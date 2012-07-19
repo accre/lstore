@@ -1,0 +1,35 @@
+#Ignore binaries
+*.so
+*.a
+ex_cat
+ex_clone
+ex_get
+ex_inspect
+ex_load
+ex_put
+ex_rw_test
+ex_store
+log_test
+mk_linear
+trace_replay
+bootstrap
+
+#These are generated via cmake using the *.in variants
+lio_client_version.c
+
+#Skip edits
+*~
+*.log
+*.out
+*.replay
+*.txt
+!CMakeLists.txt
+*.cfg
+
+#Skip the CMake output files
+CMakeFiles
+CMakeCache.txt
+Makefile
+cmake_install.cmake
+install_manifest.txt
+

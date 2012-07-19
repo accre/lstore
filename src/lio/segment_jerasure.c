@@ -1,0 +1,1538 @@
+/*
+Advanced Computing Center for Research and Education Proprietary License
+Version 1.0 (April 2006)
+
+Copyright (c) 2006, Advanced Computing Center for Research and Education,
+ Vanderbilt University, All rights reserved.
+
+This Work is the sole and exclusive property of the Advanced Computing Center
+for Research and Education department at Vanderbilt University.  No right to
+disclose or otherwise disseminate any of the information contained herein is
+granted by virtue of your possession of this software except in accordance with
+the terms and conditions of a separate License Agreement entered into with
+Vanderbilt University.
+
+THE AUTHOR OR COPYRIGHT HOLDERS PROVIDES THE "WORK" ON AN "AS IS" BASIS,
+WITHOUT WARRANTY OF ANY KIND, EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT
+LIMITED TO THE WARRANTIES OF MERCHANTABILITY, TITLE, FITNESS FOR A PARTICULAR
+PURPOSE, AND NON-INFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
+ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+Vanderbilt University
+Advanced Computing Center for Research and Education
+230 Appleton Place
+Nashville, TN 37203
+http://www.accre.vanderbilt.edu
+*/
+
+//***********************************************************************
+// Routines for managing a Jerasure segment
+//    This segment drivers supports all the erasure methods in the Jerasure
+//    library from Jim Plank:
+//        http://web.eecs.utk.edu/~plank/plank/www/software.html
+//***********************************************************************
+
+#define _log_module_index 178
+
+#include "ex3_abstract.h"
+#include "ex3_system.h"
+#include "interval_skiplist.h"
+#include "ex3_compare.h"
+#include "log.h"
+#include "string_token.h"
+#include "segment_lun.h"
+#include "iniparse.h"
+#include "random.h"
+#include "append_printf.h"
+#include "type_malloc.h"
+#include "rs_query_base.h"
+#include "segment_lun.h"
+#include "segment_lun_priv.h"
+#include "segment_jerasure.h"
+#include "erasure_tools.h"
+
+#define JE_MAGIC_SIZE 4
+
+typedef struct {
+  segment_t *child_seg;
+  erasure_plan_t *plan;
+  thread_pool_context_t *tpc;
+  ex_off_t max_parity;
+  int soft_errors;
+  int hard_errors;
+  int method;
+  int n_data_devs;
+  int n_parity_devs;
+  int n_devs;
+  int chunk_size;
+  int chunk_size_with_magic;
+  int stripe_size;
+  int stripe_size_with_magic;
+  int data_size;
+  int parity_size;
+  int w;
+} segjerase_priv_t;
+
+typedef struct {
+  segment_t *seg;
+  data_attr_t *da;
+  ex_iovec_t  *iov;
+  ex_off_t    boff;
+  ex_off_t    nbytes;
+  tbuffer_t  *buffer;
+  int         nstripes;
+  int         n_iov;
+  int         rw_mode;
+  int timeout;
+} segjerase_rw_t;
+
+typedef struct {
+  int start_stripe;
+  int iov_start;
+  int nstripes;
+} segjerase_io_t;
+
+typedef struct {
+  segment_t *seg;
+  data_attr_t *da;
+  FILE *fd;
+  ex_off_t bufsize;
+  int max_replaced;
+  int inspect_mode;
+  int timeout;
+} segjerase_inspect_t;
+
+typedef struct {
+  segjerase_inspect_t *si;
+  ex_off_t lo;
+  ex_off_t hi;
+  int do_print;
+} segjerase_full_t;
+
+typedef struct {
+  segment_t *sseg;
+  segment_t *dseg;
+  op_generic_t *gop;
+} segjerase_clone_t;
+
+
+//***********************************************************************
+//  segjerase_inspect_full_func - Does a full byte-level verification of the
+//     provided byte range and optionally corrects things.
+//***********************************************************************
+
+op_status_t segjerase_inspect_full_func(void *arg, int id)
+{
+  segjerase_full_t *sf = (segjerase_full_t *)arg;
+  segjerase_inspect_t *si = sf->si;
+  segjerase_priv_t *s = (segjerase_priv_t *)si->seg->priv;
+  op_status_t status;
+  opque_t *q;
+  int err, i, j, k, do_fix, nstripes, total_stripes, stripe, bufstripes;
+  int  n_iov, n_erased, good_magic, unrecoverable_count, bad_count, repair_errors;
+  int magic_count[s->n_devs], match, index, magic_used;
+  int magic_devs[s->n_devs*s->n_devs];
+  int erasures[s->n_devs+1], max_iov;
+  ex_off_t nbytes, bufsize, boff, base_offset;
+  tbuffer_t tbuf_read, tbuf;
+  char *buffer, *ptr[s->n_devs], parity[s->n_parity_devs*s->chunk_size];
+  char empty_magic[JE_MAGIC_SIZE];
+  char magic_key[s->n_devs*JE_MAGIC_SIZE];
+  iovec_t *iov;
+  ex_iovec_t ex_read;
+  ex_iovec_t *ex_iov;
+
+  memset(empty_magic, 0, JE_MAGIC_SIZE);
+  status = op_success_status;
+  q = new_opque();
+  opque_start_execution(q);
+  status = op_success_status;
+
+  do_fix = 0;
+  i = si->inspect_mode & INSPECT_COMMAND_BITS;
+  if ((i == INSPECT_QUICK_REPAIR) || (i == INSPECT_SCAN_REPAIR) || (i == INSPECT_FULL_REPAIR)) do_fix = 1;
+
+  base_offset = sf->lo / s->data_size; base_offset = base_offset * s->stripe_size_with_magic;
+  nbytes = sf->hi - sf->lo + 1;
+  total_stripes = nbytes / s->data_size;
+log_printf(0, "lo=" XOT " hi= " XOT " nbytes=" XOT " total_stripes=%d data_size=%d\n", sf->lo, sf->hi, nbytes, total_stripes, s->data_size);
+  bufsize = total_stripes * s->stripe_size_with_magic;
+  if (bufsize > si->bufsize) bufsize = si->bufsize;
+  type_malloc(buffer, char, bufsize);
+  bufstripes = bufsize / s->stripe_size_with_magic;
+
+  max_iov = bufstripes;
+  type_malloc(ex_iov, ex_iovec_t, bufstripes);
+  type_malloc(iov, iovec_t, bufstripes);
+
+  repair_errors = 0;
+  bad_count = 0;
+  unrecoverable_count = 0;
+  for (stripe=0; stripe<total_stripes; stripe += bufstripes) {
+     ex_read.offset = base_offset + stripe*s->stripe_size_with_magic;
+     nstripes = stripe + bufstripes;
+     if (nstripes > total_stripes) nstripes = total_stripes;
+     nstripes = nstripes - stripe;
+     ex_read.len = nstripes * s->stripe_size_with_magic;
+
+log_printf(0, "stripe=%d nstripes=%d total_stripes=%d\n", stripe, nstripes, total_stripes);
+     if (sf->do_print == 1) inspect_printf(si->fd, XIDT ": checking stripes: (%d, %d)\n", segment_id(si->seg), stripe, stripe+nstripes-1);
+
+     //** Read the data in
+     tbuffer_single(&tbuf_read, ex_read.len, buffer);
+     memset(buffer, 0, bufsize);
+     err = gop_sync_exec(segment_read(s->child_seg, si->da, 1, &ex_read, &tbuf_read, 0, si->timeout));
+
+     n_iov = 0;
+     nbytes = 0;
+     for (i=0; i<nstripes; i++) {  //** Now check everything
+        magic_used = 0;
+        boff = i*s->stripe_size_with_magic;
+
+        for (k=0; k < s->n_devs; k++) {
+            match = -1;
+            for (j=0; j<magic_used; j++) {
+               if (memcmp(&(magic_key[j*JE_MAGIC_SIZE]), &(buffer[boff + k*s->chunk_size_with_magic]), JE_MAGIC_SIZE) == 0) {
+                   match = j;
+                   magic_devs[j*s->n_devs + magic_count[j]] = k;
+                   magic_count[j]++;
+                   break;
+               }
+            }
+
+            if (match == -1) {
+               magic_devs[magic_used*s->n_devs] = k;
+               magic_count[magic_used] = 1;
+               memcpy(&(magic_key[magic_used*JE_MAGIC_SIZE]), &(buffer[boff + k*s->chunk_size_with_magic]), JE_MAGIC_SIZE);
+               magic_used++;
+            }
+        }
+
+        //** See who has the quorum
+        match = magic_count[0];
+        index = 0;
+        for (k=1; k<magic_used; k++) {
+           if (match<magic_count[k]) {match = magic_count[k];  index = k; }
+        }
+
+        good_magic = memcmp(empty_magic, &(magic_key[index*JE_MAGIC_SIZE]), JE_MAGIC_SIZE);
+        if ((good_magic == 0) && (magic_count[index] != s->n_devs)) {
+           unrecoverable_count++;
+           bad_count++;
+log_printf(0, "unrecoverable error stripe=%d i=%d good_magic=%d magic_count=%d\n", stripe,i, good_magic, magic_count[index]);
+
+        } else if (magic_count[index] == s->n_devs) { //** Magic looks good so check the data
+             //** Make the decoding structure
+             for (k=0; k < s->n_data_devs; k++) {
+                ptr[k] = &(buffer[boff + JE_MAGIC_SIZE + k*s->chunk_size_with_magic]);
+             }
+             for (k=0; k < s->n_parity_devs; k++) {
+                ptr[s->n_data_devs + k] = &(parity[k*s->chunk_size]);
+             }
+
+           //** and do the encoding
+           s->plan->encode_block(s->plan, ptr, s->chunk_size);
+
+           //** Verify with the parity on disk
+           err = 0;
+           for (k=0; k < s->n_parity_devs; k++) {
+              if (memcmp(&(parity[k*s->chunk_size]), &(buffer[boff + JE_MAGIC_SIZE + (k+s->n_data_devs)*s->chunk_size_with_magic]), s->chunk_size) != 0) err = 1;
+           }
+           if (err != 0) { unrecoverable_count++; bad_count++; }
+        } else if (magic_count[index] >= s->n_data_devs) {
+           bad_count++;
+log_printf(0, "trying to fix stripe=%d i=%d\n", stripe,i);
+
+           if (do_fix == 1) {
+              //** Make the decoding structure
+              for (k=0; k < s->n_devs; k++) {
+                 ptr[k] = &(buffer[boff + JE_MAGIC_SIZE + k*s->chunk_size_with_magic]);
+              }
+
+              //** Mark the missing/bad blocks
+              n_erased = 0;
+              for (k=0; k < magic_used; k++) {
+                 if (k != index) {
+                    match = k*s->n_devs;
+                    for (j=0; j< magic_count[k]; j++) { //** Copy the magic over and mark the dev as bad
+                       memcpy(&(buffer[boff + magic_devs[match+j]*s->chunk_size_with_magic]), &(magic_key[index*JE_MAGIC_SIZE]), JE_MAGIC_SIZE);
+                       erasures[n_erased] = magic_devs[match+j];
+                       n_erased++;
+                    }
+                 }
+              }
+              erasures[n_erased] = -1;
+
+log_printf(0, "erased_count=%d erased[0]=%d, index=%d\n", n_erased, erasures[0], index);
+
+              //** and do the decoding
+              s->plan->decode_block(s->plan, ptr, s->chunk_size, erasures);
+
+              //** Mark it for storage
+              for (j=0; j<n_erased; j++) {
+                 k = erasures[j];
+                 ex_iov[n_iov].offset = ex_read.offset + i*s->stripe_size_with_magic + k*s->chunk_size_with_magic;
+
+log_printf(0, "offset=" XOT " k=%d\n", ex_iov[n_iov].offset, k);
+                 ex_iov[n_iov].len = s->chunk_size_with_magic;
+                 iov[n_iov].iov_base = &(buffer[boff + k*s->chunk_size_with_magic]);
+log_printf(0, "memcmp=%d\n", memcmp(iov[n_iov].iov_base, &(buffer[boff + index*s->chunk_size_with_magic]), JE_MAGIC_SIZE));
+                 iov[n_iov].iov_len = ex_iov[n_iov].len;
+                 nbytes += ex_iov[n_iov].len;
+                 n_iov++;
+                 if (n_iov >= max_iov) {
+                    max_iov = 1.5 * max_iov;
+                    ex_iov = (ex_iovec_t *)realloc(ex_iov, sizeof(ex_iovec_t) * max_iov);
+                    iov = (iovec_t *)realloc(iov, sizeof(iovec_t) * max_iov);
+                 }
+              }
+           }
+        }
+     }
+
+     //** Perform any updates if needed
+     if (n_iov > 0) {
+        tbuffer_vec(&tbuf, nbytes, n_iov, iov);
+        err = gop_sync_exec(segment_write(s->child_seg, si->da, n_iov, ex_iov, &tbuf, 0, si->timeout));
+log_printf(0, "gop_error=%d nbytes=" XOT " n_iov=%d\n", err, nbytes, n_iov);
+        if (err != OP_STATE_SUCCESS) {
+
+//           inspect_printf(si->fd, XIDT ": checking stripes: (%d, %d)\n", segment_id(si->seg), start_stripe, start_stripe+curr_stripe-1);
+           repair_errors++;
+        }
+     }
+
+     if (sf->do_print == 1) inspect_printf(si->fd, XIDT ": bad stripe count: %d  --- Repair errors: %d\n", segment_id(si->seg), bad_count, repair_errors);
+
+
+  }
+
+  free(buffer);
+  free(ex_iov);
+  free(iov);
+  opque_free(q, OP_DESTROY);
+
+  status.error_code = bad_count;
+  status.op_status = OP_STATE_SUCCESS;
+  if ((unrecoverable_count > 0) || (repair_errors > 0)) status.op_status = OP_STATE_FAILURE;
+  return(status);
+}
+
+//***********************************************************************
+// segjerase_inspect_full - Generates the command for doing a full scan and repair
+//***********************************************************************
+
+op_generic_t *segjerase_inspect_full(segjerase_inspect_t *si, int do_print, ex_off_t lo, ex_off_t hi)
+{
+  segjerase_priv_t *s = (segjerase_priv_t *)si->seg->priv;
+  segjerase_full_t *sf;
+
+  type_malloc(sf, segjerase_full_t, 1);
+  sf->si = si;
+  sf->lo = lo;
+  sf->hi = hi;
+  sf->do_print = do_print;
+
+  return(new_thread_pool_op(s->tpc, NULL, segjerase_inspect_full_func, (void *)sf, free, 1));
+}
+
+//***********************************************************************
+// segjerase_inspect_scan - Just runs through the segment checking that the
+//    magic tags are consistent and optionally corrects them
+//***********************************************************************
+
+op_status_t segjerase_inspect_scan(segjerase_inspect_t *si)
+{
+  segjerase_priv_t *s = (segjerase_priv_t *)si->seg->priv;
+  op_status_t status;
+  opque_t *q;
+  op_generic_t *gop;
+  ex_off_t fsize, off, lo, hi;
+  int  bufsize = 1024*1024;
+  int maxstripes, curr_stripe, i, j, moff, magic_stripe, n_iov, start_stripe, stripe, total_stripes;
+  char magic[bufsize], empty_magic[JE_MAGIC_SIZE];
+  int start_bad, do_fix, err, bad_count, empty;
+  iovec_t *iov;
+  ex_iovec_t *ex_iov;
+  tbuffer_t tbuf;
+
+  memset(empty_magic, 0, JE_MAGIC_SIZE);
+
+  q = new_opque();
+  opque_start_execution(q);
+  status = op_success_status;
+
+  do_fix = 0;
+  i = si->inspect_mode & INSPECT_COMMAND_BITS;
+  if ((i == INSPECT_QUICK_REPAIR) || (i == INSPECT_SCAN_REPAIR) || (i == INSPECT_FULL_REPAIR)) do_fix = 1;
+
+  fsize = segment_size(si->seg);
+  maxstripes = bufsize / (s->n_devs*JE_MAGIC_SIZE);
+  type_malloc(iov, iovec_t, maxstripes);
+  type_malloc(ex_iov, ex_iovec_t, maxstripes);
+
+  memset(magic, 0, bufsize);
+
+  magic_stripe = s->n_devs * JE_MAGIC_SIZE;
+  total_stripes = fsize / s->data_size;
+  start_stripe = 0;
+  curr_stripe = 0;
+  n_iov = 0;
+  off = 0;
+  bad_count = 0;
+
+log_printf(0, "fsize=" XOT " data_size=%d total_stripes=%d\n", fsize, s->data_size, total_stripes);
+
+//  inspect_printf(si->fd, XIDT ": Total number of stripes:%d\n", segment_id(si->seg), total_stripes);
+
+  for (stripe=0; stripe <= total_stripes; stripe++) {
+    if ((curr_stripe > maxstripes) || (stripe == total_stripes)) {
+       inspect_printf(si->fd, XIDT ": checking stripes: (%d, %d)\n", segment_id(si->seg), start_stripe, start_stripe+curr_stripe-1);
+
+log_printf(0, "i=%d n_iov=%d size=%d\n", i, n_iov, n_iov*JE_MAGIC_SIZE);
+       tbuffer_vec(&tbuf, n_iov*JE_MAGIC_SIZE, n_iov, iov);
+       err = gop_sync_exec(segment_read(s->child_seg, si->da, n_iov, ex_iov, &tbuf, 0, si->timeout));
+
+       //** Check for errors and fire off repairs
+       moff = 0;
+       start_bad = -1;
+       for (i=0; i<curr_stripe; i++) {
+          err = 0;
+          for (j=1; j < s->n_devs; j++) {
+             if (memcmp(&(magic[moff]), &(magic[moff+j*JE_MAGIC_SIZE]), JE_MAGIC_SIZE) != 0) {
+                err = 1;
+                break;
+             }
+          }
+
+log_printf(0, " i=%d err=%d\n", i, err);
+          empty = 0;
+          if (err == 0) {
+            if (memcmp(empty_magic, &(magic[moff]), JE_MAGIC_SIZE) != 0) empty = 1;
+          }
+log_printf(0, " i=%d after empty check empty=%d\n", i, empty);
+
+          if (err == 0) {  //** It's good see if we need to generate a new task
+             if ((do_fix == 1) && (start_bad != -1)) {
+                lo = (start_stripe + start_bad) * s->data_size;  hi = (start_stripe + i) * s->data_size - 1;
+                gop = segjerase_inspect_full(si, 0, lo, hi);
+                opque_add(q, gop);
+                start_bad = -1;
+             }
+          } else {
+             bad_count++;
+             if (start_bad == -1) start_bad = i;
+log_printf(0, " i=%d bad=%d start_bad=%d\n", i, bad_count, start_bad);
+
+          }
+
+          moff += magic_stripe;
+       }
+
+       //** HAndle any leftover errors
+       if ((do_fix == 1) && (start_bad != -1)) {
+          lo = (start_stripe + start_bad) * s->data_size;  hi = (start_stripe + curr_stripe) * s->data_size - 1;
+          gop = segjerase_inspect_full(si, 0, lo, hi);
+          opque_add(q, gop);
+       }
+
+       //** Wait for any pending tasks to complete
+
+       if (opque_task_count(q) > 0) {
+          err = opque_waitall(q);
+          if (err != OP_STATE_SUCCESS) {
+             status = op_failure_status;
+          }
+       }
+
+       //** Reset for the next round
+       curr_stripe = 0;
+       start_stripe = stripe;
+       n_iov = 0;
+
+       inspect_printf(si->fd, XIDT ": bad stripe count: %d\n", segment_id(si->seg), bad_count);
+    }
+
+    if (stripe < total_stripes) {
+       //** Generate the iolist
+       for (i=0; i< s->n_devs; i++) {
+         ex_iov[n_iov].offset = off;
+         ex_iov[n_iov].len = JE_MAGIC_SIZE;
+         iov[n_iov].iov_base = &(magic[n_iov*JE_MAGIC_SIZE]);
+         iov[n_iov].iov_len = JE_MAGIC_SIZE;
+         n_iov++;
+         off += s->chunk_size_with_magic;
+       }
+
+       curr_stripe++;
+    }
+  }
+
+  free(iov);
+  free(ex_iov);
+  opque_free(q, OP_DESTROY);
+
+  status.error_code = bad_count;
+  if ((do_fix == 0) && (bad_count > 0)) {
+     status = op_failure_status;
+  }
+
+log_printf(0, "do_fix=%d bad_count=%d\n", do_fix, bad_count);
+
+  return(status);
+}
+
+//***********************************************************************
+// segjerase_inspect_func - Checks that all the segments are available and they are the right size
+//     and corrects them if requested
+//***********************************************************************
+
+op_status_t segjerase_inspect_func(void *arg, int id)
+{
+  segjerase_inspect_t *si = (segjerase_inspect_t *)arg;
+  segjerase_priv_t *s = (segjerase_priv_t *)si->seg->priv;
+  op_status_t status;
+  int option, total_stripes, child_replaced;
+  op_generic_t *gop;
+
+  status = op_success_status;
+
+  inspect_printf(si->fd, XIDT ": segment information: method=%s data_devs=%d parity_devs=%d chunk_size=%d  used_size=" XOT " mode=%d\n", 
+       segment_id(si->seg), JE_method[s->method], s->n_data_devs, s->n_parity_devs, s->chunk_size, segment_size(s->child_seg),  si->inspect_mode);
+
+  //** Issue the inspect for the underlying LUN
+  inspect_printf(si->fd, XIDT ": Inspecting child segment...\n", segment_id(si->seg));
+  gop = segment_inspect(s->child_seg, si->da, si->fd, si->inspect_mode, si->bufsize, si->timeout);
+  gop_waitall(gop);
+  status = gop_get_status(gop);
+  gop_free(gop, OP_DESTROY);
+  si->max_replaced = status.error_code;
+  child_replaced = si->max_replaced;
+
+  total_stripes = segment_size(si->seg) / s->data_size;
+
+  //** The INSPECT_QUICK_* options are handled by the LUN driver.
+  option = si->inspect_mode & INSPECT_COMMAND_BITS;
+  switch (option) {
+    case (INSPECT_SCAN_CHECK):
+    case (INSPECT_SCAN_REPAIR):
+        inspect_printf(si->fd, XIDT ": Total number of stripes:%d\n", segment_id(si->seg), total_stripes);
+        status = segjerase_inspect_scan(si);
+        break;
+    case (INSPECT_FULL_CHECK):
+    case (INSPECT_FULL_REPAIR):
+        inspect_printf(si->fd, XIDT ": Total number of stripes:%d\n", segment_id(si->seg), total_stripes);
+        gop =  segjerase_inspect_full(si, 1, 0, segment_size(si->seg));
+        gop_waitall(gop);
+        status = gop_get_status(gop);
+        gop_free(gop, OP_DESTROY);
+        break;
+  }
+
+  if (si->max_replaced > s->n_data_devs) {
+     status.op_status = OP_STATE_FAILURE;
+  } else if ((child_replaced > 0) && ((si->inspect_mode & INSPECT_FORCE_REPAIR) == 0)) {
+     status.op_status = OP_STATE_FAILURE;
+  }
+
+  if (status.op_status == OP_STATE_SUCCESS) {
+     inspect_printf(si->fd, XIDT ": status: SUCCESS (%d devices, %d stripes)\n", segment_id(si->seg), si->max_replaced, status.error_code);
+  } else {
+     inspect_printf(si->fd, XIDT ": status: FAILURE (%d devices, %d stripes)\n", segment_id(si->seg), si->max_replaced, status.error_code);
+  }
+
+  status.error_code = si->max_replaced;
+
+  return(status);
+}
+
+//***********************************************************************
+//  segjerase_inspect_func - Does the actual segment inspection operations
+//***********************************************************************
+
+op_generic_t *segjerase_inspect(segment_t *seg, data_attr_t *da, FILE *fd, int mode, ex_off_t bufsize, int timeout)
+{
+  segjerase_priv_t *s = (segjerase_priv_t *)seg->priv;
+  op_generic_t *gop;
+  op_status_t err;
+  segjerase_inspect_t *si;
+  int option;
+
+  gop = NULL;
+  option = mode & INSPECT_COMMAND_BITS;
+
+  switch (option) {
+    case (INSPECT_QUICK_CHECK):
+    case (INSPECT_SCAN_CHECK):
+    case (INSPECT_FULL_CHECK):
+    case (INSPECT_QUICK_REPAIR):
+    case (INSPECT_SCAN_REPAIR):
+    case (INSPECT_FULL_REPAIR):
+        type_malloc(si, segjerase_inspect_t, 1);
+        si->seg = seg;
+        si->da = da;
+        si->fd = fd;
+        si->inspect_mode = mode;
+        si->bufsize = bufsize;
+        si->timeout = timeout;
+        gop = new_thread_pool_op(s->tpc, NULL, segjerase_inspect_func, (void *)si, free, 1);
+    case (INSPECT_MIGRATE):
+        gop = segment_inspect(s->child_seg, da, fd, mode, bufsize, timeout);
+        break;
+    case (INSPECT_SOFT_ERRORS):
+        err.error_code = s->soft_errors;
+        err.op_status = (err.error_code == 0) ? OP_STATE_SUCCESS : OP_STATE_FAILURE;
+        gop = gop_dummy(err);
+        break;
+    case (INSPECT_HARD_ERRORS):
+        err.error_code = s->hard_errors;
+        err.op_status = (err.error_code == 0) ? OP_STATE_SUCCESS : OP_STATE_FAILURE;
+        gop = gop_dummy(err);
+        break;
+  }
+
+  return(gop);
+}
+
+//*******************************************************************************
+// segjerase_clone_func - Does the clone function
+//*******************************************************************************
+
+op_status_t segjerase_clone_func(void *arg, int id)
+{
+  segjerase_clone_t *cop = (segjerase_clone_t *)arg;
+//  cache_segment_t *ss = (cache_segment_t *)cop->sseg->priv;
+  segjerase_priv_t *ds = (segjerase_priv_t *)cop->dseg->priv;
+  op_status_t status;
+
+  status = (gop_waitall(cop->gop) == OP_STATE_SUCCESS) ? op_success_status : op_failure_status;
+  gop_free(cop->gop, OP_DESTROY);
+
+  atomic_inc(ds->child_seg->ref_count);
+  return(status);
+}
+
+
+//***********************************************************************
+// segjerase_clone - Clones a segment
+//***********************************************************************
+
+op_generic_t *segjerase_clone(segment_t *seg, data_attr_t *da, segment_t **clone_seg, int mode, void *attr, int timeout)
+{
+  segment_t *clone;
+  segjerase_priv_t *ss = (segjerase_priv_t *)seg->priv;
+  segjerase_priv_t *sd;
+  segjerase_clone_t *cop;
+  ex_off_t nbytes;
+
+  type_malloc(cop, segjerase_clone_t, 1);
+
+    //** Make the base segment
+  *clone_seg = segment_jerasure_create(exnode_service_set);
+  clone = *clone_seg;
+  sd = (segjerase_priv_t *)clone->priv;
+
+  //** Do a base copy
+  *sd = *ss;
+
+  sd->child_seg = NULL;  //** This gets set in the child clone
+
+  //** Make the ET plan
+  nbytes = sd->n_data_devs * sd->chunk_size;
+  sd->plan = et_generate_plan(nbytes, sd->method, sd->n_data_devs, sd->n_parity_devs, sd->w, -1, -1);
+  if (sd->plan == NULL) {
+     log_printf(0, "seg=" XIDT " No plan generated!\n", segment_id(seg));
+  }
+  sd->plan->form_encoding_matrix(sd->plan);
+  sd->plan->form_decoding_matrix(sd->plan);
+  
+
+  //** Copy the header
+  if (seg->header.name != NULL) clone->header.name = strdup(seg->header.name);
+
+  cop->sseg = seg;
+  cop->dseg = clone;
+      //** Jerase doesn't manage any data.  The child does so clone it
+  cop->gop = segment_clone(ss->child_seg, da, &(sd->child_seg), mode, attr, timeout);
+
+  return(new_thread_pool_op(ss->tpc, NULL, segjerase_clone_func, (void *)cop, free, 1));
+}
+
+
+//***********************************************************************
+//  segjerase_read_func - Reads the stripes
+//    NOTE: 1) Assumes only 1 writer/stripe!  Otherwise you get a race condition.
+//          2) Assumes a single iov/stripe
+//          These should be enfoced automatically if called from the segment_cache driver
+//***********************************************************************
+
+op_status_t segjerase_read_func(void *arg, int id)
+{
+  segjerase_rw_t *sw = (segjerase_rw_t *)arg;
+  segjerase_priv_t *s = (segjerase_priv_t *)sw->seg->priv;
+  op_status_t status, op_status;
+  ex_off_t lo, boff, poff, len, parity_len, parity_used, curr_bytes;
+  int i, j, k, stripe, magic_used, n_erased, slot, n_iov, nstripes, curr_stripe, iov_start, magic_stripe, magic_off;
+  char *parity, *magic, *ptr[s->n_devs];
+  int erasures[s->n_devs+1];
+  char magic_key[s->n_devs*JE_MAGIC_SIZE], empty_magic[JE_MAGIC_SIZE];
+  int magic_count[s->n_devs], data_ok, match, index;
+  int magic_devs[s->n_devs*s->n_devs];
+  int soft_error, hard_error;
+  opque_t *q;
+  op_generic_t *gop;
+  ex_iovec_t *ex_iov;
+  tbuffer_t *tbuf;
+  iovec_t *iov;
+  segjerase_io_t *info;
+  tbuffer_var_t tbv;
+
+  memset(empty_magic, 0, JE_MAGIC_SIZE);
+  q = new_opque();
+  opque_start_execution(q);
+  tbuffer_var_init(&tbv);
+  magic_stripe = JE_MAGIC_SIZE*s->n_devs;
+  status = op_success_status;
+  soft_error = 0; hard_error = 0;
+
+  //** Make the space for the parity
+  parity_len = sw->nstripes * s->parity_size;
+  if (s->max_parity < parity_len) {
+     parity_len = s->max_parity;
+     for (i=0; i < sw->n_iov; i++) {
+        len = sw->iov[i].len;
+        nstripes = len / s->data_size;
+        j = nstripes*s->parity_size;
+        if (j > parity_len) parity_len = j;
+     }
+
+     if (parity_len > s->max_parity) {
+        log_printf(1, "seg=" XIDT " Parity to small.  Growing to parity_len=" XOT " s->max_parity=" XOT "\n", segment_id(sw->seg), parity_len, s->max_parity);
+     }
+  }
+  type_malloc(parity, char, parity_len);
+
+
+  type_malloc_clear(magic, char, magic_stripe*sw->nstripes);
+//  type_malloc(ptr, char *, sw->nstripes*s->n_devs);
+  type_malloc(ex_iov, ex_iovec_t, sw->n_iov);
+  type_malloc(iov, iovec_t, 2*sw->nstripes*s->n_devs);
+  type_malloc(tbuf, tbuffer_t, sw->n_iov);
+  type_malloc(info, segjerase_io_t, sw->n_iov);
+
+//  memset(magic, 0, magic_stripe*sw->nstripes);
+
+  //** Cycle through the tasks
+  parity_used = 0;
+  curr_stripe = 0;
+  n_iov = 0;
+  curr_bytes = 0;
+  for (i=0; i<=sw->n_iov; i++) {
+     if (i<sw->n_iov) {  //** Kludgy check so we don't have to copy the waitany code twice
+        lo = sw->iov[i].offset / s->data_size;
+        lo = lo * s->stripe_size_with_magic;
+        len = sw->iov[i].len;
+        nstripes = len / s->data_size;
+        j = nstripes*s->parity_size;
+     }
+
+     if (((j+parity_used) > parity_len) || (i==sw->n_iov)) {  //** Filled the buffer so wait for the current tasks to complete
+        while ((gop = opque_waitany(q)) != NULL) {
+          slot = gop_get_myid(gop);
+
+          //** Make the magic table to determine which magic has a quorum
+          iov_start = info[slot].iov_start;
+          for (stripe=0; stripe < info[slot].nstripes; stripe++) {
+//             n = info[slot].start_stripe + stripe;
+
+             magic_used = 0;
+             for (k=0; k < s->n_devs; k++) {
+                 match = -1;
+                 for (j=0; j<magic_used; j++) {
+                    if (memcmp(&(magic_key[j*JE_MAGIC_SIZE]), iov[iov_start + 2*k].iov_base, JE_MAGIC_SIZE) == 0) {
+                       match = j;
+                       magic_devs[j*s->n_devs + magic_count[j]] = k;
+log_printf(15, "(m) mindex=%d count=%d dev=%d (slot=%d)\n", j, magic_count[j]+1, k, j*s->n_devs + magic_count[j]);
+                       magic_count[j]++;
+                       break;
+                    }
+                 }
+
+                 if (match == -1) {
+                    magic_devs[magic_used*s->n_devs] = k;
+                    magic_count[magic_used] = 1;
+                    memcpy(&(magic_key[magic_used*JE_MAGIC_SIZE]), iov[iov_start + 2*k].iov_base, JE_MAGIC_SIZE);
+int d = *(uint32_t *)&(magic_key[magic_used*JE_MAGIC_SIZE]);
+log_printf(15, "(n) mindex=%d count=%d dev=%d (slot=%d) magic=%d\n", magic_used, 1, k, magic_used*s->n_devs, d);
+                    magic_used++;
+                 }
+             }
+
+             //** See who has the quorum
+             match = magic_count[0];
+             index = 0;
+             for (k=1; k<magic_used; k++) {
+                if (match<magic_count[k]) {match = magic_count[k];  index = k; }
+             }
+
+             data_ok = 1;
+             if (magic_count[index] != s->n_devs) {
+                j = 0;
+                match = index*s->n_devs;
+                for (k=0; k<magic_count[index]; k++) {
+                   if (magic_devs[match+k] < s->n_data_devs) j++;
+                }
+                if (j != s->n_data_devs) data_ok = 0;
+             } else if (memcmp(empty_magic, &(magic_key[index*JE_MAGIC_SIZE]), JE_MAGIC_SIZE) == 0) {
+                data_ok = (magic_count[index] == s->n_devs) ? 2 : -1;
+             }
+
+
+//int d = *(uint32_t *)&(magic_key[index*JE_MAGIC_SIZE]);
+//log_printf(15, "index=%d good=%d data_ok=%d magic=%d data_devs=%d\n", index, magic_count[index], data_ok, d, s->n_data_devs);
+
+             if (data_ok > 0) {
+                if (data_ok == 2) { //** no data stored so blank it
+                   for (k=0; k<s->n_data_devs; k++) {
+                      memset(iov[iov_start + 2*k + 1].iov_base, 0, s->chunk_size);
+                   }
+                }
+             } else {
+                op_status = gop_get_status(gop);
+                if ((magic_count[index] < s->n_data_devs) || (data_ok == -1)) {  //** Unrecoverable error
+                   log_printf(5, "seg=" XIDT " Error with write off=" XOT " len=" XOT " n_parity=%d good=%d error_code=%d\n",
+                         segment_id(sw->seg), sw->iov[slot].offset, sw->iov[slot].len, s->n_parity_devs, magic_count[index], op_status.error_code);
+                   status.op_status = OP_STATE_FAILURE;
+                   status.error_code = op_status.error_code;
+                   hard_error = 1;
+                } else {  //** Recoverable
+                   log_printf(5, "seg=" XIDT " recoverable write error off=" XOT " len= "XOT " n_parity=%d good=%d error_code=%d magic_used=%d index=%d magic_count[index]=%d\n",
+                         segment_id(sw->seg), sw->iov[slot].offset, sw->iov[slot].len, s->n_parity_devs, magic_count[index], op_status.error_code, magic_used, index, magic_count[index]);
+                   status.error_code = op_status.error_code;
+                   soft_error = 1;
+
+                   //** Make the decoding structure
+                   for (k=0; k < s->n_devs; k++) {
+                      ptr[k] = iov[iov_start + 2*k + 1].iov_base;
+                   }
+
+                   //** Mark the missing/bad blocks
+                   n_erased = 0;
+                   for (k=0; k < magic_used; k++) {
+                       if (k != index) {
+                          match = k*s->n_devs;
+                          for (j=0; j< magic_count[k]; j++) {
+                             erasures[n_erased] = magic_devs[match+j];
+                             n_erased++;
+                          }
+                       }
+                   }
+for (i=0; i<n_erased; i++) {
+  log_printf(15, "seg=" XIDT " erased[%d]=%d\n", segment_id(sw->seg), i, erasures[i]);
+}
+for (i=0; i<magic_count[index]; i++) {
+  log_printf(15, "seg=" XIDT " good[%d]=%d (slot=%d)\n", segment_id(sw->seg), i, magic_devs[index*s->n_devs + i], index*s->n_devs+i);
+}
+                   erasures[n_erased] = -1;
+
+                   //** and do the decoding
+                   s->plan->decode_block(s->plan, ptr, s->chunk_size, erasures);
+
+                }
+             }
+
+             iov_start += 2*s->n_devs;
+          }
+
+          gop_free(gop, OP_DESTROY);
+        }
+
+        parity_used = 0;
+        curr_stripe = 0;
+        n_iov = 0;
+     }
+
+     if (i < sw->n_iov) {  //** Kludgy check so we don't have to copy the waitany code twice
+        //** Construct the next ops base
+        ex_iov[i].offset = lo;
+        ex_iov[i].len = nstripes * s->stripe_size_with_magic;
+
+        iov_start = n_iov;
+
+        info[i].iov_start = iov_start;
+        info[i].start_stripe = curr_stripe;
+        info[i].nstripes = nstripes;
+
+        //** Cycle through the stripes for encoding
+        boff = sw->boff + curr_bytes;
+        magic_off = curr_stripe*magic_stripe;
+        for (j=0; j<nstripes; j++) {
+           tbv.nbytes = s->data_size;
+           tbuffer_next(sw->buffer, boff, &tbv);
+           assert((tbv.n_iov == 1) && (tbv.nbytes == s->data_size));
+
+           //** Make the encoding and transfer data structs
+           poff = 0;
+           for (k=0; k<s->n_data_devs; k++) {
+              iov[n_iov].iov_base = &(magic[magic_off]); iov[n_iov].iov_len = JE_MAGIC_SIZE; n_iov++;  magic_off += JE_MAGIC_SIZE;
+              iov[n_iov].iov_base = tbv.buffer[0].iov_base + poff; iov[n_iov].iov_len = s->chunk_size; n_iov++;
+              poff += s->chunk_size;
+           }
+
+           poff = 0;
+           for (k=0; k<s->n_parity_devs; k++) {
+              iov[n_iov].iov_base = &(magic[magic_off]); iov[n_iov].iov_len = JE_MAGIC_SIZE; n_iov++;  magic_off += JE_MAGIC_SIZE;
+              iov[n_iov].iov_base = &(parity[curr_stripe*s->parity_size + poff]); iov[n_iov].iov_len = s->chunk_size; n_iov++;
+              poff += s->chunk_size;
+           }
+
+           curr_stripe++;
+           boff += s->data_size;
+        }
+
+        boff = sw->boff + curr_bytes;
+        tbuffer_vec(&(tbuf[i]), ex_iov[i].len, n_iov - iov_start, &(iov[iov_start]));
+        gop = segment_read(s->child_seg, sw->da, 1, &(ex_iov[i]), &(tbuf[i]), boff, sw->timeout);
+        gop_set_myid(gop, i);
+        opque_add(q, gop);
+        curr_bytes += len;
+        parity_used += nstripes * s->parity_size;
+     }
+  }
+
+
+  //** Clean up
+  free(parity);
+  free(magic);
+  free(ex_iov);
+  free(iov);
+  free(tbuf);
+  free(info);
+
+  opque_free(q, OP_DESTROY);
+
+  if ((soft_error+hard_error) > 0) {
+     segment_lock(sw->seg);
+     if (soft_error > 0) s->soft_errors++;
+     if (hard_error > 0) s->hard_errors++;
+     segment_unlock(sw->seg);
+  }
+
+  return(status);
+}
+
+//***********************************************************************
+//  segjerase_write_func - Writes the stripes
+//    NOTE: 1) Assumes only 1 writer/stripe!  Otherwise you get a race condition.
+//          2) Assumes a single iov/stripe
+//          These should be enfoced automatically if called from the segment_cache driver
+//***********************************************************************
+
+op_status_t segjerase_write_func(void *arg, int id)
+{
+  segjerase_rw_t *sw = (segjerase_rw_t *)arg;
+  segjerase_priv_t *s = (segjerase_priv_t *)sw->seg->priv;
+  op_status_t status, op_status;
+  ex_off_t lo, boff, poff, len, parity_len, parity_used, curr_bytes;
+  int i, j, k, n_iov, nstripes, curr_stripe, pstripe, iov_start;
+  int soft_error, hard_error;
+  char *parity, *magic, **ptr;
+  opque_t *q;
+  op_generic_t *gop;
+  ex_iovec_t *ex_iov;
+  tbuffer_t *tbuf;
+  iovec_t *iov;
+  tbuffer_var_t tbv;
+
+  q = new_opque();
+  opque_start_execution(q);
+  tbuffer_var_init(&tbv);
+  status = op_success_status;
+  soft_error = 0; hard_error = 0;
+
+  //** Make the space for the parity
+  parity_len = sw->nstripes * s->parity_size;
+  if (s->max_parity < parity_len) {
+     parity_len = s->max_parity;
+     for (i=0; i < sw->n_iov; i++) {
+        len = sw->iov[i].len;
+        nstripes = len / s->data_size;
+        j = nstripes*s->parity_size;
+        if (j > parity_len) parity_len = j;
+     }
+
+     if (parity_len > s->max_parity) {
+        log_printf(1, "Parity to small.  Growing to parity_len=" XOT " s->max_parity=" XOT "\n", parity_len, s->max_parity);
+     }
+  }
+  type_malloc(parity, char, parity_len);
+
+  type_malloc_clear(magic, char, JE_MAGIC_SIZE*sw->n_iov);
+  type_malloc(ptr, char *, sw->nstripes*s->n_devs);
+  type_malloc(ex_iov, ex_iovec_t, sw->n_iov);
+  type_malloc(iov, iovec_t, 2*sw->nstripes*s->n_devs);
+  type_malloc(tbuf, tbuffer_t, sw->n_iov);
+
+  get_random(magic, sw->n_iov*JE_MAGIC_SIZE);  //** Make the magic data
+
+  //** Cycle through the tasks
+  parity_used = 0;
+  curr_stripe = 0;
+  pstripe = 0;
+  n_iov = 0;
+  curr_bytes = 0;
+  for (i=0; i<=sw->n_iov; i++) {
+     if (i<sw->n_iov) {  //** Kludgy check so we don't have to copy the waitany code twice
+        lo = sw->iov[i].offset / s->data_size;
+        lo = lo * s->stripe_size_with_magic;
+        len = sw->iov[i].len;
+        nstripes = len / s->data_size;
+        j = nstripes*s->parity_size;
+     }
+
+     if (((j+parity_used) > parity_len) || (i==sw->n_iov)) {  //** Filled the buffer so wait for the current tasks to complete
+        while ((gop = opque_waitany(q)) != NULL) {
+          j = gop_get_myid(gop);
+          if (gop_completed_successfully(gop) != OP_STATE_SUCCESS) {
+             op_status = gop_get_status(gop);
+             if (op_status.error_code > s->n_parity_devs) {
+                log_printf(5, "seg=" XIDT " Error with write off=" XOT " len= "XOT " n_parity=%d n_failed=%d\n", 
+                      segment_id(sw->seg), sw->iov[j].offset, sw->iov[j].len, s->n_parity_devs, op_status.error_code);
+                status = op_status;
+                hard_error = 1;
+             } else {
+                log_printf(5, "seg=" XIDT " recoverable write error off=" XOT " len= "XOT " n_parity=%d n_failed=%d\n", 
+                      segment_id(sw->seg), sw->iov[j].offset, sw->iov[j].len, s->n_parity_devs, op_status.error_code);
+                status.error_code = op_status.error_code;
+                soft_error = 1;
+             }
+          }
+
+          gop_free(gop, OP_DESTROY);
+        }
+        parity_used = 0;
+        curr_stripe = 0;
+        pstripe = 0;
+        n_iov = 0;
+     }
+
+     if (i < sw->n_iov) {  //** Kludgy check so we don't have to copy the waitany code twice
+        //** Construct the next ops base
+        ex_iov[i].offset = lo;
+        ex_iov[i].len = nstripes * s->stripe_size_with_magic;
+
+        iov_start = n_iov;
+
+        //** Cycle through the stripes for encoding
+        boff = sw->boff + curr_bytes;
+        for (j=0; j<nstripes; j++) {
+           tbv.nbytes = s->data_size;
+//           boff += s->chunk_size;
+           tbuffer_next(sw->buffer, boff, &tbv);
+           assert((tbv.n_iov == 1) && (tbv.nbytes == s->data_size));
+
+           //** Make the encoding and transfer data structs
+           poff = 0;
+           for (k=0; k<s->n_data_devs; k++) {
+              ptr[pstripe + k] = tbv.buffer[0].iov_base + poff;
+              iov[n_iov].iov_base = &(magic[i*JE_MAGIC_SIZE]); iov[n_iov].iov_len = JE_MAGIC_SIZE; n_iov++;
+              iov[n_iov].iov_base = ptr[pstripe+k]; iov[n_iov].iov_len = s->chunk_size; n_iov++;
+              poff += s->chunk_size;
+           }
+
+           for (k=0; k<s->n_parity_devs; k++) {
+              ptr[pstripe + s->n_data_devs + k] =  &(parity[parity_used]);
+              iov[n_iov].iov_base = &(magic[i*JE_MAGIC_SIZE]); iov[n_iov].iov_len = JE_MAGIC_SIZE; n_iov++;
+              iov[n_iov].iov_base = ptr[pstripe + s->n_data_devs + k]; iov[n_iov].iov_len = s->chunk_size; n_iov++;
+              parity_used += s->chunk_size;
+           }
+
+           //** Encode the data
+           s->plan->encode_block(s->plan, &(ptr[pstripe]), s->chunk_size);
+
+           curr_stripe++;
+           pstripe += s->n_devs;
+           boff += s->data_size;
+        }
+
+        boff = sw->boff + curr_bytes;
+        tbuffer_vec(&(tbuf[i]), nstripes*s->stripe_size_with_magic, n_iov - iov_start, &(iov[iov_start]));
+        gop = segment_write(s->child_seg, sw->da, 1, &(ex_iov[i]), &(tbuf[i]), boff, sw->timeout);
+        gop_set_myid(gop, i);
+        opque_add(q, gop);
+        curr_bytes += len;
+//        parity_used += s->parity_size * nstripes;
+
+//uint32_t *uptr;
+//int d;
+//char pbuffer[s->chunk_size+1];
+//log_printf(15, "seg=" XIDT " off=" XOT " len=" XOT "\n", segment_id(sw->seg), ex_iov[i].offset, ex_iov[i].len);
+//for (k=iov_start; k<n_iov; k += 2*s->n_devs) {
+//   log_printf(15, "PRINT iov=%d----------------\n", k);
+//   for (j=0; j < s->n_data_devs; j++) {
+//      uptr = (uint32_t *)iov[k+2*j].iov_base;
+//      d = *uptr;
+//      log_printf(15, "dev=%d magic=%d\n", j, d);
+//      memcpy(pbuffer, iov[k+2*j+1].iov_base, s->chunk_size);
+//      pbuffer[s->chunk_size] = '\0';
+//      log_printf(15, "        data=!%s!\n", pbuffer);
+//   }
+//}
+     }
+  }
+
+
+  //** Clean up
+  free(parity);
+  free(magic);
+  free(ptr);
+  free(ex_iov);
+  free(iov);
+  free(tbuf);
+
+  opque_free(q, OP_DESTROY);
+
+  if ((soft_error+hard_error) > 0) {
+     segment_lock(sw->seg);
+     if (soft_error > 0) s->soft_errors++;
+     if (hard_error > 0) s->hard_errors++;
+     segment_unlock(sw->seg);
+  }
+
+
+  return(status);
+}
+
+//***********************************************************************
+// segjerase_write - Performs a segment write operation
+//***********************************************************************
+
+op_generic_t *segjerase_write(segment_t *seg, data_attr_t *da, int n_iov, ex_iovec_t *iov, tbuffer_t *buffer, ex_off_t boff, int timeout)
+{
+  segjerase_priv_t *s = (segjerase_priv_t *)seg->priv;
+  segjerase_rw_t *sw;
+  op_generic_t *gop;
+  ex_off_t rem_pos, rem_len, nbytes;
+  int i, nstripes;
+
+  //** 1st verify the ops occur on whole rows
+  nbytes = 0;
+  nstripes = 0;
+  for (i=0; i<n_iov; i++) {
+     nbytes += iov[i].len;
+     nstripes += iov[i].len / s->data_size;
+     rem_pos = iov[i].offset % s->data_size;
+     rem_len = iov[i].len % s->data_size;
+     if ((rem_pos != 0) || (rem_len != 0)) {
+         log_printf(1, "seg=" XIDT " offset/len not on stripe boundary!  data_size=" XOT " off[%d]=" XOT " len[i]=" XOT "\n",
+             segment_id(seg), s->data_size, i, iov[i].offset, i, iov[i].len);
+         return(NULL);
+     }
+  }
+
+  //** I/O is on stripe boundaries so proceed
+  type_malloc(sw, segjerase_rw_t, 1);
+  sw->seg = seg;
+  sw->da = da;
+  sw->nbytes = nbytes;
+  sw->nstripes= nstripes;
+  sw->n_iov = n_iov;
+  sw->iov = iov;
+  sw->boff = boff;
+  sw->buffer = buffer;
+  sw->timeout = timeout;
+  sw->rw_mode = 1;
+  gop = new_thread_pool_op(s->tpc, NULL, segjerase_write_func, (void *)sw, free, 1);
+
+  return(gop);
+}
+
+
+//***********************************************************************
+// segjerase_read - Performs a segment read operation
+//***********************************************************************
+
+op_generic_t *segjerase_read(segment_t *seg, data_attr_t *da, int n_iov, ex_iovec_t *iov, tbuffer_t *buffer, ex_off_t boff, int timeout)
+{
+  segjerase_priv_t *s = (segjerase_priv_t *)seg->priv;
+  segjerase_rw_t *sw;
+  op_generic_t *gop;
+  ex_off_t rem_pos, rem_len, nbytes;
+  int i, nstripes;
+
+  //** 1st verify the ops occur on whole rows
+  nstripes = 0;
+  for (i=0; i<n_iov; i++) {
+     nbytes += iov[i].len;
+     nstripes += iov[i].len / s->data_size;
+     rem_pos = iov[i].offset % s->data_size;
+     rem_len = iov[i].len % s->data_size;
+     if ((rem_pos != 0) || (rem_len != 0)) {
+         log_printf(1, "seg=" XIDT " offset/len not on stripe boundary!  data_size=" XOT " off[%d]=" XOT " len[i]=" XOT "\n", 
+             segment_id(seg), s->data_size, i, iov[i].offset, i, iov[i].len);
+         return(NULL);
+     }
+  }
+
+
+  //** I/O is on stripe boundaries so proceed
+
+  type_malloc(sw, segjerase_rw_t, 1);
+  sw->seg = seg;
+  sw->da = da;
+  sw->n_iov = n_iov;
+  sw->nbytes = nbytes;
+  sw->nstripes = nstripes;
+  sw->iov = iov;
+  sw->boff = boff;
+  sw->buffer = buffer;
+  sw->timeout = timeout;
+  sw->rw_mode = 1;
+  gop = new_thread_pool_op(s->tpc, NULL, segjerase_read_func, (void *)sw, free, 1);
+
+  return(gop);
+}
+
+
+
+//***********************************************************************
+// segjerase_flush - Flushes a segment
+//***********************************************************************
+
+op_generic_t *segjerase_flush(segment_t *seg, data_attr_t *da, ex_off_t lo, ex_off_t hi, int timeout)
+{
+  return(gop_dummy(op_success_status));
+}
+
+//***********************************************************************
+// segjerase_remove - Removes the segment.
+//***********************************************************************
+
+op_generic_t *segjerase_remove(segment_t *seg, data_attr_t *da, int timeout)
+{
+  segjerase_priv_t *s = (segjerase_priv_t *)seg->priv;
+
+  return(segment_remove(s->child_seg, da, timeout));
+}
+
+//***********************************************************************
+// segjerase_truncate - Truncates (or grows) the segment
+//***********************************************************************
+
+op_generic_t *segjerase_truncate(segment_t *seg, data_attr_t *da, ex_off_t new_size, int timeout)
+{
+  segjerase_priv_t *s = (segjerase_priv_t *)seg->priv;
+  ex_off_t tweaked_size;
+
+  //** Round to the nearest whole row
+  tweaked_size = new_size / s->data_size;
+  if ((new_size % s->data_size) > 0) tweaked_size++;
+  tweaked_size *= s->stripe_size_with_magic;
+
+  return(segment_truncate(s->child_seg, da, tweaked_size, timeout));
+}
+
+//***********************************************************************
+// segjerase_block_size - Returns the segment block size.
+//***********************************************************************
+
+ex_off_t segjerase_block_size(segment_t *seg)
+{
+  segjerase_priv_t *s = (segjerase_priv_t *)seg->priv;
+  return(s->data_size);
+}
+
+//***********************************************************************
+// segjerase_size - Returns the segment size.
+//***********************************************************************
+
+ex_off_t segjerase_size(segment_t *seg)
+{
+  segjerase_priv_t *s = (segjerase_priv_t *)seg->priv;
+  ex_off_t nbytes;
+
+  nbytes = segment_size(s->child_seg) / s->stripe_size_with_magic;
+  nbytes = nbytes * s->data_size;
+
+  return(nbytes);
+}
+
+//***********************************************************************
+// segjerase_serialize_text -Convert the segment to a text based format
+//***********************************************************************
+
+int segjerase_serialize_text(segment_t *seg, exnode_exchange_t *exp)
+{
+  segjerase_priv_t *s = (segjerase_priv_t *)seg->priv;
+  int bufsize=10*1024;
+  char segbuf[bufsize];
+  char *etext;
+  int sused;
+  exnode_exchange_t child_exp;
+
+  segbuf[0] = 0;
+  child_exp.type = EX_TEXT;
+  child_exp.text = NULL;
+
+  sused = 0;
+
+  //** Store the child segment 1st
+  segment_serialize(s->child_seg, &child_exp);
+
+  //** Store the segment header
+  append_printf(segbuf, &sused, bufsize, "[segment-" XIDT "]\n", seg->header.id);
+  if ((seg->header.name != NULL) && (strcmp(seg->header.name, "") != 0)) {
+     etext = escape_text("=", '\\', seg->header.name);
+     append_printf(segbuf, &sused, bufsize, "name=%s\n", etext);  free(etext);
+  }
+  append_printf(segbuf, &sused, bufsize, "type=%s\n", SEGMENT_TYPE_JERASURE);
+  append_printf(segbuf, &sused, bufsize, "ref_count=%d\n", seg->ref_count);
+
+  //** And the params
+  append_printf(segbuf, &sused, bufsize, "segment=" XIDT "\n", segment_id(s->child_seg));
+  append_printf(segbuf, &sused, bufsize, "method=%s\n", JE_method[s->method]);
+  append_printf(segbuf, &sused, bufsize, "n_data_devs=%d\n", s->n_data_devs);
+  append_printf(segbuf, &sused, bufsize, "n_parity_devs=%d\n", s->n_parity_devs);
+  append_printf(segbuf, &sused, bufsize, "chunk_size=%d\n", s->chunk_size);
+  append_printf(segbuf, &sused, bufsize, "w=%d\n", s->w);
+  append_printf(segbuf, &sused, bufsize, "max_parity=" XOT "\n", s->max_parity);
+
+  //** Merge the exnodes together
+  exnode_exchange_append_text(exp, segbuf);
+  exnode_exchange_append_text(exp, child_exp.text);
+
+  //** Clean up the child
+  exnode_exchange_free(&child_exp);
+
+  return(0);
+}
+
+//***********************************************************************
+// segjerase_serialize_proto -Convert the segment to a protocol buffer
+//***********************************************************************
+
+int segjerase_serialize_proto(segment_t *seg, exnode_exchange_t *exp)
+{
+//  segjerase_priv_t *s = (segjerase_priv_t *)seg->priv;
+
+  return(-1);
+}
+
+//***********************************************************************
+// segjerase_serialize -Convert the segment to a more portable format
+//***********************************************************************
+
+int segjerase_serialize(segment_t *seg, exnode_exchange_t *exp)
+{
+  if (exp->type == EX_TEXT) {
+     return(segjerase_serialize_text(seg, exp));
+  } else if (exp->type == EX_PROTOCOL_BUFFERS) {
+     return(segjerase_serialize_proto(seg, exp));
+  }
+
+  return(-1);
+}
+
+
+//***********************************************************************
+// segjerase_deserialize_text -Read the text based segment
+//***********************************************************************
+
+int segjerase_deserialize_text(segment_t *seg, ex_id_t id, exnode_exchange_t *exp)
+{
+  segjerase_priv_t *s = (segjerase_priv_t *)seg->priv;
+  seglun_priv_t *slun;
+  int bufsize=1024;
+  int nbytes;
+  char seggrp[bufsize];
+  char *text;
+  inip_file_t *fd;
+
+  //** Parse the ini text
+  fd = inip_read_text(exp->text);
+
+  //** Make the segment section name
+  snprintf(seggrp, bufsize, "segment-" XIDT, id);
+
+  //** Get the segment header info
+  seg->header.id = id;
+  seg->header.type = SEGMENT_TYPE_JERASURE;
+  seg->header.name = inip_get_string(fd, seggrp, "name", "");
+
+  //** Load the child segemnt (should be a LUN segment)
+  id = inip_get_integer(fd, seggrp, "segment", 0);
+  if (id == 0) { inip_destroy(fd); return (-1); }
+
+  s->child_seg = load_segment(id, exp);
+  if (s->child_seg == NULL) { inip_destroy(fd); return(-2); }
+
+  atomic_inc(s->child_seg->ref_count);
+
+  //** Load the params
+  s->n_data_devs = inip_get_integer(fd, seggrp, "n_data_devs", 6);
+  s->n_parity_devs = inip_get_integer(fd, seggrp, "n_parity_devs", 3);
+  s->n_devs = s->n_data_devs + s->n_parity_devs;
+
+  s->w = inip_get_integer(fd, seggrp, "w", -1);
+  s->max_parity = inip_get_integer(fd, seggrp, "max_parity", 16*1024*1024);
+  s->chunk_size = inip_get_integer(fd, seggrp, "chunk_size", 16*1024);
+  s->stripe_size = s->chunk_size * s->n_devs;
+  s->data_size = s->chunk_size * s->n_data_devs;
+  s->parity_size = s->chunk_size * s->n_parity_devs;
+  s->chunk_size_with_magic = s->chunk_size + JE_MAGIC_SIZE;
+  s->stripe_size_with_magic = s->chunk_size_with_magic * s->n_devs;
+  text = inip_get_string(fd, seggrp, "method", (char *)JE_method[CAUCHY_GOOD]);
+  s->method = et_method_type(text);  free(text);
+  if (s->method < 0) return(-3);
+
+  //** From the seg we can determine the other params (and sanity check input)
+  if (strcmp(s->child_seg->header.type, SEGMENT_TYPE_LUN) != 0) {
+     log_printf(0, "Child segment not type LUN!  got=%s\n", s->child_seg->header.type);
+     inip_destroy(fd);
+     return(-4);
+  }
+  slun = (seglun_priv_t *)s->child_seg->priv;
+
+  if (slun->n_devices != (s->n_data_devs + s->n_parity_devs)) {
+     log_printf(0, "Child n_devices(%d) != n_data_devs(%d) + n_parity_devs(%d)!\n", slun->n_devices, s->n_data_devs, s->n_parity_devs);
+     inip_destroy(fd);
+     return(-5);
+  }
+
+  if (slun->chunk_size != (s->chunk_size + JE_MAGIC_SIZE)) {
+     log_printf(0, "Child chunk_size(%d) != JE chunksize(%d) + JE_MAGIC_SIZE(%d)!\n", slun->chunk_size, s->chunk_size, JE_MAGIC_SIZE);
+     inip_destroy(fd);
+     return(-6);
+  }
+
+  nbytes = s->n_data_devs * s->chunk_size;
+  s->plan = et_generate_plan(nbytes, s->method, s->n_data_devs, s->n_parity_devs, s->w, -1, -1);
+  if (s->plan == NULL) {
+     log_printf(0, "seg=" XIDT " No plan generated!\n", segment_id(seg));
+     inip_destroy(fd);
+     return(-7);
+  }
+  s->plan->form_encoding_matrix(s->plan);
+  s->plan->form_decoding_matrix(s->plan);
+
+  inip_destroy(fd);
+
+  return(0);
+}
+
+//***********************************************************************
+// segjerase_deserialize_proto - Read the prot formatted segment
+//***********************************************************************
+
+int segjerase_deserialize_proto(segment_t *seg, ex_id_t id, exnode_exchange_t *exp)
+{
+  return(-1);
+}
+
+//***********************************************************************
+// segjerase_deserialize -Convert from the portable to internal format
+//***********************************************************************
+
+int segjerase_deserialize(segment_t *seg, ex_id_t id, exnode_exchange_t *exp)
+{
+  if (exp->type == EX_TEXT) {
+     return(segjerase_deserialize_text(seg, id, exp));
+  } else if (exp->type == EX_PROTOCOL_BUFFERS) {
+     return(segjerase_deserialize_proto(seg, id, exp));
+  }
+
+  return(-1);
+}
+
+
+//***********************************************************************
+// segjerasue_destroy - Destroys a Jerasure segment struct (not the data)
+//***********************************************************************
+
+void segjerase_destroy(segment_t *seg)
+{
+  segjerase_priv_t *s = (segjerase_priv_t *)seg->priv;
+
+  //** Check if it's still in use
+log_printf(15, "seg->id=" XIDT " ref_count=%d\n", segment_id(seg), seg->ref_count);
+
+  if (seg->ref_count > 0) return;
+
+  //** Destroy the child segment as well
+  atomic_dec(s->child_seg->ref_count);
+  segment_destroy(s->child_seg);
+
+  if (s->plan != NULL) et_destroy_plan(s->plan);
+
+  ex_header_release(&(seg->header));
+
+  apr_thread_mutex_destroy(seg->lock);
+  apr_thread_cond_destroy(seg->cond);
+  apr_pool_destroy(seg->mpool);
+
+  //** Do final cleanup
+  free(s);
+  free(seg);
+
+  return;
+}
+
+//***********************************************************************
+// segment_jerasure_create - Creates a Jerasure segment
+//***********************************************************************
+
+segment_t *segment_jerasure_create(void *arg)
+{
+  exnode_abstract_set_t *es = (exnode_abstract_set_t *)arg;
+  segjerase_priv_t *s;
+  segment_t *seg;
+
+  //** Make the space
+  type_malloc_clear(seg, segment_t, 1);
+  type_malloc_clear(s, segjerase_priv_t, 1);
+
+  seg->priv = s;
+
+  generate_ex_id(&(seg->header.id));
+  atomic_set(seg->ref_count, 0);
+  seg->header.type = SEGMENT_TYPE_JERASURE;
+  assert(apr_pool_create(&(seg->mpool), NULL) == APR_SUCCESS);
+  apr_thread_mutex_create(&(seg->lock), APR_THREAD_MUTEX_DEFAULT, seg->mpool);
+  apr_thread_cond_create(&(seg->cond), seg->mpool);
+
+  seg->rs = es->rs;
+  seg->ds = es->ds;
+  s->tpc = es->tpc_unlimited;
+  s->child_seg = NULL;
+
+  seg->fn.read = segjerase_read;
+  seg->fn.write = segjerase_write;
+  seg->fn.inspect = segjerase_inspect;
+  seg->fn.truncate = segjerase_truncate;
+  seg->fn.remove = segjerase_remove;
+  seg->fn.flush = segjerase_flush;
+  seg->fn.clone = segjerase_clone;
+  seg->fn.size = segjerase_size;
+  seg->fn.block_size = segjerase_block_size;
+  seg->fn.serialize = segjerase_serialize;
+  seg->fn.deserialize = segjerase_deserialize;
+  seg->fn.destroy = segjerase_destroy;
+
+  return(seg);
+}
+
+
+
+//***********************************************************************
+// segment_jerasure_load - Loads a Jerasure segment from ini/ex3
+//***********************************************************************
+
+segment_t *segment_jerasure_load(void *arg, ex_id_t id, exnode_exchange_t *ex)
+{
+  segment_t *seg = segment_jerasure_create(arg);
+  segment_deserialize(seg, id, ex);
+  return(seg);
+}
+
