@@ -1,0 +1,18 @@
+#Ignore binaries
+*.so
+*.a
+bootstrap
+
+#These are generated via cmake using the *.in variants
+gop_version.c
+
+#Skip edits
+*~
+
+#Skip the CMake output files
+CMakeFiles
+CMakeCache.txt
+Makefile
+cmake_install.cmake
+install_manifest.txt
+
