@@ -1,0 +1,23 @@
+#Ignore binaries
+*.so
+*.a
+ibp_perf
+ibp_copyperf
+ibp_find_drive
+ibp_test
+ibp_tool
+bootstrap
+
+#These are generated via cmake using the *.in variants
+ibp_client_version.c
+
+#Skip edits
+*~
+
+#Skip the CMake output files
+CMakeFiles
+CMakeCache.txt
+Makefile
+cmake_install.cmake
+install_manifest.txt
+
