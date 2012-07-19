@@ -1,0 +1,9 @@
+#!/bin/bash
+d=""
+[ "${1}" == "32" ] && d="32" && export cmflags='-D CMAKE_REQUIRED_FLAGS=-m32' && echo "Making 32-bit binaries"
+
+[ -e CMakeCache.txt ] && rm CMakeCache.txt
+
+CMAKE_PREFIX_PATH=/usr/local${d} \
+   cmake ${cmflags}  -D CMAKE_INSTALL_PREFIX=/usr/local -D CMAKE_INCLUDE_CURRENT_DIR=on -D CMAKE_VERBOSE_MAKEFILE=on CMakeLists.txt
+

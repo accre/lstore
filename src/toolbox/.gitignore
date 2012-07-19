@@ -1,0 +1,22 @@
+#Ignore binaries
+*.so
+*.a
+hw_info
+isl_test
+sl_test
+bootstrap
+
+#These are generated via cmake using the *.in variants
+toolbox_config.h
+toolbox_version.c
+
+#Skip edits
+*~
+
+#Skip the CMake output files
+CMakeFiles
+CMakeCache.txt
+Makefile
+cmake_install.cmake
+install_manifest.txt
+
