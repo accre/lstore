@@ -13,6 +13,7 @@ log_test
 mk_linear
 trace_replay
 bootstrap
+rs_test
 
 #These are generated via cmake using the *.in variants
 lio_client_version.c
@@ -25,6 +26,8 @@ lio_client_version.c
 *.txt
 !CMakeLists.txt
 *.cfg
+core*
+vgcore.*
 
 #Skip the CMake output files
 CMakeFiles

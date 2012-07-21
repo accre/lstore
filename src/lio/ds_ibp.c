@@ -310,7 +310,6 @@ ds_ibp_op_t *ds_ibp_op_create(ds_ibp_priv_t *ds, ds_ibp_attr_t *attr)
   type_malloc_clear(iop, ds_ibp_op_t, 1);
 
   iop->attr = (attr == NULL) ? &(ds->attr_default) : attr;
-	
   return(iop);
 }
 
@@ -321,6 +320,9 @@ ds_ibp_op_t *ds_ibp_op_create(ds_ibp_priv_t *ds, ds_ibp_attr_t *attr)
 void _ds_ibp_op_free(op_generic_t *gop, int mode)
 {
   ds_ibp_op_t *iop = gop->free_ptr;
+
+//log_printf(0, "Freeing gid=%d\n", gop_id(gop));
+//flush_log();
 
   //** Call the original cleanup routine
   gop->free_ptr = iop->free_ptr;

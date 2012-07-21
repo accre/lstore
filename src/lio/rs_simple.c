@@ -335,7 +335,7 @@ op_generic_t *rs_simple_request(resource_service_fn_t *arg, data_attr_t *da, rs_
 
            for (k=0; k<req_size; k++) {
               if (req[k].rid_index == i) {
-                 log_printf(15, "rs_simple_request: i=%d ds_key=%s, size=" XOT "\n", i, rse->ds_key, req[k].size);
+                 log_printf(15, "rs_simple_request: i=%d ds_key=%s, rid_key=%s size=" XOT "\n", i, rse->ds_key, rse->rid_key, req[k].size);
                  req[k].rid_key = rse->rid_key;
                  req[k].gop = ds_allocate(rss->ds, rse->ds_key, da, req[k].size, caps[k], timeout);
                  opque_add(que, req[k].gop);
@@ -373,9 +373,12 @@ op_generic_t *rs_simple_request(resource_service_fn_t *arg, data_attr_t *da, rs_
   free(kvq_local.pickone);
 
   free_stack(stack, 1);
-//  free_stack(used_stack);
 
   log_printf(15, "rs_simple_request: END n_rid=%d\n", n_rid);
+
+//callback_t *cb = (callback_t *)que->qd.list->top->data;
+//op_generic_t *gop = (op_generic_t *)cb->priv;
+//log_printf(15, "top gid=%d reg=%d\n", gop_id(gop), gop_id(req[0].gop));
 
   if ((found == 0) || (err_cnt>0)) {
      opque_free(que, OP_DESTROY);
