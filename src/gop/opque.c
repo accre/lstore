@@ -273,16 +273,16 @@ opque_t *new_opque()
 }
 
 //*************************************************************
-// free_opque_stack - Frees an opque
+// free_finished_stack - Frees an opque
 //*************************************************************
 
-void free_opque_stack(Stack_t *stack, int mode)
+void free_finished_stack(Stack_t *stack, int mode)
 {
   op_generic_t *gop;
 
   gop = (op_generic_t *)pop(stack);
   while (gop != NULL) {
-//log_printf(15, "free_opque_stack: gop=%p\n", gop);
+//log_printf(15, "gid=%d\n", gop_id(gop));
      if (gop->type == Q_TYPE_QUE) {
 //log_printf(15, "free_opque_stack: gop->type=QUE\n"); flush_log();
            opque_free(gop->q->opque, mode);
@@ -299,6 +299,34 @@ void free_opque_stack(Stack_t *stack, int mode)
 }
 
 //*************************************************************
+// free_list_stack - Frees an opque
+//*************************************************************
+
+void free_list_stack(Stack_t *stack, int mode)
+{
+  op_generic_t *gop;
+  callback_t *cb;
+
+  cb = (callback_t *)pop(stack);
+  while (cb != NULL) {
+     gop = (op_generic_t *)cb->priv;
+log_printf(15, "gid=%d\n", gop_id(gop));
+     if (gop->type == Q_TYPE_QUE) {
+//log_printf(15, "free_opque_stack: gop->type=QUE\n"); flush_log();
+           opque_free(gop->q->opque, mode);
+     } else {
+//log_printf(15, "free_opque_stack: gop->type=OPER\n"); flush_log();
+//DONE in op_generic_destroy        callback_destroy(gop->base.cb);  //** Free the callback chain as well
+       if (gop->base.free != NULL) gop->base.free(gop, mode);
+     }
+
+     cb = (callback_t *)pop(stack);
+  }
+
+  free_stack(stack, 0);
+}
+
+//*************************************************************
 //  opque_free - Frees the que container and optionally
 //    the container itself allowing it to be reused based
 //    on the mode
@@ -308,20 +336,17 @@ void opque_free(opque_t *opq, int mode)
 {
   que_data_t *q = &(opq->qd);
 
-log_printf(15, "opque_free: qid=%d nfin=%d nlist=%d nfailed=%d\n", gop_id(&(opq->op)), stack_size(q->finished), stack_size(q->list), stack_size(q->failed));
+log_printf(15, "qid=%d nfin=%d nlist=%d nfailed=%d\n", gop_id(&(opq->op)), stack_size(q->finished), stack_size(q->list), stack_size(q->failed));
 
   lock_opque(&(opq->qd));  //** Lock it to make sure Everything is finished and safe to free
   
   //** Free the stacks
   free_stack(q->failed, 0);
-  free_opque_stack(q->finished, mode);
-  free_opque_stack(q->list, mode);
+  free_finished_stack(q->finished, mode);
+  free_list_stack(q->list, mode);
 
   unlock_opque(&(opq->qd));  //** Has to be unlocked for gop_generic_free to work cause it also locks it
   gop_generic_free(opque_get_gop(opq), mode);
-
-//  apr_thread_mutex_destroy(opq->op.base.lock);
-//  apr_thread_cond_destroy(opq->op.base.cond);
 
   if (mode == OP_DESTROY) free(opq);
 }
