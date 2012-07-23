@@ -62,6 +62,7 @@ void _log_init()
 {
   int n;
 
+   _log_level = 0;
    atomic_init();
    assert(apr_pool_create(&_log_mpool, NULL) == APR_SUCCESS);
    assert(apr_thread_mutex_create(&_log_lock, APR_THREAD_MUTEX_DEFAULT, _log_mpool) == APR_SUCCESS);
@@ -181,7 +182,7 @@ void mlog_load(char *fname)
 
   default_level = inip_get_integer(fd, group_level, "default", 0);
 //printf("mlog_load: inital ll=%d\n", _log_level);
-  _log_level = inip_get_integer(fd, group_level, "start_level", _log_level);
+  _log_level = inip_get_integer(fd, group_level, "start_level", 0);
 //printf("mlog_load: new ll=%d\n", _log_level);
   for (n=0; n<_mlog_size; n++) _mlog_table[n] = default_level;
   logname = inip_get_string(fd, group_level, "output", "stdout");

@@ -72,6 +72,8 @@ int proc_info(int *socket, int *core_phys, int *core_virt)
      *core_virt = hwloc_get_nbobjs_by_depth(topology, depth);
   }
 
+  hwloc_topology_destroy(topology);
+
   return(err);
 }
 
