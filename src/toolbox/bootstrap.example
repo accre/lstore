@@ -1,4 +1,5 @@
-#!/bin/bash
+#!/usr/bin/env bash
+
 d=""
 [ "${1}" == "32" ] && d="32" && export cmflags='-D CMAKE_REQUIRED_FLAGS=-m32' && echo "Making 32-bit binaries"
 
