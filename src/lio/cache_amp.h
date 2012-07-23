@@ -40,7 +40,7 @@ extern "C" {
 
 #include "cache_priv.h"
 
-#define CACHE_AMP_TYPE "amp"
+#define CACHE_TYPE_AMP "amp"
 
 cache_t *amp_cache_create(void *arg, data_attr_t *da, int timeout);
 cache_t *amp_cache_load(void *arg, data_attr_t *da, int timeout, char *fname);

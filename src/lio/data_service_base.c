@@ -40,7 +40,7 @@ http://www.accre.vanderbilt.edu
 #include "log.h"
 
 typedef struct {
-  data_service_fn_t *ds;
+  data_service_fn_t *(*ds_create)(char *fname);
 } data_service_driver_t;
 
 typedef struct {
@@ -49,11 +49,14 @@ typedef struct {
 
 data_service_table_t *data_service_driver = NULL;
 
+list_t *data_service_available_table = NULL;
+
+
 //***********************************************************************
 // install_data_service- Installs a data_service driver into the table
 //***********************************************************************
 
-int install_data_service(char *type, data_service_fn_t *ds)
+int install_data_service(char *type, data_service_fn_t *(*ds_create)(char *fname))
 {
   data_service_driver_t *d;
 
@@ -70,26 +73,69 @@ int install_data_service(char *type, data_service_fn_t *ds)
   }
   
   type_malloc_clear(d, data_service_driver_t, 1);
-  d->ds = ds;
+  d->ds_create = ds_create;
   list_insert(data_service_driver->table, type, (void *)d);
 
   return(0);
 }
 
 //***********************************************************************
-// lookup_data_service - returns the DS driver
+// load_data_service - Creates a new DS based on the type
 //***********************************************************************
 
-data_service_fn_t *lookup_data_service(char *type)
+data_service_fn_t *load_data_service(char *type, char *fname)
 {
   data_service_driver_t *d;
 
   d = list_search(data_service_driver->table, type);
   if (d == NULL) {
-    log_printf(0, "loookup_data_service:  No matching driver for type=%s\n", type);
+    log_printf(0, "No matching driver for type=%s\n", type);
     return(NULL);
   }
 
-  return(d->ds);
+  return(d->ds_create(fname));
+}
+
+
+//***********************************************************************
+// lookup_data_service - returns the current DS for the given type
+//***********************************************************************
+
+int add_data_service(data_service_fn_t *ds)
+{
+  data_service_fn_t *d;
+
+  if (data_service_available_table == NULL) {
+     data_service_available_table = list_create(0, &list_string_compare, list_string_dup, list_simple_free, list_no_data_free);
+  }
+
+  d = list_search(data_service_available_table, ds_type(ds));
+  if (d != NULL) {
+    log_printf(0, "Matching driver for type=%s\n", ds_type(ds));
+    return(1);
+  }
+
+  list_insert(data_service_available_table, ds_type(ds), (void *)ds);
+
+  return(0);
+}
+
+//***********************************************************************
+// lookup_data_service - returns the current DS for the given type
+//***********************************************************************
+
+data_service_fn_t *lookup_data_service(char *type)
+{
+  data_service_fn_t *ds;
+
+  if (data_service_available_table == NULL) return(NULL);
+
+  ds = list_search(data_service_available_table, type);
+  if (ds == NULL) {
+    log_printf(0, "No matching driver for type=%s\n", type);
+    return(NULL);
+  }
+
+  return(ds);
 }
 

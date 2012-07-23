@@ -31,84 +31,45 @@ http://www.accre.vanderbilt.edu
 
 #include "exnode.h"
 #include "log.h"
+#include "lio.h"
 
 //*************************************************************************
 //*************************************************************************
 
 int main(int argc, char **argv)
 {
-  int i, j, start_option;
-  int n_rid, timeout;
+  int i, start_option;
+  int n_rid;
   char *query_text;
-  ibp_context_t *ic;
   rs_query_t *rq;
   ex_off_t block_size, total_size;
   exnode_t *ex;
-  data_service_fn_t *ds = NULL;
-  resource_service_fn_t *rs = NULL;
-  thread_pool_context_t *tpc_unlimited = NULL;
-  thread_pool_context_t *tpc_cpu = NULL;
-  cache_t *cache;
-  inip_file_t *ifd;
-  data_attr_t *da;
   char *fname_out = NULL;
-  char *cfg_name = NULL;
-  char *ctype = NULL;
   exnode_exchange_t *exp;
   segment_t *seg = NULL;
   op_generic_t *gop;
-   
+
   if (argc < 5) {
      printf("\n");
-     printf("mk_linear [-d log_level] [-c system.cfg] -q rs_query_string \n");
-     printf("           -rs rs.ini n_rid block_size total_size file.ex3\n"); 
+     printf("mk_linear LIO_COMMON_OPTIONS -q rs_query_string n_rid block_size total_size file.ex3\n");
+     lio_print_options(stdout);
      printf("\n");
      return(1);
   }
 
-  tpc_unlimited = thread_pool_create_context("UNLIMITED", 0, 2000);
-  tpc_cpu = thread_pool_create_context("CPU", 0, 0);
-  ic = ibp_create_context();  //** Initialize IBP
-  ds = ds_ibp_create(ic);
-  da = ds_attr_create(ds);
-  cache_system_init();
-  timeout = 120;
+  lio_init(&argc, argv);
 
   //*** Parse the args
   i=1;
   do {
      start_option = i;
-     
-     if (strcmp(argv[i], "-d") == 0) { //** Enable debugging
-        i++;
-        j = atoi(argv[i])*1024; i++;
-        set_log_level(j);
-    } else if (strcmp(argv[i], "-c") == 0) { //** Load the config file
-        i++;
-        cfg_name = argv[i]; i++;
-     } else if (strcmp(argv[i], "-rs") == 0) { //** Load the resource file
-        i++;
-        rs = rs_simple_create(argv[i], ds); i++;
-     } else if (strcmp(argv[i], "-q") == 0) { //** Load the query
+
+     if (strcmp(argv[i], "-q") == 0) { //** Load the query
         i++;
         query_text = argv[i]; i++;
-     } 
+     }
 
   } while (start_option < i);
-
-  if (cfg_name != NULL) {
-     ibp_load_config(ic, cfg_name);
-
-     ifd = inip_read(cfg_name);  
-     ctype = inip_get_string(ifd, "cache", "type", CACHE_LRU_TYPE);
-     inip_destroy(ifd);
-     cache = load_cache(ctype, da, timeout, cfg_name);
-     free(ctype);
-  } else {
-     cache = create_cache(CACHE_LRU_TYPE, da, timeout);
-  }
-
-  exnode_system_init(ds, rs, NULL, tpc_unlimited, tpc_cpu, cache);
 
   //** Load the fixed options
   n_rid = atoi(argv[i]); i++;
@@ -116,22 +77,18 @@ int main(int argc, char **argv)
   total_size = atoi(argv[i]); i++;
   fname_out = argv[i]; i++;
 
-  //** Do some simple sanity checks 
+  //** Do some simple sanity checks
   //** Make sure we loaded a simple res service
-  if (rs == NULL) {
-    printf("Missing resource service!\n");
-    return(1);
-  }
   if (fname_out == NULL) {
     printf("Missing output filename!\n");
     return(2);
   }
- 
-  //** Create an empty linear segment  
+
+  //** Create an empty linear segment
   seg = create_segment(SEGMENT_TYPE_LINEAR);
 
   //** Parse the query
-  rq = rs_query_parse(rs, query_text);
+  rq = rs_query_parse(lio_gc->rs, query_text);
 //  rs_query_add(rs, &rq, RSQ_BASE_OP_AND, "lun", RSQ_BASE_KV_EXACT, "", RSQ_BASE_KV_ANY);
   if (rq == NULL) {
      printf("Error parsing RS query: %s\n", query_text);
@@ -140,7 +97,7 @@ int main(int argc, char **argv)
   }
 
   //** Make the actual segment
-  gop = segment_linear_make(seg, NULL, rq, n_rid, block_size, total_size, timeout);
+  gop = segment_linear_make(seg, NULL, rq, n_rid, block_size, total_size, lio_gc->timeout);
   i = gop_waitall(gop);
   if (i != 0) {
      printf("ERROR making segment! nerr=%d\n", i);
@@ -151,7 +108,7 @@ int main(int argc, char **argv)
   //** Make an empty exnode
   ex = exnode_create();
 
-  //** and insert it  
+  //** and insert it
   view_insert(ex, seg);
 
 
@@ -170,19 +127,9 @@ int main(int argc, char **argv)
   //** Clean up
   exnode_destroy(ex);
 
-  rs_query_destroy(rs, rq);
-  
-  exnode_system_destroy();
-  cache_destroy(cache);
-  cache_system_destroy();
+  rs_query_destroy(lio_gc->rs, rq);
 
-  rs_destroy_service(rs);
-
-  ds_attr_destroy(ds, da);
-  ds_destroy_service(ds);
-  ibp_destroy_context(ic);  
-  thread_pool_destroy_context(tpc_unlimited);
-  thread_pool_destroy_context(tpc_cpu);
+  lio_shutdown();
 
   return(0);
 }

@@ -63,6 +63,7 @@ set(LIO_OBJS
    exnode3.pb-c.c
    exnode_config.c
    ex_id.c
+   lio_config.c
    rs_base.c
    rs_query_base.c
    rs_simple.c

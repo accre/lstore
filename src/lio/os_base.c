@@ -42,7 +42,7 @@ http://www.accre.vanderbilt.edu
 #include "log.h"
 
 typedef struct {
-  object_service_fn_t *(*create)(void *arg, char *fname);
+  object_service_fn_t *(*create)(thread_pool_context_t *tpc, char *fname);
   void *arg;
 } os_driver_t;
 
@@ -57,7 +57,7 @@ os_regex_table_t *os_regex_table_create(int n);
 // install_object_service- Installs an OS driver into the table
 //***********************************************************************
 
-int install_object_service(char *type, object_service_fn_t *(*create)(void *arg, char *fname), void *arg)
+int install_object_service(char *type, object_service_fn_t *(*create)(thread_pool_context_t *tpc, char *fname))
 {
   os_driver_t *d;
 
@@ -75,7 +75,6 @@ int install_object_service(char *type, object_service_fn_t *(*create)(void *arg,
 
   type_malloc_clear(d, os_driver_t, 1);
   d->create = create;
-  d->arg = arg;
   list_insert(os_driver_table->table, type, (void *)d);
 
   return(0);
@@ -85,7 +84,7 @@ int install_object_service(char *type, object_service_fn_t *(*create)(void *arg,
 // create_object_service - Creates a segment of the given type
 //***********************************************************************
 
-object_service_fn_t *create_object_service(char *type, char *fname)
+object_service_fn_t *create_object_service(char *type, thread_pool_context_t *tpc, char *fname)
 {
   os_driver_t *d;
 
@@ -95,7 +94,7 @@ object_service_fn_t *create_object_service(char *type, char *fname)
     return(NULL);
   }
 
-  return(d->create(d->arg, fname));
+  return(d->create(tpc, fname));
 }
 
 //***********************************************************************

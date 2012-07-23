@@ -40,7 +40,7 @@ extern "C" {
 
 #include "cache_priv.h"
 
-#define CACHE_LRU_TYPE "lru"
+#define CACHE_TYPE_LRU "lru"
 
 cache_t *lru_cache_create(void *arg, data_attr_t *da, int timeout);
 cache_t *lru_cache_load(void *arg, data_attr_t *da, int timeout, char *fname);

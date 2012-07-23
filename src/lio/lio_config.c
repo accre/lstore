@@ -30,18 +30,13 @@ http://www.accre.vanderbilt.edu
 #define _log_module_index 182
 
 #include "lio.h"
+#include "type_malloc.h"
+#include "log.h"
+#include "hwinfo.h"
+#include "apr_wrapper.h"
 
 //** Define the global LIO config
 lio_config_t *lio_gc = NULL;
-
-//***************************************************************
-//  lio_install_os  - Loads the default OSs
-//***************************************************************
-
-void lio_install_os()
-{
-  install_object_service(OS_TYPE_FILE, object_service_file_create, NULL);
-}
 
 //***************************************************************
 // lio_print_options - Prints the standard supported lio options
@@ -50,9 +45,9 @@ void lio_install_os()
 
 void lio_print_options(FILE *fd)
 {
- fprintf(fd, "LIO_COMMON_OPTIONS\n");
- fprintf(fd, "   -d level    -Set the debug level (0-20).  Defaults to 0\n");
- fprintf(fd, "   -c config   -Configuration file\n");
+ fprintf(fd, "    LIO_COMMON_OPTIONS\n");
+ fprintf(fd, "       -d level    -Set the debug level (0-20).  Defaults to 0\n");
+ fprintf(fd, "       -c config   -Configuration file\n");
 }
 
 //***************************************************************
@@ -60,16 +55,18 @@ void lio_print_options(FILE *fd)
 //    modified by removing LIO common options.
 //***************************************************************
 
-int lio_init(int *argc, int **argv)
+int lio_init(int *argc, char **argv)
 {
-  int i, start_option, ll, nargs;
-  int nargs;
-  char *myargv[*nargc];
+  int i, ll, nargs, err;
+  int sockets, cores, vcores;
+  char *myargv[*argc];
   char *ctype;
 
   type_malloc_clear(lio_gc, lio_config_t, 1);
 
-  lio_install_os();
+  apr_wrapper_start();
+
+  exnode_system_init();
 
   //** Parse any arguments
   memcpy(myargv, argv, sizeof(char *)*(*argc));
@@ -97,49 +94,74 @@ int lio_init(int *argc, int **argv)
   memcpy(argv, myargv, sizeof(char *)*nargs);
   *argc = nargs;
 
-  if (ll > -1) set_log_level(ll);
-
-  lio_gc->tpc_unlimited = thread_pool_create_context("UNLIMITED", 0, 2000);
-  lio_gc->tpc_cpu = thread_pool_create_context("CPU", 0, 0);
-  lio_gc->rs = NULL;
-  lio_gc->ic = ibp_create_context();  //** Initialize IBP
-  lio_gc->ds = ds_ibp_create(ic);
-  lio_gc->da = ds_attr_create(ds);
-  cache_system_init();
-  lio_gc->timeout = 120;
-
   if (lio_gc->cfg_name != NULL) {
      mlog_load(lio_gc->cfg_name);
 
-     ibp_load_config(ic, lio_gc->cfg_name);
+     if (ll > -1) ll = log_level();
 
-     lio_gc->inifd = inip_read(lio_gc->cfg_name);
-     lio_gc->timeout = inip_get_integer(lio_gc->ifd, "lio", "timeout", lio_gc->timeout);
+     set_log_level(ll);
 
-     ctype = inip_get_string(lio_gc->ifd, "cache", "type", CACHE_AMP_TYPE);
-     cache = load_cache(ctype, lio_gc->da, lio_gc->timeout, lio_gc->cfg_name);
+
+     lio_gc->ifd = inip_read(lio_gc->cfg_name);
+     lio_gc->timeout = inip_get_integer(lio_gc->ifd, "lio_config", "timeout", 120);
+
+     lio_gc->userid = inip_get_string(lio_gc->ifd, "lio_config", "userid", NULL);
+
+     ctype = inip_get_string(lio_gc->ifd, "lio_config", "ds", DS_TYPE_IBP);
+     lio_gc->ds = load_data_service(ctype, lio_gc->cfg_name);
+     if (lio_gc->ds == NULL) {
+        err = 2;
+        log_printf(1, "Error loading data service!  type=%s\n", ctype);
+     }
+     free(ctype);
+     lio_gc->da = ds_attr_create(lio_gc->ds);
+
+
+     ctype = inip_get_string(lio_gc->ifd, "lio_config", "rs", RS_TYPE_SIMPLE);
+     lio_gc->rs = load_resource_service(ctype, lio_gc->cfg_name, lio_gc->ds);
+     if (lio_gc->rs == NULL) {
+        err = 3;
+        log_printf(1, "Error loading resource service!  type=%s\n", ctype);
+     }
      free(ctype);
 
-     ctype = inip_get_string(lio_gc->ifd, "lio", "object_service_type", OS_TYPE_FILE);
-     lio_gc->os = create_object_service(ctype, lio_gc->cfg_name);
-     free(ctype);
-
-     if (lio_gc->userdid == NULL) {
-        lio_gc->userid = inip_get_string(lio_gc->ifd, "lio", "userid", NULL);
+     proc_info(&sockets, &cores, &vcores);
+     cores = inip_get_integer(lio_gc->ifd, "lio_config", "tpc_cpu", cores);
+     lio_gc->tpc_cpu = thread_pool_create_context("CPU", 1, cores);
+     if (lio_gc->tpc_cpu == NULL) {
+        err = 5;
+        log_printf(0, "Error loading tpc_cpu threadpool!  n=%d\n", cores);
      }
 
-     lio_gc->rs = rs_simple_create(lio_gc->cfg_name, lio_gc->ds);
-  } else {
-     cache = create_cache(CACHE_AMP_TYPE, lio_gc->da, lio_gc->timeout);
-     lio_gc->os = create_object_service(OS_LSTORE_TYPE, NULL);
+     cores = inip_get_integer(lio_gc->ifd, "lio_config", "tpc_unlimited", 10000);
+     lio_gc->tpc_unlimited = thread_pool_create_context("UNLIMITED", 1, cores);
+     if (lio_gc->tpc_unlimited == NULL) {
+        err = 6;
+        log_printf(0, "Error loading tpc_unlimited threadpool!  n=%d\n", cores);
+     }
+
+     ctype = inip_get_string(lio_gc->ifd, "lio_config", "os", OS_TYPE_FILE);
+     lio_gc->os = create_object_service(ctype, lio_gc->tpc_cpu, lio_gc->cfg_name);
+     if (lio_gc->os == NULL) {
+        err = 4;
+        log_printf(1, "Error loading object service!  type=%s\n", ctype);
+     }
+     free(ctype);
+
+     ctype = inip_get_string(lio_gc->ifd, "lio_config", "cache", CACHE_TYPE_AMP);
+     lio_gc->cache = load_cache(ctype, lio_gc->da, lio_gc->timeout, lio_gc->cfg_name);
+     if (lio_gc->os == NULL) {
+        err = 4;
+        log_printf(0, "Error loading cache service!  type=%s\n", ctype);
+     }
+     free(ctype);
   }
 
-  lio_gc->creds = os_login(lio_gc->os, lio_gc->userid, OS_CREDS_INI_TYPE, lio_gc->inifd);
+  lio_gc->creds = os_login(lio_gc->os, lio_gc->userid, OS_CREDS_INI_TYPE, lio_gc->ifd);
 
-  exnode_system_init(lio_gc->ds, lio_gc->rs, lio_gc->os, lio_gc->tpc_unlimited, lio_gc->tpc_cpu, lio_gc->cache);
+  exnode_system_config(lio_gc->ds, lio_gc->rs, lio_gc->os, lio_gc->tpc_unlimited, lio_gc->tpc_cpu, lio_gc->cache);
 
-
-  return(0);
+  return(err);
 }
 
 //***************************************************************
@@ -155,13 +177,14 @@ int lio_shutdown()
 
   ds_attr_destroy(lio_gc->ds, lio_gc->da);
   ds_destroy_service(lio_gc->ds);
-  ibp_destroy_context(lio_gc->ic);
   thread_pool_destroy_context(lio_gc->tpc_unlimited);
   thread_pool_destroy_context(lio_gc->tpc_cpu);
-  inip_destroy(lio_gc->inifd);
+  inip_destroy(lio_gc->ifd);
 
   os_logout(lio_gc->os, lio_gc->creds);
   os_destroy_service(lio_gc->os);
+
+  apr_wrapper_stop();
 
   return(0);
 }

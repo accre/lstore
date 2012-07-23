@@ -580,6 +580,8 @@ void ds_ibp_destroy(data_service_fn_t *dsf)
 
 //  ibp_destroy_context(ds->ic);  //** Done by the callint program
 
+  ibp_destroy_context(ds->ic);
+
   free(ds);
   free(dsf);
 }
@@ -589,23 +591,26 @@ void ds_ibp_destroy(data_service_fn_t *dsf)
 //  ds_ibp_create - Creates the IBP data service
 //***********************************************************************
 
-data_service_fn_t *ds_ibp_create(ibp_context_t *ic)
+data_service_fn_t *ds_ibp_create(char *config_file)
 {
   data_service_fn_t *dsf;
   ds_ibp_priv_t *ds;
-  
+  ibp_context_t *ic;
+
   type_malloc_clear(dsf, data_service_fn_t, 1);
   type_malloc_clear(ds, ds_ibp_priv_t , 1);
 
   //** Set the default attributes
   memset(&(ds->attr_default), 0, sizeof(ds_ibp_attr_t));
-  ds->attr_default.attr.duration = 3600;    
+  ds->attr_default.attr.duration = 3600;
   ds->attr_default.attr.reliability = IBP_HARD;
-  ds->attr_default.attr.type = IBP_BYTEARRAY;    
-  ds->attr_default.disk_cs_type = CHKSUM_DEFAULT;    
-  
-  ds->ic = ic;  
-  dsf->type = "IBP";
+  ds->attr_default.attr.type = IBP_BYTEARRAY;
+  ds->attr_default.disk_cs_type = CHKSUM_DEFAULT;
+
+  ic = ibp_create_context();
+  ibp_load_config(ic, config_file);
+  ds->ic = ic;
+  dsf->type = DS_TYPE_IBP;
 
   dsf->priv = (void *)ds;
   dsf->destroy_service = ds_ibp_destroy;

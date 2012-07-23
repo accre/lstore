@@ -42,14 +42,14 @@ extern "C" {
 #endif
 
 typedef struct {
-  ibp_depot_t depot;  
+  ibp_depot_t depot;
 } ds_ibp_alloc_op_t;
 
 typedef struct {
   int state;
   int timeout;
   ibp_off_t new_size;
-  ibp_capstatus_t probe;  
+  ibp_capstatus_t probe;
   callback_t *cb;
   data_service_fn_t *dsf;
   ds_ibp_attr_t *attr;

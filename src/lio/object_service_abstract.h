@@ -35,6 +35,7 @@ http://www.accre.vanderbilt.edu
 #include <regex.h>
 #include "ex3_types.h"
 #include "opque.h"
+#include "thread_pool.h"
 
 #ifndef _OBJECT_SERVICE_H_
 #define _OBJECT_SERVICE_H_
@@ -46,6 +47,8 @@ extern "C" {
 #define OS_OBJECT_FILE 0
 #define OS_OBJECT_DIR  1
 #define OS_OBJECT_LINK 2
+
+#define OS_CREDS_INI_TYPE 0  //** Load creds from file
 
 typedef struct {
   int q_mode;
@@ -110,7 +113,7 @@ struct object_service_fn_s {
 
 #define os_type(os) (os)->type
 #define os_destroy_service(os) (os)->destroy_service(os)
-#define os_login(os, userid, type, arg) (os)->(os, userid, type, arg)
+#define os_login(os, userid, type, arg) (os)->login(os, userid, type, arg)
 #define os_logout(os, c) (os)->logout(os, c)
 
 #define os_create_object(os, c, path, type) (os)->create_object(os, c, path, type)
@@ -135,8 +138,8 @@ struct object_service_fn_s {
 #define os_destroy_attr_iter(os, it) (os)->destroy_attr_iter(it)
 #define os_destroy(os) (os)->destroy_service(os)
 
-int install_object_service(char *type, object_service_fn_t *(*create)(void *arg, char *fname), void *arg);
-object_service_fn_t *create_object_service(char *type, char *fname);
+int install_object_service(char *type, object_service_fn_t *(*create)(thread_pool_context_t *tpc, char *fname));
+object_service_fn_t *create_object_service(char *type, thread_pool_context_t *tpc, char *fname);
 
 os_regex_table_t *os_regex_table_crete(int n);
 void os_regex_table_destroy(os_regex_table_t *table);

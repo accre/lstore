@@ -42,7 +42,7 @@ extern "C" {
 
 #define OS_TYPE_FILE "file"
 
-object_service_fn_t *object_service_file_create(void *arg, char *fname);
+object_service_fn_t *object_service_file_create(thread_pool_context_t *tpc, char *fname);
 
 #ifdef __cplusplus
 }

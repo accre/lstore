@@ -42,6 +42,8 @@ http://www.accre.vanderbilt.edu
 extern "C" {
 #endif
 
+#define DS_TYPE_IBP "ibp"
+
    //** Additional IBP attributes
 #define DS_IBP_ATTR_RELIABILITY 2
 #define DS_IBP_ATTR_TYPE        3
@@ -60,7 +62,7 @@ typedef struct {
   int disk_cs_blocksize;
 } ds_ibp_attr_t;
 
-data_service_fn_t *ds_ibp_create(ibp_context_t *ic);
+data_service_fn_t *ds_ibp_create(char *fname_config);
 
 #ifdef __cplusplus
 }

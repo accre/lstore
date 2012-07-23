@@ -126,8 +126,11 @@ struct data_service_fn_s {
 };
 
 
+data_service_fn_t *load_data_service(char *type, char *fname);
+int install_data_service(char *type, data_service_fn_t *(*ds_create)(char *fname));
+int add_data_service(data_service_fn_t *ds);
 data_service_fn_t *lookup_data_service(char *type);
-int install_data_service(char *type, data_service_fn_t *ds);
+
 
 #ifdef __cplusplus
 }

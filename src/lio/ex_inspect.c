@@ -35,6 +35,7 @@ http://www.accre.vanderbilt.edu
 #include "iniparse.h"
 #include "type_malloc.h"
 #include "thread_pool.h"
+#include "lio.h"
 
 #define n_inspect 10
 char *inspect_opts[] = { "DUMMY", "inspect_quick_check",  "inspect_scan_check",  "inspect_full_check",
@@ -48,18 +49,8 @@ char *inspect_opts[] = { "DUMMY", "inspect_quick_check",  "inspect_scan_check", 
 int main(int argc, char **argv)
 {
   int i, j, start_option, whattodo;
-  int timeout, ll, force_repair;
-  ibp_context_t *ic;
-  inip_file_t *ifd;
-  data_service_fn_t *ds = NULL;
-  resource_service_fn_t *rs = NULL;
-  thread_pool_context_t *tpc_unlimited = NULL;
-  thread_pool_context_t *tpc_cpu = NULL;
-  cache_t *cache = NULL;
-  data_attr_t *da;
+  int force_repair;
   char *fname = NULL;
-  char *cfg_name = NULL;
-  char *ctype;
   exnode_t *ex;
   exnode_exchange_t *exp, *exp_out;
   segment_t *seg;
@@ -72,9 +63,9 @@ int main(int argc, char **argv)
 //printf("argc=%d\n", argc);
   if (argc < 2) {
      printf("\n");
-     printf("ex_inspect [-d log_level] [-c system.cfg] [-bufsize n] [-force] inspect_opt file.ex3\n");
+     printf("ex_inspect LIO_COMMON_OPTIONS [-bufsize n] [-force] inspect_opt file.ex3\n");
      printf("    file.ex3 - File to inspect\n");
-     printf("    -c system.cfg - IBP and Cache configuration options\n");
+     lio_print_options(stdout);
      n = bufsize / 1024 / 1024;
      printf("    -bufsize n    - Buffer size to use.  Defaults to " XOT "MB\n", n);
      printf("    -force        - Forces data replacement even if it would result in data loss\n");
@@ -84,16 +75,8 @@ int main(int argc, char **argv)
      return(1);
   }
 
-//set_log_level(20);
-  tpc_unlimited = thread_pool_create_context("UNLIMITED", 0, 2000);
-  tpc_cpu = thread_pool_create_context("CPU", 0, 0);
-  rs = NULL;
-  ic = ibp_create_context();  //** Initialize IBP
-  ds = ds_ibp_create(ic);
-  da = ds_attr_create(ds);
-  cache_system_init();
-  timeout = 120;
-  ll = -1;
+  lio_init(&argc, argv);
+
   force_repair = 0;
 
   //*** Parse the args
@@ -101,16 +84,7 @@ int main(int argc, char **argv)
   do {
      start_option = i;
 
-     if (strcmp(argv[i], "-d") == 0) { //** Enable debugging
-        i++;
-        ll = atoi(argv[i]); i++;
-     } else if (strcmp(argv[i], "-rs") == 0) { //** Load the resource file
-        i++;
-        rs = rs_simple_create(argv[i], ds); i++;
-     } else if (strcmp(argv[i], "-c") == 0) { //** Load the config file
-        i++;
-        cfg_name = argv[i]; i++;
-     } else if (strcmp(argv[i], "-force") == 0) { //** Force repair
+     if (strcmp(argv[i], "-force") == 0) { //** Force repair
         i++;
         force_repair = INSPECT_FORCE_REPAIR;
      } else if (strcmp(argv[i], "-bufsize") == 0) { //** Change the buffer size
@@ -124,24 +98,6 @@ int main(int argc, char **argv)
      }
 
   } while (start_option < i);
-
-  if (cfg_name != NULL) {
-     ibp_load_config(ic, cfg_name);
-
-     ifd = inip_read(cfg_name);
-     ctype = inip_get_string(ifd, "cache", "type", CACHE_LRU_TYPE);
-     inip_destroy(ifd);
-     cache = load_cache(ctype, da, timeout, cfg_name);
-     free(ctype);
-     mlog_load(cfg_name);
-     if (rs == NULL) rs = rs_simple_create(cfg_name, ds);
-  } else {
-     cache = create_cache(CACHE_LRU_TYPE, da, timeout);
-  }
-
-  if (ll > -1) set_log_level(ll);
-
-  exnode_system_init(ds, rs, NULL, tpc_unlimited, tpc_cpu, cache);
 
   //** Get the inspect_opt;
   whattodo = -1;
@@ -181,7 +137,7 @@ int main(int argc, char **argv)
 
 printf("whattodo=%d\n", whattodo);
   //** Execute the inspection operation
-  gop = segment_inspect(seg, da, stdout, whattodo, bufsize, timeout);
+  gop = segment_inspect(seg, lio_gc->da, stdout, whattodo, bufsize, lio_gc->timeout);
 flush_log();
   gop_waitany(gop);
 flush_log();
@@ -234,16 +190,7 @@ flush_log();
 
   exnode_destroy(ex);
 
-  exnode_system_destroy();
-  cache_destroy(cache);
-  cache_system_destroy();
-
-  rs_destroy_service(rs);
-  ds_attr_destroy(ds, da);
-  ds_destroy_service(ds);
-  ibp_destroy_context(ic);
-  thread_pool_destroy_context(tpc_unlimited);
-  thread_pool_destroy_context(tpc_cpu);
+  lio_shutdown();
 
   return(0);
 }

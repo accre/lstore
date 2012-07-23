@@ -35,6 +35,7 @@ http://www.accre.vanderbilt.edu
 #include "iniparse.h"
 #include "type_malloc.h"
 #include "thread_pool.h"
+#include "lio.h"
 
 //*************************************************************************
 //*************************************************************************
@@ -48,18 +49,8 @@ int main(int argc, char **argv)
   apr_time_t start_time, disk_start, cumulative_time, disk_cumulative;
   double dt, bandwidth, mbytes;
   ex_off_t i, err, size, rlen, wlen;
-  int timeout, ll, firsttime, start_option, print_timing;
-  ibp_context_t *ic;
-  inip_file_t *ifd;
-  data_service_fn_t *ds = NULL;
-  resource_service_fn_t *rs = NULL;
-  thread_pool_context_t *tpc_unlimited = NULL;
-  thread_pool_context_t *tpc_cpu = NULL;
-  cache_t *cache = NULL;
-  data_attr_t *da;
+  int firsttime, start_option, print_timing;
   char *fname = NULL;
-  char *cfg_name = NULL;
-  char *ctype;
   exnode_t *ex;
   exnode_exchange_t *exp;
   segment_t *seg;
@@ -70,48 +61,31 @@ int main(int argc, char **argv)
 //printf("argc=%d\n", argc);
   if (argc < 2) {
      printf("\n");
-     printf("ex_get [-d log_level] [-c system.cfg] [-i] [-b bufsize] remote_file.ex3 local_file\n");
-     printf("    remote_file.ex3 - Remote ex3 object to retreive and store in the local file\n");
-     printf("    local_file - Local file to store data or \"-\" to use stdout\n");
-     printf("    -c system.cfg   - IBP and Cache configuration options\n");
+     printf("ex_get LIO_COMMON_OPTIONS [-i] [-b bufsize] remote_file.ex3 local_file\n");
+     lio_print_options(stdout);
      printf("    -b bufsize      - Buffer size to use in MBytes (Default=%dMB)\n", bufsize_mb);
      printf("    -i              - Print timing and bandwith information\n");
+     printf("    remote_file.ex3 - Remote ex3 object to retreive and store in the local file\n");
+     printf("    local_file - Local file to store data or \"-\" to use stdout\n");
      printf("\n");
      return(1);
   }
 
-//set_log_level(20);
-  tpc_unlimited = thread_pool_create_context("UNLIMITED", 0, 2000);
-  tpc_cpu = thread_pool_create_context("CPU", 0, 0);
-  rs = NULL;
-  ic = ibp_create_context();  //** Initialize IBP
-  ds = ds_ibp_create(ic);
-  da = ds_attr_create(ds);
-  cache_system_init();
-  timeout = 120;
+  lio_init(&argc, argv);
+
   print_timing = 0;
-  ll = -1;
 
   //*** Parse the args
   i=1;
   do {
      start_option = i;
 
-     if (strcmp(argv[i], "-d") == 0) { //** Enable debugging
-        i++;
-        ll = atoi(argv[i]); i++;
-     } else if (strcmp(argv[i], "-b") == 0) { //** Enable debugging
+     if (strcmp(argv[i], "-b") == 0) { //** Enable debugging
         i++;
         bufsize_mb = atoi(argv[i]); i++;
      } else if (strcmp(argv[i], "-i") == 0) { //** Enable timing
         i++;
         print_timing = 1;
-     } else if (strcmp(argv[i], "-rs") == 0) { //** Load the resource file
-        i++;
-        rs = rs_simple_create(argv[i], ds); i++;
-     } else if (strcmp(argv[i], "-c") == 0) { //** Load the config file
-        i++;
-        cfg_name = argv[i]; i++;
      }
 
   } while (start_option < i);
@@ -120,25 +94,6 @@ int main(int argc, char **argv)
   type_malloc(rbuf, char, bufsize+1);
   type_malloc(wbuf, char, bufsize+1);
   log_printf(1, "bufsize= 2 * " XOT " bytes (%d MB total)\n", bufsize, bufsize_mb);
-
-  if (cfg_name != NULL) {
-     ibp_load_config(ic, cfg_name);
-
-     ifd = inip_read(cfg_name);
-     ctype = inip_get_string(ifd, "cache", "type", CACHE_LRU_TYPE);
-     inip_destroy(ifd);
-     cache = load_cache(ctype, da, timeout, cfg_name);
-     free(ctype);
-
-     mlog_load(cfg_name);
-     if (rs == NULL) rs = rs_simple_create(cfg_name, ds);
-  } else {
-     cache = create_cache(CACHE_LRU_TYPE, da, timeout);
-  }
-
-  if (ll > -1) set_log_level(ll);
-
-  exnode_system_init(ds, rs, NULL, tpc_unlimited, tpc_cpu, cache);
 
   //** This is the remote file to download
   fname = argv[i]; i++;
@@ -198,7 +153,7 @@ int main(int argc, char **argv)
      tbuffer_single(&tbuf, rlen, rbuf);
      ex_iovec_single(&iov, i, rlen);
 log_printf(1, "ex_get: i=%d rlen=%d wlen=%d\n", i, rlen, wlen); flush_log();
-     gop = segment_read(seg, da, 1, &iov, &tbuf, 0, 5);
+     gop = segment_read(seg, lio_gc->da, 1, &iov, &tbuf, 0, 5);
 log_printf(1, "ex_get: i=%d gid=%d\n", i, gop_id(gop)); flush_log();
 
      //** Dump the data to disk
@@ -250,15 +205,7 @@ log_printf(1, "ex_get: i=%d gid=%d\n", i, gop_id(gop)); flush_log();
 
   exnode_destroy(ex);
 
-  exnode_system_destroy();
-  cache_destroy(cache);
-  cache_system_destroy();
-
-  ds_attr_destroy(ds, da);
-  ds_destroy_service(ds);
-  ibp_destroy_context(ic);
-  thread_pool_destroy_context(tpc_unlimited);
-  thread_pool_destroy_context(tpc_cpu);
+  lio_shutdown();
 
   free(rbuf);
   free(wbuf);

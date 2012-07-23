@@ -62,7 +62,10 @@ resource_service_fn_t *ex3_get_default_rs();
 int ex3_set_default_os(object_service_fn_t *os);
 object_service_fn_t *ex3_get_default_os();
 
-int exnode_system_init(data_service_fn_t *ds, resource_service_fn_t *rs, object_service_fn_t *os, thread_pool_context_t *tpc_unlimited, thread_pool_context_t *tpc_cpu, cache_t *c);
+//int exnode_system_init(data_service_fn_t *ds, resource_service_fn_t *rs, object_service_fn_t *os, thread_pool_context_t *tpc_unlimited, thread_pool_context_t *tpc_cpu, cache_t *c);
+int exnode_system_init();
+int exnode_system_config(data_service_fn_t *ds, resource_service_fn_t *rs, object_service_fn_t *os, thread_pool_context_t *tpc_unlimited, thread_pool_context_t *tpc_cpu, cache_t *cache);
+
 void exnode_system_destroy();
 
 #ifdef __cplusplus

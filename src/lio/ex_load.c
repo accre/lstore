@@ -25,34 +25,23 @@ Advanced Computing Center for Research and Education
 230 Appleton Place
 Nashville, TN 37203
 http://www.accre.vanderbilt.edu
-*/ 
+*/
 
 #define _log_module_index 172
 
 #include <assert.h>
 #include "exnode.h"
 #include "log.h"
-#include "iniparse.h"
 #include "type_malloc.h"
-#include "thread_pool.h"
+#include "lio.h"
 
 //*************************************************************************
 //*************************************************************************
 
 int main(int argc, char **argv)
 {
-  int i, start_option;
-  int timeout, ll;
-  ibp_context_t *ic;
-  data_service_fn_t *ds = NULL;
-  resource_service_fn_t *rs = NULL;
-  thread_pool_context_t *tpc_unlimited, *tpc_cpu;
-  inip_file_t *ifd;
-  data_attr_t *da;
+  int i;
   char *fname = NULL;
-  char *cfg_name = NULL;
-  char *ctype = NULL;
-  cache_t *cache;
   exnode_t *ex;
   exnode_exchange_t *exp;
   exnode_exchange_t *exp_in;
@@ -60,66 +49,18 @@ int main(int argc, char **argv)
 
   if (argc < 4) {
      printf("\n");
-     printf("ex_load [-d log_level] [-c system.cfg] -rs rs.ini file.ex3\n");
+     printf("ex_load LIO_COMMON_OPTIONS file.ex3\n");
+     lio_print_options(stdout);
      printf("\n");
      return(1);
   }
 
-  tpc_unlimited = thread_pool_create_context("UNLIMITED", 0, 2000);
-  tpc_cpu = thread_pool_create_context("CPU", 0, 0);
-  ic = ibp_create_context();  //** Initialize IBP
-  ds = ds_ibp_create(ic);
-  da = ds_attr_create(ds);
-  cache_system_init();
-  timeout = 120;
-  ll = -1;
-
-  //*** Parse the args
-  i=1;
-  do {
-     start_option = i;
-
-     if (strcmp(argv[i], "-d") == 0) { //** Enable debugging
-        i++;
-        ll = atoi(argv[i]); i++;
-     } else if (strcmp(argv[i], "-c") == 0) { //** Load the config file
-        i++;
-        cfg_name = argv[i]; i++;
-     } else if (strcmp(argv[i], "-rs") == 0) { //** Load the resource file
-        i++;
-        rs = rs_simple_create(argv[i], ds); i++;
-     }
-
-  } while (start_option < i);
-
-  if (cfg_name != NULL) {
-     ibp_load_config(ic, cfg_name);
-
-     ifd = inip_read(cfg_name);
-     ctype = inip_get_string(ifd, "cache", "type", CACHE_LRU_TYPE);
-     inip_destroy(ifd);
-     cache = load_cache(ctype, da, timeout, cfg_name);
-     free(ctype);
-
-     mlog_load(cfg_name);
-     if (rs == NULL) rs = rs_simple_create(cfg_name, ds);
-  } else {
-     cache = create_cache(CACHE_LRU_TYPE, da, timeout);
-  }
-
-  if (ll > -1) set_log_level(ll);
-
-  exnode_system_init(ds, rs, NULL, tpc_unlimited, tpc_cpu, cache);
+  lio_init(&argc, argv);
 
   //** Load the fixed options
+  i = 1;
   fname = argv[i]; i++;
 
-  //** Do some simple sanity checks
-  //** Make sure we loaded a simple res service
-  if (rs == NULL) {
-    printf("Missing resource service!\n");
-    return(1);
-  }
   if (fname == NULL) {
     printf("Missing input filename!\n");
     return(2);
@@ -162,17 +103,7 @@ int main(int argc, char **argv)
 
   exnode_destroy(ex);
 
-  cache_destroy(cache);
-  cache_system_destroy();
-
-  exnode_system_destroy();
-
-  rs_destroy_service(rs);
-  ds_attr_destroy(ds, da);
-  ds_destroy_service(ds);
-  ibp_destroy_context(ic);
-  thread_pool_destroy_context(tpc_unlimited);
-  thread_pool_destroy_context(tpc_cpu);
+  lio_shutdown();
 
   return(0);
 }

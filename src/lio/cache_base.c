@@ -122,8 +122,8 @@ cache_t *create_cache(char *type, data_attr_t *da, int timeout)
 
 void cache_system_init()
 {
-  install_cache(CACHE_LRU_TYPE, lru_cache_load, lru_cache_create, NULL);
-  install_cache(CACHE_AMP_TYPE, amp_cache_load, amp_cache_create, NULL);
+  install_cache(CACHE_TYPE_LRU, lru_cache_load, lru_cache_create, NULL);
+  install_cache(CACHE_TYPE_AMP, amp_cache_load, amp_cache_create, NULL);
 }
 
 //*************************************************************************

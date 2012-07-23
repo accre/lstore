@@ -40,7 +40,7 @@ http://www.accre.vanderbilt.edu
 #include "log.h"
 
 typedef struct {
-  resource_service_fn_t *driver;
+  resource_service_fn_t *(*rs_create)(char *fname, data_service_fn_t *ds);
 } rs_driver_t;
 
 typedef struct {
@@ -49,11 +49,13 @@ typedef struct {
 
 rs_table_t *rs_driver_table = NULL;
 
+list_t *rs_available_table = NULL;
+
 //***********************************************************************
-// install_layout- Installs a resource_service driver into the table
+// install_resource_service- Installs a resource_service driver into the table
 //***********************************************************************
 
-int install_resource_service(char *type, resource_service_fn_t *driver)
+int install_resource_service(char *type, resource_service_fn_t *(*rs_create)(char *fname, data_service_fn_t *ds))
 {
   rs_driver_t *d;
 
@@ -70,17 +72,17 @@ int install_resource_service(char *type, resource_service_fn_t *driver)
   }
   
   type_malloc_clear(d, rs_driver_t, 1);
-  d->driver = driver;
+  d->rs_create = rs_create;
   list_insert(rs_driver_table->table, type, (void *)d);
 
   return(0);
 }
 
 //***********************************************************************
-// lookup_resource_service - Looks up the resource service driver
+// load_resource_service - Looks up the resource service driver and creates a new instance
 //***********************************************************************
 
-resource_service_fn_t *lookup_resource_service(char *type)
+resource_service_fn_t *load_resource_service(char *type, char *fname, data_service_fn_t *ds)
 {
   rs_driver_t *d;
 
@@ -90,5 +92,47 @@ resource_service_fn_t *lookup_resource_service(char *type)
     return(NULL);
   }
 
-  return(d->driver);
+  return(d->rs_create(fname, ds));
+}
+
+//***********************************************************************
+// lookup_resource_service - Looks up the resource service installed
+//***********************************************************************
+
+resource_service_fn_t *lookup_resource_service(char *type)
+{
+  resource_service_fn_t *rs;
+
+  if (rs_available_table == NULL) return(NULL);
+
+  rs = (resource_service_fn_t *)list_search(rs_available_table, type);
+  if (rs == NULL) {
+    log_printf(0, "No matching driver for type=%s\n", type);
+    return(NULL);
+  }
+
+  return(rs);
+}
+
+//***********************************************************************
+// add_resource_service - Adds up the resource service to the available table
+//***********************************************************************
+
+resource_service_fn_t *add_resource_service(resource_service_fn_t *rs)
+{
+  resource_service_fn_t *d;
+
+  if (rs_available_table == NULL) {
+    rs_available_table = list_create(0, &list_string_compare, list_string_dup, list_simple_free, list_no_data_free);
+  }
+
+  d = (resource_service_fn_t *)list_search(rs_available_table, rs_type(rs));
+  if (d != NULL) {
+    log_printf(0, "Matching driver for type=%s\n", rs_type(rs));
+    return(NULL);
+  }
+
+  list_insert(rs_available_table, rs_type(rs), (void *)rs);
+
+  return(rs);
 }

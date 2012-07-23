@@ -929,9 +929,8 @@ void osfile_destroy(object_service_fn_t *os)
 //  object_service_file_create - Creates a file backed OS
 //***********************************************************************
 
-object_service_fn_t *object_service_file_create(void *arg, char *fname)
+object_service_fn_t *object_service_file_create(thread_pool_context_t *tpc_cpu, char *fname)
 {
-  exnode_abstract_set_t *es = (exnode_abstract_set_t *)arg;
   inip_file_t *fd;
   object_service_fn_t *os;
   osfile_priv_t *osf;
@@ -942,11 +941,11 @@ object_service_fn_t *object_service_file_create(void *arg, char *fname)
      apr_thread_mutex_create(&_path_parse_lock, APR_THREAD_MUTEX_DEFAULT, _path_parse_pool);
   }
 
-  type_malloc(os, object_service_fn_t, 1); 
+  type_malloc(os, object_service_fn_t, 1);
   type_malloc(osf, osfile_priv_t, 1);
   os->priv = (void *)osf;
-  
-  osf->tpc = es->tpc_cpu;
+
+  osf->tpc = tpc_cpu;
 
   osf->base_path = NULL;
   if (fname == NULL) {
@@ -972,9 +971,9 @@ object_service_fn_t *object_service_file_create(void *arg, char *fname)
   os->create_object_iter = osfile_create_object_iter;
   os->next_object = osfile_next_object;
   os->destroy_object_iter = osfile_destroy_object_iter;
-  os->open_object = osfile_open_object;  
+  os->open_object = osfile_open_object;
   os->close_object = osfile_close_object;
-  os->get_attr = osfile_get_attr; 
+  os->get_attr = osfile_get_attr;
   os->set_attr = osfile_set_attr;
   os->get_multiple_attrs = osfile_get_multiple_attrs;
   os->set_multiple_attrs = osfile_set_multiple_attrs;

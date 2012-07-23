@@ -97,7 +97,9 @@ struct resource_service_fn_s {
 
 void resource_service_destroy(resource_service_fn_t *rsf);
 
-int install_resource_service(char *type, resource_service_fn_t *rs);
+int install_resource_service(char *type, resource_service_fn_t *(*rs_create)(char *fname, data_service_fn_t *ds));
+resource_service_fn_t *load_resource_service(char *type, char *fname, data_service_fn_t *ds);
+resource_service_fn_t *add_resource_service(resource_service_fn_t *rs);
 resource_service_fn_t *lookup_resource_service(char *type);
 
 #ifdef __cplusplus

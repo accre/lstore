@@ -38,9 +38,9 @@ http://www.accre.vanderbilt.edu
 #include "iniparse.h"
 #include "string_token.h"
 #include "type_malloc.h"
-#include "thread_pool.h"
 #include "random.h"
 #include "opque.h"
+#include "lio.h"
 
 typedef struct {
   char *filename;
@@ -103,7 +103,6 @@ test_index_t write_index;
 exnode_t *ex = NULL;
 segment_t *seg = NULL;
 data_attr_t *da = NULL;
-cache_t *cache = NULL;
 
 int my_log_level = 10;
 
@@ -802,7 +801,7 @@ log_printf(my_log_level, "rw_test: stragglers -- read_index.curr=%d (%d done) wr
   log_printf(0,"----------------------------------------------------------\n");
 
   printf("--------------------- Cache Stats ------------------------\n");
-  cache_stats(cache, &cs);
+  cache_stats(lio_gc->cache, &cs);
   i = 0;
   cache_stats_print(&cs, text_buffer, &i, tbufsize);
   printf("%s", text_buffer);
@@ -816,7 +815,7 @@ log_printf(my_log_level, "rw_test: stragglers -- read_index.curr=%d (%d done) wr
      perform_final_verify();
 
      printf("--------------------- Cache Stats ------------------------\n");
-     cache_stats(cache, &cs);
+     cache_stats(lio_gc->cache, &cs);
      i = 0;
      cache_stats_print(&cs, text_buffer, &i, tbufsize);
      printf("%s", text_buffer);
@@ -834,7 +833,7 @@ log_printf(my_log_level, "rw_test: stragglers -- read_index.curr=%d (%d done) wr
      perform_final_verify();
 
      printf("--------------------- Cache Stats ------------------------\n");
-     cache_stats(cache, &cs);
+     cache_stats(lio_gc->cache, &cs);
      i = 0;
      cache_stats_print(&cs, text_buffer, &i, tbufsize);
      printf("%s", text_buffer);
@@ -945,15 +944,7 @@ void rw_print_options(FILE *fd)
 
 int main(int argc, char **argv)
 {
-  int i, n, err, start_option, ll, print_exnode, soft_errors, hard_errors;
-  ibp_context_t *ic;
-  data_service_fn_t *ds = NULL;
-  resource_service_fn_t *rs = NULL;
-  thread_pool_context_t *tpc_unlimited = NULL;
-  thread_pool_context_t *tpc_cpu = NULL;
-  char *cfg_name = NULL;
-  char *ctype = NULL;
-  inip_file_t *ifd;
+  int i, err, start_option, print_exnode, soft_errors, hard_errors;
   exnode_exchange_t *exp;
   exnode_exchange_t *exp_out;
   op_status_t status;
@@ -962,80 +953,38 @@ int main(int argc, char **argv)
 //printf("argc=%d\n", argc);
   if (argc < 2) {
      printf("\n");
-     printf("ex_rw_test [-d log_level] [-ex] [-tc n_cpu_threads] -c system.cfg\n");
+     printf("ex_rw_test LIO_COMMON_OPTIONS [-ex]\n");
+     lio_print_options(stdout);
      printf("     -ex   Print the final exnode to the screen before truncation\n");
      printf("\n");
      return(1);
   }
 
-//set_log_level(20);
-  tpc_unlimited = thread_pool_create_context("UNLIMITED", 0, 2000);
-  tpc_cpu = NULL;
-  rs = NULL;
-  ic = ibp_create_context();  //** Initialize IBP
-  ds = ds_ibp_create(ic);
-  da = ds_attr_create(ds);
-  cache_system_init();
-  rwc.timeout = 120;
+  lio_init(&argc, argv);
+
+  da = lio_gc->da;
+  rwc.timeout = lio_gc->timeout;
 
   //*** Parse the args
   print_exnode = 0;
   i=1;
-  ll = -1;
   do {
      start_option = i;
 
-     if (strcmp(argv[i], "-d") == 0) { //** Enable debugging
-        i++;
-        ll = atoi(argv[i]); i++;
-     } else if (strcmp(argv[i], "-c") == 0) { //** Load a config file
-        i++;
-        cfg_name = argv[i]; i++;
-     } else if (strcmp(argv[i], "-ex") == 0) { //** Show the final exnode
+     if (strcmp(argv[i], "-ex") == 0) { //** Show the final exnode
         i++;
         print_exnode = 1;
-     } else if (strcmp(argv[i], "-tc") == 0) { //** Show the final exnode
-        i++;
-        n = atoi(argv[i]); i++;
-        tpc_cpu = thread_pool_create_context("CPU", 0, n);
      }
   } while ((start_option < i) && (i<argc));
 
-
-  if (tpc_cpu == NULL) tpc_cpu = thread_pool_create_context("CPU", 0, 0);
-
-  if (cfg_name == NULL) {
+  if (lio_gc->cfg_name == NULL) {
      printf("ex_rw_test:  Missing config file!\n");
      flush_log(); fflush(stdout);
      abort();
   }
 
-  //** Load the log info
-  mlog_load(cfg_name);
-  if (ll > -1) set_log_level(ll);
-
-  //** Load the ibp config
-  ibp_load_config(ic, cfg_name);
-
-  //** Load the resource service
-  rs = rs_simple_create(cfg_name, ds);
-
-  //** Determine what type of cache system to use
-  ifd = inip_read(cfg_name);
-  ctype = inip_get_string(ifd, "cache", "type", CACHE_LRU_TYPE);
-  inip_destroy(ifd);
-
-  printf("Loading cache type %s\n", ctype);
-  cache = load_cache(ctype, da, rwc.timeout, cfg_name);
-  free(ctype);
-
-
-  //** Now set up the exnode system defaults
-  exnode_system_init(ds, rs, NULL, tpc_unlimited, tpc_cpu, cache);
-
-
   //** Lastly load the R/W test params
-  rw_load_options(cfg_name);
+  rw_load_options(lio_gc->cfg_name);
 
 
   //** Print the options to the screen
@@ -1043,10 +992,6 @@ int main(int argc, char **argv)
   printf("------------------------------------------------------------------\n");
   rw_print_options(stdout);
   printf("------------------------------------------------------------------\n\n");
-
-
-//seglun_row_decompose_test();
-//return(0);
 
   //** Open the file
   exp = exnode_exchange_load_file(rwc.filename);
@@ -1114,20 +1059,10 @@ int main(int argc, char **argv)
   //** Shut everything down
   exnode_destroy(ex);
   exnode_exchange_destroy(exp);
-  cache_destroy(cache);
-  cache_system_destroy();
 
-//set_log_level(20);
+printf("tpc_unlimited=%d  tpc_cpu=%d\n", lio_gc->tpc_unlimited->n_ops, lio_gc->tpc_cpu->n_ops);
 
-  exnode_system_destroy();
-
-printf("tpc_unlimited=%d  tpc_cpu=%d ibp=%d\n", tpc_unlimited->n_ops, tpc_cpu->n_ops, ic->n_ops);
-
-  ds_attr_destroy(ds, da);
-  ds_destroy_service(ds);
-  ibp_destroy_context(ic);
-  thread_pool_destroy_context(tpc_unlimited);
-  thread_pool_destroy_context(tpc_cpu);
+  lio_shutdown();
 
   return(0);
 }

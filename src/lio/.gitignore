@@ -28,6 +28,7 @@ lio_client_version.c
 *.cfg
 core*
 vgcore.*
+*.ex3
 
 #Skip the CMake output files
 CMakeFiles
