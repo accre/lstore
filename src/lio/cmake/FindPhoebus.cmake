@@ -10,8 +10,6 @@
 # Find the include path
 
 find_path(PHOEBUS_INCLUDE_DIR liblsl_client.h)
-
-set(APR_NAMES ${APR_NAMES} apr-1)
 find_library(PHOEBUS_LIBRARY NAMES lsl_client dl)
 
 if (PHOEBUS_LIBRARY AND PHOEBUS_INCLUDE_DIR)
@@ -23,6 +21,8 @@ if (PHOEBUS_FOUND)
    message(STATUS "Found Phoebus: ${PHOEBUS_LIBRARY} ${PHOEBUS_INCLUDE_DIR}")
 else (PHOEBUS_FOUND)
    message(STATUS "Could not find Phoebus library")
+   set(PHOEBUS_LIBRARY "")
+   set(PHOEBUS_INCLUDE_DIR "")
 endif (PHOEBUS_FOUND)
 
 
