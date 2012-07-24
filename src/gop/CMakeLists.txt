@@ -30,7 +30,6 @@ find_package(APRUtil REQUIRED)
 find_package(ToolBox REQUIRED)
 
 include_directories(${TOOLBOX_INCLUDE_DIR} ${APR_INCLUDE_DIR} ${APRUTIL_INCLUDE_DIR} )
-#SET(LIBS ${LIBS} ${APR_LIBRARY} ${APRUTIL_LIBRARY} ${HWLOC_LIBRARY} pthread m xml2 dl)
 
 #Make the version file
 set(GOP_VERSION "gop: v1.0.0")
