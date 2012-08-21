@@ -36,11 +36,12 @@ find_package(Jerasure REQUIRED)
 find_package(ToolBox REQUIRED)
 find_package(GOP REQUIRED)
 find_package(IBP REQUIRED)
+find_package(ZMQ REQUIRED)
 
 include_directories(${OPENSSL_INCLUDE_DIR} ${PROTOBUF_INCLUDE_DIR} ${APR_INCLUDE_DIR} ${APRUTIL_INCLUDE_DIR} ${PHOEBUS_INCLUDE_DIR}
    ${HWLOC_INCLUDE_DIR} ${JERASURE_INCLUDE_DIR} ${TOOLBOX_INCLUDE_DIR} ${GOP_INCLUDE_DIR} ${IBP_INCLUDE_DIR} )
 SET(LIBS ${LIBS} ${IBP_LIBRARY} ${GOP_LIBRARY} ${TOOLBOX_LIBRARY} ${JERASURE_LIBRARY} ${OPENSSL_LIBRARIES} ${CRYPTO_LIBRARIES} 
-   ${PROTOBUF_LIBRARY} ${APR_LIBRARY} ${APRUTIL_LIBRARY} ${HWLOC_LIBRARY} pthread xml2 m dl)
+   ${PROTOBUF_LIBRARY} ${APR_LIBRARY} ${APRUTIL_LIBRARY} ${HWLOC_LIBRARY} pthread m dl zmq)
 
 #Make the version file
 set(LIO_CLIENT_VERSION "lio_client: v1.0.0")
@@ -67,6 +68,12 @@ set(LIO_OBJS
    rs_base.c
    rs_query_base.c
    rs_simple.c
+   rs_zmq.c
+   rsz_request.pb-c.c
+   rsz_req.pb-c.c
+   rsz_cap.pb-c.c
+   rsz_response.pb-c.c
+   rs_zmq_base.c
    segment_base.c
    segment_linear.c
    segment_file.c
@@ -96,6 +103,7 @@ ADD_EXECUTABLE( ex_rw_test ex_rw_test.c ${EX3_OBJS} )
 ADD_EXECUTABLE( trace_replay trace_replay.c trace.c ${EX3_OBJS} )
 ADD_EXECUTABLE( log_test log_test.c ${EX3_OBJS} )
 ADD_EXECUTABLE( rs_test rs_test.c ${EX3_OBJS} )
+ADD_EXECUTABLE( rs_test_svr rs_test_svr.c ${EX3_OBJS} )
 
 ADD_LIBRARY( lio_trace SHARED ${LIBLIO_TRACE_OBJS})
 ADD_LIBRARY( lio SHARED ${LIO_OBJS})
@@ -119,12 +127,13 @@ TARGET_LINK_LIBRARIES( ex_rw_test ${lio_lib} ${LIBS})
 TARGET_LINK_LIBRARIES( trace_replay ${lio_lib} ${LIBS} m )
 TARGET_LINK_LIBRARIES( log_test ${lio_lib} ${LIBS})
 TARGET_LINK_LIBRARIES( rs_test ${lio_lib} ${LIBS})
+TARGET_LINK_LIBRARIES( rs_test_svr ${lio_lib} ${LIBS})
 
 install(TARGETS lio DESTINATION lib)
 install(TARGETS lio-static DESTINATION lib)
 install(FILES 
-   cache_amp.h       data_block.h             ex3_abstract.h  ex3_linear_priv.h  exnode.h         rs_simple.h           segment_jerasure.h  segment_lun_priv.h
-   cache_amp_priv.h  data_service_abstract.h  ex3_compare.h   ex3_system.h       lio.h            rs_simple_priv.h      segment_linear.h    trace.h
+   cache_amp.h       data_block.h             ex3_abstract.h  ex3_linear_priv.h  exnode.h         rs_simple.h	rs_zmq.h	rsz_request.pb-c.h	rsz_response.pb-c.h	rsz_req.pb-c.h	rsz_cap.pb-c.h           segment_jerasure.h  segment_lun_priv.h
+   cache_amp_priv.h  data_service_abstract.h  ex3_compare.h   ex3_system.h       lio.h     rs_simple_priv.h	rs_zmq_priv.h	rs_zmq_base.h     segment_linear.h    trace.h
    cache_lru.h       ds_ibp.h                 ex3_fmttypes.h  ex3_types.h        os_file.h        segment_cache.h       segment_log.h       transfer_buffer.h
    cache_lru_priv.h  ds_ibp_priv.h            ex3_header.h    exnode3.h          raid4.h          segment_cache_priv.h  segment_log_priv.h  view_layout.h
    cache_priv.h      erasure_tools.h          ex3_linear.h    exnode3.pb-c.h     rs_query_base.h  segment_file.h        segment_lun.h       cache.h

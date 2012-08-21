@@ -175,6 +175,7 @@ int lio_shutdown()
 
   exnode_system_destroy();
 
+  rs_destroy_service(lio_gc->rs);
   ds_attr_destroy(lio_gc->ds, lio_gc->da);
   ds_destroy_service(lio_gc->ds);
   thread_pool_destroy_context(lio_gc->tpc_unlimited);
