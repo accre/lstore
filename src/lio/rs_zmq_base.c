@@ -50,7 +50,7 @@ void *rs_zmq_worker_routine(void *arg)
     rs_zmq_rep_t *response = NULL;
 
     type_malloc_clear(req, rs_zmq_req_t, 1);
-    req->da = thread_arg->da; //** Needs to make a copy
+    req->da = thread_arg->da; 
     req->rs = thread_arg->rs;
     req->timeout = thread_arg->timeout;
 
@@ -77,7 +77,7 @@ void *rs_zmq_worker_routine(void *arg)
     
         if (status.op_status != OP_STATE_SUCCESS) {
             printf("Error with data request! err_code=%d\n", status.error_code);
-            abort();
+            //abort();
         }
     
         printf("Finished with receiving request. Now start to send response.\n");
@@ -138,6 +138,12 @@ void *rs_zmq_worker_routine(void *arg)
 
         //** Destroy response
         free(response);
+
+//-----------------------------------------------------------------------------------------
+//** Temporary codes for testing get rid value
+       // rs_zmq_send_rid_value(thread_arg->rs, rssever);
+//-----------------------------------------------------------------------------------------
+
     } //** end while(1)
 
     //** Destroy req
@@ -151,6 +157,7 @@ void *rs_zmq_worker_routine(void *arg)
     fflush(stdout);
 #endif
 
+    pthread_exit(NULL);    
 }
 
 //********************************************************************
@@ -303,7 +310,11 @@ void *rs_zmq_req_serialize(rs_zmq_req_t *req, int *len)
 
     void *buf; 
     buf = malloc(*len);
-   
+    if (buf == NULL) {
+        fprintf(stderr, "Memory allocation failed.\n");
+        exit(1);
+    }
+ 
     rs__zmq__rsz_request__pack(&msg, buf);
   
 #ifdef DEBUG
@@ -488,24 +499,19 @@ void rs_zmq_req_deserialize(rs_zmq_req_t* req, void *buf, int len)
 //****************************************************************************************
 int rs_zmq_req_recv(rs_zmq_req_t* req, void *socket)
 {
-    zmq_msg_t request;
-    int rc = zmq_msg_init(&request);
-    assert(rc == 0);
-
-    rc = zmq_recvmsg(socket, &request, 0); //** This blocking call returns either because of calling zmq_ctx_destroy in main function, or receving one message
-    assert (rc != 0); //** The message length shouldn't be 0
-    if (rc == -1) //** Indicates that  zmq_ctx_destroy is called
+    void *request;
+    int rc = rs_zmq_recv(socket, &request); //** This blocking call returns either because of calling zmq_ctx_destroy in main function, or receving one message
+    if (rc == -1) //** Indicates that zmq_ctx_destroy is called
 	return -1;
- 
-    int len = zmq_msg_size(&request);	
-    printf("Length of request message:%d\n", len);
+
+    printf("Length of recvd request message %d bytes\n", rc);
 
     //** Deserializes request received from zmq client 
-    rs_zmq_req_deserialize(req, zmq_msg_data(&request), len);
+    rs_zmq_req_deserialize(req, request, rc);
+    
+    free(request);
 
-    zmq_msg_close(&request);
-
-    return len;
+    return rc;
 }
 
 //********************************************************************
@@ -528,6 +534,10 @@ void *rs_zmq_rep_serialize(rs_zmq_rep_t *rep, int *len)
 
     void *buf;
     buf = malloc(*len);
+    if (buf == NULL) {
+        fprintf(stderr, "Memory allocation failed.\n");
+        exit(1);
+    }
 
     rs__zmq__rsz_response__pack(&msg, buf);
 
@@ -571,7 +581,7 @@ void rs_zmq_rep_deserialize(rs_zmq_rep_t *rep, void *buf, int len)
     rep->n_ele = msg->n_cap; 
     rep->req = rs_zmq_reqlist_deserialize(msg->req, msg->n_req);
     rep->caps = rs_zmq_caplist_deserialize(rep->ds, msg->cap, msg->n_cap);    
-
+    printf("Deserialized response %d bytes\n", len);
     // Free the unpacked message
     rs__zmq__rsz_response__free_unpacked(msg, NULL);     
 }
@@ -587,12 +597,38 @@ int rs_zmq_rep_send(rs_zmq_rep_t* rep, void *socket)
     void *buf = rs_zmq_rep_serialize(rep, &len);
 
     int rc;
-    rc = zmq_send(socket, buf, len, 0);
-    assert(rc == len);
+    rc = rs_zmq_send(socket, buf, len);
 
     //** Destroy allocated space
     free(buf);
+    return rc;
 }
+
+//****************************************************************************************
+// rs_zmq_recvmsg - Receives data through zmq
+// Allocates space for *buf
+//****************************************************************************************
+int rs_zmq_recv(void *socket, void **buf)
+{
+    zmq_msg_t msg;
+    int rc = zmq_msg_init(&msg);
+    assert(rc == 0);
+  
+    rc = zmq_recvmsg(socket, &msg, 0);
+    assert(rc != 0); //** Message length shouldn't be 0
+    if (rc == -1) return rc; //** Different actions for receving request and response
+   
+    *buf = malloc(rc); 
+    if (buf == NULL) {
+        fprintf(stderr, "Memory allocation failed.\n");
+        exit(1);
+    }
+    memcpy(*buf, zmq_msg_data(&msg), rc);
+
+    zmq_msg_close(&msg);
+
+    return rc;    
+}    
 
 //****************************************************************************************
 // rs_zmq_rep_recv - Receives response through zmq
@@ -600,21 +636,224 @@ int rs_zmq_rep_send(rs_zmq_rep_t* rep, void *socket)
 //****************************************************************************************
 int rs_zmq_rep_recv(rs_zmq_rep_t* rep, void *socket)
 {
-    zmq_msg_t response;
-    int rc = zmq_msg_init(&response);
-    assert(rc == 0);
+    void *response;
+    int rc = rs_zmq_recv(socket, &response);
 
-    if (!zmq_recvmsg(socket, &response, 0)) {
-            return (NULL);
-    }
-    int len = zmq_msg_size(&response);
-    printf("Length of response message:%d\n", len);
+    printf("Length of recvd response message %d bytes\n", rc);
 
     //** Deserializes request received from zmq client 
-    rs_zmq_rep_deserialize(rep, zmq_msg_data(&response), len);
+    rs_zmq_rep_deserialize(rep, response, rc);
+    free(response);
+    
+    return rc;
+}
 
-    zmq_msg_close(&response);
+//****************************************************************************************
+// rs_zmq_rid_key_serialize - Serializes rid key 
+//****************************************************************************************
+void *rs_zmq_ridkey_serialize(rs_zmq_rid_key_t *keys, int *len)
+{
+    Rs__Zmq__RszRidKey pb_keys = RS__ZMQ__RSZ_RID_KEY__INIT;
+    if (keys->rid_key != NULL)
+	asprintf(&pb_keys.rid_key, "%s", keys->rid_key);
+    if (keys->key != NULL)
+	asprintf(&pb_keys.key, "%s", keys->key);
 
+    *len = rs__zmq__rsz_rid_key__get_packed_size(&pb_keys);
+
+    void *buf;
+    buf = malloc(*len);
+    if (buf == NULL) {
+        fprintf(stderr, "Memory allocation failed.\n");
+        exit(1);
+    }
+
+    rs__zmq__rsz_rid_key__pack(&pb_keys, buf);
+
+#ifdef DEBUG
+    fprintf(stderr, "Writing %d serialized bytes\n", *len);
+#endif
+
+    free(pb_keys.rid_key);
+    free(pb_keys.key);
+    return buf;
+}
+
+//***************************************************************************************
+// rs_zmq_ridkey_deserialize - Deserializes rid key
+//***************************************************************************************
+void rs_zmq_ridkey_deserialize(rs_zmq_rid_key_t *keys, void *buf, int len)
+{
+    Rs__Zmq__RszRidKey *pb_keys;
+    pb_keys = rs__zmq__rsz_rid_key__unpack(NULL, len, buf);
+    if (pb_keys == NULL) {
+	fprintf(stderr, "error unpacking incoming ridkey message\n");
+    }
+
+    if (pb_keys->rid_key[0] != '\0') {
+	asprintf(&keys->rid_key, "%s", pb_keys->rid_key);
+    }
+
+    if (pb_keys->key[0] != '\0') {
+	asprintf(&keys->key, "%s", pb_keys->key);
+    }
+
+    rs__zmq__rsz_rid_key__free_unpacked(pb_keys, NULL);
+}
+
+//**************************************************************************************
+// rs_zmq_ridvalue_serialize - Serializes rid value
+//**************************************************************************************
+void *rs_zmq_ridvalue_serialize(rs_zmq_rid_value_t *value, int *len)
+{
+    Rs__Zmq__RszRidValue pb_ridvalue = RS__ZMQ__RSZ_RID_VALUE__INIT;
+
+    if (value->rid_value != NULL)
+        asprintf(&pb_ridvalue.rid_value, "%s", value->rid_value);
+
+    *len = rs__zmq__rsz_rid_value__get_packed_size(&pb_ridvalue);
+
+    void *buf;
+    buf = malloc(*len);
+    if (buf == NULL) {
+	fprintf(stderr, "Memory allocation failed.\n");
+	exit(1);
+    }
+
+    rs__zmq__rsz_rid_value__pack(&pb_ridvalue, buf);
+
+#ifdef DEBUG
+    fprintf(stderr, "Writing %d bytes serialized ridvalue message\n", *len);
+#endif
+
+    free(pb_ridvalue.rid_value);
+
+    return buf;
+}
+
+//**************************************************************************************
+// rs_zmq_ridvalue_deserializes - Deserializes rid value
+//**************************************************************************************
+void rs_zmq_ridvalue_deserialize(rs_zmq_rid_value_t *value, void *buf, int len)
+{
+    Rs__Zmq__RszRidValue *pb_ridvalue;
+    pb_ridvalue = rs__zmq__rsz_rid_value__unpack(NULL, len, buf);
+
+    if (pb_ridvalue == NULL) {
+	fprintf(stderr, "error unpacking incoming ridvalue message.\n");
+	exit(1);
+    }
+
+    if (pb_ridvalue->rid_value[0] != '\0')
+	asprintf(&value->rid_value, "%s", pb_ridvalue->rid_value);
+
+    rs__zmq__rsz_rid_value__free_unpacked(pb_ridvalue, NULL);
+}
+
+//****************************************************************************************
+// rs_zmq_send - Sends rs data through zmq
+//****************************************************************************************
+int rs_zmq_send(void *socket, void *buf, int len)
+{
+    int rc;
+    rc = zmq_send(socket, buf, len, 0);
+    assert(rc == len);
+    
+    return rc;
+}
+
+//****************************************************************************************
+// rs_zmq_ridkey_send - Sends ridkey through zmq
+// Returns the length of the sent message
+//****************************************************************************************
+int rs_zmq_ridkey_send(rs_zmq_rid_key_t *keys, void *socket)
+{
+    //** Serialize keys 
+    int len;
+    void *buf = rs_zmq_ridkey_serialize(keys, &len);
+
+    rs_zmq_send(socket, buf, len);
+
+    //** Destroy allocated space
+    free(buf);
     return len;
 }
 
+//****************************************************************************************
+// rs_zmq_ridvalue_send - Sends ridvalue through zmq
+// Returns the length of the sent message
+//****************************************************************************************
+int rs_zmq_ridvalue_send(rs_zmq_rid_value_t *value, void *socket)
+{
+    //** Serialize keys 
+    int len;
+    void *buf = rs_zmq_ridvalue_serialize(value, &len);
+
+    rs_zmq_send(socket, buf, len);
+
+    //** Destroy allocated space
+    free(buf);
+    return len;
+}
+
+//****************************************************************************************
+// rs_zmq_ridkey_recv - Receives ridkey through zmq
+// Returns the length of message
+//****************************************************************************************
+int rs_zmq_ridkey_recv(rs_zmq_rid_key_t *keys, void *socket)
+{
+    void *buf;
+    int rc = rs_zmq_recv(socket, &buf);
+    assert(rc != -1);
+    printf("Length of recvd ridkey message %d bytes\n", rc);
+
+    //** Deserializes keys received from zmq client 
+    rs_zmq_ridkey_deserialize(keys, buf, rc);
+
+    free(buf);
+
+    return rc;
+}
+
+//****************************************************************************************
+// rs_zmq_ridvalue_recv - Receives ridvalue through zmq
+// Returns the length of message
+//****************************************************************************************
+int rs_zmq_ridvalue_recv(rs_zmq_rid_value_t *value, void *socket)
+{
+    void *buf;
+    int rc = rs_zmq_recv(socket, &buf);
+    assert(rc != -1);
+    //** Deserializes keys received from zmq client 
+    rs_zmq_ridvalue_deserialize(value, buf, rc);
+
+    free(buf);
+
+    return rc;
+}
+
+//********************************************************************************************
+// rs_zmq_send_rid_value - Receives rid key and sends rid value
+//********************************************************************************************
+
+void rs_zmq_send_rid_value(resource_service_fn_t *rs, void *socket)
+{
+    rs_zmq_rid_key_t *keys;
+    rs_zmq_rid_value_t *value;
+
+    type_malloc_clear(keys, rs_zmq_rid_key_t, 1);
+    type_malloc_clear(value, rs_zmq_rid_value_t, 1);
+
+    int len = rs_zmq_ridkey_recv(keys, socket);
+    printf("Received ridkey %s length %d\n", keys->rid_key, len);
+
+    value->rid_value = rs_get_rid_value(rs, keys->rid_key, keys->key);
+
+    len = rs_zmq_ridvalue_send(value, socket);
+    printf("Sent ridvalue %s length %d\n", value->rid_value, len);
+
+    free(keys->rid_key);
+    free(keys->key);
+    free(keys);
+    free(value);
+}

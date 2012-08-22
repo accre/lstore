@@ -46,10 +46,12 @@ extern "C" {
 #include "iniparse.h"
 #include "log.h"
 #include "type_malloc.h"
+#include "string_token.h"
 #include "random.h"
 #include "ds_ibp.h" //** This should be replaced by a generic data servic
 #include "rsz_request.pb-c.h"
 #include "rsz_response.pb-c.h"
+#include "rsz_rid_key_value.pb-c.h"
 #include "rs_simple_priv.h"
 
 //** Contains rs request 
@@ -83,7 +85,21 @@ typedef struct {
     int timeout;
 } rs_zmq_thread_arg_t;
 
+//** Contains rs rid keys
+typedef struct {
+    char *rid_key;
+    char *key;
+} rs_zmq_rid_key_t;
+
+//** Contains rs rid value
+typedef struct {
+    char *rid_value;
+} rs_zmq_rid_value_t;
+
 void *rs_zmq_worker_routine(void *arg);
+int rs_zmq_send(void *socket, void *buf, int len);
+int rs_zmq_recv(void *socket, void **buf);
+
 Rs__Zmq__RszReqSet **rs_zmq_reqlist_serialize(rs_request_t *req, int num_ele);
 rs_request_t *rs_zmq_reqlist_deserialize(Rs__Zmq__RszReqSet **reqlist, int num_ele);
 void rs_zmq_reqlist_destroy(Rs__Zmq__RszReqSet **req_set, int num_ele);
@@ -99,6 +115,17 @@ int rs_zmq_rep_send(rs_zmq_rep_t* response, void *socket);
 int rs_zmq_rep_recv(rs_zmq_rep_t* rep, void *socket);
 char *rs_query_type_replace(char *query, char *old_rst, char *new_rst);
 
+void *rs_zmq_ridkey_serialize(rs_zmq_rid_key_t *keys, int *len);
+void rs_zmq_ridkey_deserialize(rs_zmq_rid_key_t *keys, void *buf, int len);
+void *rs_zmq_ridvalue_serialize(rs_zmq_rid_value_t *value, int *len);
+void rs_zmq_ridvalue_deserialize(rs_zmq_rid_value_t *value, void *buf, int len);
+
+int rs_zmq_ridkey_send(rs_zmq_rid_key_t *keys, void *socket);
+int rs_zmq_ridvalue_send(rs_zmq_rid_value_t *value, void *socket);
+int rs_zmq_ridkey_recv(rs_zmq_rid_key_t *keys, void *socket);
+int rs_zmq_ridvalue_recv(rs_zmq_rid_value_t *value, void *socket);
+
+void rs_zmq_send_rid_value(resource_service_fn_t *rs, void *socket);
 #ifdef __cplusplus
 }
 #endif

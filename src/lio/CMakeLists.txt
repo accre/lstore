@@ -73,6 +73,7 @@ set(LIO_OBJS
    rsz_req.pb-c.c
    rsz_cap.pb-c.c
    rsz_response.pb-c.c
+   rsz_rid_key_value.pb-c.c
    rs_zmq_base.c
    segment_base.c
    segment_linear.c
@@ -132,7 +133,7 @@ TARGET_LINK_LIBRARIES( rs_test_svr ${lio_lib} ${LIBS})
 install(TARGETS lio DESTINATION lib)
 install(TARGETS lio-static DESTINATION lib)
 install(FILES 
-   cache_amp.h       data_block.h             ex3_abstract.h  ex3_linear_priv.h  exnode.h         rs_simple.h	rs_zmq.h	rsz_request.pb-c.h	rsz_response.pb-c.h	rsz_req.pb-c.h	rsz_cap.pb-c.h           segment_jerasure.h  segment_lun_priv.h
+   cache_amp.h       data_block.h             ex3_abstract.h  ex3_linear_priv.h  exnode.h         rs_simple.h	rs_zmq.h	rsz_request.pb-c.h	rsz_response.pb-c.h	rsz_req.pb-c.h	rsz_cap.pb-c.h		rsz_rid_key_value.pb-c.h           segment_jerasure.h  segment_lun_priv.h
    cache_amp_priv.h  data_service_abstract.h  ex3_compare.h   ex3_system.h       lio.h     rs_simple_priv.h	rs_zmq_priv.h	rs_zmq_base.h     segment_linear.h    trace.h
    cache_lru.h       ds_ibp.h                 ex3_fmttypes.h  ex3_types.h        os_file.h        segment_cache.h       segment_log.h       transfer_buffer.h
    cache_lru_priv.h  ds_ibp_priv.h            ex3_header.h    exnode3.h          raid4.h          segment_cache_priv.h  segment_log_priv.h  view_layout.h

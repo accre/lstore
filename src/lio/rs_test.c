@@ -95,6 +95,8 @@ int main(int argc, char **argv)
 
   //** Parse the query
   rsq = rs_query_parse(lio_gc->rs, qstr);
+  if (rsq == NULL)
+	exit(EXIT_FAILURE);
 
   //** Generate the data request
   type_malloc_clear(req_list, rs_request_t, n_alloc);
@@ -143,6 +145,13 @@ int main(int argc, char **argv)
 
   //** Clean up
   rs_query_destroy(lio_gc->rs, rsq);
+
+//----------------------------------------------------------------------
+  //** Temporary codes for testing get rid value
+/*  char *value = rs_get_rid_value(lio_gc->rs, "gamma_2", "rid_key");
+  printf("Value for rid key gamma_2: %s\n", value);
+  free(value);*/ 
+//----------------------------------------------------------------------
 
   lio_shutdown();
 

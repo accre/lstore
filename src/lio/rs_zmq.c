@@ -63,8 +63,8 @@ op_status_t rs_zmq_req_func(void *arg, int id)
     rs_zmq_req_t *req;
     req = (rs_zmq_req_t *)arg;
     buf = rs_zmq_req_serialize(req, &len);
- 
-    printf("Length of serialized request: %d\n", len); 
+
+    printf("Length of serialized request %d bytes\n", len); 
 
     //** Sends serialized request through ZMQ
     rs_zmq_priv_t *rsz = (rs_zmq_priv_t *) req->rs->priv;
@@ -76,6 +76,8 @@ op_status_t rs_zmq_req_func(void *arg, int id)
     rc = zmq_send(rsz->zmq_socket, buf, len , 0);
     assert(rc == len); 
   
+    printf("Sent request %d bytes\n", len); 
+
     //** Receives response through ZMQ 
     //** ReqList and CapList are filled in here
     rs_zmq_rep_t *rep;
@@ -87,7 +89,6 @@ op_status_t rs_zmq_req_func(void *arg, int id)
     //** Print the caps
     char *qstr = rs_query_base_print(req->rs, req->rsq);
     printf("---------------------------------------------------------------------\n");
-    printf("Display caps\n"); 
     printf("\nQuery: %s  n_alloc: %d\n", qstr, req->n_rid);
     printf("\n");
     int i;
@@ -128,7 +129,7 @@ op_generic_t *rs_zmq_request(resource_service_fn_t *arg, data_attr_t *da, rs_que
     rsr->da = da;
     rsr->rsq = rsq;
     rsr->caps = caps;
-    rsr-> req = req;
+    rsr->req = req;
     rsr->req_size = req_size;
     rsr->hints_list = hints_list;
     rsr->fixed_size = fixed_size;
@@ -151,6 +152,36 @@ op_generic_t *rs_zmq_request(resource_service_fn_t *arg, data_attr_t *da, rs_que
 //********************************************************************
 char *rs_zmq_get_rid_value(resource_service_fn_t *arg, char *rid_key, char *key) {
 
+    rs_zmq_priv_t *rsz = (rs_zmq_priv_t *)arg->priv;
+
+    //** Sends the ridkey 
+    int len;
+    rs_zmq_rid_key_t *keys;
+    type_malloc_clear(keys, rs_zmq_rid_key_t, 1);
+    keys->rid_key = rid_key;
+    keys->key = key;
+    len = rs_zmq_ridkey_send(keys, rsz->zmq_socket); 
+
+    printf("Length of serialized ridkey: %d bytes\n", len);
+    fflush(stdout);
+
+    //** Receives ridvalue 
+    rs_zmq_rid_value_t *value;
+    type_malloc_clear(value, rs_zmq_rid_value_t, 1);
+    len = rs_zmq_ridvalue_recv(value, rsz->zmq_socket);
+    printf("Length of recvd ridvalue:%d bytes\n", len);
+    fflush(stdout);
+
+    char *rid_value;
+
+    asprintf(&rid_value, "%s", value->rid_value);
+
+    //** Frees allocations
+    free(keys);
+    free(value->rid_value);
+    free(value);
+
+    return rid_value;
 }
 
 //********************************************************************

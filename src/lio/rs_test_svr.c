@@ -76,7 +76,6 @@ int main(int argc, char **argv)
        if (strcmp(argv[i], "-n") == 0) { //** Thread number 
           i++;
           thread_nbr = atoi(argv[i]);
-	  printf("Thread Num: %d\n", thread_nbr);
        } else if (strcmp(argv[i], "-c") == 0) { //** Config file
 	  i++;
 	  cfg_name = argv[i]; 
@@ -90,7 +89,7 @@ int main(int argc, char **argv)
     kf = inip_read(cfg_name);
     if (kf == NULL) {
         log_printf(0, "rs_test_svr: Error parsing config file! file=%s\n", cfg_name);
-        return(NULL);
+        return(-1);
     }
 
     //** Retrieves remote zmq server name, transport protocol, and lisenting port
