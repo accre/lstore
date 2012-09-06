@@ -67,7 +67,7 @@ int main(int argc, char **argv)
      return(1);
   }
 
-  lio_init(&argc, argv);
+  lio_init(&argc, &argv);
 
   mode = CLONE_STRUCTURE;
 
@@ -106,7 +106,7 @@ int main(int argc, char **argv)
   //** Load the source
   exp = exnode_exchange_load_file(sfname);
   ex = exnode_create();
-  exnode_deserialize(ex, exp);
+  exnode_deserialize(ex, exp, lio_gc->ess);
 
 //  printf("Initial exnode=====================================\n");
 //  printf("%s", exp->text);
@@ -114,7 +114,7 @@ int main(int argc, char **argv)
 
 
   //** Execute the clone operation
-  gop = exnode_clone(ex, lio_gc->da, &cex, (void *)clone_arg, mode, lio_gc->timeout);
+  gop = exnode_clone(lio_gc->tpc_unlimited, ex, lio_gc->da, &cex, (void *)clone_arg, mode, lio_gc->timeout);
 
   gop_waitany(gop);
   status = gop_get_status(gop);

@@ -265,7 +265,7 @@ op_generic_t *segfile_truncate(segment_t *seg, data_attr_t *da, ex_off_t new_siz
 // segfile_inspect - Checks if the file exists
 //***********************************************************************
 
-op_generic_t *segfile_inspect(segment_t *seg, data_attr_t *da, FILE *ifd, int mode, ex_off_t bufsize, int timeout)
+op_generic_t *segfile_inspect(segment_t *seg, data_attr_t *da, info_fd_t *ifd, int mode, ex_off_t bufsize, int timeout)
 {
   segfile_priv_t *s = (segfile_priv_t *)seg->priv;
   FILE *fd;
@@ -318,6 +318,18 @@ op_generic_t *segfile_flush(segment_t *seg, data_attr_t *da, ex_off_t lo, ex_off
 }
 
 //***********************************************************************
+// segfile_signature - Generates the segment signature
+//***********************************************************************
+
+int segfile_signature(segment_t *seg, char *buffer, int *used, int bufsize)
+{
+  append_printf(buffer, used, bufsize, "file()\n");
+
+  return(0);
+}
+
+
+//***********************************************************************
 // segfile_clone_func - Clone data from a file segment
 //***********************************************************************
 
@@ -368,25 +380,28 @@ op_generic_t *segfile_clone(segment_t *seg, data_attr_t *da, segment_t **clone_s
   char fid[4096];
   op_generic_t *gop;
   segfile_clone_t *sfc;
+  int use_existing = (*clone_seg != NULL) ? 1 : 0;
 
   //** Make the base segment
-  *clone_seg = segment_file_create(exnode_service_set);
+  if (use_existing == 0) *clone_seg = segment_file_create(seg->ess);
   clone = *clone_seg;
 
   ss = (segfile_priv_t *)seg->priv;
   sd = (segfile_priv_t *)clone->priv;
 
   //** Copy the header
-  if (seg->header.name != NULL) clone->header.name = strdup(seg->header.name);
+  if ((seg->header.name != NULL) && (use_existing == 0)) clone->header.name = strdup(seg->header.name);
 
-  if (attr == NULL) {    //** make a new file using the segment id as the name if none specified
-     fname = strdup(ss->fname);
-     root = dirname(fname);
-     sprintf(fid, "%s/" XIDT ".dat", root, segment_id(clone));
-     sd->fname = strdup(fid);
-     free(fname);
-  } else {  //** User specified the path so use it
-     sd->fname = strdup((char *)attr);
+  if (use_existing == 0) {
+     if (attr == NULL) {    //** make a new file using the segment id as the name if none specified
+        fname = strdup(ss->fname);
+        root = dirname(fname);
+        sprintf(fid, "%s/" XIDT ".dat", root, segment_id(clone));
+        sd->fname = strdup(fid);
+        free(fname);
+     } else {  //** User specified the path so use it
+        sd->fname = strdup((char *)attr);
+     }
   }
 
   type_malloc(sfc, segfile_clone_t, 1);
@@ -628,6 +643,7 @@ segment_t *segment_file_create(void *arg)
   s->qname = strdup(qname);
 
   seg->priv = s;
+  seg->ess = es;
   seg->fn.read = segfile_read;
   seg->fn.write = segfile_write;
   seg->fn.inspect = segfile_inspect;
@@ -635,6 +651,7 @@ segment_t *segment_file_create(void *arg)
   seg->fn.remove = segfile_remove;
   seg->fn.flush = segfile_flush;
   seg->fn.clone = segfile_clone;
+  seg->fn.signature = segfile_signature;
   seg->fn.size = segfile_size;
   seg->fn.block_size = segfile_block_size;
   seg->fn.serialize = segfile_serialize;

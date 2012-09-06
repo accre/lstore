@@ -53,7 +53,7 @@ void ds_ibp_destroy_probe(data_service_fn_t *arg, data_probe_t *probe)
   free(probe);
 }
 
-void ds_ibp_destroy_attr(data_service_fn_t *arg, data_probe_t *attr)
+void ds_ibp_destroy_attr(data_service_fn_t *arg, data_attr_t *attr)
 {
   free(attr);
 }
@@ -591,7 +591,7 @@ void ds_ibp_destroy(data_service_fn_t *dsf)
 //  ds_ibp_create - Creates the IBP data service
 //***********************************************************************
 
-data_service_fn_t *ds_ibp_create(char *config_file)
+data_service_fn_t *ds_ibp_create(void *arg, char *config_file, char *section)
 {
   data_service_fn_t *dsf;
   ds_ibp_priv_t *ds;
@@ -607,8 +607,9 @@ data_service_fn_t *ds_ibp_create(char *config_file)
   ds->attr_default.attr.type = IBP_BYTEARRAY;
   ds->attr_default.disk_cs_type = CHKSUM_DEFAULT;
 
+  //printf("cfg=%s sec=%s\n", config_file, section);
   ic = ibp_create_context();
-  ibp_load_config(ic, config_file);
+  ibp_load_config(ic, config_file, section);
   ds->ic = ic;
   dsf->type = DS_TYPE_IBP;
 

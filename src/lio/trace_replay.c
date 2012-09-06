@@ -74,7 +74,7 @@ int main(int argc, char **argv)
      return(1);
   }
 
-  lio_init(&argc, argv);
+  lio_init(&argc, &argv);
 
   np = 1;
   update_interval = 1000;
@@ -107,7 +107,7 @@ int main(int argc, char **argv)
   //** Load the template
   template_exchange = exnode_exchange_load_file(template_name);
   tex = exnode_create();
-  exnode_deserialize(tex, template_exchange);
+  exnode_deserialize(tex, template_exchange, lio_gc->ess);
 
   //** Load the trace
   trace = trace_load(exnode_service_set, tex, lio_gc->da, lio_gc->timeout, trace_header);

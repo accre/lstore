@@ -154,6 +154,7 @@ trace_t *trace_load(exnode_abstract_set_t *exs, exnode_t *tex, data_attr_t *da, 
   for (i=0; i<n_files; i++) {
     file = &(trace->files[i]);
 
+    file->seg = NULL;
     file->ex = exnode_create();
     segment_clone(tseg, da, &(file->seg), CLONE_STRUCTURE, NULL, timeout);
     view_insert(file->ex, file->seg);

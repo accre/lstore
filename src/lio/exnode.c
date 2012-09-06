@@ -101,6 +101,66 @@ exnode_t *exnode_create()
 }
 
 //*************************************************************************
+// exnode_remove_func - Resmoves the exnode data
+//*************************************************************************
+
+op_status_t exnode_remove_func(void *arg, int gid)
+{
+  exnode_clone_t *op = (exnode_clone_t *)arg;
+  exnode_t *ex = op->src_ex;
+  list_iter_t it;
+  segment_t *seg;
+  ex_id_t *id;
+  int i, n;
+  op_generic_t *gop;
+  opque_t *q;
+  op_status_t status;
+
+  n = list_key_count(ex->view);
+  if (n == 0) return(op_success_status);
+
+  q = new_opque();
+  opque_start_execution(q);
+
+  //** Start the cloning process
+  it = list_iter_search(ex->view, NULL, 0);
+  list_next(&it, (list_key_t **)&id, (list_data_t **)&seg);
+  i = 0;
+  while (seg != NULL) {
+    gop = segment_remove(seg, op->da, op->timeout);
+    opque_add(q, gop);
+    list_next(&it, (list_key_t **)&id, (list_data_t **)&seg);
+  }
+
+  //** Wait for everything to complete
+  i = opque_waitall(q);
+
+  opque_free(q, OP_DESTROY);
+
+  status = (i != OP_STATE_SUCCESS) ? op_failure_status : op_success_status;
+  return(status);
+}
+
+//*************************************************************************
+// exnode_remove - Removes the exnode data
+//*************************************************************************
+
+op_generic_t *exnode_remove(thread_pool_context_t *tpc, exnode_t *ex, data_attr_t *da, int timeout)
+{
+  exnode_clone_t *exc;
+  op_generic_t *gop;
+
+  type_malloc_clear(exc, exnode_clone_t, 1);
+  exc->src_ex = ex;
+  exc->da = da;
+  exc->timeout = timeout;
+
+  gop = new_thread_pool_op(tpc, NULL, exnode_remove_func, (void *)exc, free, 1);
+  return(gop);
+}
+
+
+//*************************************************************************
 // exnode_clone_func - Clones the exnode structure and optionally data
 //*************************************************************************
 
@@ -131,6 +191,7 @@ op_status_t exnode_clone_func(void *arg, int gid)
   i = 0;
   while (src_seg != NULL) {
     new_seg[i] = src_seg;
+    new_seg[i+1] = NULL;  //** Need to do this soit doesn't try and use it
     gop = segment_clone(src_seg, exc->da, &(new_seg[i+1]), exc->mode, exc->arg, exc->timeout);
     gop_set_private(gop, &(new_seg[i]));
     opque_add(q, gop);
@@ -173,7 +234,7 @@ op_status_t exnode_clone_func(void *arg, int gid)
 // exnode_clone - Clones the exnode structure and optionally data
 //*************************************************************************
 
-op_generic_t *exnode_clone(exnode_t *src_ex, data_attr_t *da, exnode_t **ex, void *arg, int mode, int timeout)
+op_generic_t *exnode_clone(thread_pool_context_t *tpc, exnode_t *src_ex, data_attr_t *da, exnode_t **ex, void *arg, int mode, int timeout)
 {
   exnode_clone_t *exc;
   op_generic_t *gop;
@@ -184,7 +245,6 @@ op_generic_t *exnode_clone(exnode_t *src_ex, data_attr_t *da, exnode_t **ex, voi
   if (src_ex->header.name != NULL) (*ex)->header.name = strdup(src_ex->header.name);
   if (src_ex->header.type != NULL) (*ex)->header.type = strdup(src_ex->header.type);
   generate_ex_id(&((*ex)->header.id));
-  
 
   type_malloc(exc, exnode_clone_t, 1);
   exc->src_ex = src_ex;
@@ -194,7 +254,7 @@ op_generic_t *exnode_clone(exnode_t *src_ex, data_attr_t *da, exnode_t **ex, voi
   exc->timeout = timeout;
   exc->arg = arg;
 
-  gop = new_thread_pool_op(exnode_service_set->tpc_unlimited, NULL, exnode_clone_func, (void *)exc, free, 1);
+  gop = new_thread_pool_op(tpc, NULL, exnode_clone_func, (void *)exc, free, 1);
   return(gop);
 }
 
@@ -298,8 +358,8 @@ void exnode_exchange_append_text(exnode_exchange_t *exp, char *buffer)
 //  exnode_deserialize_text - Storea a text based exnode
 //*************************************************************************
 
-int exnode_deserialize_text(exnode_t *ex, exnode_exchange_t *exp)
-{  
+int exnode_deserialize_text(exnode_t *ex, exnode_exchange_t *exp, exnode_abstract_set_t *ess)
+{
   inip_group_t *g;
   inip_element_t *ele;
   inip_file_t *fd;
@@ -308,7 +368,7 @@ int exnode_deserialize_text(exnode_t *ex, exnode_exchange_t *exp)
   int fin;
   char *key, *value, *token, *bstate;
   char *exgrp = "exnode";
-  
+
   fd = inip_read_text(exp->text);
 
   //** Load the header
@@ -316,7 +376,7 @@ int exnode_deserialize_text(exnode_t *ex, exnode_exchange_t *exp)
   if (g != NULL) {
      ex->header.name =  inip_get_string(fd, exgrp, "name", "");
      ex->header.id = inip_get_integer(fd, exgrp, "id", 0);
-  }              
+  }
 
   //** and the views
   g = inip_find_group(fd, "view");
@@ -339,7 +399,7 @@ int exnode_deserialize_text(exnode_t *ex, exnode_exchange_t *exp)
 
         //** and load it
         log_printf(15, "exnode_load_text: Loading view segment " XIDT "\n", id);
-        seg = load_segment(id, exp);
+        seg = load_segment(ess, id, exp);
         atomic_inc(seg->ref_count);
         list_insert(ex->view, &segment_id(seg), seg);
      }
@@ -358,15 +418,15 @@ int exnode_deserialize_text(exnode_t *ex, exnode_exchange_t *exp)
 
   inip_destroy(fd);
 
-  return(0);    
+  return(0);
 }
 
 //*************************************************************************
 // exnode_deserialize_proto - Deserializes the exnode from a google protobuf
 //*************************************************************************
 
-int exnode_deserialize_proto(exnode_t *ex, exnode_exchange_t *exp)
-{  
+int exnode_deserialize_proto(exnode_t *ex, exnode_exchange_t *exp, exnode_abstract_set_t *ess)
+{
   return(-1);
 }
 
@@ -374,14 +434,14 @@ int exnode_deserialize_proto(exnode_t *ex, exnode_exchange_t *exp)
 // exnode_deserialize - Deserializes the exnode
 //*************************************************************************
 
-int exnode_deserialize(exnode_t *ex, exnode_exchange_t *exp)
-{  
+int exnode_deserialize(exnode_t *ex, exnode_exchange_t *exp, exnode_abstract_set_t *ess)
+{
   if (exp->type == EX_TEXT) {
-     return(exnode_deserialize_text(ex, exp));
+     return(exnode_deserialize_text(ex, exp, ess));
   } else if (exp->type == EX_PROTOCOL_BUFFERS) {
-     return(exnode_deserialize_proto(ex, exp));
+     return(exnode_deserialize_proto(ex, exp, ess));
   }
- 
+
   return(-1);
 }
 
@@ -392,7 +452,7 @@ int exnode_deserialize(exnode_t *ex, exnode_exchange_t *exp)
 
 int exnode_serialize_text(exnode_t *ex, exnode_exchange_t *exp)
 {
-  int bufsize = 1024;  
+  int bufsize = 1024;
   char buffer[bufsize];
   char *etext;
   int used = 0;
@@ -400,7 +460,6 @@ int exnode_serialize_text(exnode_t *ex, exnode_exchange_t *exp)
   ex_id_t *id;
   skiplist_iter_t it;
 
-  
   //** Store the header
   append_printf(buffer, &used, bufsize, "[exnode]\n");
   if (ex->header.name != NULL) {
@@ -413,7 +472,7 @@ int exnode_serialize_text(exnode_t *ex, exnode_exchange_t *exp)
   append_printf(buffer, &used, bufsize, "id=" XIDT "\n\n", ex->header.id);
 
   exnode_exchange_append_text(exp, buffer);
-    
+
   //** and all the views
   used = 0;
   append_printf(buffer, &used, bufsize, "\n[view]\n");
@@ -423,14 +482,14 @@ int exnode_serialize_text(exnode_t *ex, exnode_exchange_t *exp)
      log_printf(15, "exnode_serialize_text: Storing view segment " XIDT "\n", segment_id(seg));
      append_printf(buffer, &used, bufsize, "segment=" XIDT "\n", *id);
 
-     segment_serialize(seg, exp);     
+     segment_serialize(seg, exp);
   }
 
   append_printf(buffer, &used, bufsize, "\n");
- 
+
   exnode_exchange_append_text(exp, buffer);
 
-  return(0);    
+  return(0);
 }
 
 //*************************************************************************
@@ -438,7 +497,7 @@ int exnode_serialize_text(exnode_t *ex, exnode_exchange_t *exp)
 //*************************************************************************
 
 int exnode_serialize_proto(exnode_t *ex, exnode_exchange_t *exp)
-{  
+{
   return(-1);
 }
 
@@ -447,7 +506,7 @@ int exnode_serialize_proto(exnode_t *ex, exnode_exchange_t *exp)
 //*************************************************************************
 
 int exnode_serialize(exnode_t *ex, exnode_exchange_t *exp)
-{  
+{
   if (exp->type == EX_TEXT) {
      return(exnode_serialize_text(ex, exp));
   } else if (exp->type == EX_PROTOCOL_BUFFERS) {

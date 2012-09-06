@@ -25,7 +25,7 @@ Advanced Computing Center for Research and Education
 230 Appleton Place
 Nashville, TN 37203
 http://www.accre.vanderbilt.edu
-*/ 
+*/
 
 //***********************************************************************
 // Routines for managing the segment loading framework
@@ -33,6 +33,10 @@ http://www.accre.vanderbilt.edu
 
 #define _log_module_index 154
 
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <libgen.h>
 #include "ex3_abstract.h"
 #include "list.h"
 #include "type_malloc.h"
@@ -41,61 +45,8 @@ http://www.accre.vanderbilt.edu
 #include "string_token.h"
 #include "log.h"
 
-typedef struct {
-  object_service_fn_t *(*create)(thread_pool_context_t *tpc, char *fname);
-  void *arg;
-} os_driver_t;
-
-typedef struct {
-  list_t *table;
-} os_driver_table_t;
-
-os_driver_table_t *os_driver_table = NULL;
-os_regex_table_t *os_regex_table_create(int n);
-
-//***********************************************************************
-// install_object_service- Installs an OS driver into the table
-//***********************************************************************
-
-int install_object_service(char *type, object_service_fn_t *(*create)(thread_pool_context_t *tpc, char *fname))
-{
-  os_driver_t *d;
-
-  //** 1st time so create the struct
-  if (os_driver_table == NULL) {
-     type_malloc_clear(os_driver_table, os_driver_table_t, 1);
-     os_driver_table->table = list_create(0, &list_string_compare, list_string_dup, list_simple_free, list_no_data_free);
-  }
-
-  d = list_search(os_driver_table->table, type);
-  if (d != NULL) {
-    log_printf(0, "install_object_service: Matching driver for type=%s already exists!\n", type);
-    return(1);
-  }
-
-  type_malloc_clear(d, os_driver_t, 1);
-  d->create = create;
-  list_insert(os_driver_table->table, type, (void *)d);
-
-  return(0);
-}
-
-//***********************************************************************
-// create_object_service - Creates a segment of the given type
-//***********************************************************************
-
-object_service_fn_t *create_object_service(char *type, thread_pool_context_t *tpc, char *fname)
-{
-  os_driver_t *d;
-
-  d = list_search(os_driver_table->table, type);
-  if (d == NULL) {
-    log_printf(0, "create_object_service:  No matching driver for type=%s\n", type);
-    return(NULL);
-  }
-
-  return(d->create(tpc, fname));
-}
+apr_thread_mutex_t *_path_parse_lock = NULL;
+apr_pool_t *_path_parse_pool = NULL;
 
 //***********************************************************************
 // os_glob2regex - Converts a string in shell glob notation to regex
@@ -104,28 +55,32 @@ object_service_fn_t *create_object_service(char *type, thread_pool_context_t *tp
 char *os_glob2regex(char *glob)
 {
   char *reg;
-  int i, j, n;
+  int i, j, n, n_regex;
 
   n = strlen(glob);
-  type_malloc(reg, char, n);
+  n_regex = 2*n + 10;
+  type_malloc(reg, char, n_regex);
 
   j = 0;
   reg[j] = '^'; j++;
 
+//log_printf(15, "glob=%s\n", glob);
+
   switch (glob[0]) {
-    case ('.') : reg[j] = '\\'; reg[j+1] = '.'; j=+2;  break;
-    case ('*') : reg[j] = '\\'; reg[j+1] = '*'; j=+2;  break;
+    case ('.') : reg[j] = '\\'; reg[j+1] = '.'; j+=2;  break;
+    case ('*') : reg[j] = '.';  reg[j+1] = '*'; j+=2;  break;
     case ('?') : reg[j] = '.'; j++; break;
     default  : reg[j] = glob[0]; j++; break;
   }
 
   for (i=1; i<n; i++) {
      switch (glob[i]) {
-        case ('.') : reg[j] = '\\'; reg[j+1] = '.'; j=+2;  break;
+        case ('.') : reg[j] = '\\'; reg[j+1] = '.'; j+=2;  break;
         case ('*') : if (glob[i-1] == '\\') {
                        reg[j] = '*'; j++;
                      } else {
-                       reg[j] = '\\'; reg[j+1] = '*'; j=+2;
+//log_printf(15, "*else j=%d\n", j);
+                       reg[j] = '.'; reg[j+1] = '*'; j+=2;
                      }
                      break;
         case ('?') : reg[j] = (glob[i-1] == '\\') ? '?' : '.';
@@ -134,13 +89,56 @@ char *os_glob2regex(char *glob)
         default    : reg[j] = glob[i]; j++;
                      break;
      }
+
+     if (j>= n_regex-2) {
+        n_regex *= 2;
+        reg = realloc(reg, n_regex);
+     }
+//reg[j] = 0;
+//log_printf(15, "i=%d j=%d glob=%s regex=%s\n", i, j, glob, reg);
+
   }
 
   reg[j] = '$';
   reg[j+1] = 0;
-  j =+ 2;
+  j += 2;
 
   return(realloc(reg, j));
+}
+
+//***********************************************************************
+// check_for_glob - Returns 1 if a glob char acter exists in the string
+//***********************************************************************
+
+int check_for_glob(char *glob)
+{
+  int i;
+
+  if ((glob[0] == '*') || (glob[0] == '?') || (glob[0] == '[')) return(1);
+
+  i = 1;
+  while (glob[i] != 0) {
+    if ((glob[i] == '*') || (glob[i] == '?') || (glob[i] == '[')) {
+       if (glob[i-1] != '\\') return(1);
+    }
+
+    i++;
+  }
+
+  return(0);
+}
+
+//***********************************************************************
+// os_regex_is_fixed - Returns 1 if the regex is a fixed path otherwise 0
+//***********************************************************************
+
+int os_regex_is_fixed(os_regex_table_t *regex)
+{
+
+  if (regex->n == 0) return(1);
+  if (regex->n == 1) return(regex->regex_entry[0].fixed);
+
+  return(0);
 }
 
 //***********************************************************************
@@ -150,7 +148,7 @@ char *os_glob2regex(char *glob)
 os_regex_table_t *os_path_glob2regex(char *path)
 {
   os_regex_table_t *table;
-  char *bstate, *p2, *frag;
+  char *bstate, *p2, *frag, *f2;
   int i, j, n, fin, err;
 
   p2 = strdup(path);
@@ -160,26 +158,57 @@ os_regex_table_t *os_path_glob2regex(char *path)
   n = strlen(p2);
   for (i=0; i<n; i++) { if (p2[i] == '/') j++; }
 
+  log_printf(15, "START path=%s max_frags=%d\n", path, j);
+
   //** Make the  table space
   table = os_regex_table_create(n);
+
 
   //** Cycle through the fragments converting them
   i = 0;
   frag = escape_string_token(p2, "/", '\\', 1, &bstate, &fin);
-  while (frag != NULL) {
-     table->regex_entry[i].expression = os_glob2regex(frag);
-     err = regcomp(&(table->regex_entry[i].compiled), table->regex_entry[i].expression, REG_NOSUB);
-     if (err != 0) {
-        os_regex_table_destroy(table);
-        log_printf(0, "os_path_glob2regex: Error with fragment %s err=%d tid=%d\n", table->regex_entry[i].expression, err, atomic_thread_id);
-        return(NULL);
+  fin = 0;
+  table->regex_entry[0].expression = NULL;
+  while (frag[0] != 0 ) {
+     if (check_for_glob(frag) == 0) {
+        if (table->regex_entry[i].expression != NULL) {
+           n = strlen(table->regex_entry[i].expression) + strlen(frag) + 2;
+           type_malloc(f2, char, n);
+           snprintf(f2, n, "%s/%s", table->regex_entry[i].expression, frag);
+           free(table->regex_entry[i].expression);
+           table->regex_entry[i].expression = f2;
+        } else {
+           table->regex_entry[i].expression = strdup(frag);
+        }
+
+        table->regex_entry[i].fixed = 1;
+     } else {
+        if (table->regex_entry[i].fixed == 1) i++;
+
+        table->regex_entry[i].expression = os_glob2regex(frag);
+        log_printf(15, "   i=%d glob=%s  regex=%s\n", i, frag, table->regex_entry[i].expression);
+        err = regcomp(&(table->regex_entry[i].compiled), table->regex_entry[i].expression, REG_NOSUB|REG_EXTENDED);
+        if (err != 0) {
+           os_regex_table_destroy(table);
+           log_printf(0, "os_path_glob2regex: Error with fragment %s err=%d tid=%d\n", table->regex_entry[i].expression, err, atomic_thread_id);
+           free(p2);
+           return(NULL);
+        }
+
+        i++;
      }
 
      frag = escape_string_token(NULL, "/", '\\', 1, &bstate, &fin);
   }
 
-  table->n = i; //** Adjust the table size
+  table->n = (table->regex_entry[i].fixed == 1) ? i+1 : i; //** Adjust the table size
 
+  if (log_level() >= 15) {
+     for (i=0; i<table->n; i++) {
+        log_printf(15, "i=%d fixed=%d frag=%s\n", i, table->regex_entry[i].fixed, table->regex_entry[i].expression);
+     }
+  }
+  free(p2);
   return(table);
 }
 
@@ -193,8 +222,30 @@ os_regex_table_t *os_regex_table_create(int n)
 
   type_malloc_clear(table, os_regex_table_t, 1);
   type_malloc_clear(table->regex_entry, os_regex_entry_t, n);
-
   table->n = n;
+
+  return(table);
+}
+
+//***********************************************************************
+// os_regex2table - Creates a regex table from the regular expression
+//***********************************************************************
+
+os_regex_table_t *os_regex2table(char *regex)
+{
+  int err;
+  os_regex_table_t *table;
+
+  table = os_regex_table_create(1);
+
+  table->regex_entry[0].expression = strdup(regex);
+  err = regcomp(&(table->regex_entry[0].compiled), table->regex_entry[0].expression, REG_NOSUB|REG_EXTENDED);
+  if (err != 0) {
+     os_regex_table_destroy(table);
+     log_printf(0, "Error with fragment %s err=%d tid=%d\n", table->regex_entry[0].expression, err, atomic_thread_id);
+     return(NULL);
+  }
+
   return(table);
 }
 
@@ -210,8 +261,8 @@ void os_regex_table_destroy(os_regex_table_t *table)
   if (table->regex_entry != NULL) {
      for (i=0; i<table->n; i++) {
        re = &(table->regex_entry[i]);
-       if (re->expression != NULL) {
-           free(re->expression);
+       free(re->expression);
+       if (re->fixed == 0) {
            regfree(&(re->compiled));
        }
      }
@@ -221,3 +272,65 @@ void os_regex_table_destroy(os_regex_table_t *table)
 
   free(table);
 }
+
+//***********************************************************************
+//  path_split - Splits the path into a basename and dirname
+//***********************************************************************
+
+void os_path_split(char *path, char **dir, char **file)
+{
+  char *ptr;
+
+  log_printf(15, "path=%s\n", path);
+
+  ptr = strdup(path);
+
+  if (_path_parse_lock == NULL) {
+     apr_pool_create(&_path_parse_pool, NULL);
+     apr_thread_mutex_create(&_path_parse_lock, APR_THREAD_MUTEX_DEFAULT, _path_parse_pool);
+  }
+
+  apr_thread_mutex_lock(_path_parse_lock);
+
+  *dir = strdup(dirname(ptr));
+
+  free(ptr);
+  ptr = strdup(path);
+  *file = strdup(basename(path));
+  free(ptr);
+
+  apr_thread_mutex_unlock(_path_parse_lock);
+
+  log_printf(15, "path=%s dir=%s file=%s\n", path, *dir, *file);
+
+}
+
+//***********************************************************************
+// os_local_filetype - Determines the file type
+//***********************************************************************
+
+int os_local_filetype(char *path)
+{
+  struct stat s;
+  int err, ftype;
+
+  ftype = 0;
+  err = lstat(path, &s);
+  if (err == 0) {
+    if (S_ISLNK(s.st_mode)) {
+       err = stat(path, &s);
+       ftype |= OS_OBJECT_LINK;
+    }
+
+    if (err == 0) {
+       if (S_ISREG(s.st_mode)) {
+         ftype |= OS_OBJECT_FILE;
+       } else if (S_ISDIR(s.st_mode)) {
+         ftype |= OS_OBJECT_DIR;
+       }
+    }
+  }
+
+  return(ftype);
+}
+

@@ -64,18 +64,7 @@ int main(int argc, char **argv)
      return(1);
   }
 
-  lio_init(&argc, argv);
-
-//  tpc_unlimited = thread_pool_create_context("UNLIMITED", 0, 2000);
-//  tpc_cpu = thread_pool_create_context("CPU", 0, 0);
-//  rs = NULL;
-//  ic = ibp_create_context();  //** Initialize IBP
-//  ds = ds_ibp_create(ic);
-//  da = ds_attr_create(ds);
-//  cache_system_init();
-//  timeout = 120;
-//  ll = -1;
-
+  lio_init(&argc, &argv);
 
   //*** Parse the args
   i=1;

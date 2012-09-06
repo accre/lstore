@@ -44,7 +44,7 @@ extern "C" {
 
 segment_t *segment_log_load(void *arg, ex_id_t id, exnode_exchange_t *ex);
 segment_t *segment_log_create(void *arg);
-segment_t *slog_make(segment_t *table, segment_t *data, segment_t *base);  //** Makes a new log segment using
+segment_t *slog_make(service_manager_t *sm, segment_t *table, segment_t *data, segment_t *base);  //** Makes a new log segment using
 
 //redundant---op_generic_t *slog_compact(segment_t *seg);  //** Compatcts the table/data log and optionally destroy's the old
 op_generic_t *slog_merge_with_base(segment_t *seg, data_attr_t *da, ex_off_t bufsize, char *buffer, int truncate_old_log, int timeout);  //** Merges the current log with the base

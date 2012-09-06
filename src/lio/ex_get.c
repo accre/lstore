@@ -71,7 +71,7 @@ int main(int argc, char **argv)
      return(1);
   }
 
-  lio_init(&argc, argv);
+  lio_init(&argc, &argv);
 
   print_timing = 0;
 
@@ -125,7 +125,7 @@ int main(int argc, char **argv)
 
   //** and parse the remote exnode
   ex = exnode_create();
-  exnode_deserialize(ex, exp);
+  exnode_deserialize(ex, exp, lio_gc->ess);
 
   //** Get the default view to use
   seg = exnode_get_default(ex);

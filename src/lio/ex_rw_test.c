@@ -960,7 +960,7 @@ int main(int argc, char **argv)
      return(1);
   }
 
-  lio_init(&argc, argv);
+  lio_init(&argc, &argv);
 
   da = lio_gc->da;
   rwc.timeout = lio_gc->timeout;
@@ -997,7 +997,7 @@ int main(int argc, char **argv)
   exp = exnode_exchange_load_file(rwc.filename);
   //** and parse it
   ex = exnode_create();
-  exnode_deserialize(ex, exp);
+  exnode_deserialize(ex, exp, lio_gc->ess);
 
   //** Get the default view to use
   seg = exnode_get_default(ex);
@@ -1031,13 +1031,13 @@ int main(int argc, char **argv)
   }
 
   //** Get the error counts
-  gop = segment_inspect(seg, da, stdout, INSPECT_SOFT_ERRORS, 0, 10);
+  gop = segment_inspect(seg, da, lio_ifd, INSPECT_SOFT_ERRORS, 0, 10);
   gop_waitall(gop);
   status = gop_get_status(gop);
   soft_errors = status.error_code;
   gop_free(gop, OP_DESTROY);
 
-  gop = segment_inspect(seg, da, stdout, INSPECT_HARD_ERRORS, 0, 10);
+  gop = segment_inspect(seg, da, lio_ifd, INSPECT_HARD_ERRORS, 0, 10);
   gop_waitall(gop);
   status = gop_get_status(gop);
   hard_errors = status.error_code;

@@ -35,6 +35,7 @@ http://www.accre.vanderbilt.edu
 
 #include <stdlib.h>
 #include "ex3_abstract.h"
+#include "service_manager.h"
 #include "data_service_abstract.h"
 #include "interval_skiplist.h"
 #include "append_printf.h"
@@ -186,7 +187,7 @@ int data_block_serialize(data_block_t *d, exnode_exchange_t *exp)
 // data_block_deserialize_text -Read the text based data block
 //***********************************************************************
 
-data_block_t *data_block_deserialize_text(ex_id_t id, exnode_exchange_t *exp)
+data_block_t *data_block_deserialize_text(service_manager_t *sm, ex_id_t id, exnode_exchange_t *exp)
 {
   int bufsize=1024;
   char capgrp[bufsize];
@@ -213,7 +214,7 @@ data_block_t *data_block_deserialize_text(ex_id_t id, exnode_exchange_t *exp)
 
   //** Determine the type and make a blank block
   text = inip_get_string(cfd, capgrp, "type", "");
-  ds = lookup_data_service(text);
+  ds = lookup_service(sm, DS_SM_RUNNING, text);
   if (ds == NULL) {
      log_printf(0, "data_block_deserialize_text: b->id=" XIDT " Unknown data service tpye=%s!\n", id, text);
      return(NULL);;
@@ -271,7 +272,7 @@ data_block_t *data_block_deserialize_text(ex_id_t id, exnode_exchange_t *exp)
 // data_block_deserialize_proto - Read the prot formatted data block
 //***********************************************************************
 
-data_block_t *data_block_deserialize_proto(ex_id_t id, exnode_exchange_t *exp)
+data_block_t *data_block_deserialize_proto(service_manager_t *sm, ex_id_t id, exnode_exchange_t *exp)
 {
   return(NULL);
 }
@@ -280,12 +281,12 @@ data_block_t *data_block_deserialize_proto(ex_id_t id, exnode_exchange_t *exp)
 // data_block_deserialize -Convert from the portable to internal format
 //***********************************************************************
 
-data_block_t *data_block_deserialize(ex_id_t id, exnode_exchange_t *exp)
+data_block_t *data_block_deserialize(service_manager_t *sm, ex_id_t id, exnode_exchange_t *exp)
 {
   if (exp->type == EX_TEXT) {
-     return(data_block_deserialize_text(id, exp));
+     return(data_block_deserialize_text(sm, id, exp));
   } else if (exp->type == EX_PROTOCOL_BUFFERS) {
-     return(data_block_deserialize_proto(id, exp));
+     return(data_block_deserialize_proto(sm, id, exp));
   }
  
   return(NULL);

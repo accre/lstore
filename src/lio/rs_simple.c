@@ -35,6 +35,7 @@ http://www.accre.vanderbilt.edu
 
 #include <assert.h>
 #include "list.h"
+#include "ex3_system.h"
 #include "resource_service_abstract.h"
 #include "rs_query_base.h"
 #include "rs_simple.h"
@@ -499,6 +500,7 @@ log_printf(15, "rs_simple_destroy: sl=%p\n", rss->rid_table); flush_log();
 
   list_destroy(rss->rid_table);
 
+  free(rss->random_array);
   free(rss);
   free(rs);
 }
@@ -509,8 +511,9 @@ log_printf(15, "rs_simple_destroy: sl=%p\n", rss->rid_table); flush_log();
 //    the given file.
 //***********************************************************************
 
-resource_service_fn_t *rs_simple_create(char *fname, data_service_fn_t *ds)
+resource_service_fn_t *rs_simple_create(void *arg, char *fname, char *section)
 {
+  exnode_abstract_set_t *ess = (exnode_abstract_set_t *)arg;
   inip_file_t *kf;
   inip_group_t *ig;
   char *key;
@@ -531,9 +534,9 @@ resource_service_fn_t *rs_simple_create(char *fname, data_service_fn_t *ds)
   type_malloc_clear(rss, rs_simple_priv_t, 1);
 //  rss->rid_table = list_create(0, &list_string_compare, list_string_dup, list_simple_free, rs_simple_rid_free);
   rss->rid_table = list_create(0, &list_string_compare, NULL, NULL, rs_simple_rid_free);
-log_printf(15, "rs_simple_create: sl=%p\n", rss->rid_table);
+log_printf(15, "rs_simple_create: sl=%p ds=%p\n", rss->rid_table, ess->ds);
 
-  rss->ds = ds;
+  rss->ds = ess->ds;
 
   //** And load it
   ig = inip_first_group(kf);

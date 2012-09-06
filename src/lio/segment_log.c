@@ -72,6 +72,7 @@ typedef struct {
   void *attr;
   int mode;
   int timeout;
+  int trunc;
 } seglog_clone_t;
 
 typedef struct {
@@ -514,7 +515,7 @@ int _slog_load(segment_t *seg)
   ex_iovec_t ex_iov;
   tbuffer_t tbuf;
 
-  da = ds_attr_create(seg->ds);
+  da = ds_attr_create(seg->ess->ds);
 
   s->file_size = segment_size(s->base_seg);
   s->log_size = segment_size(s->table_seg);
@@ -554,7 +555,7 @@ log_printf(15, "r->lo=" XOT " r->len(hi)=" XOT " r->data_offset=" XOT "\n", r->l
 
 log_printf(15, "FINAL:  fsize=" XOT " lsize=" XOT " dsize=" XOT "\n", s->file_size, s->log_size, s->data_size);
 
-  ds_attr_destroy(seg->ds, da);
+  ds_attr_destroy(seg->ess->ds, da);
 
   if (err_count > 0) {
      if ((err_count == 1) && (last_bad == 1)) {
@@ -669,15 +670,24 @@ op_status_t seglog_clone_func(void *arg, int id)
   stack = NULL;
   q2 = NULL;
 
-  //** Go ahead and start cloning the log
   q = new_opque();
-  opque_add(q, segment_clone(ss->table_seg, slc->da, &(sd->table_seg), CLONE_STRUCTURE, slc->attr, slc->timeout));
-  opque_add(q, segment_clone(ss->data_seg, slc->da, &(sd->data_seg), CLONE_STRUCTURE, slc->attr, slc->timeout));
   opque_start_execution(q);
 
+  //** SEe if we are using an old seg.  If so we need to trunc it first
+  if (slc->trunc == 1) {
+     opque_add(q, segment_truncate(sd->table_seg, slc->da, 0, slc->timeout));
+     opque_add(q, segment_truncate(sd->data_seg, slc->da, 0, slc->timeout));
+     opque_add(q, segment_truncate(sd->base_seg, slc->da, 0, slc->timeout));
+  }
+
+  //** Go ahead and start cloning the log
+  opque_add(q, segment_clone(ss->table_seg, slc->da, &(sd->table_seg), CLONE_STRUCTURE, slc->attr, slc->timeout));
+  opque_add(q, segment_clone(ss->data_seg, slc->da, &(sd->data_seg), CLONE_STRUCTURE, slc->attr, slc->timeout));
 
   //** Check and see how much data will be transferred if using base
   base = _slog_find_base(ss->base_seg);
+
+  opque_waitall(q);
 
   if (slc->mode == CLONE_STRUCTURE) {  //** Only cloning the structure
     opque_add(q, segment_clone(base, slc->da, &(sd->base_seg), CLONE_STRUCTURE, slc->attr, slc->timeout));
@@ -711,7 +721,7 @@ log_printf(15, "dt=" XOT " nbytes_log=" XOT " nbytes_base=" XOT " ss->file_size=
   //** Now copy the data if needed
   if (do_segment_copy == 1) {  //** segment_copy() method
      type_malloc(buffer, char, bufsize);
-     opque_add(q, segment_copy(slc->da, slc->sseg, slc->dseg, 0, 0, ss->file_size, bufsize, buffer, slc->timeout));
+     opque_add(q, segment_copy(ss->tpc, slc->da, slc->sseg, slc->dseg, 0, 0, ss->file_size, bufsize, buffer, 0, slc->timeout));
   } else if (slc->mode == CLONE_STRUCT_AND_DATA) {  //** Use the incremental log+base method
      //** First clone the base struct and data
      opque_add(q, segment_clone(base, slc->da, &(sd->base_seg), CLONE_STRUCT_AND_DATA, slc->attr, slc->timeout));
@@ -790,9 +800,11 @@ log_printf(15, "dt=" XOT " nbytes_log=" XOT " nbytes_base=" XOT " ss->file_size=
   }
 
   //** Flag them as being used
-  atomic_inc(sd->table_seg->ref_count);
-  atomic_inc(sd->data_seg->ref_count);
-  atomic_inc(sd->base_seg->ref_count);
+  if (slc->trunc == 0) {
+     atomic_inc(sd->table_seg->ref_count);
+     atomic_inc(sd->data_seg->ref_count);
+     atomic_inc(sd->base_seg->ref_count);
+  }
 
   //** Clean up
   if (stack != NULL) free_stack(stack, 1);
@@ -817,16 +829,19 @@ op_generic_t *seglog_clone(segment_t *seg, data_attr_t *da, segment_t **clone_se
   seglog_priv_t *sd;
   op_generic_t *gop;
   seglog_clone_t *slc;
+  int use_existing = (*clone_seg != NULL) ? 1 : 0;
 
     //** Make the base segment
 //log_printf(0, " before clone create\n");
-  *clone_seg = segment_log_create(exnode_service_set);
+  if (use_existing == 0) *clone_seg = segment_log_create(seg->ess);
 //log_printf(0, " after clone create\n");
   clone = *clone_seg;
   sd = (seglog_priv_t *)clone->priv;
 
+log_printf(15, "use_existing=%d sseg=" XIDT " dseg=" XIDT "\n", use_existing, segment_id(seg), segment_id(clone));
+
   //** Copy the header
-  if (seg->header.name != NULL) clone->header.name = strdup(seg->header.name);
+  if ((seg->header.name != NULL) && (use_existing == 0)) clone->header.name = strdup(seg->header.name);
 
   type_malloc(slc, seglog_clone_t, 1);
   slc->sseg = seg;
@@ -835,6 +850,7 @@ op_generic_t *seglog_clone(segment_t *seg, data_attr_t *da, segment_t **clone_se
   slc->mode = mode;
   slc->timeout = timeout;
   slc->attr = attr;
+  slc->trunc = use_existing;
   gop = new_thread_pool_op(sd->tpc, NULL, seglog_clone_func, (void *)slc, free, 1);
 
   return(gop);
@@ -964,7 +980,7 @@ op_generic_t *seglog_remove(segment_t *seg, data_attr_t *da, int timeout)
 // seglog_inspect - Inspects the log segment
 //***********************************************************************
 
-op_generic_t *seglog_inspect(segment_t *seg, data_attr_t *da, FILE *fd, int mode, ex_off_t bufsize, int timeout)
+op_generic_t *seglog_inspect(segment_t *seg, data_attr_t *da, info_fd_t *fd, int mode, ex_off_t bufsize, int timeout)
 {
   seglog_priv_t *s = (seglog_priv_t *)seg->priv;
   opque_t *q = new_opque();
@@ -1015,6 +1031,26 @@ ex_off_t seglog_block_size(segment_t *seg)
 //  seglog_priv_t *s = (seglog_priv_t *)seg->priv;
 
   return(1);
+}
+
+//***********************************************************************
+// seglog_signature - Generates the segment signature
+//***********************************************************************
+
+int seglog_signature(segment_t *seg, char *buffer, int *used, int bufsize)
+{
+  seglog_priv_t *s = (seglog_priv_t *)seg->priv;
+
+  append_printf(buffer, used, bufsize, "log(log)\n");
+  segment_signature(s->table_seg, buffer, used, bufsize);
+
+  append_printf(buffer, used, bufsize, "log(data)\n");
+  segment_signature(s->data_seg, buffer, used, bufsize);
+
+  append_printf(buffer, used, bufsize, "log(base)\n");
+  segment_signature(s->base_seg, buffer, used, bufsize);
+
+  return(0);
 }
 
 
@@ -1129,19 +1165,19 @@ int seglog_deserialize_text(segment_t *seg, ex_id_t id, exnode_exchange_t *exp)
   //** Load the child segments
   id = inip_get_integer(fd, seggrp, "log", 0);
   if (id == 0) return (-1);
-  s->table_seg = load_segment(id, exp);
+  s->table_seg = load_segment(seg->ess, id, exp);
   if (s->table_seg == NULL) return(-2);
   atomic_inc(s->table_seg->ref_count);
 
   id = inip_get_integer(fd, seggrp, "data", 0);
   if (id == 0) return (-1);
-  s->data_seg = load_segment(id, exp);
+  s->data_seg = load_segment(seg->ess, id, exp);
   if (s->data_seg == NULL) return(-2);
   atomic_inc(s->data_seg->ref_count);
 
   id = inip_get_integer(fd, seggrp, "base", 0);
   if (id == 0) return (-1);
-  s->base_seg = load_segment(id, exp);
+  s->base_seg = load_segment(seg->ess, id, exp);
   if (s->base_seg == NULL) return(-2);
   atomic_inc(s->base_seg->ref_count);
 
@@ -1249,8 +1285,7 @@ segment_t *segment_log_create(void *arg)
   apr_thread_mutex_create(&(seg->lock), APR_THREAD_MUTEX_DEFAULT, seg->mpool);
   apr_thread_cond_create(&(seg->cond), seg->mpool);
 
-  seg->rs = es->rs;
-  seg->ds = es->ds;
+  seg->ess = es;
   s->tpc = es->tpc_unlimited;
   seg->fn.read = seglog_read;
   seg->fn.write = seglog_write;
@@ -1259,6 +1294,7 @@ segment_t *segment_log_create(void *arg)
   seg->fn.remove = seglog_remove;
   seg->fn.flush = seglog_flush;
   seg->fn.clone = seglog_clone;
+  seg->fn.signature = seglog_signature;
   seg->fn.size = seglog_size;
   seg->fn.block_size = seglog_block_size;
   seg->fn.serialize = seglog_serialize;
@@ -1284,11 +1320,17 @@ segment_t *segment_log_load(void *arg, ex_id_t id, exnode_exchange_t *ex)
 //    The empty log and data must be provided.
 //***********************************************************************
 
-segment_t *slog_make(segment_t *table, segment_t *data, segment_t *base)
+segment_t *slog_make(service_manager_t *sm, segment_t *table, segment_t *data, segment_t *base)
 {
-  segment_t *seg = create_segment(SEGMENT_TYPE_LOG);
-  seglog_priv_t *s = (seglog_priv_t *)seg->priv;
+  segment_t *seg;
+  seglog_priv_t *s;
+  segment_create_t *screate;
 
+  screate = lookup_service(sm, SEG_SM_CREATE, SEGMENT_TYPE_LOG);
+  if (screate == NULL) return(NULL);
+
+  seg = (*screate)(get_service_type_arg(sm, SEG_SM_CREATE));
+  s = (seglog_priv_t *)seg->priv;
   s->table_seg = table;
   s->data_seg = data;
   s->base_seg = base;

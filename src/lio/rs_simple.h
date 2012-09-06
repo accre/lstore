@@ -34,8 +34,8 @@ http://www.accre.vanderbilt.edu
 #include "list.h"
 #include "resource_service_abstract.h"
 
-#ifndef _RS_BASE_H_
-#define _RS_BASE_H_
+#ifndef _RS_SIMPLE_H_
+#define _RS_SIMPLE_H_
 
 #ifdef __cplusplus
 extern "C" {
@@ -43,8 +43,7 @@ extern "C" {
 
 #define RS_TYPE_SIMPLE "simple"
 
-resource_service_fn_t *rs_simple_create(char *fname, data_service_fn_t *ds);
-resource_service_fn_t *rs_simple_create_driver(void *arg);
+resource_service_fn_t *rs_simple_create(void *arg, char *fname, char *section);
 
 #ifdef __cplusplus
 }

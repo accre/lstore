@@ -55,7 +55,7 @@ int main(int argc, char **argv)
      return(1);
   }
 
-  lio_init(&argc, argv);
+  lio_init(&argc, &argv);
 
   //** Load the fixed options
   i = 1;
@@ -88,7 +88,7 @@ int main(int argc, char **argv)
   printf("%s", exp_in->text);
   printf("===================================================\n");
 
-  exnode_deserialize(ex, exp_in);
+  exnode_deserialize(ex, exp_in, lio_gc->ess);
 
   //** Print it
   exp = exnode_exchange_create(EX_TEXT);

@@ -77,7 +77,7 @@ typedef struct {
 typedef struct {
   segment_t *seg;
   data_attr_t *da;
-  FILE *fd;
+  info_fd_t *fd;
   ex_off_t bufsize;
   int inspect_mode;
   int timeout;
@@ -100,7 +100,9 @@ typedef struct {
   data_attr_t *da;
   int mode;
   int timeout;
+  int trunc;
 } seglun_clone_t;
+
 typedef struct {
   op_generic_t *gop;
   tbuffer_t buffer;
@@ -127,12 +129,12 @@ int slun_row_placement_check(segment_t *seg, data_attr_t *da, seglun_row_t *b, i
     hints_list[i].local_rsq = NULL;
     migrate = data_block_get_attr(b->block[i].data, "migrate");
     if (migrate != NULL) {
-       hints_list[i].local_rsq = rs_query_parse(seg->rs, migrate);
+       hints_list[i].local_rsq = rs_query_parse(seg->ess->rs, migrate);
     }
   }
 
   //** Now call the query check
-  gop = rs_data_request(seg->rs, NULL, s->rsq, NULL, NULL, 0, hints_list, n_devices, n_devices, timeout);
+  gop = rs_data_request(seg->ess->rs, NULL, s->rsq, NULL, NULL, 0, hints_list, n_devices, n_devices, timeout);
   gop_waitall(gop);
   gop_free(gop, OP_DESTROY);
 
@@ -143,7 +145,7 @@ int slun_row_placement_check(segment_t *seg, data_attr_t *da, seglun_row_t *b, i
         block_status[i] = 1;
      }
 
-     if (hints_list[i].local_rsq != NULL) { rs_query_destroy(seg->rs, hints_list[i].local_rsq); }
+     if (hints_list[i].local_rsq != NULL) { rs_query_destroy(seg->ess->rs, hints_list[i].local_rsq); }
   }
 
   return(nbad);
@@ -169,7 +171,7 @@ int slun_row_placement_fix(segment_t *seg, data_attr_t *da, seglun_row_t *b, int
   op_generic_t *gop;
   opque_t *q;
 
-  rsq = rs_query_dup(seg->rs, s->rsq);
+  rsq = rs_query_dup(seg->ess->rs, s->rsq);
 
   loop = 0;
   do {
@@ -193,24 +195,24 @@ int slun_row_placement_fix(segment_t *seg, data_attr_t *da, seglun_row_t *b, int
            hints_list[nbad].status = RS_ERROR_OK;
            req[m].rid_index = nbad;
            req[m].size = b->block_len;
-           db[m] = data_block_create(seg->ds);
+           db[m] = data_block_create(seg->ess->ds);
            cap[m] = db[m]->cap;
            missing[m] = i;
            nbad--;
            m++;
         }
 
-       if (hints_list[j].local_rsq != NULL) { rs_query_destroy(seg->rs, hints_list[j].local_rsq); }
+       if (hints_list[j].local_rsq != NULL) { rs_query_destroy(seg->ess->rs, hints_list[j].local_rsq); }
 
         migrate = data_block_get_attr(b->block[i].data, "migrate");
         if (migrate != NULL) {
-           hints_list[j].local_rsq = rs_query_parse(seg->rs, migrate);
+           hints_list[j].local_rsq = rs_query_parse(seg->ess->rs, migrate);
         }
 //log_printf(0, "i=%d ngood=%d nbad=%d m=%d\n", i, ngood, nbad, m);
      }
 
 
-     gop = rs_data_request(seg->rs, da, rsq, cap, req, m, hints_list, ngood, n_devices, timeout);
+     gop = rs_data_request(seg->ess->rs, da, rsq, cap, req, m, hints_list, ngood, n_devices, timeout);
      gop_waitall(gop);
      gop_free(gop, OP_DESTROY);
 
@@ -236,10 +238,10 @@ int slun_row_placement_fix(segment_t *seg, data_attr_t *da, seglun_row_t *b, int
 
            if (req[j].rid_key != NULL) {
               log_printf(15, "Excluding rid_key=%s on next round\n", req[j].rid_key);
-              rs_query_add(seg->rs, &rsq, RSQ_BASE_OP_KV, "rid_key", RSQ_BASE_KV_EXACT, req[j].rid_key, RSQ_BASE_KV_EXACT);
-              rs_query_add(seg->rs, &rsq, RSQ_BASE_OP_NOT, NULL, 0, NULL, 0);
-              rs_query_add(seg->rs, &rsq, RSQ_BASE_OP_AND, NULL, 0, NULL, 0);
-//char *qstr = rs_query_print(seg->rs, rsq);
+              rs_query_add(seg->ess->rs, &rsq, RSQ_BASE_OP_KV, "rid_key", RSQ_BASE_KV_EXACT, req[j].rid_key, RSQ_BASE_KV_EXACT);
+              rs_query_add(seg->ess->rs, &rsq, RSQ_BASE_OP_NOT, NULL, 0, NULL, 0);
+              rs_query_add(seg->ess->rs, &rsq, RSQ_BASE_OP_AND, NULL, 0, NULL, 0);
+//char *qstr = rs_query_print(seg->ess->rs, rsq);
 //log_printf(0, "rsq=%s\n", qstr);
 //free(qstr);
            }
@@ -306,9 +308,9 @@ log_printf(15, "missing[%d]=%d status=%d\n", j,i, gop_completed_successfully(gop
   } while ((loop < 5) && (todo > 0));
 
   for (i=0; i<n_devices; i++) {
-     if (hints_list[i].local_rsq != NULL) { rs_query_destroy(seg->rs, hints_list[i].local_rsq); }
+     if (hints_list[i].local_rsq != NULL) { rs_query_destroy(seg->ess->rs, hints_list[i].local_rsq); }
   }
-  rs_query_destroy(seg->rs, rsq);
+  rs_query_destroy(seg->ess->rs, rsq);
 
 //log_printf(0, "todo=%d\n", todo);
 
@@ -453,7 +455,7 @@ int slun_row_replace_fix(segment_t *seg, data_attr_t *da, seglun_row_t *b, int *
   char *migrate;
 
   //** Dup the base query
-  rsq = rs_query_dup(seg->rs,  rsq_base);
+  rsq = rs_query_dup(seg->ess->rs,  rsq_base);
 
   memset(hints_list, 0, sizeof(hints_list));
 
@@ -490,7 +492,7 @@ log_printf(15, "loop=%d ------------------------------\n", loop);
              atomic_dec(b->block[i].data->ref_count);
              data_block_destroy(b->block[i].data);
           }
-          b->block[i].data = data_block_create(seg->ds);
+          b->block[i].data = data_block_create(seg->ess->ds);
           cap_list[m] = b->block[i].data->cap;
           b->block[i].data->rid_key = NULL;
           b->block[i].data->cap = cap_list[m];
@@ -502,12 +504,12 @@ log_printf(15, "loop=%d ------------------------------\n", loop);
           nbad--;
        }
 
-       if (hints_list[j].local_rsq != NULL) { rs_query_destroy(seg->rs, hints_list[j].local_rsq); }
+       if (hints_list[j].local_rsq != NULL) { rs_query_destroy(seg->ess->rs, hints_list[j].local_rsq); }
 
        migrate = data_block_get_attr(b->block[i].data, "migrate");
        if (migrate != NULL) {
 //log_printf(0, "i=%d migrate[" XIDT "]=%s\n", i, b->block[i].data->id, migrate);
-           hints_list[j].local_rsq = rs_query_parse(seg->rs, migrate);
+           hints_list[j].local_rsq = rs_query_parse(seg->ess->rs, migrate);
        } else {
            hints_list[j].local_rsq = NULL;
        }
@@ -515,7 +517,7 @@ log_printf(15, "loop=%d ------------------------------\n", loop);
     }
 
     //** Execute the Query
-    gop = rs_data_request(seg->rs, da, rsq, cap_list, req_list, m, hints_list, ngood, n_devices, timeout);
+    gop = rs_data_request(seg->ess->rs, da, rsq, cap_list, req_list, m, hints_list, ngood, n_devices, timeout);
     err = gop_waitall(gop);
 
     //** Process the results
@@ -531,9 +533,9 @@ log_printf(15, "missing[%d]=%d req.op_status=%d\n", j, missing[j], gop_completed
        } else {  //** Make sure we exclude the RID key on the next round due to the failure
           if (req_list[j].rid_key != NULL) {
              log_printf(15, "Excluding rid_key=%s on next round\n", req_list[j].rid_key);
-             rs_query_add(seg->rs, &rsq, RSQ_BASE_OP_KV, "rid_key", RSQ_BASE_KV_EXACT, req_list[j].rid_key, RSQ_BASE_KV_EXACT);
-             rs_query_add(seg->rs, &rsq, RSQ_BASE_OP_NOT, NULL, 0, NULL, 0);
-             rs_query_add(seg->rs, &rsq, RSQ_BASE_OP_AND, NULL, 0, NULL, 0);
+             rs_query_add(seg->ess->rs, &rsq, RSQ_BASE_OP_KV, "rid_key", RSQ_BASE_KV_EXACT, req_list[j].rid_key, RSQ_BASE_KV_EXACT);
+             rs_query_add(seg->ess->rs, &rsq, RSQ_BASE_OP_NOT, NULL, 0, NULL, 0);
+             rs_query_add(seg->ess->rs, &rsq, RSQ_BASE_OP_AND, NULL, 0, NULL, 0);
           }
        }
 
@@ -552,9 +554,9 @@ log_printf(15, "after row_pad_fix.  m=%d err=%d\n", m, err);
   } while ((loop < 5) && (err > 0));
 
   //** Clean up
-  rs_query_destroy(seg->rs, rsq);
+  rs_query_destroy(seg->ess->rs, rsq);
   for (i=0; i<n_devices; i++) {
-     if (hints_list[i].local_rsq != NULL) { rs_query_destroy(seg->rs, hints_list[i].local_rsq); }
+     if (hints_list[i].local_rsq != NULL) { rs_query_destroy(seg->ess->rs, hints_list[i].local_rsq); }
   }
 
   return(err);
@@ -1051,7 +1053,7 @@ int seglun_row_decompose_test()
   b->block = block;
   b->seg_offset = 0;
   for (i=0; i<max_dev; i++) {
-     block[i].data = data_block_create(seg->ds);
+     block[i].data = data_block_create(seg->ess->ds);
      block[i].cap_offset = 0;
      block[i].data->size = bufsize;     //** Set them to a not to exceed value so
      block[i].data->max_size = bufsize; //** I don't have to muck with them as I change params
@@ -1422,6 +1424,11 @@ op_generic_t *seglun_remove(segment_t *seg, data_attr_t *da, int timeout)
   }
   segment_unlock(seg);
 
+  log_printf(15, "seg=" XIDT " qid=%d ntasks=%d\n", segment_id(seg), gop_id(opque_get_gop(q)), opque_task_count(q));
+  if (n == 0) {
+     opque_free(q, OP_DESTROY);
+     return(gop_dummy(op_success_status));
+  }
   return(opque_get_gop(q));
 }
 
@@ -1434,6 +1441,9 @@ op_status_t seglun_migrate_func(void *arg, int id)
   seglun_inspect_t *si = (seglun_inspect_t *)arg;
   seglun_priv_t *s = (seglun_priv_t *)si->seg->priv;
   seglun_row_t *b;
+  int bufsize = 10*1024;
+  char info[bufsize];
+  int used;
   int block_status[s->n_devices];
   int nattempted, nmigrated, err, i;
 
@@ -1442,28 +1452,30 @@ op_status_t seglun_migrate_func(void *arg, int id)
 
   segment_lock(si->seg);
 
-  inspect_printf(si->fd, XIDT ": segment information: n_devices=%d n_shift=%d chunk_size=" XOT "  used_size=" XOT " total_size=" XOT " mode=%d\n", segment_id(si->seg), s->n_devices, s->n_shift, s->chunk_size, s->used_size, s->total_size, si->inspect_mode);
+  info_printf(si->fd, 1, XIDT ": segment information: n_devices=%d n_shift=%d chunk_size=" XOT "  used_size=" XOT " total_size=" XOT " mode=%d\n", segment_id(si->seg), s->n_devices, s->n_shift, s->chunk_size, s->used_size, s->total_size, si->inspect_mode);
 
   nattempted = 0; nmigrated = 0;
   it = iter_search_interval_skiplist(s->isl, (skiplist_key_t *)NULL, (skiplist_key_t *)NULL);
   for (b = (seglun_row_t *)next_interval_skiplist(&it); b != NULL; b = (seglun_row_t *)next_interval_skiplist(&it)) {
     for (i=0; i < s->n_devices; i++) block_status[i] = 0;
 
-    inspect_printf(si->fd, XIDT ": Checking row (" XOT ", " XOT ", " XOT ")\n", segment_id(si->seg), b->seg_offset, b->seg_end, b->row_len);
+    info_printf(si->fd, 1, XIDT ": Checking row (" XOT ", " XOT ", " XOT ")\n", segment_id(si->seg), b->seg_offset, b->seg_end, b->row_len);
 
     for (i=0; i < s->n_devices; i++) block_status[i] = 0;
     err = slun_row_placement_check(si->seg, si->da, b, block_status, s->n_devices, si->timeout);
-    inspect_printf(si->fd, XIDT ":     slun_row_placement_check:", segment_id(si->seg));
-    for (i=0; i < s->n_devices; i++) inspect_printf(si->fd, " %d", block_status[i]);
-    inspect_printf(si->fd, "\n");
+    used = 0;
+    append_printf(info, &used, bufsize, XIDT ":     slun_row_placement_check:", segment_id(si->seg));
+    for (i=0; i < s->n_devices; i++) append_printf(info, &used, bufsize, " %d", block_status[i]);
+    info_printf(si->fd, 1, "%s\n", info);
     if (err > 0) {
        i = slun_row_placement_fix(si->seg, si->da, b, block_status, s->n_devices, si->timeout);
        nmigrated +=  err - i;
        nattempted += err;
 
-       inspect_printf(si->fd, XIDT ":     slun_row_placement_fix:", segment_id(si->seg));
-       for (i=0; i < s->n_devices; i++) inspect_printf(si->fd, " %d", block_status[i]);
-       inspect_printf(si->fd, "\n");
+       used =0;
+       append_printf(info, &used, bufsize, XIDT ":     slun_row_placement_fix:", segment_id(si->seg));
+       for (i=0; i < s->n_devices; i++) append_printf(info, &used, bufsize, " %d", block_status[i]);
+       info_printf(si->fd, 1, "%s\n", info);
     } else {
        nattempted = nattempted + err;
     }
@@ -1473,10 +1485,10 @@ op_status_t seglun_migrate_func(void *arg, int id)
   segment_unlock(si->seg);
 
   if (nattempted != nmigrated) {
-     inspect_printf(si->fd, XIDT ": status: FAILURE (%d needed migrating, %d migrated)\n", segment_id(si->seg), nattempted, nmigrated);
+     info_printf(si->fd, 1, XIDT ": status: FAILURE (%d needed migrating, %d migrated)\n", segment_id(si->seg), nattempted, nmigrated);
      status = op_failure_status;
   } else {
-     inspect_printf(si->fd, XIDT ": status: SUCCESS (%d needed migrating, %d migrated)\n", segment_id(si->seg), nattempted, nmigrated);
+     info_printf(si->fd, 1, XIDT ": status: SUCCESS (%d needed migrating, %d migrated)\n", segment_id(si->seg), nattempted, nmigrated);
   }
 
   return(status);
@@ -1494,6 +1506,9 @@ op_status_t seglun_inspect_func(void *arg, int id)
   seglun_row_t *b;
   op_status_t status;
   interval_skiplist_iter_t it;
+  int bufsize = 10*1024;
+  char info[bufsize];
+  int used;
   int block_status[s->n_devices];
   int i, err, option, force_repair, max_lost, total_lost, total_repaired, total_migrate, nmigrated, nlost, nrepaired;
 
@@ -1511,38 +1526,41 @@ op_status_t seglun_inspect_func(void *arg, int id)
 
   segment_lock(si->seg);
 
-  inspect_printf(si->fd, XIDT ": segment information: n_devices=%d n_shift=%d chunk_size=" XOT "  used_size=" XOT " total_size=" XOT " mode=%d\n", segment_id(si->seg), s->n_devices, s->n_shift, s->chunk_size, s->used_size, s->total_size, si->inspect_mode);
+  info_printf(si->fd, 1, XIDT ": segment information: n_devices=%d n_shift=%d chunk_size=" XOT "  used_size=" XOT " total_size=" XOT " mode=%d\n", segment_id(si->seg), s->n_devices, s->n_shift, s->chunk_size, s->used_size, s->total_size, si->inspect_mode);
 
   it = iter_search_interval_skiplist(s->isl, (skiplist_key_t *)NULL, (skiplist_key_t *)NULL);
   for (b = (seglun_row_t *)next_interval_skiplist(&it); b != NULL; b = (seglun_row_t *)next_interval_skiplist(&it)) {
     for (i=0; i < s->n_devices; i++) block_status[i] = 0;
 
-    inspect_printf(si->fd, XIDT ": Checking row (" XOT ", " XOT ", " XOT ")\n", segment_id(si->seg), b->seg_offset, b->seg_end, b->row_len);
+    info_printf(si->fd, 1, XIDT ": Checking row (" XOT ", " XOT ", " XOT ")\n", segment_id(si->seg), b->seg_offset, b->seg_end, b->row_len);
     nlost = slun_row_size_check(si->seg, si->da, b, block_status, s->n_devices, force_repair, si->timeout);
-    inspect_printf(si->fd, XIDT ":     slun_row_size_check:", segment_id(si->seg));
-    for (i=0; i < s->n_devices; i++) inspect_printf(si->fd, " %d", block_status[i]);
-    inspect_printf(si->fd, "\n");
+    used = 0;
+    append_printf(info, &used, bufsize, XIDT ":     slun_row_size_check:", segment_id(si->seg));
+    for (i=0; i < s->n_devices; i++) append_printf(info, &used, bufsize, " %d", block_status[i]);
+    info_printf(si->fd, 1, "%s\n", info);
 
     if (max_lost < nlost) max_lost = nlost;
 
     nrepaired = 0;
     if ((force_repair > 0) && (nlost > 0)) {
-       inspect_printf(si->fd, XIDT ":     Attempting to pad the row\n", segment_id(si->seg));
+       info_printf(si->fd, 1, XIDT ":     Attempting to pad the row\n", segment_id(si->seg));
        err = slun_row_pad_fix(si->seg, si->da, b, block_status, s->n_devices, si->timeout);
 
-       inspect_printf(si->fd, XIDT ":     slun_row_pad_fix:", segment_id(si->seg));
-       for (i=0; i < s->n_devices; i++) inspect_printf(si->fd, " %d", block_status[i]);
-       inspect_printf(si->fd, "\n");
+       used = 0;
+       append_printf(info, &used, bufsize, XIDT ":     slun_row_pad_fix:", segment_id(si->seg));
+       for (i=0; i < s->n_devices; i++) append_printf(info, &used, bufsize, " %d", block_status[i]);
+       info_printf(si->fd, 1, "%s\n", info);
 
        if (max_lost < err) max_lost = err;
 
-       inspect_printf(si->fd, XIDT ":     Attempting to replace mssing row allocations\n", segment_id(si->seg));
+       info_printf(si->fd, 1, XIDT ":     Attempting to replace mssing row allocations\n", segment_id(si->seg));
        i = 0;  //** Iteratively try and repair the row
        do {
          err = slun_row_replace_fix(si->seg, si->da, b, block_status, s->n_devices, s->rsq, si->timeout);
-         inspect_printf(si->fd, XIDT ":     slun_row_pad_fix:", segment_id(si->seg));
-         for (i=0; i < s->n_devices; i++) inspect_printf(si->fd, " %d", block_status[i]);
-         inspect_printf(si->fd, "\n");
+         used = 0;
+         append_printf(info, &used, bufsize, XIDT ":     slun_row_pad_fix:", segment_id(si->seg));
+         for (i=0; i < s->n_devices; i++) append_printf(info, &used, bufsize, " %d", block_status[i]);
+         info_printf(si->fd, 1, "%s\n", info);
 
          i++;
        } while ((err > 0) && (i<5));
@@ -1553,16 +1571,18 @@ op_status_t seglun_inspect_func(void *arg, int id)
     for (i=0; i < s->n_devices; i++) block_status[i] = 0;
     err = slun_row_placement_check(si->seg, si->da, b, block_status, s->n_devices, si->timeout);
     total_migrate += err;
-    inspect_printf(si->fd, XIDT ":     slun_row_placement_check:", segment_id(si->seg));
-    for (i=0; i < s->n_devices; i++) inspect_printf(si->fd, " %d", block_status[i]);
-    inspect_printf(si->fd, "\n");
+    used = 0;
+    append_printf(info, &used, bufsize, XIDT ":     slun_row_placement_check:", segment_id(si->seg));
+    for (i=0; i < s->n_devices; i++) append_printf(info, &used, bufsize, " %d", block_status[i]);
+    info_printf(si->fd, 1, "%s\n", info);
     if (err > 0) {
        i = slun_row_placement_fix(si->seg, si->da, b, block_status, s->n_devices, si->timeout);
        nmigrated += err - i;
 
-       inspect_printf(si->fd, XIDT ":     slun_row_placement_fix:", segment_id(si->seg));
-       for (i=0; i < s->n_devices; i++) inspect_printf(si->fd, " %d", block_status[i]);
-       inspect_printf(si->fd, "\n");
+       used = 0;
+       append_printf(info, &used, bufsize, XIDT ":     slun_row_placement_fix:", segment_id(si->seg));
+       for (i=0; i < s->n_devices; i++) append_printf(info, &used, bufsize, " %d", block_status[i]);
+       info_printf(si->fd, 1, "%s\n", info);
     }
 
     total_lost += nlost;
@@ -1573,10 +1593,10 @@ op_status_t seglun_inspect_func(void *arg, int id)
 
   i = total_lost - total_repaired + total_migrate - nmigrated;
   if (i != 0) {
-     inspect_printf(si->fd, XIDT ": status: FAILURE (%d max dev/row lost, %d lost, %d repaired, %d need moving, %d moved)\n", segment_id(si->seg), max_lost, total_lost, total_repaired, total_migrate, nmigrated);
+     info_printf(si->fd, 1, XIDT ": status: FAILURE (%d max dev/row lost, %d lost, %d repaired, %d need moving, %d moved)\n", segment_id(si->seg), max_lost, total_lost, total_repaired, total_migrate, nmigrated);
      status = op_failure_status;
   } else {
-     inspect_printf(si->fd, XIDT ": status: SUCCESS (%d max dev/row lost, %d lost, %d repaired, %d need moving, %d moved)\n", segment_id(si->seg), max_lost, total_lost, total_repaired, total_migrate, nmigrated);
+     info_printf(si->fd, 1, XIDT ": status: SUCCESS (%d max dev/row lost, %d lost, %d repaired, %d need moving, %d moved)\n", segment_id(si->seg), max_lost, total_lost, total_repaired, total_migrate, nmigrated);
   }
 //  free(si);
 
@@ -1588,7 +1608,7 @@ op_status_t seglun_inspect_func(void *arg, int id)
 //  seglun_inspect_func - Does the actual segment inspection operations
 //***********************************************************************
 
-op_generic_t *seglun_inspect(segment_t *seg, data_attr_t *da, FILE *fd, int mode, ex_off_t bufsize, int timeout)
+op_generic_t *seglun_inspect(segment_t *seg, data_attr_t *da, info_fd_t *fd, int mode, ex_off_t bufsize, int timeout)
 {
   seglun_priv_t *s = (seglun_priv_t *)seg->priv;
   op_generic_t *gop;
@@ -1666,6 +1686,10 @@ op_status_t seglun_clone_func(void *arg, int id)
   op_generic_t *gop = NULL;
   op_status_t status;
 
+  //** SEe if we are using an old seg.  If so we need to trunc it first
+  if (slc->trunc == 1) {
+     gop_sync_exec(segment_truncate(slc->dseg, slc->da, 0, slc->timeout));
+  }
 
   if (ss->total_size == 0) return(op_success_status);  //** No data to clone
 
@@ -1746,13 +1770,16 @@ op_generic_t *seglun_clone(segment_t *seg, data_attr_t *da, segment_t **clone_se
   seglun_priv_t *sd;
   op_generic_t *gop;
   seglun_clone_t *slc;
+  int use_existing = (*clone_seg != NULL) ? 1 : 0;
 
     //** Make the base segment
 //log_printf(0, " before clone create\n");
-  *clone_seg = segment_lun_create(exnode_service_set);
+  if (use_existing == 0) *clone_seg = segment_lun_create(seg->ess);
 //log_printf(0, " after clone create\n");
   clone = *clone_seg;
   sd = (seglun_priv_t *)clone->priv;
+
+log_printf(15, "use_existing=%d sseg=" XIDT " dseg=" XIDT "\n", use_existing, segment_id(seg), segment_id(clone));
 
   //** Copy the private constants
   sd->max_block_size = ss->max_block_size;
@@ -1764,18 +1791,24 @@ op_generic_t *seglun_clone(segment_t *seg, data_attr_t *da, segment_t **clone_se
   sd->n_shift = ss->n_shift;
 
   //** Copy the header
-  if (seg->header.name != NULL) clone->header.name = strdup(seg->header.name);
+  if ((seg->header.name != NULL) && (use_existing == 0)) clone->header.name = strdup(seg->header.name);
 
   //** Copy the default rs query
-  if (attr == NULL) {
-     sd->rsq = rs_query_dup(seg->rs, ss->rsq);
-  } else {
-     sd->rsq = rs_query_parse(seg->rs, (char *)attr);
+  if (use_existing == 0) {
+     if (attr == NULL) {
+        sd->rsq = rs_query_dup(seg->ess->rs, ss->rsq);
+     } else {
+        sd->rsq = rs_query_parse(seg->ess->rs, (char *)attr);
+     }
   }
 
   //** Now copy the data if needed
    if (mode == CLONE_STRUCTURE) {
-    gop = gop_dummy(op_success_status);
+    if (use_existing == 1) {
+       gop = segment_truncate(clone, da, 0, timeout);
+    } else {
+       gop = gop_dummy(op_success_status);
+    }
   } else {
     type_malloc(slc, seglun_clone_t, 1);
     slc->sseg = seg;
@@ -1783,6 +1816,7 @@ op_generic_t *seglun_clone(segment_t *seg, data_attr_t *da, segment_t **clone_se
     slc->da = da;
     slc->mode = mode;
     slc->timeout = timeout;
+    slc->trunc = use_existing;
     gop = new_thread_pool_op(sd->tpc, NULL, seglun_clone_func, (void *)slc, free, 1);
   }
 
@@ -1817,6 +1851,23 @@ ex_off_t seglun_block_size(segment_t *seg)
 }
 
 //***********************************************************************
+// seglun_signature - Generates the segment signature
+//***********************************************************************
+
+int seglun_signature(segment_t *seg, char *buffer, int *used, int bufsize)
+{
+  seglun_priv_t *s = (seglun_priv_t *)seg->priv;
+
+  append_printf(buffer, used, bufsize, "lun(\n");
+  append_printf(buffer, used, bufsize, "    n_devices=%d\n", s->n_devices);
+  append_printf(buffer, used, bufsize, "    n_shift=%d\n", s->n_shift);
+  append_printf(buffer, used, bufsize, "    chunk_size=" XOT "\n", s->chunk_size);
+  append_printf(buffer, used, bufsize, ")\n");
+
+  return(0);
+}
+
+//***********************************************************************
 // seglun_serialize_text -Convert the segment to a text based format
 //***********************************************************************
 
@@ -1848,7 +1899,7 @@ int seglun_serialize_text(segment_t *seg, exnode_exchange_t *exp)
 
   //** default resource query
   if (s->rsq != NULL) {
-     ext = rs_query_print(seg->rs, s->rsq);
+     ext = rs_query_print(seg->ess->rs, s->rsq);
      etext = escape_text("=", '\\', ext);
      append_printf(segbuf, &sused, bufsize, "query_default=%s\n", etext);  free(etext); free(ext);
   }
@@ -1947,7 +1998,7 @@ int seglun_deserialize_text(segment_t *seg, ex_id_t id, exnode_exchange_t *exp)
   //** default resource query
   etext = inip_get_string(fd, seggrp, "query_default", "");
   text = unescape_text('\\', etext);
-  s->rsq = rs_query_parse(seg->rs, text);
+  s->rsq = rs_query_parse(seg->ess->rs, text);
   free(text); free(etext);
 
   s->n_devices = inip_get_integer(fd, seggrp, "n_devices", 2);
@@ -1989,7 +2040,7 @@ int seglun_deserialize_text(segment_t *seg, ex_id_t id, exnode_exchange_t *exp)
            sscanf(escape_string_token(NULL, ":", '\\', 0, &bstate, &fin), XOT, &(block[i].cap_offset));
 
            //** Find the cooresponding cap
-           block[i].data = data_block_deserialize(id, exp);
+           block[i].data = data_block_deserialize(seg->ess->dsm, id, exp);
            atomic_inc(block[i].data->ref_count);
 
         }
@@ -2068,7 +2119,7 @@ log_printf(15, "seglun_destroy: seg->id=" XIDT " ref_count=%d\n", segment_id(seg
   }
   free(b_list);
 
-  if (s->rsq != NULL) rs_query_destroy(seg->rs, s->rsq);
+  if (s->rsq != NULL) rs_query_destroy(seg->ess->rs, s->rsq);
   free(s);
 
   ex_header_release(&(seg->header));
@@ -2080,24 +2131,6 @@ log_printf(15, "seglun_destroy: seg->id=" XIDT " ref_count=%d\n", segment_id(seg
   free(seg);
 }
 
-
-//***********************************************************************
-// segment_linear_make - Creates a linear segment
-//***********************************************************************
-
-//op_generic_t *segment_lun_make(segment_t *seg, data_attr_t *da, rs_query_t *rsq, int n_rid, ex_off_t block_size, ex_off_t total_size, int timeout)
-//{
-//  seglun_priv_t *s = (seglun_priv_t *)seg->priv;
-
-//  s->n__default = n_rid;
-//  s->max_block_size = block_size;
-// s->excess_block_size = block_size / 4;
-//  if (s->rsq != NULL) rs_query_destroy(seg->rs, s->rsq);
-//  s->rsq = rs_query_dup(seg->rs, rsq);
-
- // return(seglun_truncate(seg, da, total_size, timeout));
-//}
-
 //***********************************************************************
 // segment_linear_create - Creates a linear segment
 //***********************************************************************
@@ -2107,6 +2140,9 @@ segment_t *segment_lun_create(void *arg)
   exnode_abstract_set_t *es = (exnode_abstract_set_t *)arg;
   seglun_priv_t *s;
   segment_t *seg;
+
+log_printf(0, "ESS es=%p\n", es);
+log_printf(0, "ESS es->rs=%p\n", es->rs);
 
 //log_printf(0, "creating new segment\n");
   //** Make the space
@@ -2137,8 +2173,7 @@ segment_t *segment_lun_create(void *arg)
   apr_thread_mutex_create(&(seg->lock), APR_THREAD_MUTEX_DEFAULT, seg->mpool);
   apr_thread_cond_create(&(seg->cond), seg->mpool);
 
-  seg->rs = es->rs;
-  seg->ds = es->ds;
+  seg->ess = es;
   s->tpc = es->tpc_unlimited;
 
   seg->fn.read = seglun_read;
@@ -2148,6 +2183,7 @@ segment_t *segment_lun_create(void *arg)
   seg->fn.remove = seglun_remove;
   seg->fn.flush = seglun_flush;
   seg->fn.clone = seglun_clone;
+  seg->fn.signature = seglun_signature;
   seg->fn.size = seglun_size;
   seg->fn.block_size = seglun_block_size;
   seg->fn.serialize = seglun_serialize;

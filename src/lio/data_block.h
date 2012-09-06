@@ -66,7 +66,7 @@ typedef struct {
 
 //** Block related functions
 int data_block_serialize(data_block_t *d, exnode_exchange_t *exp);
-data_block_t *data_block_deserialize(ex_id_t id, exnode_exchange_t *exp);
+data_block_t *data_block_deserialize(service_manager_t *dsm, ex_id_t id, exnode_exchange_t *exp);
 data_block_t *data_block_create(data_service_fn_t *ds);
 char *data_block_get_attr(data_block_t *d, char *key);
 int data_block_set_attr(data_block_t *d, char *key, char *val);

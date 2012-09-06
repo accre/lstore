@@ -146,7 +146,7 @@ int main(int argc, char **argv)
      return(1);
   }
 
-  lio_init(&argc, argv);
+  lio_init(&argc, &argv);
 
   //*** Parse the args
   //** This is the remote file to download
@@ -162,7 +162,7 @@ int main(int argc, char **argv)
 
   //** and parse the remote exnode
   ex = exnode_create();
-  exnode_deserialize(ex, exp);
+  exnode_deserialize(ex, exp, lio_gc->ess);
 
   //** Get the default view to use
   seg = exnode_get_default(ex);
@@ -225,8 +225,9 @@ int main(int argc, char **argv)
   //*************************************************************************
   //-- Clone the base structure and the use segment_copy to copy the data and verify --
   //*************************************************************************
+  clone = NULL;
   assert(gop_sync_exec(segment_clone(seg, lio_gc->da, &clone, CLONE_STRUCTURE, NULL, lio_gc->timeout)) == OP_STATE_SUCCESS);
-  assert(gop_sync_exec(segment_copy(lio_gc->da, seg, clone, 0, 0, bufsize, chunk_size, buffer, lio_gc->timeout)) == OP_STATE_SUCCESS);
+  assert(gop_sync_exec(segment_copy(lio_gc->ess->tpc_unlimited, lio_gc->da, seg, clone, 0, 0, bufsize, chunk_size, buffer, 0, lio_gc->timeout)) == OP_STATE_SUCCESS);
   memset(buffer, 0, bufsize);
   assert(gop_sync_exec(segment_read(clone, lio_gc->da, 1, &ex_iov, &tbuf, 0, lio_gc->timeout)) == OP_STATE_SUCCESS);
   assert(compare_buffers_print(buffer, base_data, bufsize, 0) == 0);
@@ -282,6 +283,7 @@ int main(int argc, char **argv)
   //*************************************************************************
   assert(gop_sync_exec(segment_remove(clone, lio_gc->da, lio_gc->timeout)) == OP_STATE_SUCCESS);
   segment_destroy(clone);
+  clone = NULL;
   assert(gop_sync_exec(segment_clone(seg, lio_gc->da, &clone, CLONE_STRUCTURE, NULL, lio_gc->timeout)) == OP_STATE_SUCCESS);
 
   s = (seglog_priv_t *)clone->priv;
@@ -314,6 +316,7 @@ int main(int argc, char **argv)
   //*************************************************************************
   //---- clone2 = clone (structure and data). Verify the contents -----------
   //*************************************************************************
+  clone2 = NULL;
   assert(gop_sync_exec(segment_clone(clone, lio_gc->da, &clone2, CLONE_STRUCT_AND_DATA, NULL, lio_gc->timeout)) == OP_STATE_SUCCESS);
   memset(buffer, 0, bufsize);
   assert(gop_sync_exec(segment_read(clone2, lio_gc->da, 1, &ex_iov, &tbuf, 0, lio_gc->timeout)) == OP_STATE_SUCCESS);
@@ -326,6 +329,7 @@ int main(int argc, char **argv)
   //*************************************************************************
   //---------------- Clone2 = clone's structure *only* ----------------------
   //*************************************************************************
+  clone2 = NULL;
   assert(gop_sync_exec(segment_clone(clone, lio_gc->da, &clone2, CLONE_STRUCTURE, NULL, lio_gc->timeout)) == OP_STATE_SUCCESS);
 
   //*************************************************************************
@@ -363,6 +367,7 @@ int main(int argc, char **argv)
   //*************************************************************************
   // -- clone3 = clone2 structure and contents and verify
   //*************************************************************************
+  clone3 = NULL;
   assert(gop_sync_exec(segment_clone(clone2, lio_gc->da, &clone3, CLONE_STRUCT_AND_DATA, NULL, lio_gc->timeout)) == OP_STATE_SUCCESS);
   memset(buffer, 0, bufsize);
   assert(gop_sync_exec(segment_read(clone3, lio_gc->da, 1, &ex_iov, &tbuf, 0, lio_gc->timeout)) == OP_STATE_SUCCESS);
