@@ -111,7 +111,10 @@ void *gd_thread_func(apr_thread_t *th, void *data)
   while (gd_shutdown == 0) {
     //** Execute everything on the stack
     while ((gop = (op_generic_t *)pop(gd_stack)) != NULL) {
+        log_printf(15, "DUMMY gid=%d status=%d\n", gop_id(gop), gop->base.status);
+        apr_thread_mutex_unlock(gd_lock);
         gop_mark_completed(gop, gop->base.status);
+        apr_thread_mutex_lock(gd_lock);
     }
 
     //** Wait for more work
@@ -170,17 +173,17 @@ void gop_dummy_destroy()
 void _gop_dummy_submit_op(void *arg, op_generic_t *op)
 {
   int dolock = 0;
-//int err;
-//err = apr_thread_mutex_trylock(op->base.ctl->lock);
-//if (err != APR_SUCCESS) dolock = 1;
 
-  if (op->base.cb != NULL) {  //** gop is on a q
+log_printf(15, "gid=%d\n", gop_id(op));
+//  if (op->base.cb != NULL) {  //** gop is on a q
      apr_thread_mutex_lock(gd_lock);
      push(gd_stack, op);
      apr_thread_cond_signal(gd_cond);
      apr_thread_mutex_unlock(gd_lock);
      return;
-  }
+//  }
+
+//*-------* This isn't executed below -----------
 
   if (apr_thread_mutex_trylock(op->base.ctl->lock) != APR_SUCCESS) dolock = 1;
   unlock_gop(op);
@@ -227,7 +230,7 @@ log_printf(15, " state=%d\n", state); flush_log();
   gop->base.status = state;
 //  gop_mark_completed(gop, state);
 
-  return(gop); 
+  return(gop);
 }
 
 
@@ -403,6 +406,7 @@ void _gop_start_execution(op_generic_t *g)
   if (gop_get_type(g) == Q_TYPE_QUE) {
     _opque_start_execution(g->q->opque);
   } else if (g->base.started_execution == 0) {
+    log_printf(15, "gid=%d started_execution=%d\n", gop_get_id(g), g->base.started_execution);
     g->base.started_execution = 1;
     g->base.pc->fn->submit(g->base.pc->arg, g);
   }

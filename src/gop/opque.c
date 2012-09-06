@@ -388,6 +388,8 @@ int internal_opque_add(opque_t *que, op_generic_t *gop, int dolock)
 
   if (q->opque->op.base.started_execution == 1) {
      if (gop->type == Q_TYPE_OPERATION) {
+        log_printf(15, "gid=%d started_execution=%d\n", gop_get_id(gop), gop->base.started_execution);
+        gop->base.started_execution = 1;
         gop->base.pc->fn->submit(gop->base.pc->arg, gop);
      } else {  //** It's a queue
         opque_start_execution(gop->q->opque);
@@ -444,16 +446,18 @@ void _opque_start_execution(opque_t *que)
      cb = (callback_t *)pop(q->list);
      gop = (op_generic_t *)cb->priv;
      if (gop->type == Q_TYPE_OPERATION) {
+        log_printf(15, "qid=%d gid=%d\n",gop_id(opque_get_gop(que)), gop_get_id(gop));
         gop->base.started_execution = 1;
         gop->base.pc->fn->submit(gop->base.pc->arg, gop);
      } else {  //** It's a queue
+       log_printf(15, "qid=%d Q gid=%d\n",gop_id(opque_get_gop(que)), gop_get_id(gop));
        lock_opque(gop->q);
         _opque_start_execution(gop->q->opque);
        unlock_opque(gop->q);
      }
   }
 
-//  unlock_opque(q);   
+//  unlock_opque(q);
 }
 
 //*************************************************************
