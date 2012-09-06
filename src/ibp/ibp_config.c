@@ -605,10 +605,12 @@ void ibp_cc_load(inip_file_t *kf, ibp_context_t *cfg)
 // ibp_load_config - Loads the ibp client config
 //**********************************************************
 
-int ibp_load_config(ibp_context_t *ic, char *fname)
+int ibp_load_config(ibp_context_t *ic, char *fname, char *section)
 {
   inip_file_t *keyfile;
   apr_time_t t = 0;
+
+  if (section == NULL) section = "ibp_async";
 
   //* Load the config file
   keyfile = inip_read(fname);
@@ -617,21 +619,21 @@ int ibp_load_config(ibp_context_t *ic, char *fname)
     return(-1);
   }
 
-  ic->abort_conn_attempts = inip_get_integer(keyfile, "ibp_async", "abort_attempts", ic->abort_conn_attempts);
-  t = inip_get_integer(keyfile, "ibp_async", "min_idle", 0);
+  ic->abort_conn_attempts = inip_get_integer(keyfile, section, "abort_attempts", ic->abort_conn_attempts);
+  t = inip_get_integer(keyfile, section, "min_idle", 0);
   if (t != 0) ic->min_idle = t;
-  ic->tcpsize = inip_get_integer(keyfile, "ibp_async", "tcpsize", ic->tcpsize);
-  ic->min_threads = inip_get_integer(keyfile, "ibp_async", "min_depot_threads", ic->min_threads);
-  ic->max_threads = inip_get_integer(keyfile, "ibp_async", "max_depot_threads", ic->max_threads);
-  ic->max_connections = inip_get_integer(keyfile, "ibp_async", "max_connections", ic->max_connections);
-  ic->new_command = inip_get_integer(keyfile, "ibp_async", "command_weight", ic->new_command);
-  ic->max_workload = inip_get_integer(keyfile, "ibp_async", "max_thread_workload", ic->max_workload);
-  ic->max_coalesce = inip_get_integer(keyfile, "ibp_async", "max_coalesce_workload", ic->max_coalesce);
-  ic->coalesce_enable = inip_get_integer(keyfile, "ibp_async", "coalesce_enable", ic->coalesce_enable);
-  ic->max_wait = inip_get_integer(keyfile, "ibp_async", "max_wait", ic->max_wait);
-  ic->wait_stable_time = inip_get_integer(keyfile, "ibp_async", "wait_stable_time", ic->wait_stable_time);
-  ic->check_connection_interval = inip_get_integer(keyfile, "ibp_async", "check_interval", ic->check_connection_interval);
-  ic->max_retry = inip_get_integer(keyfile, "ibp_async", "max_retry", ic->max_retry);
+  ic->tcpsize = inip_get_integer(keyfile, section, "tcpsize", ic->tcpsize);
+  ic->min_threads = inip_get_integer(keyfile, section, "min_depot_threads", ic->min_threads);
+  ic->max_threads = inip_get_integer(keyfile, section, "max_depot_threads", ic->max_threads);
+  ic->max_connections = inip_get_integer(keyfile, section, "max_connections", ic->max_connections);
+  ic->new_command = inip_get_integer(keyfile, section, "command_weight", ic->new_command);
+  ic->max_workload = inip_get_integer(keyfile, section, "max_thread_workload", ic->max_workload);
+  ic->max_coalesce = inip_get_integer(keyfile, section, "max_coalesce_workload", ic->max_coalesce);
+  ic->coalesce_enable = inip_get_integer(keyfile, section, "coalesce_enable", ic->coalesce_enable);
+  ic->max_wait = inip_get_integer(keyfile, section, "max_wait", ic->max_wait);
+  ic->wait_stable_time = inip_get_integer(keyfile, section, "wait_stable_time", ic->wait_stable_time);
+  ic->check_connection_interval = inip_get_integer(keyfile, section, "check_interval", ic->check_connection_interval);
+  ic->max_retry = inip_get_integer(keyfile, section, "max_retry", ic->max_retry);
 
   ibp_cc_load(keyfile, ic);
 

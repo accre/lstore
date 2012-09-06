@@ -384,7 +384,7 @@ int main(int argc, char **argv)
         disk_blocksize = atoi(argv[i])*1024; i++;
      } else if (strcmp(argv[i], "-config") == 0) { //** Read the config file
         i++;
-        ibp_load_config(ic, argv[i]);
+        ibp_load_config(ic, argv[i], NULL);
         i++;
      } else if (strcmp(argv[i], "-phoebus") == 0) { //** Check if we want phoebus transfers
         ns_mode = NS_TYPE_PHOEBUS;

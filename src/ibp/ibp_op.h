@@ -140,20 +140,20 @@ typedef struct {  //** Read/Write operation
    ibp_rw_buf_t **rwbuf;
    ibp_rw_buf_t *bs_ptr;
    pigeon_coop_hole_t rwcg_pch;
-   ibp_rw_buf_t buf_single; 
+   ibp_rw_buf_t buf_single;
 } ibp_op_rw_t;
 
 typedef struct { //** MERGE allocoation op
    char mkey[MAX_KEY_SIZE];      //** Master key
-   char mtypekey[MAX_KEY_SIZE];  
+   char mtypekey[MAX_KEY_SIZE];
    char ckey[MAX_KEY_SIZE];      //** Child key
-   char ctypekey[MAX_KEY_SIZE]; 
+   char ctypekey[MAX_KEY_SIZE];
 } ibp_op_merge_alloc_t;
 
 typedef struct {  //**Allocate operation
    ibp_off_t size;
    ibp_off_t offset;                //** ibp_alias_allocate
-   apr_time_t duration;               //** ibp_alias_allocate
+   int   duration;               //** ibp_alias_allocate
    int   disk_chksum_type;            //** ibp_*ALLOCATE_CHKSUM
    ibp_off_t  disk_blocksize;          //** IBP_*ALLOCATE_CHKSUM
    char       key[MAX_KEY_SIZE];      //** ibp_rename/alias_allocate
@@ -185,7 +185,7 @@ typedef struct {  //** modify Allocation operation
    char       typekey[MAX_KEY_SIZE];
    ibp_off_t     offset;    //** IBP_ALIAS_MANAGE
    ibp_off_t     size;
-   apr_time_t duration;
+   int        duration;
    int        reliability;
 } ibp_op_modify_alloc_t;
 
@@ -322,8 +322,8 @@ op_generic_t *new_ibp_modify_count_op(ibp_context_t *ic, ibp_cap_t *cap, int mod
 void set_ibp_modify_count_op(ibp_op_t *op, ibp_cap_t *cap, int mode, int captype, int timeout);
 void set_ibp_alias_modify_count_op(ibp_op_t *op, ibp_cap_t *cap, ibp_cap_t *mcap, int mode, int captype, int timeout);
 op_generic_t *new_ibp_alias_modify_count_op(ibp_context_t *ic, ibp_cap_t *cap, ibp_cap_t *mcap, int mode, int captype, int timeout);
-void set_ibp_modify_alloc_op(ibp_op_t *op, ibp_cap_t *cap, ibp_off_t size, time_t duration, int reliability, int timeout);
-op_generic_t *new_ibp_modify_alloc_op(ibp_context_t *ic, ibp_cap_t *cap, ibp_off_t size, time_t duration, int reliability, int timeout);
+void set_ibp_modify_alloc_op(ibp_op_t *op, ibp_cap_t *cap, ibp_off_t size, int duration, int reliability, int timeout);
+op_generic_t *new_ibp_modify_alloc_op(ibp_context_t *ic, ibp_cap_t *cap, ibp_off_t size, int duration, int reliability, int timeout);
 
 op_generic_t *new_ibp_truncate_op(ibp_context_t *ic, ibp_cap_t *cap, ibp_off_t size, int timeout);
 void set_ibp_truncate_op(ibp_op_t *op, ibp_cap_t *cap, ibp_off_t size, int timeout);
@@ -333,12 +333,12 @@ void set_ibp_probe_op(ibp_op_t *op, ibp_cap_t *cap, ibp_capstatus_t *probe, int 
 void set_ibp_alias_probe_op(ibp_op_t *op, ibp_cap_t *cap, ibp_alias_capstatus_t *probe, int timeout);
 op_generic_t *new_ibp_alias_probe_op(ibp_context_t *ic, ibp_cap_t *cap, ibp_alias_capstatus_t *probe, int timeout);
 void set_ibp_depot_modify_op(ibp_op_t *op, ibp_depot_t *depot, char *password, ibp_off_t hard, ibp_off_t soft,
-      time_t duration, int timeout);
+      int duration, int timeout);
 op_generic_t *new_ibp_depot_modify_op(ibp_context_t *ic, ibp_depot_t *depot, char *password, ibp_off_t hard, ibp_off_t soft,
-      time_t duration, int timeout);
-void set_ibp_alias_modify_alloc_op(ibp_op_t *op, ibp_cap_t *cap, ibp_cap_t *mcap, ibp_off_t offset, ibp_off_t size, time_t duration,
+      int duration, int timeout);
+void set_ibp_alias_modify_alloc_op(ibp_op_t *op, ibp_cap_t *cap, ibp_cap_t *mcap, ibp_off_t offset, ibp_off_t size, int duration,
      int timeout);
-op_generic_t *new_ibp_alias_modify_alloc_op(ibp_context_t *ic, ibp_cap_t *cap, ibp_cap_t *mcap, ibp_off_t offset, ibp_off_t size, time_t duration,
+op_generic_t *new_ibp_alias_modify_alloc_op(ibp_context_t *ic, ibp_cap_t *cap, ibp_cap_t *mcap, ibp_off_t offset, ibp_off_t size, int duration,
      int timeout);
 
 void set_ibp_depot_inq_op(ibp_op_t *op, ibp_depot_t *depot, char *password, ibp_depotinfo_t *di, int timeout);
@@ -396,7 +396,7 @@ void ibp_set_max_retry(ibp_context_t *ic, int n);
 int  ibp_get_max_retry(ibp_context_t *ic);
 void ibp_set_read_cc(ibp_context_t *ic, ibp_connect_context_t *cc);
 void ibp_set_write_cc(ibp_context_t *ic, ibp_connect_context_t *cc);
-int ibp_load_config(ibp_context_t *ic, char *fname);
+int ibp_load_config(ibp_context_t *ic, char *fname, char *section);
 //void set_ibp_config(ibp_config_t *cfg);
 void default_ibp_config(ibp_context_t *ic);
 ibp_context_t *ibp_create_context();

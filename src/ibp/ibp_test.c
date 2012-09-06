@@ -466,15 +466,15 @@ void perform_big_alloc_tests(ibp_depot_t *depot)
   set_ibp_attributes(&attr, time(NULL) + A_DURATION, IBP_HARD, IBP_BYTEARRAY);
   op = new_ibp_alloc_op(ic, &caps, asize, depot, &attr, disk_cs_type, disk_blocksize, ibp_timeout);
   opque_add(q, op);
-  err = opque_waitall(q);  
+  err = opque_waitall(q);
   if (err != OP_STATE_SUCCESS) {
-     failed_tests++; 
+     failed_tests++;
      status = gop_get_status(op);
      printf("perform_big_alloc_test: FAILED ibp_allocate error! * nfailed=%d ibp_errno=%d\n", err, status.error_code); 
      opque_free(q, OP_DESTROY);
      return;
   }
-  
+
   printf("perform_big_alloc_test: rcap=%s\n", get_ibp_cap(&caps, IBP_READCAP));
   printf("perform_big_alloc_test: wcap=%s\n", get_ibp_cap(&caps, IBP_WRITECAP));
   printf("perform_big_alloc_test: mcap=%s\n", get_ibp_cap(&caps, IBP_MANAGECAP));
@@ -544,7 +544,7 @@ void perform_big_alloc_tests(ibp_depot_t *depot)
   }
 
   //-------------------------------
-  
+
   //** Do the comparison **
   err = strcmp(buffer, buffer_cmp);
   if (err == 0) {
@@ -562,11 +562,11 @@ void perform_big_alloc_tests(ibp_depot_t *depot)
   op = new_ibp_remove_op(ic, get_ibp_cap(&caps, IBP_MANAGECAP), ibp_timeout);
   opque_add(q, op);
   err = opque_waitall(q);
-  if (err != OP_STATE_SUCCESS) { 
-     printf("perform_big_alloc_test: Error removing the allocation!  ibp_errno=%d\n", err); 
+  if (err != OP_STATE_SUCCESS) {
+     printf("perform_big_alloc_test: Error removing the allocation!  ibp_errno=%d\n", err);
      opque_free(q, OP_DESTROY);
-     return; 
-  } 
+     return;
+  }
 
   opque_finished_submission(q);
 
@@ -586,8 +586,9 @@ void perform_manage_truncate_tests(ibp_depot_t *depot)
   ibp_off_t pos;
   char buffer[bufsize+1], buffer_cmp[bufsize+1];
   tbuffer_t buf;
-  int err;
+  int err, dt;
   ibp_capstatus_t astat;
+  ibp_capstatus_t astat2;
   ibp_attributes_t attr;
   ibp_capset_t caps;
   ibp_cap_t *cap;
@@ -612,7 +613,7 @@ void perform_manage_truncate_tests(ibp_depot_t *depot)
   if (err != OP_STATE_SUCCESS) {
      failed_tests++;
      status = gop_get_status(op);
-     printf("perform_manage_truncte_test: FAILED ibp_allocate error! * nfailed=%d ibp_errno=%d\n", err, status.error_code); 
+     printf("perform_manage_truncte_test: FAILED ibp_allocate error! * nfailed=%d ibp_errno=%d\n", err, status.error_code);
      abort();
      opque_free(q, OP_DESTROY);
      return;
@@ -636,7 +637,7 @@ void perform_manage_truncate_tests(ibp_depot_t *depot)
   if (err != OP_STATE_SUCCESS) {
      failed_tests++;
      status = gop_get_status(op);
-     printf("perform_big_alloc_test: FAILED Initial ibp_write error! * ibp_errno=%d\n", status.error_code); 
+     printf("perform_big_alloc_test: FAILED Initial ibp_write error! * ibp_errno=%d\n", status.error_code);
      abort();
      opque_free(q, OP_DESTROY);
      return;
@@ -661,9 +662,12 @@ void perform_manage_truncate_tests(ibp_depot_t *depot)
   }
 
   //** Now attempt to IBP_CHNG the size which would cause a data loss
-  set_ibp_attributes(&(astat.attrib), time(NULL) + A_DURATION, IBP_HARD, IBP_BYTEARRAY);
+//  set_ibp_attributes(&(astat.attrib), time(NULL) + A_DURATION, IBP_HARD, IBP_BYTEARRAY);
+  astat2 = astat;
+  set_ibp_attributes(&(astat2.attrib), -1, -1, -1);
+  astat2.maxSize = bufsize/2;
   astat.maxSize = bufsize/2;
-  err = IBP_manage(get_ibp_cap(&caps, IBP_MANAGECAP), &timer, IBP_CHNG, 0, &astat);
+  err = IBP_manage(get_ibp_cap(&caps, IBP_MANAGECAP), &timer, IBP_CHNG, 0, &astat2);
   if (err == 0) {
      failed_tests++;
      printf("perform_manage_truncate_test: Oops!  Successfully used IBP_CHNG to result in data loss! error = %d * ibp_errno=%d\n", err, IBP_errno);
@@ -671,14 +675,22 @@ void perform_manage_truncate_tests(ibp_depot_t *depot)
   }
 
   //** Verify the original size/data pos is intact
-  memset(&astat, 0, sizeof(astat));
-  err = IBP_manage(get_ibp_cap(&caps, IBP_MANAGECAP), &timer, IBP_PROBE, 0, &astat);
+  memset(&astat2, 0, sizeof(astat2));
+  err = IBP_manage(get_ibp_cap(&caps, IBP_MANAGECAP), &timer, IBP_PROBE, 0, &astat2);
+  dt = astat.attrib.duration - astat2.attrib.duration;
   if (err == 0) {
-     if ((astat.currentSize != bufsize) || (astat.maxSize != asize)) {
+     if ((astat2.currentSize != bufsize) || (astat2.maxSize != asize)) {
         failed_tests++;
         printf("perform_manage_truncate_test: ibp_manage FAILED with initial IBP_CHNG check of size/pos!\n");
-        printf("perform_manage_truncate_test: current size = " I64T " should be " I64T "\n", astat.currentSize, bufsize);
-        printf("perform_manage_truncate_test:     max size = " I64T " should be " I64T "\n", astat.maxSize, asize);
+        printf("perform_manage_truncate_test: current size = " I64T " should be " I64T "\n", astat2.currentSize, bufsize);
+        printf("perform_manage_truncate_test:     max size = " I64T " should be " I64T "\n", astat2.maxSize, asize);
+        abort();
+     } else if ((dt > 10) || (dt < 0) || (astat2.attrib.reliability != IBP_HARD) || (astat2.attrib.type != IBP_BYTEARRAY)) {
+        failed_tests++;
+        printf("perform_manage_truncate_test: ibp_manage FAILED with initial IBP_CHNG check!\n");
+        printf("perform_manage_truncate_test:     duration = %d should be ~%d\n", astat2.attrib.duration, astat.attrib.duration);
+        printf("perform_manage_truncate_test:     reliability = %d should be IBP_HARD (%d)\n", astat2.attrib.reliability, IBP_HARD);
+        printf("perform_manage_truncate_test:     type = %d should be IBP_BYTE_ARRAY (%d)\n", astat2.attrib.type, IBP_BYTEARRAY);
         abort();
      }
   } else {
@@ -689,9 +701,12 @@ void perform_manage_truncate_tests(ibp_depot_t *depot)
   }
 
   //** Now shorten the size via IBP_CHNG which should be OK
-  set_ibp_attributes(&(astat.attrib), time(NULL) + A_DURATION, IBP_HARD, IBP_BYTEARRAY);
+//  set_ibp_attributes(&(astat.attrib), time(NULL) + A_DURATION, IBP_HARD, IBP_BYTEARRAY);
+  astat2 = astat;
+  set_ibp_attributes(&(astat2.attrib), -1, -1, -1);
   astat.maxSize = bufsize+1;
-  err = IBP_manage(get_ibp_cap(&caps, IBP_MANAGECAP), &timer, IBP_CHNG, 0, &astat);
+  astat2.maxSize = bufsize+1;
+  err = IBP_manage(get_ibp_cap(&caps, IBP_MANAGECAP), &timer, IBP_CHNG, 0, &astat2);
   if (err != 0) {
      failed_tests++;
      printf("perform_manage_truncate_test: Cant shrink allocation using IBP_CHNG and no data loss! error = %d * ibp_errno=%d\n", err, IBP_errno);
@@ -700,14 +715,22 @@ void perform_manage_truncate_tests(ibp_depot_t *depot)
   }
 
   //** Verify the new size/data pos is intact
-  memset(&astat, 0, sizeof(astat));
-  err = IBP_manage(get_ibp_cap(&caps, IBP_MANAGECAP), &timer, IBP_PROBE, 0, &astat);
+  memset(&astat2, 0, sizeof(astat2));
+  err = IBP_manage(get_ibp_cap(&caps, IBP_MANAGECAP), &timer, IBP_PROBE, 0, &astat2);
+  dt = astat.attrib.duration - astat2.attrib.duration;
   if (err == 0) {
-     if ((astat.currentSize != bufsize) || (astat.maxSize != (bufsize+1))) {
+     if ((astat2.currentSize != bufsize) || (astat2.maxSize != (bufsize+1))) {
         failed_tests++;
         printf("perform_manage_truncate_test: ibp_manage FAILED with 2nd IBP_CHNG check of size/pos!\n");
-        printf("perform_manage_truncate_test: current size = " I64T " should be " I64T "\n", astat.currentSize, bufsize);
-        printf("perform_manage_truncate_test:     max size = " I64T " should be " I64T "\n", astat.maxSize, bufsize+1);
+        printf("perform_manage_truncate_test: current size = " I64T " should be " I64T "\n", astat2.currentSize, bufsize);
+        printf("perform_manage_truncate_test:     max size = " I64T " should be " I64T "\n", astat2.maxSize, asize);
+        abort();
+     } else if ((dt > 10) || (dt < 0) || (astat2.attrib.reliability != IBP_HARD) || (astat2.attrib.type != IBP_BYTEARRAY)) {
+        failed_tests++;
+        printf("perform_manage_truncate_test: ibp_manage FAILED with initial IBP_CHNG check!\n");
+        printf("perform_manage_truncate_test:     duration = %d should be ~%d\n", astat2.attrib.duration, astat.attrib.duration);
+        printf("perform_manage_truncate_test:     reliability = %d should be IBP_HARD (%d)\n", astat2.attrib.reliability, IBP_HARD);
+        printf("perform_manage_truncate_test:     type = %d should be IBP_BYTE_ARRAY (%d)\n", astat2.attrib.type, IBP_BYTEARRAY);
         abort();
      }
   } else {
@@ -1353,7 +1376,7 @@ printf("start!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n"); fflush(stdout);
      printf("                      blocksize determines how many bytes to send between checksums in kbytes.\n"); 
      printf("-disk_chksum type blocksize - Enable Disk checksumming.\n");
      printf("                      type should be NONE, SHA256, SHA512, SHA1, or MD5.\n");
-     printf("                      blocksize determines how many bytes to send between checksums in kbytes.\n"); 
+     printf("                      blocksize determines how many bytes to send between checksums in kbytes.\n");
      printf("\n");
      printf("\n");
      return(-1);
@@ -1380,7 +1403,7 @@ printf("22222222222222222222222222222222222111111111111111111111111111111\n"); f
        i++;
     } else if (strcmp(argv[i], "-config") == 0) { //** Read the config file
        i++;
-       ibp_load_config(ic, argv[i]);
+       ibp_load_config(ic, argv[i], NULL);
        i++;
     } else if (strcmp(argv[i], "-no-async") == 0) { //** Skip the async test
        i++;

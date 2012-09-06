@@ -58,7 +58,7 @@ typedef int64_t ibp_off_t;  //** Base IBP offset/size data type
  * Definition of the capability attributes structure
  */
 typedef struct ibp_attributes {
-  time_t  duration;     /* lifetime of the capability */
+  int     duration;     /* lifetime of the capability */
   int     reliability;  /* reliability type of the capability */
   int     type;         /* capability storage type */
 } *IBP_attributes;

@@ -144,9 +144,9 @@ op_status_t process_error(op_generic_t *gop, op_status_t *err, int status, doubl
   } else if (status == IBP_OK) {
     err->op_status = OP_STATE_SUCCESS;
     err->error_code = IBP_OK;
-  } else if (status == IBP_E_BAD_FORMAT) {
-    err->op_status = OP_STATE_RETRY;
-    err->error_code = IBP_E_BAD_FORMAT;
+//  } else if (status == IBP_E_BAD_FORMAT) {
+//    err->op_status = OP_STATE_RETRY;
+//    err->error_code = IBP_E_BAD_FORMAT;
   } else {
     err->op_status = OP_STATE_FAILURE;
     err->error_code = status;
@@ -1344,7 +1344,7 @@ op_generic_t *new_ibp_get_chksum_op(ibp_context_t *ic, ibp_cap_t *mcap, int chks
        int timeout)
 {
   ibp_op_t *op = new_ibp_op(ic);
-  
+
   set_ibp_get_chksum_op(op, mcap, chksum_info_only, cs_type, cs_size, blocksize, nblocks, nbytes, buffer, bufsize, timeout);
 
   return(ibp_get_gop(op));
@@ -1359,7 +1359,7 @@ op_generic_t *new_ibp_get_chksum_op(ibp_context_t *ic, ibp_cap_t *mcap, int chks
 op_status_t allocate_command(op_generic_t *gop, NetStream_t *ns)
 {
   ibp_op_t *op = ibp_get_iop(gop);
-  char buffer[1024]; 
+  char buffer[1024];
 //  apr_time_t atime, now;
   op_status_t err;
   ibp_op_alloc_t *cmd = &(op->alloc_op);
@@ -1370,12 +1370,12 @@ log_printf(10, "allocate_command: cs_type=%d\n", cmd->disk_chksum_type);
 //log_printf(0, "allocate_command: cs_type=%d duration=" TT "\n", cmd->disk_chksum_type, cmd->duration);
 
   if (cmd->disk_chksum_type == CHKSUM_DEFAULT) {  //** Normal allocation
-     snprintf(buffer, sizeof(buffer), "%d %d %s %d %d " TT " " I64T " %d\n", 
-          IBPv040, IBP_ALLOCATE, cmd->depot->rid.name, cmd->attr->reliability, cmd->attr->type, 
+     snprintf(buffer, sizeof(buffer), "%d %d %s %d %d %d " I64T " %d\n",
+          IBPv040, IBP_ALLOCATE, cmd->depot->rid.name, cmd->attr->reliability, cmd->attr->type,
           cmd->duration, cmd->size, (int)apr_time_sec(gop->op->cmd.timeout));
   } else if ((chksum_valid_type(cmd->disk_chksum_type) == 1) || (cmd->disk_chksum_type == CHKSUM_NONE)) {
-     snprintf(buffer, sizeof(buffer), "%d %d %d " I64T " %s %d %d " TT " " I64T " %d\n", 
-          IBPv040, IBP_ALLOCATE_CHKSUM, cmd->disk_chksum_type, cmd->disk_blocksize, cmd->depot->rid.name, cmd->attr->reliability, cmd->attr->type, 
+     snprintf(buffer, sizeof(buffer), "%d %d %d " I64T " %s %d %d %d " I64T " %d\n",
+          IBPv040, IBP_ALLOCATE_CHKSUM, cmd->disk_chksum_type, cmd->disk_blocksize, cmd->depot->rid.name, cmd->attr->reliability, cmd->attr->type,
           cmd->duration, cmd->size, (int)apr_time_sec(gop->op->cmd.timeout));
   } else {
     log_printf(10, "allocate_command: Invalid chksum type! type=%d ns=%d\n", cmd->disk_chksum_type, ns_getid(ns));
@@ -1398,16 +1398,16 @@ log_printf(10, "allocate_command: cs_type=%d\n", cmd->disk_chksum_type);
 op_status_t split_allocate_command(op_generic_t *gop, NetStream_t *ns)
 {
   ibp_op_t *op = ibp_get_iop(gop);
-  char buffer[1024]; 
+  char buffer[1024];
   op_status_t err;
   ibp_op_alloc_t *cmd = &(op->alloc_op);
 
   if (cmd->disk_chksum_type == CHKSUM_DEFAULT) {  //** Normal split allocation
-      snprintf(buffer, sizeof(buffer), "%d %d %s %s %d %d " TT " " I64T " %d\n", 
-          IBPv040, IBP_SPLIT_ALLOCATE, cmd->key, cmd->typekey, cmd->attr->reliability, cmd->attr->type, 
+      snprintf(buffer, sizeof(buffer), "%d %d %s %s %d %d %d " I64T " %d\n",
+          IBPv040, IBP_SPLIT_ALLOCATE, cmd->key, cmd->typekey, cmd->attr->reliability, cmd->attr->type,
           cmd->duration, cmd->size, (int)apr_time_sec(gop->op->cmd.timeout));
   } else if ((chksum_valid_type(cmd->disk_chksum_type) == 1) || (cmd->disk_chksum_type == CHKSUM_NONE)) {
-      snprintf(buffer, sizeof(buffer), "%d %d %d " I64T " %s %s %d %d " TT " " I64T " %d\n", 
+      snprintf(buffer, sizeof(buffer), "%d %d %d " I64T " %s %s %d %d %d " I64T " %d\n", 
           IBPv040, IBP_SPLIT_ALLOCATE_CHKSUM, cmd->disk_chksum_type, cmd->disk_blocksize, cmd->key, cmd->typekey, cmd->attr->reliability, cmd->attr->type, 
           cmd->duration, cmd->size, (int)apr_time_sec(gop->op->cmd.timeout));
   } else {
@@ -1735,7 +1735,7 @@ op_status_t alias_allocate_command(op_generic_t *gop, NetStream_t *ns)
   op_status_t err;
   ibp_op_alloc_t *cmd = &(op->alloc_op);
 
-  snprintf(buffer, sizeof(buffer), "%d %d %s %s " I64T " " I64T " " TT " %d\n", 
+  snprintf(buffer, sizeof(buffer), "%d %d %s %s " I64T " " I64T " %d %d\n",
        IBPv040, IBP_ALIAS_ALLOCATE, cmd->key, cmd->typekey, cmd->offset, cmd->size, cmd->duration, (int)apr_time_sec(gop->op->cmd.timeout));
 
   ns_write_chksum_clear(ns);
@@ -1977,7 +1977,7 @@ op_status_t modify_alloc_command(op_generic_t *gop, NetStream_t *ns)
   ibp_op_t *op = ibp_get_iop(gop);
   char buffer[1024]; 
   op_status_t err;
-  apr_time_t atime;
+  int atime;
   ibp_op_modify_alloc_t *cmd;
 
   cmd = &(op->mod_alloc_op);
@@ -1985,7 +1985,7 @@ op_status_t modify_alloc_command(op_generic_t *gop, NetStream_t *ns)
   atime = cmd->duration - time(NULL); //** This is in sec NOT APR time
   if (atime < 0) atime = cmd->duration;
 
-  snprintf(buffer, sizeof(buffer), "%d %d %s %s %d %d " I64T " " TT " %d %d\n", 
+  snprintf(buffer, sizeof(buffer), "%d %d %s %s %d %d " I64T " %d %d %d\n", 
        IBPv040, IBP_MANAGE, cmd->key, cmd->typekey, IBP_CHNG, IBP_MANAGECAP, cmd->size, atime, 
        cmd->reliability, (int)apr_time_sec(gop->op->cmd.timeout));
 
@@ -2006,7 +2006,7 @@ op_status_t modify_alloc_command(op_generic_t *gop, NetStream_t *ns)
 //   reliability of an existing allocation.
 //*************************************************************
 
-void set_ibp_modify_alloc_op(ibp_op_t *op, ibp_cap_t *cap, ibp_off_t size, time_t duration, int reliability, 
+void set_ibp_modify_alloc_op(ibp_op_t *op, ibp_cap_t *cap, ibp_off_t size, int duration, int reliability, 
      int timeout)
 {
   char hoststr[1024];
@@ -2036,7 +2036,7 @@ void set_ibp_modify_alloc_op(ibp_op_t *op, ibp_cap_t *cap, ibp_off_t size, time_
 
 //*************************************************************
 
-op_generic_t *new_ibp_modify_alloc_op(ibp_context_t *ic, ibp_cap_t *cap, ibp_off_t size, time_t duration, int reliability, int timeout)
+op_generic_t *new_ibp_modify_alloc_op(ibp_context_t *ic, ibp_cap_t *cap, ibp_off_t size, int duration, int reliability, int timeout)
 {
   ibp_op_t *op = new_ibp_op(ic);
 
@@ -2054,9 +2054,9 @@ op_generic_t *new_ibp_modify_alloc_op(ibp_context_t *ic, ibp_cap_t *cap, ibp_off
 op_status_t alias_modify_alloc_command(op_generic_t *gop, NetStream_t *ns)
 {
   ibp_op_t *op = ibp_get_iop(gop);
-  char buffer[1024]; 
+  char buffer[1024];
   op_status_t err;
-  apr_time_t atime;
+  int atime;
   ibp_op_modify_alloc_t *cmd;
 
   cmd = &(op->mod_alloc_op);
@@ -2064,8 +2064,8 @@ op_status_t alias_modify_alloc_command(op_generic_t *gop, NetStream_t *ns)
   atime = cmd->duration - time(NULL); //** This is in sec NOT APR time
   if (atime < 0) atime = cmd->duration;
 
-  snprintf(buffer, sizeof(buffer), "%d %d %s %s %d " I64T " " I64T " " TT " %s %s %d\n", 
-       IBPv040, IBP_ALIAS_MANAGE, cmd->key, cmd->typekey, IBP_CHNG, cmd->offset,  cmd->size, atime, 
+  snprintf(buffer, sizeof(buffer), "%d %d %s %s %d " I64T " " I64T " %d %s %s %d\n",
+       IBPv040, IBP_ALIAS_MANAGE, cmd->key, cmd->typekey, IBP_CHNG, cmd->offset,  cmd->size, atime,
        cmd->mkey, cmd->mtypekey, (int)apr_time_sec(gop->op->cmd.timeout));
 
 //  log_printf(0, "alias_modify_alloc_command: buffer=!%s!\n", buffer);
@@ -2081,18 +2081,18 @@ op_status_t alias_modify_alloc_command(op_generic_t *gop, NetStream_t *ns)
 }
 
 //*************************************************************
-// set_ibp_alias_modify_alloc_op - Modifes the size, duration, and 
+// set_ibp_alias_modify_alloc_op - Modifes the size, duration, and
 //   reliability of an existing allocation.
 //*************************************************************
 
-void set_ibp_alias_modify_alloc_op(ibp_op_t *op, ibp_cap_t *cap, ibp_cap_t *mcap, ibp_off_t offset, ibp_off_t size, time_t duration, 
+void set_ibp_alias_modify_alloc_op(ibp_op_t *op, ibp_cap_t *cap, ibp_cap_t *mcap, ibp_off_t offset, ibp_off_t size, int duration,
      int timeout)
 {
   char hoststr[1024];
   int port;
   char host[256];
   ibp_op_modify_alloc_t *cmd;
-  
+
   init_ibp_base_op(op, "alias_modify_alloc", timeout, 10*op->ic->new_command, NULL, 1, IBP_ALIAS_MANAGE, IBP_CHNG);
 
   cmd = &(op->mod_alloc_op);
@@ -2112,12 +2112,12 @@ void set_ibp_alias_modify_alloc_op(ibp_op_t *op, ibp_cap_t *cap, ibp_cap_t *mcap
   gop->op->cmd.send_command = alias_modify_alloc_command;
   gop->op->cmd.send_phase = NULL;
   gop->op->cmd.recv_phase = status_get_recv;
-  
+
 }
 
 //*************************************************************
 
-op_generic_t *new_ibp_alias_modify_alloc_op(ibp_context_t *ic, ibp_cap_t *cap, ibp_cap_t *mcap, ibp_off_t offset, ibp_off_t size, time_t duration, int timeout)
+op_generic_t *new_ibp_alias_modify_alloc_op(ibp_context_t *ic, ibp_cap_t *cap, ibp_cap_t *mcap, ibp_off_t offset, ibp_off_t size, int duration, int timeout)
 {
   ibp_op_t *op = new_ibp_op(ic);
 
@@ -2135,17 +2135,13 @@ op_generic_t *new_ibp_alias_modify_alloc_op(ibp_context_t *ic, ibp_cap_t *cap, i
 op_status_t truncate_command(op_generic_t *gop, NetStream_t *ns)
 {
   ibp_op_t *op = ibp_get_iop(gop);
-  char buffer[1024]; 
+  char buffer[1024];
   op_status_t err;
-  apr_time_t atime;
   ibp_op_modify_alloc_t *cmd;
 
   cmd = &(op->mod_alloc_op);
 
-  atime = cmd->duration - time(NULL); //** This is in sec NOT APR time
-  if (atime < 0) atime = cmd->duration;
-
-  snprintf(buffer, sizeof(buffer), "%d %d %s %s %d " I64T " %d\n", 
+  snprintf(buffer, sizeof(buffer), "%d %d %s %s %d " I64T " %d\n",
        IBPv040, IBP_MANAGE, cmd->key, cmd->typekey, IBP_TRUNCATE, cmd->size, (int)apr_time_sec(gop->op->cmd.timeout));
 
 //  log_printf(0, "truncate__command: buffer=!%s!\n", buffer);
@@ -2725,7 +2721,7 @@ op_status_t depot_modify_command(op_generic_t *gop, NetStream_t *ns)
 
   cmd = &(op->depot_modify_op);
 
-  snprintf(buffer, sizeof(buffer), "%d %d %s %d %s %d\n " I64T " " I64T " " TT "\n", 
+  snprintf(buffer, sizeof(buffer), "%d %d %s %d %s %d\n " I64T " " I64T " " TT "\n",
        IBPv040, IBP_STATUS, cmd->depot->rid.name, IBP_ST_CHANGE, cmd->password, (int)apr_time_sec(gop->op->cmd.timeout),
        cmd->max_hard, cmd->max_soft, cmd->max_duration);
 
@@ -2743,14 +2739,14 @@ op_status_t depot_modify_command(op_generic_t *gop, NetStream_t *ns)
 //  set_ibp_depot_modify - Modify the settings of a depot/RID
 //*************************************************************
 
-void set_ibp_depot_modify_op(ibp_op_t *op, ibp_depot_t *depot, char *password, ibp_off_t hard, ibp_off_t soft, 
-      time_t duration, int timeout)
+void set_ibp_depot_modify_op(ibp_op_t *op, ibp_depot_t *depot, char *password, ibp_off_t hard, ibp_off_t soft,
+      int duration, int timeout)
 {
   ibp_op_depot_modify_t *cmd = &(op->depot_modify_op);
 
-  init_ibp_base_op(op, "depot_modify", timeout, op->ic->new_command, NULL, 
+  init_ibp_base_op(op, "depot_modify", timeout, op->ic->new_command, NULL,
          op->ic->new_command, IBP_STATUS, IBP_ST_CHANGE);
-  
+
   cmd->depot = depot;
   cmd->password = password;
   cmd->max_hard = hard;
@@ -2765,8 +2761,8 @@ void set_ibp_depot_modify_op(ibp_op_t *op, ibp_depot_t *depot, char *password, i
 
 //*************************************************************
 
-op_generic_t *new_ibp_depot_modify_op(ibp_context_t *ic, ibp_depot_t *depot, char *password, ibp_off_t hard, ibp_off_t soft, 
-      time_t duration, int timeout)
+op_generic_t *new_ibp_depot_modify_op(ibp_context_t *ic, ibp_depot_t *depot, char *password, ibp_off_t hard, ibp_off_t soft,
+      int duration, int timeout)
 {
   ibp_op_t *op = new_ibp_op(ic);
   if (op == NULL) return(NULL);
@@ -2783,7 +2779,7 @@ op_generic_t *new_ibp_depot_modify_op(ibp_context_t *ic, ibp_depot_t *depot, cha
 op_status_t depot_inq_command(op_generic_t *gop, NetStream_t *ns)
 {
   ibp_op_t *op = ibp_get_iop(gop);
-  char buffer[1024]; 
+  char buffer[1024];
   op_status_t err;
   ibp_op_depot_inq_t *cmd;
 
@@ -2791,7 +2787,7 @@ op_status_t depot_inq_command(op_generic_t *gop, NetStream_t *ns)
 
   ns_write_chksum_clear(ns);
 
-  snprintf(buffer, sizeof(buffer), "%d %d %s %d %s %d\n", 
+  snprintf(buffer, sizeof(buffer), "%d %d %s %d %s %d\n",
        IBPv040, IBP_STATUS, cmd->depot->rid.name, IBP_ST_INQ, cmd->password, (int)apr_time_sec(gop->op->cmd.timeout));
 
   err = send_command(gop, ns, buffer);
