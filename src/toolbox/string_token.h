@@ -35,6 +35,7 @@ extern "C" {
 #endif
 
 char *string_token(char *str, const char *sep, char **last, int *finished);
+char *argv2format(char *arg);
 char *escape_string_token(char *str, const char *delims, char escape_char, int compress_delims, char **last, int *finished);
 int escape_count(char special_chars, char escape_char, char *data);
 char *escape_text(char *special_chars, char escape_char, char *data);
@@ -43,6 +44,7 @@ char *escape_strchr(char escape_char, char *data, char match);
 char *string_trim(char *str);
 int64_t split_token_into_number_and_scale(char *token);
 char *pretty_print_int_with_scale(int64_t value, char *buffer);
+char *pretty_print_double_with_scale(int base, double value, char *buffer);
 
 #ifdef __cplusplus
 }

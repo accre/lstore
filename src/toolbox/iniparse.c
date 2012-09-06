@@ -419,8 +419,9 @@ inip_file_t *inip_read(const char *fname)
 inip_file_t *inip_read_text(const char *text)
 {
   inip_file_t *inip;
+  char fname[L_tmpnam+1];
 
-  char *fname = tmpnam(NULL);
+  tmpnam(fname);
   FILE *fd = fopen(fname, "w");
   fprintf(fd, "%s\n", text);
   fclose(fd);

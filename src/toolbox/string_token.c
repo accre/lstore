@@ -43,7 +43,7 @@ char NULL_TERMINATOR = '\0';
 //   IF no more strings exist finished == 1;
 //*****************************************************************
 
-char *string_token(char *str, const char *sep, char **last, int *finished) 
+char *string_token(char *str, const char *sep, char **last, int *finished)
 {
   char *token = strtok_r(str, sep, last);
 
@@ -57,13 +57,51 @@ char *string_token(char *str, const char *sep, char **last, int *finished)
   return(token);
 }
 
+//*****************************************************************
+// argv2format - Converts an argument with \n, \t, etc to a proper
+//     format for passing to printf
+//*****************************************************************
+
+char *argv2format(char *arg)
+{
+  int i, j, k, n, sub;
+  char special[] = { 'a', 'b', 'f', 'n', 'r', 't', 'v', '\\' };
+  char replace[] = { '\a', '\b', '\f', '\n', '\r', '\t', '\v', '\\' };
+  char *str = strdup(arg);
+
+  n = strlen(arg);
+  if (n < 2) return(str);
+
+  j = 0;
+  for (i=0; i<n-1; i++) {
+    sub = 0;
+    if (arg[i] == '\\') {
+       for (k=0; k<8; k++) {
+          if (arg[i+1] == special[k]) break;
+       }
+       if (k<8) {
+          sub = 1;
+          str[j] = replace[k]; j++; i++;
+       } else {
+          str[j] = arg[i]; j++;
+       }
+    } else {
+      str[j] = arg[i]; j++;
+    }
+  }
+
+  if (sub == 0) { str[j] = arg[n-1]; j++; }
+  str[j] = 0;
+  return(str);
+}
+
 
 //*****************************************************************
-// escape_string_token - Same as string_token except it supports 
+// escape_string_token - Same as string_token except it supports
 //   parsing escape sequences.
 //*****************************************************************
 
-char *escape_string_token(char *str, const char *delims, char escape_char, int compress_delims, char **last, int *finished) 
+char *escape_string_token(char *str, const char *delims, char escape_char, int compress_delims, char **last, int *finished)
 {
   int n, ndata;
   char *ptr, *token;
@@ -142,7 +180,7 @@ int escape_count(char *special_chars, char escape_char, char *data)
   return(count);
 }
 
-//*********************************************************************** 
+//***********************************************************************
 //  escape_text - Simple routine to escape text in a string
 //***********************************************************************
 
@@ -150,7 +188,7 @@ char *escape_text(char *special_chars, char escape_char, char *data)
 {
   char *str;
   int n, i, j, nchar;
-  
+
   n = escape_count(special_chars, escape_char, data);
 
   nchar = strlen(data);
@@ -171,7 +209,7 @@ char *escape_text(char *special_chars, char escape_char, char *data)
   return(str);
 }
 
-//*********************************************************************** 
+//***********************************************************************
 //  unescape_text - Removes the escape text in a string
 //***********************************************************************
 
@@ -297,6 +335,45 @@ char *pretty_print_int_with_scale(int64_t value, char *buffer)
   }
 
 //printf("prettyprint: value=" I64T " (%s)\n", value, buffer);
+
+  return(buffer);
+}
+
+
+//***********************************************************************
+//  pretty_print_double_with_scale - Stores the double as a string using
+//     the largest divisible scale factor. Buffer is used to
+//     hold the converted number and must have enough characters to store
+//     the double.
+//
+//     base is either 1, 1000, or 1024.
+//
+//     NOTE: If buffer==NULL then a new string is created and returned
+//           which must be freed.
+//***********************************************************************
+
+char *pretty_print_double_with_scale(int base, double value, char *buffer)
+{
+  double n;
+  int i;
+  char *unit="\0KMGT";
+
+  if (buffer == NULL) type_malloc(buffer, char, 30);
+
+  if (base == 1) { sprintf(buffer, "%lf", value); return(buffer); }
+
+  n = value;
+  for (i=0; i<3; i++) {
+    if (n < base) break;
+    n = n / base;
+  }
+
+
+  if (base == 1024) {
+    sprintf(buffer, "%7.3lf%cI", n, unit[i]);
+  } else {
+    sprintf(buffer, "%7.3lf%c", n, unit[i]);
+  }
 
   return(buffer);
 }

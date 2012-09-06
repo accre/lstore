@@ -210,6 +210,16 @@ int main(int argc, char **argv)
      printf("ERROR! key>j (%d<%d)!!!!!\n", *key, j);
   }
 
+  printf("min_key:  Checking that round down works\n");
+  j = min_key+1;
+  it = iter_search_skiplist(sl, (skiplist_key_t *)&j, -1);
+  err = next_skiplist(&it, (skiplist_key_t *)&key, (skiplist_data_t *)&data);
+  printf("Checking for j=%d min_key=%d got key=%d\n", j, min_key, *key);
+  if (*key != min_key) {
+     printf("ERROR! key>j (%d<%d)!!!!!\n", *key, j);
+  }
+
+
   j = key_list[50];
   it = iter_search_skiplist(sl, (skiplist_key_t *)&j, 0);
   err = next_skiplist(&it, (skiplist_key_t *)&key, (skiplist_data_t *)&data);

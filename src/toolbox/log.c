@@ -38,10 +38,10 @@ http://www.accre.vanderbilt.edu
 #include "log.h"
 #include "atomic_counter.h"
 #include "iniparse.h"
-
-
-#ifndef _DISABLE_LOG
+#include "type_malloc.h"
 #include <apr_thread_mutex.h>
+
+
 FILE *_log_fd = NULL;
 int _log_level = 0;
 long int _log_currsize = 0;
@@ -62,7 +62,7 @@ void _log_init()
 {
   int n;
 
-   _log_level = 0;
+//   _log_level = 0;
    atomic_init();
    assert(apr_pool_create(&_log_mpool, NULL) == APR_SUCCESS);
    assert(apr_thread_mutex_create(&_log_lock, APR_THREAD_MUTEX_DEFAULT, _log_mpool) == APR_SUCCESS);
@@ -187,6 +187,7 @@ void mlog_load(char *fname)
   for (n=0; n<_mlog_size; n++) _mlog_table[n] = default_level;
   logname = inip_get_string(fd, group_level, "output", "stdout");
   open_log(logname);
+  free(logname);
   _log_maxsize = inip_get_integer(fd, group_level, "size", 100*1024*1024);
 
   //** Load the mappings
@@ -219,6 +220,75 @@ void mlog_load(char *fname)
   inip_destroy(fd);
 }
 
-#endif
 
+//***************************************************************
+// minfo_printf -Does a normal printf
+//***************************************************************
 
+int minfo_printf(info_fd_t *ifd, int module_index, int level, const char *fn, const char *fname, int line, const char *fmt, ...)
+{
+  va_list args;
+  int n = 0;
+
+  if (level > _mlog_table[module_index]) return(0);
+  if (level > ifd->level) return(0);
+
+  apr_thread_mutex_lock(ifd->lock);
+
+  //** Print the the header
+  switch (ifd->header_type) {
+    case INFO_HEADER_NONE:    break;
+    case INFO_HEADER_THREAD:  n = fprintf(ifd->fd, "[tid=%d] ", atomic_thread_id); break;
+    case INFO_HEADER_FULL:   n = fprintf(ifd->fd, "[mi=%d tid=%d file=%s:%d fn=%s] ", module_index, atomic_thread_id, fname, line, fn);  break;
+  }
+
+  //** Print the user text
+  va_start(args, fmt);
+  n += vfprintf(ifd->fd, fmt, args);
+  va_end(args);
+
+  apr_thread_mutex_unlock(ifd->lock);
+
+  return(n);
+}
+
+//***************************************************************
+// info_flush - Flushes teh info device
+//***************************************************************
+
+void info_flush(info_fd_t *ifd)
+{
+  apr_thread_mutex_lock(ifd->lock);
+  fflush(ifd->fd);
+  apr_thread_mutex_unlock(ifd->lock);
+}
+
+//***************************************************************
+// info_create - Creates an info FD device
+//***************************************************************
+
+info_fd_t *info_create(FILE *fd, int header_type, int level)
+{
+  info_fd_t *ifd;
+
+  type_malloc(ifd, info_fd_t, 1);
+
+  if (_log_lock == NULL) _log_init();  //** WE use the log mpool
+
+  assert(apr_thread_mutex_create(&(ifd->lock), APR_THREAD_MUTEX_DEFAULT, _log_mpool) == APR_SUCCESS);
+  ifd->fd = fd;
+  ifd->header_type = header_type;
+  ifd->level = level;
+
+  return(ifd);
+}
+
+//***************************************************************
+// info_destroy - Destroys a previously created info device
+//***************************************************************
+
+void info_destroy(info_fd_t *ifd)
+{
+  apr_thread_mutex_destroy(ifd->lock);
+  free(ifd);
+}

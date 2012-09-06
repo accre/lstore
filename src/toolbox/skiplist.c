@@ -25,7 +25,7 @@ Advanced Computing Center for Research and Education
 230 Appleton Place
 Nashville, TN 37203
 http://www.accre.vanderbilt.edu
-*/ 
+*/
 
 #define _log_module_index 104
 
@@ -39,8 +39,9 @@ int skiplist_compare_fn_strcmp(void *arg, skiplist_key_t *k1, skiplist_key_t *k2
 int skiplist_compare_fn_strncmp(void *arg, skiplist_key_t *k1, skiplist_key_t *k2);
 int skiplist_compare_fn_ptr(void *arg, skiplist_key_t *k1, skiplist_key_t *k2);
 
-skiplist_compare_t skiplist_compare_int={skiplist_compare_fn_int, NULL};
-skiplist_compare_t skiplist_compare_strcmp={skiplist_compare_fn_strcmp, NULL};
+skiplist_compare_t skiplist_compare_int={skiplist_compare_fn_int, (void *)(int)(long)(1)};
+skiplist_compare_t skiplist_compare_strcmp={skiplist_compare_fn_strcmp, (void *)(int)(long)1};
+skiplist_compare_t skiplist_compare_strcmp_descending={skiplist_compare_fn_strcmp, (void *)(int)(long)(-1)};
 skiplist_compare_t skiplist_compare_ptr={skiplist_compare_fn_ptr, NULL};
 
 //*********************************************************************************
@@ -88,6 +89,8 @@ int skiplist_compare_fn_ptr(void *arg, skiplist_key_t *a, skiplist_key_t *b)
 
 int skiplist_compare_fn_int(void *arg, skiplist_key_t *k1, skiplist_key_t *k2)
 {
+  int scale = (int)(long)arg;
+
   int *a = (int *)k1;
   int *b = (int *)k2;
   int cmp = 1;
@@ -98,7 +101,9 @@ int skiplist_compare_fn_int(void *arg, skiplist_key_t *k1, skiplist_key_t *k2)
     cmp = 0;
   }
 
-  log_printf(15, "skiplist_compare_int: cmp(%d,%d)=%d\n", *a, *b, cmp);
+  cmp = scale * cmp;
+
+  log_printf(15, "skiplist_compare_int: cmp(%d,%d)=%d scale=%d\n", *a, *b, cmp, scale);
   return(cmp);
 }
 
@@ -106,10 +111,12 @@ int skiplist_compare_fn_int(void *arg, skiplist_key_t *k1, skiplist_key_t *k2)
 
 int skiplist_compare_fn_strcmp(void *arg, skiplist_key_t *k1, skiplist_key_t *k2)
 {
+  int scale = (int)(long)arg;
+
   char *a = (char *)k1;
   char *b = (char *)k2;
 
-  return(strcmp(a,b));
+  return(scale*strcmp(a,b));
 }
 
 //*********************************************************************************
@@ -588,6 +595,7 @@ log_printf(15, "iter_search_skiplist: it.sn=%p\n", it.ptr[0]->next[0]);
 skiplist_iter_t iter_search_skiplist_compare(skiplist_t *sl, skiplist_key_t *key, skiplist_compare_t *compare, int round_mode)
 {
   skiplist_iter_t it;
+  int cmp;
 
   it.sl = sl;
   it.ele = NULL;
@@ -596,31 +604,36 @@ skiplist_iter_t iter_search_skiplist_compare(skiplist_t *sl, skiplist_key_t *key
   it.sn = NULL;
   it.compare = compare;
   memset(it.ptr, 0, sizeof(it.ptr));
-  find_key_compare(sl, it.ptr, key, compare, 1);
-log_printf(15, "it.sn=%p\n", it.ptr[0]->next[0]);
+  cmp = find_key_compare(sl, it.ptr, key, compare, 0);
+log_printf(15, "it.ptr->next=%p\n", it.ptr[0]->next[0]);
 
-  if (round_mode < 0) {
+  if ((round_mode < -1) || ((round_mode < 0) && (cmp != 0))) {
      if (it.ptr[0] != NULL) {
+//log_printf(15, "returning prev\n");
         it.sn = it.ptr[0];
         it.ele = &(it.sn->ele);
      } else if (it.ptr[0]->next[0] != NULL) {
+//log_printf(15, "returning next\n");
         it.sn = it.ptr[0]->next[0];
         it.ele = &(it.sn->ele);
      }
-  } else if (round_mode == 0) {
-     if (it.ptr[0]->next[0] != NULL) {
-        it.sn = it.ptr[0]->next[0];
-        it.ele = &(it.sn->ele);
-     }
+//  } else if (round_mode == 0) {
   } else {
      if (it.ptr[0]->next[0] != NULL) {
-        if (it.ptr[0]->next[0]->next[0] != NULL) {
-           it.sn = it.ptr[0]->next[0]->next[0];
-           it.ele = &(it.sn->ele);
-        }
+        it.sn = it.ptr[0]->next[0];
+        it.ele = &(it.sn->ele);
      }
-
+//  } else {
+//     if (it.ptr[0]->next[0] != NULL) {
+//        if (it.ptr[0]->next[0]->next[0] != NULL) {
+//           it.sn = it.ptr[0]->next[0]->next[0];
+//           it.ele = &(it.sn->ele);
+//        }
+//     }
   }
+
+log_printf(15, "it.sn=%p\n", it.sn);
+
   return(it);
 }
 

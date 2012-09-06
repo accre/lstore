@@ -113,6 +113,7 @@ skiplist_key_t *sl_ptr_dup(skiplist_key_t *key);
 
 extern skiplist_compare_t skiplist_compare_int;
 extern skiplist_compare_t skiplist_compare_strcmp;
+extern skiplist_compare_t skiplist_compare_strcmp_descending;
 extern skiplist_compare_t skiplist_compare_ptr;
 
 void skiplist_strncmp_set(skiplist_compare_t *compare, int n);

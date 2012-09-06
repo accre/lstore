@@ -50,6 +50,30 @@ extern "C" {
 
 #define _mlog_size 1024
 
+typedef struct {
+  apr_thread_mutex_t *lock;
+  FILE *fd;
+  int header_type;
+  int level;
+} info_fd_t;
+
+#define INFO_HEADER_NONE   0
+#define INFO_HEADER_THREAD 1
+#define INFO_HEADER_FULL   2
+
+info_fd_t *info_create(FILE *fd, int header_type, int level);
+void info_destroy(info_fd_t *fd);
+void flush_info(info_fd_t *fd);
+//int info_printf(info_fd_t *fd, int level, const char *fmt, ...);
+int minfo_printf(info_fd_t *ifd, int module_index, int level, const char *fn, const char *fname, int line, const char *fmt, ...);
+void info_flush(info_fd_t *ifd);
+#define info_printf(ifd, n, ...) minfo_printf(ifd, _log_module_index, n, __func__, _mlog_file_table[_log_module_index], __LINE__, __VA_ARGS__)
+#define get_info_header_type(fd) fd->header_type
+#define set_info_header_type(fd, new_type) fd->header_type = new_type
+#define get_info_level(fd) fd->level
+#define set_info_level(fd, new_level) fd->level = new_level
+
+
 extern int _mlog_table[_mlog_size];
 extern char *_mlog_file_table[_mlog_size];
 

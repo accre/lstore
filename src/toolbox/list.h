@@ -47,6 +47,7 @@ typedef skiplist_t list_t;
 typedef skiplist_iter_t list_iter_t;
 
 #define list_strncmp_set(cmp, n) skiplist_strncmp_set(cmp, n)
+#define list_string_descending_compare skiplist_compare_strcmp_descending
 #define list_string_compare skiplist_compare_strcmp
 #define list_compare_ptr skiplist_compare_ptr
 #define list_compare_int skiplist_compare_int
