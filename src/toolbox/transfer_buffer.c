@@ -224,8 +224,6 @@ void tbuffer_fn(tbuffer_t *tb, size_t total_bytes, void *arg, int (*next_block)(
   tb->arg = arg;
   tb->next_block = next_block;
   tb->buf.total_bytes = total_bytes;
-
-  tb->next_block = next_block;
 }
 
 
