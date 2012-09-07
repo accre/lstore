@@ -42,7 +42,7 @@ http://www.accre.vanderbilt.edu
 #include "pigeon_coop.h"
 
 typedef struct {
-  cache_t *(*driver)(void *arg, data_attr_t *da, int timeout, char *fname);
+  cache_t *(*driver)(void *arg, data_attr_t *da, int timeout, char *fname, char *section);
   cache_t *(*create)(void *arg, data_attr_t *da, int timeout);
   void *arg;
 } cache_driver_t;
@@ -57,7 +57,7 @@ cache_table_t *cache_driver_table = NULL;
 // install_cache - Installs a cache driver into the table
 //***********************************************************************
 
-int install_cache(char *type, cache_t *(*driver)(void *arg, data_attr_t *da, int timeout, char *fname), cache_t *(*create)(void *arg, data_attr_t *da, int timeout), void *arg)
+int install_cache(char *type, cache_t *(*driver)(void *arg, data_attr_t *da, int timeout, char *fname, char *section), cache_t *(*create)(void *arg, data_attr_t *da, int timeout), void *arg)
 {
   cache_driver_t *d;
 
@@ -86,7 +86,7 @@ int install_cache(char *type, cache_t *(*driver)(void *arg, data_attr_t *da, int
 // load_cache - Loads the given cache type from the file
 //***********************************************************************
 
-cache_t *load_cache(char *ctype, data_attr_t *da, int timeout, char *fname)
+cache_t *load_cache(char *ctype, data_attr_t *da, int timeout, char *fname, char *section)
 {
   cache_driver_t *d;
 
@@ -96,7 +96,7 @@ cache_t *load_cache(char *ctype, data_attr_t *da, int timeout, char *fname)
     return(NULL);
   }
 
-  return(d->driver(d->arg, da, timeout, fname));
+  return(d->driver(d->arg, da, timeout, fname, section));
 }
 
 //***********************************************************************

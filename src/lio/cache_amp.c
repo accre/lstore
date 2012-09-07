@@ -1499,13 +1499,14 @@ cache_t *amp_cache_create(void *arg, data_attr_t *da, int timeout)
 // amp_cache_load -Creates and configures an amp cache structure
 //*************************************************************************
 
-cache_t *amp_cache_load(void *arg, data_attr_t *da, int timeout, char *fname)
+cache_t *amp_cache_load(void *arg, data_attr_t *da, int timeout, char *fname, char *grp)
 {
   cache_t *c;
   cache_amp_t *cp;
   inip_file_t *fd;
-  char *grp = "cache-amp";
   int dt;
+
+  if (grp == NULL) grp = "cache-amp";
 
   //** Create the default structure
   c = amp_cache_create(arg, da, timeout);

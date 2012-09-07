@@ -42,7 +42,16 @@ extern "C" {
 
 #define OS_TYPE_FILE "file"
 
-object_service_fn_t *object_service_file_create(thread_pool_context_t *tpc, char *fname);
+typedef struct {
+  object_service_fn_t *os;
+  os_object_iter_t  *oit;
+} local_object_iter_t;
+
+int local_next_object(local_object_iter_t *it, char **myfname, int *prefix_len);
+local_object_iter_t *create_local_object_iter(os_regex_table_t *path, os_regex_table_t *object_regex, int object_types, int recurse_depth);
+void destroy_local_object_iter(local_object_iter_t *it);
+
+object_service_fn_t *object_service_file_create(service_manager_t *authn_sm, service_manager_t *osaz_sm, thread_pool_context_t *tpc, thread_pool_context_t *tpc_unlimited, char *fname, char *section);
 
 #ifdef __cplusplus
 }

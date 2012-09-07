@@ -44,6 +44,7 @@ int main(int argc, char **argv)
   rs_query_t *rq;
   ex_off_t block_size, total_size;
   exnode_t *ex;
+  segment_create_t *screate;
   char *fname_out = NULL;
   exnode_exchange_t *exp;
   segment_t *seg = NULL;
@@ -57,7 +58,7 @@ int main(int argc, char **argv)
      return(1);
   }
 
-  lio_init(&argc, argv);
+  lio_init(&argc, &argv);
 
   //*** Parse the args
   i=1;
@@ -85,7 +86,8 @@ int main(int argc, char **argv)
   }
 
   //** Create an empty linear segment
-  seg = create_segment(SEGMENT_TYPE_LINEAR);
+  screate = lookup_service(lio_gc->ess->ssm, SEG_SM_CREATE, SEGMENT_TYPE_LINEAR);
+  seg = (*screate)(lio_gc->ess);
 
   //** Parse the query
   rq = rs_query_parse(lio_gc->rs, query_text);

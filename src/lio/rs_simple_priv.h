@@ -34,6 +34,7 @@ http://www.accre.vanderbilt.edu
 #include "list.h"
 #include "data_service_abstract.h"
 #include "opque.h"
+#include "service_manager.h"
 
 #ifndef _RS_SIMPLE_PRIV_H_
 #define _RS_SIMPLE_PRIV_H_

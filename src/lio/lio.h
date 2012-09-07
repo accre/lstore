@@ -27,45 +27,7 @@ Nashville, TN 37203
 http://www.accre.vanderbilt.edu
 */
 
-#include "exnode.h"
-
-#ifndef _LIO_CONFIG_H_
-#define _LIO_CONFIG_H_
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-typedef struct {
-  ibp_context_t *ic;
-  data_service_fn_t *ds;
-  object_service_fn_t *os;
-  resource_service_fn_t *rs;
-  thread_pool_context_t *tpc_unlimited;
-  thread_pool_context_t *tpc_cpu;
-  cache_t *cache;
-  data_attr_t *da;
-  inip_file_t *ifd;
-  os_creds_t *creds;
-  char *userid;
-  char *cfg_name;
-  int timeout;
-} lio_config_t;
-
-extern lio_config_t *lio_gc;
-
-//** Config routines
-void lio_print_options(FILE *fd);
-int lio_init(int *argc, char **argv);
-int lio_shutdown();
-const char *lio_client_version();
-
-
-#ifdef __cplusplus
-}
-#endif
-
-#endif
+#include "lio_abstract.h"
 
 
 

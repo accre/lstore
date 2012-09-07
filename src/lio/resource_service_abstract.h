@@ -42,6 +42,9 @@ http://www.accre.vanderbilt.edu
 extern "C" {
 #endif
 
+#define RS_SM_AVAILABLE 0
+#define RS_SM_RUNNING   1
+
 #define RS_ERROR_OK                  -100 //** No error everything is good
 #define RS_ERROR_NOT_ENOUGH_RIDS     -101 //** Didn't find enough RIDs for the request
 #define RS_ERROR_FIXED_MATCH_FAIL    -102 //** The fixed RID failed to match the request
@@ -83,6 +86,8 @@ struct resource_service_fn_s {
   void (*destroy_service)(resource_service_fn_t *rs);
 };
 
+typedef resource_service_fn_t *(rs_create_t)(void *arg, char *fname, char *section);
+
 
 #define rs_type(rs)  (rs)->type
 #define rs_get_rid_value(rs, rid_key, key) (rs)->get_rid_value(rs, rid_key, key)
@@ -97,10 +102,10 @@ struct resource_service_fn_s {
 
 void resource_service_destroy(resource_service_fn_t *rsf);
 
-int install_resource_service(char *type, resource_service_fn_t *(*rs_create)(char *fname, data_service_fn_t *ds));
-resource_service_fn_t *load_resource_service(char *type, char *fname, data_service_fn_t *ds);
-resource_service_fn_t *add_resource_service(resource_service_fn_t *rs);
-resource_service_fn_t *lookup_resource_service(char *type);
+//int install_resource_service(char *type, resource_service_fn_t *(*rs_create)(char *fname, data_service_fn_t *ds, char *section));
+//resource_service_fn_t *load_resource_service(char *type, char *fname, data_service_fn_t *ds, char *section);
+//resource_service_fn_t *add_resource_service(resource_service_fn_t *rs);
+//resource_service_fn_t *lookup_resource_service(char *type);
 
 #ifdef __cplusplus
 }

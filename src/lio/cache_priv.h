@@ -179,8 +179,8 @@ extern atomic_int_t _cache_count;
 #define cache_unlock(c) apr_thread_mutex_unlock((c)->lock)
 #define cache_destroy(c) (c)->fn.destroy(c)
 
-int install_cache(char *type, cache_t *(*driver)(void *arg, data_attr_t *da, int timeout, char *fname), cache_t *(*create)(void *arg, data_attr_t *da, int timeout), void *arg);
-cache_t *load_cache(char *ctype, data_attr_t *da, int timeout, char *fname);
+int install_cache(char *type, cache_t *(*driver)(void *arg, data_attr_t *da, int timeout, char *fname, char *section), cache_t *(*create)(void *arg, data_attr_t *da, int timeout), void *arg);
+cache_t *load_cache(char *ctype, data_attr_t *da, int timeout, char *fname, char *section);
 cache_t *create_cache(char *type, data_attr_t *da, int timeout);
 cache_stats_t get_cache_stats(cache_t *c);
 void cache_base_destroy(cache_t *c);

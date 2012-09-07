@@ -64,18 +64,7 @@ int main(int argc, char **argv)
      return(1);
   }
 
-  lio_init(&argc, argv);
-
-//  tpc_unlimited = thread_pool_create_context("UNLIMITED", 0, 2000);
-//  tpc_cpu = thread_pool_create_context("CPU", 0, 0);
-//  rs = NULL;
-//  ic = ibp_create_context();  //** Initialize IBP
-//  ds = ds_ibp_create(ic);
-//  da = ds_attr_create(ds);
-//  cache_system_init();
-//  timeout = 120;
-//  ll = -1;
-
+  lio_init(&argc, &argv);
 
   //*** Parse the args
   i=1;
@@ -95,8 +84,6 @@ int main(int argc, char **argv)
 
   //** Parse the query
   rsq = rs_query_parse(lio_gc->rs, qstr);
-  if (rsq == NULL)
-	exit(EXIT_FAILURE);
 
   //** Generate the data request
   type_malloc_clear(req_list, rs_request_t, n_alloc);
@@ -111,6 +98,7 @@ int main(int argc, char **argv)
 
   gop = rs_data_request(lio_gc->rs, lio_gc->da, rsq, cap_list, req_list, n_alloc, NULL, 0, n_alloc, lio_gc->timeout);
 
+
   //** Wait for it to complete
   gop_waitall(gop);
   status = gop_get_status(gop);
@@ -120,6 +108,18 @@ int main(int argc, char **argv)
      printf("Error with data request! err_code=%d\n", status.error_code);
      abort();
   }
+
+
+  //** Print the caps
+  printf("Query: %s  n_alloc: %d\n", qstr, n_alloc);
+  printf("\n");
+  for (i=0; i<n_alloc; i++) {
+     printf("%d.\tRID key: %s\n", i, req_list[i].rid_key);
+     printf("\tRead  : %s\n", (char *)ds_get_cap(lio_gc->ds, cap_list[i], DS_CAP_READ));
+     printf("\tWrite : %s\n", (char *)ds_get_cap(lio_gc->ds, cap_list[i], DS_CAP_WRITE));
+     printf("\tManage: %s\n", (char *)ds_get_cap(lio_gc->ds, cap_list[i], DS_CAP_MANAGE));
+  }
+  printf("\n");
 
   //** Now destroy the allocation I just created
   q = new_opque();
@@ -145,13 +145,6 @@ int main(int argc, char **argv)
 
   //** Clean up
   rs_query_destroy(lio_gc->rs, rsq);
-
-//----------------------------------------------------------------------
-  //** Temporary codes for testing get rid value
-/*  char *value = rs_get_rid_value(lio_gc->rs, "gamma_2", "rid_key");
-  printf("Value for rid key gamma_2: %s\n", value);
-  free(value);*/ 
-//----------------------------------------------------------------------
 
   lio_shutdown();
 

@@ -2254,10 +2254,11 @@ int cache_stats_print(cache_stats_t *cs, char *buffer, int *used, int nmax)
 // segcache_inspect - Issues integrity checks for the underlying segments
 //***********************************************************************
 
-op_generic_t *segcache_inspect(segment_t *seg, data_attr_t *da, FILE *fd, int mode, ex_off_t bufsize, int timeout)
+op_generic_t *segcache_inspect(segment_t *seg, data_attr_t *da, info_fd_t *fd, int mode, ex_off_t bufsize, int timeout)
 {
   cache_segment_t *s = (cache_segment_t *)seg->priv;
 
+  info_printf(fd, 1, XIDT ": Cache segment maps to child " XIDT "\n", segment_id(seg), segment_id(s->child_seg));
   return(segment_inspect(s->child_seg, da, fd, mode, bufsize, timeout));
 }
 
@@ -2347,6 +2348,19 @@ op_status_t segcache_clone_func(void *arg, int id)
 }
 
 //***********************************************************************
+// segcache_signature - Generates the segment signature
+//***********************************************************************
+
+int segcache_signature(segment_t *seg, char *buffer, int *used, int bufsize)
+{
+  cache_segment_t *s = (cache_segment_t *)seg->priv;
+
+  append_printf(buffer, used, bufsize, "cache()\n");
+
+  return(segment_signature(s->child_seg, buffer, used, bufsize));
+}
+
+//***********************************************************************
 // segcache_clone - Clones a segment
 //***********************************************************************
 
@@ -2355,24 +2369,25 @@ op_generic_t *segcache_clone(segment_t *seg, data_attr_t *da, segment_t **clone_
   segment_t *clone;
   cache_segment_t *ss, *sd;
   cache_clone_t *cop;
-
-  type_malloc(cop, cache_clone_t, 1);
+  int use_existing = (*clone_seg != NULL) ? 1 : 0;
 
   //** Make the base segment
-  *clone_seg = segment_cache_create(exnode_service_set);
+  if (use_existing == 0) *clone_seg = segment_cache_create(seg->ess);
   clone = *clone_seg;
   sd = (cache_segment_t *)clone->priv;
   ss = (cache_segment_t *)seg->priv;
 
   //** Copy the header
-  if (seg->header.name != NULL) clone->header.name = strdup(seg->header.name);
+  if ((seg->header.name != NULL) && (use_existing == 0)) clone->header.name = strdup(seg->header.name);
 
- //** Basic size info
+  //** Basic size info
   sd->total_size = ss->total_size;
   sd->page_size = ss->page_size;
 
+  type_malloc(cop, cache_clone_t, 1);
   cop->sseg = seg;
   cop->dseg = clone;
+  if (use_existing == 1) atomic_dec(sd->child_seg->ref_count);
   cop->gop = segment_clone(ss->child_seg, da, &(sd->child_seg), mode, arg, timeout);
 
   return(new_thread_pool_op(ss->tpc_unlimited, NULL, segcache_clone_func, (void *)cop, free, 1));
@@ -2413,7 +2428,7 @@ op_generic_t *segcache_remove(segment_t *seg, data_attr_t *da, int timeout)
   cache_segment_t *s = (cache_segment_t *)seg->priv;
 
   cache_page_drop(seg, 0, s->total_size + 1);
-  return(segment_truncate(s->child_seg, da, s->total_size, timeout));
+  return(segment_remove(s->child_seg, da, timeout));
 }
 
 //***********************************************************************
@@ -2510,11 +2525,13 @@ int segcache_deserialize_text(segment_t *seg, ex_id_t id, exnode_exchange_t *exp
   snprintf(seggrp, bufsize, "segment-" XIDT, id);
 
   //** Remove my random ID from the segments table
-  cache_lock(s->c);
-log_printf(5, "Removing initial seg=" XIDT "\n", segment_id(seg));
-  list_remove(s->c->segments, &(segment_id(seg)), seg);
-  s->c->fn.removing_segment(s->c, seg);
-  cache_unlock(s->c);
+  if (s->c) {
+     cache_lock(s->c);
+     log_printf(5, "Removing initial seg=" XIDT "\n", segment_id(seg));
+     list_remove(s->c->segments, &(segment_id(seg)), seg);
+     s->c->fn.removing_segment(s->c, seg);
+     cache_unlock(s->c);
+  }
 
   //** Get the segment header info
   seg->header.id = id;
@@ -2532,17 +2549,19 @@ log_printf(5, "Removing initial seg=" XIDT "\n", segment_id(seg));
   id = inip_get_integer(fd, seggrp, "segment", 0);
   if (id == 0) return (-1);
 
-  s->child_seg = load_segment(id, exp);
+  s->child_seg = load_segment(seg->ess, id, exp);
   if (s->child_seg == NULL) return(-2);
 
   atomic_inc(s->child_seg->ref_count);
 
   //** Tweak the page size
   s->page_size = segment_block_size(s->child_seg);
-  if (s->page_size < s->c->default_page_size) {
-     n = s->c->default_page_size / s->page_size;
-     if ((s->c->default_page_size % s->page_size) > 0) n++;
-     s->page_size = n * s->page_size;
+  if (s->c != NULL) {
+     if (s->page_size < s->c->default_page_size) {
+        n = s->c->default_page_size / s->page_size;
+        if ((s->c->default_page_size % s->page_size) > 0) n++;
+        s->page_size = n * s->page_size;
+     }
   }
 
   //** If total_size is -1 then get the size from child
@@ -2555,15 +2574,18 @@ log_printf(5, "Removing initial seg=" XIDT "\n", segment_id(seg));
 log_printf(5, "seg=" XIDT " Initial child_last_page=" XOT " child_size=" XOT " page_size=" XOT "\n", segment_id(seg), s->child_last_page, segment_size(s->child_seg), s->page_size);
 
   //** and reinsert myself with the new ID
-  cache_lock(s->c);
-log_printf(5, "Inserting seg=" XIDT "\n", segment_id(seg));
-  list_insert(s->c->segments, &(segment_id(seg)), seg);
-  s->c->fn.adding_segment(s->c, seg);
-  cache_unlock(s->c);
+  if (s->c != NULL) {
+     cache_lock(s->c);
+     log_printf(5, "Inserting seg=" XIDT "\n", segment_id(seg));
+     list_insert(s->c->segments, &(segment_id(seg)), seg);
+     s->c->fn.adding_segment(s->c, seg);
+     cache_unlock(s->c);
+  }
 
   inip_destroy(fd);
 
-  log_printf(15, "segcache_deserialize_text: seg=" XIDT " page_size=" XOT " default=" XOT "\n", segment_id(seg), s->page_size, s->c->default_page_size);
+  n = (s->c == NULL) ? 0 : s->c->default_page_size;
+  log_printf(15, "segcache_deserialize_text: seg=" XIDT " page_size=" XOT " default=" XOT "\n", segment_id(seg), s->page_size, n);
   return(0);
 }
 
@@ -2604,6 +2626,8 @@ void segcache_destroy(segment_t *seg)
 log_printf(15, "segcache_destroy: seg->id=" XIDT " ref_count=%d\n", segment_id(seg), seg->ref_count);
 flush_log();
 
+log_printf(0, "CACHE-PTR seg=" XIDT " s->c=%p\n", segment_id(seg), s->c);
+
   if (seg->ref_count > 0) return;
 
   //** Flag the segment as being removed
@@ -2611,18 +2635,21 @@ flush_log();
   s->close_requested = 1;
   segment_unlock(seg);
 
-  //** FLush everything to backing store
-  gop = segment_flush(seg, s->c->da, 0, s->total_size+1, s->c->timeout);
-  gop_waitall(gop);
-  gop_free(gop, OP_DESTROY);
+  //** IF s->c == NULL then we are just cloning the structure or serial/deserializing an exnode
+  //** There should be no data loaded
+  if (s->c != NULL) {
+     //** Flush everything to backing store
+     gop = segment_flush(seg, s->c->da, 0, s->total_size+1, s->c->timeout);
+     gop_waitall(gop);
+     gop_free(gop, OP_DESTROY);
 
-  //** Remove it from the cache manager
-  cache_lock(s->c);
-log_printf(5, "Removing seg=" XIDT "\n", segment_id(seg));
-flush_log();
-  list_remove(s->c->segments, &(segment_id(seg)), seg);
-  s->c->fn.removing_segment(s->c, seg);
-  cache_unlock(s->c);
+     //** Remove it from the cache manager
+     cache_lock(s->c);
+     log_printf(5, "Removing seg=" XIDT "\n", segment_id(seg));
+     list_remove(s->c->segments, &(segment_id(seg)), seg);
+     s->c->fn.removing_segment(s->c, seg);
+     cache_unlock(s->c);
+  }
 
   //** Got to check if a dirty thread is trying to do an empty flush
   segment_lock(seg);
@@ -2690,6 +2717,8 @@ segment_t *segment_cache_create(void *arg)
   s->c = es->cache;
   s->page_size = 64*1024;
 
+log_printf(0, "CACHE-PTR seg=" XIDT " s->c=%p\n", segment_id(seg), s->c);
+
   generate_ex_id(&(seg->header.id));
   atomic_set(seg->ref_count, 0);
   seg->header.type = SEGMENT_TYPE_CACHE;
@@ -2697,6 +2726,7 @@ segment_t *segment_cache_create(void *arg)
   snprintf(qname, sizeof(qname), XIDT HP_HOSTPORT_SEPARATOR "1" HP_HOSTPORT_SEPARATOR "0" HP_HOSTPORT_SEPARATOR "0", seg->header.id);
   s->qname = strdup(qname);
 
+  seg->ess = es;
   seg->priv = s;
   seg->fn.read = cache_read;
   seg->fn.write = cache_write;
@@ -2705,17 +2735,20 @@ segment_t *segment_cache_create(void *arg)
   seg->fn.remove = segcache_remove;
   seg->fn.flush = cache_flush_range;
   seg->fn.clone = segcache_clone;
+  seg->fn.signature = segcache_signature;
   seg->fn.size = segcache_size;
   seg->fn.block_size = segcache_block_size;
   seg->fn.serialize = segcache_serialize;
   seg->fn.deserialize = segcache_deserialize;
   seg->fn.destroy = segcache_destroy;
 
-  cache_lock(s->c);
-log_printf(5, "Inserting seg=" XIDT "\n", segment_id(seg));
-  list_insert(s->c->segments, &(segment_id(seg)), seg);
-  s->c->fn.adding_segment(s->c, seg);
-  cache_unlock(s->c);
+  if (s->c != NULL) { //** If no cache backend skip this  only used for temporary deseril/serial
+     cache_lock(s->c);
+     log_printf(5, "Inserting seg=" XIDT "\n", segment_id(seg));
+     list_insert(s->c->segments, &(segment_id(seg)), seg);
+     s->c->fn.adding_segment(s->c, seg);
+     cache_unlock(s->c);
+  }
 
   return(seg);
 }

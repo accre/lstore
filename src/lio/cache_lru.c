@@ -907,13 +907,14 @@ cache_t *lru_cache_create(void *arg, data_attr_t *da, int timeout)
 // lru_cache_load -Creates and configures an LRU cache structure
 //*************************************************************************
 
-cache_t *lru_cache_load(void *arg, data_attr_t *da, int timeout, char *fname)
+cache_t *lru_cache_load(void *arg, data_attr_t *da, int timeout, char *fname, char *grp)
 {
   cache_t *c;
   cache_lru_t *cp;
   inip_file_t *fd;
-  char *grp = "cache-lru";
   int dt;
+
+  if (grp == NULL) grp = "cache-lru";
 
   //** Create the default structure
   c = lru_cache_create(arg, da, timeout);

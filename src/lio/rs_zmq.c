@@ -35,7 +35,9 @@ http://www.accre.vanderbilt.edu
 #define _log_module_index 183 
 
 #include <assert.h>
+#include <sys/uio.h>
 #include <zmq.h>
+#include "ex3_system.h"
 #include "list.h"
 #include "resource_service_abstract.h"
 #include "rs_query_base.h"
@@ -97,6 +99,13 @@ op_status_t rs_zmq_req_func(void *arg, int id)
         printf("\tRead  : %s\n", (char *)ds_get_cap(rep->ds, rep->caps[i], DS_CAP_READ));
         printf("\tWrite : %s\n", (char *)ds_get_cap(rep->ds, rep->caps[i], DS_CAP_WRITE));
         printf("\tManage: %s\n", (char *)ds_get_cap(rep->ds, rep->caps[i], DS_CAP_MANAGE));
+
+        ds_set_cap(rep->ds, req->caps[i], DS_CAP_READ, ds_get_cap(rep->ds, rep->caps[i], DS_CAP_READ));
+        ds_set_cap(rep->ds, req->caps[i], DS_CAP_WRITE, ds_get_cap(rep->ds, rep->caps[i], DS_CAP_WRITE));
+        ds_set_cap(rep->ds, req->caps[i], DS_CAP_MANAGE, ds_get_cap(rep->ds, rep->caps[i], DS_CAP_MANAGE));
+        ds_set_cap(rep->ds, rep->caps[i], DS_CAP_READ, NULL);
+        ds_set_cap(rep->ds, rep->caps[i], DS_CAP_WRITE, NULL);
+        ds_set_cap(rep->ds, rep->caps[i], DS_CAP_MANAGE, NULL);
      }
      printf("\n");
 
@@ -190,12 +199,10 @@ char *rs_zmq_get_rid_value(resource_service_fn_t *arg, char *rid_key, char *key)
 void rs_zmq_destroy(resource_service_fn_t *rs)
 {
     rs_zmq_priv_t *rsz = (rs_zmq_priv_t *)rs->priv;
-    
+
     zmq_close(rsz->zmq_socket);
     zmq_ctx_destroy(rsz->zmq_context);
-    //** Talk to alan about this
-    thread_pool_destroy_context(rsz->tpc);
-   
+
     free(rsz->zmq_svr);
     free(rsz);
     free(rs);
@@ -204,8 +211,11 @@ void rs_zmq_destroy(resource_service_fn_t *rs)
 //********************************************************************
 // rs_zmq_create - Creates a zmq resource management service. 
 //********************************************************************
-resource_service_fn_t *rs_zmq_create(char *fname, data_service_fn_t *ds)
+resource_service_fn_t *rs_zmq_create(void *arg, char *fname, char *section)
 {
+    exnode_abstract_set_t *ess = (exnode_abstract_set_t *)arg;
+
+log_printf(15, "START!!!!!!!!!!!!!!!!!!\n"); flush_log();
     //** Creates zmq context
     void *context = zmq_ctx_new();
     assert(context != NULL);
@@ -219,10 +229,10 @@ resource_service_fn_t *rs_zmq_create(char *fname, data_service_fn_t *ds)
     type_malloc_clear(rsz, rs_zmq_priv_t, 1);
     rsz->zmq_context = context;
     rsz->zmq_socket = socket;
-    rsz->ds = ds;
+    rsz->ds = ess->ds;
 
     //** Don't know which thread pool context I should use. So create a new one for rs zmq. 
-    rsz->tpc = thread_pool_create_context("UNLIMITED", 0, 2000); //** Refers to lio_gc->tpc_unlimited in lio_login.c
+    rsz->tpc = ess->tpc_unlimited; //** Refers to lio_gc->tpc_unlimited in lio_login.c
 
     inip_file_t *kf;
     char *svr_proto, *svr_addr, *svr_port;
@@ -234,9 +244,9 @@ resource_service_fn_t *rs_zmq_create(char *fname, data_service_fn_t *ds)
     }
 
     //** Retrieves remote zmq server name, transport protocol, and lisenting port
-    svr_proto = inip_get_string(kf, "lio_config", "zmq_protocol", RS_ZMQ_DFT_PROTO);
-    svr_addr = inip_get_string(kf, "lio_config", "zmq_server", NULL);
-    svr_port = inip_get_string(kf, "lio_config", "zmq_port", RS_ZMQ_DFT_PORT);
+    svr_proto = inip_get_string(kf, section, "protocol", RS_ZMQ_DFT_PROTO);
+    svr_addr = inip_get_string(kf, section, "server", NULL);
+    svr_port = inip_get_string(kf, section, "port", RS_ZMQ_DFT_PORT);
     asprintf(&rsz->zmq_svr, "%s://%s:%s", string_trim(svr_proto), string_trim(svr_addr), string_trim(svr_port)); 
 
     free(svr_proto);

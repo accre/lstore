@@ -42,6 +42,9 @@ http://www.accre.vanderbilt.edu
 extern "C" {
 #endif
 
+#define DS_SM_AVAILABLE 0
+#define DS_SM_RUNNING   1
+
 #define DS_ATTR_DURATION 1
 
 #define DS_CAP_READ   1
@@ -121,15 +124,13 @@ struct data_service_fn_s {
   op_generic_t *(*read)(data_service_fn_t *, data_attr_t *attr, data_cap_t *rcap, ds_int_t off, tbuffer_t *read, ex_off_t boff, ex_off_t len, int timeout);
   op_generic_t *(*write)(data_service_fn_t *, data_attr_t *attr, data_cap_t *wcap, ds_int_t off, tbuffer_t *write, ex_off_t boff, ex_off_t len, int timeout);
   op_generic_t *(*append)(data_service_fn_t *, data_attr_t *attr, data_cap_t *wcap, tbuffer_t *write, ex_off_t boff, ex_off_t len, int timeout);
-  op_generic_t *(*copy)(data_service_fn_t *, data_attr_t *attr, int mode, int ns_type, char *ppath, data_cap_t *src_cap, ds_int_t src_off,  
+  op_generic_t *(*copy)(data_service_fn_t *, data_attr_t *attr, int mode, int ns_type, char *ppath, data_cap_t *src_cap, ds_int_t src_off,
                data_cap_t *dest_cap, ds_int_t dest_off, ds_int_t len, int timeout);
 };
 
 
-data_service_fn_t *load_data_service(char *type, char *fname);
-int install_data_service(char *type, data_service_fn_t *(*ds_create)(char *fname));
-int add_data_service(data_service_fn_t *ds);
-data_service_fn_t *lookup_data_service(char *type);
+
+//typedef data_service_fn_t *(ds_create_t)(exnode_abstract_set_t *ess, char *fname, char *section);
 
 
 #ifdef __cplusplus

@@ -25,7 +25,7 @@ Advanced Computing Center for Research and Education
 230 Appleton Place
 Nashville, TN 37203
 http://www.accre.vanderbilt.edu
-*/ 
+*/
 
 //***********************************************************************
 // ZMQ resource managment implementation
@@ -33,12 +33,14 @@ http://www.accre.vanderbilt.edu
 
 #ifndef _RS_ZMQ_BASE_H_
 #define _RS_ZMQ_BASE_H_
+
 //#define DEBUG
-#ifdef __cplusplus 
+#ifdef __cplusplus
 extern "C" {
 #endif
 
 #include <assert.h>
+#include <sys/uio.h>  //** ZMQ uses struct iovec but fogets to include the header
 #include <zmq.h>
 #include "resource_service_abstract.h"
 #include "rs_query_base.h"

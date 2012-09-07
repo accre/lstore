@@ -35,6 +35,7 @@ http://www.accre.vanderbilt.edu
 #include "ex3_header.h"
 #include "ex3_types.h"
 #include "data_service_abstract.h"
+#include "service_manager.h"
 #include "data_block.h"
 #include "resource_service_abstract.h"
 #include "object_service_abstract.h"
@@ -43,6 +44,7 @@ http://www.accre.vanderbilt.edu
 #include "exnode3.pb-c.h"
 #include "thread_pool.h"
 #include "transfer_buffer.h"
+#include "log.h"
 
 #ifndef _EX3_ABSTRACT_H_
 #define _EX3_ABSTRACT_H_
@@ -73,6 +75,9 @@ extern "C" {
 #define CLONE_STRUCTURE       0
 #define CLONE_STRUCT_AND_DATA 1
 
+#define SEG_SM_LOAD   0
+#define SEG_SM_CREATE 1
+
 typedef void segment_priv_t;
 
 struct segment_s;
@@ -81,11 +86,12 @@ typedef struct segment_s segment_t;
 typedef struct {
   op_generic_t *(*read)(segment_t *seg, data_attr_t *da, int n_iov, ex_iovec_t *iov, tbuffer_t *buffer, ex_off_t boff, int timeout);
   op_generic_t *(*write)(segment_t *seg, data_attr_t *da, int n_iov, ex_iovec_t *iov, tbuffer_t *buffer, ex_off_t boff, int timeout);
-  op_generic_t *(*inspect)(segment_t *seg, data_attr_t *da, FILE *fd, int mode, ex_off_t buffer_size, int timeout);
+  op_generic_t *(*inspect)(segment_t *seg, data_attr_t *da, info_fd_t *fd, int mode, ex_off_t buffer_size, int timeout);
   op_generic_t *(*truncate)(segment_t *seg, data_attr_t *da, ex_off_t new_size, int timeout);
   op_generic_t *(*remove)(segment_t *seg, data_attr_t *da, int timeout);
   op_generic_t *(*flush)(segment_t *seg, data_attr_t *da, ex_off_t lo, ex_off_t hi, int timeout);
   op_generic_t *(*clone)(segment_t *seg, data_attr_t *da, segment_t **clone, int mode, void *attr, int timeout);
+  int (*signature)(segment_t *seg, char *buffer, int *used, int bufsize);
   ex_off_t (*block_size)(segment_t *seg);
   ex_off_t (*size)(segment_t *seg);
   int (*serialize)(segment_t *seg, exnode_exchange_t *exp);
@@ -93,7 +99,7 @@ typedef struct {
   void (*destroy)(segment_t *seg);
 } segment_fn_t;
 
-#define inspect_printf(fd, ...) if ((fd) != NULL) fprintf(fd, __VA_ARGS__)
+//#define inspect_printf(fd, ...) if ((fd) != NULL) fprintf(fd, __VA_ARGS__)
 
 #define segment_id(s) (s)->header.id
 #define segment_type(s) (s)->header.type
@@ -106,25 +112,12 @@ typedef struct {
 #define segment_flush(s, da, lo, hi, to) (s)->fn.flush(s, da, lo, hi, to)
 #define segment_clone(s, da, clone_ex, mode, attr, to) (s)->fn.clone(s, da, clone_ex, mode, attr, to)
 #define segment_size(s) (s)->fn.size(s)
+#define segment_signature(s, buffer, used, bufsize) (s)->fn.signature(s, buffer, used, bufsize)
 #define segment_block_size(s) (s)->fn.block_size(s)
 #define segment_serialize(s, exp) (s)->fn.serialize(s, exp)
 #define segment_deserialize(s, id, exp) (s)->fn.deserialize(s, id, exp)
 #define segment_lock(s) apr_thread_mutex_lock((s)->lock)
 #define segment_unlock(s) apr_thread_mutex_unlock((s)->lock)
-
-struct segment_s {
-  ex_header_t header;
-  atomic_int_t ref_count;
-  segment_priv_t *priv;
-  resource_service_fn_t *rs;
-  data_service_fn_t *ds;
-  segment_fn_t fn;
-  apr_thread_mutex_t *lock;
-  apr_thread_cond_t *cond;
-  apr_pool_t *mpool;
-
-};
-
 
 typedef struct {
   ex_header_t header;
@@ -133,18 +126,33 @@ typedef struct {
   list_t *view;
 } exnode_t;
 
-//extern data_service_fn_t *_ds_default;
-//extern resource_service_fn_t *_rs_default;
-//extern object_service_fn_t *_os_default;
+typedef struct exnode_abstract_set_s exnode_abstract_set_t;
+
+struct segment_s {
+  ex_header_t header;
+  atomic_int_t ref_count;
+  segment_priv_t *priv;
+  exnode_abstract_set_t *ess;
+  segment_fn_t fn;
+  apr_thread_mutex_t *lock;
+  apr_thread_cond_t *cond;
+  apr_pool_t *mpool;
+};
+
+
+typedef data_service_fn_t *(ds_create_t)(exnode_abstract_set_t *ess, char *fname, char *section);
+typedef segment_t *(segment_load_t)(void *arg, ex_id_t id, exnode_exchange_t *ex);
+typedef segment_t *(segment_create_t)(void *arg);
 
 
 //** Exnode related functions
 exnode_t *exnode_create();
-op_generic_t *exnode_clone(exnode_t *ex, data_attr_t *da, exnode_t **clone_ex, void *arg, int mode, int timeout);
+op_generic_t *exnode_remove(thread_pool_context_t *tpc, exnode_t *ex, data_attr_t *da, int timeout);
+op_generic_t *exnode_clone(thread_pool_context_t *tpc, exnode_t *ex, data_attr_t *da, exnode_t **clone_ex, void *arg, int mode, int timeout);
 void exnode_destroy(exnode_t *ex);
 void exnode_exchange_append_text(exnode_exchange_t *exp, char *buffer);
 int exnode_serialize(exnode_t *ex, exnode_exchange_t *exp);
-int exnode_deserialize(exnode_t *ex, exnode_exchange_t *exp);
+int exnode_deserialize(exnode_t *ex, exnode_exchange_t *exp, exnode_abstract_set_t *ess);
 ex_header_t *exnode_get_header(exnode_t *ex);
 Exnode3__Exnode *exnode_native2pb(exnode_t *exnode);
 void exnode_exchange_init(exnode_exchange_t *exp, int type);
@@ -169,10 +177,10 @@ segment_t *view_search_by_id(exnode_t *ex, ex_id_t id);
 //** Segment related functions
 #define segment_get_header(seg) &((seg)->header)
 #define segment_set_header(seg, new_head) (seg)->header = *(new_head)
-op_generic_t *segment_copy(data_attr_t *da, segment_t *src_seg, segment_t *dest_seg, ex_off_t src_offset, ex_off_t dest_offset, ex_off_t len, ex_off_t bufsize, char *buffer, int timoeut);
-int install_segment(char *type, segment_t *(*driver)(void *arg, ex_id_t id, exnode_exchange_t *ex), segment_t *(*create)(void *arg), void *arg);
-segment_t *load_segment(ex_id_t id, exnode_exchange_t *ex);
-segment_t *create_segment(char *type);
+op_generic_t *segment_copy(thread_pool_context_t *tpc, data_attr_t *da, segment_t *src_seg, segment_t *dest_seg, ex_off_t src_offset, ex_off_t dest_offset, ex_off_t len, ex_off_t bufsize, char *buffer, int do_truncate, int timoeut);
+op_generic_t *segment_put(thread_pool_context_t *tpc, data_attr_t *da, FILE *fd, segment_t *dest_seg, ex_off_t dest_offset, ex_off_t len, ex_off_t bufsize, char *buffer, int do_truncate, int timeout);
+op_generic_t *segment_get(thread_pool_context_t *tpc, data_attr_t *da, segment_t *src_seg, FILE *fd, ex_off_t src_offset, ex_off_t len, ex_off_t bufsize, char *buffer, int timeout);
+segment_t *load_segment(exnode_abstract_set_t *ess, ex_id_t id, exnode_exchange_t *ex);
 
 void generate_ex_id(ex_id_t *id);
 

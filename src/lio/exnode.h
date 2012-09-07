@@ -44,5 +44,8 @@ http://www.accre.vanderbilt.edu
 
 #include "ds_ibp.h"
 #include "rs_simple.h"
+#include "rs_zmq.h"
 #include "os_file.h"
+#include "osaz_fake.h"
+#include "authn_fake.h"
 

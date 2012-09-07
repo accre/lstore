@@ -97,7 +97,7 @@ typedef struct {
 typedef struct {
   segment_t *seg;
   data_attr_t *da;
-  FILE *fd;
+  info_fd_t *fd;
   ex_off_t bufsize;
   int max_replaced;
   int inspect_mode;
@@ -178,7 +178,7 @@ log_printf(0, "lo=" XOT " hi= " XOT " nbytes=" XOT " total_stripes=%d data_size=
      ex_read.len = nstripes * s->stripe_size_with_magic;
 
 log_printf(0, "stripe=%d nstripes=%d total_stripes=%d\n", stripe, nstripes, total_stripes);
-     if (sf->do_print == 1) inspect_printf(si->fd, XIDT ": checking stripes: (%d, %d)\n", segment_id(si->seg), stripe, stripe+nstripes-1);
+     if (sf->do_print == 1) info_printf(si->fd, 1, XIDT ": checking stripes: (%d, %d)\n", segment_id(si->seg), stripe, stripe+nstripes-1);
 
      //** Read the data in
      tbuffer_single(&tbuf_read, ex_read.len, buffer);
@@ -299,12 +299,12 @@ log_printf(0, "memcmp=%d\n", memcmp(iov[n_iov].iov_base, &(buffer[boff + index*s
 log_printf(0, "gop_error=%d nbytes=" XOT " n_iov=%d\n", err, nbytes, n_iov);
         if (err != OP_STATE_SUCCESS) {
 
-//           inspect_printf(si->fd, XIDT ": checking stripes: (%d, %d)\n", segment_id(si->seg), start_stripe, start_stripe+curr_stripe-1);
+//           info_printf(si->fd, 1, XIDT ": checking stripes: (%d, %d)\n", segment_id(si->seg), start_stripe, start_stripe+curr_stripe-1);
            repair_errors++;
         }
      }
 
-     if (sf->do_print == 1) inspect_printf(si->fd, XIDT ": bad stripe count: %d  --- Repair errors: %d\n", segment_id(si->seg), bad_count, repair_errors);
+     if (sf->do_print == 1) info_printf(si->fd, 1, XIDT ": bad stripe count: %d  --- Repair errors: %d\n", segment_id(si->seg), bad_count, repair_errors);
 
 
   }
@@ -389,7 +389,7 @@ log_printf(0, "fsize=" XOT " data_size=%d total_stripes=%d\n", fsize, s->data_si
 
   for (stripe=0; stripe <= total_stripes; stripe++) {
     if ((curr_stripe > maxstripes) || (stripe == total_stripes)) {
-       inspect_printf(si->fd, XIDT ": checking stripes: (%d, %d)\n", segment_id(si->seg), start_stripe, start_stripe+curr_stripe-1);
+       info_printf(si->fd, 1, XIDT ": checking stripes: (%d, %d)\n", segment_id(si->seg), start_stripe, start_stripe+curr_stripe-1);
 
 log_printf(0, "i=%d n_iov=%d size=%d\n", i, n_iov, n_iov*JE_MAGIC_SIZE);
        tbuffer_vec(&tbuf, n_iov*JE_MAGIC_SIZE, n_iov, iov);
@@ -452,7 +452,7 @@ log_printf(0, " i=%d bad=%d start_bad=%d\n", i, bad_count, start_bad);
        start_stripe = stripe;
        n_iov = 0;
 
-       inspect_printf(si->fd, XIDT ": bad stripe count: %d\n", segment_id(si->seg), bad_count);
+       info_printf(si->fd, 1, XIDT ": bad stripe count: %d\n", segment_id(si->seg), bad_count);
     }
 
     if (stripe < total_stripes) {
@@ -499,11 +499,12 @@ op_status_t segjerase_inspect_func(void *arg, int id)
 
   status = op_success_status;
 
-  inspect_printf(si->fd, XIDT ": segment information: method=%s data_devs=%d parity_devs=%d chunk_size=%d  used_size=" XOT " mode=%d\n", 
+  info_printf(si->fd, 1, XIDT ": jerase segment maps to child " XIDT "\n", segment_id(si->seg), segment_id(s->child_seg));
+  info_printf(si->fd, 1, XIDT ": segment information: method=%s data_devs=%d parity_devs=%d chunk_size=%d  used_size=" XOT " mode=%d\n", 
        segment_id(si->seg), JE_method[s->method], s->n_data_devs, s->n_parity_devs, s->chunk_size, segment_size(s->child_seg),  si->inspect_mode);
 
   //** Issue the inspect for the underlying LUN
-  inspect_printf(si->fd, XIDT ": Inspecting child segment...\n", segment_id(si->seg));
+  info_printf(si->fd, 1, XIDT ": Inspecting child segment...\n", segment_id(si->seg));
   gop = segment_inspect(s->child_seg, si->da, si->fd, si->inspect_mode, si->bufsize, si->timeout);
   gop_waitall(gop);
   status = gop_get_status(gop);
@@ -518,12 +519,12 @@ op_status_t segjerase_inspect_func(void *arg, int id)
   switch (option) {
     case (INSPECT_SCAN_CHECK):
     case (INSPECT_SCAN_REPAIR):
-        inspect_printf(si->fd, XIDT ": Total number of stripes:%d\n", segment_id(si->seg), total_stripes);
+        info_printf(si->fd, 1, XIDT ": Total number of stripes:%d\n", segment_id(si->seg), total_stripes);
         status = segjerase_inspect_scan(si);
         break;
     case (INSPECT_FULL_CHECK):
     case (INSPECT_FULL_REPAIR):
-        inspect_printf(si->fd, XIDT ": Total number of stripes:%d\n", segment_id(si->seg), total_stripes);
+        info_printf(si->fd, 1, XIDT ": Total number of stripes:%d\n", segment_id(si->seg), total_stripes);
         gop =  segjerase_inspect_full(si, 1, 0, segment_size(si->seg));
         gop_waitall(gop);
         status = gop_get_status(gop);
@@ -538,9 +539,9 @@ op_status_t segjerase_inspect_func(void *arg, int id)
   }
 
   if (status.op_status == OP_STATE_SUCCESS) {
-     inspect_printf(si->fd, XIDT ": status: SUCCESS (%d devices, %d stripes)\n", segment_id(si->seg), si->max_replaced, status.error_code);
+     info_printf(si->fd, 1, XIDT ": status: SUCCESS (%d devices, %d stripes)\n", segment_id(si->seg), si->max_replaced, status.error_code);
   } else {
-     inspect_printf(si->fd, XIDT ": status: FAILURE (%d devices, %d stripes)\n", segment_id(si->seg), si->max_replaced, status.error_code);
+     info_printf(si->fd, 1, XIDT ": status: FAILURE (%d devices, %d stripes)\n", segment_id(si->seg), si->max_replaced, status.error_code);
   }
 
   status.error_code = si->max_replaced;
@@ -552,7 +553,7 @@ op_status_t segjerase_inspect_func(void *arg, int id)
 //  segjerase_inspect_func - Does the actual segment inspection operations
 //***********************************************************************
 
-op_generic_t *segjerase_inspect(segment_t *seg, data_attr_t *da, FILE *fd, int mode, ex_off_t bufsize, int timeout)
+op_generic_t *segjerase_inspect(segment_t *seg, data_attr_t *da, info_fd_t *fd, int mode, ex_off_t bufsize, int timeout)
 {
   segjerase_priv_t *s = (segjerase_priv_t *)seg->priv;
   op_generic_t *gop;
@@ -578,7 +579,9 @@ op_generic_t *segjerase_inspect(segment_t *seg, data_attr_t *da, FILE *fd, int m
         si->bufsize = bufsize;
         si->timeout = timeout;
         gop = new_thread_pool_op(s->tpc, NULL, segjerase_inspect_func, (void *)si, free, 1);
+        break;
     case (INSPECT_MIGRATE):
+        info_printf(fd, 1, XIDT ": jerase segment maps to child " XIDT "\n", segment_id(seg), segment_id(s->child_seg));
         gop = segment_inspect(s->child_seg, da, fd, mode, bufsize, timeout);
         break;
     case (INSPECT_SOFT_ERRORS):
@@ -621,36 +624,46 @@ op_status_t segjerase_clone_func(void *arg, int id)
 
 op_generic_t *segjerase_clone(segment_t *seg, data_attr_t *da, segment_t **clone_seg, int mode, void *attr, int timeout)
 {
-  segment_t *clone;
+  segment_t *clone, *child;
+  erasure_plan_t *cplan;
   segjerase_priv_t *ss = (segjerase_priv_t *)seg->priv;
   segjerase_priv_t *sd;
   segjerase_clone_t *cop;
   ex_off_t nbytes;
+  int use_existing = (*clone_seg != NULL) ? 1 : 0;
 
   type_malloc(cop, segjerase_clone_t, 1);
 
     //** Make the base segment
-  *clone_seg = segment_jerasure_create(exnode_service_set);
+   if (use_existing == 0) *clone_seg = segment_jerasure_create(seg->ess);
   clone = *clone_seg;
   sd = (segjerase_priv_t *)clone->priv;
 
   //** Do a base copy
+  if (use_existing == 1) { cplan = sd->plan; child = sd->child_seg; }
   *sd = *ss;
 
-  sd->child_seg = NULL;  //** This gets set in the child clone
+int cref = atomic_get(sd->child_seg->ref_count);
+log_printf(15, "use_existing=%d sseg=" XIDT " dseg=" XIDT " cref=%d\n", use_existing, segment_id(seg), segment_id(clone), cref);
+  if (use_existing == 1) {
+     sd->child_seg = child;
+     sd->plan = cplan;
+     atomic_dec(child->ref_count);
+  } else {   //** Need to contstruct a plan
+     sd->child_seg = NULL;
 
-  //** Make the ET plan
-  nbytes = sd->n_data_devs * sd->chunk_size;
-  sd->plan = et_generate_plan(nbytes, sd->method, sd->n_data_devs, sd->n_parity_devs, sd->w, -1, -1);
-  if (sd->plan == NULL) {
-     log_printf(0, "seg=" XIDT " No plan generated!\n", segment_id(seg));
+     //** Make the ET plan
+     nbytes = sd->n_data_devs * sd->chunk_size;
+     sd->plan = et_generate_plan(nbytes, sd->method, sd->n_data_devs, sd->n_parity_devs, sd->w, -1, -1);
+     if (sd->plan == NULL) {
+        log_printf(0, "seg=" XIDT " No plan generated!\n", segment_id(seg));
+     }
+     sd->plan->form_encoding_matrix(sd->plan);
+     sd->plan->form_decoding_matrix(sd->plan);
+
+     //** Copy the header
+     if (seg->header.name != NULL) clone->header.name = strdup(seg->header.name);
   }
-  sd->plan->form_encoding_matrix(sd->plan);
-  sd->plan->form_decoding_matrix(sd->plan);
-  
-
-  //** Copy the header
-  if (seg->header.name != NULL) clone->header.name = strdup(seg->header.name);
 
   cop->sseg = seg;
   cop->dseg = clone;
@@ -1260,6 +1273,26 @@ ex_off_t segjerase_size(segment_t *seg)
 }
 
 //***********************************************************************
+// segjerase_signature - Generates the segment signature
+//***********************************************************************
+
+int segjerase_signature(segment_t *seg, char *buffer, int *used, int bufsize)
+{
+  segjerase_priv_t *s = (segjerase_priv_t *)seg->priv;
+
+  append_printf(buffer, used, bufsize, "jerase(\n");
+  append_printf(buffer, used, bufsize, "    method=%s\n", JE_method[s->method]);
+  append_printf(buffer, used, bufsize, "    n_data_devs=%d\n", s->n_data_devs);
+  append_printf(buffer, used, bufsize, "    n_parity_devs=%d\n", s->n_parity_devs);
+  append_printf(buffer, used, bufsize, "    chunk_size=%d\n", s->chunk_size);
+  append_printf(buffer, used, bufsize, "    w=%d\n", s->w);
+  append_printf(buffer, used, bufsize, ")\n");
+
+  return(segment_signature(s->child_seg, buffer, used, bufsize));
+}
+
+
+//***********************************************************************
 // segjerase_serialize_text -Convert the segment to a text based format
 //***********************************************************************
 
@@ -1335,7 +1368,6 @@ int segjerase_serialize(segment_t *seg, exnode_exchange_t *exp)
   return(-1);
 }
 
-
 //***********************************************************************
 // segjerase_deserialize_text -Read the text based segment
 //***********************************************************************
@@ -1365,7 +1397,7 @@ int segjerase_deserialize_text(segment_t *seg, ex_id_t id, exnode_exchange_t *ex
   id = inip_get_integer(fd, seggrp, "segment", 0);
   if (id == 0) { inip_destroy(fd); return (-1); }
 
-  s->child_seg = load_segment(id, exp);
+  s->child_seg = load_segment(seg->ess, id, exp);
   if (s->child_seg == NULL) { inip_destroy(fd); return(-2); }
 
   atomic_inc(s->child_seg->ref_count);
@@ -1502,8 +1534,7 @@ segment_t *segment_jerasure_create(void *arg)
   apr_thread_mutex_create(&(seg->lock), APR_THREAD_MUTEX_DEFAULT, seg->mpool);
   apr_thread_cond_create(&(seg->cond), seg->mpool);
 
-  seg->rs = es->rs;
-  seg->ds = es->ds;
+  seg->ess = es;
   s->tpc = es->tpc_unlimited;
   s->child_seg = NULL;
 
@@ -1514,6 +1545,7 @@ segment_t *segment_jerasure_create(void *arg)
   seg->fn.remove = segjerase_remove;
   seg->fn.flush = segjerase_flush;
   seg->fn.clone = segjerase_clone;
+  seg->fn.signature = segjerase_signature;
   seg->fn.size = segjerase_size;
   seg->fn.block_size = segjerase_block_size;
   seg->fn.serialize = segjerase_serialize;

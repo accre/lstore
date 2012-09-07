@@ -83,6 +83,7 @@ typedef struct {
   data_attr_t *da;
   int mode;
   int timeout;
+  int trunc;
 } seglin_clone_t;
 
 typedef struct {
@@ -156,7 +157,7 @@ log_printf(15, "_sl_grow: sid=" XIDT " gid=%d growing existing block seg_off=" X
   n_blocks = 0;
   for (off=lo; off<new_size; off = off + s->max_block_size) {
      type_malloc_clear(b, seglin_slot_t, 1);
-     b->data = data_block_create(seg->ds);
+     b->data = data_block_create(seg->ess->ds);
      b->cap_offset = 0;
      b->seg_offset = off;
      b->len = s->max_block_size;
@@ -179,7 +180,7 @@ log_printf(15, "_sl_grow: sid=" XIDT " n_blocks=%d max_block_size=" XOT "\n", se
   //** Generate the query
   if (n_blocks > 0) {
      i = (s->n_rid_default > n_blocks) ? n_blocks : s->n_rid_default;
-     gop2 = rs_data_request(seg->rs, da, s->rsq, cap_list, req_list, n_blocks, NULL, 0, i, timeout);
+     gop2 = rs_data_request(seg->ess->rs, da, s->rsq, cap_list, req_list, n_blocks, NULL, 0, i, timeout);
   }
 
 log_printf(15, "_sl_grow: sid=" XIDT " before exec gop2=%p\n", segment_id(seg), gop2);
@@ -684,7 +685,7 @@ void _seglin_probe_cb(void *arg, int state)
           log_printf(10, "_seglin_probe_cb: allocation too small! i=%d\n", i);
           opque_set_status(sp->q, op_failure_status);
        }
-    }  
+    }
   } else {
     opque_set_status(sp->q, op_failure_status);
   }
@@ -735,7 +736,7 @@ op_generic_t *seglin_remove(segment_t *seg, data_attr_t *da, int timeout)
 // seglin_inspect_func - Checks that all the segments are available and they are the right size
 //***********************************************************************
 
-op_generic_t *seglin_inspect_op(segment_t *seg, data_attr_t *da, FILE *fd, int mode, ex_off_t buffer_size, int timeout)
+op_generic_t *seglin_inspect_op(segment_t *seg, data_attr_t *da, info_fd_t *fd, int mode, ex_off_t buffer_size, int timeout)
 {
   seglin_priv_t *s = (seglin_priv_t *)seg->priv;
   op_generic_t *gop;
@@ -779,7 +780,7 @@ op_generic_t *seglin_inspect_op(segment_t *seg, data_attr_t *da, FILE *fd, int m
 //  seglin_truncate_func - Does the actual segment truncat operations
 //***********************************************************************
 
-op_generic_t *seglin_inspect(segment_t *seg, data_attr_t *da, FILE *fd, int mode, ex_off_t bufsize, int timeout)
+op_generic_t *seglin_inspect(segment_t *seg, data_attr_t *da, info_fd_t *fd, int mode, ex_off_t bufsize, int timeout)
 {
   seglin_priv_t *s = (seglin_priv_t *)seg->priv;
   op_generic_t *gop;
@@ -837,6 +838,11 @@ op_status_t seglin_clone_func(void *arg, int id)
   op_generic_t *gop = NULL;
   op_status_t status;
 
+  //** SEe if we are using an old seg.  If so we need to trunc it first
+  if (slc->trunc == 1) {
+     gop_sync_exec(segment_truncate(slc->dseg, slc->da, 0, slc->timeout));
+  }
+
   //** Determine the number of intervals
   n_blocks = interval_skiplist_count(ss->isl);
 
@@ -850,7 +856,7 @@ op_status_t seglin_clone_func(void *arg, int id)
   i = 0;
   while ((bs = (seglin_slot_t *)next_interval_skiplist(&it)) != NULL) {
      type_malloc_clear(bd, seglin_slot_t, 1);
-     bd->data = data_block_create(slc->dseg->ds);
+     bd->data = data_block_create(slc->dseg->ess->ds);
      bd->cap_offset = 0;
      bd->seg_offset = bs->seg_offset;
      bd->len = bs->len;
@@ -869,7 +875,7 @@ op_status_t seglin_clone_func(void *arg, int id)
   //** Generate the query
   if (n_blocks > 0) {
      i = (sd->n_rid_default > n_blocks) ? n_blocks : sd->n_rid_default;
-     gop = rs_data_request(slc->dseg->rs, slc->da, sd->rsq, cap_list, req_list, n_blocks, NULL, 0, i, slc->timeout);
+     gop = rs_data_request(slc->dseg->ess->rs, slc->da, sd->rsq, cap_list, req_list, n_blocks, NULL, 0, i, slc->timeout);
   }
 
   //** Wait for block creation to complete
@@ -930,22 +936,25 @@ op_generic_t *seglin_clone(segment_t *seg, data_attr_t *da, segment_t **clone_se
   seglin_priv_t *sd;
   op_generic_t *gop;
   seglin_clone_t *slc;
+  int use_existing = (*clone_seg != NULL) ? 1 : 0;
 
     //** Make the base segment
-  *clone_seg = segment_linear_create(exnode_service_set);
+  if (use_existing == 0) *clone_seg = segment_linear_create(seg->ess);
   clone = *clone_seg;
   sd = (seglin_priv_t *)clone->priv;
 
   //** Copy the header
-  if (seg->header.name != NULL) clone->header.name = strdup(seg->header.name);
+  if ((seg->header.name != NULL) && (use_existing == 0)) clone->header.name = strdup(seg->header.name);
 
   //** Copy the default rs queury
-  if (attr == NULL) {
-     sd->rsq = rs_query_dup(seg->rs, ss->rsq);
-  } else {
-     sd->rsq = rs_query_parse(seg->rs, (char *)attr);
+  if (use_existing == 0) {
+     if (attr == NULL) {
+        sd->rsq = rs_query_dup(seg->ess->rs, ss->rsq);
+     } else {
+        sd->rsq = rs_query_parse(seg->ess->rs, (char *)attr);
+     }
+     sd->n_rid_default = ss->n_rid_default;
   }
-  sd->n_rid_default = ss->n_rid_default;
 
   //** Basic size info
   sd->max_block_size = ss->max_block_size;
@@ -953,7 +962,11 @@ op_generic_t *seglin_clone(segment_t *seg, data_attr_t *da, segment_t **clone_se
 
   //** Now copy the data if needed
    if (mode == CLONE_STRUCTURE) {
-    gop = gop_dummy(op_success_status);
+      if (use_existing == 1) {
+         gop = segment_truncate(clone, da, 0, timeout);
+      } else {
+         gop = gop_dummy(op_success_status);
+      }
   } else {
     type_malloc(slc, seglin_clone_t, 1);
     slc->sseg = seg;
@@ -961,6 +974,7 @@ op_generic_t *seglin_clone(segment_t *seg, data_attr_t *da, segment_t **clone_se
     slc->da = da;
     slc->mode = mode;
     slc->timeout = timeout;
+    slc->trunc = use_existing;
     gop = new_thread_pool_op(sd->tpc, NULL, seglin_clone_func, (void *)slc, free, 1);
   }
 
@@ -980,7 +994,7 @@ ex_off_t seglin_size(segment_t *seg)
   size = s->used_size;
   segment_unlock(seg);
 
-  return(size);  
+  return(size);
 }
 
 //***********************************************************************
@@ -991,7 +1005,7 @@ ex_off_t seglin_block_size(segment_t *seg)
 {
 //  seglin_priv_t *s = (seglin_priv_t *)seg->priv;
 
-  return(1);  
+  return(1);
 }
 
 //***********************************************************************
@@ -1023,10 +1037,10 @@ int seglin_serialize_text(segment_t *seg, exnode_exchange_t *exp)
   }
   append_printf(segbuf, &sused, bufsize, "type=%s\n", SEGMENT_TYPE_LINEAR);
   append_printf(segbuf, &sused, bufsize, "ref_count=%d\n", seg->ref_count);
-  
+
   //** default resource query
   if (s->rsq != NULL) {
-     ext = rs_query_print(seg->rs, s->rsq);
+     ext = rs_query_print(seg->ess->rs, s->rsq);
      etext = escape_text("=", '\\', ext);
      append_printf(segbuf, &sused, bufsize, "query_default=%s\n", etext);  free(etext); free(ext);
   }
@@ -1037,18 +1051,18 @@ int seglin_serialize_text(segment_t *seg, exnode_exchange_t *exp)
   append_printf(segbuf, &sused, bufsize, "excess_block_size=" XOT "\n", s->excess_block_size);
   append_printf(segbuf, &sused, bufsize, "max_size=" XOT "\n", s->total_size);
   append_printf(segbuf, &sused, bufsize, "used_size=" XOT "\n", s->used_size);
-  
+
   //** Cycle through the blocks storing both the segment block information and also the cap blocks
   it = iter_search_interval_skiplist(s->isl, (skiplist_key_t *)NULL, (skiplist_key_t *)NULL);
   while ((b = (seglin_slot_t *)next_interval_skiplist(&it)) != NULL) {
      //** Add the cap
      data_block_serialize(b->data, &cap_exp);
-     
+
      //** Add the segment block
-     append_printf(segbuf, &sused, bufsize, "block=" XIDT ":" XOT ":" XOT ":" XOT ":" XOT "\n", 
-          b->data->id, b->seg_offset, b->cap_offset, b->seg_end, b->len);     
+     append_printf(segbuf, &sused, bufsize, "block=" XIDT ":" XOT ":" XOT ":" XOT ":" XOT "\n",
+          b->data->id, b->seg_offset, b->cap_offset, b->seg_end, b->len);
   }
-  
+
 
   //** Merge everything together and return it
   if (cap_exp.text != NULL) {
@@ -1056,8 +1070,8 @@ int seglin_serialize_text(segment_t *seg, exnode_exchange_t *exp)
     free(cap_exp.text);
   }
   exnode_exchange_append_text(exp, segbuf);
-  
-  return(0);  
+
+  return(0);
 }
 
 //***********************************************************************
@@ -1084,6 +1098,19 @@ int seglin_serialize(segment_t *seg, exnode_exchange_t *exp)
   }
  
   return(-1);
+}
+
+//***********************************************************************
+// seglin_signature - Generates the segment signature
+//***********************************************************************
+
+int seglin_signature(segment_t *seg, char *buffer, int *used, int bufsize)
+{
+  seglin_priv_t *s = (seglin_priv_t *)seg->priv;
+
+  append_printf(buffer, used, bufsize, "linear(n_rid_default=%d)\n", s->n_rid_default);
+
+  return(0);
 }
 
 //***********************************************************************
@@ -1116,7 +1143,7 @@ int seglin_deserialize_text(segment_t *seg, ex_id_t id, exnode_exchange_t *exp)
   //** default resource query
   etext = inip_get_string(fd, seggrp, "query_default", "");
   text = unescape_text('\\', etext);
-  s->rsq = rs_query_parse(seg->rs, text);
+  s->rsq = rs_query_parse(seg->ess->rs, text);
   free(text); free(etext);
   s->n_rid_default = inip_get_integer(fd, seggrp, "n_rid_default", 2);
 
@@ -1145,7 +1172,7 @@ int seglin_deserialize_text(segment_t *seg, ex_id_t id, exnode_exchange_t *exp)
         free(token);
 
         //** Find the cooresponding cap
-        b->data = data_block_deserialize(id, exp);
+        b->data = data_block_deserialize(seg->ess->dsm, id, exp);
         atomic_inc(b->data->ref_count);
 
        //** Finally add it to the ISL
@@ -1203,7 +1230,7 @@ log_printf(15, "seglin_destroy: seg->id=" XIDT " ref_count=%d\n", segment_id(seg
 
   if (seg->ref_count > 0) return;
 
-  n = interval_skiplist_count(s->isl);    
+  n = interval_skiplist_count(s->isl);
   type_malloc_clear(b_list, seglin_slot_t *, n);
   it = iter_search_interval_skiplist(s->isl, (skiplist_key_t *)NULL, (skiplist_key_t *)NULL);
   for (i=0; i<n; i++) {
@@ -1218,14 +1245,14 @@ log_printf(15, "seglin_destroy: seg->id=" XIDT " ref_count=%d\n", segment_id(seg
   }
   free(b_list);
 
-  if (s->rsq != NULL) rs_query_destroy(seg->rs, s->rsq);
+  if (s->rsq != NULL) rs_query_destroy(seg->ess->rs, s->rsq);
   free(s);
 
   ex_header_release(&(seg->header));
 
   apr_thread_mutex_destroy(seg->lock);
   apr_thread_cond_destroy(seg->cond);
-  apr_pool_destroy(seg->mpool);  
+  apr_pool_destroy(seg->mpool);
 
   free(seg);
 }
@@ -1242,8 +1269,8 @@ op_generic_t *segment_linear_make(segment_t *seg, data_attr_t *da, rs_query_t *r
   s->n_rid_default = n_rid;
   s->max_block_size = block_size;
   s->excess_block_size = block_size / 4;
-  if (s->rsq != NULL) rs_query_destroy(seg->rs, s->rsq);
-  s->rsq = rs_query_dup(seg->rs, rsq);
+  if (s->rsq != NULL) rs_query_destroy(seg->ess->rs, s->rsq);
+  s->rsq = rs_query_dup(seg->ess->rs, rsq);
 
   return(seglin_truncate(seg, da, total_size, timeout));
 }
@@ -1279,8 +1306,7 @@ segment_t *segment_linear_create(void *arg)
   apr_thread_mutex_create(&(seg->lock), APR_THREAD_MUTEX_DEFAULT, seg->mpool);
   apr_thread_cond_create(&(seg->cond), seg->mpool);
 
-  seg->rs = es->rs;
-  seg->ds = es->ds;
+  seg->ess = es;
   s->tpc = es->tpc_unlimited;
 
   seg->fn.read = seglin_read;
@@ -1290,6 +1316,7 @@ segment_t *segment_linear_create(void *arg)
   seg->fn.remove = seglin_remove;
   seg->fn.flush = seglin_flush;
   seg->fn.clone = seglin_clone;
+  seg->fn.signature = seglin_signature;
   seg->fn.size = seglin_size;
   seg->fn.block_size = seglin_block_size;
   seg->fn.serialize = seglin_serialize;

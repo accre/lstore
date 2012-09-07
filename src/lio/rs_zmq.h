@@ -41,11 +41,11 @@ http://www.accre.vanderbilt.edu
 extern "C" {
 #endif
 
-#define RS_TYPE_ZMQ "zmq"
+#define RS_TYPE_ZMQ "rs_zmq"
 #define RS_ZMQ_DFT_PROTO "tcp"
 #define RS_ZMQ_DFT_PORT "5555"
 
-resource_service_fn_t *rs_zmq_create(char *fname, data_service_fn_t *ds);
+resource_service_fn_t *rs_zmq_create(void *arg, char *fname, char *section);
 resource_service_fn_t *rs_zmq_create_driver(void *arg); //** Don't know how to use this function
 
 #ifdef __cplusplus

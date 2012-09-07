@@ -41,7 +41,7 @@ find_package(ZMQ REQUIRED)
 include_directories(${OPENSSL_INCLUDE_DIR} ${PROTOBUF_INCLUDE_DIR} ${APR_INCLUDE_DIR} ${APRUTIL_INCLUDE_DIR} ${PHOEBUS_INCLUDE_DIR}
    ${HWLOC_INCLUDE_DIR} ${JERASURE_INCLUDE_DIR} ${TOOLBOX_INCLUDE_DIR} ${GOP_INCLUDE_DIR} ${IBP_INCLUDE_DIR} )
 SET(LIBS ${LIBS} ${IBP_LIBRARY} ${GOP_LIBRARY} ${TOOLBOX_LIBRARY} ${JERASURE_LIBRARY} ${OPENSSL_LIBRARIES} ${CRYPTO_LIBRARIES} 
-   ${PROTOBUF_LIBRARY} ${APR_LIBRARY} ${APRUTIL_LIBRARY} ${HWLOC_LIBRARY} pthread xml2 m dl zmq)
+   ${PROTOBUF_LIBRARY} ${APR_LIBRARY} ${APRUTIL_LIBRARY} ${HWLOC_LIBRARY} xml2 zmq pthread m dl)
 
 #Make the version file
 set(LIO_CLIENT_VERSION "lio_client: v1.0.0")
@@ -52,11 +52,13 @@ CompilerFlags(COMPILER_FLAGS)
 configure_file("${PROJECT_SOURCE_DIR}/lio_client_version.c.in" "${PROJECT_BINARY_DIR}/lio_client_version.c")
 
 set(LIO_OBJS
+   authn_fake.c
+   cred_default.c
    data_block.c
-   data_service_base.c
    ds_ibp.c
    os_base.c
    os_file.c
+   osaz_fake.c
    ex3_global.c
    ex3_header.c
    ex3_compare.c
@@ -65,7 +67,7 @@ set(LIO_OBJS
    exnode_config.c
    ex_id.c
    lio_config.c
-   rs_base.c
+   lio_core.c
    rs_query_base.c
    rs_simple.c
    rs_zmq.c
@@ -88,23 +90,11 @@ set(LIO_OBJS
    segment_jerasure.c
    erasure_tools.c
    raid4.c
+   service_manager.c
+   zhelpers.c
 )
 
 set(LIBLIO_TRACE_OBJS liblio_trace.c )
-
-#message("proto src is ${PROTO_SRC}")
-# various executables
-ADD_EXECUTABLE( mk_linear mk_linear.c ${EX3_OBJS} )
-ADD_EXECUTABLE( ex_load ex_load.c ${EX3_OBJS} )
-ADD_EXECUTABLE( ex_get ex_get.c ${EX3_OBJS} )
-ADD_EXECUTABLE( ex_put ex_put.c ${EX3_OBJS} )
-ADD_EXECUTABLE( ex_inspect ex_inspect.c ${EX3_OBJS} )
-ADD_EXECUTABLE( ex_clone ex_clone.c ${EX3_OBJS} )
-ADD_EXECUTABLE( ex_rw_test ex_rw_test.c ${EX3_OBJS} )
-ADD_EXECUTABLE( trace_replay trace_replay.c trace.c ${EX3_OBJS} )
-ADD_EXECUTABLE( log_test log_test.c ${EX3_OBJS} )
-ADD_EXECUTABLE( rs_test rs_test.c ${EX3_OBJS} )
-ADD_EXECUTABLE( rs_test_svr rs_test_svr.c ${EX3_OBJS} )
 
 ADD_LIBRARY( lio_trace SHARED ${LIBLIO_TRACE_OBJS})
 ADD_LIBRARY( lio SHARED ${LIO_OBJS})
@@ -113,22 +103,25 @@ SET_TARGET_PROPERTIES( lio-static PROPERTIES OUTPUT_NAME "lio" )
 SET_TARGET_PROPERTIES(lio PROPERTIES CLEAN_DIRECT_OUTPUT 1)
 SET_TARGET_PROPERTIES(lio-static PROPERTIES CLEAN_DIRECT_OUTPUT 1)
 
+set(LIO_EXE 
+    mk_linear ex_load ex_get ex_put ex_inspect ex_clone ex_rw_test log_test rs_test rs_test_svr os_test os_fsck
+    lio_touch lio_mkdir lio_rmdir lio_rm lio_ln lio_find lio_ls lio_du lio_setattr lio_getattr lio_mv lio_cp
+    lio_put lio_get lio_signature lio_warm lio_inspect lio_fsck
+)
+
 #Make static executables by default
 SET(lio_lib lio-static)
 #To use shared libs
 #SET(lio_lib lio)
 
-TARGET_LINK_LIBRARIES( mk_linear ${lio_lib} ${LIBS})
-TARGET_LINK_LIBRARIES( ex_load ${lio_lib} ${LIBS})
-TARGET_LINK_LIBRARIES( ex_get ${lio_lib} ${LIBS})
-TARGET_LINK_LIBRARIES( ex_put ${lio_lib} ${LIBS})
-TARGET_LINK_LIBRARIES( ex_inspect ${lio_lib} ${LIBS})
-TARGET_LINK_LIBRARIES( ex_clone ${lio_lib} ${LIBS})
-TARGET_LINK_LIBRARIES( ex_rw_test ${lio_lib} ${LIBS})
+#Add the exe build rules
+foreach (f ${LIO_EXE})
+  add_executable(${f} ${f}.c ${EXE3_OBJS})
+  target_link_libraries(${f} ${lio_lib} ${LIBS})
+endforeach(f)
+
+ADD_EXECUTABLE( trace_replay trace_replay.c trace.c ${EX3_OBJS} )
 TARGET_LINK_LIBRARIES( trace_replay ${lio_lib} ${LIBS} m )
-TARGET_LINK_LIBRARIES( log_test ${lio_lib} ${LIBS})
-TARGET_LINK_LIBRARIES( rs_test ${lio_lib} ${LIBS})
-TARGET_LINK_LIBRARIES( rs_test_svr ${lio_lib} ${LIBS})
 
 install(TARGETS lio DESTINATION lib)
 install(TARGETS lio-static DESTINATION lib)
@@ -138,6 +131,7 @@ install(FILES
    cache_lru.h       ds_ibp.h                 ex3_fmttypes.h  ex3_types.h        os_file.h        segment_cache.h       segment_log.h       transfer_buffer.h
    cache_lru_priv.h  ds_ibp_priv.h            ex3_header.h    exnode3.h          raid4.h          segment_cache_priv.h  segment_log_priv.h  view_layout.h
    cache_priv.h      erasure_tools.h          ex3_linear.h    exnode3.pb-c.h     rs_query_base.h  segment_file.h        segment_lun.h       cache.h
+   authn_abstract.h  authn_fake.h      osaz_fake.h
    DESTINATION include/lio )
 
 

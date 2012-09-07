@@ -36,6 +36,7 @@ http://www.accre.vanderbilt.edu
 #include "thread_pool.h"
 #include "lio.h"
 #include "rs_zmq_base.h"
+#include "rs_zmq.h"
 
 //*************************************************************************
 //*************************************************************************
@@ -59,46 +60,28 @@ static void catch_signals(void)
 
 int main(int argc, char **argv)
 {
-    if (argc < 5) {
+    if (argc < 2) {
        printf("\n");
-       printf("rs_test LIO_COMMON_OPTIONS -n n_thread\n");
+       printf("rs_test LIO_COMMON_OPTIONS\n");
        lio_print_options(stdout);
        return(1);
     }
 
     int thread_nbr;
 
+    lio_init(&argc, &argv);
+
+    thread_nbr = lio_parallel_task_count;
+
     //*** Parses the args
-    int i=1;
-    char *cfg_name;
-
-    do {
-       if (strcmp(argv[i], "-n") == 0) { //** Thread number 
-          i++;
-          thread_nbr = atoi(argv[i]);
-       } else if (strcmp(argv[i], "-c") == 0) { //** Config file
-	  i++;
-	  cfg_name = argv[i]; 
-       }
-       i++;
-    } while (i<argc);
-
-    inip_file_t *kf;
     char *svr_proto, *svr_addr, *svr_port, *zmq_svr;
 
-    kf = inip_read(cfg_name);
-    if (kf == NULL) {
-        log_printf(0, "rs_test_svr: Error parsing config file! file=%s\n", cfg_name);
-        return(-1);
-    }
-
     //** Retrieves remote zmq server name, transport protocol, and lisenting port
-    svr_proto = inip_get_string(kf, "lio_config", "zmq_protocol", RS_ZMQ_DFT_PROTO);
-    svr_addr = inip_get_string(kf, "lio_config", "zmq_server", NULL);
-    svr_port = inip_get_string(kf, "lio_config", "zmq_port", RS_ZMQ_DFT_PORT);
+    svr_proto = inip_get_string(lio_gc->ifd, "zmq_server", "protocol", RS_ZMQ_DFT_PROTO);
+    svr_addr = inip_get_string(lio_gc->ifd, "zmq_server", "server", NULL);
+    svr_port = inip_get_string(lio_gc->ifd, "zmq_server", "port", RS_ZMQ_DFT_PORT);
     asprintf(&zmq_svr, "%s://%s:%s", string_trim(svr_proto), string_trim(svr_addr), string_trim(svr_port));
 
-    lio_init(&argc, argv);
 
     //** Creates zmq context
     void *context = zmq_ctx_new();
@@ -183,7 +166,6 @@ int main(int argc, char **argv)
     free(svr_addr);
     free(svr_port);
     free(zmq_svr);
-    inip_destroy(kf);
   
     lio_shutdown();
 

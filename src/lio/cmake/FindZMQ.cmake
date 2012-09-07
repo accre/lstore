@@ -8,7 +8,7 @@
 #    ZMQ_FOUND - If false didn't find ZMQ
 
 # Find the include path
-find_path(zmq_inc zmq/zmq.h)
+find_path(zmq_inc zmq.h)
 
 if (zmq_inc)
    find_path(ZMQ_INCLUDE_DIR zmq.h ${zmq_inc}/zmq)

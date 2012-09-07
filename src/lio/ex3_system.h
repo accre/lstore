@@ -43,14 +43,20 @@ http://www.accre.vanderbilt.edu
 extern "C" {
 #endif
 
-typedef struct {
+struct exnode_abstract_set_s {
   resource_service_fn_t *rs;
   data_service_fn_t *ds;
   object_service_fn_t *os;
   thread_pool_context_t *tpc_unlimited;
   thread_pool_context_t *tpc_cpu;
   cache_t *cache;
-} exnode_abstract_set_t;
+  service_manager_t *dsm;
+  service_manager_t *rsm;
+  service_manager_t *ssm;
+  service_manager_t *osm;
+  service_manager_t *authn_sm;
+  service_manager_t *osaz_sm;
+};
 
 extern exnode_abstract_set_t *exnode_service_set;
 
@@ -63,8 +69,10 @@ int ex3_set_default_os(object_service_fn_t *os);
 object_service_fn_t *ex3_get_default_os();
 
 //int exnode_system_init(data_service_fn_t *ds, resource_service_fn_t *rs, object_service_fn_t *os, thread_pool_context_t *tpc_unlimited, thread_pool_context_t *tpc_cpu, cache_t *c);
+exnode_abstract_set_t *exnode_service_set_create();
+void exnode_service_set_destroy(exnode_abstract_set_t *ess);
 int exnode_system_init();
-int exnode_system_config(data_service_fn_t *ds, resource_service_fn_t *rs, object_service_fn_t *os, thread_pool_context_t *tpc_unlimited, thread_pool_context_t *tpc_cpu, cache_t *cache);
+int exnode_system_config(exnode_abstract_set_t *ess, data_service_fn_t *ds, resource_service_fn_t *rs, object_service_fn_t *os, thread_pool_context_t *tpc_unlimited, thread_pool_context_t *tpc_cpu, cache_t *cache);
 
 void exnode_system_destroy();
 

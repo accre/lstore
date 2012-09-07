@@ -14,6 +14,28 @@ mk_linear
 trace_replay
 bootstrap
 rs_test
+rs_test_svr
+os_test
+os_fsck
+lio_cp
+lio_du
+lio_find
+lio_fsck
+lio_get
+lio_getattr
+lio_setattr
+lio_inspect
+lio_ln
+lio_ls
+lio_mkdir
+lio_mv
+lio_put
+lio_rm
+lio_rmdir
+lio_signature
+lio_touch
+lio_warm
+
 
 #These are generated via cmake using the *.in variants
 lio_client_version.c

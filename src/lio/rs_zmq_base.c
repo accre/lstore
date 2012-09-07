@@ -110,19 +110,19 @@ void *rs_zmq_worker_routine(void *arg)
         free(qstr);
 
         //** Now destroy the allocation I just created
-        opque_t *q = new_opque();
-        for (i=0; i<req->n_rid; i++) {
-            gop = ds_remove(thread_arg->ds, thread_arg->da, ds_get_cap(thread_arg->ds, req->caps[i], DS_CAP_MANAGE), thread_arg->timeout);
-            opque_add(q, gop);
-        }
+//        opque_t *q = new_opque();
+//        for (i=0; i<req->n_rid; i++) {
+//            gop = ds_remove(thread_arg->ds, thread_arg->da, ds_get_cap(thread_arg->ds, req->caps[i], DS_CAP_MANAGE), thread_arg->timeout);
+//            opque_add(q, gop);
+//        }
 
         //** Wait for it to complete
-        int err = opque_waitall(q);
-        opque_free(q, OP_DESTROY);
+//        int err = opque_waitall(q);
+//        opque_free(q, OP_DESTROY);
 
-        if (err != OP_STATE_SUCCESS) {
-            printf("Error removing allocations!\n");
-        }
+//        if (err != OP_STATE_SUCCESS) {
+//            printf("Error removing allocations!\n");
+//        }
   
         //** Destroy the caps and reqs
         for (i=0; i<req->n_rid; i++) {
@@ -339,7 +339,7 @@ char *rs_query_type_replace(char *query, char *old_rst, char *new_rst)
     //** Find the position of old_rst
     char *pos;
     if ( (pos = strstr(query, old_rst)) == NULL) {
-	fprintf(stderr, "Illegal query string\n");
+	fprintf(stderr, "Illegal query string q=%s old=%s\n", query, old_rst);
 	exit(1);
     }
    
@@ -450,7 +450,7 @@ void rs_zmq_req_deserialize(rs_zmq_req_t* req, void *buf, int len)
     printf("New query string: %s\n", query_replaced); 
 #endif
 
-    req->rsq = rs_query_base_parse(NULL, query_replaced); 
+    req->rsq = rs_query_base_parse(req->rs, query_replaced); 
     req->req_size =  msg->request_size;  
     req->fixed_size = msg->fixed_size;
     req->n_rid = msg->num_rid;

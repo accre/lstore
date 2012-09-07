@@ -75,7 +75,7 @@ int main(int argc, char **argv)
      return(1);
   }
 
-  lio_init(&argc, argv);
+  lio_init(&argc, &argv);
 
   force_repair = 0;
 
@@ -121,7 +121,7 @@ int main(int argc, char **argv)
   //** Load it
   exp = exnode_exchange_load_file(fname);
   ex = exnode_create();
-  exnode_deserialize(ex, exp);
+  exnode_deserialize(ex, exp, lio_gc->ess);
 
 //  printf("Initial exnode=====================================\n");
 //  printf("%s", exp->text);
@@ -137,7 +137,7 @@ int main(int argc, char **argv)
 
 printf("whattodo=%d\n", whattodo);
   //** Execute the inspection operation
-  gop = segment_inspect(seg, lio_gc->da, stdout, whattodo, bufsize, lio_gc->timeout);
+  gop = segment_inspect(seg, lio_gc->da, lio_ifd, whattodo, bufsize, lio_gc->timeout);
 flush_log();
   gop_waitany(gop);
 flush_log();
