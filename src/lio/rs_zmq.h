@@ -1,8 +1,8 @@
 /*
 Advanced Computing Center for Research and Education Proprietary License
-Version 1.0 (April 2006)
+Version 1.0 (July 2012)
 
-Copyright (c) 2006, Advanced Computing Center for Research and Education,
+Copyright (c) 2012, Advanced Computing Center for Research and Education,
  Vanderbilt University, All rights reserved.
 
 This Work is the sole and exclusive property of the Advanced Computing Center
@@ -28,24 +28,28 @@ http://www.accre.vanderbilt.edu
 */ 
 
 //***********************************************************************
-// Base exnode include file
+// ZMQ resource managment implementation
 //***********************************************************************
 
-#include "ex3_abstract.h"
-#include "ex3_header.h"
-#include "ex3_system.h"
+#include "list.h"
+#include "resource_service_abstract.h"
 
-#include "segment_log.h"
-#include "segment_jerasure.h"
-#include "segment_lun.h"
-#include "segment_linear.h"
-#include "segment_file.h"
-#include "segment_cache.h"
+#ifndef _RS_ZMQ_H_
+#define _RS_ZMQ_H_
 
-#include "ds_ibp.h"
-#include "rs_simple.h"
-#include "rs_zmq.h"
-#include "os_file.h"
-#include "osaz_fake.h"
-#include "authn_fake.h"
+#ifdef __cplusplus 
+extern "C" {
+#endif
 
+#define RS_TYPE_ZMQ "rs_zmq"
+#define RS_ZMQ_DFT_PROTO "tcp"
+#define RS_ZMQ_DFT_PORT "5555"
+
+resource_service_fn_t *rs_zmq_create(void *arg, char *fname, char *section);
+resource_service_fn_t *rs_zmq_create_driver(void *arg); //** Don't know how to use this function
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif

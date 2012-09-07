@@ -1,8 +1,8 @@
 /*
 Advanced Computing Center for Research and Education Proprietary License
-Version 1.0 (April 2006)
+Version 1.0 (April 2012)
 
-Copyright (c) 2006, Advanced Computing Center for Research and Education,
+Copyright (c) 2012, Advanced Computing Center for Research and Education,
  Vanderbilt University, All rights reserved.
 
 This Work is the sole and exclusive property of the Advanced Computing Center
@@ -25,27 +25,32 @@ Advanced Computing Center for Research and Education
 230 Appleton Place
 Nashville, TN 37203
 http://www.accre.vanderbilt.edu
-*/ 
+*/
 
 //***********************************************************************
-// Base exnode include file
+// ZMQ resource managment implementation
 //***********************************************************************
+#ifndef _RS_ZMQ_PRIV_H_
+#define _RS_ZMQ_PRIV_H_
 
-#include "ex3_abstract.h"
-#include "ex3_header.h"
-#include "ex3_system.h"
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-#include "segment_log.h"
-#include "segment_jerasure.h"
-#include "segment_lun.h"
-#include "segment_linear.h"
-#include "segment_file.h"
-#include "segment_cache.h"
+#include "data_service_abstract.h" 
+#include "thread_pool.h"
 
-#include "ds_ibp.h"
-#include "rs_simple.h"
-#include "rs_zmq.h"
-#include "os_file.h"
-#include "osaz_fake.h"
-#include "authn_fake.h"
+typedef struct {
+    void *zmq_context;
+    void *zmq_socket;
+    char *zmq_svr; //** Format: protocol://host:port
+    data_service_fn_t *ds; //** Used for getting the data attribute
+    thread_pool_context_t *tpc; //** Contains a new thread pool context for rs zmq
+} rs_zmq_priv_t;
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif
 

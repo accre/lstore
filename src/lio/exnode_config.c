@@ -68,6 +68,7 @@ exnode_abstract_set_t *exnode_service_set_create()
   add_service(ess->ssm, SEG_SM_LOAD, SEGMENT_TYPE_LOG, segment_log_load);  add_service(ess->ssm, SEG_SM_CREATE, SEGMENT_TYPE_LOG, segment_log_create);
 
   add_service(ess->rsm, RS_SM_AVAILABLE, RS_TYPE_SIMPLE, rs_simple_create);
+  add_service(ess->rsm, RS_SM_AVAILABLE, RS_TYPE_ZMQ, rs_zmq_create);
 
   add_service(ess->dsm, DS_SM_AVAILABLE, DS_TYPE_IBP, ds_ibp_create);
 

@@ -465,6 +465,39 @@ lio_config_t *lio_create_nl(char *fname, char *section, char *user)
   lio->timeout = inip_get_integer(lio->ifd, section, "timeout", 120);
   lio->max_attr = inip_get_integer(lio->ifd, section, "max_attr_size", 10*1024*1024);
 
+  proc_info(&sockets, &cores, &vcores);
+  cores = inip_get_integer(lio->ifd, section, "tpc_cpu", cores);
+  sprintf(buffer, "tpc:%d", cores);
+  stype = buffer;
+  lio->tpc_cpu_section = strdup(stype);
+  lio->tpc_cpu = _lc_object_get(stype);
+  if (lio->tpc_cpu == NULL) {  //** Need to load it
+     lio->tpc_cpu = thread_pool_create_context("CPU", 1, cores);
+     if (lio->tpc_cpu == NULL) {
+        err = 5;
+        log_printf(0, "Error loading tpc_cpu threadpool!  n=%d\n", cores);
+     }
+
+     _lc_object_put(stype, lio->tpc_cpu);  //** Add it to the table
+  }
+  lio->ess->tpc_cpu = lio->tpc_cpu;
+
+  cores = inip_get_integer(lio->ifd, section, "tpc_unlimited", 10000);
+  sprintf(buffer, "tpc:%d", cores);
+  stype = buffer;
+  lio->tpc_unlimited_section = strdup(stype);
+  lio->tpc_unlimited = _lc_object_get(stype);
+  if (lio->tpc_unlimited == NULL) {  //** Need to load it
+     lio->tpc_unlimited = thread_pool_create_context("UNLIMITED", 1, cores);
+     if (lio->tpc_unlimited == NULL) {
+        err = 6;
+        log_printf(0, "Error loading tpc_unlimited threadpool!  n=%d\n", cores);
+     }
+
+     _lc_object_put(stype, lio->tpc_unlimited);  //** Add it to the table
+  }
+  lio->ess->tpc_unlimited = lio->tpc_unlimited;
+
   stype = inip_get_string(lio->ifd, section, "ds", DS_TYPE_IBP);
   lio->ds_section = stype;
   lio->ds = _lc_object_get(stype);
@@ -498,37 +531,6 @@ lio_config_t *lio_create_nl(char *fname, char *section, char *user)
      free(ctype);
 
      _lc_object_put(stype, lio->rs);  //** Add it to the table
-  }
-
-  proc_info(&sockets, &cores, &vcores);
-  cores = inip_get_integer(lio->ifd, section, "tpc_cpu", cores);
-  sprintf(buffer, "tpc:%d", cores);
-  stype = buffer;
-  lio->tpc_cpu_section = strdup(stype);
-  lio->tpc_cpu = _lc_object_get(stype);
-  if (lio->tpc_cpu == NULL) {  //** Need to load it
-     lio->tpc_cpu = thread_pool_create_context("CPU", 1, cores);
-     if (lio->tpc_cpu == NULL) {
-        err = 5;
-        log_printf(0, "Error loading tpc_cpu threadpool!  n=%d\n", cores);
-     }
-
-     _lc_object_put(stype, lio->tpc_cpu);  //** Add it to the table
-  }
-
-  cores = inip_get_integer(lio->ifd, section, "tpc_unlimited", 10000);
-  sprintf(buffer, "tpc:%d", cores);
-  stype = buffer;
-  lio->tpc_unlimited_section = strdup(stype);
-  lio->tpc_unlimited = _lc_object_get(stype);
-  if (lio->tpc_unlimited == NULL) {  //** Need to load it
-     lio->tpc_unlimited = thread_pool_create_context("UNLIMITED", 1, cores);
-     if (lio->tpc_unlimited == NULL) {
-        err = 6;
-        log_printf(0, "Error loading tpc_unlimited threadpool!  n=%d\n", cores);
-     }
-
-     _lc_object_put(stype, lio->tpc_unlimited);  //** Add it to the table
   }
 
   stype = inip_get_string(lio->ifd, section, "os", "osfile");

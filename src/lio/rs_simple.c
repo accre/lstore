@@ -498,6 +498,7 @@ void rs_simple_destroy(resource_service_fn_t *rs)
 
 log_printf(15, "rs_simple_destroy: sl=%p\n", rss->rid_table); flush_log();
 
+  free(rss->random_array);
   list_destroy(rss->rid_table);
 
   free(rss->random_array);

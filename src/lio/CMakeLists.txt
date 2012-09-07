@@ -36,11 +36,12 @@ find_package(Jerasure REQUIRED)
 find_package(ToolBox REQUIRED)
 find_package(GOP REQUIRED)
 find_package(IBP REQUIRED)
+find_package(ZMQ REQUIRED)
 
 include_directories(${OPENSSL_INCLUDE_DIR} ${PROTOBUF_INCLUDE_DIR} ${APR_INCLUDE_DIR} ${APRUTIL_INCLUDE_DIR} ${PHOEBUS_INCLUDE_DIR}
    ${HWLOC_INCLUDE_DIR} ${JERASURE_INCLUDE_DIR} ${TOOLBOX_INCLUDE_DIR} ${GOP_INCLUDE_DIR} ${IBP_INCLUDE_DIR} )
 SET(LIBS ${LIBS} ${IBP_LIBRARY} ${GOP_LIBRARY} ${TOOLBOX_LIBRARY} ${JERASURE_LIBRARY} ${OPENSSL_LIBRARIES} ${CRYPTO_LIBRARIES} 
-   ${PROTOBUF_LIBRARY} ${APR_LIBRARY} ${APRUTIL_LIBRARY} ${HWLOC_LIBRARY} pthread xml2 m dl)
+   ${PROTOBUF_LIBRARY} ${APR_LIBRARY} ${APRUTIL_LIBRARY} ${HWLOC_LIBRARY} xml2 zmq pthread m dl)
 
 #Make the version file
 set(LIO_CLIENT_VERSION "lio_client: v1.0.0")
@@ -51,14 +52,12 @@ CompilerFlags(COMPILER_FLAGS)
 configure_file("${PROJECT_SOURCE_DIR}/lio_client_version.c.in" "${PROJECT_BINARY_DIR}/lio_client_version.c")
 
 set(LIO_OBJS
-#   authn_base.c
    authn_fake.c
    cred_default.c
    data_block.c
    ds_ibp.c
    os_base.c
    os_file.c
-#   os_authz_base.c
    osaz_fake.c
    ex3_global.c
    ex3_header.c
@@ -69,9 +68,15 @@ set(LIO_OBJS
    ex_id.c
    lio_config.c
    lio_core.c
-#   rs_base.c
    rs_query_base.c
    rs_simple.c
+   rs_zmq.c
+   rsz_request.pb-c.c
+   rsz_req.pb-c.c
+   rsz_cap.pb-c.c
+   rsz_response.pb-c.c
+   rsz_rid_key_value.pb-c.c
+   rs_zmq_base.c
    segment_base.c
    segment_linear.c
    segment_file.c
@@ -86,6 +91,7 @@ set(LIO_OBJS
    erasure_tools.c
    raid4.c
    service_manager.c
+   zhelpers.c
 )
 
 set(LIBLIO_TRACE_OBJS liblio_trace.c )
@@ -97,9 +103,8 @@ SET_TARGET_PROPERTIES( lio-static PROPERTIES OUTPUT_NAME "lio" )
 SET_TARGET_PROPERTIES(lio PROPERTIES CLEAN_DIRECT_OUTPUT 1)
 SET_TARGET_PROPERTIES(lio-static PROPERTIES CLEAN_DIRECT_OUTPUT 1)
 
-
 set(LIO_EXE 
-    mk_linear ex_load ex_get ex_put ex_inspect ex_clone ex_rw_test log_test rs_test os_test os_fsck
+    mk_linear ex_load ex_get ex_put ex_inspect ex_clone ex_rw_test log_test rs_test rs_test_svr os_test os_fsck
     lio_touch lio_mkdir lio_rmdir lio_rm lio_ln lio_find lio_ls lio_du lio_setattr lio_getattr lio_mv lio_cp
     lio_put lio_get lio_signature lio_warm lio_inspect lio_fsck
 )
@@ -121,8 +126,8 @@ TARGET_LINK_LIBRARIES( trace_replay ${lio_lib} ${LIBS} m )
 install(TARGETS lio DESTINATION lib)
 install(TARGETS lio-static DESTINATION lib)
 install(FILES 
-   cache_amp.h       data_block.h             ex3_abstract.h  ex3_linear_priv.h  exnode.h         rs_simple.h           segment_jerasure.h  segment_lun_priv.h
-   cache_amp_priv.h  data_service_abstract.h  ex3_compare.h   ex3_system.h       lio.h            rs_simple_priv.h      segment_linear.h    trace.h
+   cache_amp.h       data_block.h             ex3_abstract.h  ex3_linear_priv.h  exnode.h         rs_simple.h	rs_zmq.h	rsz_request.pb-c.h	rsz_response.pb-c.h	rsz_req.pb-c.h	rsz_cap.pb-c.h		rsz_rid_key_value.pb-c.h           segment_jerasure.h  segment_lun_priv.h
+   cache_amp_priv.h  data_service_abstract.h  ex3_compare.h   ex3_system.h       lio.h     rs_simple_priv.h	rs_zmq_priv.h	rs_zmq_base.h     segment_linear.h    trace.h
    cache_lru.h       ds_ibp.h                 ex3_fmttypes.h  ex3_types.h        os_file.h        segment_cache.h       segment_log.h       transfer_buffer.h
    cache_lru_priv.h  ds_ibp_priv.h            ex3_header.h    exnode3.h          raid4.h          segment_cache_priv.h  segment_log_priv.h  view_layout.h
    cache_priv.h      erasure_tools.h          ex3_linear.h    exnode3.pb-c.h     rs_query_base.h  segment_file.h        segment_lun.h       cache.h
