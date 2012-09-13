@@ -25,7 +25,7 @@ Advanced Computing Center for Research and Education
 230 Appleton Place
 Nashville, TN 37203
 http://www.accre.vanderbilt.edu
-*/ 
+*/
 
 //*********************************************************************
 //*********************************************************************
@@ -40,6 +40,7 @@ http://www.accre.vanderbilt.edu
 #include <errno.h>
 #include <fcntl.h>
 #include <apr_time.h>
+#include "atomic_counter.h"
 #include "network.h"
 #include "debug.h"
 #include "log.h"
@@ -59,9 +60,10 @@ int _write_netstream_block(NetStream_t *ns, apr_time_t end_time, tbuffer_t *buff
 int tcp_bufsize = 0;   //** 0 means use the default TCP buffer sizes for the OS
 
 //*** These are used for counters to track connections
-int _cuid_counter = 0;
-apr_thread_mutex_t *_net_counter_lock = NULL;
-apr_pool_t *_net_counter_pool = NULL;
+static atomic_int_t _cuid_counter = 0;
+//apr_thread_mutex_t *_net_counter_lock = NULL;
+//apr_pool_t *_net_counter_pool = NULL;
+
 //------------------
 
 NetStream_t *_get_free_conn(Network_t *net);
@@ -69,17 +71,8 @@ NetStream_t *_get_free_conn(Network_t *net);
 int ns_generate_id() {
    int id;
 
-   if (_net_counter_lock == NULL) {      
-      if (_net_counter_pool == NULL) assert(apr_pool_create(&_net_counter_pool, NULL) == APR_SUCCESS);
-      assert(apr_thread_mutex_create(&_net_counter_lock, APR_THREAD_MUTEX_DEFAULT, _net_counter_pool) == APR_SUCCESS);
-   }
-
-   apr_thread_mutex_lock(_net_counter_lock);
-   id = _cuid_counter;
-   log_printf(15, "ns_generate_id: _cuid=%d\n", _cuid_counter);
-   _cuid_counter++;
-   if (_cuid_counter > 999999999) _cuid_counter = 0;
-   apr_thread_mutex_unlock(_net_counter_lock);
+   id = atomic_counter(&_cuid_counter);
+   log_printf(15, "ns_generate_id: _cuid=%d\n", id);
 
    return(id);
 }
@@ -300,9 +293,7 @@ int network_counter(Network_t *net)
 {
    int count;
 
-   apr_thread_mutex_lock(_net_counter_lock);
-   count = _cuid_counter;
-   apr_thread_mutex_unlock(_net_counter_lock);
+   count = atomic_get(_cuid_counter);
 
    return(count);
 }

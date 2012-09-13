@@ -36,7 +36,7 @@ http://www.accre.vanderbilt.edu
 #include "apr_thread_proc.h"
 #include "stdlib.h"
 
-atomic_int_t _atomic_global_counter = 0;
+static atomic_int_t _atomic_global_counter = 0;
 
 static apr_threadkey_t *atomic_thread_id_key;
 atomic_int_t _atomic_times_used = 0;
@@ -46,12 +46,21 @@ apr_pool_t *_atomic_mpool = NULL;
 // atomic_global_counter - Returns the global counter and inc's it as well
 //*************************************************************************
 
-inline int atomic_global_counter()
+inline int atomic_counter(atomic_int_t *counter)
 {
   int n;
-  n = atomic_inc(_atomic_global_counter);
-  if (n > 1073741824) atomic_set(_atomic_global_counter, 0);
+  n = atomic_inc(*counter);
+  if (n > 1073741824) atomic_set(*counter, 0);
   return(n);
+}
+
+//*************************************************************************
+// atomic_global_counter - Returns the global counter and inc's it as well
+//*************************************************************************
+
+inline int atomic_global_counter()
+{
+  return(atomic_counter(&_atomic_global_counter));
 }
 
 //*************************************************************************

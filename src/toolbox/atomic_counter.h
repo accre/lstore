@@ -44,6 +44,7 @@ typedef apr_uint32_t atomic_int_t;
 #define atomic_exchange(a, v) apr_atomic_xchg32(&a, v)
 
 int atomic_global_counter();
+int atomic_counter(atomic_int_t *counter);
 
 extern int *_a_thread_id_ptr();
 #define atomic_thread_id (*_a_thread_id_ptr())
