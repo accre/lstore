@@ -90,6 +90,7 @@ typedef void os_fsck_iter_t;
 typedef struct {
   char *expression;
   int fixed;
+  int fixed_prefix;
   regex_t compiled;
 } os_regex_entry_t;
 

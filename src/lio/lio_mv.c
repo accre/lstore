@@ -56,7 +56,7 @@ op_status_t mv_fn(void *arg, int id)
 {
   mv_t *mv = (mv_t *)arg;
   os_object_iter_t *it;
-  int ftype, prefix_len, slot, count, nerr, tweak;
+  int ftype, prefix_len, slot, count, nerr;
   char dname[OS_PATH_MAX];
   char **src_fname;
   op_generic_t *gop;
@@ -80,9 +80,9 @@ flush_log();
   nerr = 0;
   slot = 0;
   count = 0;
-  tweak = (strcmp(mv->dest_tuple.path, "/") == 0) ? 1 : 0;  //** Tweak things for the root path
+//  tweak = (strcmp(mv->dest_tuple.path, "/") == 0) ? 1 : 0;  //** Tweak things for the root path
   while ((ftype = os_next_object(mv->src_tuple.lc->os, it, &src_fname[slot], &prefix_len)) > 0) {
-     snprintf(dname, OS_PATH_MAX, "%s%s", mv->dest_tuple.path, &(src_fname[slot][prefix_len+tweak]));
+     snprintf(dname, OS_PATH_MAX, "%s%s", mv->dest_tuple.path, &(src_fname[slot][prefix_len+1]));
      gop = lio_move_object(mv->src_tuple.lc, mv->src_tuple.creds, src_fname[slot], dname);
      gop_set_myid(gop, slot);
 log_printf(0, "gid=%d i=%d sname=%s dname=%s\n", gop_id(gop), slot, src_fname[slot], dname);

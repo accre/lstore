@@ -172,12 +172,15 @@ os_regex_table_t *os_path_glob2regex(char *path)
   while (frag[0] != 0 ) {
      if (check_for_glob(frag) == 0) {
         if (table->regex_entry[i].expression != NULL) {
-           n = strlen(table->regex_entry[i].expression) + strlen(frag) + 2;
+           n = strlen(table->regex_entry[i].expression);
+           table->regex_entry[i].fixed_prefix = n;
+           n = n + strlen(frag) + 2;
            type_malloc(f2, char, n);
            snprintf(f2, n, "%s/%s", table->regex_entry[i].expression, frag);
            free(table->regex_entry[i].expression);
            table->regex_entry[i].expression = f2;
         } else {
+           table->regex_entry[i].fixed_prefix = 0;
            table->regex_entry[i].expression = strdup(frag);
         }
 
@@ -205,7 +208,7 @@ os_regex_table_t *os_path_glob2regex(char *path)
 
   if (log_level() >= 15) {
      for (i=0; i<table->n; i++) {
-        log_printf(15, "i=%d fixed=%d frag=%s\n", i, table->regex_entry[i].fixed, table->regex_entry[i].expression);
+        log_printf(15, "i=%d fixed=%d frag=%s fixed_prefix=%d\n", i, table->regex_entry[i].fixed, table->regex_entry[i].expression, table->regex_entry[i].fixed_prefix);
      }
   }
   free(p2);

@@ -999,7 +999,7 @@ log_printf(_amp_logging, "seg=" XIDT " MRU retry offset=" XOT "\n", segment_id(p
   while (ptable != NULL) {
     //** Verify the segment is still valid.  If not then just delete everything
     pseg = list_search(c->segments, segid);
-    if (pseg != NULL) {
+    if (pseg != NULL) {   //** VAlid segment if pseg is non-null
        segment_lock(ptable->seg);
        min_off = s->total_size;
        max_off = -1;
@@ -1069,8 +1069,13 @@ if (p->offset > -1) {
           gop = cache_flush_range(ptable->seg, s->c->da, min_off, max_off + s->page_size - 1, s->c->timeout);
           opque_add(q, gop);
        }
-    } else {  //** Segment has been deleted so drop everything cause it's already freeed
-       empty_stack(ptable->stack, 0);
+    } else {  //** Segment has been deleted so drop everything but undo the pending read so the cache_destroy will complete
+log_printf(_amp_logging, "seg=" XIDT " looks to be removed so undoing the pending CACHE_READ for marked pages\n", segment_id(p->seg));
+       segment_lock(ptable->seg);
+       while ((p = pop(ptable->stack)) != NULL) {
+          atomic_dec(p->access_pending[CACHE_READ]); //** Removed my access control from earlier
+       }
+       segment_unlock(ptable->seg);
     }
 
     cache_lock(c);

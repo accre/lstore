@@ -114,10 +114,10 @@ int main(int argc, char **argv)
    }
 
   while ((ftype = os_next_object(tuple.lc->os, it, &fname, &prefix_len)) > 0) {
-//     printf("len=%d full=%s nopref=%s\n", prefix_len, fname, &(fname[prefix_len]));
+//     printf("len=%d full=%s nopref=%s\n", prefix_len, fname, &(fname[prefix_len+1]));
 
      if (nopre == 1) {
-        info_printf(lio_ifd, 0, "%s\n", &(fname[prefix_len]));
+        info_printf(lio_ifd, 0, "%s\n", &(fname[prefix_len+1]));
      } else {
         info_printf(lio_ifd, 0, "%s\n", fname);
      }

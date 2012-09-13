@@ -968,14 +968,16 @@ int main(int argc, char **argv)
   //*** Parse the args
   print_exnode = 0;
   i=1;
-  do {
-     start_option = i;
+  if (argc > 1) {
+     do {
+        start_option = i;
 
-     if (strcmp(argv[i], "-ex") == 0) { //** Show the final exnode
-        i++;
-        print_exnode = 1;
-     }
-  } while ((start_option < i) && (i<argc));
+        if (strcmp(argv[i], "-ex") == 0) { //** Show the final exnode
+           i++;
+           print_exnode = 1;
+        }
+     } while ((start_option < i) && (i<argc));
+  }
 
   if (lio_gc->cfg_name == NULL) {
      printf("ex_rw_test:  Missing config file!\n");

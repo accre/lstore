@@ -403,7 +403,8 @@ op_status_t cp_file_fn(void *arg, int id)
 //printf(" %s", cp->src_tuple.path);
 //printf(" %s\n", cp->dest_tuple.path);
 
-//  info_printf(lio_ifd, 0, "copy src_lio=%d sfname=%s  dest_lio=%d dfname=%s\n", cp->src_tuple.is_lio, cp->src_tuple.path, cp->dest_tuple.is_lio, cp->dest_tuple.path);
+//info_printf(lio_ifd, 0, "copy src_lio=%d sfname=%s  dest_lio=%d dfname=%s\n", cp->src_tuple.is_lio, cp->src_tuple.path, cp->dest_tuple.is_lio, cp->dest_tuple.path);
+//return(op_success_status);
 
   if ((cp->src_tuple.is_lio == 0) && (cp->dest_tuple.is_lio == 0)) {  //** Not allowed to both go to disk
      info_printf(lio_ifd, 0, "Both source(%s) and destination(%s) are local files!\n", cp->src_tuple.path, cp->dest_tuple.path);
@@ -532,7 +533,7 @@ op_status_t cp_path_fn(void *arg, int id)
   cp_path_t *cp = (cp_path_t *)arg;
   copy_object_iter_t *it;
   lio_path_tuple_t create_tuple;
-  int ftype, prefix_len, slot, count, nerr, tweak;
+  int ftype, prefix_len, slot, count, nerr;
   int *dstate;
   char dname[OS_PATH_MAX];
   char *fname, *dir, *file;
@@ -560,9 +561,9 @@ flush_log();
   nerr = 0;
   slot = 0;
   count = 0;
-  tweak = (strcmp(cp->dest_tuple.path, "/") == 0) ? 1 : 0;  //** Tweak things for the root path
   while ((ftype = copy_next_object(it, &fname, &prefix_len)) > 0) {
-     snprintf(dname, OS_PATH_MAX, "%s%s", cp->dest_tuple.path, &(fname[prefix_len+tweak]));
+     snprintf(dname, OS_PATH_MAX, "%s/%s", cp->dest_tuple.path, &(fname[prefix_len+1]));
+//info_printf(lio_ifd, 0, "copy dtuple=%s sfname=%s  dfname=%s plen=%d tweak=%d\n", cp->dest_tuple.path, fname, dname, prefix_len, tweak);
      os_path_split(dname, &dir, &file);
      dstate = list_search(dir_table, dir);
      if (dstate == NULL) { //** New dir so have to check and possibly create it
@@ -578,7 +579,7 @@ flush_log();
 
      gop = new_thread_pool_op(lio_gc->tpc_unlimited, NULL, cp_file_fn, (void *)c, NULL, 1);
      gop_set_myid(gop, slot);
-log_printf(0, "gid=%d i=%d sname=%s dname=%s\n", gop_id(gop), slot, fname, dname);
+log_printf(1, "gid=%d i=%d sname=%s dname=%s\n", gop_id(gop), slot, fname, dname);
      opque_add(q, gop);
 
      count++;
@@ -755,7 +756,7 @@ log_printf(15, "333333333333333333\n"); flush_log();
 
   //** IF we made it here we have mv's to a directory
   max_spawn = lio_parallel_task_count / n_paths;
-  if (max_spawn < 10) max_spawn = 10;
+  if (max_spawn < 0) max_spawn = 1;
 
   q = new_opque();
   opque_start_execution(q);

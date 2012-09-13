@@ -123,6 +123,7 @@ typedef struct {
   long curr_pos;
   int firstpass;
   char *fragment;
+  int fixed_prefix;
 } osf_obj_level_t;
 
 typedef struct {
@@ -1300,7 +1301,7 @@ void my_seekdir(osf_dir_t *d, long offset)
 int osf_next_object(osf_object_iter_t *it, char **myfname, int *prefix_len)
 {
   osfile_priv_t *osf = (osfile_priv_t *)it->os->priv;
-  int i, rmatch, popped;
+  int i, rmatch, popped, tweak;
   osf_obj_level_t *itl, *it_top;
   char fname[OS_PATH_MAX];
   char fullname[OS_PATH_MAX];
@@ -1309,12 +1310,13 @@ int osf_next_object(osf_object_iter_t *it, char **myfname, int *prefix_len)
   *prefix_len = 0;
   if (it->finished == 1) { *myfname = NULL; return(0); }
 
-  //** Check if we have a fixed object regex.  If so it's handled directly vis strcmp()
+  //** Check if we have a fixed object regex.  If so it's handled directly via strcmp()
   if (it->object_regex != NULL) {
      if (it->object_regex->regex_entry->fixed == 1) obj_fixed = it->object_regex->regex_entry->expression;
   }
 
   //** Check if we have a prefix path of '/'.  If so make a fake itl level
+  tweak = 0;
   if (it->table->n == 0) {
      *prefix_len = 1;
      if (stack_size(it->recurse_stack) == 0) {  //**Make a fake level to get things going
@@ -1327,6 +1329,12 @@ int osf_next_object(osf_object_iter_t *it, char **myfname, int *prefix_len)
      }
   } else {
      it_top = &(it->level_info[it->table->n-1]);
+     if ((it->table->n == 1) && (it_top->fragment != NULL)) {
+        tweak = it_top->fixed_prefix;
+        if (tweak > 0) tweak += 2;
+     }
+
+log_printf(15, "top_level=%d it_top->fragment=%s it_top->path=%s tweak=%d\n", it->table->n-1, it_top->fragment, it_top->path, tweak);
 //    if (it->table->regex_entry[0].fixed == 1) {
 //       *prefix_len = 1 + strlen(it->table->regex_entry[0].expression);  //** This includes the before '/'
 //    }
@@ -1379,9 +1387,12 @@ log_printf(0, "curr_level=%d table->n=%d path=%s\n", it->curr_level, it->table->
                           rmatch = (it->object_regex == NULL) ? 0 : ((obj_fixed != NULL) ? strcmp(itl->entry, obj_fixed) : regexec(it->object_preg, itl->entry, 0, NULL, 0));
 
                           if (rmatch == 0) { //** IF a match return
-                             log_printf(15, "MATCH=%s\n", fname);
                              *myfname=strdup(fname);
-                             if (*prefix_len == 0) *prefix_len = strlen(it_top->path);
+                             if (*prefix_len == 0) {
+                                *prefix_len = strlen(it_top->path);
+                                if (*prefix_len == 0) *prefix_len = tweak;
+                             }
+                             log_printf(15, "MATCH=%s prefix=%d\n", fname, *prefix_len);
                              if (it->curr_level >= it->table->n) push(it->recurse_stack, itl);  //** Off the static table
                              return(i);
                           }
@@ -1411,9 +1422,12 @@ log_printf(0, "curr_level=%d table->n=%d path=%s\n", it->curr_level, it->table->
                           if ((i & it->object_types) > 0) {
                              rmatch = (it->object_regex == NULL) ? 0 : ((obj_fixed != NULL) ? strcmp(itl->entry, obj_fixed) : regexec(it->object_preg, itl->entry, 0, NULL, 0));
                              if (rmatch == 0) { //** IF a match return
-                                log_printf(15, "MATCH=%s\n", fname);
-                                if (*prefix_len == 0) *prefix_len = strlen(it_top->path);
+                                if (*prefix_len == 0) {
+                                   *prefix_len = strlen(it_top->path);
+                                   if (*prefix_len == 0) *prefix_len = tweak;
+                                }
                                 *myfname=strdup(fname);
+                                log_printf(15, "MATCH=%s prefix=%d\n", fname, *prefix_len);
                                 if (it->curr_level >= it->table->n) push(it->recurse_stack, itl);  //** Off the static table
                                 return(i);
                              }
@@ -2939,7 +2953,12 @@ os_object_iter_t *osfile_create_object_iter(object_service_fn_t *os, creds_t *cr
     itl->preg = &(path->regex_entry[i].compiled);
     if (path->regex_entry[i].fixed == 1) {
        itl->fragment = path->regex_entry[i].expression;
+       itl->fixed_prefix = path->regex_entry[i].fixed_prefix;
     }
+  }
+
+  if (it->table->n == 1) { //** Single level so check if a fixed path and if so tweak things
+    if ((itl->fragment != NULL) && (itl->fixed_prefix > 0)) itl->fixed_prefix--;
   }
 
   if (object_regex != NULL) it->object_preg = &(object_regex->regex_entry[0].compiled);

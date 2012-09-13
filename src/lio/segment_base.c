@@ -365,9 +365,10 @@ op_status_t segment_put_func(void *arg, int id)
   wlen = 0;
   rpos += rlen;
   nbytes -= rlen;
-log_printf(0, "FILE fd=%p\n", sc->fd);
+log_printf(0, "FILE fd=%p bufsize=" XOT "\n", sc->fd, bufsize);
 
   rlen = fread(rb, 1, rlen, sc->fd);
+  if (rlen == 0) { rpos = 0; goto finished; }
 
   do {
      //** Swap the buffers
@@ -407,6 +408,7 @@ log_printf(0, "FILE fd=%p\n", sc->fd);
      gop_sync_exec(segment_truncate(sc->dest, sc->da, wpos, sc->timeout));
   }
 
+finished:
   status = op_success_status;  status.error_code = rpos;
 
   return(status);
