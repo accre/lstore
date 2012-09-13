@@ -117,14 +117,6 @@ typedef struct {   //** Command operation
 
 
 typedef struct {  //** Hportal specific implementation
-//  int ok;                //** Ok Value
-//  int unsed_error;       //** Unused error value (for internal us only)
-//  int retry_dead_socket; //** Error occured but Ok to retry.  Close socket
-//  int timeout;           //** Command timed out
-//  int generic_err;       //** Generic internal error
-//  int dead_connection;      //** Dead connection error
-//  int invalid_host;      //** Can't resolve hostname
-//  int cant_connect;      //** Can't connect to the host
   void *(*dup_connect_context)(void *connect_context);  //** Duplicates a ccon
   void (*destroy_connect_context)(void *connect_context);
   int (*connect)(NetStream_t *ns, void *connect_context, char *host, int port, Net_timeout_t timeout);
