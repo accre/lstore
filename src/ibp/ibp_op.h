@@ -56,7 +56,13 @@ extern "C" {
 #define IBP_ST_VERSION 5     //** This is for the get_version() command
 #define IBP_ST_RES   3         //** Used to get the list or resources from the depot
 #define MAX_KEY_SIZE 256
+#define MAX_HOST_SIZE 1024
 #define IBP_CHKSUM_BLOCKSIZE 65536
+
+#define IBP_CMODE_HOST 0
+#define IBP_CMODE_RID  1
+#define IBP_CMODE_ROUND_ROBIN  2
+
 
 //typedef int64_t ibp_off_t;
 
@@ -66,7 +72,8 @@ typedef struct {
    int min_threads;     //** Min and max threads allowed to a depot
    int max_threads;     //** Max number of simultaneous connection to a depot
    int max_connections; //** Max number of connections across all connections
-   int new_command;     //** byte "cost" of just the command portion excluding any data transfer
+   int rw_new_command;     //** byte "cost" of just the command portion excluding any data transfer for a Read/Write command
+   int other_new_command;     //** byte "cost" of the non-R/W commands
    int coalesce_enable; //** Enable R/W coaleascing
    int64_t max_workload;    //** Max workload allowed in a given connection
    int64_t max_coalesce;    //** MAx amount of data that can be coalesced
@@ -76,6 +83,9 @@ typedef struct {
    int check_connection_interval;  //**# of secs to wait between checks if we need more connections to a depot
    int max_retry;        //** Max number of times to retry a command before failing.. only for dead socket retries
    int coalesce_ops;     //** If 1 then Read and Write ops for the same allocation are coalesced
+   int connection_mode;  //** Connection mode
+   int rr_size;          //** Round robin connection count. Only used ir cmode = RR
+   atomic_int_t rr_count; //** RR counter
    ibp_connect_context_t cc[IBP_MAX_NUM_CMDS+1];  //** Default connection contexts for EACH command
    ns_chksum_t ncs;
    portal_context_t *pc;
@@ -226,13 +236,14 @@ typedef struct {  //** Get the depot version information
 
 typedef struct {  //** Get a list of RID's for a depot
   ibp_depot_t *depot;
-  ibp_ridlist_t *rlist; 
+  ibp_ridlist_t *rlist;
 } ibp_op_rid_inq_t;
 
 typedef struct _ibp_op_s { //** Individual IO operation
    ibp_context_t *ic;
    op_generic_t gop;
-   op_data_t dop;   
+   op_data_t dop;
+   Stack_t *hp_parent;  //** Only used for RW coalescing
    int primary_cmd;//** Primary sync IBP command family
    int sub_cmd;    //** sub command, if applicable
    ns_chksum_t ncs;  //** chksum associated with the command
@@ -407,7 +418,8 @@ int ibp_sync_command(ibp_op_t *op);
 unsigned long int IBP_phoebus_copy(char *path, ibp_cap_t *srccap, ibp_cap_t *destcap, ibp_timer_t  *src_timer, ibp_timer_t *dest_timer,
         ibp_off_t size, ibp_off_t offset);
 void destroy_ibp_sync_context();
-
+void set_ibp_sync_context(ibp_context_t *ic) 
+;
 //**** ibp_client_version.c *******
 char *ibp_client_version();
 

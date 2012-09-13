@@ -1404,6 +1404,7 @@ printf("22222222222222222222222222222222222111111111111111111111111111111\n"); f
     } else if (strcmp(argv[i], "-config") == 0) { //** Read the config file
        i++;
        ibp_load_config(ic, argv[i], NULL);
+log_printf(0, "cmode=%d\n", ic->connection_mode);
        i++;
     } else if (strcmp(argv[i], "-no-async") == 0) { //** Skip the async test
        i++;
@@ -1435,6 +1436,8 @@ log_printf(0, "network_chksum enabled type=%d bs=%d\n", net_cs_type, blocksize);
         disk_blocksize = atoi(argv[i])*1024; i++;
       }
   } while (start_option < i);
+
+  set_ibp_sync_context(ic);
 
   host1 = argv[i];  i++;
   port1 = atoi(argv[i]); i++;
@@ -1474,6 +1477,7 @@ log_printf(0, "network_chksum enabled type=%d bs=%d\n", net_cs_type, blocksize);
   printf("ibp_manage(IBP_PROBE):-----------------------------------\n");
   memset(&astat, 0, sizeof(astat));
   err = IBP_manage(get_ibp_cap(caps, IBP_MANAGECAP), &timer, IBP_PROBE, 0, &astat);
+printf("after probe\n########################################"); fflush(stdout);
   if (err == 0) {
      printf("read count = %d\n", astat.readRefCount);
      printf("write count = %d\n", astat.writeRefCount);
@@ -2038,7 +2042,6 @@ log_printf(0, "network_chksum enabled type=%d bs=%d\n", net_cs_type, blocksize);
   printf("Tests that failed: %d\n", failed_tests);
 
   ibp_destroy_context(ic);
-  destroy_ibp_sync_context();  //** We are using the sync commands as well
 
   apr_wrapper_stop();
 

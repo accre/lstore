@@ -30,14 +30,17 @@ http://www.accre.vanderbilt.edu
 #ifndef _IBP_MISC_H_
 #define _IBP_MISC_H_
 
+#include "ibp.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 void ibp_configure_signals();
 char *string_token(char *str, const char *sep, char **last, int *finished);
-int parse_cap(ibp_cap_t *cap, char *host, int *port, char *key, char *typekey);
+int parse_cap(ibp_context_t *ic, ibp_cap_t *cap, char *host, int *port, char *key, char *typekey);
 int parse_cmpstr(char *str, char *host, int *port, int *size);
+void ibppc_form_host(ibp_context_t *ic, char *hoststr, int n_host, char *host, rid_t rid);
 //void sort_oplist(oplist_t *iolist);  
 
 #ifdef __cplusplus

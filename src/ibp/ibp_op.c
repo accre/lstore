@@ -76,16 +76,23 @@ void set_hostport(char *hostport, int max_size, char *host, int port, ibp_connec
 {
   char in_addr[DNS_ADDR_MAX];
   char ip[64];
-  int type;
+  int type, i;
 
   type = (cc == NULL) ? NS_TYPE_SOCK : cc->type;
 
+//log_printf(0, "HOST host=%s\n", host);
+  i = 0;
+  while ((host[i] != 0) && (host[i] != '#')) i++;
+  if (host[i] == '#') { host[i] = 0; i=-i; }
+
   if (lookup_host(host, in_addr, ip) != 0) {
+     if (i<0) host[-i] = '#';
      log_printf(1, "set_hostport:  Failed to lookup host: %s\n", host);
      hostport[max_size-1] = '\0';
      snprintf(hostport, max_size-1, "%s:%d:%d:0", host, port, type);
      return;
   }
+  if (i<0) host[-i] = '#';
 
 //  inet_ntop(AF_INET, (void *)in_addr, ip, 63);
   ip[63] = '\0';
@@ -93,13 +100,17 @@ void set_hostport(char *hostport, int max_size, char *host, int port, ibp_connec
   hostport[max_size-1] = '\0';
   if (type == NS_TYPE_PHOEBUS) {
      snprintf(hostport, max_size-1, "%s" HP_HOSTPORT_SEPARATOR "%d" HP_HOSTPORT_SEPARATOR "%d" HP_HOSTPORT_SEPARATOR "%s", 
-            ip, port, type, phoebus_get_key((phoebus_t *)cc->data));
+            host, port, type, phoebus_get_key((phoebus_t *)cc->data));
+//     snprintf(hostport, max_size-1, "%s" HP_HOSTPORT_SEPARATOR "%d" HP_HOSTPORT_SEPARATOR "%d" HP_HOSTPORT_SEPARATOR "%s", 
+//            ip, port, type, phoebus_get_key((phoebus_t *)cc->data));
   } else {
      snprintf(hostport, max_size-1, "%s" HP_HOSTPORT_SEPARATOR "%d" HP_HOSTPORT_SEPARATOR "%d" HP_HOSTPORT_SEPARATOR "0", 
-            ip, port, type);
+            host, port, type);
+//     snprintf(hostport, max_size-1, "%s" HP_HOSTPORT_SEPARATOR "%d" HP_HOSTPORT_SEPARATOR "%d" HP_HOSTPORT_SEPARATOR "0", 
+//            ip, port, type);
   }
 
-  log_printf(15, "set_hostport: host=%s hostport=%s\n", host, hostport);
+//  log_printf(15, "HOST host=%s hostport=%s\n", host, hostport);
 }
 
 //*************************************************************
@@ -108,7 +119,7 @@ void set_hostport(char *hostport, int max_size, char *host, int port, ibp_connec
 
 char *change_hostport_cc(char *old_hostport, ibp_connect_context_t *cc)
 {
-  char host[1024], new_hostport[1024];
+  char host[MAX_HOST_SIZE], new_hostport[MAX_HOST_SIZE];
   char *hp2 = strdup(old_hostport);
   char *bstate;
   int fin, port;
@@ -1037,19 +1048,19 @@ void set_ibp_append_op(ibp_op_t *op, ibp_cap_t *cap, tbuffer_t *buffer, ibp_off_
 
 void set_ibp_rw_op(ibp_op_t *op, int rw_type, ibp_cap_t *cap, ibp_off_t offset, tbuffer_t *buffer, ibp_off_t bpos, ibp_off_t len, int timeout)
 {
-  char hoststr[1024];
+  char hoststr[MAX_HOST_SIZE];
   int port;
-  char host[256];
+  char host[MAX_HOST_SIZE];
   ibp_op_rw_t *cmd;
   ibp_rw_buf_t *rwbuf;
 
   cmd = &(op->rw_op);
 
-  init_ibp_base_op(op, "rw", timeout, op->ic->new_command + len, NULL, len, rw_type, IBP_NOP);
+  init_ibp_base_op(op, "rw", timeout, op->ic->rw_new_command + len, NULL, len, rw_type, IBP_NOP);
   op_generic_t *gop = ibp_get_gop(op);
 
 
-  parse_cap(cap, host, &port, cmd->key, cmd->typekey);
+  parse_cap(op->ic, cap, host, &port, cmd->key, cmd->typekey);
   set_hostport(hoststr, sizeof(hoststr), host, port, &(op->ic->cc[rw_type]));
   op->dop.cmd.hostport = strdup(hoststr);
 
@@ -1169,17 +1180,17 @@ op_status_t validate_chksum_recv(op_generic_t *gop, NetStream_t *ns)
 void set_ibp_validate_chksum_op(ibp_op_t *op, ibp_cap_t *mcap, int correct_errors, int *n_bad_blocks,
        int timeout)
 {
-  char hoststr[1024];
-  char host[256];
+  char hoststr[MAX_HOST_SIZE];
+  char host[MAX_HOST_SIZE];
   ibp_op_validate_chksum_t *cmd;
   int port;
 
-  init_ibp_base_op(op, "validate_chksum", timeout, 10*op->ic->new_command, NULL, 1, IBP_VALIDATE_CHKSUM, IBP_NOP);
+  init_ibp_base_op(op, "validate_chksum", timeout, op->ic->other_new_command, NULL, 1, IBP_VALIDATE_CHKSUM, IBP_NOP);
   op_generic_t *gop = ibp_get_gop(op);
 
   cmd = &(op->validate_op);
 
-  parse_cap(mcap, host, &port, cmd->key, cmd->typekey);
+  parse_cap(op->ic, mcap, host, &port, cmd->key, cmd->typekey);
   set_hostport(hoststr, sizeof(hoststr), host, port, &(op->ic->cc[IBP_VALIDATE_CHKSUM]));
   op->dop.cmd.hostport = strdup(hoststr);
 
@@ -1307,17 +1318,17 @@ void set_ibp_get_chksum_op(ibp_op_t *op, ibp_cap_t *mcap, int chksum_info_only,
        int *cs_type, int *cs_size, ibp_off_t *blocksize, ibp_off_t *nblocks, ibp_off_t *n_chksumbytes, char *buffer, ibp_off_t bufsize,
        int timeout)
 {
-  char hoststr[1024];
-  char host[256];
+  char hoststr[MAX_HOST_SIZE];
+  char host[MAX_HOST_SIZE];
   ibp_op_get_chksum_t *cmd;
   int port;
 
-  init_ibp_base_op(op, "get_chksum", timeout, 10*op->ic->new_command, NULL, 1, IBP_VALIDATE_CHKSUM, IBP_NOP);
+  init_ibp_base_op(op, "get_chksum", timeout, op->ic->other_new_command, NULL, 1, IBP_VALIDATE_CHKSUM, IBP_NOP);
   op_generic_t *gop = ibp_get_gop(op);
 
   cmd = &(op->get_chksum_op);
 
-  parse_cap(mcap, host, &port, cmd->key, cmd->typekey);
+  parse_cap(op->ic, mcap, host, &port, cmd->key, cmd->typekey);
   set_hostport(hoststr, sizeof(hoststr), host, port, &(op->ic->cc[IBP_VALIDATE_CHKSUM]));
   op->dop.cmd.hostport = strdup(hoststr);
 
@@ -1477,7 +1488,7 @@ op_status_t allocate_recv(op_generic_t *gop, NetStream_t *ns)
   cmd->caps->writeCap = strdup(wcap);
   cmd->caps->manageCap = strdup(mcap);
 
-  log_printf(15, "alloc_recv: ns=%d rcap=%s wcap=%s mcap=%s\n", ns_getid(ns), 
+  log_printf(15, "alloc_recv: ns=%d rcap=%s wcap=%s mcap=%s\n", ns_getid(ns),
        cmd->caps->readCap, cmd->caps->writeCap, cmd->caps->manageCap);
 
   return(ibp_success_status);
@@ -1490,16 +1501,18 @@ op_status_t allocate_recv(op_generic_t *gop, NetStream_t *ns)
 void set_ibp_alloc_op(ibp_op_t *op, ibp_capset_t *caps, ibp_off_t size, ibp_depot_t *depot,
        ibp_attributes_t *attr, int disk_cs_type, ibp_off_t disk_blocksize, int timeout)
 {
-  char hoststr[1024];
+  char hoststr[MAX_HOST_SIZE];
+  char pchost[MAX_HOST_SIZE];
   ibp_op_alloc_t *cmd;
 
 //log_printf(15, "set_ibp_alloc_op: start. _hpc_config=%p\n", op->ic->hpc);
 
-  set_hostport(hoststr, sizeof(hoststr), depot->host, depot->port, &(op->ic->cc[IBP_ALLOCATE]));
+  ibppc_form_host(op->ic, pchost, sizeof(pchost), depot->host, depot->rid);
+  set_hostport(hoststr, sizeof(hoststr), pchost, depot->port, &(op->ic->cc[IBP_ALLOCATE]));
 
 //log_printf(15, "set_ibp_alloc_op: before init_ibp_base_op\n");
 
-  init_ibp_base_op(op, "alloc", timeout, 10*op->ic->new_command, strdup(hoststr), 1, IBP_ALLOCATE, IBP_NOP);
+  init_ibp_base_op(op, "alloc", timeout, op->ic->other_new_command, strdup(hoststr), 1, IBP_ALLOCATE, IBP_NOP);
 //log_printf(15, "set_ibp_alloc_op: after init_ibp_base_op\n");
 
   cmd = &(op->alloc_op);
@@ -1541,16 +1554,16 @@ op_generic_t *new_ibp_alloc_op(ibp_context_t *ic, ibp_capset_t *caps, ibp_off_t 
 void set_ibp_split_alloc_op(ibp_op_t *op, ibp_cap_t *mcap, ibp_capset_t *caps, ibp_off_t size, 
        ibp_attributes_t *attr, int disk_cs_type, ibp_off_t disk_blocksize, int timeout)
 {
-  char hoststr[1024];
-  char host[256];
+  char hoststr[MAX_HOST_SIZE];
+  char host[MAX_HOST_SIZE];
   ibp_op_alloc_t *cmd;
   int port;
 
-  init_ibp_base_op(op, "split_allocate", timeout, 10*op->ic->new_command, NULL, 1, IBP_SPLIT_ALLOCATE, IBP_NOP);
+  init_ibp_base_op(op, "split_allocate", timeout, op->ic->other_new_command, NULL, 1, IBP_SPLIT_ALLOCATE, IBP_NOP);
 
   cmd = &(op->alloc_op);
 
-  parse_cap(mcap, host, &port, cmd->key, cmd->typekey);
+  parse_cap(op->ic, mcap, host, &port, cmd->key, cmd->typekey);
   set_hostport(hoststr, sizeof(hoststr), host, port, &(op->ic->cc[IBP_SPLIT_ALLOCATE]));
   op->dop.cmd.hostport = strdup(hoststr);
 
@@ -1617,18 +1630,18 @@ op_status_t rename_command(op_generic_t *gop, NetStream_t *ns)
 
 void set_ibp_rename_op(ibp_op_t *op, ibp_capset_t *caps, ibp_cap_t *mcap, int timeout)
 {
-  char hoststr[1024];
-  char host[256];
+  char hoststr[MAX_HOST_SIZE];
+  char host[MAX_HOST_SIZE];
   ibp_op_alloc_t *cmd;
   int port;
 
 log_printf(15, "set_ibp_rename_op: start. ic=%p\n", op->ic);
 
-  init_ibp_base_op(op, "rename", timeout, 10*op->ic->new_command, NULL, 1, IBP_RENAME, IBP_NOP);
+  init_ibp_base_op(op, "rename", timeout, op->ic->other_new_command, NULL, 1, IBP_RENAME, IBP_NOP);
 
   cmd = &(op->alloc_op);
 
-  parse_cap(mcap, host, &port, cmd->key, cmd->typekey);
+  parse_cap(op->ic, mcap, host, &port, cmd->key, cmd->typekey);
   set_hostport(hoststr, sizeof(hoststr), host, port, &(op->ic->cc[IBP_RENAME]));
   op->dop.cmd.hostport = strdup(hoststr);
 
@@ -1685,23 +1698,23 @@ op_status_t merge_command(op_generic_t *gop, NetStream_t *ns)
 
 void set_ibp_merge_alloc_op(ibp_op_t *op, ibp_cap_t *mcap, ibp_cap_t *ccap, int timeout)
 {
-  char hoststr[1024];
-  char host[256];
-  char chost[256];
+  char hoststr[MAX_HOST_SIZE];
+  char host[MAX_HOST_SIZE];
+  char chost[MAX_HOST_SIZE];
   ibp_op_merge_alloc_t *cmd;
   int port, cport;
 
   log_printf(15, "set_ibp_merge_op: start. ic=%p\n", op->ic);
 
-  init_ibp_base_op(op, "rename", timeout, 10*op->ic->new_command, NULL, 1, IBP_RENAME, IBP_NOP);
+  init_ibp_base_op(op, "rename", timeout, op->ic->other_new_command, NULL, 1, IBP_RENAME, IBP_NOP);
 
   cmd = &(op->merge_op);
 
-  parse_cap(mcap, host, &port, cmd->mkey, cmd->mtypekey);
+  parse_cap(op->ic, mcap, host, &port, cmd->mkey, cmd->mtypekey);
   set_hostport(hoststr, sizeof(hoststr), host, port, &(op->ic->cc[IBP_MERGE_ALLOCATE]));
   op->dop.cmd.hostport = strdup(hoststr);
 
-  parse_cap(ccap, chost, &cport, cmd->ckey, cmd->ctypekey);
+  parse_cap(op->ic, ccap, chost, &cport, cmd->ckey, cmd->ctypekey);
 
   op_generic_t *gop = ibp_get_gop(op);
   gop->op->cmd.send_command = merge_command;
@@ -1755,18 +1768,18 @@ op_status_t alias_allocate_command(op_generic_t *gop, NetStream_t *ns)
 void set_ibp_alias_alloc_op(ibp_op_t *op, ibp_capset_t *caps, ibp_cap_t *mcap, ibp_off_t offset, ibp_off_t size, 
    int duration, int timeout)
 {
-  char hoststr[1024];
-  char host[256];
+  char hoststr[MAX_HOST_SIZE];
+  char host[MAX_HOST_SIZE];
   ibp_op_alloc_t *cmd;
   int port;
 
   log_printf(15, "set_ibp_alias_alloc_op: start. ic=%p\n", op->ic);
 
-  init_ibp_base_op(op, "rename", timeout, 10*op->ic->new_command, NULL, 1, IBP_ALIAS_ALLOCATE, IBP_NOP);
+  init_ibp_base_op(op, "rename", timeout, op->ic->other_new_command, NULL, 1, IBP_ALIAS_ALLOCATE, IBP_NOP);
 
   cmd = &(op->alloc_op);
 
-  parse_cap(mcap, host, &port, cmd->key, cmd->typekey);
+  parse_cap(op->ic, mcap, host, &port, cmd->key, cmd->typekey);
   set_hostport(hoststr, sizeof(hoststr), host, port, &(op->ic->cc[IBP_ALIAS_ALLOCATE]));
   op->dop.cmd.hostport = strdup(hoststr);
 
@@ -1884,9 +1897,9 @@ op_status_t status_get_recv(op_generic_t *gop, NetStream_t *ns)
 
 void set_ibp_generic_modify_count_op(int command, ibp_op_t *op, ibp_cap_t *cap, ibp_cap_t *mcap, int mode, int captype, int timeout)
 {
-  char hoststr[1024];
+  char hoststr[MAX_HOST_SIZE];
   int port;
-  char host[256];
+  char host[MAX_HOST_SIZE];
   ibp_op_probe_t *cmd;
 
   if ((command != IBP_MANAGE) && (command != IBP_ALIAS_MANAGE)) {
@@ -1902,15 +1915,15 @@ void set_ibp_generic_modify_count_op(int command, ibp_op_t *op, ibp_cap_t *cap, 
      return;
   }
 
-  init_ibp_base_op(op, "modify_count", timeout, 10*op->ic->new_command, NULL, 1, command, mode);
+  init_ibp_base_op(op, "modify_count", timeout, op->ic->other_new_command, NULL, 1, command, mode);
 
   cmd = &(op->probe_op);
 
-  parse_cap(cap, host, &port, cmd->key, cmd->typekey);
+  parse_cap(op->ic, cap, host, &port, cmd->key, cmd->typekey);
   set_hostport(hoststr, sizeof(hoststr), host, port, &(op->ic->cc[command]));
   op->dop.cmd.hostport = strdup(hoststr);
 
-  if (command == IBP_ALIAS_MANAGE) parse_cap(mcap, host, &port, cmd->mkey, cmd->mtypekey);
+  if (command == IBP_ALIAS_MANAGE) parse_cap(op->ic, mcap, host, &port, cmd->mkey, cmd->mtypekey);
 
   cmd->cmd = command;
   cmd->cap = cap;
@@ -2009,16 +2022,16 @@ op_status_t modify_alloc_command(op_generic_t *gop, NetStream_t *ns)
 void set_ibp_modify_alloc_op(ibp_op_t *op, ibp_cap_t *cap, ibp_off_t size, int duration, int reliability, 
      int timeout)
 {
-  char hoststr[1024];
+  char hoststr[MAX_HOST_SIZE];
   int port;
-  char host[256];
+  char host[MAX_HOST_SIZE];
   ibp_op_modify_alloc_t *cmd;
   
-  init_ibp_base_op(op, "modify_alloc", timeout, 10*op->ic->new_command, NULL, 1, IBP_MANAGE, IBP_CHNG);
+  init_ibp_base_op(op, "modify_alloc", timeout, op->ic->other_new_command, NULL, 1, IBP_MANAGE, IBP_CHNG);
 
   cmd = &(op->mod_alloc_op);
 
-  parse_cap(cap, host, &port, cmd->key, cmd->typekey);
+  parse_cap(op->ic, cap, host, &port, cmd->key, cmd->typekey);
   set_hostport(hoststr, sizeof(hoststr), host, port, &(op->ic->cc[IBP_MANAGE]));
   op->dop.cmd.hostport = strdup(hoststr);
 
@@ -2088,20 +2101,20 @@ op_status_t alias_modify_alloc_command(op_generic_t *gop, NetStream_t *ns)
 void set_ibp_alias_modify_alloc_op(ibp_op_t *op, ibp_cap_t *cap, ibp_cap_t *mcap, ibp_off_t offset, ibp_off_t size, int duration,
      int timeout)
 {
-  char hoststr[1024];
+  char hoststr[MAX_HOST_SIZE];
   int port;
-  char host[256];
+  char host[MAX_HOST_SIZE];
   ibp_op_modify_alloc_t *cmd;
 
-  init_ibp_base_op(op, "alias_modify_alloc", timeout, 10*op->ic->new_command, NULL, 1, IBP_ALIAS_MANAGE, IBP_CHNG);
+  init_ibp_base_op(op, "alias_modify_alloc", timeout, op->ic->other_new_command, NULL, 1, IBP_ALIAS_MANAGE, IBP_CHNG);
 
   cmd = &(op->mod_alloc_op);
 
-  parse_cap(cap, host, &port, cmd->key, cmd->typekey);
+  parse_cap(op->ic, cap, host, &port, cmd->key, cmd->typekey);
   set_hostport(hoststr, sizeof(hoststr), host, port, &(op->ic->cc[IBP_ALIAS_MANAGE]));
   op->dop.cmd.hostport = strdup(hoststr);
 
-  parse_cap(mcap, host, &port, cmd->mkey, cmd->mtypekey);
+  parse_cap(op->ic, mcap, host, &port, cmd->mkey, cmd->mtypekey);
 
   cmd->cap = cap;
   cmd->offset = offset;
@@ -2163,16 +2176,16 @@ op_status_t truncate_command(op_generic_t *gop, NetStream_t *ns)
 
 void set_ibp_truncate_op(ibp_op_t *op, ibp_cap_t *cap, ibp_off_t size, int timeout)
 {
-  char hoststr[1024];
+  char hoststr[MAX_HOST_SIZE];
   int port;
-  char host[256];
+  char host[MAX_HOST_SIZE];
   ibp_op_modify_alloc_t *cmd;
   
-  init_ibp_base_op(op, "truncate_alloc", timeout, 10*op->ic->new_command, NULL, 1, IBP_MANAGE, IBP_CHNG);
+  init_ibp_base_op(op, "truncate_alloc", timeout, op->ic->other_new_command, NULL, 1, IBP_MANAGE, IBP_CHNG);
 
   cmd = &(op->mod_alloc_op);
 
-  parse_cap(cap, host, &port, cmd->key, cmd->typekey);
+  parse_cap(op->ic, cap, host, &port, cmd->key, cmd->typekey);
   set_hostport(hoststr, sizeof(hoststr), host, port, &(op->ic->cc[IBP_MANAGE]));
   op->dop.cmd.hostport = strdup(hoststr);
 
@@ -2312,16 +2325,20 @@ log_printf(15, "probe_recv: p=%p QWERT\n", p);
 
 void set_ibp_probe_op(ibp_op_t *op, ibp_cap_t *cap, ibp_capstatus_t *probe, int timeout)
 {
-  char hoststr[1024];
+  char hoststr[MAX_HOST_SIZE];
   int port;
-  char host[256];
+  char host[MAX_HOST_SIZE];
   ibp_op_probe_t *cmd;
-  
-  init_ibp_base_op(op, "probe", timeout, 10*op->ic->new_command, NULL, 1, IBP_MANAGE, IBP_PROBE);
+
+log_printf(15, " cctype=%d\n", op->ic->cc[IBP_MANAGE].type);
+
+  init_ibp_base_op(op, "probe", timeout, op->ic->other_new_command, NULL, 1, IBP_MANAGE, IBP_PROBE);
+
+log_printf(15, "AFTER cctype=%d\n", op->ic->cc[IBP_MANAGE].type); flush_log();
 
   cmd = &(op->probe_op);
 
-  parse_cap(cap, host, &port, cmd->key, cmd->typekey);
+  parse_cap(op->ic, cap, host, &port, cmd->key, cmd->typekey);
   set_hostport(hoststr, sizeof(hoststr), host, port, &(op->ic->cc[IBP_MANAGE]));
   op->dop.cmd.hostport = strdup(hoststr);
 
@@ -2336,7 +2353,7 @@ log_printf(15, "set_ibp_probe_op: p=%p QWERT\n", probe);
 }
 
 //*************************************************************
-//  new_ibp_probe_op - Creats and generates  a new IBP_PROBE 
+//  new_ibp_probe_op - Creats and generates  a new IBP_PROBE
 //     command to get information about an existing allocation
 //*************************************************************
 
@@ -2420,16 +2437,16 @@ op_status_t alias_probe_recv(op_generic_t *gop, NetStream_t *ns)
 
 void set_ibp_alias_probe_op(ibp_op_t *op, ibp_cap_t *cap, ibp_alias_capstatus_t *probe, int timeout)
 {
-  char hoststr[1024];
+  char hoststr[MAX_HOST_SIZE];
   int port;
-  char host[256];
+  char host[MAX_HOST_SIZE];
   ibp_op_probe_t *cmd;
   
-  init_ibp_base_op(op, "alias_probe", timeout, 10*op->ic->new_command, NULL, 1, IBP_ALIAS_MANAGE, IBP_PROBE);
+  init_ibp_base_op(op, "alias_probe", timeout, op->ic->other_new_command, NULL, 1, IBP_ALIAS_MANAGE, IBP_PROBE);
 
   cmd = &(op->probe_op);
 
-  parse_cap(cap, host, &port, cmd->key, cmd->typekey);
+  parse_cap(op->ic, cap, host, &port, cmd->key, cmd->typekey);
   set_hostport(hoststr, sizeof(hoststr), host, port, &(op->ic->cc[IBP_ALIAS_MANAGE]));
   op->dop.cmd.hostport = strdup(hoststr);
 
@@ -2540,16 +2557,16 @@ op_status_t copy_recv(op_generic_t *gop, NetStream_t *ns)
 void set_ibp_copyappend_op(ibp_op_t *op, int ns_type, char *path, ibp_cap_t *srccap, ibp_cap_t *destcap, ibp_off_t src_offset, ibp_off_t size,
         int src_timeout, int  dest_timeout, int dest_client_timeout)
 {
-  char hoststr[1024];
+  char hoststr[MAX_HOST_SIZE];
   int port;
-  char host[256];
+  char host[MAX_HOST_SIZE];
   ibp_op_copy_t *cmd;
 
-  init_ibp_base_op(op, "copyappend", src_timeout, op->ic->new_command + size, NULL, size, IBP_SEND, IBP_NOP);
+  init_ibp_base_op(op, "copyappend", src_timeout, op->ic->rw_new_command + size, NULL, size, IBP_SEND, IBP_NOP);
 
   cmd = &(op->copy_op);
 
-  parse_cap(srccap, host, &port, cmd->src_key, cmd->src_typekey);
+  parse_cap(op->ic, srccap, host, &port, cmd->src_key, cmd->src_typekey);
   set_hostport(hoststr, sizeof(hoststr), host, port, &(op->ic->cc[IBP_SEND]));
   op->dop.cmd.hostport = strdup(hoststr);
 
@@ -2647,16 +2664,16 @@ void set_ibp_copy_op(ibp_op_t *op, int mode, int ns_type, char *path, ibp_cap_t 
         ibp_off_t src_offset, ibp_off_t dest_offset, ibp_off_t size, int src_timeout, int  dest_timeout,
         int dest_client_timeout)
 {
-  char hoststr[1024];
+  char hoststr[MAX_HOST_SIZE];
   int port;
-  char host[256];
+  char host[MAX_HOST_SIZE];
   ibp_op_copy_t *cmd;
 
-  init_ibp_base_op(op, "copy", src_timeout, op->ic->new_command + size, NULL, size, IBP_SEND, IBP_NOP);
+  init_ibp_base_op(op, "copy", src_timeout, op->ic->rw_new_command + size, NULL, size, IBP_SEND, IBP_NOP);
 
   cmd = &(op->copy_op);
 
-  parse_cap(srccap, host, &port, cmd->src_key, cmd->src_typekey);
+  parse_cap(op->ic, srccap, host, &port, cmd->src_key, cmd->src_typekey);
   set_hostport(hoststr, sizeof(hoststr), host, port, &(op->ic->cc[IBP_SEND]));
   op->dop.cmd.hostport = strdup(hoststr);
 
@@ -2744,8 +2761,8 @@ void set_ibp_depot_modify_op(ibp_op_t *op, ibp_depot_t *depot, char *password, i
 {
   ibp_op_depot_modify_t *cmd = &(op->depot_modify_op);
 
-  init_ibp_base_op(op, "depot_modify", timeout, op->ic->new_command, NULL,
-         op->ic->new_command, IBP_STATUS, IBP_ST_CHANGE);
+  init_ibp_base_op(op, "depot_modify", timeout, op->ic->other_new_command, NULL,
+         op->ic->other_new_command, IBP_STATUS, IBP_ST_CHANGE);
 
   cmd->depot = depot;
   cmd->password = password;
@@ -2903,13 +2920,15 @@ op_status_t depot_inq_recv(op_generic_t *gop, NetStream_t *ns)
 
 void set_ibp_depot_inq_op(ibp_op_t *op, ibp_depot_t *depot, char *password, ibp_depotinfo_t *di, int timeout)
 {
-  char hoststr[1024];
+  char hoststr[MAX_HOST_SIZE];
+  char pchost[MAX_HOST_SIZE];
   ibp_op_depot_inq_t *cmd = &(op->depot_inq_op);
 
-  set_hostport(hoststr, sizeof(hoststr), depot->host, depot->port, &(op->ic->cc[IBP_STATUS]));
+  ibppc_form_host(op->ic, pchost, sizeof(pchost), depot->host, depot->rid);
+  set_hostport(hoststr, sizeof(hoststr), pchost, depot->port, &(op->ic->cc[IBP_STATUS]));
 
-  init_ibp_base_op(op, "depot_inq", timeout, op->ic->new_command, strdup(hoststr), 
-         op->ic->new_command, IBP_STATUS, IBP_ST_INQ);
+  init_ibp_base_op(op, "depot_inq", timeout, op->ic->other_new_command, strdup(hoststr), 
+         op->ic->other_new_command, IBP_STATUS, IBP_ST_INQ);
   
   cmd->depot = depot;
   cmd->password = password;
@@ -3008,13 +3027,15 @@ op_status_t depot_version_recv(op_generic_t *gop, NetStream_t *ns)
 
 void set_ibp_version_op(ibp_op_t *op, ibp_depot_t *depot, char *buffer, int buffer_size, int timeout)
 {
-  char hoststr[1024];
+  char hoststr[MAX_HOST_SIZE];
+  char pchoststr[MAX_HOST_SIZE];
   ibp_op_version_t *cmd = &(op->ver_op);
 
-  set_hostport(hoststr, sizeof(hoststr), depot->host, depot->port, &(op->ic->cc[IBP_STATUS]));
+  ibppc_form_host(op->ic, pchoststr, sizeof(pchoststr), depot->host, depot->rid);
+  set_hostport(hoststr, sizeof(hoststr), pchoststr, depot->port, &(op->ic->cc[IBP_STATUS]));
 
-  init_ibp_base_op(op, "depot_version", timeout, op->ic->new_command, strdup(hoststr), 
-         op->ic->new_command, IBP_STATUS, IBP_ST_VERSION);
+  init_ibp_base_op(op, "depot_version", timeout, op->ic->other_new_command, strdup(hoststr),
+         op->ic->other_new_command, IBP_STATUS, IBP_ST_VERSION);
   
   cmd->depot = depot;
   cmd->buffer = buffer;
@@ -3113,13 +3134,15 @@ op_status_t query_res_recv(op_generic_t *gop, NetStream_t *ns)
 void set_ibp_query_resources_op(ibp_op_t *op, ibp_depot_t *depot, ibp_ridlist_t *rlist, int timeout)
 {
 {
-  char hoststr[1024];
+  char hoststr[MAX_HOST_SIZE];
+  char pchoststr[MAX_HOST_SIZE];
   ibp_op_rid_inq_t *cmd = &(op->rid_op);
 
-  set_hostport(hoststr, sizeof(hoststr), depot->host, depot->port, &(op->ic->cc[IBP_STATUS]));
+  ibppc_form_host(op->ic, pchoststr, sizeof(pchoststr), depot->host, depot->rid);
+  set_hostport(hoststr, sizeof(hoststr), pchoststr, depot->port, &(op->ic->cc[IBP_STATUS]));
 
-  init_ibp_base_op(op, "query_resources", timeout, op->ic->new_command, strdup(hoststr), 
-         op->ic->new_command, IBP_STATUS, IBP_ST_RES);
+  init_ibp_base_op(op, "query_resources", timeout, op->ic->other_new_command, strdup(hoststr),
+         op->ic->other_new_command, IBP_STATUS, IBP_ST_RES);
   
   cmd->depot = depot;
   cmd->rlist = rlist;

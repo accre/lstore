@@ -135,6 +135,15 @@ log_printf(10, "ibp_sync_command: IBP_errno=%d\n", IBP_errno); //flush_log();
 }
 
 //**************************************************************************
+// set_ibp_sync_context - Sets the IBP context to use
+//**************************************************************************
+
+void set_ibp_sync_context(ibp_context_t *ic)
+{
+  _ibp_sync = ic;
+}
+
+//**************************************************************************
 // make_ibp_sync_context
 //**************************************************************************
 
@@ -311,6 +320,8 @@ int IBP_manage(ibp_cap_t *cap, ibp_timer_t  *timer, int cmd, int captype, ibp_ca
 
   init_ibp_op(_ibp_sync, &op);
 
+log_printf(15, "IBP_manage: cmd=%d cap=%s cctype=%d\n", cmd, cap, op.ic->cc[IBP_MANAGE].type); fflush(stdout);
+
   err = 0;
   switch (cmd) {
     case IBP_INCR:
@@ -327,6 +338,8 @@ int IBP_manage(ibp_cap_t *cap, ibp_timer_t  *timer, int cmd, int captype, ibp_ca
        err = 1;
        log_printf(0, "IBP_manage:  Invalid command: %d\n", cmd);
   }
+
+log_printf(15, "AFTER IBP_manage: cmd=%d cap=%s cctype=%d\n", cmd, cap, op.ic->cc[IBP_MANAGE].type); fflush(stdout);
 
   if (err == 0) {
     err = ibp_sync_command(&op);

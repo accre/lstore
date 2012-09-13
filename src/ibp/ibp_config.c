@@ -76,7 +76,7 @@ typedef struct {
 } rwc_gop_stack_t;
 
 typedef struct {
-  Stack_t *hp_stack;
+//  Stack_t *hp_stack;
   Stack_t list_stack;
   pigeon_coop_hole_t pch;
 } rw_coalesce_t;
@@ -180,11 +180,12 @@ log_printf(15, "gid=%d coalesced_ops=%p\n", gop_id(gop), gop->op->cmd.coalesced_
     rwc = (rw_coalesce_t *)pigeon_coop_hole_data(&pch);
     rwc->pch = pch;
     list_insert(ic->coalesced_ops, cmd->cap, rwc);
-    rwc->hp_stack = stack;
+//    rwc->hp_stack = stack;
   }
 
   move_to_bottom(&(rwc->list_stack));
   insert_below(&(rwc->list_stack), ele);
+  iop->hp_parent = stack;
 
   log_printf(15, "ibp_rw_submit_coalesce: gid=%d cap=%s count=%d\n", gop_id(gop), cmd->cap, stack_size(&(rwc->list_stack)));
 
@@ -210,9 +211,10 @@ int ibp_rw_coalesce(op_generic_t *gop1)
   Stack_ele_t *ele;
   Stack_t *cstack;
   int64_t workload;
-  int n, iov_sum, found_myself;
+  int n, ntasks, iov_sum, found_myself;
   rwc_gop_stack_t *rwcg;
   pigeon_coop_hole_t pch;
+  Stack_t *my_hp = iop1->hp_parent;;
 
   apr_thread_mutex_lock(ic->lock);
 
@@ -225,15 +227,6 @@ int ibp_rw_coalesce(op_generic_t *gop1)
     apr_thread_mutex_unlock(ic->lock);
     return(0);
   }
-
-
-//  ele = (Stack_ele_t *)pop(&(rwc->list_stack));  //** The top most task should be me
-//  gop2 = (op_generic_t *)get_stack_ele_data(ele);
-//  if (gop2 != gop1) {
-//     log_printf(0, "ERROR! top stack element is notme! gid1=%d gid2=%d\n", gop_id(gop1), gop_id(gop2));
-//     flush_log();
-//     abort();
-//  }
 
   if (stack_size(&(rwc->list_stack)) == 1) { //** Nothing to do so exit
      ele = (Stack_ele_t *)pop(&(rwc->list_stack));  //** The top most task should be me
@@ -262,6 +255,7 @@ int ibp_rw_coalesce(op_generic_t *gop1)
   cstack = &(rwcg->stack);
   gop1->op->cmd.coalesced_ops = cstack;
   cmd1->rwbuf = rwbuf;
+  ntasks = 0;
 
   //** PAtch over the send command function
   if (cmd1->rw_mode == IBP_READ) {
@@ -273,7 +267,8 @@ int ibp_rw_coalesce(op_generic_t *gop1)
   n = 0;
   iov_sum = 0;
   found_myself = 0;
-  ele = (Stack_ele_t *)pop(&(rwc->list_stack));
+  move_to_top(&(rwc->list_stack));
+  ele = (Stack_ele_t *)get_ele_data(&(rwc->list_stack));
   do {
      gop2 = (op_generic_t *)get_stack_ele_data(ele);
      iop2 = ibp_get_iop(gop2);
@@ -281,25 +276,37 @@ int ibp_rw_coalesce(op_generic_t *gop1)
 
      //** Unlink the element if needed
      if (gop2 != gop1) {
-        move_to_ptr(rwc->hp_stack, ele);
-        stack_unlink_current(rwc->hp_stack, 0);
-        push_link(cstack, ele);
+        if (iop2->hp_parent == my_hp) {
+//           move_to_ptr(rwc->hp_stack, ele);
+//           stack_unlink_current(rwc->hp_stack, 0);
+           move_to_ptr(iop2->hp_parent, ele);
+           stack_unlink_current(iop2->hp_parent, 0);
+           push_link(cstack, ele);
+        }
      } else {
         found_myself = 1;
      }
 
+
+     //** Can only coalesce ops on the same hoststr
+     if (iop2->hp_parent == my_hp) {
 log_printf(15, "ibp_rw_coalesce: gop[%d]->gid=%d n_iov=%d io_total=%d\n", n, gop_id(gop2), cmd2->n_iovec_total, iov_sum);
+        rwbuf[n] = &(cmd2->buf_single);
+        iov_sum += cmd2->n_iovec_total;
+        workload += cmd2->size;
+        n++;
 
-     rwbuf[n] = &(cmd2->buf_single);
-     iov_sum += cmd2->n_iovec_total;
-     workload += cmd2->size;
-     n++;
-
-     ele = NULL;
-     if (workload < ic->max_coalesce) { ele = (Stack_ele_t *)pop(&(rwc->list_stack)); }
+        delete_current(&(rwc->list_stack), 0, 0);  //** Remove it from the stack and move down to the next
+        ele = NULL;
+        if (workload < ic->max_coalesce) { ele = (Stack_ele_t *)get_ele_data(&(rwc->list_stack)); }
+     } else {
+       log_printf(15, "SKIPPING: gop[-]->gid=%d n_iov=%d io_total=%d\n", gop_id(gop2), cmd2->n_iovec_total, iov_sum);
+       move_down(&(rwc->list_stack));
+       ele = (Stack_ele_t *)get_ele_data(&(rwc->list_stack));
+     }
   } while ((ele != NULL) && (workload < ic->max_coalesce) && (iov_sum < 2000));
 
-  if (found_myself == 0) {  //** Got to scan the list for myself
+  if (found_myself == 0) {  //** Oops! Hit the max_coalesce workdload or size so Got to scan the list for myself
      move_to_top(&(rwc->list_stack));
      while ((ele = (Stack_ele_t *)get_ele_data(&(rwc->list_stack))) != NULL) {
        gop2 = (op_generic_t *)get_stack_ele_data(ele);
@@ -320,7 +327,7 @@ log_printf(15, "ibp_rw_coalesce: gop[%d]->gid=%d n_iov=%d io_total=%d\n", n, gop
      }
 
      if (found_myself == 0) {
-        log_printf(0, "ERROR! Scanned entire list and couldnt find myself! gid1=%d gid2=%d\n", gop_id(gop1));
+        log_printf(0, "ERROR! Scanned entire list and couldnt find myself! gid1=%d\n", gop_id(gop1));
         flush_log();
         abort();
      }
@@ -332,7 +339,7 @@ if (stack_size(&(rwc->list_stack)) > 0) log_printf(1, "%d ops left on stack to c
   cmd1->n_ops = n;
   cmd1->n_iovec_total = iov_sum;
   cmd1->size = workload;
-  gop1->op->cmd.workload = workload + ic->new_command;
+  gop1->op->cmd.workload = workload + ic->rw_new_command;
 
   if (stack_size(&(rwc->list_stack)) == 0) {  //** Nothing left so free it
      list_remove(ic->coalesced_ops, cmd1->cap, NULL);
@@ -436,10 +443,12 @@ void _ibp_destroy_connect_context(void *connect_context)
 int _ibp_connect(NetStream_t *ns, void *connect_context, char *host, int port, Net_timeout_t timeout)
 {
   ibp_connect_context_t *cc = (ibp_connect_context_t *)connect_context;
+  int i, n;
 
-log_printf(15, "cc=%p\n", cc); flush_log();
-log_printf(15, "cc->type=%d\n", cc->type); flush_log();
-log_printf(15, "cc->tcpsize=%d\n", cc->tcpsize); flush_log();
+//log_printf(0, "HOST host=%s\n", host);
+//log_printf(15, "cc=%p\n", cc); flush_log();
+//log_printf(15, "cc->type=%d\n", cc->type); flush_log();
+//log_printf(15, "cc->tcpsize=%d\n", cc->tcpsize); flush_log();
 
   if (cc != NULL) {
      switch(cc->type) {
@@ -463,7 +472,16 @@ log_printf(15, "cc->tcpsize=%d\n", cc->tcpsize); flush_log();
      ns_config_sock(ns, 0);
   }
 
-  return(net_connect(ns, host, port, timeout));
+  //** See if we have an RID if so peel it off
+  i = 0;
+  while ((host[i] != 0) && (host[i] != '#')) i++;
+
+  if (host[i] == '#') { host[i] = 0; i=-i; }
+//log_printf(0, "net_connect(%s)\n", host);
+  n = net_connect(ns, host, port, timeout);
+  if (i<0) host[-i] = '#';
+
+  return(n);
 }
 
 
@@ -471,10 +489,10 @@ log_printf(15, "cc->tcpsize=%d\n", cc->tcpsize); flush_log();
 // set/unset routines for options
 //**********************************************************
 
-int ibp_set_chksum(ibp_context_t *ic, ns_chksum_t *ncs) 
-{ 
-  ns_chksum_clear(&(ic->ncs)); 
-  if (ncs != NULL) ic->ncs = *ncs; 
+int ibp_set_chksum(ibp_context_t *ic, ns_chksum_t *ncs)
+{
+  ns_chksum_clear(&(ic->ncs));
+  if (ncs != NULL) ic->ncs = *ncs;
   return(0);
 }
 void ibp_get_chksum(ibp_context_t *ic, ns_chksum_t *ncs) { *ncs = ic->ncs; };
@@ -492,8 +510,8 @@ int  ibp_get_max_depot_threads(ibp_context_t *ic) { return(ic->max_threads); }
 void ibp_set_max_connections(ibp_context_t *ic, int n) 
    { ic->max_connections = n; ic->pc->max_connections = n; }
 int  ibp_get_max_connections(ibp_context_t *ic) { return(ic->max_connections); }
-void ibp_set_command_weight(ibp_context_t *ic, int n) { ic->new_command = n; }
-int  ibp_get_command_weight(ibp_context_t *ic) { return(ic->new_command); }
+void ibp_set_command_weight(ibp_context_t *ic, int n) { ic->other_new_command = n; }
+int  ibp_get_command_weight(ibp_context_t *ic) { return(ic->other_new_command); }
 void ibp_set_max_retry_wait(ibp_context_t *ic, int n) { ic->max_wait = n; ic->pc->max_wait = n;}
 int  ibp_get_max_retry_wait(ibp_context_t *ic) { return(ic->max_wait); }
 void ibp_set_max_thread_workload(ibp_context_t *ic, int64_t n) { ic->max_workload = n; ic->pc->max_workload = n;}
@@ -610,7 +628,7 @@ int ibp_load_config(ibp_context_t *ic, char *fname, char *section)
   inip_file_t *keyfile;
   apr_time_t t = 0;
 
-  if (section == NULL) section = "ibp_async";
+  if (section == NULL) section = "ibp";
 
   //* Load the config file
   keyfile = inip_read(fname);
@@ -626,7 +644,8 @@ int ibp_load_config(ibp_context_t *ic, char *fname, char *section)
   ic->min_threads = inip_get_integer(keyfile, section, "min_depot_threads", ic->min_threads);
   ic->max_threads = inip_get_integer(keyfile, section, "max_depot_threads", ic->max_threads);
   ic->max_connections = inip_get_integer(keyfile, section, "max_connections", ic->max_connections);
-  ic->new_command = inip_get_integer(keyfile, section, "command_weight", ic->new_command);
+  ic->rw_new_command = inip_get_integer(keyfile, section, "rw_command_weight", ic->rw_new_command);
+  ic->other_new_command = inip_get_integer(keyfile, section, "other_command_weight", ic->other_new_command);
   ic->max_workload = inip_get_integer(keyfile, section, "max_thread_workload", ic->max_workload);
   ic->max_coalesce = inip_get_integer(keyfile, section, "max_coalesce_workload", ic->max_coalesce);
   ic->coalesce_enable = inip_get_integer(keyfile, section, "coalesce_enable", ic->coalesce_enable);
@@ -634,6 +653,8 @@ int ibp_load_config(ibp_context_t *ic, char *fname, char *section)
   ic->wait_stable_time = inip_get_integer(keyfile, section, "wait_stable_time", ic->wait_stable_time);
   ic->check_connection_interval = inip_get_integer(keyfile, section, "check_interval", ic->check_connection_interval);
   ic->max_retry = inip_get_integer(keyfile, section, "max_retry", ic->max_retry);
+  ic->connection_mode = inip_get_integer(keyfile, section, "connection_mode", ic->connection_mode);
+  ic->rr_size = inip_get_integer(keyfile, section, "rr_size", ic->rr_size);
 
   ibp_cc_load(keyfile, ic);
 
@@ -642,6 +663,8 @@ int ibp_load_config(ibp_context_t *ic, char *fname, char *section)
   inip_destroy(keyfile);   //Free the keyfile context
 
   copy_ibp_config(ic);
+
+log_printf(0, "fname=%s section=%s cmode=%d min_depot_threads=%d max_depot_threads=%d max_connections=%d max_thread_workload=%d coalesce_enable=%d\n", fname, section, ic->connection_mode, ic->min_threads, ic->max_threads, ic->max_connections, ic->max_workload, ic->coalesce_enable);
 
   return(0);
 }
@@ -661,7 +684,8 @@ void default_ibp_config(ibp_context_t *ic)
   ic->min_threads = 1;
   ic->max_threads = 4;
   ic->max_connections = 128;
-  ic->new_command = 10*1024;
+  ic->rw_new_command = 10*1024;
+  ic->other_new_command = 100*1024;
   ic->max_workload = 10*1024*1024;
   ic->max_coalesce = ic->max_workload;
   ic->coalesce_enable = 1;
@@ -670,6 +694,8 @@ void default_ibp_config(ibp_context_t *ic)
   ic->abort_conn_attempts = 4;
   ic->check_connection_interval = 2;
   ic->max_retry = 2;
+  ic->rr_size = 4;
+  ic->connection_mode = IBP_CMODE_HOST;
 
   for (i=0; i<=IBP_MAX_NUM_CMDS; i++) {
      ic->cc[i].type = NS_TYPE_SOCK;
