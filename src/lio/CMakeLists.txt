@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 2.6)
 
 # make a project
-project( LIO C )
+project( LIO C CXX)
 
 # Set some cmake defaults
 set(CMAKE_BUILD_TYPE "Debug")
@@ -41,7 +41,7 @@ find_package(ZMQ REQUIRED)
 include_directories(${OPENSSL_INCLUDE_DIR} ${PROTOBUF_INCLUDE_DIR} ${APR_INCLUDE_DIR} ${APRUTIL_INCLUDE_DIR} ${PHOEBUS_INCLUDE_DIR}
    ${HWLOC_INCLUDE_DIR} ${JERASURE_INCLUDE_DIR} ${TOOLBOX_INCLUDE_DIR} ${GOP_INCLUDE_DIR} ${IBP_INCLUDE_DIR} )
 SET(LIBS ${LIBS} ${IBP_LIBRARY} ${GOP_LIBRARY} ${TOOLBOX_LIBRARY} ${JERASURE_LIBRARY} ${OPENSSL_LIBRARIES} ${CRYPTO_LIBRARIES} 
-   ${PROTOBUF_LIBRARY} ${APR_LIBRARY} ${APRUTIL_LIBRARY} ${HWLOC_LIBRARY} xml2 zmq pthread m dl)
+   ${PROTOBUF_LIBRARY} ${APR_LIBRARY} ${APRUTIL_LIBRARY} ${HWLOC_LIBRARY} xml2 ${ZMQ_LIBRARY}  pthread m dl rt)
 
 #Make the version file
 set(LIO_CLIENT_VERSION "lio_client: v1.0.0")
@@ -117,11 +117,13 @@ SET(lio_lib lio-static)
 #Add the exe build rules
 foreach (f ${LIO_EXE})
   add_executable(${f} ${f}.c ${EXE3_OBJS})
+  set_target_properties(${f} PROPERTIES LINKER_LANGUAGE CXX)
   target_link_libraries(${f} ${lio_lib} ${LIBS})
 endforeach(f)
 
-ADD_EXECUTABLE( trace_replay trace_replay.c trace.c ${EX3_OBJS} )
-TARGET_LINK_LIBRARIES( trace_replay ${lio_lib} ${LIBS} m )
+add_executable( trace_replay trace_replay.c trace.c ${EX3_OBJS} )
+set_target_properties(trace_replay PROPERTIES LINKER_LANGUAGE CXX)
+target_link_libraries( trace_replay ${lio_lib} ${LIBS} m )
 
 install(TARGETS lio DESTINATION lib)
 install(TARGETS lio-static DESTINATION lib)
