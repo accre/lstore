@@ -1,0 +1,10 @@
+v1.0.0p2
+------------------------------------
+
+ibp_client_version() - Added this command to the library and also to the test programs. 
+The command returns an arbitrary character string containing verion information.  Similar to the "about"
+in GUI apps.
+
+IBP_REMOVE_UNSUPPORTED - Added this #define variable to disable the unsupported stubs.  Only used in ibp_sync.c.
+
+
