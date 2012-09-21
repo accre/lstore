@@ -77,7 +77,7 @@ op_status_t cp_lio(cp_file_t *cp)
   opque_t *q;
   int sigsize = 10*1024;
   char sig1[sigsize], sig2[sigsize];
-  char *keys[] = {"system.exnode", "system.exnode.size", "os.timestamp.system.modify"};
+  char *keys[] = {"system.exnode", "system.exnode.size", "os.timestamp.system.modify_data"};
   char *sex_data, *dex_data;
   char *val[3];
   char mysize[100];
@@ -225,7 +225,7 @@ op_status_t cp_src_local(cp_file_t *cp)
   exnode_t *ex;
   exnode_exchange_t *exp;
   segment_t *seg;
-  char *key[] = {"system.exnode", "system.exnode.size", "os.timestamp.system.modify"};
+  char *key[] = {"system.exnode", "system.exnode.size", "os.timestamp.system.modify_data"};
   char *val[3];
   int v_size[3], dtype, err;
   ex_off_t ssize;

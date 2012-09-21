@@ -32,11 +32,20 @@ http://www.accre.vanderbilt.edu
 #include "type_malloc.h"
 #include "lio.h"
 #include "log.h"
+#include "string_token.h"
 
 //***********************************************************************
 // Core LIO functionality
 //***********************************************************************
 
+
+#define  _n_lioc_file_keys 7
+#define  _n_lioc_dir_keys 6
+#define _n_lioc_create_keys 7
+#define _n_fsck_keys 4
+
+static char *_lioc_create_keys[] = { "system.owner", "os.timestamp.system.create", "os.timestamp.system.modify_data", "os.timestamp.system.modify_attr", "system.inode", "system.exnode", "system.exnode.size"};
+static char *_fsck_keys[] = { "system.owner", "system.inode", "system.exnode", "system.exnode.size" };
 
 typedef struct {
   lio_config_t *lc;
@@ -60,8 +69,8 @@ typedef struct {
 
 typedef struct {
   char *fname;
-  char *val[3];
-  int v_size[3];
+  char *val[_n_fsck_keys];
+  int v_size[_n_fsck_keys];
   int ftype;
 } lioc_fsck_task_t;
 
@@ -74,8 +83,8 @@ typedef struct {
   int owner_mode;
   int exnode_mode;
   char *owner;
-  char *val[3];
-  int v_size[3];
+  char *val[_n_fsck_keys];
+  int v_size[_n_fsck_keys];
   lioc_fsck_task_t *task;
   opque_t *q;
   int n;
@@ -94,13 +103,6 @@ typedef struct {
   int exnode_mode;
   char *owner;
 } lioc_fsck_check_t;
-
-#define  _n_lioc_file_keys 4
-#define  _n_lioc_dir_keys 3
-#define _n_lioc_create_keys 4
-
-static char *_lioc_create_keys[] = { "system.owner", "os.timestamp.system.create", "system.exnode", "system.exnode.size" };
-static char *_fsck_keys[] = { "system.owner", "system.exnode", "system.exnode.size" };
 
 
 //***********************************************************************
@@ -187,6 +189,32 @@ int lio_parse_path(char *startpath, char **user, char **service, char **path)
   }
 
   return(ptype);
+}
+
+//***********************************************************************
+// lio_set_timestamp - Sets the timestamp val/size for a attr put
+//***********************************************************************
+
+void lio_set_timestamp(char *id, char **val, int *v_size)
+{
+  *val = id;
+  *v_size = (id == NULL) ? 0 : strlen(id);
+  return;
+}
+
+//***********************************************************************
+// lio_get_timestamp - Splits the timestamp ts/id field
+//***********************************************************************
+
+void lio_get_timestamp(char *val, int *timestamp, char **id)
+{
+  char *bstate;
+  int fin;
+
+  *timestamp = 0;
+  sscanf(string_token(val, "|", &bstate, &fin), "%d", timestamp);
+  if (id != NULL) *id = string_token(NULL, "|", &bstate, &fin);
+  return;
 }
 
 //***********************************************************************
@@ -473,14 +501,17 @@ op_status_t lioc_create_object_fn(void *arg, int id)
   char *dir, *fname;
   exnode_exchange_t *exp;
   exnode_t *ex, *cex;
+  ex_id_t ino;
+  char inode[32];
   char *val[_n_lioc_create_keys];
   op_status_t status;
   int v_size[_n_lioc_create_keys];
   int err;
+  int ex_key = 5;
 
   status = op_success_status;
 
-  val[2] = NULL;
+  val[ex_key] = NULL;
 
   //** Make the base object
   err = gop_sync_exec(os_create_object(op->lc->os, op->creds, op->src_path, op->type, op->id));
@@ -503,7 +534,7 @@ op_status_t lioc_create_object_fn(void *arg, int id)
      free(fname);
 
      v_size[0] = -op->lc->max_attr;
-     err = gop_sync_exec(os_get_attr(op->lc->os, op->creds, fd, "system.exnode", (void **)&(val[2]), &(v_size[0])));
+     err = gop_sync_exec(os_get_attr(op->lc->os, op->creds, fd, "system.exnode", (void **)&(val[ex_key]), &(v_size[0])));
      if (err != OP_STATE_SUCCESS) {
         log_printf(15, "ERROR opening parent=%s\n", dir);
         free(dir);
@@ -522,7 +553,7 @@ op_status_t lioc_create_object_fn(void *arg, int id)
 
      free(dir);
   } else {
-    val[2] = op->ex;
+    val[ex_key] = op->ex;
   }
 
   //** For a directory we can just copy the exnode.  For a file we have to
@@ -536,10 +567,10 @@ op_status_t lioc_create_object_fn(void *arg, int id)
 
      //** Deserialize it
      exp = exnode_exchange_create(EX_TEXT);
-     exp->text = val[2];
+     exp->text = val[ex_key];
      ex = exnode_create();
      exnode_deserialize(ex, exp, &my_ess);
-     free(val[2]);
+     free(val[ex_key]);
      exp->text = NULL;
 
      //** Execute the clone operation
@@ -552,7 +583,7 @@ op_status_t lioc_create_object_fn(void *arg, int id)
 
      //** Serialize it for storage
      exnode_serialize(cex, exp);
-     val[2] = exp->text;
+     val[ex_key] = exp->text;
      exp->text = NULL;
      exnode_exchange_destroy(exp);
      exnode_destroy(ex);
@@ -572,8 +603,11 @@ op_status_t lioc_create_object_fn(void *arg, int id)
   //** Now add the required attributes
   val[0] = an_cred_get_id(op->creds); v_size[0] = strlen(val[0]);
   val[1] = op->id;  v_size[1] = (op->id == NULL) ? 0 : strlen(op->id);
-  v_size[2] = strlen(val[2]);
-  val[3] = "0";  v_size[3] = 1;
+  val[2] = op->id; v_size[2] = v_size[1];
+  val[3] = op->id; v_size[3] = v_size[1];
+  ino = 0; generate_ex_id(&ino);  snprintf(inode, 32, XIDT, ino); val[4] = inode;  v_size[4] = strlen(inode);
+  v_size[ex_key] = strlen(val[ex_key]);
+  val[6] = "0";  v_size[6] = 1;
   err = gop_sync_exec(os_set_multiple_attrs(op->lc->os, op->creds, fd, _lioc_create_keys, (void **)val, v_size, (op->type & OS_OBJECT_FILE) ? _n_lioc_file_keys : _n_lioc_dir_keys));
   if (err != OP_STATE_SUCCESS) {
      log_printf(15, "ERROR setting default attr fname=%s\n", op->src_path);
@@ -591,7 +625,7 @@ op_status_t lioc_create_object_fn(void *arg, int id)
   }
 
 fail:
-  if (val[2] != NULL) free(val[2]);
+  if (val[ex_key] != NULL) free(val[ex_key]);
 
   return(status);
 }
@@ -703,8 +737,9 @@ op_generic_t *lioc_link_object(lio_config_t *lc, creds_t *creds, char *src_path,
 
 int lioc_fsck_check_object(lio_config_t *lc, creds_t *creds, char *path, int ftype, int owner_mode, char *owner, int exnode_mode, char **val, int *v_size)
 {
-  int state, vs, err, srepair, ex_mode;
-  char *dir, *file, ssize[128];
+  int state, err, srepair, ex_mode, index, vs, ex_index;
+  char *dir, *file, ssize[128], *v;
+  ex_id_t ino;
   ex_off_t nbytes;
   exnode_abstract_set_t my_ess;
   exnode_exchange_t *exp;
@@ -712,6 +747,7 @@ int lioc_fsck_check_object(lio_config_t *lc, creds_t *creds, char *path, int fty
   segment_t *seg;
   int do_clone;
 
+  ex_index = 2;
   state = 0;
 
   srepair = exnode_mode & LIO_FSCK_SIZE_REPAIR;
@@ -720,7 +756,8 @@ int lioc_fsck_check_object(lio_config_t *lc, creds_t *creds, char *path, int fty
 log_printf(15, "fname=%s vs[0]=%d vs[1]=%d vs[2]=%d\n", path, v_size[0], v_size[1], v_size[2]);
 
   //** Check the owner
-  if (v_size[0] <= 0) { //** Missing owner
+  index = 0; v = val[index]; vs= v_size[index];
+  if (vs <= 0) { //** Missing owner
      switch (owner_mode) {
        case LIO_FSCK_MANUAL:
            state |= LIO_FSCK_MISSING_OWNER;
@@ -741,7 +778,7 @@ log_printf(15, "fname=%d parent=%s owner=%s\n", path, dir, file);
            free(dir);
            break;
        case LIO_FSCK_DELETE:
-          gop_sync_exec(lioc_remove_object(lc, creds, path, val[1], ftype));
+          gop_sync_exec(lioc_remove_object(lc, creds, path, val[ex_index], ftype));
           return(state);
           break;
        case LIO_FSCK_USER:
@@ -750,9 +787,33 @@ log_printf(15, "fname=%d parent=%s owner=%s\n", path, dir, file);
      }
   }
 
+  //** Check the inode
+  index = 1; v = val[index]; vs= v_size[index];
+  if (vs <= 0) { //** Missing inode
+     switch (owner_mode) {
+       case LIO_FSCK_MANUAL:
+           state |= LIO_FSCK_MISSING_INODE;
+log_printf(15, "fname=%s missing owner\n", path);
+           break;
+       case LIO_FSCK_PARENT:
+       case LIO_FSCK_USER:
+           ino = 0;
+           generate_ex_id(&ino);
+           snprintf(ssize, sizeof(ssize),  XIDT, ino);
+           lioc_set_attr(lc, creds, path, NULL, "system.inode", (void *)ssize, strlen(ssize));
+           break;
+       case LIO_FSCK_DELETE:
+          gop_sync_exec(lioc_remove_object(lc, creds, path, val[ex_index], ftype));
+          return(state);
+          break;
+     }
+  }
+
+
   //** Check if we have an exnode
   do_clone = 0;
-  if (v_size[1] <= 0) {
+  index = 2; v = val[index]; vs= v_size[index];
+  if (vs <= 0) {
      switch (ex_mode) {
        case LIO_FSCK_MANUAL:
            state |= LIO_FSCK_MISSING_EXNODE;
@@ -763,7 +824,7 @@ log_printf(15, "fname=%d parent=%s owner=%s\n", path, dir, file);
            free(file); file = NULL; vs = -lc->max_attr;
            lioc_get_attr(lc, creds, dir, NULL, "system.exnode", (void **)&file, &vs);
            if (vs > 0) {
-             val[1] = file;
+             val[index] = file;
              do_clone = 1;  //** flag we need to clone and store it
            } else {
              state |= LIO_FSCK_MISSING_EXNODE;
@@ -773,7 +834,7 @@ log_printf(15, "fname=%d parent=%s owner=%s\n", path, dir, file);
            free(dir);
            break;
        case LIO_FSCK_DELETE:
-          gop_sync_exec(lioc_remove_object(lc, creds, path, val[1], ftype));
+          gop_sync_exec(lioc_remove_object(lc, creds, path, val[ex_index], ftype));
           return(state);
           break;
      }
@@ -788,7 +849,7 @@ log_printf(15, "fname=%d parent=%s owner=%s\n", path, dir, file);
 
   //** Deserialize it
   exp = exnode_exchange_create(EX_TEXT);
-  exp->text = val[1];
+  exp->text = val[ex_index];
   ex = exnode_create();
   exnode_deserialize(ex, exp, &my_ess);
   exp->text = NULL;
@@ -818,7 +879,8 @@ log_printf(15, "fname=%d parent=%s owner=%s\n", path, dir, file);
      goto finished;
   }
 
-  if (v_size[2] <= 0) {  //** No size of correct if they want to
+  index = 3; v = val[index]; vs= v_size[index];
+  if (vs <= 0) {  //** No size of correct if they want to
      if (srepair == LIO_FSCK_SIZE_REPAIR) {
         state |= LIO_FSCK_MISSING_EXNODE_SIZE;
         goto finished;
@@ -829,7 +891,7 @@ log_printf(15, "fname=%d parent=%s owner=%s\n", path, dir, file);
   }
 
   //** Verify the size
-  sscanf(val[2], XOT, &nbytes);
+  sscanf(v, XOT, &nbytes);
   if (nbytes != segment_size(seg)) {
      if (srepair == LIO_FSCK_SIZE_REPAIR) {
         state |= LIO_FSCK_MISSING_EXNODE_SIZE;
@@ -858,8 +920,8 @@ op_status_t lioc_fsck_object_fn(void *arg, int id)
   lioc_fsck_check_t *op = (lioc_fsck_check_t *)arg;
   int err, i;
   op_status_t status;
-  char *val[3];
-  int v_size[3];
+  char *val[_n_fsck_keys];
+  int v_size[_n_fsck_keys];
 log_printf(15, "fname=%s START\n", op->path); flush_log();
 
   if (op->ftype <= 0) { //** Bad Ftype so see if we can figure it out
@@ -874,11 +936,13 @@ log_printf(15, "fname=%s START\n", op->path); flush_log();
 
   if (op->full == 0) {
 log_printf(15, "fname=%s getting attrs\n", op->path); flush_log();
-     val[0] = val[1] = val[2] = NULL;
-     v_size[0] = v_size[1] = v_size[2] = -op->lc->max_attr;
-     lioc_get_multiple_attrs(op->lc, op->creds, op->path, NULL, _fsck_keys, (void **)&val, v_size, 3);
+     for (i=0; i<_n_fsck_keys; i++) {
+       val[i] = NULL;
+       v_size[i] = -op->lc->max_attr;
+     }
+     lioc_get_multiple_attrs(op->lc, op->creds, op->path, NULL, _fsck_keys, (void **)&val, v_size, _n_fsck_keys);
      err = lioc_fsck_check_object(op->lc, op->creds, op->path, op->ftype, op->owner_mode, op->owner, op->exnode_mode, val, v_size);
-     for (i=0; i<3; i++) if (val[i] != NULL) free(val[i]);
+     for (i=0; i<_n_fsck_keys; i++) if (val[i] != NULL) free(val[i]);
   } else {
      err = lioc_fsck_check_object(op->lc, op->creds, op->path, op->ftype, op->owner_mode, op->owner, op->exnode_mode, op->val, op->v_size);
   }
@@ -957,8 +1021,8 @@ int lioc_next_fsck(lio_config_t *lc, lio_fsck_iter_t *oit, char **bad_fname, int
         if (task->ftype <= 0) break;  //** No more tasks
 log_printf(15, "fname=%s slot=%d\n", task->fname, slot);
 
-        memcpy(task->val, it->val, 3*sizeof(char *));
-        memcpy(task->v_size, it->v_size, 3*sizeof(int));
+        memcpy(task->val, it->val, _n_fsck_keys*sizeof(char *));
+        memcpy(task->v_size, it->v_size, _n_fsck_keys*sizeof(int));
 
         gop = lioc_fsck_object_full(it->lc, it->creds, task->fname, task->ftype, it->owner_mode, it->owner, it->exnode_mode, task->val, task->v_size);
         gop_set_myid(gop, slot);
@@ -977,15 +1041,15 @@ log_printf(15, "main loop start nque=%d\n", opque_tasks_left(it->q));
      *bad_atype = task->ftype;  //** Preserve the info before launching a new one
      *bad_fname = task->fname;
 log_printf(15, "fname=%s slot=%d state=%d\n", task->fname, slot, status.error_code);
-     for (i=0; i<3; i++) { if (task->val[i] != NULL) free(task->val[i]); };
+     for (i=0; i<_n_fsck_keys; i++) { if (task->val[i] != NULL) free(task->val[i]); };
 
      if (it->firsttime == 2) {  //** Only go here if we hanve't finished iterating
         task->ftype = os_next_object(it->lc->os, it->it, &(task->fname), &prefix_len);
         if (task->ftype <= 0) {
            it->firsttime = 3;
         } else {
-           memcpy(task->val, it->val, 3*sizeof(char *));
-           memcpy(task->v_size, it->v_size, 3*sizeof(int));
+           memcpy(task->val, it->val, _n_fsck_keys*sizeof(char *));
+           memcpy(task->v_size, it->v_size, _n_fsck_keys*sizeof(int));
 
            gop = lioc_fsck_object_full(it->lc, it->creds, task->fname, task->ftype, it->owner_mode, it->owner, it->exnode_mode, task->val, task->v_size);
            gop_set_myid(gop, slot);
@@ -1016,6 +1080,7 @@ log_printf(15, "nothing left\n");
 lio_fsck_iter_t *lioc_create_fsck_iter(lio_config_t *lc, creds_t *creds, char *path, int owner_mode, char *owner, int exnode_mode)
 {
   lioc_fsck_iter_t *it;
+  int i;
 
   type_malloc_clear(it, lioc_fsck_iter_t, 1);
 
@@ -1027,8 +1092,13 @@ lio_fsck_iter_t *lioc_create_fsck_iter(lio_config_t *lc, creds_t *creds, char *p
   it->exnode_mode = exnode_mode;
 
   it->regex = os_path_glob2regex(it->path);
-  it->v_size[0] = it->v_size[1] = it->v_size[2] = -lc->max_attr;
-  it->it = os_create_object_iter_alist(it->lc->os, creds, it->regex, NULL, OS_OBJECT_ANY, 10000, _fsck_keys, (void **)it->val, it->v_size, 3);
+
+  for (i=0; i<_n_fsck_keys; i++) {
+    it->v_size[i] = -lc->max_attr;
+    it->val[i] = NULL;
+  }
+
+  it->it = os_create_object_iter_alist(it->lc->os, creds, it->regex, NULL, OS_OBJECT_ANY, 10000, _fsck_keys, (void **)it->val, it->v_size, _n_fsck_keys);
   if (it->it == NULL) {
      log_printf(0, "ERROR: Failed with object_iter creation %s\n", path);
      return(NULL);

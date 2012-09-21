@@ -350,12 +350,25 @@ void lio_destroy_nl(lio_config_t *lio)
   lio_path_tuple_t *tuple;
   char buffer[128];
 
+  //** The creds is a little tricky cause we need to get the tuple first
+  lcc = list_search(_lc_object_list, lio->creds_name);
+  tuple = (lcc != NULL) ? lcc->object : NULL;
+  if (_lc_object_destroy(lio->creds_name) <= 0) {
+     os_cred_destroy(lio->os, lio->creds);
+     free(tuple);
+  }
+
+  //** Update the lc count for the creds
+  snprintf(buffer, sizeof(buffer), "lc:%s", lio->section_name);
+  _lc_object_destroy(buffer);
 
   snprintf(buffer, sizeof(buffer), "lc:%s", lio->section_name);
   if (_lc_object_destroy(buffer) > 0) {  //** Still in use so return
      apr_thread_mutex_unlock(_lc_lock);
      return;
   }
+
+  free(lio->creds_name);
 
   log_printf(15, "removing lio=%s\n", lio->section_name);
 
@@ -382,14 +395,7 @@ void lio_destroy_nl(lio_config_t *lio)
   }
   free(lio->tpc_cpu_section);
 
-  //** The creds is a little tricky cause we need to get the tuple first
-  lcc = list_search(_lc_object_list, lio->creds_name);
-  tuple = (lcc != NULL) ? lcc->object : NULL;
-  if (_lc_object_destroy(lio->creds_name) <= 0) {
-     os_cred_destroy(lio->os, lio->creds);
-     free(tuple);
-  }
-  free(lio->creds_name);
+//----
 
   if (_lc_object_destroy(lio->os_section) <= 0) {
      os_destroy_service(lio->os);
@@ -432,7 +438,6 @@ lio_config_t *lio_create_nl(char *fname, char *section, char *user)
 {
   lio_config_t *lio;
   int sockets, cores, vcores;
-  int err;
   char buffer[1024];
   char *cred_args[2];
   char *ctype, *stype;
@@ -474,7 +479,6 @@ lio_config_t *lio_create_nl(char *fname, char *section, char *user)
   if (lio->tpc_cpu == NULL) {  //** Need to load it
      lio->tpc_cpu = thread_pool_create_context("CPU", 1, cores);
      if (lio->tpc_cpu == NULL) {
-        err = 5;
         log_printf(0, "Error loading tpc_cpu threadpool!  n=%d\n", cores);
      }
 
@@ -490,7 +494,6 @@ lio_config_t *lio_create_nl(char *fname, char *section, char *user)
   if (lio->tpc_unlimited == NULL) {  //** Need to load it
      lio->tpc_unlimited = thread_pool_create_context("UNLIMITED", 1, cores);
      if (lio->tpc_unlimited == NULL) {
-        err = 6;
         log_printf(0, "Error loading tpc_unlimited threadpool!  n=%d\n", cores);
      }
 
@@ -506,7 +509,6 @@ lio_config_t *lio_create_nl(char *fname, char *section, char *user)
      ds_create = lookup_service(lio->ess->dsm, DS_SM_AVAILABLE, ctype);
      lio->ds = (*ds_create)(lio->ess, lio->cfg_name, stype);
      if (lio->ds == NULL) {
-        err = 2;
         log_printf(1, "Error loading data service!  type=%s\n", ctype);
      }
      free(ctype);
@@ -525,7 +527,6 @@ lio_config_t *lio_create_nl(char *fname, char *section, char *user)
      rs_create = lookup_service(lio->ess->rsm, RS_SM_AVAILABLE, ctype);
      lio->rs = (*rs_create)(lio->ess, lio->cfg_name, stype);
      if (lio->rs == NULL) {
-        err = 3;
         log_printf(1, "Error loading resource service!  type=%s section=%s\n", ctype, stype);
      }
      free(ctype);
@@ -541,7 +542,6 @@ lio_config_t *lio_create_nl(char *fname, char *section, char *user)
      os_create = lookup_service(lio->ess->osm, 0, ctype);
      lio->os = (*os_create)(lio->ess->authn_sm, lio->ess->osaz_sm, lio->tpc_cpu, lio->tpc_unlimited, lio->cfg_name, stype);
      if (lio->os == NULL) {
-        err = 4;
         log_printf(1, "Error loading object service!  type=%s section=%s\n", ctype, stype);
      }
      free(ctype);
@@ -575,7 +575,6 @@ lio_config_t *lio_create_nl(char *fname, char *section, char *user)
      ctype = inip_get_string(lio->ifd, section, stype, CACHE_TYPE_AMP);
      _lio_cache = load_cache(ctype, lio->da, lio->timeout, lio->cfg_name, stype);
      if (_lio_cache == NULL) {
-        err = 4;
         log_printf(0, "Error loading cache service!  type=%s\n", ctype);
      }
      free(stype); free(ctype);
@@ -704,7 +703,7 @@ int env2args(char *env, int *argc, char ***eargv)
 //char **t2 = NULL;
 int lio_init(int *argc, char ***argvp)
 {
-  int i, ll, neargs, nargs, ptype;
+  int i, ll, neargs, nargs;
   char *env;
   char **eargv;
   char **myargv;
@@ -760,6 +759,7 @@ int lio_init(int *argc, char ***argvp)
 
   //** Parse any arguments
   nargs = 1;  //** argv[0] is preserved as the calling name
+  myargv[0] = argv[0];
   i=1;
   ll = -1;
   do {
@@ -784,8 +784,7 @@ int lio_init(int *argc, char ***argvp)
         cfg_name = argv[i]; i++;
      } else if (strcmp(argv[i], "-lc") == 0) { //** Default LIO config section
         i++;
-        ptype = lio_parse_path(argv[i], &userid, &section_name, &dummy);
-        //printf("parse: arg=%s user=%s section=%s path=%s ptype=%d\n", argv[i], userid, section_name, dummy, ptype);
+        lio_parse_path(argv[i], &userid, &section_name, &dummy);
         if (section_name == NULL) section_name = "lio";
         if (dummy != NULL) free(dummy);
         i++;

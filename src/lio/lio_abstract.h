@@ -46,7 +46,8 @@ extern "C" {
 #define LIO_FSCK_MISSING_OWNER       1
 #define LIO_FSCK_MISSING_EXNODE      2
 #define LIO_FSCK_MISSING_EXNODE_SIZE 4
-#define LIO_FSCK_MISSING             8
+#define LIO_FSCK_MISSING_INODE       8
+#define LIO_FSCK_MISSING            16
 
 #define LIO_FSCK_MANUAL      0
 #define LIO_FSCK_PARENT      1
@@ -132,6 +133,8 @@ extern lio_config_t *lio_gc;
 extern info_fd_t *lio_ifd;
 extern int lio_parallel_task_count;
 
+void lio_set_timestamp(char *id, char **val, int *v_size);
+void lio_get_timestamp(char *val, int *timestamp, char **id);
 int lioc_exists(lio_config_t *lc, creds_t *creds, char *path);
 int lioc_set_multiple_attrs(lio_config_t *lc, creds_t *creds, char *path, char *id, char **key, void **val, int *v_size, int n);
 int lioc_set_attr(lio_config_t *lc, creds_t *creds, char *path, char *id, char *key, void *val, int v_size);

@@ -141,7 +141,7 @@ int main(int argc, char **argv)
      info_printf(lio_ifd, 0, "Using path=%s and owner_mode=%d exnode_mode=%d size_mode=%d (%d=manual, %d=parent, %d=delete, %d=user, %d=repair)\n",
             tuple.path, owner_mode, exnode_mode, size_mode, LIO_FSCK_MANUAL, LIO_FSCK_PARENT, LIO_FSCK_DELETE, LIO_FSCK_USER, LIO_FSCK_SIZE_REPAIR);
   }
-  info_printf(lio_ifd, 0, "Possible error states: %d=missing owner, %d=missing exnode,  %d=missing size\n", LIO_FSCK_MISSING_OWNER, LIO_FSCK_MISSING_EXNODE, LIO_FSCK_MISSING_EXNODE_SIZE);
+  info_printf(lio_ifd, 0, "Possible error states: %d=missing owner, %d=missing exnode, %d=missing size, %d=missing inode\n", LIO_FSCK_MISSING_OWNER, LIO_FSCK_MISSING_EXNODE, LIO_FSCK_MISSING_EXNODE_SIZE, LIO_FSCK_MISSING_INODE);
   info_printf(lio_ifd, 0, "--------------------------------------------------------------------\n");
   info_flush(lio_ifd);
 

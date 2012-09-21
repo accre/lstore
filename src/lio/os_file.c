@@ -576,14 +576,12 @@ void full_object_unlock(osfile_fd_t *fd)
 void osf_multi_lock(object_service_fn_t *os, creds_t *creds, osfile_fd_t *fd, char **key, int n_keys, int first_link, apr_thread_mutex_t **lock_table, int *n_locks) 
 {
   osfile_priv_t *osf = (osfile_priv_t *)os->priv;
-  int i, j, n, err, atype, small_slot, small_index, max_index;
-  int prefix_len, v_size, va_prefix_len;
+  int i, j, n, atype, small_slot, small_index, max_index;
+  int v_size, va_prefix_len;
   int lock_slot[n_keys+1];
   char linkname[OS_PATH_MAX];
   char attr_name[OS_PATH_MAX];
   void *val = linkname;
-
-  prefix_len = strlen(osf->base_path);
 
   //** Always get the primary
   n = 0;
@@ -605,7 +603,7 @@ void osf_multi_lock(object_service_fn_t *os, creds_t *creds, osfile_fd_t *fd, ch
      v_size = sizeof(linkname);
      linkname[0] = 0;
      strcpy(&(attr_name[va_prefix_len]), key[i]);
-     err =  osf->attr_link_pva.get(&osf->attr_link_pva, os, creds, fd, attr_name, &val, &v_size, &atype);
+     osf->attr_link_pva.get(&osf->attr_link_pva, os, creds, fd, attr_name, &val, &v_size, &atype);
      log_printf(15, "key[%d]=%s v_size=%d attr_name=%s linkname=%s\n", i, key[i], v_size, attr_name, linkname);
 
 //     err =  osf_get_attr(os, creds, fd, key[i], (void **)&linkname, &v_size, &atype);
@@ -901,7 +899,7 @@ int va_attr_link_get_attr(os_virtual_attr_t *myva, object_service_fn_t *os, cred
 
   *atype = OS_OBJECT_VIRTUAL;
 
-log_printf(0, "val=%p, *val=%s\n", val, (char *)(*val));
+log_printf(15, "val=%p, *val=%s\n", val, (char *)(*val));
 
   n = (int)(long)myva->priv;  //** HACKERY ** to get the attribute prefix length
   key = &(fullkey[n+1]);
@@ -998,7 +996,7 @@ int va_timestamp_set_attr(os_virtual_attr_t *va, object_service_fn_t *os, creds_
 
   curr_time = apr_time_sec(apr_time_now());
   if (v_size > 0) {
-     n = snprintf(buffer, sizeof(buffer), I64T ":%s", curr_time, (char *)val);
+     n = snprintf(buffer, sizeof(buffer), I64T "|%s", curr_time, (char *)val);
   } else {
      n = snprintf(buffer, sizeof(buffer), I64T, curr_time);
   }
@@ -1301,7 +1299,7 @@ void my_seekdir(osf_dir_t *d, long offset)
 int osf_next_object(osf_object_iter_t *it, char **myfname, int *prefix_len)
 {
   osfile_priv_t *osf = (osfile_priv_t *)it->os->priv;
-  int i, rmatch, popped, tweak;
+  int i, rmatch, tweak;
   osf_obj_level_t *itl, *it_top;
   char fname[OS_PATH_MAX];
   char fullname[OS_PATH_MAX];
@@ -1335,17 +1333,12 @@ int osf_next_object(osf_object_iter_t *it, char **myfname, int *prefix_len)
      }
 
 log_printf(15, "top_level=%d it_top->fragment=%s it_top->path=%s tweak=%d\n", it->table->n-1, it_top->fragment, it_top->path, tweak);
-//    if (it->table->regex_entry[0].fixed == 1) {
-//       *prefix_len = 1 + strlen(it->table->regex_entry[0].expression);  //** This includes the before '/'
-//    }
   }
 
   do {
     if (it->curr_level >= it->table->n) {
-      popped = 1;
       itl = (osf_obj_level_t *)pop(it->recurse_stack);
     } else {
-      popped = 0;
       itl = &(it->level_info[it->curr_level]);
     }
 
@@ -2365,9 +2358,9 @@ int osf_get_attr(object_service_fn_t *os, creds_t *creds, osfile_fd_t *ofd, char
 
   if (va != NULL) {
      n = (int)(long)va->priv;  //*** HACKERY **** to get the attribute length
-     log_printf(15, "va=%s attr=%s n=%d\n", va->attribute, attr, n);
-int d=strncmp(attr, va->attribute, n);
-     log_printf(15, "strncmp=%d\n", d);
+//     log_printf(15, "va=%s attr=%s n=%d\n", va->attribute, attr, n);
+//int d=strncmp(attr, va->attribute, n);
+//     log_printf(15, "strncmp=%d\n", d);
      if (strncmp(attr, va->attribute, n) == 0) {  //** Prefix matches
         return(va->get(va, os, creds, ofd, attr, val, v_size, atype));
      }
@@ -2646,45 +2639,6 @@ op_status_t osf_set_multiple_attr_fn(void *arg, int id)
   return(status);
 }
 
-
-//***********************************************************************
-// osf_set_multiple_attr_fn - Does the actual attribute store
-//***********************************************************************
-
-op_status_t OLD_osf_set_multiple_attr_fn(void *arg, int id)
-{
-  osfile_attr_op_t *op = (osfile_attr_op_t *)arg;
-  int err, i, atype;
-  op_status_t status;
-//  apr_time_t date;
-  apr_thread_mutex_t *lock;
-//  char timestamp[OS_PATH_MAX];
-
-  status = op_success_status;
-
-  lock = osf_retrieve_lock(op->os, op->fd->object_name, NULL);
-  osf_obj_lock(lock);
-
-  err = 0;
-  for (i=0; i<op->n; i++) {
-    err += osf_set_attr(op->os, op->creds, op->fd, op->key[i], op->val[i], op->v_size[i], &atype);
-  }
-
-  //** Update the modify time attribute
-//  date = apr_time_sec(apr_time_now());
-//  snprintf(timestamp, OS_PATH_MAX, TT "|%s|%s", date, cred_get_id(op->creds), op->fd->id);
-//  lowlevel_set_attr(op->os, op->fd->attr_dir, "system.modify", timestamp, strlen(timestamp));
-
-  osf_obj_unlock(lock);
-
-  if (err != 0) status = op_failure_status;
-
-  return(status);
-}
-
-
-
-
 //***********************************************************************
 // osfile_set_attr - Sets a single object attribute
 //   If val == NULL the attribute is deleted
@@ -2748,12 +2702,13 @@ int osfile_next_attr(os_attr_iter_t *oit, char **key, void **val, int *v_size)
   struct dirent *entry;
   os_regex_table_t *rex = it->regex;
 
+
   //** Check the VA's 1st
   while (it->va_index != NULL) {
      apr_hash_this(it->va_index, (const void **)key, &klen, (void **)&va);
      it->va_index = apr_hash_next(it->va_index);
      for (i=0; i<rex->n; i++) {
-        n = regexec(&(rex->regex_entry[i].compiled), va->attribute, 0, NULL, 0);
+        n = (rex->regex_entry[i].fixed == 1) ? strcmp(rex->regex_entry[i].expression, va->attribute) : regexec(&(rex->regex_entry[i].compiled), va->attribute, 0, NULL, 0);
         if (n == 0) { //** got a match
            if (osaz_attr_access(osf->osaz, it->creds, it->fd->object_name, va->attribute, OS_MODE_READ_BLOCKING) == 1) {
               *v_size = it->v_max;
@@ -2769,7 +2724,8 @@ int osfile_next_attr(os_attr_iter_t *oit, char **key, void **val, int *v_size)
 
   while ((entry = readdir(it->d)) != NULL) {
      for (i=0; i<rex->n; i++) {
-       n = regexec(&(rex->regex_entry[i].compiled), entry->d_name, 0, NULL, 0);
+//       n = regexec(&(rex->regex_entry[i].compiled), entry->d_name, 0, NULL, 0);
+       n = (rex->regex_entry[i].fixed == 1) ? strcmp(rex->regex_entry[i].expression, entry->d_name) : regexec(&(rex->regex_entry[i].compiled), entry->d_name, 0, NULL, 0);
 log_printf(15, "key=%s match=%d\n", entry->d_name, n);
        if (n == 0) {
           if ((strncmp(entry->d_name, FILE_ATTR_PREFIX, FILE_ATTR_PREFIX_LEN) == 0) ||

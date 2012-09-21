@@ -594,7 +594,7 @@ op_status_t _seglun_grow(segment_t *seg, data_attr_t *da, ex_off_t new_size, int
 
   //** Make the space to store the new  rows
 
-log_printf(15, "sid=" XIDT " currused=" XOT " currmax=" XOT " newmax=" XOT "\n", segment_id(seg), s->used_size, s->total_size, new_size);
+log_printf(1, "sid=" XIDT " currused=" XOT " currmax=" XOT " newmax=" XOT "\n", segment_id(seg), s->used_size, s->total_size, new_size);
 
   //** Find the last row and see if it needs expanding
   if ((s->total_size > 0) && (s->grow_break == 0)) {
@@ -726,7 +726,7 @@ op_status_t _seglun_shrink(segment_t *seg, data_attr_t *da, ex_off_t new_size, i
 
   lo = new_size;
   hi = s->total_size;
-  log_printf(15, "_sl_shrink: sid=" XIDT " total_size=" XOT " new_size=" XOT "\n", segment_id(seg), hi, lo);
+  log_printf(1, "_sl_shrink: sid=" XIDT " total_size=" XOT " new_size=" XOT "\n", segment_id(seg), hi, lo);
 
 
   it = iter_search_interval_skiplist(s->isl, (skiplist_key_t *)&lo, (skiplist_key_t *)&hi);
@@ -2141,10 +2141,10 @@ segment_t *segment_lun_create(void *arg)
   seglun_priv_t *s;
   segment_t *seg;
 
-log_printf(0, "ESS es=%p\n", es);
-log_printf(0, "ESS es->rs=%p\n", es->rs);
+//log_printf(15, "ESS es=%p\n", es);
+//log_printf(15, "ESS es->rs=%p\n", es->rs);
 
-//log_printf(0, "creating new segment\n");
+//log_printf(15, "creating new segment\n");
   //** Make the space
   type_malloc_clear(seg, segment_t, 1);
   type_malloc_clear(s, seglun_priv_t, 1);

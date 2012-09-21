@@ -2623,10 +2623,10 @@ void segcache_destroy(segment_t *seg)
   op_generic_t *gop;
 
   //** Check if it's still in use
-log_printf(15, "segcache_destroy: seg->id=" XIDT " ref_count=%d\n", segment_id(seg), seg->ref_count);
-flush_log();
+log_printf(2, "segcache_destroy: seg->id=" XIDT " ref_count=%d\n", segment_id(seg), seg->ref_count);
+//flush_log();
 
-log_printf(0, "CACHE-PTR seg=" XIDT " s->c=%p\n", segment_id(seg), s->c);
+//log_printf(2, "CACHE-PTR seg=" XIDT " s->c=%p\n", segment_id(seg), s->c);
 
   if (seg->ref_count > 0) return;
 
@@ -2717,7 +2717,7 @@ segment_t *segment_cache_create(void *arg)
   s->c = es->cache;
   s->page_size = 64*1024;
 
-log_printf(0, "CACHE-PTR seg=" XIDT " s->c=%p\n", segment_id(seg), s->c);
+log_printf(2, "CACHE-PTR seg=" XIDT " s->c=%p\n", segment_id(seg), s->c);
 
   generate_ex_id(&(seg->header.id));
   atomic_set(seg->ref_count, 0);
