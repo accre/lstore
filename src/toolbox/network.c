@@ -403,6 +403,7 @@ int net_connect(NetStream_t *ns, const char *hostname, int port, Net_timeout_t t
      case NS_TYPE_SOCK:
      case NS_TYPE_PHOEBUS:
      case NS_TYPE_1_SSL:
+     case NS_TYPE_ZSOCK:
          break;
      default:
          log_printf(0, "net_connect: Invalid ns_type=%d Exiting!\n", ns->sock_type);

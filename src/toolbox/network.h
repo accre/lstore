@@ -70,7 +70,8 @@ extern "C" {
 #define NS_TYPE_PHOEBUS  2      //** Phoebus socket implementation
 #define NS_TYPE_1_SSL    3      //** Single SSL connection -- openssl/gnutls/NSS are not thread safe so this is **slow**
 #define NS_TYPE_2_SSL    4      //** Dual SSL connection -- Allows use of separate R/W locks over SSL much faster than prev
-#define NS_TYPE_MAX      5      //** Not an actual type just the number of different types
+#define NS_TYPE_ZSOCK	 5	//** ZMQ implementation
+#define NS_TYPE_MAX      6      //** Not an actual type just the number of different types
 
 typedef int ns_native_fd_t;
 
