@@ -47,41 +47,67 @@ extern "C" {
 #define LFS_READ_MODE  1
 #define LFS_WRITE_MODE 2
 
+#define LFS_TAPE_ATTR "user.tape_system"
+
+#define LFS_INODE_OK     0  //** Everythings fine
+#define LFS_INODE_DROP   1  //** Drop the inode from the cache
+#define LFS_INODE_DELETE 2  //** Remove it from cache and delete the file contents
+
 typedef struct lio_fuse_file_handle_s lio_fuse_file_handle_t;
 
+typedef struct lio_inode_s lio_inode_t;
+
 typedef struct {
+  char *fname;
+  int name_start;
+  lio_inode_t *inode;
+  int flagged;
+  fuse_req_t req;
+} lio_dentry_t;
+
+struct lio_inode_s {
   ex_id_t ino;
   int modify_data_ts;
   int modify_attr_ts;
-  char *fname;
+//  char *fname;
+//  int name_start;
   int ftype;
-  int name_start;
   ex_off_t size;
   int fuse_count;
   int lfs_count;
-  int deleted_object;
+  int flagged_object;
   int pending_count;
   int pending_update;
-  fuse_req_t req;
+  int nlinks;
+//  fuse_req_t req;
+  lio_dentry_t *entry1;
+  Stack_t *dentry_stack;
+  Stack_t *remove_stack;
   lio_fuse_file_handle_t *fh;
   apr_time_t recheck_time;
-} lio_inode_t;
+};
 
 typedef struct {
   double attr_to;
   double entry_to;
   int inode_cache_size;
   int cond_count;
+  int enable_tape;
   atomic_int_t counter;
   list_t *new_inode_list;
   list_t *ino_index;
   list_t *fname_index;
   lio_config_t *lc;
+  apr_thread_t *rw_thread;
   apr_pool_t *mpool;
   apr_thread_mutex_t *lock;
+  apr_thread_mutex_t *rw_lock;
   apr_thread_cond_t **inode_cond;
   struct fuse_lowlevel_ops llops;
   char *id;
+  opque_t *q;
+  Stack_t *rw_stack;
+  int shutdown;
 //  atomic_int_t ino_counter;
 } lio_fuse_t;
 
