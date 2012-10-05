@@ -45,6 +45,7 @@ http://www.accre.vanderbilt.edu
 typedef struct {
   char *filename;
   int n_parallel;
+  int preallocate;
   ex_off_t buffer_size;
   ex_off_t file_size;
   int read_lag;
@@ -661,6 +662,17 @@ void rw_test()
   make_test_indices();
   log_printf(0, "Completed task and data generation\n\n"); flush_log();
 
+  //** Truncate the file to back to the correct size if needed
+  if (rwc.preallocate == 1) {
+     log_printf(0, "Preallocating all space\n\n"); flush_log();
+     j = gop_sync_exec(segment_truncate(seg, da, total_scan_bytes, 10));
+     if (j != OP_STATE_SUCCESS) {
+        printf("Error truncating the file!\n");
+        flush_log(); fflush(stdout);
+        abort();
+     }
+  }
+
   q = new_opque();
 
   free_slots = new_stack();  //** Slot 0 is hard coded below
@@ -863,6 +875,7 @@ void rw_load_options(char *cfgname)
   //** Parse the global params
   group = "rw_params";
   rwc.n_parallel = inip_get_integer(fd, group, "parallel", 1);
+  rwc.preallocate = inip_get_integer(fd, group, "preallocate", 0);
   rwc.buffer_size = inip_get_integer(fd, group, "buffer_size", 10*1024*1024);
   rwc.file_size = inip_get_integer(fd, group, "file_size", 10*1024*1024);
   rwc.do_final_check = inip_get_integer(fd, group, "do_final_check", 1);
@@ -913,6 +926,7 @@ void rw_print_options(FILE *fd)
 
   group = "rw_params";
   fprintf(fd, "[%s]\n", group);
+  fprintf(fd, "preallocate=%d\n", rwc.preallocate);
   fprintf(fd, "parallel=%d\n", rwc.n_parallel);
   fprintf(fd, "buffer_size=%s\n", pretty_print_int_with_scale(rwc.buffer_size, ppbuf));
   fprintf(fd, "file_size=%s\n", pretty_print_int_with_scale(rwc.file_size, ppbuf));

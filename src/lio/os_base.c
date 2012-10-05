@@ -322,15 +322,19 @@ int os_local_filetype(char *path)
   if (err == 0) {
     if (S_ISLNK(s.st_mode)) {
        err = stat(path, &s);
-       ftype |= OS_OBJECT_LINK;
+       ftype |= OS_OBJECT_SYMLINK;
     }
 
     if (err == 0) {
        if (S_ISREG(s.st_mode)) {
          ftype |= OS_OBJECT_FILE;
+         if (s.st_nlink > 1) ftype |= OS_OBJECT_HARDLINK;
        } else if (S_ISDIR(s.st_mode)) {
          ftype |= OS_OBJECT_DIR;
        }
+    } else {
+      ftype |= OS_OBJECT_FILE|OS_OBJECT_BROKEN_LINK;  //** Broken link so flag it as a file anyhow
+
     }
   }
 

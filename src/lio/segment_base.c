@@ -399,6 +399,7 @@ log_printf(0, "FILE fd=%p bufsize=" XOT "\n", sc->fd, bufsize);
      if (err != OP_STATE_SUCCESS) {
         log_printf(1, "ERROR write(dseg=" XIDT ") failed! wpos=" XOT, " len=" XOT "\n", segment_id(sc->dest), wpos, wlen);
         status = op_failure_status;
+        gop_free(gop, OP_DESTROY);
         return(status);
      }
      gop_free(gop, OP_DESTROY);

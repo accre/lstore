@@ -62,7 +62,7 @@ int main(int argc, char **argv)
      lio_print_path_options(stdout);
      printf("\n");
      printf("    -rd recurse_depth  - Max recursion depth on directories. Defaults to %d\n", recurse_depth);
-     printf("    -t  object_types   - Types of objects to remove bitwise OR of 1=Files, 2=Directories, 4=link.  Default is %d.\n", obj_types);
+     printf("    -t  object_types   - Types of objects to list bitwise OR of 1=Files, 2=Directories, 4=symlink, 8=hardlink.  Default is %d.\n", obj_types);
      printf("    -rp regex_path     - Regex of path to scan\n");
      printf("    -gp glob_path      - Glob of path to scan\n");
      printf("    -ro regex_object   - Regex for final object selection.\n");

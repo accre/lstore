@@ -370,8 +370,8 @@ op_status_t segjerase_inspect_scan(segjerase_inspect_t *si)
 
   fsize = segment_size(si->seg);
   maxstripes = bufsize / (s->n_devs*JE_MAGIC_SIZE);
-  type_malloc(iov, iovec_t, maxstripes);
-  type_malloc(ex_iov, ex_iovec_t, maxstripes);
+  type_malloc(iov, iovec_t, s->n_devs*maxstripes);
+  type_malloc(ex_iov, ex_iovec_t, s->n_devs*maxstripes);
 
   memset(magic, 0, bufsize);
 
@@ -388,7 +388,7 @@ log_printf(0, "fsize=" XOT " data_size=%d total_stripes=%d\n", fsize, s->data_si
 //  inspect_printf(si->fd, XIDT ": Total number of stripes:%d\n", segment_id(si->seg), total_stripes);
 
   for (stripe=0; stripe <= total_stripes; stripe++) {
-    if ((curr_stripe > maxstripes) || (stripe == total_stripes)) {
+    if ((curr_stripe >= maxstripes) || (stripe == total_stripes)) {
        info_printf(si->fd, 1, XIDT ": checking stripes: (%d, %d)\n", segment_id(si->seg), start_stripe, start_stripe+curr_stripe-1);
 
 log_printf(0, "i=%d n_iov=%d size=%d\n", i, n_iov, n_iov*JE_MAGIC_SIZE);
@@ -685,7 +685,7 @@ op_status_t segjerase_read_func(void *arg, int id)
 {
   segjerase_rw_t *sw = (segjerase_rw_t *)arg;
   segjerase_priv_t *s = (segjerase_priv_t *)sw->seg->priv;
-  op_status_t status, op_status;
+  op_status_t status, op_status, check_status;
   ex_off_t lo, boff, poff, len, parity_len, parity_used, curr_bytes;
   int i, j, k, stripe, magic_used, n_erased, slot, n_iov, nstripes, curr_stripe, iov_start, magic_stripe, magic_off;
   char *parity, *magic, *ptr[s->n_devs];
@@ -754,6 +754,7 @@ op_status_t segjerase_read_func(void *arg, int id)
      if (((j+parity_used) > parity_len) || (i==sw->n_iov)) {  //** Filled the buffer so wait for the current tasks to complete
         while ((gop = opque_waitany(q)) != NULL) {
           slot = gop_get_myid(gop);
+          check_status = gop_get_status(gop);
 
           //** Make the magic table to determine which magic has a quorum
           iov_start = info[slot].iov_start;
@@ -799,12 +800,13 @@ log_printf(15, "(n) mindex=%d count=%d dev=%d (slot=%d) magic=%d\n", magic_used,
                 }
                 if (j != s->n_data_devs) data_ok = 0;
              } else if (memcmp(empty_magic, &(magic_key[index*JE_MAGIC_SIZE]), JE_MAGIC_SIZE) == 0) {
-                data_ok = (magic_count[index] == s->n_devs) ? 2 : -1;
+//                data_ok = (magic_count[index] == s->n_devs) ? 2 : -1;
+                data_ok = ((magic_count[index] == s->n_devs) && (check_status.error_code < s->n_parity_devs)) ? 2 : -1;
              }
 
 
-//int d = *(uint32_t *)&(magic_key[index*JE_MAGIC_SIZE]);
-//log_printf(15, "index=%d good=%d data_ok=%d magic=%d data_devs=%d\n", index, magic_count[index], data_ok, d, s->n_data_devs);
+int d = *(uint32_t *)&(magic_key[index*JE_MAGIC_SIZE]);
+log_printf(15, "index=%d good=%d data_ok=%d magic=%d data_devs=%d check_status.error_code=%d\n", index, magic_count[index], data_ok, d, s->n_data_devs, check_status.error_code);
 
              if (data_ok > 0) {
                 if (data_ok == 2) { //** no data stored so blank it
@@ -815,7 +817,7 @@ log_printf(15, "(n) mindex=%d count=%d dev=%d (slot=%d) magic=%d\n", magic_used,
              } else {
                 op_status = gop_get_status(gop);
                 if ((magic_count[index] < s->n_data_devs) || (data_ok == -1)) {  //** Unrecoverable error
-                   log_printf(5, "seg=" XIDT " Error with write off=" XOT " len=" XOT " n_parity=%d good=%d error_code=%d\n",
+                   log_printf(5, "seg=" XIDT " ERROR with read off=" XOT " len=" XOT " n_parity=%d good=%d error_code=%d\n",
                          segment_id(sw->seg), sw->iov[slot].offset, sw->iov[slot].len, s->n_parity_devs, magic_count[index], op_status.error_code);
                    status.op_status = OP_STATE_FAILURE;
                    status.error_code = op_status.error_code;

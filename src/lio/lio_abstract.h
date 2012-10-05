@@ -74,11 +74,11 @@ struct lio_fn_s {
   op_generic_t *(*remove_object)(lio_config_t *lc, creds_t *creds, char *path, char *ex_optional, int ftype_optional);
   op_generic_t *(*remove_regex_object)(lio_config_t *lc, creds_t *creds, os_regex_table_t *path, os_regex_table_t *object_regex, int obj_types, int recurse_depth, int np);
   op_generic_t *(*move_object)(lio_config_t *lc, creds_t *creds, char *src_path, char *dest_path);
-  op_generic_t *(*link_object)(lio_config_t *lc, creds_t *creds, char *src_path, char *dest_path, char *id);
+  op_generic_t *(*link_object)(lio_config_t *lc, creds_t *creds, int symlink, char *src_path, char *dest_path, char *id);
 
-  op_generic_t *(*open_io)(lio_config_t *lc, creds_t *creds, char *path, int mode, char *id, lio_fd_t **fd, int max_wait);
-  op_generic_t *(*close_io)(lio_config_t *lc, lio_fd_t *fd);
-  op_generic_t *(*abort_open_io)(lio_config_t *lc, op_generic_t *gop);
+//  op_generic_t *(*open_io)(lio_config_t *lc, creds_t *creds, char *path, int mode, char *id, lio_fd_t **fd, int max_wait);
+//  op_generic_t *(*close_io)(lio_config_t *lc, lio_fd_t *fd);
+//  op_generic_t *(*abort_open_io)(lio_config_t *lc, op_generic_t *gop);
 };
 
 //#define lio_core_destroy(lc) lc->lio->destroy_service(lc)
@@ -91,11 +91,11 @@ struct lio_fn_s {
 #define lio_remove_object(lc, c, path, ex_opt, ftype_opt) (lc)->lio->remove_object(lc, c, path, ex_opt, ftype_opt)
 #define lio_remove_regex_object(lc, c, path, obj_regex, obj_types, depth, np) (lc)->lio->remove_regex_object(lc, c, path, obj_regex, obj_types, depth, np)
 #define lio_move_object(lc, c, src_path, dest_path) (lc)->lio->move_object(lc, c, src_path, dest_path)
-#define lio_link_object(lc, c, src_path, dest_path, id) (lc)->lio->link_object(lc, c, src_path, dest_path, id)
+#define lio_link_object(lc, c, symlink, src_path, dest_path, id) (lc)->lio->link_object(lc, c, symlink, src_path, dest_path, id)
 
-#define lio_open_io(lio, c, path, mode, id, fd, max_wait) (lc)->lio->open_io(lc, c, path, mode, id, fd, max_wait)
-#define lio_close_io(lio, fd) (lc)->lio->close_io(lc, fd)
-#define lio_abort_open_io(lio, gop) (lc)->lio->abort_open_io(lc, gop)
+//#define lio_open_io(lio, c, path, mode, id, fd, max_wait) (lc)->lio->open_io(lc, c, path, mode, id, fd, max_wait)
+//#define lio_close_io(lio, fd) (lc)->lio->close_io(lc, fd)
+//#define lio_abort_open_io(lio, gop) (lc)->lio->abort_open_io(lc, gop)
 
 struct lio_config_s {
   data_service_fn_t *ds;

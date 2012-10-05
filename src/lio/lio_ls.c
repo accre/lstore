@@ -40,8 +40,8 @@ http://www.accre.vanderbilt.edu
 typedef struct {
   char *fname;
   char *link;
-  char *vals[3];
-  int v_size[3];
+  char *vals[5];
+  int v_size[5];
   int prefix_len;
   int ftype;
 } ls_entry_t;
@@ -61,9 +61,16 @@ void ls_format_entry(info_fd_t *ifd, ls_entry_t *lse)
   apr_time_t dt;
   int64_t n;
   long int fsize;
+  int nlink;
 
-  if ((lse->ftype & OS_OBJECT_LINK) > 0) {
-     perms = "l---------";
+//printf("lsfe: ftype=%d fname=%s\n", lse->ftype, lse->fname);
+
+  if ((lse->ftype & OS_OBJECT_SYMLINK) > 0) {
+     if ((lse->ftype & OS_OBJECT_BROKEN_LINK) > 0) {
+        perms = "L---------";
+     } else {
+        perms = "l---------";
+     }
   }else if ((lse->ftype & OS_OBJECT_DIR) > 0) {
      perms = "d---------";
   } else {
@@ -79,10 +86,10 @@ void ls_format_entry(info_fd_t *ifd, ls_entry_t *lse)
   fsize = n;
 
   memset(dt_create, '-', 24); dt_create[24] = 0;
-  n = -1; sscanf(lse->vals[3], I64T, &n);
-  if (n > 0) {
+  n = -1; if (lse->vals[3] != NULL) sscanf(lse->vals[3], I64T, &n);
+  if (n>0) {
      n = apr_time_from_sec(n);
-     apr_ctime(dt_create, n);
+    apr_ctime(dt_create, n);
   }
 
   memcpy(dt_modify, dt_create, 25);
@@ -92,10 +99,12 @@ void ls_format_entry(info_fd_t *ifd, ls_entry_t *lse)
      apr_ctime(dt_modify, dt);
   }
 
+  nlink = 1; if (lse->vals[4] != NULL) sscanf(lse->vals[4], "%d", &nlink);
+
   if (lse->link == NULL) {
-     info_printf(ifd, 0, "%s  %10s  %10ld  %s  %s  %s%s\n", perms, owner, fsize, dt_create, dt_modify, lse->fname, dtype);
+     info_printf(ifd, 0, "%s  %3d  %10s  %10ld  %s  %s  %s%s\n", perms, nlink, owner, fsize, dt_create, dt_modify, lse->fname, dtype);
   } else {
-     info_printf(ifd, 0, "%s  %10s  %10ld  %s  %s  %s%s -> %s\n", perms, owner, fsize, dt_create, dt_modify, lse->fname, dtype, lse->link);
+     info_printf(ifd, 0, "%s  %3d  %10s  %10ld  %s  %s  %s%s -> %s\n", perms, nlink, owner, fsize, dt_create, dt_modify, lse->fname, dtype, lse->link);
   }
 
   return;
@@ -148,10 +157,10 @@ int main(int argc, char **argv)
   list_iter_t lit;
   opque_t *q;
   op_generic_t *gop;
-  char *keys[] = { "system.owner", "system.exnode.size", "system.exnode.modified", "os.create" };
-  char *vals[4];
-  int v_size[4];
-  int n_keys = 4;
+  char *keys[] = { "system.owner", "system.exnode.size", "system.exnode.modified", "os.create",  "os.link_count" };
+  char *vals[5];
+  int v_size[5];
+  int n_keys = 5;
   int recurse_depth = 0;
   int obj_types = OS_OBJECT_ANY;
 
@@ -164,7 +173,7 @@ int main(int argc, char **argv)
      lio_print_path_options(stdout);
      printf("\n");
      printf("    -rd recurse_depth  - Max recursion depth on directories. Defaults to %d\n", recurse_depth);
-     printf("    -t  object_types   - Types of objects to list bitwise OR of 1=Files, 2=Directories, 4=link.  Default is %d.\n", obj_types);
+     printf("    -t  object_types   - Types of objects to list bitwise OR of 1=Files, 2=Directories, 4=symlink, 8=hardlink.  Default is %d.\n", obj_types);
      printf("    -ns                - Don't sort the output\n");
      printf("    -rp regex_path     - Regex of path to scan\n");
      printf("    -gp glob_path      - Glob of path to scan\n");
@@ -214,7 +223,7 @@ int main(int argc, char **argv)
   }
 
 
-  for (i=0; i<n_keys; i++) v_size[i] = -1024;
+  for (i=0; i<n_keys; i++) v_size[i] = -tuple.lc->max_attr;
   memset(vals, 0, sizeof(vals));
   it = os_create_object_iter_alist(tuple.lc->os, tuple.creds, rp_single, ro_single, OS_OBJECT_ANY, recurse_depth, keys, (void **)vals, v_size, n_keys);
   if (it == NULL) {
@@ -222,8 +231,8 @@ int main(int argc, char **argv)
      goto finished;
    }
 
-  info_printf(lio_ifd, 0, "  Perms       Owner        Size           Creation date              Modify date             Filename [-> link]\n");
-  info_printf(lio_ifd, 0, "----------  ----------  ----------  ------------------------  ------------------------  ------------------------------\n");
+  info_printf(lio_ifd, 0, "  Perms     Ref   Owner        Size           Creation date              Modify date             Filename [-> link]\n");
+  info_printf(lio_ifd, 0, "----------  ---  ----------  ----------  ------------------------  ------------------------  ------------------------------\n");
 
   q = new_opque();
   table = list_create(0, &list_string_compare, NULL, list_no_key_free, list_no_data_free);
@@ -235,19 +244,18 @@ int main(int argc, char **argv)
      memcpy(lse->v_size, v_size, sizeof(v_size));
      memcpy(lse->vals, vals, sizeof(vals));
 
-     for (i=0; i<n_keys; i++) v_size[i] = -1024;
+     for (i=0; i<n_keys; i++) v_size[i] = -tuple.lc->max_attr;
      memset(vals, 0, sizeof(vals));
 
      //** Check if we have a link.  If so we need to resolve the link path
-     if ((ftype & OS_OBJECT_LINK) > 0) {
+     if ((ftype & OS_OBJECT_SYMLINK) > 0) {
         gop = new_thread_pool_op(tuple.lc->tpc_unlimited, NULL, readlink_fn, (void *)lse, NULL, 1);
         gop_set_private(gop, lse);
         opque_add(q, gop);
+        if (nosort == 1) opque_waitall(q);
+     }
 
-        if (nosort == 0) {
-           list_insert(table, lse->fname, lse);
-        }
-     } else if (nosort == 1) {
+     if (nosort == 1) {
         ls_format_entry(lio_ifd, lse);
      } else {
         list_insert(table, lse->fname, lse);

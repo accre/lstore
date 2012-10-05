@@ -65,8 +65,8 @@ op_status_t gen_warm_task(void *arg, int id)
   inip_file_t *fd;
   int err, i, n;
   char *etext;
-  
-log_printf(15, "warming fname=%s\n", w->fname);
+
+log_printf(15, "warming fname=%s, dt=%d\n", w->fname, dt);
   fd = inip_read_text(w->exnode);
   inip_group_t *g;
 
@@ -117,7 +117,6 @@ int main(int argc, char **argv)
 {
   int i, n, start_option, start_index, rg_mode, ftype, prefix_len;
   char *fname;
-//  ibp_context_t *ic;
   opque_t *q;
   op_generic_t *gop;
   op_status_t status;
@@ -129,7 +128,6 @@ int main(int argc, char **argv)
   lio_path_tuple_t tuple;
   int submitted, good, bad;
   int recurse_depth = 10000;
-  int dt = 86400;
   warm_t *w;
 
 //printf("argc=%d\n", argc);

@@ -487,15 +487,19 @@ log_printf(15, "loop=%d ------------------------------\n", loop);
 //log_printf(0, "block[%d].data=%p\n", i, b->block[i].data);
           attr_stack = NULL;
           if (b->block[i].data != NULL) {
+//log_printf(0, "old b.data->id=" XIDT "\n", b->block[i].data->id);
              attr_stack = b->block[i].data->attr_stack;
              b->block[i].data->attr_stack = NULL;
-             atomic_dec(b->block[i].data->ref_count);
+             atomic_set(b->block[i].data->ref_count, 0);
              data_block_destroy(b->block[i].data);
+             b->block[i].data = data_block_create(seg->ess->ds);
+          } else {
+             b->block[i].data = data_block_create(seg->ess->ds);
           }
-          b->block[i].data = data_block_create(seg->ess->ds);
+//log_printf(0, "new b.data->id=" XIDT "\n", b->block[i].data->id);
           cap_list[m] = b->block[i].data->cap;
           b->block[i].data->rid_key = NULL;
-          b->block[i].data->cap = cap_list[m];
+//          b->block[i].data->cap = cap_list[m];
           b->block[i].data->attr_stack = attr_stack;
           b->block[i].data->max_size = b->block_len;
           b->block[i].data->size = b->block_len;
@@ -1322,7 +1326,8 @@ log_printf(15, " seg=" XIDT " GROWING  err=%d\n",segment_id(sw->seg), err);
      } else {  //** Got a bad offset so fail the whole thing
 log_printf(15, "ERROR seg=" XIDT " READ beyond EOF!  cur_size=" XOT " requested maxpos=" XOT "\n", segment_id(sw->seg), s->total_size, maxpos);
         segment_unlock(sw->seg);
-        return(op_failure_status);
+        status.op_status = OP_STATE_FAILURE;  status.error_code = s->n_devices;
+        return(status);
      }
   }
   segment_unlock(sw->seg);

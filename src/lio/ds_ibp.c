@@ -596,16 +596,19 @@ data_service_fn_t *ds_ibp_create(void *arg, char *config_file, char *section)
   data_service_fn_t *dsf;
   ds_ibp_priv_t *ds;
   ibp_context_t *ic;
+  inip_file_t *ifd;
 
   type_malloc_clear(dsf, data_service_fn_t, 1);
   type_malloc_clear(ds, ds_ibp_priv_t , 1);
 
   //** Set the default attributes
+  ifd = inip_read(config_file);
   memset(&(ds->attr_default), 0, sizeof(ds_ibp_attr_t));
-  ds->attr_default.attr.duration = 3600;
+  ds->attr_default.attr.duration = inip_get_integer(ifd, section, "duration", 3600);
   ds->attr_default.attr.reliability = IBP_HARD;
   ds->attr_default.attr.type = IBP_BYTEARRAY;
   ds->attr_default.disk_cs_type = CHKSUM_DEFAULT;
+  inip_destroy(ifd);
 
   //printf("cfg=%s sec=%s\n", config_file, section);
   ic = ibp_create_context();

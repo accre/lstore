@@ -46,7 +46,8 @@ int main(int argc, char **argv)
   tbuffer_t tbuf;
   apr_time_t start_time, disk_start, cumulative_time, disk_cumulative;
   double dt, bandwidth, mbytes;
-  int i, err, rlen, wlen, tlen, start_option;
+  ex_off_t i, rlen, wlen, tlen;
+  int err, start_option;
   int print_timing;
   char *fname = NULL;
   exnode_t *ex;
@@ -133,7 +134,7 @@ int main(int argc, char **argv)
   err = gop_sync_exec(segment_truncate(seg, lio_gc->da, 0, 10));
   if (err != OP_STATE_SUCCESS) {
      printf("Error truncating the remote file!\n");
-     abort();
+//     abort();
   }
 
   start_time = apr_time_now();
@@ -165,9 +166,9 @@ int main(int argc, char **argv)
      rbuf[rlen] = '\0';
 
      err = gop_waitall(gop);
-     log_printf(1, "ex_put: i=%d gid=%d err=%d\n", i, gop_id(gop), err); flush_log();
+     log_printf(1, "ex_put: i=" XOT " gid=%d err=%d\n", i, gop_id(gop), err); flush_log();
      if (err != OP_STATE_SUCCESS) {
-        printf("ex_put: Error writing offset=%d wlen=%d!\n",i, wlen);
+        printf("ex_put: Error writing offset=" XOT " wlen=" XOT "!\n",i, wlen);
         flush_log();
         fflush(stdout);
         abort();

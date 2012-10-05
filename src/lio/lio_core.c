@@ -331,21 +331,46 @@ int lioc_set_attr(lio_config_t *lc, creds_t *creds, char *path, char *id, char *
 op_status_t lioc_remove_object_fn(void *arg, int id)
 {
   lioc_mk_mv_rm_t *op = (lioc_mk_mv_rm_t *)arg;
-  char *ex_data;
+  char *ex_data, *val[2];
+  char *hkeys[] = { "os.link_count", "system.exnode" };
   exnode_exchange_t *exp;
   exnode_t *ex;
-  int err, v_size, ex_remove;
+  int err, v_size, ex_remove, vs[2], n;
   op_status_t status = op_success_status;
 
   //** First remove and data associated with the object
   v_size = -op->lc->max_attr;
-  ex_data = op->ex;
 
   //** If no object type need to retrieve it
   if (op->type == 0) op->type = lioc_exists(op->lc, op->creds, op->src_path);
 
   ex_remove = 0;
-  if ((op->type & (OS_OBJECT_LINK|OS_OBJECT_DIR)) == 0) ex_remove = 1;
+  if ((op->type & OS_OBJECT_HARDLINK) > 0) { //** Got a hard link so check if we do a data removal
+     val[0] = val[1] = NULL; vs[0] = vs[1] = -op->lc->max_attr;
+     lioc_get_multiple_attrs(op->lc, op->creds, op->src_path, op->id, hkeys, (void **)val, vs, 2);
+
+     if (val[0] == NULL) {
+        log_printf(15, "Missing link count for fname=%s\n", op->src_path);
+        if (val[1] != NULL) free(val[1]);
+        return(op_failure_status);
+     }
+
+     n = 100;
+     sscanf(val[0], "%d", &n);
+     free(val[0]);
+     if (n <= 1) {
+        ex_remove = 1;
+        if (op->ex == NULL) {
+           op->ex = val[1];
+        } else {
+           if (val[1] != NULL) free(val[1]);
+        }
+     } else {
+       if (val[1] != NULL) free(val[1]);
+     }
+  } else if ((op->type & (OS_OBJECT_SYMLINK|OS_OBJECT_DIR)) == 0) {
+    ex_remove = 1;
+  }
 
   ex_data = op->ex;
   if ((op->ex == NULL) && (ex_remove == 1)) {
@@ -513,17 +538,21 @@ op_status_t lioc_create_object_fn(void *arg, int id)
 
   val[ex_key] = NULL;
 
+log_printf(15, "START op->ex=%p !!!!!!!!!\n fname=%s\n",  op->ex, op->src_path);
+
   //** Make the base object
   err = gop_sync_exec(os_create_object(op->lc->os, op->creds, op->src_path, op->type, op->id));
   if (err != OP_STATE_SUCCESS) {
      log_printf(15, "ERROR creating object fname=%s\n", op->src_path);
      status = op_failure_status;
-     goto fail;
+     goto fail_bad;
   }
 
   //** Get the parent exnode to dup
   if (op->ex == NULL) {
      os_path_split(op->src_path, &dir, &fname);
+log_printf(15, "dir=%s\n fname=%s\n", dir, fname);
+
      err = gop_sync_exec(os_open_object(op->lc->os, op->creds, dir, OS_MODE_READ_IMMEDIATE, op->id, &fd, op->lc->timeout));
      if (err != OP_STATE_SUCCESS) {
         log_printf(15, "ERROR opening parent=%s\n", dir);
@@ -608,11 +637,13 @@ op_status_t lioc_create_object_fn(void *arg, int id)
   ino = 0; generate_ex_id(&ino);  snprintf(inode, 32, XIDT, ino); val[4] = inode;  v_size[4] = strlen(inode);
   v_size[ex_key] = strlen(val[ex_key]);
   val[6] = "0";  v_size[6] = 1;
+
+log_printf(15, "NEW ino=%s exnode=%s\n", val[4], val[ex_key]); flush_log();
+
   err = gop_sync_exec(os_set_multiple_attrs(op->lc->os, op->creds, fd, _lioc_create_keys, (void **)val, v_size, (op->type & OS_OBJECT_FILE) ? _n_lioc_file_keys : _n_lioc_dir_keys));
   if (err != OP_STATE_SUCCESS) {
      log_printf(15, "ERROR setting default attr fname=%s\n", op->src_path);
      status = op_failure_status;
-     goto fail;
   }
 
 
@@ -621,10 +652,12 @@ op_status_t lioc_create_object_fn(void *arg, int id)
   if (err != OP_STATE_SUCCESS) {
      log_printf(15, "ERROR closing object fname=%s\n", op->src_path);
      status = op_failure_status;
-     goto fail;
   }
 
 fail:
+  if (status.op_status != OP_STATE_SUCCESS) gop_sync_exec(os_remove_object(op->lc->os, op->creds, op->src_path));
+
+fail_bad:
   if (val[ex_key] != NULL) free(val[ex_key]);
 
   return(status);
@@ -658,25 +691,38 @@ op_generic_t *lioc_create_object(lio_config_t *lc, creds_t *creds, char *path, i
 op_status_t lioc_link_object_fn(void *arg, int id)
 {
   lioc_mk_mv_rm_t *op = (lioc_mk_mv_rm_t *)arg;
-  os_fd_t *sfd, *dfd;
+  os_fd_t *dfd;
   opque_t *q;
-  int err, owner_size;
-  char *owner;
+  int err;
+  ex_id_t ino;
+  char inode[32];
   op_status_t status;
-  char *key[] = {"system.exnode", "system.exnode.size"};
-
+  char *lkeys[] = {"system.exnode", "system.exnode.size"};
+  char *spath[2];
+  char *vkeys[] = {"system.owner", "system.inode"};
+  char *val[2];
+  int vsize[2];
 
   //** Link the base object
-  err = gop_sync_exec(os_link_object(op->lc->os, op->creds, op->src_path, op->dest_path, op->id));
+  if (op->type == 1) { //** Symlink
+     err = gop_sync_exec(os_symlink_object(op->lc->os, op->creds, op->src_path, op->dest_path, op->id));
+  } else {
+     err = gop_sync_exec(os_hardlink_object(op->lc->os, op->creds, op->src_path, op->dest_path, op->id));
+  }
   if (err != OP_STATE_SUCCESS) {
      log_printf(15, "ERROR linking base object sfname=%s dfname=%s\n", op->src_path, op->dest_path);
      status = op_failure_status;
-     goto fail;
+     goto finished;
   }
 
-  //** Open the source and dest objects so I can link the attributes
+  if (op->type == 0) {  //** HArd link so exit
+     status = op_success_status;
+     goto finished;
+  }
+
   q = new_opque();
-  opque_add(q, os_open_object(op->lc->os, op->creds, op->src_path, OS_MODE_READ_IMMEDIATE, op->id, &sfd, op->lc->timeout));
+
+  //** Open the Destination object
   opque_add(q, os_open_object(op->lc->os, op->creds, op->dest_path, OS_MODE_READ_IMMEDIATE, op->id, &dfd, op->lc->timeout));
   err = opque_waitall(q);
   if (err != OP_STATE_SUCCESS) {
@@ -686,12 +732,16 @@ op_status_t lioc_link_object_fn(void *arg, int id)
   }
 
   //** Now link the exnode and size
-  opque_add(q, os_link_multiple_attrs(op->lc->os, op->creds, sfd, key, dfd, key, 2));
+  spath[0] = op->src_path; spath[1] = op->src_path;
+  opque_add(q, os_symlink_multiple_attrs(op->lc->os, op->creds, spath, lkeys, dfd, lkeys, 2));
 
-  //** Store the owner
-  owner = an_cred_get_id(op->creds);  owner_size = strlen(owner);
-  opque_add(q, os_set_attr(op->lc->os, op->creds, dfd, "system.owner", owner, owner_size));
+  //** Store the owner and inode
+  val[0] = an_cred_get_id(op->creds);  vsize[0] = strlen(val[0]);
+  ino = 0; generate_ex_id(&ino);  snprintf(inode, 32, XIDT, ino); val[1] = inode;  vsize[1] = strlen(inode);
+  opque_add(q, os_set_multiple_attrs(op->lc->os, op->creds, dfd, vkeys, (void **)val, vsize, 2));
 
+
+  //** Wait for everything to complete
   err = opque_waitall(q);
   if (err != OP_STATE_SUCCESS) {
      log_printf(15, "ERROR with attr link or owner set src(%s) or dest(%s) file\n", op->src_path, op->dest_path);
@@ -702,13 +752,12 @@ op_status_t lioc_link_object_fn(void *arg, int id)
   status = op_success_status;
 
 open_fail:
-  if (sfd != NULL) opque_add(q, os_close_object(op->lc->os, sfd));
   if (dfd != NULL) opque_add(q, os_close_object(op->lc->os, dfd));
   opque_waitall(q);
 
   opque_free(q, OP_DESTROY);
 
-fail:
+finished:
   return(status);
 
 }
@@ -717,7 +766,7 @@ fail:
 // lc_link_object - Generates a link object task
 //***********************************************************************
 
-op_generic_t *lioc_link_object(lio_config_t *lc, creds_t *creds, char *src_path, char *dest_path, char *id)
+op_generic_t *lioc_link_object(lio_config_t *lc, creds_t *creds, int symlink, char *src_path, char *dest_path, char *id)
 {
   lioc_mk_mv_rm_t *op;
 
@@ -725,6 +774,7 @@ op_generic_t *lioc_link_object(lio_config_t *lc, creds_t *creds, char *src_path,
 
   op->lc = lc;
   op->creds = creds;
+  op->type = symlink;
   op->src_path = strdup(src_path);
   op->dest_path = strdup(dest_path);
   op->id = (id != NULL) ? strdup(id) : NULL;

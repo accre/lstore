@@ -43,11 +43,13 @@ http://www.accre.vanderbilt.edu
 #include "type_malloc.h"
 #include "thread_pool.h"
 #include "lio.h"
+#include "append_printf.h"
+#include "string_token.h"
 
 
 #define lfs_lock(lfs)  apr_thread_mutex_lock((lfs)->lock)
 #define lfs_unlock(lfs)  apr_thread_mutex_unlock((lfs)->lock)
-#define inode_name(ino) &((ino)->fname[(ino)->name_start])
+#define dentry_name(entry) &((entry)->fname[(entry)->name_start])
 
 lio_fuse_t *lfs_gc = NULL;
 struct fuse_lowlevel_ops lfs_gc_llops;
@@ -55,21 +57,37 @@ struct fuse_lowlevel_ops lfs_gc_llops;
 int ino_compare_fn(void *arg, skiplist_key_t *a, skiplist_key_t *b);
 static skiplist_compare_t ino_compare = {.fn=ino_compare_fn, .arg=NULL };
 
-static int _inode_key_size = 5;
-static char *_inode_keys[] = { "system.inode", "system.modify_data", "system.modify_attr", "system.exnode.size", "os.type" };
+#define _inode_key_size 6
+static char *_inode_keys[] = { "system.inode", "system.modify_data", "system.modify_attr", "system.exnode.size", "os.type", "os.link_count" };
+
+#define _tape_key_size  2
+static char *_tape_keys[] = { "system.owner", "system.exnode" };
 
 typedef struct {
   lio_fuse_t *lfs;
   os_object_iter_t *it;
   os_regex_table_t *path_regex;
-  char *val[5];
-  int v_size[5];
+  char *val[_inode_key_size];
+  int v_size[_inode_key_size];
   fuse_ino_t root;
   Stack_t *stack;
-  lio_inode_t dot_ino;
-  lio_inode_t dotdot_ino;
+  lio_dentry_t dot_entry;
+  lio_dentry_t dotdot_entry;
   int state;
 } lfs_dir_iter_t;
+
+typedef struct {
+  char *buf;
+  lio_fuse_t *lfs;
+  tbuffer_t tbuf;
+  ex_iovec_t exv;
+  callback_t cb;
+  int rw_mode;
+  fuse_req_t req;
+  ex_off_t size;
+  ex_off_t off;
+  ex_id_t ino;
+} lfs_rw_cb_t;
 
 //*************************************************************************
 //  ino_compare_fn  - FUSE inode comparison function
@@ -92,27 +110,119 @@ int ino_compare_fn(void *arg, skiplist_key_t *a, skiplist_key_t *b)
 
 
 //*************************************************************************
-// _lfs_inode_lookup - Looks up an inode. IF fname is non-null.  It is used
-//     as the lookup index otherwise the ino is used.
-//    NOTE:  Locking should be handled externally!
+// _lfs_inode_lookup - Looks up an inode.
 //*************************************************************************
 
-lio_inode_t * _lfs_inode_lookup(lio_fuse_t *lfs, fuse_ino_t ino, char *fname)
+lio_inode_t * _lfs_inode_lookup(lio_fuse_t *lfs, fuse_ino_t ino)
 {
   lio_inode_t *inode;
 
-  if (fname != NULL) {
-     if (strcmp(fname, "/") == 0) {
-       inode = list_search(lfs->fname_index, (list_key_t *)"");
-     } else {
-       inode = list_search(lfs->fname_index, (list_key_t *)fname);
-     }
+  inode = list_search(lfs->ino_index, (list_key_t *)&ino);
+
+  log_printf(15, "looking up ino=%lu inode=%p\n", ino, inode);
+  return(inode);
+}
+
+
+//*************************************************************************
+// _lfs_dentry_lookup - Looks up a dentry.
+//*************************************************************************
+
+lio_dentry_t * _lfs_dentry_lookup(lio_fuse_t *lfs, char *fname)
+{
+  lio_dentry_t *entry;
+
+  if (strcmp(fname, "/") == 0) {
+     entry = list_search(lfs->fname_index, (list_key_t *)"");
   } else {
-     inode = list_search(lfs->ino_index, (list_key_t *)&ino);
+     entry = list_search(lfs->fname_index, (list_key_t *)fname);
   }
 
-  log_printf(15, "looking up ino=%lu fname=%s inode=%p\n", ino, fname, inode);
-  return(inode);
+  log_printf(15, "looking up fname=%s entry=%p\n", fname, entry);
+  return(entry);
+}
+
+//*************************************************************************
+// _lfs_dentry_insert - Adds a dentry to the file table
+//*************************************************************************
+
+int _lfs_dentry_insert(lio_fuse_t *lfs, lio_dentry_t *entry)
+{
+  int i;
+  char *fname;
+  lio_inode_t *inode;
+
+  //** Find where the local file name starts
+  fname = entry->fname;
+  i = 0;
+  while (fname[i] != 0) {
+    if (fname[i] == '/') entry->name_start = i+1;
+    i++;
+  }
+
+log_printf(15, "fname=%s name_start=%d name=%s\n", entry->fname, entry->name_start, dentry_name(entry));
+  list_insert(lfs->fname_index, (list_key_t *)entry->fname, (list_data_t *)entry);
+
+  //** got to add it to the inode dentry list
+  inode = entry->inode;
+log_printf(15, "inode=" XIDT " entry1=%p\n", inode->ino, inode->entry1);
+  if (inode->entry1 == NULL) {
+log_printf(15, "added to entry1\n");
+     inode->entry1 = entry;  //** Simple add
+  } else {
+log_printf(15, "added to dentry_stack\n");
+     if (inode->dentry_stack == NULL) inode->dentry_stack = new_stack();
+     push(inode->dentry_stack, entry);
+  }
+  return(0);
+}
+
+//*************************************************************************
+// _lfs_dentry_remove - Removes the fname's dentry
+//*************************************************************************
+
+int _lfs_dentry_remove(lio_fuse_t *lfs, lio_dentry_t *entry)
+{
+  lio_dentry_t *e2;
+  lio_inode_t *inode;
+  int move;
+
+  inode = entry->inode;
+  e2 = inode->entry1;
+  move = 1;
+log_printf(1, "fname=%s ino=" XIDT " inode->entry1->fname=%s\n", entry->fname, inode->ino, inode->entry1->fname);
+
+  if (e2 != entry) {  //** Got to scan the list fora match
+     move = 0;
+     if (inode->dentry_stack != NULL) {
+        move_to_top(inode->dentry_stack);
+        while ((e2 = get_ele_data(inode->dentry_stack)) != NULL) {
+           if (e2 == entry) break;
+           move_down(inode->dentry_stack);
+        }
+     }
+  }
+
+  if (e2 == NULL) {
+     log_printf(0, "Missing dentry! fname=%s ino=" XIDT " inode->entry1->fname=%s\n", entry->fname, inode->ino, inode->entry1->fname);
+     return(1);
+  }
+
+  list_remove(lfs->fname_index, (list_key_t *)e2->fname, (list_data_t *)e2);
+
+  if (move == 1) {
+log_printf(15, "removed from entry1\n");
+     inode->entry1 = NULL;
+     if (inode->dentry_stack != NULL) inode->entry1 = pop(inode->dentry_stack);
+  } else {
+log_printf(15, "removed from dentry_stack\n");
+     delete_current(inode->dentry_stack, 1, 0);
+  }
+
+  free(e2->fname);
+  free(e2);
+
+  return(0);
 }
 
 
@@ -122,40 +232,38 @@ lio_inode_t * _lfs_inode_lookup(lio_fuse_t *lfs, fuse_ino_t ino, char *fname)
 //    NOTE:  Locking should be handled externally!
 //*************************************************************************
 
-void _lfs_inode_insert(lio_fuse_t *lfs, lio_inode_t *inode)
+void _lfs_inode_insert(lio_fuse_t *lfs, lio_inode_t *inode, lio_dentry_t *entry)
 {
-  char *fname = inode->fname;
-  int i;
 
-  //** Find where the local file name starts
-  i = 0;
-  while (fname[i] != 0) {
-    if (fname[i] == '/') inode->name_start = i+1;
-    i++;
-  }
-
-log_printf(15, "fname=%s name_start=%d name=%s ino=" XIDT "\n", inode->fname, inode->name_start, inode_name(inode), inode->ino);
-
+  log_printf(15, "inserting ino=" XIDT "\n", inode->ino);
   list_insert(lfs->ino_index, (list_key_t *)&(inode->ino), (list_data_t *)inode);
-  list_insert(lfs->fname_index, (list_key_t *)inode->fname, (list_data_t *)inode);
+  if (entry != NULL) _lfs_dentry_insert(lfs, entry);
 
-  return;;
+  return;
 }
 
 //*************************************************************************
-// _lfs_inode_remove- Removes the given inode
+// _lfs_inode_remove- Removes the given inode so it can't be looked up
 //    NOTE:  Locking should be handled externally!
 //*************************************************************************
 
 void _lfs_inode_remove(lio_fuse_t *lfs, lio_inode_t *inode)
 {
+  lio_dentry_t *entry;
 
-  log_printf(15, "ino=" XIDT " fname=%s\n", inode->ino, inode->fname);
+  log_printf(15, "ino=" XIDT " fname=%s\n", inode->ino, inode->entry1->fname);
 
-  list_remove(lfs->fname_index, (list_key_t *)inode->fname, (list_data_t *)inode);
+  list_remove(lfs->fname_index, (list_key_t *)inode->entry1->fname, (list_data_t *)inode->entry1);
+  if (inode->dentry_stack != NULL) {
+     move_to_top(inode->dentry_stack);
+     while ((entry = get_ele_data(inode->dentry_stack)) != NULL) {
+        list_remove(lfs->fname_index, (list_key_t *)entry->fname, (list_data_t *)entry);
+        move_down(inode->dentry_stack);
+     }
+//     free_stack(inode->dentry_stack, 0);
+  }
+
   list_remove(lfs->ino_index, (list_key_t *)&(inode->ino), (list_data_t *)inode);
-
-//  free(inode->fname);
 
   return;
 }
@@ -166,8 +274,27 @@ void _lfs_inode_remove(lio_fuse_t *lfs, lio_inode_t *inode)
 
 void lfs_inode_destroy(lio_fuse_t *lfs, lio_inode_t *inode)
 {
+  lio_dentry_t *entry;
+  if (inode->entry1 != NULL) {
+     log_printf(15, "ino=" XIDT " fname=%s fuse=%d lfs=%d\n", inode->ino, inode->entry1->fname, inode->fuse_count, inode->lfs_count);
+  } else {
+     log_printf(15, "ino=" XIDT " fuse=%d lfs=%d\n", inode->ino, inode->fuse_count, inode->lfs_count);
+  }
 
-  free(inode->fname);
+  entry = inode->entry1;
+  if (entry != NULL) {
+    free(entry->fname);
+    free(entry);
+  }
+
+  if (inode->dentry_stack != NULL) {
+     while ((entry = pop(inode->dentry_stack)) != NULL) {
+        free(entry->fname);
+        free(entry);
+     }
+     free_stack(inode->dentry_stack, 0);
+  }
+
   free(inode);
   return;
 }
@@ -182,7 +309,9 @@ void _lfs_inode_access(lio_fuse_t *lfs, lio_inode_t *inode, int n_fuse, int n_lf
   inode->fuse_count += n_fuse;
   inode->lfs_count += n_lfs;
 
-log_printf(15, "fname=%s fuse=%d lfs=%d delete=%d ino=" XIDT "\n", inode->fname, inode->fuse_count, inode->lfs_count, inode->deleted_object, inode->ino);
+log_printf(1, "inode=" XIDT " fuse=%d (%d) lfs=%d (%d) flagged=%d\n", inode->ino, inode->fuse_count, n_fuse, inode->lfs_count, n_lfs, inode->flagged_object);
+
+//log_printf(15, "fname=%s fuse=%d lfs=%d flagged=%d ino=" XIDT " ptr=%p\n", inode->entry1->fname, inode->fuse_count, inode->lfs_count, inode->flagged_object, inode->ino, inode);
   return;
 }
 
@@ -192,48 +321,62 @@ log_printf(15, "fname=%s fuse=%d lfs=%d delete=%d ino=" XIDT "\n", inode->fname,
 
 void _lfs_inode_release(lio_fuse_t *lfs, lio_inode_t *inode, int n_fuse, int n_lfs)
 {
-  int err;
+  int err, drop, ndentry;
+  lio_dentry_t *entry;
 
   inode->fuse_count -= n_fuse;
   inode->lfs_count -= n_lfs;
 
-
-log_printf(15, "fname=%s fuse=%d lfs=%d delete=%d ino=" XIDT "\n", inode->fname, inode->fuse_count, inode->lfs_count, inode->deleted_object, inode->ino);
+log_printf(1, "inode=" XIDT " fuse=%d (%d) lfs=%d (%d) flagged=%d\n", inode->ino, inode->fuse_count, n_fuse, inode->lfs_count, n_lfs, inode->flagged_object);
+log_printf(15, "fname=%s fuse=%d lfs=%d flagged=%d ino=" XIDT " ptr=%p\n", inode->entry1->fname, inode->fuse_count, inode->lfs_count, inode->flagged_object, inode->ino, inode);
 if ((inode->lfs_count < 0) || (inode->fuse_count < 0)) {
-log_printf(15, "NEGATVIE fname=%s fuse=%d lfs=%d delete=%d ino=" XIDT "\n", inode->fname, inode->fuse_count, inode->lfs_count, inode->deleted_object, inode->ino);
+log_printf(15, "NEGATVIE fname=%s fuse=%d lfs=%d flagged=%d ino=" XIDT "\n", inode->entry1->fname, inode->fuse_count, inode->lfs_count, inode->flagged_object, inode->ino);
 }
 
-  if (inode->lfs_count > 0) return;  //** If FUSE triggers a delete it doesn't always do a forget call
+//  if ((inode->lfs_count > 0) || (inode->fuse_count > 0)) return;
+  if (inode->lfs_count > 0) return; //** The LFS counts signify open files, etc
+  if (inode->fuse_count > 0) {  //** Have FUSE counts so only proceed if not marked for deletion
+     if (inode->flagged_object != LFS_INODE_DELETE) return;
+  }
 
-  if (inode->deleted_object == 1) { //** Go ahead and remove it
-    _lfs_inode_remove(lfs, inode);  //** Remove it from the table so it's not accidentally accessed again
-    lfs_unlock(lfs);  //** Release the global lock while we delete things
+  if (inode->flagged_object == LFS_INODE_DELETE) { //** Go ahead and remove it
+    drop = 0;
+//    if ((stack_size(inode->remove_stack) >= inode->nlinks) || ((inode->ftype & OS_OBJECT_DIR) > 0)) {
+    ndentry = (inode->dentry_stack == NULL) ? 1 : stack_size(inode->dentry_stack);
+    if ((stack_size(inode->remove_stack) >= ndentry) || ((inode->ftype & OS_OBJECT_DIR) > 0)) {
+       _lfs_inode_remove(lfs, inode);  //** Remove it from the table so it's not accidentally accessed again
+       drop = 1;
+    }
 
-log_printf(1, "Removing fname=%s\n", inode->fname);
+log_printf(1, "Removing fname=%s remove_stack=%d ndentry=%d drop=%d ftype=%d\n", inode->entry1->fname, stack_size(inode->remove_stack), ndentry, drop, inode->ftype);
     //** Now go ahead and remove it
-    err = gop_sync_exec(lio_remove_object(lfs->lc, lfs->lc->creds, inode->fname, NULL, inode->ftype));
-log_printf(1, "remove err=%d\n", err);
-    if (inode->req != NULL) {
-       if (err == OP_STATE_SUCCESS) {
-          fuse_reply_err(inode->req, 0);
-       } else if ((inode->ftype & OS_OBJECT_DIR) > 0) { //** Most likey the dirs not empty
-          fuse_reply_err(inode->req, ENOTEMPTY);
-       } else {
-          fuse_reply_err(inode->req, EBUSY);  //** Otherwise throw a generic error
+    while ((entry = pop(inode->remove_stack)) != NULL) {
+       lfs_unlock(lfs);  //** Release the global lock while we delete things
+
+       err = gop_sync_exec(lio_remove_object(lfs->lc, lfs->lc->creds, entry->fname, NULL, inode->ftype));
+log_printf(1, "remove err=%d entry->fname=%s\n", err, entry->fname);
+       if (entry->req != NULL) {
+          if (err == OP_STATE_SUCCESS) {
+             fuse_reply_err(entry->req, 0);
+          } else if ((inode->ftype & OS_OBJECT_DIR) > 0) { //** Most likey the dirs not empty
+             fuse_reply_err(entry->req, ENOTEMPTY);
+          } else {
+             fuse_reply_err(entry->req, EBUSY);  //** Otherwise throw a generic error
+          }
        }
+
+       lfs_lock(lfs);  //** Get it back
+       inode->nlinks--;
+
+       _lfs_dentry_remove(lfs, entry);
     }
 
-    if (err == OP_STATE_SUCCESS) {
-       lfs_inode_destroy(lfs, inode);
-    }
-
-    lfs_lock(lfs);  //** Get it back
-
-    if (err != OP_STATE_SUCCESS) {  //** Add it back in if an error occured
-       inode->deleted_object = 0;
-       inode->req = NULL;
-       _lfs_inode_insert(lfs, inode);
-    }
+    free_stack(inode->remove_stack, 0);  inode->remove_stack = NULL;
+    inode->flagged_object = LFS_INODE_OK;
+    if (drop == 1) lfs_inode_destroy(lfs, inode);
+  } else {
+    _lfs_inode_remove(lfs, inode);  //** Just remove it from the table
+    lfs_inode_destroy(lfs, inode);
   }
 
   return;
@@ -248,7 +391,7 @@ mode_t ftype_lio2fuse(int ftype)
   mode_t mode;
 
   mode = 0;
-  if (ftype & OS_OBJECT_LINK) {
+  if (ftype & OS_OBJECT_SYMLINK) {
      mode = S_IFLNK | 0444;
   } else if (ftype & OS_OBJECT_DIR) {
      mode = S_IFDIR | 0755;
@@ -272,9 +415,9 @@ void _lfs_parse_inode_vals(lio_fuse_t *lfs, lio_inode_t *inode, char **val, int 
   } else {
      if (inode->ino != 0) {
         generate_ex_id(&(inode->ino));
-        log_printf(0, "Missing inode generating a temp fake one! ino=" XIDT " fname=%s\n", inode->ino, inode->fname);
+        log_printf(0, "Missing inode generating a temp fake one! ino=" XIDT "\n", inode->ino);
      } else {
-        log_printf(0, "Missing inode using the old value! ino=" XIDT " fname=%s\n", inode->ino, inode->fname);
+        log_printf(0, "Missing inode using the old value! ino=" XIDT "\n", inode->ino);
      }
   }
 
@@ -290,7 +433,7 @@ void _lfs_parse_inode_vals(lio_fuse_t *lfs, lio_inode_t *inode, char **val, int 
     inode->modify_attr_ts = 0;
   }
 
-log_printf(15, "fname=%s data_ts=%s att_ts=%s ino=" XIDT "\n", inode->fname, val[1], val[2], inode->ino);
+log_printf(15, "data_ts=%s att_ts=%s ino=" XIDT "\n", val[1], val[2], inode->ino);
 
   if (inode->fh == NULL) {
      inode->size = 0;
@@ -302,7 +445,10 @@ log_printf(15, "fname=%s data_ts=%s att_ts=%s ino=" XIDT "\n", inode->fname, val
   inode->ftype = 0;
   if (val[4] != NULL) sscanf(val[4], "%d", &(inode->ftype));
 
-  for (i=0; i<5; i++) {
+  inode->nlinks = 0;
+  if (val[5] != NULL) sscanf(val[5], "%d", &(inode->nlinks));
+
+  for (i=0; i<_inode_key_size; i++) {
      if (val[i] != NULL) free(val[i]);
   }
 
@@ -333,29 +479,31 @@ void _lfs_pending_inode_wait(lio_fuse_t *lfs, lio_inode_t *inode)
 
 
 //*************************************************************************
-//  _lfs_load_inode_entry - Loads an Inode entry from the OS
+//  _lfs_load_inode_entry - Loads an Inode and dentry from the OS
 //    NOTE: The curr_inode can be null and a new struc is created and
-//          returned.  Otherwise curr_inode is returned.  In this case
-//          fname should be freed since it is not used for the updated inode case.
+//          the new dentry is returned.
 //*************************************************************************
 
-lio_inode_t *_lfs_load_inode_entry(lio_fuse_t *lfs, char *fname, lio_inode_t *curr_inode)
+lio_dentry_t *_lfs_load_inode_entry(lio_fuse_t *lfs, char *fname, lio_inode_t *curr_inode)
 {
   int v_size[_inode_key_size];
   char *val[_inode_key_size];
   char *myfname;
   int i, err, slot, updating;
   ex_id_t start_ino;
-  lio_inode_t *inode;
+  lio_inode_t *inode, *tinode;
+  lio_dentry_t *entry;
 
   //** Check if another thread is doing the load if so wait
+  err = OP_STATE_SUCCESS;
   inode = NULL;
   updating = 0;
   if (curr_inode != NULL) {
      slot = curr_inode->ino % lfs->cond_count;
      if (curr_inode->pending_update > 0) {  //** Spin until updated
         _lfs_pending_inode_wait(lfs, curr_inode);
-        return(curr_inode);  //** Return the updated inode
+        inode = curr_inode;
+        goto dentry_only;
      }
 
      curr_inode->pending_update = 1;  //** Let everyone know an update is being performed
@@ -366,24 +514,23 @@ lio_inode_t *_lfs_load_inode_entry(lio_fuse_t *lfs, char *fname, lio_inode_t *cu
      if (inode == NULL) {  //** I'm the 1st so add it to the list
         type_malloc_clear(inode, lio_inode_t, 1);
         slot = atomic_inc(lfs->counter) % lfs->cond_count;
-        inode->fname = fname;
         inode->pending_update = 1;
         list_insert(lfs->new_inode_list, fname, (list_data_t *)inode);
         updating = 2;
      } else {  //** Wait on them to complete
        _lfs_pending_inode_wait(lfs, inode);
        free(fname);
-       if (inode->deleted_object == 1) {
-          if (inode->pending_count == 0) lfs_inode_destroy(lfs, inode);
-          inode = NULL;
-       }
-       return(inode);
+//       if (inode->flagged_object == LFS_INODE_DELETE) {
+//          if (inode->pending_count == 0) lfs_inode_destroy(lfs, inode);
+//          inode = NULL;
+//       }
+       goto dentry_only;
      }
   }
 
   lfs_unlock(lfs);  //** Release the global lock
 
-  for (i=0; i<5; i++) {
+  for (i=0; i<_inode_key_size; i++) {
      v_size[i] = -lfs->lc->max_attr;
      val[i] = NULL;
   }
@@ -393,12 +540,13 @@ lio_inode_t *_lfs_load_inode_entry(lio_fuse_t *lfs, char *fname, lio_inode_t *cu
   err = lioc_get_multiple_attrs(lfs->lc, lfs->lc->creds, myfname, NULL, _inode_keys, (void **)val, v_size, _inode_key_size);
   if (err != OP_STATE_SUCCESS) {
      log_printf(15, "Failed retrieving inode info!  path=%s\n", fname);
-     inode->deleted_object = 1;
+     inode->flagged_object = LFS_INODE_DROP;
      goto finished;
   }
 
   start_ino = inode->ino;
 
+  log_printf(15, "Parsing info for fname=%s\n", myfname);
   _lfs_parse_inode_vals(lfs, inode, val, v_size);
 
   if (start_ino == FUSE_ROOT_ID) {
@@ -413,18 +561,34 @@ finished:
     apr_thread_cond_broadcast(lfs->inode_cond[slot]);
   } else if (updating == 2) {
     inode->pending_update = 0;
-    list_remove(lfs->new_inode_list, inode->fname, inode);  //** Remove it form the list
+    list_remove(lfs->new_inode_list, fname, inode);  //** Remove it form the list
     apr_thread_cond_broadcast(lfs->inode_cond[slot]);
   }
 
+dentry_only:
+  entry = NULL;
   if (err == OP_STATE_SUCCESS) {
-    _lfs_inode_insert(lfs, inode);
+    entry = _lfs_dentry_lookup(lfs, fname);
+    tinode = _lfs_inode_lookup(lfs, inode->ino);
+    if (entry == NULL) {
+       type_malloc_clear(entry, lio_dentry_t, 1);
+       entry->fname = fname;
+       entry->inode = (tinode == NULL) ? inode : tinode;
+       _lfs_dentry_insert(lfs, entry);
+    }
+
+    if (curr_inode == NULL) {
+       if (tinode != NULL) {
+          lfs_inode_destroy(lfs, inode);  //** HArd link and already in the cache
+       } else {
+          _lfs_inode_insert(lfs, inode, NULL);
+       }
+    }
   } else {
-     if (inode->pending_count == 0) lfs_inode_destroy(lfs, inode);
-     inode = NULL;
+     if ((inode->pending_count == 0) && (curr_inode == NULL)) { lfs_inode_destroy(lfs, inode); free(fname); }
   }
 
-  return(inode);
+  return(entry);
 }
 
 //*************************************************************************
@@ -439,7 +603,7 @@ void lfs_fill_stat(struct stat *stat, lio_inode_t *inode)
   if (inode->fh != NULL) inode->size = segment_size(inode->fh->seg);
   stat->st_size = inode->size;
   stat->st_mode = ftype_lio2fuse(inode->ftype);
-  stat->st_nlink = (inode->ftype & OS_OBJECT_DIR) ? 2 : 1;
+  stat->st_nlink = inode->nlinks;
   stat->st_mtime = inode->modify_data_ts;
   stat->st_ctime = inode->modify_attr_ts;
 }
@@ -458,7 +622,7 @@ void lfs_stat(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info *fi)
 
   lfs_lock(lfs_gc);
 
-  inode = _lfs_inode_lookup(lfs_gc, ino, NULL);
+  inode = _lfs_inode_lookup(lfs_gc, ino);
   if (inode == NULL) {
      lfs_unlock(lfs_gc);
      fuse_reply_err(req, ENOENT);
@@ -466,12 +630,18 @@ void lfs_stat(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info *fi)
   }
 
   if (apr_time_now() > inode->recheck_time) {  //** Got to reload the info
-     _lfs_load_inode_entry(lfs_gc, inode->fname, inode);
+     _lfs_load_inode_entry(lfs_gc, inode->entry1->fname, inode);
+  }
+
+  if (inode->remove_stack != NULL) {
+     if (stack_size(inode->remove_stack) >= inode->nlinks) {
+        lfs_unlock(lfs_gc);
+        fuse_reply_err(req, ENOENT);
+     }
   }
 
   lfs_fill_stat(&stat, inode);
   lfs_unlock(lfs_gc);
-
   fuse_reply_attr(req, &stat, lfs_gc->attr_to);
 }
 
@@ -487,7 +657,7 @@ void lfs_forget(fuse_req_t req, fuse_ino_t ino, unsigned long nlookup)
 
   lfs_lock(lfs_gc);
 
-  inode = _lfs_inode_lookup(lfs_gc, ino, NULL);
+  inode = _lfs_inode_lookup(lfs_gc, ino);
   if (inode == NULL) {
      lfs_unlock(lfs_gc);
      fuse_reply_none(req);
@@ -508,17 +678,19 @@ void lfs_forget(fuse_req_t req, fuse_ino_t ino, unsigned long nlookup)
 
 void lfs_lookup(fuse_req_t req, fuse_ino_t parent, const char *name)
 {
-  struct fuse_entry_param entry;
+  struct fuse_entry_param fentry;
   lio_inode_t *inode, *pinode;
+  lio_dentry_t *entry;
   char fullname[OS_PATH_MAX];
   char *tmp;
+//  int to_remove;
 
   log_printf(1, "parent_ino=%lu name=%s\n", parent, name); flush_log();
 
   lfs_lock(lfs_gc);
 
   //** Lookup the parent
-  pinode = _lfs_inode_lookup(lfs_gc, parent, NULL);
+  pinode = _lfs_inode_lookup(lfs_gc, parent);
   if (pinode == NULL) {
      lfs_unlock(lfs_gc);
      fuse_reply_err(req, ENOENT);
@@ -526,39 +698,52 @@ void lfs_lookup(fuse_req_t req, fuse_ino_t parent, const char *name)
   }
 
   //** Now see if we have the child
-  snprintf(fullname, OS_PATH_MAX-1, "%s/%s", pinode->fname, name);
-log_printf(15, "parent=%s name=%s fullname=%s\n", pinode->fname, name, fullname);
+  snprintf(fullname, OS_PATH_MAX-1, "%s/%s", pinode->entry1->fname, name);
+log_printf(15, "parent=%s name=%s fullname=%s\n", pinode->entry1->fname, name, fullname);
 
-  inode = _lfs_inode_lookup(lfs_gc, 0, fullname);
-  if (inode == NULL) {  //** Don't have it so need to load it
+  entry = _lfs_dentry_lookup(lfs_gc, fullname);
+  if (entry == NULL) {  //** Don't have it so need to load it
      tmp = strdup(fullname);
-     inode = _lfs_load_inode_entry(lfs_gc, tmp, NULL);
-     if (inode == NULL) { //** File doesn't exist!
+     entry = _lfs_load_inode_entry(lfs_gc, tmp, NULL);
+     if (entry == NULL) { //** File doesn't exist!
        log_printf(15, "File doesn't exist! fname=%s\n", fullname);
        lfs_unlock(lfs_gc);
        fuse_reply_err(req, ENOENT);
        return;
      }
-  } else if (apr_time_now() > inode->recheck_time) { //** Need to recheck stuff
-     _lfs_load_inode_entry(lfs_gc, inode->fname, inode);
+  } else if (apr_time_now() > entry->inode->recheck_time) { //** Need to recheck stuff
+     _lfs_load_inode_entry(lfs_gc, entry->fname, entry->inode);
   }
 
-  //** Update the ref count
-  _lfs_inode_access(lfs_gc, inode, 1, 0);
+  inode = entry->inode;
 
-  //** Form the response
-  entry.ino = inode->ino;
-  entry.generation = 0;
-  entry.attr_timeout = lfs_gc->attr_to;
-  entry.entry_timeout = lfs_gc->entry_to;
+//  to_remove = 0;
+//  if (inode->remove_stack != NULL) {
+//     if (stack_size(inode->remove_stack) >= inode->nlinks) to_remove = 1;
+//  }
 
-  lfs_fill_stat(&(entry.attr), inode);
+  if (entry->flagged == LFS_INODE_OK) {
+     //** Update the ref count
+     _lfs_inode_access(lfs_gc, inode, 1, 0);
 
-log_printf(1, "fullname=%s ino=" XIDT " ftype=%d\n", inode->fname, inode->ino, inode->ftype);
+     //** Form the response
+     fentry.ino = inode->ino;
+     fentry.generation = 0;
+     fentry.attr_timeout = lfs_gc->attr_to;
+     fentry.entry_timeout = lfs_gc->entry_to;
 
-  lfs_unlock(lfs_gc);
+     lfs_fill_stat(&(fentry.attr), inode);
 
-  fuse_reply_entry(req, &entry);
+log_printf(1, "fullname=%s ino=" XIDT " ftype=%d\n", inode->entry1->fname, inode->ino, inode->ftype);
+
+     lfs_unlock(lfs_gc);
+
+     fuse_reply_entry(req, &fentry);
+  } else {
+     log_printf(15, "File doesn't exist! fname=%s\n", fullname);
+     lfs_unlock(lfs_gc);
+     fuse_reply_err(req, ENOENT);
+  }
 }
 
 
@@ -569,9 +754,10 @@ log_printf(1, "fullname=%s ino=" XIDT " ftype=%d\n", inode->fname, inode->ino, i
 void  lfs_readdir(fuse_req_t req, fuse_ino_t ino, size_t size, off_t off, struct fuse_file_info *fi)
 {
   lfs_dir_iter_t *dit= (lfs_dir_iter_t *)fi->fh;
-  int ftype, prefix_len, n, i;
+  int ftype, prefix_len, n, i, bpos, skip;
   char *fname, *buf;
-  lio_inode_t *inode;
+  lio_inode_t *inode, *tinode;
+  lio_dentry_t *entry;
   struct stat stbuf;
 
   int off2 = off;
@@ -589,18 +775,18 @@ void  lfs_readdir(fuse_req_t req, fuse_ino_t ino, size_t size, off_t off, struct
   if (n>off) { //** Rewind
     move_to_top(dit->stack);
     for (i=0; i<off; i++) move_down(dit->stack);
-    inode = get_ele_data(dit->stack);
-    while (inode->deleted_object == 1) {  //** SKip over deleted entries
+    entry = get_ele_data(dit->stack);
+    while (entry->flagged != LFS_INODE_OK) {  //** SKip over deleted entries
        move_down(dit->stack);
-       inode = get_ele_data(dit->stack);
-       if (inode == NULL) break;
+       entry = get_ele_data(dit->stack);
+       if (entry == NULL) break;
     }
 
-    if (inode != NULL) {
-       lfs_fill_stat(&stbuf, inode);
-       n = fuse_add_direntry(req, NULL, 0, inode_name(inode), NULL, 0);
+    if (entry != NULL) {
+       lfs_fill_stat(&stbuf, entry->inode);
+       n = fuse_add_direntry(req, NULL, 0, dentry_name(entry), NULL, 0);
        type_malloc(buf, char, n);
-       fuse_add_direntry(req, buf, n, inode->fname, &stbuf, off+1);
+       fuse_add_direntry(req, buf, n, dentry_name(entry), &stbuf, off+1);
        fuse_reply_buf(req, buf, n);
        free(buf);
       return;
@@ -613,41 +799,72 @@ void  lfs_readdir(fuse_req_t req, fuse_ino_t ino, size_t size, off_t off, struct
      return;
   }
 
-  //** If we made it here then grab the next file and look it up.
-  ftype = os_next_object(dit->lfs->lc->os, dit->it, &fname, &prefix_len);
-  if (ftype <= 0) { //** No more files
-    fuse_reply_buf(req, NULL, 0);
-    return;
+  type_malloc_clear(buf, char, size);
+  bpos=0;
+  for (;;) {
+     //** If we made it here then grab the next file and look it up.
+     ftype = os_next_object(dit->lfs->lc->os, dit->it, &fname, &prefix_len);
+     if (ftype <= 0) { //** No more files
+        if (bpos == 0) {
+           fuse_reply_buf(req, NULL, 0);
+        } else {
+           fuse_reply_buf(req, buf, bpos+1);
+        }
+        free(buf);
+        return;
+     }
+
+     //** Check if the file already exists
+     lfs_lock(dit->lfs);
+     entry = _lfs_dentry_lookup(dit->lfs, fname);
+
+     if (entry == NULL) { //** Doesn't exist so add it
+       type_malloc_clear(entry, lio_dentry_t, 1);
+       type_malloc_clear(inode, lio_inode_t, 1);
+       entry->fname = fname;
+       entry->inode = inode;
+       _lfs_parse_inode_vals(dit->lfs, inode, dit->val, dit->v_size);
+
+       //** If it's a hardlink we may already have the inode
+       tinode = _lfs_inode_lookup(dit->lfs, inode->ino);
+       if (tinode == NULL) {
+          _lfs_inode_insert(dit->lfs, inode, entry);
+       } else {  //** Inode already loaded so just add the dentry
+         entry->inode= tinode;
+         _lfs_dentry_insert(dit->lfs, entry);
+         lfs_inode_destroy(dit->lfs, inode);  //** Destroy the redundant inode
+       }
+     } else {
+       for (i=0; i<_inode_key_size; i++) if (dit->val[i] != NULL) free(dit->val[i]);
+       free(fname);
+     }
+
+log_printf(1, "next pino=" XIDT " fname=%s ftype=%d prefix_len=%d ino=" XIDT " ftype=%d\n", dit->dot_entry.inode->ino,  entry->fname, ftype, prefix_len, entry->inode->ino, entry->inode->ftype);
+
+     _lfs_inode_access(dit->lfs, entry->inode, 0, 1);  //** Make sure it's not accidentally deleted during the walk
+     lfs_fill_stat(&stbuf, entry->inode);
+     skip = entry->flagged;
+
+     lfs_unlock(dit->lfs);
+
+     move_to_bottom(dit->stack);
+     insert_below(dit->stack, entry);
+     off++;
+
+     if (skip == LFS_INODE_OK) {
+        n = fuse_add_direntry(req, NULL, 0, dentry_name(entry), NULL, 0);
+        if ((bpos+n) >= size) { //** Filled the buffer
+           lfs_unlock(dit->lfs);
+           fuse_reply_buf(req, buf, bpos+1);
+           free(buf);
+           return;
+        }
+
+        fuse_add_direntry(req, &(buf[bpos]), n, dentry_name(entry), &stbuf, off);
+        bpos += n;
+     }
   }
 
-  //** Check if the file already exists
-  lfs_lock(dit->lfs);
-  inode = _lfs_inode_lookup(dit->lfs, 0, fname);
-
-  if (inode == NULL) { //** Doesn't exist so add it
-    type_malloc_clear(inode, lio_inode_t, 1);
-    inode->fname = fname;
-    _lfs_parse_inode_vals(dit->lfs, inode, dit->val, dit->v_size);
-    _lfs_inode_insert(dit->lfs, inode);
-  } else {
-    for (i=0; i<_inode_key_size; i++) if (dit->val[i] != NULL) free(dit->val[i]);
-    free(fname);
-  }
-
-log_printf(1, "next fname=%s ftype=%d prefix_len=%d ino=" XIDT " ftype=%d\n", inode->fname, ftype, prefix_len, inode->ino, inode->ftype);
-
-  _lfs_inode_access(dit->lfs, inode, 0, 1);  //** Make sure it's not accidentally deleted during the walk
-
-  lfs_fill_stat(&stbuf, inode);
-  n = fuse_add_direntry(req, NULL, 0, inode_name(inode), NULL, 0);
-  type_malloc(buf, char, n);
-  fuse_add_direntry(req, buf, n, inode_name(inode), &stbuf, off+1);
-  fuse_reply_buf(req, buf, n);
-  free(buf);
-  move_to_bottom(dit->stack);
-  insert_below(dit->stack, inode);
-
-  lfs_unlock(dit->lfs);
 }
 
 
@@ -658,6 +875,7 @@ log_printf(1, "next fname=%s ftype=%d prefix_len=%d ino=" XIDT " ftype=%d\n", in
 void lfs_opendir(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info *fi)
 {
   lfs_dir_iter_t *dit;
+  lio_dentry_t *entry;
   lio_inode_t *inode;
   char *dir, *file;
   char path[OS_PATH_MAX];
@@ -667,11 +885,17 @@ void lfs_opendir(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info *fi)
 
   //** First find the inode
   lfs_lock(lfs_gc);
-  inode = _lfs_inode_lookup(lfs_gc, ino, NULL);
+  inode = _lfs_inode_lookup(lfs_gc, ino);
 
   if (inode == NULL) {  //** Can't find the inode so kick out
      lfs_unlock(lfs_gc);
      fuse_reply_err(req, ENOENT);
+     return;
+  }
+
+  if ((inode->ftype & OS_OBJECT_DIR) == 0) {  //** Not a directory
+     lfs_unlock(lfs_gc);
+     fuse_reply_err(req, ENOTDIR);
      return;
   }
 
@@ -684,44 +908,44 @@ void lfs_opendir(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info *fi)
   }
 
   dit->lfs = lfs_gc;
-  snprintf(path, OS_PATH_MAX, "%s/*", inode->fname);
+  snprintf(path, OS_PATH_MAX, "%s/*", inode->entry1->fname);
   dit->path_regex = os_path_glob2regex(path);
 
   dit->it = os_create_object_iter_alist(dit->lfs->lc->os, dit->lfs->lc->creds, dit->path_regex, NULL, OS_OBJECT_ANY, 0, _inode_keys, (void **)dit->val, dit->v_size, _inode_key_size);
 
   dit->stack = new_stack();
 
-  dit->dot_ino.fname = ".";
-  dit->dot_ino.name_start = 0;
-  dit->dot_ino.ino = inode->ino;
   _lfs_inode_access(lfs_gc, inode, 0, 1);  //** Make sure it's not accidentally deleted during the walk
 
-  dit->dot_ino.ftype = OS_OBJECT_DIR;
+  entry = _lfs_dentry_lookup(lfs_gc, inode->entry1->fname);
+  dit->dot_entry = *entry;
+  dit->dot_entry.fname = ".";
+  dit->dot_entry.name_start = 0;
 
-  dit->dotdot_ino.fname = "..";
-  dit->dotdot_ino.name_start = 0;
-  dit->dot_ino.ftype = OS_OBJECT_DIR;
-  if (inode->ftype ^ OS_OBJECT_DIR) {
-     dit->dotdot_ino.ino = inode->ino;
+  if (strcmp(inode->entry1->fname, "") == 0) {
+     inode = _lfs_inode_lookup(lfs_gc, FUSE_ROOT_ID);
+     entry = inode->entry1;
   } else {
-    if (strcmp(inode->fname, "") == 0) {
-       inode = _lfs_inode_lookup(lfs_gc, FUSE_ROOT_ID, NULL);
-    } else {
-       os_path_split(inode->fname, &dir, &file);
-       inode = _lfs_inode_lookup(lfs_gc, 0, dir);
-       if (inode == NULL) {  //** Got to load it
-          inode = _lfs_load_inode_entry(lfs_gc, dir, NULL);
-       } else {
-         free(dir);
-       }
-       free(file);
-    }
-    dit->dotdot_ino.ino = inode->ino;
+     os_path_split(inode->entry1->fname, &dir, &file);
+     entry = _lfs_dentry_lookup(lfs_gc, dir);
+     if (entry == NULL) {  //** Got to load it
+        entry = _lfs_load_inode_entry(lfs_gc, dir, NULL);
+        inode = entry->inode;
+     } else {
+       inode = entry->inode;
+       free(dir);
+     }
+     free(file);
   }
 
   _lfs_inode_access(lfs_gc, inode, 0, 1);  //** Make sure it's not accidentally deleted during the walk
-  insert_below(dit->stack, &dit->dot_ino);
-  insert_below(dit->stack, &dit->dotdot_ino);
+  dit->dotdot_entry = *entry;
+  dit->dotdot_entry.fname = "..";
+  dit->dotdot_entry.name_start = 0;
+
+
+  insert_below(dit->stack, &dit->dot_entry);
+  insert_below(dit->stack, &dit->dotdot_entry);
 
   lfs_unlock(lfs_gc);
 
@@ -740,9 +964,9 @@ void lfs_opendir(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info *fi)
 void lfs_closedir(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info *fi)
 {
   lfs_dir_iter_t *dit= (lfs_dir_iter_t *)fi->fh;
-  lio_inode_t *inode;
+  lio_dentry_t *entry;
 
-  log_printf(1, "ino=%lu\n", ino); flush_log();
+  log_printf(1, "ino=%lu START\n", ino); flush_log();
 
   if (dit == NULL) {
      fuse_reply_err(req, EBADF);
@@ -751,11 +975,12 @@ void lfs_closedir(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info *fi)
 
   //** Cyle through releasing all the inodes
   lfs_lock(dit->lfs);
-  while ((inode = (lio_inode_t *)pop(dit->stack)) != NULL) {
-     if ((strcmp(inode->fname, ".") == 0) || (strcmp(inode->fname, "..") == 0)) {
-        inode = _lfs_inode_lookup(dit->lfs, inode->ino, NULL);  //** Resolve . and .. correctly
-     }
-     _lfs_inode_release(dit->lfs, inode, 0, 1);
+  while ((entry = (lio_dentry_t *)pop(dit->stack)) != NULL) {
+log_printf(0, "pino=%lu fname=%s\n", ino, entry->fname); flush_log();
+//     if ((strcmp(dentry->fname, ".") == 0) || (strcmp(dentry->fname, "..") == 0)) {
+//        inode = _lfs_inode_lookup(dit->lfs, inode->ino, NULL);  //** Resolve . and .. correctly
+//     }
+     _lfs_inode_release(dit->lfs, entry->inode, 0, 1);
   }
   lfs_unlock(dit->lfs);
 
@@ -764,6 +989,8 @@ void lfs_closedir(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info *fi)
   os_destroy_object_iter(dit->lfs->lc->os, dit->it);
   os_regex_table_destroy(dit->path_regex);
   free(dit);
+
+  log_printf(1, "ino=%lu END\n", ino); flush_log();
 
   fuse_reply_err(req, 0);
   return;
@@ -775,18 +1002,19 @@ void lfs_closedir(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info *fi)
 
 int lfs_object_create(lio_fuse_t *lfs, fuse_req_t req, fuse_ino_t parent, const char *name, mode_t mode, int ftype)
 {
-  struct fuse_entry_param entry;
+  struct fuse_entry_param fentry;
   lio_inode_t *inode, *pinode;
+  lio_dentry_t *entry;
   char fullname[OS_PATH_MAX];
   char *tmp;
-  int err;
+  int err, n;
 
   log_printf(1, "parent_ino=%lu name=%s\n", parent, name); flush_log();
 
   lfs_lock(lfs);
 
   //** Lookup the parent
-  pinode = _lfs_inode_lookup(lfs, parent, NULL);
+  pinode = _lfs_inode_lookup(lfs, parent);
   if (pinode == NULL) {
      lfs_unlock(lfs);
      fuse_reply_err(req, ENOENT);
@@ -794,60 +1022,66 @@ int lfs_object_create(lio_fuse_t *lfs, fuse_req_t req, fuse_ino_t parent, const 
   }
 
   //** Now see if we have the child
-  snprintf(fullname, OS_PATH_MAX-1, "%s/%s", pinode->fname, name);
-log_printf(15, "parent=%s name=%s fullname=%s\n", pinode->fname, name, fullname);
+  snprintf(fullname, OS_PATH_MAX-1, "%s/%s", pinode->entry1->fname, name);
+log_printf(15, "parent=%s name=%s fullname=%s\n", pinode->entry1->fname, name, fullname);
 
-  inode = _lfs_inode_lookup(lfs, 0, fullname);
-  if (inode != NULL) { //** Oops it already exists
+  entry = _lfs_dentry_lookup(lfs, fullname);
+  if (entry != NULL) { //** Oops it already exists
      lfs_unlock(lfs);
      fuse_reply_err(req, EEXIST);
      return(1);
   }
 
-  tmp = strdup(fullname);
-log_printf(15, "tmp=%s\n", tmp);
-  inode = _lfs_load_inode_entry(lfs, tmp, NULL);
-  if (inode != NULL) { //** File already exist!
+  n = lioc_exists(lfs->lc, lfs->lc->creds, fullname);
+  if (n != 0) {  //** File already exists
      log_printf(15, "File already exist! fname=%s\n", fullname);
      lfs_unlock(lfs);
      fuse_reply_err(req, EEXIST);
-     free(tmp);
      return(1);
    }
 
   //** If we made it here it's a new file or dir
   //** Create the new object
-  tmp = strdup(fullname);  //** _lfs_load_inode_entry will remove this on fialure automatically
+  tmp = strdup(fullname);  //** _lfs_load_inode_entry will remove this on failure automatically
   err = gop_sync_exec(lio_create_object(lfs->lc, lfs->lc->creds, tmp, ftype, NULL, lfs->id));
   if (err != OP_STATE_SUCCESS) {
      log_printf(15, "Error creating object! fname=%s\n", fullname);
      lfs_unlock(lfs);
-     fuse_reply_err(req, EREMOTEIO);
+     if (strlen(fullname) > 3900) {  //** Probably a path length issue
+        fuse_reply_err(req, ENAMETOOLONG);
+     } else {
+        fuse_reply_err(req, EREMOTEIO);
+     }
      return(1);
   }
 
   //** Load the inode
-  inode = _lfs_load_inode_entry(lfs, tmp, NULL);
-  if (inode == NULL) { //** File doesn't exist!
+  entry = _lfs_load_inode_entry(lfs, tmp, NULL);
+  if (entry == NULL) { //** File doesn't exist!
      log_printf(15, "File doesn't exist! fname=%s\n", fullname);
      lfs_unlock(lfs);
      fuse_reply_err(req, ENOENT);
      return(1);
   }
 
+  inode = entry->inode;
+
+  //** Update the ref count
+  _lfs_inode_access(lfs_gc, inode, 1, 0);
+
   //** Form the response
-  entry.ino = inode->ino;
-  entry.generation = 0;
-  entry.attr_timeout = lfs_gc->attr_to;
-  entry.entry_timeout = lfs_gc->entry_to;
+  fentry.ino = inode->ino;
+  fentry.generation = 0;
+  fentry.attr_timeout = lfs_gc->attr_to;
+  fentry.entry_timeout = lfs_gc->entry_to;
 
-  lfs_fill_stat(&(entry.attr), inode);
+  lfs_fill_stat(&(fentry.attr), inode);
 
-log_printf(15, "fullname=%s ino=" XIDT " ftype=%d\n", inode->fname, inode->ino, inode->ftype);
+log_printf(15, "fullname=%s ino=" XIDT " ftype=%d\n", inode->entry1->fname, inode->ino, inode->ftype);
 
   lfs_unlock(lfs);
 
-  fuse_reply_entry(req, &entry);
+  fuse_reply_entry(req, &fentry);
 
   return(0);
 }
@@ -859,64 +1093,136 @@ log_printf(15, "fullname=%s ino=" XIDT " ftype=%d\n", inode->fname, inode->ino, 
 void lfs_rename(fuse_req_t req, fuse_ino_t parent, const char *name, fuse_ino_t newparent, const char *newname)
 {
   lio_fuse_t *lfs = lfs_gc;
-  lio_inode_t *sd_inode, *dd_inode, *inode, *dinode;
+  lio_inode_t *s_inode, *d_inode;
+  lio_dentry_t *d_entry, *s_entry;
   char fullname[OS_PATH_MAX];
   int err;
 
-  log_printf(1, "parent_ino=%lu name=%s\n", parent, name); flush_log();
+  log_printf(1, "parent_ino=%lu name=%s new_parent_ino=%lu newname=%s\n", parent, name, newparent, newname); flush_log();
 
   lfs_lock(lfs);
 
   //** Lookup the parents
-  sd_inode = _lfs_inode_lookup(lfs, parent, NULL);
-  if (sd_inode == NULL) {
+  s_inode = _lfs_inode_lookup(lfs, parent);
+  if (s_inode == NULL) {
      lfs_unlock(lfs);
      fuse_reply_err(req, ENOENT);
      return;
   }
 
-  dd_inode = _lfs_inode_lookup(lfs, newparent, NULL);
-  if (dd_inode == NULL) {
+  d_inode = _lfs_inode_lookup(lfs, newparent);
+  if (d_inode == NULL) {
      lfs_unlock(lfs);
      fuse_reply_err(req, ENOENT);
      return;
   }
 
   //** Now see if we have the child
-  snprintf(fullname, OS_PATH_MAX-1, "%s/%s", sd_inode->fname, name);
-log_printf(15, "parent=%s name=%s fullname=%s\n", sd_inode->fname, name, fullname);
+  snprintf(fullname, OS_PATH_MAX-1, "%s/%s", s_inode->entry1->fname, name);
+log_printf(15, "parent=%s name=%s fullname=%s\n", s_inode->entry1->fname, name, fullname);
 
-  inode = _lfs_inode_lookup(lfs, 0, fullname);
-  if (inode == NULL) { //** Oops it doesn't exist
+  s_entry = _lfs_dentry_lookup(lfs, fullname);
+  if (s_entry == NULL) { //** Oops it doesn't exist
      lfs_unlock(lfs);
      fuse_reply_err(req, EEXIST);
      return;
   }
 
   //** Do the same for the dest
-  snprintf(fullname, OS_PATH_MAX-1, "%s/%s", dd_inode->fname, newname);
-  dinode = _lfs_inode_lookup(lfs, 0, fullname);
-  if (dinode != NULL) { //** Oops it already exists and we don;t currently support this scenario
+  snprintf(fullname, OS_PATH_MAX-1, "%s/%s", d_inode->entry1->fname, newname);
+  d_entry = _lfs_dentry_lookup(lfs, fullname);
+  if (d_entry != NULL) { //** Oops it already exists and we don;t currently support this scenario
      lfs_unlock(lfs);
      fuse_reply_err(req, EEXIST);
      return;
   }
 
   //** Now do the move
-  err = gop_sync_exec(lio_move_object(lfs->lc, lfs->lc->creds, inode->fname, fullname));
+  err = gop_sync_exec(lio_move_object(lfs->lc, lfs->lc->creds, s_entry->fname, fullname));
   if (err != OP_STATE_SUCCESS) {
      lfs_unlock(lfs);
      fuse_reply_err(req, EIO);
      return;
   }
 
-  //** Update the inode name
-  free(inode->fname);
-  inode->fname = strdup(fullname);
+  //** Update the dentry name
+  s_inode = s_entry->inode;
+  _lfs_dentry_remove(lfs, s_entry);
+  type_malloc_clear(s_entry, lio_dentry_t, 1);
+  s_entry->fname = strdup(fullname);
+  s_entry->inode = s_inode;
+  _lfs_dentry_insert(lfs, s_entry);
 
   lfs_unlock(lfs);
 
   fuse_reply_err(req, 0);
+  return;
+}
+
+//*************************************************************************
+// lfs_hardlink - Creates a hardlink to an existing file
+//*************************************************************************
+
+void lfs_hardlink(fuse_req_t req, fuse_ino_t ino, fuse_ino_t newparent, const char *newname)
+{
+  lio_fuse_t *lfs = lfs_gc;
+  lio_inode_t *d_inode, *p_inode;
+  lio_dentry_t *entry;
+  struct fuse_entry_param fentry;
+  char fullname[OS_PATH_MAX];
+  int err;
+
+  log_printf(1, "ino=%lu newparent_ino=%lu newname=%s\n", ino, newparent, newname); flush_log();
+
+  lfs_lock(lfs);
+
+  //** Lookup the dest inode
+  d_inode = _lfs_inode_lookup(lfs, ino);
+  if (d_inode == NULL) {
+     lfs_unlock(lfs);
+     fuse_reply_err(req, ENOENT);
+     return;
+  }
+
+  //** Lookup the parent
+  p_inode = _lfs_inode_lookup(lfs, newparent);
+  if (p_inode == NULL) {
+     lfs_unlock(lfs);
+     fuse_reply_err(req, ENOENT);
+     return;
+  }
+
+  //** Make sure the new entry doesn't exist
+  snprintf(fullname, OS_PATH_MAX-1, "%s/%s", p_inode->entry1->fname, newname);
+  entry = _lfs_dentry_lookup(lfs, fullname);
+  if (entry != NULL) { //** Oops it already exists
+     lfs_unlock(lfs);
+     fuse_reply_err(req, EEXIST);
+     return;
+  }
+
+  //** Now do the hard link
+  err = gop_sync_exec(lio_link_object(lfs->lc, lfs->lc->creds, 0, d_inode->entry1->fname, fullname, lfs->id));
+  if (err != OP_STATE_SUCCESS) {
+     lfs_unlock(lfs);
+     fuse_reply_err(req, EIO);
+     return;
+  }
+
+  //** Update the ref count
+  _lfs_inode_access(lfs, d_inode, 1, 0);
+
+  //** Form the response
+  fentry.ino = d_inode->ino;
+  fentry.generation = 0;
+  fentry.attr_timeout = lfs_gc->attr_to;
+  fentry.entry_timeout = lfs_gc->entry_to;
+
+  lfs_fill_stat(&(fentry.attr), d_inode);
+
+  lfs_unlock(lfs);
+
+  fuse_reply_entry(req, &fentry);
   return;
 }
 
@@ -951,15 +1257,16 @@ void lfs_mkdir(fuse_req_t req, fuse_ino_t parent, const char *name, mode_t mode)
 void lfs_object_remove(lio_fuse_t *lfs, fuse_req_t req, fuse_ino_t parent, const char *name)
 {
   lio_inode_t *inode, *pinode;
+  lio_dentry_t *entry;
   char fullname[OS_PATH_MAX];
-  int defer_reply;
+  int defer_reply, err, ndentry;
 
   log_printf(15, "parent_ino=%lu name=%s\n", parent, name); flush_log();
 
   lfs_lock(lfs);
 
   //** Lookup the parent
-  pinode = _lfs_inode_lookup(lfs, parent, NULL);
+  pinode = _lfs_inode_lookup(lfs, parent);
   if (pinode == NULL) {
      lfs_unlock(lfs);
      fuse_reply_err(req, ENOENT);
@@ -967,28 +1274,56 @@ void lfs_object_remove(lio_fuse_t *lfs, fuse_req_t req, fuse_ino_t parent, const
   }
 
   //** Now see if we have the child
-  snprintf(fullname, OS_PATH_MAX-1, "%s/%s", pinode->fname, name);
-log_printf(15, "parent=%s name=%s fullname=%s\n", pinode->fname, name, fullname);
+  snprintf(fullname, OS_PATH_MAX-1, "%s/%s", pinode->entry1->fname, name);
+log_printf(15, "parent=%s name=%s fullname=%s\n", pinode->entry1->fname, name, fullname);
 
-  inode = _lfs_inode_lookup(lfs, 0, fullname);
-  if (inode == NULL) { //** Oops it doesn't exist
+  entry = _lfs_dentry_lookup(lfs, fullname);
+  if (entry == NULL) { //** Oops it doesn't exist
      lfs_unlock(lfs);
      fuse_reply_err(req, ENOENT);
      return;
   }
 
+  inode = entry->inode;
   defer_reply = inode->ftype & OS_OBJECT_DIR;
 
-  if (defer_reply > 0) inode->req = req;
+  ndentry = 1;
+  if (inode->dentry_stack != NULL) ndentry = stack_size(inode->dentry_stack) + 1;
+defer_reply = 100;
+log_printf(15, "dentry_size=%d nlinks=%d defer_reply=%d ftype=%d\n", ndentry, inode->nlinks, defer_reply, inode->ftype);
+  if ((ndentry > 1) && (inode->nlinks>1) && (defer_reply == 0)) {  //** Got more entries so safe to delete this one now
+     lfs_unlock(lfs);  //** Release the global lock while we delete things
 
-  inode->deleted_object = 1;  //** Mark it for deletion
+     err = gop_sync_exec(lio_remove_object(lfs->lc, lfs->lc->creds, entry->fname, NULL, inode->ftype));
+log_printf(1, "remove err=%d\n", err);
+     if (err == OP_STATE_SUCCESS) {
+        fuse_reply_err(req, 0);
+     } else if ((inode->ftype & OS_OBJECT_DIR) > 0) { //** Most likey the dirs not empty
+        fuse_reply_err(req, ENOTEMPTY);
+     } else {
+        fuse_reply_err(req, EBUSY);  //** Otherwise throw a generic error
+     }
+
+     lfs_lock(lfs);  //** Get it back
+     inode->nlinks--;
+     _lfs_dentry_remove(lfs, entry);
+     lfs_unlock(lfs);
+     return;
+  }
+
+  //** Deferred removal
+log_printf(1, "deffered removal. entry=%s\n", entry->fname);
+  inode->flagged_object = LFS_INODE_DELETE;  //** Mark it for deletion
+  entry->flagged = LFS_INODE_DELETE;
+//  entry->req = req;
+fuse_reply_err(req, 0);
+
+  if (inode->remove_stack == NULL) inode->remove_stack = new_stack();
+  push(inode->remove_stack, entry);
 
   _lfs_inode_release(lfs, inode, 0, 0);  //** Release it which should trigger the removal
 
   lfs_unlock(lfs);
-
-  //** Reply to the request immediately
-  if (defer_reply == 0) fuse_reply_err(req, 0);
 }
 
 //*****************************************************************
@@ -1014,6 +1349,176 @@ void lfs_rmdir(fuse_req_t req, fuse_ino_t parent, const char *name)
 }
 
 //*****************************************************************
+// lfs_set_tape_attr - Disburse the tape attribute
+//*****************************************************************
+
+void lfs_set_tape_attr(lio_fuse_t *lfs, lio_inode_t *inode, char *mytape_val, int tape_size)
+{
+  char *val[_tape_key_size], *tape_val, *bstate, *tmp;
+  int v_size[_tape_key_size];
+  int n, i, fin, ex_key, err;
+  exnode_exchange_t *exp;
+  exnode_t *ex, *cex;
+  exnode_abstract_set_t my_ess;
+
+  type_malloc(tape_val, char, tape_size+1);
+  memcpy(tape_val, mytape_val, tape_size);
+  tape_val[tape_size] = 0;  //** Just to be safe with the string/prints routines
+
+log_printf(15, "fname=%s tape_size=%d\n", inode->entry1->fname, tape_size);
+log_printf(15, "Tape attribute follows:\n%s\n", tape_val);
+
+  //** The 1st key should be n_keys
+  tmp = string_token(tape_val, "=\n", &bstate, &fin);
+  if (strcmp(tmp, "n_keys") != 0) { //*
+     log_printf(0, "ERROR parsing tape attribute! Missing n_keys! fname=%s\n", inode->entry1->fname);
+     log_printf(0, "Tape attribute follows:\n%s\n", mytape_val);
+     free(tape_val);
+     return;
+  }
+
+  sscanf(string_token(NULL, "=\n", &bstate, &fin), "%d", &n);
+  if (n != _tape_key_size) {
+     log_printf(0, "ERROR parsing n_keys size fname=%s\n", inode->entry1->fname);
+     log_printf(0, "Tape attribute follows:\n%s\n", mytape_val);
+     free(tape_val);
+     return;
+  }
+
+  for (i=0; i<_tape_key_size; i++) { v_size[i] = 0; }
+
+  //** Parse the sizes
+  for (i=0; i<_tape_key_size; i++) {
+    tmp = string_token(NULL, "=\n", &bstate, &fin);
+    if (strcmp(tmp, _tape_keys[i]) == 0) {
+       sscanf(string_token(NULL, "=\n", &bstate, &fin), "%d", &(v_size[i]));
+       if (v_size[i] < 0) {
+          log_printf(0, "ERROR parsing key=%s size=%d fname=%s\n", tmp, v_size[i], inode->entry1->fname);
+          log_printf(0, "Tape attribute follows:\n%s\n", mytape_val);
+          free(tape_val);
+          return;
+       }
+    } else {
+      log_printf(0, "ERROR Missing key=%s\n", _tape_keys[i]);
+      log_printf(0, "Tape attribute follows:\n%s\n", mytape_val);
+      free(tape_val);
+      return;
+    }
+  }
+
+  //** Split out the attributes
+  n = 0;
+  for (i=0; i<_tape_key_size; i++) {
+      val[i] = NULL;
+      if (v_size[i] > 0) {
+         type_malloc(val[i], char, v_size[i]+1);
+         memcpy(val[i], &(bstate[n]), v_size[i]);
+         val[i][v_size[i]] = 0;
+         n = n + v_size[i];
+         log_printf(15, "fname=%s key=%s val=%s\n", inode->entry1->fname, _tape_keys[i], val[i]);
+      }
+  }
+
+  //** Just need to process the exnode
+  ex_key = 1;  //** tape_key index for exnode
+  if (v_size[ex_key] > 0) {
+     //** If this has a caching segment we need to disable it from being adding
+     //** to the global cache table cause there could be multiple copies of the
+     //** same segment being serialized/deserialized.
+     my_ess = *(lfs->lc->ess);
+     my_ess.cache = NULL;
+
+     //** Deserialize it
+     exp = exnode_exchange_create(EX_TEXT);
+     exp->text = val[ex_key];
+     ex = exnode_create();
+     exnode_deserialize(ex, exp, &my_ess);
+     free(val[ex_key]); val[ex_key] = NULL;
+     exp->text = NULL;
+
+     //** Execute the clone operation
+     err = gop_sync_exec(exnode_clone(lfs->lc->tpc_unlimited, ex, lfs->lc->da, &cex, NULL, CLONE_STRUCTURE, lfs->lc->timeout));
+     if (err != OP_STATE_SUCCESS) {
+        log_printf(15, "ERROR cloning parent fname=%s\n", inode->entry1->fname);
+     }
+
+     //** Serialize it for storage
+     exnode_serialize(cex, exp);
+     val[ex_key] = exp->text;
+     v_size[ex_key] = strlen(val[ex_key]);
+     exp->text = NULL;
+     exnode_exchange_destroy(exp);
+     exnode_destroy(ex);
+     exnode_destroy(cex);
+  }
+
+  //** Store them
+  err = lioc_set_multiple_attrs(lfs->lc, lfs->lc->creds, inode->entry1->fname, NULL, _tape_keys, (void **)val, v_size, _tape_key_size);
+  if (err != OP_STATE_SUCCESS) {
+     log_printf(0, "ERROR updating exnode! fname=%s\n", inode->entry1->fname);
+  }
+
+  //** Clean up
+  free(tape_val);
+  for (i=0; i<_tape_key_size; i++) { if (val[i] != NULL) free(val[i]); }
+
+  return;
+}
+
+//*****************************************************************
+// lfs_get_tape_attr - Retreives the tape attribute
+//*****************************************************************
+
+void lfs_get_tape_attr(lio_fuse_t *lfs, lio_inode_t *inode, char **tape_val, int *tape_size)
+{
+  char *val[_tape_key_size];
+  int v_size[_tape_key_size];
+  int n, i, j, used;
+  int hmax= 1024;
+  char *buffer, header[hmax];
+
+  *tape_val = NULL;
+  *tape_size = 0;
+
+  for (i=0; i<_tape_key_size; i++) {
+    val[i] = NULL;
+    v_size[i] = -lfs->lc->max_attr;
+  }
+  i = lioc_get_multiple_attrs(lfs->lc, lfs->lc->creds, inode->entry1->fname, NULL, _tape_keys, (void **)val, v_size, _tape_key_size);
+  if (i != OP_STATE_SUCCESS) {
+     log_printf(15, "Failed retrieving inode info!  path=%s\n", inode->entry1->fname);
+     return;
+  }
+
+  //** Figure out how much space we need
+  n = 0;
+  used = 0;
+  append_printf(header, &used, hmax, "n_keys=%d\n", _tape_key_size);
+  for (i=0; i<_tape_key_size; i++) {
+     j = (v_size[i] > 0) ? v_size[i] : 0;
+     n = n + 1 + j;
+     append_printf(header, &used, hmax, "%s=%d\n", _tape_keys[i], j);
+  }
+
+  //** Copy all the data into the buffer;
+  n = n + used;
+  type_malloc_clear(buffer, char, n);
+  n = used;
+  memcpy(buffer, header, used);
+  for (i=0; i<_tape_key_size; i++) {
+     if (v_size[i] > 0) {
+        memcpy(&(buffer[n]), val[i], v_size[i]);
+        n = n + v_size[i];
+        free(val[i]);
+     }
+  }
+
+  *tape_val = buffer;
+  *tape_size = n;
+  return;
+}
+
+//*****************************************************************
 // lfs_removexattr - Removes an extended attribute
 //*****************************************************************
 
@@ -1026,9 +1531,11 @@ void lfs_removexattr(fuse_req_t req, fuse_ino_t ino, const char *name)
 
   log_printf(1, "ino=%lu attr_name=%s\n", ino, name); flush_log();
 
+  if ((lfs->enable_tape == 1) && (strcmp(name, LFS_TAPE_ATTR) == 0)) { fuse_reply_err(req, 0); return; }
+
   //** Lookup the inode
   lfs_lock(lfs);
-  inode = _lfs_inode_lookup(lfs, ino, NULL);
+  inode = _lfs_inode_lookup(lfs, ino);
   if (inode == NULL) {
      lfs_unlock(lfs);
      fuse_reply_err(req, ENOENT);
@@ -1040,7 +1547,7 @@ void lfs_removexattr(fuse_req_t req, fuse_ino_t ino, const char *name)
 
   v_size = -1;
 //  val = NULL;
-  err = lioc_set_attr(lfs->lc, lfs->lc->creds, inode->fname, NULL, (char *)name, NULL, v_size);
+  err = lioc_set_attr(lfs->lc, lfs->lc->creds, inode->entry1->fname, NULL, (char *)name, NULL, v_size);
   if (err != OP_STATE_SUCCESS) {
      fuse_reply_err(req, ENOENT);
      goto finished;
@@ -1071,7 +1578,7 @@ void lfs_setxattr(fuse_req_t req, fuse_ino_t ino, const char *name, const char *
 
   //** Lookup the inode
   lfs_lock(lfs);
-  inode = _lfs_inode_lookup(lfs, ino, NULL);
+  inode = _lfs_inode_lookup(lfs, ino);
   if (inode == NULL) {
      lfs_unlock(lfs);
      fuse_reply_err(req, ENOENT);
@@ -1084,7 +1591,7 @@ void lfs_setxattr(fuse_req_t req, fuse_ino_t ino, const char *name, const char *
   if (flags != 0) { //** Got an XATTR_CREATE/XATTR_REPLACE
      v_size = 0;
      val = NULL;
-     err = lioc_get_attr(lfs->lc, lfs->lc->creds, inode->fname, NULL, (char *)name, (void **)&val, &v_size);
+     err = lioc_get_attr(lfs->lc, lfs->lc->creds, inode->entry1->fname, NULL, (char *)name, (void **)&val, &v_size);
      if (flags == XATTR_CREATE) {
         if (err == OP_STATE_SUCCESS) {
            fuse_reply_err(req, EEXIST);
@@ -1099,10 +1606,14 @@ void lfs_setxattr(fuse_req_t req, fuse_ino_t ino, const char *name, const char *
   }
 
   v_size = size;
-  err = lioc_set_attr(lfs->lc, lfs->lc->creds, inode->fname, NULL, (char *)name, (void *)fval, v_size);
-  if (err != OP_STATE_SUCCESS) {
-     fuse_reply_err(req, ENOENT);
-     goto finished;
+  if ((lfs->enable_tape == 1) && (strcmp(name, LFS_TAPE_ATTR) == 0)) {  //** Got the tape attribute
+     lfs_set_tape_attr(lfs, inode, (char *)fval, v_size);
+  } else {
+     err = lioc_set_attr(lfs->lc, lfs->lc->creds, inode->entry1->fname, NULL, (char *)name, (void *)fval, v_size);
+     if (err != OP_STATE_SUCCESS) {
+        fuse_reply_err(req, ENOENT);
+        goto finished;
+     }
   }
 
   fuse_reply_err(req, 0);
@@ -1130,7 +1641,7 @@ void lfs_getxattr(fuse_req_t req, fuse_ino_t ino, const char *name, size_t size)
 
   //** Lookup the inode
   lfs_lock(lfs);
-  inode = _lfs_inode_lookup(lfs, ino, NULL);
+  inode = _lfs_inode_lookup(lfs, ino);
   if (inode == NULL) {
      lfs_unlock(lfs);
      fuse_reply_err(req, ENOENT);
@@ -1140,13 +1651,17 @@ void lfs_getxattr(fuse_req_t req, fuse_ino_t ino, const char *name, size_t size)
   _lfs_inode_access(lfs, inode, 0, 1);
   lfs_unlock(lfs);
 
-//  v_size = -size;
   v_size = (size == 0) ? -lfs->lc->max_attr : -size;
   val = NULL;
-  err = lioc_get_attr(lfs->lc, lfs->lc->creds, inode->fname, NULL, (char *)name, (void **)&val, &v_size);
-  if (err != OP_STATE_SUCCESS) {
-     fuse_reply_err(req, ENOENT);
-     goto finished;
+
+  if ((lfs->enable_tape == 1) && (strcmp(name, LFS_TAPE_ATTR) == 0)) {  //** Want the tape backup attr
+     lfs_get_tape_attr(lfs, inode, &val, &v_size);
+  } else {
+     err = lioc_get_attr(lfs->lc, lfs->lc->creds, inode->entry1->fname, NULL, (char *)name, (void **)&val, &v_size);
+     if (err != OP_STATE_SUCCESS) {
+        fuse_reply_err(req, ENOENT);
+        goto finished;
+     }
   }
 
   if (v_size < 0) v_size = 0;  //** No attribute
@@ -1154,7 +1669,7 @@ void lfs_getxattr(fuse_req_t req, fuse_ino_t ino, const char *name, size_t size)
   if (size == 0) {
 log_printf(15, "SIZE bpos=%d buf=%s\n", v_size, val);
     fuse_reply_xattr(req, v_size);
-  } else if (size > v_size) {
+  } else if (size >= v_size) {
 log_printf(15, "FULL bpos=%d buf=%s\n",v_size, val);
     fuse_reply_buf(req, val, v_size);
   } else {
@@ -1177,11 +1692,11 @@ finished:
 void lfs_listxattr(fuse_req_t req, fuse_ino_t ino, size_t size)
 {
   lio_inode_t *inode;
-  char *buf, *key, *val, *fname;
-  int bpos, bufsize, v_size, n, i, prefix_len, ftype;
-  os_regex_table_t *path_regex, *attr_regex;
-  os_object_iter_t *it;
-  os_attr_iter_t *ait;
+  char *buf, *key, *val;
+  int bpos, bufsize, v_size, n, i, err;
+  os_regex_table_t *attr_regex;
+  os_attr_iter_t *it;
+  os_fd_t *fd;
   lio_fuse_t *lfs = lfs_gc;
 
   bpos= size;
@@ -1190,7 +1705,7 @@ void lfs_listxattr(fuse_req_t req, fuse_ino_t ino, size_t size)
   lfs_lock(lfs);
 
   //** Lookup the inode
-  inode = _lfs_inode_lookup(lfs, ino, NULL);
+  inode = _lfs_inode_lookup(lfs, ino);
   if (inode == NULL) {
      lfs_unlock(lfs);
      fuse_reply_err(req, ENOENT);
@@ -1201,21 +1716,17 @@ void lfs_listxattr(fuse_req_t req, fuse_ino_t ino, size_t size)
   lfs_unlock(lfs);
 
   //** Make an iterator
-  path_regex = os_path_glob2regex(inode->fname);
   attr_regex = os_path_glob2regex("user.*");
-
-  v_size = 0;
-  it = os_create_object_iter(lfs->lc->os, lfs->lc->creds, path_regex, NULL, OS_OBJECT_ANY, attr_regex, 0, &ait, v_size);
-  if (it == NULL) {
-     log_printf(15, "ERROR creating iterator for fname=%s\n", inode->fname);
+  err = gop_sync_exec(os_open_object(lfs->lc->os, lfs->lc->creds, inode->entry1->fname, OS_MODE_READ_IMMEDIATE, lfs->id, &fd, lfs->lc->timeout));
+  if (err != OP_STATE_SUCCESS) {
+     log_printf(15, "ERROR: opening file: %s err=%d\n", inode->entry1->fname, err);
      fuse_reply_err(req, ENOENT);
      goto finished;
   }
 
-  //** Get the 1st and only object
-  ftype = os_next_object(lfs->lc->os, it, &fname, &prefix_len);
-  if (ftype == 0) {
-     log_printf(15, "ERROR getting next object fname=%s\n", inode->fname);
+  it = os_create_attr_iter(lfs->lc->os, lfs->lc->creds, fd, attr_regex, 0);
+  if (it == NULL) {
+     log_printf(15, "ERROR creating iterator for fname=%s\n", inode->entry1->fname);
      fuse_reply_err(req, ENOENT);
      goto finished;
   }
@@ -1225,7 +1736,12 @@ void lfs_listxattr(fuse_req_t req, fuse_ino_t ino, size_t size)
   type_malloc_clear(buf, char, bufsize);
   val = NULL;
   bpos = 0;
-  while (os_next_attr(lfs->lc->os, ait, &key, (void **)&val, &v_size) == 0) {
+
+  if (lfs->enable_tape == 1) { //** Add the tape attribute
+      strcpy(buf, LFS_TAPE_ATTR);
+      bpos = strlen(buf) + 1;
+  }
+  while (os_next_attr(lfs->lc->os, it, &key, (void **)&val, &v_size) == 0) {
      n = strlen(key);
      if ((n+bpos) > bufsize) {
         bufsize = bufsize + n + 10*1024;
@@ -1243,9 +1759,8 @@ log_printf(15, "adding key=%s bpos=%d\n", key, bpos);
      v_size = 0;
   }
 
-  free(fname);
-  os_destroy_object_iter(lfs->lc->os, it);
-  os_regex_table_destroy(path_regex);
+  os_destroy_attr_iter(lfs->lc->os, it);
+  gop_sync_exec(os_close_object(lfs->lc->os, fd));
   os_regex_table_destroy(attr_regex);
 
 i= size;
@@ -1289,13 +1804,13 @@ lio_fuse_file_handle_t *lfs_load_file_handle(lio_fuse_t *lfs, lio_inode_t *inode
   char *ex_data;
   int v_size, err;
 
-  log_printf(15, "loading exnode in=" XIDT " fname=%s\n", inode->ino, inode->fname);
+  log_printf(15, "loading exnode in=" XIDT " fname=%s\n", inode->ino, inode->entry1->fname);
 
   //** Get the exnode
   v_size = -lfs->lc->max_attr;
-  err = lioc_get_attr(lfs->lc, lfs->lc->creds, inode->fname, NULL, "system.exnode", (void **)&ex_data, &v_size);
+  err = lioc_get_attr(lfs->lc, lfs->lc->creds, inode->entry1->fname, NULL, "system.exnode", (void **)&ex_data, &v_size);
   if (err != OP_STATE_SUCCESS) {
-     log_printf(15, "Failed retrieving exnode! path=%s\n", inode->fname);
+     log_printf(15, "Failed retrieving exnode! path=%s\n", inode->entry1->fname);
      return(NULL);
   }
 
@@ -1317,7 +1832,7 @@ lio_fuse_file_handle_t *lfs_load_file_handle(lio_fuse_t *lfs, lio_inode_t *inode
   //** Get the default view to use
   seg = exnode_get_default(ex);
   if (seg == NULL) {
-     log_printf(0, "No default segment!  Aborting! fname=%s\n", inode->fname);
+     log_printf(0, "No default segment!  Aborting! fname=%s\n", inode->entry1->fname);
      exnode_destroy(ex);
      lfs_unlock(lfs);
      return(NULL);
@@ -1356,7 +1871,7 @@ int lfs_myopen(lio_fuse_t *lfs, fuse_ino_t ino, int flags, lio_fuse_fd_t **myfd)
   lfs_lock(lfs);
 
   //** Lookup the inode
-  inode = _lfs_inode_lookup(lfs, ino, NULL);
+  inode = _lfs_inode_lookup(lfs, ino);
   if (inode == NULL) {
      lfs_unlock(lfs);
      return(ENOENT);
@@ -1401,13 +1916,16 @@ void lfs_open(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info *fi)
   lio_fuse_fd_t *fd;
   int err;
 
-  log_printf(1, "ino=%lu\n", ino); flush_log();
+  log_printf(1, "ino=%lu dio=%d\n", ino, fi->direct_io); flush_log();
+
+//fi->direct_io = 1;
 
   err = lfs_myopen(lfs_gc, ino, fi->flags, &fd);
 
   if (err == 0) {
      fi->fh = (uint64_t)fd;
-     fuse_reply_open(req, fi);
+     err = fuse_reply_open(req, fi);
+log_printf(1, "ino=%lu fuse_reply_open=%d\n", ino, err);
   } else {
      fuse_reply_err(req, err);
   }
@@ -1490,9 +2008,9 @@ int lfs_myclose(lio_fuse_fd_t *fd)
   sprintf(buffer, XOT, ssize);
   val[1] = buffer; v_size[1] = strlen(val[1]);
   val[2] = NULL; v_size[2] = 0;
-  err = lioc_set_multiple_attrs(lfs->lc, lfs->lc->creds, fh->inode->fname, NULL, key, (void **)val, v_size, 3);
+  err = lioc_set_multiple_attrs(lfs->lc, lfs->lc->creds, fh->inode->entry1->fname, NULL, key, (void **)val, v_size, 3);
   if (err != OP_STATE_SUCCESS) {
-     log_printf(0, "ERROR updating exnode! fname=%s\n", fh->inode->fname);
+     log_printf(0, "ERROR updating exnode! fname=%s\n", fh->inode->entry1->fname);
   }
 
   lfs_lock(lfs);  //** Do the final release
@@ -1557,7 +2075,7 @@ void lfs_setattr(fuse_req_t req, fuse_ino_t ino, struct stat *attr, int to_set, 
   lfs_lock(lfs);
 
   //** Lookup the inode
-  inode = _lfs_inode_lookup(lfs, ino, NULL);
+  inode = _lfs_inode_lookup(lfs, ino);
   if (inode == NULL) {
      lfs_unlock(lfs);
      fuse_reply_err(req, ENOENT);
@@ -1583,14 +2101,6 @@ void lfs_setattr(fuse_req_t req, fuse_ino_t ino, struct stat *attr, int to_set, 
      log_printf(15, "calling truncate\n");
      err = gop_sync_exec(segment_truncate(fd->fh->seg, lfs->lc->da, attr->st_size, lfs->lc->timeout));
      log_printf(15, "segment_truncate=%d\n", err);
-     if (err != OP_STATE_SUCCESS) {
-        fuse_reply_err(req, EBADE);
-        lfs_lock(lfs);
-        atomic_set(fd->fh->modified, 1);
-        _lfs_inode_release(lfs, inode, 0, 1);
-        lfs_unlock(lfs);
-        return;
-     }
 
      inode->size = attr->st_size;
      atomic_set(fd->fh->modified, 1);
@@ -1608,15 +2118,15 @@ void lfs_setattr(fuse_req_t req, fuse_ino_t ino, struct stat *attr, int to_set, 
   }
 
   if (to_set & FUSE_SET_ATTR_MTIME_NOW) {
-    key[n] = "system.os.timestamp.modify_attr";
+    key[n] = "os.timestamp.system.modify_attr";
     val[n] = lfs->id;
     v_size[n] = strlen(val[n]);
     n++;
   }
 
-  err = lioc_set_multiple_attrs(lfs->lc, lfs->lc->creds, inode->fname, NULL, key, (void **)val, v_size, n);
+  err = lioc_set_multiple_attrs(lfs->lc, lfs->lc->creds, inode->entry1->fname, NULL, key, (void **)val, v_size, n);
   if (err != OP_STATE_SUCCESS) {
-     log_printf(0, "ERROR updating stat! fname=%s\n", inode->fname);
+     log_printf(0, "ERROR updating stat! fname=%s\n", inode->entry1->fname);
      fuse_reply_err(req, EBADE);
      lfs_lock(lfs);
      _lfs_inode_release(lfs, inode, 0, 1);
@@ -1636,8 +2146,158 @@ void lfs_setattr(fuse_req_t req, fuse_ino_t ino, struct stat *attr, int to_set, 
 }
 
 //*****************************************************************
+//  lfs_rw_cb - READ/WRITE callback
+//*****************************************************************
+
+void lfs_rw_cb(void *arg, int op_status)
+{
+  lfs_rw_cb_t *op = (lfs_rw_cb_t *)arg;
+
+log_printf(1, " ino=" XIDT " mode=%d off=" XOT " size=" XOT " status=%d\n", op->ino, op->rw_mode, op->off, op->size, op_status);
+  if (op->rw_mode == 0) { //** Read op
+     if (op_status == OP_STATE_SUCCESS) {
+       fuse_reply_buf(op->req, op->buf, op->size);
+     } else {
+       fuse_reply_err(op->req, EIO);
+     }
+     free(op->buf);
+
+  } else { //** Write op
+     if (op_status == OP_STATE_SUCCESS) {
+        fuse_reply_err(op->req, EIO);
+     } else {
+        fuse_reply_write(op->req, op->size);
+     }
+  }
+
+  free(op);
+
+//  apr_thread_mutex_lock(op->lfs->rw_lock);
+//  push(op->lfs->rw_stack, op);
+//  apr_thread_mutex_unlock(op->lfs->rw_lock);
+
+  return;
+}
+
+//*****************************************************************
+//  lfs_rw_thread - Handles the R/W cleanup of the callbacks
+//*****************************************************************
+
+void *OLD_lfs_rw_thread(apr_thread_t *th, void *data)
+{
+  lio_fuse_t *lfs = (lio_fuse_t *)data;
+  void *p;
+
+  apr_thread_mutex_lock(lfs->rw_lock);
+  while (lfs->shutdown == 0) {
+    while ((p = pop(lfs->rw_stack)) != NULL) {
+       free(p);
+    }
+    apr_thread_mutex_unlock(lfs->rw_lock);
+    usleep(100000);
+    apr_thread_mutex_lock(lfs->rw_lock);
+  }
+
+  while ((p = pop(lfs->rw_stack)) != NULL) {
+     free(p);
+  }
+  apr_thread_mutex_unlock(lfs->rw_lock);
+
+  return(NULL);
+}
+
+//****************************************************
+void *lfs_rw_thread(apr_thread_t *th, void *data)
+{
+  lio_fuse_t *lfs = (lio_fuse_t *)data;
+  op_generic_t *gop;
+  int n;
+
+return(NULL);
+  apr_thread_mutex_lock(lfs->rw_lock);
+  while (lfs->shutdown == 0) {
+    apr_thread_mutex_unlock(lfs->rw_lock);
+    n = 0;
+    while ((gop = opque_waitany(lfs->q)) != NULL) {
+       n++;
+       gop_free(gop, OP_DESTROY);
+    }
+    log_printf(1, "Destroyed %d ops\n", n);
+    usleep(1000000);
+    apr_thread_mutex_lock(lfs->rw_lock);
+  }
+
+  apr_thread_mutex_unlock(lfs->rw_lock);
+
+  while ((gop = opque_waitany(lfs->q)) != NULL) {
+    gop_free(gop, OP_DESTROY);
+  }
+
+  return(NULL);
+}
+
+
+//*****************************************************************
 // lfs_read - Reads data from a file
 //*****************************************************************
+
+void NEW_lfs_read(fuse_req_t req, fuse_ino_t ino, size_t size, off_t off, struct fuse_file_info *fi)
+{
+  lio_fuse_t *lfs;
+  lio_fuse_fd_t *fd;
+  lfs_rw_cb_t *op;
+  op_generic_t *gop;
+  callback_t *cb;
+  ex_off_t ssize, pend;
+ex_off_t t1, t2;
+  t1 = size; t2 = off;
+  log_printf(1, "ino=%lu size=" XOT " off=" XOT "\n", ino, t1, t2); flush_log();
+
+  fd = (lio_fuse_fd_t *)fi->fh;
+  if (fd == NULL) {
+     fuse_reply_err(req, EBADF);
+     return;
+  }
+
+  lfs = fd->fh->lfs;
+
+  //** Do the read op
+  type_malloc_clear(op, lfs_rw_cb_t, 1);
+  type_malloc_clear(cb, callback_t, 1);
+  ssize = segment_size(fd->fh->seg);
+  pend = off + size;
+  if (pend > ssize) size = ssize - off;  //** Tweak the size based on how much data there is
+  type_malloc(op->buf, char, size);
+  op->rw_mode = 0;
+  op->lfs = fd->fh->lfs;
+  op->size = size;
+  op->off = off;
+  op->req = req;
+  tbuffer_single(&(op->tbuf), size, op->buf);
+  ex_iovec_single(&(op->exv), off, size);
+  gop = segment_read(fd->fh->seg, lfs->lc->da, 1, &(op->exv), &(op->tbuf), 0, lfs->lc->timeout);
+//  gop_set_auto_destroy(gop, 1);
+  callback_set(cb, lfs_rw_cb, op);
+  gop_callback_append(gop, cb);
+
+  opque_add(lfs->q, gop);
+  return;
+}
+
+//*****************************************************************
+// lfs_write - Writes data to a file
+//*****************************************************************
+
+void NEW_lfs_write(fuse_req_t req, fuse_ino_t ino, const char *buf, size_t size, off_t off, struct fuse_file_info *fi)
+{
+  return;
+}
+
+//-----------------------------------------------------------------------
+//*****************************************************************
+// OLD_lfs_read - Reads data from a file
+//*****************************************************************
+//-----------------------------------------------------------------------
 
 void lfs_read(fuse_req_t req, fuse_ino_t ino, size_t size, off_t off, struct fuse_file_info *fi)
 {
@@ -1662,14 +2322,18 @@ ex_off_t t1, t2;
   lfs = fd->fh->lfs;
 
   //** Do the read op
-  type_malloc(buf, char, size);
   ssize = segment_size(fd->fh->seg);
   pend = off + size;
+//log_printf(0, "ssize=" XOT " off=" XOT " len=" XOT " pend=" XOT "\n", ssize, off, size, pend);
   if (pend > ssize) size = ssize - off;  //** Tweak the size based on how much data there is
+//log_printf(0, "tweaked len=" XOT "\n", size);
+  if (size <= 0) { fuse_reply_buf(req, NULL, 0); return; }
+  type_malloc(buf, char, size);
   tbuffer_single(&tbuf, size, buf);
   ex_iovec_single(&exv, off, size);
   err = gop_sync_exec(segment_read(fd->fh->seg, lfs->lc->da, 1, &exv, &tbuf, 0, lfs->lc->timeout));
   if (err != OP_STATE_SUCCESS) {
+     log_printf(1, "ERROR with read! fname=%s\n", fd->fh->inode->entry1->fname);
      free(buf);
      fuse_reply_err(req, EIO);
      return;
@@ -1681,9 +2345,11 @@ ex_off_t t1, t2;
   return;
 }
 
+//-----------------------------------------------------------------------
 //*****************************************************************
-// lfs_write - Writes data to a file
+// OLD_lfs_write - Writes data to a file
 //*****************************************************************
+//-----------------------------------------------------------------------
 
 void lfs_write(fuse_req_t req, fuse_ino_t ino, const char *buf, size_t size, off_t off, struct fuse_file_info *fi)
 {
@@ -1750,6 +2416,129 @@ void lfs_flush(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info *fi)
   return;
 }
 
+//*****************************************************************
+//  lfs_readlink - Reads the object symlink
+//*****************************************************************
+
+void lfs_readlink(fuse_req_t req, fuse_ino_t ino)
+{
+  lio_fuse_t *lfs = lfs_gc;
+  lio_inode_t *inode;
+  int err;
+  char *val;
+  int v_size;
+
+  log_printf(15, "ino=%lu\n", ino); flush_log();
+
+  lfs_lock(lfs_gc);
+
+  inode = _lfs_inode_lookup(lfs_gc, ino);
+  if (inode == NULL) {
+     lfs_unlock(lfs_gc);
+     fuse_reply_err(req, ENOENT);
+     return;
+  }
+
+  if ((inode->ftype & OS_OBJECT_SYMLINK) == 0) {
+     lfs_unlock(lfs);
+     fuse_reply_err(req, EINVAL);
+     return;
+  }
+
+  _lfs_inode_access(lfs, inode, 0, 1);
+  lfs_unlock(lfs);
+
+  val = NULL;
+  v_size = -lfs->lc->max_attr;
+  err = lioc_get_attr(lfs->lc, lfs->lc->creds, inode->entry1->fname, NULL, "os.link", (void *)&val, &v_size);
+  if (err != OP_STATE_SUCCESS) {
+     log_printf(15, "Failed retrieving inode info!  path=%s\n", inode->entry1->fname);
+     fuse_reply_err(req, EIO);
+  } else if (v_size > 0) {
+     fuse_reply_readlink(req, val);
+     free(val);
+  } else {
+     fuse_reply_err(req, EIO);
+  }
+
+  lfs_lock(lfs);
+  _lfs_inode_release(lfs, inode, 0, 1);
+  lfs_unlock(lfs);
+
+  return;
+}
+
+
+//*****************************************************************
+//  lfs_symlink - Makes a symbolic link
+//*****************************************************************
+
+void lfs_symlink(fuse_req_t req, const char *link, fuse_ino_t parent, const char *name)
+{
+  lio_fuse_t *lfs = lfs_gc;
+  lio_inode_t *p_inode;
+  lio_dentry_t *entry;
+  struct fuse_entry_param fentry;
+  char fullname[OS_PATH_MAX];
+  int err;
+
+  log_printf(1, "parent=%lu name=%s link=%s\n", parent, name, link); flush_log();
+
+  lfs_lock(lfs);
+
+  //** Lookup the parent
+  p_inode = _lfs_inode_lookup(lfs, parent);
+  if (p_inode == NULL) {
+     lfs_unlock(lfs);
+     fuse_reply_err(req, ENOENT);
+     return;
+  }
+
+  //** Make sure the new entry doesn't exist
+  snprintf(fullname, OS_PATH_MAX-1, "%s/%s", p_inode->entry1->fname, name);
+  entry = _lfs_dentry_lookup(lfs, fullname);
+  if (entry != NULL) { //** Oops it already exists
+     lfs_unlock(lfs);
+     fuse_reply_err(req, EEXIST);
+     return;
+  }
+
+  lfs_unlock(lfs);
+
+  //** Now do the sym link
+  err = gop_sync_exec(lio_link_object(lfs->lc, lfs->lc->creds, 1, (char *)link, fullname, lfs->id));
+  if (err != OP_STATE_SUCCESS) {
+     lfs_unlock(lfs);
+     fuse_reply_err(req, EIO);
+     return;
+  }
+
+  //** Load the the new entry
+  lfs_lock(lfs);
+  entry = _lfs_load_inode_entry(lfs, strdup(fullname), NULL);
+  if (entry == NULL) {
+     lfs_unlock(lfs);
+     fuse_reply_err(req, EIO);
+     return;
+  }
+
+  //** Update the ref count
+  _lfs_inode_access(lfs_gc, entry->inode, 1, 0);
+
+  //** Form the response
+  fentry.ino = entry->inode->ino;
+  fentry.generation = 0;
+  fentry.attr_timeout = lfs_gc->attr_to;
+  fentry.entry_timeout = lfs_gc->entry_to;
+
+  lfs_fill_stat(&(fentry.attr), entry->inode);
+
+  lfs_unlock(lfs);
+
+  fuse_reply_entry(req, &fentry);
+  return;
+}
+
 
 //*****************************************************************
 //*****************************************************************
@@ -1759,8 +2548,6 @@ void lfs_flush(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info *fi)
 #define STUB_INO  { log_printf(15, "STUB ino=%lu\n", ino); flush_log(); fuse_reply_err(req, ENOSYS); return; }
 
 
-void lfs_readlink(fuse_req_t req, fuse_ino_t ino) STUB_INO
-void lfs_symlink(fuse_req_t req, const char *link, fuse_ino_t parent, const char *name) STUB_PARENT
 void lfs_fsync(fuse_req_t req, fuse_ino_t ino, int datasync, struct fuse_file_info *fi) STUB_INO
 void lfs_fsyncdir(fuse_req_t req, fuse_ino_t ino, int datasync, struct fuse_file_info *fi) STUB_INO
 void lfs_statfs(fuse_req_t req, fuse_ino_t ino) STUB_INO
@@ -1786,6 +2573,7 @@ lio_fuse_t *lio_fuse_init(lio_config_t *lc)
   lio_fuse_t *lfs;
   struct fuse_lowlevel_ops *ll;
   lio_inode_t *inode;
+  lio_dentry_t *entry;
   char *section =  "lfs";
   double n;
   int p;
@@ -1800,6 +2588,7 @@ lio_fuse_t *lio_fuse_init(lio_config_t *lc)
   lfs->attr_to = inip_get_double(lc->ifd, section, "stat_timout", 1.0);
   lfs->inode_cache_size = inip_get_integer(lc->ifd, section, "inode_cache_size", 1000000);
   lfs->cond_count = inip_get_integer(lc->ifd, section, "cond_size", 100);
+  lfs->enable_tape = inip_get_integer(lc->ifd, section, "enable_tape", 0);
 
   apr_pool_create(&(lfs->mpool), NULL);
   apr_thread_mutex_create(&(lfs->lock), APR_THREAD_MUTEX_DEFAULT, lfs->mpool);
@@ -1824,15 +2613,22 @@ lio_fuse_t *lio_fuse_init(lio_config_t *lc)
 
   //** Insert the root inode but we need to do some munging
   lfs_lock(lfs);
-  inode = _lfs_load_inode_entry(lfs, strdup(""), NULL);
-  _lfs_inode_remove(lfs, inode);
-  inode->ino = FUSE_ROOT_ID;
-  _lfs_inode_insert(lfs, inode);
-  _lfs_inode_access(lfs, inode, 1, 0);  //** Always keep the root inode
+  entry = _lfs_load_inode_entry(lfs, strdup(""), NULL);
+  _lfs_inode_remove(lfs, entry->inode);  //** This removes the inode and all dentries
+  entry->inode->entry1 = NULL;
+  entry->inode->ino = FUSE_ROOT_ID;
+  _lfs_inode_insert(lfs, entry->inode, entry);
+  _lfs_inode_access(lfs, entry->inode, 1, 1);  //** Always keep the root inode
 
-inode = _lfs_inode_lookup(lfs, 0, "");
+inode = _lfs_inode_lookup(lfs, FUSE_ROOT_ID);
 printf(" root_ino=%lu\n", inode->ino);
   lfs_unlock(lfs);
+
+  lfs->q = new_opque();
+  opque_start_execution(lfs->q);
+  lfs->rw_stack = new_stack();
+  apr_thread_mutex_create(&(lfs->rw_lock), APR_THREAD_MUTEX_DEFAULT, lfs->mpool);
+  apr_thread_create(&(lfs->rw_thread), NULL, lfs_rw_thread, (void *)lfs, lfs->mpool);
 
   //** Make the fn table
   ll = &(lfs_gc_llops);
@@ -1857,11 +2653,12 @@ printf(" root_ino=%lu\n", inode->ino);
   ll->read = lfs_read;
   ll->write = lfs_write;
   ll->flush = lfs_flush;
+  ll->link = lfs_hardlink;
+  ll->readlink = lfs_readlink;
+  ll->symlink = lfs_symlink;
 
   //stubs
 
-//ll->readlink = lfs_readlink;
-//ll->symlink = lfs_symlink;
 //ll->fsync = lfs_fsync;
 //ll->fsyncdir = lfs_fsyncdir;
 //ll->statfs = lfs_statfs;
@@ -1889,6 +2686,7 @@ void lio_fuse_destroy(lio_fuse_t *lfs)
   list_iter_t it;
   ex_id_t *ino;
   lio_inode_t *inode;
+  apr_status_t value;
   int err, i;
 
   log_printf(15, "shutting down\n"); flush_log();
@@ -1903,8 +2701,8 @@ void lio_fuse_destroy(lio_fuse_t *lfs)
   //** Cycle through and destroy all the inodes
   it = list_iter_search(lfs->ino_index, NULL, 0);
   while ((err=list_next(&it, (list_key_t **)&ino, (list_data_t **)&inode)) == 0) {
-     if (inode->fname != NULL) free(inode->fname);
-     free(inode);
+log_printf(0, "destroying ino=" XIDT "\n", *ino); flush_log();
+     lfs_inode_destroy(lfs, inode);
   }
   list_destroy(lfs->ino_index);
 
@@ -1913,9 +2711,19 @@ void lio_fuse_destroy(lio_fuse_t *lfs)
   }
   free(lfs->inode_cond);
 
+  //** Shut down the RW thread
+  apr_thread_mutex_lock(lfs->rw_lock);
+  lfs->shutdown=1;
+  apr_thread_mutex_unlock(lfs->rw_lock);
+
+  apr_thread_join(&value, lfs->rw_thread);  //** Wait for it to complete
+
   //** Clean up everything else
+  opque_free(lfs->q, OP_DESTROY);
+  free_stack(lfs->rw_stack, 1);
   if (lfs->id != NULL) free(lfs->id);
   apr_thread_mutex_destroy(lfs->lock);
+  apr_thread_mutex_destroy(lfs->rw_lock);
   apr_pool_destroy(lfs->mpool);
 
   free(lfs);

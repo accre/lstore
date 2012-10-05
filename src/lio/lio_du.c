@@ -186,7 +186,7 @@ log_printf(15, "MAIN SUMONLY=1\n");
       }
 
      while ((ftype = os_next_object(tuple.lc->os, it, &fname, &prefix_len)) > 0) {
-        if (((ftype & OS_OBJECT_LINK) > 0) && (ignoreln == 1)) continue;  //** Ignoring links
+        if (((ftype & OS_OBJECT_SYMLINK) > 0) && (ignoreln == 1)) continue;  //** Ignoring links
 
 log_printf(15, "sumonly inserting fname=%s\n", fname);
         type_malloc_clear(de, du_entry_t, 1);
@@ -226,7 +226,7 @@ log_printf(15, "MAIN LOOP\n");
   table = list_create(0, &list_string_compare, NULL, list_no_key_free, list_no_data_free);
   while ((ftype = os_next_object(tuple.lc->os, it, &fname, &prefix_len)) > 0) {
 //printf("fname=%s\n", fname);
-     if (((ftype & OS_OBJECT_LINK) > 0) && (ignoreln == 1)) continue;  //** Ignoring links
+     if (((ftype & OS_OBJECT_SYMLINK) > 0) && (ignoreln == 1)) continue;  //** Ignoring links
 //printf("fname2=%s\n", fname);
 
       if ((sumonly == 1) && ((ftype & OS_OBJECT_FILE) > 0)) {

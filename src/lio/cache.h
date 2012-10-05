@@ -37,6 +37,15 @@ http://www.accre.vanderbilt.edu
 #include "cache_lru.h"
 #include "cache_amp.h"
 
+void print_cache_table(int dolock);
+
+//#define CACHE_PRINT_LOCK  log_printf(0, "CACHE_PRINT START\n"); print_cache_table(1); log_printf(0, "CACHE_PRINT END\n")
+//#define CACHE_PRINT       log_printf(0, "CACHE_PRINT START\n"); print_cache_table(0); log_printf(0, "CACHE_PRINT END\n")
+
+#define CACHE_PRINT
+#define CACHE_PRINT_LOCK
+
+
 #ifdef __cplusplus
 extern "C" {
 #endif

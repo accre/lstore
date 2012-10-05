@@ -124,7 +124,7 @@ int main(int argc, char **argv)
      printf("           printf(end_obj_fmt, object_name);\n");
      printf("\n");
      printf("    -rd recurse_depth  - Max recursion depth on directories. Defaults to %d\n", recurse_depth);
-     printf("    -t  object_types   - Types of objects to list bitwise OR of 1=Files, 2=Directories, 4=link.  Default is %d.\n", obj_types);
+     printf("    -t  object_types   - Types of objects to list bitwise OR of 1=Files, 2=Directories, 4=symlink, 8=hardlink.  Default is %d.\n", obj_types);
      printf("    -vmax max_val      - Max size of attribute value allowed.  Default value is %d\n", max_attr);
      printf("    -ga attr_glob      - Attribute glob string\n");
      printf("    -ra attr_regex     - Attribute regex string\n");

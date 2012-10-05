@@ -89,6 +89,18 @@ typedef struct {
   int count;
 } cache_cond_t;
 
+#define CPP_BEGIN 1
+#define CPP_END   2
+#define CPP_FULL  4
+
+typedef struct {
+  ex_off_t page_start;
+  ex_off_t page_end;
+  Stack_t *range_stack;
+  char *data;
+  int flags;
+} cache_partial_page_t;
+
 typedef struct {
   cache_t *c;
   void *cache_priv;
@@ -98,10 +110,17 @@ typedef struct {
   list_t *pages;
   apr_thread_mutex_t *lock;
   apr_thread_cond_t  *flush_cond;
+  apr_thread_cond_t  *ppages_cond;
   Stack_t *flush_stack;
   char *qname;
+  cache_partial_page_t *ppage;
+  char *ppages_buffer;
   atomic_int_t cache_check_in_progress;
   int close_requested;
+  int n_ppages;
+  int ppages_used;
+  int ppages_flushing;
+  ex_off_t ppage_max;
   ex_off_t page_size;
   ex_off_t child_last_page;
   ex_off_t total_size;
@@ -168,6 +187,7 @@ struct cache_s {
    ex_off_t write_temp_overflow_used;
    double   max_fetch_fraction;
    double   write_temp_overflow_fraction;
+   int n_ppages;
    int timeout;
    int  shutdown_request;
 };

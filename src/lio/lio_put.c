@@ -108,10 +108,10 @@ int main(int argc, char **argv)
 
   //** Get the exnode
   v_size[0] = -tuple.lc->max_attr;
-  err = lioc_get_attr(tuple.lc, tuple.creds, tuple.path, NULL, "system.exnode", (void **)&ex_data, v_size);
-  if (err != OP_STATE_SUCCESS) {
+  lioc_get_attr(tuple.lc, tuple.creds, tuple.path, NULL, "system.exnode", (void **)&ex_data, v_size);
+  if (v_size[0] <= 0) {
      info_printf(lio_ifd, 0, "Failed retrieving exnode!  path=%s\n", tuple.path);
-     goto finished;
+     return(1);
   }
 
   //** Load it
@@ -149,10 +149,10 @@ log_printf(0, "AFTER PUT\n");
   val[1] = buffer; v_size[1] = strlen(val[1]);
   err = lioc_set_multiple_attrs(tuple.lc, tuple.creds, tuple.path, NULL, key, (void **)val, v_size, 2);
 
+finished:
   exnode_destroy(ex);
   exnode_exchange_destroy(exp);
 
-finished:
   free(buffer);
 
   lio_path_release(&tuple);

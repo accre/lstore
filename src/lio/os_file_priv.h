@@ -55,8 +55,14 @@ extern "C" {
 
 typedef struct {
   int base_path_len;
+  int file_path_len;
+  int hardlink_path_len;
   int internal_lock_size;
+  int hardlink_dir_size;
+  atomic_int_t hardlink_count;
   char *base_path;
+  char *file_path;
+  char *hardlink_path;
   char *host_id;
   thread_pool_context_t *tpc;
   apr_thread_mutex_t **internal_lock;
@@ -71,6 +77,7 @@ typedef struct {
   pigeon_coop_t *task_pc;
   os_virtual_attr_t lock_va;
   os_virtual_attr_t link_va;
+  os_virtual_attr_t link_count_va;
   os_virtual_attr_t type_va;
   os_virtual_attr_t create_va;
   os_virtual_attr_t attr_link_pva;

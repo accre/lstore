@@ -188,7 +188,7 @@ op_generic_t *rs_simple_request(resource_service_fn_t *arg, data_attr_t *da, rs_
   rss_rid_entry_t *rse;
   rsq_base_ele_t *q;
   int slot, rnd_off, i, j, k, i_unique, i_pickone, found, err_cnt, loop, loop_end;
-  int state, *a, *b, *op_state;
+  int state, *a, *b, *op_state, unique_size;
   Stack_t *stack;
 
   log_printf(15, "rs_simple_request: START n_rid=%d req_size=%d\n", n_rid, req_size);
@@ -198,15 +198,17 @@ op_generic_t *rs_simple_request(resource_service_fn_t *arg, data_attr_t *da, rs_
   rs_query_count(arg, rsq, &i, &(kvq_global.n_unique), &(kvq_global.n_pickone));
 
   log_printf(15, "rs_simple_request: n_unique=%d n_pickone=%d\n", kvq_global.n_unique, kvq_global.n_pickone);
+flush_log();
 
   //** Make space the for the uniq and pickone fields.
-  //** Make sure we have space for at least 1 of each to pass to the routines even though they aren't used
-  j = (kvq_global.n_pickone == 0) ? 1 : kvq_global.n_pickone;
+  //** Make sure we have space for at least 1 more than we need of each to pass to the routines even though they aren't used
+  j = (kvq_global.n_pickone == 0) ? 1 : kvq_global.n_pickone + 1;
   type_malloc_clear(kvq_global.pickone, kvq_ele_t, j);
 
-  j = (kvq_global.n_unique == 0) ? 1 : kvq_global.n_unique;
-  type_malloc_clear(kvq_global.unique, kvq_ele_t *, j);
-  for (i=0; i<j; i++) {
+  unique_size = kvq_global.n_unique + 1;
+  type_malloc_clear(kvq_global.unique, kvq_ele_t *, unique_size);
+log_printf(15, "MALLOC j=%d\n", unique_size);
+  for (i=0; i<unique_size; i++) {
       type_malloc_clear(kvq_global.unique[i], kvq_ele_t, n_rid);
   }
 
@@ -239,7 +241,7 @@ op_generic_t *rs_simple_request(resource_service_fn_t *arg, data_attr_t *da, rs_
            loop_end = 2;
            rs_query_count(arg, query_local, &j, &(kvq_local.n_unique), &(kvq_local.n_pickone));
            if ((kvq_local.n_unique != 0) && (kvq_local.n_pickone != 0)) {
-              log_printf(1, "Unsupported use of pickone/unique in local RSQ hints_list[%d]=%s!\n", i, hints_list[i]);
+              log_printf(0, "Unsupported use of pickone/unique in local RSQ hints_list[%d]=%s!\n", i, hints_list[i]);
               status.op_status = OP_STATE_FAILURE;
               status.error_code = RS_ERROR_FIXED_NOT_FOUND;
               hints_list[i].status = RS_ERROR_HINTS_INVALID_LOCAL;
@@ -251,7 +253,7 @@ op_generic_t *rs_simple_request(resource_service_fn_t *arg, data_attr_t *da, rs_
         if (i<fixed_size) {  //** Use the fixed list for assignment
            rse = list_search(rss->rid_table, hints_list[i].fixed_rid_key);
            if (rse == NULL) {
-              log_printf(1, "Missing element in hints list[%d]=%s!\n", i, hints_list[i]);
+              log_printf(0, "Missing element in hints list[%d]=%s!\n", i, hints_list[i]);
               status.op_status = OP_STATE_FAILURE;
               status.error_code = RS_ERROR_FIXED_NOT_FOUND;
               hints_list[i].status = RS_ERROR_FIXED_NOT_FOUND;
@@ -277,7 +279,7 @@ op_generic_t *rs_simple_request(resource_service_fn_t *arg, data_attr_t *da, rs_
               state = -1;
               switch (q->op) {
                 case RSQ_BASE_OP_KV:
-                   //log_printf(0, "KV: key=%s val=%s\n", q->key, q->val);
+//                   log_printf(0, "KV: key=%s val=%s i_unique=%d i_pickone=%d loop=%d\n", q->key, q->val, i_unique, i_pickone, loop); flush_log();
                    state = rss_test(q, rse, i, kvq->unique[i_unique], &(kvq->pickone[i_pickone]));
                    if ((q->key_op & RSQ_BASE_KV_UNIQUE) || (q->val_op & RSQ_BASE_KV_UNIQUE)) i_unique++;
                    if ((q->key_op & RSQ_BASE_KV_PICKONE) || (q->val_op & RSQ_BASE_KV_PICKONE)) i_pickone++;
@@ -307,7 +309,7 @@ op_generic_t *rs_simple_request(resource_service_fn_t *arg, data_attr_t *da, rs_
               type_malloc(op_state, int, 1);
               *op_state = state;
               push(stack, (void *)op_state);
-              //log_printf(15, " stack_size=%d loop=%d push state=%d\n",stack_size(stack), loop, state);
+//              log_printf(15, " stack_size=%d loop=%d push state=%d\n",stack_size(stack), loop, state); flush_log();
               q = q->next;
            }
 
@@ -362,8 +364,8 @@ op_generic_t *rs_simple_request(resource_service_fn_t *arg, data_attr_t *da, rs_
 
 
   //** Clean up
-  j = (kvq_global.n_unique == 0) ? 1 : kvq_global.n_unique;
-  for (i=0; i<j; i++) {
+log_printf(15, "FREE j=%d\n", unique_size);
+  for (i=0; i<unique_size; i++) {
       free(kvq_global.unique[i]);
   }
   free(kvq_global.unique);

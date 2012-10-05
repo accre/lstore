@@ -131,6 +131,7 @@ void os_create_remove_tests()
    int err, i;
    char foo_path[PATH_LEN];
    char bar_path[PATH_LEN];
+   char hfoo_path[PATH_LEN];
    char *match_path[10];
    os_fd_t *foo_fd;
    os_regex_table_t *regex;
@@ -195,7 +196,7 @@ void os_create_remove_tests()
    }
 
    // ** Make a softlink foo->bar
-   err = gop_sync_exec(os_link_object(os, creds, bar_path, foo_path, "me"));
+   err = gop_sync_exec(os_symlink_object(os, creds, bar_path, foo_path, "me"));
    if (err != OP_STATE_SUCCESS) {
       nfailed++;
       log_printf(0, "ERROR: linking file src: %s  dest: %s err=%d\n", bar_path, foo_path, err);
@@ -203,18 +204,73 @@ void os_create_remove_tests()
    }
 
    // ** Verify it exists
-   err = gop_sync_exec(os_open_object(os, creds, foo_path, OS_MODE_READ_IMMEDIATE, "me", &foo_fd, wait_time));
+   err = gop_sync_exec(os_exists(os, creds, foo_path));
    if (err != OP_STATE_SUCCESS) {
       nfailed++;
-      log_printf(0, "ERROR: opening file: %s err=%d\n", bar_path, err);
+      log_printf(0, "ERROR: Oops! Lost bar! %s\n", bar_path);
       return;
    }
-   err = gop_sync_exec(os_close_object(os, foo_fd));
+
+   // ** hardlink hfoo->foo
+   snprintf(hfoo_path, PATH_LEN, "%s/hfoo", prefix);
+   err = gop_sync_exec(os_hardlink_object(os, creds, foo_path, hfoo_path, "me"));
    if (err != OP_STATE_SUCCESS) {
       nfailed++;
-      log_printf(0, "ERROR: Closing file: %s err=%d\n", bar_path, err);
+      log_printf(0, "ERROR: hard linking file src: %s  dest: %s err=%d\n", foo_path, hfoo_path, err);
       return;
    }
+
+   // ** Verify they all exist
+   err = gop_sync_exec(os_exists(os, creds, hfoo_path));
+   if (err != OP_STATE_SUCCESS) {
+      nfailed++;
+      log_printf(0, "ERROR: Oops! Lost %s\n", hfoo_path);
+      return;
+   }
+   err = gop_sync_exec(os_exists(os, creds, foo_path));
+   if (err != OP_STATE_SUCCESS) {
+      nfailed++;
+      log_printf(0, "ERROR: Oops! Lost %s\n", foo_path);
+      return;
+   }
+   err = gop_sync_exec(os_exists(os, creds, bar_path));
+   if (err != OP_STATE_SUCCESS) {
+      nfailed++;
+      log_printf(0, "ERROR: Oops! Lost %s\n", bar_path);
+      return;
+   }
+
+//abort();
+
+   // ** Remove bar
+   err = gop_sync_exec(os_remove_object(os, creds, bar_path));
+   if (err != OP_STATE_SUCCESS) {
+      nfailed++;
+      log_printf(0, "ERROR: removing file: %s err=%d\n", foo_path, err);
+      return;
+   }
+
+   // ** Verify the state
+   err = gop_sync_exec(os_exists(os, creds, hfoo_path));
+   if (err != OP_STATE_SUCCESS) {
+      nfailed++;
+      log_printf(0, "ERROR: Oops! Lost %s\n", hfoo_path);
+      return;
+   }
+   err = gop_sync_exec(os_exists(os, creds, foo_path));
+   if (err != OP_STATE_SUCCESS) {
+      nfailed++;
+      log_printf(0, "ERROR: Oops! Lost %s\n", foo_path);
+      return;
+   }
+   err = gop_sync_exec(os_exists(os, creds, bar_path));
+   if (err != OP_STATE_FAILURE) {
+      nfailed++;
+      log_printf(0, "ERROR: Oops! Still have %s\n", bar_path);
+      return;
+   }
+
+//abort();
 
    // ** Remove foo
    err = gop_sync_exec(os_remove_object(os, creds, foo_path));
@@ -224,29 +280,40 @@ void os_create_remove_tests()
       return;
    }
 
-   // ** And verify it's gone
-   err = gop_sync_exec(os_open_object(os, creds, foo_path, OS_MODE_READ_IMMEDIATE, "me", &foo_fd, wait_time));
-   if (err != OP_STATE_FAILURE) {
-      nfailed++;
-      log_printf(0, "ERROR: Oops! Can open the recently deleted file: %s err=%d\n", foo_path, err);
-      return;
-   }
-
-   // ** Remove bar
-   err = gop_sync_exec(os_remove_object(os, creds, bar_path));
+   // ** And verify the state
+   err = gop_sync_exec(os_exists(os, creds, hfoo_path));
    if (err != OP_STATE_SUCCESS) {
       nfailed++;
-      log_printf(0, "ERROR: opening file: %s err=%d\n", bar_path, err);
+      log_printf(0, "ERROR: Oops! Lost %s\n", hfoo_path);
+      return;
+   }
+   err = gop_sync_exec(os_exists(os, creds, foo_path));
+   if (err != OP_STATE_FAILURE) {
+      nfailed++;
+      log_printf(0, "ERROR: Oops! Still have %s\n", foo_path);
       return;
    }
 
-   // ** And verify it's gone
-   err = gop_sync_exec(os_open_object(os, creds, bar_path, OS_MODE_READ_IMMEDIATE, "me", &foo_fd, wait_time));
-   if (err != OP_STATE_FAILURE) {
+//abort();
+
+   // ** Remove hfoo
+   err = gop_sync_exec(os_remove_object(os, creds, hfoo_path));
+   if (err != OP_STATE_SUCCESS) {
       nfailed++;
-      log_printf(0, "ERROR: Oops! Can open the recently deleted file: %s err=%d\n", foo_path, err);
+      log_printf(0, "ERROR: removing file: %s err=%d\n", hfoo_path, err);
       return;
    }
+
+   // ** MAke sure it's gone
+   err = gop_sync_exec(os_exists(os, creds, hfoo_path));
+   if (err != OP_STATE_FAILURE) {
+      nfailed++;
+      log_printf(0, "ERROR: Oops! Still have %s\n", hfoo_path);
+      return;
+   }
+
+//abort();
+
 
    // ** Create DIRECTORY foodir
    snprintf(foo_path, PATH_LEN, "%s/foodir", prefix);
@@ -479,7 +546,7 @@ void os_create_remove_tests()
    // ** Create DIRECTORY LINK foodir/linkdir -> fooddir/bardir/subdir
    snprintf(foo_path, PATH_LEN, "%s/foodir/linkdir", prefix);
    snprintf(bar_path, PATH_LEN, "%s/foodir/bardir/subdir", prefix);
-   err = gop_sync_exec(os_link_object(os, creds, bar_path, foo_path, "me"));
+   err = gop_sync_exec(os_symlink_object(os, creds, bar_path, foo_path, "me"));
    if (err != OP_STATE_SUCCESS) {
       nfailed++;
       log_printf(0, "ERROR: creating link dir: %s err=%d\n", foo_path, err);
@@ -724,6 +791,7 @@ void os_attribute_tests()
    char *key, *val, *rval, *fname;
    char **mkey, **mval, **mrval;
    char *match[10];
+   char *path[10];
    int i, err, v_size, n, nstart, j, plen;
    int m_size[10];
    int64_t dt, now, got;
@@ -772,7 +840,7 @@ void os_attribute_tests()
 
    // ** Create FILE LINK bar->foo
    snprintf(bar_path, PATH_LEN, "%s/bar", prefix);
-   err = gop_sync_exec(os_link_object(os, creds, foo_path, bar_path, "me"));
+   err = gop_sync_exec(os_symlink_object(os, creds, foo_path, bar_path, "me"));
    if (err != OP_STATE_SUCCESS) {
       nfailed++;
       log_printf(0, "ERROR: creating file: %s err=%d\n", foo_path, err);
@@ -921,9 +989,9 @@ void os_attribute_tests()
       log_printf(0, "ERROR: val missing\n");
       return;
    }
+   free(rval);
 
-
-   //** MAke an attribute for root/prefix "/"
+   //** Make an attribute for root/prefix "/"
    snprintf(root_path, PATH_LEN, "%s", prefix);
    err = gop_sync_exec(os_open_object(os, creds, root_path, OS_MODE_READ_IMMEDIATE, "me", &root_fd, wait_time));
    if (err != OP_STATE_SUCCESS) {
@@ -932,7 +1000,7 @@ void os_attribute_tests()
       return;
    }
 
-   // ** set_attr(foo1=foo1) rot root
+   // ** set_attr(foo1=foo1) root
    v_size = -1000;
    key = "user.foo1";  val="foo1";
    err = gop_sync_exec(os_set_attr(os, creds, root_fd, key, val, strlen(val)));
@@ -961,10 +1029,10 @@ void os_attribute_tests()
    //** Now softlink /bar{user.link_root} -> /{foo1}
    //** Now do a link between attributes
    mkey[0] = "user.foo1"; mval[0] = "user.link_root";
-   err = gop_sync_exec(os_link_attr(os, creds, root_fd, mkey[0], bar_fd, mval[0]));
+   err = gop_sync_exec(os_symlink_attr(os, creds, root_path, mkey[0], bar_fd, mval[0]));
    if (err != OP_STATE_SUCCESS) {
       nfailed++;
-      log_printf(0, "ERROR: with multi attr link: err=%d\n", err);
+      log_printf(0, "ERROR: with attr link: err=%d\n", err);
       return;
    }
 
@@ -974,7 +1042,7 @@ void os_attribute_tests()
    err = gop_sync_exec(os_get_attr(os, creds, bar_fd, key, (void **)&rval, &v_size));
    if (err != OP_STATE_SUCCESS) {
       nfailed++;
-      log_printf(0, "ERROR: getting mult attrs err=%d\n", err);
+      log_printf(0, "ERROR: getting attrs err=%d\n", err);
       return;
    }
    if (strcmp(val, rval) != 0) {
@@ -1118,7 +1186,7 @@ log_printf(15, "CHECK2 val=%s\n", val);
    mkey[2] = "user.foo3";  mval[2]="foo3";  m_size[2] = strlen(mval[2]);
    mkey[3] = "user.bar1";  mval[3]="bar1";  m_size[3] = strlen(mval[3]);
    regex = os_path_glob2regex("user.*");
-   it = os_create_attr_iter(os, creds, foo_fd, regex, 1000);
+   it = os_create_attr_iter(os, creds, foo_fd, regex, -1000);
    err = attr_check(it, mkey, mval, m_size, 4);
    os_regex_table_destroy(regex);
    os_destroy_attr_iter(os, it);
@@ -1130,7 +1198,7 @@ log_printf(15, "CHECK2 val=%s\n", val);
 
    // ** get_attr(foo*);
    regex = os_path_glob2regex("user.foo*");
-   it = os_create_attr_iter(os, creds, foo_fd, regex, 1000);
+   it = os_create_attr_iter(os, creds, foo_fd, regex, -1000);
    err = attr_check(it, mkey, mval, m_size, 3);
    os_regex_table_destroy(regex);
    os_destroy_attr_iter(os, it);
@@ -1154,7 +1222,7 @@ log_printf(15, "CHECK2 val=%s\n", val);
    // ** get_attr(foo*).. should just get foo3=foo3 back
    mkey[0] = "user.foo3";  mval[0]="foo3";  m_size[0] = strlen(mval[0]);
    regex = os_path_glob2regex("user.*");
-   it = os_create_attr_iter(os, creds, foo_fd, regex, 1000);
+   it = os_create_attr_iter(os, creds, foo_fd, regex, -1000);
    err = attr_check(it, mkey, mval, m_size, 1);
    os_regex_table_destroy(regex);
    os_destroy_attr_iter(os, it);
@@ -1204,7 +1272,7 @@ log_printf(15, "CHECK2 val=%s\n", val);
    mkey[0] = "user.bar2";  mval[0]="foo2";  m_size[0] = strlen(mval[0]);
    mkey[1] = "user.bar3";  mval[1]="foo3";  m_size[1] = strlen(mval[1]);
    regex = os_path_glob2regex("user.*");
-   it = os_create_attr_iter(os, creds, foo_fd, regex, 1000);
+   it = os_create_attr_iter(os, creds, foo_fd, regex, -1000);
    err = attr_check(it, mkey, mval, m_size, 2);
    os_regex_table_destroy(regex);
    os_destroy_attr_iter(os, it);
@@ -1317,7 +1385,7 @@ log_printf(15, "CHECK2 val=%s\n", val);
    snprintf(foo_path, PATH_LEN, "%s/*", prefix);
    regex = os_path_glob2regex(foo_path);
    attr_regex = os_regex2table("^user\.((foo1)|(bar2))$");
-   oit = os_create_object_iter(lio_gc->os, lio_gc->creds, regex, NULL, OS_OBJECT_FILE, attr_regex, 1000, &it, 1000);
+   oit = os_create_object_iter(lio_gc->os, lio_gc->creds, regex, NULL, OS_OBJECT_FILE, attr_regex, 1000, &it, -1000);
    if (oit == NULL) {
       nfailed++;
       log_printf(0, "ERROR: Failed with object_iter creation %s\n", foo_path);
@@ -1429,6 +1497,7 @@ log_printf(15, "CHECK2 val=%s\n", val);
             log_printf(0, "ERROR bad value fname=%s key=%s val=%s should be mval=%s\n", fname, key[i], mrval[i], mval[i]);
             return;
          }
+         if (mrval[i] != NULL) free(mrval[i]);
       }
 
       free(fname);
@@ -1445,15 +1514,15 @@ log_printf(15, "CHECK2 val=%s\n", val);
 
 
    //** Do a mult attr copy betwen foo and foodir/bar
-   snprintf(foo_path, PATH_LEN, "%s/foo", prefix);
-   err = gop_sync_exec(os_open_object(os, creds, foo_path, OS_MODE_READ_IMMEDIATE, "me", &foo_fd, wait_time));
+   snprintf(bar_path, PATH_LEN, "%s/foodir/bar", prefix); //QWERTY
+   err = gop_sync_exec(os_open_object(os, creds, bar_path, OS_MODE_READ_IMMEDIATE, "me", &bar_fd, wait_time));
    if (err != OP_STATE_SUCCESS) {
       nfailed++;
-      log_printf(0, "ERROR: opening file: %s err=%d\n", foo_path, err);
+      log_printf(0, "ERROR: opening file: %s err=%d\n", bar_path, err);
       return;
    }
-   snprintf(foo_path, PATH_LEN, "%s/foodir/bar", prefix);
-   err = gop_sync_exec(os_open_object(os, creds, foo_path, OS_MODE_READ_IMMEDIATE, "me", &bar_fd, wait_time));
+   snprintf(foo_path, PATH_LEN, "%s/foo", prefix);
+   err = gop_sync_exec(os_open_object(os, creds, foo_path, OS_MODE_READ_IMMEDIATE, "me", &foo_fd, wait_time));
    if (err != OP_STATE_SUCCESS) {
       nfailed++;
       log_printf(0, "ERROR: opening file: %s err=%d\n", foo_path, err);
@@ -1496,8 +1565,10 @@ log_printf(0, "COPY_END\n"); flush_log();
    //** Now do a link between attributes
    mkey[0] = "user.bar2"; mval[0] = "user.link_bar2";
    mkey[1] = "user.bar3"; mval[1] = "user.link_bar3";
+   path[0] = foo_path;
+   path[1] = foo_path;
 log_printf(15, "LINK_START\n"); flush_log();
-   err = gop_sync_exec(os_link_multiple_attrs(os, creds, foo_fd, mkey, bar_fd, mval, 2));
+   err = gop_sync_exec(os_symlink_multiple_attrs(os, creds, path, mkey, bar_fd, mval, 2));
    if (err != OP_STATE_SUCCESS) {
       nfailed++;
       log_printf(0, "ERROR: with multi attr link: err=%d\n", err);
@@ -1510,6 +1581,7 @@ log_printf(15, "LINK_START\n"); flush_log();
    m_size[0] = m_size[1] = -1000;
    mrval[0] = mrval[1] = NULL;
    err = gop_sync_exec(os_get_multiple_attrs(os, creds, bar_fd, mkey, (void **)mrval, m_size, 2));
+//abort();
    if (err != OP_STATE_SUCCESS) {
       nfailed++;
       log_printf(0, "ERROR: getting mult attrs err=%d\n", err);
@@ -1528,7 +1600,7 @@ log_printf(15, "LINK_START\n"); flush_log();
   //** Now get the type of bar user.link_bar2 and user.bar2 os.create
    mkey[0] = "os.attr_type.user.link_bar2";  mval[0] = "5";
    mkey[1] = "os.attr_type.user.bar2";       mval[1] = "1";
-   mkey[2] = "os.attr_type.os.create";       mval[2] = "8";
+   mkey[2] = "os.attr_type.os.create";       mval[2] = "32";
    m_size[0] = m_size[1] = m_size[2] = -1000;
    mrval[0] = mrval[1] = mrval[2] = NULL;
    err = gop_sync_exec(os_get_multiple_attrs(os, creds, bar_fd, mkey, (void **)mrval, m_size, 3));
@@ -1548,7 +1620,7 @@ log_printf(15, "LINK_START\n"); flush_log();
    }
 
   //** Now get the type of bar user.link_bar2 and user.bar2 os.create
-   mkey[0] = "os.attr_link.user.link_bar2";  mval[0] = match[0]; sprintf(match[0], "%s/foo\nuser.bar2", prefix);
+   mkey[0] = "os.attr_link.user.link_bar2";  mval[0] = match[0]; sprintf(match[0], "%s/foo/user.bar2", prefix);
    mkey[1] = "os.attr_link.user.bar2";       mval[1] = NULL;
    mkey[2] = "os.attr_link.os.create";       mval[2] = NULL;
    m_size[0] = m_size[1] = m_size[2] = -1000;
@@ -1567,7 +1639,7 @@ log_printf(15, "LINK_START\n"); flush_log();
    free(mrval[0]);
 
 
-   for (i=1; i<3; i++) {
+   for (i=1; i<2; i++) {
       if (mrval[i] != NULL) {
          nfailed++;
          log_printf(0, "ERROR: val mismatch attr=%s should not have a link got=%s\n", mkey[i], mrval[i]);

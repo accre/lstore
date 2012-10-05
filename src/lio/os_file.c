@@ -202,8 +202,10 @@ typedef struct {
   osfile_fd_t *fd_dest;
   char **key_src;
   char **key_dest;
+  char *single_path;
   char *single_src;
   char *single_dest;
+  char **src_path;
   int n;
 } osfile_copy_attr_t;
 
@@ -236,6 +238,7 @@ typedef struct {
 #define osf_obj_unlock(lock)  apr_thread_mutex_unlock(lock)
 
 //void path_split(char *path, char **dir, char **file);
+char *resolve_hardlink(object_service_fn_t *os, char *src_path, int add_prefix);
 apr_thread_mutex_t *osf_retrieve_lock(object_service_fn_t *os, char *path, int *table_slot);
 int osf_set_attr(object_service_fn_t *os, creds_t *creds, osfile_fd_t *ofd, char *attr, void *val, int v_size, int *atype);
 int osf_get_attr(object_service_fn_t *os, creds_t *creds, osfile_fd_t *ofd, char *attr, void **val, int *v_size, int *atype);
@@ -252,7 +255,7 @@ int osfile_next_object(os_object_iter_t *oit, char **fname, int *prefix_len);
 void osfile_destroy_object_iter(os_object_iter_t *it);
 op_status_t osf_set_multiple_attr_fn(void *arg, int id);
 int lowlevel_set_attr(object_service_fn_t *os, char *attr_dir, char *attr, void *val, int v_size);
-char *object_attr_dir(object_service_fn_t *os, char *path, int ftype);
+char *object_attr_dir(object_service_fn_t *os, char *prefix, char *path, int ftype);
 
 
 //*************************************************************
@@ -280,6 +283,98 @@ int store_val(void *src, int src_size, void **dest, int *v_size)
   return(0);
 }
 
+//*************************************************************
+//  osf_make_attr_symlink - Makes an attribute symlink
+//*************************************************************
+
+void osf_make_attr_symlink(object_service_fn_t *os, char *link_path, char *dest_path, char *dest_key)
+{
+//  osfile_priv_t *osf = (osfile_priv_t *)os->priv;
+
+  snprintf(link_path, OS_PATH_MAX, "%s/%s", dest_path, dest_key);
+}
+
+//*************************************************************
+//  osf_resolve_attr_symlink - Resolves an attribute symlink
+//*************************************************************
+
+int osf_resolve_attr_path(object_service_fn_t *os, char *real_path, char *path, char *key, int ftype, int *atype, int max_recurse)
+{
+  osfile_priv_t *osf = (osfile_priv_t *)os->priv;
+  char *attr, *dkey, *dfile;
+  char *pdir, *pfile;
+  int n, dtype, err;
+  char fullname[OS_PATH_MAX];
+
+  //** Get the key path
+  attr = object_attr_dir(os, osf->file_path, path, ftype);
+  snprintf(real_path, OS_PATH_MAX, "%s/%s", attr, key);
+  *atype = os_local_filetype(real_path);
+log_printf(15, "fullname=%s atype=%d\n", real_path, *atype);
+  if ((*atype & OS_OBJECT_SYMLINK) == 0) {  //** If a normal file then just return
+     free(attr);
+     return(0);
+  }
+
+  free(attr);
+
+  //** It's a symlink so read it first
+  n = readlink(real_path, fullname, OS_PATH_MAX-1);
+  if (n < 0) {
+    log_printf(0, "Bad link:  path=%s key=%s ftype=%d fullname=%s\n", path, key, ftype, fullname);
+    return(1);
+  }
+
+  fullname[n] = 0;
+
+log_printf(15, "fullname=%s real_path=%s\n", fullname, real_path);
+
+  //** Now split it out into object and key
+  os_path_split(fullname, &dfile, &dkey);
+
+log_printf(15, "fullname=%s dfile=%s dkey=%s\n", fullname, dfile, dkey);
+
+  //** Find out what ftype the target is
+  if (dfile[0] == '/') {
+     snprintf(fullname, OS_PATH_MAX, "%s%s", osf->file_path, dfile);
+  } else {
+     if (ftype & OS_OBJECT_DIR) {
+        snprintf(fullname, OS_PATH_MAX, "%s%s/%s", osf->file_path, path, dfile);
+     } else {
+        os_path_split(path, &pdir, &pfile);
+        snprintf(fullname, OS_PATH_MAX, "%s%s/%s", osf->file_path, pdir, dfile);
+        free(pdir); free(pfile);
+    }
+  }
+log_printf(15, "fullattrpath=%s ftype=%d\n", fullname, ftype);
+
+  dtype = os_local_filetype(fullname);
+  if (dtype == 0) {
+    log_printf(0, "Missing object:  path=%s key=%s ftype=%d fullname=%s\n", path, key, ftype, fullname);
+    free(dfile); free(dkey);
+    return(1);
+  }
+
+//  attr = object_attr_dir(os, "", &(fullname[osf->file_path_len]), dtype);
+  attr = object_attr_dir(os, "", fullname, dtype);
+  snprintf(real_path, OS_PATH_MAX, "%s/%s", attr, dkey);
+
+  log_printf(15, "path=%s key=%s ftype=%d real_path=%s\n", path, key, ftype, real_path);
+
+  err = 0;
+  dtype = os_local_filetype(real_path);
+  if (dtype & OS_OBJECT_SYMLINK) {  //** Need to recurseively resolve the link
+     if (max_recurse > 0) {
+        err = osf_resolve_attr_path(os, real_path, &(fullname[osf->file_path_len]), dkey, dtype, &n, max_recurse-1);
+     } else {
+        log_printf(0, "Oops! Hit max recurse depth! last path=%s\n", real_path);
+     }
+  }
+
+  free(attr); free(dfile); free(dkey);
+
+  return(err);
+}
 
 //*************************************************************
 // fobj_add_active - Adds the object to the active list
@@ -606,8 +701,6 @@ void osf_multi_lock(object_service_fn_t *os, creds_t *creds, osfile_fd_t *fd, ch
      osf->attr_link_pva.get(&osf->attr_link_pva, os, creds, fd, attr_name, &val, &v_size, &atype);
      log_printf(15, "key[%d]=%s v_size=%d attr_name=%s linkname=%s\n", i, key[i], v_size, attr_name, linkname);
 
-//     err =  osf_get_attr(os, creds, fd, key[i], (void **)&linkname, &v_size, &atype);
-
      if (v_size > 0) {
         j=v_size-1;  //** Peel off the key name.  We only need the parent object path
         while (linkname[j] != '\n' && (j>0)) { j--; }
@@ -680,7 +773,7 @@ int va_create_get_attr(os_virtual_attr_t *va, object_service_fn_t *os, creds_t *
 
   *atype = OS_OBJECT_VIRTUAL;
 
-  snprintf(fullname, OS_PATH_MAX, "%s%s", osf->base_path, fd->object_name);
+  snprintf(fullname, OS_PATH_MAX, "%s%s", osf->file_path, fd->object_name);
   err = stat(fullname, &s);
   if (err != 0) {
      *v_size = -1;
@@ -711,7 +804,7 @@ int va_link_get_attr(os_virtual_attr_t *va, object_service_fn_t *os, creds_t *cr
 
   *atype = OS_OBJECT_VIRTUAL;
 
-  snprintf(fullname, OS_PATH_MAX, "%s%s", osf->base_path, fd->object_name);
+  snprintf(fullname, OS_PATH_MAX, "%s%s", osf->file_path, fd->object_name);
 
   err = lstat(fullname, &s);
   if (err == 0) {
@@ -723,17 +816,54 @@ int va_link_get_attr(os_virtual_attr_t *va, object_service_fn_t *os, creds_t *cr
      n = readlink(fullname, buffer, sizeof(buffer)-1);
      if (n > 0) {
         buffer[n] = 0;
-        log_printf(15, "base_path=%s fullname=%s link=%s\n", osf->base_path, fullname, buffer);
+        log_printf(15, "file_path=%s fullname=%s link=%s\n", osf->file_path, fullname, buffer);
 
-        offset = strlen(osf->base_path);
-        n = n - offset;
-        return(store_val(&(buffer[offset]), n, val, v_size));
+        if (buffer[0] == '/') {
+           offset = osf->file_path_len;
+           n = n - offset;
+           return(store_val(&(buffer[offset]), n, val, v_size));
+        } else {
+          return(store_val(buffer, n, val, v_size));
+        }
      }
   }
 
   *v_size = 0;
 
   return(0);
+}
+
+//***********************************************************************
+// va_link_count_get_attr - Returns the object link count information
+//***********************************************************************
+
+int va_link_count_get_attr(os_virtual_attr_t *va, object_service_fn_t *os, creds_t *creds, os_fd_t *ofd, char *key, void **val, int *v_size, int *atype)
+{
+  osfile_fd_t *fd = (osfile_fd_t *)ofd;
+  osfile_priv_t *osf = (osfile_priv_t *)fd->os->priv;
+  struct stat s;
+  char buffer[32];
+  int err, n;
+  char fullname[OS_PATH_MAX];
+
+  *atype = OS_OBJECT_VIRTUAL;
+
+  snprintf(fullname, OS_PATH_MAX, "%s%s", osf->file_path, fd->object_name);
+
+  err = stat(fullname, &s);
+  if (err == 0) {
+     n = s.st_nlink;
+     if (S_ISDIR(s.st_mode)) {
+        n = n - 1;  //** IF a dir don't count the attribute dir
+     } else if ( n > 1) { //** Normal files should only have 1.  If more then it's a hardlink so tweark it
+        n = n - 1;
+     }
+  } else {
+    n = 1;   //** Dangling link probably
+  }
+
+  err = snprintf(buffer, 32, "%d", n);
+  return(store_val(buffer, err, val, v_size));
 }
 
 //***********************************************************************
@@ -750,7 +880,7 @@ int va_type_get_attr(os_virtual_attr_t *va, object_service_fn_t *os, creds_t *cr
 
   *atype = OS_OBJECT_VIRTUAL;
 
-  snprintf(fullname, OS_PATH_MAX, "%s%s", osf->base_path, fd->object_name);
+  snprintf(fullname, OS_PATH_MAX, "%s%s", osf->file_path, fd->object_name);
   ftype = os_local_filetype(fullname);
 
   snprintf(buffer, sizeof(buffer), "%d", ftype);
@@ -868,8 +998,10 @@ int va_attr_type_get_attr(os_virtual_attr_t *myva, object_service_fn_t *os, cred
   if (va != NULL) {
     ftype = OS_OBJECT_VIRTUAL;
   } else {
+//    n = osf_resolve_attr_path(os, fullname, fd->object_name, key, fd->ftype, &ftype, 10);
     snprintf(fullname, OS_PATH_MAX, "%s/%s", fd->attr_dir, key);
     ftype = os_local_filetype(fullname);
+    if (ftype & OS_OBJECT_BROKEN_LINK) ftype = ftype ^ OS_OBJECT_BROKEN_LINK;
   }
 
   snprintf(buffer, sizeof(buffer), "%d", ftype);
@@ -892,9 +1024,9 @@ int va_attr_link_get_attr(os_virtual_attr_t *myva, object_service_fn_t *os, cred
   list_iter_t it;
   struct stat s;
   char buffer[OS_PATH_MAX];
-  char *obj_path, *obj_end, *key, *obj_end2;
-  char *dname, *aname, *ca;
-  int err, n, offset, i;
+  char *key;
+  char *ca;
+  int err, n;
   char fullname[OS_PATH_MAX];
 
   *atype = OS_OBJECT_VIRTUAL;
@@ -934,36 +1066,15 @@ int d=strncmp(key, va->attribute, n);
         return(0);
      }
 
-     n = readlink(fullname, buffer, sizeof(buffer)-1);
+     buffer[0] = 0;
+     n = readlink(fullname, buffer, OS_PATH_MAX-1);
      if (n > 0) {
         buffer[n] = 0;
-        log_printf(15, "base_path=%s fullname=%s link=%s\n", osf->base_path, fullname, buffer);
-
-        offset = strlen(osf->base_path);
-        obj_path = &(buffer[offset]);  //** Peel off the prefix
-        obj_end = strstr(obj_path, FILE_ATTR_PREFIX);
-        if (obj_end == NULL) {
-           *v_size = 0;
-           return(1);
-        }
-
-        //** Check if this is file
-        obj_end2 = strstr(&obj_end[FILE_ATTR_PREFIX_LEN], FILE_ATTR_PREFIX);
-        if (obj_end2 != NULL) {
-           i = 0;
-           while (obj_end2[FILE_ATTR_PREFIX_LEN+i] != 0) { obj_end[i] = obj_end2[FILE_ATTR_PREFIX_LEN+i]; i++; }
-           obj_end[i] = 0;
-        } else {  //** Directory
-           i = 0;
-           while (obj_end[FILE_ATTR_PREFIX_LEN+1+i] != 0) { obj_end[i] = obj_end[FILE_ATTR_PREFIX_LEN+1+i]; i++; }
-           obj_end[i] = 0;
-        }
-
-        log_printf(15, "munged path=%s\n", obj_path);
-        os_path_split(obj_path, &dname, &aname);
-        snprintf(buffer, OS_PATH_MAX, "%s\n%s", dname, aname);
-        free(dname); free(aname);
-
+log_printf(15, "readlink(%s)=%s  n=%d\n", fullname, buffer, n);
+        log_printf(15, "munged path=%s\n", buffer);
+//        os_path_split(buffer, &dname, &aname);
+//        snprintf(buffer, OS_PATH_MAX, "%s\n%s", dname, aname);
+//        free(dname); free(aname);
         return(store_val(buffer, n, val, v_size));
      }
   }
@@ -1145,26 +1256,26 @@ int safe_remove(object_service_fn_t *os, char *path)
 // object_attr_dir - Returns the object attribute directory
 //***********************************************************************
 
-char *object_attr_dir(object_service_fn_t *os, char *path, int ftype)
+char *object_attr_dir(object_service_fn_t *os, char *prefix, char *path, int ftype)
 {
-  osfile_priv_t *osf = (osfile_priv_t *)os->priv;
+//  osfile_priv_t *osf = (osfile_priv_t *)os->priv;
   char fname[OS_PATH_MAX];
   char *dir, *base;
   char *attr_dir = NULL;
   int n;
 
-  if ((ftype & (OS_OBJECT_FILE|OS_OBJECT_LINK)) != 0) {
+  if ((ftype & (OS_OBJECT_FILE|OS_OBJECT_SYMLINK)) != 0) {
      strncpy(fname, path, OS_PATH_MAX);
      os_path_split(fname, &dir, &base);
-     //log_printf(15, "fname=%s dir=%s base=%s base_path=%s\n", fname, dir, base, osf->base_path);
+     //log_printf(15, "fname=%s dir=%s base=%s file_path=%s\n", fname, dir, base, osf->file_path);
      n = strlen(dir);
      if (dir[n-1] == '/') dir[n-1] = 0; //** Peel off a trialing /
-     snprintf(fname, OS_PATH_MAX, "%s%s/%s/%s%s", osf->base_path, dir, FILE_ATTR_PREFIX, FILE_ATTR_PREFIX, base);
+     snprintf(fname, OS_PATH_MAX, "%s%s/%s/%s%s", prefix, dir, FILE_ATTR_PREFIX, FILE_ATTR_PREFIX, base);
      //log_printf(15, "attr_dir=%s\n", fname);
      attr_dir = strdup(fname);
      free(dir); free(base);
   } else if (ftype == OS_OBJECT_DIR) {
-     snprintf(fname, OS_PATH_MAX, "%s%s/%s", osf->base_path, path, FILE_ATTR_PREFIX);
+     snprintf(fname, OS_PATH_MAX, "%s%s/%s", prefix, path, FILE_ATTR_PREFIX);
      attr_dir = strdup(fname);
   }
 
@@ -1320,7 +1431,7 @@ int osf_next_object(osf_object_iter_t *it, char **myfname, int *prefix_len)
      if (stack_size(it->recurse_stack) == 0) {  //**Make a fake level to get things going
         type_malloc_clear(itl, osf_obj_level_t, 1);
         strncpy(itl->path, "/", OS_PATH_MAX);
-        itl->d = my_opendir(osf->base_path, NULL);
+        itl->d = my_opendir(osf->file_path, NULL);
         itl->curr_pos = my_telldir(itl->d);
         itl->firstpass = 1;
         push(it->recurse_stack, itl);
@@ -1355,7 +1466,7 @@ log_printf(0, "curr_level=%d table->n=%d path=%s\n", it->curr_level, it->table->
        }
        if (i == 0) { //** Regex match
           snprintf(fname, OS_PATH_MAX, "%s/%s", itl->path, itl->entry);
-          snprintf(fullname, OS_PATH_MAX, "%s%s", osf->base_path, fname);
+          snprintf(fullname, OS_PATH_MAX, "%s%s", osf->file_path, fname);
           log_printf(15, "POSSIBLE MATCH level=%d table->n=%d fname=%s max_level=%d\n", it->curr_level, it->table->n, fname, it->max_level);
 
           if (osaz_object_access(osf->osaz, it->creds, fname, OS_MODE_READ_IMMEDIATE) == 1) { //** See if I can access it
@@ -1469,7 +1580,7 @@ int osf_purge_dir(object_service_fn_t *os, char *path, int depth)
   while ((entry = readdir(d)) != NULL) {
      snprintf(fname, OS_PATH_MAX, "%s/%s", path, entry->d_name);
      ftype = os_local_filetype(fname);
-     if (ftype & (OS_OBJECT_FILE|OS_OBJECT_LINK)) {
+     if (ftype & (OS_OBJECT_FILE|OS_OBJECT_SYMLINK)) {
         safe_remove(os, fname);
      } else if (ftype & OS_OBJECT_DIR) {
        if (depth > 0) {
@@ -1505,22 +1616,40 @@ void osfile_free_mk_mv_rm(void *arg)
 
 int osf_object_remove(object_service_fn_t *os, char *path)
 {
-  int ftype;
-  char *dir, *base;
+  int ftype, err;
+  char *dir, *base, *hard_inode;
+  struct stat s;
   char fattr[OS_PATH_MAX];
 
   ftype = os_local_filetype(path);
+  hard_inode = NULL;
 
 log_printf(15, "ftype=%d path=%s\n", ftype, path);
 
-  if (ftype & (OS_OBJECT_FILE|OS_OBJECT_LINK)) { //** It's a file
+  if (ftype & (OS_OBJECT_FILE|OS_OBJECT_SYMLINK|OS_OBJECT_HARDLINK)) { //** It's a file
 log_printf(15, "file or link removal\n");
+     if (ftype & OS_OBJECT_HARDLINK) {  //** If this is the last hardlink we need to remove the hardlink inode as well
+        memset(&s, 0, sizeof(s));
+        err = stat(path, &s);
+        if (s.st_nlink <= 2) {  //** Yep we have to remove it
+           hard_inode = resolve_hardlink(os, path, 0);
+        }
+     }
+
      remove(path);  //** Remove the file
      os_path_split(path, &dir, &base);
      snprintf(fattr, OS_PATH_MAX, "%s/%s/%s%s", dir, FILE_ATTR_PREFIX, FILE_ATTR_PREFIX, base);
-     osf_purge_dir(os, fattr, 0);
+     if ((ftype & OS_OBJECT_HARDLINK) == 0) {
+        osf_purge_dir(os, fattr, 0);
+     }
      remove(fattr);
      free(dir); free(base);
+
+     if (hard_inode != NULL) {  //** Remove the hard inode as well
+       err = osf_object_remove(os, hard_inode);
+       free(hard_inode);
+       return(err);
+     }
   } else if (ftype & OS_OBJECT_DIR) {  //** A directory
 log_printf(15, "dir removal\n");
      osf_purge_dir(os, path, 0);  //** Removes all the files
@@ -1548,14 +1677,14 @@ op_status_t osfile_remove_object_fn(void *arg, int id)
   apr_thread_mutex_t *lock;
 
   if (osaz_object_remove(osf->osaz, op->creds, op->src_path) == 0)  return(op_failure_status);
-  snprintf(fname, OS_PATH_MAX, "%s%s", osf->base_path, op->src_path);
+  snprintf(fname, OS_PATH_MAX, "%s%s", osf->file_path, op->src_path);
 
   lock = osf_retrieve_lock(op->os, op->src_path, NULL);
   osf_obj_lock(lock);
 
 
   ftype = os_local_filetype(fname);
-  if (ftype & (OS_OBJECT_FILE|OS_OBJECT_LINK)) {  //** Regular file so rm the attributes dir and the object
+  if (ftype & (OS_OBJECT_FILE|OS_OBJECT_SYMLINK)) {  //** Regular file so rm the attributes dir and the object
       log_printf(15, "Simple file removal: fname=%s\n", op->src_path);
       status = (osf_object_remove(op->os, fname) == 0) ? op_success_status : op_failure_status;
   } else {  //** Directory so make sure it's empty
@@ -1776,7 +1905,7 @@ op_status_t osfile_exists_fn(void *arg, int id)
 
   if (osaz_object_access(osf->osaz, op->creds, op->src_path, OS_MODE_READ_IMMEDIATE) == 0)  return(op_failure_status);
 
-  snprintf(fname, OS_PATH_MAX, "%s%s", osf->base_path, op->src_path);
+  snprintf(fname, OS_PATH_MAX, "%s%s", osf->file_path, op->src_path);
   status.error_code = os_local_filetype(fname);
 log_printf(15, "fname=%s  ftype=%d\n", fname, status.error_code);
   if (status.error_code == 0) status.op_status = OP_STATE_FAILURE;
@@ -1823,9 +1952,9 @@ op_status_t osfile_create_object_fn(void *arg, int id)
 
   if (osaz_object_create(osf->osaz, op->creds, op->src_path) == 0)  return(op_failure_status);
 
-  snprintf(fname, OS_PATH_MAX, "%s%s", osf->base_path, op->src_path);
+  snprintf(fname, OS_PATH_MAX, "%s%s", osf->file_path, op->src_path);
 
-log_printf(0, "base=%s src=%s fname=%s\n", osf->base_path, op->src_path, fname);
+log_printf(0, "base=%s src=%s fname=%s\n", osf->file_path, op->src_path, fname);
 
   lock = osf_retrieve_lock(op->os, op->src_path, NULL);
   osf_obj_lock(lock);
@@ -1896,10 +2025,10 @@ op_generic_t *osfile_create_object(object_service_fn_t *os, creds_t *creds, char
 }
 
 //***********************************************************************
-// osfile_link_object_fn - Actually Moves an object
+// osfile_symlink_object_fn - Symlink two objects
 //***********************************************************************
 
-op_status_t osfile_link_object_fn(void *arg, int id)
+op_status_t osfile_symlink_object_fn(void *arg, int id)
 {
   osfile_mk_mv_rm_t *op = (osfile_mk_mv_rm_t *)arg;
   osfile_priv_t *osf = (osfile_priv_t *)op->os->priv;
@@ -1909,16 +2038,15 @@ op_status_t osfile_link_object_fn(void *arg, int id)
   char dfname[OS_PATH_MAX];
   int err;
 
-  if ((osaz_object_access(osf->osaz, op->creds, op->src_path, OS_MODE_READ_IMMEDIATE) == 0) ||
-      (osaz_object_create(osf->osaz, op->creds, op->dest_path) == 0)) return(op_failure_status);
+  if (osaz_object_create(osf->osaz, op->creds, op->dest_path) == 0) return(op_failure_status);
 
   //** Verify the source exists
-  snprintf(sfname, OS_PATH_MAX, "%s%s", osf->base_path, op->src_path);
-  err = os_local_filetype(sfname);
-  if (err == 0) {
-     log_printf(15, "ERROR source file missing sfname=%s dfname=%s\n", op->src_path, op->dest_path);
-     return(op_failure_status);
-  }
+//  snprintf(sfname, OS_PATH_MAX, "%s%s", osf->file_path, op->src_path);
+//  err = os_local_filetype(sfname);
+//  if (err == 0) {
+//     log_printf(15, "ERROR source file missing sfname=%s dfname=%s\n", op->src_path, op->dest_path);
+//     return(op_failure_status);
+//  }
 
   //** Create the object like normal
   dop.os = op->os;
@@ -1933,9 +2061,15 @@ op_status_t osfile_link_object_fn(void *arg, int id)
   }
 
   //** Now remove the placeholder and replace it with the link
-  snprintf(sfname, OS_PATH_MAX, "%s%s", osf->base_path, op->src_path);
-  snprintf(dfname, OS_PATH_MAX, "%s%s", osf->base_path, op->dest_path);
+//  snprintf(sfname, OS_PATH_MAX, "%s%s", osf->file_path, op->src_path);
+  if (op->src_path[0] == '/') {
+     snprintf(sfname, OS_PATH_MAX, "%s%s", osf->file_path, op->src_path);
+  } else {
+     snprintf(sfname, OS_PATH_MAX, "%s", op->src_path);
+  }
+  snprintf(dfname, OS_PATH_MAX, "%s%s", osf->file_path, op->dest_path);
 
+log_printf(15, "sfname=%s dfname=%s\n", sfname, dfname);
   err = safe_remove(op->os, dfname);
   if (err != 0) log_printf(15, "Failed removing dest place holder %s  err=%d\n", dfname, err);
 
@@ -1947,13 +2081,16 @@ op_status_t osfile_link_object_fn(void *arg, int id)
 
 
 //***********************************************************************
-// osfile_link_object - Generates a soft link object operation
+// osfile_symlink_object - Generates a symbolic link object operation
 //***********************************************************************
 
-op_generic_t *osfile_link_object(object_service_fn_t *os, creds_t *creds, char *src_path, char *dest_path, char *id)
+op_generic_t *osfile_symlink_object(object_service_fn_t *os, creds_t *creds, char *src_path, char *dest_path, char *id)
 {
   osfile_priv_t *osf = (osfile_priv_t *)os->priv;
   osfile_mk_mv_rm_t *op;
+
+  //** Make sure the files are different
+  if (strcmp(src_path, dest_path) == 0) {  return(gop_dummy(op_failure_status)); }
 
   type_malloc_clear(op, osfile_mk_mv_rm_t, 1);
 
@@ -1963,7 +2100,225 @@ op_generic_t *osfile_link_object(object_service_fn_t *os, creds_t *creds, char *
   op->dest_path = strdup(dest_path);
   op->id = (id == NULL) ? NULL : strdup(id);
 
-  return(new_thread_pool_op(osf->tpc, NULL, osfile_link_object_fn, (void *)op, osfile_free_mk_mv_rm, 1));
+  return(new_thread_pool_op(osf->tpc, NULL, osfile_symlink_object_fn, (void *)op, osfile_free_mk_mv_rm, 1));
+}
+
+//***********************************************************************
+// osf_file2hardlink - Converts a normal file to a hardlink version
+//***********************************************************************
+
+int osf_file2hardlink(object_service_fn_t *os, char *src_path)
+{
+  osfile_priv_t *osf = (osfile_priv_t *)os->priv;
+  FILE *fd;
+  int slot, i;
+  ex_id_t id;
+  char *sattr, *hattr;
+  char fullname[OS_PATH_MAX], sfname[OS_PATH_MAX];
+
+  //** Pick a hardlink location
+  id = 0;
+  get_random(&id, sizeof(id));
+  slot = atomic_counter(&(osf->hardlink_count)) % osf->hardlink_dir_size;
+  snprintf(fullname, OS_PATH_MAX, "%s/%d/" XIDT, osf->hardlink_path, slot, id);
+  snprintf(sfname, OS_PATH_MAX, "%s%s", osf->file_path, src_path);
+  hattr = object_attr_dir(os, "", fullname, OS_OBJECT_FILE);
+  sattr = object_attr_dir(os, osf->file_path, src_path, OS_OBJECT_FILE);
+
+  //** Move the src attr dir to the hardlink location
+  i = rename(sattr, hattr);
+log_printf(0, "rename(%s,%s)=%d\n", sattr, hattr, i);
+
+  if (i != 0) {
+     log_printf(0, "rename(%s,%s) FAILED!\n", sattr, hattr);
+     free(hattr); free(sattr);
+     return(1);
+  }
+
+  //** Link the src attr dir with the harlink
+  i = symlink(hattr, sattr);
+log_printf(0, "symlink(%s,%s)=%d!\n", hattr, sattr, i);
+  if (i != 0) {
+     log_printf(0, "symlink(%s,%s) FAILED!\n", hattr, sattr);
+     free(hattr); free(sattr);
+     return(1);
+  }
+  free(hattr); free(sattr);
+
+  //** Make the hardlink proxy
+  fd = fopen(fullname, "w");
+log_printf(0, "hardlink proxy=%s\n",fullname);
+  if (fd == NULL) {
+     log_printf(0, "HArdlink proxy creation failed! fname=%s\n", fullname);
+     return(1);
+  }
+
+  //** Link the src file to the hardlink proxy
+  remove(sfname);  //** Remove the old proxy
+  i = link(fullname, sfname);
+log_printf(0, "link(%s,%s)=%d\n", fullname, sfname, i);
+  if (i != 0) {
+     log_printf(0, "link(%s,%s) FAILED!\n", fullname, sfname);
+     return(1);
+  }
+
+  return(0);
+}
+
+
+//***********************************************************************
+// resolve_hardlink - DEtermines which object in the hard link dir the object
+//  points to
+//***********************************************************************
+
+char *resolve_hardlink(object_service_fn_t *os, char *src_path, int add_prefix)
+{
+  osfile_priv_t *osf = (osfile_priv_t *)os->priv;
+  char *hpath, *tmp;
+  char buffer[OS_PATH_MAX];
+  int offset, n, i;
+
+  if (add_prefix == 1) {
+     hpath = object_attr_dir(os, osf->file_path, src_path, OS_OBJECT_FILE);
+  } else {
+     hpath = object_attr_dir(os, "", src_path, OS_OBJECT_FILE);
+  }
+
+  n = readlink(hpath, buffer, OS_PATH_MAX-1);
+  if (n <= 0) {
+     log_printf(0, "Readlink error!  src_path=%s hpath=%s\n", src_path, hpath);
+     return(NULL);
+  }
+  free(hpath);
+
+  buffer[n] = 0;
+  log_printf(15, "file_path=%s fullname=%s link=%s\n", osf->file_path, src_path, buffer);
+
+  offset = osf->hardlink_path_len;
+//  hpath = &(buffer[osf->hardlink_path_len]);
+  hpath = buffer;
+  tmp = strstr(hpath, FILE_ATTR_PREFIX "/" FILE_ATTR_PREFIX);
+  n = FILE_ATTR_PREFIX_LEN + 1 + FILE_ATTR_PREFIX_LEN;
+  for (i=0; tmp[i+n] != 0; i++) tmp[i] = tmp[i+n];
+  tmp[i] = 0;
+
+  log_printf(15, "fullname=%s link=%s\n", src_path, tmp);
+
+  return(strdup(hpath));
+}
+
+//***********************************************************************
+// osfile_hardlink_object_fn - hard links two objects
+//***********************************************************************
+
+op_status_t osfile_hardlink_object_fn(void *arg, int id)
+{
+  osfile_mk_mv_rm_t *op = (osfile_mk_mv_rm_t *)arg;
+  osfile_priv_t *osf = (osfile_priv_t *)op->os->priv;
+  op_status_t status;
+  apr_thread_mutex_t *hlock, *dlock;
+  int hslot, dslot;
+  char sfname[OS_PATH_MAX];
+  char dfname[OS_PATH_MAX];
+  char *sapath, *dapath, *link_path;
+  int err, ftype;
+
+  if ((osaz_object_access(osf->osaz, op->creds, op->src_path, OS_MODE_READ_IMMEDIATE) == 0) ||
+      (osaz_object_create(osf->osaz, op->creds, op->dest_path) == 0)) return(op_failure_status);
+
+  //** Verify the source exists
+  snprintf(sfname, OS_PATH_MAX, "%s%s", osf->file_path, op->src_path);
+  ftype = os_local_filetype(sfname);
+  if (ftype == 0) {
+     log_printf(15, "ERROR source file missing sfname=%s dfname=%s\n", op->src_path, op->dest_path);
+     return(op_failure_status);
+  }
+
+  //** Check if the source is already a hardlink
+  if ((ftype & OS_OBJECT_HARDLINK) == 0) { //** If not convert it to a hard link
+     err = osf_file2hardlink(op->os, op->src_path);
+     if (err != 0) {
+        log_printf(15, "ERROR converting source file to a hard link sfname=%s\n", op->src_path);
+       return(op_failure_status);
+     }
+
+  }
+
+  //** Resolve the hardlink by looking at the src objects attr path
+  link_path = resolve_hardlink(op->os, op->src_path, 1);
+  if (link_path == NULL) {
+     log_printf(15, "ERROR resolving src hard link sfname=%s dfname=%s\n", op->src_path, op->dest_path);
+     free(link_path);
+     return(op_failure_status);
+  }
+
+  //** Make the dest path
+  snprintf(dfname, OS_PATH_MAX, "%s%s", osf->file_path, op->dest_path);
+
+  //** Acquire the locks
+  hlock = osf_retrieve_lock(op->os, link_path, &hslot);
+  dlock = osf_retrieve_lock(op->os, dfname, &dslot);
+  if (hslot < dslot) {
+    apr_thread_mutex_lock(hlock);
+    apr_thread_mutex_lock(dlock);
+  } else if (hslot > dslot) {
+    apr_thread_mutex_lock(dlock);
+    apr_thread_mutex_lock(hlock);
+  } else {
+    apr_thread_mutex_lock(hlock);
+  }
+
+  //** Hardlink the proxy
+  if (link(link_path, dfname) != 0) {
+     log_printf(15, "ERROR making proxy hardlink link_path=%s sfname=%s dfname=%s\n", link_path, op->src_path, dfname);
+     status = op_failure_status;
+     goto finished;
+  }
+
+  //** Symlink the attr dirs together
+  sapath = object_attr_dir(op->os, "", link_path, OS_OBJECT_FILE);
+  dapath = object_attr_dir(op->os, osf->file_path, op->dest_path, OS_OBJECT_FILE);
+  if (symlink(sapath, dapath) != 0) {
+     unlink(dfname);
+     free(sapath);  free(dapath);
+     log_printf(15, "ERROR making proxy hardlink link_path=%s sfname=%s dfname=%s\n", link_path, op->src_path, op->dest_path);
+     status = op_failure_status;
+     goto finished;
+  }
+  free(sapath);  free(dapath);
+
+  status = op_success_status;
+
+finished:
+  apr_thread_mutex_unlock(hlock);
+  if (hslot != dslot)  apr_thread_mutex_unlock(dlock);
+  free(link_path);
+
+  return(status);
+}
+
+
+//***********************************************************************
+// osfile_hardlink_object - Generates a hard link object operation
+//***********************************************************************
+
+op_generic_t *osfile_hardlink_object(object_service_fn_t *os, creds_t *creds, char *src_path, char *dest_path, char *id)
+{
+  osfile_priv_t *osf = (osfile_priv_t *)os->priv;
+  osfile_mk_mv_rm_t *op;
+
+  //** Make sure the files are different
+  if (strcmp(src_path, dest_path) == 0) {  return(gop_dummy(op_failure_status)); }
+
+  type_malloc_clear(op, osfile_mk_mv_rm_t, 1);
+
+  op->os = os;
+  op->creds = creds;
+  op->src_path = strdup(src_path);
+  op->dest_path = strdup(dest_path);
+  op->id = (id == NULL) ? NULL : strdup(id);
+
+  return(new_thread_pool_op(osf->tpc, NULL, osfile_hardlink_object_fn, (void *)op, osfile_free_mk_mv_rm, 1));
 }
 
 //***********************************************************************
@@ -1983,15 +2338,15 @@ op_status_t osfile_move_object_fn(void *arg, int id)
   if ((osaz_object_remove(osf->osaz, op->creds, op->src_path) == 0) ||
       (osaz_object_create(osf->osaz, op->creds, op->dest_path) == 0)) return(op_failure_status);
 
-  snprintf(sfname, OS_PATH_MAX, "%s%s", osf->base_path, op->src_path);
-  snprintf(dfname, OS_PATH_MAX, "%s%s", osf->base_path, op->dest_path);
+  snprintf(sfname, OS_PATH_MAX, "%s%s", osf->file_path, op->src_path);
+  snprintf(dfname, OS_PATH_MAX, "%s%s", osf->file_path, op->dest_path);
 
   ftype = os_local_filetype(sfname);
 
   err = rename(sfname, dfname);  //** Move the file/dir
-  log_printf(15, "sfname=%s dfname=%s\n", sfname, dfname);
+  log_printf(15, "sfname=%s dfname=%s err=%d\n", sfname, dfname, err);
 
-  if ((ftype == OS_OBJECT_FILE) && (err==0)) { //** File move
+  if ((ftype & (OS_OBJECT_FILE|OS_OBJECT_SYMLINK)) && (err==0)) { //** File move
      //** Also need to move the attributes entry
      os_path_split(sfname, &dir, &base);
      snprintf(sfname, OS_PATH_MAX, "%s/%s/%s%s", dir, FILE_ATTR_PREFIX, FILE_ATTR_PREFIX, base);
@@ -2137,41 +2492,31 @@ op_generic_t *osfile_copy_attr(object_service_fn_t *os, creds_t *creds, os_fd_t 
 }
 
 //***********************************************************************
-// osfile_link_multiple_attrs_fn - Actually links the multiple attrs
+// osfile_symlink_multiple_attrs_fn - Actually links the multiple attrs
 //***********************************************************************
 
-op_status_t osfile_link_multiple_attrs_fn(void *arg, int id)
+op_status_t osfile_symlink_multiple_attrs_fn(void *arg, int id)
 {
   osfile_copy_attr_t *op = (osfile_copy_attr_t *)arg;
   osfile_priv_t *osf = (osfile_priv_t *)op->os->priv;
   op_status_t status;
-  apr_thread_mutex_t *lock_src, *lock_dest;
+  apr_thread_mutex_t *lock_dest;
   char sfname[OS_PATH_MAX];
   char dfname[OS_PATH_MAX];
-  int slot_src, slot_dest;
+  int slot_dest;
   int i, err;
 
-  //** Lock the individual objects based on their slot positions to avoid a deadlock
-  lock_src = osf_retrieve_lock(op->os, op->fd_src->object_name, &slot_src);
+  //** Lock the source
   lock_dest = osf_retrieve_lock(op->os, op->fd_dest->object_name, &slot_dest);
-  if (slot_src < slot_dest) {
-     osf_obj_lock(lock_src);
-     osf_obj_lock(lock_dest);
-  } else if (slot_src > slot_dest) {
-     osf_obj_lock(lock_dest);
-     osf_obj_lock(lock_src);
-  } else {  //** Same slot so only need to lock one
-     lock_dest = NULL;
-     osf_obj_lock(lock_src);
-  }
+  osf_obj_lock(lock_dest);
 
-  log_printf(15, " fsrc=%s (lock=%d) fdest=%s (lock=%d)   n=%d key_src[0]=%s key_dest[0]=%s\n", op->fd_src->object_name, slot_src, op->fd_dest->object_name, slot_dest, op->n, op->key_src[0], op->key_dest[0]);
+  log_printf(15, " fsrc[0]=%s fdest=%s (lock=%d)   n=%d key_src[0]=%s key_dest[0]=%s\n", op->src_path[0], op->fd_dest->object_name, slot_dest, op->n, op->key_src[0], op->key_dest[0]);
 
   status = op_success_status;
   for (i=0; i<op->n; i++) {
-    if ((osaz_attr_access(osf->osaz, op->creds, op->fd_src->object_name, op->key_src[i], OS_MODE_READ_IMMEDIATE) == 1) &&
-        (osaz_attr_create(osf->osaz, op->creds, op->fd_dest->object_name, op->key_dest[i]) == 1)) {
-       snprintf(sfname, OS_PATH_MAX, "%s/%s", op->fd_src->attr_dir, op->key_src[i]);
+    if (osaz_attr_create(osf->osaz, op->creds, op->fd_dest->object_name, op->key_dest[i]) == 1) {
+
+       osf_make_attr_symlink(op->os, sfname, op->src_path[i], op->key_src[i]);
        snprintf(dfname, OS_PATH_MAX, "%s/%s", op->fd_dest->attr_dir, op->key_dest[i]);
 
 log_printf(15, "sfname=%s dfname=%s\n", sfname, dfname);
@@ -2189,19 +2534,18 @@ log_printf(15, "sfname=%s dfname=%s\n", sfname, dfname);
     }
   }
 
-  osf_obj_unlock(lock_src);
-  if (lock_dest != NULL) osf_obj_unlock(lock_dest);
+  osf_obj_unlock(lock_dest);
 
-  log_printf(15, "fsrc=%s fdest=%s err=%d\n", op->fd_src->object_name, op->fd_dest->object_name, status.error_code);
+  log_printf(15, "fsrc[0]=%s fdest=%s err=%d\n", op->src_path[0], op->fd_dest->object_name, status.error_code);
 
   return(status);
 }
 
 //***********************************************************************
-// osfile_link_multiple_attrs - Generates a link multiple attribute operation
+// osfile_symlink_multiple_attrs - Generates a link multiple attribute operation
 //***********************************************************************
 
-op_generic_t *osfile_link_multiple_attrs(object_service_fn_t *os, creds_t *creds, os_fd_t *fd_src, char **key_src, os_fd_t *fd_dest, char **key_dest, int n)
+op_generic_t *osfile_symlink_multiple_attrs(object_service_fn_t *os, creds_t *creds, char **src_path, char **key_src, os_fd_t *fd_dest, char **key_dest, int n)
 {
   osfile_priv_t *osf = (osfile_priv_t *)os->priv;
   osfile_copy_attr_t *op;
@@ -2210,20 +2554,20 @@ op_generic_t *osfile_link_multiple_attrs(object_service_fn_t *os, creds_t *creds
 
   op->os = os;
   op->creds = creds;
-  op->fd_src = (osfile_fd_t *)fd_src;
+  op->src_path = src_path;
   op->fd_dest = (osfile_fd_t *)fd_dest;
   op->key_src = key_src;
   op->key_dest = key_dest;
   op->n = n;
 
-  return(new_thread_pool_op(osf->tpc, NULL, osfile_link_multiple_attrs_fn, (void *)op, free, 1));
+  return(new_thread_pool_op(osf->tpc, NULL, osfile_symlink_multiple_attrs_fn, (void *)op, free, 1));
 }
 
 //***********************************************************************
-// osfile_link_attr - Generates a link attribute operation
+// osfile_symlink_attr - Generates a link attribute operation
 //***********************************************************************
 
-op_generic_t *osfile_link_attr(object_service_fn_t *os, creds_t *creds, os_fd_t *fd_src, char *key_src, os_fd_t *fd_dest, char *key_dest)
+op_generic_t *osfile_symlink_attr(object_service_fn_t *os, creds_t *creds, char *src_path, char *key_src, os_fd_t *fd_dest, char *key_dest)
 {
   osfile_priv_t *osf = (osfile_priv_t *)os->priv;
   osfile_copy_attr_t *op;
@@ -2232,13 +2576,13 @@ op_generic_t *osfile_link_attr(object_service_fn_t *os, creds_t *creds, os_fd_t 
 
   op->os = os;
   op->creds = creds;
-  op->fd_src = (osfile_fd_t *)fd_src;
+  op->src_path = &(op->single_path); op->single_path = src_path;
   op->fd_dest = (osfile_fd_t *)fd_dest;
   op->key_src = &(op->single_src);  op->single_src = key_src;
   op->key_dest = &(op->single_dest);  op->single_dest = key_dest;
   op->n = 1;
 
-  return(new_thread_pool_op(osf->tpc, NULL, osfile_link_multiple_attrs_fn, (void *)op, free, 1));
+  return(new_thread_pool_op(osf->tpc, NULL, osfile_symlink_multiple_attrs_fn, (void *)op, free, 1));
 }
 
 
@@ -2372,8 +2716,14 @@ int osf_get_attr(object_service_fn_t *os, creds_t *creds, osfile_fd_t *ofd, char
 
 
   //** Lastly look at the actual attributes
-  snprintf(fname, OS_PATH_MAX, "%s/%s", ofd->attr_dir, attr);
-log_printf(15, "fname=%s *v_size=%d\n", fname, *v_size);
+  n = osf_resolve_attr_path(os, fname, ofd->object_name, attr, ofd->ftype, atype, 20);
+//  snprintf(fname, OS_PATH_MAX, "%s/%s", ofd->attr_dir, attr);
+log_printf(15, "fname=%s *v_size=%d resolve=%d\n", fname, *v_size, n);
+  if (n != 0) {
+     if (*v_size < 0) *val = NULL;
+     *v_size = -1;
+     return(1);
+  }
 
   *atype = os_local_filetype(fname);
 
@@ -2426,7 +2776,11 @@ op_status_t osf_get_ma_links(void *arg, int id, int first_link)
   err = 0;
   for (i=0; i<op->n; i++) {
     err += osf_get_attr(op->os, op->creds, op->fd, op->key[i], (void **)&(op->val[i]), &(op->v_size[i]), &atype);
-log_printf(15, "PTR i=%d key=%s val=%s v_size=%d\n", i, op->key[i], (char *)op->val[i], op->v_size[i]);
+if (op->v_size[i] > 0) {
+  log_printf(15, "PTR i=%d key=%s val=%s v_size=%d\n", i, op->key[i], (char *)op->val[i], op->v_size[i]);
+} else {
+  log_printf(15, "PTR i=%d key=%s val=NULL v_size=%d\n", i, op->key[i], op->v_size[i]);
+}
   }
 
   osf_multi_unlock(lock_table, n_locks);
@@ -2461,7 +2815,7 @@ op_status_t osf_get_multiple_attr_fn(void *arg, int id)
     v_start[i] = op->v_size[i];
     err += osf_get_attr(op->os, op->creds, op->fd, op->key[i], (void **)&(op->val[i]), &(op->v_size[i]), &atype);
 log_printf(15, "PTR i=%d key=%s val=%s v_size=%d atype=%d err=%d\n", i, op->key[i], (char *)op->val[i], op->v_size[i], atype, err);
-    if ((atype & OS_OBJECT_LINK) > 0) {  oops=1;  break; }
+    if ((atype & OS_OBJECT_SYMLINK) > 0) {  oops=1;  break; }
   }
 
   //** Update the access time attribute
@@ -2592,20 +2946,28 @@ int osf_set_attr(object_service_fn_t *os, creds_t *creds, osfile_fd_t *ofd, char
   va = apr_hash_get(osf->vattr_hash, attr, APR_HASH_KEY_STRING);
   if (va != NULL) { return(va->set(va, os, creds, ofd, attr, val, v_size, atype)); }
 
-  snprintf(fname, OS_PATH_MAX, "%s/%s", ofd->attr_dir, attr);
-  *atype = os_local_filetype(fname);
   if (v_size < 0) { //** Want to remove the attribute
      if (osaz_attr_remove(osf->osaz, creds, ofd->object_name, attr) == 0) return(1);
+     snprintf(fname, OS_PATH_MAX, "%s/%s", ofd->attr_dir, attr);
      safe_remove(os, fname);
-  } else {
-     if (os_local_filetype(fname) != OS_OBJECT_FILE) {
-        if (osaz_attr_create(osf->osaz, creds, ofd->object_name, attr) == 0) return(1);
-     }
-     fd = fopen(fname, "w");
-     if (fd == NULL) return(-1);
-     if (v_size > 0) fwrite(val, v_size, 1, fd);
-     fclose(fd);
+     return(0);
   }
+
+  n = osf_resolve_attr_path(os, fname, ofd->object_name, attr, ofd->ftype, atype, 20);
+  if (n != 0) {
+     return(1);
+  }
+
+  //** Store the value
+  if (os_local_filetype(fname) != OS_OBJECT_FILE) {
+     if (osaz_attr_create(osf->osaz, creds, ofd->object_name, attr) == 0) return(1);
+  }
+  fd = fopen(fname, "w");
+//log_printf(15, "fd=%p\n", fd);
+if (fd == NULL) log_printf(0, "ERROR opening attr file attr=%s val=%s v_size=%d fname=%s\n", attr, val, v_size, fname);
+  if (fd == NULL) return(-1);
+  if (v_size > 0) fwrite(val, v_size, 1, fd);
+  fclose(fd);
 
   return(0);
 }
@@ -2703,6 +3065,8 @@ int osfile_next_attr(os_attr_iter_t *oit, char **key, void **val, int *v_size)
   os_regex_table_t *rex = it->regex;
 
 
+//log_printf(15, "va_index=%p\n", it->va_index);
+
   //** Check the VA's 1st
   while (it->va_index != NULL) {
      apr_hash_this(it->va_index, (const void **)key, &klen, (void **)&va);
@@ -2719,7 +3083,7 @@ int osfile_next_attr(os_attr_iter_t *oit, char **key, void **val, int *v_size)
         }
      }
 
-     it->va_index = apr_hash_next(it->va_index);
+//     it->va_index = apr_hash_next(it->va_index);
   }
 
   while ((entry = readdir(it->d)) != NULL) {
@@ -2922,7 +3286,7 @@ os_object_iter_t *osfile_create_object_iter(object_service_fn_t *os, creds_t *cr
   if (it->table->n > 0) {
      itl = &(it->level_info[0]);
      itl->path[0] = '\0';
-     itl->d = my_opendir(osf->base_path, itl->fragment);
+     itl->d = my_opendir(osf->file_path, itl->fragment);
      itl->curr_pos = my_telldir(itl->d);
      itl->firstpass = 1;
   }
@@ -3044,7 +3408,7 @@ op_status_t osfile_open_object_fn(void *arg, int id)
   log_printf(15, "Attempting to open object=%s\n", op->path);
 
   *op->fd = NULL;
-  snprintf(fname, OS_PATH_MAX, "%s%s", osf->base_path, op->path);
+  snprintf(fname, OS_PATH_MAX, "%s%s", osf->file_path, op->path);
   ftype = os_local_filetype(fname);
   if (ftype <= 0) { return(op_failure_status); }
 
@@ -3064,7 +3428,7 @@ op_status_t osfile_open_object_fn(void *arg, int id)
   fd->id = op->id;
   fd->uuid = op->uuid;
 
-  fd->attr_dir = object_attr_dir(op->os, fd->object_name, ftype);
+  fd->attr_dir = object_attr_dir(op->os, osf->file_path, fd->object_name, ftype);
 
   osf_obj_unlock(lock);
 
@@ -3231,7 +3595,7 @@ int osf_fsck_check_file(object_service_fn_t *os, creds_t *creds, char *fname, in
   if (osaz_object_access(osf->osaz, creds, fname, OS_MODE_READ_IMMEDIATE) != 1) return(OS_FSCK_GOOD);
 
   //** Make sure the proxy entry exists
-  snprintf(fullname, OS_PATH_MAX, "%s%s", osf->base_path, fname);
+  snprintf(fullname, OS_PATH_MAX, "%s%s", osf->file_path, fname);
   ftype = os_local_filetype(fullname);
   if (ftype == 0) {
      if (dofix == OS_FSCK_MANUAL) return(OS_FSCK_MISSING_OBJECT);
@@ -3252,7 +3616,7 @@ log_printf(15, "repair  fullname=%s\n", fullname);
 log_printf(15, "fullname=%s\n", fullname);
 
   //** Make sure the FA directory exists
-  faname = object_attr_dir(os, fname, ftype);
+  faname = object_attr_dir(os, osf->file_path, fname, ftype);
   ftype = os_local_filetype(faname);
 log_printf(15, "faname=%s ftype=%d\n", faname, ftype);
 
@@ -3280,7 +3644,6 @@ log_printf(15, "faname=%s ftype=%d\n", faname, ftype);
 int osf_fsck_check_dir(object_service_fn_t *os, creds_t *creds, char *fname, int dofix)
 {
   osfile_priv_t *osf = (osfile_priv_t *)os->priv;
-//  char fullname[OS_PATH_MAX];
   char *faname;
   int ftype;
 
@@ -3288,8 +3651,8 @@ int osf_fsck_check_dir(object_service_fn_t *os, creds_t *creds, char *fname, int
   if (osaz_object_access(osf->osaz, creds, fname, OS_MODE_READ_IMMEDIATE) != 1) return(OS_FSCK_GOOD);
 
   //** Make sure the FA directory exists
-  faname = object_attr_dir(os, fname, OS_OBJECT_DIR);
-//  snprintf(fullname, OS_PATH_MAX, "%s%s", osf->base_path, faname);
+  faname = object_attr_dir(os, osf->file_path, fname, OS_OBJECT_DIR);
+//  snprintf(fullname, OS_PATH_MAX, "%s%s", osf->file_path, faname);
   ftype = os_local_filetype(faname);
 log_printf(15, "fname=%s faname=%s ftype=%d\n", fname, faname, ftype);
   if ((ftype & OS_OBJECT_DIR) == 0) {
@@ -3317,7 +3680,7 @@ log_printf(15, "fname=%s faname=%s ftype=%d\n", fname, faname, ftype);
 int osf_next_fsck(os_fsck_iter_t *oit, char **fname)
 {
   osfile_fsck_iter_t *it = (osfile_fsck_iter_t *)oit;
-//  osfile_priv_t *osf = (osfile_priv_t *)it->os->priv;
+  osfile_priv_t *osf = (osfile_priv_t *)it->os->priv;
   int prefix_len;
   char fullname[OS_PATH_MAX];
   char *faname;
@@ -3346,8 +3709,8 @@ log_printf(15, "free(ad_path=%s)\n", it->ad_path);
   atype = os_next_object(it->os, it->it, fname, &prefix_len);
 
   if (atype & OS_OBJECT_DIR) {  //** Got a directory so prep scanning it for next round
-     faname = object_attr_dir(it->os, *fname, OS_OBJECT_DIR);
-//     snprintf(fullname, OS_PATH_MAX, "%s%s", osf->base_path, *fname);
+     faname = object_attr_dir(it->os, osf->file_path, *fname, OS_OBJECT_DIR);
+//     snprintf(fullname, OS_PATH_MAX, "%s%s", osf->file_path, *fname);
      it->ad = opendir(faname);
 log_printf(15, "ad_path faname=%s ad=%p\n", faname, it->ad);
      free(faname);
@@ -3367,7 +3730,7 @@ int osfile_fsck_object_check(object_service_fn_t *os, creds_t *creds, char *fnam
   int err;
 
   log_printf(15, "mode=%d ftype=%d fname=%s\n", resolution, ftype, fname);
-  if (ftype & (OS_OBJECT_FILE|OS_OBJECT_LINK)) {
+  if (ftype & (OS_OBJECT_FILE|OS_OBJECT_SYMLINK)) {
     err = osf_fsck_check_file(os, creds, fname, resolution);
   } else {
     err = osf_fsck_check_dir(os, creds, fname, resolution);
@@ -3424,7 +3787,7 @@ int osfile_next_fsck(object_service_fn_t *os, os_fsck_iter_t *oit, char **bad_fn
   int atype, err;
 
   while ((atype = osf_next_fsck(oit, &fname)) != 0) {
-     if (atype & (OS_OBJECT_FILE|OS_OBJECT_LINK)) {   //** File object
+     if (atype & (OS_OBJECT_FILE|OS_OBJECT_SYMLINK)) {   //** File object
         err = osf_fsck_check_file(it->os, it->creds, fname, OS_FSCK_MANUAL);
      } else {   //** Directory object
         err = osf_fsck_check_dir(it->os, it->creds, fname, OS_FSCK_MANUAL);
@@ -3537,6 +3900,8 @@ void osfile_destroy(object_service_fn_t *os)
 
   free(osf->host_id);
   free(osf->base_path);
+  free(osf->file_path);
+  free(osf->hardlink_path);
   free(osf);
   free(os);
 }
@@ -3552,14 +3917,14 @@ object_service_fn_t *object_service_file_create(service_manager_t *authn_sm, ser
   osfile_priv_t *osf;
   osaz_create_t *osaz_create;
   authn_create_t *authn_create;
-  char pname[OS_PATH_MAX];
+  char pname[OS_PATH_MAX], pattr[OS_PATH_MAX];
   char *atype;
-  int i;
+  int i, err;
 
   if (section == NULL) section = "osfile";
 
-  type_malloc(os, object_service_fn_t, 1);
-  type_malloc(osf, osfile_priv_t, 1);
+  type_malloc_clear(os, object_service_fn_t, 1);
+  type_malloc_clear(osf, osfile_priv_t, 1);
   os->priv = (void *)osf;
 
   osf->tpc = tpc_unlimited;
@@ -3572,12 +3937,14 @@ object_service_fn_t *object_service_file_create(service_manager_t *authn_sm, ser
      osf->authn = (*authn_create)(NULL, NULL);
      osf->internal_lock_size = 200;
      osf->max_copy = 1024*1024;
+     osf->hardlink_dir_size = 256;
   } else {
      fd = inip_read(fname);
      osf->base_path = inip_get_string(fd, section, "base_path", "./osfile");
      atype = inip_get_string(fd, section, "authz", OSAZ_TYPE_FAKE);
      osf->internal_lock_size = inip_get_integer(fd, section, "lock_table_size", 200);
      osf->max_copy = inip_get_integer(fd, section, "max_copy", 1024*1024);
+     osf->hardlink_dir_size = inip_get_integer(fd, section, "hardlink_dir_size", 256);
      osaz_create = lookup_service(osaz_sm, 0, atype);
      osf->osaz = (*osaz_create)(fname, NULL, os);
      free(atype);
@@ -3605,6 +3972,10 @@ object_service_fn_t *object_service_file_create(service_manager_t *authn_sm, ser
      inip_destroy(fd);
   }
 
+  snprintf(pname, OS_PATH_MAX, "%s/%s", osf->base_path, "file");
+  osf->file_path = strdup(pname);  osf->file_path_len = strlen(osf->file_path);
+  snprintf(pname, OS_PATH_MAX, "%s/%s", osf->base_path, "hardlink");
+  osf->hardlink_path = strdup(pname); osf->hardlink_path_len = strlen(osf->hardlink_path);
 
   apr_pool_create(&osf->mpool, NULL);
   type_malloc_clear(osf->internal_lock, apr_thread_mutex_t *, osf->internal_lock_size);
@@ -3640,6 +4011,12 @@ object_service_fn_t *object_service_file_create(service_manager_t *authn_sm, ser
   osf->link_va.set = va_null_set_attr;
   osf->link_va.get_link = va_null_get_link_attr;
 
+  osf->link_count_va.attribute = "os.link_count";
+  osf->link_count_va.priv = os;
+  osf->link_count_va.get = va_link_count_get_attr;
+  osf->link_count_va.set = va_null_set_attr;
+  osf->link_count_va.get_link = va_null_get_link_attr;
+
   osf->type_va.attribute = "os.type";
   osf->type_va.priv = os;
   osf->type_va.get = va_type_get_attr;
@@ -3654,6 +4031,7 @@ object_service_fn_t *object_service_file_create(service_manager_t *authn_sm, ser
 
   apr_hash_set(osf->vattr_hash, osf->lock_va.attribute, APR_HASH_KEY_STRING, &(osf->lock_va));
   apr_hash_set(osf->vattr_hash, osf->link_va.attribute, APR_HASH_KEY_STRING, &(osf->link_va));
+  apr_hash_set(osf->vattr_hash, osf->link_count_va.attribute, APR_HASH_KEY_STRING, &(osf->link_count_va));
   apr_hash_set(osf->vattr_hash, osf->type_va.attribute, APR_HASH_KEY_STRING, &(osf->type_va));
   apr_hash_set(osf->vattr_hash, osf->create_va.attribute, APR_HASH_KEY_STRING, &(osf->create_va));
 
@@ -3689,7 +4067,8 @@ object_service_fn_t *object_service_file_create(service_manager_t *authn_sm, ser
   os->remove_object = osfile_remove_object;
   os->remove_regex_object = osfile_remove_regex_object;
   os->move_object = osfile_move_object;
-  os->link_object = osfile_link_object;
+  os->symlink_object = osfile_symlink_object;
+  os->hardlink_object = osfile_hardlink_object;
   os->create_object_iter = osfile_create_object_iter;
   os->create_object_iter_alist = osfile_create_object_iter_alist;
   os->next_object = osfile_next_object;
@@ -3699,12 +4078,12 @@ object_service_fn_t *object_service_file_create(service_manager_t *authn_sm, ser
   os->abort_open_object = osfile_abort_open_object;
   os->get_attr = osfile_get_attr;
   os->set_attr = osfile_set_attr;
-  os->link_attr = osfile_link_attr;
+  os->symlink_attr = osfile_symlink_attr;
   os->copy_attr = osfile_copy_attr;
   os->get_multiple_attrs = osfile_get_multiple_attrs;
   os->set_multiple_attrs = osfile_set_multiple_attrs;
   os->copy_multiple_attrs = osfile_copy_multiple_attrs;
-  os->link_multiple_attrs = osfile_link_multiple_attrs;
+  os->symlink_multiple_attrs = osfile_symlink_multiple_attrs;
   os->move_attr = osfile_move_attr;
   os->move_multiple_attrs = osfile_move_multiple_attrs;
   os->regex_object_set_multiple_attrs = osfile_regex_object_set_multiple_attrs;
@@ -3725,7 +4104,21 @@ object_service_fn_t *object_service_file_create(service_manager_t *authn_sm, ser
     return(NULL);
   }
 
-  snprintf(pname, OS_PATH_MAX, "%s/%s", osf->base_path, FILE_ATTR_PREFIX);
+  if (os_local_filetype(osf->file_path) <= 0) {
+    log_printf(0, "File Path doesn't exist!  file_path=%s\n", osf->file_path);
+    os_destroy(os);
+    os = NULL;
+    return(NULL);
+  }
+
+  if (os_local_filetype(osf->hardlink_path) <= 0) {
+    log_printf(0, "Hard link Path doesn't exist!  hardlink_path=%s\n", osf->hardlink_path);
+    os_destroy(os);
+    os = NULL;
+    return(NULL);
+  }
+
+  snprintf(pname, OS_PATH_MAX, "%s/%s", osf->file_path, FILE_ATTR_PREFIX);
   if (os_local_filetype(pname) <= 0) {  //** Missing attr directory for base so create it
      i = mkdir(pname, DIR_PERMS);
      if (i != 0) {
@@ -3736,6 +4129,30 @@ object_service_fn_t *object_service_file_create(service_manager_t *authn_sm, ser
      }
 
 
+  }
+
+  //** Make sure al lthe hardlink dirs exist
+  for (i=0; i<osf->hardlink_dir_size; i++) {
+     snprintf(pname, OS_PATH_MAX, "%s/%d", osf->hardlink_path, i);
+     if (os_local_filetype(pname) == 0) {
+        err = mkdir(pname, DIR_PERMS);
+        if (err != 0) {
+           log_printf(0, "Error creating hardlink directory! full=%s\n", pname);
+           os_destroy(os);
+           os = NULL;
+           return(NULL);
+        }
+
+        //** Also need to make the attributes directory
+        snprintf(pattr, OS_PATH_MAX, "%s/%s", pname, FILE_ATTR_PREFIX);
+        err = mkdir(pattr, DIR_PERMS);
+        if (err != 0) {
+           log_printf(0, "Error creating object attr directory! full=%s\n", pattr);
+           os_destroy(os);
+           os = NULL;
+           return(NULL);
+        }
+     }
   }
 
   return(os);

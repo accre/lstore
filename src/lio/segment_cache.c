@@ -57,6 +57,7 @@ typedef struct {
   ex_iovec_t iov_single;
   int        rw_mode;
   int        n_iov;
+  int skip_ppages;
   int timeout;
 } cache_rw_op_t;
 
@@ -89,6 +90,8 @@ typedef struct {
 
 atomic_int_t _cache_count = 0;
 atomic_int_t _flush_count = 0;
+
+op_status_t cache_rw_func(void *arg, int id);
 
 //*************************************************************
 // cache_cond_new - Creates a new shelf of cond variables
@@ -1726,6 +1729,399 @@ log_printf(5, "Looks like we need to do a manual flush.  min_off=" XOT " max_off
   return(0);
 }
 
+//*******************************************************************************
+// _cache_ppages_flush - Fluses the partial pages
+//     NOTE:  Segment should be locked on entry
+//*******************************************************************************
+
+int _cache_ppages_flush(segment_t *seg, data_attr_t *da)
+{
+  cache_segment_t *s = (cache_segment_t *)seg->priv;
+  cache_partial_page_t *pp;
+  cache_rw_op_t cop;
+  ex_iovec_t *ex_iov;
+  iovec_t *iov;
+  tbuffer_t tbuf;
+  ex_off_t *rng, *rng0, r[2];
+  int i, j, k, n_ranges, n, again, slot;
+  ex_off_t nbytes, len;
+  op_status_t status;
+
+  if (s->ppages_used == 0) return(0);
+
+log_printf(5, "Flushing ppages seg=" XIDT " ppages_used=%d\n", segment_id(seg), s->ppages_used);
+
+  //** Cycle through the pages makng the write map for each page
+  n_ranges = 0;
+  for (i=0; i<s->ppages_used; i++) {
+     pp = &(s->ppage[i]);
+log_printf(5, "START RSTACK[%d]=%p size=%d flags=%d\n", i, pp->range_stack, stack_size(pp->range_stack), pp->flags); flush_log();
+     if ( pp->flags == 1) { //** SEe if we get lucky and it's a full page
+        empty_stack(pp->range_stack, 1);
+        type_malloc(rng, ex_off_t, 2);
+        rng[0] = 0; rng[1] = s->page_size;
+        push(pp->range_stack, rng);
+        n_ranges++;
+        continue;
+     }
+
+     //** Start the iterative process to make the irreducible set for storing
+k=0;
+     do {
+        again = 0;
+        rng0 = (ex_off_t *)pop(pp->range_stack);
+        r[0] = rng0[0] - 1; r[1] = rng0[1] + 1;
+        n = stack_size(pp->range_stack);
+//if (k==0) {
+//log_printf(0, "p[%d].off=" XOT " rlo=" XOT " rhi= "XOT " stack_size=%d\n", i, pp->page_start, rng0[0], rng0[1], n);
+//}
+        for (j=0; j<n; j++) {
+           rng = (ex_off_t *)pop(pp->range_stack);
+//if (k==0) {
+//log_printf(0, "p[%d].off=" XOT " j=%d lo=" XOT " hi= "XOT "\n", i, pp->page_start, j, rng[0], rng[1]);
+//}
+           if ((rng[0] <= r[0]) && (rng[1] >= r[0])) {
+              rng0[0] = rng[0]; r[0] = rng[0] - 1;
+              if (rng[1] >= r[1]) { rng0[1] = rng[1]; r[1] = rng[1] + 1; }
+              free(rng);
+              again = 1;
+           } else if ((rng[0] > r[0]) && (rng[0] <= r[1])) {
+              if (rng[1] >= r[1]) { rng0[1] = rng[1]; r[1] = rng[1] + 1; }
+              free(rng);
+              again = 1;
+           } else {   //** No overlap so just copy it
+              move_to_bottom(pp->range_stack);
+              insert_below(pp->range_stack, rng);
+           }
+        }
+        push(pp->range_stack, rng0);
+k=1;
+     } while (again == 1);
+
+     n_ranges += stack_size(pp->range_stack);
+log_printf(5, "END RSTACK[%d]=%p size=%d n_ranges=%d\n", i, pp->range_stack, stack_size(pp->range_stack), n_ranges); flush_log();
+  }
+
+
+  //** Fill in the RW op struct
+  type_malloc_clear(ex_iov, ex_iovec_t, n_ranges);
+  type_malloc_clear(iov, iovec_t, n_ranges);
+  cop.seg = seg;
+  cop.da = da;
+  cop.n_iov = n_ranges;
+  cop.iov = ex_iov;
+  cop.rw_mode = CACHE_WRITE;
+  cop.boff = 0;
+  cop.buf = &tbuf;
+  cop.skip_ppages = 1;
+
+  nbytes = 0;
+  slot = 0;
+  for (i=0; i<s->ppages_used; i++) {
+     pp = &(s->ppage[i]);
+     while ((rng = (ex_off_t *)pop(pp->range_stack)) != NULL) {
+        len = rng[1] - rng[0] + 1;
+        iov[slot].iov_base = &(pp->data[rng[0]]);
+        iov[slot].iov_len = len;
+        ex_iov[slot].offset = pp->page_start + rng[0];
+        ex_iov[slot].len = len;
+        nbytes += len;
+r[1] = ex_iov[slot].offset + len - 1;
+log_printf(5, "seg=" XIDT " ppage=%d slot=%d off=" XOT " end=" XOT " len=" XOT "\n", segment_id(seg), i, slot, ex_iov[slot].offset, r[1], ex_iov[slot].len);
+        slot++;
+        free(rng);
+     }
+     pp->flags = 0;
+  }
+
+  //** finish the tbuf setup
+  tbuffer_vec(&tbuf, nbytes, n_ranges, iov);
+
+  //** Do the flush
+  s->ppages_flushing = 1;
+log_printf(5, "Performing flush now\n");
+
+  segment_unlock(seg);
+  status = cache_rw_func(&cop, 0);
+
+  //** Notify everyone it's done
+  segment_lock(seg);
+  s->ppages_flushing = 0;
+  s->ppages_used = 0;
+  s->ppage_max = 0;
+log_printf(5, "Flush completed\n");
+
+  apr_thread_cond_broadcast(s->ppages_cond);
+
+  free(ex_iov);
+  free(iov);
+  return((status.op_status == OP_STATE_SUCCESS) ? 0 : 1);
+}
+
+//*******************************************************************************
+// cache_ppages_read - Checks if a read request overlaps a partail page and if so
+//      flushes the ppages.
+//*******************************************************************************
+
+int cache_ppages_read(segment_t *seg, data_attr_t *da, ex_off_t lo, ex_off_t hi)
+{
+  cache_segment_t *s = (cache_segment_t *)seg->priv;
+  cache_partial_page_t *pp;
+  ex_off_t lo_page, hi_page, n_pages;
+  int i, hit, err;
+
+  err = 0;
+  segment_lock(seg);
+
+  if (s->ppages_flushing != 0) {  //** Flushing ppages so wait until finished
+log_printf(5, "Waiting for flush to complete\n");
+     do {
+       apr_thread_cond_wait(s->ppages_cond, seg->lock);
+     } while (s->ppages_flushing != 0);
+log_printf(5, "Flush completed\n");
+  }
+
+  //** Kick out if nothing to check
+  if (s->ppages_used == 0) { segment_unlock(seg); return(0); }
+
+  lo_page = lo / s->page_size; n_pages = lo_page;               lo_page = lo_page * s->page_size;
+  hi_page = hi / s->page_size; n_pages = hi_page - n_pages + 1; hi_page = hi_page * s->page_size;
+
+  hit = 0;
+  for (i=0; i<s->ppages_used; i++) {
+     pp = &(s->ppage[i]);
+     if (((lo_page < pp->page_start) && (pp->page_start < hi_page)) ||
+         (lo_page == pp->page_start) || (hi_page == pp->page_start)) {
+         hit = 1;
+         break;
+     }
+  }
+
+  if (hit == 1) {  //** Got a hit so flush everything
+     err = _cache_ppages_flush(seg, da);
+  }
+  segment_unlock(seg);
+
+  return(err);
+}
+
+//*******************************************************************************
+// cache_ppages_handle - Process partail page requests storing them in interim
+//     staging area
+//*******************************************************************************
+
+int cache_ppages_handle(segment_t *seg, data_attr_t *da, int rw_mode, ex_off_t *lo, ex_off_t *hi, ex_off_t *len, ex_off_t *bpos, tbuffer_t *tbuf)
+{
+  cache_segment_t *s = (cache_segment_t *)seg->priv;
+  cache_partial_page_t *pp;
+  ex_off_t lo_page, hi_page, n_pages, poff, boff, nbytes, pend, nhandled;
+  ex_off_t lo_new, hi_new, bpos_new;
+  ex_off_t *rng;
+  cache_page_t *p;
+  tbuffer_t pptbuf;
+  int do_flush, i, err, lo_mapped, hi_mapped;
+  err = 0;
+
+log_printf(5, "START lo=" XOT " hi=" XOT " bpos=" XOT "\n", *lo, *hi, *bpos); flush_log();
+
+  if (s->n_ppages == 0) return(0);
+
+  //** Check for a page overlap and if so flush everything
+  if (rw_mode == CACHE_READ) {
+     cache_ppages_read(seg, da, *lo, *hi);
+     return(0);
+  }
+
+  segment_lock(seg);
+
+  //** Wait for any flushed to complete
+  if (s->ppages_flushing != 0) {
+log_printf(5, "Waiting for flush to complete\n");
+     do {
+       apr_thread_cond_wait(s->ppages_cond, seg->lock);
+     } while (s->ppages_flushing != 0);
+log_printf(5, "Flush completed\n");
+  }
+
+  //** Only writes from here on
+  lo_page = *lo / s->page_size; n_pages = lo_page;               lo_page = lo_page * s->page_size;
+  hi_page = *hi / s->page_size; n_pages = hi_page - n_pages + 1; hi_page = hi_page * s->page_size;
+
+log_printf(5, "lo=" XOT " hi=" XOT " lo_page=" XOT " hi_page=" XOT " n_pages=%d \n", *lo, *hi, lo_page, hi_page, n_pages);
+  //** Check if we already have the lo/hi pages loaded
+  p = list_search(s->pages, (skiplist_key_t *)(&lo_page));
+  if (p != NULL) {
+     if (n_pages > 1) p = list_search(s->pages, (skiplist_key_t *)(&hi_page));
+     if (p != NULL) {  //** End pages already loaded
+log_printf(5, "Pages already loaded\n");
+        segment_unlock(seg);
+        return(0);
+     }
+  }
+
+  //** If we made it here the end pages at least don't exist
+  //** See if we map to a existing pages
+  do_flush = 0;
+  nhandled = 0;
+  lo_mapped = 0; hi_mapped = 0;
+  lo_new = *lo;  hi_new = *hi; bpos_new = *bpos;
+  for (i=0; i<s->ppages_used; i++) {
+     pp = &(s->ppage[i]);
+
+     //** Interior whole page check  (always copy the data to make sure we have a full page before flushing)
+     if ((n_pages > 2) && (lo_page < pp->page_start) && (pp->page_start < hi_page)) {
+         poff = 0;
+         boff = *bpos + pp->page_start - *lo;
+         nbytes = s->page_size;
+         tbuffer_single(&pptbuf, s->page_size, pp->data);
+         tbuffer_copy(tbuf, boff, &pptbuf, poff, nbytes);
+         do_flush = 1;
+         pp->flags = 1; //** Full page
+         nhandled++;
+log_printf(5, "INTERIOR FULL seg=" XIDT " using ppage=%d pstart=" XOT " pend=" XOT "\n", segment_id(seg), i, pp->page_start, pp->page_end);
+     }
+
+     //** Move the hi end down
+     if ((hi_page == pp->page_start) && (lo_page != hi_page)) {
+         poff = 0;
+         boff = *bpos + pp->page_start - *lo;
+         nbytes = *hi - pp->page_start + 1;
+         tbuffer_single(&pptbuf, s->page_size, pp->data);
+         tbuffer_copy(tbuf, boff, &pptbuf, poff, nbytes);
+         hi_new = pp->page_start - 1;
+         type_malloc(rng, ex_off_t, 2);
+         rng[0] = 0;
+         rng[1] = nbytes - 1;
+         push(pp->range_stack, rng);
+         pend = pp->page_start + pend;
+         if (pend > s->ppage_max) s->ppage_max = pend;
+         nhandled++;
+         hi_mapped = 1;
+log_printf(5, "HI_MAPPED INSERT seg=" XIDT " using ppage=%d pstart=" XOT " pend=" XOT " rlo=" XOT " rhi=" XOT "\n", segment_id(seg), i, pp->page_start, pp->page_end, rng[0], rng[1]);
+     }
+
+     //** Move the lo end partial page (also handles if lo_page=hi_page)
+     if (lo_page == pp->page_start) {
+         poff = *lo - pp->page_start;
+         boff = *bpos;
+         if (*hi > pp->page_end) {
+            pend = s->page_size - 1;
+         } else {
+            hi_mapped = 1;
+            pend = *hi - pp->page_start;
+         }
+         nbytes = pend - poff + 1;
+         tbuffer_single(&pptbuf, s->page_size, pp->data);
+         tbuffer_copy(tbuf, boff, &pptbuf, poff, nbytes);
+         lo_new = *lo + nbytes;
+         bpos_new = *bpos + nbytes;
+         type_malloc(rng, ex_off_t, 2);
+         rng[0] = poff;
+         rng[1] = pend;
+         pend = pp->page_start + pend;
+         if (pend > s->ppage_max) s->ppage_max = pend;
+         push(pp->range_stack, rng);
+         nhandled++;
+         lo_mapped = 1;
+log_printf(5, "LO_MAPPED INSERT seg=" XIDT " using ppage=%d pstart=" XOT " pend=" XOT " rlo=" XOT " rhi=" XOT "\n", segment_id(seg), i, pp->page_start, pp->page_end, rng[0], rng[1]);
+//log_printf(0, "RSTACK[%d]=%p size=%d\n", i, pp->range_stack, stack_size(pp->range_stack));
+     }
+  }
+
+  //** Check if we have full coverage.  If so kick out
+  if (nhandled == n_pages) {
+     segment_unlock(seg);
+     *lo = lo_new;  *hi = hi_new; *bpos = bpos_new;
+log_printf(5, "END lo=" XOT " hi=" XOT " bpos=" XOT "\n", *lo, *hi, *bpos); flush_log();
+     return(1);
+  }
+
+  //** See if we have enough free ppages to store the ends. If not flush
+  if ((s->n_ppages - s->ppages_used) < (2 - lo_mapped - hi_mapped)) {
+log_printf(5, "Triggering a flush\n");
+
+     do_flush = 0;
+     err = _cache_ppages_flush(seg, da);
+     if (err != 0) {
+        segment_unlock(seg);
+        return(err);
+     }
+
+     //** During the flush we lost the lock and so the pages could have been loaded
+     //** in either cache or ppages.  So we're just going to call ourself again
+     *lo = lo_new;  *hi = hi_new; *bpos = bpos_new;
+log_printf(5, "RECURSE lo=" XOT " hi=" XOT " bpos=" XOT "\n", *lo, *hi, *bpos); flush_log();
+     segment_unlock(seg);
+     return(cache_ppages_handle(seg, da, rw_mode, lo, hi, len, bpos, tbuf));
+  }
+
+  //** NOTE if we have whole pages don't store
+  if (lo_mapped == 0) { // ** Map the lo end
+     i = s->ppages_used; s->ppages_used++;
+     pp = &(s->ppage[i]);
+     pp->page_start = lo_page;
+     pp->page_end = lo_page + s->page_size -1;
+
+     poff = *lo - pp->page_start;
+     boff = *bpos;
+     if (*hi > pp->page_end) {
+        pend = s->page_size - 1;
+     } else {
+        hi_mapped = 1;
+        pend = *hi - pp->page_start;
+     }
+     nbytes = pend - poff + 1;
+     tbuffer_single(&pptbuf, s->page_size, pp->data);
+     tbuffer_copy(tbuf, boff, &pptbuf, poff, nbytes);
+     lo_new = *lo + nbytes;
+     bpos_new = *bpos + nbytes;
+     type_malloc(rng, ex_off_t, 2);
+     rng[0] = poff;
+     rng[1] = pend;
+     push(pp->range_stack, rng);
+     pend = pp->page_start + pend;
+     if (pend > s->ppage_max) s->ppage_max = pend;
+     nhandled++;
+     lo_mapped = 1;
+log_printf(5, "LO_MAPPED ADDED seg=" XIDT " using ppage=%d pstart=" XOT " pend=" XOT " rlo=" XOT " rhi=" XOT "\n", segment_id(seg), i, pp->page_start, pp->page_end, rng[0], rng[1]);
+
+  }
+
+  if (hi_mapped == 0) { // ** Do the same for the hi end
+     i = s->ppages_used; s->ppages_used++;
+     pp = &(s->ppage[i]);
+     pp->page_start = hi_page;
+     pp->page_end = hi_page + s->page_size -1;
+
+     poff = 0;
+     boff = *bpos + pp->page_start - *lo;
+     nbytes = *hi - pp->page_start + 1;
+     tbuffer_single(&pptbuf, s->page_size, pp->data);
+     tbuffer_copy(tbuf, boff, &pptbuf, poff, nbytes);
+     hi_new = pp->page_start - 1;
+     type_malloc(rng, ex_off_t, 2);
+     rng[0] = 0;
+     rng[1] = nbytes - 1;
+     push(pp->range_stack, rng);
+     pend = pp->page_start + pend;
+     if (pend > s->ppage_max) s->ppage_max = pend;
+     nhandled++;
+     hi_mapped = 1;
+log_printf(5, "HI_MAPPED ADDED seg=" XIDT " using ppage=%d pstart=" XOT " pend=" XOT " rlo=" XOT " rhi=" XOT "\n", segment_id(seg), i, pp->page_start, pp->page_end, rng[0], rng[1]);
+  }
+
+
+  if ((do_flush == 1) && (nhandled != n_pages)) {  //** Do a flush if not completely covered
+log_printf(5, "Triggering a flush do_flush=%d nhandled=%d n_pages=%d\n", do_flush, nhandled, n_pages);
+
+     err = _cache_ppages_flush(seg, da);
+  }
+
+  segment_unlock(seg);
+  *lo = lo_new;  *hi = hi_new; *bpos = bpos_new;
+log_printf(5, "END lo=" XOT " hi=" XOT " bpos=" XOT "\n", *lo, *hi, *bpos); flush_log();
+  return((n_pages == nhandled) ? 1 : 0);
+}
 
 //*******************************************************************************
 // cache_rw_func - Function for reading/writing to cache
@@ -1741,10 +2137,10 @@ op_status_t cache_rw_func(void *arg, int id)
    int status, n_pages;
    Stack_t stack;
    cache_range_t *curr, *r;
-   int progress, tb_err, first_time;
-   int mode, i, top_cnt, bottom_cnt;
+   int progress, tb_err, rerr, first_time;
+   int mode, i, j, top_cnt, bottom_cnt;
    op_status_t err;
-   ex_off_t bpos, poff, len, hi, ngot, pstart, plen;
+   ex_off_t bpos2, bpos, poff, len, mylen, lo, hi, ngot, pstart, plen;
    ex_off_t hi_got, new_size, blen;
    ex_off_t total_bytes, hit_bytes;
    tbuffer_t tb;
@@ -1758,6 +2154,54 @@ op_status_t cache_rw_func(void *arg, int id)
 
    init_stack(&stack);
 
+   //** Push the initial ranges onto the work queue
+   bpos = cop->boff;
+   bpos2 = bpos;
+   new_size = 0;
+   rerr = 0;
+   mylen = 0;
+   total_bytes = 0;
+   for (i=0; i< cop->n_iov; i++) {
+      if (cop->iov[i].len <= 0) rerr = 1;
+      lo = cop->iov[i].offset;
+      len = cop->iov[i].len;
+      hi = lo + len - 1;
+      total_bytes += len;
+      bpos2 = bpos;
+      bpos += len;
+      j = (cop->skip_ppages == 0) ? cache_ppages_handle(seg, cop->da, cop->rw_mode, &lo, &hi, &len, &bpos2, cop->buf) : 0;
+      if (j == 0) { //** Check if the ppages slurped it up
+         if (new_size < hi) new_size = hi;
+         r = cache_new_range(lo, hi, bpos2, i);
+         mylen += len;
+         push(&stack, r);
+      } else if (j < 0) {
+         rerr = -1;
+      }
+log_printf(15, "cache_rw_func: tid=%d gid=%d START i=%d lo=" XOT " hi=" XOT " new_size=" XOT " rw_mode=%d rerr=%d\n", tid, id, i, lo, hi, new_size, cop->rw_mode, rerr);
+   }
+
+   if (stack_size(&stack) == 0) { //** Handled via ppages
+      log_printf(15, "seg=" XIDT " Nothing to do. Handled by the ppage code.  rerr=%d\n", segment_id(cop->seg), rerr);
+      return((rerr == 0) ? op_success_status : op_failure_status);
+   }
+
+//   hit_bytes = bpos - cop->boff;
+//   hit_bytes = total_bytes - hit_bytes;
+   if (new_size > 0) new_size++;
+
+   ngot = bpos - cop->boff;
+
+log_printf(15, "seg=" XIDT " new_size=" XOT " child_size=" XOT "\n", segment_id(cop->seg),new_size, segment_size(cop->seg));
+   //** Check for some input range errors
+   if (((new_size > segment_size(cop->seg)) && (cop->rw_mode == CACHE_READ)) || (rerr != 0)) {
+      log_printf(1, "ERROR  Read beyond EOF, bad range, or ppage_flush error!  rw_mode=%d rerr=%d new_size=" XOT " ssize=" XOT "\n", cop->rw_mode, rerr, new_size, segment_size(cop->seg));
+      while ((r = pop(&stack)) != NULL) {
+         free(r);
+      }
+      return(op_failure_status);
+   }
+
    //** Make space the cache miss info
    if (cop->n_iov > 100) {
       type_malloc_clear(cache_missed, void *, cop->n_iov);
@@ -1765,23 +2209,6 @@ op_status_t cache_rw_func(void *arg, int id)
       memset(cache_missed_table, 0, sizeof(cache_missed_table));
       cache_missed = cache_missed_table;
    }
-
-   //** Push the initial ranges onto the work queue
-   bpos = cop->boff;
-   new_size = 0;
-   for (i=0; i< cop->n_iov; i++) {
-      hi = cop->iov[i].offset + cop->iov[i].len - 1;
-      if (new_size < hi) new_size = hi;
-      r = cache_new_range(cop->iov[i].offset, hi, bpos, i);
-log_printf(15, "cache_rw_func: tid=%d gid=%d START i=%d lo=" XOT " hi=" XOT " new_size=" XOT " rw_mode=%d\n", tid, id, i, r->lo, r->hi, new_size, cop->rw_mode);
-      bpos += cop->iov[i].len;
-      push(&stack, r);
-   }
-   total_bytes = bpos - cop->boff;
-   if (new_size > 0) new_size++;
-
-   ngot = bpos - cop->boff;
-
 
    miss_time = 0;
    hit_bytes = 0;
@@ -1953,7 +2380,7 @@ op_generic_t *cache_read(segment_t *seg, data_attr_t *da, int n_iov, ex_iovec_t 
   cache_rw_op_t *cop;
   cache_segment_t *s = (cache_segment_t *)seg->priv;
 
-  type_malloc(cop, cache_rw_op_t, 1);
+  type_malloc_clear(cop, cache_rw_op_t, 1);
   cop->seg = seg;
   cop->da = da;
   cop->n_iov = n_iov;
@@ -1975,7 +2402,7 @@ op_generic_t *cache_write(segment_t *seg, data_attr_t *da, int n_iov, ex_iovec_t
   cache_rw_op_t *cop;
   cache_segment_t *s = (cache_segment_t *)seg->priv;
 
-  type_malloc(cop, cache_rw_op_t, 1);
+  type_malloc_clear(cop, cache_rw_op_t, 1);
   cop->seg = seg;
   cop->da = da;
   cop->n_iov = n_iov;
@@ -2161,6 +2588,8 @@ int cache_stats(cache_t *c, cache_stats_t *cs)
   cache_lock(c);
 
   *cs = c->stats;
+//log_printf(0, "core hit=" XOT "\n", cs->hit_bytes);
+//log_printf(0, "core miss=" XOT "\n", cs->miss_bytes);
 
   n = list_key_count(c->segments);
   it = list_iter_search(c->segments, NULL, 0);
@@ -2185,13 +2614,14 @@ int cache_stats(cache_t *c, cache_stats_t *cs)
           cs->hit_bytes += s->stats.hit_bytes;
           cs->miss_bytes += s->stats.miss_bytes;
           cs->unused_bytes += s->stats.unused_bytes;
-
-
           segment_unlock(seg2);
         } else {
           n++;
         }
      }
+//log_printf(0, "after cycle hit=" XOT "\n", cs->hit_bytes);
+//log_printf(0, "after cycle miss=" XOT "\n", cs->miss_bytes);
+
   }
 
   cache_unlock(c);
@@ -2230,6 +2660,9 @@ int cache_stats_print(cache_stats_t *cs, char *buffer, int *used, int nmax)
 
    d1 = cs->unused_bytes * 1.0 / (1024.0*1024.0*1024.0);
    n += append_printf(buffer, used, nmax, "Unused " XOT " bytes (%lf GiB)\n", cs->unused_bytes, d1);
+
+//log_printf(0, "hit=" XOT "\n", cs->hit_bytes);
+//log_printf(0, "miss=" XOT "\n", cs->miss_bytes);
 
    dt = cs->hit_time; dt = dt / (1.0*APR_USEC_PER_SEC);
    drate = cs->hit_bytes * 1.0 / (1024.0*1024.0*dt);
@@ -2277,6 +2710,8 @@ op_status_t segcache_truncate_func(void *arg, int id)
 
   //** Adjust the size
   segment_lock(cop->seg);
+  _cache_ppages_flush(cop->seg, cop->da); //** Flush any partial pages first
+ 
   old_size = s->total_size;
   s->total_size = cop->new_size;
   segment_unlock(cop->seg);
@@ -2296,8 +2731,13 @@ op_status_t segcache_truncate_func(void *arg, int id)
   err2 = gop_waitall(gop);
 
   segment_lock(cop->seg);
-  s->child_last_page = segment_size(s->child_seg) / s->page_size;
-  s->child_last_page *= s->page_size;
+  old_size = segment_size(s->child_seg);
+  if (old_size > 0) {
+     s->child_last_page = segment_size(s->child_seg) / s->page_size;
+     s->child_last_page *= s->page_size;
+  } else {
+     s->child_last_page = -1;
+  }
   segment_unlock(cop->seg);
 
   gop_free(gop, OP_DESTROY);
@@ -2404,7 +2844,7 @@ ex_off_t segcache_size(segment_t *seg)
   ex_off_t size;
 
   segment_lock(seg);
-  size = s->total_size;
+  size = (s->total_size > (s->ppage_max+1)) ? s->total_size : s->ppage_max + 1;
   segment_unlock(seg);
   return(size);
 }
@@ -2517,6 +2957,7 @@ int segcache_deserialize_text(segment_t *seg, ex_id_t id, exnode_exchange_t *exp
   char qname[512];
   inip_file_t *fd;
   ex_off_t n;
+  int i;
 
   //** Parse the ini text
   fd = inip_read_text(exp->text);
@@ -2569,9 +3010,26 @@ int segcache_deserialize_text(segment_t *seg, ex_id_t id, exnode_exchange_t *exp
 
   //** Determine the child segment size so we don't have to call it
   //** on R/W and risk getting blocked due to child grow operations
-  s->child_last_page = segment_size(s->child_seg) / s->page_size;
-  s->child_last_page *= s->page_size;
+  if (segment_size(s->child_seg) > 0) {
+     s->child_last_page = segment_size(s->child_seg) / s->page_size;
+     s->child_last_page *= s->page_size;
+  } else {
+     s->child_last_page = -1;  //** No pages
+  }
 log_printf(5, "seg=" XIDT " Initial child_last_page=" XOT " child_size=" XOT " page_size=" XOT "\n", segment_id(seg), s->child_last_page, segment_size(s->child_seg), s->page_size);
+
+  //** Make the partial pages table
+  s->n_ppages = (s->c != NULL) ? s->c->n_ppages : 0;
+  s->ppage_max = 0;
+  if (s->n_ppages > 0) {
+     type_malloc_clear(s->ppage, cache_partial_page_t, s->n_ppages);
+     type_malloc_clear(s->ppages_buffer, char, s->n_ppages*s->page_size);
+     for (i=0; i<s->n_ppages; i++) {
+       s->ppage[i].data = &(s->ppages_buffer[i*s->page_size]);
+       s->ppage[i].range_stack = new_stack();
+//log_printf(0, "RSTACK[%d]=%p\n", i, s->ppage[i].range_stack);
+     }
+  }
 
   //** and reinsert myself with the new ID
   if (s->c != NULL) {
@@ -2609,7 +3067,7 @@ int segcache_deserialize(segment_t *seg, ex_id_t id, exnode_exchange_t *exp)
   } else if (exp->type == EX_PROTOCOL_BUFFERS) {
      return(segcache_deserialize_proto(seg, id, exp));
   }
- 
+
   return(-1);
 }
 
@@ -2621,6 +3079,7 @@ void segcache_destroy(segment_t *seg)
 {
   cache_segment_t *s = (cache_segment_t *)seg->priv;
   op_generic_t *gop;
+  int i;
 
   //** Check if it's still in use
 log_printf(2, "segcache_destroy: seg->id=" XIDT " ref_count=%d\n", segment_id(seg), seg->ref_count);
@@ -2629,6 +3088,9 @@ log_printf(2, "segcache_destroy: seg->id=" XIDT " ref_count=%d\n", segment_id(se
 //log_printf(2, "CACHE-PTR seg=" XIDT " s->c=%p\n", segment_id(seg), s->c);
 
   if (seg->ref_count > 0) return;
+
+//log_printf(0, "Before close/flush seg=" XIDT "\n", segment_id(seg));
+CACHE_PRINT;
 
   //** Flag the segment as being removed
   segment_lock(seg);
@@ -2668,6 +3130,9 @@ log_printf(2, "segcache_destroy: seg->id=" XIDT " ref_count=%d\n", segment_id(se
   apr_thread_cond_destroy(s->flush_cond);
   free_stack(s->flush_stack, 0);
 
+//log_printf(0, "After flush/drop seg=" XIDT "\n", segment_id(seg));
+CACHE_PRINT;
+
   log_printf(5, "seg=" XIDT " Starting segment destruction\n", segment_id(seg));
 
   //** Clean up the list
@@ -2678,8 +3143,16 @@ log_printf(2, "segcache_destroy: seg->id=" XIDT " ref_count=%d\n", segment_id(se
   segment_destroy(s->child_seg);
 
   //** and finally the misc stuff
+  if (s->n_ppages > 0) {
+     for (i=0; i<s->n_ppages; i++) {
+        free_stack(s->ppage[i].range_stack, 1);
+     }
+     free(s->ppages_buffer);
+     free(s->ppage);
+  }
   apr_thread_mutex_destroy(seg->lock);
   apr_thread_cond_destroy(seg->cond);
+  apr_thread_cond_destroy(s->ppages_cond);
   apr_pool_destroy(seg->mpool);
 
   free(s->qname);
@@ -2709,6 +3182,7 @@ segment_t *segment_cache_create(void *arg)
   apr_thread_mutex_create(&(seg->lock), APR_THREAD_MUTEX_DEFAULT, seg->mpool);
   apr_thread_cond_create(&(seg->cond), seg->mpool);
   apr_thread_cond_create(&(s->flush_cond), seg->mpool);
+  apr_thread_cond_create(&(s->ppages_cond), seg->mpool);
 
   s->flush_stack = new_stack();
   s->tpc_unlimited = es->tpc_unlimited;
@@ -2716,6 +3190,7 @@ segment_t *segment_cache_create(void *arg)
   s->pages = list_create(0, &skiplist_compare_ex_off, NULL, NULL, NULL);
   s->c = es->cache;
   s->page_size = 64*1024;
+  s->n_ppages = 0;
 
 log_printf(2, "CACHE-PTR seg=" XIDT " s->c=%p\n", segment_id(seg), s->c);
 
@@ -2744,9 +3219,11 @@ log_printf(2, "CACHE-PTR seg=" XIDT " s->c=%p\n", segment_id(seg), s->c);
 
   if (s->c != NULL) { //** If no cache backend skip this  only used for temporary deseril/serial
      cache_lock(s->c);
+ CACHE_PRINT;
      log_printf(5, "Inserting seg=" XIDT "\n", segment_id(seg));
      list_insert(s->c->segments, &(segment_id(seg)), seg);
      s->c->fn.adding_segment(s->c, seg);
+ CACHE_PRINT;
      cache_unlock(s->c);
   }
 

@@ -872,6 +872,7 @@ cache_t *lru_cache_create(void *arg, data_attr_t *da, int timeout)
   c->max_bytes = 100*1024*1024;
   c->bytes_used = 0;
   c->dirty_fraction = 0.1;
+  cache->n_ppages = 0;
   cache->max_fetch_fraction = 0.1;
   cache->max_fetch_size = cache->max_fetch_fraction * c->max_bytes;
   cache->write_temp_overflow_used = 0;
@@ -934,6 +935,8 @@ cache_t *lru_cache_load(void *arg, data_attr_t *da, int timeout, char *fname, ch
   c->max_fetch_size = c->max_fetch_fraction * cp->max_bytes;
   c->write_temp_overflow_fraction = inip_get_double(fd, grp, "write_temp_overflow_fraction", c->write_temp_overflow_fraction);
   c->write_temp_overflow_size = c->write_temp_overflow_fraction * cp->max_bytes;
+  c->n_ppages = inip_get_integer(fd, grp, "ppages", c->n_ppages);
+
 log_printf(0, "COP size=" XOT "\n", c->write_temp_overflow_size);
 
   cache_unlock(c);

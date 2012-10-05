@@ -437,7 +437,7 @@ void lio_destroy(lio_config_t *lio)
 lio_config_t *lio_create_nl(char *fname, char *section, char *user)
 {
   lio_config_t *lio;
-  int sockets, cores, vcores;
+  int sockets, cores, vcores, n;
   char buffer[1024];
   char *cred_args[2];
   char *ctype, *stype;
@@ -477,7 +477,7 @@ lio_config_t *lio_create_nl(char *fname, char *section, char *user)
   lio->tpc_cpu_section = strdup(stype);
   lio->tpc_cpu = _lc_object_get(stype);
   if (lio->tpc_cpu == NULL) {  //** Need to load it
-     lio->tpc_cpu = thread_pool_create_context("CPU", 1, cores);
+     lio->tpc_cpu = thread_pool_create_context("CPU", cores, cores);
      if (lio->tpc_cpu == NULL) {
         log_printf(0, "Error loading tpc_cpu threadpool!  n=%d\n", cores);
      }
@@ -492,7 +492,10 @@ lio_config_t *lio_create_nl(char *fname, char *section, char *user)
   lio->tpc_unlimited_section = strdup(stype);
   lio->tpc_unlimited = _lc_object_get(stype);
   if (lio->tpc_unlimited == NULL) {  //** Need to load it
-     lio->tpc_unlimited = thread_pool_create_context("UNLIMITED", 1, cores);
+     n = 0.1 * cores;
+     if (n > 10) n = 10;
+     if (n <= 0) n = 1;
+     lio->tpc_unlimited = thread_pool_create_context("UNLIMITED", n, cores);
      if (lio->tpc_unlimited == NULL) {
         log_printf(0, "Error loading tpc_unlimited threadpool!  n=%d\n", cores);
      }

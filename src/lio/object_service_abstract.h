@@ -48,7 +48,6 @@ extern "C" {
 
 #define OS_PATH_MAX  32768    //** Max path length
 
-
 #define OS_FSCK_FINISHED  0   //** FSCK scan is finished
 
 #define OS_FSCK_GOOD            0 //** Nothing wrong with the object
@@ -59,11 +58,13 @@ extern "C" {
 #define OS_FSCK_REMOVE    1   //** Removes the problem object
 #define OS_FSCK_REPAIR    2   //** Repairs the problem object
 
-#define OS_OBJECT_FILE     1  //** File object or attribute
-#define OS_OBJECT_DIR      2  //** Directory object
-#define OS_OBJECT_LINK     4  //** Actually a linked object or attribute
-#define OS_OBJECT_VIRTUAL  8  //** A virtual attribute
-#define OS_OBJECT_ANY     15
+#define OS_OBJECT_FILE         1  //** File object or attribute
+#define OS_OBJECT_DIR          2  //** Directory object
+#define OS_OBJECT_SYMLINK      4  //** A symlinked object or attribute
+#define OS_OBJECT_HARDLINK     8  //** A hard linked object
+#define OS_OBJECT_BROKEN_LINK 16  //** Signifies a broken link
+#define OS_OBJECT_VIRTUAL     32  //** A virtual attribute
+#define OS_OBJECT_ANY         63
 
 #define OS_MODE_READ_IMMEDIATE  0
 #define OS_MODE_WRITE_IMMEDIATE 1
@@ -122,7 +123,8 @@ struct object_service_fn_s {
   op_generic_t *(*remove_regex_object)(object_service_fn_t *os, creds_t *creds, os_regex_table_t *path, os_regex_table_t *object_regex, int obj_types, int recurse_depth);
   op_generic_t *(*regex_object_set_multiple_attrs)(object_service_fn_t *os, creds_t *creds, char *id, os_regex_table_t *path, os_regex_table_t *object_regex, int object_types, int recurse_depth, char **key, void **val, int *v_size, int n);
   op_generic_t *(*move_object)(object_service_fn_t *os, creds_t *creds, char *src_path, char *dest_path);
-  op_generic_t *(*link_object)(object_service_fn_t *os, creds_t *creds, char *src_path, char *dest_path, char *id);
+  op_generic_t *(*symlink_object)(object_service_fn_t *os, creds_t *creds, char *src_path, char *dest_path, char *id);
+  op_generic_t *(*hardlink_object)(object_service_fn_t *os, creds_t *creds, char *src_path, char *dest_path, char *id);
 
   os_object_iter_t *(*create_object_iter)(object_service_fn_t *os, creds_t *creds, os_regex_table_t *path, os_regex_table_t *obj_regex, int object_types, os_regex_table_t *attr, int recurse_dpeth, os_attr_iter_t **it, int v_max);
   os_object_iter_t *(*create_object_iter_alist)(object_service_fn_t *os, creds_t *creds, os_regex_table_t *path, os_regex_table_t *obj_regex, int object_types, int recurse_depth, char **key, void **val, int *v_size, int n_keys);
@@ -133,8 +135,8 @@ struct object_service_fn_s {
   op_generic_t *(*close_object)(object_service_fn_t *os, os_fd_t *fd);
   op_generic_t *(*abort_open_object)(object_service_fn_t *os, op_generic_t *gop);
 
-  op_generic_t *(*link_attr)(object_service_fn_t *os, creds_t *creds, os_fd_t *fd_src, char *key_src, os_fd_t *fd_dest, char *key_dest);
-  op_generic_t *(*link_multiple_attrs)(object_service_fn_t *os, creds_t *creds, os_fd_t *fd_src, char **key_src, os_fd_t *fd_dest, char **key_dest, int n);
+  op_generic_t *(*symlink_attr)(object_service_fn_t *os, creds_t *creds, char *src_path, char *key_src, os_fd_t *fd_dest, char *key_dest);
+  op_generic_t *(*symlink_multiple_attrs)(object_service_fn_t *os, creds_t *creds, char **src_path, char **key_src, os_fd_t *fd_dest, char **key_dest, int n);
 
   op_generic_t *(*get_attr)(object_service_fn_t *os, creds_t *creds, os_fd_t *fd, char *key, void **val, int *v_size);
   op_generic_t *(*set_attr)(object_service_fn_t *os, creds_t *creds, os_fd_t *fd, char *key, void *val, int v_size);
@@ -170,7 +172,8 @@ typedef object_service_fn_t *(os_create_t)(service_manager_t *authn_sm, service_
 #define os_remove_regex_object(os, c, path, obj_regex, obj_types, depth) (os)->remove_regex_object(os, c, path, obj_regex, obj_types, depth)
 #define os_regex_object_set_multiple_attrs(os, c, id, path, obj_regex, otypes, depth, key, val, v_size, n) (os)->regex_object_set_multiple_attrs(os, c, id, path, obj_regex, otypes, depth, key, val, v_size, n)
 #define os_move_object(os, c, src_path, dest_path) (os)->move_object(os, c, src_path, dest_path)
-#define os_link_object(os, c, src_path, dest_path, id) (os)->link_object(os, c, src_path, dest_path, id)
+#define os_symlink_object(os, c, src_path, dest_path, id) (os)->symlink_object(os, c, src_path, dest_path, id)
+#define os_hardlink_object(os, c, src_path, dest_path, id) (os)->hardlink_object(os, c, src_path, dest_path, id)
 
 #define os_create_object_iter(os, c, path, obj_regex, otypes, attr, depth, it_attr, v_max) (os)->create_object_iter(os, c, path, obj_regex, otypes, attr, depth, it_attr, v_max)
 #define os_create_object_iter_alist(os, c, path, obj_regex, otypes, depth, key, val, v_size, n_keys) (os)->create_object_iter_alist(os, c, path, obj_regex, otypes, depth, key, val, v_size, n_keys)
@@ -181,8 +184,8 @@ typedef object_service_fn_t *(os_create_t)(service_manager_t *authn_sm, service_
 #define os_close_object(os, fd) (os)->close_object(os, fd)
 #define os_abort_open_object(os, gop) (os)->abort_open_object(os, gop)
 
-#define os_link_attr(os, c, fd_src, key_src, fd_dest, key_dest) (os)->link_attr(os, c, fd_src, key_src, fd_dest, key_dest)
-#define os_link_multiple_attrs(os, c, fd_src, key_src, fd_dest, key_dest, n) (os)->link_multiple_attrs(os, c, fd_src, key_src, fd_dest, key_dest, n)
+#define os_symlink_attr(os, c, src_path, key_src, fd_dest, key_dest) (os)->symlink_attr(os, c, src_path, key_src, fd_dest, key_dest)
+#define os_symlink_multiple_attrs(os, c, src_path, key_src, fd_dest, key_dest, n) (os)->symlink_multiple_attrs(os, c, src_path, key_src, fd_dest, key_dest, n)
 
 #define os_get_attr(os, c, fd, key, val, v_size) (os)->get_attr(os, c, fd, key, val, v_size)
 #define os_set_attr(os, c, fd, key, val, v_size) (os)->set_attr(os, c, fd, key, val, v_size)

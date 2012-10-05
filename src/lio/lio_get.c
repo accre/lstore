@@ -101,7 +101,7 @@ int main(int argc, char **argv)
   //** Get the exnode
   v_size = -tuple.lc->max_attr;
   err = lioc_get_attr(tuple.lc, tuple.creds, tuple.path, NULL, "system.exnode", (void **)&ex_data, &v_size);
-  if (err != OP_STATE_SUCCESS) {
+  if (v_size <= 0) {
      info_printf(lio_ifd, 0, "Failed retrieving exnode!  path=%s\n", tuple.path);
      goto finished;
   }

@@ -39,6 +39,11 @@ http://www.accre.vanderbilt.edu
 #include "ex3_compare.h"
 #include "thread_pool.h"
 
+//******************
+cache_t *global_cache;
+//******************
+
+
 atomic_int_t amp_dummy = -1000;
 
 typedef struct {
@@ -51,6 +56,75 @@ op_generic_t *gop;
 } amp_prefetch_op_t;
 
 int _amp_logging = 15;  //** Kludge to flip the low level loggin statements on/off
+int _amp_slog = 15;
+
+//*************************************************************************
+// print_cache_table
+//*************************************************************************
+
+void print_cache_table(int dolock)
+{
+  cache_t *c = global_cache;
+  cache_amp_t *cp = (cache_amp_t *)c->fn.priv;
+//  cache_segment_t *s;
+  cache_page_t *p, *p0;
+//  page_amp_t *lp;
+  Stack_ele_t *ele;
+  int n;
+  int ll = 1;
+
+  if (dolock) cache_lock(c);
+
+  log_printf(ll, "Checking table.  n_pages=%d top=%p bottom=%p\n", stack_size(cp->stack), cp->stack->top, cp->stack->bottom); flush_log();
+  if (cp->stack->top != NULL) {
+     p = (cache_page_t *)cp->stack->top->data;
+     log_printf(11, "top: p=%p   p->seg=" XIDT " p->offset=" XOT "\n", p, segment_id(p->seg), p->offset);
+  }
+  if (cp->stack->bottom != NULL) {
+     p = (cache_page_t *)cp->stack->bottom->data;
+     log_printf(11, "bottom: p=%p   p->seg=" XIDT " p->offset=" XOT "\n", p, segment_id(p->seg), p->offset);
+  }
+
+  n = 0;
+
+  if ( cp->stack->top == NULL) {
+     if (cp->stack->bottom != NULL) {
+        log_printf(ll, "ERROR: top=NULL bottom=%p\n", cp->stack->bottom); flush_log();
+     }
+     goto finished;
+  }
+
+  move_to_top(cp->stack);
+  ele = get_ptr(cp->stack);
+  p = (cache_page_t *)get_stack_ele_data(ele);
+  p0 = p;
+  n++;
+  move_down(cp->stack);
+  while ((ele = get_ptr(cp->stack)) != NULL) {
+    n++;
+    p = (cache_page_t *)get_stack_ele_data(ele);
+    if (p0->seg != p->seg) {
+       log_printf(ll, "ERROR p0->seg=" XIDT " p->seg=" XIDT " n=%d\n", segment_id(p0->seg), segment_id(p->seg), n); flush_log();
+    }
+    move_down(cp->stack);
+  }
+
+  p0 = p;
+  p = (cache_page_t *)cp->stack->bottom->data;
+  if (p0 != p) {
+     log_printf(ll, "ERROR bottom(%p) != last page(%p) n=%d\n", p, p0, n); flush_log();
+     log_printf(ll, "ERROR bottom->seg=" XIDT " last->seg=" XIDT "\n", segment_id(p->seg), segment_id(p0->seg));
+     log_printf(ll, "ERROR bottom->off=" XOT " last->off=" XOT "\n", p->offset, p0->offset);
+  }
+
+finished:
+  if (n != stack_size(cp->stack)) {
+    log_printf(ll, "ERROR:  missing pages!  n=%d stack=%d\n", n, stack_size(cp->stack)); flush_log();
+  }
+
+  if (dolock) cache_unlock(c);
+
+}
 
 //*************************************************************************
 // _amp_max_bytes - REturns the max amount of space to use
@@ -570,7 +644,7 @@ void _amp_prefetch(segment_t *seg, ex_off_t lo, ex_off_t hi, int start_prefetch,
   child_size = segment_size(s->child_seg);
 
 tid = atomic_thread_id;
-log_printf(_amp_logging, "tid=%d START seg=" XIDT " lo=" XOT " hi=" XOT " child_size=" XOT "\n", tid, segment_id(seg), lo, hi, child_size);
+log_printf(_amp_slog, "tid=%d START seg=" XIDT " lo=" XOT " hi=" XOT " child_size=" XOT "\n", tid, segment_id(seg), lo, hi, child_size);
 
 //  if (child_size < lo) return;
 //  if (child_size < hi) hi = child_size;
@@ -579,18 +653,19 @@ log_printf(_amp_logging, "tid=%d START seg=" XIDT " lo=" XOT " hi=" XOT " child_
      log_printf(15, "OOPS read beyond EOF\n");
      return;
   }
-  if (child_size <= hi) {
-     hi = child_size-1;
-     log_printf(15, "OOPS read beyond EOF  truncating hi=child\n");
-  }
-
-  if (s->c->max_fetch_size <= cp->prefetch_in_process) return;  //** To much prefetching
 
   nbytes = hi + s->page_size - lo;
   if (nbytes < cp->min_prefetch_size) {
 log_printf(_amp_logging, " SMALL prefetch!  nbytes=" XOT "\n", nbytes);
      hi = lo + cp->min_prefetch_size;
   }
+
+  if (child_size <= hi) {
+     hi = child_size-1;
+     log_printf(15, "OOPS read beyond EOF  truncating hi=child\n");
+  }
+
+  if (s->c->max_fetch_size <= cp->prefetch_in_process) return;  //** To much prefetching
 
   //** To much fetching going on so truncate the fetch
   dn = s->c->max_fetch_size - cp->prefetch_in_process;
@@ -605,7 +680,7 @@ log_printf(_amp_logging, " SMALL prefetch!  nbytes=" XOT "\n", nbytes);
   hi_row = hi / s->page_size; hi_row = hi_row * s->page_size;
   nbytes = hi_row + s->page_size - lo_row;
 
-log_printf(_amp_logging, "seg=" XIDT " max_fetch=" XOT " prefetch_in_process=" XOT " nbytes=" XOT "\n", segment_id(seg), s->c->max_fetch_size, cp->prefetch_in_process, nbytes);
+log_printf(_amp_slog, "seg=" XIDT " max_fetch=" XOT " prefetch_in_process=" XOT " nbytes=" XOT "\n", segment_id(seg), s->c->max_fetch_size, cp->prefetch_in_process, nbytes);
 
   cp->prefetch_in_process += nbytes;  //** Adjust the prefetch size
 
@@ -771,12 +846,13 @@ log_printf(_amp_logging, "seg=" XIDT " SKIPPED offset=" XOT "\n", segment_id(p->
      }
 
      if (rw_mode == CACHE_WRITE) {  //** Write update so return
+//     if ((rw_mode == CACHE_WRITE) && (request_len > s->page_size)) {  //** Write update so return
         lp->bit_fields |= CAMP_ACCESSED;
         cache_unlock(c);
         return(0);
      }
 
-     //** IF made it to here we are doing a READ access update
+     //** IF made it to here we are doing a READ access update or a small write
      psize = s->page_size;
      ps = NULL;
      //** Check if we need to do a prefetch
@@ -799,7 +875,7 @@ log_printf(_amp_logging, "seg=" XIDT " SKIPPED offset=" XOT "\n", segment_id(p->
 
         if ((hi - last_offset - psize + 1) > s->c->max_fetch_size) hi = last_offset + psize + s->c->max_fetch_size;
 lo = last_offset + psize;
-log_printf(_amp_logging, "seg=" XIDT " HIT_TAG offset=" XOT " last_offset=" XOT " lo=" XOT " hi=" XOT " prefetch_pages=%d\n", segment_id(p->seg), p->offset, lp->stream_offset, lo, hi, prefetch_pages);
+log_printf(_amp_slog, "seg=" XIDT " HIT_TAG offset=" XOT " last_offset=" XOT " lo=" XOT " hi=" XOT " prefetch_pages=%d\n", segment_id(p->seg), p->offset, lp->stream_offset, lo, hi, prefetch_pages);
         _amp_prefetch(p->seg, last_offset + psize, hi, prefetch_pages, trigger_distance);
      } else {
         ps = _amp_stream_get(c, p->seg, p->offset, -1, &pse);
@@ -808,7 +884,7 @@ log_printf(_amp_logging, "seg=" XIDT " HIT_TAG offset=" XOT " last_offset=" XOT 
      if (pse != NULL) {
         if ((p->offset == pse->last_offset) && ((lp->bit_fields & CAMP_OLD) == 0)) { //** Last in chain so increase the readahead size
            pse->prefetch_size += request_len / psize;
-log_printf(_amp_logging, "seg=" XIDT " LAST offset=" XOT " prefetch_size=%d trigger=%d\n", segment_id(p->seg), p->offset, pse->prefetch_size, pse->trigger_distance);
+log_printf(_amp_slog, "seg=" XIDT " LAST offset=" XOT " prefetch_size=%d trigger=%d\n", segment_id(p->seg), p->offset, pse->prefetch_size, pse->trigger_distance);
         }
      }
 
@@ -840,7 +916,7 @@ int _amp_free_mem(cache_t *c, segment_t *pseg, ex_off_t bytes_to_free)
   total_bytes = 0;
   err = 0;
 
-log_printf(15, "START seg=" XIDT " bytes_to_free=" XOT " bytes_used=" XOT " stack_size=%d\n", segment_id(pseg), bytes_to_free, cp->bytes_used, stack_size(cp->stack));
+log_printf(_amp_logging, "START seg=" XIDT " bytes_to_free=" XOT " bytes_used=" XOT " stack_size=%d\n", segment_id(pseg), bytes_to_free, cp->bytes_used, stack_size(cp->stack));
 
   move_to_bottom(cp->stack);
   ele = get_ptr(cp->stack);
@@ -881,7 +957,7 @@ log_printf(_amp_logging, "amp_free_mem: freeing page seg=" XIDT " p->offset=" XO
 
   cp->bytes_used -= total_bytes;
   pending_bytes = bytes_to_free - total_bytes;
-log_printf(15, "END seg=" XIDT " bytes_to_free=" XOT " pending_bytes=" XOT " bytes_used=" XOT "\n", segment_id(pseg), bytes_to_free, pending_bytes, cp->bytes_used);
+log_printf(_amp_logging, "END seg=" XIDT " bytes_to_free=" XOT " pending_bytes=" XOT " bytes_used=" XOT "\n", segment_id(pseg), bytes_to_free, pending_bytes, cp->bytes_used);
 
   return(pending_bytes);
 }
@@ -1241,6 +1317,9 @@ cache_page_t *amp_create_empty_page(cache_t *c, segment_t *seg, int doblock)
 
   cache_lock(c);
 
+log_printf(15, "new page req seg=" XIDT " doblock=%d\n", segment_id(seg), doblock);
+CACHE_PRINT;
+
   qend = 0;
   do {
      max_bytes = _amp_max_bytes(c);
@@ -1254,6 +1333,9 @@ log_printf(15, "amp_create_empty_page: max_bytes=" XOT " used=" XOT " bytes_to_f
   } while ((doblock==1) && (bytes_to_free>0));
 
   if (bytes_to_free <= 0) p = _amp_new_page(c, seg);
+
+log_printf(15, "END seg=" XIDT " doblock=%d\n", segment_id(seg), doblock);
+CACHE_PRINT;
 
   cache_unlock(c);
 
@@ -1277,7 +1359,7 @@ void amp_update(cache_t *c, segment_t *seg, int rw_mode, ex_off_t lo, ex_off_t h
 
   if ((miss_info == NULL) || (rw_mode != CACHE_READ)) return;  //** Only used on a missed READ
 
-log_printf(_amp_logging, "seg=" XIDT " initial lo=" XOT " hi=" XOT "\n", segment_id(seg), lo, hi);
+log_printf(_amp_slog, "seg=" XIDT " initial lo=" XOT " hi=" XOT " miss_info=%p\n", segment_id(seg), lo, hi, miss_info);
 
   lo = lo / s->page_size; npages = lo; lo = lo * s->page_size;
   hi = hi / s->page_size; npages = hi - npages + 1; hi = hi * s->page_size;
@@ -1294,7 +1376,7 @@ log_printf(_amp_logging, "seg=" XIDT " initial lo=" XOT " hi=" XOT "\n", segment
   offset = lo - s->page_size;
   pps = _amp_stream_get(c, seg, offset, -1, NULL);
   prevp = (pps == NULL) ? 0 : pps->prefetch_size;
-log_printf(_amp_logging, "seg=" XIDT " hi=" XOT " pps=%p prevp=%d npages=%d lo=" XOT " hi=" XOT "\n", segment_id(seg), hi, pps, prevp, npages, lo, hi);
+log_printf(_amp_slog, "seg=" XIDT " hi=" XOT " pps=%p prevp=%d npages=%d lo=" XOT " hi=" XOT "\n", segment_id(seg), hi, pps, prevp, npages, lo, hi);
   ps = _amp_stream_get(c, seg, hi, nbytes, NULL);
   ps->prefetch_size = prevp + npages;
   if (ps->prefetch_size > as->start_apt_pages) {
@@ -1308,13 +1390,13 @@ log_printf(_amp_logging, "seg=" XIDT " hi=" XOT " pps=%p prevp=%d npages=%d lo="
           lp2 = (page_amp_t *)p2->priv;
           lp2->bit_fields |= CAMP_TAG;
           lp2->stream_offset = ps->last_offset;
-log_printf(_amp_logging, "seg=" XIDT " SET_TAG offset=" XOT " last=" XOT "\n", segment_id(seg), p2->offset, lp2->stream_offset);
+log_printf(_amp_slog, "seg=" XIDT " SET_TAG offset=" XOT " last=" XOT "\n", segment_id(seg), p2->offset, lp2->stream_offset);
         }
      }
 
   }
 
-log_printf(_amp_logging, "seg=" XIDT " MODIFY ps=%p last_offset=" XOT " prefetch=%d trigger=%d\n", segment_id(seg), ps, ps->last_offset, ps->prefetch_size, ps->trigger_distance);
+log_printf(_amp_slog, "seg=" XIDT " MODIFY ps=%p last_offset=" XOT " prefetch=%d trigger=%d\n", segment_id(seg), ps, ps->last_offset, ps->prefetch_size, ps->trigger_distance);
 
   //** and load the extra pages
 
@@ -1342,7 +1424,7 @@ void amp_miss_tag(cache_t *c, segment_t *seg, int mode, ex_off_t lo, ex_off_t hi
 
   if (mode == CACHE_READ) {
     if (*miss != NULL) return;
-log_printf(_amp_logging, "seg=" XIDT "  miss set offset=" XOT "\n", segment_id(seg), missing_offset);
+log_printf(_amp_slog, "seg=" XIDT "  miss set offset=" XOT "\n", segment_id(seg), missing_offset);
 
     type_malloc(off, ex_off_t, 1);
     *off = missing_offset;
@@ -1469,6 +1551,7 @@ cache_t *amp_cache_create(void *arg, data_attr_t *da, int timeout)
   c->dirty_fraction = 0.1;
   c->async_prefetch_threshold = 256*1024*1024;
   c->min_prefetch_size = 1024*1024;
+  cache->n_ppages = 0;
   cache->max_fetch_fraction = 0.1;
   cache->max_fetch_size = cache->max_fetch_fraction * c->max_bytes;
   cache->write_temp_overflow_used = 0;
@@ -1517,6 +1600,8 @@ cache_t *amp_cache_load(void *arg, data_attr_t *da, int timeout, char *fname, ch
   c = amp_cache_create(arg, da, timeout);
   cp = (cache_amp_t *)c->fn.priv;
 
+global_cache = c;
+
   //** Parse the ini text
   fd = inip_read(fname);
 
@@ -1534,6 +1619,8 @@ cache_t *amp_cache_load(void *arg, data_attr_t *da, int timeout, char *fname, ch
   c->max_fetch_size = c->max_fetch_fraction * cp->max_bytes;
   c->write_temp_overflow_fraction = inip_get_double(fd, grp, "write_temp_overflow_fraction", c->write_temp_overflow_fraction);
   c->write_temp_overflow_size = c->write_temp_overflow_fraction * cp->max_bytes;
+  c->n_ppages = inip_get_integer(fd, grp, "ppages", c->n_ppages);
+
   cache_unlock(c);
 
   inip_destroy(fd);

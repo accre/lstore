@@ -306,6 +306,8 @@ data_block_t *data_block_create(data_service_fn_t *ds)
   b->cap = ds_cap_set_create(b->ds);
   generate_ex_id(&(b->id));
 
+log_printf(15, "b->id=" XIDT " ref_count=%d b=%p\n", b->id, b->ref_count, b);
+
   return(b);
 }
 
@@ -317,7 +319,7 @@ void data_block_destroy(data_block_t *b)
 {
   if (b == NULL) return;
 
-log_printf(15, "data_block_destroy: b->id=" XIDT " ref_count=%d\n", b->id, b->ref_count);
+log_printf(15, "b->id=" XIDT " ref_count=%d\n", b->id, b->ref_count);
 
   if (b->ref_count > 0) return;
 
@@ -325,6 +327,7 @@ log_printf(15, "data_block_destroy: b->id=" XIDT " ref_count=%d\n", b->id, b->re
 
   ds_cap_set_destroy(b->ds, b->cap, 1);
   if (b->rid_key != NULL) free(b->rid_key);
+log_printf(15, "b->id=" XIDT " ref_count=%d p=%p\n", b->id, b->ref_count, b);
   free(b);
 }
 
