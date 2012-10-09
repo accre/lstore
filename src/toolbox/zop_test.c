@@ -28,6 +28,8 @@ http://www.accre.vanderbilt.edu
 */
 
 #include "net_zsock.h"
+#include "zsock_config.h"
+#include "zsock_op.h"
 
 //**********************************************************************************
 // free_tbuffer - Destroy allocation. It might be conflicted with Alan's codes if 
@@ -52,7 +54,7 @@ int main(int argc, char **argv)
     int c, port, sock_type, num;
 
     if (argc < 11) {
-	fprintf(stdout, "Command: ./netzmq_test -h hostname -p port -t transport -m mode -n num_msg ZSOCK_COMMON_OPTIONS\n");
+	fprintf(stdout, "Command: ./zop_test -h hostname -p port -t transport -m mode -n num_msg ZSOCK_COMMON_OPTIONS\n");
 	fprintf(stdout, "\t -m: zmq transport mode\n");
 	fprintf(stdout, "\t   0: REQ - REP\n");
 	fprintf(stdout, "\t   1: DEALER - ROUTER\n");
@@ -112,11 +114,13 @@ int main(int argc, char **argv)
 
     //** Initializes apr 
     apr_initialize();
-    
-    //** Create netstream    
-    NetStream_t *ns_client, *ns_svr;
-    ns_client = new_netstream();
+   
+    //** Create zsock_op server/netstream    
+    NetStream_t *ns_svr;
     ns_svr = new_netstream();
+
+    NetStream_t *ns_client;
+    ns_client = new_netstream();
 
     //mlog_load("log.cfg");
 
@@ -151,29 +155,6 @@ int main(int argc, char **argv)
     if (option->sub_num > 0)
 	option->subscribe = (char **)malloc(option->sub_num * sizeof(char*));
     option->subscribe[0] = "Hello";
-    //option->unsubscribe[0] = "test";
-/*  set_flag(option->flag, SNDHWM);
-    set_flag(option->flag, RCVHWM);
-    set_flag(option->flag, AFFINITY);
-    set_flag(option->flag, RATE);
-    set_flag(option->flag, RECOVERY_IVL);
-    set_flag(option->flag, SNDBUF);
-    set_flag(option->flag, RCVBUF);
-    set_flag(option->flag, RECONNECT_IVL);
-    set_flag(option->flag, RECONNECT_IVL_MAX);
-    set_flag(option->flag, BACKLOG);
-    set_flag(option->flag, MAXMSGSIZE);
-    set_flag(option->flag, MULTICAST_HOPS);
-    set_flag(option->flag, RCVTIMEO);
-    set_flag(option->flag, SNDTIMEO);
-    set_flag(option->flag, IPV4ONLY);
- //   set_flag(option->flag, ROUTER_BEHAVIOR);
-    set_flag(option->flag, HWM);
-
-    set_flag(option->flag, SUBSCRIBE);
-    set_flag(option->flag, UNSUBSCRIBE);
-    set_flag(option->flag, IDENTITY);
-*/
     
     if (sock_type == 5) {
         log_printf(0, "Working on ZMQ SUB:PUB mode\n"); 
@@ -194,22 +175,34 @@ int main(int argc, char **argv)
             read_netstream(ns_svr, &rcvbuf[i], 0, 1, 0);
         }
     } else if (sock_type == 0) {
+
 	log_printf(0, "Working on ZMQ REQ:REP mode\n");
         set_flag(option->flag, IDENTITY); 
-        ns_config_zsock(ns_client, ZMQ_REQ, transport, option); 
-        ns_config_zsock(ns_svr, ZMQ_REP, transport, NULL);
-        net_connect(ns_client, hostname, port, 0);
+	
+	//Creates zsock client	
+	zsock_context_t *zc;
+	zc = zsock_create_context();
+        zsock_load_config(zc, "zsock.cfg", "zsock");
+ 
+	ns_config_zsock(ns_svr, ZMQ_REP, transport, NULL);
         zsock_bind(ns_svr->sock, hostname, port);
 
-        for (i = 0; i < num; i++) {
+	for (i = 0; i < num; i++) {
             fprintf(stdout, "[Requester sending data ...]\n");
-            write_netstream(ns_client, &sndbuf[i], 1, 2, 0);
-            fprintf(stdout, "[Responder receiving data ...]\n");
+	    zsock_op_t zop;
+            init_zsock_op(zc, &zop);
+            set_zsock_write_op(&zop, hostname, port, &sndbuf[i], 1, 2, 0);
+            op_generic_t *gop = zsock_get_gop(&zop);
+	    gop_set_exec_mode(gop, OP_EXEC_DIRECT);
+	    gop_start_execution(gop);
+	    gop_waitany(gop);
+
+//            gop_free(gop, OP_FINALIZE);
+ //     	    sleep(1); 
+            
+	    fprintf(stdout, "[Responder receiving data ...]\n");
+ 	    fflush(stdout);
             read_netstream(ns_svr, &rcvbuf[i], 0, 1, 0);
-	    fprintf(stdout, "[Responder sending data ...]\n");
-	    write_netstream(ns_svr, &rcvbuf[i], 0, 1, 0);
-	    fprintf(stdout, "[Requester receiving data ...]\n"); 
-	    read_netstream(ns_client, &sndbuf[i], 0, 1, 0);
         }
     } else if (sock_type == 1) { 
 	log_printf(0, "Working on ZMQ DEALER:ROUTER mode\n");
@@ -334,8 +327,8 @@ int main(int argc, char **argv)
     free(option);
     
     free_tbuffer(rcvbuf, num);
-    if (sock_type != 4 && sock_type != 3)
-	free_tbuffer(sndbuf, num);
+//    if (sock_type != 4 && sock_type != 3)
+//	free_tbuffer(sndbuf, num);
     tbuffer_destroy(sndbuf);
     tbuffer_destroy(rcvbuf);
 

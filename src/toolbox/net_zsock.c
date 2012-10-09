@@ -116,7 +116,7 @@ long int zsock_write(net_sock_t *sock, tbuffer_t *buf, size_t bpos, size_t size,
     zmsg_dump(msg); 
     zmsg_send(&msg, zsock->socket);
 
-    return 0;
+    return size;
 }
 
 //************************************************************************
@@ -170,6 +170,76 @@ long int zsock_read(net_sock_t *sock, tbuffer_t *buf, size_t bpos, size_t size, 
     zmsg_destroy(&msg);
 
     return total_bytes;
+}
+
+//***********************************************************************
+// zsock_default_opt 
+//***********************************************************************
+
+void zsock_default_opt(zsocket_opt_t *option)
+{
+    option->flag = 0;
+    option->rate = 100;
+    option->multicast_hops = 1;
+    option->identity = NULL; //** This is a string instead of memory bytes
+ 
+    option->router_behavior = 0;
+    option->sndhwm = 1000;
+    option->rcvhwm = 1000;
+    option->affinity = 0;
+    option->recovery_ivl = 1;
+    option->sndbuf = 0;
+    option->rcvbuf = 0;
+    option->reconnect_ivl = 100;
+    option->reconnect_ivl_max = 0;
+    option->backlog = 100;
+    option->maxmsgsize = -1;
+    option->rcvtimeo = -1;
+    option->sndtimeo = -1;
+    option->ipv4only = 1;
+    option->hwm = 1;
+    option->sub_num = 0;
+    option->unsub_num = 0;
+    option->subscribe = NULL; 
+    option->unsubscribe = NULL; 
+}
+
+//************************************************************************
+// zsock_option_create - Creates a new zsocket option
+//************************************************************************
+
+zsocket_opt_t *zsock_option_create()
+{
+    zsocket_opt_t *option;
+    type_malloc(option, zsocket_opt_t, 1);
+    zsock_default_opt(option);
+    return option;
+}
+
+//************************************************************************
+// zsock_option_destroy - Destroys zsocket option  
+//************************************************************************
+
+void zsock_option_destroy(zsocket_opt_t *option)
+{
+    int i;
+    if (option->sub_num > 0) {
+        for (i = 0; i < option->sub_num; i++) {
+            free(option->subscribe[i]);
+        }
+        free(option->subscribe);
+    }
+
+    if (option->unsub_num > 0) {
+        for (i = 0; i < option->unsub_num; i++) {
+            free(option->unsubscribe[i]);
+        }
+        free(option->unsubscribe);
+    }
+
+    free(option->identity);
+
+    free(option);
 }
 
 //************************************************************************ 

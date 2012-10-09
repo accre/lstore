@@ -86,7 +86,7 @@ enum {
     IDENTITY = 0x080000     
 };
 
-//** Contains zmq socket options
+//** Contains zmq socket options, not all opts
 typedef struct {
     unsigned long int flag; //** Flag to indicate which options needs to be set
     int sndhwm;
@@ -142,6 +142,9 @@ int _zsock_act(net_sock_t *sock, const char *hostname, int port, Net_timeout_t t
 int zsock_connect(net_sock_t *sock, const char *hostname, int port, Net_timeout_t timeout);
 int zsock_bind(net_sock_t *sock, char *hostname, int port);
 void ns_config_zsock(NetStream_t *ns, int type, char *prtcl, zsocket_opt_t *option);
+void zsock_default_opt(zsocket_opt_t *option);
+zsocket_opt_t *zsock_option_create();
+void zsock_option_destroy(zsocket_opt_t *option);
 
 #ifdef __cplusplus
 }
