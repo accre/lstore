@@ -89,8 +89,9 @@ ex_header_t *exnode_get_header(exnode_t *ex) { return(&(ex->header)); }
 
 exnode_t *exnode_create()
 {
-  exnode_t *ex = (exnode_t *)malloc(sizeof(exnode_t));
-  assert(ex != NULL);
+  exnode_t *ex;
+
+  type_malloc_clear(ex, exnode_t, 1);
 
   ex_header_init(&(ex->header));
 

@@ -143,90 +143,6 @@ ex_off_t _amp_max_bytes(cache_t *c)
 //      NOTE: Assumes cache is locked!
 //*************************************************************************
 
-amp_page_stream_t *NEW_amp_stream_get(cache_t *c, segment_t *seg, ex_off_t offset, ex_off_t nbytes, amp_page_stream_t **pse_call)
-{
-  cache_segment_t *s = (cache_segment_t *)seg->priv;
-  amp_stream_table_t *as = (amp_stream_table_t *)s->cache_priv;
-  amp_page_stream_t *ps, *pse, *pss;
-  list_iter_t it;
-  ex_off_t *poff, dn, pos, lo_offset;
-  int i, j;
-  int n = 10;
-  ex_off_t dropping_offsets[n];
-
-  //** Find the last in the chain
-  it = list_iter_search(as->streams, &offset, 0);
-  list_next(&it, (list_key_t **)&poff, (list_data_t **)&ps);
-  pse = ps;  pss = ps;
-  i=0;
-  if (ps != NULL) { lo_offset = ps->last_offset - ps->nbytes; }
-  while ((ps != NULL) && (i<n)) {
-    dn = ps->last_offset - pos;
-    if (dn > ps->nbytes) {
-log_printf(_amp_logging, "offset=" XOT " last_offset=" XOT " prefetch=%d trigger=%d\n", offset, pse->last_offset, pse->prefetch_size, pse->trigger_distance);
-       break;
-    }
-
-    dn = ps->last_offset - ps->nbytes;
-    if (dn < lo_offset) lo_offset = dn;
-    dropping_offsets[i] = ps->last_offset;  i++;
-    pse = ps;
-    pos = ps->last_offset + s->page_size;
-    list_next(&it, (list_key_t **)&poff, (list_data_t **)&ps);
-  }
-
-  if (pse != NULL) {
-     i--;  //** Last index holds actual pse
-
-     for (j=0; j<i; j++) {  //** Delete the interior chain
-log_printf(_amp_logging, " dropping last=" XOT "\n", dropping_offsets[j]);
-        list_remove(as->streams, &(dropping_offsets[j]), NULL);
-     }
-
-//if (pse != pss) {
-//dn = pse->last_offset - pss->last_offset + 1 + pss->nbytes;
-dn = pse->last_offset - lo_offset + 1;
-log_printf(_amp_logging, " pse->last=" XOT " pse->nbytes=" XOT " pss->last=" XOT " pss->nbytes=" XOT " nbytes=" XOT "\n",
-  pse->last_offset, pse->nbytes, pss->last_offset, pss->nbytes, dn);
-//}
-  pse->nbytes = pse->last_offset - lo_offset;  //** Adjust the range to cover everything just removed
-//     if (pse != pss) pse->nbytes = pse->last_offset - pss->last_offset + 1 + pss->nbytes;  //** Adjust the range to cover everything just removed
-  }
-
-  if ((pse == NULL) && (nbytes > 0)) {
-     //** Unlink the old one and remove it
-     pse = &(as->stream_table[as->index]);
-     as->index = (as->index + 1) % as->max_streams;
-log_printf(_amp_logging, "seg=" XIDT " offset=" XOT " dropping ps=%p  ps->last_offset=" XOT "\n", segment_id(seg), offset, pse, pse->last_offset);
-     list_remove(as->streams, &(pse->last_offset), pse);
-
-     //** Store the new info in it
-     pse->last_offset = offset;
-     pse->nbytes = nbytes;
-     pse->prefetch_size = 0;
-     pse->trigger_distance = 0;
-
-log_printf(_amp_logging, "seg=" XIDT " offset=" XOT " moving to MRU ps=%p ps->last_offset=" XOT "\n", segment_id(seg), offset, pse, pse->last_offset);
-
-     //** Add the entry back into the stream table
-     list_insert(as->streams, &(pse->last_offset), pse);
-  } if (pse != NULL) {
-log_printf(_amp_logging, "offset=" XOT " last_offset=" XOT " prefetch=%d trigger=%d\n", offset, pse->last_offset, pse->prefetch_size, pse->trigger_distance);
-} else {
-log_printf(_amp_logging, "offset=" XOT " NO MATCH FOUND\n", offset);
-}
-
-  if (pse_call != NULL) *pse_call = pse;
-
-  return(pse);
-}
-
-//*************************************************************************
-//  _amp_stream_get - returns the *nearest* stream ot the offset if nbytes<=0.
-//      Otherwise it will create a blank new page stream with the offset and return it.
-//      NOTE: Assumes cache is locked!
-//*************************************************************************
-
 amp_page_stream_t *_amp_stream_get(cache_t *c, segment_t *seg, ex_off_t offset, ex_off_t nbytes, amp_page_stream_t **pse)
 {
   cache_segment_t *s = (cache_segment_t *)seg->priv;
@@ -293,45 +209,6 @@ log_printf(_amp_logging, "PSE offset=" XOT " last_offset=" XOT " prefetch=%d tri
 }
 
 //*************************************************************************
-//  _amp_stream_chain_last - returns the *last* link in the stream chain based on the offset.
-//      NOTE: Assumes cache is locked!
-//*************************************************************************
-
-amp_page_stream_t *MERGED_amp_stream_chain_last(cache_t *c, segment_t *seg, ex_off_t offset)
-{
-//return(_amp_stream_get(c, seg, offset, -1));
-
-  cache_segment_t *s = (cache_segment_t *)seg->priv;
-  amp_stream_table_t *as = (amp_stream_table_t *)s->cache_priv;
-  amp_page_stream_t *ps, *pse;
-  list_iter_t it;
-  ex_off_t *poff, dn, pos;
-
-  it = list_iter_search(as->streams, &offset, 0);
-  list_next(&it, (list_key_t **)&poff, (list_data_t **)&ps);
-  pse = ps;
-  while (ps != NULL) {
-    dn = ps->last_offset - pos;
-    if (dn > ps->nbytes) {
-log_printf(_amp_logging, "offset=" XOT " last_offset=" XOT " prefetch=%d trigger=%d\n", offset, pse->last_offset, pse->prefetch_size, pse->trigger_distance);
-       return(pse);
-    }
-
-    pse = ps;
-    pos = ps->last_offset + s->page_size;
-    list_next(&it, (list_key_t **)&poff, (list_data_t **)&ps);
-  }
-
-if (pse != NULL) {
-log_printf(_amp_logging, "offset=" XOT " last_offset=" XOT " prefetch=%d trigger=%d\n", offset, pse->last_offset, pse->prefetch_size, pse->trigger_distance);
-} else {
-log_printf(_amp_logging, "offset=" XOT " NO MATCH FOUND\n", offset);
-}
-  return(pse);
-}
-
-
-//*************************************************************************
 // amp_dirty_thread - Thread to handle flushing due to dirty ratio
 //*************************************************************************
 
@@ -369,12 +246,12 @@ log_printf(15, "Dirty thread running.  dirty fraction=%lf dirty bytes=" XOT " in
      it = list_iter_search(c->segments, NULL, 0);
      list_next(&it, (list_key_t **)&id, (list_data_t **)&seg);
      i = 0;
-     while (seg != NULL) {
+     while (id != NULL) {
 log_printf(15, "Flushing seg=" XIDT " i=%d\n", *id, i);
 flush_log();
         flush_list[i] = seg;
         s = (cache_segment_t *)seg->priv;
-        atomic_set(s->cache_check_in_progress, 1);  //** Flag it as being checked
+        atomic_inc(s->cache_check_in_progress);  //** Flag it as being checked
         gop = cache_flush_range(seg, s->c->da, 0, -1, s->c->timeout);
         gop_set_myid(gop, i);
         opque_add(q, gop);
@@ -388,13 +265,15 @@ flush_log();
      opque_start_execution(q);
      while ((gop = opque_waitany(q)) != NULL) {
          i = gop_get_myid(gop);
-         segment_lock(flush_list[i]);
+//         segment_lock(flush_list[i]);
          s = (cache_segment_t *)flush_list[i]->priv;
 
 log_printf(15, "Flush completed seg=" XIDT " i=%d\n", segment_id(flush_list[i]), i);
 flush_log();
-         atomic_set(s->cache_check_in_progress, 0);  //** Flag it as being finished
-         segment_unlock(flush_list[i]);
+         cache_lock(c);
+         atomic_dec(s->cache_check_in_progress);  //** Flag it as being finished
+         cache_unlock(c);
+//         segment_unlock(flush_list[i]);
 
          gop_free(gop, OP_DESTROY);
      }
@@ -418,7 +297,6 @@ log_printf(15, "Dirty thread Exiting\n");
   return(NULL);
 
 }
-
 
 //*************************************************************************
 // amp_adjust_dirty - Adjusts the dirty ratio and if needed trigger a flush
@@ -616,6 +494,7 @@ log_printf(_amp_logging, "seg=" XIDT " LAST read waiting=%d for offset=" XOT " i
   cache_unlock(s->c);
 
 
+
   //** Update the stats
   offset = nloaded * s->page_size;
 log_printf(15, "seg=" XIDT " additional system read bytes=" XOT "\n", segment_id(ap->seg), offset);
@@ -623,6 +502,11 @@ log_printf(15, "seg=" XIDT " additional system read bytes=" XOT "\n", segment_id
   s->stats.system.read_count++;
   s->stats.system.read_bytes += offset;
   segment_unlock(seg);
+
+  //** Update the count
+  cache_lock(s->c);
+  atomic_dec(s->cache_check_in_progress);  //** Flag it as being finished
+  cache_unlock(s->c);
 
   return(op_success_status);
 }
@@ -683,6 +567,11 @@ log_printf(_amp_logging, " SMALL prefetch!  nbytes=" XOT "\n", nbytes);
 log_printf(_amp_slog, "seg=" XIDT " max_fetch=" XOT " prefetch_in_process=" XOT " nbytes=" XOT "\n", segment_id(seg), s->c->max_fetch_size, cp->prefetch_in_process, nbytes);
 
   cp->prefetch_in_process += nbytes;  //** Adjust the prefetch size
+
+  //** Let's make sure the segment isn't marked for removal
+  if (list_search(s->c->segments, &(segment_id(seg))) == NULL) return;
+
+  atomic_inc(s->cache_check_in_progress);  //** Flag it as in use.  This is released on completion in amp_prefetch_fn
 
   type_malloc(ca, amp_prefetch_op_t, 1);
   ca->seg = seg;
@@ -979,7 +868,7 @@ ex_off_t _amp_attempt_free_mem(cache_t *c, segment_t *page_seg, ex_off_t bytes_t
   opque_t *q;
   amp_page_stream_t *ps;
   ex_off_t total_bytes, freed_bytes, pending_bytes, *poff;
-  ex_off_t *segid;
+  ex_id_t *segid;
   ex_off_t min_off, max_off;
   list_iter_t sit;
   int count, bits, cw, flush_count;
@@ -1074,7 +963,9 @@ log_printf(_amp_logging, "seg=" XIDT " MRU retry offset=" XOT "\n", segment_id(p
   list_next(&sit, (list_key_t **)&segid, (list_data_t **)&ptable);
   while (ptable != NULL) {
     //** Verify the segment is still valid.  If not then just delete everything
+    cache_lock(c);
     pseg = list_search(c->segments, segid);
+    cache_unlock(c);
     if (pseg != NULL) {   //** VAlid segment if pseg is non-null
        segment_lock(ptable->seg);
        min_off = s->total_size;
@@ -1501,6 +1392,8 @@ int amp_cache_destroy(cache_t *c)
 
   cache_amp_t *cp = (cache_amp_t *)c->fn.priv;
 
+  log_printf(15, "Shutting down\n"); flush_log();
+
   //** Shutdown the dirty thread
   cache_lock(c);
   c->shutdown_request = 1;
@@ -1508,6 +1401,8 @@ int amp_cache_destroy(cache_t *c)
   cache_unlock(c);
 
   apr_thread_join(&value, cp->dirty_thread);  //** Wait for it to complete
+
+  log_printf(15, "Dirty thread has completed\n"); flush_log();
 
   cache_base_destroy(c);
 

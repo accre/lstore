@@ -42,7 +42,6 @@ http://www.accre.vanderbilt.edu
 
 
 typedef struct {
-  opque_t *q;
   char **cap;
   char *fname;
   char *exnode;
@@ -63,12 +62,16 @@ op_status_t gen_warm_task(void *arg, int id)
   op_status_t status;
   op_generic_t *gop;
   inip_file_t *fd;
-  int err, i, n;
+  int err, i, j, n;
   char *etext;
+  opque_t *q;
 
 log_printf(15, "warming fname=%s, dt=%d\n", w->fname, dt);
   fd = inip_read_text(w->exnode);
   inip_group_t *g;
+
+  q = new_opque();
+  opque_start_execution(q);
 
   type_malloc(w->cap, char *, inip_n_groups(fd));
   g = inip_first_group(fd);
@@ -76,8 +79,12 @@ log_printf(15, "warming fname=%s, dt=%d\n", w->fname, dt);
   while (g) {
     if (strncmp(inip_get_group(g), "block-", 6) == 0) { //** Got a data block
       etext = inip_get_string(fd, inip_get_group(g), "manage_cap", "");
+log_printf(1, "fname=%s cap[%d]=%s\n", w->fname, w->n, etext);
       w->cap[w->n] = unescape_text('\\', etext); free(etext);
-      opque_add(w->q, new_ibp_modify_alloc_op(ic, w->cap[w->n], -1, dt, -1, lio_gc->timeout));
+//      opque_add(q, new_ibp_modify_alloc_op(ic, w->cap[w->n], -1, dt, -1, lio_gc->timeout));
+      gop = new_ibp_modify_alloc_op(ic, w->cap[w->n], -1, dt, -1, lio_gc->timeout);
+      gop_set_myid(gop, w->n);
+      opque_add(q, gop);
       w->n++;
     }
     g = inip_next_group(g);
@@ -85,13 +92,20 @@ log_printf(15, "warming fname=%s, dt=%d\n", w->fname, dt);
 
   inip_destroy(fd);
 
-  if (w->n == 0) opque_add(w->q, gop_dummy(op_success_status));
-
-  err = opque_waitall(w->q);
-  n = opque_tasks_failed(w->q);
+  if (w->n > 0) {
+    err = opque_waitall(q);
+    n = opque_tasks_failed(q);
+  } else {
+    err = OP_STATE_SUCCESS;
+  }
   if (err != OP_STATE_SUCCESS) {
      status = op_failure_status;
      info_printf(lio_ifd, 0, "Failed with file %s on %d out of %d allocations\n", w->fname, n, w->n);
+     for (i=0; i<n; i++) {
+        gop = opque_get_next_failed(q);
+        j = gop_get_myid(gop);
+        info_printf(lio_ifd, 1, "  cap[%d]=%s\n", j, w->cap[j]);
+     }
   } else {
      etext = NULL; i = 0;
      lioc_set_attr(lio_gc, creds, w->fname, NULL, "os.timestamp.system.warm", (void *)etext, i);
@@ -99,8 +113,8 @@ log_printf(15, "warming fname=%s, dt=%d\n", w->fname, dt);
      info_printf(lio_ifd, 0, "Succeeded with file %s with %d allocations\n", w->fname, w->n);
   }
 
-  while ((gop = opque_get_next_finished(w->q)) != NULL) gop_free(gop, OP_DESTROY);
-
+  opque_free(q, OP_DESTROY);
+  
   free(w->exnode);
   free(w->fname);
   for (i=0; i<w->n; i++) free(w->cap[i]);
@@ -191,9 +205,6 @@ int main(int argc, char **argv)
 
 
   type_malloc_clear(w, warm_t, lio_parallel_task_count);
-  for (i=0; i<lio_parallel_task_count; i++) {
-     w[i].q = new_opque();
-  }
 
   n = 0;
   slot = 0;
@@ -248,9 +259,6 @@ log_printf(0, "gid=%d i=%d fname=%s\n", gop_id(gop), slot, fname);
      info_printf(lio_ifd, 0, "ERROR Some files failed to warm!\n");
   }
 
-  for (i=0; i<lio_parallel_task_count; i++) {
-    opque_free(w[i].q, OP_DESTROY);
-  }
   free(w);
 
 finished:

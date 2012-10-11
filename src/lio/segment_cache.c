@@ -1848,7 +1848,7 @@ log_printf(5, "Performing flush now\n");
   segment_lock(seg);
   s->ppages_flushing = 0;
   s->ppages_used = 0;
-  s->ppage_max = 0;
+  s->ppage_max = -1;
 log_printf(5, "Flush completed\n");
 
   apr_thread_cond_broadcast(s->ppages_cond);
@@ -2968,7 +2968,7 @@ int segcache_deserialize_text(segment_t *seg, ex_id_t id, exnode_exchange_t *exp
   //** Remove my random ID from the segments table
   if (s->c) {
      cache_lock(s->c);
-     log_printf(5, "Removing initial seg=" XIDT "\n", segment_id(seg));
+     log_printf(5, "CSEG-I Removing seg=" XIDT " nsegs=%d\n", segment_id(seg), list_key_count(s->c->segments)); flush_log();
      list_remove(s->c->segments, &(segment_id(seg)), seg);
      s->c->fn.removing_segment(s->c, seg);
      cache_unlock(s->c);
@@ -3020,7 +3020,7 @@ log_printf(5, "seg=" XIDT " Initial child_last_page=" XOT " child_size=" XOT " p
 
   //** Make the partial pages table
   s->n_ppages = (s->c != NULL) ? s->c->n_ppages : 0;
-  s->ppage_max = 0;
+  s->ppage_max = -1;
   if (s->n_ppages > 0) {
      type_malloc_clear(s->ppage, cache_partial_page_t, s->n_ppages);
      type_malloc_clear(s->ppages_buffer, char, s->n_ppages*s->page_size);
@@ -3034,7 +3034,7 @@ log_printf(5, "seg=" XIDT " Initial child_last_page=" XOT " child_size=" XOT " p
   //** and reinsert myself with the new ID
   if (s->c != NULL) {
      cache_lock(s->c);
-     log_printf(5, "Inserting seg=" XIDT "\n", segment_id(seg));
+     log_printf(5, "CSEG Inserting seg=" XIDT " nsegs=%d\n", segment_id(seg), list_key_count(s->c->segments)); flush_log();
      list_insert(s->c->segments, &(segment_id(seg)), seg);
      s->c->fn.adding_segment(s->c, seg);
      cache_unlock(s->c);
@@ -3107,24 +3107,24 @@ CACHE_PRINT;
 
      //** Remove it from the cache manager
      cache_lock(s->c);
-     log_printf(5, "Removing seg=" XIDT "\n", segment_id(seg));
+     log_printf(5, "CSEG Removing seg=" XIDT " nsegs=%d\n", segment_id(seg), list_key_count(s->c->segments)); flush_log();
      list_remove(s->c->segments, &(segment_id(seg)), seg);
-     s->c->fn.removing_segment(s->c, seg);
      cache_unlock(s->c);
-  }
 
-  //** Got to check if a dirty thread is trying to do an empty flush
-  segment_lock(seg);
-  while (atomic_get(s->cache_check_in_progress) == 1) {
-    segment_unlock(seg);
-    log_printf(5, "seg=" XIDT " waiting for dirty flush to complete\n", segment_id(seg));
-    usleep(10000);
-    segment_lock(seg);
-  }
-  segment_unlock(seg);
+     //** Got to check if a dirty thread is trying to do an empty flush
+     cache_lock(s->c);
+     while (atomic_get(s->cache_check_in_progress) != 0) {
+       cache_unlock(s->c);
+       log_printf(5, "seg=" XIDT " waiting for dirty flush/prefetch to complete\n", segment_id(seg));
+       usleep(10000);
+       cache_lock(s->c);
+     }
+     s->c->fn.removing_segment(s->c, seg);  //** Do the final remove
+     cache_unlock(s->c);
 
-  //** and drop the cache pages
-  cache_page_drop(seg, 0, s->total_size + 1);
+     //** and drop the cache pages
+     cache_page_drop(seg, 0, s->total_size + 1);
+  }
 
   //** Drop the flush args
   apr_thread_cond_destroy(s->flush_cond);
@@ -3220,7 +3220,7 @@ log_printf(2, "CACHE-PTR seg=" XIDT " s->c=%p\n", segment_id(seg), s->c);
   if (s->c != NULL) { //** If no cache backend skip this  only used for temporary deseril/serial
      cache_lock(s->c);
  CACHE_PRINT;
-     log_printf(5, "Inserting seg=" XIDT "\n", segment_id(seg));
+     log_printf(5, "CSEG-I Inserting seg=" XIDT " nsegs=%d\n", segment_id(seg), list_key_count(s->c->segments)); flush_log();
      list_insert(s->c->segments, &(segment_id(seg)), seg);
      s->c->fn.adding_segment(s->c, seg);
  CACHE_PRINT;

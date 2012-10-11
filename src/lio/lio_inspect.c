@@ -49,11 +49,15 @@ char *inspect_opts[] = { "DUMMY", "inspect_quick_check",  "inspect_scan_check", 
 typedef struct {
   char *fname;
   char *exnode;
+  int ftype;
 } inspect_t;
 
 static creds_t *creds;
-static int whattodo;
+static int global_whattodo;
 static int bufsize;
+
+apr_thread_mutex_t *lock = NULL;
+list_t *seg_index;
 
 //*************************************************************************
 //  inspect_task
@@ -69,9 +73,48 @@ op_status_t inspect_task(void *arg, int id)
   segment_t *seg;
   char *keys[] = { "system.exnode", "os.timestamp.system.inspect" };
   char *val[2];
+  char *dsegid, *ptr;
   int v_size[2];
-log_printf(15, "warming fname=%s\n", w->fname);
+  int whattodo;
+  inip_file_t *ifd;
 
+  whattodo = global_whattodo;
+
+log_printf(15, "inspecting fname=%s\n", w->fname);
+
+  if (w->exnode == NULL) {
+     info_printf(lio_ifd, 0, "ERROR  Failed with file %s (ftype=%d). No exnode!\n", w->fname, w->ftype);
+     free(w->fname);
+     return(op_failure_status);
+  }
+
+  //** Kind of kludgy to load the ex twice but this is more of a prototype fn
+  ifd = inip_read_text(w->exnode);
+  dsegid = inip_get_string(ifd, "view", "default", NULL);
+  inip_destroy(ifd);
+  if (dsegid == NULL) {
+     info_printf(lio_ifd, 0, "ERROR  Failed with file %s (ftype=%d). No default segment!\n", w->fname, w->ftype);
+     free(w->exnode);
+     free(w->fname);
+     return(op_failure_status);
+  }
+
+  apr_thread_mutex_lock(lock);
+  log_printf(15, "checking fname=%s segid=%s\n", w->fname, dsegid); flush_log();
+  ptr = list_search(seg_index, dsegid);
+  log_printf(15, "checking fname=%s segid=%s got=%s\n", w->fname, dsegid, ptr); flush_log();
+  if (ptr != NULL) {
+     apr_thread_mutex_unlock(lock);
+     info_printf(lio_ifd, 0, "Skipping file %s (ftype=%d). Already loaded/processed.\n", w->fname, w->ftype);
+     free(dsegid);
+     free(w->exnode);
+     free(w->fname);
+     return(op_success_status);
+  }
+  list_insert(seg_index, dsegid, dsegid);
+  apr_thread_mutex_unlock(lock);
+
+  //** If we made it here the exnode is unique and loaded.
   //** Load it
   exp = exnode_exchange_create(EX_TEXT);  exp->text = w->exnode;
   ex = exnode_create();
@@ -85,8 +128,9 @@ log_printf(15, "warming fname=%s\n", w->fname);
   //** Get the default view to use
   seg = exnode_get_default(ex);
   if (seg == NULL) {
-     printf("No default segment!  Aborting!\n");
-     abort();
+     info_printf(lio_ifd, 0, "ERROR  Failed with file %s (ftype=%d). No default segment!\n", w->fname, w->ftype);
+     status = op_failure_status;
+     goto finished;
   }
 
   info_printf(lio_ifd, 1, XIDT ": Inspecting file %s\n", segment_id(seg), w->fname);
@@ -94,10 +138,14 @@ log_printf(15, "warming fname=%s\n", w->fname);
 log_printf(15, "whattodo=%d\n", whattodo);
   //** Execute the inspection operation
   gop = segment_inspect(seg, lio_gc->da, lio_ifd, whattodo, bufsize, lio_gc->timeout);
+log_printf(15, "fname=%s inspect_gid=%d whattodo=%d\n", w->fname, gop_id(gop), whattodo);
+
 flush_log();
   gop_waitall(gop);
 flush_log();
   status = gop_get_status(gop);
+log_printf(15, "fname=%s inspect_gid=%d status=%d\n", w->fname, gop_id(gop), status.op_status);
+
   gop_free(gop, OP_DESTROY);
 
   //** Print out the results
@@ -126,21 +174,23 @@ flush_log();
         break;
   }
 
-  //** Store the updated exnode back to disk
-  exp_out = exnode_exchange_create(EX_TEXT);
-  exnode_serialize(ex, exp_out);
-//  printf("Updated remote: %s\n", fname);
-//  printf("-----------------------------------------------------\n");
-//  printf("%s", exp_out->text);
-//  printf("-----------------------------------------------------\n");
+  if (status.op_status == OP_STATE_SUCCESS) {
+     //** Store the updated exnode back to disk
+     exp_out = exnode_exchange_create(EX_TEXT);
+     exnode_serialize(ex, exp_out);
+     //printf("Updated remote: %s\n", fname);
+     //printf("-----------------------------------------------------\n");
+     //printf("%s", exp_out->text);
+     //printf("-----------------------------------------------------\n");
 
-  val[0] = exp_out->text; v_size[0]= strlen(val[0]);
-  val[1] = NULL; v_size[1] = 0;
-  lioc_set_multiple_attrs(lio_gc, creds, w->fname, NULL, keys, (void **)val, v_size, 2);
-  exnode_exchange_destroy(exp_out);
-
+     val[0] = exp_out->text; v_size[0]= strlen(val[0]);
+     val[1] = NULL; v_size[1] = 0;
+     lioc_set_multiple_attrs(lio_gc, creds, w->fname, NULL, keys, (void **)val, v_size, 2);
+     exnode_exchange_destroy(exp_out);
+  }
 
   //** Clean up
+finished:
   exnode_exchange_destroy(exp);
 
   exnode_destroy(ex);
@@ -160,7 +210,7 @@ int main(int argc, char **argv)
   int force_repair;
   int bufsize_mb = 20;
   char *fname;
-//  ibp_context_t *ic;
+  apr_pool_t *mpool;
   opque_t *q;
   op_generic_t *gop;
   op_status_t status;
@@ -186,7 +236,7 @@ int main(int argc, char **argv)
      printf("    -f                 - Forces data replacement even if it would result in data loss\n");
      printf("    -o inspect_opt     - Inspection option.  One of the following:\n");
      for (i=1; i<n_inspect; i++) { printf("                 %s\n", inspect_opts[i]); }
-     printf("    path           - Path to warm\n");
+     printf("    path           - Path to inspect\n");
      return(1);
   }
 
@@ -213,11 +263,11 @@ int main(int argc, char **argv)
         force_repair = INSPECT_FORCE_REPAIR;
      } else if (strcmp(argv[i], "-o") == 0) { //** Inspect option
         i++;
-        whattodo = -1;
+        global_whattodo = -1;
         for(j=1; j<n_inspect; j++) {
-           if (strcasecmp(inspect_opts[j], argv[i]) == 0) { whattodo = j; break; }
+           if (strcasecmp(inspect_opts[j], argv[i]) == 0) { global_whattodo = j; break; }
         }
-        if (whattodo == -1) {
+        if (global_whattodo == -1) {
             printf("Invalid inspect option:  %s\n", argv[i]);
            abort();
         }
@@ -227,7 +277,7 @@ int main(int argc, char **argv)
   } while ((start_option < i) && (i<argc));
   start_index = i;
 
-  if ((whattodo == INSPECT_QUICK_REPAIR) || (whattodo == INSPECT_SCAN_REPAIR) || (whattodo == INSPECT_FULL_REPAIR)) whattodo |= force_repair;
+  if ((global_whattodo == INSPECT_QUICK_REPAIR) || (global_whattodo == INSPECT_SCAN_REPAIR) || (global_whattodo == INSPECT_FULL_REPAIR)) global_whattodo |= force_repair;
 
   bufsize = bufsize_mb * 1024 *1024;
 
@@ -255,6 +305,9 @@ int main(int argc, char **argv)
 
 
   type_malloc_clear(w, inspect_t, lio_parallel_task_count);
+  seg_index = list_create(0, &list_string_compare, NULL, list_simple_free, NULL);
+  assert(apr_pool_create(&mpool, NULL) == APR_SUCCESS);
+  apr_thread_mutex_create(&lock, APR_THREAD_MUTEX_DEFAULT, mpool);
 
   n = 0;
   slot = 0;
@@ -262,6 +315,7 @@ int main(int argc, char **argv)
   while ((ftype = os_next_object(tuple.lc->os, it, &fname, &prefix_len)) > 0) {
      w[slot].fname = fname;
      w[slot].exnode = ex;
+     w[slot].ftype = ftype;
      ex = NULL;  fname = NULL;
      submitted++;
      gop = new_thread_pool_op(lio_gc->tpc_unlimited, NULL, inspect_task, (void *)&(w[slot]), NULL, 1);
@@ -300,13 +354,17 @@ log_printf(0, "gid=%d i=%d fname=%s\n", gop_id(gop), slot, fname);
 
   opque_free(q, OP_DESTROY);
 
+  apr_thread_mutex_destroy(lock);
+  apr_pool_destroy(mpool);
+  list_destroy(seg_index);
+
   info_printf(lio_ifd, 0, "--------------------------------------------------------------------\n");
   info_printf(lio_ifd, 0, "Submitted: %d   Success: %d   Fail: %d\n", submitted, good, bad);
   if (submitted != (good+bad)) {
      info_printf(lio_ifd, 0, "ERROR FAILED self-consistency check! Submitted != Success+Fail\n");
   }
   if (bad > 0) {
-     info_printf(lio_ifd, 0, "ERROR Some files failed to warm!\n");
+     info_printf(lio_ifd, 0, "ERROR Some files failed inspection!\n");
   }
 
   free(w);

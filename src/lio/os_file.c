@@ -810,6 +810,7 @@ int va_link_get_attr(os_virtual_attr_t *va, object_service_fn_t *os, creds_t *cr
   if (err == 0) {
      if (S_ISLNK(s.st_mode) == 0) {
         *v_size = 0;
+        *val = NULL;
         return(0);
      }
 
@@ -4194,7 +4195,7 @@ local_object_iter_t *create_local_object_iter(os_regex_table_t *path, os_regex_t
   type_malloc_clear(osf, osfile_priv_t, 1);
   type_malloc_clear(osf->osaz, os_authz_t, 1);
   it->os->priv = (void *)osf;
-  osf->base_path = "";
+  osf->file_path = "";
   osf->osaz->object_access = local_osaz_access;
 
   it->oit = osfile_create_object_iter(it->os, NULL, path, object_regex, object_types, NULL, recurse_depth, NULL, 0);

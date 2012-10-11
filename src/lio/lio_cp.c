@@ -521,6 +521,7 @@ int copy_next_object(copy_object_iter_t *it, char **fname, int *prefix_len)
     err = local_next_object(it->lit, fname, prefix_len);
   }
 
+log_printf(15, "ftype=%d\n", err);
   return(err);
 }
 

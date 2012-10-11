@@ -699,9 +699,9 @@ op_status_t lioc_link_object_fn(void *arg, int id)
   op_status_t status;
   char *lkeys[] = {"system.exnode", "system.exnode.size"};
   char *spath[2];
-  char *vkeys[] = {"system.owner", "system.inode"};
-  char *val[2];
-  int vsize[2];
+  char *vkeys[] = {"system.owner", "system.inode", "os.timestamp.system.create", "os.timestamp.system.modify_data", "os.timestamp.system.modify_attr"};
+  char *val[5];
+  int vsize[5];
 
   //** Link the base object
   if (op->type == 1) { //** Symlink
@@ -735,10 +735,13 @@ op_status_t lioc_link_object_fn(void *arg, int id)
   spath[0] = op->src_path; spath[1] = op->src_path;
   opque_add(q, os_symlink_multiple_attrs(op->lc->os, op->creds, spath, lkeys, dfd, lkeys, 2));
 
-  //** Store the owner and inode
+  //** Store the owner, inode, and dates
   val[0] = an_cred_get_id(op->creds);  vsize[0] = strlen(val[0]);
   ino = 0; generate_ex_id(&ino);  snprintf(inode, 32, XIDT, ino); val[1] = inode;  vsize[1] = strlen(inode);
-  opque_add(q, os_set_multiple_attrs(op->lc->os, op->creds, dfd, vkeys, (void **)val, vsize, 2));
+  val[2] = op->id; vsize[2] = (op->id == NULL) ? 0 : strlen(op->id);
+  val[3] = op->id; vsize[3] = vsize[2];
+  val[4] = op->id; vsize[4] = vsize[2];
+  opque_add(q, os_set_multiple_attrs(op->lc->os, op->creds, dfd, vkeys, (void **)val, vsize, 5));
 
 
   //** Wait for everything to complete

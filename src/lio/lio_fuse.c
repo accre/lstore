@@ -39,26 +39,20 @@ http://www.accre.vanderbilt.edu
 #include "thread_pool.h"
 #include "lio.h"
 
-extern struct fuse_lowlevel_ops llops;
-
 //*************************************************************************
 //*************************************************************************
 
 int main(int argc, char **argv)
 {
-  struct fuse_chan *ch;
-  char *mountpoint;
-  struct fuse_args fargs;
-
   int err = -1;
-
 
 //printf("argc=%d\n", argc);
 
   if (argc < 2) {
      printf("\n");
-     printf("lio_fuse LIO_COMMON_OPTIONS mount_point FUSE_OPTIONS\n");
+     printf("lio_fuse LIO_COMMON_OPTIONS -fd mount_point FUSE_OPTIONS\n");
      lio_print_options(stdout);
+     printf("     -fd     -Enable FUSE debug\n");
      return(1);
   }
 
@@ -70,30 +64,15 @@ int main(int argc, char **argv)
 //  printf("argv[%d]=%s\n", i, argv[i]);
 //}
 
-  fargs.argc = argc;
-  fargs.argv = argv;
-  fargs.allocated = 0;
+  if (strcmp(argv[1], "-fd") == 0) {
+     printf("Enabling FUSE debug mode\n");
+     argv[1] = "-d";
+  }
 
   lfs_gc = lio_fuse_init(lio_gc);
 
-
-  if (fuse_parse_cmdline(&fargs, &mountpoint, NULL, NULL) != -1 &&
-      (ch = fuse_mount(mountpoint, &fargs)) != NULL) {
-      struct fuse_session *se;
-
-      se = fuse_lowlevel_new(&fargs, &lfs_gc_llops, sizeof(struct fuse_lowlevel_ops), NULL);
-      if (se != NULL) {
-         if (fuse_set_signal_handlers(se) != -1) {
-            fuse_session_add_chan(se, ch);
-            err = fuse_session_loop(se);
-            fuse_remove_signal_handlers(se);
-            fuse_session_remove_chan(ch);
-         }
-         fuse_session_destroy(se);
-      }
-      fuse_unmount(mountpoint, ch);
-  }
-  fuse_opt_free_args(&fargs);
+umask(0);
+  err = fuse_main(argc, argv, &lfs_gc_fops, NULL);
 
   lio_fuse_destroy(lfs_gc);
 
