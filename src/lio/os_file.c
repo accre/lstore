@@ -851,12 +851,12 @@ int va_link_count_get_attr(os_virtual_attr_t *va, object_service_fn_t *os, creds
 
   snprintf(fullname, OS_PATH_MAX, "%s%s", osf->file_path, fd->object_name);
 
-  err = stat(fullname, &s);
+  err = lstat(fullname, &s);
   if (err == 0) {
      n = s.st_nlink;
      if (S_ISDIR(s.st_mode)) {
         n = n - 1;  //** IF a dir don't count the attribute dir
-     } else if ( n > 1) { //** Normal files should only have 1.  If more then it's a hardlink so tweark it
+     } else if ( n > 1) { //** Normal files should only have 1.  If more then it's a hardlink so tweak it
         n = n - 1;
      }
   } else {
@@ -2111,11 +2111,12 @@ op_generic_t *osfile_symlink_object(object_service_fn_t *os, creds_t *creds, cha
 int osf_file2hardlink(object_service_fn_t *os, char *src_path)
 {
   osfile_priv_t *osf = (osfile_priv_t *)os->priv;
-  FILE *fd;
   int slot, i;
   ex_id_t id;
   char *sattr, *hattr;
   char fullname[OS_PATH_MAX], sfname[OS_PATH_MAX];
+
+  //** IF the src is a symlink we need to get that 
 
   //** Pick a hardlink location
   id = 0;
@@ -2136,7 +2137,7 @@ log_printf(0, "rename(%s,%s)=%d\n", sattr, hattr, i);
      return(1);
   }
 
-  //** Link the src attr dir with the harlink
+  //** Link the src attr dir with the hardlink
   i = symlink(hattr, sattr);
 log_printf(0, "symlink(%s,%s)=%d!\n", hattr, sattr, i);
   if (i != 0) {
@@ -2146,16 +2147,16 @@ log_printf(0, "symlink(%s,%s)=%d!\n", hattr, sattr, i);
   }
   free(hattr); free(sattr);
 
-  //** Make the hardlink proxy
-  fd = fopen(fullname, "w");
-log_printf(0, "hardlink proxy=%s\n",fullname);
-  if (fd == NULL) {
-     log_printf(0, "HArdlink proxy creation failed! fname=%s\n", fullname);
+
+  //** Move the source to the hardlink proxy
+  i = rename(sfname, fullname);
+log_printf(0, "rename(%s,%s)=%d\n", sfname, fullname, i);
+  if (i != 0) {
+     log_printf(0, "rename(%s,%s) FAILED!\n", sfname, fullname);
      return(1);
   }
 
   //** Link the src file to the hardlink proxy
-  remove(sfname);  //** Remove the old proxy
   i = link(fullname, sfname);
 log_printf(0, "link(%s,%s)=%d\n", fullname, sfname, i);
   if (i != 0) {
