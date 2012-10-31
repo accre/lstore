@@ -616,7 +616,7 @@ skiplist_data_t *next_interval_skiplist(interval_skiplist_iter_t *it)
 int count_interval_skiplist(interval_skiplist_t *isl, skiplist_key_t *lo, skiplist_key_t *hi)
 {
   interval_skiplist_iter_t it;
-  int count;
+  int count = 0;
 
   it = iter_search_interval_skiplist(isl, lo, hi);
   while (next_interval_skiplist(&it) != NULL) {

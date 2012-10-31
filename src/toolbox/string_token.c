@@ -307,7 +307,7 @@ char *pretty_print_int_with_scale(int64_t value, char *buffer)
 {
   int64_t base, n;
   int i;
-  char *unit="\0KMGT";
+  char *unit="\0KMGTPE";
 
   if ((value % 1000) == 0) {
      base = 1000;
@@ -356,7 +356,7 @@ char *pretty_print_double_with_scale(int base, double value, char *buffer)
 {
   double n;
   int i;
-  char *unit="\0KMGT";
+  char *unit="\0KMGTPE";
 
   if (buffer == NULL) type_malloc(buffer, char, 30);
 
