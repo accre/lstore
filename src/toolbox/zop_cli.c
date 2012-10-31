@@ -169,13 +169,9 @@ int main(int argc, char **argv)
    
  
     if (sock_type == 5) {
-        log_printf(0, "Working on ZMQ SUB:PUB mode\n"); 
+        log_printf(0, "Working on ZMQ SUB:PUB mode. Coming soon ... ...\n"); 
         set_flag(option->flag, SUBSCRIBE);
 	set_flag(option->flag, IDENTITY);
-
-        fprintf(stdout, "[Publisher sending data ...]\n");
-        for (i = 0; i < num; i++) {
-        }
     } else if (sock_type == 0) {
 	opque_t *q = new_opque();
 	log_printf(0, "Working on ZMQ REQ:REP mode\n");
@@ -196,7 +192,6 @@ int main(int argc, char **argv)
             opque_add(q, gop_read);
 	    opque_waitall(q);
         }
-
 	opque_free(q, OP_DESTROY);
     } else {
 	if (sock_type == 1) { 
@@ -206,9 +201,9 @@ int main(int argc, char **argv)
 	    //**log_printf(0, "Notice: Need to sleep 1 sec after connection in order to successfully send data\n");
 	    //**This "sleep" problem and multiple connection problem were solved together by making the zsock_write return value correct   
 	} else if (sock_type == 3) {
-	    log_printf(0, "Working on ZMQ ROUTER:ROUTER mode\n");
+	    log_printf(0, "Working on ZMQ ROUTER:ROUTER mode. Coming soon ... ...\n");
         } else if (sock_type == 4) {
-	    log_printf(0, "Working on ZMQ PUSH:PULL mode\n");
+	    log_printf(0, "Working on ZMQ PUSH:PULL mode. Coming soon ... ...\n");
         } 
 
 	opque_t *q = new_opque();

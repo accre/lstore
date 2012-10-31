@@ -81,6 +81,20 @@ void zsock_set_peer(net_sock_t *sock, char *address, int add_size)
 }
 
 //************************************************************************
+// zsock_io_wait - mode coule be either ZMQ_POLLIN or ZMQ_POLLOUT
+//************************************************************************
+
+int zsock_io_wait(network_zsock_t *sock, Net_timeout_t tm, int mode)
+{
+    zmq_pollitem_t item;
+    item.socket = sock->socket;
+    item.events = mode;
+    if (tm > 0) tm /= 1000;   
+    zmq_poll(&item, 1, tm);
+    return (item.revents & mode) != 0;
+}
+ 
+//************************************************************************
 // zsock_decode - Decodes a transfer buffer to a new message,returns NULL 
 // if buffer is not properly formatted.
 //************************************************************************
@@ -106,7 +120,8 @@ zmsg_t *zsock_decode(tbuffer_t *buf, size_t bpos, size_t size)
 //************************************************************************
 // zsock_write - Writes buffer to a socket. Note that when socket type is 
 // ZMQ_ROUTER, tbuffer should begin with peer address. So 'bpos' should be 0
-// and 'size' should be greater than size of peer address in this case. 
+// and 'size' should be greater than size of peer address in this case.
+// If it's not ready to write afte timeout, returns 0. 
 //************************************************************************
 
 long int zsock_write(net_sock_t *sock, tbuffer_t *buf, size_t bpos, size_t size, Net_timeout_t tm)
@@ -114,9 +129,14 @@ long int zsock_write(net_sock_t *sock, tbuffer_t *buf, size_t bpos, size_t size,
     network_zsock_t *zsock = (network_zsock_t *)sock;
     zmsg_t *msg = zsock_decode(buf, bpos, size); 
     zmsg_dump(msg); 
-    zmsg_send(&msg, zsock->socket);
 
-    return size;
+    int rc = 0;
+    if (zsock_io_wait(zsock, tm, ZMQ_POLLOUT)) {
+	zmsg_send(&msg, zsock->socket);
+	rc = size;
+    }
+
+    return rc;
 }
 
 //************************************************************************
@@ -152,22 +172,24 @@ size_t zsock_encode(zmsg_t *msg, tbuffer_t *buf)
 //************************************************************************
 // zsock_read - Reads data into the buffer from a socket. Returns number 
 // of bytes received. Allocates space to store the received data. Caller 
-// needs to release these allocation. 
+// needs to release these allocation. If timeout, returns -1 
 //************************************************************************
 
 long int zsock_read(net_sock_t *sock, tbuffer_t *buf, size_t bpos, size_t size, Net_timeout_t tm)
 {
-    int total_bytes;
+    int total_bytes = 0;
     network_zsock_t *zsock = (network_zsock_t *)sock;
     
     if (zsock == NULL) return -1;
     if (zsock->socket == NULL) return -1;
- 
-    zmsg_t *msg;
-    msg = zmsg_recv(zsock->socket);
-    zmsg_dump(msg);
-    total_bytes = zsock_encode(msg, buf);
-    zmsg_destroy(&msg);
+
+    if (zsock_io_wait(zsock, tm, ZMQ_POLLIN)) {
+        zmsg_t *msg;
+        msg = zmsg_recv(zsock->socket);
+        zmsg_dump(msg);
+        total_bytes = zsock_encode(msg, buf);
+        zmsg_destroy(&msg);
+    }
 
     return total_bytes;
 }

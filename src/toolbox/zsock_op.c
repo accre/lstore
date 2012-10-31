@@ -60,7 +60,7 @@ op_status_t gop_write(NetStream_t *ns, op_generic_t *gop, tbuffer_t *buffer, zso
 }
 
 //*************************************************************************
-// gop_read - Receives data
+// gop_read - Receives data, timeout is set to be 1s
 //*************************************************************************
 
 op_status_t gop_read(NetStream_t *ns, op_generic_t *gop, tbuffer_t *buffer, zsock_off_t pos, zsock_off_t size)
@@ -70,9 +70,13 @@ op_status_t gop_read(NetStream_t *ns, op_generic_t *gop, tbuffer_t *buffer, zsoc
 
     set_net_timeout(&dt, 1, 0);
 
-    read_netstream(ns, buffer, pos, size, dt);
+    int rc = read_netstream(ns, buffer, pos, size, dt);
 
-    status = zsock_success_status;
+    if (rc <= 0) {
+	status = zsock_failure_status;
+    } else {
+        status = zsock_success_status;
+    }
 
     return(status);
 }

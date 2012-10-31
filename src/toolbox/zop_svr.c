@@ -162,23 +162,7 @@ int main(int argc, char **argv)
     option->subscribe[0] = "Hello";
     
     if (sock_type == 5) {
-        log_printf(0, "Working on ZMQ SUB:PUB mode\n"); 
-        set_flag(option->flag, SUBSCRIBE);
-	set_flag(option->flag, IDENTITY);
-        ns_config_zsock(ns_client, ZMQ_PUB, transport, NULL);
-        ns_config_zsock(ns_svr, ZMQ_SUB, transport, option);
-        zsock_bind(ns_client->sock, hostname, port);
-        net_connect(ns_svr, hostname, port, 0);
-
-        fprintf(stdout, "[Publisher sending data ...]\n");
-        for (i = 0; i < num; i++) {
-            write_netstream(ns_client, &sndbuf[i], 0, 1, 0);
-        }
-
-        fprintf(stdout, "[Receiver receiving data ...]\n");
-        for (i = 0; i < 5; i++) {
-            read_netstream(ns_svr, &rcvbuf[i], 0, 1, 0);
-        }
+        log_printf(0, "Working on ZMQ SUB:PUB mode. Coming soon... ...!\n"); 
     } else if (sock_type == 0) {
 
 	log_printf(0, "Working on ZMQ REQ:REP mode\n");
@@ -189,10 +173,10 @@ int main(int argc, char **argv)
 
 	for (i = 0; i < num; i++) {
 	    fprintf(stdout, "[Responder receiving data ...]\n");
-            read_netstream(ns_svr, &rcvbuf[i], 0, 1, 0);
+            read_netstream(ns_svr, &rcvbuf[i], 0, 5, -1);
 
 	    fprintf(stdout, "[Responder sending data ...]\n");
-            write_netstream(ns_svr, &rcvbuf[i], 0, 2, 0);
+            write_netstream(ns_svr, &rcvbuf[i], 0, 5, 0);
         }
     } else if (sock_type == 1) { 
 	log_printf(0, "Working on ZMQ DEALER:ROUTER mode\n");
@@ -201,7 +185,7 @@ int main(int argc, char **argv)
    
         fprintf(stdout, "[Router receiving data ...]\n");
         for (i = 0; i < num; i++) {
-            read_netstream(ns_svr, &rcvbuf[i], 0, 1, 0);
+            read_netstream(ns_svr, &rcvbuf[i], 0, 5, -1);
         }
 
         fprintf(stdout, "[Router sending data ...]\n");
@@ -215,70 +199,18 @@ int main(int argc, char **argv)
  
         fprintf(stdout, "[Dealer2 receiving data ...]\n");
         for (i = 0; i < num; i++) {
-            read_netstream(ns_svr, &rcvbuf[i], 0, 1, 0);
+            read_netstream(ns_svr, &rcvbuf[i], 0, 5, -1);
         }
 
         fprintf(stdout, "[Dealer2 sending data ...]\n");
         for (i = 0; i < num; i++) {
-            write_netstream(ns_svr, &rcvbuf[i], 0, 1, 0);
+            write_netstream(ns_svr, &rcvbuf[i], 0, 5, 0);
         }
     } else if (sock_type == 3) {
-	log_printf(0, "Working on ZMQ ROUTER:ROUTER mode\n");
-  	set_flag(option->flag, IDENTITY);	
-	ns_config_zsock(ns_client, ZMQ_ROUTER, transport, option);
-	ns_config_zsock(ns_svr, ZMQ_ROUTER, transport, NULL);
-        zsock_bind(ns_svr->sock, hostname, port);
-	net_connect(ns_client, hostname, port, 0);
-	
-	sleep(1); //** Took me an hour to figure out this causes problem
-		  //** Router does not know when the client is ready so it needs to sleep!!!!!
-		  //** It is similar to the publisher.
-
-	tbuffer_t data;
-        iovec_t iov[2];
-   	
-	void *address = malloc(4);
-	memcpy(address, "test", 4);
- 
-        iov[0].iov_base = address;//"test";
-        iov[0].iov_len = 4;
-	iov[1].iov_base = "Hello";
-   	iov[1].iov_len = 5;
- 
-        tbuffer_vec(&data, 9, 2, iov); 
-	
-//	tbuffer_t *rcvbuf;
-
-
-        fprintf(stdout, "[Router1 sending data ...]\n");
-        for (i = 0; i < num; i++) {
-            write_netstream(ns_svr, &data, 0, data.buf.total_bytes, 0);
-        }
-
-        fprintf(stdout, "[Router2 receiving data ...]\n");
-        for (i = 0; i < num; i++) {
-            read_netstream(ns_client, &rcvbuf[i], 0, 1, 0);
-        }
-	free(address);
-	//free_tbuffer(&data, 1);
-	
+	log_printf(0, "Working on ZMQ ROUTER:ROUTER mode. Coming soon ... ...!\n");
     } else if (sock_type == 4) {
-	log_printf(0, "Working on ZMQ PUSH:PULL mode\n");
-        ns_config_zsock(ns_client, ZMQ_PUSH, transport, option);
-        ns_config_zsock(ns_svr, ZMQ_PULL, transport, NULL);
-        zsock_bind(ns_svr->sock, hostname, port);
-        net_connect(ns_client, hostname, port, 0);
-
-        fprintf(stdout, "[Sender sending data ...]\n");
-        for (i = 0; i < num; i++) {
-            write_netstream(ns_client, &sndbuf[i], 0, 1, 0);
-        }
-
-        fprintf(stdout, "[Receiver receiving data ...]\n");
-        for (i = 0; i < num; i++) {
-            read_netstream(ns_svr, &rcvbuf[i], 0, 1, 0);
-        }
-   } 
+	log_printf(0, "Working on ZMQ PUSH:PULL mode!! Coming soon ... ...!\n");
+    } 
     
     //zsock_connect(ns_client->sock, hostname, port, 0);
      

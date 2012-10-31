@@ -201,15 +201,18 @@ int main(int argc, char **argv)
         net_connect(ns_client, hostname, port, 0);
         zsock_bind(ns_svr->sock, hostname, port);
 
+	Net_timeout_t dt;
+	set_net_timeout(&dt, 1, 0);
+
         for (i = 0; i < num; i++) {
             fprintf(stdout, "[Requester sending data ...]\n");
-            write_netstream(ns_client, &sndbuf[i], 1, 2, 0);
+            write_netstream(ns_client, &sndbuf[i], 0, 5, dt);
             fprintf(stdout, "[Responder receiving data ...]\n");
-            read_netstream(ns_svr, &rcvbuf[i], 0, 1, 0);
+            read_netstream(ns_svr, &rcvbuf[i], 0, 5, dt);
 	    fprintf(stdout, "[Responder sending data ...]\n");
-	    write_netstream(ns_svr, &rcvbuf[i], 0, 1, 0);
+	    write_netstream(ns_svr, &rcvbuf[i], 0, 5, dt);
 	    fprintf(stdout, "[Requester receiving data ...]\n"); 
-	    read_netstream(ns_client, &sndbuf[i], 0, 1, 0);
+	    read_netstream(ns_client, &sndbuf[i], 0, 5, dt);
         }
     } else if (sock_type == 1) { 
 	log_printf(0, "Working on ZMQ DEALER:ROUTER mode\n");
