@@ -334,7 +334,7 @@ void zsock_setopt(void *socket, zsocket_opt_t *option)
     }
 
     if (check_flag(option->flag, ROUTER_BEHAVIOR)) {
-	zsocket_set_router_behavior(socket, option->router_behavior);
+	zsocket_set_router_mandatory(socket, option->router_behavior);
     }
 
     if (check_flag(option->flag,HWM)) {
