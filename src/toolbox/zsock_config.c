@@ -423,6 +423,13 @@ int zsock_load_config(zsock_context_t *zc, char *fname, char *section)
     }
 
     zc->max_workload = inip_get_integer(keyfile, section, "max_thread_workload", zc->max_workload);
+    zc->max_retry = inip_get_integer(keyfile, section, "max_retry", zc->max_retry);
+    zc->min_threads = inip_get_integer(keyfile, section, "min_threads", zc->min_threads);
+    zc->max_threads = inip_get_integer(keyfile, section, "max_threads", zc->max_threads);
+    zc->max_connections = inip_get_integer(keyfile, section, "max_connections", zc->max_connections);
+    zc->max_wait = inip_get_integer(keyfile, section, "max_wait", zc->max_wait);
+    zc->wait_stable_time = inip_get_integer(keyfile, section, "wait_stable_time", zc->wait_stable_time);
+    zc->check_connection_interval = inip_get_integer(keyfile, section, "check_interval", zc->check_connection_interval);
 
     copy_zsock_config(zc);
 

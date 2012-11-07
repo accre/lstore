@@ -1,0 +1,256 @@
+/*
+Advanced Computing Center for Research and Education Proprietary License
+Version 1.0 (September 2012)
+
+Copyright (c) 2012, Advanced Computing Center for Research and Education,
+ Vanderbilt University, All rights reserved.
+
+This Work is the sole and exclusive property of the Advanced Computing Center
+for Research and Education department at Vanderbilt University.  No right to
+disclose or otherwise disseminate any of the information contained herein is
+granted by virtue of your possession of this software except in accordance with
+the terms and conditions of a separate License Agreement entered into with
+Vanderbilt University.
+
+THE AUTHOR OR COPYRIGHT HOLDERS PROVIDES THE "WORK" ON AN "AS IS" BASIS,
+WITHOUT WARRANTY OF ANY KIND, EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT
+LIMITED TO THE WARRANTIES OF MERCHANTABILITY, TITLE, FITNESS FOR A PARTICULAR
+PURPOSE, AND NON-INFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
+ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+Vanderbilt University
+Advanced Computing Center for Research and Education
+230 Appleton Place
+Nashville, TN 37203
+http://www.accre.vanderbilt.edu
+*/
+
+//*************************************************************************
+//*************************************************************************
+
+#include "rr_cli.h"
+
+//*************************************************************************
+// _rrcli_init - Initializes rr client
+//*************************************************************************
+
+void _rrcli_init(rrcli_t *self)
+{
+    self->mode = SYNC_MODE;
+    self->timeout = TIMEOUT_DFT; 
+    self->retries = RETRIES_DFT;
+    self->ctx = NULL;
+    self->socket = NULL;
+    self->pattern = NULL;
+    self->server = NULL;
+    self->broker = NULL;
+    self->single = NULL;
+}
+
+//*************************************************************************
+// rrcli_new - Constructs a request response client. 
+//*************************************************************************
+
+rrcli_t *rrcli_new()
+{
+    rrcli_t *cli;
+    type_malloc_clear(cli, rrcli_t, 1);
+
+    _rrcli_init(cli);
+
+    cli->ctx = zctx_new();
+
+    return cli;       
+}
+
+//************************************************************************
+// rrcli_destroy - Destroys rrcli
+//************************************************************************
+void rrcli_destroy(rrcli_t **self_p) 
+{
+    assert(self_p);
+    if (*self_p) {
+	rrcli_t *self = *self_p;
+ 	zctx_destroy(&self->ctx);
+	zmsg_destroy(&self->single);	
+	free(self->pattern);
+	free(self->server);
+	free(self->broker);
+	free(self);
+	*self_p = NULL;
+    }
+}
+
+//*************************************************************************
+// _rrcli_create_socket - Creates a socket for rrcli
+//*************************************************************************
+
+void _rrcli_create_socket(rrcli_t *self)
+{
+    if (self->socket) {
+        zsocket_destroy(self->ctx, self->socket); //** Destroy existing socket 
+    }
+    self->socket = rr_create_socket(self->ctx, self->mode, ZMQ_REQ, ZMQ_DEALER);
+}
+
+//*************************************************************************
+// _rrcli_connect - Connects or reconnects to a server or broker 
+//*************************************************************************
+
+void _rrcli_connect(rrcli_t *self, char *endpoint)
+{
+    _rrcli_create_socket(self);
+    zsocket_connect(self->socket, endpoint);
+}
+
+//***********************************************************************
+// rrcli_send - Sends buf through zmq
+// OUTPUTS:
+//    Returns the number of bytes in the sent message if successful. Otherwise, retruns -1.
+//***********************************************************************
+
+int rrcli_send(rrcli_t *self, void *buf, size_t len)
+{
+    zmsg_t *msg = zmsg_new();
+    zmsg_pushmem(msg, buf, len);
+
+    if (self->mode == SYNC_MODE) {
+	if (self->single) {
+	    zmsg_destroy(&self->single);
+	}
+        self->single = zmsg_dup(msg);
+    }
+
+    int rc = zmsg_send(&msg, self->socket);
+
+    return rc;
+}
+
+//*************************************************************************
+// _rrcli_retry_to_connect -
+//*************************************************************************
+
+void _rrcli_retry_to_connect(rrcli_t *self)
+{
+    if (strcmp(self->pattern, "lpp") == 0) {
+        _rrcli_connect(self, self->server);
+    } else if (strcmp(self->pattern, "md") == 0) {
+        _rrcli_connect(self, self->broker);
+    } 
+
+    zmsg_t *msg = zmsg_dup(self->single);
+    zmsg_send(&msg, self->socket);
+}
+
+//*************************************************************************
+// rrcli_recv - Receives data through zmq
+// OUTPUTS:
+//    Returns the number of bytes in the MESSAGE if successful. Note the value
+//    can exceed the value of len parameter in case the message was truncated.
+//    Otherwise, returns -1.
+//*************************************************************************
+
+int rrcli_recv(rrcli_t *self, void *buf, size_t len)
+{
+    int retries = self->retries;
+    int nbytes = -1;
+
+    while (1) {
+        if (zsocket_poll(self->socket, self->timeout)) {
+            nbytes = zmq_recv(self->socket, buf, len, 0);
+            assert(nbytes != -1);
+            break;
+        }
+
+        if (self->mode == ASYNC_MODE) break;
+
+        if (--retries < 0) break;
+
+        //** Reconnection
+        _rrcli_retry_to_connect(self); 
+    }
+
+    return nbytes;
+}
+
+//***********************************************************************
+// _rrcli_config_base - Configs common fields 
+//***********************************************************************
+
+void _rrcli_config_base(rrcli_t *self, inip_file_t *keyfile, char *section)
+{
+    assert(keyfile);
+    assert(section);
+
+    rr_set_mode_tm(keyfile, "lppcli", &self->mode, &self->timeout); 
+    self->retries = inip_get_integer(keyfile, section, "retries", RETRIES_DFT);
+}
+
+//**************************************************************************
+// rrcli_config_lpp - Configs rrcli to use lpp pattern
+//**************************************************************************
+
+void _rrcli_config_lpp(rrcli_t *self, inip_file_t *keyfile)
+{
+    assert(keyfile);
+    
+    _rrcli_config_base(self, keyfile, "lppcli");
+
+    self->server = inip_get_string(keyfile, "lppcli", "server", NULL);
+    assert(self->server);
+
+    _rrcli_connect(self, self->server);
+}
+
+//**************************************************************************
+// rrcli_config_md - Configs rrcli to use md pattern 
+//**************************************************************************
+
+void _rrcli_config_md(rrcli_t *self, inip_file_t *keyfile)
+{
+    assert(keyfile);
+
+    _rrcli_config_base(self, keyfile, "mdcli");
+
+    self->broker = inip_get_string(keyfile, "mdcli", "broker", NULL);
+    assert(self->broker);
+
+    _rrcli_connect(self, self->broker);
+}
+
+//*************************************************************************
+// rrcli_load_config - Configs the rr client
+//*************************************************************************
+
+void rrcli_load_config(rrcli_t *self, char *fname)
+{
+/*    if (fname == NULL) {
+	if (os_local_filetype("zsock.cfg") != 0) {
+	    fname = zsock.cfg;
+	} else if (os_local_filetype("~/zsock.cfg") != 0) {
+	    fname = "~/zsock.cfg";
+	} else if (os_local_filetype("/etc/zsock.cfg") != 0) {
+	    fname = "/etc/zsock.cfg";
+	}
+    }
+*/
+    assert(fname);
+    inip_file_t *keyfile = inip_read(fname);
+    self->pattern = inip_get_string(keyfile, "zsock", "pattern", NULL);
+    assert(self->pattern != NULL); //** Need a more decent way to handle misconfiguration 
+
+    if (strcmp(self->pattern, "lpp") == 0) {
+	_rrcli_config_lpp(self, keyfile);
+    } else if (strcmp(self->pattern, "md") == 0) {
+	_rrcli_config_md(self, keyfile);
+    } else {
+	log_printf(0, "Unknown ZMQ Pattern: %s.\n", self->pattern);
+ 	exit(0);	
+    } 
+
+    inip_destroy(keyfile);
+}
+
+

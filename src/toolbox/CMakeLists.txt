@@ -72,6 +72,8 @@ SET(NETWORK_OBJS
     net_zsock.c
     zsock_config.c
     zsock_op.c
+    rr_cli.c
+    rr_svr.c
 )
 
 SET(TOOL_OBJS  
@@ -106,6 +108,8 @@ ADD_EXECUTABLE( netzsock_test netzsock_test.c )
 ADD_EXECUTABLE( zop_test zop_test.c pigeon_hole.c pigeon_coop.c dns_cache.c)
 ADD_EXECUTABLE( zop_cli zop_cli.c pigeon_hole.c pigeon_coop.c dns_cache.c)
 ADD_EXECUTABLE( zop_svr zop_svr.c pigeon_hole.c pigeon_coop.c dns_cache.c)
+ADD_EXECUTABLE( rrcli_app rrcli_app.c rr_cli.c rr_svr.c rr_base.c)
+ADD_EXECUTABLE( rrsvr_app rrsvr_app.c rr_svr.c rr_base.c)
 
 ADD_LIBRARY( toolbox SHARED ${TOOLBOX_OBJS})
 ADD_LIBRARY( toolbox-static STATIC ${TOOLBOX_OBJS})
@@ -115,6 +119,8 @@ SET_TARGET_PROPERTIES(toolbox-static PROPERTIES CLEAN_DIRECT_OUTPUT 1)
 SET_TARGET_PROPERTIES(netzsock_test PROPERTIES LINKER_LANGUAGE CXX)
 SET_TARGET_PROPERTIES(zop_test PROPERTIES LINKER_LANGUAGE CXX)
 SET_TARGET_PROPERTIES(zop_cli PROPERTIES LINKER_LANGUAGE CXX)
+SET_TARGET_PROPERTIES(rrcli_app PROPERTIES LINKER_LANGUAGE CXX)
+SET_TARGET_PROPERTIES(rrsvr_app PROPERTIES LINKER_LANGUAGE CXX)
 SET_TARGET_PROPERTIES(zop_svr PROPERTIES LINKER_LANGUAGE CXX)
 
 #Make static executables by default
@@ -128,11 +134,13 @@ TARGET_LINK_LIBRARIES( hw_info ${toolbox_lib} ${LIBS} )
 TARGET_LINK_LIBRARIES( netzsock_test ${toolbox_lib} ${LIBS} )
 TARGET_LINK_LIBRARIES( zop_test ${toolbox_lib} ${LIBS} )
 TARGET_LINK_LIBRARIES( zop_cli ${toolbox_lib} ${LIBS} )
+TARGET_LINK_LIBRARIES( rrcli_app ${toolbox_lib} ${LIBS} )
+TARGET_LINK_LIBRARIES( rrsvr_app ${toolbox_lib} ${LIBS} )
 TARGET_LINK_LIBRARIES( zop_svr ${toolbox_lib} ${LIBS} )
 
 install(TARGETS toolbox DESTINATION lib)
 install(TARGETS toolbox-static DESTINATION lib)
 install(FILES append_printf.h   chksum.h     fmttypes.h  interval_skiplist.h  net_1_ssl.h  net_phoebus.h  phoebus.h      random.h    string_token.h    type_malloc.h
               apr_wrapper.h     debug.h      hwinfo.h    list.h               net_2_ssl.h  net_sock.h     pigeon_coop.h  skiplist.h  toolbox_config.h
-              atomic_counter.h  dns_cache.h  iniparse.h  log.h                net_fd.h     network.h      pigeon_hole.h  stack.h     transfer_buffer.h	net_zsock.h zsock_config.h zsock_op.h
+              atomic_counter.h  dns_cache.h  iniparse.h  log.h                net_fd.h     network.h      pigeon_hole.h  stack.h     transfer_buffer.h	net_zsock.h zsock_config.h zsock_op.h rr_cli.h rr_svr.h
               DESTINATION include/toolbox )
