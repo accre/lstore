@@ -46,6 +46,7 @@ void _rrcli_init(rrcli_t *self)
     self->pattern = NULL;
     self->server = NULL;
     self->broker = NULL;
+    self->identity = NULL;
     self->single = NULL;
 }
 
@@ -68,6 +69,7 @@ rrcli_t *rrcli_new()
 //************************************************************************
 // rrcli_destroy - Destroys rrcli
 //************************************************************************
+
 void rrcli_destroy(rrcli_t **self_p) 
 {
     assert(self_p);
@@ -78,6 +80,7 @@ void rrcli_destroy(rrcli_t **self_p)
 	free(self->pattern);
 	free(self->server);
 	free(self->broker);
+	free(self->identity);
 	free(self);
 	*self_p = NULL;
     }
@@ -93,6 +96,8 @@ void _rrcli_create_socket(rrcli_t *self)
         zsocket_destroy(self->ctx, self->socket); //** Destroy existing socket 
     }
     self->socket = rr_create_socket(self->ctx, self->mode, ZMQ_REQ, ZMQ_DEALER);
+    if (self->identity)
+        zsocket_set_identity(self->socket, self->identity);
 }
 
 //*************************************************************************
@@ -106,7 +111,7 @@ void _rrcli_connect(rrcli_t *self, char *endpoint)
 }
 
 //***********************************************************************
-// rrcli_send - Sends buf through zmq
+// rrcli_send - Sends len of bytes in buf through zmq
 // OUTPUTS:
 //    Returns the number of bytes in the sent message if successful. Otherwise, retruns -1.
 //***********************************************************************
@@ -129,7 +134,7 @@ int rrcli_send(rrcli_t *self, void *buf, size_t len)
 }
 
 //*************************************************************************
-// _rrcli_retry_to_connect -
+// _rrcli_retry_to_connect - Reconnects to the remote endpoint and resends message
 //*************************************************************************
 
 void _rrcli_retry_to_connect(rrcli_t *self)
@@ -149,7 +154,7 @@ void _rrcli_retry_to_connect(rrcli_t *self)
 // OUTPUTS:
 //    Returns the number of bytes in the MESSAGE if successful. Note the value
 //    can exceed the value of len parameter in case the message was truncated.
-//    Otherwise, returns -1.
+//    (nbytes < len ? nbytes : len) bytes are stored in the buf. If failed, returns -1.
 //*************************************************************************
 
 int rrcli_recv(rrcli_t *self, void *buf, size_t len)
@@ -186,6 +191,7 @@ void _rrcli_config_base(rrcli_t *self, inip_file_t *keyfile, char *section)
 
     rr_set_mode_tm(keyfile, "lppcli", &self->mode, &self->timeout); 
     self->retries = inip_get_integer(keyfile, section, "retries", RETRIES_DFT);
+    self->identity = inip_get_string(keyfile, section, "identity", NULL);
 }
 
 //**************************************************************************
@@ -226,20 +232,10 @@ void _rrcli_config_md(rrcli_t *self, inip_file_t *keyfile)
 
 void rrcli_load_config(rrcli_t *self, char *fname)
 {
-/*    if (fname == NULL) {
-	if (os_local_filetype("zsock.cfg") != 0) {
-	    fname = zsock.cfg;
-	} else if (os_local_filetype("~/zsock.cfg") != 0) {
-	    fname = "~/zsock.cfg";
-	} else if (os_local_filetype("/etc/zsock.cfg") != 0) {
-	    fname = "/etc/zsock.cfg";
-	}
-    }
-*/
     assert(fname);
     inip_file_t *keyfile = inip_read(fname);
     self->pattern = inip_get_string(keyfile, "zsock", "pattern", NULL);
-    assert(self->pattern != NULL); //** Need a more decent way to handle misconfiguration 
+    assert(self->pattern); //** Need a more decent way to handle misconfiguration 
 
     if (strcmp(self->pattern, "lpp") == 0) {
 	_rrcli_config_lpp(self, keyfile);

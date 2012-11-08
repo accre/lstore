@@ -37,9 +37,18 @@ http://www.accre.vanderbilt.edu
 extern "C" {
 #endif
 
-#include "zheaders.h"
+#include <zmq.h>
+#include <czmq.h>
 #include "iniparse.h"
 #include "log.h"
+#include "type_malloc.h"
+
+#define RETRIES_DFT 3
+#define TIMEOUT_DFT -1 
+
+//** Communication mode 
+#define SYNC_MODE 0
+#define ASYNC_MODE 1
 
 void rr_set_mode_tm(inip_file_t *keyfile, char *section, int *mode, int *timeout);
 void *rr_create_socket(zctx_t *ctx, int mode, int sync_st, int asyn_st);

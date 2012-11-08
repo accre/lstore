@@ -37,19 +37,17 @@ http://www.accre.vanderbilt.edu
 extern "C" {
 #endif
 
-#include "zheaders.h"
-#include "type_malloc.h"
-#include "iniparse.h"
-#include "log.h"
+#include "rr_base.h"
 
 //** Request and Response server class
 typedef struct {
-    zctx_t *ctx;     //** CZMQ context
-    void *socket;    //** Server socket
-    char *pattern;   //** ZMQ pattern
+    zctx_t *ctx;       //** CZMQ context
+    void *socket;      //** Server socket
+    char *pattern;     //** ZMQ pattern
     char *endpoint;    //** Endpoint that server binds to 
-    int timeout;     //** Request timeout
-    int mode;        //** Either SYNC_MODE or ASYNC_MODE
+    char *cli_identity; //** Client's identity
+    int timeout;       //** Request timeout
+    int mode;          //** Either SYNC_MODE or ASYNC_MODE
 }rrsvr_t; 
 
 rrsvr_t *rrsvr_new();

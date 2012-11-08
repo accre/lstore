@@ -44,6 +44,7 @@ void _rrsvr_init(rrsvr_t *self)
     self->socket = NULL;
     self->pattern = NULL;
     self->endpoint = NULL;
+    self->cli_identity = NULL;
 }
 
 //*************************************************************************
@@ -73,6 +74,7 @@ void rrsvr_destroy(rrsvr_t **self_p)
  	zctx_destroy(&self->ctx);
 	free(self->pattern);
 	free(self->endpoint);
+	free(self->cli_identity);
 	free(self);
 	*self_p = NULL;
     }
@@ -89,7 +91,16 @@ void _rrsvr_bind_lpp(rrsvr_t *self)
 }
 
 //***********************************************************************
-// rrsvr_send - Sends buf through zmq
+// rrsvr_construct_envelope - Constructs the envelope 
+//***********************************************************************
+
+void rrsvr_construct_envelope(rrsvr_t *self, zmsg_t *msg) 
+{
+    zmsg_pushstr(msg, "%s", self->cli_identity);
+}
+
+//***********************************************************************
+// rrsvr_send - Sends len of bytes in buf through zmq
 // OUTPUTS:
 //    Returns the number of bytes in the sent message if successful. Otherwise, retruns -1.
 //***********************************************************************
@@ -97,7 +108,12 @@ void _rrsvr_bind_lpp(rrsvr_t *self)
 int rrsvr_send(rrsvr_t *self, void *buf, size_t len)
 {
     zmsg_t *msg = zmsg_new();
-    zmsg_pushmem(msg, buf, len);
+
+    if (self->mode == ASYNC_MODE) {
+        rrsvr_construct_envelope(self, msg);
+    }
+
+    zmsg_addmem(msg, buf, len);
 
     int rc = zmsg_send(&msg, self->socket);
     return rc;
@@ -108,14 +124,26 @@ int rrsvr_send(rrsvr_t *self, void *buf, size_t len)
 // OUTPUTS:
 //    Returns the number of bytes in the MESSAGE if successful. Note the value
 //    can exceed the value of len parameter in case the message was truncated.
+//    (nbytes < len ? nbytes : len) bytes are stored in the buf.  If failed, returns -1.
 //*************************************************************************
 
 int rrsvr_recv(rrsvr_t *self, void *buf, size_t len)
 {
     int nbytes = 0;
     if (zsocket_poll(self->socket, self->timeout)) {
-        nbytes = zmq_recv(self->socket, buf, len, 0);
-        assert(nbytes != -1);
+	zmsg_t *msg = zmsg_recv(self->socket);
+	if (self->mode == ASYNC_MODE) { //** Retrieves envelope
+	    free(self->cli_identity);
+            self->cli_identity = zmsg_popstr(msg);
+	}
+	
+	nbytes = zmsg_content_size(msg);
+
+    	size_t to_copy = (size_t)nbytes < len ? (size_t)nbytes : len;
+	zframe_t *frame = zmsg_pop(msg);
+    	memcpy (buf, zframe_data(frame), to_copy);
+	zframe_destroy(&frame);
+	zmsg_destroy(&msg);
     }
 
     return nbytes;
@@ -142,16 +170,6 @@ void _rrsvr_config_lpp(rrsvr_t *self, inip_file_t *keyfile)
 
 void rrsvr_load_config(rrsvr_t *self, char *fname)
 {
-/*    if (fname == NULL) {
-	if (os_local_filetype("zsock.cfg") != 0) {
-	    fname = zsock.cfg;
-	} else if (os_local_filetype("~/zsock.cfg") != 0) {
-	    fname = "~/zsock.cfg";
-	} else if (os_local_filetype("/etc/zsock.cfg") != 0) {
-	    fname = "/etc/zsock.cfg";
-	}
-    }
-*/
     assert(fname);
     inip_file_t *keyfile = inip_read(fname);
     self->pattern = inip_get_string(keyfile, "zsock", "pattern", NULL);
