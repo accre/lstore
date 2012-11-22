@@ -35,6 +35,7 @@ extern "C" {
 #endif
 
 #include <stdio.h>
+#include <stdint.h>
 
 struct inip_element_s {  //** Key/Value pair
    char *key;

@@ -68,6 +68,14 @@ int main(int argc, char **argv)
 
   sl = create_skiplist_full(l_max, p, 1, &skiplist_compare_int, NULL, NULL, NULL);
 
+  //** Make sure everything works fine with an empty list
+  i = 12345;
+  it = iter_search_skiplist(sl, (skiplist_key_t *)&i, 0);
+  next_skiplist(&it, (skiplist_key_t **)&key, (skiplist_data_t **)&data);
+  if (data != NULL) {
+     printf("ERROR got something from an EMPTY list\n");
+  }
+
   key_list = (int *)malloc(sizeof(int)*n_max);
   data_list = (int *)malloc(sizeof(int)*n_max);
 

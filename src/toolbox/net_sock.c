@@ -43,6 +43,7 @@ http://www.accre.vanderbilt.edu
 #include <signal.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <limits.h>
 #include "network.h"
 #include "debug.h"
 #include "log.h"
@@ -172,6 +173,7 @@ int leni, ni, nbi;
    do {
       tbv.nbytes = len;
       tbuffer_next(buf, pos, &tbv);
+      if (tbv.n_iov > IOV_MAX) tbv.n_iov = IOV_MAX;  //** Make sure we don't have to many entries
       n = readv(s->fd, tbv.buffer, tbv.n_iov);
 leni=tbv.buffer[0].iov_len;
 ni = n;
@@ -221,6 +223,7 @@ apr_size_t my_write(network_sock_t *sock, tbuffer_t *buf, apr_size_t bpos, apr_s
 //len2 = tbv.nbytes;
 //ni=tbv.n_iov;
 //log_printf(15, "s->fd=%d requested=%d got tbv.nbytes=%d tbv.n_iov=%d\n", s->fd, leni, len2, ni); flush_log();
+      if (tbv.n_iov > IOV_MAX) tbv.n_iov = IOV_MAX;  //** Make sure we don't have to many entries
       n = writev(s->fd, tbv.buffer, tbv.n_iov);
 //leni=tbv.buffer->iov_len;
 //ni = n;
@@ -400,27 +403,26 @@ net_sock_t *sock_accept(net_sock_t *nsock)
   memset(sock, 0, sizeof(network_sock_t));
 
   if (apr_pool_create(&(sock->mpool), NULL) != APR_SUCCESS) {
-     return(NULL); 
+     free(sock);
+     return(NULL);
   }
-  
- //**QWERT
- apr_thread_mutex_create(&(sock->lock), APR_THREAD_MUTEX_DEFAULT,sock->mpool);
- //**QWERTY
+
 
   sock->tcpsize = psock->tcpsize;
 
   err = apr_socket_accept(&(sock->fd), psock->fd, sock->mpool);
   if (err != APR_SUCCESS) {
+     apr_pool_destroy(sock->mpool);
      free(sock);
      sock = NULL;
+     log_printf(0, "ERROR with apr_socket_accept err=%d\n", err);
+  } else {
+    apr_thread_mutex_create(&(sock->lock), APR_THREAD_MUTEX_DEFAULT,sock->mpool);
+
+    //** Set the with a minimal timeout of 10ms
+    set_net_timeout(&tm, 0, SOCK_DEFAULT_TIMEOUT);
+    apr_socket_timeout_set(sock->fd, tm);
   }
-
-//apr_socket_timeout_get(sock->fd, &tm);
-//log_printf(5, "sock_accept: initial tm=" TT "\n", tm);
-
-  //** Set the with a minimal timeout of 10ms
-  set_net_timeout(&tm, 0, SOCK_DEFAULT_TIMEOUT);
-  apr_socket_timeout_set(sock->fd, tm);
 
   return(sock);    
 }
