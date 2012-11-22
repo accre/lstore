@@ -94,7 +94,7 @@ op_status_t cp_lio(cp_file_t *cp)
   status = op_failure_status;
   q = new_opque();
 
-  //** Check if the dest exists and if not create it
+  //** Check if the dest exists and if not creates it
   dtype = lioc_exists(cp->dest_tuple.lc, cp->dest_tuple.creds, cp->dest_tuple.path);
 
   if (dtype == 0) { //** Need to create it
@@ -195,6 +195,10 @@ op_status_t cp_lio(cp_file_t *cp)
   val[1] = mysize; dv_size[1] = strlen(val[1]);
   val[2] = NULL; dv_size[2] = 0;
   gop_sync_exec(os_set_multiple_attrs(cp->dest_tuple.lc->os, cp->dest_tuple.creds, dfd, keys, (void **)val, dv_size, 3));
+
+  //**Update the error counts if needed
+  lioc_update_error_counts(cp->src_tuple.lc, cp->src_tuple.creds, cp->src_tuple.path, sseg);
+  lioc_update_error_counts(cp->dest_tuple.lc, cp->dest_tuple.creds, cp->dest_tuple.path, dseg);
 
   //** Close the files
   opque_add(q, os_close_object(cp->src_tuple.lc->os, sfd));
@@ -305,6 +309,9 @@ log_printf(0, "AFTER PUT\n");
   val[2] = NULL; v_size[2] = 0;
   err = lioc_set_multiple_attrs(cp->dest_tuple.lc, cp->dest_tuple.creds, cp->dest_tuple.path, NULL, key, (void **)val, v_size, 3);
 
+  //**Update the error counts if needed
+  lioc_update_error_counts(cp->dest_tuple.lc, cp->dest_tuple.creds, cp->dest_tuple.path, seg);
+
   exnode_destroy(ex);
   exnode_exchange_destroy(exp);
 
@@ -380,6 +387,9 @@ op_status_t cp_dest_local(cp_file_t *cp)
   free(buffer);
 
   fclose(fd);
+
+  //**Update the error counts if needed
+  lioc_update_error_counts(cp->src_tuple.lc, cp->src_tuple.creds, cp->src_tuple.path, seg);
 
   exnode_destroy(ex);
   exnode_exchange_destroy(exp);

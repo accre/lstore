@@ -411,7 +411,7 @@ log_printf(15, "cache_rw_pages: rw_mode=%d i=%d offset=" XOT "\n", rw_mode, i, p
            cc.write_bytes += cio->nbytes;
            cio->gop = segment_write(s->child_seg, s->c->da, 1, &(cio->ex_iov), &(cio->buf), 0, s->c->timeout);
         }
-log_printf(15, "rw_mode=%d gid=%d offset=" XOT " len=" XOT "\n", rw_mode, gop_id(cio->gop), plist[contig_start].p->offset, cio->nbytes);
+log_printf(2, "rw_mode=%d gid=%d offset=" XOT " len=" XOT "\n", rw_mode, gop_id(cio->gop), plist[contig_start].p->offset, cio->nbytes);
 flush_log();
 
         gop_set_myid(cio->gop, myid);
@@ -468,7 +468,7 @@ log_printf(15, "cache_rw_pages: end rw_mode=%d i=%d offset=" XOT "\n", rw_mode, 
         cc.write_bytes += cio->nbytes;
         cio->gop = segment_write(s->child_seg, s->c->da, 1, &(cio->ex_iov), &(cio->buf), 0, s->c->timeout);
      }
-log_printf(15, "end rw_mode=%d gid=%d offset=" XOT " len=" XOT "\n", rw_mode, gop_id(cio->gop), plist[contig_start].p->offset, cio->nbytes);
+log_printf(2, "end rw_mode=%d gid=%d offset=" XOT " len=" XOT "\n", rw_mode, gop_id(cio->gop), plist[contig_start].p->offset, cio->nbytes);
 log_printf(15, "end rw_mode=%d myid=%d gid=%d\n", rw_mode, myid, gop_id(cio->gop));
 flush_log();
 
@@ -1743,7 +1743,7 @@ int _cache_ppages_flush(segment_t *seg, data_attr_t *da)
   iovec_t *iov;
   tbuffer_t tbuf;
   ex_off_t *rng, *rng0, r[2];
-  int i, j, k, n_ranges, n, again, slot;
+  int i, j, n_ranges, n, again, slot;
   ex_off_t nbytes, len;
   op_status_t status;
 
@@ -1766,7 +1766,7 @@ log_printf(5, "START RSTACK[%d]=%p size=%d flags=%d\n", i, pp->range_stack, stac
      }
 
      //** Start the iterative process to make the irreducible set for storing
-k=0;
+//k=0;
      do {
         again = 0;
         rng0 = (ex_off_t *)pop(pp->range_stack);
@@ -1795,7 +1795,7 @@ k=0;
            }
         }
         push(pp->range_stack, rng0);
-k=1;
+//k=1;
      } while (again == 1);
 
      n_ranges += stack_size(pp->range_stack);
@@ -1993,7 +1993,7 @@ log_printf(5, "INTERIOR FULL seg=" XIDT " using ppage=%d pstart=" XOT " pend=" X
          rng[0] = 0;
          rng[1] = nbytes - 1;
          push(pp->range_stack, rng);
-         pend = pp->page_start + pend;
+         pend = pp->page_start + nbytes - 1;
          if (pend > s->ppage_max) s->ppage_max = pend;
          nhandled++;
          hi_mapped = 1;
@@ -2103,7 +2103,7 @@ log_printf(5, "LO_MAPPED ADDED seg=" XIDT " using ppage=%d pstart=" XOT " pend="
      rng[0] = 0;
      rng[1] = nbytes - 1;
      push(pp->range_stack, rng);
-     pend = pp->page_start + pend;
+     pend = pp->page_start + nbytes - 1;
      if (pend > s->ppage_max) s->ppage_max = pend;
      nhandled++;
      hi_mapped = 1;
@@ -2112,7 +2112,7 @@ log_printf(5, "HI_MAPPED ADDED seg=" XIDT " using ppage=%d pstart=" XOT " pend="
 
 
   if ((do_flush == 1) && (nhandled != n_pages)) {  //** Do a flush if not completely covered
-log_printf(5, "Triggering a flush do_flush=%d nhandled=%d n_pages=%d\n", do_flush, nhandled, n_pages);
+log_printf(1, "Triggering a flush do_flush=%d nhandled=%d n_pages=%d\n", do_flush, nhandled, n_pages);
 
      err = _cache_ppages_flush(seg, da);
   }
@@ -2275,7 +2275,11 @@ log_printf(15, "cache_rw_func: tid=%d lo=" XOT " hi=" XOT " rw_mode=%d pstart=" 
          if (cop->rw_mode == CACHE_WRITE) {
             tb_err += tbuffer_copy(cop->buf, bpos, &tb, poff, blen);
             segment_lock(seg);  //** Tweak the size if needed
-            if (curr->hi > s->total_size) s->total_size = curr->hi + 1;
+//            if (curr->hi > s->total_size) s->total_size = curr->hi + 1;
+if (curr->hi > s->total_size) {
+  log_printf(0, "seg=" XIDT " total_size=" XOT " curr->hi=" XOT "\n", segment_id(cop->seg), s->total_size, curr->hi);
+  s->total_size = curr->hi + 1;
+}
             segment_unlock(seg);
          } else {
             tb_err += tbuffer_copy(&tb, poff, cop->buf, bpos, blen);
@@ -2352,14 +2356,20 @@ flush_log();
   } else {
      s->stats.user.write_count++;
      s->stats.user.write_bytes += ngot;
+
+     //** Update the size if needed
+     if ((s->total_size < new_size) && (cop->rw_mode == CACHE_WRITE)) s->total_size = new_size;
+
+if ((s->total_size < new_size) && (cop->rw_mode == CACHE_WRITE)) {
+  log_printf(0, "seg=" XIDT " total_size=" XOT " new_size=" XOT "\n", segment_id(cop->seg), s->total_size, new_size);
+  s->total_size = new_size;
+}
   }
   s->stats.hit_bytes += hit_bytes;
   s->stats.miss_bytes += total_bytes - hit_bytes;
   s->stats.hit_time += hit_time;
   s->stats.miss_time += miss_time;
 
-  //** Update the size if needed
-  if (s->total_size < new_size) s->total_size = new_size;
 log_printf(15, "cache_rw_func: tid=%d END size=" XOT "\n", tid, s->total_size);
 
   segment_unlock(seg);
@@ -2431,12 +2441,17 @@ op_status_t cache_flush_range_func(void *arg, int id)
    int progress;
    int mode, err;
    ex_off_t lo, hi, hi_got;
+   double dt;
+   apr_time_t now;
+
 
    err = OP_STATE_SUCCESS;
 
    init_stack(&stack);
 
-log_printf(5, "COP seg=" XIDT " offset=" XOT " len=" XOT " size=" XOT "\n", segment_id(cop->seg), cop->iov_single.offset, cop->iov_single.len, segment_size(cop->seg));
+now = apr_time_now();
+log_printf(1, "COP seg=" XIDT " offset=" XOT " len=" XOT " size=" XOT "\n", segment_id(cop->seg), cop->iov_single.offset, cop->iov_single.len, segment_size(cop->seg));
+flush_log();
 
    total_pages = 0;
    lo = cop->iov_single.offset;
@@ -2467,7 +2482,7 @@ log_printf(5, "START seg=" XIDT " lo=" XOT " hi=" XOT " flush_id=" XOT "\n", seg
 log_printf(5, "cache_flush_range_func: processing range: lo=" XOT " hi=" XOT " mode=%d\n", curr->lo, curr->hi, mode);
       n_pages = max_pages;
       status = cache_dirty_pages_get(cop->seg, mode, curr->lo, curr->hi, &hi_got, page, &n_pages);
-log_printf(5, "cache_flush_range_func: processing range: lo=" XOT " hi=" XOT " hi_got=" XOT " mode=%d skip_mode=%d n_pages=%d\n", curr->lo, curr->hi, hi_got, mode, status, n_pages);
+log_printf(1, "seg=" XIDT " processing range: lo=" XOT " hi=" XOT " hi_got=" XOT " mode=%d skip_mode=%d n_pages=%d\n", segment_id(cop->seg), curr->lo, curr->hi, hi_got, mode, status, n_pages);
 flush_log();
 
       if (status == 0) {  //** Got some data to process
@@ -2527,7 +2542,9 @@ log_printf(5, "END seg=" XIDT " lo=" XOT " hi=" XOT " flush_id=" XOT " AFTER WAI
    flush_wait(cop->seg, flush_id);
    flush_id[2] = progress;
 
-log_printf(5, "END seg=" XIDT " lo=" XOT " hi=" XOT " flush_id=" XOT " total_pages=%d status=%d\n", segment_id(cop->seg), lo, hi, flush_id[2], total_pages, err);
+dt = apr_time_now() - now;
+dt /= APR_USEC_PER_SEC;
+log_printf(1, "END seg=" XIDT " lo=" XOT " hi=" XOT " flush_id=" XOT " total_pages=%d status=%d dt=%lf\n", segment_id(cop->seg), lo, hi, flush_id[2], total_pages, err, dt);
   return((err == OP_STATE_SUCCESS) ? op_success_status : op_failure_status);
 }
 
@@ -2691,7 +2708,9 @@ op_generic_t *segcache_inspect(segment_t *seg, data_attr_t *da, info_fd_t *fd, i
 {
   cache_segment_t *s = (cache_segment_t *)seg->priv;
 
-  info_printf(fd, 1, XIDT ": Cache segment maps to child " XIDT "\n", segment_id(seg), segment_id(s->child_seg));
+  if ((mode != INSPECT_SOFT_ERRORS) && (mode != INSPECT_HARD_ERRORS)) {
+     info_printf(fd, 1, XIDT ": Cache segment maps to child " XIDT "\n", segment_id(seg), segment_id(s->child_seg));
+  }
   return(segment_inspect(s->child_seg, da, fd, mode, bufsize, timeout));
 }
 
@@ -2845,6 +2864,7 @@ ex_off_t segcache_size(segment_t *seg)
 
   segment_lock(seg);
   size = (s->total_size > (s->ppage_max+1)) ? s->total_size : s->ppage_max + 1;
+  log_printf(0, "seg=" XIDT " total_size=" XOT " ppage_max=" XOT " size=" XOT "\n", segment_id(seg), s->total_size, s->ppage_max, size);
   segment_unlock(seg);
   return(size);
 }
@@ -3092,9 +3112,10 @@ log_printf(2, "segcache_destroy: seg->id=" XIDT " ref_count=%d\n", segment_id(se
 //log_printf(0, "Before close/flush seg=" XIDT "\n", segment_id(seg));
 CACHE_PRINT;
 
-  //** Flag the segment as being removed
+  //** Flag the segment as being removed and flush any ppages
   segment_lock(seg);
   s->close_requested = 1;
+  if (s->c != NULL) _cache_ppages_flush(seg, s->c->da);
   segment_unlock(seg);
 
   //** IF s->c == NULL then we are just cloning the structure or serial/deserializing an exnode
@@ -3119,11 +3140,14 @@ CACHE_PRINT;
        usleep(10000);
        cache_lock(s->c);
      }
-     s->c->fn.removing_segment(s->c, seg);  //** Do the final remove
      cache_unlock(s->c);
 
      //** and drop the cache pages
      cache_page_drop(seg, 0, s->total_size + 1);
+
+     cache_lock(s->c);
+     s->c->fn.removing_segment(s->c, seg);  //** Do the final remove
+     cache_unlock(s->c);
   }
 
   //** Drop the flush args

@@ -350,10 +350,9 @@ op_status_t segjerase_inspect_scan(segjerase_inspect_t *si)
   opque_t *q;
   op_generic_t *gop;
   ex_off_t fsize, off, lo, hi;
-  int  bufsize = 1024*1024;
   int maxstripes, curr_stripe, i, j, moff, magic_stripe, n_iov, start_stripe, stripe, total_stripes;
-  char magic[bufsize], empty_magic[JE_MAGIC_SIZE];
-  int start_bad, do_fix, err, bad_count, empty;
+  char *magic, empty_magic[JE_MAGIC_SIZE];
+  int start_bad, do_fix, err, bad_count, empty, bufsize;
   iovec_t *iov;
   ex_iovec_t *ex_iov;
   tbuffer_t tbuf;
@@ -369,7 +368,9 @@ op_status_t segjerase_inspect_scan(segjerase_inspect_t *si)
   if ((i == INSPECT_QUICK_REPAIR) || (i == INSPECT_SCAN_REPAIR) || (i == INSPECT_FULL_REPAIR)) do_fix = 1;
 
   fsize = segment_size(si->seg);
-  maxstripes = bufsize / (s->n_devs*JE_MAGIC_SIZE);
+  maxstripes = 1024;
+  bufsize = s->n_devs * maxstripes * JE_MAGIC_SIZE;
+  type_malloc(magic, char, bufsize);
   type_malloc(iov, iovec_t, s->n_devs*maxstripes);
   type_malloc(ex_iov, ex_iovec_t, s->n_devs*maxstripes);
 
@@ -470,6 +471,7 @@ log_printf(0, " i=%d bad=%d start_bad=%d\n", i, bad_count, start_bad);
     }
   }
 
+  free(magic);
   free(iov);
   free(ex_iov);
   opque_free(q, OP_DESTROY);
@@ -512,6 +514,9 @@ op_status_t segjerase_inspect_func(void *arg, int id)
   si->max_replaced = status.error_code;
   child_replaced = si->max_replaced;
 
+  //** Kick out if we can't fix anything
+  if (child_replaced > s->n_data_devs) goto fail;
+
   total_stripes = segment_size(si->seg) / s->data_size;
 
   //** The INSPECT_QUICK_* options are handled by the LUN driver.
@@ -532,6 +537,7 @@ op_status_t segjerase_inspect_func(void *arg, int id)
         break;
   }
 
+fail:
   if (si->max_replaced > s->n_data_devs) {
      status.op_status = OP_STATE_FAILURE;
   } else if ((child_replaced > 0) && ((si->inspect_mode & INSPECT_FORCE_REPAIR) == 0)) {

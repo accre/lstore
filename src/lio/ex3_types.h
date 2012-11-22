@@ -35,6 +35,7 @@ http://www.accre.vanderbilt.edu
 #define _EX3_TYPES_H_
 
 #include <inttypes.h>
+#include "ibp.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -48,10 +49,12 @@ extern "C" {
 typedef int64_t ex_off_t;
 typedef uint64_t ex_id_t;
 
-typedef struct {    //** I/O Vec array
-  ex_off_t offset;
-  ex_off_t len;
-} ex_iovec_t;
+typedef ibp_iovec_t ex_iovec_t;
+
+//typedef struct {    //** I/O Vec array
+//  ex_off_t offset;
+//  ex_off_t len;
+//} ex_iovec_t;
 
 #define ex_iovec_single(iov, oset, nbytes) (iov)->offset = oset; (iov)->len = nbytes
 ex_iovec_t *ex_iovec_create();

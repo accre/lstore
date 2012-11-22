@@ -58,6 +58,7 @@ typedef struct {
   ex_off_t seg_end;     //** Ending location to use
   ex_off_t block_len;   //** Length of each block
   ex_off_t row_len;     //** Total length of row. (block_len*n_devices)
+  int rwop_index;
 } seglun_row_t;
 
 typedef struct {
@@ -106,7 +107,13 @@ typedef struct {
 typedef struct {
   op_generic_t *gop;
   tbuffer_t buffer;
-  ex_off_t offset;
+  ex_iovec_t *ex_iov;
+  iovec_t *iov;
+  int n_ex;
+  int c_ex;
+  int n_iov;
+  int c_iov;
+//  ex_off_t offset;
   ex_off_t len;
 } lun_rw_row_t;
 
@@ -142,7 +149,7 @@ int slun_row_placement_check(segment_t *seg, data_attr_t *da, seglun_row_t *b, i
   for (i=0; i<n_devices; i++) {
      if (hints_list[i].status != RS_ERROR_OK) {
         nbad++;
-        block_status[i] = 1;
+        block_status[i] = hints_list[i].status;
      }
 
      if (hints_list[i].local_rsq != NULL) { rs_query_destroy(seg->ess->rs, hints_list[i].local_rsq); }
@@ -445,6 +452,7 @@ int slun_row_replace_fix(segment_t *seg, data_attr_t *da, seglun_row_t *b, int *
 //  seglun_priv_t *s = (seglun_priv_t *)seg->priv;
   rs_request_t req_list[n_devices];
   data_cap_set_t *cap_list[n_devices];
+  op_status_t status;
   opque_t *q;
   rs_query_t *rsq;
   op_generic_t *gop;
@@ -524,6 +532,17 @@ log_printf(15, "loop=%d ------------------------------\n", loop);
     gop = rs_data_request(seg->ess->rs, da, rsq, cap_list, req_list, m, hints_list, ngood, n_devices, timeout);
     err = gop_waitall(gop);
 
+    //** Check if we have enough RIDS
+    if (err != OP_STATE_SUCCESS) {
+       status = gop_get_status(gop);
+       if (status.error_code == RS_ERROR_NOT_ENOUGH_RIDS) { //** No use looping
+          log_printf(1, "seg=" XIDT " ERROR not enough RIDS!\n", segment_id(seg));
+          err = m;
+          loop = 10;  //** Kick us out of the loop
+          goto oops;
+       }
+    }
+
     //** Process the results
     err = 0;
     for (j=0; j<m; j++) {
@@ -546,13 +565,13 @@ log_printf(15, "missing[%d]=%d req.op_status=%d\n", j, missing[j], gop_completed
 log_printf(15, "after rs query block_status[%d]=%d block_len=" XOT "\n", i, block_status[i], b->block_len);
     }
 
-    gop_free(gop, OP_DESTROY);
-
     //**Pad the good ones
     err = m - err + slun_row_pad_fix(seg, da, b, block_status, n_devices, timeout);
 
 log_printf(15, "after row_pad_fix.  m=%d err=%d\n", m, err);
 
+oops:
+    gop_free(gop, OP_DESTROY);
     opque_free(q, OP_DESTROY);
     loop++;
   } while ((loop < 5) && (err > 0));
@@ -572,7 +591,7 @@ log_printf(15, "after row_pad_fix.  m=%d err=%d\n", m, err);
 
 op_status_t _seglun_grow(segment_t *seg, data_attr_t *da, ex_off_t new_size, int timeout)
 {
-  int i, n, err;
+  int i, n, err, cnt;
   ex_off_t off, dsize, old_len;
   seglun_priv_t *s = (seglun_priv_t *)seg->priv;
   seglun_row_t *b;
@@ -653,6 +672,7 @@ log_printf(15, "sid=" XIDT " row maxed out seg_offset=" XOT " curr seg_end=" XOT
      type_malloc_clear(b, seglun_row_t, 1);
      type_malloc_clear(block, seglun_block_t, s->n_devices);
      b->block = block;
+     b->rwop_index = -1;
      b->seg_offset = off;
 
      dsize = off + s->max_row_size;
@@ -676,19 +696,31 @@ log_printf(15, "sid=" XIDT " row maxed out seg_offset=" XOT " curr seg_end=" XOT
 
      if (err == 0) {
         insert_interval_skiplist(s->isl, (skiplist_key_t *)&(b->seg_offset), (skiplist_key_t *)&(b->seg_end), (skiplist_data_t *)b);
+     } else {  //** Got an error so clean up and kick out
+       for (i=0; i<s->n_devices; i++) {
+          if (block[i].data != NULL) {
+             cnt = atomic_get(block[i].data->ref_count);
+             if ( cnt > 0) atomic_dec(block[i].data->ref_count);
+             data_block_destroy(block[i].data);
+          }
+       }
+       free(block);
+       free(b);
+       goto oops;
      }
 
 log_printf(15, "sid=" XIDT " off=" XOT " b->row_len=" XOT " err=%d\n", segment_id(seg), b->seg_offset, b->row_len, err);
 
   }
 
+oops:
   now = apr_time_now() - now;
   s->grow_time += now;
   s->grow_count++;
 
 gsecs = (double)now/APR_USEC_PER_SEC;
 tsecs = (double)s->grow_time/APR_USEC_PER_SEC;
-log_printf(5, "sid=" XIDT " END used=" XOT " old max=" XOT " newmax=" XOT " err=%d berr=%d dt=%lf dt_total=%lf grow_count=%d\n", segment_id(seg), s->used_size, s->total_size, new_size, err, berr, gsecs, tsecs, s->grow_count);
+log_printf(1, "sid=" XIDT " END used=" XOT " old max=" XOT " newmax=" XOT " err=%d berr=%d dt=%lf dt_total=%lf grow_count=%d\n", segment_id(seg), s->used_size, s->total_size, new_size, err, berr, gsecs, tsecs, s->grow_count);
 
   if ((err+berr) == 0) {
     s->total_size = new_size;
@@ -869,10 +901,11 @@ op_generic_t *seglun_truncate(segment_t *seg, data_attr_t *da, ex_off_t new_size
 void lun_row_decompose(segment_t *seg, lun_rw_row_t *rw_buf, seglun_row_t *b, ex_off_t start, tbuffer_t *buffer, ex_off_t bpos, ex_off_t rwlen)
 {
   seglun_priv_t *s = (seglun_priv_t *)seg->priv;
-  int i, k, n_stripes, start_stripe, end_stripe;
+  lun_rw_row_t *rwb;
+  int i, j, k, n_stripes, start_stripe, end_stripe;
   ex_off_t lo, hi, nleft, pos, chunk_off, chunk_end, stripe_off, begin, end, nbytes;
-  iovec_t *iov[s->n_devices];
-  int n_iov[s->n_devices], c_iov[s->n_devices], err, dev, ss, stripe_shift;
+  int err, dev, ss, stripe_shift;
+  ex_off_t offset[s->n_devices], len[s->n_devices];
   tbuffer_var_t tbv;
 //ex_off_t dummy;
 
@@ -887,13 +920,19 @@ log_printf(15, "start_stripe=" XOT " end_stripe=" XOT " n_stripes=" XOT "\n", st
   tbuffer_var_init(&tbv);
 
   for (i=0; i < s->n_devices; i++) {
-     rw_buf[i].offset = -1;
-     rw_buf[i].len = 0;
+     offset[i] = -1;
+     len[i] = 0;
 
      //** Make the initial space
-     n_iov[i] = n_stripes;
-     type_malloc(iov[i], iovec_t, n_stripes);
-     c_iov[i] = 0;
+     k = rw_buf[i].c_iov - rw_buf[i].n_iov;
+     if (k < n_stripes) {
+        rw_buf[i].c_iov += n_stripes - k + 1;
+        if (rw_buf[i].iov == NULL) {
+           type_malloc(rw_buf[i].iov, iovec_t, rw_buf[i].c_iov);
+        } else {
+           type_realloc(rw_buf[i].iov, iovec_t, rw_buf[i].c_iov);
+        }
+     }
   }
 
   ss = start_stripe;
@@ -905,6 +944,7 @@ log_printf(15, "start_stripe=" XOT " end_stripe=" XOT " n_stripes=" XOT "\n", st
         dev = (i+stripe_shift) % s->n_devices;
         chunk_off = stripe_off + dev * s->chunk_size;
         chunk_end = chunk_off + s->chunk_size - 1;
+        rwb = &(rw_buf[i]);
 //log_printf(15, " i=%d dev=%d chunk_off=" XOT " chunk_end=" XOT "\n", i, dev, chunk_off, chunk_end);
 
         if ((chunk_end >= lo) && (chunk_off <= hi)) {
@@ -912,10 +952,10 @@ log_printf(15, "start_stripe=" XOT " end_stripe=" XOT " n_stripes=" XOT "\n", st
            end = (chunk_end > hi) ? hi - chunk_off : s->chunk_size - 1;
            nbytes = end - begin + 1;
 
-           if (rw_buf[i].offset == -1) { //** 1st time it's used so set the offset
-              rw_buf[i].offset = ss * s->chunk_size + begin;
+           if (offset[i] == -1) { //** 1st time it's used so set the offset
+              offset[i] = ss * s->chunk_size + begin;
            }
-           rw_buf[i].len += nbytes;
+           len[i] += nbytes;
 
            pos = bpos + chunk_off + begin - lo;
 //log_printf(15, "begin=" XOT " end=" XOT " nbytes=" XOT " bpos=" XOT "\n", begin, end, nbytes, pos);
@@ -925,14 +965,14 @@ log_printf(15, "start_stripe=" XOT " end_stripe=" XOT " n_stripes=" XOT "\n", st
            err = TBUFFER_OK;
            while ((nleft > 0) && (err == TBUFFER_OK)) {
               err = tbuffer_next(buffer, pos, &tbv);
-              k = c_iov[i] + tbv.n_iov;
-              if (k >= n_iov[i]) type_realloc(iov[i], iovec_t, k*1.25);
+              k = rwb->n_iov + tbv.n_iov;
+              if (k >= rwb->c_iov) { rwb->c_iov = 1.25*k; type_realloc(rwb->iov, iovec_t, rwb->c_iov); }
               for (k=0; k<tbv.n_iov; k++) {
-                 iov[i][c_iov[i] + k] = tbv.buffer[k];
+                 rwb->iov[rwb->n_iov + k] = tbv.buffer[k];
 //dummy = iov[i][c_iov[i]+k].iov_len;
 //log_printf(15, "iov[%d][%d] -- iov_len=" XOT " iov_base=%p\n", i, c_iov[i]+k, dummy, iov[i][c_iov[i]+k].iov_base);
               }
-              c_iov[i] += tbv.n_iov;
+              rwb->n_iov += tbv.n_iov;
 
               nleft -= tbv.nbytes;
 
@@ -949,10 +989,21 @@ log_printf(15, "start_stripe=" XOT " end_stripe=" XOT " n_stripes=" XOT "\n", st
 
   for (i=0; i < s->n_devices; i++) {
 //log_printf(15, "i=%d off=" XOT " len=" XOT " n_iov=%d\n", i, rw_buf[i].offset, rw_buf[i].len, c_iov[i]);
-     if (rw_buf[i].offset >= 0) {
-        tbuffer_vec(&(rw_buf[i].buffer), rw_buf[i].len, c_iov[i], iov[i]);
-     } else {
-        free(iov[i]);
+     if (offset[i] >= 0) {
+        j = rw_buf[i].n_ex;
+        if (rw_buf[i].n_ex == rw_buf[i].c_ex) {
+           k = 1.25 * (j+1);
+           rw_buf[i].c_ex = k;
+           if (rw_buf[i].n_ex == 0) {
+              type_malloc(rw_buf[i].ex_iov, ex_iovec_t, k);
+           } else {
+              type_realloc(rw_buf[i].ex_iov, ex_iovec_t, k);
+           }
+        }
+        rw_buf[i].ex_iov[j].offset = offset[i];
+        rw_buf[i].ex_iov[j].len = len[i];
+        rw_buf[i].len += len[i];
+        rw_buf[i].n_ex++;
      }
   }
 
@@ -1130,8 +1181,8 @@ int seglun_row_decompose_test()
             lun_row_decompose(seg, rw_buf, b, offset, &tbuf, 0, len);
 
             for (i=0; i < s->n_devices; i++) {
-               if (rw_buf[i].offset >= 0) {
-                  tbuffer_copy(&(tbuf_ref[i]), rw_buf[i].offset, &(rw_buf[i].buffer), 0, rw_buf[i].len);
+               if (rw_buf[i].n_ex > 0) {
+                  tbuffer_copy(&(tbuf_ref[i]), rw_buf[i].ex_iov[0].offset, &(rw_buf[i].buffer), 0, rw_buf[i].ex_iov[0].len);
                }
             }
 
@@ -1172,23 +1223,30 @@ op_status_t seglun_rw_op(segment_t *seg, data_attr_t *da, int n_iov, ex_iovec_t 
   seglun_priv_t *s = (seglun_priv_t *)seg->priv;
   op_status_t status;
   opque_t *q;
-  seglun_row_t *b;
+  seglun_row_t *b, **bused;
   interval_skiplist_iter_t it;
   ex_off_t lo, hi, start, end, blen, bpos;
-  int i, maxerr, nerr, slot;
+  int i, j, maxerr, nerr, slot, n_bslots;
+  int *bcount;
   Stack_t *stack;
-  lun_rw_row_t *rw_buf;
+  lun_rw_row_t *rw_buf, *rwb_table;
 
   segment_lock(seg);
+
+  type_malloc(bused, seglun_row_t *, interval_skiplist_count(s->isl));
+  type_malloc(bcount, int, s->n_devices * interval_skiplist_count(s->isl));
+  type_malloc(rwb_table, lun_rw_row_t, s->n_devices * interval_skiplist_count(s->isl));
 
   q = new_opque();
   stack = new_stack();
   bpos = boff;
 
-log_printf(15, "START sid=" XIDT " n_iov=%d rw_mode=%d\n", segment_id(seg), n_iov, rw_mode);
+log_printf(15, "START sid=" XIDT " n_iov=%d rw_mode=%d intervals=%d\n", segment_id(seg), n_iov, rw_mode, interval_skiplist_count(s->isl));
 
+  n_bslots = 0;
   for (slot=0; slot<n_iov; slot++) {
     lo = iov[slot].offset;
+
     hi = lo + iov[slot].len - 1;
     it = iter_search_interval_skiplist(s->isl, (skiplist_key_t *)&lo, (skiplist_key_t *)&hi);
     b = (seglun_row_t *)next_interval_skiplist(&it);
@@ -1199,42 +1257,73 @@ log_printf(15, "FOR sid=" XIDT " slot=%d n_iov=%d lo=" XOT " hi=" XOT " b=%p\n",
       end = (hi >= b->seg_end) ? b->row_len-1 : (hi - b->seg_offset);
       blen = end - start + 1;
 
-log_printf(15, "sid=" XIDT " soff=" XOT " bpos=" XOT " blen=" XOT " seg_off=" XOT " seg_len=" XOT " seg_end=" XOT "\n", segment_id(seg),
-     start, bpos, blen, b->seg_offset, b->row_len, b->seg_end); flush_log();
+log_printf(15, "sid=" XIDT " soff=" XOT " bpos=" XOT " blen=" XOT " seg_off=" XOT " seg_len=" XOT " seg_end=" XOT " rwop_index=%d\n", segment_id(seg),
+     start, bpos, blen, b->seg_offset, b->row_len, b->seg_end, b->rwop_index); flush_log();
 
-      type_malloc_clear(rw_buf, lun_rw_row_t, s->n_devices);
-      lun_row_decompose(seg, rw_buf, b, start, buffer, bpos, blen);
-      if (rw_mode== 0) {
-         for (i=0; i < s->n_devices; i++) {
-            if (rw_buf[i].len > 0) {
-               rw_buf[i].gop = ds_read(b->block[i].data->ds, da, ds_get_cap(b->block[i].data->ds, b->block[i].data->cap, DS_CAP_READ),
-                                       rw_buf[i].offset, &(rw_buf[i].buffer), 0, rw_buf[i].len, timeout);
-               opque_add(q, rw_buf[i].gop);
-            }
-         }
-      } else {
-         for (i=0; i < s->n_devices; i++) {
-            if (rw_buf[i].len > 0) {
-//FORCE ERROR -- Force a failure on all writes to the first allocation for testing purposes
-//if (i==0) {
-//  rw_buf[i].len = 0;
-//} else {
-               rw_buf[i].gop = ds_write(b->block[i].data->ds, da, ds_get_cap(b->block[i].data->ds, b->block[i].data->cap, DS_CAP_WRITE),
-                                       rw_buf[i].offset, &(rw_buf[i].buffer), 0, rw_buf[i].len, timeout);
-               opque_add(q, rw_buf[i].gop);
-//}
-            }
-         }
+      if (b->rwop_index < 0) {
+         bused[n_bslots] = b;
+         b->rwop_index = n_bslots; n_bslots++;
+         j = b->rwop_index * s->n_devices;
+         memset(&(rwb_table[j]), 0, sizeof(lun_rw_row_t)*s->n_devices);
       }
+
+log_printf(15, "rwop_index=%d\n", b->rwop_index);
+
+      rw_buf = &(rwb_table[b->rwop_index*s->n_devices]);
+      lun_row_decompose(seg, rw_buf, b, start, buffer, bpos, blen);
 
       bpos = bpos + blen;
 
       b = (seglun_row_t *)next_interval_skiplist(&it);
-      push(stack, rw_buf);
     }
-log_printf(15, "bottom sid=" XIDT " i=%d\n", segment_id(seg), i);
+log_printf(15, "bottom sid=" XIDT " slot=%d\n", segment_id(seg), slot);
 
   }
+
+log_printf(15, " n_bslots=%d\n", n_bslots);
+
+  //** Assemble the sub tasks and start executing them
+  for (slot=0; slot < n_bslots; slot++) {
+     b = bused[slot];
+     b->rwop_index = -1;
+     j = slot * s->n_devices;
+
+     if (rw_mode== 0) {
+        for (i=0; i < s->n_devices; i++) {
+            if (rwb_table[j + i].n_ex > 0) {
+               tbuffer_vec(&(rwb_table[j + i].buffer), rwb_table[j + i].len, rwb_table[j+i].n_iov, rwb_table[j+i].iov);
+               if (rwb_table[j+i].n_iov == 1) {
+                  rwb_table[j + i].gop = ds_read(b->block[i].data->ds, da, ds_get_cap(b->block[i].data->ds, b->block[i].data->cap, DS_CAP_READ),
+                                          rwb_table[j+i].ex_iov[0].offset, &(rwb_table[j+i].buffer), 0, rwb_table[j+i].len, timeout);
+               } else {
+                  rwb_table[j + i].gop = ds_readv(b->block[i].data->ds, da, ds_get_cap(b->block[i].data->ds, b->block[i].data->cap, DS_CAP_READ),
+                                          rwb_table[j + i].n_ex, rwb_table[j+i].ex_iov, &(rwb_table[j+i].buffer), 0, rwb_table[j+i].len, timeout);
+               }
+               opque_add(q, rwb_table[j+i].gop);
+            }
+         }
+     } else {
+         for (i=0; i < s->n_devices; i++) {
+            if (rwb_table[i].n_ex > 0) {
+//FORCE ERROR -- Force a failure on all writes to the first allocation for testing purposes
+//if (i==0) {
+//  rwb_table[i].len = 0;
+//} else {
+               tbuffer_vec(&(rwb_table[j + i].buffer), rwb_table[j + i].len, rwb_table[j+i].n_iov, rwb_table[j+i].iov);
+               if (rwb_table[j+i].n_iov == 1) {
+                  rwb_table[j + i].gop = ds_write(b->block[i].data->ds, da, ds_get_cap(b->block[i].data->ds, b->block[i].data->cap, DS_CAP_READ),
+                                          rwb_table[j+i].ex_iov[0].offset, &(rwb_table[j+i].buffer), 0, rwb_table[j+i].len, timeout);
+               } else {
+                  rwb_table[j + i].gop = ds_writev(b->block[i].data->ds, da, ds_get_cap(b->block[i].data->ds, b->block[i].data->cap, DS_CAP_WRITE),
+                                       rwb_table[j + i].n_ex, rwb_table[j+i].ex_iov, &(rwb_table[j+i].buffer), 0, rwb_table[j+i].len, timeout);
+               }
+               opque_add(q, rwb_table[j+i].gop);
+//}
+            }
+         }
+     }
+  }
+
   segment_unlock(seg);
 
   if (opque_task_count(q) == 0) {
@@ -1243,25 +1332,24 @@ log_printf(15, "bottom sid=" XIDT " i=%d\n", segment_id(seg), i);
   } else {
      opque_waitall(q);
      maxerr = 0;
-     while ((rw_buf = (lun_rw_row_t *)pop(stack)) != NULL) {
+     for (slot = 0; slot < n_bslots; slot++) {
         nerr = 0;
+        j = slot * s->n_devices;
         for (i=0; i < s->n_devices; i++) {
-           if (rw_buf[i].len > 0) {
-              if (gop_completed_successfully(rw_buf[i].gop) != OP_STATE_SUCCESS) {  //** Error
+           if (rwb_table[j+i].n_ex > 0) {
+              if (gop_completed_successfully(rwb_table[j+i].gop) != OP_STATE_SUCCESS) {  //** Error
                  nerr++;  //** Increment the error count
-//                 if (rw_mode == 0) { //** Wipe the blocks that failed
-//                    for (j=0; j<rw_buf[i].buffer.buf.n; j++) {
-//                       memset(rw_buf[i].buffer.buf.iov[j].iov_base, 0, rw_buf[i].buffer.buf.iov[j].iov_len);
-//                    }
-//                 }
               }
-              if (rw_buf[i].buffer.buf.iov != &(rw_buf[i].buffer.buf.io_single)) free(rw_buf[i].buffer.buf.iov);
-log_printf(15, "end stage i=%d gid=%d gop_completed_successfully=%d nerr=%d\n", i, gop_id(rw_buf[i].gop), gop_completed_successfully(rw_buf[i].gop), nerr);
+
+              free(rwb_table[j+i].ex_iov);
+log_printf(15, "end stage i=%d gid=%d gop_completed_successfully=%d nerr=%d\n", i, gop_id(rwb_table[j+i].gop), gop_completed_successfully(rwb_table[j+i].gop), nerr);
            }
+
+           if (rwb_table[j+i].iov != NULL) free(rwb_table[j+i].iov);
         }
 
         if (nerr > maxerr) maxerr = nerr;
-        free(rw_buf);
+//        free(rwb_table);
      }
 
 log_printf(15, "END stage maxerr=%d\n", maxerr);
@@ -1276,6 +1364,9 @@ log_printf(15, "failure maxerr=%d\n", maxerr);
      }
   }
 
+  free(rwb_table);
+  free(bcount);
+  free(bused);
   free_stack(stack, 0);
   opque_free(q, OP_DESTROY);
 
@@ -1573,14 +1664,19 @@ op_status_t seglun_inspect_func(void *arg, int id)
        nrepaired = nlost - err;
     }
 
-    for (i=0; i < s->n_devices; i++) block_status[i] = 0;
+    err = 0;
+    for (i=0; i < s->n_devices; i++) if (block_status[i] != 0) err++;
+    if (err != 0) goto fail;
+
+log_printf(0, "BEFORE_PLACEMENT_CHECK\n");
     err = slun_row_placement_check(si->seg, si->da, b, block_status, s->n_devices, si->timeout);
     total_migrate += err;
     used = 0;
     append_printf(info, &used, bufsize, XIDT ":     slun_row_placement_check:", segment_id(si->seg));
     for (i=0; i < s->n_devices; i++) append_printf(info, &used, bufsize, " %d", block_status[i]);
     info_printf(si->fd, 1, "%s\n", info);
-    if (err > 0) {
+log_printf(0, "AFTER_PLACEMENT_CHECK\n");
+    if ((err > 0) && ((option == INSPECT_QUICK_REPAIR) || (option == INSPECT_SCAN_REPAIR) || (option == INSPECT_FULL_REPAIR))) {
        i = slun_row_placement_fix(si->seg, si->da, b, block_status, s->n_devices, si->timeout);
        nmigrated += err - i;
 
@@ -1590,6 +1686,7 @@ op_status_t seglun_inspect_func(void *arg, int id)
        info_printf(si->fd, 1, "%s\n", info);
     }
 
+fail:
     total_lost += nlost;
     total_repaired += nrepaired;
   }
@@ -2031,6 +2128,7 @@ int seglun_deserialize_text(segment_t *seg, ex_id_t id, exnode_exchange_t *exp)
         type_malloc_clear(b, seglun_row_t, 1);
         type_malloc_clear(block, seglun_block_t, s->n_devices);
         b->block = block;
+        b->rwop_index = -1;
 
         //** Parse the segment line
         value = inip_get_element_value(ele);

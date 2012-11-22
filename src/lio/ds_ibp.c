@@ -502,6 +502,44 @@ op_generic_t *ds_ibp_write(data_service_fn_t *dsf, data_attr_t *dattr, data_cap_
 }
 
 //***********************************************************************
+// ds_ibp_readv - Generates a vec read operation
+//***********************************************************************
+
+op_generic_t *ds_ibp_readv(data_service_fn_t *dsf, data_attr_t *dattr, data_cap_t *rcap, int n_iov, ex_iovec_t *iov, tbuffer_t *dread, ds_int_t droff, ds_int_t size, int timeout)
+{
+  ds_ibp_priv_t *ds = (ds_ibp_priv_t *)(dsf->priv);
+  ds_ibp_attr_t *attr = (ds_ibp_attr_t *)dattr;
+
+  ds_ibp_op_t *iop = ds_ibp_op_create(ds, attr);
+
+  //** Create the op
+  iop->gop = new_ibp_vec_read_op(ds->ic, rcap, n_iov, iov, dread, droff, size, timeout);
+
+  ds_ibp_setup_finish(iop);
+
+  return(iop->gop);
+}
+
+//***********************************************************************
+// ds_ibp_writev - Generates a Vec write operation
+//***********************************************************************
+
+op_generic_t *ds_ibp_writev(data_service_fn_t *dsf, data_attr_t *dattr, data_cap_t *wcap, int n_iov, ex_iovec_t *iov, tbuffer_t *dwrite, ds_int_t boff, ds_int_t size, int timeout)
+{
+  ds_ibp_priv_t *ds = (ds_ibp_priv_t *)(dsf->priv);
+  ds_ibp_attr_t *attr = (ds_ibp_attr_t *)dattr;
+
+  ds_ibp_op_t *iop = ds_ibp_op_create(ds, attr);
+
+  //** Create the op
+  iop->gop = new_ibp_vec_write_op(ds->ic, wcap, n_iov, iov, dwrite, boff, size, timeout);
+
+  ds_ibp_setup_finish(iop);
+
+  return(iop->gop);
+}
+
+//***********************************************************************
 // ds_ibp_append - Generates a write append operation
 //***********************************************************************
 
@@ -593,6 +631,7 @@ void ds_ibp_destroy(data_service_fn_t *dsf)
 
 data_service_fn_t *ds_ibp_create(void *arg, char *config_file, char *section)
 {
+  int cs_type;
   data_service_fn_t *dsf;
   ds_ibp_priv_t *ds;
   ibp_context_t *ic;
@@ -605,9 +644,21 @@ data_service_fn_t *ds_ibp_create(void *arg, char *config_file, char *section)
   ifd = inip_read(config_file);
   memset(&(ds->attr_default), 0, sizeof(ds_ibp_attr_t));
   ds->attr_default.attr.duration = inip_get_integer(ifd, section, "duration", 3600);
+  cs_type = inip_get_integer(ifd, section, "chksum_type", CHKSUM_DEFAULT);
+  if ( ! ((chksum_valid_type(cs_type) == 0) || (cs_type == CHKSUM_DEFAULT) || (cs_type == CHKSUM_NONE)))  {
+     log_printf(0, "Invalid chksum type=%d resetting to CHKSUM_DEFAULT(%d)\n", cs_type, CHKSUM_DEFAULT);
+     cs_type = CHKSUM_DEFAULT;
+  }
+  ds->attr_default.disk_cs_type = cs_type;
+
+  ds->attr_default.disk_cs_blocksize = inip_get_integer(ifd, section, "chksum_blocksize", 64*1024);
+  if (ds->attr_default.disk_cs_blocksize <= 0) {
+     log_printf(0, "Invalid chksum blocksize=" XOT " resetting to %d\n", ds->attr_default.disk_cs_blocksize, 64*1024);
+     ds->attr_default.disk_cs_blocksize = 64 *1024;
+  }
   ds->attr_default.attr.reliability = IBP_HARD;
   ds->attr_default.attr.type = IBP_BYTEARRAY;
-  ds->attr_default.disk_cs_type = CHKSUM_DEFAULT;
+//  ds->attr_default.disk_cs_type = CHKSUM_DEFAULT;
   inip_destroy(ifd);
 
   //printf("cfg=%s sec=%s\n", config_file, section);
@@ -636,6 +687,8 @@ data_service_fn_t *ds_ibp_create(void *arg, char *config_file, char *section)
   dsf->modify_count = ds_ibp_modify_count;
   dsf->read = ds_ibp_read;
   dsf->write = ds_ibp_write;
+  dsf->readv = ds_ibp_readv;
+  dsf->writev = ds_ibp_writev;
   dsf->append = ds_ibp_append;
   dsf->copy = ds_ibp_copy;
   dsf->probe = ds_ibp_probe;

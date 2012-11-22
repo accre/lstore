@@ -149,6 +149,9 @@ log_printf(0, "AFTER PUT\n");
   val[1] = buffer; v_size[1] = strlen(val[1]);
   err = lioc_set_multiple_attrs(tuple.lc, tuple.creds, tuple.path, NULL, key, (void **)val, v_size, 2);
 
+  //** Update the error count if needed
+  lioc_update_error_counts(tuple.lc, tuple.creds, tuple.path, seg);
+
 finished:
   exnode_destroy(ex);
   exnode_exchange_destroy(exp);

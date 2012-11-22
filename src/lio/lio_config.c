@@ -575,7 +575,8 @@ lio_config_t *lio_create_nl(char *fname, char *section, char *user)
 
   if (_lio_cache == NULL) {
      stype = inip_get_string(lio->ifd, section, "cache", CACHE_TYPE_AMP);
-     ctype = inip_get_string(lio->ifd, section, stype, CACHE_TYPE_AMP);
+     ctype = inip_get_string(lio->ifd, stype, "type", CACHE_TYPE_AMP);
+log_printf(0, "CACHE stype=%s ctype=%s\n", stype, ctype);
      _lio_cache = load_cache(ctype, lio->da, lio->timeout, lio->cfg_name, stype);
      if (_lio_cache == NULL) {
         log_printf(0, "Error loading cache service!  type=%s\n", ctype);

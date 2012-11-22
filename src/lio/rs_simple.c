@@ -246,7 +246,7 @@ log_printf(15, "MALLOC j=%d\n", unique_size);
               status.error_code = RS_ERROR_FIXED_NOT_FOUND;
               hints_list[i].status = RS_ERROR_HINTS_INVALID_LOCAL;
               err_cnt++;
-              break;
+              continue;
            }
         }
 
@@ -258,7 +258,7 @@ log_printf(15, "MALLOC j=%d\n", unique_size);
               status.error_code = RS_ERROR_FIXED_NOT_FOUND;
               hints_list[i].status = RS_ERROR_FIXED_NOT_FOUND;
               err_cnt++;
-              break;
+              continue;
            }
            rnd_off = rse->slot;
         }

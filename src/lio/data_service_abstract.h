@@ -91,6 +91,8 @@ typedef void data_probe_t;
 #define ds_modify_count(ds, attr, mcap, mode, captype, to) (ds)->modify_count(ds, attr, mcap, mode, captype, to)
 #define ds_read(ds, attr, rcap, off, readfn, boff, len, to) (ds)->read(ds, attr, rcap, off, readfn, boff, len, to)
 #define ds_write(ds, attr, wcap, off, writefn, boff, len, to) (ds)->write(ds, attr, wcap, off, writefn, boff, len, to)
+#define ds_readv(ds, attr, rcap, n_vec, iov, readfn, boff, len, to) (ds)->readv(ds, attr, rcap, n_vec, iov, readfn, boff, len, to)
+#define ds_writev(ds, attr, wcap, n_vec, iov, writefn, boff, len, to) (ds)->writev(ds, attr, wcap, n_vec, iov, writefn, boff, len, to)
 #define ds_append(ds, attr, wcap, writefn, boff, len, to) (ds)->append(ds, attr, wcap, writefn, boff, len, to)
 #define ds_copy(ds, attr, mode, ns_type, ppath, src_cap, src_off, dest_cap, dest_off, len, to) \
               (ds)->copy(ds, attr, mode, ns_type, ppath, src_cap, src_off, dest_cap, dest_off, len, to)
@@ -123,6 +125,8 @@ struct data_service_fn_s {
   op_generic_t *(*modify_count)(data_service_fn_t *, data_attr_t *dattr, data_cap_t *mcap, int mode, int captype, int timeout);
   op_generic_t *(*read)(data_service_fn_t *, data_attr_t *attr, data_cap_t *rcap, ds_int_t off, tbuffer_t *read, ex_off_t boff, ex_off_t len, int timeout);
   op_generic_t *(*write)(data_service_fn_t *, data_attr_t *attr, data_cap_t *wcap, ds_int_t off, tbuffer_t *write, ex_off_t boff, ex_off_t len, int timeout);
+  op_generic_t *(*readv)(data_service_fn_t *, data_attr_t *attr, data_cap_t *rcap, int n_iov, ex_iovec_t *iov, tbuffer_t *read, ex_off_t boff, ex_off_t len, int timeout);
+  op_generic_t *(*writev)(data_service_fn_t *, data_attr_t *attr, data_cap_t *wcap, int n_iov, ex_iovec_t *iov, tbuffer_t *write, ex_off_t boff, ex_off_t len, int timeout);
   op_generic_t *(*append)(data_service_fn_t *, data_attr_t *attr, data_cap_t *wcap, tbuffer_t *write, ex_off_t boff, ex_off_t len, int timeout);
   op_generic_t *(*copy)(data_service_fn_t *, data_attr_t *attr, int mode, int ns_type, char *ppath, data_cap_t *src_cap, ds_int_t src_off,
                data_cap_t *dest_cap, ds_int_t dest_off, ds_int_t len, int timeout);

@@ -102,6 +102,7 @@ typedef struct {
   int file_count;
   int enable_tape;
   int shutdown;
+  int mount_point_len;
   atomic_int_t counter;
   list_t *ino_index;
   list_t *fname_index;
@@ -113,6 +114,7 @@ typedef struct {
   apr_thread_mutex_t **file_lock;
   struct fuse_operations fops;
   char *id;
+  char *mount_point;
 } lio_fuse_t;
 
 struct lio_fuse_file_handle_s {  //** Shared file handle
@@ -127,7 +129,7 @@ struct lio_fuse_file_handle_s {  //** Shared file handle
 extern lio_fuse_t *lfs_gc;
 extern struct fuse_operations lfs_gc_fops;
 
-lio_fuse_t *lio_fuse_init(lio_config_t *lc);
+lio_fuse_t *lio_fuse_init(lio_config_t *lc, char *mount_point);
 void lio_fuse_destroy(lio_fuse_t *lfs);
 
 #ifdef __cplusplus

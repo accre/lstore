@@ -119,16 +119,15 @@ int main(int argc, char **argv)
      goto finished;
   }
 
-//FILE *fd = fopen("dummy.get", "w");
-//log_printf(0, "FILE fd=%p\n",fd);
   //** Do the put
   err = gop_sync_exec(segment_get(tuple.lc->tpc_unlimited, tuple.lc->da, seg, stdout, 0, -1, bufsize, buffer, 3600));
-//log_printf(0, "AFTER get err=%d\n",err);
-//fclose(fd);
   if (err != OP_STATE_SUCCESS) {
      info_printf(lio_ifd, 0, "Failed reading data!  path=%s\n", tuple.path);
      goto finished;
   }
+
+  //** Update the error count if needed
+  lioc_update_error_counts(tuple.lc, tuple.creds, tuple.path, seg);
 
   exnode_destroy(ex);
   exnode_exchange_destroy(exp);

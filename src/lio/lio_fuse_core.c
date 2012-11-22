@@ -45,8 +45,8 @@ http://www.accre.vanderbilt.edu
 #include "append_printf.h"
 #include "string_token.h"
 
-//#define lfs_lock(lfs)  log_printf(0, "lock\n"); apr_thread_mutex_lock((lfs)->lock)
-//#define lfs_unlock(lfs) log_printf(0, "unlock\n");  apr_thread_mutex_unlock((lfs)->lock)
+//#define lfs_lock(lfs)  log_printf(0, "lfs_lock\n"); flush_log(); apr_thread_mutex_lock((lfs)->lock)
+//#define lfs_unlock(lfs) log_printf(0, "lfs_unlock\n");  flush_log(); apr_thread_mutex_unlock((lfs)->lock)
 #define lfs_lock(lfs)    apr_thread_mutex_lock((lfs)->lock)
 #define lfs_unlock(lfs)  apr_thread_mutex_unlock((lfs)->lock)
 
@@ -67,6 +67,8 @@ typedef struct {
   os_regex_table_t *path_regex;
   char *val[_inode_key_size];
   int v_size[_inode_key_size];
+  char *dot_path;
+  char *dotdot_path;
   Stack_t *stack;
   int state;
 } lfs_dir_iter_t;
@@ -224,6 +226,7 @@ void lfs_fill_stat(struct stat *stat, lio_inode_t *inode)
 void _lfs_parse_inode_vals(lio_fuse_t *lfs, lio_inode_t *inode, char **val, int *v_size)
 {
   int i;
+  char *link;
 
   if (val[0] != NULL) {
      inode->ino = 0; sscanf(val[0], XIDT, &(inode->ino));
@@ -264,6 +267,15 @@ log_printf(15, "data_ts=%s att_ts=%s ino=" XIDT "\n", val[1], val[2], inode->ino
 
   inode->link = val[6];  //** Don't want to free this value below
   val[6] = NULL;
+  if (inode->link != NULL) {
+     if (inode->link[0] == '/') { //** IF an absolute link then we need to add the mount prefix back
+        i = strlen(inode->link) + lfs->mount_point_len + 1;
+        type_malloc(link, char, i);
+        snprintf(link, i, "%s%s", lfs->mount_point, inode->link);
+        free(inode->link);
+        inode->link = link;
+     }
+  }
 
   for (i=0; i<_inode_key_size; i++) {
      if (val[i] != NULL) free(val[i]);
@@ -299,7 +311,8 @@ lio_inode_t *_lfs_load_inode_entry(lio_fuse_t *lfs, const char *fname, lio_inode
      val[i] = NULL;
   }
 
-  lfs_unlock(lfs);
+  lfs_unlock(lfs);  //** Do the OS query without the lock
+
   //** Get the attributes
   myfname = (strcmp(fname, "") == 0) ? "/" : (char *)fname;
   err = lioc_get_multiple_attrs(lfs->lc, lfs->lc->creds, myfname, NULL, _inode_keys, (void **)val, v_size, _inode_key_size);
@@ -317,7 +330,8 @@ lio_inode_t *_lfs_load_inode_entry(lio_fuse_t *lfs, const char *fname, lio_inode
 //  if (start_ino == 1) inode.ino = 1;
 
   //** Now try and insert it
-  lfs_lock(lfs);
+  lfs_lock(lfs);  //** Reacquire the lock
+
   tinode = _lfs_inode_lookup(lfs, inode.ino);
   if (tinode == NULL) { //** Doesn't exist so insert it
      type_malloc_clear(tinode, lio_inode_t, 1);
@@ -331,7 +345,7 @@ lio_inode_t *_lfs_load_inode_entry(lio_fuse_t *lfs, const char *fname, lio_inode
      tinode->fh = fh;
      tinode->flagged = err;
   }
-  lfs_unlock(lfs);
+
 
   return(tinode);
 }
@@ -390,11 +404,7 @@ lio_dentry_t * _lfs_dentry_get(lio_fuse_t *lfs, const char *fname)
 {
   lio_dentry_t *entry = NULL;
 
-//  if (strcmp(fname, "/") == 0) {
-//     entry = list_search(lfs->fname_index, (list_key_t *)"");
-//  } else {
-     entry = list_search(lfs->fname_index, (list_key_t *)fname);
-//  }
+  entry = list_search(lfs->fname_index, (list_key_t *)fname);
 
   return(entry);
 }
@@ -412,17 +422,23 @@ lio_inode_t * _lfs_dentry_lookup(lio_fuse_t *lfs, const char *fname, int auto_in
 
   if (entry != NULL) {
      inode = _lfs_inode_lookup(lfs, entry->ino);
-  } else if (auto_insert == 1) {  //** Go ahead and insert it and the inode
+  }
+
+  if ((auto_insert == 1) && (inode == NULL)) {  //** Go ahead and insert it and the inode
      inode = _lfs_load_inode_entry(lfs_gc, fname, NULL);
      if (inode == NULL) {
         log_printf(15, "FAILED looking up fname=%s\n", fname);
         return(NULL);
      }
 
-     type_malloc_clear(entry, lio_dentry_t, 1);
-     entry->fname = strdup(fname);
-     entry->ino = inode->ino;
-     _lfs_dentry_insert(lfs_gc, entry);
+     //** Check if someone else beat us to it during the loading phase
+     entry = _lfs_dentry_get(lfs, fname);
+     if (entry == NULL) {
+        type_malloc_clear(entry, lio_dentry_t, 1);
+        entry->fname = strdup(fname);
+        entry->ino = inode->ino;
+        _lfs_dentry_insert(lfs_gc, entry);
+     }
   }
 
   log_printf(15, "looking up fname=%s entry=%p inode=%p\n", fname, entry, inode);
@@ -449,13 +465,33 @@ int lfs_stat(const char *fname, struct stat *stat)
   }
 
   entry = _lfs_dentry_get(lfs_gc, fname);
+  if (entry == NULL) log_printf(0, "ERROR_DENTRY:  fname=%s inode=%p\n", fname, inode);
   if (entry->flagged == LFS_INODE_DELETE) {
      log_printf(1, "fname=%s flagged for removal\n", fname);
+     lfs_unlock(lfs_gc);
      return(-ENOENT);
   }
 
-  if (apr_time_now() > inode->recheck_time) {  //** Got to reload the info
-     _lfs_load_inode_entry(lfs_gc, fname, inode);
+  if (apr_time_now() > entry->recheck_time) { //** Update the entry timeout as well
+      entry->recheck_time = apr_time_now() + lfs_gc->attr_to * APR_USEC_PER_SEC;
+  }
+
+  if (apr_time_now() > inode->recheck_time) {  //** Update the inode
+     //** Update the recheck time to minimaze the GC from removing.  It *will* still happen though
+     inode->recheck_time = apr_time_now() + lfs_gc->attr_to * APR_USEC_PER_SEC;
+     inode = _lfs_load_inode_entry(lfs_gc, fname, inode);
+
+     if (inode == NULL) {  //** Remove the old dentry
+        entry = _lfs_dentry_get(lfs_gc, fname);
+        if (entry != NULL) {
+           _lfs_dentry_remove(lfs_gc, entry);
+           lfs_dentry_destroy(lfs_gc, entry);
+        }
+
+        lfs_unlock(lfs_gc);
+        log_printf(1, "fname=%s missing from backend\n", fname);
+        return(-ENOENT);
+     }
   }
 
   lfs_fill_stat(stat, inode);
@@ -495,13 +531,16 @@ int lfs_opendir(const char *fname, struct fuse_file_info *fi)
 
   dit->state = 0;
 
+  lfs_lock(dit->lfs);
   inode = _lfs_dentry_lookup(lfs_gc, fname, 1);
   if (inode == NULL) {
      log_printf(0, "ERROR with lookup of fname=%s\n", fname);
+     lfs_unlock(dit->lfs);
      return(-ENOENT);
   }
 
   //** Add "."
+  dit->dot_path = strdup(fname);
   type_malloc_clear(e2, lio_dentry_t, 1);
   e2->ino = inode->ino;
   e2->fname = strdup(".");
@@ -512,15 +551,21 @@ int lfs_opendir(const char *fname, struct fuse_file_info *fi)
   if (strcmp(fname, "/") != 0) {
      os_path_split((char *)fname, &dir, &file);
      inode = _lfs_dentry_lookup(lfs_gc, dir, 1);
-     free(dir);
+     dit->dotdot_path = dir;
      free(file);
+  } else {
+     dit->dotdot_path = strdup(fname);
   }
+
+  log_printf(1, "dot=%s dotdot=%s\n", dit->dot_path, dit->dotdot_path);
 
   type_malloc_clear(e2, lio_dentry_t, 1);
   e2->ino = inode->ino;
   e2->fname = strdup("..");
   e2->name_start = 0;
   insert_below(dit->stack, e2);
+
+  lfs_unlock(dit->lfs);
 
   //** Compose our reply
   fi->fh = (uint64_t)dit;
@@ -540,9 +585,12 @@ int lfs_readdir(const char *dname, void *buf, fuse_fill_dir_t filler, off_t off,
   int ftype, prefix_len, n, i;
   char *fname;
   struct stat stbuf;
+  apr_time_t now;
+  double dt;
 
   int off2 = off;
   log_printf(1, "dname=%s off=%d stack_size=%d\n", dname, off2, stack_size(dit->stack)); flush_log();
+  now = apr_time_now();
 
   if (dit == NULL) {
      return(-EBADF);
@@ -557,9 +605,19 @@ int lfs_readdir(const char *dname, void *buf, fuse_fill_dir_t filler, off_t off,
     lfs_lock(dit->lfs);
     entry = get_ele_data(dit->stack);
     while (entry != NULL) {
-       inode = _lfs_inode_lookup(dit->lfs, entry->ino);
+       if (off > 1) {
+          inode = _lfs_dentry_lookup(dit->lfs, entry->fname, 1);
+       } else if (off == 0) {
+          inode = _lfs_dentry_lookup(dit->lfs, dit->dot_path, 1);
+       } else if (off == 1) {
+          inode = _lfs_dentry_lookup(dit->lfs, dit->dotdot_path, 1);
+       } else {
+          inode= NULL;
+       }
+//       inode = _lfs_inode_lookup(dit->lfs, entry->ino);
+
        if (inode == NULL) {
-          log_printf(0, "Missing inode!  fname=%s ino=" XIDT "\n", entry->fname, entry->ino);
+          log_printf(0, "Missing inode!  fname=%s ino=" XIDT " off=%d\n", entry->fname, entry->ino, off);
           lfs_unlock(dit->lfs);
           return(-ENOENT);
        }
@@ -570,6 +628,9 @@ log_printf(15, "inserting fname=%s off=%d\n", entry->fname, off2);
        if (entry->flagged != LFS_INODE_DELETE) {
           lfs_fill_stat(&stbuf, inode);
           if (filler(buf, dentry_name(entry), &stbuf, off) == 1) {
+             dt = apr_time_now() - now;
+             dt /= APR_USEC_PER_SEC;
+             log_printf(1, "dt=%lf\n", dt);
              return(0);
           }
        } else {
@@ -588,8 +649,10 @@ log_printf(15, "dname=%s switching to iter\n", dname);
      //** If we made it here then grab the next file and look it up.
      ftype = os_next_object(dit->lfs->lc->os, dit->it, &fname, &prefix_len);
      if (ftype <= 0) { //** No more files
+        dt = apr_time_now() - now;
+        dt /= APR_USEC_PER_SEC;
 off2=off;
-log_printf(15, "dname=%s NOTHING LEFT off=%d\n", dname,off2);
+log_printf(15, "dname=%s NOTHING LEFT off=%d dt=%lf\n", dname,off2, dt);
         return(0);
      }
 
@@ -618,6 +681,7 @@ log_printf(15, "new entry fname=%s\n", fname);  flush_log();
 log_printf(15, "existing entry fname=%s\n", fname); flush_log();
         *entry = *fentry;
         entry->fname = fname;
+        fentry->recheck_time = apr_time_now() + lfs_gc->attr_to * APR_USEC_PER_SEC;
      }
 
      inode = _lfs_inode_lookup(dit->lfs, ino);
@@ -644,6 +708,9 @@ log_printf(1, "next fname=%s ftype=%d prefix_len=%d ino=" XIDT " off=%d\n", entr
      if (entry->flagged != LFS_INODE_DELETE) {
         lfs_fill_stat(&stbuf, inode);
         if (filler(buf, dentry_name(entry), &stbuf, off) == 1) {
+           dt = apr_time_now() - now;
+           dt /= APR_USEC_PER_SEC;
+           log_printf(1, "dt=%lf\n", dt);
            lfs_unlock(dit->lfs);
            return(0);
         }
@@ -671,6 +738,9 @@ int lfs_closedir(const char *fname, struct fuse_file_info *fi)
   if (dit == NULL) {
      return(-EBADF);
   }
+
+  free(dit->dot_path);
+  free(dit->dotdot_path);
 
   //** Cyle through releasing all the entries
   lfs_lock(dit->lfs);
@@ -1066,13 +1136,17 @@ int lfs_myclose(char *fname, lio_fuse_fd_t *fd)
   lio_fuse_file_handle_t *fh;
   lio_dentry_t *fentry;
   lio_inode_t *inode;
-  int flags, slot;
+  int flags, slot, n;
   exnode_exchange_t *exp;
   ex_off_t ssize;
   char buffer[32];
-  char *key[] = {"system.exnode", "system.exnode.size", "os.timestamp.system.modify_data"};
-  char *val[3];
-  int err, v_size[3];
+  char *key[] = {"system.exnode", "system.exnode.size", "os.timestamp.system.modify_data", "system.hard_errors", "system.soft_errors"};
+  char *val[5];
+  int err, v_size[5];
+  char ebuf[2][128];
+  int hard_errors, soft_errors;
+  apr_time_t now;
+  double dt;
 
   log_printf(1, "fname=%s modified=%d count=%d\n", fname, fd->fh->modified, fd->fh->ref_count); flush_log();
 
@@ -1102,8 +1176,16 @@ int lfs_myclose(char *fname, lio_fuse_fd_t *fd)
 
 log_printf(1, "FLUSH/TRUNCATE fname=%s\n", fname);
   //** Flush and truncate everything which could take some time
-  err = gop_sync_exec(segment_flush(fh->seg, lfs->lc->da, 0, segment_size(fh->seg)+1, lfs->lc->timeout));
+  now = apr_time_now();
   err = gop_sync_exec(segment_truncate(fh->seg, lfs->lc->da, segment_size(fh->seg), lfs->lc->timeout));
+  dt = apr_time_now() - now;
+  dt /= APR_USEC_PER_SEC;
+  log_printf(1, "TRUNCATE fname=%s dt=%lf\n", fname, dt);
+  now = apr_time_now();
+  err = gop_sync_exec(segment_flush(fh->seg, lfs->lc->da, 0, segment_size(fh->seg)+1, lfs->lc->timeout));
+  dt = apr_time_now() - now;
+  dt /= APR_USEC_PER_SEC;
+  log_printf(1, "FLUSH fname=%s dt=%lf\n", fname, dt);
 
   //** Now acquire the global lock.  No need to check again since I have the file lock
   lfs_lock(lfs);
@@ -1117,6 +1199,10 @@ log_printf(1, "FLUSH/TRUNCATE fname=%s\n", fname);
 
   inode->fh = NULL;
 
+  //** Now we can release the lock while we update the object cause we still have the file lock
+  lfs_unlock(lfs);
+
+
 log_printf(0, "DESTROYING exnode fname=%s\n", fname); flush_log();
 
   //** Ok no one has the file opened so teardown the segment/exnode
@@ -1124,6 +1210,7 @@ log_printf(0, "DESTROYING exnode fname=%s\n", fname); flush_log();
   if (fh->modified == 0) {
      exnode_destroy(fh->ex);
      fh->ref_count--;
+     lfs_lock(lfs);
      fentry->ref_count--;
      flags = fentry->flagged;
      lfs_unlock(lfs);
@@ -1138,19 +1225,40 @@ log_printf(0, "DESTROYING exnode fname=%s\n", fname); flush_log();
   exnode_serialize(fh->ex, exp);
   ssize = segment_size(fh->seg);
 
-  exnode_destroy(fh->ex);
+  //** Get any errors that may have occured
+  lioc_get_error_counts(lfs->lc, fh->seg, &hard_errors, &soft_errors);
 
-  lfs_unlock(lfs);  //** Now we can release the lock while we update the object
+  now = apr_time_now();
+  exnode_destroy(fh->ex);
+  dt = apr_time_now() - now;
+  dt /= APR_USEC_PER_SEC;
+  log_printf(1, "exnode_destroy fname=%s dt=%lf\n", fname, dt);
 
   //** Update the OS exnode
+  n = 3;
   val[0] = exp->text;  v_size[0] = strlen(val[0]);
   sprintf(buffer, XOT, ssize);
   val[1] = buffer; v_size[1] = strlen(val[1]);
   val[2] = NULL; v_size[2] = 0;
-  err = lioc_set_multiple_attrs(lfs->lc, lfs->lc->creds, fname, NULL, key, (void **)val, v_size, 3);
+
+  if ((hard_errors>0) || (soft_errors>0)) {
+     n = 5;
+     sprintf(ebuf[0], "%d", hard_errors);
+     sprintf(ebuf[1], "%d", soft_errors);
+     val[3] = ebuf[0]; v_size[3] = strlen(val[3]);
+     val[4] = ebuf[1]; v_size[4] = strlen(val[4]);
+  }
+
+  now = apr_time_now();
+
+  err = lioc_set_multiple_attrs(lfs->lc, lfs->lc->creds, fname, NULL, key, (void **)val, v_size, n);
   if (err != OP_STATE_SUCCESS) {
      log_printf(0, "ERROR updating exnode! fname=%s\n", fname);
   }
+
+  dt = apr_time_now() - now;
+  dt /= APR_USEC_PER_SEC;
+  log_printf(1, "ATTR_UPDATE fname=%s dt=%lf\n", fname, dt);
 
   lfs_lock(lfs);  //** Do the final release
   fh->ref_count--;
@@ -1177,16 +1285,22 @@ int lfs_release(const char *fname, struct fuse_file_info *fi)
 {
   lio_fuse_fd_t *fd;
   int err;
+  apr_time_t now;
+  double dt;
 
-  log_printf(1, "fname=%s START\n", fname); flush_log();
+  log_printf(1, "SART fname=%s\n", fname); flush_log();
 
   fd = (lio_fuse_fd_t *)fi->fh;
   if (fd == NULL) {
      return(-EBADF);
   }
 
+  now = apr_time_now();
   err = lfs_myclose((char *)fname, fd);
-//  log_printf(1, "fname=%s END\n", fname); flush_log();
+
+  dt = apr_time_now() - now;
+  dt /= APR_USEC_PER_SEC;
+  log_printf(1, "END fname=%s dt=%lf\n", fname, dt); flush_log();
 
   return(err);
 }
@@ -1231,6 +1345,7 @@ ex_off_t t1, t2;
   }
 
   return(size);
+  log_printf(1, "START fname=%s\n", fname); flush_log();
 }
 
 //*****************************************************************
@@ -1244,15 +1359,20 @@ int lfs_write(const char *fname, const char *buf, size_t size, off_t off, struct
   tbuffer_t tbuf;
   ex_iovec_t exv;
   int err;
+  apr_time_t now;
+  double dt;
+
+  now = apr_time_now();
 
 ex_off_t t1, t2;
   t1 = size; t2 = off;
-  log_printf(1, "fname=%s size=" XOT " off=" XOT "\n", fname, t1, t2); flush_log();
 
   fd = (lio_fuse_fd_t *)fi->fh;
   if (fd == NULL) {
      return(-EBADF);
   }
+
+  log_printf(1, "START fname=%s seg=" XIDT " size=" XOT " off=" XOT "\n", fname, segment_id(fd->fh->seg), t1, t2); flush_log();
 
   atomic_set(fd->fh->modified, 1);
 
@@ -1262,6 +1382,10 @@ ex_off_t t1, t2;
   tbuffer_single(&tbuf, size, (char *)buf);
   ex_iovec_single(&exv, off, size);
   err = gop_sync_exec(segment_write(fd->fh->seg, lfs->lc->da, 1, &exv, &tbuf, 0, lfs->lc->timeout));
+  dt = apr_time_now() - now;
+  dt /= APR_USEC_PER_SEC;
+  log_printf(1, "END fname=%s seg=" XIDT " size=" XOT " off=" XOT " dt=%lf\n", fname, segment_id(fd->fh->seg), t1, t2, dt); flush_log();
+
   if (err != OP_STATE_SUCCESS) {
      return(-EIO);
   }
@@ -1278,8 +1402,12 @@ int lfs_flush(const char *fname, struct fuse_file_info *fi)
   lio_fuse_t *lfs;
   lio_fuse_fd_t *fd;
   int err;
+  apr_time_t now;
+  double dt;
 
-  log_printf(1, "fname=%s\n", fname); flush_log();
+  now = apr_time_now();
+
+  log_printf(1, "START fname=%s\n", fname); flush_log();
 
   fd = (lio_fuse_fd_t *)fi->fh;
   if (fd == NULL) {
@@ -1292,6 +1420,10 @@ int lfs_flush(const char *fname, struct fuse_file_info *fi)
   if (err != OP_STATE_SUCCESS) {
      return(-EIO);
   }
+
+  dt = apr_time_now() - now;
+  dt /= APR_USEC_PER_SEC;
+  log_printf(1, "END fname=%s dt=%lf\n", fname, dt); flush_log();
 
   return(0);
 }
@@ -1417,7 +1549,7 @@ int lfs_utimens(const char *fname, const struct timespec tv[2])
 int lfs_listxattr(const char *fname, char *list, size_t size)
 {
   char *buf, *key, *val;
-  int bpos, bufsize, v_size, n, i, err, ftype;
+  int bpos, bufsize, v_size, n, i, err;
   os_regex_table_t *attr_regex;
   os_attr_iter_t *it;
   os_fd_t *fd;
@@ -1433,7 +1565,6 @@ int lfs_listxattr(const char *fname, char *list, size_t size)
      log_printf(15, "Failed retrieving inode info!  path=%s\n", fname);
      return(-ENOENT);
   }
-  ftype = inode->ftype;
   lfs_unlock(lfs);
 
 
@@ -1732,6 +1863,10 @@ int lfs_getxattr(const char *fname, const char *name, char *buf, size_t size)
   lio_fuse_t *lfs = lfs_gc;
   lio_inode_t *inode;
   lio_attr_t *attr;
+  apr_time_t now, now2;
+  double dt, dt2;
+
+  now = apr_time_now();
 
   v_size= size;
   log_printf(1, "fname=%s size=%d attr_name=%s\n", fname, size, name); flush_log();
@@ -1750,19 +1885,25 @@ int lfs_getxattr(const char *fname, const char *name, char *buf, size_t size)
      if (apr_time_now() <= attr->recheck_time) {  //** It's good
         v_size = attr->v_size;
         val = attr->val;
+
+        dt = apr_time_now() - now;
+        dt /= APR_USEC_PER_SEC;
+
         if (size == 0) {
-          log_printf(1, "CACHED SIZE bpos=%d buf=%s\n", v_size, val);
+          log_printf(1, "CACHED SIZE bpos=%d buf=%s dt=%lf\n", v_size, val, dt);
         } else if (size >= v_size) {
-          log_printf(1, "CACHED FULL bpos=%d buf=%s\n", v_size, val);
+          log_printf(1, "CACHED FULL bpos=%d buf=%s dt=%lf\n", v_size, val, dt);
           memcpy(buf, val, v_size);
         } else {
-          log_printf(1, "CACHED ERANGE bpos=%d buf=%s\n", v_size, val);
+          log_printf(1, "CACHED ERANGE bpos=%d buf=%s dt=%lf\n", v_size, val, dt);
         }
         lfs_unlock(lfs);
         return(v_size);
      }
   }
   lfs_unlock(lfs);
+
+  now2 = apr_time_now();
 
   //** IF we made it here we either don't have it cached or it's expired
   v_size = (size == 0) ? -lfs->lc->max_attr : -size;
@@ -1777,6 +1918,9 @@ int lfs_getxattr(const char *fname, const char *name, char *buf, size_t size)
         return(-ENOENT);
      }
   }
+
+  dt2 = apr_time_now() - now2;
+  dt2 /= APR_USEC_PER_SEC;
 
   if (v_size < 0) v_size = 0;  //** No attribute
 
@@ -1803,10 +1947,14 @@ log_printf(1, "ERANGE bpos=%d buf=%s\n", v_size, val);
   }
 
   snprintf(aname, sizeof(aname), XIDT ":%s", inode->ino, name);
-log_printf(15, "fname=%s aname=%s\n", fname, aname);
+log_printf(1, "fname=%s aname=%s\n", fname, aname);
   attr = list_search(lfs->attr_index, aname);
+
+  dt = apr_time_now() - now;
+  dt /= APR_USEC_PER_SEC;
+
   if (attr != NULL) { //** Already exists so just update the info
-log_printf(15, "UPDATING fname=%s aname=%s\n", fname, aname);
+log_printf(1, "UPDATING fname=%s aname=%s, dt=%lf dt_query=%lf\n", fname, aname, dt, dt2);
 
      if (attr->val != NULL) free (attr->val);
      attr->val = val;
@@ -1816,7 +1964,7 @@ log_printf(15, "UPDATING fname=%s aname=%s\n", fname, aname);
      type_malloc_clear(attr, lio_attr_t, 1);
      attr->val = val;
      attr->v_size = v_size;
-log_printf(15, "ADDING fname=%s aname=%s p=%p v_size=%d\n", fname, aname, attr, attr->v_size);
+log_printf(1, "ADDING fname=%s aname=%s p=%p v_size=%d df=%lf dt_query=%lf\n", fname, aname, attr, attr->v_size, dt, dt2);
      list_insert(lfs->attr_index, strdup(aname), attr);
   }
 
@@ -2012,14 +2160,26 @@ int lfs_readlink(const char *fname, char *buf, size_t bsize)
 int lfs_symlink(const char *link, const char *newname)
 {
   lio_fuse_t *lfs = lfs_gc;
+  const char *link2;
   int err;
 
   log_printf(1, "link=%s newname=%s\n", link, newname); flush_log();
 
+  //** If the link is an absolute path we need to peel off the mount point to the get attribs to link correctly
+  //** We only support symlinks within LFS
+  link2 = link;
+  if (link[0] == '/') { //** Got an abs symlink
+     if (strncmp(link, lfs->mount_point, lfs->mount_point_len) == 0) { //** abs symlink w/in LFS
+        link2 = &(link[lfs->mount_point_len]);
+     } else {
+       log_printf(1, "Oops!  symlink outside LFS mount not supported!  link=%s newname=%s\n", link, newname);
+       return(-EFAULT);
+     }
+  }
+
   //** Now do the sym link
-  err = gop_sync_exec(lio_link_object(lfs->lc, lfs->lc->creds, 1, (char *)link, (char *)newname, lfs->id));
+  err = gop_sync_exec(lio_link_object(lfs->lc, lfs->lc->creds, 1, (char *)link2, (char *)newname, lfs->id));
   if (err != OP_STATE_SUCCESS) {
-     lfs_unlock(lfs);
      return(-EIO);
   }
 
@@ -2086,7 +2246,7 @@ void *lfs_gc_thread(apr_thread_t *th, void *data)
         now = apr_time_now();
         it = list_iter_search(lfs->fname_index, NULL, 0);
         while ((err=list_next(&it, (list_key_t **)&fname, (list_data_t **)&entry)) == 0) {
-//log_printf(15, "dentry->fname=%s ref_count=%d recheck=" TT " now=" TT "\n", entry->fname, entry->ref_count, entry->recheck_time, now);
+//log_printf(1, "dentry->fname=%s ref_count=%d recheck=" TT " now=" TT "\n", entry->fname, entry->ref_count, entry->recheck_time, now);
            if ((now > entry->recheck_time) && (entry->ref_count <= 0)) {
               dt = now - entry->recheck_time;
 //log_printf(15, "DT=" TT " stale= " TT "\n", dt, stale);
@@ -2158,7 +2318,7 @@ int lfs_statfs(const char *fname, struct statvfs *fs)
 //         is used in the hopes that the change is made to support this in the future.
 //*************************************************************************
 
-lio_fuse_t *lio_fuse_init(lio_config_t *lc)
+lio_fuse_t *lio_fuse_init(lio_config_t *lc, char *mount_point)
 {
   lio_fuse_t *lfs;
   struct fuse_operations *fops;
@@ -2166,10 +2326,12 @@ lio_fuse_t *lio_fuse_init(lio_config_t *lc)
   double n;
   int p;
 
-  log_printf(15, "START\n");
+  log_printf(15, "START mount=%s\n", mount_point);
   type_malloc_clear(lfs, lio_fuse_t, 1);
 
   lfs->lc = lc;
+  lfs->mount_point = strdup(mount_point);
+  lfs->mount_point_len = strlen(mount_point);
 
   //** Load config info
   lfs->entry_to = inip_get_double(lc->ifd, section, "entry_timout", 1.0);
@@ -2254,6 +2416,7 @@ void lio_fuse_destroy(lio_fuse_t *lfs)
 
   log_printf(15, "shutting down\n"); flush_log();
 
+
   //** Shut down the RW thread
   apr_thread_mutex_lock(lfs->lock);
   lfs->shutdown=1;
@@ -2289,6 +2452,7 @@ log_printf(0, "destroying entry=%s\n", fname); flush_log();
 
   //** Clean up everything else
   if (lfs->id != NULL) free (lfs->id);
+  free(lfs->mount_point);
   apr_thread_mutex_destroy(lfs->lock);
   apr_pool_destroy(lfs->mpool);
 

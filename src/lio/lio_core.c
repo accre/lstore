@@ -323,6 +323,56 @@ int lioc_set_attr(lio_config_t *lc, creds_t *creds, char *path, char *id, char *
   return(err);
 }
 
+//***********************************************************************
+// lioc_get_error_counts - Gets the error counts
+//***********************************************************************
+
+void lioc_get_error_counts(lio_config_t *lc, segment_t *seg, int *hard_errors, int *soft_errors)
+{
+  op_generic_t *gop;
+  op_status_t status;
+
+  gop = segment_inspect(seg, lc->da, lio_ifd, INSPECT_HARD_ERRORS, 0, 1);
+  gop_waitall(gop);
+  status = gop_get_status(gop);
+  gop_free(gop, OP_DESTROY);
+  *hard_errors = status.error_code;
+
+  gop = segment_inspect(seg, lc->da, lio_ifd, INSPECT_SOFT_ERRORS, 0, 1);
+  gop_waitall(gop);
+  status = gop_get_status(gop);
+  gop_free(gop, OP_DESTROY);
+  *soft_errors = status.error_code;
+
+  return;
+}
+
+//***********************************************************************
+// lioc_update_error_count - Updates the error count attributes if needed
+//***********************************************************************
+
+void lioc_update_error_counts(lio_config_t *lc, creds_t *creds, char *path, segment_t *seg)
+{
+  int hard_errors, soft_errors;
+  char *keys[] = { "system.hard_errors", "system.soft_errors" };
+  char *val[2];
+  char buf[2][128];
+  int v_size[2];
+
+  lioc_get_error_counts(lc, seg, &hard_errors, &soft_errors);
+
+  //** Got errors so update the attributes
+  if ((hard_errors > 0) || (soft_errors > 0)) {
+     snprintf(buf[0], 127, "%d", hard_errors);
+     snprintf(buf[1], 127, "%d", soft_errors);
+     val[0] = buf[0];  v_size[0] = strlen(val[0]);
+     val[1] = buf[1];  v_size[1] = strlen(val[1]);
+
+     lioc_set_multiple_attrs(lc, creds, path, NULL, keys, (void **)val, v_size, 2);
+  }
+
+  return;
+}
 
 //***********************************************************************
 // lioc_remove_object - Removes an object

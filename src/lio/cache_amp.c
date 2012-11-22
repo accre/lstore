@@ -1355,7 +1355,7 @@ void amp_adding_segment(cache_t *c, segment_t *seg)
 
 log_printf(_amp_logging, "cp->min_prefetch_size=" XOT " start_apt_pages=%d\n", cp->min_prefetch_size, stable->start_apt_pages);
   for (i=0; i < stable->max_streams; i++) {
-     stable->stream_table[i].last_offset = -i;
+     stable->stream_table[i].last_offset = -i-1;
   }
 
   s->cache_priv = stable;
@@ -1377,6 +1377,8 @@ void amp_removing_segment(cache_t *c, segment_t *seg)
   free(stable->stream_table);
 
   free(stable);
+
+  stable = NULL;  //** Make sure we clear it and gen a core dump if accidentally used
 
   return;
 }
@@ -1516,6 +1518,7 @@ global_cache = c;
   c->write_temp_overflow_size = c->write_temp_overflow_fraction * cp->max_bytes;
   c->n_ppages = inip_get_integer(fd, grp, "ppages", c->n_ppages);
 
+log_printf(0, "ppages=%d\n", c->n_ppages);
   cache_unlock(c);
 
   inip_destroy(fd);

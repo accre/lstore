@@ -71,11 +71,11 @@ op_status_t inspect_task(void *arg, int id)
   exnode_t *ex;
   exnode_exchange_t *exp, *exp_out;
   segment_t *seg;
-  char *keys[] = { "system.exnode", "os.timestamp.system.inspect" };
-  char *val[2];
+  char *keys[] = { "system.exnode", "os.timestamp.system.inspect", "system.hard_errors", "system.soft_errors" };
+  char *val[4];
   char *dsegid, *ptr;
-  int v_size[2];
-  int whattodo;
+  int v_size[4];
+  int whattodo, repair_mode;
   inip_file_t *ifd;
 
   whattodo = global_whattodo;
@@ -150,13 +150,16 @@ log_printf(15, "fname=%s inspect_gid=%d status=%d\n", w->fname, gop_id(gop), sta
 
   //** Print out the results
   whattodo = whattodo & INSPECT_COMMAND_BITS;
+
+  repair_mode = 0;
   switch(whattodo) {
-    case (INSPECT_QUICK_CHECK):
-    case (INSPECT_SCAN_CHECK):
-    case (INSPECT_FULL_CHECK):
     case (INSPECT_QUICK_REPAIR):
     case (INSPECT_SCAN_REPAIR):
     case (INSPECT_FULL_REPAIR):
+         repair_mode = 1;
+    case (INSPECT_QUICK_CHECK):
+    case (INSPECT_SCAN_CHECK):
+    case (INSPECT_FULL_CHECK):
     case (INSPECT_MIGRATE):
         if (status.op_status == OP_STATE_SUCCESS) {
            info_printf(lio_ifd, 0, "Success with file %s!\n", w->fname);
@@ -174,7 +177,7 @@ log_printf(15, "fname=%s inspect_gid=%d status=%d\n", w->fname, gop_id(gop), sta
         break;
   }
 
-  if (status.op_status == OP_STATE_SUCCESS) {
+  if ((status.op_status == OP_STATE_SUCCESS) && (repair_mode == 1)) {
      //** Store the updated exnode back to disk
      exp_out = exnode_exchange_create(EX_TEXT);
      exnode_serialize(ex, exp_out);
@@ -185,7 +188,9 @@ log_printf(15, "fname=%s inspect_gid=%d status=%d\n", w->fname, gop_id(gop), sta
 
      val[0] = exp_out->text; v_size[0]= strlen(val[0]);
      val[1] = NULL; v_size[1] = 0;
-     lioc_set_multiple_attrs(lio_gc, creds, w->fname, NULL, keys, (void **)val, v_size, 2);
+     val[2] = NULL;  v_size[2] = -1;  //** Remove the system.*_errors
+     val[3] = NULL;  v_size[3] = -1;
+     lioc_set_multiple_attrs(lio_gc, creds, w->fname, NULL, keys, (void **)val, v_size, 4);
      exnode_exchange_destroy(exp_out);
   }
 
@@ -206,7 +211,7 @@ finished:
 
 int main(int argc, char **argv)
 {
-  int i, j, n, start_option, start_index, rg_mode, ftype, prefix_len;
+  int i, j,  start_option, start_index, rg_mode, ftype, prefix_len;
   int force_repair;
   int bufsize_mb = 20;
   char *fname;
@@ -309,7 +314,6 @@ int main(int argc, char **argv)
   assert(apr_pool_create(&mpool, NULL) == APR_SUCCESS);
   apr_thread_mutex_create(&lock, APR_THREAD_MUTEX_DEFAULT, mpool);
 
-  n = 0;
   slot = 0;
   submitted = good = bad = 0;
   while ((ftype = os_next_object(tuple.lc->os, it, &fname, &prefix_len)) > 0) {

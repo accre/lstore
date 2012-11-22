@@ -69,7 +69,7 @@ int main(int argc, char **argv)
      argv[1] = "-d";
   }
 
-  lfs_gc = lio_fuse_init(lio_gc);
+  lfs_gc = lio_fuse_init(lio_gc, argv[argc-1]);
 
 umask(0);
   err = fuse_main(argc, argv, &lfs_gc_fops, NULL);
