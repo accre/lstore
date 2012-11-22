@@ -227,7 +227,8 @@ double write_allocs(ibp_capset_t *caps, int qlen, int n, int asize, int block_si
   stime = apr_time_now();
 
   while (finished == 0) {
-    nleft = qlen - opque_tasks_left(q);
+//    nleft = qlen - opque_tasks_left(q);
+    nleft = stack_size(tbuf_free);
 //    printf("\nLOOP: nleft=%d qlen=%d\n", nleft, qlen);
     if (nleft > 0) {
        for (j=block_start; j < nblocks; j++) {
@@ -242,7 +243,7 @@ double write_allocs(ibp_capset_t *caps, int qlen, int n, int asize, int block_si
 
              if ((j==(nblocks-1)) && (rem > 0)) { len = rem; } else { len = block_size; }
 //             printf("%d=(%d,%d) ", count, j, i);
-             
+
              tbuffer_single(&(buf[*slot]), len, buffer);
              op = new_ibp_write_op(ic, get_ibp_cap(&(caps[i]), IBP_WRITECAP), j*block_size, &(buf[*slot]), 0, len, ibp_timeout);
              gop_set_id(op, *slot);
@@ -253,7 +254,7 @@ double write_allocs(ibp_capset_t *caps, int qlen, int n, int asize, int block_si
 
           alloc_start = 0;
        }
-       
+
        block_start = 0;
     }
 
@@ -290,7 +291,7 @@ double write_allocs(ibp_capset_t *caps, int qlen, int n, int asize, int block_si
   }
 
   err = opque_waitall(q);
-  if (err != 0) {
+  if (err != OP_STATE_SUCCESS) {
      printf("write_allocs: At least 1 error occured! * ibp_errno=%d * nfailed=%d\n", err, opque_tasks_failed(q)); 
   }    
   opque_free(q, OP_DESTROY);
@@ -369,7 +370,7 @@ int main(int argc, char **argv)
   double r1, r2;
   int i, automode, doskip, start_option, tcpsize, cs_type;
   int q_len, n_allocs, alloc_size, block_size, llevel;
-  ibp_capset_t *caps_list, *base_caps;
+  ibp_capset_t *caps_list;
   rid_t rid;
   int port;
   char buffer[1024];
@@ -381,8 +382,7 @@ int main(int argc, char **argv)
   chksum_t cs;
   ns_chksum_t ns_cs;
   int blocksize = 0;
-  
-  base_caps = NULL;
+
 
   if (argc < 4) {
      printf("\n");
