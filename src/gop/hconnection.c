@@ -553,6 +553,7 @@ log_printf(5, "hc_recv_thread: after recv phase.. ns=%d gid=%d finished=%d\n", n
   }
   n = hp->n_conn;
 
+  hp->closing_conn++;
   if (cmd_pause_time > 0) hp->sleeping_conn++;
   hportal_unlock(hp);
 
@@ -577,6 +578,7 @@ log_printf(5, "hc_recv_thread: after recv phase.. ns=%d gid=%d finished=%d\n", n
 
   //** place myself on the closed que for reaping (Notice that this is done after the potentical sleep above)
   hportal_lock(hp);
+  hp->closing_conn--;
   push(hp->closed_que, (void *)hc);
   hportal_unlock(hp);
 

@@ -138,6 +138,7 @@ log_printf(15, "create_hportal: hpc=%p\n", hpc);
   hp->direct_list = new_stack();
   hp->pause_until = 0;
   hp->stable_conn = max_conn;
+  hp->closing_conn = 0;
   hp->failed_conn_attempts = 0;
   hp->successful_conn_attempts = 0;
   hp->abort_conn_attempts = hpc->abort_conn_attempts;
@@ -346,6 +347,13 @@ void shutdown_hportal(portal_context_t *hpc)
 
      hportal_lock(hp);
      _reap_hportal(hp);  //** clean up any closed connections
+
+     while (hp->closing_conn > 0) {
+        hportal_unlock(hp);
+        log_printf(1, "waiting for connections to close.  host=%s closing_conn=%d\n", hp->skey, hp->closing_conn);
+        usleep(10000);
+        hportal_lock(hp);
+     }
 
      shutdown_direct(hp);  //** Shutdown any direct connections
 

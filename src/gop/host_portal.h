@@ -67,6 +67,7 @@ typedef struct {       //** Contains information about the depot including all c
   int max_conn;           //** Max allowed connections, normally global_config->max_threads
   int min_conn;           //** Max allowed connections, normally global_config->min_threads
   int sleeping_conn;      //** Connections currently sleeping due to a depot load error
+  int closing_conn;       //** Connetions currently being closed
   apr_time_t pause_until;     //** Forces the system to wait, if needed, before making new conn
   Stack_t *conn_list;     //** List of connections
   Stack_t *que;           //** Task que
