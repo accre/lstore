@@ -33,7 +33,7 @@ http://www.accre.vanderbilt.edu
 #include "rr_svr.h"
 
 //*************************************************************************
-// _rrsvr_init - Initializes rr server 
+// _rrsvr_init - Initialize rr server 
 //*************************************************************************
 
 void _rrsvr_init(rrsvr_t *self)
@@ -48,7 +48,7 @@ void _rrsvr_init(rrsvr_t *self)
 }
 
 //*************************************************************************
-// rrsvr_new - Constructs a request response server 
+// rrsvr_new - Construct a request response server 
 //*************************************************************************
 
 rrsvr_t *rrsvr_new()
@@ -59,12 +59,16 @@ rrsvr_t *rrsvr_new()
     _rrsvr_init(svr);
 
     svr->ctx = zctx_new();
+    if (!svr->ctx) {
+	free(svr);
+	return NULL;
+    }
 
     return svr;       
 }
 
 //************************************************************************
-// rrsvr_destroy - Destroys rrsvr
+// rrsvr_destroy - Destroy rrsvr
 //************************************************************************
 void rrsvr_destroy(rrsvr_t **self_p) 
 {
@@ -81,7 +85,7 @@ void rrsvr_destroy(rrsvr_t **self_p)
 }
 
 //*************************************************************************
-// _rrsvr_bind_lpp - Binds to an endpoint 
+// _rrsvr_bind_lpp - Bind to an endpoint 
 //*************************************************************************
 
 void _rrsvr_bind_lpp(rrsvr_t *self)
@@ -91,7 +95,7 @@ void _rrsvr_bind_lpp(rrsvr_t *self)
 }
 
 //***********************************************************************
-// rrsvr_construct_envelope - Constructs the envelope 
+// rrsvr_construct_envelope - Construct the envelope 
 //***********************************************************************
 
 void rrsvr_construct_envelope(rrsvr_t *self, zmsg_t *msg) 
@@ -100,7 +104,7 @@ void rrsvr_construct_envelope(rrsvr_t *self, zmsg_t *msg)
 }
 
 //***********************************************************************
-// rrsvr_send - Sends len of bytes in buf through zmq
+// rrsvr_send - Send len of bytes in buf through zmq
 // OUTPUTS:
 //    Returns the number of bytes in the sent message if successful. Otherwise, retruns -1.
 //***********************************************************************
@@ -120,7 +124,7 @@ int rrsvr_send(rrsvr_t *self, void *buf, size_t len)
 }
 
 //*************************************************************************
-// rrsvr_recv - Receives data through zmq
+// rrsvr_recv - Receive data through zmq
 // OUTPUTS:
 //    Returns the number of bytes in the MESSAGE if successful. Note the value
 //    can exceed the value of len parameter in case the message was truncated.
@@ -150,7 +154,7 @@ int rrsvr_recv(rrsvr_t *self, void *buf, size_t len)
 }
 
 //**************************************************************************
-// rrsvr_config_lpp - Configs rrsvr to use lpp pattern
+// rrsvr_config_lpp - Config rrsvr to use lpp pattern
 //**************************************************************************
 
 void _rrsvr_config_lpp(rrsvr_t *self, inip_file_t *keyfile)
@@ -165,7 +169,7 @@ void _rrsvr_config_lpp(rrsvr_t *self, inip_file_t *keyfile)
 }
 
 //*************************************************************************
-// rrsvr_load_config - Configs the rr server 
+// rrsvr_load_config - Config the rr server 
 //*************************************************************************
 
 void rrsvr_load_config(rrsvr_t *self, char *fname)
@@ -184,5 +188,3 @@ void rrsvr_load_config(rrsvr_t *self, char *fname)
 
     inip_destroy(keyfile);
 }
-
-

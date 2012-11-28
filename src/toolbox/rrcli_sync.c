@@ -2,6 +2,7 @@
 
 int main()
 {
+    apr_initialize();
     rrcli_t *cli = rrcli_new();
     rrcli_load_config(cli, "zsock.cfg");
 

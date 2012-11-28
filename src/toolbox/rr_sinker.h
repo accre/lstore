@@ -30,71 +30,32 @@ http://www.accre.vanderbilt.edu
 //*************************************************************************
 //*************************************************************************
 
-#ifndef _RR_BASE_H_
-#define _RR_BASE_H_
+#ifndef _RR_SINKER_H_
+#define _RR_SINKER_H_
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#include <zmq.h>
-#include <czmq.h>
-#include <uuid/uuid.h>
+#include "rr_base.h"
 
-#include "iniparse.h"
-#include "log.h"
-#include "type_malloc.h"
+//** User callback function to process results
+typedef rrtask_data_t *(sinker_task_fn)(rrtask_data_t *input);
 
-#define RETRIES_DFT 3
-#define TIMEOUT_DFT -1 
-
-//** Communication mode 
-#define SYNC_MODE 0
-#define ASYNC_MODE 1
-
-#define HEARTBEAT_LIVENESS 3
-#define HEARTBEAT_DFT 2500
-#define RECONNECT_DFT 2500
-#define HEARTBEAT_EXPIRY HEARTBEAT_LIVENESS * HEARTBEAT_DFT
-
-//** RRWRK commands, as strings
-#define RRWRK_READY          "\001"
-#define RRWRK_REQUEST        "\002"
-#define RRWRK_REPLY          "\003"
-#define RRWRK_HEARTBEAT      "\004"
-#define RRWRK_DISCONNECT     "\005"
-#define RRWRK_OUTPUT	     "\006"
-
-//** RRCLI commands, as strings
-#define RRCLI_FINISHED 		"\001"
-#define RRCLI_ACK		"\002"
-#define RRCLI_REQUEST		"\003"
-
-//**  This is the version of RR/Client we implement
-#define RR_CLIENT         "RRC01"
-
-//**  This is the version of RR/Worker we implement
-#define RR_WORKER         "RRW01"
-
-//** Task Data 
 typedef struct {
-    size_t len;
-    void *data;
-}rrtask_data_t;
+    zctx_t *ctx;
+    void *sinker;
+    void *pipe;
+    char *pattern;
+    char *endpoint;
+    sinker_task_fn *cb;
+} rrsinker_t;
 
-//** Task related functions
-rrtask_data_t *rrtask_data_new();
-void rrtask_data_destroy(rrtask_data_t **self_p);
-void rrtask_set_data(rrtask_data_t *self, void *buf, size_t len);
-void *rrtask_get_data(rrtask_data_t *self);
-size_t rrtask_get_len(rrtask_data_t *self);
-
-
-void rr_set_mode_tm(inip_file_t *keyfile, char *section, int *mode, int *timeout);
-void *rr_create_socket(zctx_t *ctx, int mode, int sync_st, int asyn_st);
-void rr_dump(void *buf, int len);
-char *rr_uuid_str(uuid_t uuid);
-
+rrsinker_t *rrsinker_new();
+void rrsinker_destroy(rrsinker_t **self_p);
+void rrsinker_start(rrsinker_t *self, sinker_task_fn *cb);
+void rrsinker_task_manager(void *args, zctx_t *ctx, void *pipe);
+void rrsinker_load_config(rrsinker_t *self, char *fname);
 
 #ifdef __cplusplus
 }

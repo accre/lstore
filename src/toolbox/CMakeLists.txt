@@ -48,7 +48,7 @@ check_include_file("stdint.h" HAVE_STDINT_H)
 check_include_file("inttypes.h" HAVE_INTTYPES_H)
 
 include_directories(${GOP_INCLUDE_DIR} ${OPENSSL_INCLUDE_DIR} ${APR_INCLUDE_DIR} ${APRUTIL_INCLUDE_DIR} ${ZMQ_INCLUDE_DIR} ${CZMQ_INCLUDE_DIR})
-SET(LIBS ${LIBS} ${GOP_LIBRARY} ${OPENSSL_LIBRARIES} ${CRYPTO_LIBRARIES} ${APR_LIBRARY} ${APRUTIL_LIBRARY} ${HWLOC_LIBRARY} ${CZMQ_LIBRARY} ${ZMQ_LIBRARY} rt pthread m xml2 dl)
+SET(LIBS ${LIBS} ${GOP_LIBRARY} ${OPENSSL_LIBRARIES} ${CRYPTO_LIBRARIES} ${APR_LIBRARY} ${APRUTIL_LIBRARY} ${HWLOC_LIBRARY} ${CZMQ_LIBRARY} ${ZMQ_LIBRARY} uuid rt pthread m xml2 dl)
 
 CONFIGURE_FILE( ${CMAKE_SOURCE_DIR}/toolbox_config.h.in ${CMAKE_SOURCE_DIR}/toolbox_config.h )
 
@@ -74,6 +74,9 @@ SET(NETWORK_OBJS
     zsock_op.c
     rr_cli.c
     rr_svr.c
+    rr_wrk.c
+    rr_broker.c
+    rr_sinker.c
 )
 
 SET(TOOL_OBJS  
@@ -112,6 +115,9 @@ ADD_EXECUTABLE( rrcli_sync rrcli_sync.c rr_cli.c rr_svr.c rr_base.c)
 ADD_EXECUTABLE( rrcli_async rrcli_async.c rr_cli.c rr_svr.c rr_base.c)
 ADD_EXECUTABLE( rrsvr_sync rrsvr_sync.c rr_svr.c rr_base.c)
 ADD_EXECUTABLE( rrsvr_async rrsvr_async.c rr_svr.c rr_base.c)
+ADD_EXECUTABLE( rrwrk_app rrwrk_app.c rr_wrk.c rr_base.c)
+ADD_EXECUTABLE( rrsinker_app rrsinker_app.c rr_sinker.c rr_base.c)
+ADD_EXECUTABLE( rrbroker_app rrbroker_app.c rr_broker.c rr_base.c)
 
 ADD_LIBRARY( toolbox SHARED ${TOOLBOX_OBJS})
 ADD_LIBRARY( toolbox-static STATIC ${TOOLBOX_OBJS})
@@ -126,6 +132,9 @@ SET_TARGET_PROPERTIES(rrcli_async PROPERTIES LINKER_LANGUAGE CXX)
 SET_TARGET_PROPERTIES(rrsvr_sync PROPERTIES LINKER_LANGUAGE CXX)
 SET_TARGET_PROPERTIES(rrsvr_async PROPERTIES LINKER_LANGUAGE CXX)
 SET_TARGET_PROPERTIES(zop_svr PROPERTIES LINKER_LANGUAGE CXX)
+SET_TARGET_PROPERTIES(rrwrk_app PROPERTIES LINKER_LANGUAGE CXX)
+SET_TARGET_PROPERTIES(rrsinker_app PROPERTIES LINKER_LANGUAGE CXX)
+SET_TARGET_PROPERTIES(rrbroker_app PROPERTIES LINKER_LANGUAGE CXX)
 
 #Make static executables by default
 SET(toolbox_lib toolbox-static)
@@ -143,10 +152,13 @@ TARGET_LINK_LIBRARIES( rrcli_async ${toolbox_lib} ${LIBS} )
 TARGET_LINK_LIBRARIES( rrsvr_sync ${toolbox_lib} ${LIBS} )
 TARGET_LINK_LIBRARIES( rrsvr_async ${toolbox_lib} ${LIBS} )
 TARGET_LINK_LIBRARIES( zop_svr ${toolbox_lib} ${LIBS} )
+TARGET_LINK_LIBRARIES( rrwrk_app ${toolbox_lib} ${LIBS} )
+TARGET_LINK_LIBRARIES( rrsinker_app ${toolbox_lib} ${LIBS} )
+TARGET_LINK_LIBRARIES( rrbroker_app ${toolbox_lib} ${LIBS} )
 
 install(TARGETS toolbox DESTINATION lib)
 install(TARGETS toolbox-static DESTINATION lib)
 install(FILES append_printf.h   chksum.h     fmttypes.h  interval_skiplist.h  net_1_ssl.h  net_phoebus.h  phoebus.h      random.h    string_token.h    type_malloc.h
               apr_wrapper.h     debug.h      hwinfo.h    list.h               net_2_ssl.h  net_sock.h     pigeon_coop.h  skiplist.h  toolbox_config.h
-              atomic_counter.h  dns_cache.h  iniparse.h  log.h                net_fd.h     network.h      pigeon_hole.h  stack.h     transfer_buffer.h	net_zsock.h zsock_config.h zsock_op.h rr_cli.h rr_svr.h
+              atomic_counter.h  dns_cache.h  iniparse.h  log.h                net_fd.h     network.h      pigeon_hole.h  stack.h     transfer_buffer.h	net_zsock.h zsock_config.h zsock_op.h rr_cli.h rr_svr.h rr_wrk.h rr_broker.h rr_sinker.h
               DESTINATION include/toolbox )

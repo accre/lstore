@@ -33,7 +33,7 @@ http://www.accre.vanderbilt.edu
 #include "rr_cli.h"
 
 //*************************************************************************
-// _rrcli_init - Initializes rr client
+// _rrcli_init - Initialize rr client
 //*************************************************************************
 
 void _rrcli_init(rrcli_t *self)
@@ -51,7 +51,7 @@ void _rrcli_init(rrcli_t *self)
 }
 
 //*************************************************************************
-// rrcli_new - Constructs a request response client. 
+// rrcli_new - Construct a request response client. 
 //*************************************************************************
 
 rrcli_t *rrcli_new()
@@ -62,12 +62,34 @@ rrcli_t *rrcli_new()
     _rrcli_init(cli);
 
     cli->ctx = zctx_new();
+    if (!cli->ctx) {
+	free(cli);
+	return NULL;	
+    }
 
     return cli;       
 }
 
 //************************************************************************
-// rrcli_destroy - Destroys rrcli
+// rrcli_close - Close rrcli
+//************************************************************************
+
+void rrcli_close(rrcli_t *self)
+{
+    zmsg_t *msg = zmsg_new();
+
+    zmsg_pushstr(msg, RRCLI_FINISHED);
+    zmsg_pushstr(msg, RR_CLIENT);
+    if (self->mode == ASYNC_MODE)
+        zmsg_pushstr(msg, "");
+
+    zmsg_send(&msg, self->socket);
+    zmsg_t *ack = zmsg_recv(self->socket);
+    zmsg_destroy(&ack);
+}
+
+//************************************************************************
+// rrcli_destroy - Destroy rrcli
 //************************************************************************
 
 void rrcli_destroy(rrcli_t **self_p) 
@@ -75,6 +97,8 @@ void rrcli_destroy(rrcli_t **self_p)
     assert(self_p);
     if (*self_p) {
 	rrcli_t *self = *self_p;
+	if (streq(self->pattern, "ppp"))
+	    rrcli_close(self);
  	zctx_destroy(&self->ctx);
 	zmsg_destroy(&self->single);	
 	free(self->pattern);
@@ -87,7 +111,7 @@ void rrcli_destroy(rrcli_t **self_p)
 }
 
 //*************************************************************************
-// _rrcli_create_socket - Creates a socket for rrcli
+// _rrcli_create_socket - Create a socket for rrcli
 //*************************************************************************
 
 void _rrcli_create_socket(rrcli_t *self)
@@ -95,13 +119,14 @@ void _rrcli_create_socket(rrcli_t *self)
     if (self->socket) {
         zsocket_destroy(self->ctx, self->socket); //** Destroy existing socket 
     }
+    
     self->socket = rr_create_socket(self->ctx, self->mode, ZMQ_REQ, ZMQ_DEALER);
     if (self->identity)
         zsocket_set_identity(self->socket, self->identity);
 }
 
 //*************************************************************************
-// _rrcli_connect - Connects or reconnects to a server or broker 
+// _rrcli_connect - Connect or reconnect to a server or broker 
 //*************************************************************************
 
 void _rrcli_connect(rrcli_t *self, char *endpoint)
@@ -111,15 +136,22 @@ void _rrcli_connect(rrcli_t *self, char *endpoint)
 }
 
 //***********************************************************************
-// rrcli_send - Sends len of bytes in buf through zmq
+// rrcli_send - Send len of bytes in buf through zmq
 // OUTPUTS:
-//    Returns the number of bytes in the sent message if successful. Otherwise, retruns -1.
+//    Return non-zero code on failure.
 //***********************************************************************
 
 int rrcli_send(rrcli_t *self, void *buf, size_t len)
 {
     zmsg_t *msg = zmsg_new();
     zmsg_pushmem(msg, buf, len);
+
+    if (streq(self->pattern, "ppp")) {
+	zmsg_pushstr(msg, RRCLI_REQUEST);
+	zmsg_pushstr(msg, RR_CLIENT);
+	if (self->mode == ASYNC_MODE)
+	    zmsg_pushstr(msg, "");
+    }
 
     if (self->mode == SYNC_MODE) {
 	if (self->single) {
@@ -134,7 +166,7 @@ int rrcli_send(rrcli_t *self, void *buf, size_t len)
 }
 
 //*************************************************************************
-// _rrcli_retry_to_connect - Reconnects to the remote endpoint and resends message
+// _rrcli_retry_to_connect - Reconnect to the remote endpoint and resends message
 //*************************************************************************
 
 void _rrcli_retry_to_connect(rrcli_t *self)
@@ -150,7 +182,7 @@ void _rrcli_retry_to_connect(rrcli_t *self)
 }
 
 //*************************************************************************
-// rrcli_recv - Receives data through zmq
+// rrcli_recv - Receive data through zmq
 // OUTPUTS:
 //    Returns the number of bytes in the MESSAGE if successful. Note the value
 //    can exceed the value of len parameter in case the message was truncated.
@@ -181,7 +213,7 @@ int rrcli_recv(rrcli_t *self, void *buf, size_t len)
 }
 
 //***********************************************************************
-// _rrcli_config_base - Configs common fields 
+// _rrcli_config_base - Config common fields 
 //***********************************************************************
 
 void _rrcli_config_base(rrcli_t *self, inip_file_t *keyfile, char *section)
@@ -189,13 +221,13 @@ void _rrcli_config_base(rrcli_t *self, inip_file_t *keyfile, char *section)
     assert(keyfile);
     assert(section);
 
-    rr_set_mode_tm(keyfile, "lppcli", &self->mode, &self->timeout); 
+    rr_set_mode_tm(keyfile, section, &self->mode, &self->timeout); 
     self->retries = inip_get_integer(keyfile, section, "retries", RETRIES_DFT);
     self->identity = inip_get_string(keyfile, section, "identity", NULL);
 }
 
 //**************************************************************************
-// rrcli_config_lpp - Configs rrcli to use lpp pattern
+// rrcli_config_lpp - Config rrcli to use lpp pattern
 //**************************************************************************
 
 void _rrcli_config_lpp(rrcli_t *self, inip_file_t *keyfile)
@@ -211,23 +243,41 @@ void _rrcli_config_lpp(rrcli_t *self, inip_file_t *keyfile)
 }
 
 //**************************************************************************
-// rrcli_config_md - Configs rrcli to use md pattern 
+// _rrcli_config - Config rrcli 
 //**************************************************************************
 
-void _rrcli_config_md(rrcli_t *self, inip_file_t *keyfile)
+void _rrcli_config(rrcli_t *self, inip_file_t *keyfile, char *pattern)
 {
     assert(keyfile);
 
-    _rrcli_config_base(self, keyfile, "mdcli");
+    _rrcli_config_base(self, keyfile, pattern);
 
-    self->broker = inip_get_string(keyfile, "mdcli", "broker", NULL);
+    self->broker = inip_get_string(keyfile, pattern, "broker", NULL);
     assert(self->broker);
 
     _rrcli_connect(self, self->broker);
 }
 
+//**************************************************************************
+// rrcli_config_md - Config rrcli to use md pattern 
+//**************************************************************************
+
+void _rrcli_config_md(rrcli_t *self, inip_file_t *keyfile)
+{
+    _rrcli_config(self, keyfile, "mdcli");
+}
+
+//**************************************************************************
+// rrcli_config_ppp - Config rrcli to use ppp pattern 
+//**************************************************************************
+
+void _rrcli_config_ppp(rrcli_t *self, inip_file_t *keyfile)
+{
+    _rrcli_config(self, keyfile, "pppcli");
+}
+
 //*************************************************************************
-// rrcli_load_config - Configs the rr client
+// rrcli_load_config - Config the rr client
 //*************************************************************************
 
 void rrcli_load_config(rrcli_t *self, char *fname)
@@ -241,6 +291,8 @@ void rrcli_load_config(rrcli_t *self, char *fname)
 	_rrcli_config_lpp(self, keyfile);
     } else if (strcmp(self->pattern, "md") == 0) {
 	_rrcli_config_md(self, keyfile);
+    } else if (strcmp(self->pattern, "ppp") == 0) {
+	_rrcli_config_ppp(self, keyfile);
     } else {
 	log_printf(0, "Unknown ZMQ Pattern: %s.\n", self->pattern);
  	exit(0);	
