@@ -81,7 +81,7 @@ void zsock_set_peer(net_sock_t *sock, char *address, int add_size)
 }
 
 //************************************************************************
-// zsock_io_wait - mode coule be either ZMQ_POLLIN or ZMQ_POLLOUT
+// zsock_io_wait - mode could be either ZMQ_POLLIN or ZMQ_POLLOUT
 //************************************************************************
 
 int zsock_io_wait(network_zsock_t *sock, Net_timeout_t tm, int mode)
@@ -95,9 +95,9 @@ int zsock_io_wait(network_zsock_t *sock, Net_timeout_t tm, int mode)
 }
  
 //************************************************************************
-// zsock_decode - Decodes a transfer buffer to a new message,returns NULL 
-// if buffer is not properly formatted.
+// zsock_decode - Decode a transfer buffer into a new message
 //************************************************************************
+
 zmsg_t *zsock_decode(tbuffer_t *buf, size_t bpos, size_t size)
 {
     int i, rc;
@@ -118,7 +118,7 @@ zmsg_t *zsock_decode(tbuffer_t *buf, size_t bpos, size_t size)
 }
 
 //************************************************************************
-// zsock_write - Writes buffer to a socket. Note that when socket type is 
+// zsock_write - Write buffer to a socket. Note that when socket type is 
 // ZMQ_ROUTER, tbuffer should begin with peer address. So 'bpos' should be 0
 // and 'size' should be greater than size of peer address in this case.
 // If it's not ready to write afte timeout, returns 0. 
@@ -140,8 +140,9 @@ long int zsock_write(net_sock_t *sock, tbuffer_t *buf, size_t bpos, size_t size,
 }
 
 //************************************************************************
-// zsock_encode - Encodes message to a new transfer buffer, returns buffer size
+// zsock_encode - Encode message to a new transfer buffer, return buffer size
 //************************************************************************
+
 size_t zsock_encode(zmsg_t *msg, tbuffer_t *buf)
 {
     int frame_count;
@@ -168,11 +169,10 @@ size_t zsock_encode(zmsg_t *msg, tbuffer_t *buf)
     return total_size;
 }
 
-
 //************************************************************************
-// zsock_read - Reads data into the buffer from a socket. Returns number 
-// of bytes received. Allocates space to store the received data. Caller 
-// needs to release these allocation. If timeout, returns -1 
+// zsock_read - Read data into the buffer from a socket. Return number 
+// of bytes received. Allocate space to store the received data. Caller 
+// needs to release these allocation. 
 //************************************************************************
 
 long int zsock_read(net_sock_t *sock, tbuffer_t *buf, size_t bpos, size_t size, Net_timeout_t tm)
@@ -227,7 +227,7 @@ void zsock_default_opt(zsocket_opt_t *option)
 }
 
 //************************************************************************
-// zsock_option_create - Creates a new zsocket option
+// zsock_option_create - Create a new zsocket option
 //************************************************************************
 
 zsocket_opt_t *zsock_option_create()
@@ -239,7 +239,7 @@ zsocket_opt_t *zsock_option_create()
 }
 
 //************************************************************************
-// zsock_option_destroy - Destroys zsocket option  
+// zsock_option_destroy - Destroy zsocket option  
 //************************************************************************
 
 void zsock_option_destroy(zsocket_opt_t *option)
@@ -265,7 +265,7 @@ void zsock_option_destroy(zsocket_opt_t *option)
 }
 
 //************************************************************************ 
-// zsock_setopt - Sets zmq socket options
+// zsock_setopt - Set zmq socket options
 //************************************************************************
 void zsock_setopt(void *socket, zsocket_opt_t *option)
 {
@@ -359,7 +359,7 @@ void zsock_setopt(void *socket, zsocket_opt_t *option)
 }
 
 //************************************************************************
-// _zsock_act - Connects or binds to the endpoint depending on action
+// _zsock_act - Connect or bind to the endpoint depending on action
 //************************************************************************
 
 int _zsock_act(net_sock_t *sock, const char *hostname, int port, Net_timeout_t timeout, int action)
@@ -388,7 +388,7 @@ int _zsock_act(net_sock_t *sock, const char *hostname, int port, Net_timeout_t t
 }
 
 //***********************************************************************
-// zsock_connect - Connects a socket to the requested endpoint
+// zsock_connect - Connect a socket to the requested endpoint
 //***********************************************************************
 
 int zsock_connect(net_sock_t *sock, const char *hostname, int port, Net_timeout_t timeout)
@@ -397,7 +397,7 @@ int zsock_connect(net_sock_t *sock, const char *hostname, int port, Net_timeout_
 }
 
 //***********************************************************************
-// zsock_bind - Binds a socket to the requested endpoint 
+// zsock_bind - Bind a socket to the requested endpoint 
 //***********************************************************************
 
 int zsock_bind(net_sock_t *sock, char *hostname, int port)
@@ -429,7 +429,7 @@ void ns_config_zsock(NetStream_t *ns, int type, char *prtcl, zsocket_opt_t *opti
 
     apr_thread_mutex_create(&(zsock->lock), APR_THREAD_MUTEX_DEFAULT, zsock->mpool);
 
-    //** Might needs to move context creation to zsock_connect or zsock_bind
+    //** Might need to move context creation to zsock_connect or zsock_bind
     zsock->context = zctx_new();
     assert(zsock->context);
 

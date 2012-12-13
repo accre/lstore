@@ -36,7 +36,7 @@ op_status_t zsock_success_status = {OP_STATE_SUCCESS, ZSOCK_OK};
 op_status_t zsock_failure_status = {OP_STATE_FAILURE, 0};
 
 //*************************************************************************
-// gop_write - Sends data
+// gop_write - Send data
 //*************************************************************************
 
 op_status_t gop_write(NetStream_t *ns, op_generic_t *gop, tbuffer_t *buffer, zsock_off_t pos, zsock_off_t size)
@@ -60,7 +60,7 @@ op_status_t gop_write(NetStream_t *ns, op_generic_t *gop, tbuffer_t *buffer, zso
 }
 
 //*************************************************************************
-// gop_read - Receives data, timeout is set to be 1s
+// gop_read - Receive data. timeout is set to be 1s
 //*************************************************************************
 
 op_status_t gop_read(NetStream_t *ns, op_generic_t *gop, tbuffer_t *buffer, zsock_off_t pos, zsock_off_t size)
@@ -107,7 +107,7 @@ void _zsock_op_free(op_generic_t *gop, int mode) //** Are these enough? or redud
 }
 
 //*************************************************************************
-// init_zsock_op - Initializes an ZSOCK op
+// init_zsock_op - Initialize an ZSOCK op
 //*************************************************************************
 
 void init_zsock_op(zsock_context_t *zc, zsock_op_t *op)
@@ -131,7 +131,7 @@ void init_zsock_op(zsock_context_t *zc, zsock_op_t *op)
 }
 
 //*************************************************************************
-// new_zsock_op -  Allocates space for a new op
+// new_zsock_op -  Allocate space for a new op
 //*************************************************************************
 
 zsock_op_t *new_zsock_op(zsock_context_t *zc)
@@ -147,7 +147,7 @@ zsock_op_t *new_zsock_op(zsock_context_t *zc)
 }
 
 //************************************************************************
-// new_zsock_rw_op - Creates a new IO operation
+// new_zsock_rw_op - Create a new IO operation
 //************************************************************************
 
 op_generic_t *new_zsock_rw_op(zsock_context_t *zc, char *hostname, int port, int rw_type, tbuffer_t *buffer, zsock_off_t boff, zsock_off_t len, int timeout)
@@ -161,7 +161,7 @@ op_generic_t *new_zsock_rw_op(zsock_context_t *zc, char *hostname, int port, int
 } 
 
 //************************************************************************
-// set_zsock_rw_op - Generates a new IO operation
+// set_zsock_rw_op - Generate a new IO operation
 //************************************************************************
 
 void set_zsock_rw_op(zsock_op_t *op, char *hostname, int port, int rw_type, tbuffer_t *buffer, zsock_off_t boff, zsock_off_t len, int timeout)
@@ -211,7 +211,7 @@ void set_zsock_rw_op(zsock_op_t *op, char *hostname, int port, int rw_type, tbuf
 }
 
 //************************************************************************
-// new_zsock_read_op - Creates a new read operation
+// new_zsock_read_op - Create a new read operation
 //************************************************************************
 
 op_generic_t *new_zsock_read_op(zsock_context_t *zc, char *hostname, int port, tbuffer_t *buffer, zsock_off_t boff, zsock_off_t len, int timeout)
@@ -221,7 +221,7 @@ op_generic_t *new_zsock_read_op(zsock_context_t *zc, char *hostname, int port, t
 }
 
 //************************************************************************
-// set_zsock_read_ip - Generates a new read operation
+// set_zsock_read_ip - Generate a new read operation
 //************************************************************************
 
 void set_zsock_read_op(zsock_op_t *op, char *hostname, int port, tbuffer_t *buffer, zsock_off_t boff, zsock_off_t len, int timeout) 
@@ -230,7 +230,7 @@ void set_zsock_read_op(zsock_op_t *op, char *hostname, int port, tbuffer_t *buff
 }
 
 //***********************************************************************
-// new_zsock_write_op - Creates a new write operation
+// new_zsock_write_op - Create a new write operation
 //***********************************************************************
 
 op_generic_t *new_zsock_write_op(zsock_context_t *zc, char *hostname, int port, tbuffer_t *buffer, zsock_off_t boff, zsock_off_t len, int timeout)
@@ -240,7 +240,7 @@ op_generic_t *new_zsock_write_op(zsock_context_t *zc, char *hostname, int port, 
 }
 
 //***********************************************************************
-// set_zsock_write_op - Generates a new write operation
+// set_zsock_write_op - Generate a new write operation
 //***********************************************************************
 
 void set_zsock_write_op(zsock_op_t *op, char *hostname, int port, tbuffer_t *buffer, zsock_off_t boff, zsock_off_t len, int timeout)
@@ -258,7 +258,7 @@ void set_zsock_write_op(zsock_op_t *op, char *hostname, int port, tbuffer_t *buf
 //}
 
 //***********************************************************************
-// write_send - Executes write operation 
+// write_send - Execute write operation 
 //***********************************************************************
 
 op_status_t write_send(op_generic_t *gop, NetStream_t *ns)
@@ -284,7 +284,7 @@ op_status_t write_send(op_generic_t *gop, NetStream_t *ns)
 }
 
 //***********************************************************************
-// read_recv - Executes read operation 
+// read_recv - Execute read operation 
 //***********************************************************************
 
 op_status_t read_recv(op_generic_t *gop, NetStream_t *ns)

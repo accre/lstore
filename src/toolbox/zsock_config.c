@@ -46,7 +46,7 @@ int _zsock_context_count = 0; //** Is it necessary to have this var?
 inip_element_t *_find_group_key(inip_file_t *inip, const char *group_name, const char *key);
 
 //**********************************************************************
-// _zsock_dup_connect_connect - Copies an ZMQ connect_context structure
+// _zsock_dup_connect_connect - Copy an ZMQ connect_context structure
 //**********************************************************************
 
 void *_zsock_dup_connect_context(void *connect_context)
@@ -65,7 +65,7 @@ void *_zsock_dup_connect_context(void *connect_context)
 
 
 //*********************************************************************
-//_zsock_destroy_connect_context - Destroys an ZMQ connect_context structure
+//_zsock_destroy_connect_context - Destroy an ZMQ connect_context structure
 //*********************************************************************
 
 void _zsock_destroy_connect_context(void *connect_context)
@@ -77,7 +77,7 @@ void _zsock_destroy_connect_context(void *connect_context)
 }
 
 //**********************************************************************
-// _zsock_connect - Makes a ZMQ connection to remote host
+// _zsock_connect - Make a ZMQ connection to remote host
 //**********************************************************************
 
 int _zsock_connect(NetStream_t *ns, void *connect_context, char *host, int port, Net_timeout_t timeout)
@@ -102,7 +102,7 @@ int _zsock_connect(NetStream_t *ns, void *connect_context, char *host, int port,
 }
 
 //***********************************************************************
-// _zsock_submit_op - Submits a zsock OP 
+// _zsock_submit_op - Submit a zsock OP 
 //***********************************************************************
 
 void _zsock_submit_op(void *arg, op_generic_t *gop)
@@ -125,13 +125,13 @@ void _zsock_submit_op(void *arg, op_generic_t *gop)
 void default_zsock_config(zsock_context_t *zc)
 {
     zc->min_idle = apr_time_make(30, 0);        //** Connection minimum idle time before disconnecting
-    zc->min_threads = 1;     //** Min and max threads allowed 
-    zc->max_threads = 4;     //** Max number of simultaneous connection 
-    zc->max_connections = 128; //** Max number of connections across all connections
-    zc->max_wait = 30;         //** Max time to wait and retry a connection
-    zc->wait_stable_time = 15; //** Time to wait before opening a new connection for a heavily loaded server
-    zc->abort_conn_attempts = 4; //** If this many failed connection requests occur in a row we abort
-    zc->check_connection_interval = 2;  //**# of secs to wait between checks if we need more connections 
+    zc->min_threads = 1;     			//** Min and max threads allowed 
+    zc->max_threads = 4;     			//** Max number of simultaneous connection 
+    zc->max_connections = 128; 			//** Max number of connections across all connections
+    zc->max_wait = 30;         			//** Max time to wait and retry a connection
+    zc->wait_stable_time = 15; 			//** Time to wait before opening a new connection for a heavily loaded server
+    zc->abort_conn_attempts = 4; 		//** If this many failed connection requests occur in a row we abort
+    zc->check_connection_interval = 2;  	//** # of secs to wait between checks if we need more connections 
     zc->max_retry = 2;  
 
     int i;
@@ -142,7 +142,7 @@ void default_zsock_config(zsock_context_t *zc)
 }
 
 //************************************************************************
-// zsock_create_context - Creates a zsock context
+// zsock_create_context - Create a zsock context
 //************************************************************************
 
 zsock_context_t *zsock_create_context()
@@ -172,7 +172,7 @@ zsock_context_t *zsock_create_context()
 }
 
 //************************************************************************
-// zsock_destroy_context - Destroys zsock context
+// zsock_destroy_context - Destroy zsock context
 //************************************************************************
 
 void zsock_destroy_context(zsock_context_t *zc)
@@ -209,7 +209,7 @@ void zsock_destroy_context(zsock_context_t *zc)
 } 
 
 //************************************************************************
-// zsock_get_type - Gets the zmq socket type
+// zsock_get_type - Get the zmq socket type
 //************************************************************************
 
 int zsock_get_type(char *type) 
@@ -239,7 +239,7 @@ int zsock_get_type(char *type)
 }
 
 //************************************************************************
-// zsock_option_load - Loads the socket option for connection
+// zsock_option_load - Load the socket option for connection
 //************************************************************************
 
 void zsock_option_load(inip_file_t *kf, const char *group, zsocket_opt_t *option)
@@ -362,8 +362,9 @@ void zsock_option_load(inip_file_t *kf, const char *group, zsocket_opt_t *option
 }
 
 //************************************************************************
-// zsock_cc_load - Loads the default connect_context for commands
+// zsock_cc_load - Load the default connect_context for commands
 //************************************************************************
+
 void zsock_cc_load(inip_file_t *kf, zsock_context_t *cfg)
 {
     int i;
@@ -388,7 +389,7 @@ void zsock_cc_load(inip_file_t *kf, zsock_context_t *cfg)
 }
 
 //************************************************************************
-// copy_zsock_config - Sets the zsock config options
+// copy_zsock_config - Set the zsock config options
 //************************************************************************
 
 void copy_zsock_config(zsock_context_t *cfg)
@@ -406,7 +407,7 @@ void copy_zsock_config(zsock_context_t *cfg)
 }
 
 //************************************************************************
-// zsock_load_config - Loads the zsock config
+// zsock_load_config - Load the zsock config
 //************************************************************************
 
 int zsock_load_config(zsock_context_t *zc, char *fname, char *section)
@@ -423,6 +424,13 @@ int zsock_load_config(zsock_context_t *zc, char *fname, char *section)
     }
 
     zc->max_workload = inip_get_integer(keyfile, section, "max_thread_workload", zc->max_workload);
+    zc->max_retry = inip_get_integer(keyfile, section, "max_retry", zc->max_retry);
+    zc->min_threads = inip_get_integer(keyfile, section, "min_threads", zc->min_threads);
+    zc->max_threads = inip_get_integer(keyfile, section, "max_threads", zc->max_threads);
+    zc->max_connections = inip_get_integer(keyfile, section, "max_connections", zc->max_connections);
+    zc->max_wait = inip_get_integer(keyfile, section, "max_wait", zc->max_wait);
+    zc->wait_stable_time = inip_get_integer(keyfile, section, "wait_stable_time", zc->wait_stable_time);
+    zc->check_connection_interval = inip_get_integer(keyfile, section, "check_interval", zc->check_connection_interval);
 
     copy_zsock_config(zc);
 
