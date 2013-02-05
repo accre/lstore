@@ -53,9 +53,10 @@ typedef struct {
    portal_context_t *pc;
    apr_thread_pool_t *tp;
    atomic_int_t n_ops;
-atomic_int_t n_completed;
-atomic_int_t n_started;
-atomic_int_t n_submitted;
+   atomic_int_t n_completed;
+   atomic_int_t n_started;
+   atomic_int_t n_submitted;
+   atomic_int_t n_direct;
    int min_idle;
    int min_threads;
    int max_threads;
@@ -74,11 +75,15 @@ typedef struct {
 #define gop_get_tp(gop) (gop)->op->priv
 //#define tp_gop_id(top) ((thread_pool_op_t *)((gop)->op->priv))->id
 
+int thread_pool_direct(thread_pool_context_t *tpc, apr_thread_start_t fn, void *arg);
+
 int set_thread_pool_op(thread_pool_op_t *op, thread_pool_context_t *tpc, char *que, op_status_t (*fn)(void *arg, int id), void *arg, void (*my_op_free)(void *arg), int workload);
 op_generic_t *new_thread_pool_op(thread_pool_context_t *tpc, char *que, op_status_t (*fn)(void *arg, int id), void *arg, void (*my_op_free)(void *arg), int workload);
 
 thread_pool_context_t *thread_pool_create_context(char *tp_name, int min_threads, int max_threads);
 void thread_pool_destroy_context(thread_pool_context_t *tpc);
+
+void  *thread_pool_exec_fn(apr_thread_t *th, void *data);
 
 #ifdef __cplusplus
 }

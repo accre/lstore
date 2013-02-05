@@ -2,6 +2,7 @@
 *.so
 *.a
 bootstrap
+mq_test
 
 #These are generated via cmake using the *.in variants
 gop_version.c

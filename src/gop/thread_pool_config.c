@@ -46,8 +46,6 @@ void _tp_destroy_connect_context(void *connect_context);
 int _tp_connect(NetStream_t *ns, void *connect_context, char *host, int port, Net_timeout_t timeout);
 void _tp_close_connection(NetStream_t *ns);
 
-void  *_tp_exec(apr_thread_t *th, void *data);
-
 void _tp_op_free(op_generic_t *op, int mode);
 void _tp_submit_op(void *arg, op_generic_t *op);
 
@@ -83,7 +81,7 @@ void _tp_op_free(op_generic_t *gop, int mode)
 
   gop_generic_free(gop, OP_FINALIZE);  //** I free the actual op
 
-  free(top->dop.cmd.hostport);
+  if (top->dop.cmd.hostport) free(top->dop.cmd.hostport);
 
   if (mode == OP_DESTROY) free(gop->free_ptr);
   log_printf(15, "_tp_op_free: gid=%d END\n", id); flush_log();
@@ -101,7 +99,7 @@ void _tp_submit_op(void *arg, op_generic_t *gop)
 
 atomic_inc(op->tpc->n_submitted);
 
-  aerr = apr_thread_pool_push(op->tpc->tp, _tp_exec, gop, APR_THREAD_TASK_PRIORITY_NORMAL, NULL);
+  aerr = apr_thread_pool_push(op->tpc->tp, thread_pool_exec_fn, gop, APR_THREAD_TASK_PRIORITY_NORMAL, NULL);
 
   if (aerr != APR_SUCCESS) {
     log_printf(0, "ERROR submiting task!  aerr=%d gid=%d\n", aerr, gop_id(gop));
@@ -136,6 +134,25 @@ int _tp_connect(NetStream_t *ns, void *connect_context, char *host, int port, Ne
 void _tp_close_connection(NetStream_t *ns)
 {
   return;
+}
+
+//*************************************************************
+// thread_pool_direct - Bypasses the _tp_exec GOP wrapper
+//     and directly submits the task to the APR thread pool
+//*************************************************************
+
+int thread_pool_direct(thread_pool_context_t *tpc, apr_thread_start_t fn, void *arg)
+{
+  int err = apr_thread_pool_push(tpc->tp, fn, arg, APR_THREAD_TASK_PRIORITY_NORMAL, NULL);
+
+  atomic_inc(tpc->n_direct);
+
+log_printf(0, "tpd=%d\n", atomic_get(tpc->n_direct));
+  if (err != APR_SUCCESS) {
+    log_printf(0, "ERROR submiting task!  err=%d\n", err);
+  }
+
+  return((err == APR_SUCCESS) ? 0 : 1);
 }
 
 //**********************************************************

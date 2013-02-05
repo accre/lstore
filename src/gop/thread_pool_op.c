@@ -57,7 +57,7 @@ op_status_t tp_command(op_generic_t *gop, NetStream_t *ns)
 
 //*************************************************************
 
-void  *_tp_exec(apr_thread_t *th, void *arg)
+void  *thread_pool_exec_fn(apr_thread_t *th, void *arg)
 {
   op_generic_t *gop = (op_generic_t *)arg;
   thread_pool_op_t *op = gop_get_tp(gop);
@@ -111,37 +111,9 @@ void init_tp_op(thread_pool_context_t *tpc, thread_pool_op_t *op)
 
 int set_thread_pool_op(thread_pool_op_t *op, thread_pool_context_t *tpc, char *que, op_status_t (*fn)(void *arg, int id), void *arg, void (*my_op_free)(void *arg), int workload)
 {
-//  command_op_t *cmd = &(op->dop.cmd);
-//  char hostport[512];
-
-//  cmd->timeout = 10;
-//  cmd->retry_count = 0;
-//  cmd->workload = workload;
-//  cmd->cmp_size = workload;
-//  cmd->send_command = tp_command;
-//  cmd->send_phase = NULL;
-//  cmd->recv_phase = tp_recv;
-//  cmd->destroy_command = NULL;
-
-//  cmd->connect_context = NULL;
-
-//  if (que == NULL) {
-//    cmd->hostport = strdup(tpc->hostport);
-//  } else {
-//    snprintf(hostport, sizeof(hostport), "%s" HP_HOSTPORT_SEPARATOR "1" HP_HOSTPORT_SEPARATOR "0" HP_HOSTPORT_SEPARATOR "0", que);
-//    cmd->hostport = strdup(hostport);
-//  }
-
-//log_printf(0, "q=%s hostport=%s cmd=%s\n", que, tpc->hostport, cmd->hostport);
-
   op->fn = fn;
   op->arg = arg;
   op->my_op_free = my_op_free;
-
-//  apr_thread_mutex_lock(_tp_lock);
-//  _tp_id++;
-//  op->id = _tp_id;
-//  apr_thread_mutex_unlock(_tp_lock);
 
   return(0);
 }
