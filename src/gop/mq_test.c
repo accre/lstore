@@ -451,7 +451,7 @@ void generate_tasks(mq_context_t *mqc, opque_t *q, int count, test_data_t *td_ba
 
 int bulk_test(mq_context_t *mqc)
 {
-  int err, n, expire;
+  int err, n, expire, quick;
   opque_t *q = new_opque();
   op_generic_t *gop;
   test_data_t tdc, *td;
@@ -460,14 +460,27 @@ int bulk_test(mq_context_t *mqc)
   char b64[1024];
   double ttime;
 
+  quick = 0;
                  //**delay, address_reply, expire
   test_data_set(&tdc, 5, 1, 3);
-  generate_tasks(mqc, q, 100, &tdc);
+  if (quick == 0) {
+     generate_tasks(mqc, q, 100, &tdc);
+  } else {
+     generate_tasks(mqc, q, 10, &tdc);
+  }
   expire = 30;
   test_data_set(&tdc, 2, 1, expire);
-  generate_tasks(mqc, q, 1000, &tdc);
+  if (quick == 0) {
+     generate_tasks(mqc, q, 1000, &tdc);
+  } else {
+     generate_tasks(mqc, q, 10, &tdc);
+  }
   test_data_set(&tdc, 0, 0, expire);
-  generate_tasks(mqc, q, 10000, &tdc);
+  if (quick == 0) {
+     generate_tasks(mqc, q, 10000, &tdc);
+  } else {
+     generate_tasks(mqc, q, 10, &tdc);
+  }
 
   log_printf(0, "TEST: (START) %d tasks in bulk test\n", opque_task_count(q));
   err = 0;
@@ -786,6 +799,122 @@ log_printf(5, "deferred responses to handle %d (server_portal=%p)\n", stack_size
 
 int proc_trackexec_ping(mq_portal_t *p, mq_socket_t *sock, mq_msg_t *msg)
 {
+  mq_frame_t *pid, *tdf;
+  mq_msg_t *response, *track_response;
+  defer_t *defer;
+  char *data, b64[1024];
+  int err, size;
+  test_data_t *td;
+
+log_printf(5, "TEXEC START\n");
+//for (f = mq_msg_first(msg), i=0; f != NULL; f = mq_msg_next(msg), i++) {
+//  mq_get_frame(f, (void **)&data, &err);
+//  log_printf(5, "fsize[%d]=%d\n", i, err);
+//}
+
+  apr_thread_mutex_lock(lock);
+  server_stats.incoming[MQS_TRACKEXEC_INDEX]++;
+  apr_thread_mutex_unlock(lock);
+
+  //** Peel off the top frames and just leave the return address
+  mq_msg_first(msg); mq_frame_destroy(mq_msg_pluck(msg, 0));  //blank
+  mq_frame_destroy(mq_msg_pluck(msg, 0));  //version
+  mq_frame_destroy(mq_msg_pluck(msg,0));  //command(trackexec)
+
+  pid = mq_msg_pluck(msg, 0);  //Ping ID
+mq_get_frame(pid, (void **)&data, &size);
+log_printf(1, "TEXEC sid=%s\n", mq_id2str(data, size, b64, sizeof(b64)));
+  mq_frame_destroy(mq_msg_pluck(msg,0));  //PING command
+
+  tdf = mq_msg_pluck(msg, 0);   //Arg
+  mq_get_frame(tdf, (void **)&td, &err);
+  if (err != sizeof(test_data_t)) {
+     log_printf(0, "ERROR: test_data data argument incorrect size!  size=%d\n", err);
+  }
+
+  //** What's left in msg is the tracking address ***
+
+  //** Form the core of the response messeage
+  response = mq_msg_new();
+  mq_msg_append_mem(response, MQF_VERSION_KEY, MQF_VERSION_SIZE, MQF_MSG_KEEP_DATA);
+  mq_msg_append_mem(response, MQF_RESPONSE_KEY, MQF_RESPONSE_SIZE, MQF_MSG_KEEP_DATA);
+  mq_msg_append_frame(response, pid);
+  mq_msg_append_frame(response, tdf);
+  mq_msg_append_mem(response, NULL, 0, MQF_MSG_KEEP_DATA);
+
+  //** Add the address
+  mq_apply_return_address_msg(response, msg, 1);
+
+  //** Make the trackaddress response if needed
+log_printf(5, "address_reply=%d\n", td->address_reply);
+  track_response = (td->address_reply == 1) ? mq_trackaddress_msg(host, msg, pid, 1) : NULL;
+
+  if (td->delay == 0) {
+     mq_get_frame(pid, (void **)&data, &size);;
+     log_printf(3, "delay=0.  Sending response. gid=" LU "\n", *(uint64_t *)data);
+     //** Send the response
+     apr_thread_mutex_lock(lock);
+     server_stats.outgoing[MQS_RESPONSE_INDEX]++;
+     apr_thread_mutex_unlock(lock);
+
+     if (p == NULL) {
+        err = mq_send(sock, response, 0);
+        mq_msg_destroy(response);
+     } else {
+        err = mq_submit(server_portal, mq_task_new(server_portal->mqc, response, NULL, NULL, 5));
+     }
+
+     if (err != 0) {
+        log_printf(0, "ERROR:  Failed sending PONG message to host=%s error=%d\n", host, err);
+     }
+
+  } else if (td->delay > 0) {
+     log_printf(3, "delay>0.  Deferring response.\n");
+     type_malloc(defer, defer_t, 1);
+     defer->msg = response;
+     defer->td = td;
+     defer->td->ping_count = atomic_get(ping_count);
+     defer->expire = apr_time_now() + apr_time_from_sec(td->delay);
+     apr_thread_mutex_lock(lock);
+     push(deferred_pending, defer);
+     apr_thread_cond_signal(cond);
+     apr_thread_mutex_unlock(lock);
+  } else {
+     log_printf(3, "delay<0.  Dropping response.\n");
+     mq_msg_destroy(response);
+  }
+
+  if (track_response != NULL) {  //** Send a TRACKADDESS response
+     apr_thread_mutex_lock(lock);
+     server_stats.outgoing[MQS_TRACKADDRESS_INDEX]++;
+     apr_thread_mutex_unlock(lock);
+
+     if (p == NULL) {
+        err = mq_send(sock, track_response, 0);
+        mq_msg_destroy(track_response);
+     } else {
+        err = mq_submit(server_portal, mq_task_new(server_portal->mqc, track_response, NULL, NULL, 5));
+     }
+
+
+     if (err != 0) {
+        log_printf(0, "ERROR:  Failed sending TRACKADDRESS message to host=%s error=%d\n", host, err);
+     }
+  }
+
+  mq_msg_destroy(msg);
+
+log_printf(5, "TEXEC END\n");
+
+  return(0);
+}
+
+//***************************************************************************
+// OLD_proc_trackexec_ping - Processes a ping request from the application and returns a response
+//***************************************************************************
+
+int OLD_proc_trackexec_ping(mq_portal_t *p, mq_socket_t *sock, mq_msg_t *msg)
+{
   mq_frame_t *f, *pid, *tdf;
   mq_msg_t *response, *track_response;
   defer_t *defer;
@@ -845,7 +974,7 @@ log_printf(5, "address_reply=%d\n", td->address_reply);
      if (track_response != NULL) {  //** Got to add the routing info for the trackaddress message
         //** This is my address which goes on the end
         mq_get_frame(f, (void **)&data, &size);
-        if (i != 1) {  //** We skip the sender address line.  He knows who he is.
+        if (i > 1) {  //** We skip the sender address line.  He knows who he is.
            if (data != NULL) {
               type_malloc(copy, void, size);
               memcpy(copy, data, size);
@@ -1064,10 +1193,8 @@ fail:
 // cb_ping - Handles the PING response
 //***************************************************************************
 
-void cb_ping(void *arg)
+void cb_ping(void *arg, mq_task_t *task)
 {
-  mq_task_t *task = (mq_task_t *)arg;
-
   log_printf(3, "START\n"); flush_log();
   proc_trackexec_ping(server_portal, NULL, task->msg);
   log_printf(3, "END\n"); flush_log();
@@ -1115,12 +1242,11 @@ void server_test_mq_loop()
   //** Make the server portal
   mqc = server_make_context();
 
-  //** Form the command table
-  table = mq_command_table_new(NULL);
-  mq_command_add(table, MQF_PING_KEY, MQF_PING_SIZE, cb_ping);
-
   //** Make the server portal
-  server_portal = mq_portal_create(mqc, host, MQ_CMODE_BIND, table);
+  server_portal = mq_portal_create(mqc, host, MQ_CMODE_SERVER);
+  table = mq_portal_command_table(server_portal);
+  mq_command_add(table, MQF_PING_KEY, MQF_PING_SIZE, NULL, cb_ping);
+
   mq_portal_install(mqc, server_portal);
 
   //** Wait for a shutdown
@@ -1128,8 +1254,6 @@ void server_test_mq_loop()
 
   //** Destroy the portal
   mq_destroy_context(mqc);
-
-  mq_command_table_destroy(table);
 
   log_printf(0, "END\n");
 }
