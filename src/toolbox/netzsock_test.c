@@ -174,7 +174,7 @@ int main(int argc, char **argv)
     set_flag(option->flag, UNSUBSCRIBE);
     set_flag(option->flag, IDENTITY);
 */
-    
+
     if (sock_type == 5) {
         log_printf(0, "Working on ZMQ SUB:PUB mode\n"); 
         set_flag(option->flag, SUBSCRIBE);
@@ -195,11 +195,11 @@ int main(int argc, char **argv)
         }
     } else if (sock_type == 0) {
 	log_printf(0, "Working on ZMQ REQ:REP mode\n");
-        set_flag(option->flag, IDENTITY); 
-        ns_config_zsock(ns_client, ZMQ_REQ, transport, option); 
+        set_flag(option->flag, IDENTITY);
+        ns_config_zsock(ns_client, ZMQ_REQ, transport, option);
         ns_config_zsock(ns_svr, ZMQ_REP, transport, NULL);
-        net_connect(ns_client, hostname, port, 0);
         zsock_bind(ns_svr->sock, hostname, port);
+        net_connect(ns_client, hostname, port, 0);
 
 	Net_timeout_t dt;
 	set_net_timeout(&dt, 1, 0);
@@ -306,7 +306,7 @@ int main(int argc, char **argv)
         }
 	free(address);
 	//free_tbuffer(&data, 1);
-	
+
     } else if (sock_type == 4) {
 	log_printf(0, "Working on ZMQ PUSH:PULL mode\n");
         ns_config_zsock(ns_client, ZMQ_PUSH, transport, option);
@@ -323,10 +323,10 @@ int main(int argc, char **argv)
         for (i = 0; i < num; i++) {
             read_netstream(ns_svr, &rcvbuf[i], 0, 1, 0);
         }
-   } 
-    
+   }
+
     //zsock_connect(ns_client->sock, hostname, port, 0);
-     
+
     destroy_netstream(ns_client);
     destroy_netstream(ns_svr);
     apr_terminate();
