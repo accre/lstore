@@ -215,7 +215,6 @@ extern int _opque_counter;
 //#define unlock_gop(gop) apr_thread_mutex_unlock((gop)->base.ctl->lock)
 #define gop_id(gop) (gop)->base.id
 #define gop_get_auto_destroy(gop) (gop)->base.auto_destroy
-#define gop_set_auto_destroy(gop, val) (gop)->base.auto_destroy = val
 #define gop_get_private(gop) (gop)->base.user_priv
 #define gop_set_private(gop, newval) (gop)->base.user_priv = newval
 #define gop_get_id(gop) (gop)->base.id
@@ -265,6 +264,7 @@ void default_sort_ops(void *arg, opque_t *que);
 
 op_generic_t *gop_dummy(op_status_t state);
 void gop_free(op_generic_t *gop, int mode);
+void gop_set_auto_destroy(op_generic_t *gop, int val);
 void gop_set_success_state(op_generic_t *g, op_status_t state);
 void gop_callback_append(op_generic_t *q, callback_t *cb);
 op_generic_t *gop_get_next_finished(op_generic_t *gop);
@@ -274,6 +274,8 @@ int gop_tasks_finished(op_generic_t *gop);
 int gop_tasks_left(op_generic_t *gop);
 int gop_waitall(op_generic_t *gop);
 op_generic_t *gop_waitany(op_generic_t *gop);
+op_generic_t *gop_timed_waitany(op_generic_t *g, int dt);
+int gop_timed_waitall(op_generic_t *g, int dt);
 void gop_start_execution(op_generic_t *gop);
 void gop_finished_submission(op_generic_t *gop);
 void gop_set_exec_mode(op_generic_t *g, int mode);
