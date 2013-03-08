@@ -90,7 +90,7 @@ void mq_stats_print(int ll, char *tag, mq_command_stats_t *a)
 
 //**************************************************************
 
-mq_command_t *mq_command_new(void *cmd, int cmd_size, mq_fn_exec_t *fn)
+mq_command_t *mq_command_new(void *cmd, int cmd_size, void *arg, mq_fn_exec_t *fn)
 {
   mq_command_t *mqc;
 
@@ -100,6 +100,7 @@ mq_command_t *mq_command_new(void *cmd, int cmd_size, mq_fn_exec_t *fn)
   memcpy(mqc->cmd, cmd, cmd_size);
 
   mqc->cmd_size = cmd_size;
+  mqc->arg = arg;
   mqc->fn = fn;
 
   return(mqc);
@@ -109,11 +110,11 @@ mq_command_t *mq_command_new(void *cmd, int cmd_size, mq_fn_exec_t *fn)
 //  mq_command_add - Adds and RPC call to the local host
 //**************************************************************
 
-void mq_command_add(mq_command_table_t *table, void *cmd, int cmd_size, mq_fn_exec_t *fn)
+void mq_command_add(mq_command_table_t *table, void *cmd, int cmd_size, void *arg, mq_fn_exec_t *fn)
 {
   mq_command_t *mqc;
 
-  mqc = mq_command_new(cmd, cmd_size, fn);
+  mqc = mq_command_new(cmd, cmd_size, arg, fn);
 
   apr_hash_set(table->table, mqc->cmd, mqc->cmd_size, mqc);
 }
@@ -122,13 +123,25 @@ void mq_command_add(mq_command_table_t *table, void *cmd, int cmd_size, mq_fn_ex
 //  mq_command_table_new - Creates a new RPC table
 //**************************************************************
 
-mq_command_table_t *mq_command_table_new(mq_fn_exec_t *fn_default)
+void mq_command_table_set_default(mq_command_table_t *table, void *arg, mq_fn_exec_t *fn_default)
+{
+  table->fn_default = fn_default;
+  table->arg_default = arg;
+}
+
+
+//**************************************************************
+//  mq_command_table_new - Creates a new RPC table
+//**************************************************************
+
+mq_command_table_t *mq_command_table_new(void *arg, mq_fn_exec_t *fn_default)
 {
   mq_command_table_t *t;
 
   type_malloc(t, mq_command_table_t, 1);
 
   t->fn_default = fn_default;
+  t->arg_default = arg;
   apr_pool_create(&(t->mpool), NULL);
   assert((t->table = apr_hash_make(t->mpool)) != NULL);
 
@@ -170,9 +183,9 @@ void mq_command_exec(mq_command_table_t *t, mq_task_t *task, void *key, int klen
 
 log_printf(3, "cmd=%p\n", cmd);
   if (cmd == NULL) {
-    t->fn_default(task);
+    t->fn_default(t->arg_default, task);
   } else {
-    cmd->fn(task);
+    cmd->fn(cmd->arg, task);
   }
 }
 
@@ -237,10 +250,10 @@ int mq_task_send(mq_context_t *mqc, mq_task_t *task)
 
   //** Look up the portal
   apr_thread_mutex_lock(mqc->lock);
-  p = (mq_portal_t *)(apr_hash_get(mqc->portals, host, APR_HASH_KEY_STRING));
+  p = (mq_portal_t *)(apr_hash_get(mqc->client_portals, host, APR_HASH_KEY_STRING));
   if (p == NULL) {  //** New host so create the portal
-     p = mq_portal_create(mqc, host, MQ_CMODE_CONNECT, NULL);
-     apr_hash_set(mqc->portals, p->host, APR_HASH_KEY_STRING, p);
+     p = mq_portal_create(mqc, host, MQ_CMODE_CLIENT);
+     apr_hash_set(mqc->client_portals, p->host, APR_HASH_KEY_STRING, p);
   }
   apr_thread_mutex_unlock(mqc->lock);
 
@@ -435,6 +448,72 @@ log_printf(5, "end\n"); flush_log();
 }
 
 //**************************************************************
+// mq_apply_return_address_msg - Converts the raw return address
+//  to a "Sender" address o nteh message
+//  NOTE: The raw address should have the empty frame!
+//        if dup_frames == 0 then raw_address frames are consumed!
+//**************************************************************
+
+void mq_apply_return_address_msg(mq_msg_t *msg, mq_msg_t *raw_address, int dup_frames)
+{
+  mq_frame_t *f;
+
+  f = mq_msg_first(raw_address);
+  if (dup_frames == 0) f = mq_msg_pop(raw_address);
+  while (f != NULL) {
+    if (dup_frames == 1) {
+       mq_msg_push_frame(msg, mq_frame_dup(f));
+    } else {
+       mq_msg_push_frame(msg, f);
+    }
+
+    f = (dup_frames == 0) ? mq_msg_pop(raw_address) : mq_msg_next(raw_address);
+  }
+
+  return;
+}
+
+//**************************************************************
+// mq_trackaddress_msg - Forms a track address response
+//   This takes the raw address frames from the original email
+//   and flips or duplicates them based dup_frames
+//   ****NOTE:  The address should start with the EMPTY frame****
+//        if dup_frames == 0 then raw_address frames are consumed!
+//**************************************************************
+
+mq_msg_t *mq_trackaddress_msg(char *host, mq_msg_t *raw_address, mq_frame_t *fid, int dup_frames)
+{
+  mq_msg_t *track_response;
+  mq_frame_t *f;
+
+  track_response = mq_msg_new();
+  mq_msg_append_mem(track_response, MQF_VERSION_KEY, MQF_VERSION_SIZE, MQF_MSG_KEEP_DATA);
+  mq_msg_append_mem(track_response, MQF_TRACKADDRESS_KEY, MQF_TRACKADDRESS_SIZE, MQF_MSG_KEEP_DATA);
+
+  if (dup_frames == 1) {
+     mq_msg_append_frame(track_response, mq_frame_dup(fid));
+  } else {
+     mq_msg_append_frame(track_response, fid);
+  }
+
+  //** Add the address. We skip frame 0 (empty) and frame 1 (sender -- he knows who he is)
+  mq_msg_first(raw_address); mq_msg_next(raw_address);
+  while ((f = mq_msg_next(raw_address)) != NULL) {
+     mq_msg_append_frame(track_response, mq_frame_dup(f));  //** Always dup frames
+  }
+
+  //** Need to add ourselves and the empty frame to the tracking address
+  mq_msg_append_mem(track_response, host, strlen(host), MQF_MSG_KEEP_DATA);
+  mq_msg_append_mem(track_response, NULL, 0, MQF_MSG_KEEP_DATA);
+
+  //** Lastly add the return addres.  We always dup the frames here cause they are used
+  //** in the address already if not duped.
+  mq_apply_return_address_msg(track_response, raw_address, dup_frames);
+
+  return(track_response);
+}
+
+//**************************************************************
 // mqc_trackaddress - Processes a track address command
 //**************************************************************
 
@@ -468,7 +547,7 @@ log_printf(5, "tn->tracking=%p\n", tn->tracking);
      mq_frame_destroy(mq_msg_pluck(msg, 0));  // version
      mq_frame_destroy(mq_msg_pluck(msg, 0));  // TRACKADDRESS command
      mq_frame_destroy(mq_msg_pluck(msg, 0));  // id
-     mq_frame_destroy(mq_msg_pluck(msg, 0));  // <empty>
+//QWERTY     mq_frame_destroy(mq_msg_pluck(msg, 0));  // <empty>
 
      //** What's left is the address until an empty frame
      size = mq_msg_total_size(msg);
@@ -1042,7 +1121,7 @@ int mq_conn_make(mq_conn_t *c)
   log_printf(5, "START host=%s\n", c->pc->host);
 
   c->sock = mq_socket_new(c->pc->ctx, MQ_TRACE_ROUTER);
-  if (c->pc->connect_mode == MQ_CMODE_CONNECT) {
+  if (c->pc->connect_mode == MQ_CMODE_CLIENT) {
      err = mq_connect(c->sock, c->pc->host);
   } else {
      err = mq_bind(c->sock, c->pc->host);
@@ -1051,7 +1130,7 @@ int mq_conn_make(mq_conn_t *c)
   c->mq_uuid = zsocket_identity(c->sock->arg);  //** Kludge
 
   if (err != 0) return(1);
-  if (c->pc->connect_mode == MQ_CMODE_BIND) return(0);  //** Nothing else to do
+  if (c->pc->connect_mode == MQ_CMODE_SERVER) return(0);  //** Nothing else to do
 
   err = 1; //** Defaults to failure
 
@@ -1201,7 +1280,7 @@ log_printf(5, "after process_incoming finished=%d\n", finished);
       goto cleanup;
     }
 
-    if (apr_time_now() > next_hb_check) {
+    if ((apr_time_now() > next_hb_check) || (npoll == 1)) {
        finished += mqc_heartbeat(c, npoll);
 log_printf(5, "after heartbeat finished=%d\n", finished);
 
@@ -1227,6 +1306,8 @@ log_printf(5, "hb_new=" LU "\n", next_hb_check);
 
        nprocessed = 0;
        last_check = apr_time_now();
+
+       if ((finished == 0) && (npoll == 1)) sleep(1);  //** Wantto exit but have some commands pending
     }
   } while (finished == 0);
 
@@ -1368,6 +1449,9 @@ void mq_portal_destroy(mq_portal_t *p)
   _mq_reap_closed(p);  //** Don;t have to worry about locking cause no one else exists
 
 
+  //** Destroy the command table
+  mq_command_table_destroy(p->command_table);
+
   //** Update the stats
   apr_thread_mutex_lock(p->mqc->lock);
   mq_stats_add(&(p->mqc->stats), &(p->stats));
@@ -1390,6 +1474,32 @@ void mq_portal_destroy(mq_portal_t *p)
 }
 
 //**************************************************************
+// mq_portal_lookup - Looks up a portal context
+//**************************************************************
+
+mq_portal_t *mq_portal_lookup(mq_context_t *mqc, char *hostname, int connect_mode)
+{
+  apr_hash_t *ptable;
+  mq_portal_t *p;
+
+  apr_thread_mutex_lock(mqc->lock);
+  ptable = (connect_mode == MQ_CMODE_CLIENT) ? mqc->client_portals : mqc->server_portals;
+  p = (mq_portal_t *)(apr_hash_get(ptable, hostname, APR_HASH_KEY_STRING));
+  apr_thread_mutex_unlock(mqc->lock);
+
+  return(p);
+}
+
+//**************************************************************
+// mq_portal_command_table - Retrieves the portal command table
+//**************************************************************
+
+mq_command_table_t *mq_portal_command_table(mq_portal_t *portal)
+{
+  return(portal->command_table);
+}
+
+//**************************************************************
 // mq_portal_install - Installs a server portal into the context
 //**************************************************************
 
@@ -1397,9 +1507,11 @@ int mq_portal_install(mq_context_t *mqc, mq_portal_t *p)
 {
   mq_portal_t *p2;
   int err;
+  apr_hash_t *ptable;
 
   apr_thread_mutex_lock(mqc->lock);
-  p2 = (mq_portal_t *)(apr_hash_get(mqc->portals, p->host, APR_HASH_KEY_STRING));
+  ptable = (p->connect_mode == MQ_CMODE_CLIENT) ? mqc->client_portals : mqc->server_portals;
+  p2 = (mq_portal_t *)(apr_hash_get(ptable, p->host, APR_HASH_KEY_STRING));
   if (p2 != NULL) {
      apr_thread_mutex_unlock(mqc->lock);
      return(1);
@@ -1408,7 +1520,7 @@ int mq_portal_install(mq_context_t *mqc, mq_portal_t *p)
   //** Make a connection if non exists
   apr_thread_mutex_lock(p->lock);
 
-  apr_hash_set(mqc->portals, p->host, APR_HASH_KEY_STRING, p);
+  apr_hash_set(ptable, p->host, APR_HASH_KEY_STRING, p);
   if (p->active_conn == 0) {
      err = mq_conn_create(p, 1);
   }
@@ -1423,7 +1535,7 @@ int mq_portal_install(mq_context_t *mqc, mq_portal_t *p)
 // mq_portal_create - Creates a new MQ portal
 //**************************************************************
 
-mq_portal_t *mq_portal_create(mq_context_t *mqc, char *host, int connect_mode, mq_command_table_t *ctable)
+mq_portal_t *mq_portal_create(mq_context_t *mqc, char *host, int connect_mode)
 {
   mq_portal_t *p;
 
@@ -1433,9 +1545,9 @@ mq_portal_t *mq_portal_create(mq_context_t *mqc, char *host, int connect_mode, m
 
   p->mqc = mqc;
   p->host = strdup(host);
-  p->command_table = ctable;
+  p->command_table = mq_command_table_new(NULL, NULL);
 
-  if (connect_mode == MQ_CMODE_CONNECT) {
+  if (connect_mode == MQ_CMODE_CLIENT) {
      p->min_conn = mqc->min_conn;
      p->max_conn = mqc->max_conn;
   } else {
@@ -1475,10 +1587,17 @@ void mq_destroy_context(mq_context_t *mqc)
   mq_portal_t *p;
   void *val;
 
-log_printf(5, "Shutting down portals\n"); flush_log();
-  for (hi=apr_hash_first(mqc->mpool, mqc->portals); hi != NULL; hi = apr_hash_next(hi)) {
+log_printf(5, "Shutting down client_portals\n"); flush_log();
+  for (hi=apr_hash_first(mqc->mpool, mqc->client_portals); hi != NULL; hi = apr_hash_next(hi)) {
      apr_hash_this(hi, NULL, NULL, &val); p = (mq_portal_t *)val;
-     apr_hash_set(mqc->portals, p->host, APR_HASH_KEY_STRING, NULL);
+     apr_hash_set(mqc->client_portals, p->host, APR_HASH_KEY_STRING, NULL);
+     log_printf(5, "destroying p->host=%s\n", p->host); flush_log();
+     mq_portal_destroy(p);
+  }
+log_printf(5, "Shutting down server_portals\n"); flush_log();
+  for (hi=apr_hash_first(mqc->mpool, mqc->server_portals); hi != NULL; hi = apr_hash_next(hi)) {
+     apr_hash_this(hi, NULL, NULL, &val); p = (mq_portal_t *)val;
+     apr_hash_set(mqc->server_portals, p->host, APR_HASH_KEY_STRING, NULL);
      log_printf(5, "destroying p->host=%s\n", p->host); flush_log();
      mq_portal_destroy(p);
   }
@@ -1488,7 +1607,7 @@ log_printf(5, "Completed portal shutdown\n"); flush_log();
 
   mq_stats_print(2, "Portal total", &(mqc->stats));
 
-  apr_hash_clear(mqc->portals);
+  apr_hash_clear(mqc->client_portals);
 
   thread_pool_destroy_context(mqc->tp);
 
@@ -1544,7 +1663,8 @@ mq_context_t *mq_create_context(inip_file_t *ifd, char *section)
   mqc->pcfn.submit = _mq_submit_op;
   mqc->tp->pc->fn = &(mqc->pcfn);
 
-  assert((mqc->portals = apr_hash_make(mqc->mpool)) != NULL);
+  assert((mqc->client_portals = apr_hash_make(mqc->mpool)) != NULL);
+  assert((mqc->server_portals = apr_hash_make(mqc->mpool)) != NULL);
 
   atomic_set(mqc->n_ops, 0);
 

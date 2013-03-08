@@ -35,7 +35,6 @@ http://www.accre.vanderbilt.edu
 #include "host_portal.h"
 #include "atomic_counter.h"
 #include "thread_pool.h"
-#include "envelope.h"
 #include "iniparse.h"
 #include <zmq.h>
 #include <czmq.h>
@@ -94,8 +93,8 @@ extern "C" {
 #define MQ_POLLERR ZMQ_POLLERR
 
 //********  Connection modes
-#define MQ_CMODE_CONNECT  0     //** Normal outgoing connection
-#define MQ_CMODE_BIND     1     //** USed by servers for incoming connections
+#define MQ_CMODE_CLIENT  0     //** Normal outgoing connection
+#define MQ_CMODE_SERVER  1     //** USed by servers for incoming connections
 
 //******** Socket types
 #define MQ_DEALER ZMQ_DEALER
@@ -154,6 +153,9 @@ typedef struct mq_socket_context_s mq_socket_context_t;
 struct mq_socket_s;
 typedef struct mq_socket_s mq_socket_t;
 
+struct mq_task_s;
+typedef struct mq_task_s mq_task_t;
+
 struct mq_socket_s {
   int type;
   void *arg;
@@ -173,21 +175,23 @@ struct mq_socket_context_s {
   void (*destroy)(mq_socket_context_t *ctx);
 };
 
-typedef void (mq_fn_exec_t)(void *arg);
+typedef void (mq_fn_exec_t)(void *arg, mq_task_t *task);
 
 typedef struct {
   mq_fn_exec_t *fn;
   void *cmd;
   int cmd_size;
+  void *arg;
 } mq_command_t;
 
 typedef struct {
   mq_fn_exec_t *fn_default;
+  void *arg_default;
   apr_hash_t *table;
   apr_pool_t *mpool;
 } mq_command_table_t;
 
-typedef struct {
+struct mq_task_s {
   mq_msg_t *msg;  //** Actual message to send with address
   mq_msg_t *response;     //** Response message
   op_generic_t *gop;      //**
@@ -195,7 +199,7 @@ typedef struct {
   void *arg;
   apr_time_t timeout;  //** Initially the DT in sec for the command to complete and converted to abs timeout when sent
   void (*my_arg_free)(void *arg);
-} mq_task_t;
+};
 
 typedef struct {
   mq_msg_t *address;
@@ -278,10 +282,13 @@ struct mq_context_s {      //** Main MQ context
   apr_pool_t *mpool;         //** Context memory pool
   atomic_int_t n_ops;        //** Operation count
   thread_pool_context_t *tp; //** Worker thread pool
-  apr_hash_t  *portals;      //** List of all the portals
+  apr_hash_t  *client_portals;      //** List of all client or outgoing portals
+  apr_hash_t  *server_portals;  //** List of all the server or incoming portals
   portal_fn_t pcfn;          //** Portal contect used to overide the submit op for the TP
   mq_command_stats_t stats;//** Command stats
 };
+
+typedef mq_context_t *(mq_create_t)(inip_file_t *ifd, char *section);
 
 char *mq_id2str(char *id, int id_len, char *str, int str_len);
 
@@ -292,6 +299,7 @@ mq_frame_t *mq_msg_last(mq_msg_t *msg);
 mq_frame_t *mq_msg_next(mq_msg_t *msg);
 mq_frame_t *mq_msg_prev(mq_msg_t *msg);
 mq_frame_t *mq_msg_current(mq_msg_t *msg);
+mq_frame_t *mq_frame_dup(mq_frame_t *f);
 mq_frame_t *mq_msg_pluck(mq_msg_t *msg, int move_up);
 void mq_msg_insert_above(mq_msg_t *msg, mq_frame_t *f);
 void mq_msg_insert_below(mq_msg_t *msg, mq_frame_t *f);
@@ -305,6 +313,9 @@ void mq_msg_push_mem(mq_msg_t *msg, void *data, int len, int auto_free);
 void mq_msg_append_mem(mq_msg_t *msg, void *data, int len, int auto_free);
 int mq_msg_total_size(mq_msg_t *msg);
 
+mq_msg_t *mq_trackaddress_msg(char *host, mq_msg_t *raw_address, mq_frame_t *fid, int dup_frames);
+void mq_apply_return_address_msg(mq_msg_t *msg, mq_msg_t *raw_address, int dup_frames);
+
 void mq_stats_add(mq_command_stats_t *a, mq_command_stats_t *b);
 void mq_stats_print(int ll, char *tag, mq_command_stats_t *a);
 mq_task_t *mq_task_new(mq_context_t *ctx, mq_msg_t *msg, op_generic_t *gop, void *arg, int dt);
@@ -312,19 +323,21 @@ int mq_task_set(mq_task_t *task, mq_context_t *ctx, mq_msg_t *msg, op_generic_t 
 void mq_task_destroy(mq_task_t *task);
 op_generic_t *new_mq_op(mq_context_t *ctx, mq_msg_t *msg, op_status_t (*fn_response)(void *arg, int id), void *arg, void (*my_arg_free)(void *arg), int dt);
 
-mq_command_t *mq_command_new(void *cmd, int cmd_size, mq_fn_exec_t *fn);
-void mq_command_add(mq_command_table_t *table, void *cmd, int cmd_size, mq_fn_exec_t *fn);
+mq_command_t *mq_command_new(void *cmd, int cmd_size, void *arg, mq_fn_exec_t *fn);
+void mq_command_add(mq_command_table_t *table, void *cmd, int cmd_size, void *arg, mq_fn_exec_t *fn);
 void mq_command_exec(mq_command_table_t *t, mq_task_t *task, void *key, int klen);
 void mq_command_table_destroy(mq_command_table_t *t);
-mq_command_table_t *mq_command_table_new(mq_fn_exec_t *fn_default);
+mq_command_table_t *mq_command_table_new(void *arg, mq_fn_exec_t *fn_default);
+void mq_command_table_set_default(mq_command_table_t *table, void *arg, mq_fn_exec_t *fn);
 
 int mq_task_send(mq_context_t *mqc, mq_task_t *task);
 int mq_submit(mq_portal_t *p, mq_task_t *task);
 int mq_portal_install(mq_context_t *mqc, mq_portal_t *p);
-mq_portal_t *mq_portal_create(mq_context_t *mqc, char *host, int connect_mode, mq_command_table_t *ctable);
+mq_portal_t *mq_portal_create(mq_context_t *mqc, char *host, int connect_mode);
+mq_portal_t *mq_portal_lookup(mq_context_t *mqc, char *host, int connect_mode);
+mq_command_table_t *mq_portal_command_table(mq_portal_t *portal);
 mq_context_t *mq_create_context(inip_file_t *ifd, char *section);
 void mq_destroy_context(mq_context_t *mqp);
-
 mq_socket_t *zero_create_socket(mq_socket_context_t *ctx, int stype);
 void zero_socket_context_destroy(mq_socket_context_t *ctx);
 mq_socket_context_t *zero_socket_context_new();
