@@ -896,6 +896,7 @@ cache_t *lru_cache_create(void *arg, data_attr_t *da, int timeout)
   cache->fn.destroy = lru_cache_destroy;
   cache->fn.adding_segment = lru_adding_segment;
   cache->fn.removing_segment = lru_removing_segment;
+  cache->fn.get_handle = cache_base_handle;
 
   apr_thread_cond_create(&(c->dirty_trigger), cache->mpool);
   apr_thread_create(&(c->dirty_thread), NULL, lru_dirty_thread, (void *)cache, cache->mpool);
@@ -908,11 +909,10 @@ cache_t *lru_cache_create(void *arg, data_attr_t *da, int timeout)
 // lru_cache_load -Creates and configures an LRU cache structure
 //*************************************************************************
 
-cache_t *lru_cache_load(void *arg, data_attr_t *da, int timeout, char *fname, char *grp)
+cache_t *lru_cache_load(void *arg, inip_file_t *fd, char *grp, data_attr_t *da, int timeout)
 {
   cache_t *c;
   cache_lru_t *cp;
-  inip_file_t *fd;
   int dt;
 
   if (grp == NULL) grp = "cache-lru";
@@ -920,9 +920,6 @@ cache_t *lru_cache_load(void *arg, data_attr_t *da, int timeout, char *fname, ch
   //** Create the default structure
   c = lru_cache_create(arg, da, timeout);
   cp = (cache_lru_t *)c->fn.priv;
-
-  //** Parse the ini text
-  fd = inip_read(fname);
 
   cache_lock(c);
   cp->max_bytes = inip_get_integer(fd, grp, "max_bytes", cp->max_bytes);
@@ -940,8 +937,6 @@ cache_t *lru_cache_load(void *arg, data_attr_t *da, int timeout, char *fname, ch
 log_printf(0, "COP size=" XOT "\n", c->write_temp_overflow_size);
 
   cache_unlock(c);
-
-  inip_destroy(fd);
 
   return(c);
 }

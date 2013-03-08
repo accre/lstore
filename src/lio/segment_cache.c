@@ -2864,7 +2864,7 @@ ex_off_t segcache_size(segment_t *seg)
 
   segment_lock(seg);
   size = (s->total_size > (s->ppage_max+1)) ? s->total_size : s->ppage_max + 1;
-  log_printf(0, "seg=" XIDT " total_size=" XOT " ppage_max=" XOT " size=" XOT "\n", segment_id(seg), s->total_size, s->ppage_max, size);
+  log_printf(5, "seg=" XIDT " total_size=" XOT " ppage_max=" XOT " size=" XOT "\n", segment_id(seg), s->total_size, s->ppage_max, size);
   segment_unlock(seg);
   return(size);
 }
@@ -2976,7 +2976,7 @@ int segcache_deserialize_text(segment_t *seg, ex_id_t id, exnode_exchange_t *exp
   char seggrp[bufsize];
   char qname[512];
   inip_file_t *fd;
-  ex_off_t n;
+  ex_off_t n, child_size;
   int i;
 
   //** Parse the ini text
@@ -3025,18 +3025,19 @@ int segcache_deserialize_text(segment_t *seg, ex_id_t id, exnode_exchange_t *exp
      }
   }
 
-  //** If total_size is -1 then get the size from child
-  if (s->total_size < 0) s->total_size = segment_size(s->child_seg);
+  //** If total_size is -1 or child is smaller use the size from child
+  child_size = segment_size(s->child_seg);
+  if ((s->total_size < 0) || (s->total_size > child_size)) s->total_size = child_size;
 
   //** Determine the child segment size so we don't have to call it
   //** on R/W and risk getting blocked due to child grow operations
-  if (segment_size(s->child_seg) > 0) {
-     s->child_last_page = segment_size(s->child_seg) / s->page_size;
+  if (child_size > 0) {
+     s->child_last_page = child_size / s->page_size;
      s->child_last_page *= s->page_size;
   } else {
      s->child_last_page = -1;  //** No pages
   }
-log_printf(5, "seg=" XIDT " Initial child_last_page=" XOT " child_size=" XOT " page_size=" XOT "\n", segment_id(seg), s->child_last_page, segment_size(s->child_seg), s->page_size);
+log_printf(5, "seg=" XIDT " Initial child_last_page=" XOT " child_size=" XOT " page_size=" XOT "\n", segment_id(seg), s->child_last_page, child_size, s->page_size);
 
   //** Make the partial pages table
   s->n_ppages = (s->c != NULL) ? s->c->n_ppages : 0;
@@ -3193,7 +3194,7 @@ CACHE_PRINT;
 
 segment_t *segment_cache_create(void *arg)
 {
-  exnode_abstract_set_t *es = (exnode_abstract_set_t *)arg;
+  service_manager_t *es = (service_manager_t *)arg;
   cache_segment_t *s;
   segment_t *seg;
   char qname[512];
@@ -3209,10 +3210,11 @@ segment_t *segment_cache_create(void *arg)
   apr_thread_cond_create(&(s->ppages_cond), seg->mpool);
 
   s->flush_stack = new_stack();
-  s->tpc_unlimited = es->tpc_unlimited;
-  s->tpc_cpu = es->tpc_cpu;
+  s->tpc_unlimited = lookup_service(es, ESS_RUNNING, ESS_TPC_UNLIMITED);
+  s->tpc_cpu = lookup_service(es, ESS_RUNNING, ESS_TPC_CPU);
   s->pages = list_create(0, &skiplist_compare_ex_off, NULL, NULL, NULL);
-  s->c = es->cache;
+  s->c = lookup_service(es, ESS_RUNNING, ESS_CACHE);
+  if (s->c != NULL) s->c = cache_get_handle(s->c);
   s->page_size = 64*1024;
   s->n_ppages = 0;
 

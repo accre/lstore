@@ -30,6 +30,9 @@ http://www.accre.vanderbilt.edu
 //*************************************************************************
 //*************************************************************************
 
+#include "cache_priv.h"
+#include "iniparse.h"
+
 #ifndef __CACHE_AMP_H_
 #define __CACHE_AMP_H_
 
@@ -38,12 +41,10 @@ http://www.accre.vanderbilt.edu
 extern "C" {
 #endif
 
-#include "cache_priv.h"
-
 #define CACHE_TYPE_AMP "amp"
 
 cache_t *amp_cache_create(void *arg, data_attr_t *da, int timeout);
-cache_t *amp_cache_load(void *arg, data_attr_t *da, int timeout, char *fname, char *section);
+cache_t *amp_cache_load(void *arg, inip_file_t *ifd, char *section, data_attr_t *da, int timeout);
 
 
 #ifdef __cplusplus

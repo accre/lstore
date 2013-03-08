@@ -25,27 +25,26 @@ Advanced Computing Center for Research and Education
 230 Appleton Place
 Nashville, TN 37203
 http://www.accre.vanderbilt.edu
-*/ 
+*/
 
 //*************************************************************************
 //*************************************************************************
-
-#ifndef __CACHE_LRU_H_
-#define __CACHE_LRU_H_
 
 #include "cache_priv.h"
 #include "iniparse.h"
+
+#ifndef __CACHE_ROUND_ROBIN_H_
+#define __CACHE_ROUND_ROBIN_H_
 
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
+#define CACHE_TYPE_ROUND_ROBIN "round_robin"
 
-#define CACHE_TYPE_LRU "lru"
-
-cache_t *lru_cache_create(void *arg, data_attr_t *da, int timeout);
-cache_t *lru_cache_load(void *arg, inip_file_t *ifd, char *section, data_attr_t *da, int timeout);
+cache_t *round_robin_cache_create(void *arg, data_attr_t *da, int timeout);
+cache_t *round_robin_cache_load(void *arg, inip_file_t *ifd, char *section, data_attr_t *da, int timeout);
 
 
 #ifdef __cplusplus

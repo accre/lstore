@@ -1472,6 +1472,7 @@ cache_t *amp_cache_create(void *arg, data_attr_t *da, int timeout)
   cache->fn.destroy = amp_cache_destroy;
   cache->fn.adding_segment = amp_adding_segment;
   cache->fn.removing_segment = amp_removing_segment;
+  cache->fn.get_handle = cache_base_handle;
 
   apr_thread_cond_create(&(c->dirty_trigger), cache->mpool);
   apr_thread_create(&(c->dirty_thread), NULL, amp_dirty_thread, (void *)cache, cache->mpool);
@@ -1484,11 +1485,10 @@ cache_t *amp_cache_create(void *arg, data_attr_t *da, int timeout)
 // amp_cache_load -Creates and configures an amp cache structure
 //*************************************************************************
 
-cache_t *amp_cache_load(void *arg, data_attr_t *da, int timeout, char *fname, char *grp)
+cache_t *amp_cache_load(void *arg, inip_file_t *fd, char *grp, data_attr_t *da, int timeout)
 {
   cache_t *c;
   cache_amp_t *cp;
-  inip_file_t *fd;
   int dt;
 
   if (grp == NULL) grp = "cache-amp";
@@ -1498,9 +1498,6 @@ cache_t *amp_cache_load(void *arg, data_attr_t *da, int timeout, char *fname, ch
   cp = (cache_amp_t *)c->fn.priv;
 
 global_cache = c;
-
-  //** Parse the ini text
-  fd = inip_read(fname);
 
   cache_lock(c);
   cp->max_bytes = inip_get_integer(fd, grp, "max_bytes", cp->max_bytes);
@@ -1520,8 +1517,6 @@ global_cache = c;
 
 log_printf(0, "ppages=%d\n", c->n_ppages);
   cache_unlock(c);
-
-  inip_destroy(fd);
 
   return(c);
 }
