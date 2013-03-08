@@ -87,6 +87,22 @@ mq_frame_t *mq_frame_new(void *data, int len, int auto_free)
   return(f);
 }
 
+mq_frame_t *mq_frame_dup(mq_frame_t *f)
+{
+  void *data, *copy;
+  int size;
+
+  mq_get_frame(f, &data, &size);
+  if (size == 0) {
+     copy = NULL;
+  } else {
+    type_malloc(copy, void, size);
+    memcpy(copy, data, size);
+  }
+
+  return(mq_frame_new(copy, size, MQF_MSG_AUTO_FREE));
+}
+
 void mq_frame_destroy(mq_frame_t *f)
 {
    if ((f->auto_free == MQF_MSG_AUTO_FREE) && (f->data)) {
