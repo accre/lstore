@@ -499,6 +499,25 @@ log_printf(15, "gop_free: gid=%d tid=%d\n", gop_id(gop), atomic_thread_id);
 }
 
 //*************************************************************
+// gop_set_auto_destroy - Sets the auto destroy mode.
+//  NOTE:  If the gop has completed already the gop is destroyed
+//*************************************************************
+
+void gop_set_auto_destroy(op_generic_t *gop, int val)
+{
+  int state;
+
+  lock_gop(gop);
+  gop->base.auto_destroy = val;
+  state = gop->base.state;
+  unlock_gop(gop);
+
+  //** Already completed go ahead and destroy it
+  if (state == 1) gop_free(gop, OP_DESTROY);
+}
+
+
+//*************************************************************
 // gop_waitany - waits until any given task completes and
 //   returns the operation.
 //*************************************************************
@@ -564,6 +583,77 @@ log_printf(15, "START gid=%d type=%d\n", gop_id(g), gop_get_type(g));
   status = _gop_completed_successfully(g);
 
 log_printf(15, "END gid=%d type=%d\n", gop_id(g), gop_get_type(g));
+  unlock_gop(g);
+
+  return(status);
+}
+
+
+//*************************************************************
+// gop_timed_waitany - waits until any given task completes and
+//   returns the operation.
+//*************************************************************
+
+op_generic_t *gop_timed_waitany(op_generic_t *g, int dt)
+{
+  op_generic_t *gop = NULL;
+  apr_interval_time_t adt = apr_time_from_sec(dt);
+  int loop;
+
+  lock_gop(g);
+  _gop_start_execution(g);  //** Make sure things have been submitted
+
+  loop = 0;
+  if (gop_get_type(g) == Q_TYPE_QUE) {
+      while (((gop = (op_generic_t *)pop(g->q->finished)) == NULL) && (g->q->nleft > 0) && (loop == 0)) {
+        apr_thread_cond_timedwait(g->base.ctl->cond, g->base.ctl->lock, adt); //** Sleep until something completes
+        loop++;
+     }
+  } else {
+     while ((g->base.state == 0) && (loop == 0)) {
+        apr_thread_cond_timedwait(g->base.ctl->cond, g->base.ctl->lock, adt); //** Sleep until something completes
+        loop++;
+     }
+
+     if (g->base.state != 0) gop = g;
+  }
+  unlock_gop(g);
+
+  return(gop);
+}
+
+//*************************************************************
+// gop_timed_waitall - waits until all the tasks are completed
+//    It returns op_status if all the tasks completed without problems or
+//    with the last error otherwise.
+//*************************************************************
+
+int gop_timed_waitall(op_generic_t *g, int dt)
+{
+  int status;
+  int loop;
+  apr_interval_time_t adt = apr_time_from_sec(dt);
+
+  lock_gop(g);
+  _gop_start_execution(g);  //** Make sure things have been submitted
+
+  loop = 0;
+  if (gop_get_type(g) == Q_TYPE_QUE) {
+     while ((g->q->nleft > 0) && (loop == 0)) {
+        apr_thread_cond_timedwait(g->base.ctl->cond, g->base.ctl->lock, adt); //** Sleep until something completes
+        loop++;
+     }
+
+     status = (g->q->nleft > 0) ? OP_STATE_RETRY : _gop_completed_successfully(g);
+  } else {
+     while ((g->base.state == 0) && (loop == 0)) {
+        apr_thread_cond_timedwait(g->base.ctl->cond, g->base.ctl->lock, adt); //** Sleep until something completes
+        loop++;
+     }
+
+     status = (g->base.state == 0) ? OP_STATE_RETRY : _gop_completed_successfully(g);
+  }
+
   unlock_gop(g);
 
   return(status);
