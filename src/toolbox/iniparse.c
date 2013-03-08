@@ -307,18 +307,10 @@ inip_element_t *_find_group_key(inip_file_t *inip, const char *group_name, const
 
 int64_t inip_get_integer(inip_file_t *inip, const char *group, const char *key, int64_t def)
 {
-  char *string;
-  int64_t n, scale;
   inip_element_t *ele = _find_group_key(inip, group, key);
   if (ele == NULL) return(def);
 
-  string = strdup(ele->value);
-  scale = split_token_into_number_and_scale(string);
-//printf("token=%s scale=" I64T "\n", string, scale);
-  sscanf(string, I64T, &n);
-  n = scale * n;
-  free(string);
-  return(n);
+  return(string_get_integer(ele->value));
 }
 
 uint64_t inip_get_unsigned_integer(inip_file_t *inip, const char *group, const char *key, uint64_t def)

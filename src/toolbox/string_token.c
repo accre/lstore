@@ -150,7 +150,7 @@ char *escape_string_token(char *str, const char *delims, char escape_char, int c
 char *escape_strchr(char escape_char, char *data, char match)
 {
   int n, ndata;
-  
+
   //** Cycle trough until we find a match
   ndata = strlen(data);
   n = 0;
@@ -291,6 +291,26 @@ int64_t split_token_into_number_and_scale(char *token)
   }
 
   return(base);
+}
+
+//***********************************************************************
+// string_get_integer - Parses the string and returns the integer.
+//      The string can include a scale unit
+//***********************************************************************
+
+int64_t string_get_integer(char *value)
+{
+  char *string;
+  int64_t scale, n;
+
+  string = strdup(value);
+  scale = split_token_into_number_and_scale(string);
+//printf("token=%s scale=" I64T "\n", string, scale);
+  sscanf(string, I64T, &n);
+  n = scale * n;
+  free(string);
+
+  return(n);
 }
 
 //***********************************************************************
