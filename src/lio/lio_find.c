@@ -43,7 +43,7 @@ http://www.accre.vanderbilt.edu
 
 int main(int argc, char **argv)
 {
-  int i, ftype, rg_mode, start_index, start_option, prefix_len, nopre;
+  int i, ftype, rg_mode, start_option, prefix_len, nopre;
   char *fname;
   lio_path_tuple_t tuple;
   os_regex_table_t *rp_single, *ro_single;
@@ -93,7 +93,6 @@ int main(int argc, char **argv)
      }
 
   } while ((start_option < i) && (i<argc));
-  start_index = i;
 
 
   if (rg_mode == 0) {
@@ -104,6 +103,7 @@ int main(int argc, char **argv)
 
      //** Create the simple path iterator
      tuple = lio_path_resolve(argv[i]);
+     lio_path_wildcard_auto_append(&tuple);
      rp_single = os_path_glob2regex(tuple.path);
   }
 

@@ -103,7 +103,7 @@ void trace_print_summary(trace_t *trace, FILE *fd)
 // trace_load - Loads a trace
 //**********************************************************************
 
-trace_t *trace_load(exnode_abstract_set_t *exs, exnode_t *tex, data_attr_t *da, int timeout, char *fname)
+trace_t *trace_load(service_manager_t *exs, exnode_t *tex, data_attr_t *da, int timeout, char *fname)
 {
   inip_file_t *tfd;
   int n_files, n_ops, i, j, k, fin;

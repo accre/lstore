@@ -129,7 +129,7 @@ log_printf(1, "fname=%s cap[%d]=%s\n", w->fname, w->n, etext);
 
 int main(int argc, char **argv)
 {
-  int i, n, start_option, start_index, rg_mode, ftype, prefix_len;
+  int i, start_option, start_index, rg_mode, ftype, prefix_len;
   char *fname;
   opque_t *q;
   op_generic_t *gop;
@@ -206,7 +206,6 @@ int main(int argc, char **argv)
 
   type_malloc_clear(w, warm_t, lio_parallel_task_count);
 
-  n = 0;
   slot = 0;
   submitted = good = bad = 0;
   while ((ftype = os_next_object(tuple.lc->os, it, &fname, &prefix_len)) > 0) {

@@ -80,7 +80,7 @@ void load_file(char *fname, char **val, int *v_size)
 
 int main(int argc, char **argv)
 {
-  int i, rg_mode, start_index, start_option, err, fin;
+  int i, rg_mode, start_option, err, fin;
   lio_path_tuple_t tuple;
   os_regex_table_t *rp_single, *ro_single;
   os_object_iter_t *it;
@@ -180,8 +180,6 @@ int main(int argc, char **argv)
         n_skeys++;  i++;
      }
   } while ((start_option < i) && (i<argc));
-  start_index = i;
-
 
   if (rg_mode == 0) {
      if (path == NULL) {

@@ -1525,7 +1525,7 @@ log_printf(15, "seg->id=" XIDT " ref_count=%d\n", segment_id(seg), seg->ref_coun
 
 segment_t *segment_jerasure_create(void *arg)
 {
-  exnode_abstract_set_t *es = (exnode_abstract_set_t *)arg;
+  service_manager_t *es = (service_manager_t *)arg;
   segjerase_priv_t *s;
   segment_t *seg;
 
@@ -1543,7 +1543,7 @@ segment_t *segment_jerasure_create(void *arg)
   apr_thread_cond_create(&(seg->cond), seg->mpool);
 
   seg->ess = es;
-  s->tpc = es->tpc_unlimited;
+  s->tpc = lookup_service(es, ESS_RUNNING, ESS_TPC_UNLIMITED);
   s->child_seg = NULL;
 
   seg->fn.read = segjerase_read;

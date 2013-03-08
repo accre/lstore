@@ -58,7 +58,7 @@ typedef struct {
 // load_segment - Loads the given segment from the file/struct
 //***********************************************************************
 
-segment_t *load_segment(exnode_abstract_set_t *ess, ex_id_t id, exnode_exchange_t *ex)
+segment_t *load_segment(service_manager_t *ess, ex_id_t id, exnode_exchange_t *ex)
 {
   char *type = NULL;
   char name[1024];
@@ -76,7 +76,7 @@ segment_t *load_segment(exnode_abstract_set_t *ess, ex_id_t id, exnode_exchange_
     return(NULL);
   }
 
-  sload = lookup_service(ess->ssm, SEG_SM_LOAD, type);
+  sload = lookup_service(ess, SEG_SM_LOAD, type);
   if (sload == NULL) {
     log_printf(0, "load_segment:  No matching driver for type=%s  id=" XIDT "\n", type, id);
     return(NULL);

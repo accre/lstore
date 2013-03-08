@@ -36,7 +36,8 @@ lio_signature
 lio_touch
 lio_warm
 lio_fuse
-
+lio_rs
+rs_server
 #These are generated via cmake using the *.in variants
 lio_client_version.c
 

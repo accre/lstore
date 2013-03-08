@@ -37,7 +37,7 @@ http://www.accre.vanderbilt.edu
 #include <openssl/md5.h>
 
 #ifndef _OS_FILE_PRIV_H_
-#define _OS_FILE__PRIV_H_
+#define _OS_FILE_PRIV_H_
 
 #ifdef __cplusplus
 extern "C" {

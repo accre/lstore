@@ -166,7 +166,8 @@ log_printf(1, "ex_get: i=%d gid=%d\n", i, gop_id(gop)); flush_log();
      err = gop_waitall(gop);
      if (err != OP_STATE_SUCCESS) {
         printf("Error reading offset=" XOT " len=" XOT "!\n",i, rlen);
-        abort();
+        rlen = 0;  //** Kicks us out
+
      }
 
 //fwrite(rbuf, rlen, 1, fd2);

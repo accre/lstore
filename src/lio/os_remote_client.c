@@ -28,90 +28,63 @@ http://www.accre.vanderbilt.edu
 */
 
 //***********************************************************************
-// Default cred setup
+// Remote OS implementation for the client side
 //***********************************************************************
 
-#define _log_module_index 185
+#define _log_module_index 213
 
-#include "list.h"
+#include "object_service_abstract.h"
 #include "type_malloc.h"
 #include "log.h"
-#include "authn_abstract.h"
+#include "atomic_counter.h"
+#include "thread_pool.h"
+#include "os_remote_client.h"
+#include "os_remote_client_priv.h"
+#include "append_printf.h"
 
 //***********************************************************************
-
-char *cdef_get_type(creds_t *c)
-{
-  return("DEFAULT");
-}
-
+// os_remote_client_destroy
 //***********************************************************************
 
-void *cdef_get_type_field(creds_t *c, int index)
+void os_remote_client_destroy(object_service_fn_t *os)
 {
-  return(NULL);
-}
+  osrc_priv_t *osrc = (osrc_priv_t *)os->priv;
 
-//***********************************************************************
 
-char *cdef_get_id(creds_t *c)
-{
-  return(c->id);
-//  if (c->id != NULL) {
-//     return(strdup(c->id));
-//  }
-//  return(NULL);
-}
+  osaz_destroy(osrc->osaz);
+  authn_destroy(osrc->authn);
 
-//***********************************************************************
+  apr_pool_destroy(osrc->mpool);
 
-void cdef_set_id(creds_t *c, char *id)
-{
-  c->id = strdup(id);
-  return;
-}
-
-//***********************************************************************
-
-void cdef_set_private_handle(creds_t *c, void *handle, void (*destroy)(void *))
-{
-  c->handle = handle;
-  c->handle_destroy = destroy;
-  return;
-}
-
-//***********************************************************************
-
-void *cdef_get_private_handle(creds_t *c)
-{
-  return(c->handle);
+  free(osrc->host_ros);
+  free(osrc);
+  free(os);
 }
 
 
 //***********************************************************************
-
-void cdef_destroy(creds_t *c)
-{
-  if (c->handle_destroy != NULL) c->handle_destroy(c);
-  if (c->id != NULL) free(c->id);
-  free(c);
-}
-
+//  object_service_remote_client_create - Creates a remote client OS
 //***********************************************************************
 
-creds_t *cred_default_create()
+object_service_fn_t *object_service_remote_client_create(service_manager_t *ess, inip_file_t *fd, char *section)
 {
-  creds_t *c;
-  type_malloc_clear(c, creds_t, 1);
+  object_service_fn_t *os;
+  osrc_priv_t *osrc;
+  char *str;
 
-  c->get_type = cdef_get_type;
-  c->get_type_field = cdef_get_type_field;
-  c->get_id = cdef_get_id;
-  c->set_id = cdef_set_id;
-  c->set_private_handle = cdef_set_private_handle;
-  c->get_private_handle = cdef_get_private_handle;
-  c->destroy = cdef_destroy;
+  if (section == NULL) section = "os_remote_client";
 
-  return(c);
+  type_malloc_clear(os, object_service_fn_t, 1);
+  type_malloc_clear(osrc, osrc_priv_t, 1);
+  os->priv = (void *)osrc;
+
+  str = inip_get_string(fd, section, "os_temp", NULL);
+  if (str != NULL) {  //** Running in test/temp
+     log_printf(0, "NOTE: Running in debug mode by loading Remote server locally!\n");
+//     osrc->os_temp = object_service_remote_server_create(ess, fname, str);
+     free(str);
+  }
+
+  return(os);
 }
 

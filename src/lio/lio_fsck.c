@@ -42,7 +42,7 @@ http://www.accre.vanderbilt.edu
 
 int main(int argc, char **argv)
 {
-  int i, owner_mode, exnode_mode, size_mode, n, nfailed, start_option, start_index;
+  int i, owner_mode, exnode_mode, size_mode, n, nfailed, start_option;
   lio_fsck_iter_t *it;
   char *owner;
   char *fname;
@@ -122,8 +122,6 @@ int main(int argc, char **argv)
         i++;
      }
   } while ((start_option < i) && (i<argc));
-  start_index = i;
-
 
   if (i>=argc) {
      info_printf(lio_ifd, 0, "Missing directory!\n");

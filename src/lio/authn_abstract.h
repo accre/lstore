@@ -31,12 +31,17 @@ http://www.accre.vanderbilt.edu
 // Generic Authentication service
 //***********************************************************************
 
+#include "service_manager.h"
+#include "iniparse.h"
+
 #ifndef _AUTHN_ABSTRACT_H_
 #define _AUTHN_ABSTRACT_H_
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+#define AUTHN_AVAILABLE "authn_available"
 
 typedef struct creds_s creds_t;
 
@@ -73,7 +78,7 @@ struct authn_s {
   void (*destroy)(authn_t *an);
 };
 
-typedef authn_t *(authn_create_t)(char *fname, char *section);
+typedef authn_t *(authn_create_t)(service_manager_t *ess, inip_file_t *ifd, char *section);
 
 #define authn_cred_init(an, type, args) (an)->cred_init(an, type, args)
 #define authn_destroy(an) (an)->destroy(an)

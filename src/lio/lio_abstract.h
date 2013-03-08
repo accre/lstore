@@ -32,6 +32,7 @@ http://www.accre.vanderbilt.edu
 //***********************************************************************
 
 #include "exnode.h"
+#include "mq_portal.h"
 #include "log.h"
 
 #ifndef _LIO_ABSTRACT_H_
@@ -103,7 +104,9 @@ struct lio_config_s {
   resource_service_fn_t *rs;
   thread_pool_context_t *tpc_unlimited;
   thread_pool_context_t *tpc_cpu;
-  exnode_abstract_set_t *ess;
+  mq_context_t *mqc;
+  service_manager_t *ess;
+  service_manager_t *ess_nocache;  //** Copy of ess but missing cache.  Kind of a kludge...
   lio_fn_t *lio;
   cache_t *cache;
   data_attr_t *da;
@@ -112,6 +115,7 @@ struct lio_config_s {
   char *cfg_name;
   char *section_name;
   char *ds_section;
+  char *mq_section;
   char *os_section;
   char *rs_section;
   char *tpc_cpu_section;
@@ -144,6 +148,7 @@ void lioc_get_error_counts(lio_config_t *lc, segment_t *seg, int *hard_errors, i
 void lioc_update_error_counts(lio_config_t *lc, creds_t *creds, char *path, segment_t *seg);
 void lc_object_remove_unused(int remove_all_unused);
 void lio_path_release(lio_path_tuple_t *tuple);
+int lio_path_wildcard_auto_append(lio_path_tuple_t *tuple);
 lio_path_tuple_t lio_path_resolve(char *startpath);
 int lio_parse_path(char *startpath, char **user, char **service, char **path);
 lio_fn_t *lio_core_create();

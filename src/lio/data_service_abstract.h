@@ -42,8 +42,8 @@ http://www.accre.vanderbilt.edu
 extern "C" {
 #endif
 
-#define DS_SM_AVAILABLE 0
-#define DS_SM_RUNNING   1
+#define DS_SM_AVAILABLE "ds_available"
+#define DS_SM_RUNNING   "ds_running"
 
 #define DS_ATTR_DURATION 1
 
@@ -63,11 +63,16 @@ extern "C" {
 #define DS_PROBE_CURR_SIZE   4
 #define DS_PROBE_MAX_SIZE    5
 
+#define DS_INQUIRE_USED  1
+#define DS_INQUIRE_FREE  2
+#define DS_INQUIRE_TOTAL 3
+
 typedef int64_t ds_int_t;
 typedef void data_attr_t;
 typedef void data_cap_set_t;
 typedef void data_cap_t;
 typedef void data_probe_t;
+typedef void data_inquire_t;
 
 #define ds_type(ds) (ds)->type
 #define ds_destroy_service(ds) (ds)->destroy_service(ds)
@@ -75,6 +80,7 @@ typedef void data_probe_t;
 #define ds_cap_set_destroy(ds, cs, free_cap) (ds)->destroy_cap_set(ds, cs, free_cap)
 #define ds_get_cap(ds, cs, key) (ds)->get_cap(ds, cs, key)
 #define ds_set_cap(ds, cs, key, cap) (ds)->set_cap(ds, cs, key, cap)
+#define ds_translate_cap_set(ds, rid_key, ds_key, cs) (ds)->translate_cap_set(ds, rid_key, ds_key, cs)
 #define ds_attr_create(ds) (ds)->new_attr(ds)
 #define ds_attr_destroy(ds, da) (ds)->destroy_attr(ds, da)
 #define ds_get_attr(ds, attr, key, val, size) (ds)->get_attr(ds, attr, key, val, size)
@@ -84,6 +90,11 @@ typedef void data_probe_t;
 #define ds_probe_create(ds) (ds)->new_probe(ds)
 #define ds_probe_destroy(ds, p) (ds)->destroy_probe(ds, p)
 #define ds_get_probe(ds, p, key, val, size) (ds)->get_probe(ds, p, key, val, size)
+#define ds_res2rid(ds, res) (ds)->res2rid(ds, res)
+#define ds_inquire_create(ds) (ds)->new_inquire(ds)
+#define ds_inquire_destroy(ds, space) (ds)->destroy_inquire(ds, space)
+#define ds_res_inquire(ds, res, attr, space, to) (ds)->res_inquire(ds, res, attr, space, to)
+#define ds_res_inquire_get(ds, type, space) (ds)->res_inquire_get(ds, type, space)
 #define ds_allocate(ds, res, attr, size, cs, to) (ds)->allocate(ds, res, attr,size, cs, to)
 #define ds_remove(ds, attr, mcap, to) (ds)->remove(ds, attr, mcap, to)
 #define ds_truncate(ds, attr, mcap, new_size, to) (ds)->truncate(ds, attr, mcap, new_size, to)
@@ -97,14 +108,21 @@ typedef void data_probe_t;
 #define ds_copy(ds, attr, mode, ns_type, ppath, src_cap, src_off, dest_cap, dest_off, len, to) \
               (ds)->copy(ds, attr, mode, ns_type, ppath, src_cap, src_off, dest_cap, dest_off, len, to)
 
-
 struct data_service_fn_s;
 typedef struct data_service_fn_s data_service_fn_t;
+
+//typedef struct {
+//  char *rid_key;
+//  char *ds_key;
+//  void *ds_priv;
+//  void *rs_priv;
+//} data_service_mapping_t;
 
 struct data_service_fn_s {
   void *priv;
   char *type;
   void (*destroy_service)(data_service_fn_t *);
+  void (*translate_cap_set)(data_service_fn_t *ds, char *rid_key, char *ds_key, data_cap_set_t *cs);
   data_cap_set_t *(*new_cap_set)(data_service_fn_t *);
   data_cap_t *(*get_cap)(data_service_fn_t *, data_cap_set_t *cs, int key);
   int (*set_cap)(data_service_fn_t *, data_cap_set_t *cs, int key, data_cap_t *cap);
@@ -118,6 +136,11 @@ struct data_service_fn_s {
   data_probe_t *(*new_probe)(data_service_fn_t *);
   int (*get_probe)(data_service_fn_t *, data_probe_t *probe, int key, void *val, int size);
   void (*destroy_probe)(data_service_fn_t *, data_probe_t *probe);
+  char *(*res2rid)(data_service_fn_t *ds, char *ds_key);
+  data_inquire_t *(*new_inquire)(data_service_fn_t *ds);
+  void (*destroy_inquire)(data_service_fn_t *ds, data_inquire_t *space);
+  ds_int_t (*res_inquire_get)(data_service_fn_t *ds, int type, data_inquire_t *space);
+  op_generic_t *(*res_inquire)(data_service_fn_t *, char *res, data_attr_t *attr, data_inquire_t *space, int timeout);
   op_generic_t *(*allocate)(data_service_fn_t *, char *res, data_attr_t *attr, ds_int_t size, data_cap_set_t *caps, int timeout);
   op_generic_t *(*remove)(data_service_fn_t *, data_attr_t *dattr, data_cap_t *mcap, int timeout);
   op_generic_t *(*truncate)(data_service_fn_t *, data_attr_t *dattr, data_cap_t *mcap, ex_off_t new_size, int timeout);
@@ -131,10 +154,6 @@ struct data_service_fn_s {
   op_generic_t *(*copy)(data_service_fn_t *, data_attr_t *attr, int mode, int ns_type, char *ppath, data_cap_t *src_cap, ds_int_t src_off,
                data_cap_t *dest_cap, ds_int_t dest_off, ds_int_t len, int timeout);
 };
-
-
-
-//typedef data_service_fn_t *(ds_create_t)(exnode_abstract_set_t *ess, char *fname, char *section);
 
 
 #ifdef __cplusplus

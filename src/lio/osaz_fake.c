@@ -79,7 +79,7 @@ void osaz_fake_destroy(os_authz_t *az)
 // osaz_fake_create - Create a Fake AuthN service
 //***********************************************************************
 
-os_authz_t *osaz_fake_create(char *fname, char *section, object_service_fn_t *os)
+os_authz_t *osaz_fake_create(service_manager_t *ess, inip_file_t *ifd, char *section, object_service_fn_t *os)
 {
   os_authz_t *osaz;
 

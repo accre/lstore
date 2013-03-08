@@ -75,7 +75,7 @@ void authn_fake_destroy(authn_t *an)
 // authn_fake_create - Create a Fake AuthN service
 //***********************************************************************
 
-authn_t *authn_fake_create(char *fname, char *section)
+authn_t *authn_fake_create(service_manager_t *ess, inip_file_t *ifd, char *section)
 {
   authn_t *an;
 

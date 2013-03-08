@@ -118,6 +118,32 @@ typedef struct {
 } lun_rw_row_t;
 
 //***********************************************************************
+// _slun_perform_remap - Does a cap remap
+//   **NOTE: Assumes the segment is locked
+//***********************************************************************
+
+void _slun_perform_remap(segment_t *seg)
+{
+  seglun_priv_t *s = (seglun_priv_t *)seg->priv;
+  interval_skiplist_iter_t it;
+  seglun_row_t *b;
+  int i;
+
+  log_printf(5, "START\n");
+  it = iter_search_interval_skiplist(s->isl, (skiplist_key_t *)NULL, (skiplist_key_t *)NULL);
+  while ((b = (seglun_row_t *)next_interval_skiplist(&it)) != NULL) {
+    for (i=0; i<s->n_devices; i++) {
+       rs_translate_cap_set(s->rs, b->block[i].data->rid_key, b->block[i].data->cap);
+       log_printf(15, "i=%d rcap=%s\n", i, ds_get_cap(s->ds, b->block[i].data->cap, DS_CAP_READ));
+    }
+  }
+  log_printf(5, "END\n");
+
+  return;
+}
+
+
+//***********************************************************************
 // slun_row_placement_check - Checks the placement of each allocation
 //***********************************************************************
 
@@ -136,12 +162,12 @@ int slun_row_placement_check(segment_t *seg, data_attr_t *da, seglun_row_t *b, i
     hints_list[i].local_rsq = NULL;
     migrate = data_block_get_attr(b->block[i].data, "migrate");
     if (migrate != NULL) {
-       hints_list[i].local_rsq = rs_query_parse(seg->ess->rs, migrate);
+       hints_list[i].local_rsq = rs_query_parse(s->rs, migrate);
     }
   }
 
   //** Now call the query check
-  gop = rs_data_request(seg->ess->rs, NULL, s->rsq, NULL, NULL, 0, hints_list, n_devices, n_devices, timeout);
+  gop = rs_data_request(s->rs, NULL, s->rsq, NULL, NULL, 0, hints_list, n_devices, n_devices, timeout);
   gop_waitall(gop);
   gop_free(gop, OP_DESTROY);
 
@@ -152,7 +178,7 @@ int slun_row_placement_check(segment_t *seg, data_attr_t *da, seglun_row_t *b, i
         block_status[i] = hints_list[i].status;
      }
 
-     if (hints_list[i].local_rsq != NULL) { rs_query_destroy(seg->ess->rs, hints_list[i].local_rsq); }
+     if (hints_list[i].local_rsq != NULL) { rs_query_destroy(s->rs, hints_list[i].local_rsq); }
   }
 
   return(nbad);
@@ -166,8 +192,9 @@ int slun_row_placement_check(segment_t *seg, data_attr_t *da, seglun_row_t *b, i
 int slun_row_placement_fix(segment_t *seg, data_attr_t *da, seglun_row_t *b, int *block_status, int n_devices, int timeout)
 {
   seglun_priv_t *s = (seglun_priv_t *)seg->priv;
-  int i, j, k, nbad, ngood, loop;
+  int i, j, k, nbad, ngood, loop, cleanup_index;
   int missing[n_devices], m, todo;
+  char *cleanup_key[5*n_devices];
   rs_request_t req[n_devices];
   rs_query_t *rsq;
   rs_hints_t hints_list[n_devices];
@@ -178,8 +205,9 @@ int slun_row_placement_fix(segment_t *seg, data_attr_t *da, seglun_row_t *b, int
   op_generic_t *gop;
   opque_t *q;
 
-  rsq = rs_query_dup(seg->ess->rs, s->rsq);
+  rsq = rs_query_dup(s->rs, s->rsq);
 
+  cleanup_index = 0;
   loop = 0;
   do {
      q = new_opque();
@@ -202,24 +230,24 @@ int slun_row_placement_fix(segment_t *seg, data_attr_t *da, seglun_row_t *b, int
            hints_list[nbad].status = RS_ERROR_OK;
            req[m].rid_index = nbad;
            req[m].size = b->block_len;
-           db[m] = data_block_create(seg->ess->ds);
+           db[m] = data_block_create(s->ds);
            cap[m] = db[m]->cap;
            missing[m] = i;
            nbad--;
            m++;
         }
 
-       if (hints_list[j].local_rsq != NULL) { rs_query_destroy(seg->ess->rs, hints_list[j].local_rsq); }
+       if (hints_list[j].local_rsq != NULL) { rs_query_destroy(s->rs, hints_list[j].local_rsq); }
 
         migrate = data_block_get_attr(b->block[i].data, "migrate");
         if (migrate != NULL) {
-           hints_list[j].local_rsq = rs_query_parse(seg->ess->rs, migrate);
+           hints_list[j].local_rsq = rs_query_parse(s->rs, migrate);
         }
 //log_printf(0, "i=%d ngood=%d nbad=%d m=%d\n", i, ngood, nbad, m);
      }
 
 
-     gop = rs_data_request(seg->ess->rs, da, rsq, cap, req, m, hints_list, ngood, n_devices, timeout);
+     gop = rs_data_request(s->rs, da, rsq, cap, req, m, hints_list, ngood, n_devices, timeout);
      gop_waitall(gop);
      gop_free(gop, OP_DESTROY);
 
@@ -230,7 +258,8 @@ int slun_row_placement_fix(segment_t *seg, data_attr_t *da, seglun_row_t *b, int
         i = missing[j];
 //log_printf(0, "missing[%d]=%d rid_key=%s\n", j, missing[j], req[j].rid_key);
         if (ds_get_cap(db[j]->ds, db[j]->cap, DS_CAP_READ) != NULL) {
-           db[j]->rid_key = strdup(req[j].rid_key);
+           db[j]->rid_key = req[j].rid_key;
+           req[j].rid_key = NULL;  //** Cleanup
 
            //** Make the copy operation
            gop = ds_copy(b->block[i].data->ds, da, DS_PUSH, NS_TYPE_SOCK, "",
@@ -245,10 +274,13 @@ int slun_row_placement_fix(segment_t *seg, data_attr_t *da, seglun_row_t *b, int
 
            if (req[j].rid_key != NULL) {
               log_printf(15, "Excluding rid_key=%s on next round\n", req[j].rid_key);
-              rs_query_add(seg->ess->rs, &rsq, RSQ_BASE_OP_KV, "rid_key", RSQ_BASE_KV_EXACT, req[j].rid_key, RSQ_BASE_KV_EXACT);
-              rs_query_add(seg->ess->rs, &rsq, RSQ_BASE_OP_NOT, NULL, 0, NULL, 0);
-              rs_query_add(seg->ess->rs, &rsq, RSQ_BASE_OP_AND, NULL, 0, NULL, 0);
-//char *qstr = rs_query_print(seg->ess->rs, rsq);
+              cleanup_key[cleanup_index] = req[j].rid_key;
+              req[j].rid_key = NULL;
+              rs_query_add(s->rs, &rsq, RSQ_BASE_OP_KV, "rid_key", RSQ_BASE_KV_EXACT, cleanup_key[cleanup_index], RSQ_BASE_KV_EXACT);
+              cleanup_index++;
+              rs_query_add(s->rs, &rsq, RSQ_BASE_OP_NOT, NULL, 0, NULL, 0);
+              rs_query_add(s->rs, &rsq, RSQ_BASE_OP_AND, NULL, 0, NULL, 0);
+//char *qstr = rs_query_print(s->rs, rsq);
 //log_printf(0, "rsq=%s\n", qstr);
 //free(qstr);
            }
@@ -314,10 +346,12 @@ log_printf(15, "missing[%d]=%d status=%d\n", j,i, gop_completed_successfully(gop
 
   } while ((loop < 5) && (todo > 0));
 
+  for (i=0; i<cleanup_index; i++) free(cleanup_key[i]);
+
   for (i=0; i<n_devices; i++) {
-     if (hints_list[i].local_rsq != NULL) { rs_query_destroy(seg->ess->rs, hints_list[i].local_rsq); }
+     if (hints_list[i].local_rsq != NULL) { rs_query_destroy(s->rs, hints_list[i].local_rsq); }
   }
-  rs_query_destroy(seg->ess->rs, rsq);
+  rs_query_destroy(s->rs, rsq);
 
 //log_printf(0, "todo=%d\n", todo);
 
@@ -449,24 +483,26 @@ int slun_row_pad_fix(segment_t *seg, data_attr_t *da, seglun_row_t *b, int *bloc
 
 int slun_row_replace_fix(segment_t *seg, data_attr_t *da, seglun_row_t *b, int *block_status, int n_devices, rs_query_t *rsq_base, int timeout)
 {
-//  seglun_priv_t *s = (seglun_priv_t *)seg->priv;
+  seglun_priv_t *s = (seglun_priv_t *)seg->priv;
   rs_request_t req_list[n_devices];
   data_cap_set_t *cap_list[n_devices];
+  char *cleanup_key[5*n_devices];
   op_status_t status;
   opque_t *q;
   rs_query_t *rsq;
   op_generic_t *gop;
   Stack_t *attr_stack;
-  int i, j, loop, err, m, ngood, nbad;
+  int i, j, loop, err, m, ngood, nbad, cleanup_index;
   int missing[n_devices];
   rs_hints_t hints_list[n_devices];
   char *migrate;
 
   //** Dup the base query
-  rsq = rs_query_dup(seg->ess->rs,  rsq_base);
+  rsq = rs_query_dup(s->rs, rsq_base);
 
   memset(hints_list, 0, sizeof(hints_list));
 
+  cleanup_index = 0;
   loop = 0;
   do {
     err = 0;
@@ -500,9 +536,9 @@ log_printf(15, "loop=%d ------------------------------\n", loop);
              b->block[i].data->attr_stack = NULL;
              atomic_set(b->block[i].data->ref_count, 0);
              data_block_destroy(b->block[i].data);
-             b->block[i].data = data_block_create(seg->ess->ds);
+             b->block[i].data = data_block_create(s->ds);
           } else {
-             b->block[i].data = data_block_create(seg->ess->ds);
+             b->block[i].data = data_block_create(s->ds);
           }
 //log_printf(0, "new b.data->id=" XIDT "\n", b->block[i].data->id);
           cap_list[m] = b->block[i].data->cap;
@@ -516,12 +552,12 @@ log_printf(15, "loop=%d ------------------------------\n", loop);
           nbad--;
        }
 
-       if (hints_list[j].local_rsq != NULL) { rs_query_destroy(seg->ess->rs, hints_list[j].local_rsq); }
+       if (hints_list[j].local_rsq != NULL) { rs_query_destroy(s->rs, hints_list[j].local_rsq); }
 
        migrate = data_block_get_attr(b->block[i].data, "migrate");
        if (migrate != NULL) {
 //log_printf(0, "i=%d migrate[" XIDT "]=%s\n", i, b->block[i].data->id, migrate);
-           hints_list[j].local_rsq = rs_query_parse(seg->ess->rs, migrate);
+           hints_list[j].local_rsq = rs_query_parse(s->rs, migrate);
        } else {
            hints_list[j].local_rsq = NULL;
        }
@@ -529,7 +565,7 @@ log_printf(15, "loop=%d ------------------------------\n", loop);
     }
 
     //** Execute the Query
-    gop = rs_data_request(seg->ess->rs, da, rsq, cap_list, req_list, m, hints_list, ngood, n_devices, timeout);
+    gop = rs_data_request(s->rs, da, rsq, cap_list, req_list, m, hints_list, ngood, n_devices, timeout);
     err = gop_waitall(gop);
 
     //** Check if we have enough RIDS
@@ -550,15 +586,19 @@ log_printf(15, "loop=%d ------------------------------\n", loop);
 log_printf(15, "missing[%d]=%d req.op_status=%d\n", j, missing[j], gop_completed_successfully(req_list[j].gop));
        if (ds_get_cap(b->block[i].data->ds, b->block[i].data->cap, DS_CAP_READ) != NULL) {
           block_status[i] = 2;  //** Mark the block for padding
-          b->block[i].data->rid_key = strdup(req_list[j].rid_key);
+          b->block[i].data->rid_key = req_list[j].rid_key;
           atomic_inc(b->block[i].data->ref_count);
+          req_list[j].rid_key = NULL; //** Cleanup
           err++;
        } else {  //** Make sure we exclude the RID key on the next round due to the failure
           if (req_list[j].rid_key != NULL) {
              log_printf(15, "Excluding rid_key=%s on next round\n", req_list[j].rid_key);
-             rs_query_add(seg->ess->rs, &rsq, RSQ_BASE_OP_KV, "rid_key", RSQ_BASE_KV_EXACT, req_list[j].rid_key, RSQ_BASE_KV_EXACT);
-             rs_query_add(seg->ess->rs, &rsq, RSQ_BASE_OP_NOT, NULL, 0, NULL, 0);
-             rs_query_add(seg->ess->rs, &rsq, RSQ_BASE_OP_AND, NULL, 0, NULL, 0);
+             cleanup_key[cleanup_index] = req_list[j].rid_key;
+             req_list[j].rid_key = NULL;  //** Don't want to accidentally free it below
+             rs_query_add(s->rs, &rsq, RSQ_BASE_OP_KV, "rid_key", RSQ_BASE_KV_EXACT, cleanup_key[cleanup_index], RSQ_BASE_KV_EXACT);
+             cleanup_index++;
+             rs_query_add(s->rs, &rsq, RSQ_BASE_OP_NOT, NULL, 0, NULL, 0);
+             rs_query_add(s->rs, &rsq, RSQ_BASE_OP_AND, NULL, 0, NULL, 0);
           }
        }
 
@@ -577,10 +617,11 @@ oops:
   } while ((loop < 5) && (err > 0));
 
   //** Clean up
-  rs_query_destroy(seg->ess->rs, rsq);
+  rs_query_destroy(s->rs, rsq);
   for (i=0; i<n_devices; i++) {
-     if (hints_list[i].local_rsq != NULL) { rs_query_destroy(seg->ess->rs, hints_list[i].local_rsq); }
+     if (hints_list[i].local_rsq != NULL) { rs_query_destroy(s->rs, hints_list[i].local_rsq); }
   }
+  for (i=0; i<cleanup_index; i++) free(cleanup_key[i]);
 
   return(err);
 }
@@ -1108,7 +1149,7 @@ int seglun_row_decompose_test()
   b->block = block;
   b->seg_offset = 0;
   for (i=0; i<max_dev; i++) {
-     block[i].data = data_block_create(seg->ess->ds);
+     block[i].data = data_block_create(s->ds);
      block[i].cap_offset = 0;
      block[i].data->size = bufsize;     //** Set them to a not to exceed value so
      block[i].data->max_size = bufsize; //** I don't have to muck with them as I change params
@@ -1232,6 +1273,21 @@ op_status_t seglun_rw_op(segment_t *seg, data_attr_t *da, int n_iov, ex_iovec_t 
   lun_rw_row_t *rw_buf, *rwb_table;
 
   segment_lock(seg);
+
+  //** Check if we need to translate the caps
+  if (s->map_version != s->notify.map_version) {
+     while (s->inprogress_count > 0) {
+         apr_thread_cond_wait(seg->cond, seg->lock);
+     }
+
+     //** Do the remap unless someoue beat us to it.
+     if (s->map_version != s->notify.map_version) {
+        s->map_version = s->notify.map_version;
+        _slun_perform_remap(seg);
+     }
+  }
+
+  s->inprogress_count++;  //** Flag that we are doing an I/O op
 
   type_malloc(bused, seglun_row_t *, interval_skiplist_count(s->isl));
   type_malloc(bcount, int, s->n_devices * interval_skiplist_count(s->isl));
@@ -1363,6 +1419,12 @@ log_printf(15, "failure maxerr=%d\n", maxerr);
         status.error_code = maxerr;
      }
   }
+
+  //** Update the inprogress count
+  segment_lock(seg);
+  s->inprogress_count--;
+  if (s->inprogress_count == 0) apr_thread_cond_broadcast(seg->cond);
+  segment_unlock(seg);
 
   free(rwb_table);
   free(bcount);
@@ -1649,7 +1711,7 @@ op_status_t seglun_inspect_func(void *arg, int id)
 
        if (max_lost < err) max_lost = err;
 
-       info_printf(si->fd, 1, XIDT ":     Attempting to replace mssing row allocations\n", segment_id(si->seg));
+       info_printf(si->fd, 1, XIDT ":     Attempting to replace missing row allocations\n", segment_id(si->seg));
        i = 0;  //** Iteratively try and repair the row
        do {
          err = slun_row_replace_fix(si->seg, si->da, b, block_status, s->n_devices, s->rsq, si->timeout);
@@ -1898,9 +1960,9 @@ log_printf(15, "use_existing=%d sseg=" XIDT " dseg=" XIDT "\n", use_existing, se
   //** Copy the default rs query
   if (use_existing == 0) {
      if (attr == NULL) {
-        sd->rsq = rs_query_dup(seg->ess->rs, ss->rsq);
+        sd->rsq = rs_query_dup(sd->rs, ss->rsq);
      } else {
-        sd->rsq = rs_query_parse(seg->ess->rs, (char *)attr);
+        sd->rsq = rs_query_parse(sd->rs, (char *)attr);
      }
   }
 
@@ -2001,7 +2063,7 @@ int seglun_serialize_text(segment_t *seg, exnode_exchange_t *exp)
 
   //** default resource query
   if (s->rsq != NULL) {
-     ext = rs_query_print(seg->ess->rs, s->rsq);
+     ext = rs_query_print(s->rs, s->rsq);
      etext = escape_text("=", '\\', ext);
      append_printf(segbuf, &sused, bufsize, "query_default=%s\n", etext);  free(etext); free(ext);
   }
@@ -2100,7 +2162,7 @@ int seglun_deserialize_text(segment_t *seg, ex_id_t id, exnode_exchange_t *exp)
   //** default resource query
   etext = inip_get_string(fd, seggrp, "query_default", "");
   text = unescape_text('\\', etext);
-  s->rsq = rs_query_parse(seg->ess->rs, text);
+  s->rsq = rs_query_parse(s->rs, text);
   free(text); free(etext);
 
   s->n_devices = inip_get_integer(fd, seggrp, "n_devices", 2);
@@ -2110,6 +2172,7 @@ int seglun_deserialize_text(segment_t *seg, ex_id_t id, exnode_exchange_t *exp)
   s->excess_block_size = inip_get_integer(fd, seggrp, "excess_block_size", s->max_block_size/4);
   s->total_size = inip_get_integer(fd, seggrp, "max_size", 0);
   s->used_size = inip_get_integer(fd, seggrp, "used_size", 0);
+  if (s->used_size > s->total_size) s->used_size = s->total_size;  //** Sanity check the size
   s->chunk_size = inip_get_integer(fd, seggrp, "chunk_size", 16*1024);
   s->n_shift = inip_get_integer(fd, seggrp, "n_shift", 1);
 
@@ -2143,7 +2206,7 @@ int seglun_deserialize_text(segment_t *seg, ex_id_t id, exnode_exchange_t *exp)
            sscanf(escape_string_token(NULL, ":", '\\', 0, &bstate, &fin), XOT, &(block[i].cap_offset));
 
            //** Find the cooresponding cap
-           block[i].data = data_block_deserialize(seg->ess->dsm, id, exp);
+           block[i].data = data_block_deserialize(seg->ess, id, exp);
            atomic_inc(block[i].data->ref_count);
 
         }
@@ -2204,6 +2267,9 @@ log_printf(15, "seglun_destroy: seg->id=" XIDT " ref_count=%d\n", segment_id(seg
 
   if (seg->ref_count > 0) return;
 
+  //** Disable notification about mapping changes
+  rs_unregister_mapping_updates(s->rs, &(s->notify));
+
   n = interval_skiplist_count(s->isl);
   type_malloc_clear(b_list, seglun_row_t *, n);
   it = iter_search_interval_skiplist(s->isl, (skiplist_key_t *)NULL, (skiplist_key_t *)NULL);
@@ -2222,7 +2288,7 @@ log_printf(15, "seglun_destroy: seg->id=" XIDT " ref_count=%d\n", segment_id(seg
   }
   free(b_list);
 
-  if (s->rsq != NULL) rs_query_destroy(seg->ess->rs, s->rsq);
+  if (s->rsq != NULL) rs_query_destroy(s->rs, s->rsq);
   free(s);
 
   ex_header_release(&(seg->header));
@@ -2240,7 +2306,7 @@ log_printf(15, "seglun_destroy: seg->id=" XIDT " ref_count=%d\n", segment_id(seg
 
 segment_t *segment_lun_create(void *arg)
 {
-  exnode_abstract_set_t *es = (exnode_abstract_set_t *)arg;
+  service_manager_t *es = (service_manager_t *)arg;
   seglun_priv_t *s;
   segment_t *seg;
 
@@ -2277,7 +2343,14 @@ segment_t *segment_lun_create(void *arg)
   apr_thread_cond_create(&(seg->cond), seg->mpool);
 
   seg->ess = es;
-  s->tpc = es->tpc_unlimited;
+  s->tpc = lookup_service(es, ESS_RUNNING, ESS_TPC_UNLIMITED);
+  s->rs = lookup_service(es, ESS_RUNNING, ESS_RS);
+  s->ds = lookup_service(es, ESS_RUNNING, ESS_DS);
+
+  //** Set up rempa notifications
+  s->notify.lock = seg->lock;
+  s->notify.map_version = -1;  //** This should trigger a remap on the first R/W op.
+  rs_register_mapping_updates(s->rs, &(s->notify));
 
   seg->fn.read = seglun_read;
   seg->fn.write = seglun_write;

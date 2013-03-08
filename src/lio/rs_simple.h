@@ -43,7 +43,7 @@ extern "C" {
 
 #define RS_TYPE_SIMPLE "simple"
 
-resource_service_fn_t *rs_simple_create(void *arg, char *fname, char *section);
+resource_service_fn_t *rs_simple_create(void *arg, inip_file_t *fd, char *section);
 
 #ifdef __cplusplus
 }

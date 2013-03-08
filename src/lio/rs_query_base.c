@@ -271,12 +271,11 @@ log_printf(15, "rs_query_base_parse: initial token=%s!\n", token);
 log_printf(15, "rs_query_base_parse: rs_type=%s\n", t2);
   ekey = unescape_text('\\', t2);
 log_printf(15, "rs_query_base_parse: ekey=%s\n", ekey);
-//  rs = lookup_resource_service(ekey);
-  if (strcmp(rs->type, ekey) != 0) {
-     log_printf(0, "rs_query_base_parse: Mismatch RS types  parent=%s got=%s!\n", rs->type, ekey);
-     free(buffer);
-     return(NULL);
-  }
+//  if (strcmp(rs->type, ekey) != 0) {
+//     log_printf(0, "rs_query_base_parse: Mismatch RS types  parent=%s got=%s!\n", rs->type, ekey);
+//     free(buffer);
+//     return(NULL);
+//  }
   free(ekey);
 
   type_malloc(query, rsq_base_t, 1);

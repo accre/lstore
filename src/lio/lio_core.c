@@ -572,7 +572,6 @@ op_status_t lioc_create_object_fn(void *arg, int id)
 {
   lioc_mk_mv_rm_t *op = (lioc_mk_mv_rm_t *)arg;
   os_fd_t *fd;
-  exnode_abstract_set_t my_ess;
   char *dir, *fname;
   exnode_exchange_t *exp;
   exnode_t *ex, *cex;
@@ -641,14 +640,12 @@ log_printf(15, "dir=%s\n fname=%s\n", dir, fname);
      //** If this has a caching segment we need to disable it from being adding
      //** to the global cache table cause there could be multiple copies of the
      //** same segment being serialized/deserialized.
-     my_ess = *(op->lc->ess);
-     my_ess.cache = NULL;
 
      //** Deserialize it
      exp = exnode_exchange_create(EX_TEXT);
      exp->text = val[ex_key];
      ex = exnode_create();
-     exnode_deserialize(ex, exp, &my_ess);
+     exnode_deserialize(ex, exp, op->lc->ess_nocache);
      free(val[ex_key]);
      exp->text = NULL;
 
@@ -844,7 +841,6 @@ int lioc_fsck_check_object(lio_config_t *lc, creds_t *creds, char *path, int fty
   char *dir, *file, ssize[128], *v;
   ex_id_t ino;
   ex_off_t nbytes;
-  exnode_abstract_set_t my_ess;
   exnode_exchange_t *exp;
   exnode_t *ex, *cex;
   segment_t *seg;
@@ -947,14 +943,11 @@ log_printf(15, "fname=%s missing owner\n", path);
   //** If this has a caching segment we need to disable it from being adding
   //** to the global cache table cause there could be multiple copies of the
   //** same segment being serialized/deserialized.
-  my_ess = *(lc->ess);
-  my_ess.cache = NULL;
-
   //** Deserialize it
   exp = exnode_exchange_create(EX_TEXT);
   exp->text = val[ex_index];
   ex = exnode_create();
-  exnode_deserialize(ex, exp, &my_ess);
+  exnode_deserialize(ex, exp, lc->ess_nocache);
   exp->text = NULL;
 
      //** Execute the clone operation if needed

@@ -42,7 +42,7 @@ extern "C" {
 
 #define OSAZ_TYPE_FAKE "fake"
 
-os_authz_t *osaz_fake_create(char *fname, char *section, object_service_fn_t *os);
+os_authz_t *osaz_fake_create(service_manager_t *ess, inip_file_t *ifd, char *section, object_service_fn_t *os);
 
 #ifdef __cplusplus
 }

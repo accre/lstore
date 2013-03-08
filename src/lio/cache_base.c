@@ -41,146 +41,11 @@ http://www.accre.vanderbilt.edu
 #include "ex3_compare.h"
 #include "pigeon_coop.h"
 
-typedef struct {
-  cache_t *(*driver)(void *arg, data_attr_t *da, int timeout, char *fname, char *section);
-  cache_t *(*create)(void *arg, data_attr_t *da, int timeout);
-  void *arg;
-} cache_driver_t;
-
-typedef struct {
-  list_t *table;
-} cache_table_t;
-
-cache_table_t *cache_driver_table = NULL;
-
-//***********************************************************************
-// install_cache - Installs a cache driver into the table
-//***********************************************************************
-
-int install_cache(char *type, cache_t *(*driver)(void *arg, data_attr_t *da, int timeout, char *fname, char *section), cache_t *(*create)(void *arg, data_attr_t *da, int timeout), void *arg)
-{
-  cache_driver_t *d;
-
-  //** 1st time so create the struct
-  if (cache_driver_table == NULL) {
-     type_malloc_clear(cache_driver_table, cache_table_t, 1);
-     cache_driver_table->table = list_create(0, &list_string_compare, list_string_dup, list_simple_free, list_no_data_free);
-  }
-
-  d = list_search(cache_driver_table->table, type);
-  if (d != NULL) {
-    log_printf(0, "install_cache: Matching driver for type=%s already exists!\n", type);
-    return(1);
-  }
-  
-  type_malloc_clear(d, cache_driver_t, 1);
-  d->driver = driver;
-  d->create = create;
-  d->arg = arg;
-  list_insert(cache_driver_table->table, type, (void *)d);
-
-  return(0);
-}
-
-//***********************************************************************
-// load_cache - Loads the given cache type from the file
-//***********************************************************************
-
-cache_t *load_cache(char *ctype, data_attr_t *da, int timeout, char *fname, char *section)
-{
-  cache_driver_t *d;
-
-  d = list_search(cache_driver_table->table, ctype);
-  if (d == NULL) {
-    log_printf(0, "load_cache:  No matching driver for type=%s\n", ctype);
-    return(NULL);
-  }
-
-  return(d->driver(d->arg, da, timeout, fname, section));
-}
-
-//***********************************************************************
-// create_cache - Creates a cache of the given type
-//***********************************************************************
-
-cache_t *create_cache(char *type, data_attr_t *da, int timeout)
-{
-  cache_driver_t *d;
-
-  d = list_search(cache_driver_table->table, type);
-  if (d == NULL) {
-    log_printf(0, "load_cache:  No matching driver for type=%s\n", type);
-    return(NULL);
-  }
-
-  return(d->create(d->arg, da, timeout));
-}
-
 //*************************************************************************
-// cache_system_init - Loads the caceh drivers
+//  cache_base_handle  - Simple get_handle method
 //*************************************************************************
 
-void cache_system_init()
-{
-  install_cache(CACHE_TYPE_LRU, lru_cache_load, lru_cache_create, NULL);
-  install_cache(CACHE_TYPE_AMP, amp_cache_load, amp_cache_create, NULL);
-}
-
-//*************************************************************************
-// cache_system_destroy - Loads the caceh drivers
-//*************************************************************************
-
-void cache_system_destroy()
-{
-}
-
-//*************************************************************************
-// get_cache_stats - Returns the cumulative cache stats
-//*************************************************************************
-
-cache_stats_t DUMMY_get_cache_stats(cache_t *c)
-{
-  Stack_t stack;
-  list_iter_t it;
-  ex_id_t id;
-  segment_t *seg;
-  cache_segment_t *s;
-  cache_stats_t cs;
-
-  init_stack(&stack);
-
-  //** Generate the list
-  cache_lock(c);
-  it = list_iter_search(c->segments, NULL, 0);
-  list_next(&it, (list_key_t *)&id, (list_data_t *)&seg);
-  while (seg != NULL) {
-    push(&stack, seg);
-    list_next(&it, (list_key_t *)&id, (list_data_t *)&seg);
-  }
-  cs = c->stats;
-  cache_unlock(c);
-
-  //** Now sum everything up
-  seg = (segment_t *)pop(&stack);
-  while (seg != NULL) {
-    segment_lock(seg);
-    s = (cache_segment_t *)seg->priv;
-
-    cs.user.read_count += s->stats.user.read_count;
-    cs.user.write_count += s->stats.user.write_count;
-    cs.user.read_bytes += s->stats.user.read_bytes;
-    cs.user.write_bytes += s->stats.user.write_bytes;
-    cs.system.read_count += s->stats.system.read_count;
-    cs.system.write_count += s->stats.system.write_count;
-    cs.system.read_bytes += s->stats.system.read_bytes;
-    cs.system.write_bytes += s->stats.system.write_bytes;
-    segment_unlock(seg);
-
-    seg = (segment_t *)pop(&stack);    
-  }
-  
-  return(cs);
-}
+cache_t *cache_base_handle(cache_t *c) { return(c); }
 
 //*************************************************************************
 // cache_base_destroy - Destroys the base cache elements
@@ -193,7 +58,6 @@ void cache_base_destroy(cache_t *c)
   apr_thread_mutex_destroy(c->lock);
   apr_pool_destroy(c->mpool);
 }
-
 
 //*************************************************************************
 // cache_base_create - Creates the base cache elements

@@ -147,7 +147,7 @@ op_status_t readlink_fn(void *arg, int id)
 
 int main(int argc, char **argv)
 {
-  int i, ftype, rg_mode, start_index, start_option, prefix_len, nosort;
+  int i, ftype, rg_mode, start_option, prefix_len, nosort;
   char *fname;
   ls_entry_t *lse;
   list_t *table;
@@ -208,7 +208,6 @@ int main(int argc, char **argv)
      }
 
   } while ((start_option < i) && (i<argc));
-  start_index = i;
 
 
   if (rg_mode == 0) {
@@ -219,6 +218,7 @@ int main(int argc, char **argv)
 
      //** Create the simple path iterator
      tuple = lio_path_resolve(argv[i]);
+     lio_path_wildcard_auto_append(&tuple);
      rp_single = os_path_glob2regex(tuple.path);
   }
 
@@ -281,6 +281,7 @@ int main(int argc, char **argv)
     }
   }
 
+  list_destroy(table);
 finished:
   lio_path_release(&tuple);
   if (ro_single != NULL) os_regex_table_destroy(ro_single);

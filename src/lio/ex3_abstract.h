@@ -45,6 +45,7 @@ http://www.accre.vanderbilt.edu
 #include "thread_pool.h"
 #include "transfer_buffer.h"
 #include "log.h"
+#include "iniparse.h"
 
 #ifndef _EX3_ABSTRACT_H_
 #define _EX3_ABSTRACT_H_
@@ -75,8 +76,8 @@ extern "C" {
 #define CLONE_STRUCTURE       0
 #define CLONE_STRUCT_AND_DATA 1
 
-#define SEG_SM_LOAD   0
-#define SEG_SM_CREATE 1
+#define SEG_SM_LOAD   "segment_load"
+#define SEG_SM_CREATE "segment_create"
 
 typedef void segment_priv_t;
 
@@ -126,13 +127,11 @@ typedef struct {
   list_t *view;
 } exnode_t;
 
-typedef struct exnode_abstract_set_s exnode_abstract_set_t;
-
 struct segment_s {
   ex_header_t header;
   atomic_int_t ref_count;
   segment_priv_t *priv;
-  exnode_abstract_set_t *ess;
+  service_manager_t *ess;
   segment_fn_t fn;
   apr_thread_mutex_t *lock;
   apr_thread_cond_t *cond;
@@ -140,7 +139,7 @@ struct segment_s {
 };
 
 
-typedef data_service_fn_t *(ds_create_t)(exnode_abstract_set_t *ess, char *fname, char *section);
+typedef data_service_fn_t *(ds_create_t)(service_manager_t *ess, inip_file_t *ifd, char *section);
 typedef segment_t *(segment_load_t)(void *arg, ex_id_t id, exnode_exchange_t *ex);
 typedef segment_t *(segment_create_t)(void *arg);
 
@@ -152,7 +151,7 @@ op_generic_t *exnode_clone(thread_pool_context_t *tpc, exnode_t *ex, data_attr_t
 void exnode_destroy(exnode_t *ex);
 void exnode_exchange_append_text(exnode_exchange_t *exp, char *buffer);
 int exnode_serialize(exnode_t *ex, exnode_exchange_t *exp);
-int exnode_deserialize(exnode_t *ex, exnode_exchange_t *exp, exnode_abstract_set_t *ess);
+int exnode_deserialize(exnode_t *ex, exnode_exchange_t *exp, service_manager_t *ess);
 ex_header_t *exnode_get_header(exnode_t *ex);
 Exnode3__Exnode *exnode_native2pb(exnode_t *exnode);
 void exnode_exchange_init(exnode_exchange_t *exp, int type);
@@ -180,7 +179,7 @@ segment_t *view_search_by_id(exnode_t *ex, ex_id_t id);
 op_generic_t *segment_copy(thread_pool_context_t *tpc, data_attr_t *da, segment_t *src_seg, segment_t *dest_seg, ex_off_t src_offset, ex_off_t dest_offset, ex_off_t len, ex_off_t bufsize, char *buffer, int do_truncate, int timoeut);
 op_generic_t *segment_put(thread_pool_context_t *tpc, data_attr_t *da, FILE *fd, segment_t *dest_seg, ex_off_t dest_offset, ex_off_t len, ex_off_t bufsize, char *buffer, int do_truncate, int timeout);
 op_generic_t *segment_get(thread_pool_context_t *tpc, data_attr_t *da, segment_t *src_seg, FILE *fd, ex_off_t src_offset, ex_off_t len, ex_off_t bufsize, char *buffer, int timeout);
-segment_t *load_segment(exnode_abstract_set_t *ess, ex_id_t id, exnode_exchange_t *ex);
+segment_t *load_segment(service_manager_t *ess, ex_id_t id, exnode_exchange_t *ex);
 
 void generate_ex_id(ex_id_t *id);
 

@@ -29,6 +29,7 @@ http://www.accre.vanderbilt.edu
 
 #define _log_module_index 193
 
+#include <stdlib.h>
 #include "lio.h"
 #include "type_malloc.h"
 #include "log.h"
@@ -154,19 +155,45 @@ void lio_path_release(lio_path_tuple_t *tuple)
 }
 
 //***************************************************************
+// lio_path_wildcard_auto_append - Auto appends a "*" if the path
+//      ends in "/".
+//     Returns 0 if no change and 1 if a wildcard was added.
+//***************************************************************
+
+int lio_path_wildcard_auto_append(lio_path_tuple_t *tuple)
+{
+  int n;
+
+  if (tuple->path == NULL) return(0);
+
+  n = strlen(tuple->path);
+  if (tuple->path[n-1] == '/') {
+     tuple->path = realloc(tuple->path, n+1+1);
+     tuple->path[n] = '*';
+     tuple->path[n+1] = 0;
+
+log_printf(5, " tweaked tuple=%s\n", tuple->path);
+     return(1);
+  }
+
+  return(0);
+}
+
+//***************************************************************
 //  lio_path_resolve - Returns a  path tuple object
 //      containing the cred, lc, and path
 //***************************************************************
 
 lio_path_tuple_t lio_path_resolve(char *lpath)
 {
-  char *userid, *section_name, *fname;
+  char *userid, *pp_userid, *section_name, *fname;
   char *cred_args[2];
   lio_path_tuple_t tuple, *tuple2;
   char buffer[1024];
   int n, is_lio;
 
-  is_lio = lio_parse_path(lpath, &userid, &section_name, &fname);
+  is_lio = lio_parse_path(lpath, &pp_userid, &section_name, &fname);
+  userid = pp_userid;
 
 log_printf(15, "lpath=%s user=%s lc=%s path=%s\n", lpath, userid, section_name, fname);
 
@@ -222,7 +249,7 @@ log_printf(15, "lpath=%s user=%s lc=%s path=%s\n", lpath, userid, section_name, 
   tuple2 = _lc_object_get(buffer);
   if (tuple2 == NULL) { //** Doesn't exist so insert the tuple
      cred_args[0] = tuple.lc->cfg_name;
-     cred_args[1] = userid;
+     cred_args[1] = strdup(userid);
      tuple.creds = os_cred_init(tuple.lc->os, OS_CREDS_INI_TYPE, (void **)cred_args);
      type_malloc_clear(tuple2, lio_path_tuple_t, 1);
      tuple2->creds = tuple.creds;
@@ -242,7 +269,7 @@ finished:
   apr_thread_mutex_unlock(_lc_lock);
 
   if (section_name != NULL) free(section_name);
-  if (userid != NULL) free(userid);
+  if (pp_userid != NULL) free(pp_userid);
 
   tuple.is_lio = is_lio;
   return(tuple);
@@ -372,7 +399,6 @@ void lio_destroy_nl(lio_config_t *lio)
 
   log_printf(15, "removing lio=%s\n", lio->section_name);
 
-
   if (_lc_object_destroy(lio->rs_section) <= 0) {
      rs_destroy_service(lio->rs);
   }
@@ -395,6 +421,11 @@ void lio_destroy_nl(lio_config_t *lio)
   }
   free(lio->tpc_cpu_section);
 
+  if (_lc_object_destroy(lio->mq_section) <= 0) {
+     mq_destroy_context(lio->mqc);
+  }
+  free(lio->mq_section);
+
 //----
 
   if (_lc_object_destroy(lio->os_section) <= 0) {
@@ -408,6 +439,7 @@ void lio_destroy_nl(lio_config_t *lio)
   if (lio->section_name != NULL) free(lio->section_name);
 
   exnode_service_set_destroy(lio->ess);
+  exnode_service_set_destroy(lio->ess_nocache);
 
   lio_core_destroy(lio);
 
@@ -444,6 +476,7 @@ lio_config_t *lio_create_nl(char *fname, char *section, char *user)
   ds_create_t *ds_create;
   rs_create_t *rs_create;
   os_create_t *os_create;
+  cache_load_t *cache_create;
   lio_path_tuple_t *tuple;
 
   //** Add the LC first cause it may already exist
@@ -484,7 +517,7 @@ lio_config_t *lio_create_nl(char *fname, char *section, char *user)
 
      _lc_object_put(stype, lio->tpc_cpu);  //** Add it to the table
   }
-  lio->ess->tpc_cpu = lio->tpc_cpu;
+  add_service(lio->ess, ESS_RUNNING, ESS_TPC_CPU, lio->tpc_cpu);
 
   cores = inip_get_integer(lio->ifd, section, "tpc_unlimited", 10000);
   sprintf(buffer, "tpc:%d", cores);
@@ -502,17 +535,33 @@ lio_config_t *lio_create_nl(char *fname, char *section, char *user)
 
      _lc_object_put(stype, lio->tpc_unlimited);  //** Add it to the table
   }
-  lio->ess->tpc_unlimited = lio->tpc_unlimited;
+  add_service(lio->ess, ESS_RUNNING, ESS_TPC_UNLIMITED, lio->tpc_unlimited);
+
+  stype = inip_get_string(lio->ifd, section, "mq", "mq_context");
+  lio->mq_section = stype;
+  lio->mqc = _lc_object_get(stype);
+  if (lio->mqc == NULL) {  //** Need to load it
+     lio->mqc = mq_create_context(lio->ifd, stype);
+     if (lio->mqc == NULL) {
+        log_printf(1, "Error loading MQ service!\n");
+     } else {
+        add_service(lio->ess, ESS_RUNNING, ESS_MQ, lio->mqc);  //** It's used by the block loader
+     }
+
+     _lc_object_put(stype, lio->mqc);  //** Add it to the table
+  }
 
   stype = inip_get_string(lio->ifd, section, "ds", DS_TYPE_IBP);
   lio->ds_section = stype;
   lio->ds = _lc_object_get(stype);
   if (lio->ds == NULL) {  //** Need to load it
      ctype = inip_get_string(lio->ifd, stype, "type", DS_TYPE_IBP);
-     ds_create = lookup_service(lio->ess->dsm, DS_SM_AVAILABLE, ctype);
-     lio->ds = (*ds_create)(lio->ess, lio->cfg_name, stype);
+     ds_create = lookup_service(lio->ess, DS_SM_AVAILABLE, ctype);
+     lio->ds = (*ds_create)(lio->ess, lio->ifd, stype);
      if (lio->ds == NULL) {
         log_printf(1, "Error loading data service!  type=%s\n", ctype);
+     } else {
+        add_service(lio->ess, DS_SM_RUNNING, ctype, lio->ds);  //** It's used by the block loader
      }
      free(ctype);
 
@@ -520,15 +569,16 @@ lio_config_t *lio_create_nl(char *fname, char *section, char *user)
   }
   lio->da = ds_attr_create(lio->ds);
 
-  lio->ess->ds = lio->ds;  //** This is needed by the RS service
+  add_service(lio->ess, ESS_RUNNING, ESS_DS, lio->ds);  //** This is needed by the RS service
+  add_service(lio->ess, ESS_RUNNING, ESS_DA, lio->da);  //** This is needed by the RS service
 
   stype = inip_get_string(lio->ifd, section, "rs", RS_TYPE_SIMPLE);
   lio->rs_section = stype;
   lio->rs = _lc_object_get(stype);
   if (lio->rs == NULL) {  //** Need to load it
      ctype = inip_get_string(lio->ifd, stype, "type", RS_TYPE_SIMPLE);
-     rs_create = lookup_service(lio->ess->rsm, RS_SM_AVAILABLE, ctype);
-     lio->rs = (*rs_create)(lio->ess, lio->cfg_name, stype);
+     rs_create = lookup_service(lio->ess, RS_SM_AVAILABLE, ctype);
+     lio->rs = (*rs_create)(lio->ess, lio->ifd, stype);
      if (lio->rs == NULL) {
         log_printf(1, "Error loading resource service!  type=%s section=%s\n", ctype, stype);
      }
@@ -536,14 +586,15 @@ lio_config_t *lio_create_nl(char *fname, char *section, char *user)
 
      _lc_object_put(stype, lio->rs);  //** Add it to the table
   }
+  add_service(lio->ess, ESS_RUNNING, ESS_RS, lio->rs);
 
   stype = inip_get_string(lio->ifd, section, "os", "osfile");
   lio->os_section = stype;
   lio->os = _lc_object_get(stype);
   if (lio->os == NULL) {  //** Need to load it
      ctype = inip_get_string(lio->ifd, stype, "type", OS_TYPE_FILE);
-     os_create = lookup_service(lio->ess->osm, 0, ctype);
-     lio->os = (*os_create)(lio->ess->authn_sm, lio->ess->osaz_sm, lio->tpc_cpu, lio->tpc_unlimited, lio->cfg_name, stype);
+     os_create = lookup_service(lio->ess, OS_AVAILABLE, ctype);
+     lio->os = (*os_create)(lio->ess, lio->ifd, stype);
      if (lio->os == NULL) {
         log_printf(1, "Error loading object service!  type=%s section=%s\n", ctype, stype);
      }
@@ -551,6 +602,7 @@ lio_config_t *lio_create_nl(char *fname, char *section, char *user)
 
      _lc_object_put(stype, lio->os);  //** Add it to the table
   }
+  add_service(lio->ess, ESS_RUNNING, ESS_OS, lio->os);
 
   cred_args[0] = lio->cfg_name;
   cred_args[1] = (user == NULL) ? inip_get_string(lio->ifd, section, "user", "guest") : strdup(user);
@@ -577,15 +629,24 @@ lio_config_t *lio_create_nl(char *fname, char *section, char *user)
      stype = inip_get_string(lio->ifd, section, "cache", CACHE_TYPE_AMP);
      ctype = inip_get_string(lio->ifd, stype, "type", CACHE_TYPE_AMP);
 log_printf(0, "CACHE stype=%s ctype=%s\n", stype, ctype);
-     _lio_cache = load_cache(ctype, lio->da, lio->timeout, lio->cfg_name, stype);
+     cache_create = lookup_service(lio->ess, CACHE_LOAD_AVAILABLE, ctype);
+     _lio_cache = (*cache_create)(lio->ess, lio->ifd, stype, lio->da, lio->timeout);
+//     _lio_cache = load_cache(ctype, lio->da, lio->timeout, lio->ifd, stype);
      if (_lio_cache == NULL) {
         log_printf(0, "Error loading cache service!  type=%s\n", ctype);
      }
      free(stype); free(ctype);
   }
-  lio->cache = _lio_cache;
 
-  exnode_system_config(lio->ess, lio->ds, lio->rs, lio->os, lio->tpc_unlimited, lio->tpc_cpu, lio->cache);
+  //** This is just used for creating empty exnodes or dup them.
+  //** Since it's missing the cache it doesn't get added to the global cache list
+  //** and accidentally generate collisions.  Especially useful for mkdir to copy the parent exnode
+  lio->ess_nocache = clone_service_manager(lio->ess);
+
+  lio->cache = _lio_cache;
+  add_service(lio->ess, ESS_RUNNING, ESS_CACHE, lio->cache);
+
+//  exnode_system_config(lio->ess, lio->ds, lio->rs, lio->os, lio->tpc_unlimited, lio->tpc_cpu, lio->cache);
 
   return(lio);
 }
@@ -859,7 +920,6 @@ int lio_init(int *argc, char ***argvp)
 int lio_shutdown()
 {
   cache_destroy(_lio_cache);
-  cache_system_destroy();
 
   exnode_system_destroy();
 

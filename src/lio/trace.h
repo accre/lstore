@@ -73,7 +73,7 @@ typedef struct {
   data_attr_t *da;
 } trace_t;
 
-trace_t *trace_load(exnode_abstract_set_t *exs, exnode_t *template, data_attr_t *da, int timeout, char *fname);
+trace_t *trace_load(service_manager_t *exs, exnode_t *template, data_attr_t *da, int timeout, char *fname);
 void trace_destroy(trace_t *trace);
 void trace_print_summary(trace_t *trace, FILE *fd);
 

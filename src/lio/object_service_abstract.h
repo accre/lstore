@@ -46,6 +46,9 @@ http://www.accre.vanderbilt.edu
 extern "C" {
 #endif
 
+#define OS_AVAILABLE "os_available"
+#define OSAZ_AVAILABLE "osaz_available"
+
 #define OS_PATH_MAX  32768    //** Max path length
 
 #define OS_FSCK_FINISHED  0   //** FSCK scan is finished
@@ -154,7 +157,7 @@ struct object_service_fn_s {
 };
 
 
-typedef object_service_fn_t *(os_create_t)(service_manager_t *authn_sm, service_manager_t *osaz_sm, thread_pool_context_t *tpc_cpu, thread_pool_context_t *tpc_unlimited, char *fname, char *section);
+typedef object_service_fn_t *(os_create_t)(service_manager_t *ess, inip_file_t *ifd, char *section);
 
 #define os_type(os) (os)->type
 #define os_destroy_service(os) (os)->destroy_service(os)
@@ -223,7 +226,7 @@ struct os_authz_s {
 };
 
 
-typedef os_authz_t *(osaz_create_t)(char *fname, char *section, object_service_fn_t *os);
+typedef os_authz_t *(osaz_create_t)(service_manager_t *ess, inip_file_t *ifd, char *section, object_service_fn_t *os);
 
 #define osaz_object_create(osa, c, path) (osa)->object_create(osa, c, path)
 #define osaz_object_remove(osa, c, path) (osa)->object_remove(osa, c, path)

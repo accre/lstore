@@ -62,7 +62,7 @@ typedef struct {
   int disk_cs_blocksize;
 } ds_ibp_attr_t;
 
-data_service_fn_t *ds_ibp_create(void *arg, char *fname_config, char *section);
+data_service_fn_t *ds_ibp_create(void *arg, inip_file_t *ifd, char *section);
 
 #ifdef __cplusplus
 }

@@ -42,8 +42,8 @@ http://www.accre.vanderbilt.edu
 extern "C" {
 #endif
 
-#define RS_SM_AVAILABLE 0
-#define RS_SM_RUNNING   1
+#define RS_SM_AVAILABLE "rs_available"
+#define RS_SM_RUNNING   "rs_running"
 
 #define RS_ERROR_OK                  -100 //** No error everything is good
 #define RS_ERROR_NOT_ENOUGH_RIDS     -101 //** Didn't find enough RIDs for the request
@@ -52,10 +52,23 @@ extern "C" {
 #define RS_ERROR_HINTS_INVALID_LOCAL -104 //** The fixed RID's local RSQ contained a pickone or unique which isn't supported
 #define RS_ERROR_EMPTY_STACK         -105 //** The Query stack is empty so the query is probably malformed
 
-#define RS_STATUS_ON  0  //** THe RID is enabled and available for use
-#define RS_STATUS_OFF 1  //** THe RID is disabled and should be ignored
+#define RS_STATUS_ON     0  //** The RID is enabled and available for use
+#define RS_STATUS_OFF    1  //** The RID is disabled due to space or down and should be ignored
+#define RS_STATUS_IGNORE 2  //** Disabled via config file
 
 typedef struct resource_service_fn_s resource_service_fn_t;
+
+typedef struct {
+  int n_rids_total;
+  int n_rids_free;
+  int n_rids_status[3];
+  int64_t used_total;   //** *_total is for everything in the config file.  Ignoring state
+  int64_t free_total;
+  int64_t total_total;
+  int64_t used_up;;     //** Just totals for depot up, i.e. RS_STATUS_ON
+  int64_t free_up;
+  int64_t total_up;
+} rs_space_t;
 
 typedef void rs_query_t;
 
@@ -72,10 +85,20 @@ typedef struct {
   char *rid_key;
 } rs_request_t;
 
+typedef struct {
+  apr_thread_mutex_t *lock;
+  int map_version;
+  int status_version;
+} rs_mapping_notify_t;
+
 struct resource_service_fn_s {
   void *priv;
   char *type;
   char *(*get_rid_value)(resource_service_fn_t *arg, char *rid_key, char *key);
+  char *(*get_rid_config)(resource_service_fn_t *arg);
+  void (*translate_cap_set)(resource_service_fn_t *arg, char *rid_key, data_cap_set_t *cap);
+  void (*register_mapping_updates)(resource_service_fn_t *arg, rs_mapping_notify_t *map_version);
+  void (*unregister_mapping_updates)(resource_service_fn_t *arg, rs_mapping_notify_t *map_version);
   int  (*query_add)(resource_service_fn_t *arg, rs_query_t **q, int op, char *key, int key_op, char *val, int val_op);
   void (*query_append)(resource_service_fn_t *arg, rs_query_t *q, rs_query_t *qappend);
   rs_query_t *(*query_dup)(resource_service_fn_t *arg, rs_query_t *q);
@@ -86,11 +109,15 @@ struct resource_service_fn_s {
   void (*destroy_service)(resource_service_fn_t *rs);
 };
 
-typedef resource_service_fn_t *(rs_create_t)(void *arg, char *fname, char *section);
+typedef resource_service_fn_t *(rs_create_t)(void *arg, inip_file_t *ifd, char *section);
 
 
 #define rs_type(rs)  (rs)->type
 #define rs_get_rid_value(rs, rid_key, key) (rs)->get_rid_value(rs, rid_key, key)
+#define rs_get_rid_config(rs) (rs)->get_rid_config(rs)
+#define rs_translate_cap_set(rs, rid_key, cs) (rs)->translate_cap_set(rs, rid_key, cs)
+#define rs_register_mapping_updates(rs, notify) (rs)->register_mapping_updates(rs, notify)
+#define rs_unregister_mapping_updates(rs, notify) (rs)->unregister_mapping_updates(rs, notify)
 #define rs_query_add(rs, q, op, key, kop, val, vop) (rs)->query_add(rs, q, op, key, kop, val, vop)
 #define rs_query_append(rs, q, qappend) (rs)->query_append(rs, q, qappend)
 #define rs_query_dup(rs, q) (rs)->query_dup(rs, q)
@@ -100,12 +127,9 @@ typedef resource_service_fn_t *(rs_create_t)(void *arg, char *fname, char *secti
 #define rs_data_request(rs, da, q, caps, req, n_req, hints_list, fixed_size, n_rid, to) (rs)->data_request(rs, da, q, caps, req, n_req, hints_list, fixed_size, n_rid, to)
 #define rs_destroy_service(rs) (rs)->destroy_service(rs)
 
-void resource_service_destroy(resource_service_fn_t *rsf);
+rs_space_t rs_space(char *config);
 
-//int install_resource_service(char *type, resource_service_fn_t *(*rs_create)(char *fname, data_service_fn_t *ds, char *section));
-//resource_service_fn_t *load_resource_service(char *type, char *fname, data_service_fn_t *ds, char *section);
-//resource_service_fn_t *add_resource_service(resource_service_fn_t *rs);
-//resource_service_fn_t *lookup_resource_service(char *type);
+void resource_service_destroy(resource_service_fn_t *rsf);
 
 #ifdef __cplusplus
 }

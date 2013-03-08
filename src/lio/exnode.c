@@ -359,7 +359,7 @@ void exnode_exchange_append_text(exnode_exchange_t *exp, char *buffer)
 //  exnode_deserialize_text - Storea a text based exnode
 //*************************************************************************
 
-int exnode_deserialize_text(exnode_t *ex, exnode_exchange_t *exp, exnode_abstract_set_t *ess)
+int exnode_deserialize_text(exnode_t *ex, exnode_exchange_t *exp, service_manager_t *ess)
 {
   inip_group_t *g;
   inip_element_t *ele;
@@ -426,7 +426,7 @@ int exnode_deserialize_text(exnode_t *ex, exnode_exchange_t *exp, exnode_abstrac
 // exnode_deserialize_proto - Deserializes the exnode from a google protobuf
 //*************************************************************************
 
-int exnode_deserialize_proto(exnode_t *ex, exnode_exchange_t *exp, exnode_abstract_set_t *ess)
+int exnode_deserialize_proto(exnode_t *ex, exnode_exchange_t *exp, service_manager_t *ess)
 {
   return(-1);
 }
@@ -435,7 +435,7 @@ int exnode_deserialize_proto(exnode_t *ex, exnode_exchange_t *exp, exnode_abstra
 // exnode_deserialize - Deserializes the exnode
 //*************************************************************************
 
-int exnode_deserialize(exnode_t *ex, exnode_exchange_t *exp, exnode_abstract_set_t *ess)
+int exnode_deserialize(exnode_t *ex, exnode_exchange_t *exp, service_manager_t *ess)
 {
   if (exp->type == EX_TEXT) {
      return(exnode_deserialize_text(ex, exp, ess));

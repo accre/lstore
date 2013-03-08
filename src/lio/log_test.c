@@ -227,7 +227,7 @@ int main(int argc, char **argv)
   //*************************************************************************
   clone = NULL;
   assert(gop_sync_exec(segment_clone(seg, lio_gc->da, &clone, CLONE_STRUCTURE, NULL, lio_gc->timeout)) == OP_STATE_SUCCESS);
-  assert(gop_sync_exec(segment_copy(lio_gc->ess->tpc_unlimited, lio_gc->da, seg, clone, 0, 0, bufsize, chunk_size, buffer, 0, lio_gc->timeout)) == OP_STATE_SUCCESS);
+  assert(gop_sync_exec(segment_copy(lio_gc->tpc_unlimited, lio_gc->da, seg, clone, 0, 0, bufsize, chunk_size, buffer, 0, lio_gc->timeout)) == OP_STATE_SUCCESS);
   memset(buffer, 0, bufsize);
   assert(gop_sync_exec(segment_read(clone, lio_gc->da, 1, &ex_iov, &tbuf, 0, lio_gc->timeout)) == OP_STATE_SUCCESS);
   assert(compare_buffers_print(buffer, base_data, bufsize, 0) == 0);

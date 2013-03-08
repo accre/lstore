@@ -209,18 +209,18 @@ void rs_zmq_destroy(resource_service_fn_t *rs)
 }
 
 //********************************************************************
-// rs_zmq_create - Creates a zmq resource management service. 
+// rs_zmq_create - Creates a zmq resource management service.
 //********************************************************************
-resource_service_fn_t *rs_zmq_create(void *arg, char *fname, char *section)
+resource_service_fn_t *rs_zmq_create(void *arg, inip_file_t *kf, char *section)
 {
-    exnode_abstract_set_t *ess = (exnode_abstract_set_t *)arg;
+    service_manager_t *ess = (service_manager_t *)arg;
 
 log_printf(15, "START!!!!!!!!!!!!!!!!!!\n"); flush_log();
     //** Creates zmq context
     void *context = zmq_ctx_new();
     assert(context != NULL);
-  
-    //** Creates zmq request (ZMQ_REQ) socket 
+
+    //** Creates zmq request (ZMQ_REQ) socket
     void *socket = zmq_socket(context, ZMQ_REQ);
     assert(socket != NULL);
 
@@ -229,19 +229,12 @@ log_printf(15, "START!!!!!!!!!!!!!!!!!!\n"); flush_log();
     type_malloc_clear(rsz, rs_zmq_priv_t, 1);
     rsz->zmq_context = context;
     rsz->zmq_socket = socket;
-    rsz->ds = ess->ds;
+    rsz->ds = lookup_service(ess, ESS_RUNNING, ESS_DS);
 
     //** Don't know which thread pool context I should use. So create a new one for rs zmq. 
-    rsz->tpc = ess->tpc_unlimited; //** Refers to lio_gc->tpc_unlimited in lio_login.c
+    rsz->tpc = lookup_service(ess, ESS_RUNNING, ESS_TPC_UNLIMITED); //** Refers to lio_gc->tpc_unlimited in lio_login.c
 
-    inip_file_t *kf;
     char *svr_proto, *svr_addr, *svr_port;
-
-    kf = inip_read(fname);
-    if (kf == NULL) {
-	log_printf(0, "rs_zmq_create: Error parsing config file! file=%s\n", fname);
-	return(NULL);
-    }
 
     //** Retrieves remote zmq server name, transport protocol, and lisenting port
     svr_proto = inip_get_string(kf, section, "protocol", RS_ZMQ_DFT_PROTO);
@@ -253,8 +246,6 @@ log_printf(15, "START!!!!!!!!!!!!!!!!!!\n"); flush_log();
     free(svr_addr);
     free(svr_port);
 
-    inip_destroy(kf);
-    
     //** Creates the resource service
     resource_service_fn_t *rs; 
     type_malloc_clear(rs, resource_service_fn_t, 1);

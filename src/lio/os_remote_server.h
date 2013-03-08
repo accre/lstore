@@ -25,56 +25,24 @@ Advanced Computing Center for Research and Education
 230 Appleton Place
 Nashville, TN 37203
 http://www.accre.vanderbilt.edu
-*/ 
+*/
 
 //***********************************************************************
-// Linear exnode3 support
+// OS Remote SERVER header file
 //***********************************************************************
 
+#include "object_service_abstract.h"
 
-#include "list.h"
-#include "ex3_abstract.h"
-#include "cache.h"
-#include "service_manager.h"
-
-#ifndef _EX3_SYSTEM_H_
-#define _EX3_SYSTEM_H_
+#ifndef _OS_REMOTE_SERVER_H_
+#define _OS_REMOTE_SERVER_H_
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#define ESS_RUNNING "ess_running"
-#define ESS_DS      "ds"
-#define ESS_DA      "da"
-#define ESS_RS      "rs"
-#define ESS_OS      "os"
-#define ESS_TPC_CPU "tpc_cpu"
-#define ESS_TPC_UNLIMITED  "tpc_unlimited"
-#define ESS_CACHE      "cache"
-#define ESS_MQ      "mq"
+#define OS_TYPE_REMOTE_SERVER "os_remote_server"
 
-#define MQ_TYPE_ZMQ "mq_zmq"
-#define MQ_AVAILABLE "mq_available"
-
-extern service_manager_t *exnode_service_set;
-
-
-//** ex3_global functions
-int ex3_set_default_ds(data_service_fn_t *ds);
-data_service_fn_t *ex3_get_default_ds();
-int ex3_set_default_rs(resource_service_fn_t *rs);
-resource_service_fn_t *ex3_get_default_rs();
-int ex3_set_default_os(object_service_fn_t *os);
-object_service_fn_t *ex3_get_default_os();
-
-//int exnode_system_init(data_service_fn_t *ds, resource_service_fn_t *rs, object_service_fn_t *os, thread_pool_context_t *tpc_unlimited, thread_pool_context_t *tpc_cpu, cache_t *c);
-service_manager_t *exnode_service_set_create();
-void exnode_service_set_destroy(service_manager_t *ess);
-int exnode_system_init();
-int exnode_system_config(service_manager_t *ess, data_service_fn_t *ds, resource_service_fn_t *rs, object_service_fn_t *os, thread_pool_context_t *tpc_unlimited, thread_pool_context_t *tpc_cpu, cache_t *cache);
-
-void exnode_system_destroy();
+object_service_fn_t *object_service_remote_server_create(service_manager_t *ess, inip_file_t *fd, char *section);
 
 #ifdef __cplusplus
 }

@@ -25,37 +25,55 @@ Advanced Computing Center for Research and Education
 230 Appleton Place
 Nashville, TN 37203
 http://www.accre.vanderbilt.edu
-*/ 
+*/
 
 //***********************************************************************
-// OS file header file
+// Remote OS implementation for the Server side
 //***********************************************************************
+
+#define _log_module_index 214
 
 #include "object_service_abstract.h"
+#include "type_malloc.h"
+#include "log.h"
+#include "atomic_counter.h"
+#include "thread_pool.h"
+#include "os_remote_client.h"
+#include "os_remote_server_priv.h"
+#include "append_printf.h"
 
-#ifndef _OS_FILE_H_
-#define _OS_FILE_H_
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+//***********************************************************************
+// os_remote_server_destroy
+//***********************************************************************
 
-#define OS_TYPE_FILE "file"
+void os_remote_server_destroy(object_service_fn_t *os)
+{
+  osrs_priv_t *osrs = (osrs_priv_t *)os->priv;
 
-typedef struct {
-  object_service_fn_t *os;
-  os_object_iter_t  *oit;
-} local_object_iter_t;
+  apr_pool_destroy(osrs->mpool);
 
-int local_next_object(local_object_iter_t *it, char **myfname, int *prefix_len);
-local_object_iter_t *create_local_object_iter(os_regex_table_t *path, os_regex_table_t *object_regex, int object_types, int recurse_depth);
-void destroy_local_object_iter(local_object_iter_t *it);
-
-object_service_fn_t *object_service_file_create(service_manager_t *ess, inip_file_t *ifd, char *section);
-
-#ifdef __cplusplus
+  free(osrs->host_ros);
+  free(osrs);
+  free(os);
 }
-#endif
 
-#endif
+
+//***********************************************************************
+//  object_service_remote_client_create - Creates a remote client OS
+//***********************************************************************
+
+object_service_fn_t *object_service_remote_server_create(service_manager_t *ess, inip_file_t *ifd, char *section)
+{
+  object_service_fn_t *os;
+  osrs_priv_t *osrs;
+
+  if (section == NULL) section = "os_remote_client";
+
+  type_malloc_clear(os, object_service_fn_t, 1);
+  type_malloc_clear(osrs, osrs_priv_t, 1);
+  os->priv = (void *)osrs;
+
+  return(os);
+}
 

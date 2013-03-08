@@ -50,6 +50,7 @@ typedef struct {
   segment_t *table_seg;
   segment_t *data_seg;
   segment_t *base_seg;
+  data_service_fn_t *ds;
   interval_skiplist_t *mapping;
   thread_pool_context_t *tpc;
   ex_off_t file_size;

@@ -54,7 +54,12 @@ typedef struct {
   int n_shift;
   int hard_errors;
   int grow_break;
+  int map_version;
+  int inprogress_count;
+  rs_mapping_notify_t notify;
   interval_skiplist_t *isl;
+  resource_service_fn_t *rs;
+  data_service_fn_t *ds;
 } seglun_priv_t;
 
 #ifdef __cplusplus

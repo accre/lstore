@@ -37,11 +37,12 @@ find_package(ToolBox REQUIRED)
 find_package(GOP REQUIRED)
 find_package(IBP REQUIRED)
 find_package(ZMQ REQUIRED)
+find_package(CZMQ REQUIRED)
 find_package(FUSE REQUIRED)
 
 include_directories(${OPENSSL_INCLUDE_DIR} ${PROTOBUF_INCLUDE_DIR} ${APR_INCLUDE_DIR} ${APRUTIL_INCLUDE_DIR} ${PHOEBUS_INCLUDE_DIR}
-   ${HWLOC_INCLUDE_DIR} ${JERASURE_INCLUDE_DIR} ${TOOLBOX_INCLUDE_DIR} ${GOP_INCLUDE_DIR} ${IBP_INCLUDE_DIR} ${FUSE_INCLUDE_DIR} )
-SET(LIBS ${LIBS} ${IBP_LIBRARY} ${GOP_LIBRARY} ${TOOLBOX_LIBRARY} ${JERASURE_LIBRARY} ${OPENSSL_LIBRARIES} ${CRYPTO_LIBRARIES} 
+   ${HWLOC_INCLUDE_DIR} ${JERASURE_INCLUDE_DIR} ${TOOLBOX_INCLUDE_DIR} ${GOP_INCLUDE_DIR} ${IBP_INCLUDE_DIR} ${FUSE_INCLUDE_DIR} ${CZMQ_INCLUDE_DIR} )
+SET(LIBS ${LIBS} ${IBP_LIBRARY} ${GOP_LIBRARY} ${CZMQ_LIBRARY} ${TOOLBOX_LIBRARY} ${JERASURE_LIBRARY} ${OPENSSL_LIBRARIES} ${CRYPTO_LIBRARIES} 
    ${PROTOBUF_LIBRARY} ${APR_LIBRARY} ${APRUTIL_LIBRARY} ${HWLOC_LIBRARY} xml2 ${ZMQ_LIBRARY} ${FUSE_LIBRARY} pthread m dl rt)
 
 #Make the version file
@@ -59,6 +60,8 @@ set(LIO_OBJS
    ds_ibp.c
    os_base.c
    os_file.c
+   os_remote_client.c
+   os_remote_server.c
    osaz_fake.c
    ex3_global.c
    ex3_header.c
@@ -71,7 +74,10 @@ set(LIO_OBJS
    lio_core.c
    rs_query_base.c
    rs_simple.c
+   rs_space.c
    rs_zmq.c
+   rs_remote_client.c
+   rs_remote_server.c
    rsz_request.pb-c.c
    rsz_req.pb-c.c
    rsz_cap.pb-c.c
@@ -88,6 +94,7 @@ set(LIO_OBJS
    cache_base.c
    cache_lru.c
    cache_amp.c
+   cache_round_robin.c
    segment_jerasure.c
    erasure_tools.c
    raid4.c
@@ -107,7 +114,7 @@ SET_TARGET_PROPERTIES(lio-static PROPERTIES CLEAN_DIRECT_OUTPUT 1)
 set(LIO_EXE 
     mk_linear ex_load ex_get ex_put ex_inspect ex_clone ex_rw_test log_test rs_test rs_test_svr os_test os_fsck
     lio_touch lio_mkdir lio_rmdir lio_rm lio_ln lio_find lio_ls lio_du lio_setattr lio_getattr lio_mv lio_cp
-    lio_put lio_get lio_signature lio_warm lio_inspect lio_fsck
+    lio_put lio_get lio_signature lio_warm lio_inspect lio_fsck lio_rs rs_server
 )
 
 #Make static executables by default
@@ -138,7 +145,7 @@ install(FILES
    cache_lru.h       ds_ibp.h                 ex3_fmttypes.h  ex3_types.h        os_file.h        segment_cache.h       segment_log.h       transfer_buffer.h
    cache_lru_priv.h  ds_ibp_priv.h            ex3_header.h    exnode3.h          raid4.h          segment_cache_priv.h  segment_log_priv.h  view_layout.h
    cache_priv.h      erasure_tools.h          ex3_linear.h    exnode3.pb-c.h     rs_query_base.h  segment_file.h        segment_lun.h       cache.h
-   authn_abstract.h  authn_fake.h      osaz_fake.h
+   authn_abstract.h  authn_fake.h      	      osaz_fake.h     rs_remote.h
    DESTINATION include/lio )
 
 

@@ -80,7 +80,7 @@ void load_file(char *fname, char **val, int *v_size)
 
 int main(int argc, char **argv)
 {
-  int i, rg_mode, start_index, start_option, fin, ftype, prefix_len;
+  int i, rg_mode, start_option, fin, ftype, prefix_len;
   lio_path_tuple_t tuple;
   os_regex_table_t *rp_single, *ro_single, *attr_regex;
   os_object_iter_t *it;
@@ -187,7 +187,6 @@ int main(int argc, char **argv)
         //for(err=0; err<n_keys; err++) printf("key[%d]=%s\n", err, key[err]);
      }
   } while ((start_option < i) && (i<argc));
-  start_index = i;
 
   //** Convert all the format strings
   new_obj_fmt = argv2format(new_obj_fmt);

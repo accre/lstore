@@ -42,7 +42,7 @@ extern "C" {
 
 #define AUTHN_TYPE_FAKE "fake"
 
-authn_t *authn_fake_create(char *fname, char *section);
+authn_t *authn_fake_create(service_manager_t *ess, inip_file_t *ifd, char *section);
 
 #ifdef __cplusplus
 }

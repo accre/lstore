@@ -39,47 +39,24 @@ http://www.accre.vanderbilt.edu
 #include "log.h"
 
 //***********************************************************************
-//  set_service_type_arg - Sets the generic priv arg for the service type
+//  remove_service - Removes a service
 //***********************************************************************
 
-int set_service_type_arg(service_manager_t *sm, int sm_type, void *arg)
+int remove_service(service_manager_t *sm, char *service_section, char *service_name)
 {
+  apr_hash_t *section;
+
   apr_thread_mutex_lock(sm->lock);
 
-  if (sm_type >= sm->n) {
-     log_printf(0, "Index out of bounds!  sm_type=%d n_max=%d\n", sm_type, sm->n);
-     apr_thread_mutex_unlock(sm->lock);
-     return(1);
-  }
+  section = apr_hash_get(sm->table, service_section, APR_HASH_KEY_STRING);
+  if (section == NULL) goto finished;
 
-  sm->arg[sm_type] = arg;
+  apr_hash_set(section, service_name, APR_HASH_KEY_STRING, NULL);
 
+finished:
   apr_thread_mutex_unlock(sm->lock);
 
   return(0);
-}
-
-//***********************************************************************
-//  set_service_type_arg - Sets the generic priv arg for the service type
-//***********************************************************************
-
-void *get_service_type_arg(service_manager_t *sm, int sm_type)
-{
-  void *arg;
-
-  apr_thread_mutex_lock(sm->lock);
-
-  if (sm_type >= sm->n) {
-     log_printf(0, "Index out of bounds!  sm_type=%d n_max=%d\n", sm_type, sm->n);
-     apr_thread_mutex_unlock(sm->lock);
-     return(NULL);
-  }
-
-  arg = sm->arg[sm_type];
-
-  apr_thread_mutex_unlock(sm->lock);
-
-  return(arg);
 }
 
 
@@ -87,20 +64,25 @@ void *get_service_type_arg(service_manager_t *sm, int sm_type)
 //  add_service - Adds a service to the appropriate list
 //***********************************************************************
 
-int add_service(service_manager_t *sm, int sm_type, char *service_name, void *service)
+int add_service(service_manager_t *sm, char *service_section, char *service_name, void *service)
 {
   char *key;
+  apr_hash_t *section;
 
   apr_thread_mutex_lock(sm->lock);
 
-  if (sm_type >= sm->n) {
-     log_printf(0, "Index out of bounds!  sm_type=%d n_max=%d\n", sm_type, sm->n);
-     apr_thread_mutex_unlock(sm->lock);
-     return(1);
+  log_printf(15, "adding section=%s service=%s\n", service_section, service_name);
+
+  section = apr_hash_get(sm->table, service_section, APR_HASH_KEY_STRING);
+  if (section == NULL) {  //** New section so create the table and insert it
+     log_printf(15, "Creating section=%s\n", service_section);
+     section = apr_hash_make(sm->pool);
+     key = apr_pstrdup(sm->pool, service_section);
+     apr_hash_set(sm->table, key, APR_HASH_KEY_STRING, section);
   }
 
   key = apr_pstrdup(sm->pool, service_name);
-  apr_hash_set(sm->queue[sm_type], key, APR_HASH_KEY_STRING, service);
+  apr_hash_set(section, key, APR_HASH_KEY_STRING, service);
 
   apr_thread_mutex_unlock(sm->lock);
 
@@ -108,28 +90,57 @@ int add_service(service_manager_t *sm, int sm_type, char *service_name, void *se
 }
 
 //***********************************************************************
-// lookup_data_service - returns the current DS for the given type
+// lookup_service - Returns the currrent object associated with the service
 //***********************************************************************
 
-void *lookup_service(service_manager_t *sm, int sm_type, char *service_name)
+void *lookup_service(service_manager_t *sm, char *service_section, char *service_name)
 {
   void *s;
+  apr_hash_t *section;
 
   apr_thread_mutex_lock(sm->lock);
 
-  if (sm_type >= sm->n) {
-     log_printf(0, "Index out of bounds!  sm_type=%d n_max=%d\n", sm_type, sm->n);
+  section = apr_hash_get(sm->table, service_section, APR_HASH_KEY_STRING);
+  if (section == NULL) {  //** New section so create the table and insert it
+     log_printf(10, "No matching section for section=%s name=%s\n", service_section, service_name);
      apr_thread_mutex_unlock(sm->lock);
      return(NULL);
   }
 
-  s = apr_hash_get(sm->queue[sm_type], service_name, APR_HASH_KEY_STRING);
+  s = apr_hash_get(section, service_name, APR_HASH_KEY_STRING);
   if (s == NULL) {
-    log_printf(0, "No matching driver for type=%s\n", service_name);
+    log_printf(10, "No matching object for section=%s name=%\n", service_section, service_name);
   }
   apr_thread_mutex_unlock(sm->lock);
 
   return(s);
+}
+
+//***********************************************************************
+// clone_service_manager - Clones an existing SM
+//***********************************************************************
+
+service_manager_t *clone_service_manager(service_manager_t *sm)
+{
+  apr_ssize_t klen;
+  service_manager_t *clone;
+  apr_hash_index_t *his;
+  apr_hash_t *section, *clone_section;
+  char *key;
+
+  //** Make an empty SM
+  clone = create_service_manager(sm);
+
+  //** Now cycle through all the tables and copy them
+  apr_thread_mutex_lock(sm->lock);
+  for (his = apr_hash_first(NULL, sm->table); his != NULL; his = apr_hash_next(his)) {
+     apr_hash_this(his, (const void **)&key, &klen, (void **)&section);
+     clone_section = apr_hash_copy(clone->pool, section);
+     apr_hash_set(clone->table, apr_pstrdup(clone->pool, key), APR_HASH_KEY_STRING, clone_section);
+  }
+  apr_thread_mutex_unlock(sm->lock);
+
+  return(clone);
 }
 
 //***********************************************************************
@@ -139,8 +150,6 @@ void *lookup_service(service_manager_t *sm, int sm_type, char *service_name)
 void destroy_service_manager(service_manager_t *sm)
 {
    apr_pool_destroy(sm->pool);
-   free(sm->queue);
-   free(sm->arg);
    free(sm);
 }
 
@@ -149,22 +158,16 @@ void destroy_service_manager(service_manager_t *sm)
 // create_service_manager - Creates a new SM for use
 //***********************************************************************
 
-service_manager_t *create_service_manager(int n)
+service_manager_t *create_service_manager()
 {
-  int i;
   service_manager_t *sm;
 
   type_malloc_clear(sm, service_manager_t, 1);
 
   apr_pool_create(&sm->pool, NULL);
   apr_thread_mutex_create(&sm->lock, APR_THREAD_MUTEX_DEFAULT, sm->pool);
-  sm->n = n;
 
-  type_malloc(sm->queue, apr_hash_t *, n);
-  type_malloc_clear(sm->arg, void *, n);
-  for (i=0; i<n; i++) {
-     sm->queue[i] = apr_hash_make(sm->pool);
-  }
+  sm->table = apr_hash_make(sm->pool);
 
   return(sm);
 }

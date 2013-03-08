@@ -25,56 +25,32 @@ Advanced Computing Center for Research and Education
 230 Appleton Place
 Nashville, TN 37203
 http://www.accre.vanderbilt.edu
-*/ 
+*/
 
 //***********************************************************************
-// Linear exnode3 support
+// OS Remote Server private header file
 //***********************************************************************
 
+#include "object_service_abstract.h"
+#include "authn_abstract.h"
+#include "mq_portal.h"
+//#include "chksum.h"
+//#include <openssl/md5.h>
 
-#include "list.h"
-#include "ex3_abstract.h"
-#include "cache.h"
-#include "service_manager.h"
-
-#ifndef _EX3_SYSTEM_H_
-#define _EX3_SYSTEM_H_
+#ifndef _OS_REMOTE_SERVER_PRIV_H_
+#define _OS_REMOTE_SERVER_PRIV_H_
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#define ESS_RUNNING "ess_running"
-#define ESS_DS      "ds"
-#define ESS_DA      "da"
-#define ESS_RS      "rs"
-#define ESS_OS      "os"
-#define ESS_TPC_CPU "tpc_cpu"
-#define ESS_TPC_UNLIMITED  "tpc_unlimited"
-#define ESS_CACHE      "cache"
-#define ESS_MQ      "mq"
+typedef struct {
+  object_service_fn_t *os_actual;  //** Actual OS used
+  mq_context_t *mqc;          //** Portal for connecting to he remote OS server
+  char *host_ros;              //** ADdress of the Remote OS server
+  apr_pool_t *mpool;
+} osrs_priv_t;
 
-#define MQ_TYPE_ZMQ "mq_zmq"
-#define MQ_AVAILABLE "mq_available"
-
-extern service_manager_t *exnode_service_set;
-
-
-//** ex3_global functions
-int ex3_set_default_ds(data_service_fn_t *ds);
-data_service_fn_t *ex3_get_default_ds();
-int ex3_set_default_rs(resource_service_fn_t *rs);
-resource_service_fn_t *ex3_get_default_rs();
-int ex3_set_default_os(object_service_fn_t *os);
-object_service_fn_t *ex3_get_default_os();
-
-//int exnode_system_init(data_service_fn_t *ds, resource_service_fn_t *rs, object_service_fn_t *os, thread_pool_context_t *tpc_unlimited, thread_pool_context_t *tpc_cpu, cache_t *c);
-service_manager_t *exnode_service_set_create();
-void exnode_service_set_destroy(service_manager_t *ess);
-int exnode_system_init();
-int exnode_system_config(service_manager_t *ess, data_service_fn_t *ds, resource_service_fn_t *rs, object_service_fn_t *os, thread_pool_context_t *tpc_unlimited, thread_pool_context_t *tpc_cpu, cache_t *cache);
-
-void exnode_system_destroy();
 
 #ifdef __cplusplus
 }

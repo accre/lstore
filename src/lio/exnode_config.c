@@ -39,48 +39,44 @@ http://www.accre.vanderbilt.edu
 #include "type_malloc.h"
 #include "random.h"
 
-exnode_abstract_set_t *exnode_service_set = NULL;
+service_manager_t *exnode_service_set = NULL;
 
 //***********************************************************************
 //  exnode_service_set_create - Creates a default ESS
 //***********************************************************************
 
-exnode_abstract_set_t *exnode_service_set_create()
+service_manager_t *exnode_service_set_create()
 {
-  exnode_abstract_set_t *ess;
+  service_manager_t *ess;
 
-  type_malloc_clear(ess, exnode_abstract_set_t, 1);
-  ess->dsm = create_service_manager(2);
-  ess->rsm = create_service_manager(1);
-  ess->ssm = create_service_manager(2);
-  ess->osm = create_service_manager(1);
-  ess->authn_sm = create_service_manager(1);
-  ess->osaz_sm = create_service_manager(1);
+  ess = create_service_manager();
 
   //** Install the drivers
-  set_service_type_arg(ess->ssm, SEG_SM_LOAD, ess);
-  set_service_type_arg(ess->ssm, SEG_SM_CREATE, ess);
-  add_service(ess->ssm, SEG_SM_LOAD, SEGMENT_TYPE_LINEAR, segment_linear_load);  add_service(ess->ssm, SEG_SM_CREATE, SEGMENT_TYPE_LINEAR, segment_linear_create);
-  add_service(ess->ssm, SEG_SM_LOAD, SEGMENT_TYPE_FILE, segment_file_load);  add_service(ess->ssm, SEG_SM_CREATE, SEGMENT_TYPE_FILE, segment_file_create);
-  add_service(ess->ssm, SEG_SM_LOAD, SEGMENT_TYPE_CACHE, segment_cache_load);  add_service(ess->ssm, SEG_SM_CREATE, SEGMENT_TYPE_CACHE, segment_cache_create);
-  add_service(ess->ssm, SEG_SM_LOAD, SEGMENT_TYPE_LUN, segment_lun_load);  add_service(ess->ssm, SEG_SM_CREATE, SEGMENT_TYPE_LUN, segment_lun_create);
-  add_service(ess->ssm, SEG_SM_LOAD, SEGMENT_TYPE_JERASURE, segment_jerasure_load);  add_service(ess->ssm, SEG_SM_CREATE, SEGMENT_TYPE_JERASURE, segment_jerasure_create);
-  add_service(ess->ssm, SEG_SM_LOAD, SEGMENT_TYPE_LOG, segment_log_load);  add_service(ess->ssm, SEG_SM_CREATE, SEGMENT_TYPE_LOG, segment_log_create);
+  add_service(ess, SEG_SM_LOAD, SEGMENT_TYPE_LINEAR, segment_linear_load);     add_service(ess, SEG_SM_CREATE, SEGMENT_TYPE_LINEAR, segment_linear_create);
+  add_service(ess, SEG_SM_LOAD, SEGMENT_TYPE_FILE, segment_file_load);         add_service(ess, SEG_SM_CREATE, SEGMENT_TYPE_FILE, segment_file_create);
+  add_service(ess, SEG_SM_LOAD, SEGMENT_TYPE_CACHE, segment_cache_load);       add_service(ess, SEG_SM_CREATE, SEGMENT_TYPE_CACHE, segment_cache_create);
+  add_service(ess, SEG_SM_LOAD, SEGMENT_TYPE_LUN, segment_lun_load);           add_service(ess, SEG_SM_CREATE, SEGMENT_TYPE_LUN, segment_lun_create);
+  add_service(ess, SEG_SM_LOAD, SEGMENT_TYPE_JERASURE, segment_jerasure_load); add_service(ess, SEG_SM_CREATE, SEGMENT_TYPE_JERASURE, segment_jerasure_create);
+  add_service(ess, SEG_SM_LOAD, SEGMENT_TYPE_LOG, segment_log_load);           add_service(ess, SEG_SM_CREATE, SEGMENT_TYPE_LOG, segment_log_create);
 
-  add_service(ess->rsm, RS_SM_AVAILABLE, RS_TYPE_SIMPLE, rs_simple_create);
-  add_service(ess->rsm, RS_SM_AVAILABLE, RS_TYPE_ZMQ, rs_zmq_create);
+  add_service(ess, RS_SM_AVAILABLE, RS_TYPE_SIMPLE, rs_simple_create);
+  add_service(ess, RS_SM_AVAILABLE, RS_TYPE_REMOTE_CLIENT, rs_remote_client_create);
+  add_service(ess, RS_SM_AVAILABLE, RS_TYPE_REMOTE_SERVER, rs_remote_server_create);
+  add_service(ess, RS_SM_AVAILABLE, RS_TYPE_ZMQ, rs_zmq_create);
 
-  add_service(ess->dsm, DS_SM_AVAILABLE, DS_TYPE_IBP, ds_ibp_create);
+  add_service(ess, DS_SM_AVAILABLE, DS_TYPE_IBP, ds_ibp_create);
 
-  add_service(ess->osm, 0, OS_TYPE_FILE, object_service_file_create);
+  add_service(ess, OS_AVAILABLE, OS_TYPE_FILE, object_service_file_create);
+  add_service(ess, OS_AVAILABLE, OS_TYPE_REMOTE_CLIENT, object_service_remote_client_create);
+  add_service(ess, OS_AVAILABLE, OS_TYPE_REMOTE_SERVER, object_service_remote_server_create);
 
-  add_service(ess->authn_sm, 0, AUTHN_TYPE_FAKE, authn_fake_create);
+  add_service(ess, AUTHN_AVAILABLE, AUTHN_TYPE_FAKE, authn_fake_create);
 
-  add_service(ess->osaz_sm, 0, AUTHN_TYPE_FAKE, osaz_fake_create);
+  add_service(ess, OSAZ_AVAILABLE, OSAZ_TYPE_FAKE, osaz_fake_create);
 
-//  install_authn_service(AUTHN_TYPE_FAKE, authn_fake_create);
-
-//  install_os_authz_service(OSAZ_TYPE_FAKE, osaz_fake_create);
+  add_service(ess, CACHE_LOAD_AVAILABLE, CACHE_TYPE_LRU, lru_cache_load);   add_service(ess, CACHE_CREATE_AVAILABLE, CACHE_TYPE_LRU, lru_cache_create);
+  add_service(ess, CACHE_LOAD_AVAILABLE, CACHE_TYPE_AMP, amp_cache_load);   add_service(ess, CACHE_CREATE_AVAILABLE, CACHE_TYPE_AMP, amp_cache_create);
+  add_service(ess, CACHE_LOAD_AVAILABLE, CACHE_TYPE_ROUND_ROBIN, round_robin_cache_load);   add_service(ess, CACHE_CREATE_AVAILABLE, CACHE_TYPE_ROUND_ROBIN, round_robin_cache_create);
 
   return(ess);
 }
@@ -89,15 +85,9 @@ exnode_abstract_set_t *exnode_service_set_create()
 // exnode_service_set_destroy - Destroys an ESS
 //***********************************************************************
 
-void exnode_service_set_destroy(exnode_abstract_set_t *ess)
+void exnode_service_set_destroy(service_manager_t *ess)
 {
-  destroy_service_manager(ess->dsm);
-  destroy_service_manager(ess->rsm);
-  destroy_service_manager(ess->ssm);
-  destroy_service_manager(ess->osm);
-  destroy_service_manager(ess->authn_sm);
-  destroy_service_manager(ess->osaz_sm);
-  free(ess);
+  destroy_service_manager(ess);
 }
 
 //***********************************************************************
@@ -110,8 +100,6 @@ int exnode_system_init()
 
   exnode_service_set = exnode_service_set_create();
 
-  cache_system_init();
-
   return(0);
 }
 
@@ -120,16 +108,15 @@ int exnode_system_init()
 // exnode_system_config - Configures  the exnode system for use
 //***********************************************************************
 
-int exnode_system_config(exnode_abstract_set_t *ess, data_service_fn_t *ds, resource_service_fn_t *rs, object_service_fn_t *os, thread_pool_context_t *tpc_unlimited, thread_pool_context_t *tpc_cpu, cache_t *cache)
+int exnode_system_config(service_manager_t *ess, data_service_fn_t *ds, resource_service_fn_t *rs, object_service_fn_t *os, thread_pool_context_t *tpc_unlimited, thread_pool_context_t *tpc_cpu, cache_t *cache)
 {
-  ess->ds = ds;
-  ess->rs = rs;
-  ess->os = os;
-  ess->tpc_unlimited = tpc_unlimited;
-  ess->tpc_cpu = tpc_cpu;
-  ess->cache = cache;
 
-  add_service(ess->dsm, DS_SM_RUNNING, DS_TYPE_IBP, ds);
+  add_service(ess, ESS_RUNNING, ESS_DS, ds);
+  add_service(ess, ESS_RUNNING, ESS_RS, rs);
+  add_service(ess, ESS_RUNNING, ESS_OS, os);
+  add_service(ess, ESS_RUNNING, ESS_TPC_CPU, tpc_cpu);
+  add_service(ess, ESS_RUNNING, ESS_TPC_UNLIMITED, tpc_unlimited);
+  add_service(ess, ESS_RUNNING, ESS_CACHE, cache);
 
   return(0);
 }

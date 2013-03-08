@@ -2178,7 +2178,7 @@ char *resolve_hardlink(object_service_fn_t *os, char *src_path, int add_prefix)
   osfile_priv_t *osf = (osfile_priv_t *)os->priv;
   char *hpath, *tmp;
   char buffer[OS_PATH_MAX];
-  int offset, n, i;
+  int n, i;
 
   if (add_prefix == 1) {
      hpath = object_attr_dir(os, osf->file_path, src_path, OS_OBJECT_FILE);
@@ -2196,7 +2196,7 @@ char *resolve_hardlink(object_service_fn_t *os, char *src_path, int add_prefix)
   buffer[n] = 0;
   log_printf(15, "file_path=%s fullname=%s link=%s\n", osf->file_path, src_path, buffer);
 
-  offset = osf->hardlink_path_len;
+//  offset = osf->hardlink_path_len;
 //  hpath = &(buffer[osf->hardlink_path_len]);
   hpath = buffer;
   tmp = strstr(hpath, FILE_ATTR_PREFIX "/" FILE_ATTR_PREFIX);
@@ -3912,15 +3912,14 @@ void osfile_destroy(object_service_fn_t *os)
 //  object_service_file_create - Creates a file backed OS
 //***********************************************************************
 
-object_service_fn_t *object_service_file_create(service_manager_t *authn_sm, service_manager_t *osaz_sm, thread_pool_context_t *tpc_cpu, thread_pool_context_t *tpc_unlimited, char *fname, char *section)
+object_service_fn_t *object_service_file_create(service_manager_t *ess, inip_file_t *fd, char *section)
 {
-  inip_file_t *fd;
   object_service_fn_t *os;
   osfile_priv_t *osf;
   osaz_create_t *osaz_create;
   authn_create_t *authn_create;
   char pname[OS_PATH_MAX], pattr[OS_PATH_MAX];
-  char *atype;
+  char *atype, *asection;
   int i, err;
 
   if (section == NULL) section = "osfile";
@@ -3929,49 +3928,46 @@ object_service_fn_t *object_service_file_create(service_manager_t *authn_sm, ser
   type_malloc_clear(osf, osfile_priv_t, 1);
   os->priv = (void *)osf;
 
-  osf->tpc = tpc_unlimited;
+  osf->tpc = lookup_service(ess, ESS_RUNNING, ESS_TPC_UNLIMITED);
   osf->base_path = NULL;
-  if (fname == NULL) {
+  if (fd == NULL) {
      osf->base_path = strdup("./osfile");
-     osaz_create = lookup_service(osaz_sm, 0, OSAZ_TYPE_FAKE);
-     osf->osaz = (*osaz_create)(NULL, NULL, os);
-     authn_create = lookup_service(authn_sm, 0, OSAZ_TYPE_FAKE);
-     osf->authn = (*authn_create)(NULL, NULL);
+     osaz_create = lookup_service(ess, OSAZ_AVAILABLE, OSAZ_TYPE_FAKE);
+     osf->osaz = (*osaz_create)(ess, NULL, NULL, os);
+     authn_create = lookup_service(ess, AUTHN_AVAILABLE, AUTHN_TYPE_FAKE);
+     osf->authn = (*authn_create)(ess, NULL, NULL);
      osf->internal_lock_size = 200;
      osf->max_copy = 1024*1024;
      osf->hardlink_dir_size = 256;
   } else {
-     fd = inip_read(fname);
      osf->base_path = inip_get_string(fd, section, "base_path", "./osfile");
-     atype = inip_get_string(fd, section, "authz", OSAZ_TYPE_FAKE);
      osf->internal_lock_size = inip_get_integer(fd, section, "lock_table_size", 200);
      osf->max_copy = inip_get_integer(fd, section, "max_copy", 1024*1024);
      osf->hardlink_dir_size = inip_get_integer(fd, section, "hardlink_dir_size", 256);
-     osaz_create = lookup_service(osaz_sm, 0, atype);
-     osf->osaz = (*osaz_create)(fname, NULL, os);
-     free(atype);
+     asection = inip_get_string(fd, section, "authz", NULL);
+     atype = (asection == NULL) ? strdup(OSAZ_TYPE_FAKE) : inip_get_string(fd, asection, "type", OSAZ_TYPE_FAKE);
+     osaz_create = lookup_service(ess, OSAZ_AVAILABLE, atype);
+     osf->osaz = (*osaz_create)(ess, fd, asection, os);
+     free(atype);  free(asection);
      if (osf->osaz == NULL) {
         free(osf->base_path);
         free(osf);
         free(os);
-        inip_destroy(fd);
         return(NULL);
      }
 
-     atype = inip_get_string(fd, section, "authn", AUTHN_TYPE_FAKE);
-     authn_create = lookup_service(authn_sm, 0, atype);
-     osf->authn = (*authn_create)(fname, NULL);
-     free(atype);
+     asection = inip_get_string(fd, section, "authn", NULL);
+     atype = (asection == NULL) ? strdup(AUTHN_TYPE_FAKE) : inip_get_string(fd, asection, "type", AUTHN_TYPE_FAKE);
+     authn_create = lookup_service(ess, AUTHN_AVAILABLE, atype);
+     osf->authn = (*authn_create)(ess, fd, asection);
+     free(atype); free(asection);
      if (osf->osaz == NULL) {
         free(osf->base_path);
         osaz_destroy(osf->osaz);
         free(osf);
         free(os);
-        inip_destroy(fd);
         return(NULL);
      }
-
-     inip_destroy(fd);
   }
 
   snprintf(pname, OS_PATH_MAX, "%s/%s", osf->base_path, "file");

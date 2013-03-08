@@ -89,7 +89,6 @@ int lio_init(int *argc, int **argv)
   lio_gc->ic = ibp_create_context();  //** Initialize IBP
   lio_gc->ds = ds_ibp_create(ic);
   lio_gc->da = ds_attr_create(ds);
-  cache_system_init();
   lio_gc->timeout = 120;
 
   if (lio_gc->cfg_name != NULL) {
@@ -120,7 +119,6 @@ int lio_init(int *argc, int **argv)
 int lio_shutdown()
 {
   cache_destroy(lio_gc->cache);
-  cache_system_destroy();
 
   exnode_system_destroy();
 

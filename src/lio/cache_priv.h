@@ -170,6 +170,7 @@ struct cache_fn_s {
   void (*cache_miss_tag)(cache_t *c, segment_t *seg, int rw_mode, ex_off_t lo, ex_off_t hi, ex_off_t missing_offset, void **miss);
   int (*s_page_access)(cache_t *c, cache_page_t *p, int rw_mode, ex_off_t request_len);
   int (*s_pages_release)(cache_t *c, cache_page_t **p, int n_pages);
+  cache_t *(*get_handle)(cache_t *);
   int (*destroy)(cache_t *c);
 };
 
@@ -197,18 +198,15 @@ extern atomic_int_t _cache_count;
 #define unique_cache_id() atomic_inc(_cache_count);
 #define cache_lock(c) apr_thread_mutex_lock((c)->lock)
 #define cache_unlock(c) apr_thread_mutex_unlock((c)->lock)
+#define cache_get_handle(c) (c)->fn.get_handle(c)
 #define cache_destroy(c) (c)->fn.destroy(c)
 
-int install_cache(char *type, cache_t *(*driver)(void *arg, data_attr_t *da, int timeout, char *fname, char *section), cache_t *(*create)(void *arg, data_attr_t *da, int timeout), void *arg);
-cache_t *load_cache(char *ctype, data_attr_t *da, int timeout, char *fname, char *section);
-cache_t *create_cache(char *type, data_attr_t *da, int timeout);
 cache_stats_t get_cache_stats(cache_t *c);
+cache_t *cache_base_handle(cache_t *);
 void cache_base_destroy(cache_t *c);
 void cache_base_create(cache_t *c, data_attr_t *da, int timeout);
 void *cache_cond_new(void *arg, int size);
 void cache_cond_free(void *arg, int size, void *data);
-void cache_system_init();
-void cache_system_destroy();
 op_generic_t *cache_flush_range(segment_t *seg, data_attr_t *da, ex_off_t lo, ex_off_t hi, int timeout);
 int cache_drop_pages(segment_t *seg, ex_off_t lo, ex_off_t hi);
 int cache_release_pages(int n_pages, page_handle_t *page, int rw_mode);

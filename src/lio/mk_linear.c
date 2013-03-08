@@ -86,7 +86,7 @@ int main(int argc, char **argv)
   }
 
   //** Create an empty linear segment
-  screate = lookup_service(lio_gc->ess->ssm, SEG_SM_CREATE, SEGMENT_TYPE_LINEAR);
+  screate = lookup_service(lio_gc->ess, SEG_SM_CREATE, SEGMENT_TYPE_LINEAR);
   seg = (*screate)(lio_gc->ess);
 
   //** Parse the query

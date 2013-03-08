@@ -1317,6 +1317,8 @@ int lfs_read(const char *fname, char *buf, size_t size, off_t off, struct fuse_f
   ex_iovec_t exv;
   int err;
   ex_off_t ssize, pend;
+  apr_time_t now;
+  double dt;
 
 ex_off_t t1, t2;
   t1 = size; t2 = off;
@@ -1329,6 +1331,8 @@ ex_off_t t1, t2;
 
   lfs = fd->fh->lfs;
 
+  now = apr_time_now();
+
   //** Do the read op
   ssize = segment_size(fd->fh->seg);
   pend = off + size;
@@ -1339,13 +1343,17 @@ ex_off_t t1, t2;
   tbuffer_single(&tbuf, size, buf);
   ex_iovec_single(&exv, off, size);
   err = gop_sync_exec(segment_read(fd->fh->seg, lfs->lc->da, 1, &exv, &tbuf, 0, lfs->lc->timeout));
+
+  dt = apr_time_now() - now;
+  dt /= APR_USEC_PER_SEC;
+  log_printf(1, "END fname=%s seg=" XIDT " size=" XOT " off=" XOT " dt=%lf\n", fname, segment_id(fd->fh->seg), t1, t2, dt); flush_log();
+
   if (err != OP_STATE_SUCCESS) {
      log_printf(1, "ERROR with read! fname=%s\n", fname);
      return(-EIO);
   }
 
   return(size);
-  log_printf(1, "START fname=%s\n", fname); flush_log();
 }
 
 //*****************************************************************
@@ -1643,7 +1651,6 @@ void lfs_set_tape_attr(lio_fuse_t *lfs, char *fname, char *mytape_val, int tape_
   lio_inode_t *inode;
   exnode_exchange_t *exp;
   exnode_t *ex, *cex;
-  exnode_abstract_set_t my_ess;
 
   type_malloc(tape_val, char, tape_size+1);
   memcpy(tape_val, mytape_val, tape_size);
@@ -1725,14 +1732,11 @@ log_printf(15, "nkeys=%d fname=%s ftype=%d\n", nkeys, fname, ftype);
      //** If this has a caching segment we need to disable it from being adding
      //** to the global cache table cause there could be multiple copies of the
      //** same segment being serialized/deserialized.
-     my_ess = *(lfs->lc->ess);
-     my_ess.cache = NULL;
-
      //** Deserialize it
      exp = exnode_exchange_create(EX_TEXT);
      exp->text = val[ex_key];
      ex = exnode_create();
-     exnode_deserialize(ex, exp, &my_ess);
+     exnode_deserialize(ex, exp, lfs->lc->ess_nocache);
      free(val[ex_key]); val[ex_key] = NULL;
      exp->text = NULL;
 
@@ -2287,18 +2291,25 @@ void *lfs_gc_thread(apr_thread_t *th, void *data)
 
 int lfs_statfs(const char *fname, struct statvfs *fs)
 {
+  lio_fuse_t *lfs = lfs_gc;
+  rs_space_t space;
+  char *config;
+
   memset(fs, 0, sizeof(struct statvfs));
-  ex_off_t nblocks;
 
-  nblocks = lfs_gc->fs_size / 4096;
+  log_printf(1, "fname=%s\n", fname);
 
-  log_printf(1, "fname=%s fs_size=" XOT " nblocks=" XOT "\n", fname, lfs_gc->fs_size, nblocks);
+  //** Get the config
+  config = rs_get_rid_config(lfs->lc->rs);
+
+  //** And parse it
+  space = rs_space(config);
+  free(config);
 
   fs->f_bsize = 4096;
-//  fs->f_frsize = 4096;
-  fs->f_blocks = nblocks;
-  fs->f_bfree = nblocks;
-  fs->f_bavail = nblocks;
+  fs->f_blocks = space.total_up / 4096;
+  fs->f_bfree = space.free_up / 4096;
+  fs->f_bavail = fs->f_bfree;
   fs->f_files = 1;
   fs->f_ffree = (ex_off_t)1024*1024*1024*1024*1024;
 //  fs->f_favail =

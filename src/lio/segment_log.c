@@ -515,7 +515,7 @@ int _slog_load(segment_t *seg)
   ex_iovec_t ex_iov;
   tbuffer_t tbuf;
 
-  da = ds_attr_create(seg->ess->ds);
+  da = ds_attr_create(s->ds);
 
   s->file_size = segment_size(s->base_seg);
   s->log_size = segment_size(s->table_seg);
@@ -555,7 +555,7 @@ log_printf(15, "r->lo=" XOT " r->len(hi)=" XOT " r->data_offset=" XOT "\n", r->l
 
 log_printf(15, "FINAL:  fsize=" XOT " lsize=" XOT " dsize=" XOT "\n", s->file_size, s->log_size, s->data_size);
 
-  ds_attr_destroy(seg->ess->ds, da);
+  ds_attr_destroy(s->ds, da);
 
   if (err_count > 0) {
      if ((err_count == 1) && (last_bad == 1)) {
@@ -1266,7 +1266,7 @@ log_printf(15, "seglog_destroy: seg->id=" XIDT " ref_count=%d\n", segment_id(seg
 
 segment_t *segment_log_create(void *arg)
 {
-  exnode_abstract_set_t *es = (exnode_abstract_set_t *)arg;
+  service_manager_t *es = (service_manager_t *)arg;
   seglog_priv_t *s;
   segment_t *seg;
 
@@ -1286,7 +1286,9 @@ segment_t *segment_log_create(void *arg)
   apr_thread_cond_create(&(seg->cond), seg->mpool);
 
   seg->ess = es;
-  s->tpc = es->tpc_unlimited;
+  s->tpc = lookup_service(es, ESS_RUNNING, ESS_TPC_UNLIMITED);
+  s->ds = lookup_service(es, ESS_RUNNING, ESS_DS);
+
   seg->fn.read = seglog_read;
   seg->fn.write = seglog_write;
   seg->fn.inspect = seglog_inspect;
@@ -1329,7 +1331,7 @@ segment_t *slog_make(service_manager_t *sm, segment_t *table, segment_t *data, s
   screate = lookup_service(sm, SEG_SM_CREATE, SEGMENT_TYPE_LOG);
   if (screate == NULL) return(NULL);
 
-  seg = (*screate)(get_service_type_arg(sm, SEG_SM_CREATE));
+  seg = (*screate)(sm);
   s = (seglog_priv_t *)seg->priv;
   s->table_seg = table;
   s->data_seg = data;

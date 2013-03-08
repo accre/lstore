@@ -622,7 +622,7 @@ op_generic_t *segment_file_make(segment_t *seg, data_attr_t *da, char *fname)
 
 segment_t *segment_file_create(void *arg)
 {
-  exnode_abstract_set_t *es = (exnode_abstract_set_t *)arg;
+  service_manager_t *es = (service_manager_t *)arg;
   segfile_priv_t *s;
   segment_t *seg;
   char qname[512];
@@ -637,8 +637,7 @@ segment_t *segment_file_create(void *arg)
   atomic_set(seg->ref_count, 0);
   seg->header.type = SEGMENT_TYPE_FILE;
 
-//  s->tpc = es->tpc_cpu;
-  s->tpc = es->tpc_unlimited;
+  s->tpc = lookup_service(es, ESS_RUNNING, ESS_TPC_UNLIMITED);
   snprintf(qname, sizeof(qname), XIDT HP_HOSTPORT_SEPARATOR "1" HP_HOSTPORT_SEPARATOR "0" HP_HOSTPORT_SEPARATOR "0", seg->header.id);
   s->qname = strdup(qname);
 
