@@ -30,6 +30,7 @@ http://www.accre.vanderbilt.edu
 #define _log_module_index 193
 
 #include <stdlib.h>
+#include <unistd.h>
 #include "lio.h"
 #include "type_malloc.h"
 #include "log.h"
@@ -152,6 +153,38 @@ void lio_path_release(lio_path_tuple_t *tuple)
   apr_thread_mutex_unlock(_lc_lock);
 
   return;
+}
+
+//***************************************************************
+// lio_path_local_make_absolute - Converts the local relative
+//     path to an absolute one.
+//***************************************************************
+
+void lio_path_local_make_absolute(lio_path_tuple_t *tuple)
+{
+  char *p;
+  int i, n, last_slash, glob_index;
+
+  if (tuple->path == NULL) return;
+
+  p = tuple->path;
+  n = strlen(p);
+  last_slash = 0;
+  glob_index = -1;
+  if ((p[0] == '*') || (p[0] == '?') || (p[0] == '[')) return;
+
+  for (i=1; i<n; i++) {
+    if (p[i] == '/') last_slash = i;
+    if ((p[i] == '*') || (p[i] == '?') || (p[i] == '[')) {
+       if (p[i-1] != '\\') { glob_index = i; break; }
+    }
+  }
+
+log_printf(0, "p=%s len=%d last_slash=%d glob=%d\n", p, n, last_slash, glob_index);
+  if (glob_index == -1) last_slash = n;
+  p[last_slash] = 0;
+  tuple->path = realpath(p, NULL);
+  free(p);
 }
 
 //***************************************************************

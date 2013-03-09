@@ -148,6 +148,7 @@ void lioc_get_error_counts(lio_config_t *lc, segment_t *seg, int *hard_errors, i
 void lioc_update_error_counts(lio_config_t *lc, creds_t *creds, char *path, segment_t *seg);
 void lc_object_remove_unused(int remove_all_unused);
 void lio_path_release(lio_path_tuple_t *tuple);
+void lio_path_local_make_absolute(lio_path_tuple_t *tuple);
 int lio_path_wildcard_auto_append(lio_path_tuple_t *tuple);
 lio_path_tuple_t lio_path_resolve(char *startpath);
 int lio_parse_path(char *startpath, char **user, char **service, char **path);
