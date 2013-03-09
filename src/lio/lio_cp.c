@@ -716,7 +716,6 @@ log_printf(15, "n_paths=%d argc=%d si=%d dtype=%d\n", n_paths, argc, start_index
 
   for (i=0; i<n_paths; i++) {
      flist[i].src_tuple = lio_path_resolve(argv[i+start_index]);
-log_printf(0, "i=%d is_lio=%d path=%s\n", i, flist[i].src_tuple.is_lio, flist[i].src_tuple.path);
      if (flist[i].src_tuple.is_lio == 0) lio_path_local_make_absolute(&(flist[i].src_tuple));
      flist[i].dest_tuple = dtuple;
      flist[i].dest_type = dtype;

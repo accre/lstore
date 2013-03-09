@@ -180,7 +180,6 @@ void lio_path_local_make_absolute(lio_path_tuple_t *tuple)
     }
   }
 
-log_printf(0, "p=%s len=%d last_slash=%d glob=%d\n", p, n, last_slash, glob_index);
   if (glob_index == -1) last_slash = n;
   p[last_slash] = 0;
   tuple->path = realpath(p, NULL);
