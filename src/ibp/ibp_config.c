@@ -623,19 +623,11 @@ void ibp_cc_load(inip_file_t *kf, ibp_context_t *cfg)
 // ibp_load_config - Loads the ibp client config
 //**********************************************************
 
-int ibp_load_config(ibp_context_t *ic, char *fname, char *section)
+int ibp_load_config(ibp_context_t *ic, inip_file_t *keyfile, char *section)
 {
-  inip_file_t *keyfile;
   apr_time_t t = 0;
 
   if (section == NULL) section = "ibp";
-
-  //* Load the config file
-  keyfile = inip_read(fname);
-  if (keyfile == NULL) {
-    log_printf(0, "ibp_load_config:  Error parsing config file! file=%s\n", fname);
-    return(-1);
-  }
 
   ic->abort_conn_attempts = inip_get_integer(keyfile, section, "abort_attempts", ic->abort_conn_attempts);
   t = inip_get_integer(keyfile, section, "min_idle", 0);
@@ -659,15 +651,37 @@ int ibp_load_config(ibp_context_t *ic, char *fname, char *section)
   ibp_cc_load(keyfile, ic);
 
   phoebus_load_config(keyfile);
-  
-  inip_destroy(keyfile);   //Free the keyfile context
 
   copy_ibp_config(ic);
 
-log_printf(0, "fname=%s section=%s cmode=%d min_depot_threads=%d max_depot_threads=%d max_connections=%d max_thread_workload=%d coalesce_enable=%d\n", fname, section, ic->connection_mode, ic->min_threads, ic->max_threads, ic->max_connections, ic->max_workload, ic->coalesce_enable);
+log_printf(0, "section=%s cmode=%d min_depot_threads=%d max_depot_threads=%d max_connections=%d max_thread_workload=%d coalesce_enable=%d\n", section, ic->connection_mode, ic->min_threads, ic->max_threads, ic->max_connections, ic->max_workload, ic->coalesce_enable);
 
   return(0);
 }
+
+//**********************************************************
+// ibp_load_config_file - Loads the ibp client config from a text file
+//**********************************************************
+
+int ibp_load_config_file(ibp_context_t *ic, char *fname, char *section)
+{
+  inip_file_t *keyfile;
+  int err;
+
+  //* Load the config file
+  keyfile = inip_read(fname);
+  if (keyfile == NULL) {
+    log_printf(0, "Error parsing config file! file=%s\n", fname);
+    return(-1);
+  }
+
+  err = ibp_load_config(ic, keyfile, section);
+
+  inip_destroy(keyfile);
+
+  return(err);
+}
+
 
 //**********************************************************
 // default_ibp_config - Sets the default ibp config options

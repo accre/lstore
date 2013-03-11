@@ -731,7 +731,7 @@ int main(int argc, char **argv)
 
   if (strcmp(argv[i], "-config") == 0) { //** Read the config file
      i++;
-     ibp_load_config(ic, argv[i], NULL);
+     ibp_load_config_file(ic, argv[i], NULL);
      i++;
   }
 
