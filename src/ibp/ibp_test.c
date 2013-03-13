@@ -1403,7 +1403,7 @@ printf("22222222222222222222222222222222222111111111111111111111111111111\n"); f
        i++;
     } else if (strcmp(argv[i], "-config") == 0) { //** Read the config file
        i++;
-       ibp_load_config(ic, argv[i], NULL);
+       ibp_load_config_file(ic, argv[i], NULL);
 log_printf(0, "cmode=%d\n", ic->connection_mode);
        i++;
     } else if (strcmp(argv[i], "-no-async") == 0) { //** Skip the async test

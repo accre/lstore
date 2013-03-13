@@ -45,6 +45,7 @@ http://www.accre.vanderbilt.edu
 #include "pigeon_coop.h"
 #include "list.h"
 #include "atomic_counter.h"
+#include "iniparse.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -407,7 +408,8 @@ void ibp_set_max_retry(ibp_context_t *ic, int n);
 int  ibp_get_max_retry(ibp_context_t *ic);
 void ibp_set_read_cc(ibp_context_t *ic, ibp_connect_context_t *cc);
 void ibp_set_write_cc(ibp_context_t *ic, ibp_connect_context_t *cc);
-int ibp_load_config(ibp_context_t *ic, char *fname, char *section);
+int ibp_load_config(ibp_context_t *ic, inip_file_t *ifd, char *section);
+int ibp_load_config_file(ibp_context_t *ic, char *fname, char *section);
 //void set_ibp_config(ibp_config_t *cfg);
 void default_ibp_config(ibp_context_t *ic);
 ibp_context_t *ibp_create_context();

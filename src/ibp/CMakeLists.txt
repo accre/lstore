@@ -70,15 +70,8 @@ SET(IBP_OBJS
     ibp_errno.c 
     ibp_client_version.c 
     iovec_sync.c 
+    io_wrapper.c
 )
-
-#message("proto src is ${PROTO_SRC}")
-# various executables
-ADD_EXECUTABLE( ibp_perf ibp_perf.c io_wrapper.c ${IBP_OBJS} )
-ADD_EXECUTABLE( ibp_copyperf ibp_copyperf.c io_wrapper.c ${IBP_OBJS} )
-ADD_EXECUTABLE( ibp_test ibp_test.c io_wrapper.c ${IBP_OBJS} )
-ADD_EXECUTABLE( ibp_tool ibp_tool.c ${IBP_OBJS} )
-ADD_EXECUTABLE( ibp_find_drive ibp_find_drive.c io_wrapper.c ${IBP_OBJS} )
 
 ADD_LIBRARY( ibp SHARED ${IBP_OBJS})
 ADD_LIBRARY( ibp-static STATIC ${IBP_OBJS})
@@ -91,12 +84,13 @@ SET(ibp_lib ibp-static)
 #To use shared libs
 #SET(ibp_lib ibp)
 
-TARGET_LINK_LIBRARIES( ibp_perf ${ibp_lib} ${LIBS})
-TARGET_LINK_LIBRARIES( ibp_test ${ibp_lib} ${LIBS})
-TARGET_LINK_LIBRARIES( ibp_copyperf ${ibp_lib} ${LIBS})
-TARGET_LINK_LIBRARIES( ibp_tool ${ibp_lib}  ${LIBS})
-TARGET_LINK_LIBRARIES( ibp_find_drive ${ibp_lib} ${LIBS})
+SET(EXE ibp_perf ibp_test ibp_copyperf ibp_tool ibp_find_drive)
+foreach (f ${EXE})
+   ADD_EXECUTABLE( ${f} ${f}.c ${IBP_OBJS} )
+   TARGET_LINK_LIBRARIES( ${f} ${ibp_lib} ${LIBS})
+endforeach(f)
 
+install(FILES ${EXE} DESTINATION bin)
 install(TARGETS ibp DESTINATION lib)
 install(TARGETS ibp-static DESTINATION lib)
 install(FILES 

@@ -101,15 +101,12 @@ int parse_cap(ibp_context_t *ic, ibp_cap_t *cap, char *host, int *port, char *ke
   int i, j, n, m;
   char rr[16];
 
-  host[MAX_HOST_SIZE-1] = '\0';
-  key[MAX_KEY_SIZE-1] = '\0';
-  typekey[MAX_KEY_SIZE-1] = '\0';
+  host[MAX_HOST_SIZE-1] = '\0'; host[0] = '\0';
+  key[MAX_KEY_SIZE-1] = '\0';   key[0] = '\0';
+  typekey[MAX_KEY_SIZE-1] = '\0'; typekey[0] = '\0';
+  *port = -1;
 
-  if (cap == NULL) {
-     host[0] = '\0'; key[0] = '\0'; typekey[0] = '\0';
-     *port = -1;
-     return(1);
-  }
+  if (cap == NULL) return(1);
 
   char *temp = strdup(cap);
   char *ptr;

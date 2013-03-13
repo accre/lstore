@@ -468,7 +468,7 @@ int main(int argc, char **argv)
         disk_blocksize = atoi(argv[i])*1024; i++;
      } else if (strcmp(argv[i], "-config") == 0) { //** Read the config file
         i++;
-        ibp_load_config(ic, argv[i], NULL);
+        ibp_load_config_file(ic, argv[i], NULL);
         i++;
      } else if (strcmp(argv[i], "-tcpsize") == 0) { //** Change the tcp buffer size
         i++;
