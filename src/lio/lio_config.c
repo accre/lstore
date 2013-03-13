@@ -227,6 +227,7 @@ void lio_path_local_make_absolute(lio_path_tuple_t *tuple)
   char path[OS_PATH_MAX];
   char c;
 
+log_printf(5, "initial path=%s\n", tuple->path);
   if (tuple->path == NULL) return;
 
   p = tuple->path;
@@ -378,6 +379,7 @@ finished:
   if (pp_userid != NULL) free(pp_userid);
 
   tuple.is_lio = is_lio;
+log_printf(5, "path=%s is_lio=%d\n", tuple.path, tuple.is_lio);
   return(tuple);
 }
 
@@ -436,6 +438,7 @@ lio_path_tuple_t lio_path_resolve(int auto_fuse_convert, char *lpath)
 
   tuple = lio_path_resolve_base(lpath);
 
+log_printf(5, "auto_fuse_convert=%d\n", auto_fuse_convert);
   if ((tuple.is_lio == 0) && (auto_fuse_convert > 0)) {
      return(lio_path_auto_fuse_convert(&tuple));
   }
@@ -657,6 +660,7 @@ lio_config_t *lio_create_nl(char *fname, char *section, char *user)
 
   type_malloc_clear(lio, lio_config_t, 1);
   lio->ess = exnode_service_set_create();
+  lio->auto_translate = 1;
 
   //** Add it to the table for ref counting
   snprintf(buffer, sizeof(buffer), "lc:%s", section);

@@ -138,6 +138,8 @@ log_printf(15, "inspecting fname=%s\n", w->fname);
 log_printf(15, "whattodo=%d\n", whattodo);
   //** Execute the inspection operation
   gop = segment_inspect(seg, lio_gc->da, lio_ifd, whattodo, bufsize, lio_gc->timeout);
+  if (gop == NULL) { printf("File not found.\n"); return(op_failure_status); }
+
 log_printf(15, "fname=%s inspect_gid=%d whattodo=%d\n", w->fname, gop_id(gop), whattodo);
 
 flush_log();
@@ -254,6 +256,8 @@ int main(int argc, char **argv)
 
   i=1;
   force_repair = 0;
+  global_whattodo = INSPECT_QUICK_CHECK;
+
   do {
      start_option = i;
 
