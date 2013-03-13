@@ -57,6 +57,7 @@ ADD_EXECUTABLE(mq_test mq_test.c)
 SET_TARGET_PROPERTIES(mq_test PROPERTIES LINKER_LANGUAGE CXX)
 TARGET_LINK_LIBRARIES(mq_test gop-static ${LIBS})
 
+install(FILES ${LIO_EXE} DESTINATION bin)
 install(TARGETS gop DESTINATION lib)
 install(TARGETS gop-static DESTINATION lib)
 install(FILES callback.h gop_config.h  host_portal.h  opque.h  thread_pool.h mq_portal.h
