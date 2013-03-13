@@ -90,7 +90,7 @@ foreach (f ${EXE})
    TARGET_LINK_LIBRARIES( ${f} ${ibp_lib} ${LIBS})
 endforeach(f)
 
-install(FILES ${EXE} DESTINATION bin)
+install(TARGETS ${EXE} DESTINATION bin)
 install(TARGETS ibp DESTINATION lib)
 install(TARGETS ibp-static DESTINATION lib)
 install(FILES 
