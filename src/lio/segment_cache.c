@@ -3027,7 +3027,7 @@ int segcache_deserialize_text(segment_t *seg, ex_id_t id, exnode_exchange_t *exp
 
   //** If total_size is -1 or child is smaller use the size from child
   child_size = segment_size(s->child_seg);
-  if ((s->total_size < 0) || (s->total_size > child_size)) s->total_size = child_size;
+//QWERT CHECK  if ((s->total_size < 0) || (s->total_size > child_size)) s->total_size = child_size;
 
   //** Determine the child segment size so we don't have to call it
   //** on R/W and risk getting blocked due to child grow operations

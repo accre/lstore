@@ -72,7 +72,7 @@ int main(int argc, char **argv)
   }
 
   //** Get the source
-  tuple = lio_path_resolve(argv[start_index]);
+  tuple = lio_path_resolve(lio_gc->auto_translate, argv[start_index]);
 
   //** Check if it exists
   ftype = lioc_exists(tuple.lc, tuple.creds, tuple.path);

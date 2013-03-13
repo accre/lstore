@@ -250,7 +250,7 @@ int main(int argc, char **argv)
   //*** Parse the path args
   rg_mode = 0;
   rp_single = ro_single = NULL;
-  rg_mode = lio_parse_path_options(&argc, argv, &tuple, &rp_single, &ro_single);
+  rg_mode = lio_parse_path_options(&argc, argv, lio_gc->auto_translate, &tuple, &rp_single, &ro_single);
 
   i=1;
   force_repair = 0;
@@ -293,7 +293,7 @@ int main(int argc, char **argv)
      }
 
      //** Create the simple path iterator
-     tuple = lio_path_resolve(argv[start_index]);
+     tuple = lio_path_resolve(lio_gc->auto_translate, argv[start_index]);
      rp_single = os_path_glob2regex(tuple.path);
   }
 

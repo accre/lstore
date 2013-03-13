@@ -124,6 +124,7 @@ struct lio_config_s {
   int timeout;
   int max_attr;
   int anonymous_creation;
+  int auto_translate;
 };
 
 typedef struct {
@@ -145,17 +146,19 @@ int lioc_set_attr(lio_config_t *lc, creds_t *creds, char *path, char *id, char *
 int lioc_get_multiple_attrs(lio_config_t *lc, creds_t *creds, char *path, char *id, char **key, void **val, int *v_size, int n_keys);
 int lioc_get_attr(lio_config_t *lc, creds_t *creds, char *path, char *id, char *key, void **val, int *v_size);
 void lioc_get_error_counts(lio_config_t *lc, segment_t *seg, int *hard_errors, int *soft_errors);
-void lioc_update_error_counts(lio_config_t *lc, creds_t *creds, char *path, segment_t *seg);
+int lioc_update_error_counts(lio_config_t *lc, creds_t *creds, char *path, segment_t *seg);
 void lc_object_remove_unused(int remove_all_unused);
 void lio_path_release(lio_path_tuple_t *tuple);
 void lio_path_local_make_absolute(lio_path_tuple_t *tuple);
 int lio_path_wildcard_auto_append(lio_path_tuple_t *tuple);
-lio_path_tuple_t lio_path_resolve(char *startpath);
+lio_path_tuple_t lio_path_auto_fuse_convert(lio_path_tuple_t *tuple);
+lio_path_tuple_t lio_path_resolve_base(char *startpath);
+lio_path_tuple_t lio_path_resolve(int auto_fuse_convert, char *startpath);
 int lio_parse_path(char *startpath, char **user, char **service, char **path);
 lio_fn_t *lio_core_create();
 void lio_core_destroy(lio_config_t *lio);
 void lio_print_path_options(FILE *fd);
-int lio_parse_path_options(int *argc, char **argv, lio_path_tuple_t *tuple, os_regex_table_t **rp, os_regex_table_t **ro);
+int lio_parse_path_options(int *argc, char **argv, int auto_mode, lio_path_tuple_t *tuple, os_regex_table_t **rp, os_regex_table_t **ro);
 void lio_print_options(FILE *fd);
 int lio_init(int *argc, char ***argv);
 int lio_shutdown();

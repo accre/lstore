@@ -76,7 +76,7 @@ int main(int argc, char **argv)
   q = new_opque();
   opque_start_execution(q);
   for (i=0; i<n; i++) {
-     flist[i] = lio_path_resolve(argv[i+1]);
+     flist[i] = lio_path_resolve(lio_gc->auto_translate, argv[i+1]);
      rpath[i] = os_path_glob2regex(flist[i].path);
      gop = lio_remove_regex_object(flist[i].lc, flist[i].creds, rpath[i], NULL, OS_OBJECT_DIR, 0, lio_parallel_task_count);
      gop_set_myid(gop, i);

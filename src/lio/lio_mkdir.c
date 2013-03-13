@@ -149,7 +149,7 @@ int main(int argc, char **argv)
   q = new_opque();
   opque_start_execution(q);
   for (i=0; i<n; i++) {
-     flist[i] = lio_path_resolve(argv[i+start_index]);
+     flist[i] = lio_path_resolve(lio_gc->auto_translate, argv[i+start_index]);
      gop = new_thread_pool_op(lio_gc->tpc_unlimited, NULL, mkdir_fn, (void *)&(flist[i]), NULL, 1);
      gop_set_myid(gop, i);
 log_printf(0, "gid=%d i=%d fname=%s\n", gop_id(gop), i, flist[i].path);

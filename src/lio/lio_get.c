@@ -64,7 +64,6 @@ int main(int argc, char **argv)
   }
 
   lio_init(&argc, &argv);
-
   i=1;
   do {
      start_option = i;
@@ -88,7 +87,7 @@ int main(int argc, char **argv)
   type_malloc(buffer, char, bufsize+1);
 
   //** Get the source
-  tuple = lio_path_resolve(argv[start_index]);
+  tuple = lio_path_resolve(lio_gc->auto_translate, argv[start_index]);
 
   //** Check if it exists
   ftype = lioc_exists(tuple.lc, tuple.creds, tuple.path);
@@ -116,6 +115,7 @@ int main(int argc, char **argv)
   seg = exnode_get_default(ex);
   if (seg == NULL) {
      info_printf(lio_ifd, 0, "No default segment!  Aborting!\n");
+     err = 1;
      goto finished;
   }
 
@@ -127,7 +127,8 @@ int main(int argc, char **argv)
   }
 
   //** Update the error count if needed
-  lioc_update_error_counts(tuple.lc, tuple.creds, tuple.path, seg);
+  err = lioc_update_error_counts(tuple.lc, tuple.creds, tuple.path, seg);
+  if (err > 0) info_printf(lio_ifd, 0, "Failed downloading data!  path=%s\n", tuple.path);
 
   exnode_destroy(ex);
   exnode_exchange_destroy(exp);
@@ -139,7 +140,7 @@ finished:
 
   lio_shutdown();
 
-  return(0);
+  return(err);
 }
 
 

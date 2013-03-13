@@ -78,7 +78,7 @@ int main(int argc, char **argv)
   rg_mode = 0;
   rp_single = ro_single = NULL;
 
-  rg_mode = lio_parse_path_options(&argc, argv, &tuple, &rp_single, &ro_single);
+  rg_mode = lio_parse_path_options(&argc, argv, lio_gc->auto_translate, &tuple, &rp_single, &ro_single);
 
   i=1;
   do {
@@ -122,7 +122,7 @@ int main(int argc, char **argv)
   q = new_opque();
   opque_start_execution(q);
   for (i=0; i<n; i++) {
-     flist[i] = lio_path_resolve(argv[i+start_index]);
+     flist[i] = lio_path_resolve(lio_gc->auto_translate, argv[i+start_index]);
      rpath[i] = os_path_glob2regex(flist[i].path);
      gop = lio_remove_regex_object(flist[i].lc, flist[i].creds, rpath[i], NULL, obj_types, recurse_depth, lio_parallel_task_count);
      gop_set_myid(gop, i);

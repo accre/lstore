@@ -83,7 +83,6 @@ int main(int argc, char **argv)
   owner = NULL;
   exnode_mode = 0;
   size_mode = 0;
-
   i=1;
   do {
      start_option = i;
@@ -129,7 +128,7 @@ int main(int argc, char **argv)
   }
 
   //** Create the simple path iterator
-  tuple = lio_path_resolve(argv[i]);
+  tuple = lio_path_resolve(lio_gc->auto_translate, argv[i]);
 
   info_printf(lio_ifd, 0, "--------------------------------------------------------------------\n");
   if (owner_mode == LIO_FSCK_USER) {

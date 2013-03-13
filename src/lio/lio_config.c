@@ -45,6 +45,11 @@ typedef struct {
   char *key;
 } lc_object_container_t;
 
+typedef struct {
+  char *prefix;
+  int len;
+} lfs_mount_t;
+
 int lio_parallel_task_count = 100;
 
 //** Define the global LIO config
@@ -52,12 +57,16 @@ lio_config_t *lio_gc = NULL;
 cache_t *_lio_cache = NULL;
 info_fd_t *lio_ifd = NULL;
 
+int _lfs_mount_count = -1;
+lfs_mount_t *lfs_mount = NULL;
+
 apr_pool_t *_lc_mpool = NULL;
 apr_thread_mutex_t *_lc_lock = NULL;
 list_t *_lc_object_list = NULL;
 
 lio_config_t *lio_create_nl(char *fname, char *section, char *user);
 void lio_destroy_nl(lio_config_t *lio);
+
 
 //***************************************************************
 //  _lc_object_destroy - Decrements the LC object and removes it
@@ -133,6 +142,57 @@ void _lc_object_put(char *key, void *obj)
 }
 
 //***************************************************************
+//  lio_find_lfs_mounts - Finds the LFS mounts and creates the global
+//     internal table for use by the path commands
+//***************************************************************
+
+void lio_find_lfs_mounts()
+{
+   Stack_t *stack;
+   FILE *fd;
+   lfs_mount_t *entry;
+   char *text, *prefix, *bstate;
+   int i, fin;
+   size_t ns;
+
+   stack = new_stack();
+
+   fd = fopen("/proc/mounts", "r");
+   text = NULL;
+   while (getline(&text, &ns, fd) != -1) {
+//log_printf(5, "getline=%s", text);
+     if (strncmp(text, "lfs:", 4) == 0) { //** Found a match
+       string_token(text, " ", &bstate, &fin);
+       prefix = string_token(NULL, " ", &bstate, &fin);
+       if (prefix != NULL) { //** Add it
+          type_malloc_clear(entry, lfs_mount_t, 1);
+          entry->prefix = strdup(prefix);
+          entry->len = strlen(entry->prefix);
+          push(stack, entry);
+          log_printf(5, "mount prefix=%s len=%d\n", entry->prefix, entry->len);
+       }
+     }
+
+     free(text);
+     text = NULL;
+   }
+
+   if (text != NULL) free(text);  //** Getline() always returns something
+
+   //** Convert it to a simple array
+   _lfs_mount_count = stack_size(stack);
+   type_malloc(lfs_mount, lfs_mount_t, _lfs_mount_count);
+   for (i=0; i<_lfs_mount_count; i++) {
+      entry = pop(stack);
+      lfs_mount[i].prefix = entry->prefix;
+      lfs_mount[i].len = entry->len;
+      free(entry);
+   }
+
+   free_stack(stack, 0);
+}
+
+//***************************************************************
 //  lio_path_release - Decrs a path tuple object
 //***************************************************************
 
@@ -162,8 +222,10 @@ void lio_path_release(lio_path_tuple_t *tuple)
 
 void lio_path_local_make_absolute(lio_path_tuple_t *tuple)
 {
-  char *p;
+  char *p, *rp;
   int i, n, last_slash, glob_index;
+  char path[OS_PATH_MAX];
+  char c;
 
   if (tuple->path == NULL) return;
 
@@ -181,9 +243,21 @@ void lio_path_local_make_absolute(lio_path_tuple_t *tuple)
   }
 
   if (glob_index == -1) last_slash = n;
+  c = p[last_slash];
   p[last_slash] = 0;
-  tuple->path = realpath(p, NULL);
-  free(p);
+  rp = realpath(p, NULL);
+log_printf(5, "p=%s realpath=%s last_slash=%d n=%d\n", p, rp, last_slash, n);
+  p[last_slash] = c;
+  if (rp != NULL) {
+     if (last_slash == n) {
+        tuple->path = rp;
+     } else {
+        snprintf(path, sizeof(path), "%s%s", rp, &(p[last_slash]));
+        tuple->path = strdup(path);
+        free(rp);
+     }
+     free(p);
+  }
 }
 
 //***************************************************************
@@ -212,11 +286,11 @@ log_printf(5, " tweaked tuple=%s\n", tuple->path);
 }
 
 //***************************************************************
-//  lio_path_resolve - Returns a  path tuple object
+//  lio_path_resolve_base - Returns a  path tuple object
 //      containing the cred, lc, and path
 //***************************************************************
 
-lio_path_tuple_t lio_path_resolve(char *lpath)
+lio_path_tuple_t lio_path_resolve_base(char *lpath)
 {
   char *userid, *pp_userid, *section_name, *fname;
   char *cred_args[2];
@@ -308,6 +382,68 @@ finished:
 }
 
 //***************************************************************
+// lio_path_auto_fuse_convert - Automatically detects and converts
+//    local paths sitting on a LFS mount
+//***************************************************************
+
+lio_path_tuple_t lio_path_auto_fuse_convert(lio_path_tuple_t *ltuple)
+{
+  char path[OS_PATH_MAX];
+  lio_path_tuple_t tuple;
+  int do_convert, prefix_len, i;
+
+  //** Convert if to an absolute path
+  lio_path_local_make_absolute(ltuple);
+  tuple = *ltuple;
+
+  //** Now check if the prefixes match
+  for (i=0; i < _lfs_mount_count; i++) {
+     if (strncmp(ltuple->path, lfs_mount[i].prefix, lfs_mount[i].len) == 0) {
+        do_convert = 0;
+        prefix_len = lfs_mount[i].len;
+        if (strlen(ltuple->path) > prefix_len) {
+           if (ltuple->path[prefix_len] == '/') {
+              do_convert = 1;
+              snprintf(path, sizeof(path), "@:%s", &(ltuple->path[prefix_len]));
+           }
+        } else {
+           do_convert = 1;
+           snprintf(path, sizeof(path), "@:/");
+        }
+
+        if (do_convert == 1) {
+           log_printf(5, "auto convert\n");
+//           snprintf(path, sizeof(path), "@:%s", &(ltuple->path[prefix_len-1]));
+           log_printf(5, "auto convert path=%s\n", path);
+           tuple = lio_path_resolve_base(path);
+           lio_path_release(ltuple);
+           break;  //** Found a match so kick out
+        }
+     }
+  }
+
+  return(tuple);
+}
+
+//***************************************************************
+//  lio_path_resolve - Returns a  path tuple object
+//      containing the cred, lc, and path
+//***************************************************************
+
+lio_path_tuple_t lio_path_resolve(int auto_fuse_convert, char *lpath)
+{
+  lio_path_tuple_t tuple;
+
+  tuple = lio_path_resolve_base(lpath);
+
+  if ((tuple.is_lio == 0) && (auto_fuse_convert > 0)) {
+     return(lio_path_auto_fuse_convert(&tuple));
+  }
+
+  return(tuple);
+}
+
+//***************************************************************
 // lc_object_remove_unused  - Removes unused LC's from the global
 //     table.  The default, remove_all_unsed=0, is to only
 //     remove anonymously created LC's.
@@ -391,6 +527,7 @@ void lio_print_options(FILE *fd)
 {
  fprintf(fd, "    LIO_COMMON_OPTIONS\n");
  fprintf(fd, "       -d level        - Set the debug level (0-20).  Defaults to 0\n");
+ fprintf(fd, "       -no-auto-lfs    - Disable auto-conversion of LFS mount paths to lio\n");
  fprintf(fd, "       -c config       - Configuration file\n");
  fprintf(fd, "       -lc user@config - Use the user and config section specified for making the default LIO\n");
  fprintf(fd, "       -np N           - Number of simultaneous operations. Default is %d.\n", lio_parallel_task_count);
@@ -716,12 +853,14 @@ void lio_print_path_options(FILE *fd)
 // lio_parse_path_options - Parses the path options
 //***************************************************************
 
-int lio_parse_path_options(int *argc, char **argv, lio_path_tuple_t *tuple, os_regex_table_t **rp, os_regex_table_t **ro)
+int lio_parse_path_options(int *argc, char **argv, int auto_mode, lio_path_tuple_t *tuple, os_regex_table_t **rp, os_regex_table_t **ro)
 {
   int nargs, i;
 //  char *myargv[*argc];
 
   *rp = NULL; *ro = NULL;
+
+  if (*argc == 1) return(0);
 
   nargs = 1;  //** argv[0] is preserved as the calling name
 //  myargv[0] = argv[0];
@@ -731,14 +870,14 @@ int lio_parse_path_options(int *argc, char **argv, lio_path_tuple_t *tuple, os_r
 //log_printf(0, "argv[%d]=%s\n", i, argv[i]);
      if (strcmp(argv[i], "-rp") == 0) { //** Regex for path
         i++;
-        *tuple = lio_path_resolve(argv[i]);  //** Pick off the user/host
+        *tuple = lio_path_resolve(auto_mode, argv[i]);  //** Pick off the user/host
         *rp = os_regex2table(tuple->path); i++;
      } else if (strcmp(argv[i], "-ro") == 0) {  //** Regex for object
         i++;
         *ro = os_regex2table(argv[i]); i++;
      } else if (strcmp(argv[i], "-gp") == 0) {  //** Glob for path
         i++;
-        *tuple = lio_path_resolve(argv[i]);  //** Pick off the user/host
+        *tuple = lio_path_resolve(auto_mode, argv[i]);  //** Pick off the user/host
         *rp = os_path_glob2regex(tuple->path); i++;
      } else if (strcmp(argv[i], "-go") == 0) {  //** Glob for object
         i++;
@@ -800,7 +939,7 @@ int env2args(char *env, int *argc, char ***eargv)
 //char **t2 = NULL;
 int lio_init(int *argc, char ***argvp)
 {
-  int i, ll, neargs, nargs;
+  int i, ll, neargs, nargs, auto_mode;
   char *env;
   char **eargv;
   char **myargv;
@@ -859,11 +998,15 @@ int lio_init(int *argc, char ***argvp)
   myargv[0] = argv[0];
   i=1;
   ll = -1;
+  auto_mode = -1;
   do {
 //printf("argv[%d]=%s\n", i, argv[i]);
      if (strcmp(argv[i], "-d") == 0) { //** Enable debugging
         i++;
         ll = atoi(argv[i]); i++;
+     } else if (strcmp(argv[i], "-no-auto-lfs") == 0) { //** Regex for path
+        i++;
+        auto_mode = 0;
      } else if (strcmp(argv[i], "-np") == 0) { //** Parallel task count
         i++;
         lio_parallel_task_count = atoi(argv[i]); i++;
@@ -916,10 +1059,10 @@ int lio_init(int *argc, char ***argvp)
   if (cfg_name == NULL) {
     if (os_local_filetype("lio.cfg") != 0) {
        cfg_name = "lio.cfg";
-    } else if (os_local_filetype("~/lio.cfg") != 0) {
-       cfg_name = "~/lio.cfg";
-    } else if (os_local_filetype("/etc/lio.cfg") != 0) {
-       cfg_name = "/etc/lio.cfg";
+    } else if (os_local_filetype("~/.lio/lio.cfg") != 0) {
+       cfg_name = "~/.lio/lio.cfg";
+    } else if (os_local_filetype("/etc/lio/lio.cfg") != 0) {
+       cfg_name = "/etc/lio/lio.cfg";
     }
   }
 
@@ -930,11 +1073,14 @@ int lio_init(int *argc, char ***argvp)
      if (ll > -1) set_log_level(ll);
 
      lio_gc = lio_create(cfg_name, section_name, userid);
+     if (auto_mode != -1) lio_gc->auto_translate = auto_mode;
   } else {
      log_printf(0, "Error missing config file!\n");
   }
 
   if (userid != NULL) free(userid);
+
+  lio_find_lfs_mounts();  //** Make the global mount prefix table
 
 //argv = *argvp;
 //printf("end argc=%d\n", *argc);

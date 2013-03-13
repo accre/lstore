@@ -1242,6 +1242,7 @@ log_printf(0, "DESTROYING exnode fname=%s\n", fname); flush_log();
   val[2] = NULL; v_size[2] = 0;
 
   if ((hard_errors>0) || (soft_errors>0)) {
+     log_printf(1, "ERROR: fname=%s hard_errors=%d soft_errors=%d\n", fname, hard_errors, soft_errors);
      n = 5;
      sprintf(ebuf[0], "%d", hard_errors);
      sprintf(ebuf[1], "%d", soft_errors);
@@ -1274,7 +1275,7 @@ log_printf(0, "DESTROYING exnode fname=%s\n", fname); flush_log();
 
   if (flags == LFS_INODE_DELETE) return(lfs_object_remove(lfs, fname));
 
-  return(0);
+  return((hard_errors==0) ? 0 : -EIO);
 }
 
 //*****************************************************************

@@ -72,6 +72,7 @@ set(LIO_OBJS
    ex_id.c
    lio_config.c
    lio_core.c
+   lio_fuse_core.c
    rs_query_base.c
    rs_simple.c
    rs_space.c
@@ -114,7 +115,7 @@ SET_TARGET_PROPERTIES(lio-static PROPERTIES CLEAN_DIRECT_OUTPUT 1)
 set(LIO_EXE 
     mk_linear ex_load ex_get ex_put ex_inspect ex_clone ex_rw_test log_test rs_test rs_test_svr os_test os_fsck
     lio_touch lio_mkdir lio_rmdir lio_rm lio_ln lio_find lio_ls lio_du lio_setattr lio_getattr lio_mv lio_cp
-    lio_put lio_get lio_signature lio_warm lio_inspect lio_fsck lio_rs rs_server
+    lio_put lio_get lio_signature lio_warm lio_inspect lio_fsck lio_rs rs_server lio_fuse
 )
 
 #Make static executables by default
@@ -133,10 +134,11 @@ add_executable( trace_replay trace_replay.c trace.c ${EX3_OBJS} )
 set_target_properties(trace_replay PROPERTIES LINKER_LANGUAGE CXX)
 target_link_libraries( trace_replay ${lio_lib} ${LIBS} m )
 
-add_executable( lio_fuse lio_fuse.c lio_fuse_core.c ${EX3_OBJS} )
-set_target_properties(lio_fuse PROPERTIES LINKER_LANGUAGE CXX)
-target_link_libraries( lio_fuse ${lio_lib} ${LIBS} m )
+#add_executable( lio_fuse lio_fuse.c lio_fuse_core.c ${EX3_OBJS} )
+#set_target_properties(lio_fuse PROPERTIES LINKER_LANGUAGE CXX)
+#target_link_libraries( lio_fuse ${lio_lib} ${LIBS} m )
 
+install(TARGETS ${LIO_EXE} DESTINATION bin)
 install(TARGETS lio DESTINATION lib)
 install(TARGETS lio-static DESTINATION lib)
 install(FILES 

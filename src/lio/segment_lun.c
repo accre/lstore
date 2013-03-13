@@ -1445,7 +1445,7 @@ op_status_t seglun_rw_func(void *arg, int id)
 {
   seglun_rw_t *sw = (seglun_rw_t *)arg;
   seglun_priv_t *s = (seglun_priv_t *)sw->seg->priv;
-  int i, err;
+  int i;
   op_status_t status;
   ex_off_t new_size;
   ex_off_t pos, maxpos;
@@ -1453,7 +1453,7 @@ op_status_t seglun_rw_func(void *arg, int id)
 log_printf(15, "sid=" XIDT " n_iov=%d off[0]=" XOT " len[0]=" XOT " max_size=" XOT " used_size=" XOT "\n",
      segment_id(sw->seg), sw->n_iov, sw->iov[0].offset, sw->iov[0].len, s->total_size, s->used_size);
 
-  err = OP_STATE_SUCCESS;
+//  err = OP_STATE_SUCCESS;
 
   //** Find the max extent;
   maxpos = 0;
@@ -1473,8 +1473,12 @@ log_printf(15, "sid=" XIDT " n_iov=%d off[0]=" XOT " len[0]=" XOT " max_size=" X
 log_printf(15, " seg=" XIDT " GROWING  curr_used_size=" XOT " curr_total_size=" XOT " new_size=" XOT " requested maxpos=" XOT "\n",
       segment_id(sw->seg), s->used_size, s->total_size, new_size, maxpos);
            status = _slun_truncate(sw->seg, sw->da, new_size, sw->timeout);
-           err = status.op_status;
-log_printf(15, " seg=" XIDT " GROWING  err=%d\n",segment_id(sw->seg), err);
+log_printf(15, " seg=" XIDT " GROWING  err=%d\n",segment_id(sw->seg), status.op_status);
+           if (status.op_status != OP_STATE_SUCCESS) {
+              segment_unlock(sw->seg);
+              status.op_status = OP_STATE_FAILURE;  status.error_code = s->n_devices;
+              return(status);
+           }
         }
      } else {  //** Got a bad offset so fail the whole thing
 log_printf(15, "ERROR seg=" XIDT " READ beyond EOF!  cur_size=" XOT " requested maxpos=" XOT "\n", segment_id(sw->seg), s->total_size, maxpos);
@@ -1488,8 +1492,8 @@ log_printf(15, "ERROR seg=" XIDT " READ beyond EOF!  cur_size=" XOT " requested 
   //** Now do the actual R/W operation
 log_printf(15, "Before exec\n");
   status = seglun_rw_op(sw->seg, sw->da, sw->n_iov, sw->iov, sw->buffer, sw->boff, sw->rw_mode, sw->timeout);
-  if (status.op_status != OP_STATE_SUCCESS) err = OP_STATE_FAILURE;
-log_printf(15, "After exec err=%d\n", err);
+//  if (status.op_status != OP_STATE_SUCCESS) err = OP_STATE_FAILURE;
+log_printf(15, "After exec err=%d\n", status.op_status);
 
   segment_lock(sw->seg);
 log_printf(15, "oldused=" XOT " maxpos=" XOT "\n", s->used_size, maxpos);

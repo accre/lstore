@@ -166,7 +166,7 @@ int main(int argc, char **argv)
   start_index = i;
 
   //** Make the dest tuple
-  dtuple = lio_path_resolve(argv[argc-1]);
+  dtuple = lio_path_resolve(lio_gc->auto_translate, argv[argc-1]);
 
   if (i>=argc) {
      info_printf(lio_ifd, 0, "Missing directory!\n");
@@ -194,7 +194,7 @@ log_printf(15, "n_paths=%d argc=%d si=%d dtype=%d\n", n_paths, argc, start_index
   type_malloc_clear(flist, mv_t, n_paths);
 
   for (i=0; i<n_paths; i++) {
-     flist[i].src_tuple = lio_path_resolve(argv[i+start_index]);
+     flist[i].src_tuple = lio_path_resolve(lio_gc->auto_translate, argv[i+start_index]);
      flist[i].regex = os_path_glob2regex(flist[i].src_tuple.path);
      flist[i].dest_tuple = dtuple;
      flist[i].dest_type = dtype;

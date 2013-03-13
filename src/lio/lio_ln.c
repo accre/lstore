@@ -89,8 +89,8 @@ int main(int argc, char **argv)
     }
   } while ((start_option < i) && (i<argc));
 
-  src_fname = argv[i];  i++;  stuple = lio_path_resolve(src_fname);
-  dest_fname = argv[i]; i++;  dtuple = lio_path_resolve(dest_fname);
+  src_fname = argv[i];  i++;  stuple = lio_path_resolve(lio_gc->auto_translate, src_fname);
+  dest_fname = argv[i]; i++;  dtuple = lio_path_resolve(lio_gc->auto_translate, dest_fname);
 
   //** Make sure we're linking in the same system
   if (strcmp(stuple.lc->section_name, dtuple.lc->section_name) != 0) {

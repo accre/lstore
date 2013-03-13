@@ -351,7 +351,7 @@ void lioc_get_error_counts(lio_config_t *lc, segment_t *seg, int *hard_errors, i
 // lioc_update_error_count - Updates the error count attributes if needed
 //***********************************************************************
 
-void lioc_update_error_counts(lio_config_t *lc, creds_t *creds, char *path, segment_t *seg)
+int lioc_update_error_counts(lio_config_t *lc, creds_t *creds, char *path, segment_t *seg)
 {
   int hard_errors, soft_errors;
   char *keys[] = { "system.hard_errors", "system.soft_errors" };
@@ -371,7 +371,7 @@ void lioc_update_error_counts(lio_config_t *lc, creds_t *creds, char *path, segm
      lioc_set_multiple_attrs(lc, creds, path, NULL, keys, (void **)val, v_size, 2);
   }
 
-  return;
+  return(hard_errors);
 }
 
 //***********************************************************************

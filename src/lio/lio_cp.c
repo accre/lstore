@@ -87,7 +87,7 @@ op_status_t cp_lio(cp_file_t *cp)
   os_fd_t *sfd, *dfd;
   ex_off_t ssize;
   int sv_size[2], dv_size[3];
-  int dtype, err, used;
+  int dtype, err, used, hard_errors;
 
   info_printf(lio_ifd, 0, "copy %s@%s:%s %s@%s:%s\n", an_cred_get_id(cp->src_tuple.creds), cp->src_tuple.lc->section_name, cp->src_tuple.path, an_cred_get_id(cp->dest_tuple.creds), cp->dest_tuple.lc->section_name, cp->dest_tuple.path);
 
@@ -197,8 +197,8 @@ op_status_t cp_lio(cp_file_t *cp)
   gop_sync_exec(os_set_multiple_attrs(cp->dest_tuple.lc->os, cp->dest_tuple.creds, dfd, keys, (void **)val, dv_size, 3));
 
   //**Update the error counts if needed
-  lioc_update_error_counts(cp->src_tuple.lc, cp->src_tuple.creds, cp->src_tuple.path, sseg);
-  lioc_update_error_counts(cp->dest_tuple.lc, cp->dest_tuple.creds, cp->dest_tuple.path, dseg);
+  hard_errors = lioc_update_error_counts(cp->src_tuple.lc, cp->src_tuple.creds, cp->src_tuple.path, sseg);
+  hard_errors += lioc_update_error_counts(cp->dest_tuple.lc, cp->dest_tuple.creds, cp->dest_tuple.path, dseg);
 
   //** Close the files
   opque_add(q, os_close_object(cp->src_tuple.lc->os, sfd));
@@ -212,7 +212,7 @@ op_status_t cp_lio(cp_file_t *cp)
   exnode_destroy(dex);
   exnode_exchange_destroy(dexp);
 
-  status = op_success_status;
+  if (hard_errors == 0) status = op_success_status;
 
 finished:
   return(status);
@@ -231,7 +231,7 @@ op_status_t cp_src_local(cp_file_t *cp)
   segment_t *seg;
   char *key[] = {"system.exnode", "system.exnode.size", "os.timestamp.system.modify_data"};
   char *val[3];
-  int v_size[3], dtype, err;
+  int v_size[3], dtype, err, hard_errors;
   ex_off_t ssize;
   op_status_t status;
   FILE *fd;
@@ -310,14 +310,14 @@ log_printf(0, "AFTER PUT\n");
   err = lioc_set_multiple_attrs(cp->dest_tuple.lc, cp->dest_tuple.creds, cp->dest_tuple.path, NULL, key, (void **)val, v_size, 3);
 
   //**Update the error counts if needed
-  lioc_update_error_counts(cp->dest_tuple.lc, cp->dest_tuple.creds, cp->dest_tuple.path, seg);
+  hard_errors = lioc_update_error_counts(cp->dest_tuple.lc, cp->dest_tuple.creds, cp->dest_tuple.path, seg);
 
   exnode_destroy(ex);
   exnode_exchange_destroy(exp);
 
   free(buffer);
 
-  status = op_success_status;
+  if (hard_errors == 0) status = op_success_status;
 
 finished:
 
@@ -335,7 +335,7 @@ op_status_t cp_dest_local(cp_file_t *cp)
   exnode_t *ex;
   exnode_exchange_t *exp;
   segment_t *seg;
-  int v_size;
+  int v_size, hard_errors;
   op_status_t status;
   FILE *fd;
 
@@ -389,12 +389,12 @@ op_status_t cp_dest_local(cp_file_t *cp)
   fclose(fd);
 
   //**Update the error counts if needed
-  lioc_update_error_counts(cp->src_tuple.lc, cp->src_tuple.creds, cp->src_tuple.path, seg);
+  hard_errors = lioc_update_error_counts(cp->src_tuple.lc, cp->src_tuple.creds, cp->src_tuple.path, seg);
 
   exnode_destroy(ex);
   exnode_exchange_destroy(exp);
 
-  status = op_success_status;
+  if (hard_errors == 0) status = op_success_status;
 
 finished:
   return(status);
@@ -428,8 +428,6 @@ op_status_t cp_file_fn(void *arg, int id)
   } else {               //** both source and dest are lio
      status = cp_lio(cp);
   }
-
-  status = op_success_status;
 
   return(status);
 }
@@ -611,6 +609,7 @@ log_printf(1, "gid=%d i=%d sname=%s dname=%s\n", gop_id(gop), slot, fname, dname
   copy_destroy_object_iter(it);
 
   while ((gop = opque_waitany(q)) != NULL) {
+     status = gop_get_status(gop);
      slot = gop_get_myid(gop);
      c = &(cplist[slot]);
 log_printf(15, "slot=%d fname=%s\n", slot, c->src_tuple.path);
@@ -634,7 +633,7 @@ log_printf(15, "slot=%d fname=%s\n", slot, c->src_tuple.path);
 
 int main(int argc, char **argv)
 {
-  int i, start_index, start_option, n_paths;
+  int i, start_index, start_option, n_paths, n_errors;
   int bufsize_mb = 20;
   cp_path_t *flist;
   cp_file_t cp_single;
@@ -690,7 +689,7 @@ int main(int argc, char **argv)
   bufsize = 1024*1024*bufsize_mb;
 
   //** Make the dest tuple
-  dtuple = lio_path_resolve(argv[argc-1]);
+  dtuple = lio_path_resolve(lio_gc->auto_translate, argv[argc-1]);
 
   if (i>=argc) {
      info_printf(lio_ifd, 0, "Missing directory!\n");
@@ -715,7 +714,7 @@ log_printf(15, "n_paths=%d argc=%d si=%d dtype=%d\n", n_paths, argc, start_index
   type_malloc_clear(flist, cp_path_t, n_paths);
 
   for (i=0; i<n_paths; i++) {
-     flist[i].src_tuple = lio_path_resolve(argv[i+start_index]);
+     flist[i].src_tuple = lio_path_resolve(lio_gc->auto_translate, argv[i+start_index]);
      if (flist[i].src_tuple.is_lio == 0) lio_path_local_make_absolute(&(flist[i].src_tuple));
      flist[i].dest_tuple = dtuple;
      flist[i].dest_type = dtype;
@@ -764,6 +763,7 @@ log_printf(15, "333333333333333333\n"); flush_log();
   //** IF we made it here we have mv's to a directory
   max_spawn = lio_parallel_task_count / n_paths;
   if (max_spawn < 0) max_spawn = 1;
+  n_errors = 0;
 
   q = new_opque();
   opque_start_execution(q);
@@ -777,7 +777,8 @@ log_printf(0, "gid=%d i=%d fname=%s\n", gop_id(gop), i, flist[i].src_tuple.path)
         gop = opque_waitany(q);
         i = gop_get_myid(gop);
         status = gop_get_status(gop);
-        if (status.op_status != OP_STATE_SUCCESS) info_printf(lio_ifd, 0, "Failed with path %s\n", flist[i].src_tuple.path);
+        n_errors += status.error_code;
+//        if (status.op_status != OP_STATE_SUCCESS) info_printf(lio_ifd, 0, "Failed with path %s\n", flist[i].src_tuple.path);
         gop_free(gop, OP_DESTROY);
      }
   }
@@ -787,7 +788,8 @@ log_printf(0, "gid=%d i=%d fname=%s\n", gop_id(gop), i, flist[i].src_tuple.path)
      while ((gop = opque_get_next_failed(q)) != NULL) {
          i = gop_get_myid(gop);
          status = gop_get_status(gop);
-         info_printf(lio_ifd, 0, "Failed with path %s\n", flist[i].src_tuple.path);
+         n_errors += status.error_code;
+//         info_printf(lio_ifd, 0, "Failed with path %s\n", flist[i].src_tuple.path);
      }
   }
 
@@ -805,6 +807,8 @@ finished:
 
   lio_shutdown();
 
-  return(0);
+  if (n_errors > 0) info_printf(lio_ifd, 0, "Failed copying %d file(s)!\n", n_errors);
+
+  return((n_errors == 0) ? 0 : 1);
 }
 

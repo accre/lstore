@@ -524,7 +524,7 @@ char *rss_get_rid_config(resource_service_fn_t *rs)
 {
   rs_simple_priv_t *rss = (rs_simple_priv_t *)rs->priv;
   char *buffer, *key, *val;
-  int bufsize = 10*1024;
+  int bufsize = 5*1024;
   apr_hash_index_t *hi;
   rss_check_entry_t *ce;
   int used;
@@ -536,6 +536,7 @@ char *rss_get_rid_config(resource_service_fn_t *rs)
   apr_thread_mutex_lock(rss->lock);
   do {
      if (buffer != NULL) free(buffer);
+     bufsize = 2 * bufsize;
      type_malloc_clear(buffer, char, bufsize);
 
      used = 0;
