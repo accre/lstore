@@ -50,7 +50,7 @@ int main(int argc, char **argv)
   os_regex_table_t **rpath;
   lio_path_tuple_t *flist, tuple;
   os_regex_table_t *rp_single, *ro_single;
-  int recurse_depth = 10000;
+  int recurse_depth = 0;
   int obj_types = OS_OBJECT_ANY;
 
 //printf("argc=%d\n", argc);
@@ -59,7 +59,7 @@ int main(int argc, char **argv)
      printf("lio_rm LIO_COMMON_OPTIONS [-rd recurse_depth] [-t object_types] LIO_PATH_OPTIONS\n");
      lio_print_options(stdout);
      lio_print_path_options(stdout);
-     printf("    -rd recurse_depth  - Max recursion depth on directories. Defaults to %d\n", recurse_depth);
+     printf("    -rd recurse_depth  - Max recursion depth on directories. Defaults to %d.\n", recurse_depth);
      printf("    -t  object_types   - Types of objects to list bitwise OR of 1=Files, 2=Directories, 4=symlink, 8=hardlink.  Default is %d.\n", obj_types);
      return(1);
   }
