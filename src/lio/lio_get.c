@@ -56,10 +56,10 @@ int main(int argc, char **argv)
 //printf("argc=%d\n", argc);
   if (argc < 2) {
      printf("\n");
-     printf("lio_get LIO_COMMON_OPTIONS [-b bufsize] src_file\n");
+     printf("lio_get LIO_COMMON_OPTIONS [-b bufsize] src_file1 .. src_file_N\n");
      lio_print_options(stdout);
      printf("    -b bufsize         - Buffer size to use in MBytes (Default=%dMB)\n", bufsize_mb);
-     printf("    src_file          - Source file\n");
+     printf("    src_file           - Source file\n");
      return(1);
   }
 
@@ -86,57 +86,59 @@ int main(int argc, char **argv)
   bufsize = 1024*1024*bufsize_mb;
   type_malloc(buffer, char, bufsize+1);
 
-  //** Get the source
-  tuple = lio_path_resolve(lio_gc->auto_translate, argv[start_index]);
+  for (i=start_index; i<argc; i++) {
+     //** Get the source
+     tuple = lio_path_resolve(lio_gc->auto_translate, argv[i]);
 
-  //** Check if it exists
-  ftype = lioc_exists(tuple.lc, tuple.creds, tuple.path);
+     //** Check if it exists
+     ftype = lioc_exists(tuple.lc, tuple.creds, tuple.path);
 
-  if ((ftype & OS_OBJECT_FILE) == 0) { //** Doesn't exist or is a dir
-     info_printf(lio_ifd, 1, "ERROR source file(%s) doesn't exist or is a dir ftype=%d!\n", tuple.path, ftype);
-     goto finished;
+     if ((ftype & OS_OBJECT_FILE) == 0) { //** Doesn't exist or is a dir
+        info_printf(lio_ifd, 1, "ERROR source file(%s) doesn't exist or is a dir ftype=%d!\n", tuple.path, ftype);
+        goto finished;
+     }
+
+     //** Get the exnode
+     v_size = -tuple.lc->max_attr;
+     err = lioc_get_attr(tuple.lc, tuple.creds, tuple.path, NULL, "system.exnode", (void **)&ex_data, &v_size);
+     if (v_size <= 0) {
+        info_printf(lio_ifd, 0, "Failed retrieving exnode!  path=%s\n", tuple.path);
+        goto finished;
+     }
+
+     //** Load it
+     exp = exnode_exchange_create(EX_TEXT);
+     exp->text = ex_data;
+     ex = exnode_create();
+     exnode_deserialize(ex, exp, tuple.lc->ess);
+
+     //** Get the default view to use
+     seg = exnode_get_default(ex);
+     if (seg == NULL) {
+        info_printf(lio_ifd, 0, "No default segment!  Aborting!\n");
+        err = 1;
+        goto finished;
+     }
+
+     //** Do the get
+     err = gop_sync_exec(segment_get(tuple.lc->tpc_unlimited, tuple.lc->da, seg, stdout, 0, -1, bufsize, buffer, 3600));
+     if (err != OP_STATE_SUCCESS) {
+        info_printf(lio_ifd, 0, "Failed reading data!  path=%s\n", tuple.path);
+        goto finished;
+     }
+
+     //** Update the error count if needed
+     err = lioc_update_error_counts(tuple.lc, tuple.creds, tuple.path, seg);
+     if (err > 0) info_printf(lio_ifd, 0, "Failed downloading data!  path=%s\n", tuple.path);
+
+     exnode_destroy(ex);
+     exnode_exchange_destroy(exp);
+
+     lio_path_release(&tuple);
   }
-
-  //** Get the exnode
-  v_size = -tuple.lc->max_attr;
-  err = lioc_get_attr(tuple.lc, tuple.creds, tuple.path, NULL, "system.exnode", (void **)&ex_data, &v_size);
-  if (v_size <= 0) {
-     info_printf(lio_ifd, 0, "Failed retrieving exnode!  path=%s\n", tuple.path);
-     goto finished;
-  }
-
-  //** Load it
-  exp = exnode_exchange_create(EX_TEXT);
-  exp->text = ex_data;
-  ex = exnode_create();
-  exnode_deserialize(ex, exp, tuple.lc->ess);
-
-  //** Get the default view to use
-  seg = exnode_get_default(ex);
-  if (seg == NULL) {
-     info_printf(lio_ifd, 0, "No default segment!  Aborting!\n");
-     err = 1;
-     goto finished;
-  }
-
-  //** Do the put
-  err = gop_sync_exec(segment_get(tuple.lc->tpc_unlimited, tuple.lc->da, seg, stdout, 0, -1, bufsize, buffer, 3600));
-  if (err != OP_STATE_SUCCESS) {
-     info_printf(lio_ifd, 0, "Failed reading data!  path=%s\n", tuple.path);
-     goto finished;
-  }
-
-  //** Update the error count if needed
-  err = lioc_update_error_counts(tuple.lc, tuple.creds, tuple.path, seg);
-  if (err > 0) info_printf(lio_ifd, 0, "Failed downloading data!  path=%s\n", tuple.path);
-
-  exnode_destroy(ex);
-  exnode_exchange_destroy(exp);
 
 finished:
   free(buffer);
-
-  lio_path_release(&tuple);
 
   lio_shutdown();
 

@@ -42,7 +42,7 @@ http://www.accre.vanderbilt.edu
 
 int main(int argc, char **argv)
 {
-  int i, owner_mode, exnode_mode, size_mode, n, nfailed, start_option;
+  int i, owner_mode, exnode_mode, size_mode, start_option, start_index;
   lio_fsck_iter_t *it;
   char *owner;
   char *fname;
@@ -50,10 +50,11 @@ int main(int argc, char **argv)
   op_status_t status;
   lio_path_tuple_t tuple;
   int ftype, err;
+  ex_off_t n, nfailed, checked;
 
   if (argc < 2) {
      printf("\n");
-     printf("lio_fsck LIO_COMMON_OPTIONS  [-o parent|manual|delete|user valid_user]  [-ex parent|manual|delete] [-s manual|repair] path\n");
+     printf("lio_fsck LIO_COMMON_OPTIONS  [-o parent|manual|delete|user valid_user]  [-ex parent|manual|delete] [-s manual|repair] path_1 .. path_N\n");
      lio_print_options(stdout);
      printf("    -o                 - How to handle missing system.owner issues.  Default is manual.\n");
      printf("                            parent - Make the object owner the same as the parent directory.\n");
@@ -121,53 +122,57 @@ int main(int argc, char **argv)
         i++;
      }
   } while ((start_option < i) && (i<argc));
+  start_index = i;
 
   if (i>=argc) {
      info_printf(lio_ifd, 0, "Missing directory!\n");
      return(2);
   }
 
-  //** Create the simple path iterator
-  tuple = lio_path_resolve(lio_gc->auto_translate, argv[i]);
-
   info_printf(lio_ifd, 0, "--------------------------------------------------------------------\n");
   if (owner_mode == LIO_FSCK_USER) {
-     info_printf(lio_ifd, 0, "Using path=%s and owner_mode=%d (%s) exnode_mode=%d size_mode=%d (%d=manual, %d=parent, %d=delete, %d=user, %d=repair)\n",
-            tuple.path, owner_mode, owner, exnode_mode, size_mode, LIO_FSCK_MANUAL, LIO_FSCK_PARENT, LIO_FSCK_DELETE, LIO_FSCK_USER, LIO_FSCK_SIZE_REPAIR);
+     info_printf(lio_ifd, 0, "owner_mode=%d (%s) exnode_mode=%d size_mode=%d (%d=manual, %d=parent, %d=delete, %d=user, %d=repair)\n",
+            owner_mode, owner, exnode_mode, size_mode, LIO_FSCK_MANUAL, LIO_FSCK_PARENT, LIO_FSCK_DELETE, LIO_FSCK_USER, LIO_FSCK_SIZE_REPAIR);
   } else {
-     info_printf(lio_ifd, 0, "Using path=%s and owner_mode=%d exnode_mode=%d size_mode=%d (%d=manual, %d=parent, %d=delete, %d=user, %d=repair)\n",
-            tuple.path, owner_mode, exnode_mode, size_mode, LIO_FSCK_MANUAL, LIO_FSCK_PARENT, LIO_FSCK_DELETE, LIO_FSCK_USER, LIO_FSCK_SIZE_REPAIR);
+     info_printf(lio_ifd, 0, "owner_mode=%d exnode_mode=%d size_mode=%d (%d=manual, %d=parent, %d=delete, %d=user, %d=repair)\n",
+            owner_mode, exnode_mode, size_mode, LIO_FSCK_MANUAL, LIO_FSCK_PARENT, LIO_FSCK_DELETE, LIO_FSCK_USER, LIO_FSCK_SIZE_REPAIR);
   }
   info_printf(lio_ifd, 0, "Possible error states: %d=missing owner, %d=missing exnode, %d=missing size, %d=missing inode\n", LIO_FSCK_MISSING_OWNER, LIO_FSCK_MISSING_EXNODE, LIO_FSCK_MISSING_EXNODE_SIZE, LIO_FSCK_MISSING_INODE);
   info_printf(lio_ifd, 0, "--------------------------------------------------------------------\n");
   info_flush(lio_ifd);
 
-  n = 0; nfailed = 0;
+  n = 0; nfailed = 0; checked = 0;
   exnode_mode = exnode_mode | size_mode;
-  it = lio_create_fsck_iter(tuple.lc, tuple.creds, tuple.path, LIO_FSCK_MANUAL, NULL, LIO_FSCK_MANUAL);  //** WE use resolve to clean up so we can see the problem objects
-  while ((err = lio_next_fsck(tuple.lc, it, &fname, &ftype)) != LIO_FSCK_FINISHED) {
-     info_printf(lio_ifd, 0, "err:%d  type:%d  object:%s\n", err, ftype, fname);
-     if ((owner_mode != LIO_FSCK_MANUAL) || (exnode_mode != LIO_FSCK_MANUAL)) {
-        gop = lio_fsck_object(tuple.lc, tuple.creds, fname, ftype, owner_mode, owner, exnode_mode);
-        gop_waitany(gop);
-        status = gop_get_status(gop);
-        gop_free(gop, OP_DESTROY);
-        if (status.error_code != OS_FSCK_GOOD) nfailed++;
-        info_printf(lio_ifd, 0, "    resolve:%d  object:%s\n", status.error_code, fname);
+
+  for (i=start_index; i<argc; i++) {
+     //** Create the simple path iterator
+     tuple = lio_path_resolve(lio_gc->auto_translate, argv[i]);
+     it = lio_create_fsck_iter(tuple.lc, tuple.creds, tuple.path, LIO_FSCK_MANUAL, NULL, LIO_FSCK_MANUAL);  //** WE use resolve to clean up so we can see the problem objects
+     while ((err = lio_next_fsck(tuple.lc, it, &fname, &ftype)) != LIO_FSCK_FINISHED) {
+        info_printf(lio_ifd, 0, "err:%d  type:%d  object:%s\n", err, ftype, fname);
+        if ((owner_mode != LIO_FSCK_MANUAL) || (exnode_mode != LIO_FSCK_MANUAL)) {
+           gop = lio_fsck_object(tuple.lc, tuple.creds, fname, ftype, owner_mode, owner, exnode_mode);
+           gop_waitany(gop);
+           status = gop_get_status(gop);
+           gop_free(gop, OP_DESTROY);
+           if (status.error_code != OS_FSCK_GOOD) nfailed++;
+           info_printf(lio_ifd, 0, "    resolve:%d  object:%s\n", status.error_code, fname);
+        }
+
+        free(fname);
+        fname = NULL;
+        n++;
      }
 
-     free(fname);
-     fname = NULL;
-     n++;
+     checked += lio_fsck_visited_count(tuple.lc, it);
+     lio_destroy_fsck_iter(tuple.lc, it);
+     lio_path_release(&tuple);
   }
 
-  lio_destroy_fsck_iter(tuple.lc, it);
-
   info_printf(lio_ifd, 0, "--------------------------------------------------------------------\n");
-  info_printf(lio_ifd, 0, "Problem objects: %d  Repair Failed count: %d\n", n, nfailed);
+  info_printf(lio_ifd, 0, "Problem objects: " XOT "  Repair Failed count: " XOT " Processed: " XOT "\n", n, nfailed, checked);
   info_printf(lio_ifd, 0, "--------------------------------------------------------------------\n");
 
-  lio_path_release(&tuple);
 
   lio_shutdown();
 

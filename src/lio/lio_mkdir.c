@@ -91,8 +91,8 @@ int main(int argc, char **argv)
      printf("\n");
      printf("lio_mkdir LIO_COMMON_OPTIONS [-ex exnode.ex3] dir1 dir22 ...\n");
      lio_print_options(stdout);
-     printf("    -ex exnode.ex3  - Optional exnode to use.  Defaults to parent dir.\n");
-     printf("    dir*           - New directories to create\n");
+     printf("    -ex exnode.ex3      - Optional exnode to use.  Defaults to parent dir.\n");
+     printf("    dir*                - New directories to create\n");
      return(1);
   }
 

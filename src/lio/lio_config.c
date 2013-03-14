@@ -232,9 +232,9 @@ log_printf(5, "initial path=%s\n", tuple->path);
 
   p = tuple->path;
   n = strlen(p);
-  last_slash = 0;
+  last_slash = -1;
   glob_index = -1;
-  if ((p[0] == '*') || (p[0] == '?') || (p[0] == '[')) return;
+  if ((p[0] == '*') || (p[0] == '?') || (p[0] == '[')) goto wildcard;
 
   for (i=1; i<n; i++) {
     if (p[i] == '/') last_slash = i;
@@ -243,12 +243,24 @@ log_printf(5, "initial path=%s\n", tuple->path);
     }
   }
 
-  if (glob_index == -1) last_slash = n;
-  c = p[last_slash];
-  p[last_slash] = 0;
-  rp = realpath(p, NULL);
+wildcard:
+  if (last_slash == -1) {  //** Just using the CWD as the base for the glob
+     realpath(".", path);
+     i = strlen(path);
+     path[i] = '/';  //** Need to add the trailing / to the path
+     path[i+1] = 0;
+     rp = strdup(path);
+     last_slash = 0;
+  } else {
+     if (glob_index == -1) last_slash = n;
+     c = p[last_slash];
+     p[last_slash] = 0;
+     rp = realpath(p, NULL);
+     p[last_slash] = c;
+  }
+
 log_printf(5, "p=%s realpath=%s last_slash=%d n=%d\n", p, rp, last_slash, n);
-  p[last_slash] = c;
+
   if (rp != NULL) {
      if (last_slash == n) {
         tuple->path = rp;
@@ -537,6 +549,7 @@ void lio_print_options(FILE *fd)
  fprintf(fd, "       -i N            - Print information messages of level N or greater. No header is printed\n");
  fprintf(fd, "       -it N           - Print information messages of level N or greater. Thread ID header is used\n");
  fprintf(fd, "       -if N           - Print information messages of level N or greater. Full header is used\n");
+ fprintf(fd, "\n");
 }
 
 //***************************************************************
@@ -846,11 +859,13 @@ lio_config_t *lio_create(char *fname, char *section, char *user)
 
 void lio_print_path_options(FILE *fd)
 {
- fprintf(fd, "    LIO_PATH_OPTIONS: -rp regex_path | -gp glob_path   -ro regex_objext | -go glob_object\n");
+ fprintf(fd, "    LIO_PATH_OPTIONS: [-rp regex_path | -gp glob_path]  [-ro regex_objext | -go glob_object] [path_1 ... path_N]\n");
  fprintf(fd, "       -rp regex_path  - Regex of path to scan\n");
  fprintf(fd, "       -gp glob_path   - Glob of path to scan\n");
  fprintf(fd, "       -ro regex_obj   - Regex for final object selection.\n");
  fprintf(fd, "       -go glob_obj    - Glob for final object selection.\n");
+ fprintf(fd, "       path1 .. pathN  - Glob of paths to target\n");
+ fprintf(fd, "\n");
 }
 
 //***************************************************************
@@ -965,7 +980,7 @@ int lio_init(int *argc, char ***argvp)
   _lc_object_list = list_create(0, &list_string_compare, NULL, list_no_key_free, list_no_data_free);
 
 //argv = *argvp;
-//printf("start argc=%d\n", *argc);
+printf("start argc=%d\n", *argc);
 //for (i=0; i<*argc; i++) {
 //  printf("start argv[%d]=%s\n", i, argv[i]);
 //}

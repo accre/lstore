@@ -45,11 +45,11 @@ typedef struct {
   char **cap;
   char *fname;
   char *exnode;
+  creds_t *creds;
+  ibp_context_t *ic;
   int n;
 } warm_t;
 
-static creds_t *creds = NULL;
-static ibp_context_t *ic = NULL;
 static int dt = 86400;
 
 //*************************************************************************
@@ -82,7 +82,7 @@ log_printf(15, "warming fname=%s, dt=%d\n", w->fname, dt);
 log_printf(1, "fname=%s cap[%d]=%s\n", w->fname, w->n, etext);
       w->cap[w->n] = unescape_text('\\', etext); free(etext);
 //      opque_add(q, new_ibp_modify_alloc_op(ic, w->cap[w->n], -1, dt, -1, lio_gc->timeout));
-      gop = new_ibp_modify_alloc_op(ic, w->cap[w->n], -1, dt, -1, lio_gc->timeout);
+      gop = new_ibp_modify_alloc_op(w->ic, w->cap[w->n], -1, dt, -1, lio_gc->timeout);
       gop_set_myid(gop, w->n);
       opque_add(q, gop);
       w->n++;
@@ -108,7 +108,7 @@ log_printf(1, "fname=%s cap[%d]=%s\n", w->fname, w->n, etext);
      }
   } else {
      etext = NULL; i = 0;
-     lioc_set_attr(lio_gc, creds, w->fname, NULL, "os.timestamp.system.warm", (void *)etext, i);
+     lioc_set_attr(lio_gc, w->creds, w->fname, NULL, "os.timestamp.system.warm", (void *)etext, i);
      status = op_success_status;
      info_printf(lio_ifd, 0, "Succeeded with file %s with %d allocations\n", w->fname, w->n);
   }
@@ -129,7 +129,7 @@ log_printf(1, "fname=%s cap[%d]=%s\n", w->fname, w->n, etext);
 
 int main(int argc, char **argv)
 {
-  int i, start_option, start_index, rg_mode, ftype, prefix_len;
+  int i, j, start_option, start_index, rg_mode, ftype, prefix_len;
   char *fname;
   opque_t *q;
   op_generic_t *gop;
@@ -147,13 +147,11 @@ int main(int argc, char **argv)
 //printf("argc=%d\n", argc);
   if (argc < 2) {
      printf("\n");
-     printf("lio_warm LIO_COMMON_OPTIONS [-rd recurse_depth] [-dt time] path\n");
      printf("lio_warm LIO_COMMON_OPTIONS [-rd recurse_depth] [-dt time] LIO_PATH_OPTIONS\n");
      lio_print_options(stdout);
      lio_print_path_options(stdout);
      printf("    -rd recurse_depth  - Max recursion depth on directories. Defaults to %d\n", recurse_depth);
      printf("    -dt time       - Duration time in sec.  Default is %d sec\n", dt);
-     printf("    path           - Path to warm\n");
      return(1);
   }
 
@@ -179,48 +177,74 @@ int main(int argc, char **argv)
   } while ((start_option < i) && (i<argc));
   start_index = i;
 
+
   if (rg_mode == 0) {
-     if (argc <= start_index) {
+     if (i>=argc) {
         info_printf(lio_ifd, 0, "Missing directory!\n");
         return(2);
      }
-
-     //** Create the simple path iterator
-     tuple = lio_path_resolve(lio_gc->auto_translate, argv[start_index]);
-     rp_single = os_path_glob2regex(tuple.path);
+  } else {
+    start_index--;  //** Ther 1st entry will be the rp created in lio_parse_path_options
   }
-
-  creds = tuple.lc->creds;
-
-  ic = ((ds_ibp_priv_t *)(tuple.lc->ds->priv))->ic;
 
   q = new_opque();
   opque_start_execution(q);
-  ex_size = - tuple.lc->max_attr;
-  it = os_create_object_iter_alist(tuple.lc->os, tuple.creds, rp_single, ro_single, OS_OBJECT_FILE, recurse_depth, &key, (void **)&ex, &ex_size, 1);
-  if (it == NULL) {
-     info_printf(lio_ifd, 0, "ERROR: Failed with object_iter creation\n");
-     goto finished;
-   }
-
 
   type_malloc_clear(w, warm_t, lio_parallel_task_count);
-
-  slot = 0;
   submitted = good = bad = 0;
-  while ((ftype = os_next_object(tuple.lc->os, it, &fname, &prefix_len)) > 0) {
-     w[slot].fname = fname;
-     w[slot].exnode = ex;
-     ex = NULL;  fname = NULL;
-     submitted++;
-     gop = new_thread_pool_op(lio_gc->tpc_unlimited, NULL, gen_warm_task, (void *)&(w[slot]), NULL, 1);
-     gop_set_myid(gop, slot);
+
+  for (j=start_index; j<argc; j++) {
+     log_printf(5, "path_index=%d argc=%d rg_mode=%d\n", j, argc, rg_mode);
+     if (rg_mode == 0) {
+        //** Create the simple path iterator
+        tuple = lio_path_resolve(lio_gc->auto_translate, argv[j]);
+        lio_path_wildcard_auto_append(&tuple);
+        rp_single = os_path_glob2regex(tuple.path);
+     } else {
+        rg_mode = 0;  //** Use the initial rp
+     }
+
+     ex_size = - tuple.lc->max_attr;
+     it = os_create_object_iter_alist(tuple.lc->os, tuple.creds, rp_single, ro_single, OS_OBJECT_FILE, recurse_depth, &key, (void **)&ex, &ex_size, 1);
+     if (it == NULL) {
+        info_printf(lio_ifd, 0, "ERROR: Failed with object_iter creation\n");
+        goto finished;
+      }
+
+
+     slot = 0;
+     while ((ftype = os_next_object(tuple.lc->os, it, &fname, &prefix_len)) > 0) {
+        w[slot].fname = fname;
+        w[slot].exnode = ex;
+        w[slot].creds = tuple.lc->creds;
+        w[slot].ic = ((ds_ibp_priv_t *)(tuple.lc->ds->priv))->ic;
+
+        ex = NULL;  fname = NULL;
+        submitted++;
+        gop = new_thread_pool_op(lio_gc->tpc_unlimited, NULL, gen_warm_task, (void *)&(w[slot]), NULL, 1);
+        gop_set_myid(gop, slot);
 log_printf(0, "gid=%d i=%d fname=%s\n", gop_id(gop), slot, fname);
 //info_printf(lio_ifd, 0, "n=%d gid=%d slot=%d fname=%s\n", submitted, gop_id(gop), slot, fname);
-     opque_add(q, gop);
+        opque_add(q, gop);
 
-     if (submitted >= lio_parallel_task_count) {
-        gop = opque_waitany(q);
+        if (submitted >= lio_parallel_task_count) {
+           gop = opque_waitany(q);
+           status = gop_get_status(gop);
+           if (status.op_status == OP_STATE_SUCCESS) {
+              good++;
+           } else {
+              bad++;
+           }
+           slot = gop_get_myid(gop);
+           gop_free(gop, OP_DESTROY);
+        } else {
+           slot++;
+        }
+     }
+
+     os_destroy_object_iter(lio_gc->os, it);
+
+     while ((gop = opque_waitany(q)) != NULL) {
         status = gop_get_status(gop);
         if (status.op_status == OP_STATE_SUCCESS) {
            good++;
@@ -229,22 +253,11 @@ log_printf(0, "gid=%d i=%d fname=%s\n", gop_id(gop), slot, fname);
         }
         slot = gop_get_myid(gop);
         gop_free(gop, OP_DESTROY);
-     } else {
-        slot++;
      }
-  }
 
-  os_destroy_object_iter(lio_gc->os, it);
-
-  while ((gop = opque_waitany(q)) != NULL) {
-     status = gop_get_status(gop);
-     if (status.op_status == OP_STATE_SUCCESS) {
-        good++;
-     } else {
-        bad++;
-     }
-     slot = gop_get_myid(gop);
-     gop_free(gop, OP_DESTROY);
+     lio_path_release(&tuple);
+     if (rp_single != NULL) { os_regex_table_destroy(rp_single); rp_single = NULL; }
+     if (ro_single != NULL) { os_regex_table_destroy(ro_single); ro_single = NULL; }
   }
 
   opque_free(q, OP_DESTROY);
@@ -264,7 +277,6 @@ finished:
   if (rp_single != NULL) os_regex_table_destroy(rp_single);
   if (ro_single != NULL) os_regex_table_destroy(ro_single);
 
-  lio_path_release(&tuple);
   lio_shutdown();
 
   return(0);

@@ -89,6 +89,7 @@ typedef struct {
   opque_t *q;
   int n;
   int firsttime;
+  ex_off_t visited_count;
 } lioc_fsck_iter_t;
 
 typedef struct {
@@ -1130,6 +1131,7 @@ log_printf(15, "main loop start nque=%d\n", opque_tasks_left(it->q));
 
   //** Start processing the results
   while ((gop = opque_waitany(it->q)) != NULL) {
+     it->visited_count++;
      slot = gop_get_myid(gop);
      task = &(it->task[slot]);
      status = gop_get_status(gop);
@@ -1236,6 +1238,16 @@ void lioc_destroy_fsck_iter(lio_config_t *lc, lio_fsck_iter_t *oit)
   return;
 }
 
+//***********************************************************************
+// lioc_fsck_visited_count - Returns the number of files checked
+//***********************************************************************
+
+ex_off_t lioc_fsck_visited_count(lio_config_t *lc, lio_fsck_iter_t *oit)
+{
+  lioc_fsck_iter_t *it = (lioc_fsck_iter_t *)oit;
+
+  return(it->visited_count);
+}
 
 //***********************************************************************
 // lc_move_object - Generates a move object task
@@ -1276,6 +1288,7 @@ lio_fn_t *lio_core_create()
   lio->create_fsck_iter = lioc_create_fsck_iter;
   lio->destroy_fsck_iter = lioc_destroy_fsck_iter;
   lio->next_fsck = lioc_next_fsck;
+  lio->fsck_visited_count = lioc_fsck_visited_count;
   lio->fsck_object = lioc_fsck_object;
 
   return(lio);

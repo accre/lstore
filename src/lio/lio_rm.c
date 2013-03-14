@@ -56,18 +56,11 @@ int main(int argc, char **argv)
 //printf("argc=%d\n", argc);
   if (argc < 2) {
      printf("\n");
-     printf("lio_rm LIO_COMMON_OPTIONS [-rd recurse_depth] [-t object_types] path1 ... pathN\n");
      printf("lio_rm LIO_COMMON_OPTIONS [-rd recurse_depth] [-t object_types] LIO_PATH_OPTIONS\n");
      lio_print_options(stdout);
      lio_print_path_options(stdout);
-     printf("\n");
      printf("    -rd recurse_depth  - Max recursion depth on directories. Defaults to %d\n", recurse_depth);
      printf("    -t  object_types   - Types of objects to list bitwise OR of 1=Files, 2=Directories, 4=symlink, 8=hardlink.  Default is %d.\n", obj_types);
-     printf("    -rp regex_path     - Regex of path to scan\n");
-     printf("    -gp glob_path      - Glob of path to scan\n");
-     printf("    -ro regex_object   - Regex for final object selection.\n");
-     printf("    -go glob_object    - Glob for final object selection.\n");
-     printf("    path1 .. pathN     - Glob of paths for removal\n");
      return(1);
   }
 
@@ -103,14 +96,16 @@ int main(int argc, char **argv)
      if (rp_single != NULL) os_regex_table_destroy(rp_single);
      if (ro_single != NULL) os_regex_table_destroy(ro_single);
      lio_path_release(&tuple);
-     goto finished;
   }
 
-  //** If we made it here we just have a collection of path globs.
-  //** This is the 1st object to remove
+  //** Check if we have more things to remove
   if (i>=argc) {
-    info_printf(lio_ifd, 0, "Missing directory!\n");
-    return(2);
+    if (rp_single == NULL) {
+       info_printf(lio_ifd, 0, "Missing directory!\n");
+       return(2);
+    }
+
+    goto finished;
   }
 
 

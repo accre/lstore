@@ -70,7 +70,7 @@ struct lio_fn_s {
   void (*destroy_fsck_iter)(lio_config_t *lc, lio_fsck_iter_t *it);
   int (*next_fsck)(lio_config_t *lc, lio_fsck_iter_t *it, char **fname, int *ftype);
   op_generic_t *(*fsck_object)(lio_config_t *lc, creds_t *creds, char *fname, int ftype, int owner_mode, char *owner, int exnode_mode);
-
+  ex_off_t (*fsck_visited_count)(lio_config_t *lc, lio_fsck_iter_t *it);
   op_generic_t *(*create_object)(lio_config_t *lc, creds_t *creds, char *path, int type, char *ex, char *id);
   op_generic_t *(*remove_object)(lio_config_t *lc, creds_t *creds, char *path, char *ex_optional, int ftype_optional);
   op_generic_t *(*remove_regex_object)(lio_config_t *lc, creds_t *creds, os_regex_table_t *path, os_regex_table_t *object_regex, int obj_types, int recurse_depth, int np);
@@ -85,6 +85,7 @@ struct lio_fn_s {
 //#define lio_core_destroy(lc) lc->lio->destroy_service(lc)
 #define lio_create_fsck_iter(lc, c, path, owner_mode, owner, exnode_mode) (lc)->lio->create_fsck_iter(lc, c, path, owner_mode, owner, exnode_mode)
 #define lio_destroy_fsck_iter(lc, it) (lc)->lio->destroy_fsck_iter(lc, it)
+#define lio_fsck_visited_count(lc, it) (lc)->lio->fsck_visited_count(lc, it)
 #define lio_next_fsck(lc, it, fname, atype) (lc)->lio->next_fsck(lc, it, fname, atype)
 #define lio_fsck_object(lc, c, fname, ftype, owner_mode, owner, exnode_mode) (lc)->lio->fsck_object(lc, c, fname, ftype, owner_mode, owner, exnode_mode)
 

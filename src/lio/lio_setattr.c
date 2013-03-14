@@ -80,13 +80,12 @@ void load_file(char *fname, char **val, int *v_size)
 
 int main(int argc, char **argv)
 {
-  int i, rg_mode, start_option, err, fin;
+  int i, j, rg_mode, start_option, start_index, err, fin;
   lio_path_tuple_t tuple;
   os_regex_table_t *rp_single, *ro_single;
   os_object_iter_t *it;
   os_fd_t *fd;
   char *bstate;
-  char *path;
   char *key[MAX_SET];
   char *val[MAX_SET];
   int v_size[MAX_SET];
@@ -109,14 +108,12 @@ int main(int argc, char **argv)
 //printf("argc=%d\n", argc);
   if (argc < 2) {
      printf("\n");
-     printf("lio_setattr LIO_COMMON_OPTIONS [-rd recurse_depth] [-t object_types] [-delim c] -p path -as key=value | -ar key | -af key=vfilename | -al key=obj_path/dkey\n");
-     printf("lio_setattr LIO_COMMON_OPTIONS [-rd recurse_depth] [-t object_types] LIO_PATH_OPTIONS -as key=value | -ar key | -af key=vfilename | -al key=obj_path/dkey\n");
+     printf("lio_setattr LIO_COMMON_OPTIONS [-rd recurse_depth] [-t object_types] -as key=value | -ar key | -af key=vfilename | -al key=obj_path/dkey LIO_PATH_OPTIONS\n");
      lio_print_options(stdout);
      lio_print_path_options(stdout);
      printf("\n");
      printf("    -rd recurse_depth  - Max recursion depth on directories. Defaults to %d\n", recurse_depth);
      printf("    -t  object_types   - Types of objects to list bitwise OR of 1=Files, 2=Directories, 4=symlink, 8=hardlink.  Default is %d.\n", obj_types);
-     printf("    -p  path           - Path glob to scan\n");
      printf("    -delim c           - Key/value delimeter characters.  Defauls is %s.\n", delims);
      printf("    -as key=value      - Breaks up the literal string into the key/value pair and stores it.\n");
      printf("    -ar key            - Remove the key.\n");
@@ -134,7 +131,6 @@ int main(int argc, char **argv)
   rg_mode = 0;
   rp_single = ro_single = NULL;
   n_keys = 0; n_skeys = 0;
-  path = NULL;
 
   rg_mode = lio_parse_path_options(&argc, argv, lio_gc->auto_translate, &tuple, &rp_single, &ro_single);
 
@@ -151,9 +147,6 @@ int main(int argc, char **argv)
      } else if (strcmp(argv[i], "-delim") == 0) {  //** Get the delimiter
         i++;
         delims = argv[i]; i++;
-     } else if (strcmp(argv[i], "-p") == 0) {  //** Path
-        i++;
-        path = argv[i]; i++;
      } else if (strcmp(argv[i], "-as") == 0) {  //** String attribute
         i++;
         key[n_keys] = string_token(argv[i], delims, &bstate, &fin);
@@ -180,55 +173,69 @@ int main(int argc, char **argv)
         n_skeys++;  i++;
      }
   } while ((start_option < i) && (i<argc));
+  start_index = i;
 
   if (rg_mode == 0) {
-     if (path == NULL) {
+     if (start_index >= argc) {
         info_printf(lio_ifd, 0, "Missing directory!\n");
         return(2);
      }
-
-     //** Create the simple path iterator
-     tuple = lio_path_resolve(lio_gc->auto_translate, path);
-     rp_single = os_path_glob2regex(tuple.path);
+  } else {
+    start_index--;  //** Ther 1st entry will be the rp created in lio_parse_path_options
   }
 
-
-  if (n_keys > 0) {
-     err = gop_sync_exec(os_regex_object_set_multiple_attrs(tuple.lc->os, tuple.creds, NULL, rp_single,  ro_single, obj_types, recurse_depth, key, (void **)val, v_size, n_keys));
-     if (err != OP_STATE_SUCCESS) {
-        info_printf(lio_ifd, 0, "ERROR with operation! \n");
-     }
-  }
-
-  if (n_skeys > 0) {  //** For symlink attrs we have to manually iterate
-     it = os_create_object_iter(tuple.lc->os, tuple.creds, rp_single, ro_single, obj_types, NULL, recurse_depth, NULL, 0);
-     if (it == NULL) {
-        info_printf(lio_ifd, 0, "ERROR: Failed with object_iter creation\n");
-        goto finished;
+  for (j=start_index; j<argc; j++) {
+     log_printf(5, "path_index=%d argc=%d rg_mode=%d\n", j, argc, rg_mode);
+     if (rg_mode == 0) {
+        //** Create the simple path iterator
+        tuple = lio_path_resolve(lio_gc->auto_translate, argv[j]);
+        rp_single = os_path_glob2regex(tuple.path);
+     } else {
+        rg_mode = 0;  //** Use the initial rp
      }
 
-     while ((ftype = os_next_object(tuple.lc->os, it, &fname, &prefix_len)) > 0) {
-        err = gop_sync_exec(os_open_object(tuple.lc->os, tuple.creds, fname, OS_MODE_READ_IMMEDIATE, NULL, &fd, 30));
+     if (n_keys > 0) {
+        err = gop_sync_exec(os_regex_object_set_multiple_attrs(tuple.lc->os, tuple.creds, NULL, rp_single,  ro_single, obj_types, recurse_depth, key, (void **)val, v_size, n_keys));
         if (err != OP_STATE_SUCCESS) {
-           info_printf(lio_ifd, 0, "ERROR: opening file: %s.  Skipping.\n", fname);
-        } else {
-           //** Do the symlink
-           err = gop_sync_exec(os_symlink_multiple_attrs(tuple.lc->os, tuple.creds, sobj, skey, fd, dkey, n_skeys));
-           if (err != OP_STATE_SUCCESS) {
-              info_printf(lio_ifd, 0, "ERROR: with linking file: %s\n", fname);
-           }
+           info_printf(lio_ifd, 0, "ERROR with operation! \n");
+        }
+     }
 
-           //** Close the file
-           err = gop_sync_exec(os_close_object(tuple.lc->os, fd));
-           if (err != OP_STATE_SUCCESS) {
-              info_printf(lio_ifd, 0, "ERROR: closing file: %s\n", fname);
-           }
+     if (n_skeys > 0) {  //** For symlink attrs we have to manually iterate
+        it = os_create_object_iter(tuple.lc->os, tuple.creds, rp_single, ro_single, obj_types, NULL, recurse_depth, NULL, 0);
+        if (it == NULL) {
+           info_printf(lio_ifd, 0, "ERROR: Failed with object_iter creation\n");
+           goto finished;
         }
 
-        free(fname);
+        while ((ftype = os_next_object(tuple.lc->os, it, &fname, &prefix_len)) > 0) {
+           err = gop_sync_exec(os_open_object(tuple.lc->os, tuple.creds, fname, OS_MODE_READ_IMMEDIATE, NULL, &fd, 30));
+           if (err != OP_STATE_SUCCESS) {
+              info_printf(lio_ifd, 0, "ERROR: opening file: %s.  Skipping.\n", fname);
+           } else {
+              //** Do the symlink
+              err = gop_sync_exec(os_symlink_multiple_attrs(tuple.lc->os, tuple.creds, sobj, skey, fd, dkey, n_skeys));
+              if (err != OP_STATE_SUCCESS) {
+                 info_printf(lio_ifd, 0, "ERROR: with linking file: %s\n", fname);
+              }
+
+              //** Close the file
+              err = gop_sync_exec(os_close_object(tuple.lc->os, fd));
+              if (err != OP_STATE_SUCCESS) {
+                 info_printf(lio_ifd, 0, "ERROR: closing file: %s\n", fname);
+              }
+           }
+
+           free(fname);
+        }
+
+        os_destroy_object_iter(tuple.lc->os, it);
      }
 
-     os_destroy_object_iter(tuple.lc->os, it);
+     lio_path_release(&tuple);
+     if (rp_single != NULL) { os_regex_table_destroy(rp_single); rp_single = NULL; }
+     if (ro_single != NULL) { os_regex_table_destroy(ro_single); ro_single = NULL; }
+
   }
 
 finished:
@@ -236,10 +243,6 @@ finished:
     if (sobj[i] != NULL) free(sobj[i]);
     if (skey[i] != NULL) free(skey[i]);
   }
-
-  lio_path_release(&tuple);
-  if (ro_single != NULL) os_regex_table_destroy(ro_single);
-  if (rp_single != NULL) os_regex_table_destroy(rp_single);
 
   lio_shutdown();
 

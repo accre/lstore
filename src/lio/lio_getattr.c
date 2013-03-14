@@ -80,17 +80,16 @@ void load_file(char *fname, char **val, int *v_size)
 
 int main(int argc, char **argv)
 {
-  int i, rg_mode, start_option, fin, ftype, prefix_len;
+  int i, j, rg_mode, start_option, start_index, fin, ftype, prefix_len;
   lio_path_tuple_t tuple;
   os_regex_table_t *rp_single, *ro_single, *attr_regex;
   os_object_iter_t *it;
   os_attr_iter_t *ait;
   char *bstate, *fname;
-  char *path;
   char *key[MAX_SET];
   char *val[MAX_SET];
   int v_size[MAX_SET];
-  int n_keys;
+  int n_keys, n_keys_al;
   int max_attr = 1024*1024;
   char *new_obj_fmt = "object=%s\\n";
   char *end_obj_fmt = "\\n";
@@ -104,7 +103,6 @@ int main(int argc, char **argv)
 //printf("argv[1]=!%s! str=!%s!\n", argv[1], estr);
   if (argc < 2) {
      printf("\n");
-     printf("lio_getattr LIO_COMMON_OPTIONS [-rd recurse_depth] [-t object_types] [-vmax max_val] PRINT_OPTIONS [-ga attr_glob | -ra attr_regex | -al key1,key2,...keyN] path\n");
      printf("lio_getattr LIO_COMMON_OPTIONS [-rd recurse_depth] [-t object_types] [-vmax max_val] PRINT_OPTIONS [-ga attr_glob | -ra attr_regex | -al key1,key2,...keyN] LIO_PATH_OPTIONS\n");
      lio_print_options(stdout);
      lio_print_path_options(stdout);
@@ -129,7 +127,6 @@ int main(int argc, char **argv)
      printf("    -ga attr_glob      - Attribute glob string\n");
      printf("    -ra attr_regex     - Attribute regex string\n");
      printf("    -al key1,key2,...  - Comma separated list of keys to retrieve\n");
-     printf("    path               - Path glob to scan\n");
      return(1);
   }
 
@@ -139,8 +136,7 @@ int main(int argc, char **argv)
   //*** Parse the args
   rg_mode = 0;
   rp_single = ro_single = attr_regex = NULL;
-  n_keys = 0;
-  path = NULL;
+  n_keys_al = 0;
 
   rg_mode = lio_parse_path_options(&argc, argv, lio_gc->auto_translate, &tuple, &rp_single, &ro_single);
 
@@ -183,10 +179,12 @@ int main(int argc, char **argv)
           n_keys++;
           key[n_keys] = string_token(NULL, ",", &bstate, &fin);
         } while (fin == 0);
+        n_keys_al = n_keys;
         i++;
         //for(err=0; err<n_keys; err++) printf("key[%d]=%s\n", err, key[err]);
      }
   } while ((start_option < i) && (i<argc));
+  start_index = i;
 
   //** Convert all the format strings
   new_obj_fmt = argv2format(new_obj_fmt);
@@ -200,70 +198,82 @@ int main(int argc, char **argv)
         info_printf(lio_ifd, 0, "Missing directory!\n");
         return(2);
      }
-     path = argv[i];
-log_printf(15, "path=%s\n", path);
-
-     //** Create the simple path iterator
-     tuple = lio_path_resolve(lio_gc->auto_translate, path);
-     rp_single = os_path_glob2regex(tuple.path);
+  } else {
+    start_index--;  //** The 1st entry will be the rp created in lio_parse_path_options
   }
 
 
-  //** Make the iterator.  It depends on if we have a regex or a list
-  if (n_keys > 0) {  //** Using a fixed list of keys
-     for (i=0; i<n_keys; i++) { v_size[i] = -max_attr; val[i] = NULL; }
-     it = os_create_object_iter_alist(tuple.lc->os, tuple.creds, rp_single, ro_single, obj_types, recurse_depth, key, (void **)val, v_size, n_keys);
-  } else {   //** Got a regex for attribute selection
-     v_size[0] = -max_attr;
-     it = os_create_object_iter(tuple.lc->os, tuple.creds, rp_single, ro_single, obj_types, attr_regex, recurse_depth, &ait, v_size[0]);
-  }
+  for (j=start_index; j<argc; j++) {
+     log_printf(5, "path_index=%d argc=%d rg_mode=%d\n", j, argc, rg_mode);
+     if (rg_mode == 0) {
+        //** Create the simple path iterator
+        tuple = lio_path_resolve(lio_gc->auto_translate, argv[j]);
+        lio_path_wildcard_auto_append(&tuple);
+        rp_single = os_path_glob2regex(tuple.path);
+     } else {
+        rg_mode = 0;  //** Use the initial rp
+     }
 
-  if (it == NULL) {
-     info_printf(lio_ifd, 0, "ERROR creating iterator!\n");
-  }
+     //** Make the iterator.  It depends on if we have a regex or a list
+     if (n_keys_al > 0) {  //** Using a fixed list of keys
+        n_keys = n_keys_al;
+        for (i=0; i<n_keys; i++) { v_size[i] = -max_attr; val[i] = NULL; }
+        it = os_create_object_iter_alist(tuple.lc->os, tuple.creds, rp_single, ro_single, obj_types, recurse_depth, key, (void **)val, v_size, n_keys);
+     } else {   //** Got a regex for attribute selection
+        v_size[0] = -max_attr;
+        it = os_create_object_iter(tuple.lc->os, tuple.creds, rp_single, ro_single, obj_types, attr_regex, recurse_depth, &ait, v_size[0]);
+     }
+
+     if (it == NULL) {
+        info_printf(lio_ifd, 0, "ERROR creating iterator!\n");
+     }
 
 log_printf(15, "before main loop\n");
-  //**Now iterate through the objects
-  while ((ftype = os_next_object(tuple.lc->os, it, &fname, &prefix_len)) > 0) {
-     if (attr_regex != NULL) {  //** Got an attr regex so load all the attr
-        n_keys = 0;
-        v_size[n_keys] = -1*max_attr;
-        val[n_keys] = NULL;
-log_printf(15, "v_size = %d\n", v_size[n_keys]);
-        while (os_next_attr(tuple.lc->os, ait, &(key[n_keys]), (void **)&(val[n_keys]), &(v_size[n_keys])) == 0) {
-           n_keys++;
+     //**Now iterate through the objects
+     while ((ftype = os_next_object(tuple.lc->os, it, &fname, &prefix_len)) > 0) {
+        if (attr_regex != NULL) {  //** Got an attr regex so load all the attr
+           n_keys = 0;
            v_size[n_keys] = -1*max_attr;
            val[n_keys] = NULL;
+log_printf(15, "v_size = %d\n", v_size[n_keys]);
+           while (os_next_attr(tuple.lc->os, ait, &(key[n_keys]), (void **)&(val[n_keys]), &(v_size[n_keys])) == 0) {
+              n_keys++;
+              v_size[n_keys] = -1*max_attr;
+              val[n_keys] = NULL;
+           }
+        }
+
+        //** Print the record
+        info_printf(lio_ifd, 0, new_obj_fmt, fname);
+        if (n_keys > 0) {
+           info_printf(lio_ifd, 0, attr_fmt, key[0], val[0]);
+           for (i=1; i<n_keys; i++) {
+               info_printf(lio_ifd, 0, "%s", attr_sep);
+               info_printf(lio_ifd, 0, attr_fmt, key[i], val[i]);
+           }
+        }
+        info_printf(lio_ifd, 0, end_obj_fmt, fname);
+
+        //** Free the space
+        free(fname);
+        for (i=0; i<n_keys; i++) {
+          if (val[i] != NULL) free(val[i]);
+          if (attr_regex != NULL) free(key[i]);
         }
      }
 
-     //** Print the record
-     info_printf(lio_ifd, 0, new_obj_fmt, fname);
-     if (n_keys > 0) {
-        info_printf(lio_ifd, 0, attr_fmt, key[0], val[0]);
-        for (i=1; i<n_keys; i++) {
-            info_printf(lio_ifd, 0, "%s", attr_sep);
-            info_printf(lio_ifd, 0, attr_fmt, key[i], val[i]);
-        }
-     }
-     info_printf(lio_ifd, 0, end_obj_fmt, fname);
+     os_destroy_object_iter(tuple.lc->os, it);
 
-     //** Free the space
-     free(fname);
-     for (i=0; i<n_keys; i++) {
-       if (val[i] != NULL) free(val[i]);
-       if (attr_regex != NULL) free(key[i]);
-     }
+     lio_path_release(&tuple);
+     if (rp_single != NULL) { os_regex_table_destroy(rp_single); rp_single = NULL; }
+     if (ro_single != NULL) { os_regex_table_destroy(ro_single); ro_single = NULL; }
   }
-
-  os_destroy_object_iter(tuple.lc->os, it);
 
 log_printf(15, "after main loop\n");
 
-  lio_path_release(&tuple);
-  if (ro_single != NULL) os_regex_table_destroy(ro_single);
-  if (rp_single != NULL) os_regex_table_destroy(rp_single);
-  if (attr_regex != NULL) os_regex_table_destroy(attr_regex);
+  if (attr_regex != NULL) {
+     os_regex_table_destroy(attr_regex);
+  }
 
   free(new_obj_fmt);
   free(end_obj_fmt);

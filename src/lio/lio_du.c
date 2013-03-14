@@ -85,7 +85,7 @@ void du_format_entry(info_fd_t *ifd, du_entry_t *de, int sumonly)
 
 int main(int argc, char **argv)
 {
-  int i, ftype, rg_mode, start_index, start_option, nosort, prefix_len;
+  int i, j, ftype, rg_mode, start_index, start_option, nosort, prefix_len;
   char *fname;
   du_entry_t *de;
   list_t *table, *sum_table, *lt;
@@ -101,7 +101,6 @@ int main(int argc, char **argv)
 //printf("argc=%d\n", argc);
   if (argc < 2) {
      printf("\n");
-     printf("lio_du LIO_COMMON_OPTIONS [-rd recurse_depth] [-ns] [-h|-hi] [-s] [-ln] path\n");
      printf("lio_du LIO_COMMON_OPTIONS [-rd recurse_depth] [-ns] [-h|-hi] [-s] [-ln] LIO_PATH_OPTIONS\n");
      lio_print_options(stdout);
      lio_print_path_options(stdout);
@@ -112,7 +111,6 @@ int main(int argc, char **argv)
      printf("    -hi                - Print using base 1024\n");
      printf("    -s                 - Print directory summaries only\n");
      printf("    -ln                - Follow links.  Otherwise they are ignored\n");
-     printf("    path               - Path glob to scan\n");
      return(1);
   }
 
@@ -156,64 +154,22 @@ int main(int argc, char **argv)
   } while ((start_option < i) && (i<argc));
   start_index = i;
 
-  if (sumonly == 1) nosort = 0;  //** Doing a tally overides the no sort option
+  if (sumonly == 1) {
+      nosort = 0;  //** Doing a tally overides the no sort option
+      sum_table = list_create(0, &list_string_compare, NULL, list_no_key_free, list_no_data_free);
+  }
 
   if (rg_mode == 0) {
      if (i>=argc) {
         printf("Missing directory!\n");
         return(2);
      }
-
-     //** Create the simple path iterator
-     tuple = lio_path_resolve(lio_gc->auto_translate, argv[i]);
-     rp_single = os_path_glob2regex(tuple.path);
+  } else {
+    start_index--;  //** Ther 1st entry will be the rp created in lio_parse_path_options
   }
 
 //log_printf(15, "argv[%d]=%s\n", i, argv[i]);
 
-
-  //** Make the toplevel list
-  if (sumonly == 1) {
-log_printf(15, "MAIN SUMONLY=1\n");
-     sum_table = list_create(0, &list_string_compare, NULL, list_no_key_free, list_no_data_free);
-
-     v_size = -1024;
-     val = NULL;
-     it = os_create_object_iter_alist(tuple.lc->os, tuple.creds, rp_single, ro_single, OS_OBJECT_ANY, 0, &key, (void **)&val, &v_size, 1);
-     if (it == NULL) {
-        log_printf(0, "ERROR: Failed with object_iter creation\n");
-        goto finished;
-      }
-
-     while ((ftype = os_next_object(tuple.lc->os, it, &fname, &prefix_len)) > 0) {
-        if (((ftype & OS_OBJECT_SYMLINK) > 0) && (ignoreln == 1)) continue;  //** Ignoring links
-
-log_printf(15, "sumonly inserting fname=%s\n", fname);
-        type_malloc_clear(de, du_entry_t, 1);
-        de->fname = fname;
-        de->ftype = ftype;
-
-        if (val != NULL) sscanf(val, I64T, &(de->bytes));
-        list_insert(sum_table, de->fname, de);
-
-        v_size = -1024;
-        free(val); val = NULL;
-     }
-
-     os_destroy_object_iter(tuple.lc->os, it);
-
-log_printf(15, "sum_table=%d\n", list_key_count(sum_table));
-  }
-
-log_printf(15, "MAIN LOOP\n");
-
-  v_size = -1024;
-  val = NULL;
-  it = os_create_object_iter_alist(tuple.lc->os, tuple.creds, rp_single, ro_single, OS_OBJECT_ANY, recurse_depth, &key, (void **)&val, &v_size, 1);
-  if (it == NULL) {
-     log_printf(0, "ERROR: Failed with object_iter creation\n");
-     goto finished;
-   }
 
   if (sumonly == 1) {
      info_printf(lio_ifd, 0, "  Size      File count            Filename\n");
@@ -224,45 +180,104 @@ log_printf(15, "MAIN LOOP\n");
   }
 
   table = list_create(0, &list_string_compare, NULL, list_no_key_free, list_no_data_free);
-  while ((ftype = os_next_object(tuple.lc->os, it, &fname, &prefix_len)) > 0) {
-//printf("fname=%s\n", fname);
-     if (((ftype & OS_OBJECT_SYMLINK) > 0) && (ignoreln == 1)) continue;  //** Ignoring links
-//printf("fname2=%s\n", fname);
 
-      if ((sumonly == 1) && ((ftype & OS_OBJECT_FILE) > 0)) {
-        bytes = 0;
-        if (val != NULL) sscanf(val, I64T, &bytes);
-
-        lit = list_iter_search(sum_table, NULL, 0);
-        while ((list_next(&lit, (list_key_t **)&file, (list_data_t **)&de)) == 0) {
-             if (strncmp(de->fname, fname, strlen(de->fname)) == 0) {
-                log_printf(15, "accum de->fname=%s fname=%s\n", de->fname, fname);
-                de->bytes += bytes;
-                de->count++;
-             }
-        }
-      } else {
-        type_malloc_clear(de, du_entry_t, 1);
-        de->fname = fname;
-        de->ftype = ftype;
-
-        if (val != NULL) sscanf(val, I64T, &(de->bytes));
-
-//printf("fname=%s size=" I64T "\n", de->fname, de->bytes);
-        if (nosort == 1) {
-           du_format_entry(lio_ifd, de, sumonly);
-           free(de->fname);
-           free(de);
-        } else {
-           list_insert(table, de->fname, de);
-        }
+  for (j=start_index; j<argc; j++) {
+     log_printf(5, "path_index=%d argc=%d rg_mode=%d\n", j, argc, rg_mode);
+     if (rg_mode == 0) {
+        //** Create the simple path iterator
+        tuple = lio_path_resolve(lio_gc->auto_translate, argv[j]);
+        lio_path_wildcard_auto_append(&tuple);
+        rp_single = os_path_glob2regex(tuple.path);
+     } else {
+        rg_mode = 0;  //** Use the initial rp
      }
 
-     v_size = -1024;
-     free(val); val = NULL;
-  }
+     //** Make the toplevel list
+     if (sumonly == 1) {
+log_printf(15, "MAIN SUMONLY=1\n");
+        v_size = -1024;
+        val = NULL;
+        it = os_create_object_iter_alist(tuple.lc->os, tuple.creds, rp_single, ro_single, OS_OBJECT_ANY, 0, &key, (void **)&val, &v_size, 1);
+        if (it == NULL) {
+           log_printf(0, "ERROR: Failed with object_iter creation\n");
+           goto finished;
+        }
 
-  os_destroy_object_iter(tuple.lc->os, it);
+        while ((ftype = os_next_object(tuple.lc->os, it, &fname, &prefix_len)) > 0) {
+           if (((ftype & OS_OBJECT_SYMLINK) > 0) && (ignoreln == 1)) continue;  //** Ignoring links
+
+log_printf(15, "sumonly inserting fname=%s\n", fname);
+           type_malloc_clear(de, du_entry_t, 1);
+           de->fname = fname;
+           de->ftype = ftype;
+
+           if (val != NULL) sscanf(val, I64T, &(de->bytes));
+           list_insert(sum_table, de->fname, de);
+
+           v_size = -1024;
+           free(val); val = NULL;
+        }
+
+        os_destroy_object_iter(tuple.lc->os, it);
+
+log_printf(15, "sum_table=%d\n", list_key_count(sum_table));
+     }
+
+log_printf(15, "MAIN LOOP\n");
+
+     v_size = -1024;
+     val = NULL;
+     it = os_create_object_iter_alist(tuple.lc->os, tuple.creds, rp_single, ro_single, OS_OBJECT_ANY, recurse_depth, &key, (void **)&val, &v_size, 1);
+     if (it == NULL) {
+        log_printf(0, "ERROR: Failed with object_iter creation\n");
+        goto finished;
+      }
+
+     while ((ftype = os_next_object(tuple.lc->os, it, &fname, &prefix_len)) > 0) {
+//printf("fname=%s\n", fname);
+        if (((ftype & OS_OBJECT_SYMLINK) > 0) && (ignoreln == 1)) continue;  //** Ignoring links
+//printf("fname2=%s\n", fname);
+
+         if ((sumonly == 1) && ((ftype & OS_OBJECT_FILE) > 0)) {
+            bytes = 0;
+            if (val != NULL) sscanf(val, I64T, &bytes);
+
+            lit = list_iter_search(sum_table, NULL, 0);
+            while ((list_next(&lit, (list_key_t **)&file, (list_data_t **)&de)) == 0) {
+               if ((strncmp(de->fname, fname, strlen(de->fname)) == 0) && ((de->ftype & OS_OBJECT_DIR) > 0)) {
+                  log_printf(15, "accum de->fname=%s fname=%s\n", de->fname, fname);
+                  de->bytes += bytes;
+                  de->count++;
+               }
+            }
+            free(fname);
+         } else {
+            type_malloc_clear(de, du_entry_t, 1);
+            de->fname = fname;
+            de->ftype = ftype;
+
+            if (val != NULL) sscanf(val, I64T, &(de->bytes));
+
+//printf("fname=%s size=" I64T "\n", de->fname, de->bytes);
+            if (nosort == 1) {
+               du_format_entry(lio_ifd, de, sumonly);
+               free(de->fname);
+               free(de);
+            } else {
+               list_insert(table, de->fname, de);
+            }
+         }
+
+         v_size = -1024;
+         free(val); val = NULL;
+     }
+
+     os_destroy_object_iter(tuple.lc->os, it);
+
+     lio_path_release(&tuple);
+     if (rp_single != NULL) { os_regex_table_destroy(rp_single); rp_single = NULL; }
+     if (ro_single != NULL) { os_regex_table_destroy(ro_single); ro_single = NULL; }
+  }
 
   if ((nosort == 1) && (sumonly == 0)) goto finished;  //** Check if we're done
 
@@ -274,11 +289,10 @@ log_printf(15, "MAIN LOOP\n");
       du_format_entry(lio_ifd, de, sumonly);
   }
 
-finished:
-  lio_path_release(&tuple);
-  if (ro_single != NULL) os_regex_table_destroy(ro_single);
-  if (rp_single != NULL) os_regex_table_destroy(rp_single);
+  if (sumonly == 1) list_destroy(sum_table);
+  list_destroy(table);
 
+finished:
   lio_shutdown();
 
   return(0);

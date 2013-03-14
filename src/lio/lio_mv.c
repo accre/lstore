@@ -140,12 +140,12 @@ int main(int argc, char **argv)
   if (argc < 2) {
      printf("\n");
      printf("lio_mv LIO_COMMON_OPTIONS [-ln] src_path1 .. src_pathN dest_path\n");
-//     printf("lio_du LIO_COMMON_OPTIONS [-ln] LIO_PATH_OPTIONS dest_path\n");
      lio_print_options(stdout);
 //     lio_print_path_options(stdout);
      printf("\n");
      printf("    -ln                - Follow links.  Otherwise they are ignored\n");
-     printf("    path               - Path glob to scan\n");
+     printf("    src_path*          - Source path glob to move\n");
+     printf("    dest_path          - Destination directory of file\n");
      return(1);
   }
 
@@ -176,20 +176,10 @@ int main(int argc, char **argv)
   //** Get the dest filetype/exists
   dtype = lioc_exists(dtuple.lc, dtuple.creds, dtuple.path);
 
-//  gop = os_exists(dtuple.lc->os, dtuple.creds, dtuple.path);
-//  gop_waitall(gop);
-//  status = gop_get_status(gop);
-//  dtype = status.error_code;
-//  gop_free(gop, OP_DESTROY);
-
 
   //** Create the simple path iterator
   n_paths = argc - start_index - 1;
 log_printf(15, "n_paths=%d argc=%d si=%d dtype=%d\n", n_paths, argc, start_index, dtype);
-//printf("n_paths=%d argc=%d si=%d\n", n_paths, argc, start_index);
-//for (i=start_index; i<argc; i++) {
-//  printf("argv[%d]=%s\n", i, argv[i]);
-//}
 
   type_malloc_clear(flist, mv_t, n_paths);
 

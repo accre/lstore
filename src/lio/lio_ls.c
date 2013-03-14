@@ -147,7 +147,7 @@ op_status_t readlink_fn(void *arg, int id)
 
 int main(int argc, char **argv)
 {
-  int i, ftype, rg_mode, start_option, prefix_len, nosort;
+  int i, j, ftype, rg_mode, start_option, start_index, prefix_len, nosort;
   char *fname;
   ls_entry_t *lse;
   list_t *table;
@@ -167,7 +167,6 @@ int main(int argc, char **argv)
 //printf("argc=%d\n", argc);
   if (argc < 2) {
      printf("\n");
-     printf("lio_ls LIO_COMMON_OPTIONS [-rd recurse_depth] [-ns] path\n");
      printf("lio_ls LIO_COMMON_OPTIONS [-rd recurse_depth] [-ns] LIO_PATH_OPTIONS\n");
      lio_print_options(stdout);
      lio_print_path_options(stdout);
@@ -179,7 +178,6 @@ int main(int argc, char **argv)
      printf("    -gp glob_path      - Glob of path to scan\n");
      printf("    -ro regex_object   - Regex for final object selection.\n");
      printf("    -go glob_object    - Glob for final object selection.\n");
-     printf("    path               - Path glob to scan\n");
      return(1);
   }
 
@@ -208,85 +206,97 @@ int main(int argc, char **argv)
      }
 
   } while ((start_option < i) && (i<argc));
-
+  start_index = i;
 
   if (rg_mode == 0) {
      if (i>=argc) {
         info_printf(lio_ifd, 0, "Missing directory!\n");
         return(2);
      }
-
-     //** Create the simple path iterator
-     tuple = lio_path_resolve(lio_gc->auto_translate, argv[i]);
-     lio_path_wildcard_auto_append(&tuple);
-     rp_single = os_path_glob2regex(tuple.path);
+  } else {
+    start_index--;  //** Ther 1st entry will be the rp created in lio_parse_path_options
   }
 
-
-  for (i=0; i<n_keys; i++) v_size[i] = -tuple.lc->max_attr;
-  memset(vals, 0, sizeof(vals));
-  it = os_create_object_iter_alist(tuple.lc->os, tuple.creds, rp_single, ro_single, OS_OBJECT_ANY, recurse_depth, keys, (void **)vals, v_size, n_keys);
-  if (it == NULL) {
-     info_printf(lio_ifd, 0, "ERROR: Failed with object_iter creation\n");
-     goto finished;
-   }
 
   info_printf(lio_ifd, 0, "  Perms     Ref   Owner        Size           Creation date              Modify date             Filename [-> link]\n");
   info_printf(lio_ifd, 0, "----------  ---  ----------  ----------  ------------------------  ------------------------  ------------------------------\n");
 
   q = new_opque();
   table = list_create(0, &list_string_compare, NULL, list_no_key_free, list_no_data_free);
-  while ((ftype = os_next_object(tuple.lc->os, it, &fname, &prefix_len)) > 0) {
-     type_malloc_clear(lse, ls_entry_t, 1);
-     lse->fname = fname;
-     lse->ftype = ftype;
-     lse->prefix_len = prefix_len;
-     memcpy(lse->v_size, v_size, sizeof(v_size));
-     memcpy(lse->vals, vals, sizeof(vals));
+
+
+  for (j=start_index; j<argc; j++) {
+     log_printf(5, "path_index=%d argc=%d rg_mode=%d\n", j, argc, rg_mode);
+     if (rg_mode == 0) {
+        //** Create the simple path iterator
+        tuple = lio_path_resolve(lio_gc->auto_translate, argv[j]);
+        lio_path_wildcard_auto_append(&tuple);
+        rp_single = os_path_glob2regex(tuple.path);
+     } else {
+        rg_mode = 0;  //** Use the initial rp
+     }
 
      for (i=0; i<n_keys; i++) v_size[i] = -tuple.lc->max_attr;
      memset(vals, 0, sizeof(vals));
-
-     //** Check if we have a link.  If so we need to resolve the link path
-     if ((ftype & OS_OBJECT_SYMLINK) > 0) {
-        gop = new_thread_pool_op(tuple.lc->tpc_unlimited, NULL, readlink_fn, (void *)lse, NULL, 1);
-        gop_set_private(gop, lse);
-        opque_add(q, gop);
-        if (nosort == 1) opque_waitall(q);
+     it = os_create_object_iter_alist(tuple.lc->os, tuple.creds, rp_single, ro_single, OS_OBJECT_ANY, recurse_depth, keys, (void **)vals, v_size, n_keys);
+     if (it == NULL) {
+        info_printf(lio_ifd, 0, "ERROR: Failed with object_iter creation\n");
+        goto finished;
      }
 
-     if (nosort == 1) {
-        ls_format_entry(lio_ifd, lse);
-     } else {
-        list_insert(table, lse->fname, lse);
+     while ((ftype = os_next_object(tuple.lc->os, it, &fname, &prefix_len)) > 0) {
+        type_malloc_clear(lse, ls_entry_t, 1);
+        lse->fname = fname;
+        lse->ftype = ftype;
+        lse->prefix_len = prefix_len;
+        memcpy(lse->v_size, v_size, sizeof(v_size));
+        memcpy(lse->vals, vals, sizeof(vals));
+
+        for (i=0; i<n_keys; i++) v_size[i] = -tuple.lc->max_attr;
+        memset(vals, 0, sizeof(vals));
+
+        //** Check if we have a link.  If so we need to resolve the link path
+        if ((ftype & OS_OBJECT_SYMLINK) > 0) {
+           gop = new_thread_pool_op(tuple.lc->tpc_unlimited, NULL, readlink_fn, (void *)lse, NULL, 1);
+           gop_set_private(gop, lse);
+           opque_add(q, gop);
+           if (nosort == 1) opque_waitall(q);
+        }
+
+        if (nosort == 1) {
+           ls_format_entry(lio_ifd, lse);
+        } else {
+           list_insert(table, lse->fname, lse);
+        }
      }
+
+     os_destroy_object_iter(tuple.lc->os, it);
+
+     lio_path_release(&tuple);
+     if (rp_single != NULL) { os_regex_table_destroy(rp_single); rp_single = NULL; }
+     if (ro_single != NULL) { os_regex_table_destroy(ro_single); ro_single = NULL; }
   }
-
-  os_destroy_object_iter(tuple.lc->os, it);
 
   //** Wait for any readlinks to complete
   opque_waitall(q);
 
   //** Now sort and print things if needed
   if (nosort == 0) {
-     lit = list_iter_search(table, "", 0);
+     lit = list_iter_search(table, NULL, 0);
      while ((list_next(&lit, (list_key_t **)&fname, (list_data_t **)&lse)) == 0) {
        ls_format_entry(lio_ifd, lse);
      }
-  } else {
-    while ((gop = opque_get_next_finished(q)) != NULL) {
-       lse = gop_get_private(gop);
-       gop_free(gop, OP_DESTROY);
-       ls_format_entry(lio_ifd, lse);
-    }
+//  } else {
+//    while ((gop = opque_get_next_finished(q)) != NULL) {
+//       lse = gop_get_private(gop);
+//       gop_free(gop, OP_DESTROY);
+//       ls_format_entry(lio_ifd, lse);
+//    }
   }
 
   list_destroy(table);
-finished:
-  lio_path_release(&tuple);
-  if (ro_single != NULL) os_regex_table_destroy(ro_single);
-  if (rp_single != NULL) os_regex_table_destroy(rp_single);
 
+finished:
   opque_free(q, OP_DESTROY);
 
   lio_shutdown();
