@@ -1498,8 +1498,10 @@ int lfs_truncate(const char *fname, off_t new_size)
 
   lfs_lock(lfs);
   inode= _lfs_dentry_lookup(lfs, fname, 0);
-  inode->size = new_size;
-  atomic_set(fd->fh->modified, 1);
+  if (inode != NULL) {
+     inode->size = new_size;
+     atomic_set(fd->fh->modified, 1);
+  }
   lfs_unlock(lfs);
 
   lfs_myclose((char *)fname, fd);
@@ -1544,7 +1546,7 @@ int lfs_utimens(const char *fname, const struct timespec tv[2])
 
   lfs_lock(lfs);
   inode = _lfs_dentry_lookup(lfs, fname, 0);
-  inode->modify_data_ts = tv[1].tv_sec;
+  if (inode != NULL) inode->modify_data_ts = tv[1].tv_sec;
   lfs_unlock(lfs);
 
   return(0);
