@@ -544,7 +544,7 @@ int segfile_deserialize_text(segment_t *seg, ex_id_t id, exnode_exchange_t *exp)
   //** Clean up
   inip_destroy(fd);
 
-  return(err);  
+  return(err);
 }
 
 //***********************************************************************
@@ -610,7 +610,7 @@ op_generic_t *segment_file_make(segment_t *seg, data_attr_t *da, char *fname)
 
   if (fd ==  NULL) {
     return(gop_dummy(op_failure_status));  //** Return an error
-  } 
+  }
 
   fclose(fd);
   return(gop_dummy(op_success_status));
@@ -656,7 +656,7 @@ segment_t *segment_file_create(void *arg)
   seg->fn.serialize = segfile_serialize;
   seg->fn.deserialize = segfile_deserialize;
   seg->fn.destroy = segfile_destroy;
-  
+
   return(seg);
 }
 
@@ -667,6 +667,9 @@ segment_t *segment_file_create(void *arg)
 segment_t *segment_file_load(void *arg, ex_id_t id, exnode_exchange_t *ex)
 {
   segment_t *seg = segment_file_create(arg);
-  segment_deserialize(seg, id, ex);
+  if (segment_deserialize(seg, id, ex) != 0) {
+     segment_destroy(seg);
+     seg = NULL;
+  }
   return(seg);
 }

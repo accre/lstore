@@ -137,7 +137,12 @@ op_status_t cp_lio(cp_file_t *cp)
   sexp = exnode_exchange_create(EX_TEXT);
   sexp->text = sex_data;
   sex = exnode_create();
-  exnode_deserialize(sex, sexp, cp->src_tuple.lc->ess);
+  if (exnode_deserialize(sex, sexp, cp->src_tuple.lc->ess) != 0) {
+     info_printf(lio_ifd, 0, "ERROR parsing source exnode(%s)!\n", cp->src_tuple.path);
+     exnode_destroy(sex);
+     exnode_exchange_destroy(sexp);
+     goto finished;
+  }
 
   sseg = exnode_get_default(sex);
   if (sseg == NULL) {
@@ -150,7 +155,14 @@ op_status_t cp_lio(cp_file_t *cp)
   dexp = exnode_exchange_create(EX_TEXT);
   dexp->text = dex_data;
   dex = exnode_create();
-  exnode_deserialize(dex, dexp, cp->dest_tuple.lc->ess);
+  if (exnode_deserialize(dex, dexp, cp->dest_tuple.lc->ess) != 0) {
+     info_printf(lio_ifd, 0, "ERROR parsing destinationexnode(%s)!\n", cp->dest_tuple.path);
+     exnode_destroy(sex);
+     exnode_exchange_destroy(sexp);
+     exnode_destroy(dex);
+     exnode_exchange_destroy(dexp);
+     goto finished;
+  }
 
   dseg = exnode_get_default(dex);
   if (dseg == NULL) {
@@ -272,7 +284,13 @@ op_status_t cp_src_local(cp_file_t *cp)
   exp = exnode_exchange_create(EX_TEXT);
   exp->text = ex_data;
   ex = exnode_create();
-  exnode_deserialize(ex, exp, cp->dest_tuple.lc->ess);
+  if (exnode_deserialize(ex, exp, cp->dest_tuple.lc->ess) != 0) {
+     info_printf(lio_ifd, 0, "ERROR parsing exnode!  Aborting!\n");
+     exnode_destroy(ex);
+     exnode_exchange_destroy(exp);
+     fclose(fd);
+     goto finished;
+  }
 
   //** Get the default view to use
   seg = exnode_get_default(ex);
@@ -363,7 +381,12 @@ op_status_t cp_dest_local(cp_file_t *cp)
   exp = exnode_exchange_create(EX_TEXT);
   exp->text = ex_data;
   ex = exnode_create();
-  exnode_deserialize(ex, exp, cp->src_tuple.lc->ess);
+  if (exnode_deserialize(ex, exp, cp->src_tuple.lc->ess) != 0) {
+     info_printf(lio_ifd, 0, "ERROR parsing exnode!  Aborting!\n");
+     exnode_destroy(ex);
+     exnode_exchange_destroy(exp);
+     goto finished;
+  }
 
   //** Get the default view to use
   seg = exnode_get_default(ex);

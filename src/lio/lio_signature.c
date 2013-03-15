@@ -94,7 +94,10 @@ int main(int argc, char **argv)
   exp = exnode_exchange_create(EX_TEXT);
   exp->text = ex_data;
   ex = exnode_create();
-  exnode_deserialize(ex, exp, tuple.lc->ess);
+  if (exnode_deserialize(ex, exp, tuple.lc->ess) != 0) {
+     info_printf(lio_ifd, 0, "No default segment!  Aborting!\n");
+     goto finished;
+  }
 
   //** Get the default view to use
   seg = exnode_get_default(ex);

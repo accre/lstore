@@ -118,7 +118,11 @@ log_printf(15, "inspecting fname=%s\n", w->fname);
   //** Load it
   exp = exnode_exchange_create(EX_TEXT);  exp->text = w->exnode;
   ex = exnode_create();
-  exnode_deserialize(ex, exp, lio_gc->ess);
+  if (exnode_deserialize(ex, exp, lio_gc->ess) != 0) {
+     info_printf(lio_ifd, 0, "ERROR  Failed with file %s (ftype=%d). Problem parsing exnode!\n", w->fname, w->ftype);
+     status = op_failure_status;
+     goto finished;
+  }
 
 //  printf("Initial exnode=====================================\n");
 //  printf("%s", exp->text);

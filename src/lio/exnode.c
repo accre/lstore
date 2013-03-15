@@ -401,8 +401,12 @@ int exnode_deserialize_text(exnode_t *ex, exnode_exchange_t *exp, service_manage
         //** and load it
         log_printf(15, "exnode_load_text: Loading view segment " XIDT "\n", id);
         seg = load_segment(ess, id, exp);
-        atomic_inc(seg->ref_count);
-        list_insert(ex->view, &segment_id(seg), seg);
+        if (seg != NULL) {
+           atomic_inc(seg->ref_count);
+           list_insert(ex->view, &segment_id(seg), seg);
+        } else {
+           log_printf(0, "Bad segment!  sid=" XIDT "\n", id);
+        }
      }
 
      //** Move to the next segmnet to load
@@ -419,7 +423,7 @@ int exnode_deserialize_text(exnode_t *ex, exnode_exchange_t *exp, service_manage
 
   inip_destroy(fd);
 
-  return(0);
+  return((ex->default_seg == NULL) ? 1 : 0);
 }
 
 //*************************************************************************

@@ -110,7 +110,11 @@ int main(int argc, char **argv)
      exp = exnode_exchange_create(EX_TEXT);
      exp->text = ex_data;
      ex = exnode_create();
-     exnode_deserialize(ex, exp, tuple.lc->ess);
+     if (exnode_deserialize(ex, exp, tuple.lc->ess) != 0) {
+        info_printf(lio_ifd, 0, "ERROR parsing exnode!  Aborting!\n");
+        err = 1;
+        goto finished;
+     }
 
      //** Get the default view to use
      seg = exnode_get_default(ex);
@@ -131,13 +135,13 @@ int main(int argc, char **argv)
      err = lioc_update_error_counts(tuple.lc, tuple.creds, tuple.path, seg);
      if (err > 0) info_printf(lio_ifd, 0, "Failed downloading data!  path=%s\n", tuple.path);
 
+finished:
      exnode_destroy(ex);
      exnode_exchange_destroy(exp);
 
      lio_path_release(&tuple);
   }
 
-finished:
   free(buffer);
 
   lio_shutdown();

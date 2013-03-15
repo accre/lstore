@@ -1012,13 +1012,20 @@ lio_fuse_file_handle_t *lfs_load_file_handle(lio_fuse_t *lfs, const char *fname)
   exp = exnode_exchange_create(EX_TEXT);
   exp->text = ex_data;
   ex = exnode_create();
-  exnode_deserialize(ex, exp, lfs->lc->ess);
+  if (exnode_deserialize(ex, exp, lfs->lc->ess) != 0) {
+     log_printf(0, "Bad exnode! fname=%s\n", fname);
+     exnode_destroy(ex);
+     exnode_exchange_destroy(exp);
+     lfs_unlock(lfs);
+     return(NULL);
+  }
 
   //** Get the default view to use
   seg = exnode_get_default(ex);
   if (seg == NULL) {
      log_printf(0, "No default segment!  Aborting! fname=%s\n", fname);
      exnode_destroy(ex);
+     exnode_exchange_destroy(exp);
      lfs_unlock(lfs);
      return(NULL);
   }
@@ -1063,8 +1070,13 @@ int lfs_myopen(lio_fuse_t *lfs, const char *fname, int flags, lio_fuse_fd_t **my
   inode = _lfs_dentry_lookup(lfs, fname, 1);
   if (inode == NULL) {
      lfs_unlock(lfs);
+     lfs_file_unlock(lfs, fname, slot);
      return(-ENOENT);
   }
+
+  //** Get the entry and flag it as being used
+  entry = _lfs_dentry_get(lfs, fname);
+  entry->ref_count++;
 
   fh = inode->fh;
   if (fh != NULL) fh->ref_count++;
@@ -1075,12 +1087,12 @@ int lfs_myopen(lio_fuse_t *lfs, const char *fname, int flags, lio_fuse_fd_t **my
   }
 
   if (fh == NULL) { //** Failed getting the shared file handle so return an error
+     lfs_unlock(lfs);
+     entry->ref_count--;
+     lfs_unlock(lfs);
+     lfs_file_unlock(lfs, fname, slot);
      return(-ENOENT);
   }
-
-  //** Get the entry and flag it as being used
-  entry = _lfs_dentry_get(lfs, fname);
-  entry->ref_count++;
 
   //** Make the file handle
   type_malloc_clear(fd, lio_fuse_fd_t, 1);
@@ -1194,6 +1206,7 @@ log_printf(1, "FLUSH/TRUNCATE fname=%s\n", fname);
   if (inode == NULL) {
      log_printf(0, "ERROR  missing inode on open file! fname=%s\n", fname);
      lfs_unlock(lfs);
+     lfs_file_unlock(lfs, fname, slot);
      return(-EIO);
   }
 
@@ -1739,9 +1752,16 @@ log_printf(15, "nkeys=%d fname=%s ftype=%d\n", nkeys, fname, ftype);
      exp = exnode_exchange_create(EX_TEXT);
      exp->text = val[ex_key];
      ex = exnode_create();
-     exnode_deserialize(ex, exp, lfs->lc->ess_nocache);
+     err = exnode_deserialize(ex, exp, lfs->lc->ess_nocache);
      free(val[ex_key]); val[ex_key] = NULL;
      exp->text = NULL;
+
+     if (err != 0) {
+        log_printf(1, "ERROR parsing parent exnode fname=%s\n", fname);
+        exnode_exchange_destroy(exp);
+        exnode_destroy(ex);
+        exnode_destroy(cex);
+     }
 
      //** Execute the clone operation
      err = gop_sync_exec(exnode_clone(lfs->lc->tpc_unlimited, ex, lfs->lc->da, &cex, NULL, CLONE_STRUCTURE, lfs->lc->timeout));
@@ -2244,7 +2264,7 @@ void *lfs_gc_thread(apr_thread_t *th, void *data)
 
         n_inode = stack_size(stack);
         while ((inode = pop(stack)) != NULL) {
-           log_printf(15, "Dropping inode=" XIDT "\n", inode->ino);
+           log_printf(1, "Dropping inode=" XIDT "\n", inode->ino);
            _lfs_inode_remove(lfs, inode);
            lfs_inode_destroy(lfs, inode);
         }
@@ -2258,6 +2278,7 @@ void *lfs_gc_thread(apr_thread_t *th, void *data)
               dt = now - entry->recheck_time;
 //log_printf(15, "DT=" TT " stale= " TT "\n", dt, stale);
               if (dt > stale) {
+//log_printf(1, "STALE dentry->fname=%s ref_count=%d\n", entry->fname, entry->ref_count);
                  push(stack, entry);
               }
            }
@@ -2265,7 +2286,7 @@ void *lfs_gc_thread(apr_thread_t *th, void *data)
 
         n_dentry = stack_size(stack);
         while ((entry = pop(stack)) != NULL) {
-           log_printf(15, "Dropping dentry fname=%s inode=" XIDT "\n", entry->fname, entry->ino);
+           log_printf(1, "Dropping dentry fname=%s inode=" XIDT " ref_count=%d\n", entry->fname, entry->ino, entry->ref_count);
            _lfs_dentry_remove(lfs, entry);
            lfs_dentry_destroy(lfs, entry);
         }

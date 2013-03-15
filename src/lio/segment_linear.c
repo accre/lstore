@@ -1337,6 +1337,9 @@ segment_t *segment_linear_create(void *arg)
 segment_t *segment_linear_load(void *arg, ex_id_t id, exnode_exchange_t *ex)
 {
   segment_t *seg = segment_linear_create(arg);
-  segment_deserialize(seg, id, ex);
+  if (segment_deserialize(seg, id, ex) != 0) {
+     segment_destroy(seg);
+     seg = NULL;
+  }
   return(seg);
 }

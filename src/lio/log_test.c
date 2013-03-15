@@ -162,7 +162,10 @@ int main(int argc, char **argv)
 
   //** and parse the remote exnode
   ex = exnode_create();
-  exnode_deserialize(ex, exp, lio_gc->ess);
+  if (exnode_deserialize(ex, exp, lio_gc->ess) != 0) {
+     printf("ERROR parsing exnode!  Aborting!\n");
+     abort();
+  }
 
   //** Get the default view to use
   seg = exnode_get_default(ex);

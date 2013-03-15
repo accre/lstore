@@ -435,13 +435,15 @@ op_status_t lioc_remove_object_fn(void *arg, int id)
      exp = exnode_exchange_create(EX_TEXT);
      exp->text = ex_data;
      ex = exnode_create();
-     exnode_deserialize(ex, exp, op->lc->ess);
-
-     //** Execute the remove operation
-     err = gop_sync_exec(exnode_remove(op->lc->tpc_unlimited, ex, op->lc->da, op->lc->timeout));
-     if (err != OP_STATE_SUCCESS) {
+     if (exnode_deserialize(ex, exp, op->lc->ess) != 0) {
         log_printf(15, "ERROR removing data for object fname=%s\n", op->src_path);
         status = op_failure_status;
+     } else {  //** Execute the remove operation since we have a good exnode
+        err = gop_sync_exec(exnode_remove(op->lc->tpc_unlimited, ex, op->lc->da, op->lc->timeout));
+        if (err != OP_STATE_SUCCESS) {
+           log_printf(15, "ERROR removing data for object fname=%s\n", op->src_path);
+           status = op_failure_status;
+        }
      }
 
      //** Clean up
@@ -646,15 +648,24 @@ log_printf(15, "dir=%s\n fname=%s\n", dir, fname);
      exp = exnode_exchange_create(EX_TEXT);
      exp->text = val[ex_key];
      ex = exnode_create();
-     exnode_deserialize(ex, exp, op->lc->ess_nocache);
+     if (exnode_deserialize(ex, exp, op->lc->ess_nocache) != 0) {
+        log_printf(15, "ERROR parsing parent exnode fname=%s\n", dir);
+        status = op_failure_status;
+        exnode_exchange_destroy(exp);
+        exnode_destroy(ex);
+        goto fail;
+     }
      free(val[ex_key]);
      exp->text = NULL;
 
      //** Execute the clone operation
      err = gop_sync_exec(exnode_clone(op->lc->tpc_unlimited, ex, op->lc->da, &cex, NULL, CLONE_STRUCTURE, op->lc->timeout));
      if (err != OP_STATE_SUCCESS) {
-        log_printf(15, "ERROR closing parent fname=%s\n", dir);
+        log_printf(15, "ERROR cloning parent fname=%s\n", dir);
         status = op_failure_status;
+        exnode_exchange_destroy(exp);
+        exnode_destroy(ex);
+        exnode_destroy(cex);
         goto fail;
      }
 
@@ -948,14 +959,19 @@ log_printf(15, "fname=%s missing owner\n", path);
   exp = exnode_exchange_create(EX_TEXT);
   exp->text = val[ex_index];
   ex = exnode_create();
-  exnode_deserialize(ex, exp, lc->ess_nocache);
+  if (exnode_deserialize(ex, exp, lc->ess_nocache) != 0) {
+     log_printf(15, "ERROR parsing parent exnode fname=%s\n", dir);
+     state |= LIO_FSCK_MISSING_EXNODE;
+     exp->text = NULL;
+     goto finished;
+  }
   exp->text = NULL;
 
      //** Execute the clone operation if needed
   if (do_clone == 1) {
      err = gop_sync_exec(exnode_clone(lc->tpc_unlimited, ex, lc->da, &cex, NULL, CLONE_STRUCTURE, lc->timeout));
      if (err != OP_STATE_SUCCESS) {
-        log_printf(15, "ERROR closing parent fname=%s\n", dir);
+        log_printf(15, "ERROR cloning parent fname=%s\n", dir);
         state |= LIO_FSCK_MISSING_EXNODE;
         goto finished;
      }

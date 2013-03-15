@@ -1501,8 +1501,10 @@ log_printf(15, "seg->id=" XIDT " ref_count=%d\n", segment_id(seg), seg->ref_coun
   if (seg->ref_count > 0) return;
 
   //** Destroy the child segment as well
-  atomic_dec(s->child_seg->ref_count);
-  segment_destroy(s->child_seg);
+  if (s->child_seg != NULL) {
+     atomic_dec(s->child_seg->ref_count);
+     segment_destroy(s->child_seg);
+  }
 
   if (s->plan != NULL) et_destroy_plan(s->plan);
 
@@ -1572,7 +1574,10 @@ segment_t *segment_jerasure_create(void *arg)
 segment_t *segment_jerasure_load(void *arg, ex_id_t id, exnode_exchange_t *ex)
 {
   segment_t *seg = segment_jerasure_create(arg);
-  segment_deserialize(seg, id, ex);
+  if (segment_deserialize(seg, id, ex) != 0) {
+     segment_destroy(seg);
+     seg = NULL;
+  }
   return(seg);
 }
 

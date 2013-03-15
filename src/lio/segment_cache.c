@@ -3011,7 +3011,11 @@ int segcache_deserialize_text(segment_t *seg, ex_id_t id, exnode_exchange_t *exp
   if (id == 0) return (-1);
 
   s->child_seg = load_segment(seg->ess, id, exp);
-  if (s->child_seg == NULL) return(-2);
+  if (s->child_seg == NULL) {
+     log_printf(0, "ERROR child_seg = NULL sid=" XIDT " cid=" XIDT "\n",segment_id(seg), id);
+     flush_log();
+     return(-2);
+  }
 
   atomic_inc(s->child_seg->ref_count);
 
@@ -3164,8 +3168,10 @@ CACHE_PRINT;
   list_destroy(s->pages);
 
   //** Destroy the child segment as well
-  atomic_dec(s->child_seg->ref_count);
-  segment_destroy(s->child_seg);
+  if (s->child_seg != NULL) {
+     atomic_dec(s->child_seg->ref_count);
+     segment_destroy(s->child_seg);
+  }
 
   //** and finally the misc stuff
   if (s->n_ppages > 0) {
@@ -3263,7 +3269,10 @@ log_printf(2, "CACHE-PTR seg=" XIDT " s->c=%p\n", segment_id(seg), s->c);
 segment_t *segment_cache_load(void *arg, ex_id_t id, exnode_exchange_t *ex)
 {
   segment_t *seg = segment_cache_create(arg);
-  segment_deserialize(seg, id, ex);
+  if (segment_deserialize(seg, id, ex) != 0) {
+     segment_destroy(seg);
+     seg = NULL;
+  }
   return(seg);
 }
 
