@@ -274,9 +274,6 @@ log_printf(0, "gid=%d i=%d fname=%s\n", gop_id(gop), slot, fname);
   free(w);
 
 finished:
-  if (rp_single != NULL) os_regex_table_destroy(rp_single);
-  if (ro_single != NULL) os_regex_table_destroy(ro_single);
-
   lio_shutdown();
 
   return(0);
