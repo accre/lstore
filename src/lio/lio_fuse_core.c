@@ -1197,8 +1197,6 @@ log_printf(1, "FLUSH/TRUNCATE fname=%s\n", fname);
      return(-EIO);
   }
 
-  inode->fh = NULL;
-
   //** Now we can release the lock while we update the object cause we still have the file lock
   lfs_unlock(lfs);
 
@@ -1213,6 +1211,7 @@ log_printf(0, "DESTROYING exnode fname=%s\n", fname); flush_log();
      lfs_lock(lfs);
      fentry->ref_count--;
      flags = fentry->flagged;
+     inode->fh = NULL;
      lfs_unlock(lfs);
      lfs_file_unlock(lfs, fname, slot);
      free(fh);
@@ -1265,6 +1264,7 @@ log_printf(0, "DESTROYING exnode fname=%s\n", fname); flush_log();
   fh->ref_count--;
   fentry->ref_count--;
   flags = fentry->flagged;
+  inode->fh = NULL;
   lfs_unlock(lfs);
 
   //** Clean up
