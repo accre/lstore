@@ -993,7 +993,7 @@ int lio_init(int *argc, char ***argvp)
   _lc_object_list = list_create(0, &list_string_compare, NULL, list_no_key_free, list_no_data_free);
 
 //argv = *argvp;
-printf("start argc=%d\n", *argc);
+//printf("start argc=%d\n", *argc);
 //for (i=0; i<*argc; i++) {
 //  printf("start argv[%d]=%s\n", i, argv[i]);
 //}
