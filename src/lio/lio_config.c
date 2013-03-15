@@ -243,31 +243,44 @@ log_printf(5, "initial path=%s\n", tuple->path);
     }
   }
 
+log_printf(5, "last_slash=%d\n", last_slash);
+
 wildcard:
   if (last_slash == -1) {  //** Just using the CWD as the base for the glob
-     realpath(".", path);
+     if (strcmp(p, ".") == 0) {
+        realpath(".", path);
+        last_slash = n;
+     } else if (strcmp(p, "..") == 0) {
+        realpath("..", path);
+        last_slash = n;
+     } else {
+        realpath(".", path);
+        last_slash = 0;
+     }
+
      i = strlen(path);
      path[i] = '/';  //** Need to add the trailing / to the path
      path[i+1] = 0;
      rp = strdup(path);
-     last_slash = 0;
   } else {
-     if (glob_index == -1) last_slash = n;
+     if (last_slash == -1) last_slash = n;
+//     if (glob_index == -1) last_slash = n;
      c = p[last_slash];
      p[last_slash] = 0;
      rp = realpath(p, NULL);
      p[last_slash] = c;
+     if ((p[n-1] == '/') && (last_slash == n)) last_slash--;  //** '/' terminator so preserve it
   }
 
-log_printf(5, "p=%s realpath=%s last_slash=%d n=%d\n", p, rp, last_slash, n);
+log_printf(5, "p=%s realpath=%s last_slash=%d n=%d glob_index=%d\n", p, rp, last_slash, n, glob_index);
 
   if (rp != NULL) {
      if (last_slash == n) {
         tuple->path = rp;
      } else {
-        snprintf(path, sizeof(path), "%s%s", rp, &(p[last_slash]));
-        tuple->path = strdup(path);
-        free(rp);
+           snprintf(path, sizeof(path), "%s%s", rp, &(p[last_slash]));
+           tuple->path = strdup(path);
+           free(rp);
      }
      free(p);
   }
