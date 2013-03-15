@@ -1132,8 +1132,6 @@ int lio_shutdown()
 {
   cache_destroy(_lio_cache);
 
-  exnode_system_destroy();
-
   lio_destroy(lio_gc);
 
   lc_object_remove_unused(0);
@@ -1141,6 +1139,8 @@ int lio_shutdown()
   apr_thread_mutex_destroy(_lc_lock);
   apr_pool_destroy(_lc_mpool);
 //  list_destroy(_lc_object_list);
+
+  exnode_system_destroy();
 
   apr_wrapper_stop();
 
