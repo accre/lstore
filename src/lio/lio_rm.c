@@ -135,10 +135,11 @@ log_printf(0, "gid=%d i=%d fname=%s\n", gop_id(gop), i, flist[i].path);
 
   err = opque_waitall(q);
   if (err != OP_STATE_SUCCESS) {
-     while ((gop = opque_get_next_failed(q)) != NULL) {
-         i = gop_get_myid(gop);
-         status = gop_get_status(gop);
-         info_printf(lio_ifd, 0, "Failed with directory %s\n", argv[i+start_index]);
+     while ((gop = opque_waitany(q)) != NULL) {
+        i = gop_get_myid(gop);
+        status = gop_get_status(gop);
+        if (status.op_status != OP_STATE_SUCCESS) info_printf(lio_ifd, 0, "Failed with directory %s\n", argv[i+start_index]);
+        gop_free(gop, OP_DESTROY);
      }
   }
 
