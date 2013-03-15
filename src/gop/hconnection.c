@@ -110,12 +110,16 @@ void close_hc(host_connection_t *hc)
   //** Now clean up the closed que being careful not to "join" the hc thread
   host_connection_t *hc2;
 
+   hportal_lock(hc->hp);
    while ((hc2 = (host_connection_t *)pop(hc->hp->closed_que)) != NULL) {
+     hportal_unlock(hc->hp);
      if (hc2 != hc) {
         apr_thread_join(&value, hc2->recv_thread);
         destroy_host_connection(hc2);
      }
+     hportal_lock(hc->hp);
    }
+   hportal_unlock(hc->hp);
 
   //** finally free the original hc **
   destroy_host_connection(hc);
