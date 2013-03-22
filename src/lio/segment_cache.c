@@ -2969,7 +2969,7 @@ int segcache_serialize(segment_t *seg, exnode_exchange_t *exp)
 // segcache_deserialize_text -Read the text based segment
 //***********************************************************************
 
-int segcache_deserialize_text(segment_t *seg, ex_id_t id, exnode_exchange_t *exp)
+int segcache_deserialize_text(segment_t *seg, ex_id_t myid, exnode_exchange_t *exp)
 {
   cache_segment_t *s = (cache_segment_t *)seg->priv;
   int bufsize=1024;
@@ -2977,13 +2977,40 @@ int segcache_deserialize_text(segment_t *seg, ex_id_t id, exnode_exchange_t *exp
   char qname[512];
   inip_file_t *fd;
   ex_off_t n, child_size;
+  ex_id_t id;
   int i;
 
   //** Parse the ini text
   fd = inip_read_text(exp->text);
 
   //** Make the segment section name
-  snprintf(seggrp, bufsize, "segment-" XIDT, id);
+  snprintf(seggrp, bufsize, "segment-" XIDT, myid);
+
+  //** Basic size info
+  s->total_size = inip_get_integer(fd, seggrp, "used_size", -1);
+
+  //** Load the child
+  id = inip_get_integer(fd, seggrp, "segment", 0);
+  if (id == 0) {
+     log_printf(0, "ERROR missing child segment tag initial sid=" XIDT " myid=" XIDT "\n",segment_id(seg), myid);
+     flush_log();
+     inip_destroy(fd);
+     return (-1);
+  }
+
+//s->child_seg = NULL;
+//log_printf(0, "ERROR FORCING child_seg = NULL initial sid=" XIDT " myid=" XIDT " cid=" XIDT "\n",segment_id(seg), myid, id);
+//flush_log();
+//inip_destroy(fd);
+//return(-2);
+
+  s->child_seg = load_segment(seg->ess, id, exp);
+  if (s->child_seg == NULL) {
+     log_printf(0, "ERROR child_seg = NULL initial sid=" XIDT " myid=" XIDT " cid=" XIDT "\n",segment_id(seg), myid, id);
+     flush_log();
+     inip_destroy(fd);
+     return(-2);
+  }
 
   //** Remove my random ID from the segments table
   if (s->c) {
@@ -2995,27 +3022,13 @@ int segcache_deserialize_text(segment_t *seg, ex_id_t id, exnode_exchange_t *exp
   }
 
   //** Get the segment header info
-  seg->header.id = id;
+  seg->header.id = myid;
   if (s->qname != NULL) free(s->qname);
   snprintf(qname, sizeof(qname), XIDT HP_HOSTPORT_SEPARATOR "1" HP_HOSTPORT_SEPARATOR "0" HP_HOSTPORT_SEPARATOR "0", seg->header.id);
   s->qname = strdup(qname);
 
   seg->header.type = SEGMENT_TYPE_CACHE;
   seg->header.name = inip_get_string(fd, seggrp, "name", "");
-
-  //** Basic size info
-  s->total_size = inip_get_integer(fd, seggrp, "used_size", -1);
-
-  //** Load the child
-  id = inip_get_integer(fd, seggrp, "segment", 0);
-  if (id == 0) return (-1);
-
-  s->child_seg = load_segment(seg->ess, id, exp);
-  if (s->child_seg == NULL) {
-     log_printf(0, "ERROR child_seg = NULL sid=" XIDT " cid=" XIDT "\n",segment_id(seg), id);
-     flush_log();
-     return(-2);
-  }
 
   atomic_inc(s->child_seg->ref_count);
 
