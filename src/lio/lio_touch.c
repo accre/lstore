@@ -76,7 +76,7 @@ op_status_t touch_fn(void *arg, int id)
 
 int main(int argc, char **argv)
 {
-  int i, n, start_index, err, start_option;
+  int i, j, n, start_index, err, start_option;
   char *ex_fname;
   opque_t *q;
   op_generic_t *gop;
@@ -156,9 +156,9 @@ log_printf(0, "gid=%d i=%d fname=%s\n", gop_id(gop), i, flist[i].path);
 
      if (opque_tasks_left(q) > lio_parallel_task_count) {
         gop = opque_waitany(q);
-        i = gop_get_myid(gop);
+        j = gop_get_myid(gop);
         status = gop_get_status(gop);
-        if (status.op_status != OP_STATE_SUCCESS) info_printf(lio_ifd, 0, "Failed with file %s with error %s\n", argv[i+start_index], error_table[status.error_code]);
+        if (status.op_status != OP_STATE_SUCCESS) info_printf(lio_ifd, 0, "Failed with file %s with error %s\n", argv[j+start_index], error_table[status.error_code]);
         gop_free(gop, OP_DESTROY);
      }
   }
@@ -166,9 +166,9 @@ log_printf(0, "gid=%d i=%d fname=%s\n", gop_id(gop), i, flist[i].path);
   err = opque_waitall(q);
   if (err != OP_STATE_SUCCESS) {
      while ((gop = opque_get_next_failed(q)) != NULL) {
-         i = gop_get_myid(gop);
+         j = gop_get_myid(gop);
          status = gop_get_status(gop);
-         info_printf(lio_ifd, 0, "Failed with file %s with error %s\n", argv[i+start_index], error_table[status.error_code]);
+         info_printf(lio_ifd, 0, "Failed with file %s with error %s\n", argv[j+start_index], error_table[status.error_code]);
      }
   }
 

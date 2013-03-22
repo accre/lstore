@@ -303,7 +303,11 @@ lio_inode_t *_lfs_load_inode_entry(lio_fuse_t *lfs, const char *fname, lio_inode
   lio_inode_t inode;
   lio_inode_t *tinode;
 
-  //** Check if another thread is doing the load if so wait
+  //** If the file is open we don't do an update
+  if (curr_inode != NULL) {
+     if (curr_inode->fh != NULL) return(curr_inode);
+  }
+
   err = OP_STATE_SUCCESS;
 
   for (i=0; i<_inode_key_size; i++) {
@@ -334,10 +338,12 @@ lio_inode_t *_lfs_load_inode_entry(lio_fuse_t *lfs, const char *fname, lio_inode
 
   tinode = _lfs_inode_lookup(lfs, inode.ino);
   if (tinode == NULL) { //** Doesn't exist so insert it
+log_printf(1, "inserting info for fname=%s\n", fname);
      type_malloc_clear(tinode, lio_inode_t, 1);
      *tinode = inode;
      _lfs_inode_insert(lfs, tinode);
   } else {  //** Just update the contents
+log_printf(1, "updating info for fname=%s\n", fname);
      fh = tinode->fh;
      err = tinode->flagged;
      if (tinode->link != NULL) free(tinode->link);
@@ -370,7 +376,7 @@ int _lfs_dentry_insert(lio_fuse_t *lfs, lio_dentry_t *entry)
 
   entry->recheck_time = apr_time_now() + lfs->entry_to * APR_USEC_PER_SEC;
 
-log_printf(15, "fname=%s name_start=%d name=%s\n", entry->fname, entry->name_start, dentry_name(entry));
+log_printf(1, "fname=%s name_start=%d name=%s\n", entry->fname, entry->name_start, dentry_name(entry));
   list_insert(lfs->fname_index, (list_key_t *)entry->fname, (list_data_t *)entry);
 
   return(0);
@@ -382,6 +388,7 @@ log_printf(15, "fname=%s name_start=%d name=%s\n", entry->fname, entry->name_sta
 
 int _lfs_dentry_remove(lio_fuse_t *lfs, lio_dentry_t *entry)
 {
+log_printf(1, "fname=%s\n", entry->fname);
   list_remove(lfs->fname_index, (list_key_t *)entry->fname, (list_data_t *)entry);
   return(0);
 }
@@ -424,6 +431,8 @@ lio_inode_t * _lfs_dentry_lookup(lio_fuse_t *lfs, const char *fname, int auto_in
      inode = _lfs_inode_lookup(lfs, entry->ino);
   }
 
+  log_printf(1, "looking up fname=%s INITIAL entry=%p inode=%p\n", fname, entry, inode);
+
   if ((auto_insert == 1) && (inode == NULL)) {  //** Go ahead and insert it and the inode
      inode = _lfs_load_inode_entry(lfs_gc, fname, NULL);
      if (inode == NULL) {
@@ -438,10 +447,13 @@ lio_inode_t * _lfs_dentry_lookup(lio_fuse_t *lfs, const char *fname, int auto_in
         entry->fname = strdup(fname);
         entry->ino = inode->ino;
         _lfs_dentry_insert(lfs_gc, entry);
+     } else if (entry->ino != inode->ino) {
+log_printf(1, "fname=%s inode changed old=" XOT " new=" XOT "\n", fname, entry->ino, inode->ino);
+        entry->ino = inode->ino;
      }
   }
 
-  log_printf(15, "looking up fname=%s entry=%p inode=%p\n", fname, entry, inode);
+  log_printf(1, "looking up fname=%s FINAL entry=%p inode=%p\n", fname, entry, inode);
   return(inode);
 }
 
@@ -454,7 +466,7 @@ int lfs_stat(const char *fname, struct stat *stat)
   lio_inode_t *inode;
   lio_dentry_t *entry;
 
-  log_printf(15, "fname=%s\n", fname); flush_log();
+  log_printf(1, "fname=%s\n", fname); flush_log();
 
   lfs_lock(lfs_gc);
 
@@ -660,6 +672,7 @@ log_printf(15, "dname=%s NOTHING LEFT off=%d dt=%lf\n", dname,off2, dt);
         ino = 0; sscanf(dit->val[0], XIDT, &ino);
      } else {
         log_printf(0, "Missing inode!  fname=%s\n", fname);
+        for (i=0; i<_inode_key_size-1; i++) if (dit->val[i] != NULL) free(dit->val[i]);
         return(-ENOENT);
      }
 
@@ -693,8 +706,8 @@ log_printf(15, "existing entry fname=%s\n", fname); flush_log();
         _lfs_inode_insert(dit->lfs, inode);
      } else {
        for (i=0; i<_inode_key_size-1; i++) if (dit->val[i] != NULL) free(dit->val[i]);
-       i=_inode_key_size-1;
-       if (dit->val[i] != NULL) free(dit->val[i]);
+//       i=_inode_key_size-1;
+//       if (dit->val[i] != NULL) free(dit->val[i]);
      }
 
 off2=off;
@@ -789,7 +802,7 @@ int lfs_object_create(lio_fuse_t *lfs, const char *fname, mode_t mode, int ftype
   //** Create the new object
   err = gop_sync_exec(lio_create_object(lfs->lc, lfs->lc->creds, (char *)fname, ftype, NULL, lfs->id));
   if (err != OP_STATE_SUCCESS) {
-     log_printf(15, "Error creating object! fname=%s\n", fullname);
+     log_printf(1, "Error creating object! fname=%s\n", fullname);
      lfs_unlock(lfs);
      if (strlen(fullname) > 3900) {  //** Probably a path length issue
         return(-ENAMETOOLONG);
@@ -800,7 +813,7 @@ int lfs_object_create(lio_fuse_t *lfs, const char *fname, mode_t mode, int ftype
   //** Load the inode
   inode = _lfs_dentry_lookup(lfs, fname, 1);
   if (inode == NULL) { //** File doesn't exist!
-     log_printf(15, "File doesn't exist! fname=%s\n", fname);
+     log_printf(1, "File doesn't exist! fname=%s\n", fname);
      lfs_unlock(lfs);
      return(-ENOENT);
   }
@@ -995,7 +1008,7 @@ lio_fuse_file_handle_t *lfs_load_file_handle(lio_fuse_t *lfs, const char *fname)
   v_size = -lfs->lc->max_attr;
   err = lioc_get_attr(lfs->lc, lfs->lc->creds, (char *)fname, NULL, "system.exnode", (void **)&ex_data, &v_size);
   if (err != OP_STATE_SUCCESS) {
-     log_printf(15, "Failed retrieving exnode! path=%s\n", fname);
+     log_printf(1, "Failed retrieving exnode! path=%s\n", fname);
      return(NULL);
   }
 
@@ -1080,6 +1093,8 @@ int lfs_myopen(lio_fuse_t *lfs, const char *fname, int flags, lio_fuse_fd_t **my
 
   fh = inode->fh;
   if (fh != NULL) fh->ref_count++;
+
+log_printf(1, "fname=%s inode=%p fh=%p entry=%p\n", fname, inode, entry);
   lfs_unlock(lfs);
 
   if (fh == NULL) { //** Not currently open so need to load it
@@ -1088,6 +1103,7 @@ int lfs_myopen(lio_fuse_t *lfs, const char *fname, int flags, lio_fuse_fd_t **my
 
   if (fh == NULL) { //** Failed getting the shared file handle so return an error
      lfs_unlock(lfs);
+log_printf(1, "ERROR failed getting shared file handle fname=%s entry=%p ref_coun t=%d\n", fname, entry, entry->ref_count); flush_log();
      entry->ref_count--;
      lfs_unlock(lfs);
      lfs_file_unlock(lfs, fname, slot);
@@ -1133,7 +1149,7 @@ int lfs_open(const char *fname, struct fuse_file_info *fi)
      fi->fh = (uint64_t)fd;
   }
 
-//  log_printf(1, "fname=%s dio=%d END\n", fname, fi->direct_io); flush_log();
+  log_printf(1, "fname=%s dio=%d err=%d END\n", fname, fi->direct_io, err); flush_log();
 
   return(err);
 }
@@ -1173,6 +1189,9 @@ int lfs_myclose(char *fname, lio_fuse_fd_t *fd)
   free(fd);
 
   lfs_lock(lfs);
+
+inode = _lfs_dentry_lookup(lfs, fname, 0);
+if (inode == NULL) log_printf(0, "DEBUG ERROR  missing inode on open file! fname=%s\n", fname);
 
   if (fh->ref_count > 1) {  //** Somebody else has it open as well
      fh->ref_count--;
@@ -1560,6 +1579,7 @@ int lfs_utimens(const char *fname, const struct timespec tv[2])
   lfs_lock(lfs);
   inode = _lfs_dentry_lookup(lfs, fname, 0);
   if (inode != NULL) inode->modify_data_ts = tv[1].tv_sec;
+if (inode == NULL) log_printf(1, "ERROR missing inode fname=%s\n", fname);
   lfs_unlock(lfs);
 
   return(0);

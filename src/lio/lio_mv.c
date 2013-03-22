@@ -126,7 +126,7 @@ log_printf(15, "slot=%d fname=%s\n", slot, src_fname[slot]);
 
 int main(int argc, char **argv)
 {
-  int i, start_index, start_option, n_paths;
+  int i, j, start_index, start_option, n_paths;
   unsigned int ui;
   char *fname;
   mv_t *flist;
@@ -276,9 +276,9 @@ log_printf(0, "gid=%d i=%d fname=%s\n", gop_id(gop), i, flist[i].src_tuple.path)
 
      if (opque_tasks_left(q) > lio_parallel_task_count) {
         gop = opque_waitany(q);
-        i = gop_get_myid(gop);
+        j = gop_get_myid(gop);
         status = gop_get_status(gop);
-        if (status.op_status != OP_STATE_SUCCESS) info_printf(lio_ifd, 0, "Failed with path %s\n", flist[i].src_tuple.path);
+        if (status.op_status != OP_STATE_SUCCESS) info_printf(lio_ifd, 0, "Failed with path %s\n", flist[j].src_tuple.path);
         gop_free(gop, OP_DESTROY);
      }
   }
@@ -286,9 +286,9 @@ log_printf(0, "gid=%d i=%d fname=%s\n", gop_id(gop), i, flist[i].src_tuple.path)
   err = opque_waitall(q);
   if (err != OP_STATE_SUCCESS) {
      while ((gop = opque_get_next_failed(q)) != NULL) {
-         i = gop_get_myid(gop);
+         j = gop_get_myid(gop);
          status = gop_get_status(gop);
-         info_printf(lio_ifd, 0, "Failed with path %s\n", flist[i].src_tuple.path);
+         info_printf(lio_ifd, 0, "Failed with path %s\n", flist[j].src_tuple.path);
      }
   }
 

@@ -43,7 +43,7 @@ http://www.accre.vanderbilt.edu
 
 int main(int argc, char **argv)
 {
-  int i, n, err, rg_mode;
+  int i, j, n, err, rg_mode;
   opque_t *q;
   op_generic_t *gop;
   op_status_t status;
@@ -100,11 +100,11 @@ log_printf(0, "gid=%d i=%d fname=%s\n", gop_id(gop), i, flist[i].path);
 
      if (opque_tasks_left(q) > lio_parallel_task_count) {
         gop = opque_waitany(q);
-        i = gop_get_myid(gop);
+        j = gop_get_myid(gop);
         status = gop_get_status(gop);
         if (status.op_status != OP_STATE_SUCCESS) {
-           if (i >= 0) {
-              info_printf(lio_ifd, 0, "Failed with directory %s\n", argv[i+1]);
+           if (j >= 0) {
+              info_printf(lio_ifd, 0, "Failed with directory %s\n", argv[j+1]);
            } else {
               info_printf(lio_ifd, 0, "Failed with regex path\n");
            }
@@ -116,10 +116,10 @@ log_printf(0, "gid=%d i=%d fname=%s\n", gop_id(gop), i, flist[i].path);
   err = opque_waitall(q);
   if (err != OP_STATE_SUCCESS) {
      while ((gop = opque_get_next_failed(q)) != NULL) {
-         i = gop_get_myid(gop);
+         j = gop_get_myid(gop);
          status = gop_get_status(gop);
-         if (i >= 0) {
-            info_printf(lio_ifd, 0, "Failed with directory %s\n", argv[i+1]);
+         if (j >= 0) {
+            info_printf(lio_ifd, 0, "Failed with directory %s\n", argv[j+1]);
          } else {
             info_printf(lio_ifd, 0, "Failed with regex path\n");
          }
