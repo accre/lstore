@@ -336,6 +336,8 @@ int os_local_filetype(char *path)
       ftype |= OS_OBJECT_FILE|OS_OBJECT_BROKEN_LINK;  //** Broken link so flag it as a file anyhow
 
     }
+  } else {
+    log_printf(1, "lstat error!  fname=%s errno=%d\n", path, errno);
   }
 
   return(ftype);

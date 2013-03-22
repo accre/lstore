@@ -1691,7 +1691,7 @@ op_status_t osfile_remove_object_fn(void *arg, int id)
   } else {  //** Directory so make sure it's empty
     if (osf_is_empty(fname) != 1) {
        osf_obj_unlock(lock);
-       log_printf(15, "Oops! trying to remove a non-empty dir: fname=%s\n", op->src_path);
+       log_printf(15, "Oops! trying to remove a non-empty dir: fname=%s ftype=%d\n", op->src_path, ftype);
        return(op_failure_status);
     }
 
