@@ -344,6 +344,7 @@ log_printf(15, "missing[%d]=%d status=%d\n", j,i, gop_completed_successfully(gop
      todo= 0;
      for (i=0; i<n_devices; i++) if (block_status[i] != 0) todo++;
 
+     loop++;
   } while ((loop < 5) && (todo > 0));
 
   for (i=0; i<cleanup_index; i++) free(cleanup_key[i]);
