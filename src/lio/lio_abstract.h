@@ -108,6 +108,7 @@ struct lio_config_s {
   mq_context_t *mqc;
   service_manager_t *ess;
   service_manager_t *ess_nocache;  //** Copy of ess but missing cache.  Kind of a kludge...
+  Stack_t *plugin_stack;
   lio_fn_t *lio;
   cache_t *cache;
   data_attr_t *da;

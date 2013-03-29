@@ -112,6 +112,9 @@ SET_TARGET_PROPERTIES( lio-static PROPERTIES OUTPUT_NAME "lio" )
 SET_TARGET_PROPERTIES(lio PROPERTIES CLEAN_DIRECT_OUTPUT 1)
 SET_TARGET_PROPERTIES(lio-static PROPERTIES CLEAN_DIRECT_OUTPUT 1)
 
+ADD_LIBRARY(dynfile SHARED segment_dynfile.c )
+SET_TARGET_PROPERTIES(dynfile PROPERTIES CLEAN_DIRECT_OUTPUT 1)
+
 set(LIO_EXE 
     mk_linear ex_load ex_get ex_put ex_inspect ex_clone ex_rw_test log_test rs_test rs_test_svr os_test os_fsck
     lio_touch lio_mkdir lio_rmdir lio_rm lio_ln lio_find lio_ls lio_du lio_setattr lio_getattr lio_mv lio_cp
@@ -119,9 +122,9 @@ set(LIO_EXE
 )
 
 #Make static executables by default
-SET(lio_lib lio-static)
+#SET(lio_lib lio-static)
 #To use shared libs
-#SET(lio_lib lio)
+SET(lio_lib lio)
 
 #Add the exe build rules
 foreach (f ${LIO_EXE})

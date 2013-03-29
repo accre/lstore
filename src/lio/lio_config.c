@@ -31,6 +31,7 @@ http://www.accre.vanderbilt.edu
 
 #include <stdlib.h>
 #include <unistd.h>
+#include <apr_dso.h>
 #include "lio.h"
 #include "type_malloc.h"
 #include "log.h"
@@ -66,7 +67,6 @@ list_t *_lc_object_list = NULL;
 
 lio_config_t *lio_create_nl(char *fname, char *section, char *user);
 void lio_destroy_nl(lio_config_t *lio);
-
 
 //***************************************************************
 //  _lc_object_destroy - Decrements the LC object and removes it
@@ -140,6 +140,97 @@ void _lc_object_put(char *key, void *obj)
 
   return;
 }
+
+//***************************************************************
+// _lio_load_plugins - Loads the optional plugins
+//***************************************************************
+
+void _lio_load_plugins(lio_config_t *lio, inip_file_t *fd)
+{
+  inip_group_t *g;
+  inip_element_t *ele;
+  char *key;
+  apr_dso_handle_t *handle;
+  int error;
+  void *sym;
+  char *section, *name, *library, *symbol;
+  char buffer[1024];
+
+  g = inip_first_group(fd);
+  while (g) {
+    if (strcmp(inip_get_group(g), "plugin") == 0) { //** Got a Plugin section
+       //** Parse the plugin section
+       ele = inip_first_element(g);
+       section = name = library = symbol = NULL;
+       while (ele != NULL) {
+         key = inip_get_element_key(ele);
+         if (strcmp(key, "section") == 0) {
+            section = inip_get_element_value(ele);
+         } else if (strcmp(key, "name") == 0) {
+            name = inip_get_element_value(ele);
+         } else if (strcmp(key, "library") == 0) {
+            library = inip_get_element_value(ele);
+         } else if (strcmp(key, "symbol") == 0) {
+            symbol = inip_get_element_value(ele);
+         }
+
+         ele = inip_next_element(ele);
+       }
+
+       //** Sanity check it
+       error = 1;
+       if ((section == NULL) || (name == NULL) || (library == NULL) || (symbol == NULL)) goto fail;
+
+       //** Attempt to load it
+       snprintf(buffer, sizeof(buffer), "plugin_handle:%s", library);
+       handle = _lc_object_get(buffer);
+       if (handle == NULL) {
+          if (apr_dso_load(&handle, library, _lc_mpool) != APR_SUCCESS) goto fail;
+          _lc_object_put(buffer, handle);
+         add_service(lio->ess, "plugin", buffer, handle);
+       }
+       if (apr_dso_sym(&sym, handle, symbol) != APR_SUCCESS) goto fail;
+
+       if (lio->plugin_stack == NULL) lio->plugin_stack = new_stack();
+       log_printf(5, "library=%s\n", buffer);
+       push(lio->plugin_stack, strdup(buffer));
+       add_service(lio->ess, section, name, sym);
+
+       error = 0;  //** Skip cleanup
+fail:
+       if (error != 0) {
+          log_printf(0, "ERROR loading plugin!  section=%s name=%s library=%s symbol=%s\n", section, name, library, symbol);
+       }
+    }
+    g = inip_next_group(g);
+  }
+}
+
+//***************************************************************
+// _lio_destroy_plugins - Destroys the optional plugins
+//***************************************************************
+
+void _lio_destroy_plugins(lio_config_t *lio)
+{
+  char *library_key;
+  apr_dso_handle_t *handle;
+  int count;
+
+  if (lio->plugin_stack == NULL) return;
+
+  while ((library_key = pop(lio->plugin_stack)) != NULL) {
+    log_printf(5, "library_key=%s\n", library_key);
+    count = _lc_object_destroy(library_key);
+    if (count <= 0) {
+       handle = lookup_service(lio->ess, "plugin", library_key);
+       if (handle != NULL) apr_dso_unload(handle);
+    }
+    free(library_key);
+  }
+
+  free_stack(lio->plugin_stack, 0);
+}
+
 
 //***************************************************************
 //  lio_find_lfs_mounts - Finds the LFS mounts and creates the global
@@ -637,6 +728,8 @@ void lio_destroy_nl(lio_config_t *lio)
   if (lio->cfg_name != NULL) free(lio->cfg_name);
   if (lio->section_name != NULL) free(lio->section_name);
 
+  _lio_destroy_plugins(lio);
+
   exnode_service_set_destroy(lio->ess);
   exnode_service_set_destroy(lio->ess_nocache);
 
@@ -700,6 +793,9 @@ lio_config_t *lio_create_nl(char *fname, char *section, char *user)
   lio->section_name = strdup(section);
 
   lio->ifd = inip_read(lio->cfg_name);
+
+  _lio_load_plugins(lio, lio->ifd);  //** Load the plugins
+
   lio->timeout = inip_get_integer(lio->ifd, section, "timeout", 120);
   lio->max_attr = inip_get_integer(lio->ifd, section, "max_attr_size", 10*1024*1024);
 
