@@ -13,7 +13,6 @@ if (OPENSSL_INCLUDE_DIR AND OPENSSL_LIBRARIES)
 else (OPENSSL_INCLUDE_DIR AND OPENSSL_LIBRARIES)
 
   FIND_PATH(OPENSSL_INCLUDE_DIR openssl/ssl.h
-     $ENV{CMAKE_PREFIX_PATH}/include/
      $ENV{HOME}/include/
      /usr/include/
      /usr/local/include/
@@ -66,15 +65,13 @@ else (OPENSSL_INCLUDE_DIR AND OPENSSL_LIBRARIES)
 
    FIND_LIBRARY(OPENSSL_LIBRARIES NAMES ssl ssleay32 ssleay32MD libeay32 libeay32MD
       PATHS
-      $ENV{CMAKE_PREFIX_PATH}/include/
-      $ENV{HOME}/include/
+      $ENV{HOME}/lib/
       /usr/lib
       /usr/local/lib
    )
    FIND_LIBRARY(CRYPTO_LIBRARIES crypto
       PATHS
-      $ENV{CMAKE_PREFIX_PATH}/include/
-      $ENV{HOME}/include/
+      $ENV{HOME}/lib/
       /usr/lib
       /usr/local/lib
    )
