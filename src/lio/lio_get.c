@@ -65,15 +65,17 @@ int main(int argc, char **argv)
 
   lio_init(&argc, &argv);
   i=1;
-  do {
-     start_option = i;
+  if (i < argc) {
+     do {
+        start_option = i;
 
-     if (strcmp(argv[i], "-b") == 0) {  //** Get the buffer size
-        i++;
-        bufsize_mb = atoi(argv[i]); i++;
-     }
+        if (strcmp(argv[i], "-b") == 0) {  //** Get the buffer size
+           i++;
+           bufsize_mb = atoi(argv[i]); i++;
+        }
 
-  } while ((start_option < i) && (i<argc));
+     } while ((start_option < i) && (i<argc));
+  }
   start_index = i;
 
   //** This is the 1st dir to remove

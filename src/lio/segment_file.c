@@ -469,7 +469,7 @@ int segfile_serialize_text(segment_t *seg, exnode_exchange_t *exp)
      etext = escape_text("=", '\\', seg->header.name);
      append_printf(segbuf, &sused, bufsize, "name=%s\n", etext);  free(etext);
   }
-  append_printf(segbuf, &sused, bufsize, "type=%s\n", SEGMENT_TYPE_FILE);
+  append_printf(segbuf, &sused, bufsize, "type=%s\n", seg->header.type);
   append_printf(segbuf, &sused, bufsize, "ref_count=%d\n", seg->ref_count);
   append_printf(segbuf, &sused, bufsize, "file=%s\n\n", s->fname);
 
