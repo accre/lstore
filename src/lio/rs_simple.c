@@ -154,14 +154,18 @@ log_printf(15, "ckey=%s found=%d\n", key, found);
            if (n_match > 0) {
               if (v_unique > 0) {
                  for (i=0; i<n_match; i++) {
-                     if (strcmp(val, uniq[i].value) == 0) {
-                        found = 0;
-                        break;
+                     if (uniq[i].value != NULL) {  //** This could be NULL if a previous RID wasn't in the config table
+                        if (strcmp(val, uniq[i].value) == 0) {
+                           found = 0;
+                           break;
+                        }
                      }
                  }
               } else if (v_pickone > 0) {
-                 if (strcmp(val, pickone->value) != 0) {
-                    found = 0;
+                 if (pickone->value != NULL) {  //** Same as above for uniq check
+                    if (strcmp(val, pickone->value) != 0) {
+                       found = 0;
+                    }
                  }
               }
            }
@@ -268,12 +272,9 @@ log_printf(15, "MALLOC j=%d\n", unique_size);
         if (i<fixed_size) {  //** Use the fixed list for assignment
            rse = list_search(rss->rid_table, hints_list[i].fixed_rid_key);
            if (rse == NULL) {
-              log_printf(0, "Missing element in hints list[%d]=%s!\n", i, hints_list[i]);
-              status.op_status = OP_STATE_FAILURE;
-              status.error_code = RS_ERROR_FIXED_NOT_FOUND;
+              log_printf(0, "Missing element in hints list[%d]=%s! Ignoring check.\n", i, hints_list[i]);
               hints_list[i].status = RS_ERROR_FIXED_NOT_FOUND;
-              err_cnt++;
-              continue;
+              continue;   //** Skip the check
            }
            rnd_off = rse->slot;
         }
@@ -366,7 +367,7 @@ log_printf(15, "i=%d j=%d slot=%d rse->rid_key=%s rse->status=%d\n", i, j, slot,
            log_printf(1, "Match fail in fixed list[%d]=%s!\n", i, hints_list[i].fixed_rid_key);
            status.op_status = OP_STATE_FAILURE;
            status.error_code = RS_ERROR_FIXED_MATCH_FAIL;
-           hints_list[i].status = RS_ERROR_FIXED_NOT_FOUND;
+           hints_list[i].status = RS_ERROR_FIXED_MATCH_FAIL;
            err_cnt++;
            break;  //** Skip to the next in the list
         } else {
@@ -409,10 +410,8 @@ log_printf(15, "FREE j=%d\n", unique_size);
         status.op_status = OP_STATE_FAILURE;
         status.error_code = RS_ERROR_NOT_ENOUGH_RIDS;
      }
-
      return(gop_dummy(status));
   }
-
 
   return(opque_get_gop(que));
 }

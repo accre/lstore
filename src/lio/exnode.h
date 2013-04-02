@@ -47,8 +47,7 @@ http://www.accre.vanderbilt.edu
 #include "rs_remote.h"
 #include "rs_zmq.h"
 #include "os_file.h"
-#include "os_remote_client.h"
-#include "os_remote_server.h"
+#include "os_remote.h"
 #include "osaz_fake.h"
 #include "authn_fake.h"
 

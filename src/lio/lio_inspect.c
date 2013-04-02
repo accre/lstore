@@ -170,7 +170,7 @@ log_printf(15, "fname=%s inspect_gid=%d status=%d\n", w->fname, gop_id(gop), sta
         if (status.op_status == OP_STATE_SUCCESS) {
            info_printf(lio_ifd, 0, "Success with file %s!\n", w->fname);
         } else {
-           info_printf(lio_ifd, 0, "ERROR  Failed with file %s.  status=%d error_code=%d\n", w->fname, status.op_status, status.error_code);
+           info_printf(lio_ifd, 0, "ERROR:  Failed with file %s.  status=%d error_code=%d\n", w->fname, status.op_status, status.error_code);
         }
         break;
     case (INSPECT_SOFT_ERRORS):
@@ -238,11 +238,13 @@ int main(int argc, char **argv)
 //printf("argc=%d\n", argc);
   if (argc < 2) {
      printf("\n");
-     printf("lio_inspect LIO_COMMON_OPTIONS [-rd recurse_depth] [-b bufsize_mb] [-f] -o inspect_opt LIO_PATH_OPTIONS\n");
+     printf("lio_inspect LIO_COMMON_OPTIONS [-rd recurse_depth] [-b bufsize_mb] [-f] [-s] -o inspect_opt LIO_PATH_OPTIONS\n");
      lio_print_options(stdout);
      lio_print_path_options(stdout);
      printf("    -rd recurse_depth  - Max recursion depth on directories. Defaults to %d\n", recurse_depth);
      printf("    -b bufsize_mb      - Buffer size to use in MBytes for *each* inspect (Default=%dMB)\n", bufsize_mb);
+     printf("    -s                 - Report soft errors, like a missing RID in the config file but the allocation is good.\n");
+     printf("                         The default is to ignore these type of errors.\n");
      printf("    -f                 - Forces data replacement even if it would result in data loss\n");
      printf("    -o inspect_opt     - Inspection option.  One of the following:\n");
      for (i=1; i<n_inspect; i++) { printf("                 %s\n", inspect_opts[i]); }
@@ -272,6 +274,9 @@ int main(int argc, char **argv)
      } else if (strcmp(argv[i], "-f") == 0) { //** Force repair
         i++;
         force_repair = INSPECT_FORCE_REPAIR;
+     } else if (strcmp(argv[i], "-s") == 0) { //** Report soft errors
+        i++;
+        global_whattodo |= INSPECT_SOFT_ERROR_FAIL;
      } else if (strcmp(argv[i], "-o") == 0) { //** Inspect option
         i++;
         global_whattodo = -1;

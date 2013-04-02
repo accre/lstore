@@ -33,13 +33,14 @@ http://www.accre.vanderbilt.edu
 
 #define _log_module_index 213
 
+#include "ex3_system.h"
 #include "object_service_abstract.h"
 #include "type_malloc.h"
 #include "log.h"
 #include "atomic_counter.h"
 #include "thread_pool.h"
-#include "os_remote_client.h"
-#include "os_remote_client_priv.h"
+#include "os_remote.h"
+#include "os_remote_priv.h"
 #include "append_printf.h"
 
 //***********************************************************************
@@ -81,9 +82,17 @@ object_service_fn_t *object_service_remote_client_create(service_manager_t *ess,
   str = inip_get_string(fd, section, "os_temp", NULL);
   if (str != NULL) {  //** Running in test/temp
      log_printf(0, "NOTE: Running in debug mode by loading Remote server locally!\n");
-//     osrc->os_temp = object_service_remote_server_create(ess, fname, str);
+     osrc->os_temp = object_service_remote_server_create(ess, fd, str);
+     assert(osrc->os_temp != NULL);
      free(str);
   }
+
+  //** Get the MQC
+  assert((osrc->mqc = lookup_service(ess, ESS_RUNNING, ESS_MQ)) != NULL);
+
+  //** Set up the fn ptrs
+  os->type = OS_TYPE_REMOTE_CLIENT;
+
 
   return(os);
 }

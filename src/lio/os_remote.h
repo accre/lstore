@@ -28,21 +28,24 @@ http://www.accre.vanderbilt.edu
 */
 
 //***********************************************************************
-// OS Remote SERVER header file
+// OS Remote Server/Client header file
 //***********************************************************************
 
 #include "object_service_abstract.h"
 
-#ifndef _OS_REMOTE_SERVER_H_
-#define _OS_REMOTE_SERVER_H_
+#ifndef _OS_REMOTE_H_
+#define _OS_REMOTE_H_
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 #define OS_TYPE_REMOTE_SERVER "os_remote_server"
+#define OS_TYPE_REMOTE_CLIENT "os_remote_client"
 
 object_service_fn_t *object_service_remote_server_create(service_manager_t *ess, inip_file_t *fd, char *section);
+object_service_fn_t *object_service_remote_client_create(service_manager_t *ess, inip_file_t *ifd, char *section);
+
 
 #ifdef __cplusplus
 }

@@ -61,25 +61,6 @@ typedef struct {
 } rsrs_update_handle_t;
 
 //***********************************************************************
-// mq_print_id - Prints the ID
-//***********************************************************************
-
-char *OLD_mq_print_id(char *id, int len, char *buffer, int bsize)
-{
-   int i, used, n;
-
-   used = 0;
-   for (i=0; i<len-1; i++) {
-      n = (unsigned char)id[i];
-      append_printf(buffer, &used, bsize, "%d-", n);
-   }
-   n = (unsigned char)id[len-1];
-   append_printf(buffer, &used, bsize, "%d", n);
-
-   return(buffer);
-}
-
-//***********************************************************************
 // rsrs_update_register - Registers the connection for RID updates
 //***********************************************************************
 

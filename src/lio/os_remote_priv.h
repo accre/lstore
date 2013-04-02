@@ -37,19 +37,31 @@ http://www.accre.vanderbilt.edu
 //#include "chksum.h"
 //#include <openssl/md5.h>
 
-#ifndef _OS_REMOTE_SERVER_PRIV_H_
-#define _OS_REMOTE_SERVER_PRIV_H_
+#ifndef _OS_REMOTE_PRIV_H_
+#define _OS_REMOTE_PRIV_H_
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 typedef struct {
-  object_service_fn_t *os_actual;  //** Actual OS used
+  object_service_fn_t *os_child;  //** Actual OS used
+  apr_thread_mutex_t *lock;
+  apr_thread_cond_t *cond;
+  apr_pool_t *mpool;
+  mq_context_t *mqc;          //** Portal for connecting to he remote OS server
+  char *hostname;             //** Addres to bind to
+  mq_portal_t *server_portal;
+} osrs_priv_t;
+
+typedef struct {
+  object_service_fn_t *os_temp;  //** Used only for initial debugging of the client/server
   mq_context_t *mqc;          //** Portal for connecting to he remote OS server
   char *host_ros;              //** ADdress of the Remote OS server
+  os_authz_t *osaz;
+  authn_t *authn;
   apr_pool_t *mpool;
-} osrs_priv_t;
+} osrc_priv_t;
 
 
 #ifdef __cplusplus

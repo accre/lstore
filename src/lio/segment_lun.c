@@ -147,7 +147,7 @@ void _slun_perform_remap(segment_t *seg)
 // slun_row_placement_check - Checks the placement of each allocation
 //***********************************************************************
 
-int slun_row_placement_check(segment_t *seg, data_attr_t *da, seglun_row_t *b, int *block_status, int n_devices, int timeout)
+int slun_row_placement_check(segment_t *seg, data_attr_t *da, seglun_row_t *b, int *block_status, int n_devices, int soft_error_fail, int timeout)
 {
   seglun_priv_t *s = (seglun_priv_t *)seg->priv;
   int i, nbad;
@@ -174,7 +174,11 @@ int slun_row_placement_check(segment_t *seg, data_attr_t *da, seglun_row_t *b, i
   nbad = 0;
   for (i=0; i<n_devices; i++) {
      if (hints_list[i].status != RS_ERROR_OK) {
-        nbad++;
+        if (hints_list[i].status == RS_ERROR_FIXED_NOT_FOUND) {
+            if (soft_error_fail > 0) nbad++;
+        } else {
+           nbad++;
+        }
         block_status[i] = hints_list[i].status;
      }
 
@@ -1609,9 +1613,12 @@ op_status_t seglun_migrate_func(void *arg, int id)
   int used;
   int block_status[s->n_devices];
   int nattempted, nmigrated, err, i;
+  int soft_error_fail;
 
   op_status_t status = op_success_status;
   interval_skiplist_iter_t it;
+
+  soft_error_fail = (si->inspect_mode & INSPECT_SOFT_ERROR_FAIL);
 
   segment_lock(si->seg);
 
@@ -1625,7 +1632,7 @@ op_status_t seglun_migrate_func(void *arg, int id)
     info_printf(si->fd, 1, XIDT ": Checking row (" XOT ", " XOT ", " XOT ")\n", segment_id(si->seg), b->seg_offset, b->seg_end, b->row_len);
 
     for (i=0; i < s->n_devices; i++) block_status[i] = 0;
-    err = slun_row_placement_check(si->seg, si->da, b, block_status, s->n_devices, si->timeout);
+    err = slun_row_placement_check(si->seg, si->da, b, block_status, s->n_devices, soft_error_fail, si->timeout);
     used = 0;
     append_printf(info, &used, bufsize, XIDT ":     slun_row_placement_check:", segment_id(si->seg));
     for (i=0; i < s->n_devices; i++) append_printf(info, &used, bufsize, " %d", block_status[i]);
@@ -1671,7 +1678,7 @@ op_status_t seglun_inspect_func(void *arg, int id)
   interval_skiplist_iter_t it;
   int bufsize = 10*1024;
   char info[bufsize];
-  int used;
+  int used, soft_error_fail;
   int block_status[s->n_devices];
   int i, err, option, force_repair, max_lost, total_lost, total_repaired, total_migrate, nmigrated, nlost, nrepaired;
 
@@ -1684,6 +1691,7 @@ op_status_t seglun_inspect_func(void *arg, int id)
   nlost = 0;
 
   option = si->inspect_mode & INSPECT_COMMAND_BITS;
+  soft_error_fail = (si->inspect_mode & INSPECT_SOFT_ERROR_FAIL);
   force_repair = 0;
   if ((option == INSPECT_QUICK_REPAIR) || (option == INSPECT_SCAN_REPAIR) || (option == INSPECT_FULL_REPAIR)) force_repair = si->inspect_mode & INSPECT_FORCE_REPAIR;
 
@@ -1736,7 +1744,9 @@ op_status_t seglun_inspect_func(void *arg, int id)
     if (err != 0) goto fail;
 
 log_printf(0, "BEFORE_PLACEMENT_CHECK\n");
-    err = slun_row_placement_check(si->seg, si->da, b, block_status, s->n_devices, si->timeout);
+    err = slun_row_placement_check(si->seg, si->da, b, block_status, s->n_devices, soft_error_fail, si->timeout);
+    for (i=0; i < s->n_devices; i++) append_printf(info, &used, bufsize, " %d", block_status[i]);
+
     total_migrate += err;
     used = 0;
     append_printf(info, &used, bufsize, XIDT ":     slun_row_placement_check:", segment_id(si->seg));
@@ -1762,10 +1772,10 @@ fail:
 
   i = total_lost - total_repaired + total_migrate - nmigrated;
   if (i != 0) {
-     info_printf(si->fd, 1, XIDT ": status: FAILURE (%d max dev/row lost, %d lost, %d repaired, %d need moving, %d moved)\n", segment_id(si->seg), max_lost, total_lost, total_repaired, total_migrate, nmigrated);
+     info_printf(si->fd, 1, XIDT ": status: FAILURE (%d max dev/row lost, %d lost, %d repaired, %d need(s) moving, %d moved)\n", segment_id(si->seg), max_lost, total_lost, total_repaired, total_migrate, nmigrated);
      status = op_failure_status;
   } else {
-     info_printf(si->fd, 1, XIDT ": status: SUCCESS (%d max dev/row lost, %d lost, %d repaired, %d need moving, %d moved)\n", segment_id(si->seg), max_lost, total_lost, total_repaired, total_migrate, nmigrated);
+     info_printf(si->fd, 1, XIDT ": status: SUCCESS (%d max dev/row lost, %d lost, %d repaired, %d need(s) moving, %d moved)\n", segment_id(si->seg), max_lost, total_lost, total_repaired, total_migrate, nmigrated);
   }
 //  free(si);
 
