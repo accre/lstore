@@ -496,7 +496,7 @@ op_status_t segjerase_inspect_func(void *arg, int id)
   segjerase_inspect_t *si = (segjerase_inspect_t *)arg;
   segjerase_priv_t *s = (segjerase_priv_t *)si->seg->priv;
   op_status_t status;
-  int option, total_stripes, child_replaced;
+  int option, total_stripes, child_replaced, force_reconstruct, repair;
   op_generic_t *gop;
 
   status = op_success_status;
@@ -519,8 +519,18 @@ op_status_t segjerase_inspect_func(void *arg, int id)
 
   total_stripes = segment_size(si->seg) / s->data_size;
 
-  //** The INSPECT_QUICK_* options are handled by the LUN driver.
+  //** The INSPECT_QUICK_* options are handled by the LUN driver. If force_reconstruct is set then we probably need to do a scan
   option = si->inspect_mode & INSPECT_COMMAND_BITS;
+  repair = ((option == INSPECT_QUICK_REPAIR) || (option == INSPECT_SCAN_REPAIR) || (option == INSPECT_FULL_REPAIR)) ? 1 : 0;
+  force_reconstruct = si->inspect_mode & INSPECT_FORCE_RECONSTRUCTION;
+  if ((repair > 0) && (force_reconstruct > 0) && (child_replaced > 0) && (option == INSPECT_QUICK_REPAIR)) {
+     si->inspect_mode -= option;
+     option = INSPECT_FULL_REPAIR;
+     si->inspect_mode += option;
+  }
+
+  option = si->inspect_mode & INSPECT_COMMAND_BITS;
+
   switch (option) {
     case (INSPECT_SCAN_CHECK):
     case (INSPECT_SCAN_REPAIR):

@@ -1372,7 +1372,7 @@ log_printf(15, " n_bslots=%d\n", n_bslots);
 //} else {
                tbuffer_vec(&(rwb_table[j + i].buffer), rwb_table[j + i].len, rwb_table[j+i].n_iov, rwb_table[j+i].iov);
                if (rwb_table[j+i].n_iov == 1) {
-                  rwb_table[j + i].gop = ds_write(b->block[i].data->ds, da, ds_get_cap(b->block[i].data->ds, b->block[i].data->cap, DS_CAP_READ),
+                  rwb_table[j + i].gop = ds_write(b->block[i].data->ds, da, ds_get_cap(b->block[i].data->ds, b->block[i].data->cap, DS_CAP_WRITE),
                                           rwb_table[j+i].ex_iov[0].offset, &(rwb_table[j+i].buffer), 0, rwb_table[j+i].len, timeout);
                } else {
                   rwb_table[j + i].gop = ds_writev(b->block[i].data->ds, da, ds_get_cap(b->block[i].data->ds, b->block[i].data->cap, DS_CAP_WRITE),
@@ -1678,7 +1678,7 @@ op_status_t seglun_inspect_func(void *arg, int id)
   interval_skiplist_iter_t it;
   int bufsize = 10*1024;
   char info[bufsize];
-  int used, soft_error_fail;
+  int used, soft_error_fail, force_reconstruct, nforce;
   int block_status[s->n_devices];
   int i, err, option, force_repair, max_lost, total_lost, total_repaired, total_migrate, nmigrated, nlost, nrepaired;
 
@@ -1692,6 +1692,7 @@ op_status_t seglun_inspect_func(void *arg, int id)
 
   option = si->inspect_mode & INSPECT_COMMAND_BITS;
   soft_error_fail = (si->inspect_mode & INSPECT_SOFT_ERROR_FAIL);
+  force_reconstruct = (si->inspect_mode & INSPECT_FORCE_RECONSTRUCTION);
   force_repair = 0;
   if ((option == INSPECT_QUICK_REPAIR) || (option == INSPECT_SCAN_REPAIR) || (option == INSPECT_FULL_REPAIR)) force_repair = si->inspect_mode & INSPECT_FORCE_REPAIR;
 
@@ -1729,7 +1730,7 @@ op_status_t seglun_inspect_func(void *arg, int id)
        do {
          err = slun_row_replace_fix(si->seg, si->da, b, block_status, s->n_devices, s->rsq, si->timeout);
          used = 0;
-         append_printf(info, &used, bufsize, XIDT ":     slun_row_pad_fix:", segment_id(si->seg));
+         append_printf(info, &used, bufsize, XIDT ":     slun_row_replace_fix:", segment_id(si->seg));
          for (i=0; i < s->n_devices; i++) append_printf(info, &used, bufsize, " %d", block_status[i]);
          info_printf(si->fd, 1, "%s\n", info);
 
@@ -1754,13 +1755,29 @@ log_printf(0, "BEFORE_PLACEMENT_CHECK\n");
     info_printf(si->fd, 1, "%s\n", info);
 log_printf(0, "AFTER_PLACEMENT_CHECK\n");
     if ((err > 0) && ((option == INSPECT_QUICK_REPAIR) || (option == INSPECT_SCAN_REPAIR) || (option == INSPECT_FULL_REPAIR))) {
-       i = slun_row_placement_fix(si->seg, si->da, b, block_status, s->n_devices, si->timeout);
-       nmigrated += err - i;
+       if (force_reconstruct == 0) {
+          i = slun_row_placement_fix(si->seg, si->da, b, block_status, s->n_devices, si->timeout);
+          nmigrated += err - i;
+          used = 0;
+          append_printf(info, &used, bufsize, XIDT ":     slun_row_placement_fix:", segment_id(si->seg));
+          for (i=0; i < s->n_devices; i++) append_printf(info, &used, bufsize, " %d", block_status[i]);
+          info_printf(si->fd, 1, "%s\n", info);
+       } else if (force_repair > 0) {  //** Don't want to use depot-depot copies so instead make a blank allocation and let the higher level handle things
+          i = 0;  //** Iteratively try and repair the row
+          nforce = err;
+          if (max_lost < err) max_lost = err;
+          do {
+            err = slun_row_replace_fix(si->seg, si->da, b, block_status, s->n_devices, s->rsq, si->timeout);
+            used = 0;
+            append_printf(info, &used, bufsize, XIDT ":     slun_row_replace_fix:", segment_id(si->seg));
+            for (i=0; i < s->n_devices; i++) append_printf(info, &used, bufsize, " %d", block_status[i]);
+            info_printf(si->fd, 1, "%s\n", info);
+            i++;
+          } while ((err > 0) && (i<5));
 
-       used = 0;
-       append_printf(info, &used, bufsize, XIDT ":     slun_row_placement_fix:", segment_id(si->seg));
-       for (i=0; i < s->n_devices; i++) append_printf(info, &used, bufsize, " %d", block_status[i]);
-       info_printf(si->fd, 1, "%s\n", info);
+          nmigrated += nforce - err;
+       }
+
     }
 
 fail:

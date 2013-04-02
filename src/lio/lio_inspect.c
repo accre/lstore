@@ -80,7 +80,7 @@ op_status_t inspect_task(void *arg, int id)
 
   whattodo = global_whattodo;
 
-log_printf(15, "inspecting fname=%s\n", w->fname);
+log_printf(15, "inspecting fname=%s global_whattodo=%d\n", w->fname, global_whattodo);
 
   if (w->exnode == NULL) {
      info_printf(lio_ifd, 0, "ERROR  Failed with file %s (ftype=%d). No exnode!\n", w->fname, w->ftype);
@@ -218,7 +218,7 @@ finished:
 int main(int argc, char **argv)
 {
   int i, j,  start_option, start_index, rg_mode, ftype, prefix_len;
-  int force_repair;
+  int force_repair, option;
   int bufsize_mb = 20;
   char *fname;
   apr_pool_t *mpool;
@@ -238,13 +238,16 @@ int main(int argc, char **argv)
 //printf("argc=%d\n", argc);
   if (argc < 2) {
      printf("\n");
-     printf("lio_inspect LIO_COMMON_OPTIONS [-rd recurse_depth] [-b bufsize_mb] [-f] [-s] -o inspect_opt LIO_PATH_OPTIONS\n");
+     printf("lio_inspect LIO_COMMON_OPTIONS [-rd recurse_depth] [-b bufsize_mb] [-f] [-s] [-r] -o inspect_opt LIO_PATH_OPTIONS\n");
      lio_print_options(stdout);
      lio_print_path_options(stdout);
      printf("    -rd recurse_depth  - Max recursion depth on directories. Defaults to %d\n", recurse_depth);
      printf("    -b bufsize_mb      - Buffer size to use in MBytes for *each* inspect (Default=%dMB)\n", bufsize_mb);
      printf("    -s                 - Report soft errors, like a missing RID in the config file but the allocation is good.\n");
      printf("                         The default is to ignore these type of errors.\n");
+     printf("    -r                 - Use reconstruction for all repairs. Even for data placement issues.\n");
+     printf("                         Not always successful.  Try without option in those cases.\n");
+     printf("                         Even for data placement issues. Could fail\n");
      printf("    -f                 - Forces data replacement even if it would result in data loss\n");
      printf("    -o inspect_opt     - Inspection option.  One of the following:\n");
      for (i=1; i<n_inspect; i++) { printf("                 %s\n", inspect_opts[i]); }
@@ -260,7 +263,8 @@ int main(int argc, char **argv)
 
   i=1;
   force_repair = 0;
-  global_whattodo = INSPECT_QUICK_CHECK;
+  option = INSPECT_QUICK_CHECK;
+  global_whattodo = 0;
 
   do {
      start_option = i;
@@ -274,16 +278,19 @@ int main(int argc, char **argv)
      } else if (strcmp(argv[i], "-f") == 0) { //** Force repair
         i++;
         force_repair = INSPECT_FORCE_REPAIR;
+     } else if (strcmp(argv[i], "-r") == 0) { //** Force reconstruction
+        i++;
+        global_whattodo |= INSPECT_FORCE_RECONSTRUCTION;
      } else if (strcmp(argv[i], "-s") == 0) { //** Report soft errors
         i++;
         global_whattodo |= INSPECT_SOFT_ERROR_FAIL;
      } else if (strcmp(argv[i], "-o") == 0) { //** Inspect option
         i++;
-        global_whattodo = -1;
+        option = -1;
         for(j=1; j<n_inspect; j++) {
-           if (strcasecmp(inspect_opts[j], argv[i]) == 0) { global_whattodo = j; break; }
+           if (strcasecmp(inspect_opts[j], argv[i]) == 0) { option = j; break; }
         }
-        if (global_whattodo == -1) {
+        if (option == -1) {
             printf("Invalid inspect option:  %s\n", argv[i]);
            abort();
         }
@@ -293,7 +300,8 @@ int main(int argc, char **argv)
   } while ((start_option < i) && (i<argc));
   start_index = i;
 
-  if ((global_whattodo == INSPECT_QUICK_REPAIR) || (global_whattodo == INSPECT_SCAN_REPAIR) || (global_whattodo == INSPECT_FULL_REPAIR)) global_whattodo |= force_repair;
+  global_whattodo |= option;
+  if ((option == INSPECT_QUICK_REPAIR) || (option == INSPECT_SCAN_REPAIR) || (option == INSPECT_FULL_REPAIR)) global_whattodo |= force_repair;
 
   bufsize = bufsize_mb * 1024 *1024;
 
