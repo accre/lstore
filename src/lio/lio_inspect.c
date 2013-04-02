@@ -290,7 +290,6 @@ int main(int argc, char **argv)
      } else if (strcmp(argv[i], "-q") == 0) { //** Add additional query
         i++;
         query = rs_query_parse(lio_gc->rs, argv[i]);
-printf("q=%p arg=%s\n", query, argv[i]);
         i++;
      } else if (strcmp(argv[i], "-o") == 0) { //** Inspect option
         i++;
