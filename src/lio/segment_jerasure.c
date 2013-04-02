@@ -98,6 +98,7 @@ typedef struct {
   segment_t *seg;
   data_attr_t *da;
   info_fd_t *fd;
+  rs_query_t *query;
   ex_off_t bufsize;
   int max_replaced;
   int inspect_mode;
@@ -507,7 +508,7 @@ op_status_t segjerase_inspect_func(void *arg, int id)
 
   //** Issue the inspect for the underlying LUN
   info_printf(si->fd, 1, XIDT ": Inspecting child segment...\n", segment_id(si->seg));
-  gop = segment_inspect(s->child_seg, si->da, si->fd, si->inspect_mode, si->bufsize, si->timeout);
+  gop = segment_inspect(s->child_seg, si->da, si->fd, si->inspect_mode, si->bufsize, si->query, si->timeout);
   gop_waitall(gop);
   status = gop_get_status(gop);
   gop_free(gop, OP_DESTROY);
@@ -569,7 +570,7 @@ fail:
 //  segjerase_inspect_func - Does the actual segment inspection operations
 //***********************************************************************
 
-op_generic_t *segjerase_inspect(segment_t *seg, data_attr_t *da, info_fd_t *fd, int mode, ex_off_t bufsize, int timeout)
+op_generic_t *segjerase_inspect(segment_t *seg, data_attr_t *da, info_fd_t *fd, int mode, ex_off_t bufsize, rs_query_t *query, int timeout)
 {
   segjerase_priv_t *s = (segjerase_priv_t *)seg->priv;
   op_generic_t *gop;
@@ -594,11 +595,12 @@ op_generic_t *segjerase_inspect(segment_t *seg, data_attr_t *da, info_fd_t *fd, 
         si->inspect_mode = mode;
         si->bufsize = bufsize;
         si->timeout = timeout;
+        si->query = query;
         gop = new_thread_pool_op(s->tpc, NULL, segjerase_inspect_func, (void *)si, free, 1);
         break;
     case (INSPECT_MIGRATE):
         info_printf(fd, 1, XIDT ": jerase segment maps to child " XIDT "\n", segment_id(seg), segment_id(s->child_seg));
-        gop = segment_inspect(s->child_seg, da, fd, mode, bufsize, timeout);
+        gop = segment_inspect(s->child_seg, da, fd, mode, bufsize, query, timeout);
         break;
     case (INSPECT_SOFT_ERRORS):
         err.error_code = s->soft_errors;

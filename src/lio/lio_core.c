@@ -333,13 +333,13 @@ void lioc_get_error_counts(lio_config_t *lc, segment_t *seg, int *hard_errors, i
   op_generic_t *gop;
   op_status_t status;
 
-  gop = segment_inspect(seg, lc->da, lio_ifd, INSPECT_HARD_ERRORS, 0, 1);
+  gop = segment_inspect(seg, lc->da, lio_ifd, INSPECT_HARD_ERRORS, 0, NULL, 1);
   gop_waitall(gop);
   status = gop_get_status(gop);
   gop_free(gop, OP_DESTROY);
   *hard_errors = status.error_code;
 
-  gop = segment_inspect(seg, lc->da, lio_ifd, INSPECT_SOFT_ERRORS, 0, 1);
+  gop = segment_inspect(seg, lc->da, lio_ifd, INSPECT_SOFT_ERRORS, 0, NULL, 1);
   gop_waitall(gop);
   status = gop_get_status(gop);
   gop_free(gop, OP_DESTROY);

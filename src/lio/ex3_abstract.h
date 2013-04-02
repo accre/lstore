@@ -89,7 +89,7 @@ typedef struct segment_s segment_t;
 typedef struct {
   op_generic_t *(*read)(segment_t *seg, data_attr_t *da, int n_iov, ex_iovec_t *iov, tbuffer_t *buffer, ex_off_t boff, int timeout);
   op_generic_t *(*write)(segment_t *seg, data_attr_t *da, int n_iov, ex_iovec_t *iov, tbuffer_t *buffer, ex_off_t boff, int timeout);
-  op_generic_t *(*inspect)(segment_t *seg, data_attr_t *da, info_fd_t *fd, int mode, ex_off_t buffer_size, int timeout);
+  op_generic_t *(*inspect)(segment_t *seg, data_attr_t *da, info_fd_t *fd, int mode, ex_off_t buffer_size, rs_query_t *query, int timeout);
   op_generic_t *(*truncate)(segment_t *seg, data_attr_t *da, ex_off_t new_size, int timeout);
   op_generic_t *(*remove)(segment_t *seg, data_attr_t *da, int timeout);
   op_generic_t *(*flush)(segment_t *seg, data_attr_t *da, ex_off_t lo, ex_off_t hi, int timeout);
@@ -109,7 +109,7 @@ typedef struct {
 #define segment_destroy(s) (s)->fn.destroy(s)
 #define segment_read(s, da, n_iov, iov, tbuf, boff, to) (s)->fn.read(s, da, n_iov, iov, tbuf, boff, to)
 #define segment_write(s, da, n_iov, iov, tbuf, boff, to) (s)->fn.write(s, da, n_iov, iov, tbuf, boff, to)
-#define segment_inspect(s, da, fd, mode, bsize, to) (s)->fn.inspect(s, da, fd, mode, bsize, to)
+#define segment_inspect(s, da, fd, mode, bsize, query, to) (s)->fn.inspect(s, da, fd, mode, bsize, query, to)
 #define segment_truncate(s, da, new_size, to) (s)->fn.truncate(s, da, new_size, to)
 #define segment_remove(s, da, to) (s)->fn.remove(s, da, to)
 #define segment_flush(s, da, lo, hi, to) (s)->fn.flush(s, da, lo, hi, to)

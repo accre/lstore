@@ -55,6 +55,7 @@ typedef struct {
 static creds_t *creds;
 static int global_whattodo;
 static int bufsize;
+rs_query_t *query;
 
 apr_thread_mutex_t *lock = NULL;
 list_t *seg_index;
@@ -141,7 +142,7 @@ log_printf(15, "inspecting fname=%s global_whattodo=%d\n", w->fname, global_what
 
 log_printf(15, "whattodo=%d\n", whattodo);
   //** Execute the inspection operation
-  gop = segment_inspect(seg, lio_gc->da, lio_ifd, whattodo, bufsize, lio_gc->timeout);
+  gop = segment_inspect(seg, lio_gc->da, lio_ifd, whattodo, bufsize, query, lio_gc->timeout);
   if (gop == NULL) { printf("File not found.\n"); return(op_failure_status); }
 
 log_printf(15, "fname=%s inspect_gid=%d whattodo=%d\n", w->fname, gop_id(gop), whattodo);
@@ -238,7 +239,7 @@ int main(int argc, char **argv)
 //printf("argc=%d\n", argc);
   if (argc < 2) {
      printf("\n");
-     printf("lio_inspect LIO_COMMON_OPTIONS [-rd recurse_depth] [-b bufsize_mb] [-f] [-s] [-r] -o inspect_opt LIO_PATH_OPTIONS\n");
+     printf("lio_inspect LIO_COMMON_OPTIONS [-rd recurse_depth] [-b bufsize_mb] [-f] [-s] [-r] [-q extra_query] -o inspect_opt LIO_PATH_OPTIONS\n");
      lio_print_options(stdout);
      lio_print_path_options(stdout);
      printf("    -rd recurse_depth  - Max recursion depth on directories. Defaults to %d\n", recurse_depth);
@@ -248,6 +249,7 @@ int main(int argc, char **argv)
      printf("    -r                 - Use reconstruction for all repairs. Even for data placement issues.\n");
      printf("                         Not always successful.  Try without option in those cases.\n");
      printf("                         Even for data placement issues. Could fail\n");
+     printf("    -q  extra_query    - Extra RS query for data placement. AND-ed with default query\n");
      printf("    -f                 - Forces data replacement even if it would result in data loss\n");
      printf("    -o inspect_opt     - Inspection option.  One of the following:\n");
      for (i=1; i<n_inspect; i++) { printf("                 %s\n", inspect_opts[i]); }
@@ -265,6 +267,7 @@ int main(int argc, char **argv)
   force_repair = 0;
   option = INSPECT_QUICK_CHECK;
   global_whattodo = 0;
+  query = NULL;
 
   do {
      start_option = i;
@@ -284,6 +287,11 @@ int main(int argc, char **argv)
      } else if (strcmp(argv[i], "-s") == 0) { //** Report soft errors
         i++;
         global_whattodo |= INSPECT_SOFT_ERROR_FAIL;
+     } else if (strcmp(argv[i], "-q") == 0) { //** Add additional query
+        i++;
+        query = rs_query_parse(lio_gc->rs, argv[i]);
+printf("q=%p arg=%s\n", query, argv[i]);
+        i++;
      } else if (strcmp(argv[i], "-o") == 0) { //** Inspect option
         i++;
         option = -1;

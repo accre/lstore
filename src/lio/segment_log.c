@@ -980,14 +980,14 @@ op_generic_t *seglog_remove(segment_t *seg, data_attr_t *da, int timeout)
 // seglog_inspect - Inspects the log segment
 //***********************************************************************
 
-op_generic_t *seglog_inspect(segment_t *seg, data_attr_t *da, info_fd_t *fd, int mode, ex_off_t bufsize, int timeout)
+op_generic_t *seglog_inspect(segment_t *seg, data_attr_t *da, info_fd_t *fd, int mode, ex_off_t bufsize, rs_query_t *query, int timeout)
 {
   seglog_priv_t *s = (seglog_priv_t *)seg->priv;
   opque_t *q = new_opque();
 
-  opque_add(q, segment_inspect(s->table_seg, da, fd, mode, bufsize, timeout));
-  opque_add(q, segment_inspect(s->data_seg, da, fd, mode, bufsize, timeout));
-  opque_add(q, segment_inspect(s->base_seg, da, fd, mode, bufsize, timeout));
+  opque_add(q, segment_inspect(s->table_seg, da, fd, mode, bufsize, query, timeout));
+  opque_add(q, segment_inspect(s->data_seg, da, fd, mode, bufsize, query, timeout));
+  opque_add(q, segment_inspect(s->base_seg, da, fd, mode, bufsize, query, timeout));
   return(opque_get_gop(q));
 }
 

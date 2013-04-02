@@ -137,7 +137,7 @@ int main(int argc, char **argv)
 
 printf("whattodo=%d\n", whattodo);
   //** Execute the inspection operation
-  gop = segment_inspect(seg, lio_gc->da, lio_ifd, whattodo, bufsize, lio_gc->timeout);
+  gop = segment_inspect(seg, lio_gc->da, lio_ifd, whattodo, bufsize, NULL, lio_gc->timeout);
 flush_log();
   gop_waitany(gop);
 flush_log();

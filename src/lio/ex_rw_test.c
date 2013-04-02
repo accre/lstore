@@ -1047,13 +1047,13 @@ int main(int argc, char **argv)
   }
 
   //** Get the error counts
-  gop = segment_inspect(seg, da, lio_ifd, INSPECT_SOFT_ERRORS, 0, 10);
+  gop = segment_inspect(seg, da, lio_ifd, INSPECT_SOFT_ERRORS, 0, NULL, 10);
   gop_waitall(gop);
   status = gop_get_status(gop);
   soft_errors = status.error_code;
   gop_free(gop, OP_DESTROY);
 
-  gop = segment_inspect(seg, da, lio_ifd, INSPECT_HARD_ERRORS, 0, 10);
+  gop = segment_inspect(seg, da, lio_ifd, INSPECT_HARD_ERRORS, 0, NULL, 10);
   gop_waitall(gop);
   status = gop_get_status(gop);
   hard_errors = status.error_code;
