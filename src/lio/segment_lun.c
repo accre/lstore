@@ -1707,7 +1707,7 @@ op_status_t seglun_inspect_func(void *arg, int id)
      rs_query_add(s->rs, &query, RSQ_BASE_OP_AND, NULL, 0, NULL, 0);
   }
 
-info_printf(si->fd, 1, "local_query=%p\n", si->query);
+//info_printf(si->fd, 1, "local_query=%p\n", si->query);
   info_printf(si->fd, 1, XIDT ": segment information: n_devices=%d n_shift=%d chunk_size=" XOT "  used_size=" XOT " total_size=" XOT " mode=%d\n", segment_id(si->seg), s->n_devices, s->n_shift, s->chunk_size, s->used_size, s->total_size, si->inspect_mode);
 
   it = iter_search_interval_skiplist(s->isl, (skiplist_key_t *)NULL, (skiplist_key_t *)NULL);

@@ -971,6 +971,7 @@ resource_service_fn_t *rs_simple_create(void *arg, inip_file_t *kf, char *sectio
   rs->register_mapping_updates = rss_mapping_register;
   rs->unregister_mapping_updates = rss_mapping_unregister;
   rs->translate_cap_set = rss_translate_cap_set;
+  rs->query_new = rs_query_base_new;
   rs->query_dup = rs_query_base_dup;
   rs->query_add = rs_query_base_add;
   rs->query_append = rs_query_base_append;

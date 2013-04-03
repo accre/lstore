@@ -276,7 +276,7 @@ log_printf(0, "erased_count=%d erased[0]=%d, index=%d\n", n_erased, erasures[0],
                  k = erasures[j];
                  ex_iov[n_iov].offset = ex_read.offset + i*s->stripe_size_with_magic + k*s->chunk_size_with_magic;
 
-log_printf(0, "offset=" XOT " k=%d\n", ex_iov[n_iov].offset, k);
+log_printf(0, "offset=" XOT " k=%d n_iov=%d max_iov=%d\n", ex_iov[n_iov].offset, k, n_iov, max_iov);
                  ex_iov[n_iov].len = s->chunk_size_with_magic;
                  iov[n_iov].iov_base = &(buffer[boff + k*s->chunk_size_with_magic]);
 log_printf(0, "memcmp=%d\n", memcmp(iov[n_iov].iov_base, &(buffer[boff + index*s->chunk_size_with_magic]), JE_MAGIC_SIZE));
@@ -284,7 +284,7 @@ log_printf(0, "memcmp=%d\n", memcmp(iov[n_iov].iov_base, &(buffer[boff + index*s
                  nbytes += ex_iov[n_iov].len;
                  n_iov++;
                  if (n_iov >= max_iov) {
-                    max_iov = 1.5 * max_iov;
+                    max_iov = 1.5 * max_iov + 1;
                     ex_iov = (ex_iovec_t *)realloc(ex_iov, sizeof(ex_iovec_t) * max_iov);
                     iov = (iovec_t *)realloc(iov, sizeof(iovec_t) * max_iov);
                  }

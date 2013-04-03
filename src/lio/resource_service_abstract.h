@@ -102,6 +102,7 @@ struct resource_service_fn_s {
   int  (*query_add)(resource_service_fn_t *arg, rs_query_t **q, int op, char *key, int key_op, char *val, int val_op);
   void (*query_append)(resource_service_fn_t *arg, rs_query_t *q, rs_query_t *qappend);
   rs_query_t *(*query_dup)(resource_service_fn_t *arg, rs_query_t *q);
+  rs_query_t *(*query_new)(resource_service_fn_t *arg);
   void (*query_destroy)(resource_service_fn_t *arg, rs_query_t *q);
   op_generic_t *(*data_request)(resource_service_fn_t *arg, data_attr_t *da, rs_query_t *q, data_cap_set_t **caps, rs_request_t *req, int req_size, rs_hints_t *hints_list, int fixed_size, int n_rid, int timeout);
   rs_query_t *(*query_parse)(resource_service_fn_t *arg, char *value);
@@ -120,6 +121,7 @@ typedef resource_service_fn_t *(rs_create_t)(void *arg, inip_file_t *ifd, char *
 #define rs_unregister_mapping_updates(rs, notify) (rs)->unregister_mapping_updates(rs, notify)
 #define rs_query_add(rs, q, op, key, kop, val, vop) (rs)->query_add(rs, q, op, key, kop, val, vop)
 #define rs_query_append(rs, q, qappend) (rs)->query_append(rs, q, qappend)
+#define rs_query_new(rs) (rs)->query_new(rs)
 #define rs_query_dup(rs, q) (rs)->query_dup(rs, q)
 #define rs_query_destroy(rs, q) (rs)->query_destroy(rs, q)
 #define rs_query_parse(rs, value) (rs)->query_parse(rs, value)

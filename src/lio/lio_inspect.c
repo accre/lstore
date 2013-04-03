@@ -39,7 +39,7 @@ http://www.accre.vanderbilt.edu
 #include "ds_ibp_priv.h"
 #include "ibp.h"
 #include "string_token.h"
-
+#include "rs_query_base.h"
 
 #define n_inspect 10
 char *inspect_opts[] = { "DUMMY", "inspect_quick_check",  "inspect_scan_check",  "inspect_full_check",
@@ -221,25 +221,26 @@ int main(int argc, char **argv)
   int i, j,  start_option, start_index, rg_mode, ftype, prefix_len;
   int force_repair, option;
   int bufsize_mb = 20;
-  char *fname;
+  char *fname, *qstr;
+  rs_query_t *rsq;
   apr_pool_t *mpool;
   opque_t *q;
   op_generic_t *gop;
   op_status_t status;
   char *ex;
   char *key = "system.exnode";
-  int ex_size, slot;
+  int ex_size, slot, q_count;
   os_object_iter_t *it;
   os_regex_table_t *rp_single, *ro_single;
   lio_path_tuple_t tuple;
-  int submitted, good, bad;
+  int submitted, good, bad, do_print;
   int recurse_depth = 10000;
   inspect_t *w;
 
 //printf("argc=%d\n", argc);
   if (argc < 2) {
      printf("\n");
-     printf("lio_inspect LIO_COMMON_OPTIONS [-rd recurse_depth] [-b bufsize_mb] [-f] [-s] [-r] [-q extra_query] -o inspect_opt LIO_PATH_OPTIONS\n");
+     printf("lio_inspect LIO_COMMON_OPTIONS [-rd recurse_depth] [-b bufsize_mb] [-f] [-s] [-r] [-q extra_query] [-bl key value] [-p] -o inspect_opt LIO_PATH_OPTIONS\n");
      lio_print_options(stdout);
      lio_print_path_options(stdout);
      printf("    -rd recurse_depth  - Max recursion depth on directories. Defaults to %d\n", recurse_depth);
@@ -250,7 +251,10 @@ int main(int argc, char **argv)
      printf("                         Not always successful.  Try without option in those cases.\n");
      printf("                         Even for data placement issues. Could fail\n");
      printf("    -q  extra_query    - Extra RS query for data placement. AND-ed with default query\n");
+     printf("    -bl key value      - Blacklist the given key/value combination. Multiple -bl options can be provided\n");
+     printf("                         For a RID use: rid_key rid     Hostname: host hostname\n");
      printf("    -f                 - Forces data replacement even if it would result in data loss\n");
+     printf("    -p                 - Print the resulting query string\n");
      printf("    -o inspect_opt     - Inspection option.  One of the following:\n");
      for (i=1; i<n_inspect; i++) { printf("                 %s\n", inspect_opts[i]); }
      return(1);
@@ -267,8 +271,9 @@ int main(int argc, char **argv)
   force_repair = 0;
   option = INSPECT_QUICK_CHECK;
   global_whattodo = 0;
-  query = NULL;
-
+  query = rs_query_new(lio_gc->rs);
+  do_print = 0;
+  q_count = 0;
   do {
      start_option = i;
 
@@ -287,10 +292,26 @@ int main(int argc, char **argv)
      } else if (strcmp(argv[i], "-s") == 0) { //** Report soft errors
         i++;
         global_whattodo |= INSPECT_SOFT_ERROR_FAIL;
+     } else if (strcmp(argv[i], "-p") == 0) { //** Print resulting query string
+        i++;
+        do_print = 1;
      } else if (strcmp(argv[i], "-q") == 0) { //** Add additional query
         i++;
-        query = rs_query_parse(lio_gc->rs, argv[i]);
+        rsq = rs_query_parse(lio_gc->rs, argv[i]);
+        if (rsq == NULL) {
+           printf("ERROR parsing Query: %s\nAborting!\n",argv[i]);
+           exit(1);
+        }
+        q_count++;
+        rs_query_append(lio_gc->rs, query, rsq);
+        rs_query_destroy(lio_gc->rs, rsq);
         i++;
+     } else if (strcmp(argv[i], "-bl") == 0) { //** Blacklist
+        i++;
+        q_count++;
+        rs_query_add(lio_gc->rs, &query, RSQ_BASE_OP_KV, argv[i], RSQ_BASE_KV_EXACT, argv[i+1], RSQ_BASE_KV_EXACT);
+        rs_query_add(lio_gc->rs, &query, RSQ_BASE_OP_NOT, "*", RSQ_BASE_KV_ANY, "*", RSQ_BASE_KV_ANY);
+        i = i + 2;
      } else if (strcmp(argv[i], "-o") == 0) { //** Inspect option
         i++;
         option = -1;
@@ -306,6 +327,23 @@ int main(int argc, char **argv)
 
   } while ((start_option < i) && (i<argc));
   start_index = i;
+
+  //** Finish forming the query.  We need to add all the AND operations
+  if (q_count == 0) {
+     rs_query_destroy(lio_gc->rs, query);
+     query = NULL;
+  } else {
+     for (j=0; j<q_count-1; j++) {
+        rs_query_add(lio_gc->rs, &query, RSQ_BASE_OP_AND, "*", RSQ_BASE_KV_ANY, "*", RSQ_BASE_KV_ANY);
+     }
+  }
+
+  //** Print the resulting query
+  if (do_print == 1) {
+     qstr = rs_query_print(lio_gc->rs, query);
+     printf("RS query=%s\n", qstr);
+     free(qstr);
+  }
 
   global_whattodo |= option;
   if ((option == INSPECT_QUICK_REPAIR) || (option == INSPECT_SCAN_REPAIR) || (option == INSPECT_FULL_REPAIR)) global_whattodo |= force_repair;

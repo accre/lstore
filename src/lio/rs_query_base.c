@@ -90,6 +90,19 @@ void rs_query_base_destroy(resource_service_fn_t *rs, rs_query_t *rsq)
   free(query);
 }
 
+//***********************************************************************
+// rq_query_base_new - Makes an emptry RS query
+//***********************************************************************
+
+rs_query_t *rs_query_base_new(resource_service_fn_t *rs)
+{
+  rsq_base_t *q;
+
+  type_malloc_clear(q, rsq_base_t, 1);
+  q->rs = rs;
+
+  return((rs_query_t *)q);
+}
 
 
 //***********************************************************************
@@ -124,8 +137,13 @@ int rs_query_base_add(resource_service_fn_t *rs, rs_query_t **rsq, int op, char 
      (*query)->head = q;
      (*query)->tail = q;
   } else {
-     (*query)->tail->next = q;
-     (*query)->tail = q;
+     if ((*query)->head == NULL) {
+        (*query)->head = q;
+        (*query)->tail = q;
+     } else {
+        (*query)->tail->next = q;
+        (*query)->tail = q;
+     }
   }
 
   return(0);
@@ -147,7 +165,8 @@ log_printf(15, "rs_query_phase_dup: START\n");
 
   if (query == NULL) return(NULL);
 
-  type_malloc_clear(new_query, rsq_base_t, 1);
+  new_query = rs_query_base_new(rs);
+
   for (q = query->head; q != NULL; q = q->next) {
 log_printf(15, "rs_query_phase_dup: Adding element\n");
      type_malloc_clear(qn, rsq_base_ele_t, 1);

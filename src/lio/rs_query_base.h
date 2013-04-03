@@ -78,6 +78,7 @@ int rs_query_base_add(resource_service_fn_t *rs, rs_query_t **q, int op, char *k
 void rs_query_base_append(resource_service_fn_t *rs, rs_query_t *rsq, rs_query_t *rsq_append);
 void rs_query_base_destroy(resource_service_fn_t *rs, rs_query_t *q);
 char *rs_query_base_print(resource_service_fn_t *rs, rs_query_t *q);
+rs_query_t *rs_query_base_new(resource_service_fn_t *rs);
 rs_query_t *rs_query_base_dup(resource_service_fn_t *rs, rs_query_t *query);
 rs_query_t *rs_query_base_parse(resource_service_fn_t *rs, char *value);
 void rs_query_base_destroy(resource_service_fn_t *rs, rs_query_t *q);
