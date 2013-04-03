@@ -193,7 +193,23 @@ gop_waitall(gop);
 mq_destroy_context(mqc);
 --------------------------------------
 
-Look at client_test_thread() in mq_test.c for a fully working example
+Look at client_test_thread() in mq_test.c for a fully working example.  The format for the repsonse handler,
+client_response_pong(), in the above example is:
+
+	op_status_t (*fn_response)(void *arg, int id);
+
+The arg passed in is actually a pointer of type mq_task_t.  This structure is used for both GOP submissions
+and server side tasks.  Right now we'll just focus on the GOP or client side meanings.
+
+typedef struct {
+  mq_msg_t *msg;          //** Actual message sent with address
+  mq_msg_t *response;     //** Response message
+  op_generic_t *gop;      //** GOP corresponding to the task.
+  mq_context_t *ctx;      //** Portal context for sending responses.
+  void *arg;              //** Optional argument when calling new_mq_op().  This was free() in the above example.
+  apr_time_t timeout;     //** Initially the DT in sec for the command to complete and converted to abs timeout when sent
+  void (*my_arg_free)(void *arg);  //** Function for cleaning up the GOP arg on GOP destruction.
+} mq_task_t;
 
 
 Likewise for the server side its:
@@ -207,29 +223,64 @@ log_printf(0, "START\n");
 //** Make the server context
 mqc = mq_create_context(ifd, "mq_context");
 
-//** Form the command table
-table = mq_command_table_new(NULL);
-mq_command_add(table, MQF_PING_KEY, MQF_PING_SIZE, cb_ping);
-
 //** Make the server portal
 server_portal = mq_portal_create(mqc, host, MQ_CMODE_BIND, table);
+
+//** Get the command table fro mthe newly created MQ portal
+table = mq_portal_command_table_new(serger_portal);
+
+//** Install your commands
+mq_command_add(table, MQF_PING_KEY, MQF_PING_SIZE, NULL, cb_ping);
+
+//** Make available for use
 mq_portal_install(mqc, server_portal);
 
-//** Wait for a shutdown
+//** Wait for a shutdown using an eventFD.  Not reuqired Just one way to trigger a shutdown.
+//**  Could also do it via another command
 read(control_efd, &n, sizeof(n));
 
 //** Destroy the portal
 mq_destroy_context(mqc);
 
-mq_command_table_destroy(table);
 --------------------------------------
 
 This code is directly lifted from server_test_mq_loop() in mq_test.c.
 
 The format for commands used by the command table is pretty simple:
-	void command_fn(void *arg)
+	void command_fn(void *arg, mq_task_t *task)
 
-You can look at cb_ping() in mq_test.c for an example.
+Arg is the void * pointer provided when adding the operation to the command table.
+In the above it corresponds to the NULL in mq_command_add() above.
+
+The other argument, task, uses the same task structure as discussed above but with slightly different meanings:
+
+typedef struct {
+  mq_msg_t *msg;          //** Message received
+  mq_msg_t *response;     //** NULL, Unused
+  op_generic_t *gop;      //** NULL, Unused
+  mq_context_t *ctx;      //** Portal context for sending responses. (Server+GOP)
+  void *arg;              //** Optional argument when calling mq_command_add().
+  apr_time_t timeout;     //** Initially the DT in sec for the command to complete and converted to abs timeout when sent
+  void (*my_arg_free)(void *arg);  //** NULL, Unused
+} mq_task_t;
+
+
+Servers normally send responses directly in more of a fire and forget approach, bypassing the GOP framework. In this case one
+uses mq_submit():
+
+	int mq_submit(mq_portal_t *p, mq_task_t *task);
+
+The easist way to generate the task is to use the helper function:
+
+	mq_task_t *mq_task_new(mq_context_t *ctx, mq_msg_t *msg, op_generic_t *gop, void *arg, int dt);
+
+In the cb_ping() example above translates to
+
+        err = mq_submit(server_portal, mq_task_new(server_portal->mqc, response, NULL, NULL, 5));
+
+in proc_trackexec_ping() which is called from cb_ping();
+
+You can look at cb_ping() in mq_test.c for the full example.
 
 
 

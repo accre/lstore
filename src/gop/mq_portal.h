@@ -191,14 +191,14 @@ typedef struct {
   apr_pool_t *mpool;
 } mq_command_table_t;
 
-struct mq_task_s {
-  mq_msg_t *msg;  //** Actual message to send with address
-  mq_msg_t *response;     //** Response message
-  op_generic_t *gop;      //**
-  mq_context_t *ctx;
-  void *arg;
-  apr_time_t timeout;  //** Initially the DT in sec for the command to complete and converted to abs timeout when sent
-  void (*my_arg_free)(void *arg);
+struct mq_task_s {      //** Generic containter for MQ messages for both the server and GOP (or client). If the variable is not used it's value is NULL.
+  mq_msg_t *msg;          //** Actual message to send with address (Server+GOP)
+  mq_msg_t *response;     //** Response message (GOP)
+  op_generic_t *gop;      //** GOP corresponding to the task.  This could be NULL if a direct submission is used (GOP)
+  mq_context_t *ctx;      //** Portal context for sending responses. (Server+GOP)
+  void *arg;              //** Optional argument when calling mq_command_add() or new_mq_op() (server+GOP)
+  apr_time_t timeout;     //** Initially the DT in sec for the command to complete and converted to abs timeout when sent
+  void (*my_arg_free)(void *arg);  //** Function for cleaning up the GOP arg. (GOP)
 };
 
 typedef struct {
