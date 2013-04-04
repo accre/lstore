@@ -224,10 +224,10 @@ log_printf(0, "START\n");
 mqc = mq_create_context(ifd, "mq_context");
 
 //** Make the server portal
-server_portal = mq_portal_create(mqc, host, MQ_CMODE_BIND, table);
+server_portal = mq_portal_create(mqc, host, MQ_CMODE_SERVER);
 
-//** Get the command table fro mthe newly created MQ portal
-table = mq_portal_command_table_new(serger_portal);
+//** Get the command table from the newly created MQ portal
+table = mq_portal_command_table(server_portal);
 
 //** Install your commands
 mq_command_add(table, MQF_PING_KEY, MQF_PING_SIZE, NULL, cb_ping);
