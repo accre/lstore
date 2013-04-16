@@ -2711,13 +2711,13 @@ op_generic_t *segcache_inspect(segment_t *seg, data_attr_t *da, info_fd_t *fd, i
 
   if ((mode != INSPECT_SOFT_ERRORS) && (mode != INSPECT_HARD_ERRORS)) {
      info_printf(fd, 1, XIDT ": Cache segment maps to child " XIDT "\n", segment_id(seg), segment_id(s->child_seg));
-  }
 
-  //** Check the file size first
-  child_size = segment_size(s->child_seg);
-  if (child_size < s->total_size) {
-     info_printf(fd, 1, XIDT ": ERROR Cache segment size(" XOT ") > child segment size(" XOT ")!\n", segment_id(seg), s->total_size, child_size);
-     return(gop_dummy(op_failure_status));
+     //** Check the file size first
+     child_size = segment_size(s->child_seg);
+     if (child_size < s->total_size) {
+        info_printf(fd, 1, XIDT ": ERROR Cache segment size(" XOT ") > child segment size(" XOT ")!\n", segment_id(seg), s->total_size, child_size);
+        return(gop_dummy(op_failure_status));
+     }
   }
 
   return(segment_inspect(s->child_seg, da, fd, mode, bufsize, query, timeout));
