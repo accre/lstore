@@ -208,6 +208,7 @@ data_block_t *data_block_deserialize_text(service_manager_t *sm, ex_id_t id, exn
   snprintf(capgrp, bufsize, "block-" XIDT, id);
   cg = inip_find_group(cfd, capgrp);
   if (cg == NULL) {
+     inip_destroy(cfd);
      log_printf(0, "data_block_deserialize_text: id=" XIDT " not found!\n", id);
      return(NULL);
   }
@@ -216,6 +217,7 @@ data_block_t *data_block_deserialize_text(service_manager_t *sm, ex_id_t id, exn
   text = inip_get_string(cfd, capgrp, "type", "");
   ds = lookup_service(sm, DS_SM_RUNNING, text);
   if (ds == NULL) {
+     inip_destroy(cfd);
      log_printf(0, "data_block_deserialize_text: b->id=" XIDT " Unknown data service tpye=%s!\n", id, text);
      return(NULL);;
   }
@@ -235,9 +237,6 @@ data_block_t *data_block_deserialize_text(service_manager_t *sm, ex_id_t id, exn
   atomic_set(b->ref_count, 0);
   atomic_set(b->initial_ref_count, i);
   etext = inip_get_string(cfd, capgrp, "read_cap", "");
-//char *tmp=unescape_text('\\', etext);
-//log_printf(15, "data_block_deserialize_text:   escaped rcap=%s\n", etext);
-//log_printf(15, "data_block_deserialize_text: unescaped rcap=%s\n", tmp);
   ds_set_cap(b->ds, b->cap, DS_CAP_READ, unescape_text('\\', etext)); free(etext);
   etext = inip_get_string(cfd, capgrp, "write_cap", "");
   ds_set_cap(b->ds, b->cap, DS_CAP_WRITE, unescape_text('\\', etext)); free(etext);

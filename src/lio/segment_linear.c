@@ -1125,11 +1125,14 @@ int seglin_deserialize_text(segment_t *seg, ex_id_t id, exnode_exchange_t *exp)
   int bufsize=1024;
   char seggrp[bufsize];
   char *text, *etext, *token, *bstate, *key, *value;
-  int fin;
+  int fin, fail;
   seglin_slot_t *b;
   inip_file_t *fd;
   inip_group_t *g;
   inip_element_t *ele;
+
+
+  fail = 0;
 
   //** Parse the ini text
   fd = inip_read_text(exp->text);
@@ -1175,10 +1178,16 @@ int seglin_deserialize_text(segment_t *seg, ex_id_t id, exnode_exchange_t *exp)
 
         //** Find the cooresponding cap
         b->data = data_block_deserialize(seg->ess, id, exp);
-        atomic_inc(b->data->ref_count);
+        if (b->data == NULL) {
+           log_printf(0, "Missing data block!  block id=" XIDT " seg=" XIDT "\n", id, segment_id(seg));
+           free(b);
+           fail = 1;
+        } else {
+           atomic_inc(b->data->ref_count);
 
-       //** Finally add it to the ISL
-       insert_interval_skiplist(s->isl, (skiplist_key_t *)&(b->seg_offset), (skiplist_key_t *)&(b->seg_end), (skiplist_data_t *)b);
+           //** Finally add it to the ISL
+           insert_interval_skiplist(s->isl, (skiplist_key_t *)&(b->seg_offset), (skiplist_key_t *)&(b->seg_end), (skiplist_data_t *)b);
+        }
      }
 
      ele = inip_next_element(ele);
@@ -1188,7 +1197,7 @@ int seglin_deserialize_text(segment_t *seg, ex_id_t id, exnode_exchange_t *exp)
   //** Clean up
   inip_destroy(fd);
 
-  return(0);
+  return(fail);
 }
 
 //***********************************************************************
