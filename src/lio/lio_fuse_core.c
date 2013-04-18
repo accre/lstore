@@ -672,7 +672,7 @@ log_printf(15, "dname=%s NOTHING LEFT off=%d dt=%lf\n", dname,off2, dt);
         ino = 0; sscanf(dit->val[0], XIDT, &ino);
      } else {
         log_printf(0, "Missing inode!  fname=%s\n", fname);
-        for (i=0; i<_inode_key_size-1; i++) if (dit->val[i] != NULL) free(dit->val[i]);
+        for (i=0; i<_inode_key_size; i++) if (dit->val[i] != NULL) free(dit->val[i]);
         return(-ENOENT);
      }
 
@@ -705,7 +705,7 @@ log_printf(15, "existing entry fname=%s\n", fname); flush_log();
         _lfs_parse_inode_vals(dit->lfs, inode, dit->val, dit->v_size);
         _lfs_inode_insert(dit->lfs, inode);
      } else {
-       for (i=0; i<_inode_key_size-1; i++) if (dit->val[i] != NULL) free(dit->val[i]);
+       for (i=0; i<_inode_key_size; i++) if (dit->val[i] != NULL) free(dit->val[i]);
 //       i=_inode_key_size-1;
 //       if (dit->val[i] != NULL) free(dit->val[i]);
      }
@@ -1022,8 +1022,7 @@ lio_fuse_file_handle_t *lfs_load_file_handle(lio_fuse_t *lfs, const char *fname)
   }
 
   //** Load it
-  exp = exnode_exchange_create(EX_TEXT);
-  exp->text = ex_data;
+  exp = exnode_exchange_text_parse(ex_data);
   ex = exnode_create();
   if (exnode_deserialize(ex, exp, lfs->lc->ess) != 0) {
      log_printf(0, "Bad exnode! fname=%s\n", fname);
@@ -1267,7 +1266,7 @@ log_printf(0, "DESTROYING exnode fname=%s\n", fname); flush_log();
 
   //** Update the OS exnode
   n = 3;
-  val[0] = exp->text;  v_size[0] = strlen(val[0]);
+  val[0] = exp->text.text;  v_size[0] = strlen(val[0]);
   sprintf(buffer, XOT, ssize);
   val[1] = buffer; v_size[1] = strlen(val[1]);
   val[2] = NULL; v_size[2] = 0;
@@ -1769,12 +1768,11 @@ log_printf(15, "nkeys=%d fname=%s ftype=%d\n", nkeys, fname, ftype);
      //** to the global cache table cause there could be multiple copies of the
      //** same segment being serialized/deserialized.
      //** Deserialize it
-     exp = exnode_exchange_create(EX_TEXT);
-     exp->text = val[ex_key];
+     exp = exnode_exchange_text_parse(val[ex_key]);
      ex = exnode_create();
      err = exnode_deserialize(ex, exp, lfs->lc->ess_nocache);
-     free(val[ex_key]); val[ex_key] = NULL;
-     exp->text = NULL;
+     exnode_exchange_free(exp);
+     val[ex_key] = NULL;
 
      if (err != 0) {
         log_printf(1, "ERROR parsing parent exnode fname=%s\n", fname);
@@ -1791,9 +1789,9 @@ log_printf(15, "nkeys=%d fname=%s ftype=%d\n", nkeys, fname, ftype);
 
      //** Serialize it for storage
      exnode_serialize(cex, exp);
-     val[ex_key] = exp->text;
+     val[ex_key] = exp->text.text;
      v_size[ex_key] = strlen(val[ex_key]);
-     exp->text = NULL;
+     exp->text.text = NULL;
      exnode_exchange_destroy(exp);
      exnode_destroy(ex);
      exnode_destroy(cex);

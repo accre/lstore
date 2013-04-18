@@ -1022,12 +1022,11 @@ int seglin_serialize_text(segment_t *seg, exnode_exchange_t *exp)
   char *ext, *etext;
   int sused;
   seglin_slot_t *b;
-  exnode_exchange_t cap_exp;
+  exnode_exchange_t *cap_exp;
   interval_skiplist_iter_t it;
 
   segbuf[0] = 0;
-  cap_exp.type = EX_TEXT;
-  cap_exp.text = NULL;
+  cap_exp = exnode_exchange_create(EX_TEXT);
 
   sused = 0;
 
@@ -1058,7 +1057,7 @@ int seglin_serialize_text(segment_t *seg, exnode_exchange_t *exp)
   it = iter_search_interval_skiplist(s->isl, (skiplist_key_t *)NULL, (skiplist_key_t *)NULL);
   while ((b = (seglin_slot_t *)next_interval_skiplist(&it)) != NULL) {
      //** Add the cap
-     data_block_serialize(b->data, &cap_exp);
+     data_block_serialize(b->data, cap_exp);
 
      //** Add the segment block
      append_printf(segbuf, &sused, bufsize, "block=" XIDT ":" XOT ":" XOT ":" XOT ":" XOT "\n",
@@ -1067,10 +1066,8 @@ int seglin_serialize_text(segment_t *seg, exnode_exchange_t *exp)
 
 
   //** Merge everything together and return it
-  if (cap_exp.text != NULL) {
-    exnode_exchange_append_text(exp, cap_exp.text);
-    free(cap_exp.text);
-  }
+  exnode_exchange_append(exp, cap_exp);
+  exnode_exchange_destroy(cap_exp);
   exnode_exchange_append_text(exp, segbuf);
 
   return(0);
@@ -1135,7 +1132,7 @@ int seglin_deserialize_text(segment_t *seg, ex_id_t id, exnode_exchange_t *exp)
   fail = 0;
 
   //** Parse the ini text
-  fd = inip_read_text(exp->text);
+  fd = exp->text.fd;
 
   //** Make the segment section name
   snprintf(seggrp, bufsize, "segment-" XIDT, id);
@@ -1192,10 +1189,6 @@ int seglin_deserialize_text(segment_t *seg, ex_id_t id, exnode_exchange_t *exp)
 
      ele = inip_next_element(ele);
   }
-
-
-  //** Clean up
-  inip_destroy(fd);
 
   return(fail);
 }

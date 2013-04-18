@@ -117,7 +117,7 @@ log_printf(15, "inspecting fname=%s global_whattodo=%d\n", w->fname, global_what
 
   //** If we made it here the exnode is unique and loaded.
   //** Load it
-  exp = exnode_exchange_create(EX_TEXT);  exp->text = w->exnode;
+  exp = exnode_exchange_text_parse(w->exnode);
   ex = exnode_create();
   if (exnode_deserialize(ex, exp, lio_gc->ess) != 0) {
      info_printf(lio_ifd, 0, "ERROR  Failed with file %s (ftype=%d). Problem parsing exnode!\n", w->fname, w->ftype);
@@ -193,7 +193,7 @@ log_printf(15, "fname=%s inspect_gid=%d status=%d\n", w->fname, gop_id(gop), sta
      //printf("%s", exp_out->text);
      //printf("-----------------------------------------------------\n");
 
-     val[0] = exp_out->text; v_size[0]= strlen(val[0]);
+     val[0] = exp_out->text.text; v_size[0]= strlen(val[0]);
      val[1] = NULL; v_size[1] = 0;
      val[2] = NULL;  v_size[2] = -1;  //** Remove the system.*_errors
      val[3] = NULL;  v_size[3] = -1;

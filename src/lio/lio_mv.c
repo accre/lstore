@@ -82,7 +82,7 @@ flush_log();
   count = 0;
 //  tweak = (strcmp(mv->dest_tuple.path, "/") == 0) ? 1 : 0;  //** Tweak things for the root path
   while ((ftype = os_next_object(mv->src_tuple.lc->os, it, &src_fname[slot], &prefix_len)) > 0) {
-     snprintf(dname, OS_PATH_MAX, "%s%s", mv->dest_tuple.path, &(src_fname[slot][prefix_len+1]));
+     snprintf(dname, OS_PATH_MAX, "%s/%s", mv->dest_tuple.path, &(src_fname[slot][prefix_len+1]));
      gop = lio_move_object(mv->src_tuple.lc, mv->src_tuple.creds, src_fname[slot], dname);
      gop_set_myid(gop, slot);
 log_printf(0, "gid=%d i=%d sname=%s dname=%s\n", gop_id(gop), slot, src_fname[slot], dname);
@@ -264,7 +264,7 @@ log_printf(15, "55555555555555555\n"); flush_log();
 
   //** IF we made it here we have mv's to a directory
   max_spawn = lio_parallel_task_count / n_paths;
-  if (max_spawn < 10) max_spawn = 10;
+  if (max_spawn <= 0) max_spawn = 1;
 
   q = new_opque();
   opque_start_execution(q);
@@ -302,6 +302,7 @@ finished:
     os_regex_table_destroy(flist[i].regex);
   }
 
+  free(flist);
   lio_shutdown();
 
   return(0);

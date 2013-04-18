@@ -152,6 +152,7 @@ op_generic_t *exnode_remove(thread_pool_context_t *tpc, exnode_t *ex, data_attr_
 op_generic_t *exnode_clone(thread_pool_context_t *tpc, exnode_t *ex, data_attr_t *da, exnode_t **clone_ex, void *arg, int mode, int timeout);
 void exnode_destroy(exnode_t *ex);
 void exnode_exchange_append_text(exnode_exchange_t *exp, char *buffer);
+void exnode_exchange_append(exnode_exchange_t *exp, exnode_exchange_t *exp_append);
 int exnode_serialize(exnode_t *ex, exnode_exchange_t *exp);
 int exnode_deserialize(exnode_t *ex, exnode_exchange_t *exp, service_manager_t *ess);
 ex_header_t *exnode_get_header(exnode_t *ex);
@@ -161,6 +162,7 @@ exnode_exchange_t *exnode_exchange_create(int type);
 void exnode_exchange_destroy(exnode_exchange_t *exp);
 void exnode_exchange_free(exnode_exchange_t *exp);
 exnode_exchange_t *exnode_exchange_load_file(char *fname);
+exnode_exchange_t *exnode_exchange_text_parse(char *text);
 segment_t *exnode_get_default(exnode_t *ex);
 void exnode_set_default(exnode_t *ex, segment_t *seg);
 

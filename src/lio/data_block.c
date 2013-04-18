@@ -154,7 +154,9 @@ int data_block_serialize_text(data_block_t *b, exnode_exchange_t *exp)
   append_printf(capsbuf, &cused, bufsize, "\n");
 
   //** Merge everything together and return it
-  exnode_exchange_append_text(exp, capsbuf);
+  exnode_exchange_t cexp;
+  cexp.text.text = capsbuf;
+  exnode_exchange_append(exp, &cexp);
 
   return(0);
 }
@@ -202,13 +204,12 @@ data_block_t *data_block_deserialize_text(service_manager_t *sm, ex_id_t id, exn
   data_block_attr_t *attr;
 
   //** Parse the ini text
-  cfd = inip_read_text(exp->text);
+  cfd = exp->text.fd;
 
   //** Find the cooresponding cap
   snprintf(capgrp, bufsize, "block-" XIDT, id);
   cg = inip_find_group(cfd, capgrp);
   if (cg == NULL) {
-     inip_destroy(cfd);
      log_printf(0, "data_block_deserialize_text: id=" XIDT " not found!\n", id);
      return(NULL);
   }
@@ -217,7 +218,6 @@ data_block_t *data_block_deserialize_text(service_manager_t *sm, ex_id_t id, exn
   text = inip_get_string(cfd, capgrp, "type", "");
   ds = lookup_service(sm, DS_SM_RUNNING, text);
   if (ds == NULL) {
-     inip_destroy(cfd);
      log_printf(0, "data_block_deserialize_text: b->id=" XIDT " Unknown data service tpye=%s!\n", id, text);
      return(NULL);;
   }
@@ -260,9 +260,6 @@ data_block_t *data_block_deserialize_text(service_manager_t *sm, ex_id_t id, exn
 
     ele = inip_next_element(ele);
   }
-
-  //** Clean up
-  inip_destroy(cfd);
 
   return(b);
 }

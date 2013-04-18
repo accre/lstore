@@ -2911,7 +2911,7 @@ int segcache_serialize_text(segment_t *seg, exnode_exchange_t *exp)
   char segbuf[bufsize];
   char *etext;
   int sused;
-  exnode_exchange_t child_exp;
+  exnode_exchange_t *child_exp;
 
   segbuf[0] = 0;
 
@@ -2933,15 +2933,12 @@ int segcache_serialize_text(segment_t *seg, exnode_exchange_t *exp)
   append_printf(segbuf, &sused, bufsize, "segment=" XIDT "\n", segment_id(s->child_seg));
 
   //** Serialize the child as well
-  child_exp.type = EX_TEXT;
-  child_exp.text = NULL;
-  segment_serialize(s->child_seg, &child_exp);
+  child_exp = exnode_exchange_create(EX_TEXT);
+  segment_serialize(s->child_seg, child_exp);
 
   //** And merge everything together
-  if (child_exp.text != NULL) {
-    exnode_exchange_append_text(exp, child_exp.text);
-    exnode_exchange_free(&child_exp);
-  }
+  exnode_exchange_append(exp, child_exp);
+  exnode_exchange_destroy(child_exp);
   exnode_exchange_append_text(exp, segbuf);
 
   return(0);
@@ -2990,7 +2987,7 @@ int segcache_deserialize_text(segment_t *seg, ex_id_t myid, exnode_exchange_t *e
   int i;
 
   //** Parse the ini text
-  fd = inip_read_text(exp->text);
+  fd = exp->text.fd;
 
   //** Make the segment section name
   snprintf(seggrp, bufsize, "segment-" XIDT, myid);
@@ -3003,7 +3000,6 @@ int segcache_deserialize_text(segment_t *seg, ex_id_t myid, exnode_exchange_t *e
   if (id == 0) {
      log_printf(0, "ERROR missing child segment tag initial sid=" XIDT " myid=" XIDT "\n",segment_id(seg), myid);
      flush_log();
-     inip_destroy(fd);
      return (-1);
   }
 
@@ -3017,7 +3013,6 @@ int segcache_deserialize_text(segment_t *seg, ex_id_t myid, exnode_exchange_t *e
   if (s->child_seg == NULL) {
      log_printf(0, "ERROR child_seg = NULL initial sid=" XIDT " myid=" XIDT " cid=" XIDT "\n",segment_id(seg), myid, id);
      flush_log();
-     inip_destroy(fd);
      return(-2);
   }
 
@@ -3086,8 +3081,6 @@ log_printf(5, "seg=" XIDT " Initial child_last_page=" XOT " child_size=" XOT " p
      s->c->fn.adding_segment(s->c, seg);
      cache_unlock(s->c);
   }
-
-  inip_destroy(fd);
 
   n = (s->c == NULL) ? 0 : s->c->default_page_size;
   log_printf(15, "segcache_deserialize_text: seg=" XIDT " page_size=" XOT " default=" XOT "\n", segment_id(seg), s->page_size, n);

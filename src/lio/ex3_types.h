@@ -51,19 +51,20 @@ typedef uint64_t ex_id_t;
 
 typedef ibp_iovec_t ex_iovec_t;
 
-//typedef struct {    //** I/O Vec array
-//  ex_off_t offset;
-//  ex_off_t len;
-//} ex_iovec_t;
 
 #define ex_iovec_single(iov, oset, nbytes) (iov)->offset = oset; (iov)->len = nbytes
 ex_iovec_t *ex_iovec_create();
 void ex_iovec_destroy(ex_iovec_t *iov);
 
 typedef struct {
+  char *text;
+  inip_file_t *fd;
+} exnode_text_t;
+
+typedef struct {
   int type;
   union {
-    char *text;
+    exnode_text_t text;
   };
 } exnode_exchange_t;
 

@@ -53,6 +53,8 @@ int main(int argc, char **argv)
   int v_size;
   lio_path_tuple_t tuple;
 
+  err = 0;
+
 //printf("argc=%d\n", argc);
   if (argc < 2) {
      printf("\n");
@@ -97,7 +99,7 @@ int main(int argc, char **argv)
 
      if ((ftype & OS_OBJECT_FILE) == 0) { //** Doesn't exist or is a dir
         info_printf(lio_ifd, 1, "ERROR source file(%s) doesn't exist or is a dir ftype=%d!\n", tuple.path, ftype);
-        goto finished;
+        goto finished_early;
      }
 
      //** Get the exnode
@@ -109,8 +111,7 @@ int main(int argc, char **argv)
      }
 
      //** Load it
-     exp = exnode_exchange_create(EX_TEXT);
-     exp->text = ex_data;
+     exp = exnode_exchange_text_parse(ex_data);
      ex = exnode_create();
      if (exnode_deserialize(ex, exp, tuple.lc->ess) != 0) {
         info_printf(lio_ifd, 0, "ERROR parsing exnode!  Aborting!\n");
@@ -141,6 +142,7 @@ finished:
      exnode_destroy(ex);
      exnode_exchange_destroy(exp);
 
+finished_early:
      lio_path_release(&tuple);
   }
 

@@ -45,7 +45,6 @@ int main(int argc, char **argv)
   exnode_t *ex;
   exnode_exchange_t *exp;
   exnode_exchange_t *exp_in;
-  FILE *fd;
 
   if (argc < 4) {
      printf("\n");
@@ -71,21 +70,10 @@ int main(int argc, char **argv)
   ex = exnode_create();
 
   //** Load it
-  exp_in = exnode_exchange_create(EX_TEXT);
-  fd = fopen(fname, "r");
-  assert(fd != NULL);
-  fseek(fd, 0, SEEK_END);
-  i = ftell(fd);
-  printf("exnode size=%d\n", i);
-  type_malloc_clear(exp_in->text, char, i + 2);
-  fseek(fd, 0, SEEK_SET);
-  fread(exp_in->text, i, 1, fd);
-  exp_in->text[i] = '\n';
-  exp_in->text[i+1] = '\0';
-  fclose(fd);
+  exp_in = exnode_exchange_load_file(fname);
 
   printf("Initial exnode=====================================\n");
-  printf("%s", exp_in->text);
+  printf("%s", exp_in->text.text);
   printf("===================================================\n");
 
   exnode_deserialize(ex, exp_in, lio_gc->ess);
@@ -95,7 +83,7 @@ int main(int argc, char **argv)
   exnode_serialize(ex, exp);
 
   printf("Loaded exnode=====================================\n");
-  printf("%s", exp->text);
+  printf("%s", exp->text.text);
   printf("===================================================\n");
 
   exnode_exchange_destroy(exp_in);

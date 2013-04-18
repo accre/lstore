@@ -117,11 +117,11 @@ int main(int argc, char **argv)
   //** Print it
   exp = exnode_exchange_create(EX_TEXT);
   exnode_serialize(ex, exp);
-  printf("%s", exp->text);
+  printf("%s", exp->text.text);
 
   //** and Save if back to disk
   FILE *fd = fopen(fname_out, "w");
-  fprintf(fd, "%s", exp->text);
+  fprintf(fd, "%s", exp->text.text);
   fclose(fd);
   exnode_exchange_destroy(exp);
 

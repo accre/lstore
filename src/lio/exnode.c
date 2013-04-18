@@ -266,7 +266,8 @@ op_generic_t *exnode_clone(thread_pool_context_t *tpc, exnode_t *src_ex, data_at
 
 void exnode_exchange_free(exnode_exchange_t *exp)
 {
-  if (exp->text != NULL) free(exp->text);
+  if (exp->text.text != NULL) { free(exp->text.text); exp->text.text= NULL; }
+  if (exp->text.fd != NULL) { inip_destroy(exp->text.fd); exp->text.fd = NULL; }
 }
 
 //*************************************************************************
@@ -305,30 +306,45 @@ exnode_exchange_t *exnode_exchange_create(int type)
 }
 
 //*************************************************************************
+// exnode_exchange_text_parse - Parses a text based exnode and returns it
+//*************************************************************************
+
+exnode_exchange_t *exnode_exchange_text_parse(char *text)
+{
+  exnode_exchange_t *exp;
+
+  exp = exnode_exchange_create(EX_TEXT);
+
+  exp->text.text = text;
+  exp->text.fd = inip_read_text(text);
+
+  return(exp);
+}
+
+
+//*************************************************************************
 // exnode_exchange_create - Returns an empty exportable exnode
 //*************************************************************************
 
 exnode_exchange_t *exnode_exchange_load_file(char *fname)
 {
-  exnode_exchange_t *exp;
   FILE *fd;
+  char *text;
   int i;
-
-  exp = exnode_exchange_create(EX_TEXT);
 
   fd = fopen(fname, "r");
   assert(fd != NULL);
   fseek(fd, 0, SEEK_END);
   i = ftell(fd);
 //  printf("exnode size=%d\n", i);
-  type_malloc_clear(exp->text, char, i + 2);
+  type_malloc(text, char, i + 2);
   fseek(fd, 0, SEEK_SET);
-  fread(exp->text, i, 1, fd);
-  exp->text[i] = '\n';
-  exp->text[i+1] = '\0';
+  fread(text, i, 1, fd);
+  text[i] = '\n';
+  text[i+1] = '\0';
   fclose(fd);
 
-  return(exp);
+  return(exnode_exchange_text_parse(text));
 }
 
 //*************************************************************************
@@ -341,18 +357,31 @@ void exnode_exchange_append_text(exnode_exchange_t *exp, char *buffer)
   char *text;
   int n;
 
-  n = (exp->text == NULL) ? 0 : strlen(exp->text);
+  if (buffer == NULL) return;
+
+  n = (exp->text.text == NULL) ? 0 : strlen(exp->text.text);
 
   type_malloc_clear(text, char, n + strlen(buffer) + 3);
   if (n == 0) {
     sprintf(text, "%s", buffer);
-    exp->text = text;
+    exp->text.text = text;
   } else {
-    sprintf(text, "%s\n%s", exp->text, buffer);
-    free(exp->text);
-    exp->text = text;
+    sprintf(text, "%s\n%s", exp->text.text, buffer);
+    free(exp->text.text);
+    exp->text.text = text;
   }
 
+}
+
+//*************************************************************************
+// exnode_exchange_append - Appends the text to the text based exnode
+//     proto object.  NOT used for the goole protobuf version
+//*************************************************************************
+
+void exnode_exchange_append(exnode_exchange_t *exp, exnode_exchange_t *exp_append)
+{
+  if (exp_append->text.text == NULL) return;
+  exnode_exchange_append_text(exp, exp_append->text.text);
 }
 
 //*************************************************************************
@@ -370,7 +399,7 @@ int exnode_deserialize_text(exnode_t *ex, exnode_exchange_t *exp, service_manage
   char *key, *value, *token, *bstate;
   char *exgrp = "exnode";
 
-  fd = inip_read_text(exp->text);
+  fd = exp->text.fd;
 
   //** Load the header
   g = inip_find_group(fd, exgrp);
@@ -420,8 +449,6 @@ int exnode_deserialize_text(exnode_t *ex, exnode_exchange_t *exp, service_manage
   } else {
     ex->default_seg = list_search(ex->view, &id);
   }
-
-  inip_destroy(fd);
 
   return((ex->default_seg == NULL) ? 1 : 0);
 }
