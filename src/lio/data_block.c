@@ -154,7 +154,9 @@ int data_block_serialize_text(data_block_t *b, exnode_exchange_t *exp)
   append_printf(capsbuf, &cused, bufsize, "\n");
 
   //** Merge everything together and return it
-  exnode_exchange_append_text(exp, capsbuf);
+  exnode_exchange_t cexp;
+  cexp.text.text = capsbuf;
+  exnode_exchange_append(exp, &cexp);
 
   return(0);
 }
@@ -202,7 +204,7 @@ data_block_t *data_block_deserialize_text(service_manager_t *sm, ex_id_t id, exn
   data_block_attr_t *attr;
 
   //** Parse the ini text
-  cfd = inip_read_text(exp->text);
+  cfd = exp->text.fd;
 
   //** Find the cooresponding cap
   snprintf(capgrp, bufsize, "block-" XIDT, id);
@@ -235,9 +237,6 @@ data_block_t *data_block_deserialize_text(service_manager_t *sm, ex_id_t id, exn
   atomic_set(b->ref_count, 0);
   atomic_set(b->initial_ref_count, i);
   etext = inip_get_string(cfd, capgrp, "read_cap", "");
-//char *tmp=unescape_text('\\', etext);
-//log_printf(15, "data_block_deserialize_text:   escaped rcap=%s\n", etext);
-//log_printf(15, "data_block_deserialize_text: unescaped rcap=%s\n", tmp);
   ds_set_cap(b->ds, b->cap, DS_CAP_READ, unescape_text('\\', etext)); free(etext);
   etext = inip_get_string(cfd, capgrp, "write_cap", "");
   ds_set_cap(b->ds, b->cap, DS_CAP_WRITE, unescape_text('\\', etext)); free(etext);
@@ -261,9 +260,6 @@ data_block_t *data_block_deserialize_text(service_manager_t *sm, ex_id_t id, exn
 
     ele = inip_next_element(ele);
   }
-
-  //** Clean up
-  inip_destroy(cfd);
 
   return(b);
 }

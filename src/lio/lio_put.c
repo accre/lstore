@@ -118,8 +118,7 @@ int main(int argc, char **argv)
   }
 
   //** Load it
-  exp = exnode_exchange_create(EX_TEXT);
-  exp->text = ex_data;
+  exp = exnode_exchange_text_parse(ex_data);
   ex = exnode_create();
   if (exnode_deserialize(ex, exp, tuple.lc->ess) != 0) {
      info_printf(lio_ifd, 0, "ERROR parsing exnode!  Aborting!\n");
@@ -149,11 +148,11 @@ log_printf(0, "AFTER PUT\n");
   }
 
   //** Serialize the exnode
-  free(exp->text);  exp->text = NULL;
+  exnode_exchange_free(exp);
   exnode_serialize(ex, exp);
 
   //** Update the OS exnode
-  val[0] = exp->text;  v_size[0] = strlen(val[0]);
+  val[0] = exp->text.text;  v_size[0] = strlen(val[0]);
   sprintf(buffer, I64T, segment_size(seg));
   val[1] = buffer; v_size[1] = strlen(val[1]);
   err = lioc_set_multiple_attrs(tuple.lc, tuple.creds, tuple.path, NULL, key, (void **)val, v_size, 2);

@@ -134,7 +134,7 @@ int main(int argc, char **argv)
 //  printf("-----------------------------------------------------\n");
 
   fd = fopen(cfname, "w");
-  fprintf(fd, "%s", exp_out->text);
+  fprintf(fd, "%s", exp_out->text.text);
   fclose(fd);
   exnode_exchange_destroy(exp_out);
 

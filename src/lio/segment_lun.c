@@ -2089,12 +2089,11 @@ int seglun_serialize_text(segment_t *seg, exnode_exchange_t *exp)
   char *ext, *etext;
   int sused, i;
   seglun_row_t *b;
-  exnode_exchange_t cap_exp;
+  exnode_exchange_t *cap_exp;
   interval_skiplist_iter_t it;
 
   segbuf[0] = 0;
-  cap_exp.type = EX_TEXT;
-  cap_exp.text = NULL;
+  cap_exp = exnode_exchange_create(EX_TEXT);
 
   sused = 0;
 
@@ -2133,7 +2132,7 @@ int seglun_serialize_text(segment_t *seg, exnode_exchange_t *exp)
      //** Add the segment stripe information
      append_printf(segbuf, &sused, bufsize, "row=" XOT ":" XOT ":" XOT, b->seg_offset, b->seg_end, b->row_len);
      for (i=0; i < s->n_devices; i++) {
-        data_block_serialize(b->block[i].data, &cap_exp); //** Add the cap
+        data_block_serialize(b->block[i].data, cap_exp); //** Add the cap
 //log_printf(0, "seg=" XIDT "        dev=%d bid=" XIDT " cap_offset=" XOT "\n", segment_id(seg), i, b->block[i].data->id, b->block[i].cap_offset);
         append_printf(segbuf, &sused, bufsize, ":" XIDT ":" XOT, b->block[i].data->id, b->block[i].cap_offset);
      }
@@ -2142,10 +2141,9 @@ int seglun_serialize_text(segment_t *seg, exnode_exchange_t *exp)
 
 
   //** Merge everything together and return it
-  if (cap_exp.text != NULL) {
-    exnode_exchange_append_text(exp, cap_exp.text);
-    free(cap_exp.text);
-  }
+  exnode_exchange_append(exp, cap_exp);
+  exnode_exchange_destroy(cap_exp);
+
   exnode_exchange_append_text(exp, segbuf);
 
   return(0);
@@ -2187,7 +2185,7 @@ int seglun_deserialize_text(segment_t *seg, ex_id_t id, exnode_exchange_t *exp)
   int bufsize=1024;
   char seggrp[bufsize];
   char *text, *etext, *token, *bstate, *key, *value;
-  int fin, i;
+  int fin, i, fail;
   seglun_row_t *b;
   seglun_block_t *block;
   inip_file_t *fd;
@@ -2195,7 +2193,9 @@ int seglun_deserialize_text(segment_t *seg, ex_id_t id, exnode_exchange_t *exp)
   inip_element_t *ele;
 
   //** Parse the ini text
-  fd = inip_read_text(exp->text);
+  fd = exp->text.fd;
+
+  fail = 0;  //** Default to no failure
 
   //** Make the segment section name
   snprintf(seggrp, bufsize, "segment-" XIDT, id);
@@ -2253,7 +2253,12 @@ int seglun_deserialize_text(segment_t *seg, ex_id_t id, exnode_exchange_t *exp)
 
            //** Find the cooresponding cap
            block[i].data = data_block_deserialize(seg->ess, id, exp);
-           atomic_inc(block[i].data->ref_count);
+           if (block[i].data == NULL) {
+              log_printf(0, "Missing data block!  block id=" XIDT " seg=" XIDT "\n", id, segment_id(seg));
+              fail = 1;
+           } else {
+              atomic_inc(block[i].data->ref_count);
+           }
 
         }
         free(token);
@@ -2265,11 +2270,7 @@ int seglun_deserialize_text(segment_t *seg, ex_id_t id, exnode_exchange_t *exp)
      ele = inip_next_element(ele);
   }
 
-
-  //** Clean up
-  inip_destroy(fd);
-
-  return(0);
+  return(fail);
 }
 
 //***********************************************************************
@@ -2326,8 +2327,10 @@ log_printf(15, "seglun_destroy: seg->id=" XIDT " ref_count=%d\n", segment_id(seg
 
   for (i=0; i<n; i++) {
      for (j=0; j<s->n_devices; j++) {
-       atomic_dec(b_list[i]->block[j].data->ref_count);
-       data_block_destroy(b_list[i]->block[j].data);
+       if (b_list[i]->block[j].data != NULL) {
+          atomic_dec(b_list[i]->block[j].data->ref_count);
+          data_block_destroy(b_list[i]->block[j].data);
+       }
      }
      free(b_list[i]->block);
      free(b_list[i]);

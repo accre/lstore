@@ -134,8 +134,7 @@ op_status_t cp_lio(cp_file_t *cp)
   }
 
   //** Deserailize them
-  sexp = exnode_exchange_create(EX_TEXT);
-  sexp->text = sex_data;
+  sexp = exnode_exchange_text_parse(sex_data);
   sex = exnode_create();
   if (exnode_deserialize(sex, sexp, cp->src_tuple.lc->ess) != 0) {
      info_printf(lio_ifd, 0, "ERROR parsing source exnode(%s)!\n", cp->src_tuple.path);
@@ -152,8 +151,7 @@ op_status_t cp_lio(cp_file_t *cp)
      goto finished;
   }
 
-  dexp = exnode_exchange_create(EX_TEXT);
-  dexp->text = dex_data;
+  dexp = exnode_exchange_text_parse(dex_data);
   dex = exnode_create();
   if (exnode_deserialize(dex, dexp, cp->dest_tuple.lc->ess) != 0) {
      info_printf(lio_ifd, 0, "ERROR parsing destinationexnode(%s)!\n", cp->dest_tuple.path);
@@ -198,11 +196,11 @@ op_status_t cp_lio(cp_file_t *cp)
   gop_free(gop, OP_DESTROY);
 
   //** Serialize the exnode
-  free(dexp->text);  dexp->text = NULL;
+  exnode_exchange_free(dexp);
   exnode_serialize(dex, dexp);
 
   //** Update the dest exnode and size
-  val[0] = dexp->text;  dv_size[0] = strlen(val[0]);
+  val[0] = dexp->text.text;  dv_size[0] = strlen(val[0]);
   sprintf(mysize, I64T, ssize);
   val[1] = mysize; dv_size[1] = strlen(val[1]);
   val[2] = NULL; dv_size[2] = 0;
@@ -281,8 +279,7 @@ op_status_t cp_src_local(cp_file_t *cp)
   }
 
   //** Load it
-  exp = exnode_exchange_create(EX_TEXT);
-  exp->text = ex_data;
+  exp = exnode_exchange_text_parse(ex_data);
   ex = exnode_create();
   if (exnode_deserialize(ex, exp, cp->dest_tuple.lc->ess) != 0) {
      info_printf(lio_ifd, 0, "ERROR parsing exnode!  Aborting!\n");
@@ -317,11 +314,11 @@ log_printf(0, "AFTER PUT\n");
   }
 
   //** Serialize the exnode
-  free(exp->text);  exp->text = NULL;
+  exnode_exchange_free(exp);
   exnode_serialize(ex, exp);
 
   //** Update the OS exnode
-  val[0] = exp->text;  v_size[0] = strlen(val[0]);
+  val[0] = exp->text.text;  v_size[0] = strlen(val[0]);
   sprintf(buffer, I64T, ssize);
   val[1] = buffer; v_size[1] = strlen(val[1]);
   val[2] = NULL; v_size[2] = 0;
@@ -378,8 +375,7 @@ op_status_t cp_dest_local(cp_file_t *cp)
   }
 
   //** Load it
-  exp = exnode_exchange_create(EX_TEXT);
-  exp->text = ex_data;
+  exp = exnode_exchange_text_parse(ex_data);
   ex = exnode_create();
   if (exnode_deserialize(ex, exp, cp->src_tuple.lc->ess) != 0) {
      info_printf(lio_ifd, 0, "ERROR parsing exnode!  Aborting!\n");
@@ -575,7 +571,7 @@ op_status_t cp_path_fn(void *arg, int id)
   opque_t *q;
   op_status_t status;
 
-log_printf(15, "START src=%s dest=%s\n", cp->src_tuple.path, cp->dest_tuple.path);
+log_printf(15, "START src=%s dest=%s max_spawn=%d\n", cp->src_tuple.path, cp->dest_tuple.path, max_spawn);
 flush_log();
 
   status = op_success_status;
@@ -785,7 +781,7 @@ log_printf(15, "333333333333333333\n"); flush_log();
 
   //** IF we made it here we have mv's to a directory
   max_spawn = lio_parallel_task_count / n_paths;
-  if (max_spawn < 0) max_spawn = 1;
+  if (max_spawn <= 0) max_spawn = 1;
   n_errors = 0;
 
   q = new_opque();

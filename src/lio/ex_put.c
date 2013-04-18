@@ -209,7 +209,7 @@ log_printf(1, "Flush completed\n");
 //  printf("-----------------------------------------------------\n");
 
   fd_out = fopen(fname, "w");
-  fprintf(fd_out, "%s", exp_out->text);
+  fprintf(fd_out, "%s", exp_out->text.text);
   fclose(fd_out);
   exnode_exchange_destroy(exp_out);
 

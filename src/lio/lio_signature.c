@@ -91,8 +91,7 @@ int main(int argc, char **argv)
   }
 
   //** Load it
-  exp = exnode_exchange_create(EX_TEXT);
-  exp->text = ex_data;
+  exp = exnode_exchange_text_parse(ex_data);
   ex = exnode_create();
   if (exnode_deserialize(ex, exp, tuple.lc->ess) != 0) {
      info_printf(lio_ifd, 0, "No default segment!  Aborting!\n");

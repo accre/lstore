@@ -518,7 +518,7 @@ int segfile_deserialize_text(segment_t *seg, ex_id_t id, exnode_exchange_t *exp)
   inip_file_t *fd;
 
   //** Parse the ini text
-  fd = inip_read_text(exp->text);
+  fd = exp->text.fd;
 
   //** Make the segment section name
   snprintf(seggrp, bufsize, "segment-" XIDT, id);
@@ -540,9 +540,6 @@ int segfile_deserialize_text(segment_t *seg, ex_id_t id, exnode_exchange_t *exp)
      log_printf(5, "segfile_deserialize_text: Error opening file %s for segment " XIDT "\n", s->fname, id);
      err = 1;
   }
-
-  //** Clean up
-  inip_destroy(fd);
 
   return(err);
 }

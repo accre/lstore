@@ -122,9 +122,9 @@ set(LIO_EXE
 )
 
 #Make static executables by default
-#SET(lio_lib lio-static)
+SET(lio_lib lio-static)
 #To use shared libs
-SET(lio_lib lio)
+#SET(lio_lib lio)
 
 #Add the exe build rules
 foreach (f ${LIO_EXE})

@@ -180,7 +180,7 @@ flush_log();
 //  printf("-----------------------------------------------------\n");
 
   fd = fopen(fname, "w");
-  fprintf(fd, "%s", exp_out->text);
+  fprintf(fd, "%s", exp_out->text.text);
   fclose(fd);
   exnode_exchange_destroy(exp_out);
 

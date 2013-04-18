@@ -1065,7 +1065,7 @@ int seglog_serialize_text(segment_t *seg, exnode_exchange_t *exp)
   char segbuf[bufsize];
   char *etext;
   int sused;
-  exnode_exchange_t child_exp;
+  exnode_exchange_t *child_exp;
 
   segbuf[0] = 0;
 
@@ -1083,34 +1083,24 @@ int seglog_serialize_text(segment_t *seg, exnode_exchange_t *exp)
 
   //** And the children segments
   append_printf(segbuf, &sused, bufsize, "log=" XIDT "\n", segment_id(s->table_seg));
-  child_exp.type = EX_TEXT;
-  child_exp.text = NULL;
-  segment_serialize(s->table_seg, &child_exp);
-  if (child_exp.text != NULL) {
-    exnode_exchange_append_text(exp, child_exp.text);
-    exnode_exchange_free(&child_exp);
-  }
+  child_exp = exnode_exchange_create(EX_TEXT);
+  segment_serialize(s->table_seg, child_exp);
+  exnode_exchange_append(exp, child_exp);
+  exnode_exchange_free(child_exp);
 
   append_printf(segbuf, &sused, bufsize, "data=" XIDT "\n", segment_id(s->data_seg));
-  child_exp.type = EX_TEXT;
-  child_exp.text = NULL;
-  segment_serialize(s->data_seg, &child_exp);
-  if (child_exp.text != NULL) {
-    exnode_exchange_append_text(exp, child_exp.text);
-    exnode_exchange_free(&child_exp);
-  }
+  segment_serialize(s->data_seg, child_exp);
+  exnode_exchange_append(exp, child_exp);
+  exnode_exchange_free(child_exp);
 
   append_printf(segbuf, &sused, bufsize, "base=" XIDT "\n", segment_id(s->base_seg));
-  child_exp.type = EX_TEXT;
-  child_exp.text = NULL;
-  segment_serialize(s->base_seg, &child_exp);
-  if (child_exp.text != NULL) {
-    exnode_exchange_append_text(exp, child_exp.text);
-    exnode_exchange_free(&child_exp);
-  }
+  segment_serialize(s->base_seg, child_exp);
+  exnode_exchange_append(exp, child_exp);
+  exnode_exchange_free(child_exp);
 
   //** And finally the the container
   exnode_exchange_append_text(exp, segbuf);
+  exnode_exchange_destroy(child_exp);
 
   return(0);
 }
@@ -1152,7 +1142,7 @@ int seglog_deserialize_text(segment_t *seg, ex_id_t id, exnode_exchange_t *exp)
   inip_file_t *fd;
 
   //** Parse the ini text
-  fd = inip_read_text(exp->text);
+  fd = exp->text.fd;
 
   //** Make the segment section name
   snprintf(seggrp, bufsize, "segment-" XIDT, id);
@@ -1183,8 +1173,6 @@ int seglog_deserialize_text(segment_t *seg, ex_id_t id, exnode_exchange_t *exp)
 
   //** Load the log table which will also set the size
   _slog_load(seg);
-
-  inip_destroy(fd);
 
   log_printf(15, "seglog_deserialize_text: seg=" XIDT "\n", segment_id(seg));
   return(0);

@@ -1042,7 +1042,7 @@ int main(int argc, char **argv)
     exnode_serialize(ex, exp_out);
 
     printf("--------------------- Final Exnode ----------------------\n");
-    printf("%s", exp_out->text);
+    printf("%s", exp_out->text.text);
     printf("---------------------------------------------------------\n");
   }
 

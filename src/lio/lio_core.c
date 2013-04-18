@@ -432,8 +432,7 @@ op_status_t lioc_remove_object_fn(void *arg, int id)
   //** Only done for normal files.  No links or dirs
   if ((ex_remove == 1) && (ex_data != NULL)) {
      //** Deserialize it
-     exp = exnode_exchange_create(EX_TEXT);
-     exp->text = ex_data;
+     exp = exnode_exchange_text_parse(ex_data);
      ex = exnode_create();
      if (exnode_deserialize(ex, exp, op->lc->ess) != 0) {
         log_printf(15, "ERROR removing data for object fname=%s\n", op->src_path);
@@ -447,7 +446,7 @@ op_status_t lioc_remove_object_fn(void *arg, int id)
      }
 
      //** Clean up
-     if (op->ex != NULL) exp->text = NULL;  //** The inital exnode is free() by the TP op
+     if (op->ex != NULL) exp->text.text = NULL;  //** The inital exnode is free() by the TP op
      exnode_exchange_destroy(exp);
      exnode_destroy(ex);
   }
@@ -645,8 +644,7 @@ log_printf(15, "dir=%s\n fname=%s\n", dir, fname);
      //** same segment being serialized/deserialized.
 
      //** Deserialize it
-     exp = exnode_exchange_create(EX_TEXT);
-     exp->text = val[ex_key];
+     exp = exnode_exchange_text_parse(val[ex_key]);
      ex = exnode_create();
      if (exnode_deserialize(ex, exp, op->lc->ess_nocache) != 0) {
         log_printf(15, "ERROR parsing parent exnode fname=%s\n", dir);
@@ -655,8 +653,6 @@ log_printf(15, "dir=%s\n fname=%s\n", dir, fname);
         exnode_destroy(ex);
         goto fail;
      }
-     free(val[ex_key]);
-     exp->text = NULL;
 
      //** Execute the clone operation
      err = gop_sync_exec(exnode_clone(op->lc->tpc_unlimited, ex, op->lc->da, &cex, NULL, CLONE_STRUCTURE, op->lc->timeout));
@@ -670,9 +666,10 @@ log_printf(15, "dir=%s\n fname=%s\n", dir, fname);
      }
 
      //** Serialize it for storage
+     exnode_exchange_free(exp);
      exnode_serialize(cex, exp);
-     val[ex_key] = exp->text;
-     exp->text = NULL;
+     val[ex_key] = exp->text.text;
+     exp->text.text = NULL;
      exnode_exchange_destroy(exp);
      exnode_destroy(ex);
      exnode_destroy(cex);
@@ -956,16 +953,15 @@ log_printf(15, "fname=%s missing owner\n", path);
   //** to the global cache table cause there could be multiple copies of the
   //** same segment being serialized/deserialized.
   //** Deserialize it
-  exp = exnode_exchange_create(EX_TEXT);
-  exp->text = val[ex_index];
+  exp = exnode_exchange_text_parse(val[ex_index]);
   ex = exnode_create();
   if (exnode_deserialize(ex, exp, lc->ess_nocache) != 0) {
      log_printf(15, "ERROR parsing parent exnode fname=%s\n", dir);
      state |= LIO_FSCK_MISSING_EXNODE;
-     exp->text = NULL;
+     exp->text.text = NULL;
      goto finished;
   }
-  exp->text = NULL;
+  exp->text.text = NULL;
 
      //** Execute the clone operation if needed
   if (do_clone == 1) {
@@ -978,7 +974,7 @@ log_printf(15, "fname=%s missing owner\n", path);
 
      //** Serialize it for storage
      exnode_serialize(cex, exp);
-     lioc_set_attr(lc, creds, path, NULL, "system.exnode", (void *)exp->text, strlen(exp->text));
+     lioc_set_attr(lc, creds, path, NULL, "system.exnode", (void *)exp->text.text, strlen(exp->text.text));
      exnode_destroy(ex);
      ex = cex;   //** WE use the clone for size checking
   }

@@ -1323,16 +1323,15 @@ int segjerase_serialize_text(segment_t *seg, exnode_exchange_t *exp)
   char segbuf[bufsize];
   char *etext;
   int sused;
-  exnode_exchange_t child_exp;
+  exnode_exchange_t *child_exp;
 
   segbuf[0] = 0;
-  child_exp.type = EX_TEXT;
-  child_exp.text = NULL;
+  child_exp = exnode_exchange_create(EX_TEXT);
 
   sused = 0;
 
   //** Store the child segment 1st
-  segment_serialize(s->child_seg, &child_exp);
+  segment_serialize(s->child_seg, child_exp);
 
   //** Store the segment header
   append_printf(segbuf, &sused, bufsize, "[segment-" XIDT "]\n", seg->header.id);
@@ -1354,10 +1353,10 @@ int segjerase_serialize_text(segment_t *seg, exnode_exchange_t *exp)
 
   //** Merge the exnodes together
   exnode_exchange_append_text(exp, segbuf);
-  exnode_exchange_append_text(exp, child_exp.text);
+  exnode_exchange_append(exp, child_exp);
 
   //** Clean up the child
-  exnode_exchange_free(&child_exp);
+  exnode_exchange_destroy(child_exp);
 
   return(0);
 }
@@ -1403,7 +1402,7 @@ int segjerase_deserialize_text(segment_t *seg, ex_id_t id, exnode_exchange_t *ex
   inip_file_t *fd;
 
   //** Parse the ini text
-  fd = inip_read_text(exp->text);
+  fd = exp->text.fd;
 
   //** Make the segment section name
   snprintf(seggrp, bufsize, "segment-" XIDT, id);
@@ -1415,10 +1414,10 @@ int segjerase_deserialize_text(segment_t *seg, ex_id_t id, exnode_exchange_t *ex
 
   //** Load the child segemnt (should be a LUN segment)
   id = inip_get_integer(fd, seggrp, "segment", 0);
-  if (id == 0) { inip_destroy(fd); return (-1); }
+  if (id == 0) { return (-1); }
 
   s->child_seg = load_segment(seg->ess, id, exp);
-  if (s->child_seg == NULL) { inip_destroy(fd); return(-2); }
+  if (s->child_seg == NULL) { return(-2); }
 
   atomic_inc(s->child_seg->ref_count);
 
@@ -1442,14 +1441,12 @@ int segjerase_deserialize_text(segment_t *seg, ex_id_t id, exnode_exchange_t *ex
   //** From the seg we can determine the other params (and sanity check input)
   if (strcmp(s->child_seg->header.type, SEGMENT_TYPE_LUN) != 0) {
      log_printf(0, "Child segment not type LUN!  got=%s\n", s->child_seg->header.type);
-     inip_destroy(fd);
      return(-4);
   }
   slun = (seglun_priv_t *)s->child_seg->priv;
 
   if (slun->n_devices != (s->n_data_devs + s->n_parity_devs)) {
      log_printf(0, "Child n_devices(%d) != n_data_devs(%d) + n_parity_devs(%d)!\n", slun->n_devices, s->n_data_devs, s->n_parity_devs);
-     inip_destroy(fd);
      return(-5);
   }
 
@@ -1463,13 +1460,10 @@ int segjerase_deserialize_text(segment_t *seg, ex_id_t id, exnode_exchange_t *ex
   s->plan = et_generate_plan(nbytes, s->method, s->n_data_devs, s->n_parity_devs, s->w, -1, -1);
   if (s->plan == NULL) {
      log_printf(0, "seg=" XIDT " No plan generated!\n", segment_id(seg));
-     inip_destroy(fd);
      return(-7);
   }
   s->plan->form_encoding_matrix(s->plan);
   s->plan->form_decoding_matrix(s->plan);
-
-  inip_destroy(fd);
 
   return(0);
 }

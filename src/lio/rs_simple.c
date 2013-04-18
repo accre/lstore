@@ -706,7 +706,11 @@ int rss_perform_check(resource_service_fn_t *rs)
             ce->re->space_free = ds_res_inquire_get(rss->ds, DS_INQUIRE_FREE, ce->space);
             ce->re->space_used = ds_res_inquire_get(rss->ds, DS_INQUIRE_USED, ce->space);
             ce->re->space_total = ds_res_inquire_get(rss->ds, DS_INQUIRE_TOTAL, ce->space);
-            if (ce->re->space_free <= rss->min_free) ce->re->status = 1;
+            if (ce->re->space_free <= rss->min_free) {
+               ce->re->status = 1;
+            } else {
+               ce->re->status = 0;
+            }
          } else {  //** No response so mark it as down
             ce->re->status = 1;
          }
