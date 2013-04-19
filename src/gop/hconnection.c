@@ -190,6 +190,7 @@ void recv_wait_for_work(host_connection_t *hc)
   lock_hc(hc);
   while ((hc->shutdown_request == 0) && (stack_size(hc->pending_stack) == 0)) {
      hc_send_signal(hc);
+log_printf(5, "shutdown_request=%d\n", hc->shutdown_request);
      apr_thread_cond_wait(hc->recv_cond, hc->lock);
   }
   unlock_hc(hc);
@@ -225,7 +226,7 @@ void *hc_send_thread(apr_thread_t *th, void *data)
   }
 
   tid = atomic_thread_id;
-  log_printf(6, "hc_send_thread: New connection to host=%s:%d ns=%d tid=%d\n", hp->host, hp->port, ns_getid(ns), tid);
+  log_printf(2, "hc_send_thread: New connection to host=%s:%d ns=%d tid=%d\n", hp->host, hp->port, ns_getid(ns), tid);
 
 
   //** Store my position in the conn_list **
@@ -487,7 +488,9 @@ log_printf(5, "hc_recv_thread: after recv phase.. ns=%d gid=%d finished=%d\n", n
   lock_hc(hc); hc_send_signal(hc); unlock_hc(hc);
 
   //** Wait for send thread to complete **
+log_printf(5, "Waiting for send_thread to complete\n");
   apr_thread_join(&value, hc->send_thread);
+log_printf(5, "send_thread has exited\n");
 
   pending = 0;  //** This is used to decide if we should adjust tuning
 
@@ -609,7 +612,7 @@ int create_host_connection(host_portal_t *hp)
   hc->hp = hp;
   hc->last_used = apr_time_now();
 
-
+log_printf(3, "additional connection host=%s:%d\n", hp->host, hp->port);
   apr_thread_create(&(hc->send_thread), NULL, hc_send_thread, (void *)hc, hc->mpool);
   apr_thread_create(&(hc->recv_thread), NULL, hc_recv_thread, (void *)hc, hc->mpool);
 
