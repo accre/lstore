@@ -26,7 +26,6 @@ endif(WIN32)
 
 # get dependancies
 find_package(OpenSSL REQUIRED)
-find_package(Protobufc REQUIRED)
 find_package(APR REQUIRED)
 find_package(APRUtil REQUIRED)
 find_package(Phoebus)
@@ -36,9 +35,9 @@ find_package(GOP REQUIRED)
 check_include_file("stdint.h" HAVE_STDINT_H)
 check_include_file("inttypes.h" HAVE_INTTYPES_H)
 
-include_directories(${OPENSSL_INCLUDE_DIR} ${PROTOBUF_INCLUDE_DIR} ${APR_INCLUDE_DIR} ${APRUTIL_INCLUDE_DIR} ${PHOEBUS_INCLUDE_DIR} 
+include_directories(${OPENSSL_INCLUDE_DIR} ${APR_INCLUDE_DIR} ${APRUTIL_INCLUDE_DIR} ${PHOEBUS_INCLUDE_DIR} 
    ${TOOLBOX_INCLUDE_DIR} ${GOP_INCLUDE_DIR} ${IBP_INCLUDE_DIR})
-SET(LIBS ${LIBS} ${TOOLBOX_LIBRARY} ${GOP_LIBRARY} ${OPENSSL_LIBRARIES} ${CRYPTO_LIBRARIES} ${PROTOBUF_LIBRARY} ${APR_LIBRARY} ${APRUTIL_LIBRARY} pthread m xml2 dl)
+SET(LIBS ${LIBS} ${TOOLBOX_LIBRARY} ${GOP_LIBRARY} ${OPENSSL_LIBRARIES} ${CRYPTO_LIBRARIES} ${APR_LIBRARY} ${APRUTIL_LIBRARY} pthread m xml2 dl)
 
 # config options
 if (Phoebus_FOUND)
