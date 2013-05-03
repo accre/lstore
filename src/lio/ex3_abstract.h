@@ -41,7 +41,7 @@ http://www.accre.vanderbilt.edu
 #include "object_service_abstract.h"
 #include "atomic_counter.h"
 #include "opque.h"
-#include "exnode3.pb-c.h"
+//#include "exnode3.pb-c.h"
 #include "thread_pool.h"
 #include "transfer_buffer.h"
 #include "log.h"
@@ -156,7 +156,7 @@ void exnode_exchange_append(exnode_exchange_t *exp, exnode_exchange_t *exp_appen
 int exnode_serialize(exnode_t *ex, exnode_exchange_t *exp);
 int exnode_deserialize(exnode_t *ex, exnode_exchange_t *exp, service_manager_t *ess);
 ex_header_t *exnode_get_header(exnode_t *ex);
-Exnode3__Exnode *exnode_native2pb(exnode_t *exnode);
+//Exnode3__Exnode *exnode_native2pb(exnode_t *exnode);
 void exnode_exchange_init(exnode_exchange_t *exp, int type);
 exnode_exchange_t *exnode_exchange_create(int type);
 void exnode_exchange_destroy(exnode_exchange_t *exp);
@@ -166,7 +166,7 @@ exnode_exchange_t *exnode_exchange_text_parse(char *text);
 segment_t *exnode_get_default(exnode_t *ex);
 void exnode_set_default(exnode_t *ex, segment_t *seg);
 
-exnode_t *exnode_pb2native(Exnode3__Exnode *pb);
+//exnode_t *exnode_pb2native(Exnode3__Exnode *pb);
 int exnode_printf(exnode_t *ex, void *buffer, int *nbytes);
 exnode_t *exnode_load(char *fname);
 int exnode_save(char *fname, exnode_t *ex);
