@@ -62,7 +62,6 @@ service_manager_t *exnode_service_set_create()
   add_service(ess, RS_SM_AVAILABLE, RS_TYPE_SIMPLE, rs_simple_create);
   add_service(ess, RS_SM_AVAILABLE, RS_TYPE_REMOTE_CLIENT, rs_remote_client_create);
   add_service(ess, RS_SM_AVAILABLE, RS_TYPE_REMOTE_SERVER, rs_remote_server_create);
-  add_service(ess, RS_SM_AVAILABLE, RS_TYPE_ZMQ, rs_zmq_create);
 
   add_service(ess, DS_SM_AVAILABLE, DS_TYPE_IBP, ds_ibp_create);
 

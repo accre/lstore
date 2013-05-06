@@ -26,7 +26,7 @@ endif(WIN32)
 
 # get dependancies
 find_package(OpenSSL REQUIRED)
-find_package(Protobufc REQUIRED)
+#find_package(Protobufc REQUIRED)
 find_package(APR REQUIRED)
 find_package(APRUtil REQUIRED)
 #find_package(APRUtil REQUIRED)
@@ -40,10 +40,15 @@ find_package(ZMQ REQUIRED)
 find_package(CZMQ REQUIRED)
 find_package(FUSE REQUIRED)
 
-include_directories(${OPENSSL_INCLUDE_DIR} ${PROTOBUF_INCLUDE_DIR} ${APR_INCLUDE_DIR} ${APRUTIL_INCLUDE_DIR} ${PHOEBUS_INCLUDE_DIR}
+#include_directories(${OPENSSL_INCLUDE_DIR} ${PROTOBUF_INCLUDE_DIR} ${APR_INCLUDE_DIR} ${APRUTIL_INCLUDE_DIR} ${PHOEBUS_INCLUDE_DIR}
+#   ${HWLOC_INCLUDE_DIR} ${JERASURE_INCLUDE_DIR} ${TOOLBOX_INCLUDE_DIR} ${GOP_INCLUDE_DIR} ${IBP_INCLUDE_DIR} ${FUSE_INCLUDE_DIR} ${CZMQ_INCLUDE_DIR} )
+#SET(LIBS ${LIBS} ${IBP_LIBRARY} ${GOP_LIBRARY} ${CZMQ_LIBRARY} ${TOOLBOX_LIBRARY} ${JERASURE_LIBRARY} ${OPENSSL_LIBRARIES} ${CRYPTO_LIBRARIES} 
+#   ${PROTOBUF_LIBRARY} ${APR_LIBRARY} ${APRUTIL_LIBRARY} ${HWLOC_LIBRARY} xml2 ${ZMQ_LIBRARY} ${FUSE_LIBRARY} pthread m dl rt)
+
+include_directories(${OPENSSL_INCLUDE_DIR} ${APR_INCLUDE_DIR} ${APRUTIL_INCLUDE_DIR} ${PHOEBUS_INCLUDE_DIR}
    ${HWLOC_INCLUDE_DIR} ${JERASURE_INCLUDE_DIR} ${TOOLBOX_INCLUDE_DIR} ${GOP_INCLUDE_DIR} ${IBP_INCLUDE_DIR} ${FUSE_INCLUDE_DIR} ${CZMQ_INCLUDE_DIR} )
 SET(LIBS ${LIBS} ${IBP_LIBRARY} ${GOP_LIBRARY} ${CZMQ_LIBRARY} ${TOOLBOX_LIBRARY} ${JERASURE_LIBRARY} ${OPENSSL_LIBRARIES} ${CRYPTO_LIBRARIES} 
-   ${PROTOBUF_LIBRARY} ${APR_LIBRARY} ${APRUTIL_LIBRARY} ${HWLOC_LIBRARY} xml2 ${ZMQ_LIBRARY} ${FUSE_LIBRARY} pthread m dl rt)
+   ${APR_LIBRARY} ${APRUTIL_LIBRARY} ${HWLOC_LIBRARY} xml2 ${ZMQ_LIBRARY} ${FUSE_LIBRARY} pthread m dl rt)
 
 #Make the version file
 set(LIO_CLIENT_VERSION "lio_client: v1.0.0")
@@ -67,7 +72,7 @@ set(LIO_OBJS
    ex3_header.c
    ex3_compare.c
    exnode.c
-   exnode3.pb-c.c
+#   exnode3.pb-c.c
    exnode_config.c
    ex_id.c
    lio_config.c
@@ -76,15 +81,15 @@ set(LIO_OBJS
    rs_query_base.c
    rs_simple.c
    rs_space.c
-   rs_zmq.c
+#   rs_zmq.c
    rs_remote_client.c
    rs_remote_server.c
-   rsz_request.pb-c.c
-   rsz_req.pb-c.c
-   rsz_cap.pb-c.c
-   rsz_response.pb-c.c
-   rsz_rid_key_value.pb-c.c
-   rs_zmq_base.c
+#   rsz_request.pb-c.c
+#   rsz_req.pb-c.c
+#   rsz_cap.pb-c.c
+#   rsz_response.pb-c.c
+#   rsz_rid_key_value.pb-c.c
+#   rs_zmq_base.c
    segment_base.c
    segment_linear.c
    segment_file.c
@@ -116,7 +121,7 @@ ADD_LIBRARY(dynfile SHARED segment_dynfile.c )
 SET_TARGET_PROPERTIES(dynfile PROPERTIES CLEAN_DIRECT_OUTPUT 1)
 
 set(LIO_EXE 
-    mk_linear ex_load ex_get ex_put ex_inspect ex_clone ex_rw_test log_test rs_test rs_test_svr os_test os_fsck
+    mk_linear ex_load ex_get ex_put ex_inspect ex_clone ex_rw_test log_test rs_test os_test os_fsck
     lio_touch lio_mkdir lio_rmdir lio_rm lio_ln lio_find lio_ls lio_du lio_setattr lio_getattr lio_mv lio_cp
     lio_put lio_get lio_signature lio_warm lio_inspect lio_fsck lio_rs rs_server lio_fuse
 )

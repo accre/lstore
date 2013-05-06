@@ -1076,7 +1076,9 @@ int lio_init(int *argc, char ***argvp)
   char *dummy;
   char *cfg_name = NULL;
   char *section_name = "lio";
-  char  *userid = NULL;
+  char *userid = NULL;
+  char *home;
+  char buffer[4096];
 
   argv = *argvp;
 
@@ -1188,10 +1190,14 @@ int lio_init(int *argc, char ***argvp)
   if (cfg_name == NULL) {
     if (os_local_filetype("lio.cfg") != 0) {
        cfg_name = "lio.cfg";
-    } else if (os_local_filetype("~/.lio/lio.cfg") != 0) {
-       cfg_name = "~/.lio/lio.cfg";
     } else if (os_local_filetype("/etc/lio/lio.cfg") != 0) {
        cfg_name = "/etc/lio/lio.cfg";
+    } else {
+      home = getenv("HOME");
+      snprintf(buffer, sizeof(buffer), "%s/.lio/lio.cfg", home);
+      if (os_local_filetype(buffer) != 0) {
+         cfg_name = strdup(buffer);
+      }
     }
   }
 
