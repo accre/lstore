@@ -23,7 +23,38 @@ typedef struct {
 typedef struct {  //** Used for Reading the ini file
    bfile_entry_t *curr;
    Stack_t *stack;
+   Stack_t *include_paths;
 } bfile_t;
+
+//***********************************************************************
+// bfile_fopen - Opens the requested file scanning the include paths
+//     if the file doesn't exist in the CWD and is not an absolute path.
+//     IF the file cannot be found NULL is returned.
+//***********************************************************************
+
+FILE *bfile_fopen(Stack_t *include_paths, char *fname)
+{
+  FILE *fd;
+  char fullpath[BUFMAX];
+  char *path;
+
+  if (fname[0] == '/') { //** Absolute path so just try and open it
+     return(fopen(fname, "r"));
+  }
+
+  //** Relative path so cycle through the prefixes
+  move_to_top(include_paths);
+  while ((path = get_ele_data(include_paths)) != NULL) {
+    snprintf(fullpath, BUFMAX, "%s/%s", path, fname);
+    fd = fopen(fullpath, "r");
+log_printf(15, "checking path=%s fname=%s fullpath=%s fd=%p\n", path, fname, fullpath, fd);
+    if (fd != NULL) return(fd);   //** Found it so kick out
+
+    move_down(include_paths);
+  }
+
+  return(NULL);
+}
 
 //***********************************************************************
 // _get_line - Reads a line of text from the file
@@ -59,12 +90,12 @@ log_printf(15, "_get_line: fgets=%s", comment);
    comment = escape_strchr('\\', bfd->curr->buffer, '#');
    if (comment != NULL) comment[0] = '\0';
 
-   if (strncmp(bfd->curr->buffer, "%include", 8) == 0) { //** In include them open and recurse
+   if (strncmp(bfd->curr->buffer, "%include ", 9) == 0) { //** In include them open and recurse
       fname = string_token(&(bfd->curr->buffer[8]), " \n", &last, &fin);
       log_printf(10, "_get_line: Opening include file %s\n", fname);
 
       type_malloc(entry, bfile_entry_t, 1);
-      entry->fd = fopen(fname, "r");
+      entry->fd = bfile_fopen(bfd->include_paths, fname);
       if (entry->fd == NULL) {  //** Can't open the file
          log_printf(1, "_get_line: Problem opening include file !%s!\n", fname);
          free(entry);
@@ -75,6 +106,11 @@ log_printf(15, "_get_line: fgets=%s", comment);
       bfd->curr = entry;
 
       return(_get_line(bfd));
+   } else if (strncmp(bfd->curr->buffer, "%include_path ", 14) == 0) { //** Add an include path to the search list
+      fname = string_token(&(bfd->curr->buffer[13]), " \n", &last, &fin);
+      log_printf(10, "_get_line: Adding include path %s\n", fname);
+      move_to_bottom(bfd->include_paths);
+      insert_below(bfd->include_paths, strdup(fname));
    }
 
 log_printf(15, "_get_line: buffer=%s\n", bfd->curr->buffer);
@@ -372,6 +408,8 @@ inip_file_t *inip_read(const char *fname)
   entry->used = 0;
   bfd.curr = entry;
   bfd.stack = new_stack();
+  bfd.include_paths = new_stack();
+  push(bfd.include_paths, strdup("."));  //** By default always look in the CWD 1st
 
   type_malloc(inip, inip_file_t, 1);
 
@@ -394,12 +432,14 @@ inip_file_t *inip_read(const char *fname)
      fclose(bfd.curr->fd);
      free(bfd.curr);
   }
+
   while ((entry = (bfile_entry_t *)pop(bfd.stack)) != NULL) {
     fclose(entry->fd);
     free(entry);
   }
 
-  free(bfd.stack);
+  free_stack(bfd.stack, 1);
+  free_stack(bfd.include_paths, 1);
 
   return(inip);
 }
