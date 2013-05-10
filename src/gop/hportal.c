@@ -321,7 +321,7 @@ void shutdown_hportal(portal_context_t *hpc)
      apr_hash_this(hi, NULL, NULL, &val); hp = (host_portal_t *)val;
      hportal_lock(hp);
 
-log_printf(5, "before wait n_conn=%d stack_size(conn_list)=%d\n", hp->n_conn, stack_size(hp->conn_list));
+log_printf(5, "before wait n_conn=%d stack_size(conn_list)=%d host=%s\n", hp->n_conn, stack_size(hp->conn_list), hp->skey);
      while (stack_size(hp->conn_list) != hp->n_conn) {
         hportal_unlock(hp);
         log_printf(5, "waiting for connections to finish starting.  host=%s closing_conn=%d n_conn=%d stack_size(conn_list)=%d\n", hp->skey, hp->closing_conn, hp->n_conn, stack_size(hp->conn_list));
@@ -334,14 +334,14 @@ log_printf(5, "after wait n_conn=%d stack_size(conn_list)=%d\n", hp->n_conn, sta
      while ((hc = (host_connection_t *)get_ele_data(hp->conn_list)) != NULL) {
         free_stack(hp->que, 1);  //** Empty the que so we don't respawn connections
         hp->que = new_stack();
-        hportal_unlock(hp);
+//        hportal_unlock(hp);
 
         lock_hc(hc);
         hc->shutdown_request = 1;
         apr_thread_cond_signal(hc->recv_cond);
         unlock_hc(hc);
 
-        hportal_lock(hp);
+//        hportal_lock(hp);
         move_down(hp->conn_list);
      }
 
