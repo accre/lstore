@@ -350,13 +350,14 @@ wildcard:
         last_slash = 0;
      }
 
-     i = strlen(path);
-     path[i] = '/';  //** Need to add the trailing / to the path
-     path[i+1] = 0;
+     if (last_slash != n) {
+        i = strlen(path);
+        path[i] = '/';  //** Need to add the trailing / to the path
+        path[i+1] = 0;
+     }
      rp = strdup(path);
   } else {
      if (last_slash == -1) last_slash = n;
-//     if (glob_index == -1) last_slash = n;
      c = p[last_slash];
      p[last_slash] = 0;
      rp = realpath(p, NULL);
