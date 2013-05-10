@@ -432,7 +432,7 @@ op_status_t cp_file_fn(void *arg, int id)
 //printf(" %s", cp->src_tuple.path);
 //printf(" %s\n", cp->dest_tuple.path);
 
-info_printf(lio_ifd, 0, "copy src_lio=%d sfname=%s  dest_lio=%d dfname=%s\n", cp->src_tuple.is_lio, cp->src_tuple.path, cp->dest_tuple.is_lio, cp->dest_tuple.path);
+//info_printf(lio_ifd, 0, "copy src_lio=%d sfname=%s  dest_lio=%d dfname=%s\n", cp->src_tuple.is_lio, cp->src_tuple.path, cp->dest_tuple.is_lio, cp->dest_tuple.path);
 //return(op_success_status);
 
   if ((cp->src_tuple.is_lio == 0) && (cp->dest_tuple.is_lio == 0)) {  //** Not allowed to both go to disk
