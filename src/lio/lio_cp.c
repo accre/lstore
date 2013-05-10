@@ -591,7 +591,8 @@ flush_log();
   count = 0;
   while ((ftype = copy_next_object(it, &fname, &prefix_len)) > 0) {
      snprintf(dname, OS_PATH_MAX, "%s/%s", cp->dest_tuple.path, &(fname[prefix_len+1]));
-//info_printf(lio_ifd, 0, "copy dtuple=%s sfname=%s  dfname=%s plen=%d tweak=%d\n", cp->dest_tuple.path, fname, dname, prefix_len, tweak);
+//info_printf(lio_ifd, 0, "copy dtuple=%s sfname=%s  dfname=%s plen=%d\n", cp->dest_tuple.path, fname, dname, prefix_len);
+
      os_path_split(dname, &dir, &file);
      dstate = list_search(dir_table, dir);
      if (dstate == NULL) { //** New dir so have to check and possibly create it
@@ -824,7 +825,14 @@ finished:
 
   free(flist);
 
+//set_log_level(20);
+//printf("Before shutdown\n");
+//apr_time_t dt = apr_time_now();
   lio_shutdown();
+//dt = apr_time_now() - dt;
+//double sec = dt;
+//sec = sec / (1.0*APR_USEC_PER_SEC);
+//printf("After shutdown dt=%lf\n", sec);
 
   if (n_errors > 0) info_printf(lio_ifd, 0, "Failed copying %d file(s)!\n", n_errors);
 
