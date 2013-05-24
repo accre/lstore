@@ -45,6 +45,7 @@ http://www.accre.vanderbilt.edu
 int main(int argc, char **argv)
 {
   int err = -1;
+  lio_fuse_t *lfs_gc;
 
 //printf("argc=%d\n", argc);
 
@@ -72,7 +73,7 @@ int main(int argc, char **argv)
   lfs_gc = lio_fuse_init(lio_gc, argv[argc-1]);
 
 umask(0);
-  err = fuse_main(argc, argv, &lfs_gc_fops, NULL);
+ err = fuse_main(argc, argv, &lfs_gc_fops, lfs_gc /* <- stored to fuse's ctx->private_data*/);
 
   lio_fuse_destroy(lfs_gc);
 
