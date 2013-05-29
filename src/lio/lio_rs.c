@@ -263,15 +263,15 @@ int main(int argc, char **argv)
      }
   } while (watch == 1);
 
-printf("BEFORE unregister\n"); fflush(stdout);
+  info_printf(lio_ifd, 5, "BEFORE unregister\n"); info_flush(lio_ifd);
   rs_unregister_mapping_updates(lio_gc->rs, &notify);
-printf("AFTER unregister\n"); fflush(stdout);
+  info_printf(lio_ifd, 5, "AFTER unregister\n"); info_flush(lio_ifd);
 
   //** Cleanup
   apr_pool_destroy(mpool);
 
   lio_shutdown();
-printf("AFTER lio_shutdown\n"); fflush(stdout);
+  info_printf(lio_ifd, 5, "AFTER shutdown\n"); info_flush(lio_ifd);
 
   return(0);
 }
