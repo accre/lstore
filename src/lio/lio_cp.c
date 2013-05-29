@@ -685,6 +685,7 @@ int main(int argc, char **argv)
   lio_init(&argc, &argv);
 
   //*** Parse the args
+  n_errors = 0;
   keepln = 0;
   i=1;
   do {
@@ -770,6 +771,7 @@ log_printf(15, "2222222222222222 fixed=%d exp=%s\n", os_regex_is_fixed(flist[0].
         status = cp_file_fn(&cp_single, 0);
         if (status.op_status != OP_STATE_SUCCESS) {
            info_printf(lio_ifd, 0, "ERROR: with copy src=%s  dest=%s\n", flist[0].src_tuple.path, dtuple.path);
+           n_errors += status.error_code;
            goto finished;
         }
 log_printf(15, "333333333333333333\n"); flush_log();
@@ -783,7 +785,6 @@ log_printf(15, "333333333333333333\n"); flush_log();
   //** IF we made it here we have mv's to a directory
   max_spawn = lio_parallel_task_count / n_paths;
   if (max_spawn <= 0) max_spawn = 1;
-  n_errors = 0;
 
   q = new_opque();
   opque_start_execution(q);
