@@ -67,8 +67,25 @@ void signal_shutdown(int sig)
 int main(int argc, char **argv)
 {
   int background = 0;
+  int i;
 
 //printf("argc=%d\n", argc);
+
+  for (i=0; i<argc; i++) {
+    if (strcmp(argv[i], "-b") == 0) { background = 1; break; }
+  }
+
+  if (background == 1) {
+     if (fork() == 0) {    //** This is the daemon
+//        flush_log();
+        fclose(stdin);     //** Need to close all the std* devices **
+        fclose(stdout);
+        fclose(stderr);
+     } else {           //** Parent exits and doesn't close anything
+        printf("Running as a daemon.\n");
+        exit(0);
+     }
+  }
 
   if (argc < 2) {
      printf("\n");
@@ -80,22 +97,8 @@ int main(int argc, char **argv)
 
   lio_init(&argc, &argv);
 
-printf("argc=%d\n", argc);
-  if (argc == 2) {
-    if (strcmp(argv[1], "-b") == 0) background = 1;
-  }
-
-
   if (background == 1) {
-     if (fork() == 0) {    //** This is the daemon
-        log_printf(0, "Running as a daemon.\n");
-        flush_log();
-        fclose(stdin);     //** Need to close all the std* devices **
-        fclose(stdout);
-        fclose(stderr);
-     } else {           //** Parent exits and doesn't close anything
-        exit(0);
-     }
+     log_printf(0, "Running as a daemon.\n");
   }
 
   //***Attach the signal handler for shutdown

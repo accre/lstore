@@ -73,7 +73,7 @@ typedef struct {
   int state;
 } lfs_dir_iter_t;
 
-lio_fuse_t *lfs_gc = NULL;
+//// lio_fuse_t *lfs_gc = NULL;
 struct fuse_operations lfs_gc_fops;
 
 //*************************************************************************
@@ -434,7 +434,7 @@ lio_inode_t * _lfs_dentry_lookup(lio_fuse_t *lfs, const char *fname, int auto_in
   log_printf(1, "looking up fname=%s INITIAL entry=%p inode=%p\n", fname, entry, inode);
 
   if ((auto_insert == 1) && (inode == NULL)) {  //** Go ahead and insert it and the inode
-     inode = _lfs_load_inode_entry(lfs_gc, fname, NULL);
+     inode = _lfs_load_inode_entry(lfs, fname, NULL);
      if (inode == NULL) {
         log_printf(15, "FAILED looking up fname=%s\n", fname);
         return(NULL);
@@ -446,7 +446,7 @@ lio_inode_t * _lfs_dentry_lookup(lio_fuse_t *lfs, const char *fname, int auto_in
         type_malloc_clear(entry, lio_dentry_t, 1);
         entry->fname = strdup(fname);
         entry->ino = inode->ino;
-        _lfs_dentry_insert(lfs_gc, entry);
+        _lfs_dentry_insert(lfs, entry);
      } else if (entry->ino != inode->ino) {
 log_printf(1, "fname=%s inode changed old=" XOT " new=" XOT "\n", fname, entry->ino, inode->ino);
         entry->ino = inode->ino;
@@ -465,49 +465,61 @@ int lfs_stat(const char *fname, struct stat *stat)
 {
   lio_inode_t *inode;
   lio_dentry_t *entry;
+  
+  lio_fuse_t *lfs;
+  struct fuse_context *ctx;
+  ctx = fuse_get_context();
+  if (NULL == ctx || NULL == ctx->private_data)
+  {
+    log_printf(0, "ERROR_CTX:  unable to access fuse context or context is invalid");
+    return(-EINVAL);
+  }else
+  {
+    lfs = (lio_fuse_t*)ctx->private_data;
+  }
 
   log_printf(1, "fname=%s\n", fname); flush_log();
 
-  lfs_lock(lfs_gc);
+  lfs_lock(lfs);
 
-  inode = _lfs_dentry_lookup(lfs_gc, fname, 1);
+  inode = _lfs_dentry_lookup(lfs, fname, 1);
   if (inode == NULL) {
-     lfs_unlock(lfs_gc);
+     lfs_unlock(lfs);
      return(-ENOENT);
   }
 
-  entry = _lfs_dentry_get(lfs_gc, fname);
+  entry = _lfs_dentry_get(lfs, fname);
   if (entry == NULL) log_printf(0, "ERROR_DENTRY:  fname=%s inode=%p\n", fname, inode);
   if (entry->flagged == LFS_INODE_DELETE) {
      log_printf(1, "fname=%s flagged for removal\n", fname);
-     lfs_unlock(lfs_gc);
+     lfs_unlock(lfs);
      return(-ENOENT);
   }
 
   if (apr_time_now() > entry->recheck_time) { //** Update the entry timeout as well
-      entry->recheck_time = apr_time_now() + lfs_gc->attr_to * APR_USEC_PER_SEC;
+      entry->recheck_time = apr_time_now() + lfs->attr_to * APR_USEC_PER_SEC;
   }
 
   if (apr_time_now() > inode->recheck_time) {  //** Update the inode
      //** Update the recheck time to minimaze the GC from removing.  It *will* still happen though
-     inode->recheck_time = apr_time_now() + lfs_gc->attr_to * APR_USEC_PER_SEC;
-     inode = _lfs_load_inode_entry(lfs_gc, fname, inode);
+     inode->recheck_time = apr_time_now() + lfs->attr_to * APR_USEC_PER_SEC;
+     inode = _lfs_load_inode_entry(lfs, fname, inode);
 
      if (inode == NULL) {  //** Remove the old dentry
-        entry = _lfs_dentry_get(lfs_gc, fname);
+        entry = _lfs_dentry_get(lfs, fname);
         if (entry != NULL) {
-           _lfs_dentry_remove(lfs_gc, entry);
-           lfs_dentry_destroy(lfs_gc, entry);
+           _lfs_dentry_remove(lfs, entry);
+           lfs_dentry_destroy(lfs, entry);
         }
 
-        lfs_unlock(lfs_gc);
+        lfs_unlock(lfs);
         log_printf(1, "fname=%s missing from backend\n", fname);
         return(-ENOENT);
      }
   }
 
   lfs_fill_stat(stat, inode);
-  lfs_unlock(lfs_gc);
+  lfs_unlock(lfs);
   return(0);
 }
 
@@ -524,16 +536,28 @@ int lfs_opendir(const char *fname, struct fuse_file_info *fi)
   lio_inode_t *inode;
   int i;
 
+  lio_fuse_t *lfs;
+  struct fuse_context *ctx;
+  ctx = fuse_get_context();
+  if (NULL == ctx || NULL == ctx->private_data)
+  {
+    log_printf(0, "ERROR_CTX:  unable to access fuse context or context is invalid");
+    return(-EINVAL);
+  }else
+  {
+    lfs = (lio_fuse_t*)ctx->private_data;
+  }
+
   log_printf(1, "fname=%s\n", fname); flush_log();
 
   type_malloc_clear(dit, lfs_dir_iter_t, 1);
 
   for (i=0; i<_inode_key_size; i++) {
-    dit->v_size[i] = -lfs_gc->lc->max_attr;
+    dit->v_size[i] = -lfs->lc->max_attr;
     dit->val[i] = NULL;
   }
 
-  dit->lfs = lfs_gc;
+  dit->lfs = lfs;
   snprintf(path, OS_PATH_MAX, "%s/*", fname);
   dit->path_regex = os_path_glob2regex(path);
 
@@ -544,7 +568,7 @@ int lfs_opendir(const char *fname, struct fuse_file_info *fi)
   dit->state = 0;
 
   lfs_lock(dit->lfs);
-  inode = _lfs_dentry_lookup(lfs_gc, fname, 1);
+  inode = _lfs_dentry_lookup(lfs, fname, 1);
   if (inode == NULL) {
      log_printf(0, "ERROR with lookup of fname=%s\n", fname);
      lfs_unlock(dit->lfs);
@@ -562,7 +586,7 @@ int lfs_opendir(const char *fname, struct fuse_file_info *fi)
   //** And ".."
   if (strcmp(fname, "/") != 0) {
      os_path_split((char *)fname, &dir, &file);
-     inode = _lfs_dentry_lookup(lfs_gc, dir, 1);
+     inode = _lfs_dentry_lookup(lfs, dir, 1);
      dit->dotdot_path = dir;
      free(file);
   } else {
@@ -599,6 +623,18 @@ int lfs_readdir(const char *dname, void *buf, fuse_fill_dir_t filler, off_t off,
   struct stat stbuf;
   apr_time_t now;
   double dt;
+
+  lio_fuse_t *lfs;
+  struct fuse_context *ctx;
+  ctx = fuse_get_context();
+  if (NULL == ctx || NULL == ctx->private_data)
+  {
+    log_printf(0, "ERROR_CTX:  unable to access fuse context or context is invalid");
+    return(-EINVAL);
+  }else
+  {
+    lfs = (lio_fuse_t*)ctx->private_data;
+  }
 
   int off2 = off;
   log_printf(1, "dname=%s off=%d stack_size=%d\n", dname, off2, stack_size(dit->stack)); flush_log();
@@ -689,12 +725,12 @@ log_printf(15, "new entry fname=%s\n", fname);  flush_log();
         type_malloc_clear(fentry, lio_dentry_t, 1);
         fentry->fname = strdup(fname);
         fentry->ino = ino;
-        _lfs_dentry_insert(lfs_gc, fentry);
+        _lfs_dentry_insert(lfs, fentry);
      } else {
 log_printf(15, "existing entry fname=%s\n", fname); flush_log();
         *entry = *fentry;
         entry->fname = fname;
-        fentry->recheck_time = apr_time_now() + lfs_gc->attr_to * APR_USEC_PER_SEC;
+        fentry->recheck_time = apr_time_now() + lfs->attr_to * APR_USEC_PER_SEC;
      }
 
      inode = _lfs_inode_lookup(dit->lfs, ino);
@@ -829,9 +865,21 @@ int lfs_object_create(lio_fuse_t *lfs, const char *fname, mode_t mode, int ftype
 
 int lfs_mknod(const char *fname, mode_t mode, dev_t rdev)
 {
+  lio_fuse_t *lfs;
+  struct fuse_context *ctx;
+  ctx = fuse_get_context();
+  if (NULL == ctx || NULL == ctx->private_data)
+  {
+    log_printf(0, "ERROR_CTX:  unable to access fuse context or context is invalid");
+    return(-EINVAL);
+  }else
+  {
+    lfs = (lio_fuse_t*)ctx->private_data;
+  }
+
   log_printf(1, "fname=%s\n", fname); flush_log();
 
-  return(lfs_object_create(lfs_gc, fname, mode, OS_OBJECT_FILE));
+  return(lfs_object_create(lfs, fname, mode, OS_OBJECT_FILE));
 }
 
 
@@ -841,9 +889,21 @@ int lfs_mknod(const char *fname, mode_t mode, dev_t rdev)
 
 int lfs_mkdir(const char *fname, mode_t mode)
 {
+  lio_fuse_t *lfs;
+  struct fuse_context *ctx;
+  ctx = fuse_get_context();
+  if (NULL == ctx || NULL == ctx->private_data)
+  {
+    log_printf(0, "ERROR_CTX:  unable to access fuse context or context is invalid");
+    return(-EINVAL);
+  }else
+  {
+    lfs = (lio_fuse_t*)ctx->private_data;
+  }
+
   log_printf(1, "fname=%s mode=%d\n", fname, mode); flush_log();
 
-  return(lfs_object_create(lfs_gc, fname, mode, OS_OBJECT_DIR));
+  return(lfs_object_create(lfs, fname, mode, OS_OBJECT_DIR));
 }
 
 //*****************************************************************
@@ -926,9 +986,21 @@ int lfs_object_remove(lio_fuse_t *lfs, const char *fname)
 
 int lfs_unlink(const char *fname)
 {
+  lio_fuse_t *lfs;
+  struct fuse_context *ctx;
+  ctx = fuse_get_context();
+  if (NULL == ctx || NULL == ctx->private_data)
+  {
+    log_printf(0, "ERROR_CTX:  unable to access fuse context or context is invalid");
+    return(-EINVAL);
+  }else
+  {
+    lfs = (lio_fuse_t*)ctx->private_data;
+  }
+
   log_printf(1, "fname=%s\n", fname); flush_log();
 
-  return(lfs_object_remove(lfs_gc, fname));
+  return(lfs_object_remove(lfs, fname));
 }
 
 //*****************************************************************
@@ -937,9 +1009,21 @@ int lfs_unlink(const char *fname)
 
 int lfs_rmdir(const char *fname)
 {
+  lio_fuse_t *lfs;
+  struct fuse_context *ctx;
+  ctx = fuse_get_context();
+  if (NULL == ctx || NULL == ctx->private_data)
+  {
+    log_printf(0, "ERROR_CTX:  unable to access fuse context or context is invalid");
+    return(-EINVAL);
+  }else
+  {
+    lfs = (lio_fuse_t*)ctx->private_data;
+  }
+
   log_printf(1, "fname=%s\n", fname); flush_log();
 
-  return(lfs_object_remove(lfs_gc, fname));
+  return(lfs_object_remove(lfs, fname));
 }
 
 //*****************************************************************
@@ -960,7 +1044,7 @@ int lfs_file_lock(lio_fuse_t *lfs, const char *fname)
      return(-ENOENT);
   }
 
-  //** Got a syumlink so need to load the link
+  //** Got a symlink so need to load the link
   if ((inode->ftype & OS_OBJECT_SYMLINK) > 0) {
      inode = _lfs_dentry_lookup(lfs, fname, 1);
      if (inode == NULL) {
@@ -1138,11 +1222,23 @@ int lfs_open(const char *fname, struct fuse_file_info *fi)
   lio_fuse_fd_t *fd;
   int err;
 
+  lio_fuse_t *lfs;
+  struct fuse_context *ctx;
+  ctx = fuse_get_context();
+  if (NULL == ctx || NULL == ctx->private_data)
+  {
+    log_printf(0, "ERROR_CTX:  unable to access fuse context or context is invalid");
+    return(-EINVAL);
+  }else
+  {
+    lfs = (lio_fuse_t*)ctx->private_data;
+  }
+
   log_printf(1, "fname=%s dio=%d START \n", fname, fi->direct_io); flush_log();
 
 //fi->direct_io = 1;
 
-  err = lfs_myopen(lfs_gc, fname, fi->flags, &fd);
+  err = lfs_myopen(lfs, fname, fi->flags, &fd);
 
   if (err == 0) {
      fi->fh = (uint64_t)fd;
@@ -1159,7 +1255,7 @@ int lfs_open(const char *fname, struct fuse_file_info *fi)
 
 int lfs_myclose(char *fname, lio_fuse_fd_t *fd)
 {
-  lio_fuse_t *lfs;
+  //// lio_fuse_t *lfs;
   lio_fuse_file_handle_t *fh;
   lio_dentry_t *fentry;
   lio_inode_t *inode;
@@ -1175,14 +1271,26 @@ int lfs_myclose(char *fname, lio_fuse_fd_t *fd)
   apr_time_t now;
   double dt;
 
+  lio_fuse_t *lfs;
+  struct fuse_context *ctx;
+  ctx = fuse_get_context();
+  if (NULL == ctx || NULL == ctx->private_data)
+  {
+    log_printf(0, "ERROR_CTX:  unable to access fuse context or context is invalid");
+    return(-EINVAL);
+  }else
+  {
+    lfs = (lio_fuse_t*)ctx->private_data;
+  }
+
   log_printf(1, "fname=%s modified=%d count=%d\n", fname, fd->fh->modified, fd->fh->ref_count); flush_log();
 
-  slot = lfs_file_lock(lfs_gc, fname);
+  slot = lfs_file_lock(lfs, fname);
   if (slot < 0) return(slot);
 
   //** Get the handles
   fh = fd->fh;
-  lfs = fh->lfs;
+  //// lfs = fh->lfs;
   fentry = fd->entry;
 
   free(fd);
@@ -1474,9 +1582,20 @@ int lfs_flush(const char *fname, struct fuse_file_info *fi)
 
 int lfs_rename(const char *oldname, const char *newname)
 {
-  lio_fuse_t *lfs = lfs_gc;
   lio_dentry_t *entry;
   int err;
+
+  lio_fuse_t *lfs;
+  struct fuse_context *ctx;
+  ctx = fuse_get_context();
+  if (NULL == ctx || NULL == ctx->private_data)
+  {
+    log_printf(0, "ERROR_CTX:  unable to access fuse context or context is invalid");
+    return(-EINVAL);
+  }else
+  {
+    lfs = (lio_fuse_t*)ctx->private_data;
+  }
 
   log_printf(1, "oldname=%s newname=%s\n", oldname, newname); flush_log();
 
@@ -1508,11 +1627,22 @@ int lfs_rename(const char *oldname, const char *newname)
 
 int lfs_truncate(const char *fname, off_t new_size)
 {
-  lio_fuse_t *lfs = lfs_gc;
   lio_fuse_fd_t *fd;
   lio_inode_t *inode;
   ex_off_t ts;
   int err;
+
+  lio_fuse_t *lfs;
+  struct fuse_context *ctx;
+  ctx = fuse_get_context();
+  if (NULL == ctx || NULL == ctx->private_data)
+  {
+    log_printf(0, "ERROR_CTX:  unable to access fuse context or context is invalid");
+    return(-EINVAL);
+  }else
+  {
+    lfs = (lio_fuse_t*)ctx->private_data;
+  }
 
   log_printf(1, "fname=%s\n", fname); flush_log();
 
@@ -1547,7 +1677,6 @@ int lfs_truncate(const char *fname, off_t new_size)
 
 int lfs_utimens(const char *fname, const struct timespec tv[2])
 {
-  lio_fuse_t *lfs = lfs_gc;
   lio_inode_t *inode;
   char buf[1024];
   char *key;
@@ -1555,6 +1684,18 @@ int lfs_utimens(const char *fname, const struct timespec tv[2])
   int v_size;
   ex_off_t ts;
   int err;
+
+  lio_fuse_t *lfs;
+  struct fuse_context *ctx;
+  ctx = fuse_get_context();
+  if (NULL == ctx || NULL == ctx->private_data)
+  {
+    log_printf(0, "ERROR_CTX:  unable to access fuse context or context is invalid");
+    return(-EINVAL);
+  }else
+  {
+    lfs = (lio_fuse_t*)ctx->private_data;
+  }
 
   log_printf(1, "fname=%s\n", fname); flush_log();
 
@@ -1596,8 +1737,19 @@ int lfs_listxattr(const char *fname, char *list, size_t size)
   os_regex_table_t *attr_regex;
   os_attr_iter_t *it;
   os_fd_t *fd;
-  lio_fuse_t *lfs = lfs_gc;
   lio_inode_t *inode;
+
+  lio_fuse_t *lfs;
+  struct fuse_context *ctx;
+  ctx = fuse_get_context();
+  if (NULL == ctx || NULL == ctx->private_data)
+  {
+    log_printf(0, "ERROR_CTX:  unable to access fuse context or context is invalid");
+    return(-EINVAL);
+  }else
+  {
+    lfs = (lio_fuse_t*)ctx->private_data;
+  }
 
   bpos= size;
   log_printf(1, "fname=%s size=%d\n", fname, bpos); flush_log();
@@ -1905,11 +2057,22 @@ int lfs_getxattr(const char *fname, const char *name, char *buf, size_t size)
   char *val;
   int v_size, err, got_tape;
   char aname[512];
-  lio_fuse_t *lfs = lfs_gc;
   lio_inode_t *inode;
   lio_attr_t *attr;
   apr_time_t now, now2;
   double dt, dt2;
+
+  lio_fuse_t *lfs;
+  struct fuse_context *ctx;
+  ctx = fuse_get_context();
+  if (NULL == ctx || NULL == ctx->private_data)
+  {
+    log_printf(0, "ERROR_CTX:  unable to access fuse context or context is invalid");
+    return(-EINVAL);
+  }else
+  {
+    lfs = (lio_fuse_t*)ctx->private_data;
+  }
 
   now = apr_time_now();
 
@@ -2027,10 +2190,21 @@ int lfs_setxattr(const char *fname, const char *name, const char *fval, size_t s
 {
   char *val;
   int v_size, err;
-  lio_fuse_t *lfs = lfs_gc;
   lio_inode_t *inode;
   lio_attr_t *attr;
   char aname[512];
+
+  lio_fuse_t *lfs;
+  struct fuse_context *ctx;
+  ctx = fuse_get_context();
+  if (NULL == ctx || NULL == ctx->private_data)
+  {
+    log_printf(0, "ERROR_CTX:  unable to access fuse context or context is invalid");
+    return(-EINVAL);
+  }else
+  {
+    lfs = (lio_fuse_t*)ctx->private_data;
+  }
 
   v_size= size;
   log_printf(1, "fname=%s size=%d attr_name=%s\n", fname, size, name); flush_log();
@@ -2100,10 +2274,21 @@ log_printf(15, "ADDING fname=%s aname=%s p=%p v_size=%d\n", fname, aname, attr, 
 int lfs_removexattr(const char *fname, const char *name)
 {
   int v_size, err;
-  lio_fuse_t *lfs = lfs_gc;
   lio_inode_t *inode;
   lio_attr_t *attr;
   char aname[512];
+
+  lio_fuse_t *lfs;
+  struct fuse_context *ctx;
+  ctx = fuse_get_context();
+  if (NULL == ctx || NULL == ctx->private_data)
+  {
+    log_printf(0, "ERROR_CTX:  unable to access fuse context or context is invalid");
+    return(-EINVAL);
+  }else
+  {
+    lfs = (lio_fuse_t*)ctx->private_data;
+  }
 
   log_printf(1, "fname=%s attr_name=%s\n", fname, name); flush_log();
 
@@ -2144,9 +2329,20 @@ log_printf(15, "REMOVING fname=%s aname=%s\n", fname, aname);
 
 int lfs_hardlink(const char *oldname, const char *newname)
 {
-  lio_fuse_t *lfs = lfs_gc;
   lio_inode_t *inode;
   int err;
+
+  lio_fuse_t *lfs;
+  struct fuse_context *ctx;
+  ctx = fuse_get_context();
+  if (NULL == ctx || NULL == ctx->private_data)
+  {
+    log_printf(0, "ERROR_CTX:  unable to access fuse context or context is invalid");
+    return(-EINVAL);
+  }else
+  {
+    lfs = (lio_fuse_t*)ctx->private_data;
+  }
 
   log_printf(1, "oldname=%s newname=%s\n", oldname, newname); flush_log();
 
@@ -2172,16 +2368,27 @@ int lfs_hardlink(const char *oldname, const char *newname)
 
 int lfs_readlink(const char *fname, char *buf, size_t bsize)
 {
-//  lio_fuse_t *lfs = lfs_gc;
   lio_inode_t *inode;
   int v_size;
+
+  lio_fuse_t *lfs;
+  struct fuse_context *ctx;
+  ctx = fuse_get_context();
+  if (NULL == ctx || NULL == ctx->private_data)
+  {
+    log_printf(0, "ERROR_CTX:  unable to access fuse context or context is invalid");
+    return(-EINVAL);
+  }else
+  {
+    lfs = (lio_fuse_t*)ctx->private_data;
+  }
 
   log_printf(15, "fname=%s\n", fname); flush_log();
 
 
-  lfs_lock(lfs_gc);
+  lfs_lock(lfs);
 
-  inode = _lfs_dentry_lookup(lfs_gc, fname, 1);
+  inode = _lfs_dentry_lookup(lfs, fname, 1);
   if (inode == NULL) {
      return(-ENOENT);
   } else if ((inode->ftype & OS_OBJECT_SYMLINK) == 0) {
@@ -2193,7 +2400,7 @@ int lfs_readlink(const char *fname, char *buf, size_t bsize)
   memcpy(buf, inode->link, v_size);
   buf[v_size] = 0;
 
-  lfs_unlock(lfs_gc);
+  lfs_unlock(lfs);
 
   return(0);
 }
@@ -2204,9 +2411,20 @@ int lfs_readlink(const char *fname, char *buf, size_t bsize)
 
 int lfs_symlink(const char *link, const char *newname)
 {
-  lio_fuse_t *lfs = lfs_gc;
   const char *link2;
   int err;
+
+  lio_fuse_t *lfs;
+  struct fuse_context *ctx;
+  ctx = fuse_get_context();
+  if (NULL == ctx || NULL == ctx->private_data)
+  {
+    log_printf(0, "ERROR_CTX:  unable to access fuse context or context is invalid");
+    return(-EINVAL);
+  }else
+  {
+    lfs = (lio_fuse_t*)ctx->private_data;
+  }
 
   log_printf(1, "link=%s newname=%s\n", link, newname); flush_log();
 
@@ -2333,9 +2551,20 @@ void *lfs_gc_thread(apr_thread_t *th, void *data)
 
 int lfs_statfs(const char *fname, struct statvfs *fs)
 {
-  lio_fuse_t *lfs = lfs_gc;
   rs_space_t space;
   char *config;
+
+  lio_fuse_t *lfs;
+  struct fuse_context *ctx;
+  ctx = fuse_get_context();
+  if (NULL == ctx || NULL == ctx->private_data)
+  {
+    log_printf(0, "ERROR_CTX:  unable to access fuse context or context is invalid");
+    return(-EINVAL);
+  }else
+  {
+    lfs = (lio_fuse_t*)ctx->private_data;
+  }
 
   memset(fs, 0, sizeof(struct statvfs));
 
