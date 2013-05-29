@@ -127,6 +127,7 @@ struct lio_config_s {
   int max_attr;
   int anonymous_creation;
   int auto_translate;
+  int ref_cnt;
 };
 
 typedef struct {

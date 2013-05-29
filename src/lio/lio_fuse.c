@@ -42,49 +42,76 @@ http://www.accre.vanderbilt.edu
 //*************************************************************************
 //*************************************************************************
 
+void print_usage(void)
+{
+     printf("\n"
+            "lio_fuse mount_point [FUSE_OPTIONS] [--lio LIO_COMMON_OPTIONS]\n");
+     lio_print_options(stdout);
+     printf("    FUSE_OPTIONS:\n"
+            "       -h   --help            print this help\n"
+	    "       -ho                    print FUSE mount options help\n"
+            "       -V   --version         print FUSE version\n"
+            "       -d   -o debug          enable debug output (implies -f)\n"
+            "       -s                     disable multi-threaded operation\n"
+            "       -f                     foreground operation\n"
+            "                                (REQUIRED unless  '-c /absolute/path/lio.cfg' is specified and all included files are absolute paths)"
+            "       -o OPT[,OPT...]        mount options\n"
+            "                                (for possible values of OPT see 'man mount.fuse' or see 'lio_fuse -ho')\n");
+}
+
 int main(int argc, char **argv)
 {
   int err = -1;
-  char *mount_point;
-  lio_fuse_t *lfs_gc;
+  lio_fuse_init_args_t lio_args;
+  int fuse_argc;
+  char **fuse_argv;
+  
+  // DEBUG
+  int i;
+  printf("argc=%d\n", argc);
+  for (i=0; i<argc; i++) {
+    printf("argv[%d]=%s\n", i, argv[i]);
+  }
 
-//printf("argc=%d\n", argc);
-
-  if (argc < 2) {
-     printf("\n");
-     printf("lio_fuse LIO_COMMON_OPTIONS -fd mount_point FUSE_OPTIONS\n");
-     lio_print_options(stdout);
-     printf("     -fd     -Enable FUSE debug\n");
+  if (argc < 2 || strcmp(argv[1], "-h") == 0 || strcmp(argv[1], "--help") == 0) {
+     print_usage();
      return(1);
   }
 
-  lio_init(&argc, &argv);
+  // ** split lio and fuse arguments **
 
-//int i;
-//printf("argc=%d\n", argc);
-//for (i=0; i<argc; i++) {
-//  printf("argv[%d]=%s\n", i, argv[i]);
-//}
+  int idx;
+  lio_args.mount_point = argv[1];
 
-  if (strcmp(argv[1], "-fd") == 0) {
-     printf("Enabling FUSE debug mode\n");
-     argv[1] = "-d";
-     mount_point = argv[2];
-  }else
-  {
-     mount_point = argv[1];
+  // these defaults hold if --lio is not used on the commandline
+  fuse_argc = argc;
+  fuse_argv = argv;
+  lio_args.lio_argc = 1;
+  lio_args.lio_argv = argv;
+
+  for (idx=1; idx<argc; idx++) {
+    if(strcmp(argv[idx], "--lio") == 0) {
+      fuse_argc = idx;
+      lio_args.lio_argc = argc - idx;
+      lio_args.lio_argv = &argv[idx];
+      lio_args.lio_argv[0] = argv[0]; //replace "--lio" with the executable name because the parser may reasonably expect the zeroth argument to be the program name
+    }
   }
 
-// printf("mount_point: %s\n",mount_point);
+  // DEBUG
+  printf("\nfuse_argc=%d\n", fuse_argc);
+  for (i=0; i<fuse_argc; i++) {
+    printf("fuse_argv[%d]=%s\n", i, fuse_argv[i]);
+  }
+  printf("\nlio_argc=%d\n", lio_args.lio_argc);
+  for (i=0; i<lio_args.lio_argc; i++) {
+    printf("fuse_argv[%d]=%s\n", i, lio_args.lio_argv[i]);
+  }
+  printf("mountpoint=%s\n",lio_args.mount_point);
 
-  lfs_gc = lio_fuse_init(lio_gc, mount_point);
-
-umask(0);
- err = fuse_main(argc, argv, &lfs_gc_fops, lfs_gc /* <- stored to fuse's ctx->private_data*/);
-
-  lio_fuse_destroy(lfs_gc);
-
-  lio_shutdown();
+  umask(0);
+  
+  err = fuse_main(fuse_argc, fuse_argv, &lfs_fops, &lio_args /* <- stored to fuse's ctx->private_data*/);
 
   return(err);
 }

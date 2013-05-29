@@ -1081,6 +1081,12 @@ int lio_init(int *argc, char ***argvp)
   char *home;
   char buffer[4096];
 
+  if(NULL != lio_gc && lio_gc->ref_cnt > 0) { 
+    // lio_gc is a global singleton, if it is already initialized don't initialize again. (Note this implementation is not entirely immune to race conditions)
+    lio_gc->ref_cnt++;
+    return 0;
+  }
+
   argv = *argvp;
 
   apr_wrapper_start();
@@ -1209,6 +1215,7 @@ int lio_init(int *argc, char ***argvp)
      if (ll > -1) set_log_level(ll);
 
      lio_gc = lio_create(cfg_name, section_name, userid);
+     lio_gc->ref_cnt = 1;
      if (auto_mode != -1) lio_gc->auto_translate = auto_mode;
   } else {
      log_printf(0, "Error missing config file!\n");
@@ -1233,6 +1240,11 @@ int lio_init(int *argc, char ***argvp)
 
 int lio_shutdown()
 {
+  lio_gc->ref_cnt--;
+  if(NULL != lio_gc && lio_gc->ref_cnt > 0) {
+    return 0;
+  }
+
   cache_destroy(_lio_cache);
 
   lio_destroy(lio_gc);
