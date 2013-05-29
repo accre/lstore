@@ -67,11 +67,12 @@ int main(int argc, char **argv)
   char **fuse_argv;
   
   // DEBUG
-  int i;
+/*  int i;
   printf("argc=%d\n", argc);
   for (i=0; i<argc; i++) {
     printf("argv[%d]=%s\n", i, argv[i]);
   }
+*/
 
   if (argc < 2 || strcmp(argv[1], "-h") == 0 || strcmp(argv[1], "--help") == 0) {
      print_usage();
@@ -98,7 +99,8 @@ int main(int argc, char **argv)
     }
   }
 
-  // DEBUG
+  // DEBUG  
+/*
   printf("\nfuse_argc=%d\n", fuse_argc);
   for (i=0; i<fuse_argc; i++) {
     printf("fuse_argv[%d]=%s\n", i, fuse_argv[i]);
@@ -108,7 +110,7 @@ int main(int argc, char **argv)
     printf("fuse_argv[%d]=%s\n", i, lio_args.lio_argv[i]);
   }
   printf("mountpoint=%s\n",lio_args.mount_point);
-
+*/
   umask(0);
   
   err = fuse_main(fuse_argc, fuse_argv, &lfs_fops, &lio_args /* <- stored to fuse's ctx->private_data*/);
