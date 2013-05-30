@@ -125,12 +125,17 @@ struct lio_fuse_file_handle_s {  //** Shared file handle
   atomic_int_t modified;
 };
 
+typedef struct {
+  lio_config_t *lc;
+  char *mount_point;
+  int lio_argc;
+  char **lio_argv;
+} lio_fuse_init_args_t;
 
-extern lio_fuse_t *lfs_gc;
-extern struct fuse_operations lfs_gc_fops;
+extern struct fuse_operations lfs_fops;
 
-lio_fuse_t *lio_fuse_init(lio_config_t *lc, char *mount_point);
-void lio_fuse_destroy(lio_fuse_t *lfs);
+void *lfs_init(struct fuse_conn_info *conn);  // returns pointer to lio_fuse_t on success, otherwise NULL
+void lfs_destroy(void *lfs); // expects a lio_fuse_t* as the argument
 
 #ifdef __cplusplus
 }

@@ -73,9 +73,6 @@ typedef struct {
   int state;
 } lfs_dir_iter_t;
 
-//// lio_fuse_t *lfs_gc = NULL;
-struct fuse_operations lfs_gc_fops;
-
 //*************************************************************************
 //  ino_compare_fn  - FUSE inode comparison function
 //*************************************************************************
@@ -2594,38 +2591,56 @@ int lfs_statfs(const char *fname, struct statvfs *fs)
 
 //*************************************************************************
 //  lio_fuse_init - Creates a lowlevel fuse handle for use
-//     NOTE:  This returns a generic object but FUSE doesn't support passing
-//         a generic context to the FUSE called routines so as a result
-//         all the routines use the lfs_gc global context.  The current setup
-//         is used in the hopes that the change is made to support this in the future.
+//     Note that this function should be called by FUSE and the return value of this function 
+//     overwrites the .private_data field of the fuse context. This function returns the
+//     lio fuse handle (lio_fuse_t *lfs) on success and NULL on failure.
+//
+//     This function calls lio_init(...) itself, no need to call it beforehand.
+//
 //*************************************************************************
 
-lio_fuse_t *lio_fuse_init(lio_config_t *lc, char *mount_point)
+void *lfs_init(struct fuse_conn_info *conn)
 {
   lio_fuse_t *lfs;
-  struct fuse_operations *fops;
   char *section =  "lfs";
   double n;
   int p;
 
-  log_printf(15, "START mount=%s\n", mount_point);
+  lio_fuse_init_args_t *init_args;
+
+  // Retrieve the fuse_context, the last argument of fuse_main(...) is passed in the private_data field for use as a generic user arg. We pass the mount point in it.
+  struct fuse_context *ctx;
+  ctx = fuse_get_context();
+  if (NULL == ctx || NULL == ctx->private_data)
+  {
+    log_printf(0, "ERROR_CTX:  unable to access fuse context or context is invalid. (Hint: last arg of fuse_main(...) must be lio_fuse_init_args_t* and have the mount point set)");
+    return(NULL); //TODO: what is the best way to signal failure in the init function? Note that the return value of this function overwrites the .private_data field of the fuse context
+  }else
+  {
+    init_args = (lio_fuse_init_args_t*)ctx->private_data;
+  }  
+
+  lio_init(&init_args->lio_argc, &init_args->lio_argv); //This sets the global lio_gc, it also uses a reference count to safely handle extra calls to init
+  init_args->lc = lio_gc;
+
+  log_printf(15, "START mount=%s\n", init_args->mount_point);
   type_malloc_clear(lfs, lio_fuse_t, 1);
 
-  lfs->lc = lc;
-  lfs->mount_point = strdup(mount_point);
-  lfs->mount_point_len = strlen(mount_point);
+  lfs->lc = init_args->lc;
+  lfs->mount_point = strdup(init_args->mount_point);
+  lfs->mount_point_len = strlen(init_args->mount_point);
 
   //** Load config info
-  lfs->entry_to = inip_get_double(lc->ifd, section, "entry_timout", 1.0);
-  lfs->attr_to = inip_get_double(lc->ifd, section, "stat_timout", 1.0);
-  lfs->inode_cache_size = inip_get_integer(lc->ifd, section, "inode_cache_size", 1000000);
-  lfs->xattr_to = APR_USEC_PER_SEC * inip_get_integer(lc->ifd, section, "xattr_timeout", 60);
-  lfs->stale_dt = APR_USEC_PER_SEC * inip_get_integer(lc->ifd, section, "stale_timeout", 60);
-  lfs->gc_interval = APR_USEC_PER_SEC * inip_get_integer(lc->ifd, section, "gc_interval", 60);
-  lfs->file_count = inip_get_integer(lc->ifd, section, "file_size", 100);
-  lfs->enable_tape = inip_get_integer(lc->ifd, section, "enable_tape", 0);
+  lfs->entry_to = inip_get_double(lfs->lc->ifd, section, "entry_timout", 1.0);
+  lfs->attr_to = inip_get_double(lfs->lc->ifd, section, "stat_timout", 1.0);
+  lfs->inode_cache_size = inip_get_integer(lfs->lc->ifd, section, "inode_cache_size", 1000000);
+  lfs->xattr_to = APR_USEC_PER_SEC * inip_get_integer(lfs->lc->ifd, section, "xattr_timeout", 60);
+  lfs->stale_dt = APR_USEC_PER_SEC * inip_get_integer(lfs->lc->ifd, section, "stale_timeout", 60);
+  lfs->gc_interval = APR_USEC_PER_SEC * inip_get_integer(lfs->lc->ifd, section, "gc_interval", 60);
+  lfs->file_count = inip_get_integer(lfs->lc->ifd, section, "file_size", 100);
+  lfs->enable_tape = inip_get_integer(lfs->lc->ifd, section, "enable_tape", 0);
   lfs->fs_size = (ex_off_t)1024*1024*1024*1024*1024;
-  lfs->fs_size = inip_get_integer(lc->ifd, section, "fs_size", lfs->fs_size);
+  lfs->fs_size = inip_get_integer(lfs->lc->ifd, section, "fs_size", lfs->fs_size);
 
   n = lfs->inode_cache_size;
   p = log2(n) + 3;
@@ -2648,45 +2663,23 @@ lio_fuse_t *lio_fuse_init(lio_config_t *lc, char *mount_point)
   apr_gethostname(hostname, sizeof(hostname), lfs->mpool);
   lfs->id = strdup(hostname);
 
-  //** Make the fn table
-  fops = &(lfs_gc_fops);
-  fops->opendir = lfs_opendir;
-  fops->releasedir = lfs_closedir;
-  fops->readdir = lfs_readdir;
-  fops->getattr = lfs_stat;
-  fops->utimens = lfs_utimens;
-  fops->truncate = lfs_truncate;
-  fops->rename = lfs_rename;
-  fops->mknod = lfs_mknod;
-  fops->mkdir = lfs_mkdir;
-  fops->unlink = lfs_unlink;
-  fops->rmdir = lfs_rmdir;
-  fops->listxattr = lfs_listxattr;
-  fops->getxattr = lfs_getxattr;
-  fops->setxattr = lfs_setxattr;
-  fops->removexattr = lfs_removexattr;
-  fops->open = lfs_open;
-  fops->release = lfs_release;
-  fops->read = lfs_read;
-  fops->write = lfs_write;
-  fops->flush = lfs_flush;
-  fops->link = lfs_hardlink;
-  fops->readlink = lfs_readlink;
-  fops->symlink = lfs_symlink;
-  fops->statfs = lfs_statfs;
-
-  lfs->fops = *fops;
+  // TODO: find a cleaner way to get fops here
+  //lfs->fops = ctx->fuse->fuse_fs->op;
+  lfs->fops = lfs_fops;
 
   log_printf(15, "END\n");
 
-  return(lfs);
+  return(lfs); //
 }
 
 //*************************************************************************
 // lio_fuse_destroy - Destroy a fuse object
+//
+//    (handles shuting down lio as appropriate, no need to call lio_shutdown() externally)
+// 
 //*************************************************************************
 
-void lio_fuse_destroy(lio_fuse_t *lfs)
+void lfs_destroy(void *private_data)
 {
   list_iter_t it;
   ex_id_t *ino;
@@ -2695,9 +2688,15 @@ void lio_fuse_destroy(lio_fuse_t *lfs)
   char *fname;
   int err, i;
   apr_status_t value;
+  lio_fuse_t *lfs;
 
   log_printf(15, "shutting down\n"); flush_log();
 
+  lfs = (lio_fuse_t*)private_data;  
+  if (lfs == NULL){
+    log_printf(0,"lio_fuse_destroy: Error, the lfs handle is null, unable to shutdown cleanly. Perhaps lfs creation failed?");
+    return;
+  }  
 
   //** Shut down the RW thread
   apr_thread_mutex_lock(lfs->lock);
@@ -2739,5 +2738,40 @@ log_printf(0, "destroying entry=%s\n", fname); flush_log();
   apr_pool_destroy(lfs->mpool);
 
   free(lfs);
+
+  lio_shutdown(); // Reference counting in this function protects against shutdown if lio is still in use elsewhere
 }
+
+struct fuse_operations lfs_fops = { //All lfs instances should use the same functions so statically initialize
+  .init = lfs_init,
+  .destroy = lfs_destroy,
+
+  .opendir = lfs_opendir,
+  .releasedir = lfs_closedir,
+  .readdir = lfs_readdir,
+  .getattr = lfs_stat,
+  .utimens = lfs_utimens,
+  .truncate = lfs_truncate,
+  .rename = lfs_rename,
+  .mknod = lfs_mknod,
+  .mkdir = lfs_mkdir,
+  .unlink = lfs_unlink,
+  .rmdir = lfs_rmdir,
+  .open = lfs_open,
+  .release = lfs_release,
+  .read = lfs_read,
+  .write = lfs_write,
+  .flush = lfs_flush,
+  .link = lfs_hardlink,
+  .readlink = lfs_readlink,
+  .symlink = lfs_symlink,
+  .statfs = lfs_statfs,
+
+#ifdef HAVE_SETXATTR
+  .listxattr = lfs_listxattr,
+  .getxattr = lfs_getxattr,
+  .setxattr = lfs_setxattr,
+  .removexattr = lfs_removexattr,
+#endif
+};
 
