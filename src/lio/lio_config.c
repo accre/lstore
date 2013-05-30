@@ -697,10 +697,14 @@ void lio_destroy_nl(lio_config_t *lio)
 
   ds_attr_destroy(lio->ds, lio->da);
   if (_lc_object_destroy(lio->ds_section) <= 0) {
-//log_printf(15, "FLAG removing ds_section=%s\n", lio->ds_section);
      ds_destroy_service(lio->ds);
   }
   free(lio->ds_section);
+
+  if (_lc_object_destroy(lio->os_section) <= 0) {
+     os_destroy_service(lio->os);
+  }
+  free(lio->os_section);
 
   if (_lc_object_destroy(lio->tpc_unlimited_section) <= 0) {
      thread_pool_destroy_context(lio->tpc_unlimited);
@@ -718,11 +722,6 @@ void lio_destroy_nl(lio_config_t *lio)
   free(lio->mq_section);
 
 //----
-
-  if (_lc_object_destroy(lio->os_section) <= 0) {
-     os_destroy_service(lio->os);
-  }
-  free(lio->os_section);
 
   lio_core_destroy(lio);
 
