@@ -66,18 +66,15 @@ void signal_shutdown(int sig)
 
 int main(int argc, char **argv)
 {
-  int background = 0;
+  int background = 1;
   int i;
 
-//printf("argc=%d\n", argc);
-
   for (i=0; i<argc; i++) {
-    if (strcmp(argv[i], "-b") == 0) { background = 1; break; }
+    if (strcmp(argv[i], "-f") == 0) { background = 0; break; }
   }
 
   if (background == 1) {
      if (fork() == 0) {    //** This is the daemon
-//        flush_log();
         fclose(stdin);     //** Need to close all the std* devices **
         fclose(stdout);
         fclose(stderr);
@@ -89,9 +86,9 @@ int main(int argc, char **argv)
 
   if (argc < 2) {
      printf("\n");
-     printf("rs_server LIO_COMMON_OPTIONS [-b]\n");
+     printf("lio_server LIO_COMMON_OPTIONS [-f]\n");
      lio_print_options(stdout);
-     printf("    -b                 - Run in background as a daemon\n");
+     printf("    -f                 - Run in foreground instead of as a daemon\n");
      return(1);
   }
 
