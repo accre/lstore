@@ -420,7 +420,7 @@ flush_log();
 
         //** Skip error pages
         while (pli<pl_size) {
-          if (plist[pli].data != NULL) { break; } //** Kick out if not NULL
+          if (plist[pli].data->ptr != NULL) { break; } //** Kick out if not NULL
           log_printf(15, "skipping NULL page p->offset=" XOT "\n", plist[pli].p->offset); //** Skip error pages
           blank_pages[blank_count] = plist[pli]; blank_count++;
           pli++;
@@ -2761,7 +2761,7 @@ op_status_t segcache_truncate_func(void *arg, int id)
   segment_lock(cop->seg);
   old_size = segment_size(s->child_seg);
   if (old_size > 0) {
-     s->child_last_page = segment_size(s->child_seg) / s->page_size;
+     s->child_last_page = (old_size-1) / s->page_size;
      s->child_last_page *= s->page_size;
   } else {
      s->child_last_page = -1;
@@ -3053,7 +3053,7 @@ int segcache_deserialize_text(segment_t *seg, ex_id_t myid, exnode_exchange_t *e
   //** Determine the child segment size so we don't have to call it
   //** on R/W and risk getting blocked due to child grow operations
   if (child_size > 0) {
-     s->child_last_page = child_size / s->page_size;
+     s->child_last_page = (child_size-1) / s->page_size;
      s->child_last_page *= s->page_size;
   } else {
      s->child_last_page = -1;  //** No pages
