@@ -50,7 +50,8 @@ op_status_t op_retry_status = {OP_STATE_RETRY, 0};
 op_status_t op_dead_status = {OP_STATE_DEAD, 0};
 op_status_t op_timeout_status = {OP_STATE_TIMEOUT, 0};
 op_status_t op_invalid_host_status = {OP_STATE_INVALID_HOST, 0};
-op_status_t op_cant_connect_status = {OP_STATE_CANT_CONNECT, 0};
+//op_status_t op_cant_connect_status = {OP_STATE_CANT_CONNECT, 0};
+op_status_t op_cant_connect_status = {OP_STATE_FAILURE, OP_STATE_CANT_CONNECT};
 op_status_t op_error_status = {OP_STATE_ERROR, 0};
 
 
