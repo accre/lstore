@@ -159,7 +159,9 @@ op_status_t segjerase_inspect_full_func(void *arg, int id)
   nbytes = sf->hi - sf->lo + 1;
   total_stripes = nbytes / s->data_size;
 log_printf(0, "lo=" XOT " hi= " XOT " nbytes=" XOT " total_stripes=%d data_size=%d\n", sf->lo, sf->hi, nbytes, total_stripes, s->data_size);
-  bufsize = total_stripes * s->stripe_size_with_magic;
+  bufsize = (ex_off_t)total_stripes * (ex_off_t)s->stripe_size_with_magic;
+//  bufsize = total_stripes;
+//  bufsize *= s->stripe_size_with_magic;
   if (bufsize > si->bufsize) bufsize = si->bufsize;
   type_malloc(buffer, char, bufsize);
   bufstripes = bufsize / s->stripe_size_with_magic;
