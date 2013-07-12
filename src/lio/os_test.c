@@ -1494,7 +1494,7 @@ log_printf(15, "CHECK2 val=%s\n", val);
       for (i=0; i<2; i++) {
          if (strcmp(mrval[i], mval[i]) != 0) {
             nfailed++;
-            log_printf(0, "ERROR bad value fname=%s key=%s val=%s should be mval=%s\n", fname, key[i], mrval[i], mval[i]);
+            log_printf(0, "ERROR bad value fname=%s key=%s val=%s should be mval=%s\n", fname, mkey[i], mrval[i], mval[i]);
             return;
          }
          if (mrval[i] != NULL) free(mrval[i]);
@@ -1723,7 +1723,12 @@ int check_lock_state(os_fd_t *foo_fd, char **active, int n_active, char **pendin
 
    v_size = -10000;
    key = "os.lock";  val=NULL;
+log_printf(5, "BEFORE get_attr lock\n");
+apr_time_t dt = apr_time_now();
    err = gop_sync_exec(os_get_attr(os, creds, foo_fd, key, (void **)&lval, &v_size));
+dt = apr_time_now() - dt;
+int sec = apr_time_sec(dt);
+log_printf(5, "AFTER get_attr lock err=%d dt=%d\n", err, sec);
    if (err != OP_STATE_SUCCESS) {
       nfailed++;
       log_printf(0, "ERROR: getting attr=%s err=%d\n", key, err);
@@ -1811,6 +1816,8 @@ void os_locking_tests()
    char *task[10];
    opque_t *q;
    op_generic_t *gop, *gop_read[5], *gop_write[3], *gop_abort[2];
+   apr_time_t start, dt;
+   int sec;
 
    q = new_opque();
    opque_start_execution(q);
@@ -1831,6 +1838,8 @@ void os_locking_tests()
       log_printf(0, "ERROR: opening file: %s err=%d\n", foo_path, err);
       return;
    }
+
+   start = apr_time_now();
 
    //** Spawn 3 open(foo, READ)=r{0,1,2} tasks
    gop = os_open_object(os, creds, foo_path, OS_MODE_READ_BLOCKING, "r0", &fd_read[0], wait_time);
@@ -1861,7 +1870,7 @@ void os_locking_tests()
    lock_pause();
 
    //** Spawn 2 open(foo, WRITE)=a{0,1} tasks.  These will be aborted opens
-   gop = os_open_object(os, creds, foo_path, OS_MODE_WRITE_BLOCKING, "a0", &fd_abort[0], 4);
+   gop = os_open_object(os, creds, foo_path, OS_MODE_WRITE_BLOCKING, "a0", &fd_abort[0], 4);  //** This time is short to auto timeout
    gop_abort[0] = gop;
    opque_add(q, gop);
    lock_pause();
@@ -1889,12 +1898,19 @@ void os_locking_tests()
    opque_add(q, gop);
    lock_pause();
 
-   log_printf(0, "STATE:  active=r0,r1,r2  pending=w0,w1,a0,a1,r3,r4,w2\n");  flush_log();
+   dt = apr_time_now() - start;
+   sec = apr_time_sec(dt);
+   log_printf(0, "STATE:  active=r0,r1,r2  pending=w0,w1,a0,a1,r3,r4,w2 dt=%d\n", sec);  flush_log();
+
 
    //** Wait for the opens to complete
    gop_waitany(gop_read[0]);
    gop_waitany(gop_read[1]);
    gop_waitany(gop_read[2]);
+
+   dt = apr_time_now() - start;
+   sec = apr_time_sec(dt);
+   log_printf(0, "After open(read) completes dt=%d\n", sec);
 
    //** Verify the above state: active r0,r1,r2 pending w0,w1,r3,r4,w2
    task[0] = "r0";
@@ -1913,6 +1929,10 @@ void os_locking_tests()
       log_printf(0, "ERROR: checking state\n");
       return;
    }
+
+   dt = apr_time_now() - start;
+   sec = apr_time_sec(dt);
+   log_printf(0, "After check_lock 1 dt=%d\n", sec);
 
    //** Close the 3 open tasks(r0,r1,r2).
    err = gop_sync_exec(os_close_object(os, fd_read[0]));
@@ -1936,11 +1956,24 @@ void os_locking_tests()
 
    log_printf(0, "STATE: active=w0  pending=w1,a0,a1,r3,r4,w2\n");  flush_log();
 
+   dt = apr_time_now() - start;
+   sec = apr_time_sec(dt);
+   log_printf(0, "after read closing dt=%d\n", sec);
+
    //** Wait for the opens to complete
    gop_waitany(gop_write[0]);
 
+   dt = apr_time_now() - start;
+   sec = apr_time_sec(dt);
+   log_printf(0, "after write[0] closing dt=%d\n", sec);
+
    //** Verify state. This should leave you with w0 active and w1,a0,a1,r3,r4,w2
    err = check_lock_state(foo_fd, &(task[3]), 1, &(task[4]), 6);
+
+   dt = apr_time_now() - start;
+   sec = apr_time_sec(dt);
+   log_printf(0, "After check_lock 2 dt=%d\n", sec);
+
    if (err != 0) {
       nfailed++;
       log_printf(0, "ERROR: checking state\n");
@@ -1958,9 +1991,18 @@ void os_locking_tests()
       return;
    }
 
+   dt = apr_time_now() - start;
+   sec = apr_time_sec(dt);
+   log_printf(0, "After abort[0] dt=%d\n", sec);
+
    //** Verify the state. active=w0  pending=w1,a1,r3,r4,w2
    for (i=5; i<9; i++) task[i] = task[i+1];  //** Drop a0 fro mthe list
    err = check_lock_state(foo_fd, &(task[3]), 1, &(task[4]), 5);
+
+   dt = apr_time_now() - start;
+   sec = apr_time_sec(dt);
+   log_printf(0, "After check_lock 3 dt=%d\n", sec);
+
    if (err != 0) {
       nfailed++;
       log_printf(0, "ERROR: checking state\n");
@@ -1976,6 +2018,10 @@ void os_locking_tests()
       log_printf(0, "ERROR: Aborting a1 file: %s err=%d\n", foo_path, err);
       return;
    }
+
+   dt = apr_time_now() - start;
+   sec = apr_time_sec(dt);
+   log_printf(0, "After abort[1] dt=%d\n", sec);
 
    //** Verify the state. active=w0  pending=w1,r3,r4,w2
    for (i=5; i<8; i++) task[i] = task[i+1];  //** Drop a0 fro mthe list
@@ -1993,6 +2039,10 @@ void os_locking_tests()
       log_printf(0, "ERROR: Closing file: %s err=%d\n", foo_path, err);
       return;
    }
+
+   dt = apr_time_now() - start;
+   sec = apr_time_sec(dt);
+   log_printf(0, "After close w0 dt=%d\n", sec);
 
    log_printf(0, "STATE: active=w1  pending=r3,r4,w2\n");  flush_log();
 
@@ -2014,6 +2064,10 @@ void os_locking_tests()
       log_printf(0, "ERROR: Closing file: %s err=%d\n", foo_path, err);
       return;
    }
+
+   dt = apr_time_now() - start;
+   sec = apr_time_sec(dt);
+   log_printf(0, "After close w1 dt=%d\n", sec);
 
    log_printf(0, "STATE: active=r3,r4  pending=w2\n");  flush_log();
 

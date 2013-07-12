@@ -44,6 +44,7 @@ http://www.accre.vanderbilt.edu
 #include "object_service_abstract.h"
 #include "string_token.h"
 #include "log.h"
+#include "varint.h"
 
 apr_thread_mutex_t *_path_parse_lock = NULL;
 apr_pool_t *_path_parse_pool = NULL;
@@ -306,6 +307,130 @@ void os_path_split(char *path, char **dir, char **file)
 
   log_printf(15, "path=%s dir=%s file=%s\n", path, *dir, *file);
 
+}
+
+//***********************************************************************
+// os_regex_table_pack - Packs a regex table into the buffer and returns
+//   the number of chars used or a negative value representing the needed space
+//***********************************************************************
+
+int os_regex_table_pack(os_regex_table_t *regex, unsigned char *buffer, int bufsize)
+{
+  int i, err, n, bpos, len;
+
+  if (regex == NULL) {
+    n = zigzag_encode(0, buffer);
+    return(n);
+  }
+
+  err = 0;
+  bpos = 0;
+  n = -1;
+  if ((bpos + 4) < bufsize) n = zigzag_encode(regex->n, &(buffer[bpos]));
+  if (n < 0) { err = 1; n=4; }
+  bpos += n;
+
+  for (i=0; i<regex->n; i++) {
+log_printf(5, "level=%d fixed=%d fixed_prefix=%d expression=%s bpos=%d\n", i, regex->regex_entry[i].fixed, regex->regex_entry[i].fixed_prefix, regex->regex_entry[i].expression, bpos);
+     n = -1;
+     if ((bpos + 4) < bufsize) n = zigzag_encode(regex->regex_entry[i].fixed, &(buffer[bpos]));
+     if (n < 0) { err = 1; n=4; }
+     bpos += n;
+
+     n = -1;
+     if ((bpos + 4) < bufsize) n = zigzag_encode(regex->regex_entry[i].fixed_prefix, &(buffer[bpos]));
+     if (n < 0) { err = 1; n=4; }
+     bpos += n;
+
+     len = strlen(regex->regex_entry[i].expression);
+     n = -1;
+     if ((bpos + 4) < bufsize) n = zigzag_encode(len, &(buffer[bpos]));
+     if (n < 0) { err = 1; n=4; }
+     bpos += n;
+     if ((bpos+len) < bufsize) {
+        memcpy(&(buffer[bpos]), regex->regex_entry[i].expression, len);
+     } else {
+        log_printf(5, "ERROR buffer to small!  exp=%s bpos=%d bufsize=%d exp_len=%d\n", regex->regex_entry[i].expression, bpos, bufsize, len);
+        err = 1;
+     }
+     bpos += len;
+  }
+
+  if (err == 1) bpos = -bpos;
+
+  log_printf(5, "nbytes used=%d\n", bpos);
+
+  return(bpos);
+}
+
+//***********************************************************************
+// os_regex_table_unpack - UnPacks a regex table from the buffer and returns
+//   the regex table and also the number of characters used
+//***********************************************************************
+
+os_regex_table_t *os_regex_table_unpack(unsigned char *buffer, int bufsize, int *used)
+{
+  int i, err, n, bpos;
+  int64_t value;
+  os_regex_table_t *regex;
+
+  err = 0;
+  bpos = 0;
+  n = zigzag_decode(&(buffer[bpos]), bufsize, &value);
+log_printf(5, "n_levels=" I64T " n=%d bufsize=%d\n", value, n, bufsize);
+
+  if (n < 0) { *used = 0; return(NULL); }
+  if (value == 0) {*used = n; return(NULL); }
+  bpos += n;
+  bufsize -= n;
+
+  regex = os_regex_table_create(value);
+
+  for (i=0; i<regex->n; i++) {
+     n = zigzag_decode(&(buffer[bpos]), bufsize, &value);
+log_printf(5, "i=%d n=%d fixed=" I64T "\n", i, n, value);
+     if (n < 0) goto fail;
+     regex->regex_entry[i].fixed = value;
+     bpos += n;
+     bufsize -= n;
+
+     n = zigzag_decode(&(buffer[bpos]), bufsize, &value);
+log_printf(5, "i=%d n=%d fixed_prefix=" I64T "\n", i, n, value);
+     if (n < 0) goto fail;
+     regex->regex_entry[i].fixed_prefix = value;
+     bpos += n;
+     bufsize -= n;
+
+     n = zigzag_decode(&(buffer[bpos]), bufsize, &value);
+log_printf(5, "i=%d n=%d exp_len=" I64T " bufsize=%d bpos=%d\n", i, n, value, bufsize, bpos);
+     if (n < 0) goto fail;
+     type_malloc(regex->regex_entry[i].expression, char, value+1);
+     bpos += n;
+     bufsize -= n;
+
+     if (value <= bufsize) {
+        memcpy(regex->regex_entry[i].expression, &(buffer[bpos]), value);
+        regex->regex_entry[i].expression[value] = 0;
+        if (regex->regex_entry[i].fixed == 0) {
+           err = regcomp(&(regex->regex_entry[i].compiled), regex->regex_entry[i].expression, REG_NOSUB|REG_EXTENDED);
+           if (err != 0) goto fail;
+        }
+     } else {
+        log_printf(5, "ERROR! Buffer short! level=%d fixed=%d fixed_prefix=%d expression_len=" I64T " bpos=%d bufsize=%d\n", i, regex->regex_entry[i].fixed, regex->regex_entry[i].fixed_prefix, value, bpos, bufsize);
+        goto fail;
+     }
+     bpos += value;
+
+log_printf(5, "level=%d fixed=%d fixed_prefix=%d expression=%s bpos=%d\n", i, regex->regex_entry[i].fixed, regex->regex_entry[i].fixed_prefix, regex->regex_entry[i].expression, bpos);
+  }
+
+  *used = bpos;
+  return(regex);
+
+fail:
+  os_regex_table_destroy(regex);
+  *used = bpos;
+  return(NULL);
 }
 
 //***********************************************************************

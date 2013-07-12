@@ -7,9 +7,6 @@ project( LIO C CXX)
 set(CMAKE_BUILD_TYPE "Debug")
 #set(CMAKE_BUILD_TYPE "Release")
 
-set(CMAKE_C_FLAGS_DEBUG "${CMAKE_REQUIRED_FLAGS} -O0 -Wall -g -DHAVE_CONFIG_H -DLINUX=2 -D_REENTRANT -D_GNU_SOURCE -D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64" )
-set(CMAKE_C_FLAGS_RELEASE "-O ${CMAKE_REQUIRED_FLAGS} -DHAVE_CONFIG_H -DLINUX=2 -D_REENTRANT -D_GNU_SOURCE -D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64" )
-
 set(CMAKE_INCLUDE_CURRENT_DIR on)
 set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
 INCLUDE(CheckIncludeFile)
@@ -26,10 +23,8 @@ endif(WIN32)
 
 # get dependancies
 find_package(OpenSSL REQUIRED)
-#find_package(Protobufc REQUIRED)
 find_package(APR REQUIRED)
 find_package(APRUtil REQUIRED)
-#find_package(APRUtil REQUIRED)
 find_package(Phoebus)
 find_package(HwLoc REQUIRED)
 find_package(Jerasure REQUIRED)
@@ -39,16 +34,17 @@ find_package(IBP REQUIRED)
 find_package(ZMQ REQUIRED)
 find_package(CZMQ REQUIRED)
 find_package(FUSE REQUIRED)
+find_package(Zlib REQUIRED)
+find_package(XATTR REQUIRED)
 
-#include_directories(${OPENSSL_INCLUDE_DIR} ${PROTOBUF_INCLUDE_DIR} ${APR_INCLUDE_DIR} ${APRUTIL_INCLUDE_DIR} ${PHOEBUS_INCLUDE_DIR}
-#   ${HWLOC_INCLUDE_DIR} ${JERASURE_INCLUDE_DIR} ${TOOLBOX_INCLUDE_DIR} ${GOP_INCLUDE_DIR} ${IBP_INCLUDE_DIR} ${FUSE_INCLUDE_DIR} ${CZMQ_INCLUDE_DIR} )
-#SET(LIBS ${LIBS} ${IBP_LIBRARY} ${GOP_LIBRARY} ${CZMQ_LIBRARY} ${TOOLBOX_LIBRARY} ${JERASURE_LIBRARY} ${OPENSSL_LIBRARIES} ${CRYPTO_LIBRARIES} 
-#   ${PROTOBUF_LIBRARY} ${APR_LIBRARY} ${APRUTIL_LIBRARY} ${HWLOC_LIBRARY} xml2 ${ZMQ_LIBRARY} ${FUSE_LIBRARY} pthread m dl rt)
+set(CMAKE_C_FLAGS_DEBUG "${CMAKE_REQUIRED_FLAGS} -O0 -Wall -g -DHAVE_CONFIG_H -DLINUX=2 -D_REENTRANT -D_GNU_SOURCE -D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64 ${XATTR_FOUND}" )
+set(CMAKE_C_FLAGS_RELEASE "-O ${CMAKE_REQUIRED_FLAGS} -DHAVE_CONFIG_H -DLINUX=2 -D_REENTRANT -D_GNU_SOURCE -D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64 ${XATTR_FOUND}" )
 
-include_directories(${OPENSSL_INCLUDE_DIR} ${APR_INCLUDE_DIR} ${APRUTIL_INCLUDE_DIR} ${PHOEBUS_INCLUDE_DIR}
-   ${HWLOC_INCLUDE_DIR} ${JERASURE_INCLUDE_DIR} ${TOOLBOX_INCLUDE_DIR} ${GOP_INCLUDE_DIR} ${IBP_INCLUDE_DIR} ${FUSE_INCLUDE_DIR} ${CZMQ_INCLUDE_DIR} )
+
+include_directories(${OPENSSL_INCLUDE_DIR} ${APR_INCLUDE_DIR} ${APRUTIL_INCLUDE_DIR} ${PHOEBUS_INCLUDE_DIR} ${ZLIB_INCLUDE_DIR}
+   ${HWLOC_INCLUDE_DIR} ${JERASURE_INCLUDE_DIR} ${TOOLBOX_INCLUDE_DIR} ${GOP_INCLUDE_DIR} ${IBP_INCLUDE_DIR} ${FUSE_INCLUDE_DIR} ${CZMQ_INCLUDE_DIR} ${XATTR_INCLUDE_DIR} )
 SET(LIBS ${LIBS} ${IBP_LIBRARY} ${GOP_LIBRARY} ${CZMQ_LIBRARY} ${TOOLBOX_LIBRARY} ${JERASURE_LIBRARY} ${OPENSSL_LIBRARIES} ${CRYPTO_LIBRARIES} 
-   ${APR_LIBRARY} ${APRUTIL_LIBRARY} ${HWLOC_LIBRARY} xml2 ${ZMQ_LIBRARY} ${FUSE_LIBRARY} pthread m dl rt)
+   ${APR_LIBRARY} ${APRUTIL_LIBRARY} ${HWLOC_LIBRARY} xml2 ${ZMQ_LIBRARY} ${FUSE_LIBRARY} ${ZLIB_LIBRARY} ${XATTR_LIBRARY} pthread m dl rt)
 
 #Make the version file
 set(LIO_CLIENT_VERSION "lio_client: v1.0.0")
@@ -72,7 +68,6 @@ set(LIO_OBJS
    ex3_header.c
    ex3_compare.c
    exnode.c
-#   exnode3.pb-c.c
    exnode_config.c
    ex_id.c
    lio_config.c
@@ -81,15 +76,8 @@ set(LIO_OBJS
    rs_query_base.c
    rs_simple.c
    rs_space.c
-#   rs_zmq.c
    rs_remote_client.c
    rs_remote_server.c
-#   rsz_request.pb-c.c
-#   rsz_req.pb-c.c
-#   rsz_cap.pb-c.c
-#   rsz_response.pb-c.c
-#   rsz_rid_key_value.pb-c.c
-#   rs_zmq_base.c
    segment_base.c
    segment_linear.c
    segment_file.c
@@ -150,11 +138,11 @@ install(TARGETS ${LIO_EXE} DESTINATION bin)
 install(TARGETS lio DESTINATION lib)
 install(TARGETS lio-static DESTINATION lib)
 install(FILES 
-   cache_amp.h       data_block.h             ex3_abstract.h  ex3_linear_priv.h  exnode.h         rs_simple.h	rs_zmq.h	rsz_request.pb-c.h	rsz_response.pb-c.h	rsz_req.pb-c.h	rsz_cap.pb-c.h		rsz_rid_key_value.pb-c.h           segment_jerasure.h  segment_lun_priv.h
-   cache_amp_priv.h  data_service_abstract.h  ex3_compare.h   ex3_system.h       lio.h     rs_simple_priv.h	rs_zmq_priv.h	rs_zmq_base.h     segment_linear.h    trace.h
+   cache_amp.h       data_block.h             ex3_abstract.h  ex3_linear_priv.h  exnode.h         rs_simple.h	        segment_jerasure.h  segment_lun_priv.h
+   cache_amp_priv.h  data_service_abstract.h  ex3_compare.h   ex3_system.h       lio.h            rs_simple_priv.h	segment_linear.h    trace.h
    cache_lru.h       ds_ibp.h                 ex3_fmttypes.h  ex3_types.h        os_file.h        segment_cache.h       segment_log.h       transfer_buffer.h
    cache_lru_priv.h  ds_ibp_priv.h            ex3_header.h    exnode3.h          raid4.h          segment_cache_priv.h  segment_log_priv.h  view_layout.h
-   cache_priv.h      erasure_tools.h          ex3_linear.h    exnode3.pb-c.h     rs_query_base.h  segment_file.h        segment_lun.h       cache.h
+   cache_priv.h      erasure_tools.h          ex3_linear.h    rs_query_base.h    segment_file.h   segment_lun.h         cache.h
    authn_abstract.h  authn_fake.h      	      osaz_fake.h     rs_remote.h
    DESTINATION include/lio )
 

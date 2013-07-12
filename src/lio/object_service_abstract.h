@@ -52,6 +52,7 @@ extern "C" {
 #define OS_PATH_MAX  32768    //** Max path length
 
 #define OS_FSCK_FINISHED  0   //** FSCK scan is finished
+#define OS_FSCK_ERROR    -1   //** FSCK internal error
 
 #define OS_FSCK_GOOD            0 //** Nothing wrong with the object
 #define OS_FSCK_MISSING_ATTR    1 //** Missing the object attributes
@@ -212,6 +213,8 @@ void os_regex_table_destroy(os_regex_table_t *table);
 os_regex_table_t *os_path_glob2regex(char *path);
 char *os_glob2regex(char *glob);
 os_regex_table_t *os_regex2table(char *regex);
+int os_regex_table_pack(os_regex_table_t *regex, unsigned char *buffer, int bufsize);
+os_regex_table_t *os_regex_table_unpack(unsigned char *buffer, int bufsize, int *used);
 
 
 struct os_authz_s {

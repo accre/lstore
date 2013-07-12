@@ -2606,6 +2606,9 @@ void *lfs_init(struct fuse_conn_info *conn)
   double n;
   int p;
 
+//#ifdef HAVE_XATTR
+//  printf("XATTR found!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
+//#endif
   lio_fuse_init_args_t *init_args;
 
   // Retrieve the fuse_context, the last argument of fuse_main(...) is passed in the private_data field for use as a generic user arg. We pass the mount point in it.
@@ -2767,7 +2770,7 @@ struct fuse_operations lfs_fops = { //All lfs instances should use the same func
   .symlink = lfs_symlink,
   .statfs = lfs_statfs,
 
-#ifdef HAVE_SETXATTR
+#ifdef HAVE_XATTR
   .listxattr = lfs_listxattr,
   .getxattr = lfs_getxattr,
   .setxattr = lfs_setxattr,

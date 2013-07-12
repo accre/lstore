@@ -457,8 +457,9 @@ void rs_remote_server_destroy(resource_service_fn_t *rs)
   apr_thread_mutex_unlock(rsrs->lock);
   apr_thread_join(&dummy, rsrs->monitor_thread);
 
-  //** Destroy the portal
-//  mq_destroy_context(rsrs->mqc);
+  //** Remove and destroy the server portal
+  mq_portal_remove(rsrs->mqc, rsrs->server_portal);
+  mq_portal_destroy(rsrs->server_portal);
 
   //** Shutdown the child RS
   rs_destroy_service(rsrs->rs_child);

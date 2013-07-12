@@ -259,10 +259,10 @@ char *object_attr_dir(object_service_fn_t *os, char *prefix, char *path, int fty
 
 
 //*************************************************************
-//  store_val - Stores the return attribute value
+//  osf_store_val - Stores the return attribute value
 //*************************************************************
 
-int store_val(void *src, int src_size, void **dest, int *v_size)
+int osf_store_val(void *src, int src_size, void **dest, int *v_size)
 {
   char *buf;
 
@@ -498,6 +498,7 @@ int fobj_wait(object_service_fn_t *os, fobj_lock_t *fol, osfile_fd_t *fd, int ma
   fobj_lock_task_t *handle;
   int aborted;
   apr_time_t timeout = apr_time_make(max_wait, 0);
+apr_time_t dt;
 
   //** Get my slot
   task_pch = reserve_pigeon_coop_hole(osf->task_pc);
@@ -505,16 +506,18 @@ int fobj_wait(object_service_fn_t *os, fobj_lock_t *fol, osfile_fd_t *fd, int ma
   handle->fd = fd;
   handle->abort = 1;
 
-  log_printf(15, "SLEEPING id=%s fname=%s mymode=%d read_count=%d write_count=%d handle=%p\n", fd->id, fd->object_name, fd->mode, fol->read_count, fol->write_count, handle);
+  log_printf(15, "SLEEPING id=%s fname=%s mymode=%d read_count=%d write_count=%d handle=%p max_wait=%d\n", fd->id, fd->object_name, fd->mode, fol->read_count, fol->write_count, handle, max_wait);
 
   move_to_bottom(fol->stack);
   insert_below(fol->stack, handle);
 
+dt = apr_time_now();
   //** Sleep until it's my turn.  Remember fobj_lock is already set upon entry
   apr_thread_cond_timedwait(handle->cond, osf->fobj_lock, timeout);
   aborted = handle->abort;
-
-  log_printf(15, "AWAKE id=%s fname=%s mymode=%d read_count=%d write_count=%d handle=%p abort=%d uuid=" LU "\n", fd->id, fd->object_name, fd->mode, fol->read_count, fol->write_count, handle, aborted, fd->uuid);
+dt = apr_time_now() - dt;
+int dummy = apr_time_sec(dt);
+  log_printf(15, "AWAKE id=%s fname=%s mymode=%d read_count=%d write_count=%d handle=%p abort=%d uuid=" LU " dt=%d\n", fd->id, fd->object_name, fd->mode, fol->read_count, fol->write_count, handle, aborted, fd->uuid, dummy);
 
   //** I'm popped off the stack so just free my handle and update the counter
   release_pigeon_coop_hole(osf->task_pc, &task_pch);
@@ -786,7 +789,7 @@ int va_create_get_attr(os_virtual_attr_t *va, object_service_fn_t *os, creds_t *
 
   log_printf(15, "fname=%s sec=%s\n", fd->object_name, buffer);
 
-  return(store_val(buffer, bufsize, val, v_size));
+  return(osf_store_val(buffer, bufsize, val, v_size));
 }
 
 //***********************************************************************
@@ -822,9 +825,9 @@ int va_link_get_attr(os_virtual_attr_t *va, object_service_fn_t *os, creds_t *cr
         if (buffer[0] == '/') {
            offset = osf->file_path_len;
            n = n - offset;
-           return(store_val(&(buffer[offset]), n, val, v_size));
+           return(osf_store_val(&(buffer[offset]), n, val, v_size));
         } else {
-          return(store_val(buffer, n, val, v_size));
+          return(osf_store_val(buffer, n, val, v_size));
         }
      }
   }
@@ -864,7 +867,7 @@ int va_link_count_get_attr(os_virtual_attr_t *va, object_service_fn_t *os, creds
   }
 
   err = snprintf(buffer, 32, "%d", n);
-  return(store_val(buffer, err, val, v_size));
+  return(osf_store_val(buffer, err, val, v_size));
 }
 
 //***********************************************************************
@@ -889,7 +892,7 @@ int va_type_get_attr(os_virtual_attr_t *va, object_service_fn_t *os, creds_t *cr
 
   log_printf(15, "fname=%s type=%s v_size=%d\n", fd->object_name, buffer, *v_size);
 
-  return(store_val(buffer, bufsize, val, v_size));
+  return(osf_store_val(buffer, bufsize, val, v_size));
 }
 
 //***********************************************************************
@@ -1010,7 +1013,7 @@ int va_attr_type_get_attr(os_virtual_attr_t *myva, object_service_fn_t *os, cred
 
   log_printf(15, "fname=%s type=%s\n", fd->object_name, buffer);
 
-  return(store_val(buffer, bufsize, val, v_size));
+  return(osf_store_val(buffer, bufsize, val, v_size));
 }
 
 //***********************************************************************
@@ -1032,7 +1035,7 @@ int va_attr_link_get_attr(os_virtual_attr_t *myva, object_service_fn_t *os, cred
 
   *atype = OS_OBJECT_VIRTUAL;
 
-log_printf(15, "val=%p, *val=%s\n", val, (char *)(*val));
+//log_printf(15, "val=%p, *val=%s\n", val, (char *)(*val));
 
   n = (int)(long)myva->priv;  //** HACKERY ** to get the attribute prefix length
   key = &(fullkey[n+1]);
@@ -1076,7 +1079,7 @@ log_printf(15, "readlink(%s)=%s  n=%d\n", fullname, buffer, n);
 //        os_path_split(buffer, &dname, &aname);
 //        snprintf(buffer, OS_PATH_MAX, "%s\n%s", dname, aname);
 //        free(dname); free(aname);
-        return(store_val(buffer, n, val, v_size));
+        return(osf_store_val(buffer, n, val, v_size));
      }
   }
 
@@ -1147,7 +1150,7 @@ int va_timestamp_get_attr(os_virtual_attr_t *va, object_service_fn_t *os, creds_
     n = snprintf(buffer, sizeof(buffer), I64T, curr_time);
     log_printf(15, "now=%s\n", buffer);
     *atype = OS_OBJECT_VIRTUAL;
-    n = store_val(buffer, n, val, v_size);
+    n = osf_store_val(buffer, n, val, v_size);
   }
 
   return(n);
@@ -1863,11 +1866,10 @@ op_status_t osfile_regex_object_set_multiple_attrs_fn(void *arg, int id)
 }
 
 //***********************************************************************
-// osfile_regex_object_set_multiple_attrs - Does a bulk regex remove.
-//     Each matching object is removed.  If the object is a directory
-//     then the system will recursively remove it's contents up to the
-//     recursion depth.  Setting recurse_depth=0 will only remove the dir
-//     if it is empty.
+// osfile_regex_object_set_multiple_attrs - Does a bulk regex change attr.
+//     Each matching object's attr are changed.  If the object is a directory
+//     then the system will recursively change it's contents up to the
+//     recursion depth.
 //***********************************************************************
 
 
@@ -2816,7 +2818,11 @@ op_status_t osf_get_multiple_attr_fn(void *arg, int id)
   for (i=0; i<op->n; i++) {
     v_start[i] = op->v_size[i];
     err += osf_get_attr(op->os, op->creds, op->fd, op->key[i], (void **)&(op->val[i]), &(op->v_size[i]), &atype);
-log_printf(15, "PTR i=%d key=%s val=%s v_size=%d atype=%d err=%d\n", i, op->key[i], (char *)op->val[i], op->v_size[i], atype, err);
+if (op->v_size[i] != 0) {
+   log_printf(15, "PTR i=%d key=%s val=%s v_size=%d atype=%d err=%d\n", i, op->key[i], (char *)op->val[i], op->v_size[i], atype, err);
+} else {
+   log_printf(15, "PTR i=%d key=%s val=NULL v_size=%d atype=%d err=%d\n", i, op->key[i], op->v_size[i], atype, err);
+}
     if ((atype & OS_OBJECT_SYMLINK) > 0) {  oops=1;  break; }
   }
 
@@ -2838,7 +2844,7 @@ log_printf(15, "PTR i=%d key=%s val=%s v_size=%d atype=%d err=%d\n", i, op->key[
     return(osf_get_ma_links(arg, id, i));
   }
 
-  if (err != 0) status = op_failure_status;
+//  if (err != 0) status = op_failure_status;
 
   return(status);
 }
@@ -3244,7 +3250,7 @@ log_printf(15, "after object open\n");
 //
 //***********************************************************************
 
-os_object_iter_t *osfile_create_object_iter(object_service_fn_t *os, creds_t *creds, os_regex_table_t *path, os_regex_table_t *object_regex, int object_types, 
+os_object_iter_t *osfile_create_object_iter(object_service_fn_t *os, creds_t *creds, os_regex_table_t *path, os_regex_table_t *object_regex, int object_types,
                      os_regex_table_t *attr, int recurse_depth, os_attr_iter_t **it_attr, int v_max)
 {
   osfile_priv_t *osf = (osfile_priv_t *)os->priv;
@@ -3302,7 +3308,7 @@ os_object_iter_t *osfile_create_object_iter(object_service_fn_t *os, creds_t *cr
 //
 //***********************************************************************
 
-os_object_iter_t *osfile_create_object_iter_alist(object_service_fn_t *os, creds_t *creds, os_regex_table_t *path, os_regex_table_t *object_regex, int object_types, 
+os_object_iter_t *osfile_create_object_iter_alist(object_service_fn_t *os, creds_t *creds, os_regex_table_t *path, os_regex_table_t *object_regex, int object_types,
                      int recurse_depth, char **key, void **val, int *v_size, int n_keys)
 {
 //  osfile_priv_t *osf = (osfile_priv_t *)os->priv;
@@ -3548,7 +3554,7 @@ op_status_t osfile_close_object_fn(void *arg, int id)
 }
 
 //***********************************************************************
-//  osfile_open_object - Makes the open file op
+//  osfile_close_object - Makes the open file op
 //***********************************************************************
 
 op_generic_t *osfile_close_object(object_service_fn_t *os, os_fd_t *ofd)

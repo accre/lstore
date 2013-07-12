@@ -92,6 +92,11 @@ int main(int argc, char **argv)
   it = os_create_fsck_iter(lio_gc->os, lio_gc->creds, path, OS_FSCK_MANUAL);  //** WE use reolve to clean up so we can see the problem objects
   while ((err = os_next_fsck(lio_gc->os, it, &fname, &ftype)) != OS_FSCK_GOOD) {
      info_printf(lio_ifd, 0, "err:%d  type:%d  object:%s\n", err, ftype, fname);
+     if (err == OS_FSCK_ERROR) {  //** Internal error so abort!
+        info_printf(lio_ifd, 0, "Internal FSCK error! Aborting!\n");
+        break;
+     }
+
      if (mode != OS_FSCK_MANUAL) {
         gop = os_fsck_object(lio_gc->os, lio_gc->creds, fname, ftype, mode);
         gop_waitany(gop);
