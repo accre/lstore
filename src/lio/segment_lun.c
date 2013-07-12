@@ -1013,7 +1013,7 @@ log_printf(15, "start_stripe=" XOT " end_stripe=" XOT " n_stripes=" XOT "\n", st
            while ((nleft > 0) && (err == TBUFFER_OK)) {
               err = tbuffer_next(buffer, pos, &tbv);
               k = rwb->n_iov + tbv.n_iov;
-              if (k >= rwb->c_iov) { rwb->c_iov = 1.25*k; type_realloc(rwb->iov, iovec_t, rwb->c_iov); }
+              if (k >= rwb->c_iov) { rwb->c_iov = 2*k; type_realloc(rwb->iov, iovec_t, rwb->c_iov); }
               for (k=0; k<tbv.n_iov; k++) {
                  rwb->iov[rwb->n_iov + k] = tbv.buffer[k];
 //dummy = iov[i][c_iov[i]+k].iov_len;
@@ -1039,7 +1039,7 @@ log_printf(15, "start_stripe=" XOT " end_stripe=" XOT " n_stripes=" XOT "\n", st
      if (offset[i] >= 0) {
         j = rw_buf[i].n_ex;
         if (rw_buf[i].n_ex == rw_buf[i].c_ex) {
-           k = 1.25 * (j+1);
+           k = 2 * (j+1);
            rw_buf[i].c_ex = k;
            if (rw_buf[i].n_ex == 0) {
               type_malloc(rw_buf[i].ex_iov, ex_iovec_t, k);
@@ -1277,6 +1277,11 @@ op_status_t seglun_rw_op(segment_t *seg, data_attr_t *da, int n_iov, ex_iovec_t 
   int *bcount;
   Stack_t *stack;
   lun_rw_row_t *rw_buf, *rwb_table;
+  double dt;
+  apr_time_t tstart, tstart2;
+  op_generic_t *gop;
+
+  tstart = apr_time_now();
 
   segment_lock(seg);
 
@@ -1362,6 +1367,7 @@ log_printf(15, " n_bslots=%d\n", n_bslots);
                                           rwb_table[j + i].n_ex, rwb_table[j+i].ex_iov, &(rwb_table[j+i].buffer), 0, rwb_table[j+i].len, timeout);
                }
                opque_add(q, rwb_table[j+i].gop);
+               gop_set_myid(rwb_table[j+i].gop, i*10000 + slot);
             }
          }
      } else {
@@ -1380,6 +1386,7 @@ log_printf(15, " n_bslots=%d\n", n_bslots);
                                        rwb_table[j + i].n_ex, rwb_table[j+i].ex_iov, &(rwb_table[j+i].buffer), 0, rwb_table[j+i].len, timeout);
                }
                opque_add(q, rwb_table[j+i].gop);
+               gop_set_myid(rwb_table[j+i].gop, i*10000 + slot);
 //}
             }
          }
@@ -1392,7 +1399,17 @@ log_printf(15, " n_bslots=%d\n", n_bslots);
      log_printf(0, "ERROR Nothing to do\n");
      status = op_failure_status;
   } else {
-     opque_waitall(q);
+     tstart2 = apr_time_now();
+//     opque_waitall(q);
+     while ((gop = opque_waitany(q)) != NULL) {
+        dt = apr_time_now() - tstart2;
+        dt /= (APR_USEC_PER_SEC*1.0);
+        log_printf(15, "device=%d time: %lf\n", gop_get_myid(gop), dt);
+     }
+     dt = apr_time_now() - tstart2;
+     dt /= (APR_USEC_PER_SEC*1.0);
+     log_printf(15, "IBP time: %lf\n", dt);
+
      maxerr = 0;
      for (slot = 0; slot < n_bslots; slot++) {
         nerr = 0;
@@ -1437,6 +1454,10 @@ log_printf(15, "failure maxerr=%d\n", maxerr);
   free(bused);
   free_stack(stack, 0);
   opque_free(q, OP_DESTROY);
+
+  dt = apr_time_now() - tstart;
+  dt /= (APR_USEC_PER_SEC*1.0);
+  log_printf(15, "Total time: %lf\n", dt);
 
   return(status);
 }
@@ -1707,7 +1728,7 @@ op_status_t seglun_inspect_func(void *arg, int id)
      rs_query_add(s->rs, &query, RSQ_BASE_OP_AND, NULL, 0, NULL, 0);
   }
 
-//info_printf(si->fd, 1, "local_query=%p\n", si->query);
+info_printf(si->fd, 1, "local_query=%p\n", si->query);
   info_printf(si->fd, 1, XIDT ": segment information: n_devices=%d n_shift=%d chunk_size=" XOT "  used_size=" XOT " total_size=" XOT " mode=%d\n", segment_id(si->seg), s->n_devices, s->n_shift, s->chunk_size, s->used_size, s->total_size, si->inspect_mode);
 
   it = iter_search_interval_skiplist(s->isl, (skiplist_key_t *)NULL, (skiplist_key_t *)NULL);
