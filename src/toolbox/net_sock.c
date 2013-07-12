@@ -133,6 +133,8 @@ int sock_io_wait(network_sock_t *sock, Net_timeout_t tm, int mode)
    int state, dt;
    sock_apr_overlay_t *u = (sock_apr_overlay_t *)(sock->fd);
 
+apr_time_t start = apr_time_now();
+double ddt;
 //log_printf(10, "sock_io_wait: START tm=" TT " mode=%d\n", tm, mode);  flush_log();
 
    dt = tm / 1000; if (dt == 0) dt = 1;
@@ -145,7 +147,9 @@ int sock_io_wait(network_sock_t *sock, Net_timeout_t tm, int mode)
      state = poll(&pfd, 1, dt);
    } while ((state == -1) && (errno == EINTR));
 
-log_printf(5, "sock_io_wait: fd=%d tm=" TT " mode=%d state=%d errno=%d\n", pfd.fd, tm, mode, state, errno);
+ddt = apr_time_now() - start;
+ddt /= (1.0*APR_USEC_PER_SEC);
+log_printf(5, "sock_io_wait: fd=%d tm=" TT " mode=%d state=%d errno=%d dt=%lf\n", pfd.fd, tm, mode, state, errno, ddt);
 
    if (state > 0) {
       return(1);
@@ -208,7 +212,9 @@ apr_size_t my_write(network_sock_t *sock, tbuffer_t *buf, apr_size_t bpos, apr_s
    sock_apr_overlay_t *s = (sock_apr_overlay_t *)(sock->fd);
    tbuffer_var_t tbv;
 
-//int leni, ni, len2;
+int leni, ni, len2;
+apr_time_t start = apr_time_now();
+double dt;
 
    tbuffer_var_init(&tbv);
 //ni=bpos;
@@ -218,6 +224,8 @@ apr_size_t my_write(network_sock_t *sock, tbuffer_t *buf, apr_size_t bpos, apr_s
 //ni = bpos;
 //log_printf(15, "before tbuffer_next call bpos=%d\n", ni);
       tbv.nbytes = len;
+//len2 = 1024*1024;
+//if (len > len2) tbv.nbytes = len2;
       tbuffer_next(buf, bpos, &tbv);
 //leni=len;
 //len2 = tbv.nbytes;
@@ -225,11 +233,14 @@ apr_size_t my_write(network_sock_t *sock, tbuffer_t *buf, apr_size_t bpos, apr_s
 //log_printf(15, "s->fd=%d requested=%d got tbv.nbytes=%d tbv.n_iov=%d\n", s->fd, leni, len2, ni); flush_log();
       if (tbv.n_iov > IOV_MAX) tbv.n_iov = IOV_MAX;  //** Make sure we don't have to many entries
       n = writev(s->fd, tbv.buffer, tbv.n_iov);
-//leni=tbv.buffer->iov_len;
-//ni = n;
-//log_printf(5, "s->fd=%d  writev()=%d errno=%d nio=%d iov[0].len=%d\n", s->fd, ni, errno, tbv.n_iov, leni);
+leni=tbv.buffer->iov_len;
+ni = n;
+log_printf(5, "s->fd=%d  writev()=%d errno=%d nio=%d iov[0].len=%d\n", s->fd, ni, errno, tbv.n_iov, leni);
    } while ((n==-1) && (errno==EINTR));
 
+dt = apr_time_now() - start;
+dt /= (1.0*APR_USEC_PER_SEC);
+log_printf(5, "dt=%lf\n", dt);
 //log_printf(15, "BOTTOM\n");
 
    if (n==-1) {
