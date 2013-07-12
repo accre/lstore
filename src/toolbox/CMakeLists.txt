@@ -30,9 +30,9 @@ find_package(APR REQUIRED)
 find_package(APRUtil REQUIRED)
 find_package(HwLoc REQUIRED)
 find_package(Phoebus)
-#find_package(GOP REQUIRED)
 find_package(ZMQ REQUIRED)
 find_package(CZMQ REQUIRED)
+find_package(Zlib REQUIRED)
 
 # config options
 if (Phoebus_FOUND)
@@ -47,11 +47,8 @@ endif (Phoebus_FOUND)
 check_include_file("stdint.h" HAVE_STDINT_H)
 check_include_file("inttypes.h" HAVE_INTTYPES_H)
 
-#include_directories(${GOP_INCLUDE_DIR} ${OPENSSL_INCLUDE_DIR} ${APR_INCLUDE_DIR} ${APRUTIL_INCLUDE_DIR} ${ZMQ_INCLUDE_DIR} ${CZMQ_INCLUDE_DIR})
-#SET(LIBS ${LIBS} ${GOP_LIBRARY} ${OPENSSL_LIBRARIES} ${CRYPTO_LIBRARIES} ${APR_LIBRARY} ${APRUTIL_LIBRARY} ${HWLOC_LIBRARY} ${CZMQ_LIBRARY} ${ZMQ_LIBRARY} rt pthread m xml2 dl)
-
-include_directories(${OPENSSL_INCLUDE_DIR} ${APR_INCLUDE_DIR} ${APRUTIL_INCLUDE_DIR} ${ZMQ_INCLUDE_DIR} ${CZMQ_INCLUDE_DIR})
-SET(LIBS ${LIBS} ${OPENSSL_LIBRARIES} ${CRYPTO_LIBRARIES} ${APR_LIBRARY} ${APRUTIL_LIBRARY} ${HWLOC_LIBRARY} ${CZMQ_LIBRARY} ${ZMQ_LIBRARY} rt pthread m xml2 dl)
+include_directories(${OPENSSL_INCLUDE_DIR} ${APR_INCLUDE_DIR} ${APRUTIL_INCLUDE_DIR} ${ZMQ_INCLUDE_DIR} ${CZMQ_INCLUDE_DIR} ${ZLIB_INCLUDE_DIR})
+SET(LIBS ${LIBS} ${OPENSSL_LIBRARIES} ${CRYPTO_LIBRARIES} ${APR_LIBRARY} ${APRUTIL_LIBRARY} ${HWLOC_LIBRARY} ${CZMQ_LIBRARY} ${ZMQ_LIBRARY} ${ZLIB_LIBRARY} rt pthread m xml2 dl)
 
 CONFIGURE_FILE( ${CMAKE_SOURCE_DIR}/toolbox_config.h.in ${CMAKE_SOURCE_DIR}/toolbox_config.h )
 
@@ -72,14 +69,6 @@ SET(NETWORK_OBJS
     net_fd.c 
     net_phoebus.c 
     phoebus.c 
-#    net_zsock.c
-#    zsock_config.c
-#    zsock_op.c
-#    rr_cli.c
-#    rr_svr.c
-#    rr_wrk.c
-#    rr_broker.c
-#    rr_sinker.c
 )
 
 SET(TOOL_OBJS  
@@ -99,17 +88,17 @@ SET(TOOL_OBJS
     random.c
     chksum.c 
     transfer_buffer.c
+    varint.c
+    packer.c
 )
 
 SET( TOOLBOX_OBJS ${TOOL_OBJS} ${NETWORK_OBJS} )
 
 # various executables
-#ADD_EXECUTABLE( sl_test sl_test.c skiplist.c log.c atomic_counter.c iniparse.c stack.c string_token.c )
-#ADD_EXECUTABLE( isl_test isl_test.c interval_skiplist.c skiplist.c log.c atomic_counter.c iniparse.c stack.c string_token.c )
-#ADD_EXECUTABLE( hw_info hw_info.c hwinfo.c)
 ADD_EXECUTABLE( sl_test sl_test.c )
 ADD_EXECUTABLE( isl_test isl_test.c )
 ADD_EXECUTABLE( hw_info hw_info.c)
+ADD_EXECUTABLE( varint_test varint_test.c )
 #ADD_EXECUTABLE( netzsock_test netzsock_test.c )
 #ADD_EXECUTABLE( zop_test zop_test.c pigeon_hole.c pigeon_coop.c dns_cache.c)
 #ADD_EXECUTABLE( zop_cli zop_cli.c pigeon_hole.c pigeon_coop.c dns_cache.c)
@@ -147,6 +136,7 @@ SET(toolbox_lib toolbox-static)
 TARGET_LINK_LIBRARIES( sl_test  ${toolbox_lib} ${LIBS})
 TARGET_LINK_LIBRARIES( isl_test  ${toolbox_lib} ${LIBS})
 TARGET_LINK_LIBRARIES( hw_info ${toolbox_lib} ${LIBS} )
+TARGET_LINK_LIBRARIES( varint_test ${toolbox_lib} ${LIBS} )
 #TARGET_LINK_LIBRARIES( netzsock_test ${toolbox_lib} ${LIBS} )
 #TARGET_LINK_LIBRARIES( zop_test ${toolbox_lib} ${LIBS} )
 #TARGET_LINK_LIBRARIES( zop_cli ${toolbox_lib} ${LIBS} )
@@ -162,6 +152,6 @@ TARGET_LINK_LIBRARIES( hw_info ${toolbox_lib} ${LIBS} )
 install(TARGETS toolbox DESTINATION lib)
 install(TARGETS toolbox-static DESTINATION lib)
 install(FILES append_printf.h   chksum.h     fmttypes.h  interval_skiplist.h  net_1_ssl.h  net_phoebus.h  phoebus.h      random.h    string_token.h    type_malloc.h
-              apr_wrapper.h     debug.h      hwinfo.h    list.h               net_2_ssl.h  net_sock.h     pigeon_coop.h  skiplist.h  toolbox_config.h
-              atomic_counter.h  dns_cache.h  iniparse.h  log.h                net_fd.h     network.h      pigeon_hole.h  stack.h     transfer_buffer.h
+              apr_wrapper.h     debug.h      hwinfo.h    list.h               net_2_ssl.h  net_sock.h     pigeon_coop.h  skiplist.h  toolbox_config.h  varint.h
+              atomic_counter.h  dns_cache.h  iniparse.h  log.h                net_fd.h     network.h      pigeon_hole.h  stack.h     transfer_buffer.h packer.h
               DESTINATION include/toolbox )
