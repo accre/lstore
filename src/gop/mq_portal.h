@@ -333,6 +333,8 @@ void mq_command_table_set_default(mq_command_table_t *table, void *arg, mq_fn_ex
 int mq_task_send(mq_context_t *mqc, mq_task_t *task);
 int mq_submit(mq_portal_t *p, mq_task_t *task);
 int mq_portal_install(mq_context_t *mqc, mq_portal_t *p);
+void mq_portal_remove(mq_context_t *mqc, mq_portal_t *p);
+void mq_portal_destroy(mq_portal_t *p);
 mq_portal_t *mq_portal_create(mq_context_t *mqc, char *host, int connect_mode);
 mq_portal_t *mq_portal_lookup(mq_context_t *mqc, char *host, int connect_mode);
 mq_command_table_t *mq_portal_command_table(mq_portal_t *portal);

@@ -32,6 +32,7 @@ find_package(ToolBox REQUIRED)
 find_package(ZMQ REQUIRED)
 find_package(CZMQ REQUIRED)
 find_package(HwLoc REQUIRED)
+find_package(Zlib REQUIRED)
 
 #Make the version file
 set(GOP_VERSION "gop: v1.0.0")
@@ -41,7 +42,7 @@ CompilerVersion(COMPILER_VERSION)
 CompilerFlags(COMPILER_FLAGS)
 configure_file("${PROJECT_SOURCE_DIR}/gop_version.c.in" "${PROJECT_BINARY_DIR}/gop_version.c")
 
-SET(GOP_OBJS callback.c gop.c  hconnection.c  hportal.c  opque.c  thread_pool_config.c  thread_pool_op.c mq_msg.c mq_zmq.c mq_portal.c)
+SET(GOP_OBJS callback.c gop.c  hconnection.c  hportal.c  opque.c  thread_pool_config.c  thread_pool_op.c mq_msg.c mq_zmq.c mq_portal.c mq_ongoing.c mq_stream.c mq_helpers.c )
 
 ADD_LIBRARY( gop SHARED ${GOP_OBJS})
 ADD_LIBRARY( gop-static STATIC ${GOP_OBJS})
@@ -49,16 +50,21 @@ SET_TARGET_PROPERTIES(gop-static PROPERTIES OUTPUT_NAME "gop" )
 SET_TARGET_PROPERTIES(gop PROPERTIES CLEAN_DIRECT_OUTPUT 1)
 SET_TARGET_PROPERTIES(gop-static PROPERTIES CLEAN_DIRECT_OUTPUT 1)
 
-include_directories(${TOOLBOX_INCLUDE_DIR} ${APR_INCLUDE_DIR} ${APRUTIL_INCLUDE_DIR} ${ZMQ_INCLUDE_DIR} ${CZMQ_INCLUDE_DIR} )
+include_directories(${TOOLBOX_INCLUDE_DIR} ${APR_INCLUDE_DIR} ${APRUTIL_INCLUDE_DIR} ${ZMQ_INCLUDE_DIR} ${CZMQ_INCLUDE_DIR} ${ZLIB_INCLUDE_DIR} )
 
-SET(LIBS ${LIBS} ${ZMQ_LIBRARY} ${CZMQ_LIBRARY} ${TOOLBOX_LIBRARY} ${HWLOC_LIBRARY} ${OPENSSL_LIBRARIES} ${CRYPTO_LIBRARIES} ${PROTOBUF_LIBRARY} ${APR_LIBRARY} ${APRUTIL_LIBRARY} pthread m xml2 dl rt)
+SET(LIBS ${LIBS} ${ZMQ_LIBRARY} ${CZMQ_LIBRARY} ${TOOLBOX_LIBRARY} ${HWLOC_LIBRARY} ${OPENSSL_LIBRARIES} ${CRYPTO_LIBRARIES} 
+    ${PROTOBUF_LIBRARY} ${APR_LIBRARY} ${APRUTIL_LIBRARY} ${ZLIB_LIBRARY} pthread m xml2 dl rt)
 
 ADD_EXECUTABLE(mq_test mq_test.c)
 SET_TARGET_PROPERTIES(mq_test PROPERTIES LINKER_LANGUAGE CXX)
 TARGET_LINK_LIBRARIES(mq_test gop-static ${LIBS})
 
+ADD_EXECUTABLE(mqs_test mqs_test.c)
+SET_TARGET_PROPERTIES(mqs_test PROPERTIES LINKER_LANGUAGE CXX)
+TARGET_LINK_LIBRARIES(mqs_test gop-static ${LIBS})
+
 install(TARGETS ${LIO_EXE} DESTINATION bin)
 install(TARGETS gop DESTINATION lib)
 install(TARGETS gop-static DESTINATION lib)
-install(FILES callback.h gop_config.h  host_portal.h  opque.h  thread_pool.h mq_portal.h
+install(FILES callback.h gop_config.h  host_portal.h  opque.h  thread_pool.h mq_portal.h mq_helpers.h mq_stream.h mq_ongoing.h
               DESTINATION include/gop )

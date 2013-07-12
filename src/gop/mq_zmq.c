@@ -36,6 +36,7 @@ http://www.accre.vanderbilt.edu
 #include "mq_portal.h"
 #include "type_malloc.h"
 #include "log.h"
+#include "apr_signal.h"
 #include <stdlib.h>
 
 //*************************************************************
@@ -146,6 +147,7 @@ log_printf(5, "dest=!%.*s! nframes=%d\n", f->len, (char *)(f->data), stack_size(
        }
        loop++;
 log_printf(5, "sending frame=%d len=%d bytes=%d errno=%d loop=%d\n", count, f->len, bytes, errno, loop); flush_log();
+if (f->len>0) { log_printf(5, "byte=%uc\n", (unsigned char)f->data[0]); flush_log(); }
     } while ((bytes == -1) && (loop < 10));
     n += bytes;
 count++;
@@ -385,6 +387,10 @@ mq_socket_context_t *zero_socket_context_new()
   zctx_set_linger(ctx->arg, 0);
   ctx->create_socket = zero_create_socket;
   ctx->destroy = zero_socket_context_destroy;
+
+  //** Disable the CZMQ SIGINT/SIGTERM signale handler
+  apr_signal(SIGINT, NULL);
+  apr_signal(SIGTERM, NULL);
 
   return(ctx);
 }

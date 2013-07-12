@@ -201,7 +201,7 @@ struct opque_s {
 };
 
 
-extern int _opque_counter;
+extern atomic_int_t _opque_counter;
 
 #define _op_set_status(v, opstat, errcode) (v).op_status = opstat; (v).error_code = errcode
 
@@ -272,6 +272,7 @@ op_generic_t *gop_get_next_failed(op_generic_t *gop);
 int gop_tasks_failed(op_generic_t *gop);
 int gop_tasks_finished(op_generic_t *gop);
 int gop_tasks_left(op_generic_t *gop);
+int gop_will_block(op_generic_t *g);
 int gop_waitall(op_generic_t *gop);
 op_generic_t *gop_waitany(op_generic_t *gop);
 op_generic_t *gop_timed_waitany(op_generic_t *g, int dt);

@@ -58,7 +58,7 @@ static portal_fn_t _tp_base_portal = {
   .submit = _tp_submit_op
 };
 
-int _tp_context_count = 0;
+atomic_int_t _tp_context_count = 0;
 apr_thread_mutex_t *_tp_lock = NULL;
 apr_pool_t *_tp_pool = NULL;
 //int _tp_id = 0;
@@ -184,11 +184,13 @@ thread_pool_context_t *thread_pool_create_context(char *tp_name, int min_threads
   thread_pool_context_t *tpc;
   apr_interval_time_t dt;
 
+  log_printf(15, "count=%d\n", _tp_context_count);
+
   type_malloc_clear(tpc, thread_pool_context_t, 1);
 
   assert(apr_wrapper_start() == APR_SUCCESS);
 
-  if (_tp_context_count == 0) {
+  if (atomic_inc(_tp_context_count) == 0) {
      apr_pool_create(&_tp_pool, NULL);
      apr_thread_mutex_create(&_tp_lock, APR_THREAD_MUTEX_DEFAULT, _tp_pool);
      init_opque_system();
@@ -211,7 +213,7 @@ atomic_set(tpc->n_completed, 0);
 atomic_set(tpc->n_started, 0);
 atomic_set(tpc->n_submitted, 0);
 
-  _tp_context_count++;
+//  _tp_context_count++;
 
   return(tpc);
 }
@@ -230,8 +232,7 @@ log_printf(15, "tpc->name=%s  high=%d idle=%d\n", tpc->name, apr_thread_pool_thr
 
   apr_thread_pool_destroy(tpc->tp);
 
-  _tp_context_count--;
-  if (_tp_context_count == 0) {
+  if (atomic_dec(_tp_context_count) == 0) {
      destroy_opque_system();
      apr_thread_mutex_destroy(_tp_lock);
      apr_pool_destroy(_tp_pool);

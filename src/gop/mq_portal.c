@@ -183,7 +183,8 @@ void mq_command_exec(mq_command_table_t *t, mq_task_t *task, void *key, int klen
 
 log_printf(3, "cmd=%p\n", cmd);
   if (cmd == NULL) {
-    t->fn_default(t->arg_default, task);
+     log_printf(0, "Unknown command!\n");
+     t->fn_default(t->arg_default, task);
   } else {
     cmd->fn(cmd->arg, task);
   }
@@ -1170,7 +1171,7 @@ int mq_conn_make(mq_conn_t *c)
      dt = apr_time_now() - start;
      dt = apr_time_sec(dt);
 
-     if (dt > 10000) {
+     if (dt > 5) {
         log_printf(0, "ERROR: Failed sending task to host=%s\n", c->pc->host);
         goto fail;
      }
@@ -1497,6 +1498,17 @@ mq_portal_t *mq_portal_lookup(mq_context_t *mqc, char *hostname, int connect_mod
 mq_command_table_t *mq_portal_command_table(mq_portal_t *portal)
 {
   return(portal->command_table);
+}
+
+//**************************************************************
+// mq_portal_remove - Removes a server portal in the context
+//**************************************************************
+
+void mq_portal_remove(mq_context_t *mqc, mq_portal_t *p)
+{
+  apr_thread_mutex_lock(mqc->lock);
+  apr_hash_set(mqc->server_portals, p->host, APR_HASH_KEY_STRING, NULL);
+  apr_thread_mutex_unlock(mqc->lock);
 }
 
 //**************************************************************

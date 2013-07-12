@@ -44,7 +44,7 @@ void gop_dummy_init();
 void gop_dummy_destroy();
 
 
-int _opque_counter = 0;
+atomic_int_t _opque_counter = 0;
 apr_pool_t *_opque_pool = NULL;
 pigeon_coop_t *_gop_control = NULL;
 
@@ -114,14 +114,13 @@ void gop_control_free(void *arg, int size, void *data)
 void init_opque_system()
 {
   log_printf(15, "init_opque_system: counter=%d\n", _opque_counter);
-  if (_opque_counter == 0) {   //** Only init if needed
+  if (atomic_inc(_opque_counter) == 0) {   //** Only init if needed
      assert(apr_pool_create(&_opque_pool, NULL) == APR_SUCCESS);
      _gop_control = new_pigeon_coop("gop_control", 50, sizeof(gop_control_t), NULL, gop_control_new, gop_control_free);
      gop_dummy_init();
      atomic_init();
   }
 
-  _opque_counter++;
 }
 
 //*************************************************************
@@ -131,8 +130,7 @@ void init_opque_system()
 void destroy_opque_system()
 {
   log_printf(15, "destroy_opque_system: counter=%d\n", _opque_counter);
-  _opque_counter--;
-  if (_opque_counter == 0) {   //** Only wipe if not used
+  if (atomic_dec(_opque_counter) == 0) {   //** Only wipe if not used
      destroy_pigeon_coop(_gop_control);
      apr_pool_destroy(_opque_pool);
      gop_dummy_destroy();

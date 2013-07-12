@@ -517,6 +517,24 @@ void gop_set_auto_destroy(op_generic_t *gop, int val)
   if (state == 1) gop_free(gop, OP_DESTROY);
 }
 
+//*************************************************************
+// gop_will_block - Returns 1 if a gop_waitany will block
+//*************************************************************
+
+int gop_will_block(op_generic_t *g)
+{
+  int status = 0;
+
+  lock_gop(g);
+  if (gop_get_type(g) == Q_TYPE_QUE) {
+     if ((stack_size(g->q->finished) == 0) && (g->q->nleft > 0)) status = 1;
+  } else {
+     if (g->base.state == 0) status = 1;
+  }
+  unlock_gop(g);
+
+  return(status);
+}
 
 //*************************************************************
 // gop_waitany - waits until any given task completes and
