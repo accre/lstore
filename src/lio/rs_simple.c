@@ -428,10 +428,13 @@ char *rs_simple_get_rid_value(resource_service_fn_t *arg, char *rid_key, char *k
   char *value = NULL;
 
 
+  apr_thread_mutex_lock(rss->lock);
   rse = list_search(rss->rid_table, rid_key);
   if (rse != NULL) {
      value = list_search(rse->attr, key);
+     if (value != NULL)  value = strdup(value);
   }
+  apr_thread_mutex_unlock(rss->lock);
 
   return(strdup(value));
 }
@@ -795,7 +798,7 @@ void *rss_check_thread(apr_thread_t *th, void *data)
     if (rss->current_check != rss->modify_time) { //** Need to reload
        rss->current_check = rss->modify_time;
        do_notify = 1;
-       _rss_make_check_table(rs);
+      // _rss_make_check_table(rs);
     }
     map_version = rss->modify_time;
     apr_thread_mutex_unlock(rss->lock);
@@ -900,9 +903,10 @@ int _rs_simple_refresh(resource_service_fn_t *rs)
   if (rss->modify_time != sbuf.st_mtime) {  //** File changed so reload it
      log_printf(5, "RELOADING data\n");
      rss->modify_time = sbuf.st_mtime;
-     list_destroy(rss->rid_table);
-     free(rss->random_array);
-     err = _rs_simple_load(rs, rss->fname);
+     if (rss->rid_table != NULL) list_destroy(rss->rid_table);
+     if (rss->random_array != NULL) free(rss->random_array);
+     err = _rs_simple_load(rs, rss->fname);  //** Load the new file
+     _rss_make_check_table(rs);  //** and make the new inquiry table
      apr_thread_cond_signal(rss->cond);  //** Notify the check thread that we made a change
      return(err);
   }
@@ -995,11 +999,13 @@ resource_service_fn_t *rs_simple_create(void *arg, inip_file_t *kf, char *sectio
   rss->min_free = inip_get_integer(kf, section, "min_free", 100*1024*1024);
 
   //** Get the modify time to detect changes
-  assert(stat(rss->fname, &sbuf) == 0);
-  rss->modify_time = sbuf.st_mtime;
+//  assert(stat(rss->fname, &sbuf) == 0);
+//  rss->modify_time = sbuf.st_mtime;
+  rss->modify_time = 0;
 
   //** Load the RID table
-  assert(_rs_simple_load(rs, rss->fname) == 0);
+  assert(_rs_simple_refresh(rs) == 0);
+//  assert(_rs_simple_load(rs, rss->fname) == 0);
 
   //** Launch the check thread
   apr_thread_create(&(rss->check_thread), NULL, rss_check_thread, (void *)rs, rss->mpool);
