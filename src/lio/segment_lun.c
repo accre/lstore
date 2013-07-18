@@ -1425,6 +1425,7 @@ log_printf(15, "end stage i=%d gid=%d gop_completed_successfully=%d nerr=%d\n", 
            }
 
            if (rwb_table[j+i].iov != NULL) free(rwb_table[j+i].iov);
+           gop_free(rwb_table[j+i].gop, OP_DESTROY);
         }
 
         if (nerr > maxerr) maxerr = nerr;
