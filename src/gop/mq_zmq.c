@@ -37,6 +37,7 @@ http://www.accre.vanderbilt.edu
 #include "type_malloc.h"
 #include "log.h"
 #include "apr_signal.h"
+#include "random.h"
 #include <stdlib.h>
 
 //*************************************************************
@@ -85,7 +86,7 @@ if (socket->type != MQ_PAIR) zsocket_set_router_mandatory(socket->arg, 1);
   //** Set the ID
   if (socket->type != MQ_PAIR) {
      snprintf(buf, 255, format, args);
-     snprintf(id, 255, "%s:%ld", buf, random());
+     snprintf(id, 255, "%s:%ld", buf, random_int(1, 1000000));
      zsocket_set_identity(socket->arg, id);
   }
 
@@ -177,6 +178,7 @@ int zero_native_recv(mq_socket_t *socket, mq_msg_t *msg, int flags)
   if ((flags & MQ_DONTWAIT) > 0) {
     more = 0;
     rc = zmq_getsockopt (socket->arg, ZMQ_EVENTS, &more, &msize);
+log_printf(5, "more=" I64T "\n", more);
     assert (rc == 0);
     if ((more & ZMQ_POLLIN) == 0) return(-1);
   }
@@ -202,6 +204,7 @@ log_printf(15, "rc=%d errno=%d\n", rc, errno);
     mq_msg_append_frame(msg, f);
     n += f->len;
     nframes++;
+log_printf(5, "more=" I64T "\n", more);
   } while (more > 0);
 
 log_printf(5, "total bytes=%d nframes=%d\n", n, nframes);

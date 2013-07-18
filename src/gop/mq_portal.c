@@ -1229,9 +1229,10 @@ fail:
 void *mq_conn_thread(apr_thread_t *th, void *data)
 {
   mq_conn_t *c = (mq_conn_t *)data;
-  int k, npoll, err, finished, nprocessed, slow_exit;
+  int k, npoll, err, finished, nprocessed, nproc, nincoming, slow_exit;
   long int heartbeat_ms;
   uint64_t n;
+  int64_t total_proc, total_incoming;
   mq_pollitem_t pfd[3];
   apr_time_t next_hb_check, last_check;
   double proc_rate, dt;
@@ -1265,16 +1266,27 @@ log_printf(5, "after conn_make err=%d\n", err);
   npoll = 2;
   next_hb_check = apr_time_now() + apr_time_from_sec(1);
   last_check = apr_time_now();
-  nprocessed = 0;
   slow_exit = 0;
+  total_proc = total_incoming = 0;
+  nprocessed = 0;
+
   do {
     k = mq_poll(pfd, npoll, heartbeat_ms);
     log_printf(5, "pfd[EFD]=%d pdf[CONN]=%d npoll=%d n=%d errno=%d\n", pfd[PI_EFD].revents, pfd[PI_CONN].revents, npoll, k, errno);
 
+//k=1; //FIXME
     if (k > 0) {  //** Got an event so process it
-      if ((npoll == 2) && (pfd[PI_EFD].revents != 0)) finished += mqc_process_task(c, &npoll, &nprocessed);
+      nproc = 0;
+      if ((npoll == 2) && (pfd[PI_EFD].revents != 0)) finished += mqc_process_task(c, &npoll, &nproc);
+      nprocessed += nproc;
+      total_proc += nproc;
+//finished += mqc_process_task(c, &npoll, &nprocessed);
 log_printf(5, "after process_task finished=%d\n", finished);
-      if (pfd[PI_CONN].revents != 0) finished += mqc_process_incoming(c, &nprocessed);
+      nincoming = 0;
+      if (pfd[PI_CONN].revents != 0) finished += mqc_process_incoming(c, &nincoming);
+//finished += mqc_process_incoming(c, &nincoming);
+      nprocessed += nincoming;
+      total_incoming += nincoming;
 log_printf(5, "after process_incoming finished=%d\n", finished);
     } else if (k < 0) {
       log_printf(0, "ERROR on socket uuid=%s errno=%d\n", c->mq_uuid, errno); flush_log();
@@ -1317,7 +1329,7 @@ cleanup:
   //** Cleanup my struct but don'r free(c).
   //** This is done on portal cleanup
   mq_stats_print(2, c->mq_uuid, &(c->stats));
-log_printf(2, "END: uuid=%s\n", c->mq_uuid); flush_log();
+log_printf(2, "END: uuid=%s total_incoming=" I64T " total_processed=" I64T "\n", c->mq_uuid, total_incoming, total_proc); flush_log();
 
   mq_conn_teardown(c);
 
