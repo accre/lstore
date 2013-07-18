@@ -232,6 +232,12 @@ int main(int argc, char **argv)
   assert(apr_pool_create(&mpool, NULL) == APR_SUCCESS);
   apr_thread_mutex_create(&lock, APR_THREAD_MUTEX_DEFAULT, mpool);
 
+//if (watch == 1) {
+//  printf("Sleeping for 60s\n"); fflush(stdout);
+//  sleep(60);
+//  printf("Woken up\n"); fflush(stdout);
+//}
+
   memset(&notify, 0, sizeof(notify));
   notify.lock = lock;
   me = notify;  me.map_version = 1; //** This triggers the initial load
@@ -270,8 +276,8 @@ int main(int argc, char **argv)
   //** Cleanup
   apr_pool_destroy(mpool);
 
+//  info_printf(lio_ifd, 5, "AFTER shutdown\n"); info_flush(lio_ifd);
   lio_shutdown();
-  info_printf(lio_ifd, 5, "AFTER shutdown\n"); info_flush(lio_ifd);
 
   return(0);
 }
