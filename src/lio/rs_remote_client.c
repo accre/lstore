@@ -71,12 +71,12 @@ char *rsrc_get_rid_config(resource_service_fn_t *rs)
   op_generic_t *gop;
 
   //** Generate the command
-  gop = rsrc_update_config_op(rs, 0, 60);
+//  gop = rsrc_update_config_op(rs, 0, 60);
 
   //** Send it and wait for a response
-  gop_waitall(gop);
+//  gop_waitall(gop);
 
-  gop_free(gop, OP_DESTROY);
+//  gop_free(gop, OP_DESTROY);
 
   return(rs_get_rid_config(rsrc->rs_child));
 }
