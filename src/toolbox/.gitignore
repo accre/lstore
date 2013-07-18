@@ -8,6 +8,7 @@ bootstrap
 zop_cli
 zop_svr
 zop_test
+varint_test
 
 #These are generated via cmake using the *.in variants
 toolbox_config.h
