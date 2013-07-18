@@ -43,6 +43,8 @@ extern "C" {
 
 #define AUTHN_AVAILABLE "authn_available"
 
+#define AUTHN_INDEX_SHARED_HANDLE 0
+
 typedef struct creds_s creds_t;
 
 struct creds_s {
@@ -51,7 +53,7 @@ struct creds_s {
   char *id;
   void (*handle_destroy)(void *);
   char *(*get_type)(creds_t *creds);
-  void *(*get_type_field)(creds_t *creds, int index);
+  void *(*get_type_field)(creds_t *creds, int index, int *len);
   char *(*get_id)(creds_t *creds);
   void (*set_id)(creds_t *creds, char *id);
   void *(*get_private_handle)(creds_t *creds);
@@ -62,7 +64,7 @@ struct creds_s {
 creds_t *cred_default_create();
 
 #define an_cred_get_type(c) (c)->get_type(c)
-#define an_cred_get_type_field(c, index) (c)->get_type_field(c, index)
+#define an_cred_get_type_field(c, index, len) (c)->get_type_field(c, index, len)
 #define an_cred_get_id(c) (c)->get_id(c)
 #define an_cred_set_id(c, id) (c)->set_id(c, id)
 #define an_cred_get_private_handle(c) (c)->get_private_handle(c)

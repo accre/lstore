@@ -47,8 +47,9 @@ char *cdef_get_type(creds_t *c)
 
 //***********************************************************************
 
-void *cdef_get_type_field(creds_t *c, int index)
+void *cdef_get_type_field(creds_t *c, int index, int *len)
 {
+  *len = 0;
   return(NULL);
 }
 

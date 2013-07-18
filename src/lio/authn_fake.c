@@ -48,6 +48,21 @@ char *authn_fake_get_type(creds_t *c)
 }
 
 //***********************************************************************
+// authn_fake_get_type_filed - Returns the requested type field
+//***********************************************************************
+
+void *authn_fake_get_type_field(creds_t *c, int index, int *len)
+{
+  if (index == AUTHN_INDEX_SHARED_HANDLE) {
+     *len = strlen(c->id);
+     return(c->id);
+  }
+
+  *len = 0;
+  return(NULL);
+}
+
+//***********************************************************************
 // authn_fake_cred_init - Creates a Fake AuthN credential
 //***********************************************************************
 
@@ -57,6 +72,7 @@ creds_t *authn_fake_cred_init(authn_t *an, int type, void **args)
 
   c = cred_default_create();
   c->get_type = authn_fake_get_type;
+  c->get_type_field = authn_fake_get_type_field;
 
   return(c);
 }

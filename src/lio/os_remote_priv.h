@@ -109,6 +109,8 @@ typedef struct {
   int ongoing_interval;       //** Ongoing command check interval
   int shutdown;
   int max_stream;
+  authn_t *authn;
+  creds_t *dummy_creds;       //** Dummy creds. Should be replaced when proper AuthN/AuthZ is added
 } osrs_priv_t;
 
 typedef struct {

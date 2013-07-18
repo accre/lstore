@@ -46,6 +46,7 @@ http://www.accre.vanderbilt.edu
 #include "mq_helpers.h"
 #include "mq_stream.h"
 #include "varint.h"
+#include "authn_fake.h"
 
 //#define OSRS_HANDLE(ofd) ((osrs_ongoing_object_t *)((ofd)->data))->handle
 #define OSRS_HANDLE(ofd) (void *)(*(intptr_t *)(ofd)->data)
@@ -115,6 +116,21 @@ typedef struct {
   int v_tmp;
   int n;
 } osrc_mult_attr_t;
+
+//***********************************************************************
+// osrc_add_creds - Adds the creds to the message
+//***********************************************************************
+
+int osrc_add_creds(object_service_fn_t *os, creds_t *creds, mq_msg_t *msg)
+{
+  void *chandle;
+  int len;
+
+  chandle = an_cred_get_type_field(creds, AUTHN_INDEX_SHARED_HANDLE, &len);
+  mq_msg_append_mem(msg, chandle, len, MQF_MSG_KEEP_DATA);
+
+  return(0);
+}
 
 //***********************************************************************
 // osrc_response_status - Handles a response that just returns the status
@@ -194,7 +210,7 @@ log_printf(5, "START\n");
   msg = mq_make_exec_core_msg(osrc->remote_host, 1);
   mq_msg_append_mem(msg, OSR_REMOVE_REGEX_OBJECT_KEY, OSR_REMOVE_REGEX_OBJECT_SIZE, MQF_MSG_KEEP_DATA);
   mq_msg_append_mem(msg, osrc->host_id, osrc->host_id_len, MQF_MSG_KEEP_DATA);
-  mq_msg_append_mem(msg, creds, sizeof(creds), MQF_MSG_KEEP_DATA);
+  osrc_add_creds(os, creds, msg);
 
   bufsize = 4096;
   type_malloc(buffer, unsigned char, bufsize);
@@ -255,7 +271,7 @@ log_printf(5, "START fname=%s\n", path);
   //** Form the message
   msg = mq_make_exec_core_msg(osrc->remote_host, 1);
   mq_msg_append_mem(msg, OSR_REMOVE_OBJECT_KEY, OSR_REMOVE_OBJECT_SIZE, MQF_MSG_KEEP_DATA);
-  mq_msg_append_mem(msg, creds, sizeof(creds), MQF_MSG_KEEP_DATA);
+  osrc_add_creds(os, creds, msg);
   mq_msg_append_mem(msg, path, strlen(path)+1, MQF_MSG_KEEP_DATA);
   mq_msg_append_mem(msg, NULL, 0, MQF_MSG_KEEP_DATA);
 
@@ -290,7 +306,7 @@ log_printf(5, "START\n");
   msg = mq_make_exec_core_msg(osrc->remote_host, 1);
   mq_msg_append_mem(msg, OSR_REGEX_SET_MULT_ATTR_KEY, OSR_REGEX_SET_MULT_ATTR_SIZE, MQF_MSG_KEEP_DATA);
   mq_msg_append_mem(msg, osrc->host_id, osrc->host_id_len, MQF_MSG_KEEP_DATA);
-  mq_msg_append_mem(msg, creds, sizeof(creds), MQF_MSG_KEEP_DATA);
+  osrc_add_creds(os, creds, msg);
   if (id != NULL) {
      mq_msg_append_mem(msg, id, strlen(id), MQF_MSG_KEEP_DATA);
   } else {
@@ -377,7 +393,7 @@ log_printf(5, "START fname=%s\n", path);
   //** Form the message
   msg = mq_make_exec_core_msg(osrc->remote_host, 1);
   mq_msg_append_mem(msg, OSR_EXISTS_KEY, OSR_EXISTS_SIZE, MQF_MSG_KEEP_DATA);
-  mq_msg_append_mem(msg, creds, sizeof(creds), MQF_MSG_KEEP_DATA);
+  osrc_add_creds(os, creds, msg);
   mq_msg_append_mem(msg, path, strlen(path)+1, MQF_MSG_KEEP_DATA);
   mq_msg_append_mem(msg, NULL, 0, MQF_MSG_KEEP_DATA);
 
@@ -409,7 +425,7 @@ log_printf(5, "START fname=%s\n", path);
   //** Form the message
   msg = mq_make_exec_core_msg(osrc->remote_host, 1);
   mq_msg_append_mem(msg, OSR_CREATE_OBJECT_KEY, OSR_CREATE_OBJECT_SIZE, MQF_MSG_KEEP_DATA);
-  mq_msg_append_mem(msg, creds, sizeof(creds), MQF_MSG_KEEP_DATA);
+  osrc_add_creds(os, creds, msg);
   mq_msg_append_mem(msg, path, strlen(path)+1, MQF_MSG_KEEP_DATA);
 
   n = zigzag_encode(type, buffer);
@@ -448,7 +464,7 @@ log_printf(5, "START src_fname=%s\n", src_path);
   //** Form the message
   msg = mq_make_exec_core_msg(osrc->remote_host, 1);
   mq_msg_append_mem(msg, OSR_SYMLINK_OBJECT_KEY, OSR_SYMLINK_OBJECT_SIZE, MQF_MSG_KEEP_DATA);
-  mq_msg_append_mem(msg, creds, sizeof(creds), MQF_MSG_KEEP_DATA);
+  osrc_add_creds(os, creds, msg);
   mq_msg_append_mem(msg, src_path, strlen(src_path)+1, MQF_MSG_KEEP_DATA);
   mq_msg_append_mem(msg, dest_path, strlen(dest_path)+1, MQF_MSG_KEEP_DATA);
   if (id == NULL) {
@@ -482,7 +498,7 @@ log_printf(5, "START src_fname=%s\n", src_path);
   //** Form the message
   msg = mq_make_exec_core_msg(osrc->remote_host, 1);
   mq_msg_append_mem(msg, OSR_HARDLINK_OBJECT_KEY, OSR_HARDLINK_OBJECT_SIZE, MQF_MSG_KEEP_DATA);
-  mq_msg_append_mem(msg, creds, sizeof(creds), MQF_MSG_KEEP_DATA);
+  osrc_add_creds(os, creds, msg);
   mq_msg_append_mem(msg, src_path, strlen(src_path)+1, MQF_MSG_KEEP_DATA);
   mq_msg_append_mem(msg, dest_path, strlen(dest_path)+1, MQF_MSG_KEEP_DATA);
   if (id == NULL) {
@@ -516,7 +532,7 @@ log_printf(5, "START src_fname=%s\n", src_path);
   //** Form the message
   msg = mq_make_exec_core_msg(osrc->remote_host, 1);
   mq_msg_append_mem(msg, OSR_MOVE_OBJECT_KEY, OSR_MOVE_OBJECT_SIZE, MQF_MSG_KEEP_DATA);
-  mq_msg_append_mem(msg, creds, sizeof(creds), MQF_MSG_KEEP_DATA);
+  osrc_add_creds(os, creds, msg);
   mq_msg_append_mem(msg, src_path, strlen(src_path)+1, MQF_MSG_KEEP_DATA);
   mq_msg_append_mem(msg, dest_path, strlen(dest_path)+1, MQF_MSG_KEEP_DATA);
   mq_msg_append_mem(msg, NULL, 0, MQF_MSG_KEEP_DATA);
@@ -549,7 +565,7 @@ log_printf(5, "START\n");
   //** Form the message
   msg = mq_make_exec_core_msg(osrc->remote_host, 1);
   mq_msg_append_mem(msg, OSR_COPY_MULTIPLE_ATTR_KEY, OSR_COPY_MULTIPLE_ATTR_SIZE, MQF_MSG_KEEP_DATA);
-  mq_msg_append_mem(msg, creds, sizeof(creds), MQF_MSG_KEEP_DATA);
+  osrc_add_creds(os, creds, msg);
 
   //** Form the heartbeat and handle frames
   mq_msg_append_mem(msg, osrc->host_id, osrc->host_id_len, MQF_MSG_KEEP_DATA);
@@ -649,7 +665,7 @@ log_printf(5, "START\n");
   //** Form the message
   msg = mq_make_exec_core_msg(osrc->remote_host, 1);
   mq_msg_append_mem(msg, OSR_SYMLINK_MULTIPLE_ATTR_KEY, OSR_SYMLINK_MULTIPLE_ATTR_SIZE, MQF_MSG_KEEP_DATA);
-  mq_msg_append_mem(msg, creds, sizeof(creds), MQF_MSG_KEEP_DATA);
+  osrc_add_creds(os, creds, msg);
 
   //** Form the heartbeat and handle frames
   mq_msg_append_mem(msg, osrc->host_id, osrc->host_id_len, MQF_MSG_KEEP_DATA);
@@ -752,7 +768,7 @@ log_printf(5, "START\n");
   //** Form the message
   msg = mq_make_exec_core_msg(osrc->remote_host, 1);
   mq_msg_append_mem(msg, OSR_MOVE_MULTIPLE_ATTR_KEY, OSR_MOVE_MULTIPLE_ATTR_SIZE, MQF_MSG_KEEP_DATA);
-  mq_msg_append_mem(msg, creds, sizeof(creds), MQF_MSG_KEEP_DATA);
+  osrc_add_creds(os, creds, msg);
 
   //** Form the heartbeat and handle frames
   mq_msg_append_mem(msg, osrc->host_id, osrc->host_id_len, MQF_MSG_KEEP_DATA);
@@ -933,7 +949,7 @@ log_printf(5, "START\n");
   msg = mq_make_exec_core_msg(osrc->remote_host, 1);
   mq_msg_append_mem(msg, OSR_GET_MULTIPLE_ATTR_KEY, OSR_GET_MULTIPLE_ATTR_SIZE, MQF_MSG_KEEP_DATA);
   mq_msg_append_mem(msg, osrc->host_id, osrc->host_id_len, MQF_MSG_KEEP_DATA);
-  mq_msg_append_mem(msg, creds, sizeof(creds), MQF_MSG_KEEP_DATA);
+  osrc_add_creds(os, creds, msg);
 
   //** Form the heartbeat and handle frames
   mq_msg_append_mem(msg, osrc->host_id, osrc->host_id_len, MQF_MSG_KEEP_DATA);
@@ -1027,7 +1043,7 @@ log_printf(5, "START\n");
   //** Form the message
   msg = mq_make_exec_core_msg(osrc->remote_host, 1);
   mq_msg_append_mem(msg, OSR_SET_MULTIPLE_ATTR_KEY, OSR_SET_MULTIPLE_ATTR_SIZE, MQF_MSG_KEEP_DATA);
-  mq_msg_append_mem(msg, creds, sizeof(creds), MQF_MSG_KEEP_DATA);
+  osrc_add_creds(os, creds, msg);
 
   //** Form the heartbeat and handle frames
   mq_msg_append_mem(msg, osrc->host_id, osrc->host_id_len, MQF_MSG_KEEP_DATA);
@@ -1247,7 +1263,7 @@ log_printf(5, "START\n");
   msg = mq_make_exec_core_msg(osrc->remote_host, 1);
   mq_msg_append_mem(msg, OSR_ATTR_ITER_KEY, OSR_ATTR_ITER_SIZE, MQF_MSG_KEEP_DATA);
   mq_msg_append_mem(msg, osrc->host_id, strlen(osrc->host_id)+1, MQF_MSG_KEEP_DATA);
-  mq_msg_append_mem(msg, creds, sizeof(creds), MQF_MSG_KEEP_DATA);
+  osrc_add_creds(os, creds, msg);
   mq_msg_append_mem(msg, ofd->data, ofd->size, MQF_MSG_KEEP_DATA);
 
   bufsize = 4096;
@@ -1463,7 +1479,7 @@ log_printf(5, "START\n");
   msg = mq_make_exec_core_msg(osrc->remote_host, 1);
   mq_msg_append_mem(msg, OSR_OBJECT_ITER_AREGEX_KEY, OSR_OBJECT_ITER_AREGEX_SIZE, MQF_MSG_KEEP_DATA);
   mq_msg_append_mem(msg, osrc->host_id, osrc->host_id_len, MQF_MSG_KEEP_DATA);
-  mq_msg_append_mem(msg, creds, sizeof(creds), MQF_MSG_KEEP_DATA);
+  osrc_add_creds(os, creds, msg);
 
   bufsize = 4096;
   type_malloc(buffer, unsigned char, bufsize);
@@ -1557,7 +1573,7 @@ log_printf(5, "START\n");
   msg = mq_make_exec_core_msg(osrc->remote_host, 1);
   mq_msg_append_mem(msg, OSR_OBJECT_ITER_ALIST_KEY, OSR_OBJECT_ITER_ALIST_SIZE, MQF_MSG_KEEP_DATA);
   mq_msg_append_mem(msg, osrc->host_id, osrc->host_id_len, MQF_MSG_KEEP_DATA);
-  mq_msg_append_mem(msg, creds, sizeof(creds), MQF_MSG_KEEP_DATA);
+  osrc_add_creds(os, creds, msg);
 
   //** Estimate the size of the keys
   n = 0;
@@ -1711,7 +1727,7 @@ log_printf(5, "START fname=%s id=%s\n", path, id);
   //** Form the message
   msg = mq_make_exec_core_msg(osrc->remote_host, 1);
   mq_msg_append_mem(msg, OSR_OPEN_OBJECT_KEY, OSR_OPEN_OBJECT_SIZE, MQF_MSG_KEEP_DATA);
-  mq_msg_append_mem(msg, creds, sizeof(creds), MQF_MSG_KEEP_DATA);
+  osrc_add_creds(os, creds, msg);
   if (id != NULL) {
      mq_msg_append_mem(msg, id, strlen(id)+1, MQF_MSG_KEEP_DATA);
   } else {
@@ -1849,7 +1865,7 @@ log_printf(5, "START\n");
   //** Form the message
   msg = mq_make_exec_core_msg(osrc->remote_host, 1);
   mq_msg_append_mem(msg, OSR_FSCK_OBJECT_KEY, OSR_FSCK_OBJECT_SIZE, MQF_MSG_KEEP_DATA);
-  mq_msg_append_mem(msg, creds, sizeof(creds), MQF_MSG_KEEP_DATA);
+  osrc_add_creds(os, creds, msg);
   mq_msg_append_mem(msg, fname, strlen(fname), MQF_MSG_KEEP_DATA);
 
   n = zigzag_encode(ftype, buf);
@@ -1985,7 +2001,7 @@ log_printf(5, "START\n");
   msg = mq_make_exec_core_msg(osrc->remote_host, 1);
   mq_msg_append_mem(msg, OSR_FSCK_ITER_KEY, OSR_FSCK_ITER_SIZE, MQF_MSG_KEEP_DATA);
   mq_msg_append_mem(msg, osrc->host_id, strlen(osrc->host_id)+1, MQF_MSG_KEEP_DATA);
-  mq_msg_append_mem(msg, creds, sizeof(creds), MQF_MSG_KEEP_DATA);
+  osrc_add_creds(os, creds, msg);
   mq_msg_append_mem(msg, path, strlen(path), MQF_MSG_KEEP_DATA);
 
   n = zigzag_encode(mode, buf);
@@ -2034,6 +2050,16 @@ void osrc_destroy_fsck_iter(object_service_fn_t *os, os_fsck_iter_t *oit)
 creds_t *osrc_cred_init(object_service_fn_t *os, int type, void **args)
 {
   osrc_priv_t *osrc = (osrc_priv_t *)os->priv;
+  creds_t *creds;
+
+  if (osrc->os_temp == NULL) {
+     creds = authn_cred_init(osrc->authn, type, args);
+
+     //** Right now this is filled with dummy routines until we get an official authn/authz implementation
+     an_cred_set_id(creds, args[1]);
+
+     return(creds);
+  }
 
   return(os_cred_init(osrc->os_temp, type, args));
 }
@@ -2045,6 +2071,11 @@ creds_t *osrc_cred_init(object_service_fn_t *os, int type, void **args)
 void osrc_cred_destroy(object_service_fn_t *os, creds_t *creds)
 {
   osrc_priv_t *osrc = (osrc_priv_t *)os->priv;
+
+  if (osrc->os_temp == NULL) {
+     an_cred_destroy(creds);
+     return;
+  }
 
   return(os_cred_destroy(osrc->os_temp, creds));
 }
@@ -2089,7 +2120,7 @@ void *osrc_heartbeat_thread(apr_thread_t *th, void *data)
 
      //** Sleep until time for the next heartbeat or time to exit
      apr_thread_mutex_lock(osrc->lock);
-     apr_thread_cond_timedwait(osrc->cond, osrc->lock, timeout);
+     if (osrc->shutdown == 0) apr_thread_cond_timedwait(osrc->cond, osrc->lock, timeout);
      n = osrc->shutdown;
      apr_thread_mutex_unlock(osrc->lock);
 
@@ -2125,7 +2156,7 @@ void osrc_destroy(object_service_fn_t *os)
   }
 
 //  osaz_destroy(osrc->osaz);
-//  authn_destroy(osrc->authn);
+  if (osrc->authn != NULL) authn_destroy(osrc->authn);
 
 //  apr_pool_destroy(osrc->mpool);
 
@@ -2145,8 +2176,9 @@ object_service_fn_t *object_service_remote_client_create(service_manager_t *ess,
   object_service_fn_t *os;
   osrc_priv_t *osrc;
   unsigned int n;
-  char *str;
+  char *str, *asection, *atype;
   char hostname[1024], buffer[1024];
+  authn_create_t *authn_create;
 
 log_printf(0, "START\n");
   if (section == NULL) section = "os_remote_client";
@@ -2162,6 +2194,12 @@ log_printf(0, "START\n");
      assert(osrc->os_remote != NULL);
      osrc->os_temp = ((osrs_priv_t *)(osrc->os_remote->priv))->os_child;
      free(str);
+  } else {
+     asection = inip_get_string(fd, section, "authn", NULL);
+     atype = (asection == NULL) ? strdup(AUTHN_TYPE_FAKE) : inip_get_string(fd, asection, "type", AUTHN_TYPE_FAKE);
+     authn_create = lookup_service(ess, AUTHN_AVAILABLE, atype);
+     osrc->authn = (*authn_create)(ess, fd, asection);
+     free(atype); free(asection);
   }
 
   osrc->timeout = inip_get_integer(fd, section, "timeout", 60);
