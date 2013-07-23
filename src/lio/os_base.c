@@ -45,9 +45,11 @@ http://www.accre.vanderbilt.edu
 #include "string_token.h"
 #include "log.h"
 #include "varint.h"
+#include "atomic_counter.h"
 
 apr_thread_mutex_t *_path_parse_lock = NULL;
 apr_pool_t *_path_parse_pool = NULL;
+atomic_int_t _path_parse_counter = 0;
 
 //***********************************************************************
 // os_glob2regex - Converts a string in shell glob notation to regex
@@ -290,8 +292,15 @@ void os_path_split(char *path, char **dir, char **file)
   ptr = strdup(path);
 
   if (_path_parse_lock == NULL) {
-     apr_pool_create(&_path_parse_pool, NULL);
-     apr_thread_mutex_create(&_path_parse_lock, APR_THREAD_MUTEX_DEFAULT, _path_parse_pool);
+     if (atomic_inc(_path_parse_counter) == 0) {   //** Only init if needed
+        apr_pool_create(&_path_parse_pool, NULL);
+        apr_thread_mutex_create(&_path_parse_lock, APR_THREAD_MUTEX_DEFAULT, _path_parse_pool);
+        atomic_set(_path_parse_counter, 1000000);
+     } else {
+        while (atomic_get(_path_parse_counter) != 1000000) {
+           usleep(100);
+        }
+     }
   }
 
   apr_thread_mutex_lock(_path_parse_lock);
