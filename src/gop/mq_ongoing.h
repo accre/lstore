@@ -41,6 +41,9 @@ http://www.accre.vanderbilt.edu
 extern "C" {
 #endif
 
+#define ONGOING_KEY            "ongoing"
+#define ONGOING_SIZE           7
+
 typedef op_generic_t *(mq_ongoing_fail_t)(void *arg, void *handle);
 
 typedef struct {
@@ -73,6 +76,9 @@ typedef struct {
   int shutdown;
 } mq_ongoing_t;
 
+void mq_ongoing_host_inc(mq_context_t *mqc, char *remote_host, char *id, int id_len);
+void mq_ongoing_host_dec(char *remote_host, char *id, int id_len);
+void ongoing_heartbeat_shutdown();
 void mq_ongoing_cb(void *arg, mq_task_t *task);
 mq_ongoing_object_t *mq_ongoing_add(mq_ongoing_t *mqon, char *id, int id_len, void *handle, mq_ongoing_fail_t *on_fail, void *on_fail_arg);
 void *mq_ongoing_remove(mq_ongoing_t *mqon, char *id, int id_len, intptr_t key);

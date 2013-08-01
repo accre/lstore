@@ -103,6 +103,9 @@ typedef struct {
   int sent_data;
   int unsent_data;
   int shutdown;
+  int transfer_packets;  //** Number of packets exchanged
+  int msid;              //** Stream ID
+  int dead_connection;   //** Connections is hosed so don;t even try sending anything
 } mq_stream_t;
 
 void mqs_server_more_cb(void *arg, mq_task_t *task);

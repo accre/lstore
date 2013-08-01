@@ -36,11 +36,22 @@ http://www.accre.vanderbilt.edu
 #include "mq_ongoing.h"
 #include "mq_helpers.h"
 #include "random.h"
+#include "string_token.h"
 #include <sys/eventfd.h>
 
 #define MQS_TEST_KEY  "mqs_test"
 #define MQS_TEST_SIZE 8
 
+typedef struct {
+ int launch_flusher;
+ int delay;
+ int client_delay;
+ int max_packet;
+ int send_bytes;
+ int timeout;
+ int shouldbe;
+ int gid;
+} test_gop_t;
 
 apr_thread_mutex_t *lock = NULL;
 apr_thread_cond_t  *cond = NULL;
@@ -51,7 +62,12 @@ mq_ongoing_t *server_ongoing = NULL;
 
 char *test_data = NULL;
 int test_size = 1024*1024;
-int total_bytes_to_transfer = 10*1024*1024;
+int packet_min = 1024;
+int packet_max = 1024*1024;
+int send_min = 1024;
+int send_max = 10*1024*1024;
+int nparallel = 100;
+int ntotal = 1000;
 int do_compress = MQS_PACK_RAW;
 int timeout = 10;
 int stream_max_size = 4096;
@@ -78,10 +94,15 @@ op_status_t client_read_stream(void *task_arg, int tid)
   mq_stream_t *mqs;
   op_status_t status;
   int err, nread, nleft, offset, nbytes;
+  int client_delay;
   char *buffer;
+  test_gop_t *op;
 
-log_printf(5, "START\n");
+  op = gop_get_private(task->gop);
 
+  log_printf(0, "START: gid=%d test_gop(f=%d, cd=%d sd=%d, mp=%d, sb=%d, to=%d) = %d\n", op->gid, op->launch_flusher, op->client_delay, op->delay, op->max_packet, op->send_bytes, op->timeout, op->shouldbe);
+
+  client_delay = op->client_delay;
   type_malloc(buffer, char, test_size);
 
   status = op_success_status;
@@ -91,8 +112,10 @@ log_printf(5, "START\n");
 
   mqs = mq_stream_read_create(mqc, host_id, host_id_len, mq_msg_first(task->response), host);
 
+  log_printf(0, "gid=%d msid=%d\n", op->gid, mqs->msid);
+
   nread = 0;
-  nleft = total_bytes_to_transfer;
+  nleft = op->send_bytes;
   while (nleft > 0) {
 offset=-1;
      err = mq_stream_read(mqs, &offset, sizeof(int));
@@ -135,13 +158,23 @@ offset=-1;
      }
      nread += nbytes;
      nleft -= nbytes;
+
+     if ((nleft > 0) && (client_delay > 0)) {
+        log_printf(0, "gid=%d msid=%d sleep(%d)\n", op->gid, mqs->msid, client_delay);
+        sleep(client_delay);
+        log_printf(0, "gid=%d msid=%d Awake!\n", op->gid, mqs->msid);
+        client_delay = 0;
+     }
+
+     log_printf(2, "nread=%d nleft=%d\n", nread, nleft);
   }
 
 fail:
+  err = mqs->msid;
   mq_stream_destroy(mqs);
   free(buffer);
 
-log_printf(5, "END status=%d %d\n", err, status.op_status, status.error_code);
+log_printf(5, "END msid=%d status=%d %d\n", err, status.op_status, status.error_code);
 
   return(status);
 }
@@ -157,15 +190,18 @@ mq_context_t *client_make_context()
                       "  min_conn=1\n"
                       "  max_conn=4\n"
                       "  min_threads=2\n"
-                      "  max_threads=10\n"
+                      "  max_threads=%d\n"
                       "  backlog_trigger=1000\n"
                       "  heartbeat_dt=1\n"
                       "  heartbeat_failure=10\n"
                       "  min_ops_per_sec=100\n";
+
+  char buffer[1024];
   inip_file_t *ifd;
   mq_context_t *mqc;
 
-  ifd = inip_read_text(text_params);
+  snprintf(buffer, sizeof(buffer), text_params, 20*nparallel);
+  ifd = inip_read_text(buffer);
   mqc = mq_create_context(ifd, "mq_context");
   assert(mqc != NULL);
   inip_destroy(ifd);
@@ -173,49 +209,108 @@ mq_context_t *client_make_context()
   return(mqc);
 }
 
-
 //***************************************************************************
-// client_test - Performs a stream test
+// test_gop - Generates a MQS test GOP for execution
 //***************************************************************************
 
-int client_test(mq_context_t *mqc, int flusher, int delay, int to)
+op_generic_t *test_gop(mq_context_t *mqc, int flusher, int client_delay, int delay, int max_packet, int send_bytes, int to)
 {
-  int got, shouldbe, n;
   mq_msg_t *msg;
   op_generic_t *gop;
+  test_gop_t *op;
 
   log_printf(0, "START\n");
+
+  //** Fill in the structure
+  type_malloc_clear(op, test_gop_t, 1);
+  op->launch_flusher = flusher;
+  op->delay = delay;
+  op->client_delay = client_delay;
+  op->max_packet = max_packet;
+  op->send_bytes = send_bytes;
+  op->timeout = to;
+
+  op->shouldbe = OP_STATE_SUCCESS;
+  if (flusher == 0) {
+     if (delay > to) op->shouldbe = OP_STATE_FAILURE;
+  }
 
    //** Make the gop
   msg = mq_make_exec_core_msg(host, 1);
   mq_msg_append_mem(msg, MQS_TEST_KEY, MQS_TEST_SIZE, MQF_MSG_KEEP_DATA);
   mq_msg_append_mem(msg, host_id, host_id_len, MQF_MSG_KEEP_DATA);
+  mq_msg_append_mem(msg, op, sizeof(test_gop_t), MQF_MSG_KEEP_DATA);
   mq_msg_append_mem(msg, NULL, 0, MQF_MSG_KEEP_DATA);
   gop = new_mq_op(mqc, msg, client_read_stream, mqc, NULL, to);
+  gop_set_private(gop, op);
+  op->gid = gop_id(gop);
 
-  //** Change the global settings
-  launch_flusher = flusher;
-  delay_response = delay;
-  timeout = to;
+  log_printf(0, "CREATE: gid=%d test_gop(f=%d, cd=%d, sd=%d, mp=%d, sb=%d, to=%d) = %d\n", gop_id(gop), op->launch_flusher, op->client_delay, op->delay, op->max_packet, op->send_bytes, op->timeout, op->shouldbe);
 
-  //** and execute it
-  got = gop_waitall(gop);
+  return(gop);
+}
 
-  shouldbe = OP_STATE_SUCCESS;
-  if (flusher == 0) {
-     if (delay > to) shouldbe = OP_STATE_FAILURE;
+//***************************************************************************
+// new_bulk_task - Generates a new bulk task
+//***************************************************************************
+
+op_generic_t *new_bulk_task(mq_context_t *mqc)
+{
+  int transfer_bytes, packet_bytes, delay, client_delay, flusher, to;
+  int to_min, to_max;
+
+  to_min = 10; to_max = 20;
+
+  transfer_bytes = random_int(send_min, send_max);
+  packet_bytes = random_int(packet_min, packet_max);
+  to = random_int(to_min, to_max);
+  delay = random_int(1, 10);
+  if (delay == 1) {
+      delay = random_int(to_min, to_max);
+      if (delay == to) delay += 2;
+  } else {
+      delay = 0;
   }
-  if (got != shouldbe) {
+  flusher = random_int(1, 3);
+  if (flusher != 1) {
+      flusher = 0;
+  }
+
+  client_delay = random_int(1, 10);
+  if (client_delay == 1) {
+      client_delay = random_int(to_min, to_max);
+      if (client_delay == to) client_delay -= 2;
+  } else {
+      client_delay = 0;
+  }
+
+  return(test_gop(mqc, flusher, client_delay, delay, packet_bytes, transfer_bytes, to));
+}
+
+//***************************************************************************
+// client_consume_result - Evaluates the result and frees the GOP
+//   On success 0 is returned.  Otherwise 1 is returned indicating an error
+//***************************************************************************
+
+int client_consume_result(op_generic_t *gop)
+{
+  int n;
+  test_gop_t *op;
+  op_status_t status;
+
+  op = gop_get_private(gop);
+  status = gop_get_status(gop);
+
+  if (status.op_status != op->shouldbe) {
      n = 1;
-     log_printf(0, "ERROR with stream test! got=%d shouldbe=%d\n", got, shouldbe);
+     log_printf(0, "ERROR with stream test! gid=%d test_gop(f=%d, cd=%d sd=%d, mp=%d, sb=%d, to=%d) = %d got=%d\n", gop_id(gop), op->launch_flusher, op->client_delay, op->delay, op->max_packet, op->send_bytes, op->timeout, op->shouldbe, status.op_status);
   } else {
      n = 0;
-     log_printf(0, "SUCCESS with stream test! got=%d shouldbe=%d\n", got, shouldbe);
+     log_printf(0, "SUCCESS with stream test! gid=%d test_gop(f=%d, cd=%d sd=%d, mp=%d, sb=%d, to=%d) = %d got=%d\n", gop_id(gop), op->launch_flusher, op->client_delay, op->delay, op->max_packet, op->send_bytes, op->timeout, op->shouldbe, status.op_status);
   }
 
-  log_printf(0, "END\n");
-
   gop_free(gop, OP_DESTROY);
+  free(op);
 
   return(n);
 }
@@ -226,8 +321,11 @@ int client_test(mq_context_t *mqc, int flusher, int delay, int to)
 
 void *client_test_thread(apr_thread_t *th, void *arg)
 {
-  int n;
+  int n, i;
+  int single_max, single_send;
   mq_context_t *mqc;
+  op_generic_t *gop;
+  opque_t *q = NULL;
 
   log_printf(0, "START\n");
 
@@ -235,19 +333,58 @@ void *client_test_thread(apr_thread_t *th, void *arg)
   //** Make the portal
   mqc = client_make_context();
 
+  log_printf(0, "START basic stream tests\n");
   n = 0;
-  n += client_test(mqc, 0, 0, 10);  //** Normal valid usage pattern
-  n += client_test(mqc, 0, 10, 5);  //** Response will come after the timeout
-  n += client_test(mqc, 1, 15, 8);  //** Launch the flusher but delay sending data forcing the heartbeat to handle it
+  single_max = 8192;
+  single_send = 1024 * 1024;
+
+//  gop = test_gop(mqc, 0, 0, 0, single_max, single_send, 10); gop_waitall(gop); n += client_consume_result(gop);  //** Normal valid usage pattern
+//  gop = test_gop(mqc, 1, 0, 0, single_max, single_send, 10); gop_waitall(gop); n += client_consume_result(gop);  //** Launch the flusher but no delay sending data
+//  gop = test_gop(mqc, 0, 0, 10, single_max, single_send, 5); gop_waitall(gop); n += client_consume_result(gop);  //** Response will come after the timeout
+//  gop = test_gop(mqc, 1, 0, 15, single_max, single_send, 8); gop_waitall(gop); n += client_consume_result(gop);  //** Launch the flusher but delay sending data forcing the heartbeat to handle it
+//  gop = test_gop(mqc, 0, 30, 0, single_max, single_send, 5); gop_waitall(gop); n += client_consume_result(gop);  //** Vvalid use pattern but the client pauses after reading
 
   if (n != 0) {
-     log_printf(0, "ERROR with %d tests\n", n);
+     log_printf(0, "END:  ERROR with %d basic tests\n", n);
   } else {
-     log_printf(0, "SUCCESS! No problems with any stream test\n");
+     log_printf(0, "END:  SUCCESS! No problems with any basic stream test\n");
   }
+
+//goto skip;
+
+  log_printf(0, "START bulk stream tests\n");
+  n = 0;
+
+  q = new_opque();
+  opque_start_execution(q);
+  for (i=0; i<ntotal; i++) {
+      gop = new_bulk_task(mqc);
+      opque_add(q, gop);
+      if (i>nparallel) {
+         gop = opque_waitany(q);
+         n += client_consume_result(gop);
+      }
+  }
+
+  log_printf(0, "FINISHED job submission!\n");
+
+  while ((gop = opque_waitany(q)) != NULL) {
+     n += client_consume_result(gop);
+  }
+
+  if (n != 0) {
+     log_printf(0, "END:  ERROR with %d bulk tests\n", n);
+  } else {
+     log_printf(0, "END:  SUCCESS! No problems with any bulk stream test\n");
+  }
+
+skip:
+  ongoing_heartbeat_shutdown();
 
   //** Destroy the portal
   mq_destroy_context(mqc);
+
+  if (q != NULL) opque_free(q, OP_DESTROY);
 
   log_printf(0, "END\n");
 
@@ -261,10 +398,10 @@ void *client_test_thread(apr_thread_t *th, void *arg)
 void cb_write_stream(void *arg, mq_task_t *task)
 {
   int nbytes, offset, nsent, nleft, err;
-  mq_frame_t *fid, *hid;
+  mq_frame_t *fid, *hid, *fop;
   mq_msg_t *msg;
   mq_stream_t *mqs;
-  log_printf(3, "START stream_max=%d total_bytes=%d launch_flusher=%d delay_response=%d timeout=%d\n", stream_max_size, total_bytes_to_transfer, launch_flusher, delay_response, timeout); flush_log();
+  test_gop_t *op;
 
   apr_thread_mutex_lock(lock);
   in_process++;
@@ -278,16 +415,24 @@ void cb_write_stream(void *arg, mq_task_t *task)
   mq_frame_destroy(mq_msg_pop(msg));  //** Drop the application command frame
   hid = mq_msg_pop(msg);  //** This is the Host ID for ongoing tracking
 
-  //** Create the stream so we can get the heartbeating while we work
-  mqs = mq_stream_write_create(task->ctx, server_portal, server_ongoing, do_compress, stream_max_size, timeout, msg, fid, hid, launch_flusher);
+  fop = mq_msg_pop(msg);  //** Contains the op structure
+  mq_get_frame(fop, (void **)&op, &nbytes);
+  assert(nbytes == sizeof(test_gop_t));
 
-  if (delay_response > 0) {
-     log_printf(5, "Sleeping for %d sec\n", delay_response);
-     sleep(delay_response);
-     log_printf(5, "Woken up from sleep\n");
+  log_printf(0, "START: gid=%d test_gop(f=%d, cd=%d, sd=%d, mp=%d, sb=%d, to=%d) = %d\n", op->gid, op->launch_flusher, op->client_delay, op->delay, op->max_packet, op->send_bytes, op->timeout, op->shouldbe);
+
+  //** Create the stream so we can get the heartbeating while we work
+  mqs = mq_stream_write_create(task->ctx, server_portal, server_ongoing, do_compress, op->max_packet, op->timeout, msg, fid, hid, op->launch_flusher);
+
+  log_printf(0, "gid=%d msid=%d\n", op->gid, mqs->msid);
+
+  if (op->delay > 0) {
+     log_printf(5, "Sleeping for %d sec gid=%d\n", op->delay, op->gid);
+     sleep(op->delay);
+     log_printf(5, "Woken up from sleep gid=%d\n", op->gid);
   }
 
-  nleft = total_bytes_to_transfer;
+  nleft = op->send_bytes;
   nsent = 0;
   do {
      nbytes = random_int(1, test_size);
@@ -297,19 +442,19 @@ void cb_write_stream(void *arg, mq_task_t *task)
      log_printf(0, "nsent=%d  offset=%d nbytes=%d\n", nsent, offset, nbytes);
      err = mq_stream_write(mqs, &offset, sizeof(int));
      if (err != 0) {
-        log_printf(0, "ERROR writing offset!  nsent=%d\n", nsent);
+        log_printf(0, "ERROR writing offset!  nsent=%d gid=%d\n", nsent, op->gid);
         goto fail;
      }
 
      err = mq_stream_write(mqs, &nbytes, sizeof(int));
      if (err != 0) {
-        log_printf(0, "ERROR writing nbytes!  nsent=%d\n", nsent);
+        log_printf(0, "ERROR writing nbytes!  nsent=%d gid=%d\n", nsent, op->gid);
         goto fail;
      }
 
      err = mq_stream_write(mqs, &(test_data[offset]), nbytes);
      if (err != 0) {
-        log_printf(0, "ERROR writing test_data!  nsent=%d\n", nsent);
+        log_printf(0, "ERROR writing test_data!  nsent=%d gid=%d\n", nsent, op->gid);
         goto fail;
      }
 
@@ -318,9 +463,11 @@ void cb_write_stream(void *arg, mq_task_t *task)
   } while (nleft > 0);
 
 fail:
+  err = op->gid;
+  mq_frame_destroy(fop);
   mq_stream_destroy(mqs);
 
-  log_printf(3, "END\n"); flush_log();
+  log_printf(0, "END gid=%d\n", err); flush_log();
 
   apr_thread_mutex_lock(lock);
   in_process--;
@@ -339,15 +486,17 @@ mq_context_t *server_make_context()
                       "  min_conn=1\n"
                       "  max_conn=2\n"
                       "  min_threads=2\n"
-                      "  max_threads=100\n"
-                      "  backlog_trigger=1000\n"
+                      "  max_threads=%d\n"
+                      "  backlog_trigger=10000\n"
                       "  heartbeat_dt=1\n"
                       "  heartbeat_failure=5\n"
                       "  min_ops_per_sec=100\n";
+  char buffer[1024];
   inip_file_t *ifd;
   mq_context_t *mqc;
 
-  ifd = inip_read_text(text_params);
+  snprintf(buffer, sizeof(buffer), text_params, 20*nparallel);
+  ifd = inip_read_text(buffer);
   mqc = mq_create_context(ifd, "mq_context");
   assert(mqc != NULL);
   inip_destroy(ifd);
@@ -381,6 +530,7 @@ void *server_test_thread(apr_thread_t *th, void *arg)
   table = mq_portal_command_table(server_portal);
   mq_command_add(table, MQS_TEST_KEY, MQS_TEST_SIZE, mqc, cb_write_stream);
   mq_command_add(table, MQS_MORE_DATA_KEY, MQS_MORE_DATA_SIZE, server_ongoing, mqs_server_more_cb);
+  mq_command_add(table, ONGOING_KEY, ONGOING_SIZE, server_ongoing, mq_ongoing_cb);
 
   mq_portal_install(mqc, server_portal);
 
@@ -388,7 +538,7 @@ void *server_test_thread(apr_thread_t *th, void *arg)
   read(control_efd, &n, sizeof(n));
 
   apr_thread_mutex_lock(lock);
-  while (in_process == 1) {
+  while (in_process != 0) {
      apr_thread_cond_wait(cond, lock);
   }
   apr_thread_mutex_unlock(lock);
@@ -414,20 +564,29 @@ int main(int argc, char **argv)
   apr_thread_t *server_thread, *client_thread;
   apr_status_t dummy;
   int i, start_option, do_random;
+  int64_t lsize = 0;
+  char buf1[256], buf2[256];
+  char *logfile = NULL;
   uint64_t n;
 
   if (argc < 2) {
-     printf("mqs_test [-d log_level] [-t kbytes] [-p kbytes] [-z] [-0] \n");
+     printf("mqs_test [-d log_level] [-log log_file] [-log_size size] [-t min max] [-p min max] [-np nparalle] [-nt ntotal] [-z] [-0] \n");
      printf("\n");
-     printf("-t kbytes     Total number of bytes to transfer in KB. Defaults is %d KB\n", total_bytes_to_transfer/1024);
-     printf("-p kbytes     Max size of a stream packet in KB. Defaults is %d KB\n", stream_max_size/1024);
-     printf("-z            Enable data compression\n");
-     printf("-0            Use test data filled with zeros.  Defaults to using random data.\n");
+     printf("-d log_level\n");
+     printf("-log log_file  Log file for storing output.  Defaults to stdout\n");
+     printf("-log_size size Log file size.  Can use unit abbreviations.\n");
+     printf("-t min max     Range of total bytes to transfer for bulk tests. Defaults is %s to %s\n", pretty_print_int_with_scale(send_min, buf1), pretty_print_int_with_scale(send_max, buf2));
+     printf("-p min max     Range of max stream packet sizes for bulk tests. Defaults is %s to %s\n", pretty_print_int_with_scale(packet_min, buf1), pretty_print_int_with_scale(packet_max, buf2));
+     printf("-np nparallel  Number of parallel streams to execute.  Default is %d\n", nparallel);
+     printf("-nt ntotal     Total number of bulk operations to perform.  Default is %d\n", ntotal);
+     printf("-z             Enable data compression\n");
+     printf("-0             Use test data filled with zeros.  Defaults to using random data.\n");
      printf("\n");
      return(0);
   }
 
   i = 1;
+  do_random = 1;
   do {
      start_option = i;
 
@@ -440,11 +599,31 @@ int main(int argc, char **argv)
         return(0);
      } else if (strcmp(argv[i], "-t") == 0) { //** Change number of total bytes transferred
         i++;
-        total_bytes_to_transfer = atol(argv[i]) * 1024;
+        send_min = string_get_integer(argv[i]);
+        i++;
+        send_max = string_get_integer(argv[i]);
         i++;
      } else if (strcmp(argv[i], "-p") == 0) { //** Max number of bytes to transfer / packet
         i++;
-        stream_max_size = atol(argv[i]) * 1024;
+        packet_min = string_get_integer(argv[i]);
+        i++;
+        packet_max = string_get_integer(argv[i]);
+        i++;
+     } else if (strcmp(argv[i], "-np") == 0) { //** Parallel transfers
+        i++;
+        nparallel = string_get_integer(argv[i]);
+        i++;
+     } else if (strcmp(argv[i], "-nt") == 0) { //** Total number of transfers
+        i++;
+        ntotal = string_get_integer(argv[i]);
+        i++;
+     } else if (strcmp(argv[i], "-log") == 0) { //** Log file
+        i++;
+        logfile = argv[i];
+        i++;
+     } else if (strcmp(argv[i], "-log_size") == 0) { //** Log file size
+        i++;
+        lsize = string_get_integer(argv[i]);
         i++;
      } else if (strcmp(argv[i], "-z") == 0) { //** Enable compression
         i++;
@@ -457,12 +636,17 @@ int main(int argc, char **argv)
 
 printf("log_level=%d\n", _log_level);
 
+printf("Settings packet=(%d,%d) send=(%d,%d) np=%d nt=%d\n", packet_min, packet_max, send_min, send_max, nparallel, ntotal);
+
 //log_printf(0, "before wrapper opque_count=%d\n", _opque_counter);
   apr_wrapper_start();
 log_printf(0, "after wrapper opque_count=%d\n", _opque_counter);
   init_opque_system();
 log_printf(0, "after init opque_count=%d\n", _opque_counter);
   init_random();
+
+  if (logfile != NULL) open_log(logfile);
+  if (lsize != 0) set_log_maxsize(lsize);
 
   //** Make the test_data to pluck info from
   type_malloc_clear(test_data, char, test_size);

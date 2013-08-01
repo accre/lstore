@@ -436,7 +436,7 @@ log_printf(5, "id_size=%d\n", size);
   if (tn->tracking != NULL) mqc_heartbeat_dec(c, tn->tracking);
 
   //** Execute the task in the thread pool
-log_printf(5, "Submitting repsonse for exec\n"); flush_log();
+log_printf(5, "Submitting repsonse for exec gid=%d\n", gop_id(tn->task->gop)); flush_log();
 
   tn->task->response = msg;
   thread_pool_direct(c->pc->tp, thread_pool_exec_fn, tn->task->gop);
@@ -801,6 +801,7 @@ log_printf(5, "hb->key=%s\n", entry->key);
         if (entry == c->hb_conn) conn_dead = 1;
 klen = apr_time_sec(dt);
 log_printf(3, "hb->key=%s FAIL dt=%d\n", entry->key, klen);
+log_printf(1, "before waiting size=%d\n", apr_hash_count(c->waiting));
         //** NOTE: using internal non-threadsafe iterator.  Should be ok in this case
         for (hit = apr_hash_first(NULL, c->waiting); hit != NULL; hit = apr_hash_next(hit)) {
             apr_hash_this(hit, (const void **)&key, &klen, (void **)&tn);
@@ -820,7 +821,9 @@ assert(tn->task->gop);
             }
         }
 
-        //** Remove the netry and clean up
+log_printf(1, "after waiting size=%d\n", apr_hash_count(c->waiting));
+
+        //** Remove the entry and clean up
         apr_hash_set(c->heartbeat_dest, entry->key, entry->key_size, NULL);
         apr_hash_set(c->heartbeat_lut, &(entry->lut_id), sizeof(uint64_t), NULL);
         free(entry->key);
@@ -848,6 +851,7 @@ log_printf(5, "hb->key=%s CHECK dt=%d\n", entry->key, klen);
   now = apr_time_now();
   //** NOTE: using internal non-threadsafe iterator.  Should be ok in this case
   hi = apr_hash_first(NULL, c->waiting);
+log_printf(1, "before waiting size=%d\n", apr_hash_count(c->waiting));
   while (hi != NULL) {
      apr_hash_this(hi, (const void **)&key, &klen, (void **)&tn);
 
@@ -861,7 +865,7 @@ log_printf(5, "hb->key=%s CHECK dt=%d\n", entry->key, klen);
 
         //** Submit the fail task
 log_printf(1, "Failed task uuid=%s hash_count=%u sid=%s\n", c->mq_uuid, apr_hash_count(c->waiting), mq_id2str(key, klen, b64, sizeof(b64))); flush_log();
-log_printf(1, "Failed task tn->task=%p tn->task->gop=%p\n", tn->task, tn->task->gop); flush_log();
+log_printf(1, "Failed task tn->task=%p tn->task->gop=%p gid=%d\n", tn->task, tn->task->gop, gop_id(tn->task->gop)); flush_log();
 assert(tn->task);
 assert(tn->task->gop);
         thread_pool_direct(c->pc->tp, mqtp_failure, tn->task);
@@ -874,6 +878,8 @@ assert(tn->task->gop);
 
      hi = apr_hash_next(hi);
   }
+
+log_printf(1, "after waiting size=%d\n", apr_hash_count(c->waiting));
 
   if (do_conn_hb == 1) {    //** Check if we HB the main uplink
      if ( ((pending_count == 0) && (npoll > 1)) ||
@@ -1092,6 +1098,7 @@ int mqc_process_task(mq_conn_t *c, int *npoll, int *nproc)
      mq_task_complete(c, task, OP_STATE_SUCCESS);
   } else {                 //** Track the task
 log_printf(1, "TRACKING id_size=%d sid=%s\n", size, mq_id2str(data, size, b64, sizeof(b64)));
+if (task->gop != NULL) log_printf(1, "TRACKING gid=%d\n", gop_id(task->gop));
      //** Insert it in the monitoring table
      type_malloc_clear(tn, mq_task_monitor_t, 1);
      tn->task = task;
