@@ -39,6 +39,7 @@ http://www.accre.vanderbilt.edu
 #include "apr_wrapper.h"
 #include "log.h"
 #include "string_token.h"
+#include "mq_ongoing.h"
 
 typedef struct {
   int count;
@@ -716,7 +717,11 @@ void lio_destroy_nl(lio_config_t *lio)
   }
   free(lio->tpc_cpu_section);
 
-  if (_lc_object_destroy(lio->mq_section) <= 0) {
+  if (_lc_object_destroy(lio->mq_section) <= 0) {  //** Destroy the MQ context
+     mq_ongoing_t *on = lookup_service(lio->ess, ESS_RUNNING, ESS_ONGOING_CLIENT);
+     if (on != NULL) {  //** And also the ongoing client
+        mq_ongoing_destroy(on);
+     }
      mq_destroy_context(lio->mqc);
   }
   free(lio->mq_section);
@@ -847,6 +852,10 @@ lio_config_t *lio_create_nl(char *fname, char *section, char *user)
      _lc_object_put(stype, lio->mqc);  //** Add it to the table
   }
 
+  //** Add the shared ongoing object
+  mq_ongoing_t *on = mq_ongoing_create(lio->mqc, NULL, 0, ONGOING_CLIENT);
+  add_service(lio->ess, ESS_RUNNING, ESS_ONGOING_CLIENT, on);
+  
   stype = inip_get_string(lio->ifd, section, "ds", DS_TYPE_IBP);
   lio->ds_section = stype;
   lio->ds = _lc_object_get(stype);

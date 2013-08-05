@@ -53,6 +53,7 @@ extern "C" {
 #define ESS_TPC_UNLIMITED  "tpc_unlimited"
 #define ESS_CACHE      "cache"
 #define ESS_MQ      "mq"
+#define ESS_ONGOING_CLIENT "ongoing_client"
 
 #define MQ_TYPE_ZMQ "mq_zmq"
 #define MQ_AVAILABLE "mq_available"

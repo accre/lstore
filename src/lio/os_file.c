@@ -157,6 +157,7 @@ typedef struct {
   creds_t *creds;
   os_regex_table_t *rpath;
   os_regex_table_t *object_regex;
+  atomic_int_t abort;
   int obj_types;
   int recurse_depth;
 } osfile_remove_regex_op_t;
@@ -173,6 +174,7 @@ typedef struct {
   char *id;
   int *v_size;
   int n_keys;
+  atomic_int_t abort;
 } osfile_regex_object_attr_op_t;
 
 typedef struct {
@@ -1737,7 +1739,7 @@ op_status_t osfile_remove_regex_fn(void *arg, int id)
   osfile_priv_t *osf = (osfile_priv_t *)op->os->priv;
   osfile_mk_mv_rm_t rm_op;
   os_object_iter_t *it;
-  int prefix_len;
+  int prefix_len, count;
   char *fname;
   op_status_t status, op_status;
 
@@ -1748,6 +1750,7 @@ op_status_t osfile_remove_regex_fn(void *arg, int id)
 
   it = osfile_create_object_iter(op->os, op->creds, op->rpath, op->object_regex, op->obj_types, NULL, op->recurse_depth, NULL, 0);
 
+  count = 0;
   while (osfile_next_object(it, &fname, &prefix_len) > 0) {
 log_printf(15, "removing fname=%s\n", fname);
      if (osaz_object_remove(osf->osaz, op->creds, fname) == 0) {
@@ -1763,6 +1766,15 @@ log_printf(15, "removing fname=%s\n", fname);
      }
 
      free(fname);
+
+     count++;  //** Check for an abort
+     if (count == 20) {
+        count = 0;
+        if (atomic_get(op->abort) != 0) {
+           status.op_status = OP_STATE_FAILURE;
+           break;
+        }
+     }
   }
 
   osfile_destroy_object_iter(it);
@@ -1796,6 +1808,31 @@ op_generic_t *osfile_remove_regex_object(object_service_fn_t *os, creds_t *creds
 }
 
 //***********************************************************************
+// osfile_abort_remove_regex_object_fn - Performs the actual open abort operation
+//***********************************************************************
+
+op_status_t osfile_abort_remove_regex_object_fn(void *arg, int id)
+{
+  osfile_remove_regex_op_t *op = (osfile_remove_regex_op_t *)arg;
+
+  atomic_set(op->abort, 1);
+
+  return(op_success_status);
+}
+
+//***********************************************************************
+//  osfile_abort_remove_regex_object - Aborts an ongoing remove operation
+//***********************************************************************
+
+op_generic_t *osfile_abort_remove_regex_object(object_service_fn_t *os, op_generic_t *gop)
+{
+  osfile_priv_t *osf = (osfile_priv_t *)os->priv;
+  thread_pool_op_t *tpop = gop_get_tp(gop);
+
+  return(new_thread_pool_op(osf->tpc, NULL, osfile_abort_remove_regex_object_fn, tpop->arg, NULL, 1));
+}
+
+//***********************************************************************
 // osfile_regex_object_set_multiple_attrs - Recursivley sets the fixed attibutes
 //***********************************************************************
 
@@ -1809,7 +1846,7 @@ op_status_t osfile_regex_object_set_multiple_attrs_fn(void *arg, int id)
   osfile_attr_op_t op_attr;
   osfile_fd_t *fd;
   osfile_open_op_t op_open;
-  int prefix_len;
+  int prefix_len, count;
 
   op_attr.os = op->os;
   op_attr.creds = op->creds;
@@ -1833,7 +1870,7 @@ op_status_t osfile_regex_object_set_multiple_attrs_fn(void *arg, int id)
   status = op_success_status;
 
   it = osfile_create_object_iter(op->os, op->creds, op->rpath, op->object_regex, op->object_types, NULL, op->recurse_depth, NULL, 0);
-
+  count = 0;
   while (osfile_next_object(it, &fname, &prefix_len) > 0) {
      if (osaz_object_access(osf->osaz, op->creds, fname, OS_MODE_WRITE_IMMEDIATE) == 0) {
         status.op_status = OP_STATE_FAILURE;
@@ -1858,6 +1895,16 @@ op_status_t osfile_regex_object_set_multiple_attrs_fn(void *arg, int id)
      }
 
      free(fname);
+
+     count++;  //** Check for an abort
+     if (count == 20) {
+        count = 0;
+        if (atomic_get(op->abort) != 0) {
+           status.op_status = OP_STATE_FAILURE;
+           break;
+        }
+     }
+
   }
 
   osfile_destroy_object_iter(it);
@@ -1893,6 +1940,31 @@ op_generic_t *osfile_regex_object_set_multiple_attrs(object_service_fn_t *os, cr
   op->object_types = object_types;
 
   return(new_thread_pool_op(osf->tpc, NULL, osfile_regex_object_set_multiple_attrs_fn, (void *)op, free, 1));
+}
+
+//***********************************************************************
+// osfile_abort_regex_object_set_multiple_attrs_fn - Performs the actual open abort operation
+//***********************************************************************
+
+op_status_t osfile_abort_regex_object_set_multiple_attrs_fn(void *arg, int id)
+{
+  osfile_regex_object_attr_op_t *op = (osfile_regex_object_attr_op_t *)arg;
+
+  atomic_set(op->abort, 1);
+
+  return(op_success_status);
+}
+
+//***********************************************************************
+//  osfile_abort_regex_object_set_multiple_attrs - Aborts an ongoing remove operation
+//***********************************************************************
+
+op_generic_t *osfile_abort_regex_object_set_multiple_attrs(object_service_fn_t *os, op_generic_t *gop)
+{
+  osfile_priv_t *osf = (osfile_priv_t *)os->priv;
+  thread_pool_op_t *tpop = gop_get_tp(gop);
+
+  return(new_thread_pool_op(osf->tpc, NULL, osfile_abort_regex_object_set_multiple_attrs_fn, tpop->arg, NULL, 1));
 }
 
 //***********************************************************************
@@ -4070,6 +4142,7 @@ object_service_fn_t *object_service_file_create(service_manager_t *ess, inip_fil
   os->create_object = osfile_create_object;
   os->remove_object = osfile_remove_object;
   os->remove_regex_object = osfile_remove_regex_object;
+  os->abort_remove_regex_object = osfile_abort_remove_regex_object;
   os->move_object = osfile_move_object;
   os->symlink_object = osfile_symlink_object;
   os->hardlink_object = osfile_hardlink_object;
@@ -4091,6 +4164,7 @@ object_service_fn_t *object_service_file_create(service_manager_t *ess, inip_fil
   os->move_attr = osfile_move_attr;
   os->move_multiple_attrs = osfile_move_multiple_attrs;
   os->regex_object_set_multiple_attrs = osfile_regex_object_set_multiple_attrs;
+  os->abort_regex_object_set_multiple_attrs = osfile_abort_regex_object_set_multiple_attrs;
   os->create_attr_iter = osfile_create_attr_iter;
   os->next_attr = osfile_next_attr;
   os->destroy_attr_iter = osfile_destroy_attr_iter;

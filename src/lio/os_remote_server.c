@@ -2509,37 +2509,34 @@ log_printf(0, "START\n");
   //** Make the server portal
   osrs->server_portal = mq_portal_create(osrs->mqc, osrs->hostname, MQ_CMODE_SERVER);
   ctable = mq_portal_command_table(osrs->server_portal);
-  mq_command_add(ctable, OSR_EXISTS_KEY, OSR_EXISTS_SIZE, os, osrs_exists_cb);
-  mq_command_add(ctable, OSR_CREATE_OBJECT_KEY, OSR_CREATE_OBJECT_SIZE, os, osrs_create_object_cb);
-  mq_command_add(ctable, OSR_REMOVE_OBJECT_KEY, OSR_REMOVE_OBJECT_SIZE, os, osrs_remove_object_cb);
-  mq_command_add(ctable, OSR_REMOVE_REGEX_OBJECT_KEY, OSR_REMOVE_REGEX_OBJECT_SIZE, os, osrs_remove_regex_object_cb);
-  mq_command_add(ctable, OSR_MOVE_OBJECT_KEY, OSR_MOVE_OBJECT_SIZE, os, osrs_move_object_cb);
-  mq_command_add(ctable, OSR_SYMLINK_OBJECT_KEY, OSR_SYMLINK_OBJECT_SIZE, os, osrs_symlink_object_cb);
-  mq_command_add(ctable, OSR_HARDLINK_OBJECT_KEY, OSR_HARDLINK_OBJECT_SIZE, os, osrs_hardlink_object_cb);
-  mq_command_add(ctable, OSR_OPEN_OBJECT_KEY, OSR_OPEN_OBJECT_SIZE, os, osrs_open_object_cb);
-  mq_command_add(ctable, OSR_CLOSE_OBJECT_KEY, OSR_CLOSE_OBJECT_SIZE, os, osrs_close_object_cb);
-  mq_command_add(ctable, OSR_ABORT_OPEN_OBJECT_KEY, OSR_ABORT_OPEN_OBJECT_SIZE, os, osrs_abort_open_object_cb);
-  mq_command_add(ctable, OSR_REGEX_SET_MULT_ATTR_KEY, OSR_REGEX_SET_MULT_ATTR_SIZE, os, osrs_regex_set_mult_attr_cb);
-  mq_command_add(ctable, OSR_GET_MULTIPLE_ATTR_KEY, OSR_GET_MULTIPLE_ATTR_SIZE, os, osrs_get_mult_attr_cb);
-  mq_command_add(ctable, OSR_SET_MULTIPLE_ATTR_KEY, OSR_SET_MULTIPLE_ATTR_SIZE, os, osrs_set_mult_attr_cb);
-  mq_command_add(ctable, OSR_COPY_MULTIPLE_ATTR_KEY, OSR_COPY_MULTIPLE_ATTR_SIZE, os, osrs_copy_mult_attr_cb);
-  mq_command_add(ctable, OSR_MOVE_MULTIPLE_ATTR_KEY, OSR_MOVE_MULTIPLE_ATTR_SIZE, os, osrs_move_mult_attr_cb);
-  mq_command_add(ctable, OSR_SYMLINK_MULTIPLE_ATTR_KEY, OSR_SYMLINK_MULTIPLE_ATTR_SIZE, os, osrs_symlink_mult_attr_cb);
-  mq_command_add(ctable, OSR_OBJECT_ITER_ALIST_KEY, OSR_OBJECT_ITER_ALIST_SIZE, os, osrs_object_iter_alist_cb);
-  mq_command_add(ctable, OSR_OBJECT_ITER_AREGEX_KEY, OSR_OBJECT_ITER_AREGEX_SIZE, os, osrs_object_iter_aregex_cb);
-  mq_command_add(ctable, OSR_ATTR_ITER_KEY, OSR_ATTR_ITER_SIZE, os, osrs_attr_iter_cb);
-  mq_command_add(ctable, OSR_FSCK_ITER_KEY, OSR_FSCK_ITER_SIZE, os, osrs_fsck_iter_cb);
-  mq_command_add(ctable, OSR_FSCK_OBJECT_KEY, OSR_FSCK_OBJECT_SIZE, os, osrs_fsck_object_cb);
+  mq_command_set(ctable, OSR_EXISTS_KEY, OSR_EXISTS_SIZE, os, osrs_exists_cb);
+  mq_command_set(ctable, OSR_CREATE_OBJECT_KEY, OSR_CREATE_OBJECT_SIZE, os, osrs_create_object_cb);
+  mq_command_set(ctable, OSR_REMOVE_OBJECT_KEY, OSR_REMOVE_OBJECT_SIZE, os, osrs_remove_object_cb);
+  mq_command_set(ctable, OSR_REMOVE_REGEX_OBJECT_KEY, OSR_REMOVE_REGEX_OBJECT_SIZE, os, osrs_remove_regex_object_cb);
+  mq_command_set(ctable, OSR_MOVE_OBJECT_KEY, OSR_MOVE_OBJECT_SIZE, os, osrs_move_object_cb);
+  mq_command_set(ctable, OSR_SYMLINK_OBJECT_KEY, OSR_SYMLINK_OBJECT_SIZE, os, osrs_symlink_object_cb);
+  mq_command_set(ctable, OSR_HARDLINK_OBJECT_KEY, OSR_HARDLINK_OBJECT_SIZE, os, osrs_hardlink_object_cb);
+  mq_command_set(ctable, OSR_OPEN_OBJECT_KEY, OSR_OPEN_OBJECT_SIZE, os, osrs_open_object_cb);
+  mq_command_set(ctable, OSR_CLOSE_OBJECT_KEY, OSR_CLOSE_OBJECT_SIZE, os, osrs_close_object_cb);
+  mq_command_set(ctable, OSR_ABORT_OPEN_OBJECT_KEY, OSR_ABORT_OPEN_OBJECT_SIZE, os, osrs_abort_open_object_cb);
+  mq_command_set(ctable, OSR_REGEX_SET_MULT_ATTR_KEY, OSR_REGEX_SET_MULT_ATTR_SIZE, os, osrs_regex_set_mult_attr_cb);
+  mq_command_set(ctable, OSR_GET_MULTIPLE_ATTR_KEY, OSR_GET_MULTIPLE_ATTR_SIZE, os, osrs_get_mult_attr_cb);
+  mq_command_set(ctable, OSR_SET_MULTIPLE_ATTR_KEY, OSR_SET_MULTIPLE_ATTR_SIZE, os, osrs_set_mult_attr_cb);
+  mq_command_set(ctable, OSR_COPY_MULTIPLE_ATTR_KEY, OSR_COPY_MULTIPLE_ATTR_SIZE, os, osrs_copy_mult_attr_cb);
+  mq_command_set(ctable, OSR_MOVE_MULTIPLE_ATTR_KEY, OSR_MOVE_MULTIPLE_ATTR_SIZE, os, osrs_move_mult_attr_cb);
+  mq_command_set(ctable, OSR_SYMLINK_MULTIPLE_ATTR_KEY, OSR_SYMLINK_MULTIPLE_ATTR_SIZE, os, osrs_symlink_mult_attr_cb);
+  mq_command_set(ctable, OSR_OBJECT_ITER_ALIST_KEY, OSR_OBJECT_ITER_ALIST_SIZE, os, osrs_object_iter_alist_cb);
+  mq_command_set(ctable, OSR_OBJECT_ITER_AREGEX_KEY, OSR_OBJECT_ITER_AREGEX_SIZE, os, osrs_object_iter_aregex_cb);
+  mq_command_set(ctable, OSR_ATTR_ITER_KEY, OSR_ATTR_ITER_SIZE, os, osrs_attr_iter_cb);
+  mq_command_set(ctable, OSR_FSCK_ITER_KEY, OSR_FSCK_ITER_SIZE, os, osrs_fsck_iter_cb);
+  mq_command_set(ctable, OSR_FSCK_OBJECT_KEY, OSR_FSCK_OBJECT_SIZE, os, osrs_fsck_object_cb);
 
   //** Make the ongoing checker
-  osrs->ongoing = mq_ongoing_create(osrs->mqc, osrs->server_portal, osrs->ongoing_interval);
+  osrs->ongoing = mq_ongoing_create(osrs->mqc, osrs->server_portal, osrs->ongoing_interval, ONGOING_SERVER);
   assert(osrs->ongoing != NULL);
 
-  //** and add the command it will process
-  mq_command_add(ctable, OSR_ONGOING_KEY, OSR_ONGOING_SIZE, osrs->ongoing, mq_ongoing_cb);
-
   //** This is to handle client stream responses
-  mq_command_add(ctable, MQS_MORE_DATA_KEY, MQS_MORE_DATA_SIZE, osrs->ongoing, mqs_server_more_cb);
+  mq_command_set(ctable, MQS_MORE_DATA_KEY, MQS_MORE_DATA_SIZE, osrs->ongoing, mqs_server_more_cb);
 
   mq_portal_install(osrs->mqc, osrs->server_portal);
 

@@ -957,7 +957,6 @@ resource_service_fn_t *rs_simple_create(void *arg, inip_file_t *kf, char *sectio
   service_manager_t *ess = (service_manager_t *)arg;
   rs_simple_priv_t *rss;
   resource_service_fn_t *rs;
-  struct stat sbuf;
 
   //** Create the new RS list
   type_malloc_clear(rss, rs_simple_priv_t, 1);

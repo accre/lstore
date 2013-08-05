@@ -530,9 +530,9 @@ resource_service_fn_t *rs_remote_server_create(void *arg, inip_file_t *fd, char 
   //** Make the server portal
   rsrs->server_portal = mq_portal_create(rsrs->mqc, rsrs->hostname, MQ_CMODE_SERVER);
   ctable = mq_portal_command_table(rsrs->server_portal);
-  mq_command_add(ctable, RSR_GET_RID_CONFIG_KEY, RSR_GET_RID_CONFIG_SIZE, rs, rsrs_rid_config_cb);
-  mq_command_add(ctable, RSR_GET_UPDATE_CONFIG_KEY, RSR_GET_UPDATE_CONFIG_SIZE, rs, rsrs_rid_config_cb);
-  mq_command_add(ctable, RSR_ABORT_KEY, RSR_ABORT_SIZE, rs, rsrs_abort_cb);
+  mq_command_set(ctable, RSR_GET_RID_CONFIG_KEY, RSR_GET_RID_CONFIG_SIZE, rs, rsrs_rid_config_cb);
+  mq_command_set(ctable, RSR_GET_UPDATE_CONFIG_KEY, RSR_GET_UPDATE_CONFIG_SIZE, rs, rsrs_rid_config_cb);
+  mq_command_set(ctable, RSR_ABORT_KEY, RSR_ABORT_SIZE, rs, rsrs_abort_cb);
   mq_portal_install(rsrs->mqc, rsrs->server_portal);
 
   //** Launch the config changes thread

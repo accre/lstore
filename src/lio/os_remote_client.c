@@ -55,6 +55,7 @@ http://www.accre.vanderbilt.edu
 #define OSRC_ITER_AREGEX 1
 
 typedef struct {
+  object_service_fn_t *os;
   void *data;
   int size;
 } osrc_object_fd_t;
@@ -99,6 +100,7 @@ typedef struct {
 typedef struct {
   char handle[1024];
   osrc_object_fd_t **pfd;
+  object_service_fn_t *os;
 } osrc_open_t;
 
 typedef struct {
@@ -172,7 +174,7 @@ log_printf(5, "START\n");
   //** Parse the response
   mq_remove_header(task->response, 1);
 
-  mqs = mq_stream_read_create(osrc->mqc, osrc->host_id, osrc->host_id_len, mq_msg_first(task->response), osrc->remote_host);
+  mqs = mq_stream_read_create(osrc->mqc, osrc->ongoing, osrc->host_id, osrc->host_id_len, mq_msg_first(task->response), osrc->remote_host);
 
   //** Parse the status
   status.op_status = mq_stream_read_varint(mqs, &err);
@@ -899,7 +901,7 @@ log_printf(5, "START\n");
   //** Parse the response
   mq_remove_header(task->response, 1);
 
-  mqs = mq_stream_read_create(osrc->mqc, osrc->host_id, osrc->host_id_len, mq_msg_first(task->response), osrc->remote_host);
+  mqs = mq_stream_read_create(osrc->mqc, osrc->ongoing, osrc->host_id, osrc->host_id_len, mq_msg_first(task->response), osrc->remote_host);
 
   //** Parse the status
   status.op_status = mq_stream_read_varint(mqs, &err);
@@ -1218,7 +1220,7 @@ log_printf(5, "START\n");
   //** Parse the response
   mq_remove_header(task->response, 1);
 
-  it->mqs = mq_stream_read_create(osrc->mqc, osrc->host_id, osrc->host_id_len, mq_msg_first(task->response), osrc->remote_host);
+  it->mqs = mq_stream_read_create(osrc->mqc, osrc->ongoing, osrc->host_id, osrc->host_id_len, mq_msg_first(task->response), osrc->remote_host);
 
   //** Parse the status
   status.op_status = mq_stream_read_varint(it->mqs, &err);
@@ -1432,7 +1434,7 @@ log_printf(5, "START\n");
   //** Parse the response
   mq_remove_header(task->response, 1);
 
-  it->mqs = mq_stream_read_create(osrc->mqc, osrc->host_id, osrc->host_id_len, mq_msg_first(task->response), osrc->remote_host);
+  it->mqs = mq_stream_read_create(osrc->mqc, osrc->ongoing, osrc->host_id, osrc->host_id_len, mq_msg_first(task->response), osrc->remote_host);
 
   //** Parse the status
   status.op_status = mq_stream_read_varint(it->mqs, &err);
@@ -1669,6 +1671,7 @@ op_status_t osrc_response_open(void *task_arg, int tid)
 {
   mq_task_t *task = (mq_task_t *)task_arg;
   osrc_open_t *arg = (osrc_open_t *)task->arg;
+  osrc_priv_t *osrc = (osrc_priv_t *)arg->os->priv;
   op_status_t status;
   void *data;
   osrc_object_fd_t *fd;
@@ -1681,6 +1684,7 @@ log_printf(5, "START\n");
   status = mq_read_status_frame(mq_msg_first(task->response), 0);
   if (status.op_status == OP_STATE_SUCCESS) {
      type_malloc(fd, osrc_object_fd_t, 1);
+     fd->os = arg->os;
 //mq_frame_t *frame = mq_msg_next(task->response);
 //mq_get_frame(frame, (void **)&data, &(fd->size));
      mq_get_frame(mq_msg_next(task->response), (void **)&data, &(fd->size));
@@ -1693,6 +1697,7 @@ log_printf(5, "START\n");
      type_malloc(fd->data, char, fd->size);
      memcpy(fd->data, data, fd->size);
      *(arg->pfd) = fd;
+     mq_ongoing_host_inc(osrc->ongoing, osrc->remote_host, fd->data, fd->size, osrc->heartbeat);
   } else {
      *(arg->pfd) = NULL;
   }
@@ -1720,7 +1725,7 @@ op_generic_t *osrc_open_object(object_service_fn_t *os, creds_t *creds, char *pa
 
 log_printf(5, "START fname=%s id=%s\n", path, id);
   type_malloc(arg, osrc_open_t, 1);
-
+  arg->os = os;
   arg->pfd = (osrc_object_fd_t **)pfd;
   hlen = snprintf(arg->handle, 1024, "%s:%d", osrc->host_id, atomic_global_counter());
 
@@ -1799,6 +1804,7 @@ op_status_t osrc_response_close_object(void *task_arg, int tid)
 {
   mq_task_t *task = (mq_task_t *)task_arg;
   osrc_object_fd_t *fd = (osrc_object_fd_t *)task->arg;
+  osrc_priv_t *osrc = (osrc_priv_t *)fd->os->priv;
 
   op_status_t status;
 
@@ -1808,6 +1814,9 @@ log_printf(5, "START\n");
   mq_remove_header(task->response, 1);
 
   status = mq_read_status_frame(mq_msg_first(task->response), 0);
+
+  //** Quit tracking it
+  mq_ongoing_host_dec(osrc->ongoing, osrc->remote_host, fd->data, fd->size);
 
 log_printf(5, "END status=%d %d\n", status.op_status, status.error_code);
 
@@ -1958,7 +1967,7 @@ log_printf(5, "START\n");
   //** Parse the response
   mq_remove_header(task->response, 1);
 
-  it->mqs = mq_stream_read_create(osrc->mqc, osrc->host_id, osrc->host_id_len, mq_msg_first(task->response), osrc->remote_host);
+  it->mqs = mq_stream_read_create(osrc->mqc, osrc->ongoing, osrc->host_id, osrc->host_id_len, mq_msg_first(task->response), osrc->remote_host);
 
   //** Parse the status
   status.op_status = mq_stream_read_varint(it->mqs, &err);
@@ -2080,59 +2089,6 @@ void osrc_cred_destroy(object_service_fn_t *os, creds_t *creds)
   return(os_cred_destroy(osrc->os_temp, creds));
 }
 
-//***********************************************************************
-// osrc_heartbeat_thread - Sends renewal heartbeats for open files and iterators
-//***********************************************************************
-
-void *osrc_heartbeat_thread(apr_thread_t *th, void *data)
-{
-  object_service_fn_t *os = (object_service_fn_t *)data;
-  osrc_priv_t *osrc = (osrc_priv_t *)os->priv;
-  apr_time_t timeout = apr_time_make(osrc->heartbeat, 0);
-  op_generic_t *gop;
-  mq_msg_t *msg;
-  int n;
-
-  //** Figure out hoiw often to send ongoing messages
-  if (osrc->heartbeat < 10) {
-     n = 5;
-  } else if (osrc->heartbeat < 60) {
-     n = osrc->heartbeat - 5;
-  } else {
-     n = osrc->heartbeat - 30;
-  }
-  timeout = apr_time_make(n, 0);
-
-  n = 0;
-  do {
-     //** Form the message
-     msg = mq_make_exec_core_msg(osrc->remote_host, 1);
-     mq_msg_append_mem(msg, OSR_ONGOING_KEY, OSR_ONGOING_SIZE, MQF_MSG_KEEP_DATA);
-     mq_msg_append_mem(msg, osrc->host_id, strlen(osrc->host_id)+1, MQF_MSG_KEEP_DATA);
-     mq_msg_append_mem(msg, NULL, 0, MQF_MSG_KEEP_DATA);
-
-     //** Make the gop
-     gop = new_mq_op(osrc->mqc, msg, osrc_response_status, NULL, NULL, osrc->timeout);
-
-     //** Wait for it to complete
-     gop_waitall(gop);
-     gop_free(gop, OP_DESTROY);
-
-     //** Sleep until time for the next heartbeat or time to exit
-     apr_thread_mutex_lock(osrc->lock);
-     if (osrc->shutdown == 0) apr_thread_cond_timedwait(osrc->cond, osrc->lock, timeout);
-     n = osrc->shutdown;
-     apr_thread_mutex_unlock(osrc->lock);
-
-log_printf(15, "loop end n=%d\n", n);
-  } while (n == 0);
-
-log_printf(15, "EXITING\n");
-
-  return(NULL);
-}
-
-
 
 //***********************************************************************
 // os_remote_client_destroy
@@ -2141,15 +2097,6 @@ log_printf(15, "EXITING\n");
 void osrc_destroy(object_service_fn_t *os)
 {
   osrc_priv_t *osrc = (osrc_priv_t *)os->priv;
-  apr_status_t dummy;
-
-  //** Wake up the heartbeat thread
-  apr_thread_mutex_lock(osrc->lock);
-  osrc->shutdown = 1;
-  apr_thread_cond_broadcast(osrc->cond);
-  apr_thread_mutex_unlock(osrc->lock);
-
-  apr_thread_join(&dummy, osrc->heartbeat_thread);
 
   if (osrc->os_remote != NULL) {
      os_destroy(osrc->os_remote);
@@ -2220,8 +2167,8 @@ log_printf(0, "START\n");
   //** Get the MQC
   assert((osrc->mqc = lookup_service(ess, ESS_RUNNING, ESS_MQ)) != NULL);
 
-  //** Launch the config changes thread
-  assert(apr_thread_create(&(osrc->heartbeat_thread), NULL, osrc_heartbeat_thread, (void *)os, osrc->mpool) == APR_SUCCESS);
+  //** Get the Global ongoing handle
+  assert((osrc->ongoing = lookup_service(ess, ESS_RUNNING, ESS_ONGOING_CLIENT)) != NULL);
 
   //** Set up the fn ptrs
   os->type = OS_TYPE_REMOTE_CLIENT;

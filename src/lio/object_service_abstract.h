@@ -125,7 +125,9 @@ struct object_service_fn_s {
   op_generic_t *(*create_object)(object_service_fn_t *os, creds_t *creds, char *path, int type, char *id);
   op_generic_t *(*remove_object)(object_service_fn_t *os, creds_t *creds, char *path);
   op_generic_t *(*remove_regex_object)(object_service_fn_t *os, creds_t *creds, os_regex_table_t *path, os_regex_table_t *object_regex, int obj_types, int recurse_depth);
+  op_generic_t *(*abort_remove_regex_object)(object_service_fn_t *os, op_generic_t *gop);
   op_generic_t *(*regex_object_set_multiple_attrs)(object_service_fn_t *os, creds_t *creds, char *id, os_regex_table_t *path, os_regex_table_t *object_regex, int object_types, int recurse_depth, char **key, void **val, int *v_size, int n);
+  op_generic_t *(*abort_regex_object_set_multiple_attrs)(object_service_fn_t *os, op_generic_t *gop);
   op_generic_t *(*move_object)(object_service_fn_t *os, creds_t *creds, char *src_path, char *dest_path);
   op_generic_t *(*symlink_object)(object_service_fn_t *os, creds_t *creds, char *src_path, char *dest_path, char *id);
   op_generic_t *(*hardlink_object)(object_service_fn_t *os, creds_t *creds, char *src_path, char *dest_path, char *id);
@@ -174,7 +176,9 @@ typedef object_service_fn_t *(os_create_t)(service_manager_t *ess, inip_file_t *
 #define os_create_object(os, c, path, type, id) (os)->create_object(os, c, path, type, id)
 #define os_remove_object(os, c, path) (os)->remove_object(os, c, path)
 #define os_remove_regex_object(os, c, path, obj_regex, obj_types, depth) (os)->remove_regex_object(os, c, path, obj_regex, obj_types, depth)
+#define os_abort_remove_regex_object(os, gop) (os)->abort_remove_regex_object(os, gop)
 #define os_regex_object_set_multiple_attrs(os, c, id, path, obj_regex, otypes, depth, key, val, v_size, n) (os)->regex_object_set_multiple_attrs(os, c, id, path, obj_regex, otypes, depth, key, val, v_size, n)
+#define os_abort_regex_object_set_multiple_attrs(os, gop) (os)->abort_regex_object_set_multiple_attrs(os, gop)
 #define os_move_object(os, c, src_path, dest_path) (os)->move_object(os, c, src_path, dest_path)
 #define os_symlink_object(os, c, src_path, dest_path, id) (os)->symlink_object(os, c, src_path, dest_path, id)
 #define os_hardlink_object(os, c, src_path, dest_path, id) (os)->hardlink_object(os, c, src_path, dest_path, id)

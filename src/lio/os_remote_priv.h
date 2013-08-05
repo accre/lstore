@@ -64,8 +64,6 @@ extern "C" {
 #define OSR_ABORT_OPEN_OBJECT_SIZE 20
 #define OSR_CLOSE_OBJECT_KEY       "os_close_object"
 #define OSR_CLOSE_OBJECT_SIZE      15
-#define OSR_ONGOING_KEY            "os_ongoing"
-#define OSR_ONGOING_SIZE           10
 #define OSR_REGEX_SET_MULT_ATTR_KEY  "os_regex_set_mult_object"
 #define OSR_REGEX_SET_MULT_ATTR_SIZE 24
 #define OSR_GET_MULTIPLE_ATTR_KEY  "os_get_mult"
@@ -119,6 +117,7 @@ typedef struct {
   apr_thread_mutex_t *lock;
   apr_thread_cond_t *cond;
   mq_context_t *mqc;             //** Portal for connecting to he remote OS server
+  mq_ongoing_t *ongoing;         //** Ongoing handle
   char *remote_host;             //** Address of the Remote OS server
   char *host_id;                 //** Used for forming the open handle id;
   int host_id_len;               //** Length of host id
