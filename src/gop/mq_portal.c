@@ -107,16 +107,33 @@ mq_command_t *mq_command_new(void *cmd, int cmd_size, void *arg, mq_fn_exec_t *f
 }
 
 //**************************************************************
-//  mq_command_add - Adds and RPC call to the local host
+//  mq_command_set - Adds/removes and RPC call to the local host
 //**************************************************************
 
-void mq_command_add(mq_command_table_t *table, void *cmd, int cmd_size, void *arg, mq_fn_exec_t *fn)
+void mq_command_set(mq_command_table_t *table, void *cmd, int cmd_size, void *arg, mq_fn_exec_t *fn)
 {
   mq_command_t *mqc;
 
-  mqc = mq_command_new(cmd, cmd_size, arg, fn);
+  apr_thread_mutex_lock(table->lock);
+  if (fn != NULL) {
+     mqc = apr_hash_get(table->table, cmd, cmd_size);
+     if (mqc != NULL) {
+        apr_hash_set(table->table, mqc->cmd, mqc->cmd_size, NULL);
+        free(mqc->cmd);
+        free(mqc);
+     }
 
-  apr_hash_set(table->table, mqc->cmd, mqc->cmd_size, mqc);
+     mqc = mq_command_new(cmd, cmd_size, arg, fn);
+     apr_hash_set(table->table, mqc->cmd, mqc->cmd_size, mqc);
+  } else {
+     mqc = apr_hash_get(table->table, cmd, cmd_size);
+     if (mqc != NULL) {
+        apr_hash_set(table->table, mqc->cmd, mqc->cmd_size, NULL);
+        free(mqc->cmd);
+        free(mqc);
+     }
+  }
+  apr_thread_mutex_unlock(table->lock);
 }
 
 //**************************************************************
@@ -125,8 +142,11 @@ void mq_command_add(mq_command_table_t *table, void *cmd, int cmd_size, void *ar
 
 void mq_command_table_set_default(mq_command_table_t *table, void *arg, mq_fn_exec_t *fn_default)
 {
+  apr_thread_mutex_lock(table->lock);
   table->fn_default = fn_default;
   table->arg_default = arg;
+  apr_thread_mutex_unlock(table->lock);
+
 }
 
 
@@ -143,6 +163,7 @@ mq_command_table_t *mq_command_table_new(void *arg, mq_fn_exec_t *fn_default)
   t->fn_default = fn_default;
   t->arg_default = arg;
   apr_pool_create(&(t->mpool), NULL);
+  assert(apr_thread_mutex_create(&(t->lock), APR_THREAD_MUTEX_DEFAULT, t->mpool) == APR_SUCCESS);
   assert((t->table = apr_hash_make(t->mpool)) != NULL);
 
   return(t);

@@ -39,26 +39,14 @@ http://www.accre.vanderbilt.edu
 #include "type_malloc.h"
 #include "log.h"
 
-typedef struct {
-  char *id;
-  int id_len;
-  int count;
-} ongoing_host_t;
-
-typedef struct {
-  apr_hash_t *table;
-  mq_context_t *mqc;
-  char *remote_host;
-} ongoing_table_t;
-
-atomic_int_t _ongoing_count = 0;
-apr_thread_mutex_t *_ongoing_lock = NULL;
-apr_thread_cond_t *_ongoing_cond = NULL;
-apr_pool_t *_ongoing_mpool = NULL;
-apr_hash_t *_ongoing_table = NULL;
-apr_thread_t *_ongoing_hb_thread = NULL;
-int _ongoing_shutdown = 0;
-int _ongoing_timeout = 5;
+//atomic_int_t _ongoing_count = 0;
+//apr_thread_mutex_t *_ongoing_lock = NULL;
+//apr_thread_cond_t *_ongoing_cond = NULL;
+//apr_pool_t *_ongoing_mpool = NULL;
+//apr_hash_t *_ongoing_table = NULL;
+//apr_thread_t *_ongoing_hb_thread = NULL;
+//int _ongoing_shutdown = 0;
+//int _ongoing_timeout = 5;
 
 //***********************************************************************
 // ongoing_response_status - Handles a response that just returns the status
@@ -81,62 +69,31 @@ log_printf(2, "END status=%d %d\n", status.op_status, status.error_code);
 }
 
 //***********************************************************************
-// ongoing_heartbeat_shutdown - Shuts dow nthe heartbeat thread
-//***********************************************************************
-
-void ongoing_heartbeat_shutdown()
-{
-  apr_status_t dummy;
-
-  if (_ongoing_table == NULL) return;
-
-  apr_thread_mutex_lock(_ongoing_lock);
-  _ongoing_shutdown = 1;
-  apr_thread_cond_broadcast(_ongoing_cond);
-  apr_thread_mutex_unlock(_ongoing_lock);
-
-  apr_thread_join(&dummy, _ongoing_hb_thread);
-}
-
-//***********************************************************************
 // ongoing_heartbeat_thread - Sends renewal heartbeats for ongoing objects
 //***********************************************************************
 
 void *ongoing_heartbeat_thread(apr_thread_t *th, void *data)
 {
+  mq_ongoing_t *on = (mq_ongoing_t *)data;
   apr_time_t timeout = apr_time_make(10, 0);
   op_generic_t *gop;
   mq_msg_t *msg;
-  ongoing_host_t *oh;
+  ongoing_hb_t *oh;
   ongoing_table_t *table;
   apr_hash_index_t *hi, *hit;
   opque_t *q;
-  char *id, *remote_host;
+  char *remote_host, *id;
+  apr_time_t now;
   apr_ssize_t id_len;
   int n, k;
 
-  if (_ongoing_table == NULL) {  //** IF 1st time make the structures
-     if (atomic_inc(_ongoing_count) == 0) {
-        apr_pool_create(&_ongoing_mpool, NULL);
-        apr_thread_mutex_create(&_ongoing_lock, APR_THREAD_MUTEX_DEFAULT, _ongoing_mpool);
-        apr_thread_cond_create(&_ongoing_cond, _ongoing_mpool);
-        assert((_ongoing_table = apr_hash_make(_ongoing_mpool)) != NULL);
-        assert(apr_thread_create(&_ongoing_hb_thread, NULL, ongoing_heartbeat_thread, NULL, _ongoing_mpool) == APR_SUCCESS);
-
-        atomic_set(_ongoing_count, 1000000);
-     } else {
-        while (atomic_get(_ongoing_count) < 1000000) {
-           usleep(100);
-        }
-     }
-  }
-
-  apr_thread_mutex_lock(_ongoing_lock);
+  apr_thread_mutex_lock(on->lock);
   n = 0;
+  now = apr_time_now() + apr_time_from_sec(5);  //Give our selves a little buffer to send the HB
   do {
      log_printf(1, "Loop Start\n");
      q = new_opque();
-     for (hit = apr_hash_first(NULL, _ongoing_table); hit != NULL; hit = apr_hash_next(hit)) {
+     for (hit = apr_hash_first(NULL, on->table); hit != NULL; hit = apr_hash_next(hit)) {
         apr_hash_this(hit, (const void **)&remote_host, &id_len, (void **)&table);
 
         k = apr_hash_count(table->table);
@@ -144,45 +101,71 @@ void *ongoing_heartbeat_thread(apr_thread_t *th, void *data)
 
         for (hi = apr_hash_first(NULL, table->table); hi != NULL; hi = apr_hash_next(hi)) {
            apr_hash_this(hi, (const void **)&id, &id_len, (void **)&oh);
-           oh->count++;  //** This insures it's not accidentally deleted
+           if (now > oh->next_check) {
+              //** Form the message
+              msg = mq_make_exec_core_msg(remote_host, 1);
+              mq_msg_append_mem(msg, ONGOING_KEY, ONGOING_SIZE, MQF_MSG_KEEP_DATA);
+              mq_msg_append_mem(msg, oh->id, oh->id_len, MQF_MSG_KEEP_DATA);
+              mq_msg_append_mem(msg, NULL, 0, MQF_MSG_KEEP_DATA);
 
-           //** Form the message
-           msg = mq_make_exec_core_msg(remote_host, 1);
-           mq_msg_append_mem(msg, ONGOING_KEY, ONGOING_SIZE, MQF_MSG_KEEP_DATA);
-           mq_msg_append_mem(msg, oh->id, oh->id_len, MQF_MSG_KEEP_DATA);
-           mq_msg_append_mem(msg, NULL, 0, MQF_MSG_KEEP_DATA);
-
-           //** Make the gop
-           gop = new_mq_op(table->mqc, msg, ongoing_response_status, NULL, NULL, _ongoing_timeout);
-           gop_set_private(gop, oh);
-           opque_add(q, gop);
+              //** Make the gop
+              gop = new_mq_op(on->mqc, msg, ongoing_response_status, NULL, NULL, oh->heartbeat-2);
+              gop_set_private(gop, table);
+              opque_add(q, gop);
+           }
         }
+
      }
      log_printf(1, "Loop end\n");
 
      //** Wait for it to complete
-     apr_thread_mutex_unlock(_ongoing_lock);
+     apr_thread_mutex_unlock(on->lock);
      opque_waitall(q);
-     apr_thread_mutex_lock(_ongoing_lock);
+     apr_thread_mutex_lock(on->lock);
 
      //** Dec the counters
      while ((gop = opque_waitany(q)) != NULL) {
 log_printf(0, "gotone\n");
-       oh = gop_get_private(gop);
-       oh->count--;
+       table = gop_get_private(gop);
+       table->count--;
+
+       //** Update the next check
+       for (hi = apr_hash_first(NULL, table->table); hi != NULL; hi = apr_hash_next(hi)) {
+          apr_hash_this(hi, (const void **)&id, &id_len, (void **)&oh);
+          oh->next_check = apr_time_now() + apr_time_from_sec(oh->heartbeat);
+       }
+
        gop_free(gop, OP_DESTROY);
      }
      opque_free(q, OP_DESTROY);
 
      //** Sleep until time for the next heartbeat or time to exit
-     if (_ongoing_shutdown == 0) apr_thread_cond_timedwait(_ongoing_cond, _ongoing_lock, timeout);
-     n = _ongoing_shutdown;
+     if (on->shutdown == 0) apr_thread_cond_timedwait(on->cond, on->lock, timeout);
+     n = on->shutdown;
 
 log_printf(2, "main loop bottom n=%d\n", n);
   } while (n == 0);
+
+log_printf(2, "CLEANUP\n");
+
+  for (hit = apr_hash_first(NULL, on->table); hit != NULL; hit = apr_hash_next(hit)) {
+     apr_hash_this(hit, (const void **)&remote_host, &id_len, (void **)&table);
+
+     for (hi = apr_hash_first(NULL, table->table); hi != NULL; hi = apr_hash_next(hi)) {
+        apr_hash_this(hi, (const void **)&id, &id_len, (void **)&oh);
+        apr_hash_set(table->table, id, id_len, NULL);
+        free(oh->id);
+        free(oh);
+     }
+
+     apr_hash_set(on->table, table->remote_host, strlen(table->remote_host), NULL);
+     free(table->remote_host);
+     free(table);
+  }
+
 log_printf(2, "EXITING\n");
 
-  apr_thread_mutex_unlock(_ongoing_lock);
+  apr_thread_mutex_unlock(on->lock);
 
   return(NULL);
 }
@@ -192,71 +175,55 @@ log_printf(2, "EXITING\n");
 // mq_ongoing_host_inc - Adds a host for ongoing heartbeats
 //***********************************************************************
 
-void mq_ongoing_host_inc(mq_context_t *mqc, char *remote_host, char *id, int id_len)
+void mq_ongoing_host_inc(mq_ongoing_t *on, char *remote_host, char *my_id, int id_len, int heartbeat)
 {
-  ongoing_host_t *oh;
+  ongoing_hb_t *oh;
   ongoing_table_t *table;
   int n;
 
-  if ((id == NULL) || (id_len <= 0)) return;
-
-  if (_ongoing_table == NULL) {  //** IF 1st time make the structures
-     if (atomic_inc(_ongoing_count) == 0) {
-        apr_pool_create(&_ongoing_mpool, NULL);
-        apr_thread_mutex_create(&_ongoing_lock, APR_THREAD_MUTEX_DEFAULT, _ongoing_mpool);
-        apr_thread_cond_create(&_ongoing_cond, _ongoing_mpool);
-        assert((_ongoing_table = apr_hash_make(_ongoing_mpool)) != NULL);
-        assert(apr_thread_create(&_ongoing_hb_thread, NULL, ongoing_heartbeat_thread, NULL, _ongoing_mpool) == APR_SUCCESS);
-
-        atomic_set(_ongoing_count, 1000000);
-     } else {
-        while (atomic_get(_ongoing_count) < 1000000) {
-           usleep(100);
-        }
-     }
-  }
-
-  apr_thread_mutex_lock(_ongoing_lock);
+  apr_thread_mutex_lock(on->lock);
 
   n = strlen(remote_host);
-  table = apr_hash_get(_ongoing_table, remote_host, n);  //** Look up the host
+  table = apr_hash_get(on->table, remote_host, n);  //** Look up the remote host
   if (table == NULL) { //** New host so add it
      type_malloc_clear(table, ongoing_table_t, 1);
-     assert((table->table = apr_hash_make(_ongoing_mpool)) != NULL);
+     assert((table->table = apr_hash_make(on->mpool)) != NULL);
      table->remote_host = strdup(remote_host);
-     table->mqc = mqc;
-     apr_hash_set(_ongoing_table, table->remote_host, n, table);
+     apr_hash_set(on->table, table->remote_host, n, table);
   }
 
-  oh = apr_hash_get(table->table, id, id_len);  //** Look up the host
-  if (oh == NULL) { //** New host so add it
-     type_malloc_clear(oh, ongoing_host_t, 1);
-     type_malloc(oh->id, char, id_len);
-     memcpy(oh->id, id, id_len);
-     oh->id_len = id_len;
+  table->count++;
 
-     apr_hash_set(table->table, oh->id, oh->id_len, oh);
+  oh = apr_hash_get(table->table, my_id, id_len);  //** Look up the id
+  if (oh == NULL) { //** New host so add it
+     type_malloc_clear(oh, ongoing_hb_t, 1);
+     type_malloc(oh->id, char, id_len);
+     memcpy(oh->id, my_id, id_len);
+     oh->id_len = id_len;
+     oh->heartbeat = heartbeat;
+     oh->next_check = apr_time_now() + apr_time_from_sec(heartbeat);
+     apr_hash_set(table->table, oh->id, id_len, oh);
   }
 
   oh->count++;
-  apr_thread_mutex_unlock(_ongoing_lock);
+  apr_thread_mutex_unlock(on->lock);
 }
 
 //***********************************************************************
 // mq_ongoing_host_dec - Decrementsthe tracking count to a host for ongoing heartbeats
 //***********************************************************************
 
-void mq_ongoing_host_dec(char *remote_host, char *id, int id_len)
+void mq_ongoing_host_dec(mq_ongoing_t *on, char *remote_host, char *id, int id_len)
 {
-  ongoing_host_t *oh;
+  ongoing_hb_t *oh;
   ongoing_table_t *table;
 
-  if ((id == NULL) || (id_len <= 0)) return;
 
-
-  apr_thread_mutex_lock(_ongoing_lock);
-  table = apr_hash_get(_ongoing_table, remote_host, strlen(remote_host));  //** Look up the host
+  apr_thread_mutex_lock(on->lock);
+  table = apr_hash_get(on->table, remote_host, strlen(remote_host));  //** Look up the host
   if (table == NULL) goto fail;
+
+  table->count--;
 
   oh = apr_hash_get(table->table, id, id_len);  //** Look up the host
   if (oh != NULL) {
@@ -265,17 +232,11 @@ void mq_ongoing_host_dec(char *remote_host, char *id, int id_len)
         apr_hash_set(table->table, id, id_len, NULL);
         free(oh->id);
         free(oh);
-//        if (apr_hash_count(table->table) == 0) {  //** Table is empty so remove it also
-//           apr_hash_set(_ongoing_table, remote_host, strlen(remote_host), NULL);
-//           ///apr_hash_destroy  //No such thing exists in tghe APR world:(
-//           free(table->remote_host);
-//           free(table);
-//        }
      }
   }
 
 fail:
-  apr_thread_mutex_unlock(_ongoing_lock);
+  apr_thread_mutex_unlock(on->lock);
 }
 
 //***********************************************************************
@@ -513,11 +474,11 @@ log_printf(2, "closing host now=" TT " next_check=" TT " hb=%d\n", apr_time_now(
 }
 
 //***********************************************************************
-// mq_ongoing_thread - Checks to make sure heartbeats are being
+// mq_ongoing_server_thread - Checks to make sure heartbeats are being
 //     being received from clients with open handles
 //***********************************************************************
 
-void *mq_ongoing_thread(apr_thread_t *th, void *data)
+void *mq_ongoing_server_thread(apr_thread_t *th, void *data)
 {
   mq_ongoing_t *mqon = (mq_ongoing_t *)data;
   apr_hash_index_t *hi;
@@ -551,6 +512,17 @@ log_printf(15, "loop end n=%d\n", n);
   } while (n == 0);
   apr_thread_mutex_unlock(mqon->lock);
 
+log_printf(15, "CLEANUP\n");
+
+  for (hi = apr_hash_first(NULL, mqon->id_table); hi != NULL; hi = apr_hash_next(hi)) {
+     apr_hash_this(hi, (const void **)&key, &klen, (void **)&oh);
+     _mq_ongoing_close(mqon, oh);
+     apr_hash_set(mqon->id_table, key, klen, NULL);
+     free(oh->id);
+     apr_pool_destroy(oh->mpool);
+     free(oh);
+  }
+
 log_printf(15, "EXITING\n");
 
   return(NULL);
@@ -563,10 +535,7 @@ log_printf(15, "EXITING\n");
 void mq_ongoing_destroy(mq_ongoing_t *mqon)
 {
   apr_status_t value;
-  apr_hash_index_t *hi;
-  mq_ongoing_host_t *oh;
-  char *key;
-  apr_ssize_t klen;
+  mq_command_table_t *ctable;
 
   //** Wake up the ongoing thread
   apr_thread_mutex_lock(mqon->lock);
@@ -575,17 +544,14 @@ void mq_ongoing_destroy(mq_ongoing_t *mqon)
   apr_thread_mutex_unlock(mqon->lock);
 
   //** Wait for it to shutdown
-  apr_thread_join(&value, mqon->ongoing_thread);
+  if (mqon->ongoing_server_thread) {
+     ctable = mq_portal_command_table(mqon->server_portal);
+     mq_command_set(ctable, ONGOING_KEY, ONGOING_SIZE, mqon, NULL);
 
-  //** Close all ongoing processes
-  for (hi = apr_hash_first(NULL, mqon->id_table); hi != NULL; hi = apr_hash_next(hi)) {
-     apr_hash_this(hi, (const void **)&key, &klen, (void **)&oh);
-     _mq_ongoing_close(mqon, oh);
-     apr_hash_set(mqon->id_table, key, klen, NULL);
-     free(oh->id);
-     apr_pool_destroy(oh->mpool);
-     free(oh);
+     apr_thread_join(&value, mqon->ongoing_server_thread);
   }
+
+  if (mqon->ongoing_heartbeat_thread) apr_thread_join(&value, mqon->ongoing_heartbeat_thread);
 
   apr_pool_destroy(mqon->mpool);
   free(mqon);
@@ -595,9 +561,10 @@ void mq_ongoing_destroy(mq_ongoing_t *mqon)
 // mq_ongoing_create - Creates an object to handle ongoing tasks
 //***********************************************************************
 
-mq_ongoing_t *mq_ongoing_create(mq_context_t *mqc, mq_portal_t *server_portal, int check_interval)
+mq_ongoing_t *mq_ongoing_create(mq_context_t *mqc, mq_portal_t *server_portal, int check_interval, int mode)
 {
   mq_ongoing_t *mqon;
+  mq_command_table_t *ctable;
 
   type_malloc_clear(mqon, mq_ongoing_t, 1);
 
@@ -609,10 +576,21 @@ mq_ongoing_t *mq_ongoing_create(mq_context_t *mqc, mq_portal_t *server_portal, i
   apr_thread_mutex_create(&(mqon->lock), APR_THREAD_MUTEX_DEFAULT, mqon->mpool);
   apr_thread_cond_create(&(mqon->cond), mqon->mpool);
 
-  mqon->id_table = apr_hash_make(mqon->mpool);
-  assert(mqon->id_table != NULL);
+  if (mode & ONGOING_SERVER) {
+     mqon->id_table = apr_hash_make(mqon->mpool);
+     assert(mqon->id_table != NULL);
 
-  apr_thread_create(&(mqon->ongoing_thread), NULL, mq_ongoing_thread, (void *)mqon, mqon->mpool);
+     ctable = mq_portal_command_table(server_portal);
+     mq_command_set(ctable, ONGOING_KEY, ONGOING_SIZE, mqon, mq_ongoing_cb);
+     apr_thread_create(&(mqon->ongoing_server_thread), NULL, mq_ongoing_server_thread, (void *)mqon, mqon->mpool);
+  }
+
+  if (mode & ONGOING_CLIENT) {
+     mqon->table = apr_hash_make(mqon->mpool);
+     assert(mqon->table != NULL);
+
+     apr_thread_create(&(mqon->ongoing_heartbeat_thread), NULL, ongoing_heartbeat_thread, (void *)mqon, mqon->mpool);
+  }
   return(mqon);
 }
 

@@ -59,6 +59,7 @@ char *handle = NULL;
 mq_command_stats_t server_stats;
 mq_portal_t *server_portal = NULL;
 mq_ongoing_t *server_ongoing = NULL;
+mq_ongoing_t *client_ongoing = NULL;
 
 char *test_data = NULL;
 int test_size = 1024*1024;
@@ -110,7 +111,7 @@ op_status_t client_read_stream(void *task_arg, int tid)
   //** Parse the response
   mq_remove_header(task->response, 1);
 
-  mqs = mq_stream_read_create(mqc, host_id, host_id_len, mq_msg_first(task->response), host);
+  mqs = mq_stream_read_create(mqc, client_ongoing, host_id, host_id_len, mq_msg_first(task->response), host);
 
   log_printf(0, "gid=%d msid=%d\n", op->gid, mqs->msid);
 
@@ -333,6 +334,10 @@ void *client_test_thread(apr_thread_t *th, void *arg)
   //** Make the portal
   mqc = client_make_context();
 
+  //** Make the ongoing checker
+  client_ongoing = mq_ongoing_create(mqc, NULL, 30, ONGOING_CLIENT);
+  assert(client_ongoing != NULL);
+
   log_printf(0, "START basic stream tests\n");
   n = 0;
   single_max = 8192;
@@ -379,7 +384,7 @@ void *client_test_thread(apr_thread_t *th, void *arg)
   }
 
 skip:
-  ongoing_heartbeat_shutdown();
+  mq_ongoing_destroy(client_ongoing);
 
   //** Destroy the portal
   mq_destroy_context(mqc);
@@ -523,14 +528,14 @@ void *server_test_thread(apr_thread_t *th, void *arg)
   server_portal = mq_portal_create(mqc, host, MQ_CMODE_SERVER);
 
   //** Make the ongoing checker
-  server_ongoing = mq_ongoing_create(mqc, server_portal, 30);
+  server_ongoing = mq_ongoing_create(mqc, server_portal, 30, ONGOING_SERVER);
   assert(server_ongoing != NULL);
 
   //** Install the commands
   table = mq_portal_command_table(server_portal);
-  mq_command_add(table, MQS_TEST_KEY, MQS_TEST_SIZE, mqc, cb_write_stream);
-  mq_command_add(table, MQS_MORE_DATA_KEY, MQS_MORE_DATA_SIZE, server_ongoing, mqs_server_more_cb);
-  mq_command_add(table, ONGOING_KEY, ONGOING_SIZE, server_ongoing, mq_ongoing_cb);
+  mq_command_set(table, MQS_TEST_KEY, MQS_TEST_SIZE, mqc, cb_write_stream);
+  mq_command_set(table, MQS_MORE_DATA_KEY, MQS_MORE_DATA_SIZE, server_ongoing, mqs_server_more_cb);
+//ADded in ongoing_create  mq_command_set(table, ONGOING_KEY, ONGOING_SIZE, server_ongoing, mq_ongoing_cb);
 
   mq_portal_install(mqc, server_portal);
 

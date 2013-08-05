@@ -1083,7 +1083,7 @@ void server_test_mq_loop()
   //** Make the server portal
   server_portal = mq_portal_create(mqc, host, MQ_CMODE_SERVER);
   table = mq_portal_command_table(server_portal);
-  mq_command_add(table, MQF_PING_KEY, MQF_PING_SIZE, NULL, cb_ping);
+  mq_command_set(table, MQF_PING_KEY, MQF_PING_SIZE, NULL, cb_ping);
 
   mq_portal_install(mqc, server_portal);
 

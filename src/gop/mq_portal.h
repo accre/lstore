@@ -189,6 +189,7 @@ typedef struct {
   void *arg_default;
   apr_hash_t *table;
   apr_pool_t *mpool;
+  apr_thread_mutex_t *lock;
 } mq_command_table_t;
 
 struct mq_task_s {      //** Generic containter for MQ messages for both the server and GOP (or client). If the variable is not used it's value is NULL.
@@ -324,7 +325,7 @@ void mq_task_destroy(mq_task_t *task);
 op_generic_t *new_mq_op(mq_context_t *ctx, mq_msg_t *msg, op_status_t (*fn_response)(void *arg, int id), void *arg, void (*my_arg_free)(void *arg), int dt);
 
 mq_command_t *mq_command_new(void *cmd, int cmd_size, void *arg, mq_fn_exec_t *fn);
-void mq_command_add(mq_command_table_t *table, void *cmd, int cmd_size, void *arg, mq_fn_exec_t *fn);
+void mq_command_set(mq_command_table_t *table, void *cmd, int cmd_size, void *arg, mq_fn_exec_t *fn);
 void mq_command_exec(mq_command_table_t *t, mq_task_t *task, void *key, int klen);
 void mq_command_table_destroy(mq_command_table_t *t);
 mq_command_table_t *mq_command_table_new(void *arg, mq_fn_exec_t *fn_default);

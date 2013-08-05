@@ -310,7 +310,7 @@ void mq_stream_read_destroy(mq_stream_t *mqs)
      apr_thread_mutex_lock(mqs->lock);
   }
 
-  mq_ongoing_host_dec(mqs->remote_host, mqs->host_id, mqs->hid_len);
+  mq_ongoing_host_dec(mqs->ongoing, mqs->remote_host, mqs->host_id, mqs->hid_len);
 
   apr_thread_mutex_unlock(mqs->lock);
 
@@ -332,7 +332,7 @@ void mq_stream_read_destroy(mq_stream_t *mqs)
 // mq_stream_read_create - Creates an MQ stream for reading
 //***********************************************************************
 
-mq_stream_t *mq_stream_read_create(mq_context_t *mqc, char *host_id, int hid_len, mq_frame_t *fdata, char *remote_host)
+mq_stream_t *mq_stream_read_create(mq_context_t *mqc, mq_ongoing_t *on, char *host_id, int hid_len, mq_frame_t *fdata, char *remote_host)
 {
   mq_stream_t *mqs;
   int ptype;
@@ -340,6 +340,7 @@ mq_stream_t *mq_stream_read_create(mq_context_t *mqc, char *host_id, int hid_len
   type_malloc_clear(mqs, mq_stream_t, 1);
 
   mqs->mqc = mqc;
+  mqs->ongoing = on;
   mqs->type = MQS_READ;
   mqs->want_more = MQS_MORE;
   mqs->remote_host = remote_host;
@@ -366,8 +367,7 @@ log_printf(5, "printing 1st 50 bytes mqsbuf=%s\n", mq_id2str(mqs->data, n, buffe
 
   if (mqs->data[MQS_STATE_INDEX] == MQS_MORE) { //** More data coming so ask for it
 log_printf(5, "issuing read request\n");
-//     mq_ongoing_host_inc(mqs->mqc, mqs->remote_host, mqs->stream_id, mqs->sid_len);
-     mq_ongoing_host_inc(mqs->mqc, mqs->remote_host, mqs->host_id, mqs->hid_len);
+     mq_ongoing_host_inc(mqs->ongoing, mqs->remote_host, mqs->host_id, mqs->hid_len, mqs->timeout);
      mq_stream_read_request(mqs);
   }
 

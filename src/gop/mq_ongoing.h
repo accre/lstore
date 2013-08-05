@@ -44,7 +44,25 @@ extern "C" {
 #define ONGOING_KEY            "ongoing"
 #define ONGOING_SIZE           7
 
+#define ONGOING_SERVER 1
+#define ONGOING_CLIENT 2
+
 typedef op_generic_t *(mq_ongoing_fail_t)(void *arg, void *handle);
+
+typedef struct {
+  char *id;
+  int id_len;
+  int heartbeat;
+  int count;
+  apr_time_t next_check;
+} ongoing_hb_t;
+
+typedef struct {
+  apr_hash_t *table;
+  char *remote_host;
+  int count;
+} ongoing_table_t;
+
 
 typedef struct {
   int type;
@@ -68,23 +86,25 @@ typedef struct {
   apr_pool_t *mpool;
   apr_thread_mutex_t *lock;
   apr_thread_cond_t *cond;
-  apr_hash_t *id_table;
-  apr_thread_t *ongoing_thread;
+  apr_hash_t *id_table;       //** Server table
+  apr_hash_t *table;          //** Client table
+  apr_thread_t *ongoing_server_thread;
+  apr_thread_t *ongoing_heartbeat_thread;
   mq_context_t *mqc;
   mq_portal_t *server_portal;
   int check_interval;
   int shutdown;
 } mq_ongoing_t;
 
-void mq_ongoing_host_inc(mq_context_t *mqc, char *remote_host, char *id, int id_len);
-void mq_ongoing_host_dec(char *remote_host, char *id, int id_len);
+void mq_ongoing_host_inc(mq_ongoing_t *on, char *remote_host, char *id, int id_len, int heartbeat);
+void mq_ongoing_host_dec(mq_ongoing_t *on, char *remote_host, char *id, int id_len);
 void ongoing_heartbeat_shutdown();
 void mq_ongoing_cb(void *arg, mq_task_t *task);
 mq_ongoing_object_t *mq_ongoing_add(mq_ongoing_t *mqon, char *id, int id_len, void *handle, mq_ongoing_fail_t *on_fail, void *on_fail_arg);
 void *mq_ongoing_remove(mq_ongoing_t *mqon, char *id, int id_len, intptr_t key);
 void *mq_ongoing_get(mq_ongoing_t *mqon, char *id, int id_len, intptr_t key);
 void mq_ongoing_release(mq_ongoing_t *mqon, char *id, int id_len, intptr_t key);
-mq_ongoing_t *mq_ongoing_create(mq_context_t *mqc, mq_portal_t *server_portal, int check_interval);
+mq_ongoing_t *mq_ongoing_create(mq_context_t *mqc, mq_portal_t *server_portal, int check_interval, int mode);
 void mq_ongoing_destroy(mq_ongoing_t *mqon);
 
 #ifdef __cplusplus
