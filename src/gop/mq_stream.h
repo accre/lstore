@@ -67,8 +67,6 @@ extern "C" {
 #define MQS_HANDLE_SIZE_INDEX 2
 #define MQS_HANDLE_INDEX      3
 
-typedef op_generic_t *(mq_ongoing_fail_t)(void *arg, void *handle);
-
 typedef struct {
   apr_pool_t *mpool;
   apr_thread_mutex_t *lock;
