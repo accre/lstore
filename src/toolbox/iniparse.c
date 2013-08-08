@@ -386,25 +386,21 @@ char *inip_get_string(inip_file_t *inip, const char *group, const char *key, cha
 
 
 //***********************************************************************
-//  inip_read - Reads a .ini file
+//  inip_read_fd - Loads the .ini file pointed to by the file descriptor
 //***********************************************************************
 
-inip_file_t *inip_read(const char *fname)
+inip_file_t *inip_read_fd(FILE *fd)
 {
   inip_file_t *inip;
   inip_group_t *group, *prev;
   bfile_t bfd;
   bfile_entry_t *entry;
 
-  log_printf(15, "inip_read: Parsing file %s\n", fname);
-
   type_malloc_clear(entry, bfile_entry_t, 1);
-  entry->fd = fopen(fname, "r");
-  if (entry->fd == NULL) {  //** Can't open the file
-     log_printf(1, "inip_read: Problem opening file %s\n", fname);
-     free(entry);
-     return(NULL);
-  }
+  entry->fd = fd;
+
+  rewind(fd);
+
   entry->used = 0;
   bfd.curr = entry;
   bfd.stack = new_stack();
@@ -445,22 +441,32 @@ inip_file_t *inip_read(const char *fname)
 }
 
 //***********************************************************************
+//  inip_read - Reads a .ini file
+//***********************************************************************
+
+inip_file_t *inip_read(const char *fname)
+{
+  FILE *fd;
+
+  log_printf(15, "Parsing file %s\n", fname);
+
+  fd = fopen(fname, "r");
+  if (fd == NULL) {  //** Can't open the file
+     log_printf(1, "Problem opening file %s\n", fname);
+     return(NULL);
+  }
+
+  return(inip_read_fd(fd));
+}
+
+//***********************************************************************
 //  inip_read_text - Converts a character array into a .ini file
 //***********************************************************************
 
 inip_file_t *inip_read_text(const char *text)
 {
-  inip_file_t *inip;
-  char fname[L_tmpnam+1];
-
-  tmpnam(fname);
-  FILE *fd = fopen(fname, "w");
+  FILE *fd = tmpfile();
   fprintf(fd, "%s\n", text);
-  fclose(fd);
 
-  inip = inip_read(fname);
-
-  remove(fname);
-
-  return(inip);
+  return(inip_read_fd(fd));
 }

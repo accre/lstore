@@ -66,6 +66,7 @@ typedef struct {  //File
 #define inip_get_element_key(ele) ((ele) == NULL) ? NULL : (ele)->key
 #define inip_get_element_value(ele) ((ele) == NULL) ? NULL : (ele)->value
 
+inip_file_t *inip_read_fd(FILE *fd);
 inip_file_t *inip_read(const char *fname);
 inip_file_t *inip_read_text(const char *text);
 void inip_destroy(inip_file_t *inip);
