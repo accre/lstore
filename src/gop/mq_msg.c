@@ -55,6 +55,28 @@ int mq_get_frame(mq_frame_t *f, void **data, int *size)
 }
 
 //*************************************************************
+//  mq_frame_strdup - Converts the contents ofthe frame to a NULL
+//    terminated string and returns the pointer.  The
+//    caller is responsible for freeing the data.
+//*************************************************************
+
+char *mq_frame_strdup(mq_frame_t *f)
+{
+  char *data, *str;
+  int n;
+
+  mq_get_frame(f, (void **)&data, &n);
+
+  if (data == NULL) return(NULL);
+
+  type_malloc(str, char, n+1);
+  str[n] = 0;
+  memcpy(str, data, n);
+
+  return(str);
+}
+
+//*************************************************************
 // quick stack related msg routines
 //*************************************************************
 
