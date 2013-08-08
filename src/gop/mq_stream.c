@@ -73,7 +73,7 @@ log_printf(1, "Waiting to accept data msid=%d\n", mqs->msid);
   mq_get_frame(mq_msg_first(task->response), (void **)&(mqs->data), &(mqs->len));
   pack_read_new_data(mqs->pack, &(mqs->data[MQS_HEADER]), mqs->len-MQS_HEADER);
 
-log_printf(1, "Accepting data len=%d msid=%\n", mqs->len-MQS_HEADER, mqs->msid);
+log_printf(1, "Accepting data len=%d msid=%d\n", mqs->len-MQS_HEADER, mqs->msid);
 
   //** Notify the consumer it's available
   mqs->waiting = -2;
