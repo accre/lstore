@@ -1753,6 +1753,8 @@ op_status_t osfile_remove_regex_fn(void *arg, int id)
   count = 0;
   while (osfile_next_object(it, &fname, &prefix_len) > 0) {
 log_printf(15, "removing fname=%s\n", fname);
+//usleep(0.5*1000000); log_printf(5, "SLEEP (fix count as well!) fname=%s\n", fname);
+
      if (osaz_object_remove(osf->osaz, op->creds, fname) == 0) {
         status.op_status = OP_STATE_FAILURE;
         status.error_code++;
@@ -1872,6 +1874,8 @@ op_status_t osfile_regex_object_set_multiple_attrs_fn(void *arg, int id)
   it = osfile_create_object_iter(op->os, op->creds, op->rpath, op->object_regex, op->object_types, NULL, op->recurse_depth, NULL, 0);
   count = 0;
   while (osfile_next_object(it, &fname, &prefix_len) > 0) {
+//usleep(0.5*1000000); log_printf(5, "SLEEP (fix count as well!) fname=%s\n", fname);
+
      if (osaz_object_access(osf->osaz, op->creds, fname, OS_MODE_WRITE_IMMEDIATE) == 0) {
         status.op_status = OP_STATE_FAILURE;
         status.error_code += op->n_keys;
@@ -1898,6 +1902,7 @@ op_status_t osfile_regex_object_set_multiple_attrs_fn(void *arg, int id)
 
      count++;  //** Check for an abort
      if (count == 20) {
+//     if (count == 1) {
         count = 0;
         if (atomic_get(op->abort) != 0) {
            status.op_status = OP_STATE_FAILURE;
@@ -1938,6 +1943,7 @@ op_generic_t *osfile_regex_object_set_multiple_attrs(object_service_fn_t *os, cr
   op->v_size = v_size;
   op->n_keys = n_attrs;
   op->object_types = object_types;
+  op->abort = 0;
 
   return(new_thread_pool_op(osf->tpc, NULL, osfile_regex_object_set_multiple_attrs_fn, (void *)op, free, 1));
 }

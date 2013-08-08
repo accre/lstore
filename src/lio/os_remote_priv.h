@@ -52,6 +52,8 @@ extern "C" {
 #define OSR_REMOVE_OBJECT_SIZE     16
 #define OSR_REMOVE_REGEX_OBJECT_KEY  "os_remove_regex_object"
 #define OSR_REMOVE_REGEX_OBJECT_SIZE 22
+#define OSR_ABORT_REMOVE_REGEX_OBJECT_KEY  "os_abort_remove_regex_object"
+#define OSR_ABORT_REMOVE_REGEX_OBJECT_SIZE 28
 #define OSR_MOVE_OBJECT_KEY        "os_move_object"
 #define OSR_MOVE_OBJECT_SIZE       14
 #define OSR_SYMLINK_OBJECT_KEY     "os_symlink_object"
@@ -66,6 +68,8 @@ extern "C" {
 #define OSR_CLOSE_OBJECT_SIZE      15
 #define OSR_REGEX_SET_MULT_ATTR_KEY  "os_regex_set_mult_object"
 #define OSR_REGEX_SET_MULT_ATTR_SIZE 24
+#define OSR_ABORT_REGEX_SET_MULT_ATTR_KEY  "os_abort_regex_set_mult_object"
+#define OSR_ABORT_REGEX_SET_MULT_ATTR_SIZE 30
 #define OSR_GET_MULTIPLE_ATTR_KEY  "os_get_mult"
 #define OSR_GET_MULTIPLE_ATTR_SIZE 11
 #define OSR_SET_MULTIPLE_ATTR_KEY  "os_set_mult"
@@ -86,6 +90,8 @@ extern "C" {
 #define OSR_FSCK_ITER_SIZE          12
 #define OSR_FSCK_OBJECT_KEY         "os_fsck_object"
 #define OSR_FSCK_OBJECT_SIZE        14
+#define OSR_SPIN_HB_KEY             "os_spin_hb"
+#define OSR_SPIN_HB_SIZE            10
 
         //** Types of ongoing objects stored
 #define OSR_ONGOING_FD_TYPE    0
@@ -102,6 +108,7 @@ typedef struct {
   mq_context_t *mqc;          //** Portal for connecting to he remote OS server
   mq_ongoing_t *ongoing;      //** Ongoing open files or iterators
   apr_hash_t *abort;          //** Abort open handles
+  apr_hash_t *spin;           //** Abort spin handles
   char *hostname;             //** Addres to bind to
   mq_portal_t *server_portal;
   int ongoing_interval;       //** Ongoing command check interval
@@ -121,10 +128,13 @@ typedef struct {
   char *remote_host;             //** Address of the Remote OS server
   char *host_id;                 //** Used for forming the open handle id;
   int host_id_len;               //** Length of host id
+  int spin_interval;             //** Spin heartbeat interval
+  int spin_fail;                 //** Spin fail interval
   os_authz_t *osaz;
   authn_t *authn;
   apr_pool_t *mpool;
   apr_thread_t *heartbeat_thread;
+  thread_pool_context_t *tpc;
   int timeout;
   int heartbeat;
   int shutdown;

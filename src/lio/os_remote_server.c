@@ -57,6 +57,14 @@ typedef struct {
   op_generic_t *gop;
 } osrs_abort_handle_t;
 
+typedef struct {
+  char *key;
+  int key_len;
+  int abort;
+  apr_time_t last_hb;
+  op_generic_t *gop;
+} spin_hb_t;
+
 //***********************************************************************
 // osrs_get_creds - Retreives the creds from the message
 //***********************************************************************
@@ -179,6 +187,54 @@ void osrs_exists_cb(void *arg, mq_task_t *task)
 }
 
 //***********************************************************************
+// osrs_spin_hb_cb - Processes the Spin HB command
+//***********************************************************************
+
+void osrs_spin_hb_cb(void *arg, mq_task_t *task)
+{
+  object_service_fn_t *os = (object_service_fn_t *)arg;
+  osrs_priv_t *osrs = (osrs_priv_t *)os->priv;
+  mq_frame_t *fcred, *fspin;
+  char *spin_hb;
+  spin_hb_t *spin;
+  creds_t *creds;
+  int fsize;
+  mq_msg_t *msg;
+
+  log_printf(5, "Processing incoming request\n");
+
+  //** Parse the command. Don't have to
+  msg = task->msg;
+  mq_remove_header(msg, 0);
+
+  mq_frame_destroy(mq_msg_pop(msg));  //** This is the ID
+  mq_frame_destroy(mq_msg_pop(msg));  //** Drop the application command frame
+  mq_frame_destroy(mq_msg_pop(msg));  //** Host/user ID
+
+  fcred = mq_msg_pop(msg);  //** This has the creds
+  creds = osrs_get_creds(os, fcred);
+
+  fspin = mq_msg_pop(msg);  //** This has the Spin ID
+  mq_get_frame(fspin, (void **)&spin_hb, &fsize);
+
+    //** Now check if the handle is valid
+  apr_thread_mutex_lock(osrs->lock);
+  if ((spin = apr_hash_get(osrs->spin, spin_hb, fsize)) != NULL) {
+     spin->last_hb = apr_time_now();
+  } else {
+     log_printf(5, "Invalid handle!\n");
+  }
+  apr_thread_mutex_unlock(osrs->lock);
+
+
+  mq_frame_destroy(fspin);
+  mq_frame_destroy(fcred);
+
+
+  log_printf(5, "END\n");
+}
+
+//***********************************************************************
 // osrs_create_object_cb - Processes the create object command
 //***********************************************************************
 
@@ -221,8 +277,10 @@ void osrs_create_object_cb(void *arg, mq_task_t *task)
   mq_get_frame(f, (void **)&data, &nbytes);
 
   if (creds != NULL) {
+     data = mq_frame_strdup(f);
      gop = os_create_object(osrs->os_child, creds, name, ftype, data);
      gop_waitall(gop);
+     if (data != NULL) free(data);
      status = gop_get_status(gop);
      gop_free(gop, OP_DESTROY);
   } else {
@@ -310,15 +368,18 @@ void osrs_remove_regex_object_cb(void *arg, mq_task_t *task)
   os_regex_table_t *path, *object_regex;
   creds_t *creds;
   int fsize, bpos, n;
-  int64_t recurse_depth, obj_types, timeout;
+  int64_t recurse_depth, obj_types, timeout, len, hb_timeout;
   mq_msg_t *msg;
-  op_generic_t *gop;
+  apr_time_t expire;
+  op_generic_t *gop, *g;
   mq_stream_t *mqs;
   op_status_t status;
+  spin_hb_t spin;
 
   log_printf(5, "Processing incoming request\n");
 
   status = op_failure_status;
+  memset(&spin, 0, sizeof(spin));
 
   //** Parse the command.
   msg = task->msg;
@@ -346,6 +407,25 @@ void osrs_remove_regex_object_cb(void *arg, mq_task_t *task)
   if (n < 0) { timeout = 60; goto fail; }
   bpos += n;
 
+  //** Get the spin heartbeat handle ID
+  n = zigzag_decode(&(buffer[bpos]), fsize-bpos, &len);
+  if (n < 0)  goto fail;
+  bpos += n;
+
+  if ((bpos+len) > fsize) goto fail;
+  type_malloc(spin.key, char, len+1);
+  memcpy(spin.key, &(buffer[bpos]), len);
+  spin.key[len] = 0;
+  spin.key_len = len;
+  spin.last_hb = apr_time_now();
+  bpos += len;
+  apr_hash_set(osrs->spin, spin.key, spin.key_len, &spin);
+
+  //** Spin Heartbeat timeout
+  n = zigzag_decode(&(buffer[bpos]), fsize-bpos, &hb_timeout);
+  if (n < 0) goto fail;
+  bpos += n;
+
   n = zigzag_decode(&(buffer[bpos]), fsize-bpos, &recurse_depth);
   if (n < 0) goto fail;
   bpos += n;
@@ -365,14 +445,39 @@ void osrs_remove_regex_object_cb(void *arg, mq_task_t *task)
   //** run the task
   if (creds != NULL) {
     gop = os_remove_regex_object(osrs->os_child, creds, path, object_regex, obj_types, recurse_depth);
-    gop_waitall(gop);
-    status = gop_get_status(gop);
+
+    while ((g = gop_timed_waitany(spin.gop, 1)) == NULL) {
+       expire = apr_time_now() - apr_time_from_sec(hb_timeout);
+       apr_thread_mutex_lock(osrs->lock);
+       n = ((expire > spin.last_hb) || (spin.abort > 0)) ? 1 : 0;
+       log_printf(5, "n=%d spin.abort=%d expire=" TT " spin.last_hb=" TT "\n", n, spin.abort, expire, spin.last_hb);
+       apr_thread_mutex_unlock(osrs->lock);
+
+       if (n == 1) { //** Kill the gop
+          log_printf(1, "Aborting gop=%d\n", gop_id(spin.gop));
+          g = os_abort_remove_regex_object(osrs->os_child, spin.gop);
+          gop_waitall(g);
+          gop_free(g, OP_DESTROY);
+          break;
+       }
+    }
+
+    gop_waitall(spin.gop);
+    status = gop_get_status(spin.gop);
     gop_free(gop, OP_DESTROY);
   } else {
      status = op_failure_status;
   }
 
 fail:
+  if (spin.key != NULL) {
+     apr_thread_mutex_lock(osrs->lock);
+     apr_hash_set(osrs->spin, spin.key, spin.key_len, NULL);
+     free(spin.key);
+     if (spin.gop != NULL) gop_free(spin.gop, OP_DESTROY);
+     apr_thread_mutex_unlock(osrs->lock);
+  }
+
   mq_frame_destroy(fdata);
   mq_frame_destroy(fcred);
 
@@ -385,6 +490,68 @@ fail:
   mq_stream_write(mqs, tbuf, n);
   mq_stream_destroy(mqs);
 }
+
+//***********************************************************************
+// osrs_abort_remove_regex_object_cb - Aborts a bulk remove command
+//***********************************************************************
+
+void osrs_abort_remove_regex_object_cb(void *arg, mq_task_t *task)
+{
+  object_service_fn_t *os = (object_service_fn_t *)arg;
+  osrs_priv_t *osrs = (osrs_priv_t *)os->priv;
+  mq_frame_t *fcred, *fspin, *fid;
+  char *spin_hb;
+  spin_hb_t *spin;
+  creds_t *creds;
+  int fsize;
+  op_status_t status;
+  mq_msg_t *msg, *response;
+  op_generic_t *gop;
+
+  log_printf(5, "Processing incoming request\n");
+
+  //** Parse the command. Don't have to
+  msg = task->msg;
+  mq_remove_header(msg, 0);
+
+  mq_frame_destroy(mq_msg_pop(msg));  //** This is the ID
+  mq_frame_destroy(mq_msg_pop(msg));  //** Drop the application command frame
+  fid = mq_msg_pop(msg);  //** Host/user ID
+
+  fcred = mq_msg_pop(msg);  //** This has the creds
+  creds = osrs_get_creds(os, fcred);
+
+  fspin = mq_msg_pop(msg);  //** This has the Spin ID
+  mq_get_frame(fspin, (void **)&spin_hb, &fsize);
+
+    //** Now check if the handle is valid
+  apr_thread_mutex_lock(osrs->lock);
+  if ((spin = apr_hash_get(osrs->spin, spin_hb, fsize)) != NULL) {
+     gop = os_abort_remove_regex_object(osrs->os_child, spin->gop);
+     gop_waitall(gop);
+     status = gop_get_status(gop);
+     gop_free(gop, OP_DESTROY);
+  } else {
+     log_printf(5, "Invalid handle!\n");
+  }
+  apr_thread_mutex_unlock(osrs->lock);
+
+  //** Form the response
+  response = mq_make_response_core_msg(msg, fid);
+  mq_msg_append_frame(response, mq_make_status_frame(status));
+  mq_msg_append_mem(response, NULL, 0, MQF_MSG_KEEP_DATA);  //** Empty frame
+
+log_printf(5, "status.op_status=%d\n", status.op_status);
+  //** Lastly send it
+  mq_submit(osrs->server_portal, mq_task_new(osrs->mqc, response, NULL, NULL, 30));
+
+  mq_frame_destroy(fspin);
+  mq_frame_destroy(fcred);
+
+
+  log_printf(5, "END\n");
+}
+
 
 //***********************************************************************
 // osrs_symlink_object_cb - Processes the symlink object command
@@ -421,13 +588,14 @@ void osrs_symlink_object_cb(void *arg, mq_task_t *task)
   mq_get_frame(fdname, (void **)&dest_name, &fsize);
 
   fuserid = mq_msg_pop(msg);  //** User ID
-  mq_get_frame(fuserid, (void **)&userid, &fsize);
 
   if (creds != NULL) {
+     userid = mq_frame_strdup(fuserid);
      gop = os_symlink_object(osrs->os_child, creds, src_name, dest_name, userid);
      gop_waitall(gop);
      status = gop_get_status(gop);
      gop_free(gop, OP_DESTROY);
+     if (userid != NULL) free(userid);
   } else {
      status = op_failure_status;
   }
@@ -481,13 +649,14 @@ void osrs_hardlink_object_cb(void *arg, mq_task_t *task)
   mq_get_frame(fdname, (void **)&dest_name, &fsize);
 
   fuserid = mq_msg_pop(msg);  //** User ID
-  mq_get_frame(fuserid, (void **)&userid, &fsize);
 
   if (creds != NULL) {
+     userid = mq_frame_strdup(fuserid);
      gop = os_hardlink_object(osrs->os_child, creds, src_name, dest_name, userid);
      gop_waitall(gop);
      status = gop_get_status(gop);
      gop_free(gop, OP_DESTROY);
+     if (userid != NULL) free(userid);
   } else {
      status = op_failure_status;
   }
@@ -595,7 +764,6 @@ void osrs_open_object_cb(void *arg, mq_task_t *task)
   creds = osrs_get_creds(os, fcred);
 
   fuid = mq_msg_pop(msg);  //** User ID for storing in lock attribute
-  mq_get_frame(fuid, (void **)&id, &fsize);
 
   fsname = mq_msg_pop(msg);  //** Source file
   mq_get_frame(fsname, (void **)&src_name, &fsize);
@@ -611,6 +779,7 @@ log_printf(5, "fname=%s mode=%d max_wait=%d\n", src_name, mode, max_wait);
   if (creds != NULL) {
      mq_get_frame(fhandle, (void **)&(ah.handle), &n);
      ah.handle_len = n;
+     id = mq_frame_strdup(fuid);
      ah.gop = os_open_object(osrs->os_child, creds, src_name, mode, id, &fd, max_wait);
      osrs_add_abort_handle(os, &ah);  //** Add us to the abort list
 
@@ -618,6 +787,7 @@ log_printf(5, "fname=%s mode=%d max_wait=%d\n", src_name, mode, max_wait);
 
      osrs_remove_abort_handle(os, &ah);  //** Can remove us now since finished
 
+     if (id != NULL) free(id);
      status = gop_get_status(ah.gop);
      gop_free(ah.gop, OP_DESTROY);
   } else {
@@ -1086,6 +1256,68 @@ log_printf(5, "status.op_status=%d\n", status.op_status);
   if (v_size) free(v_size);
 }
 
+
+//***********************************************************************
+// osrs_abort_regex_set_muylt_attr_cb - Aborts a bulk set attr command
+//***********************************************************************
+
+void osrs_abort_regex_set_mult_attr_cb(void *arg, mq_task_t *task)
+{
+  object_service_fn_t *os = (object_service_fn_t *)arg;
+  osrs_priv_t *osrs = (osrs_priv_t *)os->priv;
+  mq_frame_t *fcred, *fspin, *fid;
+  char *spin_hb;
+  spin_hb_t *spin;
+  creds_t *creds;
+  int fsize;
+  op_status_t status;
+  mq_msg_t *msg, *response;
+  op_generic_t *gop;
+
+  log_printf(5, "Processing incoming request\n");
+
+  //** Parse the command. Don't have to
+  msg = task->msg;
+  mq_remove_header(msg, 0);
+
+  mq_frame_destroy(mq_msg_pop(msg));  //** This is the ID
+  mq_frame_destroy(mq_msg_pop(msg));  //** Drop the application command frame
+  fid = mq_msg_pop(msg);  //** Host/user ID
+
+  fcred = mq_msg_pop(msg);  //** This has the creds
+  creds = osrs_get_creds(os, fcred);
+
+  fspin = mq_msg_pop(msg);  //** This has the Spin ID
+  mq_get_frame(fspin, (void **)&spin_hb, &fsize);
+
+    //** Now check if the handle is valid
+  apr_thread_mutex_lock(osrs->lock);
+  if ((spin = apr_hash_get(osrs->spin, spin_hb, fsize)) != NULL) {
+     gop = os_abort_regex_object_set_multiple_attrs(osrs->os_child, spin->gop);
+     gop_waitall(gop);
+     status = gop_get_status(gop);
+     gop_free(gop, OP_DESTROY);
+  } else {
+     log_printf(5, "Invalid handle!\n");
+  }
+  apr_thread_mutex_unlock(osrs->lock);
+
+  //** Form the response
+  response = mq_make_response_core_msg(msg, fid);
+  mq_msg_append_frame(response, mq_make_status_frame(status));
+  mq_msg_append_mem(response, NULL, 0, MQF_MSG_KEEP_DATA);  //** Empty frame
+
+log_printf(5, "status.op_status=%d\n", status.op_status);
+  //** Lastly send it
+  mq_submit(osrs->server_portal, mq_task_new(osrs->mqc, response, NULL, NULL, 30));
+
+  mq_frame_destroy(fspin);
+  mq_frame_destroy(fcred);
+
+
+  log_printf(5, "END\n");
+}
+
 //***********************************************************************
 // osrs_regex_set_set_mult_attr_cb - Processes the regex based object attrribute setting
 //***********************************************************************
@@ -1101,18 +1333,21 @@ void osrs_regex_set_mult_attr_cb(void *arg, mq_task_t *task)
   char **key;
   char **val;
   char *call_id;
+  spin_hb_t spin;
+  apr_time_t expire;
   os_regex_table_t *path, *object_regex;
   creds_t *creds;
   int fsize, bpos, n, i;
-  int64_t recurse_depth, obj_types, timeout, n_attrs, len;
+  int64_t recurse_depth, obj_types, timeout, hb_timeout, n_attrs, len;
   mq_msg_t *msg;
-  op_generic_t *gop;
+  op_generic_t *g;
   mq_stream_t *mqs;
   op_status_t status;
 
   log_printf(5, "Processing incoming request\n");
 
   status = op_failure_status;
+  memset(&spin, 0, sizeof(spin));
   key = NULL; val = NULL, v_size = NULL; n_attrs = 0;
 
   //** Parse the command.
@@ -1127,23 +1362,49 @@ void osrs_regex_set_mult_attr_cb(void *arg, mq_task_t *task)
   creds = osrs_get_creds(os, fcred);
 
   fcid = mq_msg_pop(msg);  //** This has the call ID
-  mq_get_frame(fcid, (void **)&call_id, &fsize);
+  call_id = mq_frame_strdup(fcid);
 
   fdata = mq_msg_pop(msg);  //** This has the data
   mq_get_frame(fdata, (void **)&buffer, &fsize);
-
-  //** Create the stream so we can get the heartbeating while we work
-  mqs = mq_stream_write_create(osrs->mqc, osrs->server_portal, osrs->ongoing, MQS_PACK_COMPRESS, osrs->max_stream, timeout, msg, fid, hid, 0);
 
   //** Parse the buffer
   path = NULL;
   object_regex = NULL;
   bpos = 0;
 
+  //** Get the timeout
   n = zigzag_decode(&(buffer[bpos]), fsize-bpos, &timeout);
-  if (n < 0) { timeout = 60; goto fail; }
+  if (n < 0) {
+     timeout = 60;
+  } else {
+     bpos += n;
+  }
+
+  //** Create the stream so we can get the heartbeating while we work
+  mqs = mq_stream_write_create(osrs->mqc, osrs->server_portal, osrs->ongoing, MQS_PACK_COMPRESS, osrs->max_stream, timeout, msg, fid, hid, 0);
+  if (n < 0) goto fail;
+
+  //** Get the spin heartbeat handle ID
+  n = zigzag_decode(&(buffer[bpos]), fsize-bpos, &len);
+  if (n < 0)  goto fail;
   bpos += n;
 
+  if ((bpos+len) > fsize) goto fail;
+  type_malloc(spin.key, char, len+1);
+  memcpy(spin.key, &(buffer[bpos]), len);
+  spin.key[len] = 0;
+  spin.key_len = len;
+  spin.last_hb = apr_time_now();
+  bpos += len;
+  apr_hash_set(osrs->spin, spin.key, spin.key_len, &spin);
+
+
+  //** Spin Heartbeat timeout
+  n = zigzag_decode(&(buffer[bpos]), fsize-bpos, &hb_timeout);
+  if (n < 0) goto fail;
+  bpos += n;
+
+  //** Get the other params
   n = zigzag_decode(&(buffer[bpos]), fsize-bpos, &recurse_depth);
   if (n < 0) goto fail;
   bpos += n;
@@ -1196,17 +1457,45 @@ void osrs_regex_set_mult_attr_cb(void *arg, mq_task_t *task)
 log_printf(15, "i=%d key=%s val=%s bpos=%d\n", i, key[i], val[i], bpos);
   }
 
+log_printf(5, "hb_abort_timeout=%d\n", hb_timeout);
+
   //** run the task
   if (creds != NULL) {
-     gop = os_regex_object_set_multiple_attrs(osrs->os_child, creds, call_id, path, object_regex, obj_types, recurse_depth, key, (void **)val, v_size, n_attrs);
-     gop_waitall(gop);
-     status = gop_get_status(gop);
-     gop_free(gop, OP_DESTROY);
+     spin.gop = os_regex_object_set_multiple_attrs(osrs->os_child, creds, call_id, path, object_regex, obj_types, recurse_depth, key, (void **)val, v_size, n_attrs);
+
+     while ((g = gop_timed_waitany(spin.gop, 1)) == NULL) {
+        expire = apr_time_now() - apr_time_from_sec(hb_timeout);
+        apr_thread_mutex_lock(osrs->lock);
+        n = ((expire > spin.last_hb) || (spin.abort > 0)) ? 1 : 0;
+        log_printf(5, "n=%d spin.abort=%d expire=" TT " spin.last_hb=" TT "\n", n, spin.abort, expire, spin.last_hb);
+        apr_thread_mutex_unlock(osrs->lock);
+
+        if (n == 1) { //** Kill the gop
+           log_printf(1, "Aborting gop=%d\n", gop_id(spin.gop));
+           g = os_abort_regex_object_set_multiple_attrs(osrs->os_child, spin.gop);
+           gop_waitall(g);
+           gop_free(g, OP_DESTROY);
+           break;
+        }
+     }
+
+     gop_waitall(spin.gop);
+     status = gop_get_status(spin.gop);
   } else {
      status = op_failure_status;
   }
 
 fail:
+  if (spin.key != NULL) {
+     apr_thread_mutex_lock(osrs->lock);
+     apr_hash_set(osrs->spin, spin.key, spin.key_len, NULL);
+     free(spin.key);
+     if (spin.gop != NULL) gop_free(spin.gop, OP_DESTROY);
+     apr_thread_mutex_unlock(osrs->lock);
+  }
+
+  if (call_id != NULL) free(call_id);
+
   mq_frame_destroy(fdata);
   mq_frame_destroy(fcred);
   mq_frame_destroy(fcid);
@@ -1222,6 +1511,7 @@ fail:
     free(key); free(val); free(v_size);
   }
 
+  log_printf(5, "END status=%d n_errs=%d\n", status.op_status, status.error_code);
   //** Send the response
   n = zigzag_encode(status.op_status, tbuf);
   n = n + zigzag_encode(status.error_code, &(tbuf[n]));
@@ -2466,6 +2756,9 @@ log_printf(0, "START\n");
   osrs->abort = apr_hash_make(osrs->mpool);
   assert(osrs->abort != NULL);
 
+  osrs->spin = apr_hash_make(osrs->mpool);
+  assert(osrs->spin != NULL);
+
   //** Get the host name we bind to
   osrs->hostname= inip_get_string(fd, section, "address", NULL);
 
@@ -2509,10 +2802,12 @@ log_printf(0, "START\n");
   //** Make the server portal
   osrs->server_portal = mq_portal_create(osrs->mqc, osrs->hostname, MQ_CMODE_SERVER);
   ctable = mq_portal_command_table(osrs->server_portal);
+  mq_command_set(ctable, OSR_SPIN_HB_KEY, OSR_SPIN_HB_SIZE, os, osrs_spin_hb_cb);
   mq_command_set(ctable, OSR_EXISTS_KEY, OSR_EXISTS_SIZE, os, osrs_exists_cb);
   mq_command_set(ctable, OSR_CREATE_OBJECT_KEY, OSR_CREATE_OBJECT_SIZE, os, osrs_create_object_cb);
   mq_command_set(ctable, OSR_REMOVE_OBJECT_KEY, OSR_REMOVE_OBJECT_SIZE, os, osrs_remove_object_cb);
   mq_command_set(ctable, OSR_REMOVE_REGEX_OBJECT_KEY, OSR_REMOVE_REGEX_OBJECT_SIZE, os, osrs_remove_regex_object_cb);
+  mq_command_set(ctable, OSR_ABORT_REMOVE_REGEX_OBJECT_KEY, OSR_ABORT_REMOVE_REGEX_OBJECT_SIZE, os, osrs_abort_remove_regex_object_cb);
   mq_command_set(ctable, OSR_MOVE_OBJECT_KEY, OSR_MOVE_OBJECT_SIZE, os, osrs_move_object_cb);
   mq_command_set(ctable, OSR_SYMLINK_OBJECT_KEY, OSR_SYMLINK_OBJECT_SIZE, os, osrs_symlink_object_cb);
   mq_command_set(ctable, OSR_HARDLINK_OBJECT_KEY, OSR_HARDLINK_OBJECT_SIZE, os, osrs_hardlink_object_cb);
@@ -2520,6 +2815,7 @@ log_printf(0, "START\n");
   mq_command_set(ctable, OSR_CLOSE_OBJECT_KEY, OSR_CLOSE_OBJECT_SIZE, os, osrs_close_object_cb);
   mq_command_set(ctable, OSR_ABORT_OPEN_OBJECT_KEY, OSR_ABORT_OPEN_OBJECT_SIZE, os, osrs_abort_open_object_cb);
   mq_command_set(ctable, OSR_REGEX_SET_MULT_ATTR_KEY, OSR_REGEX_SET_MULT_ATTR_SIZE, os, osrs_regex_set_mult_attr_cb);
+  mq_command_set(ctable, OSR_ABORT_REGEX_SET_MULT_ATTR_KEY, OSR_ABORT_REGEX_SET_MULT_ATTR_SIZE, os, osrs_abort_regex_set_mult_attr_cb);
   mq_command_set(ctable, OSR_GET_MULTIPLE_ATTR_KEY, OSR_GET_MULTIPLE_ATTR_SIZE, os, osrs_get_mult_attr_cb);
   mq_command_set(ctable, OSR_SET_MULTIPLE_ATTR_KEY, OSR_SET_MULTIPLE_ATTR_SIZE, os, osrs_set_mult_attr_cb);
   mq_command_set(ctable, OSR_COPY_MULTIPLE_ATTR_KEY, OSR_COPY_MULTIPLE_ATTR_SIZE, os, osrs_copy_mult_attr_cb);

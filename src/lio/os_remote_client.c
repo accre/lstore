@@ -119,6 +119,31 @@ typedef struct {
   int n;
 } osrc_mult_attr_t;
 
+typedef struct {
+  object_service_fn_t *os;
+  creds_t *creds;
+  os_regex_table_t *path;
+  os_regex_table_t *object_regex;
+  int obj_types;
+  int recurse_depth;
+  uint64_t my_id;
+} osrc_remove_regex_t;
+
+typedef struct {
+  object_service_fn_t *os;
+  creds_t *creds;
+  char *id;
+  os_regex_table_t *path;
+  os_regex_table_t *object_regex;
+  int obj_types;
+  int recurse_depth;
+  char **key;
+  void **val;
+  int *v_size;
+  int n_attrs;
+  uint64_t my_id;
+} osrc_set_regex_t;
+
 //***********************************************************************
 // osrc_add_creds - Adds the creds to the message
 //***********************************************************************
@@ -198,21 +223,25 @@ log_printf(5, "END err=%d status=%d %d\n", err, status.op_status, status.error_c
 //     if it is empty.
 //***********************************************************************
 
-op_generic_t *osrc_remove_regex_object(object_service_fn_t *os, creds_t *creds, os_regex_table_t *path, os_regex_table_t *object_regex, int obj_types, int recurse_depth)
+op_status_t osrc_remove_regex_object_func(void *arg, int id)
 {
-  osrc_priv_t *osrc = (osrc_priv_t *)os->priv;
+  osrc_remove_regex_t *op = (osrc_remove_regex_t *)arg;
+  osrc_priv_t *osrc = (osrc_priv_t *)op->os->priv;
   int bpos, bufsize, again, n;
   unsigned char *buffer;
-  mq_msg_t *msg;
-  op_generic_t *gop;
+  mq_msg_t *msg, *spin;
+  op_generic_t *gop, *g;
+  op_status_t status;
 
 log_printf(5, "START\n");
+
+  status = op_success_status;
 
   //** Form the message
   msg = mq_make_exec_core_msg(osrc->remote_host, 1);
   mq_msg_append_mem(msg, OSR_REMOVE_REGEX_OBJECT_KEY, OSR_REMOVE_REGEX_OBJECT_SIZE, MQF_MSG_KEEP_DATA);
   mq_msg_append_mem(msg, osrc->host_id, osrc->host_id_len, MQF_MSG_KEEP_DATA);
-  osrc_add_creds(os, creds, msg);
+  osrc_add_creds(op->os, op->creds, msg);
 
   bufsize = 4096;
   type_malloc(buffer, unsigned char, bufsize);
@@ -224,19 +253,29 @@ log_printf(5, "START\n");
     if (n<0) { again = 1; n=4; }
     bpos += n;
 
-    n = zigzag_encode(recurse_depth, &(buffer[bpos]));
+    n = zigzag_encode(sizeof(op->my_id), &(buffer[bpos]));
+    if (n<0) { again = 1; n=4; }
+    bpos += n;
+    memcpy(&(buffer[bpos]), &(op->my_id), sizeof(op->my_id));
+    bpos += sizeof(op->my_id);
+
+    n = zigzag_encode(osrc->spin_fail, &(buffer[bpos]));
     if (n<0) { again = 1; n=4; }
     bpos += n;
 
-    n = zigzag_encode(obj_types, &(buffer[bpos]));
+    n = zigzag_encode(op->recurse_depth, &(buffer[bpos]));
     if (n<0) { again = 1; n=4; }
     bpos += n;
 
-    n = os_regex_table_pack(path, &(buffer[(again==0) ? bpos : 0]), bufsize-bpos);
+    n = zigzag_encode(op->obj_types, &(buffer[bpos]));
+    if (n<0) { again = 1; n=4; }
+    bpos += n;
+
+    n = os_regex_table_pack(op->path, &(buffer[(again==0) ? bpos : 0]), bufsize-bpos);
     if (n < 0) { again = 1; n = -n; }
     bpos += n;
 
-    n = os_regex_table_pack(object_regex, &(buffer[(again==0) ? bpos : 0]), bufsize-bpos);
+    n = os_regex_table_pack(op->object_regex, &(buffer[(again==0) ? bpos : 0]), bufsize-bpos);
     if (n < 0) { again = 1; n = -n; }
     bpos += n;
 
@@ -253,9 +292,99 @@ log_printf(5, "START\n");
 
 log_printf(5, "END\n");
 
-  //** Make the gop
-  gop = new_mq_op(osrc->mqc, msg, osrc_response_stream_status, os, NULL, osrc->timeout);
+  //** Make the gop and submit it
+  gop = new_mq_op(osrc->mqc, msg, osrc_response_stream_status, op->os, NULL, osrc->timeout);
+  gop_start_execution(gop);
+
+  //** Wait for it to complete Sending hearbeats as needed
+  while ((g = gop_timed_waitany(gop, osrc->spin_interval)) == NULL) {
+     //** Form the spin message
+     spin = mq_make_exec_core_msg(osrc->remote_host, 0);
+     mq_msg_append_mem(spin, OSR_SPIN_HB_KEY, OSR_SPIN_HB_SIZE, MQF_MSG_KEEP_DATA);
+     mq_msg_append_mem(spin, osrc->host_id, osrc->host_id_len, MQF_MSG_KEEP_DATA);
+     osrc_add_creds(op->os, op->creds, spin);
+     mq_msg_append_mem(spin, &(op->my_id), sizeof(op->my_id), MQF_MSG_KEEP_DATA);
+
+     //** And send it
+     g = new_mq_op(osrc->mqc, spin, NULL, NULL, NULL, osrc->timeout);
+     log_printf(5, "spin hb sent. gid=%d\n", gop_id(g));
+     gop_set_auto_destroy(g, 1);
+     gop_start_execution(g);
+  }
+
+  gop_waitall(gop);
+  status = gop_get_status(gop);
+  gop_free(gop, OP_DESTROY);
+
+log_printf(5, "END status=%d\n", status.op_status);
+
+  return(status);
+}
+
+
+//***********************************************************************
+// osrc_remove_regex_object - Does a bulk regex remove.
+//     Each matching object is removed.  If the object is a directory
+//     then the system will recursively remove it's contents up to the
+//     recursion depth.  Setting recurse_depth=0 will only remove the dir
+//     if it is empty.
+//***********************************************************************
+
+op_generic_t *osrc_remove_regex_object(object_service_fn_t *os, creds_t *creds, os_regex_table_t *path, os_regex_table_t *object_regex, int obj_types, int recurse_depth)
+{
+  osrc_priv_t *osrc = (osrc_priv_t *)os->priv;
+  osrc_remove_regex_t *op;
+  op_generic_t *gop;
+
+  type_malloc(op, osrc_remove_regex_t, 1);
+  op->os = os;
+  op->creds = creds;
+  op->path = path;
+  op->object_regex = object_regex;
+  op->obj_types = obj_types;
+  op->recurse_depth = recurse_depth;
+  op->my_id = 0;
+  get_random(&(op->my_id), sizeof(op->my_id));
+
+  gop = new_thread_pool_op(osrc->tpc, NULL, osrc_remove_regex_object_func, (void *)op, free, 1);
   return(gop);
+}
+
+//***********************************************************************
+// osrc_abort_remove_regex_object - Aborts a bulk remove call
+//***********************************************************************
+
+op_generic_t *osrc_abort_remove_regex_object(object_service_fn_t *os, op_generic_t *gop)
+{
+  osrc_priv_t *osrc = (osrc_priv_t *)os->priv;
+  mq_msg_t *msg;
+  unsigned char buf[512];
+  int bpos;
+  op_generic_t *g;
+  osrc_set_regex_t *op;
+
+log_printf(5, "START\n");
+  op = gop_get_private(gop);
+
+  //** Form the message
+  msg = mq_make_exec_core_msg(osrc->remote_host, 1);
+  mq_msg_append_mem(msg, OSR_ABORT_REMOVE_REGEX_OBJECT_KEY, OSR_ABORT_REMOVE_REGEX_OBJECT_SIZE, MQF_MSG_KEEP_DATA);
+  mq_msg_append_mem(msg, osrc->host_id, osrc->host_id_len, MQF_MSG_KEEP_DATA);
+  osrc_add_creds(os, op->creds, msg);
+
+  bpos = zigzag_encode(sizeof(op->my_id), buf);
+  memcpy(&(buf[bpos]), &(op->my_id), sizeof(op->my_id));
+  bpos += sizeof(op->my_id);
+  mq_msg_append_mem(msg, buf, bpos, MQF_MSG_KEEP_DATA);
+
+  mq_msg_append_mem(msg, NULL, 0, MQF_MSG_KEEP_DATA);
+
+  //** Make the gop
+  g = new_mq_op(osrc->mqc, msg, osrc_response_status, NULL, NULL, osrc->timeout);
+
+log_printf(5, "END\n");
+
+  return(g);
 }
 
 //***********************************************************************
@@ -293,24 +422,27 @@ log_printf(5, "END\n");
 //     recursion depth.
 //***********************************************************************
 
-
-op_generic_t *osrc_regex_object_set_multiple_attrs(object_service_fn_t *os, creds_t *creds, char *id, os_regex_table_t *path, os_regex_table_t *object_regex, int object_types, int recurse_depth, char **key, void **val, int *v_size, int n_attrs)
+op_status_t osrc_regex_object_set_multiple_attrs_func(void *arg, int id)
 {
-  osrc_priv_t *osrc = (osrc_priv_t *)os->priv;
+  osrc_set_regex_t *op = (osrc_set_regex_t *)arg;
+  osrc_priv_t *osrc = (osrc_priv_t *)op->os->priv;
   int bpos, bufsize, again, n, i, len;
   unsigned char *buffer;
-  mq_msg_t *msg;
-  op_generic_t *gop;
+  mq_msg_t *msg, *spin;
+  op_generic_t *gop, *g;
+  op_status_t status;
 
 log_printf(5, "START\n");
+
+  status = op_success_status;
 
   //** Form the message
   msg = mq_make_exec_core_msg(osrc->remote_host, 1);
   mq_msg_append_mem(msg, OSR_REGEX_SET_MULT_ATTR_KEY, OSR_REGEX_SET_MULT_ATTR_SIZE, MQF_MSG_KEEP_DATA);
   mq_msg_append_mem(msg, osrc->host_id, osrc->host_id_len, MQF_MSG_KEEP_DATA);
-  osrc_add_creds(os, creds, msg);
-  if (id != NULL) {
-     mq_msg_append_mem(msg, id, strlen(id), MQF_MSG_KEEP_DATA);
+  osrc_add_creds(op->os, op->creds, msg);
+  if (op->id != NULL) {
+     mq_msg_append_mem(msg, op->id, strlen(op->id), MQF_MSG_KEEP_DATA);
   } else {
      mq_msg_append_mem(msg, NULL, 0, MQF_MSG_KEEP_DATA);
   }
@@ -325,19 +457,29 @@ log_printf(5, "START\n");
     if (n<0) { again = 1; n=4; }
     bpos += n;
 
-    n = zigzag_encode(recurse_depth, &(buffer[bpos]));
+    n = zigzag_encode(sizeof(op->my_id), &(buffer[bpos]));
+    if (n<0) { again = 1; n=4; }
+    bpos += n;
+    memcpy(&(buffer[bpos]), &(op->my_id), sizeof(op->my_id));
+    bpos += sizeof(op->my_id);
+
+    n = zigzag_encode(osrc->spin_fail, &(buffer[bpos]));
     if (n<0) { again = 1; n=4; }
     bpos += n;
 
-    n = zigzag_encode(object_types, &(buffer[bpos]));
+    n = zigzag_encode(op->recurse_depth, &(buffer[bpos]));
     if (n<0) { again = 1; n=4; }
     bpos += n;
 
-    n = os_regex_table_pack(path, &(buffer[(again==0) ? bpos : 0]), bufsize-bpos);
+    n = zigzag_encode(op->obj_types, &(buffer[bpos]));
+    if (n<0) { again = 1; n=4; }
+    bpos += n;
+
+    n = os_regex_table_pack(op->path, &(buffer[(again==0) ? bpos : 0]), bufsize-bpos);
     if (n < 0) { again = 1; n = -n; }
     bpos += n;
 
-    n = os_regex_table_pack(object_regex, &(buffer[(again==0) ? bpos : 0]), bufsize-bpos);
+    n = os_regex_table_pack(op->object_regex, &(buffer[(again==0) ? bpos : 0]), bufsize-bpos);
     if (n < 0) { again = 1; n = -n; }
     bpos += n;
 
@@ -347,23 +489,23 @@ log_printf(5, "START\n");
        type_malloc(buffer, unsigned char, bufsize);
     }
 
-    bpos += zigzag_encode(n_attrs, (unsigned char *)&(buffer[bpos]));
+    bpos += zigzag_encode(op->n_attrs, (unsigned char *)&(buffer[bpos]));
 
-    for (i=0; i<n_attrs; i++) {
-log_printf(15, "i=%d key=%s val=%s bpos=%d\n", i, key[i], val[i], bpos);
-      len = strlen(key[i]);
+    for (i=0; i<op->n_attrs; i++) {
+log_printf(15, "i=%d key=%s val=%s bpos=%d\n", i, op->key[i], op->val[i], bpos);
+      len = strlen(op->key[i]);
       n = (again == 0) ? zigzag_encode(len, (unsigned char *)&(buffer[bpos])) : 4;
       if (n<0) { again = 1; n=4; }
       bpos += n;
-      if (again == 0) memcpy(&(buffer[bpos]), key[i], len);
+      if (again == 0) memcpy(&(buffer[bpos]), op->key[i], len);
       bpos += len;
 
-      len = v_size[i];
+      len = op->v_size[i];
       n = (again == 0) ? zigzag_encode(len, (unsigned char *)&(buffer[bpos])) : 4;
       if (n<0) { again = 1; n=4; }
       bpos += n;
       if (len > 0) {
-         if (again == 0) memcpy(&(buffer[bpos]), val[i], len);
+         if (again == 0) memcpy(&(buffer[bpos]), op->val[i], len);
          bpos += len;
       }
     }
@@ -373,12 +515,108 @@ log_printf(15, "i=%d key=%s val=%s bpos=%d\n", i, key[i], val[i], bpos);
   mq_msg_append_mem(msg, buffer, bpos, MQF_MSG_AUTO_FREE);
   mq_msg_append_mem(msg, NULL, 0, MQF_MSG_KEEP_DATA);
 
-log_printf(5, "END\n");
 
-  //** Make the gop
-  gop = new_mq_op(osrc->mqc, msg, osrc_response_stream_status, os, NULL, osrc->timeout);
+  //** Make the gop and submit it
+  gop = new_mq_op(osrc->mqc, msg, osrc_response_stream_status, op->os, NULL, osrc->timeout);
+  gop_start_execution(gop);
+
+  //** Wait for it to complete Sending hearbeats as needed
+  while ((g = gop_timed_waitany(gop, osrc->spin_interval)) == NULL) {
+     //** Form the spin message
+     spin = mq_make_exec_core_msg(osrc->remote_host, 0);
+     mq_msg_append_mem(spin, OSR_SPIN_HB_KEY, OSR_SPIN_HB_SIZE, MQF_MSG_KEEP_DATA);
+     mq_msg_append_mem(spin, osrc->host_id, osrc->host_id_len, MQF_MSG_KEEP_DATA);
+     osrc_add_creds(op->os, op->creds, spin);
+     mq_msg_append_mem(spin, &(op->my_id), sizeof(op->my_id), MQF_MSG_KEEP_DATA);
+
+     //** And send it
+     g = new_mq_op(osrc->mqc, spin, NULL, NULL, NULL, osrc->timeout);
+     log_printf(5, "spin hb sent. gid=%d\n", gop_id(g));
+     gop_set_auto_destroy(g, 1);
+     gop_start_execution(g);
+  }
+
+  gop_waitall(gop);
+  status = gop_get_status(gop);
+  gop_free(gop, OP_DESTROY);
+
+log_printf(5, "END status=%d\n", status.op_status);
+
+
+  return(status);
+}
+
+//***********************************************************************
+// osrc_regex_object_set_multiple_attrs - Does a bulk regex change.
+//     Each matching object's attr are changed.  If the object is a directory
+//     then the system will recursively change it's contents up to the
+//     recursion depth.
+//***********************************************************************
+
+op_generic_t *osrc_regex_object_set_multiple_attrs(object_service_fn_t *os, creds_t *creds, char *id, os_regex_table_t *path, os_regex_table_t *object_regex, int object_types, int recurse_depth, char **key, void **val, int *v_size, int n_attrs)
+{
+  osrc_priv_t *osrc = (osrc_priv_t *)os->priv;
+  osrc_set_regex_t *op;
+  op_generic_t *gop;
+
+  type_malloc(op, osrc_set_regex_t, 1);
+  op->os = os;
+  op->creds = creds;
+  op->id = id;
+  op->path = path;
+  op->object_regex = object_regex;
+  op->obj_types = object_types;
+  op->recurse_depth = recurse_depth;
+  op->key = key;
+  op->val = val;
+  op->v_size= v_size;
+  op->n_attrs = n_attrs;
+  op->my_id = 0;
+  get_random(&(op->my_id), sizeof(op->my_id));
+
+  gop = new_thread_pool_op(osrc->tpc, NULL, osrc_regex_object_set_multiple_attrs_func, (void *)op, free, 1);
+  gop_set_private(gop, op);
+
   return(gop);
 }
+
+//***********************************************************************
+// osrc_abort_regex_object_set_multiple_attrs - Aborts a bulk attr call
+//***********************************************************************
+
+op_generic_t *osrc_abort_regex_object_set_multiple_attrs(object_service_fn_t *os, op_generic_t *gop)
+{
+  osrc_priv_t *osrc = (osrc_priv_t *)os->priv;
+  mq_msg_t *msg;
+  unsigned char buf[512];
+  int bpos;
+  op_generic_t *g;
+  osrc_set_regex_t *op;
+
+log_printf(5, "START\n");
+  op = gop_get_private(gop);
+
+  //** Form the message
+  msg = mq_make_exec_core_msg(osrc->remote_host, 1);
+  mq_msg_append_mem(msg, OSR_ABORT_REGEX_SET_MULT_ATTR_KEY, OSR_ABORT_REGEX_SET_MULT_ATTR_SIZE, MQF_MSG_KEEP_DATA);
+  mq_msg_append_mem(msg, osrc->host_id, osrc->host_id_len, MQF_MSG_KEEP_DATA);
+  osrc_add_creds(os, op->creds, msg);
+
+  bpos = zigzag_encode(sizeof(op->my_id), buf);
+  memcpy(&(buf[bpos]), &(op->my_id), sizeof(op->my_id));
+  bpos += sizeof(op->my_id);
+  mq_msg_append_mem(msg, buf, bpos, MQF_MSG_KEEP_DATA);
+
+  mq_msg_append_mem(msg, NULL, 0, MQF_MSG_KEEP_DATA);
+
+  //** Make the gop
+  g = new_mq_op(osrc->mqc, msg, osrc_response_status, NULL, NULL, osrc->timeout);
+
+log_printf(5, "END\n");
+
+  return(g);
+}
+
 
 //***********************************************************************
 //  osrc_exists - Returns the object type  and 0 if it doesn't exist
@@ -406,7 +644,6 @@ log_printf(5, "END\n");
 
   return(gop);
 }
-
 
 //***********************************************************************
 // osrc_create_object - Creates an object
@@ -2153,6 +2390,8 @@ log_printf(0, "START\n");
   osrc->heartbeat = inip_get_integer(fd, section, "heartbeat", 600);
   osrc->remote_host = inip_get_string(fd, section, "remote_address", NULL);
   osrc->max_stream = inip_get_integer(fd, section, "max_stream", 1024*1024);
+  osrc->spin_interval = inip_get_integer(fd, section, "spin_interval", 1);
+  osrc->spin_fail = inip_get_integer(fd, section, "spin_fail", 4);
 
   apr_pool_create(&osrc->mpool, NULL);
   apr_thread_mutex_create(&(osrc->lock), APR_THREAD_MUTEX_DEFAULT, osrc->mpool);
@@ -2170,6 +2409,9 @@ log_printf(0, "START\n");
   //** Get the Global ongoing handle
   assert((osrc->ongoing = lookup_service(ess, ESS_RUNNING, ESS_ONGOING_CLIENT)) != NULL);
 
+  //** Get the thread pool to use
+  assert((osrc->tpc = lookup_service(ess, ESS_RUNNING, ESS_TPC_UNLIMITED)) != NULL);
+
   //** Set up the fn ptrs
   os->type = OS_TYPE_REMOTE_CLIENT;
 
@@ -2180,6 +2422,7 @@ log_printf(0, "START\n");
   os->create_object = osrc_create_object;//DONE
   os->remove_object = osrc_remove_object;//DONE
   os->remove_regex_object = osrc_remove_regex_object;//DONE
+  os->abort_remove_regex_object = osrc_abort_remove_regex_object;//DONE
   os->move_object = osrc_move_object;//DONE
   os->symlink_object = osrc_symlink_object;//DONE
   os->hardlink_object = osrc_hardlink_object;//DONE
@@ -2201,6 +2444,7 @@ log_printf(0, "START\n");
   os->move_attr = osrc_move_attr;//DONE
   os->move_multiple_attrs = osrc_move_multiple_attrs;//DONE
   os->regex_object_set_multiple_attrs = osrc_regex_object_set_multiple_attrs;//DONE
+  os->abort_regex_object_set_multiple_attrs = osrc_abort_regex_object_set_multiple_attrs;
   os->create_attr_iter = osrc_create_attr_iter;
   os->next_attr = osrc_next_attr;
   os->destroy_attr_iter = osrc_destroy_attr_iter;
