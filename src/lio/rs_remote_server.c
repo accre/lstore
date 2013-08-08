@@ -93,7 +93,13 @@ void rsrs_update_register(resource_service_fn_t *rs, mq_frame_t *fid, mq_msg_t *
   mq_apply_return_address_msg(h->msg, address, 0);
 
   //** Figure out when we wake up if no change
-  h->reply_time = (timeout > 60) ? apr_time_from_sec(timeout-60) : 0;
+  if (timeout > 10) {
+     h->reply_time = apr_time_from_sec(timeout-10);
+  } else if (timeout > 5) {
+     h->reply_time = apr_time_from_sec(timeout-5);
+  } else {
+     h->reply_time = apr_time_from_sec(1);
+  }
   h->reply_time += apr_time_now();
 
   apr_thread_mutex_lock(rsrs->lock);
@@ -102,7 +108,9 @@ void rsrs_update_register(resource_service_fn_t *rs, mq_frame_t *fid, mq_msg_t *
   push(rsrs->pending, h);
 
   //** Check if we need to change when we wake up
-  if (h->reply_time < rsrs->wakeup_time) rsrs->wakeup_time = h->reply_time;
+  if ((h->reply_time < rsrs->wakeup_time) || (rsrs->wakeup_time == 0)) rsrs->wakeup_time = h->reply_time;
+
+log_printf(5, "timeout=%d now=" TT " reply_time=" TT " wakeup=" TT "\n", timeout, apr_time_now(), h->reply_time, rsrs->wakeup_time);
 
   apr_thread_mutex_unlock(rsrs->lock);
 }
@@ -303,7 +311,7 @@ void rsrs_rid_config_cb(void *arg, mq_task_t *task)
      if (n > 0) {
         data[n-1] = '\0';
         sscanf(data, "%d %d", &(version.map_version), &(version.status_version));
-log_printf(5, "data=!%s! map=%d status=%d\n", data, version.map_version, version.status_version);
+log_printf(5, "data=!%s! map=%d status=%d timeout=%d\n", data, version.map_version, version.status_version, timeout);
 
         mq_frame_destroy(f);
      } else {
@@ -334,7 +342,7 @@ log_printf(5, "data=!%s! map=%d status=%d\n", data, version.map_version, version
   if (do_config == 1) {
      rsrs_config_send(rs, fid, msg);
   } else {
-     mq_submit(rsrs->server_portal,  mq_task_new(rsrs->mqc, mq_trackaddress_msg(rsrs->hostname, msg, fid, 1), NULL, NULL, 20));
+//     mq_submit(rsrs->server_portal,  mq_task_new(rsrs->mqc, mq_trackaddress_msg(rsrs->hostname, msg, fid, 1), NULL, NULL, 20));
      rsrs_update_register(rs, fid, msg, timeout);
   }
 
@@ -374,6 +382,7 @@ void rsrs_client_notify(resource_service_fn_t *rs, int everyone)
   move_to_top(rsrs->pending);
   while ((h = get_ele_data(rsrs->pending)) != NULL) {
      if ((h->reply_time < now) || (everyone == 1)) {
+log_printf(5, "sending update to a client everyone=%d\n", everyone);
         mq_frame_set(h->version_frame, strdup(version), vlen, MQF_MSG_AUTO_FREE);
         mq_frame_set(h->config_frame, strdup(config), clen, MQF_MSG_AUTO_FREE);
         mq_submit(rsrs->server_portal, mq_task_new(rsrs->mqc, h->msg, NULL, NULL, 30));
@@ -422,11 +431,14 @@ log_printf(5, "START\n");
      if (changed == 1) { *my_map = *notify_map; }  //** Copy the changes over
      shutdown = rsrs->shutdown;
      wakeup_time = rsrs->wakeup_time;
+log_printf(5, "checking.... pending=%d now=" TT " wakeup=" TT "\n", stack_size(rsrs->pending), apr_time_now(), wakeup_time);
      apr_thread_mutex_unlock(rsrs->lock);
 
      if (changed == 1) { //** RID table has changed so propagate it to everone
+log_printf(5, "pushing update to all clients\n");
         rsrs_client_notify(rs, 1);
      } else if (apr_time_now() > wakeup_time) {  //** Got a client about to expire so handle it
+log_printf(5, "pushing udpate to expiring clients\n");
         rsrs_client_notify(rs, 0);
      }
   } while (shutdown == 0);
@@ -501,6 +513,7 @@ resource_service_fn_t *rs_remote_server_create(void *arg, inip_file_t *fd, char 
   memset(&(rsrs->my_map_version), 0, sizeof(rsrs->my_map_version));
   memset(&(rsrs->notify_map_version), 0, sizeof(rsrs->notify_map_version));
   rsrs->notify_map_version.lock = rsrs->lock;
+  rsrs->notify_map_version.cond = rsrs->cond;
 
   //** Get the host name we bind to
   rsrs->hostname= inip_get_string(fd, section, "address", NULL);

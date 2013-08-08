@@ -87,6 +87,7 @@ typedef struct {
 
 typedef struct {
   apr_thread_mutex_t *lock;
+  apr_thread_cond_t *cond;
   int map_version;
   int status_version;
 } rs_mapping_notify_t;

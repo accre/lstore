@@ -274,7 +274,6 @@ op_generic_t *rsrc_update_config_op(resource_service_fn_t *rs, int mode, int tim
   mq_msg_append_mem(msg, MQF_TRACKEXEC_KEY, MQF_TRACKEXEC_SIZE, MQF_MSG_KEEP_DATA);
 
   mq_msg_append_mem(msg, &(arg->id), sizeof(uint64_t), MQF_MSG_KEEP_DATA);
-  log_printf(5, "mqid=%s\n", mq_id2str((char *)&(arg->id), sizeof(uint64_t), dt, sizeof(dt)));
 
   if (mode == 0) {
      mq_msg_append_mem(msg, RSR_GET_RID_CONFIG_KEY, RSR_GET_RID_CONFIG_SIZE, MQF_MSG_KEEP_DATA);
@@ -291,8 +290,10 @@ op_generic_t *rsrc_update_config_op(resource_service_fn_t *rs, int mode, int tim
   arg->mode = mode;
 
   //** Make the gop
-  gop = new_mq_op(rsrc->mqc, msg, rsrc_response_get_config, arg, free, 60);
+  gop = new_mq_op(rsrc->mqc, msg, rsrc_response_get_config, arg, free, timeout);
   gop_set_private(gop, arg);
+
+  log_printf(5, "mqid=%s timeout=%d gid=%d\n", mq_id2str((char *)&(arg->id), sizeof(uint64_t), dt, sizeof(dt)), timeout, gop_id(gop));
 
   return(gop);
 }
@@ -365,21 +366,30 @@ void *rsrc_check_thread(apr_thread_t *th, void *data)
 {
   resource_service_fn_t *rs = (resource_service_fn_t *)data;
   rs_remote_client_priv_t *rsrc = (rs_remote_client_priv_t *)rs->priv;
-  op_generic_t *gop;
+  op_generic_t *gop, *g;
+  op_status_t status;
   int n;
 
   n = 0;
+  gop = NULL;
   do {
-     gop = rsrc_update_config_op(rs, 1, rsrc->check_interval);
-log_printf(15, "before gop_timed_waitany gid=%d\n", gop_id(gop));
-     gop_waitany(gop);
-log_printf(15, "after gop_waitany\n");
+     if (gop == NULL) {
+        gop = rsrc_update_config_op(rs, 1, rsrc->check_interval);
+     }
+log_printf(15, "before gop_timed_waitany gid=%d timeout=%d\n", gop_id(gop), rsrc->check_interval);
+     g = gop_timed_waitany(gop, 1);
+log_printf(15, "after gop_waitany g=%p\n", g); flush_log();
 
      apr_thread_mutex_lock(rsrc->lock);
      n = rsrc->shutdown;
      apr_thread_mutex_unlock(rsrc->lock);
 
-     gop_free(gop, OP_DESTROY);
+     if (g != NULL) {
+        status = gop_get_status(gop);
+log_printf(15, "update completed status=%d\n", status.op_status); flush_log();
+        gop_free(gop, OP_DESTROY);
+        gop = NULL;
+     }
 log_printf(15, "loop end n=%d\n", n);
   } while (n == 0);
 

@@ -2420,6 +2420,7 @@ segment_t *segment_lun_create(void *arg)
 
   //** Set up rempa notifications
   s->notify.lock = seg->lock;
+  s->notify.cond = seg->cond;
   s->notify.map_version = -1;  //** This should trigger a remap on the first R/W op.
   rs_register_mapping_updates(s->rs, &(s->notify));
 

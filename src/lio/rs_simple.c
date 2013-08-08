@@ -642,6 +642,7 @@ void rss_mapping_notify(resource_service_fn_t *rs, int new_version, int status_c
      apr_thread_mutex_lock(rsn->lock);
      rsn->map_version = new_version;
      if (status_change > 0) rsn->status_version = status_change;
+     apr_thread_cond_broadcast(rsn->cond);
      apr_thread_mutex_unlock(rsn->lock);
   }
   apr_thread_mutex_unlock(rss->update_lock);

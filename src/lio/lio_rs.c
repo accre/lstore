@@ -41,6 +41,7 @@ http://www.accre.vanderbilt.edu
 #include "lio.h"
 
 apr_thread_mutex_t *lock;
+apr_thread_cond_t *cond;
 apr_pool_t *mpool;
 
 typedef struct {
@@ -196,6 +197,7 @@ int main(int argc, char **argv)
 {
   int start_option, i, watch, summary;
   rs_mapping_notify_t notify, me;
+  apr_time_t dt;
   char *config;
 
 //printf("argc=%d\n", argc);
@@ -231,6 +233,7 @@ int main(int argc, char **argv)
   //** Make the APR stuff
   assert(apr_pool_create(&mpool, NULL) == APR_SUCCESS);
   apr_thread_mutex_create(&lock, APR_THREAD_MUTEX_DEFAULT, mpool);
+  apr_thread_cond_create(&cond, mpool);
 
 //if (watch == 1) {
 //  printf("Sleeping for 60s\n"); fflush(stdout);
@@ -240,11 +243,14 @@ int main(int argc, char **argv)
 
   memset(&notify, 0, sizeof(notify));
   notify.lock = lock;
+  notify.cond = cond;
   me = notify;  me.map_version = 1; //** This triggers the initial load
   rs_register_mapping_updates(lio_gc->rs, &notify);
+  dt = apr_time_from_sec(1);
   do {
      //** Check for an update
      apr_thread_mutex_lock(lock);
+     if (watch == 1) apr_thread_cond_timedwait(notify.cond, notify.lock, dt);
      i = ((me.map_version != notify.map_version) || (me.status_version != notify.status_version)) ? 1 : 0;
      me = notify;
      apr_thread_mutex_unlock(lock);
