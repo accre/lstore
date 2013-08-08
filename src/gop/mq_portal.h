@@ -295,6 +295,7 @@ char *mq_id2str(char *id, int id_len, char *str, int str_len);
 
 mq_msg_t *mq_msg_new();
 int mq_get_frame(mq_frame_t *f, void **data, int *size);
+char *mq_frame_strdup(mq_frame_t *f);
 mq_frame_t *mq_msg_first(mq_msg_t *msg);
 mq_frame_t *mq_msg_last(mq_msg_t *msg);
 mq_frame_t *mq_msg_next(mq_msg_t *msg);
