@@ -205,7 +205,7 @@ void mq_command_exec(mq_command_table_t *t, mq_task_t *task, void *key, int klen
 log_printf(3, "cmd=%p\n", cmd);
   if (cmd == NULL) {
      log_printf(0, "Unknown command!\n");
-     t->fn_default(t->arg_default, task);
+     if (t->fn_default != NULL) t->fn_default(t->arg_default, task);
   } else {
     cmd->fn(cmd->arg, task);
   }
