@@ -14,7 +14,7 @@ if (xattr_inc)
    find_path(XATTR_INCLUDE_DIR xattr.h ${xattr_inc}/attr)
 endif (xattr_inc)
 
-find_library(XATTR_LIBRARY NAMES attr)
+find_library(XATTR_LIBRARY NAMES attr PATHS /usr/lib64 /usr/lib /usr/local/lib)
 
 if (XATTR_LIBRARY AND XATTR_INCLUDE_DIR)
     SET(XATTR_FOUND "-DHAVE_XATTR")
