@@ -56,7 +56,8 @@ site_name(BUILD_HOST)
 Date(BUILD_DATE)
 CompilerVersion(COMPILER_VERSION)
 CompilerFlags(COMPILER_FLAGS)
-configure_file("${PROJECT_SOURCE_DIR}/ibp_client_version.c.in" "${PROJECT_BINARY_DIR}/ibp_client_version.c")
+#configure_file("${PROJECT_SOURCE_DIR}/ibp_client_version.c.in" "${PROJECT_BINARY_DIR}/ibp_client_version.c")
+configure_file("${PROJECT_SOURCE_DIR}/ibp_client_version.c.in" "${PROJECT_SOURCE_DIR}/ibp_client_version.c")
 
 # common objects
 
