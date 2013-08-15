@@ -412,14 +412,15 @@ log_printf(5, " tweaked tuple=%s\n", tuple->path);
 
 lio_path_tuple_t lio_path_resolve_base(char *lpath)
 {
-  char *userid, *pp_userid, *section_name, *fname;
+  char *userid, *pp_userid, *section_name, *pp_section_name, *fname;
   char *cred_args[2];
   lio_path_tuple_t tuple, *tuple2;
   char buffer[1024];
   int n, is_lio;
 
-  is_lio = lio_parse_path(lpath, &pp_userid, &section_name, &fname);
+  is_lio = lio_parse_path(lpath, &pp_userid, &pp_section_name, &fname);
   userid = pp_userid;
+  section_name = pp_section_name;
 
 log_printf(15, "lpath=%s user=%s lc=%s path=%s\n", lpath, userid, section_name, fname);
 
@@ -448,8 +449,8 @@ log_printf(15, "lpath=%s user=%s lc=%s path=%s\n", lpath, userid, section_name, 
   if (section_name == NULL) {
      section_name = lio_gc->section_name;
      tuple.lc = lio_gc;
-     snprintf(buffer, sizeof(buffer), "lc%s", section_name);
-     _lc_object_get(buffer);
+     snprintf(buffer, sizeof(buffer), "lc:%s", section_name);
+     _lc_object_get(buffer); //needed for reference counting I presume?
   } else {
      snprintf(buffer, sizeof(buffer), "lc:%s", section_name);
      tuple.lc = _lc_object_get(buffer);
@@ -494,7 +495,7 @@ log_printf(15, "lpath=%s user=%s lc=%s path=%s\n", lpath, userid, section_name, 
 finished:
   apr_thread_mutex_unlock(_lc_lock);
 
-  if (section_name != NULL) free(section_name);
+  if (pp_section_name != NULL) free(pp_section_name);
   if (pp_userid != NULL) free(pp_userid);
 
   tuple.is_lio = is_lio;
