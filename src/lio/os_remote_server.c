@@ -2742,7 +2742,7 @@ object_service_fn_t *object_service_remote_server_create(service_manager_t *ess,
   char *cred_args[2];
 
 log_printf(0, "START\n");
-  if (section == NULL) section = "os_remote_client";
+  if (section == NULL) section = "os_remote_server";
 
   type_malloc_clear(os, object_service_fn_t, 1);
   type_malloc_clear(osrs, osrs_priv_t, 1);
