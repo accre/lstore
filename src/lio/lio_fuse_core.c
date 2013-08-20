@@ -641,20 +641,24 @@ int lfs_readdir(const char *dname, void *buf, fuse_fill_dir_t filler, off_t off,
      return(-EBADF);
   }
 
+  off++;  //** This is the *next* slot to get where the stack top is off=1
+
   memset(&stbuf, 0, sizeof(stbuf));
   n = stack_size(dit->stack);
-  if (n>off) { //** Rewind
-    move_to_top(dit->stack);
-    for (i=0; i<off; i++) move_down(dit->stack);
+  if (n>=off) { //** Rewind
+//    move_to_top(dit->stack);
+//    for (i=0; i<off; i++) move_down(dit->stack);
+    move_to_bottom(dit->stack);  //** Go from the bottom up.
+    for (i=n; i>off; i--) move_up(dit->stack);
 
     lfs_lock(dit->lfs);
     entry = get_ele_data(dit->stack);
     while (entry != NULL) {
-       if (off > 1) {
+       if (off > 2) {
           inode = _lfs_dentry_lookup(dit->lfs, entry->fname, 1);
-       } else if (off == 0) {
-          inode = _lfs_dentry_lookup(dit->lfs, dit->dot_path, 1);
        } else if (off == 1) {
+          inode = _lfs_dentry_lookup(dit->lfs, dit->dot_path, 1);
+       } else if (off == 2) {
           inode = _lfs_dentry_lookup(dit->lfs, dit->dotdot_path, 1);
        } else {
           inode= NULL;
@@ -667,7 +671,6 @@ int lfs_readdir(const char *dname, void *buf, fuse_fill_dir_t filler, off_t off,
           return(-ENOENT);
        }
 
-       off++;
 off2=off;
 log_printf(15, "inserting fname=%s off=%d\n", entry->fname, off2);
        if (entry->flagged != LFS_INODE_DELETE) {
@@ -682,6 +685,7 @@ log_printf(15, "inserting fname=%s off=%d\n", entry->fname, off2);
           log_printf(1, "fname=%s flagged for removal\n", entry->fname); 
        }
 
+       off++;
        move_down(dit->stack);
        entry = get_ele_data(dit->stack);
     }
@@ -749,7 +753,6 @@ log_printf(1, "next fname=%s ftype=%d prefix_len=%d ino=" XIDT " off=%d\n", entr
 
      move_to_bottom(dit->stack);
      insert_below(dit->stack, entry);
-     off++;
 
      if (entry->flagged != LFS_INODE_DELETE) {
         lfs_fill_stat(&stbuf, inode);
@@ -763,6 +766,8 @@ log_printf(1, "next fname=%s ftype=%d prefix_len=%d ino=" XIDT " off=%d\n", entr
      } else {
         log_printf(1, "fname=%s flagged for removal\n", entry->fname); 
      }
+
+     off++;
 
      lfs_unlock(dit->lfs);
   }
