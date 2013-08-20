@@ -200,6 +200,8 @@ int mq_stream_read_wait(mq_stream_t *mqs)
      while (mqs->waiting != -2) {
          apr_thread_cond_wait(mqs->cond, mqs->lock);
      }
+  } else if (mqs->waiting == -3) { //**error occured
+     err = 1;
   }
   apr_thread_mutex_unlock(mqs->lock);
 
