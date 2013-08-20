@@ -1078,7 +1078,9 @@ int env2args(char *env, int *argc, char ***eargv)
 //char **t2 = NULL;
 int lio_init(int *argc, char ***argvp)
 {
-  int i, ll, neargs, nargs, auto_mode;
+  int i, j, k, ll, neargs, nargs, auto_mode;
+  char *name;
+  char var[4096];
   char *env;
   char **eargv;
   char **myargv;
@@ -1113,8 +1115,23 @@ int lio_init(int *argc, char ***argvp)
 //  printf("start argv[%d]=%s\n", i, argv[i]);
 //}
 
-  //** Get default args from the environment
-  env = getenv("LIO_OPTIONS");
+  //** Determine the preferred environment variable based on the calling name to use for the args
+  os_path_split(argv[0], &dummy, &name);
+  if (dummy != NULL) free(dummy);
+  j = strncmp(name, "lio_", 4) == 0 ? 4 : 0;
+  i = 0;
+  memcpy(var, "LIO_OPTIONS_", 12);
+  k = 12;
+  while ((name[j+i] != 0) && (i<3900)) {
+    var[k+i] = toupper(name[j+i]);
+    i++;
+  }
+  var[k+i] = 0;
+  free(name);
+
+  env = getenv(var); //** Get the exe based options if available
+  if (env == NULL) env = getenv("LIO_OPTIONS");  //** If not get the global default
+
   if (env != NULL) {  //** Got args so prepend them to the front of the list
      env = strdup(env);  //** Don't want to mess up the actual env variable
      eargv = NULL;
