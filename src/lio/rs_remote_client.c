@@ -515,6 +515,7 @@ resource_service_fn_t *rs_remote_client_create(void *arg, inip_file_t *fd, char 
   rs->data_request = rsrc_data_request;
   rs->destroy_service = rs_remote_client_destroy;
 
+  rs->query_new = rs_query_base_new;
   rs->query_dup = rs_query_base_dup;
   rs->query_add = rs_query_base_add;
   rs->query_append = rs_query_base_append;
