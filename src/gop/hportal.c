@@ -34,6 +34,7 @@ http://www.accre.vanderbilt.edu
 #include <assert.h>
 #include <stdio.h>
 #include <apr_thread_proc.h>
+#include <assert.h>
 #include "dns_cache.h"
 #include "host_portal.h"
 #include "fmttypes.h"
@@ -447,9 +448,15 @@ void compact_hportals(portal_context_t *hpc)
      compact_hportal_direct(hp);
 
      if ((hp->n_conn == 0) && (hp->closing_conn == 0) && (stack_size(hp->que) == 0) && (stack_size(hp->direct_list) == 0)) { //** if not used so remove it
-       hportal_unlock(hp);
-       apr_hash_set(hpc->table, hp->skey, APR_HASH_KEY_STRING, NULL);  //** This removes the key
-       destroy_hportal(hp);
+       if (stack_size(hp->conn_list) != 0) {
+          log_printf(0, "ERROR! DANGER WILL ROBINSON! stack_size(hp->conn_list)=%d hp=%s\n", stack_size(hp->conn_list), hp->skey);
+          flush_log();
+          assert(stack_size(hp->conn_list == 0));
+       } else {
+          hportal_unlock(hp);
+          apr_hash_set(hpc->table, hp->skey, APR_HASH_KEY_STRING, NULL);  //** This removes the key
+          destroy_hportal(hp);
+       }
      } else {
        hportal_unlock(hp);
      }
@@ -694,7 +701,7 @@ void check_hportal_connections(host_portal_t *hp)
 //            n_newconn = 1;
             n_newconn = (hp->pause_until == 0) ? 1 : 0;
          } else {
-            n_newconn = 1;
+            n_newconn = (hp->n_conn < hp->max_conn) ? 1 : 0;
             hp->pause_until = apr_time_now() + apr_time_make(hp->context->wait_stable_time, 0);
          }
       } else {
