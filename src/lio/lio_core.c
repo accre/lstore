@@ -278,7 +278,7 @@ int lioc_get_attr(lio_config_t *lc, creds_t *creds, char *path, char *id, char *
 
 int lioc_set_multiple_attrs(lio_config_t *lc, creds_t *creds, char *path, char *id, char **key, void **val, int *v_size, int n)
 {
-  int err;
+  int err, serr;
   os_fd_t *fd;
 
   err = gop_sync_exec(os_open_object(lc->os, creds, path, OS_MODE_READ_IMMEDIATE, id, &fd, lc->timeout));
@@ -287,13 +287,15 @@ int lioc_set_multiple_attrs(lio_config_t *lc, creds_t *creds, char *path, char *
      return(err);
   }
 
-  gop_sync_exec(os_set_multiple_attrs(lc->os, creds, fd, key, val, v_size, n));
-
+  serr = gop_sync_exec(os_set_multiple_attrs(lc->os, creds, fd, key, val, v_size, n));
+  
   //** Close the parent
   err = gop_sync_exec(os_close_object(lc->os, fd));
   if (err != OP_STATE_SUCCESS) {
      log_printf(15, "ERROR closing object=%s\n", path);
   }
+
+  if (serr != OP_STATE_SUCCESS) err = OP_STATE_FAILURE;
 
   return(err);
 }
@@ -304,7 +306,7 @@ int lioc_set_multiple_attrs(lio_config_t *lc, creds_t *creds, char *path, char *
 
 int lioc_set_attr(lio_config_t *lc, creds_t *creds, char *path, char *id, char *key, void *val, int v_size)
 {
-  int err;
+  int err, serr;
   os_fd_t *fd;
 
   err = gop_sync_exec(os_open_object(lc->os, creds, path, OS_MODE_READ_IMMEDIATE, id, &fd, lc->timeout));
@@ -313,13 +315,15 @@ int lioc_set_attr(lio_config_t *lc, creds_t *creds, char *path, char *id, char *
      return(err);
   }
 
-  gop_sync_exec(os_set_attr(lc->os, creds, fd, key, val, v_size));
+  serr = gop_sync_exec(os_set_attr(lc->os, creds, fd, key, val, v_size));
 
   //** Close the parent
   err = gop_sync_exec(os_close_object(lc->os, fd));
   if (err != OP_STATE_SUCCESS) {
      log_printf(15, "ERROR closing object=%s\n", path);
   }
+
+  if (serr != OP_STATE_SUCCESS) err = OP_STATE_FAILURE;
 
   return(err);
 }
