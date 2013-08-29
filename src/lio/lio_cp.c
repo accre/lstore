@@ -204,7 +204,7 @@ op_status_t cp_lio(cp_file_t *cp)
   sprintf(mysize, I64T, ssize);
   val[1] = mysize; dv_size[1] = strlen(val[1]);
   val[2] = NULL; dv_size[2] = 0;
-  gop_sync_exec(os_set_multiple_attrs(cp->dest_tuple.lc->os, cp->dest_tuple.creds, dfd, keys, (void **)val, dv_size, 3));
+  err = gop_sync_exec(os_set_multiple_attrs(cp->dest_tuple.lc->os, cp->dest_tuple.creds, dfd, keys, (void **)val, dv_size, 3));
 
   //**Update the error counts if needed
   hard_errors = lioc_update_error_counts(cp->src_tuple.lc, cp->src_tuple.creds, cp->src_tuple.path, sseg);
@@ -222,7 +222,7 @@ op_status_t cp_lio(cp_file_t *cp)
   exnode_destroy(dex);
   exnode_exchange_destroy(dexp);
 
-  if (hard_errors == 0) status = op_success_status;
+  if ((hard_errors == 0) && (err == OP_STATE_SUCCESS)) status = op_success_status;
 
 finished:
   return(status);
@@ -332,7 +332,7 @@ log_printf(0, "AFTER PUT\n");
 
   free(buffer);
 
-  if (hard_errors == 0) status = op_success_status;
+  if ((hard_errors == 0) && (err == OP_STATE_SUCCESS)) status = op_success_status;
 
 finished:
 
@@ -826,6 +826,8 @@ finished:
 
   free(flist);
 
+  if (n_errors > 0) info_printf(lio_ifd, 0, "Failed copying %d file(s)!\n", n_errors);
+
 //set_log_level(20);
 //printf("Before shutdown\n");
 //apr_time_t dt = apr_time_now();
@@ -834,8 +836,6 @@ finished:
 //double sec = dt;
 //sec = sec / (1.0*APR_USEC_PER_SEC);
 //printf("After shutdown dt=%lf\n", sec);
-
-  if (n_errors > 0) info_printf(lio_ifd, 0, "Failed copying %d file(s)!\n", n_errors);
 
   return((n_errors == 0) ? 0 : 1);
 }
