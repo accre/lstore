@@ -222,7 +222,7 @@ op_status_t segment_get_func(void *arg, int id)
   char *rb, *wb, *tb;
   ex_off_t bufsize;
   int err;
-  ex_off_t rpos, wpos, rlen, wlen, tlen, nbytes;
+  ex_off_t rpos, wpos, rlen, wlen, tlen, nbytes, got;
   ex_iovec_t rex;
   op_generic_t *gop;
   op_status_t status;
@@ -233,6 +233,8 @@ op_status_t segment_get_func(void *arg, int id)
   tbuffer_single(&tbuf1, bufsize, rb);
   tbuffer_single(&tbuf2, bufsize, wb);
   rbuf = &tbuf1;  wbuf = &tbuf2;
+
+  status = op_success_status;
 
   nbytes = sc->len;
 
@@ -282,22 +284,30 @@ log_printf(0, "FILE fd=%p\n", sc->fd);
      }
 
      //** Start the write
-     fwrite(wb, 1, wlen, sc->fd);
+     got = fwrite(wb, 1, wlen, sc->fd);
+     if (wlen != got) { 
+        log_printf(1, "ERROR from fread=%d  dest sid=" XIDT "\n", errno, segment_id(sc->dest));
+        status = op_failure_status; 
+        err = gop_waitall(gop);
+        gop_free(gop, OP_DESTROY);
+        goto fail; 
+     }
+
      wpos += wlen;
 
      //** Wait for the read to complete
      if (rlen > 0) {
         err = gop_waitall(gop);
+        gop_free(gop, OP_DESTROY);
         if (err != OP_STATE_SUCCESS) {
            log_printf(1, "ERROR write(dseg=" XIDT ") failed! wpos=" XOT, " len=" XOT "\n", segment_id(sc->dest), wpos, wlen);
            status = op_failure_status;
-           return(status);
+           goto fail;
         }
-        gop_free(gop, OP_DESTROY);
      }
   } while (rlen > 0);
 
-  status = op_success_status;
+fail:
 
   return(status);
 }
@@ -339,7 +349,7 @@ op_status_t segment_put_func(void *arg, int id)
   char *rb, *wb, *tb;
   ex_off_t bufsize;
   int err;
-  ex_off_t rpos, wpos, rlen, wlen, tlen, nbytes;
+  ex_off_t rpos, wpos, rlen, wlen, tlen, nbytes, got;
   ex_iovec_t wex;
   op_generic_t *gop;
   op_status_t status;
@@ -352,6 +362,7 @@ op_status_t segment_put_func(void *arg, int id)
   rbuf = &tbuf1;  wbuf = &tbuf2;
 
   nbytes = sc->len;
+  status = op_success_status;
 
   //** Read the initial block
   rpos = 0; wpos = sc->dest_offset;
@@ -366,8 +377,15 @@ op_status_t segment_put_func(void *arg, int id)
   nbytes -= rlen;
 log_printf(0, "FILE fd=%p bufsize=" XOT "\n", sc->fd, bufsize);
 
-  rlen = fread(rb, 1, rlen, sc->fd);
-  if (rlen == 0) { rpos = 0; goto finished; }
+  got = fread(rb, 1, rlen, sc->fd);
+  if (got == 0) { 
+     if (feof(sc->fd) == 0)  {
+        log_printf(1, "ERROR from fread=%d  dest sid=" XIDT " rlen=" XOT " got=" XOT "\n", errno, segment_id(sc->dest), rlen, got);
+       status = op_failure_status; 
+     }
+     goto finished;
+  }
+  rlen = got;
 
   do {
      //** Swap the buffers
@@ -389,7 +407,17 @@ log_printf(0, "FILE fd=%p bufsize=" XOT "\n", sc->fd, bufsize);
        rlen = (nbytes > bufsize) ? bufsize : nbytes;
      }
      if (rlen > 0) {
-        rlen = fread(rb, 1, rlen, sc->fd);
+        got = fread(rb, 1, rlen, sc->fd);
+        if (got == 0) {
+           if (feof(sc->fd) == 0)  {
+              log_printf(1, "ERROR from fread=%d  dest sid=" XIDT " got=" XOT " rlen=" XOT "\n", errno, segment_id(sc->dest), got, rlen);
+              status = op_failure_status; 
+              err = gop_waitall(gop);
+              gop_free(gop, OP_DESTROY);
+              goto finished; 
+           }
+        }
+        rlen = got;
         rpos += rlen;
         nbytes -= rlen;
      }
@@ -399,7 +427,7 @@ log_printf(0, "FILE fd=%p bufsize=" XOT "\n", sc->fd, bufsize);
         log_printf(1, "ERROR write(dseg=" XIDT ") failed! wpos=" XOT, " len=" XOT "\n", segment_id(sc->dest), wpos, wlen);
         status = op_failure_status;
         gop_free(gop, OP_DESTROY);
-        return(status);
+        goto finished;
      }
      gop_free(gop, OP_DESTROY);
   } while (rlen > 0);
@@ -409,7 +437,7 @@ log_printf(0, "FILE fd=%p bufsize=" XOT "\n", sc->fd, bufsize);
   }
 
 finished:
-  status = op_success_status;  status.error_code = rpos;
+//  status.error_code = rpos;
 
   return(status);
 }
