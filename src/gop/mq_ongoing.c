@@ -451,7 +451,7 @@ void _mq_ongoing_close(mq_ongoing_t *mqon, mq_ongoing_host_t *oh)
   op_generic_t *gop;
   opque_t *q;
 
-log_printf(2, "closing host now=" TT " next_check=" TT " hb=%d\n", apr_time_now(), oh->next_check, oh->heartbeat);
+log_printf(2, "closing host=%s now=" TT " next_check=" TT " hb=%d\n", oh->id, apr_time_now(), oh->next_check, oh->heartbeat);
   q = new_opque();
   opque_start_execution(q);
 
@@ -510,7 +510,6 @@ void *mq_ongoing_server_thread(apr_thread_t *th, void *data)
 
 log_printf(15, "loop end n=%d\n", n);
   } while (n == 0);
-  apr_thread_mutex_unlock(mqon->lock);
 
 log_printf(15, "CLEANUP\n");
 
@@ -522,6 +521,8 @@ log_printf(15, "CLEANUP\n");
      apr_pool_destroy(oh->mpool);
      free(oh);
   }
+
+  apr_thread_mutex_unlock(mqon->lock);
 
 log_printf(15, "EXITING\n");
 
