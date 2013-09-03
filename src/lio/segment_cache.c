@@ -2399,7 +2399,7 @@ op_generic_t *cache_read(segment_t *seg, data_attr_t *da, int n_iov, ex_iovec_t 
   cop->boff = boff;
   cop->buf = buffer;
 
-  return(new_thread_pool_op(s->tpc_cpu, s->qname, cache_rw_func, (void *)cop, free, 1));
+  return(new_thread_pool_op(s->tpc_unlimited, s->qname, cache_rw_func, (void *)cop, free, 1));
 }
 
 
@@ -2421,7 +2421,7 @@ op_generic_t *cache_write(segment_t *seg, data_attr_t *da, int n_iov, ex_iovec_t
   cop->boff = boff;
   cop->buf = buffer;
 
-  return(new_thread_pool_op(s->tpc_cpu, s->qname, cache_rw_func, (void *)cop, free, 1));
+  return(new_thread_pool_op(s->tpc_unlimited, s->qname, cache_rw_func, (void *)cop, free, 1));
 }
 
 
