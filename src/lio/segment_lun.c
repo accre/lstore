@@ -690,21 +690,22 @@ log_printf(15, "sid=" XIDT " increasing existing row seg_offset=" XOT " curr seg
         slun_row_size_check(seg, da, b, block_status, s->n_devices, 1, timeout);
 
         //** Check if we had an error on the size
-        n = 0;
+        n = 0; berr = 0;
         for (i=0; i<s->n_devices; i++) if (block_status[i]==2) n++;
-        if (n > 0) {  //** Error growing the allocations so just leave them with the bad size but truncate the block to the old size
+        if (n==0) {
+           berr = slun_row_pad_fix(seg, da, b, block_status, s->n_devices, timeout);
+        }
+
+        if ((n>0) || (berr > 0)) { //** Error growing the allocations so just leave them with the bad size but truncate the block to the old size
            b->block_len = old_len;
            b->row_len = old_len * s->n_devices;
            b->seg_end = b->seg_offset + b->row_len - 1;
            for (i=0; i<s->n_devices; i++) b->block[i].data->max_size = old_len;
-        } else {
-           for (i=0; i<s->n_devices; i++) block_status[i] = 2;  //** Mark them for padding since they were enlarged
-           berr = slun_row_pad_fix(seg, da, b, block_status, s->n_devices, timeout);
         }
 
         insert_interval_skiplist(s->isl, (skiplist_key_t *)&(b->seg_offset), (skiplist_key_t *)&(b->seg_end), (skiplist_data_t *)b);
 
-log_printf(15, "sid=" XIDT " enlarged row seg_offset=" XOT " seg_end=" XOT " row_len=" XOT "\n", segment_id(seg), b->seg_offset, b->seg_end, b->row_len);
+log_printf(15, "sid=" XIDT " enlarged row seg_offset=" XOT " seg_end=" XOT " row_len=" XOT " n=%d berr=%d\n", segment_id(seg), b->seg_offset, b->seg_end, b->row_len, n, berr);
 
         lo = b->seg_end + 1;
      } else {
@@ -769,7 +770,7 @@ gsecs = (double)now/APR_USEC_PER_SEC;
 tsecs = (double)s->grow_time/APR_USEC_PER_SEC;
 log_printf(1, "sid=" XIDT " END used=" XOT " old max=" XOT " newmax=" XOT " err=%d berr=%d dt=%lf dt_total=%lf grow_count=%d\n", segment_id(seg), s->used_size, s->total_size, new_size, err, berr, gsecs, tsecs, s->grow_count);
 
-  if ((err+berr) == 0) {
+  if (err == 0) {
     s->total_size = new_size;
     status = op_success_status;
   } else {
