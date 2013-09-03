@@ -55,6 +55,11 @@ void create_tag_file(const char *filepath, int flush) {
    }
    time_t cur_time = time(NULL);
    FILE *fd = fopen(filepath, "w");
+   /* One final check */
+   if (fd == NULL) {
+     printf("Failed to open %s\n", filepath);
+     exit(1);
+  }
    fprintf(fd, "#\n# Tag file created %s#\n", ctime(&cur_time));
    
 }
