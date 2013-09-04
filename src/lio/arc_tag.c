@@ -33,8 +33,17 @@ http://www.accre.vanderbilt.edu
 #include <unistd.h>
 #include "object_service_abstract.h"
 
-void print_usage()
-{
+/*** TODO: check for duplicate tags (compairing both to INI contents and current command contents)  ***/
+void add_tag(char *tag_file, char *path, int recurse_depth, const char *regex_path, const char *regex_object) {
+  FILE *fd = fopen(tag_file, "a");
+  if (fd == NULL) {
+    printf("Failed to open %s!\n", tag_file);
+    exit(1);
+  }
+  fprintf(fd, "\n[TAG]\npath=%s\nrecurse_depth=%i\nregex_path=%s\nregex_object=%s\n", path, recurse_depth, regex_path, regex_object);
+}
+
+void print_usage() {
   printf("\nUsage: arc_tag [-t tag name] [-rd recurse depth] [-rp regex of path to scan] [-ro regex for file selection] [-gp glob of path to scan] [-go glob for file selection] [PATH]...\n");
   printf("\t-t\ttag file to use (default if not specified: ~./arc_tag_file.txt)\n");
   printf("\t-rd\trecurse depth (default: 10000)\n");
@@ -89,9 +98,6 @@ int main(int argc, char **argv)
     } while ((start_option < i) && (i < argc));
     
     start_index = i;
-  
-    printf("regex_path:   %s\n", regex_path);
-    printf("regex_object:   %s\n", regex_object);
     if (tag_file == NULL) {
       char *homedir = getenv("HOME");
       tag_file = strcat(homedir, "/.arc_tag_file.txt");
@@ -102,11 +108,11 @@ int main(int argc, char **argv)
       return(1);
     } else {
       if (i>=argc) {
-        printf("Missing directory(s)!\n");
+        printf("Missing target path(s)!\n\n");
         print_usage();
       } else {
 	for (d=start_index; d<argc; d++) {
-	  printf("This is path %i   %s\n", d, argv[d]);
+	  add_tag(tag_file, argv[d], recurse_depth, regex_path, regex_object);
 	}
       }
     }
