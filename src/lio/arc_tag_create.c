@@ -36,9 +36,7 @@ http://www.accre.vanderbilt.edu
 
 void create_tag_file(const char *filepath, int flush) {
   /* Check for existence */
-   if((access(filepath, F_OK)) != -1)
-   {
-      
+   if((access(filepath, F_OK)) != -1) {
      if (flush == 0) {
        printf("Tag file already exists!  %s\n", filepath);
        exit(1);
@@ -46,18 +44,15 @@ void create_tag_file(const char *filepath, int flush) {
      } else if ((access(filepath, W_OK)) != -1) {
        remove(filepath);      
       } else {
-	printf("You do not have write permission!\n");
+       printf("You do not have write permission to overwrite %s!\n", filepath);
 	exit(1);
       }
-   } else if ((access(filepath, W_OK)) == -1) {
-     printf("Permission denied creating %s\n", filepath);
-     exit(1);
    }
    time_t cur_time = time(NULL);
    FILE *fd = fopen(filepath, "w");
    /* One final check */
    if (fd == NULL) {
-     printf("Failed to open %s\n", filepath);
+     printf("Failed to create/open %s\n", filepath);
      exit(1);
   }
    fprintf(fd, "#\n# Tag file created %s#\n", ctime(&cur_time));
