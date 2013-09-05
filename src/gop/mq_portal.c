@@ -41,6 +41,7 @@ int mq_conn_create(mq_portal_t *p, int dowait);
 void mq_conn_teardown(mq_conn_t *c);
 void mqc_heartbeat_dec(mq_conn_t *c, mq_heartbeat_entry_t *hb);
 void _mq_reap_closed(mq_portal_t *p);
+void *mqtp_failure(apr_thread_t *th, void *arg);
 
 //**************************************************************
 // mq_id2str - Convert the command id to a printable string
@@ -219,6 +220,7 @@ int mq_submit(mq_portal_t *p, mq_task_t *task)
 {
   uint64_t n;
   int backlog, err;
+  mq_task_t *t;
   apr_thread_mutex_lock(p->lock);
 
   //** Do a quick check for connections that need to be reaped
@@ -228,7 +230,7 @@ int mq_submit(mq_portal_t *p, mq_task_t *task)
   move_to_bottom(p->tasks);
   insert_below(p->tasks, task);
   backlog = stack_size(p->tasks);
-  log_printf(2, "portal=%s backlog=%d active_conn=%d max_conn=%d\n", p->host, backlog, p->active_conn, p->max_conn); flush_log();
+  log_printf(2, "portal=%s backlog=%d active_conn=%d max_conn=%d total_conn=%d\n", p->host, backlog, p->active_conn, p->max_conn, p->total_conn); flush_log();
 
   //** Noitify the connections
   n = 1;
@@ -239,18 +241,30 @@ int mq_submit(mq_portal_t *p, mq_task_t *task)
   if (backlog > p->backlog_trigger) {
      if (p->total_conn == 0) { //** No current connections so try and make one
         err = mq_conn_create(p, 1);
+        if (err != 0) {  //** Fail everything
+           log_printf(1, "Host is dead so failing tasks host=%s\n", p->host);
+           while ((t = pop(p->tasks)) != NULL) {
+              thread_pool_direct(p->tp, mqtp_failure, t);
+           }
+        }
      } else if (p->total_conn < p->max_conn) {
         err = mq_conn_create(p, 0);
      }
   } else if (p->total_conn == 0) { //** No current connections so try and make one
      err = mq_conn_create(p, 1);
+     if (err != 0) {  //** Fail everything
+        log_printf(1, "Host is dead so failing tasks host=%s\n", p->host);
+        while ((t = pop(p->tasks)) != NULL) {
+           thread_pool_direct(p->tp, mqtp_failure, t);
+        }
+     }
   }
 
-  log_printf(2, "END portal=%s backlog=%d active_conn=%d total_conn=%d max_conn=%d\n", p->host, backlog, p->active_conn, p->total_conn, p->max_conn); flush_log();
+  log_printf(2, "END portal=%s err=%d backlog=%d active_conn=%d total_conn=%d max_conn=%d\n", p->host, err, backlog, p->active_conn, p->total_conn, p->max_conn); flush_log();
 
   apr_thread_mutex_unlock(p->lock);
 
-  return(err);
+  return(0);
 }
 
 //**************************************************************
@@ -1162,6 +1176,8 @@ int mq_conn_make(mq_conn_t *c)
   if (c->pc->connect_mode == MQ_CMODE_SERVER) return(0);  //** Nothing else to do
 
   err = 1; //** Defaults to failure
+  dt = 0;
+  frame = -1;
 
   //** Form the ping message and make the base hearbeat message
   type_malloc_clear(hb, mq_heartbeat_entry_t, 1);
@@ -1272,12 +1288,18 @@ log_printf(2, "START: host=%s heartbeat_dt=%d\n", c->pc->host, c->pc->heartbeat_
   err = mq_conn_make(c);
 log_printf(2, "START(2): uuid=%s\n", c->mq_uuid);
 
-log_printf(5, "after conn_make err=%d\n", err);
 
   //** Notify the parent about the connections status via c->cefd
   //** It is then safe to manipulate c->pc->lock
-  n = (err = 0) ? 1 : 2;  //** EventFD's block on 0 values so make 1 success and 2 failure
+  n = (err == 0) ? 1 : 2;  //** EventFD's block on 0 values so make 1 success and 2 failure
+
+log_printf(5, "after conn_make err=%d n=" LU "\n", err, n);
+
   write(c->cefd, &n, sizeof(n));
+
+  total_proc = total_incoming = 0;
+  slow_exit = 0;
+  nprocessed = 0;
 
   if (err != 0) goto cleanup;  //** if no connection shutdown
 
@@ -1294,9 +1316,6 @@ log_printf(5, "after conn_make err=%d\n", err);
   npoll = 2;
   next_hb_check = apr_time_now() + apr_time_from_sec(1);
   last_check = apr_time_now();
-  slow_exit = 0;
-  total_proc = total_incoming = 0;
-  nprocessed = 0;
 
   do {
     k = mq_poll(pfd, npoll, heartbeat_ms);
@@ -1408,17 +1427,18 @@ int mq_conn_create(mq_portal_t *p, int dowait)
   c->cefd = eventfd(0, 0);
   assert(c->cefd != -1);
 
-  //** Spawn the thread
-  apr_thread_create(&(c->thread), NULL, mq_conn_thread, (void *)c, p->mpool);  //** USe the parent mpool so I can do the teardown
-
   p->active_conn++; //** Inc the number of connections
   p->total_conn++;
+
+  //** Spawn the thread
+  apr_thread_create(&(c->thread), NULL, mq_conn_thread, (void *)c, p->mpool);  //** USe the parent mpool so I can do the teardown
 
   err = 0;
 //dowait=1;
   if (dowait == 1) {  //** If needed wait until connected
      read(c->cefd, &n, sizeof(n));
      err = (n == 1) ? 0 : 1;  //** n==1 is a success anything else is an error
+log_printf(1, "err=%d n=" LU "\n", err, n);
   }
 
   return(err);
