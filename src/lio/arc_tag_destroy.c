@@ -31,56 +31,38 @@ http://www.accre.vanderbilt.edu
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
-#include <time.h>
 
 
-void create_tag_file(const char *filepath, int flush) {
+void destroy_tag_file(const char *filepath) 
+{
   /* Check for existence */
-   if((access(filepath, F_OK)) != -1) {
-     if (flush == 0) {
-       printf("Tag file already exists!  %s\n", filepath);
-       exit(1);
-     /* Check for write permission */
-     } else if ((access(filepath, W_OK)) != -1) {
-       remove(filepath);      
-      } else {
-       printf("You do not have write permission to overwrite %s!\n", filepath);
-	exit(1);
-      }
+   if ((access(filepath, F_OK)) != -1) {      
+     remove(filepath);      
+   } else {
+     printf("%s does not exist!  \n", filepath);
    }
-   time_t cur_time = time(NULL);
-   FILE *fd = fopen(filepath, "w");
-   /* One final check */
-   if (fd == NULL) {
-     printf("Failed to create/open %s\n", filepath);
-     exit(1);
-  }
-   fprintf(fd, "#\n# Tag file created %s#\n", ctime(&cur_time));
-   
 }
 
 
 void print_usage()
 {
-  printf("\nUsage: arc_tag_create [-f] [tag name]\n\tIf no tag name is specified, the default ~/.arc_tag_file.txt will be used\n");
+  printf("\nUsage: arc_tag_destrot [tag file name]\n\tIf no tag name is specified, the default ~/.arc_tag_file.txt will be used\n");
   printf("");
   exit(0);
 }
 
 int main(int argc, char **argv)
 {
-  int i = 1, flush = 0, start_option = 0;  
+  int i = 1, start_option = 0;  
   char *path = NULL;
 
-  if (argc > 3) {
+  if (argc > 2) {
     print_usage();
   } else if (argc > 1) {
     do {
       start_option = i;
       if (strcmp(argv[i], "-h") == 0) {
 	print_usage();
-      } else if (strcmp(argv[i], "-f") == 0) {
-	flush = 1;
       } else {
 	path = argv[i];
       }
@@ -90,5 +72,5 @@ int main(int argc, char **argv)
     char *homedir = getenv("HOME");
     path = strcat(homedir, "/.arc_tag_file.txt");
   }
-  create_tag_file(path, flush);
+  destroy_tag_file(path);
 }
