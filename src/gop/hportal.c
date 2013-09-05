@@ -451,7 +451,7 @@ void compact_hportals(portal_context_t *hpc)
        if (stack_size(hp->conn_list) != 0) {
           log_printf(0, "ERROR! DANGER WILL ROBINSON! stack_size(hp->conn_list)=%d hp=%s\n", stack_size(hp->conn_list), hp->skey);
           flush_log();
-          assert(stack_size(hp->conn_list == 0));
+          assert(stack_size(hp->conn_list) == 0);
        } else {
           hportal_unlock(hp);
           apr_hash_set(hpc->table, hp->skey, APR_HASH_KEY_STRING, NULL);  //** This removes the key
