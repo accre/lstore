@@ -129,6 +129,7 @@ typedef struct {             //** Handle for maintaining all the ecopy connectio
   apr_thread_mutex_t *lock;
   apr_hash_t *table;         //** Table containing the depot_portal structs
   apr_pool_t *pool;          //** Memory pool for hash table
+  apr_time_t min_idle;       //** Idle time before closing connection
   int running_threads;       //** currently running # of connections
   int max_connections;       //** Max aggregate allowed number of threads
   int min_threads;           //** Max allowed number of threads/host
@@ -139,7 +140,6 @@ typedef struct {             //** Handle for maintaining all the ecopy connectio
   int wait_stable_time;      //** time to wait before adding connections for unstable hosts
   int abort_conn_attempts;   //** If this many failed connection requests occur in a row we abort
   int check_connection_interval; //** Max time to wait for a thread to check for a close
-  int min_idle;              //** Idle time before closing connection
   int max_retry;             //** Default max number of times to retry an op
   int count;                 //** Internal Counter 
   apr_time_t   next_check;       //** Time for next compact_dportal call

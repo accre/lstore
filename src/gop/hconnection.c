@@ -210,7 +210,8 @@ void *hc_send_thread(apr_thread_t *th, void *data)
   op_generic_t *hsop;
   op_status_t finished;
   Net_timeout_t dt;
-  int dtime, tid;
+  apr_time_t dtime;
+  int tid;
 
   //** check if the host is invalid and if so flush the work que
   if (hp->invalid_host == 1) {
@@ -259,12 +260,8 @@ void *hc_send_thread(apr_thread_t *th, void *data)
 
      hsop = _get_hportal_op(hp);
      if (hsop == NULL) {
-        lock_hc(hc);
-        dtime = hpc->min_idle + (hc->last_used - apr_time_now());
-        unlock_hc(hc);
-        if (dtime > 1) dtime = 1;  //** Sometimes the signals don't quite make it
-        log_printf(15, "hc_send_thread: No commands so sleeping.. ns=%d time=" TT " max_wait=%d\n", ns_getid(ns), apr_time_now(), dtime);
-        hportal_wait(hp, dtime);    //** Wait for a new task
+        log_printf(15, "hc_send_thread: No commands so sleeping.. ns=%d time=" TT "\n", ns_getid(ns), apr_time_now());
+        hportal_wait(hp, 1);    //** Wait for a new task
         hportal_unlock(hp);
      } else { //** Got one so let's process it
         hop = &(hsop->op->cmd);
@@ -319,7 +316,7 @@ log_printf(5, "hc_send_thread: after send phase.. ns=%d gid=%d finisehd=%d\n", n
         dtime = apr_time_now() - hc->last_used; //** Exit if not busy
         if (dtime >= hpc->min_idle) {
            hc->shutdown_request = 1;
-           log_printf(5, "hc_send_thread: ns=%d min_idle(%d) reached.  Shutting down! dtime=%d\n",
+           log_printf(5, "hc_send_thread: ns=%d min_idle(" TT ") reached.  Shutting down! dtime=" TT "\n",
               ns_getid(ns), hpc->min_idle, dtime);
         }
      } else if (hc->start_stable == 0) {
