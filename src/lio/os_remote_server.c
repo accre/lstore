@@ -2040,17 +2040,18 @@ void osrs_object_iter_alist_cb(void *arg, mq_task_t *task)
   fdata = mq_msg_pop(msg);  //** This has the data
   mq_get_frame(fdata, (void **)&buffer, &fsize);
 
-  //** Create the stream so we can get the heartbeating while we work
-  mqs = mq_stream_write_create(osrs->mqc, osrs->server_portal, osrs->ongoing, MQS_PACK_COMPRESS, osrs->max_stream, timeout, msg, fid, hid, 0);
-
   //** Parse the buffer
   path = NULL;
   object_regex = NULL;
   bpos = 0;
 
+  //** Get the stream timeout
   n = zigzag_decode(&(buffer[bpos]), fsize-bpos, &timeout);
   if (n < 0) { timeout = 60; goto fail; }
   bpos += n;
+
+  //** Create the stream so we can get the heartbeating while we work.  We need the timeout is why we do it here,
+  mqs = mq_stream_write_create(osrs->mqc, osrs->server_portal, osrs->ongoing, MQS_PACK_COMPRESS, osrs->max_stream, timeout, msg, fid, hid, 0);
 
   n = zigzag_decode(&(buffer[bpos]), fsize-bpos, &recurse_depth);
   if (n < 0) goto fail;
@@ -2142,6 +2143,8 @@ log_printf(5, "val[%d]=%s\n", i, val[i]);
      }
 
      free(fname);
+
+     if (err != 0) break;  //** Got a write error so break;
   }
 
   //** Flag this as the last object
