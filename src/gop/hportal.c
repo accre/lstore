@@ -648,11 +648,19 @@ void _hp_fail_tasks(host_portal_t *hp, op_status_t err_code)
   op_generic_t *hsop;
 
   hp->workload = 0;
-  while ((hsop = (op_generic_t *)pop(hp->que)) != NULL) {
+
+  //** Use the _get_hportal_op() To make sure we handle any coalescing
+  while ((hsop = _get_hportal_op(hp)) != NULL) {
       hportal_unlock(hp);
       gop_mark_completed(hsop, err_code);
       hportal_lock(hp);
   }
+
+//  while ((hsop = (op_generic_t *)pop(hp->que)) != NULL) {
+//      hportal_unlock(hp);
+//      gop_mark_completed(hsop, err_code);
+//      hportal_lock(hp);
+//  }
 }
 
 //*************************************************************************
