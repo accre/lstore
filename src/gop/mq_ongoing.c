@@ -500,7 +500,11 @@ void *mq_ongoing_server_thread(apr_thread_t *th, void *data)
 
        if ((oh->next_check < now) && (oh->next_check > 0)) { //** Expired heartbeat so shut everything associated with the connection
            _mq_ongoing_close(mqon, oh);
-           oh->next_check = 0;  //** Skip next time around
+           //oh->next_check = 0;  //** Skip next time around
+           apr_hash_set(mqon->id_table, key, klen, NULL);
+           free(oh->id);
+           apr_pool_destroy(oh->mpool);
+           free(oh);
        }
     }
 
