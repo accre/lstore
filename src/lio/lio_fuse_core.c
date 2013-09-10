@@ -55,8 +55,10 @@ http://www.accre.vanderbilt.edu
 int ino_compare_fn(void *arg, skiplist_key_t *a, skiplist_key_t *b);
 static skiplist_compare_t ino_compare = {.fn=ino_compare_fn, .arg=NULL };
 
-#define _inode_key_size 7
-static char *_inode_keys[] = { "system.inode", "system.modify_data", "system.modify_attr", "system.exnode.size", "os.type", "os.link_count", "os.link" };
+#define _inode_key_size 11
+#define _inode_fuse_attr_start 7
+static char *_inode_keys[] = { "system.inode", "system.modify_data", "system.modify_attr", "system.exnode.size", "os.type", "os.link_count", "os.link",
+                               "security.selinux",  "system.posix_acl_access", "system.posix_acl_default", "security.capability"};
 
 #define _tape_key_size  2
 static char *_tape_keys[] = { "system.owner", "system.exnode" };
@@ -224,6 +226,8 @@ void _lfs_parse_inode_vals(lio_fuse_t *lfs, lio_inode_t *inode, char **val, int 
 {
   int i;
   char *link;
+  lio_attr_t *attr;
+  char aname[512];
 
   if (val[0] != NULL) {
      inode->ino = 0; sscanf(val[0], XIDT, &(inode->ino));
@@ -274,12 +278,46 @@ log_printf(15, "data_ts=%s att_ts=%s ino=" XIDT "\n", val[1], val[2], inode->ino
      }
   }
 
+  //** Handle all the various security ACLs that Linux likes to check
+  for (i=_inode_fuse_attr_start; i<_inode_key_size; i++) {
+     snprintf(aname, sizeof(aname), XIDT ":%s", inode->ino, _inode_keys[i]);
+     attr = list_search(lfs->attr_index, aname);
+     if (attr != NULL) { //** Already exists so just update the info
+log_printf(15, "UPDATING aname=%s\n", aname);
+        if (attr->val != NULL) free (attr->val);
+        if (v_size[i] > 0) {
+           type_malloc(attr->val, char, v_size[i]);
+           memcpy(attr->val, val[i], v_size[i]);
+           attr->v_size = v_size[i];
+        } else {
+           attr->v_size = 0;
+           attr->val = NULL;
+        }
+     } else {   //** New entry so insert it
+        type_malloc_clear(attr, lio_attr_t, 1);
+        if (v_size[i] > 0) {
+           type_malloc(attr->val, char, v_size[i]);
+           memcpy(attr->val, val[i], v_size[i]);
+           attr->v_size = v_size[i];
+        } else {
+           attr->v_size = 0;
+           attr->val = NULL;
+        }
+
+log_printf(15, "ADDING aname=%s p=%p v_size=%d\n", aname, attr, attr->v_size);
+        list_insert(lfs->attr_index, strdup(aname), attr);
+     }
+
+     attr->recheck_time = apr_time_now() + lfs->xattr_to;
+  }
+
+  //** Clean up
   for (i=0; i<_inode_key_size; i++) {
      if (val[i] != NULL) free(val[i]);
   }
 
   //** Update the recheck time
-  inode->recheck_time = apr_time_now() + lfs->attr_to * APR_USEC_PER_SEC;
+  inode->recheck_time = apr_time_now() + lfs->attr_to;
 }
 
 
