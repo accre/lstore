@@ -1318,7 +1318,7 @@ log_printf(15, "START sid=" XIDT " n_iov=%d rw_mode=%d intervals=%d\n", segment_
     hi = lo + iov[slot].len - 1;
     it = iter_search_interval_skiplist(s->isl, (skiplist_key_t *)&lo, (skiplist_key_t *)&hi);
     b = (seglun_row_t *)next_interval_skiplist(&it);
-log_printf(15, "FOR sid=" XIDT " slot=%d n_iov=%d lo=" XOT " hi=" XOT " b=%p\n", segment_id(seg), slot, n_iov, lo, hi, b);
+log_printf(15, "FOR sid=" XIDT " slot=%d n_iov=%d lo=" XOT " hi=" XOT " len=" XOT " b=%p\n", segment_id(seg), slot, n_iov, lo, hi, iov[slot].len, b);
 
     while (b != NULL) {
       start = (lo <= b->seg_offset) ? 0 : (lo - b->seg_offset);
@@ -1373,7 +1373,7 @@ log_printf(15, " n_bslots=%d\n", n_bslots);
          }
      } else {
          for (i=0; i < s->n_devices; i++) {
-            if (rwb_table[i].n_ex > 0) {
+            if (rwb_table[j+i].n_ex > 0) {
 //FORCE ERROR -- Force a failure on all writes to the first allocation for testing purposes
 //if (i==0) {
 //  rwb_table[i].len = 0;
@@ -1426,7 +1426,7 @@ log_printf(15, "end stage i=%d gid=%d gop_completed_successfully=%d nerr=%d\n", 
            }
 
            if (rwb_table[j+i].iov != NULL) free(rwb_table[j+i].iov);
-           gop_free(rwb_table[j+i].gop, OP_DESTROY);
+           if (rwb_table[j+i].gop != NULL) gop_free(rwb_table[j+i].gop, OP_DESTROY);
         }
 
         if (nerr > maxerr) maxerr = nerr;
@@ -1730,7 +1730,7 @@ op_status_t seglun_inspect_func(void *arg, int id)
      rs_query_add(s->rs, &query, RSQ_BASE_OP_AND, NULL, 0, NULL, 0);
   }
 
-info_printf(si->fd, 1, "local_query=%p\n", si->query);
+//info_printf(si->fd, 1, "local_query=%p\n", si->query);
   info_printf(si->fd, 1, XIDT ": segment information: n_devices=%d n_shift=%d chunk_size=" XOT "  used_size=" XOT " total_size=" XOT " mode=%d\n", segment_id(si->seg), s->n_devices, s->n_shift, s->chunk_size, s->used_size, s->total_size, si->inspect_mode);
 
   it = iter_search_interval_skiplist(s->isl, (skiplist_key_t *)NULL, (skiplist_key_t *)NULL);
