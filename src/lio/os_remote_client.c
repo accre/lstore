@@ -2403,6 +2403,8 @@ log_printf(0, "START\n");
   osrc->host_id = strdup(buffer);
   osrc->host_id_len = strlen(osrc->host_id)+1;
 
+  log_printf(1, "My host_id=%s\n", osrc->host_id);
+
   //** Get the MQC
   assert((osrc->mqc = lookup_service(ess, ESS_RUNNING, ESS_MQ)) != NULL);
 

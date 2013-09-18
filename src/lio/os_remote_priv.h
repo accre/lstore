@@ -111,6 +111,7 @@ typedef struct {
   apr_hash_t *spin;           //** Abort spin handles
   char *hostname;             //** Addres to bind to
   mq_portal_t *server_portal;
+  thread_pool_context_t *tpc;
   int ongoing_interval;       //** Ongoing command check interval
   int shutdown;
   int max_stream;
