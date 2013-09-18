@@ -403,6 +403,7 @@ void *hc_recv_thread(apr_thread_t *th, void *data)
 
 log_printf(5, "hc_recv_thread: before recv phase.. ns=%d gid=%d\n", ns_getid(ns), gop_id(hsop));
         status = (hop->recv_phase != NULL) ? hop->recv_phase(hsop, ns) : op_success_status;
+        hop->end_time = apr_time_now();
 log_printf(5, "hc_recv_thread: after recv phase.. ns=%d gid=%d finished=%d\n", ns_getid(ns), gop_id(hsop), status.op_status);
 
         //** dec the current workload
