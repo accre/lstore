@@ -96,6 +96,7 @@ op_status_t cp_lio(cp_file_t *cp)
   hard_errors = 0;
   sexp = dexp = NULL;
   sex = dex = NULL;
+  sfd = dfd = NULL;
 
   //** Check if the dest exists and if not creates it
   dtype = lioc_exists(cp->dest_tuple.lc, cp->dest_tuple.creds, cp->dest_tuple.path);
@@ -158,7 +159,7 @@ log_printf(5, "src=%s dest=%s dtype=%d\n", cp->src_tuple.path, cp->dest_tuple.pa
   dexp = exnode_exchange_text_parse(dex_data);
   dex = exnode_create();
   if (exnode_deserialize(dex, dexp, cp->dest_tuple.lc->ess) != 0) {
-     info_printf(lio_ifd, 0, "ERROR parsing destinationexnode(%s)!\n", cp->dest_tuple.path);
+     info_printf(lio_ifd, 0, "ERROR parsing destination exnode(%s)!\n", cp->dest_tuple.path);
      goto finished;
   }
 
@@ -222,6 +223,11 @@ finished:
   if (dexp != NULL) exnode_exchange_destroy(dexp);
 
   if ((hard_errors == 0) && (err == OP_STATE_SUCCESS)) status = op_success_status;
+
+  if (status.op_status != OP_STATE_SUCCESS) { //** Destroy the file
+     log_printf(5, "ERROR with copy.  Destroying file=%s\n", cp->dest_tuple.path);
+     gop_sync_exec(lioc_remove_object(cp->dest_tuple.lc, cp->dest_tuple.creds, cp->dest_tuple.path, NULL, OS_OBJECT_FILE)); 
+  }
 
   return(status);
 }
