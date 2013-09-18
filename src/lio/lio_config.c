@@ -1163,6 +1163,9 @@ int lio_init(int *argc, char ***argvp)
   i=1;
   ll = -1;
   auto_mode = -1;
+
+  if (*argc < 2) goto no_args;  //** Nothing to parse
+
   do {
 //printf("argv[%d]=%s\n", i, argv[i]);
      if (strcmp(argv[i], "-d") == 0) { //** Enable debugging
@@ -1200,12 +1203,13 @@ int lio_init(int *argc, char ***argvp)
      }
   } while (i<*argc);
 
+no_args:
+
   //** If not specified create a default
   if (lio_ifd == NULL) lio_ifd = info_create(stdout, INFO_HEADER_NONE, 0);
 
 
   //** Adjust argv to reflect the parsed arguments
-//  memcpy(argv, myargv, sizeof(char *)*nargs);
   *argvp = myargv;
   *argc = nargs;
 
@@ -1279,7 +1283,6 @@ int lio_shutdown()
 
   apr_thread_mutex_destroy(_lc_lock);
   apr_pool_destroy(_lc_mpool);
-//  list_destroy(_lc_object_list);
 
   exnode_system_destroy();
 
