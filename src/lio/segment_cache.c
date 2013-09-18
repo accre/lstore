@@ -2858,6 +2858,7 @@ op_generic_t *segcache_clone(segment_t *seg, data_attr_t *da, segment_t **clone_
   if (use_existing == 1) atomic_dec(sd->child_seg->ref_count);
   cop->gop = segment_clone(ss->child_seg, da, &(sd->child_seg), mode, arg, timeout);
 
+  log_printf(5, "child_clone gid=%d\n", gop_id(cop->gop));
   return(new_thread_pool_op(ss->tpc_unlimited, NULL, segcache_clone_func, (void *)cop, free, 1));
 }
 

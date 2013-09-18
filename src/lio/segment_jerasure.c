@@ -713,6 +713,7 @@ log_printf(15, "use_existing=%d sseg=" XIDT " dseg=" XIDT " cref=%d\n", use_exis
   cop->dseg = clone;
       //** Jerase doesn't manage any data.  The child does so clone it
   cop->gop = segment_clone(ss->child_seg, da, &(sd->child_seg), mode, attr, timeout);
+  log_printf(5, "child_clone gid=%d\n", gop_id(cop->gop));
 
   return(new_thread_pool_op(ss->tpc, NULL, segjerase_clone_func, (void *)cop, free, 1));
 }
