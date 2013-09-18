@@ -150,6 +150,8 @@ int lioc_get_multiple_attrs(lio_config_t *lc, creds_t *creds, char *path, char *
 int lioc_get_attr(lio_config_t *lc, creds_t *creds, char *path, char *id, char *key, void **val, int *v_size);
 void lioc_get_error_counts(lio_config_t *lc, segment_t *seg, int *hard_errors, int *soft_errors);
 int lioc_update_error_counts(lio_config_t *lc, creds_t *creds, char *path, segment_t *seg);
+op_generic_t *lioc_remove_object(lio_config_t *lc, creds_t *creds, char *path, char *ex_optional, int ftype_optional);
+
 void lc_object_remove_unused(int remove_all_unused);
 void lio_path_release(lio_path_tuple_t *tuple);
 void lio_path_local_make_absolute(lio_path_tuple_t *tuple);
