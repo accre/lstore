@@ -232,7 +232,7 @@ void _lfs_parse_inode_vals(lio_fuse_t *lfs, lio_inode_t *inode, char **val, int 
   if (val[0] != NULL) {
      inode->ino = 0; sscanf(val[0], XIDT, &(inode->ino));
   } else {
-     if (inode->ino != 0) {
+     if (inode->ino == 0) {
         generate_ex_id(&(inode->ino));
         log_printf(0, "Missing inode generating a temp fake one! ino=" XIDT "\n", inode->ino);
      } else {
@@ -652,7 +652,6 @@ int lfs_readdir(const char *dname, void *buf, fuse_fill_dir_t filler, off_t off,
   lfs_dir_iter_t *dit= (lfs_dir_iter_t *)fi->fh;
   lio_dentry_t *entry, *fentry;
   lio_inode_t *inode;
-  ex_id_t ino;
   int ftype, prefix_len, n, i;
   char *fname;
   struct stat stbuf;
@@ -684,8 +683,6 @@ int lfs_readdir(const char *dname, void *buf, fuse_fill_dir_t filler, off_t off,
   memset(&stbuf, 0, sizeof(stbuf));
   n = stack_size(dit->stack);
   if (n>=off) { //** Rewind
-//    move_to_top(dit->stack);
-//    for (i=0; i<off; i++) move_down(dit->stack);
     move_to_bottom(dit->stack);  //** Go from the bottom up.
     for (i=n; i>off; i--) move_up(dit->stack);
 
@@ -701,7 +698,6 @@ int lfs_readdir(const char *dname, void *buf, fuse_fill_dir_t filler, off_t off,
        } else {
           inode= NULL;
        }
-//       inode = _lfs_inode_lookup(dit->lfs, entry->ino);
 
        if (inode == NULL) {
           log_printf(0, "Missing inode!  fname=%s ino=" XIDT " off=%d\n", entry->fname, entry->ino, off);
@@ -743,13 +739,13 @@ log_printf(15, "dname=%s NOTHING LEFT off=%d dt=%lf\n", dname,off2, dt);
         return(0);
      }
 
-     if (dit->val[0] != NULL) {
-        ino = 0; sscanf(dit->val[0], XIDT, &ino);
-     } else {
-        log_printf(0, "Missing inode!  fname=%s\n", fname);
-        for (i=0; i<_inode_key_size; i++) if (dit->val[i] != NULL) free(dit->val[i]);
-        return(-ENOENT);
-     }
+//     if (dit->val[0] != NULL) {
+//        ino = 0; sscanf(dit->val[0], XIDT, &ino);
+//     } else {
+//        log_printf(0, "Missing inode!  fname=%s\n", fname);
+//        for (i=0; i<_inode_key_size; i++) if (dit->val[i] != NULL) free(dit->val[i]);
+//        return(-ENOENT);
+//     }
 
      lfs_lock(dit->lfs);
      fentry = _lfs_dentry_get(dit->lfs, fname);
@@ -758,12 +754,12 @@ log_printf(15, "dname=%s NOTHING LEFT off=%d dt=%lf\n", dname,off2, dt);
 log_printf(15, "new entry fname=%s\n", fname);  flush_log();
         entry->fname = fname;
         entry->name_start = prefix_len+1;
-        entry->ino = ino;
+        entry->ino = 0;  //** Reset after the parse
 
         //** This is for the lookup table
         type_malloc_clear(fentry, lio_dentry_t, 1);
         fentry->fname = strdup(fname);
-        fentry->ino = ino;
+        fentry->ino = 0;  //** REset it after the parse
         _lfs_dentry_insert(lfs, fentry);
      } else {
 log_printf(15, "existing entry fname=%s\n", fname); flush_log();
@@ -772,18 +768,18 @@ log_printf(15, "existing entry fname=%s\n", fname); flush_log();
         fentry->recheck_time = apr_time_now() + lfs->attr_to * APR_USEC_PER_SEC;
      }
 
-     inode = _lfs_inode_lookup(dit->lfs, ino);
+     inode = _lfs_inode_lookup(dit->lfs, entry->ino);
      if (inode == NULL) {
         type_malloc_clear(inode, lio_inode_t, 1);
         inode->ftype = ftype;
-        inode->ino = ino;
+        inode->ino = 0;
         _lfs_parse_inode_vals(dit->lfs, inode, dit->val, dit->v_size);
         _lfs_inode_insert(dit->lfs, inode);
      } else {
-       for (i=0; i<_inode_key_size; i++) if (dit->val[i] != NULL) free(dit->val[i]);
-//       i=_inode_key_size-1;
-//       if (dit->val[i] != NULL) free(dit->val[i]);
+        _lfs_parse_inode_vals(dit->lfs, inode, dit->val, dit->v_size);
      }
+
+     fentry->ino = entry->ino = inode->ino;  //** Make sure the ino is in sync
 
 off2=off;
 log_printf(1, "next fname=%s ftype=%d prefix_len=%d ino=" XIDT " off=%d\n", entry->fname, ftype, prefix_len, entry->ino, off);
