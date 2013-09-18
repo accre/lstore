@@ -2529,7 +2529,7 @@ op_status_t copy_recv(op_generic_t *gop, NetStream_t *ns)
   cmd = &(op->copy_op);
 
   //** Need to read the depot status info
-  log_printf(15, "copy_recv: ns=%d Start", ns->id);
+  log_printf(15, "copy_recv: ns=%d Start\n", ns->id);
 
   ns_read_chksum_clear(ns);
 
