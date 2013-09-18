@@ -243,7 +243,7 @@ fail:
 // mq_ongoing_add - Adds an onging object to the tracking tables
 //***********************************************************************
 
-mq_ongoing_object_t *mq_ongoing_add(mq_ongoing_t *mqon, char *id, int id_len, void *handle, mq_ongoing_fail_t *on_fail, void *on_fail_arg)
+mq_ongoing_object_t *mq_ongoing_add(mq_ongoing_t *mqon, int auto_clean, char *id, int id_len, void *handle, mq_ongoing_fail_t *on_fail, void *on_fail_arg)
 {
   mq_ongoing_object_t *ongoing;
   mq_ongoing_host_t *oh;
@@ -254,6 +254,7 @@ mq_ongoing_object_t *mq_ongoing_add(mq_ongoing_t *mqon, char *id, int id_len, vo
   ongoing->on_fail = on_fail;
   ongoing->on_fail_arg = on_fail_arg;
   ongoing->count = 0;
+  ongoing->auto_clean = auto_clean;
 
   log_printf(5, "host=%s len=%d handle=%p key=%" PRIdPTR "\n", id, id_len, handle, ongoing->key);
 
@@ -270,7 +271,7 @@ mq_ongoing_object_t *mq_ongoing_add(mq_ongoing_t *mqon, char *id, int id_len, vo
      oh->id[id_len] = 0;  //** NULL terminate the string
      oh->id_len = id_len;
 
-     oh->heartbeat = 600;
+     oh->heartbeat = 60;
      sscanf(id, "%d:", &(oh->heartbeat));
      log_printf(5, "heartbeat interval=%d\n", oh->heartbeat);
      oh->next_check = apr_time_now() + apr_time_from_sec(oh->heartbeat);
@@ -451,13 +452,15 @@ void _mq_ongoing_close(mq_ongoing_t *mqon, mq_ongoing_host_t *oh)
   op_generic_t *gop;
   opque_t *q;
 
-log_printf(2, "closing host=%s now=" TT " next_check=" TT " hb=%d\n", oh->id, apr_time_now(), oh->next_check, oh->heartbeat);
+int n = apr_hash_count(oh->table);
+log_printf(2, "closing host=%s task_count=%d now=" TT " next_check=" TT " hb=%d\n", oh->id, n, apr_time_now(), oh->next_check, oh->heartbeat);
   q = new_opque();
   opque_start_execution(q);
 
   for (hi = apr_hash_first(NULL, oh->table); hi != NULL; hi = apr_hash_next(hi)) {
      apr_hash_this(hi, (const void **)&key, &klen, (void **)&oo);
-//     apr_hash_set(oh->table, key, klen, NULL);
+
+     if (oo->auto_clean) apr_hash_set(oh->table, key, klen, NULL);  //** I'm cleaning up so remove it from the table
 
      gop = oo->on_fail(oo->on_fail_arg, oo->handle);
      gop_set_private(gop, oo);
@@ -465,8 +468,8 @@ log_printf(2, "closing host=%s now=" TT " next_check=" TT " hb=%d\n", oh->id, ap
   }
 
   while ((gop = opque_waitany(q)) != NULL) {
-//     oo = gop_get_private(gop);
-//     free(oo);
+     oo = gop_get_private(gop);
+     if (oo->auto_clean) free(oo);
      gop_free(gop, OP_DESTROY);
   }
 
@@ -495,16 +498,22 @@ void *mq_ongoing_server_thread(apr_thread_t *th, void *data)
   do {
     //** Cycle through checking each host's heartbeat
     now = apr_time_now();
+    n = apr_hash_count(mqon->id_table);    
+    log_printf(10, "now=" TT " heartbeat table size=%d\n", apr_time_now(), n);
     for (hi = apr_hash_first(NULL, mqon->id_table); hi != NULL; hi = apr_hash_next(hi)) {
        apr_hash_this(hi, (const void **)&key, &klen, (void **)&oh);
 
+       log_printf(10, "host=%s now=" TT " next_check=" TT "\n", oh->id, apr_time_now(), oh->next_check);
        if ((oh->next_check < now) && (oh->next_check > 0)) { //** Expired heartbeat so shut everything associated with the connection
            _mq_ongoing_close(mqon, oh);
-           //oh->next_check = 0;  //** Skip next time around
-           apr_hash_set(mqon->id_table, key, klen, NULL);
-           free(oh->id);
-           apr_pool_destroy(oh->mpool);
-           free(oh);
+           oh->next_check = 0;  //** Skip next time around
+       } else if (oh->next_check == 0) { //** See if everything has cleaned up
+           if (apr_hash_count(oh->table) == 0) { //** Safe to clean up
+              apr_hash_set(mqon->id_table, key, klen, NULL);
+              free(oh->id);
+              apr_pool_destroy(oh->mpool);
+              free(oh);
+           }
        }
     }
 
@@ -519,12 +528,23 @@ log_printf(15, "CLEANUP\n");
 
   for (hi = apr_hash_first(NULL, mqon->id_table); hi != NULL; hi = apr_hash_next(hi)) {
      apr_hash_this(hi, (const void **)&key, &klen, (void **)&oh);
-     _mq_ongoing_close(mqon, oh);
+     if (oh->next_check > 0) _mq_ongoing_close(mqon, oh);  //** Only shut down pending hosts
+
+     while (apr_hash_count(oh->table) > 0) {
+       n = apr_hash_count(oh->table);
+       log_printf(5, "waiting on host=%s nleft=%d\n", oh->id, n);
+       apr_thread_mutex_unlock(mqon->lock);
+       usleep(10000);  //** Sleep and see if if clears up
+       apr_thread_mutex_lock(mqon->lock);
+     }
+
      apr_hash_set(mqon->id_table, key, klen, NULL);
      free(oh->id);
      apr_pool_destroy(oh->mpool);
      free(oh);
   }
+
+log_printf(15, "FINISHED\n");
 
   apr_thread_mutex_unlock(mqon->lock);
 

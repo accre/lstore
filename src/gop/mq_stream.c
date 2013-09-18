@@ -718,7 +718,7 @@ log_printf(5, "nbytes=%d mqs->len=%d mqs->max_size=%d\n", nbytes, mqs->len, mqs-
           apr_thread_mutex_create(&(mqs->lock), APR_THREAD_MUTEX_DEFAULT, mqs->mpool);
           apr_thread_cond_create(&(mqs->cond), mqs->mpool);
           apr_thread_mutex_lock(mqs->lock);
-          mqs->oo = mq_ongoing_add(mqs->ongoing, mqs->host_id, mqs->hid_len, mqs, mqs_write_on_fail, NULL);
+          mqs->oo = mq_ongoing_add(mqs->ongoing, 0, mqs->host_id, mqs->hid_len, mqs, mqs_write_on_fail, NULL);
 
           if (nleft > 0) mqs->data[MQS_STATE_INDEX] = MQS_MORE;
           mqs_write_send(mqs, mqs->address, mqs->fid);
@@ -746,7 +746,7 @@ log_printf(5, "msid=%d pack_write_flush=%d\n", mqs->msid, nbytes);
                apr_thread_mutex_create(&(mqs->lock), APR_THREAD_MUTEX_DEFAULT, mqs->mpool);
                apr_thread_cond_create(&(mqs->cond), mqs->mpool);
                apr_thread_mutex_lock(mqs->lock);
-               mqs->oo = mq_ongoing_add(mqs->ongoing, mqs->host_id, mqs->hid_len, mqs, mqs_write_on_fail, NULL);
+               mqs->oo = mq_ongoing_add(mqs->ongoing, 0, mqs->host_id, mqs->hid_len, mqs, mqs_write_on_fail, NULL);
             }
 
             mqs->want_more = MQS_MORE;
@@ -903,7 +903,7 @@ log_printf(5, "initial used bpos=%d\n", pack_used(mqs->pack));
      apr_pool_create(&mqs->mpool, NULL);
      apr_thread_mutex_create(&(mqs->lock), APR_THREAD_MUTEX_DEFAULT, mqs->mpool);
      apr_thread_cond_create(&(mqs->cond), mqs->mpool);
-     mqs->oo = mq_ongoing_add(mqs->ongoing, mqs->host_id, mqs->hid_len, mqs, mqs_write_on_fail, NULL);
+     mqs->oo = mq_ongoing_add(mqs->ongoing, 0, mqs->host_id, mqs->hid_len, mqs, mqs_write_on_fail, NULL);
      mqs->sent_data = 1;
      apr_thread_create(&(mqs->flusher_thread), NULL, mqs_flusher_thread,  (void *)mqs, mqs->mpool);
   }

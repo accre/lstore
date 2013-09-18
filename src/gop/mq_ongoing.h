@@ -67,6 +67,7 @@ typedef struct {
 typedef struct {
   int type;
   int count;
+  int auto_clean;
   void *handle;
   intptr_t key;
   mq_ongoing_fail_t *on_fail;
@@ -100,7 +101,7 @@ void mq_ongoing_host_inc(mq_ongoing_t *on, char *remote_host, char *id, int id_l
 void mq_ongoing_host_dec(mq_ongoing_t *on, char *remote_host, char *id, int id_len);
 void ongoing_heartbeat_shutdown();
 void mq_ongoing_cb(void *arg, mq_task_t *task);
-mq_ongoing_object_t *mq_ongoing_add(mq_ongoing_t *mqon, char *id, int id_len, void *handle, mq_ongoing_fail_t *on_fail, void *on_fail_arg);
+mq_ongoing_object_t *mq_ongoing_add(mq_ongoing_t *mqon, int auto_clean, char *id, int id_len, void *handle, mq_ongoing_fail_t *on_fail, void *on_fail_arg);
 void *mq_ongoing_remove(mq_ongoing_t *mqon, char *id, int id_len, intptr_t key);
 void *mq_ongoing_get(mq_ongoing_t *mqon, char *id, int id_len, intptr_t key);
 void mq_ongoing_release(mq_ongoing_t *mqon, char *id, int id_len, intptr_t key);
