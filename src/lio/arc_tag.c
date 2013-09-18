@@ -32,21 +32,32 @@ http://www.accre.vanderbilt.edu
 #include <string.h>
 #include <unistd.h>
 #include "object_service_abstract.h"
+#include "lio_abstract.h"
 
 /*** TODO: check for duplicate tags (compairing both to INI contents and current command contents)  ***/
-void add_tag(char *tag_file, char *path, int recurse_depth, const char *regex_path, const char *regex_object) {
+void add_tag(char *tag_file, char *path, const char *regex_path, const char *regex_object, int obj_types, int recurse_depth) {
+  lio_path_tuple_t tuple;
   FILE *fd = fopen(tag_file, "a");
+
   if (fd == NULL) {
     printf("Failed to open %s!\n", tag_file);
     exit(1);
   }
-  fprintf(fd, "\n[TAG]\npath=%s\nrecurse_depth=%i\nregex_path=%s\nregex_object=%s\n", path, recurse_depth, regex_path, regex_object);
+
+  if (path != NULL) {
+     tuple = lio_path_resolve(lio_gc->auto_translate, path);
+     fprintf(fd, "\n[TAG]\npath=%s\nrecurse_depth=%d\nobject_types=%d\n\n", tuple.path, recurse_depth, obj_types);
+     lio_path_release(&tuple);
+  } else {
+     fprintf(fd, "\n[TAG]\nrecurse_depth=%d\nobject_types=%d\nregex_path=%s\nregex_object=%s\n", recurse_depth, obj_types, regex_path, regex_object);
+  }
 }
 
 void print_usage() {
   printf("\nUsage: arc_tag [-t tag name] [-rd recurse depth] [-rp regex of path to scan] [-ro regex for file selection] [-gp glob of path to scan] [-go glob for file selection] [PATH]...\n");
   printf("\t-t\ttag file to use (default if not specified: ~./arc_tag_file.txt)\n");
   printf("\t-rd\trecurse depth (default: 10000)\n");
+  printf("\t-o\tTypes of objects to select. Bitwise OR of 1=Files, 2=Directories, 4=symlink, 8=hardlink.  Default is %d.\n", OS_OBJECT_ANY);
   printf("\t-rp\tregular expression for path\n");
   printf("\t-ro\tregular expression for file selection\n");
   printf("\t-gp\tglob for path\n");
@@ -57,10 +68,14 @@ void print_usage() {
 
 int main(int argc, char **argv)
 {
-  int i = 1, d, recurse_depth = 10000, start_option = 0, start_index;  
+  int i = 1, d, recurse_depth = 10000, start_option = 0, start_index, obj_types;  
   char *regex_path = NULL;
   char *regex_object = NULL;
   char *tag_file = NULL;
+
+  lio_init(&argc, &argv);
+
+  obj_types = OS_OBJECT_ANY;
 
   if (argc < 2) {
     print_usage();
@@ -76,6 +91,10 @@ int main(int argc, char **argv)
       } else if (strcmp(argv[i], "-rd") == 0) {
 	i++;
 	recurse_depth = atoi(argv[i]);
+	i++;
+      } else if (strcmp(argv[i], "-o") == 0) {
+	i++;
+	obj_types = atoi(argv[i]);
 	i++;
       } else if (strcmp(argv[i], "-rp") == 0) {
 	i++;  
@@ -111,11 +130,15 @@ int main(int argc, char **argv)
         printf("Missing target path(s)!\n\n");
         print_usage();
       } else {
+        if ((regex_path != NULL) || (regex_object != NULL)) add_tag(tag_file, NULL, regex_path, regex_object, obj_types, recurse_depth);
 	for (d=start_index; d<argc; d++) {
-	  add_tag(tag_file, argv[d], recurse_depth, regex_path, regex_object);
+	  add_tag(tag_file, argv[d], NULL, NULL, obj_types, recurse_depth);
 	}
       }
     }
   }
 
+  lio_shutdown();
+
+  return(0);
 }

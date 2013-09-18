@@ -50,30 +50,112 @@ typedef struct {
 
 typedef struct {
   lio_path_tuple_t tuple;
+  os_object_iter_t *oit;
   local_object_iter_t *lit;
 } ls_object_iter_t;
 
 
-void run_ls(char *path, char *regex_path, char *regex_object, int recurse_depth) {
+
+//*************************************************************************
+//  ls_create_object_iter - Create an ls object iterator
+//*************************************************************************
+
+ls_object_iter_t *ls_create_object_iter(lio_path_tuple_t tuple, os_regex_table_t *path_regex, os_regex_table_t *obj_regex, int obj_types, int rd)
+{
+  ls_object_iter_t *it;
+
+  type_malloc_clear(it, ls_object_iter_t, 1);
+
+  it->tuple = tuple;
+  if (tuple.is_lio == 1) {
+     it->oit = os_create_object_iter(tuple.lc->os, tuple.creds, path_regex, obj_regex, obj_types, NULL, rd, NULL, 0);
+  } else {
+     it->lit = create_local_object_iter(path_regex, obj_regex, obj_types, rd);
+  }
+
+  return(it);
+}
+
+//*************************************************************************
+//  ls_destroy_object_iter - Destroys an ls object iterator
+//*************************************************************************
+
+void ls_destroy_object_iter(ls_object_iter_t *it)
+{
+
+  if (it->tuple.is_lio == 1) {
+    os_destroy_object_iter(it->tuple.lc->os, it->oit);
+  } else {
+    destroy_local_object_iter(it->lit);
+  }
+
+  free(it);
+}
+
+//*************************************************************************
+//  ls_next_object - Returns the next object to work on
+//*************************************************************************
+
+int ls_next_object(ls_object_iter_t *it, char **fname, int *prefix_len)
+{
+  int err = 0;
+
+  if (it->tuple.is_lio == 1) {
+    err = os_next_object(it->tuple.lc->os, it->oit, fname, prefix_len);
+  } else {
+    err = local_next_object(it->lit, fname, prefix_len);
+  }
+
+log_printf(15, "ftype=%d\n", err);
+  return(err);
+}
+
+
+//**********************************************************************************
+
+//**********************************************************************************
+
+void run_ls(char *path, char *regex_path, char *regex_object, int obj_types, int recurse_depth) {
   printf("%s  %s  %s  %i\n", path, regex_path, regex_object, recurse_depth);
 
   ls_object_iter_t *it;  
-  int *prefix_len;
+  os_regex_table_t *rp, *ro;
+  lio_path_tuple_t tuple;
+  int prefix_len, ftype;
   char *fname = NULL;
-  char *test = strcat(path, regex_path);
 
-  type_malloc_clear(it, ls_object_iter_t, 1);
-  it->tuple = lio_path_resolve(0, test);
-  it->lit = create_local_object_iter(os_regex2table(test), os_regex2table(regex_object), OS_OBJECT_FILE, recurse_depth);
+  rp = ro = NULL;
+
+  tuple = lio_path_resolve(lio_gc->auto_translate, path);
+  if (path != NULL) {
+     lio_path_wildcard_auto_append(&tuple);
+     rp = os_path_glob2regex(tuple.path);     
+  } else {
+     rp = os_regex2table(regex_path);     
+     ro = os_regex2table(regex_object);     
+  }
+
+  it = ls_create_object_iter(tuple, rp, ro, obj_types, recurse_depth);
+  if (it == NULL) {
+     info_printf(lio_ifd, 0, "ERROR: Failed with object_iter creation! path=%s regex_path=%s regex_object=%s\n", path, regex_path, regex_object);
+     return;
+  }
 
   if (it == NULL) {
     printf("ERROR: Failed to parse arc_tag: %s  %s  %s  %i\n", path, regex_path, regex_object, recurse_depth);
     exit(3);
   }
-   while ((local_next_object(it->lit, &fname, &prefix_len)) > 0) {
-     //printf("fname: %s\n", fname);
+   while ((ftype = ls_next_object(it, &fname, &prefix_len)) > 0) {
+     printf("fname: %s ftype=%d\n", fname, ftype);
+     free(fname);
    }
 
+  ls_destroy_object_iter(it);
+
+  if (rp != NULL) os_regex_table_destroy(rp);
+  if (ro != NULL) os_regex_table_destroy(ro);
+
+  lio_path_release(&tuple);
 }
 
 
@@ -82,7 +164,7 @@ void process_tag_file(char *tag_file) {
   char *path = NULL;
   char *regex_path = NULL;
   char *regex_object = NULL;
-  int recurse_depth;
+  int recurse_depth, obj_types;
   inip_file_t *ini_fd;
   inip_group_t *ini_g;
   inip_element_t *ele;
@@ -96,6 +178,7 @@ void process_tag_file(char *tag_file) {
     /*** process tag file ***/
     assert(ini_fd = inip_read(tag_file));
     ini_g = inip_first_group(ini_fd);
+    obj_types = OS_OBJECT_ANY;
     while (ini_g != NULL) {
       if (strcmp(inip_get_group(ini_g), "TAG") == 0) {
 	ele = inip_first_element(ini_g);
@@ -105,15 +188,17 @@ void process_tag_file(char *tag_file) {
 	  if (strcmp(key, "path") == 0) {
 	    path = value;
 	  } else if (strcmp(key, "regex_path") == 0) {
-	    regex_path = strdup(value);
+	    regex_path = value;
 	  } else if (strcmp(key, "regex_object") == 0) {
-	    regex_object = strdup(value);
+	    regex_object = value;
 	  } else if (strcmp(key, "recurse_depth") == 0) {
-	    recurse_depth = atoi(strdup(value));
+	    recurse_depth = atoi(value);
+	  } else if (strcmp(key, "object_types") == 0) {
+	    obj_types = atoi(value);
 	  }
 	  ele = inip_next_element(ele);
 	}
-	run_ls(path, regex_path, regex_object, recurse_depth);
+	run_ls(path, regex_path, regex_object, obj_types, recurse_depth);
       }
       ini_g = inip_next_group(ini_g);
     }
@@ -159,4 +244,7 @@ int main(int argc, char **argv) {
     tag_file = strcat(homedir, "/.arc_tag_file.txt");
   }
   process_tag_file(tag_file);
+
+  lio_shutdown();
+
 }
