@@ -54,7 +54,7 @@ if (XML2_FOUND)
 endif (XML2_FOUND)
 
 SET(LIBS ${LIBS} ${IBP_LIBRARY} ${GOP_LIBRARY} ${CZMQ_LIBRARY} ${TOOLBOX_LIBRARY} ${JERASURE_LIBRARY} ${OPENSSL_LIBRARIES} ${CRYPTO_LIBRARIES} 
-   ${APR_LIBRARY} ${APRUTIL_LIBRARY} ${HWLOC_LIBRARY} ${ZMQ_LIBRARY} ${FUSE_LIBRARY} ${XML_LIB} ${ZLIB_LIBRARY} ${XATTR_LIBRARY} pthread m dl rt)
+   ${APR_LIBRARY} ${APRUTIL_LIBRARY} ${HWLOC_LIBRARY} ${ZMQ_LIBRARY} ${FUSE_LIBRARY} ${XML_LIB} ${ZLIB_LIBRARY} ${XATTR_LIBRARY} pthread m dl rt lzma)
 
 #Make the version file
 set(LIO_CLIENT_VERSION "lio_client: v1.0.0")
@@ -121,7 +121,8 @@ SET_TARGET_PROPERTIES(dynfile PROPERTIES CLEAN_DIRECT_OUTPUT 1)
 set(LIO_EXE 
     mk_linear ex_load ex_get ex_put ex_inspect ex_clone ex_rw_test log_test rs_test os_test os_fsck
     lio_touch lio_mkdir lio_rmdir lio_rm lio_ln lio_find lio_ls lio_du lio_setattr lio_getattr lio_mv lio_cp
-    lio_put lio_get lio_signature lio_warm lio_inspect lio_fsck lio_rs lio_server lio_fuse
+    lio_put lio_get lio_signature lio_warm lio_inspect lio_fsck lio_rs lio_server lio_fuse arc_tag_create
+    arc_tag_destroy arc_tag arc_tag_ls
 )
 
 #Make static executables by default
