@@ -1636,7 +1636,7 @@ op_status_t seglun_migrate_func(void *arg, int id)
   int bufsize = 10*1024;
   char info[bufsize];
   int used;
-  int block_status[s->n_devices];
+  int block_status[s->n_devices], block_copy[s->n_devices];
   int nattempted, nmigrated, err, i;
   int soft_error_fail;
 
@@ -1656,6 +1656,10 @@ op_status_t seglun_migrate_func(void *arg, int id)
 
     info_printf(si->fd, 1, XIDT ": Checking row (" XOT ", " XOT ", " XOT ")\n", segment_id(si->seg), b->seg_offset, b->seg_end, b->row_len);
 
+    for (i=0; i < s->n_devices; i++) {
+        info_printf(si->fd, 3, XIDT ":     dev=%i rcap=%s\n", segment_id(si->seg), i, ds_get_cap(s->ds, b->block[i].data->cap, DS_CAP_READ));
+    }
+
     for (i=0; i < s->n_devices; i++) block_status[i] = 0;
     err = slun_row_placement_check(si->seg, si->da, b, block_status, s->n_devices, soft_error_fail, s->rsq, si->timeout);
     used = 0;
@@ -1663,9 +1667,15 @@ op_status_t seglun_migrate_func(void *arg, int id)
     for (i=0; i < s->n_devices; i++) append_printf(info, &used, bufsize, " %d", block_status[i]);
     info_printf(si->fd, 1, "%s\n", info);
     if (err > 0) {
+       memcpy(block_copy, block_status, sizeof(int)*s->n_devices);
+
        i = slun_row_placement_fix(si->seg, si->da, b, block_status, s->n_devices, s->rsq, si->timeout);
        nmigrated +=  err - i;
        nattempted += err;
+
+       for (i=0; i < s->n_devices; i++) {
+           if ((block_copy[i] == 1) && (block_status[i] == 0)) info_printf(si->fd, 2, XIDT ":     dev=%i moved to rcap=%s\n", segment_id(si->seg), i, ds_get_cap(s->ds, b->block[i].data->cap, DS_CAP_READ));
+       }
 
        used =0;
        append_printf(info, &used, bufsize, XIDT ":     slun_row_placement_fix:", segment_id(si->seg));
@@ -1705,8 +1715,8 @@ op_status_t seglun_inspect_func(void *arg, int id)
   int bufsize = 10*1024;
   char info[bufsize];
   int used, soft_error_fail, force_reconstruct, nforce;
-  int block_status[s->n_devices];
-  int i, err, option, force_repair, max_lost, total_lost, total_repaired, total_migrate, nmigrated, nlost, nrepaired;
+  int block_status[s->n_devices], block_copy[s->n_devices];
+  int i, j, err, option, force_repair, max_lost, total_lost, total_repaired, total_migrate, nmigrated, nlost, nrepaired;
 
   status = op_success_status;
   max_lost = 0;
@@ -1739,6 +1749,11 @@ op_status_t seglun_inspect_func(void *arg, int id)
     for (i=0; i < s->n_devices; i++) block_status[i] = 0;
 
     info_printf(si->fd, 1, XIDT ": Checking row (" XOT ", " XOT ", " XOT ")\n", segment_id(si->seg), b->seg_offset, b->seg_end, b->row_len);
+
+    for (i=0; i < s->n_devices; i++) {
+        info_printf(si->fd, 3, XIDT ":     dev=%i rcap=%s\n", segment_id(si->seg), i, ds_get_cap(s->ds, b->block[i].data->cap, DS_CAP_READ));
+    }
+
     nlost = slun_row_size_check(si->seg, si->da, b, block_status, s->n_devices, force_repair, si->timeout);
     used = 0;
     append_printf(info, &used, bufsize, XIDT ":     slun_row_size_check:", segment_id(si->seg));
@@ -1760,16 +1775,23 @@ op_status_t seglun_inspect_func(void *arg, int id)
        if (max_lost < err) max_lost = err;
 
        info_printf(si->fd, 1, XIDT ":     Attempting to replace missing row allocations\n", segment_id(si->seg));
-       i = 0;  //** Iteratively try and repair the row
+       j = 0;  //** Iteratively try and repair the row
        do {
+         memcpy(block_copy, block_status, sizeof(int)*s->n_devices);
+
          err = slun_row_replace_fix(si->seg, si->da, b, block_status, s->n_devices, query, si->timeout);
+
+         for (i=0; i < s->n_devices; i++) {
+             if ((block_copy[i] == 1) && (block_status[i] == 0)) info_printf(si->fd, 2, XIDT ":     dev=%i replaced rcap=%s\n", segment_id(si->seg), i, ds_get_cap(s->ds, b->block[i].data->cap, DS_CAP_READ));
+         }
+
          used = 0;
          append_printf(info, &used, bufsize, XIDT ":     slun_row_replace_fix:", segment_id(si->seg));
          for (i=0; i < s->n_devices; i++) append_printf(info, &used, bufsize, " %d", block_status[i]);
          info_printf(si->fd, 1, "%s\n", info);
 
-         i++;
-       } while ((err > 0) && (i<5));
+         j++;
+       } while ((err > 0) && (j<5));
 
        nrepaired = nlost - err;
     }
@@ -1790,24 +1812,37 @@ log_printf(0, "BEFORE_PLACEMENT_CHECK\n");
 log_printf(0, "AFTER_PLACEMENT_CHECK\n");
     if ((err > 0) && ((option == INSPECT_QUICK_REPAIR) || (option == INSPECT_SCAN_REPAIR) || (option == INSPECT_FULL_REPAIR))) {
        if (force_reconstruct == 0) {
+          memcpy(block_copy, block_status, sizeof(int)*s->n_devices);
+
           i = slun_row_placement_fix(si->seg, si->da, b, block_status, s->n_devices, query, si->timeout);
           nmigrated += err - i;
+
+          for (i=0; i < s->n_devices; i++) {
+              if ((block_copy[i] != 0) && (block_status[i] == 0)) info_printf(si->fd, 2, XIDT ":     dev=%i moved to rcap=%s\n", segment_id(si->seg), i, ds_get_cap(s->ds, b->block[i].data->cap, DS_CAP_READ));
+          }
+
+
           used = 0;
           append_printf(info, &used, bufsize, XIDT ":     slun_row_placement_fix:", segment_id(si->seg));
           for (i=0; i < s->n_devices; i++) append_printf(info, &used, bufsize, " %d", block_status[i]);
           info_printf(si->fd, 1, "%s\n", info);
        } else if (force_repair > 0) {  //** Don't want to use depot-depot copies so instead make a blank allocation and let the higher level handle things
-          i = 0;  //** Iteratively try and repair the row
+          j = 0;  //** Iteratively try and repair the row
           nforce = err;
           if (max_lost < err) max_lost = err;
           do {
+            memcpy(block_copy, block_status, sizeof(int)*s->n_devices);
             err = slun_row_replace_fix(si->seg, si->da, b, block_status, s->n_devices, query, si->timeout);
+
+            for (i=0; i < s->n_devices; i++) {
+                if ((block_copy[i] == 1) && (block_status[i] == 0)) info_printf(si->fd, 2, XIDT ":     dev=%i replaced rcap=%s\n", segment_id(si->seg), i, ds_get_cap(s->ds, b->block[i].data->cap, DS_CAP_READ));
+            }
             used = 0;
             append_printf(info, &used, bufsize, XIDT ":     slun_row_replace_fix:", segment_id(si->seg));
             for (i=0; i < s->n_devices; i++) append_printf(info, &used, bufsize, " %d", block_status[i]);
             info_printf(si->fd, 1, "%s\n", info);
-            i++;
-          } while ((err > 0) && (i<5));
+            j++;
+          } while ((err > 0) && (j<5));
 
           nmigrated += nforce - err;
        }
