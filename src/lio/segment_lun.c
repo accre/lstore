@@ -100,6 +100,7 @@ typedef struct {
   segment_t *sseg;
   segment_t *dseg;
   data_attr_t *da;
+  ex_off_t max_transfer;
   int mode;
   int timeout;
   int trunc;
@@ -1318,7 +1319,7 @@ log_printf(15, "START sid=" XIDT " n_iov=%d rw_mode=%d intervals=%d\n", segment_
     hi = lo + iov[slot].len - 1;
     it = iter_search_interval_skiplist(s->isl, (skiplist_key_t *)&lo, (skiplist_key_t *)&hi);
     b = (seglun_row_t *)next_interval_skiplist(&it);
-log_printf(15, "FOR sid=" XIDT " slot=%d n_iov=%d lo=" XOT " hi=" XOT " b=%p\n", segment_id(seg), slot, n_iov, lo, hi, b);
+log_printf(15, "FOR sid=" XIDT " slot=%d n_iov=%d lo=" XOT " hi=" XOT " len=" XOT " b=%p\n", segment_id(seg), slot, n_iov, lo, hi, iov[slot].len, b);
 
     while (b != NULL) {
       start = (lo <= b->seg_offset) ? 0 : (lo - b->seg_offset);
@@ -1373,7 +1374,7 @@ log_printf(15, " n_bslots=%d\n", n_bslots);
          }
      } else {
          for (i=0; i < s->n_devices; i++) {
-            if (rwb_table[i].n_ex > 0) {
+            if (rwb_table[j+i].n_ex > 0) {
 //FORCE ERROR -- Force a failure on all writes to the first allocation for testing purposes
 //if (i==0) {
 //  rwb_table[i].len = 0;
@@ -1426,7 +1427,7 @@ log_printf(15, "end stage i=%d gid=%d gop_completed_successfully=%d nerr=%d\n", 
            }
 
            if (rwb_table[j+i].iov != NULL) free(rwb_table[j+i].iov);
-           gop_free(rwb_table[j+i].gop, OP_DESTROY);
+           if (rwb_table[j+i].gop != NULL) gop_free(rwb_table[j+i].gop, OP_DESTROY);
         }
 
         if (nerr > maxerr) maxerr = nerr;
@@ -1635,7 +1636,7 @@ op_status_t seglun_migrate_func(void *arg, int id)
   int bufsize = 10*1024;
   char info[bufsize];
   int used;
-  int block_status[s->n_devices];
+  int block_status[s->n_devices], block_copy[s->n_devices];
   int nattempted, nmigrated, err, i;
   int soft_error_fail;
 
@@ -1655,6 +1656,10 @@ op_status_t seglun_migrate_func(void *arg, int id)
 
     info_printf(si->fd, 1, XIDT ": Checking row (" XOT ", " XOT ", " XOT ")\n", segment_id(si->seg), b->seg_offset, b->seg_end, b->row_len);
 
+    for (i=0; i < s->n_devices; i++) {
+        info_printf(si->fd, 3, XIDT ":     dev=%i rcap=%s\n", segment_id(si->seg), i, ds_get_cap(s->ds, b->block[i].data->cap, DS_CAP_READ));
+    }
+
     for (i=0; i < s->n_devices; i++) block_status[i] = 0;
     err = slun_row_placement_check(si->seg, si->da, b, block_status, s->n_devices, soft_error_fail, s->rsq, si->timeout);
     used = 0;
@@ -1662,9 +1667,15 @@ op_status_t seglun_migrate_func(void *arg, int id)
     for (i=0; i < s->n_devices; i++) append_printf(info, &used, bufsize, " %d", block_status[i]);
     info_printf(si->fd, 1, "%s\n", info);
     if (err > 0) {
+       memcpy(block_copy, block_status, sizeof(int)*s->n_devices);
+
        i = slun_row_placement_fix(si->seg, si->da, b, block_status, s->n_devices, s->rsq, si->timeout);
        nmigrated +=  err - i;
        nattempted += err;
+
+       for (i=0; i < s->n_devices; i++) {
+           if ((block_copy[i] == 1) && (block_status[i] == 0)) info_printf(si->fd, 2, XIDT ":     dev=%i moved to rcap=%s\n", segment_id(si->seg), i, ds_get_cap(s->ds, b->block[i].data->cap, DS_CAP_READ));
+       }
 
        used =0;
        append_printf(info, &used, bufsize, XIDT ":     slun_row_placement_fix:", segment_id(si->seg));
@@ -1704,8 +1715,8 @@ op_status_t seglun_inspect_func(void *arg, int id)
   int bufsize = 10*1024;
   char info[bufsize];
   int used, soft_error_fail, force_reconstruct, nforce;
-  int block_status[s->n_devices];
-  int i, err, option, force_repair, max_lost, total_lost, total_repaired, total_migrate, nmigrated, nlost, nrepaired;
+  int block_status[s->n_devices], block_copy[s->n_devices];
+  int i, j, err, option, force_repair, max_lost, total_lost, total_repaired, total_migrate, nmigrated, nlost, nrepaired;
 
   status = op_success_status;
   max_lost = 0;
@@ -1730,7 +1741,7 @@ op_status_t seglun_inspect_func(void *arg, int id)
      rs_query_add(s->rs, &query, RSQ_BASE_OP_AND, NULL, 0, NULL, 0);
   }
 
-info_printf(si->fd, 1, "local_query=%p\n", si->query);
+//info_printf(si->fd, 1, "local_query=%p\n", si->query);
   info_printf(si->fd, 1, XIDT ": segment information: n_devices=%d n_shift=%d chunk_size=" XOT "  used_size=" XOT " total_size=" XOT " mode=%d\n", segment_id(si->seg), s->n_devices, s->n_shift, s->chunk_size, s->used_size, s->total_size, si->inspect_mode);
 
   it = iter_search_interval_skiplist(s->isl, (skiplist_key_t *)NULL, (skiplist_key_t *)NULL);
@@ -1738,6 +1749,11 @@ info_printf(si->fd, 1, "local_query=%p\n", si->query);
     for (i=0; i < s->n_devices; i++) block_status[i] = 0;
 
     info_printf(si->fd, 1, XIDT ": Checking row (" XOT ", " XOT ", " XOT ")\n", segment_id(si->seg), b->seg_offset, b->seg_end, b->row_len);
+
+    for (i=0; i < s->n_devices; i++) {
+        info_printf(si->fd, 3, XIDT ":     dev=%i rcap=%s\n", segment_id(si->seg), i, ds_get_cap(s->ds, b->block[i].data->cap, DS_CAP_READ));
+    }
+
     nlost = slun_row_size_check(si->seg, si->da, b, block_status, s->n_devices, force_repair, si->timeout);
     used = 0;
     append_printf(info, &used, bufsize, XIDT ":     slun_row_size_check:", segment_id(si->seg));
@@ -1759,16 +1775,23 @@ info_printf(si->fd, 1, "local_query=%p\n", si->query);
        if (max_lost < err) max_lost = err;
 
        info_printf(si->fd, 1, XIDT ":     Attempting to replace missing row allocations\n", segment_id(si->seg));
-       i = 0;  //** Iteratively try and repair the row
+       j = 0;  //** Iteratively try and repair the row
        do {
+         memcpy(block_copy, block_status, sizeof(int)*s->n_devices);
+
          err = slun_row_replace_fix(si->seg, si->da, b, block_status, s->n_devices, query, si->timeout);
+
+         for (i=0; i < s->n_devices; i++) {
+             if ((block_copy[i] == 1) && (block_status[i] == 0)) info_printf(si->fd, 2, XIDT ":     dev=%i replaced rcap=%s\n", segment_id(si->seg), i, ds_get_cap(s->ds, b->block[i].data->cap, DS_CAP_READ));
+         }
+
          used = 0;
          append_printf(info, &used, bufsize, XIDT ":     slun_row_replace_fix:", segment_id(si->seg));
          for (i=0; i < s->n_devices; i++) append_printf(info, &used, bufsize, " %d", block_status[i]);
          info_printf(si->fd, 1, "%s\n", info);
 
-         i++;
-       } while ((err > 0) && (i<5));
+         j++;
+       } while ((err > 0) && (j<5));
 
        nrepaired = nlost - err;
     }
@@ -1789,24 +1812,37 @@ log_printf(0, "BEFORE_PLACEMENT_CHECK\n");
 log_printf(0, "AFTER_PLACEMENT_CHECK\n");
     if ((err > 0) && ((option == INSPECT_QUICK_REPAIR) || (option == INSPECT_SCAN_REPAIR) || (option == INSPECT_FULL_REPAIR))) {
        if (force_reconstruct == 0) {
+          memcpy(block_copy, block_status, sizeof(int)*s->n_devices);
+
           i = slun_row_placement_fix(si->seg, si->da, b, block_status, s->n_devices, query, si->timeout);
           nmigrated += err - i;
+
+          for (i=0; i < s->n_devices; i++) {
+              if ((block_copy[i] != 0) && (block_status[i] == 0)) info_printf(si->fd, 2, XIDT ":     dev=%i moved to rcap=%s\n", segment_id(si->seg), i, ds_get_cap(s->ds, b->block[i].data->cap, DS_CAP_READ));
+          }
+
+
           used = 0;
           append_printf(info, &used, bufsize, XIDT ":     slun_row_placement_fix:", segment_id(si->seg));
           for (i=0; i < s->n_devices; i++) append_printf(info, &used, bufsize, " %d", block_status[i]);
           info_printf(si->fd, 1, "%s\n", info);
        } else if (force_repair > 0) {  //** Don't want to use depot-depot copies so instead make a blank allocation and let the higher level handle things
-          i = 0;  //** Iteratively try and repair the row
+          j = 0;  //** Iteratively try and repair the row
           nforce = err;
           if (max_lost < err) max_lost = err;
           do {
+            memcpy(block_copy, block_status, sizeof(int)*s->n_devices);
             err = slun_row_replace_fix(si->seg, si->da, b, block_status, s->n_devices, query, si->timeout);
+
+            for (i=0; i < s->n_devices; i++) {
+                if ((block_copy[i] == 1) && (block_status[i] == 0)) info_printf(si->fd, 2, XIDT ":     dev=%i replaced rcap=%s\n", segment_id(si->seg), i, ds_get_cap(s->ds, b->block[i].data->cap, DS_CAP_READ));
+            }
             used = 0;
             append_printf(info, &used, bufsize, XIDT ":     slun_row_replace_fix:", segment_id(si->seg));
             for (i=0; i < s->n_devices; i++) append_printf(info, &used, bufsize, " %d", block_status[i]);
             info_printf(si->fd, 1, "%s\n", info);
-            i++;
-          } while ((err > 0) && (i<5));
+            j++;
+          } while ((err > 0) && (j<5));
 
           nmigrated += nforce - err;
        }
@@ -1913,24 +1949,36 @@ op_status_t seglun_clone_func(void *arg, int id)
   seglun_priv_t *sd = (seglun_priv_t *)slc->dseg->priv;
   interval_skiplist_iter_t its, itd;
   seglun_row_t *bd, *bs;
-  ex_off_t row_size;
-  int err, dir, i;
+  ex_off_t row_size, max_gops, n_gops, offset, d_offset, len, end;
+  int err, dir, i, j, k, *max_index, n_rows, n;
+  Stack_t **gop_stack;
   opque_t *q;
+  apr_time_t dtus;
+  double dts;
   op_generic_t *gop = NULL;
+  op_generic_t *gop_next;
   op_status_t status;
-
-  //** SEe if we are using an old seg.  If so we need to trunc it first
+  
+  //** See if we are using an old seg.  If so we need to trunc it first
   if (slc->trunc == 1) {
      gop_sync_exec(segment_truncate(slc->dseg, slc->da, 0, slc->timeout));
   }
 
   if (ss->total_size == 0) return(op_success_status);  //** No data to clone
 
+
+  segment_lock(slc->sseg);
+  
+  //** Determine how many elements and reserve the space for it.
+  n_rows = interval_skiplist_count(ss->isl);
+  type_malloc_clear(max_index, int, n_rows*ss->n_devices);
+
   //** Grow the file size but keep the same breaks as the original
   its = iter_search_interval_skiplist(ss->isl, (skiplist_key_t *)NULL, (skiplist_key_t *)NULL);
   row_size = -1;
   bs = NULL;
   i = 0;
+  max_gops = 0;
   while ((bs = (seglun_row_t *)next_interval_skiplist(&its)) != NULL) {
      row_size = bs->row_len;
      if (bs->row_len != ss->max_row_size) {
@@ -1940,12 +1988,20 @@ op_status_t seglun_clone_func(void *arg, int id)
         if (err != OP_STATE_SUCCESS) {
            log_printf(15, "Error growing destination! dseg=" XIDT "\n", segment_id(slc->dseg));
            sd->grow_break = 0; //** Undo the break flag
+           free(max_index);
+           segment_unlock(slc->sseg);
            return(op_failure_status);
         }
         sd->used_size = ss->used_size;
         sd->grow_break = 1; //** Flag a break for the next grow operation
         row_size = -1;
      }
+
+     n_gops = bs->block_len / slc->max_transfer;
+     if ((bs->block_len % slc->max_transfer) > 0) n_gops++;
+     for (j=0; j<ss->n_devices; j++) max_index[i+j] = n_gops;
+     if (n_gops > max_gops) max_gops = n_gops;
+     i++;
   }
 
   //** Do the final grow if needed
@@ -1955,14 +2011,17 @@ op_status_t seglun_clone_func(void *arg, int id)
      if (err != OP_STATE_SUCCESS) {
         log_printf(15, "Error growing destination! dseg=" XIDT "\n", segment_id(slc->dseg));
         sd->grow_break = 0; //** Undo the break flag
+        free(max_index);
+        segment_unlock(slc->sseg);
         return(op_failure_status);
      }
      sd->used_size = ss->used_size;
   }
 
-  sd->grow_break = 0; //** Fished growing so undo the break flag
+  sd->grow_break = 0; //** Finished growing so undo the break flag
 
-
+  type_malloc_clear(gop_stack, Stack_t *, n_rows*ss->n_devices);
+  for (i=0; i<n_rows*ss->n_devices; i++) gop_stack[i] = new_stack();
 
   //** Generate the copy list
   q = new_opque();
@@ -1971,15 +2030,65 @@ op_status_t seglun_clone_func(void *arg, int id)
 
   its = iter_search_interval_skiplist(ss->isl, (skiplist_key_t *)NULL, (skiplist_key_t *)NULL);
   itd = iter_search_interval_skiplist(sd->isl, (skiplist_key_t *)NULL, (skiplist_key_t *)NULL);
+  j = 0;
+  n = 0;
   while ((bs = (seglun_row_t *)next_interval_skiplist(&its)) != NULL) {
      bd = (seglun_row_t *)next_interval_skiplist(&itd);
+     
      for (i=0; i < ss->n_devices; i++) {
-        gop = ds_copy(bd->block[i].data->ds, slc->da, dir, NS_TYPE_SOCK, "",
-                 ds_get_cap(bs->block[i].data->ds, bs->block[i].data->cap, DS_CAP_READ), bs->block[i].cap_offset,
-                 ds_get_cap(bd->block[i].data->ds, bd->block[i].data->cap, DS_CAP_WRITE), bd->block[i].cap_offset,
-                 bs->block_len, slc->timeout);
-        opque_add(q, gop);
+        len = slc->max_transfer;
+        d_offset = bd->block[i].cap_offset;
+        offset = bs->block[i].cap_offset;
+        end = offset + bs->block_len;
+        k = 0;
+        do {
+           if ((offset+len) >= end) {
+              len = end - offset;
+              k = -1;
+           }
+
+           gop = ds_copy(bd->block[i].data->ds, slc->da, dir, NS_TYPE_SOCK, "",
+                    ds_get_cap(bs->block[i].data->ds, bs->block[i].data->cap, DS_CAP_READ), offset,
+                    ds_get_cap(bd->block[i].data->ds, bd->block[i].data->cap, DS_CAP_WRITE), d_offset,
+                    len, slc->timeout);
+           gop_set_private(gop, gop_stack[j]);
+           n++;
+
+           if (k<1) {  //** Start executing the 1st couple for each allocation
+              opque_add(q, gop);
+           } else {    //** The rest we place on a stack
+              move_to_bottom(gop_stack[j]);
+              insert_below(gop_stack[j], gop);
+           }
+
+           d_offset += len;
+           offset += len;
+           k++;
+        } while (k > 0);
+
+        j++;
      }
+  }
+
+  segment_unlock(slc->sseg);
+
+  log_printf(5, "Total number of tasks: %d\n", n);
+
+  //** Loop through adding tasks as needed
+  for (i=0; i<n; i++) {
+     gop = opque_waitany(q);
+     gop_next = pop((Stack_t *)gop_get_private(gop));
+     if (gop_next != NULL) opque_add(q, gop_next);
+
+     //** This is for diagnostics
+     dtus = gop->op->cmd.end_time - gop->op->cmd.start_time;
+     dts = (1.0*dtus) / (1.0*APR_USEC_PER_SEC);
+     ibp_op_t *iop = ibp_get_iop(gop);
+     ibp_op_copy_t *cmd = &(iop->copy_op);
+     status = gop_get_status(gop);
+     log_printf(5, "clone_dt src=%s dest=%s  gid=%d status=(%d %d) dt=%lf\n", cmd->srccap, cmd->destcap, gop_id(gop), status.op_status, status.error_code, dts);
+
+     gop_free(gop, OP_DESTROY);
   }
 
   //** Wait for the copying to finish
@@ -1987,7 +2096,9 @@ op_status_t seglun_clone_func(void *arg, int id)
   status = (opque_tasks_failed(q) == 0) ? op_success_status : op_failure_status;
 
   opque_free(q, OP_DESTROY);
-
+  free(max_index);
+  for (i=0; i<n_rows*ss->n_devices; i++) free_stack(gop_stack[i], 0);
+  free(gop_stack);
   return(status);
 }
 
@@ -2050,6 +2161,7 @@ log_printf(15, "use_existing=%d sseg=" XIDT " dseg=" XIDT "\n", use_existing, se
     slc->mode = mode;
     slc->timeout = timeout;
     slc->trunc = use_existing;
+    slc->max_transfer = 20*1024*1024;
     gop = new_thread_pool_op(sd->tpc, NULL, seglun_clone_func, (void *)slc, free, 1);
   }
 

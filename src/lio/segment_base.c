@@ -279,6 +279,7 @@ log_printf(0, "FILE fd=%p\n", sc->fd);
      if (rlen > 0) {
         ex_iovec_single(&rex, rpos, rlen);
         gop = segment_read(sc->src, sc->da, 1, &rex, rbuf, 0, sc->timeout);
+        gop_start_execution(gop);  //** Start doing the transfer
         rpos += rlen;
         nbytes -= rlen;
      }
@@ -399,6 +400,7 @@ log_printf(0, "FILE fd=%p bufsize=" XOT "\n", sc->fd, bufsize);
      ex_iovec_single(&wex, wpos, wlen);
      wpos += wlen;
      gop = segment_write(sc->dest, sc->da, 1, &wex, wbuf, 0, sc->timeout);
+     gop_start_execution(gop);  //** Start doing the transfer
 
      //** Read in the next block
      if (nbytes < 0) {
@@ -422,6 +424,7 @@ log_printf(0, "FILE fd=%p bufsize=" XOT "\n", sc->fd, bufsize);
         nbytes -= rlen;
      }
 
+     //** Wait for it to complete
      err = gop_waitall(gop);
      if (err != OP_STATE_SUCCESS) {
         log_printf(1, "ERROR write(dseg=" XIDT ") failed! wpos=" XOT, " len=" XOT "\n", segment_id(sc->dest), wpos, wlen);

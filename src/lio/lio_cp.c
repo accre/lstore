@@ -93,9 +93,14 @@ op_status_t cp_lio(cp_file_t *cp)
 
   status = op_failure_status;
   q = new_opque();
+  hard_errors = 0;
+  sexp = dexp = NULL;
+  sex = dex = NULL;
 
   //** Check if the dest exists and if not creates it
   dtype = lioc_exists(cp->dest_tuple.lc, cp->dest_tuple.creds, cp->dest_tuple.path);
+
+log_printf(5, "src=%s dest=%s dtype=%d\n", cp->src_tuple.path, cp->dest_tuple.path, dtype);
 
   if (dtype == 0) { //** Need to create it
      err = gop_sync_exec(lio_create_object(cp->dest_tuple.lc, cp->dest_tuple.creds, cp->dest_tuple.path, OS_OBJECT_FILE, NULL, NULL));
@@ -130,6 +135,8 @@ op_status_t cp_lio(cp_file_t *cp)
   err = opque_waitall(q);
   if (err != OP_STATE_SUCCESS) {
      log_printf(10, "ERROR with os_open src=%s sex=%p dest=%s dex=%p\n", cp->src_tuple.path, sex_data, cp->dest_tuple.path, dex_data);
+     if (sex_data != NULL) free(sex_data);
+     if (dex_data != NULL) free(dex_data);
      goto finished;
   }
 
@@ -138,16 +145,13 @@ op_status_t cp_lio(cp_file_t *cp)
   sex = exnode_create();
   if (exnode_deserialize(sex, sexp, cp->src_tuple.lc->ess) != 0) {
      info_printf(lio_ifd, 0, "ERROR parsing source exnode(%s)!\n", cp->src_tuple.path);
-     exnode_destroy(sex);
-     exnode_exchange_destroy(sexp);
      goto finished;
   }
 
   sseg = exnode_get_default(sex);
   if (sseg == NULL) {
      info_printf(lio_ifd, 0, "No default segment for source(%s)!\n", cp->src_tuple.path);
-     exnode_destroy(sex);
-     exnode_exchange_destroy(sexp);
+     if (dex_data != NULL) free(dex_data);
      goto finished;
   }
 
@@ -155,20 +159,12 @@ op_status_t cp_lio(cp_file_t *cp)
   dex = exnode_create();
   if (exnode_deserialize(dex, dexp, cp->dest_tuple.lc->ess) != 0) {
      info_printf(lio_ifd, 0, "ERROR parsing destinationexnode(%s)!\n", cp->dest_tuple.path);
-     exnode_destroy(sex);
-     exnode_exchange_destroy(sexp);
-     exnode_destroy(dex);
-     exnode_exchange_destroy(dexp);
      goto finished;
   }
 
   dseg = exnode_get_default(dex);
   if (dseg == NULL) {
      info_printf(lio_ifd, 0, "No default segment for source(%s)!\n", cp->dest_tuple.path);
-     exnode_destroy(sex);
-     exnode_exchange_destroy(sexp);
-     exnode_destroy(dex);
-     exnode_exchange_destroy(dexp);
      goto finished;
   }
 
@@ -179,6 +175,7 @@ op_status_t cp_lio(cp_file_t *cp)
   if (strcmp(sig1, sig2) == 0) {
      info_printf(lio_ifd, 1, "Cloning %s->%s\n", cp->src_tuple.path, cp->dest_tuple.path);
      gop = segment_clone(sseg, cp->dest_tuple.lc->da, &dseg, CLONE_STRUCT_AND_DATA, NULL, cp->dest_tuple.lc->timeout);
+     log_printf(5, "src=%s  clone gid=%d\n", cp->src_tuple.path, gop_id(gop));
   } else {
      info_printf(lio_ifd, 1, "Slow copy:( %s->%s\n", cp->src_tuple.path, cp->dest_tuple.path);
      type_malloc(buffer, char, bufsize+1);
@@ -210,21 +207,22 @@ op_status_t cp_lio(cp_file_t *cp)
   hard_errors = lioc_update_error_counts(cp->src_tuple.lc, cp->src_tuple.creds, cp->src_tuple.path, sseg);
   hard_errors += lioc_update_error_counts(cp->dest_tuple.lc, cp->dest_tuple.creds, cp->dest_tuple.path, dseg);
 
+finished:
+
   //** Close the files
-  opque_add(q, os_close_object(cp->src_tuple.lc->os, sfd));
-  opque_add(q, os_close_object(cp->dest_tuple.lc->os, dfd));
+  if (sfd != NULL) opque_add(q, os_close_object(cp->src_tuple.lc->os, sfd));
+  if (dfd != NULL) opque_add(q, os_close_object(cp->dest_tuple.lc->os, dfd));
   opque_waitall(q);
 
   opque_free(q, OP_DESTROY);
 
-  exnode_destroy(sex);
-  exnode_exchange_destroy(sexp);
-  exnode_destroy(dex);
-  exnode_exchange_destroy(dexp);
+  if (sex != NULL) exnode_destroy(sex);
+  if (sexp != NULL) exnode_exchange_destroy(sexp);
+  if (dex != NULL) exnode_destroy(dex);
+  if (dexp != NULL) exnode_exchange_destroy(dexp);
 
   if ((hard_errors == 0) && (err == OP_STATE_SUCCESS)) status = op_success_status;
 
-finished:
   return(status);
 }
 
@@ -252,6 +250,8 @@ op_status_t cp_src_local(cp_file_t *cp)
 
   //** Check if it exists and if not create it
   dtype = lioc_exists(cp->dest_tuple.lc, cp->dest_tuple.creds, cp->dest_tuple.path);
+
+log_printf(5, "src=%s dest=%s dtype=%d\n", cp->src_tuple.path, cp->dest_tuple.path, dtype);
 
   if (dtype == 0) { //** Need to create it
      err = gop_sync_exec(lio_create_object(cp->dest_tuple.lc, cp->dest_tuple.creds, cp->dest_tuple.path, OS_OBJECT_FILE, NULL, NULL));
@@ -360,6 +360,8 @@ op_status_t cp_dest_local(cp_file_t *cp)
 
   //** Check if it exists
   ftype = lioc_exists(cp->src_tuple.lc, cp->src_tuple.creds, cp->src_tuple.path);
+
+log_printf(5, "src=%s dest=%s dtype=%d\n", cp->src_tuple.path, cp->dest_tuple.path, ftype);
 
   if ((ftype & OS_OBJECT_FILE) == 0) { //** Doesn't exist or is a dir
      info_printf(lio_ifd, 1, "ERROR source file(%s) doesn't exist or is a dir ftype=%d!\n", cp->src_tuple.path, ftype);

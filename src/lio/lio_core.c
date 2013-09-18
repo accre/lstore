@@ -685,7 +685,6 @@ log_printf(15, "dir=%s\n fname=%s\n", dir, fname);
   if (err != OP_STATE_SUCCESS) {
      log_printf(15, "ERROR opening object fname=%s\n", op->src_path);
      status = op_failure_status;
-     free(val[1]);
      goto fail;
   }
 

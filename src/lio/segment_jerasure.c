@@ -174,13 +174,13 @@ log_printf(0, "lo=" XOT " hi= " XOT " nbytes=" XOT " total_stripes=%d data_size=
   bad_count = 0;
   unrecoverable_count = 0;
   for (stripe=0; stripe<total_stripes; stripe += bufstripes) {
-     ex_read.offset = base_offset + stripe*s->stripe_size_with_magic;
+     ex_read.offset = base_offset + (ex_off_t)stripe*s->stripe_size_with_magic;
      nstripes = stripe + bufstripes;
      if (nstripes > total_stripes) nstripes = total_stripes;
      nstripes = nstripes - stripe;
-     ex_read.len = nstripes * s->stripe_size_with_magic;
+     ex_read.len = (ex_off_t)nstripes * s->stripe_size_with_magic;
 
-log_printf(0, "stripe=%d nstripes=%d total_stripes=%d\n", stripe, nstripes, total_stripes);
+log_printf(0, "stripe=%d nstripes=%d total_stripes=%d offset=" XOT " len=" XOT "\n", stripe, nstripes, total_stripes, ex_read.offset, ex_read.len);
      if (sf->do_print == 1) info_printf(si->fd, 1, XIDT ": checking stripes: (%d, %d)\n", segment_id(si->seg), stripe, stripe+nstripes-1);
 
      //** Read the data in
@@ -225,7 +225,7 @@ log_printf(0, "stripe=%d nstripes=%d total_stripes=%d\n", stripe, nstripes, tota
            unrecoverable_count++;
            bad_count++;
 log_printf(0, "unrecoverable error stripe=%d i=%d good_magic=%d magic_count=%d\n", stripe,i, good_magic, magic_count[index]);
-
+           if (sf->do_print == 1) info_printf(si->fd, 10, XIDT ": Unrecoverable Error!   Matching Magic:%d  Need:%d   stripe:%d\n", segment_id(si->seg), magic_count[index], s->n_data_devs, stripe+i);
         } else if (magic_count[index] == s->n_devs) { //** Magic looks good so check the data
              //** Make the decoding structure
              for (k=0; k < s->n_data_devs; k++) {
@@ -241,9 +241,28 @@ log_printf(0, "unrecoverable error stripe=%d i=%d good_magic=%d magic_count=%d\n
            //** Verify with the parity on disk
            err = 0;
            for (k=0; k < s->n_parity_devs; k++) {
-              if (memcmp(&(parity[k*s->chunk_size]), &(buffer[boff + JE_MAGIC_SIZE + (k+s->n_data_devs)*s->chunk_size_with_magic]), s->chunk_size) != 0) err = 1;
+//              if (memcmp(&(parity[k*s->chunk_size]), &(buffer[boff + JE_MAGIC_SIZE + (k+s->n_data_devs)*s->chunk_size_with_magic]), s->chunk_size) != 0) err++;
+if (memcmp(&(parity[k*s->chunk_size]), &(buffer[boff + JE_MAGIC_SIZE + (k+s->n_data_devs)*s->chunk_size_with_magic]), s->chunk_size) != 0) {
+  err++;
+  if (sf->do_print == 1) info_printf(si->fd, 10, XIDT ": bad parity=%d\n", segment_id(si->seg), k);
+int z, z1, z2;
+info_printf(si->fd, 0, "Bad offsets: ");
+for (z=0; z<s->chunk_size; z++)
+  if (parity[k*s->chunk_size+z] != buffer[boff + JE_MAGIC_SIZE + (k+s->n_data_devs)*s->chunk_size_with_magic + z]) {
+     z1 = parity[k*s->chunk_size+z];
+     z2 = buffer[boff + JE_MAGIC_SIZE + (k+s->n_data_devs)*s->chunk_size_with_magic + z];
+     info_printf(si->fd, 0, " %d(%d,%d)", z, z1, z2);     
+  }
+info_printf(si->fd, 0, "\n");
+
+}
            }
-           if (err != 0) { unrecoverable_count++; bad_count++; }
+           if (err != 0) { 
+              unrecoverable_count++; 
+              bad_count++; 
+log_printf(0, "Corrupt data stripe=%d i=%d good_magic=%d\n", stripe,i, good_magic);
+              if (sf->do_print == 1) info_printf(si->fd, 10, XIDT ": Unrecoverable Error! Corrupt data but magic is good. Bad parity:%d   stripe:%d\n", segment_id(si->seg), err, stripe+i);
+          }
         } else if (magic_count[index] >= s->n_data_devs) {
            bad_count++;
 log_printf(0, "trying to fix stripe=%d i=%d\n", stripe,i);
@@ -307,7 +326,7 @@ log_printf(0, "gop_error=%d nbytes=" XOT " n_iov=%d\n", err, nbytes, n_iov);
         }
      }
 
-     if (sf->do_print == 1) info_printf(si->fd, 1, XIDT ": bad stripe count: %d  --- Repair errors: %d\n", segment_id(si->seg), bad_count, repair_errors);
+     if (sf->do_print == 1) info_printf(si->fd, 1, XIDT ": bad stripe count: %d  --- Repair errors: %d   Unrecoverable errors:%d\n", segment_id(si->seg), bad_count, repair_errors, unrecoverable_count);
 
 
   }
@@ -517,6 +536,8 @@ op_status_t segjerase_inspect_func(void *arg, int id)
   si->max_replaced = status.error_code;
   child_replaced = si->max_replaced;
 
+log_printf(5, "status: %d %d\n", status.op_status, status.error_code);
+
   //** Kick out if we can't fix anything
   if (child_replaced > s->n_data_devs) goto fail;
 
@@ -525,8 +546,11 @@ op_status_t segjerase_inspect_func(void *arg, int id)
   //** The INSPECT_QUICK_* options are handled by the LUN driver. If force_reconstruct is set then we probably need to do a scan
   option = si->inspect_mode & INSPECT_COMMAND_BITS;
   repair = ((option == INSPECT_QUICK_REPAIR) || (option == INSPECT_SCAN_REPAIR) || (option == INSPECT_FULL_REPAIR)) ? 1 : 0;
-  force_reconstruct = si->inspect_mode & INSPECT_FORCE_RECONSTRUCTION;
-  if ((repair > 0) && (force_reconstruct > 0) && (child_replaced > 0) && (option == INSPECT_QUICK_REPAIR)) {
+//  force_reconstruct = si->inspect_mode & INSPECT_FORCE_REPAIR;
+log_printf(5, "repair=%d child_replaced=%d option=%d inspect_mode=%d INSPECT_QUICK_REPAIR=%d\n", repair, child_replaced, option, si->inspect_mode, INSPECT_QUICK_REPAIR);
+//  if ((repair > 0) && (force_reconstruct > 0) && (child_replaced > 0) && (option == INSPECT_QUICK_REPAIR)) {
+  if ((repair > 0) && (child_replaced > 0) && (option == INSPECT_QUICK_REPAIR)) {
+     info_printf(si->fd, 1, XIDT ": Child segment repaired.  Forcing a full file check.\n", segment_id(si->seg));
      si->inspect_mode -= option;
      option = INSPECT_FULL_REPAIR;
      si->inspect_mode += option;
@@ -689,6 +713,7 @@ log_printf(15, "use_existing=%d sseg=" XIDT " dseg=" XIDT " cref=%d\n", use_exis
   cop->dseg = clone;
       //** Jerase doesn't manage any data.  The child does so clone it
   cop->gop = segment_clone(ss->child_seg, da, &(sd->child_seg), mode, attr, timeout);
+  log_printf(5, "child_clone gid=%d\n", gop_id(cop->gop));
 
   return(new_thread_pool_op(ss->tpc, NULL, segjerase_clone_func, (void *)cop, free, 1));
 }

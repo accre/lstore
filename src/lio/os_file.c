@@ -498,9 +498,9 @@ int fobj_wait(object_service_fn_t *os, fobj_lock_t *fol, osfile_fd_t *fd, int ma
   osfile_priv_t *osf = (osfile_priv_t *)os->priv;
   pigeon_coop_hole_t task_pch;
   fobj_lock_task_t *handle;
-  int aborted;
+  int aborted, loop;
   apr_time_t timeout = apr_time_make(max_wait, 0);
-apr_time_t dt;
+  apr_time_t dt, start_time;
 
   //** Get my slot
   task_pch = reserve_pigeon_coop_hole(osf->task_pc);
@@ -513,11 +513,23 @@ apr_time_t dt;
   move_to_bottom(fol->stack);
   insert_below(fol->stack, handle);
 
-dt = apr_time_now();
   //** Sleep until it's my turn.  Remember fobj_lock is already set upon entry
-  apr_thread_cond_timedwait(handle->cond, osf->fobj_lock, timeout);
-  aborted = handle->abort;
-dt = apr_time_now() - dt;
+  start_time = apr_time_now();
+  do {
+    loop = 0;
+    apr_thread_cond_timedwait(handle->cond, osf->fobj_lock, timeout);
+    aborted = handle->abort;
+
+    move_to_top(fol->stack);
+    handle = (fobj_lock_task_t *)get_ele_data(fol->stack);
+    if (handle != NULL) {
+       if (handle->fd->uuid == fd->uuid) loop = 1;
+    }
+    dt = apr_time_now() - start_time;
+    
+    if ((aborted == 1) || (dt > timeout)) loop = 1;
+  } while (loop == 0);
+
 int dummy = apr_time_sec(dt);
   log_printf(15, "AWAKE id=%s fname=%s mymode=%d read_count=%d write_count=%d handle=%p abort=%d uuid=" LU " dt=%d\n", fd->id, fd->object_name, fd->mode, fol->read_count, fol->write_count, handle, aborted, fd->uuid, dummy);
 

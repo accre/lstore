@@ -52,6 +52,11 @@ http://www.accre.vanderbilt.edu
 #define FIXME_SIZE 1024*1024
 
 typedef struct {
+  object_service_fn_t *os;
+  os_fd_t *fd;
+} osrs_close_fail_t;
+
+typedef struct {
   char *handle;
   apr_ssize_t handle_len;
   op_generic_t *gop;
@@ -731,6 +736,7 @@ void osrs_move_object_cb(void *arg, mq_task_t *task)
   mq_submit(osrs->server_portal, mq_task_new(osrs->mqc, response, NULL, NULL, 30));
 }
 
+
 //***********************************************************************
 // osrs_open_object_cb - Processes the object open command
 //***********************************************************************
@@ -804,7 +810,8 @@ handle = NULL;
      mq_get_frame(fhb, (void **)&handle, &handle_len);
 log_printf(5, "handle=%s\n", handle);
 log_printf(5, "handle_len=%d\n", handle_len);
-     oo = mq_ongoing_add(osrs->ongoing, handle, handle_len, (void *)fd, (mq_ongoing_fail_t *)osrs->os_child->close_object, osrs->os_child);
+     oo = mq_ongoing_add(osrs->ongoing, 1, handle, handle_len, (void *)fd, (mq_ongoing_fail_t *)osrs->os_child->close_object, osrs->os_child);
+
 n=sizeof(intptr_t);
 log_printf(5, "PTR key=%" PRIdPTR " len=%d\n", oo->key, n);
      mq_msg_append_mem(response, &(oo->key), sizeof(intptr_t), MQF_MSG_KEEP_DATA);
@@ -2040,17 +2047,18 @@ void osrs_object_iter_alist_cb(void *arg, mq_task_t *task)
   fdata = mq_msg_pop(msg);  //** This has the data
   mq_get_frame(fdata, (void **)&buffer, &fsize);
 
-  //** Create the stream so we can get the heartbeating while we work
-  mqs = mq_stream_write_create(osrs->mqc, osrs->server_portal, osrs->ongoing, MQS_PACK_COMPRESS, osrs->max_stream, timeout, msg, fid, hid, 0);
-
   //** Parse the buffer
   path = NULL;
   object_regex = NULL;
   bpos = 0;
 
+  //** Get the stream timeout
   n = zigzag_decode(&(buffer[bpos]), fsize-bpos, &timeout);
   if (n < 0) { timeout = 60; goto fail; }
   bpos += n;
+
+  //** Create the stream so we can get the heartbeating while we work.  We need the timeout is why we do it here,
+  mqs = mq_stream_write_create(osrs->mqc, osrs->server_portal, osrs->ongoing, MQS_PACK_COMPRESS, osrs->max_stream, timeout, msg, fid, hid, 0);
 
   n = zigzag_decode(&(buffer[bpos]), fsize-bpos, &recurse_depth);
   if (n < 0) goto fail;
@@ -2142,6 +2150,8 @@ log_printf(5, "val[%d]=%s\n", i, val[i]);
      }
 
      free(fname);
+
+     if (err != 0) break;  //** Got a write error so break;
   }
 
   //** Flag this as the last object
@@ -2747,6 +2757,8 @@ log_printf(0, "START\n");
   type_malloc_clear(os, object_service_fn_t, 1);
   type_malloc_clear(osrs, osrs_priv_t, 1);
   os->priv = (void *)osrs;
+
+  assert((osrs->tpc = lookup_service(ess, ESS_RUNNING, ESS_TPC_UNLIMITED)) != NULL);
 
   //** Make the locks and cond variables
   assert(apr_pool_create(&(osrs->mpool), NULL) == APR_SUCCESS);

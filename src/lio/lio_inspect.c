@@ -232,7 +232,7 @@ int main(int argc, char **argv)
   int ex_size, slot, q_count;
   os_object_iter_t *it;
   os_regex_table_t *rp_single, *ro_single;
-  lio_path_tuple_t tuple;
+  lio_path_tuple_t static_tuple, *tuple, *tuple_list;
   int submitted, good, bad, do_print;
   int recurse_depth = 10000;
   inspect_t *w;
@@ -265,7 +265,7 @@ int main(int argc, char **argv)
   //*** Parse the path args
   rg_mode = 0;
   rp_single = ro_single = NULL;
-  rg_mode = lio_parse_path_options(&argc, argv, lio_gc->auto_translate, &tuple, &rp_single, &ro_single);
+  rg_mode = lio_parse_path_options(&argc, argv, lio_gc->auto_translate, &static_tuple, &rp_single, &ro_single);
 
   i=1;
   force_repair = 0;
@@ -364,6 +364,9 @@ int main(int argc, char **argv)
   assert(apr_pool_create(&mpool, NULL) == APR_SUCCESS);
   apr_thread_mutex_create(&lock, APR_THREAD_MUTEX_DEFAULT, mpool);
 
+  slot = argc - start_index;
+  type_malloc_clear(tuple_list, lio_path_tuple_t, slot);
+
   q = new_opque();
   opque_start_execution(q);
 
@@ -372,25 +375,26 @@ int main(int argc, char **argv)
 
   for (j=start_index; j<argc; j++) {
      log_printf(5, "path_index=%d argc=%d rg_mode=%d\n", j, argc, rg_mode);
+     tuple = &(tuple_list[j - start_index]);
      if (rg_mode == 0) {
         //** Create the simple path iterator
-        tuple = lio_path_resolve(lio_gc->auto_translate, argv[j]);
-        lio_path_wildcard_auto_append(&tuple);
-        rp_single = os_path_glob2regex(tuple.path);
+        *tuple = lio_path_resolve(lio_gc->auto_translate, argv[j]);
+        lio_path_wildcard_auto_append(tuple);
+        rp_single = os_path_glob2regex(tuple->path);
      } else {
         rg_mode = 0;  //** Use the initial rp
      }
 
-     creds = tuple.lc->creds;
+     creds = tuple->lc->creds;
 
-     ex_size = - tuple.lc->max_attr;
-     it = os_create_object_iter_alist(tuple.lc->os, tuple.creds, rp_single, ro_single, OS_OBJECT_FILE, recurse_depth, &key, (void **)&ex, &ex_size, 1);
+     ex_size = - tuple->lc->max_attr;
+     it = os_create_object_iter_alist(tuple->lc->os, tuple->creds, rp_single, ro_single, OS_OBJECT_FILE, recurse_depth, &key, (void **)&ex, &ex_size, 1);
      if (it == NULL) {
         info_printf(lio_ifd, 0, "ERROR: Failed with object_iter creation\n");
         goto finished;
       }
 
-     while ((ftype = os_next_object(tuple.lc->os, it, &fname, &prefix_len)) > 0) {
+     while ((ftype = os_next_object(tuple->lc->os, it, &fname, &prefix_len)) > 0) {
         w[slot].fname = fname;
         w[slot].exnode = ex;
         w[slot].ftype = ftype;
@@ -419,21 +423,26 @@ log_printf(0, "gid=%d i=%d fname=%s\n", gop_id(gop), slot, fname);
 
      os_destroy_object_iter(lio_gc->os, it);
 
-     while ((gop = opque_waitany(q)) != NULL) {
-        status = gop_get_status(gop);
-        if (status.op_status == OP_STATE_SUCCESS) {
-           good++;
-        } else {
-           bad++;
-        }
-        slot = gop_get_myid(gop);
-        gop_free(gop, OP_DESTROY);
-     }
-
      if (rp_single != NULL) { os_regex_table_destroy(rp_single); rp_single = NULL; }
      if (ro_single != NULL) { os_regex_table_destroy(ro_single); ro_single = NULL; }
 
-     lio_path_release(&tuple);
+  }
+
+  //** Wait for everything to complete
+  while ((gop = opque_waitany(q)) != NULL) {
+     status = gop_get_status(gop);
+     if (status.op_status == OP_STATE_SUCCESS) {
+        good++;
+     } else {
+        bad++;
+     }
+     slot = gop_get_myid(gop);
+     gop_free(gop, OP_DESTROY);
+  }
+
+
+  for (i=0; i<(argc-start_index); i++) {
+      lio_path_release(&(tuple_list[i]));
   }
 
   opque_free(q, OP_DESTROY);

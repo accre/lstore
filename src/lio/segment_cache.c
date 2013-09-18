@@ -2399,7 +2399,7 @@ op_generic_t *cache_read(segment_t *seg, data_attr_t *da, int n_iov, ex_iovec_t 
   cop->boff = boff;
   cop->buf = buffer;
 
-  return(new_thread_pool_op(s->tpc_cpu, s->qname, cache_rw_func, (void *)cop, free, 1));
+  return(new_thread_pool_op(s->tpc_unlimited, s->qname, cache_rw_func, (void *)cop, free, 1));
 }
 
 
@@ -2421,7 +2421,7 @@ op_generic_t *cache_write(segment_t *seg, data_attr_t *da, int n_iov, ex_iovec_t
   cop->boff = boff;
   cop->buf = buffer;
 
-  return(new_thread_pool_op(s->tpc_cpu, s->qname, cache_rw_func, (void *)cop, free, 1));
+  return(new_thread_pool_op(s->tpc_unlimited, s->qname, cache_rw_func, (void *)cop, free, 1));
 }
 
 
@@ -2858,6 +2858,7 @@ op_generic_t *segcache_clone(segment_t *seg, data_attr_t *da, segment_t **clone_
   if (use_existing == 1) atomic_dec(sd->child_seg->ref_count);
   cop->gop = segment_clone(ss->child_seg, da, &(sd->child_seg), mode, arg, timeout);
 
+  log_printf(5, "child_clone gid=%d\n", gop_id(cop->gop));
   return(new_thread_pool_op(ss->tpc_unlimited, NULL, segcache_clone_func, (void *)cop, free, 1));
 }
 
