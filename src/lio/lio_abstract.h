@@ -137,6 +137,30 @@ typedef struct {
   int is_lio;
 } lio_path_tuple_t;
 
+typedef struct {
+  lio_path_tuple_t tuple;
+  os_object_iter_t *oit;
+  local_object_iter_t *lit;
+} unified_object_iter_t;
+
+typedef struct {
+  lio_path_tuple_t src_tuple;
+  lio_path_tuple_t dest_tuple;
+  ex_off_t bufsize;
+} lio_cp_file_t;
+
+typedef struct {
+  lio_path_tuple_t src_tuple;
+  lio_path_tuple_t dest_tuple;
+  os_regex_table_t *path_regex;
+  os_regex_table_t *obj_regex;
+  int recurse_depth;
+  int dest_type;
+  int obj_types;
+  int max_spawn;
+  ex_off_t bufsize;
+} lio_cp_path_t;
+
 extern lio_config_t *lio_gc;
 extern info_fd_t *lio_ifd;
 extern int lio_parallel_task_count;
@@ -151,6 +175,15 @@ int lioc_get_attr(lio_config_t *lc, creds_t *creds, char *path, char *id, char *
 void lioc_get_error_counts(lio_config_t *lc, segment_t *seg, int *hard_errors, int *soft_errors);
 int lioc_update_error_counts(lio_config_t *lc, creds_t *creds, char *path, segment_t *seg);
 op_generic_t *lioc_remove_object(lio_config_t *lc, creds_t *creds, char *path, char *ex_optional, int ftype_optional);
+unified_object_iter_t *unified_create_object_iter(lio_path_tuple_t tuple, os_regex_table_t *path_regex, os_regex_table_t *obj_regex, int obj_types, int rd);
+void unified_destroy_object_iter(unified_object_iter_t *it);
+int unified_next_object(unified_object_iter_t *it, char **fname, int *prefix_len);
+op_status_t cp_lio2lio(lio_cp_file_t *cp);
+op_status_t cp_local2lio(lio_cp_file_t *cp);
+op_status_t cp_lio2local(lio_cp_file_t *cp);
+op_status_t lio_cp_file_fn(void *arg, int id);
+int lio_cp_create_dir(list_t *table, lio_path_tuple_t tuple);
+op_status_t lio_cp_path_fn(void *arg, int id);
 
 void lc_object_remove_unused(int remove_all_unused);
 void lio_path_release(lio_path_tuple_t *tuple);
