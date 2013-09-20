@@ -48,68 +48,6 @@ typedef struct {
   int dest_type;
 } ls_path_t;
 
-typedef struct {
-  lio_path_tuple_t tuple;
-  os_object_iter_t *oit;
-  local_object_iter_t *lit;
-} ls_object_iter_t;
-
-
-
-//*************************************************************************
-//  ls_create_object_iter - Create an ls object iterator
-//*************************************************************************
-
-ls_object_iter_t *ls_create_object_iter(lio_path_tuple_t tuple, os_regex_table_t *path_regex, os_regex_table_t *obj_regex, int obj_types, int rd)
-{
-  ls_object_iter_t *it;
-
-  type_malloc_clear(it, ls_object_iter_t, 1);
-
-  it->tuple = tuple;
-  if (tuple.is_lio == 1) {
-     it->oit = os_create_object_iter(tuple.lc->os, tuple.creds, path_regex, obj_regex, obj_types, NULL, rd, NULL, 0);
-  } else {
-     it->lit = create_local_object_iter(path_regex, obj_regex, obj_types, rd);
-  }
-
-  return(it);
-}
-
-//*************************************************************************
-//  ls_destroy_object_iter - Destroys an ls object iterator
-//*************************************************************************
-
-void ls_destroy_object_iter(ls_object_iter_t *it)
-{
-
-  if (it->tuple.is_lio == 1) {
-    os_destroy_object_iter(it->tuple.lc->os, it->oit);
-  } else {
-    destroy_local_object_iter(it->lit);
-  }
-
-  free(it);
-}
-
-//*************************************************************************
-//  ls_next_object - Returns the next object to work on
-//*************************************************************************
-
-int ls_next_object(ls_object_iter_t *it, char **fname, int *prefix_len)
-{
-  int err = 0;
-
-  if (it->tuple.is_lio == 1) {
-    err = os_next_object(it->tuple.lc->os, it->oit, fname, prefix_len);
-  } else {
-    err = local_next_object(it->lit, fname, prefix_len);
-  }
-
-log_printf(15, "ftype=%d\n", err);
-  return(err);
-}
-
 
 //**********************************************************************************
 
@@ -118,7 +56,7 @@ log_printf(15, "ftype=%d\n", err);
 void run_ls(char *path, char *regex_path, char *regex_object, int obj_types, int recurse_depth) {
   printf("%s  %s  %s  %i\n", path, regex_path, regex_object, recurse_depth);
 
-  ls_object_iter_t *it;  
+  unified_object_iter_t *it;  
   os_regex_table_t *rp, *ro;
   lio_path_tuple_t tuple;
   int prefix_len, ftype;
@@ -135,22 +73,18 @@ void run_ls(char *path, char *regex_path, char *regex_object, int obj_types, int
      ro = os_regex2table(regex_object);     
   }
 
-  it = ls_create_object_iter(tuple, rp, ro, obj_types, recurse_depth);
+  it = unified_create_object_iter(tuple, rp, ro, obj_types, recurse_depth);
   if (it == NULL) {
      info_printf(lio_ifd, 0, "ERROR: Failed with object_iter creation! path=%s regex_path=%s regex_object=%s\n", path, regex_path, regex_object);
-     return;
+     exit(3);
   }
 
-  if (it == NULL) {
-    printf("ERROR: Failed to parse arc_tag: %s  %s  %s  %i\n", path, regex_path, regex_object, recurse_depth);
-    exit(3);
-  }
-   while ((ftype = ls_next_object(it, &fname, &prefix_len)) > 0) {
-     printf("fname: %s ftype=%d\n", fname, ftype);
+   while ((ftype = unified_next_object(it, &fname, &prefix_len)) > 0) {
+     printf("fname: %s    ftype=%d\n", fname, ftype);
      free(fname);
    }
 
-  ls_destroy_object_iter(it);
+  unified_destroy_object_iter(it);
 
   if (rp != NULL) os_regex_table_destroy(rp);
   if (ro != NULL) os_regex_table_destroy(ro);
@@ -238,7 +172,7 @@ int main(int argc, char **argv) {
 
     } while ((start_option < i) && (i < argc));  
   }
-  /*** If no tag file was specified, set to the default***/
+  /*** If no tag file was specified, set to the default ***/
   if (tag_file == NULL) {
     char *homedir = getenv("HOME");
     tag_file = strcat(homedir, "/.arc_tag_file.txt");
@@ -247,4 +181,5 @@ int main(int argc, char **argv) {
 
   lio_shutdown();
 
+  return(0);
 }
