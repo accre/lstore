@@ -52,9 +52,10 @@ extern "C" {
 #define RS_ERROR_HINTS_INVALID_LOCAL -104 //** The fixed RID's local RSQ contained a pickone or unique which isn't supported
 #define RS_ERROR_EMPTY_STACK         -105 //** The Query stack is empty so the query is probably malformed
 
-#define RS_STATUS_ON     0  //** The RID is enabled and available for use
-#define RS_STATUS_OFF    1  //** The RID is disabled due to space or down and should be ignored
-#define RS_STATUS_IGNORE 2  //** Disabled via config file
+#define RS_STATUS_UP           0  //** The RID is enabled and available for use
+#define RS_STATUS_IGNORE       1  //** Disabled via config file
+#define RS_STATUS_OUT_OF_SPACE 2  //** The RID is disabled due to space
+#define RS_STATUS_DOWN         3  //** Can't connect to RID
 
 typedef struct resource_service_fn_s resource_service_fn_t;
 

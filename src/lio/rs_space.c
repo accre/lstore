@@ -89,7 +89,7 @@ rs_space_t rs_space(char *config)
        space.total_total += ntotal;
 
        //** If up add it to the available space
-       if (status == RS_STATUS_ON) {
+       if (status == RS_STATUS_UP) {
           space.used_up += nused;
           space.free_up += nfree;
           space.total_up += ntotal;

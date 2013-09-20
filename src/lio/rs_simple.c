@@ -285,7 +285,7 @@ log_printf(15, "MALLOC j=%d\n", unique_size);
         rse = rss->random_array[slot];
 
 log_printf(15, "i=%d j=%d slot=%d rse->rid_key=%s rse->status=%d\n", i, j, slot, rse->rid_key, rse->status);
-        if ((rse->status != RS_STATUS_ON) && (i>=fixed_size)) continue;  //** Skip this if disabled and not in the fixed list
+        if ((rse->status != RS_STATUS_UP) && (i>=fixed_size)) continue;  //** Skip this if disabled and not in the fixed list
 
         empty_stack(stack, 1);
         q = query_global->head;
@@ -475,7 +475,7 @@ rss_rid_entry_t *rss_load_entry(inip_group_t *grp)
 log_printf(0, "loading\n");
   //** Create the new RS list
   type_malloc_clear(rse, rss_rid_entry_t, 1);
-  rse->status = RS_STATUS_ON;
+  rse->status = RS_STATUS_UP;
   rse->attr = list_create(1, &list_string_compare, list_string_dup, list_simple_free, list_simple_free);
 
   //** Now cycle through the attributes
@@ -711,12 +711,12 @@ int rss_perform_check(resource_service_fn_t *rs)
             ce->re->space_used = ds_res_inquire_get(rss->ds, DS_INQUIRE_USED, ce->space);
             ce->re->space_total = ds_res_inquire_get(rss->ds, DS_INQUIRE_TOTAL, ce->space);
             if (ce->re->space_free <= rss->min_free) {
-               ce->re->status = 1;
+               ce->re->status = RS_STATUS_OUT_OF_SPACE;
             } else {
-               ce->re->status = 0;
+               ce->re->status = RS_STATUS_UP;
             }
          } else {  //** No response so mark it as down
-            ce->re->status = 1;
+            ce->re->status = RS_STATUS_DOWN;
          }
          if (prev_status != ce->re->status) status_change = 1;
 

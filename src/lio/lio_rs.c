@@ -99,7 +99,7 @@ void print_rid_summary(char *config)
   int base = 1024;
   char *key, *value;
   char fbuf[20], ubuf[20], tbuf[20];
-  char *state[4] = { "UP    ", "SKIP  ", "IGNORE", "INVALID" };
+  char *state[5] = { "UP      ", "IGNORE  ", "NO_SPACE", "DOWN    ", "INVALID " };
   int n, n_usable;
   rid_summary_t *rsum;
   ex_off_t space_total, space_free, space_used;
@@ -163,22 +163,22 @@ void print_rid_summary(char *config)
 
 
   //** Now print the summary
-  printf("        RID           State             Host                  Used      Free     Total\n");
-  printf("--------------------  ------  ------------------------------  --------  --------  --------\n");
+  printf("        RID             State             Host                  Used      Free     Total\n");
+  printf("--------------------  --------  ------------------------------  --------  --------  --------\n");
   it = list_iter_search(table, NULL, 0);
   while (list_next(&it, (list_key_t **)&key, (list_data_t **)&rsum) == 0) {
-     printf("%-20s  %6s  %-30s  %8s  %8s  %8s\n", rsum->rid, state[rsum->status], rsum->host,
+     printf("%-20s  %8s  %-30s  %8s  %8s  %8s\n", rsum->rid, state[rsum->status], rsum->host,
         my_pretty_print_double_with_scale((double)rsum->used, ubuf, base),
         my_pretty_print_double_with_scale((double)rsum->free, fbuf, base),
         my_pretty_print_double_with_scale((double)rsum->total, tbuf, base));
   }
 
   printf("------------------------------------------------------------  --------  --------  --------\n");
-  printf("Usable Resources:%4d                                         %8s  %8s  %8s\n", list_key_count(table),
+  printf("Usable Resources:%4d                                           %8s  %8s  %8s\n", list_key_count(table),
      my_pretty_print_double_with_scale((double)up_used, ubuf, base),
      my_pretty_print_double_with_scale((double)up_free, fbuf, base),
      my_pretty_print_double_with_scale((double)up_total, tbuf, base));
-  printf("Total Resources: %4d                                         %8s  %8s  %8s\n", list_key_count(table),
+  printf("Total Resources: %4d                                           %8s  %8s  %8s\n", list_key_count(table),
      my_pretty_print_double_with_scale((double)space_used, ubuf, base),
      my_pretty_print_double_with_scale((double)space_free, fbuf, base),
      my_pretty_print_double_with_scale((double)space_total, tbuf, base));
