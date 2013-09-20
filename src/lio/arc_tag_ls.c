@@ -138,15 +138,11 @@ void run_ls(char *path, char *regex_path, char *regex_object, int obj_types, int
   it = ls_create_object_iter(tuple, rp, ro, obj_types, recurse_depth);
   if (it == NULL) {
      info_printf(lio_ifd, 0, "ERROR: Failed with object_iter creation! path=%s regex_path=%s regex_object=%s\n", path, regex_path, regex_object);
-     return;
+     exit(3);
   }
 
-  if (it == NULL) {
-    printf("ERROR: Failed to parse arc_tag: %s  %s  %s  %i\n", path, regex_path, regex_object, recurse_depth);
-    exit(3);
-  }
    while ((ftype = ls_next_object(it, &fname, &prefix_len)) > 0) {
-     printf("fname: %s ftype=%d\n", fname, ftype);
+     printf("fname: %s    ftype=%d\n", fname, ftype);
      free(fname);
    }
 
@@ -238,7 +234,7 @@ int main(int argc, char **argv) {
 
     } while ((start_option < i) && (i < argc));  
   }
-  /*** If no tag file was specified, set to the default***/
+  /*** If no tag file was specified, set to the default ***/
   if (tag_file == NULL) {
     char *homedir = getenv("HOME");
     tag_file = strcat(homedir, "/.arc_tag_file.txt");
