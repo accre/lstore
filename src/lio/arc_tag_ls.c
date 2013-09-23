@@ -35,6 +35,7 @@ http://www.accre.vanderbilt.edu
 #include "iniparse.h"
 #include "lio.h"
 #include "type_malloc.h"
+#include "object_service_abstract.h"
 
 
 typedef struct {
@@ -54,8 +55,6 @@ typedef struct {
 //**********************************************************************************
 
 void run_ls(char *path, char *regex_path, char *regex_object, int obj_types, int recurse_depth) {
-  printf("%s  %s  %s  %i\n", path, regex_path, regex_object, recurse_depth);
-
   unified_object_iter_t *it;  
   os_regex_table_t *rp, *ro;
   lio_path_tuple_t tuple;
@@ -80,7 +79,23 @@ void run_ls(char *path, char *regex_path, char *regex_object, int obj_types, int
   }
 
    while ((ftype = unified_next_object(it, &fname, &prefix_len)) > 0) {
-     printf("fname: %s    ftype=%d\n", fname, ftype);
+     char *ftype_string = NULL;
+     if ((ftype & OS_OBJECT_VIRTUAL) == 32) {
+       ftype_string = "VIRTUAL";       
+     } else if ((ftype & OS_OBJECT_BROKEN_LINK) == 16) {
+       ftype_string = "BROKEN_LINK";
+     } else if ((ftype & OS_OBJECT_HARDLINK) == 8) {
+       ftype_string = "HARDLINK";
+     } else if ((ftype & OS_OBJECT_SYMLINK) == 4) {
+       ftype_string = "SYMLINK";
+     } else if ((ftype & OS_OBJECT_DIR) == 2) {
+       ftype_string = "DIR";
+     } else if ((ftype & OS_OBJECT_FILE) == 1) {
+       ftype_string = "FILE";
+     } else {
+       ftype_string = "UNKNOWN";
+     }
+     printf("%-13s\t%s\n", ftype_string, fname);
      free(fname);
    }
 
