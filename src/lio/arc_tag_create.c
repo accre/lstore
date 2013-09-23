@@ -62,8 +62,10 @@ void create_tag_file(const char *filepath, int flush) {
 
 void print_usage()
 {
-  printf("\nUsage: arc_tag_create [-f] [tag name]\n\tIf no tag name is specified, the default ~/.arc_tag_file.txt will be used\n");
-  printf("");
+  printf("\nUsage: arc_tag_create [-h] [-f] [tag name]\nIf no tag name is specified, the default ~/.arc_tag_file.txt will be used\n");
+  printf("\t-h\tPrint help message\n");
+  printf("\t-f\tFlush the specifed tag file\n");
+  printf("\n");
   exit(0);
 }
 

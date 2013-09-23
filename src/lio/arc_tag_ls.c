@@ -108,8 +108,9 @@ void run_ls(char *path, char *regex_path, char *regex_object, int obj_types, int
 }
 
 
-void process_tag_file(char *tag_file) {
+void process_tag_file(char *tag_file, char *tag_name) {
 
+  char *name = NULL;
   char *path = NULL;
   char *regex_path = NULL;
   char *regex_object = NULL;
@@ -134,7 +135,10 @@ void process_tag_file(char *tag_file) {
 	while (ele != NULL) {
 	  key = inip_get_element_key(ele);
 	  value = inip_get_element_value(ele);
-	  if (strcmp(key, "path") == 0) {
+	  if (strcmp(key, "name") == 0) {
+	    name = value;
+	    printf("This is name: %s\n", value);
+	  } else if (strcmp(key, "path") == 0) {
 	    path = value;
 	  } else if (strcmp(key, "regex_path") == 0) {
 	    regex_path = value;
@@ -147,7 +151,10 @@ void process_tag_file(char *tag_file) {
 	  }
 	  ele = inip_next_element(ele);
 	}
-	run_ls(path, regex_path, regex_object, obj_types, recurse_depth);
+	printf("This is tag_name %s and this is name %s\n", tag_name, name);
+	if ((tag_name == NULL) || (strcmp(tag_name, name) == 0)) {
+	  run_ls(path, regex_path, regex_object, obj_types, recurse_depth);
+	}
       }
       ini_g = inip_next_group(ini_g);
     }
@@ -158,8 +165,9 @@ void process_tag_file(char *tag_file) {
 
 
 void print_usage() {
-  printf("\nUsage: arc_tag_ls [-t tag file] \n");
+  printf("\nUsage: arc_tag_ls [-t tag file] [-n tag name]\n");
   printf("\t-t\ttag file to use (default if not specified: ~./arc_tag_file.txt)\n");
+  printf("\t\n\ttag name to list (if none, all tags will be printed)");
   printf("\nExamples to come soon\n");
   exit(0);
 }
@@ -169,6 +177,7 @@ int main(int argc, char **argv) {
  
  int i = 1, start_option = 0;   
  char *tag_file = NULL;
+ char *tag_name = NULL;
  
  lio_init(&argc, &argv);
 
@@ -183,8 +192,12 @@ int main(int argc, char **argv) {
       } else if (strcmp(argv[i], "-t") == 0) {
 	i++;
 	tag_file = argv[i];
+	i++;
+      } else if (strcmp(argv[i], "-n") == 0) {
+	i++;
+	tag_name = argv[i];
+	i++;
       }
-
     } while ((start_option < i) && (i < argc));  
   }
   /*** If no tag file was specified, set to the default ***/
@@ -192,7 +205,7 @@ int main(int argc, char **argv) {
     char *homedir = getenv("HOME");
     tag_file = strcat(homedir, "/.arc_tag_file.txt");
   }
-  process_tag_file(tag_file);
+  process_tag_file(tag_file, tag_name);
 
   lio_shutdown();
 
