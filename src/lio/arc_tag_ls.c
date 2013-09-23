@@ -137,7 +137,6 @@ void process_tag_file(char *tag_file, char *tag_name) {
 	  value = inip_get_element_value(ele);
 	  if (strcmp(key, "name") == 0) {
 	    name = value;
-	    printf("This is name: %s\n", value);
 	  } else if (strcmp(key, "path") == 0) {
 	    path = value;
 	  } else if (strcmp(key, "regex_path") == 0) {
@@ -151,7 +150,6 @@ void process_tag_file(char *tag_file, char *tag_name) {
 	  }
 	  ele = inip_next_element(ele);
 	}
-	printf("This is tag_name %s and this is name %s\n", tag_name, name);
 	if ((tag_name == NULL) || (strcmp(tag_name, name) == 0)) {
 	  run_ls(path, regex_path, regex_object, obj_types, recurse_depth);
 	}
