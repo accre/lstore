@@ -202,6 +202,10 @@ int main(int argc, char **argv)
     start_index--;  //** The 1st entry will be the rp created in lio_parse_path_options
   }
 
+  if ((n_keys_al == 0) && (attr_regex == NULL)) { //** No attributes specified so default to everything
+      attr_regex = os_path_glob2regex("*");  
+  }
+
 
   for (j=start_index; j<argc; j++) {
      log_printf(5, "path_index=%d argc=%d rg_mode=%d\n", j, argc, rg_mode);
