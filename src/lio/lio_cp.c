@@ -81,6 +81,12 @@ int main(int argc, char **argv)
 
   lio_init(&argc, &argv);
 
+  if (argc <= 1) {
+     info_printf(lio_ifd, 0, "Missing Source and destination!\n");
+     return(1);
+  }
+
+
   //*** Parse the args
   n_errors = 0;
   keepln = 0;
