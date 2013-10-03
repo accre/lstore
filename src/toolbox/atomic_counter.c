@@ -111,6 +111,9 @@ void atomic_destroy()
   if (atomic_dec(_atomic_times_used) > 0) return;
   
   apr_pool_destroy(_atomic_mpool);
+
+  _atomic_mpool = NULL;
+  _atomic_times_used = 0;
 }
 
 
