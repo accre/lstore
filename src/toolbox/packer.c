@@ -60,9 +60,12 @@ int pack_read_zlib(pack_t *pack, unsigned char *data, int len)
 
 log_printf(15, "START z.avail_out=%d z.avail_in=%d len=%d\n", p->z.avail_out, p->z.avail_in, len);
 
+  if (len == 0) return(0);
+
   nbytes = inflate(&(p->z), Z_NO_FLUSH);
-log_printf(15, "inflate=%d\n", nbytes);
-  nbytes = ((nbytes == Z_OK) || (nbytes == Z_STREAM_END)) ? len - p->z.avail_out : PACK_ERROR;
+  log_printf(15, "inflate=%d\n", nbytes);
+
+  nbytes = ((nbytes == Z_OK) || (nbytes == Z_STREAM_END) || (nbytes == Z_BUF_ERROR)) ? len - p->z.avail_out : PACK_ERROR;
 
 log_printf(15, "END z.avail_out=%d z.avail_in=%d len=%d nbytes=%d\n", p->z.avail_out, p->z.avail_in, len, nbytes);
   return(nbytes);
@@ -105,7 +108,7 @@ int pack_write_zlib(pack_t *pack, unsigned char *data, int len)
   p->z.next_in = data;
   nbytes = deflate(&(p->z), Z_NO_FLUSH);
 log_printf(5, "deflate_error=%d len=%d avail_in=%d pack_used=%d\n", nbytes, len, p->z.avail_in, pack_used(pack));
-  nbytes = (nbytes == Z_OK) ? len - p->z.avail_in : PACK_ERROR;
+  nbytes = ((nbytes == Z_OK) || (nbytes == Z_BUF_ERROR)) ? len - p->z.avail_in : PACK_ERROR;
 
   return(nbytes);
 }
@@ -120,7 +123,7 @@ void pack_write_resized_zlib(pack_t *pack, unsigned char *buffer, int bufsize)
   pack_zlib_t *p = &(pack->zlib);
   int offset;
 
-  if (bufsize < p->bufsize) abort();
+  assert(bufsize >= (p->bufsize - p->z.avail_out));
 
   offset = p->bufsize - p->z.avail_out;
   p->z.next_out = &(buffer[offset]);
@@ -326,7 +329,7 @@ void pack_write_resized_raw(pack_t *pack, unsigned char *buffer, int bufsize)
 {
   pack_raw_t *p = &(pack->raw);
 
-  if (bufsize < p->bufsize) abort();
+  assert(bufsize >= p->bpos);
 
   p->buffer = buffer;
   p->bufsize = bufsize;
