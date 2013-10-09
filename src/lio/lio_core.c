@@ -1853,6 +1853,17 @@ flush_log();
      snprintf(dname, OS_PATH_MAX, "%s/%s", cp->dest_tuple.path, &(fname[prefix_len+1]));
 //info_printf(lio_ifd, 0, "copy dtuple=%s sfname=%s  dfname=%s plen=%d\n", cp->dest_tuple.path, fname, dname, prefix_len);
 
+     if ((ftype & OS_OBJECT_DIR) > 0) { //** Got a directory
+        dstate = list_search(dir_table, fname);
+        if (dstate == NULL) { //** New dir so have to check and possibly create it
+           create_tuple = cp->dest_tuple;
+           create_tuple.path = fname;
+           lio_cp_create_dir(dir_table, create_tuple);
+        }
+
+        continue;  //** Nothing else to do so go to the next file.
+     }
+
      os_path_split(dname, &dir, &file);
      dstate = list_search(dir_table, dir);
      if (dstate == NULL) { //** New dir so have to check and possibly create it
@@ -1860,7 +1871,8 @@ flush_log();
         create_tuple.path = dir;
         lio_cp_create_dir(dir_table, create_tuple);
      }
-     free(dir); free(file);
+     if (dir) { free(dir); dir = NULL; }
+     if (file) { free(file); file = NULL; }
 
      c = &(cplist[slot]);
      c->src_tuple = cp->src_tuple; c->src_tuple.path = fname;
