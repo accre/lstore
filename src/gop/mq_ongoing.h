@@ -95,6 +95,7 @@ typedef struct {
   mq_portal_t *server_portal;
   int check_interval;
   int shutdown;
+  int send_divisor;
 } mq_ongoing_t;
 
 void mq_ongoing_host_inc(mq_ongoing_t *on, char *remote_host, char *id, int id_len, int heartbeat);

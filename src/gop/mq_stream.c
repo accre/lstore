@@ -333,7 +333,7 @@ void mq_stream_read_destroy(mq_stream_t *mqs)
 // mq_stream_read_create - Creates an MQ stream for reading
 //***********************************************************************
 
-mq_stream_t *mq_stream_read_create(mq_context_t *mqc, mq_ongoing_t *on, char *host_id, int hid_len, mq_frame_t *fdata, char *remote_host)
+mq_stream_t *mq_stream_read_create(mq_context_t *mqc, mq_ongoing_t *on, char *host_id, int hid_len, mq_frame_t *fdata, char *remote_host, int to)
 {
   mq_stream_t *mqs;
   int ptype;
@@ -347,7 +347,7 @@ mq_stream_t *mq_stream_read_create(mq_context_t *mqc, mq_ongoing_t *on, char *ho
   mqs->remote_host = remote_host;
   mqs->host_id = host_id;
   mqs->hid_len = hid_len;
-  mqs->timeout = 30;
+  mqs->timeout = to;
   mqs->msid = atomic_global_counter();
 
   mq_get_frame(fdata, (void **)&(mqs->data), &(mqs->len));
@@ -399,13 +399,13 @@ log_printf(1, "msid=%d address frame count=%d state_index=%c\n", mqs->msid, stac
   mq_msg_append_mem(response, mqs->data, MQS_HEADER + pack_used(mqs->pack), MQF_MSG_AUTO_FREE);
   mq_msg_append_mem(response, NULL, 0, MQF_MSG_KEEP_DATA);  //** Empty frame
 
-char buffer[1024];
-int n = MQS_HEADER + pack_used(mqs->pack);
-if (n > 50) n = 50;
-int i;
-n=MQS_HEADER+1;
-for (i=0; i<MQS_HEADER; i++) log_printf(2, "i=%d c=%c\n", i, mqs->data[i]);
-log_printf(2, "printing 1st 50 bytes mqsbuf=%s\n", mq_id2str((char *)mqs->data, n, buffer, 1024));
+//char buffer[1024];
+//int n = MQS_HEADER + pack_used(mqs->pack);
+//if (n > 50) n = 50;
+//int i;
+//n=MQS_HEADER;
+//for (i=0; i<MQS_HEADER; i++) log_printf(2, "i=%d c=%c\n", i, mqs->data[i]);
+//log_printf(2, "printing 1st 50 bytes mqsbuf=%s\n", mq_id2str((char *)mqs->data, n, buffer, 1024));
 
 log_printf(2, "nbytes=%d more=%c\n", pack_used(mqs->pack), mqs->data[MQS_STATE_INDEX]);
 
@@ -595,7 +595,6 @@ log_printf(5, "id_size=%d handle_len=%d\n", id_size, len);
   }
 
   //** Let caller know it's sent and reset the size
-  mq_ongoing_release(ongoing, (char *)id, id_size, key);
   mqs->ready = 0;
   mqs->waiting = 0;
   mqs->expire = 0;
@@ -603,6 +602,8 @@ log_printf(5, "id_size=%d handle_len=%d\n", id_size, len);
   pack_consumed(mqs->pack);
   apr_thread_cond_broadcast(mqs->cond);
   apr_thread_mutex_unlock(mqs->lock);
+
+  mq_ongoing_release(ongoing, (char *)id, id_size, key);  //** Do this to avoiud a deadlock on failure in mqs_on_fail()
 
 fail:
   log_printf(1, "END msid=%d\n", err);
@@ -712,6 +713,8 @@ log_printf(5, "growing space=%d\n", nbytes);
     if (nbytes > 0) {  //** Stored some data
        nleft -= nbytes;
        dpos += nbytes;
+    } else if (nbytes == PACK_ERROR) {
+       pack_consumed(mqs->pack);    //** Rest so garbage data isn't sent
     }
 
     if ((nleft > 0) && (grew_space == 0)) {  //** Need to flush the data
@@ -739,7 +742,8 @@ log_printf(5, "growing space=%d\n", nbytes);
          //** Last set of writes so flush everything
          nbytes = pack_write_flush(mqs->pack);
 log_printf(5, "msid=%d pack_write_flush=%d\n", mqs->msid, nbytes);
-         if (nbytes == PACK_FINISHED) {  //**
+         if ((nbytes == PACK_FINISHED) || (nbytes == PACK_ERROR)) {
+            if (nbytes == PACK_ERROR) pack_consumed(mqs->pack);  //** Remove garbage data
             mqs->want_more = MQS_FINISHED;
             if (mqs->data) mqs->data[MQS_STATE_INDEX] = MQS_FINISHED;
          } else {
@@ -760,9 +764,9 @@ log_printf(5, "msid=%d pack_write_flush=%d\n", mqs->msid, nbytes);
             mqs->sent_data = 1;
             pack_consumed(mqs->pack);
          } else {  //** Got a pending request so just do a flush
-            apr_thread_mutex_unlock(mqs->lock);
+            if (mqs->mpool != NULL) apr_thread_mutex_unlock(mqs->lock);
             err = mq_stream_write_flush(mqs);
-            apr_thread_mutex_lock(mqs->lock);
+            if (mqs->mpool != NULL) apr_thread_mutex_lock(mqs->lock);
             if (err != 0) goto fail;
          }
       } while (nbytes != PACK_FINISHED);
@@ -829,11 +833,11 @@ log_printf(1, "Destroying stream msid=%d\n", mqs->msid);
 
 log_printf(2, "msid=%d sent_data=%d abort_error=%d oo=%p mpool=%p transfer_packets=%d\n", mqs->msid, mqs->sent_data, abort_error, mqs->oo, mqs->mpool, mqs->transfer_packets);
 
+  if (mqs->mpool != NULL) { apr_thread_mutex_unlock(mqs->lock); } //** Release the lock in case the ongoing cleanup thread is trying to clean up as well
+
   if (mqs->oo != NULL)  { //** In the ongoing table so remove us
      mq_ongoing_remove(mqs->ongoing, mqs->host_id, mqs->hid_len, mqs->oo->key);
   }
-
-  if (mqs->mpool != NULL) { apr_thread_mutex_unlock(mqs->lock); } //** Release the lock in case the ongoing cleanup thread is trying to clean up as well
 
   //** Clean up
   if (mqs->mpool != NULL) {

@@ -384,6 +384,7 @@ void  *mqt_exec(apr_thread_t *th, void *arg)
  
   f = mq_msg_next(task->msg);     //** Skip the ID
   mq_get_frame(f, &key, &n);
+//log_printf(1, "execing sid=%s  EXEC SUBMIT now=" TT "\n", mq_id2str(key, n, b64, sizeof(b64)), apr_time_sec(apr_time_now()));  flush_log();
 log_printf(1, "execing sid=%s\n", mq_id2str(key, n, b64, sizeof(b64)));
   f = mq_msg_next(task->msg); //** and get the user command
   mq_get_frame(f, &key, &n);

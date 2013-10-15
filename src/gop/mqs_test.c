@@ -76,6 +76,9 @@ int launch_flusher = 0;
 int delay_response = 0;
 int in_process = 0;
 
+int ongoing_server_interval = 5;
+int ongoing_client_interval = 1;
+
 char *host = "tcp://127.0.0.1:6714";
 char *host_id = "30:Random_Id";
 int host_id_len = 13;
@@ -111,7 +114,7 @@ op_status_t client_read_stream(void *task_arg, int tid)
   //** Parse the response
   mq_remove_header(task->response, 1);
 
-  mqs = mq_stream_read_create(mqc, client_ongoing, host_id, host_id_len, mq_msg_first(task->response), host);
+  mqs = mq_stream_read_create(mqc, client_ongoing, host_id, host_id_len, mq_msg_first(task->response), host, op->timeout);
 
   log_printf(0, "gid=%d msid=%d\n", op->gid, mqs->msid);
 
@@ -201,7 +204,7 @@ mq_context_t *client_make_context()
   inip_file_t *ifd;
   mq_context_t *mqc;
 
-  snprintf(buffer, sizeof(buffer), text_params, 20*nparallel);
+  snprintf(buffer, sizeof(buffer), text_params, 100*nparallel);
   ifd = inip_read_text(buffer);
   mqc = mq_create_context(ifd, "mq_context");
   assert(mqc != NULL);
@@ -214,7 +217,7 @@ mq_context_t *client_make_context()
 // test_gop - Generates a MQS test GOP for execution
 //***************************************************************************
 
-op_generic_t *test_gop(mq_context_t *mqc, int flusher, int client_delay, int delay, int max_packet, int send_bytes, int to)
+op_generic_t *test_gop(mq_context_t *mqc, int flusher, int client_delay, int delay, int max_packet, int send_bytes, int to, int myid)
 {
   mq_msg_t *msg;
   op_generic_t *gop;
@@ -245,8 +248,10 @@ op_generic_t *test_gop(mq_context_t *mqc, int flusher, int client_delay, int del
   gop = new_mq_op(mqc, msg, client_read_stream, mqc, NULL, to);
   gop_set_private(gop, op);
   op->gid = gop_id(gop);
+  gop_set_myid(gop, myid);
 
-  log_printf(0, "CREATE: gid=%d test_gop(f=%d, cd=%d, sd=%d, mp=%d, sb=%d, to=%d) = %d\n", gop_id(gop), op->launch_flusher, op->client_delay, op->delay, op->max_packet, op->send_bytes, op->timeout, op->shouldbe);
+  log_printf(0, "CREATE: gid=%d myid=%d test_gop(f=%d, cd=%d, sd=%d, mp=%d, sb=%d, to=%d) = %d\n", gop_id(gop), myid, op->launch_flusher, op->client_delay, op->delay, op->max_packet, op->send_bytes, op->timeout, op->shouldbe);
+  flush_log();
 
   return(gop);
 }
@@ -255,7 +260,7 @@ op_generic_t *test_gop(mq_context_t *mqc, int flusher, int client_delay, int del
 // new_bulk_task - Generates a new bulk task
 //***************************************************************************
 
-op_generic_t *new_bulk_task(mq_context_t *mqc)
+op_generic_t *new_bulk_task(mq_context_t *mqc, int myid)
 {
   int transfer_bytes, packet_bytes, delay, client_delay, flusher, to;
   int to_min, to_max;
@@ -273,6 +278,7 @@ op_generic_t *new_bulk_task(mq_context_t *mqc)
       delay = 0;
   }
   flusher = random_int(1, 3);
+//flusher = 1;
   if (flusher != 1) {
       flusher = 0;
   }
@@ -285,7 +291,9 @@ op_generic_t *new_bulk_task(mq_context_t *mqc)
       client_delay = 0;
   }
 
-  return(test_gop(mqc, flusher, client_delay, delay, packet_bytes, transfer_bytes, to));
+//delay = to + 5;
+
+  return(test_gop(mqc, flusher, client_delay, delay, packet_bytes, transfer_bytes, to, myid));
 }
 
 //***************************************************************************
@@ -304,11 +312,12 @@ int client_consume_result(op_generic_t *gop)
 
   if (status.op_status != op->shouldbe) {
      n = 1;
-     log_printf(0, "ERROR with stream test! gid=%d test_gop(f=%d, cd=%d sd=%d, mp=%d, sb=%d, to=%d) = %d got=%d\n", gop_id(gop), op->launch_flusher, op->client_delay, op->delay, op->max_packet, op->send_bytes, op->timeout, op->shouldbe, status.op_status);
+     log_printf(0, "ERROR with stream test! gid=%d myid=%d test_gop(f=%d, cd=%d sd=%d, mp=%d, sb=%d, to=%d) = %d got=%d\n", gop_id(gop), gop_get_myid(gop), op->launch_flusher, op->client_delay, op->delay, op->max_packet, op->send_bytes, op->timeout, op->shouldbe, status.op_status);
   } else {
      n = 0;
-     log_printf(0, "SUCCESS with stream test! gid=%d test_gop(f=%d, cd=%d sd=%d, mp=%d, sb=%d, to=%d) = %d got=%d\n", gop_id(gop), op->launch_flusher, op->client_delay, op->delay, op->max_packet, op->send_bytes, op->timeout, op->shouldbe, status.op_status);
+     log_printf(0, "SUCCESS with stream test! gid=%d myid=%d test_gop(f=%d, cd=%d sd=%d, mp=%d, sb=%d, to=%d) = %d got=%d\n", gop_id(gop), gop_get_myid(gop), op->launch_flusher, op->client_delay, op->delay, op->max_packet, op->send_bytes, op->timeout, op->shouldbe, status.op_status);
   }
+  flush_log();
 
   gop_free(gop, OP_DESTROY);
   free(op);
@@ -335,7 +344,7 @@ void *client_test_thread(apr_thread_t *th, void *arg)
   mqc = client_make_context();
 
   //** Make the ongoing checker
-  client_ongoing = mq_ongoing_create(mqc, NULL, 30, ONGOING_CLIENT);
+  client_ongoing = mq_ongoing_create(mqc, NULL, ongoing_client_interval, ONGOING_CLIENT);
   assert(client_ongoing != NULL);
 
   log_printf(0, "START basic stream tests\n");
@@ -357,15 +366,15 @@ void *client_test_thread(apr_thread_t *th, void *arg)
 
 //goto skip;
 
-  log_printf(0, "START bulk stream tests\n");
+  log_printf(0, "START bulk stream tests nparallel=%d\n", nparallel);
   n = 0;
 
   q = new_opque();
   opque_start_execution(q);
   for (i=0; i<ntotal; i++) {
-      gop = new_bulk_task(mqc);
+      gop = new_bulk_task(mqc, i);
       opque_add(q, gop);
-      if (i>nparallel) {
+      if (i>=nparallel-1) {
          gop = opque_waitany(q);
          n += client_consume_result(gop);
       }
@@ -500,7 +509,7 @@ mq_context_t *server_make_context()
   inip_file_t *ifd;
   mq_context_t *mqc;
 
-  snprintf(buffer, sizeof(buffer), text_params, 20*nparallel);
+  snprintf(buffer, sizeof(buffer), text_params, 100*nparallel);
   ifd = inip_read_text(buffer);
   mqc = mq_create_context(ifd, "mq_context");
   assert(mqc != NULL);
@@ -528,7 +537,7 @@ void *server_test_thread(apr_thread_t *th, void *arg)
   server_portal = mq_portal_create(mqc, host, MQ_CMODE_SERVER);
 
   //** Make the ongoing checker
-  server_ongoing = mq_ongoing_create(mqc, server_portal, 30, ONGOING_SERVER);
+  server_ongoing = mq_ongoing_create(mqc, server_portal, ongoing_server_interval, ONGOING_SERVER);
   assert(server_ongoing != NULL);
 
   //** Install the commands
@@ -671,8 +680,9 @@ log_printf(0, "after init opque_count=%d\n", _opque_counter);
   assert(server_efd != 0);
 
 
-  apr_thread_create(&client_thread, NULL, client_test_thread, NULL, mpool);
   apr_thread_create(&server_thread, NULL, server_test_thread, NULL, mpool);
+  sleep(5); //** Make surethe server gets fired up
+  apr_thread_create(&client_thread, NULL, client_test_thread, NULL, mpool);
 
   apr_thread_join(&dummy, client_thread);
 
