@@ -199,7 +199,7 @@ log_printf(5, "START\n");
   //** Parse the response
   mq_remove_header(task->response, 1);
 
-  mqs = mq_stream_read_create(osrc->mqc, osrc->ongoing, osrc->host_id, osrc->host_id_len, mq_msg_first(task->response), osrc->remote_host);
+  mqs = mq_stream_read_create(osrc->mqc, osrc->ongoing, osrc->host_id, osrc->host_id_len, mq_msg_first(task->response), osrc->remote_host, osrc->stream_timeout);
 
   //** Parse the status
   status.op_status = mq_stream_read_varint(mqs, &err);
@@ -1138,7 +1138,7 @@ log_printf(5, "START\n");
   //** Parse the response
   mq_remove_header(task->response, 1);
 
-  mqs = mq_stream_read_create(osrc->mqc, osrc->ongoing, osrc->host_id, osrc->host_id_len, mq_msg_first(task->response), osrc->remote_host);
+  mqs = mq_stream_read_create(osrc->mqc, osrc->ongoing, osrc->host_id, osrc->host_id_len, mq_msg_first(task->response), osrc->remote_host, osrc->stream_timeout);
 
   //** Parse the status
   status.op_status = mq_stream_read_varint(mqs, &err);
@@ -1457,7 +1457,7 @@ log_printf(5, "START\n");
   //** Parse the response
   mq_remove_header(task->response, 1);
 
-  it->mqs = mq_stream_read_create(osrc->mqc, osrc->ongoing, osrc->host_id, osrc->host_id_len, mq_msg_first(task->response), osrc->remote_host);
+  it->mqs = mq_stream_read_create(osrc->mqc, osrc->ongoing, osrc->host_id, osrc->host_id_len, mq_msg_first(task->response), osrc->remote_host, osrc->stream_timeout);
 
   //** Parse the status
   status.op_status = mq_stream_read_varint(it->mqs, &err);
@@ -1671,7 +1671,7 @@ log_printf(5, "START\n");
   //** Parse the response
   mq_remove_header(task->response, 1);
 
-  it->mqs = mq_stream_read_create(osrc->mqc, osrc->ongoing, osrc->host_id, osrc->host_id_len, mq_msg_first(task->response), osrc->remote_host);
+  it->mqs = mq_stream_read_create(osrc->mqc, osrc->ongoing, osrc->host_id, osrc->host_id_len, mq_msg_first(task->response), osrc->remote_host, osrc->stream_timeout);
 
   //** Parse the status
   status.op_status = mq_stream_read_varint(it->mqs, &err);
@@ -2204,7 +2204,7 @@ log_printf(5, "START\n");
   //** Parse the response
   mq_remove_header(task->response, 1);
 
-  it->mqs = mq_stream_read_create(osrc->mqc, osrc->ongoing, osrc->host_id, osrc->host_id_len, mq_msg_first(task->response), osrc->remote_host);
+  it->mqs = mq_stream_read_create(osrc->mqc, osrc->ongoing, osrc->host_id, osrc->host_id_len, mq_msg_first(task->response), osrc->remote_host, osrc->stream_timeout);
 
   //** Parse the status
   status.op_status = mq_stream_read_varint(it->mqs, &err);
@@ -2390,6 +2390,7 @@ log_printf(0, "START\n");
   osrc->heartbeat = inip_get_integer(fd, section, "heartbeat", 600);
   osrc->remote_host = inip_get_string(fd, section, "remote_address", NULL);
   osrc->max_stream = inip_get_integer(fd, section, "max_stream", 1024*1024);
+  osrc->stream_timeout = inip_get_integer(fd, section, "stream_timeout", 65);
   osrc->spin_interval = inip_get_integer(fd, section, "spin_interval", 1);
   osrc->spin_fail = inip_get_integer(fd, section, "spin_fail", 4);
 
