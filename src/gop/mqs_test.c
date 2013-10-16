@@ -173,6 +173,15 @@ offset=-1;
      log_printf(2, "nread=%d nleft=%d\n", nread, nleft);
   }
 
+  nbytes = 1;
+  log_printf(1, "gid=%d msid=%d Before read after EOS\n", op->gid, mqs->msid);
+  err = mq_stream_read(mqs, buffer, nbytes);
+  log_printf(1, "gid=%d msid=%d Attempt to read beyond EOS err=%d\n", op->gid, mqs->msid, err);
+  if (err == 0) {
+     log_printf(0, "ERROR Attempt to read after EOS succeeded! err=%d gid=%d msid=%d\n", err, op->gid, mqs->msid);
+     status = op_failure_status;
+  }
+
 fail:
   err = mqs->msid;
   mq_stream_destroy(mqs);
