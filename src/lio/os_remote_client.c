@@ -1934,7 +1934,8 @@ log_printf(5, "START\n");
      type_malloc(fd->data, char, fd->size);
      memcpy(fd->data, data, fd->size);
      *(arg->pfd) = fd;
-     mq_ongoing_host_inc(osrc->ongoing, osrc->remote_host, fd->data, fd->size, osrc->heartbeat);
+//     mq_ongoing_host_inc(osrc->ongoing, osrc->remote_host, fd->data, fd->size, osrc->heartbeat);
+     mq_ongoing_host_inc(osrc->ongoing, osrc->remote_host, osrc->host_id, osrc->host_id_len, osrc->heartbeat);
   } else {
      *(arg->pfd) = NULL;
   }
