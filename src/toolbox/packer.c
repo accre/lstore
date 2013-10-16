@@ -40,6 +40,7 @@ http://www.accre.vanderbilt.edu
 #include "packer.h"
 #include "type_malloc.h"
 #include "log.h"
+//#include "random.h"
 
 //***********************************************************************
 //-------------------- Compressed routines ------------------------------
@@ -107,7 +108,10 @@ int pack_write_zlib(pack_t *pack, unsigned char *data, int len)
   p->z.avail_in = len;
   p->z.next_in = data;
   nbytes = deflate(&(p->z), Z_NO_FLUSH);
-log_printf(5, "deflate_error=%d len=%d avail_in=%d pack_used=%d\n", nbytes, len, p->z.avail_in, pack_used(pack));
+//log_printf(5, "deflate_error=%d len=%d avail_in=%d pack_used=%d\n", nbytes, len, p->z.avail_in, pack_used(pack));
+//double r = random_double(0, 1);
+//if (r > 0.25) { log_printf(0, "FORCING PACK_ERROR\n"); return(PACK_ERROR); }
+
   nbytes = ((nbytes == Z_OK) || (nbytes == Z_BUF_ERROR)) ? len - p->z.avail_in : PACK_ERROR;
 
   return(nbytes);
@@ -189,7 +193,7 @@ log_printf(5, "start avail_out=%d\n", p->z.avail_out);
   err = deflate(&(p->z), Z_FINISH);
 log_printf(5, "end avail_out=%d err=%d\n", p->z.avail_out, err);
 
-  if (err == Z_OK) {
+  if ((err == Z_OK) || (err == Z_BUF_ERROR)) {
     err = PACK_NONE;
   } else if (err == Z_STREAM_END) {
     err = PACK_FINISHED;
@@ -197,6 +201,7 @@ log_printf(5, "end avail_out=%d err=%d\n", p->z.avail_out, err);
     err = PACK_ERROR;
   }
 
+log_printf(5, "translated err=%d\n", err);
   return(err);
 }
 
