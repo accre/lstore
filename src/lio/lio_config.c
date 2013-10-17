@@ -854,7 +854,7 @@ lio_config_t *lio_create_nl(char *fname, char *section, char *user)
   }
 
   //** Add the shared ongoing object
-  mq_ongoing_t *on = mq_ongoing_create(lio->mqc, NULL, 0, ONGOING_CLIENT);
+  mq_ongoing_t *on = mq_ongoing_create(lio->mqc, NULL, 1, ONGOING_CLIENT);
   add_service(lio->ess, ESS_RUNNING, ESS_ONGOING_CLIENT, on);
   
   stype = inip_get_string(lio->ifd, section, "ds", DS_TYPE_IBP);

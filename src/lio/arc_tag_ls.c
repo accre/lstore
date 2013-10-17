@@ -35,6 +35,7 @@ http://www.accre.vanderbilt.edu
 #include "iniparse.h"
 #include "lio.h"
 #include "type_malloc.h"
+#include "object_service_abstract.h"
 
 
 typedef struct {
@@ -54,8 +55,6 @@ typedef struct {
 //**********************************************************************************
 
 void run_ls(char *path, char *regex_path, char *regex_object, int obj_types, int recurse_depth) {
-  printf("%s  %s  %s  %i\n", path, regex_path, regex_object, recurse_depth);
-
   unified_object_iter_t *it;  
   os_regex_table_t *rp, *ro;
   lio_path_tuple_t tuple;
@@ -80,7 +79,23 @@ void run_ls(char *path, char *regex_path, char *regex_object, int obj_types, int
   }
 
    while ((ftype = unified_next_object(it, &fname, &prefix_len)) > 0) {
-     printf("fname: %s    ftype=%d\n", fname, ftype);
+     char *ftype_string = NULL;
+     if ((ftype & OS_OBJECT_VIRTUAL) == 32) {
+       ftype_string = "VIRTUAL";       
+     } else if ((ftype & OS_OBJECT_BROKEN_LINK) == 16) {
+       ftype_string = "BROKEN_LINK";
+     } else if ((ftype & OS_OBJECT_HARDLINK) == 8) {
+       ftype_string = "HARDLINK";
+     } else if ((ftype & OS_OBJECT_SYMLINK) == 4) {
+       ftype_string = "SYMLINK";
+     } else if ((ftype & OS_OBJECT_DIR) == 2) {
+       ftype_string = "DIR";
+     } else if ((ftype & OS_OBJECT_FILE) == 1) {
+       ftype_string = "FILE";
+     } else {
+       ftype_string = "UNKNOWN";
+     }
+     printf("%-13s\t%s\n", ftype_string, fname);
      free(fname);
    }
 
@@ -93,8 +108,9 @@ void run_ls(char *path, char *regex_path, char *regex_object, int obj_types, int
 }
 
 
-void process_tag_file(char *tag_file) {
+void process_tag_file(char *tag_file, char *tag_name) {
 
+  char *name = NULL;
   char *path = NULL;
   char *regex_path = NULL;
   char *regex_object = NULL;
@@ -119,7 +135,9 @@ void process_tag_file(char *tag_file) {
 	while (ele != NULL) {
 	  key = inip_get_element_key(ele);
 	  value = inip_get_element_value(ele);
-	  if (strcmp(key, "path") == 0) {
+	  if (strcmp(key, "name") == 0) {
+	    name = value;
+	  } else if (strcmp(key, "path") == 0) {
 	    path = value;
 	  } else if (strcmp(key, "regex_path") == 0) {
 	    regex_path = value;
@@ -132,7 +150,9 @@ void process_tag_file(char *tag_file) {
 	  }
 	  ele = inip_next_element(ele);
 	}
-	run_ls(path, regex_path, regex_object, obj_types, recurse_depth);
+	if ((tag_name == NULL) || (strcmp(tag_name, name) == 0)) {
+	  run_ls(path, regex_path, regex_object, obj_types, recurse_depth);
+	}
       }
       ini_g = inip_next_group(ini_g);
     }
@@ -143,8 +163,9 @@ void process_tag_file(char *tag_file) {
 
 
 void print_usage() {
-  printf("\nUsage: arc_tag_ls [-t tag file] \n");
+  printf("\nUsage: arc_tag_ls [-t tag file] [-n tag name]\n");
   printf("\t-t\ttag file to use (default if not specified: ~./arc_tag_file.txt)\n");
+  printf("\t\n\ttag name to list (if none, all tags will be printed)");
   printf("\nExamples to come soon\n");
   exit(0);
 }
@@ -154,6 +175,7 @@ int main(int argc, char **argv) {
  
  int i = 1, start_option = 0;   
  char *tag_file = NULL;
+ char *tag_name = NULL;
  
  lio_init(&argc, &argv);
 
@@ -168,8 +190,12 @@ int main(int argc, char **argv) {
       } else if (strcmp(argv[i], "-t") == 0) {
 	i++;
 	tag_file = argv[i];
+	i++;
+      } else if (strcmp(argv[i], "-n") == 0) {
+	i++;
+	tag_name = argv[i];
+	i++;
       }
-
     } while ((start_option < i) && (i < argc));  
   }
   /*** If no tag file was specified, set to the default ***/
@@ -177,7 +203,7 @@ int main(int argc, char **argv) {
     char *homedir = getenv("HOME");
     tag_file = strcat(homedir, "/.arc_tag_file.txt");
   }
-  process_tag_file(tag_file);
+  process_tag_file(tag_file, tag_name);
 
   lio_shutdown();
 

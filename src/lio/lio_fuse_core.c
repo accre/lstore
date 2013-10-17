@@ -364,12 +364,14 @@ lio_inode_t *_lfs_load_inode_entry(lio_fuse_t *lfs, const char *fname, lio_inode
 
   log_printf(15, "Parsing info for fname=%s\n", myfname);
   memset(&inode, 0, sizeof(inode));
-  _lfs_parse_inode_vals(lfs, &inode, val, v_size);
-
-//  if (start_ino == 1) inode.ino = 1;
 
   //** Now try and insert it
   lfs_lock(lfs);  //** Reacquire the lock
+
+  _lfs_parse_inode_vals(lfs, &inode, val, v_size);  //** Need the lock cause the attr table is updated
+
+//  if (start_ino == 1) inode.ino = 1;
+
 
   tinode = _lfs_inode_lookup(lfs, inode.ino);
   if (tinode == NULL) { //** Doesn't exist so insert it
@@ -409,7 +411,7 @@ int _lfs_dentry_insert(lio_fuse_t *lfs, lio_dentry_t *entry)
     i++;
   }
 
-  entry->recheck_time = apr_time_now() + lfs->entry_to * APR_USEC_PER_SEC;
+  entry->recheck_time = apr_time_now() + lfs->entry_to;
 
 log_printf(1, "fname=%s name_start=%d name=%s\n", entry->fname, entry->name_start, dentry_name(entry));
   list_insert(lfs->fname_index, (list_key_t *)entry->fname, (list_data_t *)entry);
@@ -528,12 +530,12 @@ int lfs_stat_real(const char *fname,
   }
 
   if (apr_time_now() > entry->recheck_time) { //** Update the entry timeout as well
-      entry->recheck_time = apr_time_now() + lfs->attr_to * APR_USEC_PER_SEC;
+      entry->recheck_time = apr_time_now() + lfs->attr_to;
   }
 
   if (apr_time_now() > inode->recheck_time) {  //** Update the inode
      //** Update the recheck time to minimaze the GC from removing.  It *will* still happen though
-     inode->recheck_time = apr_time_now() + lfs->attr_to * APR_USEC_PER_SEC;
+     inode->recheck_time = apr_time_now() + 100*APR_USEC_PER_SEC;  //** This gets set properly in when loading
      inode = _lfs_load_inode_entry(lfs, fname, inode);
 
      if (inode == NULL) {  //** Remove the old dentry
@@ -777,7 +779,7 @@ log_printf(15, "new entry fname=%s\n", fname);  flush_log();
 log_printf(15, "existing entry fname=%s\n", fname); flush_log();
         *entry = *fentry;
         entry->fname = fname;
-        fentry->recheck_time = apr_time_now() + lfs->attr_to * APR_USEC_PER_SEC;
+        fentry->recheck_time = apr_time_now() + lfs->attr_to;
      }
 
      inode = _lfs_inode_lookup(dit->lfs, entry->ino);
@@ -2746,17 +2748,14 @@ void *lfs_init_real(struct fuse_conn_info *conn,
   lfs->mount_point = strdup(init_args->mount_point);
   lfs->mount_point_len = strlen(init_args->mount_point);
 
-  //** Load config info.
-  lfs->entry_to = inip_get_double(lfs->lc->ifd, section, "entry_timout", 1.0);
-  lfs->attr_to = inip_get_double(lfs->lc->ifd, section, "stat_timout", 1.0);
+  lfs->entry_to = APR_USEC_PER_SEC * inip_get_double(lfs->lc->ifd, section, "entry_timout", 10.0);
+  lfs->attr_to = APR_USEC_PER_SEC * inip_get_double(lfs->lc->ifd, section, "stat_timeout", 10.0);
   lfs->inode_cache_size = inip_get_integer(lfs->lc->ifd, section, "inode_cache_size", 1000000);
   lfs->xattr_to = APR_USEC_PER_SEC * inip_get_integer(lfs->lc->ifd, section, "xattr_timeout", 60);
   lfs->stale_dt = APR_USEC_PER_SEC * inip_get_integer(lfs->lc->ifd, section, "stale_timeout", 60);
   lfs->gc_interval = APR_USEC_PER_SEC * inip_get_integer(lfs->lc->ifd, section, "gc_interval", 60);
-  lfs->file_count = inip_get_integer(lfs->lc->ifd, section, "file_size", 100);
+  lfs->file_count = inip_get_integer(lfs->lc->ifd, section, "file_lock_size", 1000);
   lfs->enable_tape = inip_get_integer(lfs->lc->ifd, section, "enable_tape", 0);
-  lfs->fs_size = (ex_off_t)1024*1024*1024*1024*1024;
-  lfs->fs_size = inip_get_integer(lfs->lc->ifd, section, "fs_size", lfs->fs_size);
 
   n = lfs->inode_cache_size;
   p = log2(n) + 3;

@@ -376,7 +376,7 @@ op_status_t segment_put_func(void *arg, int id)
   wlen = 0;
   rpos += rlen;
   nbytes -= rlen;
-log_printf(0, "FILE fd=%p bufsize=" XOT "\n", sc->fd, bufsize);
+log_printf(0, "FILE fd=%p bufsize=" XOT " rlen=" XOT " nbytes=" XOT "\n", sc->fd, bufsize, rlen, nbytes);
 
   got = fread(rb, 1, rlen, sc->fd);
   if (got == 0) { 

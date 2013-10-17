@@ -1565,7 +1565,7 @@ op_status_t cp_local2lio(lio_cp_file_t *cp)
   //** Check if it exists and if not create it
   dtype = lioc_exists(cp->dest_tuple.lc, cp->dest_tuple.creds, cp->dest_tuple.path);
 
-log_printf(5, "src=%s dest=%s dtype=%d\n", cp->src_tuple.path, cp->dest_tuple.path, dtype);
+log_printf(5, "src=%s dest=%s dtype=%d bufsize=" XOT "\n", cp->src_tuple.path, cp->dest_tuple.path, dtype, cp->bufsize);
 
   if (dtype == 0) { //** Need to create it
      err = gop_sync_exec(lio_create_object(cp->dest_tuple.lc, cp->dest_tuple.creds, cp->dest_tuple.path, OS_OBJECT_FILE, NULL, NULL));
@@ -1831,7 +1831,7 @@ op_status_t lio_cp_path_fn(void *arg, int id)
   opque_t *q;
   op_status_t status;
 
-log_printf(15, "START src=%s dest=%s max_spawn=%d\n", cp->src_tuple.path, cp->dest_tuple.path, cp->max_spawn);
+log_printf(15, "START src=%s dest=%s max_spawn=%d bufsize=" XOT "\n", cp->src_tuple.path, cp->dest_tuple.path, cp->max_spawn, cp->bufsize);
 flush_log();
 
   status = op_success_status;
@@ -1853,6 +1853,17 @@ flush_log();
      snprintf(dname, OS_PATH_MAX, "%s/%s", cp->dest_tuple.path, &(fname[prefix_len+1]));
 //info_printf(lio_ifd, 0, "copy dtuple=%s sfname=%s  dfname=%s plen=%d\n", cp->dest_tuple.path, fname, dname, prefix_len);
 
+     if ((ftype & OS_OBJECT_DIR) > 0) { //** Got a directory
+        dstate = list_search(dir_table, fname);
+        if (dstate == NULL) { //** New dir so have to check and possibly create it
+           create_tuple = cp->dest_tuple;
+           create_tuple.path = fname;
+           lio_cp_create_dir(dir_table, create_tuple);
+        }
+
+        continue;  //** Nothing else to do so go to the next file.
+     }
+
      os_path_split(dname, &dir, &file);
      dstate = list_search(dir_table, dir);
      if (dstate == NULL) { //** New dir so have to check and possibly create it
@@ -1860,11 +1871,13 @@ flush_log();
         create_tuple.path = dir;
         lio_cp_create_dir(dir_table, create_tuple);
      }
-     free(dir); free(file);
+     if (dir) { free(dir); dir = NULL; }
+     if (file) { free(file); file = NULL; }
 
      c = &(cplist[slot]);
      c->src_tuple = cp->src_tuple; c->src_tuple.path = fname;
      c->dest_tuple = cp->dest_tuple; c->dest_tuple.path = strdup(dname);
+     c->bufsize = cp->bufsize;
 
      gop = new_thread_pool_op(lio_gc->tpc_unlimited, NULL, lio_cp_file_fn, (void *)c, NULL, 1);
      gop_set_myid(gop, slot);

@@ -81,6 +81,12 @@ int main(int argc, char **argv)
 
   lio_init(&argc, &argv);
 
+  if (argc <= 1) {
+     info_printf(lio_ifd, 0, "Missing Source and destination!\n");
+     return(1);
+  }
+
+
   //*** Parse the args
   n_errors = 0;
   keepln = 0;
@@ -124,10 +130,11 @@ int main(int argc, char **argv)
   //** Create the simple path iterator
   n_paths = argc - start_index - 1;
 log_printf(15, "n_paths=%d argc=%d si=%d dtype=%d\n", n_paths, argc, start_index, dtype);
-//printf("n_paths=%d argc=%d si=%d\n", n_paths, argc, start_index);
-//for (i=start_index; i<argc; i++) {
-//  printf("argv[%d]=%s\n", i, argv[i]);
-//}
+
+  if (n_paths <= 0) {
+     info_printf(lio_ifd, 0, "Missing destination!\n");
+     return(1);
+  }
 
   type_malloc_clear(flist, lio_cp_path_t, n_paths);
 
@@ -164,14 +171,14 @@ log_printf(15, "11111111\n"); flush_log();
         }
      }
 
-log_printf(15, "2222222222222222 fixed=%d exp=%s\n", os_regex_is_fixed(flist[0].path_regex), flist[0].path_regex->regex_entry[0].expression); flush_log();
+log_printf(15, "2222222222222222 fixed=%d exp=%s dtype=%d\n", os_regex_is_fixed(flist[0].path_regex), flist[0].path_regex->regex_entry[0].expression, dtype); flush_log();
 
      //**if it's a fixed src with a dir dest we skip and use the cp_fn routines
      if ((os_regex_is_fixed(flist[0].path_regex) == 1) && ((dtype == 0) || ((dtype & OS_OBJECT_FILE) > 0))) {
         //** IF we made it here we have a simple cp
-        cp_single.src_tuple = flist[0].src_tuple;
-        cp_single.dest_tuple = flist[0].dest_tuple;
-        status = lio_cp_file_fn(&cp_single, 0);
+//        cp_single.src_tuple = flist[0].src_tuple;
+//        cp_single.dest_tuple = flist[0].dest_tuple;
+        status = lio_cp_file_fn(&(flist[0]), 0);
         if (status.op_status != OP_STATE_SUCCESS) {
            info_printf(lio_ifd, 0, "ERROR: with copy src=%s  dest=%s\n", flist[0].src_tuple.path, dtuple.path);
            n_errors += status.error_code;
@@ -189,7 +196,9 @@ log_printf(15, "333333333333333333\n"); flush_log();
      gop = new_thread_pool_op(lio_gc->tpc_unlimited, NULL, lio_cp_path_fn, (void *)&(flist[i]), NULL, 1);
      gop_set_myid(gop, i);
 log_printf(0, "gid=%d i=%d fname=%s\n", gop_id(gop), i, flist[i].src_tuple.path);
+
      opque_add(q, gop);
+log_printf(0, "bufsize=" XOT "\n", flist[i].bufsize);
 
      if (opque_tasks_left(q) > lio_parallel_task_count) {
         gop = opque_waitany(q);
