@@ -96,6 +96,10 @@ cache_t *round_robin_cache_create(void *arg, data_attr_t *da, int timeout)
   type_malloc_clear(cache, cache_t, 1);
   type_malloc_clear(c, cache_rr_t, 1);
   cache->fn.priv = c;
+  if (!cache->fn.priv)
+  {
+    log_printf(0,"ERROR: a null priv structure was malloc()d");
+  }
 
   cache_base_create(cache, da, timeout);
 

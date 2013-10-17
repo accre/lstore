@@ -494,25 +494,21 @@ log_printf(1, "fname=%s inode changed old=" XOT " new=" XOT "\n", fname, entry->
 
 //*************************************************************************
 // lfs_stat - Does a stat on the file/dir
+//            Note: lfs_stat_real does the lifting, lfs_stat just handles
+//                  getting the lfs handle from the fuse contex. Splitting
+//                  it up this way makes it so someone can use this without
+//                  FUSE
 //*************************************************************************
 
-int lfs_stat(const char *fname, struct stat *stat)
+int lfs_stat_real(const char *fname,
+                  struct stat *stat,
+                  lio_fuse_t *lfs)
 {
   lio_inode_t *inode;
   lio_dentry_t *entry;
-  
-  lio_fuse_t *lfs;
-  struct fuse_context *ctx;
-  ctx = fuse_get_context();
-  if (NULL == ctx || NULL == ctx->private_data)
-  {
-    log_printf(0, "ERROR_CTX:  unable to access fuse context or context is invalid");
-    return(-EINVAL);
-  }else
-  {
-    lfs = (lio_fuse_t*)ctx->private_data;
+  if (!lfs) {
+      printf("************************** GOT A BLANK LFS ******************\n");
   }
-
   log_printf(1, "fname=%s\n", fname); flush_log();
 
   lfs_lock(lfs);
@@ -556,6 +552,22 @@ int lfs_stat(const char *fname, struct stat *stat)
   lfs_fill_stat(stat, inode);
   lfs_unlock(lfs);
   return(0);
+}
+int lfs_stat(const char *fname,
+                  struct stat *stat)
+{
+  lio_fuse_t *lfs;
+  struct fuse_context *ctx;
+  ctx = fuse_get_context();
+  if (NULL == ctx || NULL == ctx->private_data)
+  {
+    log_printf(0, "ERROR_CTX:  unable to access fuse context or context is invalid\n");
+    return(-EINVAL);
+  }else
+  {
+    lfs = (lio_fuse_t*)ctx->private_data;
+  }
+  return lfs_stat_real(fname, stat, lfs);
 }
 
 //*************************************************************************
@@ -899,6 +911,11 @@ int lfs_object_create(lio_fuse_t *lfs, const char *fname, mode_t mode, int ftype
 // lfs_mknod - Makes a regular file
 //*************************************************************************
 
+int lfs_mknod_real(const char *fname, mode_t mode, dev_t rdev, lio_fuse_t *lfs)
+{
+  log_printf(1, "fname=%s\n", fname); flush_log();
+  return(lfs_object_create(lfs, fname, mode, OS_OBJECT_FILE));
+}
 int lfs_mknod(const char *fname, mode_t mode, dev_t rdev)
 {
   lio_fuse_t *lfs;
@@ -912,11 +929,11 @@ int lfs_mknod(const char *fname, mode_t mode, dev_t rdev)
   {
     lfs = (lio_fuse_t*)ctx->private_data;
   }
-
-  log_printf(1, "fname=%s\n", fname); flush_log();
-
-  return(lfs_object_create(lfs, fname, mode, OS_OBJECT_FILE));
+  // we don't support making devices in FUSE, right?
+  return lfs_mknod_real(fname, mode, rdev, lfs);
 }
+
+ 
 
 
 //*************************************************************************
@@ -1253,23 +1270,11 @@ log_printf(1, "ERROR failed getting shared file handle fname=%s entry=%p ref_cou
 // lfs_open - Opens a file for I/O
 //*****************************************************************
 
-int lfs_open(const char *fname, struct fuse_file_info *fi)
+int lfs_open_real(const char *fname, struct fuse_file_info *fi, lio_fuse_t *lfs)
 {
   lio_fuse_fd_t *fd;
   int err;
-
-  lio_fuse_t *lfs;
-  struct fuse_context *ctx;
-  ctx = fuse_get_context();
-  if (NULL == ctx || NULL == ctx->private_data)
-  {
-    log_printf(0, "ERROR_CTX:  unable to access fuse context or context is invalid");
-    return(-EINVAL);
-  }else
-  {
-    lfs = (lio_fuse_t*)ctx->private_data;
-  }
-
+  // FIXME, need to populate fi upstream and undo this comment
   log_printf(1, "fname=%s dio=%d START \n", fname, fi->direct_io); flush_log();
 
 //fi->direct_io = 1;
@@ -1279,17 +1284,33 @@ int lfs_open(const char *fname, struct fuse_file_info *fi)
   if (err == 0) {
      fi->fh = (uint64_t)fd;
   }
-
-  log_printf(1, "fname=%s dio=%d err=%d END\n", fname, fi->direct_io, err); flush_log();
-
+  //log_printf(1, "fname=%s dio=%d err=%d END\n", fname, fi->direct_io, err); flush_log();
+  log_printf(1, "fname=%s dio=%d err=%d fh=%d END\n", fname, fi, err, fi->fh); flush_log();
   return(err);
 }
+
+int lfs_open(const char *fname, struct fuse_file_info *fi)
+{
+  struct fuse_context *ctx;
+  ctx = fuse_get_context();
+  lio_fuse_t *lfs;
+  if (NULL == ctx || NULL == ctx->private_data)
+  {
+    log_printf(0, "ERROR_CTX:  unable to access fuse context or context is invalid");
+    return(-EINVAL);
+  }else
+  {
+    lfs = (lio_fuse_t*)ctx->private_data;
+  }
+  return lfs_open_real(fname, fi, lfs);
+}
+
 
 //*****************************************************************
 // lfs_myclose - Closes a file
 //*****************************************************************
 
-int lfs_myclose(char *fname, lio_fuse_fd_t *fd)
+int lfs_myclose_real(char *fname, lio_fuse_fd_t *fd, lio_fuse_t *lfs)
 {
   //// lio_fuse_t *lfs;
   lio_fuse_file_handle_t *fh;
@@ -1307,19 +1328,7 @@ int lfs_myclose(char *fname, lio_fuse_fd_t *fd)
   apr_time_t now;
   double dt;
 
-  lio_fuse_t *lfs;
-  struct fuse_context *ctx;
-  ctx = fuse_get_context();
-  if (NULL == ctx || NULL == ctx->private_data)
-  {
-    log_printf(0, "ERROR_CTX:  unable to access fuse context or context is invalid");
-    return(-EINVAL);
-  }else
-  {
-    lfs = (lio_fuse_t*)ctx->private_data;
-  }
-
-  log_printf(1, "fname=%s modified=%d count=%d\n", fname, fd->fh->modified, fd->fh->ref_count); flush_log();
+    log_printf(1, "fname=%s modified=%d count=%d\n", fname, fd->fh->modified, fd->fh->ref_count); flush_log();
 
   slot = lfs_file_lock(lfs, fname);
   if (slot < 0) return(slot);
@@ -1453,11 +1462,28 @@ log_printf(0, "DESTROYING exnode fname=%s\n", fname); flush_log();
   return((hard_errors==0) ? 0 : -EIO);
 }
 
+int lfs_myclose(char *fname, lio_fuse_fd_t *fd)
+{
+  lio_fuse_t *lfs;
+  struct fuse_context *ctx;
+  ctx = fuse_get_context();
+  if (NULL == ctx || NULL == ctx->private_data)
+  {
+    log_printf(0, "ERROR_CTX:  unable to access fuse context or context is invalid");
+    return(-EINVAL);
+  }else
+  {
+    lfs = (lio_fuse_t*)ctx->private_data;
+  }
+  return lfs_myclose_real(fname, fd, lfs);
+}
+
 //*****************************************************************
 // lfs_release - Closes a file
 //*****************************************************************
-
-int lfs_release(const char *fname, struct fuse_file_info *fi)
+int lfs_release_real(const char *fname,
+                     struct fuse_file_info *fi,
+                     lio_fuse_t *lfs)
 {
   lio_fuse_fd_t *fd;
   int err;
@@ -1472,7 +1498,7 @@ int lfs_release(const char *fname, struct fuse_file_info *fi)
   }
 
   now = apr_time_now();
-  err = lfs_myclose((char *)fname, fd);
+  err = lfs_myclose_real((char *)fname, fd, lfs);
 
   dt = apr_time_now() - now;
   dt /= APR_USEC_PER_SEC;
@@ -1481,6 +1507,22 @@ int lfs_release(const char *fname, struct fuse_file_info *fi)
   return(err);
 }
 
+int lfs_release(const char *fname, struct fuse_file_info *fi)
+{
+  lio_fuse_t *lfs;
+  struct fuse_context *ctx;
+  ctx = fuse_get_context();
+  if (NULL == ctx || NULL == ctx->private_data)
+  {
+    log_printf(0, "ERROR_CTX:  unable to access fuse context or context is invalid");
+    return(-EINVAL);
+  }else
+  {
+    lfs = (lio_fuse_t*)ctx->private_data;
+  }
+  return lfs_release_real(fname, fi, lfs);
+}
+   
 //*****************************************************************
 // lfs_read - Reads data from a file
 //*****************************************************************
@@ -1496,26 +1538,40 @@ int lfs_read(const char *fname, char *buf, size_t size, off_t off, struct fuse_f
   apr_time_t now;
   double dt;
 
-ex_off_t t1, t2;
+  ex_off_t t1, t2;
   t1 = size; t2 = off;
   log_printf(1, "fname=%s size=" XOT " off=" XOT "\n", fname, t1, t2); flush_log();
 
   fd = (lio_fuse_fd_t *)fi->fh;
   if (fd == NULL) {
+     log_printf(0, "ERROR: Got a null file desriptor\n");
      return(-EBADF);
   }
 
+  lfs = NULL;
   lfs = fd->fh->lfs;
-
+  if (lfs == NULL)
+  {
+    log_printf(0, "ERROR: Got a null LFS handle\n");
+    return(-EBADF);
+  }
   now = apr_time_now();
 
   //** Do the read op
   ssize = segment_size(fd->fh->seg);
   pend = off + size;
-//log_printf(0, "ssize=" XOT " off=" XOT " len=" XOT " pend=" XOT "\n", ssize, off, size, pend);
-  if (pend > ssize) size = ssize - off;  //** Tweak the size based on how much data there is
-//log_printf(0, "tweaked len=" XOT "\n", size);
-  if (size <= 0) { return(0); }
+  log_printf(0, "ssize=" XOT " off=" XOT " len=" XOT " pend=" XOT "\n", ssize, off, size, pend);
+  if (pend > ssize)
+  {
+    if (off > ssize) {
+        // offset is past the end of the segment
+        return(0);
+    } else {
+        size = ssize - off;  //** Tweak the size based on how much data there is
+    }
+  }
+  log_printf(0, "tweaked len=" XOT "\n", size);
+  if (size <= 0) { log_printf(0, "Clipped tweaked len\n"); return(0); }
   tbuffer_single(&tbuf, size, buf);
   ex_iovec_single(&exv, off, size);
   err = gop_sync_exec(segment_read(fd->fh->seg, lfs->lc->da, 1, &exv, &tbuf, 0, lfs->lc->timeout));
@@ -1526,6 +1582,7 @@ ex_off_t t1, t2;
 
   if (err != OP_STATE_SUCCESS) {
      log_printf(1, "ERROR with read! fname=%s\n", fname);
+     printf("got value %d\n", err);
      return(-EIO);
   }
 
@@ -1548,7 +1605,7 @@ int lfs_write(const char *fname, const char *buf, size_t size, off_t off, struct
 
   now = apr_time_now();
 
-ex_off_t t1, t2;
+  ex_off_t t1, t2;
   t1 = size; t2 = off;
 
   fd = (lio_fuse_fd_t *)fi->fh;
@@ -2638,7 +2695,10 @@ int lfs_statfs(const char *fname, struct statvfs *fs)
 //
 //*************************************************************************
 
-void *lfs_init(struct fuse_conn_info *conn)
+void *lfs_init_real(struct fuse_conn_info *conn,
+                    const int argc,
+                    const char **argv,
+                    const char *mount_point)
 {
   lio_fuse_t *lfs;
   char *section =  "lfs";
@@ -2648,20 +2708,34 @@ void *lfs_init(struct fuse_conn_info *conn)
 //#ifdef HAVE_XATTR
 //  printf("XATTR found!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
 //#endif
+  printf("GOT INTO INIT_REAL!\n");
   lio_fuse_init_args_t *init_args;
-
+  lio_fuse_init_args_t real_args;
   // Retrieve the fuse_context, the last argument of fuse_main(...) is passed in the private_data field for use as a generic user arg. We pass the mount point in it.
   struct fuse_context *ctx;
-  ctx = fuse_get_context();
-  if (NULL == ctx || NULL == ctx->private_data)
+  if ((argc == 0) && (argv == NULL) && (mount_point == NULL))
   {
-    log_printf(0, "ERROR_CTX:  unable to access fuse context or context is invalid. (Hint: last arg of fuse_main(...) must be lio_fuse_init_args_t* and have the mount point set)");
-    return(NULL); //TODO: what is the best way to signal failure in the init function? Note that the return value of this function overwrites the .private_data field of the fuse context
-  }else
+    // I really don't get what indentation scheme's being followed here
+    // --AMM 9/20/13
+    ctx = fuse_get_context();
+    if (NULL == ctx || NULL == ctx->private_data)
+    {
+        log_printf(0, "ERROR_CTX:  unable to access fuse context or context is invalid. (Hint: last arg of fuse_main(...) must be lio_fuse_init_args_t* and have the mount point set)");
+        return(NULL); //TODO: what is the best way to signal failure in the init function? Note that the return value of this function overwrites the .private_data field of the fuse context
+    }else
+    {
+      init_args = (lio_fuse_init_args_t*)ctx->private_data;
+    }
+  }
+  else
   {
-    init_args = (lio_fuse_init_args_t*)ctx->private_data;
-  }  
-
+    // We weren't called by fuse, so the args are function arguments
+    // AMM - 9/23/13
+    init_args = &real_args;
+    init_args->lio_argc = argc;
+    init_args->lio_argv = argv;
+    init_args->mount_point = mount_point;
+  }
   lio_init(&init_args->lio_argc, &init_args->lio_argv); //This sets the global lio_gc, it also uses a reference count to safely handle extra calls to init
   init_args->lc = lio_gc;
 
@@ -2672,7 +2746,7 @@ void *lfs_init(struct fuse_conn_info *conn)
   lfs->mount_point = strdup(init_args->mount_point);
   lfs->mount_point_len = strlen(init_args->mount_point);
 
-  //** Load config info
+  //** Load config info.
   lfs->entry_to = inip_get_double(lfs->lc->ifd, section, "entry_timout", 1.0);
   lfs->attr_to = inip_get_double(lfs->lc->ifd, section, "stat_timout", 1.0);
   lfs->inode_cache_size = inip_get_integer(lfs->lc->ifd, section, "inode_cache_size", 1000000);
@@ -2713,7 +2787,10 @@ void *lfs_init(struct fuse_conn_info *conn)
 
   return(lfs); //
 }
-
+void *lfs_init(struct fuse_conn_info *conn)
+{
+  return lfs_init_real(conn,0,NULL,NULL);
+}
 //*************************************************************************
 // lio_fuse_destroy - Destroy a fuse object
 //
@@ -2732,7 +2809,7 @@ void lfs_destroy(void *private_data)
   apr_status_t value;
   lio_fuse_t *lfs;
 
-  log_printf(15, "shutting down\n"); flush_log();
+  log_printf(0, "shutting down\n"); flush_log();
 
   lfs = (lio_fuse_t*)private_data;  
   if (lfs == NULL){

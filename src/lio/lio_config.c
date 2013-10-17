@@ -1276,17 +1276,22 @@ int lio_shutdown()
   }
 
   cache_destroy(_lio_cache);
+  _lio_cache = NULL;
 
   lio_destroy(lio_gc);
+  lio_gc = NULL;  //** Reset the global to NULL so it's not accidentally reused.
 
   lc_object_remove_unused(0);
 
   apr_thread_mutex_destroy(_lc_lock);
   apr_pool_destroy(_lc_mpool);
-
+  _lc_mpool = NULL;
+  _lc_lock  = NULL;
   exnode_system_destroy();
 
   apr_wrapper_stop();
+
+  lio_ifd = NULL;
 
   return(0);
 }

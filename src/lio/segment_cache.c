@@ -3240,7 +3240,7 @@ segment_t *segment_cache_create(void *arg)
   s->page_size = 64*1024;
   s->n_ppages = 0;
 
-log_printf(2, "CACHE-PTR seg=" XIDT " s->c=%p\n", segment_id(seg), s->c);
+  log_printf(2, "CACHE-PTR seg=" XIDT " s->c=%p\n", segment_id(seg), s->c);
 
   generate_ex_id(&(seg->header.id));
   atomic_set(seg->ref_count, 0);

@@ -471,8 +471,8 @@ rss_rid_entry_t *rss_load_entry(inip_group_t *grp)
   rss_rid_entry_t *rse;
   inip_element_t *ele;
   char *key, *value;
-
-log_printf(0, "loading\n");
+  // SO noisy
+  //log_printf(0, "loading\n");
   //** Create the new RS list
   type_malloc_clear(rse, rss_rid_entry_t, 1);
   rse->status = RS_STATUS_UP;

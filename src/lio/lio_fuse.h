@@ -137,6 +137,9 @@ extern struct fuse_operations lfs_fops;
 void *lfs_init(struct fuse_conn_info *conn);  // returns pointer to lio_fuse_t on success, otherwise NULL
 void lfs_destroy(void *lfs); // expects a lio_fuse_t* as the argument
 
+// Forward declarations for non-FUSE consumers of this
+void *lfs_init_real(struct fuse_conn_info *conn, const int argc, const char **argv, const char *mount_point);
+
 #ifdef __cplusplus
 }
 #endif

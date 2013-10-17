@@ -54,7 +54,7 @@ if (XML2_FOUND)
 endif (XML2_FOUND)
 
 SET(LIBS ${LIBS} ${IBP_LIBRARY} ${GOP_LIBRARY} ${CZMQ_LIBRARY} ${TOOLBOX_LIBRARY} ${JERASURE_LIBRARY} ${OPENSSL_LIBRARIES} ${CRYPTO_LIBRARIES} 
-   ${APR_LIBRARY} ${APRUTIL_LIBRARY} ${HWLOC_LIBRARY} ${ZMQ_LIBRARY} ${FUSE_LIBRARY} ${XML_LIB} ${ZLIB_LIBRARY} ${XATTR_LIBRARY} pthread m dl rt lzma)
+   ${APR_LIBRARY} ${APRUTIL_LIBRARY} ${HWLOC_LIBRARY} ${ZMQ_LIBRARY} ${FUSE_LIBRARY} ${XML_LIB} ${ZLIB_LIBRARY} ${XATTR_LIBRARY} pthread m dl rt)
 
 #Make the version file
 set(LIO_CLIENT_VERSION "lio_client: v1.0.0")
@@ -122,7 +122,7 @@ set(LIO_EXE
     mk_linear ex_load ex_get ex_put ex_inspect ex_clone ex_rw_test log_test rs_test os_test os_fsck
     lio_touch lio_mkdir lio_rmdir lio_rm lio_ln lio_find lio_ls lio_du lio_setattr lio_getattr lio_mv lio_cp
     lio_put lio_get lio_signature lio_warm lio_inspect lio_fsck lio_rs lio_server lio_fuse arc_tag_create
-    arc_tag_destroy arc_tag arc_tag_ls
+    arc_tag_destroy arc_tag arc_tag_ls lio_test
 )
 
 #Make static executables by default
@@ -155,6 +155,11 @@ install(FILES
    cache_lru_priv.h  ds_ibp_priv.h            ex3_header.h    exnode3.h          raid4.h          segment_cache_priv.h  segment_log_priv.h  view_layout.h
    cache_priv.h      erasure_tools.h          ex3_linear.h    rs_query_base.h    segment_file.h   segment_lun.h         cache.h
    authn_abstract.h  authn_fake.h      	      osaz_fake.h     rs_remote.h
+   lio_abstract.h    os_remote.h              rs_zmq.h
+   cache_round_robin.h
+   service_manager.h
+   resource_service_abstract.h
+   object_service_abstract.h
    DESTINATION include/lio )
 
 
