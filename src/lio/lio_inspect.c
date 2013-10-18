@@ -248,8 +248,9 @@ int main(int argc, char **argv)
      printf("    -s                 - Report soft errors, like a missing RID in the config file but the allocation is good.\n");
      printf("                         The default is to ignore these type of errors.\n");
      printf("    -r                 - Use reconstruction for all repairs. Even for data placement issues.\n");
-     printf("                         Not always successful.  Try without option in those cases.\n");
-     printf("                         Even for data placement issues. Could fail\n");
+     printf("                         Not always successful.The default is to use depot-to-depot copies if possible.\n");
+     printf("                         This can lead to drive hotspots if migrating data from a failing drive\n");
+     printf("                         which can be avoided by using this option.\n");
      printf("    -q  extra_query    - Extra RS query for data placement. AND-ed with default query\n");
      printf("    -bl key value      - Blacklist the given key/value combination. Multiple -bl options can be provided\n");
      printf("                         For a RID use: rid_key rid     Hostname: host hostname\n");

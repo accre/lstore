@@ -89,10 +89,10 @@ int main(int argc, char **argv)
 //printf("argc=%d\n", argc);
   if (argc < 2) {
      printf("\n");
-     printf("lio_mkdir LIO_COMMON_OPTIONS [-ex exnode.ex3] dir1 dir22 ...\n");
+     printf("lio_mkdir LIO_COMMON_OPTIONS [-ex exnode.ex3] dir1 dir2 ...\n");
      lio_print_options(stdout);
-     printf("    -ex exnode.ex3      - Optional exnode to use.  Defaults to parent dir.\n");
-     printf("    dir*                - New directories to create\n");
+     printf("    -ex exnode.ex3      - Optional exnode to use.  Defaults to using the parent directory's exnode.\n");
+     printf("    dir1 dir2 ...       - New directories to create\n");
      return(1);
   }
 

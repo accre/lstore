@@ -143,9 +143,9 @@ int main(int argc, char **argv)
      lio_print_options(stdout);
 //     lio_print_path_options(stdout);
      printf("\n");
-     printf("    -ln                - Follow links.  Otherwise they are ignored\n");
-     printf("    src_path*          - Source path glob to move\n");
-     printf("    dest_path          - Destination directory of file\n");
+     printf("    -ln                    - Follow links.  Otherwise they are ignored\n");
+     printf("    src_path1 .. src_pathN - Source path glob to move\n");
+     printf("    dest_path              - Destination directory or file name\n");
      return(1);
   }
 

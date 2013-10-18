@@ -151,7 +151,7 @@ int main(int argc, char **argv)
      lio_print_options(stdout);
      lio_print_path_options(stdout);
      printf("    -rd recurse_depth  - Max recursion depth on directories. Defaults to %d\n", recurse_depth);
-     printf("    -dt time       - Duration time in sec.  Default is %d sec\n", dt);
+     printf("    -dt time           - Duration time in sec.  Default is %d sec\n", dt);
      return(1);
   }
 

@@ -117,7 +117,7 @@ int main(int argc, char **argv)
      printf("    -delim c           - Key/value delimeter characters.  Defauls is %s.\n", delims);
      printf("    -as key=value      - Breaks up the literal string into the key/value pair and stores it.\n");
      printf("    -ar key            - Remove the key.\n");
-     printf("    -af key=vfilename  - Similar to -as but the valure is loaded from the given vfilename.\n");
+     printf("    -af key=vfilename  - Similar to -as but the value is loaded from the given vfilename.\n");
      printf("    -al key=sobj_path/skey - Symlink the key to another objects (sobj_path) key(skey).\n");
      printf("\n");
      printf("       NOTE: Multiple -as/-ar/-af/-al clauses are allowed\n\n");
