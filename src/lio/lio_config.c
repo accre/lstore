@@ -1161,7 +1161,7 @@ int lio_init(int *argc, char ***argvp)
   nargs = 1;  //** argv[0] is preserved as the calling name
   myargv[0] = argv[0];
   i=1;
-  ll = -1;
+  ll = 0;
   auto_mode = -1;
 
   if (*argc < 2) goto no_args;  //** Nothing to parse
@@ -1242,7 +1242,7 @@ no_args:
   if (cfg_name != NULL) {
      mlog_load(cfg_name);
 
-     if (ll > -1) set_log_level(ll);
+     set_log_level(ll);
 
      lio_gc = lio_create(cfg_name, section_name, userid);
      lio_gc->ref_cnt = 1;
