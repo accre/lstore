@@ -104,6 +104,7 @@ set(LIO_OBJS
    raid4.c
    service_manager.c
    zhelpers.c
+   archive.c
 )
 
 set(LIBLIO_TRACE_OBJS liblio_trace.c )
