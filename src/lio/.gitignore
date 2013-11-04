@@ -1,6 +1,7 @@
 #Ignore binaries
 *.so
 *.a
+arc_create
 arc_tag
 arc_tag_create
 arc_tag_destroy
