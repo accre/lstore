@@ -158,7 +158,7 @@ int run_tape_copy(char *server, char *dest) {
     } else if (exit_status == 1) {
         printf("ERROR: Generic failure running tape copy\n");
     }
-    return exit_status;
+    return(exit_status);
 }
 //**********************************************************************************
 // Processes the ini file and archives the appropriate data
@@ -175,7 +175,7 @@ int process_tag_file(char *tag_file, char *tag_name) {
     inip_file_t *ini_fd;
     inip_group_t *ini_g;
     inip_element_t *ele;
-    char *key, *value, arc_server;
+    char *key, *value, *arc_server;
 
     /*** Check for tag file existence and read permission ***/
     if (((access(tag_file, F_OK)) == -1) || ((access(tag_file, R_OK)) == -1)) {
@@ -221,7 +221,7 @@ int process_tag_file(char *tag_file, char *tag_name) {
                     // Write the data to tape via TiBS
                     res = run_tape_copy(arc_server, dest);
                     if (res != 0) {
-                        printf("ERROR: Writing to tape has failed for %s\n", dest);
+                        printf("ERROR: %d: Writing to tape has failed for %s\n", res, dest);
                     }
                 }
             }
@@ -276,5 +276,5 @@ int main(int argc, char **argv) {
 
     lio_shutdown();
 
-    return (0);
+    return(0);
 }
