@@ -116,6 +116,7 @@ typedef struct {
   cache_partial_page_t *ppage;
   char *ppages_buffer;
   atomic_int_t cache_check_in_progress;
+  atomic_int_t dumping_pages;
   int close_requested;
   int n_ppages;
   int ppages_used;
