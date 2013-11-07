@@ -1227,13 +1227,13 @@ no_args:
   if (cfg_name == NULL) {
     if (os_local_filetype("lio.cfg") != 0) {
        cfg_name = "lio.cfg";
-    } else if (os_local_filetype("/etc/lio/lio.cfg") != 0) {
-       cfg_name = "/etc/lio/lio.cfg";
     } else {
       home = getenv("HOME");
       snprintf(buffer, sizeof(buffer), "%s/.lio/lio.cfg", home);
       if (os_local_filetype(buffer) != 0) {
          cfg_name = strdup(buffer);
+      } else if (os_local_filetype("/etc/lio/lio.cfg") != 0) {
+         cfg_name = "/etc/lio/lio.cfg";
       }
     }
   }
