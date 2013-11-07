@@ -496,7 +496,7 @@ void change_all_hportal_conn(portal_context_t *hpc, int min_conn, int max_conn)
 //        NOTE:  No locking is performed
 //*************************************************************************
 
-void _add_hportal_op(host_portal_t *hp, op_generic_t *hsop, int addtotop)
+void _add_hportal_op(host_portal_t *hp, op_generic_t *hsop, int addtotop, int release_master)
 {
   command_op_t *hop = &(hsop->op->cmd);
   Stack_ele_t *ele;
@@ -509,6 +509,10 @@ void _add_hportal_op(host_portal_t *hp, op_generic_t *hsop, int addtotop)
     move_to_bottom(hp->que);
     insert_below(hp->que, (void *)hsop);
   };
+
+  //** Since we've now added the op to the hp que we can release the master lock if needed
+  //** without fear of having the compact_hportals() coming in and destroying the hp
+  if (release_master == 1) apr_thread_mutex_unlock(hp->context->lock);
 
   //** Check if we need a little pre-processing
   if (hop->on_submit != NULL) {
@@ -798,7 +802,7 @@ int submit_hp_direct_op(portal_context_t *hpc, op_generic_t *op)
                      log_printf(15, "submit_hp_direct_op(A): before submit ns=%d opid=%d wl=%d\n",ns_getid(hc->ns), op->base.id, hc->curr_workload);
                      unlock_hc(hc);
                      hportal_unlock(shp);
-                     status = submit_hportal(shp, op, 1);
+                     status = submit_hportal(shp, op, 1, 0);
                      log_printf(15, "submit_hp_direct_op(A): after submit ns=%d opid=%d\n",ns_getid(hc->ns), op->base.id);
                      hportal_unlock(hp);
                      return(status);
@@ -808,7 +812,7 @@ int submit_hp_direct_op(portal_context_t *hpc, op_generic_t *op)
             } else {
               hportal_unlock(shp);
               log_printf(15, "submit_hp_direct_op(B): opid=%d\n", op->base.id);
-              status = submit_hportal(shp, op, 1);
+              status = submit_hportal(shp, op, 1, 0);
               hportal_unlock(hp);
               return(status);
             }
@@ -828,7 +832,7 @@ int submit_hp_direct_op(portal_context_t *hpc, op_generic_t *op)
       return(-1);
    }
    push(hp->direct_list, (void *)shp);
-   status = submit_hportal(shp, op, 1);
+   status = submit_hportal(shp, op, 1, 0);
    
    hportal_unlock(hp);
 
@@ -840,10 +844,10 @@ int submit_hp_direct_op(portal_context_t *hpc, op_generic_t *op)
 //     spawns any new connections if needed
 //*************************************************************************
 
-int submit_hportal(host_portal_t *hp, op_generic_t *op, int addtotop)
+int submit_hportal(host_portal_t *hp, op_generic_t *op, int addtotop, int release_master)
 {
    hportal_lock(hp);
-   _add_hportal_op(hp, op, addtotop);  //** Add the task
+   _add_hportal_op(hp, op, addtotop, release_master);  //** Add the task
    hportal_unlock(hp);
 
    //** Now figure out how many new connections are needed, if any
@@ -887,8 +891,10 @@ host_portal_t *hp2 = _lookup_hportal(hpc, hop->hostport);
 log_printf(15, "submit_hp_que_op: after lookup hp2=%p\n", hp2);
    }
 
-   apr_thread_mutex_unlock(hpc->lock);
+   //** This is done in the submit_hportal() since we have release_master=1
+   //** This protects against accidental compaction removal
+   //** apr_thread_mutex_unlock(hpc->lock);   
 
-   return(submit_hportal(hp, op, 0));
+   return(submit_hportal(hp, op, 0, 1));
 }
 

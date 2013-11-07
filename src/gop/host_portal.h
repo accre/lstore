@@ -124,7 +124,7 @@ void change_all_hportal_conn(portal_context_t *hpc, int min_conn, int max_conn);
 void _hp_fail_tasks(host_portal_t *hp, op_status_t err_code);
 void check_hportal_connections(host_portal_t *hp);
 int submit_hp_direct_op(portal_context_t *hpc, op_generic_t *op);
-int submit_hportal(host_portal_t *dp, op_generic_t *op, int addtotop);
+int submit_hportal(host_portal_t *dp, op_generic_t *op, int addtotop, int release_master);
 int submit_hp_que_op(portal_context_t *hpc, op_generic_t *op);
 
 //** Routines for hconnection.c

@@ -586,11 +586,13 @@ int main(int argc, char **argv)
   apr_pool_t *mpool;
   apr_thread_t *server_thread, *client_thread;
   apr_status_t dummy;
-  int i, start_option, do_random;
+  int i, start_option, do_random, ll;
   int64_t lsize = 0;
   char buf1[256], buf2[256];
   char *logfile = NULL;
   uint64_t n;
+
+  ll = 0;
 
   if (argc < 2) {
      printf("mqs_test [-d log_level] [-log log_file] [-log_size size] [-t min max] [-p min max] [-np nparalle] [-nt ntotal] [-z] [-0] \n");
@@ -615,7 +617,7 @@ int main(int argc, char **argv)
 
      if (strcmp(argv[i], "-d") == 0) { //** Enable debugging
         i++;
-        set_log_level(atol(argv[i]));
+        ll = atol(argv[i]);
         i++;
      } else if (strcmp(argv[i], "-h") == 0) { //** Print help
         printf("mq_test [-d log_level]\n");
@@ -670,6 +672,8 @@ log_printf(0, "after init opque_count=%d\n", _opque_counter);
 
   if (logfile != NULL) open_log(logfile);
   if (lsize != 0) set_log_maxsize(lsize);
+
+  set_log_level(ll);
 
   //** Make the test_data to pluck info from
   type_malloc_clear(test_data, char, test_size);

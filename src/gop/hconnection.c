@@ -510,20 +510,20 @@ log_printf(5, "send_thread has exited\n");
 
      if (hc->curr_op != NULL) {  //** This is from the sending thread
         log_printf(15, "hc_recv_thread: ns=%d Pushing sending thread task on stack gid=%d\n", ns_getid(ns), gop_id(hc->curr_op));
-        submit_hportal(hp, hc->curr_op, 1);
+        submit_hportal(hp, hc->curr_op, 1, 0);
         pending = 1;
      }
      if (hsop != NULL) {  //** This is my command
         log_printf(15, "hc_recv_thread: ns=%d Pushing current recving task on stack gid=%d\n", ns_getid(ns), gop_id(hsop));
         hop = &(hsop->op->cmd);
         hop->retry_count--;  //** decr in case this command is a problem
-        submit_hportal(hp, hsop, 1);
+        submit_hportal(hp, hsop, 1, 0);
         pending = 1;
      }
 
      //** and everything else on the pending_stack
      while ((hsop = (op_generic_t *)pop(hc->pending_stack)) != NULL) {
-        submit_hportal(hp, hsop, 1);
+        submit_hportal(hp, hsop, 1, 0);
         pending = 1;
      }
   }
