@@ -498,7 +498,7 @@ int fobj_wait(object_service_fn_t *os, fobj_lock_t *fol, osfile_fd_t *fd, int ma
   osfile_priv_t *osf = (osfile_priv_t *)os->priv;
   pigeon_coop_hole_t task_pch;
   fobj_lock_task_t *handle;
-  int aborted, loop;
+  int aborted, loop, dummy;
   apr_time_t timeout = apr_time_make(max_wait, 0);
   apr_time_t dt, start_time;
 
@@ -516,21 +516,25 @@ int fobj_wait(object_service_fn_t *os, fobj_lock_t *fol, osfile_fd_t *fd, int ma
   //** Sleep until it's my turn.  Remember fobj_lock is already set upon entry
   start_time = apr_time_now();
   do {
-    loop = 0;
+    loop = 1;
     apr_thread_cond_timedwait(handle->cond, osf->fobj_lock, timeout);
     aborted = handle->abort;
 
-    move_to_top(fol->stack);
-    handle = (fobj_lock_task_t *)get_ele_data(fol->stack);
-    if (handle != NULL) {
-       if (handle->fd->uuid == fd->uuid) loop = 1;
-    }
+//    move_to_top(fol->stack);
+//    handle = (fobj_lock_task_t *)get_ele_data(fol->stack);
+//    if (handle != NULL) {
+//       if (handle->fd->uuid == fd->uuid) loop = 1;
+//    }
     dt = apr_time_now() - start_time;
+
+dummy = apr_time_sec(dt);
+  log_printf(15, "CHECKING id=%s fname=%s mymode=%d read_count=%d write_count=%d handle=%p abort=%d uuid=" LU " dt=%d\n", fd->id, fd->object_name, fd->mode, fol->read_count, fol->write_count, handle, aborted, fd->uuid, dummy);
     
-    if ((aborted == 1) || (dt > timeout)) loop = 1;
+//    if ((aborted == 1) || (dt > timeout)) loop = 1;
+//    if ((dt < timeout)) loop = 0;
   } while (loop == 0);
 
-int dummy = apr_time_sec(dt);
+dummy = apr_time_sec(dt);
   log_printf(15, "AWAKE id=%s fname=%s mymode=%d read_count=%d write_count=%d handle=%p abort=%d uuid=" LU " dt=%d\n", fd->id, fd->object_name, fd->mode, fol->read_count, fol->write_count, handle, aborted, fd->uuid, dummy);
 
   //** I'm popped off the stack so just free my handle and update the counter
@@ -673,7 +677,7 @@ void full_object_unlock(osfile_fd_t *fd)
          pop(fol->stack);  //** Clear it from the stack. It's already stored in handle above
          log_printf(15, "WAKEUP ALARM fname=%s mymode=%d read_count=%d write_count=%d handle=%p\n", fd->object_name, fd->mode, fol->read_count, fol->write_count, handle);
          handle->abort = 0;
-         apr_thread_cond_signal(handle->cond);   //** They will wake up when fobj_lock is released in the calling routine
+         apr_thread_cond_broadcast(handle->cond);   //** They will wake up when fobj_lock is released in the calling routine
      }
   }
 
@@ -3531,7 +3535,7 @@ op_status_t osfile_open_object_fn(void *arg, int id)
   osf_obj_unlock(lock);
 
   err = full_object_lock(fd, op->max_wait);  //** Do a full lock if needed
-log_printf(15, "full_object_lock=%d fname=%s\n uuid=" LU "\n", err, fd->object_name, fd->uuid);
+log_printf(15, "full_object_lock=%d fname=%s uuid=" LU " max_wait=%d\n", err, fd->object_name, fd->uuid, op->max_wait);
   if (err != 0) {  //** Either a timeout or abort occured
      *(op->fd) = NULL;
 
