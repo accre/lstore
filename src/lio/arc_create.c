@@ -84,7 +84,7 @@ void check_path(char *path) {
 //**********************************************************************************
 
 int run_lstore_copy(char *dest, char *path, char *regex_path, char *regex_object, int obj_types, int recurse_depth) {
-    int res = 0;
+    int res = EXIT_SUCCESS;
     lio_path_tuple_t dtuple;
     os_regex_table_t *rp, *ro;
     lio_cp_path_t *flist;
@@ -167,7 +167,7 @@ int run_tape_copy(char *server, char *dest) {
 //**********************************************************************************
 
 int set_tapeid_attr(char *dest) {
-    int res = 0;
+    int res = EXIT_SUCCESS;
     lio_path_tuple_t dtuple;
     os_object_iter_t *it;
     os_regex_table_t *rp_single, *ro_single = NULL;
@@ -233,7 +233,7 @@ int set_tapeid_attr(char *dest) {
 //**********************************************************************************
 
 int process_tag_file(char *tag_file, char *tag_name) {
-    int res = 0;
+    int res = EXIT_SUCCESS;
     char *name = NULL;
     char *path = NULL;
     char *regex_path = NULL;
@@ -343,11 +343,11 @@ int main(int argc, char **argv) {
     /*** If no tag file was specified, set to the default ***/
     if (tag_file == NULL) {
         char *homedir = getenv("HOME");
-        tag_file = strcat(homedir, "/.arc_tag_file.txt");
+        tag_file = concat(homedir, "/.arc_tag_file.txt");
     }
     process_tag_file(tag_file, tag_name);
 
     lio_shutdown();
 
-    return (0);
+    return(EXIT_SUCCESS);
 }
