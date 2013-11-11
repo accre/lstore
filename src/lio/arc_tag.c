@@ -33,6 +33,7 @@ http://www.accre.vanderbilt.edu
 #include <unistd.h>
 #include "object_service_abstract.h"
 #include "lio_abstract.h"
+#include "archive.h"
 
 /*** TODO: check for duplicate tags (compairing both to INI contents and current command contents)  ***/
 void add_tag(char *tag_file, char *tag_name, char *path, const char *regex_path, const char *regex_object, int obj_types, int recurse_depth) {
@@ -128,7 +129,7 @@ int main(int argc, char **argv)
     start_index = i;
     if (tag_file == NULL) {
       char *homedir = getenv("HOME");
-      tag_file = strcat(homedir, "/.arc_tag_file.txt");
+      tag_file = concat(homedir, "/.arc_tag_file.txt");
     }
   
     if (((access (tag_file, F_OK)) == -1) || ((access(tag_file, W_OK)) == -1)) {

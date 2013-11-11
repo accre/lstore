@@ -38,7 +38,7 @@ http://www.accre.vanderbilt.edu
 #include "type_malloc.h"
 #include "thread_pool.h"
 #include "apr_time.h"
-
+#include "archive.h"
 
 
 
@@ -90,7 +90,7 @@ int run_lstore_copy(char *dest, char *path, char *regex_path, char *regex_object
     lio_cp_path_t *flist;
     int dtype, buffer_size, max_spawn;
     op_status_t status;
-    
+
 
     //TODO add this as an CLI option 
     //** Store the buffer size
@@ -123,19 +123,19 @@ int run_lstore_copy(char *dest, char *path, char *regex_path, char *regex_object
     flist[0].max_spawn = max_spawn;
     flist[0].bufsize = buffer_size;
 
-    status = lio_cp_path_fn(&(flist[0]), 0);    
+    status = lio_cp_path_fn(&(flist[0]), 0);
     if (status.op_status != OP_STATE_SUCCESS) {
         printf("ERROR: with copy src=%s  dest=%s\n", flist[0].src_tuple.path, dtuple.path);
         res = 5;
         goto finally;
     }
-    
-    finally:
-        lio_path_release(&dtuple);
-        lio_path_release(&(flist[0].src_tuple));
-        os_regex_table_destroy(flist[0].path_regex);        
-        free(flist);
-        return(res);
+
+finally:
+    lio_path_release(&dtuple);
+    lio_path_release(&(flist[0].src_tuple));
+    os_regex_table_destroy(flist[0].path_regex);
+    free(flist);
+    return (res);
 }
 
 
@@ -146,7 +146,7 @@ int run_lstore_copy(char *dest, char *path, char *regex_path, char *regex_object
 int run_tape_copy(char *server, char *dest) {
     // should not be hardcoded
     char *script = "/tibs/bin/archive.sh";
-    int len = sizeof(script) + sizeof(server) + sizeof(dest);
+    int len = sizeof (script) + sizeof (server) + sizeof (dest);
     char cmd[len];
     sprintf(cmd, "%s %s %s", script, server, dest);
     int res = system(cmd);
@@ -158,8 +158,76 @@ int run_tape_copy(char *server, char *dest) {
     } else if (exit_status == 1) {
         printf("ERROR: Generic failure running tape copy\n");
     }
-    return(exit_status);
+    return (exit_status);
 }
+
+
+//**********************************************************************************
+// Sets the user.tapeid attribute on the files archived
+//**********************************************************************************
+
+int set_tapeid_attr(char *dest) {
+    int res = 0;
+    lio_path_tuple_t dtuple;
+    os_object_iter_t *it;
+    os_regex_table_t *rp_single, *ro_single = NULL;
+
+    res = lioc_set_attr(lio_gc, lio_gc->creds, dest, NULL, ARCHIVE_TAPE_ATTRIBUTE, (char *) dest, strlen(dest));
+    if (res != OP_STATE_SUCCESS) {
+        printf("ERROR: Failed to set tapeid attribute! on %s\n", dest);
+    } else {
+        char *lio_dest = concat("@:", dest);
+        dtuple = lio_path_resolve(lio_gc->auto_translate, dest);
+        rp_single = os_path_glob2regex(dtuple.path);
+        it = os_create_object_iter(dtuple.lc->os, dtuple.creds, rp_single, ro_single, OS_OBJECT_ANY, NULL, 10000, NULL, 0);
+        if (it == NULL) {
+            printf("ERROR: Failed to create iterator!\n");
+            res = 1;
+        } else {
+            int ftype, prefix_len;
+            char *fname;
+            int err = 0;
+            os_fd_t *fd;
+
+            while ((ftype = os_next_object(dtuple.lc->os, it, &fname, &prefix_len)) > 0) {
+                // Open the file
+                err = gop_sync_exec(os_open_object(dtuple.lc->os, dtuple.creds, fname, OS_MODE_READ_IMMEDIATE, NULL, &fd, 30));
+                if (err != OP_STATE_SUCCESS) {
+                    printf("ERROR: Failed to open file: %s.  Skipping.\n", fname);
+                } else {
+                    printf ("Creating symlink,  src: %s  attr: %s  val: %s\n", dest, ARCHIVE_TAPE_ATTRIBUTE, dest);
+                    // Create the symlink
+                    err = gop_sync_exec(os_symlink_attr(dtuple.lc->os, dtuple.creds, dest, ARCHIVE_TAPE_ATTRIBUTE, fd, dest));
+                    if (err != OP_STATE_SUCCESS) {
+                        printf("ERROR: Failed to link file: %s\n", fname);
+                    }
+                    printf("DEBUG:  closing file\n");
+                    // Close the file
+                    err = gop_sync_exec(os_close_object(dtuple.lc->os, fd));
+                    if (err != OP_STATE_SUCCESS) {
+                        printf("ERROR: Failed to close file: %s\n", fname);
+                    }
+                }
+
+                free(fname);
+            }
+            os_destroy_object_iter(dtuple.lc->os, it);
+        }
+        lio_path_release(&dtuple);
+        if (rp_single != NULL) {
+            os_regex_table_destroy(rp_single);
+            rp_single = NULL;
+        }
+        if (ro_single != NULL) {
+            os_regex_table_destroy(ro_single);
+            ro_single = NULL;
+        }
+    }
+
+    return (res);
+}
+
+
 //**********************************************************************************
 // Processes the ini file and archives the appropriate data
 //**********************************************************************************
@@ -222,6 +290,11 @@ int process_tag_file(char *tag_file, char *tag_name) {
                     res = run_tape_copy(arc_server, dest);
                     if (res != 0) {
                         printf("ERROR: %d: Writing to tape has failed for %s\n", res, dest);
+                    } else {
+                        res = set_tapeid_attr(dest);
+                        if (res != 0) {
+                            printf("Failed to set tape id attribute for %s\n", dest);
+                        }
                     }
                 }
             }
@@ -276,5 +349,5 @@ int main(int argc, char **argv) {
 
     lio_shutdown();
 
-    return(0);
+    return (0);
 }

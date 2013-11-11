@@ -27,6 +27,7 @@ Nashville, TN 37203
 http://www.accre.vanderbilt.edu
 */
 
+#define ARCHIVE_TAPE_ATTRIBUTE "user.tapeid"
 
 // concatenate two strings together
 char* concat(char *str1, char *str2);
