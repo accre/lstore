@@ -105,6 +105,10 @@ typedef struct {
   char *owner;
 } lioc_fsck_check_t;
 
+typedef struct {
+  lio_path_tuple_t tuple;
+  ex_off_t new_size;
+} lioc_trunc_t;
 
 //***********************************************************************
 // lioc_free_mk_mv_rm
@@ -1919,5 +1923,101 @@ log_printf(15, "slot=%d fname=%s\n", slot, c->src_tuple.path);
   status = op_success_status;
   if (nerr > 0) {status.op_status = OP_STATE_FAILURE; status.error_code = nerr; }
   return(status);
+}
+
+
+//***********************************************************************
+// lioc_truncate_fn - Performs an segment truncation
+//***********************************************************************
+
+op_status_t lioc_truncate_fn(void *arg, int tid)
+{
+  lioc_trunc_t *op = (lioc_trunc_t *)arg;
+  char *ex_data, buffer[128];
+  exnode_t *ex;
+  exnode_exchange_t *exp;
+  segment_t *seg;
+  char *key[] = {"system.exnode", "system.exnode.size", "os.timestamp.system.modify_data"};
+  char *val[3];
+  int v_size[3], err, hard_errors, ftype;
+  op_status_t status;
+
+  status = op_failure_status;
+
+  //** Check if it exists
+  ftype = lioc_exists(op->tuple.lc, op->tuple.creds, op->tuple.path);
+
+log_printf(5, "fname=%s\n", op->tuple.path, ftype);
+
+  if ((ftype & OS_OBJECT_FILE) == 0) { //** Doesn't exist or is a dir
+     info_printf(lio_ifd, 1, "ERROR source file(%s) doesn't exist or is a dir ftype=%d!\n", op->tuple.path, ftype);
+     goto finished;
+  }
+
+  //** Get the exnode
+  v_size[0] = -op->tuple.lc->max_attr;
+  err = lioc_get_attr(op->tuple.lc, op->tuple.creds, op->tuple.path, NULL, "system.exnode", (void **)&ex_data, v_size);
+  if (err != OP_STATE_SUCCESS) {
+     info_printf(lio_ifd, 0, "Failed retrieving exnode!  path=%s\n", op->tuple.path);
+     goto finished;
+  }
+
+  //** Load it
+  exp = exnode_exchange_text_parse(ex_data);
+  ex = exnode_create();
+  if (exnode_deserialize(ex, exp, op->tuple.lc->ess) != 0) {
+     info_printf(lio_ifd, 0, "ERROR parsing exnode!  Aborting!\n");
+     exnode_destroy(ex);
+     exnode_exchange_destroy(exp);
+     goto finished;
+  }
+
+  //** Get the default view to use
+  seg = exnode_get_default(ex);
+  if (seg == NULL) {
+     info_printf(lio_ifd, 0, "No default segment!  Aborting!\n");
+     exnode_destroy(ex);
+     exnode_exchange_destroy(exp);
+     goto finished;
+  }
+
+  err = gop_sync_exec(segment_truncate(seg, op->tuple.lc->da, op->new_size, 60));
+
+  //** Serialize the exnode
+  exnode_exchange_free(exp);
+  exnode_serialize(ex, exp);
+
+  //** Update the OS exnode
+  val[0] = exp->text.text;  v_size[0] = strlen(val[0]);
+  sprintf(buffer, I64T, op->new_size);
+  val[1] = buffer; v_size[1] = strlen(val[1]);
+  val[2] = NULL; v_size[2] = 0;
+  err = lioc_set_multiple_attrs(op->tuple.lc, op->tuple.creds, op->tuple.path, NULL, key, (void **)val, v_size, 3);
+
+  //**Update the error counts if needed
+  hard_errors = lioc_update_error_counts(op->tuple.lc, op->tuple.creds, op->tuple.path, seg);
+
+  exnode_destroy(ex);
+  exnode_exchange_destroy(exp);
+
+  if (hard_errors == 0) status = op_success_status;
+
+finished:
+  return(status);
+}
+
+//***********************************************************************
+// lioc_truncate - Truncates an object
+//***********************************************************************
+
+op_generic_t *lioc_truncate(lio_path_tuple_t *tuple, ex_off_t new_size)
+{
+  lioc_trunc_t *op;
+
+  type_malloc_clear(op, lioc_trunc_t, 1);
+
+  op->tuple = *tuple;
+  op->new_size = new_size;
+  return(new_thread_pool_op(tuple->lc->tpc_unlimited, NULL, lioc_truncate_fn, (void *)op, free, 1));
 }
 
