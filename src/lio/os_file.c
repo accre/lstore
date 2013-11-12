@@ -3057,6 +3057,7 @@ int osf_set_attr(object_service_fn_t *os, creds_t *creds, osfile_fd_t *ofd, char
 
   n = osf_resolve_attr_path(os, fname, ofd->object_name, attr, ofd->ftype, atype, 20);
   if (n != 0) {
+     log_printf(15, "ERROR resolving path: fname=%s object_name=%s attr=%s\n", fname, ofd->object_name, attr);
      return(1);
   }
 

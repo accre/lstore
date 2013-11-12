@@ -181,7 +181,7 @@ int main(int argc, char **argv)
         return(2);
      }
   } else {
-    start_index--;  //** Ther 1st entry will be the rp created in lio_parse_path_options
+    start_index--;  //** The 1st entry will be the rp created in lio_parse_path_options
   }
 
   for (j=start_index; j<argc; j++) {
