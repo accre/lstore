@@ -31,6 +31,7 @@ http://www.accre.vanderbilt.edu
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
+#include "archive.h"
 
 
 void destroy_tag_file(const char *filepath) 
@@ -70,7 +71,7 @@ int main(int argc, char **argv)
   }
   if (path == NULL) {
     char *homedir = getenv("HOME");
-    path = strcat(homedir, "/.arc_tag_file.txt");
+    path = concat(homedir, "/.arc_tag_file.txt");
   }
   destroy_tag_file(path);
 }

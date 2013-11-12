@@ -32,6 +32,7 @@ http://www.accre.vanderbilt.edu
 #include <string.h>
 #include <unistd.h>
 #include <time.h>
+#include "archive.h"
 
 
 void create_tag_file(const char *filepath, int flush) {
@@ -90,7 +91,7 @@ int main(int argc, char **argv)
   }
   if (path == NULL) {
     char *homedir = getenv("HOME");
-    path = strcat(homedir, "/.arc_tag_file.txt");
+    path = concat(homedir, "/.arc_tag_file.txt");
   }
   create_tag_file(path, flush);
 }

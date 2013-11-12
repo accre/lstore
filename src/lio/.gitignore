@@ -67,3 +67,5 @@ Makefile
 cmake_install.cmake
 install_manifest.txt
 
+# netbeans info
+nbproject
