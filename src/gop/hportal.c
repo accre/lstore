@@ -693,6 +693,7 @@ void check_hportal_connections(host_portal_t *hp)
 
        if ((hp->n_conn+n_newconn) > hp->max_conn) {
           n_newconn = hp->max_conn - hp->n_conn;
+          if (n_newconn < 0) n_newconn = 0;
       }
    }
 
