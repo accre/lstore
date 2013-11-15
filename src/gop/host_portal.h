@@ -54,6 +54,10 @@ extern "C" {
 typedef struct {       //** Contains information about the depot including all connections
   char skey[512];         //** Search key used for lookups its "host:port:type:..." Same as for the op
   char host[512];         //** Hostname
+  int oops_neg;           //** All the oops are just for tracking down a bug and should be removed once it's found and fixed.
+  int oops_check;
+  int oops_recv_start;
+  int oops_recv_end;
   int port;               //** port
   int invalid_host;       //** Flag that this host is not resolvable
   int64_t workload;       //** Amount of work left in the feeder que

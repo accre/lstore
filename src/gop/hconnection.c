@@ -377,6 +377,7 @@ void *hc_recv_thread(apr_thread_t *th, void *data)
 
   //** Get the initial cmd count -- Used at the end to decide if retry
   hportal_lock(hp);
+  hp->oops_recv_start++;
   start_cmds_processed = hp->cmds_processed;
   hportal_unlock(hp);
 
@@ -533,6 +534,8 @@ log_printf(5, "send_thread has exited\n");
   //** Now remove myself from the hportal
 //  if (hp->n_conn != stack_size(hp->conn_list)) log_printf(0, "hc_recv_thread: ns=%d hp->n_conn=%d stack_size(hp->conn_list)=%d N_CONN ERROR!!!!!!\n", ns_getid(ns), hp->n_conn, stack_size(hp->conn_list));
 
+  hp->oops_recv_end++;
+  if (hp->n_conn < 0) hp->oops_neg++;
   if (hp->n_conn > 0) hp->n_conn--;
   move_to_ptr(hp->conn_list, hc->my_pos);
   delete_current(hp->conn_list, 1, 0);

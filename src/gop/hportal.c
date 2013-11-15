@@ -35,6 +35,7 @@ http://www.accre.vanderbilt.edu
 #include <stdio.h>
 #include <apr_thread_proc.h>
 #include <assert.h>
+#include "type_malloc.h"
 #include "dns_cache.h"
 #include "host_portal.h"
 #include "fmttypes.h"
@@ -93,7 +94,7 @@ host_portal_t *create_hportal(portal_context_t *hpc, void *connect_context, char
   host_portal_t *hp;
 
 log_printf(15, "create_hportal: hpc=%p\n", hpc);
-  assert((hp = (host_portal_t *)malloc(sizeof(host_portal_t))) != NULL);
+  type_malloc_clear(hp, host_portal_t, 1);
   assert(apr_pool_create(&(hp->mpool), NULL) == APR_SUCCESS);
 
   char host[sizeof(hp->host)];
@@ -738,7 +739,8 @@ void check_hportal_connections(host_portal_t *hp)
    //** Update the total # of connections after the operation
    //** n_conn is used instead of conn_list to prevent false positives on a dead depot
    hp->n_conn = hp->n_conn + n_newconn;
-
+   hp->oops_check += n_newconn;
+   if (n_newconn < 0) hp->oops_neg = -100000;
    hportal_unlock(hp);
 
    //** Spawn the new connections if needed **
