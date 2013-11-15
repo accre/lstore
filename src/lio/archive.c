@@ -28,8 +28,9 @@ http://www.accre.vanderbilt.edu
 */
 
 #include <stdlib.h>
-#include <string.h>
 #include <stdio.h>
+#include <string.h>
+#include <assert.h>
 #include "archive.h"
 
 // concatenates two strings together

@@ -38,7 +38,7 @@ http://www.accre.vanderbilt.edu
 #include "type_malloc.h"
 #include "thread_pool.h"
 #include "apr_time.h"
-#include "archive.h"
+
 
 
 
@@ -151,7 +151,7 @@ int run_tape_copy(char *server, char *dest) {
 
     //should not be hardcoded but this is temporary
     char *script = "/tibs/bin/archive.sh";
-    int len = sizeof (script) + sizeof (server) + sizeof (dest);
+    int len = strlen(script) + strlen(server) + strlen(dest) + 10;
     char cmd[len];
     sprintf(cmd, "%s %s %s", script, server, dest);
     int res = system(cmd);
@@ -171,13 +171,15 @@ int run_tape_copy(char *server, char *dest) {
 // Sets the user.tapeid attribute on the files archived
 //**********************************************************************************
 
-int set_tapeid_attr(char *dest) {
+int set_tapeid_attr(char *dest, char *server) {
     int err, res = EXIT_SUCCESS;
     lio_path_tuple_t dtuple;
     os_object_iter_t *it;
     os_regex_table_t *rp_single, *ro_single = NULL;
-
-    err = lioc_set_attr(lio_gc, lio_gc->creds, dest, NULL, ARCHIVE_TAPE_ATTRIBUTE, (char *) dest, strlen(dest));
+    int len = strlen(server) + strlen(dest) + 10;
+    char attr[len];
+    sprintf(attr, "%s %s", server, dest);
+    err = lioc_set_attr(lio_gc, lio_gc->creds, dest, NULL, ARCHIVE_TAPE_ATTRIBUTE, (char *) attr, strlen(attr));
     if (err != OP_STATE_SUCCESS) {
         res = 1;
         printf("ERROR: Failed to set tape id attribute on parent!:  %s\n", dest);
@@ -202,7 +204,7 @@ int set_tapeid_attr(char *dest) {
                 } else {
                     // Create the symlink
                     if (strcmp(dest, fname) != 0) {
-                        printf("Creating symlink,  src: %s  attr: %s  val: %s\n", dest, ARCHIVE_TAPE_ATTRIBUTE, fname);
+                        //printf("Creating symlink,  src: %s  attr: %s  val: %s\n", dest, ARCHIVE_TAPE_ATTRIBUTE, fname);
                         err = gop_sync_exec(os_symlink_attr(dtuple.lc->os, dtuple.creds, dest, ARCHIVE_TAPE_ATTRIBUTE, fd, ARCHIVE_TAPE_ATTRIBUTE));
                         if (err != OP_STATE_SUCCESS) {
                             printf("ERROR: Failed to link file: %s\n", fname);
@@ -306,7 +308,7 @@ int process_tag_file(char *tag_file, char *tag_name) {
                         printf("ERROR: %d: Writing to tape has failed for %s\n", res, dest);
                     } else {
                         // set the tape id attribute for restores
-                        res = set_tapeid_attr(dest);
+                        res = set_tapeid_attr(dest, arc_server);
                         if (res != 0) {
                             printf("Failed to set tape id attribute for %s\n", dest);
                         }
