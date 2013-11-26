@@ -44,6 +44,7 @@ http://www.accre.vanderbilt.edu
 #include "lio.h"
 #include "append_printf.h"
 #include "string_token.h"
+#include "apr_wrapper.h"
 
 //#define lfs_lock(lfs)  log_printf(0, "lfs_lock\n"); flush_log(); apr_thread_mutex_lock((lfs)->lock)
 //#define lfs_unlock(lfs) log_printf(0, "lfs_unlock\n");  flush_log(); apr_thread_mutex_unlock((lfs)->lock)
@@ -2692,7 +2693,7 @@ void *lfs_init(struct fuse_conn_info *conn)
 
   apr_pool_create(&(lfs->mpool), NULL);
   apr_thread_mutex_create(&(lfs->lock), APR_THREAD_MUTEX_DEFAULT, lfs->mpool);
-  apr_thread_create(&(lfs->gc_thread), NULL, lfs_gc_thread, (void *)lfs, lfs->mpool);
+  thread_create_assert(&(lfs->gc_thread), NULL, lfs_gc_thread, (void *)lfs, lfs->mpool);
 
   //** Make the cond table
   type_malloc_clear(lfs->file_lock, apr_thread_mutex_t *, lfs->file_count);

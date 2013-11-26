@@ -38,6 +38,7 @@ http://www.accre.vanderbilt.edu
 #include "log.h"
 #include "ex3_compare.h"
 #include "thread_pool.h"
+#include "apr_wrapper.h"
 
 //******************
 cache_t *global_cache;
@@ -1465,7 +1466,7 @@ cache_t *amp_cache_create(void *arg, data_attr_t *da, int timeout)
   cache->fn.get_handle = cache_base_handle;
 
   apr_thread_cond_create(&(c->dirty_trigger), cache->mpool);
-  apr_thread_create(&(c->dirty_thread), NULL, amp_dirty_thread, (void *)cache, cache->mpool);
+  thread_create_assert(&(c->dirty_thread), NULL, amp_dirty_thread, (void *)cache, cache->mpool);
 
   return(cache);
 }

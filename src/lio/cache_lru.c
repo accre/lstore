@@ -37,6 +37,7 @@ http://www.accre.vanderbilt.edu
 #include "type_malloc.h"
 #include "log.h"
 #include "ex3_compare.h"
+#include "apr_wrapper.h"
 
 atomic_int_t lru_dummy = -1000;
 
@@ -899,7 +900,7 @@ cache_t *lru_cache_create(void *arg, data_attr_t *da, int timeout)
   cache->fn.get_handle = cache_base_handle;
 
   apr_thread_cond_create(&(c->dirty_trigger), cache->mpool);
-  apr_thread_create(&(c->dirty_thread), NULL, lru_dirty_thread, (void *)cache, cache->mpool);
+  thread_create_assert(&(c->dirty_thread), NULL, lru_dirty_thread, (void *)cache, cache->mpool);
 
   return(cache);
 }

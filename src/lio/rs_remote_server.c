@@ -50,6 +50,7 @@ http://www.accre.vanderbilt.edu
 #include "random.h"
 #include "rs_query_base.h"
 #include "ex3_system.h"
+#include "apr_wrapper.h"
 
 typedef struct {
   mq_msg_t *msg;
@@ -549,7 +550,7 @@ resource_service_fn_t *rs_remote_server_create(void *arg, inip_file_t *fd, char 
   mq_portal_install(rsrs->mqc, rsrs->server_portal);
 
   //** Launch the config changes thread
-  assert(apr_thread_create(&(rsrs->monitor_thread), NULL, rsrs_monitor_thread, (void *)rs, rsrs->mpool) == APR_SUCCESS);
+  thread_create_assert(&(rsrs->monitor_thread), NULL, rsrs_monitor_thread, (void *)rs, rsrs->mpool);
 
   //** Set up the fn ptrs.  This is just for syncing the rid configuration and state
   //** so very little is implemented
