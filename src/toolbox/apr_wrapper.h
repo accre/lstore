@@ -31,10 +31,21 @@ http://www.accre.vanderbilt.edu
 //  APR Wrapper to safely start/stop the APR system in
 //  applications with multiple libraries using APR and 
 //  starting/stopping it themselves
+//
+//  Also provides wrappers for checking on threa creations
 //*************************************************************
 
 #ifndef __APR_WRAPPER_H_
 #define __APR_WRAPPER_H_
+
+#define thread_create_warn(err, thread, attr, thread_fn, arg, mpool) \
+  if ((err = apr_thread_create(thread, attr, thread_fn, arg, mpool)) != APR_SUCCESS) { \
+     log_printf(0, "WARN: Possible deadlock can occur!  Failed launching new thread!  Increase maxproc in limit/ulimit.\n"); \
+     fprintf(stderr, "WARN: Possible deadlock can occur!  Failed launching new thread!  Increase maxproc in limit/ulimit.\n"); \
+  }
+
+#define thread_create_assert(thread, attr, thread_fn, arg, mpool) \
+  assert(apr_thread_create(thread, attr, thread_fn, arg, mpool) == APR_SUCCESS)
 
 #ifdef __cplusplus
 extern "C" {
