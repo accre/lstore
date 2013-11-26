@@ -39,6 +39,16 @@ http://www.accre.vanderbilt.edu
 #include "thread_pool.h"
 #include "apr_time.h"
 
+// Check if path exists...if not, creates it
+
+void check_path(char *path) {
+    if (lioc_exists(lio_gc, lio_gc->creds, path) == 0) {
+        if (gop_sync_exec(lio_create_object(lio_gc, lio_gc->creds, path, OS_OBJECT_DIR, NULL, NULL)) != OP_STATE_SUCCESS) {
+            printf("ERROR: Failed to create %s!\n", path);
+            exit(4);
+        }
+    }
+}
 
 
 
@@ -48,7 +58,7 @@ http://www.accre.vanderbilt.edu
 
 char* prepare_lstore_destination(char *name) {
     apr_time_t now = apr_time_sec(apr_time_now());
-    char *secs[80];
+    char secs[80];
     char *path = NULL;
     char* arc_path = NULL;
     char *root = "/archive/";
@@ -67,18 +77,6 @@ char* prepare_lstore_destination(char *name) {
     return arc_path;
 }
 
-// Check if path exists...if not, creates it
-
-void check_path(char *path) {
-    if (lioc_exists(lio_gc, lio_gc->creds, path) == 0) {
-        if (gop_sync_exec(lioc_create_object(lio_gc, lio_gc->creds, path, OS_OBJECT_DIR, NULL, NULL)) != OP_STATE_SUCCESS) {
-            printf("ERROR: Failed to create %s!\n", path);
-            exit(4);
-        }
-    }
-}
-
-
 //**********************************************************************************
 // Copies the local data into the L-Store system for staging
 //**********************************************************************************
@@ -86,7 +84,6 @@ void check_path(char *path) {
 int run_lstore_copy(char *dest, char *path, char *regex_path, char *regex_object, int obj_types, int recurse_depth) {
     int res = EXIT_SUCCESS;
     lio_path_tuple_t dtuple;
-    os_regex_table_t *rp, *ro;
     lio_cp_path_t *flist;
     int dtype, buffer_size, max_spawn;
     op_status_t status;
@@ -255,11 +252,13 @@ int process_tag_file(char *tag_file, char *tag_name) {
     char *regex_path = NULL;
     char *regex_object = NULL;
     char *dest = NULL;
-    int recurse_depth, obj_types;
+    int recurse_depth, obj_types, err;
     inip_file_t *ini_fd;
     inip_group_t *ini_g;
     inip_element_t *ele;
     char *key, *value, *arc_server;
+
+    err = 0;
 
     /*** Check for tag file existence and read permission ***/
     if (((access(tag_file, F_OK)) == -1) || ((access(tag_file, R_OK)) == -1)) {
@@ -300,17 +299,20 @@ int process_tag_file(char *tag_file, char *tag_name) {
                     res = run_lstore_copy(dest, path, regex_path, regex_object, obj_types, recurse_depth);
                     if (res != 0) {
                         printf("ERROR: Data ingestion has failed...skipping %s\n", dest);
+			err = 1;
                         continue;
                     }
                     // Write the data to tape via TiBS
                     res = run_tape_copy(arc_server, dest);
                     if (res != 0) {
                         printf("ERROR: %d: Writing to tape has failed for %s\n", res, dest);
+			err = 1;
                     } else {
                         // set the tape id attribute for restores
                         res = set_tapeid_attr(dest, arc_server);
                         if (res != 0) {
                             printf("Failed to set tape id attribute for %s\n", dest);
+    			    err = 1;
                         }
                     }
                 }
@@ -320,6 +322,8 @@ int process_tag_file(char *tag_file, char *tag_name) {
         /*** proper cleanup ***/
         inip_destroy(ini_fd);
     }
+
+    return(err);
 }
 
 void print_usage() {
