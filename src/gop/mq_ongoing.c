@@ -38,6 +38,7 @@ http://www.accre.vanderbilt.edu
 #include "mq_helpers.h"
 #include "type_malloc.h"
 #include "log.h"
+#include "apr_wrapper.h"
 
 //atomic_int_t _ongoing_count = 0;
 //apr_thread_mutex_t *_ongoing_lock = NULL;
@@ -653,14 +654,14 @@ mq_ongoing_t *mq_ongoing_create(mq_context_t *mqc, mq_portal_t *server_portal, i
 
      ctable = mq_portal_command_table(server_portal);
      mq_command_set(ctable, ONGOING_KEY, ONGOING_SIZE, mqon, mq_ongoing_cb);
-     apr_thread_create(&(mqon->ongoing_server_thread), NULL, mq_ongoing_server_thread, (void *)mqon, mqon->mpool);
+     thread_create_assert(&(mqon->ongoing_server_thread), NULL, mq_ongoing_server_thread, (void *)mqon, mqon->mpool);
   }
 
   if (mode & ONGOING_CLIENT) {
      mqon->table = apr_hash_make(mqon->mpool);
      assert(mqon->table != NULL);
 
-     apr_thread_create(&(mqon->ongoing_heartbeat_thread), NULL, ongoing_heartbeat_thread, (void *)mqon, mqon->mpool);
+     thread_create_assert(&(mqon->ongoing_heartbeat_thread), NULL, ongoing_heartbeat_thread, (void *)mqon, mqon->mpool);
   }
   return(mqon);
 }

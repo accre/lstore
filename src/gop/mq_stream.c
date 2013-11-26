@@ -41,6 +41,7 @@ http://www.accre.vanderbilt.edu
 #include "log.h"
 #include "varint.h"
 #include "packer.h"
+#include "apr_wrapper.h"
 
 //***********************************************************************
 // mqs_response_client_more - Handles a response for more data from the server
@@ -905,7 +906,7 @@ log_printf(5, "initial used bpos=%d\n", pack_used(mqs->pack));
      apr_thread_cond_create(&(mqs->cond), mqs->mpool);
      mqs->oo = mq_ongoing_add(mqs->ongoing, 0, mqs->host_id, mqs->hid_len, mqs, mqs_write_on_fail, NULL);
      mqs->sent_data = 1;
-     apr_thread_create(&(mqs->flusher_thread), NULL, mqs_flusher_thread,  (void *)mqs, mqs->mpool);
+     thread_create_assert(&(mqs->flusher_thread), NULL, mqs_flusher_thread,  (void *)mqs, mqs->mpool);
   }
 
   return(mqs);

@@ -633,6 +633,8 @@ int spawn_new_connection(host_portal_t *hp)
 {
   int n;
 
+  hportal_lock(hp); hp->oops_spawn++; hportal_unlock(hp);
+
   n = get_hpc_thread_count(hp->context);
   if (n > hp->context->max_connections) {
        host_connection_t *hc = find_hc_to_close(hp->context);

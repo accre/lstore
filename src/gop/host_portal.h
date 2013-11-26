@@ -58,6 +58,12 @@ typedef struct {       //** Contains information about the depot including all c
   int oops_check;
   int oops_recv_start;
   int oops_recv_end;
+  int oops_send_start;
+  int oops_send_end;
+  int oops_spawn;
+  int oops_spawn_send_err;
+  int oops_spawn_recv_err;
+  int oops_spawn_retry;
   int port;               //** port
   int invalid_host;       //** Flag that this host is not resolvable
   int64_t workload;       //** Amount of work left in the feeder que
@@ -85,6 +91,7 @@ typedef struct {       //** Contains information about the depot including all c
 } host_portal_t;
 
 typedef struct {            //** Individual depot connection in conn_list
+   int recv_up;
    int cmd_count;
    int curr_workload;
    int shutdown_request;

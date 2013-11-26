@@ -42,6 +42,8 @@ http://www.accre.vanderbilt.edu
 #include "log.h"
 #include "network.h"
 #include "atomic_counter.h"
+#include "type_malloc.h"
+#include "apr_wrapper.h"
 
 //*************************************************************************
 // new_host_connection - Allocates space for a new connection
@@ -50,7 +52,9 @@ http://www.accre.vanderbilt.edu
 host_connection_t *new_host_connection(apr_pool_t *mpool)
 {
   host_connection_t *hc;
-  assert((hc = (host_connection_t *)malloc(sizeof(host_connection_t))) != NULL);
+
+  type_malloc_clear(hc, host_connection_t, 1);
+//  assert((hc = (host_connection_t *)malloc(sizeof(host_connection_t))) != NULL);
 
   hc->mpool = mpool;
   apr_thread_mutex_create(&(hc->lock), APR_THREAD_MUTEX_DEFAULT, mpool);
@@ -211,7 +215,24 @@ void *hc_send_thread(apr_thread_t *th, void *data)
   op_status_t finished;
   Net_timeout_t dt;
   apr_time_t dtime;
-  int tid;
+  int tid, err;
+
+  hportal_lock(hp);
+  hp->oops_send_start++;
+  hportal_unlock(hp);
+
+  //** Wait until the recv thread has started.
+  lock_hc(hc);
+  while (hc->recv_up == 0) {
+    apr_thread_cond_wait(hc->send_cond, hc->lock);
+  }
+  err = hc->recv_up;
+  unlock_hc(hc);
+
+  log_printf(5, "hc->recv_up=%d host=%s\n",err, hp->host); 
+
+  if (err != 1) return(NULL);  //** If send thread failed to spawn exit;
+
 
   //** check if the host is invalid and if so flush the work que
   if (hp->invalid_host == 1) {
@@ -347,6 +368,10 @@ log_printf(5, "hc_send_thread: after send phase.. ns=%d gid=%d finisehd=%d\n", n
   //*** The recv side handles the removal from the hportal structure ***
   modify_hpc_thread_count(hpc, -1);
 
+  hportal_lock(hp);
+  hp->oops_send_end++;
+  hportal_unlock(hp);
+
   apr_thread_exit(th, 0);
   return(NULL);
 }
@@ -374,6 +399,12 @@ void *hc_recv_thread(apr_thread_t *th, void *data)
 
   tid = atomic_thread_id;
   log_printf(15, "hc_recv_thread: New thread started! ns=%d tid=%d\n", ns_getid(ns), tid);
+
+  //** Let the send thread know I'm up
+  lock_hc(hc);
+  hc->recv_up = 1;
+  apr_thread_cond_broadcast(hc->send_cond);
+  unlock_hc(hc);
 
   //** Get the initial cmd count -- Used at the end to decide if retry
   hportal_lock(hp);
@@ -604,6 +635,8 @@ int create_host_connection(host_portal_t *hp)
 {
   host_connection_t *hc;
   apr_pool_t *pool;
+  apr_status_t value;
+  int send_err, recv_err, err = 0;
 
   modify_hpc_thread_count(hp->context, 1);
 
@@ -613,10 +646,34 @@ int create_host_connection(host_portal_t *hp)
   hc->hp = hp;
   hc->last_used = apr_time_now();
 
-log_printf(3, "additional connection host=%s:%d\n", hp->host, hp->port);
-  apr_thread_create(&(hc->send_thread), NULL, hc_send_thread, (void *)hc, hc->mpool);
-  apr_thread_create(&(hc->recv_thread), NULL, hc_recv_thread, (void *)hc, hc->mpool);
+  send_err = recv_err = 0;
 
-  return(0);
+log_printf(3, "additional connection host=%s:%d\n", hp->host, hp->port);
+  thread_create_warn(send_err, &(hc->send_thread), NULL, hc_send_thread, (void *)hc, hc->mpool);
+
+  if (send_err == APR_SUCCESS) {
+      thread_create_warn(recv_err,&(hc->recv_thread), NULL, hc_recv_thread, (void *)hc, hc->mpool);
+      if (recv_err != APR_SUCCESS) {
+         lock_hc(hc);
+         hc->recv_up = -1;
+         apr_thread_cond_broadcast(hc->send_cond);
+         unlock_hc(hc);
+         apr_thread_join(&value, hc->send_thread);
+      }
+  }
+
+  if ((send_err != APR_SUCCESS) || (recv_err != APR_SUCCESS)) {
+     hportal_lock(hp);
+     hp->n_conn--;
+     if (send_err != APR_SUCCESS) hp->oops_spawn_send_err++;
+     if (recv_err != APR_SUCCESS) hp->oops_spawn_recv_err++;
+     hportal_unlock(hp);
+     modify_hpc_thread_count(hp->context, -1);
+
+     destroy_host_connection(hc);
+     err = 1;
+  }
+
+  return(err);
 }
 

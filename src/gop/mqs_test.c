@@ -37,6 +37,7 @@ http://www.accre.vanderbilt.edu
 #include "mq_helpers.h"
 #include "random.h"
 #include "string_token.h"
+#include "apr_wrapper.h"
 #include <sys/eventfd.h>
 
 #define MQS_TEST_KEY  "mqs_test"
@@ -693,9 +694,9 @@ log_printf(0, "after init opque_count=%d\n", _opque_counter);
   assert(server_efd != 0);
 
 
-  apr_thread_create(&server_thread, NULL, server_test_thread, NULL, mpool);
+  thread_create_assert(&server_thread, NULL, server_test_thread, NULL, mpool);
   sleep(5); //** Make surethe server gets fired up
-  apr_thread_create(&client_thread, NULL, client_test_thread, NULL, mpool);
+  thread_create_assert(&client_thread, NULL, client_test_thread, NULL, mpool);
 
   apr_thread_join(&dummy, client_thread);
 

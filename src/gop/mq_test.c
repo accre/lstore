@@ -31,6 +31,7 @@ http://www.accre.vanderbilt.edu
 #include "apr_wrapper.h"
 #include "log.h"
 #include "type_malloc.h"
+#include "apr_wrapper.h"
 #include <sys/eventfd.h>
 
 #define CMD_PING 1
@@ -1229,9 +1230,9 @@ printf("log_level=%d\n", _log_level);
   deferred_ready = new_stack();
   deferred_pending = new_stack();
 
-  apr_thread_create(&client_thread, NULL, client_test_thread, NULL, mpool);
-  apr_thread_create(&server_thread, NULL, server_test_thread, NULL, mpool);
-  apr_thread_create(&deferred_thread, NULL, server_deferred_thread, NULL, mpool);
+  thread_create_assert(&client_thread, NULL, client_test_thread, NULL, mpool);
+  thread_create_assert(&server_thread, NULL, server_test_thread, NULL, mpool);
+  thread_create_assert(&deferred_thread, NULL, server_deferred_thread, NULL, mpool);
 
   apr_thread_join(&dummy, client_thread);
 

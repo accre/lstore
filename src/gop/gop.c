@@ -38,6 +38,7 @@ http://www.accre.vanderbilt.edu
 #include "log.h"
 #include "opque.h"
 #include "atomic_counter.h"
+#include "apr_wrapper.h"
 
 //** Defined in opque.c
 void _opque_start_execution(opque_t *que);
@@ -140,7 +141,7 @@ void gop_dummy_init()
   gd_stack = new_stack();
 
   //** and launch the thread
-  apr_thread_create(&gd_thread, NULL, gd_thread_func, NULL, gd_pool);
+  thread_create_assert(&gd_thread, NULL, gd_thread_func, NULL, gd_pool);
 }
 
 //***********************************************************************

@@ -32,6 +32,7 @@ http://www.accre.vanderbilt.edu
 #include "type_malloc.h"
 #include <sys/eventfd.h>
 #include "apr_base64.h"
+#include "apr_wrapper.h"
 
 //** Poll index for connection monitoring
 #define PI_CONN 0   //** Actual connection
@@ -1432,7 +1433,7 @@ int mq_conn_create(mq_portal_t *p, int dowait)
   p->total_conn++;
 
   //** Spawn the thread
-  apr_thread_create(&(c->thread), NULL, mq_conn_thread, (void *)c, p->mpool);  //** USe the parent mpool so I can do the teardown
+  thread_create_assert(&(c->thread), NULL, mq_conn_thread, (void *)c, p->mpool);  //** USe the parent mpool so I can do the teardown
 
   err = 0;
 //dowait=1;
