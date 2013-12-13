@@ -38,6 +38,7 @@ http://www.accre.vanderbilt.edu
 #include "log.h"
 #include "ex3_compare.h"
 #include "thread_pool.h"
+#include "apr_wrapper.h"
 
 //******************
 cache_t *global_cache;
@@ -905,6 +906,8 @@ flush_log();
              ptable = (page_table_t *)pigeon_coop_hole_data(&pt_pch);
              ptable->seg = p->seg;
              ptable->id = segment_id(p->seg);
+             s = (cache_segment_t *)ptable->seg->priv;
+             atomic_inc(s->dumping_pages);  //** This makes sure we don't free the segment
              ptable->pch = pt_pch;
              list_insert(table, &(ptable->id), ptable);
           }
@@ -1025,6 +1028,7 @@ if (p->offset > -1) {
      }
 
      segment_unlock(ptable->seg);
+     atomic_dec(s->dumping_pages);  //** Now we can free the segment
 
      if (max_off>-1) {
         if ((max_off - min_off) < 10*s->page_size) max_off = min_off + 10*s->page_size;
@@ -1462,7 +1466,7 @@ cache_t *amp_cache_create(void *arg, data_attr_t *da, int timeout)
   cache->fn.get_handle = cache_base_handle;
 
   apr_thread_cond_create(&(c->dirty_trigger), cache->mpool);
-  apr_thread_create(&(c->dirty_thread), NULL, amp_dirty_thread, (void *)cache, cache->mpool);
+  thread_create_assert(&(c->dirty_thread), NULL, amp_dirty_thread, (void *)cache, cache->mpool);
 
   return(cache);
 }

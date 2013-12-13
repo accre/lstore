@@ -30,48 +30,21 @@ http://www.accre.vanderbilt.edu
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include <unistd.h>
+#include <assert.h>
 #include "archive.h"
 
-
-void destroy_tag_file(const char *filepath) 
-{
-  /* Check for existence */
-   if ((access(filepath, F_OK)) != -1) {      
-     remove(filepath);      
-   } else {
-     printf("%s does not exist!  \n", filepath);
-   }
+// concatenates two strings together
+char* concat(char *str1, char *str2) {
+  char *res = malloc(strlen(str1) + strlen(str2) + 1);
+  strcpy(res, str1);
+  strcat(res, str2);
+  return res;
 }
 
-
-void print_usage()
-{
-  printf("\nUsage: arc_tag_destrot [tag file name]\n\tIf no tag name is specified, the default ~/.arc_tag_file.txt will be used\n");
-  printf("");
-  exit(0);
-}
-
-int main(int argc, char **argv)
-{
-  int i = 1, start_option = 0;  
-  char *path = NULL;
-
-  if (argc > 2) {
-    print_usage();
-  } else if (argc > 1) {
-    do {
-      start_option = i;
-      if (strcmp(argv[i], "-h") == 0) {
-	print_usage();
-      } else {
-	path = argv[i];
-      }
-    } while ((start_option < i) && (i < argc));
-  }
-  if (path == NULL) {
-    char *homedir = getenv("HOME");
-    path = concat(homedir, "/.arc_tag_file.txt");
-  }
-  destroy_tag_file(path);
+// adds two paths together with separator
+char* path_concat(char *str1, char *str2) {
+  char *res = malloc(strlen(str1) + strlen(str2) + 2);
+  strcpy(res, concat(str1, "/"));
+  strcat(res, str2);
+  return res;
 }

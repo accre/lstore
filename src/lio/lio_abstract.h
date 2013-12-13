@@ -184,6 +184,7 @@ op_status_t cp_lio2local(lio_cp_file_t *cp);
 op_status_t lio_cp_file_fn(void *arg, int id);
 int lio_cp_create_dir(list_t *table, lio_path_tuple_t tuple);
 op_status_t lio_cp_path_fn(void *arg, int id);
+op_generic_t *lioc_truncate(lio_path_tuple_t *tuple, ex_off_t new_size);
 
 void lc_object_remove_unused(int remove_all_unused);
 void lio_path_release(lio_path_tuple_t *tuple);

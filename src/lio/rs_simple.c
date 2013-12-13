@@ -50,6 +50,7 @@ http://www.accre.vanderbilt.edu
 #include "random.h"
 #include "append_printf.h"
 #include "string_token.h"
+#include "apr_wrapper.h"
 
 typedef struct {
   char *key;
@@ -998,17 +999,14 @@ resource_service_fn_t *rs_simple_create(void *arg, inip_file_t *kf, char *sectio
   rss->check_timeout = inip_get_integer(kf, section, "check_timeout", 60);
   rss->min_free = inip_get_integer(kf, section, "min_free", 100*1024*1024);
 
-  //** Get the modify time to detect changes
-//  assert(stat(rss->fname, &sbuf) == 0);
-//  rss->modify_time = sbuf.st_mtime;
+  //** Set the modify time to force a change
   rss->modify_time = 0;
 
   //** Load the RID table
   assert(_rs_simple_refresh(rs) == 0);
-//  assert(_rs_simple_load(rs, rss->fname) == 0);
 
   //** Launch the check thread
-  apr_thread_create(&(rss->check_thread), NULL, rss_check_thread, (void *)rs, rss->mpool);
+  thread_create_assert(&(rss->check_thread), NULL, rss_check_thread, (void *)rs, rss->mpool);
 
   return(rs);
 }

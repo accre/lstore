@@ -51,9 +51,8 @@ typedef struct {
 
 
 //**********************************************************************************
-
+// Performs walk and prints the output 
 //**********************************************************************************
-
 void run_ls(char *path, char *regex_path, char *regex_object, int obj_types, int recurse_depth) {
   unified_object_iter_t *it;  
   os_regex_table_t *rp, *ro;

@@ -56,6 +56,7 @@ static creds_t *creds;
 static int global_whattodo;
 static int bufsize;
 rs_query_t *query;
+int error_only_check = 0;
 
 apr_thread_mutex_t *lock = NULL;
 list_t *seg_index;
@@ -227,9 +228,10 @@ int main(int argc, char **argv)
   opque_t *q;
   op_generic_t *gop;
   op_status_t status;
-  char *ex;
-  char *key = "system.exnode";
-  int ex_size, slot, q_count;
+  char *vals[3];
+  char *keys[3] = {"system.exnode", "system.soft_errors", "system.hard_errors" };
+  int v_size[3], acount;
+  int slot, q_count, gotone;
   os_object_iter_t *it;
   os_regex_table_t *rp_single, *ro_single;
   lio_path_tuple_t static_tuple, *tuple, *tuple_list;
@@ -248,13 +250,15 @@ int main(int argc, char **argv)
      printf("    -s                 - Report soft errors, like a missing RID in the config file but the allocation is good.\n");
      printf("                         The default is to ignore these type of errors.\n");
      printf("    -r                 - Use reconstruction for all repairs. Even for data placement issues.\n");
-     printf("                         Not always successful.  Try without option in those cases.\n");
-     printf("                         Even for data placement issues. Could fail\n");
+     printf("                         Not always successful.The default is to use depot-to-depot copies if possible.\n");
+     printf("                         This can lead to drive hotspots if migrating data from a failing drive\n");
+     printf("                         which can be avoided by using this option.\n");
      printf("    -q  extra_query    - Extra RS query for data placement. AND-ed with default query\n");
      printf("    -bl key value      - Blacklist the given key/value combination. Multiple -bl options can be provided\n");
      printf("                         For a RID use: rid_key rid     Hostname: host hostname\n");
      printf("    -f                 - Forces data replacement even if it would result in data loss\n");
      printf("    -p                 - Print the resulting query string\n");
+     printf("    -e                 - Only check files that have soft or hard errors\n");
      printf("    -o inspect_opt     - Inspection option.  One of the following:\n");
      for (i=1; i<n_inspect; i++) { printf("                 %s\n", inspect_opts[i]); }
      return(1);
@@ -274,6 +278,7 @@ int main(int argc, char **argv)
   query = rs_query_new(lio_gc->rs);
   do_print = 0;
   q_count = 0;
+  acount = 1;
   do {
      start_option = i;
 
@@ -286,6 +291,10 @@ int main(int argc, char **argv)
      } else if (strcmp(argv[i], "-f") == 0) { //** Force repair
         i++;
         force_repair = INSPECT_FORCE_REPAIR;
+     } else if (strcmp(argv[i], "-e") == 0) { //** Only check files that have soft/hard errors
+        i++;
+        error_only_check = 1;
+        acount = 3;
      } else if (strcmp(argv[i], "-r") == 0) { //** Force reconstruction
         i++;
         global_whattodo |= INSPECT_FORCE_RECONSTRUCTION;
@@ -387,37 +396,59 @@ int main(int argc, char **argv)
 
      creds = tuple->lc->creds;
 
-     ex_size = - tuple->lc->max_attr;
-     it = os_create_object_iter_alist(tuple->lc->os, tuple->creds, rp_single, ro_single, OS_OBJECT_FILE, recurse_depth, &key, (void **)&ex, &ex_size, 1);
+     for (i=0; i< acount; i++) v_size[i] = -tuple->lc->max_attr;
+     it = os_create_object_iter_alist(tuple->lc->os, tuple->creds, rp_single, ro_single, OS_OBJECT_FILE, recurse_depth, keys, (void **)vals, v_size, acount);
      if (it == NULL) {
         info_printf(lio_ifd, 0, "ERROR: Failed with object_iter creation\n");
         goto finished;
       }
 
      while ((ftype = os_next_object(tuple->lc->os, it, &fname, &prefix_len)) > 0) {
-        w[slot].fname = fname;
-        w[slot].exnode = ex;
-        w[slot].ftype = ftype;
-        ex = NULL;  fname = NULL;
-        submitted++;
-        gop = new_thread_pool_op(lio_gc->tpc_unlimited, NULL, inspect_task, (void *)&(w[slot]), NULL, 1);
-        gop_set_myid(gop, slot);
+        gotone = 0;
+        if (error_only_check == 1) {  //** Want to only check files with soft/hard errors
+           if (vals[1] != NULL) {
+              printf("fname=%s soft=%s\n", fname, vals[1]);
+              if (atol(vals[1]) > 0) gotone = 1;
+              free(vals[1]);
+           }
+           if (vals[2] != NULL) {
+              printf("fname=%s hard=%s\n", fname, vals[2]);
+              if (atol(vals[2]) > 0) gotone = 1;
+              free(vals[2]);
+           }
+        } else {  //** Normal mode is to check everything
+           gotone = 1;
+        }
+
+        if (gotone == 1) {
+          w[slot].fname = fname;
+          w[slot].exnode = vals[0];
+          w[slot].ftype = ftype;
+          vals[0] = NULL;  fname = NULL;
+
+          submitted++;
+          gop = new_thread_pool_op(lio_gc->tpc_unlimited, NULL, inspect_task, (void *)&(w[slot]), NULL, 1);
+          gop_set_myid(gop, slot);
 log_printf(0, "gid=%d i=%d fname=%s\n", gop_id(gop), slot, fname);
 //info_printf(lio_ifd, 0, "n=%d gid=%d slot=%d fname=%s\n", submitted, gop_id(gop), slot, fname);
-        opque_add(q, gop);
+          opque_add(q, gop);
 
-        if (submitted >= lio_parallel_task_count) {
-           gop = opque_waitany(q);
-           status = gop_get_status(gop);
-           if (status.op_status == OP_STATE_SUCCESS) {
-              good++;
-           } else {
-              bad++;
-           }
-           slot = gop_get_myid(gop);
-           gop_free(gop, OP_DESTROY);
-        } else {
-           slot++;
+          if (submitted >= lio_parallel_task_count) {
+             gop = opque_waitany(q);
+             status = gop_get_status(gop);
+             if (status.op_status == OP_STATE_SUCCESS) {
+                good++;
+             } else {
+                bad++;
+             }
+             slot = gop_get_myid(gop);
+             gop_free(gop, OP_DESTROY);
+          } else {
+             slot++;
+          }
+        } else {  //** Do some cleanup since we aren't doing a check
+          free(fname);
+          for (i=0; i<acount; i++) if (vals[i] != NULL) free(vals[i]);
         }
      }
 

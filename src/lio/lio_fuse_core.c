@@ -44,6 +44,7 @@ http://www.accre.vanderbilt.edu
 #include "lio.h"
 #include "append_printf.h"
 #include "string_token.h"
+#include "apr_wrapper.h"
 
 //#define lfs_lock(lfs)  log_printf(0, "lfs_lock\n"); flush_log(); apr_thread_mutex_lock((lfs)->lock)
 //#define lfs_unlock(lfs) log_printf(0, "lfs_unlock\n");  flush_log(); apr_thread_mutex_unlock((lfs)->lock)
@@ -508,9 +509,18 @@ int lfs_stat_real(const char *fname,
 {
   lio_inode_t *inode;
   lio_dentry_t *entry;
-  if (!lfs) {
-      printf("************************** GOT A BLANK LFS ******************\n");
+  /*
+  struct fuse_context *ctx;
+  ctx = fuse_get_context();
+  if (NULL == ctx || NULL == ctx->private_data)
+  {
+    log_printf(0, "ERROR_CTX:  unable to access fuse context or context is invalid");
+    return(-EINVAL);
+  }else
+  {
+    lfs = (lio_fuse_t*)ctx->private_data;
   }
+  */
   log_printf(1, "fname=%s\n", fname); flush_log();
 
   lfs_lock(lfs);
@@ -730,7 +740,7 @@ log_printf(15, "inserting fname=%s off=%d\n", entry->fname, off2);
              return(0);
           }
        } else {
-          log_printf(1, "fname=%s flagged for removal\n", entry->fname); 
+          log_printf(1, "fname=%s flagged for removal\n", entry->fname);
        }
 
        off++;
@@ -812,7 +822,7 @@ log_printf(1, "next fname=%s ftype=%d prefix_len=%d ino=" XIDT " off=%d\n", entr
            return(0);
         }
      } else {
-        log_printf(1, "fname=%s flagged for removal\n", entry->fname); 
+        log_printf(1, "fname=%s flagged for removal\n", entry->fname);
      }
 
      off++;
@@ -935,7 +945,7 @@ int lfs_mknod(const char *fname, mode_t mode, dev_t rdev)
   return lfs_mknod_real(fname, mode, rdev, lfs);
 }
 
- 
+
 
 
 //*************************************************************************
@@ -1524,7 +1534,7 @@ int lfs_release(const char *fname, struct fuse_file_info *fi)
   }
   return lfs_release_real(fname, fi, lfs);
 }
-   
+
 //*****************************************************************
 // lfs_read - Reads data from a file
 //*****************************************************************
@@ -2689,7 +2699,7 @@ int lfs_statfs(const char *fname, struct statvfs *fs)
 
 //*************************************************************************
 //  lio_fuse_init - Creates a lowlevel fuse handle for use
-//     Note that this function should be called by FUSE and the return value of this function 
+//     Note that this function should be called by FUSE and the return value of this function
 //     overwrites the .private_data field of the fuse context. This function returns the
 //     lio fuse handle (lio_fuse_t *lfs) on success and NULL on failure.
 //
@@ -2710,7 +2720,6 @@ void *lfs_init_real(struct fuse_conn_info *conn,
 //#ifdef HAVE_XATTR
 //  printf("XATTR found!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
 //#endif
-  printf("GOT INTO INIT_REAL!\n");
   lio_fuse_init_args_t *init_args;
   lio_fuse_init_args_t real_args;
   // Retrieve the fuse_context, the last argument of fuse_main(...) is passed in the private_data field for use as a generic user arg. We pass the mount point in it.
@@ -2765,7 +2774,7 @@ void *lfs_init_real(struct fuse_conn_info *conn,
 
   apr_pool_create(&(lfs->mpool), NULL);
   apr_thread_mutex_create(&(lfs->lock), APR_THREAD_MUTEX_DEFAULT, lfs->mpool);
-  apr_thread_create(&(lfs->gc_thread), NULL, lfs_gc_thread, (void *)lfs, lfs->mpool);
+  thread_create_assert(&(lfs->gc_thread), NULL, lfs_gc_thread, (void *)lfs, lfs->mpool);
 
   //** Make the cond table
   type_malloc_clear(lfs->file_lock, apr_thread_mutex_t *, lfs->file_count);
@@ -2794,7 +2803,7 @@ void *lfs_init(struct fuse_conn_info *conn)
 // lio_fuse_destroy - Destroy a fuse object
 //
 //    (handles shuting down lio as appropriate, no need to call lio_shutdown() externally)
-// 
+//
 //*************************************************************************
 
 void lfs_destroy(void *private_data)
@@ -2810,11 +2819,11 @@ void lfs_destroy(void *private_data)
 
   log_printf(0, "shutting down\n"); flush_log();
 
-  lfs = (lio_fuse_t*)private_data;  
+  lfs = (lio_fuse_t*)private_data;
   if (lfs == NULL){
     log_printf(0,"lio_fuse_destroy: Error, the lfs handle is null, unable to shutdown cleanly. Perhaps lfs creation failed?");
     return;
-  }  
+  }
 
   //** Shut down the RW thread
   apr_thread_mutex_lock(lfs->lock);
