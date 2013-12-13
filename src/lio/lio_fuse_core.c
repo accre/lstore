@@ -2640,6 +2640,13 @@ int lfs_statfs(const char *fname, struct statvfs *fs)
 
 void *lfs_init(struct fuse_conn_info *conn)
 {
+  return lfs_init_real(conn,0,NULL,NULL);
+}
+void *lfs_init_real(struct fuse_conn_info *conn,
+                    const int argc,
+                    const char **argv,
+                    const char *mount_point)
+{
   lio_fuse_t *lfs;
   char *section =  "lfs";
   double n;
@@ -2649,19 +2656,33 @@ void *lfs_init(struct fuse_conn_info *conn)
 //  printf("XATTR found!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
 //#endif
   lio_fuse_init_args_t *init_args;
-
+  lio_fuse_init_args_t real_args;
   // Retrieve the fuse_context, the last argument of fuse_main(...) is passed in the private_data field for use as a generic user arg. We pass the mount point in it.
   struct fuse_context *ctx;
   ctx = fuse_get_context();
-  if (NULL == ctx || NULL == ctx->private_data)
+  if ((argc == 0) && (argv == NULL) && (mount_point == NULL))
   {
-    log_printf(0, "ERROR_CTX:  unable to access fuse context or context is invalid. (Hint: last arg of fuse_main(...) must be lio_fuse_init_args_t* and have the mount point set)");
-    return(NULL); //TODO: what is the best way to signal failure in the init function? Note that the return value of this function overwrites the .private_data field of the fuse context
-  }else
+    // I really don't get what indentation scheme's being followed here
+    // --AMM 9/20/13
+    ctx = fuse_get_context();
+    if (NULL == ctx || NULL == ctx->private_data)
+    {
+        log_printf(0, "ERROR_CTX:  unable to access fuse context or context is invalid. (Hint: last arg of fuse_main(...) must be lio_fuse_init_args_t* and have the mount point set)");
+        return(NULL); //TODO: what is the best way to signal failure in the init function? Note that the return value of this function overwrites the .private_data field of the fuse context
+    }else
+    {
+      init_args = (lio_fuse_init_args_t*)ctx->private_data;
+    }
+  }
+  else
   {
-    init_args = (lio_fuse_init_args_t*)ctx->private_data;
-  }  
-
+    // We weren't called by fuse, so the args are function arguments
+    // AMM - 9/23/13
+    init_args = &real_args;
+    init_args->argc = argc;
+    init_args->argv = argv;
+    init_args->mount_point = mount_point;
+  }
   lio_init(&init_args->lio_argc, &init_args->lio_argv); //This sets the global lio_gc, it also uses a reference count to safely handle extra calls to init
   init_args->lc = lio_gc;
 
@@ -2672,7 +2693,7 @@ void *lfs_init(struct fuse_conn_info *conn)
   lfs->mount_point = strdup(init_args->mount_point);
   lfs->mount_point_len = strlen(init_args->mount_point);
 
-  //** Load config info
+  //** Load config info.
   lfs->entry_to = inip_get_double(lfs->lc->ifd, section, "entry_timout", 1.0);
   lfs->attr_to = inip_get_double(lfs->lc->ifd, section, "stat_timout", 1.0);
   lfs->inode_cache_size = inip_get_integer(lfs->lc->ifd, section, "inode_cache_size", 1000000);
