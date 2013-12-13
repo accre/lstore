@@ -44,6 +44,7 @@ http://www.accre.vanderbilt.edu
 #include "lio.h"
 #include "append_printf.h"
 #include "string_token.h"
+#include "apr_wrapper.h"
 
 //#define lfs_lock(lfs)  log_printf(0, "lfs_lock\n"); flush_log(); apr_thread_mutex_lock((lfs)->lock)
 //#define lfs_unlock(lfs) log_printf(0, "lfs_unlock\n");  flush_log(); apr_thread_mutex_unlock((lfs)->lock)
@@ -364,12 +365,14 @@ lio_inode_t *_lfs_load_inode_entry(lio_fuse_t *lfs, const char *fname, lio_inode
 
   log_printf(15, "Parsing info for fname=%s\n", myfname);
   memset(&inode, 0, sizeof(inode));
-  _lfs_parse_inode_vals(lfs, &inode, val, v_size);
-
-//  if (start_ino == 1) inode.ino = 1;
 
   //** Now try and insert it
   lfs_lock(lfs);  //** Reacquire the lock
+
+  _lfs_parse_inode_vals(lfs, &inode, val, v_size);  //** Need the lock cause the attr table is updated
+
+//  if (start_ino == 1) inode.ino = 1;
+
 
   tinode = _lfs_inode_lookup(lfs, inode.ino);
   if (tinode == NULL) { //** Doesn't exist so insert it
@@ -409,7 +412,7 @@ int _lfs_dentry_insert(lio_fuse_t *lfs, lio_dentry_t *entry)
     i++;
   }
 
-  entry->recheck_time = apr_time_now() + lfs->entry_to * APR_USEC_PER_SEC;
+  entry->recheck_time = apr_time_now() + lfs->entry_to;
 
 log_printf(1, "fname=%s name_start=%d name=%s\n", entry->fname, entry->name_start, dentry_name(entry));
   list_insert(lfs->fname_index, (list_key_t *)entry->fname, (list_data_t *)entry);
@@ -500,7 +503,7 @@ int lfs_stat(const char *fname, struct stat *stat)
 {
   lio_inode_t *inode;
   lio_dentry_t *entry;
-  
+
   lio_fuse_t *lfs;
   struct fuse_context *ctx;
   ctx = fuse_get_context();
@@ -532,12 +535,12 @@ int lfs_stat(const char *fname, struct stat *stat)
   }
 
   if (apr_time_now() > entry->recheck_time) { //** Update the entry timeout as well
-      entry->recheck_time = apr_time_now() + lfs->attr_to * APR_USEC_PER_SEC;
+      entry->recheck_time = apr_time_now() + lfs->attr_to;
   }
 
   if (apr_time_now() > inode->recheck_time) {  //** Update the inode
      //** Update the recheck time to minimaze the GC from removing.  It *will* still happen though
-     inode->recheck_time = apr_time_now() + lfs->attr_to * APR_USEC_PER_SEC;
+     inode->recheck_time = apr_time_now() + 100*APR_USEC_PER_SEC;  //** This gets set properly in when loading
      inode = _lfs_load_inode_entry(lfs, fname, inode);
 
      if (inode == NULL) {  //** Remove the old dentry
@@ -716,7 +719,7 @@ log_printf(15, "inserting fname=%s off=%d\n", entry->fname, off2);
              return(0);
           }
        } else {
-          log_printf(1, "fname=%s flagged for removal\n", entry->fname); 
+          log_printf(1, "fname=%s flagged for removal\n", entry->fname);
        }
 
        off++;
@@ -765,7 +768,7 @@ log_printf(15, "new entry fname=%s\n", fname);  flush_log();
 log_printf(15, "existing entry fname=%s\n", fname); flush_log();
         *entry = *fentry;
         entry->fname = fname;
-        fentry->recheck_time = apr_time_now() + lfs->attr_to * APR_USEC_PER_SEC;
+        fentry->recheck_time = apr_time_now() + lfs->attr_to;
      }
 
      inode = _lfs_inode_lookup(dit->lfs, entry->ino);
@@ -798,7 +801,7 @@ log_printf(1, "next fname=%s ftype=%d prefix_len=%d ino=" XIDT " off=%d\n", entr
            return(0);
         }
      } else {
-        log_printf(1, "fname=%s flagged for removal\n", entry->fname); 
+        log_printf(1, "fname=%s flagged for removal\n", entry->fname);
      }
 
      off++;
@@ -2630,7 +2633,7 @@ int lfs_statfs(const char *fname, struct statvfs *fs)
 
 //*************************************************************************
 //  lio_fuse_init - Creates a lowlevel fuse handle for use
-//     Note that this function should be called by FUSE and the return value of this function 
+//     Note that this function should be called by FUSE and the return value of this function
 //     overwrites the .private_data field of the fuse context. This function returns the
 //     lio fuse handle (lio_fuse_t *lfs) on success and NULL on failure.
 //
@@ -2693,17 +2696,15 @@ void *lfs_init_real(struct fuse_conn_info *conn,
   lfs->mount_point = strdup(init_args->mount_point);
   lfs->mount_point_len = strlen(init_args->mount_point);
 
-  //** Load config info.
-  lfs->entry_to = inip_get_double(lfs->lc->ifd, section, "entry_timout", 1.0);
-  lfs->attr_to = inip_get_double(lfs->lc->ifd, section, "stat_timout", 1.0);
+  //** Load config info
+  lfs->entry_to = APR_USEC_PER_SEC * inip_get_double(lfs->lc->ifd, section, "entry_timout", 10.0);
+  lfs->attr_to = APR_USEC_PER_SEC * inip_get_double(lfs->lc->ifd, section, "stat_timeout", 10.0);
   lfs->inode_cache_size = inip_get_integer(lfs->lc->ifd, section, "inode_cache_size", 1000000);
   lfs->xattr_to = APR_USEC_PER_SEC * inip_get_integer(lfs->lc->ifd, section, "xattr_timeout", 60);
   lfs->stale_dt = APR_USEC_PER_SEC * inip_get_integer(lfs->lc->ifd, section, "stale_timeout", 60);
   lfs->gc_interval = APR_USEC_PER_SEC * inip_get_integer(lfs->lc->ifd, section, "gc_interval", 60);
-  lfs->file_count = inip_get_integer(lfs->lc->ifd, section, "file_size", 100);
+  lfs->file_count = inip_get_integer(lfs->lc->ifd, section, "file_lock_size", 1000);
   lfs->enable_tape = inip_get_integer(lfs->lc->ifd, section, "enable_tape", 0);
-  lfs->fs_size = (ex_off_t)1024*1024*1024*1024*1024;
-  lfs->fs_size = inip_get_integer(lfs->lc->ifd, section, "fs_size", lfs->fs_size);
 
   n = lfs->inode_cache_size;
   p = log2(n) + 3;
@@ -2713,7 +2714,7 @@ void *lfs_init_real(struct fuse_conn_info *conn,
 
   apr_pool_create(&(lfs->mpool), NULL);
   apr_thread_mutex_create(&(lfs->lock), APR_THREAD_MUTEX_DEFAULT, lfs->mpool);
-  apr_thread_create(&(lfs->gc_thread), NULL, lfs_gc_thread, (void *)lfs, lfs->mpool);
+  thread_create_assert(&(lfs->gc_thread), NULL, lfs_gc_thread, (void *)lfs, lfs->mpool);
 
   //** Make the cond table
   type_malloc_clear(lfs->file_lock, apr_thread_mutex_t *, lfs->file_count);
@@ -2739,7 +2740,7 @@ void *lfs_init_real(struct fuse_conn_info *conn,
 // lio_fuse_destroy - Destroy a fuse object
 //
 //    (handles shuting down lio as appropriate, no need to call lio_shutdown() externally)
-// 
+//
 //*************************************************************************
 
 void lfs_destroy(void *private_data)
@@ -2755,11 +2756,11 @@ void lfs_destroy(void *private_data)
 
   log_printf(15, "shutting down\n"); flush_log();
 
-  lfs = (lio_fuse_t*)private_data;  
+  lfs = (lio_fuse_t*)private_data;
   if (lfs == NULL){
     log_printf(0,"lio_fuse_destroy: Error, the lfs handle is null, unable to shutdown cleanly. Perhaps lfs creation failed?");
     return;
-  }  
+  }
 
   //** Shut down the RW thread
   apr_thread_mutex_lock(lfs->lock);

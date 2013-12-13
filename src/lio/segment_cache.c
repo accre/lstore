@@ -3166,7 +3166,15 @@ CACHE_PRINT;
      //** and drop the cache pages
      cache_page_drop(seg, 0, s->total_size + 1);
 
+     //** Make sure all the pages are actually gone by waiting to make sure a free_mem() call isn't running on a page we hold
      cache_lock(s->c);
+     while (atomic_get(s->dumping_pages) != 0) {
+       cache_unlock(s->c);
+       log_printf(5, "seg=" XIDT " waiting for a forced page free to complete\n", segment_id(seg));
+       usleep(10000);
+       cache_lock(s->c);
+     }
+
      s->c->fn.removing_segment(s->c, seg);  //** Do the final remove
      cache_unlock(s->c);
   }

@@ -1051,6 +1051,8 @@ void os_attribute_tests()
       return;
    }
 
+//abort();
+
    free(rval);
 
    //** Now remove the foo1 attribute for root

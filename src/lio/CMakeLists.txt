@@ -104,6 +104,7 @@ set(LIO_OBJS
    raid4.c
    service_manager.c
    zhelpers.c
+   archive.c
 )
 
 set(LIBLIO_TRACE_OBJS liblio_trace.c )
@@ -122,7 +123,7 @@ set(LIO_EXE
     mk_linear ex_load ex_get ex_put ex_inspect ex_clone ex_rw_test log_test rs_test os_test os_fsck
     lio_touch lio_mkdir lio_rmdir lio_rm lio_ln lio_find lio_ls lio_du lio_setattr lio_getattr lio_mv lio_cp
     lio_put lio_get lio_signature lio_warm lio_inspect lio_fsck lio_rs lio_server lio_fuse arc_tag_create
-    arc_tag_destroy arc_tag arc_tag_ls
+    arc_tag_destroy arc_tag arc_tag_ls arc_create arc_restore
 )
 
 #Make static executables by default
@@ -154,7 +155,7 @@ install(FILES
    cache_lru.h       ds_ibp.h                 ex3_fmttypes.h  ex3_types.h        os_file.h        segment_cache.h       segment_log.h       transfer_buffer.h
    cache_lru_priv.h  ds_ibp_priv.h            ex3_header.h    exnode3.h          raid4.h          segment_cache_priv.h  segment_log_priv.h  view_layout.h
    cache_priv.h      erasure_tools.h          ex3_linear.h    rs_query_base.h    segment_file.h   segment_lun.h         cache.h
-   authn_abstract.h  authn_fake.h      	      osaz_fake.h     rs_remote.h
+   authn_abstract.h  authn_fake.h      	      osaz_fake.h     rs_remote.h        archive.h
    DESTINATION include/lio )
 
 

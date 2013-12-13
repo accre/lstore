@@ -376,7 +376,7 @@ void osrs_remove_regex_object_cb(void *arg, mq_task_t *task)
   int64_t recurse_depth, obj_types, timeout, len, hb_timeout;
   mq_msg_t *msg;
   apr_time_t expire;
-  op_generic_t *gop, *g;
+  op_generic_t *g, *gop;
   mq_stream_t *mqs;
   op_status_t status;
   spin_hb_t spin;
@@ -450,8 +450,8 @@ void osrs_remove_regex_object_cb(void *arg, mq_task_t *task)
   //** run the task
   if (creds != NULL) {
     gop = os_remove_regex_object(osrs->os_child, creds, path, object_regex, obj_types, recurse_depth);
-
-    while ((g = gop_timed_waitany(spin.gop, 1)) == NULL) {
+    
+    while ((g = gop_timed_waitany(gop, 1)) == NULL) {
        expire = apr_time_now() - apr_time_from_sec(hb_timeout);
        apr_thread_mutex_lock(osrs->lock);
        n = ((expire > spin.last_hb) || (spin.abort > 0)) ? 1 : 0;
@@ -460,15 +460,15 @@ void osrs_remove_regex_object_cb(void *arg, mq_task_t *task)
 
        if (n == 1) { //** Kill the gop
           log_printf(1, "Aborting gop=%d\n", gop_id(spin.gop));
-          g = os_abort_remove_regex_object(osrs->os_child, spin.gop);
+          g = os_abort_remove_regex_object(osrs->os_child, gop);
           gop_waitall(g);
           gop_free(g, OP_DESTROY);
           break;
        }
     }
 
-    gop_waitall(spin.gop);
-    status = gop_get_status(spin.gop);
+    gop_waitall(gop);
+    status = gop_get_status(gop);
     gop_free(gop, OP_DESTROY);
   } else {
      status = op_failure_status;

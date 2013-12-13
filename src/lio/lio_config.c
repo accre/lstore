@@ -854,7 +854,7 @@ lio_config_t *lio_create_nl(char *fname, char *section, char *user)
   }
 
   //** Add the shared ongoing object
-  mq_ongoing_t *on = mq_ongoing_create(lio->mqc, NULL, 0, ONGOING_CLIENT);
+  mq_ongoing_t *on = mq_ongoing_create(lio->mqc, NULL, 1, ONGOING_CLIENT);
   add_service(lio->ess, ESS_RUNNING, ESS_ONGOING_CLIENT, on);
   
   stype = inip_get_string(lio->ifd, section, "ds", DS_TYPE_IBP);
@@ -1161,7 +1161,7 @@ int lio_init(int *argc, char ***argvp)
   nargs = 1;  //** argv[0] is preserved as the calling name
   myargv[0] = argv[0];
   i=1;
-  ll = -1;
+  ll = 0;
   auto_mode = -1;
 
   if (*argc < 2) goto no_args;  //** Nothing to parse
@@ -1227,13 +1227,13 @@ no_args:
   if (cfg_name == NULL) {
     if (os_local_filetype("lio.cfg") != 0) {
        cfg_name = "lio.cfg";
-    } else if (os_local_filetype("/etc/lio/lio.cfg") != 0) {
-       cfg_name = "/etc/lio/lio.cfg";
     } else {
       home = getenv("HOME");
       snprintf(buffer, sizeof(buffer), "%s/.lio/lio.cfg", home);
       if (os_local_filetype(buffer) != 0) {
          cfg_name = strdup(buffer);
+      } else if (os_local_filetype("/etc/lio/lio.cfg") != 0) {
+         cfg_name = "/etc/lio/lio.cfg";
       }
     }
   }
@@ -1242,7 +1242,7 @@ no_args:
   if (cfg_name != NULL) {
      mlog_load(cfg_name);
 
-     if (ll > -1) set_log_level(ll);
+     set_log_level(ll);
 
      lio_gc = lio_create(cfg_name, section_name, userid);
      lio_gc->ref_cnt = 1;

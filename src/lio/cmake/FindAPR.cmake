@@ -14,6 +14,7 @@
 # Find the *relative* include path
 find_path(apr_inc apr-1/apr.h)
 
+
 # Now convert it to the full path
 if (apr_inc)     
    find_path(APR_INCLUDE_DIR apr.h ${apr_inc}/apr-1 )

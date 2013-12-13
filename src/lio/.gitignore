@@ -1,6 +1,12 @@
 #Ignore binaries
 *.so
 *.a
+arc_create
+arc_restore
+arc_tag
+arc_tag_create
+arc_tag_destroy
+arc_tag_ls
 ex_cat
 ex_clone
 ex_get
@@ -38,6 +44,7 @@ lio_warm
 lio_fuse
 lio_rs
 lio_server
+
 #These are generated via cmake using the *.in variants
 lio_client_version.c
 
@@ -61,3 +68,5 @@ Makefile
 cmake_install.cmake
 install_manifest.txt
 
+# netbeans info
+nbproject

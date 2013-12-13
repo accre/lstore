@@ -48,6 +48,7 @@ http://www.accre.vanderbilt.edu
 #include "random.h"
 #include "rs_query_base.h"
 #include "mq_portal.h"
+#include "apr_wrapper.h"
 
 typedef struct {
   uint64_t id;
@@ -503,7 +504,7 @@ resource_service_fn_t *rs_remote_client_create(void *arg, inip_file_t *fd, char 
   free(stype);
 
   //** Launch the config changes thread
-  assert(apr_thread_create(&(rsrc->check_thread), NULL, rsrc_check_thread, (void *)rs, rsrc->mpool) == APR_SUCCESS);
+  thread_create_assert(&(rsrc->check_thread), NULL, rsrc_check_thread, (void *)rs, rsrc->mpool);
 
 
   //** Set up the fn ptrs

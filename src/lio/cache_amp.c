@@ -38,6 +38,7 @@ http://www.accre.vanderbilt.edu
 #include "log.h"
 #include "ex3_compare.h"
 #include "thread_pool.h"
+#include "apr_wrapper.h"
 
 //******************
 cache_t *global_cache;
@@ -905,6 +906,8 @@ flush_log();
              ptable = (page_table_t *)pigeon_coop_hole_data(&pt_pch);
              ptable->seg = p->seg;
              ptable->id = segment_id(p->seg);
+             s = (cache_segment_t *)ptable->seg->priv;
+             atomic_inc(s->dumping_pages);  //** This makes sure we don't free the segment
              ptable->pch = pt_pch;
              list_insert(table, &(ptable->id), ptable);
           }
@@ -962,94 +965,82 @@ log_printf(_amp_logging, "seg=" XIDT " MRU retry offset=" XOT "\n", segment_id(p
   sit = list_iter_search(table, list_first_key(table), 0);
   list_next(&sit, (list_key_t **)&segid, (list_data_t **)&ptable);
   while (ptable != NULL) {
-    //** Verify the segment is still valid.  If not then just delete everything
-    cache_lock(c);
-    pseg = list_search(c->segments, segid);
-    cache_unlock(c);
-    if (pseg != NULL) {   //** VAlid segment if pseg is non-null
-       segment_lock(ptable->seg);
-       min_off = s->total_size;
-       max_off = -1;
+     segment_lock(ptable->seg);
+     min_off = s->total_size;
+     max_off = -1;
 
-       s = (cache_segment_t *)ptable->seg->priv;
-       while ((p = pop(ptable->stack)) != NULL) {
-          atomic_dec(p->access_pending[CACHE_READ]); //** Removed my access control from earlier
-          flush_count = atomic_get(p->access_pending[CACHE_FLUSH]);
-          cw = atomic_get(p->access_pending[CACHE_WRITE]);
-          count = atomic_get(p->access_pending[CACHE_READ]) + cw + flush_count;
-          bits = atomic_get(p->bit_fields);
-          if (count != 0) { //** Currently in use so wait for it to be released
-             if (cw > 0) {  //** Got writes so need to wait until they complete otherwise the page may not get released
-                bits = bits | C_TORELEASE;  //** Mark it for release
-                atomic_set(p->bit_fields, bits);
-                _cache_drain_writes(p->seg, p);  //** Drain the write ops
-                bits = atomic_get(p->bit_fields);  //** Get the bit fields to see if it's dirty
-             }
+     s = (cache_segment_t *)ptable->seg->priv;
+     while ((p = pop(ptable->stack)) != NULL) {
+        atomic_dec(p->access_pending[CACHE_READ]); //** Removed my access control from earlier
+        flush_count = atomic_get(p->access_pending[CACHE_FLUSH]);
+        cw = atomic_get(p->access_pending[CACHE_WRITE]);
+        count = atomic_get(p->access_pending[CACHE_READ]) + cw + flush_count;
+        bits = atomic_get(p->bit_fields);
+        if (count != 0) { //** Currently in use so wait for it to be released
+           if (cw > 0) {  //** Got writes so need to wait until they complete otherwise the page may not get released
+              bits = bits | C_TORELEASE;  //** Mark it for release
+              atomic_set(p->bit_fields, bits);
+              _cache_drain_writes(p->seg, p);  //** Drain the write ops
+              bits = atomic_get(p->bit_fields);  //** Get the bit fields to see if it's dirty
+           }
 
-             if (flush_count == 0) {  //** Make sure it's not already being flushed
-                if ((bits & C_ISDIRTY) != 0) {  //** Have to flush it don't have to track it cause the flush will do the release 
-                   if (min_off > p->offset) min_off = p->offset;
-                   if (max_off < p->offset) max_off = p->offset;
-                }
-             }
-             bits = bits | C_TORELEASE;
+           if (flush_count == 0) {  //** Make sure it's not already being flushed
+              if ((bits & C_ISDIRTY) != 0) {  //** Have to flush it don't have to track it cause the flush will do the release 
+                 if (min_off > p->offset) min_off = p->offset;
+                 if (max_off < p->offset) max_off = p->offset;
+              }
+           }
+           bits = bits | C_TORELEASE;
 
 log_printf(_amp_logging, "in use marking for release seg=" XIDT " p->offset=" XOT " bits=%d\n", segment_id(p->seg), p->offset, bits);
-             atomic_set(p->bit_fields, bits);
+           atomic_set(p->bit_fields, bits);
 
-             pending_bytes += s->page_size;
-          } else {  //** Not in use
-             if ((bits & (C_ISDIRTY|C_EMPTY)) == 0) {  //** Don't have to flush it just drop the page
-                cp->limbo_pages--;
+           pending_bytes += s->page_size;
+        } else {  //** Not in use
+           if ((bits & (C_ISDIRTY|C_EMPTY)) == 0) {  //** Don't have to flush it just drop the page
+              cp->limbo_pages--;
 log_printf(_amp_logging, "FREEING page seg=" XIDT " p->offset=" XOT " bits=%d limbo=%d\n", segment_id(p->seg), p->offset, bits, cp->limbo_pages);
-                list_remove(s->pages, &(p->offset), p);  //** Have to do this here cause p->offset is the key var
-                if (p->data[0].ptr) free(p->data[0].ptr);
-                if (p->data[1].ptr) free(p->data[1].ptr);
-                lp = (page_amp_t *)p->priv;
-                free(lp);
-                freed_bytes += s->page_size;
-             } else {         //** Got to flush the page first but don't have to track it cause the flush will do the release
-                if (p->offset > -1) { //** Skip blank pages
-                   if (min_off > p->offset) min_off = p->offset;
-                   if (max_off < p->offset) max_off = p->offset;
-                }
+              list_remove(s->pages, &(p->offset), p);  //** Have to do this here cause p->offset is the key var
+              if (p->data[0].ptr) free(p->data[0].ptr);
+              if (p->data[1].ptr) free(p->data[1].ptr);
+              lp = (page_amp_t *)p->priv;
+              free(lp);
+              freed_bytes += s->page_size;
+           } else {         //** Got to flush the page first but don't have to track it cause the flush will do the release
+              if (p->offset > -1) { //** Skip blank pages
+                 if (min_off > p->offset) min_off = p->offset;
+                 if (max_off < p->offset) max_off = p->offset;
+              }
 
-                bits = bits | C_TORELEASE;
-                atomic_set(p->bit_fields, bits);
+              bits = bits | C_TORELEASE;
+              atomic_set(p->bit_fields, bits);
 
-                pending_bytes += s->page_size;
+              pending_bytes += s->page_size;
 if (p->offset > -1) {
   log_printf(15, "FLUSHING page seg=" XIDT " p->offset=" XOT " bits=%d\n", segment_id(p->seg), p->offset, bits);
 } else {
   log_printf(15, "RELEASE trigger for empty page seg=" XIDT " p->offset=" XOT " bits=%d\n", segment_id(p->seg), p->offset, bits);
 }
-             }
-          }
+           }
+        }
 
-         list_next(&sit, (list_key_t **)&poff, (list_data_t **)&p);
-       }
+      list_next(&sit, (list_key_t **)&poff, (list_data_t **)&p);
+     }
 
-       segment_unlock(ptable->seg);
+     segment_unlock(ptable->seg);
+     atomic_dec(s->dumping_pages);  //** Now we can free the segment
 
-       if (max_off>-1) {
-          if ((max_off - min_off) < 10*s->page_size) max_off = min_off + 10*s->page_size;
-          gop = cache_flush_range(ptable->seg, s->c->da, min_off, max_off + s->page_size - 1, s->c->timeout);
-          opque_add(q, gop);
-       }
-    } else {  //** Segment has been deleted so drop everything but undo the pending read so the cache_destroy will complete
-log_printf(_amp_logging, "seg=" XIDT " looks to be removed so undoing the pending CACHE_READ for marked pages\n", segment_id(p->seg));
-       segment_lock(ptable->seg);
-       while ((p = pop(ptable->stack)) != NULL) {
-          atomic_dec(p->access_pending[CACHE_READ]); //** Removed my access control from earlier
-       }
-       segment_unlock(ptable->seg);
-    }
+     if (max_off>-1) {
+        if ((max_off - min_off) < 10*s->page_size) max_off = min_off + 10*s->page_size;
+        gop = cache_flush_range(ptable->seg, s->c->da, min_off, max_off + s->page_size - 1, s->c->timeout);
+        opque_add(q, gop);
+     }
 
-    cache_lock(c);
-    release_pigeon_coop_hole(cp->free_page_tables, &(ptable->pch));
-    cache_unlock(c);
+     cache_lock(c);
+     release_pigeon_coop_hole(cp->free_page_tables, &(ptable->pch));
+     cache_unlock(c);
 
-    list_next(&sit, (skiplist_key_t **)&pseg, (skiplist_data_t **)&ptable);
+     list_next(&sit, (skiplist_key_t **)&pseg, (skiplist_data_t **)&ptable);
   }
 
 cache_lock(c);
@@ -1475,7 +1466,7 @@ cache_t *amp_cache_create(void *arg, data_attr_t *da, int timeout)
   cache->fn.get_handle = cache_base_handle;
 
   apr_thread_cond_create(&(c->dirty_trigger), cache->mpool);
-  apr_thread_create(&(c->dirty_thread), NULL, amp_dirty_thread, (void *)cache, cache->mpool);
+  thread_create_assert(&(c->dirty_thread), NULL, amp_dirty_thread, (void *)cache, cache->mpool);
 
   return(cache);
 }

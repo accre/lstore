@@ -136,6 +136,7 @@ typedef struct {
   apr_pool_t *mpool;
   apr_thread_t *heartbeat_thread;
   thread_pool_context_t *tpc;
+  int stream_timeout;
   int timeout;
   int heartbeat;
   int shutdown;

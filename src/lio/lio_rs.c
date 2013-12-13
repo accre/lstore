@@ -204,7 +204,7 @@ int main(int argc, char **argv)
 
   if (argc < 2) {
      printf("\n");
-     printf("lio_rs LIO_COMMON_OPTIONS [-w] [-s]\n");
+     printf("lio_rs LIO_COMMON_OPTIONS [-w] [-s | -f]\n");
      lio_print_options(stdout);
      printf("    -w                 - Watch for RID configuration changes. Press ^C to exit\n");
      printf("    -s                 - Print a RID space usage summary\n");
