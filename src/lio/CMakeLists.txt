@@ -156,6 +156,13 @@ install(FILES
    cache_lru_priv.h  ds_ibp_priv.h            ex3_header.h    exnode3.h          raid4.h          segment_cache_priv.h  segment_log_priv.h  view_layout.h
    cache_priv.h      erasure_tools.h          ex3_linear.h    rs_query_base.h    segment_file.h   segment_lun.h         cache.h
    authn_abstract.h  authn_fake.h      	      osaz_fake.h     rs_remote.h        archive.h
+   lio_abstract.h
+   cache_round_robin.h
+   resource_service_abstract.h
+   object_service_abstract.h
+   service_manager.h
+   rs_zmq.h
+   os_remote.h
    DESTINATION include/lio )
 
 
