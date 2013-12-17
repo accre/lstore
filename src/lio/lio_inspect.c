@@ -73,11 +73,11 @@ op_status_t inspect_task(void *arg, int id)
   exnode_t *ex;
   exnode_exchange_t *exp, *exp_out;
   segment_t *seg;
-  char *keys[] = { "system.exnode", "os.timestamp.system.inspect", "system.hard_errors", "system.soft_errors" };
+  char *keys[] = { "os.timestamp.system.inspect", "system.hard_errors", "system.soft_errors", "system.exnode" };
   char *val[4];
   char *dsegid, *ptr;
   int v_size[4];
-  int whattodo, repair_mode;
+  int whattodo, repair_mode, count;
   inip_file_t *ifd;
 
   whattodo = global_whattodo;
@@ -194,11 +194,14 @@ log_printf(15, "fname=%s inspect_gid=%d status=%d\n", w->fname, gop_id(gop), sta
      //printf("%s", exp_out->text);
      //printf("-----------------------------------------------------\n");
 
-     val[0] = exp_out->text.text; v_size[0]= strlen(val[0]);
-     val[1] = NULL; v_size[1] = 0;
-     val[2] = NULL;  v_size[2] = -1;  //** Remove the system.*_errors
-     val[3] = NULL;  v_size[3] = -1;
-     lioc_set_multiple_attrs(lio_gc, creds, w->fname, NULL, keys, (void **)val, v_size, 4);
+     val[0] = NULL;  v_size[0] = 0;
+     val[1] = NULL;  v_size[1] = -1;  //** Remove the system.*_errors
+     val[2] = NULL;  v_size[2] = -1;
+
+     count = (strcmp(exp->text.text, exp_out->text.text) == 0) ? 1 : 0;  //** Only update the exnode if it's changed
+     val[3] = exp_out->text.text; v_size[3]= strlen(val[3]);
+
+     lioc_set_multiple_attrs(lio_gc, creds, w->fname, NULL, keys, (void **)val, v_size, 4-count);
      exnode_exchange_destroy(exp_out);
   }
 
