@@ -75,7 +75,7 @@ op_status_t inspect_task(void *arg, int id)
   segment_t *seg;
   char *keys[] = { "os.timestamp.system.inspect", "system.hard_errors", "system.soft_errors", "system.exnode" };
   char *val[4];
-  char *dsegid, *ptr;
+  char *dsegid, *ptr, *exnode2;
   int v_size[4];
   int whattodo, repair_mode, count;
   inip_file_t *ifd;
@@ -197,9 +197,21 @@ log_printf(15, "fname=%s inspect_gid=%d status=%d\n", w->fname, gop_id(gop), sta
      val[0] = NULL;  v_size[0] = 0;
      val[1] = NULL;  v_size[1] = -1;  //** Remove the system.*_errors
      val[2] = NULL;  v_size[2] = -1;
+     val[3] = exp_out->text.text; v_size[3]= strlen(val[3]);
 
      count = (strcmp(exp->text.text, exp_out->text.text) == 0) ? 1 : 0;  //** Only update the exnode if it's changed
-     val[3] = exp_out->text.text; v_size[3]= strlen(val[3]);
+     if (count == 0) {  //** Do a further check to make sure the exnode hans't changed during the inspection
+        count = -lio_gc->max_attr;
+        exnode2 = NULL;
+        lioc_get_attr(lio_gc, creds, w->fname, NULL, "system.exnode", (void **)&exnode2, &count);
+        if (exnode2 != NULL) {
+           count = (strcmp(exnode2, exp->text.text) == 0) ? 0 : 1;
+           free(exnode2);
+           if (count == 1) { info_printf(lio_ifd, 0, "WARN Exnode changed during inspection for file %s (ftype=%d). Aborting exnode update\n", w->fname, w->ftype); }
+        } else {
+           count = 1;
+        }
+     }
 
      lioc_set_multiple_attrs(lio_gc, creds, w->fname, NULL, keys, (void **)val, v_size, 4-count);
      exnode_exchange_destroy(exp_out);
