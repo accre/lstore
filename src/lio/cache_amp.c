@@ -360,6 +360,7 @@ void _amp_process_waiters(cache_t *c)
   cache_cond_t *cache_cond;
   ex_off_t bytes_free, bytes_needed;
 
+log_printf(15, "stack_size(pending_free_tasks)=%d stack_size(cp->waiting_stack)=%d\n", stack_size(cp->pending_free_tasks), stack_size(cp->waiting_stack));
   if (stack_size(cp->pending_free_tasks) > 0) {  //**Check on pending free tasks 1st
      while ((cache_cond = (cache_cond_t *)pop(cp->pending_free_tasks)) != NULL) {
 log_printf(15, "waking up pending task cache_cond=%p stack_size left=%d\n", cache_cond, stack_size(cp->pending_free_tasks));
@@ -373,10 +374,12 @@ log_printf(15, "waking up pending task cache_cond=%p stack_size left=%d\n", cach
      move_to_top(cp->waiting_stack);
      pw = get_ele_data(cp->waiting_stack);
      bytes_needed = pw->bytes_needed;
+log_printf(15, "START free=" XOT " needed=" XOT "\n", bytes_free, bytes_needed);
+
      while ((bytes_needed <= bytes_free) && (pw != NULL)) {
         bytes_free -= bytes_needed;
         delete_current(cp->waiting_stack, 1, 0);
-log_printf(15, "waking up waiting stack pw=%d\n", pw);
+log_printf(15, "waking up waiting stack pw=%p\n", pw);
 
         apr_thread_cond_signal(pw->cond);    //** Wake up the paused thread
 
@@ -1000,16 +1003,15 @@ ex_off_t _amp_force_free_mem(cache_t *c, segment_t *page_seg, ex_off_t bytes_to_
   cache_segment_t *s = (cache_segment_t *)page_seg->priv;
   cache_amp_t *cp = (cache_amp_t *)c->fn.priv;
   ex_off_t freed_bytes, bytes_left;
-  int top, finished;
+  int top;
   pigeon_coop_hole_t pch;
   cache_cond_t *cache_cond;
 
   top = 0;
   freed_bytes = _amp_attempt_free_mem(c, page_seg, bytes_left);
   bytes_left = bytes_to_free - freed_bytes;
-  finished = 0;
 
-  while ((freed_bytes < bytes_to_free) && (finished == 0)) {  //** Keep trying to mark space as free until I get enough
+  while (freed_bytes < bytes_to_free) {  //** Keep trying to mark space as free until I get enough
      if (top == 0) {
         top = 1;
         pch = reserve_pigeon_coop_hole(s->c->cond_coop);
@@ -1026,17 +1028,13 @@ log_printf(15, "not enough space so waiting cache_cond=%p freed_bytes=" XOT " by
      //** Now wait until it's my turn
      apr_thread_cond_wait(cache_cond->cond, c->lock);
 
-     bytes_left -= freed_bytes;
-     freed_bytes = _amp_attempt_free_mem(c, page_seg, bytes_left);
-     finished = 1;
+     freed_bytes += _amp_attempt_free_mem(c, page_seg, bytes_left);
   }
 
   //** Now check if we can handle some waiters
   if (check_waiters == 1) _amp_process_waiters(c);
 
   if (top == 1) release_pigeon_coop_hole(s->c->cond_coop, &pch);
-
-  freed_bytes = bytes_to_free - bytes_left;
 
   return(freed_bytes);
 }
@@ -1067,7 +1065,7 @@ void _amp_wait_for_page(cache_t *c, segment_t *seg, int ontop)
      bytes_needed = s->page_size - bytes_free;
      n = _amp_force_free_mem(c, seg, bytes_needed, check_waiters_first);
 
-     if (n > 0) { //** Didn't make it so wait
+     if (n < bytes_needed) { //** Didn't make it so wait
         if (ontop == 0) {
            move_to_bottom(cp->waiting_stack);
            insert_below(cp->waiting_stack, &pw);
