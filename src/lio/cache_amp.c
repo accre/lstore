@@ -1008,8 +1008,7 @@ ex_off_t _amp_force_free_mem(cache_t *c, segment_t *page_seg, ex_off_t bytes_to_
   cache_cond_t *cache_cond;
 
   top = 0;
-  freed_bytes = _amp_attempt_free_mem(c, page_seg, bytes_left);
-  bytes_left = bytes_to_free - freed_bytes;
+  freed_bytes = _amp_attempt_free_mem(c, page_seg, bytes_to_free);
 
   while (freed_bytes < bytes_to_free) {  //** Keep trying to mark space as free until I get enough
      if (top == 0) {
@@ -1028,6 +1027,7 @@ log_printf(15, "not enough space so waiting cache_cond=%p freed_bytes=" XOT " by
      //** Now wait until it's my turn
      apr_thread_cond_wait(cache_cond->cond, c->lock);
 
+     bytes_left = bytes_to_free - freed_bytes;
      freed_bytes += _amp_attempt_free_mem(c, page_seg, bytes_left);
   }
 
