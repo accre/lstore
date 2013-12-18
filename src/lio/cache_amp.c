@@ -252,7 +252,7 @@ log_printf(15, "Flushing seg=" XIDT " i=%d\n", *id, i);
 flush_log();
         flush_list[i] = seg;
         s = (cache_segment_t *)seg->priv;
-        atomic_inc(s->cache_check_in_progress);  //** Flag it as being checked
+        s->cache_check_in_progress++;  //** Flag it as being checked
         gop = cache_flush_range(seg, s->c->da, 0, -1, s->c->timeout);
         gop_set_myid(gop, i);
         opque_add(q, gop);
@@ -266,19 +266,18 @@ flush_log();
      opque_start_execution(q);
      while ((gop = opque_waitany(q)) != NULL) {
          i = gop_get_myid(gop);
-//         segment_lock(flush_list[i]);
          s = (cache_segment_t *)flush_list[i]->priv;
 
 log_printf(15, "Flush completed seg=" XIDT " i=%d\n", segment_id(flush_list[i]), i);
 flush_log();
          cache_lock(c);
-         atomic_dec(s->cache_check_in_progress);  //** Flag it as being finished
+         s->cache_check_in_progress--;  //** Flag it as being finished
          cache_unlock(c);
-//         segment_unlock(flush_list[i]);
 
          gop_free(gop, OP_DESTROY);
      }
      opque_free(q, OP_DESTROY);
+
 
      cache_lock(c);
 
@@ -301,13 +300,13 @@ log_printf(15, "Dirty thread Exiting\n");
 
 //*************************************************************************
 // amp_adjust_dirty - Adjusts the dirty ratio and if needed trigger a flush
+//   NOTE:  cache lock should be help by calling thread!
 //*************************************************************************
 
-void amp_adjust_dirty(cache_t *c, ex_off_t tweak)
+void _amp_adjust_dirty(cache_t *c, ex_off_t tweak)
 {
   cache_amp_t *cp = (cache_amp_t *)c->fn.priv;
 
-  cache_lock(c);
   c->stats.dirty_bytes += tweak;
   if (c->stats.dirty_bytes > cp->dirty_bytes_trigger) {
      if (cp->flush_in_progress == 0) {
@@ -315,7 +314,6 @@ void amp_adjust_dirty(cache_t *c, ex_off_t tweak)
         apr_thread_cond_signal(cp->dirty_trigger);
      }
   }
-  cache_unlock(c);
 }
 
 //*************************************************************************
@@ -340,7 +338,7 @@ cache_page_t *_amp_new_page(cache_t *c, segment_t *seg)
   p->priv = (void *)lp;
   p->seg = seg;
   p->offset = atomic_dec(amp_dummy);
-  atomic_set(p->bit_fields, C_EMPTY);  //** This way it's not accidentally deleted
+  p->bit_fields = C_EMPTY;  //** This way it's not accidentally deleted
   lp->stream_offset = -1;
 
   //** Store my position
@@ -367,7 +365,6 @@ void _amp_process_waiters(cache_t *c)
 log_printf(15, "waking up pending task cache_cond=%p stack_size left=%d\n", cache_cond, stack_size(cp->pending_free_tasks));
         apr_thread_cond_signal(cache_cond->cond);    //** Wake up the paused thread
      }
-//     return;
   }
 
   if (stack_size(cp->waiting_stack) > 0) {  //** Also handle the tasks waiting for flushes to complete
@@ -425,7 +422,6 @@ log_printf(_amp_logging, "seg=" XIDT " initial lo=" XOT " hi=" XOT " trigger=" X
      cache_advise(ap->seg, CACHE_READ, offset, ap->hi, page, &n_pages, 1);
 log_printf(_amp_logging, "seg=" XIDT " lo=" XOT " hi=" XOT " n_pages=%d\n", segment_id(ap->seg), offset, ap->hi, n_pages);
      if (n_pages == 0) { //** Hit an existing page
-        segment_lock(seg);
         cache_lock(s->c);
         it = iter_search_skiplist(s->pages, &offset, 0);
         next_skiplist(&it, (skiplist_key_t **)&poff, (skiplist_data_t **)&p);
@@ -456,12 +452,11 @@ log_printf(_amp_logging, "seg=" XIDT " SET_TAG offset=" XOT "\n", segment_id(ap-
            }
         }
         cache_unlock(s->c);
-        segment_unlock(seg);
      } else {  //** Process the pages just loaded
        cache_lock(s->c);
        nloaded += n_pages;
        for (i=0; i<n_pages; i++) {
-          if (atomic_get(page[i].p->access_pending[CACHE_READ]) > 0) pending_read++;
+          if (page[i].p->access_pending[CACHE_READ] > 0) pending_read++;
 
           if (page[i].p->offset == trigger_offset) {
              lp = (page_amp_t *)page[i].p->priv;
@@ -506,7 +501,7 @@ log_printf(15, "seg=" XIDT " additional system read bytes=" XOT "\n", segment_id
 
   //** Update the count
   cache_lock(s->c);
-  atomic_dec(s->cache_check_in_progress);  //** Flag it as being finished
+  s->cache_check_in_progress--;  //** Flag it as being finished
   cache_unlock(s->c);
 
   return(op_success_status);
@@ -572,7 +567,7 @@ log_printf(_amp_slog, "seg=" XIDT " max_fetch=" XOT " prefetch_in_process=" XOT 
   //** Let's make sure the segment isn't marked for removal
   if (list_search(s->c->segments, &(segment_id(seg))) == NULL) return;
 
-  atomic_inc(s->cache_check_in_progress);  //** Flag it as in use.  This is released on completion in amp_prefetch_fn
+  s->cache_check_in_progress++;  //** Flag it as in use.  This is released on completion in amp_prefetch_fn
 
   type_malloc(ca, amp_prefetch_op_t, 1);
   ca->seg = seg;
@@ -591,26 +586,24 @@ ca->gop = gop;
 }
 
 //*************************************************************************
-//  amp_pages_release - Releases the page using the amp algorithm.
+//  _amp_pages_release - Releases the page using the amp algorithm.
 //    Returns 0 if the page still exits and 1 if it was removed.
+//  NOTE: Cache lock should be held by calling thread
 //*************************************************************************
 
-int amp_pages_release(cache_t *c, cache_page_t **page, int n_pages)
+int _amp_pages_release(cache_t *c, cache_page_t **page, int n_pages)
 {
   cache_amp_t *cp = (cache_amp_t *)c->fn.priv;
   cache_segment_t *s;
   page_amp_t *lp;
   cache_page_t *p;
-  int bits, i;
-
-  cache_lock(c);
+  int i;
 
   for (i=0; i<n_pages; i++) {
      p = page[i];
-     bits = atomic_get(p->bit_fields);
-log_printf(15, "seg=" XIDT " p->offset=" XOT " bits=%d bytes_used=" XOT "\n", segment_id(p->seg), p->offset, bits, cp->bytes_used);
-     if ((bits & C_TORELEASE) > 0) {
-log_printf(15, "DESTROYING seg=" XIDT " p->offset=" XOT " bits=%d bytes_used=" XOT "cache_pages=%d\n", segment_id(p->seg), p->offset, bits, cp->bytes_used, stack_size(cp->stack));
+log_printf(15, "seg=" XIDT " p->offset=" XOT " bits=%d bytes_used=" XOT "\n", segment_id(p->seg), p->offset, p->bit_fields, cp->bytes_used);
+     if ((p->bit_fields & C_TORELEASE) > 0) {
+log_printf(15, "DESTROYING seg=" XIDT " p->offset=" XOT " bits=%d bytes_used=" XOT "cache_pages=%d\n", segment_id(p->seg), p->offset, p->bit_fields, cp->bytes_used, stack_size(cp->stack));
         s = (cache_segment_t *)p->seg->priv;
         lp = (page_amp_t *)p->priv;
 
@@ -635,8 +628,6 @@ log_printf(15, "seg=" XIDT " limbo page p->offset=" XOT " limbo=%d\n", segment_i
   //** Now check if we can handle some waiters
   _amp_process_waiters(c);
 
-  cache_unlock(c);
-
   return(0);
 }
 
@@ -645,18 +636,17 @@ log_printf(15, "seg=" XIDT " limbo page p->offset=" XOT " limbo=%d\n", segment_i
 //    forced cache page requests it's possible that another empty page request
 //    created the page already.  If so we just need to drop this page cause
 //    it wasnn't added to the segment (remove_from_segment=0)
+//
+//     NOTE thread must hold cache lock!
 //*************************************************************************
 
-void amp_pages_destroy(cache_t *c, cache_page_t **page, int n_pages, int remove_from_segment)
+void _amp_pages_destroy(cache_t *c, cache_page_t **page, int n_pages, int remove_from_segment)
 {
   cache_amp_t *cp = (cache_amp_t *)c->fn.priv;
   cache_segment_t *s;
   page_amp_t *lp;
   cache_page_t *p;
-//  cache_cond_t *cache_cond;
-  int i;
-  int cr, cw, cf, count;
-  cache_lock(c);
+  int i, count;
 
 log_printf(15, " START cp->bytes_used=" XOT "\n", cp->bytes_used);
 
@@ -664,13 +654,8 @@ log_printf(15, " START cp->bytes_used=" XOT "\n", cp->bytes_used);
      p = page[i];
      s = (cache_segment_t *)p->seg->priv;
 
-     cr = atomic_get(p->access_pending[CACHE_READ]);
-     cw = atomic_get(p->access_pending[CACHE_WRITE]);
-     cf = atomic_get(p->access_pending[CACHE_FLUSH]);
-     count = cr +cw + cf;
+     count = p->access_pending[CACHE_READ] + p->access_pending[CACHE_WRITE] + p->access_pending[CACHE_FLUSH];
 
-//     cache_cond = (cache_cond_t *)pigeon_coop_hole_data(&(p->cond_pch));
-//     if (cache_cond == NULL) {  //** No one listening so free normally
      if (count == 0) {  //** No one is listening
 log_printf(15, "amp_pages_destroy i=%d p->offset=" XOT " seg=" XIDT " remove_from_segment=%d limbo=%d\n", i, p->offset, segment_id(p->seg), remove_from_segment, cp->limbo_pages);
         cp->bytes_used -= s->page_size;
@@ -690,23 +675,22 @@ log_printf(15, "amp_pages_destroy i=%d p->offset=" XOT " seg=" XIDT " remove_fro
         if (p->data[1].ptr) free(p->data[1].ptr);
         free(lp);
      } else {  //** Someone is listening so trigger them and also clear the bits so it will be released
-       atomic_set(p->bit_fields, C_TORELEASE);
-log_printf(15, "amp_pages_destroy i=%d p->offset=" XOT " seg=" XIDT " remove_from_segment=%d cr=%d cw=%d cf=%d limbo=%d\n", i, p->offset, segment_id(p->seg), remove_from_segment, cr, cw, cf, cp->limbo_pages);
+       p->bit_fields = C_TORELEASE;
+log_printf(15, "amp_pages_destroy i=%d p->offset=" XOT " seg=" XIDT " remove_from_segment=%d cr=%d cw=%d cf=%d limbo=%d\n", i, p->offset,
+  segment_id(p->seg), remove_from_segment, p->access_pending[CACHE_READ], p->access_pending[CACHE_WRITE], p->access_pending[CACHE_FLUSH], cp->limbo_pages);
      }
   }
 
 log_printf(15, " AFTER LOOP cp->bytes_used=" XOT "\n", cp->bytes_used);
-
 log_printf(15, " END cp->bytes_used=" XOT "\n", cp->bytes_used);
-
-  cache_unlock(c);
 }
 
 //*************************************************************************
 //  amp_page_access - Updates the access time for the cache block
+//    NOTE: Cache lock should be owned by calling thread!
 //*************************************************************************
 
-int amp_page_access(cache_t *c, cache_page_t *p, int rw_mode, ex_off_t request_len)
+int _amp_page_access(cache_t *c, cache_page_t *p, int rw_mode, ex_off_t request_len)
 {
   cache_amp_t *cp = (cache_amp_t *)c->fn.priv;
   cache_segment_t *s = (cache_segment_t *)p->seg->priv;
@@ -720,25 +704,17 @@ int amp_page_access(cache_t *c, cache_page_t *p, int rw_mode, ex_off_t request_l
   //** Only update the position if the page is linked.
   //** Otherwise the page is destined to be dropped
   if (lp->ele != NULL) {
-     cache_lock(c);
-     if (lp->ele != NULL) {  //** Recehck with the lock on
-        //** Move to the MRU position
-        if ((lp->bit_fields & CAMP_ACCESSED) > 0) {
+     //** Move to the MRU position
+     if ((lp->bit_fields & CAMP_ACCESSED) > 0) {
 log_printf(_amp_logging, "seg=" XIDT " MRU offset=" XOT "\n", segment_id(p->seg), p->offset);
-           move_to_ptr(cp->stack, lp->ele);
-           stack_unlink_current(cp->stack, 1);
-           move_to_top(cp->stack);
-           insert_link_above(cp->stack, lp->ele);
-        }
-else {
-log_printf(_amp_logging, "seg=" XIDT " SKIPPED offset=" XOT "\n", segment_id(p->seg), p->offset);
-}
+        move_to_ptr(cp->stack, lp->ele);
+        stack_unlink_current(cp->stack, 1);
+        move_to_top(cp->stack);
+        insert_link_above(cp->stack, lp->ele);
      }
 
      if (rw_mode == CACHE_WRITE) {  //** Write update so return
-//     if ((rw_mode == CACHE_WRITE) && (request_len > s->page_size)) {  //** Write update so return
         lp->bit_fields |= CAMP_ACCESSED;
-        cache_unlock(c);
         return(0);
      }
 
@@ -779,8 +755,6 @@ log_printf(_amp_slog, "seg=" XIDT " LAST offset=" XOT " prefetch_size=%d trigger
      }
 
      lp->bit_fields |= CAMP_ACCESSED;
-
-     cache_unlock(c);
   }
 
   return(0);
@@ -799,9 +773,8 @@ int _amp_free_mem(cache_t *c, segment_t *pseg, ex_off_t bytes_to_free)
   cache_page_t *p;
   page_amp_t *lp;
   Stack_ele_t *ele;
-  apr_thread_mutex_t *plock;
   ex_off_t total_bytes, pending_bytes;
-  int gotlock, count, bits, err;
+  int count, err;
 
   total_bytes = 0;
   err = 0;
@@ -813,36 +786,29 @@ log_printf(_amp_logging, "START seg=" XIDT " bytes_to_free=" XOT " bytes_used=" 
   while ((total_bytes < bytes_to_free) && (ele != NULL) && (err == 0)) {
     p = (cache_page_t *)get_stack_ele_data(ele);
     lp = (page_amp_t *)p->priv;
-    plock = p->seg->lock;
-    gotlock = apr_thread_mutex_trylock(plock);
-    if ((gotlock == APR_SUCCESS) || (p->seg == pseg)) {
-       bits = atomic_get(p->bit_fields);
-       if ((bits & C_TORELEASE) == 0) { //** Skip it if already flagged for removal
-          count = atomic_get(p->access_pending[CACHE_READ]) + atomic_get(p->access_pending[CACHE_WRITE]) + atomic_get(p->access_pending[CACHE_FLUSH]);
-          if (count == 0) { //** No one is using it
+    if ((p->bit_fields & C_TORELEASE) == 0) { //** Skip it if already flagged for removal
+       count = p->access_pending[CACHE_READ] + p->access_pending[CACHE_WRITE] + p->access_pending[CACHE_FLUSH];
+       if (count == 0) { //** No one is using it
+          if (((p->bit_fields & C_ISDIRTY) == 0) && ((lp->bit_fields & (CAMP_OLD|CAMP_ACCESSED)) > 0)) {  //** Don't have to flush it
              s = (cache_segment_t *)p->seg->priv;
-             if (((bits & C_ISDIRTY) == 0) && ((lp->bit_fields & (CAMP_OLD|CAMP_ACCESSED)) > 0)) {  //** Don't have to flush it
-//             if ((bits & C_ISDIRTY) == 0) {  //** Don't have to flush it
-                total_bytes += s->page_size;
-log_printf(_amp_logging, "amp_free_mem: freeing page seg=" XIDT " p->offset=" XOT " bits=%d\n", segment_id(p->seg), p->offset, bits);
-                list_remove(s->pages, &(p->offset), p);  //** Have to do this here cause p->offset is the key var
-                delete_current(cp->stack, 1, 0);
-                if (p->data[0].ptr) free(p->data[0].ptr);
-                if (p->data[1].ptr) free(p->data[1].ptr);
-                free(lp);
-             } else {         //** Got to flush the page first
-                err = 1;
-             }
-          } else {
-            err = 1;
+             total_bytes += s->page_size;
+log_printf(_amp_logging, "amp_free_mem: freeing page seg=" XIDT " p->offset=" XOT " bits=%d\n", segment_id(p->seg), p->offset, p->bit_fields);
+             list_remove(s->pages, &(p->offset), p);  //** Have to do this here cause p->offset is the key var
+             delete_current(cp->stack, 1, 0);
+             if (p->data[0].ptr) free(p->data[0].ptr);
+             if (p->data[1].ptr) free(p->data[1].ptr);
+             free(lp);
+          } else {         //** Got to flush the page first
+             err = 1;
           }
+       } else {
+         err = 1;
        }
-       if (gotlock == APR_SUCCESS) apr_thread_mutex_unlock(plock);
     } else {
-      err = 1;
+       move_up(cp->stack);
     }
 
-    if ((total_bytes < bytes_to_free) && (err == 0)) ele = get_ptr(cp->stack);
+    ele = get_ptr(cp->stack);
   }
 
   cp->bytes_used -= total_bytes;
@@ -861,18 +827,16 @@ ex_off_t _amp_attempt_free_mem(cache_t *c, segment_t *page_seg, ex_off_t bytes_t
 {
   cache_amp_t *cp = (cache_amp_t *)c->fn.priv;
   cache_segment_t *s;
-  segment_t *pseg;
   cache_page_t *p;
   page_amp_t *lp;
   Stack_ele_t *ele, *curr_ele;
   op_generic_t *gop;
   opque_t *q;
   amp_page_stream_t *ps;
-  ex_off_t total_bytes, freed_bytes, pending_bytes, *poff;
+  ex_off_t total_bytes, freed_bytes, pending_bytes;
   ex_id_t *segid;
-  ex_off_t min_off, max_off;
   list_iter_t sit;
-  int count, bits, cw, flush_count;
+  int count, n;
   list_t *table;
   page_table_t *ptable;
   pigeon_coop_hole_t pch, pt_pch;
@@ -882,6 +846,7 @@ log_printf(15, "START seg=" XIDT " bytes_to_free=" XOT " bytes_used=" XOT " stac
   freed_bytes = 0;
   pending_bytes = 0;
   total_bytes = 0;
+  q = NULL;
 
   //** cache_lock(c) is already acquired
   pch = reserve_pigeon_coop_hole(cp->free_pending_tables);
@@ -893,37 +858,57 @@ log_printf(15, "START seg=" XIDT " bytes_to_free=" XOT " bytes_used=" XOT " stac
   while ((total_bytes < bytes_to_free) && (ele != NULL)) {
     p = (cache_page_t *)get_stack_ele_data(ele);
     lp = (page_amp_t *)p->priv;
+    s = (cache_segment_t *)p->seg->priv;
 
-    bits = atomic_get(p->bit_fields);
-log_printf(15, "checking page for release seg=" XIDT " p->offset=" XOT " bits=%d\n", segment_id(p->seg), p->offset, bits);
+log_printf(15, "checking page for release seg=" XIDT " p->offset=" XOT " bits=%d\n", segment_id(p->seg), p->offset, p->bit_fields);
 flush_log();
 
-    if ((bits & C_TORELEASE) == 0) { //** Skip it if already flagged for removal
+    if ((p->bit_fields & C_TORELEASE) == 0) { //** Skip it if already flagged for removal
        if ((lp->bit_fields & (CAMP_OLD|CAMP_ACCESSED)) > 0) {  //** Already used once or cycled so ok to evict
-          ptable = (page_table_t *)list_search(table, (list_key_t *)&(segment_id(p->seg)));
-          if (ptable == NULL) {  //** Have to make a new segment entry
-             pt_pch = reserve_pigeon_coop_hole(cp->free_page_tables);
-             ptable = (page_table_t *)pigeon_coop_hole_data(&pt_pch);
-             ptable->seg = p->seg;
-             ptable->id = segment_id(p->seg);
-             s = (cache_segment_t *)ptable->seg->priv;
-             atomic_inc(s->dumping_pages);  //** This makes sure we don't free the segment
-             ptable->pch = pt_pch;
-             list_insert(table, &(ptable->id), ptable);
-          }
-
-          stack_unlink_current(cp->stack, 1);  //** Unlink it.  This is ele
-
-          s = (cache_segment_t *)p->seg->priv;
           if ((lp->bit_fields & CAMP_ACCESSED) == 0) c->stats.unused_bytes += s->page_size;
 
-          cp->limbo_pages++;
-log_printf(_amp_logging, "UNLINKING seg=" XIDT " p->offset=" XOT " bits=%d limbo=%d\n", segment_id(p->seg), p->offset, bits, cp->limbo_pages);
+          n = 0;
+          count = p->access_pending[CACHE_READ] + p->access_pending[CACHE_WRITE] + p->access_pending[CACHE_FLUSH];
+          if (count == 0) { //** No one is using it
+             if (((p->bit_fields & C_ISDIRTY) == 0) && ((lp->bit_fields & (CAMP_OLD|CAMP_ACCESSED)) > 0)) {  //** Don't have to flush it
+                freed_bytes += s->page_size;
+log_printf(_amp_logging, "freeing page seg=" XIDT " p->offset=" XOT " bits=%d\n", segment_id(p->seg), p->offset, p->bit_fields);
+                list_remove(s->pages, &(p->offset), p);  //** Have to do this here cause p->offset is the key var
+                delete_current(cp->stack, 1, 0);
+                if (p->data[0].ptr) free(p->data[0].ptr);
+                if (p->data[1].ptr) free(p->data[1].ptr);
+                free(lp);
+                n = 1;
+             }
+          }
 
-          atomic_inc(p->access_pending[CACHE_READ]);  //** Do this so it's not accidentally deleted
-          push(ptable->stack, p);
-          total_bytes += s->page_size;
-          free(lp->ele); lp->ele = NULL;  //** Mark it as removed from the list so a page_release doesn't free also
+          if (n == 0) { //** Couldn't perform an immediate release
+             if ((p->access_pending[CACHE_FLUSH] == 0) && ((p->bit_fields & C_ISDIRTY) != 0)) {  //** Make sure it's not already being flushed and it's dirty
+                ptable = (page_table_t *)list_search(table, (list_key_t *)&(segment_id(p->seg)));
+                if (ptable == NULL) {  //** Have to make a new segment entry
+                   pt_pch = reserve_pigeon_coop_hole(cp->free_page_tables);
+                   ptable = (page_table_t *)pigeon_coop_hole_data(&pt_pch);
+                   ptable->seg = p->seg;
+                   ptable->id = segment_id(p->seg);
+//                   s->dumping_pages++;  //** This makes sure we don't free the segment
+                   ptable->pch = pt_pch;
+                   list_insert(table, &(ptable->id), ptable);
+                   ptable->lo = p->offset; ptable->hi = p->offset;
+                } else {
+                   if (ptable->lo > p->offset) ptable->lo = p->offset;
+                   if (ptable->hi < p->offset) ptable->hi = p->offset;
+                }
+             }
+             p->bit_fields |= C_TORELEASE;
+
+log_printf(_amp_logging, "in use marking for release seg=" XIDT " p->offset=" XOT " bits=%d\n", segment_id(p->seg), p->offset, p->bit_fields);
+
+             pending_bytes += s->page_size;
+             stack_unlink_current(cp->stack, 1);  //** Unlink it.  This is ele
+             free(lp->ele); lp->ele = NULL;  //** Mark it as removed from the list so a page_release doesn't free also
+             cp->limbo_pages++;
+log_printf(_amp_logging, "UNLINKING seg=" XIDT " p->offset=" XOT " bits=%d limbo=%d\n", segment_id(p->seg), p->offset, p->bit_fields, cp->limbo_pages);
+          }
        } else {
           lp->bit_fields |= CAMP_OLD;  //** Flag it as old
 
@@ -936,15 +921,18 @@ log_printf(_amp_logging, "seg=" XIDT " MRU retry offset=" XOT "\n", segment_id(p
           move_to_ptr(cp->stack, curr_ele);
 
           //** Tweak the stream info
-          _amp_stream_get(c, p->seg, p->offset, -1, &ps);  //** Don't care aboutthe initial element in the chaing.  Just the last
+          _amp_stream_get(c, p->seg, p->offset, -1, &ps);  //** Don't care about the initial element in the chaing.  Just the last
           if (ps != NULL) {
              if (ps->prefetch_size > 0) ps->prefetch_size--;
              if (ps->trigger_distance > 0) ps->trigger_distance--;
              if ((ps->prefetch_size-1) < ps->trigger_distance) ps->trigger_distance = ps->prefetch_size - 1;
           }
        }
+    } else {
+      move_up(cp->stack);  //** Marked for release so move to the next page
     }
 
+    total_bytes = freed_bytes + pending_bytes;
     if (total_bytes < bytes_to_free) ele = get_ptr(cp->stack);
   }
 
@@ -955,115 +943,46 @@ log_printf(_amp_logging, "seg=" XIDT " MRU retry offset=" XOT "\n", segment_id(p
      return(0);
   }
 
-  cache_unlock(c);  //** Don't need the cache lock for the next part
 
-  q = new_opque();
-  opque_start_execution(q);
-
-  //** Now cycle through the segments to be freed
-  pending_bytes = 0;
+  //** Cycle through creating the flush calls if needed
   sit = list_iter_search(table, list_first_key(table), 0);
   list_next(&sit, (list_key_t **)&segid, (list_data_t **)&ptable);
-  while (ptable != NULL) {
-     segment_lock(ptable->seg);
-     min_off = s->total_size;
-     max_off = -1;
+  if (ptable != NULL) {
+     q = new_opque();
+     opque_start_execution(q);
 
-     s = (cache_segment_t *)ptable->seg->priv;
-     while ((p = pop(ptable->stack)) != NULL) {
-        atomic_dec(p->access_pending[CACHE_READ]); //** Removed my access control from earlier
-        flush_count = atomic_get(p->access_pending[CACHE_FLUSH]);
-        cw = atomic_get(p->access_pending[CACHE_WRITE]);
-        count = atomic_get(p->access_pending[CACHE_READ]) + cw + flush_count;
-        bits = atomic_get(p->bit_fields);
-        if (count != 0) { //** Currently in use so wait for it to be released
-           if (cw > 0) {  //** Got writes so need to wait until they complete otherwise the page may not get released
-              bits = bits | C_TORELEASE;  //** Mark it for release
-              atomic_set(p->bit_fields, bits);
-              _cache_drain_writes(p->seg, p);  //** Drain the write ops
-              bits = atomic_get(p->bit_fields);  //** Get the bit fields to see if it's dirty
-           }
-
-           if (flush_count == 0) {  //** Make sure it's not already being flushed
-              if ((bits & C_ISDIRTY) != 0) {  //** Have to flush it don't have to track it cause the flush will do the release 
-                 if (min_off > p->offset) min_off = p->offset;
-                 if (max_off < p->offset) max_off = p->offset;
-              }
-           }
-           bits = bits | C_TORELEASE;
-
-log_printf(_amp_logging, "in use marking for release seg=" XIDT " p->offset=" XOT " bits=%d\n", segment_id(p->seg), p->offset, bits);
-           atomic_set(p->bit_fields, bits);
-
-           pending_bytes += s->page_size;
-        } else {  //** Not in use
-           if ((bits & (C_ISDIRTY|C_EMPTY)) == 0) {  //** Don't have to flush it just drop the page
-              cp->limbo_pages--;
-log_printf(_amp_logging, "FREEING page seg=" XIDT " p->offset=" XOT " bits=%d limbo=%d\n", segment_id(p->seg), p->offset, bits, cp->limbo_pages);
-              list_remove(s->pages, &(p->offset), p);  //** Have to do this here cause p->offset is the key var
-              if (p->data[0].ptr) free(p->data[0].ptr);
-              if (p->data[1].ptr) free(p->data[1].ptr);
-              lp = (page_amp_t *)p->priv;
-              free(lp);
-              freed_bytes += s->page_size;
-           } else {         //** Got to flush the page first but don't have to track it cause the flush will do the release
-              if (p->offset > -1) { //** Skip blank pages
-                 if (min_off > p->offset) min_off = p->offset;
-                 if (max_off < p->offset) max_off = p->offset;
-              }
-
-              bits = bits | C_TORELEASE;
-              atomic_set(p->bit_fields, bits);
-
-              pending_bytes += s->page_size;
-if (p->offset > -1) {
-  log_printf(15, "FLUSHING page seg=" XIDT " p->offset=" XOT " bits=%d\n", segment_id(p->seg), p->offset, bits);
-} else {
-  log_printf(15, "RELEASE trigger for empty page seg=" XIDT " p->offset=" XOT " bits=%d\n", segment_id(p->seg), p->offset, bits);
-}
-           }
-        }
-
-      list_next(&sit, (list_key_t **)&poff, (list_data_t **)&p);
-     }
-
-     segment_unlock(ptable->seg);
-     atomic_dec(s->dumping_pages);  //** Now we can free the segment
-
-     if (max_off>-1) {
-        if ((max_off - min_off) < 10*s->page_size) max_off = min_off + 10*s->page_size;
-        gop = cache_flush_range(ptable->seg, s->c->da, min_off, max_off + s->page_size - 1, s->c->timeout);
+     while (ptable != NULL) {
+        if ((ptable->hi - ptable->lo) < 10*s->page_size) ptable->hi = ptable->lo + 10*s->page_size;
+        gop = cache_flush_range(ptable->seg, s->c->da, ptable->lo, ptable->hi + s->page_size - 1, s->c->timeout);
         opque_add(q, gop);
+        release_pigeon_coop_hole(cp->free_page_tables, &(ptable->pch));
+        list_next(&sit, (list_key_t **)&segid, (list_data_t **)&ptable);
      }
 
-     cache_lock(c);
-     release_pigeon_coop_hole(cp->free_page_tables, &(ptable->pch));
-     cache_unlock(c);
-
-     list_next(&sit, (skiplist_key_t **)&pseg, (skiplist_data_t **)&ptable);
-  }
-
-cache_lock(c);
 log_printf(15, "BEFORE waitall seg=" XIDT " bytes_to_free=" XOT " bytes_used=" XOT " freed_bytes=" XOT " pending_bytes=" XOT "\n", 
     segment_id(page_seg), bytes_to_free, cp->bytes_used, freed_bytes, pending_bytes);
-cache_unlock(c);
 
+     cache_unlock(c);  //** Don't need the cache lock for the next part
 
-  //** Wait for any tasks to complete
-  opque_waitall(q);
-  opque_free(q, OP_DESTROY);
+     //** Wait for any tasks to complete
+     opque_waitall(q);
+     opque_free(q, OP_DESTROY);
 
-  //** Had this when we came in
-  cache_lock(c);
+     //** Had this when we came in
+     cache_lock(c);
 
 log_printf(15, "AFTER waitall seg=" XIDT " bytes_used=" XOT "\n", segment_id(page_seg), cp->bytes_used);
 
-  cp->bytes_used -= freed_bytes;  //** Update how much I directly freed
-
 log_printf(15, "AFTER used update seg=" XIDT " bytes_used=" XOT "\n", segment_id(page_seg), cp->bytes_used);
 
+    //** Clean up
+    empty_skiplist(table);
+  }
+
+
+  cp->bytes_used -= freed_bytes;  //** Update how much I directly freed
+
   //** Clean up
-  empty_skiplist(table);
   release_pigeon_coop_hole(cp->free_pending_tables, &pch);
 
 log_printf(15, "total_bytes marked for removal =" XOT "\n", total_bytes);
@@ -1085,12 +1004,9 @@ ex_off_t _amp_force_free_mem(cache_t *c, segment_t *page_seg, ex_off_t bytes_to_
   pigeon_coop_hole_t pch;
   cache_cond_t *cache_cond;
 
-  //** I'm holding this coming in but don't need it cause I can touch all segs
-  segment_unlock(page_seg);
-
   top = 0;
-  bytes_left = bytes_to_free;
   freed_bytes = _amp_attempt_free_mem(c, page_seg, bytes_left);
+  bytes_left = bytes_to_free - freed_bytes;
   finished = 0;
 
   while ((freed_bytes < bytes_to_free) && (finished == 0)) {  //** Keep trying to mark space as free until I get enough
@@ -1118,14 +1034,9 @@ log_printf(15, "not enough space so waiting cache_cond=%p freed_bytes=" XOT " by
   //** Now check if we can handle some waiters
   if (check_waiters == 1) _amp_process_waiters(c);
 
-  cache_unlock(c);  //** Reacquire the lock in the proper order
-  segment_lock(page_seg);  //** Reacquire the lock cause I had it coming in
-  cache_lock(c);
-
   if (top == 1) release_pigeon_coop_hole(s->c->cond_coop, &pch);
 
   freed_bytes = bytes_to_free - bytes_left;
-//NEW  freed_bytes = bytes_left - freed_bytes;
 
   return(freed_bytes);
 }
@@ -1164,14 +1075,7 @@ void _amp_wait_for_page(cache_t *c, segment_t *seg, int ontop)
            push(cp->waiting_stack, &pw);
         }
 
-        segment_unlock(seg);  //** Unlock the segment to prevent deadlocks
-
         apr_thread_cond_wait(pw.cond, c->lock);  //** Wait for the space to become available
-
-        //** Have to reaquire both locks in the correct order
-        cache_unlock(c);
-        segment_lock(seg);
-        cache_lock(c);
 
         ontop = 1;  //** 2nd time we are always placed on the top of the stack
         check_waiters_first = 0;  //** And don't check on waiters
@@ -1186,18 +1090,17 @@ void _amp_wait_for_page(cache_t *c, segment_t *seg, int ontop)
 }
 
 //*************************************************************************
-// amp_create_empty_page - Creates an empty page for use
+// _amp_create_empty_page - Creates an empty page for use
+//    NOTE: cache lock should be owned by thread
 //*************************************************************************
 
-cache_page_t *amp_create_empty_page(cache_t *c, segment_t *seg, int doblock)
+cache_page_t *_amp_create_empty_page(cache_t *c, segment_t *seg, int doblock)
 {
   cache_amp_t *cp = (cache_amp_t *)c->fn.priv;
   cache_segment_t *s = (cache_segment_t *)seg->priv;
   ex_off_t max_bytes, bytes_to_free;
   cache_page_t *p = NULL;
   int qend;
-
-  cache_lock(c);
 
 log_printf(15, "new page req seg=" XIDT " doblock=%d\n", segment_id(seg), doblock);
 CACHE_PRINT;
@@ -1218,8 +1121,6 @@ log_printf(15, "amp_create_empty_page: max_bytes=" XOT " used=" XOT " bytes_to_f
 
 log_printf(15, "END seg=" XIDT " doblock=%d\n", segment_id(seg), doblock);
 CACHE_PRINT;
-
-  cache_unlock(c);
 
   return(p);
 }
@@ -1252,7 +1153,6 @@ log_printf(_amp_slog, "seg=" XIDT " initial lo=" XOT " hi=" XOT " miss_info=%p\n
   free(miss_info);
 
   //** Adjust the read range prefetch params
-  segment_lock(seg);
   cache_lock(s->c);
 
   offset = lo - s->page_size;
@@ -1289,17 +1189,16 @@ log_printf(_amp_slog, "seg=" XIDT " MODIFY ps=%p last_offset=" XOT " prefetch=%d
   }
 
   cache_unlock(s->c);
-  segment_unlock(seg);
-
 
   return;
 }
 
 //*************************************************************************
-//  amp_miss_tag - Dummy routine
+//  _amp_miss_tag - Dummy routine
+//   NOTE: The cache lock should be held by the calling thread!!!
 //*************************************************************************
 
-void amp_miss_tag(cache_t *c, segment_t *seg, int mode, ex_off_t lo, ex_off_t hi, ex_off_t missing_offset, void **miss)
+void _amp_miss_tag(cache_t *c, segment_t *seg, int mode, ex_off_t lo, ex_off_t hi, ex_off_t missing_offset, void **miss)
 {
   ex_off_t *off;
   cache_amp_t *cp = (cache_amp_t *)c->fn.priv;
@@ -1312,12 +1211,10 @@ log_printf(_amp_slog, "seg=" XIDT "  miss set offset=" XOT "\n", segment_id(seg)
     *off = missing_offset;
     *miss = off;
   } else {  //** For a write just trigger a dirty flush
-     cache_lock(c);
      if (cp->flush_in_progress == 0) {
         cp->flush_in_progress = 1;
         apr_thread_cond_signal(cp->dirty_trigger);
      }
-     cache_unlock(c);
   }
 
   return;
@@ -1356,7 +1253,7 @@ log_printf(_amp_logging, "cp->min_prefetch_size=" XOT " start_apt_pages=%d\n", c
 
 //*************************************************************************
 //  amp_removing_segment - Called each time a segment is being removed
-//     NOTE: seg is locked but the cache is!
+//     NOTE: cache is locked!
 //*************************************************************************
 
 void amp_removing_segment(cache_t *c, segment_t *seg)
@@ -1453,13 +1350,13 @@ cache_t *amp_cache_create(void *arg, data_attr_t *da, int timeout)
   c->free_pending_tables = new_pigeon_coop("free_pending_tables", 50, sizeof(list_t *), cache->mpool, free_pending_table_new, free_pending_table_free);
   c->free_page_tables = new_pigeon_coop("free_page_tables", 50, sizeof(page_table_t), cache->mpool, free_page_tables_new, free_page_tables_free);
 
-  cache->fn.create_empty_page = amp_create_empty_page;
-  cache->fn.adjust_dirty = amp_adjust_dirty;
-  cache->fn.destroy_pages = amp_pages_destroy;
+  cache->fn.create_empty_page = _amp_create_empty_page;
+  cache->fn.adjust_dirty = _amp_adjust_dirty;
+  cache->fn.destroy_pages = _amp_pages_destroy;
   cache->fn.cache_update = amp_update;
-  cache->fn.cache_miss_tag = amp_miss_tag;
-  cache->fn.s_page_access = amp_page_access;
-  cache->fn.s_pages_release = amp_pages_release;
+  cache->fn.cache_miss_tag = _amp_miss_tag;
+  cache->fn.s_page_access = _amp_page_access;
+  cache->fn.s_pages_release = _amp_pages_release;
   cache->fn.destroy = amp_cache_destroy;
   cache->fn.adding_segment = amp_adding_segment;
   cache->fn.removing_segment = amp_removing_segment;

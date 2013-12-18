@@ -115,8 +115,8 @@ typedef struct {
   char *qname;
   cache_partial_page_t *ppage;
   char *ppages_buffer;
-  atomic_int_t cache_check_in_progress;
-  atomic_int_t dumping_pages;
+  int cache_check_in_progress;
+  int dumping_pages;
   int close_requested;
   int n_ppages;
   int ppages_used;
@@ -140,9 +140,9 @@ typedef struct {
    void *priv;
    ex_off_t offset;
    pigeon_coop_hole_t cond_pch;
-   atomic_int_t  bit_fields;
-   atomic_int_t access_pending[3];
-   atomic_int_t used_count;
+   int  bit_fields;
+   int access_pending[3];
+   int used_count;
    int current_index;
 }  cache_page_t;
 
@@ -156,6 +156,7 @@ typedef struct {
   segment_t *seg;
   ex_id_t   id;
   pigeon_coop_hole_t pch;
+  ex_off_t lo, hi;
 } page_table_t;
 
 typedef struct cache_fn_s cache_fn_t;
