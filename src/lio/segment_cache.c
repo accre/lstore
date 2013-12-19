@@ -336,7 +336,6 @@ log_printf(15, "START pl_size=%d\n", pl_size);
 
   //** Figure out the contiguous blocks
   q = new_opque();
-  opque_start_execution(q);  //** Go ahead and start executing tasks as the are created
   myid = -1;
 //  for (pli=0; pli<pl_size; pli++) {
   pli = 0;

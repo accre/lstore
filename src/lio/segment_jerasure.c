@@ -148,7 +148,7 @@ op_status_t segjerase_inspect_full_func(void *arg, int id)
   memset(empty_magic, 0, JE_MAGIC_SIZE);
   status = op_success_status;
   q = new_opque();
-  opque_start_execution(q);
+//  opque_start_execution(q);
   status = op_success_status;
 
   do_fix = 0;
@@ -382,7 +382,7 @@ op_status_t segjerase_inspect_scan(segjerase_inspect_t *si)
   memset(empty_magic, 0, JE_MAGIC_SIZE);
 
   q = new_opque();
-  opque_start_execution(q);
+//  opque_start_execution(q);
   status = op_success_status;
 
   do_fix = 0;
@@ -749,7 +749,7 @@ op_status_t segjerase_read_func(void *arg, int id)
 
   memset(empty_magic, 0, JE_MAGIC_SIZE);
   q = new_opque();
-  opque_start_execution(q);
+//  opque_start_execution(q);
   tbuffer_var_init(&tbv);
   magic_stripe = JE_MAGIC_SIZE*s->n_devs;
   status = op_success_status;
@@ -1007,7 +1007,7 @@ op_status_t segjerase_write_func(void *arg, int id)
   tbuffer_var_t tbv;
 
   q = new_opque();
-  opque_start_execution(q);
+//  opque_start_execution(q);
   tbuffer_var_init(&tbv);
   status = op_success_status;
   soft_error = 0; hard_error = 0;

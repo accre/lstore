@@ -952,7 +952,6 @@ log_printf(_amp_logging, "seg=" XIDT " MRU retry offset=" XOT "\n", segment_id(p
   list_next(&sit, (list_key_t **)&segid, (list_data_t **)&ptable);
   if (ptable != NULL) {
      q = new_opque();
-     opque_start_execution(q);
 
      while (ptable != NULL) {
         if ((ptable->hi - ptable->lo) < 10*s->page_size) ptable->hi = ptable->lo + 10*s->page_size;
