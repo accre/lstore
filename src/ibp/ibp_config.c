@@ -66,7 +66,8 @@ static portal_fn_t _ibp_base_portal = {
   .connect = _ibp_connect,
   .close_connection = close_netstream,
   .sort_tasks = default_sort_ops,
-  .submit = _ibp_submit_op
+  .submit = _ibp_submit_op,
+  .sync_exec = NULL
 };
 
 int _ibp_context_count = 0;
