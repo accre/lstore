@@ -613,7 +613,10 @@ log_printf(15, "START gid=%d type=%d\n", gop_id(g), gop_get_type(g));
         log_printf(15, "sync_exec_que -- waiting for gid=%d to complete\n", gop_id(g));
         cb = (callback_t *)pop(g->q->opque->qd.list);
         g2 = (op_generic_t *)cb->priv;
+        unlock_gop(g);  //** Don't need this for a direct exec
         status = gop_waitall(g2);
+        log_printf(15, "sync_exec -- gid=%d completed with err=%d\n", gop_id(g), status);
+        return(status);
      } else {  //** Got to submit it normally
         _gop_start_execution(g);  //** Make sure things have been submitted
         while (g->q->nleft > 0) {
