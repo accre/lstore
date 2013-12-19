@@ -121,8 +121,9 @@ typedef struct {  //** Hportal specific implementation
   void (*destroy_connect_context)(void *connect_context);
   int (*connect)(NetStream_t *ns, void *connect_context, char *host, int port, Net_timeout_t timeout);
   void (*close_connection)(NetStream_t *ns);
-  void (*sort_tasks)(void *arg, opque_t *q);        //**optional
+  void (*sort_tasks)(void *arg, opque_t *q);        //** optional
   void (*submit)(void *arg, op_generic_t *op);
+  void (*sync_exec)(void *arg, op_generic_t *op);   //** optional
 } portal_fn_t;
 
 typedef struct {             //** Handle for maintaining all the ecopy connections

@@ -94,7 +94,7 @@ void *ongoing_heartbeat_thread(apr_thread_t *th, void *data)
      now = apr_time_now() - apr_time_from_sec(5);  //** Give our selves a little buffer
      log_printf(1, "Loop Start now=" TT "\n", apr_time_now());
      q = new_opque();
-     opque_start_execution(q);
+//     opque_start_execution(q);
      for (hit = apr_hash_first(NULL, on->table); hit != NULL; hit = apr_hash_next(hit)) {
         apr_hash_this(hit, (const void **)&remote_host, &id_len, (void **)&table);
 

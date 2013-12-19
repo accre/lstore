@@ -1735,6 +1735,7 @@ mq_context_t *mq_create_context(inip_file_t *ifd, char *section)
   mqc->tp = thread_pool_create_context("mq", mqc->min_threads, mqc->max_threads);
   mqc->pcfn = *(mqc->tp->pc->fn);
   mqc->pcfn.submit = _mq_submit_op;
+  mqc->pcfn.sync_exec = NULL;
   mqc->tp->pc->fn = &(mqc->pcfn);
 
   assert((mqc->client_portals = apr_hash_make(mqc->mpool)) != NULL);

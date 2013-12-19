@@ -41,6 +41,7 @@ http://www.accre.vanderbilt.edu
 #include "type_malloc.h"
 #include "hwinfo.h"
 
+void  *thread_pool_exec_fn(apr_thread_t *th, void *arg);
 void *_tp_dup_connect_context(void *connect_context);
 void _tp_destroy_connect_context(void *connect_context);
 int _tp_connect(NetStream_t *ns, void *connect_context, char *host, int port, Net_timeout_t timeout);
@@ -55,7 +56,8 @@ static portal_fn_t _tp_base_portal = {
   .connect = _tp_connect,
   .close_connection = _tp_close_connection,
   .sort_tasks = default_sort_ops,
-  .submit = _tp_submit_op
+  .submit = _tp_submit_op,
+  .sync_exec = thread_pool_exec_fn
 };
 
 atomic_int_t _tp_context_count = 0;
