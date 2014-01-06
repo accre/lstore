@@ -131,7 +131,7 @@ op_status_t segjerase_inspect_full_func(void *arg, int id)
   segjerase_priv_t *s = (segjerase_priv_t *)si->seg->priv;
   op_status_t status;
   opque_t *q;
-  int err, i, j, k, do_fix, nstripes, total_stripes, stripe, bufstripes;
+  int err, i, j, k, do_fix, nstripes, total_stripes, stripe, bufstripes, n_empty;
   int  n_iov, n_erased, good_magic, unrecoverable_count, bad_count, repair_errors;
   int magic_count[s->n_devs], match, index, magic_used;
   int magic_devs[s->n_devs*s->n_devs];
@@ -173,6 +173,7 @@ log_printf(0, "lo=" XOT " hi= " XOT " nbytes=" XOT " total_stripes=%d data_size=
   repair_errors = 0;
   bad_count = 0;
   unrecoverable_count = 0;
+  n_empty = 0;
   for (stripe=0; stripe<total_stripes; stripe += bufstripes) {
      ex_read.offset = base_offset + (ex_off_t)stripe*s->stripe_size_with_magic;
      nstripes = stripe + bufstripes;
@@ -221,6 +222,12 @@ log_printf(0, "stripe=%d nstripes=%d total_stripes=%d offset=" XOT " len=" XOT "
         }
 
         good_magic = memcmp(empty_magic, &(magic_key[index*JE_MAGIC_SIZE]), JE_MAGIC_SIZE);
+
+        if (good_magic == 0) {
+           n_empty++;
+           info_printf(si->fd, 10, "Empty stripe=%d.  empty chunks: %d\n", stripe+i, magic_count[index]);
+        }
+
         if ((good_magic == 0) && (magic_count[index] != s->n_devs)) {
            unrecoverable_count++;
            bad_count++;
@@ -326,7 +333,7 @@ log_printf(0, "gop_error=%d nbytes=" XOT " n_iov=%d\n", err, nbytes, n_iov);
         }
      }
 
-     if (sf->do_print == 1) info_printf(si->fd, 1, XIDT ": bad stripe count: %d  --- Repair errors: %d   Unrecoverable errors:%d\n", segment_id(si->seg), bad_count, repair_errors, unrecoverable_count);
+     if (sf->do_print == 1) info_printf(si->fd, 1, XIDT ": bad stripe count: %d  --- Repair errors: %d   Unrecoverable errors:%d  Empty stripes: %d\n", segment_id(si->seg), bad_count, repair_errors, unrecoverable_count, n_empty);
 
 
   }
@@ -372,7 +379,7 @@ op_status_t segjerase_inspect_scan(segjerase_inspect_t *si)
   opque_t *q;
   op_generic_t *gop;
   ex_off_t fsize, off, lo, hi;
-  int maxstripes, curr_stripe, i, j, moff, magic_stripe, n_iov, start_stripe, stripe, total_stripes;
+  int maxstripes, curr_stripe, i, j, moff, magic_stripe, n_iov, start_stripe, stripe, total_stripes, n_empty;
   char *magic, empty_magic[JE_MAGIC_SIZE];
   int start_bad, do_fix, err, bad_count, empty, bufsize;
   iovec_t *iov;
@@ -405,6 +412,7 @@ op_status_t segjerase_inspect_scan(segjerase_inspect_t *si)
   n_iov = 0;
   off = 0;
   bad_count = 0;
+  n_empty = 0;
 
 log_printf(0, "fsize=" XOT " data_size=%d total_stripes=%d\n", fsize, s->data_size, total_stripes);
 
@@ -433,7 +441,11 @@ log_printf(0, "i=%d n_iov=%d size=%d\n", i, n_iov, n_iov*JE_MAGIC_SIZE);
 log_printf(0, " i=%d err=%d\n", i, err);
           empty = 0;
           if (err == 0) {
-            if (memcmp(empty_magic, &(magic[moff]), JE_MAGIC_SIZE) != 0) empty = 1;
+            if (memcmp(empty_magic, &(magic[moff]), JE_MAGIC_SIZE) == 0) {
+               empty = 1;
+               n_empty++;
+               info_printf(si->fd, 10, "Empty stripe=%d s=%d i=%d\n", start_stripe+i, start_stripe, i);
+            }
           }
 log_printf(0, " i=%d after empty check empty=%d\n", i, empty);
 
@@ -454,7 +466,7 @@ log_printf(0, " i=%d bad=%d start_bad=%d\n", i, bad_count, start_bad);
           moff += magic_stripe;
        }
 
-       //** HAndle any leftover errors
+       //** Handle any leftover errors
        if ((do_fix == 1) && (start_bad != -1)) {
           lo = (start_stripe + start_bad) * s->data_size;  hi = (start_stripe + curr_stripe) * s->data_size - 1;
           gop = segjerase_inspect_full(si, 0, lo, hi);
@@ -475,7 +487,7 @@ log_printf(0, " i=%d bad=%d start_bad=%d\n", i, bad_count, start_bad);
        start_stripe = stripe;
        n_iov = 0;
 
-       info_printf(si->fd, 1, XIDT ": bad stripe count: %d\n", segment_id(si->seg), bad_count);
+       info_printf(si->fd, 1, XIDT ": bad stripe count: %d  Empty stripes: %d\n", segment_id(si->seg), bad_count, n_empty);
     }
 
     if (stripe < total_stripes) {
@@ -518,7 +530,7 @@ op_status_t segjerase_inspect_func(void *arg, int id)
   segjerase_inspect_t *si = (segjerase_inspect_t *)arg;
   segjerase_priv_t *s = (segjerase_priv_t *)si->seg->priv;
   op_status_t status;
-  int option, total_stripes, child_replaced, force_reconstruct, repair;
+  int option, total_stripes, child_replaced, repair;
   op_generic_t *gop;
 
   status = op_success_status;
