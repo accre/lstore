@@ -773,6 +773,7 @@ log_printf(1, "sid=" XIDT " END used=" XOT " old max=" XOT " newmax=" XOT " err=
 
   if (err == 0) {
     s->total_size = new_size;
+    s->used_size = new_size;
     status = op_success_status;
   } else {
     status =  op_failure_status;
