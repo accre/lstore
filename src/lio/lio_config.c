@@ -776,6 +776,7 @@ lio_config_t *lio_create_nl(char *fname, char *section, char *user)
   os_create_t *os_create;
   cache_load_t *cache_create;
   lio_path_tuple_t *tuple;
+  int *val;
 
   //** Add the LC first cause it may already exist
   snprintf(buffer, sizeof(buffer), "lc:%s", section);
@@ -804,6 +805,11 @@ lio_config_t *lio_create_nl(char *fname, char *section, char *user)
 
   lio->timeout = inip_get_integer(lio->ifd, section, "timeout", 120);
   lio->max_attr = inip_get_integer(lio->ifd, section, "max_attr_size", 10*1024*1024);
+
+  //** Add the Jerase paranoid option
+  type_malloc(val, int, 1);  //** NOTE: this is not freed on a destroy
+  *val = inip_get_integer(lio->ifd, section, "jerase_paranoid", 0);
+  add_service(lio->ess, ESS_RUNNING, "jerase_paranoid", val);
 
   proc_info(&sockets, &cores, &vcores);
   cores = inip_get_integer(lio->ifd, section, "tpc_cpu", cores);
