@@ -72,6 +72,7 @@ typedef struct {
   int stripe_size_with_magic;
   int data_size;
   int parity_size;
+  int paranoid_check;
   int w;
 } segjerase_priv_t;
 
@@ -118,6 +119,134 @@ typedef struct {
   op_generic_t *gop;
 } segjerase_clone_t;
 
+//***********************************************************************
+// jerase_control_check - Does a check that the parity and data are all
+//   in sync by failing  "good" chunks and doing a repair veriying the
+//   the new data matches the "good" chunks.
+//***********************************************************************
+
+int jerase_control_check(erasure_plan_t *plan, int chunk_size, int n_devs, int n_parity, int *badmap, char **ptr, char **eptr, char **pwork)
+{
+  int erasures[n_devs+1];  //** Leave space for a control failure
+  int i, n, n_control, n_ctl_max;
+  int control[n_parity];
+
+  memcpy(eptr, ptr, sizeof(char *)*n_devs);  //** Set the base blocks using the actual data
+
+  //** Determine the max number of controls
+  n_ctl_max = 0; for (i=0; i<n_devs; i++)  n_ctl_max += badmap[i];
+  n_ctl_max = n_parity - n_ctl_max;
+
+  //** Form the erasures array
+  n_control = 0;
+  n = 0;
+  for (i=0; i<n_devs; i++) {
+     if (((badmap[i] == 0) && (n_control < n_ctl_max)) || (badmap[i] == 1)) {
+        erasures[n] = i;
+log_printf(0, "bad=%d map=%d\n", i, badmap[i]);
+
+        if ((badmap[i] == 0) && (n_control < n_ctl_max)) { 
+           control[n_control] = i;  //** This is a control chunk
+           eptr[i] = pwork[n_control];
+           n_control++;
+        }
+        n++;
+     }
+  }
+  erasures[n] = -1;  //** It's "-1" terminated
+
+  //** and do the decoding
+  plan->decode_block(plan, eptr, chunk_size, erasures);
+
+  if (n_control <= 0) return(0);  //** No control used so just return success.  This means we had n_parity_dev erasures.
+
+
+  //** Check if we have a match
+  n = 0;
+  for (i=0; i<n_control; i++) {
+     if (memcmp(ptr[control[i]], eptr[control[i]], chunk_size) != 0) n++;
+  }
+
+  return(n);
+}
+
+//***********************************************************************
+//  jerase_brute_recurse - Recursively tries to find a match
+//***********************************************************************
+
+int jerase_brute_recurse(int level, int *index, erasure_plan_t *plan, int chunk_size, int n_devs, int n_bad_devs, int *badmap, char **ptr, char **eptr, char **pwork)
+{
+  int i, start, match;
+  int erasures[n_bad_devs+2];  //** Leave space for a control failure
+  char *tptr;
+
+  if (level == n_bad_devs) {  //** Do an erasure check
+     memset(badmap, 0, sizeof(int)*n_devs);
+
+     memcpy(eptr, ptr, sizeof(char *)*n_devs);  //** Set the base blocks using the actual data
+     for (i=0; i<n_bad_devs; i++) {  //** Overwrite the "failed" blocks using the work buffers
+         eptr[index[i]] = pwork[i];
+         erasures[i] = index[i];
+         badmap[index[i]] = 1;
+log_printf(10, "marking dev=%d as bad\n", index[i]);
+     }
+     erasures[n_bad_devs+1] = -1;
+
+     for (i=0; i<n_devs; i++) { //** Cycle through looking for a control dev to detect correctness
+        if (badmap[i] == 0) {
+log_printf(10, "marking dev=%d as control\n", i);
+
+           //** Add the control "bad" device
+           erasures[n_bad_devs] = i;
+           tptr = eptr[i];
+           eptr[i] = pwork[n_bad_devs];
+
+           //** and do the decoding
+           plan->decode_block(plan, eptr, chunk_size, erasures);
+
+           //** Check if we have a match
+           match = memcmp(ptr[i], eptr[i], chunk_size);
+           eptr[i] = tptr;
+
+           return(match);
+        }
+     }
+  } else {
+     start = (level == 0) ? 0 : index[level-1]+1;
+     for (i = start; i<n_devs; i++) {
+        index[level] = i;
+        if (jerase_brute_recurse(level+1, index, plan, chunk_size, n_devs, n_bad_devs, badmap, ptr, eptr, pwork) == 0) return(0);
+     }
+  }
+
+  return(1);  //** If made it here then no luck
+}
+
+//*************************************************************************
+//  jerase_brute_recovery - Does a brute force attempt to recover the data
+//     Since we don't have clue which device is bad we use 1 device as a control
+//     to detect correctness.  This means we can only correct n_parity_devs-1 failures.
+//**************************************************************************
+
+int jerase_brute_recovery(erasure_plan_t *plan, int chunk_size, int n_devs, int n_parity_devs, int *badmap, char **ptr, char **eptr, char **pwork)
+{
+  int i;
+  int index[n_parity_devs];
+
+  //** See if we get lucky and the initial badmap is good
+  if (jerase_control_check(plan, chunk_size, n_devs, n_parity_devs, badmap, ptr, eptr, pwork) == 0) return(0);
+  
+  //** No luck have to run through the perms
+  memset(badmap, 0, sizeof(int)*n_devs);
+
+  for (i=1; i<n_parity_devs-1; i++) {  //** Cycle through checking for 1 failure, then double failure combo, etc
+     memset(index, 0, sizeof(int)*n_parity_devs);
+     if (jerase_brute_recurse(0, index, plan, chunk_size, n_devs, i, badmap, ptr, eptr, pwork) == 0) return(0);  //** Found it so kick out
+  }
+
+  return(1);  //** No luck
+}
+
 
 //***********************************************************************
 //  segjerase_inspect_full_func - Does a full byte-level verification of the
@@ -132,15 +261,18 @@ op_status_t segjerase_inspect_full_func(void *arg, int id)
   op_status_t status;
   opque_t *q;
   int err, i, j, k, do_fix, nstripes, total_stripes, stripe, bufstripes, n_empty;
-  int  n_iov, n_erased, good_magic, unrecoverable_count, bad_count, repair_errors;
+  int  n_iov, good_magic, unrecoverable_count, bad_count, repair_errors, erasure_errors;
   int magic_count[s->n_devs], match, index, magic_used;
   int magic_devs[s->n_devs*s->n_devs];
-  int erasures[s->n_devs+1], max_iov;
+  int max_iov, skip, last_bad, tmp;
+  int badmap[s->n_devs], badmap_brute[s->n_devs], badmap_last[s->n_devs], bm_brute_used, used;
   ex_off_t nbytes, bufsize, boff, base_offset;
   tbuffer_t tbuf_read, tbuf;
   char *buffer, *ptr[s->n_devs], parity[s->n_parity_devs*s->chunk_size];
+  char *eptr[s->n_devs], *pwork[s->n_parity_devs];
   char empty_magic[JE_MAGIC_SIZE];
   char magic_key[s->n_devs*JE_MAGIC_SIZE];
+  char print_buffer[2048];
   iovec_t *iov;
   ex_iovec_t ex_read;
   ex_iovec_t *ex_iov;
@@ -170,10 +302,17 @@ log_printf(0, "lo=" XOT " hi= " XOT " nbytes=" XOT " total_stripes=%d data_size=
   type_malloc(ex_iov, ex_iovec_t, bufstripes);
   type_malloc(iov, iovec_t, bufstripes);
 
+  for (i=0; i < s->n_parity_devs; i++) pwork[i] = &(parity[i*s->chunk_size]);
+  memset(badmap_last, 0, sizeof(int)*s->n_devs);
+
   repair_errors = 0;
   bad_count = 0;
+  erasure_errors = 0;
   unrecoverable_count = 0;
   n_empty = 0;
+  bm_brute_used = 0;
+  last_bad = -2;
+  
   for (stripe=0; stripe<total_stripes; stripe += bufstripes) {
      ex_read.offset = base_offset + (ex_off_t)stripe*s->stripe_size_with_magic;
      nstripes = stripe + bufstripes;
@@ -228,97 +367,97 @@ log_printf(0, "stripe=%d nstripes=%d total_stripes=%d offset=" XOT " len=" XOT "
            info_printf(si->fd, 10, "Empty stripe=%d.  empty chunks: %d\n", stripe+i, magic_count[index]);
         }
 
-        if ((good_magic == 0) && (magic_count[index] != s->n_devs)) {
+if (magic_used > 1) log_printf(5, "n_magic=%d stripe=%d\n", magic_used, stripe+i);
+        skip = 0;
+        tmp = bad_count;
+        used = 0;
+
+        if (((good_magic == 0) && (magic_count[index] != s->n_devs)) || (magic_count[index] < s->n_data_devs)) {
+           skip = 1;
            unrecoverable_count++;
            bad_count++;
 log_printf(0, "unrecoverable error stripe=%d i=%d good_magic=%d magic_count=%d\n", stripe,i, good_magic, magic_count[index]);
-           if (sf->do_print == 1) info_printf(si->fd, 10, XIDT ": Unrecoverable Error!   Matching Magic:%d  Need:%d   stripe:%d\n", segment_id(si->seg), magic_count[index], s->n_data_devs, stripe+i);
-        } else if (magic_count[index] == s->n_devs) { //** Magic looks good so check the data
-             //** Make the decoding structure
-             for (k=0; k < s->n_data_devs; k++) {
-                ptr[k] = &(buffer[boff + JE_MAGIC_SIZE + k*s->chunk_size_with_magic]);
-             }
-             for (k=0; k < s->n_parity_devs; k++) {
-                ptr[s->n_data_devs + k] = &(parity[k*s->chunk_size]);
-             }
-
-           //** and do the encoding
-           s->plan->encode_block(s->plan, ptr, s->chunk_size);
-
-           //** Verify with the parity on disk
-           err = 0;
-           for (k=0; k < s->n_parity_devs; k++) {
-//              if (memcmp(&(parity[k*s->chunk_size]), &(buffer[boff + JE_MAGIC_SIZE + (k+s->n_data_devs)*s->chunk_size_with_magic]), s->chunk_size) != 0) err++;
-if (memcmp(&(parity[k*s->chunk_size]), &(buffer[boff + JE_MAGIC_SIZE + (k+s->n_data_devs)*s->chunk_size_with_magic]), s->chunk_size) != 0) {
-  err++;
-  if (sf->do_print == 1) info_printf(si->fd, 10, XIDT ": bad parity=%d\n", segment_id(si->seg), k);
-int z, z1, z2;
-info_printf(si->fd, 0, "Bad offsets: ");
-for (z=0; z<s->chunk_size; z++)
-  if (parity[k*s->chunk_size+z] != buffer[boff + JE_MAGIC_SIZE + (k+s->n_data_devs)*s->chunk_size_with_magic + z]) {
-     z1 = parity[k*s->chunk_size+z];
-     z2 = buffer[boff + JE_MAGIC_SIZE + (k+s->n_data_devs)*s->chunk_size_with_magic + z];
-     info_printf(si->fd, 0, " %d(%d,%d)", z, z1, z2);     
-  }
-info_printf(si->fd, 0, "\n");
-
-}
+           append_printf(print_buffer, &used, sizeof(print_buffer), XIDT ": Unrecoverable error!  Matching magic:%d  Need:%d", segment_id(si->seg), magic_count[index], s->n_data_devs, stripe+i);
+        } else {  //** Either all the data is good or we have a have a few bad blocks
+           //** Make the decoding structure
+           for (k=0; k < s->n_devs; k++) {
+              ptr[k] = &(buffer[boff + JE_MAGIC_SIZE + k*s->chunk_size_with_magic]);
            }
-           if (err != 0) { 
-              unrecoverable_count++; 
-              bad_count++; 
-log_printf(0, "Corrupt data stripe=%d i=%d good_magic=%d\n", stripe,i, good_magic);
-              if (sf->do_print == 1) info_printf(si->fd, 10, XIDT ": Unrecoverable Error! Corrupt data but magic is good. Bad parity:%d   stripe:%d\n", segment_id(si->seg), err, stripe+i);
-          }
-        } else if (magic_count[index] >= s->n_data_devs) {
-           bad_count++;
-log_printf(0, "trying to fix stripe=%d i=%d\n", stripe,i);
 
-           if (do_fix == 1) {
-              //** Make the decoding structure
-              for (k=0; k < s->n_devs; k++) {
-                 ptr[k] = &(buffer[boff + JE_MAGIC_SIZE + k*s->chunk_size_with_magic]);
-              }
-
-              //** Mark the missing/bad blocks
-              n_erased = 0;
-              for (k=0; k < magic_used; k++) {
-                 if (k != index) {
-                    match = k*s->n_devs;
-                    for (j=0; j< magic_count[k]; j++) { //** Copy the magic over and mark the dev as bad
-                       memcpy(&(buffer[boff + magic_devs[match+j]*s->chunk_size_with_magic]), &(magic_key[index*JE_MAGIC_SIZE]), JE_MAGIC_SIZE);
-                       erasures[n_erased] = magic_devs[match+j];
-                       n_erased++;
-                    }
+           //** Mark the missing/bad blocks
+           memset(badmap, 0, sizeof(int)*s->n_devs);
+           for (k=0; k < magic_used; k++) {
+              if (k != index) {
+                 match = k*s->n_devs;
+                 for (j=0; j< magic_count[k]; j++) { //** Copy the magic over and mark the dev as bad
+                    badmap[magic_devs[match+j]] = 1;
                  }
               }
-              erasures[n_erased] = -1;
+           }
 
-log_printf(0, "erased_count=%d erased[0]=%d, index=%d\n", n_erased, erasures[0], index);
+           if (jerase_control_check(s->plan, s->chunk_size, s->n_devs, s->n_parity_devs, badmap, ptr, eptr, pwork) != 0) {  //** See if everything checks out
+              //** Got an error so see if we can brute force a fix
+              bad_count++;                 
+              erasure_errors++;  //** Internal erasure error. Inconsistent data on disk
+              
+              if (bm_brute_used == 1) memcpy(badmap, badmap_brute, sizeof(int)*s->n_devs);  //** Copy over the last brute force bad map
+              if (jerase_brute_recovery(s->plan, s->chunk_size, s->n_devs, s->n_parity_devs, badmap, ptr, eptr, pwork) == 0) {
+                 memcpy(badmap_brute, badmap, sizeof(int)*s->n_devs);  //** Got a correctable error
 
-              //** and do the decoding
-              s->plan->decode_block(s->plan, ptr, s->chunk_size, erasures);
+                 if (get_info_level(si->fd) > 1) {   //** Print some diag info if needed
+                    append_printf(print_buffer, &used, sizeof(print_buffer), XIDT ": Recoverable same magic.", segment_id(si->seg));
+                 }
+              } else {
+                 skip = 1;
+                 unrecoverable_count++;
+              }
+           } else if (magic_count[index] != s->n_devs) {
+              bad_count++;   //** bad magic error only
+           } else {
+              skip = 1;  //** All is good nothing to store
+           }
 
-              //** Mark it for storage
-              for (j=0; j<n_erased; j++) {
-                 k = erasures[j];
-                 ex_iov[n_iov].offset = ex_read.offset + i*s->stripe_size_with_magic + k*s->chunk_size_with_magic;
+           if ((skip == 0) && (do_fix == 1)) { //** Got some data to update
+              for (k=0; k< s->n_devs; k++) {  //** Store the updated data back in the buffer with consistent magic
+                  if (badmap[k] == 1) {
+                     memcpy(&(buffer[boff + k*s->chunk_size_with_magic]), &(magic_key[index*JE_MAGIC_SIZE]), JE_MAGIC_SIZE);
+                     if (eptr[k] != ptr[k]) memcpy(ptr[k], eptr[k], s->chunk_size);  //** Need to copy the data/parity back to the buffer
+
+                     ex_iov[n_iov].offset = ex_read.offset + i*s->stripe_size_with_magic + k*s->chunk_size_with_magic;
 
 log_printf(0, "offset=" XOT " k=%d n_iov=%d max_iov=%d\n", ex_iov[n_iov].offset, k, n_iov, max_iov);
-                 ex_iov[n_iov].len = s->chunk_size_with_magic;
-                 iov[n_iov].iov_base = &(buffer[boff + k*s->chunk_size_with_magic]);
+                     ex_iov[n_iov].len = s->chunk_size_with_magic;
+                     iov[n_iov].iov_base = &(buffer[boff + k*s->chunk_size_with_magic]);
 log_printf(0, "memcmp=%d\n", memcmp(iov[n_iov].iov_base, &(buffer[boff + index*s->chunk_size_with_magic]), JE_MAGIC_SIZE));
-                 iov[n_iov].iov_len = ex_iov[n_iov].len;
-                 nbytes += ex_iov[n_iov].len;
-                 n_iov++;
-                 if (n_iov >= max_iov) {
-                    max_iov = 1.5 * max_iov + 1;
-                    ex_iov = (ex_iovec_t *)realloc(ex_iov, sizeof(ex_iovec_t) * max_iov);
-                    iov = (iovec_t *)realloc(iov, sizeof(iovec_t) * max_iov);
-                 }
+                     iov[n_iov].iov_len = ex_iov[n_iov].len;
+                     nbytes += ex_iov[n_iov].len;
+                     n_iov++;
+                     if (n_iov >= max_iov) {
+                        max_iov = 1.5 * max_iov + 1;
+                        ex_iov = (ex_iovec_t *)realloc(ex_iov, sizeof(ex_iovec_t) * max_iov);
+                        iov = (iovec_t *)realloc(iov, sizeof(iovec_t) * max_iov);
+                     }
+                  }
               }
            }
         }
+
+        if ((get_info_level(si->fd) > 1) && (tmp != bad_count)) {   //** Print some diag info if needed
+           if ((stripe+i-1 != last_bad) || (memcmp(badmap_last, badmap, sizeof(int)*s->n_devs) != 0)) {
+              if (used == 0) {
+                 append_printf(print_buffer, &used, sizeof(print_buffer), XIDT ": bad stripe=%d   devmap:", segment_id(si->seg), stripe+i);
+              } else {
+                 append_printf(print_buffer, &used, sizeof(print_buffer),"  stripe=%d   devmap:", stripe+i);
+              }
+              for (k=0; k<s->n_devs; k++) {
+                  append_printf(print_buffer, &used, sizeof(print_buffer), " %d", badmap[k]);
+              }
+              info_printf(si->fd, 1, "%s\n", print_buffer);
+              memcpy(badmap_last, badmap, sizeof(int)*s->n_devs);
+           }
+           last_bad = stripe+i;
+        }
+
      }
 
      //** Perform any updates if needed
@@ -328,12 +467,11 @@ log_printf(0, "memcmp=%d\n", memcmp(iov[n_iov].iov_base, &(buffer[boff + index*s
 log_printf(0, "gop_error=%d nbytes=" XOT " n_iov=%d\n", err, nbytes, n_iov);
         if (err != OP_STATE_SUCCESS) {
 
-//           info_printf(si->fd, 1, XIDT ": checking stripes: (%d, %d)\n", segment_id(si->seg), start_stripe, start_stripe+curr_stripe-1);
            repair_errors++;
         }
      }
 
-     if (sf->do_print == 1) info_printf(si->fd, 1, XIDT ": bad stripe count: %d  --- Repair errors: %d   Unrecoverable errors:%d  Empty stripes: %d\n", segment_id(si->seg), bad_count, repair_errors, unrecoverable_count, n_empty);
+     if (sf->do_print == 1) info_printf(si->fd, 1, XIDT ": bad stripe count: %d  --- Repair errors: %d   Unrecoverable errors:%d  Empty stripes: %d   Silent errors: %d\n", segment_id(si->seg), bad_count, repair_errors, unrecoverable_count, n_empty, erasure_errors);
 
 
   }
@@ -345,7 +483,7 @@ log_printf(0, "gop_error=%d nbytes=" XOT " n_iov=%d\n", err, nbytes, n_iov);
 
   status.error_code = bad_count;
   status.op_status = OP_STATE_SUCCESS;
-  if ((unrecoverable_count > 0) || (repair_errors > 0)) status.op_status = OP_STATE_FAILURE;
+  if ((unrecoverable_count > 0) || (repair_errors > 0) || ((bad_count > 0) && (do_fix == 0))) status.op_status = OP_STATE_FAILURE;
   return(status);
 }
 
@@ -744,13 +882,15 @@ op_status_t segjerase_read_func(void *arg, int id)
   segjerase_priv_t *s = (segjerase_priv_t *)sw->seg->priv;
   op_status_t status, op_status, check_status;
   ex_off_t lo, boff, poff, len, parity_len, parity_used, curr_bytes;
-  int i, j, k, stripe, magic_used, n_erased, slot, n_iov, nstripes, curr_stripe, iov_start, magic_stripe, magic_off;
-  char *parity, *magic, *ptr[s->n_devs];
-  int erasures[s->n_devs+1];
+  int i, j, k, stripe, magic_used, slot, n_iov, nstripes, curr_stripe, iov_start, magic_stripe, magic_off;
+  char *parity, *magic, *ptr[s->n_devs], *eptr[s->n_devs];
+  char pbuff[s->n_parity_devs*s->chunk_size];
+  char *pwork[s->n_parity_devs];
   char magic_key[s->n_devs*JE_MAGIC_SIZE], empty_magic[JE_MAGIC_SIZE];
   int magic_count[s->n_devs], data_ok, match, index;
   int magic_devs[s->n_devs*s->n_devs];
-  int soft_error, hard_error;
+  int badmap[s->n_devs], badmap_brute[s->n_devs], bm_brute_used;
+  int soft_error, hard_error, do_recover;
   opque_t *q;
   op_generic_t *gop;
   ex_iovec_t *ex_iov;
@@ -761,11 +901,11 @@ op_status_t segjerase_read_func(void *arg, int id)
 
   memset(empty_magic, 0, JE_MAGIC_SIZE);
   q = new_opque();
-//  opque_start_execution(q);
   tbuffer_var_init(&tbv);
   magic_stripe = JE_MAGIC_SIZE*s->n_devs;
   status = op_success_status;
   soft_error = 0; hard_error = 0;
+  bm_brute_used = 0;
 
   //** Make the space for the parity
   parity_len = sw->nstripes * s->parity_size;
@@ -786,13 +926,12 @@ op_status_t segjerase_read_func(void *arg, int id)
 
 
   type_malloc_clear(magic, char, magic_stripe*sw->nstripes);
-//  type_malloc(ptr, char *, sw->nstripes*s->n_devs);
   type_malloc(ex_iov, ex_iovec_t, sw->n_iov);
   type_malloc(iov, iovec_t, 2*sw->nstripes*s->n_devs);
   type_malloc(tbuf, tbuffer_t, sw->n_iov);
   type_malloc(info, segjerase_io_t, sw->n_iov);
 
-//  memset(magic, 0, magic_stripe*sw->nstripes);
+  for (i=0; i < s->n_parity_devs; i++) pwork[i] = &(pbuff[i*s->chunk_size]);
 
   //** Cycle through the tasks
   parity_used = 0;
@@ -816,8 +955,6 @@ op_status_t segjerase_read_func(void *arg, int id)
           //** Make the magic table to determine which magic has a quorum
           iov_start = info[slot].iov_start;
           for (stripe=0; stripe < info[slot].nstripes; stripe++) {
-//             n = info[slot].start_stripe + stripe;
-
              magic_used = 0;
              for (k=0; k < s->n_devs; k++) {
                  match = -1;
@@ -857,7 +994,6 @@ log_printf(15, "(n) mindex=%d count=%d dev=%d (slot=%d) magic=%d\n", magic_used,
                 }
                 if (j != s->n_data_devs) data_ok = 0;
              } else if (memcmp(empty_magic, &(magic_key[index*JE_MAGIC_SIZE]), JE_MAGIC_SIZE) == 0) {
-//                data_ok = (magic_count[index] == s->n_devs) ? 2 : -1;
                 data_ok = ((magic_count[index] == s->n_devs) && (check_status.error_code < s->n_parity_devs)) ? 2 : -1;
              }
 
@@ -865,13 +1001,14 @@ log_printf(15, "(n) mindex=%d count=%d dev=%d (slot=%d) magic=%d\n", magic_used,
 int d = *(uint32_t *)&(magic_key[index*JE_MAGIC_SIZE]);
 log_printf(15, "index=%d good=%d data_ok=%d magic=%d data_devs=%d check_status.error_code=%d\n", index, magic_count[index], data_ok, d, s->n_data_devs, check_status.error_code);
 
-             if (data_ok > 0) {
-                if (data_ok == 2) { //** no data stored so blank it
-                   for (k=0; k<s->n_data_devs; k++) {
-                      memset(iov[iov_start + 2*k + 1].iov_base, 0, s->chunk_size);
-                   }
+             do_recover = 0;
+             if (data_ok == 1) {   //** All magics are the same
+                if (s->paranoid_check == 1) do_recover = 1;  //** Paranoid mode
+             } else if (data_ok == 2) { //** no data stored so blank it
+                for (k=0; k<s->n_data_devs; k++) {
+                   memset(iov[iov_start + 2*k + 1].iov_base, 0, s->chunk_size);
                 }
-             } else {
+             } else {  //** Missing some blocks
                 op_status = gop_get_status(gop);
                 if ((magic_count[index] < s->n_data_devs) || (data_ok == -1)) {  //** Unrecoverable error
                    log_printf(5, "seg=" XIDT " ERROR with read off=" XOT " len=" XOT " n_parity=%d good=%d error_code=%d\n",
@@ -884,34 +1021,42 @@ log_printf(15, "index=%d good=%d data_ok=%d magic=%d data_devs=%d check_status.e
                          segment_id(sw->seg), sw->iov[slot].offset, sw->iov[slot].len, s->n_parity_devs, magic_count[index], op_status.error_code, magic_used, index, magic_count[index]);
                    status.error_code = op_status.error_code;
                    soft_error = 1;
+                   do_recover = 1;
+                }
+             }
 
-                   //** Make the decoding structure
-                   for (k=0; k < s->n_devs; k++) {
-                      ptr[k] = iov[iov_start + 2*k + 1].iov_base;
-                   }
+             if (do_recover == 1) {
+                //** Make the decoding structure
+                for (k=0; k < s->n_devs; k++) {
+                    ptr[k] = iov[iov_start + 2*k + 1].iov_base;
+                }
 
-                   //** Mark the missing/bad blocks
-                   n_erased = 0;
-                   for (k=0; k < magic_used; k++) {
-                       if (k != index) {
-                          match = k*s->n_devs;
-                          for (j=0; j< magic_count[k]; j++) {
-                             erasures[n_erased] = magic_devs[match+j];
-                             n_erased++;
-                          }
+                //** Mark the missing/bad blocks
+                memset(badmap, 0, sizeof(int)*s->n_devs);
+                for (k=0; k < magic_used; k++) {
+                    if (k != index) {
+                       match = k*s->n_devs;
+                       for (j=0; j< magic_count[k]; j++) { //** Copy the magic over and mark the dev as bad
+                          badmap[magic_devs[match+j]] = 1;
                        }
+                    }
+                }
+
+                if (jerase_control_check(s->plan, s->chunk_size, s->n_devs, s->n_parity_devs, badmap, ptr, eptr, pwork) != 0) {  //** See if everything checks out
+                   //** Got an error so see if we can brute force a fix
+                   if (bm_brute_used == 1) memcpy(badmap, badmap_brute, sizeof(int)*s->n_devs);  //** Copy over the last brute force bad map
+                   if (jerase_brute_recovery(s->plan, s->chunk_size, s->n_devs, s->n_parity_devs, badmap, ptr, eptr, pwork) == 0) {
+                       memcpy(badmap_brute, badmap, sizeof(int)*s->n_devs);  //** Got a correctable error
+                       for (k=0; k<s->n_data_devs; k++) {
+                           if (eptr[k] != ptr[k]) memcpy(ptr[k], eptr[k], s->chunk_size);  //** Need to copy the data back to the buffer
+                       }
+                   } else {
+                      log_printf(5, "seg=" XIDT " ERROR with read off=" XOT " len=" XOT " n_parity=%d good=%d error_code=%d\n",
+                          segment_id(sw->seg), sw->iov[slot].offset, sw->iov[slot].len, s->n_parity_devs, magic_count[index], op_status.error_code);
+                      status.op_status = OP_STATE_FAILURE;
+                      status.error_code = op_status.error_code;
+                      hard_error = 1;
                    }
-for (i=0; i<n_erased; i++) {
-  log_printf(15, "seg=" XIDT " erased[%d]=%d\n", segment_id(sw->seg), i, erasures[i]);
-}
-for (i=0; i<magic_count[index]; i++) {
-  log_printf(15, "seg=" XIDT " good[%d]=%d (slot=%d)\n", segment_id(sw->seg), i, magic_devs[index*s->n_devs + i], index*s->n_devs+i);
-}
-                   erasures[n_erased] = -1;
-
-                   //** and do the decoding
-                   s->plan->decode_block(s->plan, ptr, s->chunk_size, erasures);
-
                 }
              }
 
@@ -1575,6 +1720,7 @@ segment_t *segment_jerasure_create(void *arg)
   service_manager_t *es = (service_manager_t *)arg;
   segjerase_priv_t *s;
   segment_t *seg;
+  int *paranoid;
 
   //** Make the space
   type_malloc_clear(seg, segment_t, 1);
@@ -1592,6 +1738,10 @@ segment_t *segment_jerasure_create(void *arg)
   seg->ess = es;
   s->tpc = lookup_service(es, ESS_RUNNING, ESS_TPC_UNLIMITED);
   s->child_seg = NULL;
+
+  //** Pluck the paranoid setting for Jerase
+  paranoid = lookup_service(es, ESS_RUNNING, "jerase_paranoid");
+  s->paranoid_check = (paranoid == NULL) ? 0 : *paranoid;
 
   seg->fn.read = segjerase_read;
   seg->fn.write = segjerase_write;
