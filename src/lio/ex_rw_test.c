@@ -859,10 +859,9 @@ log_printf(my_log_level, "rw_test: stragglers -- read_index.curr=%d (%d done) wr
 // rw_load_options - Loads the test options form the config file
 //*************************************************************************
 
-void rw_load_options(char *cfgname)
+void rw_load_options(char *cfgname, char *group)
 {
   inip_file_t *fd;
-  char *group;
   char *str;
 
   fd = inip_read(cfgname);
@@ -873,7 +872,6 @@ void rw_load_options(char *cfgname)
   }
 
   //** Parse the global params
-  group = "rw_params";
   rwc.n_parallel = inip_get_integer(fd, group, "parallel", 1);
   rwc.preallocate = inip_get_integer(fd, group, "preallocate", 0);
   rwc.buffer_size = inip_get_integer(fd, group, "buffer_size", 10*1024*1024);
@@ -961,15 +959,17 @@ int main(int argc, char **argv)
   int i, err, start_option, print_exnode, soft_errors, hard_errors;
   exnode_exchange_t *exp;
   exnode_exchange_t *exp_out;
+  char *section = "rw_params";
   op_status_t status;
   op_generic_t *gop;
 
 //printf("argc=%d\n", argc);
   if (argc < 2) {
      printf("\n");
-     printf("ex_rw_test LIO_COMMON_OPTIONS [-ex]\n");
+     printf("ex_rw_test LIO_COMMON_OPTIONS [-ex] [-s section]\n");
      lio_print_options(stdout);
-     printf("     -ex   Print the final exnode to the screen before truncation\n");
+     printf("     -ex        Print the final exnode to the screen before truncation\n");
+     printf("     -s section SEction in the config file to usse.  Defaults to %s.\n", section);
      printf("\n");
      return(1);
   }
@@ -989,6 +989,10 @@ int main(int argc, char **argv)
         if (strcmp(argv[i], "-ex") == 0) { //** Show the final exnode
            i++;
            print_exnode = 1;
+        } else if (strcmp(argv[i], "-s") == 0) { //** Change the default section to use
+           i++;
+           section = argv[i];
+           i++;
         }
      } while ((start_option < i) && (i<argc));
   }
@@ -1000,11 +1004,11 @@ int main(int argc, char **argv)
   }
 
   //** Lastly load the R/W test params
-  rw_load_options(lio_gc->cfg_name);
+  rw_load_options(lio_gc->cfg_name, section);
 
 
   //** Print the options to the screen
-  printf("Configuration options:\n");
+  printf("Configuration options: %s\n", section);
   printf("------------------------------------------------------------------\n");
   rw_print_options(stdout);
   printf("------------------------------------------------------------------\n\n");
