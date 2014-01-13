@@ -174,48 +174,31 @@ log_printf(0, "bad=%d map=%d\n", i, badmap[i]);
 //  jerase_brute_recurse - Recursively tries to find a match
 //***********************************************************************
 
-int jerase_brute_recurse(int level, int *index, erasure_plan_t *plan, int chunk_size, int n_devs, int n_bad_devs, int *badmap, char **ptr, char **eptr, char **pwork)
+int jerase_brute_recurse(int level, int *index, erasure_plan_t *plan, int chunk_size, int n_devs, int n_parity, int n_bad_devs, int *badmap, char **ptr, char **eptr, char **pwork)
 {
-  int i, start, match;
-  int erasures[n_bad_devs+2];  //** Leave space for a control failure
-  char *tptr;
+  int i, start, n;
+  char *tptr[n_parity];
 
   if (level == n_bad_devs) {  //** Do an erasure check
-     memset(badmap, 0, sizeof(int)*n_devs);
-
-     memcpy(eptr, ptr, sizeof(char *)*n_devs);  //** Set the base blocks using the actual data
      for (i=0; i<n_bad_devs; i++) {  //** Overwrite the "failed" blocks using the work buffers
-         eptr[index[i]] = pwork[i];
-         erasures[i] = index[i];
+         tptr[i] = ptr[index[i]];
+         ptr[index[i]] = pwork[i];
          badmap[index[i]] = 1;
-log_printf(10, "marking dev=%d as bad\n", index[i]);
      }
-     erasures[n_bad_devs+1] = -1;
 
-     for (i=0; i<n_devs; i++) { //** Cycle through looking for a control dev to detect correctness
-        if (badmap[i] == 0) {
-log_printf(10, "marking dev=%d as control\n", i);
+     //** Perform the check
+     n = jerase_control_check(plan, chunk_size, n_devs, n_parity, badmap, ptr, eptr, &(pwork[n_bad_devs]));
 
-           //** Add the control "bad" device
-           erasures[n_bad_devs] = i;
-           tptr = eptr[i];
-           eptr[i] = pwork[n_bad_devs];
-
-           //** and do the decoding
-           plan->decode_block(plan, eptr, chunk_size, erasures);
-
-           //** Check if we have a match
-           match = memcmp(ptr[i], eptr[i], chunk_size);
-           eptr[i] = tptr;
-
-           return(match);
-        }
+     for (i=0; i<n_bad_devs; i++) {  //** Restore the original pointers
+         ptr[index[i]] = tptr[i];
      }
+
+     return(n);
   } else {
      start = (level == 0) ? 0 : index[level-1]+1;
      for (i = start; i<n_devs; i++) {
         index[level] = i;
-        if (jerase_brute_recurse(level+1, index, plan, chunk_size, n_devs, n_bad_devs, badmap, ptr, eptr, pwork) == 0) return(0);
+        if (jerase_brute_recurse(level+1, index, plan, chunk_size, n_devs, n_parity, n_bad_devs, badmap, ptr, eptr, pwork) == 0) return(0);
      }
   }
 
@@ -241,7 +224,7 @@ int jerase_brute_recovery(erasure_plan_t *plan, int chunk_size, int n_devs, int 
 
   for (i=1; i<n_parity_devs-1; i++) {  //** Cycle through checking for 1 failure, then double failure combo, etc
      memset(index, 0, sizeof(int)*n_parity_devs);
-     if (jerase_brute_recurse(0, index, plan, chunk_size, n_devs, i, badmap, ptr, eptr, pwork) == 0) return(0);  //** Found it so kick out
+     if (jerase_brute_recurse(0, index, plan, chunk_size, n_devs, n_parity_devs, i, badmap, ptr, eptr, pwork) == 0) return(0);  //** Found it so kick out
   }
 
   return(1);  //** No luck
@@ -890,7 +873,7 @@ op_status_t segjerase_read_func(void *arg, int id)
   int magic_count[s->n_devs], data_ok, match, index;
   int magic_devs[s->n_devs*s->n_devs];
   int badmap[s->n_devs], badmap_brute[s->n_devs], bm_brute_used;
-  int soft_error, hard_error, do_recover;
+  int soft_error, hard_error, do_recover, paranoid_mode;
   opque_t *q;
   op_generic_t *gop;
   ex_iovec_t *ex_iov;
@@ -906,6 +889,7 @@ op_status_t segjerase_read_func(void *arg, int id)
   status = op_success_status;
   soft_error = 0; hard_error = 0;
   bm_brute_used = 0;
+
 
   //** Make the space for the parity
   parity_len = sw->nstripes * s->parity_size;
@@ -951,7 +935,8 @@ op_status_t segjerase_read_func(void *arg, int id)
         while ((gop = opque_waitany(q)) != NULL) {
           slot = gop_get_myid(gop);
           check_status = gop_get_status(gop);
-
+          paranoid_mode = (check_status.error_code != 0) ? 1 : s->paranoid_check;  //** Force paranoid check for underlying read issues
+          
           //** Make the magic table to determine which magic has a quorum
           iov_start = info[slot].iov_start;
           for (stripe=0; stripe < info[slot].nstripes; stripe++) {
@@ -1003,7 +988,7 @@ log_printf(15, "index=%d good=%d data_ok=%d magic=%d data_devs=%d check_status.e
 
              do_recover = 0;
              if (data_ok == 1) {   //** All magics are the same
-                if (s->paranoid_check == 1) do_recover = 1;  //** Paranoid mode
+                if (paranoid_mode == 1) do_recover = 1;  //** Paranoid mode
              } else if (data_ok == 2) { //** no data stored so blank it
                 for (k=0; k<s->n_data_devs; k++) {
                    memset(iov[iov_start + 2*k + 1].iov_base, 0, s->chunk_size);
