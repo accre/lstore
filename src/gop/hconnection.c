@@ -451,7 +451,7 @@ log_printf(5, "hc_recv_thread: after recv phase.. ns=%d gid=%d finished=%d\n", n
         hc_send_signal(hc);  //** Wake up send_thread if needed
         unlock_hc(hc);
 
-        if (status.op_status == OP_STATE_RETRY) {
+        if ((status.op_status == OP_STATE_RETRY) && (hop->retry_count > 0)) {
            finished = 1;
            cmd_pause_time = hop->retry_wait;
            log_printf(5, "hc_recv_thread:  Dead socket so shutting down ns=%d retry in " TT " usec\n", ns_getid(ns), cmd_pause_time);
