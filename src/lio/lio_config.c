@@ -35,7 +35,6 @@ http://www.accre.vanderbilt.edu
 #include "lio.h"
 #include "type_malloc.h"
 #include "log.h"
-#include "hwinfo.h"
 #include "apr_wrapper.h"
 #include "log.h"
 #include "string_token.h"
@@ -805,7 +804,8 @@ lio_config_t *lio_create_nl(char *fname, char *section, char *user)
   lio->timeout = inip_get_integer(lio->ifd, section, "timeout", 120);
   lio->max_attr = inip_get_integer(lio->ifd, section, "max_attr_size", 10*1024*1024);
 
-  proc_info(&sockets, &cores, &vcores);
+//  proc_info(&sockets, &cores, &vcores);
+cores=4;
   cores = inip_get_integer(lio->ifd, section, "tpc_cpu", cores);
   sprintf(buffer, "tpc:%d", cores);
   stype = buffer;

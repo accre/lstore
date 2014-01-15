@@ -26,7 +26,6 @@ find_package(OpenSSL REQUIRED)
 find_package(APR REQUIRED)
 find_package(APRUtil REQUIRED)
 find_package(Phoebus)
-find_package(HwLoc REQUIRED)
 find_package(Jerasure REQUIRED)
 find_package(ToolBox REQUIRED)
 find_package(GOP REQUIRED)
@@ -36,25 +35,17 @@ find_package(CZMQ REQUIRED)
 find_package(FUSE REQUIRED)
 find_package(Zlib REQUIRED)
 find_package(XATTR REQUIRED)
-find_package(XML2)
 
 set(CMAKE_C_FLAGS_DEBUG "${CMAKE_REQUIRED_FLAGS} -O0 -Wall -g -DHAVE_CONFIG_H -DLINUX=2 -D_REENTRANT -D_GNU_SOURCE -D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64 ${XATTR_FOUND}" )
 set(CMAKE_C_FLAGS_RELEASE "-O ${CMAKE_REQUIRED_FLAGS} -DHAVE_CONFIG_H -DLINUX=2 -D_REENTRANT -D_GNU_SOURCE -D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64 ${XATTR_FOUND}" )
 
 
 include_directories(${OPENSSL_INCLUDE_DIR} ${APR_INCLUDE_DIR} ${APRUTIL_INCLUDE_DIR} ${PHOEBUS_INCLUDE_DIR} ${ZLIB_INCLUDE_DIR}
-   ${HWLOC_INCLUDE_DIR} ${JERASURE_INCLUDE_DIR} ${TOOLBOX_INCLUDE_DIR} ${GOP_INCLUDE_DIR} ${IBP_INCLUDE_DIR} ${FUSE_INCLUDE_DIR} 
+   ${JERASURE_INCLUDE_DIR} ${TOOLBOX_INCLUDE_DIR} ${GOP_INCLUDE_DIR} ${IBP_INCLUDE_DIR} ${FUSE_INCLUDE_DIR} 
    ${CZMQ_INCLUDE_DIR} ${XATTR_INCLUDE_DIR} )
 
-set(XML_LIB "")
-if (XML2_FOUND)
-  include_directories(${XML2_INCLUDE_DIR})
-#  list(APPEND LIBS ${XML2_LIBRARY})
-   set(XML_LIB ${XML2_LIBRARY})
-endif (XML2_FOUND)
-
 SET(LIBS ${LIBS} ${IBP_LIBRARY} ${GOP_LIBRARY} ${CZMQ_LIBRARY} ${TOOLBOX_LIBRARY} ${JERASURE_LIBRARY} ${OPENSSL_LIBRARIES} ${CRYPTO_LIBRARIES} 
-   ${APR_LIBRARY} ${APRUTIL_LIBRARY} ${HWLOC_LIBRARY} ${ZMQ_LIBRARY} ${FUSE_LIBRARY} ${XML_LIB} ${ZLIB_LIBRARY} ${XATTR_LIBRARY} pthread m dl rt)
+   ${APR_LIBRARY} ${APRUTIL_LIBRARY} ${ZMQ_LIBRARY} ${FUSE_LIBRARY} ${ZLIB_LIBRARY} ${XATTR_LIBRARY} pthread m dl rt pciaccess)
 
 #Make the version file
 set(LIO_CLIENT_VERSION "lio_client: v1.0.0")
@@ -156,7 +147,7 @@ install(FILES
    cache_lru_priv.h  ds_ibp_priv.h            ex3_header.h    exnode3.h          raid4.h          segment_cache_priv.h  segment_log_priv.h  view_layout.h
    cache_priv.h      erasure_tools.h          ex3_linear.h    rs_query_base.h    segment_file.h   segment_lun.h         cache.h
    authn_abstract.h  authn_fake.h      	      osaz_fake.h     rs_remote.h        archive.h
-   lio_abstract.h
+   lio_abstract.h    lio_fuse.h
    cache_round_robin.h
    resource_service_abstract.h
    object_service_abstract.h
