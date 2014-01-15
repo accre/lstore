@@ -39,7 +39,6 @@ http://www.accre.vanderbilt.edu
 #include "network.h"
 #include "log.h"
 #include "type_malloc.h"
-#include "hwinfo.h"
 
 void  *thread_pool_exec_fn(apr_thread_t *th, void *arg);
 void *_tp_dup_connect_context(void *connect_context);
@@ -163,13 +162,9 @@ log_printf(0, "tpd=%d\n", atomic_get(tpc->n_direct));
 
 void default_thread_pool_config(thread_pool_context_t *tpc)
 {
-  int sockets, cores, vcores;
-
-  proc_info(&sockets, &cores, &vcores);
-
   tpc->min_idle = 1; //** default to close after 1 sec
   tpc->min_threads = 1;
-  tpc->max_threads = cores;
+  tpc->max_threads = 4;
 
 //log_printf(15, "default_thread_pool_config: max_threads=%d\n", cores);
   tpc->name = NULL;

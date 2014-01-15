@@ -31,9 +31,7 @@ find_package(APRUtil REQUIRED)
 find_package(ToolBox REQUIRED)
 find_package(ZMQ REQUIRED)
 find_package(CZMQ REQUIRED)
-find_package(HwLoc REQUIRED)
 find_package(Zlib REQUIRED)
-find_package(XML2)
 
 #Make the version file
 set(GOP_VERSION "gop: v1.0.0")
@@ -53,16 +51,8 @@ SET_TARGET_PROPERTIES(gop-static PROPERTIES CLEAN_DIRECT_OUTPUT 1)
 
 include_directories(${TOOLBOX_INCLUDE_DIR} ${APR_INCLUDE_DIR} ${APRUTIL_INCLUDE_DIR} ${ZMQ_INCLUDE_DIR} ${CZMQ_INCLUDE_DIR} ${ZLIB_INCLUDE_DIR} )
 
-set(XML_LIB "")
-if (XML2_FOUND)
-  include_directories(${XML2_INCLUDE_DIR})
-#  list(APPEND LIBS ${XML2_LIBRARY})
-   set(XML_LIB ${XML2_LIBRARY})
-endif (XML2_FOUND)
-
-SET(LIBS ${LIBS} ${ZMQ_LIBRARY} ${CZMQ_LIBRARY} ${TOOLBOX_LIBRARY} ${HWLOC_LIBRARY} ${OPENSSL_LIBRARIES} ${CRYPTO_LIBRARIES} 
-    ${PROTOBUF_LIBRARY} ${APR_LIBRARY} ${APRUTIL_LIBRARY} ${XML_LIB} ${ZLIB_LIBRARY} pthread m dl rt)
-# XML lib needs to be declared before zlib, because it depends on it
+SET(LIBS ${LIBS} ${ZMQ_LIBRARY} ${CZMQ_LIBRARY} ${TOOLBOX_LIBRARY} ${OPENSSL_LIBRARIES} ${CRYPTO_LIBRARIES} 
+    ${PROTOBUF_LIBRARY} ${APR_LIBRARY} ${APRUTIL_LIBRARY} ${XML_LIB} ${ZLIB_LIBRARY} pthread m dl rt pciaccess)
 
 ADD_EXECUTABLE(mq_test mq_test.c)
 SET_TARGET_PROPERTIES(mq_test PROPERTIES LINKER_LANGUAGE CXX)
