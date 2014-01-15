@@ -32,7 +32,6 @@ find_package(Phoebus)
 find_package(ZMQ REQUIRED)
 find_package(CZMQ REQUIRED)
 find_package(Zlib REQUIRED)
-find_package(XML2)
 
 # config options
 if (Phoebus_FOUND)
@@ -49,11 +48,6 @@ check_include_file("inttypes.h" HAVE_INTTYPES_H)
 
 include_directories(${OPENSSL_INCLUDE_DIR} ${APR_INCLUDE_DIR} ${APRUTIL_INCLUDE_DIR} ${ZMQ_INCLUDE_DIR} ${CZMQ_INCLUDE_DIR} ${ZLIB_INCLUDE_DIR} )
 SET(LIBS ${LIBS} ${OPENSSL_LIBRARIES} ${CRYPTO_LIBRARIES} ${APR_LIBRARY} ${APRUTIL_LIBRARY} ${CZMQ_LIBRARY} ${ZMQ_LIBRARY} )
-
-if (XML2_FOUND)
-  include_directories(${XML2_INCLUDE_DIR})
-  list(APPEND LIBS ${XML2_LIBRARY})
-endif (XML2_FOUND)
 
 list(APPEND LIBS ${ZLIB_LIBRARY} rt pthread m dl pciaccess)
 
