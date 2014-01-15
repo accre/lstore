@@ -1076,7 +1076,7 @@ int main(int argc, char **argv)
   exnode_destroy(ex);
   exnode_exchange_destroy(exp);
 
-printf("tpc_unlimited=%d  tpc_cpu=%d\n", lio_gc->tpc_unlimited->n_ops, lio_gc->tpc_cpu->n_ops);
+printf("tpc_unlimited=%d\n", lio_gc->tpc_unlimited->n_ops);
 
   lio_shutdown();
 

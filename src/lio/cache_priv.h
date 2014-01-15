@@ -106,7 +106,6 @@ typedef struct {
   void *cache_priv;
   segment_t *child_seg;
   thread_pool_context_t *tpc_unlimited;
-  thread_pool_context_t *tpc_cpu;
   list_t *pages;
   apr_thread_mutex_t *lock;
   apr_thread_cond_t  *flush_cond;

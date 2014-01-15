@@ -107,13 +107,12 @@ int exnode_system_init()
 // exnode_system_config - Configures  the exnode system for use
 //***********************************************************************
 
-int exnode_system_config(service_manager_t *ess, data_service_fn_t *ds, resource_service_fn_t *rs, object_service_fn_t *os, thread_pool_context_t *tpc_unlimited, thread_pool_context_t *tpc_cpu, cache_t *cache)
+int exnode_system_config(service_manager_t *ess, data_service_fn_t *ds, resource_service_fn_t *rs, object_service_fn_t *os, thread_pool_context_t *tpc_unlimited, cache_t *cache)
 {
 
   add_service(ess, ESS_RUNNING, ESS_DS, ds);
   add_service(ess, ESS_RUNNING, ESS_RS, rs);
   add_service(ess, ESS_RUNNING, ESS_OS, os);
-  add_service(ess, ESS_RUNNING, ESS_TPC_CPU, tpc_cpu);
   add_service(ess, ESS_RUNNING, ESS_TPC_UNLIMITED, tpc_unlimited);
   add_service(ess, ESS_RUNNING, ESS_CACHE, cache);
 

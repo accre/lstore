@@ -3211,7 +3211,6 @@ segment_t *segment_cache_create(void *arg)
 
   s->flush_stack = new_stack();
   s->tpc_unlimited = lookup_service(es, ESS_RUNNING, ESS_TPC_UNLIMITED);
-  s->tpc_cpu = lookup_service(es, ESS_RUNNING, ESS_TPC_CPU);
   s->pages = list_create(0, &skiplist_compare_ex_off, NULL, NULL, NULL);
   s->c = lookup_service(es, ESS_RUNNING, ESS_CACHE);
   if (s->c != NULL) s->c = cache_get_handle(s->c);

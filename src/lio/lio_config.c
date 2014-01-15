@@ -712,11 +712,6 @@ void lio_destroy_nl(lio_config_t *lio)
   }
   free(lio->tpc_unlimited_section);
 
-  if (_lc_object_destroy(lio->tpc_cpu_section) <= 0) {
-     thread_pool_destroy_context(lio->tpc_cpu);
-  }
-  free(lio->tpc_cpu_section);
-
   if (_lc_object_destroy(lio->mq_section) <= 0) {  //** Destroy the MQ context
      mq_ongoing_t *on = lookup_service(lio->ess, ESS_RUNNING, ESS_ONGOING_CLIENT);
      if (on != NULL) {  //** And also the ongoing client
@@ -766,7 +761,7 @@ void lio_destroy(lio_config_t *lio)
 lio_config_t *lio_create_nl(char *fname, char *section, char *user)
 {
   lio_config_t *lio;
-  int sockets, cores, vcores, n;
+  int n, cores;
   char buffer[1024];
   char *cred_args[2];
   char *ctype, *stype;
@@ -803,23 +798,6 @@ lio_config_t *lio_create_nl(char *fname, char *section, char *user)
 
   lio->timeout = inip_get_integer(lio->ifd, section, "timeout", 120);
   lio->max_attr = inip_get_integer(lio->ifd, section, "max_attr_size", 10*1024*1024);
-
-//  proc_info(&sockets, &cores, &vcores);
-cores=4;
-  cores = inip_get_integer(lio->ifd, section, "tpc_cpu", cores);
-  sprintf(buffer, "tpc:%d", cores);
-  stype = buffer;
-  lio->tpc_cpu_section = strdup(stype);
-  lio->tpc_cpu = _lc_object_get(stype);
-  if (lio->tpc_cpu == NULL) {  //** Need to load it
-     lio->tpc_cpu = thread_pool_create_context("CPU", cores, cores);
-     if (lio->tpc_cpu == NULL) {
-        log_printf(0, "Error loading tpc_cpu threadpool!  n=%d\n", cores);
-     }
-
-     _lc_object_put(stype, lio->tpc_cpu);  //** Add it to the table
-  }
-  add_service(lio->ess, ESS_RUNNING, ESS_TPC_CPU, lio->tpc_cpu);
 
   cores = inip_get_integer(lio->ifd, section, "tpc_unlimited", 10000);
   sprintf(buffer, "tpc:%d", cores);
@@ -952,7 +930,7 @@ log_printf(0, "CACHE stype=%s ctype=%s\n", stype, ctype);
   lio->cache = _lio_cache;
   add_service(lio->ess, ESS_RUNNING, ESS_CACHE, lio->cache);
 
-//  exnode_system_config(lio->ess, lio->ds, lio->rs, lio->os, lio->tpc_unlimited, lio->tpc_cpu, lio->cache);
+//  exnode_system_config(lio->ess, lio->ds, lio->rs, lio->os, lio->tpc_unlimited, lio->cache);
 
   return(lio);
 }
