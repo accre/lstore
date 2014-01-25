@@ -31,13 +31,14 @@ find_package(APRUtil REQUIRED)
 find_package(Phoebus)
 find_package(ToolBox REQUIRED)
 find_package(GOP REQUIRED)
+find_package(ZLIB)
 
 check_include_file("stdint.h" HAVE_STDINT_H)
 check_include_file("inttypes.h" HAVE_INTTYPES_H)
 
 include_directories(${OPENSSL_INCLUDE_DIR} ${APR_INCLUDE_DIR} ${APRUTIL_INCLUDE_DIR} ${PHOEBUS_INCLUDE_DIR} 
    ${TOOLBOX_INCLUDE_DIR} ${GOP_INCLUDE_DIR} ${IBP_INCLUDE_DIR})
-SET(LIBS ${LIBS} ${TOOLBOX_LIBRARY} ${GOP_LIBRARY} ${OPENSSL_LIBRARIES} ${CRYPTO_LIBRARIES} ${APR_LIBRARY} ${APRUTIL_LIBRARY} pthread m dl)
+SET(LIBS ${LIBS} ${TOOLBOX_LIBRARY} ${GOP_LIBRARY} ${OPENSSL_LIBRARIES} ${CRYPTO_LIBRARIES} ${APR_LIBRARY} ${APRUTIL_LIBRARY} ${ZLIB_LIBRARY} pthread m dl)
 
 # config options
 if (Phoebus_FOUND)
