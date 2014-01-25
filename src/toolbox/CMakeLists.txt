@@ -49,7 +49,7 @@ check_include_file("inttypes.h" HAVE_INTTYPES_H)
 include_directories(${OPENSSL_INCLUDE_DIR} ${APR_INCLUDE_DIR} ${APRUTIL_INCLUDE_DIR} ${ZMQ_INCLUDE_DIR} ${CZMQ_INCLUDE_DIR} ${ZLIB_INCLUDE_DIR} )
 SET(LIBS ${LIBS} ${OPENSSL_LIBRARIES} ${CRYPTO_LIBRARIES} ${APR_LIBRARY} ${APRUTIL_LIBRARY} ${CZMQ_LIBRARY} ${ZMQ_LIBRARY} )
 
-list(APPEND LIBS ${ZLIB_LIBRARY} rt pthread m dl pciaccess)
+list(APPEND LIBS ${ZLIB_LIBRARY} rt pthread m dl)
 
 CONFIGURE_FILE( ${CMAKE_SOURCE_DIR}/toolbox_config.h.in ${CMAKE_SOURCE_DIR}/toolbox_config.h )
 
