@@ -40,7 +40,6 @@ http://www.accre.vanderbilt.edu
 #include <czmq.h>
 #include <apr_thread_pool.h>
 #include <apr_thread_proc.h>
-#include <sys/eventfd.h>
 
 #ifndef __MQ_PORTAL_H_
 #define __MQ_PORTAL_H_
@@ -236,7 +235,7 @@ typedef struct {  //** MQ connection container
   apr_thread_t *thread;     //** thread handle
   mq_heartbeat_entry_t *hb_conn;  //** Immediate connection uplink
   uint64_t  n_ops;         //** Numbr of ops the connection has processed
-  int cefd;                //** Private event FD for initial connection handshake
+  int cefd[2];                //** Private event FD for initial connection handshake
   mq_command_stats_t stats;//** Command stats
   apr_pool_t *mpool;       //** MEmory pool for connection/thread. APR mpools aren't thread safe!!!!!!!
 } mq_conn_t;
@@ -248,7 +247,7 @@ struct mq_portal_s {   //** Container for managing connections to a single host
   int max_conn;     //** Max number of connections to MQ host
   int active_conn;  //** Active connection count
   int total_conn;   //** Active+closing connection count
-  int efd;          //** Event notification FD
+  int efd[2];       //** Event notification FD
   int backlog_trigger;       //** Number of backlog ops to trigger a new connection
   int heartbeat_dt;          //** Heartbeat interval
   int heartbeat_failure;     //** Missing heartbeat DT for failure classification

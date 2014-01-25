@@ -30,7 +30,6 @@ http://www.accre.vanderbilt.edu
 #include "log.h"
 #include "mq_portal.h"
 #include "type_malloc.h"
-#include <sys/eventfd.h>
 #include "apr_base64.h"
 #include "apr_wrapper.h"
 
@@ -219,7 +218,7 @@ log_printf(3, "cmd=%p\n", cmd);
 
 int mq_submit(mq_portal_t *p, mq_task_t *task)
 {
-  uint64_t n;
+  char c;
   int backlog, err;
   mq_task_t *t;
   apr_thread_mutex_lock(p->lock);
@@ -234,8 +233,8 @@ int mq_submit(mq_portal_t *p, mq_task_t *task)
   log_printf(2, "portal=%s backlog=%d active_conn=%d max_conn=%d total_conn=%d\n", p->host, backlog, p->active_conn, p->max_conn, p->total_conn); flush_log();
 
   //** Noitify the connections
-  n = 1;
-  write(p->efd, &n, sizeof(n));
+  c = 1;
+  write(p->efd[1], &c, 1);
 
   //** Check if we need more connections
   err = 0;
@@ -1041,14 +1040,11 @@ int mqc_process_task(mq_conn_t *c, int *npoll, int *nproc)
   mq_frame_t *f;
   mq_task_monitor_t *tn;
   char b64[1024];
-  char *data;
+  char *data, v;
   int i, size, tracking;
-  uint64_t n;
 
   //** Read an event
-  n = 0;
-  i = read(c->pc->efd, &n, sizeof(n));
-  log_printf(5, "nleft=%lu\n", n);
+  i = read(c->pc->efd[0], &v, 1);
 
   //** Get the new task or start a wind down if requested
   apr_thread_mutex_lock(c->pc->lock);
@@ -1277,11 +1273,11 @@ void *mq_conn_thread(apr_thread_t *th, void *data)
   mq_conn_t *c = (mq_conn_t *)data;
   int k, npoll, err, finished, nprocessed, nproc, nincoming, slow_exit;
   long int heartbeat_ms;
-  uint64_t n;
   int64_t total_proc, total_incoming;
   mq_pollitem_t pfd[3];
   apr_time_t next_hb_check, last_check;
   double proc_rate, dt;
+  char v;
 
 //log_printf(2, "START: uuid=%s heartbeat_dt=%d\n", c->mq_uuid, c->pc->heartbeat_dt);
 log_printf(2, "START: host=%s heartbeat_dt=%d\n", c->pc->host, c->pc->heartbeat_dt);
@@ -1293,11 +1289,11 @@ log_printf(2, "START(2): uuid=%s\n", c->mq_uuid);
 
   //** Notify the parent about the connections status via c->cefd
   //** It is then safe to manipulate c->pc->lock
-  n = (err == 0) ? 1 : 2;  //** EventFD's block on 0 values so make 1 success and 2 failure
+  v = (err == 0) ? 1 : 2;  //** Make 1 success and 2 failure
 
-log_printf(5, "after conn_make err=%d n=" LU "\n", err, n);
+  log_printf(5, "after conn_make err=%d\n", err);
 
-  write(c->cefd, &n, sizeof(n));
+  write(c->cefd[1], &v, 1);
 
   total_proc = total_incoming = 0;
   slow_exit = 0;
@@ -1307,7 +1303,7 @@ log_printf(5, "after conn_make err=%d n=" LU "\n", err, n);
 
   //**Make the poll structure
   memset(pfd, 0, sizeof(pfd));
-  pfd[PI_EFD].fd = c->pc->efd;
+  pfd[PI_EFD].fd = c->pc->efd[0];
   pfd[PI_EFD].events = MQ_POLLIN;
   pfd[PI_CONN].socket = mq_poll_handle(c->sock);
   pfd[PI_CONN].events = MQ_POLLIN;
@@ -1409,7 +1405,7 @@ int mq_conn_create(mq_portal_t *p, int dowait)
 {
   mq_conn_t *c;
   int err;
-  uint64_t n;
+  char v;
 
   type_malloc_clear(c, mq_conn_t, 1);
 
@@ -1426,8 +1422,8 @@ int mq_conn_create(mq_portal_t *p, int dowait)
 //  c->mq_uuid = strdup(uuid);
 
   //** This is just used in the initial handshake
-  c->cefd = eventfd(0, 0);
-  assert(c->cefd != -1);
+  assert(pipe(c->cefd) == 0);
+//  fcntl(c->cefd[1], F_SETFL, O_NONBLOCK);
 
   p->active_conn++; //** Inc the number of connections
   p->total_conn++;
@@ -1438,10 +1434,12 @@ int mq_conn_create(mq_portal_t *p, int dowait)
   err = 0;
 //dowait=1;
   if (dowait == 1) {  //** If needed wait until connected
-     read(c->cefd, &n, sizeof(n));
-     err = (n == 1) ? 0 : 1;  //** n==1 is a success anything else is an error
-log_printf(1, "err=%d n=" LU "\n", err, n);
+     read(c->cefd[0], &v, 1);
+     err = (v == 1) ? 0 : 1;  //** n==1 is a success anything else is an error
+log_printf(1, "err=%d\n", err);
   }
+
+  fcntl(c->cefd[0], F_SETFL, O_NONBLOCK);
 
   return(err);
 }
@@ -1460,7 +1458,7 @@ void mq_conn_teardown(mq_conn_t *c)
   apr_hash_clear(c->heartbeat_dest);
   apr_hash_clear(c->heartbeat_lut);
   apr_pool_destroy(c->mpool);
-  if (c->cefd != -1) close(c->cefd);
+  if (c->cefd[0] != -1) { close(c->cefd[0]), close(c->cefd[0]); }
   if (c->sock != NULL) mq_socket_destroy(c->pc->ctx, c->sock);
   if (c->mq_uuid != NULL) free(c->mq_uuid);
 }
@@ -1487,7 +1485,8 @@ void _mq_reap_closed(mq_portal_t *p)
 
 void mq_portal_destroy(mq_portal_t *p)
 {
-  uint64_t n;
+  int i, n;
+  char c;
 
   //** Tell how many connections to close
   apr_thread_mutex_lock(p->lock);
@@ -1497,7 +1496,8 @@ void mq_portal_destroy(mq_portal_t *p)
   apr_thread_mutex_unlock(p->lock);
 
   //** Signal them
-  write(p->efd, &n, sizeof(n));
+  c = 1;
+  for (i=0; i<n; i++) write(p->efd[1], &c, 1);
 
   //** Wait for them all to complete
   apr_thread_mutex_lock(p->lock);
@@ -1526,7 +1526,7 @@ void mq_portal_destroy(mq_portal_t *p)
   apr_thread_cond_destroy(p->cond);
   apr_pool_destroy(p->mpool);
 
-  if (p->efd != -1) close(p->efd);
+  if (p->efd[0] != -1) { close(p->efd[0]); close(p->efd[1]); }
   if (p->ctx != NULL) mq_socket_context_destroy(p->ctx);
 
   free_stack(p->closed_conn, 0);
@@ -1636,8 +1636,9 @@ mq_portal_t *mq_portal_create(mq_context_t *mqc, char *host, int connect_mode)
   p->connect_mode = connect_mode;
   p->tp = mqc->tp;
 
-  p->efd = eventfd(0, EFD_SEMAPHORE|EFD_NONBLOCK);
-  assert(p->efd != -1);
+  assert(pipe(p->efd) == 0);
+  fcntl(p->efd[0], F_SETFL, O_NONBLOCK);
+//  fcntl(p->efd[1], F_SETFL, O_NONBLOCK);
 
   p->ctx = mq_socket_context_new();
 
