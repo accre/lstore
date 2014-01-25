@@ -536,7 +536,7 @@ log_printf(15, "remove_skiplist: list=%p\n", sl);
 
   }
 
-  if (empty_node == 1) { 
+  if (empty_node == 1) {
      sn2 = ptr[0]->next[0];
      for (i=0; i<=sn2->level; i++) {
         ptr[i]->next[i] = sn2->next[i];
