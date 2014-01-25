@@ -87,7 +87,9 @@ void _open_log(char *fname, int dolock) {
   }
 
   _log_special = 0;
-  if (strcmp(_log_fname, "stdout") == 0) {
+  if (fname == NULL) {  //** Old file so just truncate
+     ftruncate(fileno(_log_fd), 0L);
+  } else if (strcmp(_log_fname, "stdout") == 0) {
      _log_special = 1;
      _log_fd = stdout;
   } else if (strcmp(_log_fname, "stderr") == 0) {
@@ -133,7 +135,7 @@ int mlog_printf(int suppress_header, int module_index, int level, const char *fn
   _log_currsize += n;
   if (_log_currsize > _log_maxsize) {
 //     if (_log_special==0) ftruncate(fileno(_log_fd), 0L);
-     if (_log_special==0) { fclose(_log_fd); _open_log(NULL, 0); }
+     if (_log_special==0) { _open_log(NULL, 0); }
      _log_currsize = 0;
   }
   _unlock_log();
@@ -158,7 +160,7 @@ void flush_log()
 // mlog_load - Loads the module log information
 //***************************************************************
 
-void mlog_load(char *fname)
+void mlog_load(char *fname, char *output_override, int log_level_override)
 {
   char *group_index, *group_level;
   char *name, *value, *logname;
@@ -182,10 +184,10 @@ void mlog_load(char *fname)
 
   default_level = inip_get_integer(fd, group_level, "default", 0);
 //printf("mlog_load: inital ll=%d\n", _log_level);
-  _log_level = inip_get_integer(fd, group_level, "start_level", 0);
+   _log_level = (log_level_override > -1) ? inip_get_integer(fd, group_level, "start_level", 0) : log_level_override;
 //printf("mlog_load: new ll=%d\n", _log_level);
   for (n=0; n<_mlog_size; n++) _mlog_table[n] = default_level;
-  logname = inip_get_string(fd, group_level, "output", "stdout");
+  logname = (output_override == NULL) ? inip_get_string(fd, group_level, "output", "stdout") : strdup(output_override);
   open_log(logname);
   free(logname);
   _log_maxsize = inip_get_integer(fd, group_level, "size", 100*1024*1024);

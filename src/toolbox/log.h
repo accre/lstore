@@ -90,7 +90,7 @@ void _open_log(char *fname, int dolock);
 void _close_log();
 void flush_log();
 int mlog_printf(int suppress_header, int module_index, int level, const char *fn, const char *fname, int line, const char *fmt, ...);
-void mlog_load(char *fname);
+void mlog_load(char *fname, char *output_override, int log_level_override);
 
 #ifndef _log_module_index
 #define _log_module_index 0
