@@ -44,6 +44,7 @@ int main(int argc, char **argv)
   skiplist_t *sl;
   skiplist_iter_t it;
   int *key, *data;
+  int check_slot = 0;
 
   if (argc < 4) {
      printf("sk_test [-d log_level] n_max random_max l_max p\n");
@@ -66,6 +67,8 @@ int main(int argc, char **argv)
   l_max = atol(argv[i]); i++;
   p = atof(argv[i]); i++;
 
+  check_slot = n_max / 2;
+
   sl = create_skiplist_full(l_max, p, 1, &skiplist_compare_int, NULL, NULL, NULL);
 
   //** Make sure everything works fine with an empty list
@@ -84,11 +87,11 @@ int main(int argc, char **argv)
 
   for (i=0; i<n_max; i++) {
     key_list[i] = rand();
+    if (i>=(n_max-2)) key_list[i] = key_list[0];  //** Force dups
 
     if ((i==0) || (min_key > key_list[i])) min_key = key_list[i];
     if ((i==0) || (max_key < key_list[i])) max_key = key_list[i];
 
-    if (i>=(n_max-2)) key_list[i] = key_list[0];  //** Force dups
     data_list[i] = i;
     printf("inserting key[%d]=%d\n", i, key_list[i]);
     err = insert_skiplist(sl, (skiplist_key_t *)&(key_list[i]), (skiplist_data_t *)&(data_list[i]));
@@ -97,6 +100,8 @@ int main(int argc, char **argv)
     }
   }
 
+
+  printf("********** min_key=%d    max_key=%d **********\n", min_key, max_key);
 
   //**Check phase
   for (i=0; i<n_max; i++) {
@@ -201,20 +206,20 @@ int main(int argc, char **argv)
   }
 
   printf("Checking that we return the key or the next higher key\n");
-  j = key_list[50]-1;
+  j = key_list[check_slot]-1;
   it = iter_search_skiplist(sl, (skiplist_key_t *)&j, 0);
   err = next_skiplist(&it, (skiplist_key_t *)&key, (skiplist_data_t *)&data);
-  printf("Checking for j=%d key_list[50]=%d got key=%d\n", j, key_list[50], *key);
-  if (*key != key_list[50]) {
+  printf("Checking for j=%d key_list[%d]=%d got key=%d\n", j, check_slot, key_list[check_slot], *key);
+  if (*key != key_list[check_slot]) {
      printf("ERROR! key<j (%d<%d)!!!!!\n", *key, j);
   }
 
   printf("Checking that round down works\n");
-  j = key_list[50]+1;
+  j = key_list[check_slot]+1;
   it = iter_search_skiplist(sl, (skiplist_key_t *)&j, -1);
   err = next_skiplist(&it, (skiplist_key_t *)&key, (skiplist_data_t *)&data);
-  printf("Checking for j=%d key_list[50]=%d got key=%d\n", j, key_list[50], *key);
-  if (*key != key_list[50]) {
+  printf("Checking for j=%d key_list[%d]=%d got key=%d\n", j, check_slot, key_list[check_slot], *key);
+  if (*key != key_list[check_slot]) {
      printf("ERROR! key>j (%d<%d)!!!!!\n", *key, j);
   }
 
@@ -228,10 +233,10 @@ int main(int argc, char **argv)
   }
 
 
-  j = key_list[50];
+  j = key_list[check_slot];
   it = iter_search_skiplist(sl, (skiplist_key_t *)&j, 0);
   err = next_skiplist(&it, (skiplist_key_t *)&key, (skiplist_data_t *)&data);
-  printf("Checking for j=%d key_list[50]=%d got key=%d\n", j, key_list[50], *key);
+  printf("Checking for j=%d key_list[%d]=%d got key=%d\n", j, check_slot, key_list[check_slot], *key);
   if (*key != j) {
      printf("ERROR! key!=j (%d!=%d)!!!!!\n", *key, j);
   }
@@ -312,10 +317,10 @@ int main(int argc, char **argv)
        printf("empty 1 ERROR inserting key_list[%d]=%d\n", i, key_list[i]);
     }
   }
-  j = key_list[50];
+  j = key_list[check_slot];
   it = iter_search_skiplist(sl, (skiplist_key_t *)&j, 0);
   err = next_skiplist(&it, (skiplist_key_t *)&key, (skiplist_data_t *)&data);
-  printf("empty 1 Checking for j=%d key_list[50]=%d got key=%d\n", j, key_list[50], *key);
+  printf("empty 1 Checking for j=%d key_list[%d]=%d got key=%d\n", j, check_slot, key_list[check_slot], *key);
   if (*key != j) {
      printf("ERROR! key!=j (%d!=%d)!!!!!\n", *key, j);
   }
@@ -328,10 +333,10 @@ int main(int argc, char **argv)
        printf("empty 2 ERROR inserting key_list[%d]=%d\n", i, key_list[i]);
     }
   }
-  j = key_list[50];
+  j = key_list[check_slot];
   it = iter_search_skiplist(sl, (skiplist_key_t *)&j, 0);
   err = next_skiplist(&it, (skiplist_key_t *)&key, (skiplist_data_t *)&data);
-  printf("empty 2 Checking for j=%d key_list[50]=%d got key=%d\n", j, key_list[50], *key);
+  printf("empty 2 Checking for j=%d key_list[%d]=%d got key=%d\n", j, check_slot, key_list[check_slot], *key);
   if (*key != j) {
      printf("ERROR! key!=j (%d!=%d)!!!!!\n", *key, j);
   }
