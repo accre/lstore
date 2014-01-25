@@ -955,7 +955,11 @@ log_printf(_amp_logging, "seg=" XIDT " MRU retry offset=" XOT "\n", segment_id(p
 
      while (ptable != NULL) {
         if ((ptable->hi - ptable->lo) < 10*s->page_size) ptable->hi = ptable->lo + 10*s->page_size;
-        gop = cache_flush_range(ptable->seg, s->c->da, ptable->lo, ptable->hi + s->page_size - 1, s->c->timeout);
+        if (c->stats.dirty_bytes > cp->dirty_bytes_trigger) {
+           gop = cache_flush_range(ptable->seg, s->c->da, 0, -1, s->c->timeout); //** to much is dirty so flush the whole file
+        } else {
+           gop = cache_flush_range(ptable->seg, s->c->da, ptable->lo, ptable->hi + s->page_size - 1, s->c->timeout);
+        }
         opque_add(q, gop);
         release_pigeon_coop_hole(cp->free_page_tables, &(ptable->pch));
         list_next(&sit, (list_key_t **)&segid, (list_data_t **)&ptable);

@@ -107,10 +107,12 @@ typedef struct {
   segment_t *child_seg;
   thread_pool_context_t *tpc_unlimited;
   list_t *pages;
+  list_t *partial_pages;
   apr_thread_mutex_t *lock;
   apr_thread_cond_t  *flush_cond;
   apr_thread_cond_t  *ppages_cond;
   Stack_t *flush_stack;
+  Stack_t *ppages_unused;
   char *qname;
   cache_partial_page_t *ppage;
   char *ppages_buffer;
