@@ -649,6 +649,7 @@ void lio_print_options(FILE *fd)
 {
  fprintf(fd, "    LIO_COMMON_OPTIONS\n");
  fprintf(fd, "       -d level        - Set the debug level (0-20).  Defaults to 0\n");
+ fprintf(fd, "       -log log_out    - Set the log output file.  Defaults to using config setting\n");
  fprintf(fd, "       -no-auto-lfs    - Disable auto-conversion of LFS mount paths to lio\n");
  fprintf(fd, "       -c config       - Configuration file\n");
  fprintf(fd, "       -lc user@config - Use the user and config section specified for making the default LIO\n");
@@ -1056,7 +1057,7 @@ int env2args(char *env, int *argc, char ***eargv)
 //char **t2 = NULL;
 int lio_init(int *argc, char ***argvp)
 {
-  int i, j, k, ll, neargs, nargs, auto_mode;
+  int i, j, k, ll, ll_override, neargs, nargs, auto_mode;
   char *name;
   char var[4096];
   char *env;
@@ -1064,6 +1065,7 @@ int lio_init(int *argc, char ***argvp)
   char **myargv;
   char **argv;
   char *dummy;
+  char *out_override = NULL;
   char *cfg_name = NULL;
   char *section_name = "lio";
   char *userid = NULL;
@@ -1139,7 +1141,7 @@ int lio_init(int *argc, char ***argvp)
   nargs = 1;  //** argv[0] is preserved as the calling name
   myargv[0] = argv[0];
   i=1;
-  ll = 0;
+  ll_override = -1;
   auto_mode = -1;
 
   if (*argc < 2) goto no_args;  //** Nothing to parse
@@ -1148,7 +1150,10 @@ int lio_init(int *argc, char ***argvp)
 //printf("argv[%d]=%s\n", i, argv[i]);
      if (strcmp(argv[i], "-d") == 0) { //** Enable debugging
         i++;
-        ll = atoi(argv[i]); i++;
+        ll_override = atoi(argv[i]); i++;
+     } else if (strcmp(argv[i], "-log") == 0) { //** Override log file output
+        i++;
+        out_override = argv[i]; i++;
      } else if (strcmp(argv[i], "-no-auto-lfs") == 0) { //** Regex for path
         i++;
         auto_mode = 0;
@@ -1218,7 +1223,7 @@ no_args:
 
 
   if (cfg_name != NULL) {
-     mlog_load(cfg_name);
+     mlog_load(cfg_name, out_override, ll_override);
 
      set_log_level(ll);
 
