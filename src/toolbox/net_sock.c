@@ -212,7 +212,7 @@ apr_size_t my_write(network_sock_t *sock, tbuffer_t *buf, apr_size_t bpos, apr_s
    sock_apr_overlay_t *s = (sock_apr_overlay_t *)(sock->fd);
    tbuffer_var_t tbv;
 
-int leni, ni, len2;
+int leni, ni;
 apr_time_t start = apr_time_now();
 double dt;
 
@@ -320,6 +320,61 @@ long int sock_read(net_sock_t *nsock, tbuffer_t *buf, size_t bpos, size_t len, N
   return(nbytes);
 }
 
+
+//*********************************************************************
+//  sock_apr_read
+//*********************************************************************
+
+long int sock_apr_read(net_sock_t *nsock, tbuffer_t *buf, size_t bpos, size_t len, Net_timeout_t tm)
+{
+  int err;
+  apr_size_t nbytes;
+  tbuffer_var_t tbv;
+  network_sock_t *sock = (network_sock_t *)nsock;
+
+  if (sock == NULL) return(-1);   //** If closed return
+  if (sock->fd == NULL) return(-1);
+
+  tbuffer_var_init(&tbv);
+  tbv.nbytes = len;
+  tbuffer_next(buf, bpos, &tbv);
+  if (tbv.n_iov > IOV_MAX) tbv.n_iov = IOV_MAX;  //** Make sure we don't have to many entries
+
+  err = apr_socket_recvv(sock->fd, tbv.buffer, tbv.n_iov, &nbytes);
+log_printf(5, "apr_socket_recvv=%d nbytes=%d APR_SUCCESS=%d EAGAIN=%d\n", err, nbytes, APR_SUCCESS, EAGAIN);
+
+  if (err != APR_SUCCESS) nbytes = -1;
+
+  return(nbytes);
+}
+
+
+//*********************************************************************
+//  sock_apr_write
+//*********************************************************************
+
+long int sock_apr_write(net_sock_t *nsock, tbuffer_t *buf, size_t bpos, size_t len, Net_timeout_t tm)
+{
+  int err;
+  apr_size_t nbytes;
+  tbuffer_var_t tbv;
+  network_sock_t *sock = (network_sock_t *)nsock;
+
+  if (sock == NULL) return(-1);   //** If closed return
+  if (sock->fd == NULL) return(-1);
+
+  tbuffer_var_init(&tbv);
+  tbv.nbytes = len;
+  tbuffer_next(buf, bpos, &tbv);
+  if (tbv.n_iov > IOV_MAX) tbv.n_iov = IOV_MAX;  //** Make sure we don't have to many entries
+
+  err = apr_socket_sendv(sock->fd, tbv.buffer, tbv.n_iov, &nbytes);
+log_printf(5, "apr_socket_sendv=%d nbytes=%d APR_SUCCESS=%d\n", err, nbytes, APR_SUCCESS);
+  if (err != APR_SUCCESS) nbytes = -1;
+
+  return(nbytes);
+}
+
 //*********************************************************************
 // sock_connect - Creates a connection to a remote host
 //*********************************************************************
@@ -327,7 +382,6 @@ long int sock_read(net_sock_t *nsock, tbuffer_t *buf, size_t bpos, size_t len, N
 int sock_connect(net_sock_t *nsock, const char *hostname, int port, Net_timeout_t timeout)
 {
    int err;
-   Net_timeout_t tm;
 
    network_sock_t *sock = (network_sock_t *)nsock;
 
@@ -362,14 +416,14 @@ int sock_connect(net_sock_t *nsock, const char *hostname, int port, Net_timeout_
 //log_printf(0, "sock_connect: apr_socket_connect: err=%d\n", err); flush_log();
 
    //** Set a 50ms timeout
-   set_net_timeout(&tm, 0, SOCK_DEFAULT_TIMEOUT);
-   apr_socket_timeout_set(sock->fd, tm);
+//   set_net_timeout(&tm, 0, SOCK_DEFAULT_TIMEOUT);
+//   apr_socket_timeout_set(sock->fd, tm);
 
    return(err);
 }
 
 //*********************************************************************
-// sock_connection_request - Waits for a connection request or times out 
+// sock_connection_request - Waits for a connection request or times out
 //     If a request is made then 1 is returned otherwise 0 for timeout.
 //     -1 signifies an error.
 //*********************************************************************
@@ -407,7 +461,7 @@ net_sock_t *sock_accept(net_sock_t *nsock)
 {
   int err;
   Net_timeout_t tm;
-  network_sock_t *psock = (network_sock_t *)nsock;   
+  network_sock_t *psock = (network_sock_t *)nsock;
 
   network_sock_t *sock = (network_sock_t *)malloc(sizeof(network_sock_t));
   assert(sock != NULL);
@@ -435,7 +489,7 @@ net_sock_t *sock_accept(net_sock_t *nsock)
     apr_socket_timeout_set(sock->fd, tm);
   }
 
-  return(sock);    
+  return(sock);
 }
 
 //*********************************************************************
@@ -445,7 +499,7 @@ net_sock_t *sock_accept(net_sock_t *nsock)
 int sock_bind(net_sock_t *nsock, char *address, int port)
 {
   int err;
-  network_sock_t *sock = (network_sock_t *)nsock;   
+  network_sock_t *sock = (network_sock_t *)nsock;
 
   if (sock == NULL) return(1);
 
@@ -455,7 +509,7 @@ log_printf(10, "sock_bind: host=%s:%d\n", address, port);
    err = apr_sockaddr_info_get(&(sock->sa), address, APR_INET, port, 0, sock->mpool);
 //log_printf(10, "sock_bind: apr_sockaddr_info_get=%d APR_SUCCESS=%d\n", err, APR_SUCCESS);
    if (err != APR_SUCCESS) return(err);
-   
+
    err = apr_socket_create(&(sock->fd), APR_INET, SOCK_STREAM, APR_PROTO_TCP, sock->mpool);
 //log_printf(10, "sock_bind: apr_socket_create=%d APR_SUCCESS=%d\n", err, APR_SUCCESS);
    if (err != APR_SUCCESS) return(err);
@@ -481,7 +535,7 @@ log_printf(10, "sock_bind: apr_socket_bind=%d APR_SUCCESS=%d\n", err, APR_SUCCES
 int sock_listen(net_sock_t *nsock, int max_pending)
 {
   int err;
-  network_sock_t *sock = (network_sock_t *)nsock;   
+  network_sock_t *sock = (network_sock_t *)nsock;
 
   if (sock == NULL) return(1);
 
@@ -503,13 +557,13 @@ int sock_listen(net_sock_t *nsock, int max_pending)
   return(0);
 }
 
-//********************************************************************* 
-// ns_config_sock - Configure the connection to use standard sockets 
+//*********************************************************************
+// ns_config_sock - Configure the connection to use standard sockets
 //*********************************************************************
 
-int sock_native_fd(net_sock_t *nsock) 
+int sock_native_fd(net_sock_t *nsock)
 {
-  network_sock_t *sock = (network_sock_t *)nsock;   
+  network_sock_t *sock = (network_sock_t *)nsock;
   int fd;
 
   if (apr_os_sock_get(&fd, sock->fd) != APR_SUCCESS) fd = -1;
@@ -518,8 +572,8 @@ int sock_native_fd(net_sock_t *nsock)
 }
 
 
-//********************************************************************* 
-// ns_config_sock - Configure the connection to use standard sockets 
+//*********************************************************************
+// ns_config_sock - Configure the connection to use standard sockets
 //*********************************************************************
 
 void ns_config_sock(NetStream_t *ns, int tcpsize) {
@@ -542,15 +596,17 @@ if (err != APR_SUCCESS) {
  //**QWERT
  apr_thread_mutex_create(&(sock->lock), APR_THREAD_MUTEX_DEFAULT,sock->mpool);
  //**QWERTY
-  
+
   sock->tcpsize = tcpsize;
   ns->native_fd = sock_native_fd;
   ns->connect = sock_connect;
   ns->sock_status = sock_status;
   ns->set_peer = sock_set_peer;
   ns->close = sock_close;
-  ns->read = sock_read;
-  ns->write = sock_write;
+//  ns->read = sock_read;
+//  ns->write = sock_write;
+  ns->read = sock_apr_read;
+  ns->write = sock_apr_write;
   ns->accept = sock_accept;
   ns->bind = sock_bind;
   ns->listen = sock_listen;
