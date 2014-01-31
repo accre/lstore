@@ -941,7 +941,7 @@ log_printf(15, "rs_simple_destroy: sl=%p\n", rss->rid_table); flush_log();
   apr_thread_cond_destroy(rss->cond);
   apr_pool_destroy(rss->mpool);  //** This also frees the hash tables
 
-  list_destroy(rss->rid_table);
+  if (rss->rid_table != NULL) list_destroy(rss->rid_table);
 
   free(rss->random_array);
   free(rss->fname);
