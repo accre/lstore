@@ -3093,10 +3093,12 @@ ex_off_t segcache_size(segment_t *seg)
   cache_segment_t *s = (cache_segment_t *)seg->priv;
   ex_off_t size;
 
+  cache_lock(s->c);
   segment_lock(seg);
   size = (s->total_size > (s->ppage_max+1)) ? s->total_size : s->ppage_max + 1;
   log_printf(5, "seg=" XIDT " total_size=" XOT " ppage_max=" XOT " size=" XOT "\n", segment_id(seg), s->total_size, s->ppage_max, size);
   segment_unlock(seg);
+  cache_unlock(s->c);
   return(size);
 }
 
