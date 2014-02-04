@@ -1481,7 +1481,7 @@ op_status_t seglun_rw_func(void *arg, int id)
   ex_off_t new_size;
   ex_off_t pos, maxpos;
 
-log_printf(15, "sid=" XIDT " n_iov=%d off[0]=" XOT " len[0]=" XOT " max_size=" XOT " used_size=" XOT "\n",
+log_printf(2, "sid=" XIDT " n_iov=%d off[0]=" XOT " len[0]=" XOT " max_size=" XOT " used_size=" XOT "\n",
      segment_id(sw->seg), sw->n_iov, sw->iov[0].offset, sw->iov[0].len, s->total_size, s->used_size);
 
 //  err = OP_STATE_SUCCESS;
@@ -1501,10 +1501,10 @@ log_printf(15, "sid=" XIDT " n_iov=%d off[0]=" XOT " len[0]=" XOT " max_size=" X
      if (sw->rw_mode == 1) { //** Write op so grow the file
         new_size = maxpos + s->n_devices * s->excess_block_size;
         if (s->total_size < new_size) {  //** Check again within the lock
-log_printf(15, " seg=" XIDT " GROWING  curr_used_size=" XOT " curr_total_size=" XOT " new_size=" XOT " requested maxpos=" XOT "\n",
+log_printf(3, " seg=" XIDT " GROWING  curr_used_size=" XOT " curr_total_size=" XOT " new_size=" XOT " requested maxpos=" XOT "\n",
       segment_id(sw->seg), s->used_size, s->total_size, new_size, maxpos);
            status = _slun_truncate(sw->seg, sw->da, new_size, sw->timeout);
-log_printf(15, " seg=" XIDT " GROWING  err=%d\n",segment_id(sw->seg), status.op_status);
+log_printf(3, " seg=" XIDT " GROWING  err=%d\n",segment_id(sw->seg), status.op_status);
            if (status.op_status != OP_STATE_SUCCESS) {
               segment_unlock(sw->seg);
               status.op_status = OP_STATE_FAILURE;  status.error_code = s->n_devices;

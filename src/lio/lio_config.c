@@ -35,7 +35,6 @@ http://www.accre.vanderbilt.edu
 #include "lio.h"
 #include "type_malloc.h"
 #include "log.h"
-#include "hwinfo.h"
 #include "apr_wrapper.h"
 #include "log.h"
 #include "string_token.h"
@@ -650,6 +649,7 @@ void lio_print_options(FILE *fd)
 {
  fprintf(fd, "    LIO_COMMON_OPTIONS\n");
  fprintf(fd, "       -d level        - Set the debug level (0-20).  Defaults to 0\n");
+ fprintf(fd, "       -log log_out    - Set the log output file.  Defaults to using config setting\n");
  fprintf(fd, "       -no-auto-lfs    - Disable auto-conversion of LFS mount paths to lio\n");
  fprintf(fd, "       -c config       - Configuration file\n");
  fprintf(fd, "       -lc user@config - Use the user and config section specified for making the default LIO\n");
@@ -713,11 +713,6 @@ void lio_destroy_nl(lio_config_t *lio)
   }
   free(lio->tpc_unlimited_section);
 
-  if (_lc_object_destroy(lio->tpc_cpu_section) <= 0) {
-     thread_pool_destroy_context(lio->tpc_cpu);
-  }
-  free(lio->tpc_cpu_section);
-
   if (_lc_object_destroy(lio->mq_section) <= 0) {  //** Destroy the MQ context
      mq_ongoing_t *on = lookup_service(lio->ess, ESS_RUNNING, ESS_ONGOING_CLIENT);
      if (on != NULL) {  //** And also the ongoing client
@@ -767,7 +762,7 @@ void lio_destroy(lio_config_t *lio)
 lio_config_t *lio_create_nl(char *fname, char *section, char *user)
 {
   lio_config_t *lio;
-  int sockets, cores, vcores, n;
+  int n, cores;
   char buffer[1024];
   char *cred_args[2];
   char *ctype, *stype;
@@ -810,22 +805,6 @@ lio_config_t *lio_create_nl(char *fname, char *section, char *user)
   type_malloc(val, int, 1);  //** NOTE: this is not freed on a destroy
   *val = inip_get_integer(lio->ifd, section, "jerase_paranoid", 0);
   add_service(lio->ess, ESS_RUNNING, "jerase_paranoid", val);
-
-  proc_info(&sockets, &cores, &vcores);
-  cores = inip_get_integer(lio->ifd, section, "tpc_cpu", cores);
-  sprintf(buffer, "tpc:%d", cores);
-  stype = buffer;
-  lio->tpc_cpu_section = strdup(stype);
-  lio->tpc_cpu = _lc_object_get(stype);
-  if (lio->tpc_cpu == NULL) {  //** Need to load it
-     lio->tpc_cpu = thread_pool_create_context("CPU", cores, cores);
-     if (lio->tpc_cpu == NULL) {
-        log_printf(0, "Error loading tpc_cpu threadpool!  n=%d\n", cores);
-     }
-
-     _lc_object_put(stype, lio->tpc_cpu);  //** Add it to the table
-  }
-  add_service(lio->ess, ESS_RUNNING, ESS_TPC_CPU, lio->tpc_cpu);
 
   cores = inip_get_integer(lio->ifd, section, "tpc_unlimited", 10000);
   sprintf(buffer, "tpc:%d", cores);
@@ -958,7 +937,7 @@ log_printf(0, "CACHE stype=%s ctype=%s\n", stype, ctype);
   lio->cache = _lio_cache;
   add_service(lio->ess, ESS_RUNNING, ESS_CACHE, lio->cache);
 
-//  exnode_system_config(lio->ess, lio->ds, lio->rs, lio->os, lio->tpc_unlimited, lio->tpc_cpu, lio->cache);
+//  exnode_system_config(lio->ess, lio->ds, lio->rs, lio->os, lio->tpc_unlimited, lio->cache);
 
   return(lio);
 }
@@ -1084,7 +1063,7 @@ int env2args(char *env, int *argc, char ***eargv)
 //char **t2 = NULL;
 int lio_init(int *argc, char ***argvp)
 {
-  int i, j, k, ll, neargs, nargs, auto_mode;
+  int i, j, k, ll, ll_override, neargs, nargs, auto_mode;
   char *name;
   char var[4096];
   char *env;
@@ -1092,6 +1071,7 @@ int lio_init(int *argc, char ***argvp)
   char **myargv;
   char **argv;
   char *dummy;
+  char *out_override = NULL;
   char *cfg_name = NULL;
   char *section_name = "lio";
   char *userid = NULL;
@@ -1167,7 +1147,7 @@ int lio_init(int *argc, char ***argvp)
   nargs = 1;  //** argv[0] is preserved as the calling name
   myargv[0] = argv[0];
   i=1;
-  ll = 0;
+  ll_override = -1;
   auto_mode = -1;
 
   if (*argc < 2) goto no_args;  //** Nothing to parse
@@ -1176,7 +1156,10 @@ int lio_init(int *argc, char ***argvp)
 //printf("argv[%d]=%s\n", i, argv[i]);
      if (strcmp(argv[i], "-d") == 0) { //** Enable debugging
         i++;
-        ll = atoi(argv[i]); i++;
+        ll_override = atoi(argv[i]); i++;
+     } else if (strcmp(argv[i], "-log") == 0) { //** Override log file output
+        i++;
+        out_override = argv[i]; i++;
      } else if (strcmp(argv[i], "-no-auto-lfs") == 0) { //** Regex for path
         i++;
         auto_mode = 0;
@@ -1246,9 +1229,7 @@ no_args:
 
 
   if (cfg_name != NULL) {
-     mlog_load(cfg_name);
-
-     set_log_level(ll);
+     mlog_load(cfg_name, out_override, ll_override);
 
      lio_gc = lio_create(cfg_name, section_name, userid);
      lio_gc->ref_cnt = 1;

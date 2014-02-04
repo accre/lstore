@@ -424,7 +424,9 @@ void osrs_remove_regex_object_cb(void *arg, mq_task_t *task)
   spin.key_len = len;
   spin.last_hb = apr_time_now();
   bpos += len;
+  apr_thread_mutex_lock(osrs->lock);
   apr_hash_set(osrs->spin, spin.key, spin.key_len, &spin);
+  apr_thread_mutex_unlock(osrs->lock);
 
   //** Spin Heartbeat timeout
   n = zigzag_decode(&(buffer[bpos]), fsize-bpos, &hb_timeout);
@@ -1403,8 +1405,9 @@ void osrs_regex_set_mult_attr_cb(void *arg, mq_task_t *task)
   spin.key_len = len;
   spin.last_hb = apr_time_now();
   bpos += len;
+  apr_thread_mutex_lock(osrs->lock);
   apr_hash_set(osrs->spin, spin.key, spin.key_len, &spin);
-
+  apr_thread_mutex_unlock(osrs->lock);
 
   //** Spin Heartbeat timeout
   n = zigzag_decode(&(buffer[bpos]), fsize-bpos, &hb_timeout);

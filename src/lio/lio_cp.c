@@ -51,9 +51,8 @@ int main(int argc, char **argv)
   int max_spawn, keepln;
   int obj_types = OS_OBJECT_ANY;
   ex_off_t bufsize;
-  int bufsize_mb = 20;
+  char ppbuf[64];
   lio_cp_path_t *flist;
-  lio_cp_file_t cp_single;
   op_generic_t *gop;
   opque_t *q;
   lio_path_tuple_t dtuple;
@@ -61,6 +60,8 @@ int main(int argc, char **argv)
   op_status_t status;
 
   recurse_depth = 10000;
+  bufsize = 20*1024*1024;
+
 //printf("argc=%d\n", argc);
   if (argc < 2) {
      printf("\n");
@@ -69,7 +70,7 @@ int main(int argc, char **argv)
      printf("\n");
      printf("    -ln                - Follow links.  Otherwise they are ignored\n");
      printf("    -rd recurse_depth  - Max recursion depth on directories. Defaults to %d\n", recurse_depth);
-     printf("    -b bufsize_mb      - Buffer size to use in MBytes for *each* transfer (Default=%dMB)\n", bufsize_mb);
+     printf("    -b bufsize         - Buffer size to use for *each* transfer. Units supported (Default=%s)\n", pretty_print_int_with_scale(bufsize, ppbuf));
      printf("    src_path*          - Source path glob to copy\n");
      printf("    dest_path          - Destination file or directory\n");
      printf("\n");
@@ -102,15 +103,12 @@ int main(int argc, char **argv)
         recurse_depth = atoi(argv[i]); i++;
      } else if (strcmp(argv[i], "-b") == 0) {  //** Get the buffer size
         i++;
-        bufsize_mb = atoi(argv[i]); i++;
+        bufsize = string_get_integer(argv[i]); i++;
      }
 
   } while ((start_option < i) && (i<argc));
   start_index = i;
 
-
-  //** Store the boffer size
-  bufsize = 1024*1024*bufsize_mb;
 
   //** Make the dest tuple
   dtuple = lio_path_resolve(lio_gc->auto_translate, argv[argc-1]);

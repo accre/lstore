@@ -105,7 +105,7 @@ r = 1;
   err = op_success_status;
 
   FILE *fd = fopen(s->fname, "r+");
-//  if (fd == NULL) fd = fopen(s->fname, "w+");
+  if (fd == NULL) fd = fopen(s->fname, "w+");
 
 log_printf(15, "segfile_rw_func: tid=%d fname=%s n_iov=%d off[0]=" XOT " len[0]=" XOT " mode=%d\n", atomic_thread_id, s->fname, srw->n_iov, srw->iov[0].offset, srw->iov[0].len, srw->mode); 
 flush_log();
@@ -517,13 +517,15 @@ int segfile_deserialize_text(segment_t *seg, ex_id_t id, exnode_exchange_t *exp)
   int err;
   inip_file_t *fd;
 
+  err = 0;
+
   //** Parse the ini text
   fd = exp->text.fd;
 
   //** Make the segment section name
   snprintf(seggrp, bufsize, "segment-" XIDT, id);
 
-  //** Get the segment header info 
+  //** Get the segment header info
   seg->header.id = id;
   if (s->qname != NULL) free(s->qname);
   snprintf(qname, sizeof(qname), XIDT HP_HOSTPORT_SEPARATOR "1" HP_HOSTPORT_SEPARATOR "0" HP_HOSTPORT_SEPARATOR "0", seg->header.id);

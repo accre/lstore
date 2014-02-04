@@ -50,10 +50,11 @@ int restore_path(char *path, char *tape_id) {
     int res = EXIT_SUCCESS;
     //should not be hardcoded but this is temporary
     char *script = "/tibs/bin/restore.sh";
-    char *server;
+    char server[256];
     char *backup_path;
     
     strcpy(server, tape_id);
+    
     strtok_r(server, " ", &backup_path);   
     
     int len = strlen(script) + strlen(server) + strlen(backup_path) + 10;
@@ -81,32 +82,39 @@ int run_lstore_copy(char *spath, char *dpath) {
     int recurse_depth;
     int obj_types = OS_OBJECT_ANY;
 
-
     //TODO add this as an CLI option 
     //** Store the buffer size
     buffer_size = 1024 * 1024 * 20;
-    char *lio_src = concat("@:", spath);
-    stuple = lio_path_resolve(lio_gc->auto_translate, lio_src);
+    
 
     type_malloc_clear(flist, lio_cp_path_t, 1);
     max_spawn = lio_parallel_task_count;
+    
+    // target in lio to download
+    char *lio_src = concat("@:", spath);
+    stuple = lio_path_resolve(lio_gc->auto_translate, lio_src);
+    
     if (spath != NULL) {
+        // target to download to on the local system
         flist[0].dest_tuple = lio_path_resolve(lio_gc->auto_translate, dpath);
     } else {
         // TODO: deal with regex if use
-        //** Get the dest filetype/exists
+        // Get the dest filetype/exists
+        printf("ERROR:  Should not be here!\n");
     }
     if (flist[0].dest_tuple.is_lio == 1) {
         dtype = lioc_exists(flist[0].dest_tuple.lc, flist[0].dest_tuple.creds, flist[0].dest_tuple.path);
     } else {
+
         dtype = os_local_filetype(flist[0].dest_tuple.path);
     }
+    
     flist[0].src_tuple.creds = lio_gc->creds;
     //rp = os_regex2table(regex_path);
     //ro = os_regex2table(regex_object);
     flist[0].src_tuple = stuple;
     flist[0].dest_type = dtype;
-    flist[0].path_regex = os_path_glob2regex(flist[0].dest_tuple.path);
+    flist[0].path_regex = os_path_glob2regex(flist[0].src_tuple.path);
     flist[0].recurse_depth = recurse_depth;
     flist[0].obj_types = obj_types;
     flist[0].max_spawn = max_spawn;
@@ -121,7 +129,7 @@ int run_lstore_copy(char *spath, char *dpath) {
 
 finally:
     lio_path_release(&stuple);
-    lio_path_release(&(flist[0].src_tuple));
+    lio_path_release(&(flist[0].dest_tuple));
     os_regex_table_destroy(flist[0].path_regex);
     free(flist);
     return(res);
@@ -142,13 +150,13 @@ void process_restore(char *spath, char *dpath) {
         res = restore_path(spath, tape_id);
     }
     // copy files from L-Store
-                    
+    run_lstore_copy(spath, dpath);                
 }
 
 void print_usage() {
     printf("\nUsage: arc_restore -s SOURCE_PATH -d DESTINATION_PATH\n");
     printf("\t-s\tL-Store path to restore\n");
-    printf("\t-d\tLocal path to restore files to");
+    printf("\t-l\tLocal path to restore files to");
     printf("\nExamples to come soon\n");
     exit(0);
 }
@@ -164,25 +172,24 @@ int i = 1, start_option = 0;
     lio_init(&argc, &argv);
 
     /*** Parse the args ***/
-    if (argc > 3) {
+    if (argc > 5) {
         print_usage();
     } else if (argc > 1) {
         do {
-            start_option = i;
+            start_option = i;   
             if (strcmp(argv[i], "-h") == 0) {
-                print_usage();
+                print_usage();                
             } else if (strcmp(argv[i], "-s") == 0) {
                 i++;
                 spath = argv[i];
                 i++;
-            } else if (strcmp(argv[i], "-d") == 0) {
+            } else if (strcmp(argv[i], "-l") == 0) {
                 i++;
                 dpath = argv[i];
                 i++;
             }
         } while ((start_option < i) && (i < argc));
     }
-    
     process_restore(spath, dpath);
     lio_shutdown();
 

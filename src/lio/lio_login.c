@@ -84,7 +84,6 @@ int lio_init(int *argc, int **argv)
   *argc = nargs;
 
   lio_gc->tpc_unlimited = thread_pool_create_context("UNLIMITED", 0, 2000);
-  lio_gc->tpc_cpu = thread_pool_create_context("CPU", 0, 0);
   lio_gc->rs = NULL;
   lio_gc->ic = ibp_create_context();  //** Initialize IBP
   lio_gc->ds = ds_ibp_create(ic);
@@ -107,7 +106,7 @@ int lio_init(int *argc, int **argv)
 
   if (ll > -1) set_log_level(ll);
 
-  exnode_system_init(lio_gc->ds, lio_gc->rs, NULL, lio_gc->tpc_unlimited, lio_gc->tpc_cpu, lio_gc->cache);
+  exnode_system_init(lio_gc->ds, lio_gc->rs, NULL, lio_gc->tpc_unlimited, lio_gc->cache);
 
   return(0);
 }
@@ -126,7 +125,6 @@ int lio_shutdown()
   ds_destroy_service(lio_gc->ds);
   ibp_destroy_context(lio_gc->ic);
   thread_pool_destroy_context(lio_gc->tpc_unlimited);
-  thread_pool_destroy_context(lio_gc->tpc_cpu);
   inip_destroy(lio_gc->inifd);
 
   return(0);

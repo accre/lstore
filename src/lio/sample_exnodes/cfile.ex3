@@ -5,13 +5,13 @@ id=0
 [segment-10000]
 type=file
 ref_count=1
-file=/depot/rid-1/data/sample.txt
+file=./exnode_data.dat
 
 
 [segment-10001]
 type=cache
 ref_count=1
-used_size=59428494
+used_size=0
 segment=10000
 
 
