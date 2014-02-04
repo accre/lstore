@@ -1225,8 +1225,6 @@ no_args:
   if (cfg_name != NULL) {
      mlog_load(cfg_name, out_override, ll_override);
 
-     set_log_level(ll);
-
      lio_gc = lio_create(cfg_name, section_name, userid);
      lio_gc->ref_cnt = 1;
      if (auto_mode != -1) lio_gc->auto_translate = auto_mode;
