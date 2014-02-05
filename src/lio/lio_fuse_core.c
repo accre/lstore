@@ -1397,7 +1397,7 @@ log_printf(1, "FLUSH/TRUNCATE fname=%s\n", fname);
   lfs_unlock(lfs);
 
 
-log_printf(0, "DESTROYING exnode fname=%s\n", fname); flush_log();
+  log_printf(5, "starting update process fname=%s\n", fname); flush_log();
 
   //** Ok no one has the file opened so teardown the segment/exnode
   //** IF not modified just tear down and clean up
@@ -1422,12 +1422,6 @@ log_printf(0, "DESTROYING exnode fname=%s\n", fname); flush_log();
 
   //** Get any errors that may have occured
   lioc_get_error_counts(lfs->lc, fh->seg, &hard_errors, &soft_errors);
-
-  now = apr_time_now();
-  exnode_destroy(fh->ex);
-  dt = apr_time_now() - now;
-  dt /= APR_USEC_PER_SEC;
-  log_printf(1, "exnode_destroy fname=%s dt=%lf\n", fname, dt);
 
   //** Update the OS exnode
   n = 3;
@@ -1464,6 +1458,12 @@ log_printf(0, "DESTROYING exnode fname=%s\n", fname); flush_log();
   lfs_unlock(lfs);
 
   //** Clean up
+  now = apr_time_now();
+  exnode_destroy(fh->ex);
+  dt = apr_time_now() - now;
+  dt /= APR_USEC_PER_SEC;
+  log_printf(1, "exnode_destroy fname=%s dt=%lf\n", fname, dt);
+
   free(fh);
   exnode_exchange_destroy(exp);
 
