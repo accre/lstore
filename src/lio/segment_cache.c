@@ -1969,11 +1969,27 @@ log_printf(5, "Performing flush now\n");
   //** Notify everyone it's done
   cache_lock(s->c);  //** I had this on the way in
 
+  //** Update the ppage_max
   rng = skiplist_last_key(s->partial_pages);
-  s->ppage_max = (rng == NULL) ? -1 : *rng;  //** Updage the ppage_max
+  if (rng == NULL) {    //** No ppages left
+     s->ppage_max = -1;
+  } else {  //** Need to find the check the last partial page to determine the max offset
+     s->ppage_max = *rng;  //** This is our backup value in case of an error.  It's soley an attempt to recover gracefully.
+     pp = list_search(s->partial_pages, (skiplist_key_t *)rng);
+     if (pp == NULL) { //** This shouldn't happen so print some diagnostic info and do our best to recover.
+        log_printf(0, "ERROR: sid=" XIDT " lost partial page!  Looking for pp->page_start=" XOT "\n", segment_id(seg), *rng);
+        fprintf(stderr, "ERROR: sid=" XIDT " lost partial page!  Looking for pp->page_start=" XOT "\n", segment_id(seg), *rng);
+     } else {
+        move_to_bottom(pp->range_stack);
+        rng = get_ele_data(pp->range_stack);
+        if (rng != NULL) {
+           s->ppage_max = pp->page_start + rng[1];
+        }
+     }
+  }
 
   s->ppages_flushing = 0;  //** This is protected by the segment lock
-log_printf(5, "Flush completed\n");
+log_printf(5, "Flush completed pp_max=" XOT "\n", s->ppage_max);
   apr_thread_cond_broadcast(s->ppages_cond);
 
   free(ex_iov);
@@ -2038,35 +2054,16 @@ log_printf(5, "START lo=" XOT " hi=" XOT " bpos=" XOT "\n", *lo, *hi, *bpos); fl
 
   cache_lock(s->c);
   if (s->n_ppages == 0) { cache_unlock(s->c); return(0); }
-//  if (rw_mode == CACHE_READ) {
-//     if ((stack_size(s->ppages_unused) == s->n_ppages) { cache_unlock(s->c); return(0); }
-//  }
 
-
-//if (rw_mode == CACHE_READ) {
-//  if (stack_size(s->ppages_unused) != s->n_ppages) _cache_ppages_flush(seg, da);
-//  cache_unlock(s->c);
-//  return(0);
-//}
   if (s->ppages_flushing != 0)  _cache_ppages_wait_for_flush_to_complete(s);   //** Wait for any flushes to complete
 
   lo_page = *lo / s->page_size; n_pages = lo_page;               lo_page = lo_page * s->page_size;
   hi_page = *hi / s->page_size; n_pages = hi_page - n_pages + 1; hi_page = hi_page * s->page_size;
 
 log_printf(5, "lo=" XOT " hi=" XOT " lo_page=" XOT " hi_page=" XOT " n_pages=%d \n", *lo, *hi, lo_page, hi_page, n_pages);
-  //** Check if we already have the lo/hi pages loaded
-//  p = list_search(s->pages, (skiplist_key_t *)(&lo_page));
-//  if (p != NULL) {
-//     if (n_pages > 1) p = list_search(s->pages, (skiplist_key_t *)(&hi_page));
-//     if (p != NULL) {  //** End pages already loaded
-//log_printf(5, "Pages already loaded\n");
-//        cache_unlock(s->c);
-//        return(0);
-//     }
-//  }
 
   //** If we made it here the end pages at least don't exist
-  //** See if we map to an existing pages
+  //** See if we map to existing pages and update as needed
   do_flush = 0;
   nhandled = 0;
   lo_mapped = 0; hi_mapped = 0;
@@ -2236,6 +2233,7 @@ log_printf(5, "LO_MAPPED READ seg=" XIDT " using pstart=" XOT " pend=" XOT " rlo
      do_flush = 0;
   }
 
+  //** Completed overlap to existing pages check so
   //** Check if we have full coverage on a write.  If so kick out.
   //** For reads this is all we can do.
   if ((nhandled == n_pages) || (rw_mode == CACHE_READ)) {
@@ -2244,6 +2242,12 @@ log_printf(5, "LO_MAPPED READ seg=" XIDT " using pstart=" XOT " pend=" XOT " rlo
 log_printf(5, "END lo=" XOT " hi=" XOT " bpos=" XOT " nhandled=%d n_pages=%d\n", *lo, *hi, *bpos, nhandled, n_pages); flush_log();
      return((n_pages == nhandled) ? 1 : 0);
   }
+
+  //------------------------------------------------------------------
+  //** If we made it here we are dealing with a ppage write.  We only
+  //** care about checking the ppages on the ends.  Whole pages are 
+  //** Ignored and handle by the normal code.
+  //------------------------------------------------------------------
 
   //** See if we have enough free ppages to store the ends. If not flush
   if (stack_size(s->ppages_unused) < (2 - lo_mapped - hi_mapped)) {
