@@ -16,6 +16,7 @@ INCLUDE(CheckIncludeFile)
 include(${CMAKE_SOURCE_DIR}/cmake/Date.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/CompilerVersion.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/CompilerFlags.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/shared_name.cmake)
 
 #Prefer to use static libs
 if(WIN32)
@@ -90,6 +91,14 @@ foreach (f ${EXE})
    ADD_EXECUTABLE( ${f} ${f}.c ${IBP_OBJS} )
    TARGET_LINK_LIBRARIES( ${f} ${ibp_lib} ${LIBS})
 endforeach(f)
+
+set(sodeps)
+foreach(lib ${LIBS})
+  shared_name(${lib} soname)
+  set(sodeps ${sodeps} ${soname})
+endforeach()
+
+TARGET_LINK_LIBRARIES( ibp LINK_PUBLIC ${sodeps} )
 
 install(TARGETS ${EXE} DESTINATION bin)
 install(TARGETS ibp DESTINATION lib)
