@@ -71,3 +71,14 @@ install(TARGETS gop DESTINATION lib)
 install(TARGETS gop-static DESTINATION lib)
 install(FILES callback.h gop_config.h  host_portal.h  opque.h  thread_pool.h mq_portal.h mq_helpers.h mq_stream.h mq_ongoing.h
               DESTINATION include/gop )
+
+# Packaging directives
+SET(CPACK_GENERATOR "RPM")
+SET(CPACK_PACKAGE_VERSION_MAJOR "1")
+SET(CPACK_PACKAGE_VERSION_MINOR "0")
+SET(CPACK_PACKAGE_VERSION_PATCH "0")
+SET(CPACK_RPM_PACKAGE_NAME "accre-gop")
+SET(CPACK_RPM_PACKAGE_VENDOR "ACCRE (www.accre.vanderbilt.edu)")
+SET(CPACK_RPM_PACKAGE_REQUIRES "openssl >= 1.0.1f, zlib >= 1.2.8, czmq >= 1.4.1, apr >= 1.5.0, apr-util >= 1.5.3, zeromq => 3.2.3")
+INCLUDE(CPack)
+
