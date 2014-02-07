@@ -117,14 +117,21 @@ TARGET_LINK_LIBRARIES( sl_test  ${toolbox_lib} ${LIBS})
 TARGET_LINK_LIBRARIES( isl_test  ${toolbox_lib} ${LIBS})
 TARGET_LINK_LIBRARIES( varint_test ${toolbox_lib} ${LIBS} )
 
-
 set(sodeps)
+set(lpdeps)
 foreach(lib ${LIBS} )
   shared_name(${lib} soname)
+  link_directories(${ldir})
   set(sodeps ${sodeps} ${soname})
+
+  get_filename_component(ldir ${lib} PATH )
+  if (ldir)
+     set(lpdeps ${lpdeps} "-L${ldir}" )
+  endif()
 endforeach()
 
-TARGET_LINK_LIBRARIES( toolbox LINK_PUBLIC ${sodeps} )
+#link_directories(/usr/local/lib)
+TARGET_LINK_LIBRARIES( toolbox LINK_PUBLIC ${lpdeps} ${sodeps} )
 
 install(TARGETS toolbox DESTINATION lib)
 install(TARGETS toolbox-static DESTINATION lib)
