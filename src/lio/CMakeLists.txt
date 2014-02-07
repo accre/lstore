@@ -13,6 +13,7 @@ INCLUDE(CheckIncludeFile)
 include(${CMAKE_SOURCE_DIR}/cmake/Date.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/CompilerVersion.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/CompilerFlags.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/shared_name.cmake)
 
 #Prefer to use static libs
 if(WIN32)
@@ -136,6 +137,15 @@ target_link_libraries( trace_replay ${lio_lib} ${LIBS} m )
 #add_executable( lio_fuse lio_fuse.c lio_fuse_core.c ${EX3_OBJS} )
 #set_target_properties(lio_fuse PROPERTIES LINKER_LANGUAGE CXX)
 #target_link_libraries( lio_fuse ${lio_lib} ${LIBS} m )
+
+#Declare the lio shared lib dependencies
+set(sodeps)
+foreach(lib ${LIBS})
+  shared_name(${lib} soname)
+  set(sodeps ${sodeps} ${soname})
+endforeach()
+
+TARGET_LINK_LIBRARIES( lio LINK_PUBLIC ${sodeps} )
 
 install(TARGETS ${LIO_EXE} DESTINATION bin)
 install(TARGETS lio DESTINATION lib)
