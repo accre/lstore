@@ -137,15 +137,21 @@ target_link_libraries( trace_replay ${lio_lib} ${LIBS} m )
 #add_executable( lio_fuse lio_fuse.c lio_fuse_core.c ${EX3_OBJS} )
 #set_target_properties(lio_fuse PROPERTIES LINKER_LANGUAGE CXX)
 #target_link_libraries( lio_fuse ${lio_lib} ${LIBS} m )
-
-#Declare the lio shared lib dependencies
 set(sodeps)
-foreach(lib ${LIBS})
+set(lpdeps)
+foreach(lib ${LIBS} )
   shared_name(${lib} soname)
+  link_directories(${ldir})
   set(sodeps ${sodeps} ${soname})
+
+  get_filename_component(ldir ${lib} PATH )
+  if (ldir)
+     set(lpdeps ${lpdeps} "-L${ldir}" )
+  endif()
 endforeach()
 
-TARGET_LINK_LIBRARIES( lio LINK_PUBLIC ${sodeps} )
+#link_directories(/usr/local/lib)
+TARGET_LINK_LIBRARIES( lio LINK_PUBLIC ${lpdeps} ${sodeps} )
 
 install(TARGETS ${LIO_EXE} DESTINATION bin)
 install(TARGETS lio DESTINATION lib)
