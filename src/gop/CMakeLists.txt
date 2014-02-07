@@ -63,15 +63,21 @@ foreach(exe mq_test mqs_test zmq_test)
   TARGET_LINK_LIBRARIES(${exe} gop-static ${LIBS})
 endforeach()
 
-#Make the shared library 
 set(sodeps)
+set(lpdeps)
 foreach(lib ${LIBS} )
   shared_name(${lib} soname)
+  link_directories(${ldir})
   set(sodeps ${sodeps} ${soname})
+
+  get_filename_component(ldir ${lib} PATH )
+  if (ldir)
+     set(lpdeps ${lpdeps} "-L${ldir}" )
+  endif()
 endforeach()
 
-TARGET_LINK_LIBRARIES( gop LINK_PUBLIC ${sodeps} )
-
+#link_directories(/usr/local/lib)
+TARGET_LINK_LIBRARIES( gop LINK_PUBLIC ${lpdeps} ${sodeps} )
 
 install(TARGETS ${LIO_EXE} DESTINATION bin)
 install(TARGETS gop DESTINATION lib)
