@@ -16,6 +16,7 @@ INCLUDE(CheckIncludeFile)
 include(${CMAKE_SOURCE_DIR}/cmake/Date.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/CompilerVersion.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/CompilerFlags.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/shared_name.cmake)
 
 #Prefer to use static libs
 if(WIN32)
@@ -54,17 +55,23 @@ include_directories(${TOOLBOX_INCLUDE_DIR} ${APR_INCLUDE_DIR} ${APRUTIL_INCLUDE_
 SET(LIBS ${LIBS} ${ZMQ_LIBRARY} ${CZMQ_LIBRARY} ${TOOLBOX_LIBRARY} ${OPENSSL_LIBRARIES} ${CRYPTO_LIBRARIES} 
     ${PROTOBUF_LIBRARY} ${APR_LIBRARY} ${APRUTIL_LIBRARY} ${XML_LIB} ${ZLIB_LIBRARY} pthread m dl rt)
 
-ADD_EXECUTABLE(mq_test mq_test.c)
-SET_TARGET_PROPERTIES(mq_test PROPERTIES LINKER_LANGUAGE CXX)
-TARGET_LINK_LIBRARIES(mq_test gop-static ${LIBS})
 
-ADD_EXECUTABLE(mqs_test mqs_test.c)
-SET_TARGET_PROPERTIES(mqs_test PROPERTIES LINKER_LANGUAGE CXX)
-TARGET_LINK_LIBRARIES(mqs_test gop-static ${LIBS})
+#Make the executables
+foreach(exe mq_test mqs_test zmq_test)
+  ADD_EXECUTABLE(${exe} "${exe}.c")
+  SET_TARGET_PROPERTIES(${exe} PROPERTIES LINKER_LANGUAGE CXX)
+  TARGET_LINK_LIBRARIES(${exe} gop-static ${LIBS})
+endforeach()
 
-ADD_EXECUTABLE(zmq_test zmq_test.c)
-SET_TARGET_PROPERTIES(zmq_test PROPERTIES LINKER_LANGUAGE CXX)
-TARGET_LINK_LIBRARIES(zmq_test gop-static ${LIBS})
+#Make the shared library 
+set(sodeps)
+foreach(lib ${LIBS} )
+  shared_name(${lib} soname)
+  set(sodeps ${sodeps} ${soname})
+endforeach()
+
+TARGET_LINK_LIBRARIES( gop LINK_PUBLIC ${sodeps} )
+
 
 install(TARGETS ${LIO_EXE} DESTINATION bin)
 install(TARGETS gop DESTINATION lib)
