@@ -27,8 +27,8 @@ endif(WIN32)
 
 # get dependancies
 find_package(OpenSSL REQUIRED)
-find_package(APR REQUIRED)
-find_package(APRUtil REQUIRED)
+find_package(APR-ACCRE REQUIRED)
+find_package(APRUtil-ACCRE REQUIRED)
 find_package(Phoebus)
 find_package(ZMQ REQUIRED)
 find_package(CZMQ REQUIRED)
@@ -121,7 +121,6 @@ set(sodeps)
 set(lpdeps)
 foreach(lib ${LIBS} )
   shared_name(${lib} soname)
-  link_directories(${ldir})
   set(sodeps ${sodeps} ${soname})
 
   get_filename_component(ldir ${lib} PATH )
@@ -130,7 +129,6 @@ foreach(lib ${LIBS} )
   endif()
 endforeach()
 
-#link_directories(/usr/local/lib)
 TARGET_LINK_LIBRARIES( toolbox LINK_PUBLIC ${lpdeps} ${sodeps} )
 
 install(TARGETS toolbox DESTINATION lib)
