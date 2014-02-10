@@ -446,7 +446,8 @@ int _ibp_connect(NetStream_t *ns, void *connect_context, char *host, int port, N
   ibp_connect_context_t *cc = (ibp_connect_context_t *)connect_context;
   int i, n;
 
-//log_printf(0, "HOST host=%s\n", host);
+int to = timeout;
+log_printf(0, "HOST host=%s to=%d\n", host, to);
 //log_printf(15, "cc=%p\n", cc); flush_log();
 //log_printf(15, "cc->type=%d\n", cc->type); flush_log();
 //log_printf(15, "cc->tcpsize=%d\n", cc->tcpsize); flush_log();
