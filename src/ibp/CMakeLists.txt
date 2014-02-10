@@ -27,8 +27,8 @@ endif(WIN32)
 
 # get dependancies
 find_package(OpenSSL REQUIRED)
-find_package(APR REQUIRED)
-find_package(APRUtil REQUIRED)
+find_package(APR-ACCRE REQUIRED)
+find_package(APRUtil-ACCRE REQUIRED)
 find_package(Phoebus)
 find_package(ToolBox REQUIRED)
 find_package(GOP REQUIRED)
@@ -91,11 +91,11 @@ foreach (f ${EXE})
    ADD_EXECUTABLE( ${f} ${f}.c ${IBP_OBJS} )
    TARGET_LINK_LIBRARIES( ${f} ${ibp_lib} ${LIBS})
 endforeach(f)
+
 set(sodeps)
 set(lpdeps)
 foreach(lib ${LIBS} )
   shared_name(${lib} soname)
-  link_directories(${ldir})
   set(sodeps ${sodeps} ${soname})
 
   get_filename_component(ldir ${lib} PATH )
@@ -104,8 +104,7 @@ foreach(lib ${LIBS} )
   endif()
 endforeach()
 
-#link_directories(/usr/local/lib)
-TARGET_LINK_LIBRARIES( toolbox ibp ${lpdeps} ${sodeps} )
+TARGET_LINK_LIBRARIES( ibp ${lpdeps} ${sodeps} )
 
 install(TARGETS ${EXE} DESTINATION bin)
 install(TARGETS ibp DESTINATION lib)
