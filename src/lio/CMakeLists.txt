@@ -24,8 +24,8 @@ endif(WIN32)
 
 # get dependancies
 find_package(OpenSSL REQUIRED)
-find_package(APR REQUIRED)
-find_package(APRUtil REQUIRED)
+find_package(APR-ACCRE REQUIRED)
+find_package(APRUtil-ACCRE REQUIRED)
 find_package(Phoebus)
 find_package(Jerasure REQUIRED)
 find_package(ToolBox REQUIRED)
@@ -134,18 +134,19 @@ add_executable( trace_replay trace_replay.c trace.c ${EX3_OBJS} )
 set_target_properties(trace_replay PROPERTIES LINKER_LANGUAGE CXX)
 target_link_libraries( trace_replay ${lio_lib} ${LIBS} m )
 
-#add_executable( lio_fuse lio_fuse.c lio_fuse_core.c ${EX3_OBJS} )
-#set_target_properties(lio_fuse PROPERTIES LINKER_LANGUAGE CXX)
-#target_link_libraries( lio_fuse ${lio_lib} ${LIBS} m )
-
-#Declare the lio shared lib dependencies
 set(sodeps)
-foreach(lib ${LIBS})
+set(lpdeps)
+foreach(lib ${LIBS} )
   shared_name(${lib} soname)
   set(sodeps ${sodeps} ${soname})
+
+  get_filename_component(ldir ${lib} PATH )
+  if (ldir)
+     set(lpdeps ${lpdeps} "-L${ldir}" )
+  endif()
 endforeach()
 
-TARGET_LINK_LIBRARIES( lio LINK_PUBLIC ${sodeps} )
+TARGET_LINK_LIBRARIES( lio LINK_PUBLIC ${lpdeps} ${sodeps} )
 
 install(TARGETS ${LIO_EXE} DESTINATION bin)
 install(TARGETS lio DESTINATION lib)
