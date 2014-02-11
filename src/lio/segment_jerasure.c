@@ -385,6 +385,7 @@ log_printf(0, "unrecoverable error stripe=%d i=%d good_magic=%d magic_count=%d\n
               
               if (bm_brute_used == 1) memcpy(badmap, badmap_brute, sizeof(int)*s->n_devs);  //** Copy over the last brute force bad map
               if (jerase_brute_recovery(s->plan, s->chunk_size, s->n_devs, s->n_parity_devs, badmap, ptr, eptr, pwork) == 0) {
+                 bm_brute_used = 1;
                  memcpy(badmap_brute, badmap, sizeof(int)*s->n_devs);  //** Got a correctable error
 
                  if (get_info_level(si->fd) > 1) {   //** Print some diag info if needed
@@ -1031,6 +1032,7 @@ log_printf(15, "index=%d good=%d data_ok=%d magic=%d data_devs=%d check_status.e
                    //** Got an error so see if we can brute force a fix
                    if (bm_brute_used == 1) memcpy(badmap, badmap_brute, sizeof(int)*s->n_devs);  //** Copy over the last brute force bad map
                    if (jerase_brute_recovery(s->plan, s->chunk_size, s->n_devs, s->n_parity_devs, badmap, ptr, eptr, pwork) == 0) {
+                       bm_brute_used = 1;
                        memcpy(badmap_brute, badmap, sizeof(int)*s->n_devs);  //** Got a correctable error
                        for (k=0; k<s->n_data_devs; k++) {
                            if (eptr[k] != ptr[k]) memcpy(ptr[k], eptr[k], s->chunk_size);  //** Need to copy the data back to the buffer
