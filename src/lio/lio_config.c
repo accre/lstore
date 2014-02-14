@@ -1078,11 +1078,13 @@ int lio_init(int *argc, char ***argvp)
   char *home;
   char buffer[4096];
 
-  if(NULL != lio_gc && lio_gc->ref_cnt > 0) { 
+  if(NULL != lio_gc && lio_gc->ref_cnt > 0) {
     // lio_gc is a global singleton, if it is already initialized don't initialize again. (Note this implementation is not entirely immune to race conditions)
     lio_gc->ref_cnt++;
     return 0;
   }
+
+  set_log_level(-1);  //** Disables log output
 
   argv = *argvp;
 
@@ -1147,7 +1149,7 @@ int lio_init(int *argc, char ***argvp)
   nargs = 1;  //** argv[0] is preserved as the calling name
   myargv[0] = argv[0];
   i=1;
-  ll_override = -1;
+  ll_override = -100;
   auto_mode = -1;
 
   if (*argc < 2) goto no_args;  //** Nothing to parse
