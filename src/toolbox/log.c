@@ -183,7 +183,7 @@ void mlog_load(char *fname, char *output_override, int log_level_override)
   }
 
   default_level = inip_get_integer(fd, group_level, "default", 0);
-   _log_level = (log_level_override > -1) ? log_level_override : inip_get_integer(fd, group_level, "start_level", 0);
+   _log_level = (log_level_override > -10) ? log_level_override : inip_get_integer(fd, group_level, "start_level", 0);
   for (n=0; n<_mlog_size; n++) _mlog_table[n] = default_level;
   logname = (output_override == NULL) ? inip_get_string(fd, group_level, "output", "stdout") : strdup(output_override);
   open_log(logname);
