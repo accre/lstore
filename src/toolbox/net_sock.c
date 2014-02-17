@@ -62,7 +62,7 @@ typedef struct {
 //} sock_apr_union_t;
 
 //#define SOCK_DEFAULT_TIMEOUT 1000*1000
-#define SOCK_DEFAULT_TIMEOUT 0
+#define SOCK_DEFAULT_TIMEOUT 100*1000
 #define SOCK_WAIT_READ  POLLIN
 #define SOCK_WAIT_WRITE POLLOUT
 
@@ -341,9 +341,15 @@ long int sock_apr_read(net_sock_t *nsock, tbuffer_t *buf, size_t bpos, size_t le
   if (tbv.n_iov > IOV_MAX) tbv.n_iov = IOV_MAX;  //** Make sure we don't have to many entries
 
   err = apr_socket_recvv(sock->fd, tbv.buffer, tbv.n_iov, &nbytes);
-log_printf(5, "apr_socket_recvv=%d nbytes=%d APR_SUCCESS=%d EAGAIN=%d\n", err, nbytes, APR_SUCCESS, EAGAIN);
+log_printf(5, "apr_socket_recvv=%d nbytes=%d APR_SUCCESS=%d APR_TIMEUP=%d\n", err, nbytes, APR_SUCCESS, APR_TIMEUP);
 
-  if (err != APR_SUCCESS) nbytes = -1;
+  if (err == APR_SUCCESS) {
+     if (nbytes == 0) nbytes = -1;  //** Dead connection
+  } else if (err == APR_TIMEUP) {   //** Try again
+     nbytes = 0;
+  } else {                          //** Generic error 
+     nbytes = -1;
+  }
 
   return(nbytes);
 }
@@ -369,8 +375,16 @@ long int sock_apr_write(net_sock_t *nsock, tbuffer_t *buf, size_t bpos, size_t l
   if (tbv.n_iov > IOV_MAX) tbv.n_iov = IOV_MAX;  //** Make sure we don't have to many entries
 
   err = apr_socket_sendv(sock->fd, tbv.buffer, tbv.n_iov, &nbytes);
-log_printf(5, "apr_socket_sendv=%d nbytes=%d APR_SUCCESS=%d\n", err, nbytes, APR_SUCCESS);
-  if (err != APR_SUCCESS) nbytes = -1;
+log_printf(5, "apr_socket_sendv=%d nbytes=%d APR_SUCCESS=%d APR_TIMEUP=%d\n", err, nbytes, APR_SUCCESS, APR_TIMEUP);
+
+
+  if (err == APR_SUCCESS) {
+     if (nbytes == 0) nbytes = -1;  //** Dead connection
+  } else if (err == APR_TIMEUP) {   //** Try again
+     nbytes = 0;
+  } else {                          //** Generic error
+     nbytes = -1;
+  }
 
   return(nbytes);
 }
@@ -382,6 +396,7 @@ log_printf(5, "apr_socket_sendv=%d nbytes=%d APR_SUCCESS=%d\n", err, nbytes, APR
 int sock_connect(net_sock_t *nsock, const char *hostname, int port, Net_timeout_t timeout)
 {
    int err;
+   Net_timeout_t tm;
 
    network_sock_t *sock = (network_sock_t *)nsock;
 
@@ -392,7 +407,7 @@ int sock_connect(net_sock_t *nsock, const char *hostname, int port, Net_timeout_
    sock->fd = NULL;
    sock->sa = NULL;
 
-//log_printf(0, " sock_connect: hostname=%s:%d\n", hostname, port);
+log_printf(0, " sock_connect: hostname=%s:%d to=" TT "\n", hostname, port, timeout);
 //   err = apr_sockaddr_info_get(&(sock->sa), hostname, APR_INET, port, APR_IPV4_ADDR_OK, sock->mpool);
    err = apr_sockaddr_info_get(&(sock->sa), hostname, APR_INET, port, 0, sock->mpool);
 //log_printf(0, "sock_connect: apr_sockaddr_info_get: err=%d\n", err);
@@ -415,9 +430,9 @@ int sock_connect(net_sock_t *nsock, const char *hostname, int port, Net_timeout_
    err = apr_socket_connect(sock->fd, sock->sa);
 //log_printf(0, "sock_connect: apr_socket_connect: err=%d\n", err); flush_log();
 
-   //** Set a 50ms timeout
-//   set_net_timeout(&tm, 0, SOCK_DEFAULT_TIMEOUT);
-//   apr_socket_timeout_set(sock->fd, tm);
+   //** Set a default timeout
+   set_net_timeout(&tm, 0, SOCK_DEFAULT_TIMEOUT);
+   apr_socket_timeout_set(sock->fd, tm);
 
    return(err);
 }
