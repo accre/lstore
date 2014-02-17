@@ -1025,6 +1025,13 @@ int readline_netstream_raw(NetStream_t *ns, tbuffer_t *buffer, int boff, int siz
    char *buf;
    *status = 0;
 
+   if (boff > buffer->buf.iov[0].iov_len) {
+      log_printf(0, "ERROR boff>iov_len!  boff=%d iov_len=" ST "\n", boff, buffer->buf.iov[0].iov_len);
+      fprintf(stderr, "ERROR boff>iov_len!  boff=%d iov_len=" ST "\n", boff, buffer->buf.iov[0].iov_len);
+      fprintf(stdout, "ERROR boff>iov_len!  boff=%d iov_len=" ST "\n", boff, buffer->buf.iov[0].iov_len);
+      return(-1);
+   }
+
    buf = (buffer->buf.iov[0].iov_base + boff);
 
    //*** 1st grab anything currently in the network buffer ***
