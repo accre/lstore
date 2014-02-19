@@ -65,6 +65,7 @@ int lio_init(int *argc, int **argv)
 
   nargs = 1;  //** argv[0] is preserved as the calling name
   i=1;
+  ll = -1000;
   do {
      if (strcmp(argv[i], "-d") == 0) { //** Enable debugging
         i++;
@@ -82,6 +83,8 @@ int lio_init(int *argc, int **argv)
   //** Adjust argv to reflect the parsed arguments
   memcpy(argv, myargv, sizeof(char *)*nargs);
   *argc = nargs;
+
+  if (ll > -1000) set_log_level(ll);
 
   lio_gc->tpc_unlimited = thread_pool_create_context("UNLIMITED", 0, 2000);
   lio_gc->rs = NULL;
@@ -103,8 +106,6 @@ int lio_init(int *argc, int **argv)
   } else {
      cache = create_cache(CACHE_AMP_TYPE, lio_gc->da, lio_gc->timeout);
   }
-
-  if (ll > -1) set_log_level(ll);
 
   exnode_system_init(lio_gc->ds, lio_gc->rs, NULL, lio_gc->tpc_unlimited, lio_gc->cache);
 
