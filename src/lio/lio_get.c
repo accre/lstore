@@ -55,6 +55,8 @@ int main(int argc, char **argv)
 
   err = 0;
 
+  _lio_ifd = stderr;  //** Default to all information going to stderr since the output is file data.
+ 
 //printf("argc=%d\n", argc);
   if (argc < 2) {
      printf("\n");
