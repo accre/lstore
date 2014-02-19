@@ -222,7 +222,7 @@ op_status_t segment_get_func(void *arg, int id)
   char *rb, *wb, *tb;
   ex_off_t bufsize;
   int err;
-  ex_off_t rpos, wpos, rlen, wlen, tlen, nbytes, got;
+  ex_off_t rpos, wpos, rlen, wlen, tlen, nbytes, got, total;
   ex_iovec_t rex;
   op_generic_t *gop;
   op_status_t status;
@@ -262,13 +262,15 @@ log_printf(0, "FILE fd=%p\n", sc->fd);
   }
   gop_free(gop, OP_DESTROY);
 
+total = 0;
+
   do {
      //** Swap the buffers
      tb = rb; rb = wb; wb = tb;
      tmpbuf = rbuf;  rbuf = wbuf; wbuf = tmpbuf;
      tlen = rlen; rlen = wlen; wlen = tlen;
 
-     log_printf(1, "sseg=" XIDT " wpos=%d rlen=%d wlen=%d\n", segment_id(sc->src), wpos, rlen, wlen);
+     log_printf(1, "sseg=" XIDT " wpos=" XOT " rlen=" XOT " wlen=" XOT "\n", segment_id(sc->src), wpos, rlen, wlen);
 
      //** Read in the next block
      if (nbytes < 0) {
@@ -286,6 +288,8 @@ log_printf(0, "FILE fd=%p\n", sc->fd);
 
      //** Start the write
      got = fwrite(wb, 1, wlen, sc->fd);
+total += got;
+log_printf(0, "sid=" XIDT " fwrite(wb,1," XOT ", sc->fd)=" XOT " total=" XOT "\n", segment_id(sc->src), wlen, got, total);
      if (wlen != got) { 
         log_printf(1, "ERROR from fread=%d  dest sid=" XIDT "\n", errno, segment_id(sc->dest));
         status = op_failure_status; 
