@@ -320,7 +320,7 @@ void lio_path_local_make_absolute(lio_path_tuple_t *tuple)
 
 log_printf(5, "initial path=%s\n", tuple->path);
   if (tuple->path == NULL) return;
-  if (tuple->path[0] == '/') return;  //** Already an absolute path
+//  if (tuple->path[0] == '/') return;  //** Already an absolute path
 
   p = tuple->path;
   n = strlen(p);
