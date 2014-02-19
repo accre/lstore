@@ -94,8 +94,6 @@ if (socket->type != MQ_PAIR) zsocket_set_router_mandatory(socket->arg, 1);
   n = errno;
   va_end(args);
 
-  if (socket->type != MQ_PAIR) log_printf(0, "id=!%s! err=%d errno=%d\n", id, err, n);
-
   return(err);
 }
 

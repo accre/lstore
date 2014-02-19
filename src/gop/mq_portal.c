@@ -936,7 +936,7 @@ log_printf(1, "after waiting size=%d\n", apr_hash_count(c->waiting));
 
 dts = apr_time_now() - start;
 dts /= APR_USEC_PER_SEC;
-log_printf(0, "pending_count=%d npoll=%d conn_dead=%d do_conn_hb=%d n=%d dt=%lf\n", pending_count, npoll, conn_dead, do_conn_hb, n, dts);
+log_printf(10, "pending_count=%d npoll=%d conn_dead=%d do_conn_hb=%d n=%d dt=%lf\n", pending_count, npoll, conn_dead, do_conn_hb, n, dts);
   return(n+conn_dead);
 }
 

@@ -148,7 +148,7 @@ int thread_pool_direct(thread_pool_context_t *tpc, apr_thread_start_t fn, void *
 
   atomic_inc(tpc->n_direct);
 
-log_printf(0, "tpd=%d\n", atomic_get(tpc->n_direct));
+log_printf(10, "tpd=%d\n", atomic_get(tpc->n_direct));
   if (err != APR_SUCCESS) {
     log_printf(0, "ERROR submiting task!  err=%d\n", err);
   }
