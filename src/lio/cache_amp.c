@@ -1404,7 +1404,6 @@ global_cache = c;
   c->write_temp_overflow_size = c->write_temp_overflow_fraction * cp->max_bytes;
   c->n_ppages = inip_get_integer(fd, grp, "ppages", c->n_ppages);
 
-log_printf(0, "ppages=%d\n", c->n_ppages);
   cache_unlock(c);
 
   return(c);

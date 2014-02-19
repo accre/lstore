@@ -2365,7 +2365,7 @@ object_service_fn_t *object_service_remote_client_create(service_manager_t *ess,
   char hostname[1024], buffer[1024];
   authn_create_t *authn_create;
 
-log_printf(0, "START\n");
+log_printf(10, "START\n");
   if (section == NULL) section = "os_remote_client";
 
   type_malloc_clear(os, object_service_fn_t, 1);
@@ -2458,7 +2458,7 @@ log_printf(0, "START\n");
   os->next_fsck = osrc_next_fsck;
   os->fsck_object = osrc_fsck_object;
 
-log_printf(0, "END\n");
+log_printf(10, "END\n");
 
   return(os);
 }
