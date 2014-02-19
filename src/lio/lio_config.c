@@ -57,6 +57,7 @@ int lio_parallel_task_count = 100;
 lio_config_t *lio_gc = NULL;
 cache_t *_lio_cache = NULL;
 info_fd_t *lio_ifd = NULL;
+FILE *_lio_ifd = NULL;
 
 int _lfs_mount_count = -1;
 lfs_mount_t *lfs_mount = NULL;
@@ -648,15 +649,16 @@ void lc_object_remove_unused(int remove_all_unused)
 void lio_print_options(FILE *fd)
 {
  fprintf(fd, "    LIO_COMMON_OPTIONS\n");
- fprintf(fd, "       -d level        - Set the debug level (0-20).  Defaults to 0\n");
- fprintf(fd, "       -log log_out    - Set the log output file.  Defaults to using config setting\n");
- fprintf(fd, "       -no-auto-lfs    - Disable auto-conversion of LFS mount paths to lio\n");
- fprintf(fd, "       -c config       - Configuration file\n");
- fprintf(fd, "       -lc user@config - Use the user and config section specified for making the default LIO\n");
- fprintf(fd, "       -np N           - Number of simultaneous operations. Default is %d.\n", lio_parallel_task_count);
- fprintf(fd, "       -i N            - Print information messages of level N or greater. No header is printed\n");
- fprintf(fd, "       -it N           - Print information messages of level N or greater. Thread ID header is used\n");
- fprintf(fd, "       -if N           - Print information messages of level N or greater. Full header is used\n");
+ fprintf(fd, "       -d level           - Set the debug level (0-20).  Defaults to 0\n");
+ fprintf(fd, "       -log log_out       - Set the log output file.  Defaults to using config setting\n");
+ fprintf(fd, "       -no-auto-lfs       - Disable auto-conversion of LFS mount paths to lio\n");
+ fprintf(fd, "       -c config          - Configuration file\n");
+ fprintf(fd, "       -lc user@config    - Use the user and config section specified for making the default LIO\n");
+ fprintf(fd, "       -np N              - Number of simultaneous operations. Default is %d.\n", lio_parallel_task_count);
+ fprintf(fd, "       -i N               - Print information messages of level N or greater. No header is printed\n");
+ fprintf(fd, "       -it N              - Print information messages of level N or greater. Thread ID header is used\n");
+ fprintf(fd, "       -if N              - Print information messages of level N or greater. Full header is used\n");
+ fprintf(fd, "       -ilog info_log_out - Where to send informational log output.\n");
  fprintf(fd, "\n");
 }
 
@@ -1062,8 +1064,9 @@ int env2args(char *env, int *argc, char ***eargv)
 //char **t2 = NULL;
 int lio_init(int *argc, char ***argvp)
 {
-  int i, j, k, ll, ll_override, neargs, nargs, auto_mode;
-  char *name;
+  int i, j, k, ll, ll_override, neargs, nargs, auto_mode, ifll, if_mode;
+  FILE *fd;
+  char *name, *info_fname;
   char var[4096];
   char *env;
   char **eargv;
@@ -1149,6 +1152,9 @@ int lio_init(int *argc, char ***argvp)
   myargv[0] = argv[0];
   i=1;
   ll_override = -100;
+  ifll = -100;
+  if_mode = INFO_HEADER_NONE;
+  info_fname = NULL;
   auto_mode = -1;
 
   if (*argc < 2) goto no_args;  //** Nothing to parse
@@ -1169,13 +1175,19 @@ int lio_init(int *argc, char ***argvp)
         lio_parallel_task_count = atoi(argv[i]); i++;
      } else if (strcmp(argv[i], "-i") == 0) { //** Info level w/o header
         i++;
-        lio_ifd = info_create(stdout, INFO_HEADER_NONE, atoi(argv[i])); i++;
+        ifll = atoi(argv[i]); i++;
+        if_mode = INFO_HEADER_NONE;
      } else if (strcmp(argv[i], "-it") == 0) { //** Info level w thread header
         i++;
-        lio_ifd = info_create(stdout, INFO_HEADER_THREAD, atoi(argv[i])); i++;
+        ifll = atoi(argv[i]); i++;
+        if_mode = INFO_HEADER_THREAD;
      } else if (strcmp(argv[i], "-if") == 0) { //** Info level w full header
         i++;
-        lio_ifd = info_create(stdout, INFO_HEADER_FULL, atoi(argv[i])); i++;
+        ifll = atoi(argv[i]); i++;
+        if_mode = INFO_HEADER_FULL;
+     } else if (strcmp(argv[i], "-ilog") == 0) { //** Override Info log file output
+        i++;
+        info_fname = argv[i]; i++;
      } else if (strcmp(argv[i], "-c") == 0) { //** Load a config file
         i++;
         cfg_name = argv[i]; i++;
@@ -1195,23 +1207,26 @@ int lio_init(int *argc, char ***argvp)
 
 no_args:
 
-  //** If not specified create a default
-  if (lio_ifd == NULL) lio_ifd = info_create(stdout, INFO_HEADER_NONE, 0);
+  //** Make the info logging device
+  if (info_fname != NULL) { //** User didn't specify anything
+     if (strcmp(info_fname, "stdout") == 0) {
+        fd = stdout;
+     } else if (strcmp(info_fname, "stderr") == 0) {
+        fd = stderr;
+     } else {
+        fd = fopen(info_fname, "w+");
+     }
+     if (fd != NULL) _lio_ifd = fd;
+  }
+
+  if (_lio_ifd == NULL) _lio_ifd = stdout;
+
+  lio_ifd = info_create(_lio_ifd, if_mode, 0);
 
 
   //** Adjust argv to reflect the parsed arguments
   *argvp = myargv;
   *argc = nargs;
-
-//  free(myargv);
-
-//for (i=0; i<nargs; i++) log_printf(0, "myargv[%d]=%s\n", i, argv[i]);
-
-//for (i=0; i<*argc; i++) {
-//  log_printf(0, "argv[%d]=%s\n", i, argv[i]);
-//}
-//flush_log();
-//exit(1);
 
   //** TRy to see if we can find a default config somewhere
   if (cfg_name == NULL) {

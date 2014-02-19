@@ -61,6 +61,8 @@ typedef struct lio_fn_s lio_fn_t;
 typedef void lio_fsck_iter_t;
 typedef void lio_fd_t;
 
+extern FILE *_lio_ifd;  //** Default information log device
+
 struct lio_fn_s {
   void *priv;
   char *type;
