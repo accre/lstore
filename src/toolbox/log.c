@@ -126,7 +126,7 @@ int mlog_printf(int suppress_header, int module_index, int level, const char *fn
   if (_log_lock == NULL) _log_init();
 
   _lock_log();
-  if (_log_fd == NULL) {_log_fd = stdout; _log_special=1; }
+  if (_log_fd == NULL) {_log_fd = stderr; _log_special=2; }
 
   if (suppress_header == 0) n = fprintf(_log_fd, "[mi=%d tid=%d file=%s:%d fn=%s] ", module_index, atomic_thread_id, fname, line, fn);
   va_start(args, fmt);
@@ -135,7 +135,6 @@ int mlog_printf(int suppress_header, int module_index, int level, const char *fn
 
   _log_currsize += n;
   if (_log_currsize > _log_maxsize) {
-//     if (_log_special==0) ftruncate(fileno(_log_fd), 0L);
      if (_log_special==0) { _open_log(NULL, 0); }
      _log_currsize = 0;
   }
