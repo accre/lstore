@@ -154,7 +154,7 @@ install(TARGETS lio-static DESTINATION lib)
 install(FILES 
    cache_amp.h       data_block.h             ex3_abstract.h  ex3_linear_priv.h  exnode.h         rs_simple.h	        segment_jerasure.h  segment_lun_priv.h
    cache_amp_priv.h  data_service_abstract.h  ex3_compare.h   ex3_system.h       lio.h            rs_simple_priv.h	segment_linear.h    trace.h
-   cache_lru.h       ds_ibp.h                 ex3_fmttypes.h  ex3_types.h        os_file.h        segment_cache.h       segment_log.h       transfer_buffer.h
+   cache_lru.h       ds_ibp.h                 ex3_fmttypes.h  ex3_types.h        os_file.h        segment_cache.h       segment_log.h
    cache_lru_priv.h  ds_ibp_priv.h            ex3_header.h    exnode3.h          raid4.h          segment_cache_priv.h  segment_log_priv.h  view_layout.h
    cache_priv.h      erasure_tools.h          ex3_linear.h    rs_query_base.h    segment_file.h   segment_lun.h         cache.h
    authn_abstract.h  authn_fake.h      	      osaz_fake.h     rs_remote.h        archive.h
