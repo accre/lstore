@@ -1421,6 +1421,7 @@ log_printf(15, " n_bslots=%d\n", n_bslots);
            if (rwb_table[j+i].n_ex > 0) {
               if (gop_completed_successfully(rwb_table[j+i].gop) != OP_STATE_SUCCESS) {  //** Error
                  nerr++;  //** Increment the error count
+                 if (rw_mode == 0) tbuffer_memset(&(rwb_table[j+i].buffer), 0, 0, rwb_table[j+i].len); //** Blank the data on READs
               }
 
               free(rwb_table[j+i].ex_iov);
