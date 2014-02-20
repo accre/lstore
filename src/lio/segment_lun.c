@@ -1232,7 +1232,7 @@ int seglun_row_decompose_test()
 
             for (i=0; i < s->n_devices; i++) {
                if (rw_buf[i].n_ex > 0) {
-                  tbuffer_copy(&(tbuf_ref[i]), rw_buf[i].ex_iov[0].offset, &(rw_buf[i].buffer), 0, rw_buf[i].ex_iov[0].len);
+                  tbuffer_copy(&(tbuf_ref[i]), rw_buf[i].ex_iov[0].offset, &(rw_buf[i].buffer), 0, rw_buf[i].ex_iov[0].len, 1);
                }
             }
 

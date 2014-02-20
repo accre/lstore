@@ -1112,7 +1112,7 @@ log_printf(15, "seg=" XIDT " mode=%d lo=" XOT " hi=" XOT " skip_mode=%d\n", segm
 
              //** Set the page transfer buffer size
              tbuffer_single(&tb, s->page_size, p->curr_data->ptr);
-             tbuffer_copy(&tb, ppos, buf, bpos, len);
+             tbuffer_copy(&tb, ppos, buf, bpos, len, 1);
 
              n++;
           }
@@ -1282,7 +1282,7 @@ log_printf(15, "seg=" XIDT " adding page for reading p->offset=" XOT " current c
 
              //** Set the page transfer buffer size
              tbuffer_single(&tb, s->page_size, np->curr_data->ptr);
-             tbuffer_copy(buf, bpos, &tb, ppos, len);
+             tbuffer_copy(buf, bpos, &tb, ppos, len, 1);
           }
 
           *hi_got = coff + s->page_size - 1;
@@ -1417,7 +1417,7 @@ flush_skip = 3;
 
              //** Set the page transfer buffer size
              tbuffer_single(&tb, s->page_size, p->curr_data->ptr);
-             tbuffer_copy(buf, bpos, &tb, ppos, len);
+             tbuffer_copy(buf, bpos, &tb, ppos, len, 1);
 
 log_printf(15, "seg=" XIDT " adding page[" XOT "]->offset=" XOT "\n", segment_id(seg), n, p->offset);
 log_printf(15, "PAGE_GET seg=" XIDT " get p->offset=" XOT " n=%d cr=%d cw=%d cf=%d bit_fields=%d usage=%d index=%d\n", segment_id(seg), p->offset, n,
@@ -1483,7 +1483,7 @@ log_printf(15, "seg=" XIDT " adding page for reading p->offset=" XOT " current c
 
                          //** Set the page transfer buffer size
                          tbuffer_single(&tb, s->page_size, np->curr_data->ptr);
-                         tbuffer_copy(buf, bpos, &tb, ppos, len);
+                         tbuffer_copy(buf, bpos, &tb, ppos, len, 1);
                       }
 
                       *hi_got = coff + s->page_size - 1;
@@ -1586,7 +1586,7 @@ log_printf(15, "PAGE_GET seg=" XIDT " forcing page load lo_row=" XOT "\n", segme
 
         //** Set the page transfer buffer size
         tbuffer_single(&tb, s->page_size, pload[i].data->ptr);
-        tbuffer_copy(buf, bpos, &tb, ppos, len);
+        tbuffer_copy(buf, bpos, &tb, ppos, len, 1);
      }
 
      cache_release_pages(pload_count, pload, CACHE_WRITE);  //** and release them
@@ -2083,7 +2083,7 @@ log_printf(5, "LOOP seg=" XIDT " rw_mode=%d ppage pstart=" XOT " pend=" XOT "\n"
             boff = *bpos + pp->page_start - *lo;
             nbytes = s->page_size;
             tbuffer_single(&pptbuf, s->page_size, pp->data);
-            tbuffer_copy(tbuf, boff, &pptbuf, poff, nbytes);
+            tbuffer_copy(tbuf, boff, &pptbuf, poff, nbytes, 1);
             pp->flags = 1; //** Full page
             nhandled++;
          } else {  //** Got a read so flush the page
@@ -2102,7 +2102,7 @@ log_printf(5, "INTERIOR FULL rw_mode=%d seg=" XIDT " using ppages pstart=" XOT "
             boff = *bpos + pp->page_start - *lo;
             nbytes = *hi - pp->page_start + 1;
             tbuffer_single(&pptbuf, s->page_size, pp->data);
-            tbuffer_copy(tbuf, boff, &pptbuf, poff, nbytes);
+            tbuffer_copy(tbuf, boff, &pptbuf, poff, nbytes, 1);
             hi_new = pp->page_start - 1;
 
             _cache_ppages_range_merge(seg, pp, 0, nbytes - 1);
@@ -2121,7 +2121,7 @@ log_printf(5, "HI_MAPPED INSERT seg=" XIDT " using pstart=" XOT " pend=" XOT " r
                boff = *bpos + pp->page_start - *lo;
                nbytes = *hi - pp->page_start + 1;
                tbuffer_single(&pptbuf, s->page_size, pp->data);
-               tbuffer_copy(&pptbuf, poff, tbuf, boff, nbytes);
+               tbuffer_copy(&pptbuf, poff, tbuf, boff, nbytes, 1);
                hi_new = pp->page_start - 1;
                hi_mapped = 1;
                nhandled++;
@@ -2147,7 +2147,7 @@ log_printf(5, "HI_MAPPED READ seg=" XIDT " using pstart=" XOT " pend=" XOT " rlo
            }
            nbytes = pend - poff + 1;
            tbuffer_single(&pptbuf, s->page_size, pp->data);
-           tbuffer_copy(tbuf, boff, &pptbuf, poff, nbytes);
+           tbuffer_copy(tbuf, boff, &pptbuf, poff, nbytes, 1);
            lo_new = *lo + nbytes;
            bpos_new = *bpos + nbytes;
 
@@ -2169,7 +2169,7 @@ log_printf(5, "LO_MAPPED INSERT seg=" XIDT " using pstart=" XOT " pend=" XOT " r
                       boff = *bpos;
                       nbytes = phi - plo + 1;
                       tbuffer_single(&pptbuf, s->page_size, pp->data);
-                      tbuffer_copy(&pptbuf, poff, tbuf, boff, nbytes);
+                      tbuffer_copy(&pptbuf, poff, tbuf, boff, nbytes, 1);
                       lo_mapped = hi_mapped = 1;
                       lo_new = *lo + nbytes;
                       bpos_new = *bpos + nbytes;
@@ -2201,7 +2201,7 @@ log_printf(5, "LO_MAPPED READ seg=" XIDT " using pstart=" XOT " pend=" XOT " lo_
                  boff = *bpos;
                  nbytes = s->page_size - plo;
                  tbuffer_single(&pptbuf, s->page_size, pp->data);
-                 tbuffer_copy(&pptbuf, poff, tbuf, boff, nbytes);
+                 tbuffer_copy(&pptbuf, poff, tbuf, boff, nbytes, 1);
                  lo_mapped = 1;
                  lo_new = *lo + nbytes;
                  bpos_new = *bpos + nbytes;
@@ -2284,7 +2284,7 @@ log_printf(5, "RECURSE lo=" XOT " hi=" XOT " bpos=" XOT "\n", *lo, *hi, *bpos); 
      }
      nbytes = pend - poff + 1;
      tbuffer_single(&pptbuf, s->page_size, pp->data);
-     tbuffer_copy(tbuf, boff, &pptbuf, poff, nbytes);
+     tbuffer_copy(tbuf, boff, &pptbuf, poff, nbytes, 1);
      lo_new = *lo + nbytes;
      bpos_new = *bpos + nbytes;
 
@@ -2314,7 +2314,7 @@ log_printf(5, "LO_MAPPED ADDED seg=" XIDT " using ppage pstart=" XOT " pend=" XO
      boff = *bpos + pp->page_start - *lo;
      nbytes = *hi - pp->page_start + 1;
      tbuffer_single(&pptbuf, s->page_size, pp->data);
-     tbuffer_copy(tbuf, boff, &pptbuf, poff, nbytes);
+     tbuffer_copy(tbuf, boff, &pptbuf, poff, nbytes, 1);
      hi_new = pp->page_start - 1;
 
      list_insert(s->partial_pages, &(pp->page_start), pp);
@@ -2499,7 +2499,7 @@ log_printf(15, "lo=" XOT " hi=" XOT " rw_mode=%d pstart=" XOT " poff=" XOT " bpo
   curr->lo, curr->hi, cop->rw_mode, pstart, poff, bpos, blen);
 
             if (cop->rw_mode == CACHE_WRITE) {
-               tb_err += tbuffer_copy(cop->buf, bpos, &tb, poff, blen);
+               tb_err += tbuffer_copy(cop->buf, bpos, &tb, poff, blen, 1);
                segment_lock(seg);  //** Tweak the size if needed
                if (curr->hi > s->total_size) {
                   log_printf(0, "seg=" XIDT " total_size=" XOT " curr->hi=" XOT "\n", segment_id(cop->seg), s->total_size, curr->hi);
@@ -2507,7 +2507,7 @@ log_printf(15, "lo=" XOT " hi=" XOT " rw_mode=%d pstart=" XOT " poff=" XOT " bpo
                }
                segment_unlock(seg);
             } else {
-               tb_err += tbuffer_copy(&tb, poff, cop->buf, bpos, blen);
+               tb_err += tbuffer_copy(&tb, poff, cop->buf, bpos, blen, 1);
             }
 
 log_printf(15, " tb_err=%d\n", tb_err);
