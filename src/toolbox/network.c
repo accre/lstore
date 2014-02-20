@@ -957,12 +957,12 @@ int _read_netstream(NetStream_t *ns, tbuffer_t *buffer, int boff, int size, Net_
        if (i>size) {
           total_bytes = size;
           tbuffer_single(&ns_tb, size, &(ns->buffer[ns->start]));
-          tbuffer_copy(&ns_tb, 0, buffer, boff, size);
+          tbuffer_copy(&ns_tb, 0, buffer, boff, size, 1);
           ns->start = ns->start + total_bytes;
        } else {
           total_bytes = i;
           tbuffer_single(&ns_tb, i, &(ns->buffer[ns->start]));
-          tbuffer_copy(&ns_tb, 0, buffer, boff, i);
+          tbuffer_copy(&ns_tb, 0, buffer, boff, i, 1);
           ns->start = 0;
           ns->end = -1;
        }

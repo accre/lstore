@@ -85,7 +85,7 @@ void tbuffer_vec(tbuffer_t *tb, size_t total_bytes, size_t n_vec, iovec_t *iov);
 void tbuffer_fn(tbuffer_t *tb, size_t total_bytes, void *arg, int (*next_block)(tbuffer_t *tb, size_t pos, tbuffer_var_t *tbv));
 
 size_t tbuffer_size(tbuffer_t *tb);
-int tbuffer_copy(tbuffer_t *tb_s, size_t off_s, tbuffer_t *tb_d, size_t off_d, size_t nbytes);
+int tbuffer_copy(tbuffer_t *tb_s, size_t off_s, tbuffer_t *tb_d, size_t off_d, size_t nbytes, int blank_missing);
 int tbuffer_memset(tbuffer_t *buffer, size_t boff, int c, size_t nbytes);
 
 #define tbuffer_next(tb, pos, tbv) (tb)->next_block(tb, pos, tbv)

@@ -240,9 +240,11 @@ size_t tbuffer_size(tbuffer_t *tb)
 //  tbuffer_copy - Copies data between buffers
 //     This is done very simply by copying only 1 elemet of the iovec_t at a time
 //     and relying on the tbuffer_next() routine to keep track of the positions
+//     If the source destination is short and blank_missing = 1 then the corresponding
+//     destination blocks are 0'ed.  Otherwise they are left untouched.
 //***************************************************************************
 
-int tbuffer_copy(tbuffer_t *tb_s, size_t off_s, tbuffer_t *tb_d, size_t off_d, size_t nbytes)
+int tbuffer_copy(tbuffer_t *tb_s, size_t off_s, tbuffer_t *tb_d, size_t off_d, size_t nbytes, int blank_missing)
 {
   int si, di, n, err;
   size_t nleft, spos, dpos, len, sp_ele, dp_ele, slen_ele, dlen_ele, nskipped;
@@ -275,6 +277,7 @@ int tbuffer_copy(tbuffer_t *tb_s, size_t off_s, tbuffer_t *tb_d, size_t off_d, s
                  memcpy(dtv.buffer[di].iov_base+dp_ele, stv.buffer[si].iov_base+sp_ele, len);
               } else {
                  log_printf(15, "ERROR dtv.buffer[%d].iov_base=%p stv.buffer[%d].iov_base=%p\n", di, dtv.buffer[di].iov_base, si, stv.buffer[si].iov_base);
+                 if ((blank_missing != 0) && (dtv.buffer[di].iov_base != NULL)) memset(dtv.buffer[di].iov_base+dp_ele, 0, len);
                  nskipped = len;
               }
 
@@ -562,7 +565,7 @@ int tbuffer_copy_test_iovec(int n1_iovec, int n2_iovec, int n_random, char *buff
 
   //** Read and verify the buffer in a single read
   memset(output, '-', bufsize); output[bufsize] = 0; 
-  tbuffer_copy(&tbuf1, 0, &tbuf2, 0, bufsize);
+  tbuffer_copy(&tbuf1, 0, &tbuf2, 0, bufsize, 1);
   err = tbuffer_test_read(&tbuf2, buffer, bufsize, 0, bufsize);
   if (err != 0) {
      log_printf(0, "tbuffer_copy_test_iovec: Error with single full read: n_iovec1=%d n_iovec2=%d\n", n1_iovec, n2_iovec);
@@ -576,7 +579,7 @@ int tbuffer_copy_test_iovec(int n1_iovec, int n2_iovec, int n_random, char *buff
      len = (off1 > off2) ?  bufsize - off1 : bufsize - off2;
      len = random_int(0, len);
      memset(output, '-', bufsize); output[bufsize] = 0; 
-     tbuffer_copy(&tbuf1, 0, &tbuf2, 0, bufsize);
+     tbuffer_copy(&tbuf1, 0, &tbuf2, 0, bufsize, 1);
      err = tbuffer_test_read(&tbuf2, buffer, bufsize, off2, len);
      if (err != 0) {
         log_printf(0, "tbuffer_next_test_iovec: Error with random read: n_iovec1=%d n_iovec2=%d off=%d len=%d\n", n1_iovec, n2_iovec, off2, len);
