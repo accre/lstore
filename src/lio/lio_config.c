@@ -1152,7 +1152,7 @@ int lio_init(int *argc, char ***argvp)
   myargv[0] = argv[0];
   i=1;
   ll_override = -100;
-  ifll = -100;
+  ifll = 0;
   if_mode = INFO_HEADER_NONE;
   info_fname = NULL;
   auto_mode = -1;
@@ -1221,7 +1221,7 @@ no_args:
 
   if (_lio_ifd == NULL) _lio_ifd = stdout;
 
-  lio_ifd = info_create(_lio_ifd, if_mode, 0);
+  lio_ifd = info_create(_lio_ifd, if_mode, ifll);
 
 
   //** Adjust argv to reflect the parsed arguments
