@@ -84,8 +84,7 @@ char *host = "tcp://127.0.0.1:6714";
 char *host_id = "30:Random_Id";
 int host_id_len = 13;
 
-int control_efd = -1;
-int server_efd = -1;
+mq_pipe_t control_efd[2];
 int shutdown_everything = 0;
 
 //***********************************************************************
@@ -536,7 +535,7 @@ void *server_test_thread(apr_thread_t *th, void *arg)
 {
   mq_context_t *mqc;
   mq_command_table_t *table;
-  uint64_t n;
+  char c;
 
   log_printf(0, "START\n");
 
@@ -559,7 +558,7 @@ void *server_test_thread(apr_thread_t *th, void *arg)
   mq_portal_install(mqc, server_portal);
 
   //** Wait for a shutdown
-  read(control_efd, &n, sizeof(n));
+  mq_pipe_read(control_efd[0], &c);
 
   apr_thread_mutex_lock(lock);
   while (in_process != 0) {
@@ -589,9 +588,9 @@ int main(int argc, char **argv)
   apr_status_t dummy;
   int i, start_option, do_random, ll;
   int64_t lsize = 0;
-  char buf1[256], buf2[256];
+  char buf1[256], buf2[256], c;
   char *logfile = NULL;
-  uint64_t n;
+  mq_socket_context_t *ctx;
 
   ll = 0;
 
@@ -685,14 +684,9 @@ log_printf(0, "after init opque_count=%d\n", _opque_counter);
   assert(apr_thread_mutex_create(&lock, APR_THREAD_MUTEX_DEFAULT, mpool) == APR_SUCCESS);
   assert(apr_thread_cond_create(&cond, mpool) == APR_SUCCESS);
 
-  //** Make the eventFD for controlling the server
-  control_efd = eventfd(0, 0);
-  assert(control_efd != -1);
-
- //** Make the server eventfd for delayed responses
-  server_efd = eventfd(0, EFD_SEMAPHORE);
-  assert(server_efd != 0);
-
+  //** Make the pipe for controlling the server
+  ctx = mq_socket_context_new();
+  mq_pipe_create(ctx, control_efd);
 
   thread_create_assert(&server_thread, NULL, server_test_thread, NULL, mpool);
   sleep(5); //** Make surethe server gets fired up
@@ -701,9 +695,12 @@ log_printf(0, "after init opque_count=%d\n", _opque_counter);
   apr_thread_join(&dummy, client_thread);
 
   //** Trigger the server to shutdown
-  n = 1;
-  write(control_efd, &n, sizeof(n));
+  c = 1;
+  mq_pipe_write(control_efd[1], &c);
   apr_thread_join(&dummy, server_thread);
+
+  mq_pipe_destroy(ctx, control_efd);
+  mq_socket_context_destroy(ctx);
 
   apr_thread_mutex_destroy(lock);
   apr_thread_cond_destroy(cond);
@@ -712,9 +709,6 @@ log_printf(0, "after init opque_count=%d\n", _opque_counter);
 
   destroy_opque_system();
   apr_wrapper_stop();
-
-  close(control_efd);
-  close(server_efd);
 
   free(test_data);
   return(0);
