@@ -182,9 +182,9 @@ apr_time_t gop_get_end_time(op_generic_t *gop, int *state)
     if (*state == 0) {
        end_time = apr_time_now() + apr_time_make(10,0);  //** Default to 10 secs while percolating to the top
     } else {  //** We're on top so use the official end time
-       lock_gop(gop);
+       //lock_gop(gop);
        end_time = cmd->end_time;
-       unlock_gop(gop);
+       //unlock_gop(gop);
     }
   } else {
     end_time = cmd->end_time;  //** This won't change after we're on top so no need to lock
