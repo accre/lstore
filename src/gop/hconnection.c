@@ -91,7 +91,7 @@ void destroy_host_connection(host_connection_t *hc)
 // close_hc - Closes a depot connection
 //*************************************************************************
 
-void close_hc(host_connection_t *hc)
+void close_hc(host_connection_t *hc, int quick)
 {
   apr_status_t value;
 
@@ -108,6 +108,16 @@ void close_hc(host_connection_t *hc)
   lock_hc(hc); hc_send_signal(hc); unlock_hc(hc);
   hportal_lock(hc->hp); hportal_signal(hc->hp); hportal_unlock(hc->hp);
 
+  if (quick == 1) {  //** Quick shutdown.  Don't wait and clean up.
+     lock_hc(hc);
+     while (hc->send_down == 0) {
+        apr_thread_cond_wait(hc->send_cond, hc->lock);
+     }
+     hc->closing = 2;  //** Flag a repaer that I'm done with it
+     unlock_hc(hc);
+     return;
+  }
+
   //** Wait until the recv thread completes
   apr_thread_join(&value, hc->recv_thread);
 
@@ -118,14 +128,23 @@ void close_hc(host_connection_t *hc)
    while ((hc2 = (host_connection_t *)pop(hc->hp->closed_que)) != NULL) {
      hportal_unlock(hc->hp);
      if (hc2 != hc) {
-        apr_thread_join(&value, hc2->recv_thread);
-        destroy_host_connection(hc2);
+        lock_hc(hc2);
+        if (hc2->closing != 1) {
+           unlock_hc(hc2);
+           apr_thread_join(&value, hc2->recv_thread);
+           destroy_host_connection(hc2);
+        } else {
+          unlock_hc(hc2);
+        }
      }
      hportal_lock(hc->hp);
    }
    hportal_unlock(hc->hp);
 
   //** finally free the original hc **
+  lock_hc(hc);
+  hc->closing = 2;
+  unlock_hc(hc);
   destroy_host_connection(hc);
 }
 
@@ -367,6 +386,11 @@ log_printf(5, "hc_send_thread: after send phase.. ns=%d gid=%d finisehd=%d\n", n
 
   //*** The recv side handles the removal from the hportal structure ***
   modify_hpc_thread_count(hpc, -1);
+
+  lock_hc(hc);  //** Notify anybody listening that the send side is down.
+  hc->send_down = 1;
+  apr_thread_cond_signal(hc->send_cond);
+  unlock_hc(hc);
 
   hportal_lock(hp);
   hp->oops_send_end++;

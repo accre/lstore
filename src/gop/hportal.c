@@ -163,6 +163,12 @@ void _reap_hportal(host_portal_t *hp)
    while ((hc = (host_connection_t *)pop(hp->closed_que)) != NULL) {
      apr_thread_join(&value, hc->recv_thread);
 log_printf(5, "hp=%s\n", hp->skey);
+     lock_hc(hc);  //** Make sure that no one is running close_hc() while we're trying to close it
+     while (hc->closing == 1) {
+        unlock_hc(hc);
+        apr_sleep(apr_time_from_msec(10));
+     }
+     unlock_hc(hc);
      destroy_host_connection(hc);
    }
 }
@@ -290,7 +296,7 @@ void shutdown_direct(host_portal_t *hp)
         hportal_unlock(shp);
         apr_thread_mutex_unlock(hp->context->lock);
 
-        close_hc(hc);
+        close_hc(hc, 0);
 
         apr_thread_mutex_lock(hp->context->lock);
         hportal_lock(shp);
@@ -380,7 +386,7 @@ log_printf(5, "closing_conn=%d n_conn=%d\n", hp->closing_conn, hp->n_conn);
         hportal_unlock(hp);
         apr_thread_mutex_unlock(hpc->lock);
 
-        close_hc(hc);
+        close_hc(hc, 0);
 
         apr_thread_mutex_lock(hpc->lock);
         hportal_lock(hp);
@@ -560,37 +566,41 @@ op_generic_t *_get_hportal_op(host_portal_t *hp)
 host_connection_t *find_hc_to_close(portal_context_t *hpc)
 {
   apr_hash_index_t *hi;
-  host_portal_t *hp, *shp;
-  host_connection_t *hc, *best_hc, *best_direct;
+  host_portal_t *hp, *shp, *best_hp;
+  host_connection_t *hc, *best_hc;
   void *val;
-  int best_workload;
+  int best_workload, hold_lock;
   int oldest_direct_time;
 
   hc = NULL;
   best_hc = NULL;
   best_workload = -1;
   oldest_direct_time = apr_time_now() + apr_time_make(10,0);
-  best_direct = NULL;
 
   apr_thread_mutex_lock(hpc->lock);
 
   for (hi=apr_hash_first(hpc->pool, hpc->table); hi != NULL; hi = apr_hash_next(hi)) {
      apr_hash_this(hi, NULL, NULL, &val); hp = (host_portal_t *)val;
-//     apr_hash_set(hpc->table, hp->skey, APR_HASH_KEY_STRING, NULL);  //** This removes the key
 
      hportal_lock(hp);
 
      //** Scan the async connections
      move_to_top(hp->conn_list);
      while ((hc = (host_connection_t *)get_ele_data(hp->conn_list)) != NULL) {
+        hold_lock = 0;
         lock_hc(hc);
-        if (best_workload<0) best_workload = hc->curr_workload+1;
-        if (hc->curr_workload < best_workload) {
-           best_workload = hc->curr_workload;
-           best_hc = hc;
+        if (hc->closing == 0) {
+           if (best_workload<0) best_workload = hc->curr_workload+1;
+           if (hc->curr_workload < best_workload) {
+              if (best_hc != NULL) unlock_hc(best_hc);
+              hold_lock = 1;
+              best_workload = hc->curr_workload;
+              best_hc = hc;
+              best_hp = hp;
+           }
         }
         move_down(hp->conn_list);
-        unlock_hc(hc);
+        if (hold_lock == 0) unlock_hc(hc);
      }
 
      //** Scan the direct connections
@@ -600,12 +610,19 @@ host_connection_t *find_hc_to_close(portal_context_t *hpc)
         if (stack_size(shp->conn_list) > 0) {
            move_to_top(shp->conn_list);
            hc = (host_connection_t *)get_ele_data(shp->conn_list);
+           hold_lock = 0;
            lock_hc(hc);
-           if (oldest_direct_time > hc->last_used) {
-              best_direct = hc;
-              oldest_direct_time = hc->last_used;
+           if (hc->closing == 0) {
+              if (best_workload<0) best_workload = hc->curr_workload+1;
+              if (hc->curr_workload < best_workload) {
+                 if (best_hc != NULL) unlock_hc(best_hc);
+                 hold_lock = 1;
+                 best_workload = hc->curr_workload;
+                 best_hc = hc;
+                 best_hp = hp;
+              }
            }
-           unlock_hc(hc);
+           if (hold_lock == 0) unlock_hc(hc);
         }
         hportal_unlock(shp);
         move_down(hp->direct_list);
@@ -614,14 +631,14 @@ host_connection_t *find_hc_to_close(portal_context_t *hpc)
      hportal_unlock(hp);
   }
 
+  if (best_hc != NULL) {  //** Flag it as being closed so we ignore it next round and release the lock
+     best_hc->closing = 1;
+     unlock_hc(best_hc);
+  }
   apr_thread_mutex_unlock(hpc->lock);
 
-  hc = best_hc;
-  if (best_direct != NULL) {
-     if (best_workload > 0) hc = best_direct;
-  }
 
-  return(hc);
+  return(best_hc);
 }
 
 
@@ -638,7 +655,7 @@ int spawn_new_connection(host_portal_t *hp)
   n = get_hpc_thread_count(hp->context);
   if (n > hp->context->max_connections) {
        host_connection_t *hc = find_hc_to_close(hp->context);
-       close_hc(hc);
+       if (hc != NULL) close_hc(hc, 1);
   }
 
   return(create_host_connection(hp));
