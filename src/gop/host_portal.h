@@ -123,6 +123,7 @@ extern Net_timeout_t global_dt;
 #define hportal_unlock(hp) apr_thread_mutex_unlock(hp->lock)
 #define hportal_signal(hp) apr_thread_cond_broadcast(hp->cond)
 
+void _reap_hportal(host_portal_t *hp);
 op_generic_t *_get_hportal_op(host_portal_t *hp);
 void hportal_wait(host_portal_t *hp, int dt);
 int get_hpc_thread_count(portal_context_t *hpc);

@@ -94,6 +94,7 @@ void destroy_host_connection(host_connection_t *hc)
 void close_hc(host_connection_t *hc, int quick)
 {
   apr_status_t value;
+  host_portal_t *hp;
 
   //** Trigger the send thread to shutdown which also closes the recv thread
   log_printf(15, "close_hc: Closing ns=%d\n", ns_getid(hc->ns));
@@ -121,31 +122,10 @@ void close_hc(host_connection_t *hc, int quick)
   //** Wait until the recv thread completes
   apr_thread_join(&value, hc->recv_thread);
 
-  //** Now clean up the closed que being careful not to "join" the hc thread
-  host_connection_t *hc2;
-
-   hportal_lock(hc->hp);
-   while ((hc2 = (host_connection_t *)pop(hc->hp->closed_que)) != NULL) {
-     hportal_unlock(hc->hp);
-     if (hc2 != hc) {
-        lock_hc(hc2);
-        if (hc2->closing != 1) {
-           unlock_hc(hc2);
-           apr_thread_join(&value, hc2->recv_thread);
-           destroy_host_connection(hc2);
-        } else {
-          unlock_hc(hc2);
-        }
-     }
-     hportal_lock(hc->hp);
-   }
-   hportal_unlock(hc->hp);
-
-  //** finally free the original hc **
-  lock_hc(hc);
-  hc->closing = 2;
-  unlock_hc(hc);
-  destroy_host_connection(hc);
+  hp = hc->hp;
+  hportal_lock(hp);
+  _reap_hportal(hp);  //** Clean up the closed connections.  Including hc passed in
+  hportal_unlock(hp);
 }
 
 //*************************************************************
