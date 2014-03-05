@@ -174,12 +174,10 @@ log_printf(15, "2222222222222222 fixed=%d exp=%s dtype=%d\n", os_regex_is_fixed(
      //**if it's a fixed src with a dir dest we skip and use the cp_fn routines
      if ((os_regex_is_fixed(flist[0].path_regex) == 1) && ((dtype == 0) || ((dtype & OS_OBJECT_FILE) > 0))) {
         //** IF we made it here we have a simple cp
-//        cp_single.src_tuple = flist[0].src_tuple;
-//        cp_single.dest_tuple = flist[0].dest_tuple;
         status = lio_cp_file_fn(&(flist[0]), 0);
         if (status.op_status != OP_STATE_SUCCESS) {
            info_printf(lio_ifd, 0, "ERROR: with copy src=%s  dest=%s\n", flist[0].src_tuple.path, dtuple.path);
-           n_errors += status.error_code;
+           if (status.op_status != OP_STATE_SUCCESS) n_errors++;
            goto finished;
         }
 log_printf(15, "333333333333333333\n"); flush_log();
@@ -200,10 +198,9 @@ log_printf(0, "bufsize=" XOT "\n", flist[i].bufsize);
 
      if (opque_tasks_left(q) > lio_parallel_task_count) {
         gop = opque_waitany(q);
-//        j = gop_get_myid(gop);
         status = gop_get_status(gop);
-        n_errors += status.error_code;
-//        if (status.op_status != OP_STATE_SUCCESS) info_printf(lio_ifd, 0, "Failed with path %s\n", flist[j].src_tuple.path);
+        if (status.op_status != OP_STATE_SUCCESS) n_errors++;
+
         gop_free(gop, OP_DESTROY);
      }
   }
@@ -211,10 +208,8 @@ log_printf(0, "bufsize=" XOT "\n", flist[i].bufsize);
   err = opque_waitall(q);
   if (err != OP_STATE_SUCCESS) {
      while ((gop = opque_get_next_failed(q)) != NULL) {
-//         j = gop_get_myid(gop);
-         status = gop_get_status(gop);
-         n_errors += status.error_code;
-//         info_printf(lio_ifd, 0, "Failed with path %s\n", flist[j].src_tuple.path);
+        status = gop_get_status(gop);
+        if (status.op_status != OP_STATE_SUCCESS) n_errors++;
      }
   }
 
