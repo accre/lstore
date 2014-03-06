@@ -272,6 +272,7 @@ int main(int argc, char **argv)
      printf("    -bl key value      - Blacklist the given key/value combination. Multiple -bl options can be provided\n");
      printf("                         For a RID use: rid_key rid     Hostname: host hostname\n");
      printf("    -f                 - Forces data replacement even if it would result in data loss\n");
+     printf("    -x                 - Stop scanning a file if an unrecoverable error is detected.\n");
      printf("    -p                 - Print the resulting query string\n");
      printf("    -e                 - Only check files that have soft or hard errors\n");
      printf("    -o inspect_opt     - Inspection option.  One of the following:\n");
@@ -313,6 +314,9 @@ int main(int argc, char **argv)
      } else if (strcmp(argv[i], "-r") == 0) { //** Force reconstruction
         i++;
         global_whattodo |= INSPECT_FORCE_RECONSTRUCTION;
+     } else if (strcmp(argv[i], "-x") == 0) { //** Kick out if an unrecoverable error is detected
+        i++;
+        global_whattodo |= INSPECT_FAIL_ON_ERROR;
      } else if (strcmp(argv[i], "-s") == 0) { //** Report soft errors
         i++;
         global_whattodo |= INSPECT_SOFT_ERROR_FAIL;

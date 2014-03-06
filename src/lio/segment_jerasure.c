@@ -244,7 +244,7 @@ op_status_t segjerase_inspect_full_func(void *arg, int id)
   op_status_t status;
   opque_t *q;
   int err, i, j, k, do_fix, nstripes, total_stripes, stripe, bufstripes, n_empty;
-  int  n_iov, good_magic, unrecoverable_count, bad_count, repair_errors, erasure_errors;
+  int  fail_quick, n_iov, good_magic, unrecoverable_count, bad_count, repair_errors, erasure_errors;
   int magic_count[s->n_devs], match, index, magic_used;
   int magic_devs[s->n_devs*s->n_devs];
   int max_iov, skip, last_bad, tmp;
@@ -265,6 +265,8 @@ op_status_t segjerase_inspect_full_func(void *arg, int id)
   q = new_opque();
 //  opque_start_execution(q);
   status = op_success_status;
+
+  fail_quick = si->inspect_mode & INSPECT_FAIL_ON_ERROR;
 
   do_fix = 0;
   i = si->inspect_mode & INSPECT_COMMAND_BITS;
@@ -457,7 +459,10 @@ log_printf(0, "gop_error=%d nbytes=" XOT " n_iov=%d\n", err, nbytes, n_iov);
 
      if (sf->do_print == 1) info_printf(si->fd, 1, XIDT ": bad stripe count: %d  --- Repair errors: %d   Unrecoverable errors:%d  Empty stripes: %d   Silent errors: %d\n", segment_id(si->seg), bad_count, repair_errors, unrecoverable_count, n_empty, erasure_errors);
 
-
+     if (((repair_errors+unrecoverable_count) > 0) && (fail_quick > 0)) {
+        log_printf(1,"FAIL_QUICK:  Hit an unrecoverable error\n");
+        break;
+     }
   }
 
   free(buffer);
