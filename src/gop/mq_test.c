@@ -32,7 +32,6 @@ http://www.accre.vanderbilt.edu
 #include "log.h"
 #include "type_malloc.h"
 #include "apr_wrapper.h"
-#include <sys/eventfd.h>
 
 #define CMD_PING 1
 #define CMD_PONG 2
