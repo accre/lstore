@@ -586,15 +586,7 @@ int lfs_stat(const char *fname,
 // lfs_opendir - FUSE opendir call
 //*************************************************************************
 
-int lfs_opendir(const char *fname, struct fuse_file_info *fi)
-{
-  lfs_dir_iter_t *dit;
-  char path[OS_PATH_MAX];
-  char *dir, *file;
-  lio_dentry_t *e2;
-  lio_inode_t *inode;
-  int i;
-
+int lfs_opendir(const char *fname, struct fuse_file_info *fi) {
   lio_fuse_t *lfs;
   struct fuse_context *ctx;
   ctx = fuse_get_context();
@@ -606,7 +598,17 @@ int lfs_opendir(const char *fname, struct fuse_file_info *fi)
   {
     lfs = (lio_fuse_t*)ctx->private_data;
   }
+  return lfs_opendir_real(fname, fi, lfs);
 
+}
+int lfs_opendir_real(const char *fname, struct fuse_file_info *fi, lio_fuse_t *lfs)
+{
+  lfs_dir_iter_t *dit;
+  char path[OS_PATH_MAX];
+  char *dir, *file;
+  lio_dentry_t *e2;
+  lio_inode_t *inode;
+  int i;
   log_printf(1, "fname=%s\n", fname); flush_log();
 
   type_malloc_clear(dit, lfs_dir_iter_t, 1);
@@ -671,16 +673,7 @@ int lfs_opendir(const char *fname, struct fuse_file_info *fi)
 // lfs_readdir - Returns the next file in the directory
 //*************************************************************************
 
-int lfs_readdir(const char *dname, void *buf, fuse_fill_dir_t filler, off_t off, struct fuse_file_info *fi)
-{
-  lfs_dir_iter_t *dit= (lfs_dir_iter_t *)fi->fh;
-  lio_dentry_t *entry, *fentry;
-  lio_inode_t *inode;
-  int ftype, prefix_len, n, i;
-  char *fname;
-  struct stat stbuf;
-  apr_time_t now;
-  double dt;
+int lfs_readdir(const char *dname, void *buf, fuse_fill_dir_t filler, off_t off, struct fuse_file_info *fi) {
 
   lio_fuse_t *lfs;
   struct fuse_context *ctx;
@@ -693,7 +686,19 @@ int lfs_readdir(const char *dname, void *buf, fuse_fill_dir_t filler, off_t off,
   {
     lfs = (lio_fuse_t*)ctx->private_data;
   }
+  return lfs_readdir_real(dname, buf, filler, off, fi, lfs);
 
+}
+int lfs_readdir_real(const char *dname, void *buf, fuse_fill_dir_t filler, off_t off, struct fuse_file_info *fi, lio_fuse_t *lfs)
+{
+  lfs_dir_iter_t *dit= (lfs_dir_iter_t *)fi->fh;
+  lio_dentry_t *entry, *fentry;
+  lio_inode_t *inode;
+  int ftype, prefix_len, n, i;
+  char *fname;
+  struct stat stbuf;
+  apr_time_t now;
+  double dt;
   int off2 = off;
   log_printf(1, "dname=%s off=%d stack_size=%d\n", dname, off2, stack_size(dit->stack)); flush_log();
   now = apr_time_now();
@@ -1048,9 +1053,7 @@ int lfs_object_remove(lio_fuse_t *lfs, const char *fname)
 //*****************************************************************
 //  lfs_unlink - Remove a file
 //*****************************************************************
-
-int lfs_unlink(const char *fname)
-{
+int lfs_unlink(const char *fname) {
   lio_fuse_t *lfs;
   struct fuse_context *ctx;
   ctx = fuse_get_context();
@@ -1062,7 +1065,10 @@ int lfs_unlink(const char *fname)
   {
     lfs = (lio_fuse_t*)ctx->private_data;
   }
-
+  return lfs_unlink_real(fname, lfs);
+}
+int lfs_unlink_real(const char *fname, lio_fuse_t *lfs)
+{
   log_printf(1, "fname=%s\n", fname); flush_log();
 
   return(lfs_object_remove(lfs, fname));
@@ -2156,8 +2162,20 @@ void lfs_attr_free(list_data_t *obj)
 //*****************************************************************
 // lfs_getxattr - Gets a extended attributes
 //*****************************************************************
-
-int lfs_getxattr(const char *fname, const char *name, char *buf, size_t size)
+int lfs_getxattr(const char *fname, const char *name, char *buf, size_t size) {
+    lio_fuse_t *lfs;
+    struct fuse_context *ctx;
+    ctx = fuse_get_context();
+    if (NULL == ctx || NULL == ctx->private_data)
+    {
+        log_printf(0, "ERROR_CTX:  unable to access fuse context or context is invalid");
+        return(-EINVAL);
+    } else {
+        lfs = (lio_fuse_t*)ctx->private_data;
+    }
+    return lfs_getxattr_real(fname, name, buf, size, lfs);
+}
+int lfs_getxattr_real(const char *fname, const char *name, char *buf, size_t size, lio_fuse_t *lfs)
 {
   char *val;
   int v_size, err, got_tape;
@@ -2166,19 +2184,6 @@ int lfs_getxattr(const char *fname, const char *name, char *buf, size_t size)
   lio_attr_t *attr;
   apr_time_t now, now2;
   double dt, dt2;
-
-  lio_fuse_t *lfs;
-  struct fuse_context *ctx;
-  ctx = fuse_get_context();
-  if (NULL == ctx || NULL == ctx->private_data)
-  {
-    log_printf(0, "ERROR_CTX:  unable to access fuse context or context is invalid");
-    return(-EINVAL);
-  }else
-  {
-    lfs = (lio_fuse_t*)ctx->private_data;
-  }
-
   now = apr_time_now();
 
   v_size= size;
@@ -2290,26 +2295,29 @@ log_printf(1, "ADDING fname=%s aname=%s p=%p v_size=%d df=%lf dt_query=%lf\n", f
 //*****************************************************************
 // lfs_setxattr - Sets a extended attribute
 //*****************************************************************
-
 int lfs_setxattr(const char *fname, const char *name, const char *fval, size_t size, int flags)
+{
+
+    lio_fuse_t *lfs;
+    struct fuse_context *ctx;
+    ctx = fuse_get_context();
+    if (NULL == ctx || NULL == ctx->private_data)
+    {
+        log_printf(0, "ERROR_CTX:  unable to access fuse context or context is invalid");
+        return(-EINVAL);
+    } else {
+        lfs = (lio_fuse_t*)ctx->private_data;
+    }
+
+    return lfs_setxattr_real(fname, name, fval, size, flags, lfs);
+}
+int lfs_setxattr_real(const char *fname, const char *name, const char *fval, size_t size, int flags, lio_fuse_t *lfs)
 {
   char *val;
   int v_size, err;
   lio_inode_t *inode;
   lio_attr_t *attr;
   char aname[512];
-
-  lio_fuse_t *lfs;
-  struct fuse_context *ctx;
-  ctx = fuse_get_context();
-  if (NULL == ctx || NULL == ctx->private_data)
-  {
-    log_printf(0, "ERROR_CTX:  unable to access fuse context or context is invalid");
-    return(-EINVAL);
-  }else
-  {
-    lfs = (lio_fuse_t*)ctx->private_data;
-  }
 
   v_size= size;
   log_printf(1, "fname=%s size=%d attr_name=%s\n", fname, size, name); flush_log();

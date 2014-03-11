@@ -138,7 +138,20 @@ void lfs_destroy(void *lfs); // expects a lio_fuse_t* as the argument
 
 // Forward declarations for non-FUSE consumers of this
 void *lfs_init_real(struct fuse_conn_info *conn, const int argc, const char **argv, const char *mount_point);
-
+int lfs_mkdir(const char *fname, mode_t mode);
+int lfs_unlink_real(const char *fname, lio_fuse_t *lfs);
+int lfs_release_real(const char *fname,  struct fuse_file_info *fi, lio_fuse_t *lfs);
+int lfs_stat_real(const char *fname, struct stat *stat, lio_fuse_t *lfs);
+int lfs_mknod_real(const char *fname, mode_t mode, dev_t rdev, lio_fuse_t *lfs);
+int lfs_open_real(const char *fname, struct fuse_file_info *fi, lio_fuse_t *lfs);
+int lfs_release_real(const char *fname, struct fuse_file_info *fi, lio_fuse_t *lfs);
+int lfs_read(const char *fname, char *buf, size_t size, off_t off, struct fuse_file_info *fi);
+int lfs_write(const char *fname, const char *buf, size_t size, off_t off, struct fuse_file_info *fi);
+int lfs_setxattr_real(const char *fname, const char *name, const char *fval, size_t size, int flags, lio_fuse_t *lfs);
+int lfs_getxattr_real(const char *fname, const char *name, char *buf, size_t size, lio_fuse_t *lfs);
+int lfs_unlink_real(const char *fname, lio_fuse_t *lfs);
+int lfs_opendir_real(const char *fname, struct fuse_file_info *fi, lio_fuse_t *lfs);
+int lfs_readdir_real(const char *dname, void *buf, fuse_fill_dir_t filler, off_t off, struct fuse_file_info *fi, lio_fuse_t * lfs);
 #ifdef __cplusplus
 }
 #endif
