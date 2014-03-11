@@ -165,6 +165,8 @@ op_status_t rsrc_response_get_config(void *task_arg, int tid)
   int n, n_config;
   op_status_t status;
   FILE *fd;
+  apr_file_t *afd;
+  char *lock_fname;
 
   log_printf(5, "Processing rid_config response gid=%d\n", gop_id(task->gop));
 
@@ -239,9 +241,37 @@ log_printf(5, "rid_config_len=%d\n", n_config);
   //** Store the config if changed.  This should trigger the child RS to auto load
 //  if ((n_config > 0) && (arg->mode > 0)) {
   if (n_config > 0) {
+     //** Open and lock the control file
+     n = strlen(rsrc->child_target_file)+10;
+     type_malloc(lock_fname, char, n);
+     snprintf(lock_fname, n, "%s.lock", rsrc->child_target_file);
+     apr_thread_mutex_lock(rsrc->lock);
+     if (apr_file_open(&afd, lock_fname, APR_FOPEN_READ|APR_FOPEN_CREATE, APR_FPROT_OS_DEFAULT, rsrc->mpool) != APR_SUCCESS) {
+        log_printf(0, "ERROR: opening lock file: fname=%s\n", lock_fname);
+        free(lock_fname);
+        status = op_failure_status;
+         apr_thread_mutex_lock(rsrc->lock);
+        goto fail;
+     }
+     if (apr_file_lock(afd, APR_FLOCK_EXCLUSIVE) != APR_SUCCESS) {
+        log_printf(0, "ERROR: locking file: fname=%s\n", lock_fname);
+        apr_file_close(afd);
+        free(lock_fname);
+        status = op_failure_status;
+        apr_thread_mutex_lock(rsrc->lock);
+        goto fail;
+     }
+               
      fd = fopen(rsrc->child_target_file, "w");
      assert(fwrite(config, n_config, 1, fd) == 1);
      fclose(fd);
+
+    //** Release the lock
+    apr_file_unlock(afd);
+    apr_file_close(afd);
+    free(lock_fname);
+
+    apr_thread_mutex_lock(rsrc->lock);
   }
 
   //** Clean up
