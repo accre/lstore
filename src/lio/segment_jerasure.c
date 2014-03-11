@@ -678,8 +678,12 @@ op_status_t segjerase_inspect_func(void *arg, int id)
 log_printf(5, "status: %d %d\n", status.op_status, status.error_code);
 
   //** Kick out if we can't fix anything
-  if (child_replaced > s->n_data_devs) goto fail;
+  if ((status.op_status != OP_STATE_SUCCESS) || (child_replaced > s->n_parity_devs)) {
+     status.op_status = OP_STATE_FAILURE;
+     goto fail;
+  }
 
+log_printf(5, "child_replaced =%d ndata=%d\n", child_replaced, s->n_parity_devs);
   total_stripes = segment_size(si->seg) / s->data_size;
 
   //** The INSPECT_QUICK_* options are handled by the LUN driver. If force_reconstruct is set then we probably need to do a scan
