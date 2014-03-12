@@ -162,7 +162,7 @@ op_status_t rsrc_response_get_config(void *task_arg, int tid)
   char dt[128];
   char *data, *config;
   uint64_t *id;
-  int n, n_config;
+  int n, n_config, err;
   op_status_t status;
   FILE *fd;
   apr_file_t *afd;
@@ -246,19 +246,19 @@ log_printf(5, "rid_config_len=%d\n", n_config);
      type_malloc(lock_fname, char, n);
      snprintf(lock_fname, n, "%s.lock", rsrc->child_target_file);
      apr_thread_mutex_lock(rsrc->lock);
-     if (apr_file_open(&afd, lock_fname, APR_FOPEN_READ|APR_FOPEN_CREATE, APR_FPROT_OS_DEFAULT, rsrc->mpool) != APR_SUCCESS) {
+     if (apr_file_open(&afd, lock_fname, APR_FOPEN_WRITE|APR_FOPEN_CREATE, APR_FPROT_OS_DEFAULT, rsrc->mpool) != APR_SUCCESS) {
         log_printf(0, "ERROR: opening lock file: fname=%s\n", lock_fname);
         free(lock_fname);
         status = op_failure_status;
-         apr_thread_mutex_lock(rsrc->lock);
+         apr_thread_mutex_unlock(rsrc->lock);
         goto fail;
      }
-     if (apr_file_lock(afd, APR_FLOCK_EXCLUSIVE) != APR_SUCCESS) {
-        log_printf(0, "ERROR: locking file: fname=%s\n", lock_fname);
+     if ((err=apr_file_lock(afd, APR_FLOCK_EXCLUSIVE)) != APR_SUCCESS) {
+        log_printf(0, "ERROR: locking file: fname=%s err=%d oserr=%d\n", lock_fname, err, APR_TO_OS_ERROR(err));
         apr_file_close(afd);
         free(lock_fname);
         status = op_failure_status;
-        apr_thread_mutex_lock(rsrc->lock);
+        apr_thread_mutex_unlock(rsrc->lock);
         goto fail;
      }
                
@@ -271,7 +271,7 @@ log_printf(5, "rid_config_len=%d\n", n_config);
     apr_file_close(afd);
     free(lock_fname);
 
-    apr_thread_mutex_lock(rsrc->lock);
+    apr_thread_mutex_unlock(rsrc->lock);
   }
 
   //** Clean up
