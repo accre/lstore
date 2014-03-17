@@ -191,7 +191,7 @@ log_printf(15, "last err=%d\n", err);
 // rs_simple_request - Processes a simple RS request
 //***********************************************************************
 
-op_generic_t *rs_simple_request(resource_service_fn_t *arg, data_attr_t *da, rs_query_t *rsq, data_cap_set_t **caps, rs_request_t *req, int req_size, rs_hints_t *hints_list, int fixed_size, int n_rid, int timeout)
+op_generic_t *rs_simple_request(resource_service_fn_t *arg, data_attr_t *da, rs_query_t *rsq, data_cap_set_t **caps, rs_request_t *req, int req_size, rs_hints_t *hints_list, int fixed_size, int n_rid, int ignore_fixed_err, int timeout)
 {
   rs_simple_priv_t *rss = (rs_simple_priv_t *)arg->priv;
   rsq_base_t *query_global = (rsq_base_t *)rsq;
@@ -369,7 +369,7 @@ log_printf(15, "i=%d j=%d slot=%d rse->rid_key=%s rse->status=%d\n", i, j, slot,
            status.op_status = OP_STATE_FAILURE;
            status.error_code = RS_ERROR_FIXED_MATCH_FAIL;
            hints_list[i].status = RS_ERROR_FIXED_MATCH_FAIL;
-           err_cnt++;
+           if (ignore_fixed_err == 0) err_cnt++;
            break;  //** Skip to the next in the list
         } else {
            found = 0;
@@ -881,6 +881,10 @@ log_printf(15, "rs_simple_load: sl=%p\n", rss->rid_table);
 
   //** Make the randomly permuted table
   rss->n_rids = list_key_count(rss->rid_table);
+  if (rss->n_rids == 0) {
+     log_printf(0, "ERROR: n_rids=%d\n", rss->n_rids);
+     fprintf(stderr, "ERROR: n_rids=%d\n", rss->n_rids);
+  }
   type_malloc_clear(rss->random_array, rss_rid_entry_t *, rss->n_rids);
   it = list_iter_search(rss->rid_table, (list_key_t *)NULL, 0);
   for (i=0; i < rss->n_rids; i++) {

@@ -106,7 +106,7 @@ struct resource_service_fn_s {
   rs_query_t *(*query_dup)(resource_service_fn_t *arg, rs_query_t *q);
   rs_query_t *(*query_new)(resource_service_fn_t *arg);
   void (*query_destroy)(resource_service_fn_t *arg, rs_query_t *q);
-  op_generic_t *(*data_request)(resource_service_fn_t *arg, data_attr_t *da, rs_query_t *q, data_cap_set_t **caps, rs_request_t *req, int req_size, rs_hints_t *hints_list, int fixed_size, int n_rid, int timeout);
+  op_generic_t *(*data_request)(resource_service_fn_t *arg, data_attr_t *da, rs_query_t *q, data_cap_set_t **caps, rs_request_t *req, int req_size, rs_hints_t *hints_list, int fixed_size, int n_rid, int ignore_fixed_err, int timeout);
   rs_query_t *(*query_parse)(resource_service_fn_t *arg, char *value);
   char *(*query_print)(resource_service_fn_t *arg, rs_query_t *q);
   void (*destroy_service)(resource_service_fn_t *rs);
@@ -128,7 +128,7 @@ typedef resource_service_fn_t *(rs_create_t)(void *arg, inip_file_t *ifd, char *
 #define rs_query_destroy(rs, q) (rs)->query_destroy(rs, q)
 #define rs_query_parse(rs, value) (rs)->query_parse(rs, value)
 #define rs_query_print(rs, q) (rs)->query_print(rs, q)
-#define rs_data_request(rs, da, q, caps, req, n_req, hints_list, fixed_size, n_rid, to) (rs)->data_request(rs, da, q, caps, req, n_req, hints_list, fixed_size, n_rid, to)
+#define rs_data_request(rs, da, q, caps, req, n_req, hints_list, fixed_size, n_rid, ignore_fixed_err, to) (rs)->data_request(rs, da, q, caps, req, n_req, hints_list, fixed_size, n_rid, ignore_fixed_err, to)
 #define rs_destroy_service(rs) (rs)->destroy_service(rs)
 
 rs_space_t rs_space(char *config);

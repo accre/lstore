@@ -182,7 +182,7 @@ log_printf(15, "_sl_grow: sid=" XIDT " n_blocks=%d max_block_size=" XOT "\n", se
   //** Generate the query
   if (n_blocks > 0) {
      i = (s->n_rid_default > n_blocks) ? n_blocks : s->n_rid_default;
-     gop2 = rs_data_request(s->rs, da, s->rsq, cap_list, req_list, n_blocks, NULL, 0, i, timeout);
+     gop2 = rs_data_request(s->rs, da, s->rsq, cap_list, req_list, n_blocks, NULL, 0, i, 0, timeout);
   }
 
 log_printf(15, "_sl_grow: sid=" XIDT " before exec gop2=%p\n", segment_id(seg), gop2);
@@ -877,7 +877,7 @@ op_status_t seglin_clone_func(void *arg, int id)
   //** Generate the query
   if (n_blocks > 0) {
      i = (sd->n_rid_default > n_blocks) ? n_blocks : sd->n_rid_default;
-     gop = rs_data_request(sd->rs, slc->da, sd->rsq, cap_list, req_list, n_blocks, NULL, 0, i, slc->timeout);
+     gop = rs_data_request(sd->rs, slc->da, sd->rsq, cap_list, req_list, n_blocks, NULL, 0, i, 0, slc->timeout);
   }
 
   //** Wait for block creation to complete

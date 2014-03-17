@@ -169,7 +169,7 @@ int slun_row_placement_check(segment_t *seg, data_attr_t *da, seglun_row_t *b, i
   }
 
   //** Now call the query check
-  gop = rs_data_request(s->rs, NULL, query, NULL, NULL, 0, hints_list, n_devices, n_devices, timeout);
+  gop = rs_data_request(s->rs, NULL, query, NULL, NULL, 0, hints_list, n_devices, n_devices, 0, timeout);
   gop_waitall(gop);
   gop_free(gop, OP_DESTROY);
 
@@ -253,7 +253,7 @@ int slun_row_placement_fix(segment_t *seg, data_attr_t *da, seglun_row_t *b, int
      }
 
 
-     gop = rs_data_request(s->rs, da, rsq, cap, req, m, hints_list, ngood, n_devices, timeout);
+     gop = rs_data_request(s->rs, da, rsq, cap, req, m, hints_list, ngood, n_devices, 1, timeout);
      gop_waitall(gop);
      gop_free(gop, OP_DESTROY);
 
@@ -572,7 +572,7 @@ log_printf(15, "loop=%d ------------------------------\n", loop);
     }
 
     //** Execute the Query
-    gop = rs_data_request(s->rs, da, rsq, cap_list, req_list, m, hints_list, ngood, n_devices, timeout);
+    gop = rs_data_request(s->rs, da, rsq, cap_list, req_list, m, hints_list, ngood, n_devices, 1, timeout);
     err = gop_waitall(gop);
 
     //** Check if we have enough RIDS

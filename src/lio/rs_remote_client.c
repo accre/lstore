@@ -139,11 +139,11 @@ char *rsrc_simple_get_rid_value(resource_service_fn_t *rs, char *rid_key, char *
 // rsrc_data_request - Processes a RS data request
 //***********************************************************************
 
-op_generic_t *rsrc_data_request(resource_service_fn_t *rs, data_attr_t *da, rs_query_t *rsq, data_cap_set_t **caps, rs_request_t *req, int req_size, rs_hints_t *hints_list, int fixed_size, int n_rid, int timeout)
+op_generic_t *rsrc_data_request(resource_service_fn_t *rs, data_attr_t *da, rs_query_t *rsq, data_cap_set_t **caps, rs_request_t *req, int req_size, rs_hints_t *hints_list, int fixed_size, int n_rid, int ignore_fixed_err, int timeout)
 {
   rs_remote_client_priv_t *rsrc = (rs_remote_client_priv_t *)rs->priv;
 
-  return(rs_data_request(rsrc->rs_child, da, rsq, caps, req, req_size, hints_list, fixed_size, n_rid, timeout));
+  return(rs_data_request(rsrc->rs_child, da, rsq, caps, req, req_size, hints_list, fixed_size, n_rid, ignore_fixed_err, timeout));
 }
 
 //***********************************************************************

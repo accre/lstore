@@ -96,7 +96,7 @@ int main(int argc, char **argv)
     req_list[i].rid_key = NULL;  //** This will let me know if I got success as well as checking the cap
   }
 
-  gop = rs_data_request(lio_gc->rs, lio_gc->da, rsq, cap_list, req_list, n_alloc, NULL, 0, n_alloc, lio_gc->timeout);
+  gop = rs_data_request(lio_gc->rs, lio_gc->da, rsq, cap_list, req_list, n_alloc, NULL, 0, n_alloc, 0, lio_gc->timeout);
 
 
   //** Wait for it to complete
