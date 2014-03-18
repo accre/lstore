@@ -1578,7 +1578,7 @@ log_printf(5, "src=%s dest=%s dtype=%d bufsize=" XOT "\n", cp->src_tuple.path, c
         goto finished;
      }
   } else if ((dtype & OS_OBJECT_DIR) > 0) { //** It's a dir so fail
-     info_printf(lio_ifd, 0, "Destination(%s) is a dir!\n", cp->dest_tuple.path);
+     info_printf(lio_ifd, 0, "ERROR: Destination(%s) is a dir!\n", cp->dest_tuple.path);
      goto finished;
   }
 
@@ -1586,13 +1586,13 @@ log_printf(5, "src=%s dest=%s dtype=%d bufsize=" XOT "\n", cp->src_tuple.path, c
   v_size[0] = -cp->dest_tuple.lc->max_attr;
   err = lioc_get_attr(cp->dest_tuple.lc, cp->dest_tuple.creds, cp->dest_tuple.path, NULL, "system.exnode", (void **)&ex_data, v_size);
   if (err != OP_STATE_SUCCESS) {
-     info_printf(lio_ifd, 0, "Failed retrieving exnode!  path=%s\n", cp->dest_tuple.path);
+     info_printf(lio_ifd, 0, "ERROR: Failed retrieving exnode!  path=%s\n", cp->dest_tuple.path);
      goto finished;
   }
 
   fd = fopen(cp->src_tuple.path, "r");
   if (fd == NULL) {
-     info_printf(lio_ifd, 0, "Failed opening source file!  path=%s\n", cp->dest_tuple.path);
+     info_printf(lio_ifd, 0, "ERROR: Failed opening source file!  path=%s\n", cp->dest_tuple.path);
      goto finished;
   }
 
@@ -1627,7 +1627,7 @@ log_printf(0, "AFTER PUT\n");
 
   ssize = segment_size(seg);
   if (err != OP_STATE_SUCCESS) {
-     info_printf(lio_ifd, 0, "Failed uploading data!  path=%s\n", cp->dest_tuple.path);
+     info_printf(lio_ifd, 0, "ERROR: Failed uploading data!  path=%s\n", cp->dest_tuple.path);
      ssize =  0;
   }
 
@@ -1641,9 +1641,15 @@ log_printf(0, "AFTER PUT\n");
   val[1] = buffer; v_size[1] = strlen(val[1]);
   val[2] = NULL; v_size[2] = 0;
   err = lioc_set_multiple_attrs(cp->dest_tuple.lc, cp->dest_tuple.creds, cp->dest_tuple.path, NULL, key, (void **)val, v_size, 3);
+  if (err != OP_STATE_SUCCESS) {
+     info_printf(lio_ifd, 0, "ERROR: Failed setting attributes!  path=%s\n", cp->dest_tuple.path);
+  }
 
   //**Update the error counts if needed
   hard_errors = lioc_update_error_counts(cp->dest_tuple.lc, cp->dest_tuple.creds, cp->dest_tuple.path, seg);
+  if (hard_errors != 0) {
+     info_printf(lio_ifd, 0, "ERROR: Hard error during upload! hard_errors=%d  path=%s\n", hard_errors, cp->dest_tuple.path);
+  }
 
   exnode_destroy(ex);
   exnode_exchange_destroy(exp);
@@ -1690,7 +1696,7 @@ log_printf(5, "src=%s dest=%s dtype=%d\n", cp->src_tuple.path, cp->dest_tuple.pa
   v_size = -cp->src_tuple.lc->max_attr;
   err = lioc_get_attr(cp->src_tuple.lc, cp->src_tuple.creds, cp->src_tuple.path, NULL, "system.exnode", (void **)&ex_data, &v_size);
   if (err != OP_STATE_SUCCESS) {
-     info_printf(lio_ifd, 0, "Failed retrieving exnode!  path=%s\n", cp->src_tuple.path);
+     info_printf(lio_ifd, 0, "ERROR: Failed retrieving exnode!  path=%s\n", cp->src_tuple.path);
      goto finished;
   }
 
@@ -1715,7 +1721,7 @@ log_printf(5, "src=%s dest=%s dtype=%d\n", cp->src_tuple.path, cp->dest_tuple.pa
 
   fd = fopen(cp->dest_tuple.path, "w");
   if (fd == NULL) {
-     info_printf(lio_ifd, 0, "Failed opending dest file!  path=%s\n", cp->dest_tuple.path);
+     info_printf(lio_ifd, 0, "ERROR: Failed opending dest file!  path=%s\n", cp->dest_tuple.path);
      exnode_destroy(ex);
      exnode_exchange_destroy(exp);
      goto finished;
@@ -1729,6 +1735,9 @@ log_printf(5, "src=%s dest=%s dtype=%d\n", cp->src_tuple.path, cp->dest_tuple.pa
 
   //**Update the error counts if needed
   hard_errors = lioc_update_error_counts(cp->src_tuple.lc, cp->src_tuple.creds, cp->src_tuple.path, seg);
+  if (hard_errors != 0) {
+     info_printf(lio_ifd, 0, "ERROR: Hard error during download! hard_errors=%d  path=%s\n", hard_errors, cp->dest_tuple.path);
+  }
 
   exnode_destroy(ex);
   exnode_exchange_destroy(exp);
