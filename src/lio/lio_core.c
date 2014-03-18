@@ -1592,7 +1592,7 @@ log_printf(5, "src=%s dest=%s dtype=%d bufsize=" XOT "\n", cp->src_tuple.path, c
 
   fd = fopen(cp->src_tuple.path, "r");
   if (fd == NULL) {
-     info_printf(lio_ifd, 0, "ERROR: Failed opening source file!  path=%s\n", cp->dest_tuple.path);
+     info_printf(lio_ifd, 0, "ERROR: Failed opening source file!  path=%s\n", cp->src_tuple.path);
      goto finished;
   }
 

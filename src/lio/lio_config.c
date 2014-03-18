@@ -820,6 +820,8 @@ lio_config_t *lio_create_nl(char *fname, char *section, char *user)
      lio->tpc_unlimited = thread_pool_create_context("UNLIMITED", n, cores);
      if (lio->tpc_unlimited == NULL) {
         log_printf(0, "Error loading tpc_unlimited threadpool!  n=%d\n", cores);
+        fprintf(stderr, "ERROR createing tpc_unlimited threadpool! n=%d\n", cores); fflush(stderr);
+        abort();
      }
 
      _lc_object_put(stype, lio->tpc_unlimited);  //** Add it to the table
@@ -832,7 +834,9 @@ lio_config_t *lio_create_nl(char *fname, char *section, char *user)
   if (lio->mqc == NULL) {  //** Need to load it
      lio->mqc = mq_create_context(lio->ifd, stype);
      if (lio->mqc == NULL) {
-        log_printf(1, "Error loading MQ service!\n");
+        log_printf(1, "Error loading MQ service! stype=%s\n", stype);
+        fprintf(stderr, "ERROR loading MQ service! stype=%s\n", stype); fflush(stderr);
+        abort();
      } else {
         add_service(lio->ess, ESS_RUNNING, ESS_MQ, lio->mqc);  //** It's used by the block loader
      }
@@ -853,6 +857,8 @@ lio_config_t *lio_create_nl(char *fname, char *section, char *user)
      lio->ds = (*ds_create)(lio->ess, lio->ifd, stype);
      if (lio->ds == NULL) {
         log_printf(1, "Error loading data service!  type=%s\n", ctype);
+        fprintf(stderr, "ERROR loading data service!  type=%s\n", ctype); fflush(stderr);
+        abort();
      } else {
         add_service(lio->ess, DS_SM_RUNNING, ctype, lio->ds);  //** It's used by the block loader
      }
@@ -874,6 +880,8 @@ lio_config_t *lio_create_nl(char *fname, char *section, char *user)
      lio->rs = (*rs_create)(lio->ess, lio->ifd, stype);
      if (lio->rs == NULL) {
         log_printf(1, "Error loading resource service!  type=%s section=%s\n", ctype, stype);
+        fprintf(stderr, "Error loading resource service!  type=%s section=%s\n", ctype, stype); fflush(stderr);
+        abort();
      }
      free(ctype);
 
@@ -890,6 +898,8 @@ lio_config_t *lio_create_nl(char *fname, char *section, char *user)
      lio->os = (*os_create)(lio->ess, lio->ifd, stype);
      if (lio->os == NULL) {
         log_printf(1, "Error loading object service!  type=%s section=%s\n", ctype, stype);
+        fprintf(stderr, "Error loading object service!  type=%s section=%s\n", ctype, stype); fflush(stderr);
+        abort();      
      }
      free(ctype);
 
@@ -923,9 +933,10 @@ lio_config_t *lio_create_nl(char *fname, char *section, char *user)
      ctype = inip_get_string(lio->ifd, stype, "type", CACHE_TYPE_AMP);
      cache_create = lookup_service(lio->ess, CACHE_LOAD_AVAILABLE, ctype);
      _lio_cache = (*cache_create)(lio->ess, lio->ifd, stype, lio->da, lio->timeout);
-//     _lio_cache = load_cache(ctype, lio->da, lio->timeout, lio->ifd, stype);
      if (_lio_cache == NULL) {
         log_printf(0, "Error loading cache service!  type=%s\n", ctype);
+        fprintf(stderr, "Error loading cache service!  type=%s\n", ctype); fflush(stderr);
+        abort();
      }
      free(stype); free(ctype);
   }
@@ -937,8 +948,6 @@ lio_config_t *lio_create_nl(char *fname, char *section, char *user)
 
   lio->cache = _lio_cache;
   add_service(lio->ess, ESS_RUNNING, ESS_CACHE, lio->cache);
-
-//  exnode_system_config(lio->ess, lio->ds, lio->rs, lio->os, lio->tpc_unlimited, lio->cache);
 
   return(lio);
 }

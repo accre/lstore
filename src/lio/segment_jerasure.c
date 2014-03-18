@@ -394,6 +394,9 @@ log_printf(0, "unrecoverable error stripe=%d i=%d good_magic=%d magic_count=%d\n
                     append_printf(print_buffer, &used, sizeof(print_buffer), XIDT ": Recoverable same magic.", segment_id(si->seg));
                  }
               } else {
+                 if (get_info_level(si->fd) > 1) {   //** Print some diag info if needed
+                    append_printf(print_buffer, &used, sizeof(print_buffer), XIDT ": Unrecoverable data+parity mismatch.", segment_id(si->seg));
+                 }
                  skip = 1;
                  unrecoverable_count++;
               }
