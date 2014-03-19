@@ -498,7 +498,7 @@ int slun_row_replace_fix(segment_t *seg, data_attr_t *da, seglun_row_t *b, int *
   rs_query_t *rsq;
   op_generic_t *gop;
   Stack_t *attr_stack;
-  int i, j, loop, err, m, ngood, nbad, cleanup_index;
+  int i, j, loop, err, m, ngood, nbad, cleanup_index, kick_out;
   int missing[n_devices];
   rs_hints_t hints_list[n_devices];
   char *migrate;
@@ -510,6 +510,7 @@ int slun_row_replace_fix(segment_t *seg, data_attr_t *da, seglun_row_t *b, int *
 
   cleanup_index = 0;
   loop = 0;
+  kick_out = 10000;
   do {
     err = 0;
 
@@ -578,12 +579,12 @@ log_printf(15, "loop=%d ------------------------------\n", loop);
        if (status.error_code == RS_ERROR_NOT_ENOUGH_RIDS) { //** No use looping
           log_printf(1, "seg=" XIDT " ERROR not enough RIDS!\n", segment_id(seg));
           err = m;
-          loop = 10;  //** Kick us out of the loop
+          loop = kick_out + 10;  //** Kick us out of the loop
           goto oops;
        } else if (status.error_code == RS_ERROR_EMPTY_STACK) { //** No use looping
           log_printf(1, "seg=" XIDT " ERROR RS query is BAD!\n", segment_id(seg));
           err = m;
-          loop = 10;  //** Kick us out of the loop
+          loop = kick_out + 10;  //** Kick us out of the loop
           goto oops;
        }
     }
@@ -617,12 +618,12 @@ log_printf(15, "after rs query block_status[%d]=%d block_len=" XOT "\n", i, bloc
     //**Pad the good ones
     err = m - err + slun_row_pad_fix(seg, da, b, block_status, n_devices, timeout);
 
-log_printf(15, "after row_pad_fix.  m=%d err=%d\n", m, err);
+log_printf(15, "after row_pad_fix.  m=%d err=%d loop=%d\n", m, err, loop);
 
 oops:
     gop_free(gop, OP_DESTROY);
     loop++;
-  } while ((loop < 5) && (err > 0));
+  } while ((loop < kick_out) && (err > 0));
 
   //** Clean up
   rs_query_destroy(s->rs, rsq);
