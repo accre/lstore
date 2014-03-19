@@ -493,12 +493,13 @@ int slun_row_replace_fix(segment_t *seg, data_attr_t *da, seglun_row_t *b, int *
   seglun_priv_t *s = (seglun_priv_t *)seg->priv;
   rs_request_t req_list[n_devices];
   data_cap_set_t *cap_list[n_devices];
-  char *cleanup_key[5*n_devices];
+  char *key;
+  Stack_t *cleanup_stack;
   op_status_t status;
   rs_query_t *rsq;
   op_generic_t *gop;
   Stack_t *attr_stack;
-  int i, j, loop, err, m, ngood, nbad, cleanup_index, kick_out;
+  int i, j, loop, err, m, ngood, nbad, kick_out;
   int missing[n_devices];
   rs_hints_t hints_list[n_devices];
   char *migrate;
@@ -508,9 +509,9 @@ int slun_row_replace_fix(segment_t *seg, data_attr_t *da, seglun_row_t *b, int *
 
   memset(hints_list, 0, sizeof(hints_list));
 
-  cleanup_index = 0;
   loop = 0;
   kick_out = 10000;
+  cleanup_stack = NULL;
   do {
     err = 0;
 
@@ -603,10 +604,11 @@ log_printf(15, "missing[%d]=%d req.op_status=%d\n", j, missing[j], gop_completed
        } else {  //** Make sure we exclude the RID key on the next round due to the failure
           if (req_list[j].rid_key != NULL) {
              log_printf(15, "Excluding rid_key=%s on next round\n", req_list[j].rid_key);
-             cleanup_key[cleanup_index] = req_list[j].rid_key;
+             if (cleanup_stack == NULL) cleanup_stack = new_stack();
+             key = req_list[j].rid_key;
+             push(cleanup_stack, key);
              req_list[j].rid_key = NULL;  //** Don't want to accidentally free it below
-             rs_query_add(s->rs, &rsq, RSQ_BASE_OP_KV, "rid_key", RSQ_BASE_KV_EXACT, cleanup_key[cleanup_index], RSQ_BASE_KV_EXACT);
-             cleanup_index++;
+             rs_query_add(s->rs, &rsq, RSQ_BASE_OP_KV, "rid_key", RSQ_BASE_KV_EXACT, key, RSQ_BASE_KV_EXACT);
              rs_query_add(s->rs, &rsq, RSQ_BASE_OP_NOT, NULL, 0, NULL, 0);
              rs_query_add(s->rs, &rsq, RSQ_BASE_OP_AND, NULL, 0, NULL, 0);
           }
@@ -630,7 +632,7 @@ oops:
   for (i=0; i<n_devices; i++) {
      if (hints_list[i].local_rsq != NULL) { rs_query_destroy(s->rs, hints_list[i].local_rsq); }
   }
-  for (i=0; i<cleanup_index; i++) free(cleanup_key[i]);
+  if (cleanup_stack != NULL) free_stack(cleanup_stack, 1);
 
   return(err);
 }
