@@ -243,14 +243,17 @@ op_status_t segjerase_inspect_full_func(void *arg, int id)
   segjerase_priv_t *s = (segjerase_priv_t *)si->seg->priv;
   op_status_t status;
   opque_t *q;
-  int err, i, j, k, do_fix, nstripes, total_stripes, stripe, bufstripes, n_empty;
+  int err, i, j, k, d, do_fix, nstripes, total_stripes, stripe, bufstripes, n_empty;
   int  fail_quick, n_iov, good_magic, unrecoverable_count, bad_count, repair_errors, erasure_errors;
   int magic_count[s->n_devs], match, index, magic_used;
   int magic_devs[s->n_devs*s->n_devs];
-  int max_iov, skip, last_bad, tmp;
+  int max_iov, skip, last_bad, tmp, oops;
   int badmap[s->n_devs], badmap_brute[s->n_devs], badmap_last[s->n_devs], bm_brute_used, used;
+  int stripe_used[4], stripe_diag_size, stripe_buffer_size;
+  int stripe_start_error[4], stripe_error[4], dstripe;
   ex_off_t nbytes, bufsize, boff, base_offset;
   tbuffer_t tbuf_read, tbuf;
+  char stripe_msg[4][2048], *stripe_msg_label[4];
   char *buffer, *ptr[s->n_devs], parity[s->n_parity_devs*s->chunk_size];
   char *eptr[s->n_devs], *pwork[s->n_parity_devs];
   char empty_magic[JE_MAGIC_SIZE];
@@ -260,10 +263,12 @@ op_status_t segjerase_inspect_full_func(void *arg, int id)
   ex_iovec_t ex_read;
   ex_iovec_t *ex_iov;
 
+  stripe_diag_size = 4;
+  stripe_buffer_size = 2048;
+
   memset(empty_magic, 0, JE_MAGIC_SIZE);
   status = op_success_status;
   q = new_opque();
-//  opque_start_execution(q);
   status = op_success_status;
 
   fail_quick = si->inspect_mode & INSPECT_FAIL_ON_ERROR;
@@ -277,8 +282,6 @@ op_status_t segjerase_inspect_full_func(void *arg, int id)
   total_stripes = nbytes / s->data_size;
 log_printf(0, "lo=" XOT " hi= " XOT " nbytes=" XOT " total_stripes=%d data_size=%d\n", sf->lo, sf->hi, nbytes, total_stripes, s->data_size);
   bufsize = (ex_off_t)total_stripes * (ex_off_t)s->stripe_size_with_magic;
-//  bufsize = total_stripes;
-//  bufsize *= s->stripe_size_with_magic;
   if (bufsize > si->bufsize) bufsize = si->bufsize;
   type_malloc(buffer, char, bufsize);
   bufstripes = bufsize / s->stripe_size_with_magic;
@@ -297,7 +300,13 @@ log_printf(0, "lo=" XOT " hi= " XOT " nbytes=" XOT " total_stripes=%d data_size=
   n_empty = 0;
   bm_brute_used = 0;
   last_bad = -2;
-  
+
+  stripe_msg_label[0] = "empty";
+  stripe_msg_label[1] = "magic";
+  stripe_msg_label[2] = "r-mismatch";
+  stripe_msg_label[3] = "u-mismatch";
+  for (k=0; k<stripe_diag_size; k++) {stripe_used[k] = 0; stripe_msg[k][0] = 0; stripe_start_error[k] = -1; stripe_error[k] = 0; }
+
   for (stripe=0; stripe<total_stripes; stripe += bufstripes) {
      ex_read.offset = base_offset + (ex_off_t)stripe*s->stripe_size_with_magic;
      nstripes = stripe + bufstripes;
@@ -349,7 +358,8 @@ log_printf(0, "stripe=%d nstripes=%d total_stripes=%d offset=" XOT " len=" XOT "
 
         if (good_magic == 0) {
            n_empty++;
-           info_printf(si->fd, 10, "Empty stripe=%d.  empty chunks: %d\n", stripe+i, magic_count[index]);
+           append_printf(stripe_msg[0], &stripe_used[0], stripe_buffer_size, "Empty stripe.  empty chunks: %d", magic_count[index]);
+           stripe_error[0] = 1;
         }
 
 if (magic_used > 1) log_printf(5, "n_magic=%d stripe=%d\n", magic_used, stripe+i);
@@ -361,8 +371,9 @@ if (magic_used > 1) log_printf(5, "n_magic=%d stripe=%d\n", magic_used, stripe+i
            skip = 1;
            unrecoverable_count++;
            bad_count++;
-log_printf(0, "unrecoverable error stripe=%d i=%d good_magic=%d magic_count=%d\n", stripe,i, good_magic, magic_count[index]);
-           append_printf(print_buffer, &used, sizeof(print_buffer), XIDT ": Unrecoverable error!  Matching magic:%d  Need:%d", segment_id(si->seg), magic_count[index], s->n_data_devs, stripe+i);
+           log_printf(0, "unrecoverable error stripe=%d i=%d good_magic=%d magic_count=%d\n", stripe,i, good_magic, magic_count[index]);
+           append_printf(stripe_msg[1], &stripe_used[1], stripe_buffer_size, "Unrecoverable error!  Matching magic:%d  Need:%d", magic_count[index], s->n_data_devs);
+           stripe_error[1] = 1;
         } else {  //** Either all the data is good or we have a have a few bad blocks
            //** Make the decoding structure
            for (k=0; k < s->n_devs; k++) {
@@ -390,13 +401,15 @@ log_printf(0, "unrecoverable error stripe=%d i=%d good_magic=%d magic_count=%d\n
                  bm_brute_used = 1;
                  memcpy(badmap_brute, badmap, sizeof(int)*s->n_devs);  //** Got a correctable error
 
-                 if (get_info_level(si->fd) > 1) {   //** Print some diag info if needed
-                    append_printf(print_buffer, &used, sizeof(print_buffer), XIDT ": Recoverable same magic.", segment_id(si->seg));
+                 
+                 append_printf(stripe_msg[2], &stripe_used[2], stripe_buffer_size, "Recoverable same maigc. devmap:");
+                 for (d=0; d<s->n_devs; d++) {
+                     append_printf(stripe_msg[2], &stripe_used[2], stripe_buffer_size, " %d", badmap[d]);
                  }
+                 stripe_error[2] = 1;
               } else {
-                 if (get_info_level(si->fd) > 1) {   //** Print some diag info if needed
-                    append_printf(print_buffer, &used, sizeof(print_buffer), XIDT ": Unrecoverable data+parity mismatch.", segment_id(si->seg));
-                 }
+                 append_printf(stripe_msg[3], &stripe_used[3], stripe_buffer_size, "Unrecoverable data+parity mismatch.");
+                 stripe_error[3] = 1;
                  skip = 1;
                  unrecoverable_count++;
               }
@@ -432,12 +445,10 @@ log_printf(0, "memcmp=%d\n", memcmp(iov[n_iov].iov_base, &(buffer[boff + index*s
         }
 
         if ((get_info_level(si->fd) > 1) && (tmp != bad_count)) {   //** Print some diag info if needed
+           oops = (((repair_errors+unrecoverable_count) > 0) && (fail_quick > 0) && (i== nstripes-1)) ? 1 : 0;
+
            if ((stripe+i-1 != last_bad) || (memcmp(badmap_last, badmap, sizeof(int)*s->n_devs) != 0)) {
-              if (used == 0) {
-                 append_printf(print_buffer, &used, sizeof(print_buffer), XIDT ": bad stripe=%d   devmap:", segment_id(si->seg), stripe+i);
-              } else {
-                 append_printf(print_buffer, &used, sizeof(print_buffer),"  stripe=%d   devmap:", stripe+i);
-              }
+              append_printf(print_buffer, &used, sizeof(print_buffer), XIDT ": [DEVMAP] stripe=%d   devmap:", segment_id(si->seg), stripe+i);
               for (k=0; k<s->n_devs; k++) {
                   append_printf(print_buffer, &used, sizeof(print_buffer), " %d", badmap[k]);
               }
@@ -445,6 +456,25 @@ log_printf(0, "memcmp=%d\n", memcmp(iov[n_iov].iov_base, &(buffer[boff + index*s
               memcpy(badmap_last, badmap, sizeof(int)*s->n_devs);
            }
            last_bad = stripe+i;
+
+
+           for (k=0; k<stripe_diag_size; k++) {
+              if (stripe_error[k] == 1) {
+                 if ((stripe_start_error[k] == -1) || (oops == 1)) {  //** 1st time for error
+                    stripe_start_error[k] = stripe+i;
+                    info_printf(si->fd, 1, XIDT ": [START:%s] stripe=%d %s\n", segment_id(si->seg), stripe_msg_label[k], stripe+i, stripe_msg[k]); 
+                 }
+
+              } else if (stripe_start_error[k] != -1) { //** End of error
+                 dstripe = stripe+i-1 - stripe_start_error[k] + 1;
+                 info_printf(si->fd, 1, XIDT ": [END:  %s] stripe=%d (%d-%d=%d) %s\n", segment_id(si->seg), stripe_msg_label[k], stripe+i-1, stripe_start_error[k], stripe+i-1, dstripe, stripe_msg[k]); 
+                 stripe_start_error[k] = -1;
+                 stripe_msg[k][0] = 0;
+              }
+
+              stripe_used[k] = 0;
+              stripe_error[k] = 0;
+           }
         }
 
      }
