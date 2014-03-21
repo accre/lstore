@@ -40,7 +40,6 @@ http://www.accre.vanderbilt.edu
 #include <czmq.h>
 #include <apr_thread_pool.h>
 #include <apr_thread_proc.h>
-#include <sys/eventfd.h>
 
 #ifndef __MQ_PORTAL_H_
 #define __MQ_PORTAL_H_
@@ -155,6 +154,12 @@ typedef struct mq_socket_s mq_socket_t;
 struct mq_task_s;
 typedef struct mq_task_s mq_task_t;
 
+#ifdef MQ_PIPE_COMM
+  typedef int mq_pipe_t;       //** Event notification FD
+#else
+  typedef mq_socket_t* mq_pipe_t;    //** ZMQ_PAIR sockets
+#endif
+
 struct mq_socket_s {
   int type;
   void *arg;
@@ -235,7 +240,7 @@ typedef struct {  //** MQ connection container
   apr_thread_t *thread;     //** thread handle
   mq_heartbeat_entry_t *hb_conn;  //** Immediate connection uplink
   uint64_t  n_ops;         //** Numbr of ops the connection has processed
-  int cefd;                //** Private event FD for initial connection handshake
+  int cefd[2];             //** Private event FD for initial connection handshake
   mq_command_stats_t stats;//** Command stats
   apr_pool_t *mpool;       //** MEmory pool for connection/thread. APR mpools aren't thread safe!!!!!!!
 } mq_conn_t;
@@ -247,16 +252,16 @@ struct mq_portal_s {   //** Container for managing connections to a single host
   int max_conn;     //** Max number of connections to MQ host
   int active_conn;  //** Active connection count
   int total_conn;   //** Active+closing connection count
-  int efd;          //** Event notification FD
   int backlog_trigger;       //** Number of backlog ops to trigger a new connection
   int heartbeat_dt;          //** Heartbeat interval
   int heartbeat_failure;     //** Missing heartbeat DT for failure classification
   int counter;               //** Connections counter
-  int socket_type;           //** NEW: MQ socket type
+  int n_close;               //** Number of connections being requested to close
+  uint64_t n_ops;            //** Operation count
   double min_ops_per_sec;    //** Minimum ops/sec needed to keep a connection open.
   Stack_t *tasks;            //** List of tasks
   Stack_t *closed_conn;      //** List of closed connections that can be destroyed
-  int n_close;               //** Number of connections being requested to close
+  mq_pipe_t efd[2];
   apr_thread_mutex_t *lock;  //** Context lock
   apr_thread_cond_t *cond;   //** Shutdown complete cond
   mq_command_table_t *command_table; //** Server command ops for execution
@@ -264,7 +269,6 @@ struct mq_portal_s {   //** Container for managing connections to a single host
   apr_pool_t *mpool;         //** Context memory pool
   thread_pool_context_t *tp; //** Worker thread pool to use
   portal_fn_t pcfn;
-  uint64_t n_ops;            //** Operation count
   mq_socket_context_t *ctx;  //** Socket context
   mq_context_t *mqc;
   mq_command_stats_t stats;//** Command stats
@@ -290,6 +294,34 @@ struct mq_context_s {      //** Main MQ context
   portal_fn_t pcfn;          //** Portal contect used to overide the submit op for the TP
   mq_command_stats_t stats;//** Command stats
 };
+
+
+//--------------------------------------------------------------
+//  Code for performing MQ portal <-> client communication.
+//  There are 2 methods for this.  The most efficient is to use
+//  pipe() and do simple write/read/poll communications with both
+//  normal file descriptors and network sockets.  But this only works
+//  on systems that have BSD style sockets.  Which is all the *nix
+//  variants.
+//
+//  On MS windows we instead use a ZMQ PAIR type socket.
+//--------------------------------------------------------------
+
+#ifdef MQ_PIPE_COMM
+//  #define mq_pipe_create(ctx, pfd)  assert(pipe(pfd) == 0); fcntl(pfd[0], F_SETFL, O_NONBLOCK)
+  #define mq_pipe_create(ctx, pfd)  assert(pipe(pfd) == 0)
+  #define mq_pipe_poll_store(pollfd, cfd, mode) (pollfd)->fd = cfd;  (pollfd)->events = mode
+  #define mq_pipe_destroy(ctx, pfd) if (pfd[0] != -1) { close(pfd[0]); close(pfd[1]); }
+  #define mq_pipe_read(fd, c) read(fd, c, 1)
+  #define mq_pipe_write(fd, c) write(fd, c, 1)
+
+#else
+  void mq_pipe_create(mq_socket_context_t *ctx, mq_socket_t **pfd);
+  void mq_pipe_poll_store(mq_pollitem_t *pfd, mq_socket_t *sock, int mode);
+  void mq_pipe_destroy(mq_socket_context_t *ctx, mq_socket_t **pfd);
+  int mq_pipe_read(mq_socket_t *sock, char *buf);
+  int mq_pipe_write(mq_socket_t *sock, char *buf);
+#endif
 
 typedef mq_context_t *(mq_create_t)(inip_file_t *ifd, char *section);
 

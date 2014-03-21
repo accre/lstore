@@ -61,9 +61,13 @@ int zero_native_bind(mq_socket_t *socket, const char *format, ...)
   int err, n;
   char id[255];
 
-  va_start(args, format);
-  snprintf(id, 255, format, args);
-  zsocket_set_identity(socket->arg, id);
+  if (socket->type != MQ_PAIR) {
+     va_start(args, format);
+     snprintf(id, 255, format, args);
+     zsocket_set_identity(socket->arg, id);
+  } else {
+     id[0] = 0;
+  }
   err = zsocket_bind(socket->arg, format, args);
   n = errno;
   va_end(args);
@@ -78,7 +82,7 @@ int zero_native_bind(mq_socket_t *socket, const char *format, ...)
 int zero_native_connect(mq_socket_t *socket, const char *format, ...)
 {
   va_list args;
-  int err, n;
+  int err;
   char buf[255], id[255];
 
 if (socket->type != MQ_PAIR) zsocket_set_router_mandatory(socket->arg, 1);
@@ -92,10 +96,7 @@ if (socket->type != MQ_PAIR) zsocket_set_router_mandatory(socket->arg, 1);
   }
 
   err = zsocket_connect(socket->arg, format, args);
-  n = errno;
   va_end(args);
-
-  if (socket->type != MQ_PAIR) log_printf(0, "id=!%s! err=%d errno=%d\n", id, err, n);
 
   return(err);
 }
@@ -139,8 +140,12 @@ int count = 0;
 
   n = 0;
   f = mq_msg_first(msg);
-log_printf(5, "dest=!%.*s! nframes=%d\n", f->len, (char *)(f->data), stack_size(msg)); flush_log();
-log_printf(15, "\t\tsocket type = %d\n", socket->type);
+if (f->len > 1) {
+   log_printf(5, "dest=!%.*s! nframes=%d\n", f->len, (char *)(f->data), stack_size(msg)); flush_log();
+} else {
+   log_printf(5, "dest=(single byte) nframes=%d\n", stack_size(msg)); flush_log();
+}
+
   while ((fn = mq_msg_next(msg)) != NULL) {
     loop = 0;
     do {

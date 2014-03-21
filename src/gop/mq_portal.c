@@ -31,9 +31,10 @@ http://www.accre.vanderbilt.edu
 #include "mq_portal.h"
 #include "mq_roundrobin.h"
 #include "type_malloc.h"
-#include <sys/eventfd.h>
 #include "apr_base64.h"
 #include "apr_wrapper.h"
+#include "random.h"
+#include "fmttypes.h"
 
 //** Poll index for connection monitoring
 #define PI_CONN 0   //** Actual connection
@@ -44,6 +45,86 @@ void mq_conn_teardown(mq_conn_t *c);
 void mqc_heartbeat_dec(mq_conn_t *c, mq_heartbeat_entry_t *hb);
 void _mq_reap_closed(mq_portal_t *p);
 void *mqtp_failure(apr_thread_t *th, void *arg);
+
+
+//--------------------------------------------------------------
+//  Code for performing MQ portal <-> client communication.
+//  There are 2 methods for this.  The most efficient is to use
+//  pipe() and do simple write/read/poll communications with both
+//  normal file descriptors and network sockets.  But this only works
+//  on systems that have BSD style sockets.  Which is all the *nix
+//  variants.
+//
+//  On MS windows we instead use a ZMQ PAIR type socket.
+//--------------------------------------------------------------
+
+#ifndef MQ_PIPE_COMM
+//---------------Use ZMQ_PAIR for MS Windows--------------------
+
+void mq_pipe_create(mq_socket_context_t *ctx, mq_socket_t **pfd)
+{
+  char hname[257];
+  uint64_t r = 0;
+
+  //** Make the sockets
+  assert((pfd[0] = mq_socket_new(ctx, MQ_PAIR)) != NULL);
+  assert((pfd[1] = mq_socket_new(ctx, MQ_PAIR)) != NULL);
+
+  //** Connect them together
+  get_random(&r, sizeof(r));
+  snprintf(hname, sizeof(hname), "inproc://" LU, r);
+  assert(mq_bind(pfd[1], hname) == 0);
+  assert(mq_connect(pfd[0], hname) == 0);
+}
+
+void mq_pipe_poll_store(mq_pollitem_t *pfd, mq_socket_t *sock, int mode)
+{
+  pfd->socket = mq_poll_handle(sock);
+  pfd->events = mode;
+}
+
+void mq_pipe_destroy(mq_socket_context_t *ctx, mq_socket_t **pfd)
+{
+  if (pfd[0] != NULL) mq_socket_destroy(ctx, pfd[0]);
+  if (pfd[1] != NULL) mq_socket_destroy(ctx, pfd[1]);
+}
+
+int mq_pipe_read(mq_socket_t *sock, char *buf)
+{
+   int nbytes = 0;
+   int len = 1;
+   mq_msg_t *msg = mq_msg_new();
+   mq_frame_t *f;
+
+   if (mq_recv(sock, msg, 0) == 0) {  //** Got something
+      f = mq_msg_first(msg);
+      nbytes = (f->len > len) ? len : f->len;
+      if (nbytes > 0) memcpy(buf, f->data, nbytes);
+   }
+
+   mq_msg_destroy(msg);
+
+   return(nbytes);
+}
+
+int mq_pipe_write(mq_socket_t *sock, char *buf)
+{
+   int nbytes = 0;
+   int len = 1;
+   mq_msg_t *msg = mq_msg_new();
+   mq_frame_t *f = mq_frame_new(buf, len, MQF_MSG_KEEP_DATA);
+
+   mq_msg_append_frame(msg, f);
+   if (mq_send(sock, msg, 0) == 0) nbytes = len;
+
+   mq_msg_destroy(msg);
+
+   return(nbytes);
+}
+
+#endif
+
+//------------------- mq_pipe_*() end ------------------------------
 
 //**************************************************************
 // mq_id2str - Convert the command id to a printable string
@@ -221,7 +302,7 @@ log_printf(3, "cmd=%p klen=%d\n", cmd, klen);
 
 int mq_submit(mq_portal_t *p, mq_task_t *task)
 {
-  uint64_t n;
+  char c;
   int backlog, err;
   mq_task_t *t;
   apr_thread_mutex_lock(p->lock);
@@ -236,8 +317,8 @@ int mq_submit(mq_portal_t *p, mq_task_t *task)
   log_printf(2, "portal=%s backlog=%d active_conn=%d max_conn=%d total_conn=%d\n", p->host, backlog, p->active_conn, p->max_conn, p->total_conn); flush_log();
 
   //** Noitify the connections
-  n = 1;
-  write(p->efd, &n, sizeof(n));
+  c = 1;
+  mq_pipe_write(p->efd[1], &c);
 
   //** Check if we need more connections
   err = 0;
@@ -939,7 +1020,7 @@ log_printf(6, "after waiting size=%d\n", apr_hash_count(c->waiting));
 
 dts = apr_time_now() - start;
 dts /= APR_USEC_PER_SEC;
-log_printf(5, "pending_count=%d npoll=%d conn_dead=%d do_conn_hb=%d n=%d dt=%lf\n", pending_count, npoll, conn_dead, do_conn_hb, n, dts);
+log_printf(10, "pending_count=%d npoll=%d conn_dead=%d do_conn_hb=%d n=%d dt=%lf\n", pending_count, npoll, conn_dead, do_conn_hb, n, dts);
   return(n+conn_dead);
 }
 
@@ -1054,14 +1135,11 @@ int mqc_process_task(mq_conn_t *c, int *npoll, int *nproc)
   mq_frame_t *f;
   mq_task_monitor_t *tn;
   char b64[1024];
-  char *data;
+  char *data, v;
   int i, size, tracking;
-  uint64_t n;
 
   //** Read an event
-  n = 0;
-  i = read(c->pc->efd, &n, sizeof(n));
-  log_printf(5, "nleft=%lu\n", n);
+  i = mq_pipe_read(c->pc->efd[0], &v);
 
   //** Get the new task or start a wind down if requested
   apr_thread_mutex_lock(c->pc->lock);
@@ -1302,11 +1380,11 @@ void *mq_conn_thread(apr_thread_t *th, void *data)
   mq_conn_t *c = (mq_conn_t *)data;
   int k, npoll, err, finished, nprocessed, nproc, nincoming, slow_exit;
   long int heartbeat_ms;
-  uint64_t n;
   int64_t total_proc, total_incoming;
   mq_pollitem_t pfd[3];
   apr_time_t next_hb_check, last_check;
   double proc_rate, dt;
+  char v;
 
 //log_printf(2, "START: uuid=%s heartbeat_dt=%d\n", c->mq_uuid, c->pc->heartbeat_dt);
 log_printf(2, "START: host=%s heartbeat_dt=%d\n", c->pc->host, c->pc->heartbeat_dt);
@@ -1318,11 +1396,11 @@ log_printf(2, "START(2): uuid=%s\n", c->mq_uuid);
 
   //** Notify the parent about the connections status via c->cefd
   //** It is then safe to manipulate c->pc->lock
-  n = (err == 0) ? 1 : 2;  //** EventFD's block on 0 values so make 1 success and 2 failure
+  v = (err == 0) ? 1 : 2;  //** Make 1 success and 2 failure
 
-log_printf(5, "after conn_make err=%d n=" LU "\n", err, n);
+  log_printf(5, "after conn_make err=%d\n", err);
 
-  write(c->cefd, &n, sizeof(n));
+  write(c->cefd[1], &v, 1);
 
   total_proc = total_incoming = 0;
   slow_exit = 0;
@@ -1332,8 +1410,7 @@ log_printf(5, "after conn_make err=%d n=" LU "\n", err, n);
 
   //**Make the poll structure
   memset(pfd, 0, sizeof(pfd));
-  pfd[PI_EFD].fd = c->pc->efd;
-  pfd[PI_EFD].events = MQ_POLLIN;
+  mq_pipe_poll_store(&(pfd[PI_EFD]), c->pc->efd[0], MQ_POLLIN);
   pfd[PI_CONN].socket = mq_poll_handle(c->sock);
   pfd[PI_CONN].events = MQ_POLLIN;
 
@@ -1434,7 +1511,7 @@ int mq_conn_create(mq_portal_t *p, int dowait)
 {
   mq_conn_t *c;
   int err;
-  uint64_t n;
+  char v;
 
   type_malloc_clear(c, mq_conn_t, 1);
 
@@ -1445,14 +1522,8 @@ int mq_conn_create(mq_portal_t *p, int dowait)
   assert((c->heartbeat_dest = apr_hash_make(c->mpool)) != NULL);
   assert((c->heartbeat_lut = apr_hash_make(c->mpool)) != NULL);
 
-  //** Make the connection UUID which is p->name:conn_counter
-//  snprintf(uuid, 1024, "%s:%d", p->host, p->counter);
-//  p->counter++;
-//  c->mq_uuid = strdup(uuid);
-
   //** This is just used in the initial handshake
-  c->cefd = eventfd(0, 0);
-  assert(c->cefd != -1);
+  assert(pipe(c->cefd) == 0);
 
   p->active_conn++; //** Inc the number of connections
   p->total_conn++;
@@ -1474,9 +1545,9 @@ int mq_conn_create(mq_portal_t *p, int dowait)
   err = 0;
 //dowait=1;
   if (dowait == 1) {  //** If needed wait until connected
-     read(c->cefd, &n, sizeof(n));
-     err = (n == 1) ? 0 : 1;  //** n==1 is a success anything else is an error
-log_printf(1, "err=%d n=" LU "\n", err, n);
+     read(c->cefd[0], &v, 1);
+     err = (v == 1) ? 0 : 1;  //** n==1 is a success anything else is an error
+log_printf(1, "err=%d\n", err);
   }
 
   return(err);
@@ -1496,7 +1567,7 @@ void mq_conn_teardown(mq_conn_t *c)
   apr_hash_clear(c->heartbeat_dest);
   apr_hash_clear(c->heartbeat_lut);
   apr_pool_destroy(c->mpool);
-  if (c->cefd != -1) close(c->cefd);
+  if (c->cefd[0] != -1) { close(c->cefd[0]), close(c->cefd[0]); }
   if (c->sock != NULL) mq_socket_destroy(c->pc->ctx, c->sock);
   if (c->mq_uuid != NULL) free(c->mq_uuid);
 }
@@ -1523,7 +1594,8 @@ void _mq_reap_closed(mq_portal_t *p)
 
 void mq_portal_destroy(mq_portal_t *p)
 {
-  uint64_t n;
+  int i, n;
+  char c;
 
   //** Tell how many connections to close
   apr_thread_mutex_lock(p->lock);
@@ -1533,7 +1605,8 @@ void mq_portal_destroy(mq_portal_t *p)
   apr_thread_mutex_unlock(p->lock);
 
   //** Signal them
-  write(p->efd, &n, sizeof(n));
+  c = 1;
+  for (i=0; i<n; i++) mq_pipe_write(p->efd[1], &c);
 
   //** Wait for them all to complete
   apr_thread_mutex_lock(p->lock);
@@ -1562,7 +1635,7 @@ void mq_portal_destroy(mq_portal_t *p)
   apr_thread_cond_destroy(p->cond);
   apr_pool_destroy(p->mpool);
 
-  if (p->efd != -1) close(p->efd);
+  mq_pipe_destroy(p->ctx, p->efd);
   if (p->ctx != NULL) mq_socket_context_destroy(p->ctx);
 
   free_stack(p->closed_conn, 0);
@@ -1674,14 +1747,13 @@ mq_portal_t *mq_portal_create(mq_context_t *mqc, char *host, int connect_mode)
   p->connect_mode = connect_mode;
   p->tp = mqc->tp;
 
-  p->efd = eventfd(0, EFD_SEMAPHORE|EFD_NONBLOCK);
-  assert(p->efd != -1);
-
   p->ctx = mq_socket_context_new();
 
   apr_pool_create(&(p->mpool), NULL);
   apr_thread_mutex_create(&(p->lock), APR_THREAD_MUTEX_DEFAULT, p->mpool);
   apr_thread_cond_create(&(p->cond), p->mpool);
+
+  mq_pipe_create(p->ctx, p->efd);
 
   p->tasks = new_stack();
   p->closed_conn = new_stack();
@@ -1776,6 +1848,7 @@ mq_context_t *mq_create_context(inip_file_t *ifd, char *section)
   mqc->tp = thread_pool_create_context("mq", mqc->min_threads, mqc->max_threads);
   mqc->pcfn = *(mqc->tp->pc->fn);
   mqc->pcfn.submit = _mq_submit_op;
+  mqc->pcfn.sync_exec = NULL;
   mqc->tp->pc->fn = &(mqc->pcfn);
 
   assert((mqc->client_portals = apr_hash_make(mqc->mpool)) != NULL);

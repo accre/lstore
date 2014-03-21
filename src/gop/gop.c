@@ -545,28 +545,44 @@ int gop_will_block(op_generic_t *g)
 op_generic_t *gop_waitany(op_generic_t *g)
 {
   op_generic_t *gop = g;
+  callback_t *cb;
 
   lock_gop(g);
-  _gop_start_execution(g);  //** Make sure things have been submitted
 
   if (gop_get_type(g) == Q_TYPE_QUE) {
-log_printf(15, "gop_waitany: BEFORE WHILE qid=%d nleft=%d finished=%d\n", gop_id(g), g->q->nleft, stack_size(g->q->finished));
-      while (((gop = (op_generic_t *)pop(g->q->finished)) == NULL) && (g->q->nleft > 0)) {
-log_printf(15, "gop_waitany: WHILE qid=%d nleft=%d finished=%d gop=%p\n", gop_id(g), g->q->nleft, stack_size(g->q->finished), gop);
-        apr_thread_cond_wait(g->base.ctl->cond, g->base.ctl->lock); //** Sleep until something completes
-log_printf(15, "gop_waitany: after cond qid=%d nleft=%d finished=%d\n", gop_id(g), g->q->nleft, stack_size(g->q->finished));
+     log_printf(15, "sync_exec_que_check gid=%d stack_size=%d started_exec=%d\n", gop_id(g), stack_size(g->q->opque->qd.list), g->base.started_execution);
+     if ((stack_size(g->q->opque->qd.list) == 1) && (g->base.started_execution == 0)) {  //** See if we can directly exec
+        g->base.started_execution = 1;
+        cb = (callback_t *)pop(g->q->opque->qd.list);
+        gop = (op_generic_t *)cb->priv;
+        log_printf(15, "sync_exec_que -- waiting for pgid=%d cgid=%d to complete\n", gop_id(g), gop_id(gop));
+        unlock_gop(g);
+        gop_waitany(gop);
+        pop(g->q->finished); //** Remove it from the finished list.
+        return(gop);
+     } else {
+        _gop_start_execution(g);  //** Make sure things have been submitted
+        while (((gop = (op_generic_t *)pop(g->q->finished)) == NULL) && (g->q->nleft > 0)) {
+          apr_thread_cond_wait(g->base.ctl->cond, g->base.ctl->lock); //** Sleep until something completes
+        }
      }
-log_printf(15, "gop_waitany: AFTER qid=%d nleft=%d finished=%d gop=%p\n", gop_id(g), g->q->nleft, stack_size(g->q->finished), gop);
 
 if (gop != NULL) log_printf(15, "POP finished qid=%d gid=%d\n", gop_id(g), gop_id(gop));
-log_printf(15, "Printing qid=%d finished stack\n", gop_id(g));
-_opque_print_stack(g->q->finished);
+//log_printf(15, "Printing qid=%d finished stack\n", gop_id(g));
+//_opque_print_stack(g->q->finished);
   } else {
 log_printf(15, "gop_waitany: BEFORE (type=op) While gid=%d state=%d\n", gop_id(g), g->base.state); flush_log();
-
-     while (g->base.state == 0) {
-   log_printf(15, "gop_waitany: WHILE gid=%d state=%d\n", gop_id(g), g->base.state); flush_log();
-        apr_thread_cond_wait(g->base.ctl->cond, g->base.ctl->lock); //** Sleep until something completes
+    if ((g->base.pc->fn->sync_exec != NULL) && (g->base.started_execution == 0)) {  //** See if we can directly exec
+       unlock_gop(g);  //** Don't need this for a direct exec
+       log_printf(15, "sync_exec -- waiting for gid=%d to complete\n", gop_id(g));
+       g->base.pc->fn->sync_exec(g->base.pc, g);
+       log_printf(15, "sync_exec -- gid=%d completed with err=%d\n", gop_id(g), g->base.state);
+       return(g);
+     } else {  //** Got to submit it normally
+        _gop_start_execution(g);  //** Make sure things have been submitted
+        while (g->base.state == 0) {
+           apr_thread_cond_wait(g->base.ctl->cond, g->base.ctl->lock); //** Sleep until something completes
+        }
      }
 log_printf(15, "gop_waitany: AFTER (type=op) While gid=%d state=%d\n", gop_id(g), g->base.state); flush_log();
   }
@@ -584,23 +600,45 @@ log_printf(15, "gop_waitany: AFTER (type=op) While gid=%d state=%d\n", gop_id(g)
 int gop_waitall(op_generic_t *g)
 {
   int status;
+  op_generic_t *g2;
+  callback_t *cb;
 
 //log_printf(15, "START gid=%d type=%d\n", gop_id(g), gop_get_type(g));
   log_printf(5, "START gid=%d type=%d\n", gop_id(g), gop_get_type(g));
   lock_gop(g);
-  _gop_start_execution(g);  //** Make sure things have been submitted
 
   if (gop_get_type(g) == Q_TYPE_QUE) {
-     while (g->q->nleft > 0) {
-        apr_thread_cond_wait(g->base.ctl->cond, g->base.ctl->lock); //** Sleep until something completes
+     log_printf(15, "sync_exec_que_check gid=%d stack_size=%d started_exec=%d\n", gop_id(g), stack_size(g->q->opque->qd.list), g->base.started_execution);
+
+     if ((stack_size(g->q->opque->qd.list) == 1) && (g->base.started_execution == 0)) {  //** See if we can directly exec
+        log_printf(15, "sync_exec_que -- waiting for gid=%d to complete\n", gop_id(g));
+        cb = (callback_t *)pop(g->q->opque->qd.list);
+        g2 = (op_generic_t *)cb->priv;
+        unlock_gop(g);  //** Don't need this for a direct exec
+        status = gop_waitall(g2);
+        log_printf(15, "sync_exec -- gid=%d completed with err=%d\n", gop_id(g), status);
+        return(status);
+     } else {  //** Got to submit it normally
+        _gop_start_execution(g);  //** Make sure things have been submitted
+        while (g->q->nleft > 0) {
+           apr_thread_cond_wait(g->base.ctl->cond, g->base.ctl->lock); //** Sleep until something completes
+        }
      }
-     log_printf(15, "\t\tgop status = %d\n", g->base.status.op_status);
-  } else {
-     while (g->base.state == 0) {
+  } else {     //** Got a single task
+    if ((g->base.pc->fn->sync_exec != NULL) && (g->base.started_execution == 0)) {  //** See if we can directly exec
+       unlock_gop(g);  //** Don't need this for a direct exec
+       log_printf(15, "sync_exec -- waiting for gid=%d to complete\n", gop_id(g));
+       g->base.pc->fn->sync_exec(g->base.pc, g);
+       status = _gop_completed_successfully(g);
+       log_printf(15, "sync_exec -- gid=%d completed with err=%d\n", gop_id(g), status);
+       return(status);
+    } else {  //** Got to submit it the normal way
+       _gop_start_execution(g);  //** Make sure things have been submitted
+       while (g->base.state == 0) {
    log_printf(15, "gop_waitall: WHILE gid=%d state=%d\n", gop_id(g), g->base.state);
-        apr_thread_cond_wait(g->base.ctl->cond, g->base.ctl->lock); //** Sleep until something completes
-     }
-     log_printf(15, "\t\tgop status = %d\n", g->base.status.op_status);
+          apr_thread_cond_wait(g->base.ctl->cond, g->base.ctl->lock); //** Sleep until something completes
+       }
+    }
   }
 
   status = _gop_completed_successfully(g);
@@ -760,11 +798,22 @@ int gop_sync_exec(op_generic_t *gop)
 {
   int err;
 
-  log_printf(15, "waiting for gid=%d to complete\n", gop_id(gop)); 
+  if (gop->type == Q_TYPE_OPERATION) { //** Got an operation so see if we can directly exec it
+     if (gop->base.pc->fn->sync_exec != NULL) {  //** Yup we can!
+        log_printf(15, "sync_exec -- waiting for gid=%d to complete\n", gop_id(gop));
+        gop->base.pc->fn->sync_exec(gop->base.pc, gop);
+        err = _gop_completed_successfully(gop);
+        log_printf(15, "sync_exec -- gid=%d completed with err=%d\n", gop_id(gop), err);
+        gop_free(gop, OP_DESTROY);
+        return(err);
+     }
+  }
+
+  log_printf(15, "waiting for gid=%d to complete\n", gop_id(gop));
   err = gop_waitall(gop);
   log_printf(15, "gid=%d completed with err=%d\n", gop_id(gop), err);
   gop_free(gop, OP_DESTROY);
-  log_printf(15, "After gop destruction\n"); 
+  log_printf(15, "After gop destruction\n");
 
   return(err);
 }

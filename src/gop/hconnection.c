@@ -91,9 +91,10 @@ void destroy_host_connection(host_connection_t *hc)
 // close_hc - Closes a depot connection
 //*************************************************************************
 
-void close_hc(host_connection_t *hc)
+void close_hc(host_connection_t *hc, int quick)
 {
   apr_status_t value;
+  host_portal_t *hp;
 
   //** Trigger the send thread to shutdown which also closes the recv thread
   log_printf(15, "close_hc: Closing ns=%d\n", ns_getid(hc->ns));
@@ -108,25 +109,23 @@ void close_hc(host_connection_t *hc)
   lock_hc(hc); hc_send_signal(hc); unlock_hc(hc);
   hportal_lock(hc->hp); hportal_signal(hc->hp); hportal_unlock(hc->hp);
 
+  if (quick == 1) {  //** Quick shutdown.  Don't wait and clean up.
+     lock_hc(hc);
+     while (hc->send_down == 0) {
+        apr_thread_cond_wait(hc->send_cond, hc->lock);
+     }
+     hc->closing = 2;  //** Flag a repaer that I'm done with it
+     unlock_hc(hc);
+     return;
+  }
+
   //** Wait until the recv thread completes
   apr_thread_join(&value, hc->recv_thread);
 
-  //** Now clean up the closed que being careful not to "join" the hc thread
-  host_connection_t *hc2;
-
-   hportal_lock(hc->hp);
-   while ((hc2 = (host_connection_t *)pop(hc->hp->closed_que)) != NULL) {
-     hportal_unlock(hc->hp);
-     if (hc2 != hc) {
-        apr_thread_join(&value, hc2->recv_thread);
-        destroy_host_connection(hc2);
-     }
-     hportal_lock(hc->hp);
-   }
-   hportal_unlock(hc->hp);
-
-  //** finally free the original hc **
-  destroy_host_connection(hc);
+  hp = hc->hp;
+  hportal_lock(hp);
+  _reap_hportal(hp);  //** Clean up the closed connections.  Including hc passed in
+  hportal_unlock(hp);
 }
 
 //*************************************************************
@@ -368,6 +367,11 @@ log_printf(5, "hc_send_thread: after send phase.. ns=%d gid=%d finisehd=%d\n", n
   //*** The recv side handles the removal from the hportal structure ***
   modify_hpc_thread_count(hpc, -1);
 
+  lock_hc(hc);  //** Notify anybody listening that the send side is down.
+  hc->send_down = 1;
+  apr_thread_cond_signal(hc->send_cond);
+  unlock_hc(hc);
+
   hportal_lock(hp);
   hp->oops_send_end++;
   hportal_unlock(hp);
@@ -451,7 +455,7 @@ log_printf(5, "hc_recv_thread: after recv phase.. ns=%d gid=%d finished=%d\n", n
         hc_send_signal(hc);  //** Wake up send_thread if needed
         unlock_hc(hc);
 
-        if (status.op_status == OP_STATE_RETRY) {
+        if ((status.op_status == OP_STATE_RETRY) && (hop->retry_count > 0)) {
            finished = 1;
            cmd_pause_time = hop->retry_wait;
            log_printf(5, "hc_recv_thread:  Dead socket so shutting down ns=%d retry in " TT " usec\n", ns_getid(ns), cmd_pause_time);

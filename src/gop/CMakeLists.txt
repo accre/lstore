@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.6)
+cmake_minimum_required(VERSION 2.8)
 
 # make a project
 project( gop C CXX )
@@ -16,6 +16,7 @@ INCLUDE(CheckIncludeFile)
 include(${CMAKE_SOURCE_DIR}/cmake/Date.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/CompilerVersion.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/CompilerFlags.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/shared_name.cmake)
 
 #Prefer to use static libs
 if(WIN32)
@@ -26,14 +27,12 @@ endif(WIN32)
 
 # get dependancies
 find_package(OpenSSL REQUIRED)
-find_package(APR REQUIRED)
-find_package(APRUtil REQUIRED)
+find_package(APR-ACCRE REQUIRED)
+find_package(APRUtil-ACCRE REQUIRED)
 find_package(ToolBox REQUIRED)
 find_package(ZMQ REQUIRED)
 find_package(CZMQ REQUIRED)
-find_package(HwLoc REQUIRED)
 find_package(Zlib REQUIRED)
-find_package(XML2)
 
 #Make the version file
 set(GOP_VERSION "gop: v1.0.0")
@@ -53,28 +52,31 @@ SET_TARGET_PROPERTIES(gop-static PROPERTIES CLEAN_DIRECT_OUTPUT 1)
 
 include_directories(${TOOLBOX_INCLUDE_DIR} ${APR_INCLUDE_DIR} ${APRUTIL_INCLUDE_DIR} ${ZMQ_INCLUDE_DIR} ${CZMQ_INCLUDE_DIR} ${ZLIB_INCLUDE_DIR} )
 
-set(XML_LIB "")
-if (XML2_FOUND)
-  include_directories(${XML2_INCLUDE_DIR})
-#  list(APPEND LIBS ${XML2_LIBRARY})
-   set(XML_LIB ${XML2_LIBRARY})
-endif (XML2_FOUND)
-
-SET(LIBS ${LIBS} ${ZMQ_LIBRARY} ${CZMQ_LIBRARY} ${TOOLBOX_LIBRARY} ${HWLOC_LIBRARY} ${OPENSSL_LIBRARIES} ${CRYPTO_LIBRARIES} 
+SET(LIBS ${LIBS} ${ZMQ_LIBRARY} ${CZMQ_LIBRARY} ${TOOLBOX_LIBRARY} ${OPENSSL_LIBRARIES} ${CRYPTO_LIBRARIES} 
     ${PROTOBUF_LIBRARY} ${APR_LIBRARY} ${APRUTIL_LIBRARY} ${XML_LIB} ${ZLIB_LIBRARY} pthread m dl rt)
-# XML lib needs to be declared before zlib, because it depends on it
 
-ADD_EXECUTABLE(mq_test mq_test.c)
-SET_TARGET_PROPERTIES(mq_test PROPERTIES LINKER_LANGUAGE CXX)
-TARGET_LINK_LIBRARIES(mq_test gop-static ${LIBS})
 
-ADD_EXECUTABLE(mqs_test mqs_test.c)
-SET_TARGET_PROPERTIES(mqs_test PROPERTIES LINKER_LANGUAGE CXX)
-TARGET_LINK_LIBRARIES(mqs_test gop-static ${LIBS})
+#Make the executables
+foreach(exe mq_test mqs_test zmq_test)
+  ADD_EXECUTABLE(${exe} "${exe}.c")
+  SET_TARGET_PROPERTIES(${exe} PROPERTIES LINKER_LANGUAGE CXX)
+  TARGET_LINK_LIBRARIES(${exe} gop-static ${LIBS})
+endforeach()
 
-ADD_EXECUTABLE(zmq_test zmq_test.c)
-SET_TARGET_PROPERTIES(zmq_test PROPERTIES LINKER_LANGUAGE CXX)
-TARGET_LINK_LIBRARIES(zmq_test gop-static ${LIBS})
+set(sodeps)
+set(lpdeps)
+foreach(lib ${LIBS} )
+  shared_name(${lib} soname)
+  set(sodeps ${sodeps} ${soname})
+
+  get_filename_component(ldir ${lib} PATH )
+  if (ldir)
+     set(lpdeps ${lpdeps} "-L${ldir}" )
+  endif()
+endforeach()
+
+#link_directories(/usr/local/lib)
+TARGET_LINK_LIBRARIES( gop LINK_PUBLIC ${lpdeps} ${sodeps} )
 
 ADD_EXECUTABLE(rr_mq_test rr_mq_test.c)
 SET_TARGET_PROPERTIES(rr_mq_test PROPERTIES LINKER_LANGUAGE CXX)
@@ -97,3 +99,14 @@ install(TARGETS gop DESTINATION lib)
 install(TARGETS gop-static DESTINATION lib)
 install(FILES callback.h gop_config.h  host_portal.h  opque.h  thread_pool.h mq_portal.h mq_helpers.h mq_stream.h mq_ongoing.h mq_roundrobin.h
               DESTINATION include/gop )
+
+# Packaging directives
+SET(CPACK_GENERATOR "RPM")
+SET(CPACK_PACKAGE_VERSION_MAJOR "1")
+SET(CPACK_PACKAGE_VERSION_MINOR "0")
+SET(CPACK_PACKAGE_VERSION_PATCH "0")
+SET(CPACK_RPM_PACKAGE_NAME "accre-gop")
+SET(CPACK_RPM_PACKAGE_VENDOR "ACCRE (www.accre.vanderbilt.edu)")
+SET(CPACK_RPM_PACKAGE_REQUIRES "openssl >= 1.0.1f, zlib >= 1.2.8, czmq >= 1.4.1, apr >= 1.5.0, apr-util >= 1.5.3, zeromq => 3.2.3")
+INCLUDE(CPack)
+

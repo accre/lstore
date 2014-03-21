@@ -39,8 +39,8 @@ http://www.accre.vanderbilt.edu
 #include "network.h"
 #include "log.h"
 #include "type_malloc.h"
-#include "hwinfo.h"
 
+void  *thread_pool_exec_fn(apr_thread_t *th, void *arg);
 void *_tp_dup_connect_context(void *connect_context);
 void _tp_destroy_connect_context(void *connect_context);
 int _tp_connect(NetStream_t *ns, void *connect_context, char *host, int port, Net_timeout_t timeout);
@@ -55,7 +55,8 @@ static portal_fn_t _tp_base_portal = {
   .connect = _tp_connect,
   .close_connection = _tp_close_connection,
   .sort_tasks = default_sort_ops,
-  .submit = _tp_submit_op
+  .submit = _tp_submit_op,
+  .sync_exec = thread_pool_exec_fn
 };
 
 atomic_int_t _tp_context_count = 0;
@@ -147,7 +148,7 @@ int thread_pool_direct(thread_pool_context_t *tpc, apr_thread_start_t fn, void *
 
   atomic_inc(tpc->n_direct);
 
-log_printf(0, "tpd=%d\n", atomic_get(tpc->n_direct));
+log_printf(10, "tpd=%d\n", atomic_get(tpc->n_direct));
   if (err != APR_SUCCESS) {
     log_printf(0, "ERROR submiting task!  err=%d\n", err);
   }
@@ -161,13 +162,9 @@ log_printf(0, "tpd=%d\n", atomic_get(tpc->n_direct));
 
 void default_thread_pool_config(thread_pool_context_t *tpc)
 {
-  int sockets, cores, vcores;
-
-  proc_info(&sockets, &cores, &vcores);
-
   tpc->min_idle = 1; //** default to close after 1 sec
   tpc->min_threads = 1;
-  tpc->max_threads = cores;
+  tpc->max_threads = 4;
 
 //log_printf(15, "default_thread_pool_config: max_threads=%d\n", cores);
   tpc->name = NULL;

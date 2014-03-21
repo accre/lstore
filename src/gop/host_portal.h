@@ -97,6 +97,8 @@ typedef struct {            //** Individual depot connection in conn_list
    int shutdown_request;
    int net_connect_status;
    int start_stable;
+   int send_down;
+   int closing;
    apr_time_t last_used;          //** Time the last command completed
    NetStream_t *ns;           //** Socket
    Stack_t *pending_stack;    //** Local task que. An op  is mpoved from the parent que to here
@@ -121,6 +123,7 @@ extern Net_timeout_t global_dt;
 #define hportal_unlock(hp) apr_thread_mutex_unlock(hp->lock)
 #define hportal_signal(hp) apr_thread_cond_broadcast(hp->cond)
 
+void _reap_hportal(host_portal_t *hp);
 op_generic_t *_get_hportal_op(host_portal_t *hp);
 void hportal_wait(host_portal_t *hp, int dt);
 int get_hpc_thread_count(portal_context_t *hpc);
@@ -147,7 +150,7 @@ int submit_hp_que_op(portal_context_t *hpc, op_generic_t *op);
 
 host_connection_t *new_host_connection();
 void destroy_host_connection(host_connection_t *hc);
-void close_hc(host_connection_t *dc);
+void close_hc(host_connection_t *dc, int quick);
 int create_host_connection(host_portal_t *hp);
 
 #ifdef __cplusplus
