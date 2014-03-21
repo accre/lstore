@@ -65,12 +65,12 @@ void  *thread_pool_exec_fn(apr_thread_t *th, void *arg)
   int tid;
 
   tid = atomic_thread_id;
-  log_printf(15, "tp_recv: Start!!! gid=%d tid=%d\n", gop_id(gop), tid);
+  log_printf(4, "tp_recv: Start!!! gid=%d tid=%d\n", gop_id(gop), tid);
 atomic_inc(op->tpc->n_started);
 
   status = op->fn(op->arg, gop_id(gop));
 
-  log_printf(15, "tp_recv: end!!! gid=%d tid=%d status=%d\n", gop_id(gop), tid, status.op_status);
+  log_printf(4, "tp_recv: end!!! gid=%d tid=%d status=%d\n", gop_id(gop), tid, status.op_status);
 //log_printf(15, "gid=%d user_priv=%p\n", gop_id(gop), gop_get_private(gop));
 
 atomic_inc(op->tpc->n_completed);

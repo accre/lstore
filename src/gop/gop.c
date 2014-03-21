@@ -585,7 +585,8 @@ int gop_waitall(op_generic_t *g)
 {
   int status;
 
-log_printf(15, "START gid=%d type=%d\n", gop_id(g), gop_get_type(g));
+//log_printf(15, "START gid=%d type=%d\n", gop_id(g), gop_get_type(g));
+  log_printf(5, "START gid=%d type=%d\n", gop_id(g), gop_get_type(g));
   lock_gop(g);
   _gop_start_execution(g);  //** Make sure things have been submitted
 
@@ -593,11 +594,13 @@ log_printf(15, "START gid=%d type=%d\n", gop_id(g), gop_get_type(g));
      while (g->q->nleft > 0) {
         apr_thread_cond_wait(g->base.ctl->cond, g->base.ctl->lock); //** Sleep until something completes
      }
+     log_printf(15, "\t\tgop status = %d\n", g->base.status.op_status);
   } else {
      while (g->base.state == 0) {
    log_printf(15, "gop_waitall: WHILE gid=%d state=%d\n", gop_id(g), g->base.state);
         apr_thread_cond_wait(g->base.ctl->cond, g->base.ctl->lock); //** Sleep until something completes
      }
+     log_printf(15, "\t\tgop status = %d\n", g->base.status.op_status);
   }
 
   status = _gop_completed_successfully(g);

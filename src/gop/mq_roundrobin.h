@@ -6,9 +6,13 @@
 // Frame constant
 #define MQF_INCREMENT_KEY		"\007"
 #define MQF_INCREMENT_SIZE		1
+#define MQF_REGISTER_KEY		"\010"
+#define MQF_REGISTER_SIZE		1
+#define MQF_DEREGISTER_KEY		"\011"
+#define MQF_DEREGISTER_SIZE		1
+#define MQF_RR_STREAM_KEY		"\012"
+#define MQF_RR_STREAM_SIZE		1
 
-// Stats
-#define MQS_INCREMENT_INDEX		9
 
 // Socket type
 #define MQ_ROUND_ROBIN			1002

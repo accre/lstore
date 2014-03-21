@@ -34,6 +34,7 @@ http://www.accre.vanderbilt.edu
 //*************************************************************
 
 #include "mq_portal.h"
+#include "mq_roundrobin.h"
 #include "type_malloc.h"
 #include "log.h"
 #include "apr_signal.h"
@@ -139,6 +140,7 @@ int count = 0;
   n = 0;
   f = mq_msg_first(msg);
 log_printf(5, "dest=!%.*s! nframes=%d\n", f->len, (char *)(f->data), stack_size(msg)); flush_log();
+log_printf(15, "\t\tsocket type = %d\n", socket->type);
   while ((fn = mq_msg_next(msg)) != NULL) {
     loop = 0;
     do {
@@ -286,6 +288,33 @@ mq_socket_t *zero_create_trace_router_socket(mq_socket_context_t *ctx)
 }
 
 //*************************************************************
+// ROUND ROBIN socket
+//*************************************************************
+mq_socket_t *zero_create_round_robin_socket(mq_socket_context_t *ctx)
+{
+  mq_socket_t *s;
+
+  type_malloc_clear(s, mq_socket_t, 1);
+
+  s->type = MQ_ROUND_ROBIN;
+  s->arg = zsocket_new((zctx_t *)ctx->arg, ZMQ_ROUTER);
+  assert(s->arg);
+  zsocket_set_linger(s->arg, 0);
+  zsocket_set_sndhwm(s->arg, 100000);
+  zsocket_set_rcvhwm(s->arg, 100000);
+  s->destroy = zero_native_destroy;
+  s->bind = zero_native_bind;
+  s->connect = zero_native_connect;
+  s->disconnect = zero_native_disconnect;
+  s->poll_handle = zero_native_poll_handle;
+  s->monitor = zero_native_monitor;
+  s->send = zero_native_send;
+  s->recv = zero_trace_router_recv;
+
+  return(s);
+}
+
+//*************************************************************
 //   SIMPLE_ROUTER routines
 //      Send: Pop and route
 //      Recv: pass thru
@@ -339,7 +368,7 @@ mq_socket_t *zero_create_simple_router_socket(mq_socket_context_t *ctx)
 mq_socket_t *zero_create_socket(mq_socket_context_t *ctx, int stype)
 {
   mq_socket_t *s = NULL;
-
+  log_printf(15, "\t\tstype=%d\n", stype);
   switch (stype) {
     case MQ_DEALER:
     case MQ_PAIR:
@@ -351,6 +380,9 @@ mq_socket_t *zero_create_socket(mq_socket_context_t *ctx, int stype)
     case MQ_SIMPLE_ROUTER:
          s = zero_create_simple_router_socket(ctx);
          break;
+    case MQ_ROUND_ROBIN:
+	     s = zero_create_round_robin_socket(ctx);
+	     break;
     default:
        log_printf(0, "Unknown socket type: %d\n", stype);
        free(s);

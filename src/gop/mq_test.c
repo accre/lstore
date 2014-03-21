@@ -62,8 +62,8 @@ mq_command_stats_t server_stats;
 mq_portal_t *server_portal = NULL;
 
 char *host = "tcp://127.0.0.1:6714";
-int control_efd = -1;
-int server_efd = -1;
+int control_efd[2];
+int server_efd[2];
 int shutdown_everything = 0;
 atomic_int_t ping_count = 0;
 
@@ -586,7 +586,7 @@ mq_context_t *client_make_context()
 
 void *client_test_thread(apr_thread_t *th, void *arg)
 {
-  uint64_t n;
+  char v;
   int nfail, nfail_total, i, min;
   mq_context_t *mqc;
 
@@ -607,9 +607,9 @@ void *client_test_thread(apr_thread_t *th, void *arg)
 
   min = 0;
   if (min == 1) {
-     n = 1;
+     v = 1;
      log_printf(0, "Skipping raw tests.\n");
-     write(control_efd, &n, sizeof(n));
+     write(control_efd[1], &v, 1);
      sleep(1);
      log_printf(0, "Continuing....\n");
   }
@@ -629,10 +629,10 @@ void *client_test_thread(apr_thread_t *th, void *arg)
      nfail_total += nfail;
 
      if (i==0) { //** Switch the server to using the MQ loop
-        n = 1;
+        v = 1;
         log_printf(0, "Telling server to switch and use the MQ event loop\n");
-        write(control_efd, &n, sizeof(n));
-        sleep(1);
+        write(control_efd[1], &v, 1);
+        sleep(10);
         log_printf(0, "Continuing....\n");
      }
   }
@@ -760,13 +760,13 @@ int server_handle_deferred(mq_socket_t *sock)
 {
    defer_t *defer;
    int err;
-   uint64_t n;
+   char v;
 
 log_printf(5, "deferred responses to handle %d (server_portal=%p)\n", stack_size(deferred_ready), server_portal);
 
    err = 0;
    while ((defer = pop(deferred_ready)) != NULL) {
-     if (server_portal == NULL) read(server_efd, &n, sizeof(n));
+     if (server_portal == NULL) read(server_efd[0], &v, 1);
      log_printf(5, "Processing deferred response\n");
 
      defer->td->ping_count = atomic_get(ping_count) - defer->td->ping_count;  //** Send back the ping count since it was sent
@@ -973,7 +973,7 @@ void *server_test_raw_socket()
   mq_pollitem_t pfd[3];
   int dt = 1 * 1000;
   int err, n, finished;
-  uint64_t val;
+  char v;
 
   log_printf(0, "START\n");
 
@@ -987,11 +987,11 @@ void *server_test_raw_socket()
 
   //**Make the poll structure
   memset(pfd, 0, sizeof(mq_pollitem_t)*3);
-  pfd[0].fd = control_efd;
+  pfd[0].fd = control_efd[0];
   pfd[0].events = MQ_POLLIN;
   pfd[1].socket = mq_poll_handle(sock);
   pfd[1].events = MQ_POLLIN;
-  pfd[2].fd = server_efd;
+  pfd[2].fd = server_efd[0];
   pfd[2].events = MQ_POLLIN;
 
   //** Main processing loop
@@ -1001,7 +1001,7 @@ log_printf(5, "Before poll dt=%d\n", dt);
     n = mq_poll(pfd, 3, dt);
     log_printf(5, "pfd[control]=%d pfd[socket]=%d pdf[deferred]=%d\n", pfd[0].revents, pfd[1].revents, pfd[2].revents);
     if (n > 0) {  //** Got an event so process it
-      if (pfd[0].revents != 0) { finished = 1; read(control_efd, &val, sizeof(val)); }
+      if (pfd[0].revents != 0) { finished = 1; read(control_efd[0], &v, 1); }
       if (pfd[1].revents != 0) finished = server_handle_request(sock);
       if (pfd[2].revents != 0) finished = server_handle_deferred(sock);
     }
@@ -1074,8 +1074,7 @@ void server_test_mq_loop()
 {
   mq_context_t *mqc;
   mq_command_table_t *table;
-  uint64_t n;
-
+  char v;
   log_printf(0, "START\n");
 
   //** Make the server portal
@@ -1089,7 +1088,7 @@ void server_test_mq_loop()
   mq_portal_install(mqc, server_portal);
 
   //** Wait for a shutdown
-  read(control_efd, &n, sizeof(n));
+  read(control_efd[0], &v, 1);
 
   //** Destroy the portal
   mq_destroy_context(mqc);
@@ -1134,6 +1133,8 @@ void *server_deferred_thread(apr_thread_t *th, void *arg)
   defer_t *defer;
   apr_time_t dt, now, max_wait;
   uint64_t n;
+  int i;
+  char v;
 
   max_wait = apr_time_make(1, 0);
   dt = max_wait;
@@ -1167,7 +1168,8 @@ log_printf(5, "deferred_ready=%d deferred_pending=%d n= " LU " server_portal=%p\
 
     if (n > 0) { //** Got tasks to send
        if (server_portal == NULL) {
-          write(server_efd, &n, sizeof(n));
+          v = 1;
+          for (i=0; i<n; i++) write(server_efd[1], &v, 1);
        } else {
           server_handle_deferred(NULL);
        }
@@ -1188,7 +1190,7 @@ int main(int argc, char **argv)
   apr_thread_t *server_thread, *client_thread, *deferred_thread;
   apr_status_t dummy;
   int i, start_option;
-  uint64_t n;
+  char v;
 
   if (argc < 2) {
      printf("mq_test [-d log_level]\n");
@@ -1219,12 +1221,14 @@ printf("log_level=%d\n", _log_level);
   assert(apr_thread_cond_create(&cond, mpool) == APR_SUCCESS);
 
   //** Make the eventFD for controlling the server
-  control_efd = eventfd(0, 0);
-  assert(control_efd != -1);
+  assert(pipe(control_efd) == 0);
+//  fcntl(control_efd[0], F_SETFL, O_NONBLOCK);
+//  fcntl(control_efd[1], F_SETFL, O_NONBLOCK);
 
- //** Make the server eventfd for delayed responses
-  server_efd = eventfd(0, EFD_SEMAPHORE);
-  assert(server_efd != 0);
+  //** Make the server eventfd for delayed responses
+  assert(pipe(server_efd) == 0);
+//  fcntl(server_efd[0], F_SETFL, O_NONBLOCK);
+//  fcntl(server_efd[1], F_SETFL, O_NONBLOCK);
 
   //** Make the stacks for controlling deferred replies
   deferred_ready = new_stack();
@@ -1237,8 +1241,8 @@ printf("log_level=%d\n", _log_level);
   apr_thread_join(&dummy, client_thread);
 
   //** Trigger the server to shutdown
-  n = 1;
-  write(control_efd, &n, sizeof(n));
+  v = 1;
+  write(control_efd[1], &v, 1);
   apr_thread_join(&dummy, server_thread);
   apr_thread_join(&dummy, deferred_thread);
 
@@ -1253,8 +1257,8 @@ printf("log_level=%d\n", _log_level);
   destroy_opque_system();
   apr_wrapper_stop();
 
-  close(control_efd);
-  close(server_efd);
+  close(control_efd[0]); close(control_efd[1]);
+  close(server_efd[0]);  close(server_efd[1]);
 
   return(0);
 }

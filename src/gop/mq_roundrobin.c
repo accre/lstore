@@ -13,7 +13,7 @@ mq_worker_t *mq_worker_create(char *address, int free_slots) {
 	
 	worker->address = address;
 	worker->free_slots = free_slots;
-	log_printf(15, "worker created with address = %s\tslots = %d\n", address, free_slots);
+	log_printf(5, "worker created with address = %s\tslots = %d\n", address, free_slots);
 	
 	return worker;
 }
@@ -29,7 +29,7 @@ mq_worker_table_t *mq_worker_table_create() {
 	apr_pool_create(&(table->mpool), NULL);
 	assert(apr_thread_mutex_create(&(table->lock), APR_THREAD_MUTEX_DEFAULT, table->mpool) == APR_SUCCESS);
 	assert((table->table = apr_hash_make(table->mpool)) != NULL);
-	log_printf(15, "Created worker table\n");
+	log_printf(5, "Created worker table\n");
 	
 	return table;
 }
@@ -37,27 +37,12 @@ mq_worker_table_t *mq_worker_table_create() {
 // mq_worker_table_destroy()
 // Destroy the table and free memory
 
-void mq_worker_table_destroy(mq_worker_table_t *table) {
-	
-	apr_hash_index_t *hi;
-	mq_worker_t* worker;
-	void *val;
-	int i;
-	
-	log_printf(15, "Destroying worker table\n");
-	
-	for(hi = apr_hash_first(table->mpool, table->table), i = 0; hi != NULL; hi = apr_hash_next(hi), i++) {
-		apr_hash_this(hi, NULL, NULL, &val);
-		worker = (mq_worker_t *)val;
-		log_printf(15, "\tDestroying worker %d address = %s\n", i, worker->address);
-		apr_hash_set(table->table, worker->address, strlen(worker->address), NULL);
-		free(worker->address);
-		free(worker);
-	}
-	
+void mq_worker_table_destroy(mq_worker_table_t *table) {	
+	log_printf(5, "Destroying worker table\n");
+	apr_hash_clear(table->table);
 	apr_pool_destroy(table->mpool);
 	free(table);
-	log_printf(15, "Successfully destroyed worker table\n");
+	log_printf(5, "Successfully destroyed worker table\n");
 }
 
 // mq_register_worker()
@@ -76,6 +61,7 @@ void mq_register_worker(mq_worker_table_t *table, char *address, int free_slots)
 	//if free_slots < 0, we're done after this
 	worker = apr_hash_get(table->table, address, strlen(address));
 	if(worker != NULL) {
+		log_printf(15, "Clearing existing worker with address = %s\n", address);
 		apr_hash_set(table->table, worker->address, strlen(worker->address), NULL);
 		free(worker->address);
 		free(worker);
@@ -84,10 +70,10 @@ void mq_register_worker(mq_worker_table_t *table, char *address, int free_slots)
 	if(free_slots >= 0) { //registering a new worker
 		worker = mq_worker_create(address, free_slots);
 		apr_hash_set(table->table, worker->address, strlen(worker->address), worker);
-		log_printf(15, "Registered worker with address = %s\tslots = %d", address, free_slots);
+		log_printf(5, "Registered worker with address = %s\tslots = %d\n", address, free_slots);
 	}
 	else {
-		log_printf(15, "Deregistered worker with address = %s", address);
+		log_printf(5, "Deregistered worker with address = %s\n", address);
 	}
 	
 	apr_thread_mutex_unlock(table->lock);
@@ -106,9 +92,9 @@ void mq_deregister_worker(mq_worker_table_t *table, mq_worker_t *worker) {
 
 void mq_worker_table_install(mq_worker_table_t *table, mq_portal_t *portal) {
 	
-	if(portal->worker_table != NULL) {
+	if(portal->implementation_arg != NULL) {
 		log_printf(15, "Portal has existing worker table, destroying\n");
-		mq_worker_table_destroy(portal->worker_table);
+		mq_worker_table_destroy(portal->implementation_arg);
 	}
 	if(table == NULL) {
 		// suppose for some reason you tried to install a portal's existing table into itself
@@ -116,7 +102,7 @@ void mq_worker_table_install(mq_worker_table_t *table, mq_portal_t *portal) {
 		log_printf(5, "ERROR: Worker table is null!\n");
 		return;
 	}
-	portal->worker_table = table;
+	portal->implementation_arg = table;
 	log_printf(15, "Installed worker table into portal's socket context\n");
 }
 
