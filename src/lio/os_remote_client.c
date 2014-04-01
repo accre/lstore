@@ -1577,6 +1577,7 @@ int osrc_next_object(os_object_iter_t *oit, char **fname, int *prefix_len)
 
 log_printf(5, "START\n");
 
+  if (it == NULL) { log_printf(0, "ERROR: it=NULL\n"); return(-2); }
   ait = NULL;
 
   //** If a regex attr iter make sure and flush any remaining attrs
@@ -1891,6 +1892,8 @@ log_printf(5, "END\n");
 void osrc_destroy_object_iter(os_object_iter_t *oit)
 {
   osrc_object_iter_t *it = (osrc_object_iter_t *)oit;
+
+  if (it == NULL) { log_printf(0, "ERROR: it=NULL\n"); return(-2); }
 
   if (it->mqs != NULL) mq_stream_destroy(it->mqs);
   if (it->response != NULL) mq_msg_destroy(it->response);
