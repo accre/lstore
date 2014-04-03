@@ -252,7 +252,7 @@ void lio_find_lfs_mounts()
    fd = fopen("/proc/mounts", "r");
    text = NULL;
    while (getline(&text, &ns, fd) != -1) {
-//log_printf(5, "getline=%s", text);
+     log_printf(5, "getline=%s", text);
      if (strncmp(text, "lfs:", 4) == 0) { //** Found a match
        string_token(text, " ", &bstate, &fin);
        prefix = string_token(NULL, " ", &bstate, &fin);
@@ -268,6 +268,7 @@ void lio_find_lfs_mounts()
      free(text);
      text = NULL;
    }
+   if (fd != NULL) fclose(fd);
 
    if (text != NULL) free(text);  //** Getline() always returns something
 
