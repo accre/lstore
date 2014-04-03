@@ -50,13 +50,20 @@ typedef struct {
   char *fname;
   char *exnode;
   int ftype;
+  int pslot;
 } inspect_t;
 
 static creds_t *creds;
 static int global_whattodo;
 static int bufsize;
 rs_query_t *query;
+lio_path_tuple_t *tuple_list;
+char **argv_list = NULL;
 int error_only_check = 0;
+int start_index = -1;
+int final_index = -1;
+int current_index = -1;
+int from_stdin = 0;
 
 apr_thread_mutex_t *lock = NULL;
 list_t *seg_index;
@@ -228,16 +235,39 @@ finished:
   return(status);
 }
 
+//*************************************************************************
+//  next_path - Returns the next path from either argv or stdin
+//*************************************************************************
+
+char *next_path()
+{
+ char *p, *p2;
+
+ if (from_stdin == 0) {
+    if (current_index == -1) current_index = start_index;
+    if (current_index > final_index) return(NULL);
+
+    p = argv_list[current_index];
+    current_index++;
+ } else {
+    type_malloc(p2, char, 8192);
+    p = fgets(p2, 8192, stdin);
+    if (p) p2[strlen(p)-1] = 0;  //** Truncate the \n
+    printf("next_path=%s\n", p);
+ }
+
+ return(p);
+}
 
 //*************************************************************************
 //*************************************************************************
 
 int main(int argc, char **argv)
 {
-  int i, j,  start_option, start_index, rg_mode, ftype, prefix_len;
+  int i, j,  start_option, rg_mode, ftype, prefix_len;
   int force_repair, option;
   int bufsize_mb = 20;
-  char *fname, *qstr;
+  char *fname, *qstr, *path;
   rs_query_t *rsq;
   apr_pool_t *mpool;
   opque_t *q;
@@ -246,10 +276,10 @@ int main(int argc, char **argv)
   char *vals[3];
   char *keys[3] = {"system.exnode", "system.soft_errors", "system.hard_errors" };
   int v_size[3], acount;
-  int slot, q_count, gotone;
+  int slot, pslot, q_count, gotone;
   os_object_iter_t *it;
   os_regex_table_t *rp_single, *ro_single;
-  lio_path_tuple_t static_tuple, *tuple, *tuple_list;
+  lio_path_tuple_t static_tuple, tuple;
   int submitted, good, bad, do_print;
   int recurse_depth = 10000;
   inspect_t *w;
@@ -257,7 +287,7 @@ int main(int argc, char **argv)
 //printf("argc=%d\n", argc);
   if (argc < 2) {
      printf("\n");
-     printf("lio_inspect LIO_COMMON_OPTIONS [-rd recurse_depth] [-b bufsize_mb] [-f] [-s] [-r] [-q extra_query] [-bl key value] [-p] -o inspect_opt LIO_PATH_OPTIONS\n");
+     printf("lio_inspect LIO_COMMON_OPTIONS [-rd recurse_depth] [-b bufsize_mb] [-f] [-s] [-r] [-q extra_query] [-bl key value] [-p] -o inspect_opt [LIO_PATH_OPTIONS | -]\n");
      lio_print_options(stdout);
      lio_print_path_options(stdout);
      printf("    -rd recurse_depth  - Max recursion depth on directories. Defaults to %d\n", recurse_depth);
@@ -277,10 +307,12 @@ int main(int argc, char **argv)
      printf("    -e                 - Only check files that have soft or hard errors\n");
      printf("    -o inspect_opt     - Inspection option.  One of the following:\n");
      for (i=1; i<n_inspect; i++) { printf("                 %s\n", inspect_opts[i]); }
+     printf("    -                  - If no file is given but a single dash is used the files are taken from stdin\n");
      return(1);
   }
 
   lio_init(&argc, &argv);
+  argv_list = argv;
 
   //*** Parse the path args
   rg_mode = 0;
@@ -292,6 +324,7 @@ int main(int argc, char **argv)
   option = INSPECT_QUICK_CHECK;
   global_whattodo = 0;
   query = rs_query_new(lio_gc->rs);
+  final_index = argc - 1;
   do_print = 0;
   q_count = 0;
   acount = 1;
@@ -304,6 +337,9 @@ int main(int argc, char **argv)
      } else if (strcmp(argv[i], "-b") == 0) {  //** Get the buffer size
         i++;
         bufsize_mb = atoi(argv[i]); i++;
+     } else if (strcmp(argv[i], "-") == 0) {  //** Take files from stdin
+        i++;
+        from_stdin = 1;
      } else if (strcmp(argv[i], "-f") == 0) { //** Force repair
         i++;
         force_repair = INSPECT_FORCE_REPAIR;
@@ -378,7 +414,7 @@ int main(int argc, char **argv)
 
   bufsize = bufsize_mb * 1024 *1024;
 
-  if (rg_mode == 0) {
+  if ((rg_mode == 0) && (from_stdin == 0)) {
      if (argc <= start_index) {
         info_printf(lio_ifd, 0, "Missing directory!\n");
         return(2);
@@ -392,37 +428,33 @@ int main(int argc, char **argv)
   assert(apr_pool_create(&mpool, NULL) == APR_SUCCESS);
   apr_thread_mutex_create(&lock, APR_THREAD_MUTEX_DEFAULT, mpool);
 
-  slot = argc - start_index;
-  type_malloc_clear(tuple_list, lio_path_tuple_t, slot);
-
   q = new_opque();
   opque_start_execution(q);
 
-  slot = 0;
+  slot = pslot = 0;
   submitted = good = bad = 0;
 
-  for (j=start_index; j<argc; j++) {
-     log_printf(5, "path_index=%d argc=%d rg_mode=%d\n", j, argc, rg_mode);
-     tuple = &(tuple_list[j - start_index]);
+  while ((path = next_path()) != NULL) {
+     log_printf(5, "path=%s argc=%d rg_mode=%d pslot=%d\n", path, argc, rg_mode, pslot);
      if (rg_mode == 0) {
         //** Create the simple path iterator
-        *tuple = lio_path_resolve(lio_gc->auto_translate, argv[j]);
-        lio_path_wildcard_auto_append(tuple);
-        rp_single = os_path_glob2regex(tuple->path);
+        tuple = lio_path_resolve(lio_gc->auto_translate, path);
+        lio_path_wildcard_auto_append(&tuple);
+        rp_single = os_path_glob2regex(tuple.path);
      } else {
         rg_mode = 0;  //** Use the initial rp
      }
 
-     creds = tuple->lc->creds;
+     creds = tuple.lc->creds;
 
-     for (i=0; i< acount; i++) v_size[i] = -tuple->lc->max_attr;
-     it = os_create_object_iter_alist(tuple->lc->os, tuple->creds, rp_single, ro_single, OS_OBJECT_FILE, recurse_depth, keys, (void **)vals, v_size, acount);
+     for (i=0; i< acount; i++) v_size[i] = -tuple.lc->max_attr;
+     it = os_create_object_iter_alist(tuple.lc->os, tuple.creds, rp_single, ro_single, OS_OBJECT_FILE, recurse_depth, keys, (void **)vals, v_size, acount);
      if (it == NULL) {
         info_printf(lio_ifd, 0, "ERROR: Failed with object_iter creation\n");
         goto finished;
       }
 
-     while ((ftype = os_next_object(tuple->lc->os, it, &fname, &prefix_len)) > 0) {
+     while ((ftype = os_next_object(tuple.lc->os, it, &fname, &prefix_len)) > 0) {
         gotone = 0;
         if (error_only_check == 1) {  //** Want to only check files with soft/hard errors
            if (vals[1] != NULL) {
@@ -475,7 +507,7 @@ log_printf(0, "gid=%d i=%d fname=%s\n", gop_id(gop), slot, fname);
 
      if (rp_single != NULL) { os_regex_table_destroy(rp_single); rp_single = NULL; }
      if (ro_single != NULL) { os_regex_table_destroy(ro_single); ro_single = NULL; }
-
+     lio_path_release(&tuple);
   }
 
   //** Wait for everything to complete
@@ -490,10 +522,6 @@ log_printf(0, "gid=%d i=%d fname=%s\n", gop_id(gop), slot, fname);
      gop_free(gop, OP_DESTROY);
   }
 
-
-  for (i=0; i<(argc-start_index); i++) {
-      lio_path_release(&(tuple_list[i]));
-  }
 
   opque_free(q, OP_DESTROY);
 
