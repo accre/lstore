@@ -483,9 +483,9 @@ log_printf(0, "memcmp=%d\n", memcmp(iov[n_iov].iov_base, &(buffer[boff + index*s
      if (n_iov > 0) {
         tbuffer_vec(&tbuf, nbytes, n_iov, iov);
         err = gop_sync_exec(segment_write(s->child_seg, si->da, n_iov, ex_iov, &tbuf, 0, si->timeout));
-log_printf(0, "gop_error=%d nbytes=" XOT " n_iov=%d\n", err, nbytes, n_iov);
+log_printf(0, "gop_status=%d nbytes=" XOT " n_iov=%d\n", err, nbytes, n_iov);
         if (err != OP_STATE_SUCCESS) {
-
+           if (sf->do_print == 1) info_printf(si->fd, 1, XIDT ": Write update error for stripe! Probably a corrupt allocation.\n", segment_id(si->seg));
            repair_errors++;
         }
      }

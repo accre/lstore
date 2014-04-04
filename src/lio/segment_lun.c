@@ -1641,6 +1641,7 @@ op_status_t seglun_migrate_func(void *arg, int id)
   seglun_row_t *b;
   int bufsize = 10*1024;
   char info[bufsize];
+  ex_off_t sstripe, estripe;
   int used;
   int block_status[s->n_devices], block_copy[s->n_devices];
   int nattempted, nmigrated, err, i;
@@ -1660,7 +1661,8 @@ op_status_t seglun_migrate_func(void *arg, int id)
   for (b = (seglun_row_t *)next_interval_skiplist(&it); b != NULL; b = (seglun_row_t *)next_interval_skiplist(&it)) {
     for (i=0; i < s->n_devices; i++) block_status[i] = 0;
 
-    info_printf(si->fd, 1, XIDT ": Checking row (" XOT ", " XOT ", " XOT ")\n", segment_id(si->seg), b->seg_offset, b->seg_end, b->row_len);
+    sstripe = b->seg_offset / s->stripe_size; estripe = b->seg_end / s->stripe_size;
+    info_printf(si->fd, 1, XIDT ": Checking row: (" XOT ", " XOT ", " XOT ")   Stripe: (" XOT ", " XOT ")\n", segment_id(si->seg), b->seg_offset, b->seg_end, b->row_len, sstripe, estripe);
 
     for (i=0; i < s->n_devices; i++) {
         info_printf(si->fd, 3, XIDT ":     dev=%i rcap=%s\n", segment_id(si->seg), i, ds_get_cap(s->ds, b->block[i].data->cap, DS_CAP_READ));
@@ -1720,6 +1722,7 @@ op_status_t seglun_inspect_func(void *arg, int id)
   interval_skiplist_iter_t it;
   int bufsize = 10*1024;
   char info[bufsize];
+  ex_off_t sstripe, estripe;
   int used, soft_error_fail, force_reconstruct, nforce;
   int block_status[s->n_devices], block_copy[s->n_devices];
   int i, j, err, option, force_repair, max_lost, total_lost, total_repaired, total_migrate, nmigrated, nlost, nrepaired;
@@ -1754,7 +1757,8 @@ op_status_t seglun_inspect_func(void *arg, int id)
   for (b = (seglun_row_t *)next_interval_skiplist(&it); b != NULL; b = (seglun_row_t *)next_interval_skiplist(&it)) {
     for (i=0; i < s->n_devices; i++) block_status[i] = 0;
 
-    info_printf(si->fd, 1, XIDT ": Checking row (" XOT ", " XOT ", " XOT ")\n", segment_id(si->seg), b->seg_offset, b->seg_end, b->row_len);
+    sstripe = b->seg_offset / s->stripe_size; estripe = b->seg_end / s->stripe_size;
+    info_printf(si->fd, 1, XIDT ": Checking row: (" XOT ", " XOT ", " XOT ")   Stripe: (" XOT ", " XOT ")\n", segment_id(si->seg), b->seg_offset, b->seg_end, b->row_len, sstripe, estripe);
 
     for (i=0; i < s->n_devices; i++) {
         info_printf(si->fd, 3, XIDT ":     dev=%i rcap=%s\n", segment_id(si->seg), i, ds_get_cap(s->ds, b->block[i].data->cap, DS_CAP_READ));
