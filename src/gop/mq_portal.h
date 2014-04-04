@@ -257,6 +257,7 @@ struct mq_portal_s {   //** Container for managing connections to a single host
   int heartbeat_failure;     //** Missing heartbeat DT for failure classification
   int counter;               //** Connections counter
   int n_close;               //** Number of connections being requested to close
+  int socket_type;           //** NEW - socket type identifier
   uint64_t n_ops;            //** Operation count
   double min_ops_per_sec;    //** Minimum ops/sec needed to keep a connection open.
   Stack_t *tasks;            //** List of tasks
