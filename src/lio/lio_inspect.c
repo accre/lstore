@@ -253,7 +253,6 @@ char *next_path()
     type_malloc(p2, char, 8192);
     p = fgets(p2, 8192, stdin);
     if (p) p2[strlen(p)-1] = 0;  //** Truncate the \n
-    printf("next_path=%s\n", p);
  }
 
  return(p);
