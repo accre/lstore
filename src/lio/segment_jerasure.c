@@ -104,6 +104,8 @@ typedef struct {
   int max_replaced;
   int inspect_mode;
   int timeout;
+  int rerror;
+  int werror;
 } segjerase_inspect_t;
 
 typedef struct {
@@ -300,6 +302,7 @@ log_printf(0, "lo=" XOT " hi= " XOT " nbytes=" XOT " total_stripes=%d data_size=
   n_empty = 0;
   bm_brute_used = 0;
   last_bad = -2;
+  si->rerror = si->werror = 0;
 
   stripe_msg_label[0] = "empty";
   stripe_msg_label[1] = "magic";
@@ -321,6 +324,7 @@ log_printf(0, "stripe=%d nstripes=%d total_stripes=%d offset=" XOT " len=" XOT "
      tbuffer_single(&tbuf_read, ex_read.len, buffer);
      memset(buffer, 0, bufsize);
      err = gop_sync_exec(segment_read(s->child_seg, si->da, 1, &ex_read, &tbuf_read, 0, si->timeout));
+     if (err != OP_STATE_SUCCESS) si->rerror++;
 
      n_iov = 0;
      nbytes = 0;
@@ -487,6 +491,7 @@ log_printf(0, "gop_status=%d nbytes=" XOT " n_iov=%d\n", err, nbytes, n_iov);
         if (err != OP_STATE_SUCCESS) {
            if (sf->do_print == 1) info_printf(si->fd, 1, XIDT ": Write update error for stripe! Probably a corrupt allocation.\n", segment_id(si->seg));
            repair_errors++;
+           si->werror++;
         }
      }
 
@@ -690,7 +695,7 @@ op_status_t segjerase_inspect_func(void *arg, int id)
   segjerase_inspect_t *si = (segjerase_inspect_t *)arg;
   segjerase_priv_t *s = (segjerase_priv_t *)si->seg->priv;
   op_status_t status;
-  int option, total_stripes, child_replaced, repair;
+  int option, total_stripes, child_replaced, repair, loop;
   op_generic_t *gop;
 
   status = op_success_status;
@@ -743,10 +748,44 @@ log_printf(5, "repair=%d child_replaced=%d option=%d inspect_mode=%d INSPECT_QUI
     case (INSPECT_FULL_CHECK):
     case (INSPECT_FULL_REPAIR):
         info_printf(si->fd, 1, XIDT ": Total number of stripes:%d\n", segment_id(si->seg), total_stripes);
-        gop =  segjerase_inspect_full(si, 1, 0, segment_size(si->seg));
-        gop_waitall(gop);
-        status = gop_get_status(gop);
-        gop_free(gop, OP_DESTROY);
+        loop = 0;
+        do {
+           gop =  segjerase_inspect_full(si, 1, 0, segment_size(si->seg));
+           gop_waitall(gop);
+           status = gop_get_status(gop);
+           gop_free(gop, OP_DESTROY);
+        
+           if (status.op_status != OP_STATE_SUCCESS) {
+              if (((si->inspect_mode & INSPECT_FIX_READ_ERROR) && (si->rerror > 0)) ||
+                  ((si->inspect_mode & INSPECT_FIX_WRITE_ERROR) && (si->werror > 0))) {
+                 loop++;
+                 info_printf(si->fd, 1, XIDT ": Encountered Read or write errors.  Attempting to correct them.  loop=%d write_errors=%d read_errors=%d\n", segment_id(si->seg), si->rerror, si->werror);
+                 si->rerror = si->werror = 0;
+
+                 //** Issue the inspect for the underlying LUN
+                 info_printf(si->fd, 1, XIDT ": Inspecting child segment...\n", segment_id(si->seg));
+                 gop = segment_inspect(s->child_seg, si->da, si->fd, si->inspect_mode, si->bufsize, si->query, si->timeout);
+                 gop_waitall(gop);
+                 status = gop_get_status(gop);
+                 gop_free(gop, OP_DESTROY);
+                 si->max_replaced += status.error_code;  //** NOTE: This needs to be checks for edge cases.
+                 child_replaced = si->max_replaced;
+
+                 log_printf(5, "status: %d %d\n", status.op_status, status.error_code);
+
+                 //** Kick out if we can't fix anything
+                 if ((status.op_status != OP_STATE_SUCCESS) || (child_replaced > s->n_parity_devs)) {
+                    status.op_status = OP_STATE_FAILURE;
+                    loop = 10000;
+                 }
+
+              } else {
+                 loop = 10000;  //** Kick out
+              }
+           } else {
+             loop = 10000;  //** Kick out            
+           }
+        } while (loop < 10);
         break;
   }
 

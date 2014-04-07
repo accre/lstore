@@ -64,6 +64,8 @@ extern "C" {
 #define INSPECT_SOFT_ERROR_FAIL       256   //** Treat soft errors as hard
 #define INSPECT_FORCE_RECONSTRUCTION  512   //** Don't use depot-depot copies for data movement.  Instead use reconstruction
 #define INSPECT_FAIL_ON_ERROR        1024   //** Kick out if an unrecoverable error is hit
+#define INSPECT_FIX_READ_ERROR       2048   //** Treat read errors as bad blocks for repair
+#define INSPECT_FIX_WRITE_ERROR      4096   //** Treat write errors as bad blocks for repair
 #define INSPECT_COMMAND_BITS 15
 
 #define INSPECT_QUICK_CHECK  1

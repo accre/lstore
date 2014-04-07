@@ -49,7 +49,9 @@ http://www.accre.vanderbilt.edu
 
 typedef struct {
   data_block_t *data;    //** Data block
-  ex_off_t cap_offset;  //** Starting location to use data in the cap
+  ex_off_t cap_offset;   //** Starting location to use data in the cap
+  int read_err_count;    //** Read errors
+  int write_err_count;   //** Write errors
 } seglun_block_t;
 
 typedef struct {
@@ -108,9 +110,10 @@ typedef struct {
 
 typedef struct {
   op_generic_t *gop;
-  tbuffer_t buffer;
   ex_iovec_t *ex_iov;
   iovec_t *iov;
+  seglun_block_t *block;
+  tbuffer_t buffer;
   int n_ex;
   int c_ex;
   int n_iov;
@@ -553,6 +556,8 @@ log_printf(15, "loop=%d ------------------------------\n", loop);
           b->block[i].data->attr_stack = attr_stack;
           b->block[i].data->max_size = b->block_len;
           b->block[i].data->size = b->block_len;
+          b->block[i].read_err_count = 0;
+          b->block[i].write_err_count = 0;
           missing[m] = i;
           m++;
           nbad--;
@@ -1373,6 +1378,7 @@ log_printf(15, " n_bslots=%d\n", n_bslots);
                   rwb_table[j + i].gop = ds_readv(b->block[i].data->ds, da, ds_get_cap(b->block[i].data->ds, b->block[i].data->cap, DS_CAP_READ),
                                           rwb_table[j + i].n_ex, rwb_table[j+i].ex_iov, &(rwb_table[j+i].buffer), 0, rwb_table[j+i].len, timeout);
                }
+               rwb_table[j+i].block = &(b->block[i]);
                opque_add(q, rwb_table[j+i].gop);
                gop_set_myid(rwb_table[j+i].gop, i*10000 + slot);
             }
@@ -1392,6 +1398,7 @@ log_printf(15, " n_bslots=%d\n", n_bslots);
                   rwb_table[j + i].gop = ds_writev(b->block[i].data->ds, da, ds_get_cap(b->block[i].data->ds, b->block[i].data->cap, DS_CAP_WRITE),
                                        rwb_table[j + i].n_ex, rwb_table[j+i].ex_iov, &(rwb_table[j+i].buffer), 0, rwb_table[j+i].len, timeout);
                }
+               rwb_table[j+i].block = &(b->block[i]);
                opque_add(q, rwb_table[j+i].gop);
                gop_set_myid(rwb_table[j+i].gop, i*10000 + slot);
 //}
@@ -1425,7 +1432,12 @@ log_printf(15, " n_bslots=%d\n", n_bslots);
            if (rwb_table[j+i].n_ex > 0) {
               if (gop_completed_successfully(rwb_table[j+i].gop) != OP_STATE_SUCCESS) {  //** Error
                  nerr++;  //** Increment the error count
-                 if (rw_mode == 0) tbuffer_memset(&(rwb_table[j+i].buffer), 0, 0, rwb_table[j+i].len); //** Blank the data on READs
+                 if (rw_mode == 0) {
+                    tbuffer_memset(&(rwb_table[j+i].buffer), 0, 0, rwb_table[j+i].len); //** Blank the data on READs
+                    rwb_table[j+i].block->read_err_count++;
+                 } else {
+                    rwb_table[j+i].block->write_err_count++;
+                 }
               }
 
               free(rwb_table[j+i].ex_iov);
@@ -1767,7 +1779,17 @@ op_status_t seglun_inspect_func(void *arg, int id)
     nlost = slun_row_size_check(si->seg, si->da, b, block_status, s->n_devices, force_repair, si->timeout);
     used = 0;
     append_printf(info, &used, bufsize, XIDT ":     slun_row_size_check:", segment_id(si->seg));
-    for (i=0; i < s->n_devices; i++) append_printf(info, &used, bufsize, " %d", block_status[i]);
+    for (i=0; i < s->n_devices; i++) {
+        if ((b->block[i].read_err_count > 0) && ((si->inspect_mode & INSPECT_FIX_READ_ERROR) > 0)) {
+           if (block_status[i] == 0) nlost++;
+           block_status[i] += 4;
+        }
+        if ((b->block[i].write_err_count > 0) && ((si->inspect_mode & INSPECT_FIX_READ_ERROR) > 0)) {
+           if (block_status[i] == 0) nlost++;
+           block_status[i] += 8;
+        }
+        append_printf(info, &used, bufsize, " %d", block_status[i]);
+    }
     info_printf(si->fd, 1, "%s\n", info);
 
     if (max_lost < nlost) max_lost = nlost;

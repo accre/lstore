@@ -304,6 +304,8 @@ int main(int argc, char **argv)
      printf("    -x                 - Stop scanning a file if an unrecoverable error is detected.\n");
      printf("    -p                 - Print the resulting query string\n");
      printf("    -e                 - Only check files that have soft or hard errors\n");
+     printf("    -rerr              - Force new allocates to be created on read errors\n");
+     printf("    -werr              - Force new allocates to be created on write errors\n");
      printf("    -o inspect_opt     - Inspection option.  One of the following:\n");
      for (i=1; i<n_inspect; i++) { printf("                 %s\n", inspect_opts[i]); }
      printf("    -                  - If no file is given but a single dash is used the files are taken from stdin\n");
@@ -355,6 +357,12 @@ int main(int argc, char **argv)
      } else if (strcmp(argv[i], "-s") == 0) { //** Report soft errors
         i++;
         global_whattodo |= INSPECT_SOFT_ERROR_FAIL;
+     } else if (strcmp(argv[i], "-rerr") == 0) { //** Repair read errors
+        i++;
+        global_whattodo |= INSPECT_FIX_READ_ERROR;
+     } else if (strcmp(argv[i], "-werr") == 0) { //** Repair write errors
+        i++;
+        global_whattodo |= INSPECT_FIX_READ_ERROR;
      } else if (strcmp(argv[i], "-p") == 0) { //** Print resulting query string
         i++;
         do_print = 1;
