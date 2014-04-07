@@ -342,7 +342,7 @@ char *pretty_print_int_with_scale(int64_t value, char *buffer)
   if (base == 1) { sprintf(buffer, I64T, value); return(buffer); }
 
   n = value;
-  for (i=0; i<3; i++) {
+  for (i=0; i<7; i++) {
     if ((n % base) != 0) break;
     n = n / base;
   }
@@ -383,7 +383,7 @@ char *pretty_print_double_with_scale(int base, double value, char *buffer)
   if (base == 1) { sprintf(buffer, "%lf", value); return(buffer); }
 
   n = value;
-  for (i=0; i<3; i++) {
+  for (i=0; i<7; i++) {
     if (n < base) break;
     n = n / base;
   }
