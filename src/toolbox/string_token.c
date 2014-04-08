@@ -349,9 +349,13 @@ char *pretty_print_int_with_scale(int64_t value, char *buffer)
 
 
   if (base == 1024) {
-    sprintf(buffer, I64T "%cI", n, unit[i]);
+    if ( i == 0) {
+       sprintf(buffer, I64T "%c ", n, unit[i]);
+    } else {
+       sprintf(buffer, I64T "%ci", n, unit[i]);
+    }
   } else {
-    sprintf(buffer, I64T "%c", n, unit[i]);
+    sprintf(buffer, I64T "%c ", n, unit[i]);
   }
 
 //printf("prettyprint: value=" I64T " (%s)\n", value, buffer);
@@ -376,7 +380,7 @@ char *pretty_print_double_with_scale(int base, double value, char *buffer)
 {
   double n;
   int i;
-  char *unit="\0KMGTPE";
+  char *unit=" KMGTPE";
 
   if (buffer == NULL) type_malloc(buffer, char, 30);
 
@@ -390,9 +394,13 @@ char *pretty_print_double_with_scale(int base, double value, char *buffer)
 
 
   if (base == 1024) {
-    sprintf(buffer, "%7.3lf%cI", n, unit[i]);
+    if (i == 0) {
+       sprintf(buffer, "%7.3lf%c ", n, unit[i]);
+    } else {
+       sprintf(buffer, "%7.3lf%ci", n, unit[i]);
+    }
   } else {
-    sprintf(buffer, "%7.3lf%c", n, unit[i]);
+    sprintf(buffer, "%7.3lf%c ", n, unit[i]);
   }
 
   return(buffer);
