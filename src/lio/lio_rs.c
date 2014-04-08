@@ -39,6 +39,7 @@ http://www.accre.vanderbilt.edu
 #include "type_malloc.h"
 #include "thread_pool.h"
 #include "lio.h"
+#include "string_token.h"
 
 apr_thread_mutex_t *lock;
 apr_thread_cond_t *cond;
@@ -54,49 +55,18 @@ typedef struct {
   ex_off_t used;
 } rid_summary_t;
 
-//*************************************************************************
-
-char *my_pretty_print_double_with_scale(double value, char *buffer, int base)
-{
-  double n, basef;
-  int i;
-  char *unit="BKMGTPE";
-
-  if (buffer == NULL) type_malloc(buffer, char, 30);
-
-  if (base == 1) { sprintf(buffer, "%f.3lfB", value); return(buffer); }
-
-  basef = base;
-  n = value;
-  for (i=0; i<7; i++) {
-    if ((n / basef) < 1) break;
-    n = n / basef;
-  }
-
-
-//  if (base == 1024) {
-//    sprintf(buffer, "%5.3lf%ci", n, unit[i]);
-//  } else {
-    sprintf(buffer, "%5.3lf%c", n, unit[i]);
-//  }
-
-//printf("prettyprint: value=" I64T " (%s)\n", value, buffer);
-
-  return(buffer);
-}
 
 //*************************************************************************
 // print_rid_summary - Prints the RID summary
 //*************************************************************************
 
-void print_rid_summary(char *config)
+void print_rid_summary(char *config, int base)
 {
   list_t *table;
   list_iter_t it;
   inip_group_t *ig;
   inip_file_t *kf;
   inip_element_t *ele;
-  int base = 1024;
   char *key, *value;
   char fbuf[20], ubuf[20], tbuf[20];
   char *state[5] = { "UP      ", "IGNORE  ", "NO_SPACE", "DOWN    ", "INVALID " };
@@ -163,26 +133,25 @@ void print_rid_summary(char *config)
 
 
   //** Now print the summary
-  printf("        RID             State             Host                  Used      Free     Total\n");
-  printf("--------------------  --------  ------------------------------  --------  --------  --------\n");
+  printf("        RID             State             Host                      Used       Free        Total\n");
+  printf("--------------------  --------  ------------------------------   ---------   ---------   ---------\n");
   it = list_iter_search(table, NULL, 0);
   while (list_next(&it, (list_key_t **)&key, (list_data_t **)&rsum) == 0) {
-     printf("%-20s  %8s  %-30s  %8s  %8s  %8s\n", rsum->rid, state[rsum->status], rsum->host,
-        my_pretty_print_double_with_scale((double)rsum->used, ubuf, base),
-        my_pretty_print_double_with_scale((double)rsum->free, fbuf, base),
-        my_pretty_print_double_with_scale((double)rsum->total, tbuf, base));
+     printf("%-20s  %8s  %-30s   %8s   %8s   %8s\n", rsum->rid, state[rsum->status], rsum->host,
+        pretty_print_double_with_scale(base, (double)rsum->used, ubuf),
+        pretty_print_double_with_scale(base, (double)rsum->free, fbuf),
+        pretty_print_double_with_scale(base, (double)rsum->total, tbuf));
   }
 
-  printf("------------------------------------------------------------  --------  --------  --------\n");
-  printf("Usable Resources:%4d                                           %8s  %8s  %8s\n", list_key_count(table),
-     my_pretty_print_double_with_scale((double)up_used, ubuf, base),
-     my_pretty_print_double_with_scale((double)up_free, fbuf, base),
-     my_pretty_print_double_with_scale((double)up_total, tbuf, base));
-  printf("Total Resources: %4d                                           %8s  %8s  %8s\n", list_key_count(table),
-     my_pretty_print_double_with_scale((double)space_used, ubuf, base),
-     my_pretty_print_double_with_scale((double)space_free, fbuf, base),
-     my_pretty_print_double_with_scale((double)space_total, tbuf, base));
-  printf("\n");
+  printf("--------------------------------------------------------------   ---------   ---------   ---------\n");
+  printf("Usable Resources:%4d                                            %8s   %8s   %8s\n", list_key_count(table),
+     pretty_print_double_with_scale(base, (double)up_used, ubuf),
+     pretty_print_double_with_scale(base, (double)up_free, fbuf),
+     pretty_print_double_with_scale(base, (double)up_total, tbuf));
+  printf("Total Resources: %4d                                            %8s   %8s   %8s\n", list_key_count(table),
+     pretty_print_double_with_scale(base, (double)space_used, ubuf),
+     pretty_print_double_with_scale(base, (double)space_free, fbuf),
+     pretty_print_double_with_scale(base, (double)space_total, tbuf));
 
   list_destroy(table);
 
@@ -195,7 +164,7 @@ void print_rid_summary(char *config)
 
 int main(int argc, char **argv)
 {
-  int start_option, i, watch, summary;
+  int start_option, i, watch, summary, base;
   rs_mapping_notify_t notify, me;
   apr_time_t dt;
   char *config;
@@ -204,9 +173,11 @@ int main(int argc, char **argv)
 
   if (argc < 2) {
      printf("\n");
-     printf("lio_rs LIO_COMMON_OPTIONS [-w] [-s | -f]\n");
+     printf("lio_rs LIO_COMMON_OPTIONS [-w] [-b2 | -b10] [-s | -f]\n");
      lio_print_options(stdout);
      printf("    -w                 - Watch for RID configuration changes. Press ^C to exit\n");
+     printf("    -b2                - Use powers of 2 for units(default)\n");
+     printf("    -b10               - Use powers of 10 for units\n");
      printf("    -s                 - Print a RID space usage summary\n");
      printf("    -f                 - Print the full RID configuration\n");
      return(1);
@@ -216,6 +187,7 @@ int main(int argc, char **argv)
 
   watch = 0;
   summary = 0;
+  base = 1024;
 
   i=1;
   do {
@@ -227,6 +199,12 @@ int main(int argc, char **argv)
      } else if (strcmp(argv[i], "-s") == 0) {  //** Print space summary instead of full conifg
         i++;
         summary = 1;
+     } else if (strcmp(argv[i], "-b2") == 0) {  //** base-2 units
+        i++;
+        base = 1024;
+     } else if (strcmp(argv[i], "-b10") == 0) {  //** base-10 units
+        i++;
+        base = 1000;
      }
   } while ((start_option < i) && (i<argc));
 
@@ -259,17 +237,17 @@ int main(int argc, char **argv)
         config = rs_get_rid_config(lio_gc->rs);
 
         printf("Map Version: %d  Status Version: %d\n", me.map_version, me.status_version);
-        printf("----------------------------------------------------------------------------------\n");
+        printf("--------------------------------------------------------------------------------------------------\n");
 
         if (config == NULL) {
            printf("ERROR NULL config!\n");
         } else if (summary == 1) {
-           print_rid_summary(config);
+           print_rid_summary(config, base);
         } else {
           printf("%s", config);
         }
 
-        printf("----------------------------------------------------------------------------------\n");
+        printf("--------------------------------------------------------------------------------------------------\n");
 
         if (config != NULL) free(config);
      }
