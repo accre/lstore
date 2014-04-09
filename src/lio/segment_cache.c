@@ -781,9 +781,12 @@ int cache_page_drop(segment_t *seg, ex_off_t lo, ex_off_t hi)
   lo_row = lo / s->page_size; lo_row = lo_row * s->page_size;
   hi_row = hi / s->page_size; hi_row = hi_row * s->page_size;
 
-  //** Make the initial flush checker
-//  my_flush[0] = lo; my_flush[1] = hi;
-
+  //** Need to tweak the lo_row to account for a lo being inside the page
+  if (lo != lo_row) lo_row++;
+  if (lo_row > hi_row) {
+     log_printf(5, "seg=" XIDT " Nothing to do exiting.... lo=" XOT " hi=" XOT " lo_row=" XOT " hi_row=" XOT "\n", segment_id(seg), lo, hi, lo_row, hi_row);
+     return(0);
+  }
 log_printf(5, "START seg=" XIDT " lo=" XOT " hi=" XOT "\n", segment_id(seg), lo, hi);
 
   do {
@@ -2933,7 +2936,7 @@ op_generic_t *segcache_inspect(segment_t *seg, data_attr_t *da, info_fd_t *fd, i
 {
   cache_segment_t *s = (cache_segment_t *)seg->priv;
 
-  if ((mode != INSPECT_SOFT_ERRORS) && (mode != INSPECT_HARD_ERRORS)) {
+  if ((mode != INSPECT_SOFT_ERRORS) && (mode != INSPECT_HARD_ERRORS) && (mode != INSPECT_WRITE_ERRORS)) {
      info_printf(fd, 1, XIDT ": Cache segment maps to child " XIDT "\n", segment_id(seg), segment_id(s->child_seg));
 
      //** Check the file size first
