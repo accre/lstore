@@ -1893,7 +1893,7 @@ void osrc_destroy_object_iter(os_object_iter_t *oit)
 {
   osrc_object_iter_t *it = (osrc_object_iter_t *)oit;
 
-  if (it == NULL) { log_printf(0, "ERROR: it=NULL\n"); return(-2); }
+  if (it == NULL) { log_printf(0, "ERROR: it=NULL\n"); return; }
 
   if (it->mqs != NULL) mq_stream_destroy(it->mqs);
   if (it->response != NULL) mq_msg_destroy(it->response);
