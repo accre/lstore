@@ -106,6 +106,7 @@ typedef struct {
   int timeout;
   int rerror;
   int werror;
+  int bad_stripes;
 } segjerase_inspect_t;
 
 typedef struct {
@@ -113,6 +114,7 @@ typedef struct {
   ex_off_t lo;
   ex_off_t hi;
   int do_print;
+  int bad_stripes;
 } segjerase_full_t;
 
 typedef struct {
@@ -508,7 +510,11 @@ log_printf(0, "gop_status=%d nbytes=" XOT " n_iov=%d\n", err, nbytes, n_iov);
   free(iov);
   opque_free(q, OP_DESTROY);
 
-  status.error_code = bad_count;
+  sf->bad_stripes = bad_count;
+  status.error_code = INSPECT_RESULT_FULL_CHECK;
+  if ((unrecoverable_count > 0) || (repair_errors > 0)) status.error_code |= INSPECT_RESULT_HARD_ERROR;
+  if ((do_fix == 0) && (bad_count > (unrecoverable_count+repair_errors))) status.error_code |= INSPECT_RESULT_SOFT_ERROR;
+
   status.op_status = OP_STATE_SUCCESS;
   if ((unrecoverable_count > 0) || (repair_errors > 0) || ((bad_count > 0) && (do_fix == 0))) status.op_status = OP_STATE_FAILURE;
   return(status);
@@ -522,14 +528,19 @@ op_generic_t *segjerase_inspect_full(segjerase_inspect_t *si, int do_print, ex_o
 {
   segjerase_priv_t *s = (segjerase_priv_t *)si->seg->priv;
   segjerase_full_t *sf;
+  op_generic_t *gop;
 
   type_malloc(sf, segjerase_full_t, 1);
   sf->si = si;
   sf->lo = lo;
   sf->hi = hi;
   sf->do_print = do_print;
+  sf->bad_stripes = 0;
 
-  return(new_thread_pool_op(s->tpc, NULL, segjerase_inspect_full_func, (void *)sf, free, 1));
+  gop = new_thread_pool_op(s->tpc, NULL, segjerase_inspect_full_func, (void *)sf, free, 1);
+  gop_set_private(gop, sf);
+
+  return(gop);
 }
 
 //***********************************************************************
@@ -550,6 +561,8 @@ op_status_t segjerase_inspect_scan(segjerase_inspect_t *si)
   iovec_t *iov;
   ex_iovec_t *ex_iov;
   tbuffer_t tbuf;
+  segjerase_full_t *sf;
+  int error_code = 0;
 
   memset(empty_magic, 0, JE_MAGIC_SIZE);
 
@@ -643,8 +656,17 @@ log_printf(0, " i=%d bad=%d start_bad=%d\n", i, bad_count, start_bad);
        if (opque_task_count(q) > 0) {
           err = opque_waitall(q);
           if (err != OP_STATE_SUCCESS) {
-             status = op_failure_status;
+             status.op_status = OP_STATE_FAILURE;
           }
+
+          //** Cycle through getting all the error code
+          while ((gop = opque_waitany(q)) != NULL) {
+             status = gop_get_status(gop);
+             error_code |= status.error_code;
+             sf = gop_get_private(gop);
+             bad_count += sf->bad_stripes;
+             gop_free(gop, OP_DESTROY);
+          }              
        }
 
        //** Reset for the next round
@@ -673,9 +695,10 @@ log_printf(0, " i=%d bad=%d start_bad=%d\n", i, bad_count, start_bad);
   free(magic);
   free(iov);
   free(ex_iov);
+
   opque_free(q, OP_DESTROY);
 
-  status.error_code = bad_count;
+  si->bad_stripes = bad_count;
   if ((do_fix == 0) && (bad_count > 0)) {
      status = op_failure_status;
   }
@@ -694,9 +717,11 @@ op_status_t segjerase_inspect_func(void *arg, int id)
 {
   segjerase_inspect_t *si = (segjerase_inspect_t *)arg;
   segjerase_priv_t *s = (segjerase_priv_t *)si->seg->priv;
+  segjerase_full_t *sf;
   op_status_t status;
   int option, total_stripes, child_replaced, repair, loop;
   op_generic_t *gop;
+  int max_loops = 10;
 
   status = op_success_status;
 
@@ -710,13 +735,14 @@ op_status_t segjerase_inspect_func(void *arg, int id)
   gop_waitall(gop);
   status = gop_get_status(gop);
   gop_free(gop, OP_DESTROY);
-  si->max_replaced = status.error_code;
+  si->max_replaced = (status.error_code & INSPECT_RESULT_COUNT_MASK);  //** NOTE: This needs to be checks for edge cases.
+  si->bad_stripes = -1;
   child_replaced = si->max_replaced;
 
 log_printf(5, "status: %d %d\n", status.op_status, status.error_code);
 
   //** Kick out if we can't fix anything
-  if ((status.op_status != OP_STATE_SUCCESS) || (child_replaced > s->n_parity_devs)) {
+  if ((status.op_status != OP_STATE_SUCCESS) && (child_replaced > s->n_parity_devs)) {
      status.op_status = OP_STATE_FAILURE;
      goto fail;
   }
@@ -753,9 +779,11 @@ log_printf(5, "repair=%d child_replaced=%d option=%d inspect_mode=%d INSPECT_QUI
            gop =  segjerase_inspect_full(si, 1, 0, segment_size(si->seg));
            gop_waitall(gop);
            status = gop_get_status(gop);
+           sf = gop_get_private(gop);
+           si->bad_stripes = sf->bad_stripes;
            gop_free(gop, OP_DESTROY);
         
-           if (status.op_status != OP_STATE_SUCCESS) {
+           if ((status.op_status != OP_STATE_SUCCESS) && (loop < max_loops-1)) {
               if (((si->inspect_mode & INSPECT_FIX_READ_ERROR) && (si->rerror > 0)) ||
                   ((si->inspect_mode & INSPECT_FIX_WRITE_ERROR) && (si->werror > 0))) {
                  loop++;
@@ -768,7 +796,7 @@ log_printf(5, "repair=%d child_replaced=%d option=%d inspect_mode=%d INSPECT_QUI
                  gop_waitall(gop);
                  status = gop_get_status(gop);
                  gop_free(gop, OP_DESTROY);
-                 si->max_replaced += status.error_code;  //** NOTE: This needs to be checks for edge cases.
+                 si->max_replaced += (status.error_code & INSPECT_RESULT_COUNT_MASK);  //** NOTE: This needs to be checks for edge cases.
                  child_replaced = si->max_replaced;
 
                  log_printf(5, "status: %d %d\n", status.op_status, status.error_code);
@@ -785,7 +813,8 @@ log_printf(5, "repair=%d child_replaced=%d option=%d inspect_mode=%d INSPECT_QUI
            } else {
              loop = 10000;  //** Kick out            
            }
-        } while (loop < 10);
+        } while (loop < max_loops);
+        
         break;
   }
 
@@ -797,12 +826,12 @@ fail:
   }
 
   if (status.op_status == OP_STATE_SUCCESS) {
-     info_printf(si->fd, 1, XIDT ": status: SUCCESS (%d devices, %d stripes)\n", segment_id(si->seg), si->max_replaced, status.error_code);
+     info_printf(si->fd, 1, XIDT ": status: SUCCESS (%d devices, %d stripes)\n", segment_id(si->seg), si->max_replaced, si->bad_stripes);
   } else {
-     info_printf(si->fd, 1, XIDT ": status: FAILURE (%d devices, %d stripes)\n", segment_id(si->seg), si->max_replaced, status.error_code);
+     info_printf(si->fd, 1, XIDT ": status: FAILURE (%d devices, %d stripes)\n", segment_id(si->seg), si->max_replaced, si->bad_stripes);
   }
 
-  status.error_code = si->max_replaced;
+//  status.error_code = si->max_replaced;
 
   return(status);
 }
@@ -852,6 +881,9 @@ op_generic_t *segjerase_inspect(segment_t *seg, data_attr_t *da, info_fd_t *fd, 
         err.error_code = s->hard_errors;
         err.op_status = (err.error_code == 0) ? OP_STATE_SUCCESS : OP_STATE_FAILURE;
         gop = gop_dummy(err);
+        break;
+    case (INSPECT_WRITE_ERRORS):
+        gop = segment_inspect(s->child_seg, da, fd, mode, bufsize, query, timeout);
         break;
   }
 

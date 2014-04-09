@@ -68,19 +68,23 @@ extern "C" {
 #define INSPECT_FIX_WRITE_ERROR      4096   //** Treat write errors as bad blocks for repair
 #define INSPECT_COMMAND_BITS 15
 
-#define INSPECT_QUICK_CHECK  1
-#define INSPECT_SCAN_CHECK   2
-#define INSPECT_FULL_CHECK   3
-#define INSPECT_QUICK_REPAIR 4
-#define INSPECT_SCAN_REPAIR  5
-#define INSPECT_FULL_REPAIR  6
-#define INSPECT_SOFT_ERRORS  7
-#define INSPECT_HARD_ERRORS  8
-#define INSPECT_MIGRATE      9
-
+#define INSPECT_QUICK_CHECK   1
+#define INSPECT_SCAN_CHECK    2
+#define INSPECT_FULL_CHECK    3
+#define INSPECT_QUICK_REPAIR  4
+#define INSPECT_SCAN_REPAIR   5
+#define INSPECT_FULL_REPAIR   6
+#define INSPECT_SOFT_ERRORS   7
+#define INSPECT_HARD_ERRORS   8
+#define INSPECT_MIGRATE       9
+#define INSPECT_WRITE_ERRORS 10
 #define CLONE_STRUCTURE       0
 #define CLONE_STRUCT_AND_DATA 1
 
+#define INSPECT_RESULT_FULL_CHECK  512    //** Full byte-level check performed
+#define INSPECT_RESULT_SOFT_ERROR  1024   //** Soft errors found
+#define INSPECT_RESULT_HARD_ERROR  2048   //** Hard errors found
+#define INSPECT_RESULT_COUNT_MASK  511    //** Bit mask for LUN counts
 #define SEG_SM_LOAD   "segment_load"
 #define SEG_SM_CREATE "segment_create"
 
@@ -148,6 +152,11 @@ typedef data_service_fn_t *(ds_create_t)(service_manager_t *ess, inip_file_t *if
 typedef segment_t *(segment_load_t)(void *arg, ex_id_t id, exnode_exchange_t *ex);
 typedef segment_t *(segment_create_t)(void *arg);
 
+typedef struct {
+  int soft;
+  int hard;
+  int write;
+} segment_errors_t;
 
 //** Exnode related functions
 exnode_t *exnode_create();

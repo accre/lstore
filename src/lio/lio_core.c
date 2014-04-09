@@ -333,10 +333,50 @@ int lioc_set_attr(lio_config_t *lc, creds_t *creds, char *path, char *id, char *
 }
 
 //***********************************************************************
+// lioc_encode_error_counts - Encodes the error counts for a setattr call
+//
+//  The keys, val, and v_size arrays should have 3 elements. Buf is used
+//  to store the error numbers.  It's assumed to have at least 3*32 bytes.
+//  mode is used to determine how to handle 0 error values 
+//  (-1=remove attr, 0=no update, 1=store 0 value).
+//  On return the number of attributes stored is returned.
+//***********************************************************************
+
+int lioc_encode_error_counts(segment_errors_t *serr, char **key, char **val, char *buf, int *v_size, int mode)
+{
+  char *ekeys[] = { "system.hard_errors", "system.soft_errors",  "system.write_errors" };
+  int err[3];
+  int i, n, k;
+
+  k = n = 0;
+
+  //** So I can do this in a loop
+  err[0] = serr->hard;
+  err[1] = serr->soft;
+  err[2] = serr->write;
+
+  for (i=0; i<3; i++) {
+     if ((err[i] != 0) || (mode == 1)) {  //** Always store
+        val[n] = &(buf[k]);
+        k += snprintf(val[n], 32, "%d", err[i]) + 1;
+        v_size[n] = strlen(val[n]);
+        key[n] = ekeys[i];
+        n++;
+     } else if (mode == -1) { //** Remove the attribute
+        val[n] = NULL;  v_size[n] = -1;
+        key[n] = ekeys[i];
+        n++;
+     }
+  }
+
+  return(n);
+}
+
+//***********************************************************************
 // lioc_get_error_counts - Gets the error counts
 //***********************************************************************
 
-void lioc_get_error_counts(lio_config_t *lc, segment_t *seg, int *hard_errors, int *soft_errors)
+void lioc_get_error_counts(lio_config_t *lc, segment_t *seg, segment_errors_t *serr)
 {
   op_generic_t *gop;
   op_status_t status;
@@ -345,13 +385,19 @@ void lioc_get_error_counts(lio_config_t *lc, segment_t *seg, int *hard_errors, i
   gop_waitall(gop);
   status = gop_get_status(gop);
   gop_free(gop, OP_DESTROY);
-  *hard_errors = status.error_code;
+  serr->hard = status.error_code;
 
   gop = segment_inspect(seg, lc->da, lio_ifd, INSPECT_SOFT_ERRORS, 0, NULL, 1);
   gop_waitall(gop);
   status = gop_get_status(gop);
   gop_free(gop, OP_DESTROY);
-  *soft_errors = status.error_code;
+  serr->soft = status.error_code;
+
+  gop = segment_inspect(seg, lc->da, lio_ifd, INSPECT_WRITE_ERRORS, 0, NULL, 1);
+  gop_waitall(gop);
+  status = gop_get_status(gop);
+  gop_free(gop, OP_DESTROY);
+  serr->write = status.error_code;
 
   return;
 }
@@ -360,27 +406,22 @@ void lioc_get_error_counts(lio_config_t *lc, segment_t *seg, int *hard_errors, i
 // lioc_update_error_count - Updates the error count attributes if needed
 //***********************************************************************
 
-int lioc_update_error_counts(lio_config_t *lc, creds_t *creds, char *path, segment_t *seg)
+int lioc_update_error_counts(lio_config_t *lc, creds_t *creds, char *path, segment_t *seg, int mode)
 {
-  int hard_errors, soft_errors;
-  char *keys[] = { "system.hard_errors", "system.soft_errors" };
-  char *val[2];
-  char buf[2][128];
-  int v_size[2];
+  char *keys[3];
+  char *val[3];
+  char buf[128];
+  int v_size[3];
+  int n;
+  segment_errors_t serr;
 
-  lioc_get_error_counts(lc, seg, &hard_errors, &soft_errors);
-
-  //** Got errors so update the attributes
-  if ((hard_errors > 0) || (soft_errors > 0)) {
-     snprintf(buf[0], 127, "%d", hard_errors);
-     snprintf(buf[1], 127, "%d", soft_errors);
-     val[0] = buf[0];  v_size[0] = strlen(val[0]);
-     val[1] = buf[1];  v_size[1] = strlen(val[1]);
-
-     lioc_set_multiple_attrs(lc, creds, path, NULL, keys, (void **)val, v_size, 2);
+  lioc_get_error_counts(lc, seg, &serr);
+  n = lioc_encode_error_counts(&serr, keys, val, buf, v_size, mode);
+  if (n > 0) {
+     lioc_set_multiple_attrs(lc, creds, path, NULL, keys, (void **)val, v_size, n);
   }
 
-  return(hard_errors);
+  return(serr.hard);
 }
 
 //***********************************************************************
@@ -1517,8 +1558,8 @@ log_printf(5, "src=%s dest=%s dtype=%d\n", cp->src_tuple.path, cp->dest_tuple.pa
   err = gop_sync_exec(os_set_multiple_attrs(cp->dest_tuple.lc->os, cp->dest_tuple.creds, dfd, keys, (void **)val, dv_size, 3));
 
   //**Update the error counts if needed
-  hard_errors = lioc_update_error_counts(cp->src_tuple.lc, cp->src_tuple.creds, cp->src_tuple.path, sseg);
-  hard_errors += lioc_update_error_counts(cp->dest_tuple.lc, cp->dest_tuple.creds, cp->dest_tuple.path, dseg);
+  hard_errors = lioc_update_error_counts(cp->src_tuple.lc, cp->src_tuple.creds, cp->src_tuple.path, sseg, 0);
+  hard_errors += lioc_update_error_counts(cp->dest_tuple.lc, cp->dest_tuple.creds, cp->dest_tuple.path, dseg, -1);
 
 finished:
 
@@ -1646,7 +1687,7 @@ log_printf(0, "AFTER PUT\n");
   }
 
   //**Update the error counts if needed
-  hard_errors = lioc_update_error_counts(cp->dest_tuple.lc, cp->dest_tuple.creds, cp->dest_tuple.path, seg);
+  hard_errors = lioc_update_error_counts(cp->dest_tuple.lc, cp->dest_tuple.creds, cp->dest_tuple.path, seg, -1);
   if (hard_errors != 0) {
      info_printf(lio_ifd, 0, "ERROR: Hard error during upload! hard_errors=%d  path=%s\n", hard_errors, cp->dest_tuple.path);
   }
@@ -1734,7 +1775,7 @@ log_printf(5, "src=%s dest=%s dtype=%d\n", cp->src_tuple.path, cp->dest_tuple.pa
   fclose(fd);
 
   //**Update the error counts if needed
-  hard_errors = lioc_update_error_counts(cp->src_tuple.lc, cp->src_tuple.creds, cp->src_tuple.path, seg);
+  hard_errors = lioc_update_error_counts(cp->src_tuple.lc, cp->src_tuple.creds, cp->src_tuple.path, seg, 0);
   if (hard_errors != 0) {
      info_printf(lio_ifd, 0, "ERROR: Hard error during download! hard_errors=%d  path=%s\n", hard_errors, cp->dest_tuple.path);
   }
@@ -2004,7 +2045,7 @@ log_printf(5, "fname=%s\n", op->tuple.path, ftype);
   err = lioc_set_multiple_attrs(op->tuple.lc, op->tuple.creds, op->tuple.path, NULL, key, (void **)val, v_size, 3);
 
   //**Update the error counts if needed
-  hard_errors = lioc_update_error_counts(op->tuple.lc, op->tuple.creds, op->tuple.path, seg);
+  hard_errors = lioc_update_error_counts(op->tuple.lc, op->tuple.creds, op->tuple.path, seg, 0);
 
   exnode_destroy(ex);
   exnode_exchange_destroy(exp);

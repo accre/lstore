@@ -137,7 +137,7 @@ int main(int argc, char **argv)
      }
 
      //** Update the error count if needed
-     err = lioc_update_error_counts(tuple.lc, tuple.creds, tuple.path, seg);
+     err = lioc_update_error_counts(tuple.lc, tuple.creds, tuple.path, seg, 0);
      if (err > 0) info_printf(lio_ifd, 0, "Failed downloading data!  path=%s\n", tuple.path);
 
 finished:

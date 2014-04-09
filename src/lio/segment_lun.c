@@ -1784,7 +1784,7 @@ op_status_t seglun_inspect_func(void *arg, int id)
            if (block_status[i] == 0) nlost++;
            block_status[i] += 4;
         }
-        if ((b->block[i].write_err_count > 0) && ((si->inspect_mode & INSPECT_FIX_READ_ERROR) > 0)) {
+        if ((b->block[i].write_err_count > 0) && ((si->inspect_mode & INSPECT_FIX_WRITE_ERROR) > 0)) {
            if (block_status[i] == 0) nlost++;
            block_status[i] += 8;
         }
@@ -1814,7 +1814,7 @@ op_status_t seglun_inspect_func(void *arg, int id)
          err = slun_row_replace_fix(si->seg, si->da, b, block_status, s->n_devices, query, si->timeout);
 
          for (i=0; i < s->n_devices; i++) {
-             if ((block_copy[i] == 1) && (block_status[i] == 0)) info_printf(si->fd, 2, XIDT ":     dev=%i replaced rcap=%s\n", segment_id(si->seg), i, ds_get_cap(s->ds, b->block[i].data->cap, DS_CAP_READ));
+             if ((block_copy[i] != 0) && (block_status[i] == 0)) info_printf(si->fd, 2, XIDT ":     dev=%i replaced rcap=%s\n", segment_id(si->seg), i, ds_get_cap(s->ds, b->block[i].data->cap, DS_CAP_READ));
          }
 
          used = 0;
@@ -1895,11 +1895,11 @@ fail:
   } else {
      info_printf(si->fd, 1, XIDT ": status: SUCCESS (%d max dev/row lost, %d lost, %d repaired, %d need(s) moving, %d moved)\n", segment_id(si->seg), max_lost, total_lost, total_repaired, total_migrate, nmigrated);
   }
-//  free(si);
 
   rs_query_destroy(s->rs, query);
 
   status.error_code = max_lost;
+  status.error_code |= (max_lost == 0) ? 0 : INSPECT_RESULT_HARD_ERROR;
   return(status);
 }
 
@@ -1910,10 +1910,12 @@ fail:
 op_generic_t *seglun_inspect(segment_t *seg, data_attr_t *da, info_fd_t *fd, int mode, ex_off_t bufsize, rs_query_t *query, int timeout)
 {
   seglun_priv_t *s = (seglun_priv_t *)seg->priv;
+  interval_skiplist_iter_t it;
+  seglun_row_t *b;
   op_generic_t *gop;
   op_status_t err;
   seglun_inspect_t *si;
-  int option;
+  int option, i;
 
   gop = NULL;
   option = mode & INSPECT_COMMAND_BITS;
@@ -1952,10 +1954,27 @@ op_generic_t *seglun_inspect(segment_t *seg, data_attr_t *da, info_fd_t *fd, int
         break;
     case (INSPECT_SOFT_ERRORS):
     case (INSPECT_HARD_ERRORS):
+        segment_lock(seg);
         err.error_code = s->hard_errors;
+        segment_unlock(seg);
         err.op_status = (err.error_code == 0) ? OP_STATE_SUCCESS : OP_STATE_FAILURE;
         gop = gop_dummy(err);
         break;
+    case (INSPECT_WRITE_ERRORS):
+        segment_lock(seg);        
+        //** Cycle through the blocks counting the write errors
+        it = iter_search_interval_skiplist(s->isl, (skiplist_key_t *)NULL, (skiplist_key_t *)NULL);
+        err.error_code = 0;
+        while ((b = (seglun_row_t *)next_interval_skiplist(&it)) != NULL) {
+           //log_printf(10, "seg=" XIDT " block seg_off=" XOT " end=" XOT " row_len=" XOT "\n", segment_id(seg), b->seg_offset, b->seg_end, b->row_len);
+           for (i=0; i < s->n_devices; i++) { err.error_code += b->block[i].write_err_count; }
+        }
+        segment_unlock(seg);
+
+        err.op_status = (err.error_code == 0) ? OP_STATE_SUCCESS : OP_STATE_FAILURE;
+        gop = gop_dummy(err);
+        break;
+
   }
 
   return(gop);

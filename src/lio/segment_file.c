@@ -54,6 +54,7 @@ typedef struct {
   thread_pool_context_t *tpc;
   atomic_int_t hard_errors;
   atomic_int_t soft_errors;
+  atomic_int_t write_errors;
 } segfile_priv_t;
 
 typedef struct {
@@ -149,6 +150,7 @@ flush_log();
   if (err_cnt > 0) {  //** Update the error count if needed
 log_printf(15, "segfile_rw_func: ERROR tid=%d fname=%s n_iov=%d off[0]=" XOT " len[0]=" XOT " bleft=" XOT " err_cnt=%d\n", atomic_thread_id, s->fname, srw->n_iov, srw->iov[0].offset, srw->iov[0].len, bleft, err_cnt);
      atomic_inc(s->hard_errors);
+     if (srw->mode != 0) atomic_inc(s->write_errors);
   }
 
 log_printf(15, "segfile_rw_func: tid=%d fname=%s n_iov=%d off[0]=" XOT " len[0]=" XOT " bleft=" XOT " err_cnt=%d\n", atomic_thread_id, s->fname, srw->n_iov, srw->iov[0].offset, srw->iov[0].len, bleft, err_cnt);
@@ -301,6 +303,10 @@ op_generic_t *segfile_inspect(segment_t *seg, data_attr_t *da, info_fd_t *ifd, i
         break;
     case (INSPECT_HARD_ERRORS):
         err.error_code = atomic_get(s->hard_errors);
+        err.op_status = (err.error_code == 0) ? OP_STATE_SUCCESS : OP_STATE_FAILURE;
+        break;
+    case (INSPECT_WRITE_ERRORS):
+        err.error_code = atomic_get(s->write_errors);
         err.op_status = (err.error_code == 0) ? OP_STATE_SUCCESS : OP_STATE_FAILURE;
         break;
   }

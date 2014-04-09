@@ -80,11 +80,14 @@ op_status_t inspect_task(void *arg, int id)
   exnode_t *ex;
   exnode_exchange_t *exp, *exp_out;
   segment_t *seg;
-  char *keys[] = { "os.timestamp.system.inspect", "system.hard_errors", "system.soft_errors", "system.exnode" };
-  char *val[4];
+  char *keys[] = { "os.timestamp.system.inspect", "system.inspect_errors", "system.hard_errors", "system.soft_errors", "system.write_errors", "system.exnode" };
+//  char *keys[6];
+  char *val[6];
+  char buf[32], ebuf[128];
   char *dsegid, *ptr, *exnode2;
-  int v_size[4];
-  int whattodo, repair_mode, count;
+  segment_errors_t serr;
+  int v_size[6], n, repair_mode;
+  int whattodo, count;
   inip_file_t *ifd;
 
   whattodo = global_whattodo;
@@ -165,13 +168,13 @@ log_printf(15, "fname=%s inspect_gid=%d status=%d\n", w->fname, gop_id(gop), sta
 
   //** Print out the results
   whattodo = whattodo & INSPECT_COMMAND_BITS;
-
   repair_mode = 0;
+
   switch(whattodo) {
     case (INSPECT_QUICK_REPAIR):
     case (INSPECT_SCAN_REPAIR):
     case (INSPECT_FULL_REPAIR):
-         repair_mode = 1;
+        repair_mode= 1;
     case (INSPECT_QUICK_CHECK):
     case (INSPECT_SCAN_CHECK):
     case (INSPECT_FULL_CHECK):
@@ -192,7 +195,8 @@ log_printf(15, "fname=%s inspect_gid=%d status=%d\n", w->fname, gop_id(gop), sta
         break;
   }
 
-  if ((status.op_status == OP_STATE_SUCCESS) && (repair_mode == 1)) {
+  //** NOTE:  if status.error_code & INSPECT_RESULT_FULL_CHECK that means the underlying segment inspect did a full byte level check.
+  if ((status.op_status == OP_STATE_SUCCESS) && (status.error_code & INSPECT_RESULT_FULL_CHECK)) {
      //** Store the updated exnode back to disk
      exp_out = exnode_exchange_create(EX_TEXT);
      exnode_serialize(ex, exp_out);
@@ -204,7 +208,9 @@ log_printf(15, "fname=%s inspect_gid=%d status=%d\n", w->fname, gop_id(gop), sta
      val[0] = NULL;  v_size[0] = 0;
      val[1] = NULL;  v_size[1] = -1;  //** Remove the system.*_errors
      val[2] = NULL;  v_size[2] = -1;
-     val[3] = exp_out->text.text; v_size[3]= strlen(val[3]);
+     val[3] = NULL;  v_size[3] = -1;
+     val[4] = NULL;  v_size[4] = -1;
+     val[5] = exp_out->text.text; v_size[5]= strlen(val[5]);
 
      count = (strcmp(exp->text.text, exp_out->text.text) == 0) ? 1 : 0;  //** Only update the exnode if it's changed
      if (count == 0) {  //** Do a further check to make sure the exnode hans't changed during the inspection
@@ -220,8 +226,22 @@ log_printf(15, "fname=%s inspect_gid=%d status=%d\n", w->fname, gop_id(gop), sta
         }
      }
 
-     lioc_set_multiple_attrs(lio_gc, creds, w->fname, NULL, keys, (void **)val, v_size, 4-count);
+     lioc_set_multiple_attrs(lio_gc, creds, w->fname, NULL, keys, (void **)val, v_size, 6-count);
      exnode_exchange_destroy(exp_out);
+  } else {
+     n = 1;
+     val[0] = NULL;  v_size[0] = 0;
+     if (status.error_code & (INSPECT_RESULT_SOFT_ERROR|INSPECT_RESULT_HARD_ERROR)) {
+        v_size[1] = snprintf(buf, 32, "%d", status.error_code); val[1] = buf;
+        n = 2;
+     }
+
+     if (repair_mode == 1) {
+        lioc_get_error_counts(lio_gc, seg, &serr);
+        n += lioc_encode_error_counts(&serr, &(keys[n]), &(val[n]), ebuf, &(v_size[n]), 0);
+     }
+
+     lioc_set_multiple_attrs(lio_gc, creds, w->fname, NULL, keys, (void **)val, v_size, n);    
   }
 
   //** Clean up
@@ -272,9 +292,9 @@ int main(int argc, char **argv)
   opque_t *q;
   op_generic_t *gop;
   op_status_t status;
-  char *vals[3];
-  char *keys[3] = {"system.exnode", "system.soft_errors", "system.hard_errors" };
-  int v_size[3], acount;
+  char *vals[4];
+  char *keys[4] = {"system.exnode", "system.soft_errors", "system.hard_errors", "system.write_errors" };
+  int v_size[4], acount;
   int slot, pslot, q_count, gotone;
   os_object_iter_t *it;
   os_regex_table_t *rp_single, *ro_single;
@@ -286,7 +306,7 @@ int main(int argc, char **argv)
 //printf("argc=%d\n", argc);
   if (argc < 2) {
      printf("\n");
-     printf("lio_inspect LIO_COMMON_OPTIONS [-rd recurse_depth] [-b bufsize_mb] [-f] [-s] [-r] [-q extra_query] [-bl key value] [-p] -o inspect_opt [LIO_PATH_OPTIONS | -]\n");
+     printf("lio_inspect LIO_COMMON_OPTIONS [-rd recurse_depth] [-b bufsize_mb] [-es] [-eh] [-ew] [-rerr] [-werr] [-f] [-s] [-r] [-q extra_query] [-bl key value] [-p] -o inspect_opt [LIO_PATH_OPTIONS | -]\n");
      lio_print_options(stdout);
      lio_print_path_options(stdout);
      printf("    -rd recurse_depth  - Max recursion depth on directories. Defaults to %d\n", recurse_depth);
@@ -303,7 +323,10 @@ int main(int argc, char **argv)
      printf("    -f                 - Forces data replacement even if it would result in data loss\n");
      printf("    -x                 - Stop scanning a file if an unrecoverable error is detected.\n");
      printf("    -p                 - Print the resulting query string\n");
-     printf("    -e                 - Only check files that have soft or hard errors\n");
+     printf("    -es                - Only check files that have SOFT errors\n");
+     printf("    -eh                - Only check files that have HARD errors\n");
+     printf("    -ew                - Only check files that have WRITE errors\n");
+     printf("    -ei                - Only check files that have INSPECT errors\n");
      printf("    -rerr              - Force new allocates to be created on read errors\n");
      printf("    -werr              - Force new allocates to be created on write errors\n");
      printf("    -o inspect_opt     - Inspection option.  One of the following:\n");
@@ -362,7 +385,7 @@ int main(int argc, char **argv)
         global_whattodo |= INSPECT_FIX_READ_ERROR;
      } else if (strcmp(argv[i], "-werr") == 0) { //** Repair write errors
         i++;
-        global_whattodo |= INSPECT_FIX_READ_ERROR;
+        global_whattodo |= INSPECT_FIX_WRITE_ERROR;
      } else if (strcmp(argv[i], "-p") == 0) { //** Print resulting query string
         i++;
         do_print = 1;

@@ -1338,11 +1338,12 @@ int lfs_myclose_real(char *fname, lio_fuse_fd_t *fd, lio_fuse_t *lfs)
   exnode_exchange_t *exp;
   ex_off_t ssize;
   char buffer[32];
-  char *key[] = {"system.exnode", "system.exnode.size", "os.timestamp.system.modify_data", "system.hard_errors", "system.soft_errors"};
-  char *val[5];
-  int err, v_size[5];
-  char ebuf[2][128];
-  int hard_errors, soft_errors;
+  char *key[6] = {"system.exnode", "system.exnode.size", "os.timestamp.system.modify_data", NULL, NULL, NULL };
+//  char *key[6] = {"system.exnode", "system.exnode.size", "os.timestamp.system.modify_data", "system.hard_errors", "system.soft_errors", "system.write_errors" };
+  char *val[6];
+  int err, v_size[6];
+  char ebuf[128];
+  segment_errors_t serr;
   apr_time_t now;
   double dt;
 
@@ -1427,22 +1428,18 @@ log_printf(1, "FLUSH/TRUNCATE fname=%s\n", fname);
   ssize = segment_size(fh->seg);
 
   //** Get any errors that may have occured
-  lioc_get_error_counts(lfs->lc, fh->seg, &hard_errors, &soft_errors);
+  lioc_get_error_counts(lfs->lc, fh->seg, &serr);
 
-  //** Update the OS exnode
+  //** Update the exnode
   n = 3;
   val[0] = exp->text.text;  v_size[0] = strlen(val[0]);
   sprintf(buffer, XOT, ssize);
   val[1] = buffer; v_size[1] = strlen(val[1]);
   val[2] = NULL; v_size[2] = 0;
 
-  if ((hard_errors>0) || (soft_errors>0)) {
-     log_printf(1, "ERROR: fname=%s hard_errors=%d soft_errors=%d\n", fname, hard_errors, soft_errors);
-     n = 5;
-     sprintf(ebuf[0], "%d", hard_errors);
-     sprintf(ebuf[1], "%d", soft_errors);
-     val[3] = ebuf[0]; v_size[3] = strlen(val[3]);
-     val[4] = ebuf[1]; v_size[4] = strlen(val[4]);
+  n += lioc_encode_error_counts(&serr, &(key[3]), &(val[3]), ebuf, &(v_size[3]), 0);
+  if ((serr.hard>0) || (serr.soft>0) || (serr.write>0)) {
+     log_printf(1, "ERROR: fname=%s hard_errors=%d soft_errors=%d write_errors=%d\n", fname, serr.hard, serr.soft, serr.write);
   }
 
   now = apr_time_now();
@@ -1477,7 +1474,7 @@ log_printf(1, "FLUSH/TRUNCATE fname=%s\n", fname);
 
   if (flags == LFS_INODE_DELETE) return(lfs_object_remove(lfs, fname));
 
-  return((hard_errors==0) ? 0 : -EIO);
+  return((serr.hard==0) ? 0 : -EIO);
 }
 
 int lfs_myclose(char *fname, lio_fuse_fd_t *fd)
