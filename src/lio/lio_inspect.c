@@ -46,9 +46,21 @@ char *inspect_opts[] = { "DUMMY", "inspect_quick_check",  "inspect_scan_check", 
                                   "inspect_quick_repair", "inspect_scan_repair", "inspect_full_repair",
                                   "inspect_soft_errors",  "inspect_hard_errors", "inspect_migrate" };
 
+#define SMODE_EQ      0
+#define SMODE_NEQ     1
+#define SMODE_EXISTS  2
+#define SMODE_MISSING 3
+
+char *select_mode_string[] = { "eq", "neq", "exists", "missing" };
+
 typedef struct {
   char *fname;
   char *exnode;
+  char *set_key;
+  char *set_success;
+  char *set_fail;
+  int  set_success_size;
+  int  set_fail_size;
   int ftype;
   int pslot;
 } inspect_t;
@@ -80,17 +92,17 @@ op_status_t inspect_task(void *arg, int id)
   exnode_t *ex;
   exnode_exchange_t *exp, *exp_out;
   segment_t *seg;
-  char *keys[] = { "os.timestamp.system.inspect", "system.inspect_errors", "system.hard_errors", "system.soft_errors", "system.write_errors", "system.exnode" };
-//  char *keys[6];
-  char *val[6];
+  char *keys[7];
+  char *val[7];
   char buf[32], ebuf[128];
   char *dsegid, *ptr, *exnode2;
   segment_errors_t serr;
-  int v_size[6], n, repair_mode;
+  int v_size[7], n, repair_mode;
   int whattodo, count;
   inip_file_t *ifd;
 
   whattodo = global_whattodo;
+  keys[6] = NULL;
 
 log_printf(15, "inspecting fname=%s global_whattodo=%d\n", w->fname, global_whattodo);
 
@@ -205,12 +217,12 @@ log_printf(15, "fname=%s inspect_gid=%d status=%d\n", w->fname, gop_id(gop), sta
      //printf("%s", exp_out->text);
      //printf("-----------------------------------------------------\n");
 
-     val[0] = NULL;  v_size[0] = 0;
-     val[1] = NULL;  v_size[1] = -1;  //** Remove the system.*_errors
-     val[2] = NULL;  v_size[2] = -1;
-     val[3] = NULL;  v_size[3] = -1;
-     val[4] = NULL;  v_size[4] = -1;
-     val[5] = exp_out->text.text; v_size[5]= strlen(val[5]);
+     val[0] = NULL;  v_size[0] = 0;  keys[0] = "os.timestamp.system.inspect";
+     val[1] = NULL;  v_size[1] = -1; keys[1] = "system.inspect_errors";  //** Remove the system.*_errors
+     val[2] = NULL;  v_size[2] = -1; keys[2] = "system.hard_errors";
+     val[3] = NULL;  v_size[3] = -1; keys[3] = "system.soft_errors";
+     val[4] = NULL;  v_size[4] = -1; keys[4] = "system.write_errors";
+     n = 5;
 
      count = (strcmp(exp->text.text, exp_out->text.text) == 0) ? 1 : 0;  //** Only update the exnode if it's changed
      if (count == 0) {  //** Do a further check to make sure the exnode hans't changed during the inspection
@@ -222,19 +234,36 @@ log_printf(15, "fname=%s inspect_gid=%d status=%d\n", w->fname, gop_id(gop), sta
            free(exnode2);
            if (count == 1) { info_printf(lio_ifd, 0, "WARN Exnode changed during inspection for file %s (ftype=%d). Aborting exnode update\n", w->fname, w->ftype); }
         } else {
-           count = 1;
+           val[n] = exp_out->text.text; v_size[n]= strlen(val[n]);  keys[n] = "system.exnode";
+           n++;
         }
      }
 
-     lioc_set_multiple_attrs(lio_gc, creds, w->fname, NULL, keys, (void **)val, v_size, 6-count);
+     if (w->set_key != NULL) {
+        keys[n] = w->set_key;
+        val[n] = w->set_success; v_size[n] = w->set_success_size;
+        n++;
+     }
+     lioc_set_multiple_attrs(lio_gc, creds, w->fname, NULL, keys, (void **)val, v_size, n);
      exnode_exchange_destroy(exp_out);
   } else {
      n = 1;
-     val[0] = NULL;  v_size[0] = 0;
+     val[0] = NULL;  v_size[0] = 0; keys[0] = "os.timestamp.system.inspect";
      if (status.error_code & (INSPECT_RESULT_SOFT_ERROR|INSPECT_RESULT_HARD_ERROR)) {
+        keys[1] = "system.inspect_errors";
         v_size[1] = snprintf(buf, 32, "%d", status.error_code); val[1] = buf;
         n = 2;
      }
+     if (w->set_key != NULL) {
+        keys[n] = w->set_key;
+        if (status.op_status == OP_STATE_SUCCESS) {
+           val[n] = w->set_success; v_size[n] = w->set_success_size;
+        } else {
+           val[n] = w->set_fail; v_size[n] = w->set_fail_size;
+        }
+        n++;
+     }
+
 
      if (repair_mode == 1) {
         lioc_get_error_counts(lio_gc, seg, &serr);
@@ -292,9 +321,9 @@ int main(int argc, char **argv)
   opque_t *q;
   op_generic_t *gop;
   op_status_t status;
-  char *vals[4];
-  char *keys[4] = {"system.exnode", "system.soft_errors", "system.hard_errors", "system.write_errors" };
-  int v_size[4], acount;
+  char *vals[100];
+  char *keys[100];
+  int v_size[100], acount;
   int slot, pslot, q_count, gotone;
   os_object_iter_t *it;
   os_regex_table_t *rp_single, *ro_single;
@@ -302,6 +331,8 @@ int main(int argc, char **argv)
   int submitted, good, bad, do_print;
   int recurse_depth = 10000;
   inspect_t *w;
+  char *set_key, *set_success, *set_fail, *select_key, *select_value;
+  int set_success_size, set_fail_size, select_mode, select_index;
 
 //printf("argc=%d\n", argc);
   if (argc < 2) {
@@ -323,10 +354,14 @@ int main(int argc, char **argv)
      printf("    -f                 - Forces data replacement even if it would result in data loss\n");
      printf("    -x                 - Stop scanning a file if an unrecoverable error is detected.\n");
      printf("    -p                 - Print the resulting query string\n");
-     printf("    -es                - Only check files that have SOFT errors\n");
-     printf("    -eh                - Only check files that have HARD errors\n");
-     printf("    -ew                - Only check files that have WRITE errors\n");
-     printf("    -ei                - Only check files that have INSPECT errors\n");
+     printf("    -es                - Check files that have SOFT errors\n");
+     printf("    -eh                - Check files that have HARD errors\n");
+     printf("    -ew                - Check files that have WRITE errors\n");
+     printf("    -ei                - Check files that have INSPECT errors\n");
+     printf("    -select attr mode [val] - Use the given attribute to select files for inspection\n");
+     printf("                         Valid options for mode are: eq, neq, exists, and missing\n");
+     printf("    -set attr success fail  - Sets the given attribute and stores the corresponding values based on success or failure\n");
+     printf("                         To remove the attribute set the corresponding value to REMOVE or to store nothing use NULL\n");
      printf("    -rerr              - Force new allocates to be created on read errors\n");
      printf("    -werr              - Force new allocates to be created on write errors\n");
      printf("    -o inspect_opt     - Inspection option.  One of the following:\n");
@@ -351,7 +386,13 @@ int main(int argc, char **argv)
   final_index = argc - 1;
   do_print = 0;
   q_count = 0;
+  set_key = set_success = set_fail = NULL;
+  set_success_size = set_fail_size = 0;
+  select_key = select_value = NULL;
+  select_index = -1;
   acount = 1;
+  keys[0] = "system.exnode";
+
   do {
      start_option = i;
 
@@ -367,10 +408,18 @@ int main(int argc, char **argv)
      } else if (strcmp(argv[i], "-f") == 0) { //** Force repair
         i++;
         force_repair = INSPECT_FORCE_REPAIR;
-     } else if (strcmp(argv[i], "-e") == 0) { //** Only check files that have soft/hard errors
+     } else if (strcmp(argv[i], "-es") == 0) { //** Check files that have soft errors
         i++;
-        error_only_check = 1;
-        acount = 3;
+        keys[acount] = "system.soft_errors"; acount++;
+     } else if (strcmp(argv[i], "-eh") == 0) { //** Check files that have hard errors
+        i++;
+        keys[acount] = "system.hard_errors"; acount++;
+     } else if (strcmp(argv[i], "-ew") == 0) { //** Check files that have write errors
+        i++;
+        keys[acount] = "system.write_errors"; acount++;
+     } else if (strcmp(argv[i], "-ei") == 0) { //** Check files that have inspect errors
+        i++;
+        keys[acount] = "system.inspect_errors"; acount++;
      } else if (strcmp(argv[i], "-r") == 0) { //** Force reconstruction
         i++;
         global_whattodo |= INSPECT_FORCE_RECONSTRUCTION;
@@ -386,6 +435,48 @@ int main(int argc, char **argv)
      } else if (strcmp(argv[i], "-werr") == 0) { //** Repair write errors
         i++;
         global_whattodo |= INSPECT_FIX_WRITE_ERROR;
+     } else if (strcmp(argv[i], "-set") == 0) { //** Set clause
+        i++;
+        set_key = argv[i]; i++;
+        set_success = argv[i]; i++;
+        set_fail = argv[i]; i++;
+
+        if (set_success != NULL) {
+           if (strcmp(set_success, "NULL") == 0) {
+              set_success = NULL;  set_success_size = 0;
+           } else if (strcmp(set_success, "REMOVE") == 0) {
+              set_success = NULL;  set_success_size = -1;
+           } else {
+              set_success_size = strlen(set_success);
+           }
+        }
+
+        if (set_fail != NULL) {
+           if (strcmp(set_fail, "NULL") == 0) {
+              set_fail = NULL;  set_fail_size = 0;
+           } else if (strcmp(set_fail, "REMOVE") == 0) {
+              set_fail = NULL;  set_fail_size = -1;
+           } else {
+              set_fail_size = strlen(set_fail);
+           }
+        }
+     } else if (strcmp(argv[i], "-select") == 0) { //** USer specified selection
+        i++;
+        select_key = argv[i]; i++;
+        for (select_mode=0; select_mode < 4; select_mode++) {
+           if (strcmp(select_mode_string[select_mode], argv[i]) == 0) break;
+        }
+        if (select_mode == 4) {
+           printf("Invalid select mode: %s\n", argv[i]);
+           return(1);
+        }
+        i++;
+        if ((select_mode == SMODE_EQ) || (select_mode == SMODE_NEQ)) {
+          select_value = argv[i]; i++;
+        }
+
+        select_index = acount;
+        keys[acount] = select_key; acount++;
      } else if (strcmp(argv[i], "-p") == 0) { //** Print resulting query string
         i++;
         do_print = 1;
@@ -485,26 +576,44 @@ int main(int argc, char **argv)
       }
 
      while ((ftype = os_next_object(tuple.lc->os, it, &fname, &prefix_len)) > 0) {
-        gotone = 0;
-        if (error_only_check == 1) {  //** Want to only check files with soft/hard errors
-           if (vals[1] != NULL) {
-              printf("fname=%s soft=%s\n", fname, vals[1]);
-              if (atol(vals[1]) > 0) gotone = 1;
-              free(vals[1]);
+        gotone = (acount == 1) ? 1 : 0;
+        for (i=1; i<acount; i++) {
+           if ((vals[i] != NULL) && (i != select_index)) { free(vals[i]); gotone = 1; }
+        }
+
+        if (select_key != NULL) {
+           switch(select_mode) {
+              case (SMODE_EQ):
+                  if (v_size[select_index] > 0) {
+                     if (strcmp(select_value, vals[select_index]) == 0) gotone = 1;
+                  }
+                  break;
+              case (SMODE_NEQ):
+                  if (v_size[select_index] > 0) {
+                     if (strcmp(select_value, vals[select_index]) != 0) gotone = 1;
+                  }
+                  break;
+              case (SMODE_EXISTS):
+                  if (v_size[select_index] > -1) gotone = 1;
+                  break;
+              case (SMODE_MISSING):
+                  if (v_size[select_index] < 0) gotone = 1;
+                  break;
            }
-           if (vals[2] != NULL) {
-              printf("fname=%s hard=%s\n", fname, vals[2]);
-              if (atol(vals[2]) > 0) gotone = 1;
-              free(vals[2]);
-           }
-        } else {  //** Normal mode is to check everything
-           gotone = 1;
+
+           if (vals[select_index] != NULL) free(vals[select_index]);
         }
 
         if (gotone == 1) {
           w[slot].fname = fname;
           w[slot].exnode = vals[0];
           w[slot].ftype = ftype;
+          w[slot].set_key = set_key;
+          w[slot].set_success = set_success;
+          w[slot].set_success_size = set_success_size;
+          w[slot].set_fail = set_fail;
+          w[slot].set_fail_size = set_fail_size;
+    
           vals[0] = NULL;  fname = NULL;
 
           submitted++;
@@ -529,7 +638,7 @@ log_printf(0, "gid=%d i=%d fname=%s\n", gop_id(gop), slot, fname);
           }
         } else {  //** Do some cleanup since we aren't doing a check
           free(fname);
-          for (i=0; i<acount; i++) if (vals[i] != NULL) free(vals[i]);
+          if (vals[0] != NULL) free(vals[0]);
         }
      }
 
