@@ -364,7 +364,7 @@ log_printf(0, "stripe=%d nstripes=%d total_stripes=%d offset=" XOT " len=" XOT "
 
         if (good_magic == 0) {
            n_empty++;
-           append_printf(stripe_msg[0], &stripe_used[0], stripe_buffer_size, "Empty stripe.  empty chunks: %d", magic_count[index]);
+//           append_printf(stripe_msg[0], &stripe_used[0], stripe_buffer_size, "Empty stripe.  empty chunks: %d\n", magic_count[index]);
            stripe_error[0] = 1;
         }
 
