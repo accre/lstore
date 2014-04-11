@@ -1409,6 +1409,19 @@ log_printf(1, "FLUSH/TRUNCATE fname=%s\n", fname);
   //** Ok no one has the file opened so teardown the segment/exnode
   //** IF not modified just tear down and clean up
   if (fh->modified == 0) {
+     //*** See if we need to update the error counts
+     n = lioc_encode_error_counts(&serr, key, val, ebuf, v_size, 0);
+     if ((serr.hard>0) || (serr.soft>0) || (serr.write>0)) {
+        log_printf(1, "ERROR: fname=%s hard_errors=%d soft_errors=%d write_errors=%d\n", fname, serr.hard, serr.soft, serr.write);
+     }
+     if (n > 0) {
+        err = lioc_set_multiple_attrs(lfs->lc, lfs->lc->creds, fname, NULL, key, (void **)val, v_size, n);
+        if (err != OP_STATE_SUCCESS) {
+           log_printf(0, "ERROR updating exnode! fname=%s\n", fname);
+        }
+     }
+
+     //** Tear everything down
      exnode_destroy(fh->ex);
      fh->ref_count--;
      lfs_lock(lfs);
