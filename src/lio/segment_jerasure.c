@@ -264,9 +264,12 @@ op_status_t segjerase_inspect_full_func(void *arg, int id)
   char empty_magic[JE_MAGIC_SIZE];
   char magic_key[s->n_devs*JE_MAGIC_SIZE];
   char print_buffer[2048];
+  char ppbuf[128];
   iovec_t *iov;
   ex_iovec_t ex_read;
   ex_iovec_t *ex_iov;
+  apr_time_t now, loop_start;
+  double dt, rate;
 
   stripe_diag_size = 4;
   stripe_buffer_size = 2048;
@@ -321,12 +324,17 @@ log_printf(0, "lo=" XOT " hi= " XOT " nbytes=" XOT " total_stripes=%d data_size=
      ex_read.len = (ex_off_t)nstripes * s->stripe_size_with_magic;
 
 log_printf(0, "stripe=%d nstripes=%d total_stripes=%d offset=" XOT " len=" XOT "\n", stripe, nstripes, total_stripes, ex_read.offset, ex_read.len);
+loop_start = apr_time_now();
      if (sf->do_print == 1) info_printf(si->fd, 1, XIDT ": checking stripes: (%d, %d)\n", segment_id(si->seg), stripe, stripe+nstripes-1);
 
      //** Read the data in
      tbuffer_single(&tbuf_read, ex_read.len, buffer);
      memset(buffer, 0, bufsize);
+     now = apr_time_now();
      err = gop_sync_exec(segment_read(s->child_seg, si->da, 1, &ex_read, &tbuf_read, 0, si->timeout));
+     now = apr_time_now() - now;
+     dt = (double)now / APR_USEC_PER_SEC;
+     rate = (double)(nstripes*s->chunk_size*s->n_data_devs)/dt;
      if (err != OP_STATE_SUCCESS) si->rerror++;
 
      n_iov = 0;
@@ -498,7 +506,14 @@ log_printf(0, "gop_status=%d nbytes=" XOT " n_iov=%d\n", err, nbytes, n_iov);
         }
      }
 
-     if (sf->do_print == 1) info_printf(si->fd, 1, XIDT ": bad stripe count: %d  --- Repair errors: %d   Unrecoverable errors:%d  Empty stripes: %d   Silent errors: %d\n", segment_id(si->seg), bad_count, repair_errors, unrecoverable_count, n_empty, erasure_errors);
+     if (sf->do_print == 1) {
+        info_printf(si->fd, 1, XIDT ": [%lf sec %s/s] bad stripe count: %d  --- Repair errors: %d   Unrecoverable errors:%d  Empty stripes: %d   Silent errors: %d\n", 
+            segment_id(si->seg), dt, pretty_print_double_with_scale(1024, rate, ppbuf), bad_count, repair_errors, unrecoverable_count, n_empty, erasure_errors);
+     }
+
+//loop_start = apr_time_now() - loop_start;
+//dt = (double)loop_start / APR_USEC_PER_SEC;
+//info_printf(si->fd, 1, "loop_dt=%lf\n", dt);
 
      if (((repair_errors+unrecoverable_count) > 0) && (fail_quick > 0)) {
         log_printf(1,"FAIL_QUICK:  Hit an unrecoverable error\n");
