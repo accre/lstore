@@ -59,6 +59,7 @@ typedef struct {
   char *set_key;
   char *set_success;
   char *set_fail;
+  int  get_exnode;
   int  set_success_size;
   int  set_fail_size;
   int ftype;
@@ -105,6 +106,11 @@ op_status_t inspect_task(void *arg, int id)
   keys[6] = NULL;
 
 log_printf(15, "inspecting fname=%s global_whattodo=%d\n", w->fname, global_whattodo);
+
+  if (w->get_exnode == 1) {
+     count = - lio_gc->max_attr;
+     lioc_get_attr(lio_gc, lio_gc->creds, w->fname, NULL, "system.exnode", (void **)&w->exnode, &count);
+  }
 
   if (w->exnode == NULL) {
      info_printf(lio_ifd, 0, "ERROR  Failed with file %s (ftype=%d). No exnode!\n", w->fname, w->ftype);
@@ -333,7 +339,7 @@ int main(int argc, char **argv)
   os_object_iter_t *it;
   os_regex_table_t *rp_single, *ro_single;
   lio_path_tuple_t static_tuple, tuple;
-  int submitted, good, bad, do_print;
+  int submitted, good, bad, do_print, assume_skip;
   int recurse_depth = 10000;
   inspect_t *w;
   char *set_key, *set_success, *set_fail, *select_key, *select_value;
@@ -363,6 +369,7 @@ int main(int argc, char **argv)
      printf("    -eh                - Check files that have HARD errors\n");
      printf("    -ew                - Check files that have WRITE errors\n");
      printf("    -ei                - Check files that have INSPECT errors\n");
+     printf("    -assume_skip       - Assume thet most files will be skipped and only get the exnode of files to inspect\n");
      printf("    -select attr mode [val] - Use the given attribute to select files for inspection\n");
      printf("                         Valid options for mode are: eq, neq, exists, and missing\n");
      printf("    -set attr success fail  - Sets the given attribute and stores the corresponding values based on success or failure\n");
@@ -395,6 +402,7 @@ int main(int argc, char **argv)
   set_success_size = set_fail_size = 0;
   select_key = select_value = NULL;
   select_index = -1;
+  assume_skip = 0;
   acount = 1;
   keys[0] = "system.exnode";
 
@@ -425,6 +433,10 @@ int main(int argc, char **argv)
      } else if (strcmp(argv[i], "-ei") == 0) { //** Check files that have inspect errors
         i++;
         keys[acount] = "system.inspect_errors"; acount++;
+     } else if (strcmp(argv[i], "-assume_skip") == 0) { //** Skip getting the exnode for all objects
+        i++;
+        assume_skip = 1;
+        acount = 0;
      } else if (strcmp(argv[i], "-r") == 0) { //** Force reconstruction
         i++;
         global_whattodo |= INSPECT_FORCE_RECONSTRUCTION;
@@ -581,7 +593,7 @@ int main(int argc, char **argv)
       }
 
      while ((ftype = os_next_object(tuple.lc->os, it, &fname, &prefix_len)) > 0) {
-        gotone = (acount == 1) ? 1 : 0;
+        gotone = ((acount == 1) && (assume_skip == 0)) ? 1 : 0;
         for (i=1; i<acount; i++) {
            if ((vals[i] != NULL) && (i != select_index)) { free(vals[i]); gotone = 1; }
         }
@@ -610,8 +622,9 @@ int main(int argc, char **argv)
         }
 
         if (gotone == 1) {
+          w[slot].exnode = (assume_skip == 0) ? vals[0] : NULL;
+          w[slot].get_exnode = assume_skip;
           w[slot].fname = fname;
-          w[slot].exnode = vals[0];
           w[slot].ftype = ftype;
           w[slot].set_key = set_key;
           w[slot].set_success = set_success;
