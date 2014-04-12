@@ -212,9 +212,9 @@ log_printf(15, "fname=%s inspect_gid=%d status=%d\n", w->fname, gop_id(gop), sta
      //** Store the updated exnode back to disk
      exp_out = exnode_exchange_create(EX_TEXT);
      exnode_serialize(ex, exp_out);
-     //printf("Updated remote: %s\n", fname);
+     //printf("Updated remote: %s\n", w->fname);
      //printf("-----------------------------------------------------\n");
-     //printf("%s", exp_out->text);
+     //printf("%s", exp_out->text.text);
      //printf("-----------------------------------------------------\n");
 
      val[0] = NULL;  v_size[0] = 0;  keys[0] = "os.timestamp.system.inspect";
@@ -224,15 +224,20 @@ log_printf(15, "fname=%s inspect_gid=%d status=%d\n", w->fname, gop_id(gop), sta
      val[4] = NULL;  v_size[4] = -1; keys[4] = "system.write_errors";
      n = 5;
 
-     count = (strcmp(exp->text.text, exp_out->text.text) == 0) ? 1 : 0;  //** Only update the exnode if it's changed
-     if (count == 0) {  //** Do a further check to make sure the exnode hans't changed during the inspection
+     count = strcmp(exp->text.text, exp_out->text.text);  //** Only update the exnode if it's changed
+     if (count != 0) {  //** Do a further check to make sure the exnode hans't changed during the inspection
         count = -lio_gc->max_attr;
         exnode2 = NULL;
         lioc_get_attr(lio_gc, creds, w->fname, NULL, "system.exnode", (void **)&exnode2, &count);
         if (exnode2 != NULL) {
-           count = (strcmp(exnode2, exp->text.text) == 0) ? 0 : 1;
+           count = strcmp(exnode2, exp->text.text);
            free(exnode2);
-           if (count == 1) { info_printf(lio_ifd, 0, "WARN Exnode changed during inspection for file %s (ftype=%d). Aborting exnode update\n", w->fname, w->ftype); }
+           if (count != 0) { 
+              info_printf(lio_ifd, 0, "WARN Exnode changed during inspection for file %s (ftype=%d). Aborting exnode update\n", w->fname, w->ftype);
+           } else {
+             val[n] = exp_out->text.text; v_size[n]= strlen(val[n]);  keys[n] = "system.exnode";
+             n++;
+           }
         } else {
            val[n] = exp_out->text.text; v_size[n]= strlen(val[n]);  keys[n] = "system.exnode";
            n++;

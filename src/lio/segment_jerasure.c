@@ -60,6 +60,7 @@ typedef struct {
   erasure_plan_t *plan;
   thread_pool_context_t *tpc;
   ex_off_t max_parity;
+  int write_errors;
   int soft_errors;
   int hard_errors;
   int method;
@@ -814,7 +815,8 @@ log_printf(5, "repair=%d child_replaced=%d option=%d inspect_mode=%d INSPECT_QUI
              loop = 10000;  //** Kick out            
            }
         } while (loop < max_loops);
-        
+
+        if (status.op_status == OP_STATE_SUCCESS)  s->write_errors = 0;  //** Clear the write errors since we did a full successfull check
         break;
   }
 
@@ -1413,6 +1415,8 @@ op_status_t segjerase_write_func(void *arg, int id)
 
   if ((soft_error+hard_error) > 0) {
      segment_lock(sw->seg);
+     s->write_errors = 1;
+     s->paranoid_check = 1;
      if (soft_error > 0) s->soft_errors++;
      if (hard_error > 0) s->hard_errors++;
      segment_unlock(sw->seg);
@@ -1635,6 +1639,10 @@ int segjerase_serialize_text(segment_t *seg, exnode_exchange_t *exp)
   append_printf(segbuf, &sused, bufsize, "w=%d\n", s->w);
   append_printf(segbuf, &sused, bufsize, "max_parity=" XOT "\n", s->max_parity);
 
+  if (s->write_errors > 0) {
+     append_printf(segbuf, &sused, bufsize, "write_errors=%d\n", s->write_errors);
+  }
+
   //** Merge the exnodes together
   exnode_exchange_append_text(exp, segbuf);
   exnode_exchange_append(exp, child_exp);
@@ -1706,10 +1714,12 @@ int segjerase_deserialize_text(segment_t *seg, ex_id_t id, exnode_exchange_t *ex
   atomic_inc(s->child_seg->ref_count);
 
   //** Load the params
+  s->write_errors = inip_get_integer(fd, seggrp, "write_errors", -1);
+  if ((s->paranoid_check == 0) && (s->write_errors > 0)) s->paranoid_check = 1;
+
   s->n_data_devs = inip_get_integer(fd, seggrp, "n_data_devs", 6);
   s->n_parity_devs = inip_get_integer(fd, seggrp, "n_parity_devs", 3);
   s->n_devs = s->n_data_devs + s->n_parity_devs;
-
   s->w = inip_get_integer(fd, seggrp, "w", -1);
   s->max_parity = inip_get_integer(fd, seggrp, "max_parity", 16*1024*1024);
   s->chunk_size = inip_get_integer(fd, seggrp, "chunk_size", 16*1024);
