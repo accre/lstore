@@ -42,11 +42,20 @@ http://www.accre.vanderbilt.edu
 
 
 typedef struct {
+  char *rid_key;
+  ex_off_t good;
+  ex_off_t bad;
+  ex_off_t nbytes;
+} warm_hash_entry_t;
+
+typedef struct {
   char **cap;
   char *fname;
   char *exnode;
   creds_t *creds;
   ibp_context_t *ic;
+  apr_hash_t *hash;
+  apr_pool_t *mpool;
   int n;
 } warm_t;
 
@@ -62,7 +71,8 @@ op_status_t gen_warm_task(void *arg, int id)
   op_status_t status;
   op_generic_t *gop;
   inip_file_t *fd;
-  int err, i, j, n;
+  int i, j, nfailed;
+  warm_hash_entry_t *wrid;
   char *etext;
   opque_t *q;
 
@@ -78,12 +88,31 @@ log_printf(15, "warming fname=%s, dt=%d\n", w->fname, dt);
   w->n = 0;
   while (g) {
     if (strncmp(inip_get_group(g), "block-", 6) == 0) { //** Got a data block
+      //** Get the RID key
+      etext = inip_get_string(fd, inip_get_group(g), "rid_key", NULL);
+      if (etext != NULL) {
+         wrid = apr_hash_get(w->hash, etext, APR_HASH_KEY_STRING);
+         if (wrid == NULL) { //** 1st time so need to make an entry
+            type_malloc_clear(wrid, warm_hash_entry_t, 1);
+            wrid->rid_key = etext;
+            apr_hash_set(w->hash, wrid->rid_key, APR_HASH_KEY_STRING, wrid);
+         } else {
+            free(etext);
+         }
+      }
+
+      //** Get the data size and update thr counts
+      wrid->nbytes = inip_get_integer(fd, inip_get_group(g), "size", 0);
+
+      //** Get the manage cap
       etext = inip_get_string(fd, inip_get_group(g), "manage_cap", "");
 log_printf(1, "fname=%s cap[%d]=%s\n", w->fname, w->n, etext);
       w->cap[w->n] = unescape_text('\\', etext); free(etext);
-//      opque_add(q, new_ibp_modify_alloc_op(ic, w->cap[w->n], -1, dt, -1, lio_gc->timeout));
+
+      //** Add the task
       gop = new_ibp_modify_alloc_op(w->ic, w->cap[w->n], -1, dt, -1, lio_gc->timeout);
       gop_set_myid(gop, w->n);
+      gop_set_private(gop, wrid);
       opque_add(q, gop);
       w->n++;
     }
@@ -92,26 +121,33 @@ log_printf(1, "fname=%s cap[%d]=%s\n", w->fname, w->n, etext);
 
   inip_destroy(fd);
 
-  if (w->n > 0) {
-    err = opque_waitall(q);
-    n = opque_tasks_failed(q);
-  } else {
-    err = OP_STATE_SUCCESS;
-  }
-  if (err != OP_STATE_SUCCESS) {
-     status = op_failure_status;
-     info_printf(lio_ifd, 0, "Failed with file %s on %d out of %d allocations\n", w->fname, n, w->n);
-     for (i=0; i<n; i++) {
-        gop = opque_get_next_failed(q);
+  nfailed = 0;
+  while ((gop = opque_waitany(q)) != NULL) {
+     status = gop_get_status(gop);
+     wrid = gop_get_private(gop);
+
+     if (status.op_status == OP_STATE_SUCCESS) {
+        wrid->good++;
+     } else {
+        nfailed++;
+        wrid->bad++;
         j = gop_get_myid(gop);
-        info_printf(lio_ifd, 1, "  cap[%d]=%s\n", j, w->cap[j]);
+        info_printf(lio_ifd, 1, "ERROR: %s  cap=%s\n", w->fname, w->cap[j]);
      }
-  } else {
-     etext = NULL; i = 0;
-     lioc_set_attr(lio_gc, w->creds, w->fname, NULL, "os.timestamp.system.warm", (void *)etext, i);
+
+     gop_free(gop, OP_DESTROY);
+  }
+
+  if (nfailed == 0) {
      status = op_success_status;
      info_printf(lio_ifd, 0, "Succeeded with file %s with %d allocations\n", w->fname, w->n);
+  } else {
+     status = op_failure_status;
+     info_printf(lio_ifd, 0, "Failed with file %s on %d out of %d allocations\n", w->fname, nfailed, w->n);
   }
+
+  etext = NULL; i = 0;
+  lioc_set_attr(lio_gc, w->creds, w->fname, NULL, "os.timestamp.system.warm", (void *)etext, i);
 
   opque_free(q, OP_DESTROY);
   
@@ -139,19 +175,30 @@ int main(int argc, char **argv)
   int ex_size, slot;
   os_object_iter_t *it;
   os_regex_table_t *rp_single, *ro_single;
+  list_t *master;
+  apr_hash_index_t *hi;
+  apr_ssize_t klen;
+  char *rkey;
+  warm_hash_entry_t *mrid, *wrid;
+  char ppbuf[128], ppbuf2[128];
   lio_path_tuple_t tuple;
-  int submitted, good, bad;
+  ex_off_t total, good, bad, nbytes, submitted;
+  list_iter_t lit;
+  Stack_t *stack;
   int recurse_depth = 10000;
+  int summary_mode;
   warm_t *w;
 
 //printf("argc=%d\n", argc);
   if (argc < 2) {
      printf("\n");
-     printf("lio_warm LIO_COMMON_OPTIONS [-rd recurse_depth] [-dt time] LIO_PATH_OPTIONS\n");
+     printf("lio_warm LIO_COMMON_OPTIONS [-rd recurse_depth] [-dt time] [-sb] [-sf] LIO_PATH_OPTIONS\n");
      lio_print_options(stdout);
      lio_print_path_options(stdout);
      printf("    -rd recurse_depth  - Max recursion depth on directories. Defaults to %d\n", recurse_depth);
      printf("    -dt time           - Duration time in sec.  Default is %d sec\n", dt);
+     printf("    -sb                - Print the summary but only list the bad RIDs\n");
+     printf("    -sf                - Print the the full summary\n");
      return(1);
   }
 
@@ -163,6 +210,7 @@ int main(int argc, char **argv)
   rg_mode = lio_parse_path_options(&argc, argv, lio_gc->auto_translate, &tuple, &rp_single, &ro_single);
 
   i=1;
+  summary_mode = 0;
   do {
      start_option = i;
 
@@ -172,6 +220,12 @@ int main(int argc, char **argv)
      } else if (strcmp(argv[i], "-rd") == 0) { //** Recurse depth
         i++;
         recurse_depth = atoi(argv[i]); i++;
+     } else if (strcmp(argv[i], "-sb") == 0) { //** Print only bad RIDs
+        i++;
+        summary_mode = 1;
+     } else if (strcmp(argv[i], "-sf") == 0) { //** Print the full summary
+        i++;
+        summary_mode = 2;
      }
 
   } while ((start_option < i) && (i<argc));
@@ -191,6 +245,11 @@ int main(int argc, char **argv)
   opque_start_execution(q);
 
   type_malloc_clear(w, warm_t, lio_parallel_task_count);
+  for (j=0; j<lio_parallel_task_count; j++) {
+     apr_pool_create(&(w[j].mpool), NULL);
+     w[j].hash = apr_hash_make(w[j].mpool);
+  }
+
   submitted = good = bad = 0;
 
   for (j=start_index; j<argc; j++) {
@@ -263,12 +322,79 @@ log_printf(0, "gid=%d i=%d fname=%s\n", gop_id(gop), slot, fname);
   opque_free(q, OP_DESTROY);
 
   info_printf(lio_ifd, 0, "--------------------------------------------------------------------\n");
-  info_printf(lio_ifd, 0, "Submitted: %d   Success: %d   Fail: %d\n", submitted, good, bad);
+  info_printf(lio_ifd, 0, "Submitted: " XOT "   Success: " XOT "   Fail: " XOT "\n", submitted, good, bad);
   if (submitted != (good+bad)) {
      info_printf(lio_ifd, 0, "ERROR FAILED self-consistency check! Submitted != Success+Fail\n");
   }
   if (bad > 0) {
      info_printf(lio_ifd, 0, "ERROR Some files failed to warm!\n");
+  }
+
+
+  if (submitted == 0) goto cleanup;
+
+  //** Merge the data from all the tables
+  master = list_create(0, &list_string_compare, list_string_dup, list_simple_free, list_no_data_free);
+  for (i=0; i<lio_parallel_task_count; i++) {
+    hi = apr_hash_first(NULL, w[i].hash);
+    while (hi != NULL) {
+      apr_hash_this(hi, (const void **)&rkey, &klen, (void **)&wrid);
+      mrid = list_search(master, wrid->rid_key);
+      if (mrid == NULL) {
+         list_insert(master, wrid->rid_key, wrid);
+      } else {
+         mrid->good += wrid->good;
+         mrid->bad += wrid->bad;
+         mrid->nbytes += wrid->nbytes;
+
+         apr_hash_set(w[i].hash, wrid->rid_key, APR_HASH_KEY_STRING, NULL);
+         free(wrid->rid_key);
+         free(wrid);
+      }
+
+      hi = apr_hash_next(hi);
+    }
+  }
+
+  //** Print the summary
+  info_printf(lio_ifd, 0, "                                               Allocations\n");
+  info_printf(lio_ifd, 0, "            RID Key               Size        Total      Good         Bad\n");
+  info_printf(lio_ifd, 0, "------------------------------  ---------  ----------  ----------  ----------\n");
+  nbytes = good = bad = j = i = 0;
+  stack = new_stack();
+  lit = list_iter_search(master, NULL, 0);
+  while (list_next(&lit, (list_key_t **)&rkey, (list_data_t **)&mrid) == 0) {
+     j++;
+     nbytes += mrid->nbytes;
+     good += mrid->good;
+     bad += mrid->bad;
+     total = mrid->good + mrid->bad;
+     if (mrid->bad > 0) i++;
+
+     push(stack, mrid);
+
+     if ((summary_mode == 0) || ((summary_mode == 1) && (mrid->bad == 0))) continue;
+
+     info_printf(lio_ifd, 0, "%-30s  %s  %10" PXOT "  %10" PXOT "  %10" PXOT "\n", mrid->rid_key, 
+         pretty_print_double_with_scale(1024, (double)mrid->nbytes, ppbuf), total, mrid->good, mrid->bad);
+  }
+  if (summary_mode != 0) info_printf(lio_ifd, 0, "------------------------------   --------  ----------  ----------  ----------\n");
+
+  snprintf(ppbuf2, sizeof(ppbuf2), "SUM (%d RIDs, %d bad)", j, i);
+  total = good + bad;
+  info_printf(lio_ifd, 0, "%-30s  %s  %10" PXOT "  %10" PXOT "  %10" PXOT "\n", ppbuf2, 
+      pretty_print_double_with_scale(1024, (double)nbytes, ppbuf), total, good, bad);
+
+  list_destroy(master);
+
+  while ((mrid = pop(stack)) != NULL) {
+     free(mrid->rid_key);
+     free(mrid);
+  }
+  free_stack(stack, 0);
+cleanup:
+  for (j=0; j<lio_parallel_task_count; j++) {
+     apr_pool_destroy(w[j].mpool);
   }
 
   free(w);
