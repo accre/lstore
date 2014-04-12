@@ -93,7 +93,7 @@ int main(int argc, char **argv)
   int max_attr = 1024*1024;
   char *new_obj_fmt = "object=%s\\n";
   char *end_obj_fmt = "\\n";
-  char *attr_fmt = "   %s=%s\\n";
+  char *attr_fmt = "\t%s=%s\\n";
   char *attr_sep = "";
 
   int recurse_depth = 10000;
@@ -107,6 +107,9 @@ int main(int argc, char **argv)
      lio_print_options(stdout);
      lio_print_path_options(stdout);
      printf("    PRINT_OPTIONS: [-new_obj new_obj_fmt] [-end_obj end_obj_fmt] [-attr_fmt attr_fmt] [-attr_sep attr_sep]\n");
+     printf("       -list                 - Prints object and attibute names but not their values\n");
+     printf("       -list1                - Prints 1 line per file only listing the attributes. Not their values\n");
+     printf("       -single               - Prints 1 line per file with all attributes space separated\n");
      printf("       -new_obj new_obj_fmt  - New object C format string.  Default is \"%s\"\n", new_obj_fmt);
      printf("       -end_obj end_obj_fmt  - End object C format string.  Default is \"%s\"\n", end_obj_fmt);
      printf("       -attr_fmt attr_fmt    - Attribute C format string.  Default is \"%s\"\n", attr_fmt);
@@ -165,6 +168,21 @@ int main(int argc, char **argv)
      } else if (strcmp(argv[i], "-attr_sep") == 0) {  //**  Attribute separator
         i++;
         attr_sep = argv[i]; i++;
+     } else if (strcmp(argv[i], "-single") == 0) {  //**  Single line/object
+        i++;
+        new_obj_fmt = "%s";
+        attr_fmt = " %s=%s";
+        attr_sep = "";
+        end_obj_fmt = "\\n";
+     } else if (strcmp(argv[i], "-list1") == 0) {  //**  List all the attributes on 1 line
+        i++;
+        new_obj_fmt = "%s";
+        attr_fmt = " %s";
+        attr_sep = "";
+        end_obj_fmt = "\\n";
+     } else if (strcmp(argv[i], "-list") == 0) {  //**  List all the attributes
+        i++;
+        attr_fmt = "\t%s\\n";
      } else if (strcmp(argv[i], "-ga") == 0) {  //**  Attribute glob
         i++;
         attr_regex = os_path_glob2regex(argv[i]); i++;
