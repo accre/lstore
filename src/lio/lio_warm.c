@@ -179,6 +179,7 @@ int main(int argc, char **argv)
   apr_hash_index_t *hi;
   apr_ssize_t klen;
   char *rkey;
+  char *line_end;
   warm_hash_entry_t *mrid, *wrid;
   char ppbuf[128], ppbuf2[128];
   lio_path_tuple_t tuple;
@@ -374,9 +375,9 @@ log_printf(0, "gid=%d i=%d fname=%s\n", gop_id(gop), slot, fname);
      push(stack, mrid);
 
      if ((summary_mode == 0) || ((summary_mode == 1) && (mrid->bad == 0))) continue;
-
-     info_printf(lio_ifd, 0, "%-30s  %s  %10" PXOT "  %10" PXOT "  %10" PXOT "\n", mrid->rid_key, 
-         pretty_print_double_with_scale(1024, (double)mrid->nbytes, ppbuf), total, mrid->good, mrid->bad);
+     line_end = (mrid->bad == 0) ? "\n" : "  RID_ERR\n";
+     info_printf(lio_ifd, 0, "%-30s  %s  %10" PXOT "  %10" PXOT "  %10" PXOT "%s", mrid->rid_key, 
+         pretty_print_double_with_scale(1024, (double)mrid->nbytes, ppbuf), total, mrid->good, mrid->bad, line_end);
   }
   if (summary_mode != 0) info_printf(lio_ifd, 0, "------------------------------   --------  ----------  ----------  ----------\n");
 
