@@ -325,7 +325,8 @@ int main(int argc, char **argv)
 {
   int i, j,  start_option, rg_mode, ftype, prefix_len;
   int force_repair, option;
-  int bufsize_mb = 20;
+  ex_off_t bufsize;
+  char ppbuf[32];
   char *fname, *qstr, *path;
   rs_query_t *rsq;
   apr_pool_t *mpool;
@@ -345,14 +346,16 @@ int main(int argc, char **argv)
   char *set_key, *set_success, *set_fail, *select_key, *select_value;
   int set_success_size, set_fail_size, select_mode, select_index;
 
+  bufsize = 20*1024*1024;
+
 //printf("argc=%d\n", argc);
   if (argc < 2) {
      printf("\n");
-     printf("lio_inspect LIO_COMMON_OPTIONS [-rd recurse_depth] [-b bufsize_mb] [-es] [-eh] [-ew] [-rerr] [-werr] [-f] [-s] [-r] [-q extra_query] [-bl key value] [-p] -o inspect_opt [LIO_PATH_OPTIONS | -]\n");
+     printf("lio_inspect LIO_COMMON_OPTIONS [-rd recurse_depth] [-b bufsize] [-es] [-eh] [-ew] [-rerr] [-werr] [-f] [-s] [-r] [-q extra_query] [-bl key value] [-p] -o inspect_opt [LIO_PATH_OPTIONS | -]\n");
      lio_print_options(stdout);
      lio_print_path_options(stdout);
      printf("    -rd recurse_depth  - Max recursion depth on directories. Defaults to %d\n", recurse_depth);
-     printf("    -b bufsize_mb      - Buffer size to use in MBytes for *each* inspect (Default=%dMB)\n", bufsize_mb);
+     printf("    -b bufsize         - Buffer size to use for *each* inspect. Units supported (Default=%s)\n", pretty_print_int_with_scale(bufsize, ppbuf));
      printf("    -s                 - Report soft errors, like a missing RID in the config file but the allocation is good.\n");
      printf("                         The default is to ignore these type of errors.\n");
      printf("    -r                 - Use reconstruction for all repairs. Even for data placement issues.\n");
@@ -414,7 +417,7 @@ int main(int argc, char **argv)
         recurse_depth = atoi(argv[i]); i++;
      } else if (strcmp(argv[i], "-b") == 0) {  //** Get the buffer size
         i++;
-        bufsize_mb = atoi(argv[i]); i++;
+        bufsize = string_get_integer(argv[i]); i++;
      } else if (strcmp(argv[i], "-") == 0) {  //** Take files from stdin
         i++;
         from_stdin = 1;
@@ -549,8 +552,6 @@ int main(int argc, char **argv)
 
   global_whattodo |= option;
   if ((option == INSPECT_QUICK_REPAIR) || (option == INSPECT_SCAN_REPAIR) || (option == INSPECT_FULL_REPAIR)) global_whattodo |= force_repair;
-
-  bufsize = bufsize_mb * 1024 *1024;
 
   if ((rg_mode == 0) && (from_stdin == 0)) {
      if (argc <= start_index) {

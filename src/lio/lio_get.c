@@ -33,6 +33,7 @@ http://www.accre.vanderbilt.edu
 #include "exnode.h"
 #include "log.h"
 #include "iniparse.h"
+#include "string_token.h"
 #include "type_malloc.h"
 #include "thread_pool.h"
 #include "lio.h"
@@ -43,7 +44,6 @@ http://www.accre.vanderbilt.edu
 
 int main(int argc, char **argv)
 {
-  int bufsize_mb = 20;
   ex_off_t bufsize;
   int err, ftype, i, start_index, start_option;
   char *ex_data, *buffer;
@@ -52,17 +52,20 @@ int main(int argc, char **argv)
   segment_t *seg;
   int v_size;
   lio_path_tuple_t tuple;
+  char ppbuf[32];
 
   err = 0;
 
   _lio_ifd = stderr;  //** Default to all information going to stderr since the output is file data.
+
+  bufsize = 20*1024*1024;
  
 //printf("argc=%d\n", argc);
   if (argc < 2) {
      printf("\n");
      printf("lio_get LIO_COMMON_OPTIONS [-b bufsize] src_file1 .. src_file_N\n");
      lio_print_options(stdout);
-     printf("    -b bufsize         - Buffer size to use in MBytes (Default=%dMB)\n", bufsize_mb);
+     printf("    -b bufsize         - Buffer size to use. Units supported (Default=%s)\n", pretty_print_int_with_scale(bufsize, ppbuf));
      printf("    src_file           - Source file\n");
      return(1);
   }
@@ -75,7 +78,7 @@ int main(int argc, char **argv)
 
         if (strcmp(argv[i], "-b") == 0) {  //** Get the buffer size
            i++;
-           bufsize_mb = atoi(argv[i]); i++;
+           bufsize = string_get_integer(argv[i]); i++;
         }
 
      } while ((start_option < i) && (i<argc));
@@ -89,7 +92,6 @@ int main(int argc, char **argv)
   }
 
   //** Make the buffer
-  bufsize = 1024*1024*bufsize_mb;
   type_malloc(buffer, char, bufsize+1);
 
   for (i=start_index; i<argc; i++) {
