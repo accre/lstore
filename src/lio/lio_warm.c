@@ -178,9 +178,12 @@ int main(int argc, char **argv)
   list_t *master;
   apr_hash_index_t *hi;
   apr_ssize_t klen;
-  char *rkey;
+  char *rkey, *config, *value;
   char *line_end;
   warm_hash_entry_t *mrid, *wrid;
+  inip_file_t *ifd;
+  inip_group_t *ig;
+  inip_element_t *ele;
   char ppbuf[128], ppbuf2[128];
   lio_path_tuple_t tuple;
   ex_off_t total, good, bad, nbytes, submitted;
@@ -357,10 +360,36 @@ log_printf(0, "gid=%d i=%d fname=%s\n", gop_id(gop), slot, fname);
     }
   }
 
+  //** Get the RID config which is used in the summary
+  config = rs_get_rid_config(lio_gc->rs);
+  assert(ifd = inip_read_text(config));
+
+  //** Convert it for easier lookup
+  ig = inip_first_group(ifd);
+  while (ig != NULL) {
+     rkey = inip_get_group(ig);
+     if (strcmp("rid", rkey) == 0) {  //** Found a resource
+        //** Now cycle through the attributes
+        ele = inip_first_element(ig);
+        while (ele != NULL) {
+           rkey = inip_get_element_key(ele);
+           value = inip_get_element_value(ele);
+           if (strcmp(rkey, "rid_key") == 0) { 
+              free(ig->group);
+              ig->group = strdup(value);
+           }
+
+          ele = inip_next_element(ele);
+        }
+     }
+
+    ig = inip_next_group(ig);
+  }
+  
   //** Print the summary
-  info_printf(lio_ifd, 0, "                                               Allocations\n");
-  info_printf(lio_ifd, 0, "            RID Key               Size        Total      Good         Bad\n");
-  info_printf(lio_ifd, 0, "------------------------------  ---------  ----------  ----------  ----------\n");
+  info_printf(lio_ifd, 0, "                                                              Allocations\n");
+  info_printf(lio_ifd, 0, "                 RID Key                    Size        Total      Good         Bad\n");
+  info_printf(lio_ifd, 0, "----------------------------------------  ---------  ----------  ----------  ----------\n");
   nbytes = good = bad = j = i = 0;
   stack = new_stack();
   lit = list_iter_search(master, NULL, 0);
@@ -376,17 +405,22 @@ log_printf(0, "gid=%d i=%d fname=%s\n", gop_id(gop), slot, fname);
 
      if ((summary_mode == 0) || ((summary_mode == 1) && (mrid->bad == 0))) continue;
      line_end = (mrid->bad == 0) ? "\n" : "  RID_ERR\n";
-     info_printf(lio_ifd, 0, "%-30s  %s  %10" PXOT "  %10" PXOT "  %10" PXOT "%s", mrid->rid_key, 
+     rkey = inip_get_string(ifd, mrid->rid_key, "ds_key", mrid->rid_key);
+     info_printf(lio_ifd, 0, "%-40s  %s  %10" PXOT "  %10" PXOT "  %10" PXOT "%s", rkey, 
          pretty_print_double_with_scale(1024, (double)mrid->nbytes, ppbuf), total, mrid->good, mrid->bad, line_end);
+     free(rkey);
   }
-  if (summary_mode != 0) info_printf(lio_ifd, 0, "------------------------------   --------  ----------  ----------  ----------\n");
+  if (summary_mode != 0) info_printf(lio_ifd, 0, "----------------------------------------   --------  ----------  ----------  ----------\n");
 
   snprintf(ppbuf2, sizeof(ppbuf2), "SUM (%d RIDs, %d bad)", j, i);
   total = good + bad;
-  info_printf(lio_ifd, 0, "%-30s  %s  %10" PXOT "  %10" PXOT "  %10" PXOT "\n", ppbuf2, 
+  info_printf(lio_ifd, 0, "%-40s  %s  %10" PXOT "  %10" PXOT "  %10" PXOT "\n", ppbuf2, 
       pretty_print_double_with_scale(1024, (double)nbytes, ppbuf), total, good, bad);
 
   list_destroy(master);
+
+  inip_destroy(ifd);
+  free(config);
 
   while ((mrid = pop(stack)) != NULL) {
      free(mrid->rid_key);
