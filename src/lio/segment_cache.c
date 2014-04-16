@@ -2932,7 +2932,7 @@ int cache_stats_print(cache_stats_t *cs, char *buffer, int *used, int nmax)
 // segcache_inspect - Issues integrity checks for the underlying segments
 //***********************************************************************
 
-op_generic_t *segcache_inspect(segment_t *seg, data_attr_t *da, info_fd_t *fd, int mode, ex_off_t bufsize, rs_query_t *query, int timeout)
+op_generic_t *segcache_inspect(segment_t *seg, data_attr_t *da, info_fd_t *fd, int mode, ex_off_t bufsize, inspect_args_t *args, int timeout)
 {
   cache_segment_t *s = (cache_segment_t *)seg->priv;
 
@@ -2946,7 +2946,7 @@ op_generic_t *segcache_inspect(segment_t *seg, data_attr_t *da, info_fd_t *fd, i
      }
   }
 
-  return(segment_inspect(s->child_seg, da, fd, mode, bufsize, query, timeout));
+  return(segment_inspect(s->child_seg, da, fd, mode, bufsize, args, timeout));
 }
 
 //*******************************************************************************

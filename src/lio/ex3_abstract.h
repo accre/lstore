@@ -94,9 +94,15 @@ struct segment_s;
 typedef struct segment_s segment_t;
 
 typedef struct {
+  rs_query_t *query;   //** Generic extra query
+  opque_t *qs;         //** Cleanup Que on success
+  opque_t *qf;         //** Cleanup Que for failure
+} inspect_args_t;
+
+typedef struct {
   op_generic_t *(*read)(segment_t *seg, data_attr_t *da, int n_iov, ex_iovec_t *iov, tbuffer_t *buffer, ex_off_t boff, int timeout);
   op_generic_t *(*write)(segment_t *seg, data_attr_t *da, int n_iov, ex_iovec_t *iov, tbuffer_t *buffer, ex_off_t boff, int timeout);
-  op_generic_t *(*inspect)(segment_t *seg, data_attr_t *da, info_fd_t *fd, int mode, ex_off_t buffer_size, rs_query_t *query, int timeout);
+  op_generic_t *(*inspect)(segment_t *seg, data_attr_t *da, info_fd_t *fd, int mode, ex_off_t buffer_size, inspect_args_t *args, int timeout);
   op_generic_t *(*truncate)(segment_t *seg, data_attr_t *da, ex_off_t new_size, int timeout);
   op_generic_t *(*remove)(segment_t *seg, data_attr_t *da, int timeout);
   op_generic_t *(*flush)(segment_t *seg, data_attr_t *da, ex_off_t lo, ex_off_t hi, int timeout);

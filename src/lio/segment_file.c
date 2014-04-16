@@ -267,7 +267,7 @@ op_generic_t *segfile_truncate(segment_t *seg, data_attr_t *da, ex_off_t new_siz
 // segfile_inspect - Checks if the file exists
 //***********************************************************************
 
-op_generic_t *segfile_inspect(segment_t *seg, data_attr_t *da, info_fd_t *ifd, int mode, ex_off_t bufsize, rs_query_t *query, int timeout)
+op_generic_t *segfile_inspect(segment_t *seg, data_attr_t *da, info_fd_t *ifd, int mode, ex_off_t bufsize, inspect_args_t *args, int timeout)
 {
   segfile_priv_t *s = (segfile_priv_t *)seg->priv;
   FILE *fd;

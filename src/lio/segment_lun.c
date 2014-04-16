@@ -81,7 +81,7 @@ typedef struct {
   segment_t *seg;
   data_attr_t *da;
   info_fd_t *fd;
-  rs_query_t *query;
+  inspect_args_t *args;
   ex_off_t bufsize;
   int inspect_mode;
   int timeout;
@@ -152,7 +152,7 @@ void _slun_perform_remap(segment_t *seg)
 // slun_row_placement_check - Checks the placement of each allocation
 //***********************************************************************
 
-int slun_row_placement_check(segment_t *seg, data_attr_t *da, seglun_row_t *b, int *block_status, int n_devices, int soft_error_fail, rs_query_t *query, int timeout)
+int slun_row_placement_check(segment_t *seg, data_attr_t *da, seglun_row_t *b, int *block_status, int n_devices, int soft_error_fail, rs_query_t *query, inspect_args_t *args, int timeout)
 {
   seglun_priv_t *s = (seglun_priv_t *)seg->priv;
   int i, nbad;
@@ -198,7 +198,7 @@ int slun_row_placement_check(segment_t *seg, data_attr_t *da, seglun_row_t *b, i
 //     constraints
 //***********************************************************************
 
-int slun_row_placement_fix(segment_t *seg, data_attr_t *da, seglun_row_t *b, int *block_status, int n_devices, rs_query_t *query, int timeout)
+int slun_row_placement_fix(segment_t *seg, data_attr_t *da, seglun_row_t *b, int *block_status, int n_devices, inspect_args_t *args, int timeout)
 {
   seglun_priv_t *s = (seglun_priv_t *)seg->priv;
   int i, j, k, nbad, ngood, loop, cleanup_index;
@@ -214,7 +214,7 @@ int slun_row_placement_fix(segment_t *seg, data_attr_t *da, seglun_row_t *b, int
   op_generic_t *gop;
   opque_t *q;
 
-  rsq = rs_query_dup(s->rs, query);
+  rsq = rs_query_dup(s->rs, args->query);
 
   cleanup_index = 0;
   loop = 0;
@@ -322,13 +322,13 @@ log_printf(15, "missing[%d]=%d status=%d\n", j,i, gop_completed_successfully(gop
               b->block[i].cap_offset = 0;
               block_status[i] = 0;
 
-              dbold[k] = dbs; k++;
-
               gop_free(gop, OP_DESTROY);
 
               //** Remove the old data
               gop = ds_remove(dbs->ds, da, ds_get_cap(dbs->ds, dbs->cap, DS_CAP_MANAGE), timeout);
-              opque_add(q, gop);
+              opque_add(args->qs, gop);  //** This gets placed on the success queue so we can roll it back if needed
+              if (s->db_cleanup == NULL) s->db_cleanup = new_stack();
+              push(s->db_cleanup, dbs);  //** Dump the data block here cause the cap is needed for the gop.  We'll cleanup up on destroy()
            } else {  //** Copy failed so remove the destintation
               gop_free(gop, OP_DESTROY);
               gop = ds_remove(db[j]->ds, da, ds_get_cap(db[j]->ds, db[j]->cap, DS_CAP_MANAGE), timeout);
@@ -491,7 +491,7 @@ int slun_row_pad_fix(segment_t *seg, data_attr_t *da, seglun_row_t *b, int *bloc
 // slun_row_replace_fix - Replaces the missing or bad allocation in the row
 //***********************************************************************
 
-int slun_row_replace_fix(segment_t *seg, data_attr_t *da, seglun_row_t *b, int *block_status, int n_devices, rs_query_t *rsq_base, int timeout)
+int slun_row_replace_fix(segment_t *seg, data_attr_t *da, seglun_row_t *b, int *block_status, int n_devices, inspect_args_t *args, int timeout)
 {
   seglun_priv_t *s = (seglun_priv_t *)seg->priv;
   rs_request_t req_list[n_devices];
@@ -506,9 +506,10 @@ int slun_row_replace_fix(segment_t *seg, data_attr_t *da, seglun_row_t *b, int *
   int missing[n_devices];
   rs_hints_t hints_list[n_devices];
   char *migrate;
+  data_block_t *db;
 
   //** Dup the base query
-  rsq = rs_query_dup(s->rs, rsq_base);
+  rsq = rs_query_dup(s->rs, args->query);
 
   memset(hints_list, 0, sizeof(hints_list));
 
@@ -542,10 +543,16 @@ log_printf(15, "loop=%d ------------------------------\n", loop);
           attr_stack = NULL;
           if (b->block[i].data != NULL) {
 //log_printf(0, "old b.data->id=" XIDT "\n", b->block[i].data->id);
-             attr_stack = b->block[i].data->attr_stack;
-             b->block[i].data->attr_stack = NULL;
-             atomic_set(b->block[i].data->ref_count, 0);
-             data_block_destroy(b->block[i].data);
+             db = b->block[i].data;
+             attr_stack = db->attr_stack;
+             db->attr_stack = NULL;
+
+             //** Make the cleanup operations for success
+             gop = ds_remove(s->ds, da, ds_get_cap(db->ds, db->cap, DS_CAP_MANAGE), timeout);
+             opque_add(args->qs, gop);  //** This gets placed on the success queue so we can roll it back if needed
+             if (s->db_cleanup == NULL) s->db_cleanup = new_stack();
+             push(s->db_cleanup, db);   //** Dump the data block here cause the cap is needed for the gop.  We'll cleanup up on destroy()
+
              b->block[i].data = data_block_create(s->ds);
           } else {
              b->block[i].data = data_block_create(s->ds);
@@ -659,7 +666,10 @@ op_status_t _seglun_grow(segment_t *seg, data_attr_t *da, ex_off_t new_size, int
   int block_status[s->n_devices];
   apr_time_t now;
   double gsecs, tsecs;
+  inspect_args_t args;
 
+  memset(&args, 0, sizeof(args));
+  args.query = s->rsq;
 
   now = apr_time_now();
 
@@ -750,7 +760,7 @@ log_printf(15, "sid=" XIDT " row maxed out seg_offset=" XOT " curr seg_end=" XOT
 
      //** Flag them all as missing so they can be replaced
      for (i=0; i < s->n_devices; i++) block_status[i] = 1;
-     err = err + slun_row_replace_fix(seg, da, b, block_status, s->n_devices, s->rsq, timeout);
+     err = err + slun_row_replace_fix(seg, da, b, block_status, s->n_devices, &args, timeout);
 
      if (err == 0) {
         insert_interval_skiplist(s->isl, (skiplist_key_t *)&(b->seg_offset), (skiplist_key_t *)&(b->seg_end), (skiplist_data_t *)b);
@@ -1681,7 +1691,7 @@ op_status_t seglun_migrate_func(void *arg, int id)
     }
 
     for (i=0; i < s->n_devices; i++) block_status[i] = 0;
-    err = slun_row_placement_check(si->seg, si->da, b, block_status, s->n_devices, soft_error_fail, s->rsq, si->timeout);
+    err = slun_row_placement_check(si->seg, si->da, b, block_status, s->n_devices, soft_error_fail, si->args->query, si->args, si->timeout);
     used = 0;
     append_printf(info, &used, bufsize, XIDT ":     slun_row_placement_check:", segment_id(si->seg));
     for (i=0; i < s->n_devices; i++) append_printf(info, &used, bufsize, " %d", block_status[i]);
@@ -1738,7 +1748,9 @@ op_status_t seglun_inspect_func(void *arg, int id)
   int used, soft_error_fail, force_reconstruct, nforce;
   int block_status[s->n_devices], block_copy[s->n_devices];
   int i, j, err, option, force_repair, max_lost, total_lost, total_repaired, total_migrate, nmigrated, nlost, nrepaired;
+  inspect_args_t args;
 
+  args = *(si->args);
   status = op_success_status;
   max_lost = 0;
   total_lost = 0;
@@ -1757,9 +1769,12 @@ op_status_t seglun_inspect_func(void *arg, int id)
 
   //** Form the query to use
   query = rs_query_dup(s->rs, s->rsq);
-  if (si->query != NULL) {  //** Local query needs to be added
-     rs_query_append(s->rs, query, si->query);
-     rs_query_add(s->rs, &query, RSQ_BASE_OP_AND, NULL, 0, NULL, 0);
+  args.query = query;
+  if (si->args != NULL) {
+     if (si->args->query != NULL) {  //** Local query needs to be added
+        rs_query_append(s->rs, query, si->args->query);
+        rs_query_add(s->rs, &query, RSQ_BASE_OP_AND, NULL, 0, NULL, 0);
+     }
   }
 
 //info_printf(si->fd, 1, "local_query=%p\n", si->query);
@@ -1811,7 +1826,7 @@ op_status_t seglun_inspect_func(void *arg, int id)
        do {
          memcpy(block_copy, block_status, sizeof(int)*s->n_devices);
 
-         err = slun_row_replace_fix(si->seg, si->da, b, block_status, s->n_devices, query, si->timeout);
+         err = slun_row_replace_fix(si->seg, si->da, b, block_status, s->n_devices, &args, si->timeout);
 
          for (i=0; i < s->n_devices; i++) {
              if ((block_copy[i] != 0) && (block_status[i] == 0)) info_printf(si->fd, 2, XIDT ":     dev=%i replaced rcap=%s\n", segment_id(si->seg), i, ds_get_cap(s->ds, b->block[i].data->cap, DS_CAP_READ));
@@ -1833,7 +1848,7 @@ op_status_t seglun_inspect_func(void *arg, int id)
     if (err != 0) goto fail;
 
 log_printf(0, "BEFORE_PLACEMENT_CHECK\n");
-    err = slun_row_placement_check(si->seg, si->da, b, block_status, s->n_devices, soft_error_fail, query, si->timeout);
+    err = slun_row_placement_check(si->seg, si->da, b, block_status, s->n_devices, soft_error_fail, query, si->args, si->timeout);
     for (i=0; i < s->n_devices; i++) append_printf(info, &used, bufsize, " %d", block_status[i]);
 
     total_migrate += err;
@@ -1907,7 +1922,7 @@ fail:
 //  seglun_inspect_func - Does the actual segment inspection operations
 //***********************************************************************
 
-op_generic_t *seglun_inspect(segment_t *seg, data_attr_t *da, info_fd_t *fd, int mode, ex_off_t bufsize, rs_query_t *query, int timeout)
+op_generic_t *seglun_inspect(segment_t *seg, data_attr_t *da, info_fd_t *fd, int mode, ex_off_t bufsize, inspect_args_t *args, int timeout)
 {
   seglun_priv_t *s = (seglun_priv_t *)seg->priv;
   interval_skiplist_iter_t it;
@@ -1937,7 +1952,7 @@ op_generic_t *seglun_inspect(segment_t *seg, data_attr_t *da, info_fd_t *fd, int
         si->inspect_mode = mode;
         si->bufsize = bufsize;
         si->timeout = timeout;
-        si->query = query;
+        si->args = args;
         gop = new_thread_pool_op(s->tpc, NULL, seglun_inspect_func, (void *)si, free, 1);
         break;
     case (INSPECT_MIGRATE):
@@ -1949,7 +1964,7 @@ op_generic_t *seglun_inspect(segment_t *seg, data_attr_t *da, info_fd_t *fd, int
         si->inspect_mode = mode;
         si->bufsize = bufsize;
         si->timeout = timeout;
-        si->query = query;
+        si->args = args;
         gop = new_thread_pool_op(s->tpc, NULL, seglun_migrate_func, (void *)si, free, 1);
         break;
     case (INSPECT_SOFT_ERRORS):
@@ -2493,6 +2508,7 @@ void seglun_destroy(segment_t *seg)
   int i, j, n;
   interval_skiplist_iter_t it;
   seglun_row_t **b_list;
+  data_block_t *db;
   seglun_priv_t *s = (seglun_priv_t *)seg->priv;
 
   //** Check if it's still in use
@@ -2522,6 +2538,15 @@ log_printf(15, "seglun_destroy: seg->id=" XIDT " ref_count=%d\n", segment_id(seg
      free(b_list[i]);
   }
   free(b_list);
+
+  if (s->db_cleanup != NULL) {
+     while ((db = pop(s->db_cleanup)) != NULL) {
+        atomic_dec(db->ref_count);
+        data_block_destroy(db);
+     }
+
+     free_stack(s->db_cleanup, 0);
+  }
 
   if (s->rsq != NULL) rs_query_destroy(s->rs, s->rsq);
   free(s);

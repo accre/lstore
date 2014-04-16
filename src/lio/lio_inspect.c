@@ -68,7 +68,7 @@ typedef struct {
 
 static creds_t *creds;
 static int global_whattodo;
-static int bufsize;
+static ex_off_t bufsize;
 rs_query_t *query;
 lio_path_tuple_t *tuple_list;
 char **argv_list = NULL;
@@ -99,8 +99,9 @@ op_status_t inspect_task(void *arg, int id)
   char *dsegid, *ptr, *exnode2;
   segment_errors_t serr;
   int v_size[7], n, repair_mode;
-  int whattodo, count;
+  int whattodo, count, err;
   inip_file_t *ifd;
+  inspect_args_t args;
 
   whattodo = global_whattodo;
   keys[6] = NULL;
@@ -171,10 +172,13 @@ log_printf(15, "inspecting fname=%s global_whattodo=%d\n", w->fname, global_what
 
 log_printf(15, "whattodo=%d\n", whattodo);
   //** Execute the inspection operation
-  gop = segment_inspect(seg, lio_gc->da, lio_ifd, whattodo, bufsize, query, lio_gc->timeout);
+  memset(&args, 0, sizeof(args));
+  args.query = query;
+  args.qs = new_opque();  args.qf = new_opque();
+  gop = segment_inspect(seg, lio_gc->da, lio_ifd, whattodo, bufsize, &args, lio_gc->timeout);
   if (gop == NULL) { printf("File not found.\n"); return(op_failure_status); }
 
-log_printf(15, "fname=%s inspect_gid=%d whattodo=%d\n", w->fname, gop_id(gop), whattodo);
+log_printf(15, "fname=%s inspect_gid=%d whattodo=%d bufsize=" XOT "\n", w->fname, gop_id(gop), whattodo, bufsize);
 
 flush_log();
   gop_waitall(gop);
@@ -255,7 +259,8 @@ log_printf(15, "fname=%s inspect_gid=%d status=%d\n", w->fname, gop_id(gop), sta
         val[n] = w->set_success; v_size[n] = w->set_success_size;
         n++;
      }
-     lioc_set_multiple_attrs(lio_gc, creds, w->fname, NULL, keys, (void **)val, v_size, n);
+     err= lioc_set_multiple_attrs(lio_gc, creds, w->fname, NULL, keys, (void **)val, v_size, n);
+     if (err != OP_STATE_SUCCESS) status.op_status = OP_STATE_FAILURE;
      exnode_exchange_destroy(exp_out);
   } else {
      n = 1;
@@ -281,10 +286,22 @@ log_printf(15, "fname=%s inspect_gid=%d status=%d\n", w->fname, gop_id(gop), sta
         n += lioc_encode_error_counts(&serr, &(keys[n]), &(val[n]), ebuf, &(v_size[n]), 0);
      }
 
-     lioc_set_multiple_attrs(lio_gc, creds, w->fname, NULL, keys, (void **)val, v_size, n);    
+     err = lioc_set_multiple_attrs(lio_gc, creds, w->fname, NULL, keys, (void **)val, v_size, n);    
+     if (err != OP_STATE_SUCCESS) status.op_status = OP_STATE_FAILURE;
   }
 
+
   //** Clean up
+
+  //** Do the post-processing cleanup tasks
+  if (status.op_status == OP_STATE_SUCCESS) {
+    opque_waitall(args.qs);
+  } else {
+    opque_waitall(args.qf);
+  }
+  opque_free(args.qs, OP_DESTROY);
+  opque_free(args.qf, OP_DESTROY);
+
 finished:
   exnode_exchange_destroy(exp);
 
@@ -325,7 +342,6 @@ int main(int argc, char **argv)
 {
   int i, j,  start_option, rg_mode, ftype, prefix_len;
   int force_repair, option;
-  ex_off_t bufsize;
   char ppbuf[32];
   char *fname, *qstr, *path;
   rs_query_t *rsq;
