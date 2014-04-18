@@ -387,6 +387,18 @@ if (magic_used > 1) log_printf(5, "n_magic=%d stripe=%d\n", magic_used, stripe+i
            unrecoverable_count++;
            bad_count++;
            log_printf(0, "unrecoverable error stripe=%d i=%d good_magic=%d magic_count=%d\n", stripe,i, good_magic, magic_count[index]);
+
+           //** Mark the missing/bad blocks
+           memset(badmap, 0, sizeof(int)*s->n_devs);
+           for (k=0; k < magic_used; k++) {
+              if (k != index) {
+                 match = k*s->n_devs;
+                 for (j=0; j< magic_count[k]; j++) { //** Copy the magic over and mark the dev as bad
+                    badmap[magic_devs[match+j]] = 1;
+                 }
+              }
+           }
+
            append_printf(stripe_msg[1], &stripe_used[1], stripe_buffer_size, "Unrecoverable error!  Matching magic:%d  Need:%d", magic_count[index], s->n_data_devs);
            stripe_error[1] = 1;
         } else {  //** Either all the data is good or we have a have a few bad blocks
