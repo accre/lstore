@@ -204,7 +204,7 @@ log_printf(15, "fname=%s inspect_gid=%d status=%d\n", w->fname, gop_id(gop), sta
         if (status.op_status == OP_STATE_SUCCESS) {
            info_printf(lio_ifd, 0, "Success with file %s!\n", w->fname);
         } else {
-           info_printf(lio_ifd, 0, "ERROR:  Failed with file %s.  status=%d error_code=%d\n", w->fname, status.op_status, status.error_code);
+           info_printf(lio_ifd, 0, "ERROR:  Failed with file %s  status=%d error_code=%d\n", w->fname, status.op_status, status.error_code);
         }
         break;
     case (INSPECT_SOFT_ERRORS):
@@ -212,7 +212,7 @@ log_printf(15, "fname=%s inspect_gid=%d status=%d\n", w->fname, gop_id(gop), sta
         if (status.op_status == OP_STATE_SUCCESS) {
            info_printf(lio_ifd, 0, "Success with file %s!\n", w->fname);
         } else {
-           info_printf(lio_ifd, 0, "ERROR  Failed with file %s.  status=%d error_code=%d\n", w->fname, status.op_status, status.error_code);
+           info_printf(lio_ifd, 0, "ERROR  Failed with file %s  status=%d error_code=%d\n", w->fname, status.op_status, status.error_code);
         }
         break;
   }
