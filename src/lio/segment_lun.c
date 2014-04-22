@@ -2285,7 +2285,7 @@ int seglun_signature(segment_t *seg, char *buffer, int *used, int bufsize)
 int seglun_serialize_text(segment_t *seg, exnode_exchange_t *exp)
 {
   seglun_priv_t *s = (seglun_priv_t *)seg->priv;
-  int bufsize=10*1024;
+  int bufsize=100*1024;
   char segbuf[bufsize];
   char *ext, *etext;
   int sused, i;
