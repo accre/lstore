@@ -342,7 +342,8 @@ log_printf(15, "fullname=%s dfile=%s dkey=%s\n", fullname, dfile, dkey);
   if (dfile[0] == '/') {
      snprintf(fullname, OS_PATH_MAX, "%s%s", osf->file_path, dfile);
   } else {
-     if (ftype & OS_OBJECT_DIR) {
+     if ((ftype & OS_OBJECT_DIR) && ((ftype & OS_OBJECT_SYMLINK) == 0)) {
+log_printf(15, "Directory so no peeling needed\n");
         snprintf(fullname, OS_PATH_MAX, "%s%s/%s", osf->file_path, path, dfile);
      } else {
         os_path_split(path, &pdir, &pfile);
