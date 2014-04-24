@@ -349,8 +349,10 @@ log_printf(15, "missing[%d]=%d status=%d\n", j,i, gop_completed_successfully(gop
               gop_free(gop, OP_DESTROY);
 
               //** Remove the old data
-              gop = ds_remove(dbs->ds, da, ds_get_cap(dbs->ds, dbs->cap, DS_CAP_MANAGE), timeout);
-              opque_add(args->qs, gop);  //** This gets placed on the success queue so we can roll it back if needed
+              if (args->qs) {
+                 gop = ds_remove(dbs->ds, da, ds_get_cap(dbs->ds, dbs->cap, DS_CAP_MANAGE), timeout);
+                 opque_add(args->qs, gop);  //** This gets placed on the success queue so we can roll it back if needed
+              }
               if (s->db_cleanup == NULL) s->db_cleanup = new_stack();
               push(s->db_cleanup, dbs);  //** Dump the data block here cause the cap is needed for the gop.  We'll cleanup up on destroy()
            } else {  //** Copy failed so remove the destintation
@@ -582,8 +584,10 @@ log_printf(15, "loop=%d ------------------------------\n", loop);
              db->attr_stack = NULL;
 
              //** Make the cleanup operations for success
-             gop = ds_remove(s->ds, da, ds_get_cap(db->ds, db->cap, DS_CAP_MANAGE), timeout);
-             opque_add(args->qs, gop);  //** This gets placed on the success queue so we can roll it back if needed
+             if (args->qs) {
+                gop = ds_remove(s->ds, da, ds_get_cap(db->ds, db->cap, DS_CAP_MANAGE), timeout);
+                opque_add(args->qs, gop);  //** This gets placed on the success queue so we can roll it back if needed
+             }
              if (s->db_cleanup == NULL) s->db_cleanup = new_stack();
              push(s->db_cleanup, db);   //** Dump the data block here cause the cap is needed for the gop.  We'll cleanup up on destroy()
 
