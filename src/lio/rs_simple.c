@@ -197,6 +197,9 @@ op_generic_t *rs_simple_request(resource_service_fn_t *arg, data_attr_t *da, rs_
   rsq_base_t *query_global = (rsq_base_t *)rsq;
   rsq_base_t *query_local;
   kvq_table_t kvq_global, kvq_local, *kvq;
+  apr_hash_t *pick_from;
+  rid_change_entry_t *rid_change;
+  ex_off_t change;
   op_status_t status;
   opque_t *que;
   rss_rid_entry_t *rse;
@@ -281,9 +284,24 @@ log_printf(15, "MALLOC j=%d\n", unique_size);
         }
      }
 
+     //** See if we use a restrictive list.  Ususally used when rebalancing space
+     pick_from = (hints_list != NULL) ? hints_list[i].pick_from : NULL;
+     rid_change = NULL;
+     change = 0;
+     for (k=0; k<req_size; k++) {
+        if (req[k].rid_index == i) { change += req[k].size; }
+     }
+
      for (j=0; j<rss->n_rids; j++) {
         slot = (rnd_off+j) % rss->n_rids;
         rse = rss->random_array[slot];
+        if (pick_from != NULL) {
+           rid_change = apr_hash_get(pick_from, rse->rid_key, APR_HASH_KEY_STRING);
+           if (rid_change == NULL) continue;  //** Not in our list so skip to the next
+
+           //** Make sure we don't overshoot the target
+           if (abs(rid_change->delta - change) > rid_change->tolerance) continue;
+        }
 
 log_printf(15, "i=%d j=%d slot=%d rse->rid_key=%s rse->status=%d\n", i, j, slot, rse->rid_key, rse->status);
         if ((rse->status != RS_STATUS_UP) && (i>=fixed_size)) continue;  //** Skip this if disabled and not in the fixed list
@@ -363,6 +381,9 @@ log_printf(15, "i=%d j=%d slot=%d rse->rid_key=%s rse->status=%d\n", i, j, slot,
               }
            }
 
+           if (rid_change != NULL) { //** Flag that I'm tweaking things.  The caller does the source pending/delta half
+	      rid_change->delta -= change;
+           }
            break;  //** Got one so exit the RID scan and start the next one
         } else if (i<fixed_size) {  //** This should have worked so flag an error
            log_printf(1, "Match fail in fixed list[%d]=%s!\n", i, hints_list[i].fixed_rid_key);

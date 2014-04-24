@@ -94,9 +94,16 @@ struct segment_s;
 typedef struct segment_s segment_t;
 
 typedef struct {
+  rid_change_entry_t *rid;
+  apr_hash_t *pick_pool;
+} rid_inspect_tweak_t;
+
+typedef struct {
   rs_query_t *query;   //** Generic extra query
   opque_t *qs;         //** Cleanup Que on success
   opque_t *qf;         //** Cleanup Que for failure
+  apr_hash_t *rid_changes;  //** List of RID space changes
+  apr_thread_mutex_t *rid_lock;     //** Lock for manipulating the rid_changes table
 } inspect_args_t;
 
 typedef struct {

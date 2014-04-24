@@ -59,6 +59,18 @@ extern "C" {
 
 typedef struct resource_service_fn_s resource_service_fn_t;
 
+#define REBALANCE_TARGET    0
+#define REBALANCE_DONTCARE  1
+#define REBALANCE_FINISHED  2
+#define REBALANCE_IGNORE    3
+
+typedef struct {
+  char *rid_key;      //** RID key
+  int state;          //** Tweaking state
+  ex_off_t delta;     //** How much to change the space by in bytes.  Negative means remove and postive means add space to the RID
+  ex_off_t tolerance; //** Tolerance in bytes.  When abs(delta)<tolerance we stop tweaking the RID
+} rid_change_entry_t;
+
 typedef struct {
   int n_rids_total;
   int n_rids_free;
@@ -77,6 +89,7 @@ typedef struct {  //** Used for passing existing RID's and individual queries to
   char *fixed_rid_key;  //** RID key for existing/fixed index
   int  status;    //** Status of the fixed match or INVALID_LOCAL if a problem occurs with the local_rsq.  Returns one of the error codes above
   rs_query_t *local_rsq;  //** Local query appended to the global queury just for this allocation  used for both fixed and new
+  apr_hash_t *pick_from;  //** List of resources to pick from
 } rs_hints_t;
 
 typedef struct {

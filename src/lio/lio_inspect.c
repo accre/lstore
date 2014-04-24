@@ -54,6 +54,14 @@ char *inspect_opts[] = { "DUMMY", "inspect_quick_check",  "inspect_scan_check", 
 char *select_mode_string[] = { "eq", "neq", "exists", "missing" };
 
 typedef struct {
+  char *name;
+  double delta;
+  double tolerance;
+  int delta_mode;
+  apr_hash_t *pick_from;
+} pool_entry_t;
+
+typedef struct {
   char *fname;
   char *exnode;
   char *set_key;
@@ -65,6 +73,20 @@ typedef struct {
   int ftype;
   int pslot;
 } inspect_t;
+
+typedef struct {
+  char *rid_key;
+  inip_group_t *ig;
+  int status;
+  ex_off_t total;
+  ex_off_t free;
+  ex_off_t used;
+} rid_prep_entry_t;
+
+typedef struct {
+  apr_hash_t *pools;
+  apr_hash_t *rid_changes;
+} rid_pools_t;
 
 static creds_t *creds;
 static int global_whattodo;
@@ -78,8 +100,149 @@ int final_index = -1;
 int current_index = -1;
 int from_stdin = 0;
 
+apr_thread_mutex_t *rid_lock = NULL;
+rid_pools_t *rid_pools = NULL;
+apr_pool_t *rid_mpool = NULL;
+
 apr_thread_mutex_t *lock = NULL;
 list_t *seg_index;
+
+
+//*************************************************************************
+// prep_rid_table - Preps the RID table for use in generating a pool config
+//*************************************************************************
+
+apr_hash_t *prep_rid_table(inip_file_t *fd, apr_pool_t *mpool)
+{
+  apr_hash_t *table;
+  inip_group_t *ig;
+  inip_element_t *ele;
+  rid_prep_entry_t *re;
+  int n;
+  char *key, *value;
+
+  table = apr_hash_make(mpool);
+
+  ig = inip_first_group(fd);
+  while (ig != NULL) {
+    key = inip_get_group(ig);
+    if (strcmp("rid", key) == 0) {  //** Found a resource
+       type_malloc_clear(re, rid_prep_entry_t, 1);
+       re->ig = ig;
+
+       //** Now cycle through the attributes
+       ele = inip_first_element(ig);
+       while (ele != NULL) {
+          key = inip_get_element_key(ele);
+          value = inip_get_element_value(ele);
+          if (strcmp(key, "rid_key") == 0) {  //** This is the RID so store it separate
+             re->rid_key = value;
+          } else if (strcmp(key, "status") == 0) {  //** Status
+             sscanf(value, "%d", &n);
+             re->status = ((n>=0) && (n<=3)) ? n : 4;
+          } else if (strcmp(key, "space_free") == 0) {  //** Free space
+             sscanf(value, XOT, &(re->free));
+          } else if (strcmp(key, "space_used") == 0) {  //** Used space
+             sscanf(value, XOT, &(re->used));
+          } else if (strcmp(key, "space_total") == 0) {  //** Total space
+             sscanf(value, XOT, &(re->total));
+          }
+
+          ele = inip_next_element(ele);
+       }
+
+       apr_hash_set(table, re->rid_key, APR_HASH_KEY_STRING, re);
+    }
+
+    ig = inip_next_group(ig);
+  }  
+
+  return(table);
+}
+
+//*************************************************************************
+//  load_pool - Loads a pool
+//*************************************************************************
+
+void load_pool(rid_pools_t *pools, inip_file_t *pfd, apr_hash_t *rid_table, inip_group_t *pg, pool_entry_t **unspecified)
+{
+  inip_element_t *ele;
+  char *key, *value;
+  pool_entry_t *p;
+
+  type_malloc_clear(p, pool_entry_t, 1);
+
+  key = inip_get_group(pg);
+  p->name = strdup(key+5);
+
+  //** Now cycle through the attributes
+  ele = inip_first_element(pg);
+  while (ele != NULL) {
+     key = inip_get_element_key(ele);
+     value = inip_get_element_value(ele);
+     if (strcmp(key, "rid_key") == 0) {  //** This is the RID so store it separate
+//        re->rid_key = value;
+     } else if (strcmp(key, "space_free") == 0) {  //** Free space
+//        sscanf(value, XOT, &(re->free));
+     }
+
+     ele = inip_next_element(ele);
+  }
+
+  return;
+}
+
+
+//*************************************************************************
+// load_pool_config - Loads the rebalance pool configration
+//*************************************************************************
+
+rid_pools_t *load_pool_config(char *fname, apr_pool_t *mpool)
+{
+  inip_file_t *pfd, *rfd;
+  char *rid_config, *key;
+  inip_group_t *ig;
+  apr_hash_t *rid_table;
+  rid_pools_t *pools;
+  pool_entry_t *unspecified = NULL;
+
+  //** Make the rid changes and pools tables
+  type_malloc(pools, rid_pools_t, 1);
+  pools->rid_changes = apr_hash_make(mpool);
+  pools->pools = apr_hash_make(mpool);
+  
+  //** Load the pool config
+  assert((pfd = inip_read(fname)) != NULL);
+
+  //** Do the same for RID config converting it to something useful
+  assert((rid_config = rs_get_rid_config(lio_gc->rs)) != NULL);
+  assert((rfd = inip_read_text(rid_config)) != NULL);
+
+  //** Load the RID config into a usable table for converting to pools
+  rid_table = prep_rid_table(rfd, mpool);
+
+  //** Cycle through all the "pool" stanzas making the pools
+  ig = inip_first_group(pfd);
+  while (ig != NULL) {
+     key = inip_get_group(ig);
+     if (strncmp("pool-", key, 5) == 0) {  //** Found a Pool definition so load it
+        load_pool(pools, pfd, rid_table, ig, &unspecified);
+     }
+
+     ig = inip_next_group(ig);
+  }
+
+  //** Finish off by handling the unspecified group if needed
+  if (unspecified != NULL) {
+//     add_unspecified(unspecified, rid_table);
+  }
+
+  free(rid_config);
+  inip_destroy(rfd);
+  inip_destroy(pfd);
+
+  return(pools);
+}
 
 //*************************************************************************
 //  inspect_task
@@ -173,6 +336,8 @@ log_printf(15, "inspecting fname=%s global_whattodo=%d\n", w->fname, global_what
 log_printf(15, "whattodo=%d\n", whattodo);
   //** Execute the inspection operation
   memset(&args, 0, sizeof(args));
+  args.rid_lock = rid_lock;
+  args.rid_changes = (rid_pools != NULL) ? rid_pools->rid_changes : NULL;
   args.query = query;
   args.qs = new_opque();  args.qf = new_opque();
   gop = segment_inspect(seg, lio_gc->da, lio_ifd, whattodo, bufsize, &args, lio_gc->timeout);
@@ -343,7 +508,7 @@ int main(int argc, char **argv)
   int i, j,  start_option, rg_mode, ftype, prefix_len;
   int force_repair, option;
   char ppbuf[32];
-  char *fname, *qstr, *path;
+  char *fname, *qstr, *path, *pool_cfg;
   rs_query_t *rsq;
   apr_pool_t *mpool;
   opque_t *q;
@@ -356,7 +521,7 @@ int main(int argc, char **argv)
   os_object_iter_t *it;
   os_regex_table_t *rp_single, *ro_single;
   lio_path_tuple_t static_tuple, tuple;
-  int submitted, good, bad, do_print, assume_skip;
+  int submitted, good, bad, do_print, print_pools, assume_skip;
   int recurse_depth = 10000;
   inspect_t *w;
   char *set_key, *set_success, *set_fail, *select_key, *select_value;
@@ -367,7 +532,8 @@ int main(int argc, char **argv)
 //printf("argc=%d\n", argc);
   if (argc < 2) {
      printf("\n");
-     printf("lio_inspect LIO_COMMON_OPTIONS [-rd recurse_depth] [-b bufsize] [-es] [-eh] [-ew] [-rerr] [-werr] [-f] [-s] [-r] [-q extra_query] [-bl key value] [-p] -o inspect_opt [LIO_PATH_OPTIONS | -]\n");
+     printf("lio_inspect LIO_COMMON_OPTIONS [-rd recurse_depth] [-b bufsize] [-es] [-eh] [-ew] [-rerr] [-werr] [-f] [-s] [-r]\n");
+     printf("            [-pc pool.cfg] [-q extra_query] [-bl key value] [-p] -o inspect_opt [LIO_PATH_OPTIONS | -]\n");
      lio_print_options(stdout);
      lio_print_path_options(stdout);
      printf("    -rd recurse_depth  - Max recursion depth on directories. Defaults to %d\n", recurse_depth);
@@ -377,6 +543,8 @@ int main(int argc, char **argv)
      printf("    -r                 - Use reconstruction for all repairs. Even for data placement issues.\n");
      printf("                         Not always successful.The default is to use depot-to-depot copies if possible.\n");
      printf("                         This can lead to drive hotspots if migrating data from a failing drive\n");
+     printf("    -pc pool_cfg       - Load a pool config file for use in rebalancing data across resources.\n");
+     printf("    -pp                - Print the resulting RID pools and exit.  Don't run the rebalance.\n");
      printf("                         which can be avoided by using this option.\n");
      printf("    -q  extra_query    - Extra RS query for data placement. AND-ed with default query\n");
      printf("    -bl key value      - Blacklist the given key/value combination. Multiple -bl options can be provided\n");
@@ -416,6 +584,8 @@ int main(int argc, char **argv)
   query = rs_query_new(lio_gc->rs);
   final_index = argc - 1;
   do_print = 0;
+  print_pools = 0;
+  pool_cfg = NULL;
   q_count = 0;
   set_key = set_success = set_fail = NULL;
   set_success_size = set_fail_size = 0;
@@ -516,6 +686,12 @@ int main(int argc, char **argv)
      } else if (strcmp(argv[i], "-p") == 0) { //** Print resulting query string
         i++;
         do_print = 1;
+     } else if (strcmp(argv[i], "-pp") == 0) { //** Print the pool configs and exit
+        i++;
+        print_pools = 1;
+     } else if (strcmp(argv[i], "-pc") == 0) { //** Load a pool config for rebalancing
+        i++;
+        pool_cfg = argv[i]; i++;
      } else if (strcmp(argv[i], "-q") == 0) { //** Add additional query
         i++;
         rsq = rs_query_parse(lio_gc->rs, argv[i]);
@@ -566,6 +742,14 @@ int main(int argc, char **argv)
      free(qstr);
   }
 
+  //** See if we need to load the pool config for a rebalance
+  if (pool_cfg != NULL) {
+     assert(apr_pool_create(&rid_mpool, NULL) == APR_SUCCESS);
+     apr_thread_mutex_create(&rid_lock, APR_THREAD_MUTEX_DEFAULT, rid_mpool);
+     rid_pools = load_pool_config(pool_cfg, rid_mpool);
+  }
+
+  
   global_whattodo |= option;
   if ((option == INSPECT_QUICK_REPAIR) || (option == INSPECT_SCAN_REPAIR) || (option == INSPECT_FULL_REPAIR)) global_whattodo |= force_repair;
 
@@ -714,6 +898,8 @@ log_printf(0, "gid=%d i=%d fname=%s\n", gop_id(gop), slot, fname);
 
   free(w);
 
+  if (rid_lock != NULL) apr_thread_mutex_destroy(rid_lock);
+  if (rid_mpool != NULL) apr_pool_destroy(rid_mpool);
 finished:
   lio_shutdown();
 

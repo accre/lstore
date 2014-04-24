@@ -165,6 +165,7 @@ int slun_row_placement_check(segment_t *seg, data_attr_t *da, seglun_row_t *b, i
     hints_list[i].fixed_rid_key = b->block[i].data->rid_key;
     hints_list[i].status = RS_ERROR_OK;
     hints_list[i].local_rsq = NULL;
+    hints_list[i].pick_from = NULL;
     migrate = data_block_get_attr(b->block[i].data, "migrate");
     if (migrate != NULL) {
        hints_list[i].local_rsq = rs_query_parse(s->rs, migrate);
@@ -205,7 +206,12 @@ int slun_row_placement_fix(segment_t *seg, data_attr_t *da, seglun_row_t *b, int
   int missing[n_devices], m, todo;
   char *cleanup_key[5*n_devices];
   rs_request_t req[n_devices];
+  rid_inspect_tweak_t *rid_pending[n_devices];
   rs_query_t *rsq;
+  apr_hash_t *rid_changes;
+  rid_inspect_tweak_t *rid;
+  apr_thread_mutex_t *rid_lock;
+
   rs_hints_t hints_list[n_devices];
   data_block_t *db[n_devices], *dbs, *dbd, *dbold[n_devices];
   data_cap_set_t *cap[n_devices];
@@ -214,6 +220,8 @@ int slun_row_placement_fix(segment_t *seg, data_attr_t *da, seglun_row_t *b, int
   op_generic_t *gop;
   opque_t *q;
 
+  rid_changes = args->rid_changes;
+  rid_lock = args->rid_lock;
   rsq = rs_query_dup(s->rs, args->query);
 
   cleanup_index = 0;
@@ -225,8 +233,16 @@ int slun_row_placement_fix(segment_t *seg, data_attr_t *da, seglun_row_t *b, int
      memset(db, 0, sizeof(db));
      nbad = n_devices-1; ngood = 0;
      m = 0;
+     if (rid_lock != NULL) apr_thread_mutex_lock(rid_lock);
      for (i=0; i<n_devices; i++) {
-        if (block_status[i] == 0) {
+        rid = NULL;
+        if (rid_changes != NULL) {
+           rid = apr_hash_get(rid_changes, b->block[i].data->rid_key, APR_HASH_KEY_STRING);
+           if ((rid->rid->state == REBALANCE_FINISHED) || (rid->rid->state == REBALANCE_IGNORE)) { rid = NULL; }
+        }
+        rid_pending[i] = rid;
+
+        if ((block_status[i] == 0) && (rid == NULL)) {
            j = ngood;
            hints_list[ngood].fixed_rid_key = b->block[i].data->rid_key;
            hints_list[ngood].status = RS_ERROR_OK;
@@ -237,6 +253,11 @@ int slun_row_placement_fix(segment_t *seg, data_attr_t *da, seglun_row_t *b, int
            hints_list[nbad].local_rsq = NULL;
            hints_list[nbad].fixed_rid_key = NULL;
            hints_list[nbad].status = RS_ERROR_OK;
+           hints_list[nbad].pick_from = NULL;
+           if (rid != NULL) {
+              hints_list[nbad].pick_from = rid->pick_pool;
+              rid->rid->delta -= b->block_len;
+           }
            req[m].rid_index = nbad;
            req[m].size = b->block_len;
            db[m] = data_block_create(s->ds);
@@ -246,7 +267,7 @@ int slun_row_placement_fix(segment_t *seg, data_attr_t *da, seglun_row_t *b, int
            m++;
         }
 
-       if (hints_list[j].local_rsq != NULL) { rs_query_destroy(s->rs, hints_list[j].local_rsq); }
+        if (hints_list[j].local_rsq != NULL) { rs_query_destroy(s->rs, hints_list[j].local_rsq); }
 
         migrate = data_block_get_attr(b->block[i].data, "migrate");
         if (migrate != NULL) {
@@ -257,6 +278,9 @@ int slun_row_placement_fix(segment_t *seg, data_attr_t *da, seglun_row_t *b, int
 
 
      gop = rs_data_request(s->rs, da, rsq, cap, req, m, hints_list, ngood, n_devices, 1, timeout);
+
+     if (rid_lock != NULL) apr_thread_mutex_unlock(rid_lock);  //** The data request will use the rid_changes table in constructing the ops
+
      gop_waitall(gop);
      gop_free(gop, OP_DESTROY);
 
@@ -335,6 +359,16 @@ log_printf(15, "missing[%d]=%d status=%d\n", j,i, gop_completed_successfully(gop
               gop_set_myid(gop, -1);
               dbold[k] = db[j]; k++;
               opque_add(q, gop);
+
+              if (rid_pending[i] != NULL) { //** Cleanup RID changes
+                 apr_thread_mutex_lock(rid_lock);
+                 rid_pending[i]->rid->delta += b->block_len;  //** This is the original allocation
+
+                 //** and this is the destination
+                 rid = apr_hash_get(rid_changes, db[j]->rid_key, APR_HASH_KEY_STRING);
+                 if (rid != NULL) rid->rid->delta += b->block_len;
+                 apr_thread_mutex_unlock(rid_lock);
+              }
            }
         } else {
            gop_free(gop, OP_DESTROY);
@@ -1696,7 +1730,7 @@ op_status_t seglun_migrate_func(void *arg, int id)
     append_printf(info, &used, bufsize, XIDT ":     slun_row_placement_check:", segment_id(si->seg));
     for (i=0; i < s->n_devices; i++) append_printf(info, &used, bufsize, " %d", block_status[i]);
     info_printf(si->fd, 1, "%s\n", info);
-    if (err > 0) {
+    if ((err > 0) || (si->args->rid_changes != NULL)) {
        memcpy(block_copy, block_status, sizeof(int)*s->n_devices);
 
        i = slun_row_placement_fix(si->seg, si->da, b, block_status, s->n_devices, s->rsq, si->timeout);
