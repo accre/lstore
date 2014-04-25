@@ -314,6 +314,26 @@ int64_t string_get_integer(char *value)
 }
 
 //***********************************************************************
+// string_get_double - Parses the string and returns the double.
+//      The string can include a scale unit
+//***********************************************************************
+
+double string_get_double(char *value)
+{
+  char *string;
+  double scale, n;
+
+  string = strdup(value);
+  scale = split_token_into_number_and_scale(string);
+//printf("token=%s scale=" I64T "\n", string, scale);
+  sscanf(string, "%lf", &n);
+  n = scale * n;
+  free(string);
+
+  return(n);
+}
+
+//***********************************************************************
 //  pretty_print_int_with_scale - Stores the integer as a string using
 //     the largest divisible scale factor. Buffer is used to
 //     hold the converted number and must have enough characters to store
