@@ -102,7 +102,6 @@ extern "C" {
 #define MQ_TRACE_ROUTER   1000
 #define MQ_SIMPLE_ROUTER  1001
 
-
 //******** Event types
 #define MQ_EVENT_CONNECTED ZMQ_EVENT_CONNECTED
 #define MQ_EVENT_CLOSED    ZMQ_EVENT_CLOSED
@@ -258,6 +257,7 @@ struct mq_portal_s {   //** Container for managing connections to a single host
   int heartbeat_failure;     //** Missing heartbeat DT for failure classification
   int counter;               //** Connections counter
   int n_close;               //** Number of connections being requested to close
+  int socket_type;           //** NEW - socket type identifier
   uint64_t n_ops;            //** Operation count
   double min_ops_per_sec;    //** Minimum ops/sec needed to keep a connection open.
   Stack_t *tasks;            //** List of tasks
@@ -266,6 +266,7 @@ struct mq_portal_s {   //** Container for managing connections to a single host
   apr_thread_mutex_t *lock;  //** Context lock
   apr_thread_cond_t *cond;   //** Shutdown complete cond
   mq_command_table_t *command_table; //** Server command ops for execution
+  void *implementation_arg; //** Implementation-specific pointer for general use. Round robin uses this as worker table
   apr_pool_t *mpool;         //** Context memory pool
   thread_pool_context_t *tp; //** Worker thread pool to use
   portal_fn_t pcfn;
@@ -283,6 +284,7 @@ struct mq_context_s {      //** Main MQ context
   int backlog_trigger;       //** Number of backlog ops to trigger a new connection
   int heartbeat_dt;          //** Heartbeat interval
   int heartbeat_failure;     //** Missing heartbeat DT for failure classification
+  int socket_type;           //** NEW: Type of socket to use (TRACE_ROUTER or ROUND_ROBIN)
   double min_ops_per_sec;    //** Minimum ops/sec needed to keep a connection open.
   apr_thread_mutex_t *lock;  //** Context lock
   apr_pool_t *mpool;         //** Context memory pool

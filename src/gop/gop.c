@@ -603,7 +603,8 @@ int gop_waitall(op_generic_t *g)
   op_generic_t *g2;
   callback_t *cb;
 
-log_printf(15, "START gid=%d type=%d\n", gop_id(g), gop_get_type(g));
+//log_printf(15, "START gid=%d type=%d\n", gop_id(g), gop_get_type(g));
+  log_printf(5, "START gid=%d type=%d\n", gop_id(g), gop_get_type(g));
   lock_gop(g);
 
   if (gop_get_type(g) == Q_TYPE_QUE) {

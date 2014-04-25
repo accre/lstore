@@ -360,7 +360,7 @@ void *client_test_thread(apr_thread_t *th, void *arg)
   single_max = 8192;
   single_send = 1024 * 1024;
 
-//  gop = test_gop(mqc, 0, 0, 0, single_max, single_send, 10); gop_waitall(gop); n += client_consume_result(gop);  //** Normal valid usage pattern
+  gop = test_gop(mqc, 0, 0, 0, single_max, single_send, 10, 1); gop_waitall(gop); n += client_consume_result(gop);  //** Normal valid usage pattern
 //  gop = test_gop(mqc, 1, 0, 0, single_max, single_send, 10); gop_waitall(gop); n += client_consume_result(gop);  //** Launch the flusher but no delay sending data
 //  gop = test_gop(mqc, 0, 0, 10, single_max, single_send, 5); gop_waitall(gop); n += client_consume_result(gop);  //** Response will come after the timeout
 //  gop = test_gop(mqc, 1, 0, 15, single_max, single_send, 8); gop_waitall(gop); n += client_consume_result(gop);  //** Launch the flusher but delay sending data forcing the heartbeat to handle it
@@ -372,7 +372,7 @@ void *client_test_thread(apr_thread_t *th, void *arg)
      log_printf(0, "END:  SUCCESS! No problems with any basic stream test\n");
   }
 
-//goto skip;
+  goto skip;
 
   log_printf(0, "START bulk stream tests nparallel=%d\n", nparallel);
   n = 0;

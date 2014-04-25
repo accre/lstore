@@ -29,6 +29,7 @@ http://www.accre.vanderbilt.edu
 
 #include "log.h"
 #include "mq_portal.h"
+#include "mq_roundrobin.h"
 #include "type_malloc.h"
 #include "apr_base64.h"
 #include "apr_wrapper.h"
@@ -196,7 +197,8 @@ mq_command_t *mq_command_new(void *cmd, int cmd_size, void *arg, mq_fn_exec_t *f
 void mq_command_set(mq_command_table_t *table, void *cmd, int cmd_size, void *arg, mq_fn_exec_t *fn)
 {
   mq_command_t *mqc;
-
+  
+  log_printf(15, "command key = %d\n", ((char *)cmd)[0]);
   apr_thread_mutex_lock(table->lock);
   if (fn != NULL) {
      mqc = apr_hash_get(table->table, cmd, cmd_size);
@@ -285,7 +287,7 @@ void mq_command_exec(mq_command_table_t *t, mq_task_t *task, void *key, int klen
 
   cmd = apr_hash_get(t->table, key, klen);
 
-log_printf(3, "cmd=%p\n", cmd);
+log_printf(3, "cmd=%p klen=%d\n", cmd, klen);
   if (cmd == NULL) {
      log_printf(0, "Unknown command!\n");
      if (t->fn_default != NULL) t->fn_default(t->arg_default, task);
@@ -898,7 +900,7 @@ int mqc_heartbeat(mq_conn_t *c, int npoll)
 
 double dts;
 apr_time_t start = apr_time_now();
-log_printf(1, "START host=%s\n", c->mq_uuid); flush_log();
+log_printf(6, "START host=%s\n", c->mq_uuid); flush_log();
   dt_fail = apr_time_make(c->pc->heartbeat_failure, 0);
   dt_check = apr_time_make(c->pc->heartbeat_dt, 0);
   pending_count = 0;
@@ -914,12 +916,12 @@ log_printf(1, "START host=%s\n", c->mq_uuid); flush_log();
 
      now = apr_time_now();
      dt = now - entry->last_check;
-log_printf(5, "hb->key=%s\n", entry->key);
+log_printf(7, "hb->key=%s\n", entry->key);
      if (dt > dt_fail) {  //** Dead connection so fail all the commands using it
         if (entry == c->hb_conn) conn_dead = 1;
 klen = apr_time_sec(dt);
-log_printf(3, "hb->key=%s FAIL dt=%d\n", entry->key, klen);
-log_printf(1, "before waiting size=%d\n", apr_hash_count(c->waiting));
+log_printf(8, "hb->key=%s FAIL dt=%d\n", entry->key, klen);
+log_printf(6, "before waiting size=%d\n", apr_hash_count(c->waiting));
         //** NOTE: using internal non-threadsafe iterator.  Should be ok in this case
         for (hit = apr_hash_first(NULL, c->waiting); hit != NULL; hit = apr_hash_next(hit)) {
             apr_hash_this(hit, (const void **)&key, &klen, (void **)&tn);
@@ -928,8 +930,8 @@ log_printf(1, "before waiting size=%d\n", apr_hash_count(c->waiting));
                apr_hash_set(c->waiting, key, klen, NULL);
 
                //** Submit the fail task
-log_printf(1, "Failed task uuid=%s sid=%s\n", c->mq_uuid, mq_id2str(key, klen, b64, sizeof(b64))); flush_log();
-log_printf(1, "Failed task tn->task=%p tn->task->gop=%p\n", tn->task, tn->task->gop); flush_log();
+log_printf(6, "Failed task uuid=%s sid=%s\n", c->mq_uuid, mq_id2str(key, klen, b64, sizeof(b64))); flush_log();
+log_printf(6, "Failed task tn->task=%p tn->task->gop=%p\n", tn->task, tn->task->gop); flush_log();
 assert(tn->task);
 assert(tn->task->gop);
                thread_pool_direct(c->pc->tp, mqtp_failure, tn->task);
@@ -939,7 +941,7 @@ assert(tn->task->gop);
             }
         }
 
-log_printf(1, "after waiting size=%d\n", apr_hash_count(c->waiting));
+log_printf(6, "after waiting size=%d\n", apr_hash_count(c->waiting));
 
         //** Remove the entry and clean up
         apr_hash_set(c->heartbeat_dest, entry->key, entry->key_size, NULL);
@@ -949,7 +951,7 @@ log_printf(1, "after waiting size=%d\n", apr_hash_count(c->waiting));
         free(entry);
      } else if (dt > dt_check) {  //** Send a heartbeat check
 klen = apr_time_sec(dt);
-log_printf(5, "hb->key=%s CHECK dt=%d\n", entry->key, klen);
+log_printf(10, "hb->key=%s CHECK dt=%d\n", entry->key, klen);
         if ((npoll == 1) && (entry == c->hb_conn)) {
             do_conn_hb = 1;
             goto next;  //** Skip local hb if finished
@@ -969,7 +971,7 @@ log_printf(5, "hb->key=%s CHECK dt=%d\n", entry->key, klen);
   now = apr_time_now();
   //** NOTE: using internal non-threadsafe iterator.  Should be ok in this case
   hi = apr_hash_first(NULL, c->waiting);
-log_printf(1, "before waiting size=%d\n", apr_hash_count(c->waiting));
+log_printf(6, "before waiting size=%d\n", apr_hash_count(c->waiting));
   while (hi != NULL) {
      apr_hash_this(hi, (const void **)&key, &klen, (void **)&tn);
 
@@ -982,8 +984,8 @@ log_printf(1, "before waiting size=%d\n", apr_hash_count(c->waiting));
         apr_hash_set(c->waiting, key, klen, NULL);
 
         //** Submit the fail task
-log_printf(1, "Failed task uuid=%s hash_count=%u sid=%s\n", c->mq_uuid, apr_hash_count(c->waiting), mq_id2str(key, klen, b64, sizeof(b64))); flush_log();
-log_printf(1, "Failed task tn->task=%p tn->task->gop=%p gid=%d\n", tn->task, tn->task->gop, gop_id(tn->task->gop)); flush_log();
+log_printf(6, "Failed task uuid=%s hash_count=%u sid=%s\n", c->mq_uuid, apr_hash_count(c->waiting), mq_id2str(key, klen, b64, sizeof(b64))); flush_log();
+log_printf(6, "Failed task tn->task=%p tn->task->gop=%p gid=%d\n", tn->task, tn->task->gop, gop_id(tn->task->gop)); flush_log();
 assert(tn->task);
 assert(tn->task->gop);
         thread_pool_direct(c->pc->tp, mqtp_failure, tn->task);
@@ -997,7 +999,7 @@ assert(tn->task->gop);
      hi = apr_hash_next(hi);
   }
 
-log_printf(1, "after waiting size=%d\n", apr_hash_count(c->waiting));
+log_printf(6, "after waiting size=%d\n", apr_hash_count(c->waiting));
 
   if (do_conn_hb == 1) {    //** Check if we HB the main uplink
      if ( ((pending_count == 0) && (npoll > 1)) ||
@@ -1048,7 +1050,10 @@ log_printf(5, "Got a message count=%d\n", count);
      mq_get_frame(f, (void **)&data, &size);
      if (size != 0) {
         log_printf(0, "ERROR: Missing empty frame!\n");
-        mq_msg_destroy(msg);
+        //mq_msg_destroy(msg);
+        task = mq_task_new(c->pc->mqc, msg, NULL, c->pc, -1);
+        mqt_exec(NULL, task);
+        goto skip;
      }
 
 //log_printf(5, "111111111111111111111\n"); flush_log();
@@ -1058,6 +1063,7 @@ log_printf(5, "Got a message count=%d\n", count);
      if (mq_data_compare(data, size, MQF_VERSION_KEY, MQF_VERSION_SIZE) != 0) {
         log_printf(0, "ERROR: Invalid version!\n");
         mq_msg_destroy(msg);
+        goto skip;
      }
 
 //log_printf(5, "222222222222222222\n"); flush_log();
@@ -1066,23 +1072,29 @@ log_printf(5, "Got a message count=%d\n", count);
      f = mq_msg_next(msg);
      mq_get_frame(f, (void **)&data, &size);
      if (mq_data_compare(MQF_PING_KEY, MQF_PING_SIZE, data, size) == 0) {
+        log_printf(15, "Processing MQF_PING_KEY\n"); flush_log();
         c->stats.incoming[MQS_PING_INDEX]++;
         mqc_ping(c, msg);
      } else if (mq_data_compare(MQF_PONG_KEY, MQF_PONG_SIZE, data, size) == 0) {
+        log_printf(15, "Processing MQF_PONG_KEY\n"); flush_log();
         c->stats.incoming[MQS_PONG_INDEX]++;
         mqc_pong(c, msg);
      } else if (mq_data_compare(MQF_TRACKADDRESS_KEY, MQF_TRACKADDRESS_SIZE, data, size) == 0) {
+        log_printf(15, "Processing MQF_TRACKADDRESS_KEY\n"); flush_log();
         c->stats.incoming[MQS_TRACKADDRESS_INDEX]++;
         mqc_trackaddress(c, msg);
      } else if (mq_data_compare(MQF_RESPONSE_KEY, MQF_RESPONSE_SIZE, data, size) == 0) {
+        log_printf(15, "Processing MQF_RESPONSE_KEY\n"); flush_log();
         c->stats.incoming[MQS_RESPONSE_INDEX]++;
         mqc_response(c, msg);
      } else if ((mq_data_compare(MQF_EXEC_KEY, MQF_EXEC_SIZE, data, size) == 0) ||
                 (mq_data_compare(MQF_TRACKEXEC_KEY, MQF_TRACKEXEC_SIZE, data, size) == 0)) {
 
          if (mq_data_compare(MQF_TRACKEXEC_KEY, MQF_TRACKEXEC_SIZE, data, size) == 0) {
+            log_printf(15, "Processing MQF_TRACKEXEC_KEY\n"); flush_log();
             c->stats.incoming[MQS_TRACKEXEC_INDEX]++;
          } else {
+            log_printf(15, "Processing MQF_EXEC_KEY\n"); flush_log();
             c->stats.incoming[MQS_EXEC_INDEX]++;
 
          }
@@ -1095,8 +1107,9 @@ log_printf(5, "Got a message count=%d\n", count);
         log_printf(5, "ERROR: Unknown command.  Dropping\n");
         c->stats.incoming[MQS_UNKNOWN_INDEX]++;
         mq_msg_destroy(msg);
+        goto skip;
      }
-
+     skip:
      msg = mq_msg_new(); //**  The old one is destroyed after it's consumed
      if (count > 10) break;  //** Kick out for other processing
   }
@@ -1175,6 +1188,8 @@ int mqc_process_task(mq_conn_t *c, int *npoll, int *nproc)
      log_printf(0, "Invalid version!\n");
      return(1);
   }
+  
+  log_printf(10, "MQF_VERSION_KEY found\n");
 
   //** This is the command
   f = mq_msg_next(task->msg);
@@ -1191,14 +1206,19 @@ int mqc_process_task(mq_conn_t *c, int *npoll, int *nproc)
      c->stats.outgoing[MQS_TRACKEXEC_INDEX]++;
   } else if (mq_data_compare(data, size, MQF_EXEC_KEY, MQF_EXEC_SIZE) == 0) { //** We track it
      c->stats.outgoing[MQS_EXEC_INDEX]++;
+     log_printf(10, "MQF_EXEC_KEY found, num outgoing EXEC = %d\n", c->stats.outgoing[MQS_EXEC_INDEX]);
   } else if (mq_data_compare(data, size, MQF_RESPONSE_KEY, MQF_RESPONSE_SIZE) == 0) { //** Response
      c->stats.outgoing[MQS_RESPONSE_INDEX]++;
+     log_printf(10, "MQF_RESPONSE_KEY found, num outgoing RESPONSE = %d\n", c->stats.outgoing[MQS_RESPONSE_INDEX]);
   } else if (mq_data_compare(data, size, MQF_PING_KEY, MQF_PING_SIZE) == 0) {
      c->stats.outgoing[MQS_PING_INDEX]++;
+     log_printf(10, "MQF_PING_KEY found, num outgoing PING = %d\n", c->stats.outgoing[MQS_PING_INDEX]);
   } else if (mq_data_compare(data, size, MQF_PONG_KEY, MQF_PONG_SIZE) == 0) {
      c->stats.outgoing[MQS_PONG_INDEX]++;
+     log_printf(10, "MQF_PONG_KEY found, num outgoing PONG = %d\n", c->stats.outgoing[MQS_PONG_INDEX]);
   } else {
      c->stats.outgoing[MQS_UNKNOWN_INDEX]++;
+     log_printf(10, "Unknown key found! key = %d\n", data);
   }
 
   //** Send it on
@@ -1242,8 +1262,13 @@ int mq_conn_make(mq_conn_t *c)
   mq_heartbeat_entry_t *hb;
 
   log_printf(5, "START host=%s\n", c->pc->host);
-
-  c->sock = mq_socket_new(c->pc->ctx, MQ_TRACE_ROUTER);
+  
+  //** Determing the type of socket to make based on
+  //** the mq_conn_t* passed in
+  //** Old version:
+  //** c->sock = mq_socket_new(c->pc->ctx, MQ_TRACE_ROUTER);
+  //** Hardcoded MQ_TRACE_ROUTER socket type
+  c->sock = mq_socket_new(c->pc->ctx, c->pc->socket_type);
   if (c->pc->connect_mode == MQ_CMODE_CLIENT) {
      err = mq_connect(c->sock, c->pc->host);
   } else {
@@ -1502,7 +1527,18 @@ int mq_conn_create(mq_portal_t *p, int dowait)
 
   p->active_conn++; //** Inc the number of connections
   p->total_conn++;
-
+  
+  if(_log_level >= 15) {
+    log_printf(15, "portal command table:\n");
+    apr_hash_index_t *ind;
+    void *key, *val;
+    for(ind = apr_hash_first(p->command_table->mpool, p->command_table->table); ind; ind = apr_hash_next(ind)) {
+		apr_hash_this(ind, &key, NULL, &val); //key is exec key eg. MQF_PING_KEY, val is mq_exec_fn_t function pointer eg. cb_ping
+		// val is really hard to print, ignore it
+		if(key != NULL && val != NULL)
+			log_printf(15, "\t\t%d\t%p\n", ((char*)key)[0], val);
+    }
+  }
   //** Spawn the thread
   thread_create_assert(&(c->thread), NULL, mq_conn_thread, (void *)c, p->mpool);  //** USe the parent mpool so I can do the teardown
 
@@ -1652,6 +1688,7 @@ void mq_portal_remove(mq_context_t *mqc, mq_portal_t *p)
 
 int mq_portal_install(mq_context_t *mqc, mq_portal_t *p)
 {
+  
   mq_portal_t *p2;
   int err;
   apr_hash_t *ptable;
@@ -1706,6 +1743,7 @@ mq_portal_t *mq_portal_create(mq_context_t *mqc, char *host, int connect_mode)
   p->heartbeat_failure = mqc->heartbeat_failure;
   p->backlog_trigger = mqc->backlog_trigger;
   p->min_ops_per_sec = mqc->min_ops_per_sec;
+  p->socket_type = mqc->socket_type;                   // socket type
   p->connect_mode = connect_mode;
   p->tp = mqc->tp;
 
@@ -1798,6 +1836,9 @@ mq_context_t *mq_create_context(inip_file_t *ifd, char *section)
   mqc->heartbeat_dt = inip_get_integer(ifd, section, "heartbeat_dt", 5);
   mqc->heartbeat_failure = inip_get_integer(ifd, section, "heartbeat_failure", 60);
   mqc->min_ops_per_sec = inip_get_integer(ifd, section, "min_ops_per_sec", 100);
+  
+  // New socket_type parameter
+  mqc->socket_type = inip_get_integer(ifd, section, "socket_type", MQ_TRACE_ROUTER);
 
   apr_pool_create(&(mqc->mpool), NULL);
   apr_thread_mutex_create(&(mqc->lock), APR_THREAD_MUTEX_DEFAULT, mqc->mpool);

@@ -1257,7 +1257,6 @@ printf("log_level=%d\n", _log_level);
   destroy_opque_system();
   apr_wrapper_stop();
 
-
   return(0);
 }
 
