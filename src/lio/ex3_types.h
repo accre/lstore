@@ -43,6 +43,7 @@ extern "C" {
 
 #define XIDT "%" PRIu64    //uint64_t
 #define XOT  "%" PRId64    //int64_t
+#define PXOT     PRId64    // Drop the % for formatting ..int64_t
 #define XOTC PRId64
 
 

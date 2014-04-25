@@ -60,18 +60,16 @@ void du_format_entry(info_fd_t *ifd, du_entry_t *de, int sumonly)
   double fsize;
   long int n;
 
-//  fprintf(stdout, "----------  ------------------------------\n");
-
   fsize = de->bytes;
   if (base == 1) {
-       sprintf(ppsize, I64T, de->bytes);
+     sprintf(ppsize, I64T, de->bytes);
   } else {
      pretty_print_double_with_scale(base, fsize, ppsize);
   }
 
   dtype = ((de->ftype & OS_OBJECT_DIR) > 0) ? "/" : "";
   if (sumonly == 1) {
-     n = de->count;
+     n = (strcmp(dtype,"/") == 0) ? de->count : 1;
      info_printf(ifd, 0, "%10s  %10ld  %s%s\n", ppsize, n, de->fname, dtype);
   } else {
      info_printf(ifd, 0, "%10s  %s%s\n", ppsize, de->fname, dtype);
@@ -95,8 +93,10 @@ int main(int argc, char **argv)
   char *key = "system.exnode.size";
   char *val, *file;
   int64_t bytes;
+  ex_off_t total_files, total_bytes;
   int v_size, sumonly, ignoreln;
   int recurse_depth = 10000;
+  du_entry_t du_total;
 
 //printf("argc=%d\n", argc);
   if (argc < 2) {
@@ -180,6 +180,8 @@ int main(int argc, char **argv)
   }
 
   table = list_create(0, &list_string_compare, NULL, list_no_key_free, list_no_data_free);
+
+  total_files = total_bytes = 0;
 
   for (j=start_index; j<argc; j++) {
      log_printf(5, "path_index=%d argc=%d rg_mode=%d\n", j, argc, rg_mode);
@@ -286,8 +288,22 @@ log_printf(15, "MAIN LOOP\n");
 
   lit = list_iter_search(lt, "", 0);
   while ((list_next(&lit, (list_key_t **)&fname, (list_data_t **)&de)) == 0) {
+      total_bytes += de->bytes;
+      total_files += (de->ftype & OS_OBJECT_FILE) ? 1 : de->count;
       du_format_entry(lio_ifd, de, sumonly);
   }
+
+  if (sumonly == 1) {
+     info_printf(lio_ifd, 0, "----------  ----------  ------------------------------\n");
+  } else {
+     info_printf(lio_ifd, 0, "----------  ------------------------------\n");
+  }
+
+  du_total.fname = "TOTAL";
+  du_total.bytes = total_bytes;
+  du_total.count = total_files;
+  du_total.ftype = OS_OBJECT_DIR;
+  du_format_entry(lio_ifd, &du_total, sumonly);
 
   if (sumonly == 1) list_destroy(sum_table);
   list_destroy(table);

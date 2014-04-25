@@ -60,6 +60,7 @@ typedef struct {
   interval_skiplist_t *isl;
   resource_service_fn_t *rs;
   data_service_fn_t *ds;
+  Stack_t *db_cleanup;
 } seglun_priv_t;
 
 #ifdef __cplusplus

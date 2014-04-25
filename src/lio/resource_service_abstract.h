@@ -59,6 +59,18 @@ extern "C" {
 
 typedef struct resource_service_fn_s resource_service_fn_t;
 
+#define REBALANCE_TARGET    0
+#define REBALANCE_DONTCARE  1
+#define REBALANCE_FINISHED  2
+#define REBALANCE_IGNORE    3
+
+typedef struct {
+  char *rid_key;      //** RID key
+  int state;          //** Tweaking state
+  ex_off_t delta;     //** How much to change the space by in bytes.  Negative means remove and postive means add space to the RID
+  ex_off_t tolerance; //** Tolerance in bytes.  When abs(delta)<tolerance we stop tweaking the RID
+} rid_change_entry_t;
+
 typedef struct {
   int n_rids_total;
   int n_rids_free;
@@ -77,6 +89,7 @@ typedef struct {  //** Used for passing existing RID's and individual queries to
   char *fixed_rid_key;  //** RID key for existing/fixed index
   int  status;    //** Status of the fixed match or INVALID_LOCAL if a problem occurs with the local_rsq.  Returns one of the error codes above
   rs_query_t *local_rsq;  //** Local query appended to the global queury just for this allocation  used for both fixed and new
+  apr_hash_t *pick_from;  //** List of resources to pick from
 } rs_hints_t;
 
 typedef struct {
@@ -106,7 +119,7 @@ struct resource_service_fn_s {
   rs_query_t *(*query_dup)(resource_service_fn_t *arg, rs_query_t *q);
   rs_query_t *(*query_new)(resource_service_fn_t *arg);
   void (*query_destroy)(resource_service_fn_t *arg, rs_query_t *q);
-  op_generic_t *(*data_request)(resource_service_fn_t *arg, data_attr_t *da, rs_query_t *q, data_cap_set_t **caps, rs_request_t *req, int req_size, rs_hints_t *hints_list, int fixed_size, int n_rid, int timeout);
+  op_generic_t *(*data_request)(resource_service_fn_t *arg, data_attr_t *da, rs_query_t *q, data_cap_set_t **caps, rs_request_t *req, int req_size, rs_hints_t *hints_list, int fixed_size, int n_rid, int ignore_fixed_err, int timeout);
   rs_query_t *(*query_parse)(resource_service_fn_t *arg, char *value);
   char *(*query_print)(resource_service_fn_t *arg, rs_query_t *q);
   void (*destroy_service)(resource_service_fn_t *rs);
@@ -128,7 +141,7 @@ typedef resource_service_fn_t *(rs_create_t)(void *arg, inip_file_t *ifd, char *
 #define rs_query_destroy(rs, q) (rs)->query_destroy(rs, q)
 #define rs_query_parse(rs, value) (rs)->query_parse(rs, value)
 #define rs_query_print(rs, q) (rs)->query_print(rs, q)
-#define rs_data_request(rs, da, q, caps, req, n_req, hints_list, fixed_size, n_rid, to) (rs)->data_request(rs, da, q, caps, req, n_req, hints_list, fixed_size, n_rid, to)
+#define rs_data_request(rs, da, q, caps, req, n_req, hints_list, fixed_size, n_rid, ignore_fixed_err, to) (rs)->data_request(rs, da, q, caps, req, n_req, hints_list, fixed_size, n_rid, ignore_fixed_err, to)
 #define rs_destroy_service(rs) (rs)->destroy_service(rs)
 
 rs_space_t rs_space(char *config);

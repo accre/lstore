@@ -60,6 +60,7 @@ typedef struct {
   erasure_plan_t *plan;
   thread_pool_context_t *tpc;
   ex_off_t max_parity;
+  int write_errors;
   int soft_errors;
   int hard_errors;
   int method;
@@ -99,11 +100,14 @@ typedef struct {
   segment_t *seg;
   data_attr_t *da;
   info_fd_t *fd;
-  rs_query_t *query;
+  inspect_args_t *args;
   ex_off_t bufsize;
   int max_replaced;
   int inspect_mode;
   int timeout;
+  int rerror;
+  int werror;
+  int bad_stripes;
 } segjerase_inspect_t;
 
 typedef struct {
@@ -111,6 +115,7 @@ typedef struct {
   ex_off_t lo;
   ex_off_t hi;
   int do_print;
+  int bad_stripes;
 } segjerase_full_t;
 
 typedef struct {
@@ -243,27 +248,35 @@ op_status_t segjerase_inspect_full_func(void *arg, int id)
   segjerase_priv_t *s = (segjerase_priv_t *)si->seg->priv;
   op_status_t status;
   opque_t *q;
-  int err, i, j, k, do_fix, nstripes, total_stripes, stripe, bufstripes, n_empty;
+  int err, i, j, k, d, do_fix, nstripes, total_stripes, stripe, bufstripes, n_empty;
   int  fail_quick, n_iov, good_magic, unrecoverable_count, bad_count, repair_errors, erasure_errors;
   int magic_count[s->n_devs], match, index, magic_used;
   int magic_devs[s->n_devs*s->n_devs];
-  int max_iov, skip, last_bad, tmp;
+  int max_iov, skip, last_bad, tmp, oops;
   int badmap[s->n_devs], badmap_brute[s->n_devs], badmap_last[s->n_devs], bm_brute_used, used;
+  int stripe_used[4], stripe_diag_size, stripe_buffer_size;
+  int stripe_start_error[4], stripe_error[4], dstripe;
   ex_off_t nbytes, bufsize, boff, base_offset;
   tbuffer_t tbuf_read, tbuf;
+  char stripe_msg[4][2048], *stripe_msg_label[4];
   char *buffer, *ptr[s->n_devs], parity[s->n_parity_devs*s->chunk_size];
   char *eptr[s->n_devs], *pwork[s->n_parity_devs];
   char empty_magic[JE_MAGIC_SIZE];
   char magic_key[s->n_devs*JE_MAGIC_SIZE];
   char print_buffer[2048];
+  char ppbuf[128];
   iovec_t *iov;
   ex_iovec_t ex_read;
   ex_iovec_t *ex_iov;
+  apr_time_t now, loop_start;
+  double dt, rate;
+
+  stripe_diag_size = 4;
+  stripe_buffer_size = 2048;
 
   memset(empty_magic, 0, JE_MAGIC_SIZE);
   status = op_success_status;
   q = new_opque();
-//  opque_start_execution(q);
   status = op_success_status;
 
   fail_quick = si->inspect_mode & INSPECT_FAIL_ON_ERROR;
@@ -277,8 +290,6 @@ op_status_t segjerase_inspect_full_func(void *arg, int id)
   total_stripes = nbytes / s->data_size;
 log_printf(0, "lo=" XOT " hi= " XOT " nbytes=" XOT " total_stripes=%d data_size=%d\n", sf->lo, sf->hi, nbytes, total_stripes, s->data_size);
   bufsize = (ex_off_t)total_stripes * (ex_off_t)s->stripe_size_with_magic;
-//  bufsize = total_stripes;
-//  bufsize *= s->stripe_size_with_magic;
   if (bufsize > si->bufsize) bufsize = si->bufsize;
   type_malloc(buffer, char, bufsize);
   bufstripes = bufsize / s->stripe_size_with_magic;
@@ -297,7 +308,14 @@ log_printf(0, "lo=" XOT " hi= " XOT " nbytes=" XOT " total_stripes=%d data_size=
   n_empty = 0;
   bm_brute_used = 0;
   last_bad = -2;
-  
+  si->rerror = si->werror = 0;
+
+  stripe_msg_label[0] = "empty";
+  stripe_msg_label[1] = "magic";
+  stripe_msg_label[2] = "r-mismatch";
+  stripe_msg_label[3] = "u-mismatch";
+  for (k=0; k<stripe_diag_size; k++) {stripe_used[k] = 0; stripe_msg[k][0] = 0; stripe_start_error[k] = -1; stripe_error[k] = 0; }
+
   for (stripe=0; stripe<total_stripes; stripe += bufstripes) {
      ex_read.offset = base_offset + (ex_off_t)stripe*s->stripe_size_with_magic;
      nstripes = stripe + bufstripes;
@@ -306,12 +324,18 @@ log_printf(0, "lo=" XOT " hi= " XOT " nbytes=" XOT " total_stripes=%d data_size=
      ex_read.len = (ex_off_t)nstripes * s->stripe_size_with_magic;
 
 log_printf(0, "stripe=%d nstripes=%d total_stripes=%d offset=" XOT " len=" XOT "\n", stripe, nstripes, total_stripes, ex_read.offset, ex_read.len);
+loop_start = apr_time_now();
      if (sf->do_print == 1) info_printf(si->fd, 1, XIDT ": checking stripes: (%d, %d)\n", segment_id(si->seg), stripe, stripe+nstripes-1);
 
      //** Read the data in
      tbuffer_single(&tbuf_read, ex_read.len, buffer);
      memset(buffer, 0, bufsize);
+     now = apr_time_now();
      err = gop_sync_exec(segment_read(s->child_seg, si->da, 1, &ex_read, &tbuf_read, 0, si->timeout));
+     now = apr_time_now() - now;
+     dt = (double)now / APR_USEC_PER_SEC;
+     rate = (double)(nstripes*s->chunk_size*s->n_data_devs)/dt;
+     if (err != OP_STATE_SUCCESS) si->rerror++;
 
      n_iov = 0;
      nbytes = 0;
@@ -349,7 +373,8 @@ log_printf(0, "stripe=%d nstripes=%d total_stripes=%d offset=" XOT " len=" XOT "
 
         if (good_magic == 0) {
            n_empty++;
-           info_printf(si->fd, 10, "Empty stripe=%d.  empty chunks: %d\n", stripe+i, magic_count[index]);
+//           append_printf(stripe_msg[0], &stripe_used[0], stripe_buffer_size, "Empty stripe.  empty chunks: %d\n", magic_count[index]);
+           stripe_error[0] = 1;
         }
 
 if (magic_used > 1) log_printf(5, "n_magic=%d stripe=%d\n", magic_used, stripe+i);
@@ -361,8 +386,21 @@ if (magic_used > 1) log_printf(5, "n_magic=%d stripe=%d\n", magic_used, stripe+i
            skip = 1;
            unrecoverable_count++;
            bad_count++;
-log_printf(0, "unrecoverable error stripe=%d i=%d good_magic=%d magic_count=%d\n", stripe,i, good_magic, magic_count[index]);
-           append_printf(print_buffer, &used, sizeof(print_buffer), XIDT ": Unrecoverable error!  Matching magic:%d  Need:%d", segment_id(si->seg), magic_count[index], s->n_data_devs, stripe+i);
+           log_printf(0, "unrecoverable error stripe=%d i=%d good_magic=%d magic_count=%d\n", stripe,i, good_magic, magic_count[index]);
+
+           //** Mark the missing/bad blocks
+           memset(badmap, 0, sizeof(int)*s->n_devs);
+           for (k=0; k < magic_used; k++) {
+              if (k != index) {
+                 match = k*s->n_devs;
+                 for (j=0; j< magic_count[k]; j++) { //** Copy the magic over and mark the dev as bad
+                    badmap[magic_devs[match+j]] = 1;
+                 }
+              }
+           }
+
+           append_printf(stripe_msg[1], &stripe_used[1], stripe_buffer_size, "Unrecoverable error!  Matching magic:%d  Need:%d", magic_count[index], s->n_data_devs);
+           stripe_error[1] = 1;
         } else {  //** Either all the data is good or we have a have a few bad blocks
            //** Make the decoding structure
            for (k=0; k < s->n_devs; k++) {
@@ -390,10 +428,15 @@ log_printf(0, "unrecoverable error stripe=%d i=%d good_magic=%d magic_count=%d\n
                  bm_brute_used = 1;
                  memcpy(badmap_brute, badmap, sizeof(int)*s->n_devs);  //** Got a correctable error
 
-                 if (get_info_level(si->fd) > 1) {   //** Print some diag info if needed
-                    append_printf(print_buffer, &used, sizeof(print_buffer), XIDT ": Recoverable same magic.", segment_id(si->seg));
+                 
+                 append_printf(stripe_msg[2], &stripe_used[2], stripe_buffer_size, "Recoverable same maigc. devmap:");
+                 for (d=0; d<s->n_devs; d++) {
+                     append_printf(stripe_msg[2], &stripe_used[2], stripe_buffer_size, " %d", badmap[d]);
                  }
+                 stripe_error[2] = 1;
               } else {
+                 append_printf(stripe_msg[3], &stripe_used[3], stripe_buffer_size, "Unrecoverable data+parity mismatch.");
+                 stripe_error[3] = 1;
                  skip = 1;
                  unrecoverable_count++;
               }
@@ -429,12 +472,10 @@ log_printf(0, "memcmp=%d\n", memcmp(iov[n_iov].iov_base, &(buffer[boff + index*s
         }
 
         if ((get_info_level(si->fd) > 1) && (tmp != bad_count)) {   //** Print some diag info if needed
+           oops = (((repair_errors+unrecoverable_count) > 0) && (fail_quick > 0) && (i== nstripes-1)) ? 1 : 0;
+
            if ((stripe+i-1 != last_bad) || (memcmp(badmap_last, badmap, sizeof(int)*s->n_devs) != 0)) {
-              if (used == 0) {
-                 append_printf(print_buffer, &used, sizeof(print_buffer), XIDT ": bad stripe=%d   devmap:", segment_id(si->seg), stripe+i);
-              } else {
-                 append_printf(print_buffer, &used, sizeof(print_buffer),"  stripe=%d   devmap:", stripe+i);
-              }
+              append_printf(print_buffer, &used, sizeof(print_buffer), XIDT ": [DEVMAP] stripe=%d   devmap:", segment_id(si->seg), stripe+i);
               for (k=0; k<s->n_devs; k++) {
                   append_printf(print_buffer, &used, sizeof(print_buffer), " %d", badmap[k]);
               }
@@ -442,6 +483,25 @@ log_printf(0, "memcmp=%d\n", memcmp(iov[n_iov].iov_base, &(buffer[boff + index*s
               memcpy(badmap_last, badmap, sizeof(int)*s->n_devs);
            }
            last_bad = stripe+i;
+
+
+           for (k=0; k<stripe_diag_size; k++) {
+              if (stripe_error[k] == 1) {
+                 if ((stripe_start_error[k] == -1) || (oops == 1)) {  //** 1st time for error
+                    stripe_start_error[k] = stripe+i;
+                    info_printf(si->fd, 1, XIDT ": [START:%s] stripe=%d %s\n", segment_id(si->seg), stripe_msg_label[k], stripe+i, stripe_msg[k]); 
+                 }
+
+              } else if (stripe_start_error[k] != -1) { //** End of error
+                 dstripe = stripe+i-1 - stripe_start_error[k] + 1;
+                 info_printf(si->fd, 1, XIDT ": [END:  %s] stripe=%d (%d-%d=%d) %s\n", segment_id(si->seg), stripe_msg_label[k], stripe+i-1, stripe_start_error[k], stripe+i-1, dstripe, stripe_msg[k]); 
+                 stripe_start_error[k] = -1;
+                 stripe_msg[k][0] = 0;
+              }
+
+              stripe_used[k] = 0;
+              stripe_error[k] = 0;
+           }
         }
 
      }
@@ -450,14 +510,22 @@ log_printf(0, "memcmp=%d\n", memcmp(iov[n_iov].iov_base, &(buffer[boff + index*s
      if (n_iov > 0) {
         tbuffer_vec(&tbuf, nbytes, n_iov, iov);
         err = gop_sync_exec(segment_write(s->child_seg, si->da, n_iov, ex_iov, &tbuf, 0, si->timeout));
-log_printf(0, "gop_error=%d nbytes=" XOT " n_iov=%d\n", err, nbytes, n_iov);
+log_printf(0, "gop_status=%d nbytes=" XOT " n_iov=%d\n", err, nbytes, n_iov);
         if (err != OP_STATE_SUCCESS) {
-
+           if (sf->do_print == 1) info_printf(si->fd, 1, XIDT ": Write update error for stripe! Probably a corrupt allocation.\n", segment_id(si->seg));
            repair_errors++;
+           si->werror++;
         }
      }
 
-     if (sf->do_print == 1) info_printf(si->fd, 1, XIDT ": bad stripe count: %d  --- Repair errors: %d   Unrecoverable errors:%d  Empty stripes: %d   Silent errors: %d\n", segment_id(si->seg), bad_count, repair_errors, unrecoverable_count, n_empty, erasure_errors);
+     if (sf->do_print == 1) {
+        info_printf(si->fd, 1, XIDT ": [%lf sec %s/s] bad stripe count: %d  --- Repair errors: %d   Unrecoverable errors:%d  Empty stripes: %d   Silent errors: %d\n", 
+            segment_id(si->seg), dt, pretty_print_double_with_scale(1024, rate, ppbuf), bad_count, repair_errors, unrecoverable_count, n_empty, erasure_errors);
+     }
+
+//loop_start = apr_time_now() - loop_start;
+//dt = (double)loop_start / APR_USEC_PER_SEC;
+//info_printf(si->fd, 1, "loop_dt=%lf\n", dt);
 
      if (((repair_errors+unrecoverable_count) > 0) && (fail_quick > 0)) {
         log_printf(1,"FAIL_QUICK:  Hit an unrecoverable error\n");
@@ -470,7 +538,11 @@ log_printf(0, "gop_error=%d nbytes=" XOT " n_iov=%d\n", err, nbytes, n_iov);
   free(iov);
   opque_free(q, OP_DESTROY);
 
-  status.error_code = bad_count;
+  sf->bad_stripes = bad_count;
+  status.error_code = INSPECT_RESULT_FULL_CHECK;
+  if ((unrecoverable_count > 0) || (repair_errors > 0)) status.error_code |= INSPECT_RESULT_HARD_ERROR;
+  if ((do_fix == 0) && (bad_count > (unrecoverable_count+repair_errors))) status.error_code |= INSPECT_RESULT_SOFT_ERROR;
+
   status.op_status = OP_STATE_SUCCESS;
   if ((unrecoverable_count > 0) || (repair_errors > 0) || ((bad_count > 0) && (do_fix == 0))) status.op_status = OP_STATE_FAILURE;
   return(status);
@@ -484,14 +556,19 @@ op_generic_t *segjerase_inspect_full(segjerase_inspect_t *si, int do_print, ex_o
 {
   segjerase_priv_t *s = (segjerase_priv_t *)si->seg->priv;
   segjerase_full_t *sf;
+  op_generic_t *gop;
 
   type_malloc(sf, segjerase_full_t, 1);
   sf->si = si;
   sf->lo = lo;
   sf->hi = hi;
   sf->do_print = do_print;
+  sf->bad_stripes = 0;
 
-  return(new_thread_pool_op(s->tpc, NULL, segjerase_inspect_full_func, (void *)sf, free, 1));
+  gop = new_thread_pool_op(s->tpc, NULL, segjerase_inspect_full_func, (void *)sf, free, 1);
+  gop_set_private(gop, sf);
+
+  return(gop);
 }
 
 //***********************************************************************
@@ -512,6 +589,8 @@ op_status_t segjerase_inspect_scan(segjerase_inspect_t *si)
   iovec_t *iov;
   ex_iovec_t *ex_iov;
   tbuffer_t tbuf;
+  segjerase_full_t *sf;
+  int error_code = 0;
 
   memset(empty_magic, 0, JE_MAGIC_SIZE);
 
@@ -605,8 +684,17 @@ log_printf(0, " i=%d bad=%d start_bad=%d\n", i, bad_count, start_bad);
        if (opque_task_count(q) > 0) {
           err = opque_waitall(q);
           if (err != OP_STATE_SUCCESS) {
-             status = op_failure_status;
+             status.op_status = OP_STATE_FAILURE;
           }
+
+          //** Cycle through getting all the error code
+          while ((gop = opque_waitany(q)) != NULL) {
+             status = gop_get_status(gop);
+             error_code |= status.error_code;
+             sf = gop_get_private(gop);
+             bad_count += sf->bad_stripes;
+             gop_free(gop, OP_DESTROY);
+          }              
        }
 
        //** Reset for the next round
@@ -635,9 +723,10 @@ log_printf(0, " i=%d bad=%d start_bad=%d\n", i, bad_count, start_bad);
   free(magic);
   free(iov);
   free(ex_iov);
+
   opque_free(q, OP_DESTROY);
 
-  status.error_code = bad_count;
+  si->bad_stripes = bad_count;
   if ((do_fix == 0) && (bad_count > 0)) {
      status = op_failure_status;
   }
@@ -656,9 +745,11 @@ op_status_t segjerase_inspect_func(void *arg, int id)
 {
   segjerase_inspect_t *si = (segjerase_inspect_t *)arg;
   segjerase_priv_t *s = (segjerase_priv_t *)si->seg->priv;
+  segjerase_full_t *sf;
   op_status_t status;
-  int option, total_stripes, child_replaced, repair;
+  int option, total_stripes, child_replaced, repair, loop;
   op_generic_t *gop;
+  int max_loops = 10;
 
   status = op_success_status;
 
@@ -668,18 +759,23 @@ op_status_t segjerase_inspect_func(void *arg, int id)
 
   //** Issue the inspect for the underlying LUN
   info_printf(si->fd, 1, XIDT ": Inspecting child segment...\n", segment_id(si->seg));
-  gop = segment_inspect(s->child_seg, si->da, si->fd, si->inspect_mode, si->bufsize, si->query, si->timeout);
+  gop = segment_inspect(s->child_seg, si->da, si->fd, si->inspect_mode, si->bufsize, si->args, si->timeout);
   gop_waitall(gop);
   status = gop_get_status(gop);
   gop_free(gop, OP_DESTROY);
-  si->max_replaced = status.error_code;
+  si->max_replaced = (status.error_code & INSPECT_RESULT_COUNT_MASK);  //** NOTE: This needs to be checks for edge cases.
+  si->bad_stripes = -1;
   child_replaced = si->max_replaced;
 
 log_printf(5, "status: %d %d\n", status.op_status, status.error_code);
 
   //** Kick out if we can't fix anything
-  if (child_replaced > s->n_data_devs) goto fail;
+  if ((status.op_status != OP_STATE_SUCCESS) && (child_replaced > s->n_parity_devs)) {
+     status.op_status = OP_STATE_FAILURE;
+     goto fail;
+  }
 
+log_printf(5, "child_replaced =%d ndata=%d\n", child_replaced, s->n_parity_devs);
   total_stripes = segment_size(si->seg) / s->data_size;
 
   //** The INSPECT_QUICK_* options are handled by the LUN driver. If force_reconstruct is set then we probably need to do a scan
@@ -706,10 +802,48 @@ log_printf(5, "repair=%d child_replaced=%d option=%d inspect_mode=%d INSPECT_QUI
     case (INSPECT_FULL_CHECK):
     case (INSPECT_FULL_REPAIR):
         info_printf(si->fd, 1, XIDT ": Total number of stripes:%d\n", segment_id(si->seg), total_stripes);
-        gop =  segjerase_inspect_full(si, 1, 0, segment_size(si->seg));
-        gop_waitall(gop);
-        status = gop_get_status(gop);
-        gop_free(gop, OP_DESTROY);
+        loop = 0;
+        do {
+           gop =  segjerase_inspect_full(si, 1, 0, segment_size(si->seg));
+           gop_waitall(gop);
+           status = gop_get_status(gop);
+           sf = gop_get_private(gop);
+           si->bad_stripes = sf->bad_stripes;
+           gop_free(gop, OP_DESTROY);
+        
+           if ((status.op_status != OP_STATE_SUCCESS) && (loop < max_loops-1)) {
+              if (((si->inspect_mode & INSPECT_FIX_READ_ERROR) && (si->rerror > 0)) ||
+                  ((si->inspect_mode & INSPECT_FIX_WRITE_ERROR) && (si->werror > 0))) {
+                 loop++;
+                 info_printf(si->fd, 1, XIDT ": Encountered Read or write errors.  Attempting to correct them.  loop=%d write_errors=%d read_errors=%d\n", segment_id(si->seg), si->rerror, si->werror);
+                 si->rerror = si->werror = 0;
+
+                 //** Issue the inspect for the underlying LUN
+                 info_printf(si->fd, 1, XIDT ": Inspecting child segment...\n", segment_id(si->seg));
+                 gop = segment_inspect(s->child_seg, si->da, si->fd, si->inspect_mode, si->bufsize, si->args, si->timeout);
+                 gop_waitall(gop);
+                 status = gop_get_status(gop);
+                 gop_free(gop, OP_DESTROY);
+                 si->max_replaced += (status.error_code & INSPECT_RESULT_COUNT_MASK);  //** NOTE: This needs to be checks for edge cases.
+                 child_replaced = si->max_replaced;
+
+                 log_printf(5, "status: %d %d\n", status.op_status, status.error_code);
+
+                 //** Kick out if we can't fix anything
+                 if ((status.op_status != OP_STATE_SUCCESS) || (child_replaced > s->n_parity_devs)) {
+                    status.op_status = OP_STATE_FAILURE;
+                    loop = 10000;
+                 }
+
+              } else {
+                 loop = 10000;  //** Kick out
+              }
+           } else {
+             loop = 10000;  //** Kick out            
+           }
+        } while (loop < max_loops);
+
+        if (status.op_status == OP_STATE_SUCCESS)  s->write_errors = 0;  //** Clear the write errors since we did a full successfull check
         break;
   }
 
@@ -721,12 +855,12 @@ fail:
   }
 
   if (status.op_status == OP_STATE_SUCCESS) {
-     info_printf(si->fd, 1, XIDT ": status: SUCCESS (%d devices, %d stripes)\n", segment_id(si->seg), si->max_replaced, status.error_code);
+     info_printf(si->fd, 1, XIDT ": status: SUCCESS (%d devices, %d stripes)\n", segment_id(si->seg), si->max_replaced, si->bad_stripes);
   } else {
-     info_printf(si->fd, 1, XIDT ": status: FAILURE (%d devices, %d stripes)\n", segment_id(si->seg), si->max_replaced, status.error_code);
+     info_printf(si->fd, 1, XIDT ": status: FAILURE (%d devices, %d stripes)\n", segment_id(si->seg), si->max_replaced, si->bad_stripes);
   }
 
-  status.error_code = si->max_replaced;
+//  status.error_code = si->max_replaced;
 
   return(status);
 }
@@ -735,7 +869,7 @@ fail:
 //  segjerase_inspect_func - Does the actual segment inspection operations
 //***********************************************************************
 
-op_generic_t *segjerase_inspect(segment_t *seg, data_attr_t *da, info_fd_t *fd, int mode, ex_off_t bufsize, rs_query_t *query, int timeout)
+op_generic_t *segjerase_inspect(segment_t *seg, data_attr_t *da, info_fd_t *fd, int mode, ex_off_t bufsize, inspect_args_t *args, int timeout)
 {
   segjerase_priv_t *s = (segjerase_priv_t *)seg->priv;
   op_generic_t *gop;
@@ -760,12 +894,12 @@ op_generic_t *segjerase_inspect(segment_t *seg, data_attr_t *da, info_fd_t *fd, 
         si->inspect_mode = mode;
         si->bufsize = bufsize;
         si->timeout = timeout;
-        si->query = query;
+        si->args = args;
         gop = new_thread_pool_op(s->tpc, NULL, segjerase_inspect_func, (void *)si, free, 1);
         break;
     case (INSPECT_MIGRATE):
         info_printf(fd, 1, XIDT ": jerase segment maps to child " XIDT "\n", segment_id(seg), segment_id(s->child_seg));
-        gop = segment_inspect(s->child_seg, da, fd, mode, bufsize, query, timeout);
+        gop = segment_inspect(s->child_seg, da, fd, mode, bufsize, args, timeout);
         break;
     case (INSPECT_SOFT_ERRORS):
         err.error_code = s->soft_errors;
@@ -776,6 +910,9 @@ op_generic_t *segjerase_inspect(segment_t *seg, data_attr_t *da, info_fd_t *fd, 
         err.error_code = s->hard_errors;
         err.op_status = (err.error_code == 0) ? OP_STATE_SUCCESS : OP_STATE_FAILURE;
         gop = gop_dummy(err);
+        break;
+    case (INSPECT_WRITE_ERRORS):
+        gop = segment_inspect(s->child_seg, da, fd, mode, bufsize, args, timeout);
         break;
   }
 
@@ -1305,6 +1442,8 @@ op_status_t segjerase_write_func(void *arg, int id)
 
   if ((soft_error+hard_error) > 0) {
      segment_lock(sw->seg);
+     s->write_errors = 1;
+     s->paranoid_check = 1;
      if (soft_error > 0) s->soft_errors++;
      if (hard_error > 0) s->hard_errors++;
      segment_unlock(sw->seg);
@@ -1527,6 +1666,10 @@ int segjerase_serialize_text(segment_t *seg, exnode_exchange_t *exp)
   append_printf(segbuf, &sused, bufsize, "w=%d\n", s->w);
   append_printf(segbuf, &sused, bufsize, "max_parity=" XOT "\n", s->max_parity);
 
+  if (s->write_errors > 0) {
+     append_printf(segbuf, &sused, bufsize, "write_errors=%d\n", s->write_errors);
+  }
+
   //** Merge the exnodes together
   exnode_exchange_append_text(exp, segbuf);
   exnode_exchange_append(exp, child_exp);
@@ -1598,10 +1741,12 @@ int segjerase_deserialize_text(segment_t *seg, ex_id_t id, exnode_exchange_t *ex
   atomic_inc(s->child_seg->ref_count);
 
   //** Load the params
+  s->write_errors = inip_get_integer(fd, seggrp, "write_errors", -1);
+  if ((s->paranoid_check == 0) && (s->write_errors > 0)) s->paranoid_check = 1;
+
   s->n_data_devs = inip_get_integer(fd, seggrp, "n_data_devs", 6);
   s->n_parity_devs = inip_get_integer(fd, seggrp, "n_parity_devs", 3);
   s->n_devs = s->n_data_devs + s->n_parity_devs;
-
   s->w = inip_get_integer(fd, seggrp, "w", -1);
   s->max_parity = inip_get_integer(fd, seggrp, "max_parity", 16*1024*1024);
   s->chunk_size = inip_get_integer(fd, seggrp, "chunk_size", 16*1024);

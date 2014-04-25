@@ -182,7 +182,7 @@ log_printf(15, "_sl_grow: sid=" XIDT " n_blocks=%d max_block_size=" XOT "\n", se
   //** Generate the query
   if (n_blocks > 0) {
      i = (s->n_rid_default > n_blocks) ? n_blocks : s->n_rid_default;
-     gop2 = rs_data_request(s->rs, da, s->rsq, cap_list, req_list, n_blocks, NULL, 0, i, timeout);
+     gop2 = rs_data_request(s->rs, da, s->rsq, cap_list, req_list, n_blocks, NULL, 0, i, 0, timeout);
   }
 
 log_printf(15, "_sl_grow: sid=" XIDT " before exec gop2=%p\n", segment_id(seg), gop2);
@@ -738,7 +738,7 @@ op_generic_t *seglin_remove(segment_t *seg, data_attr_t *da, int timeout)
 // seglin_inspect_func - Checks that all the segments are available and they are the right size
 //***********************************************************************
 
-op_generic_t *seglin_inspect_op(segment_t *seg, data_attr_t *da, info_fd_t *fd, int mode, ex_off_t buffer_size, rs_query_t *query, int timeout)
+op_generic_t *seglin_inspect_op(segment_t *seg, data_attr_t *da, info_fd_t *fd, int mode, ex_off_t buffer_size, inspect_args_t *args, int timeout)
 {
   seglin_priv_t *s = (seglin_priv_t *)seg->priv;
   op_generic_t *gop;
@@ -782,7 +782,7 @@ op_generic_t *seglin_inspect_op(segment_t *seg, data_attr_t *da, info_fd_t *fd, 
 //  seglin_truncate_func - Does the actual segment truncat operations
 //***********************************************************************
 
-op_generic_t *seglin_inspect(segment_t *seg, data_attr_t *da, info_fd_t *fd, int mode, ex_off_t bufsize, rs_query_t *query, int timeout)
+op_generic_t *seglin_inspect(segment_t *seg, data_attr_t *da, info_fd_t *fd, int mode, ex_off_t bufsize, inspect_args_t *args, int timeout)
 {
   seglin_priv_t *s = (seglin_priv_t *)seg->priv;
   op_generic_t *gop;
@@ -798,7 +798,7 @@ op_generic_t *seglin_inspect(segment_t *seg, data_attr_t *da, info_fd_t *fd, int
     case (INSPECT_SCAN_REPAIR):
     case (INSPECT_FULL_REPAIR):
     case (INSPECT_MIGRATE):
-//        gop = seglin_inspect_op(seg, da, fd, mode, bufsize, query, timeout);
+//        gop = seglin_inspect_op(seg, da, fd, mode, bufsize, args, timeout);
           gop = gop_dummy(op_failure_status);  //** Not implemented
         break;
     case (INSPECT_SOFT_ERRORS):
@@ -877,7 +877,7 @@ op_status_t seglin_clone_func(void *arg, int id)
   //** Generate the query
   if (n_blocks > 0) {
      i = (sd->n_rid_default > n_blocks) ? n_blocks : sd->n_rid_default;
-     gop = rs_data_request(sd->rs, slc->da, sd->rsq, cap_list, req_list, n_blocks, NULL, 0, i, slc->timeout);
+     gop = rs_data_request(sd->rs, slc->da, sd->rsq, cap_list, req_list, n_blocks, NULL, 0, i, 0, slc->timeout);
   }
 
   //** Wait for block creation to complete

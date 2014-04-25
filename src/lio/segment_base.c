@@ -224,6 +224,8 @@ op_status_t segment_get_func(void *arg, int id)
   int err;
   ex_off_t rpos, wpos, rlen, wlen, tlen, nbytes, got, total;
   ex_iovec_t rex;
+  apr_time_t loop_start, file_start;
+  double dt_loop, dt_file;
   op_generic_t *gop;
   op_status_t status;
 
@@ -249,12 +251,15 @@ op_status_t segment_get_func(void *arg, int id)
 
 log_printf(0, "FILE fd=%p\n", sc->fd);
 
+  dt_loop = dt_file = 0;
   ex_iovec_single(&rex, rpos, rlen);
   wlen = 0;
   rpos += rlen;
   nbytes -= rlen;
+  loop_start = apr_time_now();
   gop = segment_read(sc->src, sc->da, 1, &rex, rbuf, 0, sc->timeout);
   err = gop_waitall(gop);
+  dt_loop = apr_time_now() - loop_start;  dt_loop /= (double)APR_USEC_PER_SEC;
   if (err != OP_STATE_SUCCESS) {
      log_printf(1, "Intial read failed! src=" XIDT " rpos=" XOT, " len=" XOT "\n", segment_id(sc->src), rpos, rlen);
      gop_free(gop, OP_DESTROY);
@@ -280,6 +285,7 @@ total = 0;
      }
      if (rlen > 0) {
         ex_iovec_single(&rex, rpos, rlen);
+        loop_start = apr_time_now();
         gop = segment_read(sc->src, sc->da, 1, &rex, rbuf, 0, sc->timeout);
         gop_start_execution(gop);  //** Start doing the transfer
         rpos += rlen;
@@ -287,7 +293,9 @@ total = 0;
      }
 
      //** Start the write
+     file_start = apr_time_now();
      got = fwrite(wb, 1, wlen, sc->fd);
+     dt_file = apr_time_now() - file_start;  dt_file /= (double)APR_USEC_PER_SEC;
 total += got;
 log_printf(0, "sid=" XIDT " fwrite(wb,1," XOT ", sc->fd)=" XOT " total=" XOT "\n", segment_id(sc->src), wlen, got, total);
      if (wlen != got) { 
@@ -310,6 +318,10 @@ log_printf(0, "sid=" XIDT " fwrite(wb,1," XOT ", sc->fd)=" XOT " total=" XOT "\n
            goto fail;
         }
      }
+
+     dt_loop = apr_time_now() - loop_start;  dt_loop /= (double)APR_USEC_PER_SEC;
+     log_printf(1, "dt_loop=%lf  dt_file=%lf\n", dt_loop, dt_file);
+
   } while (rlen > 0);
 
 fail:
@@ -358,6 +370,8 @@ op_status_t segment_put_func(void *arg, int id)
   ex_iovec_t wex;
   op_generic_t *gop;
   op_status_t status;
+  apr_time_t loop_start, file_start;
+  double dt_loop, dt_file;
 
   //** Set up the buffers
   bufsize = sc->bufsize / 2;  //** The buffer is split for R/W
@@ -382,7 +396,10 @@ op_status_t segment_put_func(void *arg, int id)
   nbytes -= rlen;
 log_printf(0, "FILE fd=%p bufsize=" XOT " rlen=" XOT " nbytes=" XOT "\n", sc->fd, bufsize, rlen, nbytes);
 
+  loop_start = apr_time_now();
   got = fread(rb, 1, rlen, sc->fd);
+  dt_file = apr_time_now() - loop_start;  dt_file /= (double)APR_USEC_PER_SEC;
+  
   if (got == 0) { 
      if (feof(sc->fd) == 0)  {
         log_printf(1, "ERROR from fread=%d  dest sid=" XIDT " rlen=" XOT " got=" XOT "\n", errno, segment_id(sc->dest), rlen, got);
@@ -403,6 +420,7 @@ log_printf(0, "FILE fd=%p bufsize=" XOT " rlen=" XOT " nbytes=" XOT "\n", sc->fd
      //** Start the write
      ex_iovec_single(&wex, wpos, wlen);
      wpos += wlen;
+     loop_start = apr_time_now();
      gop = segment_write(sc->dest, sc->da, 1, &wex, wbuf, 0, sc->timeout);
      gop_start_execution(gop);  //** Start doing the transfer
 
@@ -413,7 +431,9 @@ log_printf(0, "FILE fd=%p bufsize=" XOT " rlen=" XOT " nbytes=" XOT "\n", sc->fd
        rlen = (nbytes > bufsize) ? bufsize : nbytes;
      }
      if (rlen > 0) {
+        file_start = apr_time_now();
         got = fread(rb, 1, rlen, sc->fd);
+        dt_file = apr_time_now() - file_start;  dt_file /= (double)APR_USEC_PER_SEC;
         if (got == 0) {
            if (feof(sc->fd) == 0)  {
               log_printf(1, "ERROR from fread=%d  dest sid=" XIDT " got=" XOT " rlen=" XOT "\n", errno, segment_id(sc->dest), got, rlen);
@@ -430,6 +450,10 @@ log_printf(0, "FILE fd=%p bufsize=" XOT " rlen=" XOT " nbytes=" XOT "\n", sc->fd
 
      //** Wait for it to complete
      err = gop_waitall(gop);
+     dt_loop = apr_time_now() - loop_start;  dt_loop /= (double)APR_USEC_PER_SEC;
+
+     log_printf(1, "dt_loop=%lf  dt_file=%lf\n", dt_loop, dt_file);
+
      if (err != OP_STATE_SUCCESS) {
         log_printf(1, "ERROR write(dseg=" XIDT ") failed! wpos=" XOT, " len=" XOT "\n", segment_id(sc->dest), wpos, wlen);
         status = op_failure_status;

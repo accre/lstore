@@ -586,15 +586,7 @@ int lfs_stat(const char *fname,
 // lfs_opendir - FUSE opendir call
 //*************************************************************************
 
-int lfs_opendir(const char *fname, struct fuse_file_info *fi)
-{
-  lfs_dir_iter_t *dit;
-  char path[OS_PATH_MAX];
-  char *dir, *file;
-  lio_dentry_t *e2;
-  lio_inode_t *inode;
-  int i;
-
+int lfs_opendir(const char *fname, struct fuse_file_info *fi) {
   lio_fuse_t *lfs;
   struct fuse_context *ctx;
   ctx = fuse_get_context();
@@ -606,7 +598,17 @@ int lfs_opendir(const char *fname, struct fuse_file_info *fi)
   {
     lfs = (lio_fuse_t*)ctx->private_data;
   }
+  return lfs_opendir_real(fname, fi, lfs);
 
+}
+int lfs_opendir_real(const char *fname, struct fuse_file_info *fi, lio_fuse_t *lfs)
+{
+  lfs_dir_iter_t *dit;
+  char path[OS_PATH_MAX];
+  char *dir, *file;
+  lio_dentry_t *e2;
+  lio_inode_t *inode;
+  int i;
   log_printf(1, "fname=%s\n", fname); flush_log();
 
   type_malloc_clear(dit, lfs_dir_iter_t, 1);
@@ -671,16 +673,7 @@ int lfs_opendir(const char *fname, struct fuse_file_info *fi)
 // lfs_readdir - Returns the next file in the directory
 //*************************************************************************
 
-int lfs_readdir(const char *dname, void *buf, fuse_fill_dir_t filler, off_t off, struct fuse_file_info *fi)
-{
-  lfs_dir_iter_t *dit= (lfs_dir_iter_t *)fi->fh;
-  lio_dentry_t *entry, *fentry;
-  lio_inode_t *inode;
-  int ftype, prefix_len, n, i;
-  char *fname;
-  struct stat stbuf;
-  apr_time_t now;
-  double dt;
+int lfs_readdir(const char *dname, void *buf, fuse_fill_dir_t filler, off_t off, struct fuse_file_info *fi) {
 
   lio_fuse_t *lfs;
   struct fuse_context *ctx;
@@ -693,7 +686,19 @@ int lfs_readdir(const char *dname, void *buf, fuse_fill_dir_t filler, off_t off,
   {
     lfs = (lio_fuse_t*)ctx->private_data;
   }
+  return lfs_readdir_real(dname, buf, filler, off, fi, lfs);
 
+}
+int lfs_readdir_real(const char *dname, void *buf, fuse_fill_dir_t filler, off_t off, struct fuse_file_info *fi, lio_fuse_t *lfs)
+{
+  lfs_dir_iter_t *dit= (lfs_dir_iter_t *)fi->fh;
+  lio_dentry_t *entry, *fentry;
+  lio_inode_t *inode;
+  int ftype, prefix_len, n, i;
+  char *fname;
+  struct stat stbuf;
+  apr_time_t now;
+  double dt;
   int off2 = off;
   log_printf(1, "dname=%s off=%d stack_size=%d\n", dname, off2, stack_size(dit->stack)); flush_log();
   now = apr_time_now();
@@ -1048,9 +1053,7 @@ int lfs_object_remove(lio_fuse_t *lfs, const char *fname)
 //*****************************************************************
 //  lfs_unlink - Remove a file
 //*****************************************************************
-
-int lfs_unlink(const char *fname)
-{
+int lfs_unlink(const char *fname) {
   lio_fuse_t *lfs;
   struct fuse_context *ctx;
   ctx = fuse_get_context();
@@ -1062,7 +1065,10 @@ int lfs_unlink(const char *fname)
   {
     lfs = (lio_fuse_t*)ctx->private_data;
   }
-
+  return lfs_unlink_real(fname, lfs);
+}
+int lfs_unlink_real(const char *fname, lio_fuse_t *lfs)
+{
   log_printf(1, "fname=%s\n", fname); flush_log();
 
   return(lfs_object_remove(lfs, fname));
@@ -1332,11 +1338,12 @@ int lfs_myclose_real(char *fname, lio_fuse_fd_t *fd, lio_fuse_t *lfs)
   exnode_exchange_t *exp;
   ex_off_t ssize;
   char buffer[32];
-  char *key[] = {"system.exnode", "system.exnode.size", "os.timestamp.system.modify_data", "system.hard_errors", "system.soft_errors"};
-  char *val[5];
-  int err, v_size[5];
-  char ebuf[2][128];
-  int hard_errors, soft_errors;
+  char *key[6] = {"system.exnode", "system.exnode.size", "os.timestamp.system.modify_data", NULL, NULL, NULL };
+//  char *key[6] = {"system.exnode", "system.exnode.size", "os.timestamp.system.modify_data", "system.hard_errors", "system.soft_errors", "system.write_errors" };
+  char *val[6];
+  int err, v_size[6];
+  char ebuf[128];
+  segment_errors_t serr;
   apr_time_t now;
   double dt;
 
@@ -1402,6 +1409,20 @@ log_printf(1, "FLUSH/TRUNCATE fname=%s\n", fname);
   //** Ok no one has the file opened so teardown the segment/exnode
   //** IF not modified just tear down and clean up
   if (fh->modified == 0) {
+     //*** See if we need to update the error counts
+     lioc_get_error_counts(lfs->lc, fh->seg, &serr);
+     n = lioc_encode_error_counts(&serr, key, val, ebuf, v_size, 0);
+     if ((serr.hard>0) || (serr.soft>0) || (serr.write>0)) {
+        log_printf(1, "ERROR: fname=%s hard_errors=%d soft_errors=%d write_errors=%d\n", fname, serr.hard, serr.soft, serr.write);
+     }
+     if (n > 0) {
+        err = lioc_set_multiple_attrs(lfs->lc, lfs->lc->creds, fname, NULL, key, (void **)val, v_size, n);
+        if (err != OP_STATE_SUCCESS) {
+           log_printf(0, "ERROR updating exnode! fname=%s\n", fname);
+        }
+     }
+
+     //** Tear everything down
      exnode_destroy(fh->ex);
      fh->ref_count--;
      lfs_lock(lfs);
@@ -1421,22 +1442,18 @@ log_printf(1, "FLUSH/TRUNCATE fname=%s\n", fname);
   ssize = segment_size(fh->seg);
 
   //** Get any errors that may have occured
-  lioc_get_error_counts(lfs->lc, fh->seg, &hard_errors, &soft_errors);
+  lioc_get_error_counts(lfs->lc, fh->seg, &serr);
 
-  //** Update the OS exnode
+  //** Update the exnode
   n = 3;
   val[0] = exp->text.text;  v_size[0] = strlen(val[0]);
   sprintf(buffer, XOT, ssize);
   val[1] = buffer; v_size[1] = strlen(val[1]);
   val[2] = NULL; v_size[2] = 0;
 
-  if ((hard_errors>0) || (soft_errors>0)) {
-     log_printf(1, "ERROR: fname=%s hard_errors=%d soft_errors=%d\n", fname, hard_errors, soft_errors);
-     n = 5;
-     sprintf(ebuf[0], "%d", hard_errors);
-     sprintf(ebuf[1], "%d", soft_errors);
-     val[3] = ebuf[0]; v_size[3] = strlen(val[3]);
-     val[4] = ebuf[1]; v_size[4] = strlen(val[4]);
+  n += lioc_encode_error_counts(&serr, &(key[3]), &(val[3]), ebuf, &(v_size[3]), 0);
+  if ((serr.hard>0) || (serr.soft>0) || (serr.write>0)) {
+     log_printf(1, "ERROR: fname=%s hard_errors=%d soft_errors=%d write_errors=%d\n", fname, serr.hard, serr.soft, serr.write);
   }
 
   now = apr_time_now();
@@ -1471,7 +1488,7 @@ log_printf(1, "FLUSH/TRUNCATE fname=%s\n", fname);
 
   if (flags == LFS_INODE_DELETE) return(lfs_object_remove(lfs, fname));
 
-  return((hard_errors==0) ? 0 : -EIO);
+  return((serr.hard==0) ? 0 : -EIO);
 }
 
 int lfs_myclose(char *fname, lio_fuse_fd_t *fd)
@@ -1602,6 +1619,72 @@ int lfs_read(const char *fname, char *buf, size_t size, off_t off, struct fuse_f
 }
 
 //*****************************************************************
+// lfs_readv - Reads data from a file using a struct iovec
+//*****************************************************************
+
+int lfs_readv(const char *fname, iovec_t *iov, int n_iov, size_t size, off_t off, struct fuse_file_info *fi)
+{
+  lio_fuse_t *lfs;
+  lio_fuse_fd_t *fd;
+  tbuffer_t tbuf;
+  ex_iovec_t exv;
+  int err;
+  ex_off_t ssize, pend;
+  apr_time_t now;
+  double dt;
+
+  ex_off_t t1, t2;
+  t1 = size; t2 = off;
+  log_printf(1, "fname=%s size=" XOT " off=" XOT " n_iov=%d\n", fname, t1, t2, n_iov); flush_log();
+
+  fd = (lio_fuse_fd_t *)fi->fh;
+  if (fd == NULL) {
+     log_printf(0, "ERROR: Got a null file desriptor\n");
+     return(-EBADF);
+  }
+
+  lfs = NULL;
+  lfs = fd->fh->lfs;
+  if (lfs == NULL)
+  {
+    log_printf(0, "ERROR: Got a null LFS handle\n");
+    return(-EBADF);
+  }
+  now = apr_time_now();
+
+  //** Do the read op
+  ssize = segment_size(fd->fh->seg);
+  pend = off + size;
+  log_printf(0, "ssize=" XOT " off=" XOT " len=" XOT " pend=" XOT "\n", ssize, off, size, pend);
+  if (pend > ssize)
+  {
+    if (off > ssize) {
+        // offset is past the end of the segment
+        return(0);
+    } else {
+        size = ssize - off;  //** Tweak the size based on how much data there is
+    }
+  }
+  log_printf(0, "tweaked len=" XOT "\n", size);
+  if (size <= 0) { log_printf(0, "Clipped tweaked len\n"); return(0); }
+  tbuffer_vec(&tbuf, size, n_iov, iov);
+  ex_iovec_single(&exv, off, size);
+  err = gop_sync_exec(segment_read(fd->fh->seg, lfs->lc->da, 1, &exv, &tbuf, 0, lfs->lc->timeout));
+
+  dt = apr_time_now() - now;
+  dt /= APR_USEC_PER_SEC;
+  log_printf(1, "END fname=%s seg=" XIDT " size=" XOT " off=" XOT " dt=%lf\n", fname, segment_id(fd->fh->seg), t1, t2, dt); flush_log();
+
+  if (err != OP_STATE_SUCCESS) {
+     log_printf(1, "ERROR with read! fname=%s\n", fname);
+     printf("got value %d\n", err);
+     return(-EIO);
+  }
+
+  return(size);
+}
+
+//*****************************************************************
 // lfs_write - Writes data to a file
 //*****************************************************************
 
@@ -1634,6 +1717,50 @@ int lfs_write(const char *fname, const char *buf, size_t size, off_t off, struct
   //** Do the write op
   tbuffer_single(&tbuf, size, (char *)buf);
   ex_iovec_single(&exv, off, size);
+  err = gop_sync_exec(segment_write(fd->fh->seg, lfs->lc->da, 1, &exv, &tbuf, 0, lfs->lc->timeout));
+  dt = apr_time_now() - now;
+  dt /= APR_USEC_PER_SEC;
+  log_printf(1, "END fname=%s seg=" XIDT " size=" XOT " off=" XOT " dt=%lf\n", fname, segment_id(fd->fh->seg), t1, t2, dt); flush_log();
+
+  if (err != OP_STATE_SUCCESS) {
+     return(-EIO);
+  }
+
+  return(size);
+}
+
+//*****************************************************************
+// lfs_writev - Writes data to a file using a struct iovec
+//*****************************************************************
+
+int lfs_writev(const char *fname, iovec_t *iov, int n_iov, size_t size, off_t off, struct fuse_file_info *fi)
+{
+  lio_fuse_t *lfs;
+  lio_fuse_fd_t *fd;
+  tbuffer_t tbuf;
+  ex_iovec_t exv;
+  int err;
+  apr_time_t now;
+  double dt;
+
+  now = apr_time_now();
+
+  ex_off_t t1, t2;
+  t1 = size; t2 = off;
+
+  fd = (lio_fuse_fd_t *)fi->fh;
+  if (fd == NULL) {
+     return(-EBADF);
+  }
+
+  log_printf(1, "START fname=%s seg=" XIDT " size=" XOT " off=" XOT " n_ioc=%d\n", fname, segment_id(fd->fh->seg), t1, t2, n_iov); flush_log();
+
+  atomic_set(fd->fh->modified, 1);
+
+  lfs = fd->fh->lfs;
+
+  //** Do the write op
+  tbuffer_vec(&tbuf, size, n_iov, iov);
   err = gop_sync_exec(segment_write(fd->fh->seg, lfs->lc->da, 1, &exv, &tbuf, 0, lfs->lc->timeout));
   dt = apr_time_now() - now;
   dt /= APR_USEC_PER_SEC;
@@ -2156,8 +2283,20 @@ void lfs_attr_free(list_data_t *obj)
 //*****************************************************************
 // lfs_getxattr - Gets a extended attributes
 //*****************************************************************
-
-int lfs_getxattr(const char *fname, const char *name, char *buf, size_t size)
+int lfs_getxattr(const char *fname, const char *name, char *buf, size_t size) {
+    lio_fuse_t *lfs;
+    struct fuse_context *ctx;
+    ctx = fuse_get_context();
+    if (NULL == ctx || NULL == ctx->private_data)
+    {
+        log_printf(0, "ERROR_CTX:  unable to access fuse context or context is invalid");
+        return(-EINVAL);
+    } else {
+        lfs = (lio_fuse_t*)ctx->private_data;
+    }
+    return lfs_getxattr_real(fname, name, buf, size, lfs);
+}
+int lfs_getxattr_real(const char *fname, const char *name, char *buf, size_t size, lio_fuse_t *lfs)
 {
   char *val;
   int v_size, err, got_tape;
@@ -2166,19 +2305,6 @@ int lfs_getxattr(const char *fname, const char *name, char *buf, size_t size)
   lio_attr_t *attr;
   apr_time_t now, now2;
   double dt, dt2;
-
-  lio_fuse_t *lfs;
-  struct fuse_context *ctx;
-  ctx = fuse_get_context();
-  if (NULL == ctx || NULL == ctx->private_data)
-  {
-    log_printf(0, "ERROR_CTX:  unable to access fuse context or context is invalid");
-    return(-EINVAL);
-  }else
-  {
-    lfs = (lio_fuse_t*)ctx->private_data;
-  }
-
   now = apr_time_now();
 
   v_size= size;
@@ -2290,26 +2416,29 @@ log_printf(1, "ADDING fname=%s aname=%s p=%p v_size=%d df=%lf dt_query=%lf\n", f
 //*****************************************************************
 // lfs_setxattr - Sets a extended attribute
 //*****************************************************************
-
 int lfs_setxattr(const char *fname, const char *name, const char *fval, size_t size, int flags)
+{
+
+    lio_fuse_t *lfs;
+    struct fuse_context *ctx;
+    ctx = fuse_get_context();
+    if (NULL == ctx || NULL == ctx->private_data)
+    {
+        log_printf(0, "ERROR_CTX:  unable to access fuse context or context is invalid");
+        return(-EINVAL);
+    } else {
+        lfs = (lio_fuse_t*)ctx->private_data;
+    }
+
+    return lfs_setxattr_real(fname, name, fval, size, flags, lfs);
+}
+int lfs_setxattr_real(const char *fname, const char *name, const char *fval, size_t size, int flags, lio_fuse_t *lfs)
 {
   char *val;
   int v_size, err;
   lio_inode_t *inode;
   lio_attr_t *attr;
   char aname[512];
-
-  lio_fuse_t *lfs;
-  struct fuse_context *ctx;
-  ctx = fuse_get_context();
-  if (NULL == ctx || NULL == ctx->private_data)
-  {
-    log_printf(0, "ERROR_CTX:  unable to access fuse context or context is invalid");
-    return(-EINVAL);
-  }else
-  {
-    lfs = (lio_fuse_t*)ctx->private_data;
-  }
 
   v_size= size;
   log_printf(1, "fname=%s size=%d attr_name=%s\n", fname, size, name); flush_log();
