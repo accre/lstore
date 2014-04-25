@@ -167,4 +167,14 @@ install(FILES
    os_remote.h
    DESTINATION include/lio )
 
-
+# Packaging directives
+set(CPACK_PACKAGE_VERSION "1.0.0")
+set(CPACK_GENERATOR "RPM")
+set(CPACK_PACKAGE_NAME "accre-lio")
+set(CPACK_PACKAGE_RELEASE 1)
+set(CPACK_PACKAGE_CONTACT "Andrew Melo")
+set(CPACK_PACKAGE_VENDOR "Advanced Computing Center for Research and Education, Vanderbilt University")
+set(CPACK_PACKAGING_INSTALL_PREFIX "/usr/local")
+set(CPACK_PACKAGE_INSTALL_DIRECTORY "/usr/local")
+set(CPACK_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}-${CPACK_PACKAGE_RELEASE}.${CMAKE_SYSTEM_PROCESSOR}")
+include(CPack)
