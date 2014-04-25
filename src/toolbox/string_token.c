@@ -314,6 +314,26 @@ int64_t string_get_integer(char *value)
 }
 
 //***********************************************************************
+// string_get_double - Parses the string and returns the double.
+//      The string can include a scale unit
+//***********************************************************************
+
+double string_get_double(char *value)
+{
+  char *string;
+  double scale, n;
+
+  string = strdup(value);
+  scale = split_token_into_number_and_scale(string);
+//printf("token=%s scale=" I64T "\n", string, scale);
+  sscanf(string, "%lf", &n);
+  n = scale * n;
+  free(string);
+
+  return(n);
+}
+
+//***********************************************************************
 //  pretty_print_int_with_scale - Stores the integer as a string using
 //     the largest divisible scale factor. Buffer is used to
 //     hold the converted number and must have enough characters to store
@@ -342,16 +362,20 @@ char *pretty_print_int_with_scale(int64_t value, char *buffer)
   if (base == 1) { sprintf(buffer, I64T, value); return(buffer); }
 
   n = value;
-  for (i=0; i<3; i++) {
+  for (i=0; i<7; i++) {
     if ((n % base) != 0) break;
     n = n / base;
   }
 
 
   if (base == 1024) {
-    sprintf(buffer, I64T "%cI", n, unit[i]);
+    if ( i == 0) {
+       sprintf(buffer, I64T "%c ", n, unit[i]);
+    } else {
+       sprintf(buffer, I64T "%ci", n, unit[i]);
+    }
   } else {
-    sprintf(buffer, I64T "%c", n, unit[i]);
+    sprintf(buffer, I64T "%c ", n, unit[i]);
   }
 
 //printf("prettyprint: value=" I64T " (%s)\n", value, buffer);
@@ -376,23 +400,27 @@ char *pretty_print_double_with_scale(int base, double value, char *buffer)
 {
   double n;
   int i;
-  char *unit="\0KMGTPE";
+  char *unit=" KMGTPE";
 
   if (buffer == NULL) type_malloc(buffer, char, 30);
 
   if (base == 1) { sprintf(buffer, "%lf", value); return(buffer); }
 
   n = value;
-  for (i=0; i<3; i++) {
+  for (i=0; i<7; i++) {
     if (n < base) break;
     n = n / base;
   }
 
 
   if (base == 1024) {
-    sprintf(buffer, "%7.3lf%cI", n, unit[i]);
+    if (i == 0) {
+       sprintf(buffer, "%7.3lf%c ", n, unit[i]);
+    } else {
+       sprintf(buffer, "%7.3lf%ci", n, unit[i]);
+    }
   } else {
-    sprintf(buffer, "%7.3lf%c", n, unit[i]);
+    sprintf(buffer, "%7.3lf%c ", n, unit[i]);
   }
 
   return(buffer);

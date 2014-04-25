@@ -366,9 +366,7 @@ double inip_get_double(inip_file_t *inip, const char *group, const char *key, do
   inip_element_t *ele = _find_group_key(inip, group, key);
   if (ele == NULL) return(def);
 
-  double n;
-  sscanf(ele->value, "%lf", &n);
-  return(n);
+  return(string_get_double(ele->value));
 }
 
 //***********************************************************************
