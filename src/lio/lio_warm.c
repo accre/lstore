@@ -102,7 +102,7 @@ log_printf(15, "warming fname=%s, dt=%d\n", w->fname, dt);
       }
 
       //** Get the data size and update thr counts
-      wrid->nbytes = inip_get_integer(fd, inip_get_group(g), "size", 0);
+      wrid->nbytes += inip_get_integer(fd, inip_get_group(g), "size", 0);
 
       //** Get the manage cap
       etext = inip_get_string(fd, inip_get_group(g), "manage_cap", "");
