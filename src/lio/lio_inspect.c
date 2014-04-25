@@ -53,12 +53,21 @@ char *inspect_opts[] = { "DUMMY", "inspect_quick_check",  "inspect_scan_check", 
 
 char *select_mode_string[] = { "eq", "neq", "exists", "missing" };
 
+#define DELTA_MODE_NOTHING 0
+#define DELTA_MODE_PERCENT 1
+#define DELTA_MODE_AUTO    2
+#define DELTA_MODE_ABS     3
+
 typedef struct {
   char *name;
   double delta;
   double tolerance;
   int delta_mode;
+  int tolerance_mode;
+  int unspecified;
   apr_hash_t *pick_from;
+  Stack_t *groups;
+  Stack_t *rids;
 } pool_entry_t;
 
 typedef struct {
@@ -75,18 +84,14 @@ typedef struct {
 } inspect_t;
 
 typedef struct {
-  char *rid_key;
+//  rid_change_entry_t rc;
+  rid_inspect_tweak_t ri;
   inip_group_t *ig;
   int status;
   ex_off_t total;
   ex_off_t free;
   ex_off_t used;
 } rid_prep_entry_t;
-
-typedef struct {
-  apr_hash_t *pools;
-  apr_hash_t *rid_changes;
-} rid_pools_t;
 
 static creds_t *creds;
 static int global_whattodo;
@@ -101,12 +106,75 @@ int current_index = -1;
 int from_stdin = 0;
 
 apr_thread_mutex_t *rid_lock = NULL;
-rid_pools_t *rid_pools = NULL;
+apr_hash_t *rid_changes = NULL;
 apr_pool_t *rid_mpool = NULL;
 
 apr_thread_mutex_t *lock = NULL;
 list_t *seg_index;
 
+
+//*************************************************************************
+// process_pool - Does the final pool processing converting it into what
+//    lio_inspect expects.
+//*************************************************************************
+
+void process_pool(pool_entry_t *pe, Stack_t *parent_rid_stack)
+{
+  pool_entry_t *p;
+  rid_prep_entry_t *re;
+  ex_off_t total_used, total_bytes;
+  double avg;
+
+  //** Recursively handle all the groups
+  move_to_top(pe->groups);
+  while ((p = get_ele_data(pe->groups)) != NULL) {
+     process_pool(p, p->rids);
+  }
+
+  switch(pe->delta_mode) {
+   case (DELTA_MODE_AUTO) :   
+      //** Need to get the total size to calculate the fraction taget
+      total_used = total_bytes = 0;
+      move_to_top(pe->rids);
+      while ((re = get_ele_data(pe->rids)) != NULL) {
+         total_used += re->used;
+         total_bytes += re->total;
+         move_down(pe->rids);
+      }
+
+      avg = (double)total_used / ((double)total_bytes);
+
+      //** Make the tweaks
+      move_to_top(pe->rids);
+      while ((re = get_ele_data(pe->rids)) != NULL) {
+         re->ri.rid->delta = avg * re->total - re->used;
+         re->ri.rid->tolerance = 0.1*re->total;
+         re->ri.rid->state = 1;
+
+         move_down(pe->rids);
+      }
+      break;
+   case (DELTA_MODE_PERCENT) :   
+   case (DELTA_MODE_ABS) :   
+      //** Make the tweaks
+      move_to_top(pe->rids);
+      while ((re = get_ele_data(pe->rids)) != NULL) {
+         re->ri.rid->delta = (pe->delta_mode == DELTA_MODE_PERCENT) ? pe->delta/100.0 * re->total : pe->delta;
+         re->ri.rid->tolerance = (pe->tolerance_mode == DELTA_MODE_PERCENT) ? fabs(pe->tolerance)/100.0 * re->total : fabs(pe->tolerance);
+         re->ri.rid->state = 1;
+
+         move_down(pe->rids);
+      }
+      break;
+  }
+
+  //** Move all the RIDS to the parent pool if provided
+  if (!parent_rid_stack) return;
+
+  while ((re = pop(pe->rids)) != NULL) {
+     push(parent_rid_stack, re);
+  }
+}
 
 //*************************************************************************
 // prep_rid_table - Preps the RID table for use in generating a pool config
@@ -128,6 +196,7 @@ apr_hash_t *prep_rid_table(inip_file_t *fd, apr_pool_t *mpool)
     key = inip_get_group(ig);
     if (strcmp("rid", key) == 0) {  //** Found a resource
        type_malloc_clear(re, rid_prep_entry_t, 1);
+       type_malloc_clear(re->ri.rid, rid_change_entry_t, 1);
        re->ig = ig;
 
        //** Now cycle through the attributes
@@ -136,7 +205,7 @@ apr_hash_t *prep_rid_table(inip_file_t *fd, apr_pool_t *mpool)
           key = inip_get_element_key(ele);
           value = inip_get_element_value(ele);
           if (strcmp(key, "rid_key") == 0) {  //** This is the RID so store it separate
-             re->rid_key = value;
+             re->ri.rid->rid_key = value;
           } else if (strcmp(key, "status") == 0) {  //** Status
              sscanf(value, "%d", &n);
              re->status = ((n>=0) && (n<=3)) ? n : 4;
@@ -151,7 +220,7 @@ apr_hash_t *prep_rid_table(inip_file_t *fd, apr_pool_t *mpool)
           ele = inip_next_element(ele);
        }
 
-       apr_hash_set(table, re->rid_key, APR_HASH_KEY_STRING, re);
+       apr_hash_set(table, re->ri.rid->rid_key, APR_HASH_KEY_STRING, re);
     }
 
     ig = inip_next_group(ig);
@@ -161,33 +230,107 @@ apr_hash_t *prep_rid_table(inip_file_t *fd, apr_pool_t *mpool)
 }
 
 //*************************************************************************
+// add_wildcard - Adds a wildcard list or resources to the pool
+//*************************************************************************
+
+void add_wildcard(pool_entry_t *p, apr_hash_t *rid_table, char *mkey, char *mvalue)
+{
+  inip_element_t *ele;
+  char *key, *value, *hkey;
+  apr_ssize_t hlen;
+  apr_hash_index_t *hi;
+  rid_prep_entry_t *re;
+  int match;
+
+  for (hi=apr_hash_first(NULL, rid_table); hi != NULL; hi = apr_hash_next(hi)) {
+    apr_hash_this(hi, (const void **)&hkey, &hlen, (void **)&re);
+
+    match = 0;
+    if (mkey != NULL) {
+       for (ele=inip_first_element(re->ig); ele != NULL; ele = inip_next_element(ele)) {
+          key = inip_get_element_key(ele);
+          value = inip_get_element_value(ele);
+
+          if ((strcmp(key, mkey) == 0) && (strcmp(value, mvalue) == 0)) {
+             match = 1;
+             break;
+          }
+       }
+    } else {
+      match = 1;
+    }
+
+    if (match == 1) {  //** Got a match so move it to the pool/group
+       push(p->rids, re);
+       apr_hash_set(rid_table, hkey, hlen, NULL);
+    }
+  }
+}
+
+//*************************************************************************
 //  load_pool - Loads a pool
 //*************************************************************************
 
-void load_pool(rid_pools_t *pools, inip_file_t *pfd, apr_hash_t *rid_table, inip_group_t *pg, pool_entry_t **unspecified)
+void load_pool(Stack_t *pools, inip_file_t *pfd, inip_file_t *rfd, apr_hash_t *rid_table, inip_group_t *pg, pool_entry_t **unspecified)
 {
   inip_element_t *ele;
   char *key, *value;
   pool_entry_t *p;
+  inip_group_t *psg;
+  int n;
+  char subgroup[4096];
 
   type_malloc_clear(p, pool_entry_t, 1);
-
+  
   key = inip_get_group(pg);
   p->name = strdup(key+5);
+  p->groups = new_stack();
+  p->rids = new_stack();
 
   //** Now cycle through the attributes
   ele = inip_first_element(pg);
   while (ele != NULL) {
      key = inip_get_element_key(ele);
      value = inip_get_element_value(ele);
-     if (strcmp(key, "rid_key") == 0) {  //** This is the RID so store it separate
-//        re->rid_key = value;
-     } else if (strcmp(key, "space_free") == 0) {  //** Free space
-//        sscanf(value, XOT, &(re->free));
+     if (strcmp(key, "_delta") == 0) {  //** Delta value
+        if (strcmp(value, "auto") == 0) {
+           p->delta_mode = DELTA_MODE_AUTO;
+        } else {
+           n = strlen(value);
+           if (value[n-1] == '%') {
+              p->delta_mode = DELTA_MODE_PERCENT;
+              value[n-1] = 0;
+           }
+      
+           p->delta = string_get_double(value);
+        }
+     } else if (strcmp(key, "_tolerance") == 0) {  //** Tolerance
+        n = strlen(value);
+        if (value[n-1] == '%') {
+           p->tolerance_mode = DELTA_MODE_PERCENT;
+           value[n-1] = 0;
+        }
+      
+        p->tolerance = string_get_double(value);
+     } else if (strcmp(key, "_unspecified") == 0) {  //** This is where we dump the unspecified tasks
+        p->unspecified = 1;
+        *unspecified = p;
+     } else if (strcmp(key, "_group") == 0) {  //** Got a sub group
+        snprintf(subgroup, sizeof(subgroup), "group-%s", value);
+        psg = inip_find_group(pfd, subgroup);
+        if (psg != NULL) {
+           load_pool(p->groups, pfd, rfd, rid_table, psg, unspecified);  //** Add the sub group
+        } else {
+           printf("ERROR:  Missing subgroup.  Parent=%s missing=%s\n", p->name, value);
+        }
+     } else {  //**It's a wild card search so directly add them
+        add_wildcard(p, rid_table, key, value);
      }
 
      ele = inip_next_element(ele);
   }
+
+  push(pools, p);  //** Add ourselves to the stack;
 
   return;
 }
@@ -197,20 +340,23 @@ void load_pool(rid_pools_t *pools, inip_file_t *pfd, apr_hash_t *rid_table, inip
 // load_pool_config - Loads the rebalance pool configration
 //*************************************************************************
 
-rid_pools_t *load_pool_config(char *fname, apr_pool_t *mpool)
+apr_hash_t *load_pool_config(char *fname, apr_pool_t *mpool)
 {
   inip_file_t *pfd, *rfd;
   char *rid_config, *key;
   inip_group_t *ig;
   apr_hash_t *rid_table;
-  rid_pools_t *pools;
+  apr_hash_t *pools;
+  pool_entry_t *pe;
+  Stack_t *pool_list;
+  rid_prep_entry_t *re;
   pool_entry_t *unspecified = NULL;
 
-  //** Make the rid changes and pools tables
-  type_malloc(pools, rid_pools_t, 1);
-  pools->rid_changes = apr_hash_make(mpool);
-  pools->pools = apr_hash_make(mpool);
+  //** Make the rid changes
+  pools = apr_hash_make(mpool);
   
+  pool_list = new_stack();
+
   //** Load the pool config
   assert((pfd = inip_read(fname)) != NULL);
 
@@ -226,7 +372,7 @@ rid_pools_t *load_pool_config(char *fname, apr_pool_t *mpool)
   while (ig != NULL) {
      key = inip_get_group(ig);
      if (strncmp("pool-", key, 5) == 0) {  //** Found a Pool definition so load it
-        load_pool(pools, pfd, rid_table, ig, &unspecified);
+        load_pool(pool_list, pfd, rfd, rid_table, ig, &unspecified);
      }
 
      ig = inip_next_group(ig);
@@ -234,8 +380,26 @@ rid_pools_t *load_pool_config(char *fname, apr_pool_t *mpool)
 
   //** Finish off by handling the unspecified group if needed
   if (unspecified != NULL) {
-//     add_unspecified(unspecified, rid_table);
+     add_wildcard(unspecified, rid_table, NULL, NULL);
   }
+
+  //** Now make the final pass since the "unspecified" has been resolved.
+  while ((pe = pop(pool_list)) != NULL) {
+     process_pool(pe, NULL);
+
+     pe->pick_from = apr_hash_make(mpool);
+
+     //** Add it to the RID changes
+     while ((re = pop(pe->rids)) != NULL) {
+        re->ri.rid->state = 0;
+        re->ri.pick_pool = pe->pick_from;        
+        apr_hash_set(pools, re->ri.rid->rid_key, APR_HASH_KEY_STRING, &(re->ri));
+        apr_hash_set(pe->pick_from, re->ri.rid->rid_key, APR_HASH_KEY_STRING, re->ri.rid);
+     }
+     
+  }
+  
+  free_stack(pool_list, 1);
 
   free(rid_config);
   inip_destroy(rfd);
@@ -337,7 +501,7 @@ log_printf(15, "whattodo=%d\n", whattodo);
   //** Execute the inspection operation
   memset(&args, 0, sizeof(args));
   args.rid_lock = rid_lock;
-  args.rid_changes = (rid_pools != NULL) ? rid_pools->rid_changes : NULL;
+  args.rid_changes = rid_changes;
   args.query = query;
   args.qs = new_opque();  args.qf = new_opque();
   gop = segment_inspect(seg, lio_gc->da, lio_ifd, whattodo, bufsize, &args, lio_gc->timeout);
@@ -746,7 +910,7 @@ int main(int argc, char **argv)
   if (pool_cfg != NULL) {
      assert(apr_pool_create(&rid_mpool, NULL) == APR_SUCCESS);
      apr_thread_mutex_create(&rid_lock, APR_THREAD_MUTEX_DEFAULT, rid_mpool);
-     rid_pools = load_pool_config(pool_cfg, rid_mpool);
+     rid_changes = load_pool_config(pool_cfg, rid_mpool);
   }
 
   
