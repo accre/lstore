@@ -137,3 +137,16 @@ install(FILES append_printf.h   chksum.h     fmttypes.h  interval_skiplist.h  ne
               apr_wrapper.h     debug.h      list.h               net_2_ssl.h  net_sock.h     pigeon_coop.h  skiplist.h  toolbox_config.h  varint.h
               atomic_counter.h  dns_cache.h  iniparse.h  log.h                net_fd.h     network.h      pigeon_hole.h  stack.h     transfer_buffer.h packer.h
               DESTINATION include/toolbox )
+
+set(CPACK_PACKAGE_VERSION "1.0.0")
+set(CPACK_GENERATOR "RPM")
+set(CPACK_PACKAGE_NAME "accre-toolbox")
+set(CPACK_PACKAGE_RELEASE 1)
+set(CPACK_PACKAGE_CONTACT "Andrew Melo")
+set(CPACK_PACKAGE_VENDOR "Advanced Computing Center for Research and Education, Vanderbilt University")
+#SET(CPACK_RPM_PACKAGE_REQUIRES "openssl >= 1.0.1e")
+#set(CPACK_RPM_PACKAGE_AUTOREQPROV " no")
+set(CPACK_PACKAGING_INSTALL_PREFIX "/usr/local")
+set(CPACK_PACKAGE_INSTALL_DIRECTORY "/usr/local")
+set(CPACK_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}-${CPACK_PACKAGE_RELEASE}.${CMAKE_SYSTEM_PROCESSOR}")
+include(CPack)
