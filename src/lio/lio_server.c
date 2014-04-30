@@ -67,7 +67,7 @@ void signal_shutdown(int sig)
 int main(int argc, char **argv)
 {
   int background = 1;
-  int i;
+  int i, start_option, start_index;
 
   for (i=0; i<argc; i++) {
     if (strcmp(argv[i], "-f") == 0) { background = 0; break; }
@@ -86,9 +86,10 @@ int main(int argc, char **argv)
 
   if (argc < 2) {
      printf("\n");
-     printf("lio_server LIO_COMMON_OPTIONS [-f]\n");
+     printf("lio_server LIO_COMMON_OPTIONS [-f] [-C cwd]\n");
      lio_print_options(stdout);
      printf("    -f                 - Run in foreground instead of as a daemon\n");
+     printf("    -C cwd             - Change the current workding directory for execution\n");
      return(1);
   }
 
@@ -97,6 +98,28 @@ int main(int argc, char **argv)
   if (background == 1) {
      log_printf(0, "Running as a daemon.\n");
   }
+
+
+  //** NOTE:  The "-f" option has already been handled but it will still appear in the list below cause lio_init() won't handle it
+  i=1;
+  do {
+     start_option = i;
+
+     if (strcmp(argv[i], "-C") == 0) {  //** Change the CWD
+        i++;
+       	if (chdir(argv[i]) != 0) {
+           fprintf(stderr, "ERROR setting CWD=%s.  errno=%d\n", argv[i], errno);
+           log_printf(0, "ERROR setting CWD=%s.  errno=%d\n", argv[i], errno);
+        } else {
+           log_printf(0, "Setting CWD=%s\n", argv[i]);
+        }
+        i++;
+     } else if (strcmp(argv[i], "-f") == 0) {  //** Foreground process already handled
+        i++;
+     }
+
+  } while ((start_option < i) && (i<argc));
+  start_index = i;
 
   //***Attach the signal handler for shutdown
   apr_signal_unblock(SIGQUIT);

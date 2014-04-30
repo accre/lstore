@@ -2880,6 +2880,19 @@ void *lfs_init_real(struct fuse_conn_info *conn,
   init_args->lc = lio_gc;
 
   log_printf(15, "START mount=%s\n", init_args->mount_point);
+
+  //** See if we need to change the CWD
+  if (init_args->lio_argc > 1) {
+     if (strcmp(init_args->lio_argv[1], "-C") == 0) {
+        if (chdir(init_args->lio_argv[2]) != 0) {
+           fprintf(stderr, "ERROR setting CWD=%s.  errno=%d\n", init_args->lio_argv[2], errno);
+           log_printf(0, "ERROR setting CWD=%s.  errno=%d\n", init_args->lio_argv[2], errno);
+        } else {
+           log_printf(0, "Setting CWD=%s\n", init_args->lio_argv[2]);
+        }
+     }
+  }
+
   type_malloc_clear(lfs, lio_fuse_t, 1);
 
   lfs->lc = init_args->lc;
