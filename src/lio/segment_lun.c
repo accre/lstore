@@ -748,7 +748,7 @@ log_printf(15, "sid=" XIDT " increasing existing row seg_offset=" XOT " curr seg
         slun_row_size_check(seg, da, b, block_status, s->n_devices, 1, timeout);
 
         //** Check if we had an error on the size
-        n = 0; berr = 0;
+        n = berr = 0;
         for (i=0; i<s->n_devices; i++) if (block_status[i]==2) n++;
         if (n==0) {
            berr = slun_row_pad_fix(seg, da, b, block_status, s->n_devices, timeout);
@@ -758,7 +758,10 @@ log_printf(15, "sid=" XIDT " increasing existing row seg_offset=" XOT " curr seg
            b->block_len = old_len;
            b->row_len = old_len * s->n_devices;
            b->seg_end = b->seg_offset + b->row_len - 1;
-           for (i=0; i<s->n_devices; i++) b->block[i].data->max_size = old_len;
+           for (i=0; i<s->n_devices; i++) {
+              b->block[i].data->max_size = old_len;
+              b->block[i].data->size = old_len;
+           }
         }
 
         insert_interval_skiplist(s->isl, (skiplist_key_t *)&(b->seg_offset), (skiplist_key_t *)&(b->seg_end), (skiplist_data_t *)b);
@@ -934,6 +937,12 @@ op_status_t _seglun_shrink(segment_t *seg, data_attr_t *da, ex_off_t new_size, i
      b->seg_end = b->seg_offset + bstart_size - 1;
      b->block_len = bstart_block_size;
      b->row_len = bstart_size;
+
+     for (i=0; i<s->n_devices; i++) {
+         b->block[i].data->max_size = b->block_len;
+         b->block[i].data->size = b->block_len;
+     }
+
      insert_interval_skiplist(s->isl, (skiplist_key_t *)&(b->seg_offset), (skiplist_key_t *)&(b->seg_end), (skiplist_data_t *)b);
   }
 
@@ -1466,11 +1475,11 @@ log_printf(15, " n_bslots=%d\n", n_bslots);
      while ((gop = opque_waitany(q)) != NULL) {
         dt = apr_time_now() - tstart2;
         dt /= (APR_USEC_PER_SEC*1.0);
-        log_printf(15, "device=%d time: %lf\n", gop_get_myid(gop), dt);
+        log_printf(1, "device=%d time: %lf\n", gop_get_myid(gop), dt);
      }
      dt = apr_time_now() - tstart2;
      dt /= (APR_USEC_PER_SEC*1.0);
-     log_printf(15, "IBP time: %lf\n", dt);
+     log_printf(1, "IBP time: %lf\n", dt);
 
      maxerr = 0;
      for (slot = 0; slot < n_bslots; slot++) {
