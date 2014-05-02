@@ -748,13 +748,15 @@ log_printf(15, "sid=" XIDT " increasing existing row seg_offset=" XOT " curr seg
         slun_row_size_check(seg, da, b, block_status, s->n_devices, 1, timeout);
 
         //** Check if we had an error on the size
-        n = berr = 0;
-        for (i=0; i<s->n_devices; i++) if (block_status[i]==2) n++;
-        if (n==0) {
-           berr = slun_row_pad_fix(seg, da, b, block_status, s->n_devices, timeout);
+        berr = 0;
+        for (i=0; i<s->n_devices; i++) {
+           if (block_status[i]==2) {  //** Tweaked an allocation's size
+              berr = slun_row_pad_fix(seg, da, b, block_status, s->n_devices, timeout);
+              break;  //** Kick out
+           }
         }
 
-        if ((n>0) || (berr > 0)) { //** Error growing the allocations so just leave them with the bad size but truncate the block to the old size
+        if (berr > 0) { //** Error growing the allocations so just leave them with the bad size but truncate the block to the old size
            b->block_len = old_len;
            b->row_len = old_len * s->n_devices;
            b->seg_end = b->seg_offset + b->row_len - 1;
