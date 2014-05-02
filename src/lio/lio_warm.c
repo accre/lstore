@@ -170,9 +170,10 @@ int main(int argc, char **argv)
   opque_t *q;
   op_generic_t *gop;
   op_status_t status;
-  char *ex;
-  char *key = "system.exnode";
-  int ex_size, slot;
+//  char *ex;
+  char *keys[] = { "system.exnode", "system.write_errors" };
+  char *vals[2];
+  int slot, v_size[2];
   os_object_iter_t *it;
   os_regex_table_t *rp_single, *ro_single;
   list_t *master;
@@ -186,7 +187,7 @@ int main(int argc, char **argv)
   inip_element_t *ele;
   char ppbuf[128], ppbuf2[128];
   lio_path_tuple_t tuple;
-  ex_off_t total, good, bad, nbytes, submitted;
+  ex_off_t total, good, bad, nbytes, submitted, werr;
   list_iter_t lit;
   Stack_t *stack;
   int recurse_depth = 10000;
@@ -254,7 +255,7 @@ int main(int argc, char **argv)
      w[j].hash = apr_hash_make(w[j].mpool);
   }
 
-  submitted = good = bad = 0;
+  submitted = good = bad = werr = 0;
 
   for (j=start_index; j<argc; j++) {
      log_printf(5, "path_index=%d argc=%d rg_mode=%d\n", j, argc, rg_mode);
@@ -267,8 +268,8 @@ int main(int argc, char **argv)
         rg_mode = 0;  //** Use the initial rp
      }
 
-     ex_size = - tuple.lc->max_attr;
-     it = os_create_object_iter_alist(tuple.lc->os, tuple.creds, rp_single, ro_single, OS_OBJECT_FILE, recurse_depth, &key, (void **)&ex, &ex_size, 1);
+     v_size[0] = v_size[1] = - tuple.lc->max_attr;
+     it = os_create_object_iter_alist(tuple.lc->os, tuple.creds, rp_single, ro_single, OS_OBJECT_FILE, recurse_depth, keys, (void **)vals, v_size, 2);
      if (it == NULL) {
         info_printf(lio_ifd, 0, "ERROR: Failed with object_iter creation\n");
         goto finished;
@@ -278,11 +279,17 @@ int main(int argc, char **argv)
      slot = 0;
      while ((ftype = os_next_object(tuple.lc->os, it, &fname, &prefix_len)) > 0) {
         w[slot].fname = fname;
-        w[slot].exnode = ex;
+        w[slot].exnode = vals[0];
         w[slot].creds = tuple.lc->creds;
         w[slot].ic = ((ds_ibp_priv_t *)(tuple.lc->ds->priv))->ic;
 
-        ex = NULL;  fname = NULL;
+        if (v_size[1] != -1) {
+           werr++;
+           info_printf(lio_ifd, 0, "WRITE_ERROR for file %s\n", fname);
+           if (vals[1] != NULL) { free(vals[1]); vals[1] = NULL; }
+        }
+
+        vals[0] = NULL;  fname = NULL;
         submitted++;
         gop = new_thread_pool_op(lio_gc->tpc_unlimited, NULL, gen_warm_task, (void *)&(w[slot]), NULL, 1);
         gop_set_myid(gop, slot);
@@ -326,7 +333,7 @@ log_printf(0, "gid=%d i=%d fname=%s\n", gop_id(gop), slot, fname);
   opque_free(q, OP_DESTROY);
 
   info_printf(lio_ifd, 0, "--------------------------------------------------------------------\n");
-  info_printf(lio_ifd, 0, "Submitted: " XOT "   Success: " XOT "   Fail: " XOT "\n", submitted, good, bad);
+  info_printf(lio_ifd, 0, "Submitted: " XOT "   Success: " XOT "   Fail: " XOT "    Write Errors: " XOT "\n", submitted, good, bad, werr);
   if (submitted != (good+bad)) {
      info_printf(lio_ifd, 0, "ERROR FAILED self-consistency check! Submitted != Success+Fail\n");
   }
@@ -410,7 +417,7 @@ log_printf(0, "gid=%d i=%d fname=%s\n", gop_id(gop), slot, fname);
          pretty_print_double_with_scale(1024, (double)mrid->nbytes, ppbuf), total, mrid->good, mrid->bad, line_end);
      free(rkey);
   }
-  if (summary_mode != 0) info_printf(lio_ifd, 0, "----------------------------------------   --------  ----------  ----------  ----------\n");
+  if (summary_mode != 0) info_printf(lio_ifd, 0, "----------------------------------------  ---------  ----------  ----------  ----------\n");
 
   snprintf(ppbuf2, sizeof(ppbuf2), "SUM (%d RIDs, %d bad)", j, i);
   total = good + bad;
