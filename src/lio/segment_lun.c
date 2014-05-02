@@ -247,6 +247,7 @@ int slun_row_placement_fix(segment_t *seg, data_attr_t *da, seglun_row_t *b, int
            hints_list[ngood].fixed_rid_key = b->block[i].data->rid_key;
            hints_list[ngood].status = RS_ERROR_OK;
            hints_list[ngood].local_rsq = NULL;
+           hints_list[ngood].pick_from = NULL;
            ngood++;
         } else {
            j = nbad;
@@ -1818,13 +1819,13 @@ op_status_t seglun_inspect_func(void *arg, int id)
 
   //** Form the query to use
   query = rs_query_dup(s->rs, s->rsq);
-  args.query = query;
   if (si->args != NULL) {
      if (si->args->query != NULL) {  //** Local query needs to be added
         rs_query_append(s->rs, query, si->args->query);
         rs_query_add(s->rs, &query, RSQ_BASE_OP_AND, NULL, 0, NULL, 0);
      }
   }
+  args.query = query;
 
 //info_printf(si->fd, 1, "local_query=%p\n", si->query);
   info_printf(si->fd, 1, XIDT ": segment information: n_devices=%d n_shift=%d chunk_size=" XOT "  used_size=" XOT " total_size=" XOT " mode=%d\n", segment_id(si->seg), s->n_devices, s->n_shift, s->chunk_size, s->used_size, s->total_size, si->inspect_mode);
@@ -1897,7 +1898,7 @@ op_status_t seglun_inspect_func(void *arg, int id)
     if (err != 0) goto fail;
 
 log_printf(0, "BEFORE_PLACEMENT_CHECK\n");
-    err = slun_row_placement_check(si->seg, si->da, b, block_status, s->n_devices, soft_error_fail, query, si->args, si->timeout);
+    err = slun_row_placement_check(si->seg, si->da, b, block_status, s->n_devices, soft_error_fail, query, &args, si->timeout);
     for (i=0; i < s->n_devices; i++) append_printf(info, &used, bufsize, " %d", block_status[i]);
 
     total_migrate += err;
@@ -1910,7 +1911,7 @@ log_printf(0, "AFTER_PLACEMENT_CHECK\n");
        if (force_reconstruct == 0) {
           memcpy(block_copy, block_status, sizeof(int)*s->n_devices);
 
-          i = slun_row_placement_fix(si->seg, si->da, b, block_status, s->n_devices, query, si->timeout);
+          i = slun_row_placement_fix(si->seg, si->da, b, block_status, s->n_devices, &args, si->timeout);
           nmigrated += err - i;
 
           for (i=0; i < s->n_devices; i++) {
@@ -1928,7 +1929,7 @@ log_printf(0, "AFTER_PLACEMENT_CHECK\n");
           if (max_lost < err) max_lost = err;
           do {
             memcpy(block_copy, block_status, sizeof(int)*s->n_devices);
-            err = slun_row_replace_fix(si->seg, si->da, b, block_status, s->n_devices, query, si->timeout);
+            err = slun_row_replace_fix(si->seg, si->da, b, block_status, s->n_devices, &args, si->timeout);
 
             for (i=0; i < s->n_devices; i++) {
                 if ((block_copy[i] == 1) && (block_status[i] == 0)) info_printf(si->fd, 2, XIDT ":     dev=%i replaced rcap=%s\n", segment_id(si->seg), i, ds_get_cap(s->ds, b->block[i].data->cap, DS_CAP_READ));
