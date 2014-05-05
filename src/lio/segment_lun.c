@@ -769,7 +769,7 @@ log_printf(15, "sid=" XIDT " increasing existing row seg_offset=" XOT " curr seg
 
         insert_interval_skiplist(s->isl, (skiplist_key_t *)&(b->seg_offset), (skiplist_key_t *)&(b->seg_end), (skiplist_data_t *)b);
 
-log_printf(15, "sid=" XIDT " enlarged row seg_offset=" XOT " seg_end=" XOT " row_len=" XOT " n=%d berr=%d\n", segment_id(seg), b->seg_offset, b->seg_end, b->row_len, n, berr);
+log_printf(15, "sid=" XIDT " enlarged row seg_offset=" XOT " seg_end=" XOT " row_len=" XOT " berr=%d\n", segment_id(seg), b->seg_offset, b->seg_end, b->row_len, berr);
 
         lo = b->seg_end + 1;
      } else {
@@ -1358,9 +1358,10 @@ op_status_t seglun_rw_op(segment_t *seg, data_attr_t *da, int n_iov, ex_iovec_t 
   segment_lock(seg);
 
   //** Check if we need to translate the caps
+  apr_thread_mutex_lock(s->notify.lock);
   if (s->map_version != s->notify.map_version) {
      while (s->inprogress_count > 0) {
-         apr_thread_cond_wait(seg->cond, seg->lock);
+         apr_thread_cond_wait(s->notify.cond, s->notify.lock);
      }
 
      //** Do the remap unless someoue beat us to it.
@@ -1369,6 +1370,7 @@ op_status_t seglun_rw_op(segment_t *seg, data_attr_t *da, int n_iov, ex_iovec_t 
         _slun_perform_remap(seg);
      }
   }
+  apr_thread_mutex_unlock(s->notify.lock);
 
   s->inprogress_count++;  //** Flag that we are doing an I/O op
 
@@ -2568,6 +2570,8 @@ log_printf(15, "seglun_destroy: seg->id=" XIDT " ref_count=%d\n", segment_id(seg
 
   //** Disable notification about mapping changes
   rs_unregister_mapping_updates(s->rs, &(s->notify));
+  apr_thread_mutex_destroy(s->notify.lock);
+  apr_thread_cond_destroy(s->notify.cond);
 
   n = interval_skiplist_count(s->isl);
   type_malloc_clear(b_list, seglun_row_t *, n);
@@ -2658,8 +2662,8 @@ segment_t *segment_lun_create(void *arg)
   s->ds = lookup_service(es, ESS_RUNNING, ESS_DS);
 
   //** Set up rempa notifications
-  s->notify.lock = seg->lock;
-  s->notify.cond = seg->cond;
+  apr_thread_mutex_create(&(s->notify.lock), APR_THREAD_MUTEX_DEFAULT, seg->mpool);
+  apr_thread_cond_create(&(s->notify.cond), seg->mpool);
   s->notify.map_version = -1;  //** This should trigger a remap on the first R/W op.
   rs_register_mapping_updates(s->rs, &(s->notify));
 
