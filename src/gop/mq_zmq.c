@@ -93,6 +93,7 @@ if (socket->type != MQ_PAIR) zsocket_set_router_mandatory(socket->arg, 1);
      snprintf(buf, 255, format, args);
      snprintf(id, 255, "%s:%ld", buf, random_int(1, 1000000));
      zsocket_set_identity(socket->arg, id);
+     log_printf(4, "Unique hostname created = %s\n", id);
   }
 
   err = zsocket_connect(socket->arg, format, args);
@@ -207,13 +208,16 @@ log_printf(15, "rc=%d errno=%d\n", rc, errno);
     f->len = zmq_msg_size(&(f->zmsg));
     f->data = zmq_msg_data(&(f->zmsg));
     f->auto_free = MQF_MSG_INTERNAL_FREE;
-
+    
+    if(f->len >= 20) {
+	  log_printf(15, "length = %d, data = %s\n", f->len, f->data);
+    }
     mq_msg_append_frame(msg, f);
     n += f->len;
     nframes++;
 log_printf(5, "more=" I64T "\n", more);
   } while (more > 0);
-
+  
 log_printf(5, "total bytes=%d nframes=%d\n", n, nframes);
 
   return((n>0) ? 0 : -1);

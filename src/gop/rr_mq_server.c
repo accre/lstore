@@ -17,233 +17,357 @@ char *user_command = NULL;
  * Processing functions
  */
 
+/*
+ * process_round_robin_pass()
+ * 
+ * Grab a worker from the worker table using round robin and pass it the message
+ */
 void process_round_robin_pass(mq_portal_t *p, mq_socket_t *sock, mq_msg_t *msg) {
+	mq_worker_table_t *worker_table;
+	mq_frame_t *f, *address_frame;
 	unsigned int num_workers;
 	mq_worker_t *worker;
 	char *worker_address;
-	mq_frame_t *address_frame;
-	op_generic_t *gop;
-	mq_worker_table_t *worker_table;
+	op_generic_t *gop;	
+	mq_msg_t *pass;
+	int status;
 	
-	// Just for testing. Don't keep this
 	if(p->implementation_arg != NULL)
 		worker_table = (mq_worker_table_t *)p->implementation_arg;
 	else {
 		log_printf(1, "SERVER: ERROR - no worker table found\n");
 		return;
 	}
-	num_workers = apr_hash_count(worker_table->table);
-	if(num_workers != 1) {
-		log_printf(1, "SERVER: ERROR - number of workers != 1, num_workers = %d\n", num_workers);
-		log_printf(1, "SERVER: Destroying message and quitting response.\n");
-		mq_msg_destroy(msg);
-		return;
-	}
 	
-	apr_hash_index_t *index = apr_hash_first(worker_table->mpool, worker_table->table);
-	apr_hash_this(index, NULL, NULL, (void **)&worker);
+	log_printf(0, "SERVER: Worker table before retrieving worker:\n");
+	display_worker_table(worker_table);
+	
+	int done = 0;
+	while( !done ) {
+		worker = pop(worker_table);
+		log_printf(0, "SERVER: Worker table after popping top worker:\n");
+		display_worker_table(worker_table);
+		if( worker == NULL ) {
+			log_printf(0, "SERVER: ERROR - no workers\n");
+			log_printf(0, "SERVER: Destroying message and cancelling pass\n");
+			mq_msg_destroy(msg);
+			return;
+		}
+		log_printf(0, "SERVER: Grabbed worker with address %s\n", worker->address);
+		if(worker->free_slots <= 0) {
+			log_printf(0, "SERVER: This worker is too busy. Trying again...\n");
+			mq_add_worker(worker_table, worker);
+		}
+		else {
+			log_printf(0, "SERVER: This worker is free\n");
+			worker->free_slots--;
+			mq_add_worker(worker_table, worker);
+			done = 1;
+		}
+		log_printf(0, "SERVER: Worker table after readding worker:\n");
+		display_worker_table(worker_table);
+	}
+	// For some reason, I'm segfaulting if I use mq_get_worker() here
+	
 	worker_address = worker->address;
-	log_printf(1, "SERVER: Grabbed worker with address %s, length = %d\n", worker_address, strlen(worker_address));
+	//log_printf(1, "SERVER: Grabbed worker with address %s\n", worker_address);
 	address_frame = mq_frame_new(worker_address, strlen(worker_address), MQF_MSG_KEEP_DATA); //new frame with this address
-	mq_msg_push_frame(msg, address_frame);
 	
-	log_printf(0, "SERVER: Message before sending\n");
-	mq_frame_t *f; int size, i; char *data;
-	for (f = mq_msg_first(msg), i=0; f != NULL; f = mq_msg_next(msg), i++) {
-		mq_get_frame(f, (void **)&data, &size);
-		log_printf(4, "SERVER:\tfsize[%d] = %d\n", i, size);
-	}
+	mq_msg_push_frame(msg, address_frame); //add the worker on top
 	
-	gop = new_mq_op(p->mqc, msg, NULL, NULL, NULL, 5);
-	int status = gop_waitall(gop);
+	log_printf(0, "SERVER: Message being passed:\n");
+	display_msg_frames(msg);
 	
-	if(status != OP_STATE_SUCCESS) {
-		log_printf(1, "SERVER: FAILED to send message to worker!\n");
+	log_printf(0, "SERVER: Submitting msg via mq_submit()...\n");
+	mq_task_t *pass_task = mq_task_new(p->mqc, msg, NULL, NULL, 5);
+	// Set pass_through so that this task isn't added the heartbeat table
+	pass_task->pass_through = 1;
+	
+	status = mq_submit(p, pass_task);
+	
+	if(status != 0) {
+		log_printf(0, "SERVER: mq_submit() failed! status = %d\n", status);
 	} else {
-		log_printf(1, "SERVER: Successfully sent message to worker!\n");
+		log_printf(0, "SERVER: mq_submit() successfully sent message!\n");
 	}
 	
-	//freeing gop or deleting msg results in a segfault
-	//I guess msg is being deleted automatically later on...
-	//but I feel like leaving the gop here is a memory leak
-	//gop_free(gop, OP_DESTROY);
-	//log_printf(0, "SERVER: Destroyed gop\n");
 }
 
-void process_ping(mq_portal_t *p, mq_socket_t *sock, mq_msg_t *msg) {
-	mq_frame_t *f, *pid;
+void process_trackexec_ping(mq_portal_t *p, mq_socket_t *sock, mq_msg_t *msg) {
+	
+	mq_frame_t *f, *id_frame;
+	//char *data;
+	int err;
+	
+	log_printf(0, "SERVER: Building response message...\n");
+	
+	f = mq_msg_first(msg);
+	mq_frame_destroy(mq_msg_pluck(msg, 0)); // null
+	mq_frame_destroy(mq_msg_pluck(msg, 0)); // version
+	mq_frame_destroy(mq_msg_pluck(msg, 0)); // trackexec
+	id_frame = mq_msg_pluck(msg, 0); // "HANDLE"
+	mq_frame_destroy(mq_msg_pluck(msg, 0)); // ping
+	//leave the null frame, mq_apply_return_address_msg() will put it on top of response
+	//address = mq_msg_pluck(msg, 0); //client address
+	
+	mq_msg_t *response = mq_msg_new();//mq_make_response_core_msg(msg, id_frame);
+	mq_msg_append_mem(response, MQF_VERSION_KEY, MQF_VERSION_SIZE, MQF_MSG_KEEP_DATA);
+	mq_msg_append_mem(response, MQF_RESPONSE_KEY, MQF_RESPONSE_SIZE, MQF_MSG_KEEP_DATA);
+	mq_msg_append_frame(response, id_frame);
+	mq_msg_append_mem(response, NULL, 0, MQF_MSG_KEEP_DATA);
+	
+	mq_apply_return_address_msg(response, msg, 0);
+	
+	log_printf(0, "SERVER: Response message frames:\n");
+	display_msg_frames(response);
+	
+	err = mq_submit(p, mq_task_new(p->mqc, response, NULL, NULL, 5));
+	if(err != 0) {
+		log_printf(0, "SERVER: Failed to send response\n");
+	} else {
+		log_printf(0, "SERVER: Successfully sent response!\n");
+	}
+	mq_msg_destroy(msg);
+}
+
+void process_exec_ping(mq_portal_t *p, mq_socket_t *sock, mq_msg_t *msg) {
+	mq_frame_t *pid;
+	mq_frame_t *f;
 	char *data;
 	int err;
 	
-	log_printf(5, "SERVER: Message frames BEFORE destroying:\n");
-	int i;
-	for (f = mq_msg_first(msg), i=0; f != NULL; f = mq_msg_next(msg), i++) {
-		mq_get_frame(f, (void **)&data, &err);
-		log_printf(5, "SERVER:\tfsize[%d] = %d\n", i, err);
-	}
+	log_printf(4, "SERVER: Message frames BEFORE destroying:\n");
+	display_msg_frames(msg);
 	
 	f = mq_msg_first(msg);
 	mq_frame_destroy(mq_msg_pluck(msg, 0)); //blank frame
 	mq_frame_destroy(mq_msg_pluck(msg, 0)); //version frame
 	mq_frame_destroy(mq_msg_pluck(msg, 0)); //command frame (exec)
 	
-	pid = mq_msg_current(msg); //Message ID frame
+	pid = mq_msg_first(msg); //Message ID frame
 	mq_get_frame(pid, (void **)&data, &err); // data should be "HANDLE"
 	if(mq_data_compare(data, 6, "HANDLE", 6) == 0) {
-		log_printf(10, "SERVER: Received correct message ID!\n");
+		log_printf(4, "SERVER: Received correct message ID!\n");
 	} else {
-		log_printf(10, "SERVER: Received INCORRECT message ID!\n");
-		log_printf(10, "SERVER: ID should be \"HANDLE\", ID = %s\n", data);
+		log_printf(4, "SERVER: Received INCORRECT message ID!\n");
+		log_printf(4, "SERVER: ID should be \"HANDLE\", ID = %s\n", data);
 	}	
 	
-	log_printf(15, "SERVER: Destroying message...\n");
-	mq_msg_destroy(msg); //Can't use this function in "thread" version of the handler, i.e., the method that is linked in the command table
+	log_printf(4, "SERVER: Destroying message...\n");
+	mq_msg_destroy(msg);
 }
 
+/*
+ * process_register_worker()
+ * 
+ * Extract a worker's client portal address and number of free slots from a
+ * REGISTER message and add it in the worker table
+ */
 void process_register_worker(mq_portal_t *p, mq_socket_t *sock, mq_msg_t *msg) {
+	int worker_free_slots;
+	char *worker_address;
+	mq_msg_t *response;
+	mq_frame_t *id;
 	mq_frame_t *f;
 	char *data;
-	char *worker_address;
-	int worker_free_slots;
 	int err;
 	
-	log_printf(15, "SERVER: Message frames BEFORE destroying:\n");
-	int i;
-	for (f = mq_msg_first(msg), i=0; f != NULL; f = mq_msg_next(msg), i++) {
-		mq_get_frame(f, (void **)&data, &err);
-		log_printf(15, "SERVER:\tfsize[%d] = %d\n", i, err);
-	}
+	log_printf(0, "SERVER: Contents of REGISTER message:\n");
+	display_msg_frames(msg);
 	
 	f = mq_msg_first(msg);
-	//Assume these are good
-	mq_frame_destroy(mq_msg_pluck(msg, 0)); //blank frame
-	mq_frame_destroy(mq_msg_pluck(msg, 0)); //version frame
-	mq_frame_destroy(mq_msg_pluck(msg, 0)); //command frame (EXEC)
-	mq_frame_destroy(mq_msg_pluck(msg, 0)); //ID frame ("WORKER")
-	mq_frame_destroy(mq_msg_pluck(msg, 0)); //argument frame (REGISTER)
+	mq_frame_destroy(mq_msg_pluck(msg, 0)); // blank frame
+	mq_frame_destroy(mq_msg_pluck(msg, 0)); // version frame
+	mq_frame_destroy(mq_msg_pluck(msg, 0)); // command frame (EXEC)
+	id = mq_msg_pluck(msg, 0); // ID frame ("WORKER")
+	mq_frame_destroy(mq_msg_pluck(msg, 0)); // argument frame (REGISTER)
 	
-	f = mq_msg_current(msg);
-	mq_get_frame(f, (void **)&data, &err);
-	mq_frame_destroy(mq_msg_pluck(msg, 0)); //address frame
-	type_malloc(worker_address, char, err + 1);
-	memcpy(worker_address, data, err);
-	log_printf(4, "SERVER: Received REGISTER from address %s\n", worker_address);
-	
+	// Get the number of free slots
 	f = mq_msg_current(msg);
 	mq_get_frame(f, (void **)&data, &err);
 	worker_free_slots = atol(data);
 	mq_frame_destroy(mq_msg_pluck(msg, 0)); //slots frame
+	// message has a blank frame and the worker's address remaining
+	
+	
+	// Address frame at the bottom is the auto-generated client portal host
+	f = mq_msg_last(msg);
+	mq_get_frame(f, (void **)&data, &err);
+	type_malloc(worker_address, char, err + 1);
+	memcpy(worker_address, data, err);
+	worker_address[err] = '\0';
+	
+	log_printf(4, "SERVER: Received REGISTER from address %s\n", worker_address);
 	log_printf(4, "SERVER: Worker at %s has free_slots = %d, size = %d\n", worker_address, worker_free_slots, err);
 	
-	mq_msg_destroy(msg);
-	
+	// Add this worker to the table
 	mq_register_worker(p->implementation_arg, worker_address, worker_free_slots);
+	
+	log_printf(0, "SERVER: Sending REGISTER confirmation to worker...\n");
+	
+	// Build the response using the ID grabbed earlier
+	response = mq_msg_new();
+	mq_msg_append_mem(response, MQF_VERSION_KEY, MQF_VERSION_SIZE, MQF_MSG_KEEP_DATA);
+	mq_msg_append_mem(response, MQF_RESPONSE_KEY, MQF_RESPONSE_SIZE, MQF_MSG_KEEP_DATA);
+	mq_msg_append_frame(response, id);
+	mq_msg_append_mem(response, NULL, 0, MQF_MSG_KEEP_DATA);
+	mq_apply_return_address_msg(response, msg, 0);
+	
+	log_printf(0, "SERVER: Response message frames:\n");
+	display_msg_frames(response);
+	
+	mq_task_t *pass_task = mq_task_new(p->mqc, response, NULL, NULL, 5);
+	// No need to set this flag here, since this is an actual response to a TRACKEXEC message
+	//pass_task->pass_through = 1;
+	err = mq_submit(p, pass_task);
+	if(err != 0) {
+		log_printf(0, "SERVER: Failed to send response, err = %d\n", err);
+	} else {
+		log_printf(0, "SERVER: Successfully sent response!\n");
+	}
+	
+	mq_msg_destroy(msg);
 }
 
+/*
+ * process_deregister_worker()
+ * 
+ * Remove the worker that sent the message from the worker table
+ */
 void process_deregister_worker(mq_portal_t *p, mq_socket_t *sock, mq_msg_t *msg) {
-	mq_frame_t *f;
-	char *data;
-	char *worker_address;
-	int err;
 	mq_worker_table_t *table;
 	mq_worker_t *worker;
+	char *worker_address;
+	mq_frame_t *f;
+	char *data;
+	int err;
 	
-	f = mq_msg_first(msg);
-	mq_frame_destroy(mq_msg_pluck(msg, 0)); //blank frame
-	mq_frame_destroy(mq_msg_pluck(msg, 0)); //version frame
-	mq_frame_destroy(mq_msg_pluck(msg, 0)); //command frame (EXEC)
-	mq_frame_destroy(mq_msg_pluck(msg, 0)); //ID frame ("WORKER")
-	mq_frame_destroy(mq_msg_pluck(msg, 0)); //argument frame (DEREGISTER)
-	f = mq_msg_current(msg);
-	
+	// Grab the worker's address
+	f = mq_msg_last(msg);
 	mq_get_frame(f, (void **)&data, &err);
-	type_malloc(worker_address, char, err+1);
+	printf("err = %d\n", err);
+	type_malloc(worker_address, char, err + 1);
 	memcpy(worker_address, data, err);
+	worker_address[err] = '\0';
 	log_printf(1, "SERVER: Attempting to delete worker with address %s\n", worker_address);
 	
-	table = p->implementation_arg;
-	if(!table->table) {
-		log_printf(1, "SERVER: ERROR - no worker table exists!\n");
-		return;
-	}
-	if((worker = apr_hash_get(table->table, worker_address, err)) == NULL) {
-		log_printf(1, "SERVER: ERROR - no worker found with address %s\n", worker_address);
-		return;
-	}
-	apr_hash_set(table->table, worker_address, err, NULL);
+	table = (mq_worker_table_t *) p->implementation_arg;
+	
+	mq_deregister_worker(table, worker_address);
+	
 	log_printf(1, "SERVER: Deleted worker with address %s\n", worker_address);
+	free(worker_address);
+	mq_msg_destroy(msg);
 }
 
-void display_worker_table(mq_worker_table_t *table) {
-	apr_hash_index_t *hi;
-	mq_worker_t* worker;
-	void *val;
-	int i;
+void process_increment_worker(mq_portal_t *p, mq_socket_t *sock, mq_msg_t *msg) {
+	mq_worker_table_t *table;
+	mq_worker_t *worker;
+	char *worker_address;
+	mq_frame_t *f;
+	char *data;
+	int err;
 	
-	for(hi = apr_hash_first(table->mpool, table->table), i = 0; hi != NULL; hi = apr_hash_next(hi), i++) {
-		apr_hash_this(hi, NULL, NULL, &val);
-		worker = (mq_worker_t *)val;
-		log_printf(1, "SERVER: worker_table[%d] = { address = %s free_slots = %d }\n", i, worker->address, worker->free_slots);
+	// Grab the worker's address
+	f = mq_msg_last(msg);
+	mq_get_frame(f, (void **)&data, &err);
+	printf("err = %d\n", err);
+	type_malloc(worker_address, char, err + 1);
+	memcpy(worker_address, data, err);
+	worker_address[err] = '\0';
+	log_printf(1, "SERVER: Attempting to increment worker with address %s\n", worker_address);
+	
+	table = (mq_worker_table_t *) p->implementation_arg;
+	for(worker = mq_worker_table_first(table); worker != NULL; worker = mq_worker_table_next(table)) {
+		if(mq_data_compare(worker->address, strlen(worker->address), worker_address, strlen(worker_address)) == 0) {
+			log_printf(0, "Found worker!\n");
+			worker->free_slots++;
+			log_printf(0, "SERVER: Worker at address %s now has %d free slots\n", worker->address, worker->free_slots);
+			free(worker_address);
+			mq_msg_destroy(msg);
+			return;
+		}
 	}
+	
+	log_printf(0, "SERVER: ERROR - Could not find worker with address %s\n", worker_address);
+	free(worker_address);
+	mq_msg_destroy(msg);
 }
 
 /*
  * Hooks
  */
-
+ 
+/*
+ * pass_through()
+ * 
+ * Default function for messages the server won't process itself.
+ * Decide whether to ignore and pass forward, or send to a worker
+ */
 void pass_through(void *arg, mq_task_t *task) {
-	mq_portal_t *p = (mq_portal_t *)arg;
-	mq_msg_t *msg = task->msg;
-	mq_frame_t *f = mq_msg_first(msg);
-	char *data; int size;
+	mq_portal_t *p;
+	mq_frame_t *f;
+	mq_msg_t *msg;
+	char *data;
+	int size;
+	
+	p = (mq_portal_t *)arg;
+	msg = task->msg;
+	
+	log_printf(0, "SERVER: Beginning pass_through(). Message received:\n");
+	display_msg_frames(msg);
+	
+	f = mq_msg_first(msg);
 	mq_get_frame(f, (void **)&data, &size);
-	/*
-	int i;
-	for (f = mq_msg_first(msg), i=0; f != NULL; f = mq_msg_next(msg), i++) {
-		mq_get_frame(f, (void **)&data, &size);
-		log_printf(4, "SERVER:\tfsize[%d] = %d\n", i, size);
-		if(size >= 20)
-			log_printf(0, "SERVER: \t\taddress found: %s\n", data);
-	}
-	*/
-	if(size == 0) {
+	
+	if(size == 0) {		
+		// Top frame is a null frame - message terminated here and should be passed to a worker
 		log_printf(4, "SERVER: Deferring message to worker...\n");
 		process_round_robin_pass(p, NULL, msg);
 		log_printf(4, "SERVER: Sent message to worker.\n");
 	}	
 	else {
-		int status;
-		if(task->gop != NULL) {
-			status = gop_waitall(task->gop);
-			//gop_free(gop, OP_DESTROY);
-			//msg = NULL;
-		}
-		else {
-			int i;
-			for (f = mq_msg_first(msg), i=0; f != NULL; f = mq_msg_next(msg), i++) {
-				mq_get_frame(f, (void **)&data, &size);
-				log_printf(4, "SERVER:\tfsize[%d] = %d\n", i, size);
-				if(size >= 20)
-					log_printf(0, "SERVER: \t\taddress found: %s\n", data);
-			}
-			op_generic_t *gop = new_mq_op(p->mqc, msg, NULL, NULL, NULL, 5);
-			status = gop_waitall(gop);
-		}
+		// Top frame is an address - ignore and pass on
+		log_printf(4, "SERVER: Passing message to %s\n", data);
+		mq_task_t *pass_task = mq_task_new(p->mqc, msg, NULL, NULL, 5);
+		//Set this flag so the task isn't added to the heartbeat table in case it's a TRACKEXEC
+		pass_task->pass_through = 1;
+		int err = mq_submit(p, pass_task);
 		
-		//not enough if/else statements!
-		//if (this works) { awesome; } else { goddamnit; }
-		if(status != OP_STATE_SUCCESS)
-			log_printf(1, "SERVER: FAILED to pass message. status = %d\n", status);
-		else
-			log_printf(1, "SERVER: Successfully passed message\n");
+		if(err != 0) {
+			log_printf(0, "SERVER: Failed to pass message, err = %d\n", err);
+		} else {
+			log_printf(0, "SERVER: Successfully passed message!\n");
+		}
 	}
+	
+	// So that msg doesn't disappear when this task is destroyed
+	task->msg = NULL;
 	
 	log_printf(0, "SERVER: End of pass_through()\n");
 }
 
 void ping(void *arg, mq_task_t *task) {
 	log_printf(4, "SERVER: Executing PING response...\n");
-	process_ping((mq_portal_t *)arg, NULL, task->msg);
+	//determine if this is exec or trackexec
+	mq_msg_t *msg = task->msg;
+	mq_frame_t *exec_frame, *f;
+	char *data; int size;
+	
+	for(f = mq_msg_first(msg); f != NULL; f = mq_msg_next(msg)) {
+		mq_get_frame(f, (void **)&data, &size);
+		if( mq_data_compare(data, size, MQF_EXEC_KEY, MQF_EXEC_SIZE) == 0 ) {
+			log_printf(4, "SERVER: PING request is EXEC\n");
+			process_exec_ping((mq_portal_t *)arg, NULL, msg);
+			break;
+		}
+		if( mq_data_compare(data, size, MQF_TRACKEXEC_KEY, MQF_TRACKEXEC_SIZE) == 0 ) {
+			log_printf(4, "SERVER: PING request is TRACKEXEC\n");
+			process_trackexec_ping((mq_portal_t *)arg, NULL, msg);
+			break;
+		}
+	}
+		
 	log_printf(4, "SERVER: Completed PING response.\n");
 	task->msg = NULL;
 }
@@ -262,6 +386,13 @@ void deregister_worker(void *arg, mq_task_t *task) {
 	task->msg = NULL;
 }
 
+void increment_worker(void *arg, mq_task_t *task) {
+	log_printf(4, "SERVER: Received INCREMENT command!\n");
+	process_increment_worker((mq_portal_t *)arg, NULL, task->msg);
+	log_printf(4, "SERVER: Completed INCREMENT command!\n");
+	task->msg = NULL;
+}
+
 /*
  * Thread functions
  */
@@ -275,8 +406,8 @@ mq_context_t *server_make_context() {
 		"min_threads=2\n\t"
 		"max_threads=100\n\t"
 		"backlog_trigger=1000\n\t"
-		"heartbeat_dt=1\n\t"
-		"heartbeat_failure=5\n\t"
+		"heartbeat_dt=120\n\t"
+		"heartbeat_failure=1000\n\t"
 		"min_ops_per_sec=100\n\t"
 		"socket_type=1002\n"; // Set socket type to MQF_ROUND_ROBIN
 	
@@ -292,10 +423,6 @@ mq_context_t *server_make_context() {
 }
 
 void server_test() {
-	/*
-	 * Server needs a way of managing registered workers
-	 * Try using an apr_hash_t
-	 */
 	mq_context_t *mqc;
 	mq_portal_t *server_portal;
 	mq_command_table_t *table;
@@ -313,10 +440,12 @@ void server_test() {
 	table = mq_portal_command_table(server_portal);
 	
 	log_printf(1, "SERVER: Installing commands...\n");
-	//mq_command_set(table, MQF_PING_KEY, MQF_PING_SIZE, server_portal, ping); // If I skip this, PING should end up going to a worker
+	// PING messages go to the worker
+	//mq_command_set(table, MQF_PING_KEY, MQF_PING_SIZE, server_portal, ping);
 	mq_command_set(table, MQF_REGISTER_KEY, MQF_REGISTER_SIZE, server_portal, register_worker);
 	mq_command_set(table, MQF_DEREGISTER_KEY, MQF_DEREGISTER_SIZE, server_portal, deregister_worker);
-	mq_command_table_set_default(table, server_portal, pass_through); // default function to call when a message isn't one of the above
+	mq_command_set(table, MQF_INCREMENT_KEY, MQF_INCREMENT_SIZE, server_portal, increment_worker);
+	mq_command_table_set_default(table, server_portal, pass_through);
 	
 	log_printf(1, "SERVER: Creating worker table...\n");
 	worker_table = mq_worker_table_create();
@@ -347,8 +476,6 @@ void server_test() {
 }
 
 void *server_test_thread(apr_thread_t *th, void *arg) {
-	// Functions for threads need to be of the form
-	// void name_of_func(apr_thread_t *th, void *arg)
 	server_test();
 	return NULL;
 }
@@ -371,18 +498,18 @@ int main(int argc, char **argv) {
 		return 1;
 	}
 	
-	// Thread pool, threads, and control fd
+	// Thread pool and threads
 	apr_pool_t *mpool;
 	apr_thread_t *server_thread;
 	apr_status_t dummy;
 	
 	// Start the background systems
 	apr_wrapper_start();
-	init_opque_system();
+	//init_opque_system();
 	
 	apr_pool_create(&mpool, NULL);
 	
-	// Create threads for server
+	// Create thread for server
 	thread_create_assert(&server_thread, NULL, server_test_thread, NULL, mpool);
 	
 	apr_thread_join(&dummy, server_thread);
@@ -390,7 +517,7 @@ int main(int argc, char **argv) {
 	// Clean up
 	apr_pool_destroy(mpool);
 	
-	destroy_opque_system();
+	//destroy_opque_system();
 	apr_wrapper_stop();
 	
 	return 0;

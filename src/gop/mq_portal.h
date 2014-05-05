@@ -204,6 +204,7 @@ struct mq_task_s {      //** Generic containter for MQ messages for both the ser
   void *arg;              //** Optional argument when calling mq_command_add() or new_mq_op() (server+GOP)
   apr_time_t timeout;     //** Initially the DT in sec for the command to complete and converted to abs timeout when sent
   void (*my_arg_free)(void *arg);  //** Function for cleaning up the GOP arg. (GOP)
+  int pass_through;       //** Flag to set when a task is only used to pass a message; no heartbeating necessary
 };
 
 typedef struct {
@@ -257,6 +258,7 @@ struct mq_portal_s {   //** Container for managing connections to a single host
   int heartbeat_failure;     //** Missing heartbeat DT for failure classification
   int counter;               //** Connections counter
   int n_close;               //** Number of connections being requested to close
+  int socket_type;           //** Socket type
   uint64_t n_ops;            //** Operation count
   double min_ops_per_sec;    //** Minimum ops/sec needed to keep a connection open.
   Stack_t *tasks;            //** List of tasks

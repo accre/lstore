@@ -290,6 +290,7 @@ void mq_command_exec(mq_command_table_t *t, mq_task_t *task, void *key, int klen
 log_printf(3, "cmd=%p klen=%d\n", cmd, klen);
   if (cmd == NULL) {
      log_printf(0, "Unknown command!\n");
+     display_msg_frames(task->msg); //testing to see if the worker is returning a message and it's getting dropped here
      if (t->fn_default != NULL) t->fn_default(t->arg_default, task);
   } else {
     cmd->fn(cmd->arg, task);
@@ -319,7 +320,7 @@ int mq_submit(mq_portal_t *p, mq_task_t *task)
   //** Noitify the connections
   c = 1;
   mq_pipe_write(p->efd[1], &c);
-
+  
   //** Check if we need more connections
   err = 0;
   if (backlog > p->backlog_trigger) {
@@ -372,6 +373,7 @@ int mq_task_send(mq_context_t *mqc, mq_task_t *task)
   apr_thread_mutex_lock(mqc->lock);
   p = (mq_portal_t *)(apr_hash_get(mqc->client_portals, host, APR_HASH_KEY_STRING));
   if (p == NULL) {  //** New host so create the portal
+     log_printf(10, "Creating MQ_CMODE_CLIENT portal for outgoing connections host = %s size = %d\n", host, size);
      p = mq_portal_create(mqc, host, MQ_CMODE_CLIENT);
      apr_hash_set(mqc->client_portals, p->host, APR_HASH_KEY_STRING, p);
   }
@@ -415,6 +417,7 @@ int mq_task_set(mq_task_t *task, mq_context_t *ctx, mq_msg_t *msg, op_generic_t 
   task->gop = gop;
   task->arg = arg;
   task->timeout = dt;
+  task->pass_through = 0; //default value!
   return(0);
 }
 
@@ -461,11 +464,20 @@ void  *mqt_exec(apr_thread_t *th, void *arg)
   void *key;
   int n;
 
-//  THese have already been skipped
-//  mq_msg_first(msg);    //** Empty frame
-//  mq_msg_next(msg);     //** Version
-//  mq_msg_next(msg);     //** MQ command
- 
+
+char *data;
+int size, i;
+  for(f = mq_msg_first(task->msg), i = 0; f != NULL; f = mq_msg_next(task->msg), i++) {
+    mq_get_frame(f, (void **)&data, &size);
+    log_printf(0, "msg[%2d]:\t%d\n", i, size);
+    if(size >= 20) {
+      log_printf(0, "        \t%s\n", data);
+    }
+  }
+  // get back in the right position
+  mq_msg_first(task->msg);    //** Empty frame
+  mq_msg_next(task->msg);     //** Version
+  mq_msg_next(task->msg);     //** MQ command
   f = mq_msg_next(task->msg);     //** Skip the ID
   mq_get_frame(f, &key, &n);
 //log_printf(1, "execing sid=%s  EXEC SUBMIT now=" TT "\n", mq_id2str(key, n, b64, sizeof(b64)), apr_time_sec(apr_time_now()));  flush_log();
@@ -526,7 +538,7 @@ void mq_task_complete(mq_conn_t *c, mq_task_t *task, int status)
 // mqc_response - Processes a command response
 //**************************************************************
 
-void mqc_response(mq_conn_t *c, mq_msg_t *msg)
+void mqc_response(mq_conn_t *c, mq_msg_t *msg, int do_exec)
 {
   mq_frame_t *f;
   int size;
@@ -556,11 +568,11 @@ log_printf(5, "id_size=%d\n", size);
   if (tn->tracking != NULL) mqc_heartbeat_dec(c, tn->tracking);
 
   //** Execute the task in the thread pool
-log_printf(5, "Submitting repsonse for exec gid=%d\n", gop_id(tn->task->gop)); flush_log();
-
-  tn->task->response = msg;
-  thread_pool_direct(c->pc->tp, thread_pool_exec_fn, tn->task->gop);
-
+  if(do_exec != 0) {
+    log_printf(5, "Submitting repsonse for exec gid=%d\n", gop_id(tn->task->gop)); flush_log();
+    tn->task->response = msg;
+    thread_pool_direct(c->pc->tp, thread_pool_exec_fn, tn->task->gop);
+  }
 
   //** Free the tracking number container
   free(tn);
@@ -1086,7 +1098,7 @@ log_printf(5, "Got a message count=%d\n", count);
      } else if (mq_data_compare(MQF_RESPONSE_KEY, MQF_RESPONSE_SIZE, data, size) == 0) {
         log_printf(15, "Processing MQF_RESPONSE_KEY\n"); flush_log();
         c->stats.incoming[MQS_RESPONSE_INDEX]++;
-        mqc_response(c, msg);
+        mqc_response(c, msg, 1);
      } else if ((mq_data_compare(MQF_EXEC_KEY, MQF_EXEC_SIZE, data, size) == 0) ||
                 (mq_data_compare(MQF_TRACKEXEC_KEY, MQF_TRACKEXEC_SIZE, data, size) == 0)) {
 
@@ -1150,7 +1162,7 @@ int mqc_process_task(mq_conn_t *c, int *npoll, int *nproc)
     task = pop(c->pc->tasks);
   }
   apr_thread_mutex_unlock(c->pc->lock);
-
+  
   if (i == -1) {
      log_printf(1, "OOPS! read=-1 task=%p!\n", task);
   }
@@ -1167,14 +1179,18 @@ int mqc_process_task(mq_conn_t *c, int *npoll, int *nproc)
 
   //** Convert the MAx exec time in sec to an abs timeout in usec
   task->timeout = apr_time_now() + apr_time_from_sec(task->timeout);
-
+  
+  log_printf(0, "Message received:\n");
+  display_msg_frames(task->msg);
   //** Check if we expect a response
   //** Skip over the address
   f = mq_msg_first(task->msg);
   mq_get_frame(f, (void **)&data, &size);
+  log_printf(0, "address length = %d\n", size);
   while ((f != NULL) && (size != 0)) {
      f = mq_msg_next(task->msg);
      mq_get_frame(f, (void **)&data, &size);
+     log_printf(0, "length = %d\n", size);
   }
   if (f == NULL) { //** Bad command
      log_printf(0, "Invalid command!\n");
@@ -1184,18 +1200,20 @@ int mqc_process_task(mq_conn_t *c, int *npoll, int *nproc)
   //** Verify the version
   f = mq_msg_next(task->msg);
   mq_get_frame(f, (void **)&data, &size);
+  log_printf(0, "length = %d\n", size);
   if (mq_data_compare(data, size, MQF_VERSION_KEY, MQF_VERSION_SIZE) != 0) {  //** Bad version number
      log_printf(0, "Invalid version!\n");
+     log_printf(0, "length = %d\n", size);
      return(1);
   }
   
   log_printf(10, "MQF_VERSION_KEY found\n");
-
+  log_printf(0, "task pass_through = %d\n", task->pass_through);
   //** This is the command
   f = mq_msg_next(task->msg);
   mq_get_frame(f, (void **)&data, &size);
   tracking = 0;
-  if (mq_data_compare(data, size, MQF_TRACKEXEC_KEY, MQF_TRACKEXEC_SIZE) == 0) { //** We track it
+  if ( (mq_data_compare(data, size, MQF_TRACKEXEC_KEY, MQF_TRACKEXEC_SIZE) == 0) && (task->pass_through == 0) ) { //** We track it - But only if it is not a pass-through task
      //** Get the ID here.  The send will munge my frame position
      f = mq_msg_next(task->msg);
      mq_get_frame(f, (void **)&data, &size);
@@ -1228,7 +1246,7 @@ int mqc_process_task(mq_conn_t *c, int *npoll, int *nproc)
      mq_task_complete(c, task, OP_STATE_FAILURE);
      return(1);
   }
-
+  
   if (tracking == 0) {     //** Exec the callback if not tracked
      mq_task_complete(c, task, OP_STATE_SUCCESS);
   } else {                 //** Track the task
@@ -1269,12 +1287,13 @@ int mq_conn_make(mq_conn_t *c)
   //** c->sock = mq_socket_new(c->pc->ctx, MQ_TRACE_ROUTER);
   //** Hardcoded MQ_TRACE_ROUTER socket type
   c->sock = mq_socket_new(c->pc->ctx, c->pc->socket_type);
+  log_printf(0, "host = %s, connect_mode = %d\n", c->pc->host, c->pc->connect_mode);
   if (c->pc->connect_mode == MQ_CMODE_CLIENT) {
      err = mq_connect(c->sock, c->pc->host);
   } else {
      err = mq_bind(c->sock, c->pc->host);
   }
-
+  
   c->mq_uuid = zsocket_identity(c->sock->arg);  //** Kludge
 
   if (err != 0) return(1);
@@ -1528,17 +1547,6 @@ int mq_conn_create(mq_portal_t *p, int dowait)
   p->active_conn++; //** Inc the number of connections
   p->total_conn++;
   
-  if(_log_level >= 15) {
-    log_printf(15, "portal command table:\n");
-    apr_hash_index_t *ind;
-    void *key, *val;
-    for(ind = apr_hash_first(p->command_table->mpool, p->command_table->table); ind; ind = apr_hash_next(ind)) {
-		apr_hash_this(ind, &key, NULL, &val); //key is exec key eg. MQF_PING_KEY, val is mq_exec_fn_t function pointer eg. cb_ping
-		// val is really hard to print, ignore it
-		if(key != NULL && val != NULL)
-			log_printf(15, "\t\t%d\t%p\n", ((char*)key)[0], val);
-    }
-  }
   //** Spawn the thread
   thread_create_assert(&(c->thread), NULL, mq_conn_thread, (void *)c, p->mpool);  //** USe the parent mpool so I can do the teardown
 
