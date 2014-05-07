@@ -458,8 +458,7 @@ int slun_row_size_check(segment_t *seg, data_attr_t *da, seglun_row_t *b, int *b
      while ((gop = opque_waitany(q)) != NULL) {
         if (gop_completed_successfully(gop) == OP_STATE_SUCCESS) {
            i = gop_get_myid(gop);
-           block_status[i] = 0;
-           b->block[i].data->max_size = b->block_len;
+           b->block[i].data->max_size = b->block_len;  //** We don't clear the block_status[i].  Any errors are trapped in the slun_row_pad_fix() call
 
            n_size--;
         }
