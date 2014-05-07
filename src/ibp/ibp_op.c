@@ -793,7 +793,7 @@ op_status_t vec_write_command(op_generic_t *gop, NetStream_t *ns)
   ns_write_chksum_set(ns, op->ncs);
   ns_write_chksum_disable(ns);
 
-//log_printf(15, "vec_write_command: sending command ns=%d\n", ns_getid(ns));
+log_printf(1, "sending command ns=%d gid=%d, command=%s\n", ns_getid(ns), gop_id(gop), buffer);
 
   err = send_command(gop, ns, buffer);
   if (err.op_status != OP_STATE_SUCCESS) {
@@ -831,6 +831,8 @@ op_status_t write_command(op_generic_t *gop, NetStream_t *ns)
 
   ns_write_chksum_set(ns, op->ncs);
   ns_write_chksum_disable(ns);
+
+log_printf(1, "sending command ns=%d gid=%d, command=%s\n", ns_getid(ns), gop_id(gop), buffer);
 
   err = send_command(gop, ns, buffer);
   if (err.op_status != OP_STATE_SUCCESS) {
