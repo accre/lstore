@@ -228,22 +228,27 @@ void lio_get_timestamp(char *val, int *timestamp, char **id)
 
 int lioc_get_multiple_attrs(lio_config_t *lc, creds_t *creds, char *path, char *id, char **key, void **val, int *v_size, int n_keys)
 {
-  int err;
+  int err, serr;
   os_fd_t *fd;
 
   err = gop_sync_exec(os_open_object(lc->os, creds, path, OS_MODE_READ_IMMEDIATE, id, &fd, lc->timeout));
   if (err != OP_STATE_SUCCESS) {
-     log_printf(15, "ERROR opening object=%s\n", path);
+     log_printf(1, "ERROR opening object=%s\n", path);
      return(err);
   }
 
   //** IF the attribute doesn't exist *val == NULL an *v_size = 0
-  gop_sync_exec(os_get_multiple_attrs(lc->os, creds, fd, key, val, v_size, n_keys));
+  serr = gop_sync_exec(os_get_multiple_attrs(lc->os, creds, fd, key, val, v_size, n_keys));
 
   //** Close the parent
   err = gop_sync_exec(os_close_object(lc->os, fd));
   if (err != OP_STATE_SUCCESS) {
-     log_printf(15, "ERROR closing object=%s\n", path);
+     log_printf(1, "ERROR closing object=%s\n", path);
+  }
+
+  if (serr != OP_STATE_SUCCESS) {
+      log_printf(1, "ERROR getting attributes object=%s\n", path);
+      err = OP_STATE_FAILURE;
   }
 
   return(err);
@@ -255,22 +260,27 @@ int lioc_get_multiple_attrs(lio_config_t *lc, creds_t *creds, char *path, char *
 
 int lioc_get_attr(lio_config_t *lc, creds_t *creds, char *path, char *id, char *key, void **val, int *v_size)
 {
-  int err;
+  int err, serr;
   os_fd_t *fd;
 
   err = gop_sync_exec(os_open_object(lc->os, creds, path, OS_MODE_READ_IMMEDIATE, id, &fd, lc->timeout));
   if (err != OP_STATE_SUCCESS) {
-     log_printf(15, "ERROR opening object=%s\n", path);
+     log_printf(1, "ERROR opening object=%s\n", path);
      return(err);
   }
 
   //** IF the attribute doesn't exist *val == NULL an *v_size = 0
-  gop_sync_exec(os_get_attr(lc->os, creds, fd, key, val, v_size));
+  serr = gop_sync_exec(os_get_attr(lc->os, creds, fd, key, val, v_size));
 
   //** Close the parent
   err = gop_sync_exec(os_close_object(lc->os, fd));
   if (err != OP_STATE_SUCCESS) {
-     log_printf(15, "ERROR closing object=%s\n", path);
+     log_printf(1, "ERROR closing object=%s\n", path);
+  }
+
+  if (serr != OP_STATE_SUCCESS) {
+      log_printf(1, "ERROR getting attribute object=%s\n", path);
+      err = OP_STATE_FAILURE;
   }
 
   return(err);
@@ -287,7 +297,7 @@ int lioc_set_multiple_attrs(lio_config_t *lc, creds_t *creds, char *path, char *
 
   err = gop_sync_exec(os_open_object(lc->os, creds, path, OS_MODE_READ_IMMEDIATE, id, &fd, lc->timeout));
   if (err != OP_STATE_SUCCESS) {
-     log_printf(15, "ERROR opening object=%s\n", path);
+     log_printf(1, "ERROR opening object=%s\n", path);
      return(err);
   }
 
@@ -296,10 +306,13 @@ int lioc_set_multiple_attrs(lio_config_t *lc, creds_t *creds, char *path, char *
   //** Close the parent
   err = gop_sync_exec(os_close_object(lc->os, fd));
   if (err != OP_STATE_SUCCESS) {
-     log_printf(15, "ERROR closing object=%s\n", path);
+     log_printf(1, "ERROR closing object=%s\n", path);
   }
 
-  if (serr != OP_STATE_SUCCESS) err = OP_STATE_FAILURE;
+  if (serr != OP_STATE_SUCCESS) {
+      log_printf(1, "ERROR setting attributes object=%s\n", path);
+      err = OP_STATE_FAILURE;
+  }
 
   return(err);
 }
@@ -315,7 +328,7 @@ int lioc_set_attr(lio_config_t *lc, creds_t *creds, char *path, char *id, char *
 
   err = gop_sync_exec(os_open_object(lc->os, creds, path, OS_MODE_READ_IMMEDIATE, id, &fd, lc->timeout));
   if (err != OP_STATE_SUCCESS) {
-     log_printf(15, "ERROR opening object=%s\n", path);
+     log_printf(1, "ERROR opening object=%s\n", path);
      return(err);
   }
 
@@ -324,10 +337,13 @@ int lioc_set_attr(lio_config_t *lc, creds_t *creds, char *path, char *id, char *
   //** Close the parent
   err = gop_sync_exec(os_close_object(lc->os, fd));
   if (err != OP_STATE_SUCCESS) {
-     log_printf(15, "ERROR closing object=%s\n", path);
+     log_printf(1, "ERROR closing object=%s\n", path);
   }
 
-  if (serr != OP_STATE_SUCCESS) err = OP_STATE_FAILURE;
+  if (serr != OP_STATE_SUCCESS) {
+      log_printf(1, "ERROR setting attribute object=%s\n", path);
+      err = OP_STATE_FAILURE;
+  }
 
   return(err);
 }
