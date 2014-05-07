@@ -327,10 +327,18 @@ void init_ibp_base_op(ibp_op_t *iop, char *logstr, int timeout_sec, int workload
      int cmp_size, int primary_cmd, int sub_cmd)
 {
   command_op_t *cmd = &(iop->dop.cmd);
+  apr_time_t dt;
 
   iop->primary_cmd = primary_cmd;
   iop->sub_cmd = sub_cmd;
-  cmd->timeout = apr_time_make(timeout_sec, 0);
+  if (iop->ic->transfer_rate > 0) {
+     dt = (double)workload / iop->ic->transfer_rate;
+     if (dt < timeout_sec) dt = timeout_sec;
+  } else {
+     dt = timeout_sec;
+  }
+
+  cmd->timeout = apr_time_make(dt, 0);
   cmd->retry_count = iop->ic->max_retry;
   cmd->workload = workload;
   cmd->hostport = hostport;
@@ -902,7 +910,10 @@ op_status_t write_send(op_generic_t *gop, NetStream_t *ns)
   log_printf(5, "gid=%d ns=%d i=%d size=" I64T "\n", gop_id(gop), ns_getid(ns), i, rwbuf->size);
     err = gop_write_block(ns, gop, rwbuf->buffer, rwbuf->boff, rwbuf->size);
   log_printf(5, "gid=%d ns=%d i=%d status=%d\n", gop_id(gop), ns_getid(ns), i, err.op_status);
-    if (err.op_status != OP_STATE_SUCCESS) break;
+    if (err.op_status != OP_STATE_SUCCESS) {
+       log_printf(1, "ERROR: cap=%s gid=%d ns=%d i=%d boff=" LU " size=" I64T "\n", cmd->cap, gop_id(gop), ns_getid(ns), i, rwbuf->boff, rwbuf->size);       
+       break;
+   }
   }
 
   log_printf(15, "write_send: END ns=%d status=%d\n", ns_getid(ns), err.op_status);
@@ -952,14 +963,14 @@ op_status_t write_recv(op_generic_t *gop, NetStream_t *ns)
        sscanf(string_token(NULL, " ", &bstate, &fin), I64T, &nbytes);
 //       sscanf(buffer, "%d %d\n", &status, &nbytes);
        if ((nbytes != cmd->size) || (status != IBP_OK)) {
-          log_printf(15, "write_recv: ns=%d cap=%s gid=%d n_ops=%d Error! status/nbytes=%s\n",
+          log_printf(1, "write_recv: ns=%d cap=%s gid=%d n_ops=%d Error! status/nbytes=%s\n",
              ns_getid(ns), cmd->cap, gop_id(gop), cmd->n_ops, buffer);
           err.op_status = OP_STATE_FAILURE; err.error_code = status;
        } else {
          err = ibp_success_status;
        }
     } else {
-       log_printf(15, "write_recv: ns=%d cap=%s gid=%d n_ops=%d Error withreadline! buffer=%s\n",
+       log_printf(1, "write_recv: ns=%d cap=%s gid=%d n_ops=%d Error with readline! buffer=%s\n",
           ns_getid(ns), cmd->cap, gop_id(gop), cmd->n_ops, buffer);
        //**  If coalesced ops then free the coalesced mallocs
 //       if (cmd->n_ops > 1) free(cmd->rwbuf);

@@ -86,6 +86,7 @@ typedef struct {
    int coalesce_ops;     //** If 1 then Read and Write ops for the same allocation are coalesced
    int connection_mode;  //** Connection mode
    int rr_size;          //** Round robin connection count. Only used ir cmode = RR
+   double transfer_rate; //** Transfer rate in bytes/sec used for calculating timeouts.  Set to 0 to disable function
    atomic_int_t rr_count; //** RR counter
    ibp_connect_context_t cc[IBP_MAX_NUM_CMDS+1];  //** Default connection contexts for EACH command
    ns_chksum_t ncs;
@@ -408,6 +409,9 @@ void ibp_set_max_retry(ibp_context_t *ic, int n);
 int  ibp_get_max_retry(ibp_context_t *ic);
 void ibp_set_read_cc(ibp_context_t *ic, ibp_connect_context_t *cc);
 void ibp_set_write_cc(ibp_context_t *ic, ibp_connect_context_t *cc);
+void ibp_set_transfer_rate(ibp_context_t *ic, double rate);
+double ibp_get_transfer_rate(ibp_context_t *ic);
+
 int ibp_load_config(ibp_context_t *ic, inip_file_t *ifd, char *section);
 int ibp_load_config_file(ibp_context_t *ic, char *fname, char *section);
 //void set_ibp_config(ibp_config_t *cfg);

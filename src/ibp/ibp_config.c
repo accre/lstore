@@ -526,6 +526,8 @@ void ibp_set_check_interval(ibp_context_t *ic, int n) { ic->check_connection_int
 int  ibp_get_check_interval(ibp_context_t *ic) { return(ic->check_connection_interval); }
 void ibp_set_max_retry(ibp_context_t *ic, int n) { ic->max_retry = n; ic->pc->max_retry = n;}
 int  ibp_get_max_retry(ibp_context_t *ic) { return(ic->max_retry); }
+void ibp_set_transfer_rate(ibp_context_t *ic, double rate) { ic->transfer_rate = rate;}
+double  ibp_get_transfer_rate(ibp_context_t *ic) { return(ic->transfer_rate); }
 
 //**********************************************************
 // set_ibp_config - Sets the ibp config options
@@ -648,6 +650,7 @@ int ibp_load_config(ibp_context_t *ic, inip_file_t *keyfile, char *section)
   ic->check_connection_interval = inip_get_integer(keyfile, section, "check_interval", ic->check_connection_interval);
   ic->max_retry = inip_get_integer(keyfile, section, "max_retry", ic->max_retry);
   ic->connection_mode = inip_get_integer(keyfile, section, "connection_mode", ic->connection_mode);
+  ic->transfer_rate = inip_get_double(keyfile, section, "transfer_rate", ic->transfer_rate);
   ic->rr_size = inip_get_integer(keyfile, section, "rr_size", ic->rr_size);
 
   ibp_cc_load(keyfile, ic);
@@ -710,6 +713,8 @@ void default_ibp_config(ibp_context_t *ic)
   ic->abort_conn_attempts = 4;
   ic->check_connection_interval = 2;
   ic->max_retry = 2;
+//  ic->transfer_rate = 1*1024*1024;  //** 1MB/s
+  ic->transfer_rate = 0;
   ic->rr_size = 4;
   ic->connection_mode = IBP_CMODE_HOST;
 
@@ -742,9 +747,6 @@ ibp_context_t *ibp_create_context()
   }
 
   ic->pc = create_hportal_context(&_ibp_base_portal);
-
-//  ic->pc = default_ibp_oplist_imp();
-//  ic->pc = ic;
 
   default_ibp_config(ic);
 
@@ -801,14 +803,3 @@ void ibp_destroy_context(ibp_context_t *ic)
 
   free(ic);
 }
-
-
-//**********************************************************
-// ibp_restart - Restart the IBP system.
-//**********************************************************
-
-//void ibp_restart(ibp_context_t *ic)
-//{
-//  _ibp_finalize();
-//  _ibp_init();
-//}
