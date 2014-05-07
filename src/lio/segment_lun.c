@@ -1477,15 +1477,17 @@ log_printf(15, " n_bslots=%d\n", n_bslots);
   } else {
      tstart2 = apr_time_now();
      op_status_t dt_status;
+     int bad_count = 0;
      while ((gop = opque_waitany(q)) != NULL) {
         dt = apr_time_now() - tstart2;
         dt /= (APR_USEC_PER_SEC*1.0);
         dt_status = gop_get_status(gop);        
+        if (dt_status.op_status != OP_STATE_SUCCESS) bad_count++;
         log_printf(1, "device=%d time: %lf op_status=%d error_code=%d\n", gop_get_myid(gop), dt, dt_status.op_status, dt_status.error_code);
      }
      dt = apr_time_now() - tstart2;
      dt /= (APR_USEC_PER_SEC*1.0);
-     log_printf(1, "IBP time: %lf\n", dt);
+     log_printf(1, "IBP time: %lf errors=%d\n", dt, bad_count);
 
      maxerr = 0;
      for (slot = 0; slot < n_bslots; slot++) {
