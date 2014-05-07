@@ -694,7 +694,7 @@ oops:
 
 op_status_t _seglun_grow(segment_t *seg, data_attr_t *da, ex_off_t new_size, int timeout)
 {
-  int i, n, err, cnt;
+  int i, err, cnt;
   ex_off_t off, dsize, old_len;
   seglun_priv_t *s = (seglun_priv_t *)seg->priv;
   seglun_row_t *b;
@@ -1480,7 +1480,7 @@ log_printf(15, " n_bslots=%d\n", n_bslots);
      while ((gop = opque_waitany(q)) != NULL) {
         dt = apr_time_now() - tstart2;
         dt /= (APR_USEC_PER_SEC*1.0);
-        log_printf(1, "device=%d time: %lf\n", gop_get_myid(gop), dt);
+        log_printf(1, "device=%d time: %lf op_status=%d\n", gop_get_myid(gop), dt, gop_completed_successfully(gop));
      }
      dt = apr_time_now() - tstart2;
      dt /= (APR_USEC_PER_SEC*1.0);
