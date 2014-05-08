@@ -405,6 +405,10 @@ log_printf(15, "missing[%d]=%d status=%d\n", j,i, gop_completed_successfully(gop
   return(todo);
 }
 
+//#########################################
+//  DEBUG PURPOSES ONLY TO SIMULATE A FAILURE
+//#########################################
+//int dbg_trigger = 0;
 
 //***********************************************************************
 // slun_row_size_check - Checks the size of eack block in the row.
@@ -445,6 +449,20 @@ int slun_row_size_check(segment_t *seg, data_attr_t *da, seglun_row_t *b, int *b
            block_status[i] = 1;
            n_missing++;
         } else {   //** Size is screwed up
+//####
+//if (i == 0) {
+//log_printf(0, "dbg_trigger=%d\n", dbg_trigger);
+//  if (dbg_trigger > 0) {
+//log_printf(0, "dbg_trigger=%d FORCING a FAILURE\n", dbg_trigger);
+//     gop = gop_dummy(op_failure_status);
+//  } else {
+//     gop = ds_truncate(b->block[i].data->ds, da, ds_get_cap(b->block[i].data->ds, b->block[i].data->cap, DS_CAP_MANAGE), seg_size, timeout);
+//  }
+//  dbg_trigger++;
+//} else {
+//  gop = ds_truncate(b->block[i].data->ds, da, ds_get_cap(b->block[i].data->ds, b->block[i].data->cap, DS_CAP_MANAGE), seg_size, timeout);
+//}
+//#### ====to enable code uncomment block above and comment the line below=====
            gop = ds_truncate(b->block[i].data->ds, da, ds_get_cap(b->block[i].data->ds, b->block[i].data->cap, DS_CAP_MANAGE), seg_size, timeout);
            gop_set_myid(gop, i);
            opque_add(q, gop);
@@ -456,11 +474,14 @@ int slun_row_size_check(segment_t *seg, data_attr_t *da, seglun_row_t *b, int *b
 
   if (n_size > 0) {
      while ((gop = opque_waitany(q)) != NULL) {
+        i = gop_get_myid(gop);
         if (gop_completed_successfully(gop) == OP_STATE_SUCCESS) {
-           i = gop_get_myid(gop);
            b->block[i].data->max_size = b->block_len;  //** We don't clear the block_status[i].  Any errors are trapped in the slun_row_pad_fix() call
 
            n_size--;
+        } else {
+           block_status[i] = -2;  //** Failed on the truncate so flag it
+           log_printf(5, "truncate failed for i=%d\n", i);
         }
         gop_free(gop, OP_DESTROY);
      }
@@ -492,17 +513,20 @@ int slun_row_pad_fix(segment_t *seg, data_attr_t *da, seglun_row_t *b, int *bloc
   tbuffer_single(&tbuf, 1, &c);
   err = 0;
   for (i=0; i < n_devices; i++) {
-     log_printf(10, "seg=" XIDT " seg_offset=" XOT " i=%d\n", segment_id(seg), b->seg_offset, i);
+     log_printf(10, "seg=" XIDT " seg_offset=" XOT " i=%d block_status=%d\n", segment_id(seg), b->seg_offset, i, block_status[i]);
      if (block_status[i] == 2) {
         bstart = b->block[i].cap_offset + b->block[i].data->max_size - 1;
-     log_printf(10, "seg=" XIDT " seg_offset=" XOT " i=%d rcap=%s  padding byte=" XOT "\n", segment_id(seg),
+        log_printf(10, "seg=" XIDT " seg_offset=" XOT " i=%d rcap=%s  padding byte=" XOT "\n", segment_id(seg),
             b->seg_offset, i, ds_get_cap(b->block[i].data->ds, b->block[i].data->cap, DS_CAP_READ), bstart);
 
         gop = ds_write(b->block[i].data->ds, da, ds_get_cap(b->block[i].data->ds, b->block[i].data->cap, DS_CAP_WRITE), bstart, &tbuf, 0, 1, timeout);
         gop_set_myid(gop, i);
         opque_add(q, gop);
         err++;
-
+     } else if (block_status[i] == -2) {  //** Failed on the grow
+        err++;
+        block_status[i] = 3; 
+        log_printf(5, "truncate failed. resetting block_status[%d]=%d\n", i, block_status[i]);
      }
   }
 
@@ -515,6 +539,7 @@ int slun_row_pad_fix(segment_t *seg, data_attr_t *da, seglun_row_t *b, int *bloc
      } else {
         block_status[i] = 3;
      }
+     log_printf(5, "gop complete. block_status[%d]=%d\n", i, block_status[i]);
      gop_free(gop, OP_DESTROY);
   }
 
@@ -1356,14 +1381,17 @@ op_status_t seglun_rw_op(segment_t *seg, data_attr_t *da, int n_iov, ex_iovec_t 
 
   segment_lock(seg);
 
-  //** Check if we need to translate the caps
+  //** Check if we need to translate the caps.  We exec the "if" rarely
   apr_thread_mutex_lock(s->notify.lock);
   if (s->map_version != s->notify.map_version) {
-     while (s->inprogress_count > 0) {
-         apr_thread_cond_wait(s->notify.cond, s->notify.lock);
+     apr_thread_mutex_unlock(s->notify.lock); //** DOn;t need this while waiting for ops to complete
+
+     while (s->inprogress_count > 0) {  //** Wait until all the current ops complete
+         apr_thread_cond_wait(seg->cond, seg->lock);
      }
 
-     //** Do the remap unless someoue beat us to it.
+     //** Do the remap unless someoue beat us to it while waiting
+     apr_thread_mutex_lock(s->notify.lock);  //** Reacquire it
      if (s->map_version != s->notify.map_version) {
         s->map_version = s->notify.map_version;
         _slun_perform_remap(seg);
