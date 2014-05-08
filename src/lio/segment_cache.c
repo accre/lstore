@@ -2339,7 +2339,7 @@ log_printf(5, "HI_MAPPED ADDED seg=" XIDT " using ppage pstart=" XOT " pend=" XO
   }
 
 
-  if (do_flush == 1) {  //** Do a flush if not completely covered
+  if (do_flush > 0) {  //** Do a flush if not completely covered
 log_printf(1, "Triggering a flush do_flush=%d nhandled=%d n_pages=%d\n", do_flush, nhandled, n_pages);
 
      err = _cache_ppages_flush_list(seg, da, &pp_flush);
