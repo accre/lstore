@@ -144,7 +144,7 @@ void print_rid_summary(char *config, int base)
   }
 
   printf("--------------------------------------------------------------   ---------   ---------   ---------\n");
-  printf("Usable Resources:%4d                                            %8s   %8s   %8s\n", list_key_count(table),
+  printf("Usable Resources:%4d                                            %8s   %8s   %8s\n", n_usable,
      pretty_print_double_with_scale(base, (double)up_used, ubuf),
      pretty_print_double_with_scale(base, (double)up_free, fbuf),
      pretty_print_double_with_scale(base, (double)up_total, tbuf));
