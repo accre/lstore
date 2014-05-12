@@ -1388,6 +1388,7 @@ op_status_t seglun_rw_op(segment_t *seg, data_attr_t *da, int n_iov, ex_iovec_t 
 
      while (s->inprogress_count > 0) {  //** Wait until all the current ops complete
          apr_thread_cond_wait(seg->cond, seg->lock);
+         log_printf(5, "sid=" XIDT " inprogress_count=%d\n", segment_id(seg), s->inprogress_count);
      }
 
      //** Do the remap unless someoue beat us to it while waiting
