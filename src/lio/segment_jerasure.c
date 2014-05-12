@@ -268,7 +268,7 @@ op_status_t segjerase_inspect_full_func(void *arg, int id)
   iovec_t *iov;
   ex_iovec_t ex_read;
   ex_iovec_t *ex_iov;
-  apr_time_t now, loop_start;
+  apr_time_t now, loop_start, clr_dt;
   double dt, rate;
 
   stripe_diag_size = 4;
@@ -329,7 +329,10 @@ loop_start = apr_time_now();
 
      //** Read the data in
      tbuffer_single(&tbuf_read, ex_read.len, buffer);
+clr_dt = apr_time_now();
      memset(buffer, 0, bufsize);
+clr_dt = apr_time_now() - clr_dt;
+log_printf(5, "sid=" XIDT " clr_dt=%d\n", segment_id(si->seg), apr_time_sec(clr_dt));
      now = apr_time_now();
      err = gop_sync_exec(segment_read(s->child_seg, si->da, 1, &ex_read, &tbuf_read, 0, si->timeout));
      now = apr_time_now() - now;
