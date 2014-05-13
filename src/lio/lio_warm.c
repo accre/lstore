@@ -394,6 +394,7 @@ log_printf(0, "gid=%d i=%d fname=%s\n", gop_id(gop), slot, fname);
   }
   
   //** Print the summary
+  info_printf(lio_ifd, 0, "\n");
   info_printf(lio_ifd, 0, "                                                              Allocations\n");
   info_printf(lio_ifd, 0, "                 RID Key                    Size        Total      Good         Bad\n");
   info_printf(lio_ifd, 0, "----------------------------------------  ---------  ----------  ----------  ----------\n");
