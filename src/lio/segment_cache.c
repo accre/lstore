@@ -1800,7 +1800,7 @@ int _cache_ppages_range_merge(segment_t *seg, cache_partial_page_t *pp, ex_off_t
   move_to_top(pp->range_stack);
   prng = NULL;
   while ((rng = get_ele_data(pp->range_stack)) != NULL) {
-     if (lo < rng[0]) break;  //** Got it
+     if (lo <= rng[0]) break;  //** Got it
      prng = rng;
      move_down(pp->range_stack);
   }
@@ -1827,10 +1827,12 @@ int _cache_ppages_range_merge(segment_t *seg, cache_partial_page_t *pp, ex_off_t
   }
 
   if (lo <= prng[1]+1) { //** Expand prev range
-     prng[1] = hi;
-     if (rng != NULL) {  //** Move back and collapse.  Otherwise we're at the end and just need to extend the existing range
-        move_up(pp->range_stack);
-        full = _cache_ppages_range_collapse(pp);
+     if (prng[1] < hi) {
+        prng[1] = hi;
+        if (rng != NULL) {  //** Move back and collapse.  Otherwise we're at the end and just need to extend the existing range
+           move_up(pp->range_stack);
+           full = _cache_ppages_range_collapse(pp);
+        }
      }
   } else if (rng != NULL) {  //** Check if overlap on curr range
      if (rng[0] <= hi+1) {  //** Got an overlap
