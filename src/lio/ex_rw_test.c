@@ -1077,6 +1077,7 @@ int main(int argc, char **argv)
   }
 
   //** Shut everything down
+  segment_destroy(seg);
   exnode_destroy(ex);
   exnode_exchange_destroy(exp);
 
