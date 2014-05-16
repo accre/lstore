@@ -29,6 +29,7 @@ http://www.accre.vanderbilt.edu
 
 #define _log_module_index 161
 
+#include <limits.h>
 #include <apr_thread_mutex.h>
 #include <apr_thread_cond.h>
 #include "cache.h"
@@ -40,6 +41,8 @@ http://www.accre.vanderbilt.edu
 #include "string_token.h"
 #include "ex3_system.h"
 #include "ex3_compare.h"
+
+#define XOT_MAX (LONG_MAX-2)
 
 typedef struct {
   segment_t *seg;
@@ -634,7 +637,7 @@ op_status_t cache_advise_fn(void *arg, int id)
 
   //** Figure out if any pages need to be loaded
 
-log_printf(15, "START seg=" XIDT " lo=" XOT " hi=" XOT "\n", segment_id(seg), ca->lo, ca->hi);
+log_printf(5, "START seg=" XIDT " lo=" XOT " hi=" XOT "\n", segment_id(seg), ca->lo, ca->hi);
 
   max_pages = *ca->n_pages;
   *ca->n_pages = 0;
@@ -680,7 +683,7 @@ log_printf(15, "seg=" XIDT " after attempt to create page coff=" XOT " new_page=
               (*ca->n_pages)++;
               if (*ca->n_pages >= max_pages) break;
            } else {   //** Somebody else beat me to it so skip it
-log_printf(15, "seg=" XIDT " duplicate page for coff=" XOT "\n", segment_id(seg), coff); flush_log();
+log_printf(5, "seg=" XIDT " duplicate page for coff=" XOT "\n", segment_id(seg), coff); flush_log();
               s->c->fn.destroy_pages(s->c, &np, 1, 0);  //** Destroy my page
            }
         } else {
@@ -700,7 +703,7 @@ log_printf(15, "seg=" XIDT " cant find the space for coff=" XOT " so stopping sc
 
   if (*ca->n_pages > 0) cache_rw_pages(seg, ca->page, *(ca->n_pages), ca->rw_mode, 0);
 
-log_printf(15, "END seg=" XIDT " lo=" XOT " hi=" XOT " n_pages=%d\n", segment_id(seg), ca->lo, ca->hi, *ca->n_pages);
+log_printf(5, "END seg=" XIDT " lo=" XOT " hi=" XOT " n_pages=%d\n", segment_id(seg), ca->lo, ca->hi, *ca->n_pages);
 
   return(op_success_status);
 }
@@ -2976,7 +2979,20 @@ op_status_t segcache_truncate_func(void *arg, int id)
 
   //** If shrinking the file need to destroy excess cache pages
   if (cop->new_size < old_size) {
-     cache_page_drop(cop->seg, cop->new_size, old_size+1);
+     log_printf(5, "seg=" XIDT " dropping extra pages. inprogress=%d old=" XOT " new=" XOT "\n", segment_id(cop->seg), s->cache_check_in_progress, old_size, cop->new_size);
+     //** Got to check if a dirty thread is trying to do an empty flush or a prefetch is running
+     cache_lock(s->c);
+     while (s->cache_check_in_progress != 0) {
+       cache_unlock(s->c);
+       log_printf(5, "seg=" XIDT " waiting for dirty flush/prefetch to complete. inprogress=%d\n", segment_id(cop->seg), s->cache_check_in_progress);
+       usleep(10000);
+       cache_lock(s->c);
+     }
+     cache_unlock(s->c);
+
+     log_printf(5, "seg=" XIDT " dropping extra pages. NOW\n");
+     cache_page_drop(cop->seg, cop->new_size, XOT_MAX);
+     log_printf(5, "seg=" XIDT " dropping extra pages. FINISHED\n");
   }
 
   //** Do a cache flush
@@ -3391,7 +3407,8 @@ CACHE_PRINT;
      cache_unlock(s->c);
 
      //** and drop the cache pages
-     cache_page_drop(seg, 0, s->total_size + 1);
+     cache_page_drop(seg, 0, XOT_MAX);
+//     cache_page_drop(seg, 0, s->total_size + 1);
 
      //** Make sure all the pages are actually gone by waiting to make sure a free_mem() call isn't running on a page we hold
      cache_lock(s->c);
