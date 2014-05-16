@@ -410,9 +410,6 @@ op_status_t amp_prefetch_fn(void *arg, int id)
   int n_pages, i, nloaded, pending_read;
 
   nbytes = ap->hi + s->page_size - ap->lo;
-//  if (ap->start_trigger == 0) {
-//     ap->start_trigger = nbytes / (2*s->page_size);
-//  }
   trigger_offset = ap->hi - ap->start_trigger*s->page_size;
 
 log_printf(_amp_logging, "seg=" XIDT " initial lo=" XOT " hi=" XOT " trigger=" XOT " start_trigger=%d start_prefetch=%d\n", segment_id(ap->seg), ap->lo, ap->hi, trigger_offset, ap->start_trigger, ap->start_prefetch);
@@ -459,7 +456,7 @@ log_printf(_amp_logging, "seg=" XIDT " SET_TAG offset=" XOT "\n", segment_id(ap-
        cache_lock(s->c);
        nloaded += n_pages;
        for (i=0; i<n_pages; i++) {
-          if (page[i].p->access_pending[CACHE_READ] > 0) pending_read++;
+          if (page[i].p->access_pending[CACHE_READ] > 1) pending_read++;
 
           if (page[i].p->offset == trigger_offset) {
              lp = (page_amp_t *)page[i].p->priv;
@@ -472,6 +469,7 @@ log_printf(_amp_logging, "seg=" XIDT " SET_TAG offset=" XOT " last=" XOT "\n", s
        offset += s->page_size;
 
        cache_unlock(s->c);
+log_printf(_amp_logging, "seg=" XIDT " lo=" XOT " hi=" XOT " RELEASE n_pages=%d pending_read=%d\n", segment_id(ap->seg), offset, ap->hi, n_pages, pending_read);
 
        cache_release_pages(n_pages, page, CACHE_READ);
      }
@@ -524,13 +522,12 @@ void _amp_prefetch(segment_t *seg, ex_off_t lo, ex_off_t hi, int start_prefetch,
   op_generic_t *gop;
   int tid;
 
+//return;
+
   child_size = segment_size(s->child_seg);
 
 tid = atomic_thread_id;
 log_printf(_amp_slog, "tid=%d START seg=" XIDT " lo=" XOT " hi=" XOT " child_size=" XOT "\n", tid, segment_id(seg), lo, hi, child_size);
-
-//  if (child_size < lo) return;
-//  if (child_size < hi) hi = child_size;
 
   if (child_size < lo) {
      log_printf(15, "OOPS read beyond EOF\n");
@@ -552,6 +549,11 @@ log_printf(_amp_logging, " SMALL prefetch!  nbytes=" XOT "\n", nbytes);
 
   //** To much fetching going on so truncate the fetch
   dn = s->c->max_fetch_size - cp->prefetch_in_process;
+  if (dn <= 0) {  
+    log_printf(1, "to much prefetching.\n");
+    return;
+  }
+
   nbytes = hi + s->page_size - lo;
   if (dn < nbytes) {
      hi = lo + dn;
@@ -579,7 +581,7 @@ log_printf(_amp_slog, "seg=" XIDT " max_fetch=" XOT " prefetch_in_process=" XOT 
   ca->start_prefetch = start_prefetch;
   ca->start_trigger = start_trigger;
   gop = new_thread_pool_op(s->tpc_unlimited, NULL, amp_prefetch_fn, (void *)ca, free, 1);
-ca->gop = gop;
+  ca->gop = gop;
 //log_printf(15, "tid=%d seg=" XIDT " lo=" XOT " hi=" XOT " rw_mode=%d ca=%p gid=%d\n", tid, segment_id(seg), lo, hi, rw_mode, ca, gop_id(gop));
 //flush_log();
 
@@ -910,7 +912,8 @@ log_printf(_amp_logging, "in use marking for release seg=" XIDT " p->offset=" XO
              stack_unlink_current(cp->stack, 1);  //** Unlink it.  This is ele
              free(lp->ele); lp->ele = NULL;  //** Mark it as removed from the list so a page_release doesn't free also
              cp->limbo_pages++;
-log_printf(_amp_logging, "UNLINKING seg=" XIDT " p->offset=" XOT " bits=%d limbo=%d\n", segment_id(p->seg), p->offset, p->bit_fields, cp->limbo_pages);
+//log_printf(_amp_logging, "UNLINKING seg=" XIDT " p->offset=" XOT " bits=%d limbo=%d\n", segment_id(p->seg), p->offset, p->bit_fields, cp->limbo_pages);
+log_printf(15, "UNLINKING seg=" XIDT " p->offset=" XOT " bits=%d limbo=%d\n", segment_id(p->seg), p->offset, p->bit_fields, cp->limbo_pages);
           }
        } else {
           lp->bit_fields |= CAMP_OLD;  //** Flag it as old
@@ -1280,6 +1283,9 @@ void amp_removing_segment(cache_t *c, segment_t *seg)
 int amp_cache_destroy(cache_t *c)
 {
   apr_status_t value;
+  cache_page_t *p;
+  Stack_ele_t *ele;
+  int n;
 
   cache_amp_t *cp = (cache_amp_t *)c->fn.priv;
 
@@ -1297,7 +1303,24 @@ int amp_cache_destroy(cache_t *c)
 
   cache_base_destroy(c);
 
-  free_stack(cp->stack, 0);
+  if (stack_size(cp->stack) > 0) {
+     log_printf(0, "cache_stack_size=%d\n", stack_size(cp->stack));
+
+     move_to_top(cp->stack);
+     ele = get_ptr(cp->stack);
+     p = (cache_page_t *)get_stack_ele_data(ele);
+     n = 0;
+     move_down(cp->stack);
+     while ((ele = get_ptr(cp->stack)) != NULL) {
+       n++;
+       p = (cache_page_t *)get_stack_ele_data(ele);
+       log_printf(0, "ERROR n=%d p->seg=" XIDT " offset=" XOT "\n", n, segment_id(p->seg), p->offset); flush_log();
+       move_down(cp->stack);
+     }
+     log_printf(0, "-------------------\n");
+  }
+
+  free_stack(cp->stack, 1);
   free_stack(cp->waiting_stack, 0);
   free_stack(cp->pending_free_tasks, 0);
 
