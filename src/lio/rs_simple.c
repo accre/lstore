@@ -548,7 +548,7 @@ char *rss_get_rid_config(resource_service_fn_t *rs)
 {
   rs_simple_priv_t *rss = (rs_simple_priv_t *)rs->priv;
   char *buffer, *key, *val;
-  int bufsize = 5*1024;
+  int bufsize;
   apr_hash_index_t *hi;
   rss_check_entry_t *ce;
   int used;
@@ -558,6 +558,9 @@ char *rss_get_rid_config(resource_service_fn_t *rs)
   buffer = NULL;
 
   apr_thread_mutex_lock(rss->lock);
+
+  bufsize = (rss->last_config_size > 0) ? rss->last_config_size/2 + 4096 : 100*1024;
+
   do {
      if (buffer != NULL) free(buffer);
      bufsize = 2 * bufsize;
@@ -583,12 +586,15 @@ char *rss_get_rid_config(resource_service_fn_t *rs)
            if ((strcmp("rid_key", key) != 0) && (strcmp("ds_key", key) != 0)) append_printf(buffer, &used, bufsize, "%s=%s\n", key, val);
         }
 
-        append_printf(buffer, &used, bufsize, "\n");
+        if (append_printf(buffer, &used, bufsize, "\n") == -1) break;  //** Kick out have to grow the buffer
      }
   } while (used >= bufsize);
+
+  rss->last_config_size = used;
+  log_printf(5, "last_config_size=%d config=%s\n", rss->last_config_size, buffer);
+
   apr_thread_mutex_unlock(rss->lock);
 
-  log_printf(5, "config=%s\n", buffer);
 
   return(buffer);
 }

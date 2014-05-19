@@ -83,6 +83,7 @@ typedef struct {
   int unique_rids;
   int check_interval;
   int check_timeout;
+  int last_config_size;
 } rs_simple_priv_t;
 
 #ifdef __cplusplus
