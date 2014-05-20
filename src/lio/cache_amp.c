@@ -517,19 +517,17 @@ void _amp_prefetch(segment_t *seg, ex_off_t lo, ex_off_t hi, int start_prefetch,
 {
   cache_segment_t *s = (cache_segment_t *)seg->priv;
   cache_amp_t *cp = (cache_amp_t *)s->c->fn.priv;
-  ex_off_t lo_row, hi_row, child_size, nbytes, dn;
+  ex_off_t lo_row, hi_row, nbytes, dn;
   amp_prefetch_op_t *ca;
   op_generic_t *gop;
   int tid;
 
 //return;
 
-  child_size = segment_size(s->child_seg);
-
 tid = atomic_thread_id;
-log_printf(_amp_slog, "tid=%d START seg=" XIDT " lo=" XOT " hi=" XOT " child_size=" XOT "\n", tid, segment_id(seg), lo, hi, child_size);
+log_printf(_amp_slog, "tid=%d START seg=" XIDT " lo=" XOT " hi=" XOT " total_size=" XOT "\n", tid, segment_id(seg), lo, hi, s->total_size);
 
-  if (child_size < lo) {
+  if (s->total_size < lo) {
      log_printf(15, "OOPS read beyond EOF\n");
      return;
   }
@@ -540,8 +538,8 @@ log_printf(_amp_logging, " SMALL prefetch!  nbytes=" XOT "\n", nbytes);
      hi = lo + cp->min_prefetch_size;
   }
 
-  if (child_size <= hi) {
-     hi = child_size-1;
+  if (s->total_size <= hi) {
+     hi = s->total_size-1;
      log_printf(15, "OOPS read beyond EOF  truncating hi=child\n");
   }
 
