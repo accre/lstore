@@ -552,9 +552,9 @@ log_printf(_amp_logging, " SMALL prefetch!  nbytes=" XOT "\n", nbytes);
     return;
   }
 
-  nbytes = hi + s->page_size - lo;
+  nbytes = hi - lo + 1;
   if (dn < nbytes) {
-     hi = lo + dn;
+     hi = lo + dn - 1;
   }
 
 
