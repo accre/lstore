@@ -275,7 +275,7 @@ total = 0;
      tmpbuf = rbuf;  rbuf = wbuf; wbuf = tmpbuf;
      tlen = rlen; rlen = wlen; wlen = tlen;
 
-     log_printf(1, "sseg=" XIDT " wpos=" XOT " rlen=" XOT " wlen=" XOT "\n", segment_id(sc->src), wpos, rlen, wlen);
+     log_printf(1, "sseg=" XIDT " rpos=" XOT " wpos=" XOT " rlen=" XOT " wlen=" XOT " nbytes=" XOT "\n", segment_id(sc->src), rpos, wpos, rlen, wlen, nbytes);
 
      //** Read in the next block
      if (nbytes < 0) {
