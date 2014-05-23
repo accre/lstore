@@ -433,7 +433,7 @@ if (magic_used > 1) log_printf(5, "n_magic=%d stripe=%d\n", magic_used, stripe+i
                  memcpy(badmap_brute, badmap, sizeof(int)*s->n_devs);  //** Got a correctable error
 
                  
-                 append_printf(stripe_msg[2], &stripe_used[2], stripe_buffer_size, "Recoverable same maigc. devmap:");
+                 append_printf(stripe_msg[2], &stripe_used[2], stripe_buffer_size, "Recoverable same magic. devmap:");
                  for (d=0; d<s->n_devs; d++) {
                      append_printf(stripe_msg[2], &stripe_used[2], stripe_buffer_size, " %d", badmap[d]);
                  }
