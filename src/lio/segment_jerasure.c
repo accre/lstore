@@ -185,6 +185,7 @@ int jerase_brute_recurse(int level, int *index, erasure_plan_t *plan, int chunk_
   char *tptr[n_parity];
 
   if (level == n_bad_devs) {  //** Do an erasure check
+     memset(badmap, 0, sizeof(int)*n_devs);
      for (i=0; i<n_bad_devs; i++) {  //** Overwrite the "failed" blocks using the work buffers
          tptr[i] = ptr[index[i]];
          ptr[index[i]] = pwork[i];
