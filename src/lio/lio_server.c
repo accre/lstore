@@ -102,23 +102,25 @@ int main(int argc, char **argv)
 
   //** NOTE:  The "-f" option has already been handled but it will still appear in the list below cause lio_init() won't handle it
   i=1;
-  do {
-     start_option = i;
+  if (i<argc) {
+     do {
+        start_option = i;
 
-     if (strcmp(argv[i], "-C") == 0) {  //** Change the CWD
-        i++;
-       	if (chdir(argv[i]) != 0) {
-           fprintf(stderr, "ERROR setting CWD=%s.  errno=%d\n", argv[i], errno);
-           log_printf(0, "ERROR setting CWD=%s.  errno=%d\n", argv[i], errno);
-        } else {
-           log_printf(0, "Setting CWD=%s\n", argv[i]);
+        if (strcmp(argv[i], "-C") == 0) {  //** Change the CWD
+           i++;
+           if (chdir(argv[i]) != 0) {
+              fprintf(stderr, "ERROR setting CWD=%s.  errno=%d\n", argv[i], errno);
+              log_printf(0, "ERROR setting CWD=%s.  errno=%d\n", argv[i], errno);
+           } else {
+              log_printf(0, "Setting CWD=%s\n", argv[i]);
+           }
+           i++;
+        } else if (strcmp(argv[i], "-f") == 0) {  //** Foreground process already handled
+           i++;
         }
-        i++;
-     } else if (strcmp(argv[i], "-f") == 0) {  //** Foreground process already handled
-        i++;
-     }
+     } while ((start_option < i) && (i<argc));
+  }
 
-  } while ((start_option < i) && (i<argc));
   start_index = i;
 
   //***Attach the signal handler for shutdown
