@@ -30,6 +30,7 @@ http://www.accre.vanderbilt.edu
 #define _log_module_index 207
 
 #include <assert.h>
+#include <apr_pools.h>
 #include "exnode.h"
 #include "log.h"
 #include "iniparse.h"
@@ -59,7 +60,57 @@ typedef struct {
   int n;
 } warm_t;
 
+apr_hash_t *tagged_rids = NULL;
+apr_pool_t *tagged_pool = NULL;
+Stack_t *tagged_keys = NULL;
+
 static int dt = 86400;
+
+//*************************************************************************
+// parse_tag_file - Parse the file contianing the RID's for tagging
+//*************************************************************************
+
+void parse_tag_file(char *fname)
+{
+  inip_file_t *fd;
+  inip_group_t *g;
+  inip_element_t *ele;
+  char *key, *value, *v;
+
+  fd = inip_read(fname);
+  if (fd == NULL) return;
+
+  apr_pool_create(&tagged_pool, NULL);
+  tagged_rids = apr_hash_make(tagged_pool);
+  tagged_keys = new_stack();
+
+  //** Cycle through the blocks storing both the segment block information and also the cap blocks
+  g = inip_find_group(fd, "tag");
+  ele = inip_first_element(g);
+  while (ele != NULL) {
+     key = inip_get_element_key(ele);
+     if (strcmp(key, "rid_key") == 0) {
+        v = inip_get_element_value(ele);
+        value = strdup(v);
+        info_printf(lio_ifd, 0, "Tagging RID %s\n", value);
+        apr_hash_set(tagged_rids, value, APR_HASH_KEY_STRING, value);
+        push(tagged_keys, value);
+     }
+
+     ele = inip_next_element(ele);
+  }
+
+  inip_destroy(fd);
+
+  if (apr_hash_count(tagged_rids) == 0) {
+     free_stack(tagged_keys, 0);
+     apr_pool_destroy(tagged_pool);
+     tagged_pool = NULL;
+     tagged_rids = NULL;
+  } else {
+     info_printf(lio_ifd, 0, "\n");
+  }
+}
 
 //*************************************************************************
 //  gen_warm_task
@@ -115,6 +166,15 @@ log_printf(1, "fname=%s cap[%d]=%s\n", w->fname, w->n, etext);
       gop_set_private(gop, wrid);
       opque_add(q, gop);
       w->n++;
+
+      //** Check if it was tagged
+      if (tagged_rids != NULL) {
+//         info_printf(lio_ifd, 0, "checking: %s  rid_key=%s\n", w->fname, wrid->rid_key);
+
+         if (apr_hash_get(tagged_rids, wrid->rid_key, APR_HASH_KEY_STRING) != NULL) {
+            info_printf(lio_ifd, 0, "RID_TAG: %s  rid_key=%s\n", w->fname, wrid->rid_key);
+         }
+      }
     }
     g = inip_next_group(g);
   }
@@ -197,9 +257,10 @@ int main(int argc, char **argv)
 //printf("argc=%d\n", argc);
   if (argc < 2) {
      printf("\n");
-     printf("lio_warm LIO_COMMON_OPTIONS [-rd recurse_depth] [-dt time] [-sb] [-sf] LIO_PATH_OPTIONS\n");
+     printf("lio_warm LIO_COMMON_OPTIONS [-t tag.cfg] [-rd recurse_depth] [-dt time] [-sb] [-sf] LIO_PATH_OPTIONS\n");
      lio_print_options(stdout);
      lio_print_path_options(stdout);
+     printf("    -t tag.cfg         - INI file with RID to tag by printing any files usign the RIDs\n");
      printf("    -rd recurse_depth  - Max recursion depth on directories. Defaults to %d\n", recurse_depth);
      printf("    -dt time           - Duration time in sec.  Default is %d sec\n", dt);
      printf("    -sb                - Print the summary but only list the bad RIDs\n");
@@ -231,6 +292,10 @@ int main(int argc, char **argv)
      } else if (strcmp(argv[i], "-sf") == 0) { //** Print the full summary
         i++;
         summary_mode = 2;
+     } else if (strcmp(argv[i], "-t") == 0) { //** Got a list of RIDs to tag
+        i++;
+        parse_tag_file(argv[i]);
+        i++;
      }
 
   } while ((start_option < i) && (i<argc));
@@ -443,6 +508,11 @@ cleanup:
   free(w);
 
 finished:
+  if (tagged_rids != NULL) {
+     free_stack(tagged_keys, 1);
+     apr_pool_destroy(tagged_pool);
+  }
+
   lio_shutdown();
 
   return(0);
