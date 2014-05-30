@@ -2943,6 +2943,7 @@ op_generic_t *segcache_inspect(segment_t *seg, data_attr_t *da, info_fd_t *fd, i
 
   if ((mode != INSPECT_SOFT_ERRORS) && (mode != INSPECT_HARD_ERRORS) && (mode != INSPECT_WRITE_ERRORS)) {
      info_printf(fd, 1, XIDT ": Cache segment maps to child " XIDT "\n", segment_id(seg), segment_id(s->child_seg));
+     info_printf(fd, 1, XIDT ": segment information: cache used_size=" XIDT "\n", segment_id(seg), segment_size(seg));
 
      //** Check the file size first
      if (segment_size(s->child_seg) < segment_size(seg)) {
