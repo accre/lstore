@@ -594,8 +594,10 @@ op_status_t gop_read_block(NetStream_t *ns, op_generic_t *gop, tbuffer_t *buffer
      status = ibp_success_status;
   } else if (apr_time_now() > end_time) {
      status = ibp_timeout_status;
+     status.error_code = size - nleft;
   } else {
      status = ibp_retry_status;  //** Dead connection so retry
+     status.error_code = size - nleft;
   }
 
   return(status);
@@ -672,8 +674,8 @@ op_status_t read_recv(op_generic_t *gop, NetStream_t *ns)
      }
   } else {
      rwbuf = cmd->rwbuf[0];
-     log_printf(0, "read_recv: (read) ns=%d cap=%s offset[0]=" I64T " len[0]=" I64T " Error!\n", 
-         ns_getid(ns), cmd->cap, rwbuf->iovec[0].offset, rwbuf->size);
+     log_printf(0, "read_recv: (read) ns=%d cap=%s offset[0]=" I64T " len[0]=" I64T " got=%d Error!\n", 
+         ns_getid(ns), cmd->cap, rwbuf->iovec[0].offset, rwbuf->size, err.error_code);
   }
 
   //**  If coalesced ops then free the coalesced mallocs
@@ -875,9 +877,11 @@ op_status_t gop_write_block(NetStream_t *ns, op_generic_t *gop, tbuffer_t *buffe
   } else if (apr_time_now() > end_time) {
 log_printf(5, "gid=%d timeout! now=" TT " end=" TT " state=%d\n", gop_id(gop), apr_time_now(), end_time, state);
      status = ibp_timeout_status;
+     status.error_code = size - nleft;
   } else {
 log_printf(5, "gid=%d timeout! RETRY\n", gop_id(gop));
      status = ibp_retry_status;  //** Dead connection so retry
+     status.error_code = size - nleft;
   }
 
   return(status);
@@ -913,7 +917,7 @@ op_status_t write_send(op_generic_t *gop, NetStream_t *ns)
     err = gop_write_block(ns, gop, rwbuf->buffer, rwbuf->boff, rwbuf->size);
   log_printf(5, "gid=%d ns=%d i=%d status=%d\n", gop_id(gop), ns_getid(ns), i, err.op_status);
     if (err.op_status != OP_STATE_SUCCESS) {
-       log_printf(1, "ERROR: cap=%s gid=%d ns=%d i=%d boff=" LU " size=" I64T "\n", cmd->cap, gop_id(gop), ns_getid(ns), i, rwbuf->boff, rwbuf->size);       
+       log_printf(1, "ERROR: cap=%s gid=%d ns=%d i=%d boff=" LU " size=" I64T " sent=%d\n", cmd->cap, gop_id(gop), ns_getid(ns), i, rwbuf->boff, rwbuf->size, err.error_code);       
        break;
    }
   }
