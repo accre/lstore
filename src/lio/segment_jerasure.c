@@ -36,6 +36,7 @@ http://www.accre.vanderbilt.edu
 
 #define _log_module_index 178
 
+#include <zlib.h>
 #include "ex3_abstract.h"
 #include "ex3_system.h"
 #include "interval_skiplist.h"
@@ -67,6 +68,7 @@ typedef struct {
   int n_data_devs;
   int n_parity_devs;
   int n_devs;
+  int magic_cksum;
   int chunk_size;
   int chunk_size_with_magic;
   int stripe_size;
@@ -124,66 +126,122 @@ typedef struct {
   op_generic_t *gop;
 } segjerase_clone_t;
 
+
+//***********************************************************************
+// je_cksum_calc - Calculates a magic checksum
+//***********************************************************************
+
+void je_cksum_calc(char *magic, char **ptr, int n_devs, int chunk_size)
+{
+  unsigned long cksum;
+  unsigned char *m = (unsigned char *)magic;
+  int i;
+
+  cksum = adler32(0L, Z_NULL, 0);
+  for (i=0; i<n_devs; i++) cksum = adler32(cksum, (unsigned char *)ptr[i], chunk_size);
+  for (i=0; i<JE_MAGIC_SIZE; i++) {
+     m[i] = cksum & 255;
+     cksum >>= 8;
+  }
+  
+}
+
+//***********************************************************************
+// je_cksum_compare - Does a magic calculation and checksum comparison
+//***********************************************************************
+
+int je_cksum_compare(char *magic, char **ptr, int n_devs, int chunk_size)
+{
+  char magic_calc[JE_MAGIC_SIZE];
+
+  je_cksum_calc(magic_calc, ptr, n_devs, chunk_size);
+  return((memcmp(magic, magic_calc, JE_MAGIC_SIZE) == 0) ? 0 : 1);
+}
+
 //***********************************************************************
 // jerase_control_check - Does a check that the parity and data are all
 //   in sync by failing  "good" chunks and doing a repair veriying the
 //   the new data matches the "good" chunks.
 //***********************************************************************
 
-int jerase_control_check(erasure_plan_t *plan, int chunk_size, int n_devs, int n_parity, int *badmap, char **ptr, char **eptr, char **pwork)
+int jerase_control_check(erasure_plan_t *plan, int chunk_size, int n_devs, int n_parity, int *badmap, char **ptr, char **eptr, char **pwork, char *magic)
 {
   int erasures[n_devs+1];  //** Leave space for a control failure
-  int i, n, n_control, n_ctl_max;
+  int i, n, n_control, n_ctl_max, control_index, errors;
   int control[n_parity];
-
-  memcpy(eptr, ptr, sizeof(char *)*n_devs);  //** Set the base blocks using the actual data
 
   //** Determine the max number of controls
   n_ctl_max = 0; for (i=0; i<n_devs; i++)  n_ctl_max += badmap[i];
-  n_ctl_max = n_parity - n_ctl_max;
+
+  //** IF we have magic and no bad blocks we can just do a checksum
+  if ((magic != NULL) && (n_ctl_max == 0)) {
+     return(je_cksum_compare(magic, ptr, n_devs, chunk_size));     
+  }
+
+  //** Not using cksum magic or we have bad blocks that need to be reconstructed
+  n_ctl_max = (magic == NULL) ? n_parity - n_ctl_max : 0;
+
 
   //** Form the erasures array
-  n_control = 0;
-  n = 0;
-  for (i=0; i<n_devs; i++) {
-     if (((badmap[i] == 0) && (n_control < n_ctl_max)) || (badmap[i] == 1)) {
-        erasures[n] = i;
+  control_index = -1;
+  errors = 0;
+  do {
+     memcpy(eptr, ptr, sizeof(char *)*n_devs);  //** Set the base blocks using the actual data
+     n_control = 0;
+     n = 0;
+     for (i=0; i<n_devs; i++) {
+        if (((badmap[i] == 0) && (n_control < n_ctl_max) && (i > control_index)) || (badmap[i] == 1)) {
+           erasures[n] = i;
 log_printf(0, "bad=%d map=%d\n", i, badmap[i]);
 
-        if ((badmap[i] == 0) && (n_control < n_ctl_max)) { 
-           control[n_control] = i;  //** This is a control chunk
-           eptr[i] = pwork[n_control];
-           n_control++;
+           if ((magic == NULL) && (badmap[i] == 0) && (n_control < n_ctl_max)) { 
+              control[n_control] = i;  //** This is a control chunk
+              eptr[i] = pwork[n_control];
+              n_control++;
+              control_index = i;
+           }
+           n++;
         }
-        n++;
      }
-  }
-  erasures[n] = -1;  //** It's "-1" terminated
+     erasures[n] = -1;  //** It's "-1" terminated
 
-  //** and do the decoding
-  plan->decode_block(plan, eptr, chunk_size, erasures);
+     //** and do the decoding
+     plan->decode_block(plan, eptr, chunk_size, erasures);
 
-  if (n_control <= 0) return(0);  //** No control used so just return success.  This means we had n_parity_dev erasures.
+     if (magic != NULL) { //** Can do a chksum for validation
+log_printf(10, "magic ptr=%p\n", magic);
+        return(je_cksum_compare(magic, eptr, n_devs, chunk_size));
+     } else if (n_control <= 0) {  //** No cksum so do it via controls
+        if (n_ctl_max > 0) {
+           control_index = n_devs-1;
+        } else {
+           return(0);  //** No control used so just return success.  This means we had n_parity_dev erasures.
+        }
+     }
 
+     //** Check if we have a match
+     n = 0;
+     for (i=0; i<n_control; i++) {
+        if (memcmp(ptr[control[i]], eptr[control[i]], chunk_size) != 0) {
+           errors++;
+           log_printf(5, "ctl=%d dev=%d BAD\n", i, control[i]);
+           return(errors);  //** Got an error so kick out
+        }
+     }
+  } while (control_index < n_devs-1);
 
-  //** Check if we have a match
-  n = 0;
-  for (i=0; i<n_control; i++) {
-     if (memcmp(ptr[control[i]], eptr[control[i]], chunk_size) != 0) n++;
-  }
-
-  return(n);
+  return(errors);
 }
 
 //***********************************************************************
 //  jerase_brute_recurse - Recursively tries to find a match
 //***********************************************************************
 
-int jerase_brute_recurse(int level, int *index, erasure_plan_t *plan, int chunk_size, int n_devs, int n_parity, int n_bad_devs, int *badmap, char **ptr, char **eptr, char **pwork)
+int jerase_brute_recurse(int level, int *index, erasure_plan_t *plan, int chunk_size, int n_devs, int n_parity, int n_bad_devs, int *badmap, char **ptr, char **eptr, char **pwork, char *magic)
 {
-  int i, start, n;
+  int i, start, n, nbytes;
   char *tptr[n_parity];
-
+  char logbuf[4096];
   if (level == n_bad_devs) {  //** Do an erasure check
      memset(badmap, 0, sizeof(int)*n_devs);
      for (i=0; i<n_bad_devs; i++) {  //** Overwrite the "failed" blocks using the work buffers
@@ -193,7 +251,14 @@ int jerase_brute_recurse(int level, int *index, erasure_plan_t *plan, int chunk_
      }
 
      //** Perform the check
-     n = jerase_control_check(plan, chunk_size, n_devs, n_parity, badmap, ptr, eptr, &(pwork[n_bad_devs]));
+     n = jerase_control_check(plan, chunk_size, n_devs, n_parity, badmap, ptr, eptr, &pwork[n_bad_devs], magic);
+
+     logbuf[0] = 0; nbytes = 0;
+     append_printf(logbuf, &nbytes, sizeof(logbuf), "jerase_control_check=%d devmap: ", n);
+     for (i=0; i<n_devs; i++) {
+         append_printf(logbuf, &nbytes, sizeof(logbuf), " %d", badmap[i]);
+     }
+     log_printf(1, "%s\n", logbuf);
 
      for (i=0; i<n_bad_devs; i++) {  //** Restore the original pointers
          ptr[index[i]] = tptr[i];
@@ -204,7 +269,7 @@ int jerase_brute_recurse(int level, int *index, erasure_plan_t *plan, int chunk_
      start = (level == 0) ? 0 : index[level-1]+1;
      for (i = start; i<n_devs; i++) {
         index[level] = i;
-        if (jerase_brute_recurse(level+1, index, plan, chunk_size, n_devs, n_parity, n_bad_devs, badmap, ptr, eptr, pwork) == 0) return(0);
+        if (jerase_brute_recurse(level+1, index, plan, chunk_size, n_devs, n_parity, n_bad_devs, badmap, ptr, eptr, pwork, magic) == 0) return(0);
      }
   }
 
@@ -217,20 +282,24 @@ int jerase_brute_recurse(int level, int *index, erasure_plan_t *plan, int chunk_
 //     to detect correctness.  This means we can only correct n_parity_devs-1 failures.
 //**************************************************************************
 
-int jerase_brute_recovery(erasure_plan_t *plan, int chunk_size, int n_devs, int n_parity_devs, int *badmap, char **ptr, char **eptr, char **pwork)
+int jerase_brute_recovery(erasure_plan_t *plan, int chunk_size, int n_devs, int n_parity_devs, int *badmap, char **ptr, char **eptr, char **pwork, char *magic)
 {
   int i;
   int index[n_parity_devs];
 
   //** See if we get lucky and the initial badmap is good
-  if (jerase_control_check(plan, chunk_size, n_devs, n_parity_devs, badmap, ptr, eptr, pwork) == 0) return(0);
-  
+  if (jerase_control_check(plan, chunk_size, n_devs, n_parity_devs, badmap, ptr, eptr, pwork, magic) == 0) return(0);
+
+//FILE *fd = fopen("stripe.dat", "w");
+//for (i=0; i<n_devs; i++) fwrite(ptr[i], chunk_size, 1, fd);
+//fclose(fd);
+
   //** No luck have to run through the perms
   memset(badmap, 0, sizeof(int)*n_devs);
 
-  for (i=1; i<n_parity_devs-1; i++) {  //** Cycle through checking for 1 failure, then double failure combo, etc
+  for (i=1; i<n_parity_devs; i++) {  //** Cycle through checking for 1 failure, then double failure combo, etc
      memset(index, 0, sizeof(int)*n_parity_devs);
-     if (jerase_brute_recurse(0, index, plan, chunk_size, n_devs, n_parity_devs, i, badmap, ptr, eptr, pwork) == 0) return(0);  //** Found it so kick out
+     if (jerase_brute_recurse(0, index, plan, chunk_size, n_devs, n_parity_devs, i, badmap, ptr, eptr, pwork, magic) == 0) return(0);  //** Found it so kick out
   }
 
   return(1);  //** No luck
@@ -261,16 +330,16 @@ op_status_t segjerase_inspect_full_func(void *arg, int id)
   tbuffer_t tbuf_read, tbuf;
   char stripe_msg[4][2048], *stripe_msg_label[4];
   char *buffer, *ptr[s->n_devs], parity[s->n_parity_devs*s->chunk_size];
-  char *eptr[s->n_devs], *pwork[s->n_parity_devs];
+  char *eptr[s->n_devs], *pwork[s->n_parity_devs], *stripe_magic, *check_magic;
   char empty_magic[JE_MAGIC_SIZE];
   char magic_key[s->n_devs*JE_MAGIC_SIZE];
   char print_buffer[2048];
-  char ppbuf[128];
+  char ppbufr[128], ppbufw[128], ppbufp[128];
   iovec_t *iov;
   ex_iovec_t ex_read;
   ex_iovec_t *ex_iov;
   apr_time_t now, loop_start, clr_dt;
-  double dt, rate;
+  double dtt, dtr, dtw, dtp, rater, ratew, ratep;
 
   stripe_diag_size = 4;
   stripe_buffer_size = 2048;
@@ -318,6 +387,7 @@ log_printf(0, "lo=" XOT " hi= " XOT " nbytes=" XOT " total_stripes=%d data_size=
   for (k=0; k<stripe_diag_size; k++) {stripe_used[k] = 0; stripe_msg[k][0] = 0; stripe_start_error[k] = -1; stripe_error[k] = 0; }
 
   for (stripe=0; stripe<total_stripes; stripe += bufstripes) {
+     dtt = apr_time_now();
      ex_read.offset = base_offset + (ex_off_t)stripe*s->stripe_size_with_magic;
      nstripes = stripe + bufstripes;
      if (nstripes > total_stripes) nstripes = total_stripes;
@@ -337,12 +407,22 @@ log_printf(5, "sid=" XIDT " clr_dt=%d\n", segment_id(si->seg), apr_time_sec(clr_
      now = apr_time_now();
      err = gop_sync_exec(segment_read(s->child_seg, si->da, 1, &ex_read, &tbuf_read, 0, si->timeout));
      now = apr_time_now() - now;
-     dt = (double)now / APR_USEC_PER_SEC;
-     rate = (double)(nstripes*s->chunk_size*s->n_data_devs)/dt;
+     dtr = (double)now / APR_USEC_PER_SEC;
+     rater = (double)(nstripes*s->chunk_size*s->n_data_devs)/dtr;
      if (err != OP_STATE_SUCCESS) si->rerror++;
 
+
+     now = apr_time_now();
      n_iov = 0;
      nbytes = 0;
+     if ((s->magic_cksum == 0) && (do_fix == 1)) {     //** Old school magic so *everything* gets written back with the updated magic
+        n_iov = 1;
+        nbytes = ex_read.len;
+        ex_iov[0].offset = ex_read.offset;
+        ex_iov[0].len = nbytes;
+        iov[0].iov_base = buffer;
+        iov[0].iov_len = nbytes;
+     }
      for (i=0; i<nstripes; i++) {  //** Now check everything
         magic_used = 0;
         boff = i*s->stripe_size_with_magic;
@@ -373,8 +453,9 @@ log_printf(5, "sid=" XIDT " clr_dt=%d\n", segment_id(si->seg), apr_time_sec(clr_
            if (match<magic_count[k]) {match = magic_count[k];  index = k; }
         }
 
-        good_magic = memcmp(empty_magic, &(magic_key[index*JE_MAGIC_SIZE]), JE_MAGIC_SIZE);
-
+        stripe_magic = &magic_key[index*JE_MAGIC_SIZE];
+        check_magic = (s->magic_cksum == 0) ? NULL : stripe_magic;
+        good_magic = memcmp(empty_magic, stripe_magic, JE_MAGIC_SIZE);
         if (good_magic == 0) {
            n_empty++;
 //           append_printf(stripe_msg[0], &stripe_used[0], stripe_buffer_size, "Empty stripe.  empty chunks: %d\n", magic_count[index]);
@@ -422,13 +503,14 @@ if (magic_used > 1) log_printf(5, "n_magic=%d stripe=%d\n", magic_used, stripe+i
               }
            }
 
-           if (jerase_control_check(s->plan, s->chunk_size, s->n_devs, s->n_parity_devs, badmap, ptr, eptr, pwork) != 0) {  //** See if everything checks out
+log_printf(10, "check_magic_ptr=%p\n", check_magic);
+           if (jerase_control_check(s->plan, s->chunk_size, s->n_devs, s->n_parity_devs, badmap, ptr, eptr, pwork, check_magic) != 0) {  //** See if everything checks out
               //** Got an error so see if we can brute force a fix
               bad_count++;                 
               erasure_errors++;  //** Internal erasure error. Inconsistent data on disk
               
               if (bm_brute_used == 1) memcpy(badmap, badmap_brute, sizeof(int)*s->n_devs);  //** Copy over the last brute force bad map
-              if (jerase_brute_recovery(s->plan, s->chunk_size, s->n_devs, s->n_parity_devs, badmap, ptr, eptr, pwork) == 0) {
+              if (jerase_brute_recovery(s->plan, s->chunk_size, s->n_devs, s->n_parity_devs, badmap, ptr, eptr, pwork, check_magic) == 0) {
                  bm_brute_used = 1;
                  memcpy(badmap_brute, badmap, sizeof(int)*s->n_devs);  //** Got a correctable error
 
@@ -438,6 +520,16 @@ if (magic_used > 1) log_printf(5, "n_magic=%d stripe=%d\n", magic_used, stripe+i
                      append_printf(stripe_msg[2], &stripe_used[2], stripe_buffer_size, " %d", badmap[d]);
                  }
                  stripe_error[2] = 1;
+
+append_printf(stripe_msg[2], &stripe_used[2], stripe_buffer_size, "\nPrinting magic table --n_magic=%d\n",magic_used);
+for (k=0; k < magic_used; k++) {
+   match = k*s->n_devs;
+   append_printf(stripe_msg[2], &stripe_used[2], stripe_buffer_size, "%d: count=%d empty=%d devs=",k, magic_count[k], memcmp(empty_magic, &(magic_key[k*JE_MAGIC_SIZE]), JE_MAGIC_SIZE));
+   for (j=0; j< magic_count[k]; j++) { //** Copy the magic over and mark the dev as bad
+       append_printf(stripe_msg[2], &stripe_used[2], stripe_buffer_size, " %d", magic_devs[match+j]);
+   }
+   append_printf(stripe_msg[2], &stripe_used[2], stripe_buffer_size, "\n");
+}
               } else {
                  append_printf(stripe_msg[3], &stripe_used[3], stripe_buffer_size, "Unrecoverable data+parity mismatch.");
                  stripe_error[3] = 1;
@@ -447,28 +539,45 @@ if (magic_used > 1) log_printf(5, "n_magic=%d stripe=%d\n", magic_used, stripe+i
            } else if (magic_count[index] != s->n_devs) {
               bad_count++;   //** bad magic error only
            } else {
-              skip = 1;  //** All is good nothing to store
+              if (s->magic_cksum != 0) skip = 1;  //** All is good nothing to store
            }
 
+//if (stripe+i==20693) {
+//  FILE *fd = fopen("repaired.dat", "w");
+//  for (k=0; k<s->n_devs; k++) {
+//     if (eptr[k] != ptr[k]) {
+//        fwrite(eptr[k], s->chunk_size, 1, fd);
+//    } else {
+//        fwrite(ptr[k], s->chunk_size, 1, fd);
+//     }
+//  }
+//  fclose(fd);
+//}
+
            if ((skip == 0) && (do_fix == 1)) { //** Got some data to update
+              if (s->magic_cksum == 0) { //** Got to dump everything back to get the correct magic
+                 je_cksum_calc(stripe_magic, eptr, s->n_devs, s->chunk_size);
+              }
               for (k=0; k< s->n_devs; k++) {  //** Store the updated data back in the buffer with consistent magic
-                  if (badmap[k] == 1) {
-                     memcpy(&(buffer[boff + k*s->chunk_size_with_magic]), &(magic_key[index*JE_MAGIC_SIZE]), JE_MAGIC_SIZE);
+                  if ((badmap[k] == 1) || (s->magic_cksum == 0)) {
+                     memcpy(&(buffer[boff + k*s->chunk_size_with_magic]), stripe_magic, JE_MAGIC_SIZE);
                      if (eptr[k] != ptr[k]) memcpy(ptr[k], eptr[k], s->chunk_size);  //** Need to copy the data/parity back to the buffer
 
-                     ex_iov[n_iov].offset = ex_read.offset + i*s->stripe_size_with_magic + k*s->chunk_size_with_magic;
+                     if (s->magic_cksum != 0) {  //** If no adler32's for the magic we have to dump everything
+                        ex_iov[n_iov].offset = ex_read.offset + i*s->stripe_size_with_magic + k*s->chunk_size_with_magic;
 
 log_printf(0, "offset=" XOT " k=%d n_iov=%d max_iov=%d\n", ex_iov[n_iov].offset, k, n_iov, max_iov);
-                     ex_iov[n_iov].len = s->chunk_size_with_magic;
-                     iov[n_iov].iov_base = &(buffer[boff + k*s->chunk_size_with_magic]);
+                        ex_iov[n_iov].len = s->chunk_size_with_magic;
+                        iov[n_iov].iov_base = &(buffer[boff + k*s->chunk_size_with_magic]);
 log_printf(0, "memcmp=%d\n", memcmp(iov[n_iov].iov_base, &(buffer[boff + index*s->chunk_size_with_magic]), JE_MAGIC_SIZE));
-                     iov[n_iov].iov_len = ex_iov[n_iov].len;
-                     nbytes += ex_iov[n_iov].len;
-                     n_iov++;
-                     if (n_iov >= max_iov) {
-                        max_iov = 1.5 * max_iov + 1;
-                        ex_iov = (ex_iovec_t *)realloc(ex_iov, sizeof(ex_iovec_t) * max_iov);
-                        iov = (iovec_t *)realloc(iov, sizeof(iovec_t) * max_iov);
+                        iov[n_iov].iov_len = ex_iov[n_iov].len;
+                        nbytes += ex_iov[n_iov].len;
+                        n_iov++;
+                        if (n_iov >= max_iov) {
+                           max_iov = 1.5 * max_iov + 1;
+                           ex_iov = (ex_iovec_t *)realloc(ex_iov, sizeof(ex_iovec_t) * max_iov);
+                           iov = (iovec_t *)realloc(iov, sizeof(iovec_t) * max_iov);
+                        }
                      }
                   }
               }
@@ -510,7 +619,12 @@ log_printf(0, "memcmp=%d\n", memcmp(iov[n_iov].iov_base, &(buffer[boff + index*s
 
      }
 
+     now = apr_time_now() - now;
+     dtp = (double)now / APR_USEC_PER_SEC;
+     ratep = (dtp == 0) ? 0 : (double)(nstripes*s->chunk_size*s->n_data_devs)/dtp;
+
      //** Perform any updates if needed
+     now = apr_time_now();
      if (n_iov > 0) {
         tbuffer_vec(&tbuf, nbytes, n_iov, iov);
         err = gop_sync_exec(segment_write(s->child_seg, si->da, n_iov, ex_iov, &tbuf, 0, si->timeout));
@@ -521,10 +635,17 @@ log_printf(0, "gop_status=%d nbytes=" XOT " n_iov=%d\n", err, nbytes, n_iov);
            si->werror++;
         }
      }
+     now = apr_time_now() - now;
+     dtw = (double)now / APR_USEC_PER_SEC;
+     ratew = (dtw == 0) ? 0 : (double)(nbytes)/dtw;
+
+     dtt = apr_time_now() - dtt;
+     dtt = (double)dtt / APR_USEC_PER_SEC;
 
      if (sf->do_print == 1) {
-        info_printf(si->fd, 1, XIDT ": [%lf sec %s/s] bad stripe count: %d  --- Repair errors: %d   Unrecoverable errors:%d  Empty stripes: %d   Silent errors: %d\n", 
-            segment_id(si->seg), dt, pretty_print_double_with_scale(1024, rate, ppbuf), bad_count, repair_errors, unrecoverable_count, n_empty, erasure_errors);
+        info_printf(si->fd, 1, XIDT ": R[%lf sec %s/s] P[%lf sec %s/s] W[%lf sec %s/s] T[%lf sec] bad stripe count: %d  --- Repair errors: %d   Unrecoverable errors:%d  Empty stripes: %d   Silent errors: %d\n", 
+            segment_id(si->seg), dtr, pretty_print_double_with_scale(1024, rater, ppbufr), dtp, pretty_print_double_with_scale(1024, ratep, ppbufp), 
+            dtw, pretty_print_double_with_scale(1024, ratew, ppbufw), dtt, bad_count, repair_errors, unrecoverable_count, n_empty, erasure_errors);
      }
 
 //loop_start = apr_time_now() - loop_start;
@@ -758,8 +879,8 @@ op_status_t segjerase_inspect_func(void *arg, int id)
   status = op_success_status;
 
   info_printf(si->fd, 1, XIDT ": jerase segment maps to child " XIDT "\n", segment_id(si->seg), segment_id(s->child_seg));
-  info_printf(si->fd, 1, XIDT ": segment information: method=%s data_devs=%d parity_devs=%d chunk_size=%d  used_size=" XOT " mode=%d\n", 
-       segment_id(si->seg), JE_method[s->method], s->n_data_devs, s->n_parity_devs, s->chunk_size, segment_size(s->child_seg),  si->inspect_mode);
+  info_printf(si->fd, 1, XIDT ": segment information: method=%s data_devs=%d parity_devs=%d chunk_size=%d  used_size=" XOT " magic_cksum=%d mode=%d\n", 
+       segment_id(si->seg), JE_method[s->method], s->n_data_devs, s->n_parity_devs, s->chunk_size, segment_size(s->child_seg),  s->magic_cksum, si->inspect_mode);
 
   //** Issue the inspect for the underlying LUN
   info_printf(si->fd, 1, XIDT ": Inspecting child segment...\n", segment_id(si->seg));
@@ -847,7 +968,10 @@ log_printf(5, "repair=%d child_replaced=%d option=%d inspect_mode=%d INSPECT_QUI
            }
         } while (loop < max_loops);
 
-        if (status.op_status == OP_STATE_SUCCESS)  s->write_errors = 0;  //** Clear the write errors since we did a full successfull check
+        if (status.op_status == OP_STATE_SUCCESS)  {
+           s->write_errors = 0;  //** Clear the write errors since we did a full successfull check
+           if (option == INSPECT_FULL_REPAIR) s->magic_cksum = 1;  //** Did a successfull full repair which would convert s to cksum magics
+        }
         break;
   }
 
@@ -967,6 +1091,8 @@ op_generic_t *segjerase_clone(segment_t *seg, data_attr_t *da, segment_t **clone
   if (use_existing == 1) { cplan = sd->plan; child = sd->child_seg; }
   *sd = *ss;
 
+  if (mode == CLONE_STRUCTURE) sd->magic_cksum = 1;  //** If only cloning the structure we always enble storing a cksum for the magic
+
 int cref = atomic_get(sd->child_seg->ref_count);
 log_printf(15, "use_existing=%d sseg=" XIDT " dseg=" XIDT " cref=%d\n", use_existing, segment_id(seg), segment_id(clone), cref);
   if (use_existing == 1) {
@@ -1016,7 +1142,7 @@ op_status_t segjerase_read_func(void *arg, int id)
   char *parity, *magic, *ptr[s->n_devs], *eptr[s->n_devs];
   char pbuff[s->n_parity_devs*s->chunk_size];
   char *pwork[s->n_parity_devs];
-  char magic_key[s->n_devs*JE_MAGIC_SIZE], empty_magic[JE_MAGIC_SIZE];
+  char magic_key[s->n_devs*JE_MAGIC_SIZE], empty_magic[JE_MAGIC_SIZE], *stripe_magic;
   int magic_count[s->n_devs], data_ok, match, index;
   int magic_devs[s->n_devs*s->n_devs];
   int badmap[s->n_devs], badmap_brute[s->n_devs], bm_brute_used;
@@ -1174,10 +1300,11 @@ log_printf(15, "index=%d good=%d data_ok=%d magic=%d data_devs=%d check_status.e
                     }
                 }
 
-                if (jerase_control_check(s->plan, s->chunk_size, s->n_devs, s->n_parity_devs, badmap, ptr, eptr, pwork) != 0) {  //** See if everything checks out
+                stripe_magic = (s->magic_cksum == 0) ? NULL : &magic_key[index*JE_MAGIC_SIZE];  //** Determine how we validate
+                if (jerase_control_check(s->plan, s->chunk_size, s->n_devs, s->n_parity_devs, badmap, ptr, eptr, pwork, stripe_magic) != 0) {  //** See if everything checks out
                    //** Got an error so see if we can brute force a fix
                    if (bm_brute_used == 1) memcpy(badmap, badmap_brute, sizeof(int)*s->n_devs);  //** Copy over the last brute force bad map
-                   if (jerase_brute_recovery(s->plan, s->chunk_size, s->n_devs, s->n_parity_devs, badmap, ptr, eptr, pwork) == 0) {
+                   if (jerase_brute_recovery(s->plan, s->chunk_size, s->n_devs, s->n_parity_devs, badmap, ptr, eptr, pwork, stripe_magic) == 0) {
                        bm_brute_used = 1;
                        memcpy(badmap_brute, badmap, sizeof(int)*s->n_devs);  //** Got a correctable error
                        for (k=0; k<s->n_data_devs; k++) {
@@ -1288,7 +1415,7 @@ op_status_t segjerase_write_func(void *arg, int id)
   ex_off_t lo, boff, poff, len, parity_len, parity_used, curr_bytes;
   int i, j, k, n_iov, nstripes, curr_stripe, pstripe, iov_start;
   int soft_error, hard_error;
-  char *parity, *magic, **ptr;
+  char *parity, *magic, **ptr, *stripe_magic;
   opque_t *q;
   op_generic_t *gop;
   ex_iovec_t *ex_iov;
@@ -1319,13 +1446,13 @@ op_status_t segjerase_write_func(void *arg, int id)
   }
   type_malloc(parity, char, parity_len);
 
-  type_malloc_clear(magic, char, JE_MAGIC_SIZE*sw->n_iov);
+  type_malloc_clear(magic, char, JE_MAGIC_SIZE*sw->nstripes);
   type_malloc(ptr, char *, sw->nstripes*s->n_devs);
   type_malloc(ex_iov, ex_iovec_t, sw->n_iov);
   type_malloc(iov, iovec_t, 2*sw->nstripes*s->n_devs);
   type_malloc(tbuf, tbuffer_t, sw->n_iov);
 
-  get_random(magic, sw->n_iov*JE_MAGIC_SIZE);  //** Make the magic data
+///REMOVE  get_random(magic, sw->n_iov*JE_MAGIC_SIZE);  //** Make the magic data
 
   //** Cycle through the tasks
   parity_used = 0;
@@ -1384,23 +1511,27 @@ op_status_t segjerase_write_func(void *arg, int id)
            assert((tbv.n_iov == 1) && (tbv.nbytes == s->data_size));
 
            //** Make the encoding and transfer data structs
+           stripe_magic = &(magic[curr_stripe*JE_MAGIC_SIZE]);
            poff = 0;
            for (k=0; k<s->n_data_devs; k++) {
               ptr[pstripe + k] = tbv.buffer[0].iov_base + poff;
-              iov[n_iov].iov_base = &(magic[i*JE_MAGIC_SIZE]); iov[n_iov].iov_len = JE_MAGIC_SIZE; n_iov++;
+              iov[n_iov].iov_base = stripe_magic; iov[n_iov].iov_len = JE_MAGIC_SIZE; n_iov++;
               iov[n_iov].iov_base = ptr[pstripe+k]; iov[n_iov].iov_len = s->chunk_size; n_iov++;
               poff += s->chunk_size;
            }
 
            for (k=0; k<s->n_parity_devs; k++) {
               ptr[pstripe + s->n_data_devs + k] =  &(parity[parity_used]);
-              iov[n_iov].iov_base = &(magic[i*JE_MAGIC_SIZE]); iov[n_iov].iov_len = JE_MAGIC_SIZE; n_iov++;
+              iov[n_iov].iov_base = stripe_magic; iov[n_iov].iov_len = JE_MAGIC_SIZE; n_iov++;
               iov[n_iov].iov_base = ptr[pstripe + s->n_data_devs + k]; iov[n_iov].iov_len = s->chunk_size; n_iov++;
               parity_used += s->chunk_size;
            }
 
            //** Encode the data
            s->plan->encode_block(s->plan, &(ptr[pstripe]), s->chunk_size);
+
+           //** Calculate the magic/cksum
+           je_cksum_calc(stripe_magic, &ptr[pstripe], s->n_devs, s->chunk_size);
 
            curr_stripe++;
            pstripe += s->n_devs;
@@ -1669,6 +1800,7 @@ int segjerase_serialize_text(segment_t *seg, exnode_exchange_t *exp)
   append_printf(segbuf, &sused, bufsize, "chunk_size=%d\n", s->chunk_size);
   append_printf(segbuf, &sused, bufsize, "w=%d\n", s->w);
   append_printf(segbuf, &sused, bufsize, "max_parity=" XOT "\n", s->max_parity);
+  append_printf(segbuf, &sused, bufsize, "magic_cksum=%d\n", s->magic_cksum);
 
   if (s->write_errors > 0) {
      append_printf(segbuf, &sused, bufsize, "write_errors=%d\n", s->write_errors);
@@ -1748,6 +1880,7 @@ int segjerase_deserialize_text(segment_t *seg, ex_id_t id, exnode_exchange_t *ex
   s->write_errors = inip_get_integer(fd, seggrp, "write_errors", -1);
   if ((s->paranoid_check == 0) && (s->write_errors > 0)) s->paranoid_check = 1;
 
+  s->magic_cksum = inip_get_integer(fd, seggrp, "magic_cksum", 0);
   s->n_data_devs = inip_get_integer(fd, seggrp, "n_data_devs", 6);
   s->n_parity_devs = inip_get_integer(fd, seggrp, "n_parity_devs", 3);
   s->n_devs = s->n_data_devs + s->n_parity_devs;
@@ -1883,6 +2016,7 @@ segment_t *segment_jerasure_create(void *arg)
   //** Pluck the paranoid setting for Jerase
   paranoid = lookup_service(es, ESS_RUNNING, "jerase_paranoid");
   s->paranoid_check = (paranoid == NULL) ? 0 : *paranoid;
+  s->magic_cksum = 1;
 
   seg->fn.read = segjerase_read;
   seg->fn.write = segjerase_write;
