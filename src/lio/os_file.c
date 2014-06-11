@@ -244,7 +244,7 @@ typedef struct {
 //void path_split(char *path, char **dir, char **file);
 char *resolve_hardlink(object_service_fn_t *os, char *src_path, int add_prefix);
 apr_thread_mutex_t *osf_retrieve_lock(object_service_fn_t *os, char *path, int *table_slot);
-int osf_set_attr(object_service_fn_t *os, creds_t *creds, osfile_fd_t *ofd, char *attr, void *val, int v_size, int *atype);
+int osf_set_attr(object_service_fn_t *os, creds_t *creds, osfile_fd_t *ofd, char *attr, void *val, int v_size, int *atype, int append_val);
 int osf_get_attr(object_service_fn_t *os, creds_t *creds, osfile_fd_t *ofd, char *attr, void **val, int *v_size, int *atype);
 op_generic_t *osfile_set_attr(object_service_fn_t *os, creds_t *creds, os_fd_t *fd, char *key, void *val, int v_size);
 os_attr_iter_t *osfile_create_attr_iter(object_service_fn_t *os, creds_t *creds, os_fd_t *ofd, os_regex_table_t *attr, int v_max);
@@ -1137,7 +1137,7 @@ int va_timestamp_set_attr(os_virtual_attr_t *va, object_service_fn_t *os, creds_
      n = snprintf(buffer, sizeof(buffer), I64T, curr_time);
   }
 
-  n = osf_set_attr(os, creds, fd, key, (void *)buffer, n, atype);
+  n = osf_set_attr(os, creds, fd, key, (void *)buffer, n, atype, 0);
   *atype |= OS_OBJECT_VIRTUAL;
 
   return(n);
@@ -1209,6 +1209,57 @@ int va_timestamp_get_link_attr(os_virtual_attr_t *va, object_service_fn_t *os, c
   return(n);
 }
 
+//***********************************************************************
+// va_append_set_attr - Appends the data to the attribute
+//***********************************************************************
+
+int va_append_set_attr(os_virtual_attr_t *va, object_service_fn_t *os, creds_t *creds, os_fd_t *ofd, char *fullkey, void *val, int v_size, int *atype)
+{
+  osfile_fd_t *fd = (osfile_fd_t *)ofd;
+  char buffer[512];
+  char *key;
+  int n;
+
+  n = (int)(long)va->priv;  //** HACKERY ** to get the attribute prefix length
+  key = &(fullkey[n+1]);
+
+  if (strlen(fullkey) < n) {  //** Nothing to do so return;
+     *atype = OS_OBJECT_VIRTUAL;
+     return(1);
+  }
+
+  n = osf_set_attr(os, creds, fd, key, (void *)buffer, n, atype, 1);
+  *atype |= OS_OBJECT_VIRTUAL;
+
+  return(n);
+}
+
+//***********************************************************************
+// va_append_get_attr - Just returns the attr after peeling off the PVA
+//***********************************************************************
+
+int va_append_get_attr(os_virtual_attr_t *va, object_service_fn_t *os, creds_t *creds, os_fd_t *ofd, char *fullkey, void **val, int *v_size, int *atype)
+{
+  osfile_fd_t *fd = (osfile_fd_t *)ofd;
+  char *key;
+  int n;
+
+  n = (int)(long)va->priv;  //** HACKERY ** to get the attribute prefix length
+
+  log_printf(15, "fullkey=%s va=%s\n", fullkey, va->attribute);
+
+  if (strlen(fullkey) > n) {  //** Normal attribute
+     key = &(fullkey[n+1]);
+     n = osf_get_attr(os, creds, fd, key, val, v_size, atype);
+     *atype |= OS_OBJECT_VIRTUAL;
+  } else {  //** No attribute specified so nothing to do
+     *atype = OS_OBJECT_VIRTUAL;
+     *v_size = 0;
+     n = 0;
+  }
+
+  return(n);
+}
 
 
 //***********************************************************************
@@ -2524,7 +2575,7 @@ op_status_t osfile_copy_multiple_attrs_fn(void *arg, int id)
         val = NULL;
         err = osf_get_attr(op->os, op->creds, op->fd_src, op->key_src[i], &val, &v_size, &atype);
         if (err == 0) {
-           err = osf_set_attr(op->os, op->creds, op->fd_dest, op->key_dest[i], val, v_size, &atype);
+           err = osf_set_attr(op->os, op->creds, op->fd_dest, op->key_dest[i], val, v_size, &atype, 0);
            free(val);
            if (err != 0) {
               status.op_status = OP_STATE_FAILURE;
@@ -3024,7 +3075,7 @@ int lowlevel_set_attr(object_service_fn_t *os, char *attr_dir, char *attr, void 
 // osf_set_attr - Sets the attribute given the name and base directory
 //***********************************************************************
 
-int osf_set_attr(object_service_fn_t *os, creds_t *creds, osfile_fd_t *ofd, char *attr, void *val, int v_size, int *atype)
+int osf_set_attr(object_service_fn_t *os, creds_t *creds, osfile_fd_t *ofd, char *attr, void *val, int v_size, int *atype, int append_val)
 {
   osfile_priv_t *osf = (osfile_priv_t *)os->priv;
   list_iter_t it;
@@ -3068,9 +3119,11 @@ int osf_set_attr(object_service_fn_t *os, creds_t *creds, osfile_fd_t *ofd, char
   if (os_local_filetype(fname) != OS_OBJECT_FILE) {
      if (osaz_attr_create(osf->osaz, creds, ofd->object_name, attr) == 0) return(1);
   }
-  fd = fopen(fname, "w");
+
+  fd = fopen(fname, (append_val == 0) ? "w" : "a");
+
 //log_printf(15, "fd=%p\n", fd);
-if (fd == NULL) log_printf(0, "ERROR opening attr file attr=%s val=%s v_size=%d fname=%s\n", attr, val, v_size, fname);
+if (fd == NULL) log_printf(0, "ERROR opening attr file attr=%s val=%s v_size=%d fname=%s append=%d\n", attr, val, v_size, fname, append_val);
   if (fd == NULL) return(-1);
   if (v_size > 0) fwrite(val, v_size, 1, fd);
   fclose(fd);
@@ -3097,7 +3150,7 @@ op_status_t osf_set_multiple_attr_fn(void *arg, int id)
 
   err = 0;
   for (i=0; i<op->n; i++) {
-    err += osf_set_attr(op->os, op->creds, op->fd, op->key[i], op->val[i], op->v_size[i], &atype);
+    err += osf_set_attr(op->os, op->creds, op->fd, op->key[i], op->val[i], op->v_size[i], &atype, 0);
   }
 
   osf_multi_unlock(lock_table, n_locks);
@@ -4163,9 +4216,16 @@ object_service_fn_t *object_service_file_create(service_manager_t *ess, inip_fil
   osf->timestamp_pva.set = va_timestamp_set_attr;
   osf->timestamp_pva.get_link = va_timestamp_get_link_attr;
 
+  osf->append_pva.attribute = "os.append";
+  osf->append_pva.priv = (void *)(long)(strlen(osf->append_pva.attribute));
+  osf->append_pva.get = va_append_get_attr;
+  osf->append_pva.set = va_append_set_attr;
+  osf->append_pva.get_link = va_timestamp_get_link_attr;  //** The timestamp routine just peels off the PVA so can reuse it
+
   list_insert(osf->vattr_prefix, osf->attr_link_pva.attribute, &(osf->attr_link_pva));
   list_insert(osf->vattr_prefix, osf->attr_type_pva.attribute, &(osf->attr_type_pva));
   list_insert(osf->vattr_prefix, osf->timestamp_pva.attribute, &(osf->timestamp_pva));
+  list_insert(osf->vattr_prefix, osf->append_pva.attribute, &(osf->append_pva));
 
   os->type = OS_TYPE_FILE;
 

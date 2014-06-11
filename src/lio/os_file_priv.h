@@ -83,6 +83,7 @@ typedef struct {
   os_virtual_attr_t attr_link_pva;
   os_virtual_attr_t attr_type_pva;
   os_virtual_attr_t timestamp_pva;
+  os_virtual_attr_t append_pva;
   int max_copy;
 } osfile_priv_t;
 
