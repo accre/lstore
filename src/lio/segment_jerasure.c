@@ -872,7 +872,7 @@ op_status_t segjerase_inspect_func(void *arg, int id)
   segjerase_priv_t *s = (segjerase_priv_t *)si->seg->priv;
   segjerase_full_t *sf;
   op_status_t status;
-  int option, total_stripes, child_replaced, repair, loop;
+  int option, total_stripes, child_replaced, repair, loop, i;
   op_generic_t *gop;
   int max_loops = 10;
 
@@ -949,8 +949,14 @@ log_printf(5, "repair=%d child_replaced=%d option=%d inspect_mode=%d INSPECT_QUI
                  gop_waitall(gop);
                  status = gop_get_status(gop);
                  gop_free(gop, OP_DESTROY);
-                 si->max_replaced += (status.error_code & INSPECT_RESULT_COUNT_MASK);  //** NOTE: This needs to be checks for edge cases.
-                 child_replaced = si->max_replaced;
+                 ///si->max_replaced += (status.error_code & INSPECT_RESULT_COUNT_MASK);  //** NOTE: This needs to be checks for edge cases.
+                 child_replaced = 0;
+                 log_printf(5, "n_dev_rows=%d\n", si->args->n_dev_rows);
+                 for (i=0; i<si->args->n_dev_rows; i++) { 
+                    log_printf(5, "dev_row_replaced[%d]=%d\n", i, si->args->dev_row_replaced[i]);
+                    if (si->args->dev_row_replaced[i] > child_replaced) child_replaced = si->args->dev_row_replaced[i];
+                 }
+                 si->max_replaced = child_replaced;
 
                  log_printf(5, "status: %d %d\n", status.op_status, status.error_code);
 

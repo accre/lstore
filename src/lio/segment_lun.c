@@ -1830,7 +1830,7 @@ op_status_t seglun_inspect_func(void *arg, int id)
   ex_off_t sstripe, estripe;
   int used, soft_error_fail, force_reconstruct, nforce;
   int block_status[s->n_devices], block_copy[s->n_devices];
-  int i, j, err, option, force_repair, max_lost, total_lost, total_repaired, total_migrate, nmigrated, nlost, nrepaired;
+  int i, j, err, option, force_repair, max_lost, total_lost, total_repaired, total_migrate, nmigrated, nlost, nrepaired, drow;
   inspect_args_t args;
 
   args = *(si->args);
@@ -1863,8 +1863,11 @@ op_status_t seglun_inspect_func(void *arg, int id)
 //info_printf(si->fd, 1, "local_query=%p\n", si->query);
   info_printf(si->fd, 1, XIDT ": segment information: n_devices=%d n_shift=%d chunk_size=" XOT "  used_size=" XOT " total_size=" XOT " mode=%d\n", segment_id(si->seg), s->n_devices, s->n_shift, s->chunk_size, s->used_size, s->total_size, si->inspect_mode);
 
+  si->args->n_dev_rows = count_interval_skiplist(s->isl, (skiplist_key_t *)NULL, (skiplist_key_t *)NULL);
+  drow = -1;
   it = iter_search_interval_skiplist(s->isl, (skiplist_key_t *)NULL, (skiplist_key_t *)NULL);
   for (b = (seglun_row_t *)next_interval_skiplist(&it); b != NULL; b = (seglun_row_t *)next_interval_skiplist(&it)) {
+    drow++;
     for (i=0; i < s->n_devices; i++) block_status[i] = 0;
 
     sstripe = b->seg_offset / s->stripe_size; estripe = b->seg_end / s->stripe_size;
@@ -1891,6 +1894,8 @@ op_status_t seglun_inspect_func(void *arg, int id)
     info_printf(si->fd, 1, "%s\n", info);
 
     if (max_lost < nlost) max_lost = nlost;
+    si->args->dev_row_replaced[drow] += nlost;
+log_printf(5, "row=%d nlost=%d dev_row_replaced=%d\n", drow, nlost, si->args->dev_row_replaced[drow]);
 
     nrepaired = 0;
     if ((force_repair > 0) && (nlost > 0)) {
@@ -1904,7 +1909,7 @@ op_status_t seglun_inspect_func(void *arg, int id)
 
        if (max_lost < err) max_lost = err;
 
-       info_printf(si->fd, 1, XIDT ":     Attempting to replace missing row allocations\n", segment_id(si->seg));
+       info_printf(si->fd, 1, XIDT ":     Attempting to replace missing row allocations (%d total allocs replaced or replacing for row)\n", segment_id(si->seg), si->args->dev_row_replaced[drow]);
        j = 0;  //** Iteratively try and repair the row
        do {
          memcpy(block_copy, block_status, sizeof(int)*s->n_devices);
