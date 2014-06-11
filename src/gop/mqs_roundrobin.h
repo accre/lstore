@@ -10,7 +10,6 @@ int send_min = 1024;
 int send_max = 10*1024*1024;
 int nparallel = 100;
 int ntotal = 1000;
-//int do_compress = MQS_PACK_RAW;
 int timeout = 10;
 int stream_max_size = 4096;
 int launch_flusher = 0;

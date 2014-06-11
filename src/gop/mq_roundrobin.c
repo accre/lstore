@@ -13,9 +13,6 @@ mq_worker_t *mq_worker_table_next(mq_worker_table_t *table) {
 	return (mq_worker_t *)get_ele_data(table);
 }
 
-// mq_worker_create()
-// Create a worker and fill its parameters
-
 mq_worker_t *mq_worker_create(char *address, int free_slots) {
 	
 	mq_worker_t *worker;
@@ -28,32 +25,12 @@ mq_worker_t *mq_worker_create(char *address, int free_slots) {
 	return worker;
 }
 
-// mq_worker_table_create()
-// Create an empty table for workers
-
 mq_worker_table_t *mq_worker_table_create() {
-	
-	/*
-	mq_worker_table_t *table;
-	
-	type_malloc(table, mq_worker_table_t, 1);
-	apr_pool_create(&(table->mpool), NULL);
-	assert(apr_thread_mutex_create(&(table->lock), APR_THREAD_MUTEX_DEFAULT, table->mpool) == APR_SUCCESS);
-	assert((table->table = apr_hash_make(table->mpool)) != NULL);
-	log_printf(5, "Created worker table\n");
-	*/
-	
 	return (new_stack());
 }
 
-// mq_worker_table_destroy()
-// Destroy the table and free memory
-
 void mq_worker_table_destroy(mq_worker_table_t *table) {	
 	log_printf(5, "Destroying worker table\n");
-	//apr_hash_clear(table->table);
-	//apr_pool_destroy(table->mpool);
-	//free(table);
 	mq_worker_t *worker;
 	move_to_top(table);
 	while( (worker = pop(table)) != NULL ) {
@@ -64,91 +41,66 @@ void mq_worker_table_destroy(mq_worker_table_t *table) {
 	log_printf(5, "Successfully destroyed worker table\n");
 }
 
+// mq_get_worker
+// Returns a worker by specific address (used for adding/removing workers),
+// or just returns the top worker (in which case it pops)
 mq_worker_t *mq_get_worker(mq_worker_table_t *table, char *address) {
-	//if address is NULL, return the top worker
-	//otherwise, return the worker with that address
-	mq_worker_t *worker;
 	if(address == NULL) {
-		//display_worker_table(table);
-		//move_to_top(table);
-		//worker = (mq_worker_t *)pop(table);
-		//log_printf(0, "Worker is at %s\n", worker->address);
-		//delete_current(table, 0, 0);
-		//mq_add_worker(table, worker);
-		//display_worker_table(table);
-		//move_to_bottom(table);
-		//return (mq_worker_t *)get_ele_data(table);
 		return (mq_worker_t *)pop(table);
 	}
 	else {
-		log_printf(0, "Address %s requested\n", address);
+		mq_worker_t *worker;
+		log_printf(10, "Address %s requested\n", address);
 		for(worker = mq_worker_table_first(table); worker != NULL; worker = mq_worker_table_next(table)) {
 			if(mq_data_compare(worker->address, strlen(worker->address), address, strlen(address)) == 0) {
-				log_printf(0, "Found worker!\n");
+				log_printf(10, "Found worker!\n");
 				return (mq_worker_t *)get_ele_data(table);
 			}
 		}
-		log_printf(0, "Did not find worker\n");
+		log_printf(5, "Did not find worker with address %s\n", address);
 		return NULL;
 	}
 }
 
-mq_worker_t *get_worker_on_top(mq_worker_table_t *table) {
-	
+// mq_get_available_worker
+// Returns the first worker with at least 1 free slot
+// NOTE - this pops a worker off the table. It must be added again!
+mq_worker_t *mq_get_available_worker(mq_worker_table_t *table) {
+	int i, n = mq_worker_table_length(table);
+	mq_worker_t *w;
+	for(i = 0; i < n; i++) {
+		w = mq_get_worker(table, NULL);
+		if(w->free_slots > 0) {
+			log_printf(10, "First available worker found %s\n", w->address);
+			return w;
+		}
+	}
+	log_printf(0, "WARNING - All workers are busy!\n");
+	return NULL;
 }
 
-mq_worker_t *get_worker_by_address(mq_worker_table_t *table, char *address) {
-	
-}
-
-void mq_add_worker(mq_worker_table_t *table, mq_worker_t *worker) {
+void mq_worker_table_add(mq_worker_table_t *table, mq_worker_t *worker) {
 	move_to_bottom(table);
 	insert_below(table, worker);
-	//log_printf(5, "Added worker with address = %s\tslots = %d\n", worker->address, worker->free_slots);
+	log_printf(15, "Added worker with address = %s\tslots = %d\n", worker->address, worker->free_slots);
 }
 
-// mq_register_worker()
-// Register or deregister a worker in the given worker table
-// Creates an mq_worker_t object to store in the table
 void mq_register_worker(mq_worker_table_t *table, char *address, int free_slots) {
 	
 	mq_worker_t *worker;
-	//apr_thread_mutex_lock(table->lock);
-	
-	//********The following 2 comments should be ignored
-	//check if a worker with this address already exists
-	//remove it if it does exist
-	//if free_slots < 0, we're done after this
-	//worker = apr_hash_get(table->table, address, strlen(address));
 	worker = mq_get_worker(table, address);
-	if(worker != NULL) {
+	if(worker != NULL) { //overwriting an existing worker
 		log_printf(15, "Clearing existing worker with address = %s\n", address);
-		//apr_hash_set(table->table, worker->address, strlen(worker->address), NULL);
-		//free(worker->address);
-		//free(worker);
-		
-		//Update the number of free slots
 		worker->free_slots = free_slots;
 		log_printf(10, "Worker with address %s now has %d free slots\n", address, free_slots);
 	}
 	else { //registering a new worker
 		worker = mq_worker_create(address, (free_slots < 0) ? 0 : free_slots);
-		//apr_hash_set(table->table, worker->address, strlen(worker->address), worker);
-		mq_add_worker(table, worker);
+		mq_worker_table_add(table, worker);
 	}
-	/*
-	else {
-		log_printf(5, "Deregistered worker with address = %s\n", address);
-	}
-	*/
-	
-	//apr_thread_mutex_unlock(table->lock);
 }
 
-// mq_deregister_worker()
-// Deregister a worker from the table
 void mq_deregister_worker(mq_worker_table_t *table, char *address) {
-	//mq_register_worker(table, worker->address, -1);
 	mq_worker_t *worker;
 	for(worker = mq_worker_table_first(table); worker != NULL; worker = mq_worker_table_next(table)) {
 		if(mq_data_compare(worker->address, strlen(worker->address), address, strlen(address)) == 0) {
@@ -162,8 +114,6 @@ void mq_deregister_worker(mq_worker_table_t *table, char *address) {
 	log_printf(0, "ERROR - No worker with address %s\n", address);
 }
 
-// mq_worker_table_install()
-// Install the table into the void argument pointer in the socket context
 void mq_worker_table_install(mq_worker_table_t *table, mq_portal_t *portal) {
 	
 	if(portal->implementation_arg != NULL) {
@@ -173,6 +123,7 @@ void mq_worker_table_install(mq_worker_table_t *table, mq_portal_t *portal) {
 	if(table == NULL) {
 		// suppose for some reason you tried to install a portal's existing table into itself
 		// the above block would have destroyed it, so now it's null
+		// it's your fault for doing something weird
 		log_printf(5, "ERROR: Worker table is null!\n");
 		return;
 	}
@@ -180,27 +131,96 @@ void mq_worker_table_install(mq_worker_table_t *table, mq_portal_t *portal) {
 	log_printf(15, "Installed worker table into portal's socket context\n");
 }
 
-/*
- * display_worker_table()
- * 
- * Show me the workers!
- */
-
 void display_worker_table(mq_worker_table_t *table) {
 	mq_worker_t* worker;
-	//apr_hash_index_t *hi;
-	//void *val;
 	int i;
-	/*
-	for(hi = apr_hash_first(table->mpool, table->table), i = 0; hi != NULL; hi = apr_hash_next(hi), i++) {
-		apr_hash_this(hi, NULL, NULL, &val);
-		worker = (mq_worker_t *)val;
-		log_printf(1, "SERVER: worker_table[%2d] = { address = %s free_slots = %d }\n", i, worker->address, worker->free_slots);
-	}
-	*/
+	
 	for(worker = mq_worker_table_first(table), i = 0; worker != NULL; worker = mq_worker_table_next(table), i++) {
-		 log_printf(1, "worker_table[%2d] = { address = %s free_slots = %d }\n", i, worker->address, worker->free_slots);
-	 }
+		log_printf(1, "worker_table[%2d] = { address = %s free_slots = %d }\n", i, worker->address, worker->free_slots);
+	}
+}
+
+int mq_worker_table_length(mq_worker_table_t *table) {
+	mq_worker_t *w;
+	int i;
+	for(w = mq_worker_table_first(table), i = 0; w != NULL; w = mq_worker_table_next(table), i++);
+	return i;
+}
+
+// mq_send_message()
+// Sends the given message to the first available worker
+// If no worker is free, the messages needs to be added to (or pushed back on) the processing queue
+int mq_send_message(mq_msg_t *msg, mq_worker_table_t *table, mq_portal_t *portal) {
+	if(msg == NULL) {
+		log_printf(0, "SERVER: ERROR - Null message\n");
+		return -2;
+	}
+	mq_worker_t *worker = mq_get_available_worker(table);
+	if(worker == NULL) {
+		log_printf(0, "SERVER: WARNING - All workers busy\n");
+		return -1;
+	}
+	
+	worker->free_slots--;
+	mq_frame_t *addr_frame = mq_frame_new(worker->address, strlen(worker->address), MQF_MSG_KEEP_DATA);
+	mq_worker_table_add(table, worker); //add the worker back once we use its address, since get_available_worker popped it
+	mq_msg_push_frame(msg, addr_frame);
+	
+	mq_task_t *pass_task = mq_task_new(portal->mqc, msg, NULL, NULL, 5);
+	// Set pass_through so that this task isn't added the heartbeat table
+	pass_task->pass_through = 1;
+	
+	int status = mq_submit(portal, pass_task);
+	
+	if(status != 0) {
+		log_printf(0, "SERVER: mq_submit() failed! status = %d\n", status);
+	} else {
+		log_printf(10, "SERVER: mq_submit() successfully sent message!\n");
+	}
+	
+	return 0;
+}
+
+mq_processing_queue *processing_queue_new() {
+	return new_stack();
+}
+
+void processing_queue_destroy(mq_processing_queue *queue) {
+	mq_msg_t *msg;
+	move_to_top(queue);
+	while((msg = (mq_msg_t *)pop(queue)) != NULL) {
+		mq_msg_destroy(msg);
+	}
+	free(queue);
+}
+
+void processing_queue_add(mq_processing_queue *queue, mq_msg_t *msg) {
+	move_to_bottom(queue);
+	insert_below(queue, msg);
+	//printf("test: length = %d after adding\n", processing_queue_length(queue));
+}
+
+void processing_queue_push(mq_processing_queue *queue, mq_msg_t *msg) {
+	move_to_top(queue);
+	insert_above(queue, msg);
+}
+
+mq_msg_t *processing_queue_get(mq_processing_queue *queue) {
+	//move_to_top(queue);
+	return (mq_msg_t *)pop(queue);
+}
+
+int processing_queue_length(mq_processing_queue *queue) {
+	mq_msg_t *m;
+	int i = 0;
+	move_to_top(queue);
+	m = (mq_msg_t *)get_ele_data(queue);
+	while(m != NULL) {
+		move_down(queue);
+		m = (mq_msg_t *)get_ele_data(queue);
+		i++;
+	}
+	return i;
 }
 
 // display_msg_frames()
@@ -208,19 +228,25 @@ void display_worker_table(mq_worker_table_t *table) {
 // the contents.
 // Assumes only addresses are 20+ chars and prints them
 void display_msg_frames(mq_msg_t *msg) {
+	// This prints a lot of text and chokes up valgrind, so only print if needed
+	if(_log_level < 10)
+		return;
+	
 	mq_frame_t *f;
-	char *data;
+	char *data, *toprint;
 	int size, i;
 	for(f = mq_msg_first(msg), i = 0; f != NULL; f = mq_msg_next(msg), i++) {
 		mq_get_frame(f, (void **)&data, &size);
-		char *toprint = malloc(size + 1);
-		strncpy(toprint, data, size);
-		toprint[size] = '\0';
 		log_printf(0, "msg[%2d]:\t%d\n", i, size);
-		if(size >= 20) {
-			log_printf(0, "        \t%s\n", toprint);
+		if(size != 0) {
+			toprint = malloc(size + 1);
+			strncpy(toprint, data, size);
+			toprint[size] = '\0';
+			if(size >= 20) {
+				log_printf(0, "        \t%s\n", toprint);
+			}
+			free(toprint);
 		}
-		free(toprint);
 	}
 }
 

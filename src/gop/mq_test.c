@@ -807,13 +807,6 @@ int proc_trackexec_ping(mq_portal_t *p, mq_socket_t *sock, mq_msg_t *msg)
   test_data_t *td;
 
 log_printf(5, "TEXEC START\n");
-int i; mq_frame_t *f;
-for (f = mq_msg_first(msg), i=0; f != NULL; f = mq_msg_next(msg), i++) {
-  mq_get_frame(f, (void **)&data, &err);
-  log_printf(5, "fsize[%d]=%d\n", i, err);
-  if(err >= 20)
-	log_printf(5, "\t%s\n", data);
-}
 
   apr_thread_mutex_lock(lock);
   server_stats.incoming[MQS_TRACKEXEC_INDEX]++;

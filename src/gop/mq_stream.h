@@ -80,7 +80,7 @@ typedef struct {
   mq_ongoing_t *ongoing;
   mq_ongoing_object_t *oo;
   char want_more;
-  char *remote_host;
+  mq_msg_t *remote_host;
   char *host_id;
   char *stream_id;
   int sid_len;
@@ -117,7 +117,7 @@ int mq_stream_write_string(mq_stream_t *mqs, char *str);
 int mq_stream_write(mq_stream_t *mqs, void *buffer, int nbytes);
 
 void mq_stream_release_frame(mq_stream_t *mqs);
-mq_stream_t *mq_stream_read_create(mq_context_t *mqc,  mq_ongoing_t *ongoing, char *host_id, int hid_len, mq_frame_t *fdata, char *remote_host, int to);
+mq_stream_t *mq_stream_read_create(mq_context_t *mqc,  mq_ongoing_t *ongoing, char *host_id, int hid_len, mq_frame_t *fdata, mq_msg_t *remote_host, int to);
 mq_stream_t *mq_stream_write_create(mq_context_t *mqc, mq_portal_t *server_portal, mq_ongoing_t *ongoing, char pack_type, int max_size, int timeout, mq_msg_t *address, mq_frame_t *fid, mq_frame_t *hid, int launch_flusher);
 
 void mq_stream_destroy(mq_stream_t *mqs);

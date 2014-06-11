@@ -176,7 +176,7 @@ offset=-1;
   log_printf(1, "gid=%d msid=%d Before read after EOS\n", op->gid, mqs->msid);
   err = mq_stream_read(mqs, buffer, nbytes);
   log_printf(1, "gid=%d msid=%d Attempt to read beyond EOS err=%d\n", op->gid, mqs->msid, err);
-  if (err == 0) {
+  if (err != -1) { // We want mq_stream_read to return -1 here. It's an error otherwise
      log_printf(0, "ERROR Attempt to read after EOS succeeded! err=%d gid=%d msid=%d\n", err, op->gid, mqs->msid);
      status = op_failure_status;
   }

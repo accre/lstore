@@ -154,3 +154,78 @@ mq_msg_t *mq_make_response_core_msg(mq_msg_t *address, mq_frame_t *fid)
 
   return(response);
 }
+
+//***********************************************************************
+// mq_num_frames - Returns the number of frames in the message
+//***********************************************************************
+
+int mq_num_frames(mq_msg_t *msg) {
+	mq_frame_t *f;
+	int n;
+	
+	for(f = mq_msg_first(msg), n = 0; f != NULL; f = mq_msg_next(msg), n++);
+	
+	return n;
+}
+
+//***********************************************************************
+// mq_address_to_string - Converts a message to a comma-separated string
+//***********************************************************************
+
+char *mq_address_to_string(mq_msg_t *address) {
+	/*
+	mq_frame_t *f;
+	int msg_size, frames, n, size;
+	char *string, *data;
+	
+	msg_size = mq_msg_total_size(address); // sum of frame data lengths
+	frames = mq_num_frames(address) - 1; // number of frames (number of commas in result) minus the blank frame
+	n = 0;
+	size = 0;	
+	
+	string = malloc(msg_size + frames + 10);
+	f = mq_msg_first(address); //blank frame - for loop uses next frame, which is an address
+	
+	for(f = mq_msg_next(address); f != NULL; f = mq_msg_next(address)) {
+		mq_get_frame(f, (void **)&data, &size);
+		memcpy(string + n, data, size);
+		n += size;
+		if(size == 0)
+			break;
+		*(string + (n++)) = ',';
+	}
+	*(string + (--n)) = 0; // remove the trailing comma and make this the end of the string
+	
+	// For testing:
+	log_printf(0, "DEBUG: string created = %s, malloc size = %d, actual size = %d\n", string, (msg_size+frames+10), strlen(string));
+	*/
+	char *string = malloc(32);
+	sprintf(string, "this better fucking work\0");
+	
+	return string;
+}
+
+//***********************************************************************
+// mq_string_to_address - Converts a comma-separated string to a message
+//***********************************************************************
+
+mq_msg_t *mq_string_to_address(char *string) {
+	int len;
+	char *token;
+	mq_msg_t *address;
+	
+	address = mq_msg_new();
+	
+	token = strtok(string, ',');
+	while(token) {
+		mq_msg_append_mem(address, token, strlen(token), MQF_MSG_KEEP_DATA);
+		token = strtok(NULL, ',');
+	}
+	
+	mq_msg_append_mem(address, NULL, 0, MQF_MSG_KEEP_DATA);
+	
+	// For testing:
+	display_msg_frames(address);
+	
+	return address;
+}

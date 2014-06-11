@@ -455,7 +455,7 @@ op_generic_t *new_mq_op(mq_context_t *ctx, mq_msg_t *msg, op_status_t (*fn_respo
 // mqt_exec - Routine to process exec/trackexec commands
 //**************************************************************
 
-void  *mqt_exec(apr_thread_t *th, void *arg)
+void *mqt_exec(apr_thread_t *th, void *arg)
 {
   mq_task_t *task = (mq_task_t *)arg;
   mq_portal_t *p = (mq_portal_t *)task->arg;
@@ -467,14 +467,7 @@ void  *mqt_exec(apr_thread_t *th, void *arg)
 
 char *data;
 int size, i;
-  for(f = mq_msg_first(task->msg), i = 0; f != NULL; f = mq_msg_next(task->msg), i++) {
-    mq_get_frame(f, (void **)&data, &size);
-    log_printf(0, "msg[%2d]:\t%d\n", i, size);
-    if(size >= 20) {
-      log_printf(0, "        \t%s\n", data);
-    }
-  }
-  // get back in the right position
+  
   mq_msg_first(task->msg);    //** Empty frame
   mq_msg_next(task->msg);     //** Version
   mq_msg_next(task->msg);     //** MQ command
@@ -1180,17 +1173,16 @@ int mqc_process_task(mq_conn_t *c, int *npoll, int *nproc)
   //** Convert the MAx exec time in sec to an abs timeout in usec
   task->timeout = apr_time_now() + apr_time_from_sec(task->timeout);
   
-  log_printf(0, "Message received:\n");
-  display_msg_frames(task->msg);
+  
   //** Check if we expect a response
   //** Skip over the address
   f = mq_msg_first(task->msg);
   mq_get_frame(f, (void **)&data, &size);
-  log_printf(0, "address length = %d\n", size);
+  log_printf(10, "address length = %d\n", size);
   while ((f != NULL) && (size != 0)) {
      f = mq_msg_next(task->msg);
      mq_get_frame(f, (void **)&data, &size);
-     log_printf(0, "length = %d\n", size);
+     log_printf(10, "length = %d\n", size);
   }
   if (f == NULL) { //** Bad command
      log_printf(0, "Invalid command!\n");
@@ -1200,7 +1192,6 @@ int mqc_process_task(mq_conn_t *c, int *npoll, int *nproc)
   //** Verify the version
   f = mq_msg_next(task->msg);
   mq_get_frame(f, (void **)&data, &size);
-  log_printf(0, "length = %d\n", size);
   if (mq_data_compare(data, size, MQF_VERSION_KEY, MQF_VERSION_SIZE) != 0) {  //** Bad version number
      log_printf(0, "Invalid version!\n");
      log_printf(0, "length = %d\n", size);
@@ -1208,7 +1199,7 @@ int mqc_process_task(mq_conn_t *c, int *npoll, int *nproc)
   }
   
   log_printf(10, "MQF_VERSION_KEY found\n");
-  log_printf(0, "task pass_through = %d\n", task->pass_through);
+  log_printf(5, "task pass_through = %d\n", task->pass_through);
   //** This is the command
   f = mq_msg_next(task->msg);
   mq_get_frame(f, (void **)&data, &size);

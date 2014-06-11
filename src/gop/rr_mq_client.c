@@ -7,21 +7,20 @@
 #include "mq_helpers.h"
 #include "mq_ongoing.h"
 #include "mq_roundrobin.h"
+#include "mqs_roundrobin.h"
 #include "apr_wrapper.h"
 #include "log.h"
 #include "type_malloc.h"
 #include <sys/eventfd.h>
 
-#define NUM_TEST 100
+#define NUM_TEST		1
+#define NUM_PARALLEL	10
 
 char *server = "tcp://127.0.0.1:6714";
 char *id = "99:Random_Id";
 int complete = 0;
 char *user_command = NULL;
 mq_ongoing_t *ongoing = NULL;
-apr_thread_t **bulk_clients = NULL;
-
-int send_size = 8192;
 
 typedef struct {
 	int id;
@@ -37,41 +36,107 @@ op_status_t read_stream(void *arg, int tid) {
 	mq_msg_t *msg = task->response;
 	mq_stream_t *mqs;
 	op_status_t status;
+	mq_frame_t *fdata, *f;
 	int err;
-	char *buffer, *data;
-	mq_frame_t *f;
+	char *buffer;
+	
+	int n_read, n_left, offset, n_bytes;
+	
+	ongoing = mq_ongoing_create(mqc, NULL, ongoing_client_interval, ONGOING_CLIENT);
 	
 	flush_log();
-	log_printf(4, "CLIENT: Message frames BEFORE destroying:\n");
+	log_printf(10, "CLIENT: Message frames BEFORE destroying:\n");
 	display_msg_frames(msg);
 	
-	status = op_success_status;
-	mq_remove_header(msg, 0);
-	f = mq_msg_first(msg);
-	mq_get_frame(f, (void **)&data, &err);
-	char *handle = malloc(err + 1);
-	strncpy(handle, data, err);
-	handle[err] = '\0';
-	if( strcmp(data, "RESPONSE") != 0 )
-		status = op_failure_status;
+	type_malloc(buffer, char, test_size);
 	
-	/*
-	status = op_success_status;
 	mq_remove_header(msg, 1);
-	mqs = mq_stream_read_create(mqc, ongoing, id, strlen(id), mq_msg_first(msg), server, 10);
+	fdata = mq_msg_pop(msg);
+	// Remaining frames are address frames
 	
-	buffer = malloc(send_size);
-	err = mq_stream_read(mqs, buffer, send_size);
-	if(err != 0) {
-		log_printf(0, "CLIENT: ERROR receiving data stream, err = %d\n", err);
+	log_printf(10, "CLIENT: Remaining message frames:\n");
+	display_msg_frames(msg);
+	
+	mqs = mq_stream_read_create(mqc, ongoing, "STREAM_ID", 9, fdata, msg, 3);
+	status = op_success_status;
+	
+	n_read = 0;
+	n_left = TEST_SIZE;
+	char *test_data = malloc(TEST_SIZE);
+	memset(test_data, TEST_DATA, TEST_SIZE);
+	
+	while (n_left > 0) {
+		
+		offset=-1;
+		err = mq_stream_read(mqs, &offset, sizeof(int));
+		if(err != 0) {
+			log_printf(0, "CLIENT: ERROR reading offset!  n_read=%d err=%d\n", n_read, err);
+			status = op_failure_status;
+			break;
+		}
+		
+		if(offset > TEST_SIZE) {
+			log_printf(0, "CLIENT: ERROR invalid offset=%d > %d! n_read=%d\n", offset, test_size, n_read);
+			status = op_failure_status;
+			break;
+		}
+		
+		err = mq_stream_read(mqs, &n_bytes, sizeof(int));
+		if(err != 0) {
+			log_printf(0, "CLIENT: ERROR reading n_bytes!  n_read=%d err=%d\n", n_read, err);
+			status = op_failure_status;
+			break;
+		}
+		
+		err = offset + n_bytes - 1;
+		if((err > test_size) && (err >= 0)) {
+			log_printf(0, "CLIENT: ERROR invalid offset+n_bytes offset=%d test=%d max is %d! n_read=%d\n", offset, n_bytes, test_size, n_read);
+			status = op_failure_status;
+			break;
+		}
+		
+		memset(buffer, 0, n_bytes);
+		err = mq_stream_read(mqs, buffer, n_bytes);
+		if(err != 0) {
+			log_printf(0, "CLIENT: ERROR reading data! n_bytes=%d but got %d n_read=%d\n", n_bytes, err, n_read);
+			status = op_failure_status;
+			break;
+		}
+		
+		if(memcmp(buffer, &(test_data[offset]), n_bytes) != 0) {
+			log_printf(0, "CLIENT: ERROR data mismatch! offset=%d nbytes=%d nread=%d\n", offset, n_bytes, n_read);
+			status = op_failure_status;
+			break;
+		}
+		
+		n_read += n_bytes;
+		n_left -= n_bytes;
+
+		log_printf(2, "CLIENT: n_read=%d n_left=%d\n", n_read, n_left);
+	}
+	
+	n_bytes = 1;
+	log_printf(1, "CLIENT: msid = %d Before read after EOS\n", mqs->msid);
+	err = mq_stream_read(mqs, buffer, n_bytes);
+	log_printf(1, "CLIENT: msid = %d Attempt to read beyond EOS err = %d\n", mqs->msid, err);
+	if (err == 0) {
+		log_printf(0, "CLIENT: ERROR Attempt to read after EOS succeeded! err=%d msid=%d\n", err, mqs->msid);
 		status = op_failure_status;
 	}
-	else
-		log_printf(0, "CLIENT: Retrieved %d bytes of data!\n", send_size);
 	
+	if(status.op_status == OP_STATE_FAILURE) {
+		log_printf(0, "CLIENT: ERROR - Did not receive %d bytes successfully, err = %d\n", TEST_SIZE, err);
+	}
+	else
+		log_printf(10, "CLIENT: Successfully received %d bytes!\n", TEST_SIZE);
+		
+	err = mqs->msid;
+	mq_ongoing_destroy(ongoing);
 	mq_stream_destroy(mqs);
+	mq_frame_destroy(fdata);
 	free(buffer);
-	*/
+	free(test_data);
+	
 	return status;
 }
 
@@ -79,32 +144,28 @@ void build_send_data(mq_context_t *mqc) {
 	op_generic_t *gop;
 	mq_msg_t *msg;
 	char *s = malloc(5);
-	sprintf(s, "%d", send_size);
+	sprintf(s, "%d", TEST_SIZE);
 	
-	log_printf(1, "CLIENT: Building message...\n");
-	msg = mq_msg_new();
-	mq_msg_append_mem(msg, server, strlen(server), MQF_MSG_KEEP_DATA);
-	mq_msg_append_mem(msg, NULL, 0, MQF_MSG_KEEP_DATA);
-	mq_msg_append_mem(msg, MQF_VERSION_KEY, MQF_VERSION_SIZE, MQF_MSG_KEEP_DATA);
-	mq_msg_append_mem(msg, MQF_EXEC_KEY, MQF_EXEC_SIZE, MQF_MSG_KEEP_DATA); 
-	mq_msg_append_mem(msg, "HANDLE", 6, MQF_MSG_KEEP_DATA);
+	log_printf(15, "CLIENT: Building message...\n");
+	msg = mq_make_exec_core_msg(server, 1);
 	mq_msg_append_mem(msg, MQF_RR_STREAM_KEY, MQF_RR_STREAM_SIZE, MQF_MSG_KEEP_DATA);
+	mq_msg_append_mem(msg, "STREAM_ID", 9, MQF_MSG_KEEP_DATA);
 	mq_msg_append_mem(msg, s, strlen(s), MQF_MSG_KEEP_DATA);
-	mq_msg_append_mem(msg, id, strlen(id) + 1, MQF_MSG_KEEP_DATA);  // Should switch this with prev frame
 	mq_msg_append_mem(msg, NULL, 0, MQF_MSG_KEEP_DATA);
 	
-	log_printf(1, "CLIENT: Creating new generic operation...\n");
+	log_printf(15, "CLIENT: Creating new generic operation...\n");
 	gop = new_mq_op(mqc, msg, read_stream, mqc, NULL, 10);
 	
-	log_printf(1, "CLIENT: Sending message...\n");
+	log_printf(15, "CLIENT: Sending message...\n");
 	int status = gop_waitall(gop);
 	
 	if(status != OP_STATE_SUCCESS)
-		log_printf(1, "CLIENT: Failed sending RR_STREAM request to server at %s - error = %d\n", server, status);
+		log_printf(0, "CLIENT: Failed sending RR_STREAM request to server at %s - error = %d\n", server, status);
 	else
-		log_printf(1, "CLIENT: Successfully sent RR_STREAM request to server!\n");
+		log_printf(10, "CLIENT: Successfully sent RR_STREAM request to server!\n");
 	
-	//gop_free(gop, OP_DESTROY);
+	gop_free(gop, OP_DESTROY);
+	free(s);
 }
 
 op_status_t receive_pong(void *arg, int tid) {
@@ -112,46 +173,32 @@ op_status_t receive_pong(void *arg, int tid) {
 	mq_task_t *task;
 	mq_msg_t *msg;
 	mq_frame_t *f;
-	char *data;
+	uint64_t id;
+	char *data, b64[1024];
 	int size;
 	
-	log_printf(0, "CLIENT: Received response...\n");
+	log_printf(15, "CLIENT: Received response...\n");
 	
 	status = op_success_status;
 	task = (mq_task_t *)arg;
 	msg = task->msg;
 	
-	//Parse the message and double check it's right
-	
-	log_printf(4, "CLIENT: Reponse message frames:\n");
+	log_printf(10, "CLIENT: Reponse message frames:\n");
 	display_msg_frames(msg);
 	
-	mq_msg_first(msg);
-	mq_frame_destroy(mq_msg_pluck(msg, 0)); // server address
-	mq_frame_destroy(mq_msg_pluck(msg, 0)); // null
-	mq_frame_destroy(mq_msg_pluck(msg, 0)); // version
-	mq_frame_destroy(mq_msg_pluck(msg, 0)); // trackexec
+	mq_remove_header(msg, 1);
 	f = mq_msg_pluck(msg, 0); // ID
 	mq_get_frame(f, (void **)&data, &size);
-	if( mq_data_compare(data, size, "HANDLE", 6) != 0 ) {
-		//this should never happen, because the ID frame needs to match
-		//for this function to have been called in the first place
-		log_printf(0, "CLIENT: ID in response is incorrect! This shouldn't have happened! ID = %s, size = %d\n", data, size);
-		status = op_failure_status;
-	}
-	else {
-		log_printf(0, "CLIENT: Successfully received ID: %s\n", data);
-	}
+	mq_frame_destroy(f);
+	log_printf(1, "CLIENT: Successfully received ID: %s\n", mq_id2str(data, size, b64, sizeof(b64)));
 	
 	return status;
 }
 
-int send_ping(mq_context_t *mqc, int track) {
-	op_generic_t *gop;
+mq_msg_t *pack_ping_msg(int track) {
 	mq_msg_t *msg;
-	int result;
+	uint64_t *id;
 	
-	log_printf(1, "CLIENT: Building message...\n");
 	msg = mq_msg_new();
 	mq_msg_append_mem(msg, server, strlen(server), MQF_MSG_KEEP_DATA);
 	mq_msg_append_mem(msg, NULL, 0, MQF_MSG_KEEP_DATA);
@@ -162,27 +209,39 @@ int send_ping(mq_context_t *mqc, int track) {
 	else
 		mq_msg_append_mem(msg, MQF_TRACKEXEC_KEY, MQF_TRACKEXEC_SIZE, MQF_MSG_KEEP_DATA);
 	
-	mq_msg_append_mem(msg, "HANDLE", 6, MQF_MSG_KEEP_DATA);
+	id = malloc(sizeof(uint64_t));
+	*id = atomic_global_counter();
+	mq_msg_append_mem(msg, id, sizeof(uint64_t), MQF_MSG_KEEP_DATA);
 	mq_msg_append_mem(msg, MQF_PING_KEY, MQF_PING_SIZE, MQF_MSG_KEEP_DATA);
 	mq_msg_append_mem(msg, NULL, 0, MQF_MSG_KEEP_DATA);
 	
-	log_printf(0, "CLIENT: Message to send:\n");
+	return msg;
+}
+
+int send_ping(mq_context_t *mqc, int track) {
+	op_generic_t *gop;
+	mq_msg_t *msg;
+	int result;
+	
+	log_printf(15, "CLIENT: Building message...\n");
+	msg = pack_ping_msg(track);
+	log_printf(15, "CLIENT: Message to send:\n");
 	display_msg_frames(msg);
 	
-	log_printf(1, "CLIENT: Creating new gop...\n");
+	log_printf(15, "CLIENT: Creating new gop...\n");
 	if(track == 0)
 		gop = new_mq_op(mqc, msg, NULL, NULL, NULL, 15); //EXEC, no callback
 	else
 		gop = new_mq_op(mqc, msg, receive_pong, NULL, NULL, 15); //TRACKEXEC, callback is receive_pong
 	
-	log_printf(1, "CLIENT: Sending message...\n");
+	log_printf(15, "CLIENT: Sending message...\n");
 	result = 0;
 	int status = gop_waitall(gop);
 	
 	if(status != OP_STATE_SUCCESS)
-		log_printf(1, "CLIENT: Failed sending PING request to server at %s - error = %d\n", server, status);
+		log_printf(0, "CLIENT: Failed sending PING request to server at %s - error = %d\n", server, status);
 	else {
-		log_printf(1, "CLIENT: Successfully sent PING request to server!\n");
+		log_printf(15, "CLIENT: Successfully sent PING request to server!\n");
 		result = 1;
 	}
 		
@@ -191,26 +250,26 @@ int send_ping(mq_context_t *mqc, int track) {
 }
 
 void stream_data(mq_context_t *mqc) {
-	ongoing = mq_ongoing_create(mqc, NULL, 1, ONGOING_CLIENT);
-	build_send_data(mqc);
-	mq_ongoing_destroy(ongoing);	
+	build_send_data(mqc);	
 }
 
 mq_context_t *client_make_context() {
 	mq_context_t *mqc;
 	inip_file_t *ifd;
-	char *text_parameters = "[mq_context]\n\t"
-		"min_conn=1\n\t"
-		"max_conn=4\n\t"
-		"min_threads=2\n\t"
-		"max_threads=10\n\t"
-		"backlog_trigger=1000\n\t"
-		"heartbeat_dt=120\n\t"
-		"heartbeat_failure=1000\n\t"
-		"min_ops_per_sec=100\n\t"
+	char *text_parameters = "[mq_context]\n"
+		"min_conn=1\n"
+		"max_conn=4\n"
+		"min_threads=2\n"
+		"max_threads=%d\n"
+		"backlog_trigger=1000\n"
+		"heartbeat_dt=120\n"
+		"heartbeat_failure=1000\n"
+		"min_ops_per_sec=100\n"
 		"socket_type=1002\n"; // Set socket type to MQF_ROUND_ROBIN
 	
-	ifd = inip_read_text(text_parameters);
+	char buffer[1024];
+	snprintf(buffer, sizeof(buffer), text_parameters, nparallel);
+	ifd = inip_read_text(buffer);
 	
 	mqc = mq_create_context(ifd, "mq_context");
 	inip_destroy(ifd);
@@ -218,50 +277,55 @@ mq_context_t *client_make_context() {
 	return mqc;
 }
 
-void *bulk_client_test_thread(apr_thread_t *th, void *arg) {
-	test_param_t *tp = (test_param_t *)arg;
-	mq_context_t *mqc = client_make_context();
+op_generic_t *create_bulk_ping(mq_context_t *mqc, int id) {
+	op_generic_t *gop;
+	mq_msg_t *msg;
 	
-	log_printf("BULK CLIENT: id = %d\n", tp->id);
+	msg = pack_ping_msg(1);
 	
-	tp->results = send_ping(mqc, tp->track);
+	gop = new_mq_op(mqc, msg, receive_pong, NULL, NULL, 5);
 	
-	mq_destroy_context(mqc);
-	
-	return NULL;
+	return gop;
 }
 
-void bulk_test(mq_context_t *mqc) {
-	apr_status_t dummy;
-	bulk_clients = malloc(NUM_TEST * sizeof(apr_thread_t*));
+void bulk_test(mq_context_t *mqc, int num) {
+	int results, i, n_done;
+	opque_t *q = NULL;
+	op_generic_t *gop = NULL;
 	
-	test_param_t **bulk_params = malloc(NUM_TEST * sizeof(test_param_t*));
-	int results = 0;
+	ongoing = mq_ongoing_create(mqc, NULL, ongoing_client_interval, ONGOING_CLIENT);
 	
-	log_printf(0, "CLIENT: Creating %d client threads for bulk test...\n", NUM_TEST);
+	log_printf(1, "CLIENT: Starting bulk test\n");
+	log_printf(1, "CLIENT: %d tests\n", num);
 	
-	int i;
-	for(i = 0; i < NUM_TEST; i++) {
-		bulk_clients[i] = malloc(sizeof(apr_thread_t*));
-		bulk_params[i] = malloc(sizeof(test_param_t*));
-		bulk_params[i]->id = i;
-		bulk_params[i]->results = 0;
-		bulk_params[i]->track = 0;
-		thread_create_assert(&bulk_clients[i], NULL, bulk_client_test_thread, bulk_params[i], mqc->mpool);
+	q = new_opque();
+	results = 0; n_done = 0;
+	for(i = 0; i < num; i++) {
+		gop = create_bulk_ping(mqc, i); //only sends TRACKEXEC PING
+		opque_add(q, gop);
+		if(i >= NUM_PARALLEL - 1) {
+			gop = opque_waitany(q);
+			results += (gop_get_status(gop).op_status == OP_STATE_SUCCESS) ? 1 : 0;
+			gop_free(gop, OP_DESTROY);
+			n_done++;
+			log_printf(1, "CLIENT: %d of %d completed--------------------\n", n_done, num);
+		}
 	}
 	
-	log_printf(0, "CLIENT: Joining client threads...\n");
-	for(i = 0; i < NUM_TEST; i++) {
-		apr_thread_join(&dummy, bulk_clients[i]);
-		results += bulk_params[i]->results;
+	log_printf(1, "CLIENT: Submitted all jobs; q holds %d\n", opque_task_count(q));
+	
+	while((gop = opque_waitany(q)) != NULL) {
+		results += (gop_get_status(gop).op_status == OP_STATE_SUCCESS) ? 1 : 0;
+		gop_free(gop, OP_DESTROY);
+		n_done++;
+		log_printf(1, "CLIENT: %d of %d completed--------------------\n", n_done, num);
 	}
 	
-	free(bulk_clients);
-	free(bulk_params);
+	mq_ongoing_destroy(ongoing);
+	opque_free(q, OP_DESTROY);
 	
-	log_printf(0, "CLIENT: Done with bulk test\n");
-	log_printf(0, "CLIENT: EXEC PING requests:\n");
-	log_printf(0, "CLIENT:\tsent: %d\tsuccess: %d\n");
+	log_printf(0, "CLIENT: RESULTS\n");
+	log_printf(0, "\t\ttests = %d\tsuccess = %d\n", num, results);
 	
 }
 
@@ -271,13 +335,14 @@ void client_test() {
 	flush_log();
 	log_printf(1, "CLIENT: Starting...\n");
 	
-	log_printf(1, "CLIENT: Creating context...\n");
+	log_printf(15, "CLIENT: Creating context...\n");
 	mqc = client_make_context();
 	
-	//ongoing = mq_ongoing_create(mqc, NULL, 1, ONGOING_CLIENT);
+	
 	
 	log_printf(1, "CLIENT: Up and running!\n");
 	type_malloc(user_command, char, 20);
+	int num;
 	while(!complete) {
 		printf("> ");
 		scanf("%s", user_command);
@@ -289,8 +354,11 @@ void client_test() {
 			send_ping(mqc, 0);
 		else if(strcmp(user_command, "data") == 0)
 			stream_data(mqc);
-		else if(strcmp(user_command, "bulk") == 0)
-			bulk_test(mqc);
+		else if(strcmp(user_command, "bulk") == 0) {
+			printf("num: ");
+			scanf("%d", &num);
+			bulk_test(mqc, num);
+		}
 	}
 	
 	log_printf(1, "CLIENT: Shutting down...\n");
@@ -322,6 +390,8 @@ int main(int argc, char **argv) {
 		printf("%s -d <log_level>\n", argv[0]);
 		return 1;
 	}
+	
+	srand(time(NULL));
 	
 	// Thread pool and threads
 	apr_pool_t *mpool;

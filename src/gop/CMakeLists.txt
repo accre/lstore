@@ -97,7 +97,7 @@ TARGET_LINK_LIBRARIES(rr_mq_worker gop-static ${LIBS})
 install(TARGETS ${LIO_EXE} DESTINATION bin)
 install(TARGETS gop DESTINATION lib)
 install(TARGETS gop-static DESTINATION lib)
-install(FILES callback.h gop_config.h  host_portal.h  opque.h  thread_pool.h mq_portal.h mq_helpers.h mq_stream.h mq_ongoing.h mq_roundrobin.h
+install(FILES callback.h gop_config.h  host_portal.h  opque.h  thread_pool.h mq_portal.h mq_helpers.h mq_stream.h mq_ongoing.h mq_roundrobin.h mqs_roundrobin.h
               DESTINATION include/gop )
 
 # Packaging directives

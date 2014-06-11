@@ -112,12 +112,13 @@ void mq_stream_read_request(mq_stream_t *mqs)
 log_printf(2, "msid=%d want_more=%c\n", mqs->msid, mqs->want_more);
 
   //** Form the message
-  msg = mq_make_exec_core_msg(mqs->remote_host, 1);
+  //msg = mq_make_exec_core_msg(mqs->remote_host, 1);
   mq_msg_append_mem(msg, MQS_MORE_DATA_KEY, MQS_MORE_DATA_SIZE, MQF_MSG_KEEP_DATA);
   mq_msg_append_mem(msg, mqs->host_id, mqs->hid_len, MQF_MSG_KEEP_DATA);
   mq_msg_append_mem(msg, mqs->stream_id, mqs->sid_len, MQF_MSG_KEEP_DATA);
   mq_msg_append_mem(msg, &(mqs->want_more), 1, MQF_MSG_KEEP_DATA);  //** Want more data
   mq_msg_append_mem(msg, NULL, 0, MQF_MSG_KEEP_DATA);
+  mq_apply_return_address_msg(msg, mqs->remote_host, 0);
 
   //** Make the gop
   mqs->gop_waiting = new_mq_op(mqs->mqc, msg, mqs_response_client_more, mqs, NULL, mqs->timeout);
@@ -311,9 +312,12 @@ void mq_stream_read_destroy(mq_stream_t *mqs)
      mq_stream_read_wait(mqs);
      apr_thread_mutex_lock(mqs->lock);
   }
-
-  mq_ongoing_host_dec(mqs->ongoing, mqs->remote_host, mqs->host_id, mqs->hid_len);
-
+  
+  char *rhost = mq_address_to_string(mqs->remote_host);
+  log_printf(15, "remote_host as string = %s\n", rhost);
+  mq_ongoing_host_dec(mqs->ongoing, rhost, mqs->host_id, mqs->hid_len);
+  free(rhost);
+  
   apr_thread_mutex_unlock(mqs->lock);
 
   log_printf(2, "msid=%d transfer_packets=%d\n", mqs->msid, mqs->transfer_packets);
@@ -334,7 +338,7 @@ void mq_stream_read_destroy(mq_stream_t *mqs)
 // mq_stream_read_create - Creates an MQ stream for reading
 //***********************************************************************
 
-mq_stream_t *mq_stream_read_create(mq_context_t *mqc, mq_ongoing_t *on, char *host_id, int hid_len, mq_frame_t *fdata, char *remote_host, int to)
+mq_stream_t *mq_stream_read_create(mq_context_t *mqc, mq_ongoing_t *on, char *host_id, int hid_len, mq_frame_t *fdata, mq_msg_t *remote_host, int to)
 {
   mq_stream_t *mqs;
   int ptype;
@@ -369,7 +373,10 @@ log_printf(5, "printing 1st 50 bytes mqsbuf=%s\n", mq_id2str((char *)mqs->data, 
 
   if (mqs->data[MQS_STATE_INDEX] == MQS_MORE) { //** More data coming so ask for it
 log_printf(5, "issuing read request\n");
-     mq_ongoing_host_inc(mqs->ongoing, mqs->remote_host, mqs->host_id, mqs->hid_len, mqs->timeout);
+     char *rhost = mq_address_to_string(mqs->remote_host);
+     log_printf(15, "remote_host as string = %s\n", rhost);
+     mq_ongoing_host_inc(mqs->ongoing, rhost, mqs->host_id, mqs->hid_len, mqs->timeout);
+     free(rhost);
      mq_stream_read_request(mqs);
   }
 
