@@ -96,7 +96,7 @@ int main(int argc, char **argv)
   char *attr_fmt = "\t%s=%s\\n";
   char *attr_sep = "";
 
-  int recurse_depth = 10000;
+  int recurse_depth = 0;
   int obj_types = OS_OBJECT_FILE;
 
 //estr = argv2format(argv[1]);
