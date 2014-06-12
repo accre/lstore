@@ -92,7 +92,7 @@ void *ongoing_heartbeat_thread(apr_thread_t *th, void *data)
   n = 0;
   do {
      now = apr_time_now() - apr_time_from_sec(5);  //** Give our selves a little buffer
-     log_printf(1, "Loop Start now=" TT "\n", apr_time_now());
+     log_printf(5, "Loop Start now=" TT "\n", apr_time_now());
      q = new_opque();
 //     opque_start_execution(q);
      for (hit = apr_hash_first(NULL, on->table); hit != NULL; hit = apr_hash_next(hit)) {
@@ -120,7 +120,7 @@ void *ongoing_heartbeat_thread(apr_thread_t *th, void *data)
         }
 
      }
-     log_printf(1, "Loop end now=" TT "\n", apr_time_now());
+     log_printf(5, "Loop end now=" TT "\n", apr_time_now());
 
      //** Wait for it to complete
      apr_thread_mutex_unlock(on->lock);

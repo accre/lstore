@@ -36,13 +36,11 @@ op_status_t read_stream(void *arg, int tid) {
 	mq_msg_t *msg = task->response;
 	mq_stream_t *mqs;
 	op_status_t status;
-	mq_frame_t *fdata, *f;
+	mq_frame_t *fdata;
 	int err;
 	char *buffer;
 	
 	int n_read, n_left, offset, n_bytes;
-	
-	ongoing = mq_ongoing_create(mqc, NULL, ongoing_client_interval, ONGOING_CLIENT);
 	
 	flush_log();
 	log_printf(10, "CLIENT: Message frames BEFORE destroying:\n");
@@ -131,7 +129,6 @@ op_status_t read_stream(void *arg, int tid) {
 		log_printf(10, "CLIENT: Successfully received %d bytes!\n", TEST_SIZE);
 		
 	err = mqs->msid;
-	mq_ongoing_destroy(ongoing);
 	mq_stream_destroy(mqs);
 	mq_frame_destroy(fdata);
 	free(buffer);
@@ -140,18 +137,25 @@ op_status_t read_stream(void *arg, int tid) {
 	return status;
 }
 
+mq_msg_t *pack_stream_msg() {
+	char *data_size = malloc(5);
+	sprintf(data_size, "%d", TEST_SIZE);
+	
+	log_printf(15, "CLIENT: Building message...\n");
+	mq_msg_t *msg = mq_make_exec_core_msg(server, 1);
+	mq_msg_append_mem(msg, MQF_RR_STREAM_KEY, MQF_RR_STREAM_SIZE, MQF_MSG_KEEP_DATA);
+	mq_msg_append_mem(msg, "STREAM_ID", 9, MQF_MSG_KEEP_DATA);
+	mq_msg_append_mem(msg, data_size, strlen(data_size), MQF_MSG_KEEP_DATA);
+	mq_msg_append_mem(msg, NULL, 0, MQF_MSG_KEEP_DATA);
+	
+	return msg;
+}
+
 void build_send_data(mq_context_t *mqc) {
 	op_generic_t *gop;
 	mq_msg_t *msg;
-	char *s = malloc(5);
-	sprintf(s, "%d", TEST_SIZE);
 	
-	log_printf(15, "CLIENT: Building message...\n");
-	msg = mq_make_exec_core_msg(server, 1);
-	mq_msg_append_mem(msg, MQF_RR_STREAM_KEY, MQF_RR_STREAM_SIZE, MQF_MSG_KEEP_DATA);
-	mq_msg_append_mem(msg, "STREAM_ID", 9, MQF_MSG_KEEP_DATA);
-	mq_msg_append_mem(msg, s, strlen(s), MQF_MSG_KEEP_DATA);
-	mq_msg_append_mem(msg, NULL, 0, MQF_MSG_KEEP_DATA);
+	msg = pack_stream_msg();
 	
 	log_printf(15, "CLIENT: Creating new generic operation...\n");
 	gop = new_mq_op(mqc, msg, read_stream, mqc, NULL, 10);
@@ -165,7 +169,6 @@ void build_send_data(mq_context_t *mqc) {
 		log_printf(10, "CLIENT: Successfully sent RR_STREAM request to server!\n");
 	
 	gop_free(gop, OP_DESTROY);
-	free(s);
 }
 
 op_status_t receive_pong(void *arg, int tid) {
@@ -173,7 +176,6 @@ op_status_t receive_pong(void *arg, int tid) {
 	mq_task_t *task;
 	mq_msg_t *msg;
 	mq_frame_t *f;
-	uint64_t id;
 	char *data, b64[1024];
 	int size;
 	
@@ -288,44 +290,90 @@ op_generic_t *create_bulk_ping(mq_context_t *mqc, int id) {
 	return gop;
 }
 
-void bulk_test(mq_context_t *mqc, int num) {
-	int results, i, n_done;
+op_generic_t *create_bulk_stream(mq_context_t *mqc, int id) {
+	op_generic_t *gop;
+	mq_msg_t *msg;
+	
+	msg = pack_stream_msg();
+	
+	gop = new_mq_op(mqc, msg, read_stream, NULL, NULL, 5);
+	
+	return gop;
+}
+
+void bulk_stream_test(mq_context_t *mqc, int num) {
+	int stream_result, i, n_done;
 	opque_t *q = NULL;
 	op_generic_t *gop = NULL;
 	
-	ongoing = mq_ongoing_create(mqc, NULL, ongoing_client_interval, ONGOING_CLIENT);
-	
-	log_printf(1, "CLIENT: Starting bulk test\n");
+	log_printf(1, "CLIENT: Starting bulk STREAM test\n");
 	log_printf(1, "CLIENT: %d tests\n", num);
 	
 	q = new_opque();
-	results = 0; n_done = 0;
+	stream_result = 0; n_done = 0;
+	
+	stream_result = 0; n_done = 0;
+	for(i = 0; i < num; i++) {
+		gop = create_bulk_stream(mqc, i);
+		opque_add(q, gop);
+	}
+	
+	log_printf(1, "CLIENT: Submitted all STREAM jobs; opque holds %d\n", opque_task_count(q));
+	
+	while((gop = opque_waitany(q)) != NULL) {
+		stream_result += (gop_get_status(gop).op_status == OP_STATE_SUCCESS) ? 1 : 0;
+		gop_free(gop, OP_DESTROY);
+		n_done++;
+		log_printf(1, "CLIENT: STREAM %d of %d completed------------------\n", n_done, num);
+	}
+	
+	opque_free(q, OP_DESTROY);
+	
+	log_printf(0, "CLIENT: BULK TEST DONE - RESULTS:\n");
+	log_printf(0, "type\t# total\t# success\n");
+	log_printf(0, "----\t-------\t---------\n");
+	log_printf(0, "STREAM\t%7d\t%9d\n", num, stream_result);
+}
+
+void bulk_ping_test(mq_context_t *mqc, int num) {
+	int ping_result, i, n_done;
+	opque_t *q = NULL;
+	op_generic_t *gop = NULL;
+	
+	log_printf(1, "CLIENT: Starting bulk PING test\n");
+	log_printf(1, "CLIENT: %d tests\n", num);
+	
+	q = new_opque();
+	ping_result = 0; n_done = 0;
 	for(i = 0; i < num; i++) {
 		gop = create_bulk_ping(mqc, i); //only sends TRACKEXEC PING
 		opque_add(q, gop);
 		if(i >= NUM_PARALLEL - 1) {
 			gop = opque_waitany(q);
-			results += (gop_get_status(gop).op_status == OP_STATE_SUCCESS) ? 1 : 0;
+			ping_result += (gop_get_status(gop).op_status == OP_STATE_SUCCESS) ? 1 : 0;
 			gop_free(gop, OP_DESTROY);
 			n_done++;
 			log_printf(1, "CLIENT: %d of %d completed--------------------\n", n_done, num);
 		}
 	}
 	
-	log_printf(1, "CLIENT: Submitted all jobs; q holds %d\n", opque_task_count(q));
+	log_printf(1, "CLIENT: Submitted all PING jobs; opque holds %d\n", opque_task_count(q));
 	
 	while((gop = opque_waitany(q)) != NULL) {
-		results += (gop_get_status(gop).op_status == OP_STATE_SUCCESS) ? 1 : 0;
+		ping_result += (gop_get_status(gop).op_status == OP_STATE_SUCCESS) ? 1 : 0;
 		gop_free(gop, OP_DESTROY);
 		n_done++;
-		log_printf(1, "CLIENT: %d of %d completed--------------------\n", n_done, num);
+		log_printf(1, "CLIENT: PING %d of %d completed--------------------\n", n_done, num);
 	}
 	
-	mq_ongoing_destroy(ongoing);
+	
+	
 	opque_free(q, OP_DESTROY);
 	
-	log_printf(0, "CLIENT: RESULTS\n");
-	log_printf(0, "\t\ttests = %d\tsuccess = %d\n", num, results);
+	log_printf(0, "CLIENT: BULK TEST DONE - RESULTS:\n");
+	log_printf(0, "type\t# total\t# success\n");
+	log_printf(0, "----\t-------\t---------\n");
+	log_printf(0, "PING\t%7d\t%9d\n", num, ping_result);
 	
 }
 
@@ -338,7 +386,7 @@ void client_test() {
 	log_printf(15, "CLIENT: Creating context...\n");
 	mqc = client_make_context();
 	
-	
+	ongoing = mq_ongoing_create(mqc, NULL, ongoing_client_interval, ONGOING_CLIENT);
 	
 	log_printf(1, "CLIENT: Up and running!\n");
 	type_malloc(user_command, char, 20);
@@ -354,14 +402,18 @@ void client_test() {
 			send_ping(mqc, 0);
 		else if(strcmp(user_command, "data") == 0)
 			stream_data(mqc);
-		else if(strcmp(user_command, "bulk") == 0) {
-			printf("num: ");
+		else if(strcmp(user_command, "bulkping") == 0) {
 			scanf("%d", &num);
-			bulk_test(mqc, num);
+			bulk_ping_test(mqc, num);
+		}
+		else if(strcmp(user_command, "bulkdata") == 0) {
+			scanf("%d", &num);
+			bulk_stream_test(mqc, num);
 		}
 	}
 	
 	log_printf(1, "CLIENT: Shutting down...\n");
+	mq_ongoing_destroy(ongoing);
 	mq_destroy_context(mqc);
 	free(user_command);
 	

@@ -31,9 +31,9 @@ mq_worker_table_t *mq_worker_table_create() {
 
 void mq_worker_table_destroy(mq_worker_table_t *table) {	
 	log_printf(5, "Destroying worker table\n");
-	mq_worker_t *worker;
 	move_to_top(table);
-	while( (worker = pop(table)) != NULL ) {
+	mq_worker_t *worker;
+	while( (worker = (mq_worker_t *)pop(table)) != NULL) {
 		free(worker->address);
 		free(worker);
 	}
@@ -54,7 +54,8 @@ mq_worker_t *mq_get_worker(mq_worker_table_t *table, char *address) {
 		for(worker = mq_worker_table_first(table); worker != NULL; worker = mq_worker_table_next(table)) {
 			if(mq_data_compare(worker->address, strlen(worker->address), address, strlen(address)) == 0) {
 				log_printf(10, "Found worker!\n");
-				return (mq_worker_t *)get_ele_data(table);
+				delete_current(table, 0, 0);
+				return worker;
 			}
 		}
 		log_printf(5, "Did not find worker with address %s\n", address);
@@ -64,15 +65,13 @@ mq_worker_t *mq_get_worker(mq_worker_table_t *table, char *address) {
 
 // mq_get_available_worker
 // Returns the first worker with at least 1 free slot
-// NOTE - this pops a worker off the table. It must be added again!
 mq_worker_t *mq_get_available_worker(mq_worker_table_t *table) {
-	int i, n = mq_worker_table_length(table);
-	mq_worker_t *w;
-	for(i = 0; i < n; i++) {
-		w = mq_get_worker(table, NULL);
-		if(w->free_slots > 0) {
-			log_printf(10, "First available worker found %s\n", w->address);
-			return w;
+	//int i, n = mq_worker_table_length(table);
+	mq_worker_t *worker;
+	for(worker = mq_worker_table_first(table); worker != NULL; worker = mq_worker_table_next(table)) {
+		if(worker->free_slots > 0) {
+			delete_current(table, 0, 0);
+			return worker;
 		}
 	}
 	log_printf(0, "WARNING - All workers are busy!\n");
@@ -96,8 +95,8 @@ void mq_register_worker(mq_worker_table_t *table, char *address, int free_slots)
 	}
 	else { //registering a new worker
 		worker = mq_worker_create(address, (free_slots < 0) ? 0 : free_slots);
-		mq_worker_table_add(table, worker);
 	}
+	mq_worker_table_add(table, worker);
 }
 
 void mq_deregister_worker(mq_worker_table_t *table, char *address) {

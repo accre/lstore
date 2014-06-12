@@ -35,13 +35,14 @@ void process_round_robin_pass(mq_portal_t *p, mq_socket_t *sock, mq_msg_t *msg) 
 	
 	worker_table = (mq_worker_table_t *)p->implementation_arg;
 	
+	apr_thread_mutex_lock(queue_lock);
 	if(mq_worker_table_length(worker_table) == 0) {
-		apr_thread_mutex_lock(queue_lock);
 		processing_queue_add(processing_queue, msg);
 		apr_thread_mutex_unlock(queue_lock);
 		log_printf(0, "SERVER: ERROR - No workers registered. Message added to queue. Current queue length = %d\n", processing_queue_length(processing_queue));
 		return;
 	}
+	apr_thread_mutex_unlock(queue_lock);
 	
 	int n_messages;
 	
@@ -59,6 +60,7 @@ void process_round_robin_pass(mq_portal_t *p, mq_socket_t *sock, mq_msg_t *msg) 
 			if(err == -1) {
 				// All workers are busy. Push this message back on top and exit
 				processing_queue_push(processing_queue, m);
+				apr_thread_mutex_unlock(queue_lock);
 				return;
 			}
 		}
@@ -115,7 +117,9 @@ void process_register_worker(mq_portal_t *p, mq_socket_t *sock, mq_msg_t *msg) {
 	log_printf(4, "SERVER: Worker at %s has free_slots = %d, size = %d\n", worker_address, worker_free_slots, err);
 	
 	// Add this worker to the table
+	apr_thread_mutex_lock(table_lock);
 	mq_register_worker(p->implementation_arg, worker_address, worker_free_slots);
+	apr_thread_mutex_unlock(table_lock);
 	
 	log_printf(10, "SERVER: Sending REGISTER confirmation to worker...\n");
 	
@@ -160,7 +164,9 @@ void process_deregister_worker(mq_portal_t *p, mq_socket_t *sock, mq_msg_t *msg)
 	
 	table = (mq_worker_table_t *) p->implementation_arg;
 	
+	apr_thread_mutex_lock(table_lock);
 	mq_deregister_worker(table, worker_address);
+	apr_thread_mutex_unlock(table_lock);
 	
 	log_printf(5, "SERVER: Deleted worker with address %s\n", worker_address);
 	free(worker_address);
@@ -184,15 +190,18 @@ void process_increment_worker(mq_portal_t *p, mq_socket_t *sock, mq_msg_t *msg) 
 	worker_address[err] = '\0';
 	log_printf(10, "SERVER: Attempting to increment worker with address %s\n", worker_address);
 	
+	apr_thread_mutex_lock(table_lock);
 	table = (mq_worker_table_t *) p->implementation_arg;
 	worker = mq_get_worker(table, worker_address);
 	if(worker != NULL) {
 		worker->free_slots++;
+		mq_worker_table_add(table, worker);
 		log_printf(15, "SERVER: Worker with address %s now has %d free slots\n", worker_address, worker->free_slots);
 	}
 	else {
 		log_printf(0, "SERVER: ERROR - Could not find worker with address %s\n", worker_address);
 	}
+	apr_thread_mutex_unlock(table_lock);
 	
 	free(worker_address);
 	mq_msg_destroy(msg);
@@ -275,7 +284,7 @@ void *queue_checker(apr_thread_t *thread, void *arg) {
 		if(complete != 0)
 			return;
 		
-		log_printf(5, "SERVER: Checking processing queue...\n");
+		log_printf(15, "SERVER: Checking processing queue...\n");
 		int n_messages;
 		int n_processed = 0;
 		
@@ -300,7 +309,7 @@ void *queue_checker(apr_thread_t *thread, void *arg) {
 			}
 			apr_thread_mutex_unlock(queue_lock);
 		}
-		log_printf(5, "SERVER: Done checking, processed %d messages from queue. Current queue length = %d\n", n_processed, processing_queue_length(processing_queue));
+		log_printf(15, "SERVER: Done checking, processed %d messages from queue. Current queue length = %d\n", n_processed, processing_queue_length(processing_queue));
 	}
 }
 

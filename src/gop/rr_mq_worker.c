@@ -58,7 +58,7 @@ void build_send_increment(mq_portal_t *portal) {
 	msg = pack_increment_msg();
 	task = mq_task_new(portal->mqc, msg, NULL, NULL, 5);
 	
-	log_printf(15, "WORKER: Sending INCREMENT message...\n");
+	log_printf(1, "WORKER: Sending INCREMENT message...\n");
 	int status = mq_submit(portal, task);
 	
 	if(status != 0)
