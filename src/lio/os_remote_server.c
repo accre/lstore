@@ -2098,13 +2098,13 @@ log_printf(15, "i=%d key=%s v_size=%d bpos=%d\n", i, key[i], len, bpos);
   }
 
   path = os_regex_table_unpack(&(buffer[bpos]), fsize-bpos, &n);
-  if (n == 0) goto fail;
+  if ((n == 0) || (path == NULL)) { log_printf(0, "path=NULL\n"); goto fail; }
   bpos += n;
 
 log_printf(15, "1. bpos=%d fsize=%d\n", bpos, fsize);
 
   object_regex = os_regex_table_unpack(&(buffer[bpos]), fsize-bpos, &n);
-  if (n == 0) goto fail;
+  if (n == 0) { log_printf(0, "object_regex=NULL n=%d", n); goto fail; }
   bpos += n;
 
 log_printf(15, "2. bpos=%d fsize=%d\n", bpos, fsize);
