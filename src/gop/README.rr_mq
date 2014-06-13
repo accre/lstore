@@ -12,15 +12,19 @@ The overall architecture of the round robin system is as follows:
                                       ----------
 
 ---------------------------------------------------------------------
-RR_MQ_CLIENT
+| RR_MQ_CLIENT                                                      |
 ---------------------------------------------------------------------
 
 The client is largely the same as any other client. As far as the
 client is concerned, it is sending messages to the server, and the
-server is processing and responding to them.
+server is processing and responding to them. This was done by design
+so that an existing client can simply be redirected to a round-robin
+server with no other changes.
+
+
 
 ---------------------------------------------------------------------
-RR_MQ_SERVER
+| RR_MQ_SERVER                                                      |
 ---------------------------------------------------------------------
 
 The server sits in between the client and workers and passes messages
@@ -46,7 +50,8 @@ The server reacts to only 3 commands:
  - INCREMENT
 All three are used for worker control/manipulation.
 
-REGISTER:
+---REGISTER----------------------------------------------------------
+
 This message is sent by a worker to the server. The message contains
 a frame with the number of free slots this worker will have.
 Currently, all workers have 10 slots. The final frame of this message
@@ -56,19 +61,22 @@ The server stores both parameters in an mq_worker_t object, which is
 then added to the worker table. If a worker at that address already
 exists, the number of free slots is overwritten to this new value.
 
-DEREGISTER:
+---DEREGISTER--------------------------------------------------------
+
 The opposite of REGISTER. The server searches for the unique address
 (last frame of message) and removes that mq_worker_t object if it
 exists. If it doesn't exist, it is ignored.
 
-INCREMENT:
+---INCREMENT---------------------------------------------------------
+
 This is sent by the worker upon completing a task (doesn't matter if
 the task failed or was successful).
 
 The server again takes the unique address, finds the mq_worker_t in
 the table with that address, and increments its number of free slots.
 
-Worker Table:
+---Worker Table------------------------------------------------------
+
 The worker table behaves as a "least-recently-used" queue. When an
 incoming message needs to be passed to a worker, the first worker in
 the table is popped. If that worker has at least 1 free slot:
@@ -86,7 +94,12 @@ queue.
 The function display_worker_table() will list all registered workers,
 their address, and their free slots.
 
-Processing Queue:
+The worker table is stored in a new variable in mq_portal_t, called
+implementation_arg. This is a void pointer, so different
+implementations can store something else in them.
+
+---Processing Queue--------------------------------------------------
+
 The processing queue is used to store messages when all workers are
 at capacity. The processing queue does not have a limit to how many
 messages it can store. The processing queue is used in two places.
@@ -107,7 +120,8 @@ second) checks the processing queue for backlogged messages. If any
 exist, the server attempts to send as many as possible in exactly
 the same way as process_round_robin_pass.
 
-process_round_robin_pass():
+---process_round_robin_pass()----------------------------------------
+
 This function does most of the work in the server. It is the default
 function for messages that are not one of the three listed above.
 
@@ -120,10 +134,12 @@ This lets the task go without being added to the heartbeat table,
 since the server does not need a response.
 
 If there is not, this message needs to be passed to a worker. The
-mq_worker_table_t section above describes what happens.
+mq_worker_table_t section above describes what happens next.
+
+
 
 ---------------------------------------------------------------------
-RR_MQ_WORKER
+| RR_MQ_WORKER                                                      |
 ---------------------------------------------------------------------
 
 Workers largely behave like servers do in a regular MQ setup. That
@@ -139,3 +155,74 @@ also created here.
 When a worker is shutting down, it needs to send a DEREGISTER message
 to the server so it can be removed from the server's table. This is a
 fire-and-forget message.
+
+
+---------------------------------------------------------------------
+| EXAMPLE                                                           |
+---------------------------------------------------------------------
+
+The three test files, rr_mq_client/server/worker run as separate
+processes. I ran them each in their own terminal window so I could
+watch things happen in parallel. When starting the programs, debug
+level (-d <n>) is required. Setting debug to 1 will print basic info.
+Setting it to 0 will only display errors.
+
+Once the processes start, they provide a simple command line
+interface so you can run commands at leisure. Each process has its
+own set of commands you can run. The following is an example of what
+you can do (run these commands in order):
+
+WORKER:		register     - This will register the worker with the
+                               server
+
+SERVER:		workers      - This will display all workers in the
+                               table; as of now, there's only one
+
+CLIENT:		pingt        - This will send a TRACKEXEC PING to the
+                               server. You will see the server react
+                               to receiving it (there will be errors
+                               from the low-level mq stuff, - ignore
+                               these), the worker processing it, the
+                               server passing the message back, and 
+                               the client receiving it. You can also
+                               do "ping", which sends an EXEC PING.
+
+WORKER:		bulk         - This will start 10 child worker
+                               threads. They will automatically
+                               register with the server and install
+                               commands. You can't interact with
+                               these threads apart from shutting them
+                               down.
+
+SERVER:		workers      - Just to see all 10 workers
+
+CLIENT:		bulkping 100 - This will send 100 TRACKEXEC PING
+                               messages to the server with (for now)
+                               up to 10 messages in parallel. At the
+                               end you will get a short results
+                               summary showing how many messages were
+                               sent and how many succeeded. You will
+                               also see progress markers during the
+                               test.
+
+CLIENT:		bulkdata 100 - This sends 100 STREAM messages. For
+                               now, all STREAM messages request 1024
+                               bytes. You will again see progress
+                               markers during the test and a summary
+                               at the end.
+
+WORKER:		endbulk      - This shuts down all the child worker
+                               threads. If you have debug level set
+                               high enough (5 should do), you will
+                               see a summary of messages they passed.
+                               The child worker threads will
+                               automatically deregister from the
+                               server before quitting.
+
+WORKER:		deregister   - This sends a DEREGISTER to the server.
+
+WORKER:		quit         - Shuts down the worker
+
+SERVER:		quit         - Shuts down the server
+
+CLIENT:		quit         - Take a guess
