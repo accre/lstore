@@ -136,9 +136,12 @@ int tb_next_block(tbuffer_t *tb, size_t pos, tbuffer_var_t *tbv)
 
 //n1=ds; n2=ti->total_bytes;
 //log_printf(0, "tb_next_block: on boundary  ds=%d total=%d\n", n1, n2);
-    if (ds == ti->total_bytes) {  //** Want the rest of the buffer
+    if (ds >= ti->total_bytes) {  //** Want the rest of the buffer
        tbv->buffer = &(v[slot]);
        tbv->n_iov = ti->n - tbv->priv.curr_slot;
+       if (tbv->nbytes > ti->total_bytes) {
+          tbv->nbytes = (ti->total_bytes > sum) ? ti->total_bytes - sum : 0;
+       }
     } else {  //** Only want a fraction of the buffer
        len = 0;
        for (i=tbv->priv.curr_slot; i<ti->n; i++) {
@@ -155,8 +158,8 @@ int tb_next_block(tbuffer_t *tb, size_t pos, tbuffer_var_t *tbv)
        if (slot == tbv->priv.curr_slot) {  //** Want a subset of the current element
           tbv->n_iov = 1;
           tbv->priv.single = v[tbv->priv.curr_slot];
-          tbv->priv.single.iov_len = tbv->nbytes;
           tbv->buffer = &(tbv->priv.single);
+          tbv->priv.single.iov_len = tbv->nbytes;
        } else {         //** Multiple elements wanted so drop the parital element
           tbv->n_iov = slot - tbv->priv.curr_slot;
           tbv->buffer = &(v[tbv->priv.curr_slot]);
