@@ -1563,7 +1563,7 @@ int lfs_read(const char *fname, char *buf, size_t size, off_t off, struct fuse_f
   tbuffer_t tbuf;
   ex_iovec_t exv;
   int err;
-  ex_off_t ssize, pend;
+  ex_off_t ssize, pend, rsize, rend, dr;
   apr_time_t now;
   double dt;
 
@@ -1589,7 +1589,7 @@ int lfs_read(const char *fname, char *buf, size_t size, off_t off, struct fuse_f
   //** Do the read op
   ssize = segment_size(fd->fh->seg);
   pend = off + size;
-  log_printf(0, "ssize=" XOT " off=" XOT " len=" XOT " pend=" XOT "\n", ssize, off, size, pend);
+  log_printf(0, "ssize=" XOT " off=" XOT " len=" XOT " pend=" XOT " readahead=" XOT "\n", ssize, off, size, pend, lfs->readahead);
   if (pend > ssize)
   {
     if (off > ssize) {
@@ -1601,13 +1601,33 @@ int lfs_read(const char *fname, char *buf, size_t size, off_t off, struct fuse_f
   }
   log_printf(0, "tweaked len=" XOT "\n", size);
   if (size <= 0) { log_printf(0, "Clipped tweaked len\n"); return(0); }
-  tbuffer_single(&tbuf, size, buf);
-  ex_iovec_single(&exv, off, size);
+
+  rend = pend + lfs->readahead;  //** Tweak based on readahead
+  rsize = size;
+  segment_lock(fd->fh->seg);
+  dr = pend - fd->fh->readahead_end;
+  if ((dr > 0) || ((-dr) > lfs->readahead) || ((-dr) < 0.5*lfs->readahead)) {
+     rsize = rend - off;
+     if (rend > ssize)
+     {
+       if (off <= ssize) {
+          rsize = ssize - off;  //** Tweak the size based on how much data there is
+       }
+     }
+
+     fd->fh->readahead_end = rend;  //** Update the readahead end
+  } else {
+     rend = fd->fh->readahead_end;
+  }
+  segment_unlock(fd->fh->seg);
+
+  tbuffer_single(&tbuf, size, buf);  //** This is the buffer size
+  ex_iovec_single(&exv, off, rsize);  //** This is the buffer+readahead.  The extra doesn't get stored in the buffer.  Just in page cache.
   err = gop_sync_exec(segment_read(fd->fh->seg, lfs->lc->da, 1, &exv, &tbuf, 0, lfs->lc->timeout));
 
   dt = apr_time_now() - now;
   dt /= APR_USEC_PER_SEC;
-  log_printf(1, "END fname=%s seg=" XIDT " size=" XOT " off=" XOT " dt=%lf\n", fname, segment_id(fd->fh->seg), t1, t2, dt); flush_log();
+  log_printf(1, "END fname=%s seg=" XIDT " size=" XOT " off=" XOT " rsize=" XOT " rend=" XOT " dt=%lf\n", fname, segment_id(fd->fh->seg), t1, t2, rsize, rend, dt); flush_log();
 
   if (err != OP_STATE_SUCCESS) {
      log_printf(1, "ERROR with read! fname=%s\n", fname);
@@ -2907,6 +2927,7 @@ void *lfs_init_real(struct fuse_conn_info *conn,
   lfs->gc_interval = APR_USEC_PER_SEC * inip_get_integer(lfs->lc->ifd, section, "gc_interval", 60);
   lfs->file_count = inip_get_integer(lfs->lc->ifd, section, "file_lock_size", 1000);
   lfs->enable_tape = inip_get_integer(lfs->lc->ifd, section, "enable_tape", 0);
+  lfs->readahead = inip_get_integer(lfs->lc->ifd, section, "readahead", 0);
 
   n = lfs->inode_cache_size;
   p = log2(n) + 3;

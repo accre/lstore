@@ -98,6 +98,7 @@ typedef struct {
   apr_time_t xattr_to;
   apr_time_t stale_dt;
   apr_time_t gc_interval;
+  ex_off_t readahead;
   int file_count;
   int enable_tape;
   int shutdown;
@@ -121,6 +122,7 @@ struct lio_fuse_file_handle_s {  //** Shared file handle
   segment_t *seg;
   lio_fuse_t *lfs;
   int ref_count;
+  ex_off_t readahead_end;
   atomic_int_t modified;
 };
 
