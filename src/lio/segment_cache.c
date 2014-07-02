@@ -2610,7 +2610,7 @@ log_printf(15, "END size=" XOT "\n", s->total_size);
 
   segment_unlock(seg);
 
-  if (tb_err != 0) err = op_failure_status;
+//***  if (tb_err != 0) err = op_failure_status;
 
   return(err);
 }
