@@ -909,7 +909,7 @@ log_printf(5, "child_replaced =%d ndata=%d\n", child_replaced, s->n_parity_devs)
 //  force_reconstruct = si->inspect_mode & INSPECT_FORCE_REPAIR;
 log_printf(5, "repair=%d child_replaced=%d option=%d inspect_mode=%d INSPECT_QUICK_REPAIR=%d\n", repair, child_replaced, option, si->inspect_mode, INSPECT_QUICK_REPAIR);
 //  if ((repair > 0) && (force_reconstruct > 0) && (child_replaced > 0) && (option == INSPECT_QUICK_REPAIR)) {
-  if ((repair > 0) && (child_replaced > 0) && (option == INSPECT_QUICK_REPAIR)) {
+  if ((repair > 0) && ((child_replaced > 0) || (s->magic_cksum == 0)) && (option == INSPECT_QUICK_REPAIR)) {
      info_printf(si->fd, 1, XIDT ": Child segment repaired.  Forcing a full file check.\n", segment_id(si->seg));
      si->inspect_mode -= option;
      option = INSPECT_FULL_REPAIR;
