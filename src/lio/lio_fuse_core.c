@@ -1606,7 +1606,8 @@ int lfs_read(const char *fname, char *buf, size_t size, off_t off, struct fuse_f
   rsize = size;
   segment_lock(fd->fh->seg);
   dr = pend - fd->fh->readahead_end;
-  if ((dr > 0) || ((-dr) > lfs->readahead) || ((-dr) < 0.5*lfs->readahead)) {
+//  if ((dr > 0) || ((-dr) > lfs->readahead) || ((-dr) < 0.5*lfs->readahead)) {
+  if ((dr > 0) || ((-dr) > lfs->readahead)) {
      rsize = rend - off;
      if (rend > ssize)
      {
