@@ -1466,6 +1466,7 @@ op_status_t cp_lio2lio(lio_cp_file_t *cp)
   sexp = dexp = NULL;
   sex = dex = NULL;
   sfd = dfd = NULL;
+  buffer = NULL;
 
   //** Check if the dest exists and if not creates it
   dtype = lioc_exists(cp->dest_tuple.lc, cp->dest_tuple.creds, cp->dest_tuple.path);
@@ -1550,9 +1551,10 @@ log_printf(5, "src=%s dest=%s dtype=%d\n", cp->src_tuple.path, cp->dest_tuple.pa
      info_printf(lio_ifd, 1, "Slow copy:( %s->%s\n", cp->src_tuple.path, cp->dest_tuple.path);
      type_malloc(buffer, char, cp->bufsize+1);
      gop = segment_copy(cp->dest_tuple.lc->tpc_unlimited, cp->dest_tuple.lc->da, sseg, dseg, 0, 0, -1, cp->bufsize, buffer, 1, cp->dest_tuple.lc->timeout);
-     free(buffer);
   }
   err = gop_waitall(gop);
+
+  if (buffer != NULL) free(buffer);  //** Did a slow copy so clean up
 
   ssize = segment_size(sseg);
   if (err != OP_STATE_SUCCESS) {

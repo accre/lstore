@@ -53,6 +53,7 @@ int main(int argc, char **argv)
   ex_off_t bufsize;
   char ppbuf[64];
   lio_cp_path_t *flist;
+  lio_cp_file_t cpf;
   op_generic_t *gop;
   opque_t *q;
   lio_path_tuple_t dtuple;
@@ -174,7 +175,11 @@ log_printf(15, "2222222222222222 fixed=%d exp=%s dtype=%d\n", os_regex_is_fixed(
      //**if it's a fixed src with a dir dest we skip and use the cp_fn routines
      if ((os_regex_is_fixed(flist[0].path_regex) == 1) && ((dtype == 0) || ((dtype & OS_OBJECT_FILE) > 0))) {
         //** IF we made it here we have a simple cp
-        status = lio_cp_file_fn(&(flist[0]), 0);
+        cpf.src_tuple = flist[0].src_tuple; //c->src_tuple.path = fname;
+        cpf.dest_tuple = flist[0].dest_tuple; //c->dest_tuple.path = strdup(dname);
+        cpf.bufsize = flist[0].bufsize;
+        status = lio_cp_file_fn(&cpf, 0);
+
         if (status.op_status != OP_STATE_SUCCESS) {
            info_printf(lio_ifd, 0, "ERROR: with copy src=%s  dest=%s\n", flist[0].src_tuple.path, dtuple.path);
            if (status.op_status != OP_STATE_SUCCESS) n_errors++;
