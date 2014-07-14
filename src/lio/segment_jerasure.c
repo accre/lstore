@@ -1720,6 +1720,8 @@ op_generic_t *segjerase_truncate(segment_t *seg, data_attr_t *da, ex_off_t new_s
   if ((new_size % s->data_size) > 0) tweaked_size++;
   tweaked_size *= s->stripe_size_with_magic;
 
+  if (new_size == 0) s->magic_cksum = 1;  //** Enable magic_cksums if not already set
+
   return(segment_truncate(s->child_seg, da, tweaked_size, timeout));
 }
 
@@ -1761,6 +1763,7 @@ int segjerase_signature(segment_t *seg, char *buffer, int *used, int bufsize)
   append_printf(buffer, used, bufsize, "    n_data_devs=%d\n", s->n_data_devs);
   append_printf(buffer, used, bufsize, "    n_parity_devs=%d\n", s->n_parity_devs);
   append_printf(buffer, used, bufsize, "    chunk_size=%d\n", s->chunk_size);
+  append_printf(buffer, used, bufsize, "    magic_cksum=%d\n", s->magic_cksum);
   append_printf(buffer, used, bufsize, "    w=%d\n", s->w);
   append_printf(buffer, used, bufsize, ")\n");
 
@@ -1887,6 +1890,9 @@ int segjerase_deserialize_text(segment_t *seg, ex_id_t id, exnode_exchange_t *ex
   if ((s->paranoid_check == 0) && (s->write_errors > 0)) s->paranoid_check = 1;
 
   s->magic_cksum = inip_get_integer(fd, seggrp, "magic_cksum", 0);
+  if (s->magic_cksum == 0) {
+     if (segment_size(s->child_seg) == 0) s->magic_cksum = 1;  //** If empty file enable adler32 magic
+  }
   s->n_data_devs = inip_get_integer(fd, seggrp, "n_data_devs", 6);
   s->n_parity_devs = inip_get_integer(fd, seggrp, "n_parity_devs", 3);
   s->n_devs = s->n_data_devs + s->n_parity_devs;
