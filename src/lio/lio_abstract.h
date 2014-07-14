@@ -147,6 +147,7 @@ typedef struct {
   lio_path_tuple_t src_tuple;
   lio_path_tuple_t dest_tuple;
   ex_off_t bufsize;
+  int slow;
 } lio_cp_file_t;
 
 typedef struct {
@@ -158,6 +159,7 @@ typedef struct {
   int dest_type;
   int obj_types;
   int max_spawn;
+  int slow;
   ex_off_t bufsize;
 } lio_cp_path_t;
 

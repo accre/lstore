@@ -1543,7 +1543,7 @@ log_printf(5, "src=%s dest=%s dtype=%d\n", cp->src_tuple.path, cp->dest_tuple.pa
   used = 0; segment_signature(sseg, sig1, &used, sigsize);
   used = 0; segment_signature(dseg, sig2, &used, sigsize);
 
-  if (strcmp(sig1, sig2) == 0) {
+  if ((strcmp(sig1, sig2) == 0) && (cp->slow == 0)) {
      info_printf(lio_ifd, 1, "Cloning %s->%s\n", cp->src_tuple.path, cp->dest_tuple.path);
      gop = segment_clone(sseg, cp->dest_tuple.lc->da, &dseg, CLONE_STRUCT_AND_DATA, NULL, cp->dest_tuple.lc->timeout);
      log_printf(5, "src=%s  clone gid=%d\n", cp->src_tuple.path, gop_id(gop));
@@ -1950,6 +1950,7 @@ flush_log();
      c->src_tuple = cp->src_tuple; c->src_tuple.path = fname;
      c->dest_tuple = cp->dest_tuple; c->dest_tuple.path = strdup(dname);
      c->bufsize = cp->bufsize;
+     c->slow = cp->slow;
 
      gop = new_thread_pool_op(lio_gc->tpc_unlimited, NULL, lio_cp_file_fn, (void *)c, NULL, 1);
      gop_set_myid(gop, slot);

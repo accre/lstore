@@ -57,21 +57,23 @@ int main(int argc, char **argv)
   op_generic_t *gop;
   opque_t *q;
   lio_path_tuple_t dtuple;
-  int err, dtype, recurse_depth;
+  int err, dtype, recurse_depth, slow;
   op_status_t status;
 
   recurse_depth = 10000;
   bufsize = 20*1024*1024;
+  slow = 0;
 
 //printf("argc=%d\n", argc);
   if (argc < 2) {
      printf("\n");
-     printf("lio_cp LIO_COMMON_OPTIONS [-rd recurse_depth] [-ln] [-b bufsize_mb] src_path1 .. src_pathN dest_path\n");
+     printf("lio_cp LIO_COMMON_OPTIONS [-rd recurse_depth] [-ln] [-b bufsize_mb] [-f] src_path1 .. src_pathN dest_path\n");
      lio_print_options(stdout);
      printf("\n");
      printf("    -ln                - Follow links.  Otherwise they are ignored\n");
      printf("    -rd recurse_depth  - Max recursion depth on directories. Defaults to %d\n", recurse_depth);
      printf("    -b bufsize         - Buffer size to use for *each* transfer. Units supported (Default=%s)\n", pretty_print_int_with_scale(bufsize, ppbuf));
+     printf("    -f                 - Force a slow or traditional copy by reading from the source and copying to the destination\n");
      printf("    src_path*          - Source path glob to copy\n");
      printf("    dest_path          - Destination file or directory\n");
      printf("\n");
@@ -99,6 +101,9 @@ int main(int argc, char **argv)
      if (strcmp(argv[i], "-ln") == 0) {  //** Follow links
         i++;
         keepln = 1;
+     } else if (strcmp(argv[i], "-f") == 0) {  //** Force a slow copy
+        i++;
+        slow = 1;
      } else if (strcmp(argv[i], "-rd") == 0) { //** Recurse depth
         i++;
         recurse_depth = atoi(argv[i]); i++;
@@ -150,6 +155,7 @@ log_printf(15, "n_paths=%d argc=%d si=%d dtype=%d\n", n_paths, argc, start_index
      flist[i].obj_types = obj_types;
      flist[i].max_spawn = max_spawn;
      flist[i].bufsize = bufsize;
+     flist[i].slow = slow;
   }
 
   //** Do some sanity checking and handle the simple case directly
@@ -178,6 +184,7 @@ log_printf(15, "2222222222222222 fixed=%d exp=%s dtype=%d\n", os_regex_is_fixed(
         cpf.src_tuple = flist[0].src_tuple; //c->src_tuple.path = fname;
         cpf.dest_tuple = flist[0].dest_tuple; //c->dest_tuple.path = strdup(dname);
         cpf.bufsize = flist[0].bufsize;
+        cpf.slow = flist[0].slow;
         status = lio_cp_file_fn(&cpf, 0);
 
         if (status.op_status != OP_STATE_SUCCESS) {
