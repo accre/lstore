@@ -879,8 +879,8 @@ op_status_t segjerase_inspect_func(void *arg, int id)
   status = op_success_status;
 
   info_printf(si->fd, 1, XIDT ": jerase segment maps to child " XIDT "\n", segment_id(si->seg), segment_id(s->child_seg));
-  info_printf(si->fd, 1, XIDT ": segment information: method=%s data_devs=%d parity_devs=%d chunk_size=%d  used_size=" XOT " magic_cksum=%d mode=%d\n", 
-       segment_id(si->seg), JE_method[s->method], s->n_data_devs, s->n_parity_devs, s->chunk_size, segment_size(s->child_seg),  s->magic_cksum, si->inspect_mode);
+  info_printf(si->fd, 1, XIDT ": segment information: method=%s data_devs=%d parity_devs=%d chunk_size=%d  used_size=" XOT " magic_cksum=%d write_errors=%d mode=%d\n", 
+       segment_id(si->seg), JE_method[s->method], s->n_data_devs, s->n_parity_devs, s->chunk_size, segment_size(s->child_seg),  s->magic_cksum, s->write_errors, si->inspect_mode);
 
   //** Issue the inspect for the underlying LUN
   info_printf(si->fd, 1, XIDT ": Inspecting child segment...\n", segment_id(si->seg));
@@ -909,8 +909,8 @@ log_printf(5, "child_replaced =%d ndata=%d\n", child_replaced, s->n_parity_devs)
 //  force_reconstruct = si->inspect_mode & INSPECT_FORCE_REPAIR;
 log_printf(5, "repair=%d child_replaced=%d option=%d inspect_mode=%d INSPECT_QUICK_REPAIR=%d\n", repair, child_replaced, option, si->inspect_mode, INSPECT_QUICK_REPAIR);
 //  if ((repair > 0) && (force_reconstruct > 0) && (child_replaced > 0) && (option == INSPECT_QUICK_REPAIR)) {
-  if ((repair > 0) && ((child_replaced > 0) || (s->magic_cksum == 0)) && (option == INSPECT_QUICK_REPAIR)) {
-     info_printf(si->fd, 1, XIDT ": Child segment repaired.  Forcing a full file check.\n", segment_id(si->seg));
+  if ((repair > 0) && ((child_replaced > 0) || (s->magic_cksum == 0) || (s->write_errors > 0)) && (option == INSPECT_QUICK_REPAIR)) {
+     info_printf(si->fd, 1, XIDT ": Child segment repaired or existing write errors.  Forcing a full file check.\n", segment_id(si->seg));
      si->inspect_mode -= option;
      option = INSPECT_FULL_REPAIR;
      si->inspect_mode += option;
@@ -1886,7 +1886,7 @@ int segjerase_deserialize_text(segment_t *seg, ex_id_t id, exnode_exchange_t *ex
   atomic_inc(s->child_seg->ref_count);
 
   //** Load the params
-  s->write_errors = inip_get_integer(fd, seggrp, "write_errors", -1);
+  s->write_errors = inip_get_integer(fd, seggrp, "write_errors", 0);
   if ((s->paranoid_check == 0) && (s->write_errors > 0)) s->paranoid_check = 1;
 
   s->magic_cksum = inip_get_integer(fd, seggrp, "magic_cksum", 0);
