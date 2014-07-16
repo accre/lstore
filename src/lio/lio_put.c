@@ -36,7 +36,7 @@ http://www.accre.vanderbilt.edu
 #include "type_malloc.h"
 #include "thread_pool.h"
 #include "lio.h"
-
+#include "string_token.h"
 
 //*************************************************************************
 //*************************************************************************
@@ -50,8 +50,7 @@ int main(int argc, char **argv)
   exnode_t *ex;
   exnode_exchange_t *exp;
   segment_t *seg;
-  char *key[] = {"system.exnode", "system.exnode.size"};
-  char *val[2];
+  segment_errors_t errcnts;
   int v_size[2];
   lio_path_tuple_t tuple;
 
@@ -147,19 +146,12 @@ log_printf(0, "AFTER PUT\n");
      goto finished;
   }
 
-  //** Serialize the exnode
-  exnode_exchange_free(exp);
-  exnode_serialize(ex, exp);
 
-  //** Update the OS exnode
-  val[0] = exp->text.text;  v_size[0] = strlen(val[0]);
-  sprintf(buffer, I64T, segment_size(seg));
-  val[1] = buffer; v_size[1] = strlen(val[1]);
-  err = lioc_set_multiple_attrs(tuple.lc, tuple.creds, tuple.path, NULL, key, (void **)val, v_size, 2);
+  //** Update the dest exnode and misc attributes
+  err = lioc_update_exnode_attrs(tuple.lc, tuple.creds, ex, seg, tuple.path, &errcnts);
+  err = ((err > 1) || (errcnts.hard > 0)) ? 1 : 0;
 
-  //** Update the error count if needed
-  err = lioc_update_error_counts(tuple.lc, tuple.creds, tuple.path, seg, 0);
-  if (err > 0) info_printf(lio_ifd, 0, "Failed uploading data!  path=%s\n", tuple.path);
+  if (err > 1) info_printf(lio_ifd, 0, "Failed uploading data!  path=%s\n", tuple.path);
 
 finished:
   exnode_destroy(ex);

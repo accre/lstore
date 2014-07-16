@@ -441,6 +441,56 @@ int lioc_update_error_counts(lio_config_t *lc, creds_t *creds, char *path, segme
 }
 
 //***********************************************************************
+// lioc_update_exnode_attrs - Updates the exnode and system.error_* attributes
+//***********************************************************************
+
+int lioc_update_exnode_attrs(lio_config_t *lc, creds_t *creds, exnode_t *ex, segment_t *seg, char *fname, segment_errors_t *serr)
+{
+  ex_off_t ssize;
+  char buffer[32];
+  char *key[6] = {"system.exnode", "system.exnode.size", "os.timestamp.system.modify_data", NULL, NULL, NULL };
+  char *val[6];
+  exnode_exchange_t *exp;
+  int n, err, ret, v_size[6];
+  segment_errors_t my_serr;
+  char ebuf[128];
+
+  ret = 0;
+  if (serr == NULL) serr = &my_serr; //** If caller doesn't care about errors use my own space
+
+  //** Serialize the exnode
+  exp = exnode_exchange_create(EX_TEXT);
+  exnode_serialize(ex, exp);
+  ssize = segment_size(seg);
+
+  //** Get any errors that may have occured
+  lioc_get_error_counts(lc, seg, serr);
+
+  //** Update the exnode
+  n = 3;
+  val[0] = exp->text.text;  v_size[0] = strlen(val[0]);
+  sprintf(buffer, XOT, ssize);
+  val[1] = buffer; v_size[1] = strlen(val[1]);
+  val[2] = NULL; v_size[2] = 0;
+
+  n += lioc_encode_error_counts(serr, &(key[3]), &(val[3]), ebuf, &(v_size[3]), 0);
+  if ((serr->hard>0) || (serr->soft>0) || (serr->write>0)) {
+     log_printf(1, "ERROR: fname=%s hard_errors=%d soft_errors=%d write_errors=%d\n", fname, serr->hard, serr->soft, serr->write);
+     ret += 1;
+  }
+
+  err = lioc_set_multiple_attrs(lc, creds, fname, NULL, key, (void **)val, v_size, n);
+  if (err != OP_STATE_SUCCESS) {
+     log_printf(0, "ERROR updating exnode+attrs! fname=%s\n", fname);
+     ret += 2;
+  }
+
+  exnode_exchange_destroy(exp);
+
+  return(ret);
+}
+
+//***********************************************************************
 // lioc_remove_object - Removes an object
 //***********************************************************************
 
@@ -1446,15 +1496,12 @@ op_status_t cp_lio2lio(lio_cp_file_t *cp)
   opque_t *q;
   int sigsize = 10*1024;
   char sig1[sigsize], sig2[sigsize];
-  char *keys[] = {"system.exnode", "system.exnode.size", "os.timestamp.system.modify_data"};
   char *sex_data, *dex_data;
-  char *val[3];
-  char mysize[100];
   exnode_t *sex, *dex;
   exnode_exchange_t *sexp, *dexp;
+  segment_errors_t errcnts;
   segment_t *sseg, *dseg;
   os_fd_t *sfd, *dfd;
-  ex_off_t ssize;
   int sv_size[2], dv_size[3];
   int dtype, err, used, hard_errors;
 
@@ -1556,28 +1603,19 @@ log_printf(5, "src=%s dest=%s dtype=%d\n", cp->src_tuple.path, cp->dest_tuple.pa
 
   if (buffer != NULL) free(buffer);  //** Did a slow copy so clean up
 
-  ssize = segment_size(sseg);
   if (err != OP_STATE_SUCCESS) {
      info_printf(lio_ifd, 0, "Failed uploading data!  path=%s\n", cp->dest_tuple.path);
-     ssize =  0;
   }
 
   gop_free(gop, OP_DESTROY);
 
-  //** Serialize the exnode
-  exnode_exchange_free(dexp);
-  exnode_serialize(dex, dexp);
-
-  //** Update the dest exnode and size
-  val[0] = dexp->text.text;  dv_size[0] = strlen(val[0]);
-  sprintf(mysize, I64T, ssize);
-  val[1] = mysize; dv_size[1] = strlen(val[1]);
-  val[2] = NULL; dv_size[2] = 0;
-  err = gop_sync_exec(os_set_multiple_attrs(cp->dest_tuple.lc->os, cp->dest_tuple.creds, dfd, keys, (void **)val, dv_size, 3));
+  //** Update the dest exnode and misc attributes
+  hard_errors = lioc_update_exnode_attrs(cp->dest_tuple.lc, cp->dest_tuple.creds, dex, dseg, cp->dest_tuple.path, &errcnts);
+  hard_errors = (hard_errors > 1) ? 1 : 0;
 
   //**Update the error counts if needed
-  hard_errors = lioc_update_error_counts(cp->src_tuple.lc, cp->src_tuple.creds, cp->src_tuple.path, sseg, 0);
-  hard_errors += lioc_update_error_counts(cp->dest_tuple.lc, cp->dest_tuple.creds, cp->dest_tuple.path, dseg, -1);
+  hard_errors += errcnts.hard;
+  hard_errors += lioc_update_error_counts(cp->src_tuple.lc, cp->src_tuple.creds, cp->src_tuple.path, sseg, 0);
 
 finished:
 
@@ -1592,6 +1630,8 @@ finished:
   if (sexp != NULL) exnode_exchange_destroy(sexp);
   if (dex != NULL) exnode_destroy(dex);
   if (dexp != NULL) exnode_exchange_destroy(dexp);
+
+log_printf(15, "hard_errors=%d err=%d\n", hard_errors, err);
 
   if ((hard_errors == 0) && (err == OP_STATE_SUCCESS)) status = op_success_status;
 
@@ -1614,10 +1654,8 @@ op_status_t cp_local2lio(lio_cp_file_t *cp)
   exnode_t *ex;
   exnode_exchange_t *exp;
   segment_t *seg;
-  char *key[] = {"system.exnode", "system.exnode.size", "os.timestamp.system.modify_data"};
-  char *val[3];
-  int v_size[3], dtype, err, hard_errors;
-  ex_off_t ssize;
+  segment_errors_t errcnts;
+  int v_size[3], dtype, err;
   op_status_t status;
   FILE *fd;
 
@@ -1684,38 +1722,20 @@ log_printf(0, "AFTER PUT\n");
 
   fclose(fd);
 
-  ssize = segment_size(seg);
   if (err != OP_STATE_SUCCESS) {
      info_printf(lio_ifd, 0, "ERROR: Failed uploading data!  path=%s\n", cp->dest_tuple.path);
-     ssize =  0;
   }
 
-  //** Serialize the exnode
-  exnode_exchange_free(exp);
-  exnode_serialize(ex, exp);
 
-  //** Update the OS exnode
-  val[0] = exp->text.text;  v_size[0] = strlen(val[0]);
-  sprintf(buffer, I64T, ssize);
-  val[1] = buffer; v_size[1] = strlen(val[1]);
-  val[2] = NULL; v_size[2] = 0;
-  err = lioc_set_multiple_attrs(cp->dest_tuple.lc, cp->dest_tuple.creds, cp->dest_tuple.path, NULL, key, (void **)val, v_size, 3);
-  if (err != OP_STATE_SUCCESS) {
-     info_printf(lio_ifd, 0, "ERROR: Failed setting attributes!  path=%s\n", cp->dest_tuple.path);
-  }
-
-  //**Update the error counts if needed
-  hard_errors = lioc_update_error_counts(cp->dest_tuple.lc, cp->dest_tuple.creds, cp->dest_tuple.path, seg, -1);
-  if (hard_errors != 0) {
-     info_printf(lio_ifd, 0, "ERROR: Hard error during upload! hard_errors=%d  path=%s\n", hard_errors, cp->dest_tuple.path);
-  }
+  //** Update the dest exnode and misc attributes
+  lioc_update_exnode_attrs(cp->dest_tuple.lc, cp->dest_tuple.creds, ex, seg, cp->dest_tuple.path, &errcnts);
 
   exnode_destroy(ex);
   exnode_exchange_destroy(exp);
 
   free(buffer);
 
-  if ((hard_errors == 0) && (err == OP_STATE_SUCCESS)) status = op_success_status;
+  if ((errcnts.hard == 0) && (err == OP_STATE_SUCCESS)) status = op_success_status;
 
 finished:
 

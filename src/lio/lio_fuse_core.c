@@ -1335,11 +1335,7 @@ int lfs_myclose_real(char *fname, lio_fuse_fd_t *fd, lio_fuse_t *lfs)
   lio_dentry_t *fentry;
   lio_inode_t *inode;
   int flags, slot, n;
-  exnode_exchange_t *exp;
-  ex_off_t ssize;
-  char buffer[32];
   char *key[6] = {"system.exnode", "system.exnode.size", "os.timestamp.system.modify_data", NULL, NULL, NULL };
-//  char *key[6] = {"system.exnode", "system.exnode.size", "os.timestamp.system.modify_data", "system.hard_errors", "system.soft_errors", "system.write_errors" };
   char *val[6];
   int err, v_size[6];
   char ebuf[128];
@@ -1408,6 +1404,7 @@ log_printf(1, "FLUSH/TRUNCATE fname=%s\n", fname);
 
   //** Ok no one has the file opened so teardown the segment/exnode
   //** IF not modified just tear down and clean up
+  n = 0;
   if (fh->modified == 0) {
      //*** See if we need to update the error counts
      lioc_get_error_counts(lfs->lc, fh->seg, &serr);
@@ -1436,31 +1433,21 @@ log_printf(1, "FLUSH/TRUNCATE fname=%s\n", fname);
      return(0);
   }
 
-  //** Serialize the exnode
-  exp = exnode_exchange_create(EX_TEXT);
-  exnode_serialize(fh->ex, exp);
-  ssize = segment_size(fh->seg);
-
   //** Get any errors that may have occured
   lioc_get_error_counts(lfs->lc, fh->seg, &serr);
 
-  //** Update the exnode
-  n = 3;
-  val[0] = exp->text.text;  v_size[0] = strlen(val[0]);
-  sprintf(buffer, XOT, ssize);
-  val[1] = buffer; v_size[1] = strlen(val[1]);
-  val[2] = NULL; v_size[2] = 0;
-
-  n += lioc_encode_error_counts(&serr, &(key[3]), &(val[3]), ebuf, &(v_size[3]), 0);
-  if ((serr.hard>0) || (serr.soft>0) || (serr.write>0)) {
-     log_printf(1, "ERROR: fname=%s hard_errors=%d soft_errors=%d write_errors=%d\n", fname, serr.hard, serr.soft, serr.write);
-  }
-
   now = apr_time_now();
 
-  err = lioc_set_multiple_attrs(lfs->lc, lfs->lc->creds, fname, NULL, key, (void **)val, v_size, n);
-  if (err != OP_STATE_SUCCESS) {
+  //** Update the exnode and misc attributes
+  err = lioc_update_exnode_attrs(lfs->lc, lfs->lc->creds, fh->ex, fh->seg, fname, &serr);
+  if (err > 1) {
      log_printf(0, "ERROR updating exnode! fname=%s\n", fname);
+  }
+
+  n += ((err > 1) || (serr.hard > 0)) ? 1 : 0;
+
+  if ((serr.hard>0) || (serr.soft>0) || (serr.write>0)) {
+     log_printf(1, "ERROR: fname=%s hard_errors=%d soft_errors=%d write_errors=%d\n", fname, serr.hard, serr.soft, serr.write);
   }
 
   dt = apr_time_now() - now;
@@ -1482,7 +1469,6 @@ log_printf(1, "FLUSH/TRUNCATE fname=%s\n", fname);
   log_printf(1, "exnode_destroy fname=%s dt=%lf\n", fname, dt);
 
   free(fh);
-  exnode_exchange_destroy(exp);
 
   lfs_file_unlock(lfs, fname, slot);
 

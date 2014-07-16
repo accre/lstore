@@ -177,6 +177,7 @@ int lioc_get_attr(lio_config_t *lc, creds_t *creds, char *path, char *id, char *
 int lioc_encode_error_counts(segment_errors_t *serr, char **key, char **val, char *buf, int *v_size, int mode);
 void lioc_get_error_counts(lio_config_t *lc, segment_t *seg, segment_errors_t *serr);
 int lioc_update_error_counts(lio_config_t *lc, creds_t *creds, char *path, segment_t *seg, int mode);
+int lioc_update_exnode_attrs(lio_config_t *lc, creds_t *creds, exnode_t *ex, segment_t *seg, char *fname, segment_errors_t *serr);
 op_generic_t *lioc_remove_object(lio_config_t *lc, creds_t *creds, char *path, char *ex_optional, int ftype_optional);
 unified_object_iter_t *unified_create_object_iter(lio_path_tuple_t tuple, os_regex_table_t *path_regex, os_regex_table_t *obj_regex, int obj_types, int rd);
 void unified_destroy_object_iter(unified_object_iter_t *it);
