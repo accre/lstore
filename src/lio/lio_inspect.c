@@ -669,7 +669,7 @@ char *next_path()
 
 int main(int argc, char **argv)
 {
-  int i, j,  start_option, rg_mode, ftype, prefix_len;
+  int i, j,  start_option, rg_mode, ftype, prefix_len, err;
   int force_repair, option;
   char ppbuf[32];
   char *fname, *qstr, *path, *pool_cfg;
@@ -735,6 +735,8 @@ int main(int argc, char **argv)
 
   lio_init(&argc, &argv);
   argv_list = argv;
+
+  err = 0;
 
   //*** Parse the path args
   rg_mode = 0;
@@ -954,6 +956,7 @@ int main(int argc, char **argv)
      it = os_create_object_iter_alist(tuple.lc->os, tuple.creds, rp_single, ro_single, OS_OBJECT_FILE, recurse_depth, keys, (void **)vals, v_size, acount);
      if (it == NULL) {
         info_printf(lio_ifd, 0, "ERROR: Failed with object_iter creation\n");
+        err = 2;
         goto finished;
       }
 
@@ -1053,11 +1056,14 @@ log_printf(0, "gid=%d i=%d fname=%s\n", gop_id(gop), slot, fname);
 
   info_printf(lio_ifd, 0, "--------------------------------------------------------------------\n");
   info_printf(lio_ifd, 0, "Submitted: %d   Success: %d   Fail: %d\n", submitted, good, bad);
+
   if (submitted != (good+bad)) {
      info_printf(lio_ifd, 0, "ERROR FAILED self-consistency check! Submitted != Success+Fail\n");
+     err = 2;
   }
   if (bad > 0) {
      info_printf(lio_ifd, 0, "ERROR Some files failed inspection!\n");
+     err = 1;
   }
 
   free(w);
@@ -1067,7 +1073,7 @@ log_printf(0, "gid=%d i=%d fname=%s\n", gop_id(gop), slot, fname);
 finished:
   lio_shutdown();
 
-  return(0);
+  return(err);
 }
 
 
