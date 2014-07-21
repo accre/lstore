@@ -1713,15 +1713,18 @@ op_generic_t *segjerase_remove(segment_t *seg, data_attr_t *da, int timeout)
 op_generic_t *segjerase_truncate(segment_t *seg, data_attr_t *da, ex_off_t new_size, int timeout)
 {
   segjerase_priv_t *s = (segjerase_priv_t *)seg->priv;
-  ex_off_t tweaked_size;
+  ex_off_t tweaked_size, abs_size;
 
   //** Round to the nearest whole row
-  tweaked_size = new_size / s->data_size;
-  if ((new_size % s->data_size) > 0) tweaked_size++;
+  abs_size = (new_size < 0) ? -new_size : new_size;  //** If new_Size is negative then we have a reserve call
+
+  tweaked_size = abs_size / s->data_size;
+  if ((abs_size % s->data_size) > 0) tweaked_size++;
   tweaked_size *= s->stripe_size_with_magic;
 
   if (new_size == 0) s->magic_cksum = 1;  //** Enable magic_cksums if not already set
 
+  if (new_size < 0) tweaked_size = - tweaked_size;  //** Reserve call
   return(segment_truncate(s->child_seg, da, tweaked_size, timeout));
 }
 

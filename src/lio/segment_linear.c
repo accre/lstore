@@ -105,7 +105,7 @@ typedef struct {
 // seglin_grow - Expands a linear segment
 //***********************************************************************
 
-op_status_t _sl_grow(segment_t *seg, data_attr_t *da, ex_off_t new_size, int timeout)
+op_status_t _sl_grow(segment_t *seg, data_attr_t *da, ex_off_t new_size_arg, int timeout)
 {
   int i, err;
   ex_off_t off, dsize;
@@ -115,14 +115,20 @@ op_status_t _sl_grow(segment_t *seg, data_attr_t *da, ex_off_t new_size, int tim
   op_generic_t *gop1, *gop2;
   opque_t *q;
   int n_blocks;
-  ex_off_t lo, hi, bex_end, bex_len, bstart;
+  ex_off_t lo, hi, bex_end, bex_len, bstart, new_size;
   rs_request_t *req_list;
   data_cap_set_t **cap_list;
   seglin_slot_t **block;
   tbuffer_t tbuf;
   op_status_t status;
   char c[1];
-
+  
+  new_size = new_size_arg;
+  if (new_size_arg < 0) {  //** Got a space reservation call
+     new_size = - new_size_arg;
+     if (new_size < s->total_size) return(op_success_status);  //** Already have that much space reserved
+  }
+  
   //** Make the space
   lo = s->total_size;
   n_blocks = (new_size - s->total_size) / s->max_block_size + 1;
@@ -246,7 +252,6 @@ log_printf(15, "_sl_grow: sid=" XIDT " after exec err=%d\n", segment_id(seg), er
       opque_free(q, OP_DESTROY);
 
       s->total_size = new_size;
-//      s->used_size = new_size;
   } else {
     for (i=0; i<n_blocks; i++) {
        b = block[i];
@@ -365,7 +370,9 @@ op_status_t _sl_truncate(segment_t *seg, data_attr_t *da, ex_off_t new_size, int
   seglin_priv_t *s = (seglin_priv_t *)seg->priv;
   op_status_t err = op_success_status;
 
-  if (s->total_size > new_size) {
+  if (new_size < 0) {  //** Reserve space
+     err = _sl_grow(seg, da, new_size, timeout); 
+  } else if (s->total_size > new_size) {
      err = _sl_shrink(seg, da, new_size, timeout); 
   } else if (s->total_size < new_size) {
      err = _sl_grow(seg, da, new_size, timeout); 

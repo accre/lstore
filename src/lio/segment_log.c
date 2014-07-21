@@ -950,6 +950,10 @@ op_generic_t *seglog_truncate(segment_t *seg, data_attr_t *da, ex_off_t new_size
   seglog_priv_t *s = (seglog_priv_t *)seg->priv;
   seglog_truncate_t *st;
 
+  if (new_size < 0) { //** Reserve space call which is ignored at this time
+     return(gop_dummy(op_success_status));
+  }
+
   type_malloc_clear(st, seglog_truncate_t, 1);
 
   st->seg = seg;

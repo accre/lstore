@@ -96,7 +96,7 @@ op_status_t segment_copy_func(void *arg, int id)
   tbuffer_t tbuf1, tbuf2;
   int err;
   ex_off_t bufsize;
-  ex_off_t rpos, wpos, rlen, wlen, tlen, nbytes;
+  ex_off_t rpos, wpos, rlen, wlen, tlen, nbytes, dend;
   ex_iovec_t rex, wex;
   opque_t *q;
   op_generic_t *rgop, *wgop;
@@ -115,7 +115,12 @@ op_status_t segment_copy_func(void *arg, int id)
   } else {
     rlen = (nbytes > bufsize) ? bufsize : nbytes;
   }
-//  if ((sc->len != -1) && (sc->len < nbytes)) nbytes = sc->len;
+  if ((sc->len != -1) && (sc->len < nbytes)) nbytes = sc->len;
+
+  //** Go ahead and reserve the space in the destintaion
+  dend = sc->dest_offset + nbytes;
+log_printf(1, "reserving space=" XOT "\n", dend);
+  gop_sync_exec(segment_truncate(sc->dest, sc->da, -dend, sc->timeout));
 
   //** Read the initial block
   rpos = sc->src_offset;  wpos = sc->dest_offset;
@@ -366,7 +371,7 @@ op_status_t segment_put_func(void *arg, int id)
   char *rb, *wb, *tb;
   ex_off_t bufsize;
   int err;
-  ex_off_t rpos, wpos, rlen, wlen, tlen, nbytes, got;
+  ex_off_t rpos, wpos, rlen, wlen, tlen, nbytes, got, dend;
   ex_iovec_t wex;
   op_generic_t *gop;
   op_status_t status;
@@ -382,6 +387,10 @@ op_status_t segment_put_func(void *arg, int id)
 
   nbytes = sc->len;
   status = op_success_status;
+
+  //** Go ahead and reserve the space in the destintaion
+  dend = sc->dest_offset + nbytes;
+  gop_sync_exec(segment_truncate(sc->dest, sc->da, -dend, sc->timeout));
 
   //** Read the initial block
   rpos = 0; wpos = sc->dest_offset;

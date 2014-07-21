@@ -3032,6 +3032,12 @@ op_generic_t *segcache_truncate(segment_t *seg, data_attr_t *da, ex_off_t new_si
   cache_truncate_op_t *cop;
   op_generic_t *gop;
 
+
+  if (new_size < 0) { //** Got a reserve call so just pass the call to the child to handle
+     log_printf(5, "reserving space=" XOT "\n", new_size);
+     return(segment_truncate(s->child_seg, da, new_size, timeout));
+  }
+
   type_malloc(cop, cache_truncate_op_t, 1);
   cop->seg = seg;
   cop->da = da;

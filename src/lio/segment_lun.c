@@ -716,7 +716,7 @@ oops:
 // seglun_grow - Expands a linear segment
 //***********************************************************************
 
-op_status_t _seglun_grow(segment_t *seg, data_attr_t *da, ex_off_t new_size, int timeout)
+op_status_t _seglun_grow(segment_t *seg, data_attr_t *da, ex_off_t new_size_arg, int timeout)
 {
   int i, err, cnt;
   ex_off_t off, dsize, old_len;
@@ -724,13 +724,20 @@ op_status_t _seglun_grow(segment_t *seg, data_attr_t *da, ex_off_t new_size, int
   seglun_row_t *b;
   seglun_block_t *block;
   interval_skiplist_iter_t it;
-  ex_off_t lo, hi, berr;
+  ex_off_t lo, hi, berr, new_size;
   op_status_t status;
   int block_status[s->n_devices];
   apr_time_t now;
   double gsecs, tsecs;
   inspect_args_t args;
 
+  new_size = new_size_arg;
+  if (new_size < 0) { //** Reserve space call
+     new_size = - new_size_arg;
+     log_printf(5, "reserving space: current=" XOT " new=" XOT "\n", s->total_size, new_size);
+     if (new_size < s->total_size) return(op_success_status);  //** Already have enough space reserved
+  }
+  
   memset(&args, 0, sizeof(args));
   args.query = s->rsq;
 
@@ -860,7 +867,7 @@ log_printf(1, "sid=" XIDT " END used=" XOT " old max=" XOT " newmax=" XOT " err=
 
   if (err == 0) {
     s->total_size = new_size;
-    s->used_size = new_size;
+    if (new_size_arg > -1) s->used_size = new_size;  //** Only update the used size for a non-reserve space call
     status = op_success_status;
   } else {
     status =  op_failure_status;
@@ -990,7 +997,9 @@ op_status_t _slun_truncate(segment_t *seg, data_attr_t *da, ex_off_t new_size, i
   seglun_priv_t *s = (seglun_priv_t *)seg->priv;
   op_status_t err = op_success_status;
 
-  if (s->total_size > new_size) {
+  if (new_size < 0) { //Reserve space call
+     err = _seglun_grow(seg, da, new_size, timeout);
+  } else if (s->total_size > new_size) {
      err = _seglun_shrink(seg, da, new_size, timeout);
   } else if (s->total_size < new_size) {
      err = _seglun_grow(seg, da, new_size, timeout);

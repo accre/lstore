@@ -254,6 +254,8 @@ op_generic_t *segfile_truncate(segment_t *seg, data_attr_t *da, ex_off_t new_siz
   segfile_priv_t *s = (segfile_priv_t *)seg->priv;
   segfile_multi_op_t *cmd;
 
+  if (new_size < 0) return(gop_dummy(op_success_status));  //** Reserve call which we ignore
+
   type_malloc_clear(cmd, segfile_multi_op_t, 1);
 
   cmd->seg = seg;
