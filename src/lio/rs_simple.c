@@ -716,11 +716,11 @@ int rss_perform_check(resource_service_fn_t *rs)
   apr_thread_mutex_lock(rss->lock);
   for (hi = apr_hash_first(NULL, rss->rid_mapping); hi != NULL; hi = apr_hash_next(hi)) {
      apr_hash_this(hi, (const void **)&rid, &klen, (void **)&ce);
-     if (ce->re->status != RS_STATUS_IGNORE) {
+//     if (ce->re->status != RS_STATUS_IGNORE) {
         gop = ds_res_inquire(rss->ds, ce->ds_key, rss->da, ce->space, rss->check_timeout);
         gop_set_private(gop, ce);
         opque_add(q, gop);
-     }
+//     }
   }
   apr_thread_mutex_unlock(rss->lock);
 
@@ -738,13 +738,15 @@ int rss_perform_check(resource_service_fn_t *rs)
             ce->re->space_free = ds_res_inquire_get(rss->ds, DS_INQUIRE_FREE, ce->space);
             ce->re->space_used = ds_res_inquire_get(rss->ds, DS_INQUIRE_USED, ce->space);
             ce->re->space_total = ds_res_inquire_get(rss->ds, DS_INQUIRE_TOTAL, ce->space);
-            if (ce->re->space_free <= rss->min_free) {
-               ce->re->status = RS_STATUS_OUT_OF_SPACE;
-            } else {
-               ce->re->status = RS_STATUS_UP;
+            if (ce->re->status != RS_STATUS_IGNORE) {
+               if (ce->re->space_free <= rss->min_free) {
+                  ce->re->status = RS_STATUS_OUT_OF_SPACE;
+               } else {
+                  ce->re->status = RS_STATUS_UP;
+               }
             }
          } else {  //** No response so mark it as down
-            ce->re->status = RS_STATUS_DOWN;
+            if (ce->re->status != RS_STATUS_IGNORE) ce->re->status = RS_STATUS_DOWN;
          }
          if (prev_status != ce->re->status) status_change = 1;
 
