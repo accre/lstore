@@ -330,7 +330,7 @@ log_printf(5, "initial path=%s\n", tuple->path);
   glob_index = -1;
   if ((p[0] == '*') || (p[0] == '?') || (p[0] == '[')) goto wildcard;
 
-  for (i=1; i<n; i++) {
+  for (i=0; i<n; i++) {
     if (p[i] == '/') last_slash = i;
     if ((p[i] == '*') || (p[i] == '?') || (p[i] == '[')) {
        if (p[i-1] != '\\') { glob_index = i; break; }
