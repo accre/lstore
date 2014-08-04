@@ -1916,6 +1916,10 @@ log_printf(5, "row=%d nlost=%d dev_row_replaced=%d\n", drow, nlost, si->args->de
        for (i=0; i < s->n_devices; i++) append_printf(info, &used, bufsize, " %d", block_status[i]);
        info_printf(si->fd, 1, "%s\n", info);
 
+       for (i=0; i < s->n_devices; i++) {
+          if (block_status[i] != 0) info_printf(si->fd, 5, XIDT ":     dev=%i replacing rcap=%s\n", segment_id(si->seg), i, ds_get_cap(s->ds, b->block[i].data->cap, DS_CAP_READ));
+       }
+
        if (max_lost < err) max_lost = err;
 
        info_printf(si->fd, 1, XIDT ":     Attempting to replace missing row allocations (%d total allocs replaced or replacing for row)\n", segment_id(si->seg), si->args->dev_row_replaced[drow]);
@@ -1926,7 +1930,7 @@ log_printf(5, "row=%d nlost=%d dev_row_replaced=%d\n", drow, nlost, si->args->de
          err = slun_row_replace_fix(si->seg, si->da, b, block_status, s->n_devices, &args, si->timeout);
 
          for (i=0; i < s->n_devices; i++) {
-             if ((block_copy[i] != 0) && (block_status[i] == 0)) info_printf(si->fd, 2, XIDT ":     dev=%i replaced rcap=%s\n", segment_id(si->seg), i, ds_get_cap(s->ds, b->block[i].data->cap, DS_CAP_READ));
+             if ((block_copy[i] != 0) && (block_status[i] == 0)) info_printf(si->fd, 2, XIDT ":     dev=%i replaced with rcap=%s\n", segment_id(si->seg), i, ds_get_cap(s->ds, b->block[i].data->cap, DS_CAP_READ));
          }
 
          used = 0;
