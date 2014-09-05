@@ -115,7 +115,7 @@ set(LIO_EXE
     mk_linear ex_load ex_get ex_put ex_inspect ex_clone ex_rw_test log_test rs_test os_test os_fsck
     lio_touch lio_mkdir lio_rmdir lio_rm lio_ln lio_find lio_ls lio_du lio_setattr lio_getattr lio_mv lio_cp
     lio_put lio_get lio_signature lio_warm lio_inspect lio_fsck lio_rs lio_server lio_fuse arc_tag_create
-    arc_tag_destroy arc_tag arc_tag_ls arc_create arc_restore
+    arc_tag_destroy arc_tag arc_tag_ls arc_create arc_restore ds_read
 )
 
 #Make static executables by default

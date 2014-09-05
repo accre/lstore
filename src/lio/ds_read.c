@@ -47,7 +47,7 @@ int main(int argc, char **argv)
   apr_time_t start_time;
   double  dt;
   ex_off_t offset, len, dn, n;
-  int err, i, j, start_index, start_option, n_iov, n_rcap;
+  int err, i, j, start_index, start_option, n_iov, n_rcap, timeout;
   char **buffer, **rcap, *fname, *p;
   char ppbuf[32];
   FILE *fd;
@@ -59,13 +59,14 @@ int main(int argc, char **argv)
 
   err = 0;
   len = 0;
+  timeout = 60;
 
   _lio_ifd = stderr;  //** Default to all information going to stderr since the output is file data.
 
 //printf("argc=%d\n", argc);
   if (argc < 2) {
      printf("\n");
-     printf("ds_read LIO_COMMON_OPTIONS n_iov_per_rcap len_per_rcap rcap_file\n");
+     printf("ds_read LIO_COMMON_OPTIONS [-dt timeout] n_iov_per_rcap len_per_rcap rcap_file\n");
      lio_print_options(stdout);
      return(1);
   }
@@ -76,10 +77,10 @@ int main(int argc, char **argv)
      do {
         start_option = i;
 
-//        if (strcmp(argv[i], "-b") == 0) {  //** Get the buffer size
-//           i++;
-//           bufsize = string_get_integer(argv[i]); i++;
-//        }
+        if (strcmp(argv[i], "-dt") == 0) {  //** Command timeout
+           i++;
+           timeout = string_get_integer(argv[i]); i++;
+        }
 
      } while ((start_option < i) && (i<argc));
   }
@@ -102,7 +103,7 @@ int main(int argc, char **argv)
   if ((p = index(ppbuf, '\n')) != NULL) *p = 0;  //** Remove the \n if needed
   n_rcap = string_get_integer(ppbuf);
 
-  info_printf(lio_ifd, 0, "n_rcap=%d len=" XOT " n_iov_per_cap=%d fname=%s\n", n_rcap, len, n_iov, fname);
+  info_printf(lio_ifd, 0, "n_rcap=%d len=" XOT " n_iov_per_cap=%d fname=%s timeout=%d\n", n_rcap, len, n_iov, fname, timeout);
 
   //** Make the space
   type_malloc(tbuf, tbuffer_t, n_rcap);
@@ -132,7 +133,7 @@ int main(int argc, char **argv)
      iov[i][n_iov-1].iov_len = len - n;
 
      tbuffer_vec(&(tbuf[i]), len, n_iov, iov[i]);
-     gop_list[i] = ds_read(lio_gc->ds, lio_gc->da, rcap[i], offset, tbuf, 0, len, 60);
+     gop_list[i] = ds_read(lio_gc->ds, lio_gc->da, rcap[i], offset, tbuf, 0, len, timeout);
      info_printf(lio_ifd, 0, "i=%d gid=%d rcap=%s\n", i, gop_id(gop_list[i]), rcap[i]);
 
      gop_set_myid(gop_list[i], i);
