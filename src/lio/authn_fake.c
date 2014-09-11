@@ -33,10 +33,16 @@ http://www.accre.vanderbilt.edu
 
 #define _log_module_index 185
 
+#include "fmttypes.h"
 #include "list.h"
 #include "type_malloc.h"
 #include "log.h"
 #include "authn_abstract.h"
+
+typedef struct {
+  char *handle;
+  int len;
+} authn_fake_priv_t;
 
 //***********************************************************************
 // authn_fake_get_type - Returns the type
@@ -53,13 +59,57 @@ char *authn_fake_get_type(creds_t *c)
 
 void *authn_fake_get_type_field(creds_t *c, int index, int *len)
 {
+  authn_fake_priv_t *a = (authn_fake_priv_t *)c->priv;
+
   if (index == AUTHN_INDEX_SHARED_HANDLE) {
-     *len = strlen(c->id);
-     return(c->id);
+     *len = a->len;
+     return(a->handle);
   }
 
   *len = 0;
   return(NULL);
+}
+
+//***********************************************************************
+// authn_fake_set_id - Sets the user ID and also makes the shared handle.
+//  In this case the shared handle is really just string with the format
+//     id:pid:userid@hostname
+//***********************************************************************
+
+void authn_fake_set_id(creds_t *c, char *id)
+{
+  authn_fake_priv_t *a = (authn_fake_priv_t *)c->priv;
+  char buffer[1024], buf2[256], buf3[512];
+  uint64_t pid;
+
+  c->id = strdup(id);
+
+  pid = getpid();
+  getlogin_r(buf2, sizeof(buf2));
+  gethostname(buf3, sizeof(buf3));
+  snprintf(buffer, sizeof(buffer), "%s:" LU ":%s:%s", id, pid, buf2, buf3);
+  a->handle = strdup(buffer);
+  log_printf(5, "handle=%s\n", a->handle);
+  a->len = strlen(a->handle)+1;
+
+  return;
+}
+
+
+//***********************************************************************
+// authn_fake_cred_destroy - Destroy the fake credentials
+//***********************************************************************
+
+void authn_fake_cred_destroy(creds_t *c)
+{
+  authn_fake_priv_t *a = (authn_fake_priv_t *)c->priv;
+
+  if (a->handle != NULL) free(a->handle);
+  free(a);
+
+  if (c->handle_destroy != NULL) c->handle_destroy(c);
+  if (c->id != NULL) free(c->id);
+  free(c);
 }
 
 //***********************************************************************
@@ -71,8 +121,12 @@ creds_t *authn_fake_cred_init(authn_t *an, int type, void **args)
   creds_t *c;
 
   c = cred_default_create();
+
+  type_malloc_clear(c->priv, authn_fake_priv_t, 1);
   c->get_type = authn_fake_get_type;
   c->get_type_field = authn_fake_get_type_field;
+  c->set_id = authn_fake_set_id;
+  c->destroy = authn_fake_cred_destroy;
 
   return(c);
 }
@@ -85,7 +139,6 @@ void authn_fake_destroy(authn_t *an)
 {
   free(an);
 }
-
 
 //***********************************************************************
 // authn_fake_create - Create a Fake AuthN service

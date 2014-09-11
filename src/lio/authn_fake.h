@@ -42,6 +42,13 @@ extern "C" {
 
 #define AUTHN_TYPE_FAKE "fake"
 
+//*** HAck for getting userid@hosntam passed around to be romved with proper authn/z
+typedef struct {
+  char *handle;
+  int len;
+} authn_fake_priv_t;
+//--------------------------
+
 authn_t *authn_fake_create(service_manager_t *ess, inip_file_t *ifd, char *section);
 
 #ifdef __cplusplus

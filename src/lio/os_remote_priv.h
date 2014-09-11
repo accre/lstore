@@ -117,6 +117,7 @@ typedef struct {
   int max_stream;
   authn_t *authn;
   creds_t *dummy_creds;       //** Dummy creds. Should be replaced when proper AuthN/AuthZ is added
+  char *fname_activity;       //** Filename for logging operations.
 } osrs_priv_t;
 
 typedef struct {

@@ -71,14 +71,75 @@ typedef struct {
 } spin_hb_t;
 
 //***********************************************************************
+// osrs_log - Logs an operation
+//***********************************************************************
+
+void osrs_log_printf(object_service_fn_t *os, creds_t *creds, const char *fmt, ...)
+{
+  va_list args;
+  osrs_priv_t *osrs = (osrs_priv_t *)os->priv;
+  FILE *fd;
+  authn_fake_priv_t *a;
+  char date[APR_CTIME_LEN], *uid;
+  apr_time_t now;
+
+  if (osrs->fname_activity == NULL) return;
+  fd = fopen(osrs->fname_activity, "a");
+  if (fd == NULL) {
+     log_printf(0, "ERROR opening activity_log (%s)!\n", osrs->fname_activity);
+     return;
+  }
+
+  //** Add the header
+  a = creds->priv;
+  uid = (a->len != 0) ? a->handle : "(null)";
+  now = apr_time_now();
+  apr_ctime(date, now);
+  fprintf(fd, "[%s (" TT ") %s] ", date, now, uid);
+
+  //** Print the user text
+  va_start(args, fmt);
+  vfprintf(fd, fmt, args);
+  va_end(args);
+
+  fclose(fd);
+}
+
+
+//***********************************************************************
+// osrs_release_creds - Release the creds
+//
+// =====NOTE: this routine is a hack to pass around the userid and host ===
+//***********************************************************************
+
+void osrs_release_creds(object_service_fn_t *os, creds_t *creds)
+{
+  //** The handle is stored in the frame and will get released on its destruction
+  free(creds->priv);
+  free(creds);
+  return;
+}
+
+//***********************************************************************
 // osrs_get_creds - Retreives the creds from the message
+//
+// =====NOTE: this routine is a hack to pass around the userid and host ===
 //***********************************************************************
 
 creds_t *osrs_get_creds(object_service_fn_t *os, mq_frame_t *f)
 {
   osrs_priv_t *osrs = (osrs_priv_t *)os->priv;
+  creds_t *creds;
+  authn_fake_priv_t *a;
 
-  return(osrs->dummy_creds);
+  type_malloc(creds, creds_t, 1);
+  type_malloc(a, authn_fake_priv_t, 1);
+
+  *creds = *osrs->dummy_creds;
+  creds->priv = a;
+  mq_get_frame(f, (void **)&(a->handle), &(a->len));
+
+  return(creds);
 }
 
 //***********************************************************************
@@ -176,6 +237,8 @@ void osrs_exists_cb(void *arg, mq_task_t *task)
      status = op_failure_status;
   }
 
+  osrs_release_creds(os, creds);
+
   mq_frame_destroy(fname);
   mq_frame_destroy(fcred);
 
@@ -231,6 +294,7 @@ void osrs_spin_hb_cb(void *arg, mq_task_t *task)
   }
   apr_thread_mutex_unlock(osrs->lock);
 
+  osrs_release_creds(os, creds);
 
   mq_frame_destroy(fspin);
   mq_frame_destroy(fcred);
@@ -283,6 +347,7 @@ void osrs_create_object_cb(void *arg, mq_task_t *task)
 
   if (creds != NULL) {
      data = mq_frame_strdup(f);
+     osrs_log_printf(os, creds, "CREATE(%s)\n", name);
      gop = os_create_object(osrs->os_child, creds, name, ftype, data);
      gop_waitall(gop);
      if (data != NULL) free(data);
@@ -291,6 +356,8 @@ void osrs_create_object_cb(void *arg, mq_task_t *task)
   } else {
      status = op_failure_status;
   }
+
+  osrs_release_creds(os, creds);
 
   mq_frame_destroy(fname);
   mq_frame_destroy(fcred);
@@ -339,6 +406,8 @@ void osrs_remove_object_cb(void *arg, mq_task_t *task)
   mq_get_frame(fname, (void **)&name, &fsize);
 
   if (creds != NULL) {
+    osrs_log_printf(os, creds, "REMOVE(%s)\n", name);
+
     gop = os_remove_object(osrs->os_child, creds, name);
     gop_waitall(gop);
     status = gop_get_status(gop);
@@ -346,6 +415,8 @@ void osrs_remove_object_cb(void *arg, mq_task_t *task)
   } else {
      status = op_failure_status;
   }
+
+  osrs_release_creds(os, creds);
 
   mq_frame_destroy(fname);
   mq_frame_destroy(fcred);
@@ -452,7 +523,7 @@ void osrs_remove_regex_object_cb(void *arg, mq_task_t *task)
   //** run the task
   if (creds != NULL) {
     gop = os_remove_regex_object(osrs->os_child, creds, path, object_regex, obj_types, recurse_depth);
-    
+
     while ((g = gop_timed_waitany(gop, 1)) == NULL) {
        expire = apr_time_now() - apr_time_from_sec(hb_timeout);
        apr_thread_mutex_lock(osrs->lock);
@@ -484,6 +555,8 @@ fail:
      if (spin.gop != NULL) gop_free(spin.gop, OP_DESTROY);
      apr_thread_mutex_unlock(osrs->lock);
   }
+
+  osrs_release_creds(os, creds);
 
   mq_frame_destroy(fdata);
   mq_frame_destroy(fcred);
@@ -552,6 +625,8 @@ log_printf(5, "status.op_status=%d\n", status.op_status);
   //** Lastly send it
   mq_submit(osrs->server_portal, mq_task_new(osrs->mqc, response, NULL, NULL, 30));
 
+  osrs_release_creds(os, creds);
+
   mq_frame_destroy(fspin);
   mq_frame_destroy(fcred);
 
@@ -598,6 +673,7 @@ void osrs_symlink_object_cb(void *arg, mq_task_t *task)
 
   if (creds != NULL) {
      userid = mq_frame_strdup(fuserid);
+     osrs_log_printf(os, creds, "SYMLINK(%s, %s)\n", src_name, dest_name);
      gop = os_symlink_object(osrs->os_child, creds, src_name, dest_name, userid);
      gop_waitall(gop);
      status = gop_get_status(gop);
@@ -606,6 +682,8 @@ void osrs_symlink_object_cb(void *arg, mq_task_t *task)
   } else {
      status = op_failure_status;
   }
+
+  osrs_release_creds(os, creds);
 
   mq_frame_destroy(fsname);
   mq_frame_destroy(fdname);
@@ -659,6 +737,7 @@ void osrs_hardlink_object_cb(void *arg, mq_task_t *task)
 
   if (creds != NULL) {
      userid = mq_frame_strdup(fuserid);
+     osrs_log_printf(os, creds, "HARDLINK(%s, %s)\n", src_name, dest_name);
      gop = os_hardlink_object(osrs->os_child, creds, src_name, dest_name, userid);
      gop_waitall(gop);
      status = gop_get_status(gop);
@@ -667,6 +746,8 @@ void osrs_hardlink_object_cb(void *arg, mq_task_t *task)
   } else {
      status = op_failure_status;
   }
+
+  osrs_release_creds(os, creds);
 
   mq_frame_destroy(fsname);
   mq_frame_destroy(fdname);
@@ -717,6 +798,7 @@ void osrs_move_object_cb(void *arg, mq_task_t *task)
   mq_get_frame(fdname, (void **)&dest_name, &fsize);
 
   if (creds != NULL) {
+     osrs_log_printf(os, creds, "MOVE(%s, %s)\n", src_name, dest_name);
      gop = os_move_object(osrs->os_child, creds, src_name, dest_name);
      gop_waitall(gop);
      status = gop_get_status(gop);
@@ -724,6 +806,8 @@ void osrs_move_object_cb(void *arg, mq_task_t *task)
   } else {
      status = op_failure_status;
   }
+
+  osrs_release_creds(os, creds);
 
   mq_frame_destroy(fsname);
   mq_frame_destroy(fdname);
@@ -820,6 +904,8 @@ log_printf(5, "PTR key=%" PRIdPTR " len=%d\n", oo->key, n);
   }
 
   //** Do some house cleaning
+  osrs_release_creds(os, creds);
+
   mq_frame_destroy(fhb);
   mq_frame_destroy(fsname);
   mq_frame_destroy(fcred);
@@ -1077,6 +1163,8 @@ fail_fd:
 fail:
   if (fd != NULL) mq_ongoing_release(osrs->ongoing, (char *)id, id_size, fd_key);
 
+  osrs_release_creds(os, creds);
+
   mq_frame_destroy(ffd);
   mq_frame_destroy(fuid);
   mq_frame_destroy(fdata);
@@ -1237,6 +1325,8 @@ fail_fd:
 fail:
   if (fd != NULL) mq_ongoing_release(osrs->ongoing, (char *)id, id_size, fd_key);
 
+  osrs_release_creds(os, creds);
+
   mq_frame_destroy(ffd);
   mq_frame_destroy(fuid);
   mq_frame_destroy(fdata);
@@ -1319,6 +1409,8 @@ void osrs_abort_regex_set_mult_attr_cb(void *arg, mq_task_t *task)
 log_printf(5, "status.op_status=%d\n", status.op_status);
   //** Lastly send it
   mq_submit(osrs->server_portal, mq_task_new(osrs->mqc, response, NULL, NULL, 30));
+
+  osrs_release_creds(os, creds);
 
   mq_frame_destroy(fspin);
   mq_frame_destroy(fcred);
@@ -1506,6 +1598,8 @@ fail:
 
   if (call_id != NULL) free(call_id);
 
+  osrs_release_creds(os, creds);
+
   mq_frame_destroy(fdata);
   mq_frame_destroy(fcred);
   mq_frame_destroy(fcid);
@@ -1661,6 +1755,8 @@ fail:
   if (fd_src != NULL) mq_ongoing_release(osrs->ongoing, (char *)id, id_size, fd_key_src);
   if (fd_dest != NULL) mq_ongoing_release(osrs->ongoing, (char *)id, id_size, fd_key_dest);
 
+  osrs_release_creds(os, creds);
+
   mq_frame_destroy(ffd_src);
   mq_frame_destroy(ffd_dest);
   mq_frame_destroy(fuid);
@@ -1811,6 +1907,8 @@ fail_fd:
 fail:
 
   if (fd_src != NULL) mq_ongoing_release(osrs->ongoing, (char *)id, id_size, fd_key_src);
+
+  osrs_release_creds(os, creds);
 
   mq_frame_destroy(ffd_src);
   mq_frame_destroy(fuid);
@@ -1976,6 +2074,8 @@ fail:
 
   if (fd_dest != NULL) mq_ongoing_release(osrs->ongoing, (char *)id, id_size, fd_key_dest);
 
+  osrs_release_creds(os, creds);
+
   mq_frame_destroy(ffd_dest);
   mq_frame_destroy(fuid);
   mq_frame_destroy(fdata);
@@ -2117,9 +2217,6 @@ log_printf(15, "2. bpos=%d fsize=%d\n", bpos, fsize);
   }
 
 fail:
-  mq_frame_destroy(fdata);
-  mq_frame_destroy(fcred);
-
   //** Encode the status
   status = (it != NULL) ? op_success_status : op_failure_status;
   n = zigzag_encode(status.op_status, tbuf);
@@ -2165,6 +2262,11 @@ log_printf(5, "val[%d]=%s\n", i, val[i]);
   os_destroy_object_iter(osrs->os_child, it);
 
 finished:
+  osrs_release_creds(os, creds);
+
+  mq_frame_destroy(fdata);
+  mq_frame_destroy(fcred);
+
   //** Flush the buffer
   mq_stream_destroy(mqs);
 
@@ -2279,9 +2381,6 @@ log_printf(15, "2. bpos=%d fsize=%d attr_regex=%p\n", bpos, fsize, attr_regex);
   }
 
 fail:
-  mq_frame_destroy(fdata);
-  mq_frame_destroy(fcred);
-
   //** Encode the status
   status = (it != NULL) ? op_success_status : op_failure_status;
   n = zigzag_encode(status.op_status, tbuf);
@@ -2339,6 +2438,11 @@ log_printf(15, "key=%s v_size=%d\n", key, v_size);
   os_destroy_object_iter(osrs->os_child, it);
 
 finished:
+  osrs_release_creds(os, creds);
+
+  mq_frame_destroy(fdata);
+  mq_frame_destroy(fcred);
+
   //** Flush the buffer
   mq_stream_destroy(mqs);
 
@@ -2485,6 +2589,7 @@ finished:
   if (handle != NULL) mq_ongoing_release(osrs->ongoing, (char *)id, id_size, fhkey);
 
   //** Clean up
+  osrs_release_creds(os, creds);
   mq_frame_destroy(fdata);
   mq_frame_destroy(fcred);
   mq_frame_destroy(ffd);
@@ -2614,6 +2719,7 @@ log_printf(5, "err=%d bad_fname=%s bad_atype=%d\n", err, bad_fname, bad_atype);
 finished:
 
   //** Clean up
+  osrs_release_creds(os, creds);
   mq_frame_destroy(fcred);
 //  mq_frame_destroy(fhid);
 
@@ -2700,6 +2806,7 @@ log_printf(5, "err=%d\n", err);
   mq_submit(osrs->server_portal, mq_task_new(osrs->mqc, response, NULL, NULL, 30));
 
   //** Clean up
+  osrs_release_creds(os, creds);
   mq_frame_destroy(fcred);
 
   if (path != NULL) free(path);
@@ -2714,10 +2821,6 @@ void os_remote_server_destroy(object_service_fn_t *os)
 {
   osrs_priv_t *osrs = (osrs_priv_t *)os->priv;
 
-  //** Drop the fake creds
-  an_cred_destroy(osrs->dummy_creds);
-  if (osrs->authn != NULL) authn_destroy(osrs->authn);
-
   //** Remove the server portal
   mq_portal_remove(osrs->mqc, osrs->server_portal);
 
@@ -2726,6 +2829,13 @@ void os_remote_server_destroy(object_service_fn_t *os)
 
   //** Now destroy it
   mq_portal_destroy(osrs->server_portal);
+
+  //** Drop the fake creds
+  an_cred_destroy(osrs->dummy_creds);
+  if (osrs->authn != NULL) authn_destroy(osrs->authn);
+
+  //** Free the log string
+  if (osrs->fname_activity != NULL) free(osrs->fname_activity);
 
   //** Shutdown the child OS
   os_destroy_service(osrs->os_child);
@@ -2776,6 +2886,10 @@ log_printf(0, "START\n");
 
   //** Get the host name we bind to
   osrs->hostname= inip_get_string(fd, section, "address", NULL);
+
+  //** Get the activity log file
+  osrs->fname_activity = inip_get_string(fd, section, "log_activity", NULL);
+  log_printf(5, "section=%s log_activity=%s\n", section, osrs->fname_activity);
 
   //** Ongoing check interval
   osrs->ongoing_interval = inip_get_integer(fd, section, "ongoing_interval", 300);
