@@ -81,11 +81,13 @@ void authn_fake_set_id(creds_t *c, char *id)
   authn_fake_priv_t *a = (authn_fake_priv_t *)c->priv;
   char buffer[1024], buf2[256], buf3[512];
   uint64_t pid;
+  int err;
 
   c->id = strdup(id);
 
   pid = getpid();
-  getlogin_r(buf2, sizeof(buf2));
+  err = getlogin_r(buf2, sizeof(buf2));
+  if (err != 0) snprintf(buf2, sizeof(buf2), "ERROR(%d)", err);
   gethostname(buf3, sizeof(buf3));
   snprintf(buffer, sizeof(buffer), "%s:" LU ":%s:%s", id, pid, buf2, buf3);
   a->handle = strdup(buffer);
