@@ -32,6 +32,7 @@ http://www.accre.vanderbilt.edu
 #include <string.h>
 #include <strings.h>
 #include <stdio.h>
+#include <math.h>
 #include "fmttypes.h"
 #include "type_malloc.h"
 
@@ -363,7 +364,7 @@ char *pretty_print_int_with_scale(int64_t value, char *buffer)
 
   n = value;
   for (i=0; i<7; i++) {
-    if ((n % base) != 0) break;
+    if ((llabs(n) % base) != 0) break;
     n = n / base;
   }
 
@@ -408,7 +409,7 @@ char *pretty_print_double_with_scale(int base, double value, char *buffer)
 
   n = value;
   for (i=0; i<7; i++) {
-    if (n < base) break;
+    if (fabs(n) < base) break;
     n = n / base;
   }
 
