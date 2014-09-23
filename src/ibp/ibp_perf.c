@@ -770,7 +770,6 @@ int main(int argc, char **argv)
      } else if (strcmp(argv[i], "-save") == 0) { //** Save the allocations and don't delete them
         i++;
         out_fname = argv[i]; i++;
-printf("SAVE=%s\n", out_fname);
         if (strcmp(out_fname, "stderr") == 0) {
            fd_out = stderr;
            fd_special = 1;
