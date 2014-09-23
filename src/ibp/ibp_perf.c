@@ -228,6 +228,31 @@ void remove_allocs(ibp_capset_t *caps_list, int nallocs)
 }
 
 //*************************************************************************
+// save_allocs - Stores the allocations to the provided fd
+//*************************************************************************
+
+void save_allocs(FILE *fd, ibp_capset_t *caps_list, int nallocs)
+{
+  int i;
+
+  //** Print the ds_read compatible portion of the file
+  fprintf(fd, "%d\n", nallocs);
+  for (i=0; i<nallocs; i++) {
+     fprintf(fd,"%s\n", get_ibp_cap(&(caps_list[i]), IBP_READCAP));
+  }
+
+  //** Now print the full caps
+  fprintf(fd, "=========FULL CAPS FOLLOW===========\n");
+  for (i=0; i<nallocs; i++) {
+     fprintf(fd,"%s\n", get_ibp_cap(&(caps_list[i]), IBP_READCAP));
+     fprintf(fd,"%s\n", get_ibp_cap(&(caps_list[i]), IBP_WRITECAP));
+     fprintf(fd,"%s\n", get_ibp_cap(&(caps_list[i]), IBP_MANAGECAP));
+  }
+
+  return;
+}
+
+//*************************************************************************
 // validate_allocs - Validates a list of allocations
 //*************************************************************************
 
@@ -613,11 +638,12 @@ int main(int argc, char **argv)
   int i, start_option, tcpsize, cs_type;
   ibp_capset_t *caps_list, *base_caps;
   rid_t rid;
-  int port;
+  int port, fd_special;
   char buffer[1024];
   apr_time_t stime, dtime;
   double dt;
-  char *ppath, *net_cs_name, *disk_cs_name;
+  char *ppath, *net_cs_name, *disk_cs_name, *out_fname;
+  FILE *fd_out;
   phoebus_t pcc;
   char pstr[2048];
   chksum_t cs;
@@ -641,10 +667,10 @@ int main(int argc, char **argv)
      printf("-dd                 - Enable *FULL* debug output\n");
      printf("-network_chksum type blocksize - Enable network checksumming for transfers.\n");
      printf("                      type should be SHA256, SHA512, SHA1, or MD5.\n");
-     printf("                      blocksize determines how many bytes to send between checksums in kbytes.\n"); 
+     printf("                      blocksize determines how many bytes to send between checksums in kbytes.\n");
      printf("-disk_chksum type blocksize - Enable Disk checksumming.\n");
      printf("                      type should be NONE, SHA256, SHA512, SHA1, or MD5.\n");
-     printf("                      blocksize determines how many bytes to send between checksums in kbytes.\n"); 
+     printf("                      blocksize determines how many bytes to send between checksums in kbytes.\n");
      printf("-validate           - Validate disk chksum data.  Option is ignored unless disk chksumming is enabled.\n");
      printf("-config ibp.cfg     - Use the IBP configuration defined in file ibp.cfg.\n");
      printf("                      nthreads overrides value in cfg file unless -1.\n");
@@ -653,6 +679,8 @@ int main(int argc, char **argv)
      printf("-tcpsize tcpbufsize - Use this value, in KB, for the TCP send/recv buffer sizes\n");
      printf("-duration duration  - Allocation duration in sec.  Needs to be big enough to last the entire\n");
      printf("                      run.  The default duration is %d sec.\n", a_duration);
+     printf("-save fname         - Don't delete the R/W allocations on completion.  Instead save them to the given filename.\n");
+     printf("                      Can use 'stdout' and 'stderr' as the filename to redirect output\n");
      printf("-sync               - Use synchronous protocol.  Default uses async.\n");
      printf("-alias              - Use alias allocations for all I/O operations\n");
      printf("-progress           - Print completion progress.\n");
@@ -660,7 +688,7 @@ int main(int argc, char **argv)
      printf("                      Disabled if network chksums are enabled.\n");
      printf("n_depots            - Number of depot tuplets\n");
      printf("depot               - Depot hostname\n");
-     printf("port                - IBP port on depot\n"); 
+     printf("port                - IBP port on depot\n");
      printf("resource_id         - Resource ID to use on depot\n");
      printf("nthreads            - Max Number of simultaneous threads to use.  Use -1 for defaults or value in ibp.cfg\n");
      printf("ibp_timeout         - Timeout(sec) for each IBP copmmand\n");
@@ -681,6 +709,8 @@ int main(int argc, char **argv)
      return(-1);
   }
 
+  set_log_level(-1);
+
   ic = ibp_create_context();  //** Initialize IBP
 
   i = 1;
@@ -689,6 +719,9 @@ int main(int argc, char **argv)
   sync_transfer = 0;
   use_alias = 0;
   print_progress = 0;
+  fd_special = 0;
+  fd_out = NULL;
+  out_fname = NULL;
   do {
      start_option = i;
 
@@ -734,6 +767,19 @@ int main(int argc, char **argv)
         i++;
         ibp_load_config_file(ic, argv[i], NULL);
         i++;
+     } else if (strcmp(argv[i], "-save") == 0) { //** Save the allocations and don't delete them
+        i++;
+        out_fname = argv[i]; i++;
+printf("SAVE=%s\n", out_fname);
+        if (strcmp(out_fname, "stderr") == 0) {
+           fd_out = stderr;
+           fd_special = 1;
+        } else if (strcmp(out_fname, "stdout") == 0) {
+           fd_out = stdout;
+           fd_special = 1;
+        } else {
+           assert((fd_out = fopen(out_fname, "w")) != NULL);
+        }
      } else if (strcmp(argv[i], "-phoebus") == 0) { //** Check if we want Phoebus transfers
         cc = (ibp_connect_context_t *)malloc(sizeof(ibp_connect_context_t));
         cc->type = NS_TYPE_PHOEBUS;
@@ -836,7 +882,7 @@ int main(int argc, char **argv)
        case NS_TYPE_SOCK:
           printf("Connection Type: SOCKET\n"); break;
        case NS_TYPE_PHOEBUS:
-          phoebus_path_to_string(pstr, sizeof(pstr), &pcc); 
+          phoebus_path_to_string(pstr, sizeof(pstr), &pcc);
           printf("Connection Type: PHOEBUS (%s)\n", pstr); break;
        case NS_TYPE_1_SSL:
           printf("Connection Type: Single SSL\n"); break;
@@ -867,6 +913,10 @@ int main(int argc, char **argv)
      } else {
         printf("Disk Validation: Disabled\n");
      }
+  }
+
+  if (fd_out != NULL) {
+     printf("Saving allocations to %s\n", out_fname);
   }
 
   printf("TCP buffer size: %dkb (0 defaults to OS)\n", ibp_get_tcpsize(ic)/1024);
@@ -1050,14 +1100,20 @@ printf("-----------------------------\n"); fflush(stdout);
         printf("\n");
      }
 
-     printf("Removing allocations...."); fflush(stdout);
-     stime = apr_time_now();
-     remove_allocs(caps_list, readwrite_count);
-     dtime = apr_time_now() - stime;
-     dt = dtime / (1.0 * APR_USEC_PER_SEC);
-     r1 = 1.0*readwrite_count/dt;
-     printf(" %lf removes/sec (%.2lf sec total) \n", r1, dt);
-     printf("\n");
+     if (fd_out == NULL) {
+        printf("Removing allocations...."); fflush(stdout);
+        stime = apr_time_now();
+        remove_allocs(caps_list, readwrite_count);
+        dtime = apr_time_now() - stime;
+        dt = dtime / (1.0 * APR_USEC_PER_SEC);
+        r1 = 1.0*readwrite_count/dt;
+        printf(" %lf removes/sec (%.2lf sec total) \n", r1, dt);
+        printf("\n");
+     } else {
+        printf("Saving allocations to %s instead of deleting them\n", out_fname);
+        save_allocs(fd_out, caps_list, readwrite_count);
+        if (fd_special == 0) fclose(fd_out);
+     }
   }
 
   printf("Final network connection counter: %d\n", network_counter(NULL));
