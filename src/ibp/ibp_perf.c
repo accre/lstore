@@ -25,10 +25,10 @@ Advanced Computing Center for Research and Education
 230 Appleton Place
 Nashville, TN 37203
 http://www.accre.vanderbilt.edu
-*/ 
+*/
 
 //*****************************************************
-// ibp_perf - Benchmarks IBP depot creates, removes, 
+// ibp_perf - Benchmarks IBP depot creates, removes,
 //      reads, and writes.  The read and write tests
 //      use sync an async iovec style operations.
 //*****************************************************
@@ -78,7 +78,6 @@ ibp_context_t *ic = NULL;
 
 void init_buffer(char *buffer, char c, int size)
 {
-  
   if (identical_buffers == 1) {
      memset(buffer, 'A', size);
      return;
@@ -134,23 +133,23 @@ void alias_remove_allocs(ibp_capset_t *caps_list, ibp_capset_t *mcaps_list, int 
 
   for (i=0; i<nallocs; i++) {
      j = i % mallocs;
-     op = new_ibp_alias_remove_op(ic, get_ibp_cap(&(caps_list[i]), IBP_MANAGECAP), 
+     op = new_ibp_alias_remove_op(ic, get_ibp_cap(&(caps_list[i]), IBP_MANAGECAP),
               get_ibp_cap(&(mcaps_list[j]), IBP_MANAGECAP), ibp_timeout);
      opque_add(q, op);
   }
- 
+
   io_start(q);
-  err = io_waitall(q);  
+  err = io_waitall(q);
   if (err != 0) {
      printf("alias_remove_allocs: At least 1 error occured! * ibp_errno=%d * nfailed=%d\n", err, opque_tasks_failed(q)); 
-  }    
+  }
   opque_free(q, OP_DESTROY);
 
   //** Lastly free all the caps and the array
   for (i=0; i<nallocs; i++) {
-     destroy_ibp_cap(get_ibp_cap(&(caps_list[i]), IBP_READCAP));   
-     destroy_ibp_cap(get_ibp_cap(&(caps_list[i]), IBP_WRITECAP));   
-     destroy_ibp_cap(get_ibp_cap(&(caps_list[i]), IBP_MANAGECAP));   
+     destroy_ibp_cap(get_ibp_cap(&(caps_list[i]), IBP_READCAP));
+     destroy_ibp_cap(get_ibp_cap(&(caps_list[i]), IBP_WRITECAP));
+     destroy_ibp_cap(get_ibp_cap(&(caps_list[i]), IBP_MANAGECAP));
   }
 
   free(caps_list);
@@ -182,11 +181,11 @@ ibp_capset_t *create_allocs(int nallocs, int asize)
   }
 
   io_start(q);
-  err = io_waitall(q);  
+  err = io_waitall(q);
   if (err != 0) {
-     printf("create_allocs: At least 1 error occured! * ibp_errno=%d * nfailed=%d\n", err, opque_tasks_failed(q)); 
+     printf("create_allocs: At least 1 error occured! * ibp_errno=%d * nfailed=%d\n", err, opque_tasks_failed(q));
      abort();
-  }    
+  }
   opque_free(q, OP_DESTROY);
 
   return(caps);
@@ -208,19 +207,19 @@ void remove_allocs(ibp_capset_t *caps_list, int nallocs)
      op = new_ibp_remove_op(ic, get_ibp_cap(&(caps_list[i]), IBP_MANAGECAP), ibp_timeout);
      opque_add(q, op);
   }
- 
+
   io_start(q);
-  err = io_waitall(q);  
+  err = io_waitall(q);
   if (err != 0) {
-     printf("remove_allocs: At least 1 error occured! * ibp_errno=%d * nfailed=%d\n", err, opque_tasks_failed(q)); 
-  }    
+     printf("remove_allocs: At least 1 error occured! * ibp_errno=%d * nfailed=%d\n", err, opque_tasks_failed(q));
+  }
   opque_free(q, OP_DESTROY);
 
   //** Lastly free all the caps and the array
   for (i=0; i<nallocs; i++) {
-     destroy_ibp_cap(get_ibp_cap(&(caps_list[i]), IBP_READCAP));   
-     destroy_ibp_cap(get_ibp_cap(&(caps_list[i]), IBP_WRITECAP));   
-     destroy_ibp_cap(get_ibp_cap(&(caps_list[i]), IBP_MANAGECAP));   
+     destroy_ibp_cap(get_ibp_cap(&(caps_list[i]), IBP_READCAP));
+     destroy_ibp_cap(get_ibp_cap(&(caps_list[i]), IBP_WRITECAP));
+     destroy_ibp_cap(get_ibp_cap(&(caps_list[i]), IBP_MANAGECAP));
   }
 
   free(caps_list);
@@ -249,11 +248,11 @@ void validate_allocs(ibp_capset_t *caps_list, int nallocs)
        ibp_timeout);
      opque_add(q, op);
   }
- 
+
   io_start(q);
-  err = io_waitall(q);  
+  err = io_waitall(q);
   if (err != 0) {
-     printf("validate_allocs: At least 1 error occured! * ibp_errno=%d * nfailed=%d\n", err, opque_tasks_failed(q)); 
+     printf("validate_allocs: At least 1 error occured! * ibp_errno=%d * nfailed=%d\n", err, opque_tasks_failed(q));
      nalloc_bad = 0; nblocks_bad = 0;
      for (i=0; i<nallocs; i++) {
        if (bad_blocks[i] != 0) {
@@ -263,7 +262,7 @@ void validate_allocs(ibp_capset_t *caps_list, int nallocs)
      }
 
      printf("  Total Bad allocations: %d   Total Bad blocks: %d\n", nalloc_bad, nblocks_bad);
-  }    
+  }
   opque_free(q, OP_DESTROY);
 
   free(bad_blocks);
@@ -305,10 +304,10 @@ void write_allocs(ibp_capset_t *caps, int n, int asize, int block_size)
   }
 
   io_start(q);
-  err = io_waitall(q);  
+  err = io_waitall(q);
   if (err != 0) {
-     printf("write_allocs: At least 1 error occured! * ibp_errno=%d * nfailed=%d\n", err, opque_tasks_failed(q)); 
-  }    
+     printf("write_allocs: At least 1 error occured! * ibp_errno=%d * nfailed=%d\n", err, opque_tasks_failed(q));
+  }
   opque_free(q, OP_DESTROY);
 
   free(buf);
@@ -327,7 +326,7 @@ void read_allocs(ibp_capset_t *caps, int n, int asize, int block_size)
   tbuffer_t *buf;
 
   char *buffer = (char *)malloc(block_size);
-    
+
   q = new_opque();
 
   nblocks = asize / block_size;
@@ -406,7 +405,7 @@ void random_allocs(ibp_capset_t *caps, int n, int asize, int block_size, double 
   io_start(q);
   err = io_waitall(q);
   if (err != 0) {
-     printf("random_allocs: At least 1 error occured! * ibp_errno=%d * nfailed=%d\n", err, opque_tasks_failed(q)); 
+     printf("random_allocs: At least 1 error occured! * ibp_errno=%d * nfailed=%d\n", err, opque_tasks_failed(q));
   }
   opque_free(q, OP_DESTROY);
 
@@ -444,10 +443,10 @@ double small_write_allocs(ibp_capset_t *caps, int n, int asize, int small_count,
 
   nbytes = 0;
   for (i=0; i<small_count; i++) {
-     rnd = rand()/(RAND_MAX+1.0);     
+     rnd = rand()/(RAND_MAX+1.0);
      slot = n * rnd;
 
-     rnd = rand()/(RAND_MAX+1.0);     
+     rnd = rand()/(RAND_MAX+1.0);
      rnd = lmin + (lmax - lmin) * rnd;
      io_size = exp(rnd);
      if (io_size == 0) io_size = 1;
@@ -457,17 +456,15 @@ double small_write_allocs(ibp_capset_t *caps, int n, int asize, int small_count,
      offset = (asize - io_size) * rnd;
 
      tbuffer_single(&(buf[i]), io_size, buffer);
-
-//     log_printf(15, "small_write_allocs: slot=%d offset=%d size=%d\n", slot, offset, io_size);
      op = new_ibp_write_op(ic, get_ibp_cap(&(caps[slot]), IBP_WRITECAP), offset, &(buf[i]), 0, io_size, ibp_timeout);
      opque_add(q, op);
   }
- 
+
   io_start(q);
-  err = io_waitall(q);  
+  err = io_waitall(q);
   if (err != 0) {
-     printf("small_write_allocs: At least 1 error occured! * ibp_errno=%d * nfailed=%d\n", err, opque_tasks_failed(q)); 
-  }    
+     printf("small_write_allocs: At least 1 error occured! * ibp_errno=%d * nfailed=%d\n", err, opque_tasks_failed(q));
+  }
   opque_free(q, OP_DESTROY);
 
   free(buf);
@@ -505,10 +502,10 @@ double small_read_allocs(ibp_capset_t *caps, int n, int asize, int small_count, 
 
   nbytes = 0;
   for (i=0; i<small_count; i++) {
-     rnd = rand()/(RAND_MAX+1.0);     
+     rnd = rand()/(RAND_MAX+1.0);
      slot = n * rnd;
 
-     rnd = rand()/(RAND_MAX+1.0);     
+     rnd = rand()/(RAND_MAX+1.0);
      rnd = lmin + (lmax - lmin) * rnd;
      io_size = exp(rnd);
      if (io_size == 0) io_size = 1;
@@ -519,16 +516,15 @@ double small_read_allocs(ibp_capset_t *caps, int n, int asize, int small_count, 
 
      tbuffer_single(&(buf[i]), io_size, buffer);
 
-//     log_printf(15, "small_read_allocs: slot=%d offset=%d size=%d\n", slot, offset, io_size);
      op = new_ibp_read_op(ic, get_ibp_cap(&(caps[slot]), IBP_READCAP), offset, &(buf[i]), 0, io_size, ibp_timeout);
      opque_add(q, op);
   }
- 
+
   io_start(q);
-  err = io_waitall(q);  
+  err = io_waitall(q);
   if (err != 0) {
-     printf("small_read_allocs: At least 1 error occured! * ibp_errno=%d * nfailed=%d\n", err, opque_tasks_failed(q)); 
-  }    
+     printf("small_read_allocs: At least 1 error occured! * ibp_errno=%d * nfailed=%d\n", err, opque_tasks_failed(q));
+  }
   opque_free(q, OP_DESTROY);
 
   free(buf);
@@ -568,10 +564,10 @@ double small_random_allocs(ibp_capset_t *caps, int n, int asize, double readfrac
 
   nbytes = 0;
   for (i=0; i<small_count; i++) {
-     rnd = rand()/(RAND_MAX+1.0);     
+     rnd = rand()/(RAND_MAX+1.0);
      slot = n * rnd;
 
-     rnd = rand()/(RAND_MAX+1.0);     
+     rnd = rand()/(RAND_MAX+1.0);
      rnd = lmin + (lmax - lmin) * rnd;
      io_size = exp(rnd);
      if (io_size == 0) io_size = 1;
@@ -582,7 +578,7 @@ double small_random_allocs(ibp_capset_t *caps, int n, int asize, double readfrac
 
 //     log_printf(15, "small_random_allocs: slot=%d offset=%d size=%d\n", slot, offset, io_size);
 
-     rnd = rand()/(RAND_MAX+1.0);     
+     rnd = rand()/(RAND_MAX+1.0);
      if (rnd < readfrac) {
         tbuffer_single(&(buf[i]), io_size, rbuffer);
         op = new_ibp_read_op(ic, get_ibp_cap(&(caps[slot]), IBP_READCAP), offset, &(buf[i]), 0, io_size, ibp_timeout);
@@ -593,12 +589,12 @@ double small_random_allocs(ibp_capset_t *caps, int n, int asize, double readfrac
 
      opque_add(q, op);
   }
- 
+
   io_start(q);
-  err = io_waitall(q);  
+  err = io_waitall(q);
   if (err != 0) {
-     printf("small_random_allocs: At least 1 error occured! * ibp_errno=%d * nfailed=%d\n", err, opque_tasks_failed(q)); 
-  }    
+     printf("small_random_allocs: At least 1 error occured! * ibp_errno=%d * nfailed=%d\n", err, opque_tasks_failed(q));
+  }
   opque_free(q, OP_DESTROY);
 
   free(buf);
@@ -789,7 +785,7 @@ int main(int argc, char **argv)
 
   //*** Get thread count ***
   nthreads = atoi(argv[i]);
-  if (nthreads <= 0) { 
+  if (nthreads <= 0) {
      nthreads = ibp_get_max_depot_threads(ic);
   } else {
      ibp_set_max_depot_threads(ic, nthreads);
@@ -1062,7 +1058,7 @@ printf("-----------------------------\n"); fflush(stdout);
      r1 = 1.0*readwrite_count/dt;
      printf(" %lf removes/sec (%.2lf sec total) \n", r1, dt);
      printf("\n");
-  }  
+  }
 
   printf("Final network connection counter: %d\n", network_counter(NULL));
 
