@@ -66,10 +66,11 @@ int get_hpc_thread_count(portal_context_t *hpc)
 {
   int n;
 
-  apr_thread_mutex_lock(hpc->lock);
-  n = hpc->running_threads;
-  apr_thread_mutex_unlock(hpc->lock);
+//  apr_thread_mutex_lock(hpc->lock);
+//  n = hpc->running_threads;
+//  apr_thread_mutex_unlock(hpc->lock);
 
+  n = atomic_get(hpc->running_threads);
   return(n);
 }
 
@@ -79,9 +80,17 @@ int get_hpc_thread_count(portal_context_t *hpc)
 
 void modify_hpc_thread_count(portal_context_t *hpc, int n)
 {
-  apr_thread_mutex_lock(hpc->lock);
-  hpc->running_threads = hpc->running_threads + n;
-  apr_thread_mutex_unlock(hpc->lock);
+//  apr_thread_mutex_lock(hpc->lock);
+//  hpc->running_threads = hpc->running_threads + n;
+//  apr_thread_mutex_unlock(hpc->lock);
+
+    if (n == -1) {
+      atomic_dec(hpc->running_threads);
+    } else if (n == 1) {
+      atomic_inc(hpc->running_threads);
+    } else {
+      assert((n == 1) || (n== -1));
+    }
 
 }
 

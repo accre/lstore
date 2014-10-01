@@ -131,7 +131,7 @@ typedef struct {             //** Handle for maintaining all the ecopy connectio
   apr_hash_t *table;         //** Table containing the depot_portal structs
   apr_pool_t *pool;          //** Memory pool for hash table
   apr_time_t min_idle;       //** Idle time before closing connection
-  int running_threads;       //** currently running # of connections
+  atomic_int_t running_threads;       //** currently running # of connections
   int max_connections;       //** Max aggregate allowed number of threads
   int min_threads;           //** Max allowed number of threads/host
   int max_threads;           //** Max allowed number of threads/host
