@@ -59,13 +59,9 @@ extern "C" {
 
 typedef struct resource_service_fn_s resource_service_fn_t;
 
-#define REBALANCE_TARGET    0
-#define REBALANCE_DONTCARE  1
-#define REBALANCE_FINISHED  2
-#define REBALANCE_IGNORE    3
-
 typedef struct {
   char *rid_key;      //** RID key
+  char *ds_key;       //** Data service key
   int state;          //** Tweaking state
   ex_off_t delta;     //** How much to change the space by in bytes.  Negative means remove and postive means add space to the RID
   ex_off_t tolerance; //** Tolerance in bytes.  When abs(delta)<tolerance we stop tweaking the RID

@@ -297,10 +297,16 @@ log_printf(15, "MALLOC j=%d\n", unique_size);
         rse = rss->random_array[slot];
         if (pick_from != NULL) {
            rid_change = apr_hash_get(pick_from, rse->rid_key, APR_HASH_KEY_STRING);
+log_printf(15, "PICK_FROM != NULL i=%d j=%d slot=%d rse->rid_key=%s rse->status=%d rid_change=%p\n", i, j, slot, rse->rid_key, rse->status, rid_change);
+
            if (rid_change == NULL) continue;  //** Not in our list so skip to the next
+ex_off_t delta = rid_change->delta - change;
+log_printf(15, "PICK_FROM != NULL i=%d j=%d slot=%d rse->rid_key=%s rse->status=%d rc->state=%d (" XOT ") > " XOT "????\n", i, j, slot, rse->rid_key, rse->status, rid_change->state, delta, rid_change->tolerance);
 
            //** Make sure we don't overshoot the target
-           if (abs(rid_change->delta - change) > rid_change->tolerance) continue;
+           if (rid_change->state == 1) continue;   //** Already converged RID
+           if (rid_change->delta <= 0) continue;   //** Need to move data OFF this RID
+           if ((change - rid_change->delta) > rid_change->tolerance) continue;  //**delta>0 if we made it here
         }
 
 log_printf(15, "i=%d j=%d slot=%d rse->rid_key=%s rse->status=%d\n", i, j, slot, rse->rid_key, rse->status);
@@ -383,6 +389,7 @@ log_printf(15, "i=%d j=%d slot=%d rse->rid_key=%s rse->status=%d\n", i, j, slot,
 
            if (rid_change != NULL) { //** Flag that I'm tweaking things.  The caller does the source pending/delta half
 	      rid_change->delta -= change;
+              rid_change->state = ((llabs(rid_change->delta) <= rid_change->tolerance) || (rid_change->tolerance == 0)) ? 1 : 0;
            }
            break;  //** Got one so exit the RID scan and start the next one
         } else if (i<fixed_size) {  //** This should have worked so flag an error

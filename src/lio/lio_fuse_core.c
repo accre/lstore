@@ -1575,7 +1575,7 @@ int lfs_read(const char *fname, char *buf, size_t size, off_t off, struct fuse_f
   //** Do the read op
   ssize = segment_size(fd->fh->seg);
   pend = off + size;
-  log_printf(0, "ssize=" XOT " off=" XOT " len=" XOT " pend=" XOT " readahead=" XOT "\n", ssize, off, size, pend, lfs->readahead);
+  log_printf(0, "ssize=" XOT " off=" XOT " len=" XOT " pend=" XOT " readahead=" XOT " trigger=" XOT "\n", ssize, off, size, pend, lfs->readahead, lfs->readahead_trigger);
   if (pend > ssize)
   {
     if (off > ssize) {
@@ -1592,8 +1592,7 @@ int lfs_read(const char *fname, char *buf, size_t size, off_t off, struct fuse_f
   rsize = size;
   segment_lock(fd->fh->seg);
   dr = pend - fd->fh->readahead_end;
-//  if ((dr > 0) || ((-dr) > lfs->readahead) || ((-dr) < 0.5*lfs->readahead)) {
-  if ((dr > 0) || ((-dr) > lfs->readahead)) {
+  if ((dr > 0) || ((-dr) > lfs->readahead_trigger)) {
      rsize = rend - off;
      if (rend > ssize)
      {
@@ -2915,6 +2914,7 @@ void *lfs_init_real(struct fuse_conn_info *conn,
   lfs->file_count = inip_get_integer(lfs->lc->ifd, section, "file_lock_size", 1000);
   lfs->enable_tape = inip_get_integer(lfs->lc->ifd, section, "enable_tape", 0);
   lfs->readahead = inip_get_integer(lfs->lc->ifd, section, "readahead", 0);
+  lfs->readahead_trigger = lfs->readahead * inip_get_double(lfs->lc->ifd, section, "readahead_trigger", 1.0);
 
   n = lfs->inode_cache_size;
   p = log2(n) + 3;

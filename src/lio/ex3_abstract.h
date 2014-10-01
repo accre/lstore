@@ -81,10 +81,11 @@ extern "C" {
 #define CLONE_STRUCTURE       0
 #define CLONE_STRUCT_AND_DATA 1
 
-#define INSPECT_RESULT_FULL_CHECK  512    //** Full byte-level check performed
-#define INSPECT_RESULT_SOFT_ERROR  1024   //** Soft errors found
-#define INSPECT_RESULT_HARD_ERROR  2048   //** Hard errors found
-#define INSPECT_RESULT_COUNT_MASK  511    //** Bit mask for LUN counts
+#define INSPECT_RESULT_FULL_CHECK      512    //** Full byte-level check performed
+#define INSPECT_RESULT_SOFT_ERROR     1024   //** Soft errors found
+#define INSPECT_RESULT_HARD_ERROR     2048   //** Hard errors found
+#define INSPECT_RESULT_MIGRATE_ERROR  4096   //** Migrate errors found
+#define INSPECT_RESULT_COUNT_MASK      511    //** Bit mask for LUN counts
 #define SEG_SM_LOAD   "segment_load"
 #define SEG_SM_CREATE "segment_create"
 

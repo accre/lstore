@@ -872,7 +872,7 @@ op_status_t segjerase_inspect_func(void *arg, int id)
   segjerase_priv_t *s = (segjerase_priv_t *)si->seg->priv;
   segjerase_full_t *sf;
   op_status_t status;
-  int option, total_stripes, child_replaced, repair, loop, i;
+  int option, total_stripes, child_replaced, repair, loop, i, migrate_errors;
   op_generic_t *gop;
   int max_loops = 10;
 
@@ -889,10 +889,12 @@ op_status_t segjerase_inspect_func(void *arg, int id)
   status = gop_get_status(gop);
   gop_free(gop, OP_DESTROY);
   si->max_replaced = (status.error_code & INSPECT_RESULT_COUNT_MASK);  //** NOTE: This needs to be checks for edge cases.
+//  si->max_replaced = status.error_code;
   si->bad_stripes = -1;
   child_replaced = si->max_replaced;
+  migrate_errors = status.error_code & INSPECT_RESULT_MIGRATE_ERROR;
 
-log_printf(5, "status: %d %d\n", status.op_status, status.error_code);
+log_printf(5, "status: %d %d migerr=%d\n", status.op_status, status.error_code, migrate_errors);
 
   //** Kick out if we can't fix anything
   if ((status.op_status != OP_STATE_SUCCESS) && (child_replaced > s->n_parity_devs)) {
@@ -928,6 +930,7 @@ log_printf(5, "repair=%d child_replaced=%d option=%d inspect_mode=%d INSPECT_QUI
     case (INSPECT_FULL_REPAIR):
         info_printf(si->fd, 1, XIDT ": Total number of stripes:%d\n", segment_id(si->seg), total_stripes);
         loop = 0;
+        child_replaced = 0;
         do {
            gop =  segjerase_inspect_full(si, 1, 0, segment_size(si->seg));
            gop_waitall(gop);
@@ -956,7 +959,7 @@ log_printf(5, "repair=%d child_replaced=%d option=%d inspect_mode=%d INSPECT_QUI
                     log_printf(5, "dev_row_replaced[%d]=%d\n", i, si->args->dev_row_replaced[i]);
                     if (si->args->dev_row_replaced[i] > child_replaced) child_replaced = si->args->dev_row_replaced[i];
                  }
-                 si->max_replaced = child_replaced;
+                 if (child_replaced > si->max_replaced) si->max_replaced = child_replaced;
 
                  log_printf(5, "status: %d %d\n", status.op_status, status.error_code);
 

@@ -99,6 +99,7 @@ typedef struct {
   apr_time_t stale_dt;
   apr_time_t gc_interval;
   ex_off_t readahead;
+  ex_off_t readahead_trigger;
   int file_count;
   int enable_tape;
   int shutdown;
