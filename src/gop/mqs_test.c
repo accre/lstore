@@ -38,7 +38,6 @@ http://www.accre.vanderbilt.edu
 #include "random.h"
 #include "string_token.h"
 #include "apr_wrapper.h"
-#include <sys/eventfd.h>
 
 #define MQS_TEST_KEY  "mqs_test"
 #define MQS_TEST_SIZE 8
