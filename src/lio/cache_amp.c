@@ -547,7 +547,8 @@ log_printf(_amp_logging, " SMALL prefetch!  nbytes=" XOT "\n", nbytes);
 
   //** To much fetching going on so truncate the fetch
   dn = s->c->max_fetch_size - cp->prefetch_in_process;
-  if (dn <= 0) {  
+//  if (dn <= 0) {  
+  if (cp->prefetch_in_process > 0) {    //** This forces only 1 prefetch to occur at a time
     log_printf(1, "to much prefetching.\n");
     return;
   }
