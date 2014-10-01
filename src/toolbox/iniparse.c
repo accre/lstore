@@ -279,7 +279,7 @@ void inip_destroy(inip_file_t *inip)
 }
 
 //***********************************************************************
-//  _find_key - Scans the group for the given key
+//  _find_key - Scans the group for the given key and returns the element
 //***********************************************************************
 
 inip_element_t *_find_key(inip_group_t *group, const char *name)
@@ -293,6 +293,20 @@ inip_element_t *_find_key(inip_group_t *group, const char *name)
   }
 
   return(NULL);
+}
+
+//***********************************************************************
+//  inip_find_key - Scans the group for the given key and returns the value
+//***********************************************************************
+
+char *inip_find_key(inip_group_t *group, const char *name)
+{
+  inip_element_t *ele;
+
+  ele = _find_key(group, name);
+  if (ele == NULL) return(NULL);
+
+  return(ele->value);
 }
 
 

@@ -75,6 +75,7 @@ int64_t inip_get_integer(inip_file_t *inip, const char *group, const char *key, 
 uint64_t inip_get_unsigned_integer(inip_file_t *inip, const char *group, const char *key, uint64_t def);
 double inip_get_double(inip_file_t *inip, const char *group, const char *key, double def);
 inip_group_t *inip_find_group(inip_file_t *inip, const char *name);
+char *inip_find_key(inip_group_t *group, const char *name);
 
 
 #ifdef __cplusplus
