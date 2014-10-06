@@ -55,7 +55,7 @@ int base = 1;
 
 void du_format_entry(info_fd_t *ifd, du_entry_t *de, int sumonly)
 {
-  char *dtype;
+  char *dname;
   char ppsize[128];
   double fsize;
   long int n;
@@ -67,13 +67,22 @@ void du_format_entry(info_fd_t *ifd, du_entry_t *de, int sumonly)
      pretty_print_double_with_scale(base, fsize, ppsize);
   }
 
-  dtype = ((de->ftype & OS_OBJECT_DIR) > 0) ? "/" : "";
-  if (sumonly == 1) {
-     n = (strcmp(dtype,"/") == 0) ? de->count : 1;
-     info_printf(ifd, 0, "%10s  %10ld  %s%s\n", ppsize, n, de->fname, dtype);
-  } else {
-     info_printf(ifd, 0, "%10s  %s%s\n", ppsize, de->fname, dtype);
+  if ((de->ftype & OS_OBJECT_DIR) > 0) {
+    dname = de->fname;
+  } else { 
+    dname = strdup(de->fname);
+    n = strlen(dname);
+    if (n > 0) dname[n-1] = 0;
   }
+
+  if (sumonly == 1) {
+     n = ((de->ftype & OS_OBJECT_DIR) > 0) ? de->count : 1;
+     info_printf(ifd, 0, "%10s  %10ld  %s\n", ppsize, n, dname);
+  } else {
+     info_printf(ifd, 0, "%10s  %s\n", ppsize, dname);
+  }
+
+  if (dname != de->fname) free(dname);
 
   return;
 }
@@ -83,7 +92,7 @@ void du_format_entry(info_fd_t *ifd, du_entry_t *de, int sumonly)
 
 int main(int argc, char **argv)
 {
-  int i, j, ftype, rg_mode, start_index, start_option, nosort, prefix_len;
+  int i, j, ftype, rg_mode, start_index, start_option, nosort, prefix_len, plen;
   char *fname;
   du_entry_t *de;
   list_t *table, *sum_table, *lt;
@@ -210,7 +219,11 @@ log_printf(15, "MAIN SUMONLY=1\n");
 
 log_printf(15, "sumonly inserting fname=%s\n", fname);
            type_malloc_clear(de, du_entry_t, 1);
-           de->fname = fname;
+           plen = strlen(fname);
+           type_malloc(de->fname, char, plen + 2);
+           memcpy(de->fname, fname, plen);
+           de->fname[plen] = '/';  de->fname[plen+1] = 0;
+           free(fname);
            de->ftype = ftype;
 
            if (val != NULL) sscanf(val, I64T, &(de->bytes));
