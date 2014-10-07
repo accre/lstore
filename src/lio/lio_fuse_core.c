@@ -1303,7 +1303,7 @@ int lfs_open_real(const char *fname, struct fuse_file_info *fi, lio_fuse_t *lfs)
      fi->fh = (uint64_t)fd;
   }
   //log_printf(1, "fname=%s dio=%d err=%d END\n", fname, fi->direct_io, err); flush_log();
-  log_printf(1, "fname=%s dio=%d err=%d fh=%d END\n", fname, fi, err, fi->fh); flush_log();
+  log_printf(1, "fname=%s dio=%d err=%d fh=%d END\n", fname, fi->direct_io, err, fi->fh); flush_log();
   return(err);
 }
 
