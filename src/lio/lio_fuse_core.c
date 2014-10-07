@@ -1357,8 +1357,12 @@ int lfs_myclose_real(char *fname, lio_fuse_fd_t *fd, lio_fuse_t *lfs)
 
   lfs_lock(lfs);
 
-inode = _lfs_dentry_lookup(lfs, fname, 0);
-if (inode == NULL) log_printf(0, "DEBUG ERROR  missing inode on open file! fname=%s\n", fname);
+  inode = _lfs_dentry_lookup(lfs, fname, 0);
+  if (inode == NULL) {
+     log_printf(0, "DEBUG ERROR  missing inode on open file! fname=%s\n", fname);
+  } else {
+     inode->size = segment_size(fh->seg);  //** Update the size on a subsequent call
+  }
 
   if (fh->ref_count > 1) {  //** Somebody else has it open as well
      fh->ref_count--;
