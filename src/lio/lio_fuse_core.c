@@ -1543,7 +1543,94 @@ int lfs_release(const char *fname, struct fuse_file_info *fi)
 }
 
 //*****************************************************************
+// lfs_read_ex - Reads data from a file using a more native interface
+//    NOTE: Does NO readahead
+//*****************************************************************
+
+int lfs_read_ex(const char *fname, int n_iov, ex_iovec_t *iov, tbuffer_t *buffer, ex_off_t boff, struct fuse_file_info *fi)
+{
+  lio_fuse_t *lfs;
+  lio_fuse_fd_t *fd;
+  int i, err, size;
+  apr_time_t now;
+  double dt;
+  ex_off_t t1, t2;
+
+  if (n_iov <=0) return(0);
+
+  t1 = iov[0].len; t2 = iov[0].offset;
+  log_printf(1, "fname=%s n_iov=%d iov[0].len=" XOT " iov[0].offset=" XOT "\n", fname, n_iov, t1, t2); flush_log();
+
+  fd = (lio_fuse_fd_t *)fi->fh;
+  if (fd == NULL) {
+     log_printf(0, "ERROR: Got a null file desriptor\n");
+     return(-EBADF);
+  }
+
+  lfs = NULL;
+  lfs = fd->fh->lfs;
+  if (lfs == NULL)
+  {
+    log_printf(0, "ERROR: Got a null LFS handle\n");
+    return(-EBADF);
+  }
+  now = apr_time_now();
+
+  //** Do the read op
+  err = gop_sync_exec(segment_read(fd->fh->seg, lfs->lc->da, n_iov, iov, buffer, boff, lfs->lc->timeout));
+
+  dt = apr_time_now() - now;
+  dt /= APR_USEC_PER_SEC;
+  log_printf(1, "END fname=%s seg=" XIDT " dt=%lf\n", fname, segment_id(fd->fh->seg), dt); flush_log();
+
+  if (err != OP_STATE_SUCCESS) {
+     log_printf(1, "ERROR with read! fname=%s\n", fname);
+     printf("got value %d\n", err);
+     return(-EIO);
+  }
+
+  size = iov[0].len;
+  for (i=1; i<n_iov; i++) size += iov[i].len;  
+  return(size);
+}
+
+//*****************************************************************
+// lfs_readv - Reads data from a file using a struct iovec
+//    NOTE: Does NO readahead
+//*****************************************************************
+
+int lfs_readv(const char *fname, iovec_t *iov, int n_iov, size_t size, off_t off, struct fuse_file_info *fi)
+{
+  tbuffer_t tbuf;
+  ex_iovec_t exv;
+
+  tbuffer_vec(&tbuf, size, n_iov, iov);
+  ex_iovec_single(&exv, off, size);
+  return(lfs_read_ex(fname, 1, &exv, &tbuf, 0, fi));
+}
+
+//*****************************************************************
+// lfs_read_test_ex - Reads data from a file using a lfs_read_ex routine
+//    This routine is designed for simply testing the lfs_read_ex routine
+//    and it should NOT be used for FUSE cause it does not check for a
+//    read beyond EOF which FUSE allows.
+//    NOTE: Does NO readahead
+//*****************************************************************
+
+int lfs_read_test_ex(const char *fname, char *buf, size_t size, off_t off, struct fuse_file_info *fi)
+{
+  tbuffer_t tbuf;
+  ex_iovec_t exv;
+
+  tbuffer_single(&tbuf, size, buf);
+  ex_iovec_single(&exv, off, size);
+  return(lfs_read_ex(fname, 1, &exv, &tbuf, 0, fi));
+}
+
+
+//*****************************************************************
 // lfs_read - Reads data from a file
+//    NOTE: Uses the LFS readahead hints
 //*****************************************************************
 
 int lfs_read(const char *fname, char *buf, size_t size, off_t off, struct fuse_file_info *fi)
@@ -1629,23 +1716,22 @@ int lfs_read(const char *fname, char *buf, size_t size, off_t off, struct fuse_f
 }
 
 //*****************************************************************
-// lfs_readv - Reads data from a file using a struct iovec
+// lfs_write_ex - Writes data from a file using a more native interface
 //*****************************************************************
 
-int lfs_readv(const char *fname, iovec_t *iov, int n_iov, size_t size, off_t off, struct fuse_file_info *fi)
+int lfs_write_ex(const char *fname, int n_iov, ex_iovec_t *iov, tbuffer_t *buffer, ex_off_t boff, struct fuse_file_info *fi)
 {
   lio_fuse_t *lfs;
   lio_fuse_fd_t *fd;
-  tbuffer_t tbuf;
-  ex_iovec_t exv;
-  int err;
-  ex_off_t ssize, pend;
+  int i, err, size;
   apr_time_t now;
   double dt;
-
   ex_off_t t1, t2;
-  t1 = size; t2 = off;
-  log_printf(1, "fname=%s size=" XOT " off=" XOT " n_iov=%d\n", fname, t1, t2, n_iov); flush_log();
+
+  if (n_iov <=0) return(0);
+
+  t1 = iov[0].len; t2 = iov[0].offset;
+  log_printf(1, "START fname=%s n_iov=%d iov[0].len=" XOT " iov[0].offset=" XOT "\n", fname, n_iov, t1, t2); flush_log();
 
   fd = (lio_fuse_fd_t *)fi->fh;
   if (fd == NULL) {
@@ -1662,35 +1748,23 @@ int lfs_readv(const char *fname, iovec_t *iov, int n_iov, size_t size, off_t off
   }
   now = apr_time_now();
 
+  atomic_set(fd->fh->modified, 1);
+
   //** Do the read op
-  ssize = segment_size(fd->fh->seg);
-  pend = off + size;
-  log_printf(0, "ssize=" XOT " off=" XOT " len=" XOT " pend=" XOT "\n", ssize, off, size, pend);
-  if (pend > ssize)
-  {
-    if (off > ssize) {
-        // offset is past the end of the segment
-        return(0);
-    } else {
-        size = ssize - off;  //** Tweak the size based on how much data there is
-    }
-  }
-  log_printf(0, "tweaked len=" XOT "\n", size);
-  if (size <= 0) { log_printf(0, "Clipped tweaked len\n"); return(0); }
-  tbuffer_vec(&tbuf, size, n_iov, iov);
-  ex_iovec_single(&exv, off, size);
-  err = gop_sync_exec(segment_read(fd->fh->seg, lfs->lc->da, 1, &exv, &tbuf, 0, lfs->lc->timeout));
+  err = gop_sync_exec(segment_write(fd->fh->seg, lfs->lc->da, n_iov, iov, buffer, boff, lfs->lc->timeout));
 
   dt = apr_time_now() - now;
   dt /= APR_USEC_PER_SEC;
-  log_printf(1, "END fname=%s seg=" XIDT " size=" XOT " off=" XOT " dt=%lf\n", fname, segment_id(fd->fh->seg), t1, t2, dt); flush_log();
+  log_printf(1, "END fname=%s seg=" XIDT " dt=%lf\n", fname, segment_id(fd->fh->seg), dt); flush_log();
 
   if (err != OP_STATE_SUCCESS) {
-     log_printf(1, "ERROR with read! fname=%s\n", fname);
+     log_printf(1, "ERROR with write! fname=%s\n", fname);
      printf("got value %d\n", err);
      return(-EIO);
   }
 
+  size = iov[0].len;
+  for (i=1; i<n_iov; i++) size += iov[i].len;  
   return(size);
 }
 
@@ -1700,43 +1774,13 @@ int lfs_readv(const char *fname, iovec_t *iov, int n_iov, size_t size, off_t off
 
 int lfs_write(const char *fname, const char *buf, size_t size, off_t off, struct fuse_file_info *fi)
 {
-  lio_fuse_t *lfs;
-  lio_fuse_fd_t *fd;
   tbuffer_t tbuf;
   ex_iovec_t exv;
-  int err;
-  apr_time_t now;
-  double dt;
-
-  now = apr_time_now();
-
-  ex_off_t t1, t2;
-  t1 = size; t2 = off;
-
-  fd = (lio_fuse_fd_t *)fi->fh;
-  if (fd == NULL) {
-     return(-EBADF);
-  }
-
-  log_printf(1, "START fname=%s seg=" XIDT " size=" XOT " off=" XOT "\n", fname, segment_id(fd->fh->seg), t1, t2); flush_log();
-
-  atomic_set(fd->fh->modified, 1);
-
-  lfs = fd->fh->lfs;
 
   //** Do the write op
   tbuffer_single(&tbuf, size, (char *)buf);
   ex_iovec_single(&exv, off, size);
-  err = gop_sync_exec(segment_write(fd->fh->seg, lfs->lc->da, 1, &exv, &tbuf, 0, lfs->lc->timeout));
-  dt = apr_time_now() - now;
-  dt /= APR_USEC_PER_SEC;
-  log_printf(1, "END fname=%s seg=" XIDT " size=" XOT " off=" XOT " dt=%lf\n", fname, segment_id(fd->fh->seg), t1, t2, dt); flush_log();
-
-  if (err != OP_STATE_SUCCESS) {
-     return(-EIO);
-  }
-
-  return(size);
+  return(lfs_write_ex(fname, 1, &exv, &tbuf, 0, fi));
 }
 
 //*****************************************************************
@@ -1745,42 +1789,13 @@ int lfs_write(const char *fname, const char *buf, size_t size, off_t off, struct
 
 int lfs_writev(const char *fname, iovec_t *iov, int n_iov, size_t size, off_t off, struct fuse_file_info *fi)
 {
-  lio_fuse_t *lfs;
-  lio_fuse_fd_t *fd;
   tbuffer_t tbuf;
   ex_iovec_t exv;
-  int err;
-  apr_time_t now;
-  double dt;
-
-  now = apr_time_now();
-
-  ex_off_t t1, t2;
-  t1 = size; t2 = off;
-
-  fd = (lio_fuse_fd_t *)fi->fh;
-  if (fd == NULL) {
-     return(-EBADF);
-  }
-
-  log_printf(1, "START fname=%s seg=" XIDT " size=" XOT " off=" XOT " n_ioc=%d\n", fname, segment_id(fd->fh->seg), t1, t2, n_iov); flush_log();
-
-  atomic_set(fd->fh->modified, 1);
-
-  lfs = fd->fh->lfs;
 
   //** Do the write op
   tbuffer_vec(&tbuf, size, n_iov, iov);
-  err = gop_sync_exec(segment_write(fd->fh->seg, lfs->lc->da, 1, &exv, &tbuf, 0, lfs->lc->timeout));
-  dt = apr_time_now() - now;
-  dt /= APR_USEC_PER_SEC;
-  log_printf(1, "END fname=%s seg=" XIDT " size=" XOT " off=" XOT " dt=%lf\n", fname, segment_id(fd->fh->seg), t1, t2, dt); flush_log();
-
-  if (err != OP_STATE_SUCCESS) {
-     return(-EIO);
-  }
-
-  return(size);
+  ex_iovec_single(&exv, off, size);
+  return(lfs_write_ex(fname, 1, &exv, &tbuf, 0, fi));
 }
 
 //*****************************************************************
@@ -1908,6 +1923,38 @@ int lfs_truncate(const char *fname, off_t new_size)
   lfs_unlock(lfs);
 
   lfs_myclose((char *)fname, fd);
+
+  return(0);
+}
+
+// FIXME: This will get refactored "soon" - AMM Oct 8, 2014
+int lfs_truncate_fd_temp_melo(lio_fuse_t *lfs, struct fuse_file_info *fi, off_t new_size)
+{  
+  lio_inode_t *inode;
+  lio_fuse_fd_t *fd;
+
+  ex_off_t ts;
+  int err;
+
+  ts = new_size;
+  log_printf(15, "adjusting size=" XOT "\n", ts);
+  log_printf(15, "calling truncate\n");
+
+  fd = (lio_fuse_fd_t *)fi->fh;
+  if (fd == NULL) {
+     return(-EBADF);
+  }
+
+  err = gop_sync_exec(segment_truncate(fd->fh->seg, lfs->lc->da, ts, lfs->lc->timeout));
+  log_printf(15, "segment_truncate=%d\n", err);
+
+  lfs_lock(lfs);
+  inode= _lfs_dentry_lookup(lfs, fd->entry->fname, 0);
+  if (inode != NULL) {
+     inode->size = new_size;
+     atomic_set(fd->fh->modified, 1);
+  }
+  lfs_unlock(lfs);
 
   return(0);
 }
@@ -3041,6 +3088,7 @@ struct fuse_operations lfs_fops = { //All lfs instances should use the same func
   .open = lfs_open,
   .release = lfs_release,
   .read = lfs_read,
+//  .read = lfs_read_test_ex,
   .write = lfs_write,
   .flush = lfs_flush,
   .link = lfs_hardlink,

@@ -150,13 +150,19 @@ int lfs_open_real(const char *fname, struct fuse_file_info *fi, lio_fuse_t *lfs)
 int lfs_release_real(const char *fname, struct fuse_file_info *fi, lio_fuse_t *lfs);
 int lfs_read(const char *fname, char *buf, size_t size, off_t off, struct fuse_file_info *fi);
 int lfs_readv(const char *fname, iovec_t *iov, int n_iov, size_t size, off_t off, struct fuse_file_info *fi);
+int lfs_read_ex(const char *fname, int n_iov, ex_iovec_t *iov, tbuffer_t *buffer, ex_off_t boff, struct fuse_file_info *fi);
 int lfs_write(const char *fname, const char *buf, size_t size, off_t off, struct fuse_file_info *fi);
 int lfs_writev(const char *fname, iovec_t *iov, int n_iov, size_t size, off_t off, struct fuse_file_info *fi);
+int lfs_write_ex(const char *fname, int n_iov, ex_iovec_t *iov, tbuffer_t *buffer, ex_off_t boff, struct fuse_file_info *fi);
 int lfs_setxattr_real(const char *fname, const char *name, const char *fval, size_t size, int flags, lio_fuse_t *lfs);
 int lfs_getxattr_real(const char *fname, const char *name, char *buf, size_t size, lio_fuse_t *lfs);
 int lfs_unlink_real(const char *fname, lio_fuse_t *lfs);
 int lfs_opendir_real(const char *fname, struct fuse_file_info *fi, lio_fuse_t *lfs);
 int lfs_readdir_real(const char *dname, void *buf, fuse_fill_dir_t filler, off_t off, struct fuse_file_info *fi, lio_fuse_t * lfs);
+
+// I'm a bad person and I should feel bad - AMM - Oct 8, 2014
+int lfs_truncate_fd_temp_melo(lio_fuse_t *lfs, struct fuse_file_info *fi, off_t new_size);
+
 #ifdef __cplusplus
 }
 #endif
