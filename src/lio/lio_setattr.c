@@ -150,7 +150,7 @@ int main(int argc, char **argv)
      } else if (strcmp(argv[i], "-as") == 0) {  //** String attribute
         i++;
         key[n_keys] = string_token(argv[i], delims, &bstate, &fin);
-        val[n_keys] = string_token(NULL, delims, &bstate, &fin);
+        val[n_keys] = bstate;  //** Everything else is the value
         v_size[n_keys] = strlen(val[n_keys]);
         if (strcmp(val[n_keys], "") == 0) val[n_keys] = NULL;
         n_keys++;  i++;
