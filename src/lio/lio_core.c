@@ -287,10 +287,10 @@ int lioc_get_attr(lio_config_t *lc, creds_t *creds, char *path, char *id, char *
 }
 
 //***********************************************************************
-// lioc_set_multiple_attrs - Returns an attribute
+// lioc_set_multiple_attrs_real - Returns an attribute
 //***********************************************************************
 
-int lioc_set_multiple_attrs(lio_config_t *lc, creds_t *creds, char *path, char *id, char **key, void **val, int *v_size, int n)
+int lioc_set_multiple_attrs_real(lio_config_t *lc, creds_t *creds, char *path, char *id, char **key, void **val, int *v_size, int n)
 {
   int err, serr;
   os_fd_t *fd;
@@ -314,6 +314,23 @@ int lioc_set_multiple_attrs(lio_config_t *lc, creds_t *creds, char *path, char *
       err = OP_STATE_FAILURE;
   }
 
+  return(err);
+}
+
+//***********************************************************************
+// lioc_set_multiple_attrs - Returns an attribute
+//***********************************************************************
+
+int lioc_set_multiple_attrs(lio_config_t *lc, creds_t *creds, char *path, char *id, char **key, void **val, int *v_size, int n)
+{
+  int err;
+
+  err = lioc_set_multiple_attrs_real(lc, creds, path, id, key, val, v_size, n);
+  if (err != OP_STATE_SUCCESS) {  //** Got an error
+     sleep(1);  //** Wait a bit before retrying
+     err = lioc_set_multiple_attrs_real(lc, creds, path, id, key, val, v_size, n);  
+  }
+  
   return(err);
 }
 
@@ -478,6 +495,7 @@ int lioc_update_exnode_attrs(lio_config_t *lc, creds_t *creds, exnode_t *ex, seg
      log_printf(1, "ERROR: fname=%s hard_errors=%d soft_errors=%d write_errors=%d\n", fname, serr->hard, serr->soft, serr->write);
      ret += 1;
   }
+
 
   err = lioc_set_multiple_attrs(lc, creds, fname, NULL, key, (void **)val, v_size, n);
   if (err != OP_STATE_SUCCESS) {
@@ -1655,7 +1673,7 @@ op_status_t cp_local2lio(lio_cp_file_t *cp)
   exnode_exchange_t *exp;
   segment_t *seg;
   segment_errors_t errcnts;
-  int v_size[3], dtype, err;
+  int v_size[3], dtype, err, err2;
   op_status_t status;
   FILE *fd;
 
@@ -1728,14 +1746,14 @@ log_printf(0, "AFTER PUT\n");
 
 
   //** Update the dest exnode and misc attributes
-  lioc_update_exnode_attrs(cp->dest_tuple.lc, cp->dest_tuple.creds, ex, seg, cp->dest_tuple.path, &errcnts);
+  err2 = lioc_update_exnode_attrs(cp->dest_tuple.lc, cp->dest_tuple.creds, ex, seg, cp->dest_tuple.path, &errcnts);
 
   exnode_destroy(ex);
   exnode_exchange_destroy(exp);
 
   free(buffer);
 
-  if ((errcnts.hard == 0) && (err == OP_STATE_SUCCESS)) status = op_success_status;
+  if ((errcnts.hard == 0) && (err == OP_STATE_SUCCESS) && (err2 == 0)) status = op_success_status;
 
 finished:
 
