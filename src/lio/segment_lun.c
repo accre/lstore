@@ -378,10 +378,12 @@ log_printf(15, "missing[%d]=%d status=%d\n", j,i, gop_completed_successfully(gop
 
               gop_free(gop, OP_DESTROY);
 
-              //** Remove the old data
-              if (args->qs) {
+              if (args->qs) { //** Remove the old data on complete success
                  gop = ds_remove(dbs->ds, da, ds_get_cap(dbs->ds, dbs->cap, DS_CAP_MANAGE), timeout);
                  opque_add(args->qs, gop);  //** This gets placed on the success queue so we can roll it back if needed
+              } else {       //** Remove the just created allocation on failure
+                 gop = ds_remove(dbd->ds, da, ds_get_cap(dbd->ds, dbd->cap, DS_CAP_MANAGE), timeout);
+                 opque_add(args->qf, gop);  //** This gets placed on the failed queue so we can roll it back if needed
               }
               if (s->db_cleanup == NULL) s->db_cleanup = new_stack();
               push(s->db_cleanup, dbs);  //** Dump the data block here cause the cap is needed for the gop.  We'll cleanup up on destroy()
@@ -644,8 +646,8 @@ log_printf(15, "loop=%d ------------------------------\n", loop);
              attr_stack = db->attr_stack;
              db->attr_stack = NULL;
 
-             //** Make the cleanup operations for success
-             if (args->qs) {
+             //** Make the cleanup operations
+             if (args->qs) { 
                 gop = ds_remove(s->ds, da, ds_get_cap(db->ds, db->cap, DS_CAP_MANAGE), timeout);
                 opque_add(args->qs, gop);  //** This gets placed on the success queue so we can roll it back if needed
              }
