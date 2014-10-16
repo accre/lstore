@@ -134,6 +134,10 @@ add_executable( trace_replay trace_replay.c trace.c ${EX3_OBJS} )
 set_target_properties(trace_replay PROPERTIES LINKER_LANGUAGE CXX)
 target_link_libraries( trace_replay ${lio_lib} ${LIBS} m )
 
+add_executable( zadler32 zadler32.c )
+set_target_properties(zadler32 PROPERTIES LINKER_LANGUAGE CXX)
+target_link_libraries(zadler32 ${TOOLBOX_LIBRARY} ${ZLIB_LIBRARY} m )
+
 set(sodeps)
 set(lpdeps)
 foreach(lib ${LIBS} )
