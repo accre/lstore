@@ -467,8 +467,8 @@ void *mqs_flusher_thread(apr_thread_t *th, void *arg)
 log_printf(5, "msid=%d want_more=%c state_index=%c data=%p\n", mqs->msid, mqs->want_more, mqs->data[MQS_STATE_INDEX], mqs->data);
   //** Form the message. NOTE that the rest of the message is the address
   if (mqs->want_more == MQS_ABORT) {
-     mqs->data[MQS_STATE_INDEX] = mqs->want_more;
-  } else {
+     if (mqs->data != NULL) mqs->data[MQS_STATE_INDEX] = mqs->want_more;
+  } else if (mqs->data != NULL) {
      if (mqs->data[MQS_STATE_INDEX] != MQS_MORE) mqs->want_more = mqs->data[MQS_STATE_INDEX];
   }
 
@@ -583,7 +583,7 @@ log_printf(5, "id_size=%d handle_len=%d\n", id_size, len);
 
   //** Form the message. NOTE that the rest of the message is the address
   if (mqs->want_more == MQS_ABORT) {
-     mqs->data[MQS_STATE_INDEX] = mqs->want_more;
+     if (mqs->data != NULL) mqs->data[MQS_STATE_INDEX] = mqs->want_more;
   } else if (mqs->data != NULL) {
      if (mqs->data[MQS_STATE_INDEX] != MQS_MORE) mqs->want_more = mqs->data[MQS_STATE_INDEX];
   }
