@@ -1340,6 +1340,7 @@ int lfs_myclose_real(char *fname, lio_fuse_fd_t *fd, lio_fuse_t *lfs)
   int err, v_size[6];
   char ebuf[128];
   segment_errors_t serr;
+  ex_off_t inode_size, final_size;
   apr_time_t now;
   double dt;
 
@@ -1360,8 +1361,10 @@ int lfs_myclose_real(char *fname, lio_fuse_fd_t *fd, lio_fuse_t *lfs)
   inode = _lfs_dentry_lookup(lfs, fname, 0);
   if (inode == NULL) {
      log_printf(0, "DEBUG ERROR  missing inode on open file! fname=%s\n", fname);
+     inode_size = 0;
   } else {
-     inode->size = segment_size(fh->seg);  //** Update the size on a subsequent call
+     if (lfs->test_mode == 0) inode->size = segment_size(fh->seg);  //** Update the size on a subsequent call
+     inode_size = inode->size;
   }
 
   if (fh->ref_count > 1) {  //** Somebody else has it open as well
@@ -1373,13 +1376,18 @@ int lfs_myclose_real(char *fname, lio_fuse_fd_t *fd, lio_fuse_t *lfs)
      if (flags == LFS_INODE_DELETE) return(lfs_object_remove(lfs, fname));
      return(0);
   }
-
   lfs_unlock(lfs);
 
-log_printf(1, "FLUSH/TRUNCATE fname=%s\n", fname);
+  final_size = segment_size(fh->seg);
+
+  if (lfs->test_mode == 1) {  //** Testing mode may need to grow/shrink the file
+     if (inode_size != final_size) final_size = inode_size;
+  }
+
+log_printf(1, "FLUSH/TRUNCATE fname=%s inode_size=" XOT " final_size=" XOT "\n", fname, inode_size, final_size);
   //** Flush and truncate everything which could take some time
   now = apr_time_now();
-  err = gop_sync_exec(segment_truncate(fh->seg, lfs->lc->da, segment_size(fh->seg), lfs->lc->timeout));
+  err = gop_sync_exec(segment_truncate(fh->seg, lfs->lc->da, final_size, lfs->lc->timeout));
   dt = apr_time_now() - now;
   dt /= APR_USEC_PER_SEC;
   log_printf(1, "TRUNCATE fname=%s dt=%lf\n", fname, dt);
@@ -1551,6 +1559,7 @@ int lfs_read_ex(const char *fname, int n_iov, ex_iovec_t *iov, tbuffer_t *buffer
 {
   lio_fuse_t *lfs;
   lio_fuse_fd_t *fd;
+  tbuffer_t tdummy;
   int i, err, size;
   apr_time_t now;
   double dt;
@@ -1577,7 +1586,15 @@ int lfs_read_ex(const char *fname, int n_iov, ex_iovec_t *iov, tbuffer_t *buffer
   now = apr_time_now();
 
   //** Do the read op
-  err = gop_sync_exec(segment_read(fd->fh->seg, lfs->lc->da, n_iov, iov, buffer, boff, lfs->lc->timeout));
+  if (lfs->test_mode == 0) {
+     err = gop_sync_exec(segment_read(fd->fh->seg, lfs->lc->da, n_iov, iov, buffer, boff, lfs->lc->timeout));
+  } else {  //** Test mode so blank the data
+     size = iov[0].len;
+     for (i=1; i<n_iov; i++) size += iov[i].len;  
+     tbuffer_single(&tdummy, 0, NULL);
+     tbuffer_copy(&tdummy, 0, buffer, boff, size, 1);  //** The "1" says store 0's on out of bounds
+     err = OP_STATE_SUCCESS;
+  }
 
   dt = apr_time_now() - now;
   dt /= APR_USEC_PER_SEC;
@@ -1637,6 +1654,7 @@ int lfs_read(const char *fname, char *buf, size_t size, off_t off, struct fuse_f
 {
   lio_fuse_t *lfs;
   lio_fuse_fd_t *fd;
+  lio_inode_t *inode;
   tbuffer_t tbuf;
   ex_iovec_t exv;
   int err;
@@ -1698,9 +1716,23 @@ int lfs_read(const char *fname, char *buf, size_t size, off_t off, struct fuse_f
   }
   segment_unlock(fd->fh->seg);
 
-  tbuffer_single(&tbuf, size, buf);  //** This is the buffer size
-  ex_iovec_single(&exv, off, rsize);  //** This is the buffer+readahead.  The extra doesn't get stored in the buffer.  Just in page cache.
-  err = gop_sync_exec(segment_read(fd->fh->seg, lfs->lc->da, 1, &exv, &tbuf, 0, lfs->lc->timeout));
+  if (lfs->test_mode == 0) {
+     tbuffer_single(&tbuf, size, buf);  //** This is the buffer size
+     ex_iovec_single(&exv, off, rsize);  //** This is the buffer+readahead.  The extra doesn't get stored in the buffer.  Just in page cache.
+     err = gop_sync_exec(segment_read(fd->fh->seg, lfs->lc->da, 1, &exv, &tbuf, 0, lfs->lc->timeout));
+  } else {  //** Test mode so blank the data
+     lfs_lock(lfs);
+     inode = _lfs_dentry_lookup(lfs, fname, 1);
+     if (inode != NULL) {
+        if (inode->size < pend) {
+           size = inode->size - off;
+           if (size < 0) size = 0;
+        }
+        memset(buf, 0, size);
+     }
+     lfs_unlock(lfs);
+     err = OP_STATE_SUCCESS;
+  }
 
   dt = apr_time_now() - now;
   dt /= APR_USEC_PER_SEC;
@@ -1723,6 +1755,7 @@ int lfs_write_ex(const char *fname, int n_iov, ex_iovec_t *iov, tbuffer_t *buffe
 {
   lio_fuse_t *lfs;
   lio_fuse_fd_t *fd;
+  lio_inode_t *inode;
   int i, err, size;
   apr_time_t now;
   double dt;
@@ -1750,8 +1783,23 @@ int lfs_write_ex(const char *fname, int n_iov, ex_iovec_t *iov, tbuffer_t *buffe
 
   atomic_set(fd->fh->modified, 1);
 
-  //** Do the read op
-  err = gop_sync_exec(segment_write(fd->fh->seg, lfs->lc->da, n_iov, iov, buffer, boff, lfs->lc->timeout));
+  //** Do the write op
+  if (lfs->test_mode == 0) {
+     err = gop_sync_exec(segment_write(fd->fh->seg, lfs->lc->da, n_iov, iov, buffer, boff, lfs->lc->timeout));
+  } else {  //** Test mode
+     t1 = 0;  //** Calculate the biggest offset
+     for (i=0; i<n_iov; i++) {
+        t2 = iov[i].offset + iov[i].len;
+        if (t2 > t1) t1 = t2;
+     }
+     lfs_lock(lfs);
+     inode = _lfs_dentry_lookup(lfs, fname, 1);
+     if (inode != NULL) {
+        if (inode->size < t1) inode->size = t1;
+     }
+     lfs_unlock(lfs);
+     err = OP_STATE_SUCCESS;
+  }
 
   dt = apr_time_now() - now;
   dt /= APR_USEC_PER_SEC;
@@ -2955,6 +3003,8 @@ void *lfs_init_real(struct fuse_conn_info *conn,
   lfs->lc = init_args->lc;
   lfs->mount_point = strdup(init_args->mount_point);
   lfs->mount_point_len = strlen(init_args->mount_point);
+
+  lfs->test_mode = inip_get_integer(lfs->lc->ifd, section, "test_mode", 0);
 
   lfs->entry_to = APR_USEC_PER_SEC * inip_get_double(lfs->lc->ifd, section, "entry_timout", 10.0);
   lfs->attr_to = APR_USEC_PER_SEC * inip_get_double(lfs->lc->ifd, section, "stat_timeout", 10.0);

@@ -104,6 +104,7 @@ typedef struct {
   int enable_tape;
   int shutdown;
   int mount_point_len;
+  int test_mode;
   atomic_int_t counter;
   list_t *ino_index;
   list_t *fname_index;
