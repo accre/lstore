@@ -1424,7 +1424,7 @@ op_status_t segjerase_write_func(void *arg, int id)
   ex_off_t lo, boff, poff, len, parity_len, parity_used, curr_bytes;
   int i, j, k, n_iov, nstripes, curr_stripe, pstripe, iov_start;
   int soft_error, hard_error;
-  char *parity, *magic, **ptr, *stripe_magic;
+  char *parity, *magic, **ptr, *stripe_magic, *empty;
   opque_t *q;
   op_generic_t *gop;
   ex_iovec_t *ex_iov;
@@ -1453,7 +1453,8 @@ op_status_t segjerase_write_func(void *arg, int id)
         log_printf(1, "Parity to small.  Growing to parity_len=" XOT " s->max_parity=" XOT "\n", parity_len, s->max_parity);
      }
   }
-  type_malloc(parity, char, parity_len);
+  type_malloc(parity, char, parity_len + s->chunk_size);
+  empty = NULL;
 
   type_malloc_clear(magic, char, JE_MAGIC_SIZE*sw->nstripes);
   type_malloc(ptr, char *, sw->nstripes*s->n_devs);
@@ -1484,7 +1485,7 @@ op_status_t segjerase_write_func(void *arg, int id)
           if (gop_completed_successfully(gop) != OP_STATE_SUCCESS) {
              op_status = gop_get_status(gop);
              if (op_status.error_code > s->n_parity_devs) {
-                log_printf(5, "seg=" XIDT " Error with write off=" XOT " len= "XOT " n_parity=%d n_failed=%d\n", 
+                log_printf(5, "seg=" XIDT " ERROR with write off=" XOT " len= "XOT " n_parity=%d n_failed=%d\n", 
                       segment_id(sw->seg), sw->iov[j].offset, sw->iov[j].len, s->n_parity_devs, op_status.error_code);
                 status = op_status;
                 hard_error = 1;
@@ -1523,7 +1524,18 @@ op_status_t segjerase_write_func(void *arg, int id)
            stripe_magic = &(magic[curr_stripe*JE_MAGIC_SIZE]);
            poff = 0;
            for (k=0; k<s->n_data_devs; k++) {
-              ptr[pstripe + k] = tbv.buffer[0].iov_base + poff;
+              if (tbv.buffer[0].iov_base != NULL) {
+                 ptr[pstripe + k] = tbv.buffer[0].iov_base + poff;
+              } else { //** Got an error page
+                 if (empty == NULL) {
+                    empty = &(parity[parity_len]);
+                    memset(empty, 0, s->chunk_size);
+                 }
+                 //ptr[pstripe+k] = NULL;  //** Segfault for debugging QWERT
+                 log_printf(0, "seg=" XIDT " ERROR NULL ptr! dev=%d\n", segment_id(sw->seg), k);
+                 fprintf(stderr, "seg=" XIDT " ERROR NULL ptr! dev=%d\n", segment_id(sw->seg), k);
+                 ptr[pstripe + k] = empty; 
+              }  
               iov[n_iov].iov_base = stripe_magic; iov[n_iov].iov_len = JE_MAGIC_SIZE; n_iov++;
               iov[n_iov].iov_base = ptr[pstripe+k]; iov[n_iov].iov_len = s->chunk_size; n_iov++;
               poff += s->chunk_size;
