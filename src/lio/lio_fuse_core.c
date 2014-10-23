@@ -1576,6 +1576,14 @@ int lfs_read_ex(const char *fname, int n_iov, ex_iovec_t *iov, tbuffer_t *buffer
      return(-EBADF);
   }
 
+  if (log_level() > 0) {
+     for (i=0; i<n_iov; i++) {
+        t2 = iov[i].offset+iov[i].len-1;
+        log_printf(1, "LFS_READ:START " XOT " " XOT "\n", iov[i].offset, t2);
+        log_printf(1, "LFS_READ:END " XOT "\n", t2);
+     }
+  }
+
   lfs = NULL;
   lfs = fd->fh->lfs;
   if (lfs == NULL)
@@ -1662,7 +1670,7 @@ int lfs_read(const char *fname, char *buf, size_t size, off_t off, struct fuse_f
   apr_time_t now;
   double dt;
 
-  ex_off_t t1, t2;
+  ex_off_t t1, t2, t3;
   t1 = size; t2 = off;
   log_printf(1, "fname=%s size=" XOT " off=" XOT "\n", fname, t1, t2); flush_log();
 
@@ -1716,6 +1724,13 @@ int lfs_read(const char *fname, char *buf, size_t size, off_t off, struct fuse_f
   }
   segment_unlock(fd->fh->seg);
 
+  if (log_level() > 0) {
+     t2 = size+off-1;
+     t3 = off+rsize-1;
+     log_printf(1, "LFS_READ:START " XOT " " XOT " " XOT "\n", off, t1, t2, t3);
+     log_printf(1, "LFS_READ:END " XOT "\n", t3);
+  }
+
   if (lfs->test_mode == 0) {
      tbuffer_single(&tbuf, size, buf);  //** This is the buffer size
      ex_iovec_single(&exv, off, rsize);  //** This is the buffer+readahead.  The extra doesn't get stored in the buffer.  Just in page cache.
@@ -1765,6 +1780,13 @@ int lfs_write_ex(const char *fname, int n_iov, ex_iovec_t *iov, tbuffer_t *buffe
 
   t1 = iov[0].len; t2 = iov[0].offset;
   log_printf(1, "START fname=%s n_iov=%d iov[0].len=" XOT " iov[0].offset=" XOT "\n", fname, n_iov, t1, t2); flush_log();
+  if (log_level() > 0) {
+     for (i=0; i<n_iov; i++) {
+        t2 = iov[i].offset+iov[i].len-1;
+        log_printf(1, "LFS_WRITE:START " XOT " " XOT "\n", iov[i].offset, t2);
+        log_printf(1, "LFS_WRITE:END " XOT "\n", t2);
+     }
+  }
 
   fd = (lio_fuse_fd_t *)fi->fh;
   if (fd == NULL) {
