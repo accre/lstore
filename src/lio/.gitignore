@@ -23,6 +23,7 @@ rs_test
 rs_test_svr
 os_test
 os_fsck
+zadler32
 lio_cp
 lio_du
 lio_find
