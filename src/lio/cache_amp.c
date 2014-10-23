@@ -945,7 +945,7 @@ log_printf(_amp_logging, "seg=" XIDT " MRU retry offset=" XOT "\n", segment_id(p
   if (total_bytes == 0) {  //** Nothing to do so exit
      log_printf(15, "Nothing to do so exiting\n");
      release_pigeon_coop_hole(cp->free_pending_tables, &pch);
-     if (cp->bytes_used == 0) {
+     if ((cp->bytes_used == 0) || ((cp->max_bytes - cp->bytes_used) > 10*bytes_to_free)) {
         return(bytes_to_free);
      } else {
         return(0);
