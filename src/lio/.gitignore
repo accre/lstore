@@ -7,6 +7,7 @@ arc_tag
 arc_tag_create
 arc_tag_destroy
 arc_tag_ls
+ds_read
 ex_cat
 ex_clone
 ex_get
