@@ -1639,8 +1639,9 @@ op_status_t seglun_rw_func(void *arg, int id)
   seglun_priv_t *s = (seglun_priv_t *)sw->seg->priv;
   int i;
   op_status_t status;
+  char *label;
   ex_off_t new_size;
-  ex_off_t pos, maxpos;
+  ex_off_t pos, maxpos, t1, t2, t3;
 
 log_printf(2, "sid=" XIDT " n_iov=%d off[0]=" XOT " len[0]=" XOT " max_size=" XOT " used_size=" XOT "\n",
      segment_id(sw->seg), sw->n_iov, sw->iov[0].offset, sw->iov[0].len, s->total_size, s->used_size);
@@ -1680,6 +1681,17 @@ log_printf(15, "ERROR seg=" XIDT " READ beyond EOF!  cur_size=" XOT " requested 
      }
   }
   segment_unlock(sw->seg);
+
+  if (log_level() > 0) {  //** Add some logging
+     label = (sw->rw_mode == 1) ? "LUN_WRITE" : "LUN_READ";
+     for (i=0; i<sw->n_iov; i++) {
+        t1 = sw->iov[i].offset;
+        t2 = t1 + sw->iov[i].len - 1;
+        t3 = sw->iov[i].len;
+        log_printf(1, "%s:START " XOT " " XOT " " XOT "\n", label, t1, t2, t3);
+        log_printf(1, "%s:END " XOT "\n", label, t2);
+     }
+  }
 
   //** Now do the actual R/W operation
 log_printf(15, "Before exec\n");
