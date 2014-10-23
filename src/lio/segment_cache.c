@@ -95,6 +95,7 @@ atomic_int_t _cache_count = 0;
 atomic_int_t _flush_count = 0;
 
 op_status_t cache_rw_func(void *arg, int id);
+int _cache_ppages_flush(segment_t *seg, data_attr_t *da);
 
 //*************************************************************
 // cache_cond_new - Creates a new shelf of cond variables
@@ -643,6 +644,7 @@ log_printf(5, "START seg=" XIDT " lo=" XOT " hi=" XOT "\n", segment_id(seg), ca-
   *ca->n_pages = 0;
 
   cache_lock(s->c);
+  _cache_ppages_flush(seg, s->c->da); //** Flush any partial pages first  //QWERT
 
   //** Generate the page list to load
   coff = lo_row;
@@ -701,7 +703,13 @@ log_printf(15, "seg=" XIDT " cant find the space for coff=" XOT " so stopping sc
 
   cache_unlock(s->c);
 
-  if (*ca->n_pages > 0) cache_rw_pages(seg, ca->page, *(ca->n_pages), ca->rw_mode, 0);
+  if (*ca->n_pages > 0) {
+     //** Got some pages to fetch. Make sure the child segment is big enough.  If not flush
+     if (segment_size(s->child_seg) < segment_size(seg)) {
+        gop_sync_exec(cache_flush_range(seg, s->c->da, 0, -1, s->c->timeout));
+     }   
+     cache_rw_pages(seg, ca->page, *(ca->n_pages), ca->rw_mode, 0);
+  }
 
 log_printf(5, "END seg=" XIDT " lo=" XOT " hi=" XOT " n_pages=%d\n", segment_id(seg), ca->lo, ca->hi, *ca->n_pages);
 
@@ -1756,10 +1764,14 @@ int _cache_ppages_range_collapse(cache_partial_page_t *pp)
     }
   }
 
+  log_printf(5, "n_ranges=%d\n", stack_size(pp->range_stack));
+
   //** Check if we have a full page
   if (stack_size(pp->range_stack) == 1) {
      move_to_top(pp->range_stack);
      rng = get_ele_data(pp->range_stack);
+  log_printf(5, "lo=" XOT " gi=" XOT "\n", rng[0], rng[1]);
+
      if ((rng[0] == 0) && (rng[1] == (pp->page_end - pp->page_start))) {
         pp->flags = 1;
      }
@@ -1830,11 +1842,17 @@ int _cache_ppages_range_merge(segment_t *seg, cache_partial_page_t *pp, ex_off_t
   }
 
   if (lo <= prng[1]+1) { //** Expand prev range
+     log_printf(5, "seg=" XIDT " checking if can collapse prhi=" XOT " hi=" XOT "\n", segment_id(seg), prng[1], hi);
      if (prng[1] < hi) {
-        prng[1] = hi;
-        if (rng != NULL) {  //** Move back and collapse.  Otherwise we're at the end and just need to extend the existing range
+        prng[1] = hi;  //** Extend the range
+        if (rng != NULL) {  //** Move back before collapsing.  Otherwise we're at the end and we've already extended the range
+     log_printf(5, "seg=" XIDT " collapsing prlo=" XOT " prhi=" XOT "\n", segment_id(seg), prng[0], prng[1]);
            move_up(pp->range_stack);
            full = _cache_ppages_range_collapse(pp);
+        } else if (stack_size(pp->range_stack) == 1) {   //** Check if we have a full page
+            if ((prng[0] == 0) && (prng[1] == (pp->page_end - pp->page_start))) {
+               pp->flags = 1;
+            }
         }
      }
   } else if (rng != NULL) {  //** Check if overlap on curr range
@@ -2714,6 +2732,7 @@ log_printf(5, "START seg=" XIDT " lo=" XOT " hi=" XOT " flush_id=" XOT "\n", seg
    while ((curr=(cache_range_t *)pop(&stack)) != NULL) {
 log_printf(5, "cache_flush_range_func: processing range: lo=" XOT " hi=" XOT " mode=%d\n", curr->lo, curr->hi, mode);
       n_pages = max_pages;
+//mode = CACHE_DOBLOCK;  //**QWERTY
       status = cache_dirty_pages_get(cop->seg, mode, curr->lo, curr->hi, &hi_got, page, &n_pages);
 log_printf(1, "seg=" XIDT " processing range: lo=" XOT " hi=" XOT " hi_got=" XOT " mode=%d skip_mode=%d n_pages=%d\n", segment_id(cop->seg), curr->lo, curr->hi, hi_got, mode, status, n_pages);
 flush_log();
