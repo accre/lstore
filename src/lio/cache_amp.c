@@ -945,7 +945,11 @@ log_printf(_amp_logging, "seg=" XIDT " MRU retry offset=" XOT "\n", segment_id(p
   if (total_bytes == 0) {  //** Nothing to do so exit
      log_printf(15, "Nothing to do so exiting\n");
      release_pigeon_coop_hole(cp->free_pending_tables, &pch);
-     return(0);
+     if (cp->bytes_used == 0) {
+        return(bytes_to_free);
+     } else {
+        return(0);
+     }
   }
 
 
@@ -1014,7 +1018,7 @@ ex_off_t _amp_force_free_mem(cache_t *c, segment_t *page_seg, ex_off_t bytes_to_
 
   top = 0;
   freed_bytes = _amp_attempt_free_mem(c, page_seg, bytes_to_free);
-
+ 
   while (freed_bytes < bytes_to_free) {  //** Keep trying to mark space as free until I get enough
      if (top == 0) {
         top = 1;
