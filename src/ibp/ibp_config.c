@@ -212,7 +212,7 @@ int ibp_rw_coalesce(op_generic_t *gop1)
   Stack_ele_t *ele;
   Stack_t *cstack;
   int64_t workload;
-  int n, ntasks, iov_sum, found_myself;
+  int n, iov_sum, found_myself;
   rwc_gop_stack_t *rwcg;
   pigeon_coop_hole_t pch;
   Stack_t *my_hp = iop1->hp_parent;;
@@ -256,7 +256,6 @@ int ibp_rw_coalesce(op_generic_t *gop1)
   cstack = &(rwcg->stack);
   gop1->op->cmd.coalesced_ops = cstack;
   cmd1->rwbuf = rwbuf;
-  ntasks = 0;
 
   //** PAtch over the send command function
   if (cmd1->rw_mode == IBP_READ) {
