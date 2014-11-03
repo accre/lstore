@@ -104,15 +104,15 @@ extern "C" {
 
 
 //******** Event types
-#define MQ_EVENT_CONNECTED ZMQ_EVENT_CONNECTED
-#define MQ_EVENT_CLOSED    ZMQ_EVENT_CLOSED
-#define MQ_EVENT_ALL       ZMQ_EVENT_ALL
+//QWERT #define MQ_EVENT_CONNECTED ZMQ_EVENT_CONNECTED
+//QWERT #define MQ_EVENT_CLOSED    ZMQ_EVENT_CLOSED
+//QWERT #define MQ_EVENT_ALL       ZMQ_EVENT_ALL
 
 //******** Send/Recv flags
 #define MQ_DONTWAIT ZMQ_DONTWAIT
 
 typedef zmq_pollitem_t mq_pollitem_t;
-typedef zmq_event_t mq_event_t;
+//QWERT typedef zmq_event_t mq_event_t;
 
 typedef Stack_t mq_msg_t;
 
