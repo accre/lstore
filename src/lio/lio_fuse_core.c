@@ -189,7 +189,8 @@ mode_t ftype_lio2fuse(int ftype)
   } else if (ftype & OS_OBJECT_DIR) {
      mode = S_IFDIR | 0755;
   } else {
-     mode = S_IFREG | 0444;
+//     mode = S_IFREG | 0444;
+     mode = S_IFREG | 0666;  //** Make it so that everything has RW access
   }
 
   return(mode);
@@ -1903,6 +1904,41 @@ int lfs_flush(const char *fname, struct fuse_file_info *fi)
   return(0);
 }
 
+//*****************************************************************
+// lfs_fsync - Flushes any data to backing store
+//*****************************************************************
+
+int lfs_fsync(const char *fname, struct fuse_file_info *fi)
+{
+  lio_fuse_t *lfs;
+  lio_fuse_fd_t *fd;
+  int err;
+  apr_time_t now;
+  double dt;
+
+  now = apr_time_now();
+
+  log_printf(1, "START fname=%s\n", fname); flush_log();
+
+  fd = (lio_fuse_fd_t *)fi->fh;
+  if (fd == NULL) {
+     return(-EBADF);
+  }
+
+  lfs = fd->fh->lfs;
+
+  err = gop_sync_exec(segment_flush(fd->fh->seg, lfs->lc->da, 0, segment_size(fd->fh->seg)+1, lfs->lc->timeout));
+  if (err != OP_STATE_SUCCESS) {
+     return(-EIO);
+  }
+
+  dt = apr_time_now() - now;
+  dt /= APR_USEC_PER_SEC;
+  log_printf(1, "END fname=%s dt=%lf\n", fname, dt); flush_log();
+
+  return(0);
+}
+
 //*************************************************************************
 // lfs_rename - Renames a file
 //*************************************************************************
@@ -1946,6 +1982,54 @@ int lfs_rename(const char *oldname, const char *newname)
   return(0);
 }
 
+
+//*****************************************************************
+// lfs_ftruncate - Truncate the file associated with the FD
+//*****************************************************************
+
+int lfs_ftruncate(const char *fname, off_t new_size, struct fuse_file_info *fi)
+{
+  lio_fuse_fd_t *fd;
+  lio_inode_t *inode;
+  ex_off_t ts;
+  int err;
+
+  lio_fuse_t *lfs;
+  struct fuse_context *ctx;
+  ctx = fuse_get_context();
+  if (NULL == ctx || NULL == ctx->private_data)
+  {
+    log_printf(0, "ERROR_CTX:  unable to access fuse context or context is invalid");
+    return(-EINVAL);
+  }else
+  {
+    lfs = (lio_fuse_t*)ctx->private_data;
+  }
+
+  log_printf(1, "fname=%s\n", fname); flush_log();
+
+  fd = (lio_fuse_fd_t *)fi->fh;
+  if (fd == NULL) {
+     return(-EBADF);
+  }
+
+  ts = new_size;
+  log_printf(15, "adjusting size=" XOT "\n", ts);
+
+  log_printf(15, "calling truncate\n");
+  err = gop_sync_exec(segment_truncate(fd->fh->seg, lfs->lc->da, ts, lfs->lc->timeout));
+  log_printf(15, "segment_truncate=%d\n", err);
+
+  lfs_lock(lfs);
+  inode= _lfs_dentry_lookup(lfs, fname, 0);
+  if (inode != NULL) {
+     inode->size = new_size;
+     atomic_set(fd->fh->modified, 1);
+  }
+  lfs_unlock(lfs);
+
+  return(0);
+}
 
 
 //*****************************************************************
@@ -3152,6 +3236,7 @@ struct fuse_operations lfs_fops = { //All lfs instances should use the same func
   .getattr = lfs_stat,
   .utimens = lfs_utimens,
   .truncate = lfs_truncate,
+  .ftruncate = lfs_ftruncate,
   .rename = lfs_rename,
   .mknod = lfs_mknod,
   .mkdir = lfs_mkdir,
@@ -3163,6 +3248,7 @@ struct fuse_operations lfs_fops = { //All lfs instances should use the same func
 //  .read = lfs_read_test_ex,
   .write = lfs_write,
   .flush = lfs_flush,
+  .flush = lfs_fsync,
   .link = lfs_hardlink,
   .readlink = lfs_readlink,
   .symlink = lfs_symlink,
