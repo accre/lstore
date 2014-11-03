@@ -138,6 +138,10 @@ add_executable( zadler32 zadler32.c )
 set_target_properties(zadler32 PROPERTIES LINKER_LANGUAGE CXX)
 target_link_libraries(zadler32 ${TOOLBOX_LIBRARY} ${ZLIB_LIBRARY} m )
 
+add_executable( ldiff ldiff.c )
+set_target_properties(ldiff PROPERTIES LINKER_LANGUAGE CXX)
+target_link_libraries(ldiff ${TOOLBOX_LIBRARY} m )
+
 set(sodeps)
 set(lpdeps)
 foreach(lib ${LIBS} )

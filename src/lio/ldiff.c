@@ -42,11 +42,12 @@ void compare_buffers(char *b1, char *b2, int64_t len, int64_t offset, int64_t *b
     int64_t block_size, int *state, int64_t *state_offset, int64_t fsize)
 {
   int mode, ok;
-  int64_t start, end, i, k, last, bs, be, bl;
+  int64_t start, end, i, k, last, bs, be, bl, bos, boe;
  
   mode = *state;
   start = *state_offset;
-  last = fsize - 1;
+  be = offset + len;
+  last = (be == fsize) ? len-1 : -1;
 
   for (i=0; i<len; i++) {
     if (mode == 0) {  //** Matching range
@@ -54,8 +55,9 @@ void compare_buffers(char *b1, char *b2, int64_t len, int64_t offset, int64_t *b
          end = offset + i-1;
          k = end - start + 1;
          bs = start / block_size;  be = end / block_size;
+         bos = start % block_size; boe = end % block_size;
          bl = be - bs + 1;
-         printf("  MATCH  : " I64T " -> " I64T " (" I64T " bytes) [" I64T " -> " I64T " (" I64T " blocks)]\n", start, end, k, bs, be, bl);
+         printf("  MATCH  : " I64T " -> " I64T " (" I64T " bytes) [" I64T "%%" I64T  " -> " I64T "%%" I64T " (" I64T " blocks)]\n", start, end, k, bs, bos, be, boe, bl);
 
          start = offset + i;
          mode = 1;
@@ -72,8 +74,10 @@ void compare_buffers(char *b1, char *b2, int64_t len, int64_t offset, int64_t *b
             *bad_bytes += k;
             (*bad_groups)++;
             bs = start / block_size;  be = end / block_size;
+            bos = start % block_size; boe = end % block_size;
             bl = be - bs + 1;
-            printf("  DIFFER : " I64T " -> " I64T " (" I64T " bytes) [" I64T " -> " I64T " (" I64T " blocks)]\n", start, end, k, bs, be, bl);
+            printf("  DIFFER : " I64T " -> " I64T " (" I64T " bytes) [" I64T "%%" I64T  " -> " I64T "%%" I64T " (" I64T " blocks)]\n", start, end, k, bs, bos, be, boe, bl);
+//            printf("  DIFFER : " I64T " -> " I64T " (" I64T " bytes) [" I64T " -> " I64T " (" I64T " blocks)]\n", start, end, k, bs, be, bl);
 
             start = offset + i;
             mode = 0;
