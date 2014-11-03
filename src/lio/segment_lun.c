@@ -422,11 +422,11 @@ log_printf(15, "missing[%d]=%d status=%d\n", j,i, gop_completed_successfully(gop
         atomic_dec(dbold[i]->ref_count); data_block_destroy(dbold[i]);
      }
 
-//     todo= 0;
-//     for (i=0; i<n_devices; i++) if (block_status[i] != 0) todo++;
+     todo= 0;
+     for (i=0; i<n_devices; i++) if (block_status[i] != 0) todo++;
 
-     todo = n_devices;
-     for (i=0; i<n_devices; i++) if ((block_status[i] == 0) || (block_status[i] == -103)) todo--;
+//this leads to placement violations!!!!     todo = n_devices;
+//     for (i=0; i<n_devices; i++) if ((block_status[i] == 0) || (block_status[i] == -103)) todo--;
 
      loop++;
   } while ((loop < 5) && (todo > 0));
@@ -1642,6 +1642,8 @@ op_status_t seglun_rw_func(void *arg, int id)
   char *label;
   ex_off_t new_size;
   ex_off_t pos, maxpos, t1, t2, t3;
+  apr_time_t now;
+  double dt;
 
 log_printf(2, "sid=" XIDT " n_iov=%d off[0]=" XOT " len[0]=" XOT " max_size=" XOT " used_size=" XOT "\n",
      segment_id(sw->seg), sw->n_iov, sw->iov[0].offset, sw->iov[0].len, s->total_size, s->used_size);
@@ -1689,19 +1691,32 @@ log_printf(15, "ERROR seg=" XIDT " READ beyond EOF!  cur_size=" XOT " requested 
         t2 = t1 + sw->iov[i].len - 1;
         t3 = sw->iov[i].len;
         log_printf(1, "%s:START " XOT " " XOT " " XOT "\n", label, t1, t2, t3);
-        log_printf(1, "%s:END " XOT "\n", label, t2);
      }
   }
 
   //** Now do the actual R/W operation
 log_printf(15, "Before exec\n");
+  now = apr_time_now();
   status = seglun_rw_op(sw->seg, sw->da, sw->n_iov, sw->iov, sw->buffer, sw->boff, sw->rw_mode, sw->timeout);
+  now = apr_time_now() - now;
 //  if (status.op_status != OP_STATE_SUCCESS) err = OP_STATE_FAILURE;
 log_printf(15, "After exec err=%d\n", status.op_status);
 
   segment_lock(sw->seg);
 log_printf(15, "oldused=" XOT " maxpos=" XOT "\n", s->used_size, maxpos);
 
+
+  if (log_level() > 0) {  //** Add some logging
+     dt = (double) now / APR_USEC_PER_SEC;
+
+     label = (sw->rw_mode == 1) ? "LUN_WRITE" : "LUN_READ";
+     for (i=0; i<sw->n_iov; i++) {
+        t1 = sw->iov[i].offset;
+        t2 = t1 + sw->iov[i].len - 1;
+        t3 = sw->iov[i].len;
+        log_printf(1, "%s:END " XOT " : " XOT " " XOT " " XOT " %lf\n", label, t2, t1, t2, t3, dt);
+     }
+  }
   if ((sw->rw_mode == 1) && (s->used_size <= maxpos)) s->used_size = maxpos+1;
 
   if (status.op_status != OP_STATE_SUCCESS) {
@@ -1900,11 +1915,16 @@ op_status_t seglun_inspect_func(void *arg, int id)
   char info[bufsize];
   ex_off_t sstripe, estripe;
   int used, soft_error_fail, force_reconstruct, nforce;
-  int block_status[s->n_devices], block_copy[s->n_devices];
+  int block_status[s->n_devices], block_copy[s->n_devices], block_tmp[s->n_devices];
   int i, j, err, option, force_repair, max_lost, total_lost, total_repaired, total_migrate, nmigrated, nlost, nrepaired, drow;
   inspect_args_t args;
+  inspect_args_t args_blank;
 
   args = *(si->args);
+  args_blank = args;
+  args_blank.rid_changes = NULL;
+  args_blank.rid_lock = NULL;
+  
   status = op_success_status;
   max_lost = 0;
   total_lost = 0;
@@ -2023,20 +2043,33 @@ log_printf(0, "AFTER_PLACEMENT_CHECK\n");
     if ((err > 0) && ((option == INSPECT_QUICK_REPAIR) || (option == INSPECT_SCAN_REPAIR) || (option == INSPECT_FULL_REPAIR))) {
        if (force_reconstruct == 0) {
           memcpy(block_copy, block_status, sizeof(int)*s->n_devices);
-
           i = slun_row_placement_fix(si->seg, si->da, b, block_status, s->n_devices, &args, si->timeout);
           nmigrated += err - i;
+          memcpy(block_tmp, block_status, sizeof(int)*s->n_devices);
 
+          j = 0;
           for (i=0; i < s->n_devices; i++) {
              if (block_copy[i] != 0) {
                 if (block_status[i] == 0) {
                    info_printf(si->fd, 2, XIDT ":     dev=%i moved to rcap=%s\n", segment_id(si->seg), i, ds_get_cap(s->ds, b->block[i].data->cap, DS_CAP_READ));
-                } else if (block_status[i] == -103) { //** Can't opportunistically move the allocation so unflagg it
+                } else if (block_status[i] == -103) { //** Can't opportunistically move the allocation so unflagg it but I need to check for collisions later
 log_printf(0, "OPPORTUNISTIC mv failed i=%d\n", i);
                    block_status[i] = 0;
-                   total_migrate--; nmigrated--;  //** Adjust the totals
+                   total_migrate--; //** Adjust the totals
+                   j++;
                 }
              }
+          }
+
+          //** Opportunistic shuffle failed so check for placement collisions
+          if (j > 0) {
+             err = slun_row_placement_check(si->seg, si->da, b, block_tmp, s->n_devices, soft_error_fail, query, &args_blank, si->timeout);
+             if (err > 0) {
+                log_printf(1, "ERROR: opportunistic overlap.  err=%d\n", err);
+                info_printf(si->fd, 1, XIDT ": ERROR: opportunistic overlap.  err=%d\n", segment_id(si->seg), err);
+                memcpy(block_status, block_tmp, sizeof(int)*s->n_devices);
+                total_migrate += err;
+             }             
           }
 
           used = 0;
@@ -2052,7 +2085,7 @@ log_printf(0, "OPPORTUNISTIC mv failed i=%d\n", i);
             err = slun_row_replace_fix(si->seg, si->da, b, block_status, s->n_devices, &args, si->timeout);
 
             for (i=0; i < s->n_devices; i++) {
-                if ((block_copy[i] == 1) && (block_status[i] == 0)) info_printf(si->fd, 2, XIDT ":     dev=%i replaced rcap=%s\n", segment_id(si->seg), i, ds_get_cap(s->ds, b->block[i].data->cap, DS_CAP_READ));
+                if ((block_copy[i] != 0) && (block_status[i] == 0)) info_printf(si->fd, 2, XIDT ":     dev=%i replaced rcap=%s\n", segment_id(si->seg), i, ds_get_cap(s->ds, b->block[i].data->cap, DS_CAP_READ));
             }
             used = 0;
             append_printf(info, &used, bufsize, XIDT ":     slun_row_replace_fix:", segment_id(si->seg));
