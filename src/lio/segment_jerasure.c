@@ -457,12 +457,18 @@ log_printf(5, "sid=" XIDT " clr_dt=%d\n", segment_id(si->seg), apr_time_sec(clr_
         check_magic = (s->magic_cksum == 0) ? NULL : stripe_magic;
         good_magic = memcmp(empty_magic, stripe_magic, JE_MAGIC_SIZE);
         if (good_magic == 0) {
-           n_empty++;
 //           append_printf(stripe_msg[0], &stripe_used[0], stripe_buffer_size, "Empty stripe.  empty chunks: %d\n", magic_count[index]);
+           log_printf(0, "Empty stripe.  empty chunks: %d magic_used=%d stripe=%d\n", magic_count[index], magic_used, stripe+i);
            stripe_error[0] = 1;
+           if (magic_count[index] == s->n_devs) { //** Completely empty stripe so skip to the next loop
+              skip = 1;
+              used = 0;
+              n_empty++;
+              goto next;
+           }
         }
 
-if (magic_used > 1) log_printf(5, "n_magic=%d stripe=%d\n", magic_used, stripe+i);
+        if (magic_used > 1) log_printf(5, "n_magic=%d stripe=%d\n", magic_used, stripe+i);
         skip = 0;
         tmp = bad_count;
         used = 0;
@@ -583,6 +589,8 @@ log_printf(0, "memcmp=%d\n", memcmp(iov[n_iov].iov_base, &(buffer[boff + index*s
               }
            }
         }
+
+next:  //** Jump to here if an empty stripe
 
         if ((get_info_level(si->fd) > 1) && (tmp != bad_count)) {   //** Print some diag info if needed
            oops = (((repair_errors+unrecoverable_count) > 0) && (fail_quick > 0) && (i== nstripes-1)) ? 1 : 0;
