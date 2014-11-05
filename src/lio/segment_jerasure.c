@@ -905,7 +905,7 @@ op_status_t segjerase_inspect_func(void *arg, int id)
 log_printf(5, "status: %d %d migerr=%d\n", status.op_status, status.error_code, migrate_errors);
 
   //** Kick out if we can't fix anything
-  if ((status.op_status != OP_STATE_SUCCESS) && (child_replaced > s->n_parity_devs)) {
+  if (((status.op_status != OP_STATE_SUCCESS) && (child_replaced > s->n_parity_devs)) || (migrate_errors != 0)) {
      status.op_status = OP_STATE_FAILURE;
      goto fail;
   }
@@ -995,7 +995,7 @@ log_printf(5, "repair=%d child_replaced=%d option=%d inspect_mode=%d INSPECT_QUI
 fail:
   if (si->max_replaced > s->n_data_devs) {
      status.op_status = OP_STATE_FAILURE;
-  } else if ((child_replaced > 0) && ((si->inspect_mode & INSPECT_FORCE_REPAIR) == 0)) {
+  } else if (((child_replaced > 0) && ((si->inspect_mode & INSPECT_FORCE_REPAIR) == 0)) || (migrate_errors != 0)) {
      status.op_status = OP_STATE_FAILURE;
   }
 
