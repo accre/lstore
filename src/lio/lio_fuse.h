@@ -105,6 +105,7 @@ typedef struct {
   int shutdown;
   int mount_point_len;
   int test_mode;
+  int calc_adler32;
   atomic_int_t counter;
   list_t *ino_index;
   list_t *fname_index;
@@ -126,6 +127,7 @@ struct lio_fuse_file_handle_s {  //** Shared file handle
   int ref_count;
   ex_off_t readahead_end;
   atomic_int_t modified;
+  list_t *write_table;
 };
 
 typedef struct {
