@@ -35,8 +35,10 @@ http://www.accre.vanderbilt.edu
 #include <sys/stat.h>
 #include <unistd.h>
 #include <math.h>
+#include "zlib.h"
 #include "lio_fuse.h"
 #include "exnode.h"
+#include "ex3_compare.h"
 #include "log.h"
 #include "iniparse.h"
 #include "type_malloc.h"
@@ -75,6 +77,12 @@ typedef struct {
   Stack_t *stack;
   int state;
 } lfs_dir_iter_t;
+
+typedef struct {
+  ex_off_t offset;
+  ex_off_t len;
+  uLong adler32;
+} lfs_adler32_t;
 
 //*************************************************************************
 //  ino_compare_fn  - FUSE inode comparison function
@@ -1205,6 +1213,7 @@ lio_fuse_file_handle_t *lfs_load_file_handle(lio_fuse_t *lfs, const char *fname)
   fh->lfs = lfs;
   fh->ref_count = 1;
   inode->fh = fh;
+  if (lfs->calc_adler32) fh->write_table = list_create(0, &skiplist_compare_ex_off, NULL, NULL, NULL);
 
   lfs_unlock(lfs);  //** Now we can release the lock
 
@@ -1324,6 +1333,60 @@ int lfs_open(const char *fname, struct fuse_file_info *fi)
   return lfs_open_real(fname, fi, lfs);
 }
 
+//*****************************************************************
+// lfs_store_and_release_adler32 - Takes all the adler32 structures
+//    and coalesces them into a single adler32 and stores it in the
+//    user.lfs_adler32 file attribute.
+//    It also detroys the write_table
+//*****************************************************************
+
+void lfs_store_and_release_adler32(lio_config_t *lc, creds_t *creds, list_t *write_table, char *fname)
+{
+  list_iter_t it;
+  ex_off_t next, missing, overlap, dn, nbytes, pend;
+  uLong cksum;
+  unsigned int aval;
+  lfs_adler32_t *a32;
+  Stack_t *stack;
+  ex_off_t *aoff;
+  char value[256];
+
+  stack = new_stack();
+  it = list_iter_search(write_table, 0, 0);
+  cksum = adler32(0L, Z_NULL, 0);
+  missing = next = overlap = nbytes = 0;
+  while (list_next(&it, (list_key_t **)&aoff, (list_data_t **)&a32) == 0) {
+aval = a32->adler32;
+pend = a32->offset + a32->len - 1;
+     push(stack, a32);
+
+     if (a32->offset != next) {
+        log_printf(1, "fname=%s a32=%08x off=" XOT " end=" XOT " nbytes=" XOT " OOPS dn=" XOT "\n", fname, aval, a32->offset, pend, a32->len, dn);
+        dn = a32->offset - next;
+        if (dn < 0) {
+           overlap -= dn;
+        } else {
+           missing += dn;
+        }
+     } else {
+        log_printf(1, "fname=%s a32=%08x off=" XOT " end=" XOT " nbytes=" XOT "\n", fname, aval, a32->offset, pend, a32->len);
+     }
+
+     nbytes += a32->len;
+     cksum = adler32_combine(cksum, a32->adler32, a32->len);
+
+     next = a32->offset + a32->len;
+  }
+
+  list_destroy(write_table);
+  free_stack(stack, 1);
+ 
+  //** Store the attribute
+  aval = cksum;
+  dn = snprintf(value, sizeof(value), "%08x:" XOT ":" XOT ":" XOT, aval, missing, overlap, nbytes);
+  lioc_set_attr(lc, creds, fname, NULL, "user.lfs_write", value, dn);
+}
+
 
 //*****************************************************************
 // lfs_myclose - Closes a file
@@ -1441,6 +1504,7 @@ log_printf(1, "FLUSH/TRUNCATE fname=%s inode_size=" XOT " final_size=" XOT "\n",
      inode->fh = NULL;
      lfs_unlock(lfs);
      lfs_file_unlock(lfs, fname, slot);
+     if (fh->write_table != NULL) lfs_store_and_release_adler32(lfs->lc, lfs->lc->creds, fh->write_table, fname);
      free(fh);
      if (flags == LFS_INODE_DELETE) return(lfs_object_remove(lfs, fname));
      return(0);
@@ -1480,6 +1544,7 @@ log_printf(1, "FLUSH/TRUNCATE fname=%s inode_size=" XOT " final_size=" XOT "\n",
   dt = apr_time_now() - now;
   dt /= APR_USEC_PER_SEC;
   log_printf(1, "exnode_destroy fname=%s dt=%lf\n", fname, dt);
+  if (fh->write_table != NULL) lfs_store_and_release_adler32(lfs->lc, lfs->lc->creds, fh->write_table, fname);
 
   free(fh);
 
@@ -1827,6 +1892,39 @@ int lfs_write_ex(const char *fname, int n_iov, ex_iovec_t *iov, tbuffer_t *buffe
   dt = apr_time_now() - now;
   dt /= APR_USEC_PER_SEC;
   log_printf(1, "END fname=%s seg=" XIDT " dt=%lf\n", fname, segment_id(fd->fh->seg), dt); flush_log();
+
+  if (fd->fh->write_table != NULL) {
+     tbuffer_t tb;
+     lfs_adler32_t *a32;
+     unsigned char *buf = NULL;
+     ex_off_t blen = 0;
+     ex_off_t bpos = boff;
+     for (i=0; i<n_iov; i++) {
+        t2 = iov[i].offset+iov[i].len-1;
+        type_malloc(a32, lfs_adler32_t, 1);
+        a32->offset = iov[i].offset;
+        a32->len = iov[i].len;
+        a32->adler32 = adler32(0L, Z_NULL, 0);
+ 
+        //** This is sloppy should use tbuffer_next to do this but this is all going ot be thrown away once we track
+        //** down the gridftp plugin issue
+        if (blen < a32->len) {
+           if (buf != NULL) free(buf);
+           blen = a32->len;
+           type_malloc(buf, unsigned char, blen);
+        }
+        tbuffer_single(&tb, a32->len, (char *)buf);
+        tbuffer_copy(buffer, bpos, &tb, 0, a32->len, 1);
+        a32->adler32 = adler32(a32->adler32, buf, a32->len);
+        segment_lock(fd->fh->seg);
+        list_insert(fd->fh->write_table, &(a32->offset), a32);
+        segment_unlock(fd->fh->seg);
+
+        bpos += a32->len;
+     }
+
+     if (buf != NULL) free(buf);
+  }
 
   if (err != OP_STATE_SUCCESS) {
      log_printf(1, "ERROR with write! fname=%s\n", fname);
@@ -3111,6 +3209,7 @@ void *lfs_init_real(struct fuse_conn_info *conn,
   lfs->mount_point_len = strlen(init_args->mount_point);
 
   lfs->test_mode = inip_get_integer(lfs->lc->ifd, section, "test_mode", 0);
+  lfs->calc_adler32 = inip_get_integer(lfs->lc->ifd, section, "calc_adler32", 0);
 
   lfs->entry_to = APR_USEC_PER_SEC * inip_get_double(lfs->lc->ifd, section, "entry_timout", 10.0);
   lfs->attr_to = APR_USEC_PER_SEC * inip_get_double(lfs->lc->ifd, section, "stat_timeout", 10.0);
