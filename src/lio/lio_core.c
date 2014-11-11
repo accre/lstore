@@ -335,10 +335,10 @@ int lioc_set_multiple_attrs(lio_config_t *lc, creds_t *creds, char *path, char *
 }
 
 //***********************************************************************
-// lioc_set_attr - Returns an attribute
+// lioc_set_attr_real - Sets an attribute
 //***********************************************************************
 
-int lioc_set_attr(lio_config_t *lc, creds_t *creds, char *path, char *id, char *key, void *val, int v_size)
+int lioc_set_attr_real(lio_config_t *lc, creds_t *creds, char *path, char *id, char *key, void *val, int v_size)
 {
   int err, serr;
   os_fd_t *fd;
@@ -362,6 +362,23 @@ int lioc_set_attr(lio_config_t *lc, creds_t *creds, char *path, char *id, char *
       err = OP_STATE_FAILURE;
   }
 
+  return(err);
+}
+
+//***********************************************************************
+// lioc_set_attr - Sets a single attribute
+//***********************************************************************
+
+int lioc_set_attr(lio_config_t *lc, creds_t *creds, char *path, char *id, char *key, void *val, int v_size)
+{
+  int err;
+
+  err = lioc_set_attr_real(lc, creds, path, id, key, val, v_size);
+  if (err != OP_STATE_SUCCESS) {  //** Got an error
+     sleep(1);  //** Wait a bit before retrying
+     err = lioc_set_attr_real(lc, creds, path, id, key, val, v_size);  
+  }
+  
   return(err);
 }
 
