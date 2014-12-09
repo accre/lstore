@@ -1761,6 +1761,9 @@ log_printf(0, "AFTER PUT\n");
      info_printf(lio_ifd, 0, "ERROR: Failed uploading data!  path=%s\n", cp->dest_tuple.path);
   }
 
+//log_printf(0, "SLEEPING for 60 seconds!!!!!!!\n");
+//sleep(60);
+//log_printf(0, "WAKING UP!!!!!!!!!!!\n");
 
   //** Update the dest exnode and misc attributes
   err2 = lioc_update_exnode_attrs(cp->dest_tuple.lc, cp->dest_tuple.creds, ex, seg, cp->dest_tuple.path, &errcnts);
