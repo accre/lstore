@@ -579,7 +579,9 @@ log_printf(15, "gop_waitany: BEFORE (type=op) While gid=%d state=%d\n", gop_id(g
        log_printf(15, "sync_exec -- gid=%d completed with err=%d\n", gop_id(g), g->base.state);
        return(g);
      } else {  //** Got to submit it normally
+        unlock_gop(g);  //** It's a single task so no need to hold the lock.  Otherwise we can deadlock
         _gop_start_execution(g);  //** Make sure things have been submitted
+        lock_gop(g);  //** but we do need it for detecting when we're finished.
         while (g->base.state == 0) {
            apr_thread_cond_wait(g->base.ctl->cond, g->base.ctl->lock); //** Sleep until something completes
         }
