@@ -575,16 +575,14 @@ op_generic_t *_get_hportal_op(host_portal_t *hp)
 host_connection_t *find_hc_to_close(portal_context_t *hpc)
 {
   apr_hash_index_t *hi;
-  host_portal_t *hp, *shp, *best_hp;
+  host_portal_t *hp, *shp;
   host_connection_t *hc, *best_hc;
   void *val;
   int best_workload, hold_lock;
-  int oldest_direct_time;
 
   hc = NULL;
   best_hc = NULL;
   best_workload = -1;
-  oldest_direct_time = apr_time_now() + apr_time_make(10,0);
 
   apr_thread_mutex_lock(hpc->lock);
 
@@ -605,7 +603,6 @@ host_connection_t *find_hc_to_close(portal_context_t *hpc)
               hold_lock = 1;
               best_workload = hc->curr_workload;
               best_hc = hc;
-              best_hp = hp;
            }
         }
         move_down(hp->conn_list);
@@ -628,7 +625,6 @@ host_connection_t *find_hc_to_close(portal_context_t *hpc)
                  hold_lock = 1;
                  best_workload = hc->curr_workload;
                  best_hc = hc;
-                 best_hp = hp;
               }
            }
            if (hold_lock == 0) unlock_hc(hc);
