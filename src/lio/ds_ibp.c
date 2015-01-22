@@ -41,6 +41,7 @@ http://www.accre.vanderbilt.edu
 #include "opque.h"
 #include "string_token.h"
 #include "type_malloc.h"
+#include "apr_wrapper.h"
 
 int _ds_ibp_do_init = 1;
 
@@ -81,6 +82,55 @@ void ds_ibp_destroy_cap_set(data_service_fn_t *arg, data_cap_set_t *dcs, int fre
   } else {
     free(cs);
   }
+}
+
+//***********************************************************************
+// ds_ibp_cap_auto_warm - Adds the cap to the auto warming list
+//***********************************************************************
+
+void *ds_ibp_cap_auto_warm(data_service_fn_t *arg, data_cap_set_t *dcs)
+{
+  ds_ibp_priv_t *ds = (ds_ibp_priv_t *)arg->priv;
+  ibp_capset_t *cs = (ibp_capset_t *)dcs;
+  ibp_capset_t *w;
+
+  log_printf(15, "Adding to auto warm cap: %s\n", cs->manageCap);
+  
+  //** Make the new cap
+  assert((w = new_ibp_capset()) != NULL);
+  if (cs->readCap) w->readCap = strdup(cs->readCap);
+  if (cs->writeCap) w->writeCap = strdup(cs->writeCap);
+  if (cs->manageCap) w->manageCap = strdup(cs->manageCap);
+
+  //** Add it to the warming list
+  apr_thread_mutex_lock(ds->lock);
+  apr_hash_set(ds->warm_table, w->manageCap, APR_HASH_KEY_STRING, w);
+  apr_thread_mutex_unlock(ds->lock);
+  
+  return(w);
+}
+
+//***********************************************************************
+// ds_cap_stop_warm - Disables the cap from being warmed
+//***********************************************************************
+
+void ds_ibp_cap_stop_warm(data_service_fn_t *arg, void *dcs)
+{
+  ds_ibp_priv_t *ds = (ds_ibp_priv_t *)arg->priv;
+  ibp_capset_t *cs = (ibp_capset_t *)dcs;
+
+  if (cs == NULL) return;
+
+  //** Remove it from the list
+  apr_thread_mutex_lock(ds->lock);
+  apr_hash_set(ds->warm_table, cs->manageCap, APR_HASH_KEY_STRING, NULL);
+
+  log_printf(15, "Removing from auto warm: nkeys=%ud  cap: %s\n", apr_hash_count(ds->warm_table), cs->manageCap);
+  apr_thread_mutex_unlock(ds->lock);
+
+
+  //** Destroy the cap
+  ds_ibp_destroy_cap_set(arg, (data_cap_set_t *)dcs, 1);
 }
 
 //***********************************************************************
@@ -773,14 +823,72 @@ int ds_ibp_get_default_attr(data_service_fn_t *dsf, data_attr_t *da)
 }
 
 //***********************************************************************
+// ds_ibp_warm_thread - IBP warmer thread for active files
+//***********************************************************************
+
+void *ds_ibp_warm_thread(apr_thread_t *th, void *data)
+{
+  data_service_fn_t *dsf = (data_service_fn_t *)data;
+  ds_ibp_priv_t *ds = (ds_ibp_priv_t *)dsf->priv;
+  apr_time_t max_wait;
+  char *mcap;
+  apr_ssize_t hlen;
+  apr_hash_index_t *hi;
+  ibp_capset_t *w;
+  opque_t *q;
+  int dt, err;
+
+  dt = 60;
+  max_wait = apr_time_make(ds->warm_interval, 0);
+  apr_thread_mutex_lock(ds->lock);
+  while (ds->warm_stop == 0) {
+     //** Generate all the tasks
+     log_printf(10, "Starting auto-warming run\n");
+
+     q = new_opque();
+     for (hi=apr_hash_first(NULL, ds->warm_table); hi != NULL; hi = apr_hash_next(hi)) {
+        apr_hash_this(hi, (const void **)&mcap, &hlen, (void **)&w);
+        opque_add(q, new_ibp_modify_alloc_op(ds->ic, mcap, -1, ds->warm_duration, -1, dt));
+        log_printf(15, " warming: %s\n", mcap);
+
+     }
+
+     //** Wait until they all complete
+     err = opque_waitall(q);
+     log_printf(10, "opque_waitall=%d\n", err);
+
+     opque_free(q, OP_DESTROY);  //** Clean up.  Don;t care if we are successfull or not:)
+
+     //** Sleep until the next time or we get an exit request
+     apr_thread_cond_timedwait(ds->cond, ds->lock, max_wait);  
+  }
+  apr_thread_mutex_unlock(ds->lock);
+
+  log_printf(10, "EXITING auto-warm thread\n");
+
+  return(NULL);
+}
+
+//***********************************************************************
 //  ds_ibp_destroy - Creates the IBP data service
 //***********************************************************************
 
 void ds_ibp_destroy(data_service_fn_t *dsf)
 {
   ds_ibp_priv_t *ds = (ds_ibp_priv_t *)dsf->priv;
+  apr_status_t value;  
 
-//  ibp_destroy_context(ds->ic);  //** Done by the callint program
+  //** Wait for the warmer thread to complete
+  apr_thread_mutex_lock(ds->lock);
+  ds->warm_stop = 1;
+  apr_thread_cond_signal(ds->cond);
+  apr_thread_mutex_unlock(ds->lock);
+  apr_thread_join(&value, ds->thread);  //** Wait for it to complete
+
+  //** Now we can clean up
+  apr_thread_mutex_destroy(ds->lock);
+  apr_thread_cond_destroy(ds->cond);
+  apr_pool_destroy(ds->pool);
 
   ibp_destroy_context(ds->ic);
 
@@ -806,6 +914,12 @@ data_service_fn_t *ds_ibp_create(void *arg, inip_file_t *ifd, char *section)
   //** Set the default attributes
   memset(&(ds->attr_default), 0, sizeof(ds_ibp_attr_t));
   ds->attr_default.attr.duration = inip_get_integer(ifd, section, "duration", 3600);
+
+  ds->warm_duration = ds->attr_default.attr.duration;
+  ds->warm_interval = 0.33 * ds->warm_duration;  
+  ds->warm_interval = inip_get_integer(ifd, section, "warm_interval", ds->warm_interval);
+  ds->warm_duration = inip_get_integer(ifd, section, "warm_duration", ds->warm_duration);
+
   cs_type = inip_get_integer(ifd, section, "chksum_type", CHKSUM_DEFAULT);
   if ( ! ((chksum_valid_type(cs_type) == 0) || (cs_type == CHKSUM_DEFAULT) || (cs_type == CHKSUM_NONE)))  {
      log_printf(0, "Invalid chksum type=%d resetting to CHKSUM_DEFAULT(%d)\n", cs_type, CHKSUM_DEFAULT);
@@ -831,6 +945,8 @@ data_service_fn_t *ds_ibp_create(void *arg, inip_file_t *ifd, char *section)
   dsf->priv = (void *)ds;
   dsf->destroy_service = ds_ibp_destroy;
   dsf->new_cap_set = ds_ibp_new_cap_set;
+  dsf->cap_auto_warm = ds_ibp_cap_auto_warm;
+  dsf->cap_stop_warm = ds_ibp_cap_stop_warm;
   dsf->get_cap = ds_ibp_get_cap;
   dsf->set_cap = ds_ibp_set_cap;
   dsf->translate_cap_set = ds_ibp_translate_cap_set;
@@ -860,6 +976,13 @@ data_service_fn_t *ds_ibp_create(void *arg, inip_file_t *ifd, char *section)
   dsf->copy = ds_ibp_copy;
   dsf->probe = ds_ibp_probe;
   dsf->truncate = ds_ibp_truncate;
+
+  //** Launch the warmer
+  assert(apr_pool_create(&(ds->pool), NULL) == APR_SUCCESS);
+  apr_thread_mutex_create(&(ds->lock), APR_THREAD_MUTEX_DEFAULT, ds->pool);
+  apr_thread_cond_create(&(ds->cond), ds->pool);
+  ds->warm_table = apr_hash_make(ds->pool);
+  thread_create_assert(&(ds->thread), NULL, ds_ibp_warm_thread, (void *)dsf, ds->pool);
 
   return(dsf);
 }

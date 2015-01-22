@@ -80,7 +80,7 @@ void load_file(char *fname, char **val, int *v_size)
 
 int main(int argc, char **argv)
 {
-  int i, j, rg_mode, start_option, start_index, err, fin;
+  int i, j, rg_mode, start_option, start_index, err, fin, nfailed;
   lio_path_tuple_t tuple;
   os_regex_table_t *rp_single, *ro_single;
   os_object_iter_t *it;
@@ -184,6 +184,7 @@ int main(int argc, char **argv)
     start_index--;  //** The 1st entry will be the rp created in lio_parse_path_options
   }
 
+  nfailed = 0;
   for (j=start_index; j<argc; j++) {
      log_printf(5, "path_index=%d argc=%d rg_mode=%d\n", j, argc, rg_mode);
      if (rg_mode == 0) {
@@ -198,6 +199,7 @@ int main(int argc, char **argv)
         err = gop_sync_exec(os_regex_object_set_multiple_attrs(tuple.lc->os, tuple.creds, NULL, rp_single,  ro_single, obj_types, recurse_depth, key, (void **)val, v_size, n_keys));
         if (err != OP_STATE_SUCCESS) {
            info_printf(lio_ifd, 0, "ERROR with operation! \n");
+           nfailed++;
         }
      }
 
@@ -205,6 +207,7 @@ int main(int argc, char **argv)
         it = os_create_object_iter(tuple.lc->os, tuple.creds, rp_single, ro_single, obj_types, NULL, recurse_depth, NULL, 0);
         if (it == NULL) {
            info_printf(lio_ifd, 0, "ERROR: Failed with object_iter creation\n");
+           nfailed++;
            goto finished;
         }
 
@@ -212,18 +215,21 @@ int main(int argc, char **argv)
            err = gop_sync_exec(os_open_object(tuple.lc->os, tuple.creds, fname, OS_MODE_READ_IMMEDIATE, NULL, &fd, 30));
            if (err != OP_STATE_SUCCESS) {
               info_printf(lio_ifd, 0, "ERROR: opening file: %s.  Skipping.\n", fname);
+              nfailed++;
            } else {
               //** Do the symlink
               err = gop_sync_exec(os_symlink_multiple_attrs(tuple.lc->os, tuple.creds, sobj, skey, fd, dkey, n_skeys));
               if (err != OP_STATE_SUCCESS) {
                  info_printf(lio_ifd, 0, "ERROR: with linking file: %s\n", fname);
+                 nfailed++;
               }
 
               //** Close the file
               err = gop_sync_exec(os_close_object(tuple.lc->os, fd));
               if (err != OP_STATE_SUCCESS) {
                  info_printf(lio_ifd, 0, "ERROR: closing file: %s\n", fname);
-              }
+                 nfailed++;
+             }
            }
 
            free(fname);
@@ -246,7 +252,7 @@ finished:
 
   lio_shutdown();
 
-  return(0);
+  return((nfailed == 0) ? 0 : 1);
 }
 
 

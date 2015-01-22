@@ -72,6 +72,16 @@ typedef struct {
 typedef struct {
   ds_ibp_attr_t attr_default;
   ibp_context_t *ic;
+
+  //** These are all for the warmer
+  apr_pool_t *pool;
+  apr_hash_t *warm_table;
+  apr_thread_mutex_t *lock;
+  apr_thread_cond_t *cond;
+  apr_thread_t *thread;
+  int warm_interval;
+  int warm_duration;
+  int warm_stop;
 } ds_ibp_priv_t;
 
 

@@ -76,6 +76,9 @@ typedef void data_inquire_t;
 
 #define ds_type(ds) (ds)->type
 #define ds_destroy_service(ds) (ds)->destroy_service(ds)
+#define ds_cap_auto_warm(ds, cs) (ds)->cap_auto_warm(ds, cs)
+#define ds_cap_stop_warm(ds, cs) (ds)->cap_stop_warm(ds, cs)
+#define ds_cap_set_create(ds) (ds)->new_cap_set(ds)
 #define ds_cap_set_create(ds) (ds)->new_cap_set(ds)
 #define ds_cap_set_destroy(ds, cs, free_cap) (ds)->destroy_cap_set(ds, cs, free_cap)
 #define ds_get_cap(ds, cs, key) (ds)->get_cap(ds, cs, key)
@@ -124,6 +127,8 @@ struct data_service_fn_s {
   void (*destroy_service)(data_service_fn_t *);
   void (*translate_cap_set)(data_service_fn_t *ds, char *rid_key, char *ds_key, data_cap_set_t *cs);
   data_cap_set_t *(*new_cap_set)(data_service_fn_t *);
+  void *(*cap_auto_warm)(data_service_fn_t *, data_cap_set_t *dcs);
+  void (*cap_stop_warm)(data_service_fn_t *, void *warm);
   data_cap_t *(*get_cap)(data_service_fn_t *, data_cap_set_t *cs, int key);
   int (*set_cap)(data_service_fn_t *, data_cap_set_t *cs, int key, data_cap_t *cap);
   void (*destroy_cap_set)(data_service_fn_t *, data_cap_set_t *caps, int free_cap);

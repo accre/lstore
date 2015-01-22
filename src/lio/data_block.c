@@ -65,6 +65,27 @@ data_block_attr_t *db_find_key(Stack_t *stack, char *key)
 }
 
 //***********************************************************************
+// data_block_auto_warm - Adds the data block to the auto warm list
+//***********************************************************************
+
+void data_block_auto_warm(data_block_t *b)
+{
+  b->warm = ds_cap_auto_warm(b->ds, b->cap);
+}
+
+//***********************************************************************
+// data_block_stop_warm - Disables the data block from being warmed
+//***********************************************************************
+
+void data_block_stop_warm(data_block_t *b)
+{
+  if (b->warm == NULL) return;
+
+  ds_cap_stop_warm(b->ds, b->warm);
+  b->warm = NULL;
+}
+
+//***********************************************************************
 // data_block_set_attr - Sets a data block attribute
 //***********************************************************************
 
@@ -324,6 +345,9 @@ log_printf(15, "b->id=" XIDT " ref_count=%d\n", b->id, b->ref_count);
   ds_cap_set_destroy(b->ds, b->cap, 1);
   if (b->rid_key != NULL) free(b->rid_key);
 log_printf(15, "b->id=" XIDT " ref_count=%d p=%p\n", b->id, b->ref_count, b);
+
+  if (b->warm != NULL) data_block_stop_warm(b);
+
   free(b);
 }
 

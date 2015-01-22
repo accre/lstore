@@ -372,6 +372,8 @@ log_printf(15, "missing[%d]=%d status=%d\n", j,i, gop_completed_successfully(gop
               dbd->attr_stack = dbs->attr_stack;
               dbs->attr_stack = NULL;
 
+              data_block_auto_warm(dbd);  //** Add it to be auto-warmed
+
               b->block[i].data = dbd;
               b->block[i].cap_offset = 0;
               block_status[i] = 0;
@@ -710,6 +712,7 @@ log_printf(15, "loop=%d ------------------------------\n", loop);
 log_printf(15, "missing[%d]=%d req.op_status=%d\n", j, missing[j], gop_completed_successfully(req_list[j].gop));
        if (ds_get_cap(b->block[i].data->ds, b->block[i].data->cap, DS_CAP_READ) != NULL) {
           block_status[i] = 2;  //** Mark the block for padding
+          data_block_auto_warm(b->block[i].data);  //** Add it to be auto-warmed
           b->block[i].data->rid_key = req_list[j].rid_key;
           atomic_inc(b->block[i].data->ref_count);
           req_list[j].rid_key = NULL; //** Cleanup
@@ -2813,7 +2816,7 @@ segment_t *segment_lun_create(void *arg)
   s->rs = lookup_service(es, ESS_RUNNING, ESS_RS);
   s->ds = lookup_service(es, ESS_RUNNING, ESS_DS);
 
-  //** Set up rempa notifications
+  //** Set up remap notifications
   apr_thread_mutex_create(&(s->notify.lock), APR_THREAD_MUTEX_DEFAULT, seg->mpool);
   apr_thread_cond_create(&(s->notify.cond), seg->mpool);
   s->notify.map_version = -1;  //** This should trigger a remap on the first R/W op.

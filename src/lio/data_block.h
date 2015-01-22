@@ -46,6 +46,11 @@ extern "C" {
 typedef void data_block_cap_t;
 
 typedef struct {
+  data_block_cap_t *cap;
+  data_service_fn_t *ds;
+} data_block_warm_t;
+
+typedef struct {
  char *key;
  char *value;
 } data_block_attr_t;
@@ -60,6 +65,7 @@ typedef struct {
   data_service_fn_t *ds;
   char *rid_key;
   Stack_t *attr_stack;
+  data_block_warm_t *warm;
 } data_block_t;
 
 #define data_block_id(db) (db)->id
@@ -71,6 +77,8 @@ data_block_t *data_block_create(data_service_fn_t *ds);
 char *data_block_get_attr(data_block_t *d, char *key);
 int data_block_set_attr(data_block_t *d, char *key, char *val);
 void data_block_destroy(data_block_t *b);
+void data_block_auto_warm(data_block_t *b);
+void data_block_stop_warm(data_block_t *b);
 
 #ifdef __cplusplus
 }
