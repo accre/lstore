@@ -80,7 +80,7 @@ void load_file(char *fname, char **val, int *v_size)
 
 int main(int argc, char **argv)
 {
-  int i, j, rg_mode, start_option, start_index, fin, ftype, prefix_len;
+  int i, j, rg_mode, start_option, start_index, fin, ftype, prefix_len, oops;
   lio_path_tuple_t tuple;
   os_regex_table_t *rp_single, *ro_single, *attr_regex;
   os_object_iter_t *it;
@@ -98,6 +98,8 @@ int main(int argc, char **argv)
 
   int recurse_depth = 0;
   int obj_types = OS_OBJECT_FILE;
+  
+  oops = 0;
 
 //estr = argv2format(argv[1]);
 //printf("argv[1]=!%s! str=!%s!\n", argv[1], estr);
@@ -248,6 +250,7 @@ int main(int argc, char **argv)
 
      if (it == NULL) {
         info_printf(lio_ifd, 0, "ERROR creating iterator!\n");
+        oops = 1;
      }
 
 log_printf(15, "before main loop\n");
@@ -304,7 +307,7 @@ log_printf(15, "after main loop\n");
 
   lio_shutdown();
 
-  return(0);
+  return(oops);
 }
 
 

@@ -147,7 +147,7 @@ op_status_t readlink_fn(void *arg, int id)
 
 int main(int argc, char **argv)
 {
-  int i, j, ftype, rg_mode, start_option, start_index, prefix_len, nosort;
+  int i, j, ftype, rg_mode, start_option, start_index, prefix_len, nosort, oops;
   char *fname;
   ls_entry_t *lse;
   list_t *table;
@@ -163,6 +163,8 @@ int main(int argc, char **argv)
   int n_keys = 5;
   int recurse_depth = 0;
   int obj_types = OS_OBJECT_ANY;
+
+  oops = 0;
 
 //printf("argc=%d\n", argc);
   if (argc < 2) {
@@ -237,6 +239,7 @@ int main(int argc, char **argv)
      it = os_create_object_iter_alist(tuple.lc->os, tuple.creds, rp_single, ro_single, OS_OBJECT_ANY, recurse_depth, keys, (void **)vals, v_size, n_keys);
      if (it == NULL) {
         info_printf(lio_ifd, 0, "ERROR: Failed with object_iter creation\n");
+        oops = 1;
         goto finished;
      }
 
@@ -282,12 +285,6 @@ int main(int argc, char **argv)
      while ((list_next(&lit, (list_key_t **)&fname, (list_data_t **)&lse)) == 0) {
        ls_format_entry(lio_ifd, lse);
      }
-//  } else {
-//    while ((gop = opque_get_next_finished(q)) != NULL) {
-//       lse = gop_get_private(gop);
-//       gop_free(gop, OP_DESTROY);
-//       ls_format_entry(lio_ifd, lse);
-//    }
   }
 
   list_destroy(table);
@@ -297,6 +294,6 @@ finished:
 
   lio_shutdown();
 
-  return(0);
+  return(oops);
 }
 
