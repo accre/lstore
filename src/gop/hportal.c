@@ -164,21 +164,32 @@ log_printf(15, "create_hportal: hpc=%p\n", hpc);
 // _reap_hportal - Frees the closed depot connections
 //************************************************************************
 
-void _reap_hportal(host_portal_t *hp)
+void _reap_hportal(host_portal_t *hp, int quick)
 {
    host_connection_t *hc;
    apr_status_t value;
+   int count;
 
-   while ((hc = (host_connection_t *)pop(hp->closed_que)) != NULL) {
+   move_to_top(hp->closed_que);
+   while ((hc = (host_connection_t *)get_ele_data(hp->closed_que)) != NULL) {
      apr_thread_join(&value, hc->recv_thread);
 log_printf(5, "hp=%s\n", hp->skey);
-     lock_hc(hc);  //** Make sure that no one is running close_hc() while we're trying to close it
-     while (hc->closing == 1) {
-        unlock_hc(hc);
-        apr_sleep(apr_time_from_msec(10));
+     for (count=0; ((quick == 0) || (count < 2)); count++) {
+        lock_hc(hc);  //** Make sure that no one is running close_hc() while we're trying to close it
+        if (hc->closing != 1) {  //** Ok to to remove it
+           unlock_hc(hc);
+
+           delete_current(hp->closed_que, 0, 0);
+           destroy_host_connection(hc);
+
+           break;
+        } else {  //** Got somone trying ot close it so wait a little bit
+           unlock_hc(hc);
+           apr_sleep(apr_time_from_msec(10));
+        }
      }
-     unlock_hc(hc);
-     destroy_host_connection(hc);
+
+     move_down(hp->closed_que);
    }
 }
 
@@ -188,7 +199,7 @@ log_printf(5, "hp=%s\n", hp->skey);
 
 void destroy_hportal(host_portal_t *hp)
 {
-  _reap_hportal(hp);
+  _reap_hportal(hp, 0);
 
   free_stack(hp->conn_list, 1);
   free_stack(hp->que, 1);
@@ -291,7 +302,7 @@ void shutdown_direct(host_portal_t *hp)
   move_to_top(hp->direct_list);
   while ((shp = (host_portal_t *)pop(hp->direct_list)) != NULL) {
      hportal_lock(shp);
-     _reap_hportal(shp);  //** Clean up any closed connections
+     _reap_hportal(shp, 0);  //** Clean up any closed connections
 
      if ((shp->n_conn == 0) && (stack_size(shp->que) == 0)) { //** if not used so remove it
         delete_current(hp->direct_list, 0, 0);  //**Already closed 
@@ -376,7 +387,7 @@ log_printf(5, "after wait n_conn=%d stack_size(conn_list)=%d\n", hp->n_conn, sta
      hportal_lock(hp);
 
 log_printf(5, "closing_conn=%d n_conn=%d\n", hp->closing_conn, hp->n_conn);
-     _reap_hportal(hp);  //** clean up any closed connections
+     _reap_hportal(hp, 0);  //** clean up any closed connections
 
 log_printf(5, "closing_conn=%d n_conn=%d\n", hp->closing_conn, hp->n_conn);
      while ((hp->closing_conn > 0) || (hp->n_conn > 0)) {
@@ -427,9 +438,9 @@ void compact_hportal_direct(host_portal_t *hp)
   while ((shp = (host_portal_t *)get_ele_data(hp->direct_list)) != NULL) {
 
      hportal_lock(shp);
-     _reap_hportal(shp);  //** Clean up any closed connections
+     _reap_hportal(shp, 1);  //** Clean up any closed connections
 
-     if ((shp->n_conn == 0) && (shp->closing_conn == 0) && (stack_size(shp->que) == 0)) { //** if not used so remove it
+     if ((shp->n_conn == 0) && (shp->closing_conn == 0) && (stack_size(shp->que) == 0) && (stack_size(shp->closed_que) == 0)) { //** if not used so remove it
         delete_current(hp->direct_list, 0, 0);
         hportal_unlock(shp);
         destroy_hportal(shp);
@@ -459,11 +470,12 @@ void compact_hportals(portal_context_t *hpc)
 
      hportal_lock(hp);
 
-     _reap_hportal(hp);  //** Clean up any closed connections
+     _reap_hportal(hp, 1);  //** Clean up any closed connections
 
      compact_hportal_direct(hp);
 
-     if ((hp->n_conn == 0) && (hp->closing_conn == 0) && (stack_size(hp->que) == 0) && (stack_size(hp->direct_list) == 0)) { //** if not used so remove it
+     if ((hp->n_conn == 0) && (hp->closing_conn == 0) && (stack_size(hp->que) == 0) && 
+         (stack_size(hp->direct_list) == 0) && (stack_size(hp->closed_que) == 0)) { //** if not used so remove it
        if (stack_size(hp->conn_list) != 0) {
           log_printf(0, "ERROR! DANGER WILL ROBINSON! stack_size(hp->conn_list)=%d hp=%s\n", stack_size(hp->conn_list), hp->skey);
           flush_log();

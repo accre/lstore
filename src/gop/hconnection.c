@@ -124,7 +124,7 @@ void close_hc(host_connection_t *hc, int quick)
 
   hp = hc->hp;
   hportal_lock(hp);
-  _reap_hportal(hp);  //** Clean up the closed connections.  Including hc passed in
+  _reap_hportal(hp, quick);  //** Clean up the closed connections.  Including hc passed in
   hportal_unlock(hp);
 }
 
