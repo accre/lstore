@@ -1401,14 +1401,15 @@ int lfs_myclose_real(char *fname, lio_fuse_fd_t *fd, lio_fuse_t *lfs)
   int flags, slot, n;
   char *key[6] = {"system.exnode", "system.exnode.size", "os.timestamp.system.modify_data", NULL, NULL, NULL };
   char *val[6];
-  int err, v_size[6];
+  int err, v_size[6], whattodo;
   char ebuf[128];
   segment_errors_t serr;
   ex_off_t inode_size, final_size;
   apr_time_t now;
   double dt;
+  inspect_args_t args;
 
-    log_printf(1, "fname=%s modified=%d count=%d\n", fname, fd->fh->modified, fd->fh->ref_count); flush_log();
+  log_printf(1, "fname=%s modified=%d count=%d\n", fname, fd->fh->modified, fd->fh->ref_count); flush_log();
 
   slot = lfs_file_lock(lfs, fname);
   if (slot < 0) return(slot);
@@ -1476,7 +1477,7 @@ log_printf(1, "FLUSH/TRUNCATE fname=%s inode_size=" XOT " final_size=" XOT "\n",
   lfs_unlock(lfs);
 
 
-  log_printf(5, "starting update process fname=%s\n", fname); flush_log();
+  log_printf(5, "starting update process fname=%s modified=%d\n", fname, fh->modified); flush_log();
 
   //** Ok no one has the file opened so teardown the segment/exnode
   //** IF not modified just tear down and clean up
@@ -1512,6 +1513,28 @@ log_printf(1, "FLUSH/TRUNCATE fname=%s inode_size=" XOT " final_size=" XOT "\n",
 
   //** Get any errors that may have occured
   lioc_get_error_counts(lfs->lc, fh->seg, &serr);
+
+//log_printf(0, "FAKING a write error\n");
+//serr.write = 1;
+
+  if ((lfs->autocorrect_write_errors == 1) && (serr.write > 0) && (serr.hard == 0)) { //** Got a write error and we want to correct it now
+     log_printf(5, "fname=%s WRITE_ERRORS autocorrecting hard_errors=%d soft_errors=%d\n", fname, serr.hard, serr.soft);
+     memset(&args, 0, sizeof(args));
+     args.qs = new_opque();  args.qf = new_opque();
+     whattodo = INSPECT_FULL_REPAIR | INSPECT_FORCE_RECONSTRUCTION | INSPECT_FAIL_ON_ERROR | INSPECT_FIX_WRITE_ERROR | INSPECT_FORCE_REPAIR;
+     err = gop_sync_exec(segment_inspect(fh->seg, lfs->lc->da, lio_ifd, whattodo, lfs->inspect_bufsize, &args, 60));
+     if (err == OP_STATE_SUCCESS) {  //** Successful repair
+        serr.write = 0;
+        opque_waitall(args.qs);
+     } else {
+        opque_waitall(args.qf);
+     }
+
+     log_printf(5, "fname=%s WRITE_ERRORS autocorrecting result=%d\n", fname, err);
+
+     opque_free(args.qs, OP_DESTROY);
+     opque_free(args.qf, OP_DESTROY);
+  }
 
   now = apr_time_now();
 
@@ -3210,6 +3233,8 @@ void *lfs_init_real(struct fuse_conn_info *conn,
 
   lfs->test_mode = inip_get_integer(lfs->lc->ifd, section, "test_mode", 0);
   lfs->calc_adler32 = inip_get_integer(lfs->lc->ifd, section, "calc_adler32", 0);
+  lfs->autocorrect_write_errors = inip_get_integer(lfs->lc->ifd, section, "autocorrect_write_errors", 0);
+  lfs->inspect_bufsize = inip_get_integer(lfs->lc->ifd, section, "inspect_bufsize", 100*1024*1024);
 
   lfs->entry_to = APR_USEC_PER_SEC * inip_get_double(lfs->lc->ifd, section, "entry_timout", 10.0);
   lfs->attr_to = APR_USEC_PER_SEC * inip_get_double(lfs->lc->ifd, section, "stat_timeout", 10.0);

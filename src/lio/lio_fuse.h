@@ -94,6 +94,7 @@ typedef struct {  //** Individual file descriptor
 typedef struct {
   double attr_to;
   double entry_to;
+  ex_off_t inspect_bufsize;
   int inode_cache_size;
   apr_time_t xattr_to;
   apr_time_t stale_dt;
@@ -106,6 +107,7 @@ typedef struct {
   int mount_point_len;
   int test_mode;
   int calc_adler32;
+  int autocorrect_write_errors;
   atomic_int_t counter;
   list_t *ino_index;
   list_t *fname_index;
