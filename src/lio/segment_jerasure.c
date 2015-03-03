@@ -284,7 +284,7 @@ int jerase_brute_recurse(int level, int *index, erasure_plan_t *plan, int chunk_
 
 int jerase_brute_recovery(erasure_plan_t *plan, int chunk_size, int n_devs, int n_parity_devs, int *badmap, char **ptr, char **eptr, char **pwork, char *magic)
 {
-  int i;
+  int i, ncheck;
   int index[n_parity_devs];
 
   //** See if we get lucky and the initial badmap is good
@@ -297,7 +297,8 @@ int jerase_brute_recovery(erasure_plan_t *plan, int chunk_size, int n_devs, int 
   //** No luck have to run through the perms
   memset(badmap, 0, sizeof(int)*n_devs);
 
-  for (i=1; i<n_parity_devs; i++) {  //** Cycle through checking for 1 failure, then double failure combo, etc
+  ncheck = (magic != NULL) ? n_parity_devs+1 : n_parity_devs;  //** If we have magic we don't need a control
+  for (i=1; i<ncheck; i++) {  //** Cycle through checking for 1 failure, then double failure combo, etc
      memset(index, 0, sizeof(int)*n_parity_devs);
      if (jerase_brute_recurse(0, index, plan, chunk_size, n_devs, n_parity_devs, i, badmap, ptr, eptr, pwork, magic) == 0) return(0);  //** Found it so kick out
   }
