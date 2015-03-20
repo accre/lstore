@@ -58,7 +58,7 @@ extern "C" {
 
 typedef struct lio_config_s lio_config_t;
 typedef struct lio_fn_s lio_fn_t;
-typedef void lio_fsck_iter_t;
+typedef struct lio_fsck_iter_s lio_fsck_iter_t;
 
 extern FILE *_lio_ifd;  //** Default information log device
 
@@ -84,11 +84,11 @@ struct lio_fn_s {
 };
 
 //#define lio_core_destroy(lc) lc->lio->destroy_service(lc)
-#define lio_create_fsck_iter(lc, c, path, owner_mode, owner, exnode_mode) (lc)->lio->create_fsck_iter(lc, c, path, owner_mode, owner, exnode_mode)
-#define lio_destroy_fsck_iter(lc, it) (lc)->lio->destroy_fsck_iter(lc, it)
-#define lio_fsck_visited_count(lc, it) (lc)->lio->fsck_visited_count(lc, it)
-#define lio_next_fsck(lc, it, fname, atype) (lc)->lio->next_fsck(lc, it, fname, atype)
-#define lio_fsck_object(lc, c, fname, ftype, owner_mode, owner, exnode_mode) (lc)->lio->fsck_object(lc, c, fname, ftype, owner_mode, owner, exnode_mode)
+//#define lio_create_fsck_iter(lc, c, path, owner_mode, owner, exnode_mode) (lc)->lio->create_fsck_iter(lc, c, path, owner_mode, owner, exnode_mode)
+//#define lio_destroy_fsck_iter(lc, it) (lc)->lio->destroy_fsck_iter(lc, it)
+//#define lio_fsck_visited_count(lc, it) (lc)->lio->fsck_visited_count(lc, it)
+//#define lio_next_fsck(lc, it, fname, atype) (lc)->lio->next_fsck(lc, it, fname, atype)
+//#define lio_fsck_object(lc, c, fname, ftype, owner_mode, owner, exnode_mode) (lc)->lio->fsck_object(lc, c, fname, ftype, owner_mode, owner, exnode_mode)
 
 #define lio_create_object(lc, c, path, type, ex, id) (lc)->lio->create_object(lc, c, path, type, ex, id)
 #define lio_remove_object(lc, c, path, ex_opt, ftype_opt) (lc)->lio->remove_object(lc, c, path, ex_opt, ftype_opt)
@@ -280,6 +280,13 @@ int lio_encode_error_counts(segment_errors_t *serr, char **key, char **val, char
 void lio_get_error_counts(lio_config_t *lc, segment_t *seg, segment_errors_t *serr);
 int lio_update_error_counts(lio_config_t *lc, creds_t *creds, char *path, segment_t *seg, int mode);
 int lio_update_exnode_attrs(lio_config_t *lc, creds_t *creds, exnode_t *ex, segment_t *seg, char *fname, segment_errors_t *serr);
+
+int lio_next_fsck(lio_config_t *lc, lio_fsck_iter_t *oit, char **bad_fname, int *bad_atype);
+lio_fsck_iter_t *lio_create_fsck_iter(lio_config_t *lc, creds_t *creds, char *path, int owner_mode, char *owner, int exnode_mode);
+void lio_destroy_fsck_iter(lio_config_t *lc, lio_fsck_iter_t *oit);
+ex_off_t lio_fsck_visited_count(lio_config_t *lc, lio_fsck_iter_t *oit);
+op_generic_t *lio_fsck_object(lio_config_t *lc, creds_t *creds, char *fname, int ftype, int owner_mode, char *owner, int exnode_mode);
+
 
 //-----
 op_generic_t *lioc_create_object(lio_config_t *lc, creds_t *creds, char *path, int type, char *ex, char *id);
