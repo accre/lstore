@@ -84,7 +84,7 @@ int main(int argc, char **argv)
   lio_path_tuple_t tuple;
   os_regex_table_t *rp_single, *ro_single;
   os_object_iter_t *it;
-  os_fd_t *fd;
+  os_fd_t *fd;  //** This is just used for manipulating symlink attributes
   char *bstate;
   char *key[MAX_SET];
   char *val[MAX_SET];
@@ -195,20 +195,20 @@ int main(int argc, char **argv)
      }
 
      if (n_keys > 0) {
-        err = gop_sync_exec(os_regex_object_set_multiple_attrs(tuple.lc->os, tuple.creds, NULL, rp_single,  ro_single, obj_types, recurse_depth, key, (void **)val, v_size, n_keys));
+        err = gop_sync_exec(gop_lio_regex_object_set_multiple_attrs(tuple.lc, tuple.creds, NULL, rp_single,  ro_single, obj_types, recurse_depth, key, (void **)val, v_size, n_keys));
         if (err != OP_STATE_SUCCESS) {
            info_printf(lio_ifd, 0, "ERROR with operation! \n");
         }
      }
 
      if (n_skeys > 0) {  //** For symlink attrs we have to manually iterate
-        it = os_create_object_iter(tuple.lc->os, tuple.creds, rp_single, ro_single, obj_types, NULL, recurse_depth, NULL, 0);
+        it = lio_create_object_iter(tuple.lc, tuple.creds, rp_single, ro_single, obj_types, NULL, recurse_depth, NULL, 0);
         if (it == NULL) {
            info_printf(lio_ifd, 0, "ERROR: Failed with object_iter creation\n");
            goto finished;
         }
 
-        while ((ftype = os_next_object(tuple.lc->os, it, &fname, &prefix_len)) > 0) {
+        while ((ftype = lio_next_object(tuple.lc, it, &fname, &prefix_len)) > 0) {
            err = gop_sync_exec(os_open_object(tuple.lc->os, tuple.creds, fname, OS_MODE_READ_IMMEDIATE, NULL, &fd, 30));
            if (err != OP_STATE_SUCCESS) {
               info_printf(lio_ifd, 0, "ERROR: opening file: %s.  Skipping.\n", fname);
@@ -229,7 +229,7 @@ int main(int argc, char **argv)
            free(fname);
         }
 
-        os_destroy_object_iter(tuple.lc->os, it);
+        lio_destroy_object_iter(tuple.lc, it);
      }
 
      lio_path_release(&tuple);

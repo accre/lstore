@@ -131,19 +131,22 @@ void lioc_free_mk_mv_rm(void *arg)
 //   doesn't exist
 //***********************************************************************
 
+op_generic_t *gop_lioc_exists(lio_config_t *lc, creds_t *creds, char *path)
+{
+  return(os_exists(lc->os, creds, path));
+}
+
+//***********************************************************************
+// lioc_exists - Returns the filetype of the object or 0 if it
+//   doesn't exist
+//***********************************************************************
+
 int lioc_exists(lio_config_t *lc, creds_t *creds, char *path)
 {
-  int ftype;
-  op_generic_t *gop;
   op_status_t status;
 
-  gop = os_exists(lc->os, creds, path);
-  gop_waitall(gop);
-  status = gop_get_status(gop);
-  ftype = status.error_code;
-  gop_free(gop, OP_DESTROY);
-
-  return(ftype);
+  status = gop_sync_exec_status(os_exists(lc->os, creds, path));
+  return(status.error_code);
 }
 
 //***********************************************************************
@@ -1864,194 +1867,6 @@ log_printf(5, "src=%s dest=%s dtype=%d\n", cp->src_tuple.path, cp->dest_tuple.pa
 finished:
   return(status);
 }
-
-//*************************************************************************
-// lio_cp_file_fn - Actual cp function.  Copies a regex to a dest *dir*
-//*************************************************************************
-
-op_status_t lio_cp_file_fn(void *arg, int id)
-{
-  lio_cp_file_t *cp = (lio_cp_file_t *)arg;
-  op_status_t status;
-//printf("dummy %d", cp->src_tuple.is_lio);
-//printf(" %d", cp->dest_tuple.is_lio);
-//printf(" %s", cp->src_tuple.path);
-//printf(" %s\n", cp->dest_tuple.path);
-
-//info_printf(lio_ifd, 0, "copy src_lio=%d sfname=%s  dest_lio=%d dfname=%s\n", cp->src_tuple.is_lio, cp->src_tuple.path, cp->dest_tuple.is_lio, cp->dest_tuple.path);
-//return(op_success_status);
-
-  if ((cp->src_tuple.is_lio == 0) && (cp->dest_tuple.is_lio == 0)) {  //** Not allowed to both go to disk
-     info_printf(lio_ifd, 0, "Both source(%s) and destination(%s) are local files!\n", cp->src_tuple.path, cp->dest_tuple.path);
-     return(op_failure_status);
-  }
-
-  if (cp->src_tuple.is_lio == 0) {  //** Source is a local file and dest is lio
-     status = cp_local2lio(cp);
-  } else if (cp->dest_tuple.is_lio == 0) {  //** Source is lio and dest is local
-     status = cp_lio2local(cp);
-  } else {               //** both source and dest are lio
-     status = cp_lio2lio(cp);
-  }
-
-  return(status);
-}
-
-//*************************************************************************
-// lio_cp_create_dir - Ensures the new directory exists and updates the valid
-//     dir table
-//*************************************************************************
-
-int lio_cp_create_dir(list_t *table, lio_path_tuple_t tuple)
-{
-  int i, n, err;
-  struct stat s;
-  int *dstate = NULL;
-  char *dname = tuple.path;
-
-  n = strlen(dname);
-  for (i=1; i<n; i++) {
-      if ((dname[i] == '/') || (i==n-1)) {
-         dstate = list_search(table, dname);
-         if (dstate == NULL) {  //** Need to make the dir
-            if (i<n-1) dname[i] = 0;
-            if (tuple.is_lio == 0) { //** Local dir
-              err = mkdir(dname, S_IRWXU|S_IRGRP|S_IXGRP|S_IROTH|S_IXOTH);
-              if (err != 0) { //** Check if it was already created by someone else
-                 err = stat(dname, &s);
-              }
-              err = (err == 0) ? OP_STATE_SUCCESS : OP_STATE_FAILURE;
-            } else {
-              err = gop_sync_exec(lio_create_object(tuple.lc, tuple.creds, dname, OS_OBJECT_DIR, NULL, NULL));
-              if (err != OP_STATE_SUCCESS) {  //** See if it was created by someone else
-                 err = lioc_exists(tuple.lc, tuple.creds, dname);
-                 err = ((err & OS_OBJECT_DIR) > 0) ? OP_STATE_SUCCESS : OP_STATE_FAILURE;
-              }
-            }
-
-            //** Add the path to the table
-            type_malloc(dstate, int, 1);
-            *dstate = (err = OP_STATE_SUCCESS) ? 0 : 1;
-            list_insert(table, dname, dstate);
-
-            if (i<n-1) dname[i] = '/';
-         }
-      }
-  }
-
-  return((dstate == NULL) ? 1 : *dstate);
-}
-
-//*************************************************************************
-// lio_cp_path_fn - Copies a regex to a dest *dir*
-//*************************************************************************
-
-op_status_t lio_cp_path_fn(void *arg, int id)
-{
-  lio_cp_path_t *cp = (lio_cp_path_t *)arg;
-  unified_object_iter_t *it;
-  lio_path_tuple_t create_tuple;
-  int ftype, prefix_len, slot, count, nerr;
-  int *dstate;
-  char dname[OS_PATH_MAX];
-  char *fname, *dir, *file;
-  list_t *dir_table;
-  lio_cp_file_t *cplist, *c;
-  op_generic_t *gop;
-  opque_t *q;
-  op_status_t status;
-
-log_printf(15, "START src=%s dest=%s max_spawn=%d bufsize=" XOT "\n", cp->src_tuple.path, cp->dest_tuple.path, cp->max_spawn, cp->bufsize);
-flush_log();
-
-  status = op_success_status;
-
-  it = unified_create_object_iter(cp->src_tuple, cp->path_regex, cp->obj_regex, cp->obj_types, cp->recurse_depth);
-  if (it == NULL) {
-     info_printf(lio_ifd, 0, "ERROR: Failed with object_iter creation src_path=%s\n", cp->src_tuple.path);
-     return(op_failure_status);
-   }
-
-  type_malloc_clear(cplist, lio_cp_file_t, cp->max_spawn);
-  dir_table = list_create(0, &list_string_compare, list_string_dup, list_simple_free, list_simple_free);
-
-  q = new_opque();
-  nerr = 0;
-  slot = 0;
-  count = 0;
-  while ((ftype = unified_next_object(it, &fname, &prefix_len)) > 0) {
-     snprintf(dname, OS_PATH_MAX, "%s/%s", cp->dest_tuple.path, &(fname[prefix_len+1]));
-//info_printf(lio_ifd, 0, "copy dtuple=%s sfname=%s  dfname=%s plen=%d\n", cp->dest_tuple.path, fname, dname, prefix_len);
-
-     if ((ftype & OS_OBJECT_DIR) > 0) { //** Got a directory
-        dstate = list_search(dir_table, fname);
-        if (dstate == NULL) { //** New dir so have to check and possibly create it
-           create_tuple = cp->dest_tuple;
-           create_tuple.path = fname;
-           lio_cp_create_dir(dir_table, create_tuple);
-        }
-
-        continue;  //** Nothing else to do so go to the next file.
-     }
-
-     os_path_split(dname, &dir, &file);
-     dstate = list_search(dir_table, dir);
-     if (dstate == NULL) { //** New dir so have to check and possibly create it
-        create_tuple = cp->dest_tuple;
-        create_tuple.path = dir;
-        lio_cp_create_dir(dir_table, create_tuple);
-     }
-     if (dir) { free(dir); dir = NULL; }
-     if (file) { free(file); file = NULL; }
-
-     c = &(cplist[slot]);
-     c->src_tuple = cp->src_tuple; c->src_tuple.path = fname;
-     c->dest_tuple = cp->dest_tuple; c->dest_tuple.path = strdup(dname);
-     c->bufsize = cp->bufsize;
-     c->slow = cp->slow;
-
-     gop = new_thread_pool_op(lio_gc->tpc_unlimited, NULL, lio_cp_file_fn, (void *)c, NULL, 1);
-     gop_set_myid(gop, slot);
-log_printf(1, "gid=%d i=%d sname=%s dname=%s\n", gop_id(gop), slot, fname, dname);
-     opque_add(q, gop);
-
-     count++;
-
-     if (count >= cp->max_spawn) {
-        gop = opque_waitany(q);
-        slot = gop_get_myid(gop);
-        c = &(cplist[slot]);
-        status = gop_get_status(gop);
-        if (status.op_status != OP_STATE_SUCCESS) {nerr++; info_printf(lio_ifd, 0, "Failed with path %s\n", c->src_tuple.path); }
-        free(c->src_tuple.path); free(c->dest_tuple.path);
-        gop_free(gop, OP_DESTROY);
-     } else {
-        slot = count;
-     }
-  }
-
-  unified_destroy_object_iter(it);
-
-  while ((gop = opque_waitany(q)) != NULL) {
-     status = gop_get_status(gop);
-     slot = gop_get_myid(gop);
-     c = &(cplist[slot]);
-log_printf(15, "slot=%d fname=%s\n", slot, c->src_tuple.path);
-     if (status.op_status != OP_STATE_SUCCESS) {nerr++; info_printf(lio_ifd, 0, "Failed with path %s\n", c->src_tuple.path); }
-     free(c->src_tuple.path); free(c->dest_tuple.path);
-     gop_free(gop, OP_DESTROY);
-  }
-
-  opque_free(q, OP_DESTROY);
-
-  free(cplist);
-  list_destroy(dir_table);
-
-  status = op_success_status;
-  if (nerr > 0) {status.op_status = OP_STATE_FAILURE; status.error_code = nerr; }
-  return(status);
-}
-
 
 //***********************************************************************
 // lioc_truncate_fn - Performs an segment truncation

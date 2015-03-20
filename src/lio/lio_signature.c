@@ -75,7 +75,7 @@ int main(int argc, char **argv)
   tuple = lio_path_resolve(lio_gc->auto_translate, argv[start_index]);
 
   //** Check if it exists
-  ftype = lioc_exists(tuple.lc, tuple.creds, tuple.path);
+  ftype = lio_exists(tuple.lc, tuple.creds, tuple.path);
 
   if ((ftype & OS_OBJECT_FILE) == 0) { //** Doesn't exist or is a dir
      info_printf(lio_ifd, 1, "ERROR source file(%s) doesn't exist or is a dir ftype=%d!\n", tuple.path, ftype);
@@ -84,9 +84,9 @@ int main(int argc, char **argv)
 
   //** Get the exnode
   v_size = -tuple.lc->max_attr;
-  err = lioc_get_attr(tuple.lc, tuple.creds, tuple.path, NULL, "system.exnode", (void **)&ex_data, &v_size);
+  err = lio_get_attr(tuple.lc, tuple.creds, tuple.path, NULL, "system.exnode", (void **)&ex_data, &v_size);
   if (err != OP_STATE_SUCCESS) {
-     info_printf(lio_ifd, 0, "Failed retrieving exnode!  path=%s\n", tuple.path);
+     info_printf(lio_ifd, 0, "Failed retrieving exnode! err=%d path=%s\n", err, tuple.path);
      goto finished;
   }
 

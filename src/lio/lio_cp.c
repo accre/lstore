@@ -94,6 +94,7 @@ int main(int argc, char **argv)
   //*** Parse the args
   n_errors = 0;
   keepln = 0;
+  slow = LIO_COPY_DIRECT;
   i=1;
   do {
      start_option = i;
@@ -103,7 +104,7 @@ int main(int argc, char **argv)
         keepln = 1;
      } else if (strcmp(argv[i], "-f") == 0) {  //** Force a slow copy
         i++;
-        slow = 1;
+        slow = LIO_COPY_INDIRECT;
      } else if (strcmp(argv[i], "-rd") == 0) { //** Recurse depth
         i++;
         recurse_depth = atoi(argv[i]); i++;
@@ -126,7 +127,7 @@ int main(int argc, char **argv)
 
   //** Get the dest filetype/exists
   if (dtuple.is_lio == 1) {
-     dtype = lioc_exists(dtuple.lc, dtuple.creds, dtuple.path);
+     dtype = lio_exists(dtuple.lc, dtuple.creds, dtuple.path);
   } else {
      dtype = os_local_filetype(dtuple.path);
   }

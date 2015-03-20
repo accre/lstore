@@ -745,7 +745,7 @@ log_printf(15, "inspecting fname=%s global_whattodo=%d\n", w->fname, global_what
 
   if (w->get_exnode == 1) {
      count = - lio_gc->max_attr;
-     lioc_get_attr(lio_gc, lio_gc->creds, w->fname, NULL, "system.exnode", (void **)&w->exnode, &count);
+     lio_get_attr(lio_gc, lio_gc->creds, w->fname, NULL, "system.exnode", (void **)&w->exnode, &count);
   }
 
   if (w->exnode == NULL) {
@@ -875,7 +875,7 @@ log_printf(15, "fname=%s inspect_gid=%d status=%d %d\n", w->fname, gop_id(gop), 
      if (count != 0) {  //** Do a further check to make sure the exnode hans't changed during the inspection
         count = -lio_gc->max_attr;
         exnode2 = NULL;
-        lioc_get_attr(lio_gc, creds, w->fname, NULL, "system.exnode", (void **)&exnode2, &count);
+        lio_get_attr(lio_gc, creds, w->fname, NULL, "system.exnode", (void **)&exnode2, &count);
         if (exnode2 != NULL) {
            count = strcmp(exnode2, exp->text.text);
            free(exnode2);
@@ -896,7 +896,7 @@ log_printf(15, "fname=%s inspect_gid=%d status=%d %d\n", w->fname, gop_id(gop), 
         val[n] = w->set_success; v_size[n] = w->set_success_size;
         n++;
      }
-     err= lioc_set_multiple_attrs(lio_gc, creds, w->fname, NULL, keys, (void **)val, v_size, n);
+     err= lio_set_multiple_attrs(lio_gc, creds, w->fname, NULL, keys, (void **)val, v_size, n);
      if (err != OP_STATE_SUCCESS) status.op_status = OP_STATE_FAILURE;
      exnode_exchange_destroy(exp_out);
   } else {
@@ -925,11 +925,11 @@ log_printf(15, "fname=%s inspect_gid=%d status=%d %d\n", w->fname, gop_id(gop), 
         if (count != 0) {  //** Do a further check to make sure the exnode hans't changed during the inspection
            count = -lio_gc->max_attr;
            exnode2 = NULL;
-           lioc_get_attr(lio_gc, creds, w->fname, NULL, "system.exnode", (void **)&exnode2, &count);
+           lio_get_attr(lio_gc, creds, w->fname, NULL, "system.exnode", (void **)&exnode2, &count);
            if (exnode2 != NULL) {
               count = strcmp(exnode2, exp->text.text);
               free(exnode2);
-              if (count != 0) { 
+              if (count != 0) {
                  info_printf(lio_ifd, 0, "WARN Exnode changed during inspection for file %s (ftype=%d). Aborting exnode update\n", w->fname, w->ftype);
               } else {
                 val[n] = exp_out->text.text; v_size[n]= strlen(val[n]);  keys[n] = "system.exnode";
@@ -945,11 +945,11 @@ log_printf(15, "fname=%s inspect_gid=%d status=%d %d\n", w->fname, gop_id(gop), 
      }
 
      if (repair_mode == 1) {
-        lioc_get_error_counts(lio_gc, seg, &serr);
-        n += lioc_encode_error_counts(&serr, &(keys[n]), &(val[n]), ebuf, &(v_size[n]), 0);
+        lio_get_error_counts(lio_gc, seg, &serr);
+        n += lio_encode_error_counts(&serr, &(keys[n]), &(val[n]), ebuf, &(v_size[n]), 0);
      }
 
-     err = lioc_set_multiple_attrs(lio_gc, creds, w->fname, NULL, keys, (void **)val, v_size, n);    
+     err = lio_set_multiple_attrs(lio_gc, creds, w->fname, NULL, keys, (void **)val, v_size, n);
      if (err != OP_STATE_SUCCESS) status.op_status = OP_STATE_FAILURE;
      if (exp_out != NULL) exnode_exchange_destroy(exp_out);  //** Free the output exnode if it exists
   }
@@ -1361,14 +1361,14 @@ log_printf(5, "REBALANCE: key=%s tmode=%d tol=%lf\n", key_rebalance, rtol_mode, 
      creds = tuple.lc->creds;
 
      for (i=0; i< acount; i++) v_size[i] = -tuple.lc->max_attr;
-     it = os_create_object_iter_alist(tuple.lc->os, tuple.creds, rp_single, ro_single, OS_OBJECT_FILE, recurse_depth, keys, (void **)vals, v_size, acount);
+     it = lio_create_object_iter_alist(tuple.lc, tuple.creds, rp_single, ro_single, OS_OBJECT_FILE, recurse_depth, keys, (void **)vals, v_size, acount);
      if (it == NULL) {
         info_printf(lio_ifd, 0, "ERROR: Failed with object_iter creation\n");
         err = 2;
         goto finished;
       }
 
-     while (((ftype = os_next_object(tuple.lc->os, it, &fname, &prefix_len)) > 0) && (pool_todo > 0)) {
+     while (((ftype = lio_next_object(tuple.lc, it, &fname, &prefix_len)) > 0) && (pool_todo > 0)) {
         gotone = ((acount == 1) && (assume_skip == 0)) ? 1 : 0;
         for (i=1; i<acount; i++) {
            if ((vals[i] != NULL) && (i != select_index)) { free(vals[i]); gotone = 1; }
@@ -1429,7 +1429,7 @@ log_printf(5, "REBALANCE: key=%s tmode=%d tol=%lf\n", key_rebalance, rtol_mode, 
           w[slot].set_success_size = set_success_size;
           w[slot].set_fail = set_fail;
           w[slot].set_fail_size = set_fail_size;
-    
+
           vals[0] = NULL;  fname = NULL;
 
           submitted++;
@@ -1462,13 +1462,13 @@ log_printf(0, "gid=%d i=%d fname=%s\n", gop_id(gop), slot, fname);
         if (shutdown_now == 1) {
            apr_thread_mutex_lock(rid_lock);
            pool_todo = 0;  //** Force an orderly exit
-           apr_thread_mutex_unlock(rid_lock);           
+           apr_thread_mutex_unlock(rid_lock);
         }
         apr_thread_mutex_unlock(shutdown_lock);
 
      }
 
-     os_destroy_object_iter(lio_gc->os, it);
+     lio_destroy_object_iter(tuple.lc, it);
 
      if (rp_single != NULL) { os_regex_table_destroy(rp_single); rp_single = NULL; }
      if (ro_single != NULL) { os_regex_table_destroy(ro_single); ro_single = NULL; }

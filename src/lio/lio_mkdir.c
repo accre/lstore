@@ -25,7 +25,7 @@ Advanced Computing Center for Research and Education
 230 Appleton Place
 Nashville, TN 37203
 http://www.accre.vanderbilt.edu
-*/ 
+*/
 
 #define _log_module_index 199
 
@@ -52,7 +52,7 @@ op_status_t mkdir_fn(void *arg, int id)
   status = op_success_status;
 
   //** Make sure it doesn't exist
-  ftype = lioc_exists(tuple->lc, tuple->creds, tuple->path);
+  ftype = lio_exists(tuple->lc, tuple->creds, tuple->path);
 
   if (ftype != 0) { //** The file exists
      log_printf(1, "ERROR The dir exists\n");

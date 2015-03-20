@@ -221,7 +221,7 @@ int main(int argc, char **argv)
   }
 
   if ((n_keys_al == 0) && (attr_regex == NULL)) { //** No attributes specified so default to everything
-      attr_regex = os_path_glob2regex("*");  
+      attr_regex = os_path_glob2regex("*");
   }
 
 
@@ -240,10 +240,10 @@ int main(int argc, char **argv)
      if (n_keys_al > 0) {  //** Using a fixed list of keys
         n_keys = n_keys_al;
         for (i=0; i<n_keys; i++) { v_size[i] = -max_attr; val[i] = NULL; }
-        it = os_create_object_iter_alist(tuple.lc->os, tuple.creds, rp_single, ro_single, obj_types, recurse_depth, key, (void **)val, v_size, n_keys);
+        it = lio_create_object_iter_alist(tuple.lc, tuple.creds, rp_single, ro_single, obj_types, recurse_depth, key, (void **)val, v_size, n_keys);
      } else {   //** Got a regex for attribute selection
         v_size[0] = -max_attr;
-        it = os_create_object_iter(tuple.lc->os, tuple.creds, rp_single, ro_single, obj_types, attr_regex, recurse_depth, &ait, v_size[0]);
+        it = lio_create_object_iter(tuple.lc, tuple.creds, rp_single, ro_single, obj_types, attr_regex, recurse_depth, &ait, v_size[0]);
      }
 
      if (it == NULL) {
@@ -252,13 +252,13 @@ int main(int argc, char **argv)
 
 log_printf(15, "before main loop\n");
      //**Now iterate through the objects
-     while ((ftype = os_next_object(tuple.lc->os, it, &fname, &prefix_len)) > 0) {
+     while ((ftype = lio_next_object(tuple.lc, it, &fname, &prefix_len)) > 0) {
         if (attr_regex != NULL) {  //** Got an attr regex so load all the attr
            n_keys = 0;
            v_size[n_keys] = -1*max_attr;
            val[n_keys] = NULL;
 log_printf(15, "v_size = %d\n", v_size[n_keys]);
-           while (os_next_attr(tuple.lc->os, ait, &(key[n_keys]), (void **)&(val[n_keys]), &(v_size[n_keys])) == 0) {
+           while (lio_next_attr(tuple.lc, ait, &(key[n_keys]), (void **)&(val[n_keys]), &(v_size[n_keys])) == 0) {
               n_keys++;
               v_size[n_keys] = -1*max_attr;
               val[n_keys] = NULL;
@@ -284,7 +284,7 @@ log_printf(15, "v_size = %d\n", v_size[n_keys]);
         }
      }
 
-     os_destroy_object_iter(tuple.lc->os, it);
+     lio_destroy_object_iter(tuple.lc, it);
 
      lio_path_release(&tuple);
      if (rp_single != NULL) { os_regex_table_destroy(rp_single); rp_single = NULL; }

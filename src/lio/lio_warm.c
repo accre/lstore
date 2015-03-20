@@ -25,7 +25,7 @@ Advanced Computing Center for Research and Education
 230 Appleton Place
 Nashville, TN 37203
 http://www.accre.vanderbilt.edu
-*/ 
+*/
 
 #define _log_module_index 207
 
@@ -207,7 +207,7 @@ log_printf(1, "fname=%s cap[%d]=%s\n", w->fname, w->n, etext);
   }
 
   etext = NULL; i = 0;
-  lioc_set_attr(lio_gc, w->creds, w->fname, NULL, "os.timestamp.system.warm", (void *)etext, i);
+  lio_set_attr(lio_gc, w->creds, w->fname, NULL, "os.timestamp.system.warm", (void *)etext, i);
 
   opque_free(q, OP_DESTROY);
   
@@ -334,7 +334,7 @@ int main(int argc, char **argv)
      }
 
      v_size[0] = v_size[1] = - tuple.lc->max_attr;
-     it = os_create_object_iter_alist(tuple.lc->os, tuple.creds, rp_single, ro_single, OS_OBJECT_FILE, recurse_depth, keys, (void **)vals, v_size, 2);
+     it = lio_create_object_iter_alist(tuple.lc, tuple.creds, rp_single, ro_single, OS_OBJECT_FILE, recurse_depth, keys, (void **)vals, v_size, 2);
      if (it == NULL) {
         info_printf(lio_ifd, 0, "ERROR: Failed with object_iter creation\n");
         goto finished;
@@ -342,7 +342,7 @@ int main(int argc, char **argv)
 
 
      slot = 0;
-     while ((ftype = os_next_object(tuple.lc->os, it, &fname, &prefix_len)) > 0) {
+     while ((ftype = lio_next_object(tuple.lc, it, &fname, &prefix_len)) > 0) {
         w[slot].fname = fname;
         w[slot].exnode = vals[0];
         w[slot].creds = tuple.lc->creds;
@@ -377,7 +377,7 @@ log_printf(0, "gid=%d i=%d fname=%s\n", gop_id(gop), slot, fname);
         }
      }
 
-     os_destroy_object_iter(lio_gc->os, it);
+     lio_destroy_object_iter(lio_gc, it);
 
      while ((gop = opque_waitany(q)) != NULL) {
         status = gop_get_status(gop);

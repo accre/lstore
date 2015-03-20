@@ -68,7 +68,7 @@ flush_log();
 
   status = op_success_status;
 
-  it = os_create_object_iter(mv->src_tuple.lc->os, mv->src_tuple.creds, mv->regex, NULL, OS_OBJECT_ANY, NULL, 0, NULL, 0);
+  it = lio_create_object_iter(mv->src_tuple.lc, mv->src_tuple.creds, mv->regex, NULL, OS_OBJECT_ANY, NULL, 0, NULL, 0);
   if (it == NULL) {
      info_printf(lio_ifd, 0, "ERROR: Failed with object_iter creation src_path=%s\n", mv->src_tuple.path);
      return(op_failure_status);
@@ -81,7 +81,7 @@ flush_log();
   slot = 0;
   count = 0;
 //  tweak = (strcmp(mv->dest_tuple.path, "/") == 0) ? 1 : 0;  //** Tweak things for the root path
-  while ((ftype = os_next_object(mv->src_tuple.lc->os, it, &src_fname[slot], &prefix_len)) > 0) {
+  while ((ftype = lio_next_object(mv->src_tuple.lc, it, &src_fname[slot], &prefix_len)) > 0) {
      snprintf(dname, OS_PATH_MAX, "%s/%s", mv->dest_tuple.path, &(src_fname[slot][prefix_len+1]));
      gop = lio_move_object(mv->src_tuple.lc, mv->src_tuple.creds, src_fname[slot], dname);
      gop_set_myid(gop, slot);
@@ -102,7 +102,7 @@ log_printf(0, "gid=%d i=%d sname=%s dname=%s\n", gop_id(gop), slot, src_fname[sl
      }
   }
 
-  os_destroy_object_iter(mv->src_tuple.lc->os, it);
+  lio_destroy_object_iter(mv->src_tuple.lc, it);
 
   while ((gop = opque_waitany(q)) != NULL) {
      slot = gop_get_myid(gop);
@@ -174,7 +174,7 @@ int main(int argc, char **argv)
   }
 
   //** Get the dest filetype/exists
-  dtype = lioc_exists(dtuple.lc, dtuple.creds, dtuple.path);
+  dtype = lio_exists(dtuple.lc, dtuple.creds, dtuple.path);
 
 
   //** Create the simple path iterator

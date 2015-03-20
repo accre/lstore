@@ -741,6 +741,12 @@ void lio_destroy_nl(lio_config_t *lio)
 
   inip_destroy(lio->ifd);
 
+  //** Table of open files
+  list_destroy(lio->open_index);
+
+  apr_thread_mutex_destroy(lio->lock);
+  apr_pool_destroy(lio->mpool);
+
   free(lio);
 
   return;
@@ -803,6 +809,9 @@ lio_config_t *lio_create_nl(char *fname, char *section, char *user)
 
   lio->timeout = inip_get_integer(lio->ifd, section, "timeout", 120);
   lio->max_attr = inip_get_integer(lio->ifd, section, "max_attr_size", 10*1024*1024);
+  lio->calc_adler32 = inip_get_integer(lio->ifd, section, "calc_adler32", 0);
+  lio->readahead = inip_get_integer(lio->ifd, section, "readahead", 0);
+  lio->readahead_trigger = lio->readahead * inip_get_double(lio->ifd, section, "readahead_trigger", 1.0);
 
   //** Add the Jerase paranoid option
   type_malloc(val, int, 1);  //** NOTE: this is not freed on a destroy
@@ -848,7 +857,7 @@ lio_config_t *lio_create_nl(char *fname, char *section, char *user)
   //** Add the shared ongoing object
   mq_ongoing_t *on = mq_ongoing_create(lio->mqc, NULL, 1, ONGOING_CLIENT);
   add_service(lio->ess, ESS_RUNNING, ESS_ONGOING_CLIENT, on);
-  
+
   stype = inip_get_string(lio->ifd, section, "ds", DS_TYPE_IBP);
   lio->ds_section = stype;
   lio->ds = _lc_object_get(stype);
@@ -900,7 +909,7 @@ lio_config_t *lio_create_nl(char *fname, char *section, char *user)
      if (lio->os == NULL) {
         log_printf(1, "Error loading object service!  type=%s section=%s\n", ctype, stype);
         fprintf(stderr, "Error loading object service!  type=%s section=%s\n", ctype, stype); fflush(stderr);
-        abort();      
+        abort();
      }
      free(ctype);
 
@@ -949,6 +958,12 @@ lio_config_t *lio_create_nl(char *fname, char *section, char *user)
 
   lio->cache = _lio_cache;
   add_service(lio->ess, ESS_RUNNING, ESS_CACHE, lio->cache);
+
+  //** Table of open files
+  lio->open_index = create_skiplist_full(10, 0.5, 0, &ex_id_compare, NULL, NULL, NULL);
+
+  assert(apr_pool_create(&(lio->mpool), NULL) == APR_SUCCESS);
+  apr_thread_mutex_create(&(lio->lock), APR_THREAD_MUTEX_DEFAULT, lio->mpool);
 
   return(lio);
 }
@@ -1274,6 +1289,8 @@ no_args:
 //  printf("end argv[%d]=%s\n", i, argv[i]);
 //}
 
+  log_printf(1, "INIT completed\n");
+
   return(0);
 }
 
@@ -1283,6 +1300,8 @@ no_args:
 
 int lio_shutdown()
 {
+  log_printf(1, "SHUTDOWN started\n");
+
   lio_gc->ref_cnt--;
   if(NULL != lio_gc && lio_gc->ref_cnt > 0) {
     return 0;
