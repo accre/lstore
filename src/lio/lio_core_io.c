@@ -1391,11 +1391,12 @@ op_status_t lio_cp_file_fn(void *arg, int id)
 
 int lio_cp_create_dir(list_t *table, lio_path_tuple_t tuple)
 {
-  int i, n, err, skip_insert;
+  int i, n, err, error_code, skip_insert;
   struct stat s;
-  int *dstate = NULL;
   char *dname = tuple.path;
+  char *dstate;
 
+  error_code = 0;
   n = strlen(dname);
   for (i=1; i<n; i++) {
       if ((dname[i] == '/') || (i==n-1)) {
@@ -1419,16 +1420,15 @@ int lio_cp_create_dir(list_t *table, lio_path_tuple_t tuple)
             }
 
             //** Add the path to the table
-            type_malloc(dstate, int, 1);
-            *dstate = (err = OP_STATE_SUCCESS) ? 0 : 1;
-            if (skip_insert == 0) list_insert(table, dname, dstate);
+            if (err != OP_STATE_SUCCESS) error_code = 1;
+            if (skip_insert == 0) list_insert(table, dname, dname);
 
             if (i<n-1) dname[i] = '/';
          }
       }
   }
 
-  return((dstate == NULL) ? 1 : *dstate);
+  return(error_code);
 }
 
 //*************************************************************************
@@ -1441,7 +1441,7 @@ op_status_t lio_cp_path_fn(void *arg, int id)
   unified_object_iter_t *it;
   lio_path_tuple_t create_tuple;
   int ftype, prefix_len, slot, count, nerr;
-  int *dstate;
+  char *dstate;
   char dname[OS_PATH_MAX];
   char *fname, *dir, *file;
   list_t *dir_table;
@@ -1462,7 +1462,7 @@ flush_log();
    }
 
   type_malloc_clear(cplist, lio_cp_file_t, cp->max_spawn);
-  dir_table = list_create(0, &list_string_compare, list_string_dup, list_simple_free, list_simple_free);
+  dir_table = list_create(0, &list_string_compare, list_string_dup, list_simple_free, NULL);
 
   q = new_opque();
   nerr = 0;
@@ -1480,6 +1480,7 @@ flush_log();
            lio_cp_create_dir(dir_table, create_tuple);
         }
 
+        free(fname);  //** Clean up
         continue;  //** Nothing else to do so go to the next file.
      }
 
