@@ -910,7 +910,7 @@ int lfs_object_create(lio_fuse_t *lfs, const char *fname, mode_t mode, int ftype
 
   //** If we made it here it's a new file or dir
   //** Create the new object
-  err = gop_sync_exec(lio_create_object(lfs->lc, lfs->lc->creds, (char *)fname, ftype, NULL, lfs->id));
+  err = gop_sync_exec(gop_lio_create_object(lfs->lc, lfs->lc->creds, (char *)fname, ftype, NULL, lfs->id));
   if (err != OP_STATE_SUCCESS) {
      log_printf(1, "Error creating object! fname=%s\n", fullname);
      lfs_unlock(lfs);
@@ -992,7 +992,7 @@ int lfs_mkdir(const char *fname, mode_t mode)
 int lfs_actual_remove(lio_fuse_t *lfs, const char *fname, int ftype)
 {
   int err;
-  err = gop_sync_exec(lio_remove_object(lfs->lc, lfs->lc->creds, (char *)fname, NULL, ftype));
+  err = gop_sync_exec(gop_lio_remove_object(lfs->lc, lfs->lc->creds, (char *)fname, NULL, ftype));
 log_printf(1, "remove err=%d\n", err);
   if (err == OP_STATE_SUCCESS) {
       return(0);
@@ -2061,7 +2061,7 @@ int lfs_rename(const char *oldname, const char *newname)
   log_printf(1, "oldname=%s newname=%s\n", oldname, newname); flush_log();
 
   //** Do the move
-  err = gop_sync_exec(lio_move_object(lfs->lc, lfs->lc->creds, (char *)oldname, (char *)newname));
+  err = gop_sync_exec(gop_lio_move_object(lfs->lc, lfs->lc->creds, (char *)oldname, (char *)newname));
   if (err != OP_STATE_SUCCESS) {
      return(-EIO);
   }
@@ -2890,7 +2890,7 @@ int lfs_hardlink(const char *oldname, const char *newname)
   log_printf(1, "oldname=%s newname=%s\n", oldname, newname); flush_log();
 
   //** Now do the hard link
-  err = gop_sync_exec(lio_link_object(lfs->lc, lfs->lc->creds, 0, (char *)oldname, (char *)newname, lfs->id));
+  err = gop_sync_exec(gop_lio_link_object(lfs->lc, lfs->lc->creds, 0, (char *)oldname, (char *)newname, lfs->id));
   if (err != OP_STATE_SUCCESS) {
      lfs_unlock(lfs);
      return(-EIO);
@@ -2984,7 +2984,7 @@ int lfs_symlink(const char *link, const char *newname)
   }
 
   //** Now do the sym link
-  err = gop_sync_exec(lio_link_object(lfs->lc, lfs->lc->creds, 1, (char *)link2, (char *)newname, lfs->id));
+  err = gop_sync_exec(gop_lio_link_object(lfs->lc, lfs->lc->creds, 1, (char *)link2, (char *)newname, lfs->id));
   if (err != OP_STATE_SUCCESS) {
      return(-EIO);
   }

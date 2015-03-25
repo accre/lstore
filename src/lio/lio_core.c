@@ -962,41 +962,6 @@ op_generic_t *lioc_move_object(lio_config_t *lc, creds_t *creds, char *src_path,
 }
 
 
-//***********************************************************************
-// lio_core_destroy - Destroys the service
-//***********************************************************************
-
-void lio_core_destroy(lio_config_t *lc)
-{
-  free(lc->lio);
-  lc->lio = NULL;
-}
-
-//***********************************************************************
-//  lio_core_create - Creates a new lio_fn_t routine
-//***********************************************************************
-
-lio_fn_t *lio_core_create()
-{
-  lio_fn_t *lio;
-
-  type_malloc_clear(lio, lio_fn_t, 1);
-
-  lio->destroy_service = lio_core_destroy;
-  lio->create_object = lioc_create_object;
-  lio->remove_object = lioc_remove_object;
-  lio->remove_regex_object = lioc_remove_regex_object;
-  lio->link_object = lioc_link_object;
-  lio->move_object = lioc_move_object;
-//  lio->create_fsck_iter = lioc_create_fsck_iter;
-//  lio->destroy_fsck_iter = lioc_destroy_fsck_iter;
-//  lio->next_fsck = lioc_next_fsck;
-//  lio->fsck_visited_count = lioc_fsck_visited_count;
-//  lio->fsck_object = lioc_fsck_object;
-
-  return(lio);
-}
-
 //-------------------------------------------------------------------------
 //------- Universal Object Iterators
 //-------------------------------------------------------------------------
@@ -1098,7 +1063,7 @@ op_status_t cp_lio2lio(lio_cp_file_t *cp)
 log_printf(5, "src=%s dest=%s dtype=%d\n", cp->src_tuple.path, cp->dest_tuple.path, dtype);
 
   if (dtype == 0) { //** Need to create it
-     err = gop_sync_exec(lio_create_object(cp->dest_tuple.lc, cp->dest_tuple.creds, cp->dest_tuple.path, OS_OBJECT_FILE, NULL, NULL));
+     err = gop_sync_exec(gop_lio_create_object(cp->dest_tuple.lc, cp->dest_tuple.creds, cp->dest_tuple.path, OS_OBJECT_FILE, NULL, NULL));
      if (err != OP_STATE_SUCCESS) {
         info_printf(lio_ifd, 1, "ERROR creating file(%s)!\n", cp->dest_tuple.path);
         goto finished;
@@ -1246,7 +1211,7 @@ op_status_t cp_local2lio(lio_cp_file_t *cp)
 log_printf(5, "src=%s dest=%s dtype=%d bufsize=" XOT "\n", cp->src_tuple.path, cp->dest_tuple.path, dtype, cp->bufsize);
 
   if (dtype == 0) { //** Need to create it
-     err = gop_sync_exec(lio_create_object(cp->dest_tuple.lc, cp->dest_tuple.creds, cp->dest_tuple.path, OS_OBJECT_FILE, NULL, NULL));
+     err = gop_sync_exec(gop_lio_create_object(cp->dest_tuple.lc, cp->dest_tuple.creds, cp->dest_tuple.path, OS_OBJECT_FILE, NULL, NULL));
      if (err != OP_STATE_SUCCESS) {
         info_printf(lio_ifd, 1, "ERROR creating file(%s)!\n", cp->dest_tuple.path);
         goto finished;

@@ -727,8 +727,6 @@ void lio_destroy_nl(lio_config_t *lio)
 
 //----
 
-  lio_core_destroy(lio);
-
   if (lio->cfg_name != NULL) free(lio->cfg_name);
   if (lio->section_name != NULL) free(lio->section_name);
 
@@ -736,8 +734,6 @@ void lio_destroy_nl(lio_config_t *lio)
 
   exnode_service_set_destroy(lio->ess);
   exnode_service_set_destroy(lio->ess_nocache);
-
-  lio_core_destroy(lio);
 
   inip_destroy(lio->ifd);
 
@@ -797,8 +793,6 @@ lio_config_t *lio_create_nl(char *fname, char *section, char *user)
   snprintf(buffer, sizeof(buffer), "lc:%s", section);
   _lc_object_put(buffer, lio);
 
-
-  lio->lio = lio_core_create();
 
   lio->cfg_name = strdup(fname);
   lio->section_name = strdup(section);

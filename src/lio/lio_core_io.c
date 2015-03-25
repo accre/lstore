@@ -383,7 +383,7 @@ op_status_t lio_myopen_fn(void *arg, int id)
 
   if ((op->mode & (LIO_WRITE_MODE|LIO_CREATE_MODE)) != 0) {  //** Writing and they want to create it if it doesn't exist
      if (dtype == 0) { //** Need to create it
-        err = gop_sync_exec(lio_create_object(lc, op->creds, op->path, OS_OBJECT_FILE, NULL, NULL));
+        err = gop_sync_exec(gop_lio_create_object(lc, op->creds, op->path, OS_OBJECT_FILE, NULL, NULL));
         if (err != OP_STATE_SUCCESS) {
            info_printf(lio_ifd, 1, "ERROR creating file(%s)!\n", op->path);
            free(op->path); *op->fd = NULL;
@@ -593,7 +593,7 @@ log_printf(1, "FLUSH/TRUNCATE fname=%s final_size=" XOT "\n", fd->path, final_si
      lio_unlock(lc);
 
      if (fh->write_table != NULL) lio_store_and_release_adler32(lc, fd->creds, fh->write_table, fd->path);
-     if (fh->remove_on_close == 1) status = gop_sync_exec_status(lio_remove_object(lc, fd->creds, fd->path, NULL, lio_exists(lc, fd->creds, fd->path)));
+     if (fh->remove_on_close == 1) status = gop_sync_exec_status(gop_lio_remove_object(lc, fd->creds, fd->path, NULL, lio_exists(lc, fd->creds, fd->path)));
 
      free(fh);
      if (fd->path != NULL) free(fd->path);
@@ -645,7 +645,7 @@ log_printf(1, "fname=%s ref_count=%d\n", fd->path, fh->ref_count);
   if (fh->write_table != NULL) lio_store_and_release_adler32(lc, fd->creds, fh->write_table, fd->path);
 
 
-  if (fh->remove_on_close) status = gop_sync_exec_status(lio_remove_object(lc, fd->creds, fd->path, NULL, lio_exists(lc, fd->creds, fd->path)));
+  if (fh->remove_on_close) status = gop_sync_exec_status(gop_lio_remove_object(lc, fd->creds, fd->path, NULL, lio_exists(lc, fd->creds, fd->path)));
 
   free(fh);
   if (fd->path != NULL) free(fd->path);
@@ -1411,7 +1411,7 @@ int lio_cp_create_dir(list_t *table, lio_path_tuple_t tuple)
               }
               err = (err == 0) ? OP_STATE_SUCCESS : OP_STATE_FAILURE;
             } else {
-              err = gop_sync_exec(lio_create_object(tuple.lc, tuple.creds, dname, OS_OBJECT_DIR, NULL, NULL));
+              err = gop_sync_exec(gop_lio_create_object(tuple.lc, tuple.creds, dname, OS_OBJECT_DIR, NULL, NULL));
               if (err != OP_STATE_SUCCESS) {  //** See if it was created by someone else
                  err = lio_exists(tuple.lc, tuple.creds, dname);
                  err = ((err & OS_OBJECT_DIR) > 0) ? OP_STATE_SUCCESS : OP_STATE_FAILURE;

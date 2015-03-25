@@ -37,6 +37,33 @@ http://www.accre.vanderbilt.edu
 #define _n_fsck_keys 4
 static char *_fsck_keys[] = { "system.owner", "system.inode", "system.exnode", "system.exnode.size" };
 
+#define _n_lio_file_keys 7
+#define _n_lio_dir_keys 6
+#define _n_lio_create_keys 7
+
+static char *_lio_create_keys[] = { "system.owner", "os.timestamp.system.create", "os.timestamp.system.modify_data",
+       "os.timestamp.system.modify_attr", "system.inode", "system.exnode", "system.exnode.size"};
+
+typedef struct {
+  lio_config_t *lc;
+  creds_t *creds;
+  char *src_path;
+  char *dest_path;
+  char *id;
+  char *ex;
+  int type;
+} lio_mk_mv_rm_t;
+
+typedef struct {
+  lio_config_t *lc;
+  creds_t *creds;
+  os_regex_table_t *rpath;
+  os_regex_table_t *robj;
+  int recurse_depth;
+  int obj_types;
+  int np;
+} lio_remove_regex_t;
+
 typedef struct {
   char *fname;
   char *val[_n_fsck_keys];
@@ -124,22 +151,359 @@ int lio_exists(lio_config_t *lc, creds_t *creds, char *path)
   return(status.error_code);
 }
 
+//***********************************************************************
+// lio_free_mk_mv_rm
+//***********************************************************************
+
+void lio_free_mk_mv_rm(void *arg)
+{
+  lio_mk_mv_rm_t *op = (lio_mk_mv_rm_t *)arg;
+
+  if (op->src_path != NULL) free(op->src_path);
+  if (op->dest_path != NULL) free(op->dest_path);
+  if (op->id != NULL) free(op->id);
+  if (op->ex != NULL) free(op->ex);
+
+  free(op);
+}
+
+//***********************************************************************
+// lio_create_object_fn - Does the actual object creation
+//***********************************************************************
+
+op_status_t lio_create_object_fn(void *arg, int id)
+{
+  lio_mk_mv_rm_t *op = (lio_mk_mv_rm_t *)arg;
+  os_fd_t *fd;
+  char *dir, *fname;
+  exnode_exchange_t *exp;
+  exnode_t *ex, *cex;
+  ex_id_t ino;
+  char inode[32];
+  char *val[_n_lio_create_keys];
+  op_status_t status;
+  int v_size[_n_lio_create_keys];
+  int err;
+  int ex_key = 5;
+
+  status = op_success_status;
+
+  val[ex_key] = NULL;
+
+log_printf(15, "START op->ex=%p !!!!!!!!!\n fname=%s\n",  op->ex, op->src_path);
+
+  //** Make the base object
+  err = gop_sync_exec(os_create_object(op->lc->os, op->creds, op->src_path, op->type, op->id));
+  if (err != OP_STATE_SUCCESS) {
+     log_printf(15, "ERROR creating object fname=%s\n", op->src_path);
+     status = op_failure_status;
+     goto fail_bad;
+  }
+
+  //** Get the parent exnode to dup
+  if (op->ex == NULL) {
+     os_path_split(op->src_path, &dir, &fname);
+log_printf(15, "dir=%s\n fname=%s\n", dir, fname);
+
+     err = gop_sync_exec(os_open_object(op->lc->os, op->creds, dir, OS_MODE_READ_IMMEDIATE, op->id, &fd, op->lc->timeout));
+     if (err != OP_STATE_SUCCESS) {
+        log_printf(15, "ERROR opening parent=%s\n", dir);
+        free(dir);
+        status = op_failure_status;
+        goto fail;
+     }
+     free(fname);
+
+     v_size[0] = -op->lc->max_attr;
+     err = gop_sync_exec(os_get_attr(op->lc->os, op->creds, fd, "system.exnode", (void **)&(val[ex_key]), &(v_size[0])));
+     if (err != OP_STATE_SUCCESS) {
+        log_printf(15, "ERROR opening parent=%s\n", dir);
+        free(dir);
+        status = op_failure_status;
+        goto fail;
+     }
+
+     //** Close the parent
+     err = gop_sync_exec(os_close_object(op->lc->os, fd));
+     if (err != OP_STATE_SUCCESS) {
+        log_printf(15, "ERROR closing parent fname=%s\n", dir);
+        free(dir);
+        status = op_failure_status;
+        goto fail;
+     }
+
+     free(dir);
+  } else {
+    val[ex_key] = op->ex;
+  }
+
+  //** For a directory we can just copy the exnode.  For a file we have to
+  //** Clone it to get unique IDs
+  if ((op->type & OS_OBJECT_DIR) == 0) {
+     //** If this has a caching segment we need to disable it from being added
+     //** to the global cache table cause there could be multiple copies of the
+     //** same segment being serialized/deserialized.
+
+     //** Deserialize it
+     exp = exnode_exchange_text_parse(val[ex_key]);
+     ex = exnode_create();
+     if (exnode_deserialize(ex, exp, op->lc->ess_nocache) != 0) {
+        log_printf(15, "ERROR parsing parent exnode fname=%s\n", dir);
+        status = op_failure_status;
+        exnode_exchange_destroy(exp);
+        exnode_destroy(ex);
+        goto fail;
+     }
+
+     //** Execute the clone operation
+     err = gop_sync_exec(exnode_clone(op->lc->tpc_unlimited, ex, op->lc->da, &cex, NULL, CLONE_STRUCTURE, op->lc->timeout));
+     if (err != OP_STATE_SUCCESS) {
+        log_printf(15, "ERROR cloning parent fname=%s\n", dir);
+        status = op_failure_status;
+        exnode_exchange_destroy(exp);
+        exnode_destroy(ex);
+        exnode_destroy(cex);
+        goto fail;
+     }
+
+     //** Serialize it for storage
+     exnode_exchange_free(exp);
+     exnode_serialize(cex, exp);
+     val[ex_key] = exp->text.text;
+     exp->text.text = NULL;
+     exnode_exchange_destroy(exp);
+     exnode_destroy(ex);
+     exnode_destroy(cex);
+  }
+
+
+  //** Open the object so I can add the required attributes
+  err = gop_sync_exec(os_open_object(op->lc->os, op->creds, op->src_path, OS_MODE_WRITE_IMMEDIATE, op->id, &fd, op->lc->timeout));
+  if (err != OP_STATE_SUCCESS) {
+     log_printf(15, "ERROR opening object fname=%s\n", op->src_path);
+     status = op_failure_status;
+     goto fail;
+  }
+
+  //** Now add the required attributes
+  val[0] = an_cred_get_id(op->creds); v_size[0] = strlen(val[0]);
+  val[1] = op->id;  v_size[1] = (op->id == NULL) ? 0 : strlen(op->id);
+  val[2] = op->id; v_size[2] = v_size[1];
+  val[3] = op->id; v_size[3] = v_size[1];
+  ino = 0; generate_ex_id(&ino);  snprintf(inode, 32, XIDT, ino); val[4] = inode;  v_size[4] = strlen(inode);
+  v_size[ex_key] = strlen(val[ex_key]);
+  val[6] = "0";  v_size[6] = 1;
+
+log_printf(15, "NEW ino=%s exnode=%s\n", val[4], val[ex_key]); flush_log();
+
+  err = gop_sync_exec(os_set_multiple_attrs(op->lc->os, op->creds, fd, _lio_create_keys, (void **)val, v_size, (op->type & OS_OBJECT_FILE) ? _n_lio_file_keys : _n_lio_dir_keys));
+  if (err != OP_STATE_SUCCESS) {
+     log_printf(15, "ERROR setting default attr fname=%s\n", op->src_path);
+     status = op_failure_status;
+  }
+
+
+  //** Close the file
+  err = gop_sync_exec(os_close_object(op->lc->os, fd));
+  if (err != OP_STATE_SUCCESS) {
+     log_printf(15, "ERROR closing object fname=%s\n", op->src_path);
+     status = op_failure_status;
+  }
+
+fail:
+  if (status.op_status != OP_STATE_SUCCESS) gop_sync_exec(os_remove_object(op->lc->os, op->creds, op->src_path));
+
+fail_bad:
+  if (val[ex_key] != NULL) free(val[ex_key]);
+
+  return(status);
+}
+
 //*************************************************************************
 //  gop_lio_create_object - Generate a create object task
 //*************************************************************************
 
-op_generic_t *gop_lio_create_object(lio_config_t *lc, creds_t *creds, char *path, int type, char *id)
+op_generic_t *gop_lio_create_object(lio_config_t *lc, creds_t *creds, char *path, int type, char *ex, char *id)
 {
-  return(lioc_create_object(lc, creds, path, type, NULL, id));
+  lio_mk_mv_rm_t *op;
+
+  type_malloc_clear(op, lio_mk_mv_rm_t, 1);
+
+  op->lc = lc;
+  op->creds = creds;
+  op->src_path = strdup(path);
+  op->type = type;
+  op->id = (id != NULL) ? strdup(id) : NULL;
+  op->ex = (ex != NULL) ? strdup(ex) : NULL;
+  return(new_thread_pool_op(lc->tpc_unlimited, NULL, lio_create_object_fn, (void *)op, lio_free_mk_mv_rm, 1));
+}
+
+//***********************************************************************
+// lio_remove_object - Removes an object
+//***********************************************************************
+
+op_status_t lio_remove_object_fn(void *arg, int id)
+{
+  lio_mk_mv_rm_t *op = (lio_mk_mv_rm_t *)arg;
+  char *ex_data, *val[2];
+  char *hkeys[] = { "os.link_count", "system.exnode" };
+  exnode_exchange_t *exp;
+  exnode_t *ex;
+  int err, v_size, ex_remove, vs[2], n;
+  op_status_t status = op_success_status;
+
+  //** First remove and data associated with the object
+  v_size = -op->lc->max_attr;
+
+  //** If no object type need to retrieve it
+  if (op->type == 0) op->type = lio_exists(op->lc, op->creds, op->src_path);
+
+  ex_remove = 0;
+  if ((op->type & OS_OBJECT_HARDLINK) > 0) { //** Got a hard link so check if we do a data removal
+     val[0] = val[1] = NULL; vs[0] = vs[1] = -op->lc->max_attr;
+     lio_get_multiple_attrs(op->lc, op->creds, op->src_path, op->id, hkeys, (void **)val, vs, 2);
+
+     if (val[0] == NULL) {
+        log_printf(15, "Missing link count for fname=%s\n", op->src_path);
+        if (val[1] != NULL) free(val[1]);
+        return(op_failure_status);
+     }
+
+     n = 100;
+     sscanf(val[0], "%d", &n);
+     free(val[0]);
+     if (n <= 1) {
+        ex_remove = 1;
+        if (op->ex == NULL) {
+           op->ex = val[1];
+        } else {
+           if (val[1] != NULL) free(val[1]);
+        }
+     } else {
+       if (val[1] != NULL) free(val[1]);
+     }
+  } else if ((op->type & (OS_OBJECT_SYMLINK|OS_OBJECT_DIR)) == 0) {
+    ex_remove = 1;
+  }
+
+  ex_data = op->ex;
+  if ((op->ex == NULL) && (ex_remove == 1)) {
+     lio_get_attr(op->lc, op->creds, op->src_path, op->id, "system.exnode", (void **)&ex_data, &v_size);
+  }
+
+  //** Load the exnode and remove it if needed.
+  //** Only done for normal files.  No links or dirs
+  if ((ex_remove == 1) && (ex_data != NULL)) {
+     //** Deserialize it
+     exp = exnode_exchange_text_parse(ex_data);
+     ex = exnode_create();
+     if (exnode_deserialize(ex, exp, op->lc->ess) != 0) {
+        log_printf(15, "ERROR removing data for object fname=%s\n", op->src_path);
+        status = op_failure_status;
+     } else {  //** Execute the remove operation since we have a good exnode
+        err = gop_sync_exec(exnode_remove(op->lc->tpc_unlimited, ex, op->lc->da, op->lc->timeout));
+        if (err != OP_STATE_SUCCESS) {
+           log_printf(15, "ERROR removing data for object fname=%s\n", op->src_path);
+           status = op_failure_status;
+        }
+     }
+
+     //** Clean up
+     if (op->ex != NULL) exp->text.text = NULL;  //** The inital exnode is free() by the TP op
+     exnode_exchange_destroy(exp);
+     exnode_destroy(ex);
+  }
+
+  //** Now we can remove the OS entry
+  err = gop_sync_exec(os_remove_object(op->lc->os, op->creds, op->src_path));
+  if (err != OP_STATE_SUCCESS) {
+     log_printf(0, "ERROR: removing file: %s err=%d\n", op->src_path, err);
+     status = op_failure_status;
+   }
+
+  return(status);
 }
 
 //*************************************************************************
 // gop_lio_remove_object
 //*************************************************************************
 
-op_generic_t *gop_lio_remove_object(lio_config_t *lc, creds_t *creds, char *path)
+op_generic_t *gop_lio_remove_object(lio_config_t *lc, creds_t *creds, char *path, char *ex_optional, int ftype_optional)
 {
-  return(lioc_remove_object(lc, creds, path, NULL, OS_OBJECT_ANY));
+  lio_mk_mv_rm_t *op;
+
+  type_malloc_clear(op, lio_mk_mv_rm_t, 1);
+
+  op->lc = lc;
+  op->creds = creds;
+  op->src_path = strdup(path);
+  op->ex = ex_optional;
+  op->type = ftype_optional;
+  return(new_thread_pool_op(lc->tpc_unlimited, NULL, lio_remove_object_fn, (void *)op, lio_free_mk_mv_rm, 1));
+}
+
+//***********************************************************************
+// lio_remove_regex_object - Removes objects using regex's
+//***********************************************************************
+
+op_status_t lio_remove_regex_object_fn(void *arg, int id)
+{
+  lio_remove_regex_t *op = (lio_remove_regex_t *)arg;
+  os_object_iter_t *it;
+  opque_t *q;
+  op_generic_t *gop;
+  int n, nfailed, atype, prefix_len;
+  char *ex, *fname;
+  char *key[1];
+  int v_size[1];
+  op_status_t status2;
+  op_status_t status = op_success_status;
+
+  key[0] = "system.exnode";
+  ex = NULL;
+  v_size[0] = -op->lc->max_attr;
+  it = os_create_object_iter_alist(op->lc->os, op->creds, op->rpath, op->robj, op->obj_types, op->recurse_depth, key, (void **)&ex, v_size, 1);
+  if (it == NULL) {
+      log_printf(0, "ERROR: Failed with object_iter creation\n");
+      return(op_failure_status);
+   }
+
+  //** Cycle through removing the objects
+  q = new_opque();
+  n = 0;
+  nfailed = 0;
+  while ((atype = os_next_object(op->lc->os, it, &fname, &prefix_len)) > 0) {
+
+     //** If it's a directory so we need to flush all existing rm's first
+     //** Otherwire the rmdir will see pending files
+     if ((atype & OS_OBJECT_DIR) > 0) {
+        opque_waitall(q);
+     }
+
+     gop = gop_lio_remove_object(op->lc, op->creds, fname, ex, atype);
+     ex = NULL;  //** Freed in lio_remove_object
+     free(fname);
+     opque_add(q, gop);
+
+     if (opque_tasks_left(q) > op->np) {
+        gop = opque_waitany(q);
+        status2 = gop_get_status(gop);
+        if (status2.op_status != OP_STATE_SUCCESS) { printf("Failed with gid=%d\n", gop_id(gop)); nfailed++; }
+        gop_free(gop, OP_DESTROY);
+     }
+
+     n++;
+  }
+
+  os_destroy_object_iter(op->lc->os, it);
+
+  opque_waitall(q);
+  nfailed += opque_tasks_failed(q);
+  opque_free(q, OP_DESTROY);
+
+  status.op_status = (nfailed > 0) ? OP_STATE_FAILURE : OP_STATE_SUCCESS;
+  status.error_code = n;
+  return(status);
 }
 
 //*************************************************************************
@@ -148,8 +512,19 @@ op_generic_t *gop_lio_remove_object(lio_config_t *lc, creds_t *creds, char *path
 
 op_generic_t *gop_lio_remove_regex_object(lio_config_t *lc, creds_t *creds, os_regex_table_t *rpath, os_regex_table_t *object_regex, int obj_types, int recurse_depth, int np)
 {
-  return(lioc_remove_regex_object(lc, creds, rpath, object_regex, obj_types, recurse_depth, np));
+  lio_remove_regex_t *op;
 
+  type_malloc_clear(op, lio_remove_regex_t, 1);
+
+  op->lc = lc;
+  op->creds = creds;
+  op->rpath = rpath;
+  op->robj = object_regex;
+  op->obj_types = obj_types;
+  op->recurse_depth = recurse_depth;
+  op->np = np;
+
+  return(new_thread_pool_op(lc->tpc_unlimited, NULL, lio_remove_regex_object_fn, (void *)op, free, 1));
 }
 
 //*************************************************************************
@@ -180,13 +555,114 @@ op_generic_t *gop_lio_move_object(lio_config_t *lc, creds_t *creds, char *src_pa
 }
 
 
+//***********************************************************************
+// lio_link_object_fn - Does the actual object creation
+//***********************************************************************
+
+op_status_t lio_link_object_fn(void *arg, int id)
+{
+  lio_mk_mv_rm_t *op = (lio_mk_mv_rm_t *)arg;
+  os_fd_t *dfd;
+  opque_t *q;
+  int err;
+  ex_id_t ino;
+  char inode[32];
+  op_status_t status;
+  char *lkeys[] = {"system.exnode", "system.exnode.size"};
+  char *spath[2];
+  char *vkeys[] = {"system.owner", "system.inode", "os.timestamp.system.create", "os.timestamp.system.modify_data", "os.timestamp.system.modify_attr"};
+  char *val[5];
+  int vsize[5];
+
+  //** Link the base object
+  if (op->type == 1) { //** Symlink
+     err = gop_sync_exec(os_symlink_object(op->lc->os, op->creds, op->src_path, op->dest_path, op->id));
+  } else {
+     err = gop_sync_exec(os_hardlink_object(op->lc->os, op->creds, op->src_path, op->dest_path, op->id));
+  }
+  if (err != OP_STATE_SUCCESS) {
+     log_printf(15, "ERROR linking base object sfname=%s dfname=%s\n", op->src_path, op->dest_path);
+     status = op_failure_status;
+     goto finished;
+  }
+
+  if (op->type == 0) {  //** HArd link so exit
+     status = op_success_status;
+     goto finished;
+  }
+
+  q = new_opque();
+
+  //** Open the Destination object
+  opque_add(q, os_open_object(op->lc->os, op->creds, op->dest_path, OS_MODE_READ_IMMEDIATE, op->id, &dfd, op->lc->timeout));
+  err = opque_waitall(q);
+  if (err != OP_STATE_SUCCESS) {
+     log_printf(15, "ERROR opening src(%s) or dest(%s) file\n", op->src_path, op->dest_path);
+     status = op_failure_status;
+     goto open_fail;
+  }
+
+  //** Now link the exnode and size
+  spath[0] = op->src_path; spath[1] = op->src_path;
+  opque_add(q, os_symlink_multiple_attrs(op->lc->os, op->creds, spath, lkeys, dfd, lkeys, 2));
+
+  //** Store the owner, inode, and dates
+  val[0] = an_cred_get_id(op->creds);  vsize[0] = strlen(val[0]);
+  ino = 0; generate_ex_id(&ino);  snprintf(inode, 32, XIDT, ino); val[1] = inode;  vsize[1] = strlen(inode);
+  val[2] = op->id; vsize[2] = (op->id == NULL) ? 0 : strlen(op->id);
+  val[3] = op->id; vsize[3] = vsize[2];
+  val[4] = op->id; vsize[4] = vsize[2];
+  opque_add(q, os_set_multiple_attrs(op->lc->os, op->creds, dfd, vkeys, (void **)val, vsize, 5));
+
+
+  //** Wait for everything to complete
+  err = opque_waitall(q);
+  if (err != OP_STATE_SUCCESS) {
+     log_printf(15, "ERROR with attr link or owner set src(%s) or dest(%s) file\n", op->src_path, op->dest_path);
+     status = op_failure_status;
+     goto open_fail;
+  }
+
+  status = op_success_status;
+
+open_fail:
+  if (dfd != NULL) opque_add(q, os_close_object(op->lc->os, dfd));
+  opque_waitall(q);
+
+  opque_free(q, OP_DESTROY);
+
+finished:
+  return(status);
+
+}
+
+//***********************************************************************
+// gop_lio_link_object - Generates a link object task
+//***********************************************************************
+
+op_generic_t *gop_lio_link_object(lio_config_t *lc, creds_t *creds, int symlink, char *src_path, char *dest_path, char *id)
+{
+  lio_mk_mv_rm_t *op;
+
+  type_malloc_clear(op, lio_mk_mv_rm_t, 1);
+
+  op->lc = lc;
+  op->creds = creds;
+  op->type = symlink;
+  op->src_path = strdup(src_path);
+  op->dest_path = strdup(dest_path);
+  op->id = (id != NULL) ? strdup(id) : NULL;
+  return(new_thread_pool_op(lc->tpc_unlimited, NULL, lio_link_object_fn, (void *)op, lio_free_mk_mv_rm, 1));
+}
+
+
 //*************************************************************************
 //  gop_lio_symlink_object - Create a symbolic link to another object
 //*************************************************************************
 
 op_generic_t *gop_lio_symlink_object(lio_config_t *lc, creds_t *creds, char *src_path, char *dest_path, char *id)
 {
-  return(os_symlink_object(lc->os, creds, src_path, dest_path, id));
+  return(gop_lio_link_object(lc, creds, 1, src_path, dest_path, id));
 }
 
 
@@ -196,8 +672,9 @@ op_generic_t *gop_lio_symlink_object(lio_config_t *lc, creds_t *creds, char *src
 
 op_generic_t *gop_lio_hardlink_object(lio_config_t *lc, creds_t *creds, char *src_path, char *dest_path, char *id)
 {
-  return(os_hardlink_object(lc->os, creds, src_path, dest_path, id));
+  return(gop_lio_link_object(lc, creds, 1, src_path, dest_path, id));
 }
+
 
 
 //*************************************************************************
@@ -626,7 +1103,7 @@ log_printf(15, "fname=%d parent=%s owner=%s\n", path, dir, file);
            free(dir);
            break;
        case LIO_FSCK_DELETE:
-          gop_sync_exec(lio_remove_object(lc, creds, path, val[ex_index], ftype));
+          gop_sync_exec(gop_lio_remove_object(lc, creds, path, val[ex_index], ftype));
           return(state);
           break;
        case LIO_FSCK_USER:
@@ -651,7 +1128,7 @@ log_printf(15, "fname=%s missing owner\n", path);
            lio_set_attr(lc, creds, path, NULL, "system.inode", (void *)ssize, strlen(ssize));
            break;
        case LIO_FSCK_DELETE:
-          gop_sync_exec(lio_remove_object(lc, creds, path, val[ex_index], ftype));
+          gop_sync_exec(gop_lio_remove_object(lc, creds, path, val[ex_index], ftype));
           return(state);
           break;
      }
@@ -681,7 +1158,7 @@ log_printf(15, "fname=%s missing owner\n", path);
            free(dir);
            break;
        case LIO_FSCK_DELETE:
-          gop_sync_exec(lio_remove_object(lc, creds, path, val[ex_index], ftype));
+          gop_sync_exec(gop_lio_remove_object(lc, creds, path, val[ex_index], ftype));
           return(state);
           break;
      }

@@ -62,44 +62,6 @@ typedef struct lio_fsck_iter_s lio_fsck_iter_t;
 
 extern FILE *_lio_ifd;  //** Default information log device
 
-struct lio_fn_s {
-  void *priv;
-  char *type;
-  void (*destroy_service)(lio_config_t *lc);
-
-  lio_fsck_iter_t *(*create_fsck_iter)(lio_config_t *lc, creds_t *creds, char *path, int owner_mode, char *owner, int exnode_mode);
-  void (*destroy_fsck_iter)(lio_config_t *lc, lio_fsck_iter_t *it);
-  int (*next_fsck)(lio_config_t *lc, lio_fsck_iter_t *it, char **fname, int *ftype);
-  op_generic_t *(*fsck_object)(lio_config_t *lc, creds_t *creds, char *fname, int ftype, int owner_mode, char *owner, int exnode_mode);
-  ex_off_t (*fsck_visited_count)(lio_config_t *lc, lio_fsck_iter_t *it);
-  op_generic_t *(*create_object)(lio_config_t *lc, creds_t *creds, char *path, int type, char *ex, char *id);
-  op_generic_t *(*remove_object)(lio_config_t *lc, creds_t *creds, char *path, char *ex_optional, int ftype_optional);
-  op_generic_t *(*remove_regex_object)(lio_config_t *lc, creds_t *creds, os_regex_table_t *path, os_regex_table_t *object_regex, int obj_types, int recurse_depth, int np);
-  op_generic_t *(*move_object)(lio_config_t *lc, creds_t *creds, char *src_path, char *dest_path);
-  op_generic_t *(*link_object)(lio_config_t *lc, creds_t *creds, int symlink, char *src_path, char *dest_path, char *id);
-
-//  op_generic_t *(*open_io)(lio_config_t *lc, creds_t *creds, char *path, int mode, char *id, lio_fd_t **fd, int max_wait);
-//  op_generic_t *(*close_io)(lio_config_t *lc, lio_fd_t *fd);
-//  op_generic_t *(*abort_open_io)(lio_config_t *lc, op_generic_t *gop);
-};
-
-//#define lio_core_destroy(lc) lc->lio->destroy_service(lc)
-//#define lio_create_fsck_iter(lc, c, path, owner_mode, owner, exnode_mode) (lc)->lio->create_fsck_iter(lc, c, path, owner_mode, owner, exnode_mode)
-//#define lio_destroy_fsck_iter(lc, it) (lc)->lio->destroy_fsck_iter(lc, it)
-//#define lio_fsck_visited_count(lc, it) (lc)->lio->fsck_visited_count(lc, it)
-//#define lio_next_fsck(lc, it, fname, atype) (lc)->lio->next_fsck(lc, it, fname, atype)
-//#define lio_fsck_object(lc, c, fname, ftype, owner_mode, owner, exnode_mode) (lc)->lio->fsck_object(lc, c, fname, ftype, owner_mode, owner, exnode_mode)
-
-#define lio_create_object(lc, c, path, type, ex, id) (lc)->lio->create_object(lc, c, path, type, ex, id)
-#define lio_remove_object(lc, c, path, ex_opt, ftype_opt) (lc)->lio->remove_object(lc, c, path, ex_opt, ftype_opt)
-#define lio_remove_regex_object(lc, c, path, obj_regex, obj_types, depth, np) (lc)->lio->remove_regex_object(lc, c, path, obj_regex, obj_types, depth, np)
-#define lio_move_object(lc, c, src_path, dest_path) (lc)->lio->move_object(lc, c, src_path, dest_path)
-#define lio_link_object(lc, c, symlink, src_path, dest_path, id) (lc)->lio->link_object(lc, c, symlink, src_path, dest_path, id)
-
-//#define lio_open_io(lio, c, path, mode, id, fd, max_wait) (lc)->lio->open_io(lc, c, path, mode, id, fd, max_wait)
-//#define lio_close_io(lio, fd) (lc)->lio->close_io(lc, fd)
-//#define lio_abort_open_io(lio, gop) (lc)->lio->abort_open_io(lc, gop)
-
 struct lio_config_s {
   data_service_fn_t *ds;
   object_service_fn_t *os;
@@ -109,7 +71,6 @@ struct lio_config_s {
   service_manager_t *ess;
   service_manager_t *ess_nocache;  //** Copy of ess but missing cache.  Kind of a kludge...
   Stack_t *plugin_stack;
-  lio_fn_t *lio;
   cache_t *cache;
   data_attr_t *da;
   inip_file_t *ifd;
@@ -212,8 +173,8 @@ extern skiplist_compare_t ex_id_compare;
 
 op_generic_t *gop_lio_exists(lio_config_t *lc, creds_t *creds, char *path);
 int lio_exists(lio_config_t *lc, creds_t *creds, char *path);
-op_generic_t *gop_lio_create_object(lio_config_t *lc, creds_t *creds, char *path, int type, char *id);
-op_generic_t *gop_lio_remove_object(lio_config_t *lc, creds_t *creds, char *path);
+op_generic_t *gop_lio_create_object(lio_config_t *lc, creds_t *creds, char *path, int type, char *ex, char *id);
+op_generic_t *gop_lio_remove_object(lio_config_t *lc, creds_t *creds, char *path, char *ex_optional, int ftype_optional);
 op_generic_t *gop_lio_remove_regex_object(lio_config_t *lc, creds_t *creds, os_regex_table_t *path, os_regex_table_t *object_regex, int obj_types, int recurse_depth, int np);
 
 op_generic_t *gop_lio_regex_object_set_multiple_attrs(lio_config_t *lc, creds_t *creds, char *id, os_regex_table_t *path, os_regex_table_t *object_regex, int object_types, int recurse_depth, char **key, void **val, int *v_size, int n);
@@ -221,6 +182,7 @@ op_generic_t *gop_lio_abort_regex_object_set_multiple_attrs(lio_config_t *lc, op
 op_generic_t *gop_lio_move_object(lio_config_t *lc, creds_t *creds, char *src_path, char *dest_path);
 op_generic_t *gop_lio_symlink_object(lio_config_t *lc, creds_t *creds, char *src_path, char *dest_path, char *id);
 op_generic_t *gop_lio_hardlink_object(lio_config_t *lc, creds_t *creds, char *src_path, char *dest_path, char *id);
+op_generic_t *gop_lio_link_object(lio_config_t *lc, creds_t *creds, int symlink, char *src_path, char *dest_path, char *id);
 
 os_object_iter_t *lio_create_object_iter(lio_config_t *lc, creds_t *creds, os_regex_table_t *path, os_regex_table_t *obj_regex, int object_types, os_regex_table_t *attr, int recurse_dpeth, os_attr_iter_t **it, int v_max);
 os_object_iter_t *lio_create_object_iter_alist(lio_config_t *lc, creds_t *creds, os_regex_table_t *path, os_regex_table_t *obj_regex, int object_types, int recurse_depth, char **key, void **val, int *v_size, int n_keys);
