@@ -316,14 +316,14 @@ int lio_load_file_handle_attrs(lio_config_t *lc, creds_t *creds, char *fname, ex
 
 
 //***********************************************************************
-//  _lio_get_file_handle - Returns the file handle associated with the inode
+//  _lio_get_file_handle - Returns the file handle associated with the view ID
 //     number if the file is already open.  Otherwise NULL is returned
 //  ****NOTE: assumes that lio_lock(lfs) has been called ****
 //***********************************************************************
 
-lio_file_handle_t *_lio_get_file_handle(lio_config_t *lc, ex_id_t ino)
+lio_file_handle_t *_lio_get_file_handle(lio_config_t *lc, ex_id_t vid)
 {
-  return(list_search(lc->open_index, (list_key_t *)&ino));
+  return(list_search(lc->open_index, (list_key_t *)&vid));
 
 }
 
@@ -334,7 +334,7 @@ lio_file_handle_t *_lio_get_file_handle(lio_config_t *lc, ex_id_t ino)
 
 void _lio_add_file_handle(lio_config_t *lc, lio_file_handle_t *fh)
 {
-  list_insert(lc->open_index, (list_key_t *)&(fh->ino), (list_data_t *)fh);
+  list_insert(lc->open_index, (list_key_t *)&(fh->vid), (list_data_t *)fh);
 }
 
 
@@ -345,7 +345,7 @@ void _lio_add_file_handle(lio_config_t *lc, lio_file_handle_t *fh)
 
 void _lio_remove_file_handle(lio_config_t *lc, lio_file_handle_t *fh)
 {
-  list_remove(lc->open_index, (list_key_t *)&(fh->ino), (list_data_t *)fh);
+  list_remove(lc->open_index, (list_key_t *)&(fh->vid), (list_data_t *)fh);
 }
 
 //*************************************************************************
@@ -371,7 +371,7 @@ op_status_t lio_myopen_fn(void *arg, int id)
   lio_file_handle_t *fh;
   lio_fd_t *fd;
   char *exnode;
-  ex_id_t ino;
+  ex_id_t ino, vid;
   exnode_exchange_t *exp;
   op_status_t status;
   int dtype, err;
@@ -414,25 +414,35 @@ op_status_t lio_myopen_fn(void *arg, int id)
      return(op_failure_status);
   }
 
+  //** Load the exnode and get the default view ID
+  exp = exnode_exchange_text_parse(exnode);
+  vid = exnode_exchange_get_default_view_id(exp);
+  if (vid == 0) {  //** Make sure the vid is valid.
+     free(fd);  *op->fd = NULL;
+     free(op->path);
+     exnode_exchange_destroy(exp);
+     return(op_failure_status);
+  }
+
   lio_lock(lc);
-  fh = _lio_get_file_handle(lc, ino);
+  fh = _lio_get_file_handle(lc, vid);
 
   if (fh != NULL) { //** Already open so just increment the ref count and return a new fd
      fh->ref_count++;
      fd->fh = fh;
      lio_unlock(lc);
      free(op->path);
+     exnode_exchange_destroy(exp);
      return(op_success_status);
   }
 
   //** New file to open
   type_malloc_clear(fh, lio_file_handle_t, 1);
-  fh->ino = ino;
+  fh->vid = vid;
   fh->ref_count++;
   fh->lc = lc;
 
   //** Load it
-  exp = exnode_exchange_text_parse(exnode);
   fh->ex = exnode_create();
   if (exnode_deserialize(fh->ex, exp, lc->ess) != 0) {
      log_printf(0, "Bad exnode! fname=%s\n", fd->path);

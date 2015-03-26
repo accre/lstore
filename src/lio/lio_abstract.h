@@ -150,7 +150,7 @@ struct lio_file_handle_s {  //** Shared file handle
   exnode_t *ex;
   segment_t *seg;
   lio_config_t *lc;
-  ex_id_t ino;
+  ex_id_t vid;
   int ref_count;
   int remove_on_close;
   ex_off_t readahead_end;
