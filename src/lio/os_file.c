@@ -1702,7 +1702,8 @@ int osf_object_remove(object_service_fn_t *os, char *path)
 
 log_printf(15, "ftype=%d path=%s\n", ftype, path);
 
-  if (ftype & (OS_OBJECT_FILE|OS_OBJECT_SYMLINK|OS_OBJECT_HARDLINK)) { //** It's a file
+  //** It's a file or the proxy is missing so assume it's a file and remoe the FA directoory
+  if ((ftype & (OS_OBJECT_FILE|OS_OBJECT_SYMLINK|OS_OBJECT_HARDLINK)) || (ftype == 0)) {
 log_printf(15, "file or link removal\n");
      if (ftype & OS_OBJECT_HARDLINK) {  //** If this is the last hardlink we need to remove the hardlink inode as well
         memset(&s, 0, sizeof(s));
@@ -3787,7 +3788,7 @@ log_printf(15, "fullname=%s\n", fullname);
   ftype = os_local_filetype(faname);
 log_printf(15, "faname=%s ftype=%d\n", faname, ftype);
 
-  if (ftype != OS_OBJECT_DIR) {
+  if (((ftype & OS_OBJECT_DIR) == 0) || ((ftype & OS_OBJECT_BROKEN_LINK) > 0)) {
      if (dofix == OS_FSCK_MANUAL) { free(faname); return(OS_FSCK_MISSING_ATTR); }
      if (dofix == OS_FSCK_REMOVE) {
         //** Remove the FA dir
