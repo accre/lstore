@@ -2673,7 +2673,7 @@ log_printf(5, "1.err=%d\n", err);
   if (err != 0) goto fail;
 
   //** Create the fsck iterator
-  if (creds == NULL) {
+  if (creds != NULL) {
      it = os_create_fsck_iter(osrs->os_child, creds, path, mode);
   } else {
      it = NULL;
