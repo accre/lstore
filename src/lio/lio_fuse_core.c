@@ -279,6 +279,7 @@ log_printf(15, "data_ts=%s att_ts=%s ino=" XIDT "\n", val[1], val[2], inode->ino
   inode->link = val[6];  //** Don't want to free this value below
   val[6] = NULL;
   if (inode->link != NULL) {
+log_printf(15, "inode->link=%s mount_point=%s moun_point_len=%d\n", inode->link, lfs->mount_point, lfs->mount_point_len);
      if (inode->link[0] == '/') { //** IF an absolute link then we need to add the mount prefix back
         i = strlen(inode->link) + lfs->mount_point_len + 1;
         type_malloc(link, char, i);
@@ -2942,6 +2943,8 @@ int lfs_readlink(const char *fname, char *buf, size_t bsize)
   if (bsize <= v_size) v_size = bsize-1;
   memcpy(buf, inode->link, v_size);
   buf[v_size] = 0;
+
+  log_printf(15, "fname=%s link=%s\n", fname, buf); flush_log();
 
   lfs_unlock(lfs);
 
