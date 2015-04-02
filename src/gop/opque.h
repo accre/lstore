@@ -286,6 +286,7 @@ int gop_completed_successfully(op_generic_t *gop);
 
 void gop_mark_completed(op_generic_t *gop, op_status_t status);
 int gop_sync_exec(op_generic_t *gop);
+op_status_t gop_sync_exec_status(op_generic_t *gop);
 void gop_reset(op_generic_t *gop);
 void gop_init(op_generic_t *gop);
 void gop_generic_free(op_generic_t *gop, int mode);
