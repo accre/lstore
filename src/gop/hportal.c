@@ -173,7 +173,7 @@ void _reap_hportal(host_portal_t *hp, int quick)
    move_to_top(hp->closed_que);
    while ((hc = (host_connection_t *)get_ele_data(hp->closed_que)) != NULL) {
      apr_thread_join(&value, hc->recv_thread);
-log_printf(5, "hp=%s\n", hp->skey);
+log_printf(5, "hp=%s ns=%d\n", hp->skey, ns_getid(hc->ns));
      for (count=0; ((quick == 0) || (count < 2)); count++) {
         lock_hc(hc);  //** Make sure that no one is running close_hc() while we're trying to close it
         if (hc->closing != 1) {  //** Ok to to remove it
@@ -190,6 +190,7 @@ log_printf(5, "hp=%s\n", hp->skey);
      }
 
      move_down(hp->closed_que);
+     if (get_ele_data(hp->closed_que) == NULL) move_to_top(hp->closed_que);  //** Restart it needed
    }
 }
 
@@ -199,7 +200,10 @@ log_printf(5, "hp=%s\n", hp->skey);
 
 void destroy_hportal(host_portal_t *hp)
 {
+  log_printf(5, "host=%s conn_list=%d closed=%d\n", hp->host, stack_size(hp->conn_list),stack_size(hp->closed_que));
+  hportal_lock(hp);
   _reap_hportal(hp, 0);
+  hportal_unlock(hp);
 
   free_stack(hp->conn_list, 1);
   free_stack(hp->que, 1);
@@ -386,13 +390,13 @@ log_printf(5, "after wait n_conn=%d stack_size(conn_list)=%d\n", hp->n_conn, sta
 
      hportal_lock(hp);
 
-log_printf(5, "closing_conn=%d n_conn=%d\n", hp->closing_conn, hp->n_conn);
+log_printf(5, "closing_conn=%d n_conn=%d host=%s\n", hp->closing_conn, hp->n_conn, hp->host);
      _reap_hportal(hp, 0);  //** clean up any closed connections
 
 log_printf(5, "closing_conn=%d n_conn=%d\n", hp->closing_conn, hp->n_conn);
      while ((hp->closing_conn > 0) || (hp->n_conn > 0)) {
-        hportal_unlock(hp);
         log_printf(5, "waiting for connections to close.  host=%s closing_conn=%d n_conn=%d stack_size(conn_list)=%d\n", hp->skey, hp->closing_conn, hp->n_conn, stack_size(hp->conn_list));
+        hportal_unlock(hp);
         usleep(10000);
         hportal_lock(hp);
      }
