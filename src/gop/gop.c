@@ -819,6 +819,38 @@ int gop_sync_exec(op_generic_t *gop)
   return(err);
 }
 
+
+//*************************************************************
+// gop_sync_exec_status - Quick way to exec a command that just returns
+//   the gop status
+//*************************************************************
+
+op_status_t gop_sync_exec_status(op_generic_t *gop)
+{
+  int err;
+  op_status_t status;
+
+  if (gop->type == Q_TYPE_OPERATION) { //** Got an operation so see if we can directly exec it
+     if (gop->base.pc->fn->sync_exec != NULL) {  //** Yup we can!
+        log_printf(15, "sync_exec -- waiting for gid=%d to complete\n", gop_id(gop));
+        gop->base.pc->fn->sync_exec(gop->base.pc, gop);
+        status = gop->base.status;
+        log_printf(15, "sync_exec -- gid=%d completed with err=%d\n", gop_id(gop), status.op_status);
+        gop_free(gop, OP_DESTROY);
+        return(status);
+     }
+  }
+
+  log_printf(15, "waiting for gid=%d to complete\n", gop_id(gop));
+  err = gop_waitall(gop);
+  status = gop_get_status(gop);
+  log_printf(15, "gid=%d completed with err=%d\n", gop_id(gop), err);
+  gop_free(gop, OP_DESTROY);
+  log_printf(15, "After gop destruction\n");
+
+  return(status);
+}
+
 //*************************************************************
 // gop_reset - Resets an already inited gop
 //*************************************************************
