@@ -69,6 +69,7 @@ host_connection_t *new_host_connection(apr_pool_t *mpool)
   hc->curr_op = NULL;
   hc->last_used = 0;
 
+  log_printf(15, "ns=%d\n", ns_getid(hc->ns));
   return(hc);
 }
 
@@ -78,6 +79,7 @@ host_connection_t *new_host_connection(apr_pool_t *mpool)
 
 void destroy_host_connection(host_connection_t *hc)
 {
+  log_printf(15, "host=%s ns=%d\n", hc->hp->host, ns_getid(hc->ns));
   destroy_netstream(hc->ns);
   free_stack(hc->pending_stack, 0);
   apr_thread_mutex_destroy(hc->lock);
@@ -617,7 +619,7 @@ log_printf(5, "send_thread has exited\n");
 
   check_hportal_connections(hp);
 
-  log_printf(15, "hc_recv_thread: Exiting routine! ns=%d\n", ns_getid(ns));
+  log_printf(15, "Exiting routine! ns=%d host=%s\n", ns_getid(ns),hp->host);
 
   //** place myself on the closed que for reaping (Notice that this is done after the potentical sleep above)
   hportal_lock(hp);
@@ -642,7 +644,7 @@ int create_host_connection(host_portal_t *hp)
   apr_status_t value;
   int send_err, recv_err, err = 0;
 
-  modify_hpc_thread_count(hp->context, 1);
+ modify_hpc_thread_count(hp->context, 1);
 
   apr_pool_create(&pool, NULL);
 
