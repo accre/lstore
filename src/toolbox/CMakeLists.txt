@@ -132,20 +132,21 @@ endforeach()
 TARGET_LINK_LIBRARIES( toolbox LINK_PUBLIC ${lpdeps} ${sodeps} )
 
 install(TARGETS toolbox DESTINATION lib)
-install(TARGETS toolbox-static DESTINATION lib)
+install(TARGETS toolbox-static DESTINATION lib COMPONENT libraries)
 install(FILES append_printf.h   chksum.h     fmttypes.h  interval_skiplist.h  net_1_ssl.h  net_phoebus.h  phoebus.h      random.h    string_token.h    type_malloc.h
               apr_wrapper.h     debug.h      list.h               net_2_ssl.h  net_sock.h     pigeon_coop.h  skiplist.h  toolbox_config.h  varint.h
               atomic_counter.h  dns_cache.h  iniparse.h  log.h                net_fd.h     network.h      pigeon_hole.h  stack.h     transfer_buffer.h packer.h
-              DESTINATION include/toolbox )
+              DESTINATION include/toolbox COMPONENT headers)
 
+
+#Below is used for building packages
+set(CPACK_PROJECT_CONFIG_FILE ${CMAKE_SOURCE_DIR}/cmake/cpack_settings.cmake) #This is where the build type specific settings are kept
 set(CPACK_PACKAGE_VERSION "1.0.0")
-set(CPACK_GENERATOR "RPM")
+set(CPACK_GENERATOR "DEB;RPM")
 set(CPACK_PACKAGE_NAME "accre-toolbox")
 set(CPACK_PACKAGE_RELEASE 1)
-set(CPACK_PACKAGE_CONTACT "Andrew Melo")
+set(CPACK_PACKAGE_CONTACT "Andrew Melo or Alan Tackett")
 set(CPACK_PACKAGE_VENDOR "Advanced Computing Center for Research and Education, Vanderbilt University")
-#SET(CPACK_RPM_PACKAGE_REQUIRES "openssl >= 1.0.1e")
-#set(CPACK_RPM_PACKAGE_AUTOREQPROV " no")
 set(CPACK_PACKAGING_INSTALL_PREFIX "/usr/local")
 set(CPACK_PACKAGE_INSTALL_DIRECTORY "/usr/local")
 set(CPACK_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}-${CPACK_PACKAGE_RELEASE}.${CMAKE_SYSTEM_PROCESSOR}")
