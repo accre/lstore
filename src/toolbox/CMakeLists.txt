@@ -131,7 +131,7 @@ endforeach()
 
 TARGET_LINK_LIBRARIES( toolbox LINK_PUBLIC ${lpdeps} ${sodeps} )
 
-install(TARGETS toolbox DESTINATION lib)
+install(TARGETS toolbox DESTINATION lib COMPONENT libraries)
 install(TARGETS toolbox-static DESTINATION lib COMPONENT libraries)
 install(FILES append_printf.h   chksum.h     fmttypes.h  interval_skiplist.h  net_1_ssl.h  net_phoebus.h  phoebus.h      random.h    string_token.h    type_malloc.h
               apr_wrapper.h     debug.h      list.h               net_2_ssl.h  net_sock.h     pigeon_coop.h  skiplist.h  toolbox_config.h  varint.h
