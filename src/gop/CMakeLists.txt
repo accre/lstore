@@ -22,7 +22,7 @@ include(${CMAKE_SOURCE_DIR}/cmake/shared_name.cmake)
 if(WIN32)
  set(CMAKE_FIND_LIBRARY_SUFFIXES .lib .a ${CMAKE_FIND_LIBRARY_SUFFIXES})
 else(WIN32)
- set(CMAKE_FIND_LIBRARY_SUFFIXES .a ${CMAKE_FIND_LIBRARY_SUFFIXES})
+ set(CMAKE_FIND_LIBRARY_SUFFIXES .so ${CMAKE_FIND_LIBRARY_SUFFIXES})
 endif(WIN32)
 
 # get dependancies
@@ -53,14 +53,17 @@ SET_TARGET_PROPERTIES(gop-static PROPERTIES CLEAN_DIRECT_OUTPUT 1)
 include_directories(${TOOLBOX_INCLUDE_DIR} ${APR_INCLUDE_DIR} ${APRUTIL_INCLUDE_DIR} ${ZMQ_INCLUDE_DIR} ${CZMQ_INCLUDE_DIR} ${ZLIB_INCLUDE_DIR} )
 
 SET(LIBS ${LIBS} ${ZMQ_LIBRARY} ${CZMQ_LIBRARY} ${TOOLBOX_LIBRARY} ${OPENSSL_LIBRARIES} ${CRYPTO_LIBRARIES} 
-    ${PROTOBUF_LIBRARY} ${APR_LIBRARY} ${APRUTIL_LIBRARY} ${XML_LIB} ${ZLIB_LIBRARY} pthread m dl rt)
+    ${APR_LIBRARY} ${APRUTIL_LIBRARY} ${XML_LIB} ${ZLIB_LIBRARY} gssapi_krb5 pthread m dl rt)
 
 
 #Make the executables
-foreach(exe mq_test mqs_test zmq_test)
+set(GOP_EXE mq_test mqs_test zmq_test)
+#foreach(exe mq_test mqs_test zmq_test)
+foreach(exe ${GOP_EXE})
   ADD_EXECUTABLE(${exe} "${exe}.c")
   SET_TARGET_PROPERTIES(${exe} PROPERTIES LINKER_LANGUAGE CXX)
-  TARGET_LINK_LIBRARIES(${exe} gop-static ${LIBS})
+#  TARGET_LINK_LIBRARIES(${exe} gop-static ${LIBS})
+  TARGET_LINK_LIBRARIES(${exe} gop ${LIBS})
 endforeach()
 
 set(sodeps)
@@ -78,19 +81,21 @@ endforeach()
 #link_directories(/usr/local/lib)
 TARGET_LINK_LIBRARIES( gop LINK_PUBLIC ${lpdeps} ${sodeps} )
 
-install(TARGETS ${LIO_EXE} DESTINATION bin)
-install(TARGETS gop DESTINATION lib)
-install(TARGETS gop-static DESTINATION lib)
+install(TARGETS ${GOP_EXE} DESTINATION bin COMPONENT applications)
+install(TARGETS gop DESTINATION lib COMPONENT libraries)
+install(TARGETS gop-static DESTINATION lib COMPONENT libraries)
 install(FILES callback.h gop_config.h  host_portal.h  opque.h  thread_pool.h mq_portal.h mq_helpers.h mq_stream.h mq_ongoing.h
-              DESTINATION include/gop )
+              DESTINATION include/gop COMPONENT headers)
 
 # Packaging directives
-SET(CPACK_GENERATOR "RPM")
-SET(CPACK_PACKAGE_VERSION_MAJOR "1")
-SET(CPACK_PACKAGE_VERSION_MINOR "0")
-SET(CPACK_PACKAGE_VERSION_PATCH "0")
-SET(CPACK_RPM_PACKAGE_NAME "accre-gop")
-SET(CPACK_RPM_PACKAGE_VENDOR "ACCRE (www.accre.vanderbilt.edu)")
-SET(CPACK_RPM_PACKAGE_REQUIRES "openssl >= 1.0.1f, zlib >= 1.2.8, czmq >= 1.4.1, apr >= 1.5.0, apr-util >= 1.5.3, zeromq => 3.2.3")
-INCLUDE(CPack)
+set(CPACK_PROJECT_CONFIG_FILE ${CMAKE_SOURCE_DIR}/cmake/cpack_settings.cmake) #This is where the build type specific settings are kept
+set(CPACK_PACKAGE_VERSION "1.0.0")
+set(CPACK_GENERATOR "DEB;RPM")
+set(CPACK_PACKAGE_NAME "accre-gop")
+set(CPACK_PACKAGE_RELEASE 1)
+set(CPACK_PACKAGE_CONTACT "Andrew Melo or Alan Tackett")
+set(CPACK_PACKAGE_VENDOR "Advanced Computing Center for Research and Education, Vanderbilt University")
+set(CPACK_PACKAGING_INSTALL_PREFIX "/usr/local")
+set(CPACK_PACKAGE_INSTALL_DIRECTORY "/usr/local")
+include(CPack)
 
