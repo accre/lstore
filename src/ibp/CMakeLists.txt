@@ -39,7 +39,7 @@ check_include_file("inttypes.h" HAVE_INTTYPES_H)
 
 include_directories(${OPENSSL_INCLUDE_DIR} ${APR_INCLUDE_DIR} ${APRUTIL_INCLUDE_DIR} ${PHOEBUS_INCLUDE_DIR} 
    ${TOOLBOX_INCLUDE_DIR} ${GOP_INCLUDE_DIR} ${IBP_INCLUDE_DIR})
-SET(LIBS ${LIBS} ${TOOLBOX_LIBRARY} ${GOP_LIBRARY} ${OPENSSL_LIBRARIES} ${CRYPTO_LIBRARIES} ${APR_LIBRARY} ${APRUTIL_LIBRARY} ${ZLIB_LIBRARY} pthread m dl)
+SET(LIBS ${LIBS} ${TOOLBOX_LIBRARY} ${GOP_LIBRARY} ${OPENSSL_LIBRARIES} ${CRYPTO_LIBRARIES} ${APR_LIBRARY} ${APRUTIL_LIBRARY} ${ZLIB_LIBRARY} gssapi_krb5 pthread m dl)
 
 # config options
 if (Phoebus_FOUND)
@@ -113,17 +113,15 @@ install(FILES
    ibp_ClientLib.h  ibp_errno.h  ibp.h  ibp_misc.h  ibp_nfu.h  ibp_op.h  ibp_os.h  ibp_protocol.h  ibp_types.h  iovec_sync.h  io_wrapper.h
    DESTINATION include/ibp )
 
+
 # Packaging directives
+set(CPACK_PROJECT_CONFIG_FILE ${CMAKE_SOURCE_DIR}/cmake/cpack_settings.cmake) #This is where the build type specific settings are kept
 set(CPACK_PACKAGE_VERSION "1.0.0")
-set(CPACK_GENERATOR "RPM")
+set(CPACK_GENERATOR "DEB;RPM")
 set(CPACK_PACKAGE_NAME "accre-ibp-client")
 set(CPACK_PACKAGE_RELEASE 1)
-set(CPACK_PACKAGE_CONTACT "Andrew Melo")
+set(CPACK_PACKAGE_CONTACT "Andrew Melo or Alan Tackett")
 set(CPACK_PACKAGE_VENDOR "Advanced Computing Center for Research and Education, Vanderbilt University")
-#SET(CPACK_RPM_PACKAGE_REQUIRES "openssl >= 1.0.1e")
-#set(CPACK_RPM_PACKAGE_AUTOREQPROV " no")
 set(CPACK_PACKAGING_INSTALL_PREFIX "/usr/local")
 set(CPACK_PACKAGE_INSTALL_DIRECTORY "/usr/local")
-#set(CPACK_PACKAGING_INSTALL_PREFIX ${CMAKE_INSTALL_PREFIX})
-set(CPACK_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}-${CPACK_PACKAGE_RELEASE}.${CMAKE_SYSTEM_PROCESSOR}")
 include(CPack)
