@@ -134,6 +134,21 @@ void free_stack(Stack_t *stack, int data_also) {
 }
 
 //***************************************************
+//  dup_stack - Duplicates a stack
+//***************************************************
+
+void dup_stack(Stack_t *new, Stack_t *old)
+{
+  void *ptr;
+
+  move_to_bottom(old);
+  while ((ptr = get_ele_data(old)) != NULL) {
+     push(new, ptr);
+     move_up(old);
+  }
+}
+
+//***************************************************
 // push_link - push an unlinked element on top of the stack
 //***************************************************
 
