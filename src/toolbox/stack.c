@@ -90,24 +90,24 @@ void init_stack(Stack_t *stack) {
   stack->bottom = NULL;
   stack->curr = NULL;
   stack->n = 0;
-}  
+}
 
 //**************************************
 //new_stack - Creates a new stack
 //**************************************
 
 Stack_t *new_stack() {
-  Stack_t *stack; 
+  Stack_t *stack;
 
   stack = (Stack_t *)malloc(sizeof(Stack_t));
 
   init_stack(stack);
 
   return(stack);
-}  
+}
 
 //***************************************************
-//empty_stack - REmoves all stack entries.  
+//empty_stack - REmoves all stack entries.
 //   If data_also == 1 then the data is also freed.
 //***************************************************
 
@@ -199,7 +199,7 @@ void *pop(Stack_t *stack) {
       ele = stack->top;  
       stack->top = stack->top->down;
       if (stack->top) {
-         stack->top->up = NULL; 
+         stack->top->up = NULL;
       } else {
          stack->bottom = NULL;   //** Empty stack
       }
@@ -248,7 +248,7 @@ int move_to_ptr(Stack_t *stack, Stack_ele_t *ptr) {
 }
 
 //***************************************************
-// move_to_top - Makes the "top" element the 
+// move_to_top - Makes the "top" element the
 //    current element.
 //***************************************************
 
@@ -260,7 +260,7 @@ int move_to_top(Stack_t *stack) {
 
 
 //***************************************************
-// move_to_bottom - Makes the "bottom" element the 
+// move_to_bottom - Makes the "bottom" element the
 //    current element.
 //***************************************************
 
@@ -301,7 +301,7 @@ int move_up(Stack_t *stack) {
 
 //***************************************************
 // insert_link_below - Inserts an existing "unlinked"
-//      element "below" the current element and makes 
+//      element "below" the current element and makes
 //      the new element the current element
 //***************************************************
 
@@ -319,7 +319,7 @@ int insert_link_below(Stack_t *stack, Stack_ele_t *ele) {
 
      if ((move_ends == MOVE_TOP) || (move_ends == MOVE_BOTH)) stack->top = stack->curr;
      if ((move_ends == MOVE_BOTTOM) || (move_ends == MOVE_BOTH)) stack->bottom = ele;
-    
+
      stack->curr = ele;
      return(1);
   } else if (stack->top) {
@@ -328,12 +328,12 @@ int insert_link_below(Stack_t *stack, Stack_ele_t *ele) {
   } else {
      push_link(stack, ele);
      return(1);
-  } 
+  }
 }
 
 
 //***************************************************
-// insert_below - Inserts the element "below" the 
+// insert_below - Inserts the element "below" the
 //    current element and makes the new element the
 //    current element
 //***************************************************
@@ -349,7 +349,7 @@ int insert_below(Stack_t *stack, void *data) {
 
 
 //***************************************************
-// insert_link_above - Inserts the unlinked element 
+// insert_link_above - Inserts the unlinked element
 //    "above" the current element.
 //***************************************************
 
@@ -376,11 +376,11 @@ int insert_link_above(Stack_t *stack, Stack_ele_t *ele) {
   } else {
      push_link(stack, ele);
      return(1);
-  } 
+  }
 }
 
 //***************************************************
-// insert_above - Inserts the element "above" the 
+// insert_above - Inserts the element "above" the
 //    current element.
 //***************************************************
 
@@ -421,7 +421,7 @@ Stack_ele_t *stack_unlink_current(Stack_t *stack, int mv_up) {
 
      if ((move_ends == MOVE_TOP) || (move_ends == MOVE_BOTH)) stack->top = down;
      if ((move_ends == MOVE_BOTTOM) || (move_ends == MOVE_BOTH)) stack->bottom = up;
-  
+
      return(ele);
    } else {
      return(NULL);
@@ -430,13 +430,13 @@ Stack_ele_t *stack_unlink_current(Stack_t *stack, int mv_up) {
 
 
 //***************************************************
-// delete_current - Deletes the current node and 
+// delete_current - Deletes the current node and
 //     frees the data if requested(data_also=1).
-//     The pointer is repositioned above (mv_up=1) or 
+//     The pointer is repositioned above (mv_up=1) or
 //     below (mv_up=0) the deleted element.
 //***************************************************
 
-int delete_current(Stack_t *stack, int mv_up, int data_also) 
+int delete_current(Stack_t *stack, int mv_up, int data_also)
 {
   Stack_ele_t *ele = stack_unlink_current(stack, mv_up);
 
