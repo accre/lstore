@@ -68,6 +68,7 @@ service_manager_t *exnode_service_set_create()
   add_service(ess, OS_AVAILABLE, OS_TYPE_FILE, object_service_file_create);
   add_service(ess, OS_AVAILABLE, OS_TYPE_REMOTE_CLIENT, object_service_remote_client_create);
   add_service(ess, OS_AVAILABLE, OS_TYPE_REMOTE_SERVER, object_service_remote_server_create);
+  add_service(ess, OS_AVAILABLE, OS_TYPE_TIMECACHE, object_service_timecache_create);
 
   add_service(ess, AUTHN_AVAILABLE, AUTHN_TYPE_FAKE, authn_fake_create);
 

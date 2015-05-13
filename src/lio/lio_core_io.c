@@ -926,7 +926,7 @@ int lio_read(lio_fd_t *fd, char *buf, ex_off_t size, off_t off)
      _op_set_status(status, OP_STATE_FAILURE, err);
   }
 
-  return(status.error_code);  //** Never make it here
+  return(status.error_code);
 }
 
 

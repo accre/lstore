@@ -63,6 +63,7 @@ set(LIO_OBJS
    ds_ibp.c
    os_base.c
    os_file.c
+   os_timecache.c
    os_remote_client.c
    os_remote_server.c
    osaz_fake.c
@@ -175,6 +176,7 @@ install(FILES
    service_manager.h
    rs_zmq.h
    os_remote.h
+   os_timecache.h
    DESTINATION include/lio )
 
 
