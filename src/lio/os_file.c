@@ -277,6 +277,10 @@ int osf_store_val(void *src, int src_size, void **dest, int *v_size)
      } else if (*v_size > src_size) {
         buf = *dest; buf[src_size] = 0;  //** IF have the space NULL terminate
      }
+  } else if (src_size <= 0) {
+     *dest = NULL;
+     *v_size = src_size;
+     return(0);
   } else {
      *dest = malloc(src_size+1);
      buf = *dest; buf[src_size] = 0;  //** IF have the space NULL terminate
