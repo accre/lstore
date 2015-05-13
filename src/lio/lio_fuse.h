@@ -58,77 +58,19 @@ extern "C" {
 typedef struct lio_fuse_file_handle_s lio_fuse_file_handle_t;
 
 typedef struct {
-  apr_time_t recheck_time;
-  int v_size;
-  char *val;
-} lio_attr_t;
-
-typedef struct {
-  ex_id_t ino;
-  ex_off_t size;
-  int flagged;
-  int modify_data_ts;
-  int modify_attr_ts;
-  int ftype;
-  int nlinks;
-  lio_fuse_file_handle_t *fh;
-  char *link;
-  apr_time_t recheck_time;
-} lio_inode_t;
-
-typedef struct {
-  char *fname;
-  ex_id_t ino;
-  int name_start;
-  int flagged;
-  int ref_count;  //** Represents open files
-  apr_time_t recheck_time;
-} lio_dentry_t;
-
-typedef struct {  //** Individual file descriptor
-  lio_fuse_file_handle_t *fh;  //** Shared handle
-  lio_dentry_t *entry;  //** Prointer to my dentry
-  int mode;         //** R/W mode
-} lio_fuse_fd_t;
-
-typedef struct {
-  double attr_to;
-  double entry_to;
-  int inode_cache_size;
-  apr_time_t xattr_to;
-  apr_time_t stale_dt;
-  apr_time_t gc_interval;
-  ex_off_t readahead;
-  ex_off_t readahead_trigger;
-  int file_count;
   int enable_tape;
   int shutdown;
   int mount_point_len;
-  int test_mode;
-  int calc_adler32;
   atomic_int_t counter;
   list_t *ino_index;
-  list_t *fname_index;
-  list_t *attr_index;
   lio_config_t *lc;
   apr_pool_t *mpool;
-  apr_thread_t *gc_thread;
   apr_thread_mutex_t *lock;
-  apr_thread_mutex_t **file_lock;
+  apr_hash_t *open_files;
   struct fuse_operations fops;
   char *id;
   char *mount_point;
 } lio_fuse_t;
-
-struct lio_fuse_file_handle_s {  //** Shared file handle
-  exnode_t *ex;
-  segment_t *seg;
-  lio_fuse_t *lfs;
-  int ref_count;
-  ex_off_t readahead_end;
-  atomic_int_t modified;
-  list_t *write_table;
-};
 
 typedef struct {
   lio_config_t *lc;
