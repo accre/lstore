@@ -222,8 +222,11 @@ int lfs_stat(const char *fname, struct stat *stat)
 
   for (i=0; i<_inode_key_size; i++) v_size[i] = -lfs->lc->max_attr;
   err = lio_get_multiple_attrs(lfs->lc, lfs->lc->creds, fname, NULL, _inode_keys, (void **)val, v_size, _inode_key_size);
+
   if (err != OP_STATE_SUCCESS) { return(-ENOENT); }
   _lfs_parse_stat_vals(lfs, (char *)fname, stat, val, v_size);
+
+  log_printf(1, "END fname=%s err=%d\n", fname, err); flush_log();
 
   return(0);
 }
