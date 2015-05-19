@@ -74,11 +74,20 @@ typedef struct {
   apr_time_t expire;
 } ostcdb_object_t;
 
-
 typedef struct {
    char *fname;
    os_fd_t *fd_child;
 } ostc_fd_t;
+
+typedef struct {
+  int n_keys;
+  int n_keys_total;
+  int ftype_index;
+  char **key;
+  void **val;
+  int *v_size;
+} ostc_cacheprep_t;
+
 
 typedef struct {
   object_service_fn_t *os;
@@ -89,9 +98,7 @@ typedef struct {
   int *v_size_initial;
   int n_keys;
   int v_max;
-  char **key_cache;
-  char **val_cache;
-  int  *v_size_cache;
+  ostc_cacheprep_t cp;
   int iter_type;
 } ostc_object_iter_t;
 
@@ -159,8 +166,10 @@ log_printf(5, "adding\n");
 
   attr->key = strdup(key);
   if (v_size > 0) {
-    type_malloc(attr->val, void, v_size);
+    type_malloc(attr->val, void, v_size+1);
     memcpy(attr->val, val, v_size);
+    ((char *)(attr->val))[v_size] = 0;  //** NULL terminate
+
   }
   attr->v_size = v_size;
 
@@ -285,6 +294,111 @@ void *ostc_cache_compact_thread(apr_thread_t *th, void *data)
 }
 
 //***********************************************************************
+// ostc_attr_cacheprep_setup - Sets up the arrays for storing the attributes
+//    in the time cache.
+//***********************************************************************
+
+void ostc_attr_cacheprep_setup(ostc_cacheprep_t *cp, int n_keys, char **key_src, void **val_src, int *v_size_src, int get_ftype)
+{
+  int i, j, n;
+  void **vd;
+  char **kd;
+  int *vsd;
+
+  cp->ftype_index = -1;
+
+  //** Make the full list of attrs to get
+  type_malloc(kd, char *, 2*n_keys+2);
+  type_malloc_clear(vd, void *, 2*n_keys+2);
+  type_malloc_clear(vsd, int, 2*n_keys+2);
+  memcpy(kd, key_src, sizeof(char *) * n_keys);
+  memcpy(vsd, v_size_src, sizeof(int) * n_keys);
+  memcpy(vd, val_src, sizeof(void *) * n_keys);
+
+  for (i=n_keys; i<2*n_keys; i++) {
+     n = strlen(key_src[i-n_keys]);
+     j = n + OS_ATTR_LINK_LEN + 1 + 1;
+     type_malloc(kd[i], char, n + OS_ATTR_LINK_LEN + 1 + 1);
+     snprintf(kd[i], j, "%s.%s", OS_ATTR_LINK, kd[i-n_keys]);
+     vsd[i] = -OS_PATH_MAX;
+log_printf(5, "key[%d]=%s\n", i, kd[i]);
+  }
+  kd[2*n_keys] = strdup(OS_LINK);
+  vsd[2*n_keys] = -OS_PATH_MAX;
+
+  cp->n_keys = n_keys;
+  cp->n_keys_total = 2*n_keys+1;
+  cp->key = kd;
+  cp->val = vd;
+  cp->v_size = vsd;
+
+  if (get_ftype == 1) {
+     for (i=0; i<n_keys; i++) {
+        if (strcmp(key_src[i], "os.type") == 0) {
+           cp->ftype_index = i;
+           break;
+        }
+     }
+
+     if (cp->ftype_index == -1) {
+        cp->ftype_index = 2*n_keys+1;
+        cp->n_keys_total = 2*n_keys+2;
+        cp->key[cp->ftype_index] = strdup("os.type");
+        cp->v_size[cp->ftype_index] = -OS_PATH_MAX;
+     }
+  }
+}
+
+//***********************************************************************
+// ostc_attr_cacheprep_destroy - Destroy shte structures created in the setup routine
+//***********************************************************************
+
+void ostc_attr_cacheprep_destroy(ostc_cacheprep_t *cp)
+{
+  int i;
+
+  for (i=cp->n_keys; i<cp->n_keys_total; i++) {
+     if (cp->key != NULL) {
+        if (cp->key[i] != NULL) free(cp->key[i]);
+     }
+     if (cp->val != NULL) {
+        if (cp->val[i] != NULL) free(cp->val[i]);
+     }
+  }
+
+  if (cp->key != NULL) free(cp->key);
+  if (cp->val != NULL) free(cp->val);
+  if (cp->v_size != NULL) free(cp->v_size);
+}
+
+//***********************************************************************
+//  ostc_attr_cacheprep_copy - Copies the user attributes back out
+//***********************************************************************
+
+void ostc_attr_cacheprep_copy(ostc_cacheprep_t *cp, void **val, int *v_size)
+{
+   //** Copy the data
+   memcpy(val, cp->val, sizeof(char *) * cp->n_keys);
+   memcpy(v_size, cp->v_size, sizeof(int) * cp->n_keys);
+}
+
+
+//***********************************************************************
+//  ostc_attr_cacheprep_ftype - Retreives the file type from the
+//  attributes
+//***********************************************************************
+
+int ostc_attr_cacheprep_ftype(ostc_cacheprep_t *cp)
+{
+  int ftype;
+
+  if (cp->ftype_index == -1) return(-1);
+
+  sscanf((char *)cp->val[cp->ftype_index], "%d", &ftype);
+  return(ftype);
+}
+
+//***********************************************************************
 // _ostc_cache_tree_walk - Walks the cache tree using the provided path
 //   and optionally creates the target node if needed.
 //
@@ -297,21 +411,25 @@ void *ostc_cache_compact_thread(apr_thread_t *th, void *data)
 int _ostc_cache_tree_walk(object_service_fn_t *os, char *fname, Stack_t *tree, ostcdb_object_t *replacement_obj, int add_terminal_ftype, int max_recurse)
 {
   ostc_priv_t *ostc = (ostc_priv_t *)os->priv;
-  int i, n, start, end, loop;
+  int i, n, start, end, loop, err;
   Stack_t rtree;
   ostcdb_object_t *curr, *next, *prev;
 
 log_printf(5, "fname=%s add_terminal_ftype=%d\n", fname, add_terminal_ftype);
 
+  err = -1;
   if ((fname == NULL) || (max_recurse <= 0)) return(1);
 
   i=0;
-  move_to_bottom(tree);
   if ((stack_size(tree) == 0) || (fname[i] == '/')) {
      curr = ostc->cache_root;
+     empty_stack(tree, 0);
   } else {
      curr = get_ele_data(tree);
   }
+  move_to_bottom(tree);
+  insert_below(tree, curr);
+
   loop = 0;
   while (fname[i] != 0) {
      //** Pick off any multiple /'s
@@ -322,7 +440,7 @@ log_printf(5, "loop=%d start=%d i=%d fname[start]=%hhu\n", loop, start, i, fname
            move_to_bottom(tree);
            insert_below(tree, curr);
         }
-        return(0);
+        err = 0;  goto finished;
      }
      //** Find the trailing / or we reach the end
      for (end=start+1; fname[end] != '/' ; end++) {
@@ -338,7 +456,7 @@ log_printf(5, "loop=%d start=%d i=%d fname[start]=%hhu\n", loop, start, i, fname
      } else {
         next = NULL;
      }
-log_printf(5, "loop=%d start=%d end=%d i=%d next=%p end_char=%hhu\n", loop, start, end, i, next, fname[end]);
+log_printf(5, "loop=%d start=%d end=%d i=%d next=%p end_char=%hhu prefix=%s\n", loop, start, end, i, next, fname[end], fname+start);
 
      if (next == NULL) {  //** Check if at the end
         if (fname[i] == 0) { //** Yup at the end
@@ -352,7 +470,7 @@ log_printf(5, "loop=%d start=%d end=%d i=%d next=%p end_char=%hhu\n", loop, star
               move_to_bottom(tree);
               insert_below(tree, next);
 
-              return(0);
+              err = 0;  goto finished;
            }
         } else if (fname[start] == '.') {  //** Check if it's a special entry
            if (n == 1) {//**Got a "."
@@ -367,14 +485,16 @@ log_printf(5, "loop=%d start=%d end=%d i=%d next=%p end_char=%hhu\n", loop, star
            }
         }
 
-log_printf(5, "return(1)\n");
-        return(1);
+        err = 1;  goto finished;
      } else if (next->link) {  //** Got a link
         if (fname[i] != 0) { //** If not at the end we need to follow it
            //*** Need to make a new stack and recurse it only keeping the bottom element
            init_stack(&rtree);
            dup_stack(tree, &rtree);
-           if (_ostc_cache_tree_walk(os, next->link, &rtree, NULL, add_terminal_ftype, max_recurse-1) != 0) { empty_stack(&rtree, 0); return(1); }
+           if (_ostc_cache_tree_walk(os, next->link, &rtree, NULL, add_terminal_ftype, max_recurse-1) != 0) {
+              empty_stack(&rtree, 0);
+              err = 1;  goto finished;
+           }
            move_to_bottom(&rtree);
            next = get_ele_data(&rtree);  //** This will get placed as the next object on the stack
            empty_stack(&rtree, 0);
@@ -401,7 +521,19 @@ log_printf(5, "return(1)\n");
      delete_current(tree, 0, 0);
      insert_below(tree, replacement_obj);
   }
-  return(0);
+
+  err = 0;
+finished:
+  log_printf(15, "fname=%s err=%d\n", fname, err);
+ostcdb_object_t *lo;
+move_to_top(tree);
+log_printf(15, "stack_size=%d\n", stack_size(tree));
+while ((lo = get_ele_data(tree)) != NULL) {
+  log_printf(15, "pwalk lo=%s ftype=%d\n", lo->fname, lo->ftype);
+  move_down(tree);
+}
+
+  return(err);
 }
 
 //***********************************************************************
@@ -409,13 +541,17 @@ log_printf(5, "return(1)\n");
 //   final object and attribute
 //***********************************************************************
 
-int _ostcdb_resolve_attr_link(object_service_fn_t *os, Stack_t *tree, char *alink, ostcdb_object_t **lobj, ostcdb_attr_t **lattr)
+int _ostcdb_resolve_attr_link(object_service_fn_t *os, Stack_t *tree, char *alink, ostcdb_object_t **lobj, ostcdb_attr_t **lattr, int max_recurse)
 {
    Stack_t rtree;
    int i, n;
    char *aname;
+   ostcdb_object_t *lo;
+   ostcdb_attr_t *la;
 
-   *lobj = NULL;  *lattr = NULL;
+log_printf(5, "START alink=%s\n", alink);
+
+   lo = NULL; la = NULL;
 
    //** 1st split the link into a path and attribute name
    n = strlen(alink);
@@ -423,26 +559,52 @@ int _ostcdb_resolve_attr_link(object_service_fn_t *os, Stack_t *tree, char *alin
       if (alink[i] == '/') {
          aname = alink + i + 1;
          alink[i] = 0;
+         break;
       }
    }
+log_printf(5, "alink=%s aname=%s i=%d mr=%d\n", alink, aname, i, max_recurse);
 
-log_printf(5, "alink=%s i=%d\n", alink, i);
-
+   //** Copy the stack
    init_stack(&rtree);
-   dup_stack(tree, &rtree);
-   if (_ostc_cache_tree_walk(os, alink, &rtree, NULL, 0, OSTC_MAX_RECURSE) != 0) { 
-      empty_stack(&rtree, 0);
+   dup_stack(&rtree, tree);
+
+move_to_top(&rtree);
+log_printf(5, "stack_size=%d org=%d\n", stack_size(&rtree), stack_size(tree));
+while ((lo = get_ele_data(&rtree)) != NULL) {
+  log_printf(5, "pwalk lo=%s ftype=%d\n", lo->fname, lo->ftype);
+  move_down(&rtree);
+}
+lo = NULL;
+
+   //** and pop the terminal which is up.  This will pop us up to the directory for the walk
+   move_to_bottom(&rtree);
+   delete_current(&rtree, 1, 0);
+   if (_ostc_cache_tree_walk(os, alink, &rtree, NULL, 0, OSTC_MAX_RECURSE) != 0) {
       if (i> -1) alink[i] = '/';
-      return(1);
+      goto finished;
    }
    if (i> -1) alink[i] = '/'; //** Undo our string munge if needed
    move_to_bottom(&rtree);
-   *lobj = get_ele_data(&rtree);  //** This will get placed as the next object on the stack
-   empty_stack(&rtree, 0);
+   lo = get_ele_data(&rtree);  //** This will get placed as the next object on the stack
 
-   if (*lobj == NULL) return(1);
-   *lattr = apr_hash_get((*lobj)->attrs, aname, APR_HASH_KEY_STRING);
-   return((*lattr == NULL) ? 1 : 0);
+   if (lo == NULL) goto finished;
+   la = apr_hash_get(lo->attrs, aname, APR_HASH_KEY_STRING);
+log_printf(5, "alink=%s aname=%s lattr=%p mr=%d\n", alink, aname, la, max_recurse);
+
+   if (la != NULL) {
+log_printf(5, "alink=%s aname=%s lo=%s la->link=%s\n", alink, aname, lo->fname, la->link, max_recurse);
+      if (la->link) {  //** Got to recurse
+         aname = strdup(la->link);
+         _ostcdb_resolve_attr_link(os, &rtree, aname, &lo, &la, max_recurse-1);
+         free(aname);
+      }
+   }
+
+finished:
+   empty_stack(&rtree, 0);
+   *lattr = la;  *lobj = lo;
+
+   return(((la != NULL) && (lo != NULL)) ? 0 : 1);
 }
 
 
@@ -591,9 +753,12 @@ void ostc_cache_process_attrs(object_service_fn_t *os, char *fname, int ftype, c
   apr_thread_mutex_lock(ostc->lock);
   if (_ostc_cache_tree_walk(os, fname, &tree, NULL, ftype, OSTC_MAX_RECURSE) != 0) goto finished;
 
+log_printf(5, "fname=%s stack_size=%d\n", fname, stack_size(&tree));
+
   move_to_bottom(&tree);
   obj = get_ele_data(&tree);
 
+  if (obj->link) { free(obj->link); obj->link = NULL;}
   if (val[2*n]) { //** got a symlink
      obj->link = (char *)val[2*n];
      val[2*n] = NULL;
@@ -601,29 +766,34 @@ void ostc_cache_process_attrs(object_service_fn_t *os, char *fname, int ftype, c
   for (i=0; i<n; i++) {
      key = key_list[i];  lkey = val[n+i];
      if (lkey != NULL) {  //** Got to find the linked attribute
-        _ostcdb_resolve_attr_link(os, &tree, lkey, &aobj, &attr);
+        _ostcdb_resolve_attr_link(os, &tree, lkey, &aobj, &attr, OSTC_MAX_RECURSE);
 
         if (attr == NULL) continue;  //** If no atribute then skip updating
+log_printf(5, "TARGET obj=%s key=%s\n", aobj->fname, attr->key);
 
-        //** Make the attr on the link
+        //** Make the attr on the target link
         if (attr->val) free(attr->val);
-        type_malloc(attr->val, void, v_size[i]);
+        type_malloc(attr->val, void, v_size[i]+1);
         memcpy(attr->val, val[i], v_size[i]);
+        ((char *)(attr->val))[v_size[i]] = 0;  //** NULL terminate
         attr->v_size = v_size[i];
 
-        attr = apr_hash_get(aobj->attrs, key, APR_HASH_KEY_STRING);
+        //** Now make the pointer on the source
+        attr = apr_hash_get(obj->attrs, key, APR_HASH_KEY_STRING);
         if (attr == NULL) {
-           attr = new_ostcdb_attr(key, val[i], v_size[i], apr_time_now() + ostc->entry_timeout);
-           apr_hash_set(aobj->attrs, attr->key, APR_HASH_KEY_STRING, attr);
+log_printf(5, "NEW obj=%s key=%s link=%s\n", obj->fname, key, lkey);
+           attr = new_ostcdb_attr(key, NULL, -1234, apr_time_now() + ostc->entry_timeout);
+           apr_hash_set(obj->attrs, attr->key, APR_HASH_KEY_STRING, attr);
         } else {
+log_printf(5, "OLD obj=%s key=%s link=%s\n", obj->fname, key, lkey);
            if (attr->link) free(attr->link);
            if (attr->val) free(attr->val);
-           type_malloc(attr->val, void, v_size[i]);
-           memcpy(attr->val, val[i], v_size[i]);
-           attr->v_size = v_size[i];
+           attr->v_size = -1234;
+           attr->val = NULL;
         }
         attr->link = lkey;
         val[n+i] = NULL;
+        v_size[n+i] = 0;
      } else {
         attr = apr_hash_get(obj->attrs, key, APR_HASH_KEY_STRING);
         if (attr == NULL) {
@@ -632,17 +802,19 @@ void ostc_cache_process_attrs(object_service_fn_t *os, char *fname, int ftype, c
         } else {
            if (attr->link) { free(attr->link); attr->link = NULL; }
            if (attr->val) free(attr->val);
-           type_malloc(attr->val, void, v_size[i]);
-           memcpy(attr->val, val[i], v_size[i]);
+           if (v_size[i] > 0) {
+              type_malloc(attr->val, void, v_size[i]+1);
+              memcpy(attr->val, val[i], v_size[i]);
+              ((char *)(attr->val))[v_size[i]] = 0;  //** NULL terminate
+           } else {
+              attr->val = NULL;
+           }
            attr->v_size = v_size[i];
         }
      }
   }
 
 finished:
-  for (i=n; i<2*n+1; i++) {
-      if (val[i] != NULL) free(val[i]);
-  }
   apr_thread_mutex_unlock(ostc->lock);
 
   empty_stack(&tree, 0);
@@ -657,36 +829,61 @@ op_status_t ostc_cache_fetch(object_service_fn_t *os, char *fname, char **key, v
 {
   ostc_priv_t *ostc = (ostc_priv_t *)os->priv;
   Stack_t tree;
-  ostcdb_object_t *obj;
+  ostcdb_object_t *obj, *lobj;
   ostcdb_attr_t *attr;
   op_status_t status = op_failure_status;
-  int i;
+  void *va[n];
+  int vs[n];
+  int i, oops;
 
   init_stack(&tree);
+  oops = 0;
 
-log_printf(5, "fname=%s\n", fname);
+//log_printf(5, "fname=%s\n", fname);
   apr_thread_mutex_lock(ostc->lock);
   if (_ostc_cache_tree_walk(os, fname, &tree, NULL, 0, OSTC_MAX_RECURSE) != 0) goto finished;
 
   move_to_bottom(&tree);
   obj = get_ele_data(&tree);
+  oops = 1;
   for (i=0; i<n; i++) {
      attr = apr_hash_get(obj->attrs, key[i], APR_HASH_KEY_STRING);
      if (attr == NULL) goto finished;  //** Not in cache so need to pull it
 
+log_printf(5, "BEFORE obj=%s key=%s val=%s v_size=%d alink=%s olink=%s\n", obj->fname, attr->key, (char *)attr->val, attr->v_size, attr->link, obj->link);
+
      if (attr->link != NULL) {  //** Got to resolve the link
-        _ostcdb_resolve_attr_link(os, &tree, attr->link, &obj, &attr);
+        _ostcdb_resolve_attr_link(os, &tree, attr->link, &lobj, &attr, OSTC_MAX_RECURSE);
         if (attr == NULL) goto finished;  //** Can't follow the link
      }
+log_printf(5, "AFTER obj=%s key=%s val=%s v_size=%d alink=%s olink=%s\n", obj->fname, attr->key, (char *)attr->val, attr->v_size, attr->link, obj->link);
 
+     //** Store the original values in case we need to rollback
+     vs[i] = v_size[i];
+     va[i] = val[i];
+
+log_printf(5, "key=%s val=%s v_size=%d\n", attr->key, (char *)attr->val, attr->v_size);
      osf_store_val(attr->val, attr->v_size, &(val[i]), &(v_size[i]));
   }
 
+  oops = 0;
   status = op_success_status;
 
 finished:
   apr_thread_mutex_unlock(ostc->lock);
 
+  if (oops == 1) { //** Got to unroll the values stored
+     oops = i;
+     for (i=0; i<oops; i++) {
+        if (vs[i] < 0) {
+           if (val[i] != NULL) free(val[i]);
+        }
+        v_size[i] = vs[i];
+        val[i] = va[i];
+     }
+  }
+
+log_printf(5, "fname=%s n=%d key[0]=%s status=%d\n", fname, n, key[0], status.op_status);
   empty_stack(&tree, 0);
 
   return(status);
@@ -709,6 +906,8 @@ void ostc_cache_update_attrs(object_service_fn_t *os, char *fname, char **key, v
 
   init_stack(&tree);
 
+log_printf(15, "fname=%s n=%d key[0]=%s\n", fname, n, key[0]);
+
   apr_thread_mutex_lock(ostc->lock);
   if (_ostc_cache_tree_walk(os, fname, &tree, NULL, 0, OSTC_MAX_RECURSE) != 0) goto finished;
 
@@ -719,15 +918,16 @@ void ostc_cache_update_attrs(object_service_fn_t *os, char *fname, char **key, v
      if (attr == NULL) continue;  //** Not in cache so ignore updating it
 
      if (attr->link != NULL) {  //** Got to resolve the link
-        _ostcdb_resolve_attr_link(os, &tree, attr->link, &obj, &attr);
+        _ostcdb_resolve_attr_link(os, &tree, attr->link, &obj, &attr, OSTC_MAX_RECURSE);
         if (attr == NULL) continue;  //** Can't follow the link
      }
 
      attr->v_size = v_size[i];
      if (attr->val) { free(attr->val); attr->val = NULL; }
      if (val) {
-        type_malloc(attr->val, void, attr->v_size);
+        type_malloc(attr->val, void, attr->v_size+1);
         memcpy(attr->val, val[i], attr->v_size);
+        ((char *)(attr->val))[v_size[i]] = 0;  //** NULL terminate
      }
   }
 
@@ -1124,15 +1324,25 @@ op_status_t ostc_get_attrs_fn(void *arg, int tid)
   ostc_mult_attr_t *ma = (ostc_mult_attr_t *)arg;
   ostc_priv_t *ostc = (ostc_priv_t *)ma->os->priv;
   op_status_t status;
+  int ftype;
+  ostc_cacheprep_t cp;
+
 
   //** 1st see if we can satisfy everything from cache
   status = ostc_cache_fetch(ma->os, ma->fd->fname, ma->key, ma->val, ma->v_size, ma->n);
   if (status.op_status == OP_STATE_SUCCESS) return(status);
 
-  status = gop_sync_exec_status(os_get_multiple_attrs(ostc->os_child, ma->creds, ma->fd->fd_child, ma->key, ma->val, ma->v_size, ma->n));
+  ostc_attr_cacheprep_setup(&cp, ma->n, ma->key, ma->val, ma->v_size, 1);
+  status = gop_sync_exec_status(os_get_multiple_attrs(ostc->os_child, ma->creds, ma->fd->fd_child, cp.key, cp.val, cp.v_size, cp.n_keys_total));
 
   //** Store them in the cache on success
-  if (status.op_status == OP_STATE_SUCCESS) ostc_cache_update_attrs(ma->os, ma->fd->fname, ma->key, ma->val, ma->v_size, ma->n);
+  if (status.op_status == OP_STATE_SUCCESS) {
+     ftype = ostc_attr_cacheprep_ftype(&cp);
+     ostc_cache_process_attrs(ma->os, ma->fd->fname, ftype, cp.key, cp.val, cp.v_size, cp.n_keys);
+     ostc_attr_cacheprep_copy(&cp, ma->val, ma->v_size);
+  }
+
+  ostc_attr_cacheprep_destroy(&cp);
 
   return(status);
 }
@@ -1328,7 +1538,7 @@ int ostc_next_object(os_object_iter_t *oit, char **fname, int *prefix_len)
 {
   ostc_object_iter_t *it = (ostc_object_iter_t *)oit;
   ostc_priv_t *ostc = (ostc_priv_t *)it->os->priv;
-  int ftype;
+  int ftype, i;
 
 log_printf(5, "START\n");
 
@@ -1344,9 +1554,13 @@ log_printf(5, "START\n");
 
   if (it->iter_type == OSTC_ITER_ALIST) {
      //** Copy any results back
-     memcpy(it->val, it->val_cache, sizeof(char *) * it->n_keys);
-     memcpy(it->v_size, it->v_size_cache, sizeof(int) * it->n_keys);
-     ostc_cache_process_attrs(it->os, *fname, ftype, it->key_cache, (void **)it->val_cache, it->v_size_cache, it->n_keys);
+     ostc_attr_cacheprep_copy(&(it->cp), it->val, it->v_size);
+     ostc_cache_process_attrs(it->os, *fname, ftype, it->cp.key, it->cp.val, it->cp.v_size, it->n_keys);
+
+     //** We have to do a manual cleanup and can't call the CP destroy method
+     for (i=it->cp.n_keys; i<it->cp.n_keys_total; i++) {
+        if (it->cp.val[i] != NULL) { free(it->cp.val[i]); it->cp.val[i] = NULL; }
+     }
   }
 
   log_printf(5, "END\n");
@@ -1362,27 +1576,11 @@ void ostc_destroy_object_iter(os_object_iter_t *oit)
 {
   ostc_object_iter_t *it = (ostc_object_iter_t *)oit;
   ostc_priv_t *ostc = (ostc_priv_t *)it->os->priv;
-  int i;
 
   if (it == NULL) { log_printf(0, "ERROR: it=NULL\n"); return; }
 
   if (it->it_child != NULL) os_destroy_object_iter(ostc->os_child, it->it_child);
-  for (i=it->n_keys; i<2*it->n_keys; i++) {
-     if (it->key_cache != NULL) {
-        if (it->key_cache[i] != NULL) free(it->key_cache[i]);
-     }
-     if (it->val_cache != NULL) {
-        if (it->val_cache[i] != NULL) free(it->val_cache[i]);
-     }
-  }
-
-  if (it->key_cache != NULL) free(it->key_cache);
-  if (it->val_cache != NULL) {
-     //** This index corresponds to the os.link attribute where the key is a constant
-     if (it->val_cache[2*it->n_keys] != NULL) free(it->val_cache[2*it->n_keys]);
-     free(it->val_cache);
-  }
-  if (it->v_size_cache != NULL) free(it->v_size_cache);
+  ostc_attr_cacheprep_destroy(&(it->cp));
 
   if (it->v_size_initial != NULL) free(it->v_size_initial);
 
@@ -1416,7 +1614,6 @@ os_object_iter_t *ostc_create_object_iter_alist(object_service_fn_t *os, creds_t
 {
   ostc_priv_t *ostc = (ostc_priv_t *)os->priv;
   ostc_object_iter_t *it;
-  int n, i, j;
 
 log_printf(5, "START\n");
 
@@ -1428,31 +1625,14 @@ log_printf(5, "START\n");
   it->val = val;
   it->v_size = v_size;
   it->n_keys = n_keys;
+  ostc_attr_cacheprep_setup(&(it->cp), it->n_keys, key, val, v_size, 0);
+
   type_malloc(it->v_size_initial, int, n_keys);
   memcpy(it->v_size_initial, it->v_size, n_keys*sizeof(int));
 
-  //** Make the full list of attrs to get
-  type_malloc(it->key_cache, char *, 2*it->n_keys+1);
-  type_malloc_clear(it->val_cache, char *, 2*it->n_keys+1);
-  type_malloc_clear(it->v_size_cache, int, 2*it->n_keys+1);
-  memcpy(it->key_cache, key, sizeof(char *) * n_keys);
-  memcpy(it->val_cache, it->val, sizeof(char *) * n_keys);
-  memcpy(it->v_size_cache, it->v_size, sizeof(int) * n_keys);
-
-  for (i=it->n_keys; i<2*it->n_keys; i++) {
-     n = strlen(it->key_cache[i-it->n_keys]);
-     j = n + OS_ATTR_LINK_LEN + 1 + 1;
-     type_malloc(it->key_cache[i], char, n + OS_ATTR_LINK_LEN + 1 + 1);
-     snprintf(it->key_cache[i], j, "%s.%s", OS_ATTR_LINK, it->key_cache[i-it->n_keys]);
-     it->v_size_cache[i] = -OS_PATH_MAX;
-log_printf(5, "key[%d]=%s\n", i, it->key_cache[i]);
-  }
-  it->key_cache[2*it->n_keys] = OS_LINK;
-  it->v_size_cache[2*it->n_keys] = -OS_PATH_MAX;
-
   //** Make the gop and execute it
   it->it_child = os_create_object_iter_alist(ostc->os_child, creds, path, object_regex, object_types,
-                   recurse_depth, it->key_cache, (void **)it->val_cache, it->v_size_cache, 2*it->n_keys);
+                   recurse_depth, it->cp.key, it->cp.val, it->cp.v_size, it->cp.n_keys_total);
 
 log_printf(5, "it_child=%p\n", it->it_child);
   //** Clean up if an error occurred
