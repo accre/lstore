@@ -25,7 +25,7 @@ Advanced Computing Center for Research and Education
 230 Appleton Place
 Nashville, TN 37203
 http://www.accre.vanderbilt.edu
-*/ 
+*/
 
 //**********************************************************
 //**********************************************************
@@ -50,10 +50,10 @@ http://www.accre.vanderbilt.edu
 
 #else
 
-#define debug_code(a) 
+#define debug_code(a)
 #define debug_printf(n, ...)
-#define set_debug_level(n) 
-#define flush_debug() 
+#define set_debug_level(n)
+#define flush_debug()
 #define debug_level()
 
 #endif

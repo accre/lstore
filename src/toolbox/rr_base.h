@@ -46,9 +46,9 @@ extern "C" {
 #include "type_malloc.h"
 
 #define RETRIES_DFT 3
-#define TIMEOUT_DFT -1 
+#define TIMEOUT_DFT -1
 
-//** Communication mode 
+//** Communication mode
 #define SYNC_MODE 0
 #define ASYNC_MODE 1
 
@@ -76,11 +76,11 @@ extern "C" {
 //**  This is the version of RR/Worker we implement
 #define RR_WORKER         "RRW01"
 
-//** Task Data 
+//** Task Data
 typedef struct {
     size_t len;
     void *data;
-}rrtask_data_t;
+} rrtask_data_t;
 
 //** Task related functions
 rrtask_data_t *rrtask_data_new();

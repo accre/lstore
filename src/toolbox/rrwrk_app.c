@@ -1,7 +1,6 @@
 #include "rr_wrk.h"
 
-rrtask_data_t *task_fn_test(rrtask_data_t *input)
-{
+rrtask_data_t *task_fn_test(rrtask_data_t *input) {
     //** Add your own codes to process the data
     // rr_dump(rrtask_get_data(input), rrtask_get_len(input));
     printf("Working on %Zd Bytes.\n", rrtask_get_len(input));
@@ -12,19 +11,18 @@ rrtask_data_t *task_fn_test(rrtask_data_t *input)
     return output;
 }
 
-int main()
-{
+int main() {
     apr_initialize();
     rrwrk_t *wrk = rrwrk_new();
     rrwrk_load_config(wrk, "zsock.cfg");
 
     while(true) {
-	int rc = rrwrk_start(wrk, task_fn_test);
-	if (rc == -1)
-	    break;
+        int rc = rrwrk_start(wrk, task_fn_test);
+        if (rc == -1)
+            break;
     }
-   
-    rrwrk_destroy(&wrk); 
+
+    rrwrk_destroy(&wrk);
     apr_terminate();
     return 0;
 }

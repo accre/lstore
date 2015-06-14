@@ -25,7 +25,7 @@ Advanced Computing Center for Research and Education
 230 Appleton Place
 Nashville, TN 37203
 http://www.accre.vanderbilt.edu
-*/ 
+*/
 
 //*************************************************************************
 //*************************************************************************
@@ -51,46 +51,46 @@ struct skiplist_ele_s;
 typedef struct skiplist_ele_s skiplist_ele_t;
 
 struct skiplist_ele_s {
-  skiplist_data_t *data;
-  skiplist_ele_t *next;
+    skiplist_data_t *data;
+    skiplist_ele_t *next;
 };
 
 struct skiplist_node_s {
-  int level;                //** level of node
-  skiplist_key_t *key;      //** Node value
-  skiplist_node_t **next;   //** Pointers to the next node for each level
-  skiplist_ele_t ele;       //** Pointer to the data list
+    int level;                //** level of node
+    skiplist_key_t *key;      //** Node value
+    skiplist_node_t **next;   //** Pointers to the next node for each level
+    skiplist_ele_t ele;       //** Pointer to the data list
 };
 
 typedef struct {
-  int (*fn)(void *arg, skiplist_key_t *a, skiplist_key_t *b);  //** Element comparison function
-  void *arg;
+    int (*fn)(void *arg, skiplist_key_t *a, skiplist_key_t *b);  //** Element comparison function
+    void *arg;
 } skiplist_compare_t;
 
 typedef struct {  //** Generic Skip Lists container
-  int max_levels;         //** Max number of pointers/levels
-  int current_max;        //** Current Max level
-  int allow_dups;         //** Allow duplicate keys if 1
-  int n_keys;             //** Number of unique keys
-  int n_ele;              //** Number of elements
-  double p;               //** Negative Binomial distribution fraction
-  skiplist_node_t *head;  //** Node list
-  skiplist_key_t *(*dup)(skiplist_key_t *a);  //** Duplicate key function
-  void (*key_free)(skiplist_key_t *a);            //** Free'sa duped key
-  void (*data_free)(skiplist_data_t *a);            //** Free'sa duped key
-  skiplist_compare_t *compare;
-  apr_thread_mutex_t *lock;
-  apr_pool_t         *pool;
+    int max_levels;         //** Max number of pointers/levels
+    int current_max;        //** Current Max level
+    int allow_dups;         //** Allow duplicate keys if 1
+    int n_keys;             //** Number of unique keys
+    int n_ele;              //** Number of elements
+    double p;               //** Negative Binomial distribution fraction
+    skiplist_node_t *head;  //** Node list
+    skiplist_key_t *(*dup)(skiplist_key_t *a);  //** Duplicate key function
+    void (*key_free)(skiplist_key_t *a);            //** Free'sa duped key
+    void (*data_free)(skiplist_data_t *a);            //** Free'sa duped key
+    skiplist_compare_t *compare;
+    apr_thread_mutex_t *lock;
+    apr_pool_t         *pool;
 } skiplist_t;
 
 typedef struct {
-  skiplist_t *sl;
-  skiplist_compare_t *compare;  //** Element comparison function
-  skiplist_ele_t *ele;
-  skiplist_ele_t *curr;
-  skiplist_ele_t *prev;
-  skiplist_node_t *sn;
-  skiplist_node_t *ptr[SKIPLIST_MAX_LEVEL];
+    skiplist_t *sl;
+    skiplist_compare_t *compare;  //** Element comparison function
+    skiplist_ele_t *ele;
+    skiplist_ele_t *curr;
+    skiplist_ele_t *prev;
+    skiplist_node_t *sn;
+    skiplist_node_t *ptr[SKIPLIST_MAX_LEVEL];
 } skiplist_iter_t;
 
 
@@ -118,16 +118,16 @@ extern skiplist_compare_t skiplist_compare_ptr;
 
 void skiplist_strncmp_set(skiplist_compare_t *compare, int n);
 
-skiplist_t *create_skiplist_full(int maxlevels, double p, int allow_dups, 
-   skiplist_compare_t *compare,
-   skiplist_key_t *(*dup)(skiplist_key_t *a),
-   void (*key_free)(skiplist_key_t *a),
-   void (*data_free)(skiplist_data_t *a));
-skiplist_t *create_skiplist(int allow_dups, 
-   skiplist_compare_t *compare,
-   skiplist_key_t *(*dup)(skiplist_key_t *a),
-   void (*key_free)(skiplist_key_t *a),
-   void (*data_free)(skiplist_data_t *a));
+skiplist_t *create_skiplist_full(int maxlevels, double p, int allow_dups,
+                                 skiplist_compare_t *compare,
+                                 skiplist_key_t *(*dup)(skiplist_key_t *a),
+                                 void (*key_free)(skiplist_key_t *a),
+                                 void (*data_free)(skiplist_data_t *a));
+skiplist_t *create_skiplist(int allow_dups,
+                            skiplist_compare_t *compare,
+                            skiplist_key_t *(*dup)(skiplist_key_t *a),
+                            void (*key_free)(skiplist_key_t *a),
+                            void (*data_free)(skiplist_data_t *a));
 void destroy_skiplist(skiplist_t *sl);
 void empty_skiplist(skiplist_t *sl);
 int insert_skiplist(skiplist_t *sl, skiplist_key_t *key, skiplist_data_t *data);

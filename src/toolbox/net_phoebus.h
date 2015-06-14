@@ -25,7 +25,7 @@ Advanced Computing Center for Research and Education
 230 Appleton Place
 Nashville, TN 37203
 http://www.accre.vanderbilt.edu
-*/ 
+*/
 
 //*************************************************************************
 //*************************************************************************
@@ -38,12 +38,12 @@ http://www.accre.vanderbilt.edu
 #define N_BUFSIZE  1024
 
 typedef struct {
-   phoebus_t *p_path;
-   liblslSess *sess;
-   int family;
-   int fd;
-   int tcpsize;
-   char address[16];
+    phoebus_t *p_path;
+    liblslSess *sess;
+    int family;
+    int fd;
+    int tcpsize;
+    char address[16];
 } network_phoebus_t;
 
 #ifdef __cplusplus

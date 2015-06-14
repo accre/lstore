@@ -25,7 +25,7 @@ Advanced Computing Center for Research and Education
 230 Appleton Place
 Nashville, TN 37203
 http://www.accre.vanderbilt.edu
-*/ 
+*/
 
 //******************************************************************
 //******************************************************************
@@ -42,31 +42,31 @@ extern "C" {
 #endif
 
 typedef struct {
-   apr_thread_mutex_t *lock;
-   apr_pool_t *pool;
-   int nshelves;
-   int shelf_size;
-   int item_size;
-   int check_shelf;
-   int nused;
-   const char *name;
-   void *new_arg;
-   pigeon_hole_t **ph_shelf;
-   char **data_shelf;
-   void *(*new)(void *arg, int size);
-   void (*free)(void *arg, int size, void *dshelf);
+    apr_thread_mutex_t *lock;
+    apr_pool_t *pool;
+    int nshelves;
+    int shelf_size;
+    int item_size;
+    int check_shelf;
+    int nused;
+    const char *name;
+    void *new_arg;
+    pigeon_hole_t **ph_shelf;
+    char **data_shelf;
+    void *(*new)(void *arg, int size);
+    void (*free)(void *arg, int size, void *dshelf);
 }  pigeon_coop_t;
 
 typedef struct {
-   int shelf;
-   int hole;
-   void *data;
+    int shelf;
+    int hole;
+    void *data;
 } pigeon_coop_hole_t;
 
 typedef struct {
-  pigeon_coop_t *pc;
-  int shelf;
-  pigeon_hole_iter_t pi;
+    pigeon_coop_t *pc;
+    int shelf;
+    pigeon_hole_iter_t pi;
 } pigeon_coop_iter_t;
 
 pigeon_coop_iter_t pigeon_coop_iterator_init(pigeon_coop_t *ph);
@@ -75,8 +75,8 @@ void *pigeon_coop_hole_data(pigeon_coop_hole_t *pch);
 int release_pigeon_coop_hole(pigeon_coop_t *ph, pigeon_coop_hole_t *pch);
 pigeon_coop_hole_t reserve_pigeon_coop_hole(pigeon_coop_t *pc);
 void destroy_pigeon_coop(pigeon_coop_t *ph);
-pigeon_coop_t *new_pigeon_coop(const char *name, int size, int item_size, void *new_arg, void *(*new)(void *arg, int size), 
-   void (*free)(void *arg, int size, void *dshelf));
+pigeon_coop_t *new_pigeon_coop(const char *name, int size, int item_size, void *new_arg, void *(*new)(void *arg, int size),
+                               void (*free)(void *arg, int size, void *dshelf));
 
 #ifdef __cplusplus
 }

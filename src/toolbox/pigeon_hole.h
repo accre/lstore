@@ -25,7 +25,7 @@ Advanced Computing Center for Research and Education
 230 Appleton Place
 Nashville, TN 37203
 http://www.accre.vanderbilt.edu
-*/ 
+*/
 
 //******************************************************************
 //******************************************************************
@@ -41,20 +41,20 @@ extern "C" {
 #endif
 
 typedef struct {
-   apr_thread_mutex_t *lock;
-   apr_pool_t *pool;
-   int nholes;
-   int nused;
-   int next_slot;
-   char *hole;
-   const char *name;
+    apr_thread_mutex_t *lock;
+    apr_pool_t *pool;
+    int nholes;
+    int nused;
+    int next_slot;
+    char *hole;
+    const char *name;
 }  pigeon_hole_t;
 
 typedef struct {
-  pigeon_hole_t *ph;
-  int start_slot;
-  int count;
-  int found;
+    pigeon_hole_t *ph;
+    int start_slot;
+    int count;
+    int found;
 } pigeon_hole_iter_t;
 
 pigeon_hole_iter_t pigeon_hole_iterator_init(pigeon_hole_t *ph);

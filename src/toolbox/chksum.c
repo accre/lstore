@@ -25,7 +25,7 @@ Advanced Computing Center for Research and Education
 230 Appleton Place
 Nashville, TN 37203
 http://www.accre.vanderbilt.edu
-*/ 
+*/
 
 #define _log_module_index 107
 
@@ -68,20 +68,19 @@ char *_chksum_name_default = "DEFAULT";
 //
 //**********************************************************************
 
-int convert_bin2hex(int in_size, const unsigned char *in, char *out)
-{
-  int i, j;
+int convert_bin2hex(int in_size, const unsigned char *in, char *out) {
+    int i, j;
 
-  j = 0;
-  for (i=0; i<in_size; i++) {
-    out[j] = _bin2hex[2*in[i]];
-    out[j+1] = _bin2hex[2*in[i]+1];
-    j = j + 2;
-  }
+    j = 0;
+    for (i=0; i<in_size; i++) {
+        out[j] = _bin2hex[2*in[i]];
+        out[j+1] = _bin2hex[2*in[i]+1];
+        j = j + 2;
+    }
 
-  out[j] = '\0';
+    out[j] = '\0';
 
-  return(0);
+    return(0);
 
 }
 
@@ -90,17 +89,16 @@ int convert_bin2hex(int in_size, const unsigned char *in, char *out)
 //    or -2 if invalid
 //**********************************************************************
 
-int chksum_name_type(const char *name)
-{
-  int i;
+int chksum_name_type(const char *name) {
+    int i;
 
-  for (i=0; i<CHKSUM_TYPE_SIZE; i++) {
-     if (strcasecmp(name, _chksum_name[i]) == 0) return(i);
-  }
+    for (i=0; i<CHKSUM_TYPE_SIZE; i++) {
+        if (strcasecmp(name, _chksum_name[i]) == 0) return(i);
+    }
 
-  if (strcasecmp(name, _chksum_name_default) == 0) return(i);
-  
-  return(-2);
+    if (strcasecmp(name, _chksum_name_default) == 0) return(i);
+
+    return(-2);
 }
 
 
@@ -109,11 +107,10 @@ int chksum_name_type(const char *name)
 //    Returns 1 if the type is valid and 0 otherwise
 //**********************************************************************
 
-int chksum_valid_type(int type)
-{
-  if ((type > 0) && (type < CHKSUM_MAX_TYPE)) return(1);
+int chksum_valid_type(int type) {
+    if ((type > 0) && (type < CHKSUM_MAX_TYPE)) return(1);
 
-  return(0);
+    return(0);
 }
 
 
@@ -221,25 +218,33 @@ _openssl_chksum(MD5, md5)
 // blank chksum dummy routines
 //*************************************************************************
 
-int blank_reset(void *state) { return(0); }
-int blank_size(void *state, int type) { return(0); }
-int blank_get(void *state, int type, char *value) { value[0] = '\0'; return(0); }
-int blank_add(void *state, int type, tbuffer_t *data, int boff) { return(0); }
+int blank_reset(void *state) {
+    return(0);
+}
+int blank_size(void *state, int type) {
+    return(0);
+}
+int blank_get(void *state, int type, char *value) {
+    value[0] = '\0';
+    return(0);
+}
+int blank_add(void *state, int type, tbuffer_t *data, int boff) {
+    return(0);
+}
 
 //*************************************************************************
 //  blank_chksum_set - makes a blank chksum
 //*************************************************************************
 
-int blank_chksum_set(chksum_t *cs)
-{
-  cs->reset = blank_reset;    
-  cs->size = blank_size;
-  cs->add = blank_add;
-  cs->get = blank_get;
-  cs->type = CHKSUM_NONE;
-  cs->name = _chksum_name[CHKSUM_NONE];
+int blank_chksum_set(chksum_t *cs) {
+    cs->reset = blank_reset;
+    cs->size = blank_size;
+    cs->add = blank_add;
+    cs->get = blank_get;
+    cs->type = CHKSUM_NONE;
+    cs->name = _chksum_name[CHKSUM_NONE];
 
-  return(0);                                                  
+    return(0);
 }
 
 //*************************************************************************
@@ -248,23 +253,32 @@ int blank_chksum_set(chksum_t *cs)
 //
 //*************************************************************************
 
-int chksum_set(chksum_t *cs, int chksum_type)
-{
-  int i = -1;
+int chksum_set(chksum_t *cs, int chksum_type) {
+    int i = -1;
 
-  cs->type = CHKSUM_NONE;
+    cs->type = CHKSUM_NONE;
 
-  switch (chksum_type) {
-    case CHKSUM_SHA1:    i = sha1_set(cs); break;
-    case CHKSUM_SHA256:  i = sha256_set(cs); break;
-    case CHKSUM_SHA512:  i = sha512_set(cs); break;
-    case CHKSUM_MD5:     i = md5_set(cs); break;
-    case CHKSUM_NONE:    i = blank_chksum_set(cs); break;
-  }
+    switch (chksum_type) {
+    case CHKSUM_SHA1:
+        i = sha1_set(cs);
+        break;
+    case CHKSUM_SHA256:
+        i = sha256_set(cs);
+        break;
+    case CHKSUM_SHA512:
+        i = sha512_set(cs);
+        break;
+    case CHKSUM_MD5:
+        i = md5_set(cs);
+        break;
+    case CHKSUM_NONE:
+        i = blank_chksum_set(cs);
+        break;
+    }
 
-  cs->name = _chksum_name[cs->type];
+    cs->name = _chksum_name[cs->type];
 
-  return(i);
+    return(i);
 }
 
 

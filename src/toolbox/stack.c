@@ -25,7 +25,7 @@ Advanced Computing Center for Research and Education
 230 Appleton Place
 Nashville, TN 37203
 http://www.accre.vanderbilt.edu
-*/ 
+*/
 
 #define _log_module_index 111
 
@@ -44,41 +44,38 @@ http://www.accre.vanderbilt.edu
 //**************************************
 
 int check_ends(Stack_t *stack) {
-   int status;
+    int status;
 
-   status = 0;
-   if (stack->curr == stack->top) status = status + MOVE_TOP;
-   if (stack->curr == stack->bottom) status = status + MOVE_BOTTOM;
+    status = 0;
+    if (stack->curr == stack->top) status = status + MOVE_TOP;
+    if (stack->curr == stack->bottom) status = status + MOVE_BOTTOM;
 
-   return(status);
+    return(status);
 }
 
 //**************************************
 // stack_size - Returns the number of elements in the stack
 //**************************************
 
-int stack_size(Stack_t *stack)
-{
-  return(stack->n);
+int stack_size(Stack_t *stack) {
+    return(stack->n);
 }
 
 //**************************************
 // get_stack_ele_data - Returns the data associated with a Stack_ele_t structure
 //**************************************
 
-void *get_stack_ele_data(Stack_ele_t *ele)
-{
-  if (ele == NULL) return(NULL);
-  return(ele->data);
+void *get_stack_ele_data(Stack_ele_t *ele) {
+    if (ele == NULL) return(NULL);
+    return(ele->data);
 }
 
 //**************************************
 // get_stack_ele_data - Modifies the data associated with a Stack_ele_t structure
 //**************************************
 
-void set_stack_ele_data(Stack_ele_t *ele, void *data)
-{
-  if (ele != NULL) ele->data = data;
+void set_stack_ele_data(Stack_ele_t *ele, void *data) {
+    if (ele != NULL) ele->data = data;
 }
 
 //**************************************
@@ -86,10 +83,10 @@ void set_stack_ele_data(Stack_ele_t *ele, void *data)
 //**************************************
 
 void init_stack(Stack_t *stack) {
-  stack->top = NULL;
-  stack->bottom = NULL;
-  stack->curr = NULL;
-  stack->n = 0;
+    stack->top = NULL;
+    stack->bottom = NULL;
+    stack->curr = NULL;
+    stack->n = 0;
 }
 
 //**************************************
@@ -97,13 +94,13 @@ void init_stack(Stack_t *stack) {
 //**************************************
 
 Stack_t *new_stack() {
-  Stack_t *stack;
+    Stack_t *stack;
 
-  stack = (Stack_t *)malloc(sizeof(Stack_t));
+    stack = (Stack_t *)malloc(sizeof(Stack_t));
 
-  init_stack(stack);
+    init_stack(stack);
 
-  return(stack);
+    return(stack);
 }
 
 //***************************************************
@@ -112,15 +109,15 @@ Stack_t *new_stack() {
 //***************************************************
 
 void empty_stack(Stack_t *stack, int data_also) {
-  void *ptr;
+    void *ptr;
 
-  if (data_also == 1) {
-     while ((ptr = pop(stack)) != NULL) {
-         free(ptr);
-     }
-  } else {
-    while ((ptr = pop(stack)) != NULL) { };
-  }
+    if (data_also == 1) {
+        while ((ptr = pop(stack)) != NULL) {
+            free(ptr);
+        }
+    } else {
+        while ((ptr = pop(stack)) != NULL) { };
+    }
 }
 
 //***************************************************
@@ -129,23 +126,22 @@ void empty_stack(Stack_t *stack, int data_also) {
 //***************************************************
 
 void free_stack(Stack_t *stack, int data_also) {
-  empty_stack(stack, data_also);
-  free(stack);
+    empty_stack(stack, data_also);
+    free(stack);
 }
 
 //***************************************************
 //  dup_stack - Duplicates a stack
 //***************************************************
 
-void dup_stack(Stack_t *new, Stack_t *old)
-{
-  void *ptr;
+void dup_stack(Stack_t *new, Stack_t *old) {
+    void *ptr;
 
-  move_to_bottom(old);
-  while ((ptr = get_ele_data(old)) != NULL) {
-     push(new, ptr);
-     move_up(old);
-  }
+    move_to_bottom(old);
+    while ((ptr = get_ele_data(old)) != NULL) {
+        push(new, ptr);
+        move_up(old);
+    }
 }
 
 //***************************************************
@@ -153,18 +149,18 @@ void dup_stack(Stack_t *new, Stack_t *old)
 //***************************************************
 
 void push_link(Stack_t *stack, Stack_ele_t *ele) {
-   ele->down = stack->top;
-   ele->up = NULL;
+    ele->down = stack->top;
+    ele->up = NULL;
 
-   if (stack->top == NULL) {
-      stack->bottom = ele;
-   } else {
-      stack->top->up = ele;
-   }
+    if (stack->top == NULL) {
+        stack->bottom = ele;
+    } else {
+        stack->top->up = ele;
+    }
 
-   stack->top = ele;
-   stack->curr = ele;
-   stack->n++;
+    stack->top = ele;
+    stack->curr = ele;
+    stack->n++;
 }
 
 
@@ -173,12 +169,12 @@ void push_link(Stack_t *stack, Stack_ele_t *ele) {
 //***************************************************
 
 void push(Stack_t *stack, void *data) {
-   Stack_ele_t *ele;
+    Stack_ele_t *ele;
 
-   ele = (Stack_ele_t *)malloc(sizeof(Stack_ele_t));
-   ele->data = data;
+    ele = (Stack_ele_t *)malloc(sizeof(Stack_ele_t));
+    ele->data = data;
 
-   push_link(stack, ele);
+    push_link(stack, ele);
 }
 
 //***************************************************
@@ -186,9 +182,9 @@ void push(Stack_t *stack, void *data) {
 //***************************************************
 
 Stack_ele_t *pop_link(Stack_t *stack) {
-   move_to_top(stack);
+    move_to_top(stack);
 
-   return(stack_unlink_current(stack, 0));
+    return(stack_unlink_current(stack, 0));
 }
 
 //***************************************************
@@ -196,34 +192,34 @@ Stack_ele_t *pop_link(Stack_t *stack) {
 //***************************************************
 
 void *pop(Stack_t *stack) {
-   Stack_ele_t *ele;
-   void *data;
+    Stack_ele_t *ele;
+    void *data;
 
-   ele = pop_link(stack);
-   if (ele == NULL) return(NULL);
+    ele = pop_link(stack);
+    if (ele == NULL) return(NULL);
 
-   data = ele->data;
-   free(ele);
+    data = ele->data;
+    free(ele);
 
-   return(data);
+    return(data);
 //--------------
 
-   if (stack->top) {
-      stack->n--;
-      data = stack->top->data;
-      ele = stack->top;  
-      stack->top = stack->top->down;
-      if (stack->top) {
-         stack->top->up = NULL;
-      } else {
-         stack->bottom = NULL;   //** Empty stack
-      }
-      free(ele);
-   } else {
-     data = NULL;
-   }
+    if (stack->top) {
+        stack->n--;
+        data = stack->top->data;
+        ele = stack->top;
+        stack->top = stack->top->down;
+        if (stack->top) {
+            stack->top->up = NULL;
+        } else {
+            stack->bottom = NULL;   //** Empty stack
+        }
+        free(ele);
+    } else {
+        data = NULL;
+    }
 
-   return(data);
+    return(data);
 }
 
 //***************************************************
@@ -232,11 +228,11 @@ void *pop(Stack_t *stack) {
 
 Stack_ele_t *get_ptr(Stack_t *stack) {
 
-  if (stack->curr) {
-     return(stack->curr);
-  } else {
-     return(NULL);
-  }
+    if (stack->curr) {
+        return(stack->curr);
+    } else {
+        return(NULL);
+    }
 }
 
 //***************************************************
@@ -245,11 +241,11 @@ Stack_ele_t *get_ptr(Stack_t *stack) {
 
 void *get_ele_data(Stack_t *stack) {
 
-  if (stack->curr) {
-     return(stack->curr->data);
-  } else {
-     return(NULL);
-  }
+    if (stack->curr) {
+        return(stack->curr->data);
+    } else {
+        return(NULL);
+    }
 }
 
 //***************************************************
@@ -258,8 +254,8 @@ void *get_ele_data(Stack_t *stack) {
 
 int move_to_ptr(Stack_t *stack, Stack_ele_t *ptr) {
 
-  stack->curr = ptr;
-  return(1);
+    stack->curr = ptr;
+    return(1);
 }
 
 //***************************************************
@@ -269,8 +265,8 @@ int move_to_ptr(Stack_t *stack, Stack_ele_t *ptr) {
 
 int move_to_top(Stack_t *stack) {
 
-  stack->curr = stack->top;
-  return(1);
+    stack->curr = stack->top;
+    return(1);
 }
 
 
@@ -281,8 +277,8 @@ int move_to_top(Stack_t *stack) {
 
 int move_to_bottom(Stack_t *stack) {
 
-  stack->curr = stack->bottom;
-  return(1);
+    stack->curr = stack->bottom;
+    return(1);
 }
 
 
@@ -292,12 +288,12 @@ int move_to_bottom(Stack_t *stack) {
 
 int move_down(Stack_t *stack) {
 
-  if (stack->curr) {
-     stack->curr = stack->curr->down;
-     return(1);
-  } else {
-     return(0);
-  }
+    if (stack->curr) {
+        stack->curr = stack->curr->down;
+        return(1);
+    } else {
+        return(0);
+    }
 }
 
 //***************************************************
@@ -306,12 +302,12 @@ int move_down(Stack_t *stack) {
 
 int move_up(Stack_t *stack) {
 
-  if (stack->curr) {
-     stack->curr = stack->curr->up;
-     return(1);
-  } else {
-     return(0);
-  }
+    if (stack->curr) {
+        stack->curr = stack->curr->up;
+        return(1);
+    } else {
+        return(0);
+    }
 }
 
 //***************************************************
@@ -321,29 +317,29 @@ int move_up(Stack_t *stack) {
 //***************************************************
 
 int insert_link_below(Stack_t *stack, Stack_ele_t *ele) {
-  int move_ends;
+    int move_ends;
 
-  move_ends = check_ends(stack);
-  if (stack->curr) {
-     stack->n++;
+    move_ends = check_ends(stack);
+    if (stack->curr) {
+        stack->n++;
 
-     ele->down = stack->curr->down;
-     ele->up = stack->curr;
-     if (stack->curr->down) stack->curr->down->up = ele;
-     stack->curr->down = ele;
+        ele->down = stack->curr->down;
+        ele->up = stack->curr;
+        if (stack->curr->down) stack->curr->down->up = ele;
+        stack->curr->down = ele;
 
-     if ((move_ends == MOVE_TOP) || (move_ends == MOVE_BOTH)) stack->top = stack->curr;
-     if ((move_ends == MOVE_BOTTOM) || (move_ends == MOVE_BOTH)) stack->bottom = ele;
+        if ((move_ends == MOVE_TOP) || (move_ends == MOVE_BOTH)) stack->top = stack->curr;
+        if ((move_ends == MOVE_BOTTOM) || (move_ends == MOVE_BOTH)) stack->bottom = ele;
 
-     stack->curr = ele;
-     return(1);
-  } else if (stack->top) {
-     printf("insert_link_below: Can't determine position!!!!!!!! move_ends = %d\n",move_ends);
-     return(0);         // Can't determine position since curr=NULL
-  } else {
-     push_link(stack, ele);
-     return(1);
-  }
+        stack->curr = ele;
+        return(1);
+    } else if (stack->top) {
+        printf("insert_link_below: Can't determine position!!!!!!!! move_ends = %d\n",move_ends);
+        return(0);         // Can't determine position since curr=NULL
+    } else {
+        push_link(stack, ele);
+        return(1);
+    }
 }
 
 
@@ -354,12 +350,12 @@ int insert_link_below(Stack_t *stack, Stack_ele_t *ele) {
 //***************************************************
 
 int insert_below(Stack_t *stack, void *data) {
-  Stack_ele_t *ele;
+    Stack_ele_t *ele;
 
-  ele =(Stack_ele_t *) malloc(sizeof(Stack_ele_t));
-  ele->data = data;
+    ele =(Stack_ele_t *) malloc(sizeof(Stack_ele_t));
+    ele->data = data;
 
-  return(insert_link_below(stack, ele));
+    return(insert_link_below(stack, ele));
 }
 
 
@@ -369,29 +365,29 @@ int insert_below(Stack_t *stack, void *data) {
 //***************************************************
 
 int insert_link_above(Stack_t *stack, Stack_ele_t *ele) {
-  int move_ends;
+    int move_ends;
 
-  move_ends = check_ends(stack);
+    move_ends = check_ends(stack);
 
-  if (stack->curr) {
-     stack->n++;
+    if (stack->curr) {
+        stack->n++;
 
-     ele->down = stack->curr;
-     ele->up = stack->curr->up;
-     if (stack->curr->up) stack->curr->up->down = ele;
-     stack->curr->up = ele;
+        ele->down = stack->curr;
+        ele->up = stack->curr->up;
+        if (stack->curr->up) stack->curr->up->down = ele;
+        stack->curr->up = ele;
 
-     if ((move_ends == MOVE_TOP) || (move_ends == MOVE_BOTH)) stack->top = ele;
-     if ((move_ends == MOVE_BOTTOM) || (move_ends == MOVE_BOTH)) stack->bottom = stack->curr;
+        if ((move_ends == MOVE_TOP) || (move_ends == MOVE_BOTH)) stack->top = ele;
+        if ((move_ends == MOVE_BOTTOM) || (move_ends == MOVE_BOTH)) stack->bottom = stack->curr;
 
-     stack->curr = ele;
-     return(1);
-  } else if (stack->top) {
-     return(0);         // Can't determine position since curr=NULL
-  } else {
-     push_link(stack, ele);
-     return(1);
-  }
+        stack->curr = ele;
+        return(1);
+    } else if (stack->top) {
+        return(0);         // Can't determine position since curr=NULL
+    } else {
+        push_link(stack, ele);
+        return(1);
+    }
 }
 
 //***************************************************
@@ -400,12 +396,12 @@ int insert_link_above(Stack_t *stack, Stack_ele_t *ele) {
 //***************************************************
 
 int insert_above(Stack_t *stack, void *data) {
-  Stack_ele_t *ele;
+    Stack_ele_t *ele;
 
-  ele =(Stack_ele_t *) malloc(sizeof(Stack_ele_t));
-  ele->data = data;
+    ele =(Stack_ele_t *) malloc(sizeof(Stack_ele_t));
+    ele->data = data;
 
-  return(insert_link_above(stack, ele));
+    return(insert_link_above(stack, ele));
 
 }
 
@@ -416,31 +412,32 @@ int insert_above(Stack_t *stack, void *data) {
 //***************************************************
 
 Stack_ele_t *stack_unlink_current(Stack_t *stack, int mv_up) {
-   Stack_ele_t *ele, *up, *down;
-   int move_ends;
+    Stack_ele_t *ele, *up, *down;
+    int move_ends;
 
-   move_ends = check_ends(stack);
+    move_ends = check_ends(stack);
 
-   ele = stack->curr;
-   if (ele) {
-     stack->n--;
+    ele = stack->curr;
+    if (ele) {
+        stack->n--;
 
-     up = ele->up;  down = ele->down;
-     if (up) up->down = down;
-     if (down) down->up = up;
-     if (mv_up) {
-        stack->curr = up;
-     } else {
-        stack->curr = down;
-     }
+        up = ele->up;
+        down = ele->down;
+        if (up) up->down = down;
+        if (down) down->up = up;
+        if (mv_up) {
+            stack->curr = up;
+        } else {
+            stack->curr = down;
+        }
 
-     if ((move_ends == MOVE_TOP) || (move_ends == MOVE_BOTH)) stack->top = down;
-     if ((move_ends == MOVE_BOTTOM) || (move_ends == MOVE_BOTH)) stack->bottom = up;
+        if ((move_ends == MOVE_TOP) || (move_ends == MOVE_BOTH)) stack->top = down;
+        if ((move_ends == MOVE_BOTTOM) || (move_ends == MOVE_BOTH)) stack->bottom = up;
 
-     return(ele);
-   } else {
-     return(NULL);
-   }
+        return(ele);
+    } else {
+        return(NULL);
+    }
 }
 
 
@@ -451,16 +448,15 @@ Stack_ele_t *stack_unlink_current(Stack_t *stack, int mv_up) {
 //     below (mv_up=0) the deleted element.
 //***************************************************
 
-int delete_current(Stack_t *stack, int mv_up, int data_also)
-{
-  Stack_ele_t *ele = stack_unlink_current(stack, mv_up);
+int delete_current(Stack_t *stack, int mv_up, int data_also) {
+    Stack_ele_t *ele = stack_unlink_current(stack, mv_up);
 
-  if (ele != NULL) {
-     if (data_also) free(ele->data);
-     free(ele);
-     return(1);
-  } else {
-     return(0);
-  }
+    if (ele != NULL) {
+        if (data_also) free(ele->data);
+        free(ele);
+        return(1);
+    } else {
+        return(0);
+    }
 }
 
