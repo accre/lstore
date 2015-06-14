@@ -23,9 +23,9 @@ typedef Stack_t mq_worker_table_t;
 typedef Stack_t mq_processing_queue;
 
 typedef struct {
-	int free_slots;
-	char *address;
-	// Will later have job type(s)
+int free_slots;
+char *address;
+// Will later have job type(s)
 } mq_worker_t;
 
 // worker table functions

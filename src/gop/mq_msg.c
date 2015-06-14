@@ -40,18 +40,17 @@ http://www.accre.vanderbilt.edu
 //  mq_get_frame - Returns the frame data
 //**************************************************************
 
-int mq_get_frame(mq_frame_t *f, void **data, int *size)
-{
-  if (f == NULL) {
-     *data = NULL;
-     *size = 0;
-     return(0);
-  }
+int mq_get_frame(mq_frame_t *f, void **data, int *size) {
+    if (f == NULL) {
+        *data = NULL;
+        *size = 0;
+        return(0);
+    }
 
-  *size = f->len;
-  *data = f->data;
+    *size = f->len;
+    *data = f->data;
 
-  return(f->auto_free);
+    return(f->auto_free);
 }
 
 //*************************************************************
@@ -60,111 +59,138 @@ int mq_get_frame(mq_frame_t *f, void **data, int *size)
 //    caller is responsible for freeing the data.
 //*************************************************************
 
-char *mq_frame_strdup(mq_frame_t *f)
-{
-  char *data, *str;
-  int n;
+char *mq_frame_strdup(mq_frame_t *f) {
+    char *data, *str;
+    int n;
 
-  mq_get_frame(f, (void **)&data, &n);
+    mq_get_frame(f, (void **)&data, &n);
 
-  if (data == NULL) return(NULL);
+    if (data == NULL) return(NULL);
 
-  type_malloc(str, char, n+1);
-  str[n] = 0;
-  memcpy(str, data, n);
+    type_malloc(str, char, n+1);
+    str[n] = 0;
+    memcpy(str, data, n);
 
-  return(str);
+    return(str);
 }
 
 //*************************************************************
 // quick stack related msg routines
 //*************************************************************
 
-mq_msg_t *mq_msg_new() { return(new_stack()); }
-mq_frame_t *mq_msg_first(mq_msg_t *msg) { move_to_top(msg); return((mq_frame_t *)get_ele_data(msg)); }
-mq_frame_t *mq_msg_last(mq_msg_t *msg) { move_to_bottom(msg); return((mq_frame_t *)get_ele_data(msg)); }
-mq_frame_t *mq_msg_next(mq_msg_t *msg) { move_down(msg); return((mq_frame_t *)get_ele_data(msg)); }
-mq_frame_t *mq_msg_prev(mq_msg_t *msg) { move_up(msg); return((mq_frame_t *)get_ele_data(msg)); }
-mq_frame_t *mq_msg_current(mq_msg_t *msg) { return((mq_frame_t *)get_ele_data(msg)); }
-mq_frame_t *mq_msg_pluck(mq_msg_t *msg, int move_up) { mq_frame_t *f = get_ele_data(msg); delete_current(msg, move_up, 0); return(f); }
-void mq_msg_insert_above(mq_msg_t *msg, mq_frame_t *f) { insert_above(msg, f); }
-void mq_msg_insert_below(mq_msg_t *msg, mq_frame_t *f) { insert_below(msg, f); }
-void mq_msg_push_frame(mq_msg_t *msg, mq_frame_t *f) { push(msg, f); }
-void mq_msg_append_frame(mq_msg_t *msg, mq_frame_t *f) { move_to_bottom(msg); insert_below(msg, f); }
-
-void mq_frame_set(mq_frame_t *f, void *data, int len, int auto_free)
-{
-  f->data = data;
-  f->len = len;
-  f->auto_free = auto_free;
+mq_msg_t *mq_msg_new() {
+    return(new_stack());
+}
+mq_frame_t *mq_msg_first(mq_msg_t *msg) {
+    move_to_top(msg);
+    return((mq_frame_t *)get_ele_data(msg));
+}
+mq_frame_t *mq_msg_last(mq_msg_t *msg) {
+    move_to_bottom(msg);
+    return((mq_frame_t *)get_ele_data(msg));
+}
+mq_frame_t *mq_msg_next(mq_msg_t *msg) {
+    move_down(msg);
+    return((mq_frame_t *)get_ele_data(msg));
+}
+mq_frame_t *mq_msg_prev(mq_msg_t *msg) {
+    move_up(msg);
+    return((mq_frame_t *)get_ele_data(msg));
+}
+mq_frame_t *mq_msg_current(mq_msg_t *msg) {
+    return((mq_frame_t *)get_ele_data(msg));
+}
+mq_frame_t *mq_msg_pluck(mq_msg_t *msg, int move_up) {
+    mq_frame_t *f = get_ele_data(msg);
+    delete_current(msg, move_up, 0);
+    return(f);
+}
+void mq_msg_insert_above(mq_msg_t *msg, mq_frame_t *f) {
+    insert_above(msg, f);
+}
+void mq_msg_insert_below(mq_msg_t *msg, mq_frame_t *f) {
+    insert_below(msg, f);
+}
+void mq_msg_push_frame(mq_msg_t *msg, mq_frame_t *f) {
+    push(msg, f);
+}
+void mq_msg_append_frame(mq_msg_t *msg, mq_frame_t *f) {
+    move_to_bottom(msg);
+    insert_below(msg, f);
 }
 
-mq_frame_t *mq_frame_new(void *data, int len, int auto_free)
-{
-  mq_frame_t *f;
-
-  type_malloc(f, mq_frame_t, 1);
-  mq_frame_set(f, data, len, auto_free);
-
-  return(f);
+void mq_frame_set(mq_frame_t *f, void *data, int len, int auto_free) {
+    f->data = data;
+    f->len = len;
+    f->auto_free = auto_free;
 }
 
-mq_frame_t *mq_frame_dup(mq_frame_t *f)
-{
-  void *data, *copy;
-  int size;
+mq_frame_t *mq_frame_new(void *data, int len, int auto_free) {
+    mq_frame_t *f;
 
-  mq_get_frame(f, &data, &size);
-  if (size == 0) {
-     copy = NULL;
-  } else {
-    type_malloc(copy, void, size);
-    memcpy(copy, data, size);
-  }
+    type_malloc(f, mq_frame_t, 1);
+    mq_frame_set(f, data, len, auto_free);
 
-  return(mq_frame_new(copy, size, MQF_MSG_AUTO_FREE));
+    return(f);
 }
 
-void mq_frame_destroy(mq_frame_t *f)
-{
-   if ((f->auto_free == MQF_MSG_AUTO_FREE) && (f->data)) {
-      free(f->data);
-   } else if (f->auto_free == MQF_MSG_INTERNAL_FREE) {
-      zmq_msg_close(&(f->zmsg));
-   }
-   free(f);
+mq_frame_t *mq_frame_dup(mq_frame_t *f) {
+    void *data, *copy;
+    int size;
+
+    mq_get_frame(f, &data, &size);
+    if (size == 0) {
+        copy = NULL;
+    } else {
+        type_malloc(copy, void, size);
+        memcpy(copy, data, size);
+    }
+
+    return(mq_frame_new(copy, size, MQF_MSG_AUTO_FREE));
 }
 
-void mq_msg_destroy(mq_msg_t *msg)
-{
-  mq_frame_t *f;
-
-  while ((f = pop(msg)) != NULL) {
-       mq_frame_destroy(f);
-  }
-
-  free_stack(msg, 0);
+void mq_frame_destroy(mq_frame_t *f) {
+    if ((f->auto_free == MQF_MSG_AUTO_FREE) && (f->data)) {
+        free(f->data);
+    } else if (f->auto_free == MQF_MSG_INTERNAL_FREE) {
+        zmq_msg_close(&(f->zmsg));
+    }
+    free(f);
 }
 
-void mq_msg_push_mem(mq_msg_t *msg, void *data, int len, int auto_free) { push(msg, mq_frame_new(data, len, auto_free)); }
-void mq_msg_append_mem(mq_msg_t *msg, void *data, int len, int auto_free) { move_to_bottom(msg); insert_below(msg, mq_frame_new(data, len, auto_free)); }
+void mq_msg_destroy(mq_msg_t *msg) {
+    mq_frame_t *f;
+
+    while ((f = pop(msg)) != NULL) {
+        mq_frame_destroy(f);
+    }
+
+    free_stack(msg, 0);
+}
+
+void mq_msg_push_mem(mq_msg_t *msg, void *data, int len, int auto_free) {
+    push(msg, mq_frame_new(data, len, auto_free));
+}
+void mq_msg_append_mem(mq_msg_t *msg, void *data, int len, int auto_free) {
+    move_to_bottom(msg);
+    insert_below(msg, mq_frame_new(data, len, auto_free));
+}
 
 
 //*************************************************************
 // mq_msg_total_size - Total size of mesg
 //*************************************************************
 
-int mq_msg_total_size(mq_msg_t *msg)
-{
-  mq_frame_t *f;
-  int n;
+int mq_msg_total_size(mq_msg_t *msg) {
+    mq_frame_t *f;
+    int n;
 
-  n = 0;
-  move_to_top(msg);
-  while ((f = get_ele_data(msg)) != NULL) {
-    n += f->len;
-    move_down(msg);
-  }
+    n = 0;
+    move_to_top(msg);
+    while ((f = get_ele_data(msg)) != NULL) {
+        n += f->len;
+        move_down(msg);
+    }
 
-  return(n);
+    return(n);
 }

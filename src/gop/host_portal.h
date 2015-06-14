@@ -52,65 +52,65 @@ extern "C" {
 
 
 typedef struct {       //** Contains information about the depot including all connections
-  char skey[512];         //** Search key used for lookups its "host:port:type:..." Same as for the op
-  char host[512];         //** Hostname
-  int oops_neg;           //** All the oops are just for tracking down a bug and should be removed once it's found and fixed.
-  int oops_check;
-  int oops_recv_start;
-  int oops_recv_end;
-  int oops_send_start;
-  int oops_send_end;
-  int oops_spawn;
-  int oops_spawn_send_err;
-  int oops_spawn_recv_err;
-  int oops_spawn_retry;
-  int port;               //** port
-  int invalid_host;       //** Flag that this host is not resolvable
-  int64_t workload;       //** Amount of work left in the feeder que
-  int64_t executing_workload;   //** Amount of work in the executing queues
-  int64_t cmds_processed; //** Number of commands processed
-  int failed_conn_attempts;     //** Failed net_connects()
-  int successful_conn_attempts; //** Successful net_connects()
-  int abort_conn_attempts; //** IF this many failed connection requests occur in a row we abort
-  int n_conn;             //** Number of current depot connections
-  int stable_conn;        //** Last count of "stable" connections
-  int max_conn;           //** Max allowed connections, normally global_config->max_threads
-  int min_conn;           //** Max allowed connections, normally global_config->min_threads
-  int sleeping_conn;      //** Connections currently sleeping due to a depot load error
-  int closing_conn;       //** Connetions currently being closed
-  apr_time_t pause_until;     //** Forces the system to wait, if needed, before making new conn
-  Stack_t *conn_list;     //** List of connections
-  Stack_t *que;           //** Task que
-  Stack_t *closed_que;    //** List of closed but not reaped connections
-  Stack_t *direct_list;     //** List of dedicated dportal/dc for the traditional direct execution calls
-  apr_thread_mutex_t *lock;  //** shared lock
-  apr_thread_cond_t *cond;
-  apr_pool_t *mpool;
-  void *connect_context;   //** Private information needed to make a host connection
-  portal_context_t *context;  //** Specific portal implementaion
+    char skey[512];         //** Search key used for lookups its "host:port:type:..." Same as for the op
+    char host[512];         //** Hostname
+    int oops_neg;           //** All the oops are just for tracking down a bug and should be removed once it's found and fixed.
+    int oops_check;
+    int oops_recv_start;
+    int oops_recv_end;
+    int oops_send_start;
+    int oops_send_end;
+    int oops_spawn;
+    int oops_spawn_send_err;
+    int oops_spawn_recv_err;
+    int oops_spawn_retry;
+    int port;               //** port
+    int invalid_host;       //** Flag that this host is not resolvable
+    int64_t workload;       //** Amount of work left in the feeder que
+    int64_t executing_workload;   //** Amount of work in the executing queues
+    int64_t cmds_processed; //** Number of commands processed
+    int failed_conn_attempts;     //** Failed net_connects()
+    int successful_conn_attempts; //** Successful net_connects()
+    int abort_conn_attempts; //** IF this many failed connection requests occur in a row we abort
+    int n_conn;             //** Number of current depot connections
+    int stable_conn;        //** Last count of "stable" connections
+    int max_conn;           //** Max allowed connections, normally global_config->max_threads
+    int min_conn;           //** Max allowed connections, normally global_config->min_threads
+    int sleeping_conn;      //** Connections currently sleeping due to a depot load error
+    int closing_conn;       //** Connetions currently being closed
+    apr_time_t pause_until;     //** Forces the system to wait, if needed, before making new conn
+    Stack_t *conn_list;     //** List of connections
+    Stack_t *que;           //** Task que
+    Stack_t *closed_que;    //** List of closed but not reaped connections
+    Stack_t *direct_list;     //** List of dedicated dportal/dc for the traditional direct execution calls
+    apr_thread_mutex_t *lock;  //** shared lock
+    apr_thread_cond_t *cond;
+    apr_pool_t *mpool;
+    void *connect_context;   //** Private information needed to make a host connection
+    portal_context_t *context;  //** Specific portal implementaion
 } host_portal_t;
 
 typedef struct {            //** Individual depot connection in conn_list
-   int recv_up;
-   int cmd_count;
-   int curr_workload;
-   int shutdown_request;
-   int net_connect_status;
-   int start_stable;
-   int send_down;
-   int closing;
-   apr_time_t last_used;          //** Time the last command completed
-   NetStream_t *ns;           //** Socket
-   Stack_t *pending_stack;    //** Local task que. An op  is mpoved from the parent que to here
-   Stack_ele_t *my_pos;       //** My position int the dp conn list
-   op_generic_t *curr_op;   //** Sending phase op that could have failed
-   host_portal_t *hp;         //** Pointerto parent depot portal with the todo list
-   apr_thread_mutex_t *lock;      //** shared lock
-   apr_thread_cond_t *send_cond;
-   apr_thread_cond_t *recv_cond;
-   apr_thread_t *send_thread; //** Sending thread
-   apr_thread_t *recv_thread; //** recving thread
-   apr_pool_t   *mpool;       //** MEmory pool for
+    int recv_up;
+    int cmd_count;
+    int curr_workload;
+    int shutdown_request;
+    int net_connect_status;
+    int start_stable;
+    int send_down;
+    int closing;
+    apr_time_t last_used;          //** Time the last command completed
+    NetStream_t *ns;           //** Socket
+    Stack_t *pending_stack;    //** Local task que. An op  is mpoved from the parent que to here
+    Stack_ele_t *my_pos;       //** My position int the dp conn list
+    op_generic_t *curr_op;   //** Sending phase op that could have failed
+    host_portal_t *hp;         //** Pointerto parent depot portal with the todo list
+    apr_thread_mutex_t *lock;      //** shared lock
+    apr_thread_cond_t *send_cond;
+    apr_thread_cond_t *recv_cond;
+    apr_thread_t *send_thread; //** Sending thread
+    apr_thread_t *recv_thread; //** recving thread
+    apr_pool_t   *mpool;       //** MEmory pool for
 } host_connection_t;
 
 
