@@ -12,8 +12,8 @@
  * that both the copyright notice and this permission notice appear in
  * supporting documentation.
  *
- * Neither the Institution (University of Tennessee) nor the Authors 
- * make any representations about the suitability of this software for 
+ * Neither the Institution (University of Tennessee) nor the Authors
+ * make any representations about the suitability of this software for
  * any purpose. This software is provided ``as is'' without express or
  * implied warranty.
  *
@@ -57,12 +57,12 @@
 # define   IBP_PUSH              20
 # define   IBP_PULL              21
 # define   IBP_PUSH_CHKSUM       22
-# define   IBP_PULL_CHKSUM       23  
-# define   IBP_LOAD_CHKSUM       24  
+# define   IBP_PULL_CHKSUM       23
+# define   IBP_LOAD_CHKSUM       24
 # define   IBP_SEND_CHKSUM       25
 # define   IBP_PHOEBUS_SEND_CHKSUM 26
-# define   IBP_WRITE_CHKSUM      27  
-# define   IBP_STORE_CHKSUM      28  
+# define   IBP_WRITE_CHKSUM      27
+# define   IBP_STORE_CHKSUM      28
 # define   IBP_ALLOCATE_CHKSUM   29
 # define   IBP_SPLIT_ALLOCATE_CHKSUM 30
 # define   IBP_GET_CHKSUM        31
@@ -189,15 +189,15 @@
 
 # define   IBP_SOFT                  1
 # define   IBP_HARD                  2
-# define   IBP_VOLATILE       	     IBP_SOFT 
-# define   IBP_STABLE	      	     IBP_HARD 
+# define   IBP_VOLATILE       	     IBP_SOFT
+# define   IBP_STABLE	      	     IBP_HARD
 
 # define   IBP_ROUTINE_CHECK         3
 
 # define   IBP_BYTEARRAY             1
-# define   IBP_BUFFER                2   
+# define   IBP_BUFFER                2
 # define   IBP_FIFO                  3
-# define   IBP_CIRQ                  4   
+# define   IBP_CIRQ                  4
 
 # define   IBP_DATA_PORT             6714
 # define   IBP_MAXCONN               100

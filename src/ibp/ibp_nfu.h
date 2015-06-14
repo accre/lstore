@@ -12,8 +12,8 @@
  * that both the copyright notice and this permission notice appear in
  * supporting documentation.
  *
- * Neither the Institution (University of Tennessee) nor the Authors 
- * make any representations about the suitability of this software for 
+ * Neither the Institution (University of Tennessee) nor the Authors
+ * make any representations about the suitability of this software for
  * any purpose. This software is provided ``as is'' without express or
  * implied warranty.
  *
@@ -26,9 +26,9 @@
  *
  */
 
-/*! \file ibp_nfu.h 
+/*! \file ibp_nfu.h
 
-	This file includes definitions of the IBP NFU(networking function unit) APIs 
+	This file includes definitions of the IBP NFU(networking function unit) APIs
   and data structure.
 */
 
@@ -37,25 +37,26 @@
 
 # include "ibp_ClientLib.h"
 
-# ifdef __cplusplus 
-extern "C" { 
-# endif 
+# ifdef __cplusplus
+extern "C" {
+# endif
 
 typedef enum { IBP_REF_RD,IBP_REF_WR,IBP_REF_RDWR,
-               IBP_VAL_IN,IBP_VAL_OUT,IBP_VAL_INOUT } IOTYPE;
+               IBP_VAL_IN,IBP_VAL_OUT,IBP_VAL_INOUT
+             } IOTYPE;
 /*typedef enum { DATA_CAP , DATA_BUF } DATATYPE; */
 
 typedef struct {
-  IOTYPE              ioType; /* input and/or output */
-  void                *data;
-  int                 offset;
-  int                 len;
-}PARAMETER;
+    IOTYPE              ioType; /* input and/or output */
+    void                *data;
+    int                 offset;
+    int                 len;
+} PARAMETER;
 
 int IBP_nfu_op( IBP_depot depot, int opcode, int nPara, PARAMETER *paras ,IBP_timer timeout);
 
 # ifdef __cplusplus
 }
-# endif 
+# endif
 
 # endif /* _IBP_NFU_H */

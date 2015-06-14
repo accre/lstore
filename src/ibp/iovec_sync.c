@@ -45,36 +45,35 @@ http://www.accre.vanderbilt.edu
 // ibp_sync_execute - Handles the sync iovec operations
 //*************************************************************
 
-int ibp_sync_execute(opque_t *q, int nthreads)
-{
-  Stack_t *tasks;
-  op_generic_t *gop;
+int ibp_sync_execute(opque_t *q, int nthreads) {
+    Stack_t *tasks;
+    op_generic_t *gop;
 
-  log_printf(15, "ibp_sync_execute: Start! ncommands=%d\n", stack_size(q->qd.list));
-  default_sort_ops(NULL, q);
+    log_printf(15, "ibp_sync_execute: Start! ncommands=%d\n", stack_size(q->qd.list));
+    default_sort_ops(NULL, q);
 
-  q = new_opque();
-  opque_start_execution(q);
+    q = new_opque();
+    opque_start_execution(q);
 
-  tasks = q->qd.list;
-  q->qd.list = new_stack();
+    tasks = q->qd.list;
+    q->qd.list = new_stack();
 
-  while ((  gop = (op_generic_t *)pop(tasks)) != NULL) {
-     opque_add(q, gop);
-     if (opque_tasks_left(q) >= nthreads) {
-        opque_waitany(q);
-     }
+    while ((  gop = (op_generic_t *)pop(tasks)) != NULL) {
+        opque_add(q, gop);
+        if (opque_tasks_left(q) >= nthreads) {
+            opque_waitany(q);
+        }
 
-     gop = (op_generic_t *)pop(tasks);
-  }
+        gop = (op_generic_t *)pop(tasks);
+    }
 
 
-  if (opque_tasks_failed(q) == 0) {
-     return(IBP_OK);
-  } else {
-     return(IBP_E_GENERIC);
-  }
+    if (opque_tasks_failed(q) == 0) {
+        return(IBP_OK);
+    } else {
+        return(IBP_E_GENERIC);
+    }
 
-  
+
 }
 

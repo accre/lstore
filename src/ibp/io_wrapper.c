@@ -25,7 +25,7 @@ Advanced Computing Center for Research and Education
 230 Appleton Place
 Nashville, TN 37203
 http://www.accre.vanderbilt.edu
-*/ 
+*/
 
 #define _log_module_index 136
 
@@ -42,59 +42,56 @@ int _nthreads = 1;
 // io_set_mode - Sets the IO mode
 //*************************************************************************
 
-void io_set_mode(int sync_transfer, int print_progress, int nthreads)
-{
-  _sync_transfer = sync_transfer;
-  _print_progress = print_progress;
-  _nthreads = nthreads;
+void io_set_mode(int sync_transfer, int print_progress, int nthreads) {
+    _sync_transfer = sync_transfer;
+    _print_progress = print_progress;
+    _nthreads = nthreads;
 }
 
 //*************************************************************************
 //  io_start - Simple wrapper for sync/async to start execution
 //*************************************************************************
 
-void io_start(opque_t *q)
-{
-  if (_sync_transfer == 0) opque_start_execution(q);
+void io_start(opque_t *q) {
+    if (_sync_transfer == 0) opque_start_execution(q);
 }
 
 //*************************************************************************
 //  io_waitall - Simple wrapper for sync/async waitall
 //*************************************************************************
 
-int io_waitall(opque_t *q)
-{
-  int ibp_err, err, nleft;
-  op_generic_t *op;
+int io_waitall(opque_t *q) {
+    int ibp_err, err, nleft;
+    op_generic_t *op;
 
-log_printf(15, "io_waitall: sync_transfer=%d\n", _sync_transfer);
-  if (_sync_transfer == 1) {
-    ibp_err = ibp_sync_execute(q, _nthreads);
-    err = ( ibp_err == IBP_OK) ? 0 : 1;
-  } else {
-    if (_print_progress == 0) {
-       err = (opque_waitall(q) == OP_STATE_SUCCESS) ? 0 : 1;
+    log_printf(15, "io_waitall: sync_transfer=%d\n", _sync_transfer);
+    if (_sync_transfer == 1) {
+        ibp_err = ibp_sync_execute(q, _nthreads);
+        err = ( ibp_err == IBP_OK) ? 0 : 1;
     } else {
-       do {
-         nleft = opque_tasks_left(q);
-         printf("%d ", nleft);
-         do {
-            op = opque_get_next_finished(q);
-            if (op != NULL) gop_free(op, OP_DESTROY);
-         } while (op != NULL);
+        if (_print_progress == 0) {
+            err = (opque_waitall(q) == OP_STATE_SUCCESS) ? 0 : 1;
+        } else {
+            do {
+                nleft = opque_tasks_left(q);
+                printf("%d ", nleft);
+                do {
+                    op = opque_get_next_finished(q);
+                    if (op != NULL) gop_free(op, OP_DESTROY);
+                } while (op != NULL);
 
-         op = opque_waitany(q);
-         if (op != NULL) gop_free(op, OP_DESTROY);
-       } while (nleft > 0);
- 
-       printf(" --\n");
-       err = opque_tasks_failed(q);
+                op = opque_waitany(q);
+                if (op != NULL) gop_free(op, OP_DESTROY);
+            } while (nleft > 0);
+
+            printf(" --\n");
+            err = opque_tasks_failed(q);
+        }
+
+        log_printf(15, "io_waitall: err=%d nfailed=%d nleft=%d\n", err, opque_tasks_failed(q), opque_tasks_left(q));
+//flush_log();
     }
 
-log_printf(15, "io_waitall: err=%d nfailed=%d nleft=%d\n", err, opque_tasks_failed(q), opque_tasks_left(q));
-//flush_log();
-  }
-
-  return(err);
+    return(err);
 }
 
