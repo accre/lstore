@@ -44,6 +44,8 @@ static char *_fsck_keys[] = { "system.owner", "system.inode", "system.exnode", "
 static char *_lio_create_keys[] = { "system.owner", "os.timestamp.system.create", "os.timestamp.system.modify_data",
        "os.timestamp.system.modify_attr", "system.inode", "system.exnode", "system.exnode.size"};
 
+char *_lio_stat_keys[] = { "system.inode", "system.modify_data", "system.modify_attr", "system.exnode.size", "os.type", "os.link_count", "os.link" };
+
 typedef struct {
   lio_config_t *lc;
   creds_t *creds;
@@ -1047,6 +1049,124 @@ int lio_next_attr(lio_config_t *lc, os_attr_iter_t *it, char **key, void **val, 
 void lio_destroy_attr_iter(lio_config_t *lc, os_attr_iter_t *it)
 {
   os_destroy_attr_iter(lc->os, it);
+}
+
+//*************************************************************************
+// ftype_lio2posix - Converts a LIO filetype to a posix mode
+//*************************************************************************
+
+mode_t ftype_lio2posix(int ftype)
+{
+  mode_t mode;
+
+  mode = 0;
+  if (ftype & OS_OBJECT_SYMLINK) {
+     mode = S_IFLNK | 0777;
+  } else if (ftype & OS_OBJECT_DIR) {
+     mode = S_IFDIR | 0755;
+  } else {
+//     mode = S_IFREG | 0444;
+     mode = S_IFREG | 0666;  //** Make it so that everything has RW access
+  }
+
+  return(mode);
+}
+
+//*************************************************************************
+// _lio_parse_stat_vals - Parses the stat values received
+//   NOTE: All the val[*] strings are free'ed!
+//*************************************************************************
+
+void _lio_parse_stat_vals(char *fname, struct stat *stat, char **val, int *v_size, char *mount_prefix, char **flink)
+{
+  int i, n, readlink;
+  char *link;
+  ex_id_t ino;
+  ex_off_t len;
+  int ts;
+
+  ino = 0;
+  if (val[0] != NULL) {
+     sscanf(val[0], XIDT, &ino);
+  } else {
+     generate_ex_id(&ino);
+    log_printf(0, "Missing inode generating a temp fake one! ino=" XIDT "\n", ino);
+  }
+  stat->st_ino = ino;
+
+  //** Modify TS's
+  ts = 0;
+  if (val[1] != NULL) lio_get_timestamp(val[1], &ts, NULL);
+  stat->st_mtime = ts;
+  ts = 0;
+  if (val[1] != NULL) lio_get_timestamp(val[2], &ts, NULL);
+  stat->st_ctime = ts;
+  stat->st_atime = stat->st_ctime;
+
+  //** Get the symlink if it exists and optionally store it
+  readlink = 0;
+  if (val[6] != NULL) {
+     link = val[6];
+     readlink = strlen(link);
+log_printf(15, "inode->link=%s mount_point=%s moun_point_len=%d\n", link, mount_prefix, strlen(mount_prefix));
+     if (link[0] == '/') { //** If an absolute link then we need to add the mount prefix back
+        readlink += strlen(mount_prefix) + 1;
+        if (flink != NULL) {
+           type_malloc(*flink, char, readlink+1);
+           snprintf(*flink, readlink+1, "%s%s", mount_prefix, link);
+        }
+     } else if (flink != NULL) {
+        *flink = link;
+        val[6] = NULL;  //** Don't want to delete it on cleanup
+     }
+
+  }
+
+  //** File types
+  n = 0;
+  if (val[4] != NULL) sscanf(val[4], "%d", &n);
+  stat->st_mode = ftype_lio2posix(n);
+
+  len = 0;
+  if (val[3] != NULL) sscanf(val[3], XOT, &len);
+
+  stat->st_size = (n & OS_OBJECT_SYMLINK) ? readlink : len;
+  stat->st_blksize = 4096;
+  stat->st_blocks = stat->st_size / 512;
+  if (stat->st_size < 1024) stat->st_blksize = 1024;
+
+  //** N-links
+  n = 0;
+  if (val[5] != NULL) sscanf(val[5], "%d", &n);
+  stat->st_nlink = n;
+
+  //** Clean up
+  for (i=0; i<_lio_stat_key_size; i++) {
+     if (val[i] != NULL) free(val[i]);
+  }
+}
+
+//***********************************************************************
+// lio_stat - Do a simple file stat
+//***********************************************************************
+
+int lio_stat(lio_config_t *lc, creds_t *creds, char *fname, struct stat *stat, char *mount_prefix, char **readlink)
+{
+  char *val[_lio_stat_key_size];
+  int v_size[_lio_stat_key_size], i, err;
+
+  log_printf(1, "fname=%s\n", fname); flush_log();
+
+  for (i=0; i<_lio_stat_key_size; i++) v_size[i] = -lc->max_attr;
+  err = lio_get_multiple_attrs(lc, creds, fname, NULL, _lio_stat_keys, (void **)val, v_size, _lio_stat_key_size);
+
+  if (err != OP_STATE_SUCCESS) { return(-ENOENT); }
+  _lio_parse_stat_vals(fname, stat, val, v_size, mount_prefix, readlink);
+
+  log_printf(1, "END fname=%s err=%d\n", fname, err); flush_log();
+
+  return(0);
+
 }
 
 

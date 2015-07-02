@@ -326,7 +326,7 @@ int lfs_opendir(const char *fname, struct fuse_file_info *fi)
      free(de2);
      return(-ENOENT);
   }
-  de2->dentry = strdup(".");
+  de2->dentry = strdup("..");
   insert_below(dit->stack, de2);
 
   //** Compose our reply

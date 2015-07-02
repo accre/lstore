@@ -56,6 +56,9 @@ extern "C" {
 #define LIO_FSCK_USER        4
 #define LIO_FSCK_SIZE_REPAIR 8
 
+extern char *_lio_stat_keys[];
+#define  _lio_stat_key_size 7
+
 typedef struct lio_config_s lio_config_t;
 typedef struct lio_fn_s lio_fn_t;
 typedef struct lio_fsck_iter_s lio_fsck_iter_t;
@@ -207,6 +210,10 @@ int lio_read_ex(lio_fd_t *fd, int n_iov, ex_iovec_t *iov, tbuffer_t *buffer, ex_
 int lio_write(lio_fd_t *fd, char *buf, ex_off_t size, off_t off);
 int lio_writev(lio_fd_t *fd, iovec_t *iov, int n_iov, ex_off_t size, off_t off);
 int lio_write_ex(lio_fd_t *fd, int n_iov, ex_iovec_t *iov, tbuffer_t *buffer, ex_off_t boff);
+
+mode_t ftype_lio2posix(int ftype);
+void _lio_parse_stat_vals(char *fname, struct stat *stat, char **val, int *v_size, char *mount_prefix, char **flink);
+int lio_stat(lio_config_t *lc, creds_t *creds, char *fname, struct stat *stat, char *mount_prefix, char **readlink);
 
 ex_off_t lio_seek(lio_fd_t *fd, ex_off_t offset, int whence);
 ex_off_t lio_tell(lio_fd_t *fd);
