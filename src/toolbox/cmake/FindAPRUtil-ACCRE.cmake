@@ -12,11 +12,11 @@
 # APR first.
 
 # Find the *relative* include path
-find_path(apr_inc apr-1/apr.h)
+find_path(apr_inc apr-ACCRE-1/apr.h)
 
 # Now convert it to the full path
 if (apr_inc)     
-   find_path(APRUTIL_INCLUDE_DIR apr.h ${apr_inc}/apr-1 )
+   find_path(APRUTIL_INCLUDE_DIR apr.h ${apr_inc}/apr-ACCRE-1 )
 else (apr_inc)
    find_path(APRUTIL_INCLUDE_DIR apr.h)
 endif (apr_inc)
