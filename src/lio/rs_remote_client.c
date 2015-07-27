@@ -261,7 +261,7 @@ log_printf(5, "rid_config_len=%d\n", n_config);
         apr_thread_mutex_unlock(rsrc->lock);
         goto fail;
      }
-               
+
      fd = fopen(rsrc->child_target_file, "w");
      assert(fwrite(config, n_config, 1, fd) == 1);
      fclose(fd);
@@ -421,8 +421,15 @@ log_printf(15, "update completed status=%d\n", status.op_status); flush_log();
         gop_free(gop, OP_DESTROY);
         gop = NULL;
      }
-log_printf(15, "loop end n=%d\n", n);
+log_printf(15, "loop end n=%d gop=%p\n", n, gop);
   } while (n == 0);
+
+  //** Still have a pending GOP so abort it
+  if (gop != NULL) {
+     _rsrc_update_abort(rs);
+     gop_waitall(gop);
+     gop_free(gop, OP_DESTROY);
+  }
 
 log_printf(15, "EXITING\n");
 
