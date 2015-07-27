@@ -3250,6 +3250,11 @@ int osfile_next_attr(os_attr_iter_t *oit, char **key, void **val, int *v_size)
 //     it->va_index = apr_hash_next(it->va_index);
   }
 
+  if (it->d == NULL) {
+     log_printf(0, "ERROR: it->d=NULL\n");
+     return(-1);
+  }
+
   while ((entry = readdir(it->d)) != NULL) {
      for (i=0; i<rex->n; i++) {
 //       n = regexec(&(rex->regex_entry[i].compiled), entry->d_name, 0, NULL, 0);
