@@ -120,7 +120,7 @@ void _lfs_parse_stat_vals(lio_fuse_t *lfs, char *fname, struct stat *stat, char 
 {
   int i, n, readlink;
   char *link;
-  lio_fd_t *fd;
+  lio_file_handle_t *fh;
   ex_id_t ino;
   ex_off_t len;
   int ts;
@@ -161,12 +161,12 @@ log_printf(15, "inode->link=%s mount_point=%s moun_point_len=%d\n", link, lfs->m
 
   //** Size
   lfs_lock(lfs);
-  fd = apr_hash_get(lfs->open_files, fname, APR_HASH_KEY_STRING);
-  if (fd == NULL) {
+  fh = apr_hash_get(lfs->open_files, fname, APR_HASH_KEY_STRING);
+  if (fh == NULL) {
      len = 0;
      if (val[3] != NULL) sscanf(val[3], XOT, &len);
   } else {
-     len = lio_size(fd);
+     len = segment_size(fh->seg);
   }
   lfs_unlock(lfs);
 
@@ -493,17 +493,17 @@ log_printf(1, "remove err=%d\n", err);
 
 int lfs_object_remove(lio_fuse_t *lfs, const char *fname)
 {
-  lio_fd_t *fd;
+  lio_file_handle_t *fh;
 
   log_printf(1, "fname=%s\n", fname); flush_log();
 
   //** Check if it's open.  If so do a delayed removal
   lfs_lock(lfs);
-  fd = apr_hash_get(lfs->open_files, fname, APR_HASH_KEY_STRING);
-  if (fd != NULL) {
-     segment_lock(fd->fh->seg);
-     fd->fh->remove_on_close = 1;
-     segment_unlock(fd->fh->seg);
+  fh = apr_hash_get(lfs->open_files, fname, APR_HASH_KEY_STRING);
+  if (fh != NULL) {
+     segment_lock(fh->seg);
+     fh->remove_on_close = 1;
+     segment_unlock(fh->seg);
      lfs_unlock(lfs);
      return(0);
   }
@@ -540,6 +540,7 @@ int lfs_open(const char *fname, struct fuse_file_info *fi)
 {
   lio_fuse_t *lfs = lfs_get_context();
   lio_fd_t *fd;
+  lio_file_handle_t *fh;
   int mode;
 
   mode = 0;
@@ -564,7 +565,10 @@ int lfs_open(const char *fname, struct fuse_file_info *fi)
   fi->fh = (uint64_t)fd;
 
   lfs_lock(lfs);
-  apr_hash_set(lfs->open_files, fd->path, APR_HASH_KEY_STRING, fd);
+  fh = apr_hash_get(lfs->open_files, fname, APR_HASH_KEY_STRING);
+  if (fh == NULL) {
+     apr_hash_set(lfs->open_files, fd->path, APR_HASH_KEY_STRING, fd->fh);
+  }
   lfs_unlock(lfs);
   return(0);
 }
@@ -580,10 +584,15 @@ int lfs_release(const char *fname, struct fuse_file_info *fi)
   int err;
 
   lfs_lock(lfs);
-  apr_hash_set(lfs->open_files, fname, APR_HASH_KEY_STRING, NULL);
+  segment_lock(fd->fh->seg);
+  if (fd->fh->ref_count <= 1) {  //** Only remove it if I'm the last one
+     apr_hash_set(lfs->open_files, fname, APR_HASH_KEY_STRING, NULL);
+  }
+  segment_unlock(fd->fh->seg);
+
+  err = gop_sync_exec(gop_lio_close_object(fd)); // ** Close it but keep track of the error
   lfs_unlock(lfs);
 
-  err = gop_sync_exec(gop_lio_close_object(fd));
   if (err != OP_STATE_SUCCESS) {
      log_printf(0, "Failed closing file!  path=%s\n", fname);
      return(-EREMOTEIO);
