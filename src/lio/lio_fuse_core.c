@@ -556,7 +556,9 @@ int lfs_open(const char *fname, struct fuse_file_info *fi)
   if (fi->flags & O_CREAT) mode |= LIO_CREATE_MODE;
   if (fi->flags & O_TRUNC) mode |= LIO_TRUNCATE_MODE;
 
+  fi->fh = 0;
   gop_sync_exec(gop_lio_open_object(lfs->lc, lfs->lc->creds, (char *)fname, mode, NULL, &fd, 60));
+  log_printf(2, "fname=%s fd=%p\n", fname, fd);
   if (fd == NULL) {
      log_printf(0, "Failed opening file!  path=%s\n", fname);
      return(-EREMOTEIO);
@@ -582,6 +584,8 @@ int lfs_release(const char *fname, struct fuse_file_info *fi)
   lio_fuse_t *lfs = lfs_get_context();
   lio_fd_t *fd = (lio_fd_t *)fi->fh;
   int err;
+
+  log_printf(2, "fname=%d fd=%p\n", fname, fd);
 
   lfs_lock(lfs);
   segment_lock(fd->fh->seg);
@@ -615,9 +619,9 @@ int lfs_read(const char *fname, char *buf, size_t size, off_t off, struct fuse_f
 
   ex_off_t t1, t2;
   t1 = size; t2 = off;
-  log_printf(1, "fname=%s size=" XOT " off=" XOT "\n", fname, t1, t2); flush_log();
 
   fd = (lio_fd_t *)fi->fh;
+  log_printf(1, "fname=%s size=" XOT " off=" XOT " fd=%p\n", fname, t1, t2, fd); flush_log();
   if (fd == NULL) {
      log_printf(0, "ERROR: Got a null file desriptor\n");
      return(-EBADF);
@@ -714,9 +718,8 @@ int lfs_fsync(const char *fname, struct fuse_file_info *fi)
 
   now = apr_time_now();
 
-  log_printf(1, "START fname=%s\n", fname); flush_log();
-
   fd = (lio_fd_t *)fi->fh;
+  log_printf(1, "START fname=%s fd=%p\n", fname, fd); flush_log();
   if (fd == NULL) {
      return(-EBADF);
   }
