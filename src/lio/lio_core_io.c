@@ -205,6 +205,7 @@ int lio_update_exnode_attrs(lio_config_t *lc, creds_t *creds, exnode_t *ex, segm
   //** Update the exnode
   n = 3;
   val[0] = exp->text.text;  v_size[0] = strlen(val[0]);
+log_printf(0, "fname=%s exnode_size=%d exnode=%s\n", fname, v_size[0], exp->text.text);
   sprintf(buffer, XOT, ssize);
   val[1] = buffer; v_size[1] = strlen(val[1]);
   val[2] = NULL; v_size[2] = 0;
@@ -386,16 +387,19 @@ op_status_t lio_myopen_fn(void *arg, int id)
         err = gop_sync_exec(gop_lio_create_object(lc, op->creds, op->path, OS_OBJECT_FILE, NULL, NULL));
         if (err != OP_STATE_SUCCESS) {
            info_printf(lio_ifd, 1, "ERROR creating file(%s)!\n", op->path);
+           log_printf(1, "ERROR creating file(%s)!\n", op->path);
            free(op->path); *op->fd = NULL;
            return(op_failure_status);
         }
      } else if ((dtype & OS_OBJECT_DIR) > 0) { //** It's a dir so fail
         info_printf(lio_ifd, 1, "Destination(%s) is a dir!\n", op->path);
+        log_printf(1, "ERROR: Destination(%s) is a dir!\n", op->path);
         free(op->path); *op->fd = NULL;
         return(op_failure_status);
      }
   } else if (dtype == 0) { //** No file so return an error
      info_printf(lio_ifd, 20, "Destination(%s) doesn't exist!\n", op->path);
+     log_printf(1, "ERROR: Destination(%s) doesn't exist!\n", op->path);
      free(op->path); *op->fd = NULL;
      return(op_failure_status);
   }
@@ -409,6 +413,7 @@ op_status_t lio_myopen_fn(void *arg, int id)
 
   exnode = NULL;
   if (lio_load_file_handle_attrs(lc, op->creds, op->path, &ino, &exnode) != 0) {
+     log_printf(1, "ERROR loading attributes! fname=%s\n", op->path);
      free(fd);  *op->fd = NULL;
      free(op->path);
      return(op_failure_status);
@@ -418,6 +423,7 @@ op_status_t lio_myopen_fn(void *arg, int id)
   exp = exnode_exchange_text_parse(exnode);
   vid = exnode_exchange_get_default_view_id(exp);
   if (vid == 0) {  //** Make sure the vid is valid.
+     log_printf(1, "ERROR loading exnode! fname=%s\n", op->path);
      free(fd);  *op->fd = NULL;
      free(op->path);
      exnode_exchange_destroy(exp);
@@ -426,12 +432,13 @@ op_status_t lio_myopen_fn(void *arg, int id)
 
   lio_lock(lc);
   fh = _lio_get_file_handle(lc, vid);
+  log_printf(2, "fname=%s fh=%p\n", op->path, fh);
 
   if (fh != NULL) { //** Already open so just increment the ref count and return a new fd
      fh->ref_count++;
      fd->fh = fh;
      lio_unlock(lc);
-     free(op->path);
+     *op->fd = fd;
      exnode_exchange_destroy(exp);
      return(op_success_status);
   }
@@ -445,7 +452,7 @@ op_status_t lio_myopen_fn(void *arg, int id)
   //** Load it
   fh->ex = exnode_create();
   if (exnode_deserialize(fh->ex, exp, lc->ess) != 0) {
-     log_printf(0, "Bad exnode! fname=%s\n", fd->path);
+     log_printf(0, "ERROR: Bad exnode! fname=%s\n", fd->path);
      status.op_status = OP_STATE_FAILURE;  status.error_code = -EFAULT;
      goto cleanup;
   }
@@ -453,7 +460,7 @@ op_status_t lio_myopen_fn(void *arg, int id)
   //** Get the default view to use
   fh->seg = exnode_get_default(fh->ex);
   if (fh->seg == NULL) {
-     log_printf(0, "No default segment!  Aborting! fname=%s\n", fd->path);
+     log_printf(0, "ERROR: No default segment!  Aborting! fname=%s\n", fd->path);
      goto cleanup;
   }
 
@@ -484,6 +491,8 @@ op_status_t lio_myopen_fn(void *arg, int id)
   return(status);
 
 cleanup:  //** We only make it here on a failure
+  log_printf(1, "ERROR in cleanup! fname=%s\n", op->path);
+
   if (exnode != NULL) free(exnode);
   exnode_destroy(fh->ex);
   exnode_exchange_destroy(exp);
@@ -548,7 +557,7 @@ op_status_t lio_myclose_fn(void *arg, int id)
 
   lio_lock(lc);
   fh->ref_count--;
-  if (fh->ref_count > 1) {  //** Somebody else has it open as well
+  if (fh->ref_count > 0) {  //** Somebody else has it open as well
      lio_unlock(lc);
      return(status);
   }
@@ -1627,12 +1636,19 @@ op_status_t lio_truncate_fn(void *arg, int id)
   op_status_t status;
   lio_file_handle_t *fh = op->slfd->fh;
 
-  status = gop_sync_exec_status(segment_truncate(fh->seg, fh->lc->da, op->bufsize, fh->lc->timeout));
-
-  //** Move the FD to the end
-  segment_lock(fh->seg);
-  op->slfd->curr_offset = op->bufsize;
-  segment_unlock(fh->seg);
+  if (op->bufsize != segment_size(fh->seg)) {
+     status = gop_sync_exec_status(segment_truncate(fh->seg, fh->lc->da, op->bufsize, fh->lc->timeout));
+     segment_lock(fh->seg);
+     fh->modified = 1;
+     op->slfd->curr_offset = op->bufsize;
+     segment_unlock(fh->seg);
+  } else {
+    //** Move the FD to the end
+    segment_lock(fh->seg);
+    op->slfd->curr_offset = op->bufsize;
+    segment_unlock(fh->seg);
+    status = op_success_status;
+  }
 
   return(status);
 }
