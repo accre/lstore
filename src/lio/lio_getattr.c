@@ -135,6 +135,7 @@ int main(int argc, char **argv)
 
   lio_init(&argc, &argv);
 
+   max_attr = lio_gc->max_attr;
 
   //*** Parse the args
   rg_mode = 0;
