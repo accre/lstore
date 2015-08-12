@@ -2483,24 +2483,20 @@ int seglun_signature(segment_t *seg, char *buffer, int *used, int bufsize)
 }
 
 //***********************************************************************
-// seglun_serialize_text -Convert the segment to a text based format
+// seglun_serialize_text_try - Convert the segment to a text based format
 //***********************************************************************
 
-int seglun_serialize_text(segment_t *seg, exnode_exchange_t *exp)
+int seglun_serialize_text_try(segment_t *seg, char *segbuf, int bufsize, exnode_exchange_t *cap_exp)
 {
   seglun_priv_t *s = (seglun_priv_t *)seg->priv;
-  int bufsize=100*1024;
-  char segbuf[bufsize];
   char *ext, *etext;
-  int sused, i;
+  int sused, i, err;
   seglun_row_t *b;
-  exnode_exchange_t *cap_exp;
   interval_skiplist_iter_t it;
 
-  segbuf[0] = 0;
-  cap_exp = exnode_exchange_create(EX_TEXT);
 
   sused = 0;
+  segbuf[0] = 0;
 
   //** Store the segment header
   append_printf(segbuf, &sused, bufsize, "[segment-" XIDT "]\n", seg->header.id);
@@ -2526,7 +2522,7 @@ int seglun_serialize_text(segment_t *seg, exnode_exchange_t *exp)
   append_printf(segbuf, &sused, bufsize, "excess_block_size=" XOT "\n", s->excess_block_size);
   append_printf(segbuf, &sused, bufsize, "max_size=" XOT "\n", s->total_size);
   append_printf(segbuf, &sused, bufsize, "used_size=" XOT "\n", s->used_size);
-  append_printf(segbuf, &sused, bufsize, "chunk_size=" XOT "\n", s->chunk_size);
+  err = append_printf(segbuf, &sused, bufsize, "chunk_size=" XOT "\n", s->chunk_size);
 
   //** Cycle through the blocks storing both the segment block information and also the cap blocks
   it = iter_search_interval_skiplist(s->isl, (skiplist_key_t *)NULL, (skiplist_key_t *)NULL);
@@ -2541,15 +2537,47 @@ int seglun_serialize_text(segment_t *seg, exnode_exchange_t *exp)
 //log_printf(0, "seg=" XIDT "        dev=%d bid=" XIDT " cap_offset=" XOT "\n", segment_id(seg), i, b->block[i].data->id, b->block[i].cap_offset);
         append_printf(segbuf, &sused, bufsize, ":" XIDT ":" XOT, b->block[i].data->id, b->block[i].cap_offset);
      }
-     append_printf(segbuf, &sused, bufsize, "\n");
+     err = append_printf(segbuf, &sused, bufsize, "\n");
+     if (err == -1) break;  //** Kick out on the first error
+//log_printf(0, "seg=" XIDT " bufsize=%d sused=%d err=%d\n", segment_id(seg), bufsize, sused, err);
+
   }
 
+  return(err);
+}
+
+//***********************************************************************
+// seglun_serialize_text -Convert the segment to a text based format
+//***********************************************************************
+
+int seglun_serialize_text(segment_t *seg, exnode_exchange_t *exp)
+{
+  int bufsize=100*1024;
+  char staticbuf[bufsize];
+  char *segbuf = staticbuf;
+  exnode_exchange_t *cap_exp;
+  int err;
+
+  do {
+     cap_exp = exnode_exchange_create(EX_TEXT);
+     err = seglun_serialize_text_try(seg, segbuf, bufsize, cap_exp);
+     if (err == -1) { //** Need to grow the buffer
+        if (staticbuf != segbuf) free(segbuf);
+        exnode_exchange_destroy(cap_exp);
+
+        bufsize = 2*bufsize;
+        type_malloc(segbuf, char, bufsize);
+        log_printf(1, "Growing buffer bufsize=%d\n", bufsize);
+     }
+  } while (err == -1);
 
   //** Merge everything together and return it
   exnode_exchange_append(exp, cap_exp);
   exnode_exchange_destroy(cap_exp);
 
   exnode_exchange_append_text(exp, segbuf);
+
+  if (staticbuf != segbuf) free(segbuf);
 
   return(0);
 }
