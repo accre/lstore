@@ -1029,7 +1029,8 @@ int readline_netstream_raw(NetStream_t *ns, tbuffer_t *buffer, int boff, int siz
       log_printf(0, "ERROR boff>iov_len!  boff=%d iov_len=" ST "\n", boff, buffer->buf.iov[0].iov_len);
       fprintf(stderr, "ERROR boff>iov_len!  boff=%d iov_len=" ST "\n", boff, buffer->buf.iov[0].iov_len);
       fprintf(stdout, "ERROR boff>iov_len!  boff=%d iov_len=" ST "\n", boff, buffer->buf.iov[0].iov_len);
-      return(-1);
+      *status = -1;
+      return(0);
    }
 
    buf = (buffer->buf.iov[0].iov_base + boff);
@@ -1047,7 +1048,7 @@ int readline_netstream_raw(NetStream_t *ns, tbuffer_t *buffer, int boff, int siz
           ns->start = 0;
           ns->end = -1;
        }
-  
+
        if (finished == 1) {
           *status = 1;
           total_bytes--;
@@ -1062,7 +1063,7 @@ int readline_netstream_raw(NetStream_t *ns, tbuffer_t *buffer, int boff, int siz
    //*** Now grab the data off the network port ****
    nbytes = 0;
    if (finished == 0) {
-      tbuffer_single(&ns_tb, N_BUFSIZE, ns->buffer);      
+      tbuffer_single(&ns_tb, N_BUFSIZE, ns->buffer);
       nbytes = read_netstream(ns, &ns_tb, 0, N_BUFSIZE, timeout);  //**there should be 0 bytes in buffer now
       debug_printf(15, "readline_netstream_raw: ns=%d Command : !", ns->id);
       for (i=0; i< nbytes; i++) debug_printf(15, "%c", ns->buffer[i]);
@@ -1076,7 +1077,7 @@ int readline_netstream_raw(NetStream_t *ns, tbuffer_t *buffer, int boff, int siz
          total_bytes += i;
       }
    }
-  
+
    buf[total_bytes] = '\0';   //** Make sure and NULL terminate the string
 
    if (finished == 1) {  //*** Push the unprocessed characters back onto the stream buffer ****
@@ -1108,8 +1109,7 @@ int readline_netstream_raw(NetStream_t *ns, tbuffer_t *buffer, int boff, int siz
       }
       unlock_read_ns(ns);
       debug_printf(15, "readline_stream_raw: Out of buffer space or nothing read! ns=%d nbytes=%d  buffer=%s\n", ns->id, total_bytes, buffer); flush_debug();
-//      return(-1);   //**Force the socket to be closed
-   }         
+   }
 
    return(total_bytes);
 }
