@@ -194,8 +194,11 @@ inip_group_t *_next_group(bfile_t *bfd)
      if (start != NULL) {   //** Got a match!
         end = strchr(start, ']');
         if (end == NULL) {
-           printf("_next_group:  missing ] for group heading.  Parsing line: %s\n", text);
+           printf("_next_group: ERROR: missing ] for group heading.  Parsing line: %s\n", text);
+           fprintf(stderr, "_next_group: ERROR: missing ] for group heading.  Parsing line: %s\n", text);
+           log_printf(0, "_next_group: ERROR: missing ] for group heading.  Parsing line: %s\n", text);
            abort();
+           //return(NULL);
         }
 
         end[0] = '\0';  //** Terminate the ending point
