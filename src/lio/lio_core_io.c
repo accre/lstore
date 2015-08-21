@@ -929,6 +929,7 @@ int lio_read(lio_fd_t *fd, char *buf, ex_off_t size, off_t off)
   err = _gop_lio_read(&op, fd, buf, size, off);
   if (err == 0) {
      status = lio_read_ex_fn((void *)&op, -1);
+     if (status.op_status == OP_STATE_SUCCESS) status.error_code = size; // ** Adjust the size to hide any readahead that may have occurred
   } else if (err == 1) {
      status = op_success_status;
   } else {
