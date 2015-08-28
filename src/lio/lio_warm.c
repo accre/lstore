@@ -47,6 +47,7 @@ typedef struct {
   ex_off_t good;
   ex_off_t bad;
   ex_off_t nbytes;
+  ex_off_t dtime;
 } warm_hash_entry_t;
 
 typedef struct {
@@ -186,6 +187,7 @@ log_printf(1, "fname=%s cap[%d]=%s\n", w->fname, w->n, etext);
      status = gop_get_status(gop);
      wrid = gop_get_private(gop);
 
+     wrid->dtime += gop_exec_time(gop);
      if (status.op_status == OP_STATE_SUCCESS) {
         wrid->good++;
      } else {
@@ -253,6 +255,7 @@ int main(int argc, char **argv)
   int recurse_depth = 10000;
   int summary_mode;
   warm_t *w;
+  double dtime, dtime_total;
 
 //printf("argc=%d\n", argc);
   if (argc < 2) {
@@ -422,6 +425,7 @@ log_printf(0, "gid=%d i=%d fname=%s\n", gop_id(gop), slot, fname);
          mrid->good += wrid->good;
          mrid->bad += wrid->bad;
          mrid->nbytes += wrid->nbytes;
+         mrid->dtime += wrid->dtime;
 
          apr_hash_set(w[i].hash, wrid->rid_key, APR_HASH_KEY_STRING, NULL);
          free(wrid->rid_key);
@@ -446,7 +450,7 @@ log_printf(0, "gid=%d i=%d fname=%s\n", gop_id(gop), slot, fname);
         while (ele != NULL) {
            rkey = inip_get_element_key(ele);
            value = inip_get_element_value(ele);
-           if (strcmp(rkey, "rid_key") == 0) { 
+           if (strcmp(rkey, "rid_key") == 0) {
               free(ig->group);
               ig->group = strdup(value);
            }
@@ -461,10 +465,11 @@ log_printf(0, "gid=%d i=%d fname=%s\n", gop_id(gop), slot, fname);
   //** Print the summary
   info_printf(lio_ifd, 0, "\n");
   info_printf(lio_ifd, 0, "                                                              Allocations\n");
-  info_printf(lio_ifd, 0, "                 RID Key                    Size        Total      Good         Bad\n");
-  info_printf(lio_ifd, 0, "----------------------------------------  ---------  ----------  ----------  ----------\n");
+  info_printf(lio_ifd, 0, "                 RID Key                    Size    Avg Time(us)   Total       Good         Bad\n");
+  info_printf(lio_ifd, 0, "----------------------------------------  ---------  ---------   ----------  ----------  ----------\n");
   nbytes = good = bad = j = i = 0;
   stack = new_stack();
+  dtime_total = 0;
   lit = list_iter_search(master, NULL, 0);
   while (list_next(&lit, (list_key_t **)&rkey, (list_data_t **)&mrid) == 0) {
      j++;
@@ -477,18 +482,22 @@ log_printf(0, "gid=%d i=%d fname=%s\n", gop_id(gop), slot, fname);
      push(stack, mrid);
 
      if ((summary_mode == 0) || ((summary_mode == 1) && (mrid->bad == 0))) continue;
+     dtime_total += mrid->dtime;
+     dtime = mrid->dtime / (double)total;
      line_end = (mrid->bad == 0) ? "\n" : "  RID_ERR\n";
      rkey = inip_get_string(ifd, mrid->rid_key, "ds_key", mrid->rid_key);
-     info_printf(lio_ifd, 0, "%-40s  %s  %10" PXOT "  %10" PXOT "  %10" PXOT "%s", rkey, 
-         pretty_print_double_with_scale(1024, (double)mrid->nbytes, ppbuf), total, mrid->good, mrid->bad, line_end);
+     info_printf(lio_ifd, 0, "%-40s  %s  %s   %10" PXOT "  %10" PXOT "  %10" PXOT "%s", rkey,
+         pretty_print_double_with_scale(1024, (double)mrid->nbytes, ppbuf),  pretty_print_double_with_scale(1024, dtime, ppbuf2),
+         total, mrid->good, mrid->bad, line_end);
      free(rkey);
   }
-  if (summary_mode != 0) info_printf(lio_ifd, 0, "----------------------------------------  ---------  ----------  ----------  ----------\n");
+  if (summary_mode != 0) info_printf(lio_ifd, 0, "----------------------------------------  ---------  ---------   ----------  ----------  ----------\n");
 
   snprintf(ppbuf2, sizeof(ppbuf2), "SUM (%d RIDs, %d bad)", j, i);
   total = good + bad;
-  info_printf(lio_ifd, 0, "%-40s  %s  %10" PXOT "  %10" PXOT "  %10" PXOT "\n", ppbuf2, 
-      pretty_print_double_with_scale(1024, (double)nbytes, ppbuf), total, good, bad);
+  dtime_total = dtime_total / (double)total;
+  info_printf(lio_ifd, 0, "%-40s  %s  %s   %10" PXOT "  %10" PXOT "  %10" PXOT "\n", ppbuf2,
+      pretty_print_double_with_scale(1024, (double)nbytes, ppbuf), pretty_print_double_with_scale(1024, dtime_total, ppbuf2), total, good, bad);
 
   list_destroy(master);
 
