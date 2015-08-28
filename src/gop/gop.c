@@ -907,6 +907,33 @@ log_printf(20, "op_generic_free: AFTER lock gid=%d\n", gop_get_id(gop));
   release_pigeon_coop_hole(_gop_control, &(gop->base.ctl->pch));
 }
 
+//*************************************************************
+// gop_exec_time - returns the execution time
+//*************************************************************
+
+apr_time_t gop_exec_time(op_generic_t *gop)
+{
+  return(gop->op->cmd.end_time - gop->op->cmd.start_time);
+}
+
+//*************************************************************
+// gop_start_time - returns the start time
+//*************************************************************
+
+apr_time_t gop_start_time(op_generic_t *gop)
+{
+  return(gop->op->cmd.start_time);
+}
+
+//*************************************************************
+// gop_end_time - returns the end time
+//*************************************************************
+
+apr_time_t gop_end_time(op_generic_t *gop)
+{
+  return(gop->op->cmd.end_time);
+}
+
 
 
 

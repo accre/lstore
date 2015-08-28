@@ -291,6 +291,10 @@ void gop_reset(op_generic_t *gop);
 void gop_init(op_generic_t *gop);
 void gop_generic_free(op_generic_t *gop, int mode);
 void gop_callback_append(op_generic_t *gop, callback_t *cb);
+apr_time_t gop_exec_time(op_generic_t *gop);
+apr_time_t gop_start_time(op_generic_t *gop);
+apr_time_t gop_end_time(op_generic_t *gop);
+
 
 #ifdef __cplusplus
 }
