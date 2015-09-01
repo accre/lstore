@@ -141,8 +141,7 @@ int main(int argc, char **argv)
 
 finished:
   lio_shutdown();
-
-  return(0);
+  return((it == NULL) ? EIO : 0);
 }
 
 

@@ -90,6 +90,7 @@ int main(int argc, char **argv)
   char *val[MAX_SET];
   int v_size[MAX_SET];
   int n_keys, n_keys_al;
+  int return_code;
   int max_attr = 1024*1024;
   char *new_obj_fmt = "object=%s\\n";
   char *end_obj_fmt = "\\n";
@@ -98,6 +99,7 @@ int main(int argc, char **argv)
 
   int recurse_depth = 0;
   int obj_types = OS_OBJECT_FILE;
+  return_code = 0;
 
 //estr = argv2format(argv[1]);
 //printf("argv[1]=!%s! str=!%s!\n", argv[1], estr);
@@ -249,6 +251,7 @@ int main(int argc, char **argv)
 
      if (it == NULL) {
         info_printf(lio_ifd, 0, "ERROR creating iterator!\n");
+        return_code = EIO;
      }
 
 log_printf(15, "before main loop\n");
@@ -305,7 +308,7 @@ log_printf(15, "after main loop\n");
 
   lio_shutdown();
 
-  return(0);
+  return(return_code);
 }
 
 

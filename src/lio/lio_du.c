@@ -99,6 +99,7 @@ int main(int argc, char **argv)
   ex_off_t total_files, total_bytes;
   int v_size, sumonly, ignoreln;
   int recurse_depth = 10000;
+  int return_code = 0;
   du_entry_t du_total;
 
 //printf("argc=%d\n", argc);
@@ -205,6 +206,7 @@ log_printf(15, "MAIN SUMONLY=1\n");
         it = lio_create_object_iter_alist(tuple.lc, tuple.creds, rp_single, ro_single, OS_OBJECT_ANY, 0, &key, (void **)&val, &v_size, 1);
         if (it == NULL) {
            log_printf(0, "ERROR: Failed with object_iter creation\n");
+           return_code = EIO;
            goto finished;
         }
 
@@ -239,6 +241,7 @@ log_printf(15, "MAIN LOOP\n");
      it = lio_create_object_iter_alist(tuple.lc, tuple.creds, rp_single, ro_single, OS_OBJECT_ANY, recurse_depth, &key, (void **)&val, &v_size, 1);
      if (it == NULL) {
         log_printf(0, "ERROR: Failed with object_iter creation\n");
+        return_code = EIO;
         goto finished;
       }
 
@@ -318,6 +321,6 @@ log_printf(15, "MAIN LOOP\n");
 finished:
   lio_shutdown();
 
-  return(0);
+  return(return_code);
 }
 

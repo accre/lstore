@@ -85,6 +85,7 @@ int main(int argc, char **argv)
   lio_path_tuple_t *flist;
   char *error_table[] = { "", "ERROR checking dir existence", "ERROR dir already exists", "ERROR creating dir" };
   FILE *fd;
+  int return_code = 0;
 
 //printf("argc=%d\n", argc);
   if (argc < 2) {
@@ -159,13 +160,17 @@ log_printf(0, "gid=%d i=%d fname=%s\n", gop_id(gop), i, flist[i].path);
         gop = opque_waitany(q);
         j = gop_get_myid(gop);
         status = gop_get_status(gop);
-        if (status.op_status != OP_STATE_SUCCESS) info_printf(lio_ifd, 0, "Failed with directory %s with error %s\n", argv[j+start_index], error_table[status.error_code]);
+        if (status.op_status != OP_STATE_SUCCESS) {
+           info_printf(lio_ifd, 0, "Failed with directory %s with error %s\n", argv[j+start_index], error_table[status.error_code]);
+           return_code = EIO;
+        }
         gop_free(gop, OP_DESTROY);
      }
   }
 
   err = opque_waitall(q);
   if (err != OP_STATE_SUCCESS) {
+     return_code = EIO;
      while ((gop = opque_get_next_failed(q)) != NULL) {
          j = gop_get_myid(gop);
          status = gop_get_status(gop);
@@ -183,7 +188,7 @@ log_printf(0, "gid=%d i=%d fname=%s\n", gop_id(gop), i, flist[i].path);
 
   lio_shutdown();
 
-  return(0);
+  return(return_code);
 }
 
 

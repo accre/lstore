@@ -183,7 +183,7 @@ log_printf(0, "gid=%d i=%d fname=%s\n", gop_id(gop), i, flist[i].path);
 
   lio_shutdown();
 
-  return(0);
+  return((err == OP_STATE_SUCCESS) ? 0: EIO);
 }
 
 

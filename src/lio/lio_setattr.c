@@ -92,7 +92,7 @@ int main(int argc, char **argv)
   int n_keys;
   char *dkey[MAX_SET], *tmp;
   char *sobj[MAX_SET], *skey[MAX_SET];
-  int n_skeys;
+  int n_skeys, return_code;
   int ftype, prefix_len;
   char *fname;
 
@@ -104,6 +104,7 @@ int main(int argc, char **argv)
 
   int recurse_depth = 10000;
   int obj_types = OS_OBJECT_FILE;
+  return_code = 0;
 
 //printf("argc=%d\n", argc);
   if (argc < 2) {
@@ -197,6 +198,7 @@ int main(int argc, char **argv)
      if (n_keys > 0) {
         err = gop_sync_exec(gop_lio_regex_object_set_multiple_attrs(tuple.lc, tuple.creds, NULL, rp_single,  ro_single, obj_types, recurse_depth, key, (void **)val, v_size, n_keys));
         if (err != OP_STATE_SUCCESS) {
+           return_code = EIO;
            info_printf(lio_ifd, 0, "ERROR with operation! \n");
         }
      }
@@ -205,6 +207,7 @@ int main(int argc, char **argv)
         it = lio_create_object_iter(tuple.lc, tuple.creds, rp_single, ro_single, obj_types, NULL, recurse_depth, NULL, 0);
         if (it == NULL) {
            info_printf(lio_ifd, 0, "ERROR: Failed with object_iter creation\n");
+           return_code = EIO;
            goto finished;
         }
 
@@ -216,12 +219,14 @@ int main(int argc, char **argv)
               //** Do the symlink
               err = gop_sync_exec(os_symlink_multiple_attrs(tuple.lc->os, tuple.creds, sobj, skey, fd, dkey, n_skeys));
               if (err != OP_STATE_SUCCESS) {
+                 return_code = EIO;
                  info_printf(lio_ifd, 0, "ERROR: with linking file: %s\n", fname);
               }
 
               //** Close the file
               err = gop_sync_exec(os_close_object(tuple.lc->os, fd));
               if (err != OP_STATE_SUCCESS) {
+                 return_code = EIO;
                  info_printf(lio_ifd, 0, "ERROR: closing file: %s\n", fname);
               }
            }
@@ -246,7 +251,7 @@ finished:
 
   lio_shutdown();
 
-  return(0);
+  return(return_code);
 }
 
 

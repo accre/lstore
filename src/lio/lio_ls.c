@@ -117,7 +117,7 @@ void ls_format_entry(info_fd_t *ifd, ls_entry_t *lse)
 
 int main(int argc, char **argv)
 {
-  int i, j, ftype, rg_mode, start_option, start_index, prefix_len, nosort;
+  int i, j, ftype, rg_mode, start_option, start_index, prefix_len, nosort, err;
   char *fname;
   ls_entry_t *lse;
   list_t *table;
@@ -133,6 +133,7 @@ int main(int argc, char **argv)
   int n_keys = 5;
   int recurse_depth = 0;
   int obj_types = OS_OBJECT_ANY;
+  int return_code = 0;
 
 //printf("argc=%d\n", argc);
   if (argc < 2) {
@@ -207,6 +208,7 @@ int main(int argc, char **argv)
      it = lio_create_object_iter_alist(tuple.lc, tuple.creds, rp_single, ro_single, OS_OBJECT_ANY, recurse_depth, keys, (void **)vals, v_size, n_keys);
      if (it == NULL) {
         info_printf(lio_ifd, 0, "ERROR: Failed with object_iter creation\n");
+        return_code = EIO;
         goto finished;
      }
 
@@ -245,7 +247,11 @@ int main(int argc, char **argv)
   }
 
   //** Wait for any readlinks to complete
-  opque_waitall(q);
+  err = (opque_task_count(q) > 0) ? opque_waitall(q) : OP_STATE_SUCCESS;
+  if (err != OP_STATE_SUCCESS) {
+     info_printf(lio_ifd, 0, "ERROR: Failed with readlink operation!\n");
+     return_code = EIO;
+  }
 
   //** Now sort and print things if needed
   if (nosort == 0) {
@@ -262,6 +268,6 @@ finished:
 
   lio_shutdown();
 
-  return(0);
+  return(return_code);
 }
 
