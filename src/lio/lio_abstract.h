@@ -64,6 +64,7 @@ typedef struct lio_fn_s lio_fn_t;
 typedef struct lio_fsck_iter_s lio_fsck_iter_t;
 
 extern FILE *_lio_ifd;  //** Default information log device
+extern char *_lio_exe_name;  //** Executable name
 
 struct lio_config_s {
   data_service_fn_t *ds;
@@ -89,6 +90,7 @@ struct lio_config_s {
   char *rs_section;
   char *tpc_unlimited_section;
   char *creds_name;
+  char *exe_name;
   ex_off_t readahead;
   ex_off_t readahead_trigger;
   int calc_adler32;
@@ -301,7 +303,7 @@ int lio_parse_path_options(int *argc, char **argv, int auto_mode, lio_path_tuple
 void lio_print_options(FILE *fd);
 int lio_init(int *argc, char ***argv);
 int lio_shutdown();
-lio_config_t *lio_create(char *fname, char *section, char *user);
+lio_config_t *lio_create(char *fname, char *section, char *user, char *exe_name);
 void lio_destroy(lio_config_t *lio);
 const char *lio_client_version();
 

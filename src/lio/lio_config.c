@@ -58,6 +58,7 @@ lio_config_t *lio_gc = NULL;
 cache_t *_lio_cache = NULL;
 info_fd_t *lio_ifd = NULL;
 FILE *_lio_ifd = NULL;
+char *_lio_exe_name = NULL;
 
 int _lfs_mount_count = -1;
 lfs_mount_t *lfs_mount = NULL;
@@ -66,7 +67,7 @@ apr_pool_t *_lc_mpool = NULL;
 apr_thread_mutex_t *_lc_lock = NULL;
 list_t *_lc_object_list = NULL;
 
-lio_config_t *lio_create_nl(char *fname, char *section, char *user);
+lio_config_t *lio_create_nl(char *fname, char *section, char *user, char *exe_name);
 void lio_destroy_nl(lio_config_t *lio);
 
 //***************************************************************
@@ -456,7 +457,7 @@ log_printf(15, "lpath=%s user=%s lc=%s path=%s\n", lpath, userid, section_name, 
      snprintf(buffer, sizeof(buffer), "lc:%s", section_name);
      tuple.lc = _lc_object_get(buffer);
      if (tuple.lc == NULL) { //** Doesn't exist so need to load it
-        tuple.lc = lio_create_nl(lio_gc->cfg_name, section_name, userid);  //** USe the non-locking routine
+        tuple.lc = lio_create_nl(lio_gc->cfg_name, section_name, userid, _lio_exe_name);  //** USe the non-locking routine
         if (tuple.lc == NULL) {
            memset(&tuple, 0, sizeof(tuple));
            if (fname != NULL) free(fname);
@@ -743,6 +744,7 @@ void lio_destroy_nl(lio_config_t *lio)
   apr_thread_mutex_destroy(lio->lock);
   apr_pool_destroy(lio->mpool);
 
+  if (lio->exe_name != NULL) free(lio->exe_name);
   free(lio);
 
   return;
@@ -764,7 +766,7 @@ void lio_destroy(lio_config_t *lio)
 //   NOTE:  No locking is used
 //***************************************************************
 
-lio_config_t *lio_create_nl(char *fname, char *section, char *user)
+lio_config_t *lio_create_nl(char *fname, char *section, char *user, char *exe_name)
 {
   lio_config_t *lio;
   int n, cores;
@@ -788,6 +790,7 @@ lio_config_t *lio_create_nl(char *fname, char *section, char *user)
   type_malloc_clear(lio, lio_config_t, 1);
   lio->ess = exnode_service_set_create();
   lio->auto_translate = 1;
+  if (exe_name) lio->exe_name = strdup(exe_name);
 
   //** Add it to the table for ref counting
   snprintf(buffer, sizeof(buffer), "lc:%s", section);
@@ -967,12 +970,12 @@ lio_config_t *lio_create_nl(char *fname, char *section, char *user)
 // lio_create - Creates a lio configuration according to the config file
 //***************************************************************
 
-lio_config_t *lio_create(char *fname, char *section, char *user)
+lio_config_t *lio_create(char *fname, char *section, char *user, char *exe_name)
 {
   lio_config_t *lc;
 
   apr_thread_mutex_unlock(_lc_lock);
-  lc = lio_create_nl(fname, section, user);
+  lc = lio_create_nl(fname, section, user, exe_name);
   apr_thread_mutex_unlock(_lc_lock);
 
   return(lc);
@@ -1124,8 +1127,11 @@ int lio_init(int *argc, char ***argvp)
 //  printf("start argv[%d]=%s\n", i, argv[i]);
 //}
 
+  //** Grab the exe name
+  
   //** Determine the preferred environment variable based on the calling name to use for the args
   os_path_split(argv[0], &dummy, &name);
+  _lio_exe_name = name;
   if (dummy != NULL) free(dummy);
   j = strncmp(name, "lio_", 4) == 0 ? 4 : 0;
   i = 0;
@@ -1136,7 +1142,7 @@ int lio_init(int *argc, char ***argvp)
     i++;
   }
   var[k+i] = 0;
-  free(name);
+//  free(name);
 
   env = getenv(var); //** Get the exe based options if available
   if (env == NULL) env = getenv("LIO_OPTIONS");  //** If not get the global default
@@ -1266,7 +1272,7 @@ no_args:
   if (cfg_name != NULL) {
      mlog_load(cfg_name, out_override, ll_override);
 
-     lio_gc = lio_create(cfg_name, section_name, userid);
+     lio_gc = lio_create(cfg_name, section_name, userid, name);
      lio_gc->ref_cnt = 1;
      if (auto_mode != -1) lio_gc->auto_translate = auto_mode;
   } else {
@@ -1318,6 +1324,7 @@ int lio_shutdown()
   apr_wrapper_stop();
 
   lio_ifd = NULL;
+  if (_lio_exe_name) free(_lio_exe_name);
 
   return(0);
 }

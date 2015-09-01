@@ -39,6 +39,8 @@ http://www.accre.vanderbilt.edu
 #include "log.h"
 #include "authn_abstract.h"
 
+extern char *_lio_exe_name;  //** This is set by lio_init long before we would ever be called.
+
 typedef struct {
   char *handle;
   int len;
@@ -89,7 +91,7 @@ void authn_fake_set_id(creds_t *c, char *id)
   err = getlogin_r(buf2, sizeof(buf2));
   if (err != 0) snprintf(buf2, sizeof(buf2), "ERROR(%d)", err);
   gethostname(buf3, sizeof(buf3));
-  snprintf(buffer, sizeof(buffer), "%s:" LU ":%s:%s", id, pid, buf2, buf3);
+  snprintf(buffer, sizeof(buffer), "%s:" LU ":%s:%s:%s", id, pid, buf2, buf3, _lio_exe_name);
   a->handle = strdup(buffer);
   log_printf(5, "handle=%s\n", a->handle);
   a->len = strlen(a->handle)+1;
