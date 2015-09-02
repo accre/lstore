@@ -393,6 +393,15 @@ op_status_t lio_remove_object_fn(void *arg, int id)
      lio_get_attr(op->lc, op->creds, op->src_path, op->id, "system.exnode", (void **)&ex_data, &v_size);
   }
 
+  //** Remove the OS entry first.  This way if it fails we'll just kick out and the data is still good.
+  err = gop_sync_exec(os_remove_object(op->lc->os, op->creds, op->src_path));
+  if (err != OP_STATE_SUCCESS) {
+     log_printf(0, "ERROR: removing file: %s err=%d\n", op->src_path, err);
+     status = op_failure_status;
+     if (ex_data) free(ex_data);
+     return(status);
+   }
+
   //** Load the exnode and remove it if needed.
   //** Only done for normal files.  No links or dirs
   if ((ex_remove == 1) && (ex_data != NULL)) {
@@ -415,13 +424,6 @@ op_status_t lio_remove_object_fn(void *arg, int id)
      exnode_exchange_destroy(exp);
      exnode_destroy(ex);
   }
-
-  //** Now we can remove the OS entry
-  err = gop_sync_exec(os_remove_object(op->lc->os, op->creds, op->src_path));
-  if (err != OP_STATE_SUCCESS) {
-     log_printf(0, "ERROR: removing file: %s err=%d\n", op->src_path, err);
-     status = op_failure_status;
-   }
 
   return(status);
 }
