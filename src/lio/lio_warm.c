@@ -247,7 +247,7 @@ int main(int argc, char **argv)
   inip_file_t *ifd;
   inip_group_t *ig;
   inip_element_t *ele;
-  char ppbuf[128], ppbuf2[128];
+  char ppbuf[128], ppbuf2[128], ppbuf3[128];
   lio_path_tuple_t tuple;
   ex_off_t total, good, bad, nbytes, submitted, werr;
   list_iter_t lit;
@@ -497,7 +497,7 @@ log_printf(0, "gid=%d i=%d fname=%s\n", gop_id(gop), slot, fname);
   total = good + bad;
   dtime_total = dtime_total / (double)total;
   info_printf(lio_ifd, 0, "%-40s  %s  %s   %10" PXOT "  %10" PXOT "  %10" PXOT "\n", ppbuf2,
-      pretty_print_double_with_scale(1024, (double)nbytes, ppbuf), pretty_print_double_with_scale(1024, dtime_total, ppbuf2), total, good, bad);
+      pretty_print_double_with_scale(1024, (double)nbytes, ppbuf), pretty_print_double_with_scale(1024, dtime_total, ppbuf3), total, good, bad);
 
   list_destroy(master);
 
