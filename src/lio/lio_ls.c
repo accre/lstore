@@ -118,6 +118,7 @@ void ls_format_entry(info_fd_t *ifd, ls_entry_t *lse)
 int main(int argc, char **argv)
 {
   int i, j, ftype, rg_mode, start_option, start_index, prefix_len, nosort, err;
+  ex_off_t fcount;
   char *fname;
   ls_entry_t *lse;
   list_t *table;
@@ -184,9 +185,7 @@ int main(int argc, char **argv)
     start_index--;  //** Ther 1st entry will be the rp created in lio_parse_path_options
   }
 
-
-  info_printf(lio_ifd, 0, "  Perms     Ref   Owner        Size           Creation date              Modify date             Filename [-> link]\n");
-  info_printf(lio_ifd, 0, "----------  ---  ----------  ----------  ------------------------  ------------------------  ------------------------------\n");
+  fcount = 0;
 
   q = new_opque();
   table = list_create(0, &list_string_compare, NULL, list_no_key_free, list_no_data_free);
@@ -232,6 +231,12 @@ int main(int argc, char **argv)
            if (nosort == 1) opque_waitall(q);
         }
 
+        if (fcount == 0) {
+           info_printf(lio_ifd, 0, "  Perms     Ref   Owner        Size           Creation date              Modify date             Filename [-> link]\n");
+           info_printf(lio_ifd, 0, "----------  ---  ----------  ----------  ------------------------  ------------------------  ------------------------------\n");
+        }
+        fcount++;
+
         if (nosort == 1) {
            ls_format_entry(lio_ifd, lse);
         } else {
@@ -262,6 +267,8 @@ int main(int argc, char **argv)
   }
 
   list_destroy(table);
+
+  if (fcount == 0) return_code = 2;
 
 finished:
   opque_free(q, OP_DESTROY);
