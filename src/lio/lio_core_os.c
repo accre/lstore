@@ -239,6 +239,12 @@ log_printf(15, "dir=%s\n fname=%s\n", dir, fname);
     val[ex_key] = op->ex;
   }
 
+  if (val[ex_key] == NULL) { //** Oops no valid exnode!
+     log_printf(0, "ERROR No valid exnode could be located.  fname=%s\n", op->src_path);
+     status = op_failure_status;
+     goto fail;
+  }
+
   //** For a directory we can just copy the exnode.  For a file we have to
   //** Clone it to get unique IDs
   if ((op->type & OS_OBJECT_DIR) == 0) {
