@@ -452,16 +452,17 @@ log_printf(15, "missing[%d]=%d status=%d\n", j,i, gop_completed_successfully(gop
 // slun_row_size_check - Checks the size of eack block in the row.
 //***********************************************************************
 
-int slun_row_size_check(segment_t *seg, data_attr_t *da, seglun_row_t *b, int *block_status, int n_devices, int force_repair, int timeout)
+int slun_row_size_check(segment_t *seg, data_attr_t *da, seglun_row_t *b, int *block_status, apr_time_t *dt, int n_devices, int force_repair, int timeout)
 {
   int i, n_size, n_missing;
   data_probe_t *probe[n_devices];
   opque_t *q;
   op_generic_t *gop;
   ex_off_t psize, seg_size;
-
+  apr_time_t start_time;
   q = new_opque();
 
+  start_time = apr_time_now();
   for (i=0; i<n_devices; i++) {
      probe[i] = ds_probe_create(b->block[i].data->ds);
 
@@ -471,7 +472,16 @@ int slun_row_size_check(segment_t *seg, data_attr_t *da, seglun_row_t *b, int *b
      opque_add(q, gop);
   }
 
-  opque_waitall(q);
+  // ** Collect the timing information for hte probe if requested
+  if (dt != NULL) {
+     for (i=0; i<n_devices; i++) {
+        gop = opque_waitany(q);
+        dt[gop_get_myid(gop)] = apr_time_now() - start_time;
+        gop_free(gop, OP_DESTROY);
+     }
+  } else {
+     opque_waitall(q);
+  }
   opque_free(q, OP_DESTROY);
 
   q = new_opque();
@@ -815,7 +825,7 @@ log_printf(15, "sid=" XIDT " increasing existing row seg_offset=" XOT " curr seg
         b->row_len = dsize * s->n_devices;
         b->seg_end = b->seg_offset + b->row_len - 1;
         for (i=0; i<s->n_devices; i++) block_status[i] = 0;
-        slun_row_size_check(seg, da, b, block_status, s->n_devices, 1, timeout);
+        slun_row_size_check(seg, da, b, block_status, NULL, s->n_devices, 1, timeout);
 
         //** Check if we had an error on the size
         berr = 0;
@@ -1919,6 +1929,8 @@ op_status_t seglun_inspect_func(void *arg, int id)
   int i, j, err, option, force_repair, max_lost, total_lost, total_repaired, total_migrate, nmigrated, nlost, nrepaired, drow;
   inspect_args_t args;
   inspect_args_t args_blank;
+  apr_time_t dt[s->n_devices];
+  char pp[128];
 
   args = *(si->args);
   args_blank = args;
@@ -1968,7 +1980,7 @@ op_status_t seglun_inspect_func(void *arg, int id)
         info_printf(si->fd, 3, XIDT ":     dev=%i rcap=%s\n", segment_id(si->seg), i, ds_get_cap(s->ds, b->block[i].data->cap, DS_CAP_READ));
     }
 
-    nlost = slun_row_size_check(si->seg, si->da, b, block_status, s->n_devices, force_repair, si->timeout);
+    nlost = slun_row_size_check(si->seg, si->da, b, block_status, dt, s->n_devices, force_repair, si->timeout);
     used = 0;
     append_printf(info, &used, bufsize, XIDT ":     slun_row_size_check:", segment_id(si->seg));
     for (i=0; i < s->n_devices; i++) {
@@ -1982,7 +1994,13 @@ op_status_t seglun_inspect_func(void *arg, int id)
         }
         append_printf(info, &used, bufsize, " %d", block_status[i]);
     }
-    info_printf(si->fd, 1, "%s\n", info);
+
+    //** Add the timing info
+    append_printf(info, &used, bufsize, "  [", block_status[i]);
+    for (i=0; i < s->n_devices; i++) {
+        append_printf(info, &used, bufsize, " %s", pretty_print_double_with_scale(1000, (double)dt[i], pp));
+    }
+    info_printf(si->fd, 1, "%s (us)]\n", info);
 
     if (max_lost < nlost) max_lost = nlost;
     si->args->dev_row_replaced[drow] += nlost;
