@@ -1353,7 +1353,7 @@ fail:
 void *mq_conn_thread(apr_thread_t *th, void *data)
 {
   mq_conn_t *c = (mq_conn_t *)data;
-  int k, npoll, err, finished, nprocessed, nproc, nincoming, slow_exit;
+  int k, npoll, err, finished, nprocessed, nproc, nincoming, slow_exit, oops;
   long int heartbeat_ms;
   int64_t total_proc, total_incoming;
   mq_pollitem_t pfd[3];
@@ -1365,8 +1365,8 @@ void *mq_conn_thread(apr_thread_t *th, void *data)
 log_printf(2, "START: host=%s heartbeat_dt=%d\n", c->pc->host, c->pc->heartbeat_dt);
   //** Try and make the connection
   //** Right now the portal is locked so this routine can assume that.
-  err = mq_conn_make(c);
-log_printf(2, "START(2): uuid=%s\n", c->mq_uuid);
+  oops = err = mq_conn_make(c);
+log_printf(2, "START(2): uuid=%s oops=%d\n", c->mq_uuid, oops);
 
 
   //** Notify the parent about the connections status via c->cefd
@@ -1455,15 +1455,19 @@ cleanup:
   //** Cleanup my struct but don'r free(c).
   //** This is done on portal cleanup
   mq_stats_print(2, c->mq_uuid, &(c->stats));
-log_printf(2, "END: uuid=%s total_incoming=" I64T " total_processed=" I64T "\n", c->mq_uuid, total_incoming, total_proc); flush_log();
+log_printf(2, "END: uuid=%s total_incoming=" I64T " total_processed=" I64T " oops=%d\n", c->mq_uuid, total_incoming, total_proc, oops); flush_log();
 
   mq_conn_teardown(c);
 
   //** Update the conn_count, stats and place mysealf on the reaper stack
   apr_thread_mutex_lock(c->pc->lock);
   mq_stats_add(&(c->pc->stats), &(c->stats));
-  if (slow_exit == 0) c->pc->active_conn--;
-  c->pc->total_conn--;
+  //** We only update the connection counts if we actually made a connection.  The original thread that created us was already notified
+  //** if we made a valid connection and it increments the connection counts.
+  if (oops == 0) {  
+     if (slow_exit == 0) c->pc->active_conn--;
+     c->pc->total_conn--;
+  }
   if (c->pc->total_conn == 0) apr_thread_cond_signal(c->pc->cond);
   push(c->pc->closed_conn, c);
   apr_thread_mutex_unlock(c->pc->lock);
@@ -1476,13 +1480,13 @@ log_printf(2, "END: final\n"); flush_log();
 
 
 //**************************************************************
-// mq_conn_create - Creates a new connection and optionally waits
-//     for the connection to complete if dowait=1.
+// mq_conn_create_actual - This routine does the actual connection creation
+//      and optionally waits for the connection to complete if dowait=1.
 //
 //   NOTE:  Assumes p->lock is set on entry.
 //**************************************************************
 
-int mq_conn_create(mq_portal_t *p, int dowait)
+int mq_conn_create_actual(mq_portal_t *p, int dowait)
 {
   mq_conn_t *c;
   int err;
@@ -1500,18 +1504,41 @@ int mq_conn_create(mq_portal_t *p, int dowait)
   //** This is just used in the initial handshake
   assert(pipe(c->cefd) == 0);
 
-  p->active_conn++; //** Inc the number of connections
-  p->total_conn++;
-
   //** Spawn the thread
   thread_create_assert(&(c->thread), NULL, mq_conn_thread, (void *)c, p->mpool);  //** USe the parent mpool so I can do the teardown
 
   err = 0;
-//dowait=1;
   if (dowait == 1) {  //** If needed wait until connected
      read(c->cefd[0], &v, 1);
      err = (v == 1) ? 0 : 1;  //** n==1 is a success anything else is an error
-log_printf(1, "err=%d\n", err);
+  }
+
+  if (err == 0) {
+     p->active_conn++; //** Inc the number of connections on success
+     p->total_conn++;
+  }
+
+  return(err);
+}
+
+//**************************************************************
+// mq_conn_create - Creates a new connection and optionally waits
+//     for the connection to complete if dowait=1.
+//     This is a wrapper around the actual connection creation
+//
+//   NOTE:  Assumes p->lock is set on entry.
+//**************************************************************
+
+int mq_conn_create(mq_portal_t *p, int dowait)
+{
+  int err, retry;
+
+  for (retry=0; retry<3; retry++) {
+     err = mq_conn_create_actual(p, dowait);
+     log_printf(1, "retry=%d err=%d host=%s\n", retry, err, p->host);
+
+     if (err == 0) break;  //** Kick out if we got a good connection
+     apr_sleep(apr_time_from_sec(2));
   }
 
   return(err);
