@@ -173,7 +173,7 @@ void _opque_cb(void *v, int mode)
   
   log_printf(15, "PUSH finished gid=%d qid=%d\n", gop_id(gop), gop_id(&(q->opque->op)));
   log_printf(15, "Printing finished stack for qid=%d\n", gop_id(&(q->opque->op)));
-  _opque_print_stack(q->finished);
+  if (log_level() > 15) _opque_print_stack(q->finished);
 
   if (success.op_status == OP_STATE_FAILURE) push(q->failed, gop); //** Push it on the failed list if needed
 
