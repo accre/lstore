@@ -85,7 +85,9 @@ log_printf(1, "Accepting data len=%d msid=%d\n", mqs->len-MQS_HEADER, mqs->msid)
      apr_thread_cond_wait(mqs->cond, mqs->lock);
   }
 
-  mqs->data = NULL;  //** Nullify the data so it's not accidentally accessed
+  mqs->data = NULL;    //** Nullify the data so it's not accidentally accessed
+  mqs->processed = 0;  //** and reset the processed flag back to 0
+
   apr_thread_mutex_unlock(mqs->lock);
 
 log_printf(1, "END msid=%d status=%d %d\n", mqs->msid, status.op_status, status.error_code);
@@ -123,7 +125,10 @@ log_printf(2, "msid=%d want_more=%c\n", mqs->msid, mqs->want_more);
   mqs->gop_waiting = new_mq_op(mqs->mqc, msg, mqs_response_client_more, mqs, NULL, mqs->timeout);
 
   //** Start executing it
+  
+  apr_thread_mutex_lock(mqs->lock);
   mqs->waiting = 1;
+  apr_thread_mutex_unlock(mqs->lock);
   gop_start_execution(mqs->gop_waiting);
 }
 
@@ -168,8 +173,6 @@ int mq_stream_read_wait(mq_stream_t *mqs)
      return(-1);
   }
 
-  mqs->processed = 0;
-
   //** Now handle the waiting gop
   apr_thread_mutex_lock(mqs->lock);
   while (mqs->waiting == 1) {
@@ -204,6 +207,13 @@ int mq_stream_read_wait(mq_stream_t *mqs)
   //** Flip states
   mqs->gop_processed = mqs->gop_waiting;
   mqs->gop_waiting = NULL;
+
+  //** This shouldn't get triggered but just in case lets throw an error.
+  if (mqs->gop_processed == NULL) {
+     err = 3;
+     log_printf(0, "ERROR: MQS gop processed=waiting=NULL!!!!!! err=%d\n", err);
+     fprintf(stderr, "ERROR: MQS gop processed=waiting=NULL!!!!!! err=%d\n", err);
+  }
 
   //** Check if we need to fire off the next request
   if (mqs->data != NULL) {
