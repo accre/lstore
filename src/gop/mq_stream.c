@@ -209,10 +209,12 @@ int mq_stream_read_wait(mq_stream_t *mqs)
   mqs->gop_waiting = NULL;
 
   //** This shouldn't get triggered but just in case lets throw an error.
-  if (mqs->gop_processed == NULL) {
-     err = 3;
-     log_printf(0, "ERROR: MQS gop processed=waiting=NULL!!!!!! err=%d\n", err);
-     fprintf(stderr, "ERROR: MQS gop processed=waiting=NULL!!!!!! err=%d\n", err);
+  if ((mqs->gop_processed == NULL) && (mqs->data != NULL)) {
+     if ((mqs->data[MQS_STATE_INDEX] == MQS_MORE) && (mqs->want_more == MQS_MORE)) {
+        err = 3;
+        log_printf(0, "ERROR: MQS gop processed=waiting=NULL  want_more set!!!!!! err=%d\n", err);
+        fprintf(stderr, "ERROR: MQS gop processed=waiting=NULL want_more set!!!!!! err=%d\n", err);
+     }
   }
 
   //** Check if we need to fire off the next request
