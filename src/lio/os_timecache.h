@@ -25,64 +25,24 @@ Advanced Computing Center for Research and Education
 230 Appleton Place
 Nashville, TN 37203
 http://www.accre.vanderbilt.edu
-*/ 
+*/
 
 //***********************************************************************
-// lio_fuse.h - LIO Linux FUSE header file
+// OS Remote Server/Client header file
 //***********************************************************************
 
-#ifndef _LIO_FUSE_H_
-#define _LIO_FUSE_H_
+#include "object_service_abstract.h"
+
+#ifndef _OS_TIMECACHE_H_
+#define _OS_TIMECACHE_H_
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#define FUSE_USE_VERSION 26
+#define OS_TYPE_TIMECACHE "os_timecache"
 
-#include <fuse.h>
-#include <apr_time.h>
-#include "list.h"
-#include "lio.h"
-
-#define LFS_READ_MODE  1
-#define LFS_WRITE_MODE 2
-
-//#define LFS_TAPE_ATTR "user.tape_system"
-#define LFS_TAPE_ATTR "system.tape"
-
-#define LFS_INODE_OK     0  //** Everythings fine
-#define LFS_INODE_DROP   1  //** Drop the inode from the cache
-#define LFS_INODE_DELETE 2  //** Remove it from cache and delete the file contents
-
-typedef struct lio_fuse_file_handle_s lio_fuse_file_handle_t;
-
-typedef struct {
-  int enable_tape;
-  int shutdown;
-  int mount_point_len;
-  atomic_int_t counter;
-  list_t *ino_index;
-  lio_config_t *lc;
-  apr_pool_t *mpool;
-  apr_thread_mutex_t *lock;
-  apr_hash_t *open_files;
-  struct fuse_operations fops;
-  char *id;
-  char *mount_point;
-} lio_fuse_t;
-
-typedef struct {
-  lio_config_t *lc;
-  char *mount_point;
-  int lio_argc;
-  char **lio_argv;
-} lio_fuse_init_args_t;
-
-extern struct fuse_operations lfs_fops;
-
-void *lfs_init(struct fuse_conn_info *conn);  // returns pointer to lio_fuse_t on success, otherwise NULL
-void lfs_destroy(void *lfs); // expects a lio_fuse_t* as the argument
+object_service_fn_t *object_service_timecache_create(service_manager_t *ess, inip_file_t *ifd, char *section);
 
 #ifdef __cplusplus
 }

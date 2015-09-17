@@ -33,6 +33,7 @@ http://www.accre.vanderbilt.edu
 
 #define _log_module_index 214
 
+#include <apr_signal.h>
 #include "ex3_system.h"
 #include "object_service_abstract.h"
 #include "os_file.h"
@@ -50,6 +51,14 @@ http://www.accre.vanderbilt.edu
 #include "authn_fake.h"
 
 #define FIXME_SIZE 1024*1024
+
+typedef struct {
+  char *host_id;
+  ex_off_t  count;
+  int host_id_len;
+  apr_time_t start;
+  apr_time_t last;
+} osrs_active_t;
 
 typedef struct {
   object_service_fn_t *os;
@@ -70,6 +79,115 @@ typedef struct {
   op_generic_t *gop;
 } spin_hb_t;
 
+
+object_service_fn_t *_os_global = NULL;  //** This is used for the signal
+
+//***********************************************************************
+// osrs_print_active_table - Print the active table
+//***********************************************************************
+
+void osrs_print_active_table(object_service_fn_t *os, FILE *fd)
+{
+  osrs_priv_t *osrs = (osrs_priv_t *)os->priv;
+  char sdate[128], ldate[128];
+  osrs_active_t *a;
+
+  log_printf(5, "Dumping active table\n");
+
+  apr_thread_mutex_lock(osrs->lock);
+  apr_ctime(sdate, apr_time_now());
+  fprintf(fd, "#timestamp: %s\n", sdate);
+  fprintf(fd, "#host|start_time|last_time|count\n");
+  move_to_top(osrs->active_lru);
+  a = get_ele_data(osrs->active_lru);
+  while (a != NULL) {
+     apr_ctime(sdate, a->start);
+     apr_ctime(ldate, a->last);
+     fprintf(fd, "%s|%s|%s|"XOT "\n", a->host_id, sdate, ldate, a->count);
+     move_down(osrs->active_lru);
+     a = get_ele_data(osrs->active_lru);
+  }
+  apr_thread_mutex_unlock(osrs->lock);
+}
+
+
+//***********************************************************************
+//  signal_print_active_table - Dumps the active table
+//***********************************************************************
+
+void signal_print_active_table(int sig)
+{
+  osrs_priv_t *osrs;
+  FILE *fd;
+
+  if (_os_global == NULL) return;
+
+  osrs = (osrs_priv_t *)_os_global->priv;
+
+  if ((fd = fopen(osrs->fname_active, "w")) == NULL) return;
+  osrs_print_active_table(_os_global, fd);
+  fclose(fd);
+
+  return;
+}
+
+//***********************************************************************
+// osrs_update_active_table - Updates the active table
+//    NOTE:  Currently this only tracks callbacks that use streams
+//***********************************************************************
+
+void osrs_update_active_table(object_service_fn_t *os, mq_frame_t *hid)
+{
+  osrs_priv_t *osrs = (osrs_priv_t *)os->priv;
+  char *host_id;
+  int id_len;
+  Stack_ele_t *ele;
+  osrs_active_t *a;
+
+  mq_get_frame(hid, (void **)&host_id, &id_len);
+
+  apr_thread_mutex_lock(osrs->lock);
+
+  ele = apr_hash_get(osrs->active_table, host_id, id_len);
+  if (ele == NULL) { //** 1st time so need to add it
+     //** Check if we need to clean things up
+     if (stack_size(osrs->active_lru) >= osrs->max_active) {
+        move_to_bottom(osrs->active_lru);
+        a = (osrs_active_t *)get_ele_data(osrs->active_lru);
+        apr_hash_set(osrs->active_table, a->host_id, a->host_id_len, NULL);
+        if (a->host_id) free(a->host_id);
+        free(a);
+        delete_current(osrs->active_lru, 1, 0);
+     }
+
+     //** Now make the new entry
+     type_malloc(a, osrs_active_t, 1);
+     type_malloc(a->host_id, char, id_len+1);
+     memcpy(a->host_id, host_id, id_len);
+     a->host_id[id_len] = 0;
+     a->host_id_len = id_len;
+     a->start = a->last = apr_time_now();
+     a->count = 0;
+
+     //** add it
+     push(osrs->active_lru, a);
+     ele = get_ptr(osrs->active_lru);
+     apr_hash_set(osrs->active_table, a->host_id, a->host_id_len, ele);
+  }
+
+  //** Get the handle
+  a = (osrs_active_t *)get_stack_ele_data(ele);
+  a->last = apr_time_now();  //** Update it
+  a->count++;
+
+  //** and move it to the front
+  move_to_ptr(osrs->active_lru, ele);
+  stack_unlink_current(osrs->active_lru, 1);
+  push_link(osrs->active_lru, ele);
+
+  apr_thread_mutex_unlock(osrs->lock);
+}
+
 //***********************************************************************
 // osrs_log - Logs an operation
 //***********************************************************************
@@ -83,7 +201,7 @@ void osrs_log_printf(object_service_fn_t *os, creds_t *creds, const char *fmt, .
   char date[APR_CTIME_LEN], *uid;
   apr_time_t now;
 
-  if (osrs->fname_activity == NULL) return;
+  if (osrs->fname_active == NULL) return;
   fd = fopen(osrs->fname_activity, "a");
   if (fd == NULL) {
      log_printf(0, "ERROR opening activity_log (%s)!\n", osrs->fname_activity);
@@ -444,7 +562,7 @@ void osrs_remove_regex_object_cb(void *arg, mq_task_t *task)
   os_regex_table_t *path, *object_regex;
   creds_t *creds;
   int fsize, bpos, n;
-  int64_t recurse_depth, obj_types, timeout, len, hb_timeout;
+  int64_t recurse_depth, obj_types, timeout, len, hb_timeout, loop;
   mq_msg_t *msg;
   apr_time_t expire;
   op_generic_t *g, *gop;
@@ -524,7 +642,11 @@ void osrs_remove_regex_object_cb(void *arg, mq_task_t *task)
   if (creds != NULL) {
     gop = os_remove_regex_object(osrs->os_child, creds, path, object_regex, obj_types, recurse_depth);
 
+    loop = 0;
     while ((g = gop_timed_waitany(gop, 1)) == NULL) {
+       if ((loop%10) == 0) osrs_update_active_table(os, hid);
+       loop++;
+
        expire = apr_time_now() - apr_time_from_sec(hb_timeout);
        apr_thread_mutex_lock(osrs->lock);
        n = ((expire > spin.last_hb) || (spin.abort > 0)) ? 1 : 0;
@@ -1140,6 +1262,7 @@ log_printf(5, "i=%d v_size=" XOT " bpos=%d\n", i, v, bpos);
 
   //** Create the stream
   mqs = mq_stream_write_create(osrs->mqc, osrs->server_portal, osrs->ongoing, MQS_PACK_COMPRESS, max_stream, timeout, msg, fid, hid, 0);
+  osrs_update_active_table(os, hid);  //** Update the active log
 
   //** Return the results
   i = zigzag_encode(status.op_status, buffer);
@@ -1439,7 +1562,7 @@ void osrs_regex_set_mult_attr_cb(void *arg, mq_task_t *task)
   os_regex_table_t *path, *object_regex;
   creds_t *creds;
   int fsize, bpos, n, i;
-  int64_t recurse_depth, obj_types, timeout, hb_timeout, n_attrs, len;
+  int64_t recurse_depth, obj_types, timeout, hb_timeout, n_attrs, len, loop;
   mq_msg_t *msg;
   op_generic_t *g;
   mq_stream_t *mqs;
@@ -1565,7 +1688,11 @@ log_printf(5, "hb_abort_timeout=%d\n", hb_timeout);
   if (creds != NULL) {
      spin.gop = os_regex_object_set_multiple_attrs(osrs->os_child, creds, call_id, path, object_regex, obj_types, recurse_depth, key, (void **)val, v_size, n_attrs);
 
+     loop= 0;
      while ((g = gop_timed_waitany(spin.gop, 1)) == NULL) {
+        if ((loop%10) == 0) osrs_update_active_table(os, hid);
+        loop++;
+
         expire = apr_time_now() - apr_time_from_sec(hb_timeout);
         apr_thread_mutex_lock(osrs->lock);
         n = ((expire > spin.last_hb) || (spin.abort > 0)) ? 1 : 0;
@@ -2229,6 +2356,8 @@ fail:
   //** Pack up the data and send it out
   err = 0;
   while (((ftype = os_next_object(osrs->os_child, it, &fname, &prefix_len)) > 0) && (err == 0)) {
+     osrs_update_active_table(os, hid);  //** Update the active log
+
      len = strlen(fname);
      n = zigzag_encode(ftype, tbuf);
      n += zigzag_encode(prefix_len, &(tbuf[n]));
@@ -2395,6 +2524,8 @@ fail:
   //** Pack up the data and send it out
   err = 0;
   while (((ftype = os_next_object(osrs->os_child, it, &fname, &prefix_len)) > 0) && (err == 0)) {
+     osrs_update_active_table(os, hid);  //** Update the active log
+
      len = strlen(fname);
      n = zigzag_encode(ftype, tbuf);
      n += zigzag_encode(prefix_len, &(tbuf[n]));
@@ -2502,6 +2633,7 @@ void osrs_attr_iter_cb(void *arg, mq_task_t *task)
 
   //** Create the stream so we can get the heartbeating while we work
   mqs = mq_stream_write_create(osrs->mqc, osrs->server_portal, osrs->ongoing, MQS_PACK_COMPRESS, osrs->max_stream, timeout, msg, fid, fhid, 0);
+  osrs_update_active_table(os, fhid);  //** Update the active log
 
   //** Check if the file handle is the correect size
   if (hsize != sizeof(intptr_t)) {
@@ -2673,7 +2805,7 @@ log_printf(5, "1.err=%d\n", err);
   if (err != 0) goto fail;
 
   //** Create the fsck iterator
-  if (creds == NULL) {
+  if (creds != NULL) {
      it = os_create_fsck_iter(osrs->os_child, creds, path, mode);
   } else {
      it = NULL;
@@ -2697,6 +2829,8 @@ fail:
   //** Pack up the data and send it out
   err = 0;
   while (((fsck_err = os_next_fsck(osrs->os_child, it, &bad_fname, &bad_atype)) != OS_FSCK_FINISHED) && (err == 0)) {
+     osrs_update_active_table(os, fhid);  //** Update the active log
+
 log_printf(5, "err=%d bad_fname=%s bad_atype=%d\n", err, bad_fname, bad_atype);
      len = strlen(bad_fname);
      n = zigzag_encode(len, tbuf);
@@ -2820,6 +2954,7 @@ log_printf(5, "err=%d\n", err);
 void os_remote_server_destroy(object_service_fn_t *os)
 {
   osrs_priv_t *osrs = (osrs_priv_t *)os->priv;
+  osrs_active_t *a;
 
   //** Remove the server portal
   mq_portal_remove(osrs->mqc, osrs->server_portal);
@@ -2837,6 +2972,19 @@ void os_remote_server_destroy(object_service_fn_t *os)
   //** Free the log string
   if (osrs->fname_activity != NULL) free(osrs->fname_activity);
 
+
+  //** Cleanup the activity log
+  move_to_top(osrs->active_lru);
+  a = get_ele_data(osrs->active_lru);
+  while (a != NULL) {
+     if (a->host_id) free(a->host_id);
+     free(a);
+     move_down(osrs->active_lru);
+     a = get_ele_data(osrs->active_lru);
+  }
+  free_stack(osrs->active_lru, 0);
+  //** The active_table hash gets destroyed when the pool is destroyed.
+
   //** Shutdown the child OS
   os_destroy_service(osrs->os_child);
 
@@ -2845,6 +2993,7 @@ void os_remote_server_destroy(object_service_fn_t *os)
 
 
   free(osrs->hostname);
+  if (osrs->fname_active) free(osrs->fname_active);
   free(osrs);
   free(os);
 }
@@ -2963,13 +3112,24 @@ log_printf(0, "START\n");
   //** This is to handle client stream responses
   mq_command_set(ctable, MQS_MORE_DATA_KEY, MQS_MORE_DATA_SIZE, osrs->ongoing, mqs_server_more_cb);
 
-  mq_portal_install(osrs->mqc, osrs->server_portal);
-
   //** Set up the fn ptrs.  This is just for shutdown
   //** so very little is implemented
   os->destroy_service = os_remote_server_destroy;
 
   os->type = OS_TYPE_REMOTE_SERVER;
+
+  //** This is for the active tables
+  osrs->fname_active = inip_get_string(fd, section, "active_output", "/lio/log/os_active.log");
+  osrs->max_active = inip_get_integer(fd, section, "active_size", 1024);
+  osrs->active_table = apr_hash_make(osrs->mpool);
+  osrs->active_lru = new_stack();
+
+  _os_global = os;
+  apr_signal_unblock(SIGUSR1);
+  apr_signal(SIGUSR1, signal_print_active_table);
+
+  //** Activate it
+  mq_portal_install(osrs->mqc, osrs->server_portal);
 
 log_printf(0, "END\n");
 

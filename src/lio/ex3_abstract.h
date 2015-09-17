@@ -191,6 +191,7 @@ void exnode_exchange_destroy(exnode_exchange_t *exp);
 void exnode_exchange_free(exnode_exchange_t *exp);
 exnode_exchange_t *exnode_exchange_load_file(char *fname);
 exnode_exchange_t *exnode_exchange_text_parse(char *text);
+ex_id_t exnode_exchange_get_default_view_id(exnode_exchange_t *exp);
 segment_t *exnode_get_default(exnode_t *ex);
 void exnode_set_default(exnode_t *ex, segment_t *seg);
 

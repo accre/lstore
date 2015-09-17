@@ -67,13 +67,7 @@ void du_format_entry(info_fd_t *ifd, du_entry_t *de, int sumonly)
      pretty_print_double_with_scale(base, fsize, ppsize);
   }
 
-  if ((de->ftype & OS_OBJECT_DIR) > 0) {
-    dname = de->fname;
-  } else { 
-    dname = strdup(de->fname);
-    n = strlen(dname);
-    if (n > 0) dname[n-1] = 0;
-  }
+  dname = de->fname;
 
   if (sumonly == 1) {
      n = ((de->ftype & OS_OBJECT_DIR) > 0) ? de->count : 1;
@@ -105,6 +99,7 @@ int main(int argc, char **argv)
   ex_off_t total_files, total_bytes;
   int v_size, sumonly, ignoreln;
   int recurse_depth = 10000;
+  int return_code = 0;
   du_entry_t du_total;
 
 //printf("argc=%d\n", argc);
@@ -208,13 +203,14 @@ int main(int argc, char **argv)
 log_printf(15, "MAIN SUMONLY=1\n");
         v_size = -1024;
         val = NULL;
-        it = os_create_object_iter_alist(tuple.lc->os, tuple.creds, rp_single, ro_single, OS_OBJECT_ANY, 0, &key, (void **)&val, &v_size, 1);
+        it = lio_create_object_iter_alist(tuple.lc, tuple.creds, rp_single, ro_single, OS_OBJECT_ANY, 0, &key, (void **)&val, &v_size, 1);
         if (it == NULL) {
            log_printf(0, "ERROR: Failed with object_iter creation\n");
+           return_code = EIO;
            goto finished;
         }
 
-        while ((ftype = os_next_object(tuple.lc->os, it, &fname, &prefix_len)) > 0) {
+        while ((ftype = lio_next_object(tuple.lc, it, &fname, &prefix_len)) > 0) {
            if (((ftype & OS_OBJECT_SYMLINK) > 0) && (ignoreln == 1)) continue;  //** Ignoring links
 
 log_printf(15, "sumonly inserting fname=%s\n", fname);
@@ -233,7 +229,7 @@ log_printf(15, "sumonly inserting fname=%s\n", fname);
            free(val); val = NULL;
         }
 
-        os_destroy_object_iter(tuple.lc->os, it);
+        lio_destroy_object_iter(tuple.lc, it);
 
 log_printf(15, "sum_table=%d\n", list_key_count(sum_table));
      }
@@ -242,13 +238,14 @@ log_printf(15, "MAIN LOOP\n");
 
      v_size = -1024;
      val = NULL;
-     it = os_create_object_iter_alist(tuple.lc->os, tuple.creds, rp_single, ro_single, OS_OBJECT_ANY, recurse_depth, &key, (void **)&val, &v_size, 1);
+     it = lio_create_object_iter_alist(tuple.lc, tuple.creds, rp_single, ro_single, OS_OBJECT_ANY, recurse_depth, &key, (void **)&val, &v_size, 1);
      if (it == NULL) {
         log_printf(0, "ERROR: Failed with object_iter creation\n");
+        return_code = EIO;
         goto finished;
       }
 
-     while ((ftype = os_next_object(tuple.lc->os, it, &fname, &prefix_len)) > 0) {
+     while ((ftype = lio_next_object(tuple.lc, it, &fname, &prefix_len)) > 0) {
 //printf("fname=%s\n", fname);
         if (((ftype & OS_OBJECT_SYMLINK) > 0) && (ignoreln == 1)) continue;  //** Ignoring links
 //printf("fname2=%s\n", fname);
@@ -287,7 +284,7 @@ log_printf(15, "MAIN LOOP\n");
          free(val); val = NULL;
      }
 
-     os_destroy_object_iter(tuple.lc->os, it);
+     lio_destroy_object_iter(tuple.lc, it);
 
      lio_path_release(&tuple);
      if (rp_single != NULL) { os_regex_table_destroy(rp_single); rp_single = NULL; }
@@ -324,6 +321,6 @@ log_printf(15, "MAIN LOOP\n");
 finished:
   lio_shutdown();
 
-  return(0);
+  return(return_code);
 }
 

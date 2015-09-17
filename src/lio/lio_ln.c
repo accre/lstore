@@ -102,11 +102,11 @@ int main(int argc, char **argv)
   if (symlink == 0) force = 0;
 
   if (stuple.path[0] == '/') { //** Absolute path
-     ftype = lioc_exists(stuple.lc, stuple.creds, stuple.path);
+     ftype = lio_exists(stuple.lc, stuple.creds, stuple.path);
   } else {  //** Relative path
      os_path_split(dtuple.path, &dir, &file);
      snprintf(fullname, OS_PATH_MAX, "%s/%s", dir, stuple.path);
-     ftype = lioc_exists(stuple.lc, stuple.creds, fullname);
+     ftype = lio_exists(stuple.lc, stuple.creds, fullname);
      free(dir); free(file);
   }
 
@@ -126,7 +126,7 @@ int main(int argc, char **argv)
   }
 
   //** Check on the dest file
-  ftype = lioc_exists(dtuple.lc, dtuple.creds, dtuple.path);
+  ftype = lio_exists(dtuple.lc, dtuple.creds, dtuple.path);
   if (ftype != 0) { //** The file doesn't exists
      printf("ERROR destination file exists: %s\n", dtuple.path);
      err = 1;
@@ -134,7 +134,7 @@ int main(int argc, char **argv)
   }
 
   //** Now create the link
-  err = gop_sync_exec(lio_link_object(dtuple.lc, dtuple.creds, symlink, stuple.path, dtuple.path, NULL));
+  err = gop_sync_exec(gop_lio_link_object(dtuple.lc, dtuple.creds, symlink, stuple.path, dtuple.path, NULL));
   if (err != OP_STATE_SUCCESS) {
      info_printf(lio_ifd, 0, "ERROR linking file!\n");
      err = 1;

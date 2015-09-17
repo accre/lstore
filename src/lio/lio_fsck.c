@@ -56,6 +56,7 @@ int main(int argc, char **argv)
      printf("\n");
      printf("lio_fsck LIO_COMMON_OPTIONS  [-o parent|manual|delete|user valid_user]  [-ex parent|manual|delete] [-s manual|repair] path_1 .. path_N\n");
      lio_print_options(stdout);
+     lio_print_path_options(stdout);
      printf("    -o                 - How to handle missing system.owner issues.  Default is manual.\n");
      printf("                            parent - Make the object owner the same as the parent directory.\n");
      printf("                            manual - Do nothing.  Leave the owner as missing.\n");

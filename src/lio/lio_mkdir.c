@@ -25,7 +25,7 @@ Advanced Computing Center for Research and Education
 230 Appleton Place
 Nashville, TN 37203
 http://www.accre.vanderbilt.edu
-*/ 
+*/
 
 #define _log_module_index 199
 
@@ -52,7 +52,7 @@ op_status_t mkdir_fn(void *arg, int id)
   status = op_success_status;
 
   //** Make sure it doesn't exist
-  ftype = lioc_exists(tuple->lc, tuple->creds, tuple->path);
+  ftype = lio_exists(tuple->lc, tuple->creds, tuple->path);
 
   if (ftype != 0) { //** The file exists
      log_printf(1, "ERROR The dir exists\n");
@@ -61,7 +61,7 @@ op_status_t mkdir_fn(void *arg, int id)
   }
 
   //** Now create the object
-  err = gop_sync_exec(lio_create_object(tuple->lc, tuple->creds, tuple->path, OS_OBJECT_DIR, exnode_data, NULL));
+  err = gop_sync_exec(gop_lio_create_object(tuple->lc, tuple->creds, tuple->path, OS_OBJECT_DIR, exnode_data, NULL));
   if (err != OP_STATE_SUCCESS) {
      log_printf(1, "ERROR creating dir!\n");
      status.op_status = OP_STATE_FAILURE;
@@ -85,6 +85,7 @@ int main(int argc, char **argv)
   lio_path_tuple_t *flist;
   char *error_table[] = { "", "ERROR checking dir existence", "ERROR dir already exists", "ERROR creating dir" };
   FILE *fd;
+  int return_code = 0;
 
 //printf("argc=%d\n", argc);
   if (argc < 2) {
@@ -159,13 +160,17 @@ log_printf(0, "gid=%d i=%d fname=%s\n", gop_id(gop), i, flist[i].path);
         gop = opque_waitany(q);
         j = gop_get_myid(gop);
         status = gop_get_status(gop);
-        if (status.op_status != OP_STATE_SUCCESS) info_printf(lio_ifd, 0, "Failed with directory %s with error %s\n", argv[j+start_index], error_table[status.error_code]);
+        if (status.op_status != OP_STATE_SUCCESS) {
+           info_printf(lio_ifd, 0, "Failed with directory %s with error %s\n", argv[j+start_index], error_table[status.error_code]);
+           return_code = EIO;
+        }
         gop_free(gop, OP_DESTROY);
      }
   }
 
   err = opque_waitall(q);
   if (err != OP_STATE_SUCCESS) {
+     return_code = EIO;
      while ((gop = opque_get_next_failed(q)) != NULL) {
          j = gop_get_myid(gop);
          status = gop_get_status(gop);
@@ -183,7 +188,7 @@ log_printf(0, "gid=%d i=%d fname=%s\n", gop_id(gop), i, flist[i].path);
 
   lio_shutdown();
 
-  return(0);
+  return(return_code);
 }
 
 
