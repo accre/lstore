@@ -995,7 +995,6 @@ int read_netstream(NetStream_t *ns, tbuffer_t *buffer, int boff, int bsize, Net_
 // readline_netstream_raw - Performs an attempt to read a complete line
 //    if it fails it returns the partial read
 //*********************************************************************
-
 int readline_netstream_raw(NetStream_t *ns, tbuffer_t *buffer, int boff, int size, Net_timeout_t timeout, int *status) {
     tbuffer_t ns_tb;
     int nbytes, total_bytes, i;
@@ -1007,7 +1006,8 @@ int readline_netstream_raw(NetStream_t *ns, tbuffer_t *buffer, int boff, int siz
         log_printf(0, "ERROR boff>iov_len!  boff=%d iov_len=" ST "\n", boff, buffer->buf.iov[0].iov_len);
         fprintf(stderr, "ERROR boff>iov_len!  boff=%d iov_len=" ST "\n", boff, buffer->buf.iov[0].iov_len);
         fprintf(stdout, "ERROR boff>iov_len!  boff=%d iov_len=" ST "\n", boff, buffer->buf.iov[0].iov_len);
-        return(-1);
+        *status = -1;
+        return(0);
     }
 
     buf = (buffer->buf.iov[0].iov_base + boff);
@@ -1030,8 +1030,7 @@ int readline_netstream_raw(NetStream_t *ns, tbuffer_t *buffer, int boff, int siz
             *status = 1;
             total_bytes--;
             buf[total_bytes] = '\0';   //** Make sure and NULL terminate the string remove the \n
-            debug_printf(15, "readline_stream_raw: BUFFER ns=%d Command : %s * nbytes=%d\n", ns->id, buffer,total_bytes);
-            flush_debug();
+            debug_printf(15, "readline_stream_raw: BUFFER ns=%d Command : %s * nbytes=%d\n", ns->id, buffer,total_bytes); flush_debug();
             unlock_read_ns(ns);
             return(total_bytes);
         }
@@ -1045,8 +1044,7 @@ int readline_netstream_raw(NetStream_t *ns, tbuffer_t *buffer, int boff, int siz
         nbytes = read_netstream(ns, &ns_tb, 0, N_BUFSIZE, timeout);  //**there should be 0 bytes in buffer now
         debug_printf(15, "readline_netstream_raw: ns=%d Command : !", ns->id);
         for (i=0; i< nbytes; i++) debug_printf(15, "%c", ns->buffer[i]);
-        debug_printf(15, "! * nbytes =%d\n", nbytes);
-        flush_debug();
+        debug_printf(15, "! * nbytes =%d\n", nbytes); flush_debug();
 
         if (nbytes > 0) {
             //** Assumes buffer has a single iovec element
@@ -1072,12 +1070,10 @@ int readline_netstream_raw(NetStream_t *ns, tbuffer_t *buffer, int boff, int siz
         }
         unlock_read_ns(ns);
 
-        debug_printf(15, "readline_stream_raw: ns=%d Command : %s * nbytes=%d\n", ns->id, buffer,total_bytes);
-        flush_debug();
+        debug_printf(15, "readline_stream_raw: ns=%d Command : %s * nbytes=%d\n", ns->id, buffer,total_bytes); flush_debug();
     } else if (nbytes == -1) {  //** Socket error
         *status = -1;
-        debug_printf(15, "readline_stream_raw: Socket error! ns=%d nbytes=%d  buffer=%s\n", ns->id, total_bytes, buffer);
-        flush_debug();
+        debug_printf(15, "readline_stream_raw: Socket error! ns=%d nbytes=%d  buffer=%s\n", ns->id, total_bytes, buffer); flush_debug();
         return(0);
     } else {       //*** Not enough space in input buffer
         *status = 0;
@@ -1089,9 +1085,7 @@ int readline_netstream_raw(NetStream_t *ns, tbuffer_t *buffer, int boff, int siz
             ns->end = -1;
         }
         unlock_read_ns(ns);
-        debug_printf(15, "readline_stream_raw: Out of buffer space or nothing read! ns=%d nbytes=%d  buffer=%s\n", ns->id, total_bytes, buffer);
-        flush_debug();
-//      return(-1);   //**Force the socket to be closed
+        debug_printf(15, "readline_stream_raw: Out of buffer space or nothing read! ns=%d nbytes=%d  buffer=%s\n", ns->id, total_bytes, buffer); flush_debug();
     }
 
     return(total_bytes);
