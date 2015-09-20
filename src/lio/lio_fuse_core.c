@@ -28,10 +28,16 @@ http://www.accre.vanderbilt.edu
 */
 
 #define _log_module_index 212
+#include "config.h"
+#if defined(HAVE_SYS_XATTR_H)
+#include <sys/xattr.h>
+#elif defined(HAVE_ATTR_XATTR_H)
+#include <attr/xattr.h>
+#endif
+
 
 #include <assert.h>
 #include <sys/types.h>
-#include <attr/xattr.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #include <math.h>
@@ -855,7 +861,7 @@ int lfs_utimens(const char *fname, const struct timespec tv[2])
 // lfs_listxattr - Lists the extended attributes
 //    These are currently defined as the user.* attributes
 //*****************************************************************
-
+#if defined(HAVE_XATTR)
 int lfs_listxattr(const char *fname, char *list, size_t size)
 {
   lio_fuse_t *lfs = lfs_get_context();
@@ -930,7 +936,7 @@ log_printf(15, "ERANGE bpos=%d buf=%s\n", bpos, buf);
 
   return(bpos);
 }
-
+#endif // HAVE XATTR
 //*****************************************************************
 // lfs_set_tape_attr - Disburse the tape attribute
 //*****************************************************************
@@ -1134,6 +1140,7 @@ log_printf(15, "END fname=%s\n", fname);
 // lfs_getxattr - Gets an extended attribute
 //*****************************************************************
 
+#if defined(HAVE_XATTR)
 int lfs_getxattr(const char *fname, const char *name, char *buf, size_t size)
 {
   lio_fuse_t *lfs = lfs_get_context();
@@ -1168,7 +1175,9 @@ int lfs_getxattr(const char *fname, const char *name, char *buf, size_t size)
   if (val != NULL) free(val);
   return(v_size);
 }
+#endif // defined(HAVE_XATTR)
 
+#if defined(HAVE_XATTR)
 //*****************************************************************
 // lfs_setxattr - Sets a extended attribute
 //*****************************************************************
@@ -1231,6 +1240,7 @@ int lfs_removexattr(const char *fname, const char *name)
 
   return(0);
 }
+#endif // HAVE_XATTR
 
 //*************************************************************************
 // lfs_hardlink - Creates a hardlink to an existing file
