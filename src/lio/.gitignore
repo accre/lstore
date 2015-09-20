@@ -49,6 +49,7 @@ lio_server
 
 #These are generated via cmake using the *.in variants
 lio_client_version.c
+config.h
 
 #Skip edits
 *~
