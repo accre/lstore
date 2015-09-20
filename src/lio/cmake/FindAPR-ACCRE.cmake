@@ -1,52 +1,57 @@
-# -*- cmake -*-
+# Source: http://svn.trolocsis.com/repos/projects/templates/apr/build/FindAPR.cmake
+# Locate APR include paths and libraries
 
-# - Find Apache Portable Runtime
-# Find the APR includes and libraries
 # This module defines
-#  APR_INCLUDE_DIR and APRUTIL_INCLUDE_DIR, where to find apr.h, etc.
-#  APR_LIBRARIES and APRUTIL_LIBRARIES, the libraries needed to use APR.
-#  APR_FOUND and APRUTIL_FOUND, If false, do not try to use APR.
-# also defined, but not for general use are
-#  APR_LIBRARY and APRUTIL_LIBRARY, where to find the APR library.
+# APR_INCLUDES, where to find apr.h, etc.
+# APR_LIBS, linker switches to use with ld to link against APR
+# APR_EXTRALIBS, additional libraries to link against
+# APR_CFLAGS, the flags to use to compile
+# APR_FOUND, set to TRUE if found, FALSE otherwise
+# APR_VERSION, the version of APR that was found
 
-# APR first.
+set(APR_FOUND FALSE)
 
-# Find the *relative* include path
-find_path(apr_inc apr-ACCRE-1/apr.h)
+find_program(APR_CONFIG_EXECUTABLE apr-ACCRE-1-config)
+mark_as_advanced(APR_CONFIG_EXECUTABLE)
 
-# Now convert it to the full path
-if (apr_inc)     
-   find_path(APR_INCLUDE_DIR apr.h ${apr_inc}/apr-ACCRE-1 )
-else (apr_inc)
-   find_path(APR_INCLUDE_DIR apr.h)
-endif (apr_inc)
+macro(_apr_invoke _varname _regexp)
+    execute_process(
+        COMMAND ${APR_CONFIG_EXECUTABLE} ${ARGN}
+        OUTPUT_VARIABLE _apr_output
+        RESULT_VARIABLE _apr_failed
+    )
 
-FIND_LIBRARY(APR_LIBRARY NAMES apr-ACCRE-1)
+    if(_apr_failed)
+        message(FATAL_ERROR "${APR_CONFIG_EXECUTABLE} ${ARGN} failed")
+    else()
+        string(REGEX REPLACE "[\r\n]"  "" _apr_output "${_apr_output}")
+        string(REGEX REPLACE " +$"     "" _apr_output "${_apr_output}")
 
-IF (APR_LIBRARY AND APR_INCLUDE_DIR)
-    SET(APR_LIBRARIES ${APR_LIBRARY})
-    SET(APR_FOUND "YES")
-ELSE (APR_LIBRARY AND APR_INCLUDE_DIR)
-  SET(APR_FOUND "NO")
-ENDIF (APR_LIBRARY AND APR_INCLUDE_DIR)
+        if(NOT ${_regexp} STREQUAL "")
+            string(REGEX REPLACE "${_regexp}" " " _apr_output "${_apr_output}")
+        endif()
 
+        # XXX: We don't want to invoke separate_arguments() for APR_CFLAGS;
+        # just leave as-is
+        if(NOT ${_varname} STREQUAL "APR_CFLAGS")
+            separate_arguments(_apr_output)
+        endif(NOT ${_varname} STREQUAL "APR_CFLAGS")
 
-IF (APR_FOUND)
-   IF (NOT APR_FIND_QUIETLY)
-      MESSAGE(STATUS "Found APR-ACCRE: ${APR_LIBRARIES}")
-   ENDIF (NOT APR_FIND_QUIETLY)
-ELSE (APR_FOUND)
-   IF (APR_FIND_REQUIRED)
-      MESSAGE(FATAL_ERROR "Could not find APR-ACCRE library")
-   ENDIF (APR_FIND_REQUIRED)
-ENDIF (APR_FOUND)
+        set(${_varname} "${_apr_output}")
+    endif()
+endmacro(_apr_invoke)
 
-# Deprecated declarations.
-SET (NATIVE_APR_INCLUDE_PATH ${APR_INCLUDE_DIR} )
-GET_FILENAME_COMPONENT (NATIVE_APR_LIB_PATH ${APR_LIBRARY} PATH)
+_apr_invoke(APR_CFLAGS     ""        --cppflags --cflags)
+_apr_invoke(APR_INCLUDES  "(^| )-I" --includes)
+_apr_invoke(APR_LIBS      ""        --link-ld)
+_apr_invoke(APR_EXTRALIBS "(^| )-l" --libs)
+_apr_invoke(APR_VERSION   ""        --version)
 
-MARK_AS_ADVANCED(
-  APR_LIBRARY
-  APR_INCLUDE_DIR
-  )
+# ACCRE prefers 'apr.h' over 'apr-1/apr.h', convert
+#if (APR_INCLUDES)
+#    find_path(temp_include apr.h ${APR_INCLUDES}/apr-ACCRE-1 )
+#    set(APR_INCLUDES ${temp_include})
+#endif ()
 
+INCLUDE(FindPackageHandleStandardArgs)
+FIND_PACKAGE_HANDLE_STANDARD_ARGS(APR DEFAULT_MSG APR_INCLUDES APR_LIBS APR_VERSION)

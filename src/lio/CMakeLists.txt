@@ -35,18 +35,22 @@ find_package(ZMQ REQUIRED)
 find_package(CZMQ REQUIRED)
 find_package(FUSE REQUIRED)
 find_package(Zlib REQUIRED)
-find_package(XATTR REQUIRED)
+
+# check for xattr
+configure_file("${PROJECT_SOURCE_DIR}/config.h.in" "${PROJECT_SOURCE_DIR}/config.h")
+check_include_file(attr/xattr.h HAVE_ATTR_XATTR_H)
+check_include_file(sys/xattr.h HAVE_SYS_XATTR_H)
 
 set(CMAKE_C_FLAGS_DEBUG "${CMAKE_REQUIRED_FLAGS} -O0 -Wall -g -DHAVE_CONFIG_H -DLINUX=2 -D_REENTRANT -D_GNU_SOURCE -D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64 ${XATTR_FOUND}" )
 set(CMAKE_C_FLAGS_RELEASE "-O ${CMAKE_REQUIRED_FLAGS} -DHAVE_CONFIG_H -DLINUX=2 -D_REENTRANT -D_GNU_SOURCE -D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64 ${XATTR_FOUND}" )
 
 
-include_directories(${OPENSSL_INCLUDE_DIR} ${APR_INCLUDE_DIR} ${APRUTIL_INCLUDE_DIR} ${PHOEBUS_INCLUDE_DIR} ${ZLIB_INCLUDE_DIR}
+include_directories(${OPENSSL_INCLUDE_DIR} ${APR_INCLUDES} ${APU_INCLUDES} ${PHOEBUS_INCLUDE_DIR} ${ZLIB_INCLUDE_DIR}
    ${JERASURE_INCLUDE_DIR} ${TOOLBOX_INCLUDE_DIR} ${GOP_INCLUDE_DIR} ${IBP_INCLUDE_DIR} ${FUSE_INCLUDE_DIR} 
    ${CZMQ_INCLUDE_DIR} ${XATTR_INCLUDE_DIR} )
 
 SET(LIBS ${LIBS} ${IBP_LIBRARY} ${GOP_LIBRARY} ${CZMQ_LIBRARY} ${TOOLBOX_LIBRARY} ${JERASURE_LIBRARY} ${OPENSSL_LIBRARIES} ${CRYPTO_LIBRARIES} 
-   ${APR_LIBRARY} ${APRUTIL_LIBRARY} ${ZMQ_LIBRARY} ${FUSE_LIBRARY} ${ZLIB_LIBRARY} ${XATTR_LIBRARY} gssapi_krb5 pthread m dl rt)
+   ${APR_LIBS} ${APU_LIBS} ${ZMQ_LIBRARY} ${FUSE_LIBRARY} ${ZLIB_LIBRARY} ${XATTR_LIBRARY} gssapi_krb5 pthread m dl)
 
 #Make the version file
 set(LIO_CLIENT_VERSION "lio_client: v1.0.0")
@@ -104,16 +108,19 @@ set(LIO_OBJS
 
 set(LIBLIO_TRACE_OBJS liblio_trace.c )
 
+if (NOT APPLE)
 ADD_LIBRARY( lio_trace SHARED ${LIBLIO_TRACE_OBJS})
+endif (NOT APPLE)
 ADD_LIBRARY( lio SHARED ${LIO_OBJS})
 ADD_LIBRARY( lio-static STATIC ${LIO_OBJS})
 SET_TARGET_PROPERTIES( lio-static PROPERTIES OUTPUT_NAME "lio" )
 SET_TARGET_PROPERTIES(lio PROPERTIES CLEAN_DIRECT_OUTPUT 1)
 SET_TARGET_PROPERTIES(lio-static PROPERTIES CLEAN_DIRECT_OUTPUT 1)
 
+if (NOT APPLE)
 ADD_LIBRARY(dynfile SHARED segment_dynfile.c )
 SET_TARGET_PROPERTIES(dynfile PROPERTIES CLEAN_DIRECT_OUTPUT 1)
-
+endif (NOT APPLE)
 set(LIO_EXE 
     mk_linear ex_load ex_get ex_put ex_inspect ex_clone ex_rw_test log_test rs_test os_test os_fsck
     lio_touch lio_mkdir lio_rmdir lio_rm lio_ln lio_find lio_ls lio_du lio_setattr lio_getattr lio_mv lio_cp
