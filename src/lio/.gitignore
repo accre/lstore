@@ -1,6 +1,7 @@
 #Ignore binaries
 *.so
 *.a
+*.dylib
 arc_create
 arc_restore
 arc_tag
@@ -46,6 +47,7 @@ lio_warm
 lio_fuse
 lio_rs
 lio_server
+ldiff
 
 #These are generated via cmake using the *.in variants
 lio_client_version.c
