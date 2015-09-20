@@ -51,20 +51,21 @@ op_status_t touch_fn(void *arg, int id)
 
   status = op_success_status;
 
-  //** Make sure it doesn't exist
-  ftype = lioc_exists(tuple->lc, tuple->creds, tuple->path);
-  if (ftype != 0) { //** The file exists
-     log_printf(1, "ERROR The file exists\n");
-     status.op_status = OP_STATE_FAILURE;
-     status.error_code = 2;
-  }
 
-  //** Now create the object
-  err = gop_sync_exec(lio_create_object(tuple->lc, tuple->creds, tuple->path, OS_OBJECT_FILE, exnode_data, NULL));
-  if (err != OP_STATE_SUCCESS) {
-     log_printf(1, "ERROR creating file!\n");
-     status.op_status = OP_STATE_FAILURE;
-     status.error_code = 3;
+  ftype = lio_exists(tuple->lc, tuple->creds, tuple->path);
+  if (ftype != 0) { //** The file exists so just update the modified attribute
+     err = gop_sync_exec(gop_lio_set_attr(tuple->lc, tuple->creds, tuple->path, NULL, "os.timestamp.system.modify_data", NULL, 0));
+     if (err != OP_STATE_SUCCESS) {
+        status.op_status = OP_STATE_FAILURE;
+        status.error_code = 1;
+     }
+  } else {  //** New file so create the object
+    err = gop_sync_exec(gop_lio_create_object(tuple->lc, tuple->creds, tuple->path, OS_OBJECT_FILE, exnode_data, NULL));
+    if (err != OP_STATE_SUCCESS) {
+       log_printf(1, "ERROR creating file!\n");
+       status.op_status = OP_STATE_FAILURE;
+       status.error_code = 2;
+    }
   }
 
   return(status);
@@ -82,7 +83,7 @@ int main(int argc, char **argv)
   op_generic_t *gop;
   op_status_t status;
   lio_path_tuple_t *flist;
-  char *error_table[] = { "", "ERROR checking file existence", "ERROR file already exists", "ERROR creating file" };
+  char *error_table[] = { "", "ERROR Failed to update modify timestamp", "ERROR creating file" };
   FILE *fd;
 
 //printf("argc=%d\n", argc);
@@ -158,7 +159,7 @@ log_printf(0, "gid=%d i=%d fname=%s\n", gop_id(gop), i, flist[i].path);
         gop = opque_waitany(q);
         j = gop_get_myid(gop);
         status = gop_get_status(gop);
-        if (status.op_status != OP_STATE_SUCCESS) info_printf(lio_ifd, 0, "Failed with file %s with error %s\n", argv[j+start_index], error_table[status.error_code]);
+        if (status.op_status != OP_STATE_SUCCESS) info_printf(lio_ifd, 0, "Failed with file %s with: %s\n", argv[j+start_index], error_table[status.error_code]);
         gop_free(gop, OP_DESTROY);
      }
   }
@@ -168,7 +169,7 @@ log_printf(0, "gid=%d i=%d fname=%s\n", gop_id(gop), i, flist[i].path);
      while ((gop = opque_get_next_failed(q)) != NULL) {
          j = gop_get_myid(gop);
          status = gop_get_status(gop);
-         info_printf(lio_ifd, 0, "Failed with file %s with error %s\n", argv[j+start_index], error_table[status.error_code]);
+         info_printf(lio_ifd, 0, "Failed with file %s with: %s\n", argv[j+start_index], error_table[status.error_code]);
      }
   }
 
@@ -182,7 +183,7 @@ log_printf(0, "gid=%d i=%d fname=%s\n", gop_id(gop), i, flist[i].path);
 
   lio_shutdown();
 
-  return(0);
+  return((err == OP_STATE_SUCCESS) ? 0: EIO);
 }
 
 

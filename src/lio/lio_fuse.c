@@ -82,26 +82,29 @@ int main(int argc, char **argv)
   // ** split lio and fuse arguments **
 
   int idx;
-  lio_args.mount_point = argv[1];
 
   // these defaults hold if --lio is not used on the commandline
   fuse_argc = argc;
   fuse_argv = argv;
   lio_args.lio_argc = 1;
   lio_args.lio_argv = argv;
+  lio_args.mount_point = argv[1];
 
   for (idx=1; idx<argc; idx++) {
     if(strcmp(argv[idx], "--lio") == 0) {
       fuse_argc = idx;
+      lio_args.mount_point = argv[fuse_argc-1];  //** The last FUSE argument is the mount point
+
       lio_args.lio_argc = argc - idx;
       lio_args.lio_argv = &argv[idx];
       lio_args.lio_argv[0] = argv[0]; //replace "--lio" with the executable name because the parser may reasonably expect the zeroth argument to be the program name
     }
   }
 
-  // DEBUG  
-/*
+  // DEBUG
+/*********************
   printf("\nfuse_argc=%d\n", fuse_argc);
+  int i;
   for (i=0; i<fuse_argc; i++) {
     printf("fuse_argv[%d]=%s\n", i, fuse_argv[i]);
   }
@@ -110,9 +113,9 @@ int main(int argc, char **argv)
     printf("fuse_argv[%d]=%s\n", i, lio_args.lio_argv[i]);
   }
   printf("mountpoint=%s\n",lio_args.mount_point);
-*/
+***********************/
   umask(0);
-  
+
   err = fuse_main(fuse_argc, fuse_argv, &lfs_fops, &lio_args /* <- stored to fuse's ctx->private_data*/);
 
   return(err);

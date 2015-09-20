@@ -277,6 +277,10 @@ int osf_store_val(void *src, int src_size, void **dest, int *v_size)
      } else if (*v_size > src_size) {
         buf = *dest; buf[src_size] = 0;  //** IF have the space NULL terminate
      }
+  } else if (src_size <= 0) {
+     *dest = NULL;
+     *v_size = src_size;
+     return(0);
   } else {
      *dest = malloc(src_size+1);
      buf = *dest; buf[src_size] = 0;  //** IF have the space NULL terminate
@@ -1702,7 +1706,8 @@ int osf_object_remove(object_service_fn_t *os, char *path)
 
 log_printf(15, "ftype=%d path=%s\n", ftype, path);
 
-  if (ftype & (OS_OBJECT_FILE|OS_OBJECT_SYMLINK|OS_OBJECT_HARDLINK)) { //** It's a file
+  //** It's a file or the proxy is missing so assume it's a file and remoe the FA directoory
+  if ((ftype & (OS_OBJECT_FILE|OS_OBJECT_SYMLINK|OS_OBJECT_HARDLINK)) || (ftype == 0)) {
 log_printf(15, "file or link removal\n");
      if (ftype & OS_OBJECT_HARDLINK) {  //** If this is the last hardlink we need to remove the hardlink inode as well
         memset(&s, 0, sizeof(s));
@@ -3245,6 +3250,11 @@ int osfile_next_attr(os_attr_iter_t *oit, char **key, void **val, int *v_size)
 //     it->va_index = apr_hash_next(it->va_index);
   }
 
+  if (it->d == NULL) {
+     log_printf(0, "ERROR: it->d=NULL\n");
+     return(-1);
+  }
+
   while ((entry = readdir(it->d)) != NULL) {
      for (i=0; i<rex->n; i++) {
 //       n = regexec(&(rex->regex_entry[i].compiled), entry->d_name, 0, NULL, 0);
@@ -3787,7 +3797,7 @@ log_printf(15, "fullname=%s\n", fullname);
   ftype = os_local_filetype(faname);
 log_printf(15, "faname=%s ftype=%d\n", faname, ftype);
 
-  if (ftype != OS_OBJECT_DIR) {
+  if (((ftype & OS_OBJECT_DIR) == 0) || ((ftype & OS_OBJECT_BROKEN_LINK) > 0)) {
      if (dofix == OS_FSCK_MANUAL) { free(faname); return(OS_FSCK_MISSING_ATTR); }
      if (dofix == OS_FSCK_REMOVE) {
         //** Remove the FA dir

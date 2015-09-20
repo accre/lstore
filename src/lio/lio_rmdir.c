@@ -84,7 +84,7 @@ int main(int argc, char **argv)
   opque_start_execution(q);
 
   if (rg_mode == 1) {
-     gop = lio_remove_regex_object(tuple.lc, tuple.creds, rp_single, ro_single, OS_OBJECT_DIR, 0, lio_parallel_task_count);
+     gop = gop_lio_remove_regex_object(tuple.lc, tuple.creds, rp_single, ro_single, OS_OBJECT_DIR, 0, lio_parallel_task_count);
      gop_set_myid(gop, -1);
      opque_add(q, gop);
   }
@@ -93,7 +93,7 @@ int main(int argc, char **argv)
   for (i=0; i<n; i++) {
      flist[i] = lio_path_resolve(lio_gc->auto_translate, argv[i+1]);
      rpath[i] = os_path_glob2regex(flist[i].path);
-     gop = lio_remove_regex_object(flist[i].lc, flist[i].creds, rpath[i], NULL, OS_OBJECT_DIR, 0, lio_parallel_task_count);
+     gop = gop_lio_remove_regex_object(flist[i].lc, flist[i].creds, rpath[i], NULL, OS_OBJECT_DIR, 0, lio_parallel_task_count);
      gop_set_myid(gop, i);
 log_printf(0, "gid=%d i=%d fname=%s\n", gop_id(gop), i, flist[i].path);
      opque_add(q, gop);

@@ -105,6 +105,8 @@ typedef struct {
   apr_thread_mutex_t *abort_lock;
   apr_thread_cond_t *cond;
   apr_pool_t *mpool;
+  apr_hash_t *active_table;   //** Queryable active table
+  Stack_t *active_lru;        //** LRU sorted active table
   mq_context_t *mqc;          //** Portal for connecting to he remote OS server
   mq_ongoing_t *ongoing;      //** Ongoing open files or iterators
   apr_hash_t *abort;          //** Abort open handles
@@ -115,9 +117,11 @@ typedef struct {
   int ongoing_interval;       //** Ongoing command check interval
   int shutdown;
   int max_stream;
+  int max_active;             //** Max size of the active table.
   authn_t *authn;
   creds_t *dummy_creds;       //** Dummy creds. Should be replaced when proper AuthN/AuthZ is added
-  char *fname_activity;       //** Filename for logging operations.
+  char *fname_active;         //** Filename for logging ACTIVE operations.
+  char *fname_activity;       //** Filename for logging create/remove/move operations.
 } osrs_priv_t;
 
 typedef struct {

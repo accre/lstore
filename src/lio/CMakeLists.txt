@@ -46,7 +46,7 @@ include_directories(${OPENSSL_INCLUDE_DIR} ${APR_INCLUDE_DIR} ${APRUTIL_INCLUDE_
    ${CZMQ_INCLUDE_DIR} ${XATTR_INCLUDE_DIR} )
 
 SET(LIBS ${LIBS} ${IBP_LIBRARY} ${GOP_LIBRARY} ${CZMQ_LIBRARY} ${TOOLBOX_LIBRARY} ${JERASURE_LIBRARY} ${OPENSSL_LIBRARIES} ${CRYPTO_LIBRARIES} 
-   ${APR_LIBRARY} ${APRUTIL_LIBRARY} ${ZMQ_LIBRARY} ${FUSE_LIBRARY} ${ZLIB_LIBRARY} ${XATTR_LIBRARY} pthread m dl rt)
+   ${APR_LIBRARY} ${APRUTIL_LIBRARY} ${ZMQ_LIBRARY} ${FUSE_LIBRARY} ${ZLIB_LIBRARY} ${XATTR_LIBRARY} gssapi_krb5 pthread m dl rt)
 
 #Make the version file
 set(LIO_CLIENT_VERSION "lio_client: v1.0.0")
@@ -63,6 +63,7 @@ set(LIO_OBJS
    ds_ibp.c
    os_base.c
    os_file.c
+   os_timecache.c
    os_remote_client.c
    os_remote_server.c
    osaz_fake.c
@@ -74,6 +75,8 @@ set(LIO_OBJS
    ex_id.c
    lio_config.c
    lio_core.c
+   lio_core_io.c
+   lio_core_os.c
    lio_fuse_core.c
    rs_query_base.c
    rs_simple.c
@@ -173,16 +176,18 @@ install(FILES
    service_manager.h
    rs_zmq.h
    os_remote.h
+   os_timecache.h
    DESTINATION include/lio )
 
+
 # Packaging directives
+set(CPACK_PROJECT_CONFIG_FILE ${CMAKE_SOURCE_DIR}/cmake/cpack_settings.cmake) #This is where the build type specific settings are kept
 set(CPACK_PACKAGE_VERSION "1.0.0")
-set(CPACK_GENERATOR "RPM")
+set(CPACK_GENERATOR "DEB;RPM")
 set(CPACK_PACKAGE_NAME "accre-lio")
 set(CPACK_PACKAGE_RELEASE 1)
-set(CPACK_PACKAGE_CONTACT "Andrew Melo")
+set(CPACK_PACKAGE_CONTACT "Andrew Melo or Alan Tackett")
 set(CPACK_PACKAGE_VENDOR "Advanced Computing Center for Research and Education, Vanderbilt University")
 set(CPACK_PACKAGING_INSTALL_PREFIX "/usr/local")
 set(CPACK_PACKAGE_INSTALL_DIRECTORY "/usr/local")
-set(CPACK_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}-${CPACK_PACKAGE_RELEASE}.${CMAKE_SYSTEM_PROCESSOR}")
 include(CPack)

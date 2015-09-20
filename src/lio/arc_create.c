@@ -43,7 +43,7 @@ http://www.accre.vanderbilt.edu
 
 void check_path(char *path) {
     if (lioc_exists(lio_gc, lio_gc->creds, path) == 0) {
-        if (gop_sync_exec(lio_create_object(lio_gc, lio_gc->creds, path, OS_OBJECT_DIR, NULL, NULL)) != OP_STATE_SUCCESS) {
+        if (gop_sync_exec(gop_lio_create_object(lio_gc, lio_gc->creds, path, OS_OBJECT_DIR, NULL, NULL)) != OP_STATE_SUCCESS) {
             printf("ERROR: Failed to create %s!\n", path);
             exit(4);
         }

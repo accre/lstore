@@ -68,7 +68,7 @@ flush_log();
 
   status = op_success_status;
 
-  it = os_create_object_iter(mv->src_tuple.lc->os, mv->src_tuple.creds, mv->regex, NULL, OS_OBJECT_ANY, NULL, 0, NULL, 0);
+  it = lio_create_object_iter(mv->src_tuple.lc, mv->src_tuple.creds, mv->regex, NULL, OS_OBJECT_ANY, NULL, 0, NULL, 0);
   if (it == NULL) {
      info_printf(lio_ifd, 0, "ERROR: Failed with object_iter creation src_path=%s\n", mv->src_tuple.path);
      return(op_failure_status);
@@ -81,9 +81,9 @@ flush_log();
   slot = 0;
   count = 0;
 //  tweak = (strcmp(mv->dest_tuple.path, "/") == 0) ? 1 : 0;  //** Tweak things for the root path
-  while ((ftype = os_next_object(mv->src_tuple.lc->os, it, &src_fname[slot], &prefix_len)) > 0) {
+  while ((ftype = lio_next_object(mv->src_tuple.lc, it, &src_fname[slot], &prefix_len)) > 0) {
      snprintf(dname, OS_PATH_MAX, "%s/%s", mv->dest_tuple.path, &(src_fname[slot][prefix_len+1]));
-     gop = lio_move_object(mv->src_tuple.lc, mv->src_tuple.creds, src_fname[slot], dname);
+     gop = gop_lio_move_object(mv->src_tuple.lc, mv->src_tuple.creds, src_fname[slot], dname);
      gop_set_myid(gop, slot);
 log_printf(0, "gid=%d i=%d sname=%s dname=%s\n", gop_id(gop), slot, src_fname[slot], dname);
      opque_add(q, gop);
@@ -102,7 +102,7 @@ log_printf(0, "gid=%d i=%d sname=%s dname=%s\n", gop_id(gop), slot, src_fname[sl
      }
   }
 
-  os_destroy_object_iter(mv->src_tuple.lc->os, it);
+  lio_destroy_object_iter(mv->src_tuple.lc, it);
 
   while ((gop = opque_waitany(q)) != NULL) {
      slot = gop_get_myid(gop);
@@ -174,7 +174,7 @@ int main(int argc, char **argv)
   }
 
   //** Get the dest filetype/exists
-  dtype = lioc_exists(dtuple.lc, dtuple.creds, dtuple.path);
+  dtype = lio_exists(dtuple.lc, dtuple.creds, dtuple.path);
 
 
   //** Create the simple path iterator
@@ -221,7 +221,7 @@ log_printf(15, "2222222222222222 fixed=%d exp=%s\n", os_regex_is_fixed(flist[0].
            type_malloc(fname, char, strlen(dtuple.path) + 40);
            get_random(&ui, sizeof(ui));  //** MAke the random name
            sprintf(fname, "%s.mv.%ud", dtuple.path, ui);
-           err = gop_sync_exec(lio_move_object(dtuple.lc, dtuple.creds, flist[0].src_tuple.path, fname));
+           err = gop_sync_exec(gop_lio_move_object(dtuple.lc, dtuple.creds, flist[0].src_tuple.path, fname));
            if (err != OP_STATE_SUCCESS) {
              info_printf(lio_ifd, 0, "ERROR renaming dest(%s) to %s!\n", dtuple.path, fname);
              free(fname);
@@ -232,12 +232,12 @@ log_printf(15, "2222222222222222 fixed=%d exp=%s\n", os_regex_is_fixed(flist[0].
 log_printf(15, "333333333333333333\n"); flush_log();
 
         //** Now do the simple mv
-        err = gop_sync_exec(lio_move_object(dtuple.lc, dtuple.creds, flist[0].src_tuple.path, dtuple.path));
+        err = gop_sync_exec(gop_lio_move_object(dtuple.lc, dtuple.creds, flist[0].src_tuple.path, dtuple.path));
         if (err != OP_STATE_SUCCESS) {
            info_printf(lio_ifd, 0, "ERROR renaming dest(%s) to %s!\n", dtuple.path, fname);
 
            //** Mv the original back due to the error
-           if (fname != NULL) err = gop_sync_exec(lio_move_object(dtuple.lc, dtuple.creds, fname, dtuple.path));
+           if (fname != NULL) err = gop_sync_exec(gop_lio_move_object(dtuple.lc, dtuple.creds, fname, dtuple.path));
            goto finished;
         }
 
@@ -245,7 +245,7 @@ log_printf(15, "4444444444444444444\n"); flush_log();
 
         //** Clean up by removing the original dest if needed
         if (fname != NULL) {
-           err = gop_sync_exec(lio_remove_object(dtuple.lc, dtuple.creds, fname, NULL, dtype));
+           err = gop_sync_exec(gop_lio_remove_object(dtuple.lc, dtuple.creds, fname, NULL, dtype));
            if (err != OP_STATE_SUCCESS) {
               info_printf(lio_ifd, 0, "ERROR removing temp dest(%s)!\n", fname);
               free(fname);

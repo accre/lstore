@@ -43,11 +43,15 @@ http://www.accre.vanderbilt.edu
 #include "segment_cache.h"
 
 #include "ds_ibp.h"
+
 #include "rs_simple.h"
 #include "rs_remote.h"
 #include "rs_zmq.h"
+
 #include "os_file.h"
 #include "os_remote.h"
+#include "os_timecache.h"
+
 #include "osaz_fake.h"
 #include "authn_fake.h"
 

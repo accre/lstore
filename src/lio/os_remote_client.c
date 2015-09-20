@@ -54,6 +54,8 @@ http://www.accre.vanderbilt.edu
 #define OSRC_ITER_ALIST  0
 #define OSRC_ITER_AREGEX 1
 
+extern char *_lio_exe_name;  // ** This is defined in lio_config.c and is set before we would ever be called.
+
 typedef struct {
   object_service_fn_t *os;
   void *data;
@@ -2404,7 +2406,7 @@ log_printf(10, "START\n");
   apr_gethostname(hostname, sizeof(hostname), osrc->mpool);
   n = 0;
   get_random(&n, sizeof(n));
-  snprintf(buffer, sizeof(buffer), "%d:%s:%u", osrc->heartbeat, hostname, n);
+  snprintf(buffer, sizeof(buffer), "%d:%s:%s:%u", osrc->heartbeat, hostname, _lio_exe_name, n);
   osrc->host_id = strdup(buffer);
   osrc->host_id_len = strlen(osrc->host_id)+1;
 

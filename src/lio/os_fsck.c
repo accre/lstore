@@ -54,7 +54,7 @@ int main(int argc, char **argv)
      printf("\n");
      printf("os_fsck LIO_COMMON_OPTIONS [-fix manual|delete|repair] path\n");
      lio_print_options(stdout);
-     printf("    -fix  - How to handle issues.  Default is manual.\n");
+     printf("    -fix  - How to handle issues. Default is manual. Can also be delete or repair.\n");
      printf("    path  - Path prefix to use\n");
      printf("\n");
      return(1);

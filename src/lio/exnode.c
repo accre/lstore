@@ -306,6 +306,15 @@ exnode_exchange_t *exnode_exchange_create(int type)
 }
 
 //*************************************************************************
+// exnode_exchange_get_default_view_id - Returns the default View/Segment ID
+//*************************************************************************
+
+ex_id_t exnode_exchange_get_default_view_id(exnode_exchange_t *exp)
+{
+  return(inip_get_integer(exp->text.fd, "view", "default", 0));
+}
+
+//*************************************************************************
 // exnode_exchange_text_parse - Parses a text based exnode and returns it
 //*************************************************************************
 

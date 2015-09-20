@@ -42,6 +42,7 @@ typedef struct {
   char *link;
   char *vals[5];
   int v_size[5];
+  int link_size;
   int prefix_len;
   int ftype;
 } ls_entry_t;
@@ -112,42 +113,12 @@ void ls_format_entry(info_fd_t *ifd, ls_entry_t *lse)
 
 
 //*************************************************************************
-// readlink_fn - Reads the softlink
-//*************************************************************************
-
-op_status_t readlink_fn(void *arg, int id)
-{
-  ls_entry_t *lse = (ls_entry_t *)arg;
-  int err, v_size;
-  os_fd_t *fd;
-
-  err = gop_sync_exec(os_open_object(tuple.lc->os, tuple.creds, lse->fname, OS_MODE_READ_IMMEDIATE, NULL, &fd, tuple.lc->timeout));
-  if (err != OP_STATE_SUCCESS) {
-     log_printf(15, "ERROR opening object=%s\n", lse->fname);
-     return(op_failure_status);
-  }
-
-  //** IF the attribute doesn't exist *val == NULL an *v_size = 0
-  v_size = -32*1024;
-  gop_sync_exec(os_get_attr(tuple.lc->os, tuple.creds, fd, "os.link", (void **)&(lse->link), &v_size));
-
-  //** Close the parent
-  err = gop_sync_exec(os_close_object(tuple.lc->os, fd));
-  if (err != OP_STATE_SUCCESS) {
-     log_printf(15, "ERROR closing object=%s\n", lse->fname);
-     return(op_failure_status);
-  }
-
-  return(op_success_status);
-}
-
-
-//*************************************************************************
 //*************************************************************************
 
 int main(int argc, char **argv)
 {
-  int i, j, ftype, rg_mode, start_option, start_index, prefix_len, nosort, oops;
+  int i, j, ftype, rg_mode, start_option, start_index, prefix_len, nosort, err;
+  ex_off_t fcount;
   char *fname;
   ls_entry_t *lse;
   list_t *table;
@@ -157,14 +128,13 @@ int main(int argc, char **argv)
   list_iter_t lit;
   opque_t *q;
   op_generic_t *gop;
-  char *keys[] = { "system.owner", "system.exnode.size", "system.exnode.modified", "os.create",  "os.link_count" };
+  char *keys[] = { "system.owner", "system.exnode.size", "system.modify_data", "os.create",  "os.link_count" };
   char *vals[5];
   int v_size[5];
   int n_keys = 5;
   int recurse_depth = 0;
   int obj_types = OS_OBJECT_ANY;
-
-  oops = 0;
+  int return_code = 0;
 
 //printf("argc=%d\n", argc);
   if (argc < 2) {
@@ -215,9 +185,7 @@ int main(int argc, char **argv)
     start_index--;  //** Ther 1st entry will be the rp created in lio_parse_path_options
   }
 
-
-  info_printf(lio_ifd, 0, "  Perms     Ref   Owner        Size           Creation date              Modify date             Filename [-> link]\n");
-  info_printf(lio_ifd, 0, "----------  ---  ----------  ----------  ------------------------  ------------------------  ------------------------------\n");
+  fcount = 0;
 
   q = new_opque();
   table = list_create(0, &list_string_compare, NULL, list_no_key_free, list_no_data_free);
@@ -236,14 +204,14 @@ int main(int argc, char **argv)
 
      for (i=0; i<n_keys; i++) v_size[i] = -tuple.lc->max_attr;
      memset(vals, 0, sizeof(vals));
-     it = os_create_object_iter_alist(tuple.lc->os, tuple.creds, rp_single, ro_single, OS_OBJECT_ANY, recurse_depth, keys, (void **)vals, v_size, n_keys);
+     it = lio_create_object_iter_alist(tuple.lc, tuple.creds, rp_single, ro_single, OS_OBJECT_ANY, recurse_depth, keys, (void **)vals, v_size, n_keys);
      if (it == NULL) {
         info_printf(lio_ifd, 0, "ERROR: Failed with object_iter creation\n");
-        oops = 1;
+        return_code = EIO;
         goto finished;
      }
 
-     while ((ftype = os_next_object(tuple.lc->os, it, &fname, &prefix_len)) > 0) {
+     while ((ftype = lio_next_object(tuple.lc, it, &fname, &prefix_len)) > 0) {
         type_malloc_clear(lse, ls_entry_t, 1);
         lse->fname = fname;
         lse->ftype = ftype;
@@ -256,11 +224,18 @@ int main(int argc, char **argv)
 
         //** Check if we have a link.  If so we need to resolve the link path
         if ((ftype & OS_OBJECT_SYMLINK) > 0) {
-           gop = new_thread_pool_op(tuple.lc->tpc_unlimited, NULL, readlink_fn, (void *)lse, NULL, 1);
+           lse->link_size = -64*1024;
+           gop = gop_lio_get_attr(tuple.lc, tuple.creds, lse->fname, NULL, "os.link", (void **)&(lse->link), &(lse->link_size));
            gop_set_private(gop, lse);
            opque_add(q, gop);
            if (nosort == 1) opque_waitall(q);
         }
+
+        if (fcount == 0) {
+           info_printf(lio_ifd, 0, "  Perms     Ref   Owner        Size           Creation date              Modify date             Filename [-> link]\n");
+           info_printf(lio_ifd, 0, "----------  ---  ----------  ----------  ------------------------  ------------------------  ------------------------------\n");
+        }
+        fcount++;
 
         if (nosort == 1) {
            ls_format_entry(lio_ifd, lse);
@@ -269,7 +244,7 @@ int main(int argc, char **argv)
         }
      }
 
-     os_destroy_object_iter(tuple.lc->os, it);
+     lio_destroy_object_iter(tuple.lc, it);
 
      lio_path_release(&tuple);
      if (rp_single != NULL) { os_regex_table_destroy(rp_single); rp_single = NULL; }
@@ -277,7 +252,11 @@ int main(int argc, char **argv)
   }
 
   //** Wait for any readlinks to complete
-  opque_waitall(q);
+  err = (opque_task_count(q) > 0) ? opque_waitall(q) : OP_STATE_SUCCESS;
+  if (err != OP_STATE_SUCCESS) {
+     info_printf(lio_ifd, 0, "ERROR: Failed with readlink operation!\n");
+     return_code = EIO;
+  }
 
   //** Now sort and print things if needed
   if (nosort == 0) {
@@ -289,11 +268,13 @@ int main(int argc, char **argv)
 
   list_destroy(table);
 
+  if (fcount == 0) return_code = 2;
+
 finished:
   opque_free(q, OP_DESTROY);
 
   lio_shutdown();
 
-  return(oops);
+  return(return_code);
 }
 

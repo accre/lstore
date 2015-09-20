@@ -25,7 +25,7 @@ Advanced Computing Center for Research and Education
 230 Appleton Place
 Nashville, TN 37203
 http://www.accre.vanderbilt.edu
-*/ 
+*/
 
 #define _log_module_index 195
 
@@ -114,13 +114,13 @@ int main(int argc, char **argv)
         rg_mode = 0;  //** Use the initial rp
      }
 
-     it = os_create_object_iter(tuple.lc->os, tuple.creds, rp_single, ro_single, obj_types, NULL, recurse_depth, NULL, 0);
+     it = lio_create_object_iter(tuple.lc, tuple.creds, rp_single, ro_single, obj_types, NULL, recurse_depth, NULL, 0);
      if (it == NULL) {
         log_printf(0, "ERROR: Failed with object_iter creation\n");
         goto finished;
      }
 
-     while ((ftype = os_next_object(tuple.lc->os, it, &fname, &prefix_len)) > 0) {
+     while ((ftype = lio_next_object(tuple.lc, it, &fname, &prefix_len)) > 0) {
 //     printf("len=%d full=%s nopref=%s\n", prefix_len, fname, &(fname[prefix_len+1]));
 
         if (nopre == 1) {
@@ -132,7 +132,7 @@ int main(int argc, char **argv)
         free(fname);
      }
 
-     os_destroy_object_iter(tuple.lc->os, it);
+     lio_destroy_object_iter(tuple.lc, it);
 
      lio_path_release(&tuple);
      if (rp_single != NULL) { os_regex_table_destroy(rp_single); rp_single = NULL; }
@@ -141,8 +141,7 @@ int main(int argc, char **argv)
 
 finished:
   lio_shutdown();
-
-  return(0);
+  return((it == NULL) ? EIO : 0);
 }
 
 

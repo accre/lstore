@@ -454,16 +454,17 @@ log_printf(15, "missing[%d]=%d status=%d\n", j,i, gop_completed_successfully(gop
 // slun_row_size_check - Checks the size of eack block in the row.
 //***********************************************************************
 
-int slun_row_size_check(segment_t *seg, data_attr_t *da, seglun_row_t *b, int *block_status, int n_devices, int force_repair, int timeout)
+int slun_row_size_check(segment_t *seg, data_attr_t *da, seglun_row_t *b, int *block_status, apr_time_t *dt, int n_devices, int force_repair, int timeout)
 {
   int i, n_size, n_missing;
   data_probe_t *probe[n_devices];
   opque_t *q;
   op_generic_t *gop;
   ex_off_t psize, seg_size;
-
+  apr_time_t start_time;
   q = new_opque();
 
+  start_time = apr_time_now();
   for (i=0; i<n_devices; i++) {
      probe[i] = ds_probe_create(b->block[i].data->ds);
 
@@ -473,7 +474,16 @@ int slun_row_size_check(segment_t *seg, data_attr_t *da, seglun_row_t *b, int *b
      opque_add(q, gop);
   }
 
-  opque_waitall(q);
+  // ** Collect the timing information for hte probe if requested
+  if (dt != NULL) {
+     for (i=0; i<n_devices; i++) {
+        gop = opque_waitany(q);
+        dt[gop_get_myid(gop)] = apr_time_now() - start_time;
+        gop_free(gop, OP_DESTROY);
+     }
+  } else {
+     opque_waitall(q);
+  }
   opque_free(q, OP_DESTROY);
 
   q = new_opque();
@@ -818,7 +828,7 @@ log_printf(15, "sid=" XIDT " increasing existing row seg_offset=" XOT " curr seg
         b->row_len = dsize * s->n_devices;
         b->seg_end = b->seg_offset + b->row_len - 1;
         for (i=0; i<s->n_devices; i++) block_status[i] = 0;
-        slun_row_size_check(seg, da, b, block_status, s->n_devices, 1, timeout);
+        slun_row_size_check(seg, da, b, block_status, NULL, s->n_devices, 1, timeout);
 
         //** Check if we had an error on the size
         berr = 0;
@@ -1922,6 +1932,8 @@ op_status_t seglun_inspect_func(void *arg, int id)
   int i, j, err, option, force_repair, max_lost, total_lost, total_repaired, total_migrate, nmigrated, nlost, nrepaired, drow;
   inspect_args_t args;
   inspect_args_t args_blank;
+  apr_time_t dt[s->n_devices];
+  char pp[128];
 
   args = *(si->args);
   args_blank = args;
@@ -1971,7 +1983,7 @@ op_status_t seglun_inspect_func(void *arg, int id)
         info_printf(si->fd, 3, XIDT ":     dev=%i rcap=%s\n", segment_id(si->seg), i, ds_get_cap(s->ds, b->block[i].data->cap, DS_CAP_READ));
     }
 
-    nlost = slun_row_size_check(si->seg, si->da, b, block_status, s->n_devices, force_repair, si->timeout);
+    nlost = slun_row_size_check(si->seg, si->da, b, block_status, dt, s->n_devices, force_repair, si->timeout);
     used = 0;
     append_printf(info, &used, bufsize, XIDT ":     slun_row_size_check:", segment_id(si->seg));
     for (i=0; i < s->n_devices; i++) {
@@ -1985,7 +1997,13 @@ op_status_t seglun_inspect_func(void *arg, int id)
         }
         append_printf(info, &used, bufsize, " %d", block_status[i]);
     }
-    info_printf(si->fd, 1, "%s\n", info);
+
+    //** Add the timing info
+    append_printf(info, &used, bufsize, "  [", block_status[i]);
+    for (i=0; i < s->n_devices; i++) {
+        append_printf(info, &used, bufsize, " %s", pretty_print_double_with_scale(1000, (double)dt[i], pp));
+    }
+    info_printf(si->fd, 1, "%s (us)]\n", info);
 
     if (max_lost < nlost) max_lost = nlost;
     si->args->dev_row_replaced[drow] += nlost;
@@ -2486,24 +2504,20 @@ int seglun_signature(segment_t *seg, char *buffer, int *used, int bufsize)
 }
 
 //***********************************************************************
-// seglun_serialize_text -Convert the segment to a text based format
+// seglun_serialize_text_try - Convert the segment to a text based format
 //***********************************************************************
 
-int seglun_serialize_text(segment_t *seg, exnode_exchange_t *exp)
+int seglun_serialize_text_try(segment_t *seg, char *segbuf, int bufsize, exnode_exchange_t *cap_exp)
 {
   seglun_priv_t *s = (seglun_priv_t *)seg->priv;
-  int bufsize=100*1024;
-  char segbuf[bufsize];
   char *ext, *etext;
-  int sused, i;
+  int sused, i, err;
   seglun_row_t *b;
-  exnode_exchange_t *cap_exp;
   interval_skiplist_iter_t it;
 
-  segbuf[0] = 0;
-  cap_exp = exnode_exchange_create(EX_TEXT);
 
   sused = 0;
+  segbuf[0] = 0;
 
   //** Store the segment header
   append_printf(segbuf, &sused, bufsize, "[segment-" XIDT "]\n", seg->header.id);
@@ -2529,7 +2543,7 @@ int seglun_serialize_text(segment_t *seg, exnode_exchange_t *exp)
   append_printf(segbuf, &sused, bufsize, "excess_block_size=" XOT "\n", s->excess_block_size);
   append_printf(segbuf, &sused, bufsize, "max_size=" XOT "\n", s->total_size);
   append_printf(segbuf, &sused, bufsize, "used_size=" XOT "\n", s->used_size);
-  append_printf(segbuf, &sused, bufsize, "chunk_size=" XOT "\n", s->chunk_size);
+  err = append_printf(segbuf, &sused, bufsize, "chunk_size=" XOT "\n", s->chunk_size);
 
   //** Cycle through the blocks storing both the segment block information and also the cap blocks
   it = iter_search_interval_skiplist(s->isl, (skiplist_key_t *)NULL, (skiplist_key_t *)NULL);
@@ -2544,15 +2558,47 @@ int seglun_serialize_text(segment_t *seg, exnode_exchange_t *exp)
 //log_printf(0, "seg=" XIDT "        dev=%d bid=" XIDT " cap_offset=" XOT "\n", segment_id(seg), i, b->block[i].data->id, b->block[i].cap_offset);
         append_printf(segbuf, &sused, bufsize, ":" XIDT ":" XOT, b->block[i].data->id, b->block[i].cap_offset);
      }
-     append_printf(segbuf, &sused, bufsize, "\n");
+     err = append_printf(segbuf, &sused, bufsize, "\n");
+     if (err == -1) break;  //** Kick out on the first error
+//log_printf(0, "seg=" XIDT " bufsize=%d sused=%d err=%d\n", segment_id(seg), bufsize, sused, err);
+
   }
 
+  return(err);
+}
+
+//***********************************************************************
+// seglun_serialize_text -Convert the segment to a text based format
+//***********************************************************************
+
+int seglun_serialize_text(segment_t *seg, exnode_exchange_t *exp)
+{
+  int bufsize=100*1024;
+  char staticbuf[bufsize];
+  char *segbuf = staticbuf;
+  exnode_exchange_t *cap_exp;
+  int err;
+
+  do {
+     cap_exp = exnode_exchange_create(EX_TEXT);
+     err = seglun_serialize_text_try(seg, segbuf, bufsize, cap_exp);
+     if (err == -1) { //** Need to grow the buffer
+        if (staticbuf != segbuf) free(segbuf);
+        exnode_exchange_destroy(cap_exp);
+
+        bufsize = 2*bufsize;
+        type_malloc(segbuf, char, bufsize);
+        log_printf(1, "Growing buffer bufsize=%d\n", bufsize);
+     }
+  } while (err == -1);
 
   //** Merge everything together and return it
   exnode_exchange_append(exp, cap_exp);
   exnode_exchange_destroy(cap_exp);
 
   exnode_exchange_append_text(exp, segbuf);
+
+  if (staticbuf != segbuf) free(segbuf);
 
   return(0);
 }

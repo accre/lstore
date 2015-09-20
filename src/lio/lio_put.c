@@ -44,14 +44,10 @@ http://www.accre.vanderbilt.edu
 int main(int argc, char **argv)
 {
   ex_off_t bufsize;
-  int err, dtype, i, start_index, start_option;
-  char *ex_data, *buffer;
+  int err, err_close, dtype, i, start_index, start_option;
+  lio_fd_t *fd;
+  char *buffer;
   char ppbuf[32];
-  exnode_t *ex;
-  exnode_exchange_t *exp;
-  segment_t *seg;
-  segment_errors_t errcnts;
-  int v_size[2];
   lio_path_tuple_t tuple;
 
   bufsize = 20*1024*1024;
@@ -95,10 +91,10 @@ int main(int argc, char **argv)
   tuple = lio_path_resolve(lio_gc->auto_translate, argv[start_index]);
 
   //** Check if it exists and if not create it
-  dtype = lioc_exists(tuple.lc, tuple.creds, tuple.path);
+  dtype = lio_exists(tuple.lc, tuple.creds, tuple.path);
 
   if (dtype == 0) { //** Need to create it
-     err = gop_sync_exec(lio_create_object(tuple.lc, tuple.creds, tuple.path, OS_OBJECT_FILE, NULL, NULL));
+     err = gop_sync_exec(gop_lio_create_object(tuple.lc, tuple.creds, tuple.path, OS_OBJECT_FILE, NULL, NULL));
      if (err != OP_STATE_SUCCESS) {
         info_printf(lio_ifd, 1, "ERROR creating file(%s)!\n", tuple.path);
         goto finished;
@@ -108,55 +104,27 @@ int main(int argc, char **argv)
      goto finished;
   }
 
-  //** Get the exnode
-  v_size[0] = -tuple.lc->max_attr;
-  lioc_get_attr(tuple.lc, tuple.creds, tuple.path, NULL, "system.exnode", (void **)&ex_data, v_size);
-  if (v_size[0] <= 0) {
-     info_printf(lio_ifd, 0, "Failed retrieving exnode!  path=%s\n", tuple.path);
-     return(1);
-  }
-
-  //** Load it
-  exp = exnode_exchange_text_parse(ex_data);
-  ex = exnode_create();
-  if (exnode_deserialize(ex, exp, tuple.lc->ess) != 0) {
-     info_printf(lio_ifd, 0, "ERROR parsing exnode!  Aborting!\n");
-     err = 1;
+  gop_sync_exec(gop_lio_open_object(tuple.lc, tuple.creds, tuple.path, lio_fopen_flags("w"), NULL, &fd, 60));
+  if (fd == NULL) {
+     info_printf(lio_ifd, 0, "Failed opening file!  path=%s\n", tuple.path);
      goto finished;
   }
 
-  //** Get the default view to use
-  seg = exnode_get_default(ex);
-  if (seg == NULL) {
-     info_printf(lio_ifd, 0, "No default segment!  Aborting!\n");
-     err = 1;
-     goto finished;
-  }
-
-//FILE *fd = fopen("dummy.out", "r");
-//log_printf(0, "FILE fd=%p\n",fd);
   //** Do the put
-log_printf(0, "BEFORE PUT\n");
-  err = gop_sync_exec(segment_put(tuple.lc->tpc_unlimited, tuple.lc->da, stdin, seg, 0, -1, bufsize, buffer, 1, 3600));
-log_printf(0, "AFTER PUT\n");
-//fclose(fd);
+  err = gop_sync_exec(gop_lio_cp_local2lio(stdin, fd, bufsize, buffer));
   if (err != OP_STATE_SUCCESS) {
-     info_printf(lio_ifd, 0, "Failed uploading data!  path=%s\n", tuple.path);
-     err = 1;
-     goto finished;
+     info_printf(lio_ifd, 0, "Failed writing data!  path=%s\n", tuple.path);
   }
 
+  //** Close the file
+  err_close = gop_sync_exec(gop_lio_close_object(fd));
+  if (err_close != OP_STATE_SUCCESS) {
+     err = err_close;
+     info_printf(lio_ifd, 0, "Failed closing LIO file!  path=%s\n", tuple.path);
+  }
 
-  //** Update the dest exnode and misc attributes
-  err = lioc_update_exnode_attrs(tuple.lc, tuple.creds, ex, seg, tuple.path, &errcnts);
-  err = ((err > 1) || (errcnts.hard > 0)) ? 1 : 0;
-
-  if (err > 1) info_printf(lio_ifd, 0, "Failed uploading data!  path=%s\n", tuple.path);
 
 finished:
-  exnode_destroy(ex);
-  exnode_exchange_destroy(exp);
-
   free(buffer);
 
   lio_path_release(&tuple);
