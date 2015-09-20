@@ -1,0 +1,15 @@
+// This file is Autoconfigured!
+
+#cmakedefine HAVE_ATTR_XATTR_H
+#cmakedefine HAVE_SYS_XATTR_H
+#if defined(HAVE_SYS_XATTR_H) | defined(HAVE_ATTR_XATTR_H)
+#define HAVE_XATTR
+#endif
+
+#if !defined(EBADE)
+#define EBADE 50
+#endif
+
+#if !defined(EREMOTEIO)
+#define EREMOTEIO 140
+#endif
