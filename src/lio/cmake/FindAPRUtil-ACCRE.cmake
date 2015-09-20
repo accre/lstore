@@ -43,9 +43,13 @@ endmacro(_apu_invoke)
 
 _apu_invoke(APU_INCLUDES  "(^| )-I" --includes)
 _apu_invoke(APU_EXTRALIBS "(^| )-l" --libs)
+_apu_invoke(APU_LIBTOOL   ""        --link-libtool)
 _apu_invoke(APU_LIBS      ""        --link-ld)
 _apu_invoke(APU_LDFLAGS   ""        --ldflags)
 _apu_invoke(APU_VERSION   ""        --version)
 
+get_filename_component(APU_LIBTOOL_BASE ${APU_LIBTOOL} PATH ) 
+FIND_LIBRARY(APU_LIBRARY NAMES aprutil-ACCRE-1 PATHS ${APU_LIBTOOL_BASE})
+
 INCLUDE(FindPackageHandleStandardArgs)
-FIND_PACKAGE_HANDLE_STANDARD_ARGS(APU DEFAULT_MSG APU_INCLUDES APU_LIBS APU_VERSION)
+FIND_PACKAGE_HANDLE_STANDARD_ARGS(APU DEFAULT_MSG APU_INCLUDES APU_LIBS APU_LIBRARY APU_VERSION)

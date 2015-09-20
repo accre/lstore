@@ -41,17 +41,20 @@ macro(_apr_invoke _varname _regexp)
     endif()
 endmacro(_apr_invoke)
 
-_apr_invoke(APR_CFLAGS     ""        --cppflags --cflags)
+_apr_invoke(APR_CFLAGS    ""        --cppflags --cflags)
 _apr_invoke(APR_INCLUDES  "(^| )-I" --includes)
 _apr_invoke(APR_LIBS      ""        --link-ld)
+_apr_invoke(APR_LIBTOOL   ""        --link-libtool)
 _apr_invoke(APR_EXTRALIBS "(^| )-l" --libs)
 _apr_invoke(APR_VERSION   ""        --version)
 
+get_filename_component(APR_LIBTOOL_BASE ${APR_LIBTOOL} PATH ) 
+FIND_LIBRARY(APR_LIBRARY NAMES apr-ACCRE-1 PATHS ${APR_LIBTOOL_BASE})
 # ACCRE prefers 'apr.h' over 'apr-1/apr.h', convert
 #if (APR_INCLUDES)
 #    find_path(temp_include apr.h ${APR_INCLUDES}/apr-ACCRE-1 )
 #    set(APR_INCLUDES ${temp_include})
 #endif ()
-
+MESSAGE(STATUS "APR AT ${APR_LIBRARY}")
 INCLUDE(FindPackageHandleStandardArgs)
-FIND_PACKAGE_HANDLE_STANDARD_ARGS(APR DEFAULT_MSG APR_INCLUDES APR_LIBS APR_VERSION)
+FIND_PACKAGE_HANDLE_STANDARD_ARGS(APR DEFAULT_MSG APR_INCLUDES APR_LIBRARY APR_LIBS APR_VERSION)
