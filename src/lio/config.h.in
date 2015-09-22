@@ -1,9 +1,15 @@
 // This file is Autoconfigured!
-
+#ifndef ACCRE_LIO_CONFIG_H_INCLUDED
+#define ACCRE_LIO_CONFIG_H_INCLUDED
 #cmakedefine HAVE_ATTR_XATTR_H
 #cmakedefine HAVE_SYS_XATTR_H
 #if defined(HAVE_SYS_XATTR_H) | defined(HAVE_ATTR_XATTR_H)
 #define HAVE_XATTR
+#endif
+
+#if defined(__APPLE__)
+#define _DARWIN_FEATURE_64_BIT_INODE
+#define _DARWIN_USE_64_BIT_INODE
 #endif
 
 #if !defined(EBADE)
@@ -12,4 +18,6 @@
 
 #if !defined(EREMOTEIO)
 #define EREMOTEIO 140
+#endif
+
 #endif
