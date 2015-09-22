@@ -714,7 +714,7 @@ int lfs_flush(const char *fname, struct fuse_file_info *fi)
 // lfs_fsync - Flushes any data to backing store
 //*****************************************************************
 
-int lfs_fsync(const char *fname, struct fuse_file_info *fi)
+int lfs_fsync(const char *fname, int datasync, struct fuse_file_info *fi)
 {
   lio_fuse_t *lfs = lfs_get_context();
   lio_fd_t *fd;
@@ -1513,7 +1513,7 @@ struct fuse_operations lfs_fops = { //All lfs instances should use the same func
 //  .read = lfs_read_test_ex,
   .write = lfs_write,
   .flush = lfs_flush,
-  .flush = lfs_fsync,
+  .fsync = lfs_fsync,
   .link = lfs_hardlink,
   .readlink = lfs_readlink,
   .symlink = lfs_symlink,
