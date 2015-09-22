@@ -29,6 +29,7 @@ http://www.accre.vanderbilt.edu
 
 #define _log_module_index 212
 #include "config.h"
+
 #if defined(HAVE_SYS_XATTR_H)
 #include <sys/xattr.h>
 #elif defined(HAVE_ATTR_XATTR_H)
@@ -1141,7 +1142,11 @@ log_printf(15, "END fname=%s\n", fname);
 //*****************************************************************
 
 #if defined(HAVE_XATTR)
+#  if ! defined(__APPLE__)
 int lfs_getxattr(const char *fname, const char *name, char *buf, size_t size)
+#  else
+int lfs_getxattr(const char *fname, const char *name, char *buf, size_t size, uint32_t dummy)
+#  endif
 {
   lio_fuse_t *lfs = lfs_get_context();
   char *val;
@@ -1177,11 +1182,15 @@ int lfs_getxattr(const char *fname, const char *name, char *buf, size_t size)
 }
 #endif // defined(HAVE_XATTR)
 
-#if defined(HAVE_XATTR)
 //*****************************************************************
 // lfs_setxattr - Sets a extended attribute
 //*****************************************************************
+#if defined(HAVE_XATTR)
+#  if ! defined(__APPLE__)
 int lfs_setxattr(const char *fname, const char *name, const char *fval, size_t size, int flags)
+#  else
+int lfs_setxattr(const char *fname, const char *name, const char *fval, size_t size, int flags, uint32_t dummy)
+#  endif
 {
   lio_fuse_t *lfs = lfs_get_context();
   char *val;
