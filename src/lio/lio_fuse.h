@@ -74,9 +74,9 @@ typedef struct {
 
 typedef struct {
   lio_config_t *lc;
-  char *mount_point;
+  const char *mount_point;
   int lio_argc;
-  char **lio_argv;
+  const char **lio_argv;
 } lio_fuse_init_args_t;
 
 extern struct fuse_operations lfs_fops;
