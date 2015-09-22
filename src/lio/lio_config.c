@@ -248,9 +248,11 @@ void lio_find_lfs_mounts()
    int i, fin;
    size_t ns;
 
-   stack = new_stack();
 
    fd = fopen("/proc/mounts", "r");
+   if (fd == NULL) return;
+
+   stack = new_stack();
    text = NULL;
    while (getline(&text, &ns, fd) != -1) {
      log_printf(5, "getline=%s", text);
