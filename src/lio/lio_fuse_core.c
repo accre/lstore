@@ -1361,15 +1361,37 @@ int lfs_statfs(const char *fname, struct statvfs *fs)
   space = rs_space(config);
   free(config);
 
+#if ! defined(__APPLE__)
   fs->f_bsize = 4096;
   fs->f_blocks = space.total_up / 4096;
   fs->f_bfree = space.free_up / 4096;
   fs->f_bavail = fs->f_bfree;
   fs->f_files = 1;
   fs->f_ffree = (ex_off_t)1024*1024*1024*1024*1024;
-//  fs->f_favail =
-//  fs->f_fsid =
-//  fs->f_flag =
+#else
+  fs->f_bsize = 1024;
+  fs->f_ffree = UINT_MAX;
+  fs->f_files = 1;
+  // In the "you gotta be kidding me" department, OSX sticks 100% to POSIX
+  // and uses 32-bit counters for block numbers. Try and scale it so the number
+  // of blocks fits in unsigned int
+  // Why add another factor of two? Beats me. Without it, even though the values
+  // here make sense, 'df' shows half the expected numbers
+  //
+  // Here, MAXPHYS is the largest block size allowed: bsd/i386/param.h
+  while ( ( fs->f_bsize < MAXPHYS ) &&
+            (((space.total_up/fs->f_bsize) > (UINT_MAX)) ||
+             ((space.free_up/fs->f_bsize)  > (UINT_MAX)))) {
+    fs->f_bsize *= 2;
+  }
+  // Clamp the sizes to at most UINT_MAX
+  fs->f_bfree  = (space.free_up/fs->f_bsize  > UINT_MAX) ? 
+                        UINT_MAX : space.free_up/fs->f_bsize;
+  fs->f_blocks = (space.total_up/fs->f_bsize > UINT_MAX) ? 
+                        UINT_MAX : space.total_up/fs->f_bsize;
+  fs->f_frsize = fs->f_bsize;
+  fs->f_bavail = fs->f_bfree;
+#endif
   fs->f_namemax = 4096 - 100;
 
   return(0);
