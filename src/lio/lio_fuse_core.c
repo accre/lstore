@@ -1038,7 +1038,6 @@ log_printf(15, "nkeys=%d fname=%s ftype=%d\n", nkeys, fname, ftype);
         log_printf(1, "ERROR parsing parent exnode fname=%s\n", fname);
         exnode_exchange_destroy(exp);
         exnode_destroy(ex);
-        exnode_destroy(cex);
      }
 
      //** Execute the clone operation
