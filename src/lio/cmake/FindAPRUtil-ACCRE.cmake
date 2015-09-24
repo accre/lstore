@@ -25,11 +25,14 @@ macro(_apu_invoke _varname _regexp)
         message(FATAL_ERROR "${APU_CONFIG_EXECUTABLE} ${ARGN} failed")
     else()
         string(REGEX REPLACE "[\r\n]"  "" _apu_output "${_apu_output}")
-        string(REGEX REPLACE " +$"     "" _apu_output "${_apu_output}")
 
         if(NOT ${_regexp} STREQUAL "")
             string(REGEX REPLACE "${_regexp}" " " _apu_output "${_apu_output}")
         endif()
+
+        # trim string after processing the _regexp arg because it may introduce a <space> at the ends of the string
+        string(REGEX REPLACE " +$"     "" _apu_output "${_apu_output}")
+        string(REGEX REPLACE "^ +"     "" _apu_output "${_apu_output}")
 
         # XXX: We don't want to invoke separate_arguments() for APU_LDFLAGS;
         # just leave as-is
@@ -43,13 +46,20 @@ endmacro(_apu_invoke)
 
 _apu_invoke(APU_INCLUDES  "(^| )-I" --includes)
 _apu_invoke(APU_EXTRALIBS "(^| )-l" --libs)
-_apu_invoke(APU_LIBTOOL   ""        --link-libtool)
+_apu_invoke(APU_LIBTOOL   "(^| )-L" --link-libtool)
 _apu_invoke(APU_LIBS      ""        --link-ld)
 _apu_invoke(APU_LDFLAGS   ""        --ldflags)
 _apu_invoke(APU_VERSION   ""        --version)
 
-get_filename_component(APU_LIBTOOL_BASE ${APU_LIBTOOL} PATH ) 
-FIND_LIBRARY(APU_LIBRARY NAMES aprutil-ACCRE-1 PATHS ${APU_LIBTOOL_BASE})
+list(GET APU_LIBTOOL 0 APU_LIBTOOL_ARG0)
 
+get_filename_component(APU_LIBTOOL_BASE ${APU_LIBTOOL_ARG0} PATH ) 
+FIND_LIBRARY(APU_LIBRARY NAMES apr-accre-1 aprutil-ACCRE-1 PATHS ${APU_LIBTOOL_BASE})
+
+# compatibility, allow this CMake module to work with the various CMakeList.txt files
+set(APRUTIL_INCLUDE_DIR "${APU_INCLUDES}")
+set(APRUTIL_LIBRARY "${APU_LIBRARY}")
+
+MESSAGE(STATUS "APU AT ${APU_LIBRARY}")
 INCLUDE(FindPackageHandleStandardArgs)
 FIND_PACKAGE_HANDLE_STANDARD_ARGS(APU DEFAULT_MSG APU_INCLUDES APU_LIBS APU_LIBRARY APU_VERSION)
