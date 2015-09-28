@@ -9,13 +9,23 @@
 # also defined, but not for general use are
 #  JERASURE_LIBRARY and JERASURE_LIBRARY, where to find the APR library.
 
-# APR first.
+FIND_PATH(JERASURE_INCLUDE_DIR_BASE NAMES jerasure/jerasure.h
+                    jerasure/galois.h 
+                    jerasure/cauchy.h 
+                    jerasure/reed_sol.h 
+                    jerasure/liberation.h)
+if(JERASURE_INCLUDE_DIR_BASE)
+   SET(JERASURE_INCLUDE_DIR ${JERASURE_INCLUDE_DIR}/jerasure)
+else(JERASURE_INCLUDE_DIR_BASE)
+   FIND_PATH(JERASURE_INCLUDE_DIR NAMES jerasure/jerasure.h
+                    jerasure/galois.h 
+                    jerasure/cauchy.h 
+                    jerasure/reed_sol.h 
+                    jerasure/liberation.h)
+endif(JERASURE_INCLUDE_DIR_BASE)
 
 
-FIND_PATH(JERASURE_INCLUDE_DIR NAMES jerasure.h galois.h cauchy.h reed_sol.h liberation.h)
-
-
-SET(JERASURE_NAMES jerasure)
+SET(JERASURE_NAMES jerasure Jerasure)
 FIND_LIBRARY(JERASURE_LIBRARY NAMES ${JERASURE_NAMES})
 
 IF (JERASURE_LIBRARY AND JERASURE_INCLUDE_DIR)
@@ -31,9 +41,7 @@ IF (JERASURE_FOUND)
       MESSAGE(STATUS "Found JERASURE: ${JERASURE_LIBRARIES} ${JERASURE_INCLUDE_DIR}")
    ENDIF (NOT JERASURE_FIND_QUIETLY)
 ELSE (JERASURE_FOUND)
-   IF (JERASURE_FIND_REQUIRED)
-      MESSAGE(FATAL_ERROR "Could not find JERASURE library")
-   ENDIF (JERASURE_FIND_REQUIRED)
+   MESSAGE(STATUS "Could not find JERASURE library: ${JERASURE_LIBRARIES} ${JERASURE_INCLUDE_DIR}")
 ENDIF (JERASURE_FOUND)
 
 # Deprecated declarations.
