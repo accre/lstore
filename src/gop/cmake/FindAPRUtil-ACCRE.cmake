@@ -54,7 +54,7 @@ _apu_invoke(APU_VERSION   ""        --version)
 list(GET APU_LIBTOOL 0 APU_LIBTOOL_ARG0)
 
 get_filename_component(APU_LIBTOOL_BASE ${APU_LIBTOOL_ARG0} PATH ) 
-FIND_LIBRARY(APU_LIBRARY NAMES apr-accre-1 aprutil-ACCRE-1 PATHS ${APU_LIBTOOL_BASE})
+FIND_LIBRARY(APU_LIBRARY NAMES aprutil-accre-1 aprutil-ACCRE-1 PATHS ${APU_LIBTOOL_BASE})
 
 # compatibility, allow this CMake module to work with the various CMakeList.txt files
 set(APRUTIL_INCLUDE_DIR "${APU_INCLUDES}")
