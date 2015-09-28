@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+
+d=""
+[ "${1}" == "32" ] && d="32" && export cmflags='-D CMAKE_REQUIRED_FLAGS=-m32' && echo "Making 32-bit binaries"
+
+[ "${PREFIX}" == "" ] && PREFIX=/usr/local
+
+[ -e CMakeCache.txt ] && rm CMakeCache.txt
+
+if command -v cmake28 >/dev/null 2>&1; then
+    LFS_CMAKE_COMMAND=cmake28
+else
+    LFS_CMAKE_COMMAND=cmake
+fi
+
+CMAKE_PREFIX_PATH=${PREFIX}${d} \
+   ${LFS_CMAKE_COMMAND} ${cmflags}  -D CMAKE_INSTALL_PREFIX=${PREFIX}${d} -D CMAKE_INCLUDE_CURRENT_DIR=on -D CMAKE_VERBOSE_MAKEFILE=on CMakeLists.txt
+
