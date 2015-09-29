@@ -82,3 +82,31 @@ function build_lstore_package() {
 
 }
 
+function check_cmake(){
+    # Obnoxiously, we need cmake 2.8.12 to build RPM, and even Centos7 only
+    #   packages 2.8.11
+    CMAKE_VERSION=$(cmake --version | head -n 1 | awk '{ print $3 }')
+    IFS='.' read -a VERSION_ARRAY <<< "$CMAKE_VERSION"
+    if [ "${VERSION_ARRAY[0]}" -gt 2 ]; then
+        # We're good if we're at cmake 3
+        return
+    fi
+    if [[ "${VERSION_ARRAY[1]}" -lt 8 || "${VERSION_ARRAY[2]}" -lt 12 ]]; then
+        note "Using bundled version of cmake - the system version is too old '$CMAKE_VERSION'"
+        # Download cmake
+        # https://cmake.org/files/v3.3/cmake-3.3.2-Linux-x86_64.tar.gz
+        # https://cmake.org/files/v3.3/cmake-3.3.2-Linux-i386.tar.gz
+        if [ ! -d $LSTORE_RELEASE_BASE/build/cmake ]; then
+            pushd $LSTORE_RELEASE_BASE/build
+            curl https://cmake.org/files/v3.3/cmake-3.3.2-Linux-x86_64.tar.gz | tar xz
+            mv cmake-3.3.2-Linux-x86_64 cmake
+            popd
+        fi
+        export PATH="$LSTORE_RELEASE_BASE/build/cmake/bin:${PATH}"
+    fi
+    hash -r
+    CMAKE_VERSION=$(cmake --version | head -n 1 |  awk '{ print $3 }')
+    note "Bundled version of cmake is version '$CMAKE_VERSION'"
+    note "Bundled cmake can be found at $(which cmake)"
+}
+
