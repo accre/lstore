@@ -49,13 +49,19 @@ function get_lstore_source() {
     fi
 }
 
-function build_lstore_package() {
-    set -ex
+function build_lstore_binary() {
+    # In-tree builds
+    build_lstore_binary_outof_tree $1 $(pwd) $2
+}
+
+function build_lstore_binary_outof_tree() {
+    set -e
     TO_BUILD=$1
-    INSTALL_PREFIX=${2:-${LSTORE_RELEASE_BASE}/local}
+    SOURCE_PATH=$2
+    INSTALL_PREFIX=${3:-${LSTORE_RELEASE_BASE}/local}
     case $TO_BUILD in
         apr-accre)
-            ./configure --prefix=${INSTALL_PREFIX}
+            ${SOURCE_PATH}/configure --prefix=${INSTALL_PREFIX}
             make
             make test
             make install
@@ -64,10 +70,34 @@ function build_lstore_package() {
             if [ -e ${INSTALL_PREFIX}/bin/apr-ACCRE-1-config ]; then
                 OTHER_ARGS="--with-apr=${INSTALL_PREFIX}/bin/apr-ACCRE-1-config"
             fi
-            ./configure --prefix=${INSTALL_PREFIX} $OTHER_ARGS
+            ${SOURCE_PATH}/configure --prefix=${INSTALL_PREFIX} $OTHER_ARGS
             make
             make test
             make install
+            ;;
+        jerasure|toolbox|gop|ibp|lio)
+            cmake ${SOURCE_PATH} -DCMAKE_PREFIX_PATH="${INSTALL_PREFIX};${INSTALL_PREFIX}/usr/local"
+            make DESTDIR=${INSTALL_PREFIX} install
+            ;;
+        *)
+            fatal "Invalid package: $TO_BUILD"
+            ;;
+    esac
+
+}
+
+function build_lstore_package() {
+    set -e
+    TO_BUILD=$1
+    INSTALL_PREFIX=${2:-${LSTORE_RELEASE_BASE}/local}
+    case $TO_BUILD in
+        apr-accre)
+            cpack -G RPM .
+            ;;
+        apr-util-accre)
+            set -x
+            APR_LOCATION=${INSTALL_PREFIX}/bin/apr-ACCRE-1-config cpack -G RPM -D APR_LOCATION=${INSTALL_PREFIX}/bin/apr-ACCRE-1-config .
+            set +x
             ;;
         jerasure|toolbox|gop|ibp|lio)
             cmake . -DCMAKE_PREFIX_PATH="${INSTALL_PREFIX};${INSTALL_PREFIX}/usr/local"
@@ -110,3 +140,34 @@ function check_cmake(){
     note "Bundled cmake can be found at $(which cmake)"
 }
 
+function build_helper() {
+    # Don't copy/paste code twice for build-local and build-external
+    set -e
+    BUILD_BASE="$LSTORE_RELEASE_BASE/build"
+    SOURCE_BASE="$LSTORE_RELEASE_BASE/source"
+
+
+    PREFIX=$LSTORE_RELEASE_BASE/local
+    check_cmake
+
+    cd $SOURCE_BASE
+    for p in "$@"; do
+        get_lstore_source ${p}
+    done
+
+    cd $BUILD_BASE
+    for p in $@; do
+        BUILT_FLAG="${PREFIX}/built-${p}"
+        if [ -e $BUILT_FLAG ]; then
+            note "Not building ${p}, was already built. To change this behavior,"
+            note "    remove $BUILT_FLAG"
+            continue
+        fi
+        mkdir -p ${p}
+        pushd ${p}
+        build_lstore_binary_outof_tree ${p} $SOURCE_BASE/${p} ${PREFIX} 2>&1 | tee $LSTORE_RELEASE_BASE/logs/${p}-build.log
+        [ ${PIPESTATUS[0]} -eq 0 ] || fatal "Could not build ${p}"
+        touch $BUILT_FLAG
+        popd
+    done
+}
