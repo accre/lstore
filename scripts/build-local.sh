@@ -1,27 +1,29 @@
 #!/usr/bin/env bash
+set -eu 
+ABSOLUTE_PATH=$(cd `dirname "${BASH_SOURCE[0]}"` && pwd)
+source $ABSOLUTE_PATH/functions.sh
 
-[ "${1}" == "" ] && echo "${0} /install/prefix [git|tar]  **Default is to use tar**" && exit 1
+cd $LSTORE_RELEASE_BASE/build
 
-export PREFIX=${1}
+PREFIX=$LSTORE_RELEASE_BASE/local
 
-from="tar"
-if [ "${2}" == "git" ] ; then
-   from=git
-fi
-
-cd build
+# TODO: Should make sure deps are installed first. On Centos7, you need
+#     to install the "Development Tools" group, and openssl-devel, zlib-devel,
+#     czmq-devel, zmq-devel and fuse-devel
+for p in toolbox gop ibp lio; do
+    get_lstore_source ${p}
+done
 
 for p in toolbox gop ibp lio; do
-  if [ ! -d ${p} ] ; then
-     if [ "${from}" == "git" ]; then
-        echo "Checking out repository.  May be asked for password..."
-        git clone git@github.com:accre/lstore-${p}.git ${p}
-     else
-        tar -zxvf ../tarballs/${p}.tgz
-     fi
-  fi
-
-  cd ${p}
-  ../../scripts/my-build.sh 2>&1 | tee ../../logs/${p}-build.log
-  cd ..
+    BUILT_FLAG="${PREFIX}/built-${p}"
+    if [ -e $BUILT_FLAG ]; then
+        note "Not building ${p}, was already built. To change this behavior,"
+        note "    remove $BUILT_FLAG"
+        continue
+    fi
+    pushd ${p}
+    build_lstore_package ${p} ${PREFIX} 2>&1 | tee $LSTORE_RELEASE_BASE/logs/${p}-build.log
+    [ ${PIPESTATUS[0]} -eq 0 ] || fatal "Could not build ${p}"
+    touch $BUILT_FLAG
+    popd
 done
