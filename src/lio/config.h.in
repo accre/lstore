@@ -20,4 +20,8 @@
 #define EREMOTEIO 140
 #endif
 
+#if !defined(ENOATTR)
+#define ENOATTR ENODATA
+#endif
+
 #endif
