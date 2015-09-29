@@ -9,21 +9,11 @@
 # also defined, but not for general use are
 #  JERASURE_LIBRARY and JERASURE_LIBRARY, where to find the APR library.
 
-FIND_PATH(JERASURE_INCLUDE_DIR_BASE NAMES jerasure/jerasure.h
+FIND_PATH(JERASURE_INCLUDE_DIR NAMES jerasure/jerasure.h
                     jerasure/galois.h 
                     jerasure/cauchy.h 
                     jerasure/reed_sol.h 
                     jerasure/liberation.h)
-if(JERASURE_INCLUDE_DIR_BASE)
-   SET(JERASURE_INCLUDE_DIR ${JERASURE_INCLUDE_DIR}/jerasure)
-else(JERASURE_INCLUDE_DIR_BASE)
-   FIND_PATH(JERASURE_INCLUDE_DIR NAMES jerasure/jerasure.h
-                    jerasure/galois.h 
-                    jerasure/cauchy.h 
-                    jerasure/reed_sol.h 
-                    jerasure/liberation.h)
-endif(JERASURE_INCLUDE_DIR_BASE)
-
 
 SET(JERASURE_NAMES jerasure Jerasure)
 FIND_LIBRARY(JERASURE_LIBRARY NAMES ${JERASURE_NAMES})
