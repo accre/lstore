@@ -9,7 +9,7 @@ LSTORE_HEAD_BRANCHES="apr-accre=accre-fork
                        apr-util-accre=accre-fork
                        jerasure=v1
                        lio=master
-                       gop=redmine_pre-alok
+                       gop=master
                        toolbox=master
                        ibp=master"
 #
@@ -32,6 +32,8 @@ function note() {
 # Manipulating local repositories
 #
 function get_lstore_source() {
+    # TODO: Accept an additional argument allowing you to override the source
+    #       repository/branch.
     TO_GET=$1
     BRANCH=""
     for VAL in $LSTORE_HEAD_BRANCHES; do
@@ -43,14 +45,18 @@ function get_lstore_source() {
         fatal "Invalid repository: $TO_GET"
     fi
     if [ ! -e ${TO_GET} ]; then
-        git clone git@github.com:accre/lstore-${TO_GET}.git -b ${BRANCH} ${TO_GET}
+        # Try via SSH first and fall back to https otherwise
+        git clone git@github.com:accre/lstore-${TO_GET}.git -b ${BRANCH} ${TO_GET} || \
+            git clone https://github.com/accre/lstore-${TO_GET}.git -b ${BRANCH} ${TO_GET}
     else
         note "Repository ${TO_GET} already exists, not checking out"
     fi
 }
 
 function build_lstore_binary() {
-    # In-tree builds
+    # In-tree builds (are for chumps)
+    #     Make out-of-tree builds by default and then let someone force the
+    #     build to the source tree if they're a masochist.
     build_lstore_binary_outof_tree $1 $(pwd) $2
 }
 
@@ -61,7 +67,11 @@ function build_lstore_binary_outof_tree() {
     INSTALL_PREFIX=${3:-${LSTORE_RELEASE_BASE}/local}
     case $TO_BUILD in
         apr-accre)
-            ${SOURCE_PATH}/configure --prefix=${INSTALL_PREFIX}
+            # Keep this in sync with CPackConfig.cmake in our fork
+            ${SOURCE_PATH}/configure \
+                        --prefix=${INSTALL_PREFIX} \
+                        --includedir=${INSTALL_PREFIX}/include/apr-ACCRE-1 \
+                        --with-installbuilddir=${INSTALL_PREFIX}/lib/apr-ACCRE-1/build
             make
             make test
             make install
@@ -70,14 +80,17 @@ function build_lstore_binary_outof_tree() {
             if [ -e ${INSTALL_PREFIX}/bin/apr-ACCRE-1-config ]; then
                 OTHER_ARGS="--with-apr=${INSTALL_PREFIX}/bin/apr-ACCRE-1-config"
             fi
-            ${SOURCE_PATH}/configure --prefix=${INSTALL_PREFIX} $OTHER_ARGS
+            # Keep this in sync with CPackConfig.cmake in our fork
+            ${SOURCE_PATH}/configure --prefix=${INSTALL_PREFIX} $OTHER_ARGS \
+                        --includedir=${INSTALL_PREFIX}/include/apr-util-ACCRE-1 \
+                        --with-installbuilddir=${INSTALL_PREFIX}/lib/apr-util-ACCRE-1/build
             make
             make test
             make install
             ;;
         jerasure|toolbox|gop|ibp|lio)
-            cmake ${SOURCE_PATH} -DCMAKE_PREFIX_PATH="${INSTALL_PREFIX};${INSTALL_PREFIX}/usr/local"
-            make DESTDIR=${INSTALL_PREFIX} install
+            cmake ${SOURCE_PATH} -DCMAKE_PREFIX_PATH=${INSTALL_PREFIX} -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX}
+            make install
             ;;
         *)
             fatal "Invalid package: $TO_BUILD"
@@ -89,50 +102,70 @@ function build_lstore_binary_outof_tree() {
 function build_lstore_package() {
     set -e
     TO_BUILD=$1
-    INSTALL_PREFIX=${2:-${LSTORE_RELEASE_BASE}/local}
+    SOURCE_PATH=${2:-${LSTORE_RELEASE_BASE}/sources/${TO_BUILD}}
+    TAG_NAME=${3:-test}
+    DISTRO_NAME=${4:-undefined}
+    case $DISTRO_NAME in
+        undefined)
+            CPACK_ARG=""
+            CMAKE_ARG=""
+            ;;
+        centos-*)
+            CPACK_ARG="-G RPM"
+            CMAKE_ARG="-DCPACK_GENERATOR=RPM -DCPACK_SOURCE_GENERATOR=RPM"
+            ;;
+        *)
+            fatal "Unexpected distro name $DISTRO_NAME"
+            ;;
+    esac
     case $TO_BUILD in
-        apr-accre)
-            cpack -G RPM .
+        apr-accre|apr-util-accre)
+            ls -l $SOURCE_PATH/CPackConfig.cmake
+            cpack $CPACK_ARG --config $SOURCE_PATH/CPackConfig.cmake \
+                   --debug --verbose "-DCPACK_VERSION=$TAG_NAME" || \
+                fatal "$(cat _CPack_Packages/RPM/InstallOutput.log)"
             ;;
-        apr-util-accre)
+        jerasure|lio|ibp|gop|toolbox)
+            # This is gross, but works for now..
             set -x
-            APR_LOCATION=${INSTALL_PREFIX}/bin/apr-ACCRE-1-config cpack -G RPM -D APR_LOCATION=${INSTALL_PREFIX}/bin/apr-ACCRE-1-config .
+            cmake -DWANT_PACKAGE:BOOL=ON "-DLSTORE_PROJECT_VERSION=$TAG_NAME"\
+                    $CMAKE_ARG --debug --verbose $SOURCE_PATH
             set +x
-            ;;
-        jerasure|toolbox|gop|ibp|lio)
-            cmake . -DCMAKE_PREFIX_PATH="${INSTALL_PREFIX};${INSTALL_PREFIX}/usr/local"
-                            #-DPREFIX=${INSTALL_PREFIX}
-                            #-DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX}
-            make DESTDIR=${INSTALL_PREFIX} install
+            make package
             ;;
         *)
             fatal "Invalid package: $TO_BUILD"
             ;;
     esac
-
 }
 
 function check_cmake(){
     # Obnoxiously, we need cmake 2.8.12 to build RPM, and even Centos7 only
     #   packages 2.8.11
-    CMAKE_VERSION=$(cmake --version | head -n 1 | awk '{ print $3 }')
+    set +e
+    CMAKE_VERSION=$(cmake --version 2>/dev/null | head -n 1 | awk '{ print $3 }')
+    [ -z "$CMAKE_VERSION" ] && CMAKE_VERSION="0.0.0"
+    set -e
+    INSTALL_PATH=${1:-${LSTORE_RELEASE_BASE}/build}
     IFS='.' read -a VERSION_ARRAY <<< "$CMAKE_VERSION"
     if [ "${VERSION_ARRAY[0]}" -gt 2 ]; then
         # We're good if we're at cmake 3
         return
     fi
     if [[ "${VERSION_ARRAY[1]}" -lt 8 || "${VERSION_ARRAY[2]}" -lt 12 ]]; then
-        note "Using bundled version of cmake - the system version is too old '$CMAKE_VERSION'"
+        [ $CMAKE_VERSION == "0.0.0" ] ||  \
+            note "Using bundled version of cmake - the system version is too old '$CMAKE_VERSION'" &&
+            note "Couldn't find cmake, pulling our own"
         # Download cmake
         # https://cmake.org/files/v3.3/cmake-3.3.2-Linux-x86_64.tar.gz
         # https://cmake.org/files/v3.3/cmake-3.3.2-Linux-i386.tar.gz
-        if [ ! -d $LSTORE_RELEASE_BASE/build/cmake ]; then
-            pushd $LSTORE_RELEASE_BASE/build
-            curl https://cmake.org/files/v3.3/cmake-3.3.2-Linux-x86_64.tar.gz | tar xz
+        if [ ! -d $INSTALL_PATH/cmake ]; then
+            pushd $INSTALL_PATH
+            curl http://cmake.org/files/v3.3/cmake-3.3.2-Linux-x86_64.tar.gz | tar xz
             mv cmake-3.3.2-Linux-x86_64 cmake
             popd
         fi
-        export PATH="$LSTORE_RELEASE_BASE/build/cmake/bin:${PATH}"
+        export PATH="$INSTALL_PATH/cmake/bin:$PATH"
     fi
     hash -r
     CMAKE_VERSION=$(cmake --version | head -n 1 |  awk '{ print $3 }')
@@ -163,6 +196,7 @@ function build_helper() {
             note "    remove $BUILT_FLAG"
             continue
         fi
+        [ -d ${p} ] && rm -rf ${p}
         mkdir -p ${p}
         pushd ${p}
         build_lstore_binary_outof_tree ${p} $SOURCE_BASE/${p} ${PREFIX} 2>&1 | tee $LSTORE_RELEASE_BASE/logs/${p}-build.log
