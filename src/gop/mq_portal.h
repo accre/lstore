@@ -112,7 +112,6 @@ extern "C" {
 #define MQ_DONTWAIT ZMQ_DONTWAIT
 
 typedef zmq_pollitem_t mq_pollitem_t;
-//QWERT typedef zmq_event_t mq_event_t;
 
 typedef Stack_t mq_msg_t;
 
