@@ -53,8 +53,11 @@ SET_TARGET_PROPERTIES(gop-static PROPERTIES CLEAN_DIRECT_OUTPUT 1)
 include_directories(${TOOLBOX_INCLUDE_DIR} ${APR_INCLUDE_DIR} ${APRUTIL_INCLUDE_DIR} ${ZMQ_INCLUDE_DIR} ${CZMQ_INCLUDE_DIR} ${ZLIB_INCLUDE_DIR} )
 
 SET(LIBS ${LIBS} ${ZMQ_LIBRARY} ${CZMQ_LIBRARY} ${TOOLBOX_LIBRARY} ${OPENSSL_LIBRARIES} ${CRYPTO_LIBRARIES} 
-    ${APR_LIBRARY} ${APRUTIL_LIBRARY} ${XML_LIB} ${ZLIB_LIBRARY} gssapi_krb5 pthread m dl rt)
-
+    ${APR_LIBRARY} ${APRUTIL_LIBRARY} ${XML_LIB} ${ZLIB_LIBRARY} gssapi_krb5 pthread m dl)
+if(NOT APPLE)
+    # OSX doesn't want/need librt
+    LIST(APPEND LIBS rt)
+endif(NOT APPLE)
 
 #Make the executables
 set(GOP_EXE mq_test mqs_test zmq_test)
