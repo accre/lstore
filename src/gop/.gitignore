@@ -5,6 +5,10 @@ bootstrap
 mq_test
 mqs_test
 zmq_test
+rr_mq_client
+rr_mq_server
+rr_mq_test
+rr_mq_worker
 
 #These are generated via cmake using the *.in variants
 gop_version.c
@@ -18,4 +22,6 @@ CMakeCache.txt
 Makefile
 cmake_install.cmake
 install_manifest.txt
+CPackConfig.cmake
+CPackSourceConfig.cmake
 
