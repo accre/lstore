@@ -42,7 +42,7 @@ http://www.accre.vanderbilt.edu
 
 ibp_depot_t *new_ibp_depot()
 {
-   return((ibp_depot_t *)malloc(sizeof(ibp_depot_t)));
+    return((ibp_depot_t *)malloc(sizeof(ibp_depot_t)));
 }
 
 
@@ -52,7 +52,7 @@ ibp_depot_t *new_ibp_depot()
 
 void destroy_ibp_depot(ibp_depot_t *d)
 {
-   free(d);
+    free(d);
 }
 
 
@@ -62,11 +62,11 @@ void destroy_ibp_depot(ibp_depot_t *d)
 
 void set_ibp_depot(ibp_depot_t *d, char *host, int port, rid_t rid)
 {
-  strncpy(d->host, host, sizeof(d->host));
-  d->host[sizeof(d->host)-1]='\0';
+    strncpy(d->host, host, sizeof(d->host));
+    d->host[sizeof(d->host)-1]='\0';
 
-  d->port = port;
-  d->rid = rid; 
+    d->port = port;
+    d->rid = rid;
 }
 
 //===================================================================
@@ -77,7 +77,7 @@ void set_ibp_depot(ibp_depot_t *d, char *host, int port, rid_t rid)
 
 ibp_attributes_t *new_ibp_attributes()
 {
-   return((ibp_attributes_t *)malloc(sizeof(ibp_attributes_t)));
+    return((ibp_attributes_t *)malloc(sizeof(ibp_attributes_t)));
 }
 
 
@@ -87,7 +87,7 @@ ibp_attributes_t *new_ibp_attributes()
 
 void destroy_ibp_attributes(ibp_attributes_t *attr)
 {
-   free(attr);
+    free(attr);
 }
 
 //*****************************************************************
@@ -96,9 +96,9 @@ void destroy_ibp_attributes(ibp_attributes_t *attr)
 
 void set_ibp_attributes(ibp_attributes_t *attr, time_t duration, int reliability, int type)
 {
-  attr->duration = duration;
-  attr->reliability = reliability;
-  attr->type = type;
+    attr->duration = duration;
+    attr->reliability = reliability;
+    attr->type = type;
 }
 
 //*****************************************************************
@@ -107,9 +107,9 @@ void set_ibp_attributes(ibp_attributes_t *attr, time_t duration, int reliability
 
 void get_ibp_attributes(ibp_attributes_t *attr, time_t *duration, int *reliability, int *type)
 {
-  *duration = attr->duration;
-  *reliability = attr->reliability;
-  *type = attr->type;
+    *duration = attr->duration;
+    *reliability = attr->reliability;
+    *type = attr->type;
 }
 
 
@@ -121,13 +121,13 @@ void get_ibp_attributes(ibp_attributes_t *attr, time_t *duration, int *reliabili
 
 ibp_timer_t *new_ibp_timer()
 {
-   ibp_timer_t *t = (ibp_timer_t *)malloc(sizeof(ibp_timer_t));
-   if (t == NULL) return(NULL);
+    ibp_timer_t *t = (ibp_timer_t *)malloc(sizeof(ibp_timer_t));
+    if (t == NULL) return(NULL);
 
-   t->ClientTimeout = 0;
-   t->ServerSync = 0;
+    t->ClientTimeout = 0;
+    t->ServerSync = 0;
 
-   return(t);
+    return(t);
 }
 
 
@@ -137,7 +137,7 @@ ibp_timer_t *new_ibp_timer()
 
 void destroy_ibp_timer(ibp_timer_t *t)
 {
-   free(t);
+    free(t);
 }
 
 //*****************************************************************
@@ -146,8 +146,8 @@ void destroy_ibp_timer(ibp_timer_t *t)
 
 void set_ibp_timer(ibp_timer_t *t, int client_timeout, int server_timeout)
 {
-  t->ClientTimeout = client_timeout;
-  t->ServerSync = server_timeout;
+    t->ClientTimeout = client_timeout;
+    t->ServerSync = server_timeout;
 }
 
 //*****************************************************************
@@ -156,8 +156,8 @@ void set_ibp_timer(ibp_timer_t *t, int client_timeout, int server_timeout)
 
 void get_ibp_timer(ibp_timer_t *t, int *client_timeout, int *server_timeout)
 {
-  *client_timeout = t->ClientTimeout;
-  *server_timeout = t->ServerSync;
+    *client_timeout = t->ClientTimeout;
+    *server_timeout = t->ServerSync;
 }
 
 //===================================================================
@@ -169,7 +169,7 @@ void get_ibp_timer(ibp_timer_t *t, int *client_timeout, int *server_timeout)
 
 void destroy_ibp_cap(ibp_cap_t *cap)
 {
-   free(cap);
+    free(cap);
 }
 
 //*****************************************************************
@@ -178,7 +178,7 @@ void destroy_ibp_cap(ibp_cap_t *cap)
 
 ibp_cap_t *dup_ibp_cap(ibp_cap_t *src)
 {
-  return(strdup(src));
+    return(strdup(src));
 }
 
 //===================================================================
@@ -189,14 +189,14 @@ ibp_cap_t *dup_ibp_cap(ibp_cap_t *src)
 
 ibp_capset_t *new_ibp_capset()
 {
-   ibp_capset_t *c = (ibp_capset_t *)malloc(sizeof(ibp_capset_t));
-   if (c == NULL) return(NULL);
+    ibp_capset_t *c = (ibp_capset_t *)malloc(sizeof(ibp_capset_t));
+    if (c == NULL) return(NULL);
 
-   c->readCap = NULL;
-   c->writeCap = NULL;;
-   c->manageCap = NULL;
+    c->readCap = NULL;
+    c->writeCap = NULL;;
+    c->manageCap = NULL;
 
-   return(c);
+    return(c);
 }
 
 
@@ -206,11 +206,11 @@ ibp_capset_t *new_ibp_capset()
 
 void destroy_ibp_capset(ibp_capset_t *caps)
 {
-   destroy_ibp_cap(caps->readCap);
-   destroy_ibp_cap(caps->writeCap);
-   destroy_ibp_cap(caps->manageCap);
+    destroy_ibp_cap(caps->readCap);
+    destroy_ibp_cap(caps->writeCap);
+    destroy_ibp_cap(caps->manageCap);
 
-   free(caps);
+    free(caps);
 }
 
 //*****************************************************************
@@ -219,9 +219,9 @@ void destroy_ibp_capset(ibp_capset_t *caps)
 
 void copy_ibp_capset(ibp_capset_t *src, ibp_capset_t *dest)
 {
-  dest->readCap = dup_ibp_cap(src->readCap);  
-  dest->writeCap = dup_ibp_cap(src->writeCap);  
-  dest->manageCap = dup_ibp_cap(src->manageCap);  
+    dest->readCap = dup_ibp_cap(src->readCap);
+    dest->writeCap = dup_ibp_cap(src->writeCap);
+    dest->manageCap = dup_ibp_cap(src->manageCap);
 }
 
 //*****************************************************************
@@ -230,19 +230,19 @@ void copy_ibp_capset(ibp_capset_t *src, ibp_capset_t *dest)
 
 ibp_cap_t *get_ibp_cap(ibp_capset_t *caps, int ctype)
 {
-  ibp_cap_t *c;
+    ibp_cap_t *c;
 
-  if (ctype == IBP_READCAP) {
-     c = caps->readCap;
-  } else if (ctype == IBP_WRITECAP) {
-     c = caps->writeCap;
-  } else if (ctype == IBP_MANAGECAP) {
-     c = caps->manageCap;
-  } else {
-     c = NULL;
-  }
+    if (ctype == IBP_READCAP) {
+        c = caps->readCap;
+    } else if (ctype == IBP_WRITECAP) {
+        c = caps->writeCap;
+    } else if (ctype == IBP_MANAGECAP) {
+        c = caps->manageCap;
+    } else {
+        c = NULL;
+    }
 
-  return(c);
+    return(c);
 }
 
 
@@ -254,17 +254,17 @@ ibp_cap_t *get_ibp_cap(ibp_capset_t *caps, int ctype)
 
 ibp_alias_capstatus_t *new_ibp_alias_capstatus()
 {
-   ibp_alias_capstatus_t *cs = (ibp_alias_capstatus_t *)malloc(sizeof(ibp_alias_capstatus_t));
-   if (cs == NULL) return(NULL);
+    ibp_alias_capstatus_t *cs = (ibp_alias_capstatus_t *)malloc(sizeof(ibp_alias_capstatus_t));
+    if (cs == NULL) return(NULL);
 
-   
-   cs->read_refcount = -1;
-   cs->write_refcount = -1;
-   cs->offset = 0;
-   cs->size = 0;
-   cs->duration = 0;
 
-   return(cs);
+    cs->read_refcount = -1;
+    cs->write_refcount = -1;
+    cs->offset = 0;
+    cs->size = 0;
+    cs->duration = 0;
+
+    return(cs);
 }
 
 
@@ -274,7 +274,7 @@ ibp_alias_capstatus_t *new_ibp_alias_capstatus()
 
 void destroy_ibp_alias_capstatus(ibp_alias_capstatus_t *cs)
 {
-   free(cs);
+    free(cs);
 }
 
 //*****************************************************************
@@ -283,7 +283,7 @@ void destroy_ibp_alias_capstatus(ibp_alias_capstatus_t *cs)
 
 void copy_ibp_alias_capstatus(ibp_alias_capstatus_t *src, ibp_alias_capstatus_t *dest)
 {
-  memcpy(dest, src, sizeof(ibp_alias_capstatus_t));
+    memcpy(dest, src, sizeof(ibp_alias_capstatus_t));
 }
 
 //*****************************************************************
@@ -291,13 +291,13 @@ void copy_ibp_alias_capstatus(ibp_alias_capstatus_t *src, ibp_alias_capstatus_t 
 //*****************************************************************
 
 void get_ibp_alias_capstatus(ibp_alias_capstatus_t *cs, int *readcount, int *writecount,
-    ibp_off_t *offset, ibp_off_t *size, int *duration)
+                             ibp_off_t *offset, ibp_off_t *size, int *duration)
 {
- *readcount = cs->read_refcount;  
- *writecount = cs->write_refcount;  
- *offset = cs->offset;
- *size = cs->size;
- *duration = cs->duration;
+    *readcount = cs->read_refcount;
+    *writecount = cs->write_refcount;
+    *offset = cs->offset;
+    *size = cs->size;
+    *duration = cs->duration;
 }
 
 //===================================================================
@@ -308,17 +308,17 @@ void get_ibp_alias_capstatus(ibp_alias_capstatus_t *cs, int *readcount, int *wri
 
 ibp_capstatus_t *new_ibp_capstatus()
 {
-   ibp_capstatus_t *cs = (ibp_capstatus_t *)malloc(sizeof(ibp_capstatus_t));
-   if (cs == NULL) return(NULL);
+    ibp_capstatus_t *cs = (ibp_capstatus_t *)malloc(sizeof(ibp_capstatus_t));
+    if (cs == NULL) return(NULL);
 
-   
-   cs->readRefCount = -1;
-   cs->writeRefCount = -1;
-   cs->currentSize = -1;
-   cs->maxSize = 0;
-   set_ibp_attributes(&(cs->attrib), 0, -1, -1);
 
-   return(cs);
+    cs->readRefCount = -1;
+    cs->writeRefCount = -1;
+    cs->currentSize = -1;
+    cs->maxSize = 0;
+    set_ibp_attributes(&(cs->attrib), 0, -1, -1);
+
+    return(cs);
 }
 
 
@@ -328,7 +328,7 @@ ibp_capstatus_t *new_ibp_capstatus()
 
 void destroy_ibp_capstatus(ibp_capstatus_t *cs)
 {
-   free(cs);
+    free(cs);
 }
 
 //*****************************************************************
@@ -337,7 +337,7 @@ void destroy_ibp_capstatus(ibp_capstatus_t *cs)
 
 void copy_ibp_capstatus(ibp_capstatus_t *src, ibp_capstatus_t *dest)
 {
-  memcpy(dest, src, sizeof(ibp_capstatus_t));
+    memcpy(dest, src, sizeof(ibp_capstatus_t));
 }
 
 //*****************************************************************
@@ -348,13 +348,13 @@ void copy_ibp_capstatus(ibp_capstatus_t *src, ibp_capstatus_t *dest)
 //*****************************************************************
 
 void get_ibp_capstatus(ibp_capstatus_t *cs, int *readcount, int *writecount,
-    int *current_size, int *max_size, ibp_attributes_t *attrib)
+                       int *current_size, int *max_size, ibp_attributes_t *attrib)
 {
- *readcount = cs->readRefCount;  
- *writecount = cs->writeRefCount;  
- *current_size = cs->currentSize;
- *max_size = cs->maxSize;
-  *attrib = cs->attrib;
+    *readcount = cs->readRefCount;
+    *writecount = cs->writeRefCount;
+    *current_size = cs->currentSize;
+    *max_size = cs->maxSize;
+    *attrib = cs->attrib;
 }
 
 //===================================================================
@@ -365,82 +365,82 @@ void get_ibp_capstatus(ibp_capstatus_t *cs, int *readcount, int *writecount,
 
 void ridlist_init(ibp_ridlist_t *rlist, int size)
 {
-  rlist->rl = (rid_t *)malloc(sizeof(rid_t)*size);
-  assert(rlist->rl != NULL);
+    rlist->rl = (rid_t *)malloc(sizeof(rid_t)*size);
+    assert(rlist->rl != NULL);
 
-  rlist->n = size;
+    rlist->n = size;
 }
 
 //*****************************************************************
 
 void ridlist_destroy(ibp_ridlist_t *rlist)
 {
-  free(rlist->rl);
+    free(rlist->rl);
 }
 
 //*****************************************************************
 
 int ridlist_get_size(ibp_ridlist_t *rlist)
 {
-  return(rlist->n);
+    return(rlist->n);
 }
 
 //*****************************************************************
 
 rid_t ridlist_get_element(ibp_ridlist_t *rlist, int index)
 {
-  if (index >= rlist->n) {
-    log_printf(0, "ridlist_get_element:  Invalid index!  size=%d index=%d\n", rlist->n, index);
-    rid_t rid;
-    ibp_empty_rid(&rid);
-    return(rid);
-  }
+    if (index >= rlist->n) {
+        log_printf(0, "ridlist_get_element:  Invalid index!  size=%d index=%d\n", rlist->n, index);
+        rid_t rid;
+        ibp_empty_rid(&rid);
+        return(rid);
+    }
 
-  return(rlist->rl[index]);
+    return(rlist->rl[index]);
 }
 
 //*****************************************************************
 
 char *ibp_rid2str(rid_t rid, char *buffer)
 {
-  strncpy(buffer, rid.name, RID_LEN);
+    strncpy(buffer, rid.name, RID_LEN);
 
-  return(buffer);
+    return(buffer);
 }
 
 //*****************************************************************
 
 rid_t ibp_str2rid(char *rid_str)
 {
-  rid_t rid;
-  strncpy(rid.name, rid_str, RID_LEN);
+    rid_t rid;
+    strncpy(rid.name, rid_str, RID_LEN);
 
-  return(rid);
+    return(rid);
 }
 
 //*****************************************************************
 
 void ibp_empty_rid(rid_t *rid)
 {
-  sprintf(rid->name, "0");
+    sprintf(rid->name, "0");
 }
 
 //*****************************************************************
 
 int ibp_rid_is_empty(rid_t rid)
 {
-  if (strcmp(rid.name, "0") == 0) {
-     return(1);
-  }
+    if (strcmp(rid.name, "0") == 0) {
+        return(1);
+    }
 
-  return(0);
+    return(0);
 }
 
 //*****************************************************************
 
 int ibp_compare_rid(rid_t rid1, rid_t rid2)
 {
-  return(strncmp(rid1.name, rid2.name, RID_LEN));
+    return(strncmp(rid1.name, rid2.name, RID_LEN));
 }
 
 

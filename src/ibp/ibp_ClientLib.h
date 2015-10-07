@@ -12,8 +12,8 @@
  * that both the copyright notice and this permission notice appear in
  * supporting documentation.
  *
- * Neither the Institution (University of Tennessee) nor the Authors 
- * make any representations about the suitability of this software for 
+ * Neither the Institution (University of Tennessee) nor the Authors
+ * make any representations about the suitability of this software for
  * any purpose. This software is provided ``as is'' without express or
  * implied warranty.
  *
@@ -26,7 +26,7 @@
  *
  */
 
-/*! \file ibp_ClientLib.h 
+/*! \file ibp_ClientLib.h
   \brief  IBP client include file
 
   This file includes definitions of the IBP client APIs and data structure
@@ -49,8 +49,8 @@
 
 
 # ifdef __cplusplus
-extern "C" { 
-# endif 
+extern "C" {
+# endif
 
 /*********************************************************
  * IBP Client APIs definition
@@ -85,21 +85,21 @@ unsigned long int  IBP_copy(  IBP_cap  ps_source,
                               unsigned long int  pl_size,
                               unsigned long int  pl_offset);
 
-unsigned long int  IBP_mcopy ( IBP_cap pc_SourceCap, 
-                               IBP_cap pc_TargetCap[],  
+unsigned long int  IBP_mcopy ( IBP_cap pc_SourceCap,
+                               IBP_cap pc_TargetCap[],
                                unsigned int pi_CapCnt,
                                IBP_timer ps_src_timeout,
                                IBP_timer ps_tgt_timeout,
-                               unsigned long int pl_size, 
+                               unsigned long int pl_size,
                                unsigned long int pl_offset,
                                int dm_type[],
                                int dm_port[],
                                int dm_service);
 
-unsigned long int  IBP_datamover (  IBP_cap pc_TargetCap, 
+unsigned long int  IBP_datamover (  IBP_cap pc_TargetCap,
                                     IBP_cap pc_ReadCap,
                                     IBP_timer ps_tgt_timeout,
-                                    unsigned long int pl_size, 
+                                    unsigned long int pl_size,
                                     unsigned long int pl_offset,
                                     int dm_type,
                                     int dm_port,
@@ -128,6 +128,6 @@ int IBP_setMaxOpenConn(int max);
 
 # ifdef __cplusplus
 }
-# endif 
+# endif
 
 # endif /* _IBP_CLIENTLIB_H */
