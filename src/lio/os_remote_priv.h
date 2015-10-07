@@ -131,7 +131,8 @@ typedef struct {
   apr_thread_cond_t *cond;
   mq_context_t *mqc;             //** Portal for connecting to he remote OS server
   mq_ongoing_t *ongoing;         //** Ongoing handle
-  char *remote_host;             //** Address of the Remote OS server
+  mq_msg_t *remote_host;         //** Address of the Remote OS server
+  char *remote_host_string;      //** Stringified version of Remote OS server
   char *host_id;                 //** Used for forming the open handle id;
   int host_id_len;               //** Length of host id
   int spin_interval;             //** Spin heartbeat interval

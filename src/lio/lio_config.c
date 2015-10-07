@@ -248,11 +248,9 @@ void lio_find_lfs_mounts()
    int i, fin;
    size_t ns;
 
+   stack = new_stack();
 
    fd = fopen("/proc/mounts", "r");
-   if (fd == NULL) return;
-
-   stack = new_stack();
    text = NULL;
    while (getline(&text, &ns, fd) != -1) {
      log_printf(5, "getline=%s", text);
@@ -644,6 +642,49 @@ void lc_object_remove_unused(int remove_all_unused)
   return;
 }
 
+//***************************************************************
+// blacklist_destroy - Destroys a blacklist structure
+//***************************************************************
+
+void blacklist_destroy(blacklist_t *bl)
+{
+  apr_ssize_t hlen;
+  apr_hash_index_t *hi;
+  blacklist_rid_t *r;
+
+  //** Destroy all the blacklist RIDs
+  for (hi=apr_hash_first(NULL, bl->table); hi != NULL; hi = apr_hash_next(hi)) {
+     apr_hash_this(hi, NULL, &hlen, (void **)&r);
+     free(r->rid);
+     free(r);
+  }
+
+  apr_pool_destroy(bl->mpool);
+  apr_thread_mutex_destroy(bl->lock);
+  free(bl);
+}
+
+//***************************************************************
+// blacklist_load - Loads and creates a blacklist structure
+//***************************************************************
+
+blacklist_t *blacklist_load(inip_file_t *ifd, char *section)
+{
+  blacklist_t *bl;
+
+  type_malloc_clear(bl, blacklist_t, 1);
+
+  assert(apr_pool_create(&(bl->mpool), NULL) == APR_SUCCESS);
+  apr_thread_mutex_create(&(bl->lock), APR_THREAD_MUTEX_DEFAULT, bl->mpool);
+  bl->table = apr_hash_make(bl->mpool);
+
+  bl->timeout = inip_get_integer(ifd, section, "timeout", apr_time_from_sec(120));
+  bl->min_bandwidth = inip_get_integer(ifd, section, "min_bandwidth", 5*1024*1024);  //** default ro 5MB
+  bl->min_io_time = inip_get_integer(ifd, section, "min_io_time", apr_time_from_sec(1));  //** default ro 5MB
+
+  return(bl);
+}
+
 
 //***************************************************************
 // lio_print_options - Prints the standard supported lio options
@@ -743,6 +784,9 @@ void lio_destroy_nl(lio_config_t *lio)
   //** Table of open files
   list_destroy(lio->open_index);
 
+  //** Blacklist if used
+  if (lio->blacklist != NULL) blacklist_destroy(lio->blacklist);
+
   apr_thread_mutex_destroy(lio->lock);
   apr_pool_destroy(lio->mpool);
 
@@ -811,6 +855,14 @@ lio_config_t *lio_create_nl(char *fname, char *section, char *user, char *exe_na
   lio->calc_adler32 = inip_get_integer(lio->ifd, section, "calc_adler32", 0);
   lio->readahead = inip_get_integer(lio->ifd, section, "readahead", 0);
   lio->readahead_trigger = lio->readahead * inip_get_double(lio->ifd, section, "readahead_trigger", 1.0);
+
+  //** Check and see if we need to enable the blacklist
+  stype = inip_get_string(lio->ifd, section, "blacklist", NULL);
+  if (stype != NULL) { //** Yup we need to parse and load those params
+     lio->blacklist = blacklist_load(lio->ifd, stype);
+     add_service(lio->ess, ESS_RUNNING, "blacklist", lio->blacklist);
+     free(stype);
+  }
 
   //** Add the Jerase paranoid option
   type_malloc(val, int, 1);  //** NOTE: this is not freed on a destroy

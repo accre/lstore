@@ -32,6 +32,7 @@ http://www.accre.vanderbilt.edu
 //***********************************************************************
 
 #include "exnode.h"
+#include "blacklist.h"
 #include "mq_portal.h"
 #include "log.h"
 
@@ -91,6 +92,7 @@ struct lio_config_s {
   char *tpc_unlimited_section;
   char *creds_name;
   char *exe_name;
+  blacklist_t *blacklist;
   ex_off_t readahead;
   ex_off_t readahead_trigger;
   int calc_adler32;
@@ -115,6 +117,7 @@ typedef struct {
 } unified_object_iter_t;
 
 typedef struct {
+  segment_rw_hints_t *rw_hints;
   lio_path_tuple_t src_tuple;
   lio_path_tuple_t dest_tuple;
   ex_off_t bufsize;
@@ -199,19 +202,19 @@ op_generic_t *gop_lio_open_object(lio_config_t *lc, creds_t *creds, char *path, 
 op_generic_t *gop_lio_close_object(lio_fd_t *fd);
 //NOT NEEDED NOW???? op_generic_t *gop_lio_abort_open_object(lio_config_t *lc, op_generic_t *gop);
 
-op_generic_t *gop_lio_read(lio_fd_t *fd, char *buf, ex_off_t size, ex_off_t off);
-op_generic_t *gop_lio_readv(lio_fd_t *fd, iovec_t *iov, int n_iov, ex_off_t size, ex_off_t off);
-op_generic_t *gop_lio_read_ex(lio_fd_t *fd, int n_iov, ex_iovec_t *iov, tbuffer_t *buffer, ex_off_t boff);
-op_generic_t *gop_lio_write(lio_fd_t *fd, char *buf, ex_off_t size, off_t off);
-op_generic_t *gop_lio_writev(lio_fd_t *fd, iovec_t *iov, int n_iov, ex_off_t size, off_t off);
-op_generic_t *gop_lio_write_ex(lio_fd_t *fd, int n_iov, ex_iovec_t *iov, tbuffer_t *buffer, ex_off_t boff);
+op_generic_t *gop_lio_read(lio_fd_t *fd, char *buf, ex_off_t size, ex_off_t off, segment_rw_hints_t *rw_hints);
+op_generic_t *gop_lio_readv(lio_fd_t *fd, iovec_t *iov, int n_iov, ex_off_t size, ex_off_t off, segment_rw_hints_t *rw_hints);
+op_generic_t *gop_lio_read_ex(lio_fd_t *fd, int n_iov, ex_iovec_t *iov, tbuffer_t *buffer, ex_off_t boff, segment_rw_hints_t *rw_hints);
+op_generic_t *gop_lio_write(lio_fd_t *fd, char *buf, ex_off_t size, off_t off, segment_rw_hints_t *rw_hints);
+op_generic_t *gop_lio_writev(lio_fd_t *fd, iovec_t *iov, int n_iov, ex_off_t size, off_t off, segment_rw_hints_t *rw_hints);
+op_generic_t *gop_lio_write_ex(lio_fd_t *fd, int n_iov, ex_iovec_t *iov, tbuffer_t *buffer, ex_off_t boff, segment_rw_hints_t *rw_hints);
 
-int lio_read(lio_fd_t *fd, char *buf, ex_off_t size, off_t off);
-int lio_readv(lio_fd_t *fd, iovec_t *iov, int n_iov, ex_off_t size, off_t off);
-int lio_read_ex(lio_fd_t *fd, int n_iov, ex_iovec_t *iov, tbuffer_t *buffer, ex_off_t boff);
-int lio_write(lio_fd_t *fd, char *buf, ex_off_t size, off_t off);
-int lio_writev(lio_fd_t *fd, iovec_t *iov, int n_iov, ex_off_t size, off_t off);
-int lio_write_ex(lio_fd_t *fd, int n_iov, ex_iovec_t *iov, tbuffer_t *buffer, ex_off_t boff);
+int lio_read(lio_fd_t *fd, char *buf, ex_off_t size, off_t off, segment_rw_hints_t *rw_hints);
+int lio_readv(lio_fd_t *fd, iovec_t *iov, int n_iov, ex_off_t size, off_t off, segment_rw_hints_t *rw_hints);
+int lio_read_ex(lio_fd_t *fd, int n_iov, ex_iovec_t *iov, tbuffer_t *buffer, ex_off_t boff, segment_rw_hints_t *rw_hints);
+int lio_write(lio_fd_t *fd, char *buf, ex_off_t size, off_t off, segment_rw_hints_t *rw_hints);
+int lio_writev(lio_fd_t *fd, iovec_t *iov, int n_iov, ex_off_t size, off_t off, segment_rw_hints_t *rw_hints);
+int lio_write_ex(lio_fd_t *fd, int n_iov, ex_iovec_t *iov, tbuffer_t *buffer, ex_off_t boff, segment_rw_hints_t *rw_hints);
 
 mode_t ftype_lio2posix(int ftype);
 void _lio_parse_stat_vals(char *fname, struct stat *stat, char **val, int *v_size, char *mount_prefix, char **flink);
@@ -223,9 +226,9 @@ ex_off_t lio_size(lio_fd_t *fd);
 op_generic_t *gop_lio_truncate(lio_fd_t *fd, ex_off_t new_size);
 // NOT IMPLEMENTED op_generic_t *gop_lio_stat(lio_t *lc, const char *fname, struct stat *stat);
 
-op_generic_t *gop_lio_cp_local2lio(FILE *sfd, lio_fd_t *dfd, ex_off_t bufsize, char *buffer);
-op_generic_t *gop_lio_cp_lio2local(lio_fd_t *sfd, FILE *dfd, ex_off_t bufsize, char *buffer);
-op_generic_t *gop_lio_cp_lio2lio(lio_fd_t *sfd, lio_fd_t *dfd, ex_off_t bufsize, char *buffer, int hints);
+op_generic_t *gop_lio_cp_local2lio(FILE *sfd, lio_fd_t *dfd, ex_off_t bufsize, char *buffer, segment_rw_hints_t *rw_hints);
+op_generic_t *gop_lio_cp_lio2local(lio_fd_t *sfd, FILE *dfd, ex_off_t bufsize, char *buffer, segment_rw_hints_t *rw_hints);
+op_generic_t *gop_lio_cp_lio2lio(lio_fd_t *sfd, lio_fd_t *dfd, ex_off_t bufsize, char *buffer, int hints, segment_rw_hints_t *rw_hints);
 
 //op_generic_t *gop_lio_symlink_attr(lio_config_t *lc, creds_t *creds, char *src_path, char *key_src, const char *path_dest, char *key_dest);
 //op_generic_t *gop_lio_symlink_multiple_attrs(lio_config_t *lc, creds_t *creds, char **src_path, char **key_src, const char *path_dest, char **key_dest, int n);

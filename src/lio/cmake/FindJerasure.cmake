@@ -9,13 +9,13 @@
 # also defined, but not for general use are
 #  JERASURE_LIBRARY and JERASURE_LIBRARY, where to find the APR library.
 
-FIND_PATH(JERASURE_INCLUDE_DIR NAMES jerasure/jerasure.h
-                    jerasure/galois.h 
-                    jerasure/cauchy.h 
-                    jerasure/reed_sol.h 
-                    jerasure/liberation.h)
+# APR first.
 
-SET(JERASURE_NAMES jerasure Jerasure)
+
+FIND_PATH(JERASURE_INCLUDE_DIR NAMES jerasure.h galois.h cauchy.h reed_sol.h liberation.h)
+
+
+SET(JERASURE_NAMES jerasure)
 FIND_LIBRARY(JERASURE_LIBRARY NAMES ${JERASURE_NAMES})
 
 IF (JERASURE_LIBRARY AND JERASURE_INCLUDE_DIR)
@@ -31,7 +31,9 @@ IF (JERASURE_FOUND)
       MESSAGE(STATUS "Found JERASURE: ${JERASURE_LIBRARIES} ${JERASURE_INCLUDE_DIR}")
    ENDIF (NOT JERASURE_FIND_QUIETLY)
 ELSE (JERASURE_FOUND)
-   MESSAGE(STATUS "Could not find JERASURE library: ${JERASURE_LIBRARIES} ${JERASURE_INCLUDE_DIR}")
+   IF (JERASURE_FIND_REQUIRED)
+      MESSAGE(FATAL_ERROR "Could not find JERASURE library")
+   ENDIF (JERASURE_FIND_REQUIRED)
 ENDIF (JERASURE_FOUND)
 
 # Deprecated declarations.

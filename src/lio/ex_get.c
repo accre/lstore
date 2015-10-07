@@ -153,7 +153,7 @@ int main(int argc, char **argv)
      tbuffer_single(&tbuf, rlen, rbuf);
      ex_iovec_single(&iov, i, rlen);
 log_printf(1, "ex_get: i=%d rlen=%d wlen=%d\n", i, rlen, wlen); flush_log();
-     gop = segment_read(seg, lio_gc->da, 1, &iov, &tbuf, 0, 5);
+     gop = segment_read(seg, lio_gc->da, NULL, 1, &iov, &tbuf, 0, 5);
 log_printf(1, "ex_get: i=%d gid=%d\n", i, gop_id(gop)); flush_log();
 
      //** Dump the data to disk

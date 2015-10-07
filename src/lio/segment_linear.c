@@ -70,6 +70,7 @@ typedef struct {
 typedef struct {
   segment_t *seg;
   data_attr_t *da;
+  segment_rw_hints_t *rw_hints;
   ex_iovec_t  *iov;
   ex_off_t    boff;
   tbuffer_t  *buffer;
@@ -501,7 +502,7 @@ log_printf(0, " seg=" XIDT " read beyond EOF  curr_used_size=" XOT " curr_total_
 // seglin_read - Read from a linear segment 
 //***********************************************************************
 
-op_generic_t *seglin_read(segment_t *seg, data_attr_t *da, int n_iov, ex_iovec_t *iov, tbuffer_t *buffer, ex_off_t boff, int timeout)
+op_generic_t *seglin_read(segment_t *seg, data_attr_t *da, segment_rw_hints_t *rw_hints, int n_iov, ex_iovec_t *iov, tbuffer_t *buffer, ex_off_t boff, int timeout)
 {
   seglin_priv_t *s = (seglin_priv_t *)seg->priv;
   seglin_rw_t *sw;
@@ -511,6 +512,7 @@ op_generic_t *seglin_read(segment_t *seg, data_attr_t *da, int n_iov, ex_iovec_t
   type_malloc(sw, seglin_rw_t, 1);
   sw->seg = seg;
   sw->da = da;
+  sw->rw_hints = rw_hints;
   sw->n_iov = n_iov;
   sw->iov = iov;
   sw->boff = boff;
@@ -525,7 +527,7 @@ op_generic_t *seglin_read(segment_t *seg, data_attr_t *da, int n_iov, ex_iovec_t
 // seglin_write_op - Writes to a linear segment 
 //***********************************************************************
 
-op_generic_t *seglin_write_op(segment_t *seg, data_attr_t *da, int n_iov, ex_iovec_t *iov, tbuffer_t *buffer, ex_off_t boff, int timeout)
+op_generic_t *seglin_write_op(segment_t *seg, data_attr_t *da, segment_rw_hints_t *rw_hints, int n_iov, ex_iovec_t *iov, tbuffer_t *buffer, ex_off_t boff, int timeout)
 {
   seglin_priv_t *s = (seglin_priv_t *)seg->priv;
   op_generic_t *gop;
@@ -623,7 +625,7 @@ log_printf(15, " seg=" XIDT " GROWING  curr_used_size=" XOT " curr_total_size=" 
 
   //** Now do the actual write
 log_printf(15, "seglin_write_func: Before exec\n");
-  err = gop_sync_exec(seglin_write_op(sw->seg, sw->da, sw->n_iov, sw->iov, sw->buffer, sw->boff, sw->timeout));
+  err = gop_sync_exec(seglin_write_op(sw->seg, sw->da, sw->rw_hints, sw->n_iov, sw->iov, sw->buffer, sw->boff, sw->timeout));
 log_printf(15, "seglin_write_func: After exec err=%d\n", err);
 
   segment_lock(sw->seg);
@@ -647,7 +649,7 @@ log_printf(15, "seglin_write_func: oldused=" XOT " maxpos=" XOT "\n", s->used_si
 // seglin_write - Performs a segment write operation
 //***********************************************************************
 
-op_generic_t *seglin_write(segment_t *seg, data_attr_t *da, int n_iov, ex_iovec_t *iov, tbuffer_t *buffer, ex_off_t boff, int timeout)
+op_generic_t *seglin_write(segment_t *seg, data_attr_t *da, segment_rw_hints_t *rw_hints, int n_iov, ex_iovec_t *iov, tbuffer_t *buffer, ex_off_t boff, int timeout)
 {
   seglin_priv_t *s = (seglin_priv_t *)seg->priv;
   seglin_rw_t *sw;
@@ -657,6 +659,7 @@ op_generic_t *seglin_write(segment_t *seg, data_attr_t *da, int n_iov, ex_iovec_
   type_malloc(sw, seglin_rw_t, 1);
   sw->seg = seg;
   sw->da = da;
+  sw->rw_hints = rw_hints;
   sw->n_iov = n_iov;
   sw->iov = iov;
   sw->boff = boff;

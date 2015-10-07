@@ -55,6 +55,7 @@ typedef struct {
   segment_t *seg;
   tbuffer_t *buf;
   data_attr_t *da;
+  segment_rw_hints_t *rw_hints;
   ex_off_t   boff;
   ex_iovec_t *iov;
   ex_iovec_t iov_single;
@@ -72,6 +73,7 @@ typedef struct {
   int force_wait;
   page_handle_t *page;
   int *n_pages;
+  segment_rw_hints_t *rw_hints;
 } cache_advise_op_t;
 
 typedef struct {
@@ -313,7 +315,7 @@ log_printf(15, "seg=" XIDT " init p->offset=" XOT " cr=%d cw=%d cf=%d bit_fields
 //  cache_rw_pages - Reads or Writes pages on the given segment.  Optionally releases the pages
 //*******************************************************************************
 
-int cache_rw_pages(segment_t *seg, page_handle_t *plist, int pl_size, int rw_mode, int do_release)
+int cache_rw_pages(segment_t *seg, segment_rw_hints_t *rw_hints, page_handle_t *plist, int pl_size, int rw_mode, int do_release)
 {
   cache_segment_t *s = (cache_segment_t *)seg->priv;
   page_handle_t *ph;
@@ -376,11 +378,11 @@ log_printf(15, "cache_rw_pages: rw_mode=%d i=%d offset=" XOT "\n", rw_mode, i, p
         if (rw_mode == CACHE_READ) {
            cc.read_count++;
            cc.read_bytes += cio->nbytes;
-           cio->gop = segment_read(s->child_seg, s->c->da, 1, &(cio->ex_iov), &(cio->buf), 0, s->c->timeout);
+           cio->gop = segment_read(s->child_seg, s->c->da, rw_hints, 1, &(cio->ex_iov), &(cio->buf), 0, s->c->timeout);
         } else {
            cc.write_count++;
            cc.write_bytes += cio->nbytes;
-           cio->gop = segment_write(s->child_seg, s->c->da, 1, &(cio->ex_iov), &(cio->buf), 0, s->c->timeout);
+           cio->gop = segment_write(s->child_seg, s->c->da, rw_hints, 1, &(cio->ex_iov), &(cio->buf), 0, s->c->timeout);
         }
 log_printf(2, "rw_mode=%d gid=%d offset=" XOT " len=" XOT "\n", rw_mode, gop_id(cio->gop), plist[contig_start].p->offset, cio->nbytes);
 flush_log();
@@ -433,11 +435,11 @@ log_printf(15, "cache_rw_pages: end rw_mode=%d i=%d offset=" XOT "\n", rw_mode, 
      if (rw_mode == CACHE_READ) {
         cc.read_count++;
         cc.read_bytes += cio->nbytes;
-        cio->gop = segment_read(s->child_seg, s->c->da, 1, &(cio->ex_iov), &(cio->buf), 0, s->c->timeout);
+        cio->gop = segment_read(s->child_seg, s->c->da, rw_hints, 1, &(cio->ex_iov), &(cio->buf), 0, s->c->timeout);
      } else {
         cc.write_count++;
         cc.write_bytes += cio->nbytes;
-        cio->gop = segment_write(s->child_seg, s->c->da, 1, &(cio->ex_iov), &(cio->buf), 0, s->c->timeout);
+        cio->gop = segment_write(s->child_seg, s->c->da, rw_hints, 1, &(cio->ex_iov), &(cio->buf), 0, s->c->timeout);
      }
 log_printf(2, "end rw_mode=%d gid=%d offset=" XOT " len=" XOT "\n", rw_mode, gop_id(cio->gop), plist[contig_start].p->offset, cio->nbytes);
 log_printf(15, "end rw_mode=%d myid=%d gid=%d\n", rw_mode, myid, gop_id(cio->gop));
@@ -526,7 +528,7 @@ log_printf(15, "END error_count=%d blank_count=%d rw_mode=%d\n", error_count, bl
 // cache_page_force_get - Waits until the requested page is loaded
 //*******************************************************************************
 
-cache_page_t  *cache_page_force_get(segment_t *seg, int rw_mode, ex_off_t poff, ex_off_t lo, ex_off_t hi)
+cache_page_t  *cache_page_force_get(segment_t *seg, segment_rw_hints_t *rw_hints, int rw_mode, ex_off_t poff, ex_off_t lo, ex_off_t hi)
 {
   cache_segment_t *s = (cache_segment_t *)seg->priv;
   cache_page_t *p, *p2;
@@ -561,7 +563,7 @@ log_printf(15, "seg=" XIDT " CACHE_RW_PAGES rw_mode=%d offset=" XOT ". child_las
               ph.data = p->curr_data;
               p->curr_data->usage_count++;
               cache_unlock(s->c);  //** Now prep it
-              cache_rw_pages(seg, &ph, 1, CACHE_READ, 0);
+              cache_rw_pages(seg, rw_hints, &ph, 1, CACHE_READ, 0);
               cache_lock(s->c);
               ph.data->usage_count--;
            } else {   //** No data on disk yet and if not in memory then it's all zero's so flag it as such
@@ -575,7 +577,7 @@ log_printf(15, "seg=" XIDT " CACHE_RW_PAGES rw_mode=%d offset=" XOT ". child_las
                 ph.data = p->curr_data;
                 p->curr_data->usage_count++;
                 cache_unlock(s->c);  //** Now prep it
-                cache_rw_pages(seg, &ph, 1, CACHE_READ, 0);
+                cache_rw_pages(seg, rw_hints, &ph, 1, CACHE_READ, 0);
                 cache_lock(s->c);
                 ph.data->usage_count--;
              }
@@ -708,7 +710,7 @@ log_printf(15, "seg=" XIDT " cant find the space for coff=" XOT " so stopping sc
      if (segment_size(s->child_seg) < segment_size(seg)) {
         gop_sync_exec(cache_flush_range(seg, s->c->da, 0, -1, s->c->timeout));
      }   
-     cache_rw_pages(seg, ca->page, *(ca->n_pages), ca->rw_mode, 0);
+     cache_rw_pages(seg, ca->rw_hints, ca->page, *(ca->n_pages), ca->rw_mode, 0);
   }
 
 log_printf(5, "END seg=" XIDT " lo=" XOT " hi=" XOT " n_pages=%d\n", segment_id(seg), ca->lo, ca->hi, *ca->n_pages);
@@ -720,7 +722,7 @@ log_printf(5, "END seg=" XIDT " lo=" XOT " hi=" XOT " n_pages=%d\n", segment_id(
 // cache_advise - Inform the cache system about the immediate R/W intent
 //*******************************************************************************
 
-void cache_advise(segment_t *seg, int rw_mode, ex_off_t lo, ex_off_t hi, page_handle_t *page, int *n_pages, int force_wait)
+void cache_advise(segment_t *seg, segment_rw_hints_t *rw_hints, int rw_mode, ex_off_t lo, ex_off_t hi, page_handle_t *page, int *n_pages, int force_wait)
 {
   cache_segment_t *s = (cache_segment_t *)seg->priv;
   ex_off_t lo_row, hi_row, nbytes, *poff;
@@ -766,6 +768,7 @@ log_printf(15, "AFTER loop seg=" XIDT " nleft=" XOT "\n", segment_id(seg), nbyte
      ca.rw_mode = rw_mode;
      ca.page = page;
      ca.n_pages = n_pages;
+     ca.rw_hints = rw_hints;
      cache_advise_fn((void *)&ca, atomic_thread_id);
   } else {
      *n_pages = 0;
@@ -1023,7 +1026,7 @@ log_printf(15, "END: seg=" XIDT " mode=%d lo=" XOT " hi=" XOT " hi_got=" XOT " s
 //  cache_read_pages_get - Retrieves pages from cache for READING over the given range
 //*******************************************************************************
 
-int cache_read_pages_get(segment_t *seg, int mode, ex_off_t lo, ex_off_t hi, ex_off_t *hi_got, page_handle_t *page, iovec_t *iov, int *n_pages, tbuffer_t *buf, ex_off_t bpos_start, void **cache_missed, ex_off_t master_size)
+int cache_read_pages_get(segment_t *seg, segment_rw_hints_t *rw_hints, int mode, ex_off_t lo, ex_off_t hi, ex_off_t *hi_got, page_handle_t *page, iovec_t *iov, int *n_pages, tbuffer_t *buf, ex_off_t bpos_start, void **cache_missed, ex_off_t master_size)
 {
   cache_segment_t *s = (cache_segment_t *)seg->priv;
   ex_off_t lo_row, hi_row, *poff, n, old_hi, bpos, ppos, len;
@@ -1158,7 +1161,7 @@ log_printf(15, "seg=" XIDT " calling cache_advise lo=" XOT " hi=" XOT "\n", segm
      s->c->fn.cache_miss_tag(s->c, seg, CACHE_READ, lo_row, hi_row, lo_row, cache_missed);
      cache_unlock(s->c);
 
-     cache_advise(seg, CACHE_READ, lo_row, hi_row, page, n_pages, 0);
+     cache_advise(seg, rw_hints, CACHE_READ, lo_row, hi_row, page, n_pages, 0);
 log_printf(15, "seg=" XIDT " cache_advise lo=" XOT " hi=" XOT " n_pages=%d\n", segment_id(seg), lo_row, hi_row, *n_pages);
      if (*n_pages > 0) {
         for (i=0; i < *n_pages; i++) {
@@ -1167,7 +1170,7 @@ log_printf(15, "seg=" XIDT " cache_advise lo=" XOT " hi=" XOT " n_pages=%d\n", s
         }
         *hi_got = page[*n_pages-1].p->offset + s->page_size - 1;
      } else {
-        p = cache_page_force_get(seg, CACHE_READ, lo_row, lo, hi);  //** This routine does it's own seg locking
+        p = cache_page_force_get(seg, rw_hints, CACHE_READ, lo_row, lo, hi);  //** This routine does it's own seg locking
         if (p != NULL) {
             *n_pages = 1;
 log_printf(15, "PAGE_GET seg=" XIDT " forcing page load lo_row=" XOT "\n", segment_id(seg), lo_row);
@@ -1195,7 +1198,7 @@ flush_log();
 //  cache_write_pages_get - Retrieves pages from cache over the given range for WRITING
 //*******************************************************************************
 
-int cache_write_pages_get(segment_t *seg, int mode, ex_off_t lo, ex_off_t hi, ex_off_t *hi_got, page_handle_t *page, iovec_t *iov, int *n_pages, tbuffer_t *buf, ex_off_t bpos_start, void **cache_missed, ex_off_t master_size)
+int cache_write_pages_get(segment_t *seg, segment_rw_hints_t *rw_hints, int mode, ex_off_t lo, ex_off_t hi, ex_off_t *hi_got, page_handle_t *page, iovec_t *iov, int *n_pages, tbuffer_t *buf, ex_off_t bpos_start, void **cache_missed, ex_off_t master_size)
 {
   cache_segment_t *s = (cache_segment_t *)seg->priv;
   ex_off_t lo_row, hi_row, *poff, n, old_hi, coff, pstart, page_off, bpos, ppos, len;
@@ -1547,7 +1550,7 @@ log_printf(15, "seg=" XIDT " No more pages\n", segment_id(seg));
   //** Check if there are missing pages, if so force the loding if needed
   if ((n == 0) && (mode == CACHE_DOBLOCK)) {
 log_printf(15, "PAGE_GET seg=" XIDT " forcing page load lo_row=" XOT "\n", segment_id(seg), lo_row);
-     p = cache_page_force_get(seg, CACHE_WRITE, lo_row, lo, hi);  //** This routine does it's own seg locking
+     p = cache_page_force_get(seg, rw_hints, CACHE_WRITE, lo_row, lo, hi);  //** This routine does it's own seg locking
      if (p != NULL) {
         n = 1;
         pload_count = 1;
@@ -1563,7 +1566,7 @@ log_printf(15, "PAGE_GET seg=" XIDT " forcing page load lo_row=" XOT "\n", segme
         skip_mode = 0;
      }
   } else  if (pload_count > 0) { //** If needed load some pages before returning
-     err = cache_rw_pages(seg, pload, pload_count, CACHE_READ, 0);
+     err = cache_rw_pages(seg, rw_hints, pload, pload_count, CACHE_READ, 0);
      if (err > 0) { //** Handle any errors that may have occurred
         for (i=0; i<pload_count; i++) {
            if (pload[i].data->ptr == NULL)  { iov[pload_iov_index[i]].iov_base = NULL; log_printf(15, "blanking p->offset=" XOT " i=%d iov_index=%d\n", pload[i].p->offset, i, pload_iov_index[i]); }
@@ -2476,9 +2479,9 @@ log_printf(15, "seg=" XIDT " new_size=" XOT " child_size=" XOT "\n", segment_id(
 log_printf(15, "processing range: lo=" XOT " hi=" XOT " progress=%d mode=%d\n", curr->lo, curr->hi, progress, mode);
 
       if (cop->rw_mode == CACHE_READ) {
-         status = cache_read_pages_get(seg, mode, curr->lo, curr->hi, &hi_got, page, iov, &n_pages, cop->buf, curr->boff, &(cache_missed[curr->iov_index]), cop->iov[curr->iov_index].len);
+         status = cache_read_pages_get(seg, cop->rw_hints, mode, curr->lo, curr->hi, &hi_got, page, iov, &n_pages, cop->buf, curr->boff, &(cache_missed[curr->iov_index]), cop->iov[curr->iov_index].len);
       } else if (cop->rw_mode == CACHE_WRITE) {
-         status = cache_write_pages_get(seg, mode, curr->lo, curr->hi, &hi_got, page, iov, &n_pages, cop->buf, curr->boff, &(cache_missed[curr->iov_index]), cop->iov[curr->iov_index].len);
+         status = cache_write_pages_get(seg, cop->rw_hints, mode, curr->lo, curr->hi, &hi_got, page, iov, &n_pages, cop->buf, curr->boff, &(cache_missed[curr->iov_index]), cop->iov[curr->iov_index].len);
       } else {
 log_printf(0, "ERROR invalid rw_mode!!!!!! rw_mode=%d\n", cop->rw_mode);
         err = op_error_status;
@@ -2638,7 +2641,7 @@ log_printf(15, "END size=" XOT "\n", s->total_size);
 // cache_read - Read from cache
 //***********************************************************************
 
-op_generic_t *cache_read(segment_t *seg, data_attr_t *da, int n_iov, ex_iovec_t *iov, tbuffer_t *buffer, ex_off_t boff, int timeout)
+op_generic_t *cache_read(segment_t *seg, data_attr_t *da, segment_rw_hints_t *rw_hints, int n_iov, ex_iovec_t *iov, tbuffer_t *buffer, ex_off_t boff, int timeout)
 {
   cache_rw_op_t *cop;
   cache_segment_t *s = (cache_segment_t *)seg->priv;
@@ -2646,6 +2649,7 @@ op_generic_t *cache_read(segment_t *seg, data_attr_t *da, int n_iov, ex_iovec_t 
   type_malloc_clear(cop, cache_rw_op_t, 1);
   cop->seg = seg;
   cop->da = da;
+  cop->rw_hints = rw_hints;
   cop->n_iov = n_iov;
   cop->iov = iov;
   cop->rw_mode = CACHE_READ;
@@ -2660,7 +2664,7 @@ op_generic_t *cache_read(segment_t *seg, data_attr_t *da, int n_iov, ex_iovec_t 
 // cache_write - Write to cache
 //***********************************************************************
 
-op_generic_t *cache_write(segment_t *seg, data_attr_t *da, int n_iov, ex_iovec_t *iov, tbuffer_t *buffer, ex_off_t boff, int timeout)
+op_generic_t *cache_write(segment_t *seg, data_attr_t *da, segment_rw_hints_t *rw_hints, int n_iov, ex_iovec_t *iov, tbuffer_t *buffer, ex_off_t boff, int timeout)
 {
   cache_rw_op_t *cop;
   cache_segment_t *s = (cache_segment_t *)seg->priv;
@@ -2668,6 +2672,7 @@ op_generic_t *cache_write(segment_t *seg, data_attr_t *da, int n_iov, ex_iovec_t
   type_malloc_clear(cop, cache_rw_op_t, 1);
   cop->seg = seg;
   cop->da = da;
+  cop->rw_hints = rw_hints;
   cop->n_iov = n_iov;
   cop->iov = iov;
   cop->rw_mode = CACHE_WRITE;
@@ -2740,7 +2745,7 @@ flush_log();
       if (status == 0) {  //** Got some data to process
         progress = 1;  //** Flag that progress was made
         total_pages += n_pages;
-        err = (n_pages > 0) ? cache_rw_pages(cop->seg, page, n_pages, CACHE_FLUSH, 1) : 0;
+        err = (n_pages > 0) ? cache_rw_pages(cop->seg, cop->rw_hints, page, n_pages, CACHE_FLUSH, 1) : 0;
         err = (err == 0) ? OP_STATE_SUCCESS : OP_STATE_FAILURE;
         if (curr->hi > hi_got) push(&stack, cache_new_range(hi_got+1, curr->hi, 0, 0));  //** and the rest of the range on the top
       } else if ( status == 1) {  //** Empty range so push it and the extra range on the stackon the stack to retry later
@@ -2812,6 +2817,7 @@ op_generic_t *cache_flush_range(segment_t *seg, data_attr_t *da, ex_off_t lo, ex
   type_malloc(cop, cache_rw_op_t, 1);
   cop->seg = seg;
   cop->da = da;
+  cop->rw_hints = NULL;
   cop->iov = &(cop->iov_single);
   cop->iov_single.offset = lo;
   cop->iov_single.len = (hi == -1) ? -1 : hi - lo + 1;

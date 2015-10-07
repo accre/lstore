@@ -27,7 +27,6 @@ Nashville, TN 37203
 http://www.accre.vanderbilt.edu
 */
 
-#include "config.h"
 #define _log_module_index 211
 
 
@@ -60,12 +59,12 @@ void print_usage(void)
             "                                (for possible values of OPT see 'man mount.fuse' or see 'lio_fuse -ho')\n");
 }
 
-int main(int argc, const char **argv)
+int main(int argc, char **argv)
 {
   int err = -1;
   lio_fuse_init_args_t lio_args;
   int fuse_argc;
-  const char **fuse_argv;
+  char **fuse_argv;
   
   // DEBUG
 /*  int i;

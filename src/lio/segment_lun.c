@@ -28,7 +28,8 @@ http://www.accre.vanderbilt.edu
 */
 
 //***********************************************************************
-// Routines for managing a linear segment
+// Routines for managing a Logical UNit segment driver which mimics a 
+// traditional SAN LUN device
 //***********************************************************************
 
 #define _log_module_index 177
@@ -90,6 +91,7 @@ typedef struct {
 typedef struct {
   segment_t *seg;
   data_attr_t *da;
+  segment_rw_hints_t *rw_hints;
   ex_iovec_t  *iov;
   ex_off_t    boff;
   tbuffer_t  *buffer;
@@ -1425,23 +1427,38 @@ int seglun_row_decompose_test()
 // seglun_rw_op - Reads/Writes to a LUN segment
 //***********************************************************************
 
-op_status_t seglun_rw_op(segment_t *seg, data_attr_t *da, int n_iov, ex_iovec_t *iov, tbuffer_t *buffer, ex_off_t boff, int rw_mode, int timeout)
+op_status_t seglun_rw_op(segment_t *seg, data_attr_t *da, segment_rw_hints_t *rw_hints, int n_iov, ex_iovec_t *iov, tbuffer_t *buffer, ex_off_t boff, int rw_mode, int timeout)
 {
   seglun_priv_t *s = (seglun_priv_t *)seg->priv;
+  blacklist_t *bl = s->bl;
+  blacklist_rid_t *bl_rid;
   op_status_t status;
+  op_status_t blacklist_status = {OP_STATE_FAILURE, -1234};
   opque_t *q;
   seglun_row_t *b, **bused;
   interval_skiplist_iter_t it;
   ex_off_t lo, hi, start, end, blen, bpos;
-  int i, j, maxerr, nerr, slot, n_bslots;
+  int i, j, maxerr, nerr, slot, n_bslots, bl_count, dev;
   int *bcount;
   Stack_t *stack;
   lun_rw_row_t *rw_buf, *rwb_table;
   double dt;
+  apr_time_t now, exec_time;
   apr_time_t tstart, tstart2;
   op_generic_t *gop;
 
   tstart = apr_time_now();
+
+  log_printf(5, "bl=%p rw_hints=%p\n", bl, rw_hints);
+  //** Check if we can use blacklisting
+  if (rw_hints == NULL) {
+     bl = NULL;
+  } else {
+     log_printf(5, "max_blacklist=%d\n", rw_hints->lun_max_blacklist);
+     if (rw_hints->lun_max_blacklist <= 0) bl = NULL;
+  }
+
+  now = apr_time_now();
 
   segment_lock(seg);
 
@@ -1515,51 +1532,80 @@ log_printf(15, "bottom sid=" XIDT " slot=%d\n", segment_id(seg), slot);
 
 log_printf(15, " n_bslots=%d\n", n_bslots);
 
+  //** Acquire the blacklist lock if using it
+  if (bl) apr_thread_mutex_lock(bl->lock);
+
   //** Assemble the sub tasks and start executing them
   for (slot=0; slot < n_bslots; slot++) {
      b = bused[slot];
+     bl_count = 0;
      b->rwop_index = -1;
      j = slot * s->n_devices;
 
-     if (rw_mode== 0) {
-        for (i=0; i < s->n_devices; i++) {
-            if (rwb_table[j + i].n_ex > 0) {
-               tbuffer_vec(&(rwb_table[j + i].buffer), rwb_table[j + i].len, rwb_table[j+i].n_iov, rwb_table[j+i].iov);
-               if (rwb_table[j+i].n_iov == 1) {
-                  rwb_table[j + i].gop = ds_read(b->block[i].data->ds, da, ds_get_cap(b->block[i].data->ds, b->block[i].data->cap, DS_CAP_READ),
-                                          rwb_table[j+i].ex_iov[0].offset, &(rwb_table[j+i].buffer), 0, rwb_table[j+i].len, timeout);
-               } else {
-                  rwb_table[j + i].gop = ds_readv(b->block[i].data->ds, da, ds_get_cap(b->block[i].data->ds, b->block[i].data->cap, DS_CAP_READ),
-                                          rwb_table[j + i].n_ex, rwb_table[j+i].ex_iov, &(rwb_table[j+i].buffer), 0, rwb_table[j+i].len, timeout);
-               }
-               rwb_table[j+i].block = &(b->block[i]);
-               opque_add(q, rwb_table[j+i].gop);
-               gop_set_myid(rwb_table[j+i].gop, i*10000 + slot);
-            }
-         }
-     } else {
-         for (i=0; i < s->n_devices; i++) {
-            if (rwb_table[j+i].n_ex > 0) {
+     for (i=0; i < s->n_devices; i++) {
+        bl_rid = NULL;
+
+        if (rwb_table[j + i].n_ex > 0) {
+           //** Check on blacklisting the RID
+           if (bl != NULL) {
+              bl_rid = apr_hash_get(bl->table, b->block[i].data->rid_key, APR_HASH_KEY_STRING);
+              if (bl_rid != NULL) {
+                 log_printf(5, "MAYBE rid=%s dev=%i bl_count=%d\n", bl_rid->rid, i, bl_count);
+                 if (bl_rid->recheck_time < now) { //** Expired blacklist so undo it
+                    log_printf(5, "EXPIRED rid=%s dev=%i bl_count=%d\n", bl_rid->rid, i, bl_count);
+                    apr_hash_set(bl->table, bl_rid->rid, APR_HASH_KEY_STRING, NULL);
+                    free(bl_rid->rid);
+                    free(bl_rid);
+
+                    bl_rid = NULL;  //** No blacklisting
+                 } else if (bl_count >= rw_hints->lun_max_blacklist) {  //** Already blacklisted enough RIDS
+                    bl_rid = NULL;
+                 } else {
+                    bl_count++;  //** Blacklisting it
+                 }
+                 if (bl_rid != NULL) { log_printf(5, "SKIP rid=%s dev=%i bl_count=%d\n", bl_rid->rid, i, bl_count); }
+              }
+           }
+
+           //** Form the op
+           tbuffer_vec(&(rwb_table[j + i].buffer), rwb_table[j + i].len, rwb_table[j+i].n_iov, rwb_table[j+i].iov);
+           if (rw_mode== 0) {
+              if (rwb_table[j+i].n_iov == 1) {
+                 gop = (bl_rid == NULL) ? ds_read(b->block[i].data->ds, da, ds_get_cap(b->block[i].data->ds, b->block[i].data->cap, DS_CAP_READ),
+                                             rwb_table[j+i].ex_iov[0].offset, &(rwb_table[j+i].buffer), 0, rwb_table[j+i].len, timeout) :
+                                          gop_dummy(blacklist_status);
+              } else {
+                 gop = (bl_rid == NULL) ? ds_readv(b->block[i].data->ds, da, ds_get_cap(b->block[i].data->ds, b->block[i].data->cap, DS_CAP_READ),
+                                             rwb_table[j + i].n_ex, rwb_table[j+i].ex_iov, &(rwb_table[j+i].buffer), 0, rwb_table[j+i].len, timeout) :
+                                          gop_dummy(blacklist_status);
+              }
+           } else {
 //FORCE ERROR -- Force a failure on all writes to the first allocation for testing purposes
 //if (i==0) {
 //  rwb_table[i].len = 0;
 //} else {
-               tbuffer_vec(&(rwb_table[j + i].buffer), rwb_table[j + i].len, rwb_table[j+i].n_iov, rwb_table[j+i].iov);
-               if (rwb_table[j+i].n_iov == 1) {
-                  rwb_table[j + i].gop = ds_write(b->block[i].data->ds, da, ds_get_cap(b->block[i].data->ds, b->block[i].data->cap, DS_CAP_WRITE),
-                                          rwb_table[j+i].ex_iov[0].offset, &(rwb_table[j+i].buffer), 0, rwb_table[j+i].len, timeout);
-               } else {
-                  rwb_table[j + i].gop = ds_writev(b->block[i].data->ds, da, ds_get_cap(b->block[i].data->ds, b->block[i].data->cap, DS_CAP_WRITE),
-                                       rwb_table[j + i].n_ex, rwb_table[j+i].ex_iov, &(rwb_table[j+i].buffer), 0, rwb_table[j+i].len, timeout);
-               }
-               rwb_table[j+i].block = &(b->block[i]);
-               opque_add(q, rwb_table[j+i].gop);
-               gop_set_myid(rwb_table[j+i].gop, i*10000 + slot);
+              if (rwb_table[j+i].n_iov == 1) {
+                 gop = (bl_rid == NULL) ? ds_write(b->block[i].data->ds, da, ds_get_cap(b->block[i].data->ds, b->block[i].data->cap, DS_CAP_WRITE),
+                                             rwb_table[j+i].ex_iov[0].offset, &(rwb_table[j+i].buffer), 0, rwb_table[j+i].len, timeout) :
+                                          gop_dummy(blacklist_status);
+              } else {
+                 gop = (bl_rid == NULL) ? ds_writev(b->block[i].data->ds, da, ds_get_cap(b->block[i].data->ds, b->block[i].data->cap, DS_CAP_WRITE),
+                                             rwb_table[j + i].n_ex, rwb_table[j+i].ex_iov, &(rwb_table[j+i].buffer), 0, rwb_table[j+i].len, timeout) :
+                                          gop_dummy(blacklist_status);                           
+              }
 //}
-            }
-         }
+           }
+
+           rwb_table[j+i].gop = gop;
+           rwb_table[j+i].block = &(b->block[i]);
+           opque_add(q, rwb_table[j+i].gop);
+           gop_set_myid(rwb_table[j+i].gop, j+i);
+           gop_set_private(gop, b->block[i].data->rid_key);
+        }
      }
   }
+
+  if (bl) apr_thread_mutex_unlock(bl->lock);
 
   segment_unlock(seg);
 
@@ -1575,7 +1621,33 @@ log_printf(15, " n_bslots=%d\n", n_bslots);
         dt /= (APR_USEC_PER_SEC*1.0);
         dt_status = gop_get_status(gop);        
         if (dt_status.op_status != OP_STATE_SUCCESS) bad_count++;
-        log_printf(1, "device=%d time: %lf op_status=%d error_code=%d\n", gop_get_myid(gop), dt, dt_status.op_status, dt_status.error_code);
+        dev = gop_get_myid(gop) % s->n_devices;
+        log_printf(1, "device=%d slot=%d time: %lf op_status=%d error_code=%d\n", dev, gop_get_myid(gop), dt, dt_status.op_status, dt_status.error_code);
+        log_printf(5, "bl=%p\n", bl);
+        //** Check if we need to do any blacklisting
+        if ((dt_status.error_code != -1234) && (bl != NULL)) { //** Skip the blacklisted ops
+           exec_time = gop_exec_time(gop);
+           log_printf(5, "exec_time=" TT " min_time=" TT "\n", exec_time, bl->min_io_time);
+           if (exec_time > bl->min_io_time) { //** Make sure the exec time was long enough
+              dt = rwb_table[gop_get_myid(gop)].len;
+              dt /= exec_time;
+              log_printf(5, "dt=%lf min_bw=" TT "\n", dt, bl->min_bandwidth);
+              if (dt < bl->min_bandwidth) { // ** Blacklist it
+                  type_malloc(bl_rid, blacklist_rid_t, 1);
+                  bl_rid->rid = strdup(rwb_table[gop_get_myid(gop)].block->data->rid_key);
+                  bl_rid->recheck_time = apr_time_now() + bl->timeout;
+                  log_printf(2, "Blacklisting RID=%s dt=%lf\n", bl_rid->rid, dt);
+                  apr_thread_mutex_lock(bl->lock);
+                  if (apr_hash_get(bl->table, bl_rid->rid, APR_HASH_KEY_STRING) == NULL) {
+                     apr_hash_set(bl->table, bl_rid->rid, APR_HASH_KEY_STRING, bl_rid);
+                  } else {  //** Somebody else beat us to it
+                     free(bl_rid->rid);
+                     free(bl_rid);
+                  }
+                  apr_thread_mutex_unlock(bl->lock);
+              }
+           }
+        }
      }
      dt = apr_time_now() - tstart2;
      dt /= (APR_USEC_PER_SEC*1.0);
@@ -1710,7 +1782,7 @@ log_printf(15, "ERROR seg=" XIDT " READ beyond EOF!  cur_size=" XOT " requested 
   //** Now do the actual R/W operation
 log_printf(15, "Before exec\n");
   now = apr_time_now();
-  status = seglun_rw_op(sw->seg, sw->da, sw->n_iov, sw->iov, sw->buffer, sw->boff, sw->rw_mode, sw->timeout);
+  status = seglun_rw_op(sw->seg, sw->da, sw->rw_hints, sw->n_iov, sw->iov, sw->buffer, sw->boff, sw->rw_mode, sw->timeout);
   now = apr_time_now() - now;
 //  if (status.op_status != OP_STATE_SUCCESS) err = OP_STATE_FAILURE;
 log_printf(15, "After exec err=%d\n", status.op_status);
@@ -1745,7 +1817,7 @@ log_printf(15, "oldused=" XOT " maxpos=" XOT "\n", s->used_size, maxpos);
 // seglun_write - Performs a segment write operation
 //***********************************************************************
 
-op_generic_t *seglun_write(segment_t *seg, data_attr_t *da, int n_iov, ex_iovec_t *iov, tbuffer_t *buffer, ex_off_t boff, int timeout)
+op_generic_t *seglun_write(segment_t *seg, data_attr_t *da, segment_rw_hints_t *rw_hints, int n_iov, ex_iovec_t *iov, tbuffer_t *buffer, ex_off_t boff, int timeout)
 {
   seglun_priv_t *s = (seglun_priv_t *)seg->priv;
   seglun_rw_t *sw;
@@ -1754,6 +1826,7 @@ op_generic_t *seglun_write(segment_t *seg, data_attr_t *da, int n_iov, ex_iovec_
   type_malloc(sw, seglun_rw_t, 1);
   sw->seg = seg;
   sw->da = da;
+  sw->rw_hints = rw_hints;
   sw->n_iov = n_iov;
   sw->iov = iov;
   sw->boff = boff;
@@ -1769,7 +1842,7 @@ op_generic_t *seglun_write(segment_t *seg, data_attr_t *da, int n_iov, ex_iovec_
 // seglun_read - Read from a linear segment
 //***********************************************************************
 
-op_generic_t *seglun_read(segment_t *seg, data_attr_t *da, int n_iov, ex_iovec_t *iov, tbuffer_t *buffer, ex_off_t boff, int timeout)
+op_generic_t *seglun_read(segment_t *seg, data_attr_t *da, segment_rw_hints_t *rw_hints, int n_iov, ex_iovec_t *iov, tbuffer_t *buffer, ex_off_t boff, int timeout)
 {
   seglun_priv_t *s = (seglun_priv_t *)seg->priv;
   seglun_rw_t *sw;
@@ -1778,6 +1851,7 @@ op_generic_t *seglun_read(segment_t *seg, data_attr_t *da, int n_iov, ex_iovec_t
   type_malloc(sw, seglun_rw_t, 1);
   sw->seg = seg;
   sw->da = da;
+  sw->rw_hints = rw_hints;
   sw->n_iov = n_iov;
   sw->iov = iov;
   sw->boff = boff;
@@ -2861,6 +2935,7 @@ segment_t *segment_lun_create(void *arg)
   s->tpc = lookup_service(es, ESS_RUNNING, ESS_TPC_UNLIMITED);
   s->rs = lookup_service(es, ESS_RUNNING, ESS_RS);
   s->ds = lookup_service(es, ESS_RUNNING, ESS_DS);
+  s->bl = lookup_service(es, ESS_RUNNING, "blacklist");
 
   //** Set up remap notifications
   apr_thread_mutex_create(&(s->notify.lock), APR_THREAD_MUTEX_DEFAULT, seg->mpool);

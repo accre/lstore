@@ -60,6 +60,7 @@ typedef struct {
   segment_t *child_seg;
   erasure_plan_t *plan;
   thread_pool_context_t *tpc;
+  blacklist_t *blacklist;
   ex_off_t max_parity;
   int write_errors;
   int soft_errors;
@@ -82,6 +83,7 @@ typedef struct {
 typedef struct {
   segment_t *seg;
   data_attr_t *da;
+  segment_rw_hints_t *rw_hints;
   ex_iovec_t  *iov;
   ex_off_t    boff;
   ex_off_t    nbytes;
@@ -192,7 +194,7 @@ int jerase_control_check(erasure_plan_t *plan, int chunk_size, int n_devs, int n
      for (i=0; i<n_devs; i++) {
         if (((badmap[i] == 0) && (n_control < n_ctl_max) && (i > control_index)) || (badmap[i] == 1)) {
            erasures[n] = i;
-log_printf(0, "bad=%d map=%d\n", i, badmap[i]);
+           log_printf(5, "bad=%d map=%d\n", i, badmap[i]);
 
            if ((magic == NULL) && (badmap[i] == 0) && (n_control < n_ctl_max)) { 
               control[n_control] = i;  //** This is a control chunk
@@ -406,7 +408,7 @@ clr_dt = apr_time_now();
 clr_dt = apr_time_now() - clr_dt;
 log_printf(5, "sid=" XIDT " clr_dt=%d\n", segment_id(si->seg), apr_time_sec(clr_dt));
      now = apr_time_now();
-     err = gop_sync_exec(segment_read(s->child_seg, si->da, 1, &ex_read, &tbuf_read, 0, si->timeout));
+     err = gop_sync_exec(segment_read(s->child_seg, si->da, NULL, 1, &ex_read, &tbuf_read, 0, si->timeout));
      now = apr_time_now() - now;
      dtr = (double)now / APR_USEC_PER_SEC;
      rater = (double)(nstripes*s->chunk_size*s->n_data_devs)/dtr;
@@ -636,7 +638,7 @@ next:  //** Jump to here if an empty stripe
      now = apr_time_now();
      if (n_iov > 0) {
         tbuffer_vec(&tbuf, nbytes, n_iov, iov);
-        err = gop_sync_exec(segment_write(s->child_seg, si->da, n_iov, ex_iov, &tbuf, 0, si->timeout));
+        err = gop_sync_exec(segment_write(s->child_seg, si->da, NULL, n_iov, ex_iov, &tbuf, 0, si->timeout));
 log_printf(0, "gop_status=%d nbytes=" XOT " n_iov=%d\n", err, nbytes, n_iov);
         if (err != OP_STATE_SUCCESS) {
            if (sf->do_print == 1) info_printf(si->fd, 1, XIDT ": Write update error for stripe! Probably a corrupt allocation.\n", segment_id(si->seg));
@@ -764,7 +766,7 @@ log_printf(0, "fsize=" XOT " data_size=%d total_stripes=%d\n", fsize, s->data_si
 
 log_printf(0, "i=%d n_iov=%d size=%d\n", i, n_iov, n_iov*JE_MAGIC_SIZE);
        tbuffer_vec(&tbuf, n_iov*JE_MAGIC_SIZE, n_iov, iov);
-       err = gop_sync_exec(segment_read(s->child_seg, si->da, n_iov, ex_iov, &tbuf, 0, si->timeout));
+       err = gop_sync_exec(segment_read(s->child_seg, si->da, NULL, n_iov, ex_iov, &tbuf, 0, si->timeout));
 
        //** Check for errors and fire off repairs
        moff = 0;
@@ -1169,11 +1171,17 @@ op_status_t segjerase_read_func(void *arg, int id)
   op_generic_t *gop;
   ex_iovec_t *ex_iov;
   tbuffer_t *tbuf;
+  segment_rw_hints_t *rw_hints;
   iovec_t *iov;
   segjerase_io_t *info;
   tbuffer_var_t tbv;
+  int loop;
 
+  loop = 0;
   memset(empty_magic, 0, JE_MAGIC_SIZE);
+
+tryagain:  //** We first try allowing blacklisting to proceed as normal and then start over if that fails
+
   q = new_opque();
   tbuffer_var_init(&tbv);
   magic_stripe = JE_MAGIC_SIZE*s->n_devs;
@@ -1204,7 +1212,26 @@ op_status_t segjerase_read_func(void *arg, int id)
   type_malloc(ex_iov, ex_iovec_t, sw->n_iov);
   type_malloc(iov, iovec_t, 2*sw->nstripes*s->n_devs);
   type_malloc(tbuf, tbuffer_t, sw->n_iov);
+  type_malloc_clear(rw_hints, segment_rw_hints_t, sw->n_iov);
   type_malloc(info, segjerase_io_t, sw->n_iov);
+
+  //** Set up the blacklist structure
+  if (sw->rw_hints == NULL) {
+    match = (loop == 0) ? s->n_parity_devs : 0;
+  } else {
+log_printf(5, "rw_hints->lun_max_blacklist=%d loop=%d\n", rw_hints->lun_max_blacklist, loop);
+
+    if (loop == 0) {
+       match = (sw->rw_hints->lun_max_blacklist > s->n_parity_devs) ? s->n_parity_devs : sw->rw_hints->lun_max_blacklist;
+    } else {
+       match = 0;
+    }
+  }
+//----if (match > 0) match++;  //** This will force a failure and retry
+
+  for (i=0; i<sw->n_iov; i++) rw_hints[i].lun_max_blacklist = match;
+
+  log_printf(5, "rw_hints=%p lun_max_blacklist=%d\n", sw->rw_hints, rw_hints[0].lun_max_blacklist);
 
   for (i=0; i < s->n_parity_devs; i++) pwork[i] = &(pbuff[i*s->chunk_size]);
 
@@ -1389,7 +1416,7 @@ log_printf(15, "index=%d good=%d data_ok=%d magic=%d data_devs=%d check_status.e
 
         boff = sw->boff + curr_bytes;
         tbuffer_vec(&(tbuf[i]), ex_iov[i].len, n_iov - iov_start, &(iov[iov_start]));
-        gop = segment_read(s->child_seg, sw->da, 1, &(ex_iov[i]), &(tbuf[i]), boff, sw->timeout);
+        gop = segment_read(s->child_seg, sw->da, &(rw_hints[i]), 1, &(ex_iov[i]), &(tbuf[i]), boff, sw->timeout);
         gop_set_myid(gop, i);
         opque_add(q, gop);
         curr_bytes += len;
@@ -1404,9 +1431,17 @@ log_printf(15, "index=%d good=%d data_ok=%d magic=%d data_devs=%d check_status.e
   free(ex_iov);
   free(iov);
   free(tbuf);
+  free(rw_hints);
   free(info);
 
   opque_free(q, OP_DESTROY);
+
+  //** See if we need to retry without blacklisting enabled
+  if ((hard_error > 0) && (s->blacklist) && (loop == 0)) {
+     log_printf(5, "sid=" XIDT " RETRY Looks like we failed to read with blacklisting enabled so trying again\n", segment_id(sw->seg));
+     loop++;
+     goto tryagain;
+  }
 
   if ((soft_error+hard_error) > 0) {
      segment_lock(sw->seg);
@@ -1439,7 +1474,13 @@ op_status_t segjerase_write_func(void *arg, int id)
   ex_iovec_t *ex_iov;
   tbuffer_t *tbuf;
   iovec_t *iov;
+  segment_rw_hints_t *rw_hints;
   tbuffer_var_t tbv;
+  int loop;
+
+  loop = 0;
+
+tryagain: //** In case blacklisting failed we'll retry with it disabled
 
   q = new_opque();
 //  opque_start_execution(q);
@@ -1470,8 +1511,24 @@ op_status_t segjerase_write_func(void *arg, int id)
   type_malloc(ex_iov, ex_iovec_t, sw->n_iov);
   type_malloc(iov, iovec_t, 2*sw->nstripes*s->n_devs);
   type_malloc(tbuf, tbuffer_t, sw->n_iov);
+  type_malloc_clear(rw_hints, segment_rw_hints_t, sw->n_iov);
 
-///REMOVE  get_random(magic, sw->n_iov*JE_MAGIC_SIZE);  //** Make the magic data
+
+  //** Set up the blacklist structure
+  if (sw->rw_hints == NULL) {
+    k = (loop == 0) ? s->n_parity_devs : 0;
+  } else {
+log_printf(0, "rw_hints->lun_max_blacklist=%d loop=%d\n", rw_hints->lun_max_blacklist, loop);
+
+    if (loop == 0) {
+       k = (sw->rw_hints->lun_max_blacklist > s->n_parity_devs) ? s->n_parity_devs : sw->rw_hints->lun_max_blacklist;
+    } else {
+       k = 0;
+    }
+  }
+//----if (k > 0) k++;  //** This will force a failure and retry
+
+  for (i=0; i<sw->n_iov; i++) rw_hints[i].lun_max_blacklist = k;
 
   //** Cycle through the tasks
   parity_used = 0;
@@ -1570,7 +1627,7 @@ op_status_t segjerase_write_func(void *arg, int id)
 
         boff = sw->boff + curr_bytes;
         tbuffer_vec(&(tbuf[i]), nstripes*s->stripe_size_with_magic, n_iov - iov_start, &(iov[iov_start]));
-        gop = segment_write(s->child_seg, sw->da, 1, &(ex_iov[i]), &(tbuf[i]), boff, sw->timeout);
+        gop = segment_write(s->child_seg, sw->da, &(rw_hints[i]), 1, &(ex_iov[i]), &(tbuf[i]), boff, sw->timeout);
         gop_set_myid(gop, i);
         opque_add(q, gop);
         curr_bytes += len;
@@ -1602,8 +1659,16 @@ op_status_t segjerase_write_func(void *arg, int id)
   free(ex_iov);
   free(iov);
   free(tbuf);
+  free(rw_hints);
 
   opque_free(q, OP_DESTROY);
+
+  //** See if we need to retry without blacklisting enabled
+  if ((hard_error > 0) && (s->blacklist) && (loop == 0)) {
+     log_printf(5, "sid=" XIDT " RETRY Looks like we failed to write with blacklisting enabled so trying again\n", segment_id(sw->seg));
+     loop++;
+     goto tryagain;
+  }
 
   if ((soft_error+hard_error) > 0) {
      segment_lock(sw->seg);
@@ -1622,7 +1687,7 @@ op_status_t segjerase_write_func(void *arg, int id)
 // segjerase_write - Performs a segment write operation
 //***********************************************************************
 
-op_generic_t *segjerase_write(segment_t *seg, data_attr_t *da, int n_iov, ex_iovec_t *iov, tbuffer_t *buffer, ex_off_t boff, int timeout)
+op_generic_t *segjerase_write(segment_t *seg, data_attr_t *da, segment_rw_hints_t *rw_hints, int n_iov, ex_iovec_t *iov, tbuffer_t *buffer, ex_off_t boff, int timeout)
 {
   segjerase_priv_t *s = (segjerase_priv_t *)seg->priv;
   segjerase_rw_t *sw;
@@ -1649,6 +1714,7 @@ op_generic_t *segjerase_write(segment_t *seg, data_attr_t *da, int n_iov, ex_iov
   type_malloc(sw, segjerase_rw_t, 1);
   sw->seg = seg;
   sw->da = da;
+  sw->rw_hints = rw_hints;
   sw->nbytes = nbytes;
   sw->nstripes= nstripes;
   sw->n_iov = n_iov;
@@ -1667,7 +1733,7 @@ op_generic_t *segjerase_write(segment_t *seg, data_attr_t *da, int n_iov, ex_iov
 // segjerase_read - Performs a segment read operation
 //***********************************************************************
 
-op_generic_t *segjerase_read(segment_t *seg, data_attr_t *da, int n_iov, ex_iovec_t *iov, tbuffer_t *buffer, ex_off_t boff, int timeout)
+op_generic_t *segjerase_read(segment_t *seg, data_attr_t *da, segment_rw_hints_t *rw_hints, int n_iov, ex_iovec_t *iov, tbuffer_t *buffer, ex_off_t boff, int timeout)
 {
   segjerase_priv_t *s = (segjerase_priv_t *)seg->priv;
   segjerase_rw_t *sw;
@@ -1695,6 +1761,7 @@ op_generic_t *segjerase_read(segment_t *seg, data_attr_t *da, int n_iov, ex_iove
   type_malloc(sw, segjerase_rw_t, 1);
   sw->seg = seg;
   sw->da = da;
+  sw->rw_hints = rw_hints;
   sw->n_iov = n_iov;
   sw->nbytes = nbytes;
   sw->nstripes = nstripes;
@@ -2051,11 +2118,14 @@ segment_t *segment_jerasure_create(void *arg)
   seg->ess = es;
   s->tpc = lookup_service(es, ESS_RUNNING, ESS_TPC_UNLIMITED);
   s->child_seg = NULL;
-
+  
   //** Pluck the paranoid setting for Jerase
   paranoid = lookup_service(es, ESS_RUNNING, "jerase_paranoid");
   s->paranoid_check = (paranoid == NULL) ? 0 : *paranoid;
   s->magic_cksum = 1;
+
+  //** Also snag whether we're blacklisting
+  s->blacklist = lookup_service(es, ESS_RUNNING, "blacklist");
 
   seg->fn.read = segjerase_read;
   seg->fn.write = segjerase_write;

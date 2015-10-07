@@ -154,7 +154,7 @@ int main(int argc, char **argv)
      //** Start the write
      tbuffer_single(&tbuf, wlen, wbuf);
      ex_iovec_single(&iov, i, wlen);
-     gop = segment_write(seg, lio_gc->da, 1, &iov, &tbuf, 0, lio_gc->timeout);
+     gop = segment_write(seg, lio_gc->da, NULL, 1, &iov, &tbuf, 0, lio_gc->timeout);
      gop_start_execution(gop);
 
      log_printf(1, "ex_put: i=%d gid=%d\n", i, gop_id(gop)); flush_log();

@@ -419,7 +419,7 @@ log_printf(_amp_logging, "seg=" XIDT " initial lo=" XOT " hi=" XOT " trigger=" X
   offset = ap->lo;
   while (offset <= ap->hi) {
      n_pages = CACHE_MAX_PAGES_RETURNED;
-     cache_advise(ap->seg, CACHE_READ, offset, ap->hi, page, &n_pages, 1);
+     cache_advise(ap->seg, NULL, CACHE_READ, offset, ap->hi, page, &n_pages, 1);
 log_printf(_amp_logging, "seg=" XIDT " lo=" XOT " hi=" XOT " n_pages=%d\n", segment_id(ap->seg), offset, ap->hi, n_pages);
      if (n_pages == 0) { //** Hit an existing page
         cache_lock(s->c);

@@ -33,10 +33,10 @@ http://www.accre.vanderbilt.edu
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
-#include <jerasure/cauchy.h>
-#include <jerasure/liberation.h>
-#include <jerasure/reed_sol.h>
-#include <jerasure/jerasure.h>
+#include "cauchy.h"
+#include "liberation.h"
+#include "reed_sol.h"
+#include "jerasure.h"
 #include "raid4.h"
 #include "erasure_tools.h"
 #include "log.h"

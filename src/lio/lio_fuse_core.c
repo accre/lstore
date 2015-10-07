@@ -28,17 +28,10 @@ http://www.accre.vanderbilt.edu
 */
 
 #define _log_module_index 212
-#include "config.h"
-
-#if defined(HAVE_SYS_XATTR_H)
-#include <sys/xattr.h>
-#elif defined(HAVE_ATTR_XATTR_H)
-#include <attr/xattr.h>
-#endif
-
 
 #include <assert.h>
 #include <sys/types.h>
+#include <attr/xattr.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #include <math.h>
@@ -619,6 +612,7 @@ int lfs_release(const char *fname, struct fuse_file_info *fi)
 
 int lfs_read(const char *fname, char *buf, size_t size, off_t off, struct fuse_file_info *fi)
 {
+  lio_fuse_t *lfs = lfs_get_context();
   lio_fd_t *fd;
   ex_off_t nbytes;
   apr_time_t now;
@@ -637,7 +631,7 @@ int lfs_read(const char *fname, char *buf, size_t size, off_t off, struct fuse_f
   now = apr_time_now();
 
   //** Do the read op
-  nbytes = lio_read(fd, buf, size, off);
+  nbytes = lio_read(fd, buf, size, off, lfs->rw_hints);
 
   if (log_level() > 0) {
      t2 = size+off-1;
@@ -664,6 +658,7 @@ int lfs_read(const char *fname, char *buf, size_t size, off_t off, struct fuse_f
 
 int lfs_write(const char *fname, const char *buf, size_t size, off_t off, struct fuse_file_info *fi)
 {
+  lio_fuse_t *lfs = lfs_get_context();
   ex_off_t nbytes;
   lio_fd_t *fd;
 
@@ -675,7 +670,7 @@ int lfs_write(const char *fname, const char *buf, size_t size, off_t off, struct
   }
 
   //** Do the write op
-  nbytes = lio_write(fd, (char *)buf, size, off);
+  nbytes = lio_write(fd, (char *)buf, size, off, lfs->rw_hints);
   return(nbytes);
 }
 
@@ -715,7 +710,7 @@ int lfs_flush(const char *fname, struct fuse_file_info *fi)
 // lfs_fsync - Flushes any data to backing store
 //*****************************************************************
 
-int lfs_fsync(const char *fname, int datasync, struct fuse_file_info *fi)
+int lfs_fsync(const char *fname, struct fuse_file_info *fi)
 {
   lio_fuse_t *lfs = lfs_get_context();
   lio_fd_t *fd;
@@ -862,7 +857,7 @@ int lfs_utimens(const char *fname, const struct timespec tv[2])
 // lfs_listxattr - Lists the extended attributes
 //    These are currently defined as the user.* attributes
 //*****************************************************************
-#if defined(HAVE_XATTR)
+
 int lfs_listxattr(const char *fname, char *list, size_t size)
 {
   lio_fuse_t *lfs = lfs_get_context();
@@ -937,7 +932,7 @@ log_printf(15, "ERANGE bpos=%d buf=%s\n", bpos, buf);
 
   return(bpos);
 }
-#endif // HAVE XATTR
+
 //*****************************************************************
 // lfs_set_tape_attr - Disburse the tape attribute
 //*****************************************************************
@@ -1038,6 +1033,7 @@ log_printf(15, "nkeys=%d fname=%s ftype=%d\n", nkeys, fname, ftype);
         log_printf(1, "ERROR parsing parent exnode fname=%s\n", fname);
         exnode_exchange_destroy(exp);
         exnode_destroy(ex);
+        exnode_destroy(cex);
      }
 
      //** Execute the clone operation
@@ -1140,12 +1136,7 @@ log_printf(15, "END fname=%s\n", fname);
 // lfs_getxattr - Gets an extended attribute
 //*****************************************************************
 
-#if defined(HAVE_XATTR)
-#  if ! defined(__APPLE__)
 int lfs_getxattr(const char *fname, const char *name, char *buf, size_t size)
-#  else
-int lfs_getxattr(const char *fname, const char *name, char *buf, size_t size, uint32_t dummy)
-#  endif
 {
   lio_fuse_t *lfs = lfs_get_context();
   char *val;
@@ -1179,17 +1170,11 @@ int lfs_getxattr(const char *fname, const char *name, char *buf, size_t size, ui
   if (val != NULL) free(val);
   return(v_size);
 }
-#endif // defined(HAVE_XATTR)
 
 //*****************************************************************
 // lfs_setxattr - Sets a extended attribute
 //*****************************************************************
-#if defined(HAVE_XATTR)
-#  if ! defined(__APPLE__)
 int lfs_setxattr(const char *fname, const char *name, const char *fval, size_t size, int flags)
-#  else
-int lfs_setxattr(const char *fname, const char *name, const char *fval, size_t size, int flags, uint32_t dummy)
-#  endif
 {
   lio_fuse_t *lfs = lfs_get_context();
   char *val;
@@ -1248,7 +1233,6 @@ int lfs_removexattr(const char *fname, const char *name)
 
   return(0);
 }
-#endif // HAVE_XATTR
 
 //*************************************************************************
 // lfs_hardlink - Creates a hardlink to an existing file
@@ -1361,37 +1345,15 @@ int lfs_statfs(const char *fname, struct statvfs *fs)
   space = rs_space(config);
   free(config);
 
-#if ! defined(__APPLE__)
   fs->f_bsize = 4096;
   fs->f_blocks = space.total_up / 4096;
   fs->f_bfree = space.free_up / 4096;
   fs->f_bavail = fs->f_bfree;
   fs->f_files = 1;
   fs->f_ffree = (ex_off_t)1024*1024*1024*1024*1024;
-#else
-  fs->f_bsize = 1024;
-  fs->f_ffree = UINT_MAX;
-  fs->f_files = 1;
-  // In the "you gotta be kidding me" department, OSX sticks 100% to POSIX
-  // and uses 32-bit counters for block numbers. Try and scale it so the number
-  // of blocks fits in unsigned int
-  // Why add another factor of two? Beats me. Without it, even though the values
-  // here make sense, 'df' shows half the expected numbers
-  //
-  // Here, MAXPHYS is the largest block size allowed: bsd/i386/param.h
-  while ( ( fs->f_bsize < MAXPHYS ) &&
-            (((space.total_up/fs->f_bsize) > (UINT_MAX)) ||
-             ((space.free_up/fs->f_bsize)  > (UINT_MAX)))) {
-    fs->f_bsize *= 2;
-  }
-  // Clamp the sizes to at most UINT_MAX
-  fs->f_bfree  = (space.free_up/fs->f_bsize  > UINT_MAX) ? 
-                        UINT_MAX : space.free_up/fs->f_bsize;
-  fs->f_blocks = (space.total_up/fs->f_bsize > UINT_MAX) ? 
-                        UINT_MAX : space.total_up/fs->f_bsize;
-  fs->f_frsize = fs->f_bsize;
-  fs->f_bavail = fs->f_bfree;
-#endif
+//  fs->f_favail =
+//  fs->f_fsid =
+//  fs->f_flag =
   fs->f_namemax = 4096 - 100;
 
   return(0);
@@ -1516,6 +1478,7 @@ void lfs_destroy(void *private_data)
   apr_thread_mutex_destroy(lfs->lock);
   apr_pool_destroy(lfs->mpool);
 
+  if (lfs->rw_hints) free(lfs->rw_hints);
   free(lfs);
 
   lio_shutdown(); // Reference counting in this function protects against shutdown if lio is still in use elsewhere
@@ -1543,7 +1506,7 @@ struct fuse_operations lfs_fops = { //All lfs instances should use the same func
 //  .read = lfs_read_test_ex,
   .write = lfs_write,
   .flush = lfs_flush,
-  .fsync = lfs_fsync,
+  .flush = lfs_fsync,
   .link = lfs_hardlink,
   .readlink = lfs_readlink,
   .symlink = lfs_symlink,

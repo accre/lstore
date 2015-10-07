@@ -94,6 +94,11 @@ typedef void segment_priv_t;
 struct segment_s;
 typedef struct segment_s segment_t;
 
+typedef struct {     //** Structure for contaiing hints to the various segment drivers
+  int lun_max_blacklist;  //** Max number of devs to blacklist per stripe for performance
+  int number_blacklisted;
+} segment_rw_hints_t;
+
 typedef struct {
   rid_change_entry_t *rid;
   apr_hash_t *pick_pool;
@@ -110,8 +115,8 @@ typedef struct {
 } inspect_args_t;
 
 typedef struct {
-  op_generic_t *(*read)(segment_t *seg, data_attr_t *da, int n_iov, ex_iovec_t *iov, tbuffer_t *buffer, ex_off_t boff, int timeout);
-  op_generic_t *(*write)(segment_t *seg, data_attr_t *da, int n_iov, ex_iovec_t *iov, tbuffer_t *buffer, ex_off_t boff, int timeout);
+  op_generic_t *(*read)(segment_t *seg, data_attr_t *da, segment_rw_hints_t *hints, int n_iov, ex_iovec_t *iov, tbuffer_t *buffer, ex_off_t boff, int timeout);
+  op_generic_t *(*write)(segment_t *seg, data_attr_t *da, segment_rw_hints_t *hints, int n_iov, ex_iovec_t *iov, tbuffer_t *buffer, ex_off_t boff, int timeout);
   op_generic_t *(*inspect)(segment_t *seg, data_attr_t *da, info_fd_t *fd, int mode, ex_off_t buffer_size, inspect_args_t *args, int timeout);
   op_generic_t *(*truncate)(segment_t *seg, data_attr_t *da, ex_off_t new_size, int timeout);
   op_generic_t *(*remove)(segment_t *seg, data_attr_t *da, int timeout);
@@ -130,8 +135,8 @@ typedef struct {
 #define segment_id(s) (s)->header.id
 #define segment_type(s) (s)->header.type
 #define segment_destroy(s) (s)->fn.destroy(s)
-#define segment_read(s, da, n_iov, iov, tbuf, boff, to) (s)->fn.read(s, da, n_iov, iov, tbuf, boff, to)
-#define segment_write(s, da, n_iov, iov, tbuf, boff, to) (s)->fn.write(s, da, n_iov, iov, tbuf, boff, to)
+#define segment_read(s, da, hints, n_iov, iov, tbuf, boff, to) (s)->fn.read(s, da, hints, n_iov, iov, tbuf, boff, to)
+#define segment_write(s, da, hints, n_iov, iov, tbuf, boff, to) (s)->fn.write(s, da, hints, n_iov, iov, tbuf, boff, to)
 #define segment_inspect(s, da, fd, mode, bsize, query, to) (s)->fn.inspect(s, da, fd, mode, bsize, query, to)
 #define segment_truncate(s, da, new_size, to) (s)->fn.truncate(s, da, new_size, to)
 #define segment_remove(s, da, to) (s)->fn.remove(s, da, to)
@@ -209,9 +214,9 @@ segment_t *view_search_by_id(exnode_t *ex, ex_id_t id);
 //** Segment related functions
 #define segment_get_header(seg) &((seg)->header)
 #define segment_set_header(seg, new_head) (seg)->header = *(new_head)
-op_generic_t *segment_copy(thread_pool_context_t *tpc, data_attr_t *da, segment_t *src_seg, segment_t *dest_seg, ex_off_t src_offset, ex_off_t dest_offset, ex_off_t len, ex_off_t bufsize, char *buffer, int do_truncate, int timoeut);
-op_generic_t *segment_put(thread_pool_context_t *tpc, data_attr_t *da, FILE *fd, segment_t *dest_seg, ex_off_t dest_offset, ex_off_t len, ex_off_t bufsize, char *buffer, int do_truncate, int timeout);
-op_generic_t *segment_get(thread_pool_context_t *tpc, data_attr_t *da, segment_t *src_seg, FILE *fd, ex_off_t src_offset, ex_off_t len, ex_off_t bufsize, char *buffer, int timeout);
+op_generic_t *segment_copy(thread_pool_context_t *tpc, data_attr_t *da, segment_rw_hints_t *rw_hints, segment_t *src_seg, segment_t *dest_seg, ex_off_t src_offset, ex_off_t dest_offset, ex_off_t len, ex_off_t bufsize, char *buffer, int do_truncate, int timoeut);
+op_generic_t *segment_put(thread_pool_context_t *tpc, data_attr_t *da, segment_rw_hints_t *rw_hints, FILE *fd, segment_t *dest_seg, ex_off_t dest_offset, ex_off_t len, ex_off_t bufsize, char *buffer, int do_truncate, int timeout);
+op_generic_t *segment_get(thread_pool_context_t *tpc, data_attr_t *da, segment_rw_hints_t *rw_hints, segment_t *src_seg, FILE *fd, ex_off_t src_offset, ex_off_t len, ex_off_t bufsize, char *buffer, int timeout);
 segment_t *load_segment(service_manager_t *ess, ex_id_t id, exnode_exchange_t *ex);
 
 void generate_ex_id(ex_id_t *id);

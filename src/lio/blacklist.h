@@ -28,43 +28,35 @@ http://www.accre.vanderbilt.edu
 */ 
 
 //***********************************************************************
-// LUN segment support
+// Blacklist structure definition
 //***********************************************************************
 
-#ifndef _SEGMENT_LUN_PRIV_H_
-#define _SEGMENT_LUN_PRIV_H_
+#ifndef _BLACKLIST_H_
+#define _BLACKLIST_H_
 
-#include "blacklist.h"
+#include <apr_pools.h>
+#include <apr_thread_mutex.h>
+#include <apr_hash.h>
+#include <apr_time.h>
+#include "ex3_types.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 typedef struct {
-  ex_off_t used_size;
-  ex_off_t total_size;
-  ex_off_t max_block_size;
-  ex_off_t excess_block_size;
-  ex_off_t max_row_size;
-  ex_off_t chunk_size;
-  ex_off_t stripe_size;
-  apr_time_t grow_time;
-  rs_query_t *rsq;
-  thread_pool_context_t *tpc;
-  int grow_count;
-  int n_devices;
-  int n_shift;
-  int hard_errors;
-  int grow_break;
-  int map_version;
-  int inprogress_count;
-  rs_mapping_notify_t notify;
-  interval_skiplist_t *isl;
-  resource_service_fn_t *rs;
-  data_service_fn_t *ds;
-  Stack_t *db_cleanup;
-  blacklist_t *bl;
-} seglun_priv_t;
+  char *rid;
+  apr_time_t recheck_time;
+} blacklist_rid_t;
+
+typedef struct {
+  apr_pool_t *mpool;
+  apr_thread_mutex_t *lock;
+  apr_hash_t *table;
+  ex_off_t  min_bandwidth;
+  apr_time_t min_io_time;
+  apr_time_t timeout;  
+} blacklist_t;
 
 #ifdef __cplusplus
 }

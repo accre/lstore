@@ -110,7 +110,7 @@ int main(int argc, char **argv)
      }
 
      //** Do the get
-     err = gop_sync_exec(gop_lio_cp_lio2local(fd, stdout, bufsize, buffer));
+     err = gop_sync_exec(gop_lio_cp_lio2local(fd, stdout, bufsize, buffer, NULL));
      if (err != OP_STATE_SUCCESS) {
         info_printf(lio_ifd, 0, "Failed reading data!  path=%s\n", tuple.path);
      }
@@ -130,7 +130,7 @@ finished_early:
 
   lio_shutdown();
 
-  return(err);
+  return((err == OP_STATE_SUCCESS) ? 0 : EIO);
 }
 
 

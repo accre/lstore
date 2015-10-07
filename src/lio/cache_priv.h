@@ -214,7 +214,7 @@ op_generic_t *cache_flush_range(segment_t *seg, data_attr_t *da, ex_off_t lo, ex
 int cache_drop_pages(segment_t *seg, ex_off_t lo, ex_off_t hi);
 int cache_release_pages(int n_pages, page_handle_t *page, int rw_mode);
 void _cache_drain_writes(segment_t *seg, cache_page_t *p);
-void cache_advise(segment_t *seg, int rw_mode, ex_off_t lo, ex_off_t hi, page_handle_t *page, int *n_pages, int force_load);
+void cache_advise(segment_t *seg, segment_rw_hints_t *rw_hints, int rw_mode, ex_off_t lo, ex_off_t hi, page_handle_t *page, int *n_pages, int force_load);
 
 void *free_page_tables_new(void *arg, int size);
 void free_page_tables_free(void *arg, int size, void *data);

@@ -186,6 +186,7 @@ log_printf(15, "2222222222222222 fixed=%d exp=%s dtype=%d\n", os_regex_is_fixed(
         cpf.dest_tuple = flist[0].dest_tuple; //c->dest_tuple.path = strdup(dname);
         cpf.bufsize = flist[0].bufsize;
         cpf.slow = flist[0].slow;
+        cpf.rw_hints = NULL;
         status = lio_cp_file_fn(&cpf, 0);
 
         if (status.op_status != OP_STATE_SUCCESS) {

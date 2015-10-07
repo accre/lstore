@@ -57,6 +57,7 @@ typedef struct {
 typedef struct {
   segment_t *seg;
   data_attr_t *da;
+  segment_rw_hints_t *rw_hints;
   ex_iovec_t  *iov;
   ex_off_t    boff;
   tbuffer_t  *buffer;
@@ -292,13 +293,13 @@ log_printf(15, "seg=" XIDT " n_iov=%d offset[0]=" XOT " len[0]=" XOT "\n", sw->s
 
   //** Do the table and data writes
   ex_iovec_single(&ex_iov_data, data_offset, nbytes);
-  gop = segment_write(s->data_seg, sw->da, 1, &ex_iov_data, sw->buffer, sw->boff, sw->timeout);
+  gop = segment_write(s->data_seg, sw->da, sw->rw_hints, 1, &ex_iov_data, sw->buffer, sw->boff, sw->timeout);
   opque_add(q, gop);
 
   i = sw->n_iov*sizeof(slog_range_t);
   ex_iovec_single(&ex_iov_table, table_offset, i);
   tbuffer_single(&tbuf, i, (char *)r);
-  gop = segment_write(s->table_seg, sw->da, 1, &ex_iov_table, &tbuf, 0, sw->timeout);
+  gop = segment_write(s->table_seg, sw->da, sw->rw_hints, 1, &ex_iov_table, &tbuf, 0, sw->timeout);
   opque_add(q, gop);
 
   err = opque_waitall(q);
@@ -331,7 +332,7 @@ log_printf(15, "seg=" XIDT " n_iov=%d offset[0]=" XOT " len[0]=" XOT "\n", sw->s
 // seglog_write - Performs a segment write operation
 //***********************************************************************
 
-op_generic_t *seglog_write(segment_t *seg, data_attr_t *da, int n_iov, ex_iovec_t *iov, tbuffer_t *buffer, ex_off_t boff, int timeout)
+op_generic_t *seglog_write(segment_t *seg, data_attr_t *da, segment_rw_hints_t *rw_hints, int n_iov, ex_iovec_t *iov, tbuffer_t *buffer, ex_off_t boff, int timeout)
 {
   seglog_priv_t *s = (seglog_priv_t *)seg->priv;
   seglog_rw_t *sw;
@@ -340,6 +341,7 @@ op_generic_t *seglog_write(segment_t *seg, data_attr_t *da, int n_iov, ex_iovec_
   type_malloc(sw, seglog_rw_t, 1);
   sw->seg = seg;
   sw->da = da;
+  sw->rw_hints = rw_hints;
   sw->n_iov = n_iov;
   sw->iov = iov;
   sw->boff = boff;
@@ -404,7 +406,7 @@ op_status_t seglog_read_func(void *arg, int id)
        if (prev_end != ir->lo-1) { //** We have a hole so get it from the base
           ex_iov[slot].offset = pos;
           ex_iov[slot].len = ir->lo - pos;
-          gop = segment_read(s->base_seg, sw->da, 1, &(ex_iov[slot]), sw->buffer, bpos, sw->timeout);
+          gop = segment_read(s->base_seg, sw->da, sw->rw_hints, 1, &(ex_iov[slot]), sw->buffer, bpos, sw->timeout);
           opque_add(q, gop);
           pos = pos + ex_iov[slot].len;
           bpos = bpos + ex_iov[slot].len;
@@ -419,15 +421,15 @@ op_status_t seglog_read_func(void *arg, int id)
           } else {  //** Read til the range end
              ex_iov[slot].len = ir->hi - pos + 1;
           }
-          gop = segment_read(s->data_seg, sw->da, 1, &(ex_iov[slot]), sw->buffer, bpos, sw->timeout);
+          gop = segment_read(s->data_seg, sw->da, sw->rw_hints, 1, &(ex_iov[slot]), sw->buffer, bpos, sw->timeout);
        } else if (ir->hi <= hi) {  //** Completely contained in r
           ex_iov[slot].offset = ir->data_offset;
           ex_iov[slot].len = ir->hi - pos + 1;
-          gop = segment_read(s->data_seg, sw->da, 1, &(ex_iov[slot]), sw->buffer, bpos, sw->timeout);
+          gop = segment_read(s->data_seg, sw->da, sw->rw_hints, 1, &(ex_iov[slot]), sw->buffer, bpos, sw->timeout);
        } else {  //** Drop the last half
           ex_iov[slot].offset = ir->data_offset;
           ex_iov[slot].len = hi - pos + 1;
-          gop = segment_read(s->data_seg, sw->da, 1, &(ex_iov[slot]), sw->buffer, bpos, sw->timeout);
+          gop = segment_read(s->data_seg, sw->da, sw->rw_hints, 1, &(ex_iov[slot]), sw->buffer, bpos, sw->timeout);
        }
 
        opque_add(q, gop);
@@ -440,7 +442,7 @@ op_status_t seglog_read_func(void *arg, int id)
      if (prev_end == -1) { //** We have a hole so get it from the base
         ex_iov[slot].offset = lo;
         ex_iov[slot].len = hi - lo + 1;
-        gop = segment_read(s->base_seg, sw->da, 1, &(ex_iov[slot]), sw->buffer, bpos, sw->timeout);
+        gop = segment_read(s->base_seg, sw->da, sw->rw_hints, 1, &(ex_iov[slot]), sw->buffer, bpos, sw->timeout);
         opque_add(q, gop);
         pos = pos + ex_iov[slot].len;
         bpos = bpos + ex_iov[slot].len;
@@ -448,7 +450,7 @@ op_status_t seglog_read_func(void *arg, int id)
      } else if (prev_end < hi) {    //** Check if we read from the base on the end
         ex_iov[slot].offset = pos;
         ex_iov[slot].len = hi - (prev_end+1) + 1;
-        gop = segment_read(s->base_seg, sw->da, 1, &(ex_iov[slot]), sw->buffer, bpos, sw->timeout);
+        gop = segment_read(s->base_seg, sw->da, sw->rw_hints, 1, &(ex_iov[slot]), sw->buffer, bpos, sw->timeout);
         opque_add(q, gop);
         pos = pos + ex_iov[slot].len;
         bpos = bpos + ex_iov[slot].len;
@@ -478,7 +480,7 @@ op_status_t seglog_read_func(void *arg, int id)
 // seglog_read - Read from a log segment
 //***********************************************************************
 
-op_generic_t *seglog_read(segment_t *seg, data_attr_t *da, int n_iov, ex_iovec_t *iov, tbuffer_t *buffer, ex_off_t boff, int timeout)
+op_generic_t *seglog_read(segment_t *seg, data_attr_t *da, segment_rw_hints_t *rw_hints, int n_iov, ex_iovec_t *iov, tbuffer_t *buffer, ex_off_t boff, int timeout)
 {
   seglog_priv_t *s = (seglog_priv_t *)seg->priv;
   seglog_rw_t *sw;
@@ -487,6 +489,7 @@ op_generic_t *seglog_read(segment_t *seg, data_attr_t *da, int n_iov, ex_iovec_t
   type_malloc(sw, seglog_rw_t, 1);
   sw->seg = seg;
   sw->da = da;
+  sw->rw_hints = rw_hints;
   sw->n_iov = n_iov;
   sw->iov = iov;
   sw->boff = boff;
@@ -506,8 +509,8 @@ op_generic_t *seglog_read(segment_t *seg, data_attr_t *da, int n_iov, ex_iovec_t
 int _slog_load(segment_t *seg)
 {
   seglog_priv_t *s = (seglog_priv_t *)seg->priv;
-  ex_off_t i;
   int timeout = 20;
+  ex_off_t i;
   int last_bad, err_count;
   op_generic_t *gop;
   data_attr_t *da;
@@ -529,7 +532,7 @@ log_printf(15, "INITIAL:  fsize=" XOT " lsize=" XOT " dsize=" XOT "\n", s->file_
      type_malloc_clear(r, slog_range_t, 1);
      ex_iovec_single(&ex_iov, i, sizeof(slog_range_t));
      tbuffer_single(&tbuf, sizeof(slog_range_t), (char *)r);
-     gop = segment_read(s->table_seg, da, 1, &ex_iov, &tbuf, 0, timeout);
+     gop = segment_read(s->table_seg, da, NULL, 1, &ex_iov, &tbuf, 0, timeout);
      if (gop_waitall(gop) == OP_STATE_SUCCESS) {
         if (((r->lo == 0) && (r->hi == 0) && (r->data_offset == 0)) || ((r->hi == 0) && (r->lo != -1))) {  //** This is a failed write so ignore it
            log_printf(0, "seg=" XIDT " Blank/bad range!  offset=" XOT "\n", segment_id(seg), i);
@@ -721,7 +724,7 @@ log_printf(15, "dt=" XOT " nbytes_log=" XOT " nbytes_base=" XOT " ss->file_size=
   //** Now copy the data if needed
   if (do_segment_copy == 1) {  //** segment_copy() method
      type_malloc(buffer, char, bufsize);
-     opque_add(q, segment_copy(ss->tpc, slc->da, slc->sseg, slc->dseg, 0, 0, ss->file_size, bufsize, buffer, 0, slc->timeout));
+     opque_add(q, segment_copy(ss->tpc, slc->da, NULL, slc->sseg, slc->dseg, 0, 0, ss->file_size, bufsize, buffer, 0, slc->timeout));
   } else if (slc->mode == CLONE_STRUCT_AND_DATA) {  //** Use the incremental log+base method
      //** First clone the base struct and data
      opque_add(q, segment_clone(base, slc->da, &(sd->base_seg), CLONE_STRUCT_AND_DATA, slc->attr, slc->timeout));
@@ -743,11 +746,11 @@ log_printf(15, "dt=" XOT " nbytes_log=" XOT " nbytes_base=" XOT " ss->file_size=
            dlen = clog->len - pos;
            if (dlen < len) len = dlen;
            ex_iovec_single(&(clog->rex), rpos, dlen);
-           gop = segment_read(clog->seg, slc->da, 1, &(clog->rex), rbuf, rlen, slc->timeout);
+           gop = segment_read(clog->seg, slc->da, NULL, 1, &(clog->rex), rbuf, rlen, slc->timeout);
            opque_add(q1, gop);
 
            ex_iovec_single(&(clog->wex), wpos, dlen);
-           gop = segment_write(clog->seg, slc->da, 1, &(clog->wex), wbuf, rlen, slc->timeout);
+           gop = segment_write(clog->seg, slc->da, NULL, 1, &(clog->wex), wbuf, rlen, slc->timeout);
            opque_add(q2, gop);
 
            pos += dlen;
@@ -885,7 +888,7 @@ op_status_t seglog_truncate_func(void *arg, int id)
      r->data_offset = -1;
      ex_iovec_single(&ex_iov_table, table_offset, sizeof(slog_range_t));
      tbuffer_single(&tbuf_table, sizeof(slog_range_t), (char *)r);
-     gop = segment_write(s->table_seg, st->da, 1, &ex_iov_table, &tbuf_table, 0, st->timeout);
+     gop = segment_write(s->table_seg, st->da, NULL, 1, &ex_iov_table, &tbuf_table, 0, st->timeout);
      opque_add(q, gop);
 
      s->log_size += sizeof(slog_range_t);
@@ -898,13 +901,13 @@ op_status_t seglog_truncate_func(void *arg, int id)
      r->data_offset = data_offset;
      ex_iovec_single(&ex_iov_table, table_offset, sizeof(slog_range_t));
      tbuffer_single(&tbuf_table, sizeof(slog_range_t), (char *)r);
-     gop = segment_write(s->table_seg, st->da, 1, &ex_iov_table, &tbuf_table, 0, st->timeout);
+     gop = segment_write(s->table_seg, st->da, NULL, 1, &ex_iov_table, &tbuf_table, 0, st->timeout);
      opque_add(q, gop);
 
      //** Don't need to write all the blanks.  Just the last byte.
      ex_iovec_single(&ex_iov_data, data_offset + r->hi - 1, 1);
      tbuffer_single(&tbuf_data, 1, &c);
-     gop = segment_write(s->data_seg, st->da, 1, &ex_iov_data, &tbuf_data, 0, st->timeout);
+     gop = segment_write(s->data_seg, st->da, NULL, 1, &ex_iov_data, &tbuf_data, 0, st->timeout);
      opque_add(q, gop);
 
      s->log_size += sizeof(slog_range_t);
@@ -1405,7 +1408,7 @@ log_printf(15, "i=%d len>bufsize so chunking\n", i);
            ex_out[i].len = blen;
 log_printf(15, "i=%d bpos=" XOT " in.offset=" XOT " out.offset=" XOT " len=" XOT "\n", i, bpos, ex_in[i].len, ex_out[i].len, blen);
 
-           gop = segment_read(s->data_seg, sm->da, 1, &(ex_in[i]), &tbuf, 0, sm->timeout);
+           gop = segment_read(s->data_seg, sm->da, NULL, 1, &(ex_in[i]), &tbuf, 0, sm->timeout);
            opque_add(qin, gop);
            err = opque_waitall(qin);
            if (err != OP_STATE_SUCCESS) {
@@ -1414,7 +1417,7 @@ log_printf(15, "i=%d bpos=" XOT " in.offset=" XOT " out.offset=" XOT " len=" XOT
               return(op_failure_status);
            }
 
-           gop = segment_write(s->base_seg, sm->da, 1, &(ex_out[i]), &tbuf, 0, sm->timeout);
+           gop = segment_write(s->base_seg, sm->da, NULL, 1, &(ex_out[i]), &tbuf, 0, sm->timeout);
            opque_add(qout, gop);
            if (err != OP_STATE_SUCCESS) {
               segment_unlock(sm->seg);
@@ -1427,9 +1430,9 @@ log_printf(15, "i=%d bpos=" XOT " in.offset=" XOT " out.offset=" XOT " len=" XOT
         }
         pos = 0;
      } else {
-        gop = segment_read(s->data_seg, sm->da, 1, &(ex_in[i]), &tbuf, pos, sm->timeout);
+        gop = segment_read(s->data_seg, sm->da, NULL, 1, &(ex_in[i]), &tbuf, pos, sm->timeout);
         opque_add(qin, gop);
-        gop = segment_write(s->base_seg, sm->da, 1, &(ex_out[i]), &tbuf, pos, sm->timeout);
+        gop = segment_write(s->base_seg, sm->da, NULL, 1, &(ex_out[i]), &tbuf, pos, sm->timeout);
         opque_add(qout, gop);
         pos = pos + ex_in[i].len;
      }

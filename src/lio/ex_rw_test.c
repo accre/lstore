@@ -408,7 +408,7 @@ int ll = 15;
 flush_log();
   dt2 = apr_time_now();
 
-    err = gop_sync_exec(segment_read(seg, da, 1, &iov, &tbuf, 0, rwc.timeout));
+    err = gop_sync_exec(segment_read(seg, da, NULL, 1, &iov, &tbuf, 0, rwc.timeout));
   dt2 = apr_time_now() - dt2;
   dsec = dt2;
   dsec = dsec / APR_USEC_PER_SEC;
@@ -438,7 +438,7 @@ log_printf(ll, "memcmp=%d\n", err); flush_log();
      len = base_tile[last_tile_index].offset + base_tile[last_tile_index].len;
      memset(buffer, 'A', len);
      ex_iovec_single(&iov, off, len);
-     err = gop_sync_exec(segment_read(seg, da, 1, &iov, &tbuf, 0, rwc.timeout));
+     err = gop_sync_exec(segment_read(seg, da, NULL, 1, &iov, &tbuf, 0, rwc.timeout));
      if (err != OP_STATE_SUCCESS) {
          log_printf(0, "ERROR with read! block offset=" XOT "\n", off);
      }
@@ -506,7 +506,7 @@ log_printf(my_log_level, "find_write_task: span slot=%d curr=%d base=%d global=%
   tbuffer_single(&(tslot->tbuf), base_tile[slot].len, &(tile_data[base_tile[slot].offset]));
   ex_iovec_single(&(tslot->iov), offset, base_tile[slot].len);
 
-  gop = segment_write(seg, da, 1, &(tslot->iov), &(tslot->tbuf), 0, rwc.timeout);
+  gop = segment_write(seg, da, NULL, 1, &(tslot->iov), &(tslot->tbuf), 0, rwc.timeout);
   gop_set_private(gop, (void *)tslot);
 
   n = total_scan_size - rwc.write_sigma;
@@ -584,7 +584,7 @@ log_printf(my_log_level, "find_read_task: span slot=%d curr=%d base=%d global=%d
   tbuffer_single(&(tslot->tbuf), base_tile[slot].len, tslot->buffer);
   ex_iovec_single(&(tslot->iov), offset, base_tile[slot].len);
 
-  gop = segment_read(seg, da, 1, &(tslot->iov), &(tslot->tbuf), 0, rwc.timeout);
+  gop = segment_read(seg, da, NULL, 1, &(tslot->iov), &(tslot->tbuf), 0, rwc.timeout);
 log_printf(my_log_level, "find_read_task: global=%d off=" XOT " len=" XOT " gop=%p\n", tslot->global_index, offset, base_tile[slot].len, gop); flush_log();
 
   gop_set_private(gop, (void *)tslot);

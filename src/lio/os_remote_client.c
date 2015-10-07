@@ -2351,7 +2351,8 @@ void osrc_destroy(object_service_fn_t *os)
 //  apr_pool_destroy(osrc->mpool);
 
   free(osrc->host_id);
-  free(osrc->remote_host);
+  mq_msg_destroy(osrc->remote_host);
+  free(osrc->remote_host_string);
   free(osrc);
   free(os);
 }
@@ -2394,7 +2395,9 @@ log_printf(10, "START\n");
 
   osrc->timeout = inip_get_integer(fd, section, "timeout", 60);
   osrc->heartbeat = inip_get_integer(fd, section, "heartbeat", 600);
-  osrc->remote_host = inip_get_string(fd, section, "remote_address", NULL);
+  osrc->remote_host_string = inip_get_string(fd, section, "remote_address", NULL);
+  osrc->remote_host = mq_string_to_address(osrc->remote_host_string);
+
   osrc->max_stream = inip_get_integer(fd, section, "max_stream", 1024*1024);
   osrc->stream_timeout = inip_get_integer(fd, section, "stream_timeout", 65);
   osrc->spin_interval = inip_get_integer(fd, section, "spin_interval", 1);

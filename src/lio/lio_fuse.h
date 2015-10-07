@@ -70,13 +70,14 @@ typedef struct {
   struct fuse_operations fops;
   char *id;
   char *mount_point;
+  segment_rw_hints_t *rw_hints;
 } lio_fuse_t;
 
 typedef struct {
   lio_config_t *lc;
-  const char *mount_point;
+  char *mount_point;
   int lio_argc;
-  const char **lio_argv;
+  char **lio_argv;
 } lio_fuse_init_args_t;
 
 extern struct fuse_operations lfs_fops;

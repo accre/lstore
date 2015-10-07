@@ -164,7 +164,7 @@ flush_log();
 // segfile_read - Read from a file segment
 //***********************************************************************
 
-op_generic_t *segfile_read(segment_t *seg, data_attr_t *da, int n_iov, ex_iovec_t *iov, tbuffer_t *buffer, ex_off_t boff, int timeout)
+op_generic_t *segfile_read(segment_t *seg, data_attr_t *da, segment_rw_hints_t *rw_hints, int n_iov, ex_iovec_t *iov, tbuffer_t *buffer, ex_off_t boff, int timeout)
 {
   segfile_priv_t *s = (segfile_priv_t *)seg->priv;
   segfile_rw_op_t *srw;
@@ -186,7 +186,7 @@ op_generic_t *segfile_read(segment_t *seg, data_attr_t *da, int n_iov, ex_iovec_
 // segfile_write - Writes to a linear segment
 //***********************************************************************
 
-op_generic_t *segfile_write(segment_t *seg, data_attr_t *da, int n_iov, ex_iovec_t *iov, tbuffer_t *buffer, ex_off_t boff, int timeout)
+op_generic_t *segfile_write(segment_t *seg, data_attr_t *da, segment_rw_hints_t *rw_hints, int n_iov, ex_iovec_t *iov, tbuffer_t *buffer, ex_off_t boff, int timeout)
 {
   segfile_priv_t *s = (segfile_priv_t *)seg->priv;
   segfile_rw_op_t *srw;

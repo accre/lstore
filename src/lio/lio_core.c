@@ -1139,7 +1139,7 @@ log_printf(5, "src=%s dest=%s dtype=%d\n", cp->src_tuple.path, cp->dest_tuple.pa
   } else {
      info_printf(lio_ifd, 1, "Slow copy:( %s->%s\n", cp->src_tuple.path, cp->dest_tuple.path);
      type_malloc(buffer, char, cp->bufsize+1);
-     gop = segment_copy(cp->dest_tuple.lc->tpc_unlimited, cp->dest_tuple.lc->da, sseg, dseg, 0, 0, -1, cp->bufsize, buffer, 1, cp->dest_tuple.lc->timeout);
+     gop = segment_copy(cp->dest_tuple.lc->tpc_unlimited, cp->dest_tuple.lc->da, cp->rw_hints, sseg, dseg, 0, 0, -1, cp->bufsize, buffer, 1, cp->dest_tuple.lc->timeout);
   }
   err = gop_waitall(gop);
 
@@ -1259,7 +1259,7 @@ log_printf(5, "src=%s dest=%s dtype=%d bufsize=" XOT "\n", cp->src_tuple.path, c
   type_malloc(buffer, char, cp->bufsize+1);
 
 log_printf(0, "BEFORE PUT\n");
-  err = gop_sync_exec(segment_put(cp->dest_tuple.lc->tpc_unlimited, cp->dest_tuple.lc->da, fd, seg, 0, -1, cp->bufsize, buffer, 1, 3600));
+  err = gop_sync_exec(segment_put(cp->dest_tuple.lc->tpc_unlimited, cp->dest_tuple.lc->da, cp->rw_hints, fd, seg, 0, -1, cp->bufsize, buffer, 1, 3600));
 log_printf(0, "AFTER PUT\n");
 
   fclose(fd);
@@ -1352,7 +1352,7 @@ log_printf(5, "src=%s dest=%s dtype=%d\n", cp->src_tuple.path, cp->dest_tuple.pa
   }
 
   type_malloc(buffer, char, cp->bufsize+1);
-  err = gop_sync_exec(segment_get(cp->src_tuple.lc->tpc_unlimited, cp->src_tuple.lc->da, seg, fd, 0, -1, cp->bufsize, buffer, 3600));
+  err = gop_sync_exec(segment_get(cp->src_tuple.lc->tpc_unlimited, cp->src_tuple.lc->da, cp->rw_hints, seg, fd, 0, -1, cp->bufsize, buffer, 3600));
   free(buffer);
 
   fclose(fd);

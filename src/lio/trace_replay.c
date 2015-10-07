@@ -124,9 +124,9 @@ int main(int argc, char **argv)
      top = &(trace->ops[i]);
      ex_iovec_single(&(iov[top->fd]), top->offset, top->len);
      if (top->cmd == CMD_READ) {
-        gop = segment_write(trace->files[top->fd].seg, lio_gc->da, 1, &(iov[top->fd]), &tbuf, 0, lio_gc->timeout);
+        gop = segment_write(trace->files[top->fd].seg, lio_gc->da, NULL, 1, &(iov[top->fd]), &tbuf, 0, lio_gc->timeout);
      } else {
-        gop = segment_write(trace->files[top->fd].seg, lio_gc->da, 1, &(iov[top->fd]), &tbuf, 0, lio_gc->timeout);
+        gop = segment_write(trace->files[top->fd].seg, lio_gc->da, NULL, 1, &(iov[top->fd]), &tbuf, 0, lio_gc->timeout);
      }
 
      gop_set_id(gop, i);
