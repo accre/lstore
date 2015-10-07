@@ -7,8 +7,8 @@ project( gop C CXX )
 set(CMAKE_BUILD_TYPE "Debug")
 #set(CMAKE_BUILD_TYPE "Release")
 
-set(CMAKE_C_FLAGS_DEBUG "${CMAKE_REQUIRED_FLAGS} -O0 -Wall -g -DHAVE_CONFIG_H -DLINUX=2 -D_REENTRANT -D_GNU_SOURCE -D_LARGEFILE64_SOURCE" )
-set(CMAKE_C_FLAGS_RELEASE "-O ${CMAKE_REQUIRED_FLAGS} -DHAVE_CONFIG_H -DLINUX=2 -D_REENTRANT -D_GNU_SOURCE -D_LARGEFILE64_SOURCE" )
+set(CMAKE_C_FLAGS_DEBUG "${CMAKE_REQUIRED_FLAGS} -O0 -Wall -g -DHAVE_CONFIG_H -DLINUX=2 -D_REENTRANT -D_GNU_SOURCE -D_LARGEFILE64_SOURCE -DMQ_PIPE_COMM" )
+set(CMAKE_C_FLAGS_RELEASE "-O ${CMAKE_REQUIRED_FLAGS} -DHAVE_CONFIG_H -DLINUX=2 -D_REENTRANT -D_GNU_SOURCE -D_LARGEFILE64_SOURCE -DMQ_PIPE_COMM")
 
 set(CMAKE_INCLUDE_CURRENT_DIR on)
 set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
@@ -22,7 +22,7 @@ include(${CMAKE_SOURCE_DIR}/cmake/shared_name.cmake)
 if(WIN32)
  set(CMAKE_FIND_LIBRARY_SUFFIXES .lib .a ${CMAKE_FIND_LIBRARY_SUFFIXES})
 else(WIN32)
- set(CMAKE_FIND_LIBRARY_SUFFIXES .a ${CMAKE_FIND_LIBRARY_SUFFIXES})
+ set(CMAKE_FIND_LIBRARY_SUFFIXES .so ${CMAKE_FIND_LIBRARY_SUFFIXES})
 endif(WIN32)
 
 # get dependancies
@@ -42,7 +42,7 @@ CompilerVersion(COMPILER_VERSION)
 CompilerFlags(COMPILER_FLAGS)
 configure_file("${PROJECT_SOURCE_DIR}/gop_version.c.in" "${PROJECT_BINARY_DIR}/gop_version.c")
 
-SET(GOP_OBJS callback.c gop.c  hconnection.c  hportal.c  opque.c  thread_pool_config.c  thread_pool_op.c mq_msg.c mq_zmq.c mq_portal.c mq_ongoing.c mq_stream.c mq_helpers.c mq_roundrobin.c)
+SET(GOP_OBJS callback.c gop.c  hconnection.c  hportal.c  opque.c  thread_pool_config.c  thread_pool_op.c mq_msg.c mq_zmq.c mq_portal.c mq_ongoing.c mq_stream.c mq_helpers.c )
 
 ADD_LIBRARY( gop SHARED ${GOP_OBJS})
 ADD_LIBRARY( gop-static STATIC ${GOP_OBJS})
@@ -53,11 +53,16 @@ SET_TARGET_PROPERTIES(gop-static PROPERTIES CLEAN_DIRECT_OUTPUT 1)
 include_directories(${TOOLBOX_INCLUDE_DIR} ${APR_INCLUDE_DIR} ${APRUTIL_INCLUDE_DIR} ${ZMQ_INCLUDE_DIR} ${CZMQ_INCLUDE_DIR} ${ZLIB_INCLUDE_DIR} )
 
 SET(LIBS ${LIBS} ${ZMQ_LIBRARY} ${CZMQ_LIBRARY} ${TOOLBOX_LIBRARY} ${OPENSSL_LIBRARIES} ${CRYPTO_LIBRARIES} 
-    ${PROTOBUF_LIBRARY} ${APR_LIBRARY} ${APRUTIL_LIBRARY} ${XML_LIB} ${ZLIB_LIBRARY} pthread m dl rt)
-
+    ${APR_LIBRARY} ${APRUTIL_LIBRARY} ${XML_LIB} ${ZLIB_LIBRARY} gssapi_krb5 pthread m dl)
+if(NOT APPLE)
+    # OSX doesn't want/need librt
+    LIST(APPEND LIBS rt)
+endif(NOT APPLE)
 
 #Make the executables
-foreach(exe mq_test mqs_test zmq_test)
+set(GOP_EXE mq_test mqs_test zmq_test)
+#foreach(exe mq_test mqs_test zmq_test)
+foreach(exe ${GOP_EXE})
   ADD_EXECUTABLE(${exe} "${exe}.c")
   SET_TARGET_PROPERTIES(${exe} PROPERTIES LINKER_LANGUAGE CXX)
   TARGET_LINK_LIBRARIES(${exe} gop-static ${LIBS})
@@ -78,39 +83,29 @@ endforeach()
 #link_directories(/usr/local/lib)
 TARGET_LINK_LIBRARIES( gop LINK_PUBLIC ${lpdeps} ${sodeps} )
 
-ADD_EXECUTABLE(rr_mq_test rr_mq_test.c)
-SET_TARGET_PROPERTIES(rr_mq_test PROPERTIES LINKER_LANGUAGE CXX)
-TARGET_LINK_LIBRARIES(rr_mq_test gop-static ${LIBS})
-
-ADD_EXECUTABLE(rr_mq_server rr_mq_server.c)
-SET_TARGET_PROPERTIES(rr_mq_server PROPERTIES LINKER_LANGUAGE CXX)
-TARGET_LINK_LIBRARIES(rr_mq_server gop-static ${LIBS})
-
-ADD_EXECUTABLE(rr_mq_client rr_mq_client.c)
-SET_TARGET_PROPERTIES(rr_mq_client PROPERTIES LINKER_LANGUAGE CXX)
-TARGET_LINK_LIBRARIES(rr_mq_client gop-static ${LIBS})
-
-ADD_EXECUTABLE(rr_mq_worker rr_mq_worker.c)
-SET_TARGET_PROPERTIES(rr_mq_worker PROPERTIES LINKER_LANGUAGE CXX)
-TARGET_LINK_LIBRARIES(rr_mq_worker gop-static ${LIBS})
-
-install(TARGETS ${LIO_EXE} DESTINATION bin)
-install(TARGETS gop DESTINATION lib)
-install(TARGETS gop-static DESTINATION lib)
-install(FILES callback.h gop_config.h  host_portal.h  opque.h  thread_pool.h mq_portal.h mq_helpers.h mq_stream.h mq_ongoing.h mq_roundrobin.h mqs_roundrobin.h
-              DESTINATION include/gop )
+install(TARGETS ${GOP_EXE} DESTINATION bin COMPONENT applications)
+install(TARGETS gop DESTINATION lib COMPONENT libraries)
+install(TARGETS gop-static DESTINATION lib COMPONENT libraries)
+install(FILES callback.h gop_config.h  host_portal.h  opque.h  thread_pool.h mq_portal.h mq_helpers.h mq_stream.h mq_ongoing.h
+              DESTINATION include/gop COMPONENT headers)
 
 # Packaging directives
+set(PKG_PREFIX "/usr/local")
+if (DEFINED ENV{PREFIX})
+    set(PKG_PREFIX "$ENV{PREFIX}")
+    message("Using install prefix from ENV, ${PKG_PREFIX}")
+else()
+    message("Using default install prefix, ${PKG_PREFIX}")
+endif()
 
+set(CPACK_PROJECT_CONFIG_FILE ${CMAKE_SOURCE_DIR}/cmake/cpack_settings.cmake) #This is where the build type specific settings are kept
 set(CPACK_PACKAGE_VERSION "1.0.0")
-set(CPACK_GENERATOR "RPM")
+set(CPACK_GENERATOR "DEB;RPM")
 set(CPACK_PACKAGE_NAME "accre-gop")
 set(CPACK_PACKAGE_RELEASE 1)
-set(CPACK_PACKAGE_CONTACT "Andrew Melo")
+set(CPACK_PACKAGE_CONTACT "Andrew Melo or Alan Tackett")
 set(CPACK_PACKAGE_VENDOR "Advanced Computing Center for Research and Education, Vanderbilt University")
-#SET(CPACK_RPM_PACKAGE_REQUIRES "openssl >= 1.0.1e")
-#set(CPACK_RPM_PACKAGE_AUTOREQPROV " no")
-set(CPACK_PACKAGING_INSTALL_PREFIX "/usr/local")
-set(CPACK_PACKAGE_INSTALL_DIRECTORY "/usr/local")
-set(CPACK_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}-${CPACK_PACKAGE_RELEASE}.${CMAKE_SYSTEM_PROCESSOR}")
+set(CPACK_PACKAGING_INSTALL_PREFIX "${PKG_PREFIX}")
+set(CPACK_PACKAGE_INSTALL_DIRECTORY "${PKG_PREFIX}")
 include(CPack)
+
