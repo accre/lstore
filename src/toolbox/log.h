@@ -25,7 +25,7 @@ Advanced Computing Center for Research and Education
 230 Appleton Place
 Nashville, TN 37203
 http://www.accre.vanderbilt.edu
-*/
+*/ 
 
 //**********************************************************
 //**********************************************************
@@ -51,10 +51,10 @@ extern "C" {
 #define _mlog_size 1024
 
 typedef struct {
-    apr_thread_mutex_t *lock;
-    FILE *fd;
-    int header_type;
-    int level;
+  apr_thread_mutex_t *lock;
+  FILE *fd;
+  int header_type;
+  int level;
 } info_fd_t;
 
 #define INFO_HEADER_NONE   0

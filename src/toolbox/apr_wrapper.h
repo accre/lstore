@@ -25,11 +25,11 @@ Advanced Computing Center for Research and Education
 230 Appleton Place
 Nashville, TN 37203
 http://www.accre.vanderbilt.edu
-*/
+*/ 
 
 //*************************************************************
 //  APR Wrapper to safely start/stop the APR system in
-//  applications with multiple libraries using APR and
+//  applications with multiple libraries using APR and 
 //  starting/stopping it themselves
 //
 //  Also provides wrappers for checking on threa creations

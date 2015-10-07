@@ -25,7 +25,7 @@ Advanced Computing Center for Research and Education
 230 Appleton Place
 Nashville, TN 37203
 http://www.accre.vanderbilt.edu
-*/
+*/ 
 
 //*********************************************************************
 //*********************************************************************
@@ -45,7 +45,8 @@ http://www.accre.vanderbilt.edu
 // ns_config_2_sock - Configure the connection to use a single SSL socket
 //*********************************************************************
 
-void ns_config_2_ssl(NetStream_t *ns, int fd, int tcpsize) {
-    ns_config_sock(ns, tcpsize);
+void ns_config_2_ssl(NetStream_t *ns, int fd, int tcpsize)
+{
+  ns_config_sock(ns, tcpsize);
 }
 

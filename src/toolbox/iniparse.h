@@ -38,22 +38,22 @@ extern "C" {
 #include <stdint.h>
 
 struct inip_element_s {  //** Key/Value pair
-    char *key;
-    char *value;
-    struct inip_element_s *next;
+   char *key;
+   char *value;
+   struct inip_element_s *next;
 };
 typedef struct inip_element_s inip_element_t;
 
 struct inip_group_s {  //** Group
-    char *group;
-    inip_element_t *list;
-    struct inip_group_s *next;
+   char *group;
+   inip_element_t *list;
+   struct inip_group_s *next;
 };
 typedef struct inip_group_s inip_group_t;
 
 typedef struct {  //File
-    inip_group_t *tree;
-    int  n_groups;
+   inip_group_t *tree;
+   int  n_groups;
 } inip_file_t;
 
 

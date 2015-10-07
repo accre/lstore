@@ -44,7 +44,7 @@ typedef struct {
     zctx_t *ctx;       		//** CZMQ context
     void *socket;      		//** Socket for clients and workers
     char *pattern;     		//** ZMQ pattern
-    char *endpoint;    		//** Endpoint that server binds to
+    char *endpoint;    		//** Endpoint that server binds to 
     uint64_t heartbeat_at;
     uint64_t finished;		//** Total processed requests so far
     int heartbeat;
@@ -54,7 +54,7 @@ typedef struct {
     zhash_t *workers_ht;
     zlist_t *workers;  		//** Live workers have to be kept from oldest to most recent. Note that not every live worker is ready for working.
     zlist_t *waiting_requests;  //** Requests waiting for dispatching
-} rrbroker_t;
+}rrbroker_t; 
 
 //** Worker class defines a single worker, idle or active
 typedef struct {

@@ -25,7 +25,7 @@ Advanced Computing Center for Research and Education
 230 Appleton Place
 Nashville, TN 37203
 http://www.accre.vanderbilt.edu
-*/
+*/ 
 
 #ifndef __STACK_H__
 #define __STACK_H__
@@ -35,13 +35,13 @@ extern "C" {
 #endif
 
 typedef struct stack_ele {
-    void *data;
-    struct stack_ele *down, *up;
+  void *data;
+  struct stack_ele *down, *up;
 } Stack_ele_t;
 
 typedef struct {
-    Stack_ele_t *top, *bottom, *curr;
-    int n;
+   Stack_ele_t *top, *bottom, *curr;
+   int n;
 } Stack_t;
 
 int stack_size(Stack_t *);

@@ -25,7 +25,7 @@ Advanced Computing Center for Research and Education
 230 Appleton Place
 Nashville, TN 37203
 http://www.accre.vanderbilt.edu
-*/
+*/ 
 
 //*************************************************************************
 //*************************************************************************
@@ -42,14 +42,14 @@ http://www.accre.vanderbilt.edu
 #include "network.h"
 
 typedef struct {  //** Contains the private raw socket network fields
-apr_socket_t  *fd;
-apr_sockaddr_t *sa;
-apr_pollset_t *pollset;
-apr_pollfd_t pfd;
-apr_pool_t *mpool;
-apr_thread_mutex_t *lock; //** Global lock
-int tcpsize;
-int state;
+  apr_socket_t  *fd;
+  apr_sockaddr_t *sa;
+  apr_pollset_t *pollset;
+  apr_pollfd_t pfd;
+  apr_pool_t *mpool;
+  apr_thread_mutex_t *lock; //** Global lock
+  int tcpsize;
+  int state;
 } network_sock_t;
 
 #ifdef __cplusplus

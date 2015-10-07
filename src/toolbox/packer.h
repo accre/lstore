@@ -41,36 +41,36 @@ extern "C" {
 #endif
 
 typedef struct {
-    unsigned char *buffer;
-    int bufsize;
-    int bpos;
-    int nleft;
+  unsigned char *buffer;
+  int bufsize;
+  int bpos;
+  int nleft;
 } pack_raw_t;
 
 typedef struct {
-    unsigned char *buffer;
-    int bufsize;
-    int bpos;
-    z_stream z;
+  unsigned char *buffer;
+  int bufsize;
+  int bpos;
+  z_stream z;
 } pack_zlib_t;
 
 typedef struct pack_s pack_t;
 
 struct pack_s {
-    int type;
-    int mode;
-    union {
-        pack_raw_t raw;
-        pack_zlib_t zlib;
-    };
-    void (*end)(pack_t *pack);
-    void (*write_resized)(pack_t *pack, unsigned char *buffer, int bufsize);
-    int  (*write)(pack_t *pack, unsigned char *data, int nbytes);
-    int (*read_new_data)(pack_t *pack, unsigned char *buffer, int bufsize);
-    int  (*read)(pack_t *pack, unsigned char *data, int nbytes);
-    int  (*used)(pack_t *pack);
-    void (*consumed)(pack_t *pack);
-    int (*write_flush)(pack_t *pack);
+  int type;
+  int mode;
+  union {
+    pack_raw_t raw;
+    pack_zlib_t zlib;
+  };
+  void (*end)(pack_t *pack);
+  void (*write_resized)(pack_t *pack, unsigned char *buffer, int bufsize);
+  int  (*write)(pack_t *pack, unsigned char *data, int nbytes);
+  int (*read_new_data)(pack_t *pack, unsigned char *buffer, int bufsize);
+  int  (*read)(pack_t *pack, unsigned char *data, int nbytes);
+  int  (*used)(pack_t *pack);
+  void (*consumed)(pack_t *pack);
+  int (*write_flush)(pack_t *pack);
 };
 
 #define PACK_FINISHED -3

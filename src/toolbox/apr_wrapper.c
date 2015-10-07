@@ -25,11 +25,11 @@ Advanced Computing Center for Research and Education
 230 Appleton Place
 Nashville, TN 37203
 http://www.accre.vanderbilt.edu
-*/
+*/ 
 
 //*************************************************************
 //  APR Wrapper to safely start/stop the APR system in
-//  applications with multiple libraries using APR and
+//  applications with multiple libraries using APR and 
 //  starting/stopping it themselves
 //*************************************************************
 
@@ -43,28 +43,25 @@ static int _times_used = 0;  //** Tracks APR start/stop usage
 // apw_wrapper_start - Starts APR if needed
 //*************************************************************
 
-int apr_wrapper_start() {
-    int err;
+int apr_wrapper_start()
+{
+  int err;
 
-    err = APR_SUCCESS;
-    if (_times_used <= 0) {
-        err = apr_initialize();
-        _times_used = 0;
-    }
+  err = APR_SUCCESS;
+  if (_times_used <= 0) { err = apr_initialize(); _times_used = 0; }
 
-    _times_used++;
+  _times_used++;
 
-    return(err);
+  return(err);
 }
 
 //*************************************************************
 // apw_wrapper_stop - Stops APR if needed
 //*************************************************************
 
-void apr_wrapper_stop() {
-    _times_used--;
-    if (_times_used == 0) {
-        apr_terminate();
-    }
+void apr_wrapper_stop()
+{
+  _times_used--;
+  if (_times_used == 0) { apr_terminate(); }
 }
 

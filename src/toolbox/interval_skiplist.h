@@ -25,7 +25,7 @@ Advanced Computing Center for Research and Education
 230 Appleton Place
 Nashville, TN 37203
 http://www.accre.vanderbilt.edu
-*/
+*/ 
 
 //*************************************************************************
 //*************************************************************************
@@ -43,34 +43,34 @@ struct isl_data_s;
 typedef struct isl_data_s isl_data_t;
 
 struct isl_data_s {
-    isl_data_t *data;
-    isl_data_t *next;
+   isl_data_t *data; 
+   isl_data_t *next; 
 };
 
-typedef struct {
-    isl_data_t **edge;
-    isl_data_t *point;
-    isl_data_t  *start;
-    int         n_end;
+typedef struct {  
+  isl_data_t **edge;
+  isl_data_t *point;
+  isl_data_t  *start;
+  int         n_end;
 } isl_node_t;
 
 typedef struct {  //** Generic Interval Skip Lists container
-    skiplist_t *sl;
-    void (*data_free)(skiplist_data_t *a);
-    int n_intervals;
+  skiplist_t *sl;
+  void (*data_free)(skiplist_data_t *a);
+  int n_intervals;
 } interval_skiplist_t;
 
 typedef struct {
-    skiplist_key_t *lo;
-    skiplist_key_t *hi;
-    interval_skiplist_t *isl;
-    skiplist_node_t *sn;
-    isl_node_t *isln;
-    isl_data_t *ele;
-    skiplist_node_t *ptr[SKIPLIST_MAX_LEVEL];
-    int mode;
-    int ptr_level;
-    int finished;
+  skiplist_key_t *lo;
+  skiplist_key_t *hi;
+  interval_skiplist_t *isl;
+  skiplist_node_t *sn;
+  isl_node_t *isln;
+  isl_data_t *ele;
+  skiplist_node_t *ptr[SKIPLIST_MAX_LEVEL];
+  int mode;
+  int ptr_level;
+  int finished;
 } interval_skiplist_iter_t;
 
 #define interval_skiplist_lock(a) apr_thread_mutex_lock((a)->sl->lock)
@@ -82,14 +82,14 @@ skiplist_key_t *interval_skiplist_last_key(interval_skiplist_t *isl);
 
 
 interval_skiplist_t *create_interval_skiplist_full(int maxlevels, double p,
-        skiplist_compare_t *compare,
-        skiplist_key_t *(*dup)(skiplist_key_t *a),
-        void (*key_free)(skiplist_key_t *a),
-        void (*data_free)(skiplist_data_t *a));
+   skiplist_compare_t *compare,
+   skiplist_key_t *(*dup)(skiplist_key_t *a),
+   void (*key_free)(skiplist_key_t *a),
+   void (*data_free)(skiplist_data_t *a));
 interval_skiplist_t *create_interval_skiplist(skiplist_compare_t *compare,
-        skiplist_key_t *(*dup)(skiplist_key_t *a),
-        void (*key_free)(skiplist_key_t *a),
-        void (*data_free)(skiplist_data_t *a));
+   skiplist_key_t *(*dup)(skiplist_key_t *a),
+   void (*key_free)(skiplist_key_t *a),
+   void (*data_free)(skiplist_data_t *a));
 void destroy_interval_skiplist(interval_skiplist_t *isl);
 int insert_interval_skiplist(interval_skiplist_t *sl, skiplist_key_t *lo, skiplist_key_t *hi, skiplist_data_t *data);
 int remove_interval_skiplist(interval_skiplist_t *sl, skiplist_key_t *lo, skiplist_key_t *hi, skiplist_data_t *data);

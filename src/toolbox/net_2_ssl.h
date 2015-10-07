@@ -25,7 +25,7 @@ Advanced Computing Center for Research and Education
 230 Appleton Place
 Nashville, TN 37203
 http://www.accre.vanderbilt.edu
-*/
+*/ 
 
 //*************************************************************************
 //*************************************************************************
@@ -42,8 +42,8 @@ http://www.accre.vanderbilt.edu
 
 typedef struct {
 //  pthread_mutex_t lock;
-    int rfd;
-    int wfd;
+  int rfd;
+  int wfd;
 } network_2ssl_t;
 
 #ifdef __cplusplus

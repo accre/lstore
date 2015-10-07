@@ -36,7 +36,8 @@ http://www.accre.vanderbilt.edu
 // rrsinker_new - Construct rrsinker class
 //*************************************************************************
 
-rrsinker_t *rrsinker_new() {
+rrsinker_t *rrsinker_new()
+{
     rrsinker_t *self;
     type_malloc_clear(self, rrsinker_t, 1);
 
@@ -52,18 +53,19 @@ rrsinker_t *rrsinker_new() {
 }
 
 //**************************************************************************
-// rrsinker_destroy - Destroy rrsinker
+// rrsinker_destroy - Destroy rrsinker 
 //**************************************************************************
 
-void rrsinker_destroy(rrsinker_t **self_p) {
+void rrsinker_destroy(rrsinker_t **self_p)
+{
     assert(self_p);
     if (*self_p) {
-        rrsinker_t *self = *self_p;
-        free(self->pattern);
-        free(self->endpoint);
-        zctx_destroy(&self->ctx);
-        free(self);
-        self_p = NULL;
+	rrsinker_t *self = *self_p;
+	free(self->pattern);
+  	free(self->endpoint);
+	zctx_destroy(&self->ctx);
+	free(self);
+	self_p = NULL;
     }
 }
 
@@ -71,12 +73,13 @@ void rrsinker_destroy(rrsinker_t **self_p) {
 // rrsinker_task_manager
 //**************************************************************************
 
-void rrsinker_task_manager(void *args, zctx_t *ctx, void *pipe) {
+void rrsinker_task_manager(void *args, zctx_t *ctx, void *pipe)
+{
     rrsinker_t *self = (rrsinker_t *)args;
     zstr_send(pipe, "READY");
 
     while (true) {
-        zmq_pollitem_t item = {pipe, 0, ZMQ_POLLIN, 0};
+	zmq_pollitem_t item = {pipe, 0, ZMQ_POLLIN, 0};
         int rc = zmq_poll(&item, 1, -1);
         if (rc == -1 && errno == ETERM)
             break;    //** Context has been shut down
@@ -91,11 +94,11 @@ void rrsinker_task_manager(void *args, zctx_t *ctx, void *pipe) {
             rrtask_data_t *input = rrtask_data_new();
             rrtask_set_data(input, zframe_data(data_in), zframe_size(data_in));
 
-            //** User callback function to perform the task
+            //** User callback function to perform the task 
             self->cb(input);
-            zmsg_destroy(&msg);
-            rrtask_data_destroy(&input);
-        }
+	    zmsg_destroy(&msg); 
+	    rrtask_data_destroy(&input);
+	}
     }
 }
 
@@ -103,66 +106,69 @@ void rrsinker_task_manager(void *args, zctx_t *ctx, void *pipe) {
 // rrsinker_start - Start working on sinker task
 //**************************************************************************
 
-void rrsinker_start(rrsinker_t *self, sinker_task_fn *cb) {
+void rrsinker_start(rrsinker_t *self, sinker_task_fn *cb)
+{
     self->cb = cb;
     self->pipe = zthread_fork(self->ctx, rrsinker_task_manager, (void *)self);
     assert(self->pipe);
     free(zstr_recv(self->pipe));
 
     while(!zctx_interrupted) {
-        zmq_pollitem_t item = {self->sinker, 0, ZMQ_POLLIN, 0};
-        int rc = zmq_poll(&item, 1, -1);
-        if (rc == -1)
-            break;	//** Interrupted
+	zmq_pollitem_t item = {self->sinker, 0, ZMQ_POLLIN, 0};
+	int rc = zmq_poll(&item, 1, -1);
+	if (rc == -1)
+	    break;	//** Interrupted
 
-        if (item.revents & ZMQ_POLLIN) {
-            zmsg_t *msg = zmsg_recv(self->sinker);
-            if (!msg)
-                break;
-            zframe_t *empty = zmsg_pop(msg);
-            zframe_destroy(&empty);
-            zframe_t *header = zmsg_pop(msg);
-
-            if (zframe_streq(header, RR_WORKER)) {
-                zframe_t *command = zmsg_pop(msg);
-                assert(zmsg_size(msg) >= 3); //** UUID + SOURCE + DATA
-                if (zframe_streq(command, RRWRK_OUTPUT)) {
-                    zmsg_send(&msg, self->pipe);
-                }
-                zframe_destroy(&command);
-            } else {
-                log_printf(0, "S: invalid message:");
-                zmsg_dump(msg);
-                zmsg_destroy(&msg);
-            }
-            zframe_destroy(&header);
-            zmsg_destroy(&msg);
-        }
-    }
+	if (item.revents & ZMQ_POLLIN) {
+	    zmsg_t *msg = zmsg_recv(self->sinker);
+	    if (!msg)
+		break;
+	    zframe_t *empty = zmsg_pop(msg);
+	    zframe_destroy(&empty);
+	    zframe_t *header = zmsg_pop(msg);
+		
+	    if (zframe_streq(header, RR_WORKER)) {
+	   	zframe_t *command = zmsg_pop(msg);
+	        assert(zmsg_size(msg) >= 3); //** UUID + SOURCE + DATA
+		if (zframe_streq(command, RRWRK_OUTPUT)) {
+		    zmsg_send(&msg, self->pipe);
+		} 
+		zframe_destroy(&command);
+	    } else {
+		log_printf(0, "S: invalid message:");
+		zmsg_dump(msg);
+		zmsg_destroy(&msg);
+	    }
+	    zframe_destroy(&header);
+	    zmsg_destroy(&msg);
+	}
+   }
 }
 
 //*************************************************************************
 // _rrsinker_config_ppp
 //*************************************************************************
 
-void _rrsinker_config_ppp(rrsinker_t *self, inip_file_t *keyfile) {
+void _rrsinker_config_ppp(rrsinker_t *self, inip_file_t *keyfile)
+{
     assert(keyfile);
     self->endpoint = inip_get_string(keyfile, "pppsinker", "endpoint", NULL);
     assert(self->endpoint);
-
+    
     int rc = zsocket_bind(self->sinker, "%s", self->endpoint);
-    assert(rc != -1);
+    assert(rc != -1);  
 }
 
 //*************************************************************************
-// rrsinker_load_config - Config the rr sinker
+// rrsinker_load_config - Config the rr sinker 
 //*************************************************************************
 
-void rrsinker_load_config(rrsinker_t *self, char *fname) {
+void rrsinker_load_config(rrsinker_t *self, char *fname)
+{
     assert(fname);
     inip_file_t *keyfile = inip_read(fname);
     self->pattern = inip_get_string(keyfile, "zsock", "pattern", NULL);
-    assert(self->pattern); //** Need a more decent way to handle misconfiguration
+    assert(self->pattern); //** Need a more decent way to handle misconfiguration 
 
     if (strcmp(self->pattern, "ppp") == 0) {
         _rrsinker_config_ppp(self, keyfile);

@@ -25,7 +25,7 @@ Advanced Computing Center for Research and Education
 230 Appleton Place
 Nashville, TN 37203
 http://www.accre.vanderbilt.edu
-*/
+*/ 
 
 //*********************************************************************
 //*********************************************************************
@@ -37,7 +37,8 @@ http://www.accre.vanderbilt.edu
 //**********************************************************************
 // zsock_status - Returns 1 if the socket is connected and 0 otherwise
 //**********************************************************************
-int zsock_status(net_sock_t *sock) {
+int zsock_status(net_sock_t *sock)
+{
     network_zsock_t *zsock = (network_zsock_t *)sock;
     if (zsock == NULL) return 0;
     if (zsock->socket == NULL) return 0;
@@ -48,24 +49,25 @@ int zsock_status(net_sock_t *sock) {
 //***********************************************************************
 // zsock_close - zmq socket close call
 //***********************************************************************
-int zsock_close(net_sock_t *sock) {
+int zsock_close(net_sock_t *sock) 
+{
     network_zsock_t *zsock = (network_zsock_t *)sock;
-    if (zsock == NULL)
-        return 0;
-
+    if (zsock == NULL) 
+	return 0;
+    
     apr_thread_mutex_destroy(zsock->lock);
     apr_pool_destroy(zsock->mpool);
-
+    
     if (zsock->context != NULL) {
-        if (zsock->socket != NULL)
-            zsocket_destroy(zsock->context, zsock->socket);
-        zctx_destroy(&zsock->context);
+	if (zsock->socket != NULL) 
+	    zsocket_destroy(zsock->context, zsock->socket);   
+	zctx_destroy(&zsock->context);
     }
-
+ 
     if (zsock->items != NULL) free(zsock->items);
-
+    
     free(zsock);
-
+        
     return 0;
 }
 
@@ -73,7 +75,8 @@ int zsock_close(net_sock_t *sock) {
 // zsock_set_peer - Dump function
 //***********************************************************************
 
-void zsock_set_peer(net_sock_t *sock, char *address, int add_size) {
+void zsock_set_peer(net_sock_t *sock, char *address, int add_size)
+{
 
 }
 
@@ -81,20 +84,22 @@ void zsock_set_peer(net_sock_t *sock, char *address, int add_size) {
 // zsock_io_wait - mode could be either ZMQ_POLLIN or ZMQ_POLLOUT
 //************************************************************************
 
-int zsock_io_wait(network_zsock_t *sock, Net_timeout_t tm, int mode) {
+int zsock_io_wait(network_zsock_t *sock, Net_timeout_t tm, int mode)
+{
     zmq_pollitem_t item;
     item.socket = sock->socket;
     item.events = mode;
-    if (tm > 0) tm /= 1000;
+    if (tm > 0) tm /= 1000;   
     zmq_poll(&item, 1, tm);
     return (item.revents & mode) != 0;
 }
-
+ 
 //************************************************************************
 // zsock_decode - Decode a transfer buffer into a new message
 //************************************************************************
 
-zmsg_t *zsock_decode(tbuffer_t *buf, size_t bpos, size_t size) {
+zmsg_t *zsock_decode(tbuffer_t *buf, size_t bpos, size_t size)
+{
     int i, rc;
     tbuffer_var_t tbv;
     tbuffer_var_init(&tbv);
@@ -113,21 +118,22 @@ zmsg_t *zsock_decode(tbuffer_t *buf, size_t bpos, size_t size) {
 }
 
 //************************************************************************
-// zsock_write - Write buffer to a socket. Note that when socket type is
+// zsock_write - Write buffer to a socket. Note that when socket type is 
 // ZMQ_ROUTER, tbuffer should begin with peer address. So 'bpos' should be 0
 // and 'size' should be greater than size of peer address in this case.
-// If it's not ready to write afte timeout, returns 0.
+// If it's not ready to write afte timeout, returns 0. 
 //************************************************************************
 
-long int zsock_write(net_sock_t *sock, tbuffer_t *buf, size_t bpos, size_t size, Net_timeout_t tm) {
+long int zsock_write(net_sock_t *sock, tbuffer_t *buf, size_t bpos, size_t size, Net_timeout_t tm)
+{
     network_zsock_t *zsock = (network_zsock_t *)sock;
-    zmsg_t *msg = zsock_decode(buf, bpos, size);
-    zmsg_dump(msg);
+    zmsg_t *msg = zsock_decode(buf, bpos, size); 
+    zmsg_dump(msg); 
 
     int rc = 0;
     if (zsock_io_wait(zsock, tm, ZMQ_POLLOUT)) {
-        zmsg_send(&msg, zsock->socket);
-        rc = size;
+	zmsg_send(&msg, zsock->socket);
+	rc = size;
     }
 
     return rc;
@@ -137,18 +143,19 @@ long int zsock_write(net_sock_t *sock, tbuffer_t *buf, size_t bpos, size_t size,
 // zsock_encode - Encode message to a new transfer buffer, return buffer size
 //************************************************************************
 
-size_t zsock_encode(zmsg_t *msg, tbuffer_t *buf) {
+size_t zsock_encode(zmsg_t *msg, tbuffer_t *buf)
+{
     int frame_count;
     int frame_nbr = zmsg_size(msg);
     int total_size = zmsg_content_size(msg);
     int iov_nbr = frame_nbr;
     int frame_size;
     zframe_t *frame;
-
+    
     iovec_t *iov;
     type_malloc(iov, iovec_t, iov_nbr);
 
-    //** Fill in iovec here. Need to destroy the memory by the caller.
+    //** Fill in iovec here. Need to destroy the memory by the caller. 
     for (frame_count = 0; frame_count < frame_nbr; frame_count++) {
         frame = zmsg_next(msg);
         frame_size = zframe_size(frame);
@@ -163,15 +170,16 @@ size_t zsock_encode(zmsg_t *msg, tbuffer_t *buf) {
 }
 
 //************************************************************************
-// zsock_read - Read data into the buffer from a socket. Return number
-// of bytes received. Allocate space to store the received data. Caller
-// needs to release these allocation.
+// zsock_read - Read data into the buffer from a socket. Return number 
+// of bytes received. Allocate space to store the received data. Caller 
+// needs to release these allocation. 
 //************************************************************************
 
-long int zsock_read(net_sock_t *sock, tbuffer_t *buf, size_t bpos, size_t size, Net_timeout_t tm) {
+long int zsock_read(net_sock_t *sock, tbuffer_t *buf, size_t bpos, size_t size, Net_timeout_t tm)
+{
     int total_bytes = 0;
     network_zsock_t *zsock = (network_zsock_t *)sock;
-
+    
     if (zsock == NULL) return -1;
     if (zsock->socket == NULL) return -1;
 
@@ -187,15 +195,16 @@ long int zsock_read(net_sock_t *sock, tbuffer_t *buf, size_t bpos, size_t size, 
 }
 
 //***********************************************************************
-// zsock_default_opt
+// zsock_default_opt 
 //***********************************************************************
 
-void zsock_default_opt(zsocket_opt_t *option) {
+void zsock_default_opt(zsocket_opt_t *option)
+{
     option->flag = 0;
     option->rate = 100;
     option->multicast_hops = 1;
     option->identity = NULL; //** This is a string instead of memory bytes
-
+ 
     option->router_behavior = 0;
     option->sndhwm = 1000;
     option->rcvhwm = 1000;
@@ -213,15 +222,16 @@ void zsock_default_opt(zsocket_opt_t *option) {
     option->hwm = 1;
     option->sub_num = 0;
     option->unsub_num = 0;
-    option->subscribe = NULL;
-    option->unsubscribe = NULL;
+    option->subscribe = NULL; 
+    option->unsubscribe = NULL; 
 }
 
 //************************************************************************
 // zsock_option_create - Create a new zsocket option
 //************************************************************************
 
-zsocket_opt_t *zsock_option_create() {
+zsocket_opt_t *zsock_option_create()
+{
     zsocket_opt_t *option;
     type_malloc(option, zsocket_opt_t, 1);
     zsock_default_opt(option);
@@ -229,10 +239,11 @@ zsocket_opt_t *zsock_option_create() {
 }
 
 //************************************************************************
-// zsock_option_destroy - Destroy zsocket option
+// zsock_option_destroy - Destroy zsocket option  
 //************************************************************************
 
-void zsock_option_destroy(zsocket_opt_t *option) {
+void zsock_option_destroy(zsocket_opt_t *option)
+{
     int i;
     if (option->sub_num > 0) {
         for (i = 0; i < option->sub_num; i++) {
@@ -253,96 +264,97 @@ void zsock_option_destroy(zsocket_opt_t *option) {
     free(option);
 }
 
-//************************************************************************
+//************************************************************************ 
 // zsock_setopt - Set zmq socket options
 //************************************************************************
-void zsock_setopt(void *socket, zsocket_opt_t *option) {
+void zsock_setopt(void *socket, zsocket_opt_t *option)
+{
     int i;
 
     if (option == NULL) return;
 
     if (check_flag(option->flag, SNDHWM)) {
-        zsocket_set_sndhwm(socket, option->sndhwm);
-    }
+	zsocket_set_sndhwm(socket, option->sndhwm);
+    } 
 
     if (check_flag(option->flag, RCVHWM)) {
-        zsocket_set_rcvhwm(socket, option->rcvhwm);
+	zsocket_set_rcvhwm(socket, option->rcvhwm);
     }
-
+    
     if (check_flag(option->flag, AFFINITY)) {
-        zsocket_set_affinity(socket, option->affinity);
+	zsocket_set_affinity(socket, option->affinity);
     }
 
     if (check_flag(option->flag, RATE)) {
-        zsocket_set_rate(socket, option->rate);
+	zsocket_set_rate(socket, option->rate);
     }
-
+    
     if (check_flag(option->flag, RECOVERY_IVL)) {
-        zsocket_set_recovery_ivl(socket, option->recovery_ivl);
+	zsocket_set_recovery_ivl(socket, option->recovery_ivl);
     }
 
     if (check_flag(option->flag, SNDBUF)) {
-        zsocket_set_sndbuf(socket, option->sndbuf);
+	zsocket_set_sndbuf(socket, option->sndbuf);
     }
 
     if (check_flag(option->flag, RCVBUF)) {
-        zsocket_set_rcvbuf(socket, option->rcvbuf);
+	zsocket_set_rcvbuf(socket, option->rcvbuf);
     }
 
     if (check_flag(option->flag, RECONNECT_IVL)) {
-        zsocket_set_reconnect_ivl(socket, option->reconnect_ivl);
+	zsocket_set_reconnect_ivl(socket, option->reconnect_ivl);
     }
 
     if (check_flag(option->flag, RECONNECT_IVL_MAX)) {
-        zsocket_set_reconnect_ivl_max(socket, option->reconnect_ivl_max);
+	zsocket_set_reconnect_ivl_max(socket, option->reconnect_ivl_max);
     }
 
     if (check_flag(option->flag, BACKLOG)) {
-        zsocket_set_backlog(socket, option->backlog);
+	zsocket_set_backlog(socket, option->backlog);
     }
 
     if (check_flag(option->flag, MAXMSGSIZE)) {
-        zsocket_set_maxmsgsize(socket, option->maxmsgsize);
+	zsocket_set_maxmsgsize(socket, option->maxmsgsize);
     }
 
     if (check_flag(option->flag, MULTICAST_HOPS)) {
-        zsocket_set_multicast_hops(socket, option->multicast_hops);
+	zsocket_set_multicast_hops(socket, option->multicast_hops);
     }
 
     if (check_flag(option->flag, RCVTIMEO)) {
-        zsocket_set_rcvtimeo(socket, option->rcvtimeo);
+	zsocket_set_rcvtimeo(socket, option->rcvtimeo);
     }
 
     if (check_flag(option->flag, SNDTIMEO)) {
-        zsocket_set_sndtimeo(socket, option->sndtimeo);
+	zsocket_set_sndtimeo(socket, option->sndtimeo); 
     }
 
     if (check_flag(option->flag, IPV4ONLY)) {
-        zsocket_set_ipv4only(socket, option->ipv4only);
+	zsocket_set_ipv4only(socket, option->ipv4only);
     }
 
     if (check_flag(option->flag, ROUTER_BEHAVIOR)) {
-        zsocket_set_router_mandatory(socket, option->router_behavior);
+	zsocket_set_router_mandatory(socket, option->router_behavior);
     }
 
     if (check_flag(option->flag,HWM)) {
-        zsocket_set_hwm(socket, option->hwm);
+	zsocket_set_hwm(socket, option->hwm);
     }
 
     if (check_flag(option->flag, SUBSCRIBE)) {
-        for (i = 0; i < option->sub_num; i++) {
-            zsocket_set_subscribe(socket, option->subscribe[i]);
-        }
+	for (i = 0; i < option->sub_num; i++){
+	    zsocket_set_subscribe(socket, option->subscribe[i]);
+	}
     }
 
     if (check_flag(option->flag, UNSUBSCRIBE)) {
-        for (i = 0; i < option->unsub_num; i++) {
-            zsocket_set_unsubscribe(socket, option->unsubscribe[i]);
-        }
+	for (i = 0; i < option->unsub_num; i++) {
+	    zsocket_set_unsubscribe(socket, option->unsubscribe[i]);
+	}
     }
 
     if (check_flag(option->flag, IDENTITY)) {
-        zsocket_set_identity(socket, option->identity);
+	zsocket_set_identity(socket, option->identity);
     }
 }
 
@@ -350,7 +362,8 @@ void zsock_setopt(void *socket, zsocket_opt_t *option) {
 // _zsock_act - Connect or bind to the endpoint depending on action
 //************************************************************************
 
-int _zsock_act(net_sock_t *sock, const char *hostname, int port, Net_timeout_t timeout, int action) {
+int _zsock_act(net_sock_t *sock, const char *hostname, int port, Net_timeout_t timeout, int action)
+{
     network_zsock_t *zsock = (network_zsock_t *)sock;
 
     //** Creates zsock->type czmq socket
@@ -358,15 +371,15 @@ int _zsock_act(net_sock_t *sock, const char *hostname, int port, Net_timeout_t t
     assert(zsock->socket);
 
     zsock_setopt(zsock->socket, zsock->option); //** Sets option before connect and bind!!
-
+    
     int rc;
     //** Connects or binds to an endpoint
-    if (action == ZSOCK_CONNECT) {
+    if (action == ZSOCK_CONNECT){
         rc = zsocket_connect(zsock->socket, "%s://%s:%d", zsock->prtcl, hostname, port);
         assert(rc == 0);
         log_printf(0, "zsocket_connect: host=%s://%s:%d\n", zsock->prtcl, hostname, port);
     } else if (action == ZSOCK_BIND) {
-        rc = zsocket_bind(zsock->socket, "%s://%s:%d", zsock->prtcl, hostname, port); //** Always returns port number if successful
+	rc = zsocket_bind(zsock->socket, "%s://%s:%d", zsock->prtcl, hostname, port); //** Always returns port number if successful
         assert(rc == port);
         log_printf(0, "zsocket_bind: host=%s://%s:%d\n", zsock->prtcl, hostname, port);
     }
@@ -378,15 +391,17 @@ int _zsock_act(net_sock_t *sock, const char *hostname, int port, Net_timeout_t t
 // zsock_connect - Connect a socket to the requested endpoint
 //***********************************************************************
 
-int zsock_connect(net_sock_t *sock, const char *hostname, int port, Net_timeout_t timeout) {
-    return _zsock_act(sock, hostname, port, timeout, ZSOCK_CONNECT);
+int zsock_connect(net_sock_t *sock, const char *hostname, int port, Net_timeout_t timeout)
+{
+    return _zsock_act(sock, hostname, port, timeout, ZSOCK_CONNECT); 
 }
 
 //***********************************************************************
-// zsock_bind - Bind a socket to the requested endpoint
+// zsock_bind - Bind a socket to the requested endpoint 
 //***********************************************************************
 
-int zsock_bind(net_sock_t *sock, char *hostname, int port) {
+int zsock_bind(net_sock_t *sock, char *hostname, int port)
+{
     return _zsock_act(sock, hostname, port, 0, ZSOCK_BIND);
 }
 
@@ -394,22 +409,23 @@ int zsock_bind(net_sock_t *sock, char *hostname, int port) {
 // ns_config_zsock - Configure the connection to use zmq
 //***********************************************************************
 
-void ns_config_zsock(NetStream_t *ns, int type, char *prtcl, zsocket_opt_t *option) {
-    log_printf(0, "ns_config_zsock: ns=%d, \n", ns->id);
-
+void ns_config_zsock(NetStream_t *ns, int type, char *prtcl, zsocket_opt_t *option)
+{
+    log_printf(0, "ns_config_zsock: ns=%d, \n", ns->id);    
+    
     _ns_init(ns, 0);
     ns->sock_type = NS_TYPE_ZSOCK;
     network_zsock_t *zsock;
     type_malloc_clear(zsock, network_zsock_t, 1);
-    ns->sock = (net_sock_t *)zsock;
+    ns->sock = (net_sock_t *)zsock;    
 
     apr_status_t rv;
     rv = apr_pool_create(&(zsock->mpool), NULL);
     if (rv != APR_SUCCESS) {
-        log_printf(0, "ns_config_zsock: apr_pool_create error = %d\n", rv);
-        flush_log();
-        assert(rv == APR_SUCCESS);
-    }
+	log_printf(0, "ns_config_zsock: apr_pool_create error = %d\n", rv); 
+	flush_log();
+	assert(rv == APR_SUCCESS);
+    } 
 
     apr_thread_mutex_create(&(zsock->lock), APR_THREAD_MUTEX_DEFAULT, zsock->mpool);
 
@@ -420,9 +436,9 @@ void ns_config_zsock(NetStream_t *ns, int type, char *prtcl, zsocket_opt_t *opti
     zsock->type = type;
     zsock->prtcl = prtcl;
     zsock->option = option;
-
+ 
     ns->connect = zsock_connect;
-    ns->bind = zsock_bind;
+    ns->bind = zsock_bind; 
     ns->sock_status = zsock_status;
     ns->close = zsock_close;
     ns->read = zsock_read;

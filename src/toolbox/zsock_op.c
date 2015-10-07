@@ -39,7 +39,8 @@ op_status_t zsock_failure_status = {OP_STATE_FAILURE, 0};
 // gop_write - Send data
 //*************************************************************************
 
-op_status_t gop_write(NetStream_t *ns, op_generic_t *gop, tbuffer_t *buffer, zsock_off_t pos, zsock_off_t size) {
+op_status_t gop_write(NetStream_t *ns, op_generic_t *gop, tbuffer_t *buffer, zsock_off_t pos, zsock_off_t size)
+{
     int nbytes;
     op_status_t status;
     Net_timeout_t dt;
@@ -52,8 +53,8 @@ op_status_t gop_write(NetStream_t *ns, op_generic_t *gop, tbuffer_t *buffer, zso
     if (nbytes == size) {
         status = zsock_success_status;
     } else {
-        status = zsock_failure_status;
-    }
+	status = zsock_failure_status; 
+    }	 
 
     return(status);
 }
@@ -62,7 +63,8 @@ op_status_t gop_write(NetStream_t *ns, op_generic_t *gop, tbuffer_t *buffer, zso
 // gop_read - Receive data. timeout is set to be 1s
 //*************************************************************************
 
-op_status_t gop_read(NetStream_t *ns, op_generic_t *gop, tbuffer_t *buffer, zsock_off_t pos, zsock_off_t size) {
+op_status_t gop_read(NetStream_t *ns, op_generic_t *gop, tbuffer_t *buffer, zsock_off_t pos, zsock_off_t size)
+{
     op_status_t status;
     Net_timeout_t dt;
 
@@ -71,7 +73,7 @@ op_status_t gop_read(NetStream_t *ns, op_generic_t *gop, tbuffer_t *buffer, zsoc
     int rc = read_netstream(ns, buffer, pos, size, dt);
 
     if (rc <= 0) {
-        status = zsock_failure_status;
+	status = zsock_failure_status;
     } else {
         status = zsock_success_status;
     }
@@ -80,26 +82,27 @@ op_status_t gop_read(NetStream_t *ns, op_generic_t *gop, tbuffer_t *buffer, zsoc
 }
 
 //*************************************************************************
-// _zsock_op_free -  Free an op's space
+// _zsock_op_free -  Free an op's space 
 //*************************************************************************
 
-void _zsock_op_free(op_generic_t *gop, int mode) { //** Are these enough? or redudant?
+void _zsock_op_free(op_generic_t *gop, int mode) //** Are these enough? or redudant?
+{
 
     log_printf(0, "_zsock_op_free: mode=%d gid=%d gop=%p\n", mode, gop_id(gop), gop);
 
     if (gop->op->cmd.hostport != NULL) {
-        free(gop->op->cmd.hostport);
-        gop->op->cmd.hostport = NULL;
+	free(gop->op->cmd.hostport);
+	gop->op->cmd.hostport = NULL;
     }
 
-//    zsock_op_t *zop;
+//    zsock_op_t *zop; 
 //    zop = zsock_get_zop(gop);
 //    free(zop->rw_op.rwbuf);
 
     gop_generic_free(gop, OP_FINALIZE);
 
     if (mode == OP_DESTROY) free(gop->free_ptr);
-    log_printf(0, "_zsock_op_free:END\n");
+    log_printf(0, "_zsock_op_free:END\n");   
 
 }
 
@@ -107,7 +110,8 @@ void _zsock_op_free(op_generic_t *gop, int mode) { //** Are these enough? or red
 // init_zsock_op - Initialize an ZSOCK op
 //*************************************************************************
 
-void init_zsock_op(zsock_context_t *zc, zsock_op_t *op) {
+void init_zsock_op(zsock_context_t *zc, zsock_op_t *op)
+{
     op_generic_t *gop;
 
     type_memclear(op, zsock_op_t, 1);
@@ -130,9 +134,10 @@ void init_zsock_op(zsock_context_t *zc, zsock_op_t *op) {
 // new_zsock_op -  Allocate space for a new op
 //*************************************************************************
 
-zsock_op_t *new_zsock_op(zsock_context_t *zc) {
+zsock_op_t *new_zsock_op(zsock_context_t *zc)
+{
     zsock_op_t *op;
-
+    
     type_malloc(op, zsock_op_t, 1);
 
     atomic_inc(zc->n_ops);
@@ -145,20 +150,22 @@ zsock_op_t *new_zsock_op(zsock_context_t *zc) {
 // new_zsock_rw_op - Create a new IO operation
 //************************************************************************
 
-op_generic_t *new_zsock_rw_op(zsock_context_t *zc, char *hostname, int port, int rw_type, tbuffer_t *buffer, zsock_off_t boff, zsock_off_t len, int timeout) {
+op_generic_t *new_zsock_rw_op(zsock_context_t *zc, char *hostname, int port, int rw_type, tbuffer_t *buffer, zsock_off_t boff, zsock_off_t len, int timeout)
+{
     zsock_op_t *op = new_zsock_op(zc);
     if (op == NULL) return NULL;
 
-    set_zsock_rw_op(op, hostname, port, rw_type, buffer, boff, len, timeout);
+    set_zsock_rw_op(op, hostname, port, rw_type, buffer, boff, len, timeout); 
 
-    return(zsock_get_gop(op));
-}
+    return(zsock_get_gop(op));   
+} 
 
 //************************************************************************
 // set_zsock_rw_op - Generate a new IO operation
 //************************************************************************
 
-void set_zsock_rw_op(zsock_op_t *op, char *hostname, int port, int rw_type, tbuffer_t *buffer, zsock_off_t boff, zsock_off_t len, int timeout) {
+void set_zsock_rw_op(zsock_op_t *op, char *hostname, int port, int rw_type, tbuffer_t *buffer, zsock_off_t boff, zsock_off_t len, int timeout)
+{
     zsock_op_rw_t *cmd;
     zsock_rw_buf_t *rwbuf;
     char *hoststr;
@@ -171,7 +178,7 @@ void set_zsock_rw_op(zsock_op_t *op, char *hostname, int port, int rw_type, tbuf
     op->dop.cmd.connect_context = &(op->zc->cc[rw_type]);
     asprintf(&hoststr, "%s" HP_HOSTPORT_SEPARATOR "%d", hostname, port);
     op->dop.cmd.hostport = strdup(hoststr);//"129.59.132.61|5001");
-
+	
     cmd->size = len; //* This is the total size
 
     rwbuf = &(cmd->buf_single);
@@ -183,31 +190,32 @@ void set_zsock_rw_op(zsock_op_t *op, char *hostname, int port, int rw_type, tbuf
 
     rwbuf->n_iovec = 1;
     rwbuf->buffer = buffer;
-    rwbuf->boff = boff;
+    rwbuf->boff = boff;    
     rwbuf->size = len;
-
+    
     if (rw_type == ZSOCK_WRITE) {
-        gop->op->cmd.send_command = NULL;
-        gop->op->cmd.send_phase = write_send;
-        gop->op->cmd.recv_phase = NULL;
-        gop->op->cmd.on_submit = NULL;
-        gop->op->cmd.before_exec = NULL;
+	gop->op->cmd.send_command = NULL;
+	gop->op->cmd.send_phase = write_send;
+	gop->op->cmd.recv_phase = NULL;
+	gop->op->cmd.on_submit = NULL;
+	gop->op->cmd.before_exec = NULL;
     } else {
-        gop->op->cmd.send_command = NULL;
-        gop->op->cmd.send_phase = NULL;
-        gop->op->cmd.recv_phase = read_recv;
-        gop->op->cmd.on_submit = NULL;
-        gop->op->cmd.before_exec = NULL;
+	gop->op->cmd.send_command = NULL;
+	gop->op->cmd.send_phase = NULL;
+	gop->op->cmd.recv_phase = read_recv;
+	gop->op->cmd.on_submit = NULL;
+	gop->op->cmd.before_exec = NULL;
     }
-
-    free(hoststr);
+    
+    free(hoststr); 
 }
 
 //************************************************************************
 // new_zsock_read_op - Create a new read operation
 //************************************************************************
 
-op_generic_t *new_zsock_read_op(zsock_context_t *zc, char *hostname, int port, tbuffer_t *buffer, zsock_off_t boff, zsock_off_t len, int timeout) {
+op_generic_t *new_zsock_read_op(zsock_context_t *zc, char *hostname, int port, tbuffer_t *buffer, zsock_off_t boff, zsock_off_t len, int timeout)
+{
     op_generic_t *op = new_zsock_rw_op(zc, hostname, port, ZSOCK_READ, buffer, boff, len, timeout);
     return op;
 }
@@ -216,15 +224,17 @@ op_generic_t *new_zsock_read_op(zsock_context_t *zc, char *hostname, int port, t
 // set_zsock_read_ip - Generate a new read operation
 //************************************************************************
 
-void set_zsock_read_op(zsock_op_t *op, char *hostname, int port, tbuffer_t *buffer, zsock_off_t boff, zsock_off_t len, int timeout) {
-    set_zsock_rw_op(op, hostname, port, ZSOCK_READ, buffer, boff, len, timeout);
+void set_zsock_read_op(zsock_op_t *op, char *hostname, int port, tbuffer_t *buffer, zsock_off_t boff, zsock_off_t len, int timeout) 
+{
+    set_zsock_rw_op(op, hostname, port, ZSOCK_READ, buffer, boff, len, timeout); 
 }
 
 //***********************************************************************
 // new_zsock_write_op - Create a new write operation
 //***********************************************************************
 
-op_generic_t *new_zsock_write_op(zsock_context_t *zc, char *hostname, int port, tbuffer_t *buffer, zsock_off_t boff, zsock_off_t len, int timeout) {
+op_generic_t *new_zsock_write_op(zsock_context_t *zc, char *hostname, int port, tbuffer_t *buffer, zsock_off_t boff, zsock_off_t len, int timeout)
+{
     op_generic_t *op = new_zsock_rw_op(zc, hostname, port, ZSOCK_WRITE, buffer, boff, len, timeout);
     return op;
 }
@@ -233,7 +243,8 @@ op_generic_t *new_zsock_write_op(zsock_context_t *zc, char *hostname, int port, 
 // set_zsock_write_op - Generate a new write operation
 //***********************************************************************
 
-void set_zsock_write_op(zsock_op_t *op, char *hostname, int port, tbuffer_t *buffer, zsock_off_t boff, zsock_off_t len, int timeout) {
+void set_zsock_write_op(zsock_op_t *op, char *hostname, int port, tbuffer_t *buffer, zsock_off_t boff, zsock_off_t len, int timeout)
+{
     set_zsock_rw_op(op, hostname, port, ZSOCK_WRITE, buffer, boff, len, timeout);
 }
 
@@ -247,24 +258,25 @@ void set_zsock_write_op(zsock_op_t *op, char *hostname, int port, tbuffer_t *buf
 //}
 
 //***********************************************************************
-// write_send - Execute write operation
+// write_send - Execute write operation 
 //***********************************************************************
 
-op_status_t write_send(op_generic_t *gop, NetStream_t *ns) {
+op_status_t write_send(op_generic_t *gop, NetStream_t *ns)
+{
     zsock_op_t *zop = zsock_get_zop(gop);
     zsock_op_rw_t *cmd = &(zop->rw_op);
 
     log_printf(0, "write_send: START gid:%d n_ops=%d\n", gop_id(gop), cmd->n_ops);
-
+    
     int i;
     zsock_rw_buf_t *rwbuf;
     op_status_t err;
     for (i = 0; i < cmd->n_ops; i++) {
-        rwbuf = cmd->rwbuf[i];
-        log_printf(0, "gid=%d ns=%d i=%d size=" I64T "\n", gop_id(gop), ns_getid(ns), i, rwbuf->size);
-        err = gop_write(ns, gop, rwbuf->buffer, rwbuf->boff, rwbuf->size);
-        log_printf(0, "gid=%d ns=%d i=%d status=%d\n", gop_id(gop), ns_getid(ns), i, err.op_status);
-        if (err.op_status != OP_STATE_SUCCESS) break;
+	rwbuf = cmd->rwbuf[i]; 
+	log_printf(0, "gid=%d ns=%d i=%d size=" I64T "\n", gop_id(gop), ns_getid(ns), i, rwbuf->size);
+	err = gop_write(ns, gop, rwbuf->buffer, rwbuf->boff, rwbuf->size);
+	log_printf(0, "gid=%d ns=%d i=%d status=%d\n", gop_id(gop), ns_getid(ns), i, err.op_status);
+	if (err.op_status != OP_STATE_SUCCESS) break;
     }
 
     log_printf(0, "write_send: END ns=%d status=%d\n", ns_getid(ns), err.op_status);
@@ -272,10 +284,11 @@ op_status_t write_send(op_generic_t *gop, NetStream_t *ns) {
 }
 
 //***********************************************************************
-// read_recv - Execute read operation
+// read_recv - Execute read operation 
 //***********************************************************************
 
-op_status_t read_recv(op_generic_t *gop, NetStream_t *ns) {
+op_status_t read_recv(op_generic_t *gop, NetStream_t *ns)
+{
     zsock_op_t *zop = zsock_get_zop(gop);
     zsock_op_rw_t *cmd = &(zop->rw_op);
 

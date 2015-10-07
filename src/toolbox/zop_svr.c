@@ -32,11 +32,12 @@ http://www.accre.vanderbilt.edu
 #include "zsock_op.h"
 
 //**********************************************************************************
-// free_tbuffer - Destroy allocation. It might be conflicted with Alan's codes if
+// free_tbuffer - Destroy allocation. It might be conflicted with Alan's codes if 
 // add this function to transfer_buffer.h.
 //**********************************************************************************
 
-void free_tbuffer(tbuffer_t *tbuf, int num) {
+void free_tbuffer(tbuffer_t *tbuf, int num) 
+{
     int i, j;
     for (i = 0; i < num; i++) {
         for(j = 0; j < tbuf->buf.n; j++) {
@@ -46,79 +47,80 @@ void free_tbuffer(tbuffer_t *tbuf, int num) {
     }
 }
 
-int main(int argc, char **argv) {
+int main(int argc, char **argv)
+{
     //** Parse options
     char *transport, *hostname;
     int c, port, sock_type, num, level;
 
     if (argc < 13) {
-        fprintf(stdout, "Command: ./zop_test -d debug_level -h hostname -p port -t transport -m mode -n num_msg ZSOCK_COMMON_OPTIONS\n");
-        fprintf(stdout, "\t -m: zmq transport mode\n");
-        fprintf(stdout, "\t   0: REQ - REP\n");
-        fprintf(stdout, "\t   1: DEALER - ROUTER\n");
-        fprintf(stdout, "\t   2: DEALER - DEALER\n");
-        fprintf(stdout, "\t   3: ROUTER - ROUTER\n");
-        fprintf(stdout, "\t   4: PULL - PUSH\n");
-        fprintf(stdout, "\t   5: SUB - PUB\n");
-        exit(1);
+	fprintf(stdout, "Command: ./zop_test -d debug_level -h hostname -p port -t transport -m mode -n num_msg ZSOCK_COMMON_OPTIONS\n");
+	fprintf(stdout, "\t -m: zmq transport mode\n");
+	fprintf(stdout, "\t   0: REQ - REP\n");
+	fprintf(stdout, "\t   1: DEALER - ROUTER\n");
+	fprintf(stdout, "\t   2: DEALER - DEALER\n");
+	fprintf(stdout, "\t   3: ROUTER - ROUTER\n");
+	fprintf(stdout, "\t   4: PULL - PUSH\n");
+	fprintf(stdout, "\t   5: SUB - PUB\n");
+	exit(1);
     }
-
+    
     while ((c = getopt(argc, argv, "d:m:t:h:p:n:")) != -1) {
-        switch(c) {
-        case 'd':
-            level = atoi(optarg);
-            break;
-        case 'h':
-            hostname = optarg;
-            break;
-        case 't':
-            transport = optarg;
-            break;
-        case 'p':
-            port = atoi(optarg);
-            break;
-        case 'm':
-            sock_type = atoi(optarg);
-            break;
-        case 'n':
-            num = atoi(optarg);
-            break;
-        case '?':
-            if (optopt == 'c')
-                fprintf(stderr, "Option -%c requires an argument.\n", optopt);
-            else if(isprint(optopt))
-                fprintf(stderr, "Unkown option: %c\n", optopt);
-            else
-                fprintf(stderr, "Unkown option: \\x%x\n", optopt);
-            return 1;
-        default:
-            printf("Wrong options\n");
-            abort();
-        }
+	switch(c) {
+	    case 'd':
+		level = atoi(optarg);
+		break;
+	    case 'h':
+		hostname = optarg;	
+		break;
+	    case 't':
+		transport = optarg;
+		break;
+	    case 'p':
+		port = atoi(optarg);
+		break;
+	    case 'm':
+		sock_type = atoi(optarg); 
+		break;
+	    case 'n':
+		num = atoi(optarg); 
+		break;
+	    case '?':
+		if (optopt == 'c')
+		    fprintf(stderr, "Option -%c requires an argument.\n", optopt);
+		else if(isprint(optopt))
+		    fprintf(stderr, "Unkown option: %c\n", optopt);
+		else
+		    fprintf(stderr, "Unkown option: \\x%x\n", optopt);
+		return 1;	
+	    default:
+		printf("Wrong options\n");
+		abort();
+	}
     }
 
     set_log_level(level);
 
     char test[] = "Hello";
-
+ 
     tbuffer_t buf;
     tbuffer_single(&buf, 5, test);
     int i;
 
     tbuffer_t *sndbuf;
     tbuffer_t *rcvbuf;
-
-    type_malloc(sndbuf, tbuffer_t, num);
-    type_malloc(rcvbuf, tbuffer_t, num);
-
+    
+    type_malloc(sndbuf, tbuffer_t, num); 
+    type_malloc(rcvbuf, tbuffer_t, num);	
+  
     for (i = 0; i < num; i++) {
-        tbuffer_single(&sndbuf[i], 5, test);
+	tbuffer_single(&sndbuf[i], 5, test); 
     }
 
-    //** Initializes apr
+    //** Initializes apr 
     apr_initialize();
-
-    //** Create zsock_op server/netstream
+   
+    //** Create zsock_op server/netstream    
     NetStream_t *ns_svr;
     ns_svr = new_netstream();
 
@@ -136,7 +138,7 @@ int main(int argc, char **argv) {
     option->identity = (char *)malloc(5*sizeof(char)); //** This is a string instead of memory bytes
     //memcpy(option->identity, "test", 4);
     strcpy(option->identity, "test");
-
+ 
     option->router_behavior = 0;
     option->sndhwm = 1;
     option->rcvhwm = 1;
@@ -156,31 +158,31 @@ int main(int argc, char **argv) {
     option->sub_num = 1;
     option->unsub_num = 0;
     if (option->sub_num > 0)
-        option->subscribe = (char **)malloc(option->sub_num * sizeof(char*));
+	option->subscribe = (char **)malloc(option->sub_num * sizeof(char*));
     option->subscribe[0] = "Hello";
-
+    
     if (sock_type == 5) {
-        log_printf(0, "Working on ZMQ SUB:PUB mode. Coming soon... ...!\n");
+        log_printf(0, "Working on ZMQ SUB:PUB mode. Coming soon... ...!\n"); 
     } else if (sock_type == 0) {
 
-        log_printf(0, "Working on ZMQ REQ:REP mode\n");
-        set_flag(option->flag, IDENTITY);
-
-        ns_config_zsock(ns_svr, ZMQ_REP, transport, NULL);
+	log_printf(0, "Working on ZMQ REQ:REP mode\n");
+        set_flag(option->flag, IDENTITY); 
+	
+	ns_config_zsock(ns_svr, ZMQ_REP, transport, NULL);
         zsock_bind(ns_svr->sock, hostname, port);
 
-        for (i = 0; i < num; i++) {
-            fprintf(stdout, "[Responder receiving data ...]\n");
+	for (i = 0; i < num; i++) {
+	    fprintf(stdout, "[Responder receiving data ...]\n");
             read_netstream(ns_svr, &rcvbuf[i], 0, 5, -1);
 
-            fprintf(stdout, "[Responder sending data ...]\n");
+	    fprintf(stdout, "[Responder sending data ...]\n");
             write_netstream(ns_svr, &rcvbuf[i], 0, 5, 0);
         }
-    } else if (sock_type == 1) {
-        log_printf(0, "Working on ZMQ DEALER:ROUTER mode\n");
-        ns_config_zsock(ns_svr, ZMQ_ROUTER, transport, NULL);
+    } else if (sock_type == 1) { 
+	log_printf(0, "Working on ZMQ DEALER:ROUTER mode\n");
+	ns_config_zsock(ns_svr, ZMQ_ROUTER, transport, NULL);
         zsock_bind(ns_svr->sock, hostname, port);
-
+   
         fprintf(stdout, "[Router receiving data ...]\n");
         for (i = 0; i < num; i++) {
             read_netstream(ns_svr, &rcvbuf[i], 0, 5, -1);
@@ -191,10 +193,10 @@ int main(int argc, char **argv) {
             write_netstream(ns_svr, &rcvbuf[i], 0, rcvbuf[i].buf.total_bytes, 0);
         }
     } else if (sock_type == 2) {
-        log_printf(0, "Working on ZMQ DEALER:DEALER mode\n");
-        ns_config_zsock(ns_svr, ZMQ_DEALER, transport, NULL);
+	log_printf(0, "Working on ZMQ DEALER:DEALER mode\n");
+	ns_config_zsock(ns_svr, ZMQ_DEALER, transport, NULL);
         zsock_bind(ns_svr->sock, hostname, port);
-
+ 
         fprintf(stdout, "[Dealer2 receiving data ...]\n");
         for (i = 0; i < num; i++) {
             read_netstream(ns_svr, &rcvbuf[i], 0, 5, -1);
@@ -205,22 +207,22 @@ int main(int argc, char **argv) {
             write_netstream(ns_svr, &rcvbuf[i], 0, 5, 0);
         }
     } else if (sock_type == 3) {
-        log_printf(0, "Working on ZMQ ROUTER:ROUTER mode. Coming soon ... ...!\n");
+	log_printf(0, "Working on ZMQ ROUTER:ROUTER mode. Coming soon ... ...!\n");
     } else if (sock_type == 4) {
-        log_printf(0, "Working on ZMQ PUSH:PULL mode!! Coming soon ... ...!\n");
-    }
-
+	log_printf(0, "Working on ZMQ PUSH:PULL mode!! Coming soon ... ...!\n");
+    } 
+    
     //zsock_connect(ns_client->sock, hostname, port, 0);
-
+     
     destroy_netstream(ns_client);
     destroy_netstream(ns_svr);
     apr_terminate();
-
+    
     if (option->sub_num > 0)
-        free(option->subscribe);
+	free(option->subscribe); 
     free(option->identity);
     free(option);
-
+    
     free_tbuffer(rcvbuf, num);
 //    if (sock_type != 4 && sock_type != 3)
 //	free_tbuffer(sndbuf, num);

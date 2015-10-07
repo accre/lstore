@@ -25,7 +25,7 @@ Advanced Computing Center for Research and Education
 230 Appleton Place
 Nashville, TN 37203
 http://www.accre.vanderbilt.edu
-*/
+*/ 
 
 //*************************************************************************
 //*************************************************************************
@@ -47,18 +47,18 @@ extern "C" {
 #include "dns_cache.h"
 #include "iniparse.h"
 
-#define ZSOCK_MAX_NUM_CMDS 2
+#define ZSOCK_MAX_NUM_CMDS 2 
 
 typedef int64_t zsock_off_t;  //** Base ZSOCK offset/size data type
 
 //** Holds data for zsock connection
 typedef struct {
-    int conn_type;
+    int conn_type;  
     int sock_type;
 //    int sock_bind_type;
     char *prtcl; //** Connection protocol
-    void *arg;   //** Generic container for context data - ZMQ socket options
-} zsock_connect_context_t;
+    void *arg;   //** Generic container for context data - ZMQ socket options 
+} zsock_connect_context_t; 
 
 typedef struct { //** Do I need other fields in ibp_context_t?
     int min_idle;        //** Connection minimum idle time before disconnecting
@@ -71,7 +71,7 @@ typedef struct { //** Do I need other fields in ibp_context_t?
     int check_connection_interval;  //**# of secs to wait between checks if we need more connections to a depot
     int max_retry;        //** Max number of times to retry a command before failing.. only for dead socket retries
 
-    zsock_connect_context_t cc[ZSOCK_MAX_NUM_CMDS]; //** Default connection contexts
+    zsock_connect_context_t cc[ZSOCK_MAX_NUM_CMDS]; //** Default connection contexts 
     portal_context_t *pc;
     int64_t max_workload;    //** Max workload allowed in a given connection
     apr_thread_mutex_t *lock;

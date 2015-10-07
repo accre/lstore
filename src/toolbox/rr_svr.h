@@ -44,11 +44,11 @@ typedef struct {
     zctx_t *ctx;       //** CZMQ context
     void *socket;      //** Server socket
     char *pattern;     //** ZMQ pattern
-    char *endpoint;    //** Endpoint that server binds to
+    char *endpoint;    //** Endpoint that server binds to 
     char *cli_identity; //** Client's identity
     int timeout;       //** Request timeout
     int mode;          //** Either SYNC_MODE or ASYNC_MODE
-} rrsvr_t;
+}rrsvr_t; 
 
 rrsvr_t *rrsvr_new();
 void rrsvr_destroy(rrsvr_t **self_p);

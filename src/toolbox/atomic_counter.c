@@ -25,7 +25,7 @@ Advanced Computing Center for Research and Education
 230 Appleton Place
 Nashville, TN 37203
 http://www.accre.vanderbilt.edu
-*/
+*/ 
 
 //*************************************************************************
 //*************************************************************************
@@ -46,42 +46,46 @@ apr_pool_t *_atomic_mpool = NULL;
 // atomic_global_counter - Returns the global counter and inc's it as well
 //*************************************************************************
 
-inline int atomic_counter(atomic_int_t *counter) {
-    int n;
-    n = atomic_inc(*counter);
-    if (n > 1073741824) atomic_set(*counter, 0);
-    return(n);
+inline int atomic_counter(atomic_int_t *counter)
+{
+  int n;
+  n = atomic_inc(*counter);
+  if (n > 1073741824) atomic_set(*counter, 0);
+  return(n);
 }
 
 //*************************************************************************
 // atomic_global_counter - Returns the global counter and inc's it as well
 //*************************************************************************
 
-inline int atomic_global_counter() {
-    return(atomic_counter(&_atomic_global_counter));
+inline int atomic_global_counter()
+{
+  return(atomic_counter(&_atomic_global_counter));
 }
 
 //*************************************************************************
 // _a_thread_id_ptr - Returns the pointer to the thread unique id
 //*************************************************************************
 
-int *_a_thread_id_ptr() {
-    int *ptr = NULL;
+int *_a_thread_id_ptr()
+{
+  int *ptr = NULL;
 
-    apr_threadkey_private_get((void *)&ptr, atomic_thread_id_key);
-    if (ptr == NULL ) {
-        ptr = (int *)malloc(sizeof(int));
-        apr_threadkey_private_set(ptr, atomic_thread_id_key);
-        *ptr = atomic_global_counter();
-    }
+  apr_threadkey_private_get((void *)&ptr, atomic_thread_id_key);
+  if (ptr == NULL ){
+     ptr = (int *)malloc(sizeof(int));
+     apr_threadkey_private_set(ptr, atomic_thread_id_key);
+     *ptr = atomic_global_counter();
+  }
 
-    return(ptr);
+  return(ptr);
 }
 
 //***************************************************************************
 
-void _atomic_destructor(void *ptr) {
-    free(ptr);
+void _atomic_destructor(void *ptr) 
+{ 
+  free(ptr);   
 }
 
 //*************************************************************************
@@ -89,11 +93,12 @@ void _atomic_destructor(void *ptr) {
 //     thread_id or global counter routines
 //*************************************************************************
 
-void atomic_init() {
-    if (atomic_inc(_atomic_times_used) != 0) return;
+void atomic_init()
+{
+  if (atomic_inc(_atomic_times_used) != 0) return;
 
-    apr_pool_create(&_atomic_mpool, NULL);
-    apr_threadkey_private_create(&atomic_thread_id_key,_atomic_destructor, _atomic_mpool);
+  apr_pool_create(&_atomic_mpool, NULL);
+  apr_threadkey_private_create(&atomic_thread_id_key,_atomic_destructor, _atomic_mpool);
 }
 
 //*************************************************************************
@@ -101,13 +106,14 @@ void atomic_init() {
 //     thread_id or global counter routines
 //*************************************************************************
 
-void atomic_destroy() {
-    if (atomic_dec(_atomic_times_used) > 0) return;
+void atomic_destroy()
+{
+  if (atomic_dec(_atomic_times_used) > 0) return;
+  
+  apr_pool_destroy(_atomic_mpool);
 
-    apr_pool_destroy(_atomic_mpool);
-
-    _atomic_mpool = NULL;
-    _atomic_times_used = 0;
+  _atomic_mpool = NULL;
+  _atomic_times_used = 0;
 }
 
 

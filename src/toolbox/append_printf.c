@@ -25,7 +25,7 @@ Advanced Computing Center for Research and Education
 230 Appleton Place
 Nashville, TN 37203
 http://www.accre.vanderbilt.edu
-*/
+*/ 
 
 #define _log_module_index 102
 
@@ -33,24 +33,25 @@ http://www.accre.vanderbilt.edu
 #include "log.h"
 
 //***************************************************************************
-// append_printf - Appends data to the end of a string and also updates the
+// append_printf - Appends data to the end of a string and also updates the 
 //     length.
 //***************************************************************************
 
-int append_printf(char *buffer, int *used, int nbytes, const char *fmt, ...) {
-    va_list args;
-    int n, nleft;
+int append_printf(char *buffer, int *used, int nbytes, const char *fmt, ...)
+{
+  va_list args;  
+  int n, nleft;
 
-    nleft = nbytes - *used;
-    if (nleft <= 0) return(-1);
+  nleft = nbytes - *used;
+  if (nleft <= 0) return(-1);
 
-    va_start(args, fmt);
-    n = vsnprintf(&(buffer[*used]), nleft, fmt, args);
-    va_end(args);
+  va_start(args, fmt);
+  n = vsnprintf(&(buffer[*used]), nleft, fmt, args);
+  va_end(args);
 
-    *used = *used + n;
+  *used = *used + n;
 
-    if (*used >= nbytes) n = -1;
+  if (*used >= nbytes) n = -1;
 
-    return(n);
+  return(n);
 }
