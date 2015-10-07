@@ -25,7 +25,7 @@ Advanced Computing Center for Research and Education
 230 Appleton Place
 Nashville, TN 37203
 http://www.accre.vanderbilt.edu
-*/
+*/ 
 
 
 #ifndef __PHOEBUS_H
@@ -37,8 +37,8 @@ http://www.accre.vanderbilt.edu
 
 #ifdef _ENABLE_PHOEBUS
 #include "liblsl_client.h"
-#else
-typedef void liblslSess;
+#else 
+  typedef void liblslSess;
 #endif
 
 
@@ -47,15 +47,15 @@ typedef void liblslSess;
 #ifdef __cplusplus
 extern "C" {
 #endif
-
+   
 typedef struct {
-    char *key;
-    char *path_string;
-    char **path;
-    int p_count;
-    int free_path;
+   char *key;  
+   char *path_string;
+   char **path;
+   int p_count;
+   int free_path;
 } phoebus_t;
-
+   
 extern phoebus_t *global_phoebus;
 
 void phoebus_init(void);

@@ -25,7 +25,7 @@ Advanced Computing Center for Research and Education
 230 Appleton Place
 Nashville, TN 37203
 http://www.accre.vanderbilt.edu
-*/
+*/ 
 
 
 #ifndef _IBP_TYPES_H_
@@ -58,9 +58,9 @@ typedef int64_t ibp_off_t;  //** Base IBP offset/size data type
  * Definition of the capability attributes structure
  */
 typedef struct ibp_attributes {
-    int     duration;     /* lifetime of the capability */
-    int     reliability;  /* reliability type of the capability */
-    int     type;         /* capability storage type */
+  int     duration;     /* lifetime of the capability */
+  int     reliability;  /* reliability type of the capability */
+  int     type;         /* capability storage type */
 } *IBP_attributes;
 
 /*
@@ -68,61 +68,61 @@ typedef struct ibp_attributes {
  */
 
 typedef struct {      //**IBP resource ID data type
-    char name[RID_LEN];
+  char name[RID_LEN];
 } rid_t;
 
 typedef struct ibp_depot {
-    char  host[IBP_MAX_HOSTNAME_LEN];  /* host name of the depot */
-    int   port;        /* port number */
-    rid_t   rid;         /* resource ID */
+  char  host[IBP_MAX_HOSTNAME_LEN];  /* host name of the depot */
+  int   port;        /* port number */
+  rid_t   rid;         /* resource ID */
 } *IBP_depot;
 
 /*
  * Definition of the IBP depot information
  */
 typedef struct ibp_dptinfo {
-    unsigned long int   StableStor;  /* size of the stable storage (in MByte) */
-    unsigned long int   StableStorUsed;  /* size of the used stable storage (in MByte) */
-    unsigned long int   VolStor;  /* size of the volatile storage (in MByte) */
-    unsigned long int   VolStorUsed;  /* size of the used volatile storage (in MByte) */
-    long                Duration;  /* How long the depot keeps up */
-    float               majorVersion;   /* version (major) of IBP server */
-    float               minorVersion;   /* version (minor) of IBP server */
-    int                 rid;
-    int                 type;
-    long long           HardConfigured;
-    long long           HardServed;
-    long long           HardUsed;
-    long long           HardAllocable;
-    long long           TotalConfigured;
-    long long           TotalServed;
-    long long           TotalUsed;
-    long long           SoftAllocable;
-    int                 nDM;            /* how many data mover  types the
+  unsigned long int   StableStor;  /* size of the stable storage (in MByte) */
+  unsigned long int   StableStorUsed;  /* size of the used stable storage (in MByte) */
+  unsigned long int   VolStor;  /* size of the volatile storage (in MByte) */
+  unsigned long int   VolStorUsed;  /* size of the used volatile storage (in MByte) */
+  long                Duration;  /* How long the depot keeps up */
+  float               majorVersion;   /* version (major) of IBP server */
+  float               minorVersion;   /* version (minor) of IBP server */
+  int                 rid;
+  int                 type;
+  long long           HardConfigured;
+  long long           HardServed;
+  long long           HardUsed;
+  long long           HardAllocable;
+  long long           TotalConfigured;
+  long long           TotalServed;
+  long long           TotalUsed;
+  long long           SoftAllocable;
+  int                 nDM;            /* how many data mover  types the
                                         IBP server supports           */
-    int                 *dmTypes;       /* data mover types              */
-    int                 nNFU;           /* number of NFU ops */
-    int                 *NFU;           /* NFU ops */
+  int                 *dmTypes;       /* data mover types              */
+  int                 nNFU;           /* number of NFU ops */
+  int                 *NFU;           /* NFU ops */
 } *IBP_DptInfo;
 
 /*
  * Definition of the timer structure
  */
 typedef struct ibp_timer {
-    int  ClientTimeout;  /* Timeout on client side */
-    int  ServerSync;  /* Timeout on server(depot) side */
+  int  ClientTimeout;  /* Timeout on client side */
+  int  ServerSync;  /* Timeout on server(depot) side */
 } *IBP_timer;
 
 /*
  * Definition of the capability status structure
  */
-typedef struct ibp_capstatus {
-    int  readRefCount;  /* number of the capability's read reference */
-    int  writeRefCount;  /* number of the capability's write reference */
-    ibp_off_t  currentSize;  /* size of data in the capability */
-    ibp_off_t  maxSize;  /* max size of the capability */
-    struct ibp_attributes  attrib;    /* attributes of the capability */
-    char  *passwd;  /* passwd of the depot */
+typedef struct ibp_capstatus{
+  int  readRefCount;  /* number of the capability's read reference */
+  int  writeRefCount;  /* number of the capability's write reference */
+  ibp_off_t  currentSize;  /* size of data in the capability */
+  ibp_off_t  maxSize;  /* max size of the capability */
+  struct ibp_attributes  attrib;    /* attributes of the capability */
+  char  *passwd;  /* passwd of the depot */
 } *IBP_CapStatus;
 
 /*
@@ -134,16 +134,16 @@ typedef char* IBP_cap;
  * Definition of the capability set
  */
 typedef struct ibp_set_of_caps {
-    IBP_cap  readCap;  /* read capability */
-    IBP_cap writeCap;  /* write capability */
-    IBP_cap manageCap;  /* manage capability */
+  IBP_cap  readCap;  /* read capability */
+  IBP_cap writeCap;  /* write capability */
+  IBP_cap manageCap;  /* manage capability */
 } *IBP_set_of_caps;
 
 
 typedef struct {    //*** Holds the data for the different network connection types
-    int type;           //** Type of connection as defined in network.h
-    int tcpsize;        //** All types have this parameter
-    void *data;         //** Generic container for context data
+   int type;           //** Type of connection as defined in network.h
+   int tcpsize;        //** All types have this parameter
+   void *data;         //** Generic container for context data
 } ibp_connect_context_t;
 
 typedef struct ibp_attributes ibp_attributes_t;
@@ -155,21 +155,21 @@ typedef char ibp_cap_t;
 typedef struct ibp_set_of_caps ibp_capset_t;
 
 typedef struct {    //** I/O Vec array
-    ibp_off_t offset;
-    ibp_off_t len;
+  ibp_off_t offset;
+  ibp_off_t len;
 } ibp_iovec_t;
 
 typedef struct {  //** RID list structure
-    int n;
-    rid_t *rl;
+   int n;
+   rid_t *rl;
 } ibp_ridlist_t;
 
 typedef struct {  //** Alias cap status
-    int read_refcount;
-    int write_refcount;
-    ibp_off_t offset;
-    ibp_off_t size;
-    long int duration;
+  int read_refcount;
+  int write_refcount;
+  ibp_off_t offset;
+  ibp_off_t size;
+  long int duration;
 } ibp_alias_capstatus_t;
 
 //*** ibp_types.c **
@@ -194,12 +194,12 @@ ibp_capstatus_t *new_ibp_capstatus();
 void destroy_ibp_capstatus(ibp_capstatus_t *cs);
 void copy_ibp_capstatus(ibp_capstatus_t *src, ibp_capstatus_t *dest);
 void get_ibp_capstatus(ibp_capstatus_t *cs, int *readcount, int *writecount,
-                       int *current_size, int *max_size, ibp_attributes_t *attrib);
+    int *current_size, int *max_size, ibp_attributes_t *attrib);
 ibp_alias_capstatus_t *new_ibp_alias_capstatus();
 void destroy_ibp_alias_capstatus(ibp_alias_capstatus_t *cs);
 void copy_ibp_alias_capstatus(ibp_alias_capstatus_t *src, ibp_alias_capstatus_t *dest);
 void get_ibp_alias_capstatus(ibp_alias_capstatus_t *cs, int *readcount, int *writecount,
-                             ibp_off_t *offset, ibp_off_t *size, int *duration);
+    ibp_off_t *offset, ibp_off_t *size, int *duration);
 void ridlist_init(ibp_ridlist_t *rlist, int size);
 void ridlist_destroy(ibp_ridlist_t *rlist);
 int ridlist_get_size(ibp_ridlist_t *rlist);

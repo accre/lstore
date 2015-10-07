@@ -12,8 +12,8 @@
  * that both the copyright notice and this permission notice appear in
  * supporting documentation.
  *
- * Neither the Institution (University of Tennessee) nor the Authors
- * make any representations about the suitability of this software for
+ * Neither the Institution (University of Tennessee) nor the Authors 
+ * make any representations about the suitability of this software for 
  * any purpose. This software is provided ``as is'' without express or
  * implied warranty.
  *

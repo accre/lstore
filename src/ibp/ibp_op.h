@@ -25,7 +25,7 @@ Advanced Computing Center for Research and Education
 230 Appleton Place
 Nashville, TN 37203
 http://www.accre.vanderbilt.edu
-*/
+*/ 
 
 //*************************************************************
 // ibp_op.h - Header defining I/O structs and operations
@@ -68,35 +68,36 @@ extern "C" {
 //typedef int64_t ibp_off_t;
 
 typedef struct {
-    int tcpsize;         //** TCP R/W buffer size.  If 0 then OS default is used
-    int min_idle;        //** Connection minimum idle time before disconnecting
-    int min_threads;     //** Min and max threads allowed to a depot
-    int max_threads;     //** Max number of simultaneous connection to a depot
-    int max_connections; //** Max number of connections across all connections
-    int rw_new_command;     //** byte "cost" of just the command portion excluding any data transfer for a Read/Write command
-    int other_new_command;     //** byte "cost" of the non-R/W commands
-    int coalesce_enable; //** Enable R/W coaleascing
-    int64_t max_workload;    //** Max workload allowed in a given connection
-    int64_t max_coalesce;    //** MAx amount of data that can be coalesced
-    int max_wait;         //** Max time to wait and retry a connection
-    int wait_stable_time; //** Time to wait before opening a new connection for a heavily loaded depot
-    int abort_conn_attempts; //** If this many failed connection requests occur in a row we abort
-    int check_connection_interval;  //**# of secs to wait between checks if we need more connections to a depot
-    int max_retry;        //** Max number of times to retry a command before failing.. only for dead socket retries
-    int coalesce_ops;     //** If 1 then Read and Write ops for the same allocation are coalesced
-    int connection_mode;  //** Connection mode
-    int rr_size;          //** Round robin connection count. Only used ir cmode = RR
-    double transfer_rate; //** Transfer rate in bytes/sec used for calculating timeouts.  Set to 0 to disable function
-    atomic_int_t rr_count; //** RR counter
-    ibp_connect_context_t cc[IBP_MAX_NUM_CMDS+1];  //** Default connection contexts for EACH command
-    ns_chksum_t ncs;
-    portal_context_t *pc;
-    pigeon_coop_t *coalesced_stacks;
-    pigeon_coop_t *coalesced_gop_stacks;
-    list_t   *coalesced_ops;  //** Ops available for coalescing go here
-    apr_thread_mutex_t *lock;
-    apr_pool_t *mpool;
-    atomic_int_t n_ops;
+   int tcpsize;         //** TCP R/W buffer size.  If 0 then OS default is used
+   int min_idle;        //** Connection minimum idle time before disconnecting
+   int min_threads;     //** Min and max threads allowed to a depot
+   int max_threads;     //** Max number of simultaneous connection to a depot
+   int max_connections; //** Max number of connections across all connections
+   apr_time_t dt_connect;  //** How long to wait when making a new connection
+   int rw_new_command;     //** byte "cost" of just the command portion excluding any data transfer for a Read/Write command
+   int other_new_command;     //** byte "cost" of the non-R/W commands
+   int coalesce_enable; //** Enable R/W coaleascing
+   int64_t max_workload;    //** Max workload allowed in a given connection
+   int64_t max_coalesce;    //** MAx amount of data that can be coalesced
+   int max_wait;         //** Max time to wait and retry a connection
+   int wait_stable_time; //** Time to wait before opening a new connection for a heavily loaded depot
+   int abort_conn_attempts; //** If this many failed connection requests occur in a row we abort
+   int check_connection_interval;  //**# of secs to wait between checks if we need more connections to a depot
+   int max_retry;        //** Max number of times to retry a command before failing.. only for dead socket retries
+   int coalesce_ops;     //** If 1 then Read and Write ops for the same allocation are coalesced
+   int connection_mode;  //** Connection mode
+   int rr_size;          //** Round robin connection count. Only used ir cmode = RR
+   double transfer_rate; //** Transfer rate in bytes/sec used for calculating timeouts.  Set to 0 to disable function
+   atomic_int_t rr_count; //** RR counter
+   ibp_connect_context_t cc[IBP_MAX_NUM_CMDS+1];  //** Default connection contexts for EACH command
+   ns_chksum_t ncs;
+   portal_context_t *pc;
+   pigeon_coop_t *coalesced_stacks;
+   pigeon_coop_t *coalesced_gop_stacks;
+   list_t   *coalesced_ops;  //** Ops available for coalescing go here
+   apr_thread_mutex_t *lock;
+   apr_pool_t *mpool;
+   atomic_int_t n_ops;
 } ibp_context_t;
 
 
@@ -104,40 +105,40 @@ typedef struct {
 //extern ibp_config_t *_ibp_config;
 
 typedef struct {    //** IBP_VALIDATE_CHKSUM
-    ibp_cap_t *cap;
-    char       key[MAX_KEY_SIZE];
-    char       typekey[MAX_KEY_SIZE];
-    int correct_errors;
-    int *n_bad_blocks;
+   ibp_cap_t *cap;
+   char       key[MAX_KEY_SIZE];
+   char       typekey[MAX_KEY_SIZE];
+   int correct_errors;
+   int *n_bad_blocks;
 } ibp_op_validate_chksum_t;
 
 typedef struct {   //** IBP_GET_CHKSUM
-    ibp_cap_t *cap;
-    char       key[MAX_KEY_SIZE];
-    char       typekey[MAX_KEY_SIZE];
-    int chksum_info_only;
-    ibp_off_t bufsize;
-    char *buffer;
-    int *cs_type;
-    int *cs_size;
-    ibp_off_t *blocksize;
-    ibp_off_t *nblocks;
-    ibp_off_t *n_chksumbytes;
+   ibp_cap_t *cap;
+   char       key[MAX_KEY_SIZE];
+   char       typekey[MAX_KEY_SIZE];
+   int chksum_info_only;
+   ibp_off_t bufsize;
+   char *buffer;
+   int *cs_type;
+   int *cs_size;
+   ibp_off_t *blocksize;
+   ibp_off_t *nblocks;
+   ibp_off_t *n_chksumbytes;
 } ibp_op_get_chksum_t;
 
 typedef struct {
-    ibp_iovec_t *iovec;
-    tbuffer_t *buffer;
-    ibp_off_t size;
-    ibp_off_t boff;
-    int n_iovec;
-    ibp_iovec_t iovec_single;
+  ibp_iovec_t *iovec;
+  tbuffer_t *buffer;
+  ibp_off_t size;
+  ibp_off_t boff;
+  int n_iovec;
+  ibp_iovec_t iovec_single;
 } ibp_rw_buf_t;
 
-typedef struct {  //** Read/Write operation
-    ibp_cap_t *cap;
-    char       key[MAX_KEY_SIZE];
-    char       typekey[MAX_KEY_SIZE];
+typedef struct {  //** Read/Write operation 
+   ibp_cap_t *cap;
+   char       key[MAX_KEY_SIZE];
+   char       typekey[MAX_KEY_SIZE];
 //   char *buf;
 //   ibp_off_t offset;
 //   ibp_off_t size;
@@ -145,124 +146,124 @@ typedef struct {  //** Read/Write operation
 //   ibp_iovec_t *iovec;
 //   int   n_iovec;
 //   tbuffer_t *buffer;
-    int rw_mode;
-    int n_ops;
-    int n_iovec_total;
-    ibp_off_t size;
-    ibp_rw_buf_t **rwbuf;
-    ibp_rw_buf_t *bs_ptr;
-    pigeon_coop_hole_t rwcg_pch;
-    ibp_rw_buf_t buf_single;
+   int rw_mode;
+   int n_ops;
+   int n_iovec_total;
+   ibp_off_t size;
+   ibp_rw_buf_t **rwbuf;
+   ibp_rw_buf_t *bs_ptr;
+   pigeon_coop_hole_t rwcg_pch;
+   ibp_rw_buf_t buf_single;
 } ibp_op_rw_t;
 
 typedef struct { //** MERGE allocoation op
-    char mkey[MAX_KEY_SIZE];      //** Master key
-    char mtypekey[MAX_KEY_SIZE];
-    char ckey[MAX_KEY_SIZE];      //** Child key
-    char ctypekey[MAX_KEY_SIZE];
+   char mkey[MAX_KEY_SIZE];      //** Master key
+   char mtypekey[MAX_KEY_SIZE];
+   char ckey[MAX_KEY_SIZE];      //** Child key
+   char ctypekey[MAX_KEY_SIZE];
 } ibp_op_merge_alloc_t;
 
 typedef struct {  //**Allocate operation
-    ibp_off_t size;
-    ibp_off_t offset;                //** ibp_alias_allocate
-    int   duration;               //** ibp_alias_allocate
-    int   disk_chksum_type;            //** ibp_*ALLOCATE_CHKSUM
-    ibp_off_t  disk_blocksize;          //** IBP_*ALLOCATE_CHKSUM
-    char       key[MAX_KEY_SIZE];      //** ibp_rename/alias_allocate
-    char       typekey[MAX_KEY_SIZE];  //** ibp_rename/alias_allocate
-    ibp_cap_t *mcap;         //** This is just used for ibp_rename/ibp_split_allocate
-    ibp_capset_t *caps;
-    ibp_depot_t *depot;
-    ibp_attributes_t *attr;
+   ibp_off_t size;
+   ibp_off_t offset;                //** ibp_alias_allocate
+   int   duration;               //** ibp_alias_allocate
+   int   disk_chksum_type;            //** ibp_*ALLOCATE_CHKSUM
+   ibp_off_t  disk_blocksize;          //** IBP_*ALLOCATE_CHKSUM
+   char       key[MAX_KEY_SIZE];      //** ibp_rename/alias_allocate
+   char       typekey[MAX_KEY_SIZE];  //** ibp_rename/alias_allocate
+   ibp_cap_t *mcap;         //** This is just used for ibp_rename/ibp_split_allocate
+   ibp_capset_t *caps;
+   ibp_depot_t *depot;
+   ibp_attributes_t *attr;
 } ibp_op_alloc_t;
 
 typedef struct {  //** modify count and PROBE  operation
-    int       cmd;    //** IBP_MANAGE or IBP_ALIAS_MANAGE
-    ibp_cap_t *cap;
-    char       mkey[MAX_KEY_SIZE];     //** USed for ALIAS_MANAGE
-    char       mtypekey[MAX_KEY_SIZE]; //** USed for ALIAS_MANAGE
-    char       key[MAX_KEY_SIZE];
-    char       typekey[MAX_KEY_SIZE];
-    int        mode;
-    int        captype;
-    ibp_capstatus_t *probe;
-    ibp_alias_capstatus_t *alias_probe;
+   int       cmd;    //** IBP_MANAGE or IBP_ALIAS_MANAGE
+   ibp_cap_t *cap;
+   char       mkey[MAX_KEY_SIZE];     //** USed for ALIAS_MANAGE
+   char       mtypekey[MAX_KEY_SIZE]; //** USed for ALIAS_MANAGE
+   char       key[MAX_KEY_SIZE];
+   char       typekey[MAX_KEY_SIZE];
+   int        mode;
+   int        captype;
+   ibp_capstatus_t *probe;
+   ibp_alias_capstatus_t *alias_probe;
 } ibp_op_probe_t;
 
 typedef struct {  //** modify Allocation operation
-    ibp_cap_t *cap;
-    char       mkey[MAX_KEY_SIZE];     //** USed for ALIAS_MANAGE
-    char       mtypekey[MAX_KEY_SIZE]; //** USed for ALIAS_MANAGE
-    char       key[MAX_KEY_SIZE];
-    char       typekey[MAX_KEY_SIZE];
-    ibp_off_t     offset;    //** IBP_ALIAS_MANAGE
-    ibp_off_t     size;
-    int        duration;
-    int        reliability;
+   ibp_cap_t *cap;
+   char       mkey[MAX_KEY_SIZE];     //** USed for ALIAS_MANAGE
+   char       mtypekey[MAX_KEY_SIZE]; //** USed for ALIAS_MANAGE
+   char       key[MAX_KEY_SIZE];
+   char       typekey[MAX_KEY_SIZE];
+   ibp_off_t     offset;    //** IBP_ALIAS_MANAGE
+   ibp_off_t     size;
+   int        duration;
+   int        reliability;
 } ibp_op_modify_alloc_t;
 
 typedef struct {  //** depot depot copy operations
-    char      *path;       //** Phoebus path or NULL for default
-    ibp_cap_t *srccap;
-    ibp_cap_t *destcap;
-    char       src_key[MAX_KEY_SIZE];
-    char       src_typekey[MAX_KEY_SIZE];
-    ibp_off_t  src_offset;
-    ibp_off_t  dest_offset;
-    ibp_off_t  len;
-    int        dest_timeout;
-    int        dest_client_timeout;
-    int        ibp_command;
-    int        ctype;
+   char      *path;       //** Phoebus path or NULL for default
+   ibp_cap_t *srccap;
+   ibp_cap_t *destcap;
+   char       src_key[MAX_KEY_SIZE];
+   char       src_typekey[MAX_KEY_SIZE];
+   ibp_off_t  src_offset;
+   ibp_off_t  dest_offset;
+   ibp_off_t  len;
+   int        dest_timeout;
+   int        dest_client_timeout;
+   int        ibp_command;
+   int        ctype;
 } ibp_op_copy_t;
 
 typedef struct {  //** Modify a depot/RID settings
-    ibp_depot_t *depot;
-    char *password;
-    ibp_off_t max_hard;
-    ibp_off_t max_soft;
-    apr_time_t max_duration;
+   ibp_depot_t *depot;
+   char *password;
+   ibp_off_t max_hard;
+   ibp_off_t max_soft;
+   apr_time_t max_duration;
 } ibp_op_depot_modify_t;
 
 typedef struct {  //** Modify a depot/RID settings
-    ibp_depot_t *depot;
-    char *password;
-    ibp_depotinfo_t *di;
+   ibp_depot_t *depot;
+   char *password;
+   ibp_depotinfo_t *di;
 } ibp_op_depot_inq_t;
 
 typedef struct {  //** Get the depot version information
-    ibp_depot_t *depot;
-    char *buffer;
-    int buffer_size;
+  ibp_depot_t *depot;
+  char *buffer;
+  int buffer_size;
 } ibp_op_version_t;
 
 typedef struct {  //** Get a list of RID's for a depot
-    ibp_depot_t *depot;
-    ibp_ridlist_t *rlist;
+  ibp_depot_t *depot;
+  ibp_ridlist_t *rlist;
 } ibp_op_rid_inq_t;
 
 typedef struct _ibp_op_s { //** Individual IO operation
-    ibp_context_t *ic;
-    op_generic_t gop;
-    op_data_t dop;
-    Stack_t *hp_parent;  //** Only used for RW coalescing
-    int primary_cmd;//** Primary sync IBP command family
-    int sub_cmd;    //** sub command, if applicable
-    ns_chksum_t ncs;  //** chksum associated with the command
-    union {         //** Holds the individual commands options
-        ibp_op_validate_chksum_t validate_op;
-        ibp_op_get_chksum_t      get_chksum_op;
-        ibp_op_alloc_t  alloc_op;
-        ibp_op_merge_alloc_t  merge_op;
-        ibp_op_probe_t  probe_op;
-        ibp_op_rw_t     rw_op;
-        ibp_op_copy_t   copy_op;
-        ibp_op_depot_modify_t depot_modify_op;
-        ibp_op_depot_inq_t depot_inq_op;
-        ibp_op_modify_alloc_t mod_alloc_op;
-        ibp_op_rid_inq_t   rid_op;
-        ibp_op_version_t   ver_op;
-    };
+   ibp_context_t *ic;
+   op_generic_t gop;
+   op_data_t dop;
+   Stack_t *hp_parent;  //** Only used for RW coalescing
+   int primary_cmd;//** Primary sync IBP command family
+   int sub_cmd;    //** sub command, if applicable
+   ns_chksum_t ncs;  //** chksum associated with the command
+   union {         //** Holds the individual commands options
+     ibp_op_validate_chksum_t validate_op;
+     ibp_op_get_chksum_t      get_chksum_op;
+     ibp_op_alloc_t  alloc_op;
+     ibp_op_merge_alloc_t  merge_op;
+     ibp_op_probe_t  probe_op;
+     ibp_op_rw_t     rw_op;
+     ibp_op_copy_t   copy_op;
+     ibp_op_depot_modify_t depot_modify_op;
+     ibp_op_depot_inq_t depot_inq_op;
+     ibp_op_modify_alloc_t mod_alloc_op;
+     ibp_op_rid_inq_t   rid_op; 
+     ibp_op_version_t   ver_op;
+   };
 
 } ibp_op_t;
 
@@ -279,8 +280,8 @@ void ibp_op_set_ncs(op_generic_t *gop, ns_chksum_t *ncs);
 
 void init_ibp_op(ibp_context_t *ic, ibp_op_t *op);
 ibp_op_t *new_ibp_op(ibp_context_t *ic);
-void init_ibp_base_op(ibp_op_t *op, char *logstr, int timeout, int workload, char *hostport,
-                      int cmp_size, int primary_cmd, int sub_cmd);
+void init_ibp_base_op(ibp_op_t *op, char *logstr, int timeout, int workload, char *hostport, 
+     int cmp_size, int primary_cmd, int sub_cmd);
 
 void set_ibp_rw_op(ibp_op_t *op, int rw_type, ibp_cap_t *cap, ibp_off_t offset, tbuffer_t *buffer, ibp_off_t boff, ibp_off_t len, int timeout);
 op_generic_t *new_ibp_rw_op(ibp_context_t *ic, int rw_type, ibp_cap_t *cap, ibp_off_t offset, tbuffer_t *buffer, ibp_off_t boff, ibp_off_t len, int timeout);
@@ -300,31 +301,31 @@ op_generic_t *new_ibp_append_op(ibp_context_t *ic, ibp_cap_t *cap, tbuffer_t *bu
 void set_ibp_append_op(ibp_op_t *op, ibp_cap_t *cap, tbuffer_t *buffer, ibp_off_t boff, ibp_off_t len, int timeout);
 
 op_generic_t *new_ibp_copyappend_op(ibp_context_t *ic, int ns_type, char *path, ibp_cap_t *srccap, ibp_cap_t *destcap, ibp_off_t src_offset, ibp_off_t size,
-                                    int src_timeout, int  dest_timeout, int dest_client_timeout);
+        int src_timeout, int  dest_timeout, int dest_client_timeout);
 void set_ibp_copyappend_op(ibp_op_t *op, int ns_type, char *path, ibp_cap_t *srccap, ibp_cap_t *destcap, ibp_off_t src_offset, ibp_off_t size,
-                           int src_timeout, int  dest_timeout, int dest_client_timeout);
+        int src_timeout, int  dest_timeout, int dest_client_timeout);
 void set_ibp_copy_op(ibp_op_t *op, int mode, int ns_type, char *path, ibp_cap_t *srccap, ibp_cap_t *destcap,
-                     ibp_off_t src_offset, ibp_off_t dest_offset, ibp_off_t size, int src_timeout, int  dest_timeout,
-                     int dest_client_timeout);
+        ibp_off_t src_offset, ibp_off_t dest_offset, ibp_off_t size, int src_timeout, int  dest_timeout, 
+        int dest_client_timeout);
 op_generic_t *new_ibp_copy_op(ibp_context_t *ic, int mode, int ns_type, char *path, ibp_cap_t *srccap, ibp_cap_t *destcap,
-                              ibp_off_t src_offset, ibp_off_t dest_offset, ibp_off_t size, int src_timeout,
-                              int  dest_timeout, int dest_client_timeout);
+        ibp_off_t src_offset, ibp_off_t dest_offset, ibp_off_t size, int src_timeout,
+        int  dest_timeout, int dest_client_timeout);
 
-op_generic_t *new_ibp_alloc_op(ibp_context_t *ic, ibp_capset_t *caps, ibp_off_t size, ibp_depot_t *depot, ibp_attributes_t *attr,
-                               int disk_cs_type, ibp_off_t disk_blocksize, int timeout);
-void set_ibp_alloc_op(ibp_op_t *op, ibp_capset_t *caps, ibp_off_t size, ibp_depot_t *depot, ibp_attributes_t *attr,
-                      int disk_cs_type, ibp_off_t disk_blocksize, int timeout);
-void set_ibp_split_alloc_op(ibp_op_t *op, ibp_cap_t *mcap, ibp_capset_t *caps, ibp_off_t size,
-                            ibp_attributes_t *attr, int disk_cs_type, ibp_off_t disk_blocksize, int timeout);
+op_generic_t *new_ibp_alloc_op(ibp_context_t *ic, ibp_capset_t *caps, ibp_off_t size, ibp_depot_t *depot, ibp_attributes_t *attr, 
+       int disk_cs_type, ibp_off_t disk_blocksize, int timeout);
+void set_ibp_alloc_op(ibp_op_t *op, ibp_capset_t *caps, ibp_off_t size, ibp_depot_t *depot, ibp_attributes_t *attr, 
+       int disk_cs_type, ibp_off_t disk_blocksize, int timeout);
+void set_ibp_split_alloc_op(ibp_op_t *op, ibp_cap_t *mcap, ibp_capset_t *caps, ibp_off_t size, 
+       ibp_attributes_t *attr, int disk_cs_type, ibp_off_t disk_blocksize, int timeout);
 op_generic_t *new_ibp_merge_alloc_op(ibp_context_t *ic, ibp_cap_t *mcap, ibp_cap_t *ccap,
-                                     int timeout);
+       int timeout);
 void set_ibp_merge_alloc_op(ibp_op_t *op, ibp_cap_t *mcap, ibp_cap_t *ccap, int timeout);
 op_generic_t *new_ibp_split_alloc_op(ibp_context_t *ic, ibp_cap_t *mcap, ibp_capset_t *caps, ibp_off_t size,
-                                     ibp_attributes_t *attr, int disk_cs_type, ibp_off_t disk_blocksize, int timeout);
+       ibp_attributes_t *attr, int disk_cs_type, ibp_off_t disk_blocksize, int timeout);
 void set_ibp_alias_alloc_op(ibp_op_t *op, ibp_capset_t *caps, ibp_cap_t *mcap, ibp_off_t offset, ibp_off_t size,
-                            int duration, int timeout);
+   int duration, int timeout);
 op_generic_t *new_ibp_alias_alloc_op(ibp_context_t *ic, ibp_capset_t *caps, ibp_cap_t *mcap, ibp_off_t offset, ibp_off_t size,
-                                     int duration, int timeout);
+   int duration, int timeout);
 op_generic_t *new_ibp_rename_op(ibp_context_t *ic, ibp_capset_t *caps, ibp_cap_t *mcap, int timeout);
 void set_ibp_rename_op(ibp_op_t *op, ibp_capset_t *caps, ibp_cap_t *mcap, int timeout);
 op_generic_t *new_ibp_remove_op(ibp_context_t *ic, ibp_cap_t *cap, int timeout);
@@ -346,13 +347,13 @@ void set_ibp_probe_op(ibp_op_t *op, ibp_cap_t *cap, ibp_capstatus_t *probe, int 
 void set_ibp_alias_probe_op(ibp_op_t *op, ibp_cap_t *cap, ibp_alias_capstatus_t *probe, int timeout);
 op_generic_t *new_ibp_alias_probe_op(ibp_context_t *ic, ibp_cap_t *cap, ibp_alias_capstatus_t *probe, int timeout);
 void set_ibp_depot_modify_op(ibp_op_t *op, ibp_depot_t *depot, char *password, ibp_off_t hard, ibp_off_t soft,
-                             int duration, int timeout);
+      int duration, int timeout);
 op_generic_t *new_ibp_depot_modify_op(ibp_context_t *ic, ibp_depot_t *depot, char *password, ibp_off_t hard, ibp_off_t soft,
-                                      int duration, int timeout);
+      int duration, int timeout);
 void set_ibp_alias_modify_alloc_op(ibp_op_t *op, ibp_cap_t *cap, ibp_cap_t *mcap, ibp_off_t offset, ibp_off_t size, int duration,
-                                   int timeout);
+     int timeout);
 op_generic_t *new_ibp_alias_modify_alloc_op(ibp_context_t *ic, ibp_cap_t *cap, ibp_cap_t *mcap, ibp_off_t offset, ibp_off_t size, int duration,
-        int timeout);
+     int timeout);
 
 void set_ibp_depot_inq_op(ibp_op_t *op, ibp_depot_t *depot, char *password, ibp_depotinfo_t *di, int timeout);
 op_generic_t *new_ibp_depot_inq_op(ibp_context_t *ic, ibp_depot_t *depot, char *password, ibp_depotinfo_t *di, int timeout);
@@ -372,11 +373,11 @@ op_generic_t *new_ibp_validate_chksum_op(ibp_context_t *ic, ibp_cap_t *mcap, int
 
 //** IBP_GET_CHKSUM
 void set_ibp_get_chksum_op(ibp_op_t *op, ibp_cap_t *mcap, int chksum_info_only,
-                           int *cs_type, int *cs_size, ibp_off_t *blocksize, ibp_off_t *nblocks, ibp_off_t *n_chksumbytes, char *buffer, ibp_off_t bufsize,
-                           int timeout);
+       int *cs_type, int *cs_size, ibp_off_t *blocksize, ibp_off_t *nblocks, ibp_off_t *n_chksumbytes, char *buffer, ibp_off_t bufsize, 
+       int timeout);
 op_generic_t *new_ibp_get_chksum_op(ibp_context_t *ic, ibp_cap_t *mcap, int chksum_info_only,
-                                    int *cs_type, int *cs_size, ibp_off_t *blocksize, ibp_off_t *nblocks, ibp_off_t *n_chksumbytes, char *buffer, ibp_off_t bufsize,
-                                    int timeout);
+       int *cs_type, int *cs_size, ibp_off_t *blocksize, ibp_off_t *nblocks, ibp_off_t *n_chksumbytes, char *buffer, ibp_off_t bufsize, 
+       int timeout);
 
 
 
@@ -422,9 +423,9 @@ void ibp_destroy_context(ibp_context_t *ic);
 //*** ibp_sync.c ***
 int ibp_sync_command(ibp_op_t *op);
 unsigned long int IBP_phoebus_copy(char *path, ibp_cap_t *srccap, ibp_cap_t *destcap, ibp_timer_t  *src_timer, ibp_timer_t *dest_timer,
-                                   ibp_off_t size, ibp_off_t offset);
+        ibp_off_t size, ibp_off_t offset);
 void destroy_ibp_sync_context();
-void set_ibp_sync_context(ibp_context_t *ic)
+void set_ibp_sync_context(ibp_context_t *ic) 
 ;
 //**** ibp_client_version.c *******
 char *ibp_client_version();

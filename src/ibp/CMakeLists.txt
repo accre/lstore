@@ -115,14 +115,6 @@ install(FILES
 
 
 # Packaging directives
-set(PKG_PREFIX "/usr/local")
-if (DEFINED ENV{PREFIX})
-    set(PKG_PREFIX "$ENV{PREFIX}")
-    message("Using install prefix from ENV, ${PKG_PREFIX}")
-else()
-    message("Using default install prefix, ${PKG_PREFIX}")
-endif()
-
 set(CPACK_PROJECT_CONFIG_FILE ${CMAKE_SOURCE_DIR}/cmake/cpack_settings.cmake) #This is where the build type specific settings are kept
 set(CPACK_PACKAGE_VERSION "1.0.0")
 set(CPACK_GENERATOR "DEB;RPM")
@@ -130,6 +122,6 @@ set(CPACK_PACKAGE_NAME "accre-ibp-client")
 set(CPACK_PACKAGE_RELEASE 1)
 set(CPACK_PACKAGE_CONTACT "Andrew Melo or Alan Tackett")
 set(CPACK_PACKAGE_VENDOR "Advanced Computing Center for Research and Education, Vanderbilt University")
-set(CPACK_PACKAGING_INSTALL_PREFIX "${PKG_PREFIX}")
-set(CPACK_PACKAGE_INSTALL_DIRECTORY "${PKG_PREFIX}")
+set(CPACK_PACKAGING_INSTALL_PREFIX "/usr/local")
+set(CPACK_PACKAGE_INSTALL_DIRECTORY "/usr/local")
 include(CPack)
