@@ -25,7 +25,7 @@ Advanced Computing Center for Research and Education
 230 Appleton Place
 Nashville, TN 37203
 http://www.accre.vanderbilt.edu
-*/ 
+*/
 
 //*************************************************************
 // opque.h - Header defining I/O structs and operations for
@@ -76,14 +76,14 @@ typedef struct op_generic_s op_generic_t;
 #define OP_EXEC_DIRECT   101
 
 typedef struct {
-  apr_thread_mutex_t *lock;  //** shared lock
-  apr_thread_cond_t *cond;   //** shared condition variable
-  pigeon_coop_hole_t  pch;   //** Pigeon coop hole for the lock and cond
+    apr_thread_mutex_t *lock;  //** shared lock
+    apr_thread_cond_t *cond;   //** shared condition variable
+    pigeon_coop_hole_t  pch;   //** Pigeon coop hole for the lock and cond
 } gop_control_t;
 
 typedef struct {       //** Generic opcode status
-  int op_status;          //** Simplified operation status, OP_SUCCESS or OP_FAILURE
-  int error_code;         //** Low level op error code
+    int op_status;          //** Simplified operation status, OP_SUCCESS or OP_FAILURE
+    int error_code;         //** Low level op error code
 } op_status_t;
 
 extern op_status_t op_success_status;
@@ -96,110 +96,110 @@ extern op_status_t op_cant_connect_status;
 extern op_status_t op_error_status;
 
 typedef struct {   //** Command operation
-   char *hostport; //** Depot hostname:port:type:...  Unique string for host/connect_context
-   void *connect_context;   //** Private information needed to make a host connection
-   int  cmp_size;  //** Used for ordering commands within the same host
-   apr_time_t timeout;    //** Command timeout
-   apr_time_t retry_wait; //** How long to wait in case of a dead socket, if 0 then retry immediately
-   int64_t workload;   //** Workload for measuring channel usage
-   int retry_count;//** Number of times retried
-   op_status_t (*send_command)(op_generic_t *gop, NetStream_t *ns);  //**Send command routine
-   op_status_t (*send_phase)(op_generic_t *gop, NetStream_t *ns);    //**Handle "sending" side of command
-   op_status_t (*recv_phase)(op_generic_t *gop, NetStream_t *ns);    //**Handle "receiving" half of command
-   int (*on_submit)(Stack_t *stack, Stack_ele_t *gop_ele);                      //** Executed during initial execution submission
-   int (*before_exec)(op_generic_t *gop);                    //** Executed when popped off the globabl que
-   int (*destroy_command)(op_generic_t *gop);                //**Destroys the data structure
-   Stack_t  *coalesced_ops;                                  //** Stores any other coalesced ops
-   atomic_int_t on_top;
-   apr_time_t start_time;
-   apr_time_t end_time;
+    char *hostport; //** Depot hostname:port:type:...  Unique string for host/connect_context
+    void *connect_context;   //** Private information needed to make a host connection
+    int  cmp_size;  //** Used for ordering commands within the same host
+    apr_time_t timeout;    //** Command timeout
+    apr_time_t retry_wait; //** How long to wait in case of a dead socket, if 0 then retry immediately
+    int64_t workload;   //** Workload for measuring channel usage
+    int retry_count;//** Number of times retried
+    op_status_t (*send_command)(op_generic_t *gop, NetStream_t *ns);  //**Send command routine
+    op_status_t (*send_phase)(op_generic_t *gop, NetStream_t *ns);    //**Handle "sending" side of command
+    op_status_t (*recv_phase)(op_generic_t *gop, NetStream_t *ns);    //**Handle "receiving" half of command
+    int (*on_submit)(Stack_t *stack, Stack_ele_t *gop_ele);                      //** Executed during initial execution submission
+    int (*before_exec)(op_generic_t *gop);                    //** Executed when popped off the globabl que
+    int (*destroy_command)(op_generic_t *gop);                //**Destroys the data structure
+    Stack_t  *coalesced_ops;                                  //** Stores any other coalesced ops
+    atomic_int_t on_top;
+    apr_time_t start_time;
+    apr_time_t end_time;
 } command_op_t;
 
 
 typedef struct {  //** Hportal specific implementation
-  void *(*dup_connect_context)(void *connect_context);  //** Duplicates a ccon
-  void (*destroy_connect_context)(void *connect_context);
-  int (*connect)(NetStream_t *ns, void *connect_context, char *host, int port, Net_timeout_t timeout);
-  void (*close_connection)(NetStream_t *ns);
-  void (*sort_tasks)(void *arg, opque_t *q);        //** optional
-  void (*submit)(void *arg, op_generic_t *op);
-  void (*sync_exec)(void *arg, op_generic_t *op);   //** optional
+    void *(*dup_connect_context)(void *connect_context);  //** Duplicates a ccon
+    void (*destroy_connect_context)(void *connect_context);
+    int (*connect)(NetStream_t *ns, void *connect_context, char *host, int port, Net_timeout_t timeout);
+    void (*close_connection)(NetStream_t *ns);
+    void (*sort_tasks)(void *arg, opque_t *q);        //** optional
+    void (*submit)(void *arg, op_generic_t *op);
+    void (*sync_exec)(void *arg, op_generic_t *op);   //** optional
 } portal_fn_t;
 
 typedef struct {             //** Handle for maintaining all the ecopy connections
-  apr_thread_mutex_t *lock;
-  apr_hash_t *table;         //** Table containing the depot_portal structs
-  apr_pool_t *pool;          //** Memory pool for hash table
-  apr_time_t min_idle;       //** Idle time before closing connection
-  atomic_int_t running_threads;       //** currently running # of connections
-  int max_connections;       //** Max aggregate allowed number of threads
-  int min_threads;           //** Max allowed number of threads/host
-  int max_threads;           //** Max allowed number of threads/host
-  apr_time_t dt_connect;     //** Max time to wait when making a connection to a host
-  int max_wait;              //** Max time to wait on a retry_dead_socket
-  int64_t max_workload;      //** Max allowed workload before spawning another connection
-  int compact_interval;      //** Interval between garbage collections calls
-  int wait_stable_time;      //** time to wait before adding connections for unstable hosts
-  int abort_conn_attempts;   //** If this many failed connection requests occur in a row we abort
-  int check_connection_interval; //** Max time to wait for a thread to check for a close
-  int max_retry;             //** Default max number of times to retry an op
-  int count;                 //** Internal Counter 
-  apr_time_t   next_check;       //** Time for next compact_dportal call
-  Net_timeout_t dt;          //** Default wait time
-  void *arg;
-  portal_fn_t *fn;       //** Actual implementaion for application
+    apr_thread_mutex_t *lock;
+    apr_hash_t *table;         //** Table containing the depot_portal structs
+    apr_pool_t *pool;          //** Memory pool for hash table
+    apr_time_t min_idle;       //** Idle time before closing connection
+    atomic_int_t running_threads;       //** currently running # of connections
+    int max_connections;       //** Max aggregate allowed number of threads
+    int min_threads;           //** Max allowed number of threads/host
+    int max_threads;           //** Max allowed number of threads/host
+    apr_time_t dt_connect;     //** Max time to wait when making a connection to a host
+    int max_wait;              //** Max time to wait on a retry_dead_socket
+    int64_t max_workload;      //** Max allowed workload before spawning another connection
+    int compact_interval;      //** Interval between garbage collections calls
+    int wait_stable_time;      //** time to wait before adding connections for unstable hosts
+    int abort_conn_attempts;   //** If this many failed connection requests occur in a row we abort
+    int check_connection_interval; //** Max time to wait for a thread to check for a close
+    int max_retry;             //** Default max number of times to retry an op
+    int count;                 //** Internal Counter
+    apr_time_t   next_check;       //** Time for next compact_dportal call
+    Net_timeout_t dt;          //** Default wait time
+    void *arg;
+    portal_fn_t *fn;       //** Actual implementaion for application
 } portal_context_t;
 
 typedef struct {
-   callback_t *cb;        //** Optional callback
-   opque_t *parent_q;     //** Parent que attached to
-   op_status_t status;    //** Command result
-   int failure_mode;      //** Used via the callbacks to force a failure, even on success
-   int retries;           //** Upon failure how many times we've retried
-   int id;                //** Op's global id.  Can be changed by use but generally should use my_id
-   int my_id;             //** User/Application settable id.  Defaults to id.
-   int state;             //** Command state 0=submitted 1=completed
-   int started_execution; //** If 1 the tasks have already been submitted for execution
-   int execution_mode;    //** Execution mode OP_EXEC_QUEUE | OP_EXEC_DIRECT
-   int auto_destroy;      //** If 1 then automatically call the free fn to destroy the object
-   gop_control_t *ctl;    //** Lock and condition struct
-   void *user_priv;           //** Optional user supplied handle
-   void (*free)(op_generic_t *d, int mode);
-   portal_context_t *pc;
+    callback_t *cb;        //** Optional callback
+    opque_t *parent_q;     //** Parent que attached to
+    op_status_t status;    //** Command result
+    int failure_mode;      //** Used via the callbacks to force a failure, even on success
+    int retries;           //** Upon failure how many times we've retried
+    int id;                //** Op's global id.  Can be changed by use but generally should use my_id
+    int my_id;             //** User/Application settable id.  Defaults to id.
+    int state;             //** Command state 0=submitted 1=completed
+    int started_execution; //** If 1 the tasks have already been submitted for execution
+    int execution_mode;    //** Execution mode OP_EXEC_QUEUE | OP_EXEC_DIRECT
+    int auto_destroy;      //** If 1 then automatically call the free fn to destroy the object
+    gop_control_t *ctl;    //** Lock and condition struct
+    void *user_priv;           //** Optional user supplied handle
+    void (*free)(op_generic_t *d, int mode);
+    portal_context_t *pc;
 } op_common_t;
 
 typedef struct {
-   Stack_t *list;         //** List of tasks
-   Stack_t *finished;     //** lists that have completed and not yet processed
-   Stack_t *failed;       //** All lists that fail are also placed here
-   int nleft;             //** Number of lists left to be processed
-   int nsubmitted;        //** Nunmber of submitted tasks (doesn't count sub q's)
-   int finished_submission; //** No more tasks will be submitted so it's safe to free the data when finished
+    Stack_t *list;         //** List of tasks
+    Stack_t *finished;     //** lists that have completed and not yet processed
+    Stack_t *failed;       //** All lists that fail are also placed here
+    int nleft;             //** Number of lists left to be processed
+    int nsubmitted;        //** Nunmber of submitted tasks (doesn't count sub q's)
+    int finished_submission; //** No more tasks will be submitted so it's safe to free the data when finished
 //   int success;             //** Only used if no failed tasks occur to determine success
-   callback_t failure_cb;   //** Only used if a task fails
-   opque_t *opque;
+    callback_t failure_cb;   //** Only used if a task fails
+    opque_t *opque;
 } que_data_t;
 
 
 typedef struct {
-  portal_context_t *pc;
-  command_op_t cmd;
-  void *priv;
+    portal_context_t *pc;
+    command_op_t cmd;
+    void *priv;
 } op_data_t;
 
 
 struct op_generic_s {
-  int type;
-  void *free_ptr;
-  op_common_t base;
-  que_data_t   *q;
-  op_data_t   *op;
+    int type;
+    void *free_ptr;
+    op_common_t base;
+    que_data_t   *q;
+    op_data_t   *op;
 };
 
 
 struct opque_s {
-  op_generic_t op;
-  que_data_t   qd;
+    op_generic_t op;
+    que_data_t   qd;
 };
 
 

@@ -58,52 +58,52 @@ extern "C" {
 #define MQS_READ  0
 #define MQS_WRITE 1
 
-        //*** Header format [state][pack_type][handle_len][..handle..]
+//*** Header format [state][pack_type][handle_len][..handle..]
 #define MQS_HEADER (1+1+1+sizeof(intptr_t))
 
-  //** Header indices
+//** Header indices
 #define MQS_STATE_INDEX       0
 #define MQS_PACK_INDEX        1
 #define MQS_HANDLE_SIZE_INDEX 2
 #define MQS_HANDLE_INDEX      3
 
 typedef struct {
-  apr_pool_t *mpool;
-  apr_thread_mutex_t *lock;
-  apr_thread_cond_t *cond;
-  mq_context_t *mqc;
-  mq_portal_t *server_portal;
-  mq_frame_t *fid;
-  mq_frame_t *hid;
-  op_generic_t *gop_waiting;
-  op_generic_t *gop_processed;
-  mq_ongoing_t *ongoing;
-  mq_ongoing_object_t *oo;
-  char want_more;
-  mq_msg_t *remote_host;
-  char *host_id;
-  char *stream_id;
-  int sid_len;
-  int hid_len;
-  mq_msg_t *address;
-  unsigned char *data;
-  apr_thread_t *flusher_thread;
-  apr_time_t expire;
-  pack_t *pack;
-  int len;
-  int bpos;
-  int waiting;
-  int processed;
-  int ready;
-  int type;
-  int timeout;
-  int max_size;
-  int sent_data;
-  int unsent_data;
-  int shutdown;
-  int transfer_packets;  //** Number of packets exchanged
-  int msid;              //** Stream ID
-  int dead_connection;   //** Connections is hosed so don;t even try sending anything
+    apr_pool_t *mpool;
+    apr_thread_mutex_t *lock;
+    apr_thread_cond_t *cond;
+    mq_context_t *mqc;
+    mq_portal_t *server_portal;
+    mq_frame_t *fid;
+    mq_frame_t *hid;
+    op_generic_t *gop_waiting;
+    op_generic_t *gop_processed;
+    mq_ongoing_t *ongoing;
+    mq_ongoing_object_t *oo;
+    char want_more;
+    mq_msg_t *remote_host;
+    char *host_id;
+    char *stream_id;
+    int sid_len;
+    int hid_len;
+    mq_msg_t *address;
+    unsigned char *data;
+    apr_thread_t *flusher_thread;
+    apr_time_t expire;
+    pack_t *pack;
+    int len;
+    int bpos;
+    int waiting;
+    int processed;
+    int ready;
+    int type;
+    int timeout;
+    int max_size;
+    int sent_data;
+    int unsent_data;
+    int shutdown;
+    int transfer_packets;  //** Number of packets exchanged
+    int msid;              //** Stream ID
+    int dead_connection;   //** Connections is hosed so don;t even try sending anything
 } mq_stream_t;
 
 void mqs_server_more_cb(void *arg, mq_task_t *task);
