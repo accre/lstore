@@ -44,7 +44,7 @@ void mq_remove_header(mq_msg_t *msg, int drop_extra);
 op_status_t mq_read_status_frame(mq_frame_t *f, int destroy);
 mq_frame_t *mq_make_status_frame(op_status_t status);
 mq_frame_t *mq_make_id_frame();
-mq_msg_t *mq_make_exec_core_msg(char *address, int do_track);
+mq_msg_t *mq_make_exec_core_msg(mq_msg_t *address, int do_track);
 mq_msg_t *mq_make_response_core_msg(mq_msg_t *address, mq_frame_t *fid);
 int mq_num_frames(mq_msg_t *msg);
 char *mq_address_to_string(mq_msg_t *address);

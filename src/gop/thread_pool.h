@@ -25,7 +25,7 @@ Advanced Computing Center for Research and Education
 230 Appleton Place
 Nashville, TN 37203
 http://www.accre.vanderbilt.edu
-*/
+*/ 
 
 //*************************************************************
 // Generic thread pool implementation designed to woth with opque
@@ -49,26 +49,26 @@ extern "C" {
 #define TP_E_IGNORE            -2
 
 typedef struct {
-    char *name;
-    portal_context_t *pc;
-    apr_thread_pool_t *tp;
-    atomic_int_t n_ops;
-    atomic_int_t n_completed;
-    atomic_int_t n_started;
-    atomic_int_t n_submitted;
-    atomic_int_t n_direct;
-    int min_idle;
-    int min_threads;
-    int max_threads;
+   char *name;
+   portal_context_t *pc;
+   apr_thread_pool_t *tp;
+   atomic_int_t n_ops;
+   atomic_int_t n_completed;
+   atomic_int_t n_started;
+   atomic_int_t n_submitted;
+   atomic_int_t n_direct;
+   int min_idle;
+   int min_threads;
+   int max_threads;
 } thread_pool_context_t;
 
 typedef struct {
-    thread_pool_context_t *tpc;
-    op_generic_t gop;
-    op_data_t dop;
-    op_status_t (*fn)(void *priv, int id);
-    void (*my_op_free)(void *arg);
-    void *arg;
+   thread_pool_context_t *tpc;
+   op_generic_t gop;
+   op_data_t dop;
+   op_status_t (*fn)(void *priv, int id);
+   void (*my_op_free)(void *arg);
+   void *arg;
 } thread_pool_op_t;
 
 #define tp_get_gop(top) &((top)->gop)
