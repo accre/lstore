@@ -53,23 +53,23 @@ http://www.accre.vanderbilt.edu
 
 int pack_read_zlib(pack_t *pack, unsigned char *data, int len)
 {
-  pack_zlib_t *p = &(pack->zlib);
-  int nbytes;
+    pack_zlib_t *p = &(pack->zlib);
+    int nbytes;
 
-  p->z.avail_out = len;
-  p->z.next_out = data;
+    p->z.avail_out = len;
+    p->z.next_out = data;
 
-log_printf(15, "START z.avail_out=%d z.avail_in=%d len=%d\n", p->z.avail_out, p->z.avail_in, len);
+    log_printf(15, "START z.avail_out=%d z.avail_in=%d len=%d\n", p->z.avail_out, p->z.avail_in, len);
 
-  if (len == 0) return(0);
+    if (len == 0) return(0);
 
-  nbytes = inflate(&(p->z), Z_NO_FLUSH);
-  log_printf(15, "inflate=%d\n", nbytes);
+    nbytes = inflate(&(p->z), Z_NO_FLUSH);
+    log_printf(15, "inflate=%d\n", nbytes);
 
-  nbytes = ((nbytes == Z_OK) || (nbytes == Z_STREAM_END) || (nbytes == Z_BUF_ERROR)) ? len - p->z.avail_out : PACK_ERROR;
+    nbytes = ((nbytes == Z_OK) || (nbytes == Z_STREAM_END) || (nbytes == Z_BUF_ERROR)) ? len - p->z.avail_out : PACK_ERROR;
 
-log_printf(15, "END z.avail_out=%d z.avail_in=%d len=%d nbytes=%d\n", p->z.avail_out, p->z.avail_in, len, nbytes);
-  return(nbytes);
+    log_printf(15, "END z.avail_out=%d z.avail_in=%d len=%d nbytes=%d\n", p->z.avail_out, p->z.avail_in, len, nbytes);
+    return(nbytes);
 }
 
 //***********************************************************************
@@ -79,18 +79,18 @@ log_printf(15, "END z.avail_out=%d z.avail_in=%d len=%d nbytes=%d\n", p->z.avail
 
 int pack_read_new_data_zlib(pack_t *pack, unsigned char *buffer, int bufsize)
 {
-  pack_zlib_t *p = &(pack->zlib);
-  int err = 0;
+    pack_zlib_t *p = &(pack->zlib);
+    int err = 0;
 
-  if (p->z.avail_in > 0) err = PACK_ERROR;
+    if (p->z.avail_in > 0) err = PACK_ERROR;
 
-  p->z.avail_in = bufsize;
-  p->z.next_in = buffer;
+    p->z.avail_in = bufsize;
+    p->z.next_in = buffer;
 
-  p->buffer = buffer;
-  p->bufsize = bufsize;
+    p->buffer = buffer;
+    p->bufsize = bufsize;
 
-  return(err);
+    return(err);
 }
 
 //***********************************************************************
@@ -100,21 +100,21 @@ int pack_read_new_data_zlib(pack_t *pack, unsigned char *buffer, int bufsize)
 
 int pack_write_zlib(pack_t *pack, unsigned char *data, int len)
 {
-  pack_zlib_t *p = &(pack->zlib);
-  int nbytes;
+    pack_zlib_t *p = &(pack->zlib);
+    int nbytes;
 
-  if (len == 0) return(0);
+    if (len == 0) return(0);
 
-  p->z.avail_in = len;
-  p->z.next_in = data;
-  nbytes = deflate(&(p->z), Z_NO_FLUSH);
+    p->z.avail_in = len;
+    p->z.next_in = data;
+    nbytes = deflate(&(p->z), Z_NO_FLUSH);
 //log_printf(5, "deflate_error=%d len=%d avail_in=%d pack_used=%d\n", nbytes, len, p->z.avail_in, pack_used(pack));
 //double r = random_double(0, 1);
 //if (r > 0.25) { log_printf(0, "FORCING PACK_ERROR\n"); return(PACK_ERROR); }
 
-  nbytes = ((nbytes == Z_OK) || (nbytes == Z_BUF_ERROR)) ? len - p->z.avail_in : PACK_ERROR;
+    nbytes = ((nbytes == Z_OK) || (nbytes == Z_BUF_ERROR)) ? len - p->z.avail_in : PACK_ERROR;
 
-  return(nbytes);
+    return(nbytes);
 }
 
 //***********************************************************************
@@ -124,17 +124,17 @@ int pack_write_zlib(pack_t *pack, unsigned char *data, int len)
 
 void pack_write_resized_zlib(pack_t *pack, unsigned char *buffer, int bufsize)
 {
-  pack_zlib_t *p = &(pack->zlib);
-  int offset;
+    pack_zlib_t *p = &(pack->zlib);
+    int offset;
 
-  assert(bufsize >= (p->bufsize - p->z.avail_out));
+    assert(bufsize >= (p->bufsize - p->z.avail_out));
 
-  offset = p->bufsize - p->z.avail_out;
-  p->z.next_out = &(buffer[offset]);
-  p->z.avail_out = bufsize - offset;
+    offset = p->bufsize - p->z.avail_out;
+    p->z.next_out = &(buffer[offset]);
+    p->z.avail_out = bufsize - offset;
 
-  p->buffer = buffer;
-  p->bufsize = bufsize;
+    p->buffer = buffer;
+    p->bufsize = bufsize;
 }
 
 //***********************************************************************
@@ -143,10 +143,10 @@ void pack_write_resized_zlib(pack_t *pack, unsigned char *buffer, int bufsize)
 
 void pack_consumed_zlib(pack_t *pack)
 {
-  pack_zlib_t *p = &(pack->zlib);
+    pack_zlib_t *p = &(pack->zlib);
 
-  p->z.avail_out = p->bufsize;
-  p->z.next_out = p->buffer;
+    p->z.avail_out = p->bufsize;
+    p->z.next_out = p->buffer;
 }
 
 //***********************************************************************
@@ -155,15 +155,15 @@ void pack_consumed_zlib(pack_t *pack)
 
 void pack_end_zlib(pack_t *pack)
 {
-  pack_zlib_t *p = &(pack->zlib);
+    pack_zlib_t *p = &(pack->zlib);
 
-  if (pack->mode == PACK_READ) {
-     inflateEnd(&(p->z));
-  } else {
-     deflateEnd(&(p->z));
-  }
+    if (pack->mode == PACK_READ) {
+        inflateEnd(&(p->z));
+    } else {
+        deflateEnd(&(p->z));
+    }
 
-  return;
+    return;
 }
 
 //***********************************************************************
@@ -172,9 +172,9 @@ void pack_end_zlib(pack_t *pack)
 
 int pack_used_zlib(pack_t *pack)
 {
-  pack_zlib_t *p = &(pack->zlib);
+    pack_zlib_t *p = &(pack->zlib);
 
-  return(p->bufsize - p->z.avail_out);
+    return(p->bufsize - p->z.avail_out);
 }
 
 //***********************************************************************
@@ -184,25 +184,25 @@ int pack_used_zlib(pack_t *pack)
 
 int pack_write_flush_zlib(pack_t *pack)
 {
-  pack_zlib_t *p = &(pack->zlib);
-  int err;
+    pack_zlib_t *p = &(pack->zlib);
+    int err;
 
-log_printf(5, "start avail_out=%d\n", p->z.avail_out);
-  p->z.avail_in = 0;
-  p->z.next_in = Z_NULL;
-  err = deflate(&(p->z), Z_FINISH);
-log_printf(5, "end avail_out=%d err=%d\n", p->z.avail_out, err);
+    log_printf(5, "start avail_out=%d\n", p->z.avail_out);
+    p->z.avail_in = 0;
+    p->z.next_in = Z_NULL;
+    err = deflate(&(p->z), Z_FINISH);
+    log_printf(5, "end avail_out=%d err=%d\n", p->z.avail_out, err);
 
-  if ((err == Z_OK) || (err == Z_BUF_ERROR)) {
-    err = PACK_NONE;
-  } else if (err == Z_STREAM_END) {
-    err = PACK_FINISHED;
-  } else {
-    err = PACK_ERROR;
-  }
+    if ((err == Z_OK) || (err == Z_BUF_ERROR)) {
+        err = PACK_NONE;
+    } else if (err == Z_STREAM_END) {
+        err = PACK_FINISHED;
+    } else {
+        err = PACK_ERROR;
+    }
 
-log_printf(5, "translated err=%d\n", err);
-  return(err);
+    log_printf(5, "translated err=%d\n", err);
+    return(err);
 }
 
 //***********************************************************************
@@ -211,45 +211,45 @@ log_printf(5, "translated err=%d\n", err);
 
 void pack_init_zlib(pack_t *pack, int type, int mode, unsigned char *buffer, int bufsize)
 {
-  pack_zlib_t *p = &(pack->zlib);
+    pack_zlib_t *p = &(pack->zlib);
 
-  memset(pack, 0, sizeof(pack_t));
+    memset(pack, 0, sizeof(pack_t));
 
-  pack->type = type;
-  pack->mode = mode;
-  p->buffer = buffer;
-  p->bufsize = bufsize;
-  p->bpos = 0;
+    pack->type = type;
+    pack->mode = mode;
+    p->buffer = buffer;
+    p->bufsize = bufsize;
+    p->bpos = 0;
 
-  pack->end = pack_end_zlib;
+    pack->end = pack_end_zlib;
 
-  if (mode == PACK_READ) {
-    p->z.zalloc = Z_NULL;
-    p->z.zfree = Z_NULL;
-    p->z.opaque = Z_NULL;
-    assert(inflateInit(&(p->z)) == Z_OK);
-    p->z.avail_in = bufsize;
-    p->z.next_in = buffer;
-    p->z.avail_out = 0;
-    p->z.next_out = Z_NULL;;
-    pack->read_new_data = pack_read_new_data_zlib;
-    pack->read = pack_read_zlib;
-    pack->used = pack_used_zlib;
-  } else {
-    p->z.zalloc = Z_NULL;
-    p->z.zfree = Z_NULL;
-    p->z.opaque = Z_NULL;
-    assert(deflateInit(&(p->z), Z_DEFAULT_COMPRESSION) == Z_OK);
-    p->z.avail_in = 0;
-    p->z.next_in = Z_NULL;
-    p->z.avail_out = bufsize;
-    p->z.next_out = buffer;
-    pack->write_resized = pack_write_resized_zlib;
-    pack->write = pack_write_zlib;
-    pack->used = pack_used_zlib;
-    pack->consumed = pack_consumed_zlib;
-    pack->write_flush = pack_write_flush_zlib;
-  }
+    if (mode == PACK_READ) {
+        p->z.zalloc = Z_NULL;
+        p->z.zfree = Z_NULL;
+        p->z.opaque = Z_NULL;
+        assert(inflateInit(&(p->z)) == Z_OK);
+        p->z.avail_in = bufsize;
+        p->z.next_in = buffer;
+        p->z.avail_out = 0;
+        p->z.next_out = Z_NULL;;
+        pack->read_new_data = pack_read_new_data_zlib;
+        pack->read = pack_read_zlib;
+        pack->used = pack_used_zlib;
+    } else {
+        p->z.zalloc = Z_NULL;
+        p->z.zfree = Z_NULL;
+        p->z.opaque = Z_NULL;
+        assert(deflateInit(&(p->z), Z_DEFAULT_COMPRESSION) == Z_OK);
+        p->z.avail_in = 0;
+        p->z.next_in = Z_NULL;
+        p->z.avail_out = bufsize;
+        p->z.next_out = buffer;
+        pack->write_resized = pack_write_resized_zlib;
+        pack->write = pack_write_zlib;
+        pack->used = pack_used_zlib;
+        pack->consumed = pack_consumed_zlib;
+        pack->write_flush = pack_write_flush_zlib;
+    }
 }
 
 
@@ -264,19 +264,19 @@ void pack_init_zlib(pack_t *pack, int type, int mode, unsigned char *buffer, int
 
 int pack_read_raw(pack_t *pack, unsigned char *data, int len)
 {
-  pack_raw_t *p = &(pack->raw);
-  int nbytes;
+    pack_raw_t *p = &(pack->raw);
+    int nbytes;
 
-  nbytes = (len > p->nleft) ? p->nleft : len;
+    nbytes = (len > p->nleft) ? p->nleft : len;
 
-  if (nbytes == 0) return(0);
+    if (nbytes == 0) return(0);
 
-  memcpy(data, &(p->buffer[p->bpos]), nbytes);
+    memcpy(data, &(p->buffer[p->bpos]), nbytes);
 
-  p->nleft -= nbytes;
-  p->bpos  += nbytes;
+    p->nleft -= nbytes;
+    p->bpos  += nbytes;
 
-  return(nbytes);
+    return(nbytes);
 }
 
 
@@ -287,18 +287,18 @@ int pack_read_raw(pack_t *pack, unsigned char *data, int len)
 
 int pack_read_new_data_raw(pack_t *pack, unsigned char *buffer, int bufsize)
 {
-  pack_raw_t *p = &(pack->raw);
-  int err = 0;
+    pack_raw_t *p = &(pack->raw);
+    int err = 0;
 
-  if (p->nleft > 0) err = PACK_ERROR;
+    if (p->nleft > 0) err = PACK_ERROR;
 
-  p->buffer = buffer;
-  p->bufsize = bufsize;
+    p->buffer = buffer;
+    p->bufsize = bufsize;
 
-  p->bpos = 0;
-  p->nleft = p->bufsize;
+    p->bpos = 0;
+    p->nleft = p->bufsize;
 
-  return(err);
+    return(err);
 }
 
 //***********************************************************************
@@ -309,19 +309,19 @@ int pack_read_new_data_raw(pack_t *pack, unsigned char *buffer, int bufsize)
 
 int pack_write_raw(pack_t *pack, unsigned char *data, int len)
 {
-  pack_raw_t *p = &(pack->raw);
-  int nbytes;
+    pack_raw_t *p = &(pack->raw);
+    int nbytes;
 
-  nbytes = (len > p->nleft) ? p->nleft : len;
+    nbytes = (len > p->nleft) ? p->nleft : len;
 
-  if (nbytes == 0) return(PACK_FULL);
+    if (nbytes == 0) return(PACK_FULL);
 
-  memcpy(&(p->buffer[p->bpos]), data, nbytes);
+    memcpy(&(p->buffer[p->bpos]), data, nbytes);
 
-  p->nleft -= nbytes;
-  p->bpos  += nbytes;
+    p->nleft -= nbytes;
+    p->bpos  += nbytes;
 
-  return(nbytes);
+    return(nbytes);
 }
 
 
@@ -332,13 +332,13 @@ int pack_write_raw(pack_t *pack, unsigned char *data, int len)
 
 void pack_write_resized_raw(pack_t *pack, unsigned char *buffer, int bufsize)
 {
-  pack_raw_t *p = &(pack->raw);
+    pack_raw_t *p = &(pack->raw);
 
-  assert(bufsize >= p->bpos);
+    assert(bufsize >= p->bpos);
 
-  p->buffer = buffer;
-  p->bufsize = bufsize;
-  p->nleft = bufsize - p->bpos;
+    p->buffer = buffer;
+    p->bufsize = bufsize;
+    p->nleft = bufsize - p->bpos;
 }
 
 //***********************************************************************
@@ -347,10 +347,10 @@ void pack_write_resized_raw(pack_t *pack, unsigned char *buffer, int bufsize)
 
 void pack_consumed_raw(pack_t *pack)
 {
-  pack_raw_t *p = &(pack->raw);
+    pack_raw_t *p = &(pack->raw);
 
-  p->bpos = 0;
-  p->nleft = p->bufsize;
+    p->bpos = 0;
+    p->nleft = p->bufsize;
 }
 
 //***********************************************************************
@@ -359,7 +359,7 @@ void pack_consumed_raw(pack_t *pack)
 
 void pack_end_raw(pack_t *pack)
 {
-  return;
+    return;
 }
 
 //***********************************************************************
@@ -368,7 +368,7 @@ void pack_end_raw(pack_t *pack)
 
 int pack_used_raw(pack_t *pack)
 {
-  return(pack->raw.bpos);
+    return(pack->raw.bpos);
 }
 
 //***********************************************************************
@@ -377,7 +377,7 @@ int pack_used_raw(pack_t *pack)
 
 int pack_write_flush_raw(pack_t *pack)
 {
-  return(PACK_FINISHED);
+    return(PACK_FINISHED);
 }
 
 //***********************************************************************
@@ -386,30 +386,30 @@ int pack_write_flush_raw(pack_t *pack)
 
 void pack_init_raw(pack_t *pack, int type, int mode, unsigned char *buffer, int bufsize)
 {
-  pack_raw_t *p = &(pack->raw);
+    pack_raw_t *p = &(pack->raw);
 
-  memset(pack, 0, sizeof(pack_t));
+    memset(pack, 0, sizeof(pack_t));
 
-  pack->type = type;
-  pack->mode = mode;
-  p->buffer = buffer;
-  p->bufsize = bufsize;
-  p->bpos = 0;
-  p->nleft = bufsize;
+    pack->type = type;
+    pack->mode = mode;
+    p->buffer = buffer;
+    p->bufsize = bufsize;
+    p->bpos = 0;
+    p->nleft = bufsize;
 
-  pack->end = pack_end_raw;
+    pack->end = pack_end_raw;
 
-  if (mode == PACK_READ) {
-    pack->read_new_data = pack_read_new_data_raw;
-    pack->read = pack_read_raw;
-    pack->used = pack_used_raw;
-  } else {
-    pack->write_resized = pack_write_resized_raw;
-    pack->write = pack_write_raw;
-    pack->used = pack_used_raw;
-    pack->consumed = pack_consumed_raw;
-    pack->write_flush = pack_write_flush_raw;
-  }
+    if (mode == PACK_READ) {
+        pack->read_new_data = pack_read_new_data_raw;
+        pack->read = pack_read_raw;
+        pack->used = pack_used_raw;
+    } else {
+        pack->write_resized = pack_write_resized_raw;
+        pack->write = pack_write_raw;
+        pack->used = pack_used_raw;
+        pack->consumed = pack_consumed_raw;
+        pack->write_flush = pack_write_flush_raw;
+    }
 }
 
 //***********************************************************************
@@ -422,9 +422,9 @@ void pack_init_raw(pack_t *pack, int type, int mode, unsigned char *buffer, int 
 
 void pack_destroy(pack_t *pack)
 {
-log_printf(15, "type=%d mode=%d\n", pack->type, pack->mode);
-  pack_end(pack);
-  free(pack);
+    log_printf(15, "type=%d mode=%d\n", pack->type, pack->mode);
+    pack_end(pack);
+    free(pack);
 }
 
 //***********************************************************************
@@ -433,11 +433,11 @@ log_printf(15, "type=%d mode=%d\n", pack->type, pack->mode);
 
 void pack_init(pack_t *pack, int type, int mode, unsigned char *buffer, int bufsize)
 {
-  if (type == PACK_COMPRESS) {
-     pack_init_zlib(pack, type, mode, buffer, bufsize);
-  } else {
-     pack_init_raw(pack, type, mode, buffer, bufsize);
-  }
+    if (type == PACK_COMPRESS) {
+        pack_init_zlib(pack, type, mode, buffer, bufsize);
+    } else {
+        pack_init_raw(pack, type, mode, buffer, bufsize);
+    }
 }
 
 
@@ -447,12 +447,12 @@ void pack_init(pack_t *pack, int type, int mode, unsigned char *buffer, int bufs
 
 pack_t *pack_create(int type, int mode, unsigned char *buffer, int bufsize)
 {
-  pack_t *pack;
+    pack_t *pack;
 
-log_printf(15, "type=%d mode=%d\n", type, mode);
+    log_printf(15, "type=%d mode=%d\n", type, mode);
 
-  type_malloc(pack, pack_t, 1);
-  pack_init(pack, type, mode, buffer, bufsize);
-  return(pack);
+    type_malloc(pack, pack_t, 1);
+    pack_init(pack, type, mode, buffer, bufsize);
+    return(pack);
 }
 

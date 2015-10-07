@@ -25,7 +25,7 @@ Advanced Computing Center for Research and Education
 230 Appleton Place
 Nashville, TN 37203
 http://www.accre.vanderbilt.edu
-*/ 
+*/
 
 //*************************************************************************
 //*************************************************************************
@@ -59,13 +59,13 @@ extern "C" {
 #define CHKSUM_MAX_TYPE 5
 
 typedef struct {    //** Generic Checksum container
-  char state[CHKSUM_STATE_SIZE];  //** Used to store state information as an overlay record
-  int type;                    //** Chksum type
-  char *name;                  //** Pointer to the string version of the chksum type
-  int (*reset)(void *state);   //** Resets chksum to initial value
-  int (*size)(void *state, int type);    //** Size of chksum in bytes
-  int (*get)(void *state, int type, char *value);  //** Returns the chksum string
-  int (*add)(void *state, int size, tbuffer_t *data, int doff);    //** Adds the data to the check sum
+    char state[CHKSUM_STATE_SIZE];  //** Used to store state information as an overlay record
+    int type;                    //** Chksum type
+    char *name;                  //** Pointer to the string version of the chksum type
+    int (*reset)(void *state);   //** Resets chksum to initial value
+    int (*size)(void *state, int type);    //** Size of chksum in bytes
+    int (*get)(void *state, int type, char *value);  //** Returns the chksum string
+    int (*add)(void *state, int size, tbuffer_t *data, int doff);    //** Adds the data to the check sum
 } chksum_t;
 
 //** Provide usage shortcuts

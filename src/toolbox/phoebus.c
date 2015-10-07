@@ -25,7 +25,7 @@ Advanced Computing Center for Research and Education
 230 Appleton Place
 Nashville, TN 37203
 http://www.accre.vanderbilt.edu
-*/ 
+*/
 
 //***************************************************************
 //***************************************************************
@@ -45,14 +45,23 @@ http://www.accre.vanderbilt.edu
 phoebus_t *global_phoebus = NULL;
 
 #ifndef _ENABLE_PHOEBUS       //** Dummy phoebus routines
-  void phoebus_init(void) { };
-  void phoebus_destroy(void) { };
-  int phoebus_print(char *buffer, int *used, int nbytes) { return(0); }
-  void phoebus_load_config(inip_file_t *kf) { };
-  void phoebus_path_set(phoebus_t *p, const char *path) { };
-  void phoebus_path_destroy(phoebus_t *p) { };
-  void phoebus_path_to_string(char *string, int max_size, phoebus_t *p) { string[0] = '\0'; };
-  char *phoebus_get_key(phoebus_t *p) { return(""); }
+void phoebus_init(void) { };
+void phoebus_destroy(void) { };
+int phoebus_print(char *buffer, int *used, int nbytes)
+{
+    return(0);
+}
+void phoebus_load_config(inip_file_t *kf) { };
+void phoebus_path_set(phoebus_t *p, const char *path) { };
+void phoebus_path_destroy(phoebus_t *p) { };
+void phoebus_path_to_string(char *string, int max_size, phoebus_t *p)
+{
+    string[0] = '\0';
+};
+char *phoebus_get_key(phoebus_t *p)
+{
+    return("");
+}
 
 #else                         //** Actual Phoebus routines
 
@@ -62,36 +71,36 @@ phoebus_t *global_phoebus = NULL;
 
 void phoebus_path_set(phoebus_t *p, const char *path)
 {
-  char *hop, *bstate;
-  char *stage[100];
-  int finished;
+    char *hop, *bstate;
+    char *stage[100];
+    int finished;
 
-  if (path == NULL) {    //** If NULL set to defaults and return
-     p->path_string = NULL;
-     p->path = NULL;
-     p->p_count = 0;
-     return;
-  }
+    if (path == NULL) {    //** If NULL set to defaults and return
+        p->path_string = NULL;
+        p->path = NULL;
+        p->p_count = 0;
+        return;
+    }
 
-   //** Parse the path **
-   p->p_count = 0;
-   p->path_string = strdup(path);
+    //** Parse the path **
+    p->p_count = 0;
+    p->path_string = strdup(path);
 
-   p->key = strdup(path);
+    p->key = strdup(path);
 
-   hop = string_token(p->path_string, ",", &bstate, &finished);
-   while (finished == 0) {
-     stage[p->p_count] = hop;
-     p->p_count++;
-     hop = string_token(NULL, ",", &bstate, &finished);
-   }
-   
-   //** Copy the path to the final location
-   p->path = (char **)malloc(sizeof(char *) * p->p_count);
-   assert(p->path != NULL);
-   memcpy(p->path, stage, sizeof(char *) * p->p_count);
-   
-   return;
+    hop = string_token(p->path_string, ",", &bstate, &finished);
+    while (finished == 0) {
+        stage[p->p_count] = hop;
+        p->p_count++;
+        hop = string_token(NULL, ",", &bstate, &finished);
+    }
+
+    //** Copy the path to the final location
+    p->path = (char **)malloc(sizeof(char *) * p->p_count);
+    assert(p->path != NULL);
+    memcpy(p->path, stage, sizeof(char *) * p->p_count);
+
+    return;
 }
 
 //***************************************************************
@@ -100,9 +109,9 @@ void phoebus_path_set(phoebus_t *p, const char *path)
 
 void phoebus_path_destroy(phoebus_t *p)
 {
-  free(p->path_string);
-  free(p->path);
-  free(p->key);
+    free(p->path_string);
+    free(p->path);
+    free(p->key);
 }
 
 //***************************************************************
@@ -111,29 +120,29 @@ void phoebus_path_destroy(phoebus_t *p)
 
 void phoebus_path_to_string(char *string, int max_size, phoebus_t *p)
 {
-  int n, i, nleft;
-  n = p->p_count-1;
-  nleft = max_size-1;
-  string[0] = '\0';
-  for (i=0; i<n; i++) {
-     strncat(string, p->path[i], nleft);
-     nleft = nleft - strlen(p->path[i]);
-     strncat(string, ",", nleft);
-     nleft--;
-  }
-  strncat(string, p->path[n], nleft);
+    int n, i, nleft;
+    n = p->p_count-1;
+    nleft = max_size-1;
+    string[0] = '\0';
+    for (i=0; i<n; i++) {
+        strncat(string, p->path[i], nleft);
+        nleft = nleft - strlen(p->path[i]);
+        strncat(string, ",", nleft);
+        nleft--;
+    }
+    strncat(string, p->path[n], nleft);
 }
 
 //***************************************************************
 // phoebus_get_key - Get's the unique Phoebus key for the path
 //***************************************************************
 
-char *phoebus_get_key(phoebus_t *p) 
+char *phoebus_get_key(phoebus_t *p)
 {
-  if (p != NULL) return(p->key);
-  if (global_phoebus != NULL) return(global_phoebus->key);
+    if (p != NULL) return(p->key);
+    if (global_phoebus != NULL) return(global_phoebus->key);
 
-  return("");
+    return("");
 }
 
 
@@ -143,32 +152,32 @@ char *phoebus_get_key(phoebus_t *p)
 
 void phoebus_init(void)
 {
-   if (global_phoebus != NULL) return;
-   
-   global_phoebus = (phoebus_t *)malloc(sizeof(phoebus_t));
-   if (global_phoebus == NULL) {
-      log_printf(0, "phoebus_init:  Aborting programm!! Malloc failed!\n");
-      abort();
-   }
+    if (global_phoebus != NULL) return;
 
-   phoebus_path_set(global_phoebus, NULL);      
-   
-   if (liblsl_init() < 0) {      
-      perror("liblsl_init(): failed");
-      exit(errno);
-   }
-   
-   if (getenv("PHOEBUS_PATH") != NULL) {
-      phoebus_path_set(global_phoebus, getenv("PHOEBUS_PATH"));
-      if (!global_phoebus->path) {
-	 log_printf(0, "phoebus_init: Parsing of variable PHOEBUS_PATH failed.  It needs to be a comma separated list of depot IDs\n");
-	 global_phoebus->p_count = 0;
-      }
-      log_printf(10, "phoebus_init: Using the gateway specified in environmental variable PHOEBUS_PATH: \"%s\"\n", getenv("PHOEBUS_PATH"));
-   } else if (getenv("PHOEBUS_GW") != NULL) {
-      phoebus_path_set(global_phoebus, getenv("PHOEBUS_GW"));
-      log_printf(10, "phoebus_init: Using the gateway specified in environmental variable PHOEBUS_GW: \"%s\"\n", getenv("PHOEBUS_GW"));
-   }  
+    global_phoebus = (phoebus_t *)malloc(sizeof(phoebus_t));
+    if (global_phoebus == NULL) {
+        log_printf(0, "phoebus_init:  Aborting programm!! Malloc failed!\n");
+        abort();
+    }
+
+    phoebus_path_set(global_phoebus, NULL);
+
+    if (liblsl_init() < 0) {
+        perror("liblsl_init(): failed");
+        exit(errno);
+    }
+
+    if (getenv("PHOEBUS_PATH") != NULL) {
+        phoebus_path_set(global_phoebus, getenv("PHOEBUS_PATH"));
+        if (!global_phoebus->path) {
+            log_printf(0, "phoebus_init: Parsing of variable PHOEBUS_PATH failed.  It needs to be a comma separated list of depot IDs\n");
+            global_phoebus->p_count = 0;
+        }
+        log_printf(10, "phoebus_init: Using the gateway specified in environmental variable PHOEBUS_PATH: \"%s\"\n", getenv("PHOEBUS_PATH"));
+    } else if (getenv("PHOEBUS_GW") != NULL) {
+        phoebus_path_set(global_phoebus, getenv("PHOEBUS_GW"));
+        log_printf(10, "phoebus_init: Using the gateway specified in environmental variable PHOEBUS_GW: \"%s\"\n", getenv("PHOEBUS_GW"));
+    }
 }
 
 //***************************************************************
@@ -177,8 +186,8 @@ void phoebus_init(void)
 
 void phoebus_destroy(void)
 {
-   phoebus_path_destroy(global_phoebus);  
-   free(global_phoebus);  
+    phoebus_path_destroy(global_phoebus);
+    free(global_phoebus);
 }
 
 //***************************************************************
@@ -187,19 +196,19 @@ void phoebus_destroy(void)
 
 int phoebus_print(char *buffer, int *used, int nbytes)
 {
-  int i, n;
+    int i, n;
 
-  append_printf(buffer, used, nbytes, "[phoebus]\n");
-  if (global_phoebus->p_count <= 0) return(0);
+    append_printf(buffer, used, nbytes, "[phoebus]\n");
+    if (global_phoebus->p_count <= 0) return(0);
 
-  append_printf(buffer, used, nbytes, "gateway = ");
-  n = global_phoebus->p_count-1;
-  for (i=0; i<n; i++) {
-     append_printf(buffer, used, nbytes, "%s,", global_phoebus->path[i]);
-  }
-  i = append_printf(buffer, used, nbytes, "%s\n", global_phoebus->path[n]);
+    append_printf(buffer, used, nbytes, "gateway = ");
+    n = global_phoebus->p_count-1;
+    for (i=0; i<n; i++) {
+        append_printf(buffer, used, nbytes, "%s,", global_phoebus->path[i]);
+    }
+    i = append_printf(buffer, used, nbytes, "%s\n", global_phoebus->path[n]);
 
-  return(i);
+    return(i);
 }
 
 //***************************************************************
@@ -208,18 +217,18 @@ int phoebus_print(char *buffer, int *used, int nbytes)
 
 void phoebus_load_config(inip_file_t *kf)
 {
-  if (global_phoebus == NULL) phoebus_init();
+    if (global_phoebus == NULL) phoebus_init();
 
-  char *gateway = inip_get_string(kf, "phoebus", "gateway", NULL);
-  
-  if (gateway != NULL) {
-     phoebus_path_set(global_phoebus, gateway);
-     log_printf(10, "phoebus_init: Using the gateway specified in local config: %s\n", gateway);
-     free(gateway);
-  } else if (!global_phoebus->path) {
-     log_printf(10, "phoebus_init: Error, no valid Phoebus Gateway specified!\n");
-     abort();
-  }
+    char *gateway = inip_get_string(kf, "phoebus", "gateway", NULL);
+
+    if (gateway != NULL) {
+        phoebus_path_set(global_phoebus, gateway);
+        log_printf(10, "phoebus_init: Using the gateway specified in local config: %s\n", gateway);
+        free(gateway);
+    } else if (!global_phoebus->path) {
+        log_printf(10, "phoebus_init: Error, no valid Phoebus Gateway specified!\n");
+        abort();
+    }
 }
 
 #endif

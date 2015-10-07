@@ -25,7 +25,7 @@ Advanced Computing Center for Research and Education
 230 Appleton Place
 Nashville, TN 37203
 http://www.accre.vanderbilt.edu
-*/ 
+*/
 
 #define _log_module_index 176
 
@@ -35,16 +35,16 @@ http://www.accre.vanderbilt.edu
 
 int main(int argc, char **argv)
 {
-  int sockets, cores, vcores;
-  long int mtotal, mfree, mused;
+    int sockets, cores, vcores;
+    long int mtotal, mfree, mused;
 
-  proc_info(&sockets, &cores, &vcores);
+    proc_info(&sockets, &cores, &vcores);
 
-  mem_info(&mtotal, &mused, &mfree);
+    mem_info(&mtotal, &mused, &mfree);
 
-  printf("Sockets: %d    Physcial Cores: %d   Virtual cores: %d\n", sockets, cores, vcores);
-  printf("Total Memory: %ld bytes    Used: %ld bytes    Free: %ld bytes\n", mtotal, mused, mfree);
+    printf("Sockets: %d    Physcial Cores: %d   Virtual cores: %d\n", sockets, cores, vcores);
+    printf("Total Memory: %ld bytes    Used: %ld bytes    Free: %ld bytes\n", mtotal, mused, mfree);
 
-  return(0);
+    return(0);
 }
 

@@ -25,7 +25,7 @@ Advanced Computing Center for Research and Education
 230 Appleton Place
 Nashville, TN 37203
 http://www.accre.vanderbilt.edu
-*/ 
+*/
 
 //*********************************************************************
 //*********************************************************************
@@ -46,9 +46,9 @@ http://www.accre.vanderbilt.edu
 
 int ns_socket2ssl(NetStream_t *ns)
 {
-   ns->sock_type = NS_TYPE_1_SSL;
+    ns->sock_type = NS_TYPE_1_SSL;
 
-   return(0);
+    return(0);
 }
 
 //*********************************************************************
@@ -57,6 +57,6 @@ int ns_socket2ssl(NetStream_t *ns)
 
 void ns_config_1_ssl(NetStream_t *ns, int fd, int tcpsize)
 {
-  ns_config_sock(ns, tcpsize);
+    ns_config_sock(ns, tcpsize);
 }
 

@@ -11,27 +11,27 @@ int main()
     void *buf;
     int len = 15;
     buf = malloc(len);
-    
+
     while (!zctx_interrupted) {
         int rc = rrsvr_recv(svr, buf, len);
-	cycles++;
+        cycles++;
 
-	// Simulate various problems, after a few cycles
-	if (cycles > 3 && randof (3) == 0) {
-	    printf ("I: simulating a crash\n");
-	    break;
-	} else if (cycles > 3 && randof (3) == 0) {
-	    printf ("I: simulating CPU overload\n");
-	    sleep (2);
-	}
+        // Simulate various problems, after a few cycles
+        if (cycles > 3 && randof (3) == 0) {
+            printf ("I: simulating a crash\n");
+            break;
+        } else if (cycles > 3 && randof (3) == 0) {
+            printf ("I: simulating CPU overload\n");
+            sleep (2);
+        }
 
-	printf ("I: normal request\n");
-	int stored_len = rc < len ? rc : len;
-	rr_dump(buf, stored_len);
-	sleep (1); // Do some heavy work
+        printf ("I: normal request\n");
+        int stored_len = rc < len ? rc : len;
+        rr_dump(buf, stored_len);
+        sleep (1); // Do some heavy work
         rrsvr_send(svr, buf, stored_len);
     }
-    
+
     free(buf);
     rrsvr_destroy(&svr);
     return 0;

@@ -72,7 +72,7 @@ rrbroker_t *rrbroker_new()
     assert(self->workers);
     self->waiting_requests = zlist_new();
     assert(self->waiting_requests);
-   
+
     return self;
 }
 //*************************************************************************
@@ -83,8 +83,8 @@ void rrbroker_requests_destroy(rrbroker_t *self)
 {
     zmsg_t *msg = (zmsg_t *)zlist_pop(self->waiting_requests);
     while(msg) {
-	zmsg_destroy(&msg);
-	msg = (zmsg_t *)zlist_pop(self->waiting_requests);
+        zmsg_destroy(&msg);
+        msg = (zmsg_t *)zlist_pop(self->waiting_requests);
     }
 }
 
@@ -96,17 +96,17 @@ void rrbroker_destroy(rrbroker_t **self_p)
 {
     assert(self_p);
     if (*self_p) {
-	rrbroker_t *self = *self_p;
-	free(self->pattern);
-	free(self->endpoint);
-	zctx_destroy(&self->ctx);
-	rrbroker_requests_destroy(self);	
-	zlist_destroy(&self->waiting_requests);
-   	zlist_destroy(&self->workers);
- 	zhash_foreach(self->workers_ht, rrbroker_worker_erase, NULL);
-	zhash_destroy(&self->workers_ht);	
-	free(self);
-	*self_p = NULL;
+        rrbroker_t *self = *self_p;
+        free(self->pattern);
+        free(self->endpoint);
+        zctx_destroy(&self->ctx);
+        rrbroker_requests_destroy(self);
+        zlist_destroy(&self->waiting_requests);
+        zlist_destroy(&self->workers);
+        zhash_foreach(self->workers_ht, rrbroker_worker_erase, NULL);
+        zhash_destroy(&self->workers_ht);
+        free(self);
+        *self_p = NULL;
     }
 }
 
@@ -126,7 +126,7 @@ rrworker_t *rrworker_new()
     assert(self->pending_requests);
     self->expiry = zclock_time() + HEARTBEAT_EXPIRY;
     self->finished = 0;
-   
+
     return self;
 }
 
@@ -138,18 +138,18 @@ void rrworker_destroy(rrworker_t **self_p)
 {
     assert(self_p);
     if (*self_p) {
-	rrworker_t *self = *self_p;
-	free(self->uuid_str);
-	zframe_destroy(&self->address);
- 	//zhash_foreach(self->pending_requests, rrworker_request_erase, NULL); //** Pending requests should be already claimed back until then
-	zhash_destroy(&self->pending_requests); //** Will call the registered free_fn for each item
-	free(self);
+        rrworker_t *self = *self_p;
+        free(self->uuid_str);
+        zframe_destroy(&self->address);
+        //zhash_foreach(self->pending_requests, rrworker_request_erase, NULL); //** Pending requests should be already claimed back until then
+        zhash_destroy(&self->pending_requests); //** Will call the registered free_fn for each item
+        free(self);
         *self_p = NULL;
     }
 }
 
 //*************************************************************************
-// rrbroker_worker_erase - Erase the worker  
+// rrbroker_worker_erase - Erase the worker
 //*************************************************************************
 
 int rrbroker_worker_erase(const char *key, void *item, void *argument)
@@ -192,22 +192,22 @@ int rrworker_foreach_fn(const char *key, void *item, void *argument)
 void rrworker_delete(rrworker_t *self)
 {
     //** Claim pending requests first
-    if (zhash_size(self->pending_requests)) 
-	zhash_foreach(self->pending_requests, rrworker_foreach_fn, self);
+    if (zhash_size(self->pending_requests))
+        zhash_foreach(self->pending_requests, rrworker_foreach_fn, self);
 
-    //** Remove it from broker 
+    //** Remove it from broker
     zlist_remove(self->broker->workers, self);
     zhash_delete(self->broker->workers_ht, self->uuid_str);
-     
+
     self->broker->wrk_num--;
     printf("Lost a worker. Total %Zd workers.\n", self->broker->wrk_num);
 
-    //** Destroy it 
+    //** Destroy it
     rrworker_destroy(&self);
 }
 
 //*************************************************************************
-// rrbroker_purge - Disconnect the expired workers and resubmit the 
+// rrbroker_purge - Disconnect the expired workers and resubmit the
 // requests on its pending list
 //*************************************************************************
 
@@ -215,12 +215,12 @@ void rrbroker_purge(rrbroker_t *self)
 {
     rrworker_t *worker = (rrworker_t *)zlist_first(self->workers);
     while(worker) {
-   	if (zclock_time() < worker->expiry)  
-	    break;		//** Worker is alive, we're done here
+        if (zclock_time() < worker->expiry)
+            break;		//** Worker is alive, we're done here
         //** Delete expired worker
-	rrworker_delete(worker);
+        rrworker_delete(worker);
 
-	worker = (rrworker_t *)zlist_first(self->workers); 
+        worker = (rrworker_t *)zlist_first(self->workers);
     }
 
     //** Redispatch the requests
@@ -240,14 +240,14 @@ void rrbroker_send_to_worker(rrworker_t *worker, char *command, zmsg_t *msg)
     zmsg_pushstr(msg_copy, RR_WORKER);
     zmsg_wrap(msg_copy, zframe_dup(worker->address));
     zmsg_send(&msg_copy, worker->broker->socket);
-   
-    //** Insert message into worker's pending table 
+
+    //** Insert message into worker's pending table
     if (msg) {
-	zframe_t *uuid = zmsg_first(msg);
-	char *uuid_str = zframe_strdup(uuid);
-	zhash_insert(worker->pending_requests, uuid_str, msg);		
-	zhash_freefn(worker->pending_requests, uuid_str, NULL); //** Or leave it off
-	free(uuid_str);
+        zframe_t *uuid = zmsg_first(msg);
+        char *uuid_str = zframe_strdup(uuid);
+        zhash_insert(worker->pending_requests, uuid_str, msg);
+        zhash_freefn(worker->pending_requests, uuid_str, NULL); //** Or leave it off
+        free(uuid_str);
     }
 }
 
@@ -259,10 +259,10 @@ rrworker_t *rrbroker_next_worker(rrbroker_t *self)
 {
     rrworker_t *worker = (rrworker_t *)zlist_next(self->workers);
     while(worker) {
-	if (worker->ready && (zclock_time() < worker->expiry))
-	    break;	
-	worker = (rrworker_t *)zlist_next(self->workers);
-    } 
+        if (worker->ready && (zclock_time() < worker->expiry))
+            break;
+        worker = (rrworker_t *)zlist_next(self->workers);
+    }
 
     return worker;
 }
@@ -273,23 +273,23 @@ rrworker_t *rrbroker_next_worker(rrbroker_t *self)
 
 void rrbroker_request_dispatch(rrbroker_t *self, zmsg_t *request)
 {
-    //** Queue message 
+    //** Queue message
     if (request)
         zlist_append(self->waiting_requests, request);
-   
+
     while(zlist_size(self->waiting_requests) && zlist_size(self->workers)) {
-	//** Get the next message and available worker
-        rrworker_t *worker = rrbroker_next_worker(self); 
-	if (!worker) 
-	    break;  //** No worker is ready
-	if (self->mode == SYNC_MODE) 
+        //** Get the next message and available worker
+        rrworker_t *worker = rrbroker_next_worker(self);
+        if (!worker)
+            break;  //** No worker is ready
+        if (self->mode == SYNC_MODE)
             worker->ready = 0; //** Worker on SYNC_MODE only process one request once
-	zmsg_t *msg = zlist_pop(self->waiting_requests);
-		
-	//** Send request to this worker
+        zmsg_t *msg = zlist_pop(self->waiting_requests);
+
+        //** Send request to this worker
         rrbroker_send_to_worker(worker, RRWRK_REQUEST, msg);
-       
-	//printf("Message sent to worker: %s\n", worker->uuid_str);
+
+        //printf("Message sent to worker: %s\n", worker->uuid_str);
         //zmsg_dump(msg);
     }
 }
@@ -300,27 +300,27 @@ void rrbroker_request_dispatch(rrbroker_t *self, zmsg_t *request)
 
 void rrbroker_client_msg(rrbroker_t *self, zframe_t *address, zmsg_t *request)
 {
-    assert(zmsg_size(request) >= 1); //**CMD or CMD + BODY 
+    assert(zmsg_size(request) >= 1); //**CMD or CMD + BODY
     zframe_t *cmd = zmsg_pop(request);
 
     if (zframe_streq(cmd, RRCLI_FINISHED)) {
-	zmsg_t *msg = zmsg_new();
-	zmsg_wrap(msg, zframe_dup(address));
-	zmsg_send(&msg, self->socket);		
-	zmsg_destroy(&request);
-    } else if (zframe_streq(cmd, RRCLI_REQUEST)){ 
+        zmsg_t *msg = zmsg_new();
+        zmsg_wrap(msg, zframe_dup(address));
+        zmsg_send(&msg, self->socket);
+        zmsg_destroy(&request);
+    } else if (zframe_streq(cmd, RRCLI_REQUEST)) {
         //** Set message identity to client sender
-    	zmsg_push(request, zframe_dup(address));
-    
-    	//** Set message UUID
-    	uuid_t uuid; 
-    	uuid_generate(uuid);
-    	char *id_str = rr_uuid_str(uuid);
-    	zmsg_pushstr(request, id_str);
+        zmsg_push(request, zframe_dup(address));
 
-    	//** Dispatch requests
-    	rrbroker_request_dispatch(self, request);
-    	free(id_str);
+        //** Set message UUID
+        uuid_t uuid;
+        uuid_generate(uuid);
+        char *id_str = rr_uuid_str(uuid);
+        zmsg_pushstr(request, id_str);
+
+        //** Dispatch requests
+        rrbroker_request_dispatch(self, request);
+        free(id_str);
     }
 
     zframe_destroy(&cmd);
@@ -339,29 +339,29 @@ rrworker_t *rrbroker_worker_require(rrbroker_t *self, char *identity, zframe_t *
     rrworker_t *worker = (rrworker_t *)zhash_lookup(self->workers_ht, identity);
 
     if (worker == NULL) {
-	worker = rrworker_new();
-	worker->broker = self;
-	worker->uuid_str = (char *)malloc(strlen(identity) + 1);
-	strcpy(worker->uuid_str, identity);
-	worker->address = zframe_dup(address);
-	worker->ready = 1; //** New worker ready to work
-	zhash_insert(self->workers_ht, identity, worker);
-	zhash_freefn(self->workers_ht, identity, NULL);
-	zlist_append(self->workers, worker);
-    } 
+        worker = rrworker_new();
+        worker->broker = self;
+        worker->uuid_str = (char *)malloc(strlen(identity) + 1);
+        strcpy(worker->uuid_str, identity);
+        worker->address = zframe_dup(address);
+        worker->ready = 1; //** New worker ready to work
+        zhash_insert(self->workers_ht, identity, worker);
+        zhash_freefn(self->workers_ht, identity, NULL);
+        zlist_append(self->workers, worker);
+    }
 
     return worker;
 }
 
 //************************************************************************
-// rrbroker_worker_live - Worker is still live. Put it at the back of the list. 
+// rrbroker_worker_live - Worker is still live. Put it at the back of the list.
 //************************************************************************
 
 void rrbroker_worker_live(rrworker_t *self)
 {
     self->expiry = zclock_time() + HEARTBEAT_EXPIRY;
     zlist_remove(self->broker->workers, self);
-    zlist_append(self->broker->workers, self); 
+    zlist_append(self->broker->workers, self);
 }
 
 //************************************************************************
@@ -372,7 +372,7 @@ void rrbroker_worker_ready(rrworker_t *self)
 {
     rrbroker_worker_live(self);
     self->ready = 1;
-    //** Dispatch requests 
+    //** Dispatch requests
     rrbroker_request_dispatch(self->broker, NULL);
 }
 
@@ -382,7 +382,7 @@ void rrbroker_worker_ready(rrworker_t *self)
 
 void rrbroker_worker_msg(rrbroker_t *self, zframe_t *address, zmsg_t *msg)
 {
-    assert(zmsg_size(msg) >= 1); //** COMMAND or COMMAND + MSG_UUID + SOURCE 
+    assert(zmsg_size(msg) >= 1); //** COMMAND or COMMAND + MSG_UUID + SOURCE
 
     zframe_t *command = zmsg_pop(msg);
     char *uuid_str = zframe_strdup(address);
@@ -390,42 +390,42 @@ void rrbroker_worker_msg(rrbroker_t *self, zframe_t *address, zmsg_t *msg)
     rrworker_t *worker = rrbroker_worker_require(self, uuid_str, address);
 
     if (zframe_streq(command, RRWRK_REPLY)) {
-	if (worker_live) {
+        if (worker_live) {
             assert(zmsg_size(msg) == 2); //** MSG_UUID + SOURCE
-	    
-	    //** Delete acknowledged message from pending list
-	    zframe_t *msg_uuid = zmsg_pop(msg);
-	    char *m_uuid_str = zframe_strdup(msg_uuid);
-	    zmsg_t *request = zhash_lookup(worker->pending_requests, m_uuid_str);
-	    if (request) {	    
-	        worker->finished++;
-	        self->finished++;
-	    }
-	    //assert(request);
-	    zhash_delete(worker->pending_requests, m_uuid_str);
-	    zmsg_destroy(&request);
-	    free(m_uuid_str);
-	    zframe_destroy(&msg_uuid);
-  
-	    //** This worker is now waiting for work
-	    rrbroker_worker_ready(worker);
-	} 
+
+            //** Delete acknowledged message from pending list
+            zframe_t *msg_uuid = zmsg_pop(msg);
+            char *m_uuid_str = zframe_strdup(msg_uuid);
+            zmsg_t *request = zhash_lookup(worker->pending_requests, m_uuid_str);
+            if (request) {
+                worker->finished++;
+                self->finished++;
+            }
+            //assert(request);
+            zhash_delete(worker->pending_requests, m_uuid_str);
+            zmsg_destroy(&request);
+            free(m_uuid_str);
+            zframe_destroy(&msg_uuid);
+
+            //** This worker is now waiting for work
+            rrbroker_worker_ready(worker);
+        }
     } else if (zframe_streq(command, RRWRK_READY)) {
-	if (worker_live) {
-	    rrworker_delete(worker); //Not first command in session
-	} else {
-	    self->wrk_num++;
-	    printf("B: Got a new worker. Total %Zd workers.\n", self->wrk_num);
-	    rrbroker_request_dispatch(self, NULL);
-	}		
+        if (worker_live) {
+            rrworker_delete(worker); //Not first command in session
+        } else {
+            self->wrk_num++;
+            printf("B: Got a new worker. Total %Zd workers.\n", self->wrk_num);
+            rrbroker_request_dispatch(self, NULL);
+        }
     } else if (zframe_streq(command, RRWRK_HEARTBEAT)) {
         if (worker_live) {
-	    if (self->mode == ASYNC_MODE) {
-		rrbroker_worker_ready(worker);
-	    } else {
-	        rrbroker_worker_live(worker);
-	    }
-	} 
+            if (self->mode == ASYNC_MODE) {
+                rrbroker_worker_ready(worker);
+            } else {
+                rrbroker_worker_live(worker);
+            }
+        }
     } else if (zframe_streq(command, RRWRK_DISCONNECT)) {
         rrworker_delete(worker);
     } else {
@@ -444,64 +444,64 @@ void rrbroker_start(rrbroker_t *self)
 {
     assert(self);
     rrbroker_print(self);
-    
+
     //** Get and process messages forever or until interrupted
     while(!zctx_interrupted) {
-	zmq_pollitem_t item = {self->socket, 0, ZMQ_POLLIN, 0};
-	int rc = zmq_poll(&item, 1, self->heartbeat * ZMQ_POLL_MSEC);
-	if (rc == -1)
-	    break;	//** Interrrupted
+        zmq_pollitem_t item = {self->socket, 0, ZMQ_POLLIN, 0};
+        int rc = zmq_poll(&item, 1, self->heartbeat * ZMQ_POLL_MSEC);
+        if (rc == -1)
+            break;	//** Interrrupted
 
-	if (item.revents & ZMQ_POLLIN) {
-	    zmsg_t *msg = zmsg_recv(self->socket);
-	    if (!msg)
-		break;	//** Interrupted
+        if (item.revents & ZMQ_POLLIN) {
+            zmsg_t *msg = zmsg_recv(self->socket);
+            if (!msg)
+                break;	//** Interrupted
 
-	    //** Can I replace the following three calls by zmsg_unwrap()?
-	    zframe_t *sender = zmsg_pop(msg);
-	    zframe_t *empty = zmsg_pop(msg); 
-	    zframe_destroy(&empty); 
-	    zframe_t *header = zmsg_pop(msg);
+            //** Can I replace the following three calls by zmsg_unwrap()?
+            zframe_t *sender = zmsg_pop(msg);
+            zframe_t *empty = zmsg_pop(msg);
+            zframe_destroy(&empty);
+            zframe_t *header = zmsg_pop(msg);
 
-	    if (zframe_streq(header, RR_CLIENT)) {
-		//** Process requests from client
-		rrbroker_client_msg(self, sender, msg);
-	    } else if (zframe_streq(header, RR_WORKER)) {
-		//** Process data from worker
-		rrbroker_worker_msg(self, sender, msg);	
-	    } else {
-		log_printf(0, "B: invalid message:");
-		zmsg_dump(msg);
-		zmsg_destroy(&msg);
-	    }
+            if (zframe_streq(header, RR_CLIENT)) {
+                //** Process requests from client
+                rrbroker_client_msg(self, sender, msg);
+            } else if (zframe_streq(header, RR_WORKER)) {
+                //** Process data from worker
+                rrbroker_worker_msg(self, sender, msg);
+            } else {
+                log_printf(0, "B: invalid message:");
+                zmsg_dump(msg);
+                zmsg_destroy(&msg);
+            }
 
-	    zframe_destroy(&sender);
-	    zframe_destroy(&header);
- 	} 
+            zframe_destroy(&sender);
+            zframe_destroy(&header);
+        }
 
-	if (zclock_time() > self->heartbeat_at) {
+        if (zclock_time() > self->heartbeat_at) {
 
-  	    //** Disconnect and delete any expired workers
-	    rrbroker_purge(self);	    //** Purge expired workers
+            //** Disconnect and delete any expired workers
+            rrbroker_purge(self);	    //** Purge expired workers
 
-	    rrbroker_print(self);
-    
- 	    //** Send heartbeats
-	    rrworker_t *worker = (rrworker_t *)zlist_first(self->workers);
-	    while(worker) {
-		rrbroker_send_to_worker(worker, RRWRK_HEARTBEAT, NULL);
-		worker = (rrworker_t *)zlist_next(self->workers);
-	    }
-	    self->heartbeat_at = zclock_time() + self->heartbeat;
-	}	    
+            rrbroker_print(self);
+
+            //** Send heartbeats
+            rrworker_t *worker = (rrworker_t *)zlist_first(self->workers);
+            while(worker) {
+                rrbroker_send_to_worker(worker, RRWRK_HEARTBEAT, NULL);
+                worker = (rrworker_t *)zlist_next(self->workers);
+            }
+            self->heartbeat_at = zclock_time() + self->heartbeat;
+        }
     }
 
-    if (zctx_interrupted) 
-	log_printf(0, "B: interrrupt received. Killing broker...\n");
+    if (zctx_interrupted)
+        log_printf(0, "B: interrrupt received. Killing broker...\n");
 }
 
 //*****************************************************************************
-// rrbroker_bind 
+// rrbroker_bind
 //*****************************************************************************
 
 void rrbroker_bind(rrbroker_t *self)
@@ -514,7 +514,7 @@ void rrbroker_bind(rrbroker_t *self)
     zsocket_set_rcvhwm(self->socket, 100000);
 
     int rc = zsocket_bind(self->socket, "%s", self->endpoint);
-    assert(rc != -1); 
+    assert(rc != -1);
 }
 
 //******************************************************************************
@@ -547,9 +547,9 @@ void rrbroker_load_config(rrbroker_t *self, char *fname)
     assert(self->pattern);
 
     if (strcmp(self->pattern, "ppp") == 0) {
-	_rrbroker_config_ppp(self, keyfile);
+        _rrbroker_config_ppp(self, keyfile);
     } else {
-	log_printf(0, "B: Unknown ZMQ Patterns: %s.\n", self->pattern);
+        log_printf(0, "B: Unknown ZMQ Patterns: %s.\n", self->pattern);
     }
 
     inip_destroy(keyfile);
@@ -566,34 +566,34 @@ void rrbroker_print(rrbroker_t *self)
     printf("\n=============================================================================\n");
     printf("B: Waiting request list: %Zd requests.\n", zlist_size(self->waiting_requests));
     printf("B: Total finished requests: %" PRIu64 "\n", self->finished);
-/*    printf("[\n");
-    if (zlist_size(self->waiting_requests)) {
-	zmsg_t *msg = (zmsg_t *)zlist_first(self->waiting_requests);
-	while(msg) {
-	    zmsg_dump(msg);
-	    msg = (zmsg_t *)zlist_next(self->waiting_requests);
-	}
-    }
-    printf("]\n");
-*/ 
+    /*    printf("[\n");
+        if (zlist_size(self->waiting_requests)) {
+    	zmsg_t *msg = (zmsg_t *)zlist_first(self->waiting_requests);
+    	while(msg) {
+    	    zmsg_dump(msg);
+    	    msg = (zmsg_t *)zlist_next(self->waiting_requests);
+    	}
+        }
+        printf("]\n");
+    */
     printf("B: Worker list: %Zd workers\n", zlist_size(self->workers));
     printf("[\n");
     if (zlist_size(self->workers)) {
-	rrworker_t *wrk = (rrworker_t *)zlist_first(self->workers);
-	while(wrk) {
-	    printf("\tW: UUID: %s. Item: %p\n", wrk->uuid_str, wrk);
-	    printf("\tW: Pending request list: %Zd\n", zhash_size(wrk->pending_requests));
-	    printf("\tW: Total finished requests: %" PRIu64 "\n", wrk->finished);
+        rrworker_t *wrk = (rrworker_t *)zlist_first(self->workers);
+        while(wrk) {
+            printf("\tW: UUID: %s. Item: %p\n", wrk->uuid_str, wrk);
+            printf("\tW: Pending request list: %Zd\n", zhash_size(wrk->pending_requests));
+            printf("\tW: Total finished requests: %" PRIu64 "\n", wrk->finished);
 //	    zhash_foreach(wrk->pending_requests, callback, NULL);
-	    wrk = (rrworker_t *)zlist_next(self->workers);
-	}
+            wrk = (rrworker_t *)zlist_next(self->workers);
+        }
     }
     printf("]\n");
-/*
-    printf("Worker hashtable: %Zd workers\n", zhash_size(self->workers_ht));
-    printf("[\n");
-    zhash_foreach(self->workers_ht, callback, NULL); 
-    printf("]\n");*/
+    /*
+        printf("Worker hashtable: %Zd workers\n", zhash_size(self->workers_ht));
+        printf("[\n");
+        zhash_foreach(self->workers_ht, callback, NULL);
+        printf("]\n");*/
     printf("\n=============================================================================\n");
 }
 

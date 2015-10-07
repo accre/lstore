@@ -25,7 +25,7 @@ Advanced Computing Center for Research and Education
 230 Appleton Place
 Nashville, TN 37203
 http://www.accre.vanderbilt.edu
-*/ 
+*/
 
 //******************************************************************
 //******************************************************************
@@ -45,19 +45,19 @@ http://www.accre.vanderbilt.edu
 
 pigeon_hole_iter_t pigeon_hole_iterator_init(pigeon_hole_t *ph)
 {
-  pigeon_hole_iter_t pi;
+    pigeon_hole_iter_t pi;
 
-  apr_thread_mutex_lock(ph->lock);
+    apr_thread_mutex_lock(ph->lock);
 
-  pi.ph = ph;
-  pi.start_slot = ph->next_slot - ph->nused;
-  if (pi.start_slot < 0) pi.start_slot = pi.start_slot + ph->nholes;
-  pi.found = 0;
-  pi.count = 0;
+    pi.ph = ph;
+    pi.start_slot = ph->next_slot - ph->nused;
+    if (pi.start_slot < 0) pi.start_slot = pi.start_slot + ph->nholes;
+    pi.found = 0;
+    pi.count = 0;
 
-  apr_thread_mutex_unlock(ph->lock);
+    apr_thread_mutex_unlock(ph->lock);
 
-  return(pi);
+    return(pi);
 }
 
 //***************************************************************************
@@ -66,27 +66,27 @@ pigeon_hole_iter_t pigeon_hole_iterator_init(pigeon_hole_t *ph)
 
 int pigeon_hole_iterator_next(pigeon_hole_iter_t *pi)
 {
-  int i, slot;
-  pigeon_hole_t *ph = pi->ph;
+    int i, slot;
+    pigeon_hole_t *ph = pi->ph;
 
-  if (pi->count == -1) return(-1);
+    if (pi->count == -1) return(-1);
 
-  apr_thread_mutex_lock(ph->lock);
-  for (i=pi->count; i<ph->nholes; i++) {
-    slot = (pi->start_slot + i) % ph->nholes;
-    if (ph->hole[slot] == 1) {
-        apr_thread_mutex_unlock(ph->lock);
+    apr_thread_mutex_lock(ph->lock);
+    for (i=pi->count; i<ph->nholes; i++) {
+        slot = (pi->start_slot + i) % ph->nholes;
+        if (ph->hole[slot] == 1) {
+            apr_thread_mutex_unlock(ph->lock);
 
-        pi->count = i+1;;
-        pi->found++;
-        return(slot);
+            pi->count = i+1;;
+            pi->found++;
+            return(slot);
+        }
     }
-  }
 
-  apr_thread_mutex_unlock(ph->lock);
+    apr_thread_mutex_unlock(ph->lock);
 
-  pi->count = -1;
-  return(-1);
+    pi->count = -1;
+    return(-1);
 }
 
 
@@ -96,13 +96,13 @@ int pigeon_hole_iterator_next(pigeon_hole_iter_t *pi)
 
 int pigeon_holes_used(pigeon_hole_t *ph)
 {
-  int n;
+    int n;
 
-  apr_thread_mutex_lock(ph->lock);
-  n = ph->nused;
-  apr_thread_mutex_unlock(ph->lock);
+    apr_thread_mutex_lock(ph->lock);
+    n = ph->nused;
+    apr_thread_mutex_unlock(ph->lock);
 
-  return(n);
+    return(n);
 }
 
 //***************************************************************************
@@ -111,13 +111,13 @@ int pigeon_holes_used(pigeon_hole_t *ph)
 
 int pigeon_holes_free(pigeon_hole_t *ph)
 {
-  int n;
+    int n;
 
-  apr_thread_mutex_lock(ph->lock);
-  n = ph->nholes - ph->nused;
-  apr_thread_mutex_unlock(ph->lock);
+    apr_thread_mutex_lock(ph->lock);
+    n = ph->nholes - ph->nused;
+    apr_thread_mutex_unlock(ph->lock);
 
-  return(n);
+    return(n);
 }
 
 //***************************************************************************
@@ -126,24 +126,24 @@ int pigeon_holes_free(pigeon_hole_t *ph)
 
 void release_pigeon_hole(pigeon_hole_t *ph, int slot)
 {
-  apr_thread_mutex_lock(ph->lock);
-log_printf(15, "release_pigeon_hole: ph=%s nholes=%d start nused=%d slot=%d\n", ph->name, ph->nholes, ph->nused, slot);
+    apr_thread_mutex_lock(ph->lock);
+    log_printf(15, "release_pigeon_hole: ph=%s nholes=%d start nused=%d slot=%d\n", ph->name, ph->nholes, ph->nused, slot);
 
-  //** Check for valid range
-  if ((slot<0) || (slot>=ph->nholes)) {
-     log_printf(15, "release_pigeon_hole: ERROR ph=%p slot=%d is invalid\n", ph, slot);
-     apr_thread_mutex_unlock(ph->lock);
-     return;
-  }
+    //** Check for valid range
+    if ((slot<0) || (slot>=ph->nholes)) {
+        log_printf(15, "release_pigeon_hole: ERROR ph=%p slot=%d is invalid\n", ph, slot);
+        apr_thread_mutex_unlock(ph->lock);
+        return;
+    }
 
-  if (ph->hole[slot] == 1) {
-     ph->hole[slot] = 0;
-     ph->nused--;
-  } else {
-log_printf(15, "release_pigeon_hole: ERROR ph=%s nholes=%d nused=%d slot=%d is NOT USED!!!\n", ph->name, ph->nholes, ph->nused, slot);
+    if (ph->hole[slot] == 1) {
+        ph->hole[slot] = 0;
+        ph->nused--;
+    } else {
+        log_printf(15, "release_pigeon_hole: ERROR ph=%s nholes=%d nused=%d slot=%d is NOT USED!!!\n", ph->name, ph->nholes, ph->nused, slot);
 //abort();
-  }
-  apr_thread_mutex_unlock(ph->lock);
+    }
+    apr_thread_mutex_unlock(ph->lock);
 }
 
 //***************************************************************************
@@ -152,34 +152,34 @@ log_printf(15, "release_pigeon_hole: ERROR ph=%s nholes=%d nused=%d slot=%d is N
 
 int reserve_pigeon_hole(pigeon_hole_t *ph)
 {
-  int i, slot;
+    int i, slot;
 
-  apr_thread_mutex_lock(ph->lock);
+    apr_thread_mutex_lock(ph->lock);
 
 //log_printf(15, "reserve_pigeon_hole: ph=%s nholes=%d nused=%d\n", ph->name, ph->nholes, ph->nused);
 
-  if (ph->nused == ph->nholes) { //** All holes used so return
-     apr_thread_mutex_unlock(ph->lock);
-     return(-1);
-  }
-
-  for (i=0; i < ph->nholes; i++) {  
-     slot = (ph->next_slot + i) % ph->nholes; //** Start scanning at the last hole
-     if (ph->hole[slot] == 0) {
-        ph->hole[slot] = 1;
-        ph->nused++;
-        ph->next_slot = (slot+1) % ph->nholes;
-        log_printf(10, "reserve_pigeon_hole: ph=%s slot=%d\n", ph->name, slot);
+    if (ph->nused == ph->nholes) { //** All holes used so return
         apr_thread_mutex_unlock(ph->lock);
-        return(slot);
-     }
-  }
+        return(-1);
+    }
 
-  apr_thread_mutex_unlock(ph->lock);
+    for (i=0; i < ph->nholes; i++) {
+        slot = (ph->next_slot + i) % ph->nholes; //** Start scanning at the last hole
+        if (ph->hole[slot] == 0) {
+            ph->hole[slot] = 1;
+            ph->nused++;
+            ph->next_slot = (slot+1) % ph->nholes;
+            log_printf(10, "reserve_pigeon_hole: ph=%s slot=%d\n", ph->name, slot);
+            apr_thread_mutex_unlock(ph->lock);
+            return(slot);
+        }
+    }
 
-abort();
+    apr_thread_mutex_unlock(ph->lock);
 
-  return(-1);
+    abort();
+
+    return(-1);
 }
 
 
@@ -189,11 +189,11 @@ abort();
 
 void destroy_pigeon_hole(pigeon_hole_t *ph)
 {
-  apr_thread_mutex_destroy(ph->lock);
-  apr_pool_destroy(ph->pool);
+    apr_thread_mutex_destroy(ph->lock);
+    apr_pool_destroy(ph->pool);
 
-  free(ph->hole);
-  free(ph);
+    free(ph->hole);
+    free(ph);
 }
 
 //***************************************************************************
@@ -202,23 +202,23 @@ void destroy_pigeon_hole(pigeon_hole_t *ph)
 
 pigeon_hole_t *new_pigeon_hole(const char *name, int size)
 {
-  pigeon_hole_t *ph = (pigeon_hole_t *)malloc(sizeof(pigeon_hole_t));
-  assert(ph != NULL);
+    pigeon_hole_t *ph = (pigeon_hole_t *)malloc(sizeof(pigeon_hole_t));
+    assert(ph != NULL);
 
-  ph->hole = (char *)malloc(size);
-  assert(ph->hole != NULL);
+    ph->hole = (char *)malloc(size);
+    assert(ph->hole != NULL);
 
 //log_printf(0, "new_pigeon_hole: size=%d\n", size);
-  memset(ph->hole, 0, size);
-  ph->name = name;
-  apr_pool_create(&(ph->pool), NULL);
-  apr_thread_mutex_create(&(ph->lock), APR_THREAD_MUTEX_DEFAULT, ph->pool);
+    memset(ph->hole, 0, size);
+    ph->name = name;
+    apr_pool_create(&(ph->pool), NULL);
+    apr_thread_mutex_create(&(ph->lock), APR_THREAD_MUTEX_DEFAULT, ph->pool);
 
-  ph->nholes = size;
-  ph->nused = 0;
-  ph->next_slot = 0;
+    ph->nholes = size;
+    ph->nused = 0;
+    ph->next_slot = 0;
 
-  return(ph);
+    return(ph);
 }
 
 

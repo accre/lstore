@@ -3,6 +3,6 @@
 
 int main(int argc, char **argv)
 {
-  return(varint_test());
+    return(varint_test());
 }
 

@@ -25,7 +25,7 @@ Advanced Computing Center for Research and Education
 230 Appleton Place
 Nashville, TN 37203
 http://www.accre.vanderbilt.edu
-*/ 
+*/
 
 //*************************************************************************
 //*************************************************************************
@@ -38,12 +38,12 @@ http://www.accre.vanderbilt.edu
 #define N_BUFSIZE  1024
 
 typedef struct {
-   phoebus_t *p_path;
-   liblslSess *sess;
-   int family;
-   int fd;
-   int tcpsize;
-   char address[16];
+    phoebus_t *p_path;
+    liblslSess *sess;
+    int family;
+    int fd;
+    int tcpsize;
+    char address[16];
 } network_phoebus_t;
 
 #ifdef __cplusplus
@@ -58,12 +58,13 @@ long int phoebus_write(net_sock_t *sock, const void *buf, size_t count, Net_time
 long int phoebus_read(net_sock_t *sock, void *buf, size_t count, Net_timeout_t tm);
 int phoebus_connect(net_sock_t *sock, const char *hostname, int port, Net_timeout_t timeout);
 #endif
-
+ 
 void ns_config_phoebus(NetStream_t *ns, phoebus_t *path, int tcpsize);
-
+ 
 #ifdef __cplusplus
 }
 #endif
-
+ 
 #endif
-
+ 
+ 

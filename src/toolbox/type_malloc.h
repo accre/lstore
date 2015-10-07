@@ -25,9 +25,9 @@ Advanced Computing Center for Research and Education
 230 Appleton Place
 Nashville, TN 37203
 http://www.accre.vanderbilt.edu
-*/ 
+*/
 
-//************************************************************* 
+//*************************************************************
 // type_malloc simple malloc wrapper using assert, type, andsize
 //*************************************************************
 

@@ -25,7 +25,7 @@ Advanced Computing Center for Research and Education
 230 Appleton Place
 Nashville, TN 37203
 http://www.accre.vanderbilt.edu
-*/ 
+*/
 
 //*************************************************************************
 //*************************************************************************
@@ -36,7 +36,7 @@ http://www.accre.vanderbilt.edu
 #ifdef __cplusplus
 extern "C" {
 #endif
- 
+
 #include <zmq.h>
 #include <czmq.h>
 #include <unistd.h>
@@ -55,7 +55,7 @@ typedef void zsocket_t;
     void *responder; // ZMQ_REP
     void *publisher; // ZMQ_PUB
     void *subscriber;// ZMQ_SUB
-    void *sender;    // ZMQ_PUSH 
+    void *sender;    // ZMQ_PUSH
     void *receiver;  // ZMQ_PULL
     void *router;    // ZMQ_ROUTER
     void *dealer;    // ZMQ_DEALER
@@ -83,7 +83,7 @@ enum {
     HWM = 0x010000,
     SUBSCRIBE = 0x020000,
     UNSUBSCRIBE = 0x040000,
-    IDENTITY = 0x080000     
+    IDENTITY = 0x080000
 };
 
 //** Contains zmq socket options, not all opts
@@ -113,15 +113,15 @@ typedef struct {
     char *identity;
 } zsocket_opt_t;
 
-//** Contains zmq network fields 
-typedef struct { 
+//** Contains zmq network fields
+typedef struct {
     zctx_t *context;
     zsocket_t *socket;
     int type; 			//** Socket type
     char *prtcl;		//** Protocol type
     int zmq_device; 		//** Built-in zmq device
     zsocket_opt_t *option;
-    zmq_pollitem_t *items; 
+    zmq_pollitem_t *items;
     apr_pool_t *mpool;
     apr_thread_mutex_t *lock;
 } network_zsock_t;

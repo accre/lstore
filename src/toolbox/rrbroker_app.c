@@ -6,7 +6,7 @@ int main()
     rrbroker_t *broker = rrbroker_new();
     rrbroker_load_config(broker, "zsock.cfg");
     rrbroker_start(broker);
-    rrbroker_destroy(&broker); 
+    rrbroker_destroy(&broker);
     apr_terminate();
     return 0;
 }

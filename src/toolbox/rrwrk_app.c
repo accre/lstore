@@ -19,12 +19,12 @@ int main()
     rrwrk_load_config(wrk, "zsock.cfg");
 
     while(true) {
-	int rc = rrwrk_start(wrk, task_fn_test);
-	if (rc == -1)
-	    break;
+        int rc = rrwrk_start(wrk, task_fn_test);
+        if (rc == -1)
+            break;
     }
-   
-    rrwrk_destroy(&wrk); 
+
+    rrwrk_destroy(&wrk);
     apr_terminate();
     return 0;
 }

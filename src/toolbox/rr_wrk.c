@@ -33,7 +33,7 @@ http://www.accre.vanderbilt.edu
 #include "rr_wrk.h"
 
 //*************************************************************************
-// _rrwrk_init - Initialize rr worker 
+// _rrwrk_init - Initialize rr worker
 //*************************************************************************
 
 void _rrwrk_init(rrwrk_t *self)
@@ -59,7 +59,7 @@ void _rrwrk_init(rrwrk_t *self)
 }
 
 //*************************************************************************
-// rrwrk_new - Construct a request response worker. 
+// rrwrk_new - Construct a request response worker.
 //*************************************************************************
 
 rrwrk_t *rrwrk_new()
@@ -73,7 +73,7 @@ rrwrk_t *rrwrk_new()
     assert(wrk->ctx);
     wrk->data = zlist_new();
     assert(wrk->data);
-    return wrk;       
+    return wrk;
 }
 
 //************************************************************************
@@ -84,8 +84,8 @@ void rrwrk_data_destroy(rrwrk_t *self)
 {
     zmsg_t *msg = (zmsg_t *)zlist_pop(self->data);
     while(msg) {
-	zmsg_destroy(&msg);
-	msg = (zmsg_t *)zlist_pop(self->data);
+        zmsg_destroy(&msg);
+        msg = (zmsg_t *)zlist_pop(self->data);
     }
 }
 
@@ -93,20 +93,20 @@ void rrwrk_data_destroy(rrwrk_t *self)
 // rrwrk_destroy - Destroy rrwrk
 //************************************************************************
 
-void rrwrk_destroy(rrwrk_t **self_p) 
+void rrwrk_destroy(rrwrk_t **self_p)
 {
     assert(self_p);
     if (*self_p) {
-	rrwrk_t *self = *self_p;
- 	zctx_destroy(&self->ctx); //** Also destroy all the sockets created in this context
- 	rrwrk_data_destroy(self);
-	zlist_destroy(&self->data);	
-	free(self->pattern);
-	free(self->sinker);
-	free(self->broker);
+        rrwrk_t *self = *self_p;
+        zctx_destroy(&self->ctx); //** Also destroy all the sockets created in this context
+        rrwrk_data_destroy(self);
+        zlist_destroy(&self->data);
+        free(self->pattern);
+        free(self->sinker);
+        free(self->broker);
         free(self->uuid_str);
-	free(self);
-	*self_p = NULL;
+        free(self);
+        *self_p = NULL;
     }
 }
 
@@ -119,48 +119,48 @@ void rrtask_manager_fn(void *args, zctx_t *ctx, void *pipe)
     rrwrk_t *self = (rrwrk_t *)args;
 
     zstr_send(pipe, "READY");
-  
-    while (true) { 
+
+    while (true) {
         zmq_pollitem_t item = {pipe, 0, ZMQ_POLLIN, 0};
         int rc = zmq_poll(&item, 1, -1);
-	if (rc == -1 && errno == ETERM)
-	    break;    //** Context has been shut down
-	
-	zmsg_t *msg;
-	if (item.revents & ZMQ_POLLIN) { 
+        if (rc == -1 && errno == ETERM)
+            break;    //** Context has been shut down
 
-	    //** Receives task input from pipe
-	    msg = zmsg_recv(pipe);
+        zmsg_t *msg;
+        if (item.revents & ZMQ_POLLIN) {
 
-	    zframe_t *data_in = zmsg_last(msg);
+            //** Receives task input from pipe
+            msg = zmsg_recv(pipe);
 
-	    rrtask_data_t *input = rrtask_data_new();
-	    rrtask_set_data(input, zframe_data(data_in), zframe_size(data_in)); 
+            zframe_t *data_in = zmsg_last(msg);
 
-	    //** User callback function to perform the task 
-            rrtask_data_t *output = self->cb(input); 
-	    zframe_t *data_out = zframe_new(output->data, output->len); 
+            rrtask_data_t *input = rrtask_data_new();
+            rrtask_set_data(input, zframe_data(data_in), zframe_size(data_in));
 
-	    //** Removes input data from message and destroy it 
-	    zmsg_remove(msg, data_in);
-	    zframe_destroy(&data_in);	
-	    
-	    //** Adds output data to the message and send it to pipe
-	    zmsg_add(msg, data_out); 
-	    zmsg_send(&msg, pipe); 
+            //** User callback function to perform the task
+            rrtask_data_t *output = self->cb(input);
+            zframe_t *data_out = zframe_new(output->data, output->len);
 
-	    //** Destroys task input and output data	
+            //** Removes input data from message and destroy it
+            zmsg_remove(msg, data_in);
+            zframe_destroy(&data_in);
+
+            //** Adds output data to the message and send it to pipe
+            zmsg_add(msg, data_out);
+            zmsg_send(&msg, pipe);
+
+            //** Destroys task input and output data
             rrtask_data_destroy(&input);
             rrtask_data_destroy(&output);
 
-	    zmsg_destroy(&msg);
-	}
+            zmsg_destroy(&msg);
+        }
 
         if (zctx_interrupted) {
-	    printf("I am destroying this message.\n");
-	    zmsg_destroy(&msg);
-	    break;
-	}
+            printf("I am destroying this message.\n");
+            zmsg_destroy(&msg);
+            break;
+        }
     }
 }
 
@@ -171,7 +171,7 @@ void rrtask_manager_fn(void *args, zctx_t *ctx, void *pipe)
 void *_rrwrk_create_socket(zctx_t *ctx, void *socket, int type)
 {
     if (socket) {
-        zsocket_destroy(ctx, socket); //** Destroy existing socket 
+        zsocket_destroy(ctx, socket); //** Destroy existing socket
     }
     socket = zsocket_new(ctx, type);
     assert(socket);
@@ -191,7 +191,7 @@ void _rrwrk_send(void *socket, char *command, zmsg_t *msg)
     zmsg_pushstr(msg, RR_WORKER);
     zmsg_pushstr(msg, "");
 
-    zmsg_send(&msg, socket); 
+    zmsg_send(&msg, socket);
 }
 
 //*************************************************************************
@@ -204,7 +204,7 @@ void rrwrk_send_to_sinker(rrwrk_t *self, char *command, zmsg_t *msg)
 }
 
 //*************************************************************************
-// rrwrk_send_to_broker - Send message to broker. 
+// rrwrk_send_to_broker - Send message to broker.
 //*************************************************************************
 
 void rrwrk_send_to_broker(rrwrk_t *self, char *command, zmsg_t *msg)
@@ -220,10 +220,10 @@ void rrwrk_connect_to_broker(rrwrk_t *self)
 {
     self->worker = _rrwrk_create_socket(self->ctx, self->worker, ZMQ_DEALER);
 
-    //** Recreate uuid for each new connection 
+    //** Recreate uuid for each new connection
     if (self->uuid_str) {
-	free(self->uuid_str);
-    	uuid_clear(self->uuid);
+        free(self->uuid_str);
+        uuid_clear(self->uuid);
     }
 
     uuid_generate(self->uuid);
@@ -241,7 +241,7 @@ void rrwrk_connect_to_broker(rrwrk_t *self)
 }
 
 //*************************************************************************
-// rrwrk_connect_to_sinker - Connect or reconnect to sinker 
+// rrwrk_connect_to_sinker - Connect or reconnect to sinker
 //*************************************************************************
 
 void rrwrk_connect_to_sinker(rrwrk_t *self)
@@ -251,13 +251,13 @@ void rrwrk_connect_to_sinker(rrwrk_t *self)
 }
 
 //************************************************************************
-// rrwrk_task_dispatch - Dispatch tasks to individual worker 
+// rrwrk_task_dispatch - Dispatch tasks to individual worker
 //************************************************************************
 
 void rrwrk_task_dispatch(rrwrk_t *self, zmsg_t *request)
 {
     if (request)
-	zlist_append(self->data, request);
+        zlist_append(self->data, request);
 }
 
 
@@ -268,124 +268,124 @@ void rrwrk_task_dispatch(rrwrk_t *self, zmsg_t *request)
 int rrwrk_start(rrwrk_t *self, wrk_task_fn *cb)
 {
     self->heartbeat_at = zclock_time() + self->heartbeat;
-    self->cb = cb; 
+    self->cb = cb;
 
     //** Start task thread and wait for synchronization signal
-    self->pipe = zthread_fork(self->ctx, rrtask_manager_fn, (void *)self); 
+    self->pipe = zthread_fork(self->ctx, rrtask_manager_fn, (void *)self);
     assert(self->pipe);
     free(zstr_recv(self->pipe));
     //self->liveness = HEARTBEAT_LIVENESS; //** Don't do reconnect before the first connection established
 
     while(!zctx_interrupted) {
         zmq_pollitem_t items[] = {{self->worker, 0, ZMQ_POLLIN, 0}, {self->pipe, 0, ZMQ_POLLIN, 0}}; //** Be aware: this must be within while loop!!
-	int rc = zmq_poll(items, 2, self->heartbeat * ZMQ_POLL_MSEC);
-	if (rc == -1)
-	    break;	//** Interrupted
+        int rc = zmq_poll(items, 2, self->heartbeat * ZMQ_POLL_MSEC);
+        if (rc == -1)
+            break;	//** Interrupted
 
-	if (items[0].revents & ZMQ_POLLIN) { //** Data from broker is ready 
-	    zmsg_t *msg = zmsg_recv(self->worker);
-	    if (!msg)
-		break; //** Interrupted. Need to do more research to confirm it 
-	    self->liveness = HEARTBEAT_LIVENESS;
-	    self->last_heartbeat = zclock_time();
-	
-	    //** Dont try to handle errors, just assert noisily    
-	    assert(zmsg_size(msg) >= 3); //** empty + header + command + ...
+        if (items[0].revents & ZMQ_POLLIN) { //** Data from broker is ready
+            zmsg_t *msg = zmsg_recv(self->worker);
+            if (!msg)
+                break; //** Interrupted. Need to do more research to confirm it
+            self->liveness = HEARTBEAT_LIVENESS;
+            self->last_heartbeat = zclock_time();
 
-	    zframe_t *empty = zmsg_pop(msg);
-	    assert(zframe_streq(empty, ""));
-	    zframe_destroy(&empty);
+            //** Dont try to handle errors, just assert noisily
+            assert(zmsg_size(msg) >= 3); //** empty + header + command + ...
 
-	    zframe_t *header = zmsg_pop(msg);
-	    assert(zframe_streq(header, RR_WORKER)); 
-	    zframe_destroy(&header);
+            zframe_t *empty = zmsg_pop(msg);
+            assert(zframe_streq(empty, ""));
+            zframe_destroy(&empty);
 
-	    zframe_t *command = zmsg_pop(msg);
-	    if (zframe_streq(command, RRWRK_REQUEST)) {
-		assert(zmsg_size(msg) == 3); //** UUID + SOURCE + INPUT DATA
-	        self->total_received++;
-		zmq_pollitem_t item = {self->pipe, 0, ZMQ_POLLOUT, 0};
-		int rc = zmq_poll(&item, 1, 0);
-		assert(rc != -1);
-		if (item.revents & ZMQ_POLLOUT) { //** Dispatch it if worker is ready
-		    //** Send task to task manager
-		    zmsg_send(&msg, self->pipe);	
-	  	} else { //** Otherwise put it on waiting list
-		    zlist_push(self->data, zmsg_dup(msg));
-		}
-	    } else if (zframe_streq(command, RRWRK_HEARTBEAT)) {
-		; //** Do nothing for heartbeat
-	    } else if (zframe_streq(command, RRWRK_DISCONNECT)) {
-		rrwrk_connect_to_broker(self);
-	    } else {
-		log_printf(0, "E: invalid input message\n");
-	    }
+            zframe_t *header = zmsg_pop(msg);
+            assert(zframe_streq(header, RR_WORKER));
+            zframe_destroy(&header);
 
-	    zframe_destroy(&command);
-	    zmsg_destroy(&msg);
-	} else if ((zclock_time() - self->heartbeat) > self->last_heartbeat) {
-	    if(--self->liveness == 0) {
-	        rrwrk_print(self);
-	        log_printf(0, "W: Disconnected from broker - retrying ...\n");
-	        rrwrk_print(self);
-	        zclock_sleep(self->reconnect);
-	        rrwrk_connect_to_broker(self);
-	    }
-	}
-	
-	if (items[1].revents & ZMQ_POLLIN) { //** Data from pipe is ready
-	    zmsg_t *output = zmsg_recv(self->pipe);
-	    assert(zmsg_size(output) == 3); //** UUID + SOURCE + DATA
+            zframe_t *command = zmsg_pop(msg);
+            if (zframe_streq(command, RRWRK_REQUEST)) {
+                assert(zmsg_size(msg) == 3); //** UUID + SOURCE + INPUT DATA
+                self->total_received++;
+                zmq_pollitem_t item = {self->pipe, 0, ZMQ_POLLOUT, 0};
+                int rc = zmq_poll(&item, 1, 0);
+                assert(rc != -1);
+                if (item.revents & ZMQ_POLLOUT) { //** Dispatch it if worker is ready
+                    //** Send task to task manager
+                    zmsg_send(&msg, self->pipe);
+                } else { //** Otherwise put it on waiting list
+                    zlist_push(self->data, zmsg_dup(msg));
+                }
+            } else if (zframe_streq(command, RRWRK_HEARTBEAT)) {
+                ; //** Do nothing for heartbeat
+            } else if (zframe_streq(command, RRWRK_DISCONNECT)) {
+                rrwrk_connect_to_broker(self);
+            } else {
+                log_printf(0, "E: invalid input message\n");
+            }
 
-	    self->total_finished++;
+            zframe_destroy(&command);
+            zmsg_destroy(&msg);
+        } else if ((zclock_time() - self->heartbeat) > self->last_heartbeat) {
+            if(--self->liveness == 0) {
+                rrwrk_print(self);
+                log_printf(0, "W: Disconnected from broker - retrying ...\n");
+                rrwrk_print(self);
+                zclock_sleep(self->reconnect);
+                rrwrk_connect_to_broker(self);
+            }
+        }
 
-	    zmsg_t *reply = zmsg_new();
-	    //** Adds UUID + SOURCE to reply message
-	    zframe_t *uuid = zframe_dup(zmsg_first(output));
-	    zframe_t *source = zframe_dup(zmsg_next(output));
-	    zmsg_add(reply, uuid); 	
-	    zmsg_add(reply, source);  	
-	    
-	    //** Sends reply to broker
-	    rrwrk_send_to_broker(self, RRWRK_REPLY, reply);
+        if (items[1].revents & ZMQ_POLLIN) { //** Data from pipe is ready
+            zmsg_t *output = zmsg_recv(self->pipe);
+            assert(zmsg_size(output) == 3); //** UUID + SOURCE + DATA
+
+            self->total_finished++;
+
+            zmsg_t *reply = zmsg_new();
+            //** Adds UUID + SOURCE to reply message
+            zframe_t *uuid = zframe_dup(zmsg_first(output));
+            zframe_t *source = zframe_dup(zmsg_next(output));
+            zmsg_add(reply, uuid);
+            zmsg_add(reply, source);
+
+            //** Sends reply to broker
+            rrwrk_send_to_broker(self, RRWRK_REPLY, reply);
 
             //** Sends output to sinker
             //zmsg_send(&output, self->sender);
-	    rrwrk_send_to_sinker(self, RRWRK_OUTPUT, output);
-	    
-	    zmsg_destroy(&output);
-	    zmsg_destroy(&reply);
-	}
+            rrwrk_send_to_sinker(self, RRWRK_OUTPUT, output);
 
-	//** Dispatch task if any
-	while (true) {
-	    zmq_pollitem_t pipe_write = {self->pipe, 0, ZMQ_POLLOUT, 0};
-	    zmq_poll(&pipe_write, 1, 0);
-	    if ((pipe_write.revents & ZMQ_POLLOUT) && (zlist_size(self->data))) {
-	        zmsg_t* data = (zmsg_t *)zlist_pop(self->data);
-		zmsg_send(&data, self->pipe);
-		printf("Dispatched one task.\n");
-	    } else 
-		break;
-	}
+            zmsg_destroy(&output);
+            zmsg_destroy(&reply);
+        }
 
-	//** Send HEARTBEAT if it's time
-	if (zclock_time() > self->heartbeat_at) {
-	    rrwrk_print(self);
-	    rrwrk_send_to_broker(self, RRWRK_HEARTBEAT, NULL);
-	    self->heartbeat_at = zclock_time() + self->heartbeat;
-	}
+        //** Dispatch task if any
+        while (true) {
+            zmq_pollitem_t pipe_write = {self->pipe, 0, ZMQ_POLLOUT, 0};
+            zmq_poll(&pipe_write, 1, 0);
+            if ((pipe_write.revents & ZMQ_POLLOUT) && (zlist_size(self->data))) {
+                zmsg_t* data = (zmsg_t *)zlist_pop(self->data);
+                zmsg_send(&data, self->pipe);
+                printf("Dispatched one task.\n");
+            } else
+                break;
+        }
+
+        //** Send HEARTBEAT if it's time
+        if (zclock_time() > self->heartbeat_at) {
+            rrwrk_print(self);
+            rrwrk_send_to_broker(self, RRWRK_HEARTBEAT, NULL);
+            self->heartbeat_at = zclock_time() + self->heartbeat;
+        }
 
     }
 
     if (zctx_interrupted)
-	log_printf(0, "W: interrupt received. Killing worker...\n");
+        log_printf(0, "W: interrupt received. Killing worker...\n");
 
     return -1;
 }
 
 //**************************************************************************
-// rrwrk_config_ppp - Config rrworker to use ppp pattern 
+// rrwrk_config_ppp - Config rrworker to use ppp pattern
 //**************************************************************************
 
 void _rrwrk_config_ppp(rrwrk_t *self, inip_file_t *keyfile)
@@ -404,7 +404,7 @@ void _rrwrk_config_ppp(rrwrk_t *self, inip_file_t *keyfile)
 }
 
 //*************************************************************************
-// rrwrk_load_config - Config the rr worker 
+// rrwrk_load_config - Config the rr worker
 //*************************************************************************
 
 void rrwrk_load_config(rrwrk_t *self, char *fname)
@@ -412,14 +412,14 @@ void rrwrk_load_config(rrwrk_t *self, char *fname)
     assert(fname);
     inip_file_t *keyfile = inip_read(fname);
     self->pattern = inip_get_string(keyfile, "zsock", "pattern", NULL);
-    assert(self->pattern); //** Need a more decent way to handle misconfiguration 
+    assert(self->pattern); //** Need a more decent way to handle misconfiguration
 
     if (strcmp(self->pattern, "ppp") == 0) {
-	_rrwrk_config_ppp(self, keyfile);
+        _rrwrk_config_ppp(self, keyfile);
     } else {
-	log_printf(0, "W: Unknown ZMQ Pattern: %s.\n", self->pattern);
- 	exit(EXIT_FAILURE);	
-    } 
+        log_printf(0, "W: Unknown ZMQ Pattern: %s.\n", self->pattern);
+        exit(EXIT_FAILURE);
+    }
 
     inip_destroy(keyfile);
 }

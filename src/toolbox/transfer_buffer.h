@@ -25,7 +25,7 @@ Advanced Computing Center for Research and Education
 230 Appleton Place
 Nashville, TN 37203
 http://www.accre.vanderbilt.edu
-*/ 
+*/
 
 #ifndef _TRANSFER_BUFFER_H_
 #define _TRANSFER_BUFFER_H_
@@ -43,33 +43,33 @@ extern "C" {
 typedef struct iovec iovec_t;
 
 typedef struct {
-  size_t total_bytes;
-  int n;
-  iovec_t  *iov;
-  iovec_t  io_single;
+    size_t total_bytes;
+    int n;
+    iovec_t  *iov;
+    iovec_t  io_single;
 } tbinfo_t;
 
 typedef struct {
-  int    curr_slot;
-  int    slot_total_pos;
-  iovec_t single;
+    int    curr_slot;
+    int    slot_total_pos;
+    iovec_t single;
 } tbuf_state_t;
 
 typedef struct {
-  size_t nbytes;
-  iovec_t *buffer;
-  int    n_iov;
-  tbuf_state_t priv;
+    size_t nbytes;
+    iovec_t *buffer;
+    int    n_iov;
+    tbuf_state_t priv;
 } tbuffer_var_t;
 
 
 struct tbuffer_s;
 typedef struct tbuffer_s tbuffer_t;
 struct tbuffer_s {
-  void *arg;
+    void *arg;
 //  int (*next_block)(tbuffer_t *tb, size_t off, size_t *nbytes, int *n, iovec_t **buffer);
-  int (*next_block)(tbuffer_t *tb, size_t off, tbuffer_var_t *tbv);
-  tbinfo_t buf;
+    int (*next_block)(tbuffer_t *tb, size_t off, tbuffer_var_t *tbv);
+    tbinfo_t buf;
 };
 
 #define tbuffer_var_init(tbv) memset((tbv), 0, sizeof(tbuffer_var_t))

@@ -39,7 +39,7 @@ extern "C" {
 
 #include "rr_base.h"
 
-//** User callback function to perform task 
+//** User callback function to perform task
 typedef rrtask_data_t *(wrk_task_fn)(rrtask_data_t *input);
 
 //** Request and Response worker class
@@ -49,21 +49,21 @@ typedef struct {
     char *uuid_str;
     void *worker;      		//** Socket to receive message from broker
     void *sender;      		//** Socket to send summary to sinker
-    void *pipe;		
+    void *pipe;
     char *pattern;     		//** ZMQ pattern
     char *broker;
     char *sinker;
     uint64_t heartbeat_at;	//** When to send HEARBEAT
     uint64_t last_heartbeat;	//** When was last HEARBEAT received
-    uint64_t total_received; 
+    uint64_t total_received;
     uint64_t total_finished;
     size_t liveness;		//** How many attempts left
     int mode;          		//** Either SYNC_MODE or ASYNC_MODE
     int heartbeat;		//** Heartbeat delay, msecs
     int reconnect;		//** Reconnect delay, msecs
-    zlist_t *data;		//** List of task data 
+    zlist_t *data;		//** List of task data
     wrk_task_fn *cb;		//** Callback function
-}rrwrk_t; 
+} rrwrk_t;
 
 rrwrk_t *rrwrk_new();
 void rrwrk_destroy(rrwrk_t **self_p);

@@ -33,13 +33,13 @@ http://www.accre.vanderbilt.edu
 #include "rr_svr.h"
 
 //*************************************************************************
-// _rrsvr_init - Initialize rr server 
+// _rrsvr_init - Initialize rr server
 //*************************************************************************
 
 void _rrsvr_init(rrsvr_t *self)
 {
     self->mode = SYNC_MODE;
-    self->timeout = TIMEOUT_DFT; 
+    self->timeout = TIMEOUT_DFT;
     self->ctx = NULL;
     self->socket = NULL;
     self->pattern = NULL;
@@ -48,7 +48,7 @@ void _rrsvr_init(rrsvr_t *self)
 }
 
 //*************************************************************************
-// rrsvr_new - Construct a request response server 
+// rrsvr_new - Construct a request response server
 //*************************************************************************
 
 rrsvr_t *rrsvr_new()
@@ -60,32 +60,32 @@ rrsvr_t *rrsvr_new()
 
     svr->ctx = zctx_new();
     if (!svr->ctx) {
-	free(svr);
-	return NULL;
+        free(svr);
+        return NULL;
     }
 
-    return svr;       
+    return svr;
 }
 
 //************************************************************************
 // rrsvr_destroy - Destroy rrsvr
 //************************************************************************
-void rrsvr_destroy(rrsvr_t **self_p) 
+void rrsvr_destroy(rrsvr_t **self_p)
 {
     assert(self_p);
     if (*self_p) {
-	rrsvr_t *self = *self_p;
- 	zctx_destroy(&self->ctx);
-	free(self->pattern);
-	free(self->endpoint);
-	free(self->cli_identity);
-	free(self);
-	*self_p = NULL;
+        rrsvr_t *self = *self_p;
+        zctx_destroy(&self->ctx);
+        free(self->pattern);
+        free(self->endpoint);
+        free(self->cli_identity);
+        free(self);
+        *self_p = NULL;
     }
 }
 
 //*************************************************************************
-// _rrsvr_bind_lpp - Bind to an endpoint 
+// _rrsvr_bind_lpp - Bind to an endpoint
 //*************************************************************************
 
 void _rrsvr_bind_lpp(rrsvr_t *self)
@@ -95,10 +95,10 @@ void _rrsvr_bind_lpp(rrsvr_t *self)
 }
 
 //***********************************************************************
-// rrsvr_construct_envelope - Construct the envelope 
+// rrsvr_construct_envelope - Construct the envelope
 //***********************************************************************
 
-void rrsvr_construct_envelope(rrsvr_t *self, zmsg_t *msg) 
+void rrsvr_construct_envelope(rrsvr_t *self, zmsg_t *msg)
 {
     zmsg_pushstr(msg, "%s", self->cli_identity);
 }
@@ -135,19 +135,19 @@ int rrsvr_recv(rrsvr_t *self, void *buf, size_t len)
 {
     int nbytes = 0;
     if (zsocket_poll(self->socket, self->timeout)) {
-	zmsg_t *msg = zmsg_recv(self->socket);
-	if (self->mode == ASYNC_MODE) { //** Retrieves envelope
-	    free(self->cli_identity);
+        zmsg_t *msg = zmsg_recv(self->socket);
+        if (self->mode == ASYNC_MODE) { //** Retrieves envelope
+            free(self->cli_identity);
             self->cli_identity = zmsg_popstr(msg);
-	}
-	
-	nbytes = zmsg_content_size(msg);
+        }
 
-    	size_t to_copy = (size_t)nbytes < len ? (size_t)nbytes : len;
-	zframe_t *frame = zmsg_pop(msg);
-    	memcpy (buf, zframe_data(frame), to_copy);
-	zframe_destroy(&frame);
-	zmsg_destroy(&msg);
+        nbytes = zmsg_content_size(msg);
+
+        size_t to_copy = (size_t)nbytes < len ? (size_t)nbytes : len;
+        zframe_t *frame = zmsg_pop(msg);
+        memcpy (buf, zframe_data(frame), to_copy);
+        zframe_destroy(&frame);
+        zmsg_destroy(&msg);
     }
 
     return nbytes;
@@ -160,7 +160,7 @@ int rrsvr_recv(rrsvr_t *self, void *buf, size_t len)
 void _rrsvr_config_lpp(rrsvr_t *self, inip_file_t *keyfile)
 {
     assert(keyfile);
-    
+
     rr_set_mode_tm(keyfile, "lppsvr", &self->mode, &self->timeout);
     self->endpoint = inip_get_string(keyfile, "lppsvr", "endpoint", NULL);
     assert(self->endpoint);
@@ -169,7 +169,7 @@ void _rrsvr_config_lpp(rrsvr_t *self, inip_file_t *keyfile)
 }
 
 //*************************************************************************
-// rrsvr_load_config - Config the rr server 
+// rrsvr_load_config - Config the rr server
 //*************************************************************************
 
 void rrsvr_load_config(rrsvr_t *self, char *fname)
@@ -177,14 +177,14 @@ void rrsvr_load_config(rrsvr_t *self, char *fname)
     assert(fname);
     inip_file_t *keyfile = inip_read(fname);
     self->pattern = inip_get_string(keyfile, "zsock", "pattern", NULL);
-    assert(self->pattern); 
+    assert(self->pattern);
 
     if (strcmp(self->pattern, "lpp") == 0) {
-	_rrsvr_config_lpp(self, keyfile);
+        _rrsvr_config_lpp(self, keyfile);
     } else {
-	log_printf(0, "Unknown ZMQ Pattern: %s.\n", self->pattern);
- 	exit(0);	
-    } 
+        log_printf(0, "Unknown ZMQ Pattern: %s.\n", self->pattern);
+        exit(0);
+    }
 
     inip_destroy(keyfile);
 }

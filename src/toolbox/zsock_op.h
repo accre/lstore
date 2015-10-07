@@ -54,7 +54,7 @@ typedef struct {
     tbuffer_t *buffer;
     zsock_off_t size;
     zsock_off_t boff;
-    int n_iovec;   
+    int n_iovec;
 } zsock_rw_buf_t;
 
 typedef struct { //** Read/Write operation
@@ -72,7 +72,7 @@ typedef struct {
     op_generic_t gop;
     op_data_t dop;
     union {
-	zsock_op_rw_t rw_op;
+        zsock_op_rw_t rw_op;
     };
 } zsock_op_t;
 
@@ -84,14 +84,14 @@ zsock_op_t *new_zsock_op(zsock_context_t *zc);
 void init_zsock_op(zsock_context_t *zc, zsock_op_t *op);
 void _zsock_op_free(op_generic_t *gop, int mode);
 
-void set_zsock_rw_op(zsock_op_t *op, char *hostname, int port, int rw_type, tbuffer_t *buffer, zsock_off_t boff, zsock_off_t len, int timeout); 
+void set_zsock_rw_op(zsock_op_t *op, char *hostname, int port, int rw_type, tbuffer_t *buffer, zsock_off_t boff, zsock_off_t len, int timeout);
 op_generic_t *new_zsock_rw_op(zsock_context_t *zc, char *hostname, int port,  int rw_type, tbuffer_t *buffer, zsock_off_t boff, zsock_off_t len, int timeout);
 
 op_generic_t *new_zsock_read_op(zsock_context_t *zc, char *hostname, int port, tbuffer_t *buffer, zsock_off_t boff, zsock_off_t len, int timeout);
-void set_zsock_read_op(zsock_op_t *op, char *hostname, int port, tbuffer_t *buffer, zsock_off_t boff, zsock_off_t len, int timeout); 
+void set_zsock_read_op(zsock_op_t *op, char *hostname, int port, tbuffer_t *buffer, zsock_off_t boff, zsock_off_t len, int timeout);
 
 op_generic_t *new_zsock_write_op(zsock_context_t *zc, char *hostname, int port, tbuffer_t *buffer, zsock_off_t boff, zsock_off_t len, int timeout);
-void set_zsock_write_op(zsock_op_t *op, char *hostname, int port, tbuffer_t *buffer, zsock_off_t boff, zsock_off_t len, int timeout); 
+void set_zsock_write_op(zsock_op_t *op, char *hostname, int port, tbuffer_t *buffer, zsock_off_t boff, zsock_off_t len, int timeout);
 
 op_status_t write_send(op_generic_t *gop, NetStream_t *ns);
 op_status_t read_recv(op_generic_t *gop, NetStream_t *ns);

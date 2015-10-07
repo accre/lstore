@@ -45,13 +45,13 @@ typedef struct {
     zmsg_t *single;
     void *socket;    //** Client socket
     char *pattern;   //** ZMQ pattern
-    char *server;    //** Used by pirate pattern 
+    char *server;    //** Used by pirate pattern
     char *broker;    //** Used by majordomo pattern
     char *identity;  //** Client's identity
     int timeout;     //** Request timeout
     int mode;        //** Either SYNC_MODE or ASYNC_MODE
     int retries;     //** Used by SYNC_MODE
-}rrcli_t; 
+} rrcli_t;
 
 rrcli_t *rrcli_new();
 void rrcli_destroy(rrcli_t **self_p);
