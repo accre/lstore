@@ -343,7 +343,7 @@ void mq_stream_read_destroy(mq_stream_t *mqs)
   apr_thread_mutex_destroy(mqs->lock);
   apr_thread_cond_destroy(mqs->cond);
   apr_pool_destroy(mqs->mpool);
-  mq_msg_destroy(mqs->remote_host);
+  if (mqs->remote_host != NULL) mq_msg_destroy(mqs->remote_host);
   free(mqs);
 
   return;
@@ -370,10 +370,8 @@ mq_stream_t *mq_stream_read_create(mq_context_t *mqc, mq_ongoing_t *on, char *ho
   mqs->timeout = to;
   mqs->msid = atomic_global_counter();
 
-  mqs->remote_host = mq_msg_new();
-  mq_msg_append_msg(mqs->remote_host, remote_host, MQF_MSG_AUTO_FREE);
   if (log_level() > 5) {
-     char *str = mq_address_to_string(mqs->remote_host);
+     char *str = mq_address_to_string(remote_host);
      log_printf(5, "remote_host=%s\n", str);
      free(str);
   }
@@ -396,6 +394,10 @@ log_printf(5, "printing 1st 50 bytes mqsbuf=%s\n", mq_id2str((char *)mqs->data, 
 
   if (mqs->data[MQS_STATE_INDEX] == MQS_MORE) { //** More data coming so ask for it
 log_printf(5, "issuing read request\n");
+
+     mqs->remote_host = mq_msg_new();
+     mq_msg_append_msg(mqs->remote_host, remote_host, MQF_MSG_AUTO_FREE);
+
      if (log_level() >=15) {
         char *rhost = mq_address_to_string(mqs->remote_host);
         log_printf(15, "remote_host as string = %s\n", rhost);
