@@ -52,7 +52,11 @@ SET(LIBS ${LIBS} ${OPENSSL_LIBRARIES} ${CRYPTO_LIBRARIES} ${APR_LIBRARY} ${APRUT
 #include_directories(${OPENSSL_INCLUDE_DIR} ${APR_INCLUDE_DIR} ${APRUTIL_INCLUDE_DIR} ${ZMQ_INCLUDE_DIR} ${CZMQ_INCLUDE_DIR} ${ZLIB_INCLUDE_DIR} )
 #SET(LIBS ${LIBS} ${OPENSSL_LIBRARIES} ${CRYPTO_LIBRARIES} ${APR_LIBRARY} ${APRUTIL_LIBRARY} ${CZMQ_LIBRARY} ${ZMQ_LIBRARY} )
 
-list(APPEND LIBS ${ZLIB_LIBRARY} rt pthread m dl)
+list(APPEND LIBS ${ZLIB_LIBRARY} pthread m dl)
+if(NOT APPLE)
+    # OSX doesn't have/need librt
+    list(APPEND LIBS rt)
+endif(NOT APPLE)
 
 CONFIGURE_FILE( ${CMAKE_SOURCE_DIR}/toolbox_config.h.in ${CMAKE_SOURCE_DIR}/toolbox_config.h )
 
@@ -140,6 +144,14 @@ install(FILES append_printf.h   chksum.h     fmttypes.h  interval_skiplist.h  ne
 
 
 #Below is used for building packages
+set(PKG_PREFIX "/usr/local")
+if (DEFINED ENV{PREFIX})
+    set(PKG_PREFIX "$ENV{PREFIX}")
+    message("Using install prefix from ENV, ${PKG_PREFIX}")
+else()
+    message("Using default install prefix, ${PKG_PREFIX}")
+endif()
+
 set(CPACK_PROJECT_CONFIG_FILE ${CMAKE_SOURCE_DIR}/cmake/cpack_settings.cmake) #This is where the build type specific settings are kept
 set(CPACK_PACKAGE_VERSION "1.0.0")
 set(CPACK_GENERATOR "DEB;RPM")
@@ -147,7 +159,7 @@ set(CPACK_PACKAGE_NAME "accre-toolbox")
 set(CPACK_PACKAGE_RELEASE 1)
 set(CPACK_PACKAGE_CONTACT "Andrew Melo or Alan Tackett")
 set(CPACK_PACKAGE_VENDOR "Advanced Computing Center for Research and Education, Vanderbilt University")
-set(CPACK_PACKAGING_INSTALL_PREFIX "/usr/local")
-set(CPACK_PACKAGE_INSTALL_DIRECTORY "/usr/local")
+set(CPACK_PACKAGING_INSTALL_PREFIX "${PKG_PREFIX}")
+set(CPACK_PACKAGE_INSTALL_DIRECTORY "${PKG_PREFIX}")
 set(CPACK_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}-${CPACK_PACKAGE_RELEASE}.${CMAKE_SYSTEM_PROCESSOR}")
 include(CPack)
