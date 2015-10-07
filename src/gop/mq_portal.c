@@ -290,7 +290,7 @@ void mq_command_exec(mq_command_table_t *t, mq_task_t *task, void *key, int klen
 log_printf(3, "cmd=%p klen=%d\n", cmd, klen);
   if (cmd == NULL) {
      log_printf(0, "Unknown command!\n");
-     display_msg_frames(task->msg); //testing to see if the worker is returning a message and it's getting dropped here
+     //display_msg_frames(task->msg); //testing to see if the worker is returning a message and it's getting dropped here
      if (t->fn_default != NULL) t->fn_default(t->arg_default, task);
   } else {
     cmd->fn(cmd->arg, task);
