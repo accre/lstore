@@ -42,22 +42,22 @@ http://www.accre.vanderbilt.edu
 
 char *cdef_get_type(creds_t *c)
 {
-  return("DEFAULT");
+    return("DEFAULT");
 }
 
 //***********************************************************************
 
 void *cdef_get_type_field(creds_t *c, int index, int *len)
 {
-  *len = 0;
-  return(NULL);
+    *len = 0;
+    return(NULL);
 }
 
 //***********************************************************************
 
 char *cdef_get_id(creds_t *c)
 {
-  return(c->id);
+    return(c->id);
 //  if (c->id != NULL) {
 //     return(strdup(c->id));
 //  }
@@ -68,24 +68,24 @@ char *cdef_get_id(creds_t *c)
 
 void cdef_set_id(creds_t *c, char *id)
 {
-  c->id = strdup(id);
-  return;
+    c->id = strdup(id);
+    return;
 }
 
 //***********************************************************************
 
 void cdef_set_private_handle(creds_t *c, void *handle, void (*destroy)(void *))
 {
-  c->handle = handle;
-  c->handle_destroy = destroy;
-  return;
+    c->handle = handle;
+    c->handle_destroy = destroy;
+    return;
 }
 
 //***********************************************************************
 
 void *cdef_get_private_handle(creds_t *c)
 {
-  return(c->handle);
+    return(c->handle);
 }
 
 
@@ -93,26 +93,26 @@ void *cdef_get_private_handle(creds_t *c)
 
 void cdef_destroy(creds_t *c)
 {
-  if (c->handle_destroy != NULL) c->handle_destroy(c);
-  if (c->id != NULL) free(c->id);
-  free(c);
+    if (c->handle_destroy != NULL) c->handle_destroy(c);
+    if (c->id != NULL) free(c->id);
+    free(c);
 }
 
 //***********************************************************************
 
 creds_t *cred_default_create()
 {
-  creds_t *c;
-  type_malloc_clear(c, creds_t, 1);
+    creds_t *c;
+    type_malloc_clear(c, creds_t, 1);
 
-  c->get_type = cdef_get_type;
-  c->get_type_field = cdef_get_type_field;
-  c->get_id = cdef_get_id;
-  c->set_id = cdef_set_id;
-  c->set_private_handle = cdef_set_private_handle;
-  c->get_private_handle = cdef_get_private_handle;
-  c->destroy = cdef_destroy;
+    c->get_type = cdef_get_type;
+    c->get_type_field = cdef_get_type_field;
+    c->get_id = cdef_get_id;
+    c->set_id = cdef_set_id;
+    c->set_private_handle = cdef_set_private_handle;
+    c->get_private_handle = cdef_get_private_handle;
+    c->destroy = cdef_destroy;
 
-  return(c);
+    return(c);
 }
 

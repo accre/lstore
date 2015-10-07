@@ -25,7 +25,7 @@ Advanced Computing Center for Research and Education
 230 Appleton Place
 Nashville, TN 37203
 http://www.accre.vanderbilt.edu
-*/ 
+*/
 #define _log_module_index 182
 
 #include <assert.h>
@@ -61,10 +61,10 @@ static void catch_signals(void)
 int main(int argc, char **argv)
 {
     if (argc < 2) {
-       printf("\n");
-       printf("rs_test LIO_COMMON_OPTIONS\n");
-       lio_print_options(stdout);
-       return(1);
+        printf("\n");
+        printf("rs_test LIO_COMMON_OPTIONS\n");
+        lio_print_options(stdout);
+        return(1);
     }
 
     int thread_nbr;
@@ -94,7 +94,7 @@ int main(int argc, char **argv)
     int rc = zmq_bind(router, zmq_svr);
     assert(rc != -1);
     printf("ZMQ router socket created.\n");
-  
+
     // Creates and binds DEALER socket to inproc://worker
     // It talks to workers
     void *dealer = zmq_socket(context, ZMQ_DEALER);
@@ -103,13 +103,13 @@ int main(int argc, char **argv)
     assert(rc != -1);
     printf("ZMQ dealer socket created.\n");
 
-    //** Blocks the SIGINT, SIGTERM signals  
+    //** Blocks the SIGINT, SIGTERM signals
     sigemptyset(&signal_mask);
     sigaddset(&signal_mask, SIGINT);
     sigaddset(&signal_mask, SIGTERM);
     rc = pthread_sigmask(SIG_BLOCK, &signal_mask, NULL);
     assert(rc == 0);
- 
+
     //** Launches thread pool
     printf("Launching threads...\n");
     int thread_count;
@@ -118,12 +118,12 @@ int main(int argc, char **argv)
     pthread_t *workers;
     type_malloc_clear(workers, pthread_t, thread_nbr);
     for (thread_count = 0; thread_count < thread_nbr; thread_count++) {
-        type_malloc_clear(arg[thread_count], rs_zmq_thread_arg_t, 1);	
-	arg[thread_count]->zmq_context = context;
-    	arg[thread_count]->rs = lio_gc->rs;
-   	arg[thread_count]->da = ds_attr_create(lio_gc->ds);
-    	arg[thread_count]->ds = lio_gc->ds;
-    	arg[thread_count]->timeout = lio_gc->timeout;
+        type_malloc_clear(arg[thread_count], rs_zmq_thread_arg_t, 1);
+        arg[thread_count]->zmq_context = context;
+        arg[thread_count]->rs = lio_gc->rs;
+        arg[thread_count]->da = ds_attr_create(lio_gc->ds);
+        arg[thread_count]->ds = lio_gc->ds;
+        arg[thread_count]->timeout = lio_gc->timeout;
         pthread_create(&workers[thread_count], NULL, rs_zmq_worker_routine, (void *)arg[thread_count]);
     }
     printf("Launched all %d threads.\n", thread_nbr);
@@ -131,42 +131,42 @@ int main(int argc, char **argv)
     //** Unblocks the SIGINT, SIGTERM signals
     rc = pthread_sigmask(SIG_UNBLOCK, &signal_mask, NULL);
     assert(rc == 0);
-    
+
     //** Catches the SIGNIT, SIGTERM signals
     catch_signals();
 
     //** Uses a QUEUE device to connect router and dealer
     zmq_device(ZMQ_QUEUE, router, dealer);
 
-    if (s_interrupted == 1) 
-	printf("Interrupt received, killing server...\n");
-    
-    //** Shutdown zmq should go before cleaning thread resources 
+    if (s_interrupted == 1)
+        printf("Interrupt received, killing server...\n");
+
+    //** Shutdown zmq should go before cleaning thread resources
     zmq_close(router);
     zmq_close(dealer);
     printf("Destroied ZMQ router and dealer\n");
-    zmq_ctx_destroy(context); //** This "trigers" the exit of all threads, because it makes all blocking operations on sockets return   
+    zmq_ctx_destroy(context); //** This "trigers" the exit of all threads, because it makes all blocking operations on sockets return
     printf("Destroied ZMQ context\n");
     fflush(stdout);
 
     //** Waits for all threads to exit
     for (thread_count = 0; thread_count < thread_nbr; thread_count++) {
-	pthread_join(workers[thread_count], NULL);
+        pthread_join(workers[thread_count], NULL);
     }
 
-    //** Destroys allocations for threads 
+    //** Destroys allocations for threads
     for (thread_count = 0; thread_count < thread_nbr; thread_count++) {
-	ds_attr_destroy(lio_gc->ds, arg[thread_count]->da);  
+        ds_attr_destroy(lio_gc->ds, arg[thread_count]->da);
         free(arg[thread_count]);
     }
     free(arg);
     free(workers);
-    
+
     free(svr_proto);
     free(svr_addr);
     free(svr_port);
     free(zmq_svr);
-  
+
     lio_shutdown();
 
     return(0);

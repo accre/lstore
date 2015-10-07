@@ -25,7 +25,7 @@ Advanced Computing Center for Research and Education
 230 Appleton Place
 Nashville, TN 37203
 http://www.accre.vanderbilt.edu
-*/ 
+*/
 
 //***********************************************************************
 // Generates a a unique id
@@ -37,12 +37,12 @@ http://www.accre.vanderbilt.edu
 #include "random.h"
 #include "log.h"
 
-void generate_ex_id(ex_id_t *id) 
+void generate_ex_id(ex_id_t *id)
 {
-  //** Fill with random data
-  get_random(id, sizeof(ex_id_t));
+    //** Fill with random data
+    get_random(id, sizeof(ex_id_t));
 
-  //** Mask the sign bit cause JAVA doesn't like unsigned numbers
-  *id = (*id) << 1;
-  *id = (*id) >> 1;
+    //** Mask the sign bit cause JAVA doesn't like unsigned numbers
+    *id = (*id) << 1;
+    *id = (*id) >> 1;
 }

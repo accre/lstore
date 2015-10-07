@@ -25,7 +25,7 @@ Advanced Computing Center for Research and Education
 230 Appleton Place
 Nashville, TN 37203
 http://www.accre.vanderbilt.edu
-*/ 
+*/
 
 //***********************************************************************
 // LUN segment support
@@ -41,23 +41,23 @@ extern "C" {
 #endif
 
 typedef struct {
-  ex_off_t lo;
-  ex_off_t hi;  //** On disk this is actually the length.  It's converted to an offset when loaded and a length when stored
-  ex_off_t data_offset;
+    ex_off_t lo;
+    ex_off_t hi;  //** On disk this is actually the length.  It's converted to an offset when loaded and a length when stored
+    ex_off_t data_offset;
 } slog_range_t;
 
 typedef struct {
-  segment_t *table_seg;
-  segment_t *data_seg;
-  segment_t *base_seg;
-  data_service_fn_t *ds;
-  interval_skiplist_t *mapping;
-  thread_pool_context_t *tpc;
-  ex_off_t file_size;
-  ex_off_t log_size;
-  ex_off_t data_size;
-  int soft_errors;
-  int hard_errors;
+    segment_t *table_seg;
+    segment_t *data_seg;
+    segment_t *base_seg;
+    data_service_fn_t *ds;
+    interval_skiplist_t *mapping;
+    thread_pool_context_t *tpc;
+    ex_off_t file_size;
+    ex_off_t log_size;
+    ex_off_t data_size;
+    int soft_errors;
+    int hard_errors;
 } seglog_priv_t;
 
 #ifdef __cplusplus

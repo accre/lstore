@@ -25,7 +25,7 @@ Advanced Computing Center for Research and Education
 230 Appleton Place
 Nashville, TN 37203
 http://www.accre.vanderbilt.edu
-*/ 
+*/
 
 //***********************************************************************
 // ZMQ resource managment implementation
@@ -37,7 +37,7 @@ http://www.accre.vanderbilt.edu
 #ifndef _RS_ZMQ_H_
 #define _RS_ZMQ_H_
 
-#ifdef __cplusplus 
+#ifdef __cplusplus
 extern "C" {
 #endif
 

@@ -34,17 +34,19 @@ http://www.accre.vanderbilt.edu
 #include "archive.h"
 
 // concatenates two strings together
-char* concat(char *str1, char *str2) {
-  char *res = malloc(strlen(str1) + strlen(str2) + 1);
-  strcpy(res, str1);
-  strcat(res, str2);
-  return res;
+char* concat(char *str1, char *str2)
+{
+    char *res = malloc(strlen(str1) + strlen(str2) + 1);
+    strcpy(res, str1);
+    strcat(res, str2);
+    return res;
 }
 
 // adds two paths together with separator
-char* path_concat(char *str1, char *str2) {
-  char *res = malloc(strlen(str1) + strlen(str2) + 2);
-  strcpy(res, concat(str1, "/"));
-  strcat(res, str2);
-  return res;
+char* path_concat(char *str1, char *str2)
+{
+    char *res = malloc(strlen(str1) + strlen(str2) + 2);
+    strcpy(res, concat(str1, "/"));
+    strcat(res, str2);
+    return res;
 }

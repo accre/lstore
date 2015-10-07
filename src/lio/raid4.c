@@ -25,7 +25,7 @@ Advanced Computing Center for Research and Education
 230 Appleton Place
 Nashville, TN 37203
 http://www.accre.vanderbilt.edu
-*/ 
+*/
 
 #include <string.h>
 #include <stdio.h>
@@ -38,50 +38,50 @@ http://www.accre.vanderbilt.edu
 
 void xor_block(char *data, char *parity, int nbytes)
 {
-  int i;
+    int i;
 
-  for (i=0; i<nbytes; i++) parity[i] = parity[i] ^ data[i];
+    for (i=0; i<nbytes; i++) parity[i] = parity[i] ^ data[i];
 
-  return;
+    return;
 }
 
 
 //******************************************************************************
-//  raid4_encode - Encodes the given data blocks 
+//  raid4_encode - Encodes the given data blocks
 //******************************************************************************
 
 void raid4_encode(int data_strips, char **data, char **parity, int block_size)
 {
-  int i;
+    int i;
 
-  memcpy(parity[0], data[0], block_size);
+    memcpy(parity[0], data[0], block_size);
 
-  for (i=1; i<data_strips; i++) xor_block(data[i], parity[0], block_size); 
-  
-  return;
+    for (i=1; i<data_strips; i++) xor_block(data[i], parity[0], block_size);
+
+    return;
 }
 
 //******************************************************************************
-//  raid4_decode - Decodes the data 
+//  raid4_decode - Decodes the data
 //******************************************************************************
 
 int raid4_decode(int data_strips, int *erasures, char **data, char **parity, int block_size)
 {
-  int i, k;
+    int i, k;
 
-  if (erasures[1] != -1) return(-1);  //** Too many missing blocks to recover from
-  if (erasures[0] >= data_strips) return(0);  //** Lost parity only so return
+    if (erasures[1] != -1) return(-1);  //** Too many missing blocks to recover from
+    if (erasures[0] >= data_strips) return(0);  //** Lost parity only so return
 
-  k = erasures[0];
-  memcpy(data[k], parity[0], block_size);
+    k = erasures[0];
+    memcpy(data[k], parity[0], block_size);
 
-  for (i=0; i<data_strips; i++) {
-     if (i != k) {
-        xor_block(data[i], data[k], block_size); 
-     }
-  }
+    for (i=0; i<data_strips; i++) {
+        if (i != k) {
+            xor_block(data[i], data[k], block_size);
+        }
+    }
 
-  return(0);
+    return(0);
 }
 
-  
+

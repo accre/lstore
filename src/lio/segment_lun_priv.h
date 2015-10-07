@@ -25,7 +25,7 @@ Advanced Computing Center for Research and Education
 230 Appleton Place
 Nashville, TN 37203
 http://www.accre.vanderbilt.edu
-*/ 
+*/
 
 //***********************************************************************
 // LUN segment support
@@ -41,29 +41,29 @@ extern "C" {
 #endif
 
 typedef struct {
-  ex_off_t used_size;
-  ex_off_t total_size;
-  ex_off_t max_block_size;
-  ex_off_t excess_block_size;
-  ex_off_t max_row_size;
-  ex_off_t chunk_size;
-  ex_off_t stripe_size;
-  apr_time_t grow_time;
-  rs_query_t *rsq;
-  thread_pool_context_t *tpc;
-  int grow_count;
-  int n_devices;
-  int n_shift;
-  int hard_errors;
-  int grow_break;
-  int map_version;
-  int inprogress_count;
-  rs_mapping_notify_t notify;
-  interval_skiplist_t *isl;
-  resource_service_fn_t *rs;
-  data_service_fn_t *ds;
-  Stack_t *db_cleanup;
-  blacklist_t *bl;
+    ex_off_t used_size;
+    ex_off_t total_size;
+    ex_off_t max_block_size;
+    ex_off_t excess_block_size;
+    ex_off_t max_row_size;
+    ex_off_t chunk_size;
+    ex_off_t stripe_size;
+    apr_time_t grow_time;
+    rs_query_t *rsq;
+    thread_pool_context_t *tpc;
+    int grow_count;
+    int n_devices;
+    int n_shift;
+    int hard_errors;
+    int grow_break;
+    int map_version;
+    int inprogress_count;
+    rs_mapping_notify_t notify;
+    interval_skiplist_t *isl;
+    resource_service_fn_t *rs;
+    data_service_fn_t *ds;
+    Stack_t *db_cleanup;
+    blacklist_t *bl;
 } seglun_priv_t;
 
 #ifdef __cplusplus

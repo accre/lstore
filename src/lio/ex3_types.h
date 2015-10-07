@@ -25,7 +25,7 @@ Advanced Computing Center for Research and Education
 230 Appleton Place
 Nashville, TN 37203
 http://www.accre.vanderbilt.edu
-*/ 
+*/
 
 //***********************************************************************
 // Exnode3 abstract class
@@ -58,15 +58,15 @@ ex_iovec_t *ex_iovec_create();
 void ex_iovec_destroy(ex_iovec_t *iov);
 
 typedef struct {
-  char *text;
-  inip_file_t *fd;
+    char *text;
+    inip_file_t *fd;
 } exnode_text_t;
 
 typedef struct {
-  int type;
-  union {
-    exnode_text_t text;
-  };
+    int type;
+    union {
+        exnode_text_t text;
+    };
 } exnode_exchange_t;
 
 #ifdef __cplusplus

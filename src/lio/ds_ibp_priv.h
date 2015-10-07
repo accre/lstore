@@ -25,7 +25,7 @@ Advanced Computing Center for Research and Education
 230 Appleton Place
 Nashville, TN 37203
 http://www.accre.vanderbilt.edu
-*/ 
+*/
 
 //***********************************************************************
 // IBP based data service
@@ -42,46 +42,46 @@ extern "C" {
 #endif
 
 typedef struct {
-  ibp_depot_t depot;
+    ibp_depot_t depot;
 } ds_ibp_alloc_op_t;
 
 typedef struct {
-  int state;
-  int timeout;
-  ibp_off_t new_size;
-  ibp_capstatus_t probe;
-  callback_t *cb;
-  data_service_fn_t *dsf;
-  ds_ibp_attr_t *attr;
-  opque_t *q;
-  ibp_cap_t *mcap;
+    int state;
+    int timeout;
+    ibp_off_t new_size;
+    ibp_capstatus_t probe;
+    callback_t *cb;
+    data_service_fn_t *dsf;
+    ds_ibp_attr_t *attr;
+    opque_t *q;
+    ibp_cap_t *mcap;
 } ds_ibp_truncate_op_t;
 
 typedef struct {
-  void *sf_ptr;
-  ds_ibp_attr_t *attr;
-  op_generic_t *gop;
-  void (*free)(op_generic_t *d, int mode);
-  void *free_ptr;
-  union {
-    ds_ibp_alloc_op_t alloc;
-    ds_ibp_truncate_op_t truncate;
-  };
+    void *sf_ptr;
+    ds_ibp_attr_t *attr;
+    op_generic_t *gop;
+    void (*free)(op_generic_t *d, int mode);
+    void *free_ptr;
+    union {
+        ds_ibp_alloc_op_t alloc;
+        ds_ibp_truncate_op_t truncate;
+    };
 }  ds_ibp_op_t;
 
 typedef struct {
-  ds_ibp_attr_t attr_default;
-  ibp_context_t *ic;
+    ds_ibp_attr_t attr_default;
+    ibp_context_t *ic;
 
-  //** These are all for the warmer
-  apr_pool_t *pool;
-  apr_hash_t *warm_table;
-  apr_thread_mutex_t *lock;
-  apr_thread_cond_t *cond;
-  apr_thread_t *thread;
-  int warm_interval;
-  int warm_duration;
-  int warm_stop;
+    //** These are all for the warmer
+    apr_pool_t *pool;
+    apr_hash_t *warm_table;
+    apr_thread_mutex_t *lock;
+    apr_thread_cond_t *cond;
+    apr_thread_t *thread;
+    int warm_interval;
+    int warm_duration;
+    int warm_stop;
 } ds_ibp_priv_t;
 
 

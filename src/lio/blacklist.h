@@ -25,7 +25,7 @@ Advanced Computing Center for Research and Education
 230 Appleton Place
 Nashville, TN 37203
 http://www.accre.vanderbilt.edu
-*/ 
+*/
 
 //***********************************************************************
 // Blacklist structure definition
@@ -45,17 +45,17 @@ extern "C" {
 #endif
 
 typedef struct {
-  char *rid;
-  apr_time_t recheck_time;
+    char *rid;
+    apr_time_t recheck_time;
 } blacklist_rid_t;
 
 typedef struct {
-  apr_pool_t *mpool;
-  apr_thread_mutex_t *lock;
-  apr_hash_t *table;
-  ex_off_t  min_bandwidth;
-  apr_time_t min_io_time;
-  apr_time_t timeout;  
+    apr_pool_t *mpool;
+    apr_thread_mutex_t *lock;
+    apr_hash_t *table;
+    ex_off_t  min_bandwidth;
+    apr_time_t min_io_time;
+    apr_time_t timeout;
 } blacklist_t;
 
 #ifdef __cplusplus

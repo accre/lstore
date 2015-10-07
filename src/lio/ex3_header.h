@@ -25,7 +25,7 @@ Advanced Computing Center for Research and Education
 230 Appleton Place
 Nashville, TN 37203
 http://www.accre.vanderbilt.edu
-*/ 
+*/
 
 //***********************************************************************
 // Linear exnode3 support
@@ -44,10 +44,10 @@ extern "C" {
 
 
 typedef struct {
-  char *name;
-  ex_id_t id;
-  char *type;
-  list_t *attributes;  //should be a key/value pair struct?
+    char *name;
+    ex_id_t id;
+    char *type;
+    list_t *attributes;  //should be a key/value pair struct?
 } ex_header_t;
 
 ex_header_t *ex_header_create();

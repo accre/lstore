@@ -25,11 +25,11 @@ Advanced Computing Center for Research and Education
 230 Appleton Place
 Nashville, TN 37203
 http://www.accre.vanderbilt.edu
-*/ 
+*/
 
 //******************************************************************
-//  Header file to simplify using "?printf" routines and different 
-//  data types, like size_t. 
+//  Header file to simplify using "?printf" routines and different
+//  data types, like size_t.
 //******************************************************************
 
 #ifndef __EX3_FMTTYPES_

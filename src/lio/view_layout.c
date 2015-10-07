@@ -37,7 +37,7 @@ http://www.accre.vanderbilt.edu
 #include "log.h"
 
 typedef struct {
-  layout_t *lay;
+    layout_t *lay;
 } view_layout_t;
 
 //*************************************************************************
@@ -46,11 +46,11 @@ typedef struct {
 
 op_generic_t *vl_read(view_t *v, data_attr_t *da, ex_off_t off, tbuffer_t *buffer, ex_off_t boff, ex_off_t len, int timeout)
 {
- view_layout_t *vl = (view_layout_t *)v->priv;
+    view_layout_t *vl = (view_layout_t *)v->priv;
 
- if (vl == NULL)  return(gop_dummy(0));
+    if (vl == NULL)  return(gop_dummy(0));
 
- return(layout_read(vl->lay, da, off, buffer, boff, len, timeout));
+    return(layout_read(vl->lay, da, off, buffer, boff, len, timeout));
 }
 
 //*************************************************************************
@@ -59,11 +59,11 @@ op_generic_t *vl_read(view_t *v, data_attr_t *da, ex_off_t off, tbuffer_t *buffe
 
 op_generic_t *vl_write(view_t *v, data_attr_t *da, ex_off_t off, tbuffer_t *buffer, ex_off_t boff, ex_off_t len, int timeout)
 {
- view_layout_t *vl = (view_layout_t *)v->priv;
+    view_layout_t *vl = (view_layout_t *)v->priv;
 
- if (vl == NULL)  return(gop_dummy(0));
+    if (vl == NULL)  return(gop_dummy(0));
 
- return(layout_write(vl->lay, da, off, buffer, boff, len, timeout));
+    return(layout_write(vl->lay, da, off, buffer, boff, len, timeout));
 }
 
 //*************************************************************************
@@ -72,11 +72,11 @@ op_generic_t *vl_write(view_t *v, data_attr_t *da, ex_off_t off, tbuffer_t *buff
 
 op_generic_t *vl_check(view_t *v, data_attr_t *da, int timeout)
 {
- view_layout_t *vl = (view_layout_t *)v->priv;
+    view_layout_t *vl = (view_layout_t *)v->priv;
 
- if (vl == NULL)  return(gop_dummy(0));
+    if (vl == NULL)  return(gop_dummy(0));
 
- return(layout_check(vl->lay, da, timeout));
+    return(layout_check(vl->lay, da, timeout));
 }
 
 //*************************************************************************
@@ -85,11 +85,11 @@ op_generic_t *vl_check(view_t *v, data_attr_t *da, int timeout)
 
 op_generic_t *vl_repair(view_t *v, data_attr_t *da, int timeout)
 {
- view_layout_t *vl = (view_layout_t *)v->priv;
+    view_layout_t *vl = (view_layout_t *)v->priv;
 
- if (vl == NULL)  return(gop_dummy(0));
+    if (vl == NULL)  return(gop_dummy(0));
 
- return(layout_repair(vl->lay, da, timeout));
+    return(layout_repair(vl->lay, da, timeout));
 }
 
 //*************************************************************************
@@ -98,11 +98,11 @@ op_generic_t *vl_repair(view_t *v, data_attr_t *da, int timeout)
 
 op_generic_t *vl_truncate(view_t *v, data_attr_t *da, ex_off_t new_size, int timeout)
 {
- view_layout_t *vl = (view_layout_t *)v->priv;
+    view_layout_t *vl = (view_layout_t *)v->priv;
 
- if (vl == NULL)  return(gop_dummy(0));
+    if (vl == NULL)  return(gop_dummy(0));
 
- return(layout_truncate(vl->lay, da, new_size, timeout));
+    return(layout_truncate(vl->lay, da, new_size, timeout));
 }
 
 //*************************************************************************
@@ -111,11 +111,11 @@ op_generic_t *vl_truncate(view_t *v, data_attr_t *da, ex_off_t new_size, int tim
 
 ex_off_t vl_size(view_t *v)
 {
- view_layout_t *vl = (view_layout_t *)v->priv;
+    view_layout_t *vl = (view_layout_t *)v->priv;
 
- if (vl == NULL) return(-1);
+    if (vl == NULL) return(-1);
 
- return(layout_size(vl->lay));
+    return(layout_size(vl->lay));
 }
 
 //***********************************************************************
@@ -124,24 +124,24 @@ ex_off_t vl_size(view_t *v)
 
 int vl_serialize_text(view_t *v, exnode_exchange_t *exp)
 {
-  view_layout_t *vl = (view_layout_t *)v->priv;
-  int bufsize = 10*1024;
-  char buffer[bufsize];
-  int used = 0;
+    view_layout_t *vl = (view_layout_t *)v->priv;
+    int bufsize = 10*1024;
+    char buffer[bufsize];
+    int used = 0;
 
-  //** Serialize the layout
-  layout_serialize(vl->lay, exp);
+    //** Serialize the layout
+    layout_serialize(vl->lay, exp);
 
-  //** and my view
-  append_printf(buffer, &used, bufsize, "\n[view-" XIDT "]\n", v->header.id);
-  append_printf(buffer, &used, bufsize, "type=%s\n", view_type(v)); 
-  append_printf(buffer, &used, bufsize, "layout=" XIDT "\n",layout_id(vl->lay));
-  append_printf(buffer, &used, bufsize, "ref_count=" XIDT "\n\n",v->ref_count);
+    //** and my view
+    append_printf(buffer, &used, bufsize, "\n[view-" XIDT "]\n", v->header.id);
+    append_printf(buffer, &used, bufsize, "type=%s\n", view_type(v));
+    append_printf(buffer, &used, bufsize, "layout=" XIDT "\n",layout_id(vl->lay));
+    append_printf(buffer, &used, bufsize, "ref_count=" XIDT "\n\n",v->ref_count);
 
-  //** Merge everything together and return it
-  exnode_exchange_append_text(exp, buffer);
+    //** Merge everything together and return it
+    exnode_exchange_append_text(exp, buffer);
 
-  return(0);
+    return(0);
 }
 
 
@@ -151,7 +151,7 @@ int vl_serialize_text(view_t *v, exnode_exchange_t *exp)
 
 int vl_serialize_proto(view_t *v, exnode_exchange_t *exp)
 {
-  return(-1);
+    return(-1);
 }
 
 //***********************************************************************
@@ -161,14 +161,14 @@ int vl_serialize_proto(view_t *v, exnode_exchange_t *exp)
 int vl_serialize(view_t *v, exnode_exchange_t *exp)
 {
 //  view_layout_t *vl = (view_layout_t *)v->priv;
-  
-  if (exp->type == EX_TEXT) {
-     return(vl_serialize_text(v, exp));
-  } else if (exp->type == EX_PROTOCOL_BUFFERS) {
-     return(vl_serialize_proto(v, exp));
-  }
- 
-  return(-1);
+
+    if (exp->type == EX_TEXT) {
+        return(vl_serialize_text(v, exp));
+    } else if (exp->type == EX_PROTOCOL_BUFFERS) {
+        return(vl_serialize_proto(v, exp));
+    }
+
+    return(-1);
 }
 
 //***********************************************************************
@@ -177,42 +177,42 @@ int vl_serialize(view_t *v, exnode_exchange_t *exp)
 
 int vl_deserialize_text(view_t *v, ex_id_t id, exnode_exchange_t *exp)
 {
-  view_layout_t *vl = (view_layout_t *)v->priv;
-  int bufsize = 1024;
-  char grp[bufsize];
-  ex_id_t lay_id;
-  inip_file_t *fd;
+    view_layout_t *vl = (view_layout_t *)v->priv;
+    int bufsize = 1024;
+    char grp[bufsize];
+    ex_id_t lay_id;
+    inip_file_t *fd;
 
-  //** Parse the ini text
-  fd = inip_read_text(exp->text);
+    //** Parse the ini text
+    fd = inip_read_text(exp->text);
 
-  //** Make the layout section name
-  snprintf(grp, bufsize, "view-" XIDT, id);
+    //** Make the layout section name
+    snprintf(grp, bufsize, "view-" XIDT, id);
 
-  //** Get the header info 
-  v->header.id = id;
-  v->header.type = VIEW_TYPE_LAYOUT;
-  v->header.name = inip_get_string(fd, grp, "name", "");
+    //** Get the header info
+    v->header.id = id;
+    v->header.type = VIEW_TYPE_LAYOUT;
+    v->header.name = inip_get_string(fd, grp, "name", "");
 
-  //** and the layout to use
-  lay_id = inip_get_unsigned_integer(fd, grp, "layout", 0);
-  if (lay_id == 0) {
-     log_printf(0, "vl_deserialize_text: ERROR No layout specified!\n");
-     return(1);
-  }
+    //** and the layout to use
+    lay_id = inip_get_unsigned_integer(fd, grp, "layout", 0);
+    if (lay_id == 0) {
+        log_printf(0, "vl_deserialize_text: ERROR No layout specified!\n");
+        return(1);
+    }
 
-  inip_destroy(fd);
+    inip_destroy(fd);
 
-log_printf(0, "vl_deserialize_text: Attempting to load layot id=" XIDT "\n", lay_id);
+    log_printf(0, "vl_deserialize_text: Attempting to load layot id=" XIDT "\n", lay_id);
 
-  //** load the layout
-  vl->lay = load_layout(lay_id, exp);
-  atomic_inc(vl->lay->ref_count);
-  
-  if (vl->lay == NULL) return(-1);
-  if (vl->lay == NULL) return(-1);
+    //** load the layout
+    vl->lay = load_layout(lay_id, exp);
+    atomic_inc(vl->lay->ref_count);
 
-  return(0);
+    if (vl->lay == NULL) return(-1);
+    if (vl->lay == NULL) return(-1);
+
+    return(0);
 }
 
 
@@ -222,7 +222,7 @@ log_printf(0, "vl_deserialize_text: Attempting to load layot id=" XIDT "\n", lay
 
 int vl_deserialize_proto(view_t *v, ex_id_t id, exnode_exchange_t *exp)
 {
-  return(-1);
+    return(-1);
 }
 
 //***********************************************************************
@@ -231,29 +231,29 @@ int vl_deserialize_proto(view_t *v, ex_id_t id, exnode_exchange_t *exp)
 
 int vl_deserialize(view_t *v, ex_id_t id, exnode_exchange_t *exp)
 {
-  if (exp->type == EX_TEXT) {
-     return(vl_deserialize_text(v, id, exp));
-  } else if (exp->type == EX_PROTOCOL_BUFFERS) {
-     return(vl_deserialize_proto(v, id, exp));
-  }
- 
-  return(-1);
+    if (exp->type == EX_TEXT) {
+        return(vl_deserialize_text(v, id, exp));
+    } else if (exp->type == EX_PROTOCOL_BUFFERS) {
+        return(vl_deserialize_proto(v, id, exp));
+    }
+
+    return(-1);
 }
 
 
 
-//************************************************************************* 
-// view_layout_set - Sets the view's layout 
+//*************************************************************************
+// view_layout_set - Sets the view's layout
 //*************************************************************************
 
 int view_layout_set(view_t *v, layout_t *lay)
 {
- view_layout_t *vl = (view_layout_t *)v->priv;
- 
- vl->lay = lay;
- atomic_inc(lay->ref_count);
+    view_layout_t *vl = (view_layout_t *)v->priv;
 
- return(0);
+    vl->lay = lay;
+    atomic_inc(lay->ref_count);
+
+    return(0);
 }
 
 //*************************************************************************
@@ -262,16 +262,16 @@ int view_layout_set(view_t *v, layout_t *lay)
 
 void vl_destroy(view_t *v)
 {
-  view_layout_t *vl = (view_layout_t *)v->priv;
+    view_layout_t *vl = (view_layout_t *)v->priv;
 
-log_printf(15, "vl_destroy: view->id=" XIDT " ref_count=%d\n", view_id(v), v->ref_count);
-  if (v->ref_count > 0) return;
+    log_printf(15, "vl_destroy: view->id=" XIDT " ref_count=%d\n", view_id(v), v->ref_count);
+    if (v->ref_count > 0) return;
 
-  ex_header_release(&(v->header));
-  atomic_dec(vl->lay->ref_count);
-  layout_destroy(vl->lay);
-  free(vl);
-  free(v);  
+    ex_header_release(&(v->header));
+    atomic_dec(vl->lay->ref_count);
+    layout_destroy(vl->lay);
+    free(vl);
+    free(v);
 }
 
 
@@ -281,28 +281,28 @@ log_printf(15, "vl_destroy: view->id=" XIDT " ref_count=%d\n", view_id(v), v->re
 
 view_t *view_layout_create(void *arg)
 {
-  view_t *v;
-  view_layout_t *vl;
+    view_t *v;
+    view_layout_t *vl;
 
-  type_malloc_clear(v, view_t, 1);
-  type_malloc_clear(vl, view_layout_t, 1);
+    type_malloc_clear(v, view_t, 1);
+    type_malloc_clear(vl, view_layout_t, 1);
 
-  v->priv = (void *)vl;
-  generate_ex_id(&(v->header.id));
-  v->header.type = VIEW_TYPE_LAYOUT;
-  atomic_set(v->ref_count, 0);
+    v->priv = (void *)vl;
+    generate_ex_id(&(v->header.id));
+    v->header.type = VIEW_TYPE_LAYOUT;
+    atomic_set(v->ref_count, 0);
 
-  v->fn.read = vl_read;
-  v->fn.write = vl_write;
-  v->fn.check = vl_check;
-  v->fn.repair = vl_repair;
-  v->fn.truncate = vl_truncate;
-  v->fn.size = vl_size;   
-  v->fn.serialize = vl_serialize;
-  v->fn.deserialize = vl_deserialize;
-  v->fn.destroy = vl_destroy;
+    v->fn.read = vl_read;
+    v->fn.write = vl_write;
+    v->fn.check = vl_check;
+    v->fn.repair = vl_repair;
+    v->fn.truncate = vl_truncate;
+    v->fn.size = vl_size;
+    v->fn.serialize = vl_serialize;
+    v->fn.deserialize = vl_deserialize;
+    v->fn.destroy = vl_destroy;
 
-  return(v);
+    return(v);
 }
 
 //*************************************************************************
@@ -311,8 +311,8 @@ view_t *view_layout_create(void *arg)
 
 view_t *view_layout_load(void *arg, ex_id_t id, exnode_exchange_t *ex)
 {
-  view_t *v = view_layout_create(arg);
+    view_t *v = view_layout_create(arg);
 
-  view_deserialize(v, id, ex);
-  return(v);
+    view_deserialize(v, id, ex);
+    return(v);
 }

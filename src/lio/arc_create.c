@@ -41,7 +41,8 @@ http://www.accre.vanderbilt.edu
 
 // Check if path exists...if not, creates it
 
-void check_path(char *path) {
+void check_path(char *path)
+{
     if (lioc_exists(lio_gc, lio_gc->creds, path) == 0) {
         if (gop_sync_exec(gop_lio_create_object(lio_gc, lio_gc->creds, path, OS_OBJECT_DIR, NULL, NULL)) != OP_STATE_SUCCESS) {
             printf("ERROR: Failed to create %s!\n", path);
@@ -56,7 +57,8 @@ void check_path(char *path) {
 // Prepares the L-Store destination
 //**********************************************************************************
 
-char* prepare_lstore_destination(char *name) {
+char* prepare_lstore_destination(char *name)
+{
     apr_time_t now = apr_time_sec(apr_time_now());
     char secs[80];
     char *path = NULL;
@@ -81,7 +83,8 @@ char* prepare_lstore_destination(char *name) {
 // Copies the local data into the L-Store system for staging
 //**********************************************************************************
 
-int run_lstore_copy(char *dest, char *path, char *regex_path, char *regex_object, int obj_types, int recurse_depth) {
+int run_lstore_copy(char *dest, char *path, char *regex_path, char *regex_object, int obj_types, int recurse_depth)
+{
     int res = EXIT_SUCCESS;
     lio_path_tuple_t dtuple;
     lio_cp_path_t *flist;
@@ -89,7 +92,7 @@ int run_lstore_copy(char *dest, char *path, char *regex_path, char *regex_object
     op_status_t status;
 
 
-    //TODO add this as an CLI option 
+    //TODO add this as an CLI option
     //** Store the buffer size
     buffer_size = 1024 * 1024 * 20;
     char *lio_dest = concat("@:", dest);
@@ -140,9 +143,10 @@ finally:
 // Copies the data from L-Store to tape.
 //**********************************************************************************
 
-int run_tape_copy(char *server, char *dest) {
+int run_tape_copy(char *server, char *dest)
+{
 
-    /* this is a temporary hack and eventually this will be a direct integration with 
+    /* this is a temporary hack and eventually this will be a direct integration with
      * TiBS once they have completed their API.
      */
 
@@ -168,7 +172,8 @@ int run_tape_copy(char *server, char *dest) {
 // Sets the user.tapeid attribute on the files archived
 //**********************************************************************************
 
-int set_tapeid_attr(char *dest, char *server) {
+int set_tapeid_attr(char *dest, char *server)
+{
     int err, res = EXIT_SUCCESS;
     lio_path_tuple_t dtuple;
     os_object_iter_t *it;
@@ -206,7 +211,7 @@ int set_tapeid_attr(char *dest, char *server) {
                         if (err != OP_STATE_SUCCESS) {
                             printf("ERROR: Failed to link file: %s\n", fname);
                         } else {
-                            // if object is a file, truncate it                         
+                            // if object is a file, truncate it
                             if ((ftype & OS_OBJECT_FILE) == 1) {
                                 lio_path_tuple_t tuple;
                                 tuple = lio_path_resolve(lio_gc->auto_translate, fname);
@@ -245,7 +250,8 @@ int set_tapeid_attr(char *dest, char *server) {
 // Processes the ini file and archives the appropriate data
 //**********************************************************************************
 
-int process_tag_file(char *tag_file, char *tag_name) {
+int process_tag_file(char *tag_file, char *tag_name)
+{
     int res = EXIT_SUCCESS;
     char *name = NULL;
     char *path = NULL;
@@ -299,20 +305,20 @@ int process_tag_file(char *tag_file, char *tag_name) {
                     res = run_lstore_copy(dest, path, regex_path, regex_object, obj_types, recurse_depth);
                     if (res != 0) {
                         printf("ERROR: Data ingestion has failed...skipping %s\n", dest);
-			err = 1;
+                        err = 1;
                         continue;
                     }
                     // Write the data to tape via TiBS
                     res = run_tape_copy(arc_server, dest);
                     if (res != 0) {
                         printf("ERROR: %d: Writing to tape has failed for %s\n", res, dest);
-			err = 1;
+                        err = 1;
                     } else {
                         // set the tape id attribute for restores
                         res = set_tapeid_attr(dest, arc_server);
                         if (res != 0) {
                             printf("Failed to set tape id attribute for %s\n", dest);
-    			    err = 1;
+                            err = 1;
                         }
                     }
                 }
@@ -326,7 +332,8 @@ int process_tag_file(char *tag_file, char *tag_name) {
     return(err);
 }
 
-void print_usage() {
+void print_usage()
+{
     printf("\nUsage: arc_create [-t tag file] [-n tag name]\n");
     printf("\t-t\ttag file to use (default if not specified: ~./arc_tag_file.txt)\n");
     printf("\t\n\ttag name to archive (if none, all tags will be archived)");
@@ -334,7 +341,8 @@ void print_usage() {
     exit(0);
 }
 
-int main(int argc, char **argv) {
+int main(int argc, char **argv)
+{
 
     int i = 1, start_option = 0;
     char *tag_file = NULL;

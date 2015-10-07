@@ -43,7 +43,7 @@ http://www.accre.vanderbilt.edu
 extern "C" {
 #endif
 
-       //*** List the various OS commands
+//*** List the various OS commands
 #define OSR_EXISTS_KEY             "os_exists"
 #define OSR_EXISTS_SIZE            9
 #define OSR_CREATE_OBJECT_KEY      "os_create_object"
@@ -93,60 +93,60 @@ extern "C" {
 #define OSR_SPIN_HB_KEY             "os_spin_hb"
 #define OSR_SPIN_HB_SIZE            10
 
-        //** Types of ongoing objects stored
+//** Types of ongoing objects stored
 #define OSR_ONGOING_FD_TYPE    0
 #define OSR_ONGOING_OBJECT_ITER 1
 #define OSR_ONGOING_ATTR_ITER   2
 #define OSR_ONGOING_FSCK_ITER   3
 
 typedef struct {
-  object_service_fn_t *os_child;  //** Actual OS used
-  apr_thread_mutex_t *lock;
-  apr_thread_mutex_t *abort_lock;
-  apr_thread_cond_t *cond;
-  apr_pool_t *mpool;
-  apr_hash_t *active_table;   //** Queryable active table
-  Stack_t *active_lru;        //** LRU sorted active table
-  mq_context_t *mqc;          //** Portal for connecting to he remote OS server
-  mq_ongoing_t *ongoing;      //** Ongoing open files or iterators
-  apr_hash_t *abort;          //** Abort open handles
-  apr_hash_t *spin;           //** Abort spin handles
-  char *hostname;             //** Addres to bind to
-  mq_portal_t *server_portal;
-  thread_pool_context_t *tpc;
-  int ongoing_interval;       //** Ongoing command check interval
-  int shutdown;
-  int max_stream;
-  int max_active;             //** Max size of the active table.
-  authn_t *authn;
-  creds_t *dummy_creds;       //** Dummy creds. Should be replaced when proper AuthN/AuthZ is added
-  char *fname_active;         //** Filename for logging ACTIVE operations.
-  char *fname_activity;       //** Filename for logging create/remove/move operations.
+    object_service_fn_t *os_child;  //** Actual OS used
+    apr_thread_mutex_t *lock;
+    apr_thread_mutex_t *abort_lock;
+    apr_thread_cond_t *cond;
+    apr_pool_t *mpool;
+    apr_hash_t *active_table;   //** Queryable active table
+    Stack_t *active_lru;        //** LRU sorted active table
+    mq_context_t *mqc;          //** Portal for connecting to he remote OS server
+    mq_ongoing_t *ongoing;      //** Ongoing open files or iterators
+    apr_hash_t *abort;          //** Abort open handles
+    apr_hash_t *spin;           //** Abort spin handles
+    char *hostname;             //** Addres to bind to
+    mq_portal_t *server_portal;
+    thread_pool_context_t *tpc;
+    int ongoing_interval;       //** Ongoing command check interval
+    int shutdown;
+    int max_stream;
+    int max_active;             //** Max size of the active table.
+    authn_t *authn;
+    creds_t *dummy_creds;       //** Dummy creds. Should be replaced when proper AuthN/AuthZ is added
+    char *fname_active;         //** Filename for logging ACTIVE operations.
+    char *fname_activity;       //** Filename for logging create/remove/move operations.
 } osrs_priv_t;
 
 typedef struct {
-  object_service_fn_t *os_temp;  //** Used only for initial debugging of the client/server
-  object_service_fn_t *os_remote;//** Used only for initial debugging of the client/server
-  apr_thread_mutex_t *lock;
-  apr_thread_cond_t *cond;
-  mq_context_t *mqc;             //** Portal for connecting to he remote OS server
-  mq_ongoing_t *ongoing;         //** Ongoing handle
-  mq_msg_t *remote_host;         //** Address of the Remote OS server
-  char *remote_host_string;      //** Stringified version of Remote OS server
-  char *host_id;                 //** Used for forming the open handle id;
-  int host_id_len;               //** Length of host id
-  int spin_interval;             //** Spin heartbeat interval
-  int spin_fail;                 //** Spin fail interval
-  os_authz_t *osaz;
-  authn_t *authn;
-  apr_pool_t *mpool;
-  apr_thread_t *heartbeat_thread;
-  thread_pool_context_t *tpc;
-  int stream_timeout;
-  int timeout;
-  int heartbeat;
-  int shutdown;
-  int max_stream;
+    object_service_fn_t *os_temp;  //** Used only for initial debugging of the client/server
+    object_service_fn_t *os_remote;//** Used only for initial debugging of the client/server
+    apr_thread_mutex_t *lock;
+    apr_thread_cond_t *cond;
+    mq_context_t *mqc;             //** Portal for connecting to he remote OS server
+    mq_ongoing_t *ongoing;         //** Ongoing handle
+    mq_msg_t *remote_host;         //** Address of the Remote OS server
+    char *remote_host_string;      //** Stringified version of Remote OS server
+    char *host_id;                 //** Used for forming the open handle id;
+    int host_id_len;               //** Length of host id
+    int spin_interval;             //** Spin heartbeat interval
+    int spin_fail;                 //** Spin fail interval
+    os_authz_t *osaz;
+    authn_t *authn;
+    apr_pool_t *mpool;
+    apr_thread_t *heartbeat_thread;
+    thread_pool_context_t *tpc;
+    int stream_timeout;
+    int timeout;
+    int heartbeat;
+    int shutdown;
+    int max_stream;
 } osrc_priv_t;
 
 #ifdef __cplusplus

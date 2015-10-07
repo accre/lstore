@@ -25,7 +25,7 @@ Advanced Computing Center for Research and Education
 230 Appleton Place
 Nashville, TN 37203
 http://www.accre.vanderbilt.edu
-*/ 
+*/
 
 //***********************************************************************
 // Routines for managing the automatic data service framework
@@ -44,19 +44,19 @@ http://www.accre.vanderbilt.edu
 
 int remove_service(service_manager_t *sm, char *service_section, char *service_name)
 {
-  apr_hash_t *section;
+    apr_hash_t *section;
 
-  apr_thread_mutex_lock(sm->lock);
+    apr_thread_mutex_lock(sm->lock);
 
-  section = apr_hash_get(sm->table, service_section, APR_HASH_KEY_STRING);
-  if (section == NULL) goto finished;
+    section = apr_hash_get(sm->table, service_section, APR_HASH_KEY_STRING);
+    if (section == NULL) goto finished;
 
-  apr_hash_set(section, service_name, APR_HASH_KEY_STRING, NULL);
+    apr_hash_set(section, service_name, APR_HASH_KEY_STRING, NULL);
 
 finished:
-  apr_thread_mutex_unlock(sm->lock);
+    apr_thread_mutex_unlock(sm->lock);
 
-  return(0);
+    return(0);
 }
 
 
@@ -66,27 +66,27 @@ finished:
 
 int add_service(service_manager_t *sm, char *service_section, char *service_name, void *service)
 {
-  char *key;
-  apr_hash_t *section;
+    char *key;
+    apr_hash_t *section;
 
-  apr_thread_mutex_lock(sm->lock);
+    apr_thread_mutex_lock(sm->lock);
 
-  log_printf(15, "adding section=%s service=%s\n", service_section, service_name);
+    log_printf(15, "adding section=%s service=%s\n", service_section, service_name);
 
-  section = apr_hash_get(sm->table, service_section, APR_HASH_KEY_STRING);
-  if (section == NULL) {  //** New section so create the table and insert it
-     log_printf(15, "Creating section=%s\n", service_section);
-     section = apr_hash_make(sm->pool);
-     key = apr_pstrdup(sm->pool, service_section);
-     apr_hash_set(sm->table, key, APR_HASH_KEY_STRING, section);
-  }
+    section = apr_hash_get(sm->table, service_section, APR_HASH_KEY_STRING);
+    if (section == NULL) {  //** New section so create the table and insert it
+        log_printf(15, "Creating section=%s\n", service_section);
+        section = apr_hash_make(sm->pool);
+        key = apr_pstrdup(sm->pool, service_section);
+        apr_hash_set(sm->table, key, APR_HASH_KEY_STRING, section);
+    }
 
-  key = apr_pstrdup(sm->pool, service_name);
-  apr_hash_set(section, key, APR_HASH_KEY_STRING, service);
+    key = apr_pstrdup(sm->pool, service_name);
+    apr_hash_set(section, key, APR_HASH_KEY_STRING, service);
 
-  apr_thread_mutex_unlock(sm->lock);
+    apr_thread_mutex_unlock(sm->lock);
 
-  return(0);
+    return(0);
 }
 
 //***********************************************************************
@@ -95,25 +95,25 @@ int add_service(service_manager_t *sm, char *service_section, char *service_name
 
 void *lookup_service(service_manager_t *sm, char *service_section, char *service_name)
 {
-  void *s;
-  apr_hash_t *section;
+    void *s;
+    apr_hash_t *section;
 
-  apr_thread_mutex_lock(sm->lock);
+    apr_thread_mutex_lock(sm->lock);
 
-  section = apr_hash_get(sm->table, service_section, APR_HASH_KEY_STRING);
-  if (section == NULL) {  //** New section so create the table and insert it
-     log_printf(10, "No matching section for section=%s name=%s\n", service_section, service_name);
-     apr_thread_mutex_unlock(sm->lock);
-     return(NULL);
-  }
+    section = apr_hash_get(sm->table, service_section, APR_HASH_KEY_STRING);
+    if (section == NULL) {  //** New section so create the table and insert it
+        log_printf(10, "No matching section for section=%s name=%s\n", service_section, service_name);
+        apr_thread_mutex_unlock(sm->lock);
+        return(NULL);
+    }
 
-  s = apr_hash_get(section, service_name, APR_HASH_KEY_STRING);
-  if (s == NULL) {
-    log_printf(10, "No matching object for section=%s name=%\n", service_section, service_name);
-  }
-  apr_thread_mutex_unlock(sm->lock);
+    s = apr_hash_get(section, service_name, APR_HASH_KEY_STRING);
+    if (s == NULL) {
+        log_printf(10, "No matching object for section=%s name=%\n", service_section, service_name);
+    }
+    apr_thread_mutex_unlock(sm->lock);
 
-  return(s);
+    return(s);
 }
 
 //***********************************************************************
@@ -122,25 +122,25 @@ void *lookup_service(service_manager_t *sm, char *service_section, char *service
 
 service_manager_t *clone_service_manager(service_manager_t *sm)
 {
-  apr_ssize_t klen;
-  service_manager_t *clone;
-  apr_hash_index_t *his;
-  apr_hash_t *section, *clone_section;
-  char *key;
+    apr_ssize_t klen;
+    service_manager_t *clone;
+    apr_hash_index_t *his;
+    apr_hash_t *section, *clone_section;
+    char *key;
 
-  //** Make an empty SM
-  clone = create_service_manager(sm);
+    //** Make an empty SM
+    clone = create_service_manager(sm);
 
-  //** Now cycle through all the tables and copy them
-  apr_thread_mutex_lock(sm->lock);
-  for (his = apr_hash_first(NULL, sm->table); his != NULL; his = apr_hash_next(his)) {
-     apr_hash_this(his, (const void **)&key, &klen, (void **)&section);
-     clone_section = apr_hash_copy(clone->pool, section);
-     apr_hash_set(clone->table, apr_pstrdup(clone->pool, key), APR_HASH_KEY_STRING, clone_section);
-  }
-  apr_thread_mutex_unlock(sm->lock);
+    //** Now cycle through all the tables and copy them
+    apr_thread_mutex_lock(sm->lock);
+    for (his = apr_hash_first(NULL, sm->table); his != NULL; his = apr_hash_next(his)) {
+        apr_hash_this(his, (const void **)&key, &klen, (void **)&section);
+        clone_section = apr_hash_copy(clone->pool, section);
+        apr_hash_set(clone->table, apr_pstrdup(clone->pool, key), APR_HASH_KEY_STRING, clone_section);
+    }
+    apr_thread_mutex_unlock(sm->lock);
 
-  return(clone);
+    return(clone);
 }
 
 //***********************************************************************
@@ -149,8 +149,8 @@ service_manager_t *clone_service_manager(service_manager_t *sm)
 
 void destroy_service_manager(service_manager_t *sm)
 {
-   apr_pool_destroy(sm->pool);
-   free(sm);
+    apr_pool_destroy(sm->pool);
+    free(sm);
 }
 
 
@@ -160,16 +160,16 @@ void destroy_service_manager(service_manager_t *sm)
 
 service_manager_t *create_service_manager()
 {
-  service_manager_t *sm;
+    service_manager_t *sm;
 
-  type_malloc_clear(sm, service_manager_t, 1);
+    type_malloc_clear(sm, service_manager_t, 1);
 
-  apr_pool_create(&sm->pool, NULL);
-  apr_thread_mutex_create(&sm->lock, APR_THREAD_MUTEX_DEFAULT, sm->pool);
+    apr_pool_create(&sm->pool, NULL);
+    apr_thread_mutex_create(&sm->lock, APR_THREAD_MUTEX_DEFAULT, sm->pool);
 
-  sm->table = apr_hash_make(sm->pool);
+    sm->table = apr_hash_make(sm->pool);
 
-  return(sm);
+    return(sm);
 }
 
 

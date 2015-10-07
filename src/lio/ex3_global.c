@@ -36,11 +36,32 @@ resource_service_fn_t *_rs_default = NULL;
 object_service_fn_t *_os_default = NULL;
 
 
-int ex3_set_default_ds(data_service_fn_t *ds) { _ds_default = ds; return(0); }
-data_service_fn_t *ex3_get_default_ds() { return(_ds_default); }
-int ex3_set_default_rs(resource_service_fn_t *rs) { _rs_default = rs; return(0); }
-resource_service_fn_t *ex3_get_default_rs() { return(_rs_default); }
-int ex3_set_default_os(object_service_fn_t *os) { _os_default = os;  return(0); }
-object_service_fn_t *ex3_get_default_os() { return(_os_default); }
+int ex3_set_default_ds(data_service_fn_t *ds)
+{
+    _ds_default = ds;
+    return(0);
+}
+data_service_fn_t *ex3_get_default_ds()
+{
+    return(_ds_default);
+}
+int ex3_set_default_rs(resource_service_fn_t *rs)
+{
+    _rs_default = rs;
+    return(0);
+}
+resource_service_fn_t *ex3_get_default_rs()
+{
+    return(_rs_default);
+}
+int ex3_set_default_os(object_service_fn_t *os)
+{
+    _os_default = os;
+    return(0);
+}
+object_service_fn_t *ex3_get_default_os()
+{
+    return(_os_default);
+}
 
 

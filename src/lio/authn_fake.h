@@ -44,8 +44,8 @@ extern "C" {
 
 //*** HAck for getting userid@hosntam passed around to be romved with proper authn/z
 typedef struct {
-  char *handle;
-  int len;
+    char *handle;
+    int len;
 } authn_fake_priv_t;
 //--------------------------
 

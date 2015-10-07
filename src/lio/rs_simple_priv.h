@@ -44,46 +44,46 @@ extern "C" {
 #endif
 
 typedef struct {
-  char *rid_key;
-  char *ds_key;
-  list_t *attr;
-  int  status;
-  int  slot;
-  ex_off_t space_total;
-  ex_off_t space_used;
-  ex_off_t space_free;
+    char *rid_key;
+    char *ds_key;
+    list_t *attr;
+    int  status;
+    int  slot;
+    ex_off_t space_total;
+    ex_off_t space_used;
+    ex_off_t space_free;
 } rss_rid_entry_t;
 
 typedef struct {
-  char *ds_key;
-  char *rid_key;
-  data_inquire_t *space;
-  rss_rid_entry_t *re;
+    char *ds_key;
+    char *rid_key;
+    data_inquire_t *space;
+    rss_rid_entry_t *re;
 } rss_check_entry_t;
 
 typedef struct {
-  list_t *rid_table;
-  rss_rid_entry_t **random_array;
-  data_service_fn_t *ds;
-  data_attr_t *da;
-  apr_thread_mutex_t *lock;
-  apr_thread_mutex_t *update_lock;
-  apr_thread_cond_t *cond;
-  apr_thread_t *check_thread;
-  apr_pool_t *mpool;
-  apr_hash_t *mapping_updates;
-  apr_hash_t *rid_mapping;
-  time_t modify_time;
-  time_t current_check;
-  char *fname;
-  uint64_t min_free;
-  int n_rids;
-  int shutdown;
-  int dynamic_mapping;
-  int unique_rids;
-  int check_interval;
-  int check_timeout;
-  int last_config_size;
+    list_t *rid_table;
+    rss_rid_entry_t **random_array;
+    data_service_fn_t *ds;
+    data_attr_t *da;
+    apr_thread_mutex_t *lock;
+    apr_thread_mutex_t *update_lock;
+    apr_thread_cond_t *cond;
+    apr_thread_t *check_thread;
+    apr_pool_t *mpool;
+    apr_hash_t *mapping_updates;
+    apr_hash_t *rid_mapping;
+    time_t modify_time;
+    time_t current_check;
+    char *fname;
+    uint64_t min_free;
+    int n_rids;
+    int shutdown;
+    int dynamic_mapping;
+    int unique_rids;
+    int check_interval;
+    int check_timeout;
+    int last_config_size;
 } rs_simple_priv_t;
 
 #ifdef __cplusplus

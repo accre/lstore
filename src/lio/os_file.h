@@ -25,7 +25,7 @@ Advanced Computing Center for Research and Education
 230 Appleton Place
 Nashville, TN 37203
 http://www.accre.vanderbilt.edu
-*/ 
+*/
 
 //***********************************************************************
 // OS file header file
@@ -43,8 +43,8 @@ extern "C" {
 #define OS_TYPE_FILE "file"
 
 typedef struct {
-  object_service_fn_t *os;
-  os_object_iter_t  *oit;
+    object_service_fn_t *os;
+    os_object_iter_t  *oit;
 } local_object_iter_t;
 
 int local_next_object(local_object_iter_t *it, char **myfname, int *prefix_len);

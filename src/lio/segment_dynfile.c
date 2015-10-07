@@ -51,16 +51,16 @@ http://www.accre.vanderbilt.edu
 
 segment_t *segment_dynfile_create(void *arg)
 {
-  segment_t *seg;
+    segment_t *seg;
 
-  log_printf(0, "START\n");
+    log_printf(0, "START\n");
 
-  seg = segment_file_create(arg);
-  seg->header.type = SEGMENT_TYPE_DYNFILE;
+    seg = segment_file_create(arg);
+    seg->header.type = SEGMENT_TYPE_DYNFILE;
 
-  log_printf(0, "END\n");
+    log_printf(0, "END\n");
 
-  return(seg);
+    return(seg);
 }
 
 //***********************************************************************
@@ -70,11 +70,11 @@ segment_t *segment_dynfile_create(void *arg)
 segment_t *segment_dynfile_load(void *arg, ex_id_t id, exnode_exchange_t *ex)
 {
 
-  log_printf(0, "START\n");
-  segment_t *seg = segment_dynfile_create(arg);
-  segment_deserialize(seg, id, ex);
-  seg->header.type = SEGMENT_TYPE_DYNFILE;
-  log_printf(0, "END\n");
+    log_printf(0, "START\n");
+    segment_t *seg = segment_dynfile_create(arg);
+    segment_deserialize(seg, id, ex);
+    seg->header.type = SEGMENT_TYPE_DYNFILE;
+    log_printf(0, "END\n");
 
-  return(seg);
+    return(seg);
 }

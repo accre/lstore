@@ -25,7 +25,7 @@ Advanced Computing Center for Research and Education
 230 Appleton Place
 Nashville, TN 37203
 http://www.accre.vanderbilt.edu
-*/ 
+*/
 
 //***********************************************************************
 // OS file header file
@@ -54,37 +54,37 @@ extern "C" {
 #define OSF_LOCK_CHKSUM_SIZE MD5_DIGEST_LENGTH
 
 typedef struct {
-  int base_path_len;
-  int file_path_len;
-  int hardlink_path_len;
-  int internal_lock_size;
-  int hardlink_dir_size;
-  atomic_int_t hardlink_count;
-  char *base_path;
-  char *file_path;
-  char *hardlink_path;
-  char *host_id;
-  thread_pool_context_t *tpc;
-  apr_thread_mutex_t **internal_lock;
-  os_authz_t *osaz;
-  authn_t *authn;
-  apr_pool_t *mpool;
-  list_t *fobj_table;
-  apr_hash_t *vattr_hash;
-  list_t *vattr_prefix;
-  apr_thread_mutex_t *fobj_lock;
-  pigeon_coop_t *fobj_pc;
-  pigeon_coop_t *task_pc;
-  os_virtual_attr_t lock_va;
-  os_virtual_attr_t link_va;
-  os_virtual_attr_t link_count_va;
-  os_virtual_attr_t type_va;
-  os_virtual_attr_t create_va;
-  os_virtual_attr_t attr_link_pva;
-  os_virtual_attr_t attr_type_pva;
-  os_virtual_attr_t timestamp_pva;
-  os_virtual_attr_t append_pva;
-  int max_copy;
+    int base_path_len;
+    int file_path_len;
+    int hardlink_path_len;
+    int internal_lock_size;
+    int hardlink_dir_size;
+    atomic_int_t hardlink_count;
+    char *base_path;
+    char *file_path;
+    char *hardlink_path;
+    char *host_id;
+    thread_pool_context_t *tpc;
+    apr_thread_mutex_t **internal_lock;
+    os_authz_t *osaz;
+    authn_t *authn;
+    apr_pool_t *mpool;
+    list_t *fobj_table;
+    apr_hash_t *vattr_hash;
+    list_t *vattr_prefix;
+    apr_thread_mutex_t *fobj_lock;
+    pigeon_coop_t *fobj_pc;
+    pigeon_coop_t *task_pc;
+    os_virtual_attr_t lock_va;
+    os_virtual_attr_t link_va;
+    os_virtual_attr_t link_count_va;
+    os_virtual_attr_t type_va;
+    os_virtual_attr_t create_va;
+    os_virtual_attr_t attr_link_pva;
+    os_virtual_attr_t attr_type_pva;
+    os_virtual_attr_t timestamp_pva;
+    os_virtual_attr_t append_pva;
+    int max_copy;
 } osfile_priv_t;
 
 

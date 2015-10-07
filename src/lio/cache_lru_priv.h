@@ -25,7 +25,7 @@ Advanced Computing Center for Research and Education
 230 Appleton Place
 Nashville, TN 37203
 http://www.accre.vanderbilt.edu
-*/ 
+*/
 
 //*************************************************************************
 //*************************************************************************
@@ -41,30 +41,30 @@ extern "C" {
 #include "cache.h"
 
 typedef struct {
-  cache_page_t page;  //** Actual page
-  Stack_ele_t *ele;   //** LRU position
+    cache_page_t page;  //** Actual page
+    Stack_ele_t *ele;   //** LRU position
 } page_lru_t;
 
 typedef struct {
-  Stack_t *stack;
-  Stack_t *waiting_stack;
-  Stack_t *pending_free_tasks;
-  pigeon_coop_t *free_pending_tables;
-  pigeon_coop_t *free_page_tables;
-  apr_thread_cond_t *dirty_trigger;
-  apr_thread_t *dirty_thread;
-  apr_time_t dirty_max_wait;
-  ex_off_t max_bytes;
-  ex_off_t bytes_used;
-  ex_off_t dirty_bytes_trigger;
-  double   dirty_fraction;
-  int      flush_in_progress;
-  int      limbo_pages;
+    Stack_t *stack;
+    Stack_t *waiting_stack;
+    Stack_t *pending_free_tasks;
+    pigeon_coop_t *free_pending_tables;
+    pigeon_coop_t *free_page_tables;
+    apr_thread_cond_t *dirty_trigger;
+    apr_thread_t *dirty_thread;
+    apr_time_t dirty_max_wait;
+    ex_off_t max_bytes;
+    ex_off_t bytes_used;
+    ex_off_t dirty_bytes_trigger;
+    double   dirty_fraction;
+    int      flush_in_progress;
+    int      limbo_pages;
 } cache_lru_t;
 
 typedef struct {
-  apr_thread_cond_t *cond;
-  ex_off_t  bytes_needed;
+    apr_thread_cond_t *cond;
+    ex_off_t  bytes_needed;
 } lru_page_wait_t;
 
 #ifdef __cplusplus

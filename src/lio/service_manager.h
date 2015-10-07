@@ -25,7 +25,7 @@ Advanced Computing Center for Research and Education
 230 Appleton Place
 Nashville, TN 37203
 http://www.accre.vanderbilt.edu
-*/ 
+*/
 
 //***********************************************************************
 // Generic service manager header file
@@ -43,9 +43,9 @@ extern "C" {
 #endif
 
 typedef struct {
-  apr_pool_t *pool;
-  apr_thread_mutex_t *lock;
-  apr_hash_t *table;
+    apr_pool_t *pool;
+    apr_thread_mutex_t *lock;
+    apr_hash_t *table;
 } service_manager_t;
 
 service_manager_t *clone_service_manager(service_manager_t *sm);

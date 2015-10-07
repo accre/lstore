@@ -25,7 +25,7 @@ Advanced Computing Center for Research and Education
 230 Appleton Place
 Nashville, TN 37203
 http://www.accre.vanderbilt.edu
-*/ 
+*/
 
 //***********************************************************************
 // Basic Resource Query interface
@@ -49,23 +49,23 @@ http://www.accre.vanderbilt.edu
 
 void rs_query_count(resource_service_fn_t *rs, rs_query_t *rsq, int *n_ele, int *n_unique, int *n_pickone)
 {
-  rsq_base_t *query = (rsq_base_t *)rsq;
-  rsq_base_ele_t *q = query->head;
+    rsq_base_t *query = (rsq_base_t *)rsq;
+    rsq_base_ele_t *q = query->head;
 
-  *n_ele = 0;
-  *n_unique = 0;
-  *n_pickone = 0;
+    *n_ele = 0;
+    *n_unique = 0;
+    *n_pickone = 0;
 
-  while (q != NULL) {
-    (*n_ele)++;
+    while (q != NULL) {
+        (*n_ele)++;
 
-    if ((q->key_op & RSQ_BASE_KV_UNIQUE) || (q->val_op & RSQ_BASE_KV_UNIQUE)) (*n_unique)++;
-    if ((q->key_op & RSQ_BASE_KV_PICKONE) || (q->val_op & RSQ_BASE_KV_PICKONE)) (*n_pickone)++;
+        if ((q->key_op & RSQ_BASE_KV_UNIQUE) || (q->val_op & RSQ_BASE_KV_UNIQUE)) (*n_unique)++;
+        if ((q->key_op & RSQ_BASE_KV_PICKONE) || (q->val_op & RSQ_BASE_KV_PICKONE)) (*n_pickone)++;
 
-    q = q->next;
-  }
+        q = q->next;
+    }
 
-  return;
+    return;
 }
 
 //***********************************************************************
@@ -75,19 +75,19 @@ void rs_query_count(resource_service_fn_t *rs, rs_query_t *rsq, int *n_ele, int 
 
 void rs_query_base_destroy(resource_service_fn_t *rs, rs_query_t *rsq)
 {
-  rsq_base_t *query = (rsq_base_t *)rsq;
-  rsq_base_ele_t *q, *prev;
+    rsq_base_t *query = (rsq_base_t *)rsq;
+    rsq_base_ele_t *q, *prev;
 
-  q = query->head;
-  while (q != NULL) {
-     prev = q;
-     if (q->key != NULL) free(q->key);
-     if (q->val != NULL) free(q->val);
-     q = q->next;
-     free(prev);
-  }
+    q = query->head;
+    while (q != NULL) {
+        prev = q;
+        if (q->key != NULL) free(q->key);
+        if (q->val != NULL) free(q->val);
+        q = q->next;
+        free(prev);
+    }
 
-  free(query);
+    free(query);
 }
 
 //***********************************************************************
@@ -96,12 +96,12 @@ void rs_query_base_destroy(resource_service_fn_t *rs, rs_query_t *rsq)
 
 rs_query_t *rs_query_base_new(resource_service_fn_t *rs)
 {
-  rsq_base_t *q;
+    rsq_base_t *q;
 
-  type_malloc_clear(q, rsq_base_t, 1);
-  q->rs = rs;
+    type_malloc_clear(q, rsq_base_t, 1);
+    q->rs = rs;
 
-  return((rs_query_t *)q);
+    return((rs_query_t *)q);
 }
 
 
@@ -112,41 +112,43 @@ rs_query_t *rs_query_base_new(resource_service_fn_t *rs)
 
 int rs_query_base_add(resource_service_fn_t *rs, rs_query_t **rsq, int op, char *key, int key_op, char *val, int val_op)
 {
-  rsq_base_t **query = (rsq_base_t **)rsq;
-  rsq_base_ele_t *q;
+    rsq_base_t **query = (rsq_base_t **)rsq;
+    rsq_base_ele_t *q;
 
-  //** Sanity check
-  if (op > RSQ_BASE_OP_MAX_VAL) return(1);
-  if (key_op > RSQ_BASE_KV_MAX_VAL) return(2);
-  if (val_op > RSQ_BASE_KV_MAX_VAL) return(3);
-  if ((key_op & RSQ_BASE_KV_UNIQUE) && (key_op & RSQ_BASE_KV_UNIQUE)) return(4);
-  if ((val_op & RSQ_BASE_KV_UNIQUE) && (val_op & RSQ_BASE_KV_UNIQUE)) return(5);
+    //** Sanity check
+    if (op > RSQ_BASE_OP_MAX_VAL) return(1);
+    if (key_op > RSQ_BASE_KV_MAX_VAL) return(2);
+    if (val_op > RSQ_BASE_KV_MAX_VAL) return(3);
+    if ((key_op & RSQ_BASE_KV_UNIQUE) && (key_op & RSQ_BASE_KV_UNIQUE)) return(4);
+    if ((val_op & RSQ_BASE_KV_UNIQUE) && (val_op & RSQ_BASE_KV_UNIQUE)) return(5);
 
-  //** Ok make the query
-  type_malloc_clear(q, rsq_base_ele_t, 1);
-  q->op = op;
-  q->key_op = key_op; q->key = (key == NULL) ? NULL : strdup(key);
-  q->val_op = key_op; q->val = (val == NULL) ? NULL : strdup(val);
-  q->next = NULL;
+    //** Ok make the query
+    type_malloc_clear(q, rsq_base_ele_t, 1);
+    q->op = op;
+    q->key_op = key_op;
+    q->key = (key == NULL) ? NULL : strdup(key);
+    q->val_op = key_op;
+    q->val = (val == NULL) ? NULL : strdup(val);
+    q->next = NULL;
 
-  //** and append it;
-  if (*query == NULL) {
-     type_malloc_clear(*query, rsq_base_t, 1);
-     (*query)->rs = rs;
+    //** and append it;
+    if (*query == NULL) {
+        type_malloc_clear(*query, rsq_base_t, 1);
+        (*query)->rs = rs;
 
-     (*query)->head = q;
-     (*query)->tail = q;
-  } else {
-     if ((*query)->head == NULL) {
         (*query)->head = q;
         (*query)->tail = q;
-     } else {
-        (*query)->tail->next = q;
-        (*query)->tail = q;
-     }
-  }
+    } else {
+        if ((*query)->head == NULL) {
+            (*query)->head = q;
+            (*query)->tail = q;
+        } else {
+            (*query)->tail->next = q;
+            (*query)->tail = q;
+        }
+    }
 
-  return(0);
+    return(0);
 }
 
 //***********************************************************************
@@ -155,38 +157,38 @@ int rs_query_base_add(resource_service_fn_t *rs, rs_query_t **rsq, int op, char 
 
 rs_query_t *rs_query_base_dup(resource_service_fn_t *rs, rs_query_t *rsq)
 {
-  rsq_base_t *new_query;
-  rsq_base_t *query = (rsq_base_t *)rsq;
-  rsq_base_ele_t *q = query->head;
-  rsq_base_ele_t *qn = NULL;
-  rsq_base_ele_t *prev = NULL;
+    rsq_base_t *new_query;
+    rsq_base_t *query = (rsq_base_t *)rsq;
+    rsq_base_ele_t *q = query->head;
+    rsq_base_ele_t *qn = NULL;
+    rsq_base_ele_t *prev = NULL;
 
-log_printf(15, "rs_query_phase_dup: START\n");
+    log_printf(15, "rs_query_phase_dup: START\n");
 
-  if (query == NULL) return(NULL);
+    if (query == NULL) return(NULL);
 
-  new_query = rs_query_base_new(rs);
+    new_query = rs_query_base_new(rs);
 
-  for (q = query->head; q != NULL; q = q->next) {
-log_printf(15, "rs_query_phase_dup: Adding element\n");
-     type_malloc_clear(qn, rsq_base_ele_t, 1);
-     if (new_query->head == NULL) new_query->head = qn;
-     if (prev != NULL) prev->next = qn;
+    for (q = query->head; q != NULL; q = q->next) {
+        log_printf(15, "rs_query_phase_dup: Adding element\n");
+        type_malloc_clear(qn, rsq_base_ele_t, 1);
+        if (new_query->head == NULL) new_query->head = qn;
+        if (prev != NULL) prev->next = qn;
 
-     qn->op = q->op;
-     qn->key = (q->key == NULL) ? NULL : strdup(q->key);
-     qn->key_op = q->key_op;
-     qn->val = (q->val == NULL) ? NULL : strdup(q->val);
-     qn->val_op = q->val_op;
-     qn->next = NULL;
-     prev = qn;
-  }
+        qn->op = q->op;
+        qn->key = (q->key == NULL) ? NULL : strdup(q->key);
+        qn->key_op = q->key_op;
+        qn->val = (q->val == NULL) ? NULL : strdup(q->val);
+        qn->val_op = q->val_op;
+        qn->next = NULL;
+        prev = qn;
+    }
 
-  new_query->tail = qn;
+    new_query->tail = qn;
 
-log_printf(15, "rs_query_phase_dup: END\n");
+    log_printf(15, "rs_query_phase_dup: END\n");
 
-  return((rs_query_t *)new_query);
+    return((rs_query_t *)new_query);
 }
 
 //***********************************************************************
@@ -195,36 +197,36 @@ log_printf(15, "rs_query_phase_dup: END\n");
 
 void rs_query_base_append(resource_service_fn_t *rs, rs_query_t *rsq, rs_query_t *rsq_append)
 {
-  rsq_base_t *query = (rsq_base_t *)rsq;
-  rsq_base_t *query_append = (rsq_base_t *)rsq_append;
-  rsq_base_ele_t *q;
-  rsq_base_ele_t *qn = NULL;
-  rsq_base_ele_t *prev = query->tail;
+    rsq_base_t *query = (rsq_base_t *)rsq;
+    rsq_base_t *query_append = (rsq_base_t *)rsq_append;
+    rsq_base_ele_t *q;
+    rsq_base_ele_t *qn = NULL;
+    rsq_base_ele_t *prev = query->tail;
 
-log_printf(15, "START\n");
+    log_printf(15, "START\n");
 
-  if (query_append == NULL) return;
+    if (query_append == NULL) return;
 
-  for (q = query_append->head; q != NULL; q = q->next) {
-log_printf(15, "Adding element\n");
-     type_malloc_clear(qn, rsq_base_ele_t, 1);
-     if (query->head == NULL) query->head = qn;
-     if (prev != NULL) prev->next = qn;
+    for (q = query_append->head; q != NULL; q = q->next) {
+        log_printf(15, "Adding element\n");
+        type_malloc_clear(qn, rsq_base_ele_t, 1);
+        if (query->head == NULL) query->head = qn;
+        if (prev != NULL) prev->next = qn;
 
-     qn->op = q->op;
-     qn->key = (q->key == NULL) ? NULL : strdup(q->key);
-     qn->key_op = q->key_op;
-     qn->val = (q->val == NULL) ? NULL : strdup(q->val);
-     qn->val_op = q->val_op;
-     qn->next = NULL;
-     prev = qn;
-  }
+        qn->op = q->op;
+        qn->key = (q->key == NULL) ? NULL : strdup(q->key);
+        qn->key_op = q->key_op;
+        qn->val = (q->val == NULL) ? NULL : strdup(q->val);
+        qn->val_op = q->val_op;
+        qn->next = NULL;
+        prev = qn;
+    }
 
-  query->tail = qn;
+    query->tail = qn;
 
-log_printf(15, "END\n");
+    log_printf(15, "END\n");
 
-  return;
+    return;
 }
 
 //***********************************************************************
@@ -233,39 +235,40 @@ log_printf(15, "END\n");
 
 char *rs_query_base_print(resource_service_fn_t *rs, rs_query_t *rsq)
 {
-  int bufsize = 10*1024;
-  char buffer[bufsize], *ekey, *eval;
-  char *key, *val;
-  rsq_base_t *query = (rsq_base_t *)rsq;
-  rsq_base_ele_t *q;
-  int used;
+    int bufsize = 10*1024;
+    char buffer[bufsize], *ekey, *eval;
+    char *key, *val;
+    rsq_base_t *query = (rsq_base_t *)rsq;
+    rsq_base_ele_t *q;
+    int used;
 
-log_printf(15, "rs_query_base_print: START\n");
+    log_printf(15, "rs_query_base_print: START\n");
 
-  if (query == NULL) return(NULL);
+    if (query == NULL) return(NULL);
 
-  used = 0;
-  append_printf(buffer, &used, bufsize, "%s:", rs->type);
+    used = 0;
+    append_printf(buffer, &used, bufsize, "%s:", rs->type);
 
-  q = query->head;
-  while (q != NULL) {
-    key = (q->key == NULL) ? "" : q->key;
-    val = (q->val == NULL) ? "" : q->val;
-    ekey = escape_text(":", '\\', key);
-    eval = escape_text(":", '\\', val);
-    append_printf(buffer, &used, bufsize, "%d:%s:%d:%s:%d", q->op, ekey, q->key_op, eval, q->val_op);
+    q = query->head;
+    while (q != NULL) {
+        key = (q->key == NULL) ? "" : q->key;
+        val = (q->val == NULL) ? "" : q->val;
+        ekey = escape_text(":", '\\', key);
+        eval = escape_text(":", '\\', val);
+        append_printf(buffer, &used, bufsize, "%d:%s:%d:%s:%d", q->op, ekey, q->key_op, eval, q->val_op);
 
-log_printf(15, "rs_query_base_print: Adding element\n");
+        log_printf(15, "rs_query_base_print: Adding element\n");
 
-    free(ekey); free(eval);
+        free(ekey);
+        free(eval);
 
-    q = q->next;
-    if (q != NULL) append_printf(buffer, &used, bufsize, ";");
-  }
+        q = q->next;
+        if (q != NULL) append_printf(buffer, &used, bufsize, ";");
+    }
 
-log_printf(15, "rs_query_base_print: END rsq=%s\n", buffer);
+    log_printf(15, "rs_query_base_print: END rsq=%s\n", buffer);
 
-  return(strdup(buffer));
+    return(strdup(buffer));
 }
 
 //***********************************************************************
@@ -275,64 +278,66 @@ log_printf(15, "rs_query_base_print: END rsq=%s\n", buffer);
 
 rs_query_t *rs_query_base_parse(resource_service_fn_t *rs, char *qstring)
 {
-  char *buffer, *token, *t2, *ekey, *bstate, *tstate;
-  int fin, bfin;
-  rsq_base_ele_t *root, *tail, *q;
-  rsq_base_t *query = NULL;
+    char *buffer, *token, *t2, *ekey, *bstate, *tstate;
+    int fin, bfin;
+    rsq_base_ele_t *root, *tail, *q;
+    rsq_base_t *query = NULL;
 
-  buffer = strdup(qstring);
+    buffer = strdup(qstring);
 
-log_printf(15, "rs_query_base_parse: Parsing=%s!\n", buffer);
+    log_printf(15, "rs_query_base_parse: Parsing=%s!\n", buffer);
 
-  token = escape_string_token(buffer, ";", '\\', 0, &bstate, &bfin);
-log_printf(15, "rs_query_base_parse: initial token=%s!\n", token);
-  t2 = escape_string_token(token, ":", '\\', 0, &tstate, &fin);
-log_printf(15, "rs_query_base_parse: rs_type=%s\n", t2);
-  ekey = unescape_text('\\', t2);
-log_printf(15, "rs_query_base_parse: ekey=%s\n", ekey);
+    token = escape_string_token(buffer, ";", '\\', 0, &bstate, &bfin);
+    log_printf(15, "rs_query_base_parse: initial token=%s!\n", token);
+    t2 = escape_string_token(token, ":", '\\', 0, &tstate, &fin);
+    log_printf(15, "rs_query_base_parse: rs_type=%s\n", t2);
+    ekey = unescape_text('\\', t2);
+    log_printf(15, "rs_query_base_parse: ekey=%s\n", ekey);
 //  if (strcmp(rs->type, ekey) != 0) {
 //     log_printf(0, "rs_query_base_parse: Mismatch RS types  parent=%s got=%s!\n", rs->type, ekey);
 //     free(buffer);
 //     return(NULL);
 //  }
-  free(ekey);
+    free(ekey);
 
-  type_malloc(query, rsq_base_t, 1);
-  query->rs = rs;
+    type_malloc(query, rsq_base_t, 1);
+    query->rs = rs;
 
-log_printf(15, "rs_query_base_parse: bfin=%d!\n", bfin);
+    log_printf(15, "rs_query_base_parse: bfin=%d!\n", bfin);
 
-  root = NULL; tail = NULL;
-  do {
-    type_malloc_clear(q, rsq_base_ele_t, 1);
-    if (root == NULL) root = q;
+    root = NULL;
+    tail = NULL;
+    do {
+        type_malloc_clear(q, rsq_base_ele_t, 1);
+        if (root == NULL) root = q;
 
-    t2 = escape_string_token(NULL, ":", '\\', 0, &tstate, &fin);
+        t2 = escape_string_token(NULL, ":", '\\', 0, &tstate, &fin);
 
-    q->op = atoi(t2);
-    t2 = escape_string_token(NULL, ":", '\\', 0, &tstate, &fin);
-    q->key = unescape_text('\\', t2);
-    t2 = escape_string_token(NULL, ":", '\\', 0, &tstate, &fin);
-    q->key_op = atoi(t2);
-    t2 = escape_string_token(NULL, ":", '\\', 0, &tstate, &fin);
-    q->val = unescape_text('\\', t2);
-    t2 = escape_string_token(NULL, ":", '\\', 0, &tstate, &fin);
-    q->val_op = atoi(t2);
+        q->op = atoi(t2);
+        t2 = escape_string_token(NULL, ":", '\\', 0, &tstate, &fin);
+        q->key = unescape_text('\\', t2);
+        t2 = escape_string_token(NULL, ":", '\\', 0, &tstate, &fin);
+        q->key_op = atoi(t2);
+        t2 = escape_string_token(NULL, ":", '\\', 0, &tstate, &fin);
+        q->val = unescape_text('\\', t2);
+        t2 = escape_string_token(NULL, ":", '\\', 0, &tstate, &fin);
+        q->val_op = atoi(t2);
 
-    log_printf(15, "rs_query_base_parse: element=OP(%d):KEY(%s):KEY_OP(%d):VAL(%s):VAL_OP(%d)\n", q->op, q->key, q->key_op, q->val, q->val_op);
+        log_printf(15, "rs_query_base_parse: element=OP(%d):KEY(%s):KEY_OP(%d):VAL(%s):VAL_OP(%d)\n", q->op, q->key, q->key_op, q->val, q->val_op);
 
-    if (tail != NULL) tail->next = q;
-    tail = q;
+        if (tail != NULL) tail->next = q;
+        tail = q;
 
-    token = escape_string_token(NULL, ";", '\\', 0, &bstate, &bfin);  tstate = token;
-  } while (strlen(token) > 0);
+        token = escape_string_token(NULL, ";", '\\', 0, &bstate, &bfin);
+        tstate = token;
+    } while (strlen(token) > 0);
 
-  free(buffer);
+    free(buffer);
 
-  query->head = root;
-  query->tail = tail;
+    query->head = root;
+    query->tail = tail;
 
-  return((rs_query_t *)query);
+    return((rs_query_t *)query);
 }
 
 

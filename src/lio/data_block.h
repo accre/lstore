@@ -25,7 +25,7 @@ Advanced Computing Center for Research and Education
 230 Appleton Place
 Nashville, TN 37203
 http://www.accre.vanderbilt.edu
-*/ 
+*/
 
 //***********************************************************************
 // Data block definition
@@ -46,26 +46,26 @@ extern "C" {
 typedef void data_block_cap_t;
 
 typedef struct {
-  data_block_cap_t *cap;
-  data_service_fn_t *ds;
+    data_block_cap_t *cap;
+    data_service_fn_t *ds;
 } data_block_warm_t;
 
 typedef struct {
- char *key;
- char *value;
+    char *key;
+    char *value;
 } data_block_attr_t;
 
 typedef struct {
-  ex_id_t  id;
-  ex_off_t size;
-  ex_off_t max_size;
-  atomic_int_t ref_count;
-  atomic_int_t initial_ref_count;
-  data_block_cap_t *cap;
-  data_service_fn_t *ds;
-  char *rid_key;
-  Stack_t *attr_stack;
-  data_block_warm_t *warm;
+    ex_id_t  id;
+    ex_off_t size;
+    ex_off_t max_size;
+    atomic_int_t ref_count;
+    atomic_int_t initial_ref_count;
+    data_block_cap_t *cap;
+    data_service_fn_t *ds;
+    char *rid_key;
+    Stack_t *attr_stack;
+    data_block_warm_t *warm;
 } data_block_t;
 
 #define data_block_id(db) (db)->id

@@ -41,14 +41,14 @@ http://www.accre.vanderbilt.edu
 #include "mq_ongoing.h"
 
 typedef struct {
-  int count;
-  void *object;
-  char *key;
+    int count;
+    void *object;
+    char *key;
 } lc_object_container_t;
 
 typedef struct {
-  char *prefix;
-  int len;
+    char *prefix;
+    int len;
 } lfs_mount_t;
 
 int lio_parallel_task_count = 100;
@@ -79,25 +79,25 @@ void lio_destroy_nl(lio_config_t *lio);
 
 int _lc_object_destroy(char *key)
 {
-  int count = 0;
-  lc_object_container_t *lcc;
+    int count = 0;
+    lc_object_container_t *lcc;
 
-  lcc = list_search(_lc_object_list, key);
-  if (lcc != NULL) {
-    lcc->count--;
-    count = lcc->count;
-    log_printf(15, "REMOVE key=%s count=%d lcc=%p\n", key, count, lcc);
+    lcc = list_search(_lc_object_list, key);
+    if (lcc != NULL) {
+        lcc->count--;
+        count = lcc->count;
+        log_printf(15, "REMOVE key=%s count=%d lcc=%p\n", key, count, lcc);
 
-    if (lcc->count <= 0) {
-       list_remove(_lc_object_list, key, lcc);
-       free(lcc->key);
-       free(lcc);
+        if (lcc->count <= 0) {
+            list_remove(_lc_object_list, key, lcc);
+            free(lcc->key);
+            free(lcc);
+        }
+    } else {
+        log_printf(15, "REMOVE-FAIL key=%s\n", key);
     }
-  } else {
-    log_printf(15, "REMOVE-FAIL key=%s\n", key);
-  }
 
-  return(count);
+    return(count);
 }
 
 //***************************************************************
@@ -106,21 +106,21 @@ int _lc_object_destroy(char *key)
 
 void *_lc_object_get(char *key)
 {
-  void *obj = NULL;
-  lc_object_container_t *lcc;
+    void *obj = NULL;
+    lc_object_container_t *lcc;
 
-  lcc = list_search(_lc_object_list, key);
-  if (lcc != NULL) {
-    lcc->count++;
-    obj = lcc->object;
-  }
+    lcc = list_search(_lc_object_list, key);
+    if (lcc != NULL) {
+        lcc->count++;
+        obj = lcc->object;
+    }
 
-if (obj != NULL) {
-  log_printf(15, "GET key=%s count=%d lcc=%p\n", key, lcc->count, lcc);
-} else {
-  log_printf(15, "GET-FAIL key=%s\n", key);
-}
-  return(obj);
+    if (obj != NULL) {
+        log_printf(15, "GET key=%s count=%d lcc=%p\n", key, lcc->count, lcc);
+    } else {
+        log_printf(15, "GET-FAIL key=%s\n", key);
+    }
+    return(obj);
 }
 
 //***************************************************************
@@ -129,18 +129,18 @@ if (obj != NULL) {
 
 void _lc_object_put(char *key, void *obj)
 {
-  lc_object_container_t *lcc;
+    lc_object_container_t *lcc;
 
-  type_malloc(lcc, lc_object_container_t, 1);
+    type_malloc(lcc, lc_object_container_t, 1);
 
-  log_printf(15, "PUT key=%s count=1 lcc=%p\n", key, lcc);
+    log_printf(15, "PUT key=%s count=1 lcc=%p\n", key, lcc);
 
-  lcc->count = 1;
-  lcc->object = obj;
-  lcc->key = strdup(key);
-  list_insert(_lc_object_list, lcc->key, lcc);
+    lcc->count = 1;
+    lcc->object = obj;
+    lcc->key = strdup(key);
+    list_insert(_lc_object_list, lcc->key, lcc);
 
-  return;
+    return;
 }
 
 //***************************************************************
@@ -149,63 +149,63 @@ void _lc_object_put(char *key, void *obj)
 
 void _lio_load_plugins(lio_config_t *lio, inip_file_t *fd)
 {
-  inip_group_t *g;
-  inip_element_t *ele;
-  char *key;
-  apr_dso_handle_t *handle;
-  int error;
-  void *sym;
-  char *section, *name, *library, *symbol;
-  char buffer[1024];
+    inip_group_t *g;
+    inip_element_t *ele;
+    char *key;
+    apr_dso_handle_t *handle;
+    int error;
+    void *sym;
+    char *section, *name, *library, *symbol;
+    char buffer[1024];
 
-  g = inip_first_group(fd);
-  while (g) {
-    if (strcmp(inip_get_group(g), "plugin") == 0) { //** Got a Plugin section
-       //** Parse the plugin section
-       ele = inip_first_element(g);
-       section = name = library = symbol = NULL;
-       while (ele != NULL) {
-         key = inip_get_element_key(ele);
-         if (strcmp(key, "section") == 0) {
-            section = inip_get_element_value(ele);
-         } else if (strcmp(key, "name") == 0) {
-            name = inip_get_element_value(ele);
-         } else if (strcmp(key, "library") == 0) {
-            library = inip_get_element_value(ele);
-         } else if (strcmp(key, "symbol") == 0) {
-            symbol = inip_get_element_value(ele);
-         }
+    g = inip_first_group(fd);
+    while (g) {
+        if (strcmp(inip_get_group(g), "plugin") == 0) { //** Got a Plugin section
+            //** Parse the plugin section
+            ele = inip_first_element(g);
+            section = name = library = symbol = NULL;
+            while (ele != NULL) {
+                key = inip_get_element_key(ele);
+                if (strcmp(key, "section") == 0) {
+                    section = inip_get_element_value(ele);
+                } else if (strcmp(key, "name") == 0) {
+                    name = inip_get_element_value(ele);
+                } else if (strcmp(key, "library") == 0) {
+                    library = inip_get_element_value(ele);
+                } else if (strcmp(key, "symbol") == 0) {
+                    symbol = inip_get_element_value(ele);
+                }
 
-         ele = inip_next_element(ele);
-       }
+                ele = inip_next_element(ele);
+            }
 
-       //** Sanity check it
-       error = 1;
-       if ((section == NULL) || (name == NULL) || (library == NULL) || (symbol == NULL)) goto fail;
+            //** Sanity check it
+            error = 1;
+            if ((section == NULL) || (name == NULL) || (library == NULL) || (symbol == NULL)) goto fail;
 
-       //** Attempt to load it
-       snprintf(buffer, sizeof(buffer), "plugin_handle:%s", library);
-       handle = _lc_object_get(buffer);
-       if (handle == NULL) {
-          if (apr_dso_load(&handle, library, _lc_mpool) != APR_SUCCESS) goto fail;
-          _lc_object_put(buffer, handle);
-         add_service(lio->ess, "plugin", buffer, handle);
-       }
-       if (apr_dso_sym(&sym, handle, symbol) != APR_SUCCESS) goto fail;
+            //** Attempt to load it
+            snprintf(buffer, sizeof(buffer), "plugin_handle:%s", library);
+            handle = _lc_object_get(buffer);
+            if (handle == NULL) {
+                if (apr_dso_load(&handle, library, _lc_mpool) != APR_SUCCESS) goto fail;
+                _lc_object_put(buffer, handle);
+                add_service(lio->ess, "plugin", buffer, handle);
+            }
+            if (apr_dso_sym(&sym, handle, symbol) != APR_SUCCESS) goto fail;
 
-       if (lio->plugin_stack == NULL) lio->plugin_stack = new_stack();
-       log_printf(5, "library=%s\n", buffer);
-       push(lio->plugin_stack, strdup(buffer));
-       add_service(lio->ess, section, name, sym);
+            if (lio->plugin_stack == NULL) lio->plugin_stack = new_stack();
+            log_printf(5, "library=%s\n", buffer);
+            push(lio->plugin_stack, strdup(buffer));
+            add_service(lio->ess, section, name, sym);
 
-       error = 0;  //** Skip cleanup
+            error = 0;  //** Skip cleanup
 fail:
-       if (error != 0) {
-          log_printf(0, "ERROR loading plugin!  section=%s name=%s library=%s symbol=%s\n", section, name, library, symbol);
-       }
+            if (error != 0) {
+                log_printf(0, "ERROR loading plugin!  section=%s name=%s library=%s symbol=%s\n", section, name, library, symbol);
+            }
+        }
+        g = inip_next_group(g);
     }
-    g = inip_next_group(g);
-  }
 }
 
 //***************************************************************
@@ -214,23 +214,23 @@ fail:
 
 void _lio_destroy_plugins(lio_config_t *lio)
 {
-  char *library_key;
-  apr_dso_handle_t *handle;
-  int count;
+    char *library_key;
+    apr_dso_handle_t *handle;
+    int count;
 
-  if (lio->plugin_stack == NULL) return;
+    if (lio->plugin_stack == NULL) return;
 
-  while ((library_key = pop(lio->plugin_stack)) != NULL) {
-    log_printf(5, "library_key=%s\n", library_key);
-    count = _lc_object_destroy(library_key);
-    if (count <= 0) {
-       handle = lookup_service(lio->ess, "plugin", library_key);
-       if (handle != NULL) apr_dso_unload(handle);
+    while ((library_key = pop(lio->plugin_stack)) != NULL) {
+        log_printf(5, "library_key=%s\n", library_key);
+        count = _lc_object_destroy(library_key);
+        if (count <= 0) {
+            handle = lookup_service(lio->ess, "plugin", library_key);
+            if (handle != NULL) apr_dso_unload(handle);
+        }
+        free(library_key);
     }
-    free(library_key);
-  }
 
-  free_stack(lio->plugin_stack, 0);
+    free_stack(lio->plugin_stack, 0);
 }
 
 
@@ -241,49 +241,49 @@ void _lio_destroy_plugins(lio_config_t *lio)
 
 void lio_find_lfs_mounts()
 {
-   Stack_t *stack;
-   FILE *fd;
-   lfs_mount_t *entry;
-   char *text, *prefix, *bstate;
-   int i, fin;
-   size_t ns;
+    Stack_t *stack;
+    FILE *fd;
+    lfs_mount_t *entry;
+    char *text, *prefix, *bstate;
+    int i, fin;
+    size_t ns;
 
-   stack = new_stack();
+    stack = new_stack();
 
-   fd = fopen("/proc/mounts", "r");
-   text = NULL;
-   while (getline(&text, &ns, fd) != -1) {
-     log_printf(5, "getline=%s", text);
-     if (strncmp(text, "lfs:", 4) == 0) { //** Found a match
-       string_token(text, " ", &bstate, &fin);
-       prefix = string_token(NULL, " ", &bstate, &fin);
-       if (prefix != NULL) { //** Add it
-          type_malloc_clear(entry, lfs_mount_t, 1);
-          entry->prefix = strdup(prefix);
-          entry->len = strlen(entry->prefix);
-          push(stack, entry);
-          log_printf(5, "mount prefix=%s len=%d\n", entry->prefix, entry->len);
-       }
-     }
+    fd = fopen("/proc/mounts", "r");
+    text = NULL;
+    while (getline(&text, &ns, fd) != -1) {
+        log_printf(5, "getline=%s", text);
+        if (strncmp(text, "lfs:", 4) == 0) { //** Found a match
+            string_token(text, " ", &bstate, &fin);
+            prefix = string_token(NULL, " ", &bstate, &fin);
+            if (prefix != NULL) { //** Add it
+                type_malloc_clear(entry, lfs_mount_t, 1);
+                entry->prefix = strdup(prefix);
+                entry->len = strlen(entry->prefix);
+                push(stack, entry);
+                log_printf(5, "mount prefix=%s len=%d\n", entry->prefix, entry->len);
+            }
+        }
 
-     free(text);
-     text = NULL;
-   }
-   if (fd != NULL) fclose(fd);
+        free(text);
+        text = NULL;
+    }
+    if (fd != NULL) fclose(fd);
 
-   if (text != NULL) free(text);  //** Getline() always returns something
+    if (text != NULL) free(text);  //** Getline() always returns something
 
-   //** Convert it to a simple array
-   _lfs_mount_count = stack_size(stack);
-   type_malloc(lfs_mount, lfs_mount_t, _lfs_mount_count);
-   for (i=0; i<_lfs_mount_count; i++) {
-      entry = pop(stack);
-      lfs_mount[i].prefix = entry->prefix;
-      lfs_mount[i].len = entry->len;
-      free(entry);
-   }
+    //** Convert it to a simple array
+    _lfs_mount_count = stack_size(stack);
+    type_malloc(lfs_mount, lfs_mount_t, _lfs_mount_count);
+    for (i=0; i<_lfs_mount_count; i++) {
+        entry = pop(stack);
+        lfs_mount[i].prefix = entry->prefix;
+        lfs_mount[i].len = entry->len;
+        free(entry);
+    }
 
-   free_stack(stack, 0);
+    free_stack(stack, 0);
 }
 
 //***************************************************************
@@ -292,21 +292,21 @@ void lio_find_lfs_mounts()
 
 void lio_path_release(lio_path_tuple_t *tuple)
 {
-  char buffer[1024];
+    char buffer[1024];
 
-  if (tuple->path != NULL) free(tuple->path);
-  if (tuple->lc == NULL) return;
+    if (tuple->path != NULL) free(tuple->path);
+    if (tuple->lc == NULL) return;
 
-  apr_thread_mutex_lock(_lc_lock);
-  snprintf(buffer, sizeof(buffer), "tuple:%s@%s", an_cred_get_id(tuple->creds), tuple->lc->section_name);
-  _lc_object_destroy(buffer);
+    apr_thread_mutex_lock(_lc_lock);
+    snprintf(buffer, sizeof(buffer), "tuple:%s@%s", an_cred_get_id(tuple->creds), tuple->lc->section_name);
+    _lc_object_destroy(buffer);
 
-  snprintf(buffer, sizeof(buffer), "lc:%s", tuple->lc->section_name);
-  _lc_object_destroy(buffer);
+    snprintf(buffer, sizeof(buffer), "lc:%s", tuple->lc->section_name);
+    _lc_object_destroy(buffer);
 
-  apr_thread_mutex_unlock(_lc_lock);
+    apr_thread_mutex_unlock(_lc_lock);
 
-  return;
+    return;
 }
 
 //***************************************************************
@@ -316,70 +316,73 @@ void lio_path_release(lio_path_tuple_t *tuple)
 
 void lio_path_local_make_absolute(lio_path_tuple_t *tuple)
 {
-  char *p, *rp;
-  int i, n, last_slash, glob_index;
-  char path[OS_PATH_MAX];
-  char c;
+    char *p, *rp;
+    int i, n, last_slash, glob_index;
+    char path[OS_PATH_MAX];
+    char c;
 
-log_printf(5, "initial path=%s\n", tuple->path);
-  if (tuple->path == NULL) return;
+    log_printf(5, "initial path=%s\n", tuple->path);
+    if (tuple->path == NULL) return;
 //  if (tuple->path[0] == '/') return;  //** Already an absolute path
 
-  p = tuple->path;
-  n = strlen(p);
-  last_slash = -1;
-  glob_index = -1;
-  if ((p[0] == '*') || (p[0] == '?') || (p[0] == '[')) goto wildcard;
+    p = tuple->path;
+    n = strlen(p);
+    last_slash = -1;
+    glob_index = -1;
+    if ((p[0] == '*') || (p[0] == '?') || (p[0] == '[')) goto wildcard;
 
-  for (i=0; i<n; i++) {
-    if (p[i] == '/') last_slash = i;
-    if ((p[i] == '*') || (p[i] == '?') || (p[i] == '[')) {
-       if (p[i-1] != '\\') { glob_index = i; break; }
+    for (i=0; i<n; i++) {
+        if (p[i] == '/') last_slash = i;
+        if ((p[i] == '*') || (p[i] == '?') || (p[i] == '[')) {
+            if (p[i-1] != '\\') {
+                glob_index = i;
+                break;
+            }
+        }
     }
-  }
 
-log_printf(5, "last_slash=%d\n", last_slash);
+    log_printf(5, "last_slash=%d\n", last_slash);
 
 wildcard:
-  if (last_slash == -1) {  //** Just using the CWD as the base for the glob
-     if (strcmp(p, ".") == 0) {
-        realpath(".", path);
-        last_slash = n;
-     } else if (strcmp(p, "..") == 0) {
-        realpath("..", path);
-        last_slash = n;
-     } else {
-        realpath(".", path);
-        last_slash = 0;
-     }
+    if (last_slash == -1) {  //** Just using the CWD as the base for the glob
+        if (strcmp(p, ".") == 0) {
+            realpath(".", path);
+            last_slash = n;
+        } else if (strcmp(p, "..") == 0) {
+            realpath("..", path);
+            last_slash = n;
+        } else {
+            realpath(".", path);
+            last_slash = 0;
+        }
 
-     if (last_slash != n) {
-        i = strlen(path);
-        path[i] = '/';  //** Need to add the trailing / to the path
-        path[i+1] = 0;
-     }
-     rp = strdup(path);
-  } else {
-     if (last_slash == -1) last_slash = n;
-     c = p[last_slash];
-     p[last_slash] = 0;
-     rp = realpath(p, NULL);
-     p[last_slash] = c;
-     if ((p[n-1] == '/') && (last_slash == n)) last_slash--;  //** '/' terminator so preserve it
-  }
+        if (last_slash != n) {
+            i = strlen(path);
+            path[i] = '/';  //** Need to add the trailing / to the path
+            path[i+1] = 0;
+        }
+        rp = strdup(path);
+    } else {
+        if (last_slash == -1) last_slash = n;
+        c = p[last_slash];
+        p[last_slash] = 0;
+        rp = realpath(p, NULL);
+        p[last_slash] = c;
+        if ((p[n-1] == '/') && (last_slash == n)) last_slash--;  //** '/' terminator so preserve it
+    }
 
-log_printf(5, "p=%s realpath=%s last_slash=%d n=%d glob_index=%d\n", p, rp, last_slash, n, glob_index);
+    log_printf(5, "p=%s realpath=%s last_slash=%d n=%d glob_index=%d\n", p, rp, last_slash, n, glob_index);
 
-  if (rp != NULL) {
-     if (last_slash == n) {
-        tuple->path = rp;
-     } else {
-           snprintf(path, sizeof(path), "%s%s", rp, &(p[last_slash]));
-           tuple->path = strdup(path);
-           free(rp);
-     }
-     free(p);
-  }
+    if (rp != NULL) {
+        if (last_slash == n) {
+            tuple->path = rp;
+        } else {
+            snprintf(path, sizeof(path), "%s%s", rp, &(p[last_slash]));
+            tuple->path = strdup(path);
+            free(rp);
+        }
+        free(p);
+    }
 }
 
 //***************************************************************
@@ -390,21 +393,21 @@ log_printf(5, "p=%s realpath=%s last_slash=%d n=%d glob_index=%d\n", p, rp, last
 
 int lio_path_wildcard_auto_append(lio_path_tuple_t *tuple)
 {
-  int n;
+    int n;
 
-  if (tuple->path == NULL) return(0);
+    if (tuple->path == NULL) return(0);
 
-  n = strlen(tuple->path);
-  if (tuple->path[n-1] == '/') {
-     tuple->path = realloc(tuple->path, n+1+1);
-     tuple->path[n] = '*';
-     tuple->path[n+1] = 0;
+    n = strlen(tuple->path);
+    if (tuple->path[n-1] == '/') {
+        tuple->path = realloc(tuple->path, n+1+1);
+        tuple->path[n] = '*';
+        tuple->path[n+1] = 0;
 
-log_printf(5, " tweaked tuple=%s\n", tuple->path);
-     return(1);
-  }
+        log_printf(5, " tweaked tuple=%s\n", tuple->path);
+        return(1);
+    }
 
-  return(0);
+    return(0);
 }
 
 //***************************************************************
@@ -414,95 +417,95 @@ log_printf(5, " tweaked tuple=%s\n", tuple->path);
 
 lio_path_tuple_t lio_path_resolve_base(char *lpath)
 {
-  char *userid, *pp_userid, *section_name, *pp_section_name, *fname;
-  char *cred_args[2];
-  lio_path_tuple_t tuple, *tuple2;
-  char buffer[1024];
-  int n, is_lio;
+    char *userid, *pp_userid, *section_name, *pp_section_name, *fname;
+    char *cred_args[2];
+    lio_path_tuple_t tuple, *tuple2;
+    char buffer[1024];
+    int n, is_lio;
 
-  is_lio = lio_parse_path(lpath, &pp_userid, &pp_section_name, &fname);
-  userid = pp_userid;
-  section_name = pp_section_name;
+    is_lio = lio_parse_path(lpath, &pp_userid, &pp_section_name, &fname);
+    userid = pp_userid;
+    section_name = pp_section_name;
 
-log_printf(15, "lpath=%s user=%s lc=%s path=%s\n", lpath, userid, section_name, fname);
+    log_printf(15, "lpath=%s user=%s lc=%s path=%s\n", lpath, userid, section_name, fname);
 
-  apr_thread_mutex_lock(_lc_lock);
+    apr_thread_mutex_lock(_lc_lock);
 
-  n = 0;
-  if ((userid == NULL) && (section_name == NULL)) {
-     n = 1;
-     snprintf(buffer, sizeof(buffer), "tuple:%s@%s", an_cred_get_id(lio_gc->creds), lio_gc->section_name);
-  } else if ((userid != NULL) && (section_name != NULL)) {
-     n = 1;
-     snprintf(buffer, sizeof(buffer), "tuple:%s@%s", userid, section_name);
-  }
+    n = 0;
+    if ((userid == NULL) && (section_name == NULL)) {
+        n = 1;
+        snprintf(buffer, sizeof(buffer), "tuple:%s@%s", an_cred_get_id(lio_gc->creds), lio_gc->section_name);
+    } else if ((userid != NULL) && (section_name != NULL)) {
+        n = 1;
+        snprintf(buffer, sizeof(buffer), "tuple:%s@%s", userid, section_name);
+    }
 
-  if (n == 1) {
-     tuple2 = _lc_object_get(buffer);
-     if (tuple2 != NULL) { //** Already exists!
-       tuple = *tuple2;
-       tuple.path = fname;
-       goto finished;
-     }
-  }
-
-  //** Get the LC
-  n = 0;
-  if (section_name == NULL) {
-     section_name = lio_gc->section_name;
-     tuple.lc = lio_gc;
-     snprintf(buffer, sizeof(buffer), "lc:%s", section_name);
-     _lc_object_get(buffer); //needed for reference counting I presume?
-  } else {
-     snprintf(buffer, sizeof(buffer), "lc:%s", section_name);
-     tuple.lc = _lc_object_get(buffer);
-     if (tuple.lc == NULL) { //** Doesn't exist so need to load it
-        tuple.lc = lio_create_nl(lio_gc->cfg_name, section_name, userid, _lio_exe_name);  //** USe the non-locking routine
-        if (tuple.lc == NULL) {
-           memset(&tuple, 0, sizeof(tuple));
-           if (fname != NULL) free(fname);
-           goto finished;
+    if (n == 1) {
+        tuple2 = _lc_object_get(buffer);
+        if (tuple2 != NULL) { //** Already exists!
+            tuple = *tuple2;
+            tuple.path = fname;
+            goto finished;
         }
-        tuple.lc->anonymous_creation = 1;
-        _lc_object_put(buffer, tuple.lc);
-        n = 1; //** Flag as anon for cred check
-     }
-  }
+    }
 
-  //** Now determine the user
-  if (userid == NULL) {
-     userid = an_cred_get_id(tuple.lc->creds);  //** IF not specified default to the one in the LC
-  }
+    //** Get the LC
+    n = 0;
+    if (section_name == NULL) {
+        section_name = lio_gc->section_name;
+        tuple.lc = lio_gc;
+        snprintf(buffer, sizeof(buffer), "lc:%s", section_name);
+        _lc_object_get(buffer); //needed for reference counting I presume?
+    } else {
+        snprintf(buffer, sizeof(buffer), "lc:%s", section_name);
+        tuple.lc = _lc_object_get(buffer);
+        if (tuple.lc == NULL) { //** Doesn't exist so need to load it
+            tuple.lc = lio_create_nl(lio_gc->cfg_name, section_name, userid, _lio_exe_name);  //** USe the non-locking routine
+            if (tuple.lc == NULL) {
+                memset(&tuple, 0, sizeof(tuple));
+                if (fname != NULL) free(fname);
+                goto finished;
+            }
+            tuple.lc->anonymous_creation = 1;
+            _lc_object_put(buffer, tuple.lc);
+            n = 1; //** Flag as anon for cred check
+        }
+    }
 
-  snprintf(buffer, sizeof(buffer), "tuple:%s@%s", userid, tuple.lc->section_name);
-  tuple2 = _lc_object_get(buffer);
-  if (tuple2 == NULL) { //** Doesn't exist so insert the tuple
-     cred_args[0] = tuple.lc->cfg_name;
-     cred_args[1] = strdup(userid);
-     tuple.creds = os_cred_init(tuple.lc->os, OS_CREDS_INI_TYPE, (void **)cred_args);
-     type_malloc_clear(tuple2, lio_path_tuple_t, 1);
-     tuple2->creds = tuple.creds;
-     tuple2->lc = tuple.lc;
-     tuple2->path = "ANONYMOUS";
-     log_printf(15, "adding anon creds tuple=%s\n", buffer);
-     _lc_object_put(buffer, tuple2);  //** Add it to the table
-  } else if (n==1) {//** This is default user tuple just created so mark it as anon as well
-     log_printf(15, "marking anon creds tuple=%s\n", buffer);
-     tuple2->path = "ANONYMOUS-DEFAULT";
-  }
+    //** Now determine the user
+    if (userid == NULL) {
+        userid = an_cred_get_id(tuple.lc->creds);  //** IF not specified default to the one in the LC
+    }
 
-  tuple.creds = tuple2->creds;
-  tuple.path = fname;
+    snprintf(buffer, sizeof(buffer), "tuple:%s@%s", userid, tuple.lc->section_name);
+    tuple2 = _lc_object_get(buffer);
+    if (tuple2 == NULL) { //** Doesn't exist so insert the tuple
+        cred_args[0] = tuple.lc->cfg_name;
+        cred_args[1] = strdup(userid);
+        tuple.creds = os_cred_init(tuple.lc->os, OS_CREDS_INI_TYPE, (void **)cred_args);
+        type_malloc_clear(tuple2, lio_path_tuple_t, 1);
+        tuple2->creds = tuple.creds;
+        tuple2->lc = tuple.lc;
+        tuple2->path = "ANONYMOUS";
+        log_printf(15, "adding anon creds tuple=%s\n", buffer);
+        _lc_object_put(buffer, tuple2);  //** Add it to the table
+    } else if (n==1) {//** This is default user tuple just created so mark it as anon as well
+        log_printf(15, "marking anon creds tuple=%s\n", buffer);
+        tuple2->path = "ANONYMOUS-DEFAULT";
+    }
+
+    tuple.creds = tuple2->creds;
+    tuple.path = fname;
 
 finished:
-  apr_thread_mutex_unlock(_lc_lock);
+    apr_thread_mutex_unlock(_lc_lock);
 
-  if (pp_section_name != NULL) free(pp_section_name);
-  if (pp_userid != NULL) free(pp_userid);
+    if (pp_section_name != NULL) free(pp_section_name);
+    if (pp_userid != NULL) free(pp_userid);
 
-  tuple.is_lio = is_lio;
-log_printf(5, "path=%s is_lio=%d\n", tuple.path, tuple.is_lio);
-  return(tuple);
+    tuple.is_lio = is_lio;
+    log_printf(5, "path=%s is_lio=%d\n", tuple.path, tuple.is_lio);
+    return(tuple);
 }
 
 //***************************************************************
@@ -512,41 +515,41 @@ log_printf(5, "path=%s is_lio=%d\n", tuple.path, tuple.is_lio);
 
 lio_path_tuple_t lio_path_auto_fuse_convert(lio_path_tuple_t *ltuple)
 {
-  char path[OS_PATH_MAX];
-  lio_path_tuple_t tuple;
-  int do_convert, prefix_len, i;
+    char path[OS_PATH_MAX];
+    lio_path_tuple_t tuple;
+    int do_convert, prefix_len, i;
 
-  //** Convert if to an absolute path
-  lio_path_local_make_absolute(ltuple);
-  tuple = *ltuple;
+    //** Convert if to an absolute path
+    lio_path_local_make_absolute(ltuple);
+    tuple = *ltuple;
 
-  //** Now check if the prefixes match
-  for (i=0; i < _lfs_mount_count; i++) {
-     if (strncmp(ltuple->path, lfs_mount[i].prefix, lfs_mount[i].len) == 0) {
-        do_convert = 0;
-        prefix_len = lfs_mount[i].len;
-        if (strlen(ltuple->path) > prefix_len) {
-           if (ltuple->path[prefix_len] == '/') {
-              do_convert = 1;
-              snprintf(path, sizeof(path), "@:%s", &(ltuple->path[prefix_len]));
-           }
-        } else {
-           do_convert = 1;
-           snprintf(path, sizeof(path), "@:/");
-        }
+    //** Now check if the prefixes match
+    for (i=0; i < _lfs_mount_count; i++) {
+        if (strncmp(ltuple->path, lfs_mount[i].prefix, lfs_mount[i].len) == 0) {
+            do_convert = 0;
+            prefix_len = lfs_mount[i].len;
+            if (strlen(ltuple->path) > prefix_len) {
+                if (ltuple->path[prefix_len] == '/') {
+                    do_convert = 1;
+                    snprintf(path, sizeof(path), "@:%s", &(ltuple->path[prefix_len]));
+                }
+            } else {
+                do_convert = 1;
+                snprintf(path, sizeof(path), "@:/");
+            }
 
-        if (do_convert == 1) {
-           log_printf(5, "auto convert\n");
+            if (do_convert == 1) {
+                log_printf(5, "auto convert\n");
 //           snprintf(path, sizeof(path), "@:%s", &(ltuple->path[prefix_len-1]));
-           log_printf(5, "auto convert path=%s\n", path);
-           tuple = lio_path_resolve_base(path);
-           lio_path_release(ltuple);
-           break;  //** Found a match so kick out
+                log_printf(5, "auto convert path=%s\n", path);
+                tuple = lio_path_resolve_base(path);
+                lio_path_release(ltuple);
+                break;  //** Found a match so kick out
+            }
         }
-     }
-  }
+    }
 
-  return(tuple);
+    return(tuple);
 }
 
 //***************************************************************
@@ -556,16 +559,16 @@ lio_path_tuple_t lio_path_auto_fuse_convert(lio_path_tuple_t *ltuple)
 
 lio_path_tuple_t lio_path_resolve(int auto_fuse_convert, char *lpath)
 {
-  lio_path_tuple_t tuple;
+    lio_path_tuple_t tuple;
 
-  tuple = lio_path_resolve_base(lpath);
+    tuple = lio_path_resolve_base(lpath);
 
-log_printf(5, "auto_fuse_convert=%d\n", auto_fuse_convert);
-  if ((tuple.is_lio == 0) && (auto_fuse_convert > 0)) {
-     return(lio_path_auto_fuse_convert(&tuple));
-  }
+    log_printf(5, "auto_fuse_convert=%d\n", auto_fuse_convert);
+    if ((tuple.is_lio == 0) && (auto_fuse_convert > 0)) {
+        return(lio_path_auto_fuse_convert(&tuple));
+    }
 
-  return(tuple);
+    return(tuple);
 }
 
 //***************************************************************
@@ -576,70 +579,70 @@ log_printf(5, "auto_fuse_convert=%d\n", auto_fuse_convert);
 
 void lc_object_remove_unused(int remove_all_unused)
 {
-  list_t *user_lc;
-  list_iter_t it;
-  lc_object_container_t *lcc, *lcc2;
-  lio_path_tuple_t *tuple;
-  lio_config_t *lc;
-  char *key;
-  Stack_t *stack;
+    list_t *user_lc;
+    list_iter_t it;
+    lc_object_container_t *lcc, *lcc2;
+    lio_path_tuple_t *tuple;
+    lio_config_t *lc;
+    char *key;
+    Stack_t *stack;
 
-  stack = new_stack();
+    stack = new_stack();
 
-  apr_thread_mutex_lock(_lc_lock);
+    apr_thread_mutex_lock(_lc_lock);
 
-  //** Make a list of all the different LC's in use from the tuples
-  //** Keep track of the anon creds for deletion
-  user_lc = list_create(0, &list_string_compare, NULL, list_no_key_free, list_no_data_free);
-  it = list_iter_search(_lc_object_list, "tuple:", 0);
-  while ((list_next(&it, (list_key_t **)&key, (list_data_t **)&lcc)) == 0) {
-     if (strncmp(lcc->key, "tuple:", 6) != 0) break;  //** No more tuples
-     tuple = lcc->object;
-     if (tuple->path == NULL) {
-        list_insert(user_lc, tuple->lc->section_name, tuple->lc);
-        log_printf(15, "user_lc adding key=%s lc=%s\n", lcc->key, tuple->lc->section_name);
-     } else {
-        log_printf(15, "user_lc marking creds key=%s for removal\n", lcc->key);
-        if (strcmp(tuple->path, "ANONYMOUS") == 0) push(stack, lcc);
-     }
-  }
-
-  //** Go ahead and delete the anonymously created creds (as long as they aren't the LC default
-  while ((lcc = pop(stack)) != NULL) {
-     tuple = lcc->object;
-     _lc_object_destroy(lcc->key);
-//     if (strcmp(tuple->path, "ANONYMOUS") == 0) os_cred_destroy(tuple->lc->os, tuple->creds);
-     os_cred_destroy(tuple->lc->os, tuple->creds);
-  }
-
-  //** Now iterate through all the LC's
-  it = list_iter_search(_lc_object_list, "lc:", 0);
-  while ((list_next(&it, (list_key_t **)&key, (list_data_t **)&lcc)) == 0) {
-     if (strncmp(lcc->key, "lc:", 3) != 0) break;  //** No more LCs
-     lc = lcc->object;
-     log_printf(15, "checking key=%s lc=%s anon=%d count=%d\n", lcc->key, lc->section_name, lc->anonymous_creation, lcc->count);
-     lcc2 = list_search(user_lc, lc->section_name);
-     if (lcc2 == NULL) {  //** No user@lc reference so safe to delete from that standpoint
-        log_printf(15, "not in user_lc key=%s lc=%s anon=%d count=%d\n", lcc->key, lc->section_name, lc->anonymous_creation, lcc->count);
-        if (((lc->anonymous_creation == 1) && (lcc->count <= 1)) ||
-            ((remove_all_unused == 1) && (lcc->count <= 0))) {
-            push(stack, lcc);
+    //** Make a list of all the different LC's in use from the tuples
+    //** Keep track of the anon creds for deletion
+    user_lc = list_create(0, &list_string_compare, NULL, list_no_key_free, list_no_data_free);
+    it = list_iter_search(_lc_object_list, "tuple:", 0);
+    while ((list_next(&it, (list_key_t **)&key, (list_data_t **)&lcc)) == 0) {
+        if (strncmp(lcc->key, "tuple:", 6) != 0) break;  //** No more tuples
+        tuple = lcc->object;
+        if (tuple->path == NULL) {
+            list_insert(user_lc, tuple->lc->section_name, tuple->lc);
+            log_printf(15, "user_lc adding key=%s lc=%s\n", lcc->key, tuple->lc->section_name);
+        } else {
+            log_printf(15, "user_lc marking creds key=%s for removal\n", lcc->key);
+            if (strcmp(tuple->path, "ANONYMOUS") == 0) push(stack, lcc);
         }
-     }
-  }
+    }
 
-  while ((lcc = pop(stack)) != NULL) {
-     lc = lcc->object;
-     _lc_object_destroy(lcc->key);
-     lio_destroy_nl(lc);
-  }
+    //** Go ahead and delete the anonymously created creds (as long as they aren't the LC default
+    while ((lcc = pop(stack)) != NULL) {
+        tuple = lcc->object;
+        _lc_object_destroy(lcc->key);
+//     if (strcmp(tuple->path, "ANONYMOUS") == 0) os_cred_destroy(tuple->lc->os, tuple->creds);
+        os_cred_destroy(tuple->lc->os, tuple->creds);
+    }
 
-  apr_thread_mutex_unlock(_lc_lock);
+    //** Now iterate through all the LC's
+    it = list_iter_search(_lc_object_list, "lc:", 0);
+    while ((list_next(&it, (list_key_t **)&key, (list_data_t **)&lcc)) == 0) {
+        if (strncmp(lcc->key, "lc:", 3) != 0) break;  //** No more LCs
+        lc = lcc->object;
+        log_printf(15, "checking key=%s lc=%s anon=%d count=%d\n", lcc->key, lc->section_name, lc->anonymous_creation, lcc->count);
+        lcc2 = list_search(user_lc, lc->section_name);
+        if (lcc2 == NULL) {  //** No user@lc reference so safe to delete from that standpoint
+            log_printf(15, "not in user_lc key=%s lc=%s anon=%d count=%d\n", lcc->key, lc->section_name, lc->anonymous_creation, lcc->count);
+            if (((lc->anonymous_creation == 1) && (lcc->count <= 1)) ||
+                    ((remove_all_unused == 1) && (lcc->count <= 0))) {
+                push(stack, lcc);
+            }
+        }
+    }
 
-  free_stack(stack, 0);
-  list_destroy(user_lc);
+    while ((lcc = pop(stack)) != NULL) {
+        lc = lcc->object;
+        _lc_object_destroy(lcc->key);
+        lio_destroy_nl(lc);
+    }
 
-  return;
+    apr_thread_mutex_unlock(_lc_lock);
+
+    free_stack(stack, 0);
+    list_destroy(user_lc);
+
+    return;
 }
 
 //***************************************************************
@@ -648,20 +651,20 @@ void lc_object_remove_unused(int remove_all_unused)
 
 void blacklist_destroy(blacklist_t *bl)
 {
-  apr_ssize_t hlen;
-  apr_hash_index_t *hi;
-  blacklist_rid_t *r;
+    apr_ssize_t hlen;
+    apr_hash_index_t *hi;
+    blacklist_rid_t *r;
 
-  //** Destroy all the blacklist RIDs
-  for (hi=apr_hash_first(NULL, bl->table); hi != NULL; hi = apr_hash_next(hi)) {
-     apr_hash_this(hi, NULL, &hlen, (void **)&r);
-     free(r->rid);
-     free(r);
-  }
+    //** Destroy all the blacklist RIDs
+    for (hi=apr_hash_first(NULL, bl->table); hi != NULL; hi = apr_hash_next(hi)) {
+        apr_hash_this(hi, NULL, &hlen, (void **)&r);
+        free(r->rid);
+        free(r);
+    }
 
-  apr_pool_destroy(bl->mpool);
-  apr_thread_mutex_destroy(bl->lock);
-  free(bl);
+    apr_pool_destroy(bl->mpool);
+    apr_thread_mutex_destroy(bl->lock);
+    free(bl);
 }
 
 //***************************************************************
@@ -670,19 +673,19 @@ void blacklist_destroy(blacklist_t *bl)
 
 blacklist_t *blacklist_load(inip_file_t *ifd, char *section)
 {
-  blacklist_t *bl;
+    blacklist_t *bl;
 
-  type_malloc_clear(bl, blacklist_t, 1);
+    type_malloc_clear(bl, blacklist_t, 1);
 
-  assert(apr_pool_create(&(bl->mpool), NULL) == APR_SUCCESS);
-  apr_thread_mutex_create(&(bl->lock), APR_THREAD_MUTEX_DEFAULT, bl->mpool);
-  bl->table = apr_hash_make(bl->mpool);
+    assert(apr_pool_create(&(bl->mpool), NULL) == APR_SUCCESS);
+    apr_thread_mutex_create(&(bl->lock), APR_THREAD_MUTEX_DEFAULT, bl->mpool);
+    bl->table = apr_hash_make(bl->mpool);
 
-  bl->timeout = inip_get_integer(ifd, section, "timeout", apr_time_from_sec(120));
-  bl->min_bandwidth = inip_get_integer(ifd, section, "min_bandwidth", 5*1024*1024);  //** default ro 5MB
-  bl->min_io_time = inip_get_integer(ifd, section, "min_io_time", apr_time_from_sec(1));  //** default ro 5MB
+    bl->timeout = inip_get_integer(ifd, section, "timeout", apr_time_from_sec(120));
+    bl->min_bandwidth = inip_get_integer(ifd, section, "min_bandwidth", 5*1024*1024);  //** default ro 5MB
+    bl->min_io_time = inip_get_integer(ifd, section, "min_io_time", apr_time_from_sec(1));  //** default ro 5MB
 
-  return(bl);
+    return(bl);
 }
 
 
@@ -693,18 +696,18 @@ blacklist_t *blacklist_load(inip_file_t *ifd, char *section)
 
 void lio_print_options(FILE *fd)
 {
- fprintf(fd, "    LIO_COMMON_OPTIONS\n");
- fprintf(fd, "       -d level           - Set the debug level (0-20).  Defaults to 0\n");
- fprintf(fd, "       -log log_out       - Set the log output file.  Defaults to using config setting\n");
- fprintf(fd, "       -no-auto-lfs       - Disable auto-conversion of LFS mount paths to lio\n");
- fprintf(fd, "       -c config          - Configuration file\n");
- fprintf(fd, "       -lc user@config    - Use the user and config section specified for making the default LIO\n");
- fprintf(fd, "       -np N              - Number of simultaneous operations. Default is %d.\n", lio_parallel_task_count);
- fprintf(fd, "       -i N               - Print information messages of level N or greater. No header is printed\n");
- fprintf(fd, "       -it N              - Print information messages of level N or greater. Thread ID header is used\n");
- fprintf(fd, "       -if N              - Print information messages of level N or greater. Full header is used\n");
- fprintf(fd, "       -ilog info_log_out - Where to send informational log output.\n");
- fprintf(fd, "\n");
+    fprintf(fd, "    LIO_COMMON_OPTIONS\n");
+    fprintf(fd, "       -d level           - Set the debug level (0-20).  Defaults to 0\n");
+    fprintf(fd, "       -log log_out       - Set the log output file.  Defaults to using config setting\n");
+    fprintf(fd, "       -no-auto-lfs       - Disable auto-conversion of LFS mount paths to lio\n");
+    fprintf(fd, "       -c config          - Configuration file\n");
+    fprintf(fd, "       -lc user@config    - Use the user and config section specified for making the default LIO\n");
+    fprintf(fd, "       -np N              - Number of simultaneous operations. Default is %d.\n", lio_parallel_task_count);
+    fprintf(fd, "       -i N               - Print information messages of level N or greater. No header is printed\n");
+    fprintf(fd, "       -it N              - Print information messages of level N or greater. Thread ID header is used\n");
+    fprintf(fd, "       -if N              - Print information messages of level N or greater. Full header is used\n");
+    fprintf(fd, "       -ilog info_log_out - Where to send informational log output.\n");
+    fprintf(fd, "\n");
 }
 
 //***************************************************************
@@ -713,87 +716,87 @@ void lio_print_options(FILE *fd)
 
 void lio_destroy_nl(lio_config_t *lio)
 {
-  lc_object_container_t *lcc;
-  lio_path_tuple_t *tuple;
-  char buffer[128];
+    lc_object_container_t *lcc;
+    lio_path_tuple_t *tuple;
+    char buffer[128];
 
-  //** The creds is a little tricky cause we need to get the tuple first
-  lcc = list_search(_lc_object_list, lio->creds_name);
-  tuple = (lcc != NULL) ? lcc->object : NULL;
-  if (_lc_object_destroy(lio->creds_name) <= 0) {
-     os_cred_destroy(lio->os, lio->creds);
-     free(tuple);
-  }
+    //** The creds is a little tricky cause we need to get the tuple first
+    lcc = list_search(_lc_object_list, lio->creds_name);
+    tuple = (lcc != NULL) ? lcc->object : NULL;
+    if (_lc_object_destroy(lio->creds_name) <= 0) {
+        os_cred_destroy(lio->os, lio->creds);
+        free(tuple);
+    }
 
-  //** Update the lc count for the creds
-  snprintf(buffer, sizeof(buffer), "lc:%s", lio->section_name);
-  _lc_object_destroy(buffer);
+    //** Update the lc count for the creds
+    snprintf(buffer, sizeof(buffer), "lc:%s", lio->section_name);
+    _lc_object_destroy(buffer);
 
-  snprintf(buffer, sizeof(buffer), "lc:%s", lio->section_name);
-  if (_lc_object_destroy(buffer) > 0) {  //** Still in use so return
-     apr_thread_mutex_unlock(_lc_lock);
-     return;
-  }
+    snprintf(buffer, sizeof(buffer), "lc:%s", lio->section_name);
+    if (_lc_object_destroy(buffer) > 0) {  //** Still in use so return
+        apr_thread_mutex_unlock(_lc_lock);
+        return;
+    }
 
-  free(lio->creds_name);
+    free(lio->creds_name);
 
-  log_printf(15, "removing lio=%s\n", lio->section_name);
+    log_printf(15, "removing lio=%s\n", lio->section_name);
 
-  if (_lc_object_destroy(lio->rs_section) <= 0) {
-     rs_destroy_service(lio->rs);
-  }
-  free(lio->rs_section);
+    if (_lc_object_destroy(lio->rs_section) <= 0) {
+        rs_destroy_service(lio->rs);
+    }
+    free(lio->rs_section);
 
-  ds_attr_destroy(lio->ds, lio->da);
-  if (_lc_object_destroy(lio->ds_section) <= 0) {
-     ds_destroy_service(lio->ds);
-  }
-  free(lio->ds_section);
+    ds_attr_destroy(lio->ds, lio->da);
+    if (_lc_object_destroy(lio->ds_section) <= 0) {
+        ds_destroy_service(lio->ds);
+    }
+    free(lio->ds_section);
 
-  if (_lc_object_destroy(lio->os_section) <= 0) {
-     os_destroy_service(lio->os);
-  }
-  free(lio->os_section);
+    if (_lc_object_destroy(lio->os_section) <= 0) {
+        os_destroy_service(lio->os);
+    }
+    free(lio->os_section);
 
-  if (_lc_object_destroy(lio->tpc_unlimited_section) <= 0) {
-     thread_pool_destroy_context(lio->tpc_unlimited);
-  }
-  free(lio->tpc_unlimited_section);
+    if (_lc_object_destroy(lio->tpc_unlimited_section) <= 0) {
+        thread_pool_destroy_context(lio->tpc_unlimited);
+    }
+    free(lio->tpc_unlimited_section);
 
-  if (_lc_object_destroy(lio->mq_section) <= 0) {  //** Destroy the MQ context
-     mq_ongoing_t *on = lookup_service(lio->ess, ESS_RUNNING, ESS_ONGOING_CLIENT);
-     if (on != NULL) {  //** And also the ongoing client
-        mq_ongoing_destroy(on);
-     }
-     mq_destroy_context(lio->mqc);
-  }
-  free(lio->mq_section);
+    if (_lc_object_destroy(lio->mq_section) <= 0) {  //** Destroy the MQ context
+        mq_ongoing_t *on = lookup_service(lio->ess, ESS_RUNNING, ESS_ONGOING_CLIENT);
+        if (on != NULL) {  //** And also the ongoing client
+            mq_ongoing_destroy(on);
+        }
+        mq_destroy_context(lio->mqc);
+    }
+    free(lio->mq_section);
 
 //----
 
-  if (lio->cfg_name != NULL) free(lio->cfg_name);
-  if (lio->section_name != NULL) free(lio->section_name);
+    if (lio->cfg_name != NULL) free(lio->cfg_name);
+    if (lio->section_name != NULL) free(lio->section_name);
 
-  _lio_destroy_plugins(lio);
+    _lio_destroy_plugins(lio);
 
-  exnode_service_set_destroy(lio->ess);
-  exnode_service_set_destroy(lio->ess_nocache);
+    exnode_service_set_destroy(lio->ess);
+    exnode_service_set_destroy(lio->ess_nocache);
 
-  inip_destroy(lio->ifd);
+    inip_destroy(lio->ifd);
 
-  //** Table of open files
-  list_destroy(lio->open_index);
+    //** Table of open files
+    list_destroy(lio->open_index);
 
-  //** Blacklist if used
-  if (lio->blacklist != NULL) blacklist_destroy(lio->blacklist);
+    //** Blacklist if used
+    if (lio->blacklist != NULL) blacklist_destroy(lio->blacklist);
 
-  apr_thread_mutex_destroy(lio->lock);
-  apr_pool_destroy(lio->mpool);
+    apr_thread_mutex_destroy(lio->lock);
+    apr_pool_destroy(lio->mpool);
 
-  if (lio->exe_name != NULL) free(lio->exe_name);
-  free(lio);
+    if (lio->exe_name != NULL) free(lio->exe_name);
+    free(lio);
 
-  return;
+    return;
 }
 
 //***************************************************************
@@ -802,9 +805,9 @@ void lio_destroy_nl(lio_config_t *lio)
 
 void lio_destroy(lio_config_t *lio)
 {
-  apr_thread_mutex_lock(_lc_lock);
-  lio_destroy_nl(lio);
-  apr_thread_mutex_unlock(_lc_lock);
+    apr_thread_mutex_lock(_lc_lock);
+    lio_destroy_nl(lio);
+    apr_thread_mutex_unlock(_lc_lock);
 }
 
 //***************************************************************
@@ -814,209 +817,216 @@ void lio_destroy(lio_config_t *lio)
 
 lio_config_t *lio_create_nl(char *fname, char *section, char *user, char *exe_name)
 {
-  lio_config_t *lio;
-  int n, cores;
-  char buffer[1024];
-  char *cred_args[2];
-  char *ctype, *stype;
-  ds_create_t *ds_create;
-  rs_create_t *rs_create;
-  os_create_t *os_create;
-  cache_load_t *cache_create;
-  lio_path_tuple_t *tuple;
-  int *val;
+    lio_config_t *lio;
+    int n, cores;
+    char buffer[1024];
+    char *cred_args[2];
+    char *ctype, *stype;
+    ds_create_t *ds_create;
+    rs_create_t *rs_create;
+    os_create_t *os_create;
+    cache_load_t *cache_create;
+    lio_path_tuple_t *tuple;
+    int *val;
 
-  //** Add the LC first cause it may already exist
-  snprintf(buffer, sizeof(buffer), "lc:%s", section);
-  lio = _lc_object_get(buffer);
-  if (lio != NULL) {  //** Already loaded so can skip this part
-     return(lio);
-  }
+    //** Add the LC first cause it may already exist
+    snprintf(buffer, sizeof(buffer), "lc:%s", section);
+    lio = _lc_object_get(buffer);
+    if (lio != NULL) {  //** Already loaded so can skip this part
+        return(lio);
+    }
 
-  type_malloc_clear(lio, lio_config_t, 1);
-  lio->ess = exnode_service_set_create();
-  lio->auto_translate = 1;
-  if (exe_name) lio->exe_name = strdup(exe_name);
+    type_malloc_clear(lio, lio_config_t, 1);
+    lio->ess = exnode_service_set_create();
+    lio->auto_translate = 1;
+    if (exe_name) lio->exe_name = strdup(exe_name);
 
-  //** Add it to the table for ref counting
-  snprintf(buffer, sizeof(buffer), "lc:%s", section);
-  _lc_object_put(buffer, lio);
+    //** Add it to the table for ref counting
+    snprintf(buffer, sizeof(buffer), "lc:%s", section);
+    _lc_object_put(buffer, lio);
 
 
-  lio->cfg_name = strdup(fname);
-  lio->section_name = strdup(section);
+    lio->cfg_name = strdup(fname);
+    lio->section_name = strdup(section);
 
-  lio->ifd = inip_read(lio->cfg_name);
+    lio->ifd = inip_read(lio->cfg_name);
 
-  _lio_load_plugins(lio, lio->ifd);  //** Load the plugins
+    _lio_load_plugins(lio, lio->ifd);  //** Load the plugins
 
-  lio->timeout = inip_get_integer(lio->ifd, section, "timeout", 120);
-  lio->max_attr = inip_get_integer(lio->ifd, section, "max_attr_size", 10*1024*1024);
-  lio->calc_adler32 = inip_get_integer(lio->ifd, section, "calc_adler32", 0);
-  lio->readahead = inip_get_integer(lio->ifd, section, "readahead", 0);
-  lio->readahead_trigger = lio->readahead * inip_get_double(lio->ifd, section, "readahead_trigger", 1.0);
+    lio->timeout = inip_get_integer(lio->ifd, section, "timeout", 120);
+    lio->max_attr = inip_get_integer(lio->ifd, section, "max_attr_size", 10*1024*1024);
+    lio->calc_adler32 = inip_get_integer(lio->ifd, section, "calc_adler32", 0);
+    lio->readahead = inip_get_integer(lio->ifd, section, "readahead", 0);
+    lio->readahead_trigger = lio->readahead * inip_get_double(lio->ifd, section, "readahead_trigger", 1.0);
 
-  //** Check and see if we need to enable the blacklist
-  stype = inip_get_string(lio->ifd, section, "blacklist", NULL);
-  if (stype != NULL) { //** Yup we need to parse and load those params
-     lio->blacklist = blacklist_load(lio->ifd, stype);
-     add_service(lio->ess, ESS_RUNNING, "blacklist", lio->blacklist);
-     free(stype);
-  }
+    //** Check and see if we need to enable the blacklist
+    stype = inip_get_string(lio->ifd, section, "blacklist", NULL);
+    if (stype != NULL) { //** Yup we need to parse and load those params
+        lio->blacklist = blacklist_load(lio->ifd, stype);
+        add_service(lio->ess, ESS_RUNNING, "blacklist", lio->blacklist);
+        free(stype);
+    }
 
-  //** Add the Jerase paranoid option
-  type_malloc(val, int, 1);  //** NOTE: this is not freed on a destroy
-  *val = inip_get_integer(lio->ifd, section, "jerase_paranoid", 0);
-  add_service(lio->ess, ESS_RUNNING, "jerase_paranoid", val);
+    //** Add the Jerase paranoid option
+    type_malloc(val, int, 1);  //** NOTE: this is not freed on a destroy
+    *val = inip_get_integer(lio->ifd, section, "jerase_paranoid", 0);
+    add_service(lio->ess, ESS_RUNNING, "jerase_paranoid", val);
 
-  cores = inip_get_integer(lio->ifd, section, "tpc_unlimited", 10000);
-  sprintf(buffer, "tpc:%d", cores);
-  stype = buffer;
-  lio->tpc_unlimited_section = strdup(stype);
-  lio->tpc_unlimited = _lc_object_get(stype);
-  if (lio->tpc_unlimited == NULL) {  //** Need to load it
-     n = 0.1 * cores;
-     if (n > 10) n = 10;
-     if (n <= 0) n = 1;
-     lio->tpc_unlimited = thread_pool_create_context("UNLIMITED", n, cores);
-     if (lio->tpc_unlimited == NULL) {
-        log_printf(0, "Error loading tpc_unlimited threadpool!  n=%d\n", cores);
-        fprintf(stderr, "ERROR createing tpc_unlimited threadpool! n=%d\n", cores); fflush(stderr);
-        abort();
-     }
+    cores = inip_get_integer(lio->ifd, section, "tpc_unlimited", 10000);
+    sprintf(buffer, "tpc:%d", cores);
+    stype = buffer;
+    lio->tpc_unlimited_section = strdup(stype);
+    lio->tpc_unlimited = _lc_object_get(stype);
+    if (lio->tpc_unlimited == NULL) {  //** Need to load it
+        n = 0.1 * cores;
+        if (n > 10) n = 10;
+        if (n <= 0) n = 1;
+        lio->tpc_unlimited = thread_pool_create_context("UNLIMITED", n, cores);
+        if (lio->tpc_unlimited == NULL) {
+            log_printf(0, "Error loading tpc_unlimited threadpool!  n=%d\n", cores);
+            fprintf(stderr, "ERROR createing tpc_unlimited threadpool! n=%d\n", cores);
+            fflush(stderr);
+            abort();
+        }
 
-     _lc_object_put(stype, lio->tpc_unlimited);  //** Add it to the table
-  }
-  add_service(lio->ess, ESS_RUNNING, ESS_TPC_UNLIMITED, lio->tpc_unlimited);
+        _lc_object_put(stype, lio->tpc_unlimited);  //** Add it to the table
+    }
+    add_service(lio->ess, ESS_RUNNING, ESS_TPC_UNLIMITED, lio->tpc_unlimited);
 
-  stype = inip_get_string(lio->ifd, section, "mq", "mq_context");
-  lio->mq_section = stype;
-  lio->mqc = _lc_object_get(stype);
-  if (lio->mqc == NULL) {  //** Need to load it
-     lio->mqc = mq_create_context(lio->ifd, stype);
-     if (lio->mqc == NULL) {
-        log_printf(1, "Error loading MQ service! stype=%s\n", stype);
-        fprintf(stderr, "ERROR loading MQ service! stype=%s\n", stype); fflush(stderr);
-        abort();
-     } else {
-        add_service(lio->ess, ESS_RUNNING, ESS_MQ, lio->mqc);  //** It's used by the block loader
-     }
+    stype = inip_get_string(lio->ifd, section, "mq", "mq_context");
+    lio->mq_section = stype;
+    lio->mqc = _lc_object_get(stype);
+    if (lio->mqc == NULL) {  //** Need to load it
+        lio->mqc = mq_create_context(lio->ifd, stype);
+        if (lio->mqc == NULL) {
+            log_printf(1, "Error loading MQ service! stype=%s\n", stype);
+            fprintf(stderr, "ERROR loading MQ service! stype=%s\n", stype);
+            fflush(stderr);
+            abort();
+        } else {
+            add_service(lio->ess, ESS_RUNNING, ESS_MQ, lio->mqc);  //** It's used by the block loader
+        }
 
-     _lc_object_put(stype, lio->mqc);  //** Add it to the table
-  }
+        _lc_object_put(stype, lio->mqc);  //** Add it to the table
+    }
 
-  //** Add the shared ongoing object
-  mq_ongoing_t *on = mq_ongoing_create(lio->mqc, NULL, 1, ONGOING_CLIENT);
-  add_service(lio->ess, ESS_RUNNING, ESS_ONGOING_CLIENT, on);
+    //** Add the shared ongoing object
+    mq_ongoing_t *on = mq_ongoing_create(lio->mqc, NULL, 1, ONGOING_CLIENT);
+    add_service(lio->ess, ESS_RUNNING, ESS_ONGOING_CLIENT, on);
 
-  stype = inip_get_string(lio->ifd, section, "ds", DS_TYPE_IBP);
-  lio->ds_section = stype;
-  lio->ds = _lc_object_get(stype);
-  if (lio->ds == NULL) {  //** Need to load it
-     ctype = inip_get_string(lio->ifd, stype, "type", DS_TYPE_IBP);
-     ds_create = lookup_service(lio->ess, DS_SM_AVAILABLE, ctype);
-     lio->ds = (*ds_create)(lio->ess, lio->ifd, stype);
-     if (lio->ds == NULL) {
-        log_printf(1, "Error loading data service!  type=%s\n", ctype);
-        fprintf(stderr, "ERROR loading data service!  type=%s\n", ctype); fflush(stderr);
-        abort();
-     } else {
-        add_service(lio->ess, DS_SM_RUNNING, ctype, lio->ds);  //** It's used by the block loader
-     }
-     free(ctype);
+    stype = inip_get_string(lio->ifd, section, "ds", DS_TYPE_IBP);
+    lio->ds_section = stype;
+    lio->ds = _lc_object_get(stype);
+    if (lio->ds == NULL) {  //** Need to load it
+        ctype = inip_get_string(lio->ifd, stype, "type", DS_TYPE_IBP);
+        ds_create = lookup_service(lio->ess, DS_SM_AVAILABLE, ctype);
+        lio->ds = (*ds_create)(lio->ess, lio->ifd, stype);
+        if (lio->ds == NULL) {
+            log_printf(1, "Error loading data service!  type=%s\n", ctype);
+            fprintf(stderr, "ERROR loading data service!  type=%s\n", ctype);
+            fflush(stderr);
+            abort();
+        } else {
+            add_service(lio->ess, DS_SM_RUNNING, ctype, lio->ds);  //** It's used by the block loader
+        }
+        free(ctype);
 
-     _lc_object_put(stype, lio->ds);  //** Add it to the table
-  }
-  lio->da = ds_attr_create(lio->ds);
+        _lc_object_put(stype, lio->ds);  //** Add it to the table
+    }
+    lio->da = ds_attr_create(lio->ds);
 
-  add_service(lio->ess, ESS_RUNNING, ESS_DS, lio->ds);  //** This is needed by the RS service
-  add_service(lio->ess, ESS_RUNNING, ESS_DA, lio->da);  //** This is needed by the RS service
+    add_service(lio->ess, ESS_RUNNING, ESS_DS, lio->ds);  //** This is needed by the RS service
+    add_service(lio->ess, ESS_RUNNING, ESS_DA, lio->da);  //** This is needed by the RS service
 
-  stype = inip_get_string(lio->ifd, section, "rs", RS_TYPE_SIMPLE);
-  lio->rs_section = stype;
-  lio->rs = _lc_object_get(stype);
-  if (lio->rs == NULL) {  //** Need to load it
-     ctype = inip_get_string(lio->ifd, stype, "type", RS_TYPE_SIMPLE);
-     rs_create = lookup_service(lio->ess, RS_SM_AVAILABLE, ctype);
-     lio->rs = (*rs_create)(lio->ess, lio->ifd, stype);
-     if (lio->rs == NULL) {
-        log_printf(1, "Error loading resource service!  type=%s section=%s\n", ctype, stype);
-        fprintf(stderr, "Error loading resource service!  type=%s section=%s\n", ctype, stype); fflush(stderr);
-        abort();
-     }
-     free(ctype);
+    stype = inip_get_string(lio->ifd, section, "rs", RS_TYPE_SIMPLE);
+    lio->rs_section = stype;
+    lio->rs = _lc_object_get(stype);
+    if (lio->rs == NULL) {  //** Need to load it
+        ctype = inip_get_string(lio->ifd, stype, "type", RS_TYPE_SIMPLE);
+        rs_create = lookup_service(lio->ess, RS_SM_AVAILABLE, ctype);
+        lio->rs = (*rs_create)(lio->ess, lio->ifd, stype);
+        if (lio->rs == NULL) {
+            log_printf(1, "Error loading resource service!  type=%s section=%s\n", ctype, stype);
+            fprintf(stderr, "Error loading resource service!  type=%s section=%s\n", ctype, stype);
+            fflush(stderr);
+            abort();
+        }
+        free(ctype);
 
-     _lc_object_put(stype, lio->rs);  //** Add it to the table
-  }
-  add_service(lio->ess, ESS_RUNNING, ESS_RS, lio->rs);
+        _lc_object_put(stype, lio->rs);  //** Add it to the table
+    }
+    add_service(lio->ess, ESS_RUNNING, ESS_RS, lio->rs);
 
-  stype = inip_get_string(lio->ifd, section, "os", "osfile");
-  lio->os_section = stype;
-  lio->os = _lc_object_get(stype);
-  if (lio->os == NULL) {  //** Need to load it
-     ctype = inip_get_string(lio->ifd, stype, "type", OS_TYPE_FILE);
-     os_create = lookup_service(lio->ess, OS_AVAILABLE, ctype);
-     lio->os = (*os_create)(lio->ess, lio->ifd, stype);
-     if (lio->os == NULL) {
-        log_printf(1, "Error loading object service!  type=%s section=%s\n", ctype, stype);
-        fprintf(stderr, "Error loading object service!  type=%s section=%s\n", ctype, stype); fflush(stderr);
-        abort();
-     }
-     free(ctype);
+    stype = inip_get_string(lio->ifd, section, "os", "osfile");
+    lio->os_section = stype;
+    lio->os = _lc_object_get(stype);
+    if (lio->os == NULL) {  //** Need to load it
+        ctype = inip_get_string(lio->ifd, stype, "type", OS_TYPE_FILE);
+        os_create = lookup_service(lio->ess, OS_AVAILABLE, ctype);
+        lio->os = (*os_create)(lio->ess, lio->ifd, stype);
+        if (lio->os == NULL) {
+            log_printf(1, "Error loading object service!  type=%s section=%s\n", ctype, stype);
+            fprintf(stderr, "Error loading object service!  type=%s section=%s\n", ctype, stype);
+            fflush(stderr);
+            abort();
+        }
+        free(ctype);
 
-     _lc_object_put(stype, lio->os);  //** Add it to the table
-  }
-  add_service(lio->ess, ESS_RUNNING, ESS_OS, lio->os);
+        _lc_object_put(stype, lio->os);  //** Add it to the table
+    }
+    add_service(lio->ess, ESS_RUNNING, ESS_OS, lio->os);
 
-  cred_args[0] = lio->cfg_name;
-  cred_args[1] = (user == NULL) ? inip_get_string(lio->ifd, section, "user", "guest") : strdup(user);
-  snprintf(buffer, sizeof(buffer), "tuple:%s@%s", cred_args[1], lio->section_name);
-  stype = buffer;
-  lio->creds_name = strdup(buffer);
-  tuple = _lc_object_get(stype);
-  if (tuple == NULL) {  //** Need to load it
-     lio->creds = os_cred_init(lio->os, OS_CREDS_INI_TYPE, (void **)cred_args);
-     type_malloc_clear(tuple, lio_path_tuple_t, 1);
-     tuple->creds = lio->creds;
-     tuple->lc = lio;
-     _lc_object_put(stype, tuple);  //** Add it to the table
-  } else {
-     lio->creds = tuple->creds;
-  }
-  if (cred_args[1] != NULL) free(cred_args[1]);
+    cred_args[0] = lio->cfg_name;
+    cred_args[1] = (user == NULL) ? inip_get_string(lio->ifd, section, "user", "guest") : strdup(user);
+    snprintf(buffer, sizeof(buffer), "tuple:%s@%s", cred_args[1], lio->section_name);
+    stype = buffer;
+    lio->creds_name = strdup(buffer);
+    tuple = _lc_object_get(stype);
+    if (tuple == NULL) {  //** Need to load it
+        lio->creds = os_cred_init(lio->os, OS_CREDS_INI_TYPE, (void **)cred_args);
+        type_malloc_clear(tuple, lio_path_tuple_t, 1);
+        tuple->creds = lio->creds;
+        tuple->lc = lio;
+        _lc_object_put(stype, tuple);  //** Add it to the table
+    } else {
+        lio->creds = tuple->creds;
+    }
+    if (cred_args[1] != NULL) free(cred_args[1]);
 
-  //** Update the lc count for the creds
-  snprintf(buffer, sizeof(buffer), "lc:%s", lio->section_name);
-  _lc_object_get(buffer);
+    //** Update the lc count for the creds
+    snprintf(buffer, sizeof(buffer), "lc:%s", lio->section_name);
+    _lc_object_get(buffer);
 
-  if (_lio_cache == NULL) {
-     stype = inip_get_string(lio->ifd, section, "cache", CACHE_TYPE_AMP);
-     ctype = inip_get_string(lio->ifd, stype, "type", CACHE_TYPE_AMP);
-     cache_create = lookup_service(lio->ess, CACHE_LOAD_AVAILABLE, ctype);
-     _lio_cache = (*cache_create)(lio->ess, lio->ifd, stype, lio->da, lio->timeout);
-     if (_lio_cache == NULL) {
-        log_printf(0, "Error loading cache service!  type=%s\n", ctype);
-        fprintf(stderr, "Error loading cache service!  type=%s\n", ctype); fflush(stderr);
-        abort();
-     }
-     free(stype); free(ctype);
-  }
+    if (_lio_cache == NULL) {
+        stype = inip_get_string(lio->ifd, section, "cache", CACHE_TYPE_AMP);
+        ctype = inip_get_string(lio->ifd, stype, "type", CACHE_TYPE_AMP);
+        cache_create = lookup_service(lio->ess, CACHE_LOAD_AVAILABLE, ctype);
+        _lio_cache = (*cache_create)(lio->ess, lio->ifd, stype, lio->da, lio->timeout);
+        if (_lio_cache == NULL) {
+            log_printf(0, "Error loading cache service!  type=%s\n", ctype);
+            fprintf(stderr, "Error loading cache service!  type=%s\n", ctype);
+            fflush(stderr);
+            abort();
+        }
+        free(stype);
+        free(ctype);
+    }
 
-  //** This is just used for creating empty exnodes or dup them.
-  //** Since it's missing the cache it doesn't get added to the global cache list
-  //** and accidentally generate collisions.  Especially useful for mkdir to copy the parent exnode
-  lio->ess_nocache = clone_service_manager(lio->ess);
+    //** This is just used for creating empty exnodes or dup them.
+    //** Since it's missing the cache it doesn't get added to the global cache list
+    //** and accidentally generate collisions.  Especially useful for mkdir to copy the parent exnode
+    lio->ess_nocache = clone_service_manager(lio->ess);
 
-  lio->cache = _lio_cache;
-  add_service(lio->ess, ESS_RUNNING, ESS_CACHE, lio->cache);
+    lio->cache = _lio_cache;
+    add_service(lio->ess, ESS_RUNNING, ESS_CACHE, lio->cache);
 
-  //** Table of open files
-  lio->open_index = create_skiplist_full(10, 0.5, 0, &ex_id_compare, NULL, NULL, NULL);
+    //** Table of open files
+    lio->open_index = create_skiplist_full(10, 0.5, 0, &ex_id_compare, NULL, NULL, NULL);
 
-  assert(apr_pool_create(&(lio->mpool), NULL) == APR_SUCCESS);
-  apr_thread_mutex_create(&(lio->lock), APR_THREAD_MUTEX_DEFAULT, lio->mpool);
+    assert(apr_pool_create(&(lio->mpool), NULL) == APR_SUCCESS);
+    apr_thread_mutex_create(&(lio->lock), APR_THREAD_MUTEX_DEFAULT, lio->mpool);
 
-  return(lio);
+    return(lio);
 }
 
 
@@ -1026,13 +1036,13 @@ lio_config_t *lio_create_nl(char *fname, char *section, char *user, char *exe_na
 
 lio_config_t *lio_create(char *fname, char *section, char *user, char *exe_name)
 {
-  lio_config_t *lc;
+    lio_config_t *lc;
 
-  apr_thread_mutex_unlock(_lc_lock);
-  lc = lio_create_nl(fname, section, user, exe_name);
-  apr_thread_mutex_unlock(_lc_lock);
+    apr_thread_mutex_unlock(_lc_lock);
+    lc = lio_create_nl(fname, section, user, exe_name);
+    apr_thread_mutex_unlock(_lc_lock);
 
-  return(lc);
+    return(lc);
 }
 
 //***************************************************************
@@ -1041,13 +1051,13 @@ lio_config_t *lio_create(char *fname, char *section, char *user, char *exe_name)
 
 void lio_print_path_options(FILE *fd)
 {
- fprintf(fd, "    LIO_PATH_OPTIONS: [-rp regex_path | -gp glob_path]  [-ro regex_objext | -go glob_object] [path_1 ... path_N]\n");
- fprintf(fd, "       -rp regex_path  - Regex of path to scan\n");
- fprintf(fd, "       -gp glob_path   - Glob of path to scan\n");
- fprintf(fd, "       -ro regex_obj   - Regex for final object selection.\n");
- fprintf(fd, "       -go glob_obj    - Glob for final object selection.\n");
- fprintf(fd, "       path1 .. pathN  - Glob of paths to target\n");
- fprintf(fd, "\n");
+    fprintf(fd, "    LIO_PATH_OPTIONS: [-rp regex_path | -gp glob_path]  [-ro regex_objext | -go glob_object] [path_1 ... path_N]\n");
+    fprintf(fd, "       -rp regex_path  - Regex of path to scan\n");
+    fprintf(fd, "       -gp glob_path   - Glob of path to scan\n");
+    fprintf(fd, "       -ro regex_obj   - Regex for final object selection.\n");
+    fprintf(fd, "       -go glob_obj    - Glob for final object selection.\n");
+    fprintf(fd, "       path1 .. pathN  - Glob of paths to target\n");
+    fprintf(fd, "\n");
 }
 
 //***************************************************************
@@ -1056,49 +1066,54 @@ void lio_print_path_options(FILE *fd)
 
 int lio_parse_path_options(int *argc, char **argv, int auto_mode, lio_path_tuple_t *tuple, os_regex_table_t **rp, os_regex_table_t **ro)
 {
-  int nargs, i;
+    int nargs, i;
 //  char *myargv[*argc];
 
-  *rp = NULL; *ro = NULL;
+    *rp = NULL;
+    *ro = NULL;
 
-  if (*argc == 1) return(0);
+    if (*argc == 1) return(0);
 
-  nargs = 1;  //** argv[0] is preserved as the calling name
+    nargs = 1;  //** argv[0] is preserved as the calling name
 //  myargv[0] = argv[0];
 
-  i=1;
-  do {
+    i=1;
+    do {
 //log_printf(0, "argv[%d]=%s\n", i, argv[i]);
-     if (strcmp(argv[i], "-rp") == 0) { //** Regex for path
-        i++;
-        *tuple = lio_path_resolve(auto_mode, argv[i]);  //** Pick off the user/host
-        *rp = os_regex2table(tuple->path); i++;
-     } else if (strcmp(argv[i], "-ro") == 0) {  //** Regex for object
-        i++;
-        *ro = os_regex2table(argv[i]); i++;
-     } else if (strcmp(argv[i], "-gp") == 0) {  //** Glob for path
-        i++;
-        *tuple = lio_path_resolve(auto_mode, argv[i]);  //** Pick off the user/host
-        *rp = os_path_glob2regex(tuple->path); i++;
-     } else if (strcmp(argv[i], "-go") == 0) {  //** Glob for object
-        i++;
-        *ro = os_path_glob2regex(argv[i]); i++;
-     } else {
+        if (strcmp(argv[i], "-rp") == 0) { //** Regex for path
+            i++;
+            *tuple = lio_path_resolve(auto_mode, argv[i]);  //** Pick off the user/host
+            *rp = os_regex2table(tuple->path);
+            i++;
+        } else if (strcmp(argv[i], "-ro") == 0) {  //** Regex for object
+            i++;
+            *ro = os_regex2table(argv[i]);
+            i++;
+        } else if (strcmp(argv[i], "-gp") == 0) {  //** Glob for path
+            i++;
+            *tuple = lio_path_resolve(auto_mode, argv[i]);  //** Pick off the user/host
+            *rp = os_path_glob2regex(tuple->path);
+            i++;
+        } else if (strcmp(argv[i], "-go") == 0) {  //** Glob for object
+            i++;
+            *ro = os_path_glob2regex(argv[i]);
+            i++;
+        } else {
 //       myargv[nargs] = argv[i];
-       if (i!=nargs)argv[nargs] = argv[i];
-       nargs++;
-       i++;
-     }
-  } while (i<*argc);
+            if (i!=nargs)argv[nargs] = argv[i];
+            nargs++;
+            i++;
+        }
+    } while (i<*argc);
 
-  if (*argc == nargs) return(0);  //** Nothing was processed
+    if (*argc == nargs) return(0);  //** Nothing was processed
 
-  //** Adjust argv to reflect the parsed arguments
+    //** Adjust argv to reflect the parsed arguments
 //  memcpy(argv, myargv, sizeof(char *)*nargs);
-  *argc = nargs;
+    *argc = nargs;
 
 //for (i=0; i<nargs; i++) log_printf(0, "myargv[%d]=%s\n", i, argv[i]);
-  return(1);
+    return(1);
 }
 
 //***************************************************************
@@ -1107,29 +1122,32 @@ int lio_parse_path_options(int *argc, char **argv, int auto_mode, lio_path_tuple
 
 int env2args(char *env, int *argc, char ***eargv)
 {
-  int i, n, fin;
-  char *bstate, **argv;
+    int i, n, fin;
+    char *bstate, **argv;
 
-  n = 100;
-  type_malloc_clear(argv, char *, n);
+    n = 100;
+    type_malloc_clear(argv, char *, n);
 
-  i = 0;
-  argv[i] = string_token(env, " ", &bstate, &fin);
-  while (fin == 0) {
-    i++;
-    if (i==n) { n += 10; type_realloc(argv, char *, n); }
-    argv[i] = string_token(NULL, " ", &bstate, &fin);
-  }
+    i = 0;
+    argv[i] = string_token(env, " ", &bstate, &fin);
+    while (fin == 0) {
+        i++;
+        if (i==n) {
+            n += 10;
+            type_realloc(argv, char *, n);
+        }
+        argv[i] = string_token(NULL, " ", &bstate, &fin);
+    }
 
-  *argc = i;
-  if (i == 0) {
-     *argv = NULL;
-  } else {
-    type_realloc(argv, char *, i);
-  }
+    *argc = i;
+    if (i == 0) {
+        *argv = NULL;
+    } else {
+        type_realloc(argv, char *, i);
+    }
 
-  *eargv = argv;
-  return(0);
+    *eargv = argv;
+    return(0);
 }
 
 //***************************************************************
@@ -1140,40 +1158,40 @@ int env2args(char *env, int *argc, char ***eargv)
 //char **t2 = NULL;
 int lio_init(int *argc, char ***argvp)
 {
-  int i, j, k, ll, ll_override, neargs, nargs, auto_mode, ifll, if_mode;
-  FILE *fd;
-  char *name, *info_fname;
-  char var[4096];
-  char *env;
-  char **eargv;
-  char **myargv;
-  char **argv;
-  char *dummy;
-  char *out_override = NULL;
-  char *cfg_name = NULL;
-  char *section_name = "lio";
-  char *userid = NULL;
-  char *home;
-  char buffer[4096];
+    int i, j, k, ll, ll_override, neargs, nargs, auto_mode, ifll, if_mode;
+    FILE *fd;
+    char *name, *info_fname;
+    char var[4096];
+    char *env;
+    char **eargv;
+    char **myargv;
+    char **argv;
+    char *dummy;
+    char *out_override = NULL;
+    char *cfg_name = NULL;
+    char *section_name = "lio";
+    char *userid = NULL;
+    char *home;
+    char buffer[4096];
 
-  if(NULL != lio_gc && lio_gc->ref_cnt > 0) {
-    // lio_gc is a global singleton, if it is already initialized don't initialize again. (Note this implementation is not entirely immune to race conditions)
-    lio_gc->ref_cnt++;
-    return 0;
-  }
+    if(NULL != lio_gc && lio_gc->ref_cnt > 0) {
+        // lio_gc is a global singleton, if it is already initialized don't initialize again. (Note this implementation is not entirely immune to race conditions)
+        lio_gc->ref_cnt++;
+        return 0;
+    }
 
-  set_log_level(-1);  //** Disables log output
+    set_log_level(-1);  //** Disables log output
 
-  argv = *argvp;
+    argv = *argvp;
 
-  apr_wrapper_start();
+    apr_wrapper_start();
 
-  exnode_system_init();
+    exnode_system_init();
 
-  //** Create the lio object container
-  apr_pool_create(&_lc_mpool, NULL);
-  apr_thread_mutex_create(&_lc_lock, APR_THREAD_MUTEX_DEFAULT, _lc_mpool);
-  _lc_object_list = list_create(0, &list_string_compare, NULL, list_no_key_free, list_no_data_free);
+    //** Create the lio object container
+    apr_pool_create(&_lc_mpool, NULL);
+    apr_thread_mutex_create(&_lc_lock, APR_THREAD_MUTEX_DEFAULT, _lc_mpool);
+    _lc_object_list = list_create(0, &list_string_compare, NULL, list_no_key_free, list_no_data_free);
 
 //argv = *argvp;
 //printf("start argc=%d\n", *argc);
@@ -1181,161 +1199,169 @@ int lio_init(int *argc, char ***argvp)
 //  printf("start argv[%d]=%s\n", i, argv[i]);
 //}
 
-  //** Grab the exe name
-  
-  //** Determine the preferred environment variable based on the calling name to use for the args
-  os_path_split(argv[0], &dummy, &name);
-  _lio_exe_name = name;
-  if (dummy != NULL) free(dummy);
-  j = strncmp(name, "lio_", 4) == 0 ? 4 : 0;
-  i = 0;
-  memcpy(var, "LIO_OPTIONS_", 12);
-  k = 12;
-  while ((name[j+i] != 0) && (i<3900)) {
-    var[k+i] = toupper(name[j+i]);
-    i++;
-  }
-  var[k+i] = 0;
+    //** Grab the exe name
+
+    //** Determine the preferred environment variable based on the calling name to use for the args
+    os_path_split(argv[0], &dummy, &name);
+    _lio_exe_name = name;
+    if (dummy != NULL) free(dummy);
+    j = strncmp(name, "lio_", 4) == 0 ? 4 : 0;
+    i = 0;
+    memcpy(var, "LIO_OPTIONS_", 12);
+    k = 12;
+    while ((name[j+i] != 0) && (i<3900)) {
+        var[k+i] = toupper(name[j+i]);
+        i++;
+    }
+    var[k+i] = 0;
 //  free(name);
 
-  env = getenv(var); //** Get the exe based options if available
-  if (env == NULL) env = getenv("LIO_OPTIONS");  //** If not get the global default
+    env = getenv(var); //** Get the exe based options if available
+    if (env == NULL) env = getenv("LIO_OPTIONS");  //** If not get the global default
 
-  if (env != NULL) {  //** Got args so prepend them to the front of the list
-     env = strdup(env);  //** Don't want to mess up the actual env variable
-     eargv = NULL;
-     env2args(env, &neargs, &eargv);
+    if (env != NULL) {  //** Got args so prepend them to the front of the list
+        env = strdup(env);  //** Don't want to mess up the actual env variable
+        eargv = NULL;
+        env2args(env, &neargs, &eargv);
 
-     if (neargs > 0) {
-        ll = *argc + neargs;
-        type_malloc_clear(myargv, char *, ll);
-        myargv[0] = argv[0];
-        memcpy(&(myargv[1]), eargv, sizeof(char *)*neargs);
-        if (*argc > 1) memcpy(&(myargv[neargs+1]), &(argv[1]), sizeof(char *)*(*argc - 1));
-        argv = myargv;
-        *argvp = myargv;
-        *argc = ll;
-        free(eargv);
+        if (neargs > 0) {
+            ll = *argc + neargs;
+            type_malloc_clear(myargv, char *, ll);
+            myargv[0] = argv[0];
+            memcpy(&(myargv[1]), eargv, sizeof(char *)*neargs);
+            if (*argc > 1) memcpy(&(myargv[neargs+1]), &(argv[1]), sizeof(char *)*(*argc - 1));
+            argv = myargv;
+            *argvp = myargv;
+            *argc = ll;
+            free(eargv);
 //printf("after merge argc=%d\n", *argc);
 //for (i=0; i<*argc; i++) {
 //  printf("merge argv[%d]=%s\n", i, argv[i]);
 //}
-     }
-  }
+        }
+    }
 
-  type_malloc_clear(myargv, char *, *argc);
+    type_malloc_clear(myargv, char *, *argc);
 
 
-  //** Parse any arguments
-  nargs = 1;  //** argv[0] is preserved as the calling name
-  myargv[0] = argv[0];
-  i=1;
-  ll_override = -100;
-  ifll = 0;
-  if_mode = INFO_HEADER_NONE;
-  info_fname = NULL;
-  auto_mode = -1;
+    //** Parse any arguments
+    nargs = 1;  //** argv[0] is preserved as the calling name
+    myargv[0] = argv[0];
+    i=1;
+    ll_override = -100;
+    ifll = 0;
+    if_mode = INFO_HEADER_NONE;
+    info_fname = NULL;
+    auto_mode = -1;
 
-  if (*argc < 2) goto no_args;  //** Nothing to parse
+    if (*argc < 2) goto no_args;  //** Nothing to parse
 
-  do {
+    do {
 //printf("argv[%d]=%s\n", i, argv[i]);
-     if (strcmp(argv[i], "-d") == 0) { //** Enable debugging
-        i++;
-        ll_override = atoi(argv[i]); i++;
-     } else if (strcmp(argv[i], "-log") == 0) { //** Override log file output
-        i++;
-        out_override = argv[i]; i++;
-     } else if (strcmp(argv[i], "-no-auto-lfs") == 0) { //** Regex for path
-        i++;
-        auto_mode = 0;
-     } else if (strcmp(argv[i], "-np") == 0) { //** Parallel task count
-        i++;
-        lio_parallel_task_count = atoi(argv[i]); i++;
-     } else if (strcmp(argv[i], "-i") == 0) { //** Info level w/o header
-        i++;
-        ifll = atoi(argv[i]); i++;
-        if_mode = INFO_HEADER_NONE;
-     } else if (strcmp(argv[i], "-it") == 0) { //** Info level w thread header
-        i++;
-        ifll = atoi(argv[i]); i++;
-        if_mode = INFO_HEADER_THREAD;
-     } else if (strcmp(argv[i], "-if") == 0) { //** Info level w full header
-        i++;
-        ifll = atoi(argv[i]); i++;
-        if_mode = INFO_HEADER_FULL;
-     } else if (strcmp(argv[i], "-ilog") == 0) { //** Override Info log file output
-        i++;
-        info_fname = argv[i]; i++;
-     } else if (strcmp(argv[i], "-c") == 0) { //** Load a config file
-        i++;
-        cfg_name = argv[i]; i++;
-     } else if (strcmp(argv[i], "-lc") == 0) { //** Default LIO config section
-        i++;
-        lio_parse_path(argv[i], &userid, &section_name, &dummy);
-        if (section_name == NULL) section_name = "lio";
-        if (dummy != NULL) free(dummy);
-        i++;
-     } else {
-       myargv[nargs] = argv[i];
+        if (strcmp(argv[i], "-d") == 0) { //** Enable debugging
+            i++;
+            ll_override = atoi(argv[i]);
+            i++;
+        } else if (strcmp(argv[i], "-log") == 0) { //** Override log file output
+            i++;
+            out_override = argv[i];
+            i++;
+        } else if (strcmp(argv[i], "-no-auto-lfs") == 0) { //** Regex for path
+            i++;
+            auto_mode = 0;
+        } else if (strcmp(argv[i], "-np") == 0) { //** Parallel task count
+            i++;
+            lio_parallel_task_count = atoi(argv[i]);
+            i++;
+        } else if (strcmp(argv[i], "-i") == 0) { //** Info level w/o header
+            i++;
+            ifll = atoi(argv[i]);
+            i++;
+            if_mode = INFO_HEADER_NONE;
+        } else if (strcmp(argv[i], "-it") == 0) { //** Info level w thread header
+            i++;
+            ifll = atoi(argv[i]);
+            i++;
+            if_mode = INFO_HEADER_THREAD;
+        } else if (strcmp(argv[i], "-if") == 0) { //** Info level w full header
+            i++;
+            ifll = atoi(argv[i]);
+            i++;
+            if_mode = INFO_HEADER_FULL;
+        } else if (strcmp(argv[i], "-ilog") == 0) { //** Override Info log file output
+            i++;
+            info_fname = argv[i];
+            i++;
+        } else if (strcmp(argv[i], "-c") == 0) { //** Load a config file
+            i++;
+            cfg_name = argv[i];
+            i++;
+        } else if (strcmp(argv[i], "-lc") == 0) { //** Default LIO config section
+            i++;
+            lio_parse_path(argv[i], &userid, &section_name, &dummy);
+            if (section_name == NULL) section_name = "lio";
+            if (dummy != NULL) free(dummy);
+            i++;
+        } else {
+            myargv[nargs] = argv[i];
 //printf("myargv[%d]=%s\n", nargs, argv[i]);
-       nargs++;
-       i++;
-     }
-  } while (i<*argc);
+            nargs++;
+            i++;
+        }
+    } while (i<*argc);
 
 no_args:
 
-  //** Make the info logging device
-  if (info_fname != NULL) { //** User didn't specify anything
-     if (strcmp(info_fname, "stdout") == 0) {
-        fd = stdout;
-     } else if (strcmp(info_fname, "stderr") == 0) {
-        fd = stderr;
-     } else {
-        fd = fopen(info_fname, "w+");
-     }
-     if (fd != NULL) _lio_ifd = fd;
-  }
-
-  if (_lio_ifd == NULL) _lio_ifd = stdout;
-
-  lio_ifd = info_create(_lio_ifd, if_mode, ifll);
-
-
-  //** Adjust argv to reflect the parsed arguments
-  *argvp = myargv;
-  *argc = nargs;
-
-  //** TRy to see if we can find a default config somewhere
-  if (cfg_name == NULL) {
-    if (os_local_filetype("lio.cfg") != 0) {
-       cfg_name = "lio.cfg";
-    } else {
-      home = getenv("HOME");
-      snprintf(buffer, sizeof(buffer), "%s/.lio/lio.cfg", home);
-      if (os_local_filetype(buffer) != 0) {
-         cfg_name = strdup(buffer);
-      } else if (os_local_filetype("/etc/lio/lio.cfg") != 0) {
-         cfg_name = "/etc/lio/lio.cfg";
-      }
+    //** Make the info logging device
+    if (info_fname != NULL) { //** User didn't specify anything
+        if (strcmp(info_fname, "stdout") == 0) {
+            fd = stdout;
+        } else if (strcmp(info_fname, "stderr") == 0) {
+            fd = stderr;
+        } else {
+            fd = fopen(info_fname, "w+");
+        }
+        if (fd != NULL) _lio_ifd = fd;
     }
-  }
+
+    if (_lio_ifd == NULL) _lio_ifd = stdout;
+
+    lio_ifd = info_create(_lio_ifd, if_mode, ifll);
 
 
-  if (cfg_name != NULL) {
-     mlog_load(cfg_name, out_override, ll_override);
+    //** Adjust argv to reflect the parsed arguments
+    *argvp = myargv;
+    *argc = nargs;
 
-     lio_gc = lio_create(cfg_name, section_name, userid, name);
-     lio_gc->ref_cnt = 1;
-     if (auto_mode != -1) lio_gc->auto_translate = auto_mode;
-  } else {
-     log_printf(0, "Error missing config file!\n");
-  }
+    //** TRy to see if we can find a default config somewhere
+    if (cfg_name == NULL) {
+        if (os_local_filetype("lio.cfg") != 0) {
+            cfg_name = "lio.cfg";
+        } else {
+            home = getenv("HOME");
+            snprintf(buffer, sizeof(buffer), "%s/.lio/lio.cfg", home);
+            if (os_local_filetype(buffer) != 0) {
+                cfg_name = strdup(buffer);
+            } else if (os_local_filetype("/etc/lio/lio.cfg") != 0) {
+                cfg_name = "/etc/lio/lio.cfg";
+            }
+        }
+    }
 
-  if (userid != NULL) free(userid);
 
-  lio_find_lfs_mounts();  //** Make the global mount prefix table
+    if (cfg_name != NULL) {
+        mlog_load(cfg_name, out_override, ll_override);
+
+        lio_gc = lio_create(cfg_name, section_name, userid, name);
+        lio_gc->ref_cnt = 1;
+        if (auto_mode != -1) lio_gc->auto_translate = auto_mode;
+    } else {
+        log_printf(0, "Error missing config file!\n");
+    }
+
+    if (userid != NULL) free(userid);
+
+    lio_find_lfs_mounts();  //** Make the global mount prefix table
 
 //argv = *argvp;
 //printf("end argc=%d\n", *argc);
@@ -1343,9 +1369,9 @@ no_args:
 //  printf("end argv[%d]=%s\n", i, argv[i]);
 //}
 
-  log_printf(1, "INIT completed\n");
+    log_printf(1, "INIT completed\n");
 
-  return(0);
+    return(0);
 }
 
 //***************************************************************
@@ -1354,32 +1380,32 @@ no_args:
 
 int lio_shutdown()
 {
-  log_printf(1, "SHUTDOWN started\n");
+    log_printf(1, "SHUTDOWN started\n");
 
-  lio_gc->ref_cnt--;
-  if(NULL != lio_gc && lio_gc->ref_cnt > 0) {
-    return 0;
-  }
+    lio_gc->ref_cnt--;
+    if(NULL != lio_gc && lio_gc->ref_cnt > 0) {
+        return 0;
+    }
 
-  cache_destroy(_lio_cache);
-  _lio_cache = NULL;
+    cache_destroy(_lio_cache);
+    _lio_cache = NULL;
 
-  lio_destroy(lio_gc);
-  lio_gc = NULL;  //** Reset the global to NULL so it's not accidentally reused.
+    lio_destroy(lio_gc);
+    lio_gc = NULL;  //** Reset the global to NULL so it's not accidentally reused.
 
-  lc_object_remove_unused(0);
+    lc_object_remove_unused(0);
 
-  apr_thread_mutex_destroy(_lc_lock);
-  apr_pool_destroy(_lc_mpool);
-  _lc_mpool = NULL;
-  _lc_lock  = NULL;
-  exnode_system_destroy();
+    apr_thread_mutex_destroy(_lc_lock);
+    apr_pool_destroy(_lc_mpool);
+    _lc_mpool = NULL;
+    _lc_lock  = NULL;
+    exnode_system_destroy();
 
-  apr_wrapper_stop();
+    apr_wrapper_stop();
 
-  lio_ifd = NULL;
-  if (_lio_exe_name) free(_lio_exe_name);
+    lio_ifd = NULL;
+    if (_lio_exe_name) free(_lio_exe_name);
 
-  return(0);
+    return(0);
 }
 

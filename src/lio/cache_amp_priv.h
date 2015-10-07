@@ -25,7 +25,7 @@ Advanced Computing Center for Research and Education
 230 Appleton Place
 Nashville, TN 37203
 http://www.accre.vanderbilt.edu
-*/ 
+*/
 
 //*************************************************************************
 //*************************************************************************
@@ -43,59 +43,60 @@ extern "C" {
 #define CAMP_ACCESSED 1  //** Page has been accessed
 #define CAMP_TAG      2  //** Tag page for pretech
 #define CAMP_OLD      4  //** Page has been recycled without a hit
-
+ 
 typedef struct {
-  cache_page_t page;  //** Actual page
-  Stack_ele_t *ele;   //** LRU position
-  ex_off_t stream_offset;
-  int bit_fields;
+cache_page_t page;  //** Actual page
+Stack_ele_t *ele;   //** LRU position
+ex_off_t stream_offset;
+int bit_fields;
 } page_amp_t;
-
+ 
 typedef struct {
-  ex_off_t last_offset;
-  ex_off_t nbytes;
-  int prefetch_size;
-  int trigger_distance;
+ex_off_t last_offset;
+ex_off_t nbytes;
+int prefetch_size;
+int trigger_distance;
 } amp_page_stream_t;
-
+ 
 typedef struct {
-  int   max_streams;
-  amp_page_stream_t *stream_table;
-  list_t *streams;
-  int index;
-  int start_apt_pages;
+int   max_streams;
+amp_page_stream_t *stream_table;
+list_t *streams;
+int index;
+int start_apt_pages;
 } amp_stream_table_t;
-
+ 
 typedef struct {
-  Stack_t *stack;
-  Stack_t *waiting_stack;
-  Stack_t *pending_free_tasks;
-  pigeon_coop_t *free_pending_tables;
-  pigeon_coop_t *free_page_tables;
-  apr_thread_cond_t *dirty_trigger;
-  apr_thread_t *dirty_thread;
-  apr_time_t dirty_max_wait;
-  ex_off_t max_bytes;
-  ex_off_t bytes_used;
-  ex_off_t dirty_bytes_trigger;
-  ex_off_t prefetch_in_process;
-  ex_off_t async_prefetch_threshold;
-  ex_off_t min_prefetch_size;
-  double   dirty_fraction;
-  int      max_streams;
-  int      flush_in_progress;
-  int      limbo_pages;
+Stack_t *stack;
+Stack_t *waiting_stack;
+Stack_t *pending_free_tasks;
+pigeon_coop_t *free_pending_tables;
+pigeon_coop_t *free_page_tables;
+apr_thread_cond_t *dirty_trigger;
+apr_thread_t *dirty_thread;
+apr_time_t dirty_max_wait;
+ex_off_t max_bytes;
+ex_off_t bytes_used;
+ex_off_t dirty_bytes_trigger;
+ex_off_t prefetch_in_process;
+ex_off_t async_prefetch_threshold;
+ex_off_t min_prefetch_size;
+double   dirty_fraction;
+int      max_streams;
+int      flush_in_progress;
+int      limbo_pages;
 } cache_amp_t;
-
+ 
 typedef struct {
-  apr_thread_cond_t *cond;
-  ex_off_t  bytes_needed;
+apr_thread_cond_t *cond;
+ex_off_t  bytes_needed;
 } amp_page_wait_t;
-
+ 
 #ifdef __cplusplus
 }
 #endif
-
+ 
 #endif
-
-
+ 
+ 
+ 

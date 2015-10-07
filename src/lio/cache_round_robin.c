@@ -39,9 +39,9 @@ http://www.accre.vanderbilt.edu
 #include "thread_pool.h"
 
 typedef struct {
-  int n_cache;
-  cache_t **child;
-  atomic_int_t count;
+    int n_cache;
+    cache_t **child;
+    atomic_int_t count;
 } cache_rr_t;
 
 //*************************************************************************
@@ -50,11 +50,11 @@ typedef struct {
 
 cache_t *rr_get_handle(cache_t *c)
 {
-  cache_rr_t *cp = (cache_rr_t *)c->fn.priv;
-  int slot = atomic_inc(cp->count) % cp->n_cache;
+    cache_rr_t *cp = (cache_rr_t *)c->fn.priv;
+    int slot = atomic_inc(cp->count) % cp->n_cache;
 
-  log_printf(1, "n_cache=%d slot=%d\n", cp->n_cache, slot);
-  return(cp->child[slot]);
+    log_printf(1, "n_cache=%d slot=%d\n", cp->n_cache, slot);
+    return(cp->child[slot]);
 }
 
 //*************************************************************************
@@ -64,23 +64,24 @@ cache_t *rr_get_handle(cache_t *c)
 
 int rr_cache_destroy(cache_t *c)
 {
-  int i;
+    int i;
 
-  cache_rr_t *cp = (cache_rr_t *)c->fn.priv;
+    cache_rr_t *cp = (cache_rr_t *)c->fn.priv;
 
-  log_printf(15, "Shutting down\n"); flush_log();
+    log_printf(15, "Shutting down\n");
+    flush_log();
 
-  for (i=0; i<cp->n_cache; i++) {
-    cache_destroy(cp->child[i]);
-  }
+    for (i=0; i<cp->n_cache; i++) {
+        cache_destroy(cp->child[i]);
+    }
 
-  cache_base_destroy(c);
+    cache_base_destroy(c);
 
-  if (cp->child) free(cp->child);
-  free(cp);
-  free(c);
+    if (cp->child) free(cp->child);
+    free(cp);
+    free(c);
 
-  return(0);
+    return(0);
 }
 
 //*************************************************************************
@@ -90,23 +91,22 @@ int rr_cache_destroy(cache_t *c)
 cache_t *round_robin_cache_create(void *arg, data_attr_t *da, int timeout)
 {
 
-  cache_t *cache;
-  cache_rr_t *c;
+    cache_t *cache;
+    cache_rr_t *c;
 
-  type_malloc_clear(cache, cache_t, 1);
-  type_malloc_clear(c, cache_rr_t, 1);
-  cache->fn.priv = c;
-  if (!cache->fn.priv)
-  {
-    log_printf(0,"ERROR: a null priv structure was malloc()d");
-  }
+    type_malloc_clear(cache, cache_t, 1);
+    type_malloc_clear(c, cache_rr_t, 1);
+    cache->fn.priv = c;
+    if (!cache->fn.priv) {
+        log_printf(0,"ERROR: a null priv structure was malloc()d");
+    }
 
-  cache_base_create(cache, da, timeout);
+    cache_base_create(cache, da, timeout);
 
-  cache->fn.destroy = rr_cache_destroy;
-  cache->fn.get_handle = rr_get_handle;
+    cache->fn.destroy = rr_cache_destroy;
+    cache->fn.get_handle = rr_get_handle;
 
-  return(cache);
+    return(cache);
 }
 
 
@@ -116,33 +116,33 @@ cache_t *round_robin_cache_create(void *arg, data_attr_t *da, int timeout)
 
 cache_t *round_robin_cache_load(void *arg, inip_file_t *fd, char *grp, data_attr_t *da, int timeout)
 {
-  cache_t *c;
-  cache_rr_t *cp;
-  cache_load_t *cache_create;
-  char *child_section, *ctype;
-  int i;
+    cache_t *c;
+    cache_rr_t *cp;
+    cache_load_t *cache_create;
+    char *child_section, *ctype;
+    int i;
 
-  if (grp == NULL) grp = "cache-round-robin";
+    if (grp == NULL) grp = "cache-round-robin";
 
-  //** Create the default structure
-  c = round_robin_cache_create(arg, da, timeout);
-  cp = (cache_rr_t *)c->fn.priv;
+    //** Create the default structure
+    c = round_robin_cache_create(arg, da, timeout);
+    cp = (cache_rr_t *)c->fn.priv;
 
-  cache_lock(c);
-  cp->n_cache = inip_get_integer(fd, grp, "n_cache", 2);
-  child_section = inip_get_string(fd, grp, "child", "cache-amp");
-  ctype = inip_get_string(fd, child_section, "type", NULL);
+    cache_lock(c);
+    cp->n_cache = inip_get_integer(fd, grp, "n_cache", 2);
+    child_section = inip_get_string(fd, grp, "child", "cache-amp");
+    ctype = inip_get_string(fd, child_section, "type", NULL);
 
-  type_malloc(cp->child, cache_t *, cp->n_cache);
-  for (i=0; i<cp->n_cache; i++) {
-     assert((cache_create = lookup_service(arg, CACHE_LOAD_AVAILABLE, ctype)) != NULL);
-     assert((cp->child[i] = (*cache_create)(arg, fd, child_section, da, timeout)) != NULL);
-  }
+    type_malloc(cp->child, cache_t *, cp->n_cache);
+    for (i=0; i<cp->n_cache; i++) {
+        assert((cache_create = lookup_service(arg, CACHE_LOAD_AVAILABLE, ctype)) != NULL);
+        assert((cp->child[i] = (*cache_create)(arg, fd, child_section, da, timeout)) != NULL);
+    }
 
-  if (child_section) free(child_section);
-  if (ctype) free(ctype);
+    if (child_section) free(child_section);
+    if (ctype) free(ctype);
 
-  cache_unlock(c);
+    cache_unlock(c);
 
-  return(c);
+    return(c);
 }

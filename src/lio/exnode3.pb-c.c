@@ -7,1293 +7,1263 @@
 
 #include "exnode3.pb-c.h"
 void   exnode3__allocation__init
-                     (Exnode3__Allocation         *message)
+(Exnode3__Allocation         *message)
 {
-  static Exnode3__Allocation init_value = EXNODE3__ALLOCATION__INIT;
-  *message = init_value;
+    static Exnode3__Allocation init_value = EXNODE3__ALLOCATION__INIT;
+    *message = init_value;
 }
 size_t exnode3__allocation__get_packed_size
-                     (const Exnode3__Allocation *message)
+(const Exnode3__Allocation *message)
 {
-  PROTOBUF_C_ASSERT (message->base.descriptor == &exnode3__allocation__descriptor);
-  return protobuf_c_message_get_packed_size ((const ProtobufCMessage*)(message));
+    PROTOBUF_C_ASSERT (message->base.descriptor == &exnode3__allocation__descriptor);
+    return protobuf_c_message_get_packed_size ((const ProtobufCMessage*)(message));
 }
 size_t exnode3__allocation__pack
-                     (const Exnode3__Allocation *message,
-                      uint8_t       *out)
+(const Exnode3__Allocation *message,
+ uint8_t       *out)
 {
-  PROTOBUF_C_ASSERT (message->base.descriptor == &exnode3__allocation__descriptor);
-  return protobuf_c_message_pack ((const ProtobufCMessage*)message, out);
+    PROTOBUF_C_ASSERT (message->base.descriptor == &exnode3__allocation__descriptor);
+    return protobuf_c_message_pack ((const ProtobufCMessage*)message, out);
 }
 size_t exnode3__allocation__pack_to_buffer
-                     (const Exnode3__Allocation *message,
-                      ProtobufCBuffer *buffer)
+(const Exnode3__Allocation *message,
+ ProtobufCBuffer *buffer)
 {
-  PROTOBUF_C_ASSERT (message->base.descriptor == &exnode3__allocation__descriptor);
-  return protobuf_c_message_pack_to_buffer ((const ProtobufCMessage*)message, buffer);
+    PROTOBUF_C_ASSERT (message->base.descriptor == &exnode3__allocation__descriptor);
+    return protobuf_c_message_pack_to_buffer ((const ProtobufCMessage*)message, buffer);
 }
 Exnode3__Allocation *
-       exnode3__allocation__unpack
-                     (ProtobufCAllocator  *allocator,
-                      size_t               len,
-                      const uint8_t       *data)
+exnode3__allocation__unpack
+(ProtobufCAllocator  *allocator,
+ size_t               len,
+ const uint8_t       *data)
 {
-  return (Exnode3__Allocation *)
-     protobuf_c_message_unpack (&exnode3__allocation__descriptor,
-                                allocator, len, data);
+    return (Exnode3__Allocation *)
+           protobuf_c_message_unpack (&exnode3__allocation__descriptor,
+                                      allocator, len, data);
 }
 void   exnode3__allocation__free_unpacked
-                     (Exnode3__Allocation *message,
-                      ProtobufCAllocator *allocator)
+(Exnode3__Allocation *message,
+ ProtobufCAllocator *allocator)
 {
-  PROTOBUF_C_ASSERT (message->base.descriptor == &exnode3__allocation__descriptor);
-  protobuf_c_message_free_unpacked ((ProtobufCMessage*)message, allocator);
+    PROTOBUF_C_ASSERT (message->base.descriptor == &exnode3__allocation__descriptor);
+    protobuf_c_message_free_unpacked ((ProtobufCMessage*)message, allocator);
 }
 void   exnode3__allocation__table__init
-                     (Exnode3__AllocationTable         *message)
+(Exnode3__AllocationTable         *message)
 {
-  static Exnode3__AllocationTable init_value = EXNODE3__ALLOCATION__TABLE__INIT;
-  *message = init_value;
+    static Exnode3__AllocationTable init_value = EXNODE3__ALLOCATION__TABLE__INIT;
+    *message = init_value;
 }
 size_t exnode3__allocation__table__get_packed_size
-                     (const Exnode3__AllocationTable *message)
+(const Exnode3__AllocationTable *message)
 {
-  PROTOBUF_C_ASSERT (message->base.descriptor == &exnode3__allocation__table__descriptor);
-  return protobuf_c_message_get_packed_size ((const ProtobufCMessage*)(message));
+    PROTOBUF_C_ASSERT (message->base.descriptor == &exnode3__allocation__table__descriptor);
+    return protobuf_c_message_get_packed_size ((const ProtobufCMessage*)(message));
 }
 size_t exnode3__allocation__table__pack
-                     (const Exnode3__AllocationTable *message,
-                      uint8_t       *out)
+(const Exnode3__AllocationTable *message,
+ uint8_t       *out)
 {
-  PROTOBUF_C_ASSERT (message->base.descriptor == &exnode3__allocation__table__descriptor);
-  return protobuf_c_message_pack ((const ProtobufCMessage*)message, out);
+    PROTOBUF_C_ASSERT (message->base.descriptor == &exnode3__allocation__table__descriptor);
+    return protobuf_c_message_pack ((const ProtobufCMessage*)message, out);
 }
 size_t exnode3__allocation__table__pack_to_buffer
-                     (const Exnode3__AllocationTable *message,
-                      ProtobufCBuffer *buffer)
+(const Exnode3__AllocationTable *message,
+ ProtobufCBuffer *buffer)
 {
-  PROTOBUF_C_ASSERT (message->base.descriptor == &exnode3__allocation__table__descriptor);
-  return protobuf_c_message_pack_to_buffer ((const ProtobufCMessage*)message, buffer);
+    PROTOBUF_C_ASSERT (message->base.descriptor == &exnode3__allocation__table__descriptor);
+    return protobuf_c_message_pack_to_buffer ((const ProtobufCMessage*)message, buffer);
 }
 Exnode3__AllocationTable *
-       exnode3__allocation__table__unpack
-                     (ProtobufCAllocator  *allocator,
-                      size_t               len,
-                      const uint8_t       *data)
+exnode3__allocation__table__unpack
+(ProtobufCAllocator  *allocator,
+ size_t               len,
+ const uint8_t       *data)
 {
-  return (Exnode3__AllocationTable *)
-     protobuf_c_message_unpack (&exnode3__allocation__table__descriptor,
-                                allocator, len, data);
+    return (Exnode3__AllocationTable *)
+           protobuf_c_message_unpack (&exnode3__allocation__table__descriptor,
+                                      allocator, len, data);
 }
 void   exnode3__allocation__table__free_unpacked
-                     (Exnode3__AllocationTable *message,
-                      ProtobufCAllocator *allocator)
+(Exnode3__AllocationTable *message,
+ ProtobufCAllocator *allocator)
 {
-  PROTOBUF_C_ASSERT (message->base.descriptor == &exnode3__allocation__table__descriptor);
-  protobuf_c_message_free_unpacked ((ProtobufCMessage*)message, allocator);
+    PROTOBUF_C_ASSERT (message->base.descriptor == &exnode3__allocation__table__descriptor);
+    protobuf_c_message_free_unpacked ((ProtobufCMessage*)message, allocator);
 }
 void   exnode3__block__init
-                     (Exnode3__Block         *message)
+(Exnode3__Block         *message)
 {
-  static Exnode3__Block init_value = EXNODE3__BLOCK__INIT;
-  *message = init_value;
+    static Exnode3__Block init_value = EXNODE3__BLOCK__INIT;
+    *message = init_value;
 }
 size_t exnode3__block__get_packed_size
-                     (const Exnode3__Block *message)
+(const Exnode3__Block *message)
 {
-  PROTOBUF_C_ASSERT (message->base.descriptor == &exnode3__block__descriptor);
-  return protobuf_c_message_get_packed_size ((const ProtobufCMessage*)(message));
+    PROTOBUF_C_ASSERT (message->base.descriptor == &exnode3__block__descriptor);
+    return protobuf_c_message_get_packed_size ((const ProtobufCMessage*)(message));
 }
 size_t exnode3__block__pack
-                     (const Exnode3__Block *message,
-                      uint8_t       *out)
+(const Exnode3__Block *message,
+ uint8_t       *out)
 {
-  PROTOBUF_C_ASSERT (message->base.descriptor == &exnode3__block__descriptor);
-  return protobuf_c_message_pack ((const ProtobufCMessage*)message, out);
+    PROTOBUF_C_ASSERT (message->base.descriptor == &exnode3__block__descriptor);
+    return protobuf_c_message_pack ((const ProtobufCMessage*)message, out);
 }
 size_t exnode3__block__pack_to_buffer
-                     (const Exnode3__Block *message,
-                      ProtobufCBuffer *buffer)
+(const Exnode3__Block *message,
+ ProtobufCBuffer *buffer)
 {
-  PROTOBUF_C_ASSERT (message->base.descriptor == &exnode3__block__descriptor);
-  return protobuf_c_message_pack_to_buffer ((const ProtobufCMessage*)message, buffer);
+    PROTOBUF_C_ASSERT (message->base.descriptor == &exnode3__block__descriptor);
+    return protobuf_c_message_pack_to_buffer ((const ProtobufCMessage*)message, buffer);
 }
 Exnode3__Block *
-       exnode3__block__unpack
-                     (ProtobufCAllocator  *allocator,
-                      size_t               len,
-                      const uint8_t       *data)
+exnode3__block__unpack
+(ProtobufCAllocator  *allocator,
+ size_t               len,
+ const uint8_t       *data)
 {
-  return (Exnode3__Block *)
-     protobuf_c_message_unpack (&exnode3__block__descriptor,
-                                allocator, len, data);
+    return (Exnode3__Block *)
+           protobuf_c_message_unpack (&exnode3__block__descriptor,
+                                      allocator, len, data);
 }
 void   exnode3__block__free_unpacked
-                     (Exnode3__Block *message,
-                      ProtobufCAllocator *allocator)
+(Exnode3__Block *message,
+ ProtobufCAllocator *allocator)
 {
-  PROTOBUF_C_ASSERT (message->base.descriptor == &exnode3__block__descriptor);
-  protobuf_c_message_free_unpacked ((ProtobufCMessage*)message, allocator);
+    PROTOBUF_C_ASSERT (message->base.descriptor == &exnode3__block__descriptor);
+    protobuf_c_message_free_unpacked ((ProtobufCMessage*)message, allocator);
 }
 void   exnode3__attribute__init
-                     (Exnode3__Attribute         *message)
+(Exnode3__Attribute         *message)
 {
-  static Exnode3__Attribute init_value = EXNODE3__ATTRIBUTE__INIT;
-  *message = init_value;
+    static Exnode3__Attribute init_value = EXNODE3__ATTRIBUTE__INIT;
+    *message = init_value;
 }
 size_t exnode3__attribute__get_packed_size
-                     (const Exnode3__Attribute *message)
+(const Exnode3__Attribute *message)
 {
-  PROTOBUF_C_ASSERT (message->base.descriptor == &exnode3__attribute__descriptor);
-  return protobuf_c_message_get_packed_size ((const ProtobufCMessage*)(message));
+    PROTOBUF_C_ASSERT (message->base.descriptor == &exnode3__attribute__descriptor);
+    return protobuf_c_message_get_packed_size ((const ProtobufCMessage*)(message));
 }
 size_t exnode3__attribute__pack
-                     (const Exnode3__Attribute *message,
-                      uint8_t       *out)
+(const Exnode3__Attribute *message,
+ uint8_t       *out)
 {
-  PROTOBUF_C_ASSERT (message->base.descriptor == &exnode3__attribute__descriptor);
-  return protobuf_c_message_pack ((const ProtobufCMessage*)message, out);
+    PROTOBUF_C_ASSERT (message->base.descriptor == &exnode3__attribute__descriptor);
+    return protobuf_c_message_pack ((const ProtobufCMessage*)message, out);
 }
 size_t exnode3__attribute__pack_to_buffer
-                     (const Exnode3__Attribute *message,
-                      ProtobufCBuffer *buffer)
+(const Exnode3__Attribute *message,
+ ProtobufCBuffer *buffer)
 {
-  PROTOBUF_C_ASSERT (message->base.descriptor == &exnode3__attribute__descriptor);
-  return protobuf_c_message_pack_to_buffer ((const ProtobufCMessage*)message, buffer);
+    PROTOBUF_C_ASSERT (message->base.descriptor == &exnode3__attribute__descriptor);
+    return protobuf_c_message_pack_to_buffer ((const ProtobufCMessage*)message, buffer);
 }
 Exnode3__Attribute *
-       exnode3__attribute__unpack
-                     (ProtobufCAllocator  *allocator,
-                      size_t               len,
-                      const uint8_t       *data)
+exnode3__attribute__unpack
+(ProtobufCAllocator  *allocator,
+ size_t               len,
+ const uint8_t       *data)
 {
-  return (Exnode3__Attribute *)
-     protobuf_c_message_unpack (&exnode3__attribute__descriptor,
-                                allocator, len, data);
+    return (Exnode3__Attribute *)
+           protobuf_c_message_unpack (&exnode3__attribute__descriptor,
+                                      allocator, len, data);
 }
 void   exnode3__attribute__free_unpacked
-                     (Exnode3__Attribute *message,
-                      ProtobufCAllocator *allocator)
+(Exnode3__Attribute *message,
+ ProtobufCAllocator *allocator)
 {
-  PROTOBUF_C_ASSERT (message->base.descriptor == &exnode3__attribute__descriptor);
-  protobuf_c_message_free_unpacked ((ProtobufCMessage*)message, allocator);
+    PROTOBUF_C_ASSERT (message->base.descriptor == &exnode3__attribute__descriptor);
+    protobuf_c_message_free_unpacked ((ProtobufCMessage*)message, allocator);
 }
 void   exnode3__segment_header__init
-                     (Exnode3__SegmentHeader         *message)
+(Exnode3__SegmentHeader         *message)
 {
-  static Exnode3__SegmentHeader init_value = EXNODE3__SEGMENT_HEADER__INIT;
-  *message = init_value;
+    static Exnode3__SegmentHeader init_value = EXNODE3__SEGMENT_HEADER__INIT;
+    *message = init_value;
 }
 size_t exnode3__segment_header__get_packed_size
-                     (const Exnode3__SegmentHeader *message)
+(const Exnode3__SegmentHeader *message)
 {
-  PROTOBUF_C_ASSERT (message->base.descriptor == &exnode3__segment_header__descriptor);
-  return protobuf_c_message_get_packed_size ((const ProtobufCMessage*)(message));
+    PROTOBUF_C_ASSERT (message->base.descriptor == &exnode3__segment_header__descriptor);
+    return protobuf_c_message_get_packed_size ((const ProtobufCMessage*)(message));
 }
 size_t exnode3__segment_header__pack
-                     (const Exnode3__SegmentHeader *message,
-                      uint8_t       *out)
+(const Exnode3__SegmentHeader *message,
+ uint8_t       *out)
 {
-  PROTOBUF_C_ASSERT (message->base.descriptor == &exnode3__segment_header__descriptor);
-  return protobuf_c_message_pack ((const ProtobufCMessage*)message, out);
+    PROTOBUF_C_ASSERT (message->base.descriptor == &exnode3__segment_header__descriptor);
+    return protobuf_c_message_pack ((const ProtobufCMessage*)message, out);
 }
 size_t exnode3__segment_header__pack_to_buffer
-                     (const Exnode3__SegmentHeader *message,
-                      ProtobufCBuffer *buffer)
+(const Exnode3__SegmentHeader *message,
+ ProtobufCBuffer *buffer)
 {
-  PROTOBUF_C_ASSERT (message->base.descriptor == &exnode3__segment_header__descriptor);
-  return protobuf_c_message_pack_to_buffer ((const ProtobufCMessage*)message, buffer);
+    PROTOBUF_C_ASSERT (message->base.descriptor == &exnode3__segment_header__descriptor);
+    return protobuf_c_message_pack_to_buffer ((const ProtobufCMessage*)message, buffer);
 }
 Exnode3__SegmentHeader *
-       exnode3__segment_header__unpack
-                     (ProtobufCAllocator  *allocator,
-                      size_t               len,
-                      const uint8_t       *data)
+exnode3__segment_header__unpack
+(ProtobufCAllocator  *allocator,
+ size_t               len,
+ const uint8_t       *data)
 {
-  return (Exnode3__SegmentHeader *)
-     protobuf_c_message_unpack (&exnode3__segment_header__descriptor,
-                                allocator, len, data);
+    return (Exnode3__SegmentHeader *)
+           protobuf_c_message_unpack (&exnode3__segment_header__descriptor,
+                                      allocator, len, data);
 }
 void   exnode3__segment_header__free_unpacked
-                     (Exnode3__SegmentHeader *message,
-                      ProtobufCAllocator *allocator)
+(Exnode3__SegmentHeader *message,
+ ProtobufCAllocator *allocator)
 {
-  PROTOBUF_C_ASSERT (message->base.descriptor == &exnode3__segment_header__descriptor);
-  protobuf_c_message_free_unpacked ((ProtobufCMessage*)message, allocator);
+    PROTOBUF_C_ASSERT (message->base.descriptor == &exnode3__segment_header__descriptor);
+    protobuf_c_message_free_unpacked ((ProtobufCMessage*)message, allocator);
 }
 void   exnode3__jbob__init
-                     (Exnode3__JBOB         *message)
+(Exnode3__JBOB         *message)
 {
-  static Exnode3__JBOB init_value = EXNODE3__JBOB__INIT;
-  *message = init_value;
+    static Exnode3__JBOB init_value = EXNODE3__JBOB__INIT;
+    *message = init_value;
 }
 size_t exnode3__jbob__get_packed_size
-                     (const Exnode3__JBOB *message)
+(const Exnode3__JBOB *message)
 {
-  PROTOBUF_C_ASSERT (message->base.descriptor == &exnode3__jbob__descriptor);
-  return protobuf_c_message_get_packed_size ((const ProtobufCMessage*)(message));
+    PROTOBUF_C_ASSERT (message->base.descriptor == &exnode3__jbob__descriptor);
+    return protobuf_c_message_get_packed_size ((const ProtobufCMessage*)(message));
 }
 size_t exnode3__jbob__pack
-                     (const Exnode3__JBOB *message,
-                      uint8_t       *out)
+(const Exnode3__JBOB *message,
+ uint8_t       *out)
 {
-  PROTOBUF_C_ASSERT (message->base.descriptor == &exnode3__jbob__descriptor);
-  return protobuf_c_message_pack ((const ProtobufCMessage*)message, out);
+    PROTOBUF_C_ASSERT (message->base.descriptor == &exnode3__jbob__descriptor);
+    return protobuf_c_message_pack ((const ProtobufCMessage*)message, out);
 }
 size_t exnode3__jbob__pack_to_buffer
-                     (const Exnode3__JBOB *message,
-                      ProtobufCBuffer *buffer)
+(const Exnode3__JBOB *message,
+ ProtobufCBuffer *buffer)
 {
-  PROTOBUF_C_ASSERT (message->base.descriptor == &exnode3__jbob__descriptor);
-  return protobuf_c_message_pack_to_buffer ((const ProtobufCMessage*)message, buffer);
+    PROTOBUF_C_ASSERT (message->base.descriptor == &exnode3__jbob__descriptor);
+    return protobuf_c_message_pack_to_buffer ((const ProtobufCMessage*)message, buffer);
 }
 Exnode3__JBOB *
-       exnode3__jbob__unpack
-                     (ProtobufCAllocator  *allocator,
-                      size_t               len,
-                      const uint8_t       *data)
+exnode3__jbob__unpack
+(ProtobufCAllocator  *allocator,
+ size_t               len,
+ const uint8_t       *data)
 {
-  return (Exnode3__JBOB *)
-     protobuf_c_message_unpack (&exnode3__jbob__descriptor,
-                                allocator, len, data);
+    return (Exnode3__JBOB *)
+           protobuf_c_message_unpack (&exnode3__jbob__descriptor,
+                                      allocator, len, data);
 }
 void   exnode3__jbob__free_unpacked
-                     (Exnode3__JBOB *message,
-                      ProtobufCAllocator *allocator)
+(Exnode3__JBOB *message,
+ ProtobufCAllocator *allocator)
 {
-  PROTOBUF_C_ASSERT (message->base.descriptor == &exnode3__jbob__descriptor);
-  protobuf_c_message_free_unpacked ((ProtobufCMessage*)message, allocator);
+    PROTOBUF_C_ASSERT (message->base.descriptor == &exnode3__jbob__descriptor);
+    protobuf_c_message_free_unpacked ((ProtobufCMessage*)message, allocator);
 }
 void   exnode3__layout_segment__init
-                     (Exnode3__LayoutSegment         *message)
+(Exnode3__LayoutSegment         *message)
 {
-  static Exnode3__LayoutSegment init_value = EXNODE3__LAYOUT_SEGMENT__INIT;
-  *message = init_value;
+    static Exnode3__LayoutSegment init_value = EXNODE3__LAYOUT_SEGMENT__INIT;
+    *message = init_value;
 }
 size_t exnode3__layout_segment__get_packed_size
-                     (const Exnode3__LayoutSegment *message)
+(const Exnode3__LayoutSegment *message)
 {
-  PROTOBUF_C_ASSERT (message->base.descriptor == &exnode3__layout_segment__descriptor);
-  return protobuf_c_message_get_packed_size ((const ProtobufCMessage*)(message));
+    PROTOBUF_C_ASSERT (message->base.descriptor == &exnode3__layout_segment__descriptor);
+    return protobuf_c_message_get_packed_size ((const ProtobufCMessage*)(message));
 }
 size_t exnode3__layout_segment__pack
-                     (const Exnode3__LayoutSegment *message,
-                      uint8_t       *out)
+(const Exnode3__LayoutSegment *message,
+ uint8_t       *out)
 {
-  PROTOBUF_C_ASSERT (message->base.descriptor == &exnode3__layout_segment__descriptor);
-  return protobuf_c_message_pack ((const ProtobufCMessage*)message, out);
+    PROTOBUF_C_ASSERT (message->base.descriptor == &exnode3__layout_segment__descriptor);
+    return protobuf_c_message_pack ((const ProtobufCMessage*)message, out);
 }
 size_t exnode3__layout_segment__pack_to_buffer
-                     (const Exnode3__LayoutSegment *message,
-                      ProtobufCBuffer *buffer)
+(const Exnode3__LayoutSegment *message,
+ ProtobufCBuffer *buffer)
 {
-  PROTOBUF_C_ASSERT (message->base.descriptor == &exnode3__layout_segment__descriptor);
-  return protobuf_c_message_pack_to_buffer ((const ProtobufCMessage*)message, buffer);
+    PROTOBUF_C_ASSERT (message->base.descriptor == &exnode3__layout_segment__descriptor);
+    return protobuf_c_message_pack_to_buffer ((const ProtobufCMessage*)message, buffer);
 }
 Exnode3__LayoutSegment *
-       exnode3__layout_segment__unpack
-                     (ProtobufCAllocator  *allocator,
-                      size_t               len,
-                      const uint8_t       *data)
+exnode3__layout_segment__unpack
+(ProtobufCAllocator  *allocator,
+ size_t               len,
+ const uint8_t       *data)
 {
-  return (Exnode3__LayoutSegment *)
-     protobuf_c_message_unpack (&exnode3__layout_segment__descriptor,
-                                allocator, len, data);
+    return (Exnode3__LayoutSegment *)
+           protobuf_c_message_unpack (&exnode3__layout_segment__descriptor,
+                                      allocator, len, data);
 }
 void   exnode3__layout_segment__free_unpacked
-                     (Exnode3__LayoutSegment *message,
-                      ProtobufCAllocator *allocator)
+(Exnode3__LayoutSegment *message,
+ ProtobufCAllocator *allocator)
 {
-  PROTOBUF_C_ASSERT (message->base.descriptor == &exnode3__layout_segment__descriptor);
-  protobuf_c_message_free_unpacked ((ProtobufCMessage*)message, allocator);
+    PROTOBUF_C_ASSERT (message->base.descriptor == &exnode3__layout_segment__descriptor);
+    protobuf_c_message_free_unpacked ((ProtobufCMessage*)message, allocator);
 }
 void   exnode3__layout__init
-                     (Exnode3__Layout         *message)
+(Exnode3__Layout         *message)
 {
-  static Exnode3__Layout init_value = EXNODE3__LAYOUT__INIT;
-  *message = init_value;
+    static Exnode3__Layout init_value = EXNODE3__LAYOUT__INIT;
+    *message = init_value;
 }
 size_t exnode3__layout__get_packed_size
-                     (const Exnode3__Layout *message)
+(const Exnode3__Layout *message)
 {
-  PROTOBUF_C_ASSERT (message->base.descriptor == &exnode3__layout__descriptor);
-  return protobuf_c_message_get_packed_size ((const ProtobufCMessage*)(message));
+    PROTOBUF_C_ASSERT (message->base.descriptor == &exnode3__layout__descriptor);
+    return protobuf_c_message_get_packed_size ((const ProtobufCMessage*)(message));
 }
 size_t exnode3__layout__pack
-                     (const Exnode3__Layout *message,
-                      uint8_t       *out)
+(const Exnode3__Layout *message,
+ uint8_t       *out)
 {
-  PROTOBUF_C_ASSERT (message->base.descriptor == &exnode3__layout__descriptor);
-  return protobuf_c_message_pack ((const ProtobufCMessage*)message, out);
+    PROTOBUF_C_ASSERT (message->base.descriptor == &exnode3__layout__descriptor);
+    return protobuf_c_message_pack ((const ProtobufCMessage*)message, out);
 }
 size_t exnode3__layout__pack_to_buffer
-                     (const Exnode3__Layout *message,
-                      ProtobufCBuffer *buffer)
+(const Exnode3__Layout *message,
+ ProtobufCBuffer *buffer)
 {
-  PROTOBUF_C_ASSERT (message->base.descriptor == &exnode3__layout__descriptor);
-  return protobuf_c_message_pack_to_buffer ((const ProtobufCMessage*)message, buffer);
+    PROTOBUF_C_ASSERT (message->base.descriptor == &exnode3__layout__descriptor);
+    return protobuf_c_message_pack_to_buffer ((const ProtobufCMessage*)message, buffer);
 }
 Exnode3__Layout *
-       exnode3__layout__unpack
-                     (ProtobufCAllocator  *allocator,
-                      size_t               len,
-                      const uint8_t       *data)
+exnode3__layout__unpack
+(ProtobufCAllocator  *allocator,
+ size_t               len,
+ const uint8_t       *data)
 {
-  return (Exnode3__Layout *)
-     protobuf_c_message_unpack (&exnode3__layout__descriptor,
-                                allocator, len, data);
+    return (Exnode3__Layout *)
+           protobuf_c_message_unpack (&exnode3__layout__descriptor,
+                                      allocator, len, data);
 }
 void   exnode3__layout__free_unpacked
-                     (Exnode3__Layout *message,
-                      ProtobufCAllocator *allocator)
+(Exnode3__Layout *message,
+ ProtobufCAllocator *allocator)
 {
-  PROTOBUF_C_ASSERT (message->base.descriptor == &exnode3__layout__descriptor);
-  protobuf_c_message_free_unpacked ((ProtobufCMessage*)message, allocator);
+    PROTOBUF_C_ASSERT (message->base.descriptor == &exnode3__layout__descriptor);
+    protobuf_c_message_free_unpacked ((ProtobufCMessage*)message, allocator);
 }
 void   exnode3__view__init
-                     (Exnode3__View         *message)
+(Exnode3__View         *message)
 {
-  static Exnode3__View init_value = EXNODE3__VIEW__INIT;
-  *message = init_value;
+    static Exnode3__View init_value = EXNODE3__VIEW__INIT;
+    *message = init_value;
 }
 size_t exnode3__view__get_packed_size
-                     (const Exnode3__View *message)
+(const Exnode3__View *message)
 {
-  PROTOBUF_C_ASSERT (message->base.descriptor == &exnode3__view__descriptor);
-  return protobuf_c_message_get_packed_size ((const ProtobufCMessage*)(message));
+    PROTOBUF_C_ASSERT (message->base.descriptor == &exnode3__view__descriptor);
+    return protobuf_c_message_get_packed_size ((const ProtobufCMessage*)(message));
 }
 size_t exnode3__view__pack
-                     (const Exnode3__View *message,
-                      uint8_t       *out)
+(const Exnode3__View *message,
+ uint8_t       *out)
 {
-  PROTOBUF_C_ASSERT (message->base.descriptor == &exnode3__view__descriptor);
-  return protobuf_c_message_pack ((const ProtobufCMessage*)message, out);
+    PROTOBUF_C_ASSERT (message->base.descriptor == &exnode3__view__descriptor);
+    return protobuf_c_message_pack ((const ProtobufCMessage*)message, out);
 }
 size_t exnode3__view__pack_to_buffer
-                     (const Exnode3__View *message,
-                      ProtobufCBuffer *buffer)
+(const Exnode3__View *message,
+ ProtobufCBuffer *buffer)
 {
-  PROTOBUF_C_ASSERT (message->base.descriptor == &exnode3__view__descriptor);
-  return protobuf_c_message_pack_to_buffer ((const ProtobufCMessage*)message, buffer);
+    PROTOBUF_C_ASSERT (message->base.descriptor == &exnode3__view__descriptor);
+    return protobuf_c_message_pack_to_buffer ((const ProtobufCMessage*)message, buffer);
 }
 Exnode3__View *
-       exnode3__view__unpack
-                     (ProtobufCAllocator  *allocator,
-                      size_t               len,
-                      const uint8_t       *data)
+exnode3__view__unpack
+(ProtobufCAllocator  *allocator,
+ size_t               len,
+ const uint8_t       *data)
 {
-  return (Exnode3__View *)
-     protobuf_c_message_unpack (&exnode3__view__descriptor,
-                                allocator, len, data);
+    return (Exnode3__View *)
+           protobuf_c_message_unpack (&exnode3__view__descriptor,
+                                      allocator, len, data);
 }
 void   exnode3__view__free_unpacked
-                     (Exnode3__View *message,
-                      ProtobufCAllocator *allocator)
+(Exnode3__View *message,
+ ProtobufCAllocator *allocator)
 {
-  PROTOBUF_C_ASSERT (message->base.descriptor == &exnode3__view__descriptor);
-  protobuf_c_message_free_unpacked ((ProtobufCMessage*)message, allocator);
+    PROTOBUF_C_ASSERT (message->base.descriptor == &exnode3__view__descriptor);
+    protobuf_c_message_free_unpacked ((ProtobufCMessage*)message, allocator);
 }
 void   exnode3__exnode__init
-                     (Exnode3__Exnode         *message)
+(Exnode3__Exnode         *message)
 {
-  static Exnode3__Exnode init_value = EXNODE3__EXNODE__INIT;
-  *message = init_value;
+    static Exnode3__Exnode init_value = EXNODE3__EXNODE__INIT;
+    *message = init_value;
 }
 size_t exnode3__exnode__get_packed_size
-                     (const Exnode3__Exnode *message)
+(const Exnode3__Exnode *message)
 {
-  PROTOBUF_C_ASSERT (message->base.descriptor == &exnode3__exnode__descriptor);
-  return protobuf_c_message_get_packed_size ((const ProtobufCMessage*)(message));
+    PROTOBUF_C_ASSERT (message->base.descriptor == &exnode3__exnode__descriptor);
+    return protobuf_c_message_get_packed_size ((const ProtobufCMessage*)(message));
 }
 size_t exnode3__exnode__pack
-                     (const Exnode3__Exnode *message,
-                      uint8_t       *out)
+(const Exnode3__Exnode *message,
+ uint8_t       *out)
 {
-  PROTOBUF_C_ASSERT (message->base.descriptor == &exnode3__exnode__descriptor);
-  return protobuf_c_message_pack ((const ProtobufCMessage*)message, out);
+    PROTOBUF_C_ASSERT (message->base.descriptor == &exnode3__exnode__descriptor);
+    return protobuf_c_message_pack ((const ProtobufCMessage*)message, out);
 }
 size_t exnode3__exnode__pack_to_buffer
-                     (const Exnode3__Exnode *message,
-                      ProtobufCBuffer *buffer)
+(const Exnode3__Exnode *message,
+ ProtobufCBuffer *buffer)
 {
-  PROTOBUF_C_ASSERT (message->base.descriptor == &exnode3__exnode__descriptor);
-  return protobuf_c_message_pack_to_buffer ((const ProtobufCMessage*)message, buffer);
+    PROTOBUF_C_ASSERT (message->base.descriptor == &exnode3__exnode__descriptor);
+    return protobuf_c_message_pack_to_buffer ((const ProtobufCMessage*)message, buffer);
 }
 Exnode3__Exnode *
-       exnode3__exnode__unpack
-                     (ProtobufCAllocator  *allocator,
-                      size_t               len,
-                      const uint8_t       *data)
+exnode3__exnode__unpack
+(ProtobufCAllocator  *allocator,
+ size_t               len,
+ const uint8_t       *data)
 {
-  return (Exnode3__Exnode *)
-     protobuf_c_message_unpack (&exnode3__exnode__descriptor,
-                                allocator, len, data);
+    return (Exnode3__Exnode *)
+           protobuf_c_message_unpack (&exnode3__exnode__descriptor,
+                                      allocator, len, data);
 }
 void   exnode3__exnode__free_unpacked
-                     (Exnode3__Exnode *message,
-                      ProtobufCAllocator *allocator)
+(Exnode3__Exnode *message,
+ ProtobufCAllocator *allocator)
 {
-  PROTOBUF_C_ASSERT (message->base.descriptor == &exnode3__exnode__descriptor);
-  protobuf_c_message_free_unpacked ((ProtobufCMessage*)message, allocator);
+    PROTOBUF_C_ASSERT (message->base.descriptor == &exnode3__exnode__descriptor);
+    protobuf_c_message_free_unpacked ((ProtobufCMessage*)message, allocator);
 }
-static const ProtobufCFieldDescriptor exnode3__allocation__field_descriptors[7] =
-{
-  {
-    "id",
-    1,
-    PROTOBUF_C_LABEL_REQUIRED,
-    PROTOBUF_C_TYPE_INT32,
-    0,   /* quantifier_offset */
-    PROTOBUF_C_OFFSETOF(Exnode3__Allocation, id),
-    NULL,
-    NULL,
-    0,            /* packed */
-    0,NULL,NULL    /* reserved1,reserved2, etc */
-  },
-  {
-    "size",
-    2,
-    PROTOBUF_C_LABEL_REQUIRED,
-    PROTOBUF_C_TYPE_INT64,
-    0,   /* quantifier_offset */
-    PROTOBUF_C_OFFSETOF(Exnode3__Allocation, size),
-    NULL,
-    NULL,
-    0,            /* packed */
-    0,NULL,NULL    /* reserved1,reserved2, etc */
-  },
-  {
-    "max_size",
-    3,
-    PROTOBUF_C_LABEL_REQUIRED,
-    PROTOBUF_C_TYPE_INT64,
-    0,   /* quantifier_offset */
-    PROTOBUF_C_OFFSETOF(Exnode3__Allocation, max_size),
-    NULL,
-    NULL,
-    0,            /* packed */
-    0,NULL,NULL    /* reserved1,reserved2, etc */
-  },
-  {
-    "ref_count",
-    4,
-    PROTOBUF_C_LABEL_REQUIRED,
-    PROTOBUF_C_TYPE_INT32,
-    0,   /* quantifier_offset */
-    PROTOBUF_C_OFFSETOF(Exnode3__Allocation, ref_count),
-    NULL,
-    NULL,
-    0,            /* packed */
-    0,NULL,NULL    /* reserved1,reserved2, etc */
-  },
-  {
-    "write_key",
-    5,
-    PROTOBUF_C_LABEL_OPTIONAL,
-    PROTOBUF_C_TYPE_STRING,
-    0,   /* quantifier_offset */
-    PROTOBUF_C_OFFSETOF(Exnode3__Allocation, write_key),
-    NULL,
-    NULL,
-    0,            /* packed */
-    0,NULL,NULL    /* reserved1,reserved2, etc */
-  },
-  {
-    "read_key",
-    6,
-    PROTOBUF_C_LABEL_OPTIONAL,
-    PROTOBUF_C_TYPE_STRING,
-    0,   /* quantifier_offset */
-    PROTOBUF_C_OFFSETOF(Exnode3__Allocation, read_key),
-    NULL,
-    NULL,
-    0,            /* packed */
-    0,NULL,NULL    /* reserved1,reserved2, etc */
-  },
-  {
-    "manage_key",
-    7,
-    PROTOBUF_C_LABEL_OPTIONAL,
-    PROTOBUF_C_TYPE_STRING,
-    0,   /* quantifier_offset */
-    PROTOBUF_C_OFFSETOF(Exnode3__Allocation, manage_key),
-    NULL,
-    NULL,
-    0,            /* packed */
-    0,NULL,NULL    /* reserved1,reserved2, etc */
-  },
+static const ProtobufCFieldDescriptor exnode3__allocation__field_descriptors[7] = {
+    {
+        "id",
+        1,
+        PROTOBUF_C_LABEL_REQUIRED,
+        PROTOBUF_C_TYPE_INT32,
+        0,   /* quantifier_offset */
+        PROTOBUF_C_OFFSETOF(Exnode3__Allocation, id),
+        NULL,
+        NULL,
+        0,            /* packed */
+        0,NULL,NULL    /* reserved1,reserved2, etc */
+    },
+    {
+        "size",
+        2,
+        PROTOBUF_C_LABEL_REQUIRED,
+        PROTOBUF_C_TYPE_INT64,
+        0,   /* quantifier_offset */
+        PROTOBUF_C_OFFSETOF(Exnode3__Allocation, size),
+        NULL,
+        NULL,
+        0,            /* packed */
+        0,NULL,NULL    /* reserved1,reserved2, etc */
+    },
+    {
+        "max_size",
+        3,
+        PROTOBUF_C_LABEL_REQUIRED,
+        PROTOBUF_C_TYPE_INT64,
+        0,   /* quantifier_offset */
+        PROTOBUF_C_OFFSETOF(Exnode3__Allocation, max_size),
+        NULL,
+        NULL,
+        0,            /* packed */
+        0,NULL,NULL    /* reserved1,reserved2, etc */
+    },
+    {
+        "ref_count",
+        4,
+        PROTOBUF_C_LABEL_REQUIRED,
+        PROTOBUF_C_TYPE_INT32,
+        0,   /* quantifier_offset */
+        PROTOBUF_C_OFFSETOF(Exnode3__Allocation, ref_count),
+        NULL,
+        NULL,
+        0,            /* packed */
+        0,NULL,NULL    /* reserved1,reserved2, etc */
+    },
+    {
+        "write_key",
+        5,
+        PROTOBUF_C_LABEL_OPTIONAL,
+        PROTOBUF_C_TYPE_STRING,
+        0,   /* quantifier_offset */
+        PROTOBUF_C_OFFSETOF(Exnode3__Allocation, write_key),
+        NULL,
+        NULL,
+        0,            /* packed */
+        0,NULL,NULL    /* reserved1,reserved2, etc */
+    },
+    {
+        "read_key",
+        6,
+        PROTOBUF_C_LABEL_OPTIONAL,
+        PROTOBUF_C_TYPE_STRING,
+        0,   /* quantifier_offset */
+        PROTOBUF_C_OFFSETOF(Exnode3__Allocation, read_key),
+        NULL,
+        NULL,
+        0,            /* packed */
+        0,NULL,NULL    /* reserved1,reserved2, etc */
+    },
+    {
+        "manage_key",
+        7,
+        PROTOBUF_C_LABEL_OPTIONAL,
+        PROTOBUF_C_TYPE_STRING,
+        0,   /* quantifier_offset */
+        PROTOBUF_C_OFFSETOF(Exnode3__Allocation, manage_key),
+        NULL,
+        NULL,
+        0,            /* packed */
+        0,NULL,NULL    /* reserved1,reserved2, etc */
+    },
 };
 static const unsigned exnode3__allocation__field_indices_by_name[] = {
-  0,   /* field[0] = id */
-  6,   /* field[6] = manage_key */
-  2,   /* field[2] = max_size */
-  5,   /* field[5] = read_key */
-  3,   /* field[3] = ref_count */
-  1,   /* field[1] = size */
-  4,   /* field[4] = write_key */
+    0,   /* field[0] = id */
+    6,   /* field[6] = manage_key */
+    2,   /* field[2] = max_size */
+    5,   /* field[5] = read_key */
+    3,   /* field[3] = ref_count */
+    1,   /* field[1] = size */
+    4,   /* field[4] = write_key */
 };
-static const ProtobufCIntRange exnode3__allocation__number_ranges[1 + 1] =
-{
-  { 1, 0 },
-  { 0, 7 }
+static const ProtobufCIntRange exnode3__allocation__number_ranges[1 + 1] = {
+    { 1, 0 },
+    { 0, 7 }
 };
-const ProtobufCMessageDescriptor exnode3__allocation__descriptor =
-{
-  PROTOBUF_C_MESSAGE_DESCRIPTOR_MAGIC,
-  "exnode3.Allocation",
-  "Allocation",
-  "Exnode3__Allocation",
-  "exnode3",
-  sizeof(Exnode3__Allocation),
-  7,
-  exnode3__allocation__field_descriptors,
-  exnode3__allocation__field_indices_by_name,
-  1,  exnode3__allocation__number_ranges,
-  (ProtobufCMessageInit) exnode3__allocation__init,
-  NULL,NULL,NULL    /* reserved[123] */
+const ProtobufCMessageDescriptor exnode3__allocation__descriptor = {
+    PROTOBUF_C_MESSAGE_DESCRIPTOR_MAGIC,
+    "exnode3.Allocation",
+    "Allocation",
+    "Exnode3__Allocation",
+    "exnode3",
+    sizeof(Exnode3__Allocation),
+    7,
+    exnode3__allocation__field_descriptors,
+    exnode3__allocation__field_indices_by_name,
+    1,  exnode3__allocation__number_ranges,
+    (ProtobufCMessageInit) exnode3__allocation__init,
+    NULL,NULL,NULL    /* reserved[123] */
 };
-static const ProtobufCFieldDescriptor exnode3__allocation__table__field_descriptors[1] =
-{
-  {
-    "allocs",
-    1,
-    PROTOBUF_C_LABEL_REPEATED,
-    PROTOBUF_C_TYPE_MESSAGE,
-    PROTOBUF_C_OFFSETOF(Exnode3__AllocationTable, n_allocs),
-    PROTOBUF_C_OFFSETOF(Exnode3__AllocationTable, allocs),
-    &exnode3__allocation__descriptor,
-    NULL,
-    0,            /* packed */
-    0,NULL,NULL    /* reserved1,reserved2, etc */
-  },
+static const ProtobufCFieldDescriptor exnode3__allocation__table__field_descriptors[1] = {
+    {
+        "allocs",
+        1,
+        PROTOBUF_C_LABEL_REPEATED,
+        PROTOBUF_C_TYPE_MESSAGE,
+        PROTOBUF_C_OFFSETOF(Exnode3__AllocationTable, n_allocs),
+        PROTOBUF_C_OFFSETOF(Exnode3__AllocationTable, allocs),
+        &exnode3__allocation__descriptor,
+        NULL,
+        0,            /* packed */
+        0,NULL,NULL    /* reserved1,reserved2, etc */
+    },
 };
 static const unsigned exnode3__allocation__table__field_indices_by_name[] = {
-  0,   /* field[0] = allocs */
+    0,   /* field[0] = allocs */
 };
-static const ProtobufCIntRange exnode3__allocation__table__number_ranges[1 + 1] =
-{
-  { 1, 0 },
-  { 0, 1 }
+static const ProtobufCIntRange exnode3__allocation__table__number_ranges[1 + 1] = {
+    { 1, 0 },
+    { 0, 1 }
 };
-const ProtobufCMessageDescriptor exnode3__allocation__table__descriptor =
-{
-  PROTOBUF_C_MESSAGE_DESCRIPTOR_MAGIC,
-  "exnode3.Allocation_Table",
-  "AllocationTable",
-  "Exnode3__AllocationTable",
-  "exnode3",
-  sizeof(Exnode3__AllocationTable),
-  1,
-  exnode3__allocation__table__field_descriptors,
-  exnode3__allocation__table__field_indices_by_name,
-  1,  exnode3__allocation__table__number_ranges,
-  (ProtobufCMessageInit) exnode3__allocation__table__init,
-  NULL,NULL,NULL    /* reserved[123] */
-};
-static const ProtobufCFieldDescriptor exnode3__block__field_descriptors[4] =
-{
-  {
-    "allocation_offset",
+const ProtobufCMessageDescriptor exnode3__allocation__table__descriptor = {
+    PROTOBUF_C_MESSAGE_DESCRIPTOR_MAGIC,
+    "exnode3.Allocation_Table",
+    "AllocationTable",
+    "Exnode3__AllocationTable",
+    "exnode3",
+    sizeof(Exnode3__AllocationTable),
     1,
-    PROTOBUF_C_LABEL_REQUIRED,
-    PROTOBUF_C_TYPE_INT64,
-    0,   /* quantifier_offset */
-    PROTOBUF_C_OFFSETOF(Exnode3__Block, allocation_offset),
-    NULL,
-    NULL,
-    0,            /* packed */
-    0,NULL,NULL    /* reserved1,reserved2, etc */
-  },
-  {
-    "logical_offset",
-    2,
-    PROTOBUF_C_LABEL_REQUIRED,
-    PROTOBUF_C_TYPE_INT64,
-    0,   /* quantifier_offset */
-    PROTOBUF_C_OFFSETOF(Exnode3__Block, logical_offset),
-    NULL,
-    NULL,
-    0,            /* packed */
-    0,NULL,NULL    /* reserved1,reserved2, etc */
-  },
-  {
-    "len",
-    3,
-    PROTOBUF_C_LABEL_REQUIRED,
-    PROTOBUF_C_TYPE_INT64,
-    0,   /* quantifier_offset */
-    PROTOBUF_C_OFFSETOF(Exnode3__Block, len),
-    NULL,
-    NULL,
-    0,            /* packed */
-    0,NULL,NULL    /* reserved1,reserved2, etc */
-  },
-  {
-    "alloc_id",
-    4,
-    PROTOBUF_C_LABEL_REQUIRED,
-    PROTOBUF_C_TYPE_INT32,
-    0,   /* quantifier_offset */
-    PROTOBUF_C_OFFSETOF(Exnode3__Block, alloc_id),
-    NULL,
-    NULL,
-    0,            /* packed */
-    0,NULL,NULL    /* reserved1,reserved2, etc */
-  },
+    exnode3__allocation__table__field_descriptors,
+    exnode3__allocation__table__field_indices_by_name,
+    1,  exnode3__allocation__table__number_ranges,
+    (ProtobufCMessageInit) exnode3__allocation__table__init,
+    NULL,NULL,NULL    /* reserved[123] */
+};
+static const ProtobufCFieldDescriptor exnode3__block__field_descriptors[4] = {
+    {
+        "allocation_offset",
+        1,
+        PROTOBUF_C_LABEL_REQUIRED,
+        PROTOBUF_C_TYPE_INT64,
+        0,   /* quantifier_offset */
+        PROTOBUF_C_OFFSETOF(Exnode3__Block, allocation_offset),
+        NULL,
+        NULL,
+        0,            /* packed */
+        0,NULL,NULL    /* reserved1,reserved2, etc */
+    },
+    {
+        "logical_offset",
+        2,
+        PROTOBUF_C_LABEL_REQUIRED,
+        PROTOBUF_C_TYPE_INT64,
+        0,   /* quantifier_offset */
+        PROTOBUF_C_OFFSETOF(Exnode3__Block, logical_offset),
+        NULL,
+        NULL,
+        0,            /* packed */
+        0,NULL,NULL    /* reserved1,reserved2, etc */
+    },
+    {
+        "len",
+        3,
+        PROTOBUF_C_LABEL_REQUIRED,
+        PROTOBUF_C_TYPE_INT64,
+        0,   /* quantifier_offset */
+        PROTOBUF_C_OFFSETOF(Exnode3__Block, len),
+        NULL,
+        NULL,
+        0,            /* packed */
+        0,NULL,NULL    /* reserved1,reserved2, etc */
+    },
+    {
+        "alloc_id",
+        4,
+        PROTOBUF_C_LABEL_REQUIRED,
+        PROTOBUF_C_TYPE_INT32,
+        0,   /* quantifier_offset */
+        PROTOBUF_C_OFFSETOF(Exnode3__Block, alloc_id),
+        NULL,
+        NULL,
+        0,            /* packed */
+        0,NULL,NULL    /* reserved1,reserved2, etc */
+    },
 };
 static const unsigned exnode3__block__field_indices_by_name[] = {
-  3,   /* field[3] = alloc_id */
-  0,   /* field[0] = allocation_offset */
-  2,   /* field[2] = len */
-  1,   /* field[1] = logical_offset */
+    3,   /* field[3] = alloc_id */
+    0,   /* field[0] = allocation_offset */
+    2,   /* field[2] = len */
+    1,   /* field[1] = logical_offset */
 };
-static const ProtobufCIntRange exnode3__block__number_ranges[1 + 1] =
-{
-  { 1, 0 },
-  { 0, 4 }
+static const ProtobufCIntRange exnode3__block__number_ranges[1 + 1] = {
+    { 1, 0 },
+    { 0, 4 }
 };
-const ProtobufCMessageDescriptor exnode3__block__descriptor =
-{
-  PROTOBUF_C_MESSAGE_DESCRIPTOR_MAGIC,
-  "exnode3.Block",
-  "Block",
-  "Exnode3__Block",
-  "exnode3",
-  sizeof(Exnode3__Block),
-  4,
-  exnode3__block__field_descriptors,
-  exnode3__block__field_indices_by_name,
-  1,  exnode3__block__number_ranges,
-  (ProtobufCMessageInit) exnode3__block__init,
-  NULL,NULL,NULL    /* reserved[123] */
+const ProtobufCMessageDescriptor exnode3__block__descriptor = {
+    PROTOBUF_C_MESSAGE_DESCRIPTOR_MAGIC,
+    "exnode3.Block",
+    "Block",
+    "Exnode3__Block",
+    "exnode3",
+    sizeof(Exnode3__Block),
+    4,
+    exnode3__block__field_descriptors,
+    exnode3__block__field_indices_by_name,
+    1,  exnode3__block__number_ranges,
+    (ProtobufCMessageInit) exnode3__block__init,
+    NULL,NULL,NULL    /* reserved[123] */
 };
-static const ProtobufCFieldDescriptor exnode3__attribute__field_descriptors[2] =
-{
-  {
-    "key",
-    1,
-    PROTOBUF_C_LABEL_REQUIRED,
-    PROTOBUF_C_TYPE_STRING,
-    0,   /* quantifier_offset */
-    PROTOBUF_C_OFFSETOF(Exnode3__Attribute, key),
-    NULL,
-    NULL,
-    0,            /* packed */
-    0,NULL,NULL    /* reserved1,reserved2, etc */
-  },
-  {
-    "value",
-    2,
-    PROTOBUF_C_LABEL_REQUIRED,
-    PROTOBUF_C_TYPE_STRING,
-    0,   /* quantifier_offset */
-    PROTOBUF_C_OFFSETOF(Exnode3__Attribute, value),
-    NULL,
-    NULL,
-    0,            /* packed */
-    0,NULL,NULL    /* reserved1,reserved2, etc */
-  },
+static const ProtobufCFieldDescriptor exnode3__attribute__field_descriptors[2] = {
+    {
+        "key",
+        1,
+        PROTOBUF_C_LABEL_REQUIRED,
+        PROTOBUF_C_TYPE_STRING,
+        0,   /* quantifier_offset */
+        PROTOBUF_C_OFFSETOF(Exnode3__Attribute, key),
+        NULL,
+        NULL,
+        0,            /* packed */
+        0,NULL,NULL    /* reserved1,reserved2, etc */
+    },
+    {
+        "value",
+        2,
+        PROTOBUF_C_LABEL_REQUIRED,
+        PROTOBUF_C_TYPE_STRING,
+        0,   /* quantifier_offset */
+        PROTOBUF_C_OFFSETOF(Exnode3__Attribute, value),
+        NULL,
+        NULL,
+        0,            /* packed */
+        0,NULL,NULL    /* reserved1,reserved2, etc */
+    },
 };
 static const unsigned exnode3__attribute__field_indices_by_name[] = {
-  0,   /* field[0] = key */
-  1,   /* field[1] = value */
+    0,   /* field[0] = key */
+    1,   /* field[1] = value */
 };
-static const ProtobufCIntRange exnode3__attribute__number_ranges[1 + 1] =
-{
-  { 1, 0 },
-  { 0, 2 }
+static const ProtobufCIntRange exnode3__attribute__number_ranges[1 + 1] = {
+    { 1, 0 },
+    { 0, 2 }
 };
-const ProtobufCMessageDescriptor exnode3__attribute__descriptor =
-{
-  PROTOBUF_C_MESSAGE_DESCRIPTOR_MAGIC,
-  "exnode3.Attribute",
-  "Attribute",
-  "Exnode3__Attribute",
-  "exnode3",
-  sizeof(Exnode3__Attribute),
-  2,
-  exnode3__attribute__field_descriptors,
-  exnode3__attribute__field_indices_by_name,
-  1,  exnode3__attribute__number_ranges,
-  (ProtobufCMessageInit) exnode3__attribute__init,
-  NULL,NULL,NULL    /* reserved[123] */
-};
-static const ProtobufCFieldDescriptor exnode3__segment_header__field_descriptors[7] =
-{
-  {
-    "name",
-    1,
-    PROTOBUF_C_LABEL_REQUIRED,
-    PROTOBUF_C_TYPE_STRING,
-    0,   /* quantifier_offset */
-    PROTOBUF_C_OFFSETOF(Exnode3__SegmentHeader, name),
-    NULL,
-    NULL,
-    0,            /* packed */
-    0,NULL,NULL    /* reserved1,reserved2, etc */
-  },
-  {
-    "id",
+const ProtobufCMessageDescriptor exnode3__attribute__descriptor = {
+    PROTOBUF_C_MESSAGE_DESCRIPTOR_MAGIC,
+    "exnode3.Attribute",
+    "Attribute",
+    "Exnode3__Attribute",
+    "exnode3",
+    sizeof(Exnode3__Attribute),
     2,
-    PROTOBUF_C_LABEL_REQUIRED,
-    PROTOBUF_C_TYPE_INT32,
-    0,   /* quantifier_offset */
-    PROTOBUF_C_OFFSETOF(Exnode3__SegmentHeader, id),
-    NULL,
-    NULL,
-    0,            /* packed */
-    0,NULL,NULL    /* reserved1,reserved2, etc */
-  },
-  {
-    "version",
-    3,
-    PROTOBUF_C_LABEL_REQUIRED,
-    PROTOBUF_C_TYPE_INT64,
-    0,   /* quantifier_offset */
-    PROTOBUF_C_OFFSETOF(Exnode3__SegmentHeader, version),
-    NULL,
-    NULL,
-    0,            /* packed */
-    0,NULL,NULL    /* reserved1,reserved2, etc */
-  },
-  {
-    "attr",
-    4,
-    PROTOBUF_C_LABEL_REPEATED,
-    PROTOBUF_C_TYPE_MESSAGE,
-    PROTOBUF_C_OFFSETOF(Exnode3__SegmentHeader, n_attr),
-    PROTOBUF_C_OFFSETOF(Exnode3__SegmentHeader, attr),
-    &exnode3__attribute__descriptor,
-    NULL,
-    0,            /* packed */
-    0,NULL,NULL    /* reserved1,reserved2, etc */
-  },
-  {
-    "state",
-    5,
-    PROTOBUF_C_LABEL_REQUIRED,
-    PROTOBUF_C_TYPE_STRING,
-    0,   /* quantifier_offset */
-    PROTOBUF_C_OFFSETOF(Exnode3__SegmentHeader, state),
-    NULL,
-    NULL,
-    0,            /* packed */
-    0,NULL,NULL    /* reserved1,reserved2, etc */
-  },
-  {
-    "total_size",
-    6,
-    PROTOBUF_C_LABEL_REQUIRED,
-    PROTOBUF_C_TYPE_INT64,
-    0,   /* quantifier_offset */
-    PROTOBUF_C_OFFSETOF(Exnode3__SegmentHeader, total_size),
-    NULL,
-    NULL,
-    0,            /* packed */
-    0,NULL,NULL    /* reserved1,reserved2, etc */
-  },
-  {
-    "type",
-    7,
-    PROTOBUF_C_LABEL_REQUIRED,
-    PROTOBUF_C_TYPE_STRING,
-    0,   /* quantifier_offset */
-    PROTOBUF_C_OFFSETOF(Exnode3__SegmentHeader, type),
-    NULL,
-    NULL,
-    0,            /* packed */
-    0,NULL,NULL    /* reserved1,reserved2, etc */
-  },
+    exnode3__attribute__field_descriptors,
+    exnode3__attribute__field_indices_by_name,
+    1,  exnode3__attribute__number_ranges,
+    (ProtobufCMessageInit) exnode3__attribute__init,
+    NULL,NULL,NULL    /* reserved[123] */
+};
+static const ProtobufCFieldDescriptor exnode3__segment_header__field_descriptors[7] = {
+    {
+        "name",
+        1,
+        PROTOBUF_C_LABEL_REQUIRED,
+        PROTOBUF_C_TYPE_STRING,
+        0,   /* quantifier_offset */
+        PROTOBUF_C_OFFSETOF(Exnode3__SegmentHeader, name),
+        NULL,
+        NULL,
+        0,            /* packed */
+        0,NULL,NULL    /* reserved1,reserved2, etc */
+    },
+    {
+        "id",
+        2,
+        PROTOBUF_C_LABEL_REQUIRED,
+        PROTOBUF_C_TYPE_INT32,
+        0,   /* quantifier_offset */
+        PROTOBUF_C_OFFSETOF(Exnode3__SegmentHeader, id),
+        NULL,
+        NULL,
+        0,            /* packed */
+        0,NULL,NULL    /* reserved1,reserved2, etc */
+    },
+    {
+        "version",
+        3,
+        PROTOBUF_C_LABEL_REQUIRED,
+        PROTOBUF_C_TYPE_INT64,
+        0,   /* quantifier_offset */
+        PROTOBUF_C_OFFSETOF(Exnode3__SegmentHeader, version),
+        NULL,
+        NULL,
+        0,            /* packed */
+        0,NULL,NULL    /* reserved1,reserved2, etc */
+    },
+    {
+        "attr",
+        4,
+        PROTOBUF_C_LABEL_REPEATED,
+        PROTOBUF_C_TYPE_MESSAGE,
+        PROTOBUF_C_OFFSETOF(Exnode3__SegmentHeader, n_attr),
+        PROTOBUF_C_OFFSETOF(Exnode3__SegmentHeader, attr),
+        &exnode3__attribute__descriptor,
+        NULL,
+        0,            /* packed */
+        0,NULL,NULL    /* reserved1,reserved2, etc */
+    },
+    {
+        "state",
+        5,
+        PROTOBUF_C_LABEL_REQUIRED,
+        PROTOBUF_C_TYPE_STRING,
+        0,   /* quantifier_offset */
+        PROTOBUF_C_OFFSETOF(Exnode3__SegmentHeader, state),
+        NULL,
+        NULL,
+        0,            /* packed */
+        0,NULL,NULL    /* reserved1,reserved2, etc */
+    },
+    {
+        "total_size",
+        6,
+        PROTOBUF_C_LABEL_REQUIRED,
+        PROTOBUF_C_TYPE_INT64,
+        0,   /* quantifier_offset */
+        PROTOBUF_C_OFFSETOF(Exnode3__SegmentHeader, total_size),
+        NULL,
+        NULL,
+        0,            /* packed */
+        0,NULL,NULL    /* reserved1,reserved2, etc */
+    },
+    {
+        "type",
+        7,
+        PROTOBUF_C_LABEL_REQUIRED,
+        PROTOBUF_C_TYPE_STRING,
+        0,   /* quantifier_offset */
+        PROTOBUF_C_OFFSETOF(Exnode3__SegmentHeader, type),
+        NULL,
+        NULL,
+        0,            /* packed */
+        0,NULL,NULL    /* reserved1,reserved2, etc */
+    },
 };
 static const unsigned exnode3__segment_header__field_indices_by_name[] = {
-  3,   /* field[3] = attr */
-  1,   /* field[1] = id */
-  0,   /* field[0] = name */
-  4,   /* field[4] = state */
-  5,   /* field[5] = total_size */
-  6,   /* field[6] = type */
-  2,   /* field[2] = version */
+    3,   /* field[3] = attr */
+    1,   /* field[1] = id */
+    0,   /* field[0] = name */
+    4,   /* field[4] = state */
+    5,   /* field[5] = total_size */
+    6,   /* field[6] = type */
+    2,   /* field[2] = version */
 };
-static const ProtobufCIntRange exnode3__segment_header__number_ranges[1 + 1] =
-{
-  { 1, 0 },
-  { 0, 7 }
+static const ProtobufCIntRange exnode3__segment_header__number_ranges[1 + 1] = {
+    { 1, 0 },
+    { 0, 7 }
 };
-const ProtobufCMessageDescriptor exnode3__segment_header__descriptor =
-{
-  PROTOBUF_C_MESSAGE_DESCRIPTOR_MAGIC,
-  "exnode3.SegmentHeader",
-  "SegmentHeader",
-  "Exnode3__SegmentHeader",
-  "exnode3",
-  sizeof(Exnode3__SegmentHeader),
-  7,
-  exnode3__segment_header__field_descriptors,
-  exnode3__segment_header__field_indices_by_name,
-  1,  exnode3__segment_header__number_ranges,
-  (ProtobufCMessageInit) exnode3__segment_header__init,
-  NULL,NULL,NULL    /* reserved[123] */
+const ProtobufCMessageDescriptor exnode3__segment_header__descriptor = {
+    PROTOBUF_C_MESSAGE_DESCRIPTOR_MAGIC,
+    "exnode3.SegmentHeader",
+    "SegmentHeader",
+    "Exnode3__SegmentHeader",
+    "exnode3",
+    sizeof(Exnode3__SegmentHeader),
+    7,
+    exnode3__segment_header__field_descriptors,
+    exnode3__segment_header__field_indices_by_name,
+    1,  exnode3__segment_header__number_ranges,
+    (ProtobufCMessageInit) exnode3__segment_header__init,
+    NULL,NULL,NULL    /* reserved[123] */
 };
-static const ProtobufCFieldDescriptor exnode3__jbob__field_descriptors[2] =
-{
-  {
-    "id",
-    1,
-    PROTOBUF_C_LABEL_REQUIRED,
-    PROTOBUF_C_TYPE_INT32,
-    0,   /* quantifier_offset */
-    PROTOBUF_C_OFFSETOF(Exnode3__JBOB, id),
-    NULL,
-    NULL,
-    0,            /* packed */
-    0,NULL,NULL    /* reserved1,reserved2, etc */
-  },
-  {
-    "block",
-    2,
-    PROTOBUF_C_LABEL_REPEATED,
-    PROTOBUF_C_TYPE_MESSAGE,
-    PROTOBUF_C_OFFSETOF(Exnode3__JBOB, n_block),
-    PROTOBUF_C_OFFSETOF(Exnode3__JBOB, block),
-    &exnode3__block__descriptor,
-    NULL,
-    0,            /* packed */
-    0,NULL,NULL    /* reserved1,reserved2, etc */
-  },
+static const ProtobufCFieldDescriptor exnode3__jbob__field_descriptors[2] = {
+    {
+        "id",
+        1,
+        PROTOBUF_C_LABEL_REQUIRED,
+        PROTOBUF_C_TYPE_INT32,
+        0,   /* quantifier_offset */
+        PROTOBUF_C_OFFSETOF(Exnode3__JBOB, id),
+        NULL,
+        NULL,
+        0,            /* packed */
+        0,NULL,NULL    /* reserved1,reserved2, etc */
+    },
+    {
+        "block",
+        2,
+        PROTOBUF_C_LABEL_REPEATED,
+        PROTOBUF_C_TYPE_MESSAGE,
+        PROTOBUF_C_OFFSETOF(Exnode3__JBOB, n_block),
+        PROTOBUF_C_OFFSETOF(Exnode3__JBOB, block),
+        &exnode3__block__descriptor,
+        NULL,
+        0,            /* packed */
+        0,NULL,NULL    /* reserved1,reserved2, etc */
+    },
 };
 static const unsigned exnode3__jbob__field_indices_by_name[] = {
-  1,   /* field[1] = block */
-  0,   /* field[0] = id */
+    1,   /* field[1] = block */
+    0,   /* field[0] = id */
 };
-static const ProtobufCIntRange exnode3__jbob__number_ranges[1 + 1] =
-{
-  { 1, 0 },
-  { 0, 2 }
+static const ProtobufCIntRange exnode3__jbob__number_ranges[1 + 1] = {
+    { 1, 0 },
+    { 0, 2 }
 };
-const ProtobufCMessageDescriptor exnode3__jbob__descriptor =
-{
-  PROTOBUF_C_MESSAGE_DESCRIPTOR_MAGIC,
-  "exnode3.JBOB",
-  "JBOB",
-  "Exnode3__JBOB",
-  "exnode3",
-  sizeof(Exnode3__JBOB),
-  2,
-  exnode3__jbob__field_descriptors,
-  exnode3__jbob__field_indices_by_name,
-  1,  exnode3__jbob__number_ranges,
-  (ProtobufCMessageInit) exnode3__jbob__init,
-  NULL,NULL,NULL    /* reserved[123] */
-};
-static const ProtobufCFieldDescriptor exnode3__layout_segment__field_descriptors[4] =
-{
-  {
-    "segment_id",
-    1,
-    PROTOBUF_C_LABEL_REQUIRED,
-    PROTOBUF_C_TYPE_INT32,
-    0,   /* quantifier_offset */
-    PROTOBUF_C_OFFSETOF(Exnode3__LayoutSegment, segment_id),
-    NULL,
-    NULL,
-    0,            /* packed */
-    0,NULL,NULL    /* reserved1,reserved2, etc */
-  },
-  {
-    "layout_offset",
+const ProtobufCMessageDescriptor exnode3__jbob__descriptor = {
+    PROTOBUF_C_MESSAGE_DESCRIPTOR_MAGIC,
+    "exnode3.JBOB",
+    "JBOB",
+    "Exnode3__JBOB",
+    "exnode3",
+    sizeof(Exnode3__JBOB),
     2,
-    PROTOBUF_C_LABEL_REQUIRED,
-    PROTOBUF_C_TYPE_INT64,
-    0,   /* quantifier_offset */
-    PROTOBUF_C_OFFSETOF(Exnode3__LayoutSegment, layout_offset),
-    NULL,
-    NULL,
-    0,            /* packed */
-    0,NULL,NULL    /* reserved1,reserved2, etc */
-  },
-  {
-    "segment_offset",
-    3,
-    PROTOBUF_C_LABEL_REQUIRED,
-    PROTOBUF_C_TYPE_INT64,
-    0,   /* quantifier_offset */
-    PROTOBUF_C_OFFSETOF(Exnode3__LayoutSegment, segment_offset),
-    NULL,
-    NULL,
-    0,            /* packed */
-    0,NULL,NULL    /* reserved1,reserved2, etc */
-  },
-  {
-    "length",
-    4,
-    PROTOBUF_C_LABEL_REQUIRED,
-    PROTOBUF_C_TYPE_INT64,
-    0,   /* quantifier_offset */
-    PROTOBUF_C_OFFSETOF(Exnode3__LayoutSegment, length),
-    NULL,
-    NULL,
-    0,            /* packed */
-    0,NULL,NULL    /* reserved1,reserved2, etc */
-  },
+    exnode3__jbob__field_descriptors,
+    exnode3__jbob__field_indices_by_name,
+    1,  exnode3__jbob__number_ranges,
+    (ProtobufCMessageInit) exnode3__jbob__init,
+    NULL,NULL,NULL    /* reserved[123] */
+};
+static const ProtobufCFieldDescriptor exnode3__layout_segment__field_descriptors[4] = {
+    {
+        "segment_id",
+        1,
+        PROTOBUF_C_LABEL_REQUIRED,
+        PROTOBUF_C_TYPE_INT32,
+        0,   /* quantifier_offset */
+        PROTOBUF_C_OFFSETOF(Exnode3__LayoutSegment, segment_id),
+        NULL,
+        NULL,
+        0,            /* packed */
+        0,NULL,NULL    /* reserved1,reserved2, etc */
+    },
+    {
+        "layout_offset",
+        2,
+        PROTOBUF_C_LABEL_REQUIRED,
+        PROTOBUF_C_TYPE_INT64,
+        0,   /* quantifier_offset */
+        PROTOBUF_C_OFFSETOF(Exnode3__LayoutSegment, layout_offset),
+        NULL,
+        NULL,
+        0,            /* packed */
+        0,NULL,NULL    /* reserved1,reserved2, etc */
+    },
+    {
+        "segment_offset",
+        3,
+        PROTOBUF_C_LABEL_REQUIRED,
+        PROTOBUF_C_TYPE_INT64,
+        0,   /* quantifier_offset */
+        PROTOBUF_C_OFFSETOF(Exnode3__LayoutSegment, segment_offset),
+        NULL,
+        NULL,
+        0,            /* packed */
+        0,NULL,NULL    /* reserved1,reserved2, etc */
+    },
+    {
+        "length",
+        4,
+        PROTOBUF_C_LABEL_REQUIRED,
+        PROTOBUF_C_TYPE_INT64,
+        0,   /* quantifier_offset */
+        PROTOBUF_C_OFFSETOF(Exnode3__LayoutSegment, length),
+        NULL,
+        NULL,
+        0,            /* packed */
+        0,NULL,NULL    /* reserved1,reserved2, etc */
+    },
 };
 static const unsigned exnode3__layout_segment__field_indices_by_name[] = {
-  1,   /* field[1] = layout_offset */
-  3,   /* field[3] = length */
-  0,   /* field[0] = segment_id */
-  2,   /* field[2] = segment_offset */
+    1,   /* field[1] = layout_offset */
+    3,   /* field[3] = length */
+    0,   /* field[0] = segment_id */
+    2,   /* field[2] = segment_offset */
 };
-static const ProtobufCIntRange exnode3__layout_segment__number_ranges[1 + 1] =
-{
-  { 1, 0 },
-  { 0, 4 }
+static const ProtobufCIntRange exnode3__layout_segment__number_ranges[1 + 1] = {
+    { 1, 0 },
+    { 0, 4 }
 };
-const ProtobufCMessageDescriptor exnode3__layout_segment__descriptor =
-{
-  PROTOBUF_C_MESSAGE_DESCRIPTOR_MAGIC,
-  "exnode3.LayoutSegment",
-  "LayoutSegment",
-  "Exnode3__LayoutSegment",
-  "exnode3",
-  sizeof(Exnode3__LayoutSegment),
-  4,
-  exnode3__layout_segment__field_descriptors,
-  exnode3__layout_segment__field_indices_by_name,
-  1,  exnode3__layout_segment__number_ranges,
-  (ProtobufCMessageInit) exnode3__layout_segment__init,
-  NULL,NULL,NULL    /* reserved[123] */
-};
-static const ProtobufCFieldDescriptor exnode3__layout__field_descriptors[7] =
-{
-  {
-    "id",
-    1,
-    PROTOBUF_C_LABEL_REQUIRED,
-    PROTOBUF_C_TYPE_INT32,
-    0,   /* quantifier_offset */
-    PROTOBUF_C_OFFSETOF(Exnode3__Layout, id),
-    NULL,
-    NULL,
-    0,            /* packed */
-    0,NULL,NULL    /* reserved1,reserved2, etc */
-  },
-  {
-    "name",
-    2,
-    PROTOBUF_C_LABEL_REQUIRED,
-    PROTOBUF_C_TYPE_STRING,
-    0,   /* quantifier_offset */
-    PROTOBUF_C_OFFSETOF(Exnode3__Layout, name),
-    NULL,
-    NULL,
-    0,            /* packed */
-    0,NULL,NULL    /* reserved1,reserved2, etc */
-  },
-  {
-    "version",
-    3,
-    PROTOBUF_C_LABEL_REQUIRED,
-    PROTOBUF_C_TYPE_INT64,
-    0,   /* quantifier_offset */
-    PROTOBUF_C_OFFSETOF(Exnode3__Layout, version),
-    NULL,
-    NULL,
-    0,            /* packed */
-    0,NULL,NULL    /* reserved1,reserved2, etc */
-  },
-  {
-    "attr",
+const ProtobufCMessageDescriptor exnode3__layout_segment__descriptor = {
+    PROTOBUF_C_MESSAGE_DESCRIPTOR_MAGIC,
+    "exnode3.LayoutSegment",
+    "LayoutSegment",
+    "Exnode3__LayoutSegment",
+    "exnode3",
+    sizeof(Exnode3__LayoutSegment),
     4,
-    PROTOBUF_C_LABEL_REPEATED,
-    PROTOBUF_C_TYPE_MESSAGE,
-    PROTOBUF_C_OFFSETOF(Exnode3__Layout, n_attr),
-    PROTOBUF_C_OFFSETOF(Exnode3__Layout, attr),
-    &exnode3__attribute__descriptor,
-    NULL,
-    0,            /* packed */
-    0,NULL,NULL    /* reserved1,reserved2, etc */
-  },
-  {
-    "state",
-    5,
-    PROTOBUF_C_LABEL_REQUIRED,
-    PROTOBUF_C_TYPE_STRING,
-    0,   /* quantifier_offset */
-    PROTOBUF_C_OFFSETOF(Exnode3__Layout, state),
-    NULL,
-    NULL,
-    0,            /* packed */
-    0,NULL,NULL    /* reserved1,reserved2, etc */
-  },
-  {
-    "total_size",
-    6,
-    PROTOBUF_C_LABEL_REQUIRED,
-    PROTOBUF_C_TYPE_INT64,
-    0,   /* quantifier_offset */
-    PROTOBUF_C_OFFSETOF(Exnode3__Layout, total_size),
-    NULL,
-    NULL,
-    0,            /* packed */
-    0,NULL,NULL    /* reserved1,reserved2, etc */
-  },
-  {
-    "segments",
-    7,
-    PROTOBUF_C_LABEL_REPEATED,
-    PROTOBUF_C_TYPE_MESSAGE,
-    PROTOBUF_C_OFFSETOF(Exnode3__Layout, n_segments),
-    PROTOBUF_C_OFFSETOF(Exnode3__Layout, segments),
-    &exnode3__layout_segment__descriptor,
-    NULL,
-    0,            /* packed */
-    0,NULL,NULL    /* reserved1,reserved2, etc */
-  },
+    exnode3__layout_segment__field_descriptors,
+    exnode3__layout_segment__field_indices_by_name,
+    1,  exnode3__layout_segment__number_ranges,
+    (ProtobufCMessageInit) exnode3__layout_segment__init,
+    NULL,NULL,NULL    /* reserved[123] */
+};
+static const ProtobufCFieldDescriptor exnode3__layout__field_descriptors[7] = {
+    {
+        "id",
+        1,
+        PROTOBUF_C_LABEL_REQUIRED,
+        PROTOBUF_C_TYPE_INT32,
+        0,   /* quantifier_offset */
+        PROTOBUF_C_OFFSETOF(Exnode3__Layout, id),
+        NULL,
+        NULL,
+        0,            /* packed */
+        0,NULL,NULL    /* reserved1,reserved2, etc */
+    },
+    {
+        "name",
+        2,
+        PROTOBUF_C_LABEL_REQUIRED,
+        PROTOBUF_C_TYPE_STRING,
+        0,   /* quantifier_offset */
+        PROTOBUF_C_OFFSETOF(Exnode3__Layout, name),
+        NULL,
+        NULL,
+        0,            /* packed */
+        0,NULL,NULL    /* reserved1,reserved2, etc */
+    },
+    {
+        "version",
+        3,
+        PROTOBUF_C_LABEL_REQUIRED,
+        PROTOBUF_C_TYPE_INT64,
+        0,   /* quantifier_offset */
+        PROTOBUF_C_OFFSETOF(Exnode3__Layout, version),
+        NULL,
+        NULL,
+        0,            /* packed */
+        0,NULL,NULL    /* reserved1,reserved2, etc */
+    },
+    {
+        "attr",
+        4,
+        PROTOBUF_C_LABEL_REPEATED,
+        PROTOBUF_C_TYPE_MESSAGE,
+        PROTOBUF_C_OFFSETOF(Exnode3__Layout, n_attr),
+        PROTOBUF_C_OFFSETOF(Exnode3__Layout, attr),
+        &exnode3__attribute__descriptor,
+        NULL,
+        0,            /* packed */
+        0,NULL,NULL    /* reserved1,reserved2, etc */
+    },
+    {
+        "state",
+        5,
+        PROTOBUF_C_LABEL_REQUIRED,
+        PROTOBUF_C_TYPE_STRING,
+        0,   /* quantifier_offset */
+        PROTOBUF_C_OFFSETOF(Exnode3__Layout, state),
+        NULL,
+        NULL,
+        0,            /* packed */
+        0,NULL,NULL    /* reserved1,reserved2, etc */
+    },
+    {
+        "total_size",
+        6,
+        PROTOBUF_C_LABEL_REQUIRED,
+        PROTOBUF_C_TYPE_INT64,
+        0,   /* quantifier_offset */
+        PROTOBUF_C_OFFSETOF(Exnode3__Layout, total_size),
+        NULL,
+        NULL,
+        0,            /* packed */
+        0,NULL,NULL    /* reserved1,reserved2, etc */
+    },
+    {
+        "segments",
+        7,
+        PROTOBUF_C_LABEL_REPEATED,
+        PROTOBUF_C_TYPE_MESSAGE,
+        PROTOBUF_C_OFFSETOF(Exnode3__Layout, n_segments),
+        PROTOBUF_C_OFFSETOF(Exnode3__Layout, segments),
+        &exnode3__layout_segment__descriptor,
+        NULL,
+        0,            /* packed */
+        0,NULL,NULL    /* reserved1,reserved2, etc */
+    },
 };
 static const unsigned exnode3__layout__field_indices_by_name[] = {
-  3,   /* field[3] = attr */
-  0,   /* field[0] = id */
-  1,   /* field[1] = name */
-  6,   /* field[6] = segments */
-  4,   /* field[4] = state */
-  5,   /* field[5] = total_size */
-  2,   /* field[2] = version */
+    3,   /* field[3] = attr */
+    0,   /* field[0] = id */
+    1,   /* field[1] = name */
+    6,   /* field[6] = segments */
+    4,   /* field[4] = state */
+    5,   /* field[5] = total_size */
+    2,   /* field[2] = version */
 };
-static const ProtobufCIntRange exnode3__layout__number_ranges[1 + 1] =
-{
-  { 1, 0 },
-  { 0, 7 }
+static const ProtobufCIntRange exnode3__layout__number_ranges[1 + 1] = {
+    { 1, 0 },
+    { 0, 7 }
 };
-const ProtobufCMessageDescriptor exnode3__layout__descriptor =
-{
-  PROTOBUF_C_MESSAGE_DESCRIPTOR_MAGIC,
-  "exnode3.Layout",
-  "Layout",
-  "Exnode3__Layout",
-  "exnode3",
-  sizeof(Exnode3__Layout),
-  7,
-  exnode3__layout__field_descriptors,
-  exnode3__layout__field_indices_by_name,
-  1,  exnode3__layout__number_ranges,
-  (ProtobufCMessageInit) exnode3__layout__init,
-  NULL,NULL,NULL    /* reserved[123] */
-};
-static const ProtobufCFieldDescriptor exnode3__view__field_descriptors[7] =
-{
-  {
-    "id",
-    1,
-    PROTOBUF_C_LABEL_REQUIRED,
-    PROTOBUF_C_TYPE_INT32,
-    0,   /* quantifier_offset */
-    PROTOBUF_C_OFFSETOF(Exnode3__View, id),
-    NULL,
-    NULL,
-    0,            /* packed */
-    0,NULL,NULL    /* reserved1,reserved2, etc */
-  },
-  {
-    "name",
-    2,
-    PROTOBUF_C_LABEL_REQUIRED,
-    PROTOBUF_C_TYPE_STRING,
-    0,   /* quantifier_offset */
-    PROTOBUF_C_OFFSETOF(Exnode3__View, name),
-    NULL,
-    NULL,
-    0,            /* packed */
-    0,NULL,NULL    /* reserved1,reserved2, etc */
-  },
-  {
-    "version",
-    3,
-    PROTOBUF_C_LABEL_REQUIRED,
-    PROTOBUF_C_TYPE_INT64,
-    0,   /* quantifier_offset */
-    PROTOBUF_C_OFFSETOF(Exnode3__View, version),
-    NULL,
-    NULL,
-    0,            /* packed */
-    0,NULL,NULL    /* reserved1,reserved2, etc */
-  },
-  {
-    "attr",
-    4,
-    PROTOBUF_C_LABEL_REPEATED,
-    PROTOBUF_C_TYPE_MESSAGE,
-    PROTOBUF_C_OFFSETOF(Exnode3__View, n_attr),
-    PROTOBUF_C_OFFSETOF(Exnode3__View, attr),
-    &exnode3__attribute__descriptor,
-    NULL,
-    0,            /* packed */
-    0,NULL,NULL    /* reserved1,reserved2, etc */
-  },
-  {
-    "state",
-    5,
-    PROTOBUF_C_LABEL_REQUIRED,
-    PROTOBUF_C_TYPE_STRING,
-    0,   /* quantifier_offset */
-    PROTOBUF_C_OFFSETOF(Exnode3__View, state),
-    NULL,
-    NULL,
-    0,            /* packed */
-    0,NULL,NULL    /* reserved1,reserved2, etc */
-  },
-  {
-    "total_size",
-    6,
-    PROTOBUF_C_LABEL_REQUIRED,
-    PROTOBUF_C_TYPE_INT64,
-    0,   /* quantifier_offset */
-    PROTOBUF_C_OFFSETOF(Exnode3__View, total_size),
-    NULL,
-    NULL,
-    0,            /* packed */
-    0,NULL,NULL    /* reserved1,reserved2, etc */
-  },
-  {
-    "layout_list",
+const ProtobufCMessageDescriptor exnode3__layout__descriptor = {
+    PROTOBUF_C_MESSAGE_DESCRIPTOR_MAGIC,
+    "exnode3.Layout",
+    "Layout",
+    "Exnode3__Layout",
+    "exnode3",
+    sizeof(Exnode3__Layout),
     7,
-    PROTOBUF_C_LABEL_REPEATED,
-    PROTOBUF_C_TYPE_INT32,
-    PROTOBUF_C_OFFSETOF(Exnode3__View, n_layout_list),
-    PROTOBUF_C_OFFSETOF(Exnode3__View, layout_list),
-    NULL,
-    NULL,
-    0,            /* packed */
-    0,NULL,NULL    /* reserved1,reserved2, etc */
-  },
+    exnode3__layout__field_descriptors,
+    exnode3__layout__field_indices_by_name,
+    1,  exnode3__layout__number_ranges,
+    (ProtobufCMessageInit) exnode3__layout__init,
+    NULL,NULL,NULL    /* reserved[123] */
+};
+static const ProtobufCFieldDescriptor exnode3__view__field_descriptors[7] = {
+    {
+        "id",
+        1,
+        PROTOBUF_C_LABEL_REQUIRED,
+        PROTOBUF_C_TYPE_INT32,
+        0,   /* quantifier_offset */
+        PROTOBUF_C_OFFSETOF(Exnode3__View, id),
+        NULL,
+        NULL,
+        0,            /* packed */
+        0,NULL,NULL    /* reserved1,reserved2, etc */
+    },
+    {
+        "name",
+        2,
+        PROTOBUF_C_LABEL_REQUIRED,
+        PROTOBUF_C_TYPE_STRING,
+        0,   /* quantifier_offset */
+        PROTOBUF_C_OFFSETOF(Exnode3__View, name),
+        NULL,
+        NULL,
+        0,            /* packed */
+        0,NULL,NULL    /* reserved1,reserved2, etc */
+    },
+    {
+        "version",
+        3,
+        PROTOBUF_C_LABEL_REQUIRED,
+        PROTOBUF_C_TYPE_INT64,
+        0,   /* quantifier_offset */
+        PROTOBUF_C_OFFSETOF(Exnode3__View, version),
+        NULL,
+        NULL,
+        0,            /* packed */
+        0,NULL,NULL    /* reserved1,reserved2, etc */
+    },
+    {
+        "attr",
+        4,
+        PROTOBUF_C_LABEL_REPEATED,
+        PROTOBUF_C_TYPE_MESSAGE,
+        PROTOBUF_C_OFFSETOF(Exnode3__View, n_attr),
+        PROTOBUF_C_OFFSETOF(Exnode3__View, attr),
+        &exnode3__attribute__descriptor,
+        NULL,
+        0,            /* packed */
+        0,NULL,NULL    /* reserved1,reserved2, etc */
+    },
+    {
+        "state",
+        5,
+        PROTOBUF_C_LABEL_REQUIRED,
+        PROTOBUF_C_TYPE_STRING,
+        0,   /* quantifier_offset */
+        PROTOBUF_C_OFFSETOF(Exnode3__View, state),
+        NULL,
+        NULL,
+        0,            /* packed */
+        0,NULL,NULL    /* reserved1,reserved2, etc */
+    },
+    {
+        "total_size",
+        6,
+        PROTOBUF_C_LABEL_REQUIRED,
+        PROTOBUF_C_TYPE_INT64,
+        0,   /* quantifier_offset */
+        PROTOBUF_C_OFFSETOF(Exnode3__View, total_size),
+        NULL,
+        NULL,
+        0,            /* packed */
+        0,NULL,NULL    /* reserved1,reserved2, etc */
+    },
+    {
+        "layout_list",
+        7,
+        PROTOBUF_C_LABEL_REPEATED,
+        PROTOBUF_C_TYPE_INT32,
+        PROTOBUF_C_OFFSETOF(Exnode3__View, n_layout_list),
+        PROTOBUF_C_OFFSETOF(Exnode3__View, layout_list),
+        NULL,
+        NULL,
+        0,            /* packed */
+        0,NULL,NULL    /* reserved1,reserved2, etc */
+    },
 };
 static const unsigned exnode3__view__field_indices_by_name[] = {
-  3,   /* field[3] = attr */
-  0,   /* field[0] = id */
-  6,   /* field[6] = layout_list */
-  1,   /* field[1] = name */
-  4,   /* field[4] = state */
-  5,   /* field[5] = total_size */
-  2,   /* field[2] = version */
+    3,   /* field[3] = attr */
+    0,   /* field[0] = id */
+    6,   /* field[6] = layout_list */
+    1,   /* field[1] = name */
+    4,   /* field[4] = state */
+    5,   /* field[5] = total_size */
+    2,   /* field[2] = version */
 };
-static const ProtobufCIntRange exnode3__view__number_ranges[1 + 1] =
-{
-  { 1, 0 },
-  { 0, 7 }
+static const ProtobufCIntRange exnode3__view__number_ranges[1 + 1] = {
+    { 1, 0 },
+    { 0, 7 }
 };
-const ProtobufCMessageDescriptor exnode3__view__descriptor =
-{
-  PROTOBUF_C_MESSAGE_DESCRIPTOR_MAGIC,
-  "exnode3.View",
-  "View",
-  "Exnode3__View",
-  "exnode3",
-  sizeof(Exnode3__View),
-  7,
-  exnode3__view__field_descriptors,
-  exnode3__view__field_indices_by_name,
-  1,  exnode3__view__number_ranges,
-  (ProtobufCMessageInit) exnode3__view__init,
-  NULL,NULL,NULL    /* reserved[123] */
+const ProtobufCMessageDescriptor exnode3__view__descriptor = {
+    PROTOBUF_C_MESSAGE_DESCRIPTOR_MAGIC,
+    "exnode3.View",
+    "View",
+    "Exnode3__View",
+    "exnode3",
+    sizeof(Exnode3__View),
+    7,
+    exnode3__view__field_descriptors,
+    exnode3__view__field_indices_by_name,
+    1,  exnode3__view__number_ranges,
+    (ProtobufCMessageInit) exnode3__view__init,
+    NULL,NULL,NULL    /* reserved[123] */
 };
-static const ProtobufCFieldDescriptor exnode3__exnode__field_descriptors[6] =
-{
-  {
-    "table",
-    1,
-    PROTOBUF_C_LABEL_REQUIRED,
-    PROTOBUF_C_TYPE_MESSAGE,
-    0,   /* quantifier_offset */
-    PROTOBUF_C_OFFSETOF(Exnode3__Exnode, table),
-    &exnode3__allocation__table__descriptor,
-    NULL,
-    0,            /* packed */
-    0,NULL,NULL    /* reserved1,reserved2, etc */
-  },
-  {
-    "seg_headers",
-    2,
-    PROTOBUF_C_LABEL_REPEATED,
-    PROTOBUF_C_TYPE_MESSAGE,
-    PROTOBUF_C_OFFSETOF(Exnode3__Exnode, n_seg_headers),
-    PROTOBUF_C_OFFSETOF(Exnode3__Exnode, seg_headers),
-    &exnode3__segment_header__descriptor,
-    NULL,
-    0,            /* packed */
-    0,NULL,NULL    /* reserved1,reserved2, etc */
-  },
-  {
-    "jbob",
-    3,
-    PROTOBUF_C_LABEL_REPEATED,
-    PROTOBUF_C_TYPE_MESSAGE,
-    PROTOBUF_C_OFFSETOF(Exnode3__Exnode, n_jbob),
-    PROTOBUF_C_OFFSETOF(Exnode3__Exnode, jbob),
-    &exnode3__jbob__descriptor,
-    NULL,
-    0,            /* packed */
-    0,NULL,NULL    /* reserved1,reserved2, etc */
-  },
-  {
-    "layout",
-    4,
-    PROTOBUF_C_LABEL_REPEATED,
-    PROTOBUF_C_TYPE_MESSAGE,
-    PROTOBUF_C_OFFSETOF(Exnode3__Exnode, n_layout),
-    PROTOBUF_C_OFFSETOF(Exnode3__Exnode, layout),
-    &exnode3__layout__descriptor,
-    NULL,
-    0,            /* packed */
-    0,NULL,NULL    /* reserved1,reserved2, etc */
-  },
-  {
-    "view",
-    5,
-    PROTOBUF_C_LABEL_REPEATED,
-    PROTOBUF_C_TYPE_MESSAGE,
-    PROTOBUF_C_OFFSETOF(Exnode3__Exnode, n_view),
-    PROTOBUF_C_OFFSETOF(Exnode3__Exnode, view),
-    &exnode3__view__descriptor,
-    NULL,
-    0,            /* packed */
-    0,NULL,NULL    /* reserved1,reserved2, etc */
-  },
-  {
-    "attr",
-    6,
-    PROTOBUF_C_LABEL_REPEATED,
-    PROTOBUF_C_TYPE_MESSAGE,
-    PROTOBUF_C_OFFSETOF(Exnode3__Exnode, n_attr),
-    PROTOBUF_C_OFFSETOF(Exnode3__Exnode, attr),
-    &exnode3__attribute__descriptor,
-    NULL,
-    0,            /* packed */
-    0,NULL,NULL    /* reserved1,reserved2, etc */
-  },
+static const ProtobufCFieldDescriptor exnode3__exnode__field_descriptors[6] = {
+    {
+        "table",
+        1,
+        PROTOBUF_C_LABEL_REQUIRED,
+        PROTOBUF_C_TYPE_MESSAGE,
+        0,   /* quantifier_offset */
+        PROTOBUF_C_OFFSETOF(Exnode3__Exnode, table),
+        &exnode3__allocation__table__descriptor,
+        NULL,
+        0,            /* packed */
+        0,NULL,NULL    /* reserved1,reserved2, etc */
+    },
+    {
+        "seg_headers",
+        2,
+        PROTOBUF_C_LABEL_REPEATED,
+        PROTOBUF_C_TYPE_MESSAGE,
+        PROTOBUF_C_OFFSETOF(Exnode3__Exnode, n_seg_headers),
+        PROTOBUF_C_OFFSETOF(Exnode3__Exnode, seg_headers),
+        &exnode3__segment_header__descriptor,
+        NULL,
+        0,            /* packed */
+        0,NULL,NULL    /* reserved1,reserved2, etc */
+    },
+    {
+        "jbob",
+        3,
+        PROTOBUF_C_LABEL_REPEATED,
+        PROTOBUF_C_TYPE_MESSAGE,
+        PROTOBUF_C_OFFSETOF(Exnode3__Exnode, n_jbob),
+        PROTOBUF_C_OFFSETOF(Exnode3__Exnode, jbob),
+        &exnode3__jbob__descriptor,
+        NULL,
+        0,            /* packed */
+        0,NULL,NULL    /* reserved1,reserved2, etc */
+    },
+    {
+        "layout",
+        4,
+        PROTOBUF_C_LABEL_REPEATED,
+        PROTOBUF_C_TYPE_MESSAGE,
+        PROTOBUF_C_OFFSETOF(Exnode3__Exnode, n_layout),
+        PROTOBUF_C_OFFSETOF(Exnode3__Exnode, layout),
+        &exnode3__layout__descriptor,
+        NULL,
+        0,            /* packed */
+        0,NULL,NULL    /* reserved1,reserved2, etc */
+    },
+    {
+        "view",
+        5,
+        PROTOBUF_C_LABEL_REPEATED,
+        PROTOBUF_C_TYPE_MESSAGE,
+        PROTOBUF_C_OFFSETOF(Exnode3__Exnode, n_view),
+        PROTOBUF_C_OFFSETOF(Exnode3__Exnode, view),
+        &exnode3__view__descriptor,
+        NULL,
+        0,            /* packed */
+        0,NULL,NULL    /* reserved1,reserved2, etc */
+    },
+    {
+        "attr",
+        6,
+        PROTOBUF_C_LABEL_REPEATED,
+        PROTOBUF_C_TYPE_MESSAGE,
+        PROTOBUF_C_OFFSETOF(Exnode3__Exnode, n_attr),
+        PROTOBUF_C_OFFSETOF(Exnode3__Exnode, attr),
+        &exnode3__attribute__descriptor,
+        NULL,
+        0,            /* packed */
+        0,NULL,NULL    /* reserved1,reserved2, etc */
+    },
 };
 static const unsigned exnode3__exnode__field_indices_by_name[] = {
-  5,   /* field[5] = attr */
-  2,   /* field[2] = jbob */
-  3,   /* field[3] = layout */
-  1,   /* field[1] = seg_headers */
-  0,   /* field[0] = table */
-  4,   /* field[4] = view */
+    5,   /* field[5] = attr */
+    2,   /* field[2] = jbob */
+    3,   /* field[3] = layout */
+    1,   /* field[1] = seg_headers */
+    0,   /* field[0] = table */
+    4,   /* field[4] = view */
 };
-static const ProtobufCIntRange exnode3__exnode__number_ranges[1 + 1] =
-{
-  { 1, 0 },
-  { 0, 6 }
+static const ProtobufCIntRange exnode3__exnode__number_ranges[1 + 1] = {
+    { 1, 0 },
+    { 0, 6 }
 };
-const ProtobufCMessageDescriptor exnode3__exnode__descriptor =
-{
-  PROTOBUF_C_MESSAGE_DESCRIPTOR_MAGIC,
-  "exnode3.Exnode",
-  "Exnode",
-  "Exnode3__Exnode",
-  "exnode3",
-  sizeof(Exnode3__Exnode),
-  6,
-  exnode3__exnode__field_descriptors,
-  exnode3__exnode__field_indices_by_name,
-  1,  exnode3__exnode__number_ranges,
-  (ProtobufCMessageInit) exnode3__exnode__init,
-  NULL,NULL,NULL    /* reserved[123] */
+const ProtobufCMessageDescriptor exnode3__exnode__descriptor = {
+    PROTOBUF_C_MESSAGE_DESCRIPTOR_MAGIC,
+    "exnode3.Exnode",
+    "Exnode",
+    "Exnode3__Exnode",
+    "exnode3",
+    sizeof(Exnode3__Exnode),
+    6,
+    exnode3__exnode__field_descriptors,
+    exnode3__exnode__field_indices_by_name,
+    1,  exnode3__exnode__number_ranges,
+    (ProtobufCMessageInit) exnode3__exnode__init,
+    NULL,NULL,NULL    /* reserved[123] */
 };

@@ -40,60 +40,61 @@ http://www.accre.vanderbilt.edu
 
 int main(int argc, char **argv)
 {
-  int i;
-  char *fname = NULL;
-  exnode_t *ex;
-  exnode_exchange_t *exp;
-  exnode_exchange_t *exp_in;
+    int i;
+    char *fname = NULL;
+    exnode_t *ex;
+    exnode_exchange_t *exp;
+    exnode_exchange_t *exp_in;
 
-  if (argc < 4) {
-     printf("\n");
-     printf("ex_load LIO_COMMON_OPTIONS file.ex3\n");
-     lio_print_options(stdout);
-     printf("\n");
-     return(1);
-  }
+    if (argc < 4) {
+        printf("\n");
+        printf("ex_load LIO_COMMON_OPTIONS file.ex3\n");
+        lio_print_options(stdout);
+        printf("\n");
+        return(1);
+    }
 
-  lio_init(&argc, &argv);
+    lio_init(&argc, &argv);
 
-  //** Load the fixed options
-  i = 1;
-  fname = argv[i]; i++;
+    //** Load the fixed options
+    i = 1;
+    fname = argv[i];
+    i++;
 
-  if (fname == NULL) {
-    printf("Missing input filename!\n");
-    return(2);
-  }
+    if (fname == NULL) {
+        printf("Missing input filename!\n");
+        return(2);
+    }
 
 
-  //** Create a blank exnode
-  ex = exnode_create();
+    //** Create a blank exnode
+    ex = exnode_create();
 
-  //** Load it
-  exp_in = exnode_exchange_load_file(fname);
+    //** Load it
+    exp_in = exnode_exchange_load_file(fname);
 
-  printf("Initial exnode=====================================\n");
-  printf("%s", exp_in->text.text);
-  printf("===================================================\n");
+    printf("Initial exnode=====================================\n");
+    printf("%s", exp_in->text.text);
+    printf("===================================================\n");
 
-  exnode_deserialize(ex, exp_in, lio_gc->ess);
+    exnode_deserialize(ex, exp_in, lio_gc->ess);
 
-  //** Print it
-  exp = exnode_exchange_create(EX_TEXT);
-  exnode_serialize(ex, exp);
+    //** Print it
+    exp = exnode_exchange_create(EX_TEXT);
+    exnode_serialize(ex, exp);
 
-  printf("Loaded exnode=====================================\n");
-  printf("%s", exp->text.text);
-  printf("===================================================\n");
+    printf("Loaded exnode=====================================\n");
+    printf("%s", exp->text.text);
+    printf("===================================================\n");
 
-  exnode_exchange_destroy(exp_in);
-  exnode_exchange_destroy(exp);
+    exnode_exchange_destroy(exp_in);
+    exnode_exchange_destroy(exp);
 
-  exnode_destroy(ex);
+    exnode_destroy(ex);
 
-  lio_shutdown();
+    lio_shutdown();
 
-  return(0);
+    return(0);
 }
 
 

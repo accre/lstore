@@ -25,7 +25,7 @@ Advanced Computing Center for Research and Education
 230 Appleton Place
 Nashville, TN 37203
 http://www.accre.vanderbilt.edu
-*/ 
+*/
 
 //***********************************************************************
 // Routines for managing the the cache framework
@@ -45,7 +45,10 @@ http://www.accre.vanderbilt.edu
 //  cache_base_handle  - Simple get_handle method
 //*************************************************************************
 
-cache_t *cache_base_handle(cache_t *c) { return(c); }
+cache_t *cache_base_handle(cache_t *c)
+{
+    return(c);
+}
 
 //*************************************************************************
 // cache_base_destroy - Destroys the base cache elements
@@ -53,10 +56,10 @@ cache_t *cache_base_handle(cache_t *c) { return(c); }
 
 void cache_base_destroy(cache_t *c)
 {
-  list_destroy(c->segments);
-  destroy_pigeon_coop(c->cond_coop);
-  apr_thread_mutex_destroy(c->lock);
-  apr_pool_destroy(c->mpool);
+    list_destroy(c->segments);
+    destroy_pigeon_coop(c->cond_coop);
+    apr_thread_mutex_destroy(c->lock);
+    apr_pool_destroy(c->mpool);
 }
 
 //*************************************************************************
@@ -65,13 +68,13 @@ void cache_base_destroy(cache_t *c)
 
 void cache_base_create(cache_t *c, data_attr_t *da, int timeout)
 {
-  apr_pool_create(&(c->mpool), NULL);
-  apr_thread_mutex_create(&(c->lock), APR_THREAD_MUTEX_DEFAULT, c->mpool);
-  c->segments = list_create(0, &skiplist_compare_ex_id, NULL, NULL, NULL);
-  c->cond_coop = new_pigeon_coop("cache_cond_coop", 50, sizeof(cache_cond_t), c->mpool, cache_cond_new, cache_cond_free);
-  c->da = da;
-  c->timeout = timeout;
-  c->default_page_size = 16*1024;
+    apr_pool_create(&(c->mpool), NULL);
+    apr_thread_mutex_create(&(c->lock), APR_THREAD_MUTEX_DEFAULT, c->mpool);
+    c->segments = list_create(0, &skiplist_compare_ex_id, NULL, NULL, NULL);
+    c->cond_coop = new_pigeon_coop("cache_cond_coop", 50, sizeof(cache_cond_t), c->mpool, cache_cond_new, cache_cond_free);
+    c->da = da;
+    c->timeout = timeout;
+    c->default_page_size = 16*1024;
 }
 
 //*************************************************************
@@ -81,17 +84,17 @@ void cache_base_create(cache_t *c, data_attr_t *da, int timeout)
 
 void *free_page_tables_new(void *arg, int size)
 {
-  page_table_t *shelf;
-  int i;
+    page_table_t *shelf;
+    int i;
 
-  type_malloc_clear(shelf, page_table_t, size);
+    type_malloc_clear(shelf, page_table_t, size);
 
-log_printf(15, "making new shelf of size %d\n", size);
-  for (i=0; i<size; i++) {
-      shelf[i].stack = new_stack();
-  }
+    log_printf(15, "making new shelf of size %d\n", size);
+    for (i=0; i<size; i++) {
+        shelf[i].stack = new_stack();
+    }
 
-  return((void *)shelf);
+    return((void *)shelf);
 }
 
 //*************************************************************
@@ -100,17 +103,17 @@ log_printf(15, "making new shelf of size %d\n", size);
 
 void free_page_tables_free(void *arg, int size, void *data)
 {
-  page_table_t *shelf = (page_table_t *)data;
-  int i;
+    page_table_t *shelf = (page_table_t *)data;
+    int i;
 
-log_printf(15, "destroying shelf of size %d\n", size);
+    log_printf(15, "destroying shelf of size %d\n", size);
 
-  for (i=0; i<size; i++) {
-    free_stack(shelf[i].stack, 0);
-  }
+    for (i=0; i<size; i++) {
+        free_stack(shelf[i].stack, 0);
+    }
 
-  free(shelf);
-  return;
+    free(shelf);
+    return;
 }
 
 //*************************************************************
@@ -120,18 +123,19 @@ log_printf(15, "destroying shelf of size %d\n", size);
 
 void *free_pending_table_new(void *arg, int size)
 {
-  list_t **shelf;
-  int i;
+    list_t **shelf;
+    int i;
 
-  type_malloc_clear(shelf, list_t *, size);
+    type_malloc_clear(shelf, list_t *, size);
 
-log_printf(15, "making new shelf of size %d\n", size);
-  for (i=0; i<size; i++) {
-    shelf[i] = list_create(0, &skiplist_compare_ex_id, NULL, NULL, NULL);
-  }
+    log_printf(15, "making new shelf of size %d\n", size);
+    for (i=0; i<size; i++) {
+        shelf[i] = list_create(0, &skiplist_compare_ex_id, NULL, NULL, NULL);
+    }
 
-log_printf(15, " shelf[0]->max_levels=%d\n", shelf[0]->max_levels); flush_log();
-  return((void *)shelf);
+    log_printf(15, " shelf[0]->max_levels=%d\n", shelf[0]->max_levels);
+    flush_log();
+    return((void *)shelf);
 }
 
 //*************************************************************
@@ -140,16 +144,16 @@ log_printf(15, " shelf[0]->max_levels=%d\n", shelf[0]->max_levels); flush_log();
 
 void free_pending_table_free(void *arg, int size, void *data)
 {
-  list_t **shelf = (list_t **)data;
-  int i;
+    list_t **shelf = (list_t **)data;
+    int i;
 
-log_printf(15, "destroying shelf of size %d\n", size);
+    log_printf(15, "destroying shelf of size %d\n", size);
 
-  for (i=0; i<size; i++) {
-      list_destroy(shelf[i]);
-  }
+    for (i=0; i<size; i++) {
+        list_destroy(shelf[i]);
+    }
 
-  free(shelf);
-  return;
+    free(shelf);
+    return;
 }
 

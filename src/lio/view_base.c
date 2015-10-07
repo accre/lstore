@@ -25,7 +25,7 @@ Advanced Computing Center for Research and Education
 230 Appleton Place
 Nashville, TN 37203
 http://www.accre.vanderbilt.edu
-*/ 
+*/
 
 //***********************************************************************
 // Routines for managing the view loading framework
@@ -46,9 +46,9 @@ http://www.accre.vanderbilt.edu
 
 int view_insert(exnode_t *ex, segment_t *seg)
 {
-  atomic_inc(seg->ref_count);
+    atomic_inc(seg->ref_count);
 
-  return(list_insert(ex->view, &segment_id(seg), seg));
+    return(list_insert(ex->view, &segment_id(seg), seg));
 }
 
 //***********************************************************************
@@ -57,10 +57,10 @@ int view_insert(exnode_t *ex, segment_t *seg)
 
 int view_remove(exnode_t *ex, segment_t *seg)
 {
-  atomic_dec(seg->ref_count);
+    atomic_dec(seg->ref_count);
 
-  list_remove(ex->view, &segment_id(seg), seg);
- 
-  return(0);
+    list_remove(ex->view, &segment_id(seg), seg);
+
+    return(0);
 }
 

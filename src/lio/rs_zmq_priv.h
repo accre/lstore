@@ -37,7 +37,7 @@ http://www.accre.vanderbilt.edu
 extern "C" {
 #endif
 
-#include "data_service_abstract.h" 
+#include "data_service_abstract.h"
 #include "thread_pool.h"
 
 typedef struct {

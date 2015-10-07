@@ -25,7 +25,7 @@ Advanced Computing Center for Research and Education
 230 Appleton Place
 Nashville, TN 37203
 http://www.accre.vanderbilt.edu
-*/ 
+*/
 
 //***********************************************************************
 // Comparison routines for lists
@@ -38,42 +38,42 @@ http://www.accre.vanderbilt.edu
 #include "log.h"
 
 int skiplist_compare_fn_ex_off(void *arg, skiplist_key_t *k1, skiplist_key_t *k2);
-skiplist_compare_t skiplist_compare_ex_off={skiplist_compare_fn_ex_off, NULL};
+skiplist_compare_t skiplist_compare_ex_off= {skiplist_compare_fn_ex_off, NULL};
 
 int skiplist_compare_fn_ex_id(void *arg, skiplist_key_t *k1, skiplist_key_t *k2);
-skiplist_compare_t skiplist_compare_ex_id={skiplist_compare_fn_ex_id, NULL};
+skiplist_compare_t skiplist_compare_ex_id= {skiplist_compare_fn_ex_id, NULL};
 
 int skiplist_compare_fn_ex_off(void *arg, skiplist_key_t *k1, skiplist_key_t *k2)
 {
-  ex_off_t *a = (ex_off_t *)k1;
-  ex_off_t *b = (ex_off_t *)k2;
-  int cmp = 1;
+    ex_off_t *a = (ex_off_t *)k1;
+    ex_off_t *b = (ex_off_t *)k2;
+    int cmp = 1;
 
-  if (*a < *b) {
-    cmp = -1;
-  } else if ( *a == *b) {
-    cmp = 0;
-  }
+    if (*a < *b) {
+        cmp = -1;
+    } else if ( *a == *b) {
+        cmp = 0;
+    }
 
-  log_printf(15, "skiplist_compare_fn_ex_off: cmp(" XOT ", " XOT ")=%d\n", *a, *b, cmp);
-  return(cmp);
+    log_printf(15, "skiplist_compare_fn_ex_off: cmp(" XOT ", " XOT ")=%d\n", *a, *b, cmp);
+    return(cmp);
 }
 
 //*************************************************************************************
 
 int skiplist_compare_fn_ex_id(void *arg, skiplist_key_t *k1, skiplist_key_t *k2)
 {
-  ex_id_t *a = (ex_id_t *)k1;
-  ex_id_t *b = (ex_id_t *)k2;
-  int cmp = 1;
+    ex_id_t *a = (ex_id_t *)k1;
+    ex_id_t *b = (ex_id_t *)k2;
+    int cmp = 1;
 
-  if (*a < *b) {
-    cmp = -1;
-  } else if ( *a == *b) {
-    cmp = 0;
-  }
+    if (*a < *b) {
+        cmp = -1;
+    } else if ( *a == *b) {
+        cmp = 0;
+    }
 
 //  log_printf(15, "skiplist_compare_fn_ex_id: cmp(" XIDT ", " XIDT ")=%d\n", *a, *b, cmp);
-  return(cmp);
+    return(cmp);
 }
 

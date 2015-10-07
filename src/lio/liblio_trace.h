@@ -25,7 +25,7 @@ Advanced Computing Center for Research and Education
 230 Appleton Place
 Nashville, TN 37203
 http://www.accre.vanderbilt.edu
-*/ 
+*/
 
 //*************************************************************
 // liblio_trace.h - Header file for lio_trace library
@@ -39,28 +39,28 @@ extern "C" {
 #endif
 
 typedef struct {
-  int (*open)(const char *pathname, int flags, ...);
-  int (*close)(int fd);
-  ssize_t (*read)(int fd, void *buf, size_t count);
-  ssize_t (*write)(int fd, const void *buf, size_t count);
-  off_t (*lseek)(int fd, off_t offset, int whence);
+    int (*open)(const char *pathname, int flags, ...);
+    int (*close)(int fd);
+    ssize_t (*read)(int fd, void *buf, size_t count);
+    ssize_t (*write)(int fd, const void *buf, size_t count);
+    off_t (*lseek)(int fd, off_t offset, int whence);
 } lt_fn_t;
 
 typedef struct {
-  char *trace_name;
-  char *trace_header;
-  int fd;
-  int max_fd;
-  int logfd;
+    char *trace_name;
+    char *trace_header;
+    int fd;
+    int max_fd;
+    int logfd;
 } lt_config_t;
 
 typedef struct {
-  char *fname;
-  int fd;
-  long int init_size;
-  long int max_size;
-  long int block_size;
-  long int pos;
+    char *fname;
+    int fd;
+    long int init_size;
+    long int max_size;
+    long int block_size;
+    long int pos;
 } fd_trace_t;
 
 extern lt_config_t ltc;

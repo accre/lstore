@@ -48,17 +48,17 @@ apr_pool_t *mpool;
 
 void signal_shutdown(int sig)
 {
-  char date[128];
-  apr_ctime(date, apr_time_now());
+    char date[128];
+    apr_ctime(date, apr_time_now());
 
-  log_printf(0, "Shutdown requested on %s\n", date);
+    log_printf(0, "Shutdown requested on %s\n", date);
 
-  apr_thread_mutex_lock(shutdown_lock);
-  shutdown_now = 1;
-  apr_thread_cond_signal(shutdown_cond);
-  apr_thread_mutex_unlock(shutdown_lock);
+    apr_thread_mutex_lock(shutdown_lock);
+    shutdown_now = 1;
+    apr_thread_cond_signal(shutdown_cond);
+    apr_thread_mutex_unlock(shutdown_lock);
 
-  return;
+    return;
 }
 
 //*************************************************************************
@@ -66,88 +66,91 @@ void signal_shutdown(int sig)
 
 int main(int argc, char **argv)
 {
-  int background = 1;
-  int i, start_option, start_index;
+    int background = 1;
+    int i, start_option, start_index;
 
-  for (i=0; i<argc; i++) {
-    if (strcmp(argv[i], "-f") == 0) { background = 0; break; }
-  }
-
-  if (background == 1) {
-     if (fork() == 0) {    //** This is the daemon
-        fclose(stdin);     //** Need to close all the std* devices **
-        fclose(stdout);
-        fclose(stderr);
-     } else {           //** Parent exits and doesn't close anything
-        printf("Running as a daemon.\n");
-        exit(0);
-     }
-  }
-
-  if (argc < 2) {
-     printf("\n");
-     printf("lio_server LIO_COMMON_OPTIONS [-f] [-C cwd]\n");
-     lio_print_options(stdout);
-     printf("    -f                 - Run in foreground instead of as a daemon\n");
-     printf("    -C cwd             - Change the current workding directory for execution\n");
-     return(1);
-  }
-
-  lio_init(&argc, &argv);
-
-  if (background == 1) {
-     log_printf(0, "Running as a daemon.\n");
-  }
-
-
-  //** NOTE:  The "-f" option has already been handled but it will still appear in the list below cause lio_init() won't handle it
-  i=1;
-  if (i<argc) {
-     do {
-        start_option = i;
-
-        if (strcmp(argv[i], "-C") == 0) {  //** Change the CWD
-           i++;
-           if (chdir(argv[i]) != 0) {
-              fprintf(stderr, "ERROR setting CWD=%s.  errno=%d\n", argv[i], errno);
-              log_printf(0, "ERROR setting CWD=%s.  errno=%d\n", argv[i], errno);
-           } else {
-              log_printf(0, "Setting CWD=%s\n", argv[i]);
-           }
-           i++;
-        } else if (strcmp(argv[i], "-f") == 0) {  //** Foreground process already handled
-           i++;
+    for (i=0; i<argc; i++) {
+        if (strcmp(argv[i], "-f") == 0) {
+            background = 0;
+            break;
         }
-     } while ((start_option < i) && (i<argc));
-  }
+    }
 
-  start_index = i;
+    if (background == 1) {
+        if (fork() == 0) {    //** This is the daemon
+            fclose(stdin);     //** Need to close all the std* devices **
+            fclose(stdout);
+            fclose(stderr);
+        } else {           //** Parent exits and doesn't close anything
+            printf("Running as a daemon.\n");
+            exit(0);
+        }
+    }
 
-  //***Attach the signal handler for shutdown
-  apr_signal_unblock(SIGQUIT);
-  apr_signal(SIGQUIT, signal_shutdown);
+    if (argc < 2) {
+        printf("\n");
+        printf("lio_server LIO_COMMON_OPTIONS [-f] [-C cwd]\n");
+        lio_print_options(stdout);
+        printf("    -f                 - Run in foreground instead of as a daemon\n");
+        printf("    -C cwd             - Change the current workding directory for execution\n");
+        return(1);
+    }
 
-  //** Want everyone to ignore SIGPIPE messages
+    lio_init(&argc, &argv);
+
+    if (background == 1) {
+        log_printf(0, "Running as a daemon.\n");
+    }
+
+
+    //** NOTE:  The "-f" option has already been handled but it will still appear in the list below cause lio_init() won't handle it
+    i=1;
+    if (i<argc) {
+        do {
+            start_option = i;
+
+            if (strcmp(argv[i], "-C") == 0) {  //** Change the CWD
+                i++;
+                if (chdir(argv[i]) != 0) {
+                    fprintf(stderr, "ERROR setting CWD=%s.  errno=%d\n", argv[i], errno);
+                    log_printf(0, "ERROR setting CWD=%s.  errno=%d\n", argv[i], errno);
+                } else {
+                    log_printf(0, "Setting CWD=%s\n", argv[i]);
+                }
+                i++;
+            } else if (strcmp(argv[i], "-f") == 0) {  //** Foreground process already handled
+                i++;
+            }
+        } while ((start_option < i) && (i<argc));
+    }
+
+    start_index = i;
+
+    //***Attach the signal handler for shutdown
+    apr_signal_unblock(SIGQUIT);
+    apr_signal(SIGQUIT, signal_shutdown);
+
+    //** Want everyone to ignore SIGPIPE messages
 #ifdef SIGPIPE
-  apr_signal_block(SIGPIPE);
+    apr_signal_block(SIGPIPE);
 #endif
 
-  //** Make the APR stuff
-  assert(apr_pool_create(&mpool, NULL) == APR_SUCCESS);
-  apr_thread_mutex_create(&shutdown_lock, APR_THREAD_MUTEX_DEFAULT, mpool);
-  apr_thread_cond_create(&shutdown_cond, mpool);
+    //** Make the APR stuff
+    assert(apr_pool_create(&mpool, NULL) == APR_SUCCESS);
+    apr_thread_mutex_create(&shutdown_lock, APR_THREAD_MUTEX_DEFAULT, mpool);
+    apr_thread_cond_create(&shutdown_cond, mpool);
 
-  //** Wait until a shutdown request is received
-  apr_thread_mutex_lock(shutdown_lock);
-  while (shutdown_now == 0) {
-    apr_thread_cond_wait(shutdown_cond, shutdown_lock);
-  }
-  apr_thread_mutex_unlock(shutdown_lock);
+    //** Wait until a shutdown request is received
+    apr_thread_mutex_lock(shutdown_lock);
+    while (shutdown_now == 0) {
+        apr_thread_cond_wait(shutdown_cond, shutdown_lock);
+    }
+    apr_thread_mutex_unlock(shutdown_lock);
 
-  //** Cleanup
-  apr_pool_destroy(mpool);
+    //** Cleanup
+    apr_pool_destroy(mpool);
 
-  lio_shutdown();
+    lio_shutdown();
 
-  return(0);
+    return(0);
 }

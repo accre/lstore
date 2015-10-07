@@ -45,109 +45,114 @@ char *exnode_data = NULL;
 
 int main(int argc, char **argv)
 {
-  int ftype, err, symlink, i, force, start_option;
-  char *src_fname, *dest_fname;
-  char *dir, *file;
-  lio_path_tuple_t stuple, dtuple;
-  char fullname[OS_PATH_MAX];
+    int ftype, err, symlink, i, force, start_option;
+    char *src_fname, *dest_fname;
+    char *dir, *file;
+    lio_path_tuple_t stuple, dtuple;
+    char fullname[OS_PATH_MAX];
 
 //printf("argc=%d\n", argc);
 
-  if (argc < 3) {
-     printf("\n");
-     printf("lio_ln LIO_COMMON_OPTIONS [-s] [-f] source_file linked_dest_file\n");
-     lio_print_options(stdout);
-     printf("    -s               - Make symbolic links instead of hard links\n");
-     printf("    -f               - Force the link creation even if source doesn't exist. Only used for symlinks\n");
+    if (argc < 3) {
+        printf("\n");
+        printf("lio_ln LIO_COMMON_OPTIONS [-s] [-f] source_file linked_dest_file\n");
+        lio_print_options(stdout);
+        printf("    -s               - Make symbolic links instead of hard links\n");
+        printf("    -f               - Force the link creation even if source doesn't exist. Only used for symlinks\n");
 
-     return(1);
-  }
-
-  lio_init(&argc, &argv);
-
-  if (argc < 3) {
-     printf("\n");
-     printf("lio_ln LIO_COMMON_OPTIONS source_file linked_dest_file\n");
-     lio_print_options(stdout);
-     printf("    -s               - Make symbolic links instead of hard links\n");
-     printf("    -f               - Force the link creation even if source doesn't exist. Only used for symlinks\n");
-     return(1);
-  }
-
-  symlink = 0;
-  force = 0;
-  i = 1;
-  do {
-     start_option = i;
-
-    if (strcmp(argv[i], "-s") == 0) {
-       symlink = 1;
-       i++;
-    } else if (strcmp(argv[i], "-f") == 0) {
-       force = 1;
-       i++;
+        return(1);
     }
-  } while ((start_option < i) && (i<argc));
 
-  src_fname = argv[i];  i++;  stuple = lio_path_resolve(lio_gc->auto_translate, src_fname);
-  dest_fname = argv[i]; i++;  dtuple = lio_path_resolve(lio_gc->auto_translate, dest_fname);
+    lio_init(&argc, &argv);
 
-  //** Make sure we're linking in the same system
-  if (strcmp(stuple.lc->section_name, dtuple.lc->section_name) != 0) {
-     printf("Source and destination objects must exist in the same system!\n");
-     printf("Source: %s   Dest: %s\n", stuple.lc->section_name, dtuple.lc->section_name);
-     return(1);
-  }
+    if (argc < 3) {
+        printf("\n");
+        printf("lio_ln LIO_COMMON_OPTIONS source_file linked_dest_file\n");
+        lio_print_options(stdout);
+        printf("    -s               - Make symbolic links instead of hard links\n");
+        printf("    -f               - Force the link creation even if source doesn't exist. Only used for symlinks\n");
+        return(1);
+    }
 
-  if (symlink == 0) force = 0;
+    symlink = 0;
+    force = 0;
+    i = 1;
+    do {
+        start_option = i;
 
-  if (stuple.path[0] == '/') { //** Absolute path
-     ftype = lio_exists(stuple.lc, stuple.creds, stuple.path);
-  } else {  //** Relative path
-     os_path_split(dtuple.path, &dir, &file);
-     snprintf(fullname, OS_PATH_MAX, "%s/%s", dir, stuple.path);
-     ftype = lio_exists(stuple.lc, stuple.creds, fullname);
-     free(dir); free(file);
-  }
+        if (strcmp(argv[i], "-s") == 0) {
+            symlink = 1;
+            i++;
+        } else if (strcmp(argv[i], "-f") == 0) {
+            force = 1;
+            i++;
+        }
+    } while ((start_option < i) && (i<argc));
 
-  //** Check on the source file
-  if (force == 0) {
-     if (ftype == 0) { //** The file doesn't exists
-        printf("ERROR source file doesn't exist: %s\n", stuple.path);
+    src_fname = argv[i];
+    i++;
+    stuple = lio_path_resolve(lio_gc->auto_translate, src_fname);
+    dest_fname = argv[i];
+    i++;
+    dtuple = lio_path_resolve(lio_gc->auto_translate, dest_fname);
+
+    //** Make sure we're linking in the same system
+    if (strcmp(stuple.lc->section_name, dtuple.lc->section_name) != 0) {
+        printf("Source and destination objects must exist in the same system!\n");
+        printf("Source: %s   Dest: %s\n", stuple.lc->section_name, dtuple.lc->section_name);
+        return(1);
+    }
+
+    if (symlink == 0) force = 0;
+
+    if (stuple.path[0] == '/') { //** Absolute path
+        ftype = lio_exists(stuple.lc, stuple.creds, stuple.path);
+    } else {  //** Relative path
+        os_path_split(dtuple.path, &dir, &file);
+        snprintf(fullname, OS_PATH_MAX, "%s/%s", dir, stuple.path);
+        ftype = lio_exists(stuple.lc, stuple.creds, fullname);
+        free(dir);
+        free(file);
+    }
+
+    //** Check on the source file
+    if (force == 0) {
+        if (ftype == 0) { //** The file doesn't exists
+            printf("ERROR source file doesn't exist: %s\n", stuple.path);
+            err = 1;
+            goto finished;
+        }
+    }
+
+    if (((ftype & OS_OBJECT_DIR)>0) && (symlink == 0))  { //** Can only symlink a file
+        printf("ERROR Can't hard link directories!  Source: %s\n", stuple.path);
         err = 1;
         goto finished;
-     }
-  }
+    }
 
-  if (((ftype & OS_OBJECT_DIR)>0) && (symlink == 0))  { //** Can only symlink a file
-     printf("ERROR Can't hard link directories!  Source: %s\n", stuple.path);
-     err = 1;
-     goto finished;
-  }
+    //** Check on the dest file
+    ftype = lio_exists(dtuple.lc, dtuple.creds, dtuple.path);
+    if (ftype != 0) { //** The file doesn't exists
+        printf("ERROR destination file exists: %s\n", dtuple.path);
+        err = 1;
+        goto finished;
+    }
 
-  //** Check on the dest file
-  ftype = lio_exists(dtuple.lc, dtuple.creds, dtuple.path);
-  if (ftype != 0) { //** The file doesn't exists
-     printf("ERROR destination file exists: %s\n", dtuple.path);
-     err = 1;
-     goto finished;
-  }
+    //** Now create the link
+    err = gop_sync_exec(gop_lio_link_object(dtuple.lc, dtuple.creds, symlink, stuple.path, dtuple.path, NULL));
+    if (err != OP_STATE_SUCCESS) {
+        info_printf(lio_ifd, 0, "ERROR linking file!\n");
+        err = 1;
+        goto finished;
+    }
 
-  //** Now create the link
-  err = gop_sync_exec(gop_lio_link_object(dtuple.lc, dtuple.creds, symlink, stuple.path, dtuple.path, NULL));
-  if (err != OP_STATE_SUCCESS) {
-     info_printf(lio_ifd, 0, "ERROR linking file!\n");
-     err = 1;
-     goto finished;
-  }
-
-  err = 0;
+    err = 0;
 
 finished:
-  lio_path_release(&stuple);
-  lio_path_release(&dtuple);
+    lio_path_release(&stuple);
+    lio_path_release(&dtuple);
 
-  lio_shutdown();
+    lio_shutdown();
 
-  return(err);
+    return(err);
 }

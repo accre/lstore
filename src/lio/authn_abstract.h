@@ -48,17 +48,17 @@ extern "C" {
 typedef struct creds_s creds_t;
 
 struct creds_s {
-  void *priv;
-  void *handle;
-  char *id;
-  void (*handle_destroy)(void *);
-  char *(*get_type)(creds_t *creds);
-  void *(*get_type_field)(creds_t *creds, int index, int *len);
-  char *(*get_id)(creds_t *creds);
-  void (*set_id)(creds_t *creds, char *id);
-  void *(*get_private_handle)(creds_t *creds);
-  void (*set_private_handle)(creds_t *creds, void *handle, void (*destroy)(void *));
-  void (*destroy)(creds_t *creds);
+    void *priv;
+    void *handle;
+    char *id;
+    void (*handle_destroy)(void *);
+    char *(*get_type)(creds_t *creds);
+    void *(*get_type_field)(creds_t *creds, int index, int *len);
+    char *(*get_id)(creds_t *creds);
+    void (*set_id)(creds_t *creds, char *id);
+    void *(*get_private_handle)(creds_t *creds);
+    void (*set_private_handle)(creds_t *creds, void *handle, void (*destroy)(void *));
+    void (*destroy)(creds_t *creds);
 };
 
 creds_t *cred_default_create();
@@ -75,9 +75,9 @@ creds_t *cred_default_create();
 typedef struct authn_s authn_t;
 
 struct authn_s {
-  void *priv;
-  creds_t *(*cred_init)(authn_t *an, int type, void **args);
-  void (*destroy)(authn_t *an);
+    void *priv;
+    creds_t *(*cred_init)(authn_t *an, int type, void **args);
+    void (*destroy)(authn_t *an);
 };
 
 typedef authn_t *(authn_create_t)(service_manager_t *ess, inip_file_t *ifd, char *section);

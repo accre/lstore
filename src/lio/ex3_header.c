@@ -41,9 +41,9 @@ http://www.accre.vanderbilt.edu
 
 void ex_header_init(ex_header_t *eh)
 {
-  assert(eh != NULL);
-  memset(eh, 0, sizeof(ex_header_t));
-//  eh->attributes = list_create(1, &list_string_compare, list_string_dup, list_simple_free, list_simple_free);  
+    assert(eh != NULL);
+    memset(eh, 0, sizeof(ex_header_t));
+//  eh->attributes = list_create(1, &list_string_compare, list_string_dup, list_simple_free, list_simple_free);
 }
 
 //*************************************************************************
@@ -53,7 +53,7 @@ void ex_header_init(ex_header_t *eh)
 
 void ex_header_release(ex_header_t *h)
 {
-  if (h->name != NULL) free(h->name);
+    if (h->name != NULL) free(h->name);
 //  if (h->type != NULL) free(h->type);
 //  list_destroy(h->attributes);
 }
@@ -65,9 +65,9 @@ void ex_header_release(ex_header_t *h)
 
 ex_header_t *ex_header_create()
 {
-  ex_header_t *eh = (ex_header_t *)malloc(sizeof(ex_header_t));
+    ex_header_t *eh = (ex_header_t *)malloc(sizeof(ex_header_t));
 
-  return(eh);
+    return(eh);
 }
 
 //*************************************************************************
@@ -76,19 +76,22 @@ ex_header_t *ex_header_create()
 
 void ex_header_destroy(ex_header_t *eh)
 {
-  ex_header_release(eh);
-  free(eh);
+    ex_header_release(eh);
+    free(eh);
 }
 
 //*************************************************************************
 // name - Manipulates the header name
 //*************************************************************************
 
-char *ex_header_get_name(ex_header_t *h) { return(h->name); }
-void ex_header_set_name(ex_header_t *h, char *name) 
-{ 
-  if (h->name != NULL) free(h->name);
-  h->name = strdup(name); 
+char *ex_header_get_name(ex_header_t *h)
+{
+    return(h->name);
+}
+void ex_header_set_name(ex_header_t *h, char *name)
+{
+    if (h->name != NULL) free(h->name);
+    h->name = strdup(name);
 }
 
 
@@ -96,21 +99,39 @@ void ex_header_set_name(ex_header_t *h, char *name)
 // id routines
 //*************************************************************************
 
-ex_id_t ex_header_get_id(ex_header_t *h) { return(h->id); }
-void ex_header_set_id(ex_header_t *h, ex_id_t id) { h->id = id; }
+ex_id_t ex_header_get_id(ex_header_t *h)
+{
+    return(h->id);
+}
+void ex_header_set_id(ex_header_t *h, ex_id_t id)
+{
+    h->id = id;
+}
 
 //*************************************************************************
 // type routines
 //*************************************************************************
 
-char *ex_header_get_type(ex_header_t *h) { return(h->type); }
-void ex_header_set_type(ex_header_t *h, char *type) { h->type = strdup(type); }
+char *ex_header_get_type(ex_header_t *h)
+{
+    return(h->type);
+}
+void ex_header_set_type(ex_header_t *h, char *type)
+{
+    h->type = strdup(type);
+}
 
 //*************************************************************************
 // Attribute routines
 //*************************************************************************
 
-list_t *ex_header_get_attributes(ex_header_t *h) { return(h->attributes); }
-void ex_header_set_attributes(ex_header_t *h, list_t *attr) { h->attributes = attr; }
+list_t *ex_header_get_attributes(ex_header_t *h)
+{
+    return(h->attributes);
+}
+void ex_header_set_attributes(ex_header_t *h, list_t *attr)
+{
+    h->attributes = attr;
+}
 
 

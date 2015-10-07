@@ -1,4 +1,4 @@
-/* 
+/*
 Advanced Computing Center for Research and Education Proprietary License
 Version 1.0 (April 2006)
 
@@ -26,7 +26,7 @@ Advanced Computing Center for Research and Education
 Nashville, TN 37203
 http://www.accre.vanderbilt.edu
 
- 
+
  File:   arc_restore.c
  Author: Bobby Brown
 
@@ -46,17 +46,18 @@ http://www.accre.vanderbilt.edu
 #include "archive.h"
 
 
-int restore_path(char *path, char *tape_id) {
+int restore_path(char *path, char *tape_id)
+{
     int res = EXIT_SUCCESS;
     //should not be hardcoded but this is temporary
     char *script = "/tibs/bin/restore.sh";
     char server[256];
     char *backup_path;
-    
+
     strcpy(server, tape_id);
-    
-    strtok_r(server, " ", &backup_path);   
-    
+
+    strtok_r(server, " ", &backup_path);
+
     int len = strlen(script) + strlen(server) + strlen(backup_path) + 10;
     char cmd[len];
     sprintf(cmd, "%s %s %s", script, server, backup_path);
@@ -72,7 +73,8 @@ int restore_path(char *path, char *tape_id) {
     return(res);
 }
 
-int run_lstore_copy(char *spath, char *dpath) {
+int run_lstore_copy(char *spath, char *dpath)
+{
     int res = EXIT_SUCCESS;
     lio_path_tuple_t stuple;
     os_regex_table_t *rp, *ro;
@@ -82,18 +84,18 @@ int run_lstore_copy(char *spath, char *dpath) {
     int recurse_depth;
     int obj_types = OS_OBJECT_ANY;
 
-    //TODO add this as an CLI option 
+    //TODO add this as an CLI option
     //** Store the buffer size
     buffer_size = 1024 * 1024 * 20;
-    
+
 
     type_malloc_clear(flist, lio_cp_path_t, 1);
     max_spawn = lio_parallel_task_count;
-    
+
     // target in lio to download
     char *lio_src = concat("@:", spath);
     stuple = lio_path_resolve(lio_gc->auto_translate, lio_src);
-    
+
     if (spath != NULL) {
         // target to download to on the local system
         flist[0].dest_tuple = lio_path_resolve(lio_gc->auto_translate, dpath);
@@ -108,7 +110,7 @@ int run_lstore_copy(char *spath, char *dpath) {
 
         dtype = os_local_filetype(flist[0].dest_tuple.path);
     }
-    
+
     flist[0].src_tuple.creds = lio_gc->creds;
     //rp = os_regex2table(regex_path);
     //ro = os_regex2table(regex_object);
@@ -135,8 +137,9 @@ finally:
     return(res);
 }
 
-void process_restore(char *spath, char *dpath) {
-    int res = EXIT_SUCCESS;    
+void process_restore(char *spath, char *dpath)
+{
+    int res = EXIT_SUCCESS;
     char *tape_id, *dir;
     int attr_size = -lio_gc->max_attr;
     tape_id = NULL;
@@ -150,10 +153,11 @@ void process_restore(char *spath, char *dpath) {
         res = restore_path(spath, tape_id);
     }
     // copy files from L-Store
-    run_lstore_copy(spath, dpath);                
+    run_lstore_copy(spath, dpath);
 }
 
-void print_usage() {
+void print_usage()
+{
     printf("\nUsage: arc_restore -s SOURCE_PATH -d DESTINATION_PATH\n");
     printf("\t-s\tL-Store path to restore\n");
     printf("\t-l\tLocal path to restore files to");
@@ -162,10 +166,11 @@ void print_usage() {
 }
 
 /*
- * 
+ *
  */
-int main(int argc, char** argv) {
-int i = 1, start_option = 0;
+int main(int argc, char** argv)
+{
+    int i = 1, start_option = 0;
     char *spath = NULL;
     char *dpath = NULL;
 
@@ -176,9 +181,9 @@ int i = 1, start_option = 0;
         print_usage();
     } else if (argc > 1) {
         do {
-            start_option = i;   
+            start_option = i;
             if (strcmp(argv[i], "-h") == 0) {
-                print_usage();                
+                print_usage();
             } else if (strcmp(argv[i], "-s") == 0) {
                 i++;
                 spath = argv[i];

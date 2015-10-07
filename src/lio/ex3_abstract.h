@@ -25,7 +25,7 @@ Advanced Computing Center for Research and Education
 230 Appleton Place
 Nashville, TN 37203
 http://www.accre.vanderbilt.edu
-*/ 
+*/
 
 //***********************************************************************
 // Exnode3 abstract class
@@ -67,7 +67,7 @@ extern "C" {
 #define INSPECT_FIX_READ_ERROR       2048   //** Treat read errors as bad blocks for repair
 #define INSPECT_FIX_WRITE_ERROR      4096   //** Treat write errors as bad blocks for repair
 #define INSPECT_COMMAND_BITS 15
-
+ 
 #define INSPECT_QUICK_CHECK   1
 #define INSPECT_SCAN_CHECK    2
 #define INSPECT_FULL_CHECK    3
@@ -80,7 +80,7 @@ extern "C" {
 #define INSPECT_WRITE_ERRORS 10
 #define CLONE_STRUCTURE       0
 #define CLONE_STRUCT_AND_DATA 1
-
+ 
 #define INSPECT_RESULT_FULL_CHECK      512    //** Full byte-level check performed
 #define INSPECT_RESULT_SOFT_ERROR     1024   //** Soft errors found
 #define INSPECT_RESULT_HARD_ERROR     2048   //** Hard errors found
@@ -88,50 +88,50 @@ extern "C" {
 #define INSPECT_RESULT_COUNT_MASK      511    //** Bit mask for LUN counts
 #define SEG_SM_LOAD   "segment_load"
 #define SEG_SM_CREATE "segment_create"
-
+ 
 typedef void segment_priv_t;
-
+ 
 struct segment_s;
 typedef struct segment_s segment_t;
-
+ 
 typedef struct {     //** Structure for contaiing hints to the various segment drivers
-  int lun_max_blacklist;  //** Max number of devs to blacklist per stripe for performance
-  int number_blacklisted;
+int lun_max_blacklist;  //** Max number of devs to blacklist per stripe for performance
+int number_blacklisted;
 } segment_rw_hints_t;
-
+ 
 typedef struct {
-  rid_change_entry_t *rid;
-  apr_hash_t *pick_pool;
+rid_change_entry_t *rid;
+apr_hash_t *pick_pool;
 } rid_inspect_tweak_t;
-
+ 
 typedef struct {
-  rs_query_t *query;   //** Generic extra query
-  opque_t *qs;         //** Cleanup Que on success
-  opque_t *qf;         //** Cleanup Que for failure
-  apr_hash_t *rid_changes;  //** List of RID space changes
-  apr_thread_mutex_t *rid_lock;     //** Lock for manipulating the rid_changes table
-  int n_dev_rows;
-  int dev_row_replaced[128];
+rs_query_t *query;   //** Generic extra query
+opque_t *qs;         //** Cleanup Que on success
+opque_t *qf;         //** Cleanup Que for failure
+apr_hash_t *rid_changes;  //** List of RID space changes
+apr_thread_mutex_t *rid_lock;     //** Lock for manipulating the rid_changes table
+int n_dev_rows;
+int dev_row_replaced[128];
 } inspect_args_t;
-
+ 
 typedef struct {
-  op_generic_t *(*read)(segment_t *seg, data_attr_t *da, segment_rw_hints_t *hints, int n_iov, ex_iovec_t *iov, tbuffer_t *buffer, ex_off_t boff, int timeout);
-  op_generic_t *(*write)(segment_t *seg, data_attr_t *da, segment_rw_hints_t *hints, int n_iov, ex_iovec_t *iov, tbuffer_t *buffer, ex_off_t boff, int timeout);
-  op_generic_t *(*inspect)(segment_t *seg, data_attr_t *da, info_fd_t *fd, int mode, ex_off_t buffer_size, inspect_args_t *args, int timeout);
-  op_generic_t *(*truncate)(segment_t *seg, data_attr_t *da, ex_off_t new_size, int timeout);
-  op_generic_t *(*remove)(segment_t *seg, data_attr_t *da, int timeout);
-  op_generic_t *(*flush)(segment_t *seg, data_attr_t *da, ex_off_t lo, ex_off_t hi, int timeout);
-  op_generic_t *(*clone)(segment_t *seg, data_attr_t *da, segment_t **clone, int mode, void *attr, int timeout);
-  int (*signature)(segment_t *seg, char *buffer, int *used, int bufsize);
-  ex_off_t (*block_size)(segment_t *seg);
-  ex_off_t (*size)(segment_t *seg);
-  int (*serialize)(segment_t *seg, exnode_exchange_t *exp);
-  int (*deserialize)(segment_t *seg, ex_id_t id, exnode_exchange_t *exp);
-  void (*destroy)(segment_t *seg);
+op_generic_t *(*read)(segment_t *seg, data_attr_t *da, segment_rw_hints_t *hints, int n_iov, ex_iovec_t *iov, tbuffer_t *buffer, ex_off_t boff, int timeout);
+op_generic_t *(*write)(segment_t *seg, data_attr_t *da, segment_rw_hints_t *hints, int n_iov, ex_iovec_t *iov, tbuffer_t *buffer, ex_off_t boff, int timeout);
+op_generic_t *(*inspect)(segment_t *seg, data_attr_t *da, info_fd_t *fd, int mode, ex_off_t buffer_size, inspect_args_t *args, int timeout);
+op_generic_t *(*truncate)(segment_t *seg, data_attr_t *da, ex_off_t new_size, int timeout);
+op_generic_t *(*remove)(segment_t *seg, data_attr_t *da, int timeout);
+op_generic_t *(*flush)(segment_t *seg, data_attr_t *da, ex_off_t lo, ex_off_t hi, int timeout);
+op_generic_t *(*clone)(segment_t *seg, data_attr_t *da, segment_t **clone, int mode, void *attr, int timeout);
+int (*signature)(segment_t *seg, char *buffer, int *used, int bufsize);
+ex_off_t (*block_size)(segment_t *seg);
+ex_off_t (*size)(segment_t *seg);
+int (*serialize)(segment_t *seg, exnode_exchange_t *exp);
+int (*deserialize)(segment_t *seg, ex_id_t id, exnode_exchange_t *exp);
+void (*destroy)(segment_t *seg);
 } segment_fn_t;
-
+ 
 //#define inspect_printf(fd, ...) if ((fd) != NULL) fprintf(fd, __VA_ARGS__)
-
+ 
 #define segment_id(s) (s)->header.id
 #define segment_type(s) (s)->header.type
 #define segment_destroy(s) (s)->fn.destroy(s)
@@ -149,36 +149,36 @@ typedef struct {
 #define segment_deserialize(s, id, exp) (s)->fn.deserialize(s, id, exp)
 #define segment_lock(s) apr_thread_mutex_lock((s)->lock)
 #define segment_unlock(s) apr_thread_mutex_unlock((s)->lock)
-
+ 
 typedef struct {
-  ex_header_t header;
-  segment_t *default_seg;
-  list_t *block;
-  list_t *view;
+ex_header_t header;
+segment_t *default_seg;
+list_t *block;
+list_t *view;
 } exnode_t;
-
+ 
 struct segment_s {
-  ex_header_t header;
-  atomic_int_t ref_count;
-  segment_priv_t *priv;
-  service_manager_t *ess;
-  segment_fn_t fn;
-  apr_thread_mutex_t *lock;
-  apr_thread_cond_t *cond;
-  apr_pool_t *mpool;
+ex_header_t header;
+atomic_int_t ref_count;
+segment_priv_t *priv;
+service_manager_t *ess;
+segment_fn_t fn;
+apr_thread_mutex_t *lock;
+apr_thread_cond_t *cond;
+apr_pool_t *mpool;
 };
-
-
+ 
+ 
 typedef data_service_fn_t *(ds_create_t)(service_manager_t *ess, inip_file_t *ifd, char *section);
 typedef segment_t *(segment_load_t)(void *arg, ex_id_t id, exnode_exchange_t *ex);
 typedef segment_t *(segment_create_t)(void *arg);
-
+ 
 typedef struct {
-  int soft;
-  int hard;
-  int write;
+int soft;
+int hard;
+int write;
 } segment_errors_t;
-
+ 
 //** Exnode related functions
 exnode_t *exnode_create();
 op_generic_t *exnode_remove(thread_pool_context_t *tpc, exnode_t *ex, data_attr_t *da, int timeout);
@@ -199,18 +199,18 @@ exnode_exchange_t *exnode_exchange_text_parse(char *text);
 ex_id_t exnode_exchange_get_default_view_id(exnode_exchange_t *exp);
 segment_t *exnode_get_default(exnode_t *ex);
 void exnode_set_default(exnode_t *ex, segment_t *seg);
-
+ 
 //exnode_t *exnode_pb2native(Exnode3__Exnode *pb);
 int exnode_printf(exnode_t *ex, void *buffer, int *nbytes);
 exnode_t *exnode_load(char *fname);
 int exnode_save(char *fname, exnode_t *ex);
-
+ 
 //** View related functions
 int view_insert(exnode_t *ex, segment_t *view);
 int view_remove(exnode_t *ex, segment_t *view);
 segment_t *view_search_by_name(exnode_t *ex, char *name);
 segment_t *view_search_by_id(exnode_t *ex, ex_id_t id);
-
+ 
 //** Segment related functions
 #define segment_get_header(seg) &((seg)->header)
 #define segment_set_header(seg, new_head) (seg)->header = *(new_head)
@@ -218,12 +218,13 @@ op_generic_t *segment_copy(thread_pool_context_t *tpc, data_attr_t *da, segment_
 op_generic_t *segment_put(thread_pool_context_t *tpc, data_attr_t *da, segment_rw_hints_t *rw_hints, FILE *fd, segment_t *dest_seg, ex_off_t dest_offset, ex_off_t len, ex_off_t bufsize, char *buffer, int do_truncate, int timeout);
 op_generic_t *segment_get(thread_pool_context_t *tpc, data_attr_t *da, segment_rw_hints_t *rw_hints, segment_t *src_seg, FILE *fd, ex_off_t src_offset, ex_off_t len, ex_off_t bufsize, char *buffer, int timeout);
 segment_t *load_segment(service_manager_t *ess, ex_id_t id, exnode_exchange_t *ex);
-
+ 
 void generate_ex_id(ex_id_t *id);
-
+ 
 #ifdef __cplusplus
 }
 #endif
-
+ 
 #endif
-
+ 
+ 

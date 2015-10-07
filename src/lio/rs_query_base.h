@@ -25,7 +25,7 @@ Advanced Computing Center for Research and Education
 230 Appleton Place
 Nashville, TN 37203
 http://www.accre.vanderbilt.edu
-*/ 
+*/
 
 //***********************************************************************
 // Basic Resource Query interface
@@ -53,25 +53,25 @@ extern "C" {
 #define RSQ_BASE_KV_PREFIX  2
 #define RSQ_BASE_KV_ANY     3
 
-  //** Mutually exclusive options to be &'ed with the KV options above
+//** Mutually exclusive options to be &'ed with the KV options above
 #define RSQ_BASE_KV_UNIQUE   64
 #define RSQ_BASE_KV_PICKONE 128
 
 struct rsq_base_ele_s {
-  int op;          //** Query operation
-  char *key;
-  char *val;
-  int key_op;
-  int val_op;
-  struct rsq_base_ele_s *next;
+    int op;          //** Query operation
+    char *key;
+    char *val;
+    int key_op;
+    int val_op;
+    struct rsq_base_ele_s *next;
 };
 
 typedef struct rsq_base_ele_s rsq_base_ele_t;
 
 typedef struct {
-  resource_service_fn_t *rs;
-  rsq_base_ele_t *head;
-  rsq_base_ele_t *tail;
+    resource_service_fn_t *rs;
+    rsq_base_ele_t *head;
+    rsq_base_ele_t *tail;
 } rsq_base_t;
 
 int rs_query_base_add(resource_service_fn_t *rs, rs_query_t **q, int op, char *key, int key_op, char *val, int val_op);

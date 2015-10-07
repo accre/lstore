@@ -25,7 +25,7 @@ Advanced Computing Center for Research and Education
 230 Appleton Place
 Nashville, TN 37203
 http://www.accre.vanderbilt.edu
-*/ 
+*/
 
 //***********************************************************************
 // Generic data service
@@ -122,42 +122,42 @@ typedef struct data_service_fn_s data_service_fn_t;
 //} data_service_mapping_t;
 
 struct data_service_fn_s {
-  void *priv;
-  char *type;
-  void (*destroy_service)(data_service_fn_t *);
-  void (*translate_cap_set)(data_service_fn_t *ds, char *rid_key, char *ds_key, data_cap_set_t *cs);
-  data_cap_set_t *(*new_cap_set)(data_service_fn_t *);
-  void *(*cap_auto_warm)(data_service_fn_t *, data_cap_set_t *dcs);
-  void (*cap_stop_warm)(data_service_fn_t *, void *warm);
-  data_cap_t *(*get_cap)(data_service_fn_t *, data_cap_set_t *cs, int key);
-  int (*set_cap)(data_service_fn_t *, data_cap_set_t *cs, int key, data_cap_t *cap);
-  void (*destroy_cap_set)(data_service_fn_t *, data_cap_set_t *caps, int free_cap);
-  data_attr_t *(*new_attr)(data_service_fn_t *);
-  int (*get_attr)(data_service_fn_t *, data_attr_t *attr, int key, void *val, int size);
-  int (*set_attr)(data_service_fn_t *, data_attr_t *attr, int key, void *val);
-  void (*destroy_attr)(data_service_fn_t *, data_attr_t *attr);
-  int (*get_default_attr)(data_service_fn_t *, data_attr_t *attr);
-  int (*set_default_attr)(data_service_fn_t *, data_attr_t *attr);
-  data_probe_t *(*new_probe)(data_service_fn_t *);
-  int (*get_probe)(data_service_fn_t *, data_probe_t *probe, int key, void *val, int size);
-  void (*destroy_probe)(data_service_fn_t *, data_probe_t *probe);
-  char *(*res2rid)(data_service_fn_t *ds, char *ds_key);
-  data_inquire_t *(*new_inquire)(data_service_fn_t *ds);
-  void (*destroy_inquire)(data_service_fn_t *ds, data_inquire_t *space);
-  ds_int_t (*res_inquire_get)(data_service_fn_t *ds, int type, data_inquire_t *space);
-  op_generic_t *(*res_inquire)(data_service_fn_t *, char *res, data_attr_t *attr, data_inquire_t *space, int timeout);
-  op_generic_t *(*allocate)(data_service_fn_t *, char *res, data_attr_t *attr, ds_int_t size, data_cap_set_t *caps, int timeout);
-  op_generic_t *(*remove)(data_service_fn_t *, data_attr_t *dattr, data_cap_t *mcap, int timeout);
-  op_generic_t *(*truncate)(data_service_fn_t *, data_attr_t *dattr, data_cap_t *mcap, ex_off_t new_size, int timeout);
-  op_generic_t *(*probe)(data_service_fn_t *, data_attr_t *dattr, data_cap_t *mcap, data_probe_t *probe, int timeout);
-  op_generic_t *(*modify_count)(data_service_fn_t *, data_attr_t *dattr, data_cap_t *mcap, int mode, int captype, int timeout);
-  op_generic_t *(*read)(data_service_fn_t *, data_attr_t *attr, data_cap_t *rcap, ds_int_t off, tbuffer_t *read, ex_off_t boff, ex_off_t len, int timeout);
-  op_generic_t *(*write)(data_service_fn_t *, data_attr_t *attr, data_cap_t *wcap, ds_int_t off, tbuffer_t *write, ex_off_t boff, ex_off_t len, int timeout);
-  op_generic_t *(*readv)(data_service_fn_t *, data_attr_t *attr, data_cap_t *rcap, int n_iov, ex_iovec_t *iov, tbuffer_t *read, ex_off_t boff, ex_off_t len, int timeout);
-  op_generic_t *(*writev)(data_service_fn_t *, data_attr_t *attr, data_cap_t *wcap, int n_iov, ex_iovec_t *iov, tbuffer_t *write, ex_off_t boff, ex_off_t len, int timeout);
-  op_generic_t *(*append)(data_service_fn_t *, data_attr_t *attr, data_cap_t *wcap, tbuffer_t *write, ex_off_t boff, ex_off_t len, int timeout);
-  op_generic_t *(*copy)(data_service_fn_t *, data_attr_t *attr, int mode, int ns_type, char *ppath, data_cap_t *src_cap, ds_int_t src_off,
-               data_cap_t *dest_cap, ds_int_t dest_off, ds_int_t len, int timeout);
+    void *priv;
+    char *type;
+    void (*destroy_service)(data_service_fn_t *);
+    void (*translate_cap_set)(data_service_fn_t *ds, char *rid_key, char *ds_key, data_cap_set_t *cs);
+    data_cap_set_t *(*new_cap_set)(data_service_fn_t *);
+    void *(*cap_auto_warm)(data_service_fn_t *, data_cap_set_t *dcs);
+    void (*cap_stop_warm)(data_service_fn_t *, void *warm);
+    data_cap_t *(*get_cap)(data_service_fn_t *, data_cap_set_t *cs, int key);
+    int (*set_cap)(data_service_fn_t *, data_cap_set_t *cs, int key, data_cap_t *cap);
+    void (*destroy_cap_set)(data_service_fn_t *, data_cap_set_t *caps, int free_cap);
+    data_attr_t *(*new_attr)(data_service_fn_t *);
+    int (*get_attr)(data_service_fn_t *, data_attr_t *attr, int key, void *val, int size);
+    int (*set_attr)(data_service_fn_t *, data_attr_t *attr, int key, void *val);
+    void (*destroy_attr)(data_service_fn_t *, data_attr_t *attr);
+    int (*get_default_attr)(data_service_fn_t *, data_attr_t *attr);
+    int (*set_default_attr)(data_service_fn_t *, data_attr_t *attr);
+    data_probe_t *(*new_probe)(data_service_fn_t *);
+    int (*get_probe)(data_service_fn_t *, data_probe_t *probe, int key, void *val, int size);
+    void (*destroy_probe)(data_service_fn_t *, data_probe_t *probe);
+    char *(*res2rid)(data_service_fn_t *ds, char *ds_key);
+    data_inquire_t *(*new_inquire)(data_service_fn_t *ds);
+    void (*destroy_inquire)(data_service_fn_t *ds, data_inquire_t *space);
+    ds_int_t (*res_inquire_get)(data_service_fn_t *ds, int type, data_inquire_t *space);
+    op_generic_t *(*res_inquire)(data_service_fn_t *, char *res, data_attr_t *attr, data_inquire_t *space, int timeout);
+    op_generic_t *(*allocate)(data_service_fn_t *, char *res, data_attr_t *attr, ds_int_t size, data_cap_set_t *caps, int timeout);
+    op_generic_t *(*remove)(data_service_fn_t *, data_attr_t *dattr, data_cap_t *mcap, int timeout);
+    op_generic_t *(*truncate)(data_service_fn_t *, data_attr_t *dattr, data_cap_t *mcap, ex_off_t new_size, int timeout);
+    op_generic_t *(*probe)(data_service_fn_t *, data_attr_t *dattr, data_cap_t *mcap, data_probe_t *probe, int timeout);
+    op_generic_t *(*modify_count)(data_service_fn_t *, data_attr_t *dattr, data_cap_t *mcap, int mode, int captype, int timeout);
+    op_generic_t *(*read)(data_service_fn_t *, data_attr_t *attr, data_cap_t *rcap, ds_int_t off, tbuffer_t *read, ex_off_t boff, ex_off_t len, int timeout);
+    op_generic_t *(*write)(data_service_fn_t *, data_attr_t *attr, data_cap_t *wcap, ds_int_t off, tbuffer_t *write, ex_off_t boff, ex_off_t len, int timeout);
+    op_generic_t *(*readv)(data_service_fn_t *, data_attr_t *attr, data_cap_t *rcap, int n_iov, ex_iovec_t *iov, tbuffer_t *read, ex_off_t boff, ex_off_t len, int timeout);
+    op_generic_t *(*writev)(data_service_fn_t *, data_attr_t *attr, data_cap_t *wcap, int n_iov, ex_iovec_t *iov, tbuffer_t *write, ex_off_t boff, ex_off_t len, int timeout);
+    op_generic_t *(*append)(data_service_fn_t *, data_attr_t *attr, data_cap_t *wcap, tbuffer_t *write, ex_off_t boff, ex_off_t len, int timeout);
+    op_generic_t *(*copy)(data_service_fn_t *, data_attr_t *attr, int mode, int ns_type, char *ppath, data_cap_t *src_cap, ds_int_t src_off,
+                          data_cap_t *dest_cap, ds_int_t dest_off, ds_int_t len, int timeout);
 };
 
 

@@ -25,7 +25,7 @@ Advanced Computing Center for Research and Education
 230 Appleton Place
 Nashville, TN 37203
 http://www.accre.vanderbilt.edu
-*/ 
+*/
 
 //***********************************************************************
 // IBP based data service
@@ -44,7 +44,7 @@ extern "C" {
 
 #define DS_TYPE_IBP "ibp"
 
-   //** Additional IBP attributes
+//** Additional IBP attributes
 #define DS_IBP_ATTR_RELIABILITY 2
 #define DS_IBP_ATTR_TYPE        3
 #define DS_IBP_ATTR_DEPOT       4
@@ -54,12 +54,12 @@ extern "C" {
 #define DS_IBP_ATTR_DISK_CHKSUM_BLOCKSIZE 8
 
 typedef struct {
-  ibp_attributes_t attr;
-  ibp_depot_t depot;
-  ibp_connect_context_t cc;
-  ns_chksum_t ncs;
-  int disk_cs_type;
-  int disk_cs_blocksize;
+    ibp_attributes_t attr;
+    ibp_depot_t depot;
+    ibp_connect_context_t cc;
+    ns_chksum_t ncs;
+    int disk_cs_type;
+    int disk_cs_blocksize;
 } ds_ibp_attr_t;
 
 data_service_fn_t *ds_ibp_create(void *arg, inip_file_t *ifd, char *section);

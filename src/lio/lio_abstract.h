@@ -68,73 +68,73 @@ extern FILE *_lio_ifd;  //** Default information log device
 extern char *_lio_exe_name;  //** Executable name
 
 struct lio_config_s {
-  data_service_fn_t *ds;
-  object_service_fn_t *os;
-  resource_service_fn_t *rs;
-  thread_pool_context_t *tpc_unlimited;
-  mq_context_t *mqc;
-  service_manager_t *ess;
-  service_manager_t *ess_nocache;  //** Copy of ess but missing cache.  Kind of a kludge...
-  Stack_t *plugin_stack;
-  cache_t *cache;
-  data_attr_t *da;
-  inip_file_t *ifd;
-  list_t *open_index;
-  creds_t *creds;
-  apr_thread_mutex_t *lock;
-  apr_pool_t *mpool;
-  char *cfg_name;
-  char *section_name;
-  char *ds_section;
-  char *mq_section;
-  char *os_section;
-  char *rs_section;
-  char *tpc_unlimited_section;
-  char *creds_name;
-  char *exe_name;
-  blacklist_t *blacklist;
-  ex_off_t readahead;
-  ex_off_t readahead_trigger;
-  int calc_adler32;
-  int timeout;
-  int max_attr;
-  int anonymous_creation;
-  int auto_translate;
-  int ref_cnt;
+    data_service_fn_t *ds;
+    object_service_fn_t *os;
+    resource_service_fn_t *rs;
+    thread_pool_context_t *tpc_unlimited;
+    mq_context_t *mqc;
+    service_manager_t *ess;
+    service_manager_t *ess_nocache;  //** Copy of ess but missing cache.  Kind of a kludge...
+    Stack_t *plugin_stack;
+    cache_t *cache;
+    data_attr_t *da;
+    inip_file_t *ifd;
+    list_t *open_index;
+    creds_t *creds;
+    apr_thread_mutex_t *lock;
+    apr_pool_t *mpool;
+    char *cfg_name;
+    char *section_name;
+    char *ds_section;
+    char *mq_section;
+    char *os_section;
+    char *rs_section;
+    char *tpc_unlimited_section;
+    char *creds_name;
+    char *exe_name;
+    blacklist_t *blacklist;
+    ex_off_t readahead;
+    ex_off_t readahead_trigger;
+    int calc_adler32;
+    int timeout;
+    int max_attr;
+    int anonymous_creation;
+    int auto_translate;
+    int ref_cnt;
 };
 
 typedef struct {
-  creds_t *creds;
-  lio_config_t *lc;
-  char *path;
-  int is_lio;
+    creds_t *creds;
+    lio_config_t *lc;
+    char *path;
+    int is_lio;
 } lio_path_tuple_t;
 
 typedef struct {
-  lio_path_tuple_t tuple;
-  os_object_iter_t *oit;
-  local_object_iter_t *lit;
+    lio_path_tuple_t tuple;
+    os_object_iter_t *oit;
+    local_object_iter_t *lit;
 } unified_object_iter_t;
 
 typedef struct {
-  segment_rw_hints_t *rw_hints;
-  lio_path_tuple_t src_tuple;
-  lio_path_tuple_t dest_tuple;
-  ex_off_t bufsize;
-  int slow;
+    segment_rw_hints_t *rw_hints;
+    lio_path_tuple_t src_tuple;
+    lio_path_tuple_t dest_tuple;
+    ex_off_t bufsize;
+    int slow;
 } lio_cp_file_t;
 
 typedef struct {
-  lio_path_tuple_t src_tuple;
-  lio_path_tuple_t dest_tuple;
-  os_regex_table_t *path_regex;
-  os_regex_table_t *obj_regex;
-  int recurse_depth;
-  int dest_type;
-  int obj_types;
-  int max_spawn;
-  int slow;
-  ex_off_t bufsize;
+    lio_path_tuple_t src_tuple;
+    lio_path_tuple_t dest_tuple;
+    os_regex_table_t *path_regex;
+    os_regex_table_t *obj_regex;
+    int recurse_depth;
+    int dest_type;
+    int obj_types;
+    int max_spawn;
+    int slow;
+    ex_off_t bufsize;
 } lio_cp_path_t;
 
 extern lio_config_t *lio_gc;
@@ -155,26 +155,26 @@ extern int lio_parallel_task_count;
 #define lio_unlock(s) apr_thread_mutex_unlock((s)->lock)
 
 struct lio_file_handle_s {  //** Shared file handle
-  exnode_t *ex;
-  segment_t *seg;
-  lio_config_t *lc;
-  ex_id_t vid;
-  int ref_count;
-  int remove_on_close;
-  ex_off_t readahead_end;
-  atomic_int_t modified;
-  list_t *write_table;
+    exnode_t *ex;
+    segment_t *seg;
+    lio_config_t *lc;
+    ex_id_t vid;
+    int ref_count;
+    int remove_on_close;
+    ex_off_t readahead_end;
+    atomic_int_t modified;
+    list_t *write_table;
 };
 
 typedef struct lio_file_handle_s lio_file_handle_t;
 
 typedef struct {  //** Individual file descriptor
-  lio_config_t *lc;
-  lio_file_handle_t *fh;  //** Shared handle
-  creds_t *creds;
-  char *path;
-  int mode;         //** R/W mode
-  ex_off_t curr_offset;
+    lio_config_t *lc;
+    lio_file_handle_t *fh;  //** Shared handle
+    creds_t *creds;
+    char *path;
+    int mode;         //** R/W mode
+    ex_off_t curr_offset;
 } lio_fd_t;
 
 extern skiplist_compare_t ex_id_compare;
