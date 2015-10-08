@@ -9,7 +9,7 @@
 # APR_FOUND, set to TRUE if found, FALSE otherwise
 # APR_VERSION, the version of APR that was found
 
-set(APR_FOUND FALSE)
+set(APR-ACCRE_FOUND FALSE)
 
 find_program(APR_CONFIG_EXECUTABLE apr-ACCRE-1-config)
 mark_as_advanced(APR_CONFIG_EXECUTABLE)
@@ -58,7 +58,8 @@ FIND_LIBRARY(APR_LIBRARY NAMES apr-accre-1 apr-ACCRE-1 PATHS ${APR_LIBTOOL_BASE}
 
 # compatibility, allow this CMake module to work with the various CMakeList.txt files
 set(APR_INCLUDE_DIR "${APR_INCLUDES}")
-
-MESSAGE(STATUS "APR AT ${APR_LIBRARY}")
+if(APR_LIBRARY AND APR_INCLUDES)
+    set(APR-ACCRE_FOUND 1)
+endif()
 INCLUDE(FindPackageHandleStandardArgs)
 FIND_PACKAGE_HANDLE_STANDARD_ARGS(APR DEFAULT_MSG APR_INCLUDES APR_LIBRARY APR_LIBS APR_VERSION)
