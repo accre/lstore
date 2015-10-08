@@ -36,14 +36,7 @@ SET(LSTORE_PROJECT_INCLUDES
                 skiplist.h toolbox_config.h phoebus.h random.h string_token.h
                 type_malloc.h transfer_buffer.h packer.h append_printf.h
                 chksum.h varint.h atomic_counter.h dns_cache.h iniparse.h log.h)
+SET(LSTORE_EXECUTABLES sl_test isl_test varint_test)
 
-
-# Common functionality is extracted here
+# Common functionality is stored here
 include(cmake/LStoreCommon.cmake)
-
-target_link_libraries(sl_test  ${library_lib} ${LIBS})
-target_link_libraries(isl_test  ${library_lib} ${LIBS})
-target_link_libraries(varint_test ${library_lib} ${LIBS})
-ADD_EXECUTABLE(sl_test sl_test.c)
-ADD_EXECUTABLE(isl_test isl_test.c)
-ADD_EXECUTABLE(varint_test varint_test.c)
