@@ -28,10 +28,16 @@ http://www.accre.vanderbilt.edu
 */
 
 #define _log_module_index 212
+#include "config.h"
+
+#if defined(HAVE_SYS_XATTR_H)
+#include <sys/xattr.h>
+#elif defined(HAVE_ATTR_XATTR_H)
+#include <attr/xattr.h>
+#endif
 
 #include <assert.h>
 #include <sys/types.h>
-#include <attr/xattr.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #include <math.h>
@@ -726,7 +732,7 @@ int lfs_flush(const char *fname, struct fuse_file_info *fi)
 // lfs_fsync - Flushes any data to backing store
 //*****************************************************************
 
-int lfs_fsync(const char *fname, struct fuse_file_info *fi)
+int lfs_fsync(const char *fname, int datasync, struct fuse_file_info *fi)
 {
     lio_fuse_t *lfs = lfs_get_context();
     lio_fd_t *fd;
@@ -1074,7 +1080,6 @@ void lfs_set_tape_attr(lio_fuse_t *lfs, char *fname, char *mytape_val, int tape_
         exp->text.text = NULL;
         exnode_exchange_destroy(exp);
         exnode_destroy(ex);
-        exnode_destroy(cex);
     }
 
     //** Store them
@@ -1163,7 +1168,12 @@ void lfs_get_tape_attr(lio_fuse_t *lfs, char *fname, char **tape_val, int *tape_
 // lfs_getxattr - Gets an extended attribute
 //*****************************************************************
 
+#if defined(HAVE_XATTR)
+#  if ! defined(__APPLE__)
 int lfs_getxattr(const char *fname, const char *name, char *buf, size_t size)
+#  else
+int lfs_getxattr(const char *fname, const char *name, char *buf, size_t size, uint32_t dummy)
+#  endif
 {
     lio_fuse_t *lfs = lfs_get_context();
     char *val;
@@ -1198,11 +1208,16 @@ int lfs_getxattr(const char *fname, const char *name, char *buf, size_t size)
     if (val != NULL) free(val);
     return(v_size);
 }
-
+#endif //HAVE_XATTR
 //*****************************************************************
 // lfs_setxattr - Sets a extended attribute
 //*****************************************************************
+#if defined(HAVE_XATTR)
+#  if ! defined(__APPLE__)
 int lfs_setxattr(const char *fname, const char *name, const char *fval, size_t size, int flags)
+#  else
+int lfs_setxattr(const char *fname, const char *name, const char *fval, size_t size, int flags, uint32_t dummy)
+#  endif
 {
     lio_fuse_t *lfs = lfs_get_context();
     char *val;
@@ -1265,7 +1280,7 @@ int lfs_removexattr(const char *fname, const char *name)
 
     return(0);
 }
-
+#endif //HAVE_XATTR
 //*************************************************************************
 // lfs_hardlink - Creates a hardlink to an existing file
 //*************************************************************************
@@ -1543,7 +1558,7 @@ struct fuse_operations lfs_fops = { //All lfs instances should use the same func
 //  .read = lfs_read_test_ex,
     .write = lfs_write,
     .flush = lfs_flush,
-    .flush = lfs_fsync,
+    .fsync = lfs_fsync,
     .link = lfs_hardlink,
     .readlink = lfs_readlink,
     .symlink = lfs_symlink,
