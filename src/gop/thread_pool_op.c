@@ -52,31 +52,31 @@ void _tp_op_free(op_generic_t *gop, int mode);
 
 op_status_t tp_command(op_generic_t *gop, NetStream_t *ns)
 {
-  return(op_success_status);
+    return(op_success_status);
 }
 
 //*************************************************************
 
 void  *thread_pool_exec_fn(apr_thread_t *th, void *arg)
 {
-  op_generic_t *gop = (op_generic_t *)arg;
-  thread_pool_op_t *op = gop_get_tp(gop);
-  op_status_t status;
-  int tid;
+    op_generic_t *gop = (op_generic_t *)arg;
+    thread_pool_op_t *op = gop_get_tp(gop);
+    op_status_t status;
+    int tid;
 
-  tid = atomic_thread_id;
-  log_printf(15, "tp_recv: Start!!! gid=%d tid=%d\n", gop_id(gop), tid);
-atomic_inc(op->tpc->n_started);
+    tid = atomic_thread_id;
+    log_printf(4, "tp_recv: Start!!! gid=%d tid=%d\n", gop_id(gop), tid);
+    atomic_inc(op->tpc->n_started);
 
-  status = op->fn(op->arg, gop_id(gop));
+    status = op->fn(op->arg, gop_id(gop));
 
-  log_printf(15, "tp_recv: end!!! gid=%d tid=%d status=%d\n", gop_id(gop), tid, status.op_status);
+    log_printf(4, "tp_recv: end!!! gid=%d tid=%d status=%d\n", gop_id(gop), tid, status.op_status);
 //log_printf(15, "gid=%d user_priv=%p\n", gop_id(gop), gop_get_private(gop));
 
-atomic_inc(op->tpc->n_completed);
-  gop_mark_completed(gop, status);
+    atomic_inc(op->tpc->n_completed);
+    gop_mark_completed(gop, status);
 
-  return(NULL);
+    return(NULL);
 }
 
 //*************************************************************
@@ -85,23 +85,23 @@ atomic_inc(op->tpc->n_completed);
 
 void init_tp_op(thread_pool_context_t *tpc, thread_pool_op_t *op)
 {
-  op_generic_t *gop;
+    op_generic_t *gop;
 
-  //** Clear it
-  type_memclear(op, thread_pool_op_t, 1);
+    //** Clear it
+    type_memclear(op, thread_pool_op_t, 1);
 
-  //** Now munge the pointers
-  gop = &(op->gop);
-  gop_init(gop);
-  gop->op = &(op->dop);
-  gop->op->priv = op;
-  gop->type = Q_TYPE_OPERATION;
-  op->tpc = tpc;
-  op->dop.priv = op;
-  op->dop.pc = tpc->pc; //**IS this needed?????
-  gop->base.free = _tp_op_free;
-  gop->free_ptr = op;
-  gop->base.pc = tpc->pc;
+    //** Now munge the pointers
+    gop = &(op->gop);
+    gop_init(gop);
+    gop->op = &(op->dop);
+    gop->op->priv = op;
+    gop->type = Q_TYPE_OPERATION;
+    op->tpc = tpc;
+    op->dop.priv = op;
+    op->dop.pc = tpc->pc; //**IS this needed?????
+    gop->base.free = _tp_op_free;
+    gop->free_ptr = op;
+    gop->base.pc = tpc->pc;
 }
 
 
@@ -111,11 +111,11 @@ void init_tp_op(thread_pool_context_t *tpc, thread_pool_op_t *op)
 
 int set_thread_pool_op(thread_pool_op_t *op, thread_pool_context_t *tpc, char *que, op_status_t (*fn)(void *arg, int id), void *arg, void (*my_op_free)(void *arg), int workload)
 {
-  op->fn = fn;
-  op->arg = arg;
-  op->my_op_free = my_op_free;
+    op->fn = fn;
+    op->arg = arg;
+    op->my_op_free = my_op_free;
 
-  return(0);
+    return(0);
 }
 
 //*************************************************************
@@ -124,18 +124,18 @@ int set_thread_pool_op(thread_pool_op_t *op, thread_pool_context_t *tpc, char *q
 
 op_generic_t *new_thread_pool_op(thread_pool_context_t *tpc, char *que, op_status_t (*fn)(void *arg, int id), void *arg, void (*my_op_free)(void *arg), int workload)
 {
-  thread_pool_op_t *op;
+    thread_pool_op_t *op;
 
-  //** Make the struct and clear it
-  type_malloc(op, thread_pool_op_t, 1);
+    //** Make the struct and clear it
+    type_malloc(op, thread_pool_op_t, 1);
 
-  atomic_inc(tpc->n_ops);
+    atomic_inc(tpc->n_ops);
 
-  init_tp_op(tpc, op);
+    init_tp_op(tpc, op);
 
-  set_thread_pool_op(op, tpc, que, fn, arg, my_op_free, workload);
+    set_thread_pool_op(op, tpc, que, fn, arg, my_op_free, workload);
 
-  return(tp_get_gop(op));
+    return(tp_get_gop(op));
 }
 
 

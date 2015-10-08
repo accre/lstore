@@ -25,7 +25,7 @@ Advanced Computing Center for Research and Education
 230 Appleton Place
 Nashville, TN 37203
 http://www.accre.vanderbilt.edu
-*/ 
+*/
 
 //*************************************************************
 //  Generic Callback implementation
@@ -41,10 +41,10 @@ extern "C" {
 #endif
 
 struct callback_s {   //** Used for application level callback
-   void *priv;
-   void (*fn)(void *priv, int value);
-   struct callback_s *next;
-   struct callback_s *tail;
+    void *priv;
+    void (*fn)(void *priv, int value);
+    struct callback_s *next;
+    struct callback_s *tail;
 };
 
 typedef struct callback_s callback_t;

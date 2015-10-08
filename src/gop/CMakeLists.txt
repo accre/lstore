@@ -42,7 +42,7 @@ CompilerVersion(COMPILER_VERSION)
 CompilerFlags(COMPILER_FLAGS)
 configure_file("${PROJECT_SOURCE_DIR}/gop_version.c.in" "${PROJECT_BINARY_DIR}/gop_version.c")
 
-SET(GOP_OBJS callback.c gop.c  hconnection.c  hportal.c  opque.c  thread_pool_config.c  thread_pool_op.c mq_msg.c mq_zmq.c mq_portal.c mq_ongoing.c mq_stream.c mq_helpers.c )
+SET(GOP_OBJS callback.c gop.c  hconnection.c  hportal.c  opque.c  thread_pool_config.c  thread_pool_op.c mq_msg.c mq_zmq.c mq_portal.c mq_ongoing.c mq_stream.c mq_helpers.c mq_roundrobin.c)
 
 ADD_LIBRARY( gop SHARED ${GOP_OBJS})
 ADD_LIBRARY( gop-static STATIC ${GOP_OBJS})
@@ -82,6 +82,22 @@ endforeach()
 
 #link_directories(/usr/local/lib)
 TARGET_LINK_LIBRARIES( gop LINK_PUBLIC ${lpdeps} ${sodeps} )
+
+ADD_EXECUTABLE(rr_mq_test rr_mq_test.c)
+SET_TARGET_PROPERTIES(rr_mq_test PROPERTIES LINKER_LANGUAGE CXX)
+TARGET_LINK_LIBRARIES(rr_mq_test gop-static ${LIBS})
+
+ADD_EXECUTABLE(rr_mq_server rr_mq_server.c)
+SET_TARGET_PROPERTIES(rr_mq_server PROPERTIES LINKER_LANGUAGE CXX)
+TARGET_LINK_LIBRARIES(rr_mq_server gop-static ${LIBS})
+
+ADD_EXECUTABLE(rr_mq_client rr_mq_client.c)
+SET_TARGET_PROPERTIES(rr_mq_client PROPERTIES LINKER_LANGUAGE CXX)
+TARGET_LINK_LIBRARIES(rr_mq_client gop-static ${LIBS})
+
+ADD_EXECUTABLE(rr_mq_worker rr_mq_worker.c)
+SET_TARGET_PROPERTIES(rr_mq_worker PROPERTIES LINKER_LANGUAGE CXX)
+TARGET_LINK_LIBRARIES(rr_mq_worker gop-static ${LIBS})
 
 install(TARGETS ${GOP_EXE} DESTINATION bin COMPONENT applications)
 install(TARGETS gop DESTINATION lib COMPONENT libraries)
