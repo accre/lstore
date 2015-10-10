@@ -38,7 +38,7 @@ if(WANT_PACKAGE)
     set(CMAKE_BUILD_TYPE "Release")
 endif(WANT_PACKAGE)
 
-# Set preprocessor flags.
+# Set preprocessor flags. TODO: This should be moved to config.h
 # TODO: This should be probably modified if we build on something different
 # http://www.gnu.org/software/libc/manual/html_node/Feature-Test-Macros.html
 # _REENTRANT - tells the std library to enable reentrant functions
@@ -102,7 +102,7 @@ if(WANT_STATIC)
 endif(WANT_STATIC)
 
 #Add the exe build rules
-foreach (f ${LSTORE_EXECUTABLES})
+foreach(f ${LSTORE_PROJECT_EXECUTABLES})
     add_executable(${f} ${f}.c)
     set_target_properties(${f} PROPERTIES LINKER_LANGUAGE CXX)
     if(WANT_STATIC)
