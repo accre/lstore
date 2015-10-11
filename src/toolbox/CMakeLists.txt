@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8)
-
+cmake_policy(SET CMP0048 OLD)
 # Name this project
 set(LSTORE_PROJECT_NAME "toolbox")
 project(${LSTORE_PROJECT_NAME} C CXX)

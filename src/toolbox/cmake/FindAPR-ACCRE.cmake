@@ -8,7 +8,8 @@
 # APR_CFLAGS, the flags to use to compile
 # APR_FOUND, set to TRUE if found, FALSE otherwise
 # APR_VERSION, the version of APR that was found
-
+cmake_policy(PUSH)
+cmake_policy(SET CMP0054 OLD)
 set(APR-ACCRE_FOUND FALSE)
 
 find_program(APR_CONFIG_EXECUTABLE apr-ACCRE-1-config)
@@ -63,3 +64,4 @@ if(APR_LIBRARY AND APR_INCLUDES)
 endif()
 INCLUDE(FindPackageHandleStandardArgs)
 FIND_PACKAGE_HANDLE_STANDARD_ARGS(APR DEFAULT_MSG APR_INCLUDES APR_LIBRARY APR_LIBS APR_VERSION)
+cmake_policy(POP)
