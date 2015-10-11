@@ -116,6 +116,7 @@ foreach(f ${LSTORE_PROJECT_EXECUTABLES})
     else()
         target_link_libraries(${f} ${library_lib})
     endif(WANT_STATIC)
+    install(TARGETS ${f} DESTINATION bin)
 endforeach(f)
 
 # Below is used for building packages
