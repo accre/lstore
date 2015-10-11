@@ -28,15 +28,19 @@ include(${CMAKE_SOURCE_DIR}/cmake/CompilerVersion.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/CompilerFlags.cmake)
 
 # Accept config options
-set(PROJECT_VERSION "local" CACHE STRING "Version string for build")
-set(PROJECT_REVISION "1" CACHE STRING "Revision number for packaging")
+set(LSTORE_PROJECT_VERSION "local" CACHE STRING "Version string for build")
+set(LSTORE_PROJECT_REVISION "1" CACHE STRING "Revision number for packaging")
 option(WANT_PACKAGE "Set options for package building, overriding all others"
                     OFF)
 cmake_dependent_option(WANT_STATIC "Attempt to build and link statically" TRUE
                                    "NOT WANT_PACKAGE" FALSE)
-if(WANT_PACKAGE)
+cmake_dependent_option(WANT_DEBUG "Build with debug flags" TRUE
+                                   "NOT WANT_PACKAGE" FALSE)
+if(WANT_DEBUG)
+    set(CMAKE_BUILD_TYPE "Debug")
+else()
     set(CMAKE_BUILD_TYPE "Release")
-endif(WANT_PACKAGE)
+endif(WANT_DEBUG)
 
 # Set preprocessor flags. TODO: This should be moved to config.h
 # TODO: This should be probably modified if we build on something different
@@ -65,7 +69,7 @@ if(NOT APPLE)
 endif(NOT APPLE)
 
 # Make the version file.
-set(LSTORE_INC_VERSION_STRING "${LSTORE_PROJECT_NAME}: ${PROJECT_VERSION}")
+set(LSTORE_INC_VERSION_STRING "${LSTORE_PROJECT_NAME}: ${LSTORE_PROJECT_VERSION}")
 site_name(BUILD_HOST)
 Date(BUILD_DATE)
 CompilerVersion(COMPILER_VERSION)
@@ -114,10 +118,10 @@ endforeach(f)
 
 # Below is used for building packages
 set(CPACK_PACKAGE_NAME "accre-${LSTORE_PROJECT_NAME}")
-set(CPACK_PACKAGE_VERSION "${PROJECT_VERSION}")
+set(CPACK_PACKAGE_VERSION "${LSTORE_PROJECT_VERSION}")
 set(CPACK_GENERATOR "RPM;DEB")
 set(CPACK_SOURCE_GENERATOR "RPM;DEB")
-set(CPACK_PACKAGE_RELEASE ${PROJECT_REVISION})
+set(CPACK_PACKAGE_RELEASE ${LSTORE_PROJECT_REVISION})
 set(CPACK_PACKAGE_CONTACT "Andrew Melo or Alan Tackett")
 set(CPACK_PACKAGE_VENDOR "Advanced Computing Center for Research and Education, Vanderbilt University")
 set(CPACK_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}-${CPACK_PACKAGE_RELEASE}.${CMAKE_SYSTEM_PROCESSOR}")

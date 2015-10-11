@@ -36,7 +36,7 @@ set(LSTORE_PROJECT_INCLUDES
                 skiplist.h toolbox_config.h phoebus.h random.h string_token.h
                 type_malloc.h transfer_buffer.h packer.h append_printf.h
                 chksum.h varint.h atomic_counter.h dns_cache.h iniparse.h log.h)
-set(LSTORE_EXECUTABLES sl_test isl_test varint_test)
+set(LSTORE_PROJECT_EXECUTABLES sl_test isl_test varint_test)
 
 # Common functionality is stored here
 include(cmake/LStoreCommon.cmake)
