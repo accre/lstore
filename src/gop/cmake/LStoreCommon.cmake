@@ -59,7 +59,7 @@ set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -O0")
 find_package(OpenSSL REQUIRED)
 find_package(APR-ACCRE REQUIRED)
 find_package(APRUtil-ACCRE REQUIRED)
-find_package(Zlib REQUIRED)
+find_package(ZLIB REQUIRED)
 
 include_directories(${OPENSSL_INCLUDE_DIR} ${APR_INCLUDE_DIR}
                     ${APRUTIL_INCLUDE_DIR})
