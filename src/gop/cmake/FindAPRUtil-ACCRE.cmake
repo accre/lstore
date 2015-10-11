@@ -9,7 +9,7 @@
 # APU_FOUND, set to TRUE if found, FALSE otherwise
 # APU_VERSION, set to the version of apr-util found
 
-set(APU_FOUND FALSE)
+set(APRUTIL-ACCRE_FOUND FALSE)
 
 find_program(APU_CONFIG_EXECUTABLE apu-ACCRE-1-config)
 mark_as_advanced(APU_CONFIG_EXECUTABLE)
@@ -59,7 +59,9 @@ FIND_LIBRARY(APU_LIBRARY NAMES aprutil-accre-1 aprutil-ACCRE-1 PATHS ${APU_LIBTO
 # compatibility, allow this CMake module to work with the various CMakeList.txt files
 set(APRUTIL_INCLUDE_DIR "${APU_INCLUDES}")
 set(APRUTIL_LIBRARY "${APU_LIBRARY}")
+if(APU_LIBRARY AND APU_INCLUDES)
+    set(APRUTIL-ACCRE_FOUND 1)
+endif()
 
-MESSAGE(STATUS "APU AT ${APU_LIBRARY}")
 INCLUDE(FindPackageHandleStandardArgs)
 FIND_PACKAGE_HANDLE_STANDARD_ARGS(APU DEFAULT_MSG APU_INCLUDES APU_LIBS APU_LIBRARY APU_VERSION)
