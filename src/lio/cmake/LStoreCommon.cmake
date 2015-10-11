@@ -47,9 +47,11 @@ endif(WANT_DEBUG)
 # http://www.gnu.org/software/libc/manual/html_node/Feature-Test-Macros.html
 # _REENTRANT - tells the std library to enable reentrant functions
 # _GNU_SOURCE - uses GNU (not POSIX) functions
-# _LARGEFILE64_SOURCE - this should probably be changed to _FILE_OFFSET_BITS
+# _LARGEFILE64_SOURCE - Along with...
+# _FILE_OFFSET_BITS - Tell gcc that we want 64 bit offsets
 # TODO: Is this truely needed?
 # LINUX=2 - APR seems to want it
+
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -DLINUX=2 -D_REENTRANT -D_GNU_SOURCE -D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64")
 set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -O0")
 
