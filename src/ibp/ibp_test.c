@@ -1496,7 +1496,7 @@ int main(int argc, char **argv)
     //*** Print the ibp client version ***
     printf("\n");
     printf("================== IBP Client Version =================\n");
-    printf("%s\n", ibp_client_version());
+    printf("%s\n", ibp_version());
 
     //*** Init the structures ***
     ibp_timeout = 30;

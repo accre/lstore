@@ -427,8 +427,8 @@ ibp_off_t size, ibp_off_t offset);
 void destroy_ibp_sync_context();
 void set_ibp_sync_context(ibp_context_t *ic)
 ;
-//**** ibp_client_version.c *******
-char *ibp_client_version();
+//**** ibp_version.c *******
+char *ibp_version();
  
 //******* ibp_errno.c ********
 void ibp_errno_init();
