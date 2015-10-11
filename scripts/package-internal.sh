@@ -16,7 +16,7 @@ PACKAGE_SUBDIR=$PACKAGE_DISTRO
 # todo could probe this from docker variables
 PACKAGE_BASE="/tmp/lstore-release"
 SOURCE_BASE=$LSTORE_RELEASE_BASE/source
-REPO_BASE=$LSTORE_RELEASE_BASE/repo/$PACKAGE_SUBDIR
+REPO_BASE=$LSTORE_RELEASE_BASE/package/$PACKAGE_SUBDIR
 # Here and elsewhere, we need to set the umask when we write to the host-mounted
 #    paths. Otherwise users outside the container can't read/write files. But,
 #    we don't want to just blindly set umask 0000, in case there's some

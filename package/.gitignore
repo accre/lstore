@@ -1,0 +1,3 @@
+# Kludge to have GIT track an empty directory
+*
+!.gitignore
