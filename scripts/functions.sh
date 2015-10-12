@@ -205,3 +205,12 @@ function build_helper() {
         popd
     done
 }
+function get_repo_status() {
+    REPO_PATH=$1
+    cd $REPO_PATH
+    echo -n $(git rev-parse --abbrev-ref HEAD)
+    [[ $(git diff --shortstat HEAD 2> /dev/null | tail -n1) != "" ]] && \
+        echo " DIRTY" || echo " CLEAN"
+    cd - &>/dev/null
+}
+
