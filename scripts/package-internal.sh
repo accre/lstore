@@ -48,7 +48,7 @@ for PACKAGE in apr-accre apr-util-accre jerasure toolbox gop ibp lio; do
     #       if the CURRENT working directory is dirty...
     TAG_NAME=$(cd $SOURCE_BASE/$PACKAGE/ && \
                git describe --abbrev=32 --dirty --candidates=100 \
-               --match 'ACCRE_*')
+               --match 'ACCRE_*' | sed 's,^ACCRE_,,')
     PACKAGE_REPO=$REPO_BASE/$PACKAGE/$TAG_NAME
     if [ ! -e $PACKAGE_REPO ]; then
         set -x
