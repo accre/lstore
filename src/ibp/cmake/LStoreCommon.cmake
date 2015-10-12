@@ -23,6 +23,7 @@ endmacro(static_name)
 include(FeatureSummary)
 include(CheckIncludeFile)
 include(CMakeDependentOption)
+include(GNUInstallDirs)
 include(${CMAKE_SOURCE_DIR}/cmake/Date.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/CompilerVersion.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/CompilerFlags.cmake)
@@ -100,11 +101,11 @@ foreach(lib ${LIBS})
 endforeach()
 
 target_link_libraries(library LINK_PUBLIC ${LIBS})
-install(TARGETS library DESTINATION lib)
+install(TARGETS library DESTINATION ${CMAKE_INSTALL_LIBDIR})
 install(FILES ${LSTORE_PROJECT_INCLUDES} DESTINATION include/${LSTORE_PROJECT_NAME}
         COMPONENT devel)
 if(WANT_STATIC)
-    install(TARGETS library-static DESTINATION lib COMPONENT devel)
+    install(TARGETS library-static DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT devel)
 endif(WANT_STATIC)
 
 #Add the exe build rules
@@ -116,7 +117,7 @@ foreach(f ${LSTORE_PROJECT_EXECUTABLES})
     else()
         target_link_libraries(${f} ${library_lib})
     endif(WANT_STATIC)
-    install(TARGETS ${f} DESTINATION bin)
+    install(TARGETS ${f} DESTINATION ${CMAKE_INSTALL_BINDIR})
 endforeach(f)
 
 # Below is used for building packages
