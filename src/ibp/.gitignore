@@ -9,7 +9,7 @@ ibp_tool
 bootstrap
 
 #These are generated via cmake using the *.in variants
-ibp_client_version.c
+ibp_version.c
 
 #Skip edits
 *~

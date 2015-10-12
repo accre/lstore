@@ -729,7 +729,7 @@ int main(int argc, char **argv)
         printf("\n");
         printf("IBP Client Library information\n");
         printf("--------------------------------------------------\n");
-        printf("%s", ibp_client_version());
+        printf("%s", ibp_version());
         printf("--------------------------------------------------\n");
         printf("\n");
         printf("ibp_tool -t\n");
