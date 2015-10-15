@@ -187,6 +187,7 @@ char *mq_address_to_string(mq_msg_t *address)
     int msg_size, frames, n, size;
     char *string, *data;
 
+    if (address == NULL) return(NULL);
     msg_size = mq_msg_total_size(address); // sum of frame data lengths
     frames = mq_num_frames(address);
     n = 0;
