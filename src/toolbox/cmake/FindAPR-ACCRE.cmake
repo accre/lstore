@@ -9,7 +9,12 @@
 # APR_FOUND, set to TRUE if found, FALSE otherwise
 # APR_VERSION, the version of APR that was found
 cmake_policy(PUSH)
-cmake_policy(SET CMP0054 OLD)
+if(NOT (${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION} LESS 3.1))
+	# only CMAKE 3.1 and greater supports this (NOT ... LESS because CMAKE does not have a GREATER_OR_EQUAL_TO conditional)
+	# Not needed for older versions because older versions obviously use the old policy without specially requesting it
+	cmake_policy(SET CMP0054 OLD)
+endif()
+
 set(APR-ACCRE_FOUND FALSE)
 
 find_program(APR_CONFIG_EXECUTABLE apr-ACCRE-1-config)
