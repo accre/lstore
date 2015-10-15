@@ -72,3 +72,5 @@ for PACKAGE in apr-accre apr-util-accre jerasure toolbox gop ibp lio; do
     rpm -i $REPO_BASE/$PACKAGE/$TAG_NAME/*.rpm
     popd 
 done
+
+note "Done! The new packages can be found in ./repo/$PACKAGE_SUBDIR"
