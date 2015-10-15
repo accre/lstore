@@ -9,7 +9,11 @@
 # APU_FOUND, set to TRUE if found, FALSE otherwise
 # APU_VERSION, set to the version of apr-util found
 cmake_policy(PUSH)
-cmake_policy(SET CMP0054 OLD)
+if(NOT (${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION} LESS 3.1))
+	# only CMAKE 3.1 and greater supports this (NOT ... LESS because CMAKE does not have a GREATER_OR_EQUAL_TO conditional)
+	# Not needed for older versions because older versions obviously use the old policy without specially requesting it
+	cmake_policy(SET CMP0054 OLD)
+endif()
 
 set(APRUTIL-ACCRE_FOUND FALSE)
 
