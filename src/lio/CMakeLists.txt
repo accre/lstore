@@ -70,21 +70,16 @@ set(LSTORE_PROJECT_EXECUTABLES
      arc_create lio_get lio_signature lio_warm lio_inspect lio_fsck lio_rs
      lio_server mk_linear ex_load ex_get ex_put ex_inspect ex_clone ex_rw_test
      log_test rs_test os_test os_fsck lio_touch lio_mkdir lio_rmdir lio_rm
-     lio_ln
+     lio_ln zadler32 ldiff
 )
 
 # Common functionality is stored here
 include(cmake/LStoreCommon.cmake)
 
 # Add additional executables
-add_executable(trace_replay trace_replay.c trace)
+
+# Executable in two halves doesn't fit the normal pattern.
+add_executable(trace_replay trace_replay.c trace.c)
 set_target_properties(trace_replay PROPERTIES LINKER_LANGUAGE CXX)
 target_link_libraries(trace_replay ${library_lib} ${LIBS})
 
-add_executable(zadler32 zadler32.c)
-set_target_properties(zadler32 PROPERTIES LINKER_LANGUAGE CXX)
-target_link_libraries(zadler32 ${TOOLBOX_LIBRARY} ${ZLIB_LIBRARY} m)
-
-add_executable(ldiff ldiff.c)
-set_target_properties(ldiff PROPERTIES LINKER_LANGUAGE CXX)
-target_link_libraries(ldiff ${TOOLBOX_LIBRARY} m)
