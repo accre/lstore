@@ -436,8 +436,12 @@ void *rsrc_check_thread(apr_thread_t *th, void *data)
     //** Still have a pending GOP so abort it
     if (gop != NULL) {
         _rsrc_update_abort(rs);
-        gop_waitall(gop);
-        gop_free(gop, OP_DESTROY);
+        op_generic_t *g = gop_timed_waitany(gop, 10);
+        if (g) {
+            gop_free(gop, OP_DESTROY);
+        } else {
+            log_printf(0, "Aborting RS update\n");
+        }
     }
 
     log_printf(15, "EXITING\n");
