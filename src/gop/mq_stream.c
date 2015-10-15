@@ -329,9 +329,9 @@ void mq_stream_read_destroy(mq_stream_t *mqs)
     if (log_level() >= 15) {
         char *rhost = mq_address_to_string(mqs->remote_host);
         log_printf(15, "remote_host as string = %s\n", rhost);
-        free(rhost);
+        if (rhost) free(rhost);
     }
-    mq_ongoing_host_dec(mqs->ongoing, mqs->remote_host, mqs->host_id, mqs->hid_len);
+    if (mqs->remote_host != NULL) mq_ongoing_host_dec(mqs->ongoing, mqs->remote_host, mqs->host_id, mqs->hid_len);
 
     apr_thread_mutex_unlock(mqs->lock);
 
@@ -373,7 +373,7 @@ mq_stream_t *mq_stream_read_create(mq_context_t *mqc, mq_ongoing_t *on, char *ho
     if (log_level() > 5) {
         char *str = mq_address_to_string(remote_host);
         log_printf(5, "remote_host=%s\n", str);
-        free(str);
+        if (str) free(str);
     }
 
     mq_get_frame(fdata, (void **)&(mqs->data), &(mqs->len));
@@ -401,7 +401,7 @@ mq_stream_t *mq_stream_read_create(mq_context_t *mqc, mq_ongoing_t *on, char *ho
         if (log_level() >=15) {
             char *rhost = mq_address_to_string(mqs->remote_host);
             log_printf(15, "remote_host as string = %s\n", rhost);
-            free(rhost);
+            if (rhost) free(rhost);
         }
 
         log_printf(5, "before ongoing_inc\n");
