@@ -34,9 +34,13 @@ set(LSTORE_PROJECT_INCLUDES
     callback.h gop_config.h host_portal.h opque.h thread_pool.h mq_portal.h
     mq_helpers.h mq_stream.h mq_ongoing.h
 )
+if(NOT APPLE)
+    # OSX doesn't have eventfd.h
+    set(LSTORE_PROJECT_EXECUTABLES
+        rr_mq_client rr_mq_server rr_mq_test rr_mq_worker
+    )
+endif(NOT APPLE)
 
-set(LSTORE_PROJECT_EXECUTABLES 
-    rr_mq_client rr_mq_server rr_mq_test rr_mq_worker
-)
+
 # Common functionality is stored here
 include(cmake/LStoreCommon.cmake)
