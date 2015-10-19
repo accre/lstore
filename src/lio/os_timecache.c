@@ -522,7 +522,7 @@ int _ostc_cache_tree_walk(object_service_fn_t *os, char *fname, Stack_t *tree, o
         free_ostcdb_object(curr);
 
         move_to_bottom(tree);
-        delete_current(tree, 0, 0);
+        delete_current(tree, 1, 0);
         insert_below(tree, replacement_obj);
     }
 
