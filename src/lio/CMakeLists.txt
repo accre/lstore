@@ -51,7 +51,7 @@ set(LSTORE_PROJECT_OBJS
 )
     
 set(LSTORE_PROJECT_INCLUDES
-    cache_amp.h data_block.h ex3_abstract.h ex3_linear_priv.h exnode.h
+    cache_amp.h blacklist.h data_block.h ex3_abstract.h ex3_linear_priv.h exnode.h
     rs_simple.h	 segment_jerasure.h segment_lun_priv.h cache_amp_priv.h
     data_service_abstract.h ex3_compare.h ex3_system.h lio.h rs_simple_priv.h
     segment_linear.h trace.h cache_lru.h ds_ibp.h ex3_fmttypes.h ex3_types.h
