@@ -602,12 +602,12 @@ int lfs_release(const char *fname, struct fuse_file_info *fi)
     lio_fd_t *fd = (lio_fd_t *)fi->fh;
     int err;
 
-    log_printf(2, "fname=%d fd=%p\n", fname, fd);
+    log_printf(2, "fname=%s fd->path=%s fd=%p\n", fname, fd->path, fd);
 
     lfs_lock(lfs);
     segment_lock(fd->fh->seg);
     if (fd->fh->ref_count <= 1) {  //** Only remove it if I'm the last one
-        apr_hash_set(lfs->open_files, fname, APR_HASH_KEY_STRING, NULL);
+        apr_hash_set(lfs->open_files, fd->path, APR_HASH_KEY_STRING, NULL);
     }
     segment_unlock(fd->fh->seg);
 
