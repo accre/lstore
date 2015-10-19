@@ -1,4 +1,10 @@
 cmake_minimum_required(VERSION 2.8)
+if(NOT (${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION} LESS 3.0))
+	# only CMAKE 3.0 and greater supports this (NOT ... LESS because CMAKE does not have a GREATER_OR_EQUAL_TO conditional)
+	# Not needed for older versions because older versions obviously use the old policy without specially requesting it
+	cmake_policy(SET CMP0048 OLD)
+	# ^^^ use the old VERSION variable behavior
+endif()
 
 # Name this project
 set(LSTORE_PROJECT_NAME "gop")

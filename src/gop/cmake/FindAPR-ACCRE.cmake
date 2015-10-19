@@ -8,6 +8,12 @@
 # APR_CFLAGS, the flags to use to compile
 # APR_FOUND, set to TRUE if found, FALSE otherwise
 # APR_VERSION, the version of APR that was found
+cmake_policy(PUSH)
+if(NOT (${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION} LESS 3.1))
+	# only CMAKE 3.1 and greater supports this (NOT ... LESS because CMAKE does not have a GREATER_OR_EQUAL_TO conditional)
+	# Not needed for older versions because older versions obviously use the old policy without specially requesting it
+	cmake_policy(SET CMP0054 OLD)
+endif()
 
 set(APR-ACCRE_FOUND FALSE)
 
@@ -63,3 +69,4 @@ if(APR_LIBRARY AND APR_INCLUDES)
 endif()
 INCLUDE(FindPackageHandleStandardArgs)
 FIND_PACKAGE_HANDLE_STANDARD_ARGS(APR DEFAULT_MSG APR_INCLUDES APR_LIBRARY APR_LIBS APR_VERSION)
+cmake_policy(POP)
