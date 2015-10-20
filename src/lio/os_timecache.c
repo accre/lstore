@@ -172,6 +172,7 @@ ostcdb_attr_t *new_ostcdb_attr(char *key, void *val, int v_size, apr_time_t expi
 
     }
     attr->v_size = v_size;
+    attr->expire = expire;
 
     return(attr);
 }
@@ -260,7 +261,7 @@ int _ostc_cleanup(object_service_fn_t *os, ostcdb_object_t *obj, apr_time_t expi
     akept = 0;
     for (hi = apr_hash_first(NULL, obj->attrs); hi != NULL; hi = apr_hash_next(hi)) {
         a = apr_hash_this_val(hi);
-        log_printf(5, "fname=%s attr=%s\n", obj->fname, a->key);
+        log_printf(5, "fname=%s attr=%s a->expire=" TT " expired=" TT "\n", obj->fname, a->key, a->expire, expired);
         if (a->expire < expired) {
             apr_hash_set(obj->attrs, a->key, APR_HASH_KEY_STRING, NULL);
             free_ostcdb_attr(a);
@@ -961,7 +962,7 @@ finished:
 //    minimal set of cache entries.
 //***********************************************************************
 
-int _ostc_cache_populate_prefix(object_service_fn_t *os, creds_t *creds, char *path)
+int _ostc_cache_populate_prefix(object_service_fn_t *os, creds_t *creds, char *path, int prefix_len)
 {
     ostc_priv_t *ostc = (ostc_priv_t *)os->priv;
     Stack_t tree;
@@ -980,7 +981,7 @@ int _ostc_cache_populate_prefix(object_service_fn_t *os, creds_t *creds, char *p
     init_stack(&tree);
     err = _ostc_cache_tree_walk(os, path, &tree, NULL, 0, OSTC_MAX_RECURSE);
     empty_stack(&tree, 0);
-    if (err <= 0) return(err);
+    if (err <= 0)  return(err);
 
     start = err;
     for (end=start; path[end] != '/' ; end++) {  //** Find the terminal end
@@ -989,11 +990,17 @@ int _ostc_cache_populate_prefix(object_service_fn_t *os, creds_t *creds, char *p
 
     fname = strndup(path, end);
 
+    if (end <= prefix_len) {
+        log_printf(0, "ERROR: Unable to make progress in recursion. end=%d prefix_len=%d fname=%s full_path=%s\n", end, prefix_len, fname, path);
+        free(fname);
+        return(-1234);
+    }
+
     log_printf(5, "path=%s prefix=%s len=%d end=%d\n", path, fname, len, end);
 
-    key = "system.exnode"; val = NULL;
+    key = "system.inode"; val = NULL;
     key_array[0] = key;  val_array[0] = val;
-    v_size[0] = -1024*1024;
+    v_size[0] = -100;
     ostc_attr_cacheprep_setup(&cp, 1, key_array, (void **)val_array, v_size, 1);
 
     err = gop_sync_exec(os_open_object(ostc->os_child, creds, fname, OS_MODE_READ_IMMEDIATE, NULL, &fd, max_wait));
@@ -1019,7 +1026,7 @@ int _ostc_cache_populate_prefix(object_service_fn_t *os, creds_t *creds, char *p
         ostc_attr_cacheprep_copy(&cp, (void **)val_array, v_size);
         if (end < (len-1)) { //** Recurse and add the next layer
            log_printf(1, "recursing object=%s\n", path);
-           err = _ostc_cache_populate_prefix(os, creds, path);
+           err = _ostc_cache_populate_prefix(os, creds, path, end);
         }
     }
 
@@ -1432,7 +1439,7 @@ if (status.op_status == OP_STATE_SUCCESS) {
 }
     if (status.op_status == OP_STATE_SUCCESS) return(status);
 
-    _ostc_cache_populate_prefix(ma->os, ma->creds, ma->fd->fname);
+    _ostc_cache_populate_prefix(ma->os, ma->creds, ma->fd->fname, 0);
 
     ostc_attr_cacheprep_setup(&cp, ma->n, ma->key, ma->val, ma->v_size, 1);
     status = gop_sync_exec_status(os_get_multiple_attrs(ostc->os_child, ma->creds, ma->fd->fd_child, cp.key, cp.val, cp.v_size, cp.n_keys_total));
@@ -2014,8 +2021,8 @@ object_service_fn_t *object_service_timecache_create(service_manager_t *ess, ini
         abort();
     }
 
-    ostc->entry_timeout = inip_get_integer(fd, section, "entry_timeout", apr_time_from_sec(20));
-    ostc->cleanup_interval = inip_get_integer(fd, section, "cleanup_interval", apr_time_from_sec(120));
+    ostc->entry_timeout = apr_time_from_sec(inip_get_integer(fd, section, "entry_timeout", 20));
+    ostc->cleanup_interval = apr_time_from_sec(inip_get_integer(fd, section, "cleanup_interval", 120));
 
     apr_pool_create(&ostc->mpool, NULL);
     apr_thread_mutex_create(&(ostc->lock), APR_THREAD_MUTEX_DEFAULT, ostc->mpool);
