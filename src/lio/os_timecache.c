@@ -161,7 +161,7 @@ ostcdb_attr_t *new_ostcdb_attr(char *key, void *val, int v_size, apr_time_t expi
 {
     ostcdb_attr_t *attr;
 
-    log_printf(5, "adding\n");
+    log_printf(5, "adding key=%s size=%d\n", key, v_size);
     type_malloc_clear(attr, ostcdb_attr_t, 1);
 
     attr->key = strdup(key);
@@ -286,7 +286,9 @@ void *ostc_cache_compact_thread(apr_thread_t *th, void *data)
     while (ostc->shutdown == 0) {
         apr_thread_cond_timedwait(ostc->cond, ostc->lock, ostc->cleanup_interval);
 
+        log_printf(5, "START: Running an attribute cleanup\n");
         _ostc_cleanup(os, ostc->cache_root, apr_time_now());
+        log_printf(5, "END: cleanup finished\n");
     }
     apr_thread_mutex_unlock(ostc->lock);
 
@@ -402,8 +404,8 @@ int ostc_attr_cacheprep_ftype(ostc_cacheprep_t *cp)
 // _ostc_cache_tree_walk - Walks the cache tree using the provided path
 //   and optionally creates the target node if needed.
 //
-//   Returns 0 on success or 1 if the path cannot be followed and
-//     2 if the terminal object doesn't exist
+//   Returns 0 on success or a positive value representing the prefix that could
+//      be mapped.
 //
 //   NOTE:  Assumes the cache lock is held
 //***********************************************************************
@@ -434,6 +436,7 @@ int _ostc_cache_tree_walk(object_service_fn_t *os, char *fname, Stack_t *tree, o
     while (fname[i] != 0) {
         //** Pick off any multiple /'s
         for (start=i; fname[start] == '/' ; start++) {}
+        err = start;
         log_printf(5, "loop=%d start=%d i=%d fname[start]=%hhu\n", loop, start, i, fname[start]);
         if (fname[start] == 0) {
             if (loop == 0) {  //** This is the first (and last) token so push the root on the stack
@@ -487,7 +490,6 @@ int _ostc_cache_tree_walk(object_service_fn_t *os, char *fname, Stack_t *tree, o
                 }
             }
 
-            err = 1;
             goto finished;
         } else if (next->link) {  //** Got a link
             if (fname[i] != 0) { //** If not at the end we need to follow it
@@ -496,7 +498,7 @@ int _ostc_cache_tree_walk(object_service_fn_t *os, char *fname, Stack_t *tree, o
                 dup_stack(tree, &rtree);
                 if (_ostc_cache_tree_walk(os, next->link, &rtree, NULL, add_terminal_ftype, max_recurse-1) != 0) {
                     empty_stack(&rtree, 0);
-                    err = 1;
+                    err = -1;
                     goto finished;
                 }
                 move_to_bottom(&rtree);
@@ -954,6 +956,81 @@ finished:
     empty_stack(&tree, 0);
 }
 
+//***********************************************************************
+// _ostc_cache_populate_prefix - Recursively populates the prefix with a
+//    minimal set of cache entries.
+//***********************************************************************
+
+int _ostc_cache_populate_prefix(object_service_fn_t *os, creds_t *creds, char *path)
+{
+    ostc_priv_t *ostc = (ostc_priv_t *)os->priv;
+    Stack_t tree;
+    ostc_cacheprep_t cp;
+    os_fd_t *fd = NULL;
+    char *key_array[1], *val_array[1];
+    char *fname, *key, *val;
+    int v_size[1];
+    int err, start, end, len, ftype;
+    int max_wait = 10;
+    op_status_t status;
+
+    len = strlen(path);
+    if (len == 1) return(0);  //** Nothing to do.  Just a '/'
+
+    init_stack(&tree);
+    err = _ostc_cache_tree_walk(os, path, &tree, NULL, 0, OSTC_MAX_RECURSE);
+    empty_stack(&tree, 0);
+    if (err <= 0) return(err);
+
+    start = err;
+    for (end=start; path[end] != '/' ; end++) {  //** Find the terminal end
+        if (path[end] == 0) break;
+    }
+
+    fname = strndup(path, end);
+
+    log_printf(5, "path=%s prefix=%s len=%d end=%d\n", path, fname, len, end);
+
+    key = "system.exnode"; val = NULL;
+    key_array[0] = key;  val_array[0] = val;
+    v_size[0] = -1024*1024;
+    ostc_attr_cacheprep_setup(&cp, 1, key_array, (void **)val_array, v_size, 1);
+
+    err = gop_sync_exec(os_open_object(ostc->os_child, creds, fname, OS_MODE_READ_IMMEDIATE, NULL, &fd, max_wait));
+    if (err != OP_STATE_SUCCESS) {
+        log_printf(1, "ERROR opening object=%s\n", path);
+        return(-1);
+    }
+
+    //** IF the attribute doesn't exist *val == NULL an *v_size = 0
+    status = gop_sync_exec_status(os_get_multiple_attrs(ostc->os_child, creds, fd, cp.key, cp.val, cp.v_size, cp.n_keys_total));
+
+    //** Close the parent
+    err = gop_sync_exec(os_close_object(ostc->os_child, fd));
+    if (err != OP_STATE_SUCCESS) {
+        log_printf(1, "ERROR closing object=%s\n", path);
+    }
+
+    //** Store them in the cache on success
+    if (status.op_status == OP_STATE_SUCCESS) {
+        ftype = ostc_attr_cacheprep_ftype(&cp);
+        log_printf(1, "storing=%s ftype=%d end=%d len=%d v_size[0]=%d\n", fname, ftype, end, len, cp.v_size[0]);
+        ostc_cache_process_attrs(os, fname, ftype, cp.key, cp.val, cp.v_size, cp.n_keys);
+        ostc_attr_cacheprep_copy(&cp, (void **)val_array, v_size);
+        if (end < (len-1)) { //** Recurse and add the next layer
+           log_printf(1, "recursing object=%s\n", path);
+           err = _ostc_cache_populate_prefix(os, creds, path);
+        }
+    }
+
+    ostc_attr_cacheprep_destroy(&cp);
+    free(fname);
+    if (v_size[0] > 0) free(val_array[0]);
+
+    return(err);
+}
+
+
 
 //***********************************************************************
 // ostc_remove_regex_object - Simple passthru
@@ -1347,7 +1424,15 @@ op_status_t ostc_get_attrs_fn(void *arg, int tid)
 
     //** 1st see if we can satisfy everything from cache
     status = ostc_cache_fetch(ma->os, ma->fd->fname, ma->key, ma->val, ma->v_size, ma->n);
+
+if (status.op_status == OP_STATE_SUCCESS) {
+  log_printf(10, "ATTR_CACHE_HIT: fname=%s key[0]=%s n_keys=%d\n", ma->fd->fname, ma->key[0], ma->n);
+} else {
+  log_printf(10, "ATTR_CACHE_MISS fname=%s key[0]=%s n_keys=%d\n", ma->fd->fname, ma->key[0], ma->n);
+}
     if (status.op_status == OP_STATE_SUCCESS) return(status);
+
+    _ostc_cache_populate_prefix(ma->os, ma->creds, ma->fd->fname);
 
     ostc_attr_cacheprep_setup(&cp, ma->n, ma->key, ma->val, ma->v_size, 1);
     status = gop_sync_exec_status(os_get_multiple_attrs(ostc->os_child, ma->creds, ma->fd->fd_child, cp.key, cp.val, cp.v_size, cp.n_keys_total));
@@ -1929,8 +2014,8 @@ object_service_fn_t *object_service_timecache_create(service_manager_t *ess, ini
         abort();
     }
 
-    ostc->entry_timeout = apr_time_from_sec(inip_get_integer(fd, section, "entry_timeout", 20));
-    ostc->cleanup_interval = apr_time_from_sec(inip_get_integer(fd, section, "cleanup_interval", 120));
+    ostc->entry_timeout = inip_get_integer(fd, section, "entry_timeout", apr_time_from_sec(20));
+    ostc->cleanup_interval = inip_get_integer(fd, section, "cleanup_interval", apr_time_from_sec(120));
 
     apr_pool_create(&ostc->mpool, NULL);
     apr_thread_mutex_create(&(ostc->lock), APR_THREAD_MUTEX_DEFAULT, ostc->mpool);
