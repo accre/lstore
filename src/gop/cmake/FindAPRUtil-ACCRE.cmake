@@ -8,6 +8,12 @@
 # APU_LDFLAGS, additional linker flags that must be used
 # APU_FOUND, set to TRUE if found, FALSE otherwise
 # APU_VERSION, set to the version of apr-util found
+cmake_policy(PUSH)
+if(NOT (${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION} LESS 3.1))
+	# only CMAKE 3.1 and greater supports this (NOT ... LESS because CMAKE does not have a GREATER_OR_EQUAL_TO conditional)
+	# Not needed for older versions because older versions obviously use the old policy without specially requesting it
+	cmake_policy(SET CMP0054 OLD)
+endif()
 
 set(APRUTIL-ACCRE_FOUND FALSE)
 
@@ -65,3 +71,4 @@ endif()
 
 INCLUDE(FindPackageHandleStandardArgs)
 FIND_PACKAGE_HANDLE_STANDARD_ARGS(APU DEFAULT_MSG APU_INCLUDES APU_LIBS APU_LIBRARY APU_VERSION)
+cmake_policy(POP)
