@@ -11,7 +11,8 @@ LSTORE_HEAD_BRANCHES="apr-accre=accre-fork
                        lio=master
                        gop=master
                        toolbox=master
-                       ibp=master"
+                       ibp=master
+                       czmq=master"
 #
 # Informational messages
 #
@@ -88,7 +89,7 @@ function build_lstore_binary_outof_tree() {
             make test
             make install
             ;;
-        jerasure|toolbox|gop|ibp|lio)
+        jerasure|toolbox|gop|ibp|lio|czmq)
             cmake ${SOURCE_PATH} -DCMAKE_PREFIX_PATH=${INSTALL_PREFIX} -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX}
             make install
             ;;
@@ -109,10 +110,17 @@ function build_lstore_package() {
         undefined)
             CPACK_ARG=""
             CMAKE_ARG=""
+            NATIVE_PKG=""
+            ;;
+        ubuntu-*|debian-*)
+            CPACK_ARG="-G DEB"
+            CMAKE_ARG="-DCPACK_GENERATOR=DEB -DCPACK_SOURCE_GENERATOR=DEB"
+            NATIVE_PKG="cp -ra $SOURCE_BASE/$PACKAGE/ ./ ; pushd $PACKAGE ; dpkg-buildpackage -uc -us ; popd"
             ;;
         centos-*)
             CPACK_ARG="-G RPM"
             CMAKE_ARG="-DCPACK_GENERATOR=RPM -DCPACK_SOURCE_GENERATOR=RPM"
+            NATIVE_PKG=""
             ;;
         *)
             fatal "Unexpected distro name $DISTRO_NAME"
@@ -123,7 +131,10 @@ function build_lstore_package() {
             ls -l $SOURCE_PATH/CPackConfig.cmake
             cpack $CPACK_ARG --config $SOURCE_PATH/CPackConfig.cmake \
                    --debug --verbose "-DCPACK_VERSION=$TAG_NAME" || \
-                fatal "$(cat _CPack_Packages/RPM/InstallOutput.log)"
+                fatal "$(cat _CPack_Packages/*/InstallOutput.log)"
+            ;;
+        czmq)
+            eval $NATIVE_PKG
             ;;
         jerasure|lio|ibp|gop|toolbox)
             # This is gross, but works for now..
@@ -205,3 +216,15 @@ function build_helper() {
         popd
     done
 }
+
+function get_source() {
+    set -e
+    SOURCE_BASE="$LSTORE_RELEASE_BASE/source"
+
+    cd $SOURCE_BASE
+    for p in "$@"; do
+        get_lstore_source ${p}
+    done
+}
+
+

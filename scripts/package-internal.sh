@@ -13,6 +13,24 @@ source $ABSOLUTE_PATH/functions.sh
 PACKAGE_DISTRO=${1:-unknown_distro}
 PACKAGE_SUBDIR=$PACKAGE_DISTRO
 
+case $PACKAGE_DISTRO in
+undefined)
+	# TODO Fail gracefully
+    ;;
+ubuntu-*|debian-*)
+    # switch to gdebi if automatic dependency resolution is needed
+    PACKAGE_INSTALL="dpkg -i"        
+    PACKAGE_SUFFIX=deb
+    ;;
+centos-*)
+    PACKAGE_INSTALL="rpm -i"
+    PACKAGE_SUFFIX=rpm
+    ;;
+*)
+    fatal "Unexpected distro name $DISTRO_NAME"
+    ;;
+esac
+
 # todo could probe this from docker variables
 PACKAGE_BASE="/tmp/lstore-release"
 SOURCE_BASE=$LSTORE_RELEASE_BASE/source
@@ -36,7 +54,16 @@ note "Beginning packaging at $(date) for $PACKAGE_SUBDIR"
 #   configurable in the future, the order of packages matters.
 #
 cd $PACKAGE_BASE/build
-for PACKAGE in apr-accre apr-util-accre jerasure toolbox gop ibp lio; do
+for PACKAGE in apr-accre apr-util-accre jerasure czmq toolbox gop ibp lio; do
+    if [ "$PACKAGE" == "czmq" ];then
+        if (ldconfig -p | grep -q libczmq); then
+                echo "libczmq.so is available: skipping czmq package build.";
+                continue
+        else
+                echo "libczmq.so not found, building a czmq package...";
+        fi
+    fi
+
     (
         umask 000
         mkdir -p $PACKAGE
@@ -59,8 +86,7 @@ for PACKAGE in apr-accre apr-util-accre jerasure toolbox gop ibp lio; do
         rm *.source.rpm || true
         (
             umask 000
-            # Obviously needs to be changed to handle .deb
-            cp *.rpm $PACKAGE_REPO
+            cp *.${PACKAGE_SUFFIX} $PACKAGE_REPO
             chmod 666 $PACKAGE_REPO/*
         )
         set +x 
@@ -69,7 +95,7 @@ for PACKAGE in apr-accre apr-util-accre jerasure toolbox gop ibp lio; do
         note "    ${PACKAGE_REPO}"
         note "    Instead of building, we are installing from there."
     fi
-    rpm -i $REPO_BASE/$PACKAGE/$TAG_NAME/*.rpm
+    $PACKAGE_INSTALL $REPO_BASE/$PACKAGE/$TAG_NAME/*.${PACKAGE_SUFFIX}
     popd 
 done
 

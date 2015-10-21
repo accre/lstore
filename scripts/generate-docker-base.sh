@@ -68,16 +68,20 @@ for DISTRO in "${DISTROS[@]}"; do
                                     fuse-devel
                                     openssl-devel
                                     tar
-                                    which
                                     wget
+                                    which
                                     zlib-devel
                                 )
             ;;
         deb)
             ADDITIONAL_PACKAGES=(
                                     ca-certificates
+                                    cmake
                                     curl
+                                    debhelper
                                     git-core
+                                    libexpat1
+                                    libexpat1-dev
                                     libfuse-dev
                                     libssl-dev
                                     libz-dev
