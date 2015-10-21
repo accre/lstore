@@ -76,6 +76,10 @@ typedef struct {
 
 typedef struct {
     char *fname;
+    int mode;
+    int max_wait;
+    creds_t *creds;
+    char *id;
     os_fd_t *fd_child;
 } ostc_fd_t;
 
@@ -1195,6 +1199,35 @@ op_status_t ostc_move_object_fn(void *arg, int tid)
 }
 
 //***********************************************************************
+// ostc_delayed_open_object - Actual opens the object for defayed opens
+//***********************************************************************
+
+op_status_t ostc_delayed_open_object(object_service_fn_t *os, ostc_fd_t *fd, int dolock)
+{
+    ostc_priv_t *ostc = (ostc_priv_t *)os->priv;
+    op_status_t status;
+    os_fd_t *cfd;
+
+log_printf(5, "DELAYED_OPEN fd=%s\n", fd->fname);
+    status = gop_sync_exec_status(os_open_object(ostc->os_child, fd->creds, fd->fname, fd->mode, fd->id, &cfd, fd->max_wait));
+
+    //** If it failed just return
+    if (status.op_status == OP_STATE_FAILURE) return(status);
+
+    if (dolock) apr_thread_mutex_lock(ostc->lock);
+    if (fd->fd_child == NULL) {
+        fd->fd_child = cfd;
+        if (dolock) apr_thread_mutex_unlock(ostc->lock);
+    } else { //** Somebody else beat us to it so close mine and throw it away
+        if (dolock) apr_thread_mutex_unlock(ostc->lock);
+
+        gop_sync_exec(os_close_object(ostc->os_child, cfd));
+    }
+
+    return(status);
+}
+
+//***********************************************************************
 // ostc_move_object - Generates a move object operation
 //***********************************************************************
 
@@ -1222,6 +1255,15 @@ op_status_t ostc_copy_attrs_fn(void *arg, int tid)
     ostc_priv_t *ostc = (ostc_priv_t *)ma->os->priv;
     op_status_t status;
 
+    if (ma->fd->fd_child == NULL) { 
+       status = ostc_delayed_open_object(ma->os, ma->fd, 1);
+       if (status.op_status == OP_STATE_FAILURE) return(status);
+    }
+
+    if (ma->fd_dest->fd_child == NULL) { 
+       status = ostc_delayed_open_object(ma->os, ma->fd_dest, 1);
+       if (status.op_status == OP_STATE_FAILURE) return(status);
+    }
 
     status = gop_sync_exec_status(os_copy_multiple_attrs(ostc->os_child, ma->creds, ma->fd->fd_child, ma->key, ma->fd_dest->fd_child, ma->key_dest, ma->n));
 
@@ -1290,6 +1332,10 @@ op_status_t ostc_symlink_attrs_fn(void *arg, int tid)
     ostc_priv_t *ostc = (ostc_priv_t *)ma->os->priv;
     op_status_t status;
 
+    if (ma->fd_dest->fd_child == NULL) { 
+       status = ostc_delayed_open_object(ma->os, ma->fd_dest, 1);
+       if (status.op_status == OP_STATE_FAILURE) return(status);
+    }
 
     status = gop_sync_exec_status(os_symlink_multiple_attrs(ostc->os_child, ma->creds, ma->src_path, ma->key, ma->fd_dest->fd_child, ma->key_dest, ma->n));
 
@@ -1360,6 +1406,10 @@ op_status_t ostc_move_attrs_fn(void *arg, int tid)
     ostc_priv_t *ostc = (ostc_priv_t *)ma->os->priv;
     op_status_t status;
 
+    if (ma->fd->fd_child == NULL) { 
+       status = ostc_delayed_open_object(ma->os, ma->fd, 1);
+       if (status.op_status == OP_STATE_FAILURE) return(status);
+    }
 
     status = gop_sync_exec_status(os_move_multiple_attrs(ostc->os_child, ma->creds, ma->fd->fd_child, ma->key, ma->key_dest, ma->n));
 
@@ -1442,6 +1492,12 @@ if (status.op_status == OP_STATE_SUCCESS) {
     _ostc_cache_populate_prefix(ma->os, ma->creds, ma->fd->fname, 0);
 
     ostc_attr_cacheprep_setup(&cp, ma->n, ma->key, ma->val, ma->v_size, 1);
+
+    if (ma->fd->fd_child == NULL) { 
+       status = ostc_delayed_open_object(ma->os, ma->fd, 1);
+       if (status.op_status == OP_STATE_FAILURE) goto failed;
+    }
+
     status = gop_sync_exec_status(os_get_multiple_attrs(ostc->os_child, ma->creds, ma->fd->fd_child, cp.key, cp.val, cp.v_size, cp.n_keys_total));
 
     //** Store them in the cache on success
@@ -1451,6 +1507,7 @@ if (status.op_status == OP_STATE_SUCCESS) {
         ostc_attr_cacheprep_copy(&cp, ma->val, ma->v_size);
     }
 
+failed:
     ostc_attr_cacheprep_destroy(&cp);
 
     return(status);
@@ -1512,6 +1569,11 @@ op_status_t ostc_set_attrs_fn(void *arg, int tid)
     ostc_mult_attr_t *ma = (ostc_mult_attr_t *)arg;
     ostc_priv_t *ostc = (ostc_priv_t *)ma->os->priv;
     op_status_t status;
+
+    if (ma->fd->fd_child == NULL) { 
+       status = ostc_delayed_open_object(ma->os, ma->fd, 1);
+       if (status.op_status == OP_STATE_FAILURE) return(status);
+    }
 
     status = gop_sync_exec_status(os_set_multiple_attrs(ostc->os_child, ma->creds, ma->fd->fd_child, ma->key, ma->val, ma->v_size, ma->n));
 
@@ -1608,6 +1670,12 @@ os_attr_iter_t *ostc_create_attr_iter(object_service_fn_t *os, creds_t *creds, o
     ostc_priv_t *ostc = (ostc_priv_t *)os->priv;
     ostc_attr_iter_t *it;
     ostc_fd_t *fd = (ostc_fd_t *)ofd;
+    op_status_t status;
+
+    if (fd->fd_child == NULL) { 
+       status = ostc_delayed_open_object(os, fd, 1);
+       if (status.op_status == OP_STATE_FAILURE) return(NULL);
+    }
 
     type_malloc(it, ostc_attr_iter_t, 1);
 
@@ -1790,10 +1858,17 @@ op_status_t ostc_open_object_fn(void *arg, int tid)
     os_fd_t *cfd;
     ostc_fd_t *fd;
 
-    status = gop_sync_exec_status(os_open_object(ostc->os_child, op->creds, op->path, op->mode, op->id, &cfd, op->max_wait));
+    cfd = NULL;
 
-    //** If it failed just return
-    if (status.op_status == OP_STATE_FAILURE) return(status);
+log_printf(5, "mode=%d OS_MODE_READ_IMMEDIATE=%d fname=%s\n", op->mode, OS_MODE_READ_IMMEDIATE, op->path);
+
+    if (op->mode != OS_MODE_READ_IMMEDIATE) {  //** Force an immediate file open
+log_printf(5, "forced open of file. fname=%s\n", op->path);
+       status = gop_sync_exec_status(os_open_object(ostc->os_child, op->creds, op->path, op->mode, op->id, &cfd, op->max_wait));
+
+       //** If it failed just return
+       if (status.op_status == OP_STATE_FAILURE) return(status);
+    }
 
     //** Make my version of the FD
     type_malloc(fd, ostc_fd_t, 1);
@@ -1801,6 +1876,10 @@ op_status_t ostc_open_object_fn(void *arg, int tid)
     op->path = NULL;
     fd->fd_child = cfd;
     *op->fd = fd;
+    fd->mode = op->mode;
+    fd->creds = op->creds;
+    fd->id = op->id;
+    fd->max_wait = op->max_wait;
 
     return(op_success_status);
 }
@@ -1861,7 +1940,7 @@ op_status_t ostc_close_object_fn(void *arg, int tid)
     op_status_t status;
     ostc_fd_t *fd = (ostc_fd_t *)op->close_fd;
 
-    status = gop_sync_exec_status(os_close_object(ostc->os_child, fd->fd_child));
+    status = (fd->fd_child != NULL) ? gop_sync_exec_status(os_close_object(ostc->os_child, fd->fd_child)) : op_success_status;
 
     if (fd->fname != NULL) free(fd->fname);
     free(fd);
