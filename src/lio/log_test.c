@@ -216,27 +216,27 @@ int main(int argc, char **argv)
     base_data[bufsize] = '\0';
     tbuffer_single(&tbuf, bufsize, base_data);
     ex_iovec_single(&ex_iov, 0, bufsize);
-    assert(gop_sync_exec(segment_write(s->base_seg, lio_gc->da, NULL, 1, &ex_iov, &tbuf, 0, lio_gc->timeout)) == OP_STATE_SUCCESS);
+    { int result = gop_sync_exec(segment_write(s->base_seg, lio_gc->da, NULL, 1, &ex_iov, &tbuf, 0, lio_gc->timeout)); assert(result == OP_STATE_SUCCESS); }
 
     s->file_size = bufsize;  //** Since we're peeking we have to adjust the file size
     tbuffer_single(&tbuf, bufsize, buffer);  //** Read it directly back fro mthe base to make sure that works
-    assert(gop_sync_exec(segment_read(s->base_seg, lio_gc->da, NULL, 1, &ex_iov, &tbuf, 0, lio_gc->timeout)) == OP_STATE_SUCCESS);
+    { int result = gop_sync_exec(segment_read(s->base_seg, lio_gc->da, NULL, 1, &ex_iov, &tbuf, 0, lio_gc->timeout)); assert(result == OP_STATE_SUCCESS); }
     buffer[bufsize] = '\0';
-    assert(strcmp(buffer, base_data) == 0);
+    { int result = strcmp(buffer, base_data); assert(result == 0); }
 
     //** Do the same for the log
-    assert(gop_sync_exec(segment_read(seg, lio_gc->da, NULL, 1, &ex_iov, &tbuf, 0, lio_gc->timeout)) == OP_STATE_SUCCESS);
-    assert(compare_buffers_print(buffer, base_data, bufsize, 0) == 0);
+    { int result = gop_sync_exec(segment_read(seg, lio_gc->da, NULL, 1, &ex_iov, &tbuf, 0, lio_gc->timeout)); assert(result == OP_STATE_SUCCESS); }
+    { int result = compare_buffers_print(buffer, base_data, bufsize, 0); assert(result == 0); }
 
     //*************************************************************************
     //-- Clone the base structure and the use segment_copy to copy the data and verify --
     //*************************************************************************
     clone = NULL;
-    assert(gop_sync_exec(segment_clone(seg, lio_gc->da, &clone, CLONE_STRUCTURE, NULL, lio_gc->timeout)) == OP_STATE_SUCCESS);
-    assert(gop_sync_exec(segment_copy(lio_gc->tpc_unlimited, lio_gc->da, NULL, seg, clone, 0, 0, bufsize, chunk_size, buffer, 0, lio_gc->timeout)) == OP_STATE_SUCCESS);
+    { int result = gop_sync_exec(segment_clone(seg, lio_gc->da, &clone, CLONE_STRUCTURE, NULL, lio_gc->timeout)); assert(result == OP_STATE_SUCCESS); }
+    { int result = gop_sync_exec(segment_copy(lio_gc->tpc_unlimited, lio_gc->da, NULL, seg, clone, 0, 0, bufsize, chunk_size, buffer, 0, lio_gc->timeout)); assert(result == OP_STATE_SUCCESS); }
     memset(buffer, 0, bufsize);
-    assert(gop_sync_exec(segment_read(clone, lio_gc->da, NULL, 1, &ex_iov, &tbuf, 0, lio_gc->timeout)) == OP_STATE_SUCCESS);
-    assert(compare_buffers_print(buffer, base_data, bufsize, 0) == 0);
+    { int result = gop_sync_exec(segment_read(clone, lio_gc->da, NULL, 1, &ex_iov, &tbuf, 0, lio_gc->timeout)); assert(result == OP_STATE_SUCCESS); }
+    { int result = compare_buffers_print(buffer, base_data, bufsize, 0); assert(result == 0); }
 
     //*************************************************************************
     //-------------------- Write to the log and read back ---------------------
@@ -249,22 +249,22 @@ int main(int argc, char **argv)
         ex_iovec_single(&(ex_iov_table[i]), i*chunk_size, chunk_size);
         opque_add(q, segment_write(seg, lio_gc->da, NULL, 1, &(ex_iov_table[i]), &tbuf, 0, lio_gc->timeout));
     }
-    assert(opque_waitall(q) == OP_STATE_SUCCESS);
+    { int result = opque_waitall(q); assert(result == OP_STATE_SUCCESS); }
 
     //** Read it back
     memset(buffer, 0, bufsize);
-    assert(gop_sync_exec(segment_read(seg, lio_gc->da, NULL, 1, &ex_iov, &tbuf, 0, lio_gc->timeout)) == OP_STATE_SUCCESS);
-    assert(compare_buffers_print(buffer, log1_data, bufsize, 0) == 0);
+    { int result = gop_sync_exec(segment_read(seg, lio_gc->da, NULL, 1, &ex_iov, &tbuf, 0, lio_gc->timeout)); assert(result == OP_STATE_SUCCESS); }
+    { int result = compare_buffers_print(buffer, log1_data, bufsize, 0); assert(result == 0); }
 
     //*************************************************************************
     //------------------- Merge_with base and verify --------------------------
     //*************************************************************************
-    assert(gop_sync_exec(slog_merge_with_base(seg, lio_gc->da, chunk_size, buffer, 1, lio_gc->timeout)) == OP_STATE_SUCCESS);
+    { int result = gop_sync_exec(slog_merge_with_base(seg, lio_gc->da, chunk_size, buffer, 1, lio_gc->timeout)); assert(result == OP_STATE_SUCCESS); }
 
     //** Read it back
     memset(buffer, 0, bufsize);
-    assert(gop_sync_exec(segment_read(seg, lio_gc->da, NULL, 1, &ex_iov, &tbuf, 0, lio_gc->timeout)) == OP_STATE_SUCCESS);
-    assert(compare_buffers_print(buffer, log1_data, bufsize, 0) == 0);
+    { int result = gop_sync_exec(segment_read(seg, lio_gc->da, NULL, 1, &ex_iov, &tbuf, 0, lio_gc->timeout)); assert(result == OP_STATE_SUCCESS); }
+    { int result = compare_buffers_print(buffer, log1_data, bufsize, 0); assert(result == 0); }
 
     //*************************************************************************
     //--------------- Write to the new empty log and verify -------------------
@@ -277,20 +277,20 @@ int main(int argc, char **argv)
         ex_iovec_single(&(ex_iov_table[i]), i*chunk_size, chunk_size);
         opque_add(q, segment_write(seg, lio_gc->da, NULL, 1, &(ex_iov_table[i]), &tbuf, 0, lio_gc->timeout));
     }
-    assert(opque_waitall(q) == OP_STATE_SUCCESS);
+    { int result = opque_waitall(q); assert(result == OP_STATE_SUCCESS); }
 
     //** Read it back
     memset(buffer, 0, bufsize);
-    assert(gop_sync_exec(segment_read(seg, lio_gc->da, NULL, 1, &ex_iov, &tbuf, 0, lio_gc->timeout)) == OP_STATE_SUCCESS);
-    assert(compare_buffers_print(buffer, log1_data, bufsize, 0) == 0);
+    { int result = gop_sync_exec(segment_read(seg, lio_gc->da, NULL, 1, &ex_iov, &tbuf, 0, lio_gc->timeout)); assert(result == OP_STATE_SUCCESS); }
+    { int result = compare_buffers_print(buffer, log1_data, bufsize, 0); assert(result == 0); }
 
     //*************************************************************************
     //---------- Replace the clones base with seg(Log1) and verify ------------
     //*************************************************************************
-    assert(gop_sync_exec(segment_remove(clone, lio_gc->da, lio_gc->timeout)) == OP_STATE_SUCCESS);
+    { int result = gop_sync_exec(segment_remove(clone, lio_gc->da, lio_gc->timeout)); assert(result == OP_STATE_SUCCESS); }
     segment_destroy(clone);
     clone = NULL;
-    assert(gop_sync_exec(segment_clone(seg, lio_gc->da, &clone, CLONE_STRUCTURE, NULL, lio_gc->timeout)) == OP_STATE_SUCCESS);
+    { int result = gop_sync_exec(segment_clone(seg, lio_gc->da, &clone, CLONE_STRUCTURE, NULL, lio_gc->timeout)); assert(result == OP_STATE_SUCCESS); }
 
     s = (seglog_priv_t *)clone->priv;
 
@@ -299,8 +299,8 @@ int main(int argc, char **argv)
 
     //** Read it back
     memset(buffer, 0, bufsize);
-    assert(gop_sync_exec(segment_read(clone, lio_gc->da, NULL, 1, &ex_iov, &tbuf, 0, lio_gc->timeout)) == OP_STATE_SUCCESS);
-    assert(compare_buffers_print(buffer, log1_data, bufsize, 0) == 0);
+    { int result = gop_sync_exec(segment_read(clone, lio_gc->da, NULL, 1, &ex_iov, &tbuf, 0, lio_gc->timeout)); assert(result == OP_STATE_SUCCESS); }
+    { int result = compare_buffers_print(buffer, log1_data, bufsize, 0); assert(result == 0); }
 
     //*************************************************************************
     //---------- Write to the clones log and verify (now have 2 logs) ---------
@@ -312,37 +312,37 @@ int main(int argc, char **argv)
         ex_iovec_single(&(ex_iov_table[i]), i*chunk_size, 1.5*chunk_size);
         opque_add(q, segment_write(clone, lio_gc->da, NULL, 1, &(ex_iov_table[i]), &tbuf, 0, lio_gc->timeout));
     }
-    assert(opque_waitall(q) == OP_STATE_SUCCESS);
+    { int result = opque_waitall(q); assert(result == OP_STATE_SUCCESS); }
 
     //** Read it back
     memset(buffer, 0, bufsize);
-    assert(gop_sync_exec(segment_read(clone, lio_gc->da, NULL, 1, &ex_iov, &tbuf, 0, lio_gc->timeout)) == OP_STATE_SUCCESS);
-    assert(compare_buffers_print(buffer, log2_data, bufsize, 0) == 0);
+    { int result = gop_sync_exec(segment_read(clone, lio_gc->da, NULL, 1, &ex_iov, &tbuf, 0, lio_gc->timeout)); assert(result == OP_STATE_SUCCESS); }
+    { int result = compare_buffers_print(buffer, log2_data, bufsize, 0); assert(result == 0); }
 
     //*************************************************************************
     //---- clone2 = clone (structure and data). Verify the contents -----------
     //*************************************************************************
     clone2 = NULL;
-    assert(gop_sync_exec(segment_clone(clone, lio_gc->da, &clone2, CLONE_STRUCT_AND_DATA, NULL, lio_gc->timeout)) == OP_STATE_SUCCESS);
+    { int result = gop_sync_exec(segment_clone(clone, lio_gc->da, &clone2, CLONE_STRUCT_AND_DATA, NULL, lio_gc->timeout)); assert(result == OP_STATE_SUCCESS); }
     memset(buffer, 0, bufsize);
-    assert(gop_sync_exec(segment_read(clone2, lio_gc->da, NULL, 1, &ex_iov, &tbuf, 0, lio_gc->timeout)) == OP_STATE_SUCCESS);
-    assert(compare_buffers_print(buffer, log2_data, bufsize, 0) == 0);
+    { int result = gop_sync_exec(segment_read(clone2, lio_gc->da, NULL, 1, &ex_iov, &tbuf, 0, lio_gc->timeout)); assert(result == OP_STATE_SUCCESS); }
+    { int result = compare_buffers_print(buffer, log2_data, bufsize, 0); assert(result == 0); }
 
     //** We don't need this anymore so destroy it
-    assert(gop_sync_exec(segment_remove(clone2, lio_gc->da, lio_gc->timeout)) == OP_STATE_SUCCESS);
+    { int result = gop_sync_exec(segment_remove(clone2, lio_gc->da, lio_gc->timeout)); assert(result == OP_STATE_SUCCESS); }
     segment_destroy(clone2);
 
     //*************************************************************************
     //---------------- Clone2 = clone's structure *only* ----------------------
     //*************************************************************************
     clone2 = NULL;
-    assert(gop_sync_exec(segment_clone(clone, lio_gc->da, &clone2, CLONE_STRUCTURE, NULL, lio_gc->timeout)) == OP_STATE_SUCCESS);
+    { int result = gop_sync_exec(segment_clone(clone, lio_gc->da, &clone2, CLONE_STRUCTURE, NULL, lio_gc->timeout)); assert(result == OP_STATE_SUCCESS); }
 
     //*************************************************************************
     //-------------- Replace clone2's base with clone and verify --------------
     //*************************************************************************
     s = (seglog_priv_t *)clone2->priv;
-    assert(gop_sync_exec(segment_remove(s->base_seg, lio_gc->da, lio_gc->timeout)) == OP_STATE_SUCCESS);
+    { int result = gop_sync_exec(segment_remove(s->base_seg, lio_gc->da, lio_gc->timeout)); assert(result == OP_STATE_SUCCESS); }
     segment_destroy(s->base_seg);
 
     s->base_seg = clone;
@@ -350,8 +350,8 @@ int main(int argc, char **argv)
 
     //** Read it back
     memset(buffer, 0, bufsize);
-    assert(gop_sync_exec(segment_read(clone2, lio_gc->da, NULL, 1, &ex_iov, &tbuf, 0, lio_gc->timeout)) == OP_STATE_SUCCESS);
-    assert(compare_buffers_print(buffer, log2_data, bufsize, 0) == 0);
+    { int result = gop_sync_exec(segment_read(clone2, lio_gc->da, NULL, 1, &ex_iov, &tbuf, 0, lio_gc->timeout)); assert(result == OP_STATE_SUCCESS); }
+    { int result = compare_buffers_print(buffer, log2_data, bufsize, 0); assert(result == 0); }
 
     //*************************************************************************
     //----------- Write to Clone2 and verify (now have 3 logs) ----------------
@@ -363,29 +363,29 @@ int main(int argc, char **argv)
         ex_iovec_single(&(ex_iov_table[i]), i*chunk_size + chunk_size/3, chunk_size);
         opque_add(q, segment_write(clone2, lio_gc->da, NULL, 1, &(ex_iov_table[i]), &tbuf, 0, lio_gc->timeout));
     }
-    assert(opque_waitall(q) == OP_STATE_SUCCESS);
+    { int result = opque_waitall(q); assert(result == OP_STATE_SUCCESS); }
 
     //** Read it back
     memset(buffer, 0, bufsize);
-    assert(gop_sync_exec(segment_read(clone2, lio_gc->da, NULL, 1, &ex_iov, &tbuf, 0, lio_gc->timeout)) == OP_STATE_SUCCESS);
-    assert(compare_buffers_print(buffer, log3_data, bufsize, 0) == 0);
+    { int result = gop_sync_exec(segment_read(clone2, lio_gc->da, NULL, 1, &ex_iov, &tbuf, 0, lio_gc->timeout)); assert(result == OP_STATE_SUCCESS); }
+    { int result = compare_buffers_print(buffer, log3_data, bufsize, 0); assert(result == 0); }
 
     //*************************************************************************
     // -- clone3 = clone2 structure and contents and verify
     //*************************************************************************
     clone3 = NULL;
-    assert(gop_sync_exec(segment_clone(clone2, lio_gc->da, &clone3, CLONE_STRUCT_AND_DATA, NULL, lio_gc->timeout)) == OP_STATE_SUCCESS);
+    { int result = gop_sync_exec(segment_clone(clone2, lio_gc->da, &clone3, CLONE_STRUCT_AND_DATA, NULL, lio_gc->timeout)); assert(result == OP_STATE_SUCCESS); }
     memset(buffer, 0, bufsize);
-    assert(gop_sync_exec(segment_read(clone3, lio_gc->da, NULL, 1, &ex_iov, &tbuf, 0, lio_gc->timeout)) == OP_STATE_SUCCESS);
-    assert(compare_buffers_print(buffer, log3_data, bufsize, 0) == 0);
+    { int result = gop_sync_exec(segment_read(clone3, lio_gc->da, NULL, 1, &ex_iov, &tbuf, 0, lio_gc->timeout)); assert(result == OP_STATE_SUCCESS); }
+    { int result = compare_buffers_print(buffer, log3_data, bufsize, 0); assert(result == 0); }
 
     //*************************************************************************
     //--------------------- Testing Finished -------------------------------
     //*************************************************************************
 
     //** Clean up
-    assert(gop_sync_exec(segment_remove(clone3, lio_gc->da, lio_gc->timeout)) == OP_STATE_SUCCESS);
-    assert(gop_sync_exec(segment_remove(clone2, lio_gc->da, lio_gc->timeout)) == OP_STATE_SUCCESS);
+    { int result = gop_sync_exec(segment_remove(clone3, lio_gc->da, lio_gc->timeout)); assert(result == OP_STATE_SUCCESS); }
+    { int result = gop_sync_exec(segment_remove(clone2, lio_gc->da, lio_gc->timeout)); assert(result == OP_STATE_SUCCESS); }
 
     segment_destroy(clone3);
     segment_destroy(clone2);

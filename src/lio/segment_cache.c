@@ -3605,7 +3605,7 @@ segment_t *segment_cache_create(void *arg)
     type_malloc_clear(seg, segment_t, 1);
     type_malloc_clear(s, cache_segment_t, 1);
 
-    assert(apr_pool_create(&(seg->mpool), NULL) == APR_SUCCESS);
+    { int result = apr_pool_create(&(seg->mpool), NULL); assert(result == APR_SUCCESS); }
     apr_thread_mutex_create(&(seg->lock), APR_THREAD_MUTEX_DEFAULT, seg->mpool);
     apr_thread_cond_create(&(seg->cond), seg->mpool);
     apr_thread_cond_create(&(s->flush_cond), seg->mpool);

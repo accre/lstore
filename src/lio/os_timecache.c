@@ -1939,7 +1939,7 @@ object_service_fn_t *object_service_timecache_create(service_manager_t *ess, ini
     ostc->cache_root = new_ostcdb_object(strdup("/"), OS_OBJECT_DIR, 0, ostc->mpool);
 
     //** Get the thread pool to use
-    assert((ostc->tpc = lookup_service(ess, ESS_RUNNING, ESS_TPC_UNLIMITED)) != NULL);
+    { int result = (ostc->tpc = lookup_service(ess, ESS_RUNNING, ESS_TPC_UNLIMITED)); assert(result != NULL); }
 
     //** Set up the fn ptrs
     os->type = OS_TYPE_TIMECACHE;

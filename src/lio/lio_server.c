@@ -136,7 +136,7 @@ int main(int argc, char **argv)
 #endif
 
     //** Make the APR stuff
-    assert(apr_pool_create(&mpool, NULL) == APR_SUCCESS);
+    { int result = apr_pool_create(&mpool, NULL); assert(result == APR_SUCCESS); }
     apr_thread_mutex_create(&shutdown_lock, APR_THREAD_MUTEX_DEFAULT, mpool);
     apr_thread_cond_create(&shutdown_cond, mpool);
 

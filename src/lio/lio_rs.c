@@ -82,7 +82,7 @@ void print_rid_summary(char *config, int base)
     table = list_create(0, &list_string_compare, NULL, NULL, free);
 
     //** Open the file
-    assert(kf = inip_read_text(config));
+    kf = inip_read_text(config); assert(kf);
 
     //** And load it
     ig = inip_first_group(kf);
@@ -209,7 +209,7 @@ int main(int argc, char **argv)
     } while ((start_option < i) && (i<argc));
 
     //** Make the APR stuff
-    assert(apr_pool_create(&mpool, NULL) == APR_SUCCESS);
+    { int result = apr_pool_create(&mpool, NULL); assert(result == APR_SUCCESS); }
     apr_thread_mutex_create(&lock, APR_THREAD_MUTEX_DEFAULT, mpool);
     apr_thread_cond_create(&cond, mpool);
 

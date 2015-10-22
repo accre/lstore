@@ -1075,7 +1075,7 @@ void osrs_close_object_cb(void *arg, mq_task_t *task)
 
     fhid = mq_msg_pop(msg);  //** Host handle
     mq_get_frame(fhid, (void **)&fhandle, &hsize);
-    assert(hsize == sizeof(intptr_t));
+    { int result = hsize; assert(result == sizeof(intptr_t)); }
 
     key = *(intptr_t *)fhandle;
     log_printf(5, "PTR key=%" PRIdPTR "\n", key);
@@ -3064,10 +3064,10 @@ object_service_fn_t *object_service_remote_server_create(service_manager_t *ess,
     type_malloc_clear(osrs, osrs_priv_t, 1);
     os->priv = (void *)osrs;
 
-    assert((osrs->tpc = lookup_service(ess, ESS_RUNNING, ESS_TPC_UNLIMITED)) != NULL);
+    { int result = (osrs->tpc = lookup_service(ess, ESS_RUNNING, ESS_TPC_UNLIMITED)); assert(result != NULL); }
 
     //** Make the locks and cond variables
-    assert(apr_pool_create(&(osrs->mpool), NULL) == APR_SUCCESS);
+    { int result = apr_pool_create(&(osrs->mpool), NULL); assert(result == APR_SUCCESS); }
     apr_thread_mutex_create(&(osrs->lock), APR_THREAD_MUTEX_DEFAULT, osrs->mpool);
     apr_thread_mutex_create(&(osrs->abort_lock), APR_THREAD_MUTEX_DEFAULT, osrs->mpool);
 
@@ -3121,7 +3121,7 @@ object_service_fn_t *object_service_remote_server_create(service_manager_t *ess,
 
 
     //** Get the MQC
-    assert((osrs->mqc = lookup_service(ess, ESS_RUNNING, ESS_MQ)) != NULL);
+    { int result = (osrs->mqc = lookup_service(ess, ESS_RUNNING, ESS_MQ)); assert(result != NULL); }
 
     //** Make the server portal
     osrs->server_portal = mq_portal_create(osrs->mqc, osrs->hostname, MQ_CMODE_SERVER);

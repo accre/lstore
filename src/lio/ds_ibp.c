@@ -97,7 +97,7 @@ void *ds_ibp_cap_auto_warm(data_service_fn_t *arg, data_cap_set_t *dcs)
     log_printf(15, "Adding to auto warm cap: %s\n", cs->manageCap);
 
     //** Make the new cap
-    assert((w = new_ibp_capset()) != NULL);
+    {w = new_ibp_capset(); assert(w != NULL); }
     if (cs->readCap) w->readCap = strdup(cs->readCap);
     if (cs->writeCap) w->writeCap = strdup(cs->writeCap);
     if (cs->manageCap) w->manageCap = strdup(cs->manageCap);
@@ -1030,7 +1030,7 @@ data_service_fn_t *ds_ibp_create(void *arg, inip_file_t *ifd, char *section)
     dsf->truncate = ds_ibp_truncate;
 
     //** Launch the warmer
-    assert(apr_pool_create(&(ds->pool), NULL) == APR_SUCCESS);
+    { int result = apr_pool_create(&(ds->pool), NULL); assert(result == APR_SUCCESS); }
     apr_thread_mutex_create(&(ds->lock), APR_THREAD_MUTEX_DEFAULT, ds->pool);
     apr_thread_cond_create(&(ds->cond), ds->pool);
     ds->warm_table = apr_hash_make(ds->pool);

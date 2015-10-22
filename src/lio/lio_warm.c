@@ -452,7 +452,7 @@ int main(int argc, char **argv)
 
     //** Get the RID config which is used in the summary
     config = rs_get_rid_config(lio_gc->rs);
-    assert(ifd = inip_read_text(config));
+    ifd = inip_read_text(config); assert(ifd);
 
     //** Convert it for easier lookup
     ig = inip_first_group(ifd);

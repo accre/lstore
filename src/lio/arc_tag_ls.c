@@ -127,7 +127,7 @@ void process_tag_file(char *tag_file, char *tag_name)
         exit(1);
     } else {
         /*** process tag file ***/
-        assert(ini_fd = inip_read(tag_file));
+        ini_fd = inip_read(tag_file); assert(ini_fd);
         ini_g = inip_first_group(ini_fd);
         obj_types = OS_OBJECT_ANY;
         while (ini_g != NULL) {

@@ -270,7 +270,7 @@ op_status_t rsrc_response_get_config(void *task_arg, int tid)
         }
 
         fd = fopen(rsrc->child_target_file, "w");
-        assert(fwrite(config, n_config, 1, fd) == 1);
+        { int result = fwrite(config, n_config, 1, fd); assert(result == 1); }
         fclose(fd);
 
         //** Release the lock
@@ -502,7 +502,7 @@ resource_service_fn_t *rs_remote_client_create(void *arg, inip_file_t *fd, char 
     rs->priv = (void *)rsrc;
 
     //** Make the locks and cond variables
-    assert(apr_pool_create(&(rsrc->mpool), NULL) == APR_SUCCESS);
+    { int result = apr_pool_create(&(rsrc->mpool), NULL); assert(result == APR_SUCCESS); }
     apr_thread_mutex_create(&(rsrc->lock), APR_THREAD_MUTEX_DEFAULT, rsrc->mpool);
     apr_thread_cond_create(&(rsrc->cond), rsrc->mpool);
 
@@ -513,7 +513,7 @@ resource_service_fn_t *rs_remote_client_create(void *arg, inip_file_t *fd, char 
     rsrc->check_interval = inip_get_integer(fd, section, "check_interval", 3600);
 
     //** Get the MQC
-    assert((rsrc->mqc = lookup_service(ess, ESS_RUNNING, ESS_MQ)) != NULL);
+    { int result = (rsrc->mqc = lookup_service(ess, ESS_RUNNING, ESS_MQ)); assert(result != NULL); }
 
     //** Check if we are running the remote RS locally.  This means we are doing testing
     stype = inip_get_string(fd, section, "rrs_test", NULL);
