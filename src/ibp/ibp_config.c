@@ -847,7 +847,7 @@ ibp_context_t *ibp_create_context()
     assert(ic != NULL);
     memset(ic, 0, sizeof(ibp_context_t));
 
-    assert(apr_wrapper_start() == APR_SUCCESS);
+    { int result = apr_wrapper_start(); assert(result == APR_SUCCESS); }
 
     if (_ibp_context_count == 0) {
         dns_cache_init(100);
