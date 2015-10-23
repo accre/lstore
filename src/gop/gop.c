@@ -135,9 +135,9 @@ void *gd_thread_func(apr_thread_t *th, void *data)
 void gop_dummy_init()
 {
     //** Make the variables
-    assert(apr_pool_create(&gd_pool, NULL) == APR_SUCCESS);
-    assert(apr_thread_mutex_create(&gd_lock, APR_THREAD_MUTEX_DEFAULT, gd_pool) == APR_SUCCESS);
-    assert(apr_thread_cond_create(&gd_cond, gd_pool) == APR_SUCCESS);
+    { int result = apr_pool_create(&gd_pool, NULL); assert(result == APR_SUCCESS); }
+    { int result = apr_thread_mutex_create(&gd_lock, APR_THREAD_MUTEX_DEFAULT, gd_pool); assert(result == APR_SUCCESS); }
+    { int result = apr_thread_cond_create(&gd_cond, gd_pool); assert(result == APR_SUCCESS); }
     gd_stack = new_stack();
 
     //** and launch the thread
