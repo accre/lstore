@@ -227,7 +227,7 @@ void pack_init_zlib(pack_t *pack, int type, int mode, unsigned char *buffer, int
         p->z.zalloc = Z_NULL;
         p->z.zfree = Z_NULL;
         p->z.opaque = Z_NULL;
-        assert(inflateInit(&(p->z)) == Z_OK);
+        { int result = inflateInit(&(p->z)); assert(result == Z_OK); }
         p->z.avail_in = bufsize;
         p->z.next_in = buffer;
         p->z.avail_out = 0;
@@ -239,7 +239,7 @@ void pack_init_zlib(pack_t *pack, int type, int mode, unsigned char *buffer, int
         p->z.zalloc = Z_NULL;
         p->z.zfree = Z_NULL;
         p->z.opaque = Z_NULL;
-        assert(deflateInit(&(p->z), Z_DEFAULT_COMPRESSION) == Z_OK);
+        { int result = deflateInit(&(p->z), Z_DEFAULT_COMPRESSION); assert(result == Z_OK); }
         p->z.avail_in = 0;
         p->z.next_in = Z_NULL;
         p->z.avail_out = bufsize;

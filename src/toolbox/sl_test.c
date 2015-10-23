@@ -51,7 +51,7 @@ int main(int argc, char **argv)
         exit(1);
     }
 
-    assert(apr_initialize() == APR_SUCCESS);
+    { int result = apr_initialize(); assert(result == APR_SUCCESS); }
     atomic_init();
 
     open_log("stdout");

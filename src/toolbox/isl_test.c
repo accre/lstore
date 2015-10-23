@@ -71,7 +71,7 @@ int main(int argc, char **argv)
     n_int_checks = atol(argv[i]);
     i++;
 
-    assert(apr_initialize() == APR_SUCCESS);
+    { int result = apr_initialize(); assert(result == APR_SUCCESS); }
     atomic_init();
 
     isl = create_interval_skiplist_full(l_max, p, &skiplist_compare_int, NULL, NULL, NULL);
