@@ -1652,7 +1652,7 @@ op_status_t ostc_set_attrs_fn(void *arg, int tid)
     status = gop_sync_exec_status(os_set_multiple_attrs(ostc->os_child, ma->creds, ma->fd->fd_child, ma->key, ma->val, ma->v_size, ma->n));
 
     //** Failed just return
-    if (status.op_status == OP_STATE_SUCCESS) return(status);
+    if (status.op_status != OP_STATE_SUCCESS) return(status);
 
     //** Update the cache on the keys we know about
     ostc_cache_update_attrs(ma->os, ma->fd->fname, ma->key, ma->val, ma->v_size, ma->n);
