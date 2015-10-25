@@ -71,6 +71,29 @@ if(NOT APPLE)
     list(APPEND LIBS rt)
 endif(NOT APPLE)
 
+# gather the info needed to make ELF shared libraries provide version info when executed
+# based on https://polentino911.wordpress.com/2013/08/08/make-your-own-executable-shared-library-on-linux
+# Note: this logic probably has problems with some cross-compiling scenarios
+set(ELF_INTERPRETER_PATH "/not/applicable/for/this/platform")
+if(UNIX AND NOT APPLE)
+    find_program(READELF_EXEC readelf)
+    if(DEFINED READELF_EXEC)
+        set(INTERPRETER_DESCRIPTION "Requesting program interpreter:")
+        execute_process(COMMAND ${READELF_EXEC} -l /bin/ls RESULT_VARIABLE return_value OUTPUT_VARIABLE result)
+	if(return_value)
+            message(STATUS "Unable to identify ELF interpreter")
+        else(return_value)
+            string(REGEX REPLACE ".*[[]${INTERPRETER_DESCRIPTION} ([/][^ ].+)[]].*" "\\1"
+                _ELF_INTERPRETER_PATH "${result}")
+
+            add_definitions( -DELF_INTERPRETER_PATH="${_ELF_INTERPRETER_PATH}")
+            message(STATUS "ELF interpreter is ${_ELF_INTERPRETER_PATH}")
+            set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -e print_${LSTORE_PROJECT_NAME}_version_and_exit")
+            set(CMAKE_INSTALL_SO_NO_EXE FALSE)  # Default exec bit policy for sharedlibs varies by OS and distro, force bits to be set
+        endif(return_value)
+    endif(DEFINED READELF_EXEC)
+endif(UNIX AND NOT APPLE)
+
 # Make the version file.
 set(LSTORE_INC_VERSION_STRING "${LSTORE_PROJECT_NAME}: ${LSTORE_PROJECT_VERSION}")
 site_name(BUILD_HOST)
@@ -79,6 +102,8 @@ CompilerVersion(COMPILER_VERSION)
 CompilerFlags(COMPILER_FLAGS)
 configure_file(${CMAKE_SOURCE_DIR}/${LSTORE_PROJECT_NAME}_version.c.in
                ${CMAKE_SOURCE_DIR}/${LSTORE_PROJECT_NAME}_version.c)
+set(LSTORE_PROJECT_OBJS ${LSTORE_PROJECT_OBJS} ${LSTORE_PROJECT_NAME}_version.c)
+set(LSTORE_PROJECT_EXECUTABLES ${LSTORE_PROJECT_EXECUTABLES} ${LSTORE_PROJECT_NAME}_version)
 
 add_library(library SHARED ${LSTORE_PROJECT_OBJS})
 set_target_properties(library PROPERTIES OUTPUT_NAME "${LSTORE_PROJECT_NAME}")
