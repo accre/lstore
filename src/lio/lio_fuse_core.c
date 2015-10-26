@@ -59,11 +59,6 @@ http://www.accre.vanderbilt.edu
 #define lfs_lock(lfs)    apr_thread_mutex_lock((lfs)->lock)
 #define lfs_unlock(lfs)  apr_thread_mutex_unlock((lfs)->lock)
 
-#define dentry_name(entry) &((entry)->fname[(entry)->name_start])
-
-//int ino_compare_fn(void *arg, skiplist_key_t *a, skiplist_key_t *b);
-//static skiplist_compare_t ino_compare = {.fn=ino_compare_fn, .arg=NULL };
-
 #define _inode_key_size 11
 #define _inode_fuse_attr_start 7
 static char *_inode_keys[] = { "system.inode", "system.modify_data", "system.modify_attr", "system.exnode.size", "os.type", "os.link_count", "os.link",
@@ -77,6 +72,13 @@ typedef struct {
     char *dentry;
     struct stat stat;
 } lfs_dir_entry_t;
+
+typedef struct {
+     char *fname;
+     ex_id_t sid;
+     int ref_count;
+     int remove_on_close;
+}  lio_fuse_open_file_t;
 
 typedef struct {
     lio_fuse_t *lfs;
@@ -95,6 +97,8 @@ typedef struct {
     ex_off_t len;
     uLong adler32;
 } lfs_adler32_t;
+
+lio_file_handle_t *_lio_get_file_handle(lio_config_t *lc, ex_id_t vid);
 
 
 //*************************************************************************
@@ -126,9 +130,10 @@ mode_t ftype_lio2fuse(int ftype)
 void _lfs_parse_stat_vals(lio_fuse_t *lfs, char *fname, struct stat *stat, char **val, int *v_size)
 {
     int i, n, readlink;
+    lio_fuse_open_file_t *fop;
+    ex_id_t ino;
     char *link;
     lio_file_handle_t *fh;
-    ex_id_t ino;
     ex_off_t len;
     int ts;
 
@@ -167,15 +172,20 @@ void _lfs_parse_stat_vals(lio_fuse_t *lfs, char *fname, struct stat *stat, char 
     stat->st_mode = ftype_lio2fuse(n);
 
     //** Size
+    ino = 0;
     lfs_lock(lfs);
-    fh = apr_hash_get(lfs->open_files, fname, APR_HASH_KEY_STRING);
-    if (fh == NULL) {
-        len = 0;
-        if (val[3] != NULL) sscanf(val[3], XOT, &len);
-    } else {
-        len = segment_size(fh->seg);
-    }
+    fop = apr_hash_get(lfs->open_files, fname, APR_HASH_KEY_STRING);
+    if (fop != NULL) ino = fop->sid;
     lfs_unlock(lfs);
+
+    len = 0;
+    if (val[3] != NULL) sscanf(val[3], XOT, &len);
+    if (ino != 0) { //** Got an open file
+       lio_lock(lfs->lc);
+       fh = _lio_get_file_handle(lfs->lc, ino);
+       if (fh) len = segment_size(fh->seg);
+       lio_unlock(lfs->lc);
+    }
 
     stat->st_size = (n & OS_OBJECT_SYMLINK) ? readlink : len;
     stat->st_blksize = 4096;
@@ -508,19 +518,16 @@ int lfs_actual_remove(lio_fuse_t *lfs, const char *fname, int ftype)
 
 int lfs_object_remove(lio_fuse_t *lfs, const char *fname)
 {
-    lio_file_handle_t *fh;
+    lio_fuse_open_file_t *fop;
 
     log_printf(1, "fname=%s\n", fname);
     flush_log();
 
     //** Check if it's open.  If so do a delayed removal
     lfs_lock(lfs);
-    fh = apr_hash_get(lfs->open_files, fname, APR_HASH_KEY_STRING);
-    if (fh != NULL) {
-        segment_lock(fh->seg);
-        fh->remove_on_close = 1;
-        segment_unlock(fh->seg);
-        lfs_unlock(lfs);
+    fop = apr_hash_get(lfs->open_files, fname, APR_HASH_KEY_STRING);
+    if (fop != NULL) {
+        fop->remove_on_close = 1;
         return(0);
     }
     lfs_unlock(lfs);
@@ -557,7 +564,7 @@ int lfs_open(const char *fname, struct fuse_file_info *fi)
 {
     lio_fuse_t *lfs = lfs_get_context();
     lio_fd_t *fd;
-    lio_file_handle_t *fh;
+    lio_fuse_open_file_t *fop;
     int mode;
 
     mode = 0;
@@ -584,11 +591,16 @@ int lfs_open(const char *fname, struct fuse_file_info *fi)
     fi->fh = (uint64_t)fd;
 
     lfs_lock(lfs);
-    fh = apr_hash_get(lfs->open_files, fname, APR_HASH_KEY_STRING);
-    if (fh == NULL) {
-        apr_hash_set(lfs->open_files, fd->path, APR_HASH_KEY_STRING, fd->fh);
+    fop = apr_hash_get(lfs->open_files, fname, APR_HASH_KEY_STRING);
+    if (fop == NULL) {
+        type_malloc_clear(fop, lio_fuse_open_file_t, 1);
+        fop->fname = strdup(fd->path);
+        fop->sid = segment_id(fd->fh->seg);
+        apr_hash_set(lfs->open_files, fop->fname, APR_HASH_KEY_STRING, fop);
     }
+    fop->ref_count++;
     lfs_unlock(lfs);
+
     return(0);
 }
 
@@ -600,16 +612,31 @@ int lfs_release(const char *fname, struct fuse_file_info *fi)
 {
     lio_fuse_t *lfs = lfs_get_context();
     lio_fd_t *fd = (lio_fd_t *)fi->fh;
-    int err;
+    lio_fuse_open_file_t *fop;
+    int err, remove_on_close;
 
     log_printf(2, "fname=%s fd->path=%s fd=%p\n", fname, fd->path, fd);
 
+    remove_on_close = 0;
+
     lfs_lock(lfs);
-    segment_lock(fd->fh->seg);
-    if (fd->fh->ref_count <= 1) {  //** Only remove it if I'm the last one
-        apr_hash_set(lfs->open_files, fd->path, APR_HASH_KEY_STRING, NULL);
+    fop = apr_hash_get(lfs->open_files, fname, APR_HASH_KEY_STRING);
+    if (fop) {
+       remove_on_close = fop->remove_on_close;
+       fop->ref_count--;
+       if (fop->ref_count <= 0) {  //** LAst one so remove it.
+           apr_hash_set(lfs->open_files, fname, APR_HASH_KEY_STRING, NULL);
+           free(fop->fname);
+           free(fop);
+       }
     }
-    segment_unlock(fd->fh->seg);
+
+    //** See if we need to remove it
+    if (remove_on_close == 1) {
+       segment_lock(fd->fh->seg);
+       fd->fh->remove_on_close = 1;
+       segment_unlock(fd->fh->seg);
+    }
 
     err = gop_sync_exec(gop_lio_close_object(fd)); // ** Close it but keep track of the error
     lfs_unlock(lfs);
@@ -769,10 +796,21 @@ int lfs_fsync(const char *fname, int datasync, struct fuse_file_info *fi)
 int lfs_rename(const char *oldname, const char *newname)
 {
     lio_fuse_t *lfs = lfs_get_context();
+    lio_fuse_open_file_t *fop;
     int err;
 
     log_printf(1, "oldname=%s newname=%s\n", oldname, newname);
     flush_log();
+
+    lfs_lock(lfs);
+    fop = apr_hash_get(lfs->open_files, oldname, APR_HASH_KEY_STRING);
+    if (fop) {  //** Got an open file so need to mve the entry there as well.
+       apr_hash_set(lfs->open_files, oldname, APR_HASH_KEY_STRING, NULL);
+       free(fop->fname);
+       fop->fname = strdup(newname);
+       apr_hash_set(lfs->open_files, fop->fname, APR_HASH_KEY_STRING, fop);
+    }
+    lfs_unlock(lfs);
 
     //** Do the move
     err = gop_sync_exec(gop_lio_move_object(lfs->lc, lfs->lc->creds, (char *)oldname, (char *)newname));
