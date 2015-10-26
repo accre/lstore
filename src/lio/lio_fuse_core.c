@@ -638,6 +638,12 @@ int lfs_release(const char *fname, struct fuse_file_info *fi)
        segment_unlock(fd->fh->seg);
     }
 
+    //** Check if a rename occurred during file open
+    if (strcmp(fname, fd->path) != 0) {
+        free(fd->path);
+        fd->path = strdup(fname);
+    }
+
     err = gop_sync_exec(gop_lio_close_object(fd)); // ** Close it but keep track of the error
     lfs_unlock(lfs);
 
