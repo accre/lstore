@@ -11,7 +11,15 @@ $LSTORE_SCRIPT_BASE/generate-docker-base.sh
 
 cd $LSTORE_SCRIPT_BASE/docker/base
 STATUS=""
-for DISTRO in */; do
+
+# Parse comand line
+DISTROS=( "$@" )
+if [ ${#DISTROS[@]} -eq 0 ]; then
+    DISTROS=( */ )
+fi
+DISTROS=( "${DISTROS[@]%/}" )
+
+for DISTRO in "${DISTROS[@]}"; do
     note "Processing $(basename $DISTRO)"
     docker build --force-rm=true --rm=true \
         -t "lstore/builder:$(basename $DISTRO)" "$DISTRO" || \
