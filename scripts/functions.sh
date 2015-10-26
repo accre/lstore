@@ -236,3 +236,27 @@ function get_source() {
     done
 }
 
+function load_github_token() {
+    if [ ! -z "${LSTORE_GITHUB_TOKEN+}" ]; then
+        return
+    elif [ -e $HOME/.lstore_release ]; then
+        source $HOME/.lstore_release
+    fi
+    set +u
+    echo $LSTORE_GITHUB_TOKEN
+    set -u
+    [ -z "${LSTORE_GITHUB_TOKEN}" ] && \
+        fatal "Need a github authentication token to perform this action. To get
+a token, use the following FAQ (be sure to remove all scopes).
+
+https://help.github.com/articles/creating-an-access-token-for-command-line-use/
+
+This token should be set to \$LSTORE_GITHUB_TOKEN. Alternately, the file
+\$HOME/.lstore_release can be used to store secrets. The following will set
+your github token only when needed:
+
+export LSTORE_GITHUB_TOKEN=<token from github page>" \
+                                || return 0
+
+}
+
