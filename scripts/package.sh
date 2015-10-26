@@ -24,8 +24,8 @@ DISTROS=( "${DISTROS[@]%/}" )
 
 cd $LSTORE_RELEASE_BASE
 EXTRA_ARGS=""
-# if the host has proxies set, use them to try and decrease the download
-#    time
+
+# if the host has proxies set, use them to try and decrease the download time
 for PROXY in http_proxy HTTPS_PROXY; do
     if [ ! -z "${!PROXY+x}" ]; then
         EXTRA_ARGS="$EXTRA_ARGS -e ${PROXY}=${!PROXY} "
