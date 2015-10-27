@@ -343,7 +343,7 @@ op_status_t segjerase_inspect_full_func(void *arg, int id)
     iovec_t *iov;
     ex_iovec_t ex_read;
     ex_iovec_t *ex_iov;
-    apr_time_t now, loop_start, clr_dt;
+    apr_time_t now, clr_dt;
     double dtt, dtr, dtw, dtp, rater, ratew, ratep;
 
     stripe_diag_size = 4;
@@ -406,7 +406,6 @@ op_status_t segjerase_inspect_full_func(void *arg, int id)
         ex_read.len = (ex_off_t)nstripes * s->stripe_size_with_magic;
 
         log_printf(0, "stripe=%d nstripes=%d total_stripes=%d offset=" XOT " len=" XOT "\n", stripe, nstripes, total_stripes, ex_read.offset, ex_read.len);
-        loop_start = apr_time_now();
         if (sf->do_print == 1) info_printf(si->fd, 1, XIDT ": checking stripes: (%d, %d)\n", segment_id(si->seg), stripe, stripe+nstripes-1);
 
         //** Read the data in
@@ -669,10 +668,6 @@ next:  //** Jump to here if an empty stripe
                         segment_id(si->seg), dtr, pretty_print_double_with_scale(1024, rater, ppbufr), dtp, pretty_print_double_with_scale(1024, ratep, ppbufp),
                         dtw, pretty_print_double_with_scale(1024, ratew, ppbufw), dtt, bad_count, repair_errors, unrecoverable_count, n_empty, erasure_errors);
         }
-
-//loop_start = apr_time_now() - loop_start;
-//dt = (double)loop_start / APR_USEC_PER_SEC;
-//info_printf(si->fd, 1, "loop_dt=%lf\n", dt);
 
         if (((repair_errors+unrecoverable_count) > 0) && (fail_quick > 0)) {
             log_printf(1,"FAIL_QUICK:  Hit an unrecoverable error\n");
@@ -1782,6 +1777,7 @@ op_generic_t *segjerase_read(segment_t *seg, data_attr_t *da, segment_rw_hints_t
 
     //** 1st verify the ops occur on whole rows
     nstripes = 0;
+    nbytes = 0;
     for (i=0; i<n_iov; i++) {
         nbytes += iov[i].len;
         nstripes += iov[i].len / s->data_size;

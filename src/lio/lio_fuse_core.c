@@ -1064,7 +1064,6 @@ void lfs_set_tape_attr(lio_fuse_t *lfs, char *fname, char *mytape_val, int tape_
             log_printf(1, "ERROR parsing parent exnode fname=%s\n", fname);
             exnode_exchange_destroy(exp);
             exnode_destroy(ex);
-            exnode_destroy(cex);
         }
 
         //** Execute the clone operation
@@ -1080,6 +1079,7 @@ void lfs_set_tape_attr(lio_fuse_t *lfs, char *fname, char *mytape_val, int tape_
         exp->text.text = NULL;
         exnode_exchange_destroy(exp);
         exnode_destroy(ex);
+        exnode_destroy(cex);
     }
 
     //** Store them
@@ -1401,7 +1401,7 @@ int lfs_statfs(const char *fname, struct statvfs *fs)
     fs->f_bfree = space.free_up / 4096;
     fs->f_bavail = fs->f_bfree;
     fs->f_files = 1;
-    fs->f_ffree = (ex_off_t)1024*1024*1024*1024*1024;
+    fs->f_ffree = 10*1024*1024;
 //  fs->f_favail =
 //  fs->f_fsid =
 //  fs->f_flag =

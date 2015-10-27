@@ -67,7 +67,7 @@ void signal_shutdown(int sig)
 int main(int argc, char **argv)
 {
     int background = 1;
-    int i, start_option, start_index;
+    int i, start_option;
 
     for (i=0; i<argc; i++) {
         if (strcmp(argv[i], "-f") == 0) {
@@ -123,8 +123,6 @@ int main(int argc, char **argv)
             }
         } while ((start_option < i) && (i<argc));
     }
-
-    start_index = i;
 
     //***Attach the signal handler for shutdown
     apr_signal_unblock(SIGQUIT);

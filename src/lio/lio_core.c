@@ -1087,6 +1087,7 @@ op_status_t cp_lio2lio(lio_cp_file_t *cp)
     info_printf(lio_ifd, 0, "copy %s@%s:%s %s@%s:%s\n", an_cred_get_id(cp->src_tuple.creds), cp->src_tuple.lc->section_name, cp->src_tuple.path, an_cred_get_id(cp->dest_tuple.creds), cp->dest_tuple.lc->section_name, cp->dest_tuple.path);
 
     status = op_failure_status;
+    err = status.op_status;
     q = new_opque();
     hard_errors = 0;
     sexp = dexp = NULL;

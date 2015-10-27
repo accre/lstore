@@ -560,6 +560,7 @@ int _ostcdb_resolve_attr_link(object_service_fn_t *os, Stack_t *tree, char *alin
 
     //** 1st split the link into a path and attribute name
     n = strlen(alink);
+    aname = NULL;
     for (i=n-1; i>=0; i--) {
         if (alink[i] == '/') {
             aname = alink + i + 1;

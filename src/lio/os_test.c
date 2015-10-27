@@ -840,7 +840,7 @@ void os_attribute_tests()
     dt = got - now;
     if (labs(dt) > 5) {
         nfailed++;
-        log_printf(0, "ERROR: val mismatch attr=%s should be=" I64T " got=%s\n", key, val, rval);
+        log_printf(0, "ERROR: attributre timestamp is off attr=%s dt=" XOT " should be less than 5\n", key);
         return;
     }
     free(rval);

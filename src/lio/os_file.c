@@ -1946,7 +1946,7 @@ op_status_t osfile_regex_object_set_multiple_attrs_fn(void *arg, int id)
 
     op_attr.os = op->os;
     op_attr.creds = op->creds;
-    op_attr.fd = fd; //** filled if for each object
+    op_attr.fd = NULL; //** filled in for each object
     op_attr.key = op->key;
     op_attr.val = op->val;
     op_attr.v_size = op->v_size;
