@@ -66,15 +66,18 @@ void mq_pipe_create(mq_socket_context_t *ctx, mq_socket_t **pfd)
     char hname[257];
     uint64_t r = 0;
 
-//** Make the sockets
-    assert((pfd[0] = mq_socket_new(ctx, MQ_PAIR)) != NULL);
-    assert((pfd[1] = mq_socket_new(ctx, MQ_PAIR)) != NULL);
-
-//** Connect them together
+    int result = (pfd[0] = mq_socket_new(ctx, MQ_PAIR));
+    assert(result != NULL);
+    int result = (pfd[1] = mq_socket_new(ctx, MQ_PAIR));
+    assert(result != NULL);
+ 
+    //** Connect them together
     get_random(&r, sizeof(r));
     snprintf(hname, sizeof(hname), "inproc://" LU, r);
-    assert(mq_bind(pfd[1], hname) == 0);
-    assert(mq_connect(pfd[0], hname) == 0);
+    result = mq_bind(pfd[1], hname);
+    assert(result == 0);
+    result = mq_connect(pfd[0], hname);
+    assert(result == 0);
 }
 
 void mq_pipe_poll_store(mq_pollitem_t *pfd, mq_socket_t *sock, int mode)
@@ -242,15 +245,16 @@ void mq_command_table_set_default(mq_command_table_t *table, void *arg, mq_fn_ex
 mq_command_table_t *mq_command_table_new(void *arg, mq_fn_exec_t *fn_default)
 {
     mq_command_table_t *t;
-
+    
     type_malloc(t, mq_command_table_t, 1);
-
+    
     t->fn_default = fn_default;
     t->arg_default = arg;
     apr_pool_create(&(t->mpool), NULL);
-    assert(apr_thread_mutex_create(&(t->lock), APR_THREAD_MUTEX_DEFAULT, t->mpool) == APR_SUCCESS);
-    assert((t->table = apr_hash_make(t->mpool)) != NULL);
-
+    int result = apr_thread_mutex_create(&(t->lock), APR_THREAD_MUTEX_DEFAULT, t->mpool);
+    assert(result == APR_SUCCESS);
+    result = (t->table = apr_hash_make(t->mpool)); assert(result != NULL); }
+    
     return(t);
 }
 
@@ -1459,17 +1463,17 @@ void *mq_conn_thread(apr_thread_t *th, void *data)
         k = mq_poll(pfd, npoll, heartbeat_ms);
         log_printf(5, "pfd[EFD]=%d pdf[CONN]=%d npoll=%d n=%d errno=%d\n", pfd[PI_EFD].revents, pfd[PI_CONN].revents, npoll, k, errno);
 
-//k=1; //FIXME
+        //k=1; //FIXME
         if (k > 0) {  //** Got an event so process it
             nproc = 0;
             if ((npoll == 2) && (pfd[PI_EFD].revents != 0)) finished += mqc_process_task(c, &npoll, &nproc);
             nprocessed += nproc;
             total_proc += nproc;
-//finished += mqc_process_task(c, &npoll, &nprocessed);
+            //finished += mqc_process_task(c, &npoll, &nprocessed);
             log_printf(5, "after process_task finished=%d\n", finished);
             nincoming = 0;
             if (pfd[PI_CONN].revents != 0) finished += mqc_process_incoming(c, &nincoming);
-//finished += mqc_process_incoming(c, &nincoming);
+            //finished += mqc_process_incoming(c, &nincoming);
             nprocessed += nincoming;
             total_incoming += nincoming;
             log_printf(5, "after process_incoming finished=%d\n", finished);
@@ -1487,7 +1491,7 @@ void *mq_conn_thread(apr_thread_t *th, void *data)
             next_hb_check = apr_time_now() + apr_time_from_sec(1);
             log_printf(5, "hb_new=" LU "\n", next_hb_check);
 
-//** Check if we've been busy enough to stay open
+            //** Check if we've been busy enough to stay open
             dt = apr_time_now() - last_check;
             dt = dt / APR_USEC_PER_SEC;
             proc_rate = (1.0*nprocessed) / dt;
@@ -1512,15 +1516,15 @@ void *mq_conn_thread(apr_thread_t *th, void *data)
 
 
 cleanup:
-//** Cleanup my struct but don'r free(c).
-//** This is done on portal cleanup
+    //** Cleanup my struct but don'r free(c).
+    //** This is done on portal cleanup
     mq_stats_print(2, c->mq_uuid, &(c->stats));
     log_printf(2, "END: uuid=%s total_incoming=" I64T " total_processed=" I64T " oops=%d\n", c->mq_uuid, total_incoming, total_proc, oops);
     flush_log();
 
     mq_conn_teardown(c);
 
-//** Update the conn_count, stats and place mysealf on the reaper stack
+    //** Update the conn_count, stats and place mysealf on the reaper stack
     apr_thread_mutex_lock(c->pc->lock);
     mq_stats_add(&(c->pc->stats), &(c->stats));
 //** We only update the connection counts if we actually made a connection.  The original thread that created us was already notified
@@ -1553,26 +1557,32 @@ int mq_conn_create_actual(mq_portal_t *p, int dowait)
     mq_conn_t *c;
     int err;
     char v;
-
+    
     type_malloc_clear(c, mq_conn_t, 1);
-
+    
     c->pc = p;
-
-    assert(apr_pool_create(&(c->mpool), NULL) == APR_SUCCESS);
-    assert((c->waiting = apr_hash_make(c->mpool)) != NULL);
-    assert((c->heartbeat_dest = apr_hash_make(c->mpool)) != NULL);
-    assert((c->heartbeat_lut = apr_hash_make(c->mpool)) != NULL);
-
-//** This is just used in the initial handshake
-    assert(pipe(c->cefd) == 0);
-
-//** Spawn the thread
-    thread_create_assert(&(c->thread), NULL, mq_conn_thread, (void *)c, p->mpool);  //** USe the parent mpool so I can do the teardown
-
+    int result;
+    result = apr_pool_create(&(c->mpool), NULL);
+    assert(result == APR_SUCCESS); }
+    result = (c->waiting = apr_hash_make(c->mpool));
+    assert(result != NULL);
+    result = (c->heartbeat_dest = apr_hash_make(c->mpool));
+    assert(result != NULL);
+    result = (c->heartbeat_lut = apr_hash_make(c->mpool));
+    assert(result != NULL);
+    
+    //** This is just used in the initial handshake
+    result = pipe(c->cefd);
+    assert(result == 0);
+    
+    //** Spawn the thread
+    //** USe the parent mpool so I can do the teardown
+    thread_create_assert(&(c->thread), NULL, mq_conn_thread, (void *)c, p->mpool);
     err = 0;
     if (dowait == 1) {  //** If needed wait until connected
         read(c->cefd[0], &v, 1);
-        err = (v == 1) ? 0 : 1;  //** n==1 is a success anything else is an error
+        //** n==1 is a success anything else is an error
+        err = (v == 1) ? 0 : 1;
     }
 
     if (err == 0) {
@@ -1664,7 +1674,7 @@ void mq_portal_destroy(mq_portal_t *p)
     c = 1;
     for (i=0; i<n; i++) mq_pipe_write(p->efd[1], &c);
 
-//** Wait for them all to complete
+    //** Wait for them all to complete
     apr_thread_mutex_lock(p->lock);
     while (p->total_conn > 0) {
         apr_thread_cond_wait(p->cond, p->lock);
@@ -1674,14 +1684,15 @@ void mq_portal_destroy(mq_portal_t *p)
     log_printf(2, "host=%s closed_size=%d total_conn=%d\n", p->host, stack_size(p->closed_conn), p->total_conn);
     flush_log();
 
-//** Clean up
-    _mq_reap_closed(p);  //** Don;t have to worry about locking cause no one else exists
+    //** Clean up 
+    //** Don;t have to worry about locking cause no one else exists
 
 
-//** Destroy the command table
+    _mq_reap_closed(p); 
+    //** Destroy the command table
     mq_command_table_destroy(p->command_table);
 
-//** Update the stats
+    //** Update the stats
     apr_thread_mutex_lock(p->mqc->lock);
     mq_stats_add(&(p->mqc->stats), &(p->stats));
     apr_thread_mutex_unlock(p->mqc->lock);
@@ -1760,7 +1771,7 @@ int mq_portal_install(mq_context_t *mqc, mq_portal_t *p)
         return(1);
     }
 
-//** Make a connection if non exists
+    //** Make a connection if non exists
     apr_thread_mutex_lock(p->lock);
 
     apr_hash_set(ptable, p->host, APR_HASH_KEY_STRING, p);
@@ -1852,8 +1863,8 @@ void mq_destroy_context(mq_context_t *mqc)
     }
     log_printf(5, "Completed portal shutdown\n");
     flush_log();
-//sleep(1);
-//log_printf(5, "AFTER SLEEP\n"); flush_log();
+    //sleep(1);
+    //log_printf(5, "AFTER SLEEP\n"); flush_log();
 
     mq_stats_print(2, "Portal total", &(mqc->stats));
 
@@ -1866,7 +1877,7 @@ void mq_destroy_context(mq_context_t *mqc)
 
     free(mqc);
 
-//sleep(1);
+    //sleep(1);
     log_printf(5, "AFTER SLEEP2\n");
     flush_log();
 }
@@ -1904,25 +1915,27 @@ mq_context_t *mq_create_context(inip_file_t *ifd, char *section)
     mqc->heartbeat_failure = inip_get_integer(ifd, section, "heartbeat_failure", 60);
     mqc->min_ops_per_sec = inip_get_integer(ifd, section, "min_ops_per_sec", 100);
 
-// New socket_type parameter
+    // New socket_type parameter
     mqc->socket_type = inip_get_integer(ifd, section, "socket_type", MQ_TRACE_ROUTER);
 
     apr_pool_create(&(mqc->mpool), NULL);
     apr_thread_mutex_create(&(mqc->lock), APR_THREAD_MUTEX_DEFAULT, mqc->mpool);
 
-//** Make the thread pool.  All GOP commands run through here.  We replace the TP
-//** submit routine with our own.
+    //** Make the thread pool.  All GOP commands run through here.  We replace
+    //**  the TP submit routine with our own.
     mqc->tp = thread_pool_create_context("mq", mqc->min_threads, mqc->max_threads);
     mqc->pcfn = *(mqc->tp->pc->fn);
     mqc->pcfn.submit = _mq_submit_op;
     mqc->pcfn.sync_exec = NULL;
     mqc->tp->pc->fn = &(mqc->pcfn);
-
-    assert((mqc->client_portals = apr_hash_make(mqc->mpool)) != NULL);
-    assert((mqc->server_portals = apr_hash_make(mqc->mpool)) != NULL);
-
+    int result;   
+    result = (mqc->client_portals = apr_hash_make(mqc->mpool));
+    assert(result != NULL);
+    result = (mqc->server_portals = apr_hash_make(mqc->mpool));
+    assert(result != NULL);
+    
     atomic_set(mqc->n_ops, 0);
-
+    
     return(mqc);
 }
 

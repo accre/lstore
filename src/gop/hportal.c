@@ -104,7 +104,7 @@ host_portal_t *create_hportal(portal_context_t *hpc, void *connect_context, char
 
     log_printf(15, "create_hportal: hpc=%p\n", hpc);
     type_malloc_clear(hp, host_portal_t, 1);
-    assert(apr_pool_create(&(hp->mpool), NULL) == APR_SUCCESS);
+    { int result = apr_pool_create(&(hp->mpool), NULL); assert(result == APR_SUCCESS); }
 
     char host[sizeof(hp->host)];
     int port;
@@ -250,12 +250,12 @@ portal_context_t *create_hportal_context(portal_fn_t *imp)
 
 //log_printf(1, "create_hportal_context: start\n");
 
-    assert((hpc = (portal_context_t *)malloc(sizeof(portal_context_t))) != NULL);
+    {hpc = (portal_context_t *)malloc(sizeof(portal_context_t)); assert(hpc != NULL); }
     memset(hpc, 0, sizeof(portal_context_t));
 
 
-    assert(apr_pool_create(&(hpc->pool), NULL) == APR_SUCCESS);
-    assert((hpc->table = apr_hash_make(hpc->pool)) != NULL);
+    { int result = apr_pool_create(&(hpc->pool), NULL); assert(result == APR_SUCCESS); }
+    { int result = (hpc->table = apr_hash_make(hpc->pool)); assert(result != NULL); }
 
 //log_printf(15, "create_hportal_context: hpc=%p hpc->table=%p\n", hpc, hpc->table);
 

@@ -446,8 +446,8 @@ int main(int argc, char **argv)
     host = mq_string_to_address(host_string);
 
     // Create the lock
-    assert(apr_thread_mutex_create(&table_lock, APR_THREAD_MUTEX_DEFAULT, mpool) == APR_SUCCESS);
-    assert(apr_thread_mutex_create(&queue_lock, APR_THREAD_MUTEX_DEFAULT, mpool) == APR_SUCCESS);
+    { int result = apr_thread_mutex_create(&table_lock, APR_THREAD_MUTEX_DEFAULT, mpool); assert(result == APR_SUCCESS); }
+    { int result = apr_thread_mutex_create(&queue_lock, APR_THREAD_MUTEX_DEFAULT, mpool); assert(result == APR_SUCCESS); }
 
     // Create thread for server
     thread_create_assert(&server_thread, NULL, server_test_thread, NULL, mpool);

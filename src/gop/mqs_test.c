@@ -696,8 +696,8 @@ int main(int argc, char **argv)
 
     //** Make the locking structures for client/server communication
     apr_pool_create(&mpool, NULL);
-    assert(apr_thread_mutex_create(&lock, APR_THREAD_MUTEX_DEFAULT, mpool) == APR_SUCCESS);
-    assert(apr_thread_cond_create(&cond, mpool) == APR_SUCCESS);
+    { int result = apr_thread_mutex_create(&lock, APR_THREAD_MUTEX_DEFAULT, mpool); assert(result == APR_SUCCESS); }
+    { int result = apr_thread_cond_create(&cond, mpool); assert(result == APR_SUCCESS); }
 
     host_string_converted = strdup(host_string);
     host = mq_string_to_address(host_string_converted);
