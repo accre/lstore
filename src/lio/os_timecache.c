@@ -1033,8 +1033,10 @@ int _ostc_cache_populate_prefix(object_service_fn_t *os, creds_t *creds, char *p
 
     log_printf(5, "path=%s prefix=%s len=%d end=%d\n", path, fname, len, end);
 
-    key = "system.inode"; val = NULL;
-    key_array[0] = key;  val_array[0] = val;
+    key = "system.inode";
+    val = NULL;
+    key_array[0] = key;
+    val_array[0] = val;
     v_size[0] = -100;
     ostc_attr_cacheprep_setup(&cp, 1, key_array, (void **)val_array, v_size, 1);
 
@@ -1060,8 +1062,8 @@ int _ostc_cache_populate_prefix(object_service_fn_t *os, creds_t *creds, char *p
         ostc_cache_process_attrs(os, fname, ftype, cp.key, cp.val, cp.v_size, cp.n_keys);
         ostc_attr_cacheprep_copy(&cp, (void **)val_array, v_size);
         if (end < (len-1)) { //** Recurse and add the next layer
-           log_printf(1, "recursing object=%s\n", path);
-           err = _ostc_cache_populate_prefix(os, creds, path, end);
+            log_printf(1, "recursing object=%s\n", path);
+            err = _ostc_cache_populate_prefix(os, creds, path, end);
         }
     }
 
@@ -1103,10 +1105,10 @@ op_status_t ostc_remove_regex_object_fn(void *arg, int tid)
 
 void free_remove_regex(void *arg)
 {
-   ostc_remove_regex_t *op = (ostc_remove_regex_t *)arg;
+    ostc_remove_regex_t *op = (ostc_remove_regex_t *)arg;
 
-   if (op->gop) gop_free(op->gop, OP_DESTROY);
-   free(op);
+    if (op->gop) gop_free(op->gop, OP_DESTROY);
+    free(op);
 }
 
 //***********************************************************************
@@ -1282,7 +1284,7 @@ op_status_t ostc_delayed_open_object(object_service_fn_t *os, ostc_fd_t *fd)
     op_status_t status;
     os_fd_t *cfd;
 
-log_printf(5, "DELAYED_OPEN fd=%s\n", fd->fname);
+    log_printf(5, "DELAYED_OPEN fd=%s\n", fd->fname);
     status = gop_sync_exec_status(os_open_object(ostc->os_child, fd->creds, fd->fname, fd->mode, fd->id, &cfd, fd->max_wait));
 
     //** If it failed just return
@@ -1556,11 +1558,11 @@ op_status_t ostc_get_attrs_fn(void *arg, int tid)
     //** 1st see if we can satisfy everything from cache
     status = ostc_cache_fetch(ma->os, ma->fd->fname, ma->key, ma->val, ma->v_size, ma->n);
 
-if (status.op_status == OP_STATE_SUCCESS) {
-  log_printf(10, "ATTR_CACHE_HIT: fname=%s key[0]=%s n_keys=%d\n", ma->fd->fname, ma->key[0], ma->n);
-} else {
-  log_printf(10, "ATTR_CACHE_MISS fname=%s key[0]=%s n_keys=%d\n", ma->fd->fname, ma->key[0], ma->n);
-}
+    if (status.op_status == OP_STATE_SUCCESS) {
+        log_printf(10, "ATTR_CACHE_HIT: fname=%s key[0]=%s n_keys=%d\n", ma->fd->fname, ma->key[0], ma->n);
+    } else {
+        log_printf(10, "ATTR_CACHE_MISS fname=%s key[0]=%s n_keys=%d\n", ma->fd->fname, ma->key[0], ma->n);
+    }
     if (status.op_status == OP_STATE_SUCCESS) return(status);
 
     _ostc_cache_populate_prefix(ma->os, ma->creds, ma->fd->fname, 0);
@@ -1954,7 +1956,7 @@ op_status_t ostc_open_object_fn(void *arg, int tid)
     Stack_t tree;
     int err;
 
-log_printf(5, "mode=%d OS_MODE_READ_IMMEDIATE=%d fname=%s\n", op->mode, OS_MODE_READ_IMMEDIATE, op->path);
+    log_printf(5, "mode=%d OS_MODE_READ_IMMEDIATE=%d fname=%s\n", op->mode, OS_MODE_READ_IMMEDIATE, op->path);
 
     if (op->mode == OS_MODE_READ_IMMEDIATE) { //** Can use a delayed open if the object is in cache
         init_stack(&tree);
@@ -1966,7 +1968,7 @@ log_printf(5, "mode=%d OS_MODE_READ_IMMEDIATE=%d fname=%s\n", op->mode, OS_MODE_
     }
 
     //** Force an immediate file open
-log_printf(5, "forced open of file. fname=%s\n", op->path);
+    log_printf(5, "forced open of file. fname=%s\n", op->path);
     status = gop_sync_exec_status(op->gop);
     op->gop = NULL;
 

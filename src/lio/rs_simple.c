@@ -884,27 +884,8 @@ int _rs_simple_load(resource_service_fn_t *res, char *fname)
     list_iter_t it;
     int i, n;
     inip_file_t *kf;
-    apr_file_t *afd;
-    char  *lock_fname;
 
     log_printf(5, "START fname=%s n_rids=%d\n", fname, rss->n_rids);
-
-    //** Open and lock the control file
-    n = strlen(fname)+10;
-    type_malloc(lock_fname, char, n);
-    snprintf(lock_fname, n, "%s.lock", fname);
-    if (apr_file_open(&afd, lock_fname, APR_FOPEN_READ|APR_FOPEN_CREATE, APR_FPROT_OS_DEFAULT, rss->mpool) != APR_SUCCESS) {
-        log_printf(0, "ERROR: opening lock file: fname=%s\n", lock_fname);
-        free(lock_fname);
-        return(1);
-    }
-    if (apr_file_lock(afd, APR_FLOCK_SHARED) != APR_SUCCESS) {
-        log_printf(0, "ERROR: locking file: fname=%s\n", lock_fname);
-        apr_file_close(afd);
-        free(lock_fname);
-        return(2);
-    }
-
 
     //** Open the file
     kf = inip_read(fname); assert(kf);
@@ -947,11 +928,6 @@ int _rs_simple_load(resource_service_fn_t *res, char *fname)
     }
 
     inip_destroy(kf);
-
-    //** Release the lock
-    apr_file_unlock(afd);
-    apr_file_close(afd);
-    free(lock_fname);
 
     log_printf(5, "END n_rids=%d\n", rss->n_rids);
 

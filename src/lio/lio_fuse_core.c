@@ -74,10 +74,10 @@ typedef struct {
 } lfs_dir_entry_t;
 
 typedef struct {
-     char *fname;
-     ex_id_t sid;
-     int ref_count;
-     int remove_on_close;
+    char *fname;
+    ex_id_t sid;
+    int ref_count;
+    int remove_on_close;
 }  lio_fuse_open_file_t;
 
 typedef struct {
@@ -181,10 +181,10 @@ void _lfs_parse_stat_vals(lio_fuse_t *lfs, char *fname, struct stat *stat, char 
     len = 0;
     if (val[3] != NULL) sscanf(val[3], XOT, &len);
     if (ino != 0) { //** Got an open file
-       lio_lock(lfs->lc);
-       fh = _lio_get_file_handle(lfs->lc, ino);
-       if (fh) len = segment_size(fh->seg);
-       lio_unlock(lfs->lc);
+        lio_lock(lfs->lc);
+        fh = _lio_get_file_handle(lfs->lc, ino);
+        if (fh) len = segment_size(fh->seg);
+        lio_unlock(lfs->lc);
     }
 
     stat->st_size = (n & OS_OBJECT_SYMLINK) ? readlink : len;
@@ -622,20 +622,20 @@ int lfs_release(const char *fname, struct fuse_file_info *fi)
     lfs_lock(lfs);
     fop = apr_hash_get(lfs->open_files, fname, APR_HASH_KEY_STRING);
     if (fop) {
-       remove_on_close = fop->remove_on_close;
-       fop->ref_count--;
-       if (fop->ref_count <= 0) {  //** LAst one so remove it.
-           apr_hash_set(lfs->open_files, fname, APR_HASH_KEY_STRING, NULL);
-           free(fop->fname);
-           free(fop);
-       }
+        remove_on_close = fop->remove_on_close;
+        fop->ref_count--;
+        if (fop->ref_count <= 0) {  //** LAst one so remove it.
+            apr_hash_set(lfs->open_files, fname, APR_HASH_KEY_STRING, NULL);
+            free(fop->fname);
+            free(fop);
+        }
     }
 
     //** See if we need to remove it
     if (remove_on_close == 1) {
-       segment_lock(fd->fh->seg);
-       fd->fh->remove_on_close = 1;
-       segment_unlock(fd->fh->seg);
+        segment_lock(fd->fh->seg);
+        fd->fh->remove_on_close = 1;
+        segment_unlock(fd->fh->seg);
     }
 
     //** Check if a rename occurred during file open
@@ -811,10 +811,10 @@ int lfs_rename(const char *oldname, const char *newname)
     lfs_lock(lfs);
     fop = apr_hash_get(lfs->open_files, oldname, APR_HASH_KEY_STRING);
     if (fop) {  //** Got an open file so need to mve the entry there as well.
-       apr_hash_set(lfs->open_files, oldname, APR_HASH_KEY_STRING, NULL);
-       free(fop->fname);
-       fop->fname = strdup(newname);
-       apr_hash_set(lfs->open_files, fop->fname, APR_HASH_KEY_STRING, fop);
+        apr_hash_set(lfs->open_files, oldname, APR_HASH_KEY_STRING, NULL);
+        free(fop->fname);
+        fop->fname = strdup(newname);
+        apr_hash_set(lfs->open_files, fop->fname, APR_HASH_KEY_STRING, fop);
     }
     lfs_unlock(lfs);
 

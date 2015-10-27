@@ -165,8 +165,7 @@ op_status_t rsrc_response_get_config(void *task_arg, int tid)
     int n, n_config, err;
     op_status_t status;
     FILE *fd;
-    apr_file_t *afd;
-    char *lock_fname;
+    char *fname_tmp;
 
     log_printf(5, "Processing rid_config response gid=%d\n", gop_id(task->gop));
 
@@ -248,37 +247,24 @@ op_status_t rsrc_response_get_config(void *task_arg, int tid)
     //** Store the config if changed.  This should trigger the child RS to auto load
 //  if ((n_config > 0) && (arg->mode > 0)) {
     if (n_config > 0) {
-        //** Open and lock the control file
+        //** Dump the data in a temp file
         n = strlen(rsrc->child_target_file)+10;
-        type_malloc(lock_fname, char, n);
-        snprintf(lock_fname, n, "%s.lock", rsrc->child_target_file);
-        apr_thread_mutex_lock(rsrc->lock);
-        if (apr_file_open(&afd, lock_fname, APR_FOPEN_WRITE|APR_FOPEN_CREATE, APR_FPROT_OS_DEFAULT, rsrc->mpool) != APR_SUCCESS) {
-            log_printf(0, "ERROR: opening lock file: fname=%s\n", lock_fname);
-            free(lock_fname);
-            status = op_failure_status;
-            apr_thread_mutex_unlock(rsrc->lock);
-            goto fail;
-        }
-        if ((err=apr_file_lock(afd, APR_FLOCK_EXCLUSIVE)) != APR_SUCCESS) {
-            log_printf(0, "ERROR: locking file: fname=%s err=%d oserr=%d\n", lock_fname, err, APR_TO_OS_ERROR(err));
-            apr_file_close(afd);
-            free(lock_fname);
-            status = op_failure_status;
-            apr_thread_mutex_unlock(rsrc->lock);
-            goto fail;
-        }
+        type_malloc(fname_tmp, char, n);
+        snprintf(fname_tmp, n, "%s.tmp", rsrc->child_target_file);
 
-        fd = fopen(rsrc->child_target_file, "w");
-        { int result = fwrite(config, n_config, 1, fd); assert(result == 1); }
+        fd = fopen(fname_tmp, "w");
+        int result = assert(fwrite(config, n_config, 1, fd) == 1);
+        assert(result == 1);
         fclose(fd);
 
-        //** Release the lock
-        apr_file_unlock(afd);
-        apr_file_close(afd);
-        free(lock_fname);
-
-        apr_thread_mutex_unlock(rsrc->lock);
+        //** Now move it into the place of the child target
+        err = apr_file_rename(fname_tmp, rsrc->child_target_file, rsrc->mpool);
+        if (err != APR_SUCCESS) {
+            status = op_failure_status;
+            log_printf(0, "ERROR: updating target file!  tmp=%s targe=%s err=%d\n", fname_tmp, rsrc->child_target_file, err);
+            fprintf(stderr, "ERROR: updating target file!  tmp=%s targe=%s err=%d\n", fname_tmp, rsrc->child_target_file, err);
+        }
+        free(fname_tmp);
     }
 
     //** Clean up
