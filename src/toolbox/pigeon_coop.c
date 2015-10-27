@@ -80,7 +80,7 @@ pigeon_coop_hole_t pigeon_coop_iterator_next(pigeon_coop_iter_t *pci)
     pigeon_hole_t *shelf;
     pigeon_coop_t *pc = pci->pc;
 
-    if ((pci->shelf == -1)) {
+    if (pci->shelf == -1) {
         pch.shelf = -1;
         pch.hole = -1;
         pch.data = NULL;
