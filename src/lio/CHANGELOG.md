@@ -1,3 +1,9 @@
+# **[0.1.0](https://github.com/accre/lstore-lio/tree/ACCRE_0.1.0)** (2015-10-28)
+
+## Changes ([full changelog](https://github.com/accre/lstore-lio/compare/ACCRE_0.0.2...ACCRE_0.1.0))
+
+
+
 # **[0.0.3](https://github.com/accre/lstore-lio/tree/ACCRE_0.0.3)** (2015-10-27)
 
 ## Changes ([full changelog](https://github.com/accre/lstore-lio/compare/ACCRE_0.0.1...ACCRE_0.0.3))
