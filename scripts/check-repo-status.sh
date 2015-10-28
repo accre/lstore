@@ -8,6 +8,7 @@ source $ABSOLUTE_PATH/functions.sh
 statuses=( )
 cd $LSTORE_RELEASE_BASE
 statuses+=("lstore-release $(get_repo_status .)")
+
 cd source
 for REPO in apr-accre apr-util-accre jerasure toolbox gop ibp lio; do
     RET="$(get_repo_status $REPO)"

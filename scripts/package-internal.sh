@@ -34,7 +34,7 @@ esac
 # todo could probe this from docker variables
 PACKAGE_BASE="/tmp/lstore-release"
 SOURCE_BASE=$LSTORE_RELEASE_BASE/source
-REPO_BASE=$LSTORE_RELEASE_BASE/repo/$PACKAGE_SUBDIR
+REPO_BASE=$LSTORE_RELEASE_BASE/package/$PACKAGE_SUBDIR
 # Here and elsewhere, we need to set the umask when we write to the host-mounted
 #    paths. Otherwise users outside the container can't read/write files. But,
 #    we don't want to just blindly set umask 0000, in case there's some
@@ -73,9 +73,12 @@ for PACKAGE in apr-accre apr-util-accre jerasure czmq toolbox gop ibp lio; do
     pushd $PACKAGE
     # NOTE: Can't do this with --git-dir. Git 1.8.3.1 considers the tag "dirty"
     #       if the CURRENT working directory is dirty...
-    TAG_NAME=$(cd $SOURCE_BASE/$PACKAGE/ && \
-               git describe --abbrev=32 --dirty --candidates=100 \
+    # NOTE: The git update-index is needed since the host and container git
+    #       versions might be different.
+    TAG_NAME=$(cd $SOURCE_BASE/$PACKAGE/ && git update-index -q --refresh && \
+               git describe --abbrev=32 --dirty="-dev" --candidates=100 \
                --match 'ACCRE_*' | sed 's,^ACCRE_,,')
+    (cd $SOURCE_BASE/$PACKAGE/ && note "$(git status)")
     PACKAGE_REPO=$REPO_BASE/$PACKAGE/$TAG_NAME
     if [ ! -e $PACKAGE_REPO ]; then
         set -x

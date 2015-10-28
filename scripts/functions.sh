@@ -5,6 +5,7 @@
 #
 LSTORE_SCRIPT_BASE=$(cd $(dirname "${BASH_SOURCE[0]}") && pwd)
 LSTORE_RELEASE_BASE=$(cd $(dirname "${LSTORE_SCRIPT_BASE}") && pwd)
+LSTORE_TARBALL_ROOT=$LSTORE_RELEASE_BASE/tarballs/
 LSTORE_HEAD_BRANCHES="apr-accre=accre-fork
                        apr-util-accre=accre-fork
                        jerasure=v1
@@ -13,6 +14,7 @@ LSTORE_HEAD_BRANCHES="apr-accre=accre-fork
                        toolbox=master
                        ibp=master
                        czmq=master"
+
 #
 # Informational messages
 #
@@ -27,6 +29,17 @@ function fatal() {
 }
 function note() {
     lstore_message NOTE "$@"
+}
+
+#
+# Additional helpers
+#
+function get_repo_master() {
+    for VAR in $LSTORE_HEAD_BRANCHES; do
+        if [ "${VAR%=*}" == "$1" ]; then
+            echo "${VAR##*=}"
+        fi
+    done
 }
 
 #
@@ -150,15 +163,23 @@ function build_lstore_package() {
     esac
 }
 
+function get_cmake_tarballs(){
+    curl https://cmake.org/files/v3.3/cmake-3.3.2-Linux-x86_64.tar.gz > \
+            ${LSTORE_TARBALL_ROOT}/cmake-3.3.2-Linux-x86_64.tar.gz
+}
+
 function check_cmake(){
     # Obnoxiously, we need cmake 2.8.12 to build RPM, and even Centos7 only
     #   packages 2.8.11
     set +e
+    # TODO: Detect architechture
+    CMAKE_LOCAL_TARBALL=${LSTORE_TARBALL_ROOT}/cmake-3.3.2-Linux-x86_64.tar.gz
     CMAKE_VERSION=$(cmake --version 2>/dev/null | head -n 1 | awk '{ print $3 }')
     [ -z "$CMAKE_VERSION" ] && CMAKE_VERSION="0.0.0"
     set -e
     INSTALL_PATH=${1:-${LSTORE_RELEASE_BASE}/build}
-    IFS='.' read -a VERSION_ARRAY <<< "$CMAKE_VERSION"
+    IFS="." read -a VERSION_ARRAY <<< "${CMAKE_VERSION}"
+    
     if [ "${VERSION_ARRAY[0]}" -gt 2 ]; then
         # We're good if we're at cmake 3
         return
@@ -167,12 +188,14 @@ function check_cmake(){
         [ $CMAKE_VERSION == "0.0.0" ] ||  \
             note "Using bundled version of cmake - the system version is too old '$CMAKE_VERSION'" &&
             note "Couldn't find cmake, pulling our own"
+        
         # Download cmake
-        # https://cmake.org/files/v3.3/cmake-3.3.2-Linux-x86_64.tar.gz
-        # https://cmake.org/files/v3.3/cmake-3.3.2-Linux-i386.tar.gz
         if [ ! -d $INSTALL_PATH/cmake ]; then
+            if [ ! -e $CMAKE_LOCAL_TARBALL ]; then
+                get_cmake_tarballs
+            fi
             pushd $INSTALL_PATH
-            curl http://cmake.org/files/v3.3/cmake-3.3.2-Linux-x86_64.tar.gz | tar xz
+            tar xzf $CMAKE_LOCAL_TARBALL
             mv cmake-3.3.2-Linux-x86_64 cmake
             popd
         fi
@@ -217,6 +240,15 @@ function build_helper() {
     done
 }
 
+function get_repo_status() {
+    REPO_PATH=$1
+    cd $REPO_PATH
+    echo -n $(git rev-parse --abbrev-ref HEAD)
+    [[ $(git diff --shortstat HEAD 2> /dev/null | tail -n1) != "" ]] && \
+        echo " DIRTY" || echo " CLEAN"
+    cd - &>/dev/null
+}
+
 function get_source() {
     set -e
     SOURCE_BASE="$LSTORE_RELEASE_BASE/source"
@@ -227,4 +259,26 @@ function get_source() {
     done
 }
 
+function load_github_token() {
+    if [ ! -z "${LSTORE_GITHUB_TOKEN+}" ]; then
+        return
+    elif [ -e $HOME/.lstore_release ]; then
+        source $HOME/.lstore_release
+    fi
+    set +u
+    [ -z "${LSTORE_GITHUB_TOKEN}" ] && \
+        fatal "Need a github authentication token to perform this action. To get
+a token, use the following FAQ (be sure to remove all scopes).
+
+https://help.github.com/articles/creating-an-access-token-for-command-line-use/
+
+This token should be set to \$LSTORE_GITHUB_TOKEN. Alternately, the file
+\$HOME/.lstore_release can be used to store secrets. The following will set
+your github token only when needed:
+
+export LSTORE_GITHUB_TOKEN=<token from github page>"
+    set -u
+    return 0
+
+}
 

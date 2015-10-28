@@ -1,3 +1,7 @@
 build/*
-logs/*
 local/*
+logs/*
+package/*
+repo/*
+source/*
+tarballs/*
