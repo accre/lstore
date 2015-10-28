@@ -44,9 +44,8 @@ for REPO in $PACKAGES; do
             fatal "The release ${PROPOSED_TAG} already exists"
     
     PROPOSED_BRANCH="release-proposed-${PROPOSED_TAG}"
-    git checkout $(get_repo_master $REPO)
     git branch -D $PROPOSED_BRANCH || true
-    git checkout -b $PROPOSED_BRANCH
+    git checkout ${UPSTREAM_REMOTE}/$(get_repo_master $REPO) -b $PROPOSED_BRANCH
     
     # Update CHANGELOG.md
     NEW_CHANGELOG="# **[$PROPOSED_TAG]($PROPOSED_URL)** $(date '+(%F)')

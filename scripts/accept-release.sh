@@ -6,13 +6,13 @@
 set -eu 
 ABSOLUTE_PATH=$(cd `dirname "${BASH_SOURCE[0]}"` && pwd)
 source $ABSOLUTE_PATH/functions.sh
-note "Attempting to tag and merge $RELEASE_URL"
 load_github_token
 # TODO: test that GPG is set up properly
 
 # TODO: config this
 GH_ORGANIZATION=accre
 RELEASE_URL=$1
+note "Attempting to tag and merge $RELEASE_URL"
 
 GITHUB_PULL_INFO=$(curl --request GET --fail --silent \
                     -H "Authorization: token $LSTORE_GITHUB_TOKEN" \
@@ -27,10 +27,10 @@ GITHUB_HEAD_REF=$(echo "$GITHUB_PULL_INFO" | \
                     $LSTORE_RELEASE_BASE/scripts/extract-pull-head-ref.py)
 GITHUB_REPO_NAME=$(echo "$GITHUB_PULL_INFO" | \
                     $LSTORE_RELEASE_BASE/scripts/extract-pull-repo-name.py)
-GITHUB_MASTER_REF=master
 
 # Our repository name (gop, ibp, etc..)
 LSTORE_REPO=${GITHUB_REPO_NAME#lstore-}
+GITHUB_MASTER_REF=$(get_repo_master $LSTORE_REPO)
 # Our targeted tag name (ACCRE_0.0.1)
 BARE_TAG="${GITHUB_HEAD_REF#release-proposed-}"
 LSTORE_TAG="ACCRE_$BARE_TAG"
@@ -49,7 +49,6 @@ LSTORE_TAG="ACCRE_$BARE_TAG"
 #   - BASE: Release branch we're wanting to merge TO
 
 TEMP_CHECKOUT=$(mktemp -d)
-note "Checked out to $TEMP_CHECKOUT"
 trap "rm -rf $TEMP_CHECKOUT" EXIT
 cd $TEMP_CHECKOUT
 
@@ -63,25 +62,26 @@ git fetch base refs/heads/$GITHUB_BASE_REF refs/heads/$GITHUB_MASTER_REF
 # Merge proposed into accre-release
 note "Merging proposed release into accre-release"
 git checkout -t remotes/base/$GITHUB_BASE_REF -b accre-release
+git merge --no-ff -e -m "Release $LSTORE_TAG" --log  head/$GITHUB_HEAD_REF
 COMMIT_HASH=$(git rev-parse HEAD)
 COMMIT_MESSAGE=$(git log -1 --pretty=%B ${COMMIT_HASH})
 
 # Tag the release. The '-u' option requires a GPG key to sign the release
 #   Note: git config --global user.signingkey <gpg-key-id> is your friend. You
 #   want to add the 'pub' key from 'gpg --list-keys'
-note "If entering this passphrase hangs, you need to get gpg-agent working"
+note "Tagging release. If entering this passphrase hangs, you need to get
+gpg-agent properly configured"
 # FIXME: Needs a recipe for OSX to reenable -s instead of -a
 git tag -a $LSTORE_TAG -m "Release $LSTORE_TAG"
 
 # Merge accre-release into master
-note "Merging master into accre-release"
-git checkout -t base/$GITHUB_MASTER_REF -b master
-git merge --no-ff -e -m "Release $LSTORE_TAG"  head/$GITHUB_HEAD_REF
-echo -n "$COMMIT_MESSAGE" | \
-    git merge --no-ff -F - head/$GITHUB_HEAD_REF
+note "Merging accre-release into master"
+git checkout -t base/$GITHUB_MASTER_REF -b $GITHUB_MASTER_REF
+git merge --no-ff -m "$COMMIT_MESSAGE" accre-release
 
 # Push everything back. Atomic is (unfortunately) a newer git feature. If this
 # fails, update git
 git push --atomic base $GITHUB_MASTER_REF $GITHUB_BASE_REF $LSTORE_TAG || \
         fatal "If git complains about --atomic, you need a newer git"
+git push --delete head ${GITHUB_HEAD_REF}
 note "Checked out to $TEMP_CHECKOUT"

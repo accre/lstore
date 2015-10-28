@@ -41,6 +41,7 @@ function get_repo_master() {
         fi
     done
 }
+
 #
 # Manipulating local repositories
 #
