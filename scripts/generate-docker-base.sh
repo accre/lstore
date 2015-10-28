@@ -63,6 +63,7 @@ for DISTRO in "${DISTROS[@]}"; do
         rpm)
             ADDITIONAL_PACKAGES=(
                                     curl
+                                    createrepo
                                     czmq-devel
                                     expat-devel
                                     fuse-devel

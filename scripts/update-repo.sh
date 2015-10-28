@@ -18,11 +18,25 @@ for DISTRO in "${DISTROS[@]}"; do
         note "No binaries for distribution $DISTRO, skipping."
         continue
     fi
+
     PARENT="${DISTRO%-*}"
     RELEASE="${DISTRO##*-}"
+    case $PARENT in
+        centos)
+            BARE_DISTRO_IMAGE=centos-7
+            ;;
+        ubuntu|debian)
+            BARE_DISTRO_IMAGE=debian-jessie
+            ;;
+        *)
+            fatal "Unsupported distro"
+            ;;
+    esac
     mkdir -p repo/$PARENT/$RELEASE/packages
-    find package/$DISTRO/ -name *.rpm | \
-        xargs -I{} cp {} repo/$PARENT/$RELEASE/packages
-    createrepo --retain-old-md 10 --deltas --num-deltas 5 -x '*-dirty.rpm' \
-                repo/$PARENT/$RELEASE/
+    note "Starting docker container to update $DISTRO"
+    set -x
+    docker run --rm=true -v $(pwd):/tmp/source \
+            lstore/builder:$BARE_DISTRO_IMAGE \
+            /tmp/source/scripts/update-repo-internal.sh $DISTRO
+    set +x
 done
