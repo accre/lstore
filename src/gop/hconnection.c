@@ -54,7 +54,7 @@ host_connection_t *new_host_connection(apr_pool_t *mpool)
     host_connection_t *hc;
 
     type_malloc_clear(hc, host_connection_t, 1);
-//  assert((hc = (host_connection_t *)malloc(sizeof(host_connection_t))) != NULL);
+//  {hc = (host_connection_t *)malloc(sizeof(host_connection_t)); assert(hc != NULL); }
 
     hc->mpool = mpool;
     apr_thread_mutex_create(&(hc->lock), APR_THREAD_MUTEX_DEFAULT, mpool);

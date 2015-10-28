@@ -214,7 +214,7 @@ void mq_ongoing_host_inc(mq_ongoing_t *on, mq_msg_t *remote_host, char *my_id, i
     }
     if (table == NULL) { //** New host so add it
         type_malloc_clear(table, ongoing_table_t, 1);
-        assert((table->table = apr_hash_make(on->mpool)) != NULL);
+        { int result = (table->table = apr_hash_make(on->mpool)); assert(result != NULL); }
         table->remote_host = mq_msg_new();
         mq_msg_append_msg(table->remote_host, remote_host, MQF_MSG_AUTO_FREE);
         table->remote_host_hash = hash;
@@ -312,7 +312,7 @@ mq_ongoing_object_t *mq_ongoing_add(mq_ongoing_t *mqon, int auto_clean, char *id
         sscanf(id, "%d:", &(oh->heartbeat));
         log_printf(5, "heartbeat interval=%d\n", oh->heartbeat);
         oh->next_check = apr_time_now() + apr_time_from_sec(oh->heartbeat);
-        assert(apr_pool_create(&(oh->mpool), NULL) == APR_SUCCESS);
+        { int result = apr_pool_create(&(oh->mpool), NULL); assert(result == APR_SUCCESS); }
         oh->table = apr_hash_make(oh->mpool);
 
         apr_hash_set(mqon->id_table, oh->id, id_len, oh);
@@ -671,7 +671,7 @@ mq_ongoing_t *mq_ongoing_create(mq_context_t *mqc, mq_portal_t *server_portal, i
     mqon->check_interval = check_interval;
     mqon->send_divisor = 4;
 
-    assert(apr_pool_create(&(mqon->mpool), NULL) == APR_SUCCESS);
+    { int result = apr_pool_create(&(mqon->mpool), NULL); assert(result == APR_SUCCESS); }
     apr_thread_mutex_create(&(mqon->lock), APR_THREAD_MUTEX_DEFAULT, mqon->mpool);
     apr_thread_cond_create(&(mqon->cond), mqon->mpool);
 

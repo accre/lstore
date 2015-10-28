@@ -71,6 +71,28 @@ if(NOT APPLE)
     list(APPEND LIBS rt)
 endif(NOT APPLE)
 
+# gather the info needed to make ELF shared libraries provide version info when executed
+# based on https://polentino911.wordpress.com/2013/08/08/make-your-own-executable-shared-library-on-linux
+# Note: this logic probably has problems with some cross-compiling scenarios
+set(ELF_EXEC_LIB 0)
+if(UNIX AND NOT APPLE)
+    find_program(READELF_EXEC readelf)
+    if(DEFINED READELF_EXEC)
+        set(INTERPRETER_DESCRIPTION "Requesting program interpreter:")
+        execute_process(COMMAND ${READELF_EXEC} -l /bin/ls RESULT_VARIABLE return_value OUTPUT_VARIABLE result)
+	if(return_value)
+            message(STATUS "Unable to identify ELF interpreter")
+        else(return_value)
+            string(REGEX REPLACE ".*[[]${INTERPRETER_DESCRIPTION} ([/][^ ].+)[]].*" "\\1"
+                ELF_INTERPRETER_PATH "${result}")
+            message(STATUS "ELF interpreter is ${ELF_INTERPRETER_PATH}")
+            set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -e print_${LSTORE_PROJECT_NAME}_version_and_exit")
+            set(CMAKE_INSTALL_SO_NO_EXE FALSE)  # Default exec bit policy for sharedlibs varies by OS and distro, force bits to be set
+            set(ELF_EXEC_LIB 1)
+        endif(return_value)
+    endif(DEFINED READELF_EXEC)
+endif(UNIX AND NOT APPLE)
+
 # Make the version file.
 set(LSTORE_INC_VERSION_STRING "${LSTORE_PROJECT_NAME}: ${LSTORE_PROJECT_VERSION}")
 site_name(BUILD_HOST)
@@ -79,6 +101,7 @@ CompilerVersion(COMPILER_VERSION)
 CompilerFlags(COMPILER_FLAGS)
 configure_file(${CMAKE_SOURCE_DIR}/${LSTORE_PROJECT_NAME}_version.c.in
                ${CMAKE_SOURCE_DIR}/${LSTORE_PROJECT_NAME}_version.c)
+set(LSTORE_PROJECT_OBJS ${LSTORE_PROJECT_OBJS} ${LSTORE_PROJECT_NAME}_version.c)
 
 add_library(library SHARED ${LSTORE_PROJECT_OBJS})
 set_target_properties(library PROPERTIES OUTPUT_NAME "${LSTORE_PROJECT_NAME}")
@@ -123,8 +146,12 @@ endforeach(f)
 # Below is used for building packages
 set(CPACK_PACKAGE_NAME "accre-${LSTORE_PROJECT_NAME}")
 set(CPACK_PACKAGE_VERSION "${LSTORE_PROJECT_VERSION}")
-set(CPACK_GENERATOR "RPM;DEB")
-set(CPACK_SOURCE_GENERATOR "RPM;DEB")
+if(NOT DEFINED CPACK_GENERATOR)
+    set(CPACK_GENERATOR "RPM;DEB")
+endif(NOT DEFINED CPACK_GENERATOR)
+if(NOT DEFINED CPACK_SOURCE_GENERATOR)
+    set(CPACK_SOURCE_GENERATOR "RPM;DEB")
+endif(NOT DEFINED CPACK_SOURCE_GENERATOR)
 set(CPACK_PACKAGE_RELEASE ${LSTORE_PROJECT_REVISION})
 set(CPACK_PACKAGE_CONTACT "Andrew Melo or Alan Tackett")
 set(CPACK_PACKAGE_VENDOR "Advanced Computing Center for Research and Education, Vanderbilt University")

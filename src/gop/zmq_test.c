@@ -165,8 +165,8 @@ void run_server()
     ctx = new_context();
     socket = new_socket(ctx, ZMQ_ROUTER);
 //  socket = new_socket(ctx, ZMQ_REP);
-    assert(socket_bind(socket, host) == 0);
-//  assert(zmq_bind(socket, host) == 0);
+    { int result = socket_bind(socket, host); assert(result == 0); }
+//  { int result = zmq_bind(socket, host); assert(result == 0); }
 
     log_printf(0, "my identity=%s\n", zsocket_identity(socket));
 
