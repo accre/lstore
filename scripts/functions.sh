@@ -8,12 +8,13 @@ LSTORE_RELEASE_BASE=$(cd $(dirname "${LSTORE_SCRIPT_BASE}") && pwd)
 LSTORE_TARBALL_ROOT=$LSTORE_RELEASE_BASE/tarballs/
 LSTORE_HEAD_BRANCHES="apr-accre=accre-fork
                        apr-util-accre=accre-fork
+                       czmq=master
+                       gop=master
+                       gridftp=master
+                       ibp=master
                        jerasure=v1
                        lio=master
-                       gop=master
-                       toolbox=master
-                       ibp=master
-                       czmq=master"
+                       toolbox=master"
 
 #
 # Informational messages
