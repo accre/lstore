@@ -1,3 +1,10 @@
+# **[0.1.1](https://github.com/accre/lstore-lio/tree/ACCRE_0.1.1)** (2015-10-28)
+
+## Changes ([full changelog](https://github.com/accre/lstore-lio/compare/ACCRE_0.1.0...ACCRE_0.1.1))
+*  75bc0c9 Fix comment
+*  7063b47 Fix bug on a failed file removal leading to a double free() op
+
+
 # **[0.1.0](https://github.com/accre/lstore-lio/tree/ACCRE_0.1.0)** (2015-10-28)
 
 ## Changes ([full changelog](https://github.com/accre/lstore-lio/compare/ACCRE_0.0.2...ACCRE_0.1.0))
