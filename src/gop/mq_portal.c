@@ -251,9 +251,10 @@ mq_command_table_t *mq_command_table_new(void *arg, mq_fn_exec_t *fn_default)
     t->fn_default = fn_default;
     t->arg_default = arg;
     apr_pool_create(&(t->mpool), NULL);
-    int result = apr_thread_mutex_create(&(t->lock), APR_THREAD_MUTEX_DEFAULT, t->mpool);
+    int result = apr_thread_mutex_create(&(t->lock), APR_THREAD_MUTEX_DEFAULT,
+                                         t->mpool);
     assert(result == APR_SUCCESS);
-    result = (t->table = apr_hash_make(t->mpool)); assert(result != NULL); }
+    result = (t->table = apr_hash_make(t->mpool)); assert(result != NULL);
     
     return(t);
 }
@@ -1563,7 +1564,7 @@ int mq_conn_create_actual(mq_portal_t *p, int dowait)
     c->pc = p;
     int result;
     result = apr_pool_create(&(c->mpool), NULL);
-    assert(result == APR_SUCCESS); }
+    assert(result == APR_SUCCESS);
     result = (c->waiting = apr_hash_make(c->mpool));
     assert(result != NULL);
     result = (c->heartbeat_dest = apr_hash_make(c->mpool));
