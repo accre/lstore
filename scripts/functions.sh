@@ -150,7 +150,7 @@ function build_lstore_package() {
         czmq)
             eval $NATIVE_PKG
             ;;
-        jerasure|lio|ibp|gop|toolbox)
+        jerasure|lio|ibp|gop|toolbox|gridftp)
             # This is gross, but works for now..
             set -x
             cmake -DWANT_PACKAGE:BOOL=ON "-DLSTORE_PROJECT_VERSION=$TAG_NAME"\
