@@ -5,8 +5,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-const char elf_interpreter[] __attribute__((section(".interp"))) = ELF_INTERPRETER_PATH;
-
 const char *vstr = "@LSTORE_INC_VERSION_STRING@\n"
              "CMake Build Date: @BUILD_DATE@\n"
              "Compiler: @COMPILER_VERSION@\n"
@@ -27,8 +25,3 @@ void print_@LSTORE_PROJECT_NAME@_version() {
     printf("Version and build info:\n%s",vstr);
 }
 
-int main(int argc, char **argv)
-{
-    print_@LSTORE_PROJECT_NAME@_version();
-    return 0;
-}
