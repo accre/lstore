@@ -1,3 +1,9 @@
+# **[0.1.1](https://github.com/accre/lstore-gop/tree/ACCRE_0.1.1)** (2015-10-28)
+
+## Changes ([full changelog](https://github.com/accre/lstore-gop/compare/ACCRE_0.1.0...ACCRE_0.1.1))
+*  9bb1283 Use the proper printf type
+
+
 # **[0.1.0](https://github.com/accre/lstore-gop/tree/ACCRE_0.1.0)** (2015-10-28)
 
 ## Changes ([full changelog](https://github.com/accre/lstore-gop/compare/ACCRE_0.0.4...ACCRE_0.1.0))
