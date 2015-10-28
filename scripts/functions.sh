@@ -32,6 +32,16 @@ function note() {
 }
 
 #
+# Additional helpers
+#
+function get_repo_master() {
+    for VAR in $LSTORE_HEAD_BRANCHES; do
+        if [ "${VAR%=*}" == "$1" ]; then
+            echo "${VAR##*=}"
+        fi
+    done
+}
+#
 # Manipulating local repositories
 #
 function get_lstore_source() {
@@ -255,8 +265,6 @@ function load_github_token() {
         source $HOME/.lstore_release
     fi
     set +u
-    echo $LSTORE_GITHUB_TOKEN
-    set -u
     [ -z "${LSTORE_GITHUB_TOKEN}" ] && \
         fatal "Need a github authentication token to perform this action. To get
 a token, use the following FAQ (be sure to remove all scopes).
@@ -267,8 +275,9 @@ This token should be set to \$LSTORE_GITHUB_TOKEN. Alternately, the file
 \$HOME/.lstore_release can be used to store secrets. The following will set
 your github token only when needed:
 
-export LSTORE_GITHUB_TOKEN=<token from github page>" \
-                                || return 0
+export LSTORE_GITHUB_TOKEN=<token from github page>"
+    set -u
+    return 0
 
 }
 

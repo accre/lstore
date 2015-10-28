@@ -28,25 +28,32 @@ for REPO in $PACKAGES; do
     note "Examining $REPO"
     RET="$(get_repo_status $REPO)"
     cd $LSTORE_RELEASE_BASE/source/$REPO
-    PREVIOUS_TAG=$(git describe --tags --match 'ACCRE_*' ${TARGET_BRANCH} --abbrev=0)
+    git fetch ${UPSTREAM_REMOTE}
+    git fetch ${ORIGIN_REMOTE}
+    PREVIOUS_TAG=$(git describe --tags --match 'ACCRE_*' ${UPSTREAM_REMOTE}/${TARGET_BRANCH} --abbrev=0)
     PROPOSED_URL=https://github.com/accre/lstore-${REPO}/tree/ACCRE_${PROPOSED_TAG}
     PROPOSED_DIFF=https://github.com/accre/lstore-${REPO}/compare/${PREVIOUS_TAG}...ACCRE_${PROPOSED_TAG}
 
     # Sanity check things look okay.
-    git fetch --all
     GIT=${RET% *}
     CLEAN=${RET##* }
     if [ $CLEAN != "CLEAN" ]; then
         fatal "Package $REPO isn't clean."
     fi
+    git show-ref "ACCRE_${PROPOSED_TAG}" &>/dev/null && \
+            fatal "The release ${PROPOSED_TAG} already exists"
+    
     PROPOSED_BRANCH="release-proposed-${PROPOSED_TAG}"
+    git checkout $(get_repo_master $REPO)
+    git branch -D $PROPOSED_BRANCH || true
     git checkout -b $PROPOSED_BRANCH
     
     # Update CHANGELOG.md
     NEW_CHANGELOG="# **[$PROPOSED_TAG]($PROPOSED_URL)** $(date '+(%F)')
 
 ## Changes ([full changelog]($PROPOSED_DIFF))
-$(git log --oneline --no-merges accre-release..HEAD | sed 's/^/*  /')
+$(git log --oneline --no-merges  ${UPSTREAM_REMOTE}/${TARGET_BRANCH}..HEAD | \
+    sed 's/^/*  /')
 
 
 "
@@ -55,21 +62,25 @@ $(git log --oneline --no-merges accre-release..HEAD | sed 's/^/*  /')
                         $LSTORE_RELEASE_BASE/scripts/convert-to-json-string.py)"
     git show HEAD:CHANGELOG.md >> CHANGELOG.md
     git add CHANGELOG.md
-    git commit CHANGELOG.md -m "RELEASE version $PROPOSED_TAG"
+    git commit CHANGELOG.md -m "Incrementing to $PROPOSED_TAG"
     git push $UPSTREAM_REMOTE $PROPOSED_BRANCH
     HEAD_REF=$(git show-ref refs/heads/$GIT)
 
     # TODO: Make repo changable
-    GITHUB_POST='{"title":"[RELEASE] '$PROPOSED_TAG'", "head": "'$PROPOSED_BRANCH'", "base": "'$TARGET_BRANCH'", "body":'"$CHANGELOG_JSON"'}'
-    GITHUB_REQUEST=$(curl --request POST --fail --silent \
+    GITHUB_POST='{"title":"[RELEASE] '$PROPOSED_TAG'", 
+                  "head": "'$PROPOSED_BRANCH'",
+                  "base": "'$TARGET_BRANCH'",
+                  "body":'"$CHANGELOG_JSON"'}'
+    GITHUB_REQUEST=$(echo -n "$GITHUB_POST" | \
+        curl --request POST  \
         -H "Authorization: token $LSTORE_GITHUB_TOKEN"\
-        --data "$GITHUB_POST" \
+        --data-binary '@-' \
         https://api.github.com/repos/accre/lstore-${REPO}/pulls)
     GITHUB_URL=$(echo $GITHUB_REQUEST | \
                             $LSTORE_RELEASE_BASE/scripts/extract-pull-url.py)
     note "Pull request created. It can be found at
 $GITHUB_URL"
-    # TODO: Apply GH labels to relelase requests
+    # TODO: Apply GH labels to release requests
     # TODO: Use GH status API to block 'merge button' and force our
     #       accept-release.sh script
 done
