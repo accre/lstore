@@ -43,8 +43,8 @@ http://www.accre.vanderbilt.edu
 #include "os_timecache.h"
 #include "os_remote.h"
 
-//#define OSRS_HANDLE(ofd) ((osrs_ongoing_object_t *)((ofd)->data))->handle
-//#define OSRS_HANDLE(ofd) (void *)(*(intptr_t *)(ofd)->data)
+#define OSTC_LOCK(ostc); log_printf(5, "LOCK\n"); apr_thread_mutex_lock(ostc->lock)
+#define OSTC_UNLOCK(ostc) log_printf(5, "UNLOCK\n"); apr_thread_mutex_unlock(ostc->lock)
 
 #define OSTC_ITER_ALIST  0
 #define OSTC_ITER_AREGEX 1
@@ -76,6 +76,10 @@ typedef struct {
 
 typedef struct {
     char *fname;
+    int mode;
+    int max_wait;
+    creds_t *creds;
+    char *id;
     os_fd_t *fd_child;
 } ostc_fd_t;
 
@@ -91,8 +95,21 @@ typedef struct {
 
 typedef struct {
     object_service_fn_t *os;
-//  void *it;
+    os_attr_iter_t *it;
+} ostc_attr_iter_t;
+
+typedef struct {
+    object_service_fn_t *os;
+    op_generic_t *gop;
+} ostc_remove_regex_t;
+
+typedef struct {
+    object_service_fn_t *os;
     os_object_iter_t **it_child;
+    ostc_attr_iter_t it_attr;
+    os_regex_table_t *attr;
+    ostc_fd_t fd;
+    creds_t *creds;
     void **val;
     int *v_size;
     int *v_size_initial;
@@ -129,6 +146,7 @@ typedef struct {
 typedef struct {
     object_service_fn_t *os_child;//** child OS which does the heavy lifting
     apr_thread_mutex_t *lock;
+    apr_thread_mutex_t *delayed_lock;
     apr_thread_cond_t *cond;
     apr_pool_t *mpool;
     thread_pool_context_t *tpc;
@@ -139,6 +157,21 @@ typedef struct {
     int shutdown;
 } ostc_priv_t;
 
+typedef struct {
+    object_service_fn_t *os;
+    os_fd_t **fd;
+    os_fd_t *close_fd;
+    creds_t *creds;
+    op_generic_t *gop;
+    os_fd_t *cfd;
+    char *path;
+    char *id;
+    int mode;
+    int max_wait;
+} ostc_open_op_t;
+
+op_status_t ostc_close_object_fn(void *arg, int tid);
+op_status_t ostc_delayed_open_object(object_service_fn_t *os, ostc_fd_t *fd);
 
 //***********************************************************************
 // free_ostcdb_attr - Destroys a cached attribute
@@ -161,7 +194,7 @@ ostcdb_attr_t *new_ostcdb_attr(char *key, void *val, int v_size, apr_time_t expi
 {
     ostcdb_attr_t *attr;
 
-    log_printf(5, "adding\n");
+    log_printf(5, "adding key=%s size=%d\n", key, v_size);
     type_malloc_clear(attr, ostcdb_attr_t, 1);
 
     attr->key = strdup(key);
@@ -172,6 +205,7 @@ ostcdb_attr_t *new_ostcdb_attr(char *key, void *val, int v_size, apr_time_t expi
 
     }
     attr->v_size = v_size;
+    attr->expire = expire;
 
     return(attr);
 }
@@ -260,7 +294,7 @@ int _ostc_cleanup(object_service_fn_t *os, ostcdb_object_t *obj, apr_time_t expi
     akept = 0;
     for (hi = apr_hash_first(NULL, obj->attrs); hi != NULL; hi = apr_hash_next(hi)) {
         a = apr_hash_this_val(hi);
-        log_printf(5, "fname=%s attr=%s\n", obj->fname, a->key);
+        log_printf(5, "fname=%s attr=%s a->expire=" TT " expired=" TT "\n", obj->fname, a->key, a->expire, expired);
         if (a->expire < expired) {
             apr_hash_set(obj->attrs, a->key, APR_HASH_KEY_STRING, NULL);
             free_ostcdb_attr(a);
@@ -282,13 +316,15 @@ void *ostc_cache_compact_thread(apr_thread_t *th, void *data)
     object_service_fn_t *os = (object_service_fn_t *)data;
     ostc_priv_t *ostc = (ostc_priv_t *)os->priv;
 
-    apr_thread_mutex_lock(ostc->lock);
+    OSTC_LOCK(ostc);
     while (ostc->shutdown == 0) {
         apr_thread_cond_timedwait(ostc->cond, ostc->lock, ostc->cleanup_interval);
 
+        log_printf(5, "START: Running an attribute cleanup\n");
         _ostc_cleanup(os, ostc->cache_root, apr_time_now());
+        log_printf(5, "END: cleanup finished\n");
     }
-    apr_thread_mutex_unlock(ostc->lock);
+    OSTC_UNLOCK(ostc);
 
     return(NULL);
 }
@@ -402,8 +438,8 @@ int ostc_attr_cacheprep_ftype(ostc_cacheprep_t *cp)
 // _ostc_cache_tree_walk - Walks the cache tree using the provided path
 //   and optionally creates the target node if needed.
 //
-//   Returns 0 on success or 1 if the path cannot be followed and
-//     2 if the terminal object doesn't exist
+//   Returns 0 on success or a positive value representing the prefix that could
+//      be mapped.
 //
 //   NOTE:  Assumes the cache lock is held
 //***********************************************************************
@@ -434,6 +470,7 @@ int _ostc_cache_tree_walk(object_service_fn_t *os, char *fname, Stack_t *tree, o
     while (fname[i] != 0) {
         //** Pick off any multiple /'s
         for (start=i; fname[start] == '/' ; start++) {}
+        err = start;
         log_printf(5, "loop=%d start=%d i=%d fname[start]=%hhu\n", loop, start, i, fname[start]);
         if (fname[start] == 0) {
             if (loop == 0) {  //** This is the first (and last) token so push the root on the stack
@@ -487,7 +524,6 @@ int _ostc_cache_tree_walk(object_service_fn_t *os, char *fname, Stack_t *tree, o
                 }
             }
 
-            err = 1;
             goto finished;
         } else if (next->link) {  //** Got a link
             if (fname[i] != 0) { //** If not at the end we need to follow it
@@ -496,7 +532,7 @@ int _ostc_cache_tree_walk(object_service_fn_t *os, char *fname, Stack_t *tree, o
                 dup_stack(tree, &rtree);
                 if (_ostc_cache_tree_walk(os, next->link, &rtree, NULL, add_terminal_ftype, max_recurse-1) != 0) {
                     empty_stack(&rtree, 0);
-                    err = 1;
+                    err = -1;
                     goto finished;
                 }
                 move_to_bottom(&rtree);
@@ -522,7 +558,7 @@ int _ostc_cache_tree_walk(object_service_fn_t *os, char *fname, Stack_t *tree, o
         free_ostcdb_object(curr);
 
         move_to_bottom(tree);
-        delete_current(tree, 0, 0);
+        delete_current(tree, 1, 0);
         insert_below(tree, replacement_obj);
     }
 
@@ -560,6 +596,7 @@ int _ostcdb_resolve_attr_link(object_service_fn_t *os, Stack_t *tree, char *alin
 
     //** 1st split the link into a path and attribute name
     n = strlen(alink);
+    aname = NULL;
     for (i=n-1; i>=0; i--) {
         if (alink[i] == '/') {
             aname = alink + i + 1;
@@ -626,7 +663,7 @@ void ostc_cache_move_object(object_service_fn_t *os, creds_t *creds, char *src_p
 
     init_stack(&stree);
 
-    apr_thread_mutex_lock(ostc->lock);
+    OSTC_LOCK(ostc);
     if (_ostc_cache_tree_walk(os, src_path, &stree, NULL, 0, OSTC_MAX_RECURSE) == 0) {
         move_to_bottom(&stree);
         obj = get_ele_data(&stree);
@@ -634,7 +671,7 @@ void ostc_cache_move_object(object_service_fn_t *os, creds_t *creds, char *src_p
         _ostc_cache_tree_walk(os, src_path, &dtree, obj, obj->ftype, OSTC_MAX_RECURSE);  //** Do the walk and substitute
         empty_stack(&dtree, 0);
     }
-    apr_thread_mutex_unlock(ostc->lock);
+    OSTC_UNLOCK(ostc);
 
     empty_stack(&stree, 0);
 }
@@ -651,7 +688,7 @@ void ostc_cache_remove_object(object_service_fn_t *os, char *path)
 
     init_stack(&tree);
 
-    apr_thread_mutex_lock(ostc->lock);
+    OSTC_LOCK(ostc);
     if (_ostc_cache_tree_walk(os, path, &tree, NULL, 0, OSTC_MAX_RECURSE) == 0) {
         move_to_bottom(&tree);
         obj = get_ele_data(&tree);
@@ -660,7 +697,7 @@ void ostc_cache_remove_object(object_service_fn_t *os, char *path)
         apr_hash_set(parent->objects, obj->fname, APR_HASH_KEY_STRING, NULL);
         free_ostcdb_object(obj);
     }
-    apr_thread_mutex_unlock(ostc->lock);
+    OSTC_UNLOCK(ostc);
 
     empty_stack(&tree, 0);
 }
@@ -680,7 +717,7 @@ void ostc_cache_remove_attrs(object_service_fn_t *os, char *fname, char **key, i
 
     init_stack(&tree);
 
-    apr_thread_mutex_lock(ostc->lock);
+    OSTC_LOCK(ostc);
     if (_ostc_cache_tree_walk(os, fname, &tree, NULL, 0, OSTC_MAX_RECURSE) != 0) goto finished;
 
     move_to_bottom(&tree);
@@ -693,7 +730,7 @@ void ostc_cache_remove_attrs(object_service_fn_t *os, char *fname, char **key, i
         }
     }
 finished:
-    apr_thread_mutex_unlock(ostc->lock);
+    OSTC_UNLOCK(ostc);
 
     empty_stack(&tree, 0);
 }
@@ -713,7 +750,7 @@ void ostc_cache_move_attrs(object_service_fn_t *os, char *fname, char **key_old,
 
     init_stack(&tree);
 
-    apr_thread_mutex_lock(ostc->lock);
+    OSTC_LOCK(ostc);
     if (_ostc_cache_tree_walk(os, fname, &tree, NULL, 0, OSTC_MAX_RECURSE) != 0) goto finished;
 
     move_to_bottom(&tree);
@@ -735,7 +772,7 @@ void ostc_cache_move_attrs(object_service_fn_t *os, char *fname, char **key_old,
     }
 
 finished:
-    apr_thread_mutex_unlock(ostc->lock);
+    OSTC_UNLOCK(ostc);
 
     empty_stack(&tree, 0);
 }
@@ -756,7 +793,7 @@ void ostc_cache_process_attrs(object_service_fn_t *os, char *fname, int ftype, c
 
     init_stack(&tree);
 
-    apr_thread_mutex_lock(ostc->lock);
+    OSTC_LOCK(ostc);
     if (_ostc_cache_tree_walk(os, fname, &tree, NULL, ftype, OSTC_MAX_RECURSE) != 0) goto finished;
 
     log_printf(5, "fname=%s stack_size=%d\n", fname, stack_size(&tree));
@@ -774,6 +811,8 @@ void ostc_cache_process_attrs(object_service_fn_t *os, char *fname, int ftype, c
     }
     for (i=0; i<n; i++) {
         key = key_list[i];
+        if (strcmp(key, "os.lock") == 0) continue;  //** These we don't cache
+
         lkey = val[n+i];
         if (lkey != NULL) {  //** Got to find the linked attribute
             _ostcdb_resolve_attr_link(os, &tree, lkey, &aobj, &attr, OSTC_MAX_RECURSE);
@@ -828,7 +867,7 @@ void ostc_cache_process_attrs(object_service_fn_t *os, char *fname, int ftype, c
     }
 
 finished:
-    apr_thread_mutex_unlock(ostc->lock);
+    OSTC_UNLOCK(ostc);
 
     empty_stack(&tree, 0);
 }
@@ -853,7 +892,7 @@ op_status_t ostc_cache_fetch(object_service_fn_t *os, char *fname, char **key, v
     oops = 0;
 
 //log_printf(5, "fname=%s\n", fname);
-    apr_thread_mutex_lock(ostc->lock);
+    OSTC_LOCK(ostc);
     if (_ostc_cache_tree_walk(os, fname, &tree, NULL, 0, OSTC_MAX_RECURSE) != 0) goto finished;
 
     move_to_bottom(&tree);
@@ -883,7 +922,7 @@ op_status_t ostc_cache_fetch(object_service_fn_t *os, char *fname, char **key, v
     status = op_success_status;
 
 finished:
-    apr_thread_mutex_unlock(ostc->lock);
+    OSTC_UNLOCK(ostc);
 
     if (oops == 1) { //** Got to unroll the values stored
         oops = i;
@@ -921,7 +960,7 @@ void ostc_cache_update_attrs(object_service_fn_t *os, char *fname, char **key, v
 
     log_printf(15, "fname=%s n=%d key[0]=%s\n", fname, n, key[0]);
 
-    apr_thread_mutex_lock(ostc->lock);
+    OSTC_LOCK(ostc);
     if (_ostc_cache_tree_walk(os, fname, &tree, NULL, 0, OSTC_MAX_RECURSE) != 0) goto finished;
 
     move_to_bottom(&tree);
@@ -948,22 +987,146 @@ void ostc_cache_update_attrs(object_service_fn_t *os, char *fname, char **key, v
     }
 
 finished:
-    apr_thread_mutex_unlock(ostc->lock);
+    OSTC_UNLOCK(ostc);
 
     empty_stack(&tree, 0);
 }
 
+//***********************************************************************
+// _ostc_cache_populate_prefix - Recursively populates the prefix with a
+//    minimal set of cache entries.
+//***********************************************************************
+
+int _ostc_cache_populate_prefix(object_service_fn_t *os, creds_t *creds, char *path, int prefix_len)
+{
+    ostc_priv_t *ostc = (ostc_priv_t *)os->priv;
+    Stack_t tree;
+    ostc_cacheprep_t cp;
+    os_fd_t *fd = NULL;
+    char *key_array[1], *val_array[1];
+    char *fname, *key, *val;
+    int v_size[1];
+    int err, start, end, len, ftype;
+    int max_wait = 10;
+    op_status_t status;
+
+    len = strlen(path);
+    if (len == 1) return(0);  //** Nothing to do.  Just a '/'
+
+    init_stack(&tree);
+    err = _ostc_cache_tree_walk(os, path, &tree, NULL, 0, OSTC_MAX_RECURSE);
+    empty_stack(&tree, 0);
+    if (err <= 0)  return(err);
+
+    start = err;
+    for (end=start; path[end] != '/' ; end++) {  //** Find the terminal end
+        if (path[end] == 0) break;
+    }
+
+    fname = strndup(path, end);
+
+    if (end <= prefix_len) {
+        log_printf(0, "ERROR: Unable to make progress in recursion. end=%d prefix_len=%d fname=%s full_path=%s\n", end, prefix_len, fname, path);
+        free(fname);
+        return(-1234);
+    }
+
+    log_printf(5, "path=%s prefix=%s len=%d end=%d\n", path, fname, len, end);
+
+    key = "system.inode";
+    val = NULL;
+    key_array[0] = key;
+    val_array[0] = val;
+    v_size[0] = -100;
+    ostc_attr_cacheprep_setup(&cp, 1, key_array, (void **)val_array, v_size, 1);
+
+    err = gop_sync_exec(os_open_object(ostc->os_child, creds, fname, OS_MODE_READ_IMMEDIATE, NULL, &fd, max_wait));
+    if (err != OP_STATE_SUCCESS) {
+        log_printf(1, "ERROR opening object=%s\n", path);
+        return(-1);
+    }
+
+    //** IF the attribute doesn't exist *val == NULL an *v_size = 0
+    status = gop_sync_exec_status(os_get_multiple_attrs(ostc->os_child, creds, fd, cp.key, cp.val, cp.v_size, cp.n_keys_total));
+
+    //** Close the parent
+    err = gop_sync_exec(os_close_object(ostc->os_child, fd));
+    if (err != OP_STATE_SUCCESS) {
+        log_printf(1, "ERROR closing object=%s\n", path);
+    }
+
+    //** Store them in the cache on success
+    if (status.op_status == OP_STATE_SUCCESS) {
+        ftype = ostc_attr_cacheprep_ftype(&cp);
+        log_printf(1, "storing=%s ftype=%d end=%d len=%d v_size[0]=%d\n", fname, ftype, end, len, cp.v_size[0]);
+        ostc_cache_process_attrs(os, fname, ftype, cp.key, cp.val, cp.v_size, cp.n_keys);
+        ostc_attr_cacheprep_copy(&cp, (void **)val_array, v_size);
+        if (end < (len-1)) { //** Recurse and add the next layer
+            log_printf(1, "recursing object=%s\n", path);
+            err = _ostc_cache_populate_prefix(os, creds, path, end);
+        }
+    }
+
+    ostc_attr_cacheprep_destroy(&cp);
+    free(fname);
+    if (v_size[0] > 0) free(val_array[0]);
+
+    return(err);
+}
+
 
 //***********************************************************************
-// ostc_remove_regex_object - Simple passthru
-//   NOTE: CAn lead to cache inconsistencies
+// ostc_remove_regex_object_fn - Simple passthru with purging of my cache.
+//      This command is rarely used.  Hence the simple purging.
+//***********************************************************************
+
+op_status_t ostc_remove_regex_object_fn(void *arg, int tid)
+{
+    ostc_remove_regex_t *op = (ostc_remove_regex_t *)arg;
+    ostc_priv_t *ostc = (ostc_priv_t *)op->os->priv;
+    op_status_t status;
+
+    status = gop_sync_exec_status(op->gop);
+    op->gop = NULL;  //** This way we don't accidentally clean it up again
+
+    //** Since we don't know what was removed we're going to purge everything to make life easy.
+    if (status.op_status == OP_STATE_SUCCESS) {
+        apr_thread_mutex_lock(ostc->lock);
+        _ostc_cleanup(op->os, ostc->cache_root, apr_time_now() + 4*ostc->entry_timeout);
+        apr_thread_mutex_unlock(ostc->lock);
+    }
+
+    return(status);
+}
+
+//***********************************************************************
+//  free_remove_regex - Frees a regex remove object
+//***********************************************************************
+
+void free_remove_regex(void *arg)
+{
+    ostc_remove_regex_t *op = (ostc_remove_regex_t *)arg;
+
+    if (op->gop) gop_free(op->gop, OP_DESTROY);
+    free(op);
+}
+
+//***********************************************************************
+// ostc_remove_regex_object - Simple passthru with purging of my cache.
+//      This command is rarely used.  Hence the simple purging.
 //***********************************************************************
 
 op_generic_t *ostc_remove_regex_object(object_service_fn_t *os, creds_t *creds, os_regex_table_t *path, os_regex_table_t *object_regex, int obj_types, int recurse_depth)
 {
     ostc_priv_t *ostc = (ostc_priv_t *)os->priv;
+    ostc_remove_regex_t *op;
 
-    return(os_remove_regex_object(ostc->os_child, creds, path, object_regex, obj_types, recurse_depth));
+    type_malloc(op, ostc_remove_regex_t, 1);
+    op->os = os;
+    op->gop = os_remove_regex_object(ostc->os_child, creds, path, object_regex, obj_types, recurse_depth);
+    gop_set_private(op->gop, op);
+
+    return(new_thread_pool_op(ostc->tpc, NULL, ostc_remove_regex_object_fn, (void *)op, free_remove_regex, 1));
 }
 
 //***********************************************************************
@@ -973,8 +1136,10 @@ op_generic_t *ostc_remove_regex_object(object_service_fn_t *os, creds_t *creds, 
 op_generic_t *ostc_abort_remove_regex_object(object_service_fn_t *os, op_generic_t *gop)
 {
     ostc_priv_t *ostc = (ostc_priv_t *)os->priv;
+    ostc_remove_regex_t *op;
 
-    return(os_abort_remove_regex_object(ostc->os_child, gop));
+    op = (ostc_remove_regex_t *)gop_get_private(gop);
+    return(os_abort_remove_regex_object(ostc->os_child, op->gop));
 }
 
 //***********************************************************************
@@ -1110,6 +1275,35 @@ op_status_t ostc_move_object_fn(void *arg, int tid)
 }
 
 //***********************************************************************
+// ostc_delayed_open_object - Actual opens the object for defayed opens
+//***********************************************************************
+
+op_status_t ostc_delayed_open_object(object_service_fn_t *os, ostc_fd_t *fd)
+{
+    ostc_priv_t *ostc = (ostc_priv_t *)os->priv;
+    op_status_t status;
+    os_fd_t *cfd;
+
+    log_printf(5, "DELAYED_OPEN fd=%s\n", fd->fname);
+    status = gop_sync_exec_status(os_open_object(ostc->os_child, fd->creds, fd->fname, fd->mode, fd->id, &cfd, fd->max_wait));
+
+    //** If it failed just return
+    if (status.op_status == OP_STATE_FAILURE) return(status);
+
+    apr_thread_mutex_lock(ostc->delayed_lock);
+    if (fd->fd_child == NULL) {
+        fd->fd_child = cfd;
+        apr_thread_mutex_unlock(ostc->delayed_lock);
+    } else { //** Somebody else beat us to it so close mine and throw it away
+        apr_thread_mutex_unlock(ostc->delayed_lock);
+
+        gop_sync_exec(os_close_object(ostc->os_child, cfd));
+    }
+
+    return(status);
+}
+
+//***********************************************************************
 // ostc_move_object - Generates a move object operation
 //***********************************************************************
 
@@ -1137,6 +1331,15 @@ op_status_t ostc_copy_attrs_fn(void *arg, int tid)
     ostc_priv_t *ostc = (ostc_priv_t *)ma->os->priv;
     op_status_t status;
 
+    if (ma->fd->fd_child == NULL) {
+        status = ostc_delayed_open_object(ma->os, ma->fd);
+        if (status.op_status == OP_STATE_FAILURE) return(status);
+    }
+
+    if (ma->fd_dest->fd_child == NULL) {
+        status = ostc_delayed_open_object(ma->os, ma->fd_dest);
+        if (status.op_status == OP_STATE_FAILURE) return(status);
+    }
 
     status = gop_sync_exec_status(os_copy_multiple_attrs(ostc->os_child, ma->creds, ma->fd->fd_child, ma->key, ma->fd_dest->fd_child, ma->key_dest, ma->n));
 
@@ -1205,6 +1408,10 @@ op_status_t ostc_symlink_attrs_fn(void *arg, int tid)
     ostc_priv_t *ostc = (ostc_priv_t *)ma->os->priv;
     op_status_t status;
 
+    if (ma->fd_dest->fd_child == NULL) {
+        status = ostc_delayed_open_object(ma->os, ma->fd_dest);
+        if (status.op_status == OP_STATE_FAILURE) return(status);
+    }
 
     status = gop_sync_exec_status(os_symlink_multiple_attrs(ostc->os_child, ma->creds, ma->src_path, ma->key, ma->fd_dest->fd_child, ma->key_dest, ma->n));
 
@@ -1275,6 +1482,10 @@ op_status_t ostc_move_attrs_fn(void *arg, int tid)
     ostc_priv_t *ostc = (ostc_priv_t *)ma->os->priv;
     op_status_t status;
 
+    if (ma->fd->fd_child == NULL) {
+        status = ostc_delayed_open_object(ma->os, ma->fd);
+        if (status.op_status == OP_STATE_FAILURE) return(status);
+    }
 
     status = gop_sync_exec_status(os_move_multiple_attrs(ostc->os_child, ma->creds, ma->fd->fd_child, ma->key, ma->key_dest, ma->n));
 
@@ -1282,7 +1493,7 @@ op_status_t ostc_move_attrs_fn(void *arg, int tid)
     if (status.op_status == OP_STATE_FAILURE) return(status);
 
     //** Move them in the cache
-    ostc_cache_move_attrs(ma->os, ma->fd_dest->fname, ma->key, ma->key_dest, ma->n);
+    ostc_cache_move_attrs(ma->os, ma->fd->fname, ma->key, ma->key_dest, ma->n);
     return(status);
 }
 
@@ -1346,9 +1557,23 @@ op_status_t ostc_get_attrs_fn(void *arg, int tid)
 
     //** 1st see if we can satisfy everything from cache
     status = ostc_cache_fetch(ma->os, ma->fd->fname, ma->key, ma->val, ma->v_size, ma->n);
+
+    if (status.op_status == OP_STATE_SUCCESS) {
+        log_printf(10, "ATTR_CACHE_HIT: fname=%s key[0]=%s n_keys=%d\n", ma->fd->fname, ma->key[0], ma->n);
+    } else {
+        log_printf(10, "ATTR_CACHE_MISS fname=%s key[0]=%s n_keys=%d\n", ma->fd->fname, ma->key[0], ma->n);
+    }
     if (status.op_status == OP_STATE_SUCCESS) return(status);
 
+    _ostc_cache_populate_prefix(ma->os, ma->creds, ma->fd->fname, 0);
+
     ostc_attr_cacheprep_setup(&cp, ma->n, ma->key, ma->val, ma->v_size, 1);
+
+    if (ma->fd->fd_child == NULL) {
+        status = ostc_delayed_open_object(ma->os, ma->fd);
+        if (status.op_status == OP_STATE_FAILURE) goto failed;
+    }
+
     status = gop_sync_exec_status(os_get_multiple_attrs(ostc->os_child, ma->creds, ma->fd->fd_child, cp.key, cp.val, cp.v_size, cp.n_keys_total));
 
     //** Store them in the cache on success
@@ -1358,6 +1583,7 @@ op_status_t ostc_get_attrs_fn(void *arg, int tid)
         ostc_attr_cacheprep_copy(&cp, ma->val, ma->v_size);
     }
 
+failed:
     ostc_attr_cacheprep_destroy(&cp);
 
     return(status);
@@ -1420,10 +1646,15 @@ op_status_t ostc_set_attrs_fn(void *arg, int tid)
     ostc_priv_t *ostc = (ostc_priv_t *)ma->os->priv;
     op_status_t status;
 
+    if (ma->fd->fd_child == NULL) {
+        status = ostc_delayed_open_object(ma->os, ma->fd);
+        if (status.op_status == OP_STATE_FAILURE) return(status);
+    }
+
     status = gop_sync_exec_status(os_set_multiple_attrs(ostc->os_child, ma->creds, ma->fd->fd_child, ma->key, ma->val, ma->v_size, ma->n));
 
     //** Failed just return
-    if (status.op_status == OP_STATE_SUCCESS) return(status);
+    if (status.op_status != OP_STATE_SUCCESS) return(status);
 
     //** Update the cache on the keys we know about
     ostc_cache_update_attrs(ma->os, ma->fd->fname, ma->key, ma->val, ma->v_size, ma->n);
@@ -1481,11 +1712,6 @@ op_generic_t *ostc_set_attr(object_service_fn_t *os, creds_t *creds, os_fd_t *fd
 
 //***********************************************************************
 
-typedef struct {
-    object_service_fn_t *os;
-    os_attr_iter_t *it;
-} ostc_attr_iter_t;
-
 //***********************************************************************
 // ostc_next_attr - Returns the next matching attribute
 //
@@ -1515,6 +1741,12 @@ os_attr_iter_t *ostc_create_attr_iter(object_service_fn_t *os, creds_t *creds, o
     ostc_priv_t *ostc = (ostc_priv_t *)os->priv;
     ostc_attr_iter_t *it;
     ostc_fd_t *fd = (ostc_fd_t *)ofd;
+    op_status_t status;
+
+    if (fd->fd_child == NULL) {
+        status = ostc_delayed_open_object(os, fd);
+        if (status.op_status == OP_STATE_FAILURE) return(NULL);
+    }
 
     type_malloc(it, ostc_attr_iter_t, 1);
 
@@ -1606,7 +1838,7 @@ void ostc_destroy_object_iter(os_object_iter_t *oit)
     }
 
     if (it->it_child != NULL) os_destroy_object_iter(ostc->os_child, it->it_child);
-    ostc_attr_cacheprep_destroy(&(it->cp));
+    if (it->iter_type == OSTC_ITER_ALIST) ostc_attr_cacheprep_destroy(&(it->cp));
 
     if (it->v_size_initial != NULL) free(it->v_size_initial);
 
@@ -1625,8 +1857,46 @@ os_object_iter_t *ostc_create_object_iter(object_service_fn_t *os, creds_t *cred
         os_regex_table_t *attr, int recurse_depth, os_attr_iter_t **it_attr, int v_max)
 {
     ostc_priv_t *ostc = (ostc_priv_t *)os->priv;
+    ostc_object_iter_t *it;
+    os_attr_iter_t **achild;
 
-    return(os_create_object_iter(ostc->os_child, creds,  path, object_regex, object_types, attr, recurse_depth, it_attr, v_max));
+    log_printf(5, "START\n");
+
+
+    //** Make the iterator handle
+    type_malloc_clear(it, ostc_object_iter_t, 1);
+    it->iter_type = OSTC_ITER_AREGEX;
+    it->os = os;
+    it->attr = attr;
+
+    //** Set up the FD for the iterator
+    it->fd.creds = creds;
+    it->fd.fname = NULL;
+    it->fd.mode = OS_MODE_READ_IMMEDIATE;
+    it->fd.id = NULL;
+    it->fd.max_wait = 60;
+
+    achild = NULL;
+    if (it_attr != NULL) {
+        it->it_attr.os = os;
+        achild = &(it->it_attr.it);
+        *it_attr = (os_attr_iter_t *)&(it->it_attr);
+    }
+
+    //** Make the gop and execute it
+    it->it_child = os_create_object_iter(ostc->os_child, creds,  path, object_regex, object_types, attr, recurse_depth, achild, v_max);
+
+    log_printf(5, "it_child=%p\n", it->it_child);
+
+    //** Clean up if an error occurred
+    if (it->it_child == NULL) {
+        ostc_destroy_object_iter(it);
+        it = NULL;
+    }
+
+    log_printf(5, "END\n");
+
+    return(it);
 }
 
 //***********************************************************************
@@ -1672,18 +1942,6 @@ os_object_iter_t *ostc_create_object_iter_alist(object_service_fn_t *os, creds_t
     return(it);
 }
 
-//***********************************************************************
-
-typedef struct {
-    object_service_fn_t *os;
-    os_fd_t **fd;
-    os_fd_t *close_fd;
-    creds_t *creds;
-    char *path;
-    char *id;
-    int mode;
-    int max_wait;
-} ostc_open_op_t;
 
 //***********************************************************************
 // ostc_open_object_fn - Handles the actual object open
@@ -1694,20 +1952,40 @@ op_status_t ostc_open_object_fn(void *arg, int tid)
     ostc_open_op_t *op = (ostc_open_op_t *)arg;
     ostc_priv_t *ostc = (ostc_priv_t *)op->os->priv;
     op_status_t status;
-    os_fd_t *cfd;
     ostc_fd_t *fd;
+    Stack_t tree;
+    int err;
 
-    status = gop_sync_exec_status(os_open_object(ostc->os_child, op->creds, op->path, op->mode, op->id, &cfd, op->max_wait));
+    log_printf(5, "mode=%d OS_MODE_READ_IMMEDIATE=%d fname=%s\n", op->mode, OS_MODE_READ_IMMEDIATE, op->path);
+
+    if (op->mode == OS_MODE_READ_IMMEDIATE) { //** Can use a delayed open if the object is in cache
+        init_stack(&tree);
+        OSTC_LOCK(ostc);
+        err = _ostc_cache_tree_walk(op->os, op->path, &tree, NULL, 0, OSTC_MAX_RECURSE);
+        OSTC_UNLOCK(ostc);
+        empty_stack(&tree, 0);
+        if (err == 0) goto finished;
+    }
+
+    //** Force an immediate file open
+    log_printf(5, "forced open of file. fname=%s\n", op->path);
+    status = gop_sync_exec_status(op->gop);
+    op->gop = NULL;
 
     //** If it failed just return
     if (status.op_status == OP_STATE_FAILURE) return(status);
 
+finished:
     //** Make my version of the FD
     type_malloc(fd, ostc_fd_t, 1);
     fd->fname = op->path;
     op->path = NULL;
-    fd->fd_child = cfd;
+    fd->fd_child = op->cfd;
     *op->fd = fd;
+    fd->mode = op->mode;
+    fd->creds = op->creds;
+    fd->id = op->id;
+    fd->max_wait = op->max_wait;
 
     return(op_success_status);
 }
@@ -1722,6 +2000,7 @@ void ostc_open_free(void *arg)
     ostc_open_op_t *op = (ostc_open_op_t *)arg;
 
     if (op->path != NULL) free (op->path);
+    if (op->gop != NULL) gop_free(op->gop, OP_DESTROY);
     free(op);
 }
 
@@ -1733,6 +2012,7 @@ op_generic_t *ostc_open_object(object_service_fn_t *os, creds_t *creds, char *pa
 {
     ostc_priv_t *ostc = (ostc_priv_t *)os->priv;
     ostc_open_op_t *op;
+    op_generic_t *gop;
 
     type_malloc(op, ostc_open_op_t, 1);
     op->os = os;
@@ -1742,18 +2022,25 @@ op_generic_t *ostc_open_object(object_service_fn_t *os, creds_t *creds, char *pa
     op->fd = pfd;
     op->id = id;
     op->max_wait = max_wait;
+    op->cfd = NULL;
 
-    return(new_thread_pool_op(ostc->tpc, NULL, ostc_open_object_fn, (void *)op, ostc_open_free, 1));
+    op->gop = os_open_object(ostc->os_child, op->creds, op->path, op->mode, op->id, &(op->cfd), op->max_wait);
+    gop = new_thread_pool_op(ostc->tpc, NULL, ostc_open_object_fn, (void *)op, ostc_open_free, 1);
+
+    gop_set_private(gop, op);
+    return(gop);
 }
 
 //***********************************************************************
 //  ostc_abort_open_object - Aborts an ongoing open file op
-//     NOTE:   This is just a dummy and is not actually implemented
 //***********************************************************************
 
 op_generic_t *ostc_abort_open_object(object_service_fn_t *os, op_generic_t *gop)
 {
-    return(gop_dummy(op_failure_status));
+    ostc_priv_t *ostc = (ostc_priv_t *)os->priv;
+    ostc_open_op_t *op = (ostc_open_op_t *)gop_get_private(gop);
+
+    return(os_abort_open_object(ostc->os_child, op->gop));
 }
 
 
@@ -1768,7 +2055,7 @@ op_status_t ostc_close_object_fn(void *arg, int tid)
     op_status_t status;
     ostc_fd_t *fd = (ostc_fd_t *)op->close_fd;
 
-    status = gop_sync_exec_status(os_close_object(ostc->os_child, fd->fd_child));
+    status = (fd->fd_child != NULL) ? gop_sync_exec_status(os_close_object(ostc->os_child, fd->fd_child)) : op_success_status;
 
     if (fd->fname != NULL) free(fd->fname);
     free(fd);
@@ -1876,10 +2163,10 @@ void ostc_destroy(object_service_fn_t *os)
     }
 
     //** Signal we're shutting down
-    apr_thread_mutex_lock(ostc->lock);
+    OSTC_LOCK(ostc);
     ostc->shutdown = 1;
     apr_thread_cond_signal(ostc->cond);
-    apr_thread_mutex_unlock(ostc->lock);
+    OSTC_UNLOCK(ostc);
 
     //** Wait for the cleanup thread to complete
     apr_thread_join(&value, ostc->cleanup_thread);
@@ -1933,13 +2220,14 @@ object_service_fn_t *object_service_timecache_create(service_manager_t *ess, ini
 
     apr_pool_create(&ostc->mpool, NULL);
     apr_thread_mutex_create(&(ostc->lock), APR_THREAD_MUTEX_DEFAULT, ostc->mpool);
+    apr_thread_mutex_create(&(ostc->delayed_lock), APR_THREAD_MUTEX_DEFAULT, ostc->mpool);
     apr_thread_cond_create(&(ostc->cond), ostc->mpool);
 
     //** Make the root node
     ostc->cache_root = new_ostcdb_object(strdup("/"), OS_OBJECT_DIR, 0, ostc->mpool);
 
     //** Get the thread pool to use
-    assert((ostc->tpc = lookup_service(ess, ESS_RUNNING, ESS_TPC_UNLIMITED)) != NULL);
+    { int result = (ostc->tpc = lookup_service(ess, ESS_RUNNING, ESS_TPC_UNLIMITED)); assert(result != NULL); }
 
     //** Set up the fn ptrs
     os->type = OS_TYPE_TIMECACHE;

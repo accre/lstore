@@ -1742,7 +1742,9 @@ int cache_release_pages(int n_pages, page_handle_t *page_list, int rw_mode)
             if ((page->bit_fields & C_TORELEASE) > 0) {
                 count = page->access_pending[CACHE_READ] + page->access_pending[CACHE_WRITE] + page->access_pending[CACHE_FLUSH];
                 if (count == 0) {
-                    if (((page->bit_fields & C_ISDIRTY) == 0) || (page->data == NULL)) {  //** Not dirty so release it
+                    //** page->data is an array so the 2nd bool is always false.
+                    //** leaving the old code as a comment: if (((page->bit_fields & C_ISDIRTY) == 0) || (page->data == NULL)) {
+                    if ((page->bit_fields & C_ISDIRTY) == 0) {  //** Not dirty so release it
                         s->c->fn.s_pages_release(s->c, &page, 1); //** No one else is listening so release the page
                     } else {  //** Should be manually flushed so force one
                         if (min_off > page->offset) min_off = page->offset;
@@ -3605,7 +3607,7 @@ segment_t *segment_cache_create(void *arg)
     type_malloc_clear(seg, segment_t, 1);
     type_malloc_clear(s, cache_segment_t, 1);
 
-    assert(apr_pool_create(&(seg->mpool), NULL) == APR_SUCCESS);
+    { int result = apr_pool_create(&(seg->mpool), NULL); assert(result == APR_SUCCESS); }
     apr_thread_mutex_create(&(seg->lock), APR_THREAD_MUTEX_DEFAULT, seg->mpool);
     apr_thread_cond_create(&(seg->cond), seg->mpool);
     apr_thread_cond_create(&(s->flush_cond), seg->mpool);

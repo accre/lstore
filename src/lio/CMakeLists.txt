@@ -1,5 +1,10 @@
 cmake_minimum_required(VERSION 2.8)
-cmake_policy(SET CMP0048 OLD)
+if(NOT (${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION} LESS 3.0))
+	# only CMAKE 3.0 and greater supports this (NOT ... LESS because CMAKE does not have a GREATER_OR_EQUAL_TO conditional)
+	# Not needed for older versions because older versions obviously use the old policy without specially requesting it
+	cmake_policy(SET CMP0048 OLD)
+	# ^^^ use the old VERSION variable behavior
+endif()
 # Name this project
 set(LSTORE_PROJECT_NAME "lio")
 project(${LSTORE_PROJECT_NAME} C CXX)
@@ -46,7 +51,7 @@ set(LSTORE_PROJECT_OBJS
 )
     
 set(LSTORE_PROJECT_INCLUDES
-    cache_amp.h data_block.h ex3_abstract.h ex3_linear_priv.h exnode.h
+    cache_amp.h blacklist.h data_block.h ex3_abstract.h ex3_linear_priv.h exnode.h
     rs_simple.h	 segment_jerasure.h segment_lun_priv.h cache_amp_priv.h
     data_service_abstract.h ex3_compare.h ex3_system.h lio.h rs_simple_priv.h
     segment_linear.h trace.h cache_lru.h ds_ibp.h ex3_fmttypes.h ex3_types.h
@@ -65,21 +70,16 @@ set(LSTORE_PROJECT_EXECUTABLES
      arc_create lio_get lio_signature lio_warm lio_inspect lio_fsck lio_rs
      lio_server mk_linear ex_load ex_get ex_put ex_inspect ex_clone ex_rw_test
      log_test rs_test os_test os_fsck lio_touch lio_mkdir lio_rmdir lio_rm
-     lio_ln
+     lio_ln zadler32 ldiff
 )
 
 # Common functionality is stored here
 include(cmake/LStoreCommon.cmake)
 
 # Add additional executables
-add_executable(trace_replay trace_replay.c trace)
+
+# Executable in two halves doesn't fit the normal pattern.
+add_executable(trace_replay trace_replay.c trace.c)
 set_target_properties(trace_replay PROPERTIES LINKER_LANGUAGE CXX)
 target_link_libraries(trace_replay ${library_lib} ${LIBS})
 
-add_executable(zadler32 zadler32.c)
-set_target_properties(zadler32 PROPERTIES LINKER_LANGUAGE CXX)
-target_link_libraries(zadler32 ${TOOLBOX_LIBRARY} ${ZLIB_LIBRARY} m)
-
-add_executable(ldiff ldiff.c)
-set_target_properties(ldiff PROPERTIES LINKER_LANGUAGE CXX)
-target_link_libraries(ldiff ${TOOLBOX_LIBRARY} m)

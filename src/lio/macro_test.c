@@ -5,8 +5,8 @@
 
 #define type_malloc_clear(var, type, count) type_malloc(var, type, count); type_memclear(var, type, count)
 
-#define type_malloc(var, type, count) assert((var = (type *)malloc(sizeof(type)*(count))) != NULL)
-#define type_realloc(var, type, count) assert((var = (type *)realloc(var, sizeof(type)*(count))) != NULL)
+#define type_malloc(var, type, count) var = (type *)malloc(sizeof(type)*(count)); assert(var != NULL)
+#define type_realloc(var, type, count) var = (type *)realloc(var, sizeof(type)*(count)); assert(var != NULL)
 #define type_memclear(var, type, count) memset(var, 0, sizeof(type)*(count))
 
 //***********************************************************************

@@ -1946,7 +1946,7 @@ op_status_t osfile_regex_object_set_multiple_attrs_fn(void *arg, int id)
 
     op_attr.os = op->os;
     op_attr.creds = op->creds;
-    op_attr.fd = fd; //** filled if for each object
+    op_attr.fd = NULL; //** filled in for each object
     op_attr.key = op->key;
     op_attr.val = op->val;
     op_attr.v_size = op->v_size;
@@ -3358,7 +3358,7 @@ os_attr_iter_t *osfile_create_attr_iter(object_service_fn_t *os, creds_t *creds,
     //** is create a memory pool just for the hash iterator and destroy it when the attr iter is destroyed.
     //** If this isn't done and you use the osf->mpool you end up with a slow memory accumulator and also need to add locks to protect the
     //** the shared mpoll since they aren't thread safe
-    assert(apr_pool_create(&(it->mpool), NULL) == APR_SUCCESS);
+    { int result = apr_pool_create(&(it->mpool), NULL); assert(result == APR_SUCCESS); }
     it->va_index = apr_hash_first(it->mpool, osf->vattr_hash);
 
     it->d = opendir(fd->attr_dir);

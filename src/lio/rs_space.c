@@ -53,7 +53,7 @@ rs_space_t rs_space(char *config)
 
     if (config == NULL) return(space);
 
-    assert(fd = inip_read_text(config));
+    fd = inip_read_text(config); assert(fd);
 
     grp = inip_first_group(fd);
     while (grp != NULL) {

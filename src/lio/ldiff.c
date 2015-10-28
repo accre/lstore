@@ -145,8 +145,8 @@ int main(int argc, char **argv)
     //** Open the files and get their sizes
     fname1 = argv[i];
     fname2 = argv[i+1];
-    assert((fd1 = fopen(fname1, "r")) != NULL);
-    assert((fd2 = fopen(fname2, "r")) != NULL);
+    {fd1 = fopen(fname1, "r"); assert(fd1 != NULL); }
+    {fd2 = fopen(fname2, "r"); assert(fd2 != NULL); }
 
     fseek(fd1, 0, SEEK_END);
     fseek(fd2, 0, SEEK_END);
@@ -177,8 +177,8 @@ int main(int argc, char **argv)
     bad_bytes = bad_groups = 0;
     for (cpos=0; cpos < max_size; cpos += buf_size) {
         len = ((cpos+buf_size) < max_size) ? buf_size : max_size - cpos;
-        assert(fread(buf1, 1, len, fd1) == len);
-        assert(fread(buf2, 1, len, fd2) == len);
+        { int result = fread(buf1, 1, len, fd1); assert(result == len); }
+        { int result = fread(buf2, 1, len, fd2); assert(result == len); }
 
         compare_buffers(buf1, buf2, len, cpos, &bad_bytes, &bad_groups, block_size, &state, &state_offset, max_size);
     }

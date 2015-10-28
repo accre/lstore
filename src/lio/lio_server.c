@@ -67,7 +67,7 @@ void signal_shutdown(int sig)
 int main(int argc, char **argv)
 {
     int background = 1;
-    int i, start_option, start_index;
+    int i, start_option;
 
     for (i=0; i<argc; i++) {
         if (strcmp(argv[i], "-f") == 0) {
@@ -124,8 +124,6 @@ int main(int argc, char **argv)
         } while ((start_option < i) && (i<argc));
     }
 
-    start_index = i;
-
     //***Attach the signal handler for shutdown
     apr_signal_unblock(SIGQUIT);
     apr_signal(SIGQUIT, signal_shutdown);
@@ -136,7 +134,7 @@ int main(int argc, char **argv)
 #endif
 
     //** Make the APR stuff
-    assert(apr_pool_create(&mpool, NULL) == APR_SUCCESS);
+    { int result = apr_pool_create(&mpool, NULL); assert(result == APR_SUCCESS); }
     apr_thread_mutex_create(&shutdown_lock, APR_THREAD_MUTEX_DEFAULT, mpool);
     apr_thread_cond_create(&shutdown_cond, mpool);
 

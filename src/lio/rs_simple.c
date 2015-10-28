@@ -884,30 +884,11 @@ int _rs_simple_load(resource_service_fn_t *res, char *fname)
     list_iter_t it;
     int i, n;
     inip_file_t *kf;
-    apr_file_t *afd;
-    char  *lock_fname;
 
     log_printf(5, "START fname=%s n_rids=%d\n", fname, rss->n_rids);
 
-    //** Open and lock the control file
-    n = strlen(fname)+10;
-    type_malloc(lock_fname, char, n);
-    snprintf(lock_fname, n, "%s.lock", fname);
-    if (apr_file_open(&afd, lock_fname, APR_FOPEN_READ|APR_FOPEN_CREATE, APR_FPROT_OS_DEFAULT, rss->mpool) != APR_SUCCESS) {
-        log_printf(0, "ERROR: opening lock file: fname=%s\n", lock_fname);
-        free(lock_fname);
-        return(1);
-    }
-    if (apr_file_lock(afd, APR_FLOCK_SHARED) != APR_SUCCESS) {
-        log_printf(0, "ERROR: locking file: fname=%s\n", lock_fname);
-        apr_file_close(afd);
-        free(lock_fname);
-        return(2);
-    }
-
-
     //** Open the file
-    assert(kf = inip_read(fname));
+    kf = inip_read(fname); assert(kf);
 
     //** Create the new RS list
     rss->rid_table = list_create(0, &list_string_compare, NULL, NULL, rs_simple_rid_free);
@@ -947,11 +928,6 @@ int _rs_simple_load(resource_service_fn_t *res, char *fname)
     }
 
     inip_destroy(kf);
-
-    //** Release the lock
-    apr_file_unlock(afd);
-    apr_file_close(afd);
-    free(lock_fname);
 
     log_printf(5, "END n_rids=%d\n", rss->n_rids);
 
@@ -1039,7 +1015,7 @@ resource_service_fn_t *rs_simple_create(void *arg, inip_file_t *kf, char *sectio
     //** Create the new RS list
     type_malloc_clear(rss, rs_simple_priv_t, 1);
 
-    assert(apr_pool_create(&(rss->mpool), NULL) == APR_SUCCESS);
+    { int result = apr_pool_create(&(rss->mpool), NULL); assert(result == APR_SUCCESS); }
     apr_thread_mutex_create(&(rss->lock), APR_THREAD_MUTEX_DEFAULT, rss->mpool);
     apr_thread_mutex_create(&(rss->update_lock), APR_THREAD_MUTEX_DEFAULT, rss->mpool);
     apr_thread_cond_create(&(rss->cond), rss->mpool);
@@ -1079,7 +1055,7 @@ resource_service_fn_t *rs_simple_create(void *arg, inip_file_t *kf, char *sectio
     rss->modify_time = 0;
 
     //** Load the RID table
-    assert(_rs_simple_refresh(rs) == 0);
+    { int result = _rs_simple_refresh(rs); assert(result == 0); }
 
     //** Launch the check thread
     thread_create_assert(&(rss->check_thread), NULL, rss_check_thread, (void *)rs, rss->mpool);
