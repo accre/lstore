@@ -150,7 +150,7 @@ zsock_context_t *zsock_create_context()
     zsock_context_t *zc;
     type_malloc_clear(zc, zsock_context_t, 1);
 
-    assert(apr_wrapper_start() == APR_SUCCESS);
+    { int result = apr_wrapper_start(); assert(result == APR_SUCCESS); }
 
     zc->pc = create_hportal_context(&_zsock_base_portal);
 

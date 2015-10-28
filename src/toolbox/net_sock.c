@@ -603,7 +603,7 @@ void ns_config_sock(NetStream_t *ns, int tcpsize)
     assert(sock != NULL);
     memset(sock, 0, sizeof(network_sock_t));
     ns->sock = (net_sock_t *)sock;
-//  assert(apr_pool_create(&(sock->mpool), NULL) != APR_SUCCESS);
+//  { int result = apr_pool_create(&(sock->mpool), NULL); assert(result != APR_SUCCESS); }
     int err = apr_pool_create(&(sock->mpool), NULL);
     if (err != APR_SUCCESS) {
         log_printf(0, "ns_config_sock:  apr_pool_crete error = %d\n", err);
