@@ -91,7 +91,7 @@ int zero_native_connect(mq_socket_t *socket, const char *format, ...)
     //** Set the ID
     if (socket->type != MQ_PAIR) {
         snprintf(buf, 255, format, args);
-        snprintf(id, 255, "%s:%lld", buf, random_int(1, 1000000));
+        snprintf(id, 255, "%s:" I64T , buf, random_int(1, 1000000));
         zsocket_set_identity(socket->arg, id);
         log_printf(4, "Unique hostname created = %s\n", id);
     }
