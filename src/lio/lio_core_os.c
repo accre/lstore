@@ -437,7 +437,7 @@ op_status_t lio_remove_object_fn(void *arg, int id)
         }
 
         //** Clean up
-        if (op->ex != NULL) exp->text.text = NULL;  //** The inital exnode is qfree() by the TP op
+        if (op->ex != NULL) exp->text.text = NULL;  //** The inital exnode is free()-ed by the TP op
         exnode_exchange_destroy(exp);
         exnode_destroy(ex);
     }
