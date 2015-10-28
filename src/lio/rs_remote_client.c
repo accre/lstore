@@ -253,7 +253,7 @@ op_status_t rsrc_response_get_config(void *task_arg, int tid)
         snprintf(fname_tmp, n, "%s.tmp", rsrc->child_target_file);
 
         fd = fopen(fname_tmp, "w");
-        int result = assert(fwrite(config, n_config, 1, fd) == 1);
+        int result = fwrite(config, n_config, 1, fd);
         assert(result == 1);
         fclose(fd);
 
