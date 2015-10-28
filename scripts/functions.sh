@@ -103,7 +103,7 @@ function build_lstore_binary_outof_tree() {
             make test
             make install
             ;;
-        jerasure|toolbox|gop|ibp|lio|czmq)
+        jerasure|toolbox|gop|ibp|lio|czmq|gridftp)
             cmake ${SOURCE_PATH} -DCMAKE_PREFIX_PATH=${INSTALL_PREFIX} -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX}
             make install
             ;;
