@@ -416,7 +416,6 @@ op_status_t lio_remove_object_fn(void *arg, int id)
     if (err != OP_STATE_SUCCESS) {
         log_printf(0, "ERROR: removing file: %s err=%d\n", op->src_path, err);
         status = op_failure_status;
-        if (ex_data) free(ex_data);
         return(status);
     }
 
@@ -438,7 +437,7 @@ op_status_t lio_remove_object_fn(void *arg, int id)
         }
 
         //** Clean up
-        if (op->ex != NULL) exp->text.text = NULL;  //** The inital exnode is free() by the TP op
+        if (op->ex != NULL) exp->text.text = NULL;  //** The inital exnode is qfree() by the TP op
         exnode_exchange_destroy(exp);
         exnode_destroy(ex);
     }
