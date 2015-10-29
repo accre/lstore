@@ -23,7 +23,7 @@ gpgcheck=0
 protect=1
 EOF
         yum install -y epel-release
-        yum install -y accre-lio which
+        yum install -y accre-lio accre-gridftp globus-gridftp-server-progs which
         yum clean all
         ;;
     *)
@@ -34,8 +34,9 @@ esac
 # TODO: Need a better smoke test. If you don't know you have a server up, there
 #       there isn't much that can be done. At the very least --version needs to
 #       be added to the command line args for the tools.
-note "$(ls -l /usr/lib64)"
 note "Attempting ldd against lio_ls."
 ldd $(which lio_ls)
 note "Attempting to execute lio_ls."
 lio_ls && [ $? -eq 1 ]
+note "Loading gridftp plugin."
+globus-gridftp-server -dsi lfs -debug -version -log-level all

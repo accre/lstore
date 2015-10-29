@@ -54,7 +54,8 @@ note "Beginning packaging at $(date) for $PACKAGE_SUBDIR"
 #   configurable in the future, the order of packages matters.
 #
 cd $PACKAGE_BASE/build
-for PACKAGE in apr-accre apr-util-accre jerasure czmq toolbox gop ibp lio; do
+for PACKAGE in apr-accre apr-util-accre jerasure czmq \
+               toolbox gop ibp lio gridftp; do
     if [ "$PACKAGE" == "czmq" ];then
         if (ldconfig -p | grep -q libczmq); then
                 echo "libczmq.so is available: skipping czmq package build.";
@@ -75,9 +76,10 @@ for PACKAGE in apr-accre apr-util-accre jerasure czmq toolbox gop ibp lio; do
     #       if the CURRENT working directory is dirty...
     # NOTE: The git update-index is needed since the host and container git
     #       versions might be different.
-    TAG_NAME=$(cd $SOURCE_BASE/$PACKAGE/ && git update-index -q --refresh && \
-               git describe --abbrev=32 --dirty="-dev" --candidates=100 \
-               --match 'ACCRE_*' | sed 's,^ACCRE_,,')
+    TAG_NAME=$(cd $SOURCE_BASE/$PACKAGE/ &&
+                ( git update-index -q --refresh &>/dev/null || true ) && \
+                git describe --abbrev=32 --dirty="-dev" --candidates=100 \
+                    --match 'ACCRE_*' | sed 's,^ACCRE_,,')
     (cd $SOURCE_BASE/$PACKAGE/ && note "$(git status)")
     PACKAGE_REPO=$REPO_BASE/$PACKAGE/$TAG_NAME
     if [ ! -e $PACKAGE_REPO ]; then

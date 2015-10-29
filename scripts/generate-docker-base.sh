@@ -67,6 +67,7 @@ for DISTRO in "${DISTROS[@]}"; do
                                     czmq-devel
                                     expat-devel
                                     fuse-devel
+                                    globus-gridftp-server-devel
                                     openssl-devel
                                     tar
                                     wget

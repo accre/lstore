@@ -8,12 +8,13 @@ LSTORE_RELEASE_BASE=$(cd $(dirname "${LSTORE_SCRIPT_BASE}") && pwd)
 LSTORE_TARBALL_ROOT=$LSTORE_RELEASE_BASE/tarballs/
 LSTORE_HEAD_BRANCHES="apr-accre=accre-fork
                        apr-util-accre=accre-fork
+                       czmq=master
+                       gop=master
+                       gridftp=master
+                       ibp=master
                        jerasure=v1
                        lio=master
-                       gop=master
-                       toolbox=master
-                       ibp=master
-                       czmq=master"
+                       toolbox=master"
 
 #
 # Informational messages
@@ -102,7 +103,7 @@ function build_lstore_binary_outof_tree() {
             make test
             make install
             ;;
-        jerasure|toolbox|gop|ibp|lio|czmq)
+        jerasure|toolbox|gop|ibp|lio|czmq|gridftp)
             cmake ${SOURCE_PATH} -DCMAKE_PREFIX_PATH=${INSTALL_PREFIX} -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX}
             make install
             ;;
@@ -149,7 +150,7 @@ function build_lstore_package() {
         czmq)
             eval $NATIVE_PKG
             ;;
-        jerasure|lio|ibp|gop|toolbox)
+        jerasure|lio|ibp|gop|toolbox|gridftp)
             # This is gross, but works for now..
             set -x
             cmake -DWANT_PACKAGE:BOOL=ON "-DLSTORE_PROJECT_VERSION=$TAG_NAME"\
