@@ -26,6 +26,17 @@ EOF
         yum install -y accre-lio accre-gridftp globus-gridftp-server-progs which
         yum clean all
         ;;
+    ubuntu-*|debian-*)
+        note "Attempting lstore install from local apt repository."
+        REPO_BASE=$LSTORE_RELEASE_BASE/repo/$PARENT/$RELEASE/
+        cp $REPO_BASE/lstore-local-repo.list /etc/apt/sources.list.d/
+        apt-get update
+        apt-get install -y --force-yes accre-lio accre-gridftp-lfs globus-gridftp-server-progs \
+            accre-toolbox accre-gop accre-ibp libapr-accre1 libapr-accre-util1 accre-jerasure czmq
+	# --force-yes needed to install unsigned / self-signed packages 
+        # The second line of packages should be pulled in as deps and unnecessary except that
+        # CPack support for automatically configuring .deb dependencies is poor
+        ;;
     *)
         fatal "Unknown distro ${DISTRO}."
         ;;

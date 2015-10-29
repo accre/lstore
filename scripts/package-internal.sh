@@ -80,6 +80,7 @@ for PACKAGE in apr-accre apr-util-accre jerasure czmq \
                 ( git update-index -q --refresh &>/dev/null || true ) && \
                 git describe --abbrev=32 --dirty="-dev" --candidates=100 \
                     --match 'ACCRE_*' | sed 's,^ACCRE_,,')
+    TAG_NAME=${TAG_NAME:-"0.0.0-undefined-tag"}
     (cd $SOURCE_BASE/$PACKAGE/ && note "$(git status)")
     PACKAGE_REPO=$REPO_BASE/$PACKAGE/$TAG_NAME
     if [ ! -e $PACKAGE_REPO ]; then
