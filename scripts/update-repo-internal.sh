@@ -27,12 +27,6 @@ case $PARENT in
             xargs -I{} cp {} repo/$PARENT/$RELEASE/packages
         pushd repo/$PARENT/$RELEASE/
         dpkg-scanpackages packages | gzip >packages/Packages.gz
-        cat >lstore-local-repo.list \
-<<EOF
-# Update the path if needed, stick this /etc/apt/sources.list.d/, and apt-get udpate
-deb file:///$(pwd)/  packages/
-EOF
-	# note that the trailing slash after 'packages' is crucial otherwise that field is treated as a distro release name
         popd
         exit 0
         ;;

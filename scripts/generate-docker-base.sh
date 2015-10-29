@@ -83,11 +83,9 @@ for DISTRO in "${DISTROS[@]}"; do
                                     debhelper
                                     dpkg-dev
                                     git-core
-                                    libexpat1
                                     libexpat1-dev
                                     libfuse-dev
                                     libglobus-gridftp-server-dev
-                                    libkrb5-dev
                                     libssl-dev
                                     libz-dev
                                     libzmq3-dev
