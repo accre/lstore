@@ -99,4 +99,4 @@ for PACKAGE in apr-accre apr-util-accre jerasure czmq toolbox gop ibp lio; do
     popd 
 done
 
-note "Done! The new packages can be found in ./repo/$PACKAGE_SUBDIR"
+note "Done! The new packages can be found in ./package/$PACKAGE_SUBDIR"
