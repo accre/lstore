@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -eu 
+set -eu
 ABSOLUTE_PATH=$(cd `dirname "${BASH_SOURCE[0]}"` && pwd)
 source $ABSOLUTE_PATH/functions.sh
 
@@ -16,10 +16,13 @@ RELEASE="${DISTRO##*-}"
 case $PARENT in
     centos)
         mkdir -p repo/$PARENT/$RELEASE/packages
-        find package/$DISTRO/ -name *.rpm | \
+        find package/$DISTRO/ -name *.rpm | grep -v lstore-release.rpm | \
             xargs -I{} cp {} repo/$PARENT/$RELEASE/packages
         createrepo --retain-old-md 10 --deltas --num-deltas 5 -x '*-dev.rpm' \
                     repo/$PARENT/$RELEASE/
+        if [[ $RELEASE -eq 6 && -e package/$DISTRO/lstore-release.rpm ]]; then
+            cp package/$DISTRO/lstore-release.rpm repo/$PARENT
+        fi
         ;;
     ubuntu|debian)
         mkdir -p repo/$PARENT/$RELEASE/packages

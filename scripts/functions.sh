@@ -107,6 +107,9 @@ function build_lstore_binary_outof_tree() {
             cmake ${SOURCE_PATH} -DCMAKE_PREFIX_PATH=${INSTALL_PREFIX} -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX}
             make install
             ;;
+        release)
+            :
+            ;;
         *)
             fatal "Invalid package: $TO_BUILD"
             ;;
@@ -125,16 +128,19 @@ function build_lstore_package() {
             CPACK_ARG=""
             CMAKE_ARG=""
             NATIVE_PKG=""
+            PKG_TYPE=""
             ;;
         ubuntu-*|debian-*)
             CPACK_ARG="-G DEB"
             CMAKE_ARG="-DCPACK_GENERATOR=DEB -DCPACK_SOURCE_GENERATOR=DEB"
             NATIVE_PKG="cp -ra $SOURCE_BASE/$PACKAGE/ ./ ; pushd $PACKAGE ; dpkg-buildpackage -uc -us ; popd"
+            PKG_TYPE="deb"
             ;;
         centos-*)
             CPACK_ARG="-G RPM"
             CMAKE_ARG="-DCPACK_GENERATOR=RPM -DCPACK_SOURCE_GENERATOR=RPM"
             NATIVE_PKG=""
+            PKG_TYPE="rpm"
             ;;
         *)
             fatal "Unexpected distro name $DISTRO_NAME"
@@ -157,6 +163,17 @@ function build_lstore_package() {
                     $CMAKE_ARG --debug --verbose $SOURCE_PATH
             set +x
             make package
+            ;;
+        release)
+            case $PKG_TYPE in
+                rpm)
+                    cmake $CMAKE_ARG --debug --verbose $SOURCE_PATH/rpm-release
+                    make package
+                    ;;
+                *)
+                    :
+                    ;;
+            esac
             ;;
         *)
             fatal "Invalid package: $TO_BUILD"
