@@ -6,13 +6,13 @@
 LSTORE_SCRIPT_BASE=$(cd $(dirname "${BASH_SOURCE[0]}") && pwd)
 LSTORE_RELEASE_BASE=$(cd $(dirname "${LSTORE_SCRIPT_BASE}") && pwd)
 LSTORE_TARBALL_ROOT=$LSTORE_RELEASE_BASE/tarballs/
-LSTORE_HEAD_BRANCHES="apr-accre=accre-fork
-                       apr-util-accre=accre-fork
+LSTORE_HEAD_BRANCHES="apr-accre=master
+                       apr-util-accre=master
                        czmq=master
                        gop=master
                        gridftp=master
                        ibp=master
-                       jerasure=v1
+                       jerasure=master
                        lio=master
                        toolbox=master"
 

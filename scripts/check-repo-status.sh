@@ -10,13 +10,13 @@ cd $LSTORE_RELEASE_BASE
 statuses+=("lstore-release $(get_repo_status .)")
 
 cd source
-for REPO in apr-accre apr-util-accre jerasure toolbox gop ibp lio; do
+for REPO in apr-accre apr-util-accre jerasure czmq toolbox gop ibp lio gridftp; do
     RET="$(get_repo_status $REPO)"
     GIT=${RET% *}
     CLEAN=${RET##* }
     statuses+=("$REPO $GIT $CLEAN")
 done
 
-for STATUS in "${statuses[@]}"; do
+(for STATUS in "${statuses[@]}"; do
     echo $STATUS
-done
+done) | column -t -s ' ' | sort
