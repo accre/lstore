@@ -1,3 +1,9 @@
+# **[0.3.0](https://github.com/accre/lstore-lio/tree/ACCRE_0.3.0)** (2015-10-29)
+
+## Changes ([full changelog](https://github.com/accre/lstore-lio/compare/ACCRE_0.1.1...ACCRE_0.3.0))
+*  1ec778a Sync common cmake files
+
+
 # **[0.1.1](https://github.com/accre/lstore-lio/tree/ACCRE_0.1.1)** (2015-10-28)
 
 ## Changes ([full changelog](https://github.com/accre/lstore-lio/compare/ACCRE_0.1.0...ACCRE_0.1.1))
