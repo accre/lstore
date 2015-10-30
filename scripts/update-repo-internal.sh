@@ -22,7 +22,12 @@ case $PARENT in
                     repo/$PARENT/$RELEASE/
         ;;
     ubuntu|debian)
-        note "Not currently supported"
+        mkdir -p repo/$PARENT/$RELEASE/packages
+        find package/$DISTRO/ -name *.deb | \
+            xargs -I{} cp {} repo/$PARENT/$RELEASE/packages
+        pushd repo/$PARENT/$RELEASE/
+        dpkg-scanpackages packages | gzip >packages/Packages.gz
+        popd
         exit 0
         ;;
     *)
