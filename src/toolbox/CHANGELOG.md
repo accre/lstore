@@ -1,3 +1,9 @@
+# **[0.3.0](https://github.com/accre/lstore-toolbox/tree/ACCRE_0.3.0)** (2015-10-29)
+
+## Changes ([full changelog](https://github.com/accre/lstore-toolbox/compare/ACCRE_0.1.0...ACCRE_0.3.0))
+*  a8adab7 Sync common cmake files
+
+
 # **[0.1.0](https://github.com/accre/lstore-toolbox/tree/ACCRE_0.1.0)** (2015-10-28)
 
 ## Changes ([full changelog](https://github.com/accre/lstore-toolbox/compare/ACCRE_0.0.3...ACCRE_0.1.0))
