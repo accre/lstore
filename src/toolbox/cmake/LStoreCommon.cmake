@@ -104,7 +104,14 @@ configure_file(${CMAKE_SOURCE_DIR}/${LSTORE_PROJECT_NAME}_version.c.in
 set(LSTORE_PROJECT_OBJS ${LSTORE_PROJECT_OBJS} ${LSTORE_PROJECT_NAME}_version.c)
 
 add_library(library SHARED ${LSTORE_PROJECT_OBJS})
-set_target_properties(library PROPERTIES OUTPUT_NAME "${LSTORE_PROJECT_NAME}")
+
+# Possibly override the library filename
+if(DEFINED LSTORE_LIBRARY_NAME)
+    set_target_properties(library PROPERTIES OUTPUT_NAME "${LSTORE_LIBRARY_NAME}")
+else()
+    set_target_properties(library PROPERTIES OUTPUT_NAME "${LSTORE_PROJECT_NAME}")
+endif(DEFINED LSTORE_LIBRARY_NAME)
+
 set_target_properties(library PROPERTIES CLEAN_DIRECT_OUTPUT 1)
 if(WANT_STATIC)
     message(STATUS "Building a static library")
@@ -112,6 +119,11 @@ if(WANT_STATIC)
     set_target_properties(library-static PROPERTIES OUTPUT_NAME "${LSTORE_PROJECT_NAME}")
     set_target_properties(library-static PROPERTIES CLEAN_DIRECT_OUTPUT 1)
     SET(library_lib library-static)
+    if(DEFINED LSTORE_LIBRARY_NAME)
+        set_target_properties(library-static PROPERTIES OUTPUT_NAME "${LSTORE_LIBRARY_NAME}")
+    else()
+        set_target_properties(library-static PROPERTIES OUTPUT_NAME "${LSTORE_PROJECT_NAME}")
+    endif(DEFINED LSTORE_LIBRARY_NAME)
 else()
     message(STATUS "NOT building a static library")
     SET(library_lib library)
