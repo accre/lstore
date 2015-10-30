@@ -1,3 +1,9 @@
+# **[0.3.0](https://github.com/accre/lstore-ibp/tree/ACCRE_0.3.0)** (2015-10-29)
+
+## Changes ([full changelog](https://github.com/accre/lstore-ibp/compare/ACCRE_0.1.0...ACCRE_0.3.0))
+*  2ac95d5 Sync common cmake files
+
+
 # **[0.1.0](https://github.com/accre/lstore-ibp/tree/ACCRE_0.1.0)** (2015-10-28)
 
 ## Changes ([full changelog](https://github.com/accre/lstore-ibp/compare/ACCRE_0.0.2...ACCRE_0.1.0))
