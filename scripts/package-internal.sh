@@ -95,7 +95,7 @@ for PACKAGE in apr-accre apr-util-accre jerasure czmq \
             cp *.${PACKAGE_SUFFIX} $PACKAGE_REPO
             chmod 666 $PACKAGE_REPO/*
             # Update lstore-release if we built it
-            if test -n "$(shopt -s nullglob; echo lstore-release*.rpm)"; then
+            if test -n "$(shopt -s nullglob; set +u; echo lstore-release*.rpm)"; then
                 cp lstore-release*.rpm $REPO_BASE/lstore-release.rpm
             fi
         )

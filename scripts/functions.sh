@@ -167,7 +167,8 @@ function build_lstore_package() {
         release)
             case $PKG_TYPE in
                 rpm)
-                    cmake $CMAKE_ARG --debug --verbose $SOURCE_PATH/rpm-release
+                    cmake $CMAKE_ARG --debug --verbose \
+                        -DCMAKE_INSTALL_PREFIX="/" $SOURCE_PATH/rpm-release
                     make package
                     ;;
                 *)
