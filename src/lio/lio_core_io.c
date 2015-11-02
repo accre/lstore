@@ -483,8 +483,6 @@ op_status_t lio_myopen_fn(void *arg, int id)
     _lio_add_file_handle(lc, fh);
     lio_unlock(lc);  //** Now we can release the lock
 
-    exnode_exchange_destroy(exp);  //** Clean up
-
     fd->fh = fh;
     *op->fd = fd;
 
@@ -500,6 +498,8 @@ op_status_t lio_myopen_fn(void *arg, int id)
             segment_unlock(fh->seg);
         }
     }
+
+    exnode_exchange_destroy(exp);  //** Clean up
 
     return(status);
 
