@@ -506,7 +506,6 @@ op_status_t lio_myopen_fn(void *arg, int id)
 cleanup:  //** We only make it here on a failure
     log_printf(1, "ERROR in cleanup! fname=%s\n", op->path);
 
-    if (exnode != NULL) free(exnode);
     exnode_destroy(fh->ex);
     exnode_exchange_destroy(exp);
     free(fd->path);
