@@ -1243,8 +1243,8 @@ int main(int argc, char **argv)
     init_opque_system();
 
     apr_pool_create(&mpool, NULL);
-    { int result = apr_thread_mutex_create(&lock, APR_THREAD_MUTEX_DEFAULT, mpool); assert(result == APR_SUCCESS); }
-    { int result = apr_thread_cond_create(&cond, mpool); assert(result == APR_SUCCESS); }
+    assert_result(apr_thread_mutex_create(&lock, APR_THREAD_MUTEX_DEFAULT, mpool), APR_SUCCESS);
+    assert_result(apr_thread_cond_create(&cond, mpool), APR_SUCCESS);
 
     //** Make the pipe for controlling the server
     ctx = mq_socket_context_new();

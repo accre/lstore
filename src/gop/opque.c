@@ -30,6 +30,7 @@ http://www.accre.vanderbilt.edu
 #define _log_module_index 128
 
 #include <assert.h>
+#include "assert_result.h"
 #include <apr_thread_mutex.h>
 #include <apr_thread_cond.h>
 #include <stdlib.h>
@@ -82,8 +83,8 @@ void *gop_control_new(void *arg, int size)
     type_malloc_clear(shelf, gop_control_t, size);
 
     for (i=0; i<size; i++) {
-        { int result = apr_thread_mutex_create(&(shelf[i].lock), APR_THREAD_MUTEX_DEFAULT,_opque_pool); assert(result == APR_SUCCESS); }
-        { int result = apr_thread_cond_create(&(shelf[i].cond), _opque_pool); assert(result == APR_SUCCESS); }
+        assert_result(apr_thread_mutex_create(&(shelf[i].lock), APR_THREAD_MUTEX_DEFAULT,_opque_pool), APR_SUCCESS);
+        assert_result(apr_thread_cond_create(&(shelf[i].cond), _opque_pool), APR_SUCCESS);
     }
 
     return((void *)shelf);
@@ -115,7 +116,7 @@ void init_opque_system()
 {
     log_printf(15, "init_opque_system: counter=%d\n", _opque_counter);
     if (atomic_inc(_opque_counter) == 0) {   //** Only init if needed
-        { int result = apr_pool_create(&_opque_pool, NULL); assert(result == APR_SUCCESS); }
+        assert_result(apr_pool_create(&_opque_pool, NULL), APR_SUCCESS);
         _gop_control = new_pigeon_coop("gop_control", 50, sizeof(gop_control_t), NULL, gop_control_new, gop_control_free);
         gop_dummy_init();
         atomic_init();
