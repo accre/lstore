@@ -44,6 +44,7 @@ http://www.accre.vanderbilt.edu
 #include <stdlib.h>
 #include <time.h>
 #include <assert.h>
+#include "assert_result.h"
 #include <signal.h>
 #include <errno.h>
 #include <fcntl.h>

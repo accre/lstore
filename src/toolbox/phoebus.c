@@ -35,6 +35,7 @@ http://www.accre.vanderbilt.edu
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
+#include "assert_result.h"
 #include "log.h"
 #include "phoebus.h"
 #include "errno.h"

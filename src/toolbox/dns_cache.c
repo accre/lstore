@@ -36,6 +36,7 @@ http://www.accre.vanderbilt.edu
 #define _log_module_index 115
 
 #include <assert.h>
+#include "assert_result.h"
 #include <limits.h>
 #include <stdlib.h>
 #include <string.h>
@@ -79,8 +80,8 @@ void wipe_entries(DNS_cache_t *cache)
 {
     if (cache->mpool != NULL) apr_pool_destroy(cache->mpool);
 
-    { int result = apr_pool_create(&(cache->mpool), NULL); assert(result == APR_SUCCESS); }
-    { int result = (cache->table = apr_hash_make(cache->mpool)); assert(result != NULL); }
+    assert_result(apr_pool_create(&(cache->mpool), NULL), APR_SUCCESS);
+    cache->table = apr_hash_make(cache->mpool); assert(cache->table != NULL);
 
     cache->restart_time = apr_time_now() + apr_time_make(600, 0);
 }
@@ -181,7 +182,7 @@ void dns_cache_init(int size)
 
     _cache->size = size;
     _cache->mpool = NULL;
-    { int result = apr_pool_create(&(_cache->lockpool), NULL); assert(result == APR_SUCCESS); }
+    assert_result(apr_pool_create(&(_cache->lockpool), NULL), APR_SUCCESS);
     apr_thread_mutex_create(&(_cache->lock), APR_THREAD_MUTEX_DEFAULT,_cache->lockpool);
 
     wipe_entries(_cache);

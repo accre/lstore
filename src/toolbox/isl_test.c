@@ -32,6 +32,7 @@ http://www.accre.vanderbilt.edu
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
+#include "assert_result.h"
 #include "log.h"
 #include "skiplist.h"
 #include "interval_skiplist.h"
@@ -71,7 +72,7 @@ int main(int argc, char **argv)
     n_int_checks = atol(argv[i]);
     i++;
 
-    { int result = apr_initialize(); assert(result == APR_SUCCESS); }
+    assert_result(apr_initialize(), APR_SUCCESS);
     atomic_init();
 
     isl = create_interval_skiplist_full(l_max, p, &skiplist_compare_int, NULL, NULL, NULL);

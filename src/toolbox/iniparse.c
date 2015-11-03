@@ -5,6 +5,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <assert.h>
+#include "assert_result.h"
 #include "fmttypes.h"
 #include "type_malloc.h"
 #include "iniparse.h"

@@ -34,7 +34,8 @@ http://www.accre.vanderbilt.edu
 #ifndef __TYPE_MALLOC_H_
 #define __TYPE_MALLOC_H_
 
-#include "assert.h"
+#include <assert.h>
+#include "assert_result.h"
 #include "stdlib.h"
 #include "string.h"
 

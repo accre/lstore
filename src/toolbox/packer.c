@@ -37,6 +37,7 @@ http://www.accre.vanderbilt.edu
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
+#include "assert_result.h"
 #include "packer.h"
 #include "type_malloc.h"
 #include "log.h"
@@ -227,7 +228,7 @@ void pack_init_zlib(pack_t *pack, int type, int mode, unsigned char *buffer, int
         p->z.zalloc = Z_NULL;
         p->z.zfree = Z_NULL;
         p->z.opaque = Z_NULL;
-        { int result = inflateInit(&(p->z)); assert(result == Z_OK); }
+        assert_result(inflateInit(&(p->z)), Z_OK);
         p->z.avail_in = bufsize;
         p->z.next_in = buffer;
         p->z.avail_out = 0;
@@ -239,7 +240,7 @@ void pack_init_zlib(pack_t *pack, int type, int mode, unsigned char *buffer, int
         p->z.zalloc = Z_NULL;
         p->z.zfree = Z_NULL;
         p->z.opaque = Z_NULL;
-        { int result = deflateInit(&(p->z), Z_DEFAULT_COMPRESSION); assert(result == Z_OK); }
+        assert_result(deflateInit(&(p->z), Z_DEFAULT_COMPRESSION), Z_OK);
         p->z.avail_in = 0;
         p->z.next_in = Z_NULL;
         p->z.avail_out = bufsize;

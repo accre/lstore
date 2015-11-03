@@ -41,6 +41,7 @@ http://www.accre.vanderbilt.edu
 #include <pthread.h>
 #include <string.h>
 #include <assert.h>
+#include "assert_result.h"
 #include <apr_pools.h>
 #include <apr_thread_mutex.h>
 

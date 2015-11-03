@@ -45,7 +45,7 @@ http://www.accre.vanderbilt.edu
   }
 
 #define thread_create_assert(thread, attr, thread_fn, arg, mpool) \
-  { int result = apr_thread_create(thread, attr, thread_fn, arg, mpool); assert(result == APR_SUCCESS); }
+  assert_result(apr_thread_create(thread, attr, thread_fn, arg, mpool), APR_SUCCESS);
 
 #ifdef __cplusplus
 extern "C" {

@@ -40,7 +40,8 @@ set(LSTORE_PROJECT_INCLUDES
                 network.h pigeon_hole.h stack.h net_sock.h pigeon_coop.h
                 skiplist.h toolbox_config.h phoebus.h random.h string_token.h
                 type_malloc.h transfer_buffer.h packer.h append_printf.h
-                chksum.h varint.h atomic_counter.h dns_cache.h iniparse.h log.h)
+                chksum.h varint.h atomic_counter.h dns_cache.h iniparse.h
+                log.h assert_result.h)
 set(LSTORE_PROJECT_EXECUTABLES sl_test isl_test varint_test)
 
 # Common functionality is stored here

@@ -31,6 +31,7 @@ http://www.accre.vanderbilt.edu
 
 #include <stdlib.h>
 #include <assert.h>
+#include "assert_result.h"
 #include "log.h"
 #include "skiplist.h"
 
@@ -245,8 +246,8 @@ skiplist_t *create_skiplist_full(int maxlevels, double p, int allow_dups,
     skiplist_t *sl = (skiplist_t *)malloc(sizeof(skiplist_t));
     assert(sl != NULL);
 
-    { int result = apr_pool_create(&(sl->pool), NULL); assert(result == APR_SUCCESS); }
-    { int result = apr_thread_mutex_create(&(sl->lock), APR_THREAD_MUTEX_DEFAULT, sl->pool); assert(result == APR_SUCCESS); }
+    assert_result(apr_pool_create(&(sl->pool), NULL), APR_SUCCESS);
+    assert_result(apr_thread_mutex_create(&(sl->lock), APR_THREAD_MUTEX_DEFAULT, sl->pool), APR_SUCCESS);
 
     sl->n_keys = 0;
     sl->n_ele = 0;

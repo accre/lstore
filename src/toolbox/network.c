@@ -36,6 +36,7 @@ http://www.accre.vanderbilt.edu
 #include <stdlib.h>
 #include <time.h>
 #include <assert.h>
+#include "assert_result.h"
 #include <signal.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -611,13 +612,13 @@ Network_t *network_init()
     Network_t *net;
 
     //**** Allocate space for the data structures ***
-    {net = (Network_t *)malloc(sizeof(Network_t)); assert(net != NULL); }
+    net = (Network_t *)malloc(sizeof(Network_t)); assert(net != NULL);
 
 
     net->used_ports = 0;
     net->accept_pending = 0;
     net->monitor_index = 0;
-    { int result = apr_pool_create(&(net->mpool), NULL); assert(result == APR_SUCCESS); }
+    assert_result(apr_pool_create(&(net->mpool), NULL), APR_SUCCESS);
     apr_thread_mutex_create(&(net->ns_lock), APR_THREAD_MUTEX_DEFAULT,net->mpool);
     apr_thread_cond_create(&(net->cond), net->mpool);
 
@@ -697,7 +698,7 @@ NetStream_t *new_netstream()
         abort();
     }
 
-    { int result = apr_pool_create(&(ns->mpool), NULL); assert(result == APR_SUCCESS); }
+    assert_result(apr_pool_create(&(ns->mpool), NULL), APR_SUCCESS);
     apr_thread_mutex_create(&(ns->read_lock), APR_THREAD_MUTEX_DEFAULT,ns->mpool);
     apr_thread_mutex_create(&(ns->write_lock), APR_THREAD_MUTEX_DEFAULT,ns->mpool);
 
