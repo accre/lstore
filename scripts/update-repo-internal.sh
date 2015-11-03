@@ -28,8 +28,8 @@ case $PARENT in
         mkdir -p repo/$PARENT/$RELEASE/packages
         find package/$DISTRO/ -name *.deb | \
             xargs -I{} cp {} repo/$PARENT/$RELEASE/packages
-        pushd repo/$PARENT/$RELEASE/
-        dpkg-scanpackages packages | gzip >packages/Packages.gz
+        pushd repo/$PARENT/$RELEASE/packages
+        dpkg-scanpackages ./ | gzip >Packages.gz
         popd
         exit 0
         ;;

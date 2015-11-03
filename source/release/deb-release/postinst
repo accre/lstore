@@ -1,0 +1,22 @@
+#!/bin/sh
+
+set -e
+
+SUPPORTED="debian-jessie;ubuntu-trusty;ubuntu-vivid;ubuntu-wily"
+
+if [ "$1" = "configure" ]; then
+    dist=$(lsb_release -is 2> /dev/null | tr '[A-Z]' '[a-z]')
+    rel=$(lsb_release -cs 2> /dev/null | tr '[A-Z]' '[a-z]')
+
+    echo "Discovered Distro: $dist Release: $rel"
+
+    if echo $SUPPORTED | grep -q "$dist-$rel"; then
+        sed -e "s/@DIST@/$dist/" -e "s/@RELEASE@/$rel/" </usr/share/doc/lstore-repo/lstore-repo.list \
+            >/etc/apt/sources.list.d/lstore-repo.list
+        echo "Please run 'apt-get update' to access packages from this repository"
+    else
+        echo "Your distro and/or distro release is not supported by this repository at this time"
+        exit 1
+    fi
+fi
+

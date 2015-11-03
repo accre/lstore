@@ -171,6 +171,11 @@ function build_lstore_package() {
                         -DCMAKE_INSTALL_PREFIX="/" $SOURCE_PATH/rpm-release
                     make package
                     ;;
+                deb)
+                    cmake $CMAKE_ARG --debug --verbose \
+                        -DCMAKE_INSTALL_PREFIX="/" $SOURCE_PATH/deb-release
+                    make package
+                    ;;
                 *)
                     :
                     ;;

@@ -1,0 +1,3 @@
+Convenience package for adding the ACCRE LStore repository
+ This package installs the apt repository descriptor and GPG key for the
+ http://www.accre.vanderbilt.edu/repos/lstore/ package repository.
