@@ -30,6 +30,7 @@ http://www.accre.vanderbilt.edu
 #define _log_module_index 208
 
 #include <assert.h>
+#include "assert_result.h"
 #include <apr_signal.h>
 #include "exnode.h"
 #include "log.h"
@@ -144,7 +145,7 @@ void signal_shutdown(int sig)
 void install_signal_handler()
 {
     //** Make the APR stuff
-    { int result = apr_pool_create(&shutdown_mpool, NULL); assert(result == APR_SUCCESS); }
+    assert_result(apr_pool_create(&shutdown_mpool, NULL), APR_SUCCESS);
     apr_thread_mutex_create(&shutdown_lock, APR_THREAD_MUTEX_DEFAULT, shutdown_mpool);
 
     //***Attach the signal handler for shutdown
@@ -439,11 +440,11 @@ apr_hash_t *load_pool_config(char *fname, apr_pool_t *mpool, Stack_t *my_pool_li
     pool_list = (my_pool_list == NULL) ? new_stack() : my_pool_list;
 
     //** Load the pool config
-    {pfd = inip_read(fname); assert(pfd != NULL); }
+    pfd = inip_read(fname); assert(pfd != NULL);
 
     //** Do the same for RID config converting it to something useful
-    {rid_config = rs_get_rid_config(lio_gc->rs); assert(rid_config != NULL); }
-    {rfd = inip_read_text(rid_config); assert(rfd != NULL); }
+    rid_config = rs_get_rid_config(lio_gc->rs); assert(rid_config != NULL);
+    rfd = inip_read_text(rid_config); assert(rfd != NULL);
 
     //** Load the RID config into a usable table for converting to pools
     rid_table = prep_rid_table(rfd, mpool);
@@ -524,8 +525,8 @@ apr_hash_t *rebalance_pool(apr_pool_t *mpool, Stack_t *my_pool_list, char *key_r
     log_printf(5, "tstr=%s\n", tstr);
 
     //** Process the RID config converting it to something useful
-    {rid_config = rs_get_rid_config(lio_gc->rs); assert(rid_config != NULL); }
-    {rfd = inip_read_text(rid_config); assert(rfd != NULL); }
+    rid_config = rs_get_rid_config(lio_gc->rs); assert(rid_config != NULL);
+    rfd = inip_read_text(rid_config); assert(rfd != NULL);
 
     //** Load the RID config into a usable table for converting to pools
     rid_table = prep_rid_table(rfd, mpool);
@@ -538,7 +539,7 @@ apr_hash_t *rebalance_pool(apr_pool_t *mpool, Stack_t *my_pool_list, char *key_r
                  "_unspecified\n", tstr);
 
         //** and load it
-        {pfd = inip_read_text(pool_text); assert(pfd != NULL); }
+        pfd = inip_read_text(pool_text); assert(pfd != NULL);
         load_pool(pool_list, "all", pfd, rfd, rid_table, inip_first_group(pfd), &unspecified);
         inip_destroy(pfd);
         add_wildcard(unspecified, rid_table, NULL, NULL);  //** This populates the unspecified wildcard
@@ -561,7 +562,7 @@ apr_hash_t *rebalance_pool(apr_pool_t *mpool, Stack_t *my_pool_list, char *key_r
                                  "%s=%s\n", value, tstr, key_rebalance, value);
 
                         //** and load it
-                        {pfd = inip_read_text(pool_text); assert(pfd != NULL); }
+                        pfd = inip_read_text(pool_text); assert(pfd != NULL);
                         pe = load_pool(pool_list, value, pfd, rfd, rid_table, inip_first_group(pfd), &unspecified);
                         inip_destroy(pfd);
 
@@ -1370,7 +1371,7 @@ int main(int argc, char **argv)
 
     //** See if we need to load the pool config for a rebalance
     if ((pool_cfg != NULL) || (key_rebalance != NULL)) {
-        { int result = apr_pool_create(&rid_mpool, NULL); assert(result == APR_SUCCESS); }
+        assert_result(apr_pool_create(&rid_mpool, NULL), APR_SUCCESS);
         apr_thread_mutex_create(&rid_lock, APR_THREAD_MUTEX_DEFAULT, rid_mpool);
         rid_changes = (pool_cfg != NULL) ? load_pool_config(pool_cfg, rid_mpool, pools) : rebalance_pool(rid_mpool, pools, key_rebalance, rtol, rtol_mode);
         if (print_pools) {
@@ -1394,7 +1395,7 @@ int main(int argc, char **argv)
 
     type_malloc_clear(w, inspect_t, lio_parallel_task_count);
     seg_index = list_create(0, &list_string_compare, NULL, list_simple_free, NULL);
-    { int result = apr_pool_create(&mpool, NULL); assert(result == APR_SUCCESS); }
+    assert_result(apr_pool_create(&mpool, NULL), APR_SUCCESS);
     apr_thread_mutex_create(&lock, APR_THREAD_MUTEX_DEFAULT, mpool);
 
     q = new_opque();

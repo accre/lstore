@@ -33,6 +33,7 @@ http://www.accre.vanderbilt.edu
 #include <sys/stat.h>
 #include <unistd.h>
 #include <assert.h>
+#include "assert_result.h"
 #include "exnode.h"
 #include "log.h"
 #include "iniparse.h"

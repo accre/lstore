@@ -31,6 +31,7 @@ http://www.accre.vanderbilt.edu
 
 
 #include <assert.h>
+#include "assert_result.h"
 #include "lio_fuse.h"
 #include "exnode.h"
 #include "log.h"

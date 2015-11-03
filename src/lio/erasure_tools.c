@@ -33,6 +33,7 @@ http://www.accre.vanderbilt.edu
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
+#include "assert_result.h"
 #include <jerasure/cauchy.h>
 #include <jerasure/liberation.h>
 #include <jerasure/reed_sol.h>

@@ -30,6 +30,7 @@ http://www.accre.vanderbilt.edu
 #define _log_module_index 171
 
 #include <assert.h>
+#include "assert_result.h"
 #include <math.h>
 #include <apr_time.h>
 

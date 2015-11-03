@@ -28,6 +28,7 @@ http://www.accre.vanderbilt.edu
 */
 
 #include <assert.h>
+#include "assert_result.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>

@@ -32,7 +32,8 @@ http://www.accre.vanderbilt.edu
 #include <string.h>
 #include <stdlib.h>
 #include "ex3_header.h"
-#include "assert.h"
+#include <assert.h>
+#include "assert_result.h"
 #include "list.h"
 
 //*************************************************************************

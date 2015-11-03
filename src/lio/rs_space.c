@@ -35,6 +35,7 @@ http://www.accre.vanderbilt.edu
 #define _log_module_index 217
 
 #include <assert.h>
+#include "assert_result.h"
 #include "resource_service_abstract.h"
 #include "iniparse.h"
 #include "string_token.h"

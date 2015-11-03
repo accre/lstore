@@ -33,6 +33,7 @@ http://www.accre.vanderbilt.edu
 #include <stdio.h>
 #include <string.h>
 #include <assert.h>
+#include "assert_result.h"
 #include <dlfcn.h>
 #include <sys/types.h>
 #include <sys/stat.h>

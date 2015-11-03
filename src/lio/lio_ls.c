@@ -30,6 +30,7 @@ http://www.accre.vanderbilt.edu
 #define _log_module_index 196
 
 #include <assert.h>
+#include "assert_result.h"
 #include "exnode.h"
 #include "log.h"
 #include "iniparse.h"

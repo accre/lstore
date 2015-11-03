@@ -31,6 +31,7 @@ http://www.accre.vanderbilt.edu
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
+#include "assert_result.h"
 
 //******************************************************************************
 //  xor_block - XOR's a block of data

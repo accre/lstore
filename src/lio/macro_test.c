@@ -1,4 +1,5 @@
-#include "assert.h"
+#include <assert.h>
+#include "assert_result.h"
 #include "string.h"
 #include <stdlib.h>
 #include <stdio.h>

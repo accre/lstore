@@ -28,6 +28,7 @@ http://www.accre.vanderbilt.edu
 */
 
 #include <assert.h>
+#include "assert_result.h"
 #include <stdio.h>
 #include "zlib.h"
 #include "type_malloc.h"

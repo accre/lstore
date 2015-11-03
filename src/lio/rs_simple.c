@@ -34,6 +34,7 @@ http://www.accre.vanderbilt.edu
 #define _log_module_index 159
 
 #include <assert.h>
+#include "assert_result.h"
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -1015,7 +1016,7 @@ resource_service_fn_t *rs_simple_create(void *arg, inip_file_t *kf, char *sectio
     //** Create the new RS list
     type_malloc_clear(rss, rs_simple_priv_t, 1);
 
-    { int result = apr_pool_create(&(rss->mpool), NULL); assert(result == APR_SUCCESS); }
+    assert_result(apr_pool_create(&(rss->mpool), NULL), APR_SUCCESS);
     apr_thread_mutex_create(&(rss->lock), APR_THREAD_MUTEX_DEFAULT, rss->mpool);
     apr_thread_mutex_create(&(rss->update_lock), APR_THREAD_MUTEX_DEFAULT, rss->mpool);
     apr_thread_cond_create(&(rss->cond), rss->mpool);
@@ -1055,7 +1056,7 @@ resource_service_fn_t *rs_simple_create(void *arg, inip_file_t *kf, char *sectio
     rss->modify_time = 0;
 
     //** Load the RID table
-    { int result = _rs_simple_refresh(rs); assert(result == 0); }
+    assert_result(_rs_simple_refresh(rs), 0);
 
     //** Launch the check thread
     thread_create_assert(&(rss->check_thread), NULL, rss_check_thread, (void *)rs, rss->mpool);

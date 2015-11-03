@@ -31,6 +31,7 @@ http://www.accre.vanderbilt.edu
 
 
 #include <assert.h>
+#include "assert_result.h"
 #include <apr_signal.h>
 #include "lio_fuse.h"
 #include "exnode.h"
@@ -209,7 +210,7 @@ int main(int argc, char **argv)
     } while ((start_option < i) && (i<argc));
 
     //** Make the APR stuff
-    { int result = apr_pool_create(&mpool, NULL); assert(result == APR_SUCCESS); }
+    assert_result(apr_pool_create(&mpool, NULL), APR_SUCCESS);
     apr_thread_mutex_create(&lock, APR_THREAD_MUTEX_DEFAULT, mpool);
     apr_thread_cond_create(&cond, mpool);
 
