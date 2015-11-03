@@ -29,7 +29,7 @@ case $PARENT in
         find package/$DISTRO/ -name *.deb | \
             xargs -I{} cp {} repo/$PARENT/$RELEASE/packages
         pushd repo/$PARENT/$RELEASE/packages
-        dpkg-scanpackages | gzip >Packages.gz
+        dpkg-scanpackages ./ | gzip >Packages.gz
         popd
         exit 0
         ;;
