@@ -483,8 +483,6 @@ op_status_t lio_myopen_fn(void *arg, int id)
     _lio_add_file_handle(lc, fh);
     lio_unlock(lc);  //** Now we can release the lock
 
-    exnode_exchange_destroy(exp);  //** Clean up
-
     fd->fh = fh;
     *op->fd = fd;
 
@@ -501,12 +499,13 @@ op_status_t lio_myopen_fn(void *arg, int id)
         }
     }
 
+    exnode_exchange_destroy(exp);  //** Clean up
+
     return(status);
 
 cleanup:  //** We only make it here on a failure
     log_printf(1, "ERROR in cleanup! fname=%s\n", op->path);
 
-    if (exnode != NULL) free(exnode);
     exnode_destroy(fh->ex);
     exnode_exchange_destroy(exp);
     free(fd->path);
