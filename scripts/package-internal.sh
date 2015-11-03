@@ -64,6 +64,9 @@ for PACKAGE in apr-accre apr-util-accre jerasure czmq \
                 echo "libczmq.so not found, building a czmq package...";
         fi
     fi
+    if [ "$PACKAGE_SUFFIX" == deb -a $PACKAGE == release ]; then
+        continue
+    fi
 
     (
         umask 000
