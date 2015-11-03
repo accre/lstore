@@ -31,6 +31,7 @@ http://www.accre.vanderbilt.edu
 
 #include <stdlib.h>
 #include <assert.h>
+#include "assert_result.h"
 #include "ibp.h"
 #include "host_portal.h"
 #include "log.h"

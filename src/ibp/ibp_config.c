@@ -30,6 +30,7 @@ http://www.accre.vanderbilt.edu
 #define _log_module_index 129
 
 #include <assert.h>
+#include "assert_result.h"
 #include <apr_pools.h>
 #include <apr_thread_proc.h>
 #include "apr_wrapper.h"
@@ -847,7 +848,7 @@ ibp_context_t *ibp_create_context()
     assert(ic != NULL);
     memset(ic, 0, sizeof(ibp_context_t));
 
-    { int result = apr_wrapper_start(); assert(result == APR_SUCCESS); }
+    assert_result(apr_wrapper_start(), APR_SUCCESS);
 
     if (_ibp_context_count == 0) {
         dns_cache_init(100);
