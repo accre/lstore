@@ -3,3 +3,5 @@
 !.gitignore
 !release
 !release/**
+!vandy-cfg
+!vandy-cfg/**
