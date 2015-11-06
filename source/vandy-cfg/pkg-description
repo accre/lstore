@@ -1,0 +1,4 @@
+Basic starting configuration for using the primary Vanderbilt L-Store system
+  This is one package of configuration files that complements the accre-lio package. This
+  package should get you up and running with L-Store accessing the primary Vanderbilt installation
+  of L-Store servers without having to edit a configuration file.
