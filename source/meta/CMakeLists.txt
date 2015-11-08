@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 2.8)
 install(DIRECTORY etc/lio DESTINATION "etc/"
         PATTERN "*.sh" PERMISSIONS OWNER_EXECUTE OWNER_WRITE OWNER_READ GROUP_EXECUTE GROUP_READ WORLD_READ)
+install(DIRECTORY etc/logrotate.d DESTINATION "etc/logrotate.d/")
 set(CPACK_PACKAGING_INSTALL_PREFIX "/")
 set(CPACK_PACKAGE_NAME "lstore")
 set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "L-Store metapackage, which installs the appropriate libraries and
