@@ -315,8 +315,8 @@ mq_command_stats_t stats;//** Command stats
 //--------------------------------------------------------------
  
 #ifdef MQ_PIPE_COMM
-//  #define mq_pipe_create(ctx, pfd)  { int result = pipe(pfd); assert(result == 0); fcntl(pfd[0], F_SETFL, O_NONBLOCK); }
-#define mq_pipe_create(ctx, pfd)  { int result = pipe(pfd); assert(result == 0); }
+//  #define mq_pipe_create(ctx, pfd)  assert_result(pipe(pfd), 0); fcntl(pfd[0], F_SETFL, O_NONBLOCK)
+#define mq_pipe_create(ctx, pfd)  assert_result(pipe(pfd), 0)
 #define mq_pipe_poll_store(pollfd, cfd, mode) (pollfd)->fd = cfd;  (pollfd)->events = mode
 #define mq_pipe_destroy(ctx, pfd) if (pfd[0] != -1) { close(pfd[0]); close(pfd[1]); }
 #define mq_pipe_read(fd, c) read(fd, c, 1)

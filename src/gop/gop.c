@@ -30,6 +30,7 @@ http://www.accre.vanderbilt.edu
 #define _log_module_index 124
 
 #include <assert.h>
+#include "assert_result.h"
 #include <apr_thread_mutex.h>
 #include <apr_thread_cond.h>
 #include <stdlib.h>
@@ -135,9 +136,9 @@ void *gd_thread_func(apr_thread_t *th, void *data)
 void gop_dummy_init()
 {
     //** Make the variables
-    { int result = apr_pool_create(&gd_pool, NULL); assert(result == APR_SUCCESS); }
-    { int result = apr_thread_mutex_create(&gd_lock, APR_THREAD_MUTEX_DEFAULT, gd_pool); assert(result == APR_SUCCESS); }
-    { int result = apr_thread_cond_create(&gd_cond, gd_pool); assert(result == APR_SUCCESS); }
+    assert_result(apr_pool_create(&gd_pool, NULL), APR_SUCCESS);
+    assert_result(apr_thread_mutex_create(&gd_lock, APR_THREAD_MUTEX_DEFAULT, gd_pool), APR_SUCCESS);
+    assert_result(apr_thread_cond_create(&gd_cond, gd_pool), APR_SUCCESS);
     gd_stack = new_stack();
 
     //** and launch the thread

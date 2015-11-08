@@ -66,18 +66,14 @@ void mq_pipe_create(mq_socket_context_t *ctx, mq_socket_t **pfd)
     char hname[257];
     uint64_t r = 0;
 
-    int result = (pfd[0] = mq_socket_new(ctx, MQ_PAIR));
-    assert(result != NULL);
-    int result = (pfd[1] = mq_socket_new(ctx, MQ_PAIR));
-    assert(result != NULL);
+    assert_result_not_null(pfd[0] = mq_socket_new(ctx, MQ_PAIR));
+    assert_result_not_null(pfd[1] = mq_socket_new(ctx, MQ_PAIR));
  
     //** Connect them together
     get_random(&r, sizeof(r));
     snprintf(hname, sizeof(hname), "inproc://" LU, r);
-    result = mq_bind(pfd[1], hname);
-    assert(result == 0);
-    result = mq_connect(pfd[0], hname);
-    assert(result == 0);
+    assert_result(mq_bind(pfd[1], hname),0);
+    assert_result(mq_bind(pfd[0], hname),0);
 }
 
 void mq_pipe_poll_store(mq_pollitem_t *pfd, mq_socket_t *sock, int mode)
@@ -251,10 +247,9 @@ mq_command_table_t *mq_command_table_new(void *arg, mq_fn_exec_t *fn_default)
     t->fn_default = fn_default;
     t->arg_default = arg;
     apr_pool_create(&(t->mpool), NULL);
-    int result = apr_thread_mutex_create(&(t->lock), APR_THREAD_MUTEX_DEFAULT,
-                                         t->mpool);
-    assert(result == APR_SUCCESS);
-    result = (t->table = apr_hash_make(t->mpool)); assert(result != NULL);
+    assert_result(apr_thread_mutex_create(&(t->lock), APR_THREAD_MUTEX_DEFAULT,t->mpool),
+                  APR_SUCCESS);
+    t->table = apr_hash_make(t->mpool); assert(t->table != NULL);
     
     return(t);
 }
@@ -1562,19 +1557,13 @@ int mq_conn_create_actual(mq_portal_t *p, int dowait)
     type_malloc_clear(c, mq_conn_t, 1);
     
     c->pc = p;
-    int result;
-    result = apr_pool_create(&(c->mpool), NULL);
-    assert(result == APR_SUCCESS);
-    result = (c->waiting = apr_hash_make(c->mpool));
-    assert(result != NULL);
-    result = (c->heartbeat_dest = apr_hash_make(c->mpool));
-    assert(result != NULL);
-    result = (c->heartbeat_lut = apr_hash_make(c->mpool));
-    assert(result != NULL);
+    assert_result(apr_pool_create(&(c->mpool), NULL), APR_SUCCESS);
+    assert_result_not_null(c->waiting = apr_hash_make(c->mpool));
+    assert_result_not_null(c->heartbeat_dest = apr_hash_make(c->mpool));
+    assert_result_not_null(c->heartbeat_lut = apr_hash_make(c->mpool));
     
     //** This is just used in the initial handshake
-    result = pipe(c->cefd);
-    assert(result == 0);
+    assert_result(pipe(c->cefd), 0);
     
     //** Spawn the thread
     //** USe the parent mpool so I can do the teardown
@@ -1929,11 +1918,8 @@ mq_context_t *mq_create_context(inip_file_t *ifd, char *section)
     mqc->pcfn.submit = _mq_submit_op;
     mqc->pcfn.sync_exec = NULL;
     mqc->tp->pc->fn = &(mqc->pcfn);
-    int result;   
-    result = (mqc->client_portals = apr_hash_make(mqc->mpool));
-    assert(result != NULL);
-    result = (mqc->server_portals = apr_hash_make(mqc->mpool));
-    assert(result != NULL);
+    assert_result_not_null(mqc->client_portals = apr_hash_make(mqc->mpool));
+    assert_result_not_null(mqc->server_portals = apr_hash_make(mqc->mpool));
     
     atomic_set(mqc->n_ops, 0);
     

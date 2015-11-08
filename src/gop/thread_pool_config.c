@@ -30,6 +30,7 @@ http://www.accre.vanderbilt.edu
 #define _log_module_index 122
 
 #include <assert.h>
+#include "assert_result.h"
 #include <apr_pools.h>
 #include <apr_thread_proc.h>
 #include <apr_thread_pool.h>
@@ -190,7 +191,7 @@ thread_pool_context_t *thread_pool_create_context(char *tp_name, int min_threads
 
     type_malloc_clear(tpc, thread_pool_context_t, 1);
 
-    { int result = apr_wrapper_start(); assert(result == APR_SUCCESS); }
+    assert_result(apr_wrapper_start(), APR_SUCCESS);
 
     if (atomic_inc(_tp_context_count) == 0) {
         apr_pool_create(&_tp_pool, NULL);
@@ -205,7 +206,7 @@ thread_pool_context_t *thread_pool_create_context(char *tp_name, int min_threads
     if (max_threads > 0) tpc->max_threads = max_threads;
 
     dt = tpc->min_idle * 1000000;
-    { int result = apr_thread_pool_create(&(tpc->tp), tpc->min_threads, tpc->max_threads, _tp_pool); assert(result == APR_SUCCESS); }
+    assert_result(apr_thread_pool_create(&(tpc->tp), tpc->min_threads, tpc->max_threads, _tp_pool), APR_SUCCESS);
     apr_thread_pool_idle_wait_set(tpc->tp, dt);
     apr_thread_pool_threshold_set(tpc->tp, 0);
 
