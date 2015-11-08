@@ -8,5 +8,4 @@ IP=${IP:-$DEF_IP}
 
 echo "Switching to LServer IP $IP"
 
-mv $BASE/lio-core.cfg{,.old} 2>/dev/null
-sed "s/@LSERVER_IP@/$IP/" <$BASE/lio-core.cfg.in >$BASE/lio-core.cfg
+sed -i.bak 's,\(.*\)address\s*=\s*.*,\1address=tcp://'"$IP"':6713,' $BASE/lio-core.cfg
