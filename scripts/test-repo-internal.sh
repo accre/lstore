@@ -39,7 +39,7 @@ EOF
         apt-get install -y --force-yes --no-install-recommends --no-upgrade \
                     accre-lio accre-gridftp globus-gridftp-server-progs \
                     accre-toolbox accre-gop accre-ibp libapr-accre1 \
-                    libapr-accre-util1 accre-jerasure czmq libexpat1 vandy-cfg
+                    libapr-accre-util1 accre-jerasure czmq libexpat1 lstore
         apt-get clean
         # --force-yes needed to install unsigned / self-signed packages The
         # second line of packages should be pulled in as deps and unnecessary
