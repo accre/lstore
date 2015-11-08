@@ -1,0 +1,8 @@
+/var/log/lio/*.log {
+    daily
+    rotate 10
+    missingok
+    notifempty
+    copytruncate
+}
+
