@@ -1,4 +1,10 @@
-[exnode]
+#!/bin/bash
+
+OWNER="root"
+
+mkdir -p osfile/file/_^FA^_  osfile/hardlink/{{0..255},_^FA^_}/_^FA^_
+
+DEFAULT_EXNODE="[exnode]
 id=0
 
 #-------------------------------------
@@ -47,3 +53,14 @@ segment=10001
 [view]
 default=10000
 segment=10000
+"
+
+
+
+echo $OWNER > osfile/file/_^FA^_/system.owner
+echo $OWNER > osfile/hardlink/_^FA^_/system.owner
+
+echo "$DEFAULT_EXNODE" > osfile/file/_^FA^_/system.exnode
+echo "$DEFAULT_EXNODE" > osfile/hardlink/_^FA^_/system.exnode
+
+
