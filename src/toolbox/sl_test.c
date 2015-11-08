@@ -32,6 +32,7 @@ http://www.accre.vanderbilt.edu
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
+#include "assert_result.h"
 #include "log.h"
 #include "skiplist.h"
 #include "atomic_counter.h"
@@ -51,7 +52,7 @@ int main(int argc, char **argv)
         exit(1);
     }
 
-    { int result = apr_initialize(); assert(result == APR_SUCCESS); }
+    assert_result(apr_initialize(), APR_SUCCESS);
     atomic_init();
 
     open_log("stdout");

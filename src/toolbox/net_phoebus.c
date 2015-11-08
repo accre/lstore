@@ -60,6 +60,7 @@ ns_config_sock(ns, tcpsize);
 #include <stdlib.h>
 #include <time.h>
 #include <assert.h>
+#include "assert_result.h"
 #include <signal.h>
 #include <errno.h>
 #include <fcntl.h>

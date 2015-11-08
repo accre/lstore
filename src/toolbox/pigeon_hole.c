@@ -36,6 +36,7 @@ http://www.accre.vanderbilt.edu
 #include <stdint.h>
 #include <stdlib.h>
 #include <assert.h>
+#include "assert_result.h"
 #include "log.h"
 #include "pigeon_hole.h"
 

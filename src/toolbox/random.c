@@ -37,6 +37,7 @@ http://www.accre.vanderbilt.edu
 #include <apr_pools.h>
 #include <openssl/rand.h>
 #include <assert.h>
+#include "assert_result.h"
 
 apr_thread_mutex_t  *_rnd_lock = NULL;
 apr_pool_t *_rnd_pool = NULL;

@@ -31,6 +31,7 @@ http://www.accre.vanderbilt.edu
 
 #include <stdlib.h>
 #include <assert.h>
+#include "assert_result.h"
 #include "log.h"
 #include "skiplist.h"
 #include "interval_skiplist.h"
