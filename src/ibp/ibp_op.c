@@ -33,6 +33,7 @@ http://www.accre.vanderbilt.edu
 #include <stdio.h>
 #include <string.h>
 #include <assert.h>
+#include "assert_result.h"
 #include "ibp.h"
 #include "fmttypes.h"
 #include "network.h"

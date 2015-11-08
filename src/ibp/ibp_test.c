@@ -34,6 +34,7 @@ http://www.accre.vanderbilt.edu
 #include <stdlib.h>
 #include <time.h>
 #include <assert.h>
+#include "assert_result.h"
 #include "ibp.h"
 #include "log.h"
 #include "ibp.h"

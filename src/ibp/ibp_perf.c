@@ -797,7 +797,7 @@ int main(int argc, char **argv)
                 fd_out = stdout;
                 fd_special = 1;
             } else {
-                {fd_out = fopen(out_fname, "w"); assert(fd_out != NULL); }
+                fd_out = fopen(out_fname, "w"); assert(fd_out != NULL);
             }
         } else if (strcmp(argv[i], "-phoebus") == 0) { //** Check if we want Phoebus transfers
             cc = (ibp_connect_context_t *)malloc(sizeof(ibp_connect_context_t));
