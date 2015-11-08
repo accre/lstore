@@ -55,7 +55,7 @@ note "Beginning packaging at $(date) for $PACKAGE_SUBDIR"
 #
 cd $PACKAGE_BASE/build
 for PACKAGE in apr-accre apr-util-accre jerasure czmq \
-               toolbox gop ibp lio gridftp; do
+               toolbox gop ibp lio gridftp release; do
     if [ "$PACKAGE" == "czmq" ];then
         if (ldconfig -p | grep -q libczmq); then
                 echo "libczmq.so is available: skipping czmq package build.";
@@ -94,6 +94,10 @@ for PACKAGE in apr-accre apr-util-accre jerasure czmq \
             umask 000
             cp *.${PACKAGE_SUFFIX} $PACKAGE_REPO
             chmod 666 $PACKAGE_REPO/*
+            # Update lstore-release if we built it
+            if test -n "$(shopt -s nullglob; set +u; echo lstore-release*.rpm)"; then
+                cp lstore-release*.rpm $REPO_BASE/lstore-release.rpm
+            fi
         )
         set +x 
     else
