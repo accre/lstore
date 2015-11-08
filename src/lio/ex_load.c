@@ -30,6 +30,7 @@ http://www.accre.vanderbilt.edu
 #define _log_module_index 172
 
 #include <assert.h>
+#include "assert_result.h"
 #include "exnode.h"
 #include "log.h"
 #include "type_malloc.h"

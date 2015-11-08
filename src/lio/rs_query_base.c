@@ -34,6 +34,7 @@ http://www.accre.vanderbilt.edu
 #define _log_module_index 158
 
 #include <assert.h>
+#include "assert_result.h"
 #include <stdlib.h>
 #include "resource_service_abstract.h"
 #include "rs_query_base.h"

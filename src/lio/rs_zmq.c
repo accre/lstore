@@ -35,6 +35,7 @@ http://www.accre.vanderbilt.edu
 #define _log_module_index 183
 
 #include <assert.h>
+#include "assert_result.h"
 #include <sys/uio.h>
 #include <zmq.h>
 #include "ex3_system.h"

@@ -37,6 +37,7 @@ http://www.accre.vanderbilt.edu
 #endif
 
 #include <assert.h>
+#include "assert_result.h"
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>

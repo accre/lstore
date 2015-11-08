@@ -522,7 +522,7 @@ resource_service_fn_t *rs_remote_server_create(void *arg, inip_file_t *fd, char 
     rs->priv = (void *)rsrs;
 
     //** Make the locks and cond variables
-    { int result = apr_pool_create(&(rsrs->mpool), NULL); assert(result == APR_SUCCESS); }
+    assert_result(apr_pool_create(&(rsrs->mpool), NULL), APR_SUCCESS);
     apr_thread_mutex_create(&(rsrs->lock), APR_THREAD_MUTEX_DEFAULT, rsrs->mpool);
     apr_thread_cond_create(&(rsrs->cond), rsrs->mpool);
 
@@ -557,7 +557,7 @@ resource_service_fn_t *rs_remote_server_create(void *arg, inip_file_t *fd, char 
     free(stype);
 
     //** Get the MQC
-    { int result = (rsrs->mqc = lookup_service(ess, ESS_RUNNING, ESS_MQ)); assert(result != NULL); }
+    rsrs->mqc = lookup_service(ess, ESS_RUNNING, ESS_MQ); assert(rsrs->mqc != NULL);
 
     //** Make the server portal
     rsrs->server_portal = mq_portal_create(rsrs->mqc, rsrs->hostname, MQ_CMODE_SERVER);

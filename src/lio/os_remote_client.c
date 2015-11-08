@@ -2522,13 +2522,13 @@ object_service_fn_t *object_service_remote_client_create(service_manager_t *ess,
     log_printf(1, "My host_id=%s\n", osrc->host_id);
 
     //** Get the MQC
-    { int result = (osrc->mqc = lookup_service(ess, ESS_RUNNING, ESS_MQ)); assert(result != NULL); }
+    osrc->mqc = lookup_service(ess, ESS_RUNNING, ESS_MQ); assert(osrc->mqc != NULL);
 
     //** Get the Global ongoing handle
-    { int result = (osrc->ongoing = lookup_service(ess, ESS_RUNNING, ESS_ONGOING_CLIENT)); assert(result != NULL); }
+    osrc->ongoing = lookup_service(ess, ESS_RUNNING, ESS_ONGOING_CLIENT); assert(osrc->ongoing != NULL);
 
     //** Get the thread pool to use
-    { int result = (osrc->tpc = lookup_service(ess, ESS_RUNNING, ESS_TPC_UNLIMITED)); assert(result != NULL); }
+    osrc->tpc = lookup_service(ess, ESS_RUNNING, ESS_TPC_UNLIMITED); assert(osrc->tpc != NULL);
 
     //** Set up the fn ptrs
     os->type = OS_TYPE_REMOTE_CLIENT;

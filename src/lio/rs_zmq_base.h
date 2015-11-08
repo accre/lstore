@@ -40,6 +40,7 @@ extern "C" {
 #endif
 
 #include <assert.h>
+#include "assert_result.h"
 #include <sys/uio.h>  //** ZMQ uses struct iovec but fogets to include the header
 #include <zmq.h>
 #include "resource_service_abstract.h"

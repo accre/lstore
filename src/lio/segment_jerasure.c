@@ -2152,7 +2152,7 @@ segment_t *segment_jerasure_create(void *arg)
     generate_ex_id(&(seg->header.id));
     atomic_set(seg->ref_count, 0);
     seg->header.type = SEGMENT_TYPE_JERASURE;
-    { int result = apr_pool_create(&(seg->mpool), NULL); assert(result == APR_SUCCESS); }
+    assert_result(apr_pool_create(&(seg->mpool), NULL), APR_SUCCESS);
     apr_thread_mutex_create(&(seg->lock), APR_THREAD_MUTEX_DEFAULT, seg->mpool);
     apr_thread_cond_create(&(seg->cond), seg->mpool);
 

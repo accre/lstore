@@ -677,7 +677,7 @@ blacklist_t *blacklist_load(inip_file_t *ifd, char *section)
 
     type_malloc_clear(bl, blacklist_t, 1);
 
-    { int result = apr_pool_create(&(bl->mpool), NULL); assert(result == APR_SUCCESS); }
+    assert_result(apr_pool_create(&(bl->mpool), NULL), APR_SUCCESS);
     apr_thread_mutex_create(&(bl->lock), APR_THREAD_MUTEX_DEFAULT, bl->mpool);
     bl->table = apr_hash_make(bl->mpool);
 
@@ -1023,7 +1023,7 @@ lio_config_t *lio_create_nl(char *fname, char *section, char *user, char *exe_na
     //** Table of open files
     lio->open_index = create_skiplist_full(10, 0.5, 0, &ex_id_compare, NULL, NULL, NULL);
 
-    { int result = apr_pool_create(&(lio->mpool), NULL); assert(result == APR_SUCCESS); }
+    assert_result(apr_pool_create(&(lio->mpool), NULL), APR_SUCCESS);
     apr_thread_mutex_create(&(lio->lock), APR_THREAD_MUTEX_DEFAULT, lio->mpool);
 
     return(lio);
