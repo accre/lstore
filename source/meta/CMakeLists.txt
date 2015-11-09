@@ -4,8 +4,8 @@ install(DIRECTORY etc/lio DESTINATION "etc/"
 install(DIRECTORY etc/logrotate.d DESTINATION "etc/logrotate.d/")
 set(CPACK_PACKAGING_INSTALL_PREFIX "/")
 set(CPACK_PACKAGE_NAME "lstore")
-set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "L-Store metapackage, which installs the appropriate libraries and
-  default configurations")
+set(CPACK_PACKAGE_DESCRIPTION_SUMMARY
+  "L-Store metapackage, installs the appropriate libraries and default configurations")
 # At least set a short description ^^^^ because the decription file vvvv seems to get ignored
 set(CPACK_PACKAGE_DESCRIPTION_FILE ${CMAKE_CURRENT_SOURCE_DIR}/pkg-description)
 set(CPACK_PACKAGE_VERSION "1.0.0")
@@ -18,7 +18,15 @@ set(CPACK_PACKAGE_FILE_NAME "lstore-${CPACK_PACKAGE_VERSION}-${CPACK_PACKAGE_REL
 
 # DEB specific stuff
 set(CPACK_DEBIAN_PACKAGE_HOMEPAGE "http://www.lstore.org/")
-set(CPACK_DEBIAN_PACKAGE_DEPENDS "accre-gop, accre-ibp, accre-jerasure, accre-lio, accre-toolbox, libapr-accre1, libapr-accre-util1, czmq")
+set(CPACK_DEBIAN_PACKAGE_DEPENDS
+  "accre-gop, accre-ibp, accre-jerasure, accre-lio, accre-toolbox, libapr-accre1, libapr-accre-util1, czmq")
+set(CPACK_DEBIAN_PACKAGE_SUGGESTS "accre-gridftp")
 set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE ${PKG_ARCHITECTURE})
+
+# RPM specific
+set(CPACK_RPM_PACKAGE_REQUIRES "accre-lio")  # This should be sufficient and pull the other packages via deps
+set(CPACK_RPM_PACKAGE_SUGGESTS "accre-gridftp")
+# Note: CPackRPM.cmake has an issue with policy CMP0007 concerning empty list items when
+# CPACK_PACKAGING_INSTALL_PREFIX is "/" but it is benign and I don't see a good fix
 
 include(CPack)

@@ -9,5 +9,5 @@ BASE=${2:-$ABSOLUTE_PATH}
 
 echo "Switching to LServer IP $IP"
 
-sed -i.bak 's,\(.*\)address\s*=\s*.*,\1address=tcp://'"$IP"':6713,'
+sed -i.bak 's,\(.*\)address\s*=\s[^:]*.[^:]*,\1address=tcp://'"$IP"',' \
             $BASE/lio-core.cfg
