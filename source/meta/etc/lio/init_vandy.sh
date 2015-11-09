@@ -14,13 +14,13 @@ chmod 777 /lio/{log,lfs,osfile}
 (
     cd /etc/lio
     # Temporary, can move somewhere else if needed
-    curl http://www.accre.vanderbilt.edu/repos/lstore-vandy-cfg.tgz | tar xvz
+    curl http://www.accre.vanderbilt.edu/repos/lstore/lstore-vandy-cfg.tgz | tar xvz
 )
 
 # If there's not already an osfile tree set up, set one up
 if [ ! -d /lio/osfile/hardlink ]; then
     (
-        cd /lio/osfile
+        cd /lio
         /etc/lio/init_osfile.sh
     )
 fi
