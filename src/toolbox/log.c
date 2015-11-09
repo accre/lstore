@@ -93,7 +93,7 @@ void _open_log(char *fname, int dolock)
     _log_special = 0;
     if (fname == NULL) {  //** Old file so just truncate
         fseek(_log_fd, SEEK_SET, 0L);
-        ftruncate(fileno(_log_fd), 0L);
+        if(ftruncate(fileno(_log_fd), 0L)){ perror("OPEN_LOG: truncate error ");}
     } else if (strcmp(_log_fname, "stdout") == 0) {
         _log_special = 1;
         _log_fd = stdout;

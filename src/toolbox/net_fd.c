@@ -188,9 +188,7 @@ void fd_set_peer(int fd, char *address, int add_size)
 
     socklen_t plen = sizeof(struct sockaddr);
     if (getpeername(fd, &(psa.s), &plen) != 0) {
-        char errmsg[1024];
-        strerror_r(errno, errmsg, sizeof(errmsg));
-        log_printf(15, "fd_set_peer: Can't get the peers socket!  Error(%d):%s\n", errno,  errmsg);
+        log_printf(15, "fd_set_peer: Can't get the peers socket!  Error(%d):%s\n", errno,  strerror(errno));
         return;
     }
 

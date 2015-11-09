@@ -54,7 +54,7 @@ int init_random()
     _rnd_count++;
     if (_rnd_lock != NULL) return(0);
 
-    assert (RAND_load_file("/dev/urandom", max_bytes) == max_bytes);
+    assert_result(RAND_load_file("/dev/urandom", max_bytes), max_bytes);
 
     apr_pool_create(&_rnd_pool, NULL);
     apr_thread_mutex_create(&_rnd_lock, APR_THREAD_MUTEX_DEFAULT,_rnd_pool);
