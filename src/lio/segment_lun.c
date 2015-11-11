@@ -1783,7 +1783,7 @@ op_status_t seglun_rw_func(void *arg, int id)
             if (s->total_size < new_size) {  //** Check again within the lock
                 log_printf(3, " seg=" XIDT " GROWING  curr_used_size=" XOT " curr_total_size=" XOT " new_size=" XOT " requested maxpos=" XOT "\n",
                            segment_id(sw->seg), s->used_size, s->total_size, new_size, maxpos);
-                status = _slun_truncate(sw->seg, sw->da, new_size, sw->timeout);
+                status = _slun_truncate(sw->seg, sw->da, -new_size, sw->timeout);  //** This ia grow op so (-) new_size
                 log_printf(3, " seg=" XIDT " GROWING  err=%d\n",segment_id(sw->seg), status.op_status);
                 if (status.op_status != OP_STATE_SUCCESS) {
                     segment_unlock(sw->seg);
