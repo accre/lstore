@@ -528,7 +528,7 @@ resource_service_fn_t *rs_remote_client_create(void *arg, inip_file_t *fd, char 
 
     //** Wait and make sure we have an actual config to pass to the rs_local before continuing on.
     int loop = 0;
-    while ((access(rsrc->child_target_file, F_OK) == 0) && (loop < 300)) {
+    while ((access(rsrc->child_target_file, F_OK) != 0) && (loop < 300)) {
         usleep(10000);
         loop++;
     }
