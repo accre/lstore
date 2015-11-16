@@ -16,7 +16,7 @@ RELEASE="${DISTRO##*-}"
 case $PARENT in
     centos)
         mkdir -p repo/$PARENT/$RELEASE/packages
-        find package/$DISTRO/ -name *.rpm | grep -v lstore-release.rpm | \
+        find package/$DISTRO/ -name '*.rpm' | grep -v lstore-release.rpm | \
             xargs -I{} cp {} repo/$PARENT/$RELEASE/packages
         createrepo --retain-old-md 10 --deltas --num-deltas 5 -x '*-dev.rpm' \
                     repo/$PARENT/$RELEASE/
@@ -26,7 +26,7 @@ case $PARENT in
         ;;
     ubuntu|debian)
         mkdir -p repo/$PARENT/$RELEASE/packages
-        find package/$DISTRO/ -name *.deb | \
+        find package/$DISTRO/ -name '*.deb' | \
             xargs -I{} cp {} repo/$PARENT/$RELEASE/packages
         pushd repo/$PARENT/$RELEASE/packages
         dpkg-scanpackages ./ | gzip >Packages.gz

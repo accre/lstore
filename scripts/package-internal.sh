@@ -55,7 +55,7 @@ note "Beginning packaging at $(date) for $PACKAGE_SUBDIR"
 #
 cd $PACKAGE_BASE/build
 for PACKAGE in apr-accre apr-util-accre jerasure czmq \
-               toolbox gop ibp lio gridftp release; do
+               toolbox gop ibp lio gridftp release meta; do
     if [ "$PACKAGE" == "czmq" ];then
         if (ldconfig -p | grep -q libczmq); then
                 echo "libczmq.so is available: skipping czmq package build.";
