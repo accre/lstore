@@ -89,6 +89,7 @@ for DISTRO in "${DISTROS[@]}"; do
                                     libssl-dev
                                     libz-dev
                                     libzmq3-dev
+                                    lsb-release
                                     wget
                                 )
             ;;
