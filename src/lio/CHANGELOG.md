@@ -1,3 +1,14 @@
+# **[0.4.0-rc1](https://github.com/accre/lstore-lio/tree/ACCRE_0.4.0-rc1)** (2015-11-16)
+
+## Changes ([full changelog](https://github.com/accre/lstore-lio/compare/ACCRE_0.3.0...ACCRE_0.4.0-rc1))
+*  992986c Remove double-free from exnode_destory
+*  dc68667 Fix double free() on a failed file open
+*  f8542e0 Update segment_lun size calculation
+*  32db844 Rearrage exnode destroy to properly trap a failure and not get a double free
+*  7f39a76 Fix double free() on a failed file open
+*  219cd2b Incrementing to 0.4.0
+*  1e70ca5 Make sure and preseve the actual used size when shrinking vs using a full stripe
+
 # **[0.4.0](https://github.com/accre/lstore-lio/tree/ACCRE_0.4.0)** (2015-11-02)
 
 ## Changes ([full changelog](https://github.com/accre/lstore-lio/compare/ACCRE_0.3.0...ACCRE_0.4.0))
