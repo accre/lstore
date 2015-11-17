@@ -104,7 +104,8 @@ function build_lstore_binary_outof_tree() {
             make install
             ;;
         jerasure|toolbox|gop|ibp|lio|czmq|gridftp)
-            cmake ${SOURCE_PATH} -DCMAKE_PREFIX_PATH=${INSTALL_PREFIX} -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX}
+            cmake ${SOURCE_PATH} -DCMAKE_PREFIX_PATH=${INSTALL_PREFIX} \
+                                 -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX}
             make install
             ;;
         release)
@@ -195,44 +196,6 @@ function get_cmake_tarballs(){
             ${LSTORE_TARBALL_ROOT}/cmake-3.3.2-Linux-x86_64.tar.gz
 }
 
-function check_cmake(){
-    # Obnoxiously, we need cmake 2.8.12 to build RPM, and even Centos7 only
-    #   packages 2.8.11
-    set +e
-    # TODO: Detect architechture
-    CMAKE_LOCAL_TARBALL=${LSTORE_TARBALL_ROOT}/cmake-3.3.2-Linux-x86_64.tar.gz
-    CMAKE_VERSION=$(cmake --version 2>/dev/null | head -n 1 | awk '{ print $3 }')
-    [ -z "$CMAKE_VERSION" ] && CMAKE_VERSION="0.0.0"
-    set -e
-    INSTALL_PATH=${1:-${LSTORE_RELEASE_BASE}/build}
-    IFS="." read -a VERSION_ARRAY <<< "${CMAKE_VERSION}"
-    
-    if [ "${VERSION_ARRAY[0]}" -gt 2 ]; then
-        # We're good if we're at cmake 3
-        return
-    fi
-    if [[ "${VERSION_ARRAY[1]}" -lt 8 || "${VERSION_ARRAY[2]}" -lt 12 ]]; then
-        [ $CMAKE_VERSION == "0.0.0" ] ||  \
-            note "Using bundled version of cmake - the system version is too old '$CMAKE_VERSION'" &&
-            note "Couldn't find cmake, pulling our own"
-        
-        # Download cmake
-        if [ ! -d $INSTALL_PATH/cmake ]; then
-            if [ ! -e $CMAKE_LOCAL_TARBALL ]; then
-                get_cmake_tarballs
-            fi
-            pushd $INSTALL_PATH
-            tar xzf $CMAKE_LOCAL_TARBALL
-            mv cmake-3.3.2-Linux-x86_64 cmake
-            popd
-        fi
-        export PATH="$INSTALL_PATH/cmake/bin:$PATH"
-    fi
-    hash -r
-    CMAKE_VERSION=$(cmake --version | head -n 1 |  awk '{ print $3 }')
-    note "Bundled version of cmake is version '$CMAKE_VERSION'"
-    note "Bundled cmake can be found at $(which cmake)"
-}
 
 function build_helper() {
     # Don't copy/paste code twice for build-local and build-external
@@ -309,3 +272,103 @@ export LSTORE_GITHUB_TOKEN=<token from github page>"
 
 }
 
+function create_release_candidate() {
+    # Make a release candidate in the current directory
+    PROPOSED_TAG=$1
+    PREVIOUS_TAG=$2
+    PROPOSED_BRANCH=$3
+
+    PROPOSED_URL=https://github.com/accre/lstore-${REPO}/tree/ACCRE_${PROPOSED_TAG}
+    PROPOSED_DIFF=https://github.com/accre/lstore-${REPO}/compare/${PREVIOUS_TAG}...ACCRE_${PROPOSED_TAG}
+
+    # Sanity check things look okay.
+    RET="$(get_repo_status $(pwd))"
+    GIT=${RET% *}
+    CLEAN=${RET##* }
+    if [ $CLEAN != "CLEAN" ]; then
+        fatal "Package $REPO isn't clean."
+    fi
+    git show-ref "ACCRE_${PROPOSED_TAG}" &>/dev/null && \
+            fatal "The release ${PROPOSED_TAG} already exists"
+
+    if [ ! -z "$(git branch --list  $PROPOSED_BRANCH)" ]; then
+        git checkout $PROPOSED_BRANCH
+    else
+        fatal "Could not find release branch $PROPOSED_BRANCH"
+    fi
+
+    NEW_CHANGELOG=$(update_changelog ${PROPOSED_TAG} ${PREVIOUS_TAG})
+    git commit CHANGELOG.md -m "Release ${PROPOSED_TAG}
+
+$NEW_CHANGELOG"
+    git tag -a "ACCRE_${PROPOSED_TAG}" -m "Release ${PROPOSED_TAG}
+
+$NEW_CHANGELOG"
+}
+
+function update_changelog() {
+    # Modify the changelog in the current directory
+    PROPOSED_TAG=$1
+    PREVIOUS_TAG=$2
+    CURRENT_TAG=${3:-$(git rev-parse HEAD)}
+
+    # TODO: config this
+    UPSTREAM_REMOTE=origin
+    ORIGIN_REMOTE=origin
+    TARGET_BRANCH=accre-release
+
+    REPO=$(basename $(pwd))
+
+    PROPOSED_URL=https://github.com/accre/lstore-${REPO}/tree/ACCRE_${PROPOSED_TAG}
+    PROPOSED_DIFF=https://github.com/accre/lstore-${REPO}/compare/${PREVIOUS_TAG}...ACCRE_${PROPOSED_TAG}
+
+    # Update CHANGELOG.md
+    echo -n "# **[$PROPOSED_TAG]($PROPOSED_URL)** $(date '+(%F)')
+
+## Changes ([full changelog]($PROPOSED_DIFF))
+$(git log --oneline --no-merges  ${PREVIOUS_TAG}..${CURRENT_TAG} | \
+sed 's/^/*  /')
+
+" > CHANGELOG.md
+    cat CHANGELOG.md
+    git show HEAD:CHANGELOG.md >> CHANGELOG.md
+
+}
+function check_cmake(){
+    # Obnoxiously, we need cmake 2.8.12 to build RPM, and even Centos7 only
+    #   packages 2.8.11
+    set +e
+    # TODO: Detect architechture
+    CMAKE_LOCAL_TARBALL=${LSTORE_TARBALL_ROOT}/cmake-3.3.2-Linux-x86_64.tar.gz
+    CMAKE_VERSION=$(cmake --version 2>/dev/null | head -n 1 | awk '{ print $3 }')
+    [ -z "$CMAKE_VERSION" ] && CMAKE_VERSION="0.0.0"
+    set -e
+    INSTALL_PATH=${1:-${LSTORE_RELEASE_BASE}/build}
+    IFS="." read -a VERSION_ARRAY <<< "${CMAKE_VERSION}"
+
+    if [ "${VERSION_ARRAY[0]}" -gt 2 ]; then
+        # We're good if we're at cmake 3
+        return
+    fi
+    if [[ "${VERSION_ARRAY[1]}" -lt 8 || "${VERSION_ARRAY[2]}" -lt 12 ]]; then
+        [ $CMAKE_VERSION == "0.0.0" ] ||  \
+            note "Using bundled version of cmake - the system version is too old '$CMAKE_VERSION'" &&
+            note "Couldn't find cmake, pulling our own"
+
+        # Download cmake
+        if [ ! -d $INSTALL_PATH/cmake ]; then
+            if [ ! -e $CMAKE_LOCAL_TARBALL ]; then
+                get_cmake_tarballs
+            fi
+            pushd $INSTALL_PATH
+            tar xzf $CMAKE_LOCAL_TARBALL
+            mv cmake-3.3.2-Linux-x86_64 cmake
+            popd
+        fi
+        export PATH="$INSTALL_PATH/cmake/bin:$PATH"
+    fi
+    hash -r
+    CMAKE_VERSION=$(cmake --version | head -n 1 |  awk '{ print $3 }')
+    note "Bundled version of cmake is version '$CMAKE_VERSION'"
+    note "Bundled cmake can be found at $(which cmake)"
+}
