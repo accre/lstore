@@ -523,6 +523,21 @@ resource_service_fn_t *rs_remote_client_create(void *arg, inip_file_t *fd, char 
         abort();
     }
 
+    //** Launch the config changes thread
+    thread_create_assert(&(rsrc->check_thread), NULL, rsrc_check_thread, (void *)rs, rsrc->mpool);
+
+    //** Wait and make sure we have an actual config to pass to the rs_local before continuing on.
+    int loop = 0;
+    while ((access(rsrc->child_target_file, F_OK) != 0) && (loop < 300)) {
+        usleep(10000);
+        loop++;
+    }
+    if (loop>=300) {
+        log_printf(0, "ERROR: Remote RS is down! Unable to get cleint config from server! section=%s remote_host=%s!\n", section, rsrc->host_remote_rs);
+        flush_log();
+        abort();
+    }
+
     //** Start the child RS.   The update above should have dumped a RID config for it to load
     stype = inip_get_string(fd, section, "rs_local", NULL);
     if (stype == NULL) {  //** Oops missing child RS
@@ -544,8 +559,6 @@ resource_service_fn_t *rs_remote_client_create(void *arg, inip_file_t *fd, char 
     free(ctype);
     free(stype);
 
-    //** Launch the config changes thread
-    thread_create_assert(&(rsrc->check_thread), NULL, rsrc_check_thread, (void *)rs, rsrc->mpool);
 
 
     //** Set up the fn ptrs
