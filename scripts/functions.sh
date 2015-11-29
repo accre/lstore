@@ -80,6 +80,7 @@ function build_lstore_binary_outof_tree() {
     TO_BUILD=$1
     SOURCE_PATH=$2
     INSTALL_PREFIX=${3:-${LSTORE_RELEASE_BASE}/local}
+    BUILD_STATIC=${4:-0}
     case $TO_BUILD in
         apr-accre)
             # Keep this in sync with CPackConfig.cmake in our fork
@@ -104,9 +105,17 @@ function build_lstore_binary_outof_tree() {
             make install
             ;;
         jerasure|toolbox|gop|ibp|lio|czmq|gridftp)
-            cmake ${SOURCE_PATH} -DCMAKE_PREFIX_PATH=${INSTALL_PREFIX} \
+            EXTRA_ARGS=""
+            MAKE_COMMAND="make install"
+            if [ $BUILD_STATIC -ne 0 ]; then
+                EXTRA_ARGS="-DCMAKE_C_COMPILER=/usr/local//Cellar/llvm36/3.6.2/share/clang-3.6/tools/scan-build/ccc-analyzer"
+                MAKE_COMMAND="/usr/local//Cellar/llvm/3.6.2/bin/scan-build -o $(pwd) make"
+
+            fi
+            cmake ${SOURCE_PATH} ${EXTRA_ARGS} \
+                                 -DCMAKE_PREFIX_PATH=${INSTALL_PREFIX} \
                                  -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX}
-            make install
+            $MAKE_COMMAND
             ;;
         release)
             :
@@ -206,6 +215,13 @@ function build_helper() {
 
     PREFIX=$LSTORE_RELEASE_BASE/local
     check_cmake
+    if [ $1 == "STATIC" ]; then
+        STATIC=1
+        PREFIX="${PREFIX}-static"
+        shift
+    else
+        STATIC=0
+    fi
 
     cd $SOURCE_BASE
     for p in "$@"; do
@@ -214,17 +230,21 @@ function build_helper() {
 
     cd $BUILD_BASE
     for p in $@; do
-        BUILT_FLAG="${PREFIX}/built-${p}"
+        TARGET="${p}"
+        if [ $STATIC -ne 0 ]; then
+            TARGET="${p}-static"
+        fi
+        BUILT_FLAG="${PREFIX}/built-$TARGET"
         if [ -e $BUILT_FLAG ]; then
-            note "Not building ${p}, was already built. To change this behavior,"
+            note "Not building $TARGET, was already built. To change this behavior,"
             note "    remove $BUILT_FLAG"
             continue
         fi
-        [ -d ${p} ] && rm -rf ${p}
-        mkdir -p ${p}
-        pushd ${p}
-        build_lstore_binary_outof_tree ${p} $SOURCE_BASE/${p} ${PREFIX} 2>&1 | tee $LSTORE_RELEASE_BASE/logs/${p}-build.log
-        [ ${PIPESTATUS[0]} -eq 0 ] || fatal "Could not build ${p}"
+        [ -d $TARGET ] && rm -rf $TARGET
+        mkdir -p $TARGET
+        pushd $TARGET
+        build_lstore_binary_outof_tree ${p} $SOURCE_BASE/${p} ${PREFIX} ${STATIC} 2>&1 | tee $LSTORE_RELEASE_BASE/logs/${TARGET}-build.log
+        [ ${PIPESTATUS[0]} -eq 0 ] || fatal "Could not build ${TARGET}"
         touch $BUILT_FLAG
         popd
     done
