@@ -69,13 +69,6 @@ void sl_simple_free(skiplist_data_t *data)
     free(data);
 }
 
-skiplist_key_t *sl_ptr_dup(skiplist_key_t *key)
-{
-    skiplist_key_t *d = (skiplist_key_t *)malloc(sizeof(skiplist_key_t));
-    d = key;
-    return(d);
-}
-
 skiplist_key_t *sl_string_dup(skiplist_key_t *key)
 {
     char *dup = strdup((char *)key);
