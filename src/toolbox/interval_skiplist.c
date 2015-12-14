@@ -293,7 +293,7 @@ int insert_interval_skiplist(interval_skiplist_t *isl, skiplist_key_t *lo, skipl
     //** Inc the number of intervals
     isl->n_intervals++;
 
-    //** Add the hi point first since we walkthe edges from lo->hi;
+    //** Add the hi point first since we walk the edges from lo->hi;
     memset(ptr, 0, sizeof(ptr));
     cmp = find_key(sl, ptr, hi, 0);
 
@@ -342,7 +342,7 @@ int insert_interval_skiplist(interval_skiplist_t *isl, skiplist_key_t *lo, skipl
 //log_printf(15, "insert_interval_skiplist: starting walk to hi\n");
 
     //** Now do the walk
-    while (sn != sn_hi) {
+    while ((sn != sn_hi) && (sn != NULL)) {
 
         //** Find the highest edge and tag it
         i = sn->level+1;
