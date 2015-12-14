@@ -322,11 +322,10 @@ int insert_interval_skiplist(interval_skiplist_t *isl, skiplist_key_t *lo, skipl
         add_isl_node_level(isl_node, sn->level);
         for (i=0; i<=sn->level; i++) {
             if ((ptr[i] != NULL) && (ptr[i] != isl->sl->head)) copy_isl_data(((isl_node_t *)(ptr[i]->ele.data))->edge[i], &(isl_node->edge[i]));
-//        copy_isl_data(((isl_node_t *)(ptr[i]->next[i]->ele.data))->edge[i], &(isl_node->edge[i]));
         }
 
         memset(ptr, 0, sizeof(ptr));
-        cmp = find_key(sl, ptr, lo, 0);
+        find_key(sl, ptr, lo, 0);
     }
 
     isl_node = (isl_node_t *)(sn->ele.data);
