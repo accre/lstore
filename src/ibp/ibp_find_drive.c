@@ -349,17 +349,16 @@ ibp_depot_t *generate_depot_list(int *n_depots, ibp_depot_t *depot_list)
         abort();
     }
 
-    err = 0;
     skip_rid = depot_list->rid;
     j = 0;
     for (i=0; i<n; i++) {
         rid = ridlist_get_element(&rlist, i);
-        if (ibp_compare_rid(skip_rid, rid) == 0) {
-            err = 1;  //** found the RID to skip
-        } else {
+        if (ibp_compare_rid(skip_rid, rid) != 0) {  //** See if we skip it
             set_ibp_depot(&(dl[j]), depot_list->host, depot_list->port, rid);
             j++;
         }
+
+
     }
 
     gop_free(gop, OP_DESTROY);

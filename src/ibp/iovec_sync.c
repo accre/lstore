@@ -65,7 +65,7 @@ int ibp_sync_execute(opque_t *q, int nthreads)
             opque_waitany(q);
         }
 
-        gop = (op_generic_t *)pop(tasks);
+        pop(tasks);
     }
 
 

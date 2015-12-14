@@ -638,7 +638,6 @@ op_status_t read_recv(op_generic_t *gop, NetStream_t *ns)
     rwbuf = cmd->rwbuf[0];
 
     err = ibp_success_status;
-    status = IBP_E_GENERIC;
     status = atoi(string_token(buffer, " ", &bstate, &fin));
     swait = atof(string_token(NULL, " ", &bstate, &fin));
     nbytes = swait;
@@ -646,13 +645,7 @@ op_status_t read_recv(op_generic_t *gop, NetStream_t *ns)
         log_printf(15, "read_recv: (read) ns=%d cap=%s offset[0]=" I64T " len[0]=" I64T " err=%d Error!  status=%d bytes=!%s!\n",
                    ns_getid(ns), cmd->cap, rwbuf->iovec[0].offset, rwbuf->size, err, status, buffer);
 
-        //**  If coalesced ops then free the coalesced mallocs
-//     if (cmd->n_ops > 1) free(cmd->rwbuf);
-//     return(process_error(gop, &err, status, swait, NULL));
         process_error(gop, &err, status, swait, NULL);
-//      if (err.op_status != OP_STATE_RETRY) {
-//         if (cmd->n_ops > 1) free(cmd->rwbuf);
-//      }
         return(err);
     }
 
@@ -966,7 +959,6 @@ op_status_t write_recv(op_generic_t *gop, NetStream_t *ns)
     err = gop_readline_with_timeout(ns, buffer, sizeof(buffer), gop);
     if (err.op_status != OP_STATE_SUCCESS) return(err);
 
-    status = -1;
     status = atoi(string_token(buffer, " ", &bstate, &fin));
     if (status != IBP_OK) {
         log_printf(15, "write_recv: ns=%d id=%d cap=%s n_ops=%d  Error!  status=%s\n",
@@ -977,7 +969,6 @@ op_status_t write_recv(op_generic_t *gop, NetStream_t *ns)
         if (err.op_status == OP_STATE_SUCCESS) {
             log_printf(15, "write_recv: ns=%d cap=%s gid=%d n_ops=%d status/nbytes=%s\n",
                        ns_getid(ns), cmd->cap, gop_id(gop), cmd->n_ops, buffer);
-            status = -1;
             nbytes = -1;
             status = atoi(string_token(buffer, " ", &bstate, &fin));
             sscanf(string_token(NULL, " ", &bstate, &fin), I64T, &nbytes);
@@ -1197,8 +1188,6 @@ op_status_t validate_chksum_recv(op_generic_t *gop, NetStream_t *ns)
                ns_getid(ns), cmd->cap, buffer);
 
     //** Get the status and number of bad blocks(if available)
-    status = -1;
-    nerrors = -1;
     status = atoi(string_token(buffer, " ", &bstate, &fin));
     sscanf(string_token(NULL, " ", &bstate, &fin), "%lf", &swait);
     nerrors = swait;
@@ -1301,7 +1290,6 @@ op_status_t get_chksum_recv(op_generic_t *gop, NetStream_t *ns)
                ns_getid(ns), cmd->cap, buffer);
 
     //** Get the status
-    status = -1;
     status = atoi(string_token(buffer, " ", &bstate, &fin));
     if (status != IBP_OK) {
         log_printf(15, "get_chksum_recv: ns=%d cap=%s status error=%d!\n",  ns_getid(ns), cmd->cap, status);
@@ -1921,7 +1909,6 @@ op_status_t status_get_recv(op_generic_t *gop, NetStream_t *ns)
 
     log_printf(15, "status_get_recv: after readline ns=%d buffer=%s\n", ns_getid(ns), buffer);
 
-    status = IBP_E_GENERIC;
     status = atoi(string_token(buffer, " ", &bstate, &fin));
 
     return(process_error(gop, &err, status, -1, &bstate));

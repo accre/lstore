@@ -115,7 +115,7 @@ int parse_cap(ibp_context_t *ic, ibp_cap_t *cap, char *host, int *port, char *ke
 
     char *temp = strdup(cap);
     char *ptr;
-    ptr = string_token(temp, "/", &bstate, &finished); //** gets the ibp:/
+    string_token(temp, "/", &bstate, &finished); //** gets the ibp:/
 //log_printf(15, "1 ptr=%s\n", ptr);
     ptr = string_token(NULL, ":", &bstate, &finished); //** This should be the hostname
 //log_printf(15, "2 ptr=%s\n", ptr);
