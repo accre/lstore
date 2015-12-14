@@ -446,12 +446,13 @@ int remove_interval_skiplist(interval_skiplist_t *isl, skiplist_key_t *lo, skipl
 
 //log_printf(15, "remove_interval_skiplist: bbbbbbbbb\n");  flush_log();
 
-    isln = (isl_node_t *)(sn_lo->ele.data);  //** Remove the beginning if needed
-    if (isl_node_is_empty(isln, sn_lo->level) == 1) {
-        remove_isl_node(sn_lo->level, isln);
-        remove_skiplist(isl->sl, lo, NULL);
+    if (sn != sn_lo) {     //** Remove the beginning if needed
+       isln = (isl_node_t *)(sn_lo->ele.data);
+       if (isl_node_is_empty(isln, sn_lo->level) == 1) {
+           remove_isl_node(sn_lo->level, isln);
+           remove_skiplist(isl->sl, lo, NULL);
+       }
     }
-
 //log_printf(15, "remove_interval_skiplist: before data free\n");  flush_log();
 
     //** Lastly free the data
