@@ -136,7 +136,7 @@ int remove_isl_data(interval_skiplist_t *isl, isl_data_t **list, skiplist_data_t
 
     if (curr == *list) {  //** Head node
         *list = curr->next;
-    } else {
+    } else if (prev) {
         prev->next = curr->next;
     }
 
