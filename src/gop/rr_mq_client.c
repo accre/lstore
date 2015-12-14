@@ -129,7 +129,6 @@ op_status_t read_stream(void *arg, int tid)
     } else
         log_printf(10, "CLIENT: Successfully received %d bytes!\n", TEST_SIZE);
 
-    err = mqs->msid;
     mq_stream_destroy(mqs);
     mq_frame_destroy(fdata);
     free(buffer);
@@ -321,9 +320,6 @@ void bulk_stream_test(mq_context_t *mqc, int num)
     log_printf(1, "CLIENT: %d tests\n", num);
 
     q = new_opque();
-    stream_result = 0;
-    n_done = 0;
-
     stream_result = 0;
     n_done = 0;
     for(i = 0; i < num; i++) {

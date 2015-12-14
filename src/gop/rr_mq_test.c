@@ -34,8 +34,8 @@ void process_ping(mq_portal_t *p, mq_socket_t *sock, mq_msg_t *msg)
         log_printf(5, "SERVER:\tfsize[%d] = %d\n", i, err);
     }
 
-    //** Peel off the top frames and just leave the return address
-    f = mq_msg_first(msg);
+    // ** Peel off the top frames and just leave the return address
+    mq_msg_first(msg);
     mq_frame_destroy(mq_msg_pluck(msg, 0)); //blank frame
     mq_frame_destroy(mq_msg_pluck(msg, 0)); //version frame
     mq_frame_destroy(mq_msg_pluck(msg, 0)); //command frame (exec)
@@ -73,7 +73,7 @@ void unpack_register_msg(mq_portal_t *p, mq_msg_t *msg)
     int err;
     int test_slots = 10;
 
-    pid = mq_msg_first(msg);
+    mq_msg_first(msg); // ** This is the PID
     mq_frame_destroy(mq_msg_pluck(msg, 0)); //blank frame
     mq_frame_destroy(mq_msg_pluck(msg, 0)); //version frame
     mq_frame_destroy(mq_msg_pluck(msg, 0)); //command frame (exec)
@@ -155,7 +155,8 @@ void process_register_worker(mq_portal_t *p, mq_socket_t *sock, mq_msg_t *msg)
     if(register_efd == -1) {
         unpack_register_msg(p, msg);
     } else {
-        f = mq_msg_first(msg);
+        mq_msg_first(msg);  // ** Make sure at the beginning frame
+
         //Assume these are good
         mq_frame_destroy(mq_msg_pluck(msg, 0)); //blank frame
         mq_frame_destroy(mq_msg_pluck(msg, 0)); //version frame
