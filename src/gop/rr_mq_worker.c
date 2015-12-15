@@ -474,7 +474,7 @@ void worker_test()
 
     log_printf(10, "WORKER: Creating context...\n");
     mqc = worker_make_context();
-    parent_portal = malloc(sizeof(mq_portal_t*));
+    parent_portal = malloc(sizeof(mq_portal_t));
 
     log_printf(1, "WORKER: Up and running!\n");
     type_malloc(user_command, char, 20);
