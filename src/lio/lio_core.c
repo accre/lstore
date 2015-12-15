@@ -778,7 +778,7 @@ op_status_t lioc_create_object_fn(void *arg, int id)
         exp = exnode_exchange_text_parse(val[ex_key]);
         ex = exnode_create();
         if (exnode_deserialize(ex, exp, op->lc->ess_nocache) != 0) {
-            log_printf(15, "ERROR parsing parent exnode fname=%s\n", dir);
+            log_printf(15, "ERROR parsing parent exnode of op->src_path=%s\n", op->src_path);
             status = op_failure_status;
             exnode_exchange_destroy(exp);
             exnode_destroy(ex);
@@ -788,7 +788,7 @@ op_status_t lioc_create_object_fn(void *arg, int id)
         //** Execute the clone operation
         err = gop_sync_exec(exnode_clone(op->lc->tpc_unlimited, ex, op->lc->da, &cex, NULL, CLONE_STRUCTURE, op->lc->timeout));
         if (err != OP_STATE_SUCCESS) {
-            log_printf(15, "ERROR cloning parent fname=%s\n", dir);
+            log_printf(15, "ERROR cloning parent src_path=%s\n", op->src_path);
             status = op_failure_status;
             exnode_exchange_destroy(exp);
             exnode_destroy(ex);
@@ -1392,7 +1392,7 @@ op_status_t cp_lio2local(lio_cp_file_t *cp)
     }
 
     type_malloc(buffer, char, cp->bufsize+1);
-    err = gop_sync_exec(segment_get(cp->src_tuple.lc->tpc_unlimited, cp->src_tuple.lc->da, cp->rw_hints, seg, fd, 0, -1, cp->bufsize, buffer, 3600));
+    gop_sync_exec(segment_get(cp->src_tuple.lc->tpc_unlimited, cp->src_tuple.lc->da, cp->rw_hints, seg, fd, 0, -1, cp->bufsize, buffer, 3600));
     free(buffer);
 
     fclose(fd);
@@ -1467,7 +1467,7 @@ op_status_t lioc_truncate_fn(void *arg, int tid)
         goto finished;
     }
 
-    err = gop_sync_exec(segment_truncate(seg, op->tuple.lc->da, op->new_size, 60));
+    gop_sync_exec(segment_truncate(seg, op->tuple.lc->da, op->new_size, 60));
 
     //** Serialize the exnode
     exnode_exchange_free(exp);
@@ -1481,7 +1481,7 @@ op_status_t lioc_truncate_fn(void *arg, int tid)
     v_size[1] = strlen(val[1]);
     val[2] = NULL;
     v_size[2] = 0;
-    err = lioc_set_multiple_attrs(op->tuple.lc, op->tuple.creds, op->tuple.path, NULL, key, (void **)val, v_size, 3);
+    lioc_set_multiple_attrs(op->tuple.lc, op->tuple.creds, op->tuple.path, NULL, key, (void **)val, v_size, 3);
 
     //**Update the error counts if needed
     hard_errors = lioc_update_error_counts(op->tuple.lc, op->tuple.creds, op->tuple.path, seg, 0);

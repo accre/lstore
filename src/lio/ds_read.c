@@ -58,8 +58,6 @@ int main(int argc, char **argv)
     op_status_t status;
     tbuffer_t *tbuf;
 
-    err = 0;
-    len = 0;
     timeout = 60;
 
     _lio_ifd = stderr;  //** Default to all information going to stderr since the output is file data.
@@ -104,7 +102,7 @@ int main(int argc, char **argv)
 
     fd = fopen(fname, "r");
     assert(fd != NULL);
-    p = fgets(ppbuf, sizeof(ppbuf), fd);
+    fgets(ppbuf, sizeof(ppbuf), fd);
     if ((p = index(ppbuf, '\n')) != NULL) *p = 0;  //** Remove the \n if needed
     n_rcap = string_get_integer(ppbuf);
 
@@ -123,7 +121,7 @@ int main(int argc, char **argv)
     for (i=0; i<n_rcap; i++) {
         type_malloc(buffer[i], char, len+1);
         type_malloc(rcap[i], char, 256);
-        p = fgets(rcap[i], 256, fd);
+        fgets(rcap[i], 256, fd);
         if ((p = index(rcap[i], '\n')) != NULL) *p = '\0';  //** Remove the \n if needed
 
         type_malloc(iov[i], iovec_t, n_iov);

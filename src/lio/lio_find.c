@@ -70,7 +70,6 @@ int main(int argc, char **argv)
 
 
     //*** Parse the args
-    rg_mode = 0;
     rp_single = ro_single = NULL;
     nopre = 0;
 

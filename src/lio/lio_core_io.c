@@ -582,12 +582,12 @@ op_status_t lio_myclose_fn(void *arg, int id)
     log_printf(1, "FLUSH/TRUNCATE fname=%s final_size=" XOT "\n", fd->path, final_size);
     //** Flush and truncate everything which could take some time
     now = apr_time_now();
-    err = gop_sync_exec(segment_truncate(fh->seg, lc->da, final_size, lc->timeout));
+    gop_sync_exec(segment_truncate(fh->seg, lc->da, final_size, lc->timeout));
     dt = apr_time_now() - now;
     dt /= APR_USEC_PER_SEC;
     log_printf(1, "TRUNCATE fname=%s dt=%lf\n", fd->path, dt);
     now = apr_time_now();
-    err = gop_sync_exec(segment_flush(fh->seg, lc->da, 0, segment_size(fh->seg)+1, lc->timeout));
+    gop_sync_exec(segment_flush(fh->seg, lc->da, 0, segment_size(fh->seg)+1, lc->timeout));
     dt = apr_time_now() - now;
     dt /= APR_USEC_PER_SEC;
     log_printf(1, "FLUSH fname=%s dt=%lf\n", fd->path, dt);
@@ -597,7 +597,6 @@ op_status_t lio_myclose_fn(void *arg, int id)
 
     //** Ok no one has the file opened so teardown the segment/exnode
     //** IF not modified just tear down and clean up
-    n = 0;
     if (fh->modified == 0) {
         //*** See if we need to update the error counts
         lio_get_error_counts(lc, fh->seg, &serr);
@@ -645,8 +644,6 @@ op_status_t lio_myclose_fn(void *arg, int id)
     if (err > 1) {
         log_printf(0, "ERROR updating exnode! fname=%s\n", fd->path);
     }
-
-    n += ((err > 1) || (serr.hard > 0)) ? 1 : 0;
 
     if ((serr.hard>0) || (serr.soft>0) || (serr.write>0)) {
         log_printf(1, "ERROR: fname=%s hard_errors=%d soft_errors=%d write_errors=%d\n", fd->path, serr.hard, serr.soft, serr.write);
@@ -903,8 +900,6 @@ int _gop_lio_read(lio_rw_op_t *op, lio_fd_t *fd, char *buf, ex_off_t size, off_t
         }
 
         fd->fh->readahead_end = rend;  //** Update the readahead end
-    } else {
-        rend = fd->fh->readahead_end;
     }
     segment_unlock(fd->fh->seg);
 
@@ -1027,7 +1022,6 @@ op_status_t lio_write_ex_fn(void *arg, int id)
         ex_off_t blen = 0;
         ex_off_t bpos = op->boff;
         for (i=0; i < op->n_iov; i++) {
-            t2 = iov[i].offset+iov[i].len-1;
             type_malloc(a32, lfs_adler32_t, 1);
             a32->offset = iov[i].offset;
             a32->len = iov[i].len;
@@ -1379,7 +1373,6 @@ op_status_t lio_cp_file_fn(void *arg, int id)
 //return(op_success_status);
 
     buffer = NULL;
-    status = op_failure_status;
 
     if ((cp->src_tuple.is_lio == 0) && (cp->dest_tuple.is_lio == 0)) {  //** Not allowed to both go to disk
         info_printf(lio_ifd, 0, "Both source(%s) and destination(%s) are local files!\n", cp->src_tuple.path, cp->dest_tuple.path);
@@ -1514,8 +1507,6 @@ op_status_t lio_cp_path_fn(void *arg, int id)
 
     log_printf(15, "START src=%s dest=%s max_spawn=%d bufsize=" XOT "\n", cp->src_tuple.path, cp->dest_tuple.path, cp->max_spawn, cp->bufsize);
     flush_log();
-
-    status = op_success_status;
 
     it = unified_create_object_iter(cp->src_tuple, cp->path_regex, cp->obj_regex, cp->obj_types, cp->recurse_depth);
     if (it == NULL) {

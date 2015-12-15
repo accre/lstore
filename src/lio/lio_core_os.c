@@ -257,7 +257,7 @@ op_status_t lio_create_object_fn(void *arg, int id)
         exp = exnode_exchange_text_parse(val[ex_key]);
         ex = exnode_create();
         if (exnode_deserialize(ex, exp, op->lc->ess_nocache) != 0) {
-            log_printf(15, "ERROR parsing parent exnode fname=%s\n", dir);
+            log_printf(15, "ERROR parsing parent exnode src_path=%s\n", op->src_path);
             status = op_failure_status;
             exnode_exchange_destroy(exp);
             exnode_destroy(ex);
@@ -267,7 +267,7 @@ op_status_t lio_create_object_fn(void *arg, int id)
         //** Execute the clone operation
         err = gop_sync_exec(exnode_clone(op->lc->tpc_unlimited, ex, op->lc->da, &cex, NULL, CLONE_STRUCTURE, op->lc->timeout));
         if (err != OP_STATE_SUCCESS) {
-            log_printf(15, "ERROR cloning parent fname=%s\n", dir);
+            log_printf(15, "ERROR cloning parent src_path=%s\n", op->src_path);
             status = op_failure_status;
             exnode_exchange_destroy(exp);
             exnode_destroy(ex);
@@ -1090,7 +1090,6 @@ mode_t ftype_lio2posix(int ftype)
 {
     mode_t mode;
 
-    mode = 0;
     if (ftype & OS_OBJECT_SYMLINK) {
         mode = S_IFLNK | 0777;
     } else if (ftype & OS_OBJECT_DIR) {
@@ -1237,8 +1236,7 @@ int lio_fsck_check_object(lio_config_t *lc, creds_t *creds, char *path, int ftyp
 
     //** Check the owner
     index = 0;
-    v = val[index];
-    vs= v_size[index];
+    vs = v_size[index];
     if (vs <= 0) { //** Missing owner
         switch (owner_mode) {
         case LIO_FSCK_MANUAL:
@@ -1273,8 +1271,7 @@ int lio_fsck_check_object(lio_config_t *lc, creds_t *creds, char *path, int ftyp
 
     //** Check the inode
     index = 1;
-    v = val[index];
-    vs= v_size[index];
+    vs = v_size[index];
     if (vs <= 0) { //** Missing inode
         switch (owner_mode) {
         case LIO_FSCK_MANUAL:
@@ -1298,8 +1295,7 @@ int lio_fsck_check_object(lio_config_t *lc, creds_t *creds, char *path, int ftyp
     //** Check if we have an exnode
     do_clone = 0;
     index = 2;
-    v = val[index];
-    vs= v_size[index];
+    vs = v_size[index];
     if (vs <= 0) {
         switch (ex_mode) {
         case LIO_FSCK_MANUAL:
@@ -1337,7 +1333,7 @@ int lio_fsck_check_object(lio_config_t *lc, creds_t *creds, char *path, int ftyp
     exp = exnode_exchange_text_parse(val[ex_index]);
     ex = exnode_create();
     if (exnode_deserialize(ex, exp, lc->ess_nocache) != 0) {
-        log_printf(15, "ERROR parsing parent exnode fname=%s\n", dir);
+        log_printf(15, "ERROR parsing parent exnode path=%s\n", path);
         state |= LIO_FSCK_MISSING_EXNODE;
         exp->text.text = NULL;
         goto finished;
@@ -1348,7 +1344,7 @@ int lio_fsck_check_object(lio_config_t *lc, creds_t *creds, char *path, int ftyp
     if (do_clone == 1) {
         err = gop_sync_exec(exnode_clone(lc->tpc_unlimited, ex, lc->da, &cex, NULL, CLONE_STRUCTURE, lc->timeout));
         if (err != OP_STATE_SUCCESS) {
-            log_printf(15, "ERROR cloning parent fname=%s\n", dir);
+            log_printf(15, "ERROR cloning parent path=%s\n", path);
             state |= LIO_FSCK_MISSING_EXNODE;
             goto finished;
         }

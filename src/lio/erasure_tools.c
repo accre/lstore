@@ -761,7 +761,7 @@ erasure_plan_t *et_generate_plan(long long int file_size, int method,
     float increase;
 
     //** Set the default w and packetsize
-
+    best_size = 0;
 
     if (w == -1) { //** Auto set w
         switch(method) {
@@ -906,7 +906,6 @@ erasure_plan_t *et_generate_plan(long long int file_size, int method,
         new_size = file_size;
         rem = new_size % i;
         if (rem > 0) new_size = new_size + (i-rem);
-        strip_size = new_size / data_strips;
         rem = new_size % (data_strips*w*packet_size*base_unit);
         if (rem > 0) printf("ERROR with new size!!!!! new_Size=%lld rem=%lld\n", new_size, rem);
 

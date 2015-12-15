@@ -393,7 +393,6 @@ void *rsrc_check_thread(apr_thread_t *th, void *data)
     op_status_t status;
     int n;
 
-    n = 0;
     gop = NULL;
     do {
         if (gop == NULL) {

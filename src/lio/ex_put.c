@@ -190,12 +190,12 @@ int main(int argc, char **argv)
     //** Flush everything to backing store
     log_printf(1, "Flushing to disk size=" XOT "\n", segment_size(seg));
     flush_log();
-    err = gop_sync_exec(segment_flush(seg, lio_gc->da, 0, segment_size(seg)+1, lio_gc->timeout));
+    gop_sync_exec(segment_flush(seg, lio_gc->da, 0, segment_size(seg)+1, lio_gc->timeout));
     log_printf(1, "Flush completed\n");
     cumulative_time = apr_time_now() - start_time;
 
     //** Go ahead and trim the file back to it's actual size
-    err = gop_sync_exec(segment_truncate(seg, lio_gc->da, segment_size(seg), lio_gc->timeout));
+    gop_sync_exec(segment_truncate(seg, lio_gc->da, segment_size(seg), lio_gc->timeout));
 
     //** Print the informational summary if needed
     if (print_timing == 1) {

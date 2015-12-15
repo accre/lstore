@@ -235,7 +235,6 @@ void ds_ibp_translate_cap_set(data_service_fn_t *ds, char *rid_key, char *ds_key
     //** If we made it hear we need to do a translation
     //** Make the new prefix
     snprintf(ds_new, sizeof(ds_new), "ibp://%s", ds_key);
-    len = strlen(ds_new);
 
     log_printf(20, "cap=%s prefix=%s\n", str, ds_new);
 

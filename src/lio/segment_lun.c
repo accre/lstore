@@ -320,7 +320,6 @@ int slun_row_placement_fix(segment_t *seg, data_attr_t *da, seglun_row_t *b, int
 
         //** Process the results
         opque_start_execution(q);
-        todo = 0;
         for (j=0; j<m; j++) {
             i = missing[j];
 //log_printf(0, "missing[%d]=%d rid_key=%s\n", j, missing[j], req[j].rid_key);
@@ -644,8 +643,6 @@ int slun_row_replace_fix(segment_t *seg, data_attr_t *da, seglun_row_t *b, int *
     kick_out = 10000;
     cleanup_stack = NULL;
     do {
-        err = 0;
-
         log_printf(15, "loop=%d ------------------------------\n", loop);
 
         //** Make the fixed list mapping table
@@ -817,7 +814,6 @@ op_status_t _seglun_grow(segment_t *seg, data_attr_t *da, ex_off_t new_size_arg,
 
     //** Round the size to the nearest stripe size
     berr = 0;
-    err = 0;
     lo = s->total_size;
     dsize = new_size / s->stripe_size;
     dsize = dsize * s->stripe_size;
@@ -1767,7 +1763,6 @@ op_status_t seglun_rw_func(void *arg, int id)
 
     //** Find the max extent;
     maxpos = 0;
-    pos = 0;
     for (i=0; i<sw->n_iov; i++) {
         pos = sw->iov[i].offset + sw->iov[i].len - 1;
         if (pos > maxpos) maxpos = pos;
@@ -2055,7 +2050,6 @@ op_status_t seglun_inspect_func(void *arg, int id)
     total_repaired = 0;
     total_migrate = 0;
     nmigrated = 0;
-    nlost = 0;
 
     option = si->inspect_mode & INSPECT_COMMAND_BITS;
     soft_error_fail = (si->inspect_mode & INSPECT_SOFT_ERROR_FAIL);

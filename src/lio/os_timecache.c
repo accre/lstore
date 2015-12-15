@@ -453,7 +453,6 @@ int _ostc_cache_tree_walk(object_service_fn_t *os, char *fname, Stack_t *tree, o
 
     log_printf(5, "fname=%s add_terminal_ftype=%d\n", fname, add_terminal_ftype);
 
-    err = -1;
     if ((fname == NULL) || (max_recurse <= 0)) return(1);
 
     i=0;

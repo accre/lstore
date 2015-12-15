@@ -451,7 +451,6 @@ op_status_t seglog_read_func(void *arg, int id)
             ex_iov[slot].len = hi - lo + 1;
             gop = segment_read(s->base_seg, sw->da, sw->rw_hints, 1, &(ex_iov[slot]), sw->buffer, bpos, sw->timeout);
             opque_add(q, gop);
-            pos = pos + ex_iov[slot].len;
             bpos = bpos + ex_iov[slot].len;
             slot++;
         } else if (prev_end < hi) {    //** Check if we read from the base on the end
@@ -459,7 +458,6 @@ op_status_t seglog_read_func(void *arg, int id)
             ex_iov[slot].len = hi - (prev_end+1) + 1;
             gop = segment_read(s->base_seg, sw->da, sw->rw_hints, 1, &(ex_iov[slot]), sw->buffer, bpos, sw->timeout);
             opque_add(q, gop);
-            pos = pos + ex_iov[slot].len;
             bpos = bpos + ex_iov[slot].len;
             slot++;
         }
@@ -666,7 +664,7 @@ op_status_t seglog_clone_func(void *arg, int id)
     op_generic_t *gop;
     ex_off_t nbytes_base, nbytes_log;
     int bufsize = 50*1024*1024;
-    ex_off_t dt, pos, rpos, wpos, rlen, len, dlen;
+    ex_off_t dt, pos, rpos, wpos, rlen, dlen;
     tbuffer_t *wbuf, *rbuf, *tmpbuf;
     tbuffer_t tbuf1, tbuf2;
     int err, do_segment_copy;
@@ -751,9 +749,7 @@ op_status_t seglog_clone_func(void *arg, int id)
             rpos = clog->seg_offset;
             wpos = clog->lo;
             while (pos < clog->len) {
-                len = bufsize-rlen;
                 dlen = clog->len - pos;
-                if (dlen < len) len = dlen;
                 ex_iovec_single(&(clog->rex), rpos, dlen);
                 gop = segment_read(clog->seg, slc->da, NULL, 1, &(clog->rex), rbuf, rlen, slc->timeout);
                 opque_add(q1, gop);

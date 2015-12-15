@@ -716,7 +716,6 @@ void osf_multi_lock(object_service_fn_t *os, creds_t *creds, osfile_fd_t *fd, ch
     //** Always get the primary
     n = 0;
     lock_table[n] = osf_retrieve_lock(os, fd->object_name, &lock_slot[n]);
-    max_index = lock_slot[0];
     n++;
 
     log_printf(15, "lock_slot[0]=%d fname=%s\n", lock_slot[0], fd->object_name);
@@ -1730,7 +1729,7 @@ int osf_object_remove(object_service_fn_t *os, char *path)
         log_printf(15, "file or link removal\n");
         if (ftype & OS_OBJECT_HARDLINK) {  //** If this is the last hardlink we need to remove the hardlink inode as well
             memset(&s, 0, sizeof(s));
-            err = stat(path, &s);
+            stat(path, &s);
             if (s.st_nlink <= 2) {  //** Yep we have to remove it
                 hard_inode = resolve_hardlink(os, path, 0);
             }
@@ -3406,7 +3405,7 @@ int osfile_next_object(os_object_iter_t *oit, char **fname, int *prefix_len)
                 if (it->fd != NULL) {
                     op.os = it->os;
                     op.cfd = it->fd;
-                    status = osfile_close_object_fn((void *)&op, 0);
+                    osfile_close_object_fn((void *)&op, 0);
                     it->fd = NULL;
                 }
 
@@ -3444,23 +3443,15 @@ int osfile_next_object(os_object_iter_t *oit, char **fname, int *prefix_len)
             aop.fd = (osfile_fd_t *)it->fd;
             aop.key = it->key;
 
-//        if (it->v_fixed != 1) {
-//           for (i=0; i < it->n_list; i++) {  //** Free any allocated memory before the next call
-//              if (it->v_size_user[i] < 0) {
-//                 if (it->val[i] != NULL) free(it->val[i]);
-//              }
-//           }
-//        }
-
             aop.val = it->val;
             aop.v_size = it->v_size;
             memcpy(it->v_size, it->v_size_user, sizeof(int)*it->n_list);
             aop.n = it->n_list;
-            status = osf_get_multiple_attr_fn(&aop, 0);
+            osf_get_multiple_attr_fn(&aop, 0);
 
             op.os = it->os;
             op.cfd = it->fd;
-            status = osfile_close_object_fn((void *)&op, 0);
+            osfile_close_object_fn((void *)&op, 0);
             it->fd = NULL;
 
         }

@@ -277,7 +277,6 @@ int main(int argc, char **argv)
     lio_init(&argc, &argv);
 
     //*** Parse the path args
-    rg_mode = 0;
     rp_single = ro_single = NULL;
     rg_mode = lio_parse_path_options(&argc, argv, lio_gc->auto_translate, &tuple, &rp_single, &ro_single);
 
@@ -398,7 +397,6 @@ int main(int argc, char **argv)
             } else {
                 bad++;
             }
-            slot = gop_get_myid(gop);
             gop_free(gop, OP_DESTROY);
         }
 

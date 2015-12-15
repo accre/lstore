@@ -254,8 +254,6 @@ op_status_t segment_get_func(void *arg, int id)
 
     status = op_success_status;
 
-    nbytes = sc->len;
-
     //** Read the initial block
     rpos = sc->src_offset;
     wpos = 0;
@@ -268,7 +266,6 @@ op_status_t segment_get_func(void *arg, int id)
 
     log_printf(5, "FILE fd=%p\n", sc->fd);
 
-    dt_loop = dt_file = 0;
     ex_iovec_single(&rex, rpos, rlen);
     wlen = 0;
     rpos += rlen;
@@ -276,8 +273,6 @@ op_status_t segment_get_func(void *arg, int id)
     loop_start = apr_time_now();
     gop = segment_read(sc->src, sc->da, sc->rw_hints, 1, &rex, rbuf, 0, sc->timeout);
     err = gop_waitall(gop);
-    dt_loop = apr_time_now() - loop_start;
-    dt_loop /= (double)APR_USEC_PER_SEC;
     if (err != OP_STATE_SUCCESS) {
         log_printf(1, "Intial read failed! src=" XIDT " rpos=" XOT, " len=" XOT "\n", segment_id(sc->src), rpos, rlen);
         gop_free(gop, OP_DESTROY);
@@ -326,7 +321,7 @@ op_status_t segment_get_func(void *arg, int id)
         if (wlen != got) {
             log_printf(1, "ERROR from fread=%d  dest sid=" XIDT "\n", errno, segment_id(sc->dest));
             status = op_failure_status;
-            err = gop_waitall(gop);
+            gop_waitall(gop);
             gop_free(gop, OP_DESTROY);
             goto fail;
         }
@@ -480,7 +475,7 @@ op_status_t segment_put_func(void *arg, int id)
                 if (feof(sc->fd) == 0)  {
                     log_printf(1, "ERROR from fread=%d  dest sid=" XIDT " got=" XOT " rlen=" XOT "\n", errno, segment_id(sc->dest), got, rlen);
                     status = op_failure_status;
-                    err = gop_waitall(gop);
+                    gop_waitall(gop);
                     gop_free(gop, OP_DESTROY);
                     goto finished;
                 }
