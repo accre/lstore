@@ -302,7 +302,6 @@ int main(int argc, char **argv)
     if (err != OP_STATE_SUCCESS) {
         while ((gop = opque_get_next_failed(q)) != NULL) {
             j = gop_get_myid(gop);
-            status = gop_get_status(gop);
             info_printf(lio_ifd, 0, "Failed with path %s\n", flist[j].src_tuple.path);
         }
     }

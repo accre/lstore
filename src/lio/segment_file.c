@@ -93,17 +93,15 @@ op_status_t segfile_rw_func(void *arg, int id)
     int i, err_cnt;
     op_status_t err;
 
-    double r;
-//if (srw->mode == 1) {
-    r = random_double(0, 1);
-    r = 1;
-    if (r < 0.25) {
-        log_printf(0, "Triggering a failure!  fname=%s n_iov=%d off[0]=" XOT " len[0]=" XOT " mode=%d\n", s->fname, srw->n_iov, srw->iov[0].offset, srw->iov[0].len, srw->mode);
-        return(op_failure_status);
-    }
-//}
-
-    err = op_success_status;
+//    double r;
+//--if (srw->mode == 1) {
+//    r = random_double(0, 1);
+//    r = 1;
+//    if (r < 0.25) {
+//        log_printf(0, "Triggering a failure!  fname=%s n_iov=%d off[0]=" XOT " len[0]=" XOT " mode=%d\n", s->fname, srw->n_iov, srw->iov[0].offset, srw->iov[0].len, srw->mode);
+//        return(op_failure_status);
+//    }
+//--}
 
     FILE *fd = fopen(s->fname, "r+");
     if (fd == NULL) fd = fopen(s->fname, "w+");

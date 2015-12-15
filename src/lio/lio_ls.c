@@ -158,7 +158,6 @@ int main(int argc, char **argv)
     lio_init(&argc, &argv);
 
     //*** Parse the args
-    rg_mode = 0;
     rp_single = ro_single = NULL;
     nosort = 0;
 
@@ -212,7 +211,7 @@ int main(int argc, char **argv)
 
         for (i=0; i<n_keys; i++) v_size[i] = -tuple.lc->max_attr;
         memset(vals, 0, sizeof(vals));
-        it = lio_create_object_iter_alist(tuple.lc, tuple.creds, rp_single, ro_single, OS_OBJECT_ANY, recurse_depth, keys, (void **)vals, v_size, n_keys);
+        it = lio_create_object_iter_alist(tuple.lc, tuple.creds, rp_single, ro_single, obj_types, recurse_depth, keys, (void **)vals, v_size, n_keys);
         if (it == NULL) {
             info_printf(lio_ifd, 0, "ERROR: Failed with object_iter creation\n");
             return_code = EIO;

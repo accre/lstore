@@ -423,7 +423,6 @@ os_regex_table_t *os_regex_table_unpack(unsigned char *buffer, int bufsize, int 
     int64_t value;
     os_regex_table_t *regex;
 
-    err = 0;
     bpos = 0;
     n = zigzag_decode(&(buffer[bpos]), bufsize, &value);
     log_printf(5, "n_levels=" I64T " n=%d bufsize=%d\n", value, n, bufsize);

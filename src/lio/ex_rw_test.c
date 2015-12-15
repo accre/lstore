@@ -710,7 +710,6 @@ void rw_test()
 //exit(1);
 
     //** Do the test
-    flip = 0;
     i = 0;
     success = 0;
     fail = 0;

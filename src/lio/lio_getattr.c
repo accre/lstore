@@ -142,7 +142,6 @@ int main(int argc, char **argv)
     max_attr = lio_gc->max_attr;
 
     //*** Parse the args
-    rg_mode = 0;
     rp_single = ro_single = attr_regex = NULL;
     n_keys_al = 0;
 

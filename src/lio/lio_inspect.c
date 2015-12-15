@@ -622,7 +622,6 @@ void dump_pools(info_fd_t *ifd, Stack_t *pools, int scale)
     list_iter_t it;
     int total_finished, finished, total_todo, todo, total, ntodo, ptodo, total_ntodo, total_ptodo;
 
-    finished = todo = ntodo = ptodo = 0;
     move_to_top(pools);
     tneg = tpos = 0;
     total_ntodo = total_ptodo = total_todo = total_finished = 0;
@@ -1134,7 +1133,6 @@ int main(int argc, char **argv)
     err = 0;
 
     //*** Parse the path args
-    rg_mode = 0;
     rp_single = ro_single = NULL;
     rg_mode = lio_parse_path_options(&argc, argv, lio_gc->auto_translate, &static_tuple, &rp_single, &ro_single);
 
@@ -1562,7 +1560,6 @@ int main(int argc, char **argv)
         } else {
             bad++;
         }
-        slot = gop_get_myid(gop);
         gop_free(gop, OP_DESTROY);
     }
 

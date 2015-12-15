@@ -635,7 +635,7 @@ op_status_t cache_advise_fn(void *arg, int id)
     cache_advise_op_t *ca = (cache_advise_op_t *)arg;
     segment_t *seg = ca->seg;
     cache_segment_t *s = (cache_segment_t *)seg->priv;
-    ex_off_t lo_row, hi_row, nbytes, *poff, coff, poff2;
+    ex_off_t lo_row, hi_row, *poff, coff, poff2;
     cache_page_t *p, *p2, *np;
     skiplist_iter_t it;
     int err, max_pages;
@@ -648,12 +648,9 @@ op_status_t cache_advise_fn(void *arg, int id)
 
     //** Map the range to the page boundaries
     lo_row = ca->lo / s->page_size;
-    nbytes = lo_row;
     lo_row = lo_row * s->page_size;
     hi_row = ca->hi / s->page_size;
-    nbytes = hi_row - nbytes + 1;
     hi_row = hi_row * s->page_size;
-    nbytes = nbytes * s->page_size;
 
     //** Figure out if any pages need to be loaded
 
@@ -667,7 +664,6 @@ op_status_t cache_advise_fn(void *arg, int id)
 
     //** Generate the page list to load
     coff = lo_row;
-    err = 0;
     it = iter_search_skiplist(s->pages, &lo_row, 0);
     for (coff = lo_row; coff <= hi_row; coff += s->page_size) {
         //** Make sure the next page matches coff
@@ -909,7 +905,7 @@ int cache_drop_pages(segment_t *seg, ex_off_t lo, ex_off_t hi)
 int cache_dirty_pages_get(segment_t *seg, int mode, ex_off_t lo, ex_off_t hi, ex_off_t *hi_got, page_handle_t *page, int *n_pages)
 {
     cache_segment_t *s = (cache_segment_t *)seg->priv;
-    ex_off_t lo_row, hi_row, *poff, n, old_hi;
+    ex_off_t lo_row, *poff, n, old_hi;
     skiplist_iter_t it;
     cache_page_t *p;
     int err, skip_mode, can_get;
@@ -918,8 +914,6 @@ int cache_dirty_pages_get(segment_t *seg, int mode, ex_off_t lo, ex_off_t hi, ex
     //** Map the rage to the page boundaries
     lo_row = lo / s->page_size;
     lo_row = lo_row * s->page_size;
-    hi_row = hi / s->page_size;
-    hi_row = hi_row * s->page_size;
 
     log_printf(15, "START: seg=" XIDT " mode=%d lo=" XOT " hi=" XOT " lo_row=" XOT "\n", segment_id(seg), mode, lo, hi, lo_row);
 
@@ -970,7 +964,7 @@ int cache_dirty_pages_get(segment_t *seg, int mode, ex_off_t lo, ex_off_t hi, ex
 
                 //** Need to reset iterator due to potential changes while waiting
                 it = iter_search_skiplist(s->pages, &(p->offset), 0);
-                err = next_skiplist(&it, (skiplist_key_t **)&poff, (skiplist_data_t **)&p);
+                next_skiplist(&it, (skiplist_key_t **)&poff, (skiplist_data_t **)&p);
             } else {
                 skip_mode = (p->access_pending[CACHE_WRITE] == 0) ? 0 : 1;
             }
@@ -1274,7 +1268,7 @@ int cache_write_pages_get(segment_t *seg, segment_rw_hints_t *rw_hints, int mode
     //** we are in skipping mode
     skip_mode = 0;
     it = iter_search_skiplist(s->pages, &lo_row, 0);
-    err = next_skiplist(&it, (skiplist_key_t **)&poff, (skiplist_data_t **)&p);
+    next_skiplist(&it, (skiplist_key_t **)&poff, (skiplist_data_t **)&p);
 
     n = 0;
     pload_count = 0;
@@ -2142,7 +2136,6 @@ int cache_ppages_handle(segment_t *seg, data_attr_t *da, int rw_mode, ex_off_t *
     tbuffer_t pptbuf;
     skiplist_iter_t it;
     int do_flush, err, lo_mapped, hi_mapped;
-    err = 0;
 
     log_printf(5, "START lo=" XOT " hi=" XOT " bpos=" XOT "\n", *lo, *hi, *bpos);
     flush_log();
@@ -2174,7 +2167,6 @@ int cache_ppages_handle(segment_t *seg, data_attr_t *da, int rw_mode, ex_off_t *
     hi_new = *hi;
     bpos_new = *bpos;
 
-    err = 0;
     it = iter_search_skiplist(s->partial_pages, &lo_page, 0);
     while (next_skiplist(&it, (skiplist_key_t **)&ppoff, (skiplist_data_t **)&pp) == 0) {
         log_printf(5, "LOOP seg=" XIDT " rw_mode=%d ppage pstart=" XOT " pend=" XOT "\n", segment_id(seg), rw_mode, pp->page_start, pp->page_end);
@@ -2334,7 +2326,7 @@ int cache_ppages_handle(segment_t *seg, data_attr_t *da, int rw_mode, ex_off_t *
     }
 
     if (do_flush > 0) {
-        err = _cache_ppages_flush_list(seg, da, &pp_flush);
+        _cache_ppages_flush_list(seg, da, &pp_flush);
         empty_stack(&pp_flush, 0);
         do_flush = 0;
     }
@@ -2362,7 +2354,6 @@ int cache_ppages_handle(segment_t *seg, data_attr_t *da, int rw_mode, ex_off_t *
     if (stack_size(s->ppages_unused) < (2 - lo_mapped - hi_mapped)) {
         log_printf(5, "Triggering a flush\n");
 
-        do_flush = 0;
         err = _cache_ppages_flush(seg, da);
         if (err != 0) {
             cache_unlock(s->c);
@@ -2409,7 +2400,6 @@ int cache_ppages_handle(segment_t *seg, data_attr_t *da, int rw_mode, ex_off_t *
         pend = pp->page_start + pend;
         if (pend > s->ppage_max) s->ppage_max = pend;
         nhandled++;
-        lo_mapped = 1;
         if (pp->flags == 1) {
             if (do_flush == 0) init_stack(&pp_flush);
             insert_below(&pp_flush, pp);
@@ -2436,7 +2426,6 @@ int cache_ppages_handle(segment_t *seg, data_attr_t *da, int rw_mode, ex_off_t *
         pend = pp->page_start + nbytes - 1;
         if (pend > s->ppage_max) s->ppage_max = pend;
         nhandled++;
-        hi_mapped = 1;
 
         if (pp->flags == 1) {
             if (do_flush == 0) init_stack(&pp_flush);
@@ -2451,7 +2440,7 @@ int cache_ppages_handle(segment_t *seg, data_attr_t *da, int rw_mode, ex_off_t *
     if (do_flush > 0) {  //** Do a flush if not completely covered
         log_printf(1, "Triggering a flush do_flush=%d nhandled=%d n_pages=%d\n", do_flush, nhandled, n_pages);
 
-        err = _cache_ppages_flush_list(seg, da, &pp_flush);
+        _cache_ppages_flush_list(seg, da, &pp_flush);
         empty_stack(&pp_flush, 0);
     }
 
@@ -2947,7 +2936,6 @@ int cache_stats(cache_t *c, cache_stats_t *cs)
     ex_id_t *sid2;
     int i, n;
 
-    n = 0;
     cache_lock(c);
 
     *cs = c->stats;

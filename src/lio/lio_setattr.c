@@ -131,7 +131,6 @@ int main(int argc, char **argv)
 
 
     //*** Parse the args
-    rg_mode = 0;
     rp_single = ro_single = NULL;
     n_keys = 0;
     n_skeys = 0;
