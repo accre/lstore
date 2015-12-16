@@ -255,7 +255,7 @@ os_regex_table_t *os_regex_table_create(int n)
     os_regex_table_t *table;
 
     type_malloc_clear(table, os_regex_table_t, 1);
-    type_malloc_clear(table->regex_entry, os_regex_entry_t, n);
+    if ( n> 0) type_malloc_clear(table->regex_entry, os_regex_entry_t, n);
     table->n = n;
 
     return(table);
@@ -301,7 +301,7 @@ void os_regex_table_destroy(os_regex_table_t *table)
             }
         }
 
-        free(table->regex_entry);
+        if (table->n > 0) free(table->regex_entry);
     }
 
     free(table);
