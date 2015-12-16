@@ -258,8 +258,8 @@ void lio_store_and_release_adler32(lio_config_t *lc, creds_t *creds, list_t *wri
         push(stack, a32);
 
         if (a32->offset != next) {
-            log_printf(1, "fname=%s a32=%08x off=" XOT " end=" XOT " nbytes=" XOT " OOPS dn=" XOT "\n", fname, aval, a32->offset, pend, a32->len, dn);
             dn = a32->offset - next;
+            log_printf(1, "fname=%s a32=%08x off=" XOT " end=" XOT " nbytes=" XOT " OOPS dn=" XOT "\n", fname, aval, a32->offset, pend, a32->len, dn);
             if (dn < 0) {
                 overlap -= dn;
             } else {
