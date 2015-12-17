@@ -2663,6 +2663,7 @@ void osrs_attr_iter_cb(void *arg, mq_task_t *task)
     val = NULL, v_size = -1;
     it = NULL;
     handle = NULL;
+    attr_regex = NULL;
 
     //** Parse the command.
     msg = task->msg;
