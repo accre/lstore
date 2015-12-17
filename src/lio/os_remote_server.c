@@ -719,6 +719,8 @@ void osrs_abort_remove_regex_object_cb(void *arg, mq_task_t *task)
 
     log_printf(5, "Processing incoming request\n");
 
+    status = op_failure_status;  //** Store a default response
+
     //** Parse the command. Don't have to
     msg = task->msg;
     mq_remove_header(msg, 0);
@@ -1511,6 +1513,8 @@ void osrs_abort_regex_set_mult_attr_cb(void *arg, mq_task_t *task)
     op_generic_t *gop;
 
     log_printf(5, "Processing incoming request\n");
+
+    status = op_failure_status;  //** Store a default response
 
     //** Parse the command. Don't have to
     msg = task->msg;
