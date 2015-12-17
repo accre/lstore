@@ -1502,8 +1502,11 @@ int osrc_next_attr(os_attr_iter_t *oit, char **key, void **val, int *v_size)
     *v_size = it->v_max;
     osrc_store_val(it->mqs, n, val, v_size);
 
-    log_printf(5, "key=%s val=%s v_size=%d\n", *key, (char *)(*val), *v_size);
-
+    if (key != NULL) {
+        log_printf(5, "key=%s val=%s v_size=%d\n", *key, (char *)(*val), *v_size);
+    } else {
+        log_printf(5, "key=NULL val=%s v_size=%d\n", (char *)(*val), *v_size);
+    }
     log_printf(5, "END\n");
 
     return(0);
