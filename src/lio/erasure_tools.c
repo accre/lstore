@@ -698,6 +698,7 @@ erasure_plan_t *et_new_plan(int method, long long int strip_size,
         break;
     default:
         printf("et_new_plan: invalid method!!!!!! method=%d\n", method);
+        free(plan);
         return(NULL);
     }
 
