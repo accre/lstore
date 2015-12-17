@@ -2112,6 +2112,7 @@ void osrs_symlink_mult_attr_cb(void *arg, mq_task_t *task)
 
     key_src = NULL;
     key_dest = NULL;
+    src_path = NULL;
     status = op_failure_status;
 
     //** Parse the command.
