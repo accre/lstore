@@ -913,19 +913,21 @@ int _rs_simple_load(resource_service_fn_t *res, char *fname)
     if (rss->n_rids == 0) {
         log_printf(0, "ERROR: n_rids=%d\n", rss->n_rids);
         fprintf(stderr, "ERROR: n_rids=%d\n", rss->n_rids);
-    }
-    type_malloc_clear(rss->random_array, rss_rid_entry_t *, rss->n_rids);
-    it = list_iter_search(rss->rid_table, (list_key_t *)NULL, 0);
-    for (i=0; i < rss->n_rids; i++) {
-        list_next(&it, (list_key_t **)&key, (list_data_t **)&rse);
+        rss->rid_table = NULL;
+    } else {
+        type_malloc_clear(rss->random_array, rss_rid_entry_t *, rss->n_rids);
+        it = list_iter_search(rss->rid_table, (list_key_t *)NULL, 0);
+        for (i=0; i < rss->n_rids; i++) {
+            list_next(&it, (list_key_t **)&key, (list_data_t **)&rse);
 
-        n = random_int(0, rss->n_rids-1);
+            n = random_int(0, rss->n_rids-1);
 //n = i;  //FIXME
-        while (rss->random_array[n] != NULL) {
-            n = (n+1) % rss->n_rids;
+            while (rss->random_array[n] != NULL) {
+                n = (n+1) % rss->n_rids;
+            }
+            rse->slot = n;
+            rss->random_array[n] = rse;
         }
-        rse->slot = n;
-        rss->random_array[n] = rse;
     }
 
     inip_destroy(kf);
