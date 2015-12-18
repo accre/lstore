@@ -706,7 +706,7 @@ void _seglin_probe_cb(void *arg, int state)
 
     //*** Clean up ***
     for (i=0; i<interval_skiplist_count(s->isl); i++) {
-        ds_probe_destroy(b->data->ds, sp->probe[i]);
+        ds_probe_destroy(sp->block[i]->data->ds, sp->probe[i]);
     }
     free(sp->probe);
     free(sp->block);
