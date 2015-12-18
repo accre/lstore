@@ -1132,9 +1132,11 @@ op_generic_t *segjerase_clone(segment_t *seg, data_attr_t *da, segment_t **clone
         sd->plan = et_generate_plan(nbytes, sd->method, sd->n_data_devs, sd->n_parity_devs, sd->w, -1, -1);
         if (sd->plan == NULL) {
             log_printf(0, "seg=" XIDT " No plan generated!\n", segment_id(seg));
+            return(gop_dummy(op_failure_status));
+        } else {
+            sd->plan->form_encoding_matrix(sd->plan);
+            sd->plan->form_decoding_matrix(sd->plan);
         }
-        sd->plan->form_encoding_matrix(sd->plan);
-        sd->plan->form_decoding_matrix(sd->plan);
 
         //** Copy the header
         if (seg->header.name != NULL) clone->header.name = strdup(seg->header.name);
