@@ -620,7 +620,7 @@ op_status_t seglin_write_func(void *arg, int id)
         if (s->total_size < new_size) {  //** Check again within the lock
             log_printf(15, " seg=" XIDT " GROWING  curr_used_size=" XOT " curr_total_size=" XOT " new_size=" XOT " requested maxpos=" XOT "\n",
                        segment_id(sw->seg), s->used_size, s->total_size, new_size, maxpos);
-            status = _sl_truncate(sw->seg, sw->da, new_size, sw->timeout);
+            _sl_truncate(sw->seg, sw->da, new_size, sw->timeout);
         }
         segment_unlock(sw->seg);
     }
