@@ -149,7 +149,7 @@ int _slog_truncate_range(segment_t *seg, slog_range_t *r)
 
         //** Restart the iter cause of the deletion
         it = iter_search_interval_skiplist(s->mapping, (skiplist_key_t *)&lo, (skiplist_key_t *)&hi);
-        ir = (slog_range_t *)next_interval_skiplist(&it);
+        next_interval_skiplist(&it);
     } else {  //** Completely dropped
         r_table[n] = ir;
         n++;
