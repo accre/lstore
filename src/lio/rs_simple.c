@@ -387,7 +387,7 @@ op_generic_t *rs_simple_request(resource_service_fn_t *arg, data_attr_t *da, rs_
             } else if  (state == 1) { //** Got one
                 log_printf(15, "rs_simple_request: processing i=%d ds_key=%s\n", i, rse->ds_key);
                 found = 1;
-                if (i<fixed_size) hints_list[i].status = RS_ERROR_OK;
+                if ((i<fixed_size) && hints_list) hints_list[i].status = RS_ERROR_OK;
 
                 for (k=0; k<req_size; k++) {
                     if (req[k].rid_index == i) {
@@ -404,10 +404,14 @@ op_generic_t *rs_simple_request(resource_service_fn_t *arg, data_attr_t *da, rs_
                 }
                 break;  //** Got one so exit the RID scan and start the next one
             } else if (i<fixed_size) {  //** This should have worked so flag an error
-                log_printf(1, "Match fail in fixed list[%d]=%s!\n", i, hints_list[i].fixed_rid_key);
+                if (hints_list) {
+                   log_printf(1, "Match fail in fixed list[%d]=%s!\n", i, hints_list[i].fixed_rid_key);
+                   hints_list[i].status = RS_ERROR_FIXED_MATCH_FAIL;
+                } else {
+                   log_printf(1, "Match fail in fixed list and no hints are provided!\n", i);
+                }
                 status.op_status = OP_STATE_FAILURE;
                 status.error_code = RS_ERROR_FIXED_MATCH_FAIL;
-                hints_list[i].status = RS_ERROR_FIXED_MATCH_FAIL;
                 if (ignore_fixed_err == 0) err_cnt++;
                 break;  //** Skip to the next in the list
             } else {
