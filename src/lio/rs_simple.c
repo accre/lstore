@@ -476,7 +476,7 @@ char *rs_simple_get_rid_value(resource_service_fn_t *arg, char *rid_key, char *k
     }
     apr_thread_mutex_unlock(rss->lock);
 
-    return(strdup(value));
+    return(value);
 }
 
 
