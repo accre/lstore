@@ -2481,6 +2481,7 @@ op_status_t cache_rw_func(void *arg, int id)
 
     tb_err = 0;
     err = op_success_status;
+    if (cop->n_iov == 0) return(err);  //** Nothing to do so kick out
 
     init_stack(&stack);
 
