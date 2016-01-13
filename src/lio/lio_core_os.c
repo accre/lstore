@@ -1252,8 +1252,10 @@ int lio_fsck_check_object(lio_config_t *lc, creds_t *creds, char *path, int ftyp
             lio_get_attr(lc, creds, dir, NULL, "system.owner", (void **)&file, &vs);
             log_printf(15, "fname=%d parent=%s owner=%s\n", path, dir, file);
             if (vs > 0) {
-                lio_set_attr(lc, creds, path, NULL, "system.owner", (void *)file, strlen(file));
-                free(file);
+                if (file) {
+                    lio_set_attr(lc, creds, path, NULL, "system.owner", (void *)file, strlen(file));
+                    free(file);
+                }
             } else {
                 state |= LIO_FSCK_MISSING_OWNER;
             }
