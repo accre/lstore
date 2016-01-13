@@ -2103,7 +2103,7 @@ op_status_t seglun_inspect_func(void *arg, int id)
         }
 
         //** Add the timing info
-        append_printf(info, &used, bufsize, "  [", block_status[i]);
+        append_printf(info, &used, bufsize, "  [");
         for (i=0; i < s->n_devices; i++) {
             append_printf(info, &used, bufsize, " %s", pretty_print_double_with_scale(1000, (double)dt[i], pp));
         }
