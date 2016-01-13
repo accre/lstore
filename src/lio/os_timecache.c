@@ -498,16 +498,18 @@ int _ostc_cache_tree_walk(object_service_fn_t *os, char *fname, Stack_t *tree, o
         if (next == NULL) {  //** Check if at the end
             if (fname[i] == 0) { //** Yup at the end
                 if (add_terminal_ftype > 0)  { //** Want to add the terminal
-                    if (replacement_obj == NULL) {
-                        next = new_ostcdb_object(strndup(&(fname[start]), n), add_terminal_ftype, apr_time_now() + ostc->entry_timeout, ostc->mpool);
-                    } else {
-                        next = replacement_obj;
-                    }
-                    apr_hash_set(curr->objects, (void *)next->fname, n, next);
-                    move_to_bottom(tree);
-                    insert_below(tree, next);
+                    if (curr) { //** Make sure we have something to add it to
+                        if (replacement_obj == NULL) {
+                            next = new_ostcdb_object(strndup(&(fname[start]), n), add_terminal_ftype, apr_time_now() + ostc->entry_timeout, ostc->mpool);
+                        } else {
+                            next = replacement_obj;
+                        }
+                        apr_hash_set(curr->objects, (void *)next->fname, n, next);
+                        move_to_bottom(tree);
+                        insert_below(tree, next);
 
-                    err = 0;
+                        err = 0;
+                    }
                     goto finished;
                 }
             } else if (fname[start] == '.') {  //** Check if it's a special entry
