@@ -119,6 +119,7 @@ void _close_log()
 // mlog_printf - Prints data to the log file
 //***************************************************************
 
+__attribute__((format (printf, 7, 8)))
 int mlog_printf(int suppress_header, int module_index, int level, const char *fn, const char *fname, int line, const char *fmt, ...)
 {
     va_list args;
@@ -235,6 +236,7 @@ void mlog_load(char *fname, char *output_override, int log_level_override)
 // minfo_printf -Does a normal printf
 //***************************************************************
 
+__attribute__((format (printf, 7, 8)))
 int minfo_printf(info_fd_t *ifd, int module_index, int level, const char *fn, const char *fname, int line, const char *fmt, ...)
 {
     va_list args;
