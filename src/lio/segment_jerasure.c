@@ -1565,6 +1565,8 @@ tryagain: //** In case blacklisting failed we'll retry with it disabled
             len = sw->iov[i].len;
             nstripes = len / s->data_size;
             j = nstripes*s->parity_size;
+        } else {
+            j = 0;
         }
 
         if (((j+parity_used) > parity_len) || (i==sw->n_iov)) {  //** Filled the buffer so wait for the current tasks to complete
