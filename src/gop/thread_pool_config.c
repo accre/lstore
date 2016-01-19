@@ -34,6 +34,7 @@ http://www.accre.vanderbilt.edu
 #include <apr_pools.h>
 #include <apr_thread_proc.h>
 #include <apr_thread_pool.h>
+#include <apr_env.h>
 #include "apr_wrapper.h"
 #include "opque.h"
 #include "thread_pool.h"
@@ -60,10 +61,51 @@ static portal_fn_t _tp_base_portal = {
     .sync_exec = thread_pool_exec_fn
 };
 
+void thread_pool_stats_make();
+void thread_pool_stats_print();
+
 atomic_int_t _tp_context_count = 0;
 apr_thread_mutex_t *_tp_lock = NULL;
 apr_pool_t *_tp_pool = NULL;
-//int _tp_id = 0;
+int _tp_stats = 0;
+
+extern apr_threadkey_t *thread_depth_key;
+extern apr_threadkey_t *thread_depth_table_key;
+extern apr_threadkey_t *thread_concurrent_key;
+
+//***************************************************************************
+
+void _thread_pool_destructor(void *ptr)
+{
+    free(ptr);
+}
+
+//**********************************************************
+// thread_pool_stats_init - Initializes the thread pool stats routines
+//     Should only be called once.
+//**********************************************************
+
+void thread_pool_stats_init()
+{
+    int i;
+    char *eval;
+
+    //** Check if we are enabling stat collection
+    eval = NULL;
+    apr_env_get(&eval, "GOP_TP_STATS", _tp_pool);
+    if (eval != NULL) {
+        i = atol(eval);
+        if (i > 0) {
+            _tp_stats = 1;
+
+            apr_threadkey_private_create(&thread_depth_key,_thread_pool_destructor, _tp_pool);
+            apr_threadkey_private_create(&thread_depth_table_key,_thread_pool_destructor, _tp_pool);
+            apr_threadkey_private_create(&thread_concurrent_key,_thread_pool_destructor, _tp_pool);
+
+            thread_pool_stats_make();
+        }
+    }
+}
 
 //*************************************************************
 
@@ -196,6 +238,7 @@ thread_pool_context_t *thread_pool_create_context(char *tp_name, int min_threads
     if (atomic_inc(_tp_context_count) == 0) {
         apr_pool_create(&_tp_pool, NULL);
         apr_thread_mutex_create(&_tp_lock, APR_THREAD_MUTEX_DEFAULT, _tp_pool);
+        thread_pool_stats_init();
         init_opque_system();
     }
 
@@ -236,6 +279,7 @@ void thread_pool_destroy_context(thread_pool_context_t *tpc)
     apr_thread_pool_destroy(tpc->tp);
 
     if (atomic_dec(_tp_context_count) == 0) {
+        if (_tp_stats == 1) thread_pool_stats_print();
         destroy_opque_system();
         apr_thread_mutex_destroy(_tp_lock);
         apr_pool_destroy(_tp_pool);
@@ -247,4 +291,3 @@ void thread_pool_destroy_context(thread_pool_context_t *tpc)
 
     free(tpc);
 }
-
