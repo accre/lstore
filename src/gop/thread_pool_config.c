@@ -94,7 +94,7 @@ void thread_pool_stats_init()
     if (eval != NULL) {
         i = atol(eval);
         if (i > 0) {
-            _tp_stats = 1;
+            _tp_stats = i;
 
             apr_threadkey_private_create(&thread_local_stats_key,_thread_pool_destructor, _tp_pool);
 
@@ -275,7 +275,7 @@ void thread_pool_destroy_context(thread_pool_context_t *tpc)
     apr_thread_pool_destroy(tpc->tp);
 
     if (atomic_dec(_tp_context_count) == 0) {
-        if (_tp_stats == 1) thread_pool_stats_print();
+        if (_tp_stats > 0) thread_pool_stats_print();
         destroy_opque_system();
         apr_thread_mutex_destroy(_tp_lock);
         apr_pool_destroy(_tp_pool);

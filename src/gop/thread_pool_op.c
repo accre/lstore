@@ -140,7 +140,7 @@ void  *thread_pool_exec_fn(apr_thread_t *th, void *arg)
     int concurrent;
 
     tid = atomic_thread_id;
-    if (_tp_stats == 1) {
+    if (_tp_stats > 0) {
         //** Set everything to the GOP depth and inc if not running in the parent thread
         if (tid != op->parent_tid) {
             //** Check if we set a new high for max concurrency
@@ -173,7 +173,7 @@ void  *thread_pool_exec_fn(apr_thread_t *th, void *arg)
     atomic_inc(op->tpc->n_started);
 
     status = op->fn(op->arg, gop_id(gop));
-    if (_tp_stats == 1) {
+    if (_tp_stats > 0) {
         if (tid != op->parent_tid) {
             atomic_dec(_tp_depth_concurrent[my->depth]);
             atomic_dec(_tp_concurrent);
@@ -200,7 +200,7 @@ void init_tp_op(thread_pool_context_t *tpc, thread_pool_op_t *op)
     type_memclear(op, thread_pool_op_t, 1);
 
     op->depth = (_tp_stats == 0) ? -1 : (_thread_local_stats_ptr())->depth + 1; //** Store my recursion depth
-    op->parent_tid = atomic_thread_id;   //** Also store the parent TID so we can adjust the depth if needed
+    op->parent_tid = (_tp_stats == 1) ? atomic_thread_id : -1;   //** Also store the parent TID so we can adjust the depth if needed
 
     //** Now munge the pointers
     gop = &(op->gop);
