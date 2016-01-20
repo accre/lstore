@@ -69,9 +69,7 @@ apr_thread_mutex_t *_tp_lock = NULL;
 apr_pool_t *_tp_pool = NULL;
 int _tp_stats = 0;
 
-extern apr_threadkey_t *thread_depth_key;
-extern apr_threadkey_t *thread_depth_table_key;
-extern apr_threadkey_t *thread_concurrent_key;
+extern apr_threadkey_t *thread_local_stats_key;
 
 //***************************************************************************
 
@@ -98,9 +96,7 @@ void thread_pool_stats_init()
         if (i > 0) {
             _tp_stats = 1;
 
-            apr_threadkey_private_create(&thread_depth_key,_thread_pool_destructor, _tp_pool);
-            apr_threadkey_private_create(&thread_depth_table_key,_thread_pool_destructor, _tp_pool);
-            apr_threadkey_private_create(&thread_concurrent_key,_thread_pool_destructor, _tp_pool);
+            apr_threadkey_private_create(&thread_local_stats_key,_thread_pool_destructor, _tp_pool);
 
             thread_pool_stats_make();
         }

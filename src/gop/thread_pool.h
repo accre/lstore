@@ -70,6 +70,7 @@ typedef struct {
     void (*my_op_free)(void *arg);
     void *arg;
     int depth;
+    int parent_tid;
 } thread_pool_op_t;
 
 #define tp_get_gop(top) &((top)->gop)
