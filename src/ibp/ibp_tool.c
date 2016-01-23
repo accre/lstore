@@ -620,7 +620,6 @@ int cmd_modify_alloc(char **argv, int argc)
     size = atol(argv[1]);
     duration = atol(argv[2]);
     rel = scan_map(argv[3], _ibp_rel_map, table_len(_ibp_rel_map));
-    timeout = atoi(argv[4]);
 
     if (rel < 0) {
         printf("cmd_modify_alloc: Bad reliability: %s\n", argv[3]);

@@ -349,7 +349,7 @@ int IBP_manage(ibp_cap_t *cap, ibp_timer_t  *timer, int cmd, int captype, ibp_ca
     fflush(stdout);
 
     if (err == 0) {
-        err = ibp_sync_command(&op);
+        ibp_sync_command(&op);
     } else {
         IBP_errno = IBP_E_INVALID_PARAMETER;
     }
