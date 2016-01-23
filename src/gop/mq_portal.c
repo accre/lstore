@@ -658,7 +658,7 @@ void mqc_trackaddress(mq_conn_t *c, mq_msg_t *msg)
     f = mq_msg_next(msg);  //** This should be the task ID
     mq_get_frame(f, (void **)&id, &size);
 
-//** Find the task
+    //** Find the task
     tn = apr_hash_get(c->waiting, id, size);
     log_printf(5, "trackaddress status tn=%p id_size=%d\n", tn, size);
     void *data;
@@ -672,15 +672,14 @@ void mqc_trackaddress(mq_conn_t *c, mq_msg_t *msg)
         log_printf(5, "tn->tracking=%p\n", tn->tracking);
         if (tn->tracking != NULL) goto cleanup;  //** Duplicate so drop and ignore
 
-//** Form the address key but first strip off the gunk we don't care about to determine the size
-        f = mq_msg_first(msg);
+        //** Form the address key but first strip off the gunk we don't care about to determine the size
+        mq_msg_first(msg);
         mq_frame_destroy(mq_msg_pluck(msg, 0)); // empty
         mq_frame_destroy(mq_msg_pluck(msg, 0));  // version
         mq_frame_destroy(mq_msg_pluck(msg, 0));  // TRACKADDRESS command
         mq_frame_destroy(mq_msg_pluck(msg, 0));  // id
-//QWERTY     mq_frame_destroy(mq_msg_pluck(msg, 0));  // <empty>
 
-//** What's left is the address until an empty frame
+        //** What's left is the address until an empty frame
         size = mq_msg_total_size(msg);
         log_printf(5, " msg_total_size=%d frames=%d\n", size, stack_size(msg));
         type_malloc_clear(address, char, size+1);
@@ -757,8 +756,8 @@ int mqc_ping(mq_conn_t *c, mq_msg_t *msg)
 //  log_printf(5, "fsize[%d]=%d\n", i, err);
 //}
 
-//** Peel off the top frames and just leave the return address
-    f = mq_msg_first(msg);
+    //** Peel off the top frames and just leave the return address
+    mq_msg_first(msg);
     mq_frame_destroy(mq_msg_pluck(msg, 0));  //blank
     mq_frame_destroy(mq_msg_pluck(msg, 0));  //version
     mq_frame_destroy(mq_msg_pluck(msg,0));  //command
@@ -767,13 +766,13 @@ int mqc_ping(mq_conn_t *c, mq_msg_t *msg)
 
     pong = mq_msg_new();
 
-//** Push the address in reverse order (including the empty frame)
+    //** Push the address in reverse order (including the empty frame)
     while ((f = mq_msg_pop(msg)) != NULL) {
         mq_msg_push_frame(pong, f);
     }
 
     mq_msg_destroy(msg);
-//** Now add the command
+    //** Now add the command
     mq_msg_append_mem(pong, MQF_VERSION_KEY, MQF_VERSION_SIZE, MQF_MSG_KEEP_DATA);
     mq_msg_append_mem(pong, MQF_PONG_KEY, MQF_PONG_SIZE, MQF_MSG_KEEP_DATA);
     mq_msg_append_frame(pong, pid);
@@ -1058,7 +1057,6 @@ int mqc_process_incoming(mq_conn_t *c, int *nproc)
     log_printf(5, "processing incoming start\n");
 //** Process all that are on the wire
     msg = mq_msg_new();
-    n = 0;
     count = 0;
     while ((n = mq_recv(c->sock, msg, MQ_DONTWAIT)) == 0) {
         count++;
@@ -1156,7 +1154,7 @@ skip:
 
 int mqc_process_task(mq_conn_t *c, int *npoll, int *nproc)
 {
-    mq_task_t *task;
+    mq_task_t *task = NULL;
     mq_frame_t *f;
     mq_task_monitor_t *tn;
     char b64[1024];
@@ -1311,7 +1309,6 @@ int mq_conn_make(mq_conn_t *c)
     if (c->pc->connect_mode == MQ_CMODE_SERVER) return(0);  //** Nothing else to do
 
     err = 1; //** Defaults to failure
-    dt = 0;
     frame = -1;
 
 //** Form the ping message and make the base hearbeat message

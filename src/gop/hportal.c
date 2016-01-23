@@ -115,7 +115,6 @@ host_portal_t *create_hportal(portal_context_t *hpc, void *connect_context, char
     int fin;
 
     host[0] = '\0';
-    port = 0;
 
     strncpy(host, string_token(hp2, HP_HOSTPORT_SEPARATOR, &bstate, &fin), sizeof(host)-1);
     host[sizeof(host)-1] = '\0';

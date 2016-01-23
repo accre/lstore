@@ -82,7 +82,6 @@ void *ongoing_heartbeat_thread(apr_thread_t *th, void *data)
     char *remote_host_string;
 
     apr_thread_mutex_lock(on->lock);
-    n = 0;
     do {
         now = apr_time_now() - apr_time_from_sec(5);  //** Give our selves a little buffer
         log_printf(5, "Loop Start now=" TT "\n", apr_time_now());
@@ -546,7 +545,6 @@ void *mq_ongoing_server_thread(apr_thread_t *th, void *data)
     q = new_opque();
     opque_start_execution(q);
 
-    n = 0;
     apr_thread_mutex_lock(mqon->lock);
     do {
         //** Cycle through checking each host's heartbeat

@@ -440,8 +440,6 @@ void *hc_recv_thread(apr_thread_t *th, void *data)
         if (hsop != NULL) {
             hop = &(hsop->op->cmd);
 
-            status = op_success_status;
-
             if (atomic_inc(hop->on_top) == 0) {
                 hop->start_time = apr_time_now();  //**Start the timer
                 hop->end_time = hop->start_time + hop->timeout;
@@ -664,7 +662,7 @@ int create_host_connection(host_portal_t *hp)
     hc->hp = hp;
     hc->last_used = apr_time_now();
 
-    send_err = recv_err = 0;
+    recv_err = 0;
 
     log_printf(3, "additional connection host=%s:%d\n", hp->host, hp->port);
     thread_create_warn(send_err, &(hc->send_thread), NULL, hc_send_thread, (void *)hc, hc->mpool);
