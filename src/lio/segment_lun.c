@@ -959,13 +959,14 @@ op_status_t _seglun_shrink(segment_t *seg, data_attr_t *da, ex_off_t new_size, i
     interval_skiplist_iter_t it;
     seglun_row_t *b;
     opque_t *q = NULL;
-    ex_off_t lo, hi, dsize, bstart_size, bstart_block_size;
+    ex_off_t lo, hi, dsize, bstart_size, bstart_block_size, new_used;
     Stack_t *stack;
     seglun_row_t *start_b;
     op_status_t status;
     int i, err;
 
     //** Round the size to the nearest stripe size
+    new_used = new_size;
     dsize = new_size / s->stripe_size;
     dsize = dsize * s->stripe_size;
     if ((new_size % s->stripe_size) > 0) dsize += s->stripe_size;
@@ -1058,7 +1059,7 @@ op_status_t _seglun_shrink(segment_t *seg, data_attr_t *da, ex_off_t new_size, i
 finished:
     //** Update the size
     s->total_size = new_size;
-    s->used_size = new_size;
+    s->used_size = new_used;
 
     status = (err == OP_STATE_SUCCESS) ? op_success_status : op_failure_status;
     return(status);
@@ -1782,7 +1783,7 @@ op_status_t seglun_rw_func(void *arg, int id)
             if (s->total_size < new_size) {  //** Check again within the lock
                 log_printf(3, " seg=" XIDT " GROWING  curr_used_size=" XOT " curr_total_size=" XOT " new_size=" XOT " requested maxpos=" XOT "\n",
                            segment_id(sw->seg), s->used_size, s->total_size, new_size, maxpos);
-                status = _slun_truncate(sw->seg, sw->da, new_size, sw->timeout);
+                status = _slun_truncate(sw->seg, sw->da, -new_size, sw->timeout);  //** This ia grow op so (-) new_size
                 log_printf(3, " seg=" XIDT " GROWING  err=%d\n",segment_id(sw->seg), status.op_status);
                 if (status.op_status != OP_STATE_SUCCESS) {
                     segment_unlock(sw->seg);
