@@ -730,6 +730,9 @@ void lio_destroy_nl(lio_config_t *lio)
 
     //** Update the lc count for the creds
     snprintf(buffer, sizeof(buffer), "lc:%s", lio->section_name);
+
+    log_printf(1, "Destroying LIO context %s\n", buffer);
+
     _lc_object_destroy(buffer);
 
     snprintf(buffer, sizeof(buffer), "lc:%s", lio->section_name);
@@ -831,6 +834,9 @@ lio_config_t *lio_create_nl(char *fname, char *section, char *user, char *exe_na
 
     //** Add the LC first cause it may already exist
     snprintf(buffer, sizeof(buffer), "lc:%s", section);
+
+    log_printf(1, "Creating LIO context %s\n", buffer);
+
     lio = _lc_object_get(buffer);
     if (lio != NULL) {  //** Already loaded so can skip this part
         return(lio);

@@ -1,21 +1,32 @@
+# **[0.4.0-rc2](https://github.com/accre/lstore-lio/tree/ACCRE_0.4.0-rc2)** (2015-11-16)
+
+## Changes ([full changelog](https://github.com/accre/lstore-lio/compare/ACCRE_0.4.0-rc1...ACCRE_0.4.0-rc2))
+*  a22a9e4 Add some diagnostics about when lio_create/lio_destroy are run
+*  9eb95a2 Fix grow operation
+*  8d8e255 Fixed stupid boolean expression
+*  33dd859 Rearrange things so that the child RS always has a valid RID config
+
+# **[0.4.0-rc1](https://github.com/accre/lstore-lio/tree/ACCRE_0.4.0-rc1)** (2015-11-16)
+
+## Changes ([full changelog](https://github.com/accre/lstore-lio/compare/ACCRE_0.3.0...ACCRE_0.4.0-rc1))
+*  992986c Remove double-free from exnode_destory
+*  dc68667 Fix double free() on a failed file open
+*  f8542e0 Update segment_lun size calculation
+*  32db844 Rearrage exnode destroy to properly trap a failure and not get a double free
+*  7f39a76 Fix double free() on a failed file open
+*  219cd2b Incrementing to 0.4.0
+*  1e70ca5 Make sure and preseve the actual used size when shrinking vs using a full stripe
+
 # **[0.3.0](https://github.com/accre/lstore-lio/tree/ACCRE_0.3.0)** (2015-10-29)
 
 ## Changes ([full changelog](https://github.com/accre/lstore-lio/compare/ACCRE_0.1.1...ACCRE_0.3.0))
 *  1ec778a Sync common cmake files
 
-
 # **[0.1.1](https://github.com/accre/lstore-lio/tree/ACCRE_0.1.1)** (2015-10-28)
 
-## Changes ([full changelog](https://github.com/accre/lstore-lio/compare/ACCRE_0.1.0...ACCRE_0.1.1))
+## Changes ([full changelog](https://github.com/accre/lstore-lio/compare/ACCRE_0.0.3...ACCRE_0.1.1))
 *  75bc0c9 Fix comment
 *  7063b47 Fix bug on a failed file removal leading to a double free() op
-
-
-# **[0.1.0](https://github.com/accre/lstore-lio/tree/ACCRE_0.1.0)** (2015-10-28)
-
-## Changes ([full changelog](https://github.com/accre/lstore-lio/compare/ACCRE_0.0.2...ACCRE_0.1.0))
-
-
 
 # **[0.0.3](https://github.com/accre/lstore-lio/tree/ACCRE_0.0.3)** (2015-10-27)
 
@@ -41,6 +52,4 @@
 *  ebe8870 Add the ability to abort an RS update instead of waiting for it to fully timeout
 *  8f3898a Remove exceptional cases from CMakeLists
 *  2402e87 CMake version compatibility fix involving cmake_policy, synchronize across sub-projects
-
-
 
