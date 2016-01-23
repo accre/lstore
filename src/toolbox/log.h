@@ -66,7 +66,7 @@ info_fd_t *info_create(FILE *fd, int header_type, int level);
 void info_destroy(info_fd_t *fd);
 void flush_info(info_fd_t *fd);
 //int info_printf(info_fd_t *fd, int level, const char *fmt, ...);
-int minfo_printf(info_fd_t *ifd, int module_index, int level, const char *fn, const char *fname, int line, const char *fmt, ...);
+extern int minfo_printf(info_fd_t *ifd, int module_index, int level, const char *fn, const char *fname, int line, const char *fmt, ...) __attribute__((format (printf, 7, 8)));
 void info_flush(info_fd_t *ifd);
 #define info_printf(ifd, n, ...) minfo_printf(ifd, _log_module_index, n, __func__, _mlog_file_table[_log_module_index], __LINE__, __VA_ARGS__)
 #define get_info_header_type(fd) fd->header_type
@@ -90,7 +90,7 @@ extern char _log_fname[1024];
 void _open_log(char *fname, int dolock);
 void _close_log();
 void flush_log();
-int mlog_printf(int suppress_header, int module_index, int level, const char *fn, const char *fname, int line, const char *fmt, ...);
+extern int mlog_printf(int suppress_header, int module_index, int level, const char *fn, const char *fname, int line, const char *fmt, ...) __attribute__((format (printf, 7, 8)));
 void mlog_load(char *fname, char *output_override, int log_level_override);
 
 #ifndef _log_module_index
