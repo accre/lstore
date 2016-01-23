@@ -140,7 +140,7 @@ int main(int argc, char **argv)
     printf("Checking query for min_key-1\n");
     j = min_key - 1;
     it = iter_search_skiplist(sl, (skiplist_key_t *)&j, 0);
-    err = next_skiplist(&it, (skiplist_key_t *)&key, (skiplist_data_t *)&data);
+    next_skiplist(&it, (skiplist_key_t *)&key, (skiplist_data_t *)&data);
     if (*key != min_key) {
         printf("ERROR getting 1st key using min_key-1! min_key-1=%d got=%d\n", j, *key);
     }
@@ -148,7 +148,7 @@ int main(int argc, char **argv)
     printf("Checking query for min_key\n");
     j = min_key;
     it = iter_search_skiplist(sl, (skiplist_key_t *)&j, 0);
-    err = next_skiplist(&it, (skiplist_key_t *)&key, (skiplist_data_t *)&data);
+    next_skiplist(&it, (skiplist_key_t *)&key, (skiplist_data_t *)&data);
     if (*key != min_key) {
         printf("ERROR getting 1st key using min_key! min_key=%d got=%d\n", j, *key);
     }
@@ -156,7 +156,7 @@ int main(int argc, char **argv)
     printf("Checking query for min_key+1\n");
     j = min_key + 1;
     it = iter_search_skiplist(sl, (skiplist_key_t *)&j, 0);
-    err = next_skiplist(&it, (skiplist_key_t *)&key, (skiplist_data_t *)&data);
+    next_skiplist(&it, (skiplist_key_t *)&key, (skiplist_data_t *)&data);
     if (*key <= min_key) {
         printf("ERROR querying min_key+1! min_key+1=%d got=%d\n", j, *key);
     }
@@ -171,7 +171,7 @@ int main(int argc, char **argv)
     printf("Checking query for max_key-1\n");
     j = max_key - 1;
     it = iter_search_skiplist(sl, (skiplist_key_t *)&j, 0);
-    err = next_skiplist(&it, (skiplist_key_t *)&key, (skiplist_data_t *)&data);
+    next_skiplist(&it, (skiplist_key_t *)&key, (skiplist_data_t *)&data);
     if (*key != max_key) {
         printf("ERROR with last key query using max_key-1! max_key-1=%d got=%d\n", j, *key);
     }
@@ -179,7 +179,7 @@ int main(int argc, char **argv)
     printf("Checking query for max_key\n");
     j = max_key;
     it = iter_search_skiplist(sl, (skiplist_key_t *)&j, 0);
-    err = next_skiplist(&it, (skiplist_key_t *)&key, (skiplist_data_t *)&data);
+    next_skiplist(&it, (skiplist_key_t *)&key, (skiplist_data_t *)&data);
     if (*key != max_key) {
         printf("ERROR getting last key using max_key! max_key=%d got=%d\n", j, *key);
     }
@@ -187,7 +187,7 @@ int main(int argc, char **argv)
     printf("Checking query for max_key+1\n");
     j = max_key + 1;
     it = iter_search_skiplist(sl, (skiplist_key_t *)&j, 0);
-    err = next_skiplist(&it, (skiplist_key_t *)&key, (skiplist_data_t *)&data);
+    next_skiplist(&it, (skiplist_key_t *)&key, (skiplist_data_t *)&data);
     if (key != NULL) {
         printf("ERROR getting key using max_key+1! max_key+1=%d got=%d should be NULL\n", j, *key);
     }
@@ -214,7 +214,7 @@ int main(int argc, char **argv)
     printf("Checking that we return the key or the next higher key\n");
     j = key_list[check_slot]-1;
     it = iter_search_skiplist(sl, (skiplist_key_t *)&j, 0);
-    err = next_skiplist(&it, (skiplist_key_t *)&key, (skiplist_data_t *)&data);
+    next_skiplist(&it, (skiplist_key_t *)&key, (skiplist_data_t *)&data);
     printf("Checking for j=%d key_list[%d]=%d got key=%d\n", j, check_slot, key_list[check_slot], *key);
     if (*key != key_list[check_slot]) {
         printf("ERROR! key<j (%d<%d)!!!!!\n", *key, j);
@@ -223,7 +223,7 @@ int main(int argc, char **argv)
     printf("Checking that round down works\n");
     j = key_list[check_slot]+1;
     it = iter_search_skiplist(sl, (skiplist_key_t *)&j, -1);
-    err = next_skiplist(&it, (skiplist_key_t *)&key, (skiplist_data_t *)&data);
+    next_skiplist(&it, (skiplist_key_t *)&key, (skiplist_data_t *)&data);
     printf("Checking for j=%d key_list[%d]=%d got key=%d\n", j, check_slot, key_list[check_slot], *key);
     if (*key != key_list[check_slot]) {
         printf("ERROR! key>j (%d<%d)!!!!!\n", *key, j);
@@ -232,7 +232,7 @@ int main(int argc, char **argv)
     printf("min_key:  Checking that round down works\n");
     j = min_key+1;
     it = iter_search_skiplist(sl, (skiplist_key_t *)&j, -1);
-    err = next_skiplist(&it, (skiplist_key_t *)&key, (skiplist_data_t *)&data);
+    next_skiplist(&it, (skiplist_key_t *)&key, (skiplist_data_t *)&data);
     printf("Checking for j=%d min_key=%d got key=%d\n", j, min_key, *key);
     if (*key != min_key) {
         printf("ERROR! key>j (%d<%d)!!!!!\n", *key, j);
@@ -241,7 +241,7 @@ int main(int argc, char **argv)
 
     j = key_list[check_slot];
     it = iter_search_skiplist(sl, (skiplist_key_t *)&j, 0);
-    err = next_skiplist(&it, (skiplist_key_t *)&key, (skiplist_data_t *)&data);
+    next_skiplist(&it, (skiplist_key_t *)&key, (skiplist_data_t *)&data);
     printf("Checking for j=%d key_list[%d]=%d got key=%d\n", j, check_slot, key_list[check_slot], *key);
     if (*key != j) {
         printf("ERROR! key!=j (%d!=%d)!!!!!\n", *key, j);
@@ -329,7 +329,7 @@ int main(int argc, char **argv)
     }
     j = key_list[check_slot];
     it = iter_search_skiplist(sl, (skiplist_key_t *)&j, 0);
-    err = next_skiplist(&it, (skiplist_key_t *)&key, (skiplist_data_t *)&data);
+    next_skiplist(&it, (skiplist_key_t *)&key, (skiplist_data_t *)&data);
     printf("empty 1 Checking for j=%d key_list[%d]=%d got key=%d\n", j, check_slot, key_list[check_slot], *key);
     if (*key != j) {
         printf("ERROR! key!=j (%d!=%d)!!!!!\n", *key, j);
@@ -345,7 +345,7 @@ int main(int argc, char **argv)
     }
     j = key_list[check_slot];
     it = iter_search_skiplist(sl, (skiplist_key_t *)&j, 0);
-    err = next_skiplist(&it, (skiplist_key_t *)&key, (skiplist_data_t *)&data);
+    next_skiplist(&it, (skiplist_key_t *)&key, (skiplist_data_t *)&data);
     printf("empty 2 Checking for j=%d key_list[%d]=%d got key=%d\n", j, check_slot, key_list[check_slot], *key);
     if (*key != j) {
         printf("ERROR! key!=j (%d!=%d)!!!!!\n", *key, j);

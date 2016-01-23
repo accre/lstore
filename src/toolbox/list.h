@@ -55,7 +55,6 @@ typedef skiplist_iter_t list_iter_t;
 #define list_no_key_free sl_no_key_free
 #define list_no_data_free sl_no_data_free
 #define list_simple_free sl_simple_free
-#define list_dup_ptr sl_ptr_dup
 
 #define list_lock(a) apr_thread_mutex_lock((a)->lock)
 #define list_unlock(a) apr_thread_mutex_unlock((a)->lock)

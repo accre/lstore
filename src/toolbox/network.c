@@ -965,8 +965,6 @@ int _read_netstream(NetStream_t *ns, tbuffer_t *buffer, int boff, int size, Net_
         return(-1);
     }
 
-    total_bytes = 0;
-
     if (ns_read_chksum_state(ns) == 1) {  //** We have chksumming enabled
         if (size > ns->read_chksum.bytesleft) {
             size = ns->read_chksum.bytesleft;  //** Truncate at the block

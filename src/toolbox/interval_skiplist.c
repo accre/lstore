@@ -136,7 +136,7 @@ int remove_isl_data(interval_skiplist_t *isl, isl_data_t **list, skiplist_data_t
 
     if (curr == *list) {  //** Head node
         *list = curr->next;
-    } else {
+    } else if (prev) {
         prev->next = curr->next;
     }
 
@@ -293,7 +293,7 @@ int insert_interval_skiplist(interval_skiplist_t *isl, skiplist_key_t *lo, skipl
     //** Inc the number of intervals
     isl->n_intervals++;
 
-    //** Add the hi point first since we walkthe edges from lo->hi;
+    //** Add the hi point first since we walk the edges from lo->hi;
     memset(ptr, 0, sizeof(ptr));
     cmp = find_key(sl, ptr, hi, 0);
 
@@ -322,11 +322,10 @@ int insert_interval_skiplist(interval_skiplist_t *isl, skiplist_key_t *lo, skipl
         add_isl_node_level(isl_node, sn->level);
         for (i=0; i<=sn->level; i++) {
             if ((ptr[i] != NULL) && (ptr[i] != isl->sl->head)) copy_isl_data(((isl_node_t *)(ptr[i]->ele.data))->edge[i], &(isl_node->edge[i]));
-//        copy_isl_data(((isl_node_t *)(ptr[i]->next[i]->ele.data))->edge[i], &(isl_node->edge[i]));
         }
 
         memset(ptr, 0, sizeof(ptr));
-        cmp = find_key(sl, ptr, lo, 0);
+        find_key(sl, ptr, lo, 0);
     }
 
     isl_node = (isl_node_t *)(sn->ele.data);
@@ -342,7 +341,7 @@ int insert_interval_skiplist(interval_skiplist_t *isl, skiplist_key_t *lo, skipl
 //log_printf(15, "insert_interval_skiplist: starting walk to hi\n");
 
     //** Now do the walk
-    while (sn != sn_hi) {
+    while ((sn != sn_hi) && (sn != NULL)) {
 
         //** Find the highest edge and tag it
         i = sn->level+1;
@@ -446,12 +445,13 @@ int remove_interval_skiplist(interval_skiplist_t *isl, skiplist_key_t *lo, skipl
 
 //log_printf(15, "remove_interval_skiplist: bbbbbbbbb\n");  flush_log();
 
-    isln = (isl_node_t *)(sn_lo->ele.data);  //** Remove the beginning if needed
-    if (isl_node_is_empty(isln, sn_lo->level) == 1) {
-        remove_isl_node(sn_lo->level, isln);
-        remove_skiplist(isl->sl, lo, NULL);
+    if (sn != sn_lo) {     //** Remove the beginning if needed
+       isln = (isl_node_t *)(sn_lo->ele.data);
+       if (isl_node_is_empty(isln, sn_lo->level) == 1) {
+           remove_isl_node(sn_lo->level, isln);
+           remove_skiplist(isl->sl, lo, NULL);
+       }
     }
-
 //log_printf(15, "remove_interval_skiplist: before data free\n");  flush_log();
 
     //** Lastly free the data

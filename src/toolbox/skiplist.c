@@ -69,13 +69,6 @@ void sl_simple_free(skiplist_data_t *data)
     free(data);
 }
 
-skiplist_key_t *sl_ptr_dup(skiplist_key_t *key)
-{
-    skiplist_key_t *d = (skiplist_key_t *)malloc(sizeof(skiplist_key_t));
-    d = key;
-    return(d);
-}
-
 skiplist_key_t *sl_string_dup(skiplist_key_t *key)
 {
     char *dup = strdup((char *)key);
@@ -197,14 +190,16 @@ void destroy_skiplist_node(skiplist_t *sl, skiplist_node_t *sn)
 
     log_printf(15, "destroying node\n");
 
-    sl->data_free(se->data);
+    if (se) {
+        if (se->data) sl->data_free(se->data);
 
-    se = se->next;
-    while (se != NULL) {
-        se2 = se;
         se = se->next;
-        sl->data_free(se2->data);
-        free(se2);
+        while (se != NULL) {
+            se2 = se;
+            se = se->next;
+            sl->data_free(se2->data);
+            free(se2);
+        }
     }
 
     sl->key_free(sn->key);
@@ -511,8 +506,10 @@ int remove_skiplist(skiplist_t *sl, skiplist_key_t *key, skiplist_data_t *data)
     if (data == NULL) {  //** Free all the data blocks
         found = 1;
         sl->n_ele--;
-        if (se->data != NULL) sl->data_free(se->data);
+        if (se->data != NULL) { sl->data_free(se->data); se->data = NULL; }
+        se2 = se;
         se = se->next;
+        se2->next = NULL;
         while (se != NULL) {
             sl->n_ele--;
             sl->data_free(se->data);

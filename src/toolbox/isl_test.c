@@ -99,7 +99,6 @@ int main(int argc, char **argv)
 
     //** Iterate through the list to verify order
     printf("===============Iterating through Interval Skiplist\n");
-    j = 0;
     it = iter_search_interval_skiplist(isl, (skiplist_key_t *)NULL, (skiplist_key_t *)NULL);
     d = (interval_t *)next_interval_skiplist(&it);
     j = d->lo;

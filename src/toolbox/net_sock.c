@@ -282,7 +282,7 @@ long int sock_write(net_sock_t *nsock, tbuffer_t *buf, size_t bpos, size_t len, 
     err = my_write(sock, buf, bpos, len, &nbytes);
     if (err != APR_SUCCESS) {
         ewait = sock_io_wait(sock, tm, SOCK_WAIT_WRITE);
-        err = my_write(sock, buf, bpos, len, &nbytes);
+        my_write(sock, buf, bpos, len, &nbytes);
         if ((ewait == 1) && (nbytes < 1)) nbytes = -1;
     }
 
@@ -311,7 +311,7 @@ long int sock_read(net_sock_t *nsock, tbuffer_t *buf, size_t bpos, size_t len, N
     err = my_read(sock, buf, bpos, len, &nbytes);
     if (err != APR_SUCCESS) {
         ewait = sock_io_wait(sock, tm, SOCK_WAIT_READ);
-        err = my_read(sock, buf, bpos, len, &nbytes);
+        my_read(sock, buf, bpos, len, &nbytes);
 //log_printf(10, "sock_read: ewait=%d err=%d nbytes=" I64T "\n", ewait, err, nbytes);
         if ((ewait == 1) && (nbytes < 1)) nbytes = -1;
     }

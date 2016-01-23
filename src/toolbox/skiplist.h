@@ -109,7 +109,6 @@ void sl_no_key_free(skiplist_key_t *key);
 void sl_no_data_free(skiplist_data_t *data);
 void sl_simple_free(skiplist_data_t *data);
 skiplist_key_t *sl_string_dup(skiplist_key_t *data);
-skiplist_key_t *sl_ptr_dup(skiplist_key_t *key);
 
 extern skiplist_compare_t skiplist_compare_int;
 extern skiplist_compare_t skiplist_compare_strcmp;
