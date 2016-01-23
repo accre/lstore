@@ -387,7 +387,7 @@ op_generic_t *rs_simple_request(resource_service_fn_t *arg, data_attr_t *da, rs_
             } else if  (state == 1) { //** Got one
                 log_printf(15, "rs_simple_request: processing i=%d ds_key=%s\n", i, rse->ds_key);
                 found = 1;
-                if (i<fixed_size) hints_list[i].status = RS_ERROR_OK;
+                if ((i<fixed_size) && hints_list) hints_list[i].status = RS_ERROR_OK;
 
                 for (k=0; k<req_size; k++) {
                     if (req[k].rid_index == i) {
@@ -404,10 +404,14 @@ op_generic_t *rs_simple_request(resource_service_fn_t *arg, data_attr_t *da, rs_
                 }
                 break;  //** Got one so exit the RID scan and start the next one
             } else if (i<fixed_size) {  //** This should have worked so flag an error
-                log_printf(1, "Match fail in fixed list[%d]=%s!\n", i, hints_list[i].fixed_rid_key);
+                if (hints_list) {
+                   log_printf(1, "Match fail in fixed list[%d]=%s!\n", i, hints_list[i].fixed_rid_key);
+                   hints_list[i].status = RS_ERROR_FIXED_MATCH_FAIL;
+                } else {
+                   log_printf(1, "Match fail in fixed list and no hints are provided!\n", i);
+                }
                 status.op_status = OP_STATE_FAILURE;
                 status.error_code = RS_ERROR_FIXED_MATCH_FAIL;
-                hints_list[i].status = RS_ERROR_FIXED_MATCH_FAIL;
                 if (ignore_fixed_err == 0) err_cnt++;
                 break;  //** Skip to the next in the list
             } else {
@@ -476,7 +480,7 @@ char *rs_simple_get_rid_value(resource_service_fn_t *arg, char *rid_key, char *k
     }
     apr_thread_mutex_unlock(rss->lock);
 
-    return(strdup(value));
+    return(value);
 }
 
 
@@ -913,19 +917,21 @@ int _rs_simple_load(resource_service_fn_t *res, char *fname)
     if (rss->n_rids == 0) {
         log_printf(0, "ERROR: n_rids=%d\n", rss->n_rids);
         fprintf(stderr, "ERROR: n_rids=%d\n", rss->n_rids);
-    }
-    type_malloc_clear(rss->random_array, rss_rid_entry_t *, rss->n_rids);
-    it = list_iter_search(rss->rid_table, (list_key_t *)NULL, 0);
-    for (i=0; i < rss->n_rids; i++) {
-        list_next(&it, (list_key_t **)&key, (list_data_t **)&rse);
+        rss->rid_table = NULL;
+    } else {
+        type_malloc_clear(rss->random_array, rss_rid_entry_t *, rss->n_rids);
+        it = list_iter_search(rss->rid_table, (list_key_t *)NULL, 0);
+        for (i=0; i < rss->n_rids; i++) {
+            list_next(&it, (list_key_t **)&key, (list_data_t **)&rse);
 
-        n = random_int(0, rss->n_rids-1);
+            n = random_int(0, rss->n_rids-1);
 //n = i;  //FIXME
-        while (rss->random_array[n] != NULL) {
-            n = (n+1) % rss->n_rids;
+            while (rss->random_array[n] != NULL) {
+                n = (n+1) % rss->n_rids;
+            }
+            rse->slot = n;
+            rss->random_array[n] = rse;
         }
-        rse->slot = n;
-        rss->random_array[n] = rse;
     }
 
     inip_destroy(kf);

@@ -135,7 +135,6 @@ op_status_t exnode_remove_func(void *arg, int gid)
     //** Start the cloning process
     it = list_iter_search(ex->view, NULL, 0);
     list_next(&it, (list_key_t **)&id, (list_data_t **)&seg);
-    i = 0;
     while (seg != NULL) {
         gop = segment_remove(seg, op->da, op->timeout);
         opque_add(q, gop);

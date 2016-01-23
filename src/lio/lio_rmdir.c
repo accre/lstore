@@ -65,7 +65,6 @@ int main(int argc, char **argv)
     lio_init(&argc, &argv);
 
     //*** Parse the directory args
-    rg_mode = 0;
     rp_single = ro_single = NULL;
 
     rg_mode = lio_parse_path_options(&argc, argv, lio_gc->auto_translate, &tuple, &rp_single, &ro_single);
@@ -118,7 +117,6 @@ int main(int argc, char **argv)
     if (err != OP_STATE_SUCCESS) {
         while ((gop = opque_get_next_failed(q)) != NULL) {
             j = gop_get_myid(gop);
-            status = gop_get_status(gop);
             if (j >= 0) {
                 info_printf(lio_ifd, 0, "Failed with directory %s\n", argv[j+1]);
             } else {

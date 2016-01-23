@@ -178,7 +178,7 @@ void rsrs_abort_cb(void *arg, mq_task_t *task)
     //** Parse the command
     msg = task->msg;  //** Don't have to worry about msg cleanup.  It's handled at a higher level
 
-    f = mq_msg_first(msg);
+    mq_msg_first(msg);
     f = mq_msg_pop(msg);
     mq_get_frame(f, (void **)&data, &n);
     if (n != 0) {  //** SHould be an empty frame
@@ -259,7 +259,7 @@ void rsrs_rid_config_cb(void *arg, mq_task_t *task)
     //** Parse the command
     msg = task->msg;  //** Don't have to worry about msg cleanup.  It's handled at a higher level
 
-    f = mq_msg_first(msg);
+    mq_msg_first(msg);
     f = mq_msg_pop(msg);
     mq_get_frame(f, (void **)&data, &n);
     if (n != 0) {  //** SHould be an empty frame
@@ -437,7 +437,6 @@ void *rsrs_monitor_thread(apr_thread_t *th, void *data)
     //** Register us for updates
     rs_register_mapping_updates(rsrs->rs_child, notify_map);
 
-    shutdown = 0;
     do {
         sleep(1);  //** Sleep
 

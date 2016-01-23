@@ -223,7 +223,6 @@ int jerase_control_check(erasure_plan_t *plan, int chunk_size, int n_devs, int n
         }
 
         //** Check if we have a match
-        n = 0;
         for (i=0; i<n_control; i++) {
             if (memcmp(ptr[control[i]], eptr[control[i]], chunk_size) != 0) {
                 errors++;
@@ -350,7 +349,6 @@ op_status_t segjerase_inspect_full_func(void *arg, int id)
     stripe_buffer_size = 2048;
 
     memset(empty_magic, 0, JE_MAGIC_SIZE);
-    status = op_success_status;
     q = new_opque();
     status = op_success_status;
 
@@ -474,7 +472,6 @@ op_status_t segjerase_inspect_full_func(void *arg, int id)
                 log_printf(0, "Empty stripe.  empty chunks: %d magic_used=%d stripe=%d\n", magic_count[index], magic_used, stripe+i);
                 stripe_error[0] = 1;
                 if (magic_count[index] == s->n_devs) { //** Completely empty stripe so skip to the next loop
-                    skip = 1;
                     used = 0;
                     n_empty++;
                     goto next;
@@ -487,7 +484,6 @@ op_status_t segjerase_inspect_full_func(void *arg, int id)
             used = 0;
 
             if (((good_magic == 0) && (magic_count[index] != s->n_devs)) || (magic_count[index] < s->n_data_devs)) {
-                skip = 1;
                 unrecoverable_count++;
                 bad_count++;
                 log_printf(0, "unrecoverable error stripe=%d i=%d good_magic=%d magic_count=%d\n", stripe,i, good_magic, magic_count[index]);
@@ -772,7 +768,7 @@ op_status_t segjerase_inspect_scan(segjerase_inspect_t *si)
 
             log_printf(0, "i=%d n_iov=%d size=%d\n", i, n_iov, n_iov*JE_MAGIC_SIZE);
             tbuffer_vec(&tbuf, n_iov*JE_MAGIC_SIZE, n_iov, iov);
-            err = gop_sync_exec(segment_read(s->child_seg, si->da, NULL, n_iov, ex_iov, &tbuf, 0, si->timeout));
+            gop_sync_exec(segment_read(s->child_seg, si->da, NULL, n_iov, ex_iov, &tbuf, 0, si->timeout));
 
             //** Check for errors and fire off repairs
             moff = 0;
@@ -894,8 +890,6 @@ op_status_t segjerase_inspect_func(void *arg, int id)
     int option, total_stripes, child_replaced, repair, loop, i, migrate_errors;
     op_generic_t *gop;
     int max_loops = 10;
-
-    status = op_success_status;
 
     info_printf(si->fd, 1, XIDT ": jerase segment maps to child " XIDT "\n", segment_id(si->seg), segment_id(s->child_seg));
     info_printf(si->fd, 1, XIDT ": segment information: method=%s data_devs=%d parity_devs=%d chunk_size=%d  used_size=" XOT " magic_cksum=%d write_errors=%d mode=%d\n",
@@ -1138,9 +1132,11 @@ op_generic_t *segjerase_clone(segment_t *seg, data_attr_t *da, segment_t **clone
         sd->plan = et_generate_plan(nbytes, sd->method, sd->n_data_devs, sd->n_parity_devs, sd->w, -1, -1);
         if (sd->plan == NULL) {
             log_printf(0, "seg=" XIDT " No plan generated!\n", segment_id(seg));
+            return(gop_dummy(op_failure_status));
+        } else {
+            sd->plan->form_encoding_matrix(sd->plan);
+            sd->plan->form_decoding_matrix(sd->plan);
         }
-        sd->plan->form_encoding_matrix(sd->plan);
-        sd->plan->form_decoding_matrix(sd->plan);
 
         //** Copy the header
         if (seg->header.name != NULL) clone->header.name = strdup(seg->header.name);
@@ -1259,6 +1255,8 @@ tryagain:  //** We first try allowing blacklisting to proceed as normal and then
             len = sw->iov[i].len;
             nstripes = len / s->data_size;
             j = nstripes*s->parity_size;
+        } else {
+            j = 0;
         }
 
         if (((j+parity_used) > parity_len) || (i==sw->n_iov)) {  //** Filled the buffer so wait for the current tasks to complete
@@ -1569,6 +1567,8 @@ tryagain: //** In case blacklisting failed we'll retry with it disabled
             len = sw->iov[i].len;
             nstripes = len / s->data_size;
             j = nstripes*s->parity_size;
+        } else {
+            j = 0;
         }
 
         if (((j+parity_used) > parity_len) || (i==sw->n_iov)) {  //** Filled the buffer so wait for the current tasks to complete

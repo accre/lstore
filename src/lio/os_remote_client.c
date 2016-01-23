@@ -237,8 +237,6 @@ op_status_t osrc_remove_regex_object_func(void *arg, int id)
 
     log_printf(5, "START\n");
 
-    status = op_success_status;
-
     //** Form the message
     msg = mq_make_exec_core_msg(osrc->remote_host, 1);
     mq_msg_append_mem(msg, OSR_REMOVE_REGEX_OBJECT_KEY, OSR_REMOVE_REGEX_OBJECT_SIZE, MQF_MSG_KEEP_DATA);
@@ -456,8 +454,6 @@ op_status_t osrc_regex_object_set_multiple_attrs_func(void *arg, int id)
     op_status_t status;
 
     log_printf(5, "START\n");
-
-    status = op_success_status;
 
     //** Form the message
     msg = mq_make_exec_core_msg(osrc->remote_host, 1);
@@ -1154,24 +1150,28 @@ int osrc_store_val(mq_stream_t *mqs, int src_size, void **dest, int *v_size)
             *v_size = -src_size;
             mq_stream_read(mqs, NULL, src_size);  //** This drops the values
             return(1);
-        } else if (*v_size > src_size) {
+        } else if (dest && (*v_size > src_size)) {
             buf = *dest;
             buf[src_size] = 0;  //** IF have the space NULL terminate
         }
     } else {
-        if (src_size > 0) {
+        if (dest && (src_size > 0)) {
             *dest = malloc(src_size+1);
             buf = *dest;
             buf[src_size] = 0;  //** IF have the space NULL terminate
         } else {
             *v_size = src_size;
-            *dest = NULL;
+            if (dest) *dest = NULL;
             return(0);
         }
     }
 
     *v_size = src_size;
-    mq_stream_read(mqs, *dest, src_size);
+    if (dest) {
+        mq_stream_read(mqs, *dest, src_size);
+    } else {
+        mq_stream_read(mqs, NULL, src_size);  //** Just drop it
+    }
 
     return(0);
 }
@@ -1502,8 +1502,11 @@ int osrc_next_attr(os_attr_iter_t *oit, char **key, void **val, int *v_size)
     *v_size = it->v_max;
     osrc_store_val(it->mqs, n, val, v_size);
 
-    log_printf(5, "key=%s val=%s v_size=%d\n", *key, (char *)(*val), *v_size);
-
+    //** Do some key/val ptr manging for reporting
+    char *k, *v;
+    k = (key == NULL) ? NULL : *key;
+    v = (val == NULL) ? NULL : (char *)(*val);
+    log_printf(5, "key=%s val=%s v_size=%d\n", k, v, *v_size);
     log_printf(5, "END\n");
 
     return(0);

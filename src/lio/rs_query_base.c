@@ -160,7 +160,7 @@ rs_query_t *rs_query_base_dup(resource_service_fn_t *rs, rs_query_t *rsq)
 {
     rsq_base_t *new_query;
     rsq_base_t *query = (rsq_base_t *)rsq;
-    rsq_base_ele_t *q = query->head;
+    rsq_base_ele_t *q;
     rsq_base_ele_t *qn = NULL;
     rsq_base_ele_t *prev = NULL;
 

@@ -644,7 +644,6 @@ void osrs_remove_regex_object_cb(void *arg, mq_task_t *task)
 
     object_regex = os_regex_table_unpack(&(buffer[bpos]), fsize-bpos, &n);
     if (n == 0) goto fail;
-    bpos += n;
 
     //** run the task
     if (creds != NULL) {
@@ -719,6 +718,8 @@ void osrs_abort_remove_regex_object_cb(void *arg, mq_task_t *task)
     op_generic_t *gop;
 
     log_printf(5, "Processing incoming request\n");
+
+    status = op_failure_status;  //** Store a default response
 
     //** Parse the command. Don't have to
     msg = task->msg;
@@ -1513,6 +1514,8 @@ void osrs_abort_regex_set_mult_attr_cb(void *arg, mq_task_t *task)
 
     log_printf(5, "Processing incoming request\n");
 
+    status = op_failure_status;  //** Store a default response
+
     //** Parse the command. Don't have to
     msg = task->msg;
     mq_remove_header(msg, 0);
@@ -2113,6 +2116,7 @@ void osrs_symlink_mult_attr_cb(void *arg, mq_task_t *task)
 
     key_src = NULL;
     key_dest = NULL;
+    src_path = NULL;
     status = op_failure_status;
 
     //** Parse the command.
@@ -2284,7 +2288,6 @@ void osrs_object_iter_alist_cb(void *arg, mq_task_t *task)
 
     log_printf(5, "Processing incoming request\n");
 
-    status = op_failure_status;
     key = NULL;
     val = NULL, v_size = NULL;
     n_attrs = 0;
@@ -2481,7 +2484,6 @@ void osrs_object_iter_aregex_cb(void *arg, mq_task_t *task)
 
     log_printf(5, "Processing incoming request\n");
 
-    status = op_failure_status;
     it = NULL;
     path = object_regex = attr_regex = NULL;
 
@@ -2662,10 +2664,11 @@ void osrs_attr_iter_cb(void *arg, mq_task_t *task)
 
     log_printf(5, "Processing incoming request\n");
 
-    status = op_failure_status;
     key = NULL;
     val = NULL, v_size = -1;
     it = NULL;
+    handle = NULL;
+    attr_regex = NULL;
 
     //** Parse the command.
     msg = task->msg;
@@ -2688,7 +2691,6 @@ void osrs_attr_iter_cb(void *arg, mq_task_t *task)
     //** Check if the file handle is the correect size
     if (hsize != sizeof(intptr_t)) {
         log_printf(6, "ERROR invalid handle size=%d\n", hsize);
-        status = op_failure_status;
 
         //** Create the stream so we can get the heartbeating while we work
         timeout = 60;
@@ -2705,7 +2707,6 @@ void osrs_attr_iter_cb(void *arg, mq_task_t *task)
     //** Do the host lookup for the file handle
     if ((handle = mq_ongoing_get(osrs->ongoing, id, id_size, fhkey)) == NULL) {
         log_printf(6, "ERROR missing host=%s\n", id);
-        status = op_failure_status;
     }
 
     //** Parse the buffer
@@ -2824,8 +2825,8 @@ void osrs_fsck_iter_cb(void *arg, mq_task_t *task)
 
     log_printf(5, "Processing incoming request\n");
 
-    status = op_failure_status;
     it = NULL;
+    path = NULL;
     err = 0;
 
     //** Parse the command.
@@ -2956,7 +2957,6 @@ void osrs_fsck_object_cb(void *arg, mq_task_t *task)
 
     err = 0;
     path = NULL;
-    status = op_failure_status;
 
     //** Parse the command.
     msg = task->msg;
@@ -2985,7 +2985,7 @@ void osrs_fsck_object_cb(void *arg, mq_task_t *task)
         if (err == 0) {
             n = zigzag_decode(buffer, fsize, &ftype);
             n += zigzag_decode(&(buffer[n]), fsize-n, &resolution);
-            n += zigzag_decode(&(buffer[n]), fsize-n, &timeout);
+            zigzag_decode(&(buffer[n]), fsize-n, &timeout);
         }
     } else {
         err = 1;

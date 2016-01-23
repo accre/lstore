@@ -110,7 +110,6 @@ mode_t ftype_lio2fuse(int ftype)
 {
     mode_t mode;
 
-    mode = 0;
     if (ftype & OS_OBJECT_SYMLINK) {
         mode = S_IFLNK | 0777;
     } else if (ftype & OS_OBJECT_DIR) {
@@ -420,7 +419,6 @@ int lfs_readdir(const char *dname, void *buf, fuse_fill_dir_t filler, off_t off,
         de->dentry = strdup(fname+prefix_len+1);
         _lfs_parse_stat_vals(dit->lfs, fname, &(de->stat), dit->val, dit->v_size);
         free(fname);
-        off2=off;
         log_printf(1, "next fname=%s ftype=%d prefix_len=%d ino=" XIDT " off=%d\n", de->dentry, ftype, prefix_len, de->stat.st_ino, off);
 
         move_to_bottom(dit->stack);
@@ -990,8 +988,6 @@ int lfs_listxattr(const char *fname, char *list, size_t size)
     gop_sync_exec(os_close_object(lfs->lc->os, fd));
     os_regex_table_destroy(attr_regex);
 
-    i= size;
-
     log_printf(15, "bpos=%d size=%d buf=%s\n", bpos, size, buf);
 
     if (size == 0) {
@@ -1372,9 +1368,9 @@ int lfs_readlink(const char *fname, char *buf, size_t bsize)
     }
 
     if (val[0] == '/') {
-        i = snprintf(buf, bsize, "%s%s", lfs->mount_point, (char *)val);
+        snprintf(buf, bsize, "%s%s", lfs->mount_point, (char *)val);
     } else {
-        i = snprintf(buf, bsize, "%s", (char *)val);
+        snprintf(buf, bsize, "%s", (char *)val);
     }
     if (val != NULL) free(val);
     buf[bsize] = 0;

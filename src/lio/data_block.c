@@ -98,13 +98,13 @@ int data_block_set_attr(data_block_t *b, char *key, char *val)
     //** See if the key exists
     attr = db_find_key(b->attr_stack, key);
 
-    if ((attr == NULL) && (val != NULL)) {
+    if (attr == NULL) {  //** See if we need to add the attribute
         type_malloc_clear(attr, data_block_attr_t, 1);
         attr->key = strdup(key);
     }
 
-    if (attr->value != NULL) free(attr->value);
-    if (val != NULL) attr->value = strdup(val);  //** IF val == NULL then this will never get returned and on deserial it will get dropped
+    if (attr->value != NULL) free(attr->value);  //** Free the old value
+    attr->value = (val != NULL) ? strdup(val) : NULL;  //** Store the new one
 
     if (b->attr_stack == NULL) b->attr_stack = new_stack();
     push(b->attr_stack, attr);

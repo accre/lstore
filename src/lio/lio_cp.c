@@ -63,7 +63,6 @@ int main(int argc, char **argv)
 
     recurse_depth = 10000;
     bufsize = 20*1024*1024;
-    slow = 0;
 
 //printf("argc=%d\n", argc);
     if (argc < 2) {

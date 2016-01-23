@@ -223,12 +223,12 @@ op_status_t _sl_grow(segment_t *seg, data_attr_t *da, ex_off_t new_size_arg, int
         tbuffer_single(&tbuf, 1, c);
 
         if (bexpand != NULL) { //** Update the expanded block
-            err = remove_interval_skiplist(s->isl, (skiplist_key_t *)&(bexpand->seg_offset), (skiplist_key_t *)&(bexpand->seg_end), (skiplist_data_t *)bexpand);
+            remove_interval_skiplist(s->isl, (skiplist_key_t *)&(bexpand->seg_offset), (skiplist_key_t *)&(bexpand->seg_end), (skiplist_data_t *)bexpand);
             bexpand->len = bex_len;
             bexpand->seg_end = bex_end;
             bexpand->data->size = bex_len;
             bexpand->data->max_size = bex_len;
-            err = insert_interval_skiplist(s->isl, (skiplist_key_t *)&(bexpand->seg_offset), (skiplist_key_t *)&(bexpand->seg_end), (skiplist_data_t *)bexpand);
+            insert_interval_skiplist(s->isl, (skiplist_key_t *)&(bexpand->seg_offset), (skiplist_key_t *)&(bexpand->seg_end), (skiplist_data_t *)bexpand);
 
             bstart = bexpand->cap_offset + bexpand->data->max_size - 1;
             gop1 = ds_write(bexpand->data->ds, da, ds_get_cap(bexpand->data->ds, bexpand->data->cap, DS_CAP_WRITE), bstart, &tbuf, 0, 1, timeout);
@@ -239,7 +239,7 @@ op_status_t _sl_grow(segment_t *seg, data_attr_t *da, ex_off_t new_size_arg, int
             b = block[i];
             b->data->rid_key = strdup(req_list[i].rid_key);
             atomic_inc(b->data->ref_count);
-            err = insert_interval_skiplist(s->isl, (skiplist_key_t *)&(b->seg_offset), (skiplist_key_t *)&(b->seg_end), (skiplist_data_t *)b);
+            insert_interval_skiplist(s->isl, (skiplist_key_t *)&(b->seg_offset), (skiplist_key_t *)&(b->seg_end), (skiplist_data_t *)b);
 
             bstart = b->cap_offset + b->data->max_size - 1;
             gop1 = ds_write(b->data->ds, da, ds_get_cap(b->data->ds, b->data->cap, DS_CAP_WRITE), bstart, &tbuf, 0, 1, timeout);
@@ -607,7 +607,6 @@ op_status_t seglin_write_func(void *arg, int id)
 
     //** Find the max extent;
     maxpos = 0;
-    pos = 0;
     for (i=0; i<sw->n_iov; i++) {
         pos = sw->iov[i].offset + sw->iov[i].len - 1;
         if (pos > maxpos) maxpos = pos;
@@ -621,8 +620,7 @@ op_status_t seglin_write_func(void *arg, int id)
         if (s->total_size < new_size) {  //** Check again within the lock
             log_printf(15, " seg=" XIDT " GROWING  curr_used_size=" XOT " curr_total_size=" XOT " new_size=" XOT " requested maxpos=" XOT "\n",
                        segment_id(sw->seg), s->used_size, s->total_size, new_size, maxpos);
-            status = _sl_truncate(sw->seg, sw->da, new_size, sw->timeout);
-            err = status.op_status;
+            _sl_truncate(sw->seg, sw->da, new_size, sw->timeout);
         }
         segment_unlock(sw->seg);
     }
@@ -708,7 +706,7 @@ void _seglin_probe_cb(void *arg, int state)
 
     //*** Clean up ***
     for (i=0; i<interval_skiplist_count(s->isl); i++) {
-        ds_probe_destroy(b->data->ds, sp->probe[i]);
+        ds_probe_destroy(sp->block[i]->data->ds, sp->probe[i]);
     }
     free(sp->probe);
     free(sp->block);

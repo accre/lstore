@@ -755,7 +755,7 @@ int _amp_page_access(cache_t *c, cache_page_t *p, int rw_mode, ex_off_t request_
             log_printf(_amp_slog, "seg=" XIDT " HIT_TAG offset=" XOT " last_offset=" XOT " lo=" XOT " hi=" XOT " prefetch_pages=%d\n", segment_id(p->seg), p->offset, lp->stream_offset, lo, hi, prefetch_pages);
             _amp_prefetch(p->seg, last_offset + psize, hi, prefetch_pages, trigger_distance);
         } else {
-            ps = _amp_stream_get(c, p->seg, p->offset, -1, &pse);
+            _amp_stream_get(c, p->seg, p->offset, -1, &pse);
         }
 
         if (pse != NULL) {
@@ -1325,8 +1325,6 @@ int amp_cache_destroy(cache_t *c)
         log_printf(0, "cache_stack_size=%d\n", stack_size(cp->stack));
 
         move_to_top(cp->stack);
-        ele = get_ptr(cp->stack);
-        p = (cache_page_t *)get_stack_ele_data(ele);
         n = 0;
         move_down(cp->stack);
         while ((ele = get_ptr(cp->stack)) != NULL) {
