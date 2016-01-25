@@ -71,6 +71,7 @@ apr_pool_t *_tp_pool = NULL;
 int _tp_stats = 0;
 
 extern apr_threadkey_t *thread_local_stats_key;
+extern apr_threadkey_t *thread_local_depth_key;
 
 //***************************************************************************
 
@@ -97,9 +98,10 @@ void thread_pool_stats_init()
         if (i > 0) {
             _tp_stats = i;
 
-            apr_threadkey_private_create(&thread_local_stats_key,_thread_pool_destructor, _tp_pool);
-
-            thread_pool_stats_make();
+            if (thread_local_stats_key == NULL) {
+                apr_threadkey_private_create(&thread_local_stats_key,_thread_pool_destructor, _tp_pool);
+                thread_pool_stats_make();
+            }
         }
     }
 }
@@ -260,6 +262,7 @@ thread_pool_context_t *thread_pool_create_context(char *tp_name, int min_threads
         init_opque_system();
     }
 
+    if (thread_local_depth_key == NULL) apr_threadkey_private_create(&thread_local_depth_key,_thread_pool_destructor, _tp_pool);
     tpc->pc = create_hportal_context(&_tp_base_portal);  //** Really just used for the submit
 
     default_thread_pool_config(tpc);
