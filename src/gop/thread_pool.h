@@ -52,14 +52,20 @@ typedef struct {
     char *name;
     portal_context_t *pc;
     apr_thread_pool_t *tp;
+    Stack_t **reserve_stack;
+    int *overflow_running_depth;
+    atomic_int_t n_overflow;
     atomic_int_t n_ops;
     atomic_int_t n_completed;
     atomic_int_t n_started;
     atomic_int_t n_submitted;
     atomic_int_t n_direct;
+    atomic_int_t n_running;
     int min_idle;
     int min_threads;
     int max_threads;
+    int recursion_depth;
+    int max_concurrency;
 } thread_pool_context_t;
 
 typedef struct {
@@ -71,6 +77,7 @@ typedef struct {
     void *arg;
     int depth;
     int parent_tid;
+    int overflow_slot;
 } thread_pool_op_t;
 
 #define tp_get_gop(top) &((top)->gop)

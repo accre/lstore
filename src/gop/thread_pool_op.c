@@ -129,17 +129,65 @@ op_status_t tp_command(op_generic_t *gop, NetStream_t *ns)
 }
 
 //*************************************************************
+// _tpc_overflow_next - Returns the next task for execution in
+//     the overflow pool or NULL if none are available
+//
+//  NOTE: _tp_lock should be held on entry!!!
+//*************************************************************
+
+op_generic_t *_tpc_overflow_next(thread_pool_context_t *tpc)
+{
+    op_generic_t *gop = NULL;
+    thread_pool_op_t *op;
+    int i, dmax, slot;
+
+    //** Determine the currently running max depth
+    dmax = -1;
+    slot = -1;
+    if (atomic_get(tpc->n_running) >= tpc->max_concurrency) { //** Don't care about a slot if less than the max concurrency
+        for (i=0; i<tpc->recursion_depth; i++) {
+            if (tpc->overflow_running_depth[i] > dmax) dmax = tpc->overflow_running_depth[i];
+            if (tpc->overflow_running_depth[i] == -1) slot = i;
+        }
+    }
+
+    //** Not look for a viable gop
+    for (i=tpc->recursion_depth-1; i>dmax; i--) {
+        gop = pop(tpc->reserve_stack[i]);
+        if (gop) {
+            atomic_dec(tpc->n_overflow);
+            op = gop_get_tp(gop);
+            op->overflow_slot = slot;
+            if (slot > -1) tpc->overflow_running_depth[slot] = i;
+            break;
+        }
+    }
+
+if (gop) {
+    log_printf(0, "dmax=%d reserve=%d slot=%d gid=%d n_running=%d max=%d\n", dmax, i, slot, gop_id(gop), atomic_get(tpc->n_running), tpc->max_concurrency);
+} else {
+    log_printf(0, "dmax=%d reserve=%d slot=%d gop=%p n_running=%d max=%d\n", dmax, i, slot, gop, atomic_get(tpc->n_running), tpc->max_concurrency);
+}
+    return(gop);
+}
+
+//*************************************************************
 
 void  *thread_pool_exec_fn(apr_thread_t *th, void *arg)
 {
     op_generic_t *gop = (op_generic_t *)arg;
     thread_pool_op_t *op = gop_get_tp(gop);
+    thread_pool_context_t *tpc = op->tpc;
     op_status_t status;
     thread_local_stats_t *my;
     int tid;
     int concurrent;
 
     tid = atomic_thread_id;
+
+again:
+    op = gop_get_tp(gop);
+
     if (_tp_stats > 0) {
         //** Set everything to the GOP depth and inc if not running in the parent thread
         if (tid != op->parent_tid) {
@@ -169,8 +217,9 @@ void  *thread_pool_exec_fn(apr_thread_t *th, void *arg)
         }
     }
 
-    log_printf(4, "tp_recv: Start!!! gid=%d tid=%d depth=%d\n", gop_id(gop), tid, op->depth);
-    atomic_inc(op->tpc->n_started);
+    log_printf(4, "tp_recv: Start!!! gid=%d tid=%d op->depth=%d op->overflow_slot=%d n_overflow=%d\n", gop_id(gop), tid, op->depth, op->overflow_slot, atomic_get(tpc->n_overflow));
+//    log_printf(4, "tp_recv: Start!!! gid=%d tid=%d depth=%d\n", gop_id(gop), tid, op->depth);
+    atomic_inc(tpc->n_started);
 
     status = op->fn(op->arg, gop_id(gop));
     if (_tp_stats > 0) {
@@ -180,10 +229,29 @@ void  *thread_pool_exec_fn(apr_thread_t *th, void *arg)
         }
     }
 
-    log_printf(4, "tp_recv: end!!! gid=%d tid=%d status=%d\n", gop_id(gop), tid, status.op_status);
+    log_printf(4, "tp_recv: end!!! gid=%d tid=%d status=%d op->depth=%d op->overflow_slot=%d n_overflow=%d\n", gop_id(gop), tid, status.op_status, op->depth, op->overflow_slot, atomic_get(tpc->n_overflow));
 
-    atomic_inc(op->tpc->n_completed);
+    if (op->overflow_slot != -1) { //** Need to clean up our overflow slot
+        apr_thread_mutex_lock(_tp_lock);
+        tpc->overflow_running_depth[op->overflow_slot] = -1;
+        apr_thread_mutex_unlock(_tp_lock);
+    }
+
+    atomic_inc(tpc->n_completed);
+    atomic_dec(tpc->n_running);
     gop_mark_completed(gop, status);
+
+    //** Check if we need to get something from the overflow que
+    if (atomic_get(tpc->n_overflow) > 0) {
+        apr_thread_mutex_lock(_tp_lock);
+        gop = _tpc_overflow_next(tpc);
+        apr_thread_mutex_unlock(_tp_lock);
+
+        if (gop) {   //** If we got one just loop around and process it
+            atomic_inc(tpc->n_running);  //** Update the total number running.  Similar to what is done via submit
+            goto again;
+        }
+    }
 
     return(NULL);
 }
@@ -200,6 +268,7 @@ void init_tp_op(thread_pool_context_t *tpc, thread_pool_op_t *op)
     type_memclear(op, thread_pool_op_t, 1);
 
     op->depth = (_tp_stats == 0) ? -1 : (_thread_local_stats_ptr())->depth + 1; //** Store my recursion depth
+    op->overflow_slot = -1;
     op->parent_tid = (_tp_stats == 1) ? atomic_thread_id : -1;   //** Also store the parent TID so we can adjust the depth if needed
 
     //** Now munge the pointers

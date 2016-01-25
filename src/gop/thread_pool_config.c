@@ -47,6 +47,7 @@ void *_tp_dup_connect_context(void *connect_context);
 void _tp_destroy_connect_context(void *connect_context);
 int _tp_connect(NetStream_t *ns, void *connect_context, char *host, int port, Net_timeout_t timeout);
 void _tp_close_connection(NetStream_t *ns);
+op_generic_t *_tpc_overflow_next(thread_pool_context_t *tpc);
 
 void _tp_op_free(op_generic_t *op, int mode);
 void _tp_submit_op(void *arg, op_generic_t *op);
@@ -139,12 +140,31 @@ void _tp_submit_op(void *arg, op_generic_t *gop)
 {
     thread_pool_op_t *op = gop_get_tp(gop);
     apr_status_t aerr;
+    int running;
 
     log_printf(15, "_tp_submit_op: gid=%d\n", gop_id(gop));
 
     atomic_inc(op->tpc->n_submitted);
 
-    aerr = apr_thread_pool_push(op->tpc->tp, thread_pool_exec_fn, gop, APR_THREAD_TASK_PRIORITY_NORMAL, NULL);
+    running = atomic_inc(op->tpc->n_running) + 1;
+
+    if (running > op->tpc->max_concurrency) {
+        apr_thread_mutex_lock(_tp_lock);
+        atomic_inc(op->tpc->n_overflow);
+        push(op->tpc->reserve_stack[op->depth], gop);
+        gop = _tpc_overflow_next(op->tpc);
+        apr_thread_mutex_unlock(_tp_lock);
+
+        if (gop) {
+            op = gop_get_tp(gop);
+            aerr = apr_thread_pool_push(op->tpc->tp, thread_pool_exec_fn, gop, APR_THREAD_TASK_PRIORITY_NORMAL, NULL);
+        } else {
+            atomic_dec(op->tpc->n_running);  //** We didn't actually submit anything
+            aerr = APR_SUCCESS;
+        }
+    } else {
+        aerr = apr_thread_pool_push(op->tpc->tp, thread_pool_exec_fn, gop, APR_THREAD_TASK_PRIORITY_NORMAL, NULL);
+    }
 
     if (aerr != APR_SUCCESS) {
         log_printf(0, "ERROR submiting task!  aerr=%d gid=%d\n", aerr, gop_id(gop));
@@ -224,6 +244,8 @@ thread_pool_context_t *thread_pool_create_context(char *tp_name, int min_threads
 //  char buffer[1024];
     thread_pool_context_t *tpc;
     apr_interval_time_t dt;
+    int i;
+    int recursion_depth = 10;
 
     log_printf(15, "count=%d\n", _tp_context_count);
 
@@ -243,7 +265,8 @@ thread_pool_context_t *thread_pool_create_context(char *tp_name, int min_threads
     default_thread_pool_config(tpc);
     if (min_threads > 0) tpc->min_threads = min_threads;
     if (max_threads > 0) tpc->max_threads = max_threads;
-
+    tpc->recursion_depth = recursion_depth + 1;  //** The min recusion normally starts at 1 so just slap an extra level and we don't care about 0|1 starting location
+    tpc->max_concurrency = tpc->max_threads - tpc->recursion_depth - 2;
     dt = tpc->min_idle * 1000000;
     assert_result(apr_thread_pool_create(&(tpc->tp), tpc->min_threads, tpc->max_threads, _tp_pool), APR_SUCCESS);
     apr_thread_pool_idle_wait_set(tpc->tp, dt);
@@ -254,8 +277,14 @@ thread_pool_context_t *thread_pool_create_context(char *tp_name, int min_threads
     atomic_set(tpc->n_completed, 0);
     atomic_set(tpc->n_started, 0);
     atomic_set(tpc->n_submitted, 0);
+    atomic_set(tpc->n_running, 0);
 
-//  _tp_context_count++;
+    type_malloc(tpc->overflow_running_depth, int, tpc->recursion_depth);
+    type_malloc(tpc->reserve_stack, Stack_t *, tpc->recursion_depth);
+    for (i=0; i<tpc->recursion_depth; i++) {
+        tpc->overflow_running_depth[i] = -1;
+        tpc->reserve_stack[i] = new_stack();
+    }
 
     return(tpc);
 }
@@ -267,6 +296,7 @@ thread_pool_context_t *thread_pool_create_context(char *tp_name, int min_threads
 
 void thread_pool_destroy_context(thread_pool_context_t *tpc)
 {
+    int i;
     log_printf(15, "thread_pool_destroy_context: Shutting down! count=%d\n", _tp_context_count);
 
     log_printf(15, "tpc->name=%s  high=%d idle=%d\n", tpc->name, apr_thread_pool_threads_high_count(tpc->tp),  apr_thread_pool_threads_idle_timeout_count(tpc->tp));
@@ -284,6 +314,12 @@ void thread_pool_destroy_context(thread_pool_context_t *tpc)
     apr_wrapper_stop();
 
     if (tpc->name != NULL) free(tpc->name);
+
+    for (i=0; i<tpc->recursion_depth; i++) {
+        free_stack(tpc->reserve_stack[i], 0);
+    }
+    free(tpc->reserve_stack);
+    free(tpc->overflow_running_depth);
 
     free(tpc);
 }
