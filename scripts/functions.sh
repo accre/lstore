@@ -15,6 +15,7 @@ LSTORE_HEAD_BRANCHES="apr-accre=master
                        jerasure=master
                        lio=master
                        toolbox=master"
+LSTORE_LOCAL_REPOS="toolbox ibp gop lio gridftp"
 
 #
 # Informational messages
@@ -43,6 +44,13 @@ function get_repo_master() {
     done
 }
 
+function get_repo_source_path() {
+    if [[ "${LSTORE_LOCAL_REPOS}" =~ "$1" ]]; then
+        echo "$LSTORE_RELEASE_BASE/source/$1"
+    else
+        echo "$LSTORE_RELEASE_BASE/vendor/$1"
+    fi
+}
 #
 # Manipulating local repositories
 #
@@ -50,6 +58,10 @@ function get_lstore_source() {
     # TODO: Accept an additional argument allowing you to override the source
     #       repository/branch.
     TO_GET=$1
+    if [[ $LSTORE_LOCAL_REPOS != *"$TO_GET"* ]]; then
+        return
+    fi
+
     BRANCH=""
     for VAL in $LSTORE_HEAD_BRANCHES; do
         if [[ $VAL == ${TO_GET}=* ]]; then
@@ -59,10 +71,11 @@ function get_lstore_source() {
     if [ -z "$BRANCH" ]; then
         fatal "Invalid repository: $TO_GET"
     fi
-    if [ ! -e ${TO_GET} ]; then
+    DEST=$(get_repo_source_path ${TO_GET})
+    if [ ! -e ${DEST} ]; then
         # Try via SSH first and fall back to https otherwise
-        git clone git@github.com:accre/lstore-${TO_GET}.git -b ${BRANCH} ${TO_GET} || \
-            git clone https://github.com/accre/lstore-${TO_GET}.git -b ${BRANCH} ${TO_GET}
+        git clone git@github.com:accre/lstore-${TO_GET}.git -b ${BRANCH} ${DEST}|| \
+            git clone https://github.com/accre/lstore-${TO_GET}.git -b ${BRANCH} ${DEST}
     else
         note "Repository ${TO_GET} already exists, not checking out"
     fi
@@ -211,6 +224,7 @@ function build_helper() {
     set -e
     BUILD_BASE="$LSTORE_RELEASE_BASE/build"
     SOURCE_BASE="$LSTORE_RELEASE_BASE/source"
+    VENDOR_BASE="$LSTORE_RELEASE_BASE/vendor"
 
 
     PREFIX=$LSTORE_RELEASE_BASE/local
@@ -223,13 +237,9 @@ function build_helper() {
         STATIC=0
     fi
 
-    cd $SOURCE_BASE
-    for p in "$@"; do
-        get_lstore_source ${p}
-    done
-
-    cd $BUILD_BASE
+    pushd $BUILD_BASE
     for p in $@; do
+        get_lstore_source ${p}
         TARGET="${p}"
         if [ $STATIC -ne 0 ]; then
             TARGET="${p}-static"
@@ -240,14 +250,15 @@ function build_helper() {
             note "    remove $BUILT_FLAG"
             continue
         fi
-        [ -d $TARGET ] && rm -rf $TARGET
-        mkdir -p $TARGET
+        [ ! -d $TARGET ] && mkdir -p $TARGET
         pushd $TARGET
-        build_lstore_binary_outof_tree ${p} $SOURCE_BASE/${p} ${PREFIX} ${STATIC} 2>&1 | tee $LSTORE_RELEASE_BASE/logs/${TARGET}-build.log
+        SOURCE_PATH=$(get_repo_source_path ${p})
+        build_lstore_binary_outof_tree ${p} ${SOURCE_PATH} ${PREFIX} ${STATIC} 2>&1 | tee $LSTORE_RELEASE_BASE/logs/${TARGET}-build.log
         [ ${PIPESTATUS[0]} -eq 0 ] || fatal "Could not build ${TARGET}"
         touch $BUILT_FLAG
         popd
     done
+    popd
 }
 
 function get_repo_status() {
