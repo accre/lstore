@@ -147,23 +147,27 @@ void _tp_submit_op(void *arg, op_generic_t *gop)
     log_printf(15, "_tp_submit_op: gid=%d\n", gop_id(gop));
 
     atomic_inc(op->tpc->n_submitted);
-
+    op->via_submit = 1;
     running = atomic_inc(op->tpc->n_running) + 1;
 
     if (running > op->tpc->max_concurrency) {
         apr_thread_mutex_lock(_tp_lock);
         atomic_inc(op->tpc->n_overflow);
-        push(op->tpc->reserve_stack[op->depth], gop);
-        gop = _tpc_overflow_next(op->tpc);
-        apr_thread_mutex_unlock(_tp_lock);
+        push(op->tpc->reserve_stack[op->depth], gop);  //** Need to do the push and overflow check
+        gop = _tpc_overflow_next(op->tpc);             //** along with the submit or rollback atomically
 
         if (gop) {
             op = gop_get_tp(gop);
             aerr = apr_thread_pool_push(op->tpc->tp, thread_pool_exec_fn, gop, APR_THREAD_TASK_PRIORITY_NORMAL, NULL);
         } else {
             atomic_dec(op->tpc->n_running);  //** We didn't actually submit anything
+            if (op->overflow_slot != -1) {   //** Check if we need to undo our overflow slot
+                op->tpc->overflow_running_depth[op->overflow_slot] = -1;
+            }
+
             aerr = APR_SUCCESS;
         }
+        apr_thread_mutex_unlock(_tp_lock);
     } else {
         aerr = apr_thread_pool_push(op->tpc->tp, thread_pool_exec_fn, gop, APR_THREAD_TASK_PRIORITY_NORMAL, NULL);
     }

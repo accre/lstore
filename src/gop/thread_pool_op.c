@@ -52,7 +52,6 @@ typedef struct {  //** This is used to track the thread local versions of some g
 extern int _tp_context_count;
 extern apr_thread_mutex_t *_tp_lock;
 extern apr_pool_t *_tp_pool;
-extern int _tp_id;
 extern int _tp_stats;
 
 static int _tp_concurrent_max;
@@ -64,6 +63,7 @@ static atomic_int_t _tp_depth_total[TP_MAX_DEPTH];
 apr_threadkey_t *thread_local_stats_key = NULL;
 apr_threadkey_t *thread_local_depth_key = NULL;
 
+void _tp_submit_op(void *arg, op_generic_t *gop);
 void _tp_op_free(op_generic_t *gop, int mode);
 
 //*************************************************************************
@@ -139,7 +139,6 @@ int *_thread_local_depth_ptr()
     return(my_depth);
 }
 
-
 //*************************************************************
 
 op_status_t tp_command(op_generic_t *gop, NetStream_t *ns)
@@ -201,14 +200,15 @@ void  *thread_pool_exec_fn(apr_thread_t *th, void *arg)
     thread_local_stats_t *my;
     int *my_depth;
     int tid;
-    int concurrent;
+    int concurrent, start_depth;
 
     tid = atomic_thread_id;
 
-again:
     op = gop_get_tp(gop);
     my_depth = _thread_local_depth_ptr();
-    *my_depth = op->depth;   //** Set the depth
+    start_depth = *my_depth;  //** Store the old depth for later
+
+    if (tid != op->parent_tid) *my_depth = op->depth;   //** Set the depth
 
     if (_tp_stats > 0) {
         //** Set everything to the GOP depth and inc if not running in the parent thread
@@ -250,7 +250,7 @@ again:
         }
     }
 
-    log_printf(4, "tp_recv: end!!! gid=%d tid=%d status=%d op->depth=%d op->overflow_slot=%d n_overflow=%d\n", gop_id(gop), tid, status.op_status, op->depth, op->overflow_slot, atomic_get(tpc->n_overflow));
+    log_printf(4, "tp_recv: end!!! gid=%d ptid=%d status=%d op->depth=%d op->overflow_slot=%d n_overflow=%d\n", gop_id(gop), op->parent_tid, status.op_status, op->depth, op->overflow_slot, atomic_get(tpc->n_overflow));
 
     if (op->overflow_slot != -1) { //** Need to clean up our overflow slot
         apr_thread_mutex_lock(_tp_lock);
@@ -259,8 +259,12 @@ again:
     }
 
     atomic_inc(tpc->n_completed);
-    atomic_dec(tpc->n_running);
+    if (op->via_submit == 1) atomic_dec(tpc->n_running);  //** Update the concurrency if started by calling the proper submit fn
+
     gop_mark_completed(gop, status);
+
+    //** Restore the original depth in case this is a sync_exec fn chain
+    *my_depth = start_depth;
 
     //** Check if we need to get something from the overflow que
     if (atomic_get(tpc->n_overflow) > 0) {
@@ -268,10 +272,7 @@ again:
         gop = _tpc_overflow_next(tpc);
         apr_thread_mutex_unlock(_tp_lock);
 
-        if (gop) {   //** If we got one just loop around and process it
-            atomic_inc(tpc->n_running);  //** Update the total number running.  Similar to what is done via submit
-            goto again;
-        }
+        if (gop) _tp_submit_op(NULL, gop); //** If we got one just loop around and process it
     }
 
     return(NULL);

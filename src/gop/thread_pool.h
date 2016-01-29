@@ -77,6 +77,7 @@ typedef struct {
     void *arg;
     int depth;
     int parent_tid;
+    int via_submit;
     int overflow_slot;
 } thread_pool_op_t;
 
