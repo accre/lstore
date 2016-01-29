@@ -40,6 +40,7 @@ http://www.accre.vanderbilt.edu
 #define PI_CONN 0   //** Actual connection
 #define PI_EFD  1   //** Portal event FD for incoming tasks
 
+void _tp_submit_op(void *arg, op_generic_t *gop);
 int mq_conn_create(mq_portal_t *p, int dowait);
 void mq_conn_teardown(mq_conn_t *c);
 void mqc_heartbeat_dec(mq_conn_t *c, mq_heartbeat_entry_t *hb);
@@ -566,7 +567,7 @@ void mqc_response(mq_conn_t *c, mq_msg_t *msg, int do_exec)
         log_printf(5, "Submitting repsonse for exec gid=%d\n", gop_id(tn->task->gop));
         flush_log();
         tn->task->response = msg;
-        thread_pool_direct(c->pc->tp, thread_pool_exec_fn, tn->task->gop);
+        _tp_submit_op(NULL, tn->task->gop);
     }
 
 //** Free the tracking number container
