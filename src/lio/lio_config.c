@@ -763,6 +763,11 @@ void lio_destroy_nl(lio_config_t *lio)
     }
     free(lio->tpc_unlimited_section);
 
+    if (_lc_object_destroy(lio->tpc_cache_section) <= 0) {
+        thread_pool_destroy_context(lio->tpc_cache);
+    }
+    free(lio->tpc_cache_section);
+
     if (_lc_object_destroy(lio->mq_section) <= 0) {  //** Destroy the MQ context
         mq_ongoing_t *on = lookup_service(lio->ess, ESS_RUNNING, ESS_ONGOING_CLIENT);
         if (on != NULL) {  //** And also the ongoing client
@@ -892,6 +897,29 @@ lio_config_t *lio_create_nl(char *fname, char *section, char *user, char *exe_na
         _lc_object_put(stype, lio->tpc_unlimited);  //** Add it to the table
     }
     add_service(lio->ess, ESS_RUNNING, ESS_TPC_UNLIMITED, lio->tpc_unlimited);
+
+
+    cores = inip_get_integer(lio->ifd, section, "tpc_cache", 100);
+    sprintf(buffer, "tpc-cache:%d", cores);
+    stype = buffer;
+    lio->tpc_cache_section = strdup(stype);
+    lio->tpc_cache = _lc_object_get(stype);
+    if (lio->tpc_cache == NULL) {  //** Need to load it
+        n = 0.1 * cores;
+        if (n > 10) n = 10;
+        if (n <= 0) n = 1;
+        lio->tpc_cache = thread_pool_create_context("CACHE", n, cores);
+        if (lio->tpc_cache == NULL) {
+            log_printf(0, "Error loading tpc_cache threadpool!  n=%d\n", cores);
+            fprintf(stderr, "ERROR createing tpc_cache threadpool! n=%d\n", cores);
+            fflush(stderr);
+            abort();
+        }
+
+        _lc_object_put(stype, lio->tpc_cache);  //** Add it to the table
+    }
+    add_service(lio->ess, ESS_RUNNING, ESS_TPC_CACHE, lio->tpc_cache);
+
 
     stype = inip_get_string(lio->ifd, section, "mq", "mq_context");
     lio->mq_section = stype;

@@ -50,6 +50,7 @@ extern "C" {
 #define ESS_RS      "rs"
 #define ESS_OS      "os"
 #define ESS_TPC_UNLIMITED  "tpc_unlimited"
+#define ESS_TPC_CACHE  "tpc_cache"
 #define ESS_CACHE      "cache"
 #define ESS_MQ      "mq"
 #define ESS_ONGOING_CLIENT "ongoing_client"

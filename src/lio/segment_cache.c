@@ -167,6 +167,8 @@ void flush_wait(segment_t *seg, ex_off_t *my_flush)
     int finished;
     ex_off_t *check;
 
+//return;  //** Testing if this is actually needed
+
     segment_lock(seg);
 
     do {
@@ -3603,7 +3605,11 @@ segment_t *segment_cache_create(void *arg)
     apr_thread_cond_create(&(s->ppages_cond), seg->mpool);
 
     s->flush_stack = new_stack();
-    s->tpc_unlimited = lookup_service(es, ESS_RUNNING, ESS_TPC_UNLIMITED);
+//    s->tpc_unlimited = lookup_service(es, ESS_RUNNING, ESS_TPC_UNLIMITED);
+    s->tpc_unlimited = lookup_service(es, ESS_RUNNING, ESS_TPC_CACHE);
+    assert(s->tpc_unlimited != NULL);
+//s->tpc_unlimited = thread_pool_create_context("CACHE", 2, 20);
+
     s->pages = list_create(0, &skiplist_compare_ex_off, NULL, NULL, NULL);
 
     s->ppages_unused = new_stack();
