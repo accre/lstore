@@ -245,13 +245,12 @@ void default_thread_pool_config(thread_pool_context_t *tpc)
 //  thread_pool_create_context - Creates a TP context
 //**********************************************************
 
-thread_pool_context_t *thread_pool_create_context(char *tp_name, int min_threads, int max_threads)
+thread_pool_context_t *thread_pool_create_context(char *tp_name, int min_threads, int max_threads, int max_recursion_depth)
 {
 //  char buffer[1024];
     thread_pool_context_t *tpc;
     apr_interval_time_t dt;
     int i;
-    int recursion_depth = 10;
 
     log_printf(15, "count=%d\n", _tp_context_count);
 
@@ -271,9 +270,15 @@ thread_pool_context_t *thread_pool_create_context(char *tp_name, int min_threads
 
     default_thread_pool_config(tpc);
     if (min_threads > 0) tpc->min_threads = min_threads;
-    if (max_threads > 0) tpc->max_threads = max_threads;
-    tpc->recursion_depth = recursion_depth + 1;  //** The min recusion normally starts at 1 so just slap an extra level and we don't care about 0|1 starting location
-    tpc->max_concurrency = tpc->max_threads - tpc->recursion_depth - 2;
+    if (max_threads > 0) tpc->max_threads = max_threads + 1;  //** Add one for the recursion depth starting offset being 1
+    tpc->recursion_depth = max_recursion_depth + 1;  //** The min recusion normally starts at 1 so just slap an extra level and we don't care about 0|1 starting location
+    tpc->max_concurrency = tpc->max_threads - tpc->recursion_depth;
+    if (tpc->max_concurrency <= 0) {
+        tpc->max_threads += 5 - tpc->max_concurrency;  //** MAke sure we have at least 5 threads for work
+        tpc->max_concurrency = tpc->max_threads - tpc->recursion_depth;
+        log_printf(0, "Specified max threads and recursion depth don't work. Adjusting max_threads=%d\n", tpc->max_threads);
+    }
+
     dt = tpc->min_idle * 1000000;
     assert_result(apr_thread_pool_create(&(tpc->tp), tpc->min_threads, tpc->max_threads, _tp_pool), APR_SUCCESS);
     apr_thread_pool_idle_wait_set(tpc->tp, dt);

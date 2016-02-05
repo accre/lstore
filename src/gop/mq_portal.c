@@ -1559,10 +1559,10 @@ int mq_conn_create_actual(mq_portal_t *p, int dowait)
     assert_result_not_null(c->waiting = apr_hash_make(c->mpool));
     assert_result_not_null(c->heartbeat_dest = apr_hash_make(c->mpool));
     assert_result_not_null(c->heartbeat_lut = apr_hash_make(c->mpool));
-    
+
     //** This is just used in the initial handshake
     assert_result(pipe(c->cefd), 0);
-    
+
     //** Spawn the thread
     //** USe the parent mpool so I can do the teardown
     thread_create_assert(&(c->thread), NULL, mq_conn_thread, (void *)c, p->mpool);
@@ -1897,7 +1897,8 @@ mq_context_t *mq_create_context(inip_file_t *ifd, char *section)
     mqc->min_conn = inip_get_integer(ifd, section, "min_conn", 1);
     mqc->max_conn = inip_get_integer(ifd, section, "max_conn", 3);
     mqc->min_threads = inip_get_integer(ifd, section, "min_threads", 2);
-    mqc->max_threads = inip_get_integer(ifd, section, "max_threads", 4);
+    mqc->max_threads = inip_get_integer(ifd, section, "max_threads", 20);
+    mqc->max_recursion = inip_get_integer(ifd, section, "max_recursion", 5);
     mqc->backlog_trigger = inip_get_integer(ifd, section, "backlog_trigger", 100);
     mqc->heartbeat_dt = inip_get_integer(ifd, section, "heartbeat_dt", 5);
     mqc->heartbeat_failure = inip_get_integer(ifd, section, "heartbeat_failure", 60);
@@ -1911,16 +1912,16 @@ mq_context_t *mq_create_context(inip_file_t *ifd, char *section)
 
     //** Make the thread pool.  All GOP commands run through here.  We replace
     //**  the TP submit routine with our own.
-    mqc->tp = thread_pool_create_context("mq", mqc->min_threads, mqc->max_threads);
+    mqc->tp = thread_pool_create_context("mq", mqc->min_threads, mqc->max_threads, mqc->max_recursion);
     mqc->pcfn = *(mqc->tp->pc->fn);
     mqc->pcfn.submit = _mq_submit_op;
     mqc->pcfn.sync_exec = NULL;
     mqc->tp->pc->fn = &(mqc->pcfn);
     assert_result_not_null(mqc->client_portals = apr_hash_make(mqc->mpool));
     assert_result_not_null(mqc->server_portals = apr_hash_make(mqc->mpool));
-    
+
     atomic_set(mqc->n_ops, 0);
-    
+
     return(mqc);
 }
 

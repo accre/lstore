@@ -284,6 +284,7 @@ struct mq_context_s {      //** Main MQ context
     int max_conn;              //** Max number of connections to MQ host
     int min_threads;           //** Min number of worker threads
     int max_threads;           //** Max number of worker threads
+    int max_recursion;         //** Max recursion depth expected to eliminate GOP tree deadlocks
     int backlog_trigger;       //** Number of backlog ops to trigger a new connection
     int heartbeat_dt;          //** Heartbeat interval
     int heartbeat_failure;     //** Missing heartbeat DT for failure classification
