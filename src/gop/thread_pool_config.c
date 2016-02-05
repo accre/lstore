@@ -153,7 +153,12 @@ void _tp_submit_op(void *arg, op_generic_t *gop)
     if (running > op->tpc->max_concurrency) {
         apr_thread_mutex_lock(_tp_lock);
         atomic_inc(op->tpc->n_overflow);
-        push(op->tpc->reserve_stack[op->depth], gop);  //** Need to do the push and overflow check
+        if (op->depth >= op->tpc->recursion_depth) {  //** Check if we hit the max recursion
+            log_printf(0, "GOP has a recursion depth >= max specified in the TP!!!! gop depth=%d  TPC max=%d\n", op->depth, op->tpc->recursion_depth);
+            push(op->tpc->reserve_stack[op->tpc->recursion_depth-1], gop);  //** Need to do the push and overflow check
+        } else {
+            push(op->tpc->reserve_stack[op->depth], gop);  //** Need to do the push and overflow check
+        }
         gop = _tpc_overflow_next(op->tpc);             //** along with the submit or rollback atomically
 
         if (gop) {
