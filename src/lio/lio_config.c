@@ -823,7 +823,7 @@ void lio_destroy(lio_config_t *lio)
 lio_config_t *lio_create_nl(char *fname, char *section, char *user, char *exe_name)
 {
     lio_config_t *lio;
-    int n, cores;
+    int n, cores, max_recursion;
     char buffer[1024];
     char *cred_args[2];
     char *ctype, *stype;
@@ -877,7 +877,8 @@ lio_config_t *lio_create_nl(char *fname, char *section, char *user, char *exe_na
     *val = inip_get_integer(lio->ifd, section, "jerase_paranoid", 0);
     add_service(lio->ess, ESS_RUNNING, "jerase_paranoid", val);
 
-    cores = inip_get_integer(lio->ifd, section, "tpc_unlimited", 10000);
+    cores = inip_get_integer(lio->ifd, section, "tpc_unlimited", 200);
+    max_recursion = inip_get_integer(lio->ifd, section, "tpc_max_recursion", 10);
     sprintf(buffer, "tpc:%d", cores);
     stype = buffer;
     lio->tpc_unlimited_section = strdup(stype);
@@ -886,7 +887,7 @@ lio_config_t *lio_create_nl(char *fname, char *section, char *user, char *exe_na
         n = 0.1 * cores;
         if (n > 10) n = 10;
         if (n <= 0) n = 1;
-        lio->tpc_unlimited = thread_pool_create_context("UNLIMITED", n, cores);
+        lio->tpc_unlimited = thread_pool_create_context("UNLIMITED", n, cores, max_recursion);
         if (lio->tpc_unlimited == NULL) {
             log_printf(0, "Error loading tpc_unlimited threadpool!  n=%d\n", cores);
             fprintf(stderr, "ERROR createing tpc_unlimited threadpool! n=%d\n", cores);
@@ -908,7 +909,7 @@ lio_config_t *lio_create_nl(char *fname, char *section, char *user, char *exe_na
         n = 0.1 * cores;
         if (n > 10) n = 10;
         if (n <= 0) n = 1;
-        lio->tpc_cache = thread_pool_create_context("CACHE", n, cores);
+        lio->tpc_cache = thread_pool_create_context("CACHE", n, cores, max_recursion);
         if (lio->tpc_cache == NULL) {
             log_printf(0, "Error loading tpc_cache threadpool!  n=%d\n", cores);
             fprintf(stderr, "ERROR createing tpc_cache threadpool! n=%d\n", cores);
