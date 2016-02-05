@@ -270,6 +270,13 @@ void  *thread_pool_exec_fn(apr_thread_t *th, void *arg)
     if (atomic_get(tpc->n_overflow) > 0) {
         apr_thread_mutex_lock(_tp_lock);
         gop = _tpc_overflow_next(tpc);
+
+        if (gop) {
+            op = gop_get_tp(gop);
+            if (op->overflow_slot != -1) {   //** Check if we need to undo our overflow slot since this submit may fail
+                op->tpc->overflow_running_depth[op->overflow_slot] = -1;
+            }
+        }
         apr_thread_mutex_unlock(_tp_lock);
 
         if (gop) _tp_submit_op(NULL, gop); //** If we got one just loop around and process it
