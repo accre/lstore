@@ -10,7 +10,7 @@ cd $LSTORE_RELEASE_BASE
 statuses+=("lstore-release $(get_repo_status .)")
 
 cd source
-for REPO in apr-accre apr-util-accre jerasure czmq toolbox gop ibp lio gridftp; do
+for REPO in toolbox gop ibp lio gridftp; do
     RET="$(get_repo_status $REPO)"
     GIT=${RET% *}
     CLEAN=${RET##* }
