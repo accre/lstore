@@ -6,16 +6,6 @@
 LSTORE_SCRIPT_BASE=$(cd $(dirname "${BASH_SOURCE[0]}") && pwd)
 LSTORE_RELEASE_BASE=$(cd $(dirname "${LSTORE_SCRIPT_BASE}") && pwd)
 LSTORE_TARBALL_ROOT=$LSTORE_RELEASE_BASE/tarballs/
-LSTORE_HEAD_BRANCHES="apr-accre=master
-                       apr-util-accre=master
-                       czmq=master
-                       gop=master
-                       gridftp=master
-                       ibp=master
-                       jerasure=master
-                       lio=master
-                       toolbox=master"
-LSTORE_LOCAL_REPOS="toolbox ibp gop lio gridftp"
 
 #
 # Informational messages
@@ -42,43 +32,6 @@ function get_repo_master() {
             echo "${VAR##*=}"
         fi
     done
-}
-
-function get_repo_source_path() {
-    if [[ "${LSTORE_LOCAL_REPOS}" =~ "$1" ]]; then
-        echo "$LSTORE_RELEASE_BASE/source/$1"
-    else
-        echo "$LSTORE_RELEASE_BASE/vendor/$1"
-    fi
-}
-#
-# Manipulating local repositories
-#
-function get_lstore_source() {
-    # TODO: Accept an additional argument allowing you to override the source
-    #       repository/branch.
-    TO_GET=$1
-    if [[ $LSTORE_LOCAL_REPOS != *"$TO_GET"* ]]; then
-        return
-    fi
-
-    BRANCH=""
-    for VAL in $LSTORE_HEAD_BRANCHES; do
-        if [[ $VAL == ${TO_GET}=* ]]; then
-            BRANCH="${VAL#*=}"
-        fi
-    done
-    if [ -z "$BRANCH" ]; then
-        fatal "Invalid repository: $TO_GET"
-    fi
-    DEST=$(get_repo_source_path ${TO_GET})
-    if [ ! -e ${DEST} ]; then
-        # Try via SSH first and fall back to https otherwise
-        git clone git@github.com:accre/lstore-${TO_GET}.git -b ${BRANCH} ${DEST}|| \
-            git clone https://github.com/accre/lstore-${TO_GET}.git -b ${BRANCH} ${DEST}
-    else
-        note "Repository ${TO_GET} already exists, not checking out"
-    fi
 }
 
 function build_lstore_binary() {
@@ -259,25 +212,6 @@ function build_helper() {
         popd
     done
     popd
-}
-
-function get_repo_status() {
-    REPO_PATH=$1
-    cd $REPO_PATH
-    echo -n $(git rev-parse --abbrev-ref HEAD)
-    [[ $(git diff --shortstat HEAD 2> /dev/null | tail -n1) != "" ]] && \
-        echo " DIRTY" || echo " CLEAN"
-    cd - &>/dev/null
-}
-
-function get_source() {
-    set -e
-    SOURCE_BASE="$LSTORE_RELEASE_BASE/source"
-
-    cd $SOURCE_BASE
-    for p in "$@"; do
-        get_lstore_source ${p}
-    done
 }
 
 function load_github_token() {
