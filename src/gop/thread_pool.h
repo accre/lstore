@@ -52,14 +52,20 @@ typedef struct {
     char *name;
     portal_context_t *pc;
     apr_thread_pool_t *tp;
+    Stack_t **reserve_stack;
+    int *overflow_running_depth;
+    atomic_int_t n_overflow;
     atomic_int_t n_ops;
     atomic_int_t n_completed;
     atomic_int_t n_started;
     atomic_int_t n_submitted;
     atomic_int_t n_direct;
+    atomic_int_t n_running;
     int min_idle;
     int min_threads;
     int max_threads;
+    int recursion_depth;
+    int max_concurrency;
 } thread_pool_context_t;
 
 typedef struct {
@@ -69,6 +75,10 @@ typedef struct {
     op_status_t (*fn)(void *priv, int id);
     void (*my_op_free)(void *arg);
     void *arg;
+    int depth;
+    int parent_tid;
+    int via_submit;
+    int overflow_slot;
 } thread_pool_op_t;
 
 #define tp_get_gop(top) &((top)->gop)
@@ -80,7 +90,7 @@ int thread_pool_direct(thread_pool_context_t *tpc, apr_thread_start_t fn, void *
 int set_thread_pool_op(thread_pool_op_t *op, thread_pool_context_t *tpc, char *que, op_status_t (*fn)(void *arg, int id), void *arg, void (*my_op_free)(void *arg), int workload);
 op_generic_t *new_thread_pool_op(thread_pool_context_t *tpc, char *que, op_status_t (*fn)(void *arg, int id), void *arg, void (*my_op_free)(void *arg), int workload);
 
-thread_pool_context_t *thread_pool_create_context(char *tp_name, int min_threads, int max_threads);
+thread_pool_context_t *thread_pool_create_context(char *tp_name, int min_threads, int max_threads, int max_recursion);
 void thread_pool_destroy_context(thread_pool_context_t *tpc);
 
 void  *thread_pool_exec_fn(apr_thread_t *th, void *data);

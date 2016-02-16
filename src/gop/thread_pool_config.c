@@ -34,6 +34,7 @@ http://www.accre.vanderbilt.edu
 #include <apr_pools.h>
 #include <apr_thread_proc.h>
 #include <apr_thread_pool.h>
+#include <apr_env.h>
 #include "apr_wrapper.h"
 #include "opque.h"
 #include "thread_pool.h"
@@ -46,6 +47,7 @@ void *_tp_dup_connect_context(void *connect_context);
 void _tp_destroy_connect_context(void *connect_context);
 int _tp_connect(NetStream_t *ns, void *connect_context, char *host, int port, Net_timeout_t timeout);
 void _tp_close_connection(NetStream_t *ns);
+op_generic_t *_tpc_overflow_next(thread_pool_context_t *tpc);
 
 void _tp_op_free(op_generic_t *op, int mode);
 void _tp_submit_op(void *arg, op_generic_t *op);
@@ -60,10 +62,49 @@ static portal_fn_t _tp_base_portal = {
     .sync_exec = thread_pool_exec_fn
 };
 
+void thread_pool_stats_make();
+void thread_pool_stats_print();
+
 atomic_int_t _tp_context_count = 0;
 apr_thread_mutex_t *_tp_lock = NULL;
 apr_pool_t *_tp_pool = NULL;
-//int _tp_id = 0;
+int _tp_stats = 0;
+
+extern apr_threadkey_t *thread_local_stats_key;
+extern apr_threadkey_t *thread_local_depth_key;
+
+//***************************************************************************
+
+void _thread_pool_destructor(void *ptr)
+{
+    free(ptr);
+}
+
+//**********************************************************
+// thread_pool_stats_init - Initializes the thread pool stats routines
+//     Should only be called once.
+//**********************************************************
+
+void thread_pool_stats_init()
+{
+    int i;
+    char *eval;
+
+    //** Check if we are enabling stat collection
+    eval = NULL;
+    apr_env_get(&eval, "GOP_TP_STATS", _tp_pool);
+    if (eval != NULL) {
+        i = atol(eval);
+        if (i > 0) {
+            _tp_stats = i;
+
+            if (thread_local_stats_key == NULL) {
+                apr_threadkey_private_create(&thread_local_stats_key,_thread_pool_destructor, _tp_pool);
+                thread_pool_stats_make();
+            }
+        }
+    }
+}
 
 //*************************************************************
 
@@ -101,12 +142,40 @@ void _tp_submit_op(void *arg, op_generic_t *gop)
 {
     thread_pool_op_t *op = gop_get_tp(gop);
     apr_status_t aerr;
+    int running;
 
     log_printf(15, "_tp_submit_op: gid=%d\n", gop_id(gop));
 
     atomic_inc(op->tpc->n_submitted);
+    op->via_submit = 1;
+    running = atomic_inc(op->tpc->n_running) + 1;
 
-    aerr = apr_thread_pool_push(op->tpc->tp, thread_pool_exec_fn, gop, APR_THREAD_TASK_PRIORITY_NORMAL, NULL);
+    if (running > op->tpc->max_concurrency) {
+        apr_thread_mutex_lock(_tp_lock);
+        atomic_inc(op->tpc->n_overflow);
+        if (op->depth >= op->tpc->recursion_depth) {  //** Check if we hit the max recursion
+            log_printf(0, "GOP has a recursion depth >= max specified in the TP!!!! gop depth=%d  TPC max=%d\n", op->depth, op->tpc->recursion_depth);
+            push(op->tpc->reserve_stack[op->tpc->recursion_depth-1], gop);  //** Need to do the push and overflow check
+        } else {
+            push(op->tpc->reserve_stack[op->depth], gop);  //** Need to do the push and overflow check
+        }
+        gop = _tpc_overflow_next(op->tpc);             //** along with the submit or rollback atomically
+
+        if (gop) {
+            op = gop_get_tp(gop);
+            aerr = apr_thread_pool_push(op->tpc->tp, thread_pool_exec_fn, gop, APR_THREAD_TASK_PRIORITY_NORMAL, NULL);
+        } else {
+            atomic_dec(op->tpc->n_running);  //** We didn't actually submit anything
+            if (op->overflow_slot != -1) {   //** Check if we need to undo our overflow slot
+                op->tpc->overflow_running_depth[op->overflow_slot] = -1;
+            }
+
+            aerr = APR_SUCCESS;
+        }
+        apr_thread_mutex_unlock(_tp_lock);
+    } else {
+        aerr = apr_thread_pool_push(op->tpc->tp, thread_pool_exec_fn, gop, APR_THREAD_TASK_PRIORITY_NORMAL, NULL);
+    }
 
     if (aerr != APR_SUCCESS) {
         log_printf(0, "ERROR submiting task!  aerr=%d gid=%d\n", aerr, gop_id(gop));
@@ -181,11 +250,12 @@ void default_thread_pool_config(thread_pool_context_t *tpc)
 //  thread_pool_create_context - Creates a TP context
 //**********************************************************
 
-thread_pool_context_t *thread_pool_create_context(char *tp_name, int min_threads, int max_threads)
+thread_pool_context_t *thread_pool_create_context(char *tp_name, int min_threads, int max_threads, int max_recursion_depth)
 {
 //  char buffer[1024];
     thread_pool_context_t *tpc;
     apr_interval_time_t dt;
+    int i;
 
     log_printf(15, "count=%d\n", _tp_context_count);
 
@@ -196,14 +266,23 @@ thread_pool_context_t *thread_pool_create_context(char *tp_name, int min_threads
     if (atomic_inc(_tp_context_count) == 0) {
         apr_pool_create(&_tp_pool, NULL);
         apr_thread_mutex_create(&_tp_lock, APR_THREAD_MUTEX_DEFAULT, _tp_pool);
+        thread_pool_stats_init();
         init_opque_system();
     }
 
+    if (thread_local_depth_key == NULL) apr_threadkey_private_create(&thread_local_depth_key,_thread_pool_destructor, _tp_pool);
     tpc->pc = create_hportal_context(&_tp_base_portal);  //** Really just used for the submit
 
     default_thread_pool_config(tpc);
     if (min_threads > 0) tpc->min_threads = min_threads;
-    if (max_threads > 0) tpc->max_threads = max_threads;
+    if (max_threads > 0) tpc->max_threads = max_threads + 1;  //** Add one for the recursion depth starting offset being 1
+    tpc->recursion_depth = max_recursion_depth + 1;  //** The min recusion normally starts at 1 so just slap an extra level and we don't care about 0|1 starting location
+    tpc->max_concurrency = tpc->max_threads - tpc->recursion_depth;
+    if (tpc->max_concurrency <= 0) {
+        tpc->max_threads += 5 - tpc->max_concurrency;  //** MAke sure we have at least 5 threads for work
+        tpc->max_concurrency = tpc->max_threads - tpc->recursion_depth;
+        log_printf(0, "Specified max threads and recursion depth don't work. Adjusting max_threads=%d\n", tpc->max_threads);
+    }
 
     dt = tpc->min_idle * 1000000;
     assert_result(apr_thread_pool_create(&(tpc->tp), tpc->min_threads, tpc->max_threads, _tp_pool), APR_SUCCESS);
@@ -215,8 +294,14 @@ thread_pool_context_t *thread_pool_create_context(char *tp_name, int min_threads
     atomic_set(tpc->n_completed, 0);
     atomic_set(tpc->n_started, 0);
     atomic_set(tpc->n_submitted, 0);
+    atomic_set(tpc->n_running, 0);
 
-//  _tp_context_count++;
+    type_malloc(tpc->overflow_running_depth, int, tpc->recursion_depth);
+    type_malloc(tpc->reserve_stack, Stack_t *, tpc->recursion_depth);
+    for (i=0; i<tpc->recursion_depth; i++) {
+        tpc->overflow_running_depth[i] = -1;
+        tpc->reserve_stack[i] = new_stack();
+    }
 
     return(tpc);
 }
@@ -228,6 +313,7 @@ thread_pool_context_t *thread_pool_create_context(char *tp_name, int min_threads
 
 void thread_pool_destroy_context(thread_pool_context_t *tpc)
 {
+    int i;
     log_printf(15, "thread_pool_destroy_context: Shutting down! count=%d\n", _tp_context_count);
 
     log_printf(15, "tpc->name=%s  high=%d idle=%d\n", tpc->name, apr_thread_pool_threads_high_count(tpc->tp),  apr_thread_pool_threads_idle_timeout_count(tpc->tp));
@@ -236,6 +322,7 @@ void thread_pool_destroy_context(thread_pool_context_t *tpc)
     apr_thread_pool_destroy(tpc->tp);
 
     if (atomic_dec(_tp_context_count) == 0) {
+        if (_tp_stats > 0) thread_pool_stats_print();
         destroy_opque_system();
         apr_thread_mutex_destroy(_tp_lock);
         apr_pool_destroy(_tp_pool);
@@ -245,6 +332,11 @@ void thread_pool_destroy_context(thread_pool_context_t *tpc)
 
     if (tpc->name != NULL) free(tpc->name);
 
+    for (i=0; i<tpc->recursion_depth; i++) {
+        free_stack(tpc->reserve_stack[i], 0);
+    }
+    free(tpc->reserve_stack);
+    free(tpc->overflow_running_depth);
+
     free(tpc);
 }
-
