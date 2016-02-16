@@ -109,7 +109,7 @@ void *lookup_service(service_manager_t *sm, char *service_section, char *service
 
     s = apr_hash_get(section, service_name, APR_HASH_KEY_STRING);
     if (s == NULL) {
-        log_printf(10, "No matching object for section=%s name=%\n", service_section, service_name);
+        log_printf(10, "No matching object for section=%s name=%s\n", service_section, service_name);
     }
     apr_thread_mutex_unlock(sm->lock);
 

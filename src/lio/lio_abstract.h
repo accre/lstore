@@ -72,6 +72,7 @@ struct lio_config_s {
     object_service_fn_t *os;
     resource_service_fn_t *rs;
     thread_pool_context_t *tpc_unlimited;
+    thread_pool_context_t *tpc_cache;
     mq_context_t *mqc;
     service_manager_t *ess;
     service_manager_t *ess_nocache;  //** Copy of ess but missing cache.  Kind of a kludge...
@@ -90,6 +91,7 @@ struct lio_config_s {
     char *os_section;
     char *rs_section;
     char *tpc_unlimited_section;
+    char *tpc_cache_section;
     char *creds_name;
     char *exe_name;
     blacklist_t *blacklist;

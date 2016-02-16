@@ -63,6 +63,7 @@ typedef struct {
     int        n_iov;
     int skip_ppages;
     int timeout;
+int dummy;
 } cache_rw_op_t;
 
 typedef struct {
@@ -166,6 +167,8 @@ void flush_wait(segment_t *seg, ex_off_t *my_flush)
     cache_segment_t *s = (cache_segment_t *)seg->priv;
     int finished;
     ex_off_t *check;
+
+//return;  //** Testing if this is actually needed
 
     segment_lock(seg);
 
@@ -2793,7 +2796,7 @@ op_status_t cache_flush_range_func(void *arg, int id)
     hi = lo + cop->iov_single.len - 1;
 
     if (hi == -1) {  //** segment_size == 0 so nothing to do
-        return(op_success_status);
+        goto finished;
     }
 
     //** Push myself on the flush stack
@@ -2877,6 +2880,12 @@ op_status_t cache_flush_range_func(void *arg, int id)
     flush_wait(cop->seg, flush_id);
     flush_id[2] = progress;
 
+    //** Update that I'm finished
+finished:
+    segment_lock(cop->seg);
+    s->flushing_count--;
+    segment_unlock(cop->seg);
+
     dt = apr_time_now() - now;
     dt /= APR_USEC_PER_SEC;
     log_printf(1, "END seg=" XIDT " lo=" XOT " hi=" XOT " flush_id=" XOT " total_pages=%d status=%d dt=%lf\n", segment_id(cop->seg), lo, hi, flush_id[2], total_pages, err, dt);
@@ -2903,6 +2912,11 @@ op_generic_t *cache_flush_range(segment_t *seg, data_attr_t *da, ex_off_t lo, ex
     cop->boff = 0;
     cop->buf = NULL;
     cop->timeout = timeout;
+
+
+    segment_lock(seg);
+    s->flushing_count++;
+    segment_unlock(seg);
 
     return(new_thread_pool_op(s->tpc_unlimited, s->qname, cache_flush_range_func, (void *)cop, free, 1));
 }
@@ -3374,7 +3388,7 @@ int segcache_deserialize_text(segment_t *seg, ex_id_t myid, exnode_exchange_t *e
     //** Remove my random ID from the segments table
     if (s->c) {
         cache_lock(s->c);
-        log_printf(5, "CSEG-I Removing seg=" XIDT " nsegs=%d\n", segment_id(seg), list_key_count(s->c->segments));
+        log_printf(5, "CSEG-I Removing seg=" XIDT " nsegs=%d myid=" XIDT "\n", segment_id(seg), list_key_count(s->c->segments), myid);
         flush_log();
         list_remove(s->c->segments, &(segment_id(seg)), seg);
         s->c->fn.removing_segment(s->c, seg);
@@ -3404,7 +3418,6 @@ int segcache_deserialize_text(segment_t *seg, ex_id_t myid, exnode_exchange_t *e
 
     //** If total_size is -1 or child is smaller use the size from child
     child_size = segment_size(s->child_seg);
-//QWERT CHECK  if ((s->total_size < 0) || (s->total_size > child_size)) s->total_size = child_size;
 
     //** Determine the child segment size so we don't have to call it
     //** on R/W and risk getting blocked due to child grow operations
@@ -3480,7 +3493,7 @@ void segcache_destroy(segment_t *seg)
     int i;
 
     //** Check if it's still in use
-    log_printf(2, "segcache_destroy: seg->id=" XIDT " ref_count=%d\n", segment_id(seg), seg->ref_count);
+    log_printf(2, "segcache_destroy: seg->id=" XIDT " ref_count=%d sptr=%p\n", segment_id(seg), seg->ref_count, seg);
 //flush_log();
 
 //log_printf(2, "CACHE-PTR seg=" XIDT " s->c=%p\n", segment_id(seg), s->c);
@@ -3493,9 +3506,8 @@ void segcache_destroy(segment_t *seg)
     //** If s->c == NULL then we are just cloning the structure or serial/deserializing an exnode
     //** There should be no data loaded
     if (s->c != NULL) {
-        //** Flag the segment as being removed and flush any ppages
+        //** Flush any ppages
         cache_lock(s->c);
-        s->close_requested = 1;
         if (s->c != NULL) _cache_ppages_flush(seg, s->c->da);
         cache_unlock(s->c);
 
@@ -3521,19 +3533,21 @@ void segcache_destroy(segment_t *seg)
         }
         cache_unlock(s->c);
 
+        //** And make sure all the flushing tasks are complete
+        segment_lock(seg);
+        while (s->flushing_count != 0) {
+            log_printf(5, "seg=" XIDT " waiting for a flush to complete flushing_count=%d\n", segment_id(seg), s->flushing_count);
+            segment_unlock(seg);
+            usleep(10000);
+            segment_lock(seg);
+        }
+        segment_unlock(seg);
+
         //** and drop the cache pages
         cache_page_drop(seg, 0, XOT_MAX);
-//     cache_page_drop(seg, 0, s->total_size + 1);
 
-        //** Make sure all the pages are actually gone by waiting to make sure a free_mem() call isn't running on a page we hold
+
         cache_lock(s->c);
-        while (s->dumping_pages != 0) {
-            cache_unlock(s->c);
-            log_printf(5, "seg=" XIDT " waiting for a forced page free to complete\n", segment_id(seg));
-            usleep(10000);
-            cache_lock(s->c);
-        }
-
         s->c->fn.removing_segment(s->c, seg);  //** Do the final remove
         cache_unlock(s->c);
     }
@@ -3603,7 +3617,9 @@ segment_t *segment_cache_create(void *arg)
     apr_thread_cond_create(&(s->ppages_cond), seg->mpool);
 
     s->flush_stack = new_stack();
-    s->tpc_unlimited = lookup_service(es, ESS_RUNNING, ESS_TPC_UNLIMITED);
+    s->tpc_unlimited = lookup_service(es, ESS_RUNNING, ESS_TPC_CACHE);
+    assert(s->tpc_unlimited != NULL);
+
     s->pages = list_create(0, &skiplist_compare_ex_off, NULL, NULL, NULL);
 
     s->ppages_unused = new_stack();
