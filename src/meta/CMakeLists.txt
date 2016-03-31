@@ -1,7 +1,9 @@
 cmake_minimum_required(VERSION 2.8)
 install(DIRECTORY etc/lio DESTINATION "etc/"
         PATTERN "*.sh" PERMISSIONS OWNER_EXECUTE OWNER_WRITE OWNER_READ GROUP_EXECUTE GROUP_READ WORLD_READ)
-install(DIRECTORY etc/logrotate.d DESTINATION "etc/logrotate.d/")
+install(FILES etc/logrotate.d/lstore DESTINATION "etc/logrotate.d/")
+set(CPACK_RPM_EXCLUDE_FROM_AUTO_FILELIST_ADDITION "/etc/logrotate.d")
+set(CPACK_RPM_USER_FILELIST "%config(noreplace) /etc/logrotate.d/lstore")
 set(CPACK_PACKAGING_INSTALL_PREFIX "/")
 set(CPACK_PACKAGE_NAME "lstore")
 set(CPACK_PACKAGE_DESCRIPTION_SUMMARY
