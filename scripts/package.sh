@@ -32,10 +32,11 @@ for PROXY in http_proxy HTTPS_PROXY; do
     fi
 done
 
+LSTORE_RELEASE_RELATIVE=$(realpath $(pwd) --relative-to "$LSTORE_RELEASE_BASE")
 for DISTRO in "${DISTROS[@]}"; do
     note "Starting docker container to package $DISTRO"
     set -x
-    docker run --rm=true -v $(pwd):/tmp/source \
+    docker run --rm=true -v $LSTORE_RELEASE_RELATIVE:/tmp/source \
             $EXTRA_ARGS \
             lstore/builder:${DISTRO} \
             /tmp/source/scripts/package-internal.sh $DISTRO
