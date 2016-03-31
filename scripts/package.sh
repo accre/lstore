@@ -32,7 +32,12 @@ for PROXY in http_proxy HTTPS_PROXY; do
     fi
 done
 
-LSTORE_RELEASE_RELATIVE=$(realpath $(pwd) --relative-to "$LSTORE_RELEASE_BASE")
+if [[ ! -z "$HOST_VOLUME_PATH" && ! -z "$CONTAINER_VOLUME_PATH" ]]; then
+    LSTORE_RELEASE_RELATIVE="${HOST_VOLUME_PATH}/$(realpath $(pwd) --relative-to "$CONTAINER_VOLUME_PATH")"
+else
+    LSTORE_RELEASE_RELATIVE="$LSTORE_RELEASE_BASE"
+fi
+
 for DISTRO in "${DISTROS[@]}"; do
     note "Starting docker container to package $DISTRO"
     set -x
