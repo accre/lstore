@@ -2,7 +2,7 @@
 set -eu
 ABSOLUTE_PATH=$(cd `dirname "${BASH_SOURCE[0]}"` && pwd)
 source $ABSOLUTE_PATH/functions.sh
-
+umask 0000
 
 cd $LSTORE_RELEASE_BASE
 DISTRO=$1

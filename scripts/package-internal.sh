@@ -12,6 +12,7 @@ ABSOLUTE_PATH=$(cd `dirname "${BASH_SOURCE[0]}"` && pwd)
 source $ABSOLUTE_PATH/functions.sh
 PACKAGE_DISTRO=${1:-unknown_distro}
 PACKAGE_SUBDIR=$PACKAGE_DISTRO
+umask 0000
 
 case $PACKAGE_DISTRO in
 undefined)
@@ -80,6 +81,13 @@ for PACKAGE in apr-accre apr-util-accre jerasure czmq \
                 ( git update-index -q --refresh &>/dev/null || true ) && \
                 git describe --abbrev=32 --dirty="-dev" --candidates=100 \
                     --match 'ACCRE_*' | sed 's,^ACCRE_,,')
+    if [ -z "$TAG_NAME" ]; then
+        TAG_NAME="0.0.0-$(cd $PACKAGE_SOURCE &&
+                ( git update-index -q --refresh &>/dev/null || true ) && \
+                git describe --abbrev=32 --dirty="-dev" --candidates=100 \
+                    --match ROOT --always)"
+    fi
+
     TAG_NAME=${TAG_NAME:-"0.0.0-undefined-tag"}
     (cd $SOURCE_BASE && note "$(git status)")
     PACKAGE_REPO=$REPO_BASE/$PACKAGE/$TAG_NAME

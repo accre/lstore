@@ -32,13 +32,20 @@ for PROXY in http_proxy HTTPS_PROXY; do
     fi
 done
 
+if [[ ! -z "${HOST_VOLUME_PATH:-}" && ! -z "${CONTAINER_VOLUME_PATH:-}" ]]; then
+    LSTORE_RELEASE_RELATIVE="${HOST_VOLUME_PATH}/$(realpath $(pwd) --relative-to "$CONTAINER_VOLUME_PATH")"
+else
+    LSTORE_RELEASE_RELATIVE="$LSTORE_RELEASE_BASE"
+fi
+
+
 for DISTRO in "${DISTROS[@]}"; do
     PARENT="${DISTRO%-*}"
     RELEASE="${DISTRO##*-}"
     BARE_DISTRO_IMAGE="${PARENT}:${RELEASE}"
     note "Starting docker container to test $DISTRO"
     set -x
-    docker run --rm=true -v $(pwd):/tmp/source \
+    docker run --rm=true -v $LSTORE_RELEASE_RELATIVE:/tmp/source \
             $EXTRA_ARGS \
             $BARE_DISTRO_IMAGE \
             /tmp/source/scripts/test-repo-internal.sh $DISTRO

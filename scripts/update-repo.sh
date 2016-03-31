@@ -11,6 +11,12 @@ if [ ${#DISTROS[@]} -eq 0 ]; then
 fi
 DISTROS=( "${DISTROS[@]%/}" )
 
+if [[ ! -z "${HOST_VOLUME_PATH:-}" && ! -z "${CONTAINER_VOLUME_PATH:-}" ]]; then
+    LSTORE_RELEASE_RELATIVE="${HOST_VOLUME_PATH}/$(realpath $(pwd) --relative-to "$CONTAINER_VOLUME_PATH")"
+else
+    LSTORE_RELEASE_RELATIVE="$LSTORE_RELEASE_BASE"
+fi
+
 cd $LSTORE_RELEASE_BASE
 
 for DISTRO in "${DISTROS[@]}"; do
@@ -35,7 +41,7 @@ for DISTRO in "${DISTROS[@]}"; do
     mkdir -p build/repo/$PARENT/$RELEASE/packages
     note "Starting docker container to update $DISTRO"
     set -x
-    docker run --rm=true -v $(pwd):/tmp/source \
+    docker run --rm=true -v $LSTORE_RELEASE_RELATIVE:/tmp/source \
             lstore/builder:$BARE_DISTRO_IMAGE \
             /tmp/source/scripts/update-repo-internal.sh $DISTRO
     set +x
