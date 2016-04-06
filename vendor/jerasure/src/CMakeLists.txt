@@ -45,9 +45,6 @@ set_target_properties(jerasure PROPERTIES CLEAN_DIRECT_OUTPUT 1)
 #SET(ibp_lib ibp)
 #TARGET_LINK_LIBRARIES( ibp_perf ${ibp_lib} ${LIBS})
 
-configure_file(jerasure.pc.in jerasure.pc @ONLY) 
 
 install(TARGETS jerasure jerasure-static DESTINATION lib)
 install(FILES jerasure.h galois.h cauchy.h reed_sol.h liberation.h DESTINATION include/jerasure)
-
-install(FILES "${CMAKE_CURRENT_BINARY_DIR}/jerasure.pc" DESTINATION lib/pkgconfig)
