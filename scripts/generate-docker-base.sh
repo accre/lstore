@@ -96,6 +96,11 @@ for DISTRO in "${DISTROS[@]}"; do
         *)
             fatal "Unrecognized packaging system: ${PACKAGER}"
     esac
+    if [ "$DISTRO" == "ubuntu-xenial" ]; then
+        ADDITIONAL_PACKAGES+=( clang
+                               libczmq-dev
+                             )
+    fi
     if [ "${#ADDITIONAL_PACKAGES[0]}" -ne 0 ]; then
         PACKAGE_INSTALL=$PACKAGE_PREFIX
         for VAL in ${ADDITIONAL_PACKAGES[@]}; do

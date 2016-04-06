@@ -5,6 +5,7 @@
 String[] distros = ["centos-6", "centos-7",\
                     "debian-jessie", "ubuntu-trusty",\
                     "ubuntu-vivid", "ubuntu-wily"]
+
 def compile_map = [:]
 for (int i = 0 ; i < distros.size(); ++i) {
     def x = distros.get(i)

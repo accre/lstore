@@ -32,7 +32,7 @@ for DISTRO in "${DISTROS[@]}"; do
             BARE_DISTRO_IMAGE=centos-7
             ;;
         ubuntu|debian)
-            BARE_DISTRO_IMAGE=debian-jessie
+            BARE_DISTRO_IMAGE=ubuntu-xenial
             ;;
         *)
             fatal "Unsupported distro"
