@@ -2,7 +2,7 @@
 
 set -e
 
-SUPPORTED="debian-jessie;ubuntu-trusty;ubuntu-vivid;ubuntu-wily"
+SUPPORTED="debian-jessie;ubuntu-trusty;ubuntu-vivid;ubuntu-wily;ubuntu-xenial"
 
 if [ "$1" = "configure" ]; then
     dist=$(lsb_release -is 2> /dev/null | tr '[A-Z]' '[a-z]')
