@@ -14,7 +14,7 @@ DISTROS=( "${DISTROS[@]%/}" )
 cd $LSTORE_RELEASE_BASE
 
 for DISTRO in "${DISTROS[@]}"; do
-    if [ ! -e package/$DISTRO ]; then
+    if [ ! -e build/package/$DISTRO ]; then
         note "No binaries for distribution $DISTRO, skipping."
         continue
     fi
@@ -32,7 +32,7 @@ for DISTRO in "${DISTROS[@]}"; do
             fatal "Unsupported distro"
             ;;
     esac
-    mkdir -p repo/$PARENT/$RELEASE/packages
+    mkdir -p build/repo/$PARENT/$RELEASE/packages
     note "Starting docker container to update $DISTRO"
     set -x
     docker run --rm=true -v $(pwd):/tmp/source \

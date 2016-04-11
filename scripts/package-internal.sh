@@ -33,8 +33,7 @@ esac
 
 # todo could probe this from docker variables
 PACKAGE_BASE="/tmp/lstore-release"
-SOURCE_BASE=$LSTORE_RELEASE_BASE/source
-REPO_BASE=$LSTORE_RELEASE_BASE/package/$PACKAGE_SUBDIR
+REPO_BASE=$LSTORE_RELEASE_BASE/build/package/$PACKAGE_SUBDIR
 # Here and elsewhere, we need to set the umask when we write to the host-mounted
 #    paths. Otherwise users outside the container can't read/write files. But,
 #    we don't want to just blindly set umask 0000, in case there's some
@@ -55,7 +54,8 @@ note "Beginning packaging at $(date) for $PACKAGE_SUBDIR"
 #
 cd $PACKAGE_BASE/build
 for PACKAGE in apr-accre apr-util-accre jerasure czmq \
-               toolbox gop ibp lio gridftp release meta; do
+               toolbox gop ibp lio release meta; do
+    SOURCE_BASE=$(get_repo_source_path ${PACKAGE})
     if [ "$PACKAGE" == "czmq" ];then
         if (ldconfig -p | grep -q libczmq); then
                 echo "libczmq.so is available: skipping czmq package build.";
@@ -76,16 +76,16 @@ for PACKAGE in apr-accre apr-util-accre jerasure czmq \
     #       if the CURRENT working directory is dirty...
     # NOTE: The git update-index is needed since the host and container git
     #       versions might be different.
-    TAG_NAME=$(cd $SOURCE_BASE/$PACKAGE/ &&
+    TAG_NAME=$(cd $SOURCE_BASE &&
                 ( git update-index -q --refresh &>/dev/null || true ) && \
                 git describe --abbrev=32 --dirty="-dev" --candidates=100 \
                     --match 'ACCRE_*' | sed 's,^ACCRE_,,')
     TAG_NAME=${TAG_NAME:-"0.0.0-undefined-tag"}
-    (cd $SOURCE_BASE/$PACKAGE/ && note "$(git status)")
+    (cd $SOURCE_BASE && note "$(git status)")
     PACKAGE_REPO=$REPO_BASE/$PACKAGE/$TAG_NAME
     if [ ! -e $PACKAGE_REPO ]; then
         set -x
-        build_lstore_package $PACKAGE $SOURCE_BASE/$PACKAGE $TAG_NAME \
+        build_lstore_package $PACKAGE $SOURCE_BASE $TAG_NAME \
                              $PACKAGE_DISTRO
         mkdir -p $PACKAGE_REPO
         # Need to figure out what to do with these eventually.
