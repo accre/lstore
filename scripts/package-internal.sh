@@ -82,7 +82,7 @@ for PACKAGE in apr-accre apr-util-accre jerasure czmq \
                 git describe --abbrev=32 --dirty="-dev" --candidates=100 \
                     --match 'ACCRE_*' | sed 's,^ACCRE_,,')
     if [ -z "$TAG_NAME" ]; then
-        TAG_NAME="0.0.0-$(cd $PACKAGE_SOURCE &&
+        TAG_NAME="0.0.0-$(cd $SOURCE_BASE &&
                 ( git update-index -q --refresh &>/dev/null || true ) && \
                 git describe --abbrev=32 --dirty="-dev" --candidates=100 \
                     --match ROOT --always)"
