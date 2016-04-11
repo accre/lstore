@@ -1,0 +1,9 @@
+#!/bin/bash
+
+if [ "${1}" == "" ]; then
+   echo "$0 cpack_generator"
+   echo "   The list of cpack generators can be foundby executing 'cpack --help'"
+   echo "   To modify package specific settings edit cmake/cpack_settings.cmake"
+fi
+
+cpack -D CPACK_GENERATOR=${1}
