@@ -26,6 +26,7 @@ stage "Checkout"
 node {
     deleteDir()
     checkout scm
+    sh "bash scripts/check-patch.sh"
     stash includes: '**, .git/', name: 'source', useDefaultExcludes: false
 }
 
