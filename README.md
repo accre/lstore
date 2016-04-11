@@ -3,15 +3,16 @@ LStore Release Tools
 
 Structure
 -----------------------------------------------
-* scripts  - Build scripts
-  * docker - Cached Dockerfiles
-    * base - Bare images with only LStore dependencies and build tools installed
-* source   - Source repositories
-* build    - Location where all sources are built
-* logs     - Build logs
-* local    - Installation path for packages built with build-*.sh
-* package  - Storage with built RPMs
-* repo     - Default YUM/APT repositories
+* scripts   - Build scripts
+  * docker  - Cached Dockerfiles
+    * base  - Bare images with only LStore dependencies and build tools installed
+* src       - Source repositories
+* vendor    - External dependencies
+* build     - Location where all sources are built
+  * logs    - Build logs
+  * package - Storage with built RPMs
+  * repo    - Default YUM/APT repositories
+  * local   - Installation path for packages built with build-*.sh
 
 Build process
 ----------------------------------------------
