@@ -1,0 +1,533 @@
+This document covers the design and APIs for two ZMQ request response patterns (Lazy Pirate Pattern and Paranoid Pirate Protocol 0.2).
+
+I. Design
+ 
+a. LPP - Lazy Pirate Pattern
+
+This Lazy Pirate Pattern (LPP) defines a simple reliable request-reply dialog across an N-to-1 network of clients and server. 
+
+1) Goals
+
+The goals of LPP are to:
+    Allow client to recover from server crashes and restarts, and network disconnects by resending requests several times.
+    Allow client to abandon the transaction if there is still no reply after several request retries.
+
+2) Architecture
+
+Overall Conversation
+
+LPP connects a set of clients with a server. In LPP pattern, clients connect to server, and server can only reply to clients who have first sent a command. A LPP conversation could be one of the following two dialogs ('C' represents the client, 'S' represents the server):
+
+Synchronous dialog:
+-------------------------
+Repeat:
+    C: REQUEST
+    S: REPLY 
+
+
+Asynchronous dialogs:
+-------------------------
+Repeat:
+    C: REQUEST
+Repeat:
+    S: REPLY 
+
+When implementing a synchronous request-reply pattern, clients should use a REQ socket and server should use a REP socket. When implementing an asynchronous pattern, clients should use a DEALER socket and server should use a ROUTER socket. 
+
+Clients MAY use any suitable strategy for recovering from a non-responsive server. One recommended strategy is:
+    To use polling instead of blocking receives on the request socket.
+    If there is no reply within some timeout, to close the request socket and open a new socket, and resend the request on that new socket.
+    If there is no reply after several retries, to signal the transaction as failed.
+
+b. PPP - Paranoid Pirate Protocol 0.2
+
+The Paranoid Pirate Protocol (PPP) version 0.2 defines a reliable request-reply dialog between a set of client applications, a broker, a set of worker applications, and a sinker. It originated from the PPP and MDP patterns defined in the ZMQ Guide. 
+
+1) Goals
+
+The goals of PPP 0.2 are to:
+
+    1. Allow both broker and worker to detect disconnection of the other one, through the use of heartbeating. 
+    2. Allow the broker to implement "least recently used" scheduling and round robin scheduling for task distribution to workers.
+    3. Allow the worker to recover from dead or disconnected broker by resending connection requests.
+    4. Allow the broker to recover from dead or disconnected worker by resending failed tasks to other workers.
+
+2) Overall Topology
+
+PPP 0.2 connects a set of client applications, a broker, a set of worker applications, and a sinker. Clients connect to the broker, as do workers. Workers also connect to the sinker. Sinker could be on the same box as one of the clients. Clients and workers do not see each other and both can come and go arbitrarily. The broker MAY open two sockets (ports), one front-end for clients, and one back-end for workers. However PPP 0.2 is also designed to work over a single broker socket.
+
+PPP 0.2 consists of three sub-protocols:
+
+    1. PPP/Client, which covers how the PPP 0.2 broker communicate with client applications.
+    2. PPP/Worker, which covers how the PPP 0.2 broker communicate with worker applications.
+    3. PPP/Sinker, which covers how the PPP 0.2 sinker communicate with worker applications.
+
+PPP/Client
+
+PPP/Client is an asynchronous dialog initialized by the client. Client must use a ZMQ_DEALER socket. Client sends all requests (REQUEST commands) at once, sends a FINISHED command, and waits for acknowledgement from Broker. Client will block if there is no broker available. Broker should queue client requests if there is no worker available. In this design, Broker is responsible for reliability, which reduces the workload on Client. One disadvantage of this desgin is if clients send too much requests to Broker, it can easily overflow it.      
+
+A REQUEST command consists of a multipart message of 4 frames, formatted on the wire as follows:
+
+    Frame 0: Empty Frame
+    Frame 1: "RRC01" (six bytes)
+    Frame 2: 0x03 (one byte, representing REQUEST)
+    Frames 3: Request body 
+
+A FINISHED command consists of a multipart message of 4 or more frames, formatted on the wire as follows:
+
+    Frame 0: Empty Frame
+    Frame 1: "RRC01" (six bytes)
+    Frame 2: 0x01 (one byte, representing FINISHED sending requests)
+
+PPP/Worker
+
+PPP/Worker is a mix of a synchronous/asynchronous request-reply dialog, initialized by the worker, and an asynchronous heartbeat dialog that operates independently in both directions. This is the synchronous request-reply dialog ('W' represents the worker, 'B' represents the Broker):
+
+W: READY
+Repeat:
+    B: REQUEST
+    W: REPLY
+    B: REQUEST
+    W: REPLY
+    ...
+
+This is the asynchronous request-reply dialog:
+
+W: READY
+Repeat:
+    B: REQUEST
+    B: REQUEST
+    B: REQUEST
+    ...
+
+Repeat:
+    W: REPLY
+    W: REPLY
+    W: REPLY
+    ...
+
+This is the asynchronous heartbeat dialog:
+
+Repeat:
+    W: HEARTBEAT
+    ...
+
+Repeat:
+    B: HEARTBEAT
+    ...
+
+PPP/Worker starts by sending a READY command to Broker. 
+
+A READY command consists of a multipart message of 3 frames, formatted on the wire as follows:
+
+    Frame 0: Empty Frame
+    Frame 1: "RRW01" (six bytes)
+    Frame 2: 0x01 (one byte, representing READY)
+
+A REQUEST command consists of a multipart message of 5 or more frames, formatted on the wire as follows:
+
+    Frame 0: "RRW01" (six bytes)
+    Frame 2: 0x02 (one byte, representing REQUEST)
+    Frames 3+: Request body
+    
+A REPLY command consists of a multipart message of 4 or more frames, formatted on the wire as follows:
+
+    Frame 0: Empty Frame 
+    Frame 1: "RRW01" (six bytes)
+    Frame 2: 0x03 (one byte, representing REPLY sending requests)
+    Frame 3+: Reply body
+
+A HEARTBEAT command consists of a multipart message of 3 frames, formatted on the wire as follows:
+
+    Frame 0: Empty Frame
+    Frame 1: "RRW01" (six bytes)
+    Frame 2: 0x04 (one byte, representing HEARTBEAT)
+
+Opening a Connection
+
+    The Worker is responsible for opening a logical connection. One Worker MUST connect to exactly one Broker using a single ØMQ DEALER socket.
+
+    The Worker opens the connection to the Broker by creating a new socket, connecting it, and then sending a READY command to register itself at Broker. The Worker MUST NOT send a further READY.
+
+    There is no response to a READY. The Worker SHOULD assume the registration succeeded, or it detects a Broker failure through heartbeating.
+
+Request and Reply Processing
+
+    The Broker should queue all the live workers. The Broker detects a worker's liveness through heartbeats. 
+
+    In synchronous mode, the Broker pops out one request from its waiting list, and sends it to next worker who is ready for work. A Worker is ready for work if it has not received any requests after connecting to Broker or sends a reply back to Broker. The sent request will be moved from Broker's requests waiting list to this Worker's requests pending list. This worker's status then becomes live but not ready for work. After this worker replies to Broker, the request will be removed from its pending list and destroyed. This worker is ready for work again. If a worker is detected to be dead, the request on its pending requests list will be moved back to Broker's waiting list first, and re-dispatched to next worker ready for work.  
+ 
+    In asynchronous mode, the Broker uses round robin method to send all requests from its waiting list to workers who are ready for work. A Worker is ready for work as long as it is live. The sent requests will be moved from Broker's requests waiting list to their corresponding Worker's requests pending list. After the worker replies for one request, the request will be removed from its pending list and destroyed. If a worker is detected to be dead, all requests on its pending requests list will be moved back to Broker's waiting list first, and re-dispatched to next ready workers.  
+
+Heartbeating
+
+    HEARTBEAT commands are valid at any time, after a READY command.
+
+    Any received command acts as a heartbeat. Peers SHOULD NOT send HEARTBEAT commands while also sending other commands.
+
+    Both broker and worker MUST send heartbeats at regular and agreed-upon intervals. A peer MUST consider the other peer "disconnected" if no heartbeat arrives within some multiple of that interval (usually 3-5).
+
+    If the worker detects that the broker has disconnected, it SHOULD restart a new conversation.
+
+    If the broker detects that the worked has disconnected, it SHOULD remove it from its workers list, and stop sending it messages of any type.
+
+PPP/Sinker
+
+    PPP/Sinker governs the delivery of results between Workers and a Sinker using a push-pull pattern. After a worker processes the request, it will push the result to the Sinker. If there is no Sinker available, worker will block.
+
+    The result consists of a multipart message of 3 or more frames, formatted on the wire as follows:
+
+    Frame 0: Empty Frame 
+    Frame 1: "RRW01" (six bytes)
+    Frame 2: 0x03 (one byte, representing REPLY sending requests)
+    Frame 3+: Result body
+    
+II. Interface
+
+a. Request response client API
+
+1) rrcli_new - Create new request response client object
+
+Synopsis: rrcli_t *rrcli_new();
+
+Description: The rrcli_new() function creates a new client object. 
+
+Return Value: Return an handle to the newly created client if successful. Otherwise return NULL.
+
+2) rrcli_destroy - Destroy a request response client object
+
+Synopsis: void rrcli_destroy(rrcli_t **self_p);
+
+Description: The rrcli_destroy function should destroy a client object. 
+
+Return Value: None.
+
+3) rrcli_load_config - Load client configuration from config file
+
+Synopsis: void rrcli_load_config(rrcli_t *self, char *fname);
+
+Description: The rrcli_load_config should configure the client by loading data from the config file. It finds what pattern to use by looking at the value of pattern key in zsock section. Then it goes to the corresponding pattern's client section to load detailed data. Currently only lpp and ppp pattern are supported.
+
+4) rrcli_send - Send data by the client and destroy it. 
+
+Synopsis: int rrcli_send(rrcli_t *self, void *buf, size_t len);
+
+Description: The rrcli_send function should send len of bytes in buf through client and destroys it. For LPP pattern, it provides reliability for synchronous communication to server, not for asynchronous communication. For PPP pattern, it only support asynchronous communication.
+
+Return Value: Non-zero code on failure.
+
+5) rrcli_recv - Receive data through the client
+
+Synopsis: int rrcli_recv(rrcli_t *self, void *buf, size_t len);
+
+Description: The rrcli_recv reads len of bytes into buf from client.
+
+Return Value: Returns the number of bytes in the MESSAGE if successful. Note the value can exceed the value of len parameter in case the message was truncated. (nbytes < len ? nbytes : len) bytes are stored in the buf. If failed, returns -1.
+
+b. Request response server API
+
+1) rrsvr_new - Create new request response server object
+
+Synopsis: rrsvr_t *rrsvr_new();
+
+Description: The rrsvr_new() function creates a new server object. 
+
+Return Value: Return an handle to the newly created server if successful. Otherwise return NULL.
+
+2) rrsvr_destroy - Destroy a request response server object
+
+Synopsis: void rrsvr_destroy(rrsvr_t **self_p);
+
+Description: The rrsvr_destroy function should destroy a server object. 
+
+Return Value: None.
+
+3) rrsvr_load_config - Load server configuration from config file
+
+Synopsis: void rrsvr_load_config(rrsvr_t *self, char *fname);
+
+Description: The rrsvr_load_config should configure the server by loading data from the config file. It finds what pattern to use by looking at the value of pattern key in zsock section. Then it goes to the corresponding pattern's server section to load detailed data. Currently only lpp pattern is supported.
+
+4) rrsvr_send - Send data by the server and destroy it
+
+Synopsis: int rrsvr_send(rrsvr_t *self, void *buf, size_t len);
+
+Description: The rrsvr_send function should send len of bytes in buf through server and destroys it. Current implementation supports only lpp pattern.
+
+5) rrsvr_recv - Receive data through the server
+
+Synopsis: int rrsvr_recv(rrsvr_t *self, void *buf, size_t len);
+
+Description: The rrsvr_recv reads len of bytes into buf from server.
+
+Return Value: Returns the number of bytes in the MESSAGE if successful. Note the value can exceed the value of len parameter in case the message was truncated. (nbytes < len ? nbytes : len) bytes are stored in the buf. If failed, returns -1.
+
+c. Request response broker API
+
+1) rrbroker_new - Create new request response broker object
+
+Synopsis: rrbroker_t *rrbroker_new();
+
+Description: The rrbroker_new() function creates a new broker object. 
+
+Return Value: Return an handle to the newly created broker if successful. 
+
+2) rrbroker_destroy- Destroy a request response broker object
+
+Synopsis: void rrbroker_destroy(rrbroker_t **self_p);
+
+Description: The rrbroker_destroy function should destroy a broker object. 
+
+Return Value: None.
+
+3) rrworker_new - Create a new worker object for broker to keep track of each known request response worker 
+
+Synopsis: rrworker_t *rrworker_new();
+
+Description: The rrworker_new() function creates a new object for each known request response worker.   
+
+Return Value: Return an handle to the newly created object if successful. 
+
+4) rrworker_destroy - Destroy a worker object
+
+Synopsis: void rrworker_destroy(rrworker_t **self_p);
+
+Description: The rrworker_destroy() function should destroy a worker object.   
+
+Return Value: None. 
+
+5) rrbroker_worker_erase - Delete a worker object from broker and destroy it  
+
+Synopsis: int rrbroker_worker_erase(const char *key, void *item, void *argument);
+
+Description: The rrbroker_worker_erase function is a callback function for zhash_foreach method. It should delete the worker object specified by key from broker and destroy it.   
+
+Return Value: Integer as required by zhash_foreach callback function. 
+
+6) rrworker_request_erase - Delete a request object from a worker and destroy it
+
+Synopsis: int rrworker_request_erase(const char *key, void *item, void *argument);
+
+Description: The rrworker_request_erase function is a callback function for zhash_foreach method. It should delete the request object specified by key from worker and destroy it.   
+
+Return Value: Integer as required by zhash_foreach callback function. 
+
+7) rrworker_foreach_fn - Put the pending requests on this worker back to broker's waiting 
+
+Synopsis: int rrworker_foreach_fn(const char *key, void *item, void *argument);
+
+Description: The rrworker_foreach_fn function is a callback function for zhash_foreach method. It should put the pending requests on the worker specified by key back to broker's waiting list.   
+
+Return Value: Integer as required by zhash_foreach callback function. 
+
+8) rrworker_delete - Delete a worker and destroy it
+
+Synopsis: void rrworker_delete(rrworker_t *self);
+
+Description: The rrworker_delete function should delete the worker object from broker and destroy it.   
+
+Return Value: None. 
+
+9) rrbroker_purge - Disconnect the expired workers and resubmit the requests on their pending lists
+
+Synopsis: void rrbroker_purge(rrbroker_t *self);
+
+Description: The rrbroker_purge function should disconnect the expired workers and resubmit the requests on their pending lists.   
+
+Return Value: None. 
+
+10) rrbroker_send_to_worker - Send a message to worker and puts it on the worker's pending list
+
+Synopsis: void rrbroker_send_to_worker(rrworker_t *worker, char *command, zmsg_t *msg);
+
+Description: The rrbroker_send_to_worker function should send a message to the worker and puts it on the worker's pending list.   
+
+Return Value: None. 
+
+11) rrbroker_request_dispatch - Dispatch requests on broker's waiting list to workers ready for work 
+
+Synopsis: void rrbroker_request_dispatch(rrbroker_t *self, zmsg_t *request);
+
+Description: The rrbroker_request_dispatch function should dispatch requests on its waiting list to workers ready for work. Broker could use a least recent used method or a round-robin based method to dispatch the requests.   
+
+Return Value: None. 
+
+12) rrbroker_client_msg - Processs requests from request response client
+
+Synopsis: void rrbroker_client_msg(rrbroker_t *self, zframe_t *address, zmsg_t *request);
+
+Description: The rrbroker_client_msg function should process requests from client. The request could be either a normal request which will be dispatched to a worker or a request to indicate that the client's finished sending requests.   
+
+Return Value: None. 
+
+13) rrbroker_worker_require - Locate a worker by identity or creates a new worker if there is no worker already with the identity
+
+Synopsis: rrworker_t *rrbroker_worker_require(rrbroker_t *self, char *identity, zframe_t *address);
+
+Description: The rrbroker_worker_require function should locate a worker by identity in the broker's workers list or creates a new worker if there is no worker already with the identity. In order to improve the lookup performance, the broker also stores a pointer to the worker in a hash table. The key is the identity of a worker and the value is the pointer of that worker. The identity is an UUID generated by DCE compatible Universally Unique Identifier library. 
+ 
+Return Value: The existing worker or a new worker with the given identity. 
+
+14) rrbroker_worker_live - Update the worker's expiry time and move it to the back of the list.
+
+Synopsis: void rrbroker_worker_live(rrworker_t *self);
+
+Description: The rrbroker_worker_live function should update the worker's expiry time and move it to the back of the list. Live workers have to be kept from oldest to most recent. Note that not every live worker is ready for working.   
+
+Return Value: None.
+
+15) rrbroker_worker_ready - Update the worker's status to be ready for working
+
+Synopsis: void rrbroker_worker_ready(rrworker_t *self);
+
+Description: The rrbroker_worker_ready should update the worker's status to be ready for working. Refer to "Request and Reply Processing" section above to see when a worker becomes ready for work.
+
+Return Value: None.
+
+16) rrbroker_worker_msg - Processs messages from request response worker
+
+Synopsis: void rrbroker_worker_msg(rrbroker_t *self, zframe_t *address, zmsg_t *msg);
+
+Description: The rrbroker_worker_msg function should processs messages from request response worker. The message might be READY to signal a new worker, HEARTBEAT to keep alive, or a REPLY to acknowledge a request. If it is READY command, the broker will increase the number of workers connected, and invoke the dispatch of waiting requests. If it is HEARTBEAT command, the broker will update the liveness or readiness of the worker. If it is REPLY command, the broker will delete acknowledged requests from the worker's pending list, and update this worker's readiness.
+
+Return Value: None.
+
+17) rrbroker_bind - Bind the broker to an endpoint specified in configuration file.
+
+Synopsis: void rrbroker_bind(rrbroker_t *self);
+
+Description: This function should bind the broker to an endpoint specified in configuration file. This endpoint is loaded by rrbroker_load_config function.
+
+Return Value: None.
+
+18) rrbroker_load_config - Load broker configuration from config file
+
+Synopsis: void rrbroker_load_config(rrbroker_t *self, char *fname);
+
+Description: The rrbroker_load_config function should load broker configuration from config file. You should only run the broker when you are using ppp pattern. 
+
+Return Value: None.
+
+19) rrbroker_start - Start the request response broker
+
+Synopsis: void rrbroker_start(rrbroker_t *brk);
+
+Description: The rrbroker_start function should start the request response broker after loading parameters specified in the configuration file. The broker gets and processes messages from client/worker forever or until interrupted. The broker disconnects and deletes any expired workers before sending heartbeats to them in a specified interval. 
+
+Return Value: None.
+
+d. Request response worker API
+
+1) rrwrk_new - Create new request response worker object
+
+rrwrk_t *rrwrk_new();
+
+Description: The rrwrk_new() function creates a new request response worker object. 
+
+Return Value: Return an handle to the newly created request response worker if successful. 
+
+2) rrwrk_destroy - Destroy a request response worker object
+
+Synopsis: void rrwrk_destroy(rrwrk_t **self_p);
+
+Description: The rrwrk_destroy function should destroy a worker object. 
+
+Return Value: None
+
+3) rrwrk_start - Start the request response worker
+
+Synopsis: int rrwrk_start(rrwrk_t *self, wrk_task_fn *cb);
+
+Description: The rrwrk_start function should start the request response worker after loading parameters specified in the configuration file. The worker first starts a task thread and wait for synchronization signal from it. Then it gets and processes messages from broker/task thread forever or until interrupted. The worker sends heartbeats to the broker in a specified interval. If it hasn't received any heartbeat from broker in a specified time interval, the worker will try to reconnect to the broker and keep doing it until success. The worker also sends result generated by task thread to the sinker and sends acknowledgement to the broker. 
+
+Return Value: None.
+
+4) rrtask_manager_fn - The task manager function to be threaded
+
+Synopsis: void rrtask_manager_fn(void *args, zctx_t *ctx, void *pipe);
+
+Description: The rrtask_manager_fn function should be threaded using CZMQ attached threads. It gets argument, context, and pipe from parent. The pipe socket is a PAIR socket that is connected back to the caller. When you call zthread_fork, it returns you a PAIR socket that is the other end of this pipe. Thus attached threads can talk back to their parent threads over the pipe. The rrtask_manager_fn function first receives request from pipe. It then invokes user callback function to process the request, and sends the output to pipe.
+
+Return Value: None.
+
+5) rrwrk_load_config - Load worker configuration from config file
+
+Synopsis: void rrwrk_load_config(rrwrk_t *self, char *fname);
+
+Description: The rrwrk_load_config function should load worker configuration from config file. You should only run the worker when you are using ppp pattern. 
+
+Return Value: None.
+
+6) rrwrk_connect_to_broker - Connect or reconnect to broker
+
+Synopsis: void rrwrk_connect_to_broker(rrwrk_t *self);
+
+Description: The rrwrk_connect_to_broker function should connect or reconnect to broker. If the worker has a dead connection already, the socket associated with this connection will be destroyed and a new socket will be created. This function generates a new UUID to be the worker's identity for each new connection.  
+
+Return Value: None.
+
+7) rrwrk_connect_to_sinker - Connect or reconnect to sinker
+
+Synopsis: void rrwrk_connect_to_sinker(rrwrk_t *self);
+
+Description: The rrwrk_connect_to_sinker function should should connect or reconnect to sinker. This function creates a ZMQ_PUSH socket to push results to the sinker. 
+
+Return Value: None.
+
+8) rrwrk_send_to_broker - Send message to broker
+
+Synopsis: void rrwrk_send_to_broker(rrwrk_t *self, char *command, zmsg_t *msg);
+
+Description: The rrwrk_connect_to_sinker function should send message to broker. The message could be an acknowledgement or heartbeat. 
+
+Return Value: None.
+
+9) rrwrk_send_to_sinker - Send results to sinker
+
+Synopsis: void rrwrk_send_to_sinker(rrwrk_t *self, char *command, zmsg_t *msg);
+
+Description: The rrwrk_send_to_sinker should send results to sinker.
+
+Return Value: None.
+
+e. Request response sinker API
+
+1) rrsinker_new - Create new request response sinker object
+
+Synopsis: rrsinker_t *rrsinker_new();
+
+Description: The rrsinker_new() function creates a new request response sinker object. 
+
+Return Value: Return an handle to the newly created request response sinker if successful. 
+
+2) rrsinker_destroy - Destroy a request response sinker object
+
+Synopsis: void rrsinker_destroy(rrsinker_t **self_p);
+
+Description: The rrsinker_destroy function should destroy a sinker object. 
+
+Return Value: None
+
+3) rrsinker_start - Start the request response sinker
+
+Synopsis: void rrsinker_start(rrsinker_t *self, sinker_task_fn *cb);
+
+Description: The rrsinker_start function should start the request response sinker after loading parameters specified in the configuration file. The sinker first starts a task thread and waits for synchronization signal from it. Then it gets and processes messages from worker forever or until interrupted. The sinker sends received results from worker to the task thread for processing. 
+
+Return Value: None
+
+4) rrsinker_task_manager - The task manager function to be threaded
+ 
+Synopsis: void rrsinker_task_manager(void *args, zctx_t *ctx, void *pipe);
+
+Description: The rrsinker_task_manager function should be threaded using CZMQ attached threads. It gets argument, context, and pipe from parent. The pipe socket is a PAIR socket that is connected back to the caller. When you call zthread_fork, it returns you a PAIR socket that is the other end of this pipe. Thus attached threads can talk back to their parent threads over the pipe. The rrsinker_task_manager function receives request from pipe. It then invokes user callback function to process the request.
+
+Return Value: None.
+
+5) rrsinker_load_config - Load sinker configuration from config file
+
+Synopsis: void rrsinker_load_config(rrsinker_t *self, char *fname);
+
+Description: The rrsinker_load_config function should load sinker configuration from config file. You should only run the sinker when you are using ppp pattern. 
+
+Return Value: None.
