@@ -6,6 +6,7 @@
 LSTORE_SCRIPT_BASE=$(cd $(dirname "${BASH_SOURCE[0]}") && pwd)
 LSTORE_RELEASE_BASE=$(cd $(dirname "${LSTORE_SCRIPT_BASE}") && pwd)
 LSTORE_TARBALL_ROOT=$LSTORE_RELEASE_BASE/tarballs/
+LSTORE_LOCAL_REPOS="toolbox ibp gop lio meta release"
 
 #
 # Informational messages
@@ -34,6 +35,14 @@ function get_repo_master() {
     done
 }
 
+function get_repo_source_path() {
+    if [[ "${LSTORE_LOCAL_REPOS}" =~ "$1" ]]; then
+        echo "$LSTORE_RELEASE_BASE/src/$1"
+    else
+        echo "$LSTORE_RELEASE_BASE/vendor/$1"
+    fi
+}
+
 function build_lstore_binary() {
     # In-tree builds (are for chumps)
     #     Make out-of-tree builds by default and then let someone force the
@@ -45,7 +54,7 @@ function build_lstore_binary_outof_tree() {
     set -e
     TO_BUILD=$1
     SOURCE_PATH=$2
-    INSTALL_PREFIX=${3:-${LSTORE_RELEASE_BASE}/local}
+    INSTALL_PREFIX=${3:-${LSTORE_RELEASE_BASE}/build/local}
     BUILD_STATIC=${4:-0}
     case $TO_BUILD in
         apr-accre)
@@ -96,7 +105,7 @@ function build_lstore_binary_outof_tree() {
 function build_lstore_package() {
     set -e
     TO_BUILD=$1
-    SOURCE_PATH=${2:-${LSTORE_RELEASE_BASE}/sources/${TO_BUILD}}
+    SOURCE_PATH=${2:-$(get_repo_source_path ${TO_BUILD})}
     TAG_NAME=${3:-test}
     DISTRO_NAME=${4:-undefined}
     case $DISTRO_NAME in
@@ -109,7 +118,7 @@ function build_lstore_package() {
         ubuntu-*|debian-*)
             CPACK_ARG="-G DEB"
             CMAKE_ARG="-DCPACK_GENERATOR=DEB -DCPACK_SOURCE_GENERATOR=DEB"
-            NATIVE_PKG="cp -ra $SOURCE_BASE/$PACKAGE/ ./ ; pushd $PACKAGE ; dpkg-buildpackage -uc -us ; popd"
+            NATIVE_PKG="cp -ra $SOURCE_PATH ./ ; pushd $PACKAGE ; dpkg-buildpackage -uc -us ; popd"
             PKG_TYPE="deb"
             ;;
         centos-*)
@@ -176,11 +185,11 @@ function build_helper() {
     # Don't copy/paste code twice for build-local and build-external
     set -e
     BUILD_BASE="$LSTORE_RELEASE_BASE/build"
-    SOURCE_BASE="$LSTORE_RELEASE_BASE/source"
+    SOURCE_BASE="$LSTORE_RELEASE_BASE/src"
     VENDOR_BASE="$LSTORE_RELEASE_BASE/vendor"
 
 
-    PREFIX=$LSTORE_RELEASE_BASE/local
+    PREFIX=$LSTORE_RELEASE_BASE/build/local
     check_cmake
     if [ $1 == "STATIC" ]; then
         STATIC=1
@@ -192,7 +201,6 @@ function build_helper() {
 
     pushd $BUILD_BASE
     for p in $@; do
-        get_lstore_source ${p}
         TARGET="${p}"
         if [ $STATIC -ne 0 ]; then
             TARGET="${p}-static"
@@ -206,7 +214,7 @@ function build_helper() {
         [ ! -d $TARGET ] && mkdir -p $TARGET
         pushd $TARGET
         SOURCE_PATH=$(get_repo_source_path ${p})
-        build_lstore_binary_outof_tree ${p} ${SOURCE_PATH} ${PREFIX} ${STATIC} 2>&1 | tee $LSTORE_RELEASE_BASE/logs/${TARGET}-build.log
+        build_lstore_binary_outof_tree ${p} ${SOURCE_PATH} ${PREFIX} ${STATIC} 2>&1 | tee $LSTORE_RELEASE_BASE/build/logs/${TARGET}-build.log
         [ ${PIPESTATUS[0]} -eq 0 ] || fatal "Could not build ${TARGET}"
         touch $BUILT_FLAG
         popd
