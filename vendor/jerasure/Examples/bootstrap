@@ -1,0 +1,9 @@
+#!/bin/bash
+d=""
+[ "${1}" == "32" ] && d="32" && export cmflags='-D CMAKE_REQUIRED_FLAGS=-m32' && echo "Making 32-bit binaries"
+
+[ -e CMakeCache.txt ] && rm CMakeCache.txt
+
+prefix=/workspace/local${d}
+cmake ${cmflags} -DCMAKE_INSTALL_PREFIX=${prefix} -DCMAKE_INCLUDE_CURRENT_DIR=on -DCMAKE_VERBOSE_MAKEFILE=on CMakeLists.txt
+

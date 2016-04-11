@@ -1,0 +1,456 @@
+This version of the IBP client API supports most of the existing calls as outlined in:
+
+	http://loci.cs.utk.edu/ibp/documents/IBPClientAPI.pdf
+
+and additionally provides support for asynchronous calls and set/get methods for IBP data structures.
+
+The following calls are not supported: IBP_mcopy(), IBP_nfu_op(), IBP_datamover(),  IBP_setAuthenAttribute(), 
+IBP_freeCapSet(), DM_Array2String, and IBP_setMaxOpenConn().  Only the first 2 calls, IBP_mcopy(), IBP_nfu_op()
+are mentioned in the LoCI documentation.  Everything else should work as normal, including the type definitions.
+
+
+Datatypes and accessor methods
+----------------------------------
+I have added new type definitions for the standard IBP data structures that are more natural for me. 
+So use whichever you want. Below is the list from ibp/ibp_types.h:
+
+typedef struct ibp_attributes ibp_attributes_t;
+typedef struct ibp_depot ibp_depot_t;
+typedef struct ibp_dptinfo ibp_depotinfo_t;
+typedef struct ibp_timer ibp_timer_t;
+typedef struct ibp_capstatus ibp_capstatus_t;
+typedef char ibp_cap_t;
+typedef struct ibp_set_of_caps ibp_capset_t;
+
+There is also a new type "ibp_ridlist_t" for getting the list of resources from a depot. One can then use 
+the traditional IBP_status calls to probe the individual resources.  There are also a large number of
+accessor functions to hid the internal struct definitions from the user.  The expection to this is
+"ibp_depotinfo_t" datatype.  I'm not sure what a lot of the fields mean and so left it "as is".
+Listed below are all the available accessor functions from ibp/ibp_types.h:
+
+---------------- ibp_depot_t ----------------------- 
+ibp_depot_t *new_ibp_depot();
+void destroy_ibp_depot(ibp_depot_t *d);
+void set_ibp_depot(ibp_depot_t *d, char *host, int port, rid_t rid);
+
+-----------------ibp_attributes_t--------------------
+ibp_attributes_t *new_ibp_attributes();
+void destroy_ibp_attributes(ibp_attributes_t *attr);
+void set_ibp_attributes(ibp_attributes_t *attr, time_t duration, int reliability, int type);
+void get_ibp_attributes(ibp_attributes_t *attr, time_t *duration, int *reliability, int *type);
+
+----------------ibp_timer_t-------------------------
+ibp_timer_t *new_ibp_timer();
+void destroy_ibp_timer(ibp_timer_t *t);
+void set_ibp_timer(ibp_timer_t *t, int client_timeout, int server_timeout);
+void get_ibp_timer(ibp_timer_t *t, int *client_timeout, int *server_timeout);
+
+-----------------ibp_cap_t and ibp_capset_t----------
+void destroy_ibp_cap(ibp_cap_t *cap);
+ibp_cap_t *dup_ibp_cap(ibp_cap_t *src);
+ibp_capset_t *new_ibp_capset();
+void destroy_ibp_capset(ibp_capset_t *caps);
+void copy_ibp_capset(ibp_capset_t *src, ibp_capset_t *dest);
+ibp_cap_t *get_ibp_cap(ibp_capset_t *caps, int ctype);
+
+-----------------ibp_capstatus_t (gleaned from IBP_manage calls)---------
+ibp_capstatus_t *new_ibp_capstatus();
+void destroy_ibp_capstatus(ibp_capstatus_t *cs);
+void copy_ibp_capstatus(ibp_capstatus_t *src, ibp_capstatus_t *dest);
+void get_ibp_capstatus(ibp_capstatus_t *cs, int *readcount, int *writecount,
+    int *current_size, int *max_size, ibp_attributes_t *attrib);
+
+-----------------RID list management and RID conversion functions---------
+void ridlist_init(ibp_ridlist_t *rlist, int size);
+void ridlist_destroy(ibp_ridlist_t *rlist);
+int ridlist_get_size(ibp_ridlist_t *rlist);
+rid_t ridlist_get_element(ibp_ridlist_t *rlist, int index);
+char *ibp_rid2str(rid_t rid, char *buffer);
+rid_t ibp_str2rid(char *rid_str);
+void ibp_empty_rid(rid_t *rid);
+
+
+Most of the stuff above is self-explanatory if you are familiar with IBP.  I do want to highlight the 
+RID management functions.  My goal is to abstract what an RID is from it's use.  With the routines above
+there is never a reason to probe into what an RID actually is.  It could be an integer(which is what it 
+currently is), a character string, IP address, etc.
+
+Asynchronous calls
+---------------------------------------------------
+The goal of the asynchronous interface is to minimize the effect of network latency, make more efficient 
+use of an individual network connection, and minimize the need for a developer to understand pthreads 
+programming.  All the functionality of the traditional synchronous calls is available in the async interface.
+I have taken the liberty to separate out functionality and provide more descriptive names.  The best way to
+illustrate the programming differences is to give an example using the async protocol. Before I show an
+example there are a few new datatypes defined for the async calls, namely:
+
+ibp_op_t - Generic container for an async operation
+oplist_t - Contains a list of async operations
+
+Below is a program that creates a collection of allocations:
+
+--------------------------------------------------------------------------
+ibp_capset_t *create_allocs(int nallocs, int asize, ibp_depot_t *depot)
+{
+  int i, err;
+  ibp_attributes_t attr;
+  oplist_t *oplist;
+  ibp_op_t *op;
+
+  //**Create caps list which is returned **
+  ibp_capset_t *caps = (ibp_capset_t *)malloc(sizeof(ibp_capset_t)*nallocs);
+
+  //** Specify the allocations attributes **
+  set_ibp_attributes(&attr, time(NULL) + A_DURATION, IBP_HARD, IBP_BYTEARRAY);
+
+  oplist = new_ibp_oplist(NULL);  //**Create a new list of ops
+  oplist_start_execution(oplist);  //** Go on and start executing tasks.  This could be done any time
+
+  //*** Main loop for creating the allocation ops ***
+  for (i=0; i<nallocs; i++) {     
+     op = new_ibp_alloc_op(&(caps[i]), asize, depot, &attr, ibp_timeout, NULL);  //**This is the actual alloc op
+     add_ibp_oplist(oplist, op);   //** Now add it to the list and start execution
+  }
+ 
+  err = oplist_waitall(oplist);   //** Now wait for them all to complete  
+  if (err != IBP_OK) {
+     printf("create_allocs: At least 1 error occured! * ibp_errno=%d * nfailed=%d\n", err, ibp_oplist_nfailed(iolist)); 
+  }    
+  free_oplist(oplist);  //** Free all the ops and oplist info
+
+  return(caps);
+}
+
+int main(int arcg, char *argv[])
+{
+  ibp_depot_t depot;
+  ibp_rid_t rid;
+
+  rid = ibp_str2rid("0");  //** Specify the Resource to use
+  set_ibp_depot(&depot, "vudepot1.reddnet.org", 6714, &rid);  //** fill in the depot struct
+
+  ibp_init();   //** Initialize the IBP subsystem **REQUIRED**
+  create_allocs(10, 1024, &depot);  //** Perform the allocations
+  ibp_finalize();  //** Shutdown the IBP subsystem ***REQUIRED***
+
+  return(0);
+}
+
+--------------------------------------------------------------------------
+
+The most important thing to notice in main() is the ibp_init() and ibp_finalize() calls.  These are required
+to start and shutdown the IBP subsystem.
+
+Also notice the lack of anything related to pthreads.  All the multithreading is taking place inside the IBP 
+async layer.  You can mix and match IBP commands.  They don't all have to be of the same type.  Each 
+ibp_waitall() waits until all current tasks have completed.  That means you can intersperse add_ibp_oplist()
+calls and ibp_waitany() or ibp_wait_all() calls.  For an example of this look at the base_async_test() in 
+ibp_test.c.  
+
+Internally each operation is assigned a "workload" and submitted to a global queue for an individual depot.
+As the global depot queue fills up it launches individaul depot connections based on the backlog in the global
+depot queue.  Each of the individual depot connections maintains a local work queue.  They pull ops
+from the depot's global que as tasks come in.  Each of these connections is spawned as a separate execution
+thread and performs their operations in parallel.
+
+Each IBP operation can be broken up into 3 distinct phases: issue_command, send_phase, recv_phase.
+This breakdown is used to overcome latency by streaming operations to the depot and having the depot
+stream the results back.  To make it clearer take a list of 4 commands, labels cmd_1...cmd_4.  Using the 
+sync calls this would be processed:
+
+issue_command_1  (start of cmd_1)
+send_phase_1
+recv_phase_1     (wait for completion)
+issue_command_2  (start of cmd_2)
+send_phase_2
+recv_phase_2     (wait for completion)
+issue_command_3  (start of cmd_3)
+send_phase_3
+recv_phase_3     (wait for completion)
+issue_command_4  (start of cmd_4)
+send_phase_4
+recv_phase_4     (wait for completion)
+ 
+If the latency is large compared to the operation it makes it difficult to effectively use a depot connection.
+In this case each issue_command and recv_phase incurs a network latency.  As a result one tends to make 
+numerous connections to a depot and use just a fraction of the bandwidth for each connection.  This causes
+a much higher load on the depot than is necessary.
+
+If one uses async calls, assuming a single depot connection, then the operations are reorded to minimize 
+latency:
+
+issue_command_1  (start of cmd_1)
+send_phase_1
+issue_command_2  (start of cmd_2 - no pause)
+send_phase_2
+issue_command_3  (start of cmd_3 - no pause)
+send_phase_3
+issue_command_4  (start of cmd_4 - no pause)
+send_phase_4
+recv_phase_1     (wait for completion)
+recv_phase_2     (wait for completion)
+recv_phase_3     (wait for completion)
+recv_phase_4     (wait for completion)
+
+In this approach a latency penalty is incurred for the initial issue_command and *possibly* for the initial 
+recv_phase.  If there are enough commands in the global queue then there is no initial recv_phase latency.
+This is because the issue_command and send_phase ops is still being processed and overlaps the initial recv_phase.
+The first 7 commands, all the issue_command and send_phase calls, are all sent as fast as the network will
+transmit them.  There is no waiting for completion.  This approach can eliminate much of the performace 
+difference between local are remote depot access for lightweight operations, like IBP_allocate or IBP_mange()
+calls.  The async depot connection is actually 2 separate threads.  Each managing one side of the connection:
+send or recv.
+
+As the workload varies between depots the client library automatically adds/removes threads as needed. 
+If a depot closes an existing connection any commands on the local queue are placed back on the depot's 
+global queue and if needed a new connection is spawned.  There is some self-tuning based on depot load.
+For example if a depot can only sustain 2 *stable* connections because of load this is automatically detected.
+This helps eliminate network churn and greatly improves performance.  After a preset time an attempt is
+made to increase the number of connections.
+
+There are several parameters that can be tweaked to tune performance.  These are discussed in the 
+IBP client library configuration section later.
+
+The synchronous commands are all constructed from the synchronous calls but with additional logic to support
+a depot connection per client thread. This way the traditional behavior is preserved. 
+
+
+Asynchronous operations
+----------------------------
+
+All operations have the ability to use an application notification or callback structure through the
+"oplist_app_notify_t" data type.  This type is defined later in the section concerning native oplist_t operations.
+
+----Native operations on an ibp_op_t----
+ibp_op_t *new_ibp_op();
+void free_ibp_op(ibp_op_t *op);  -- Frees the internal variables for op and also op itself
+void finalize_ibp_op(ibp_op_t *iop);  -- Only frees internal variables the op remains intact
+int ibp_op_status(ibp_op_t *op);   -- Get the ops result, ie IBP_errno()
+int ibp_op_id(ibp_op_t *op);       -- Get the ops id.  Each op has a unique ID for tracking purposes in 
+                                      an oplist. The numbering always starts at 0.
+
+----Read/Write ops that support offsets----------
+Notice that there are 2 variants based on where the data comes from -- either a memory buffer or user
+supplied routine.  Internally there is only the user version since the memory buffer versions just
+calls the user version with an internally supplied routine.  The user specified versions allow you to perform
+scatter/gather operations into a coherent stream without the overhead of mutiple IBP calls.  The user
+specified routine has the form:
+
+int next_block(int pos, void *arg, int *nbytes, char **buffer);
+
+and returns the next block of data to read/write with the size stored in "nbytes" and a pointer to the 
+user supplied buffer in "buffer".  The starting buffer position is stored in "pos". The routine should 
+return a valid IBP error message.  So if everything goes fine IBP_OK should be returned.  The arg argument
+is the same routine supplied to the read/write op and is used to store private state information.  Upon 
+completion of a write operation an additional call is made to the user routine with buffer set to NULL. 
+This allows the write call to perform any final processing on the last block of data.
+
+void set_ibp_user_read_op(ibp_op_t *op, ibp_cap_t *cap, int offset, int size,
+       int (*next_block)(int, void *, int *, char **), void *arg, int timeout, oplist_app_notify_t *an);
+ibp_op_t *new_ibp_user_read_op(ibp_cap_t *cap, int offset, int size,
+       int (*next_block)(int, void *, int *, char **), void *arg, int timeout, oplist_app_notify_t *an);
+ibp_op_t *new_ibp_read_op(ibp_cap_t *cap, int offset, int size, char *buffer, int timeout, oplist_app_notify_t *an);
+void set_ibp_read_op(ibp_op_t *op, ibp_cap_t *cap, int offset, int size, char *buffer, int timeout, oplist_app_notify_t *an);
+void set_ibp_user_write_op(ibp_op_t *op, ibp_cap_t *cap, int offset, int size,
+       int (*next_block)(int, void *, int *, char **), void *arg, int timeout, oplist_app_notify_t *an);
+ibp_op_t *new_ibp_user_write_op(ibp_cap_t *cap, int offset, int size,
+       int (*next_block)(int, void *, int *, char **), void *arg, int timeout, oplist_app_notify_t *an);
+ibp_op_t *new_ibp_write_op(ibp_cap_t *cap, int offset, int size, char *buffer, int timeout, oplist_app_notify_t *an);
+void set_ibp_write_op(ibp_op_t *op, ibp_cap_t *cap, int offset, int size, char *buffer, int timeout, oplist_app_notify_t *an);
+
+
+---- Append operations - These just append data to an allocation -----
+ibp_op_t *new_ibp_append_op(ibp_cap_t *cap, int size, char *buffer, int timeout, oplist_app_notify_t *an);
+void set_ibp_append_op(ibp_op_t *op, ibp_cap_t *cap, int size, char *buffer, int timeout, oplist_app_notify_t *an);
+ibp_op_t *new_ibp_append_op(ibp_cap_t *cap, int size, char *buffer, int timeout, oplist_app_notify_t *an);
+void set_ibp_append_op(ibp_op_t *op, ibp_cap_t *cap, int size, char *buffer, int timeout, oplist_app_notify_t *an);
+
+-----------IBP allocate/remove operations-----------------------
+I've made an explicit ibp_remove_op to decr the appropriate allocation's ref count.  This is just a 
+macro for an ibp_manage() cal with a IBP_DECR command. 
+
+ibp_op_t *new_ibp_alloc_op(ibp_capset_t *caps, int size, ibp_depot_t *depot, ibp_attributes_t *attr, int timeout, oplist_app_notify_t *an);
+void set_ibp_alloc_op(ibp_op_t *op, ibp_capset_t *caps, int size, ibp_depot_t *depot, ibp_attributes_t *attr, int timeout, oplist_app_notify_t *an);
+ibp_op_t *new_ibp_remove_op(ibp_cap_t *cap, int timeout, oplist_app_notify_t *an);
+void set_ibp_remove_op(ibp_op_t *op, ibp_cap_t *cap, int timeout, oplist_app_notify_t *an);
+
+----------------Modify an allocations reference count--------------------
+ibp_op_t *new_ibp_modify_count_op(ibp_cap_t *cap, int mode, int captype, int timeout, oplist_app_notify_t *an);
+void set_ibp_modify_count_op(ibp_op_t *op, ibp_cap_t *cap, int mode, int captype, int timeout, oplist_app_notify_t *an);
+void set_ibp_modify_alloc_op(ibp_op_t *op, ibp_cap_t *cap, size_t size, time_t duration, int reliability, int timeout, oplist_app_notify_t *an);
+ibp_op_t *new_ibp_modify_alloc_op(ibp_cap_t *cap, size_t size, time_t duration, int reliability, int timeout, oplist_app_notify_t *an);
+
+--------------- Probe an allocation for details------------------
+ibp_op_t *new_ibp_probe_op(ibp_cap_t *cap, ibp_capstatus_t *probe, int timeout, oplist_app_notify_t *an);
+void set_ibp_probe_op(ibp_op_t *op, ibp_cap_t *cap, ibp_capstatus_t *probe, int timeout, oplist_app_notify_t *an);
+
+----------------Depot-depot copy---------------------------------
+Notice that the names are "copyappend" cause this is what actually happens.  The user specifies the
+source caps offset and length which is *appended* to the destination cap.  As a result once an allocation
+becomes full it is *impossible* to specify it as a destination cap for future depot-depot copies.
+Ideally a new command could be added to specify a dest offset and a command for truncating an allocation.
+
+ibp_op_t *new_ibp_copyappend_op(ibp_cap_t *srccap, ibp_cap_t *destcap, int src_offset, int size,
+        int src_timeout, int  dest_timeout, int dest_client_timeout, oplist_app_notify_t *an);
+void set_ibp_copyappend_op(ibp_op_t *op, ibp_cap_t *srccap, ibp_cap_t *destcap, int src_offset, int size,
+        int src_timeout, int  dest_timeout, int dest_client_timeout, oplist_app_notify_t *an);
+
+--------------Modify a depot's global resources-----------------
+void set_ibp_depot_modify_op(ibp_op_t *op, ibp_depot_t *depot, char *password, size_t hard, size_t soft,
+      time_t duration, int timeout, oplist_app_notify_t *an);
+ibp_op_t *new_ibp_depot_modify_op(ibp_depot_t *depot, char *password, size_t hard, size_t soft,
+      time_t duration, int timeout, oplist_app_notify_t *an);
+
+---------------Depot Inquiry calls aka IBP_status()----------------------
+void set_ibp_depot_inq_op(ibp_op_t *op, ibp_depot_t *depot, char *password, ibp_depotinfo_t *di, int timeout, oplist_app_notify_t *an);
+ibp_op_t *new_ibp_depot_inq_op(ibp_depot_t *depot, char *password, ibp_depotinfo_t *di, int timeout, oplist_app_notify_t *an);
+
+---------------Depot version call-----------------------------------------
+This is a new command added to the ACCRE depot.  It returns a free form character string.  The string is 
+terminated by having "END\n" on a single line.  This is similar to the "help->About" widgets for GUI apps.
+
+void set_ibp_version_op(ibp_op_t *op, ibp_depot_t *depot, char *buffer, int buffer_size, int timeout, oplist_app_notify_t *an);
+ibp_op_t *new_ibp_version_op(ibp_depot_t *depot, char *buffer, int buffer_size, int timeout, oplist_app_notify_t *an);
+
+-----------------Request list or depot resources--------------------------
+This command was added by Nevoa Networks to probe a depot for its resource list.
+
+void set_ibp_query_resources_op(ibp_op_t *op, ibp_depot_t *depot, ibp_ridlist_t *rlist, int timeout, oplist_app_notify_t *an);
+ibp_op_t *new_ibp_query_resources_op(ibp_depot_t *depot, ibp_ridlist_t *rlist, int timeout, oplist_app_notify_t *an);
+
+
+oplist_t operations
+----------------------------
+
+-----------Application notification callback----------------
+The "oplist_app_notify_t" type is used in all operations, oplists, and the actual oplist implementation.
+The structure takes a user supplied notification routine, *notify* below, and a user argument. Below are the routines
+needed to set and execute the structure.
+
+void app_notify_set(oplist_app_notify_t *an, void (*notify)(void *data), void *data);
+void app_notify_execute(oplist_app_notify_t *an);
+
+
+----- Manipulate an oplist_t------------
+Notice that both new_ibp_oplist() and init_oplist() have a "oplist_app_notify_t" parameter.  This provides
+callback or application notification functionality. The "oplist_app_notify_t" is defined earlier.  This function
+is called each time an operation completes.  
+
+oplist_t *new_ibp_oplist(oplist_app_notify_t *an);
+void init_oplist(oplist_t *iol, oplist_app_notify_t *an);
+void free_oplist(oplist_t *oplist);  --Free oplist internal data and oplist itself
+void finalize_oplist(oplist_t *oplist, int op_mode);  --Only free oplist internal data will not free oplist struct
+
+------------------Valid op_mode values----------------
+OPLIST_AUTO_NONE     0      //** User has to manually free the data and oplist
+OPLIST_AUTO_FINALIZE 1      //** Auto "finalize" oplist when finished
+OPLIST_AUTO_FREE     2      //** Auto "free" oplist when finished
+
+-----------Retreive failed operations-----------------
+To actually get the failed ops status use ibp_op_status() defined earlier.  One can then probe the ops
+id with ibp_op_id().
+
+int oplist_nfailed(oplist_t *oplist);
+ibp_op_t *ibp_get_failed_op(oplist_t *oplist);
+
+-------------Determine the number of tasks remaining to be proceessed------------
+int oplist_tasks_left(oplist_t *oplist);
+
+-------Add an operation to a list---------------
+int add_ibp_oplist(oplist_t *iolist, ibp_op_t *iop);
+
+-----------Signal completed task submission-----------------
+If using callbacks there may not be a need to use the "wait" routines to block until an oplist completes.
+In this case you can signal to the oplist system that you are finished submitting tasks and let it automatically
+handle memory reclamation.  This is done via the routine below where "free_mode" is one of those defined above for
+the finalize_oplist routine.
+
+void oplist_finished_submission(oplist_t *oplist, int free_mode);
+
+-----------Wait for operation completion----------------
+int oplist_waitall(oplist_t *iolist);     --All current oplist tasks must complete before returning
+ibp_op_t *ibp_waitany(oplist_t *iolist);  --Returns when any task completes in the list.
+void oplist_start_execution(oplist_t *oplist); --Start executing commands in the list
+int ibp_sync_command(ibp_op_t *op);   --Quick and dirty way to execute a command without all the extra
+                                        overhead for list manipulation.  This is how all the sync
+                                        commands are created.
+
+IBP client library configuration file
+---------------------------------------------
+
+The client library has several adjustable parameters that can be modifed either from a configuration file
+or through function calls.  An example configuration file is given below:
+
+[ibp_async]
+min_depot_threads = 1
+max_depot_threads = 4
+max_connections = 128
+command_weight = 10240
+max_thread_workload = 10485760
+#Swap out the line below for low latency networks
+#max_thread_workload = 524288
+wait_stable_time = 15
+check_interval = 5
+max_retry = 2
+
+min_depot_threads/max_depot_threads - Specifies the min and max number of threads that are created to a 
+specific depot.  These parameters are ignored for synchrounous calls.
+
+max_connections - Max number of allowed connection for all sync and async calls.  If this number is met
+the client starts closing underutilized connections.
+
+command_weight - Base weight to assign to a command.  A R/W command adds to this the number of 
+bytes R/W.
+
+max_thread_workload - Once the depot's global queue has this much work a new thread is created.
+
+wait_stable_time - Amount of time to wait, in seconds, before trying to launch a new coneection.  This is
+only triggerred if the depot has been closing connections.
+
+check_interval - Max wait time, in seconds, to wait between workload checks.
+
+max_retry - Max number of times to retry a command.  Only used for dead connection failures.
+
+
+Configuration routines
+-----------------------------
+
+--------IBP client generic routines-------
+void ibp_init();  -- Init IBP subsystem. Must be called before any sync or async commands
+void ibp_finalize();  -- Shuts down IBP subsystem
+char *ibp_client_version() - Returns an arbitrary character string with version information
+
+-----------Load config from file or store config-----------
+int ibp_load_config(char *fname);
+void set_ibp_config(ibp_config_t *cfg);
+void default_ibp_config();
+
+---------------Modify parameter routines-----------
+void ibp_set_min_depot_threads(int n);
+int  ibp_get_min_depot_threads();
+void ibp_set_max_depot_threads(int n);
+int  ibp_get_max_depot_threads();
+void ibp_set_max_connections(int n);
+int  ibp_get_max_connections();
+void ibp_set_command_weight(int n);
+int  ibp_get_command_weight();
+void ibp_set_max_thread_workload(int n);
+int  ibp_get_max_thread_workload();
+void ibp_set_wait_stable_time(int n);
+int  ibp_get_wait_stable_time();
+void ibp_set_check_interval(int n);
+int  ibp_get_check_interval();
+void ibp_set_max_retry(int n);
+int  ibp_get_max_retry();
+
+
+
+Example Programs
+---------------------------------------------
+There are 3 programs included showing how to use both the sync and async calls.
+
+ibp_perf - Performs client-to-depot benchmarks
+ibp_copyperf - Performs depot->depot benchmarks
+ibp_test - Check basic functionality.  No load tests like the other two programs work on.
+
+
