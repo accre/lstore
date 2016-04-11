@@ -1,7 +1,3 @@
-//node {
-//    step([$class: 'GitHubSetCommitStatusBuilder', statusMessage: [content: 'Performing pipeline']])
-//    step([$class: 'GitHubCommitNotifier', resultOnFailure: 'FAILURE', statusMessage: [content: 'Pipelined']])
-//}
 String[] distros = ["centos-6", "centos-7",\
                     "debian-jessie", "ubuntu-trusty",\
                     "ubuntu-vivid", "ubuntu-wily"]
@@ -29,9 +25,7 @@ for (int i = 0 ; i < distros.size(); ++i) {
 stage "Checkout"
 node {
     deleteDir()
-    git branch: 'feature/onerepo', \
-            credentialsId: '4e969784-c04c-4186-a618-5b22523ab695', \
-            url: 'https://github.com/accre/lstore-release.git'
+    checkout scm
     stash includes: '**, .git/', name: 'source', useDefaultExcludes: false
 }
 
