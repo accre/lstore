@@ -1,0 +1,17 @@
+Notes on native Debian packaging (not CPack)
+-----------------------------------------------
+
+# go into project folder
+cd lstore-jerasure
+
+# download the upstream version
+wget -O - http://web.eecs.utk.edu/~plank/plank/papers/Jerasure-1.2A.tar | gzip > ../jerasure_1.2A.orig.tar.gz
+
+# commit any changes
+dpkg-source --commit
+
+# build
+dpkg-buildpackage -us -uc
+
+# if the build is successful it should generate the following:
+../jerasure1_1.2A-1_amd64.deb  ../jerasure_1.2A-1_amd64.changes  ../jerasure_1.2A-1.debian.tar.gz  ../jerasure_1.2A-1.dsc  ../jerasure_1.2A.orig.tar.gz  ../jerasure-dev_1.2A-1_amd64.deb 
