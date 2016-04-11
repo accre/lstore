@@ -1,0 +1,23 @@
+*.o
+*.lo
+.libs/
+test/
+! test/*.c
+apr-ACCRE*
+.make.dirs
+Makefile
+apr.pc
+build/apr_rules.mk
+build/apr_rules.out
+build/pkg/pkginfo
+config.log
+config.nice
+config.status
+export_vars.c
+exports.c
+include/apr.h
+include/arch/unix/apr_private.h
+include/private/
+libapr-ACCRE-1.la
+libtool
+tools/gen_test_char
