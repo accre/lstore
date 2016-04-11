@@ -1,0 +1,3 @@
+#Don't ignore the config files
+!*.cfg
+
