@@ -21,7 +21,7 @@ set(CPACK_PACKAGE_FILE_NAME "lstore-${CPACK_PACKAGE_VERSION}-${CPACK_PACKAGE_REL
 # DEB specific stuff
 set(CPACK_DEBIAN_PACKAGE_HOMEPAGE "http://www.lstore.org/")
 set(CPACK_DEBIAN_PACKAGE_DEPENDS
-  "accre-gop, accre-ibp, accre-jerasure, accre-lio, accre-toolbox, libapr-accre1, libapr-accre-util1, czmq")
+  "accre-gop, accre-ibp, accre-jerasure, accre-lio, accre-toolbox, libapr-accre1, libapr-accre-util1, libczmq3")
 set(CPACK_DEBIAN_PACKAGE_SUGGESTS "accre-gridftp")
 set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE ${PKG_ARCHITECTURE})
 
