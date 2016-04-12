@@ -14,7 +14,7 @@ if (czmq_inc)
    find_path(CZMQ_INCLUDE_DIR czmq.h ${zmq_inc}/czmq)
 endif (czmq_inc)
 
-find_library(CZMQ_LIBRARY NAMES czmq)
+find_library(CZMQ_LIBRARY NAMES libczmq.so.3 czmq)
 
 if (CZMQ_LIBRARY AND CZMQ_INCLUDE_DIR)
     SET(CZMQ_FOUND "YES")
