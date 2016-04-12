@@ -30,6 +30,13 @@ node {
     stash includes: '**, .git/', name: 'source', useDefaultExcludes: false
 }
 
+stage "Build-Unified"
+node {
+    deleteDir()
+    unstash 'source'
+    sh "bash scripts/build-unified.sh"
+}
+
 stage "Packaging"
 parallel compile_map
 
