@@ -119,5 +119,14 @@ FROM $FROM
 MAINTAINER http://lstore.org
 $GLOBAL_INSTALL
 $PACKAGE_INSTALL
+RUN cd /tmp && \
+    git clone https://github.com/Kitware/CMake.git && \
+    cd CMake && \
+    git checkout v3.5.1 && \
+    ./bootstrap && \
+    make && \
+    make install && \
+    cd .. && \
+    rm -rf CMake
 EOF
 done
