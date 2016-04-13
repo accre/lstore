@@ -4,7 +4,9 @@ cmake_minimum_required(VERSION 2.8)
 
 # Build external dependencies
 include(ExternalProject)
+message("Binary dir is ${CMAKE_BINARY_DIR}")
 ExternalProject_add(apr-accre
+        PREFIX "${CMAKE_BINARY_DIR}/state/apr-accre/"
         SOURCE_DIR "${CMAKE_SOURCE_DIR}/vendor/apr-accre/"
         BINARY_DIR "${CMAKE_BINARY_DIR}/apr-accre/"
         CONFIGURE_COMMAND "${CMAKE_SOURCE_DIR}/vendor/apr-accre/configure"
@@ -18,6 +20,7 @@ ExternalProject_add(apr-accre
     )
 ExternalProject_add(apr-util-accre
         DEPENDS apr-accre
+        PREFIX "${CMAKE_BINARY_DIR}/state/apr-util-accre/"
         SOURCE_DIR "${CMAKE_SOURCE_DIR}/vendor/apr-util-accre/"
         BINARY_DIR "${CMAKE_BINARY_DIR}/apr-util-accre/"
         CONFIGURE_COMMAND "${CMAKE_SOURCE_DIR}/vendor/apr-util-accre/configure"
@@ -31,6 +34,7 @@ ExternalProject_add(apr-util-accre
         TEST_EXCLUDE_FROM_MAIN 1
     )
 ExternalProject_add(jerasure
+        PREFIX "${CMAKE_BINARY_DIR}/state/jerasure/"
         SOURCE_DIR "${CMAKE_SOURCE_DIR}/vendor/jerasure/"
         BINARY_DIR "${CMAKE_BINARY_DIR}/jerasure/"
         CMAKE_ARGS -DCMAKE_PREFIX_PATH=${CMAKE_INSTALL_PREFIX} -DCMAKE_INSTALL_PREFIX=${CMAKE_INSTALL_PREFIX}
@@ -38,13 +42,14 @@ ExternalProject_add(jerasure
         INSTALL_COMMAND "make" "install"
     )
 ExternalProject_add(czmq
+        PREFIX "${CMAKE_BINARY_DIR}/state/czmq/"
         SOURCE_DIR "${CMAKE_SOURCE_DIR}/vendor/czmq/"
         BINARY_DIR "${CMAKE_BINARY_DIR}/czmq/"
         CMAKE_ARGS -DCMAKE_PREFIX_PATH=${CMAKE_INSTALL_PREFIX} -DCMAKE_INSTALL_PREFIX=${CMAKE_INSTALL_PREFIX}
         TEST_EXCLUDE_FROM_MAIN 1
         TEST_COMMAND "make" "test"
         INSTALL_COMMAND "make" "install"
-)
+    )
 
 # Pull in LStore modules
 #add_subdirectory(src/toolbox)
