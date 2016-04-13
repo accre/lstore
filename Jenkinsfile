@@ -14,9 +14,9 @@ for (int i = 0 ; i < distros.size(); ++i) {
         sh "bash scripts/build-docker-base.sh ${x}"
         sh "bash scripts/package.sh ${x}"
         sh "bash scripts/update-repo.sh ${x}"
+        archive 'build/repo/**'
         sh "bash scripts/test-repo.sh ${x}"
         stash includes: 'build/repo/**', name: "${x}-repo"
-        archive 'build/repo/**'
         dockerFingerprintFrom dockerfile: "scripts/docker/base/${x}/Dockerfile", \
         image: "lstore/builder:${x}"
     } }
