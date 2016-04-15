@@ -11,17 +11,29 @@ set(LSTORE_PROJECT_NAME "ibp")
 project(${LSTORE_PROJECT_NAME} C CXX)
 
 # Include modules 
-set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
+if(NOT USE_SUPERBUILD)
+    set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
+endif()
 include(CheckIncludeFile)
 
 # Detect compiler flags.
 # No-op for ibp
 
 # Find additional dependencies.
-find_package(ToolBox REQUIRED)
-find_package(GOP REQUIRED)
-include_directories(${TOOLBOX_INCLUDE_DIR} ${GOP_INCLUDE_DIR})
-list(APPEND LIBS ${TOOLBOX_LIBRARY} ${GOP_LIBRARY})
+if(NOT USE_SUPERBUILD)
+    find_package(ToolBox REQUIRED)
+    find_package(GOP REQUIRED)
+    include_directories(${TOOLBOX_INCLUDE_DIR} ${GOP_INCLUDE_DIR})
+    list(APPEND LIBS ${TOOLBOX_LIBRARY} ${GOP_LIBRARY})
+endif()
+set(LSTORE_LIBS ${APR_LIBRARY}
+                    toolbox
+                    gop
+    )
+set(LSTORE_INCLUDE_SYSTEM ${APR_INCLUDE_DIR})
+set(LSTORE_INCLUDE_PUBLIC ${toolbox_INCLUDE_DIR}
+                    ${gop_INCLUDE_DIR})
+
 
 # Additional Compiler flags.
 # No-op for ibp
@@ -42,4 +54,10 @@ set(LSTORE_PROJECT_EXECUTABLES
 )
 
 # Common functionality is stored here
-include(cmake/LStoreCommon.cmake)
+
+if(NOT USE_SUPERBUILD)
+    include(LStoreCommon)
+else()
+    include(LStoreFunctions)
+    lstore_project_common(ibp)
+endif()

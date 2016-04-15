@@ -10,32 +10,60 @@ set(LSTORE_PROJECT_NAME "lio")
 project(${LSTORE_PROJECT_NAME} C CXX)
 
 # Include modules 
-set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
+if(NOT USE_SUPERBUILD)
+    set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
+endif()
 include(CheckIncludeFile)
 
 # Detect compiler flags.
 check_include_file(attr/xattr.h HAVE_ATTR_XATTR_H)
 check_include_file(sys/xattr.h HAVE_SYS_XATTR_H)
-configure_file(${CMAKE_SOURCE_DIR}/config.h.in
-               ${CMAKE_SOURCE_DIR}/config.h)
+configure_file(${PROJECT_SOURCE_DIR}/config.h.in
+               ${PROJECT_SOURCE_DIR}/config.h)
 
 # Find dependencies.
-find_package(Jerasure REQUIRED)
-find_package(ToolBox REQUIRED)
-find_package(GOP REQUIRED)
-find_package(IBP REQUIRED)
-find_package(ZMQ REQUIRED)
-find_package(CZMQ REQUIRED)
-find_package(FUSE REQUIRED)
-include_directories(   
-    ${JERASURE_INCLUDE_DIR} ${TOOLBOX_INCLUDE_DIR} ${GOP_INCLUDE_DIR}
-    ${IBP_INCLUDE_DIR} ${FUSE_INCLUDE_DIR} ${CZMQ_INCLUDE_DIR}
-)
+if(NOT USE_SUPERBUILD)
+    find_package(Jerasure REQUIRED)
+    find_package(ToolBox REQUIRED)
+    find_package(GOP REQUIRED)
+    find_package(IBP REQUIRED)
+    find_package(ZMQ REQUIRED)
+    find_package(CZMQ REQUIRED)
+    find_package(FUSE REQUIRED)
+    include_directories(   
+        ${JERASURE_INCLUDE_DIR} ${TOOLBOX_INCLUDE_DIR} ${GOP_INCLUDE_DIR}
+        ${IBP_INCLUDE_DIR} ${FUSE_INCLUDE_DIR} ${CZMQ_INCLUDE_DIR}
+    )
 
-list(APPEND LIBS
-    ${IBP_LIBRARY} ${GOP_LIBRARY} ${CZMQ_LIBRARY} ${TOOLBOX_LIBRARY}
-    ${JERASURE_LIBRARY} ${ZMQ_LIBRARY} ${FUSE_LIBRARIES}
-)
+    list(APPEND LIBS
+        ${IBP_LIBRARY} ${GOP_LIBRARY} ${CZMQ_LIBRARY} ${TOOLBOX_LIBRARY}
+        ${JERASURE_LIBRARY} ${ZMQ_LIBRARY} ${FUSE_LIBRARIES}
+    )
+else()
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -D_FILE_OFFSET_BITS=64")
+endif()
+set(LSTORE_LIBS  ${APR_LIBRARY}
+                    ${APRUTIL_LIBRARY}
+                    ${ZLIB_LIBRARY}
+                    ${OPENSSL_LIBRARIES}
+                    ${CZMQ_LIBRARY}
+                    ${ZMQ_LIBRARY}
+                    ${FUSE_LIBRARY}
+                    ${JERASURE_LIBRARY}
+                    toolbox
+                    gop
+                    ibp)
+set(LSTORE_INCLUDE_SYSTEM ${APR_INCLUDE_DIR}
+                    ${APRUTIL_INCLUDE_DIR}
+                    ${OPENSSL_INCLUDE_DIR}
+                    ${ZMQ_INCLUDE_DIR}
+                    ${CZMQ_INCLUDE_DIR}
+                    ${ZLIB_INCLUDE_DIR}
+                    ${FUSE_INCLUDE_DIR}
+                    ${JERASURE_INCLUDE_DIR})
+set(LSTORE_INCLUDE_PUBLIC ${toolbox_INCLUDE_DIR}
+                    ${gop_INCLUDE_DIR}
+                    ${ibp_INCLUDE_DIR})
 
 # common objects
 set(LSTORE_PROJECT_OBJS
@@ -74,12 +102,17 @@ set(LSTORE_PROJECT_EXECUTABLES
 )
 
 # Common functionality is stored here
-include(cmake/LStoreCommon.cmake)
+if(NOT USE_SUPERBUILD)
+    include(LStoreCommon)
+else()
+    include(LStoreFunctions)
+    lstore_project_common(lio)
+endif()
 
 # Add additional executables
 
 # Executable in two halves doesn't fit the normal pattern.
-add_executable(trace_replay trace_replay.c trace.c)
-set_target_properties(trace_replay PROPERTIES LINKER_LANGUAGE CXX)
-target_link_libraries(trace_replay ${library_lib} ${LIBS})
+#add_executable(trace_replay trace_replay.c trace.c)
+#set_target_properties(trace_replay PROPERTIES LINKER_LANGUAGE CXX)
+#target_link_libraries(trace_replay ${library_lib} ${LIBS})
 
