@@ -22,14 +22,16 @@ for (int i = 0 ; i < distros.size(); ++i) {
     } }
 }
 
-node {
+node('docker') {
     stage "Checkout"
     deleteDir()
     checkout scm
     sh "bash scripts/check-patch.sh"
     stash includes: '**, .git/', name: 'source', useDefaultExcludes: false
+    stage "Update-Docker-Images"
+    sh "bash scripts/build-docker-base.sh"
     stage "Build-Unified"
-    build_img = docker.image('lstore/builder:ubuntu-xenial')
+    build_img = docker.image('lstore/buildslave:ubuntu-xenial')
     echo "Starting docker"
     build_img.inside {
         echo "Inside docker"
