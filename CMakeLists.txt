@@ -3,15 +3,15 @@ cmake_minimum_required(VERSION 2.8)
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Debug)
 endif()
+
 # Options
-# TODO: https://github.com/Sarcasm/cmake-superbuild
-option(USE_SUPERBUILD "Trigger building one giant CMake project" ON)
-option(ENABLE_ASAN "Build with address sanitizer" OFF)
-option(ENABLE_MSAN "Build with memory sanitizer" OFF)
-option(ENABLE_TSAN "Build with thread sanitizer" OFF)
-option(ENABLE_UBSAN "Build with undefined behaviour sanitizer" OFF)
+option(ENABLE_ASAN "Enable address sanitizer" OFF)
+option(ENABLE_MSAN "Enable memory sanitizer" OFF)
+option(ENABLE_TSAN "Enable thread sanitizer" OFF)
+option(ENABLE_UBSAN "Enable undefined behaviour sanitizer" OFF)
 
 # Defines
+set(USE_SUPERBUILD ON)
 set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -fPIC")
 set(CMAKE_C_FLAGS_RELEASE "-O3")
@@ -52,7 +52,7 @@ find_package(Jerasure)
 set(REBUILD_DEPENDENCIES)
 include(LStoreExternals)
 
-add_custom_target(externals COMMENT "Target to build any externals")
+add_custom_target(externals COMMENT "Target to build all externals")
 if(REBUILD_DEPENDENCIES)
     message(STATUS "External dependencies exist")
     add_dependencies(externals ${REBUILD_DEPENDENCIES})
