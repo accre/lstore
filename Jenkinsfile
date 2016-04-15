@@ -29,19 +29,17 @@ node('docker') {
     sh "bash scripts/check-patch.sh"
     stash includes: '**, .git/', name: 'source', useDefaultExcludes: false
     stage "Update-Docker-Images"
-    sh "bash scripts/build-docker-base.sh"
+    sh "bash scripts/build-docker-base.sh ubuntu-xenial"
+}
+node('xenial') {
     stage "Build-Unified"
-    build_img = docker.image('lstore/buildslave:ubuntu-xenial')
-    echo "Starting docker"
-    build_img.inside {
-        echo "Inside docker"
-        sh "pwd"
-        deleteDir()
-        sh "pwd"
-        unstash 'source'
-        sh "pwd"
-        sh "bash scripts/build-unified.sh"
-    }
+    echo "Inside docker"
+    sh "pwd"
+    deleteDir()
+    sh "pwd"
+    unstash 'source'
+    sh "pwd"
+    sh "bash scripts/build-unified.sh"
 }
 
 stage "Packaging"
