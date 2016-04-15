@@ -22,19 +22,24 @@ for (int i = 0 ; i < distros.size(); ++i) {
     } }
 }
 
-stage "Checkout"
 node {
+    stage "Checkout"
     deleteDir()
     checkout scm
     sh "bash scripts/check-patch.sh"
     stash includes: '**, .git/', name: 'source', useDefaultExcludes: false
-}
-
-stage "Build-Unified"
-node {
-    deleteDir()
-    unstash 'source'
-    sh "bash scripts/build-unified.sh"
+    stage "Build-Unified"
+    build_img = docker.image('lstore/builder:ubuntu-xenial')
+    echo "Starting docker"
+    build_img.inside {
+        echo "Inside docker"
+        sh "pwd"
+        deleteDir()
+        sh "pwd"
+        unstash 'source'
+        sh "pwd"
+        sh "bash scripts/build-unified.sh"
+    }
 }
 
 stage "Packaging"
