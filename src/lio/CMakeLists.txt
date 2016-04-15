@@ -41,6 +41,7 @@ if(NOT USE_SUPERBUILD)
 else()
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -D_FILE_OFFSET_BITS=64")
 endif()
+message(STATUS "APU ${APRUTIL_INCLUDE_DIR}")
 set(LSTORE_LIBS  ${APR_LIBRARY}
                     ${APRUTIL_LIBRARY}
                     ${ZLIB_LIBRARY}
@@ -112,5 +113,7 @@ else()
     add_executable(trace_replay trace_replay.c trace.c)
     set_target_properties(trace_replay PROPERTIES LINKER_LANGUAGE CXX)
     target_link_libraries(trace_replay lio ${LSTORE_LIBS})
+    target_include_directories(trace_replay SYSTEM PRIVATE ${LSTORE_INCLUDE_SYSTEM})
+    target_include_directories(trace_replay PUBLIC ${LSTORE_INCLUDE_PUBLIC})
 endif()
 
