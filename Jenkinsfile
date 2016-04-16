@@ -33,12 +33,8 @@ node('docker') {
 }
 node('xenial') {
     stage "Build-Unified"
-    echo "Inside docker"
-    sh "pwd"
     deleteDir()
-    sh "pwd"
     unstash 'source'
-    sh "pwd"
     sh "bash scripts/build-unified.sh"
 }
 
