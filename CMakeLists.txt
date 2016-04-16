@@ -13,7 +13,7 @@ option(ENABLE_UBSAN "Enable undefined behaviour sanitizer" OFF)
 # Defines
 set(USE_SUPERBUILD ON)
 set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -fPIC")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -fPIC -D_REENTRANT -D_GNU_SOURCE -D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64")
 set(CMAKE_C_FLAGS_RELEASE "-O3")
 set(CMAKE_C_FLAGS_DEBUG "-O0 -g3 -Wall -Wextra -Wno-unused-parameter")
 set(CMAKE_C_LINK_FLAGS " ")
