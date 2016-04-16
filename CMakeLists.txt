@@ -5,6 +5,7 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 
 # Options
+option(BUILD_TESTS "Build test suite" ON)
 option(ENABLE_ASAN "Enable address sanitizer" OFF)
 option(ENABLE_MSAN "Enable memory sanitizer" OFF)
 option(ENABLE_TSAN "Enable thread sanitizer" OFF)
@@ -65,6 +66,23 @@ add_subdirectory(src/toolbox)
 add_subdirectory(src/gop)
 add_subdirectory(src/ibp)
 add_subdirectory(src/lio)
+
+# Enable testing
+if(BUILD_TESTS)
+    # TODO: add test files with file(GLOB xx test/test-*.c)
+    add_executable(run-tests test/run-tests.c
+                             test/runner.c
+                             test/runner-unix.c
+                             test/test-harness.c
+                             test/test-tb-stack.c)
+    target_link_libraries(run-tests pthread lio)
+    add_executable(run-benchmarks test/run-benchmarks.c
+                             test/runner.c
+                             test/runner-unix.c
+                             test/benchmark-sizes.c)
+    target_link_libraries(run-benchmarks pthread lio)
+    target_include_directories(run-benchmarks SYSTEM PRIVATE ${APR_INCLUDE_DIR})
+endif()
 
 # Pack it up
 include(CPack)
