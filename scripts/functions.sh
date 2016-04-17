@@ -187,7 +187,7 @@ function build_helper() {
     BUILD_BASE="$LSTORE_RELEASE_BASE/build"
     SOURCE_BASE="$LSTORE_RELEASE_BASE/src"
     VENDOR_BASE="$LSTORE_RELEASE_BASE/vendor"
-
+    mkdir -p $LSTORE_RELEASE_BASE/build/logs
 
     PREFIX=$LSTORE_RELEASE_BASE/build/local
     check_cmake

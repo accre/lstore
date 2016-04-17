@@ -610,7 +610,9 @@ typedef int apr_wait_t;
 #elif defined(_POSIX_PATH_MAX)
 #define APR_PATH_MAX       _POSIX_PATH_MAX
 #else
-#error no decision has been made on APR_PATH_MAX for your platform
+#define PATH_MAX 4096
+#define APR_PATH_MAX       PATH_MAX
+#warning no decision has been made on APR_PATH_MAX for your platform
 #endif
 
 #define APR_DSOPATH "@shlibpath_var@"

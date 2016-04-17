@@ -1,41 +1,69 @@
 cmake_minimum_required(VERSION 2.8)
-if(NOT (${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION} LESS 3.0))
-	# only CMAKE 3.0 and greater supports this (NOT ... LESS because CMAKE does not have a GREATER_OR_EQUAL_TO conditional)
-	# Not needed for older versions because older versions obviously use the old policy without specially requesting it
+
+if(POLICY CMP0048)
 	cmake_policy(SET CMP0048 OLD)
-	# ^^^ use the old VERSION variable behavior
 endif()
+
 # Name this project
 set(LSTORE_PROJECT_NAME "lio")
 project(${LSTORE_PROJECT_NAME} C CXX)
 
 # Include modules 
-set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
+if(NOT USE_SUPERBUILD)
+    set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
+endif()
 include(CheckIncludeFile)
 
 # Detect compiler flags.
 check_include_file(attr/xattr.h HAVE_ATTR_XATTR_H)
 check_include_file(sys/xattr.h HAVE_SYS_XATTR_H)
-configure_file(${CMAKE_SOURCE_DIR}/config.h.in
-               ${CMAKE_SOURCE_DIR}/config.h)
+configure_file(${PROJECT_SOURCE_DIR}/config.h.in
+               ${PROJECT_SOURCE_DIR}/config.h)
 
 # Find dependencies.
-find_package(Jerasure REQUIRED)
-find_package(ToolBox REQUIRED)
-find_package(GOP REQUIRED)
-find_package(IBP REQUIRED)
-find_package(ZMQ REQUIRED)
-find_package(CZMQ REQUIRED)
-find_package(FUSE REQUIRED)
-include_directories(   
-    ${JERASURE_INCLUDE_DIR} ${TOOLBOX_INCLUDE_DIR} ${GOP_INCLUDE_DIR}
-    ${IBP_INCLUDE_DIR} ${FUSE_INCLUDE_DIR} ${CZMQ_INCLUDE_DIR}
-)
+if(NOT USE_SUPERBUILD)
+    find_package(Jerasure REQUIRED)
+    find_package(ToolBox REQUIRED)
+    find_package(GOP REQUIRED)
+    find_package(IBP REQUIRED)
+    find_package(ZMQ REQUIRED)
+    find_package(CZMQ REQUIRED)
+    find_package(FUSE REQUIRED)
+    include_directories(   
+        ${JERASURE_INCLUDE_DIR} ${TOOLBOX_INCLUDE_DIR} ${GOP_INCLUDE_DIR}
+        ${IBP_INCLUDE_DIR} ${FUSE_INCLUDE_DIR} ${CZMQ_INCLUDE_DIR}
+    )
 
-list(APPEND LIBS
-    ${IBP_LIBRARY} ${GOP_LIBRARY} ${CZMQ_LIBRARY} ${TOOLBOX_LIBRARY}
-    ${JERASURE_LIBRARY} ${ZMQ_LIBRARY} ${FUSE_LIBRARIES}
-)
+    list(APPEND LIBS
+        ${IBP_LIBRARY} ${GOP_LIBRARY} ${CZMQ_LIBRARY} ${TOOLBOX_LIBRARY}
+        ${JERASURE_LIBRARY} ${ZMQ_LIBRARY} ${FUSE_LIBRARIES}
+    )
+else()
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -D_FILE_OFFSET_BITS=64")
+endif()
+message(STATUS "APU ${APRUTIL_INCLUDE_DIR}")
+set(LSTORE_LIBS  ${APR_LIBRARY}
+                    ${APRUTIL_LIBRARY}
+                    ${ZLIB_LIBRARY}
+                    ${OPENSSL_LIBRARIES}
+                    ${CZMQ_LIBRARY}
+                    ${ZMQ_LIBRARY}
+                    ${FUSE_LIBRARY}
+                    ${JERASURE_LIBRARY}
+                    toolbox
+                    gop
+                    ibp)
+set(LSTORE_INCLUDE_SYSTEM ${APR_INCLUDE_DIR}
+                    ${APRUTIL_INCLUDE_DIR}
+                    ${OPENSSL_INCLUDE_DIR}
+                    ${ZMQ_INCLUDE_DIR}
+                    ${CZMQ_INCLUDE_DIR}
+                    ${ZLIB_INCLUDE_DIR}
+                    ${FUSE_INCLUDE_DIR}
+                    ${JERASURE_INCLUDE_DIR})
+set(LSTORE_INCLUDE_PUBLIC ${toolbox_INCLUDE_DIR}
+                    ${gop_INCLUDE_DIR}
+                    ${ibp_INCLUDE_DIR})
 
 # common objects
 set(LSTORE_PROJECT_OBJS
@@ -74,12 +102,18 @@ set(LSTORE_PROJECT_EXECUTABLES
 )
 
 # Common functionality is stored here
-include(cmake/LStoreCommon.cmake)
-
-# Add additional executables
-
-# Executable in two halves doesn't fit the normal pattern.
-add_executable(trace_replay trace_replay.c trace.c)
-set_target_properties(trace_replay PROPERTIES LINKER_LANGUAGE CXX)
-target_link_libraries(trace_replay ${library_lib} ${LIBS})
+if(NOT USE_SUPERBUILD)
+    include(LStoreCommon)
+    add_executable(trace_replay trace_replay.c trace.c)
+    set_target_properties(trace_replay PROPERTIES LINKER_LANGUAGE CXX)
+    target_link_libraries(trace_replay ${library_lib} ${LIBS})
+else()
+    include(LStoreFunctions)
+    lstore_project_common(lio)
+    add_executable(trace_replay trace_replay.c trace.c)
+    set_target_properties(trace_replay PROPERTIES LINKER_LANGUAGE CXX)
+    target_link_libraries(trace_replay lio ${LSTORE_LIBS})
+    target_include_directories(trace_replay SYSTEM PRIVATE ${LSTORE_INCLUDE_SYSTEM})
+    target_include_directories(trace_replay PUBLIC ${LSTORE_INCLUDE_PUBLIC})
+endif()
 

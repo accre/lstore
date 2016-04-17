@@ -1,9 +1,7 @@
 cmake_minimum_required(VERSION 2.8)
-if(NOT (${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION} LESS 3.0))
-	# only CMAKE 3.0 and greater supports this (NOT ... LESS because CMAKE does not have a GREATER_OR_EQUAL_TO conditional)
-	# Not needed for older versions because older versions obviously use the old policy without specially requesting it
+
+if(POLICY CMP0048)
 	cmake_policy(SET CMP0048 OLD)
-	# ^^^ use the old VERSION variable behavior
 endif()
 
 # Name this project
@@ -11,20 +9,25 @@ set(LSTORE_PROJECT_NAME "gop")
 project(${LSTORE_PROJECT_NAME} C CXX)
 
 # Include modules 
-set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
+if(NOT USE_SUPERBUILD)
+    set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
+endif()
 include(CheckIncludeFile)
 
 # Detect compiler flags.
 # No-op for GOP
 
 # Find additional dependencies.
-find_package(ToolBox REQUIRED)
-find_package(ZMQ REQUIRED)
-find_package(CZMQ REQUIRED)
-include_directories(${TOOLBOX_INCLUDE_DIR} ${CZMQ_INCLUDE_DIR}
-                    ${ZMQ_INCLUDE_DIR}
-)
-list(APPEND LIBS ${ZMQ_LIBRARY} ${CZMQ_LIBRARY} ${TOOLBOX_LIBRARY})
+if(NOT USE_SUPERBUILD)
+    set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
+    find_package(ToolBox REQUIRED)
+    find_package(ZMQ REQUIRED)
+    find_package(CZMQ REQUIRED)
+    include_directories(${TOOLBOX_INCLUDE_DIR} ${CZMQ_INCLUDE_DIR}
+                        ${ZMQ_INCLUDE_DIR}
+    )
+    list(APPEND LIBS ${ZMQ_LIBRARY} ${CZMQ_LIBRARY} ${TOOLBOX_LIBRARY})
+endif()
 
 # Additional Compiler flags.
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DMQ_PIPE_COMM")
@@ -46,7 +49,22 @@ if(NOT APPLE)
         rr_mq_client rr_mq_server rr_mq_test rr_mq_worker
     )
 endif(NOT APPLE)
+set(LSTORE_LIBS ${APR_LIBRARY}
+                    ${APRUTIL_LIBRARY}
+                    ${CZMQ_LIBRARY}
+                    ${ZMQ_LIBRARY}
+                    toolbox
+    )
+set(LSTORE_INCLUDE_SYSTEM ${APR_INCLUDE_DIR}
+                    ${APRUTIL_INCLUDE_DIR}
+                    ${ZMQ_INCLUDE_DIR}
+                    ${CZMQ_INCLUDE_DIR}
+    )
+set(LSTORE_INCLUDE_PUBLIC ${toolbox_INCLUDE_DIR})
 
-
-# Common functionality is stored here
-include(cmake/LStoreCommon.cmake)
+if(NOT USE_SUPERBUILD)
+    include(LStoreCommon)
+else()
+    include(LStoreFunctions)
+    lstore_project_common(gop)
+endif()

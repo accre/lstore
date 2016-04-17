@@ -17,17 +17,25 @@ for (int i = 0 ; i < distros.size(); ++i) {
         sh "bash scripts/test-repo.sh ${x}"
         stash includes: 'build/repo/**', name: "${x}-repo"
         archive 'build/repo/**'
-        dockerFingerprintFrom dockerfile: "scripts/docker/base/${x}/Dockerfile", \
+        dockerFingerprintFrom dockerfile: "scripts/docker/builder/${x}/Dockerfile", \
         image: "lstore/builder:${x}"
     } }
 }
 
-stage "Checkout"
-node {
+node('docker') {
+    stage "Checkout"
     deleteDir()
     checkout scm
     sh "bash scripts/check-patch.sh"
     stash includes: '**, .git/', name: 'source', useDefaultExcludes: false
+    stage "Update-Docker-Images"
+    sh "bash scripts/build-docker-base.sh ubuntu-xenial"
+}
+node('xenial') {
+    stage "Build-Unified"
+    deleteDir()
+    unstash 'source'
+    sh "bash scripts/build-unified.sh"
 }
 
 stage "Packaging"

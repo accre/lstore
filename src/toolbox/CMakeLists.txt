@@ -1,23 +1,24 @@
 cmake_minimum_required(VERSION 2.8)
-if(NOT (${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION} LESS 3.0))
-	# only CMAKE 3.0 and greater supports this (NOT ... LESS because CMAKE does not have a GREATER_OR_EQUAL_TO conditional)
-	# Not needed for older versions because older versions obviously use the old policy without specially requesting it
+
+if(POLICY CMP0048)
 	cmake_policy(SET CMP0048 OLD)
-	# ^^^ use the old VERSION variable behavior
 endif()
+
 # Name this project
 set(LSTORE_PROJECT_NAME "toolbox")
 project(${LSTORE_PROJECT_NAME} C CXX)
 
-# Include modules 
-set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
+# Include modules
+if(NOT USE_SUPERBUILD)
+    set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
+endif()
 include(CheckIncludeFile)
 
 # Detect compiler flags.
 check_include_file("stdint.h" HAVE_STDINT_H)
 check_include_file("inttypes.h" HAVE_INTTYPES_H)
-configure_file(${CMAKE_SOURCE_DIR}/${LSTORE_PROJECT_NAME}_config.h.in
-               ${CMAKE_SOURCE_DIR}/${LSTORE_PROJECT_NAME}_config.h)
+configure_file(${PROJECT_SOURCE_DIR}/${LSTORE_PROJECT_NAME}_config.h.in
+               ${PROJECT_SOURCE_DIR}/${LSTORE_PROJECT_NAME}_config.h)
 
 
 # Find dependencies.
@@ -43,6 +44,23 @@ set(LSTORE_PROJECT_INCLUDES
                 chksum.h varint.h atomic_counter.h dns_cache.h iniparse.h
                 log.h assert_result.h)
 set(LSTORE_PROJECT_EXECUTABLES sl_test isl_test varint_test constructor_test)
+set(LSTORE_LIBS ${APR_LIBRARY}
+                    ${APRUTIL_LIBRARY}
+                    ${ZLIB_LIBRARY}
+                    ${OPENSSL_LIBRARIES}
+    )
+set(LSTORE_INCLUDE_SYSTEM ${APR_INCLUDE_DIR}
+                    ${APRUTIL_INCLUDE_DIR}
+                    ${OPENSSL_INCLUDE_DIR}
+                    ${ZLIB_INCLUDE_DIR}
+    )
+set(LSTORE_INCLUDE_PUBLIC)
+
 
 # Common functionality is stored here
-include(cmake/LStoreCommon.cmake)
+if(NOT USE_SUPERBUILD)
+    include(LStoreCommon)
+else()
+    include(LStoreFunctions)
+    lstore_project_common(toolbox)
+endif()

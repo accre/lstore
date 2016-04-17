@@ -1,4 +1,4 @@
-Descriptor of docker configs - docker/base
+Descriptor of docker configs - docker/builder
 ==========================================
 
 Adding another supported distribution is simple - add a new directory under
