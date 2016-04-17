@@ -29,15 +29,24 @@ node('docker') {
     sh "bash scripts/check-patch.sh"
     stash includes: '**, .git/', name: 'source', useDefaultExcludes: false
     stage "Update-Docker-Images"
-    sh "bash scripts/build-docker-base.sh ubuntu-xenial"
+    sh "bash scripts/build-docker-base.sh"
 }
 node('xenial') {
     stage "Build-Unified"
     deleteDir()
     unstash 'source'
-    sh "bash scripts/build-unified.sh"
+    dir('build') {
+        sh "cmake -DBUILD_TESTS=on -DCMAKE_INSTALL_PREFIX=local/ .."
+        sh "make -j8 install"
+        stash includes: 'local/**, run-tests, run-benchmarks', name: "unified-build"
+    }
 }
-
+node('xenial') {
+    stage "UnitTests"
+    deleteDir()
+    unstash 'unified-build'
+    sh "LD_LIBRARY_PATH=local/lib UV_TAP_OUTPUT=1 ./run-tests"
+}
 stage "Packaging"
 parallel compile_map
 
