@@ -22,7 +22,6 @@ macro(lstore_project_common LSTORE_PROJECT_NAME)
     # Build externals
     foreach(f ${LSTORE_PROJECT_EXECUTABLES})
         add_executable(${f} ${f}.c)
-        set_target_properties(${f} PROPERTIES LINKER_LANGUAGE CXX)
         target_link_libraries(${f} ${LSTORE_PROJECT_NAME})
         target_include_directories(${f} SYSTEM PRIVATE ${LSTORE_INCLUDE_SYSTEM})
         target_include_directories(${f} PUBLIC ${LSTORE_INCLUDE_PUBLIC})
