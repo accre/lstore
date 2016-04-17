@@ -36,7 +36,7 @@ node('xenial') {
     deleteDir()
     unstash 'source'
     dir('build') {
-        sh "cmake -DBUILD_TESTS=on -DENABLE_COVERAGE=on -DCMAKE_INSTALL_PREFIX=local/ .."
+        sh "cmake -DBUILD_TESTS=on -DENABLE_COVERAGE=on -DENABLE_ASAN=on -DCMAKE_INSTALL_PREFIX=local/ .."
         sh "make -j8 install"
         stash includes: 'local/**, run-tests, run-benchmarks', name: "unified-build"
     }
