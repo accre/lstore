@@ -18,6 +18,9 @@ TEST_IMPL(tb_stack) {
     
     Stack_t * stack2 = new_stack();
     ASSERT(stack2 != 0);
+
+    free_stack(stack, 1);
+    free_stack(stack2, 1);
     
     return 0;
 }
