@@ -26,7 +26,7 @@ node('docker') {
     stage "Checkout"
     deleteDir()
     checkout scm
-    sh "bash scripts/check-patch.sh"
+    sh "bash -x scripts/check-patch.sh"
     stash includes: '**, .git/', name: 'source', useDefaultExcludes: false
     stage "Update-Docker-Images"
     sh "bash scripts/build-docker-base.sh"
@@ -36,7 +36,7 @@ node('xenial') {
     deleteDir()
     unstash 'source'
     dir('build') {
-        sh "cmake -DBUILD_TESTS=on -DCMAKE_INSTALL_PREFIX=local/ .."
+        sh "cmake -DBUILD_TESTS=on -DENABLE_COVERAGE=on -DCMAKE_INSTALL_PREFIX=local/ .."
         sh "make -j8 install"
         stash includes: 'local/**, run-tests, run-benchmarks', name: "unified-build"
     }

@@ -5,7 +5,9 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 
 # Options
-option(BUILD_TESTS "Build test suite" ON)
+option(BUILD_TESTS "Build tests" ON)
+
+option(ENABLE_COVERAGE "Enable code coverage" OFF)
 option(ENABLE_ASAN "Enable address sanitizer" OFF)
 option(ENABLE_MSAN "Enable memory sanitizer" OFF)
 option(ENABLE_TSAN "Enable thread sanitizer" OFF)
@@ -16,8 +18,8 @@ set(USE_SUPERBUILD ON)
 set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -fPIC -D_REENTRANT -D_GNU_SOURCE -D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64")
 set(CMAKE_C_FLAGS_RELEASE "-O3")
-set(CMAKE_C_FLAGS_DEBUG "-O0 -g3 -Wall -Wextra -Wno-unused-parameter")
-set(CMAKE_C_LINK_FLAGS " ")
+set(CMAKE_C_FLAGS_DEBUG "-O0 -g3 -Wall -Wextra -Wno-unused-parameter -coverage")
+set(CMAKE_LINK_FLAGS_DEBUG "-coverage")
 
 if(ENABLE_ASAN)
     set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -fsanitize=address -fno-omit-frame-pointer -O1")
@@ -31,7 +33,9 @@ endif()
 if(ENABLE_UBSAN)
     set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -fsanitize=undefined -fno-omit-frame-pointer")
 endif()
-
+if(ENABLE_COVERAGE)
+    set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -fprofile-arcs -ftest-coverage")
+endif()
 
 
 # Use gnu-style paths
