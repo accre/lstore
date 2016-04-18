@@ -168,7 +168,7 @@ int sock_io_wait(network_sock_t *sock, Net_timeout_t tm, int mode)
 
 apr_size_t my_read(network_sock_t *sock, tbuffer_t *buf, apr_size_t pos, apr_size_t len, apr_size_t *count)
 {
-    apr_size_t n;
+    ssize_t n;
     sock_apr_overlay_t *s = (sock_apr_overlay_t *)(sock->fd);
     tbuffer_var_t tbv;
 
@@ -210,7 +210,7 @@ apr_size_t my_read(network_sock_t *sock, tbuffer_t *buf, apr_size_t pos, apr_siz
 
 apr_size_t my_write(network_sock_t *sock, tbuffer_t *buf, apr_size_t bpos, apr_size_t len, apr_size_t *count)
 {
-    size_t n;
+    ssize_t n;
     sock_apr_overlay_t *s = (sock_apr_overlay_t *)(sock->fd);
     tbuffer_var_t tbv;
 
