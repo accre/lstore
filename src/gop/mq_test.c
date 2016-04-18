@@ -1239,9 +1239,6 @@ int main(int argc, char **argv)
 
     printf("log_level=%d\n", _log_level);
 
-    apr_wrapper_start();
-    init_opque_system();
-
     apr_pool_create(&mpool, NULL);
     assert_result(apr_thread_mutex_create(&lock, APR_THREAD_MUTEX_DEFAULT, mpool), APR_SUCCESS);
     assert_result(apr_thread_cond_create(&cond, mpool), APR_SUCCESS);
@@ -1281,9 +1278,6 @@ int main(int argc, char **argv)
     apr_thread_cond_destroy(cond);
 
     apr_pool_destroy(mpool);
-
-    destroy_opque_system();
-    apr_wrapper_stop();
 
     return(0);
 }

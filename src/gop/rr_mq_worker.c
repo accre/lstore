@@ -8,7 +8,6 @@
 #include "mq_roundrobin.h"
 #include "mqs_roundrobin.h"
 #include "random.h"
-#include "apr_wrapper.h"
 #include "log.h"
 #include "type_malloc.h"
 #include <sys/eventfd.h>
@@ -541,9 +540,6 @@ int main(int argc, char **argv)
     apr_status_t dummy;
 
     // Start the background systems
-    apr_wrapper_start();
-    init_opque_system();
-
     apr_pool_create(&mpool, NULL);
 
     server = mq_string_to_address(server_string);
@@ -555,9 +551,6 @@ int main(int argc, char **argv)
 
     // Clean up
     apr_pool_destroy(mpool);
-
-    destroy_opque_system();
-    apr_wrapper_stop();
 
     return 0;
 }

@@ -462,10 +462,6 @@ int main(int argc, char **argv)
     apr_thread_t *client_thread;
     apr_status_t dummy;
 
-    // Start the background stuff
-    apr_wrapper_start();
-    init_opque_system();
-
     apr_pool_create(&mpool, NULL);
 
     server = mq_string_to_address(server_string);
@@ -477,9 +473,6 @@ int main(int argc, char **argv)
 
     // Clean up
     apr_pool_destroy(mpool);
-
-    destroy_opque_system();
-    apr_wrapper_stop();
 
     return 0;
 }

@@ -679,9 +679,7 @@ int main(int argc, char **argv)
     printf("Settings packet=(%d,%d) send=(%d,%d) np=%d nt=%d\n", packet_min, packet_max, send_min, send_max, nparallel, ntotal);
 
 //log_printf(0, "before wrapper opque_count=%d\n", _opque_counter);
-    apr_wrapper_start();
     log_printf(0, "after wrapper opque_count=%d\n", _opque_counter);
-    init_opque_system();
     log_printf(0, "after init opque_count=%d\n", _opque_counter);
     init_random();
 
@@ -724,9 +722,6 @@ int main(int argc, char **argv)
     apr_thread_cond_destroy(cond);
 
     apr_pool_destroy(mpool);
-
-    destroy_opque_system();
-    apr_wrapper_stop();
 
     free(test_data);
     return(0);

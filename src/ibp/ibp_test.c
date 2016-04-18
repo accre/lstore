@@ -1419,7 +1419,6 @@ int main(int argc, char **argv)
         return(-1);
     }
 
-    apr_wrapper_start();
     init_random();
 
 
@@ -2110,8 +2109,6 @@ int main(int argc, char **argv)
     printf("Tests that failed: %d\n", failed_tests);
 
     ibp_destroy_context(ic);
-
-    apr_wrapper_stop();
 
     return(0);
 }

@@ -561,9 +561,6 @@ int main(int argc, char **argv)
     uint64_t worker_shutdown = -1;
 
     // Start the background systems
-    apr_wrapper_start();
-    init_opque_system();
-
     apr_pool_create(&mpool, NULL);
 
     host = mq_string_to_address(host_string);
@@ -591,9 +588,6 @@ int main(int argc, char **argv)
 
     // Clean up
     apr_pool_destroy(mpool);
-
-    destroy_opque_system();
-    apr_wrapper_stop();
 
     close(control_efd);
 

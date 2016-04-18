@@ -1219,8 +1219,6 @@ int lio_init(int *argc, char ***argvp)
 
     argv = *argvp;
 
-    apr_wrapper_start();
-
     exnode_system_init();
 
     //** Create the lio object container
@@ -1435,8 +1433,6 @@ int lio_shutdown()
     _lc_mpool = NULL;
     _lc_lock  = NULL;
     exnode_system_destroy();
-
-    apr_wrapper_stop();
 
     lio_ifd = NULL;
     if (_lio_exe_name) free(_lio_exe_name);

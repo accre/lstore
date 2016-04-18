@@ -65,8 +65,8 @@ atomic_int_t curr_fd_slot = 0;
 
 
 //** Declare the constructor and destructor
-void  __attribute__ ((constructor)) liblio_trace_init(void);
-void  __attribute__ ((destructor)) liblio_trace_fini(void);
+static void  __attribute__ ((constructor)) liblio_trace_init(void);
+static void  __attribute__ ((destructor)) liblio_trace_fini(void);
 
 //*************************************************************
 // lt_default_config - sets the default config
@@ -117,12 +117,11 @@ void lt_load_config(char *fname)
 // liblio_trace_init - Initilaizes the tracing system
 //*************************************************************
 
-void __attribute__((constructor)) liblio_trace_init()
+static void __attribute__((constructor)) liblio_trace_init()
 {
     int i;
     char *config = NULL;
     void *handle;
-    apr_wrapper_start();
 
     log_printf(10, "_liblio_trace_init: Initializing system\n");
 
@@ -178,8 +177,7 @@ void __attribute__((constructor)) liblio_trace_init()
 // liblio_trace_fini - Destroys the tracing system
 //*************************************************************
 
-void __attribute__((destructor)) liblio_trace_fini()
-
+static void __attribute__((destructor)) liblio_trace_fini()
 {
     int bufsize=10*1024;
     char header[bufsize+1];
@@ -226,8 +224,8 @@ void __attribute__((destructor)) liblio_trace_fini()
 
     free(fd_table);
     free(fd_stats);
-
-    apr_wrapper_stop();
+    
+    apr_terminate();
 
     return;
 }

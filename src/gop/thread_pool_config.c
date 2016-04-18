@@ -261,13 +261,10 @@ thread_pool_context_t *thread_pool_create_context(char *tp_name, int min_threads
 
     type_malloc_clear(tpc, thread_pool_context_t, 1);
 
-    assert_result(apr_wrapper_start(), APR_SUCCESS);
-
     if (atomic_inc(_tp_context_count) == 0) {
         apr_pool_create(&_tp_pool, NULL);
         apr_thread_mutex_create(&_tp_lock, APR_THREAD_MUTEX_DEFAULT, _tp_pool);
         thread_pool_stats_init();
-        init_opque_system();
     }
 
     if (thread_local_depth_key == NULL) apr_threadkey_private_create(&thread_local_depth_key,_thread_pool_destructor, _tp_pool);
@@ -323,12 +320,9 @@ void thread_pool_destroy_context(thread_pool_context_t *tpc)
 
     if (atomic_dec(_tp_context_count) == 0) {
         if (_tp_stats > 0) thread_pool_stats_print();
-        destroy_opque_system();
         apr_thread_mutex_destroy(_tp_lock);
         apr_pool_destroy(_tp_pool);
     }
-
-    apr_wrapper_stop();
 
     if (tpc->name != NULL) free(tpc->name);
 
@@ -340,3 +334,4 @@ void thread_pool_destroy_context(thread_pool_context_t *tpc)
 
     free(tpc);
 }
+

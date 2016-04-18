@@ -33,12 +33,12 @@ http://www.accre.vanderbilt.edu
 
 #define _log_module_index 222
 
+#include "apr_wrapper.h"
 #include "opque.h"
 #include "mq_ongoing.h"
 #include "mq_helpers.h"
 #include "type_malloc.h"
 #include "log.h"
-#include "apr_wrapper.h"
 
 //***********************************************************************
 // ongoing_response_status - Handles a response that just returns the status

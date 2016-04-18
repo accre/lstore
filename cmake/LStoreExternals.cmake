@@ -68,4 +68,7 @@ if((NOT CZMQ_FOUND) OR (CZMQ_LIBRARY MATCHES "^${CMAKE_INSTALL_PREFIX}"))
 		)
 endif()
 
+message(STATUS "Using aor at ${APR_LIBRARY}")
+message(STATUS "Using apu at ${APRUTIL_LIBRARY}")
+message(STATUS "Using jerasure at ${JERASURE_LIBRARY}")
 
