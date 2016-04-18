@@ -32,7 +32,7 @@ compile_map['unified'] = {
         stage "UnitTests"
         deleteDir()
         unstash 'unified-build'
-        sh "set -o pipefail ; LD_LIBRARY_PATH=local/lib UV_TAP_OUTPUT=1 ./run-tests 2>&1 | tee tap.log"
+        sh "bash -c 'set -o pipefail ; LD_LIBRARY_PATH=local/lib UV_TAP_OUTPUT=1 ./run-tests 2>&1 | tee tap.log'"
         // step([$class: 'TapPublisher', testResults: 'tap.log'])
     }
 }
