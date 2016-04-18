@@ -1,3 +1,4 @@
+#!/bin/groovy
 String[] distros = ["centos-6", "centos-7",\
                     "debian-jessie", "ubuntu-trusty",\
                     "ubuntu-vivid", "ubuntu-wily"]
@@ -20,9 +21,10 @@ compile_map['unified'] = {
         unstash 'source'
         dir('build') {
             sh "cmake -DBUILD_TESTS=on -DENABLE_COVERAGE=on -DENABLE_ASAN=on -DCMAKE_INSTALL_PREFIX=local/ .."
-            sh "make -j8 install"
+            sh "make -j8 externals"
+            sh "make -j8 install 2>&1 | tee compile_log.txt"
             stash includes: 'local/**, run-tests, run-benchmarks', name: "unified-build"
-            step([$class: 'WarningsPublisher', canComputeNew: false, canResolveRelativePaths: false, consoleParsers: [[parserName: 'GNU Make + GNU C Compiler (gcc)']], defaultEncoding: '', excludePattern: '', healthy: '', includePattern: '', messagesPattern: '', unHealthy: ''])
+            step([$class: 'WarningsPublisher', defaultEncoding: '', excludePattern: '', healthy: '', includePattern: '', messagesPattern: '', parserConfigurations: [[parserName: 'GNU Make + GNU C Compiler (gcc)', pattern: 'compile_log.txt']], unHealthy: ''])
         }
     }
 
@@ -30,8 +32,8 @@ compile_map['unified'] = {
         stage "UnitTests"
         deleteDir()
         unstash 'unified-build'
-        sh "LD_LIBRARY_PATH=local/lib UV_TAP_OUTPUT=1 ./run-tests 2>&1 | tee tap.log"
-        step([$class: 'TapPublisher', testResults: 'tap.log'])
+        sh "set -o pipefail ; LD_LIBRARY_PATH=local/lib UV_TAP_OUTPUT=1 ./run-tests 2>&1 | tee tap.log"
+        // step([$class: 'TapPublisher', testResults: 'tap.log'])
     }
 }
 
@@ -41,7 +43,7 @@ compile_map['cppcheck'] = {
         unstash 'source'
         dir('src') {
             sh "cppcheck --enable=all --inconclusive --xml --xml-version=2 \$(pwd) > cppcheck.xml"
-            step([$class: 'CppcheckPublisher'])
+            // step([$class: 'CppcheckPublisher'])
         }
     }
 }
