@@ -64,7 +64,7 @@ typedef struct {
     apr_pool_t *mpool;
     apr_pool_t *lockpool;
     apr_hash_t *table;
-    int size;
+    unsigned int size;
     apr_time_t restart_time;
     apr_thread_mutex_t *lock;
 } DNS_cache_t;
