@@ -135,7 +135,7 @@ op_status_t segment_copy_func(void *arg, int id)
     rgop = segment_read(sc->src, sc->da, sc->rw_hints, 1, &rex, rbuf, 0, sc->timeout);
     err = gop_waitall(rgop);
     if (err != OP_STATE_SUCCESS) {
-        log_printf(1, "Intial read failed! src=" XIDT " rpos=" XOT, " len=" XOT "\n", segment_id(sc->src), rpos, rlen);
+        log_printf(1, "Intial read failed! src=%" PRIu64 " rpos=" XOT " len=" XOT "\n", segment_id(sc->src), rpos, rlen);
         gop_free(rgop, OP_DESTROY);
         return(op_failure_status);
     }
@@ -151,7 +151,7 @@ op_status_t segment_copy_func(void *arg, int id)
         rlen = wlen;
         wlen = tlen;
 
-        log_printf(1, "sseg=" XIDT " dseg=" XIDT " wpos=%d rlen=%d wlen=%d\n", segment_id(sc->src), segment_id(sc->dest), wpos, rlen, wlen);
+        log_printf(1, "sseg=" XIDT " dseg=" XIDT " wpos=%" PRId64 " rlen=%" PRId64 " wlen=%" PRId64 "\n", segment_id(sc->src), segment_id(sc->dest), wpos, rlen, wlen);
 
         //** Start the write
         ex_iovec_single(&wex, wpos, wlen);
@@ -176,7 +176,7 @@ op_status_t segment_copy_func(void *arg, int id)
 
         err = opque_waitall(q);
         if (err != OP_STATE_SUCCESS) {
-            log_printf(1, "ERROR read/write failed! src=" XIDT " rpos=" XOT, " len=" XOT "\n", segment_id(sc->src), rpos, rlen);
+            log_printf(1, "ERROR read/write failed! src=" XIDT " rpos=" XOT " len=" XOT "\n", segment_id(sc->src), rpos, rlen);
             opque_free(q, OP_DESTROY);
             return(op_failure_status);
         }
@@ -274,7 +274,7 @@ op_status_t segment_get_func(void *arg, int id)
     gop = segment_read(sc->src, sc->da, sc->rw_hints, 1, &rex, rbuf, 0, sc->timeout);
     err = gop_waitall(gop);
     if (err != OP_STATE_SUCCESS) {
-        log_printf(1, "Intial read failed! src=" XIDT " rpos=" XOT, " len=" XOT "\n", segment_id(sc->src), rpos, rlen);
+        log_printf(1, "Intial read failed! src=" XIDT " rpos=" XOT " len=" XOT "\n", segment_id(sc->src), rpos, rlen);
         gop_free(gop, OP_DESTROY);
         return(op_failure_status);
     }
@@ -333,7 +333,7 @@ op_status_t segment_get_func(void *arg, int id)
             err = gop_waitall(gop);
             gop_free(gop, OP_DESTROY);
             if (err != OP_STATE_SUCCESS) {
-                log_printf(1, "ERROR write(dseg=" XIDT ") failed! wpos=" XOT, " len=" XOT "\n", segment_id(sc->dest), wpos, wlen);
+                log_printf(1, "ERROR write(dseg=" XIDT ") failed! wpos=" XOT " len=" XOT "\n", segment_id(sc->dest), wpos, wlen);
                 status = op_failure_status;
                 goto fail;
             }
@@ -451,7 +451,7 @@ op_status_t segment_put_func(void *arg, int id)
         rlen = wlen;
         wlen = tlen;
 
-        log_printf(1, "dseg=" XIDT " wpos=%d rlen=%d wlen=%d\n", segment_id(sc->dest), wpos, rlen, wlen);
+        log_printf(1, "dseg=" XIDT " wpos=" XOT " rlen=" XOT " wlen=" XOT "\n", segment_id(sc->dest), wpos, rlen, wlen);
 
         //** Start the write
         ex_iovec_single(&wex, wpos, wlen);
@@ -493,7 +493,7 @@ op_status_t segment_put_func(void *arg, int id)
         log_printf(1, "dt_loop=%lf  dt_file=%lf\n", dt_loop, dt_file);
 
         if (err != OP_STATE_SUCCESS) {
-            log_printf(1, "ERROR write(dseg=" XIDT ") failed! wpos=" XOT, " len=" XOT "\n", segment_id(sc->dest), wpos, wlen);
+            log_printf(1, "ERROR write(dseg=" XIDT ") failed! wpos=" XOT " len=" XOT "\n", segment_id(sc->dest), wpos, wlen);
             status = op_failure_status;
             gop_free(gop, OP_DESTROY);
             goto finished;

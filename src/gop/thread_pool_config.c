@@ -313,7 +313,7 @@ void thread_pool_destroy_context(thread_pool_context_t *tpc)
     int i;
     log_printf(15, "thread_pool_destroy_context: Shutting down! count=%d\n", _tp_context_count);
 
-    log_printf(15, "tpc->name=%s  high=%d idle=%d\n", tpc->name, apr_thread_pool_threads_high_count(tpc->tp),  apr_thread_pool_threads_idle_timeout_count(tpc->tp));
+    log_printf(15, "tpc->name=%s  high=%zu idle=%zu\n", tpc->name, apr_thread_pool_threads_high_count(tpc->tp),  apr_thread_pool_threads_idle_timeout_count(tpc->tp));
     destroy_hportal_context(tpc->pc);
 
     apr_thread_pool_destroy(tpc->tp);

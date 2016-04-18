@@ -768,7 +768,7 @@ int ibp_load_config(ibp_context_t *ic, inip_file_t *keyfile, char *section)
 
     copy_ibp_config(ic);
 
-    log_printf(1, "section=%s cmode=%d min_depot_threads=%d max_depot_threads=%d max_connections=%d max_thread_workload=%d coalesce_enable=%d dt_connect=" TT "\n", section, ic->connection_mode, ic->min_threads, ic->max_threads, ic->max_connections, ic->max_workload, ic->coalesce_enable, ic->dt_connect);
+    log_printf(1, "section=%s cmode=%d min_depot_threads=%d max_depot_threads=%d max_connections=%d max_thread_workload=%" PRId64 " coalesce_enable=%d dt_connect=" TT "\n", section, ic->connection_mode, ic->min_threads, ic->max_threads, ic->max_connections, ic->max_workload, ic->coalesce_enable, ((apr_time_t) ic->dt_connect));
 
     return(0);
 }

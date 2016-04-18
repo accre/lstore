@@ -205,7 +205,7 @@ char *mq_address_to_string(mq_msg_t *address)
     *(string + (--n)) = 0; // remove the trailing comma and make this the end of the string
 
     // For testing:
-    log_printf(0, "DEBUG: string created = %s, malloc size = %d, actual size = %d\n", string, (msg_size+frames+10), strlen(string));
+    log_printf(0, "DEBUG: string created = %s, malloc size = %d, actual size = %lu\n", string, (msg_size+frames+10), strlen(string));
 
     return(string);
 }

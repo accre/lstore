@@ -532,7 +532,7 @@ op_status_t osrc_regex_object_set_multiple_attrs_func(void *arg, int id)
         bpos += zigzag_encode(op->n_attrs, (unsigned char *)&(buffer[bpos]));
 
         for (i=0; i<op->n_attrs; i++) {
-            log_printf(15, "i=%d key=%s val=%s bpos=%d\n", i, op->key[i], op->val[i], bpos);
+            log_printf(15, "i=%d key=%s val=%p bpos=%d\n", i, op->key[i], op->val[i], bpos);
             len = strlen(op->key[i]);
             n = (again == 0) ? zigzag_encode(len, (unsigned char *)&(buffer[bpos])) : 4;
             if (n<0) {

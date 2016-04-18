@@ -200,7 +200,7 @@ op_status_t rsrc_response_get_config(void *task_arg, int tid)
     f = mq_msg_next(msg);
     mq_get_frame(f, (void **)&id, &n);
     if (n != sizeof(uint64_t)) {
-        log_printf(0, " ERROR: Bad ID size!  Got %d should be sizeof(uint64_t)=%d\n", n, sizeof(uint64_t));
+        log_printf(0, " ERROR: Bad ID size!  Got %d should be sizeof(uint64_t)=%lu\n", n, sizeof(uint64_t));
         status = op_failure_status;
         goto fail;
     }

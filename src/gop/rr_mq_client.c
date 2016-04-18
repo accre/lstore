@@ -166,7 +166,7 @@ void build_send_data(mq_context_t *mqc)
     int status = gop_waitall(gop);
 
     if(status != OP_STATE_SUCCESS)
-        log_printf(0, "CLIENT: Failed sending RR_STREAM request to server at %s - error = %d\n", server, status);
+        log_printf(0, "CLIENT: Failed sending RR_STREAM request to server at %p - error = %d\n", server, status);
     else
         log_printf(10, "CLIENT: Successfully sent RR_STREAM request to server!\n");
 
@@ -246,7 +246,7 @@ int send_ping(mq_context_t *mqc, int track)
     int status = gop_waitall(gop);
 
     if(status != OP_STATE_SUCCESS)
-        log_printf(0, "CLIENT: Failed sending PING request to server at %s - error = %d\n", server, status);
+        log_printf(0, "CLIENT: Failed sending PING request to server at %p - error = %d\n", server, status);
     else {
         log_printf(15, "CLIENT: Successfully sent PING request to server!\n");
         result = 1;

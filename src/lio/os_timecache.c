@@ -635,7 +635,7 @@ int _ostcdb_resolve_attr_link(object_service_fn_t *os, Stack_t *tree, char *alin
     log_printf(5, "alink=%s aname=%s lattr=%p mr=%d\n", alink, aname, la, max_recurse);
 
     if (la != NULL) {
-        log_printf(5, "alink=%s aname=%s lo=%s la->link=%s\n", alink, aname, lo->fname, la->link, max_recurse);
+        log_printf(5, "alink=%s aname=%s lo=%s la->link=%s\n", alink, aname, lo->fname, la->link);
         if (la->link) {  //** Got to recurse
             aname = strdup(la->link);
             _ostcdb_resolve_attr_link(os, &rtree, aname, &lo, &la, max_recurse-1);

@@ -411,7 +411,7 @@ op_status_t segjerase_inspect_full_func(void *arg, int id)
         clr_dt = apr_time_now();
         memset(buffer, 0, bufsize);
         clr_dt = apr_time_now() - clr_dt;
-        log_printf(5, "sid=" XIDT " clr_dt=%d\n", segment_id(si->seg), apr_time_sec(clr_dt));
+        log_printf(5, "sid=" XIDT " clr_dt=%" PRId64 "\n", segment_id(si->seg), apr_time_sec(clr_dt));
         now = apr_time_now();
         err = gop_sync_exec(segment_read(s->child_seg, si->da, NULL, 1, &ex_read, &tbuf_read, 0, si->timeout));
         now = apr_time_now() - now;
@@ -956,11 +956,11 @@ op_status_t segjerase_inspect_func(void *arg, int id)
                 if (((si->inspect_mode & INSPECT_FIX_READ_ERROR) && (si->rerror > 0)) ||
                         ((si->inspect_mode & INSPECT_FIX_WRITE_ERROR) && (si->werror > 0))) {
                     loop++;
-                    info_printf(si->fd, 1, XIDT ": Encountered Read or write errors.  Attempting to correct them.  loop=%d write_errors=%d read_errors=%d\n", segment_id(si->seg), si->rerror, si->werror);
+                    info_printf(si->fd, 1, "seg = " XIDT "Encountered Read or write errors.  Attempting to correct them.  loop=%d write_errors=%d read_errors=%d\n", segment_id(si->seg), loop, si->rerror, si->werror);
                     si->rerror = si->werror = 0;
 
                     //** Issue the inspect for the underlying LUN
-                    info_printf(si->fd, 1, XIDT ": Inspecting child segment...\n", segment_id(si->seg));
+                    info_printf(si->fd, 1, "seg = " XIDT "Inspecting child segment...\n", segment_id(si->seg));
                     gop = segment_inspect(s->child_seg, si->da, si->fd, si->inspect_mode, si->bufsize, si->args, si->timeout);
                     gop_waitall(gop);
                     status = gop_get_status(gop);
@@ -1738,7 +1738,7 @@ op_generic_t *segjerase_write(segment_t *seg, data_attr_t *da, segment_rw_hints_
         rem_pos = iov[i].offset % s->data_size;
         rem_len = iov[i].len % s->data_size;
         if ((rem_pos != 0) || (rem_len != 0)) {
-            log_printf(1, "seg=" XIDT " offset/len not on stripe boundary!  data_size=" XOT " off[%d]=" XOT " len[i]=" XOT "\n",
+            log_printf(1, "seg=" XIDT " offset/len not on stripe boundary!  data_size=%d off[%d]=%" PRId64 " len[%d]=%" PRId64 "\n",
                        segment_id(seg), s->data_size, i, iov[i].offset, i, iov[i].len);
             return(NULL);
         }
@@ -1784,7 +1784,7 @@ op_generic_t *segjerase_read(segment_t *seg, data_attr_t *da, segment_rw_hints_t
         rem_pos = iov[i].offset % s->data_size;
         rem_len = iov[i].len % s->data_size;
         if ((rem_pos != 0) || (rem_len != 0)) {
-            log_printf(1, "seg=" XIDT " offset/len not on stripe boundary!  data_size=" XOT " off[%d]=" XOT " len[i]=" XOT "\n",
+            log_printf(1, "seg=" XIDT " offset/len not on stripe boundary!  data_size=%d off[%d]=%" PRId64 " len[%d]=%" PRId64 "\n",
                        segment_id(seg), s->data_size, i, iov[i].offset, i, iov[i].len);
             return(NULL);
         }
@@ -2056,7 +2056,7 @@ int segjerase_deserialize_text(segment_t *seg, ex_id_t id, exnode_exchange_t *ex
     }
 
     if (slun->chunk_size != (s->chunk_size + JE_MAGIC_SIZE)) {
-        log_printf(0, "Child chunk_size(%d) != JE chunksize(%d) + JE_MAGIC_SIZE(%d)!\n", slun->chunk_size, s->chunk_size, JE_MAGIC_SIZE);
+        log_printf(0, "Child chunk_size(%" PRId64 ") != JE chunksize(%d) + JE_MAGIC_SIZE(%d)!\n", slun->chunk_size, s->chunk_size, JE_MAGIC_SIZE);
         inip_destroy(fd);
         return(-6);
     }

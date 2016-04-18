@@ -36,7 +36,7 @@ http://www.accre.vanderbilt.edu
 #define __FMTTYPES_
 
 #include <inttypes.h>
-
+#include <apr_time.h>
 #define I64T "%" PRId64    //int64_t
 #define LU   "%" PRIu64    //uint64_t
 #define OT   I64T          // ibp_off_t

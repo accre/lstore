@@ -2,6 +2,7 @@
  * Round robin server
  *****************************/
 
+#include "apr_wrapper.h"
 #include "mq_portal.h"
 #include "mq_roundrobin.h"
 #include "mqs_roundrobin.h"

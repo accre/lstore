@@ -472,7 +472,7 @@ void *hc_recv_thread(apr_thread_t *th, void *data)
                 log_printf(5, "hc_recv_thread: Command timed out.  Retrying.. retry_count=%d  ns=%d gid=%d\n", hop->retry_count, ns_getid(ns), gop_id(hsop));
                 finished = 1;
             } else {
-                log_printf(15, "hc_recv_thread:  marking op as completed status=%d retry_count=%d ns=%d gid=%d\n", status, hop->retry_count, ns_getid(ns), gop_id(hsop));
+                log_printf(15, "hc_recv_thread:  marking op as completed status=%d retry_count=%d ns=%d gid=%d\n", status.op_status, hop->retry_count, ns_getid(ns), gop_id(hsop));
                 gop_mark_completed(hsop, status);
 
                 //**Update the number of commands processed **

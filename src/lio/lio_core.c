@@ -1433,7 +1433,7 @@ op_status_t lioc_truncate_fn(void *arg, int tid)
     //** Check if it exists
     ftype = lioc_exists(op->tuple.lc, op->tuple.creds, op->tuple.path);
 
-    log_printf(5, "fname=%s\n", op->tuple.path, ftype);
+    log_printf(5, "fname=%s\n", op->tuple.path);
 
     if ((ftype & OS_OBJECT_FILE) == 0) { //** Doesn't exist or is a dir
         info_printf(lio_ifd, 1, "ERROR source file(%s) doesn't exist or is a dir ftype=%d!\n", op->tuple.path, ftype);

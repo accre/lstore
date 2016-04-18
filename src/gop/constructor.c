@@ -1,5 +1,7 @@
 #include <apr_general.h>
 #include "constructor_wrapper.h"
+#include "opque.h"
+
 #ifdef ACCRE_CONSTRUCTOR_PREPRAGMA_ARGS
 #pragma ACCRE_CONSTRUCTOR_PREPRAGMA_ARGS(gop_construct_fn)
 #endif
