@@ -78,7 +78,7 @@ int pack_read_zlib(pack_t *pack, unsigned char *data, int len)
 //    provided.  The old data array should have been completely consumed!
 //***********************************************************************
 
-int pack_read_new_data_zlib(pack_t *pack, unsigned char *buffer, int bufsize)
+int pack_read_new_data_zlib(pack_t *pack, unsigned char *buffer, unsigned int bufsize)
 {
     pack_zlib_t *p = &(pack->zlib);
     int err = 0;
@@ -123,7 +123,7 @@ int pack_write_zlib(pack_t *pack, unsigned char *data, int len)
 //    expanded one.  The old data should have been copied to the new array
 //***********************************************************************
 
-void pack_write_resized_zlib(pack_t *pack, unsigned char *buffer, int bufsize)
+void pack_write_resized_zlib(pack_t *pack, unsigned char *buffer, unsigned int bufsize)
 {
     pack_zlib_t *p = &(pack->zlib);
     int offset;
@@ -210,7 +210,7 @@ int pack_write_flush_zlib(pack_t *pack)
 // pack_init_zlib - Initializes a ZLIB pack object
 //***********************************************************************
 
-void pack_init_zlib(pack_t *pack, int type, int mode, unsigned char *buffer, int bufsize)
+void pack_init_zlib(pack_t *pack, int type, int mode, unsigned char *buffer, unsigned int bufsize)
 {
     pack_zlib_t *p = &(pack->zlib);
 
@@ -286,7 +286,7 @@ int pack_read_raw(pack_t *pack, unsigned char *data, int len)
 //    provided.  The old data array should have been completely consumed!
 //***********************************************************************
 
-int pack_read_new_data_raw(pack_t *pack, unsigned char *buffer, int bufsize)
+int pack_read_new_data_raw(pack_t *pack, unsigned char *buffer, unsigned int bufsize)
 {
     pack_raw_t *p = &(pack->raw);
     int err = 0;
@@ -331,7 +331,7 @@ int pack_write_raw(pack_t *pack, unsigned char *data, int len)
 //    expanded one.  The old data should have been copied to the new array
 //***********************************************************************
 
-void pack_write_resized_raw(pack_t *pack, unsigned char *buffer, int bufsize)
+void pack_write_resized_raw(pack_t *pack, unsigned char *buffer, unsigned int bufsize)
 {
     pack_raw_t *p = &(pack->raw);
 
@@ -385,7 +385,7 @@ int pack_write_flush_raw(pack_t *pack)
 // pack_init_raw - Initializes a RAW pack object
 //***********************************************************************
 
-void pack_init_raw(pack_t *pack, int type, int mode, unsigned char *buffer, int bufsize)
+void pack_init_raw(pack_t *pack, int type, int mode, unsigned char *buffer, unsigned int bufsize)
 {
     pack_raw_t *p = &(pack->raw);
 
@@ -432,7 +432,7 @@ void pack_destroy(pack_t *pack)
 // pack_init - Initializes a pack structure
 //***********************************************************************
 
-void pack_init(pack_t *pack, int type, int mode, unsigned char *buffer, int bufsize)
+void pack_init(pack_t *pack, int type, int mode, unsigned char *buffer, unsigned int bufsize)
 {
     if (type == PACK_COMPRESS) {
         pack_init_zlib(pack, type, mode, buffer, bufsize);
@@ -446,7 +446,7 @@ void pack_init(pack_t *pack, int type, int mode, unsigned char *buffer, int bufs
 // pack_create - Creates a new pack structure and initializes it
 //***********************************************************************
 
-pack_t *pack_create(int type, int mode, unsigned char *buffer, int bufsize)
+pack_t *pack_create(int type, int mode, unsigned char *buffer, unsigned int bufsize)
 {
     pack_t *pack;
 
