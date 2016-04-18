@@ -40,7 +40,7 @@ compile_map['cppcheck'] = {
         deleteDir()
         unstash 'source'
         dir('src') {
-            sh "cppcheck --enable=all --inconclusive --xml --xml-version=2 $(pwd) > cppcheck.xml"
+            sh "cppcheck --enable=all --inconclusive --xml --xml-version=2 \$(pwd) > cppcheck.xml"
             step([$class: 'CppcheckPublisher'])
         }
     }
