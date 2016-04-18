@@ -14,7 +14,7 @@ macro(lstore_project_common LSTORE_PROJECT_NAME)
 
     # Build library
     add_library(${LSTORE_PROJECT_NAME} SHARED ${LSTORE_PROJECT_OBJS})
-    target_link_libraries(${LSTORE_PROJECT_NAME} LINK_PUBLIC ${LSTORE_LIBS})
+    target_link_libraries(${LSTORE_PROJECT_NAME} LINK_PUBLIC ${LSTORE_LIBS} m)
     target_include_directories(${LSTORE_PROJECT_NAME} SYSTEM PRIVATE ${LSTORE_INCLUDE_SYSTEM})
     target_include_directories(${LSTORE_PROJECT_NAME} PUBLIC ${LSTORE_INCLUDE_PUBLIC})
     add_dependencies(${LSTORE_PROJECT_NAME} externals)
@@ -22,7 +22,6 @@ macro(lstore_project_common LSTORE_PROJECT_NAME)
     # Build externals
     foreach(f ${LSTORE_PROJECT_EXECUTABLES})
         add_executable(${f} ${f}.c)
-        set_target_properties(${f} PROPERTIES LINKER_LANGUAGE CXX)
         target_link_libraries(${f} ${LSTORE_PROJECT_NAME})
         target_include_directories(${f} SYSTEM PRIVATE ${LSTORE_INCLUDE_SYSTEM})
         target_include_directories(${f} PUBLIC ${LSTORE_INCLUDE_PUBLIC})

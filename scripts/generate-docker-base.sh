@@ -55,7 +55,7 @@ for DISTRO in "${DISTROS[@]}"; do
             PACKAGE_PREFIX="RUN apt-get update && apt-get install -y"
             PACKAGE_POSTFIX=" --no-install-recommends --no-upgrade && apt-get clean"
             GLOBAL_INSTALL="RUN apt-get update && apt-get install -y build-essential fakeroot devscripts --no-install-recommends --no-upgrade && apt-get clean"
-            JAVA_INSTALL="RUN apt-get update && apt-get install -y openjdk-8-jdk-headless --no-install-recommends --no-upgrade && apt-get clean"
+            JAVA_INSTALL="RUN apt-get update && apt-get install -y cppcheck openjdk-8-jdk-headless lcov gcovr --no-install-recommends --no-upgrade && apt-get clean"
             ;;
         *)
             fatal "Unrecognized base image type: ${PARENT}"
