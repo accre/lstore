@@ -1,0 +1,24 @@
+The short version:
+---------------------------------------------------------------------------------------------------
+
+Only run once after cloning lstore-release or when new subprojects are added upstream:
+  ./scripts/init-source.sh
+
+
+Only need to run this once per distro or if changes to the docker build-time environment or dependencies are made:
+  sudo ./scripts/generate-docker-base.sh ubuntu-xenial
+  sudo ./scripts/build-docker-base.sh ubuntu-xenial
+
+
+Run every time you want to build new packages:
+  (optional: rm old package dir and repo dir to purge old packages, package/<distro-release> and repo/<distro>/<release> respectively)
+
+  sudo ./scripts/package.sh ubuntu-xenial
+  sudo ./scripts/update-repo.sh ubuntu-xenial
+ 
+  sudo ./scripts/test-repo.sh ubuntu-xenial (optional)
+
+
+Notes: 
+  * packages can be found at ./repo/<distro>/<release> be aware old versions may also be present.
+  * TODO: add instructions for adding packages via adding a local repo
