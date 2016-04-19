@@ -54,8 +54,8 @@ note "Beginning packaging at $(date) for $PACKAGE_SUBDIR"
 #   configurable in the future, the order of packages matters.
 #
 cd $PACKAGE_BASE/build
-for PACKAGE in apr-accre apr-util-accre jerasure czmq \
-               toolbox gop ibp lio gridftp; do
+for PACKAGE in apr-accre apr-util-accre jerasure czmq leveldb \
+               toolbox gop ibp lio; do     # gridftp removed because the build is currently in flux/broken
     if [ "$PACKAGE" == "czmq" ];then
         if (ldconfig -p | grep -q libczmq); then
                 echo "libczmq.so is available: skipping czmq package build.";
@@ -89,7 +89,7 @@ for PACKAGE in apr-accre apr-util-accre jerasure czmq \
                              $PACKAGE_DISTRO
         mkdir -p $PACKAGE_REPO
         # Need to figure out what to do with these eventually.
-        rm *.source.rpm || true
+        rm *.source.rpm >/dev/null 2>&1 || true
         (
             umask 000
             cp *.${PACKAGE_SUFFIX} $PACKAGE_REPO

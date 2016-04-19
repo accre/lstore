@@ -86,6 +86,8 @@ for DISTRO in "${DISTROS[@]}"; do
                                     libexpat1-dev
                                     libfuse-dev
                                     libglobus-gridftp-server-dev
+                                    libkrb5-dev
+                                    libsnappy-dev
                                     libssl-dev
                                     libz-dev
                                     libzmq3-dev

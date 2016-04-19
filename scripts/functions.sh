@@ -9,12 +9,13 @@ LSTORE_TARBALL_ROOT=$LSTORE_RELEASE_BASE/tarballs/
 LSTORE_HEAD_BRANCHES="apr-accre=master
                        apr-util-accre=master
                        czmq=master
-                       gop=master
-                       gridftp=master
-                       ibp=master
+                       gop=dev/alan
+                       gridftp=feature/propagate-errors
+                       ibp=dev/alan
                        jerasure=master
-                       lio=master
-                       toolbox=master"
+                       leveldb=master
+                       lio=dev/alan
+                       toolbox=dev/alan"
 
 #
 # Informational messages
@@ -114,6 +115,23 @@ function build_lstore_binary_outof_tree() {
 
 }
 
+native_deb_src() {
+    cp -ra $SOURCE_BASE/$PACKAGE/ ./
+    if [ -f ./$PACKAGE/DEBIAN/${PACKAGE}*.dsc ]; then
+        cd ./$PACKAGE/DEBIAN
+        dpkg-source -x ./${PACKAGE}*.dsc ${PACKAGE}
+    fi
+    pushd $PACKAGE
+    #echo "DEBUG: PWD $(pwd) ls:\n $(ls -l)\n"
+    dpkg-buildpackage -uc -us
+    popd
+}
+
+native_rpm_src(){
+#TODO setup rpm build env, rpmbuild -bb --clean <pkg>.spec, etc
+: #NOOP to keep bash happy about empty function
+}
+
 function build_lstore_package() {
     set -e
     TO_BUILD=$1
@@ -129,12 +147,12 @@ function build_lstore_package() {
         ubuntu-*|debian-*)
             CPACK_ARG="-G DEB"
             CMAKE_ARG="-DCPACK_GENERATOR=DEB -DCPACK_SOURCE_GENERATOR=DEB"
-            NATIVE_PKG="cp -ra $SOURCE_BASE/$PACKAGE/ ./ ; pushd $PACKAGE ; dpkg-buildpackage -uc -us ; popd"
+            NATIVE_PKG="native_deb_src"
             ;;
         centos-*)
             CPACK_ARG="-G RPM"
             CMAKE_ARG="-DCPACK_GENERATOR=RPM -DCPACK_SOURCE_GENERATOR=RPM"
-            NATIVE_PKG=""
+            NATIVE_PKG="native_rpm_src"
             ;;
         *)
             fatal "Unexpected distro name $DISTRO_NAME"
@@ -147,9 +165,9 @@ function build_lstore_package() {
                    --debug --verbose "-DCPACK_VERSION=$TAG_NAME" || \
                 fatal "$(cat _CPack_Packages/*/InstallOutput.log)"
             ;;
-        czmq)
+        czmq|leveldb)
             eval $NATIVE_PKG
-            ;;
+            ;; #TODO check if eval is uneeded
         jerasure|lio|ibp|gop|toolbox|gridftp)
             # This is gross, but works for now..
             set -x
