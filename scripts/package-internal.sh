@@ -56,6 +56,7 @@ note "Beginning packaging at $(date) for $PACKAGE_SUBDIR"
 cd $PACKAGE_BASE/build
 for PACKAGE in apr-accre apr-util-accre jerasure czmq \
                toolbox gop ibp lio release meta; do
+#for PACKAGE in meta; do
     SOURCE_BASE=$(get_repo_source_path ${PACKAGE})
     if [ "$PACKAGE" == "czmq" ];then
         if (ldconfig -p | grep -q libczmq); then
@@ -80,7 +81,7 @@ for PACKAGE in apr-accre apr-util-accre jerasure czmq \
     TAG_NAME=$(cd $SOURCE_BASE &&
                 ( git update-index -q --refresh &>/dev/null || true ) && \
                 git describe --abbrev=32 --dirty="-dev" --candidates=100 \
-                    --match 'ACCRE_*' | sed 's,^ACCRE_,,')
+                    --match 'v*' | sed 's,^v,,')
     if [ -z "$TAG_NAME" ]; then
         TAG_NAME="0.0.0-$(cd $SOURCE_BASE &&
                 ( git update-index -q --refresh &>/dev/null || true ) && \
