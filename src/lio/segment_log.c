@@ -274,7 +274,7 @@ op_status_t seglog_write_func(void *arg, int id)
     opque_t *q;
     op_generic_t *gop;
 
-    log_printf(15, "seg=" XIDT " n_iov=%d offset[0]=" XOT " len[0]=" XOT "\n", sw->seg, sw->n_iov, sw->iov[0].offset, sw->iov[0].len);
+    log_printf(15, "seg=%p n_iov=%d offset[0]=" XOT " len[0]=" XOT "\n", sw->seg, sw->n_iov, sw->iov[0].offset, sw->iov[0].len);
     q = new_opque();
 
     segment_lock(sw->seg);

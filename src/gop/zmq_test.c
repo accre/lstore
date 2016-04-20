@@ -233,8 +233,6 @@ int main(int argc, char **argv)
     } while ((start_option < i) && (i<argc));
 
 
-    apr_wrapper_start();
-    init_opque_system();
     init_random();
 
     if (test_mode == MODE_CLIENT) {

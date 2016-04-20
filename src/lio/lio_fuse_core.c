@@ -419,7 +419,7 @@ int lfs_readdir(const char *dname, void *buf, fuse_fill_dir_t filler, off_t off,
         de->dentry = strdup(fname+prefix_len+1);
         _lfs_parse_stat_vals(dit->lfs, fname, &(de->stat), dit->val, dit->v_size);
         free(fname);
-        log_printf(1, "next fname=%s ftype=%d prefix_len=%d ino=" XIDT " off=%d\n", de->dentry, ftype, prefix_len, de->stat.st_ino, off);
+        log_printf(1, "next fname=%s ftype=%d prefix_len=%d ino=" XIDT " off=" XOT "\n", de->dentry, ftype, prefix_len, de->stat.st_ino, off);
 
         move_to_bottom(dit->stack);
         insert_below(dit->stack, de);
@@ -686,13 +686,13 @@ int lfs_read(const char *fname, char *buf, size_t size, off_t off, struct fuse_f
 
     if (log_level() > 0) {
         t2 = size+off-1;
-        log_printf(1, "LFS_READ:START " XOT " " XOT "\n", off, size);
+        log_printf(1, "LFS_READ:START " XOT " %zu\n", off, size);
         log_printf(1, "LFS_READ:END " XOT "\n", t2);
     }
 
     dt = apr_time_now() - now;
     dt /= APR_USEC_PER_SEC;
-    log_printf(1, "END fname=%s seg=" XIDT " size=" XOT " off=" XOT " nbytes=" XOT " dt=%lf\n", fname, segment_id(fd->fh->seg), t1, size, nbytes, dt);
+    log_printf(1, "END fname=%s seg=" XIDT " size=" XOT " off=%zu nbytes=" XOT " dt=%lf\n", fname, segment_id(fd->fh->seg), t1, size, nbytes, dt);
     flush_log();
 
 //  if (err != OP_STATE_SUCCESS) {
@@ -988,7 +988,7 @@ int lfs_listxattr(const char *fname, char *list, size_t size)
     gop_sync_exec(os_close_object(lfs->lc->os, fd));
     os_regex_table_destroy(attr_regex);
 
-    log_printf(15, "bpos=%d size=%d buf=%s\n", bpos, size, buf);
+    log_printf(15, "bpos=%d size=%zu buf=%s\n", bpos, size, buf);
 
     if (size == 0) {
         log_printf(15, "SIZE bpos=%d buf=%s\n", bpos, buf);
@@ -1221,7 +1221,7 @@ int lfs_getxattr(const char *fname, const char *name, char *buf, size_t size, ui
     int v_size, err;
 
     v_size= size;
-    log_printf(1, "fname=%s size=%d attr_name=%s\n", fname, size, name);
+    log_printf(1, "fname=%s size=%zu attr_name=%s\n", fname, size, name);
     flush_log();
 
     v_size = (size == 0) ? -lfs->lc->max_attr : -size;
@@ -1265,7 +1265,7 @@ int lfs_setxattr(const char *fname, const char *name, const char *fval, size_t s
     int v_size, err;
 
     v_size= size;
-    log_printf(1, "fname=%s size=%d attr_name=%s\n", fname, size, name);
+    log_printf(1, "fname=%s size=%zu attr_name=%s\n", fname, size, name);
     flush_log();
 
     if (flags != 0) { //** Got an XATTR_CREATE/XATTR_REPLACE

@@ -316,7 +316,7 @@ int lio_load_file_handle_attrs(lio_config_t *lc, creds_t *creds, char *fname, ex
         sscanf(vino, XIDT, inode);
     } else {
         generate_ex_id(inode);
-        log_printf(0, "Missing inode generating a temp fake one! ino=" XIDT "\n", inode);
+        log_printf(0, "Missing inode generating a temp fake one! ino=" XIDT "\n", *inode);
     }
 
     return(0);

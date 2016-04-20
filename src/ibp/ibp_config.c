@@ -768,7 +768,7 @@ int ibp_load_config(ibp_context_t *ic, inip_file_t *keyfile, char *section)
 
     copy_ibp_config(ic);
 
-    log_printf(1, "section=%s cmode=%d min_depot_threads=%d max_depot_threads=%d max_connections=%d max_thread_workload=%d coalesce_enable=%d dt_connect=" TT "\n", section, ic->connection_mode, ic->min_threads, ic->max_threads, ic->max_connections, ic->max_workload, ic->coalesce_enable, ic->dt_connect);
+    log_printf(1, "section=%s cmode=%d min_depot_threads=%d max_depot_threads=%d max_connections=%d max_thread_workload=%" PRId64 " coalesce_enable=%d dt_connect=" TT "\n", section, ic->connection_mode, ic->min_threads, ic->max_threads, ic->max_connections, ic->max_workload, ic->coalesce_enable, ((apr_time_t) ic->dt_connect));
 
     return(0);
 }
@@ -848,8 +848,6 @@ ibp_context_t *ibp_create_context()
     assert(ic != NULL);
     memset(ic, 0, sizeof(ibp_context_t));
 
-    assert_result(apr_wrapper_start(), APR_SUCCESS);
-
     if (_ibp_context_count == 0) {
         dns_cache_init(100);
 
@@ -908,8 +906,6 @@ void ibp_destroy_context(ibp_context_t *ic)
 
         phoebus_destroy();
     }
-
-    apr_wrapper_stop();
 
     free(ic);
 }

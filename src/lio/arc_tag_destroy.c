@@ -48,7 +48,6 @@ void destroy_tag_file(const char *filepath)
 void print_usage()
 {
     printf("\nUsage: arc_tag_destrot [tag file name]\n\tIf no tag name is specified, the default ~/.arc_tag_file.txt will be used\n");
-    printf("");
     exit(0);
 }
 

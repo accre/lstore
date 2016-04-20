@@ -3186,7 +3186,7 @@ int osf_set_attr(object_service_fn_t *os, creds_t *creds, osfile_fd_t *ofd, char
     fd = fopen(fname, (append_val == 0) ? "w" : "a");
 
 //log_printf(15, "fd=%p\n", fd);
-    if (fd == NULL) log_printf(0, "ERROR opening attr file attr=%s val=%s v_size=%d fname=%s append=%d\n", attr, val, v_size, fname, append_val);
+    if (fd == NULL) log_printf(0, "ERROR opening attr file attr=%s val=%p v_size=%d fname=%s append=%d\n", attr, val, v_size, fname, append_val);
     if (fd == NULL) return(-1);
     if (v_size > 0) fwrite(val, v_size, 1, fd);
     fclose(fd);

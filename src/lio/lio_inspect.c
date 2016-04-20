@@ -1407,7 +1407,7 @@ int main(int argc, char **argv)
     if (rid_changes != NULL) {
         check_pools(pools, rid_lock, todo_mode, &pool_finished, &pool_todo);
         if (pool_todo <= 0) {
-            info_printf(lio_ifd, 0, "==================== All pools have converged! iteration: %d =====================\n", iter);
+            info_printf(lio_ifd, 0, "==================== All pools have converged! iteration: " XOT " =====================\n", iter);
         }
     }
 
@@ -1472,8 +1472,8 @@ int main(int argc, char **argv)
                     if (dump_iter > 0) {
                         if ((iter % dump_iter) == 0) {
                             apr_thread_mutex_lock(rid_lock);
-                            info_printf(lio_ifd, 0, "------------------ POOL state for iteration %d -----------------\n", iter);
-                            info_printf(lio_ifd, 0, "ITERATION: %d\n", iter);
+                            info_printf(lio_ifd, 0, "------------------ POOL state for iteration " XOT " -----------------\n", iter);
+                            info_printf(lio_ifd, 0, "ITERATION: " XOT "\n", iter);
                             dump_pools(lio_ifd, pools, base);
                             apr_thread_mutex_unlock(rid_lock);
                         }
@@ -1484,7 +1484,7 @@ int main(int argc, char **argv)
                     if ((iter % check_iter) == 0) {
                         check_pools(pools, rid_lock, todo_mode, &pool_finished, &pool_todo);
                         if (pool_todo <= 0) {
-                            info_printf(lio_ifd, 0, "==================== All pools have converged! iteration: %d =====================\n", iter);
+                            info_printf(lio_ifd, 0, "==================== All pools have converged! iteration: " XOT " =====================\n", iter);
                         }
                     }
                 }

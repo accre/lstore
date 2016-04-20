@@ -157,14 +157,14 @@ int main(int argc, char **argv)
         wlen = tlen;
 
 //     log_printf(15, "ex_put: pos=%d rlen=%d text=!%s!\n", i, len, buffer);
-        log_printf(1, "ex_put: pos=%d rlen=%d wlen=%d\n", i, rlen, wlen);
+        log_printf(1, "ex_put: pos=" XOT " rlen=" XOT " wlen=" XOT "\n", i, rlen, wlen);
         //** Start the write
         tbuffer_single(&tbuf, wlen, wbuf);
         ex_iovec_single(&iov, i, wlen);
         gop = segment_write(seg, lio_gc->da, NULL, 1, &iov, &tbuf, 0, lio_gc->timeout);
         gop_start_execution(gop);
 
-        log_printf(1, "ex_put: i=%d gid=%d\n", i, gop_id(gop));
+        log_printf(1, "ex_put: i=" XOT " gid=%d\n", i, gop_id(gop));
         flush_log();
 
         //** Read in the next block

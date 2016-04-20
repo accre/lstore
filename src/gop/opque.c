@@ -165,7 +165,7 @@ void _opque_cb(void *v, int mode)
 
     lock_opque(q);
 
-    log_printf(15, "_opque_cb: qid=%d gid=%d success=%d gop_type(gop)=%d\n", gop_id(&(q->opque->op)), gop_id(gop), success, gop_get_type(gop));
+    log_printf(15, "_opque_cb: qid=%d gid=%d success=%d gop_type(gop)=%d\n", gop_id(&(q->opque->op)), gop_id(gop), success.op_status, gop_get_type(gop));
 
 
     //** It always goes on the finished list

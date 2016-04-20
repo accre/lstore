@@ -841,7 +841,7 @@ void os_attribute_tests()
     dt = got - now;
     if (labs(dt) > 5) {
         nfailed++;
-        log_printf(0, "ERROR: attributre timestamp is off attr=%s dt=" XOT " should be less than 5\n", key);
+        log_printf(0, "ERROR: attributre timestamp is off attr=%s dt=" XOT " should be less than 5\n", key, dt);
         return;
     }
     free(rval);
@@ -892,7 +892,7 @@ void os_attribute_tests()
     }
     if (strcmp(val, rval) != 0) {
         nfailed++;
-        log_printf(0, "ERROR: val mismatch attr=%s should be=%d got=%s\n", key, val, rval);
+        log_printf(0, "ERROR: val mismatch attr=%s should be=%s got=%s\n", key, val, rval);
         return;
     }
     free(rval);
@@ -954,7 +954,7 @@ void os_attribute_tests()
     if (v_size > 0) {
         if (strstr(rval, val) == NULL) {
             nfailed++;
-            log_printf(0, "ERROR: Cant find my tag in key=%d timestamp=%s tag=%s err=%d\n", key, rval, val, err);
+            log_printf(0, "ERROR: Cant find my tag in key=%s timestamp=%s tag=%s err=%d\n", key, rval, val, err);
         }
         free(rval);
     } else {
@@ -976,7 +976,7 @@ void os_attribute_tests()
     if (v_size > 0) {
         if (strstr(rval, val) == NULL) {
             nfailed++;
-            log_printf(0, "ERROR: Cant find my tag in key=%d timestamp=%s tag=%s err=%d\n", key, rval, val, err);
+            log_printf(0, "ERROR: Cant find my tag in key=%s timestamp=%s tag=%s err=%d\n", key, rval, val, err);
         }
         free(rval);
     } else {
@@ -1034,7 +1034,7 @@ void os_attribute_tests()
     }
     if (strcmp(val, rval) != 0) {
         nfailed++;
-        log_printf(0, "ERROR: val mismatch attr=%s should be=foo1 got=$s\n", key, val);
+        log_printf(0, "ERROR: val mismatch attr=%s should be=foo1 got=%s\n", key, val);
         return;
     }
     free(rval);
@@ -1110,8 +1110,8 @@ void os_attribute_tests()
     v_size = -1000;
     key = "user.foo1";
     val="foo1";
-    log_printf(15, "PTR1 before val=%s sizeof(void)=%d sizeof(void *)=%d sizeof(void**)=%d\n", val, sizeof(void), sizeof(void *), sizeof(void **));
-    log_printf(15, "PTR1 before val=%s sizeof(char)=%d sizeof(char *)=%d sizeof(char**)=%d\n", val, sizeof(char), sizeof(char *), sizeof(char **));
+    log_printf(15, "PTR1 before val=%s sizeof(void)=%lu sizeof(void *)=%lu sizeof(void**)=%lu\n", val, sizeof(void), sizeof(void *), sizeof(void **));
+    log_printf(15, "PTR1 before val=%s sizeof(char)=%lu sizeof(char *)=%lu sizeof(char**)=%lu\n", val, sizeof(char), sizeof(char *), sizeof(char **));
     err = gop_sync_exec(os_set_attr(os, creds, foo_fd, key, val, strlen(val)));
     log_printf(15, "PTR1 after val=%s\n", val);
     if (err != OP_STATE_SUCCESS) {
@@ -1139,7 +1139,7 @@ void os_attribute_tests()
     }
     if (strcmp(val, rval) != 0) {
         nfailed++;
-        log_printf(0, "ERROR: val mismatch attr=%s should be=foo1 got=$s\n", key, val);
+        log_printf(0, "ERROR: val mismatch attr=%s should be=foo1 got=%s\n", key, val);
         return;
     }
     free(rval);
@@ -1167,7 +1167,7 @@ void os_attribute_tests()
     }
     if (strcmp(val, rval) != 0) {
         nfailed++;
-        log_printf(0, "ERROR: val mismatch attr=%s should be=%s got=$s\n", key, val, rval);
+        log_printf(0, "ERROR: val mismatch attr=%s should be=%s got=%s\n", key, val, rval);
         return;
     }
     free(rval);
@@ -1202,7 +1202,7 @@ void os_attribute_tests()
     for (i=0; i<3; i++) {
         if (strcmp(mval[i], mrval[i]) != 0) {
             nfailed++;
-            log_printf(0, "ERROR: val mismatch attr=%s should be=%s got=$s\n", mkey[i], mval[i], mrval[i]);
+            log_printf(0, "ERROR: val mismatch attr=%s should be=%s got=%s\n", mkey[i], mval[i], mrval[i]);
             return;
         }
 
@@ -1296,7 +1296,7 @@ void os_attribute_tests()
     }
     if (strcmp(val, rval) != 0) {
         nfailed++;
-        log_printf(0, "ERROR: val mismatch attr=%s should be=%s got=$s\n", key, val, rval);
+        log_printf(0, "ERROR: val mismatch attr=%s should be=%s got=%s\n", key, val, rval);
         return;
     }
     free(rval);
@@ -1438,7 +1438,7 @@ void os_attribute_tests()
     //** Verify it took
     snprintf(foo_path, PATH_LEN, "%s/*", prefix);
     regex = os_path_glob2regex(foo_path);
-    attr_regex = os_regex2table("^user\.((foo1)|(bar2))$");
+    attr_regex = os_regex2table("^user\\.((foo1)|(bar2))$");
     oit = os_create_object_iter(lio_gc->os, lio_gc->creds, regex, NULL, OS_OBJECT_FILE, attr_regex, 1000, &it, -1000);
     if (oit == NULL) {
         nfailed++;

@@ -268,7 +268,7 @@ op_generic_t *rs_simple_request(resource_service_fn_t *arg, data_attr_t *da, rs_
                 loop_end = 2;
                 rs_query_count(arg, query_local, &j, &(kvq_local.n_unique), &(kvq_local.n_pickone));
                 if ((kvq_local.n_unique != 0) && (kvq_local.n_pickone != 0)) {
-                    log_printf(0, "Unsupported use of pickone/unique in local RSQ hints_list[%d]=%s!\n", i, hints_list[i]);
+                    log_printf(0, "Unsupported use of pickone/unique in local RSQ hints_list[%d]=%s!\n", i, hints_list[i].fixed_rid_key);
                     status.op_status = OP_STATE_FAILURE;
                     status.error_code = RS_ERROR_FIXED_NOT_FOUND;
                     hints_list[i].status = RS_ERROR_HINTS_INVALID_LOCAL;
@@ -280,7 +280,7 @@ op_generic_t *rs_simple_request(resource_service_fn_t *arg, data_attr_t *da, rs_
             if (i<fixed_size) {  //** Use the fixed list for assignment
                 rse = list_search(rss->rid_table, hints_list[i].fixed_rid_key);
                 if (rse == NULL) {
-                    log_printf(0, "Missing element in hints list[%d]=%s! Ignoring check.\n", i, hints_list[i]);
+                    log_printf(0, "Missing element in hints list[%d]=%s! Ignoring check.\n", i, hints_list[i].fixed_rid_key);
                     hints_list[i].status = RS_ERROR_FIXED_NOT_FOUND;
                     continue;   //** Skip the check
                 }
@@ -408,7 +408,7 @@ op_generic_t *rs_simple_request(resource_service_fn_t *arg, data_attr_t *da, rs_
                    log_printf(1, "Match fail in fixed list[%d]=%s!\n", i, hints_list[i].fixed_rid_key);
                    hints_list[i].status = RS_ERROR_FIXED_MATCH_FAIL;
                 } else {
-                   log_printf(1, "Match fail in fixed list and no hints are provided!\n", i);
+                   log_printf(1, "Match fail in fixed list and no hints are provided!\n");
                 }
                 status.op_status = OP_STATE_FAILURE;
                 status.error_code = RS_ERROR_FIXED_MATCH_FAIL;

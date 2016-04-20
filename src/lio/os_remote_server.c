@@ -995,7 +995,7 @@ void osrs_open_object_cb(void *arg, mq_task_t *task)
     mq_get_frame(fmode, (void **)&data, &fsize);
     n = zigzag_decode(data, fsize, &mode);
     zigzag_decode(&(data[n]), fsize, &max_wait);
-    log_printf(5, "fname=%s mode=%d max_wait=%d\n", src_name, mode, max_wait);
+    log_printf(5, "fname=%s mode=%" PRId64 " max_wait=%" PRId64 "\n", src_name, mode, max_wait);
 
     fhb = mq_msg_pop(msg);  //** Heartbeat frame on success
     fhandle = mq_msg_pop(msg);  //** Handle for aborts
@@ -1233,7 +1233,7 @@ void osrs_get_mult_attr_cb(void *arg, mq_task_t *task)
     bpos += i;
     fsize -= i;
 
-    log_printf(5, "max_stream=%d timeout=%d n=%d\n", max_stream, timeout, n);
+    log_printf(5, "max_stream=%" PRId64 " timeout=%" PRId64 " n=%" PRId64 "\n", max_stream, timeout, n);
     type_malloc_clear(key, char *, n);
     type_malloc_clear(val, void *, n);
     type_malloc(v_size, int, n);
@@ -1291,7 +1291,7 @@ void osrs_get_mult_attr_cb(void *arg, mq_task_t *task)
             if (v_size[i] > 0) {
                 log_printf(15, "val[%d]=%s\n", i, (char *)val[i]);
             } else {
-                log_printf(15, "val[%d]=NULL\n", i, NULL);
+                log_printf(15, "val[%d]=NULL\n", i);
             }
         }
     }
@@ -1406,7 +1406,7 @@ void osrs_set_mult_attr_cb(void *arg, mq_task_t *task)
     bpos += i;
     fsize -= i;
 
-    log_printf(5, "timeout=%d n=%d\n", timeout, n);
+    log_printf(5, "timeout=%" PRId64 " n=%" PRId64 "\n", timeout, n);
     type_malloc_clear(key, char *, n);
     type_malloc_clear(val, char *, n);
     type_malloc(v_size, int, n);
@@ -1702,7 +1702,7 @@ void osrs_regex_set_mult_attr_cb(void *arg, mq_task_t *task)
         log_printf(15, "i=%d key=%s val=%s bpos=%d\n", i, key[i], val[i], bpos);
     }
 
-    log_printf(5, "hb_abort_timeout=%d\n", hb_timeout);
+    log_printf(5, "hb_abort_timeout=%" PRId64 "\n", hb_timeout);
 
     //** run the task
     if (creds != NULL) {
@@ -1854,7 +1854,7 @@ void osrs_copy_mult_attr_cb(void *arg, mq_task_t *task)
     bpos += i;
     fsize -= i;
 
-    log_printf(5, "timeout=%d n=%d\n", timeout, n);
+    log_printf(5, "timeout=%" PRId64 " n=%" PRId64 "\n", timeout, n);
     type_malloc_clear(key_src, char *, n);
     type_malloc_clear(key_dest, char *, n);
 
@@ -2009,7 +2009,7 @@ void osrs_move_mult_attr_cb(void *arg, mq_task_t *task)
     bpos += i;
     fsize -= i;
 
-    log_printf(5, "timeout=%d n=%d\n", timeout, n);
+    log_printf(5, "timeout=%" PRId64 " n=%" PRId64 "\n", timeout, n);
     type_malloc_clear(key_src, char *, n);
     type_malloc_clear(key_dest, char *, n);
 
@@ -2163,7 +2163,7 @@ void osrs_symlink_mult_attr_cb(void *arg, mq_task_t *task)
     bpos += i;
     fsize -= i;
 
-    log_printf(5, "timeout=%d n=%d\n", timeout, n);
+    log_printf(5, "timeout=%" PRId64 " n=%" PRId64 "\n", timeout, n);
     type_malloc_clear(key_src, char *, n);
     type_malloc_clear(key_dest, char *, n);
     type_malloc_clear(src_path, char *, n);
@@ -2356,7 +2356,7 @@ void osrs_object_iter_alist_cb(void *arg, mq_task_t *task)
         if (n < 0)  goto fail;
         bpos += n;
         v_size[i] = -llabs(len);
-        log_printf(15, "i=%d key=%s v_size=%d bpos=%d\n", i, key[i], len, bpos);
+        log_printf(15, "i=%d key=%s v_size=%" PRId64 " bpos=%d\n", i, key[i], len, bpos);
     }
 
     path = os_regex_table_unpack(&(buffer[bpos]), fsize-bpos, &n);
@@ -2406,7 +2406,7 @@ fail:
         err += mq_stream_write(mqs, tbuf, n);
         err += mq_stream_write(mqs, fname, len);
 
-        log_printf(5, "ftype=%d prefix_len=%d len=%d fname=%s n_attrs=%d\n", ftype, prefix_len, len, fname, n_attrs);
+        log_printf(5, "ftype=%d prefix_len=%d len=%" PRId64 " fname=%s n_attrs=%" PRId64 "\n", ftype, prefix_len, len, fname, n_attrs);
         //** Now dump the attributes
         for (i=0; i<n_attrs; i++) {
             n = zigzag_encode(v_size[i], tbuf);
@@ -2585,7 +2585,7 @@ fail:
         err += mq_stream_write(mqs, tbuf, n);
         err += mq_stream_write(mqs, fname, len);
 
-        log_printf(5, "ftype=%d prefix_len=%d len=%d fname=%s\n", ftype, prefix_len, len, fname);
+        log_printf(5, "ftype=%d prefix_len=%d len=%" PRId64 " fname=%s\n", ftype, prefix_len, len, fname);
         //** Now dump the attributes
         if (attr_regex != NULL) {
             v_size = v_max;
@@ -2702,7 +2702,7 @@ void osrs_attr_iter_cb(void *arg, mq_task_t *task)
 
     //** Get the local file handle
     fhkey = *(intptr_t *)fhandle;
-    log_printf(5, "PTR key=%" PRIdPTR "\n", key);
+    log_printf(5, "PTR key=%p\n", key);
 
     //** Do the host lookup for the file handle
     if ((handle = mq_ongoing_get(osrs->ongoing, id, id_size, fhkey)) == NULL) {

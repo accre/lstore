@@ -633,7 +633,7 @@ op_status_t read_recv(op_generic_t *gop, NetStream_t *ns)
     err = gop_readline_with_timeout(ns, buffer, sizeof(buffer), gop);
     if (err.op_status != OP_STATE_SUCCESS) return(err);
 
-    log_printf(15, "read_recv: after readline err = %d  ns=%d buffer=%s\n", err, ns_getid(ns), buffer);
+    log_printf(15, "read_recv: after readline err = %d  ns=%d buffer=%s\n", err.op_status, ns_getid(ns), buffer);
 
     rwbuf = cmd->rwbuf[0];
 
@@ -643,7 +643,7 @@ op_status_t read_recv(op_generic_t *gop, NetStream_t *ns)
     nbytes = swait;
     if ((status != IBP_OK) || (nbytes != cmd->size)) {
         log_printf(15, "read_recv: (read) ns=%d cap=%s offset[0]=" I64T " len[0]=" I64T " err=%d Error!  status=%d bytes=!%s!\n",
-                   ns_getid(ns), cmd->cap, rwbuf->iovec[0].offset, rwbuf->size, err, status, buffer);
+                   ns_getid(ns), cmd->cap, rwbuf->iovec[0].offset, rwbuf->size, err.op_status, status, buffer);
 
         process_error(gop, &err, status, swait, NULL);
         return(err);
@@ -2568,7 +2568,7 @@ op_status_t copy_recv(op_generic_t *gop, NetStream_t *ns)
     nbytes = swait;
     if ((status != IBP_OK) || (nbytes != cmd->len)) {
         log_printf(0, "copy_recv: (read) ns=%d srccap=%s destcap=%s offset=" I64T " len=" I64T " err=%d Error!  status/nbytes=!%s!\n",
-                   ns_getid(ns), cmd->srccap, cmd->destcap, cmd->src_offset, cmd->len, err, buffer);
+                   ns_getid(ns), cmd->srccap, cmd->destcap, cmd->src_offset, cmd->len, err.op_status, buffer);
         process_error(gop, &err, status, swait, NULL);
     }
 
@@ -2912,7 +2912,7 @@ op_status_t depot_inq_recv(op_generic_t *gop, NetStream_t *ns)
     err = gop_readline_with_timeout(ns, buffer, sizeof(buffer), gop);
     if (err.op_status != OP_STATE_SUCCESS) return(err);
 
-    log_printf(15, "depot_inq_recv: after readline ns=%d buffer=%s err=%d\n", ns_getid(ns), buffer, err);
+    log_printf(15, "depot_inq_recv: after readline ns=%d buffer=%s err=%d\n", ns_getid(ns), buffer, err.op_status);
 
     status = atoi(string_token(buffer, " ", &bstate, &fin));
     if ((status == IBP_OK) && (fin == 0)) {

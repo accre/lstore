@@ -1138,7 +1138,7 @@ void _lio_parse_stat_vals(char *fname, struct stat *stat, char **val, int *v_siz
     if (val[6] != NULL) {
         link = val[6];
         readlink = strlen(link);
-        log_printf(15, "inode->link=%s mount_point=%s moun_point_len=%d\n", link, mount_prefix, strlen(mount_prefix));
+        log_printf(15, "inode->link=%s mount_point=%s moun_point_len=%lu\n", link, mount_prefix, strlen(mount_prefix));
         if (link[0] == '/') { //** If an absolute link then we need to add the mount prefix back
             readlink += strlen(mount_prefix) + 1;
             if (flink != NULL) {
@@ -1245,12 +1245,12 @@ int lio_fsck_check_object(lio_config_t *lc, creds_t *creds, char *path, int ftyp
             break;
         case LIO_FSCK_PARENT:
             os_path_split(path, &dir, &file);
-            log_printf(15, "fname=%d parent=%s file=%s\n", path, dir, file);
+            log_printf(15, "fname=%s parent=%s file=%s\n", path, dir, file);
             free(file);
             file = NULL;
             vs = -lc->max_attr;
             lio_get_attr(lc, creds, dir, NULL, "system.owner", (void **)&file, &vs);
-            log_printf(15, "fname=%d parent=%s owner=%s\n", path, dir, file);
+            log_printf(15, "fname=%s parent=%s owner=%s\n", path, dir, file);
             if (vs > 0) {
                 if (file) {
                     lio_set_attr(lc, creds, path, NULL, "system.owner", (void *)file, strlen(file));

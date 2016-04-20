@@ -110,7 +110,7 @@ void unpack_register_msg(mq_portal_t *p, mq_msg_t *msg)
         memcpy(worker_address, data, err);
         log_printf(15, "SERVER: Received correct worker host address = %s, size = %d\n", worker_address, err);
     } else {
-        log_printf(5, "SERVER: Received incorrect address, address = %s\n", worker_host);
+        log_printf(5, "SERVER: Received incorrect address, address = %p\n", worker_host);
         log_printf(15, "SERVER: Failed! Destroying message...\n");
         mq_msg_destroy(msg);
         return;
@@ -329,7 +329,7 @@ void client_ping_test()
     gop_free(gop, OP_DESTROY);
 
     if(status != OP_STATE_SUCCESS)
-        log_printf(15, "CLIENT: Failed sending PING request to server at %s - error = %d\n", host, status);
+        log_printf(15, "CLIENT: Failed sending PING request to server at %p - error = %d\n", host, status);
     else
         log_printf(15, "CLIENT: Successfully sent PING request to server!\n");
 
@@ -511,7 +511,7 @@ void worker_register_test()
     gop_free(gop, OP_DESTROY);
 
     if(status != OP_STATE_SUCCESS)
-        log_printf(15, "WORKER: Failed sending REGISTER request to server at %s - error = %d\n", host, status);
+        log_printf(15, "WORKER: Failed sending REGISTER request to server at %p - error = %d\n", host, status);
     else
         log_printf(15, "WORKER: Successfully sent REGISTER request to server!\n");
 
@@ -561,9 +561,6 @@ int main(int argc, char **argv)
     uint64_t worker_shutdown = -1;
 
     // Start the background systems
-    apr_wrapper_start();
-    init_opque_system();
-
     apr_pool_create(&mpool, NULL);
 
     host = mq_string_to_address(host_string);
@@ -591,9 +588,6 @@ int main(int argc, char **argv)
 
     // Clean up
     apr_pool_destroy(mpool);
-
-    destroy_opque_system();
-    apr_wrapper_stop();
 
     close(control_efd);
 

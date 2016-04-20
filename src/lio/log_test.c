@@ -83,7 +83,7 @@ int compare_buffers_print(char *b1, char *b2, int len, ex_off_t offset)
                 last_byte = ((last == i) && (b1[i] == b2[i])) ? 1 : 0;
                 end = offset + i-1 + last_byte;
                 k = end - start + 1;
-                log_printf(0, "  MATCH : %d -> %d (%d bytes)\n", start, end, k);
+                log_printf(0, "  MATCH : " XOT " -> " XOT " (%d bytes)\n", start, end, k);
 
                 start = offset + i;
                 mode = 1;
@@ -98,7 +98,7 @@ int compare_buffers_print(char *b1, char *b2, int len, ex_off_t offset)
                     last_byte = ((last == i) && (b1[i] != b2[i])) ? 1 : 0;
                     end = offset + i-1 + last_byte;
                     k = end - start + 1;
-                    log_printf(0, "  DIFFER: %d -> %d (%d bytes)\n", start, end, k);
+                    log_printf(0, "  DIFFER: " XOT " -> " XOT " (%d bytes)\n", start, end, k);
 
                     start = offset + i;
                     mode = 0;

@@ -317,7 +317,7 @@ void mq_stream_read_destroy(mq_stream_t *mqs)
 
     //** Consume all the current data and request the pending
     while ((mqs->gop_processed != NULL) || (mqs->gop_waiting != NULL)) {
-        log_printf(1, "Clearing pending processed=%d waiting=%p msid=%d\n", mqs->gop_processed, mqs->gop_waiting, mqs->msid);
+        log_printf(1, "Clearing pending processed=%p waiting=%p msid=%d\n", mqs->gop_processed, mqs->gop_waiting, mqs->msid);
         if (mqs->gop_processed != NULL) log_printf(1, "processed gid=%d\n", gop_id(mqs->gop_processed));
         if (mqs->gop_waiting != NULL) log_printf(1, "waiting gid=%d\n", gop_id(mqs->gop_waiting));
         mqs->want_more = MQS_ABORT;
@@ -386,7 +386,7 @@ mq_stream_t *mq_stream_read_create(mq_context_t *mqc, mq_ongoing_t *on, char *ho
     log_printf(1, "msid=%d ptype=%d pack_type=%c\n", mqs->msid, ptype, mqs->data[MQS_PACK_INDEX]);
     mqs->pack = pack_create(ptype, PACK_READ, &(mqs->data[MQS_HEADER]), mqs->len - MQS_HEADER);
 
-    log_printf(5, "data_len=%d more=%c MQS_HEADER=%d\n", mqs->len, mqs->data[MQS_STATE_INDEX], MQS_HEADER);
+    log_printf(5, "data_len=%d more=%c MQS_HEADER=%lu\n", mqs->len, mqs->data[MQS_STATE_INDEX], MQS_HEADER);
 
     unsigned char buffer[1024];
     int n = (50 > mqs->len) ? mqs->len : 50;

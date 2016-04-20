@@ -2,13 +2,13 @@
  * Round robin worker
  *****************************/
 
+#include "apr_wrapper.h"
 #include "mq_portal.h"
 #include "mq_stream.h"
 #include "mq_ongoing.h"
 #include "mq_roundrobin.h"
 #include "mqs_roundrobin.h"
 #include "random.h"
-#include "apr_wrapper.h"
 #include "log.h"
 #include "type_malloc.h"
 #include <sys/eventfd.h>
@@ -65,7 +65,7 @@ void build_send_increment(mq_portal_t *portal)
     int status = mq_submit(portal, task);
 
     if(status != 0)
-        log_printf(0, "WORKER: Failed sending INCREMENT request to server at %s - error = %d\n", server, status);
+        log_printf(0, "WORKER: Failed sending INCREMENT request to server at %p - error = %d\n", server, status);
     else
         log_printf(10, "WORKER: Successfully sent INCREMENT request to server!\n");
 
@@ -346,7 +346,7 @@ void build_send_register(mq_context_t *mqc, mq_portal_t *wp, mq_command_table_t 
     gop_free(gop, OP_DESTROY);
 
     if(status != OP_STATE_SUCCESS) {
-        log_printf(0, "WORKER: Failed sending REGISTER request to server at %s - error = %d\n", server, status);
+        log_printf(0, "WORKER: Failed sending REGISTER request to server at %p - error = %d\n", server, status);
     } else {
         log_printf(15, "WORKER: Successfully sent REGISTER request to server!\n");
 
@@ -382,7 +382,7 @@ void build_send_deregister(mq_context_t *mqc, mq_portal_t *wp)
     gop_free(gop, OP_DESTROY);
 
     if(status != OP_STATE_SUCCESS)
-        log_printf(0, "WORKER: Failed sending DEREGISTER request to server at %s - error = %d\n", server, status);
+        log_printf(0, "WORKER: Failed sending DEREGISTER request to server at %p - error = %d\n", server, status);
     else
         log_printf(15, "WORKER: Successfully sent DEREGISTER request to server!\n");
 }
@@ -444,7 +444,7 @@ void start_bulk_worker_test(mq_context_t *mqc, int n)
         bulk_workers[i].id = i;
         thread_create_assert(&bulk_workers[i].thread, NULL, start_bulk_worker_test_thread, &(bulk_workers[i].id), mqc->mpool);
     }
-    log_printf(1, "WORKER: Minions created!\n", n);
+    log_printf(1, "WORKER: Minions created!\n");
 }
 
 // end_bulk_worker_test()
@@ -541,9 +541,6 @@ int main(int argc, char **argv)
     apr_status_t dummy;
 
     // Start the background systems
-    apr_wrapper_start();
-    init_opque_system();
-
     apr_pool_create(&mpool, NULL);
 
     server = mq_string_to_address(server_string);
@@ -555,9 +552,6 @@ int main(int argc, char **argv)
 
     // Clean up
     apr_pool_destroy(mpool);
-
-    destroy_opque_system();
-    apr_wrapper_stop();
 
     return 0;
 }

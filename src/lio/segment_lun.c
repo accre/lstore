@@ -141,7 +141,7 @@ void _slun_perform_remap(segment_t *seg)
     while ((b = (seglun_row_t *)next_interval_skiplist(&it)) != NULL) {
         for (i=0; i<s->n_devices; i++) {
             rs_translate_cap_set(s->rs, b->block[i].data->rid_key, b->block[i].data->cap);
-            log_printf(15, "i=%d rcap=%s\n", i, ds_get_cap(s->ds, b->block[i].data->cap, DS_CAP_READ));
+            log_printf(15, "i=%d rcap=%p\n", i, ds_get_cap(s->ds, b->block[i].data->cap, DS_CAP_READ));
         }
     }
     log_printf(5, "END\n");
@@ -507,7 +507,7 @@ int slun_row_size_check(segment_t *seg, data_attr_t *da, seglun_row_t *b, int *b
         //** Verify the max_size >= cap_offset+len
         ds_get_probe(b->block[i].data->ds, probe[i], DS_PROBE_MAX_SIZE, &psize, sizeof(psize));
         seg_size = b->block[i].cap_offset + b->block_len;
-        log_printf(10, "seg=" XIDT " seg_offset=" XOT " i=%d rcap=%s  size=" XOT " should be block_len=" XOT "\n", segment_id(seg),
+        log_printf(10, "seg=" XIDT " seg_offset=" XOT " i=%d rcap=%p  size=" XOT " should be block_len=" XOT "\n", segment_id(seg),
                    b->seg_offset, i, ds_get_cap(b->block[i].data->ds, b->block[i].data->cap, DS_CAP_READ), psize, b->block_len);
         if (psize < seg_size) {
             if (psize == 0) {  //** Can't access the allocation
@@ -581,7 +581,7 @@ int slun_row_pad_fix(segment_t *seg, data_attr_t *da, seglun_row_t *b, int *bloc
         log_printf(10, "seg=" XIDT " seg_offset=" XOT " i=%d block_status=%d\n", segment_id(seg), b->seg_offset, i, block_status[i]);
         if (block_status[i] == 2) {
             bstart = b->block[i].cap_offset + b->block[i].data->max_size - 1;
-            log_printf(10, "seg=" XIDT " seg_offset=" XOT " i=%d rcap=%s  padding byte=" XOT "\n", segment_id(seg),
+            log_printf(10, "seg=" XIDT " seg_offset=" XOT " i=%d rcap=%p  padding byte=" XOT "\n", segment_id(seg),
                        b->seg_offset, i, ds_get_cap(b->block[i].data->ds, b->block[i].data->cap, DS_CAP_READ), bstart);
 
             gop = ds_write(b->block[i].data->ds, da, ds_get_cap(b->block[i].data->ds, b->block[i].data->cap, DS_CAP_WRITE), bstart, &tbuf, 0, 1, timeout);
@@ -868,7 +868,7 @@ op_status_t _seglun_grow(segment_t *seg, data_attr_t *da, ex_off_t new_size_arg,
 
             insert_interval_skiplist(s->isl, (skiplist_key_t *)&(b->seg_offset), (skiplist_key_t *)&(b->seg_end), (skiplist_data_t *)b);
 
-            log_printf(15, "sid=" XIDT " enlarged row seg_offset=" XOT " seg_end=" XOT " row_len=" XOT " berr=%d\n", segment_id(seg), b->seg_offset, b->seg_end, b->row_len, berr);
+            log_printf(15, "sid=" XIDT " enlarged row seg_offset=" XOT " seg_end=" XOT " row_len=" XOT " berr=" XOT "\n", segment_id(seg), b->seg_offset, b->seg_end, b->row_len, berr);
 
             lo = b->seg_end + 1;
         } else {
@@ -931,7 +931,7 @@ oops:
 
     gsecs = (double)now/APR_USEC_PER_SEC;
     tsecs = (double)s->grow_time/APR_USEC_PER_SEC;
-    log_printf(1, "sid=" XIDT " END used=" XOT " old max=" XOT " newmax=" XOT " err=%d berr=%d dt=%lf dt_total=%lf grow_count=%d\n", segment_id(seg), s->used_size, s->total_size, new_size, err, berr, gsecs, tsecs, s->grow_count);
+    log_printf(1, "sid=" XIDT " END used=" XOT " old max=" XOT " newmax=" XOT " err=%d berr=" XOT " dt=%lf dt_total=%lf grow_count=%d\n", segment_id(seg), s->used_size, s->total_size, new_size, err, berr, gsecs, tsecs, s->grow_count);
 
     if (err == 0) {
         s->total_size = new_size;
@@ -1141,7 +1141,7 @@ void lun_row_decompose(segment_t *seg, lun_rw_row_t *rw_buf, seglun_row_t *b, ex
     n_stripes = end_stripe - start_stripe + 1;
 
     log_printf(15, "lo=" XOT " hi= " XOT " len=" XOT "\n", lo, hi, rwlen);
-    log_printf(15, "start_stripe=" XOT " end_stripe=" XOT " n_stripes=" XOT "\n", start_stripe, end_stripe, n_stripes);
+    log_printf(15, "start_stripe=%d end_stripe=%d n_stripes=%d\n", start_stripe, end_stripe, n_stripes);
 
     tbuffer_var_init(&tbv);
 
@@ -1262,7 +1262,7 @@ int seglun_compare_buffers_print(char *b1, char *b2, int len)
                 end = i-1;
                 if (b1[i] == b2[i]) end = i;
                 k = end - start + 1;
-                log_printf(0, "  MATCH : %d -> %d (%d bytes)\n", start, end, k);
+                log_printf(0, "  MATCH : " XOT " -> " XOT " (%d bytes)\n", start, end, k);
 
                 start = i;
                 mode = 1;
@@ -1276,7 +1276,7 @@ int seglun_compare_buffers_print(char *b1, char *b2, int len)
                 if ((ok == 1) || (last == i)) {
                     end = i-1;
                     k = end - start + 1;
-                    log_printf(0, "  DIFFER: %d -> %d (%d bytes)\n", start, end, k);
+                    log_printf(0, "  DIFFER: " XOT " -> " XOT " (%d bytes)\n", start, end, k);
 
                     if (k>50) k = 50;
                     memcpy(cbuf, &(b1[start]), k);
@@ -1365,7 +1365,7 @@ int seglun_row_decompose_test()
         nrows = bufsize / s->stripe_size;
         if ((bufsize % s->stripe_size) > 0) nrows++;
 
-        log_printf(0, "ndev=%d  chunk_size=%d stripe_size=%d   nrows=%d----------------------------------------------\n", ndev, s->chunk_size, s->stripe_size, nrows);
+        log_printf(0, "ndev=%d  chunk_size=" XOT " stripe_size=" XOT "   nrows=%d----------------------------------------------\n", ndev, s->chunk_size, s->stripe_size, nrows);
 
         for (i=0; i < s->n_devices; i++) {
             type_malloc(iov_ref[i], iovec_t, nrows);
@@ -1658,7 +1658,7 @@ op_status_t seglun_rw_op(segment_t *seg, data_attr_t *da, segment_rw_hints_t *rw
                 if (exec_time > bl->min_io_time) { //** Make sure the exec time was long enough
                     dt = rwb_table[gop_get_myid(gop)].len;
                     dt /= exec_time;
-                    log_printf(5, "dt=%lf min_bw=" TT "\n", dt, bl->min_bandwidth);
+                    log_printf(5, "dt=%lf min_bw=" XOT "\n", dt, bl->min_bandwidth);
                     if (dt < bl->min_bandwidth) { // ** Blacklist it
                         type_malloc(bl_rid, blacklist_rid_t, 1);
                         bl_rid->rid = strdup(rwb_table[gop_get_myid(gop)].block->data->rid_key);
@@ -1965,7 +1965,7 @@ op_status_t seglun_migrate_func(void *arg, int id)
         info_printf(si->fd, 1, XIDT ": Checking row: (" XOT ", " XOT ", " XOT ")   Stripe: (" XOT ", " XOT ")\n", segment_id(si->seg), b->seg_offset, b->seg_end, b->row_len, sstripe, estripe);
 
         for (i=0; i < s->n_devices; i++) {
-            info_printf(si->fd, 3, XIDT ":     dev=%i rcap=%s\n", segment_id(si->seg), i, ds_get_cap(s->ds, b->block[i].data->cap, DS_CAP_READ));
+            info_printf(si->fd, 3, XIDT ":     dev=%i rcap=%p\n", segment_id(si->seg), i, ds_get_cap(s->ds, b->block[i].data->cap, DS_CAP_READ));
         }
 
         for (i=0; i < s->n_devices; i++) block_status[i] = 0;
@@ -1984,7 +1984,7 @@ op_status_t seglun_migrate_func(void *arg, int id)
             for (i=0; i < s->n_devices; i++) {
                 if (block_copy[i] != 0) {
                     if (block_status[i] == 0) {
-                        info_printf(si->fd, 2, XIDT ":     dev=%i moved to rcap=%s\n", segment_id(si->seg), i, ds_get_cap(s->ds, b->block[i].data->cap, DS_CAP_READ));
+                        info_printf(si->fd, 2, XIDT ":     dev=%i moved to rcap=%p\n", segment_id(si->seg), i, ds_get_cap(s->ds, b->block[i].data->cap, DS_CAP_READ));
                     } else if (block_status[i] == -103) { //** Can't opportunistically move the allocation so unflagg it
                         log_printf(0, "OPPORTUNISTIC mv failed i=%d\n", i);
                         block_status[i] = 0;
@@ -2085,7 +2085,7 @@ op_status_t seglun_inspect_func(void *arg, int id)
         info_printf(si->fd, 1, XIDT ": Checking row: (" XOT ", " XOT ", " XOT ")   Stripe: (" XOT ", " XOT ")\n", segment_id(si->seg), b->seg_offset, b->seg_end, b->row_len, sstripe, estripe);
 
         for (i=0; i < s->n_devices; i++) {
-            info_printf(si->fd, 3, XIDT ":     dev=%i rcap=%s\n", segment_id(si->seg), i, ds_get_cap(s->ds, b->block[i].data->cap, DS_CAP_READ));
+            info_printf(si->fd, 3, XIDT ":     dev=%i rcap=%p\n", segment_id(si->seg), i, ds_get_cap(s->ds, b->block[i].data->cap, DS_CAP_READ));
         }
 
         nlost = slun_row_size_check(si->seg, si->da, b, block_status, dt, s->n_devices, force_repair, si->timeout);
@@ -2125,7 +2125,7 @@ op_status_t seglun_inspect_func(void *arg, int id)
             info_printf(si->fd, 1, "%s\n", info);
 
             for (i=0; i < s->n_devices; i++) {
-                if (block_status[i] != 0) info_printf(si->fd, 5, XIDT ":     dev=%i replacing rcap=%s\n", segment_id(si->seg), i, ds_get_cap(s->ds, b->block[i].data->cap, DS_CAP_READ));
+                if (block_status[i] != 0) info_printf(si->fd, 5, XIDT ":     dev=%i replacing rcap=%p\n", segment_id(si->seg), i, ds_get_cap(s->ds, b->block[i].data->cap, DS_CAP_READ));
             }
 
             if (max_lost < err) max_lost = err;
@@ -2138,7 +2138,7 @@ op_status_t seglun_inspect_func(void *arg, int id)
                 err = slun_row_replace_fix(si->seg, si->da, b, block_status, s->n_devices, &args, si->timeout);
 
                 for (i=0; i < s->n_devices; i++) {
-                    if ((block_copy[i] != 0) && (block_status[i] == 0)) info_printf(si->fd, 2, XIDT ":     dev=%i replaced with rcap=%s\n", segment_id(si->seg), i, ds_get_cap(s->ds, b->block[i].data->cap, DS_CAP_READ));
+                    if ((block_copy[i] != 0) && (block_status[i] == 0)) info_printf(si->fd, 2, XIDT ":     dev=%i replaced with rcap=%p\n", segment_id(si->seg), i, ds_get_cap(s->ds, b->block[i].data->cap, DS_CAP_READ));
                 }
 
                 used = 0;
@@ -2177,7 +2177,7 @@ op_status_t seglun_inspect_func(void *arg, int id)
                 for (i=0; i < s->n_devices; i++) {
                     if (block_copy[i] != 0) {
                         if (block_status[i] == 0) {
-                            info_printf(si->fd, 2, XIDT ":     dev=%i moved to rcap=%s\n", segment_id(si->seg), i, ds_get_cap(s->ds, b->block[i].data->cap, DS_CAP_READ));
+                            info_printf(si->fd, 2, XIDT ":     dev=%i moved to rcap=%p\n", segment_id(si->seg), i, ds_get_cap(s->ds, b->block[i].data->cap, DS_CAP_READ));
                         } else if (block_status[i] == -103) { //** Can't opportunistically move the allocation so unflagg it but I need to check for collisions later
                             log_printf(0, "OPPORTUNISTIC mv failed i=%d\n", i);
                             block_status[i] = 0;
@@ -2211,7 +2211,7 @@ op_status_t seglun_inspect_func(void *arg, int id)
                     err = slun_row_replace_fix(si->seg, si->da, b, block_status, s->n_devices, &args, si->timeout);
 
                     for (i=0; i < s->n_devices; i++) {
-                        if ((block_copy[i] != 0) && (block_status[i] == 0)) info_printf(si->fd, 2, XIDT ":     dev=%i replaced rcap=%s\n", segment_id(si->seg), i, ds_get_cap(s->ds, b->block[i].data->cap, DS_CAP_READ));
+                        if ((block_copy[i] != 0) && (block_status[i] == 0)) info_printf(si->fd, 2, XIDT ":     dev=%i replaced rcap=%p\n", segment_id(si->seg), i, ds_get_cap(s->ds, b->block[i].data->cap, DS_CAP_READ));
                     }
                     used = 0;
                     append_printf(info, &used, bufsize, XIDT ":     slun_row_replace_fix:", segment_id(si->seg));

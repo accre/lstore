@@ -1054,7 +1054,7 @@ int cache_dirty_pages_get(segment_t *seg, int mode, ex_off_t lo, ex_off_t hi, ex
 
     if (*hi_got > hi) *hi_got = hi;
 
-    log_printf(15, "END: seg=" XIDT " mode=%d lo=" XOT " hi=" XOT " hi_got=" XOT " skip_mode=%d n=%d\n", segment_id(seg), mode, lo, hi, *hi_got, skip_mode, n);
+    log_printf(15, "END: seg=" XIDT " mode=%d lo=" XOT " hi=" XOT " hi_got=" XOT " skip_mode=%d n=%" PRId64 "\n", segment_id(seg), mode, lo, hi, *hi_got, skip_mode, n);
 
     return(skip_mode);
 }
@@ -1350,7 +1350,7 @@ int cache_write_pages_get(segment_t *seg, segment_rw_hints_t *rw_hints, int mode
                 *hi_got = coff + s->page_size - 1;
 
                 log_printf(15, "seg=" XIDT " adding page[" XOT "]->offset=" XOT "\n", segment_id(seg), n, np->offset);
-                log_printf(15, "PAGE_GET seg=" XIDT " get np->offset=" XOT " n=%d cr=%d cw=%d cf=%d bit_fields=%d np=%p usage=%d index=%d\n", segment_id(seg), np->offset, n,
+                log_printf(15, "PAGE_GET seg=" XIDT " get np->offset=" XOT " n=%" PRId64 " cr=%d cw=%d cf=%d bit_fields=%d np=%p usage=%d index=%d\n", segment_id(seg), np->offset, n,
                            np->access_pending[CACHE_READ], np->access_pending[CACHE_WRITE], np->access_pending[CACHE_FLUSH], np->bit_fields, np, np->curr_data->usage_count, np->current_index);
 
                 n++;
@@ -1485,7 +1485,7 @@ int cache_write_pages_get(segment_t *seg, segment_rw_hints_t *rw_hints, int mode
                     tbuffer_copy(buf, bpos, &tb, ppos, len, 1);
 
                     log_printf(15, "seg=" XIDT " adding page[" XOT "]->offset=" XOT "\n", segment_id(seg), n, p->offset);
-                    log_printf(15, "PAGE_GET seg=" XIDT " get p->offset=" XOT " n=%d cr=%d cw=%d cf=%d bit_fields=%d usage=%d index=%d\n", segment_id(seg), p->offset, n,
+                    log_printf(15, "PAGE_GET seg=" XIDT " get p->offset=" XOT " n=%" PRId64 " cr=%d cw=%d cf=%d bit_fields=%d usage=%d index=%d\n", segment_id(seg), p->offset, n,
                                p->access_pending[CACHE_READ], p->access_pending[CACHE_WRITE], p->access_pending[CACHE_FLUSH], p->bit_fields, p->curr_data->usage_count, p->current_index);
 
                     n++;
@@ -1554,7 +1554,7 @@ int cache_write_pages_get(segment_t *seg, segment_rw_hints_t *rw_hints, int mode
                                 *hi_got = coff + s->page_size - 1;
 
                                 log_printf(15, "seg=" XIDT " adding page[" XOT "]->offset=" XOT "\n", segment_id(seg), n, np->offset);
-                                log_printf(15, "PAGE_GET seg=" XIDT " get np->offset=" XOT " n=%d cr=%d cw=%d cf=%d bit_fields=%d np=%p usage=%d index=%d\n", segment_id(seg), np->offset, n,
+                                log_printf(15, "PAGE_GET seg=" XIDT " get np->offset=" XOT " n=%" PRId64 " cr=%d cw=%d cf=%d bit_fields=%d np=%p usage=%d index=%d\n", segment_id(seg), np->offset, n,
                                            np->access_pending[CACHE_READ], np->access_pending[CACHE_WRITE], np->access_pending[CACHE_FLUSH], np->bit_fields, np, np->curr_data->usage_count, np->current_index);
 
                                 n++;
@@ -2158,7 +2158,7 @@ int cache_ppages_handle(segment_t *seg, data_attr_t *da, int rw_mode, ex_off_t *
     n_pages = hi_page - n_pages + 1;
     hi_page = hi_page * s->page_size;
 
-    log_printf(5, "lo=" XOT " hi=" XOT " lo_page=" XOT " hi_page=" XOT " n_pages=%d \n", *lo, *hi, lo_page, hi_page, n_pages);
+    log_printf(5, "lo=" XOT " hi=" XOT " lo_page=" XOT " hi_page=" XOT " n_pages=%" PRId64 " \n", *lo, *hi, lo_page, hi_page, n_pages);
 
     //** If we made it here the end pages at least don't exist
     //** See if we map to existing pages and update as needed
@@ -2192,7 +2192,7 @@ int cache_ppages_handle(segment_t *seg, data_attr_t *da, int rw_mode, ex_off_t *
                 do_flush++;
             }
 
-            log_printf(5, "INTERIOR FULL rw_mode=%d seg=" XIDT " using ppages pstart=" XOT " pend=" XOT "\n", segment_id(seg), rw_mode, pp->page_start, pp->page_end);
+            log_printf(5, "INTERIOR FULL rw_mode=%d seg=" XIDT " using ppages pstart=" XOT " pend=" XOT "\n", rw_mode, segment_id(seg), pp->page_start, pp->page_end);
         }
 
         //** Move the hi end down
@@ -2211,7 +2211,7 @@ int cache_ppages_handle(segment_t *seg, data_attr_t *da, int rw_mode, ex_off_t *
                 if (pend > s->ppage_max) s->ppage_max = pend;
                 nhandled++;
                 hi_mapped = 1;
-                log_printf(5, "HI_MAPPED INSERT seg=" XIDT " using pstart=" XOT " pend=" XOT " rlo=" XOT " rhi=" XOT "\n", segment_id(seg), pp->page_start, pp->page_end, 0, nbytes-1);
+                log_printf(5, "HI_MAPPED INSERT seg=" XIDT " using pstart=" XOT " pend=" XOT " rlo=%d rhi=" XOT "\n", segment_id(seg), pp->page_start, pp->page_end, 0, nbytes-1);
             } else {   //** Got a read hit so check if the 1st range completely overlaps otherwise flush the page
                 move_to_top(pp->range_stack);
                 rng = get_ele_data(pp->range_stack);
@@ -2225,7 +2225,7 @@ int cache_ppages_handle(segment_t *seg, data_attr_t *da, int rw_mode, ex_off_t *
                     hi_new = pp->page_start - 1;
                     hi_mapped = 1;
                     nhandled++;
-                    log_printf(5, "HI_MAPPED READ seg=" XIDT " using pstart=" XOT " pend=" XOT " rlo=" XOT " rhi=" XOT "\n", segment_id(seg), pp->page_start, pp->page_end, 0, nbytes-1);
+                    log_printf(5, "HI_MAPPED READ seg=" XIDT " using pstart=" XOT " pend=" XOT " rlo=%d rhi=" XOT "\n", segment_id(seg), pp->page_start, pp->page_end, 0, nbytes-1);
                 } else { //** No luck so have to flush the page
                     if (do_flush == 0) init_stack(&pp_flush);
                     insert_below(&pp_flush, pp);
@@ -2342,7 +2342,7 @@ int cache_ppages_handle(segment_t *seg, data_attr_t *da, int rw_mode, ex_off_t *
         *lo = lo_new;
         *hi = hi_new;
         *bpos = bpos_new;
-        log_printf(5, "END lo=" XOT " hi=" XOT " bpos=" XOT " nhandled=%d n_pages=%d\n", *lo, *hi, *bpos, nhandled, n_pages);
+        log_printf(5, "END lo=" XOT " hi=" XOT " bpos=" XOT " nhandled=%" PRId64 " n_pages=%" PRId64 "\n", *lo, *hi, *bpos, nhandled, n_pages);
         flush_log();
         return((n_pages == nhandled) ? 1 : 0);
     }
@@ -2436,12 +2436,12 @@ int cache_ppages_handle(segment_t *seg, data_attr_t *da, int rw_mode, ex_off_t *
             do_flush++;
         }
 
-        log_printf(5, "HI_MAPPED ADDED seg=" XIDT " using ppage pstart=" XOT " pend=" XOT " rlo=" XOT " rhi=" XOT "\n", segment_id(seg), pp->page_start, pp->page_end, 0, nbytes-1);
+        log_printf(5, "HI_MAPPED ADDED seg=" XIDT " using ppage pstart=" XOT " pend=" XOT " rlo=%d rhi=" XOT "\n", segment_id(seg), pp->page_start, pp->page_end, 0, nbytes-1);
     }
 
 
     if (do_flush > 0) {  //** Do a flush if not completely covered
-        log_printf(1, "Triggering a flush do_flush=%d nhandled=%d n_pages=%d\n", do_flush, nhandled, n_pages);
+        log_printf(1, "Triggering a flush do_flush=%d nhandled=%" PRId64 " n_pages=%" PRId64 "\n", do_flush, nhandled, n_pages);
 
         _cache_ppages_flush_list(seg, da, &pp_flush);
         empty_stack(&pp_flush, 0);
@@ -2656,7 +2656,7 @@ op_status_t cache_rw_func(void *arg, int id)
         //** If getting ready to cycle through again check if we need to switch modes
         top_cnt--;
         if (top_cnt <= 0) {
-            log_printf(15, "tid=%d completed cycle through list top=%d bottom=%d progress=%d\n", top_cnt, bottom_cnt, progress);
+            log_printf(15, "completed cycle through list top=%d bottom=%d progress=%d\n", top_cnt, bottom_cnt, progress);
             if (first_time == 1) miss_time = apr_time_now();
             first_time = 0;
             top_cnt = stack_size(&stack);
@@ -3109,9 +3109,9 @@ op_status_t segcache_truncate_func(void *arg, int id)
         }
         cache_unlock(s->c);
 
-        log_printf(5, "seg=" XIDT " dropping extra pages. NOW\n");
+        log_printf(5, "dropping extra pages. NOW\n");
         cache_page_drop(cop->seg, cop->new_size, XOT_MAX);
-        log_printf(5, "seg=" XIDT " dropping extra pages. FINISHED\n");
+        log_printf(5, "dropping extra pages. FINISHED\n");
     }
 
     //** Do a cache flush

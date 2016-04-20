@@ -168,7 +168,7 @@ int sock_io_wait(network_sock_t *sock, Net_timeout_t tm, int mode)
 
 apr_size_t my_read(network_sock_t *sock, tbuffer_t *buf, apr_size_t pos, apr_size_t len, apr_size_t *count)
 {
-    apr_size_t n;
+    ssize_t n;
     sock_apr_overlay_t *s = (sock_apr_overlay_t *)(sock->fd);
     tbuffer_var_t tbv;
 
@@ -210,7 +210,7 @@ apr_size_t my_read(network_sock_t *sock, tbuffer_t *buf, apr_size_t pos, apr_siz
 
 apr_size_t my_write(network_sock_t *sock, tbuffer_t *buf, apr_size_t bpos, apr_size_t len, apr_size_t *count)
 {
-    size_t n;
+    ssize_t n;
     sock_apr_overlay_t *s = (sock_apr_overlay_t *)(sock->fd);
     tbuffer_var_t tbv;
 
@@ -343,7 +343,7 @@ long int sock_apr_read(net_sock_t *nsock, tbuffer_t *buf, size_t bpos, size_t le
     if (tbv.n_iov > IOV_MAX) tbv.n_iov = IOV_MAX;  //** Make sure we don't have to many entries
 
     err = apr_socket_recvv(sock->fd, tbv.buffer, tbv.n_iov, &nbytes);
-    log_printf(5, "apr_socket_recvv=%d nbytes=%d APR_SUCCESS=%d APR_TIMEUP=%d\n", err, nbytes, APR_SUCCESS, APR_TIMEUP);
+    log_printf(5, "apr_socket_recvv=%d nbytes=%lu APR_SUCCESS=%d APR_TIMEUP=%d\n", err, nbytes, APR_SUCCESS, APR_TIMEUP);
 
     if (err == APR_SUCCESS) {
         if (nbytes == 0) nbytes = -1;  //** Dead connection
@@ -377,7 +377,7 @@ long int sock_apr_write(net_sock_t *nsock, tbuffer_t *buf, size_t bpos, size_t l
     if (tbv.n_iov > IOV_MAX) tbv.n_iov = IOV_MAX;  //** Make sure we don't have to many entries
 
     err = apr_socket_sendv(sock->fd, tbv.buffer, tbv.n_iov, &nbytes);
-    log_printf(5, "apr_socket_sendv=%d nbytes=%d APR_SUCCESS=%d APR_TIMEUP=%d\n", err, nbytes, APR_SUCCESS, APR_TIMEUP);
+    log_printf(5, "apr_socket_sendv=%d nbytes=%lu APR_SUCCESS=%d APR_TIMEUP=%d\n", err, nbytes, APR_SUCCESS, APR_TIMEUP);
 
 
     if (err == APR_SUCCESS) {

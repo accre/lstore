@@ -30,8 +30,6 @@ http://www.accre.vanderbilt.edu
 #define _log_module_index 107
 
 #include "chksum.h"
-#include <openssl/sha.h>
-#include <openssl/md5.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -40,6 +38,14 @@ http://www.accre.vanderbilt.edu
 #define CHKSUM_SHA256_LEN (2*SHA256_DIGEST_LENGTH)
 #define CHKSUM_SHA512_LEN (2*SHA512_DIGEST_LENGTH)
 #define CHKSUM_MD5_LEN    (2*MD5_DIGEST_LENGTH)
+
+#if defined(__APPLE__) && defined(__MACH__)
+#  define COMMON_DIGEST_FOR_OPENSSL
+#  include <CommonCrypto/CommonDigest.h>
+#else
+#  include <openssl/sha.h>
+#  include <openssl/md5.h>
+#endif
 
 char *_bin2hex =  "00" "01" "02" "03" "04" "05" "06" "07" "08" "09" "0a" "0b" "0c" "0d" "0e" "0f"
                   "10" "11" "12" "13" "14" "15" "16" "17" "18" "19" "1a" "1b" "1c" "1d" "1e" "1f"

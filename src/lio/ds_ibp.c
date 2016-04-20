@@ -229,7 +229,7 @@ void ds_ibp_translate_cap_set(data_service_fn_t *ds, char *rid_key, char *ds_key
     if (end == -1) return;
 
     len = end - start;
-    log_printf(20, "cap=%s ds_key=%s strncmp=%d len=%d strlen(ds_key)=%d\n", str, ds_key, strncmp(ds_key, &(str[start]), len), len, strlen(ds_key));
+    log_printf(20, "cap=%s ds_key=%s strncmp=%d len=%d strlen(ds_key)=%lu\n", str, ds_key, strncmp(ds_key, &(str[start]), len), len, strlen(ds_key));
     if ((strncmp(ds_key, &(str[start]), len) == 0) && (strlen(ds_key) == len)) return;
 
     //** If we made it hear we need to do a translation
@@ -980,7 +980,7 @@ data_service_fn_t *ds_ibp_create(void *arg, inip_file_t *ifd, char *section)
 
     ds->attr_default.disk_cs_blocksize = inip_get_integer(ifd, section, "chksum_blocksize", 64*1024);
     if (ds->attr_default.disk_cs_blocksize <= 0) {
-        log_printf(0, "Invalid chksum blocksize=" XOT " resetting to %d\n", ds->attr_default.disk_cs_blocksize, 64*1024);
+        log_printf(0, "Invalid chksum blocksize=%d resetting to %d\n", ds->attr_default.disk_cs_blocksize, 64*1024);
         ds->attr_default.disk_cs_blocksize = 64 *1024;
     }
     ds->attr_default.attr.reliability = IBP_HARD;

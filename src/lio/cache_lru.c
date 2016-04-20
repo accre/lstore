@@ -221,7 +221,7 @@ void _lru_process_waiters(cache_t *c)
         while ((bytes_needed <= bytes_free) && (pw != NULL)) {
             bytes_free -= bytes_needed;
             delete_current(cp->waiting_stack, 1, 0);
-            log_printf(15, "waking up waiting stack pw=%d\n", pw);
+            log_printf(15, "waking up waiting stack pw=%p\n", pw);
 
             apr_thread_cond_signal(pw->cond);    //** Wake up the paused thread
 
