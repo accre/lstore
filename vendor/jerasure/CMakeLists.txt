@@ -12,6 +12,8 @@ add_subdirectory(src)
 # TODO: automate doxygen documentation rebuild?
 
 set(CPACK_PACKAGE_VERSION "1.2a")
+set(CPACK_RPM_POST_INSTALL_SCRIPT_FILE "${CMAKE_SOURCE_DIR}/cmake/rpm-ldconfig.sh")
+set(CPACK_RPM_POST_UNINSTALL_SCRIPT_FILE "${CMAKE_SOURCE_DIR}/cmake/rpm-ldconfig.sh")
 if(NOT DEFINED CPACK_GENERATOR)
     set(CPACK_GENERATOR "DEB;RPM")
 endif(NOT DEFINED CPACK_GENERATOR)

@@ -89,6 +89,8 @@ if(BUILD_TESTS)
 endif()
 
 # Pack it up
+set(CPACK_RPM_POST_INSTALL_SCRIPT_FILE "${CMAKE_SOURCE_DIR}/cmake/rpm-ldconfig.sh")
+set(CPACK_RPM_POST_UNINSTALL_SCRIPT_FILE "${CMAKE_SOURCE_DIR}/cmake/rpm-ldconfig.sh")
 include(CPack)
 
 # Summary
