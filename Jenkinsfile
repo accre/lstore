@@ -13,6 +13,7 @@ node('docker') {
     stash includes: '**, .git/', name: 'source', useDefaultExcludes: false
     stage "Update-Docker-Images"
     sh "bash scripts/build-docker-base.sh"
+    sh "env"
 }
 compile_map['unified'] = {
     node('xenial') {
