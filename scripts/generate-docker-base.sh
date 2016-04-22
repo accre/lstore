@@ -71,6 +71,7 @@ for DISTRO in "${DISTROS[@]}"; do
                                     fuse-devel
                                     globus-gridftp-server-devel
                                     openssl-devel
+                                    rsync
                                     tar
                                     wget
                                     which
@@ -92,6 +93,7 @@ for DISTRO in "${DISTROS[@]}"; do
                                     libz-dev
                                     libzmq3-dev
                                     lsb-release
+                                    rsync
                                     wget
                                 )
             ;;
