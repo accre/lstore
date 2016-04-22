@@ -12,6 +12,7 @@ option(ENABLE_ASAN "Enable address sanitizer" OFF)
 option(ENABLE_MSAN "Enable memory sanitizer" OFF)
 option(ENABLE_TSAN "Enable thread sanitizer" OFF)
 option(ENABLE_UBSAN "Enable undefined behaviour sanitizer" OFF)
+option(ENABLE_FUZZ "Build with AFL fuzz support" OFF)
 
 # Defines
 set(USE_SUPERBUILD ON)
@@ -35,6 +36,17 @@ if(ENABLE_UBSAN)
 endif()
 if(ENABLE_COVERAGE)
     set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -fprofile-arcs -ftest-coverage")
+endif()
+if(ENABLE_FUZZ)
+    if("${CMAKE_C_COMPILER_ID}" STREQUAL "GNU")
+        set(FUZZ_COMPILE_NAME "afl-gcc")
+    elseif("${CMAKE_C_COMPILER_ID}" STREQUAL "Clang")
+        set(FUZZ_COMPILE_NAME "afl-clang")
+    else()
+        message(FATAL "Could not find AFL, but ENABLE_FUZZ is set. Please "
+                "install AFL from http://lcamtuf.coredump.cx/afl/")
+    endif()
+    find_program(CMAKE_C_COMPILER ${FUZZ_COMPILE_NAME})
 endif()
 
 
