@@ -4,6 +4,10 @@ cmake_minimum_required(VERSION 2.6)
 # make a project
 project( lstore-jerasure C )
 
+option(WANT_SHARED "Produce a shared library" ON)
+option(WANT_STATIC "Produce a static library" ON)
+
+
 # Build subdirectories
 add_subdirectory(src)
 
