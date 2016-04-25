@@ -1,5 +1,10 @@
 cmake_minimum_required(VERSION 2.8)
-install(FILES lstore-repo.list DESTINATION "usr/share/doc/lstore-repo/")
+set(LSTORE_REPO_URL "http://repo.accre.vanderbilt.edu"
+    CACHE STRING "Repository URL for LStore")
+if(INSTALL_DEB_RELEASE)
+    install(FILES lstore-repo.list DESTINATION "usr/share/doc/lstore-repo/")
+endif()
+
 set(CPACK_DEBIAN_PACKAGE_CONTROL_EXTRA ${CMAKE_CURRENT_SOURCE_DIR}/postinst)
 set(CPACK_PACKAGING_INSTALL_PREFIX "/")
 set(CPACK_PACKAGE_NAME "lstore-release")

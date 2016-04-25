@@ -1,10 +1,15 @@
-install(FILES lstore.repo DESTINATION "/etc/yum.repos.d/")
+configure_file(lstore.repo.in lstore.repo)
+set(LSTORE_REPO_URL "http://repo.accre.vanderbilt.edu"
+    CACHE STRING "Repository URL for LStore")
+if(INSTALL_YUM_RELEASE)
+    install(FILES lstore.repo DESTINATION "/etc/yum.repos.d/"
+            COMPONENT lstore-yum-release)
+endif()
 set(CPACK_RPM_EXCLUDE_FROM_AUTO_FILELIST_ADDITION "/etc/yum.repos.d")
 set(CPACK_RPM_USER_FILELIST "%config(noreplace) /etc/yum.repos.d/lstore.repo")
 set(CPACK_PACKAGING_INSTALL_PREFIX "/")
 set(CPACK_PACKAGE_NAME "lstore-release")
 set(CPACK_PACKAGE_VERSION "1.0.0")
-set(CPACK_GENERATOR "RPM")
 set(CPACK_PACKAGE_RELEASE 1)
 set(CPACK_PACKAGE_CONTACT "Andrew Melo or Alan Tackett")
 set(CPACK_PACKAGE_VENDOR "Advanced Computing Center for Research and Education, Vanderbilt University")

@@ -25,7 +25,8 @@ macro(lstore_project_common LSTORE_PROJECT_NAME)
         target_link_libraries(${f} ${LSTORE_PROJECT_NAME})
         target_include_directories(${f} SYSTEM PRIVATE ${LSTORE_INCLUDE_SYSTEM})
         target_include_directories(${f} PUBLIC ${LSTORE_INCLUDE_PUBLIC})
-        install(TARGETS ${f} DESTINATION ${CMAKE_INSTALL_BINDIR})
+        install(TARGETS ${f} DESTINATION ${CMAKE_INSTALL_BINDIR}
+                             COMPONENT bin)
     endforeach(f)
 
     # Install products
