@@ -6,7 +6,7 @@ project( lstore-jerasure C )
 
 option(WANT_SHARED "Produce a shared library" ON)
 option(WANT_STATIC "Produce a static library" ON)
-
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC")
 
 # Build subdirectories
 add_subdirectory(src)
