@@ -22,10 +22,13 @@ option(ENABLE_FUZZ "Build with AFL fuzz support" OFF)
 option(INSTALL_EXTERNALS "Install externals to \$CMAKE_INSTALL_PATH" OFF)
 option(INSTALL_YUM_RELEASE "Install yum lstore-release (may require root)" OFF)
 option(INSTALL_DEB_RELEASE "Install deb lstore-release (may require root)" OFF)
+option(INSTALL_META "Install meta-package (may require root)" OFF)
+option(INSTALL_TESTS "Install test binaries" OFF)
 
 set(LSTORE_REPO_URL "http://repo.accre.vanderbilt.edu"
         CACHE STRING "URL for lstore-release")
-
+set(CMAKE_INSTALL_PREFIX "${CMAKE_BINARY_DIR}/local"
+        CACHE STRING "Installation path")
 # Defines
 set(USE_SUPERBUILD ON)
 set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
@@ -98,7 +101,15 @@ add_subdirectory(src/toolbox)
 add_subdirectory(src/gop)
 add_subdirectory(src/ibp)
 add_subdirectory(src/lio)
-add_subdirectory(src/release/rpm-release)
+if(INSTALL_YUM_RELEASE)
+    add_subdirectory(src/release/rpm-release)
+endif()
+if(INSTALL_DEB_RELEASE)
+    add_subdirectory(src/release/deb-release)
+endif()
+if(INSTALL_META)
+    add_subdirectory(src/meta)
+endif()
 
 # Enable testing
 if(BUILD_TESTS)
@@ -115,6 +126,11 @@ if(BUILD_TESTS)
                              test/benchmark-sizes.c)
     target_link_libraries(run-benchmarks pthread lio)
     target_include_directories(run-benchmarks SYSTEM PRIVATE ${APR_INCLUDE_DIR})
+    if(INSTALL_TESTS)
+        install(TARGETS run-tests run-benchmarks
+                DESTINATION ${CMAKE_INSTALL_BINDIR}
+                COMPONENT tests)
+    endif()
 endif()
 
 # Import packaging

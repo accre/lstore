@@ -1,4 +1,4 @@
-## This file is installed by the lstore-repo package.
+## This file is installed by the lstore-release package.
 
 deb ${LSTORE_REPO_URL}/@DIST@/@RELEASE@/packages/ /
 #deb-src http://www.accre.vanderbilt.edu/repos/lstore/@DIST@/@RELEASE@/packages/ /

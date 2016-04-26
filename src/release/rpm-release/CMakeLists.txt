@@ -1,8 +1,9 @@
-configure_file(lstore.repo.in lstore.repo)
+cmake_minimum_required(VERSION 2.8)
 set(LSTORE_REPO_URL "http://repo.accre.vanderbilt.edu"
     CACHE STRING "Repository URL for LStore")
-if(INSTALL_YUM_RELEASE)
-    install(FILES lstore.repo DESTINATION "/etc/yum.repos.d/"
+if(INSTALL_YUM_RELEASE OR (NOT DEFINED INSTALL_YUM_RELEASE))
+    configure_file(lstore.repo.in ${CMAKE_BINARY_DIR}/lstore.repo)
+    install(FILES ${CMAKE_BINARY_DIR}/lstore.repo DESTINATION "/etc/yum.repos.d/"
             COMPONENT lstore-yum-release)
 endif()
 set(CPACK_RPM_EXCLUDE_FROM_AUTO_FILELIST_ADDITION "/etc/yum.repos.d")

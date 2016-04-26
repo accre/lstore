@@ -1,0 +1,14 @@
+Source: lstore
+Section: science
+Priority: optional
+Maintainer: Loic Dachary <loic@dachary.org>
+Uploaders: Julien Dutheil <julien.dutheil@univ-montp2.fr>
+Build-Depends: debhelper (>= 5), cmake (>= 2.6),
+Standards-Version: 3.9.4
+
+Package: lstore
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: Bio++ Phylogenetic Viewer
+ A phylogenetic tree editor developed using Bio++ and Qt.
+

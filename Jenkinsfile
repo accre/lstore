@@ -54,6 +54,8 @@ compile_map['cppcheck'] = {
     }
 }
 
+// cmake -DBUILD_SHARED_LIBS:BOOL=OFF -DINSTALL_TESTS:BOOL=ON ../source/
+
 for (int i = 0 ; i < distros.size(); ++i) {
     def x = distros.get(i)
     compile_map["${x}"] = { node('docker') {

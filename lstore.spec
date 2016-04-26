@@ -11,17 +11,19 @@ Release: %{_release}
 Summary: LStore - Logistical Storage
 License: Apache2
 BuildRoot: %{_builddir}/%{_basename}-root
-Source: https://github.com/accre/lstore-release/archive/v${_version}.zip
+Source: https://github.com/accre/lstore-release/archive/LStore-%{_version}.tar.gz
 
 %description
 LStore - Logistical Storage.
 
 %prep
-%setup -q -n LStore-v%{_version}-Source
+%setup -n LStore-%{_version}
 
 %build
 CFLAGS="-I%{_prefix}/include $RPM_OPT_FLAGS"
 CMAKE_FLAGS="-DCMAKE_INSTALL_PREFIX=%{_prefix}"
+CMAKE_FLAGS="$CMAKE_FLAGS -DINSTALL_YUM_RELEASE:BOOL=ON"
+CMAKE_FLAGS="$CMAKE_FLAGS -DINSTALL_META:BOOL=ON"
 cmake $CMAKE_FLAGS .
 make
 
@@ -38,9 +40,37 @@ rm -rf $RPM_BUILD_ROOT
 %files
 %defattr(-,root,root,-)
 /usr/bin
-/usr/include
 /usr/lib64
 
 %changelog
 * Sat Apr 23 2016 Andrew Melo <andrew.m.melo@vanderbilt.edu> 0.5.1-1
 - Several bug fixed.
+
+%package devel
+Summary: Development files for LStore
+Group: Development/System
+Requires: lstore
+%description devel
+Development files for LStore
+%files devel
+/usr/include
+
+%package meta
+Summary: Default LStore configuration
+Group: Development/System
+Requires: lstore
+%description meta
+Default LStore configuration
+%files meta
+%config(noreplace) /etc/lio
+%config(noreplace) /etc/logrotate.d/lstore
+
+%package release
+Version: 1.0.0
+Summary: LStore repository meta-package
+Group: Development/System
+%description release
+Installs LStore yum repository
+%files release
+%config /etc/yum.repos.d/lstore.repo
+

@@ -1,3 +1,5 @@
+# Installed by lstore-release
+
 [lstore]
 name=LStore-$releasever - LStore packages for $basearch
 baseurl=${LSTORE_REPO_URL}/centos/$releasever
