@@ -6,6 +6,7 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 
 # Options
+option(BUILD_SHARED_LIBS "Build shared LStore libraries" ON)
 option(BUILD_TESTS "Build tests" ON)
 option(BUILD_APR "Build APR from source" ON)
 option(BUILD_APU "Build APR-Util from source" ON)
