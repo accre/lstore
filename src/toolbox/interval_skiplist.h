@@ -37,6 +37,7 @@ http://www.accre.vanderbilt.edu
 extern "C" {
 #endif
 
+#include "tbx/toolbox_visibility.h"
 #include "skiplist.h"
 
 struct isl_data_s;
@@ -77,26 +78,26 @@ typedef struct {
 #define interval_skiplist_unlock(a) apr_thread_mutex_unlock((a)->sl->lock)
 #define interval_skiplist_count(a) (a)->n_intervals
 
-skiplist_key_t *interval_skiplist_first_key(interval_skiplist_t *isl);
-skiplist_key_t *interval_skiplist_last_key(interval_skiplist_t *isl);
+TBX_API skiplist_key_t *interval_skiplist_first_key(interval_skiplist_t *isl);
+TBX_API skiplist_key_t *interval_skiplist_last_key(interval_skiplist_t *isl);
 
 
-interval_skiplist_t *create_interval_skiplist_full(int maxlevels, double p,
+TBX_API interval_skiplist_t *create_interval_skiplist_full(int maxlevels, double p,
         skiplist_compare_t *compare,
         skiplist_key_t *(*dup)(skiplist_key_t *a),
         void (*key_free)(skiplist_key_t *a),
         void (*data_free)(skiplist_data_t *a));
-interval_skiplist_t *create_interval_skiplist(skiplist_compare_t *compare,
+TBX_API interval_skiplist_t *create_interval_skiplist(skiplist_compare_t *compare,
         skiplist_key_t *(*dup)(skiplist_key_t *a),
         void (*key_free)(skiplist_key_t *a),
         void (*data_free)(skiplist_data_t *a));
-void destroy_interval_skiplist(interval_skiplist_t *isl);
-int insert_interval_skiplist(interval_skiplist_t *sl, skiplist_key_t *lo, skiplist_key_t *hi, skiplist_data_t *data);
-int remove_interval_skiplist(interval_skiplist_t *sl, skiplist_key_t *lo, skiplist_key_t *hi, skiplist_data_t *data);
-int count_interval_skiplist(interval_skiplist_t *sl, skiplist_key_t *lo, skiplist_key_t *hi);
+TBX_API void destroy_interval_skiplist(interval_skiplist_t *isl);
+TBX_API int insert_interval_skiplist(interval_skiplist_t *sl, skiplist_key_t *lo, skiplist_key_t *hi, skiplist_data_t *data);
+TBX_API int remove_interval_skiplist(interval_skiplist_t *sl, skiplist_key_t *lo, skiplist_key_t *hi, skiplist_data_t *data);
+TBX_API int count_interval_skiplist(interval_skiplist_t *sl, skiplist_key_t *lo, skiplist_key_t *hi);
 
-interval_skiplist_iter_t iter_search_interval_skiplist(interval_skiplist_t *sl, skiplist_key_t *lo, skiplist_key_t *hi);
-skiplist_data_t *next_interval_skiplist(interval_skiplist_iter_t *it);
+TBX_API interval_skiplist_iter_t iter_search_interval_skiplist(interval_skiplist_t *sl, skiplist_key_t *lo, skiplist_key_t *hi);
+TBX_API skiplist_data_t *next_interval_skiplist(interval_skiplist_iter_t *it);
 
 
 #ifdef __cplusplus

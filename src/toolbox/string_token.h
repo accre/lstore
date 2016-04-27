@@ -29,24 +29,25 @@ http://www.accre.vanderbilt.edu
 
 #ifndef __STRING_TOKEN_H_
 #define __STRING_TOKEN_H_
+#include "tbx/toolbox_visibility.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-char *string_token(char *str, const char *sep, char **last, int *finished);
-char *argv2format(char *arg);
-char *escape_string_token(char *str, const char *delims, char escape_char, int compress_delims, char **last, int *finished);
-int escape_count(char special_chars, char escape_char, char *data);
-char *escape_text(char *special_chars, char escape_char, char *data);
-char *unescape_text(char escape_char, char *data);
+#include <inttypes.h>
+extern TBX_API char *string_token(char *str, const char *sep, char **last, int *finished);
+TBX_API char *argv2format(char *arg);
+TBX_API char *escape_string_token(char *str, const char *delims, char escape_char, int compress_delims, char **last, int *finished);
+int escape_count(char *special_chars, char escape_char, char *data);
+TBX_API char *escape_text(char *special_chars, char escape_char, char *data);
+TBX_API char *unescape_text(char escape_char, char *data);
 char *escape_strchr(char escape_char, char *data, char match);
 char *string_trim(char *str);
 int64_t split_token_into_number_and_scale(char *token);
-int64_t string_get_integer(char *value);
-double string_get_double(char *value);
-char *pretty_print_int_with_scale(int64_t value, char *buffer);
-char *pretty_print_double_with_scale(int base, double value, char *buffer);
+TBX_API int64_t string_get_integer(char *value);
+TBX_API double string_get_double(char *value);
+TBX_API char *pretty_print_int_with_scale(int64_t value, char *buffer);
+TBX_API char *pretty_print_double_with_scale(int base, double value, char *buffer);
 
 #ifdef __cplusplus
 }

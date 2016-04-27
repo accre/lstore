@@ -80,7 +80,7 @@ int lio_argc;
 char **lio_argv;
 } lio_fuse_init_args_t;
  
-extern struct fuse_operations lfs_fops;
+LIO_API extern struct fuse_operations lfs_fops;
  
 void *lfs_init(struct fuse_conn_info *conn);  // returns pointer to lio_fuse_t on success, otherwise NULL
 void lfs_destroy(void *lfs); // expects a lio_fuse_t* as the argument

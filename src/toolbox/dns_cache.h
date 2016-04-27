@@ -36,6 +36,7 @@ http://www.accre.vanderbilt.edu
 #ifdef __cplusplus
 extern "C" {
 #endif
+#include "tbx/toolbox_visibility.h"
 
 //#define DNS_IPV4_LEN 4
 //#define DNS_IPV6_LEN 16
@@ -43,9 +44,9 @@ extern "C" {
 #define DNS_IPV4  0
 #define DNS_IPV6  1
 
-int lookup_host(const char *, char *, char *);
-void dns_cache_init(int);
-void finalize_dns_cache();
+TBX_API int lookup_host(const char *, char *, char *);
+TBX_API void dns_cache_init(int);
+TBX_API void finalize_dns_cache();
 
 #ifdef __cplusplus
 }

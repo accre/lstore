@@ -40,6 +40,7 @@ http://www.accre.vanderbilt.edu
 extern "C" {
 #endif
 
+#include "gop/gop_visibility.h"
 #include "mq_portal.h"
 
 #ifdef __cplusplus

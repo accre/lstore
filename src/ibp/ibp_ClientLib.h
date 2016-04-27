@@ -35,6 +35,7 @@
 
 # ifndef _IBP_CLIENTLIB_H
 # define _IBP_CLIENTLIB_H
+#include "ibp/ibp_visibility.h"
 
 # ifdef STDC_HEADERS
 # include <sys/types.h>
@@ -56,29 +57,29 @@ extern "C" {
  * IBP Client APIs definition
  *********************************************************/
 
-IBP_set_of_caps  IBP_allocate(  IBP_depot  ps_depot,
+IBP_API IBP_set_of_caps  IBP_allocate(  IBP_depot  ps_depot,
                                 IBP_timer   ps_timeout,
                                 unsigned long int pl_size,
                                 IBP_attributes ps_attr);
 
-unsigned long int IBP_store(  IBP_cap    pc_cap,
+IBP_API unsigned long int IBP_store(  IBP_cap    pc_cap,
                               IBP_timer  ps_timeout,
                               char *     pc_data,
                               unsigned long int pl_size);
 
-unsigned long int IBP_write(  IBP_cap    pc_cap,
+IBP_API unsigned long int IBP_write(  IBP_cap    pc_cap,
                               IBP_timer  ps_timeout,
                               char *     pc_data,
                               unsigned long int pl_size,
                               unsigned long int pl_offset);
 
-unsigned long int  IBP_load ( IBP_cap  pc_source,
+IBP_API unsigned long int  IBP_load ( IBP_cap  pc_source,
                               IBP_timer  ps_timeout,
                               char *  pc_buf,
                               unsigned long int  pl_size,
                               unsigned long int  pl_offset);
 
-unsigned long int  IBP_copy(  IBP_cap  ps_source,
+IBP_API unsigned long int  IBP_copy(  IBP_cap  ps_source,
                               IBP_cap  ps_target,
                               IBP_timer  ps_sourceTimeout,
                               IBP_timer  ps_targetTimeout,
@@ -105,13 +106,13 @@ unsigned long int  IBP_datamover (  IBP_cap pc_TargetCap,
                                     int dm_port,
                                     int dm_service);
 
-int IBP_manage(   IBP_cap   pc_manCap,
+IBP_API int IBP_manage(   IBP_cap   pc_manCap,
                   IBP_timer ps_timeout,
                   int  pi_cmd,
                   int  pi_capType,
                   IBP_CapStatus  ps_info);
 
-IBP_DptInfo  IBP_status(  IBP_depot ps_depot,
+IBP_API IBP_DptInfo  IBP_status(  IBP_depot ps_depot,
                           int       pi_StCmd,
                           IBP_timer ps_timeout,
                           char     *pc_password,

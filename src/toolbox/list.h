@@ -31,6 +31,7 @@ http://www.accre.vanderbilt.edu
 // Searchable list routines - Just a wrapper around the skiplist routines
 //***********************************************************************
 
+#include "tbx/toolbox_visibility.h"
 #include "skiplist.h"
 
 #ifndef _LIST_H_

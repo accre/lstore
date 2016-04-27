@@ -31,6 +31,7 @@ http://www.accre.vanderbilt.edu
 extern "C" {
 #endif
 
+#include "ibp/ibp_visibility.h"
 #include "opque.h"
 
 int ibp_sync_execute(opque_t *q, int nthreads);

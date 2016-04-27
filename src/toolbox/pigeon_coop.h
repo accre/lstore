@@ -33,6 +33,7 @@ http://www.accre.vanderbilt.edu
 #ifndef __PIGEON_COOP_H_
 #define __PIGEON_COOP_H_
 
+#include "tbx/toolbox_visibility.h"
 #include <apr_thread_mutex.h>
 #include <apr_pools.h>
 #include "pigeon_hole.h"
@@ -71,11 +72,11 @@ typedef struct {
 
 pigeon_coop_iter_t pigeon_coop_iterator_init(pigeon_coop_t *ph);
 pigeon_coop_hole_t pigeon_coop_iterator_next(pigeon_coop_iter_t *pci);
-void *pigeon_coop_hole_data(pigeon_coop_hole_t *pch);
-int release_pigeon_coop_hole(pigeon_coop_t *ph, pigeon_coop_hole_t *pch);
-pigeon_coop_hole_t reserve_pigeon_coop_hole(pigeon_coop_t *pc);
-void destroy_pigeon_coop(pigeon_coop_t *ph);
-pigeon_coop_t *new_pigeon_coop(const char *name, int size, int item_size, void *new_arg, void *(*new)(void *arg, int size),
+TBX_API void *pigeon_coop_hole_data(pigeon_coop_hole_t *pch);
+TBX_API int release_pigeon_coop_hole(pigeon_coop_t *ph, pigeon_coop_hole_t *pch);
+TBX_API pigeon_coop_hole_t reserve_pigeon_coop_hole(pigeon_coop_t *pc);
+TBX_API void destroy_pigeon_coop(pigeon_coop_t *ph);
+TBX_API pigeon_coop_t *new_pigeon_coop(const char *name, int size, int item_size, void *new_arg, void *(*new)(void *arg, int size),
                                void (*free)(void *arg, int size, void *dshelf));
 
 #ifdef __cplusplus

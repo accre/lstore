@@ -43,9 +43,9 @@ extern "C" {
 #define SEGMENT_TYPE_CACHE "cache"
 
 int cache_page_drop(segment_t *seg, ex_off_t lo, ex_off_t hi);
-int cache_stats_print(cache_stats_t *cs, char *buffer, int *used, int nmax);
-int cache_stats(cache_t *c, cache_stats_t *cs);
-cache_stats_t segment_cache_stats(segment_t *seg);
+LIO_API int cache_stats_print(cache_stats_t *cs, char *buffer, int *used, int nmax);
+LIO_API int cache_stats(cache_t *c, cache_stats_t *cs);
+LIO_API cache_stats_t segment_cache_stats(segment_t *seg);
 segment_t *segment_cache_load(void *arg, ex_id_t id, exnode_exchange_t *ex);
 segment_t *segment_cache_create(void *arg);
 

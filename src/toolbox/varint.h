@@ -34,15 +34,16 @@ http://www.accre.vanderbilt.edu
 extern "C" {
 #endif
 
+#include "tbx/toolbox_visibility.h"
 #include <inttypes.h>
 
 #define varint_need_more(B) ((B) & 0x80)
 
 int varint_encode(uint64_t value, uint8_t *buffer);
 int varint_decode(uint8_t *buffer, int bufsize, uint64_t *value);
-int zigzag_encode(int64_t value, uint8_t *buffer);
-int zigzag_decode(uint8_t *buffer, int bufsize, int64_t *value);
-int varint_test();
+TBX_API int zigzag_encode(int64_t value, uint8_t *buffer);
+TBX_API int zigzag_decode(uint8_t *buffer, int bufsize, int64_t *value);
+TBX_API int varint_test();
 
 #ifdef __cplusplus
 }

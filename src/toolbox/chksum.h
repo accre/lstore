@@ -42,6 +42,7 @@ http://www.accre.vanderbilt.edu
 #ifndef __CHKSUM_H_
 #define __CHKSUM_H_
 
+#include "tbx/toolbox_visibility.h"
 #include "transfer_buffer.h"
 
 #ifdef __cplusplus
@@ -155,20 +156,20 @@ int convert_bin2hex(int in_size, const unsigned char *in, char *out);
  * @param type The type to test
  * @returns 1 if valid, 0 otherwise
  */
-int chksum_valid_type(int type);
+TBX_API int chksum_valid_type(int type);
 
 /*! @brief Initializes checksum
  * @param cs Checksum to initialize
  * @param chksum_type Type of checksum
  * @returns 0 on success, error from library otherwise
  */
-int chksum_set(chksum_t *cs, int chksum_type);
+TBX_API int chksum_set(chksum_t *cs, int chksum_type);
 
 /*! @brief Return checksum type corresponding to a given string
  * @param name Name of the checksum we desire
  * @returns Type index if found, -2 otherwise
  */
-int chksum_name_type(const char *name);
+TBX_API int chksum_name_type(const char *name);
 
 /*! @brief Initializes cs to a completely blank checksum
  * @param cs Checksum struct to initialize

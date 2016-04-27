@@ -31,6 +31,7 @@ http://www.accre.vanderbilt.edu
 // MQ streaming task management header
 //***********************************************************************
 
+#include "gop/gop_visibility.h"
 #include "opque.h"
 #include "mq_portal.h"
 #include "mq_ongoing.h"
@@ -106,21 +107,21 @@ typedef struct {
     int dead_connection;   //** Connections is hosed so don;t even try sending anything
 } mq_stream_t;
 
-void mqs_server_more_cb(void *arg, mq_task_t *task);
+GOP_API void mqs_server_more_cb(void *arg, mq_task_t *task);
 
-int64_t mq_stream_read_varint(mq_stream_t *mqs, int *error);
+GOP_API int64_t mq_stream_read_varint(mq_stream_t *mqs, int *error);
 int mq_stream_read_string(mq_stream_t *mqs, char *str, int bufsize);
-int mq_stream_read(mq_stream_t *mqs, void *buffer, int nbytes);
+GOP_API int mq_stream_read(mq_stream_t *mqs, void *buffer, int nbytes);
 
-int mq_stream_write_varint(mq_stream_t *mqs, int64_t value);
+GOP_API int mq_stream_write_varint(mq_stream_t *mqs, int64_t value);
 int mq_stream_write_string(mq_stream_t *mqs, char *str);
-int mq_stream_write(mq_stream_t *mqs, void *buffer, int nbytes);
+GOP_API int mq_stream_write(mq_stream_t *mqs, void *buffer, int nbytes);
 
 void mq_stream_release_frame(mq_stream_t *mqs);
-mq_stream_t *mq_stream_read_create(mq_context_t *mqc,  mq_ongoing_t *ongoing, char *host_id, int hid_len, mq_frame_t *fdata, mq_msg_t *remote_host, int to);
-mq_stream_t *mq_stream_write_create(mq_context_t *mqc, mq_portal_t *server_portal, mq_ongoing_t *ongoing, char pack_type, int max_size, int timeout, mq_msg_t *address, mq_frame_t *fid, mq_frame_t *hid, int launch_flusher);
+GOP_API mq_stream_t *mq_stream_read_create(mq_context_t *mqc,  mq_ongoing_t *ongoing, char *host_id, int hid_len, mq_frame_t *fdata, mq_msg_t *remote_host, int to);
+GOP_API mq_stream_t *mq_stream_write_create(mq_context_t *mqc, mq_portal_t *server_portal, mq_ongoing_t *ongoing, char pack_type, int max_size, int timeout, mq_msg_t *address, mq_frame_t *fid, mq_frame_t *hid, int launch_flusher);
 
-void mq_stream_destroy(mq_stream_t *mqs);
+GOP_API void mq_stream_destroy(mq_stream_t *mqs);
 
 #ifdef __cplusplus
 }

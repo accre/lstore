@@ -35,6 +35,7 @@ http://www.accre.vanderbilt.edu
 
 #define N_BUFSIZE  1024
 
+#include "tbx/toolbox_visibility.h"
 #include <apr_network_io.h>
 #include <apr_thread_proc.h>
 #include <apr_thread_mutex.h>
@@ -152,9 +153,9 @@ apr_thread_cond_t *cond;   //** cond used for blocking pending accept
 #define nm_get_port(nm) nm->port
 #define nm_get_host(nm) nm->address
  
-int ns_chksum_reset(ns_chksum_t *ncs);
-int ns_chksum_set(ns_chksum_t *ncs, chksum_t *chksum, size_t blocksize);
-int ns_chksum_is_valid(ns_chksum_t *ncs);
+TBX_API int ns_chksum_reset(ns_chksum_t *ncs);
+TBX_API int ns_chksum_set(ns_chksum_t *ncs, chksum_t *chksum, size_t blocksize);
+TBX_API int ns_chksum_is_valid(ns_chksum_t *ncs);
  
 #define ns_chksum_init(ncs)    memset((ncs), 0, sizeof(ns_chksum_t))
 #define ns_chksum_enable(ncs)  (ncs)->is_running = 1
@@ -171,7 +172,7 @@ int ns_chksum_is_valid(ns_chksum_t *ncs);
 #define ns_read_chksum_disable(ns)  (ns)->read_chksum.is_running = 0
 #define ns_read_chksum_bytesleft(ns) (ns)->read_chksum.bytesleft
 #define ns_read_chksum_state(ns)  (ns)->read_chksum.is_running
-int ns_read_chksum_flush(NetStream_t *ns);
+TBX_API int ns_read_chksum_flush(NetStream_t *ns);
  
 #define ns_write_chksum_set(ns, ncs) (ns)->write_chksum = (ncs)
 #define ns_write_chksum_clear(ns)  (ns)->write_chksum.is_valid = 0
@@ -179,9 +180,9 @@ int ns_read_chksum_flush(NetStream_t *ns);
 #define ns_write_chksum_disable(ns)  (ns)->write_chksum.is_running = 0
 #define ns_write_chksum_bytesleft(ns) (ns)->write_chksum.bytesleft
 #define ns_write_chksum_state(ns)  (ns)->write_chksum.is_running
-int ns_write_chksum_flush(NetStream_t *ns);
+TBX_API int ns_write_chksum_flush(NetStream_t *ns);
  
-int ns_generate_id();
+TBX_API int ns_generate_id();
 void set_network_tcpsize(int tcpsize);
 int get_network_tcpsize(int tcpsize);
 int ns_merge_ssl(NetStream_t *ns1, NetStream_t *ns2);
@@ -191,24 +192,24 @@ int connection_is_pending(Network_t *net);
 int wait_for_connection(Network_t *net, int max_wait);
 void lock_ns(NetStream_t *ns);
 void unlock_ns(NetStream_t *ns);
-int network_counter(Network_t *net);
-int net_connect(NetStream_t *ns, const char *host, int port, Net_timeout_t timeout);
+TBX_API int network_counter(Network_t *net);
+TBX_API int net_connect(NetStream_t *ns, const char *host, int port, Net_timeout_t timeout);
 int bind_server_port(Network_t *net, NetStream_t *ns, char *address, int port, int max_pending);
 Network_t *network_init();
-void close_netstream(NetStream_t *ns);
-void destroy_netstream(NetStream_t *ns);
-NetStream_t *new_netstream();
+TBX_API void close_netstream(NetStream_t *ns);
+TBX_API void destroy_netstream(NetStream_t *ns);
+TBX_API NetStream_t *new_netstream();
 void network_close(Network_t *net);
 void network_destroy(Network_t *net);
 int sniff_connection(NetStream_t *ns);
-int write_netstream(NetStream_t *ns, tbuffer_t *buffer, int boff, int bsize, Net_timeout_t timeout);
+TBX_API int write_netstream(NetStream_t *ns, tbuffer_t *buffer, int boff, int bsize, Net_timeout_t timeout);
 int write_netstream_block(NetStream_t *ns, apr_time_t end_time, tbuffer_t *buffer, int boff, int bsize);
 int read_netstream_block(NetStream_t *ns, apr_time_t end_time, tbuffer_t *buffer, int boff, int bsize);
-int read_netstream(NetStream_t *ns, tbuffer_t *buffer, int boff, int size, Net_timeout_t timeout);
-int readline_netstream_raw(NetStream_t *ns, tbuffer_t *buffer, int boff, int size, Net_timeout_t timeout, int *status);
+TBX_API int read_netstream(NetStream_t *ns, tbuffer_t *buffer, int boff, int size, Net_timeout_t timeout);
+TBX_API int readline_netstream_raw(NetStream_t *ns, tbuffer_t *buffer, int boff, int size, Net_timeout_t timeout, int *status);
 int readline_netstream(NetStream_t *ns, tbuffer_t *buffer, int boff, int size, Net_timeout_t timeout);
 int accept_pending_connection(Network_t *net, NetStream_t *ns);
-Net_timeout_t *set_net_timeout(Net_timeout_t *tm, int sec, int us);
+TBX_API Net_timeout_t *set_net_timeout(Net_timeout_t *tm, int sec, int us);
 void get_net_timeout(Net_timeout_t tm, int *sec, int *us);
 void ns_init(NetStream_t *ns);
 void _ns_init(NetStream_t *ns, int incid);

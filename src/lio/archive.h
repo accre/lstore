@@ -26,11 +26,11 @@ Advanced Computing Center for Research and Education
 Nashville, TN 37203
 http://www.accre.vanderbilt.edu
 */
-
+#include "lio/lio_visibility.h"
 #define ARCHIVE_TAPE_ATTRIBUTE "user.tapeid"
 
 // concatenate two strings together
-char* concat(char *str1, char *str2);
+LIO_API char* concat(char *str1, char *str2);
 
 // concatenate two paths together with added separator
-char* path_concat(char *str1, char *str2);
+LIO_API char* path_concat(char *str1, char *str2);

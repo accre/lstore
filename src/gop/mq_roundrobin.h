@@ -1,6 +1,7 @@
 #ifndef __MQ_ROUNDROBIN_H_
 #define __MQ_ROUNDROBIN_H_
 
+#include "gop/gop_visibility.h"
 #include "mq_portal.h"
 #include "mq_helpers.h"
 #include <string.h>

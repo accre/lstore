@@ -39,6 +39,7 @@ http://www.accre.vanderbilt.edu
 #ifdef __cplusplus
 extern "C" {
 #endif
+#include "gop/gop_visibility.h"
 
 struct callback_s {   //** Used for application level callback
     void *priv;
@@ -49,7 +50,7 @@ struct callback_s {   //** Used for application level callback
 
 typedef struct callback_s callback_t;
 
-void callback_set(callback_t *cb, void (*fn)(void *priv, int value), void *priv);
+GOP_API void callback_set(callback_t *cb, void (*fn)(void *priv, int value), void *priv);
 void callback_append(callback_t **root_cb, callback_t *cb);
 void callback_destroy(callback_t *root_cb);
 void callback_execute(callback_t *cb, int value);

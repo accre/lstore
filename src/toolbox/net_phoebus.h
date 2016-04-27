@@ -33,6 +33,7 @@ http://www.accre.vanderbilt.edu
 #ifndef __NET_PHOEBUS_H_
 #define __NET_PHOEBUS_H_
 
+#include "tbx/toolbox_visibility.h"
 #include "toolbox_config.h"
 
 #define N_BUFSIZE  1024
@@ -59,7 +60,7 @@ long int phoebus_read(net_sock_t *sock, void *buf, size_t count, Net_timeout_t t
 int phoebus_connect(net_sock_t *sock, const char *hostname, int port, Net_timeout_t timeout);
 #endif
  
-void ns_config_phoebus(NetStream_t *ns, phoebus_t *path, int tcpsize);
+TBX_API void ns_config_phoebus(NetStream_t *ns, phoebus_t *path, int tcpsize);
  
 #ifdef __cplusplus
 }

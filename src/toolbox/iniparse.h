@@ -34,6 +34,7 @@ http://www.accre.vanderbilt.edu
 extern "C" {
 #endif
 
+#include "tbx/toolbox_visibility.h"
 #include <stdio.h>
 #include <stdint.h>
 
@@ -67,15 +68,15 @@ typedef struct {  //File
 #define inip_get_element_value(ele) ((ele) == NULL) ? NULL : (ele)->value
 
 inip_file_t *inip_read_fd(FILE *fd);
-inip_file_t *inip_read(const char *fname);
-inip_file_t *inip_read_text(const char *text);
-void inip_destroy(inip_file_t *inip);
-char *inip_get_string(inip_file_t *inip, const char *group, const char *key, char *def);
-int64_t inip_get_integer(inip_file_t *inip, const char *group, const char *key, int64_t def);
+TBX_API inip_file_t *inip_read(const char *fname);
+TBX_API inip_file_t *inip_read_text(const char *text);
+TBX_API void inip_destroy(inip_file_t *inip);
+TBX_API char *inip_get_string(inip_file_t *inip, const char *group, const char *key, char *def);
+TBX_API int64_t inip_get_integer(inip_file_t *inip, const char *group, const char *key, int64_t def);
 uint64_t inip_get_unsigned_integer(inip_file_t *inip, const char *group, const char *key, uint64_t def);
-double inip_get_double(inip_file_t *inip, const char *group, const char *key, double def);
-inip_group_t *inip_find_group(inip_file_t *inip, const char *name);
-char *inip_find_key(inip_group_t *group, const char *name);
+TBX_API double inip_get_double(inip_file_t *inip, const char *group, const char *key, double def);
+TBX_API inip_group_t *inip_find_group(inip_file_t *inip, const char *name);
+TBX_API char *inip_find_key(inip_group_t *group, const char *name);
 
 
 #ifdef __cplusplus

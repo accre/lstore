@@ -35,6 +35,7 @@ http://www.accre.vanderbilt.edu
 #include <math.h>
 #include "fmttypes.h"
 #include "type_malloc.h"
+#include "string_token.h"
 
 char NULL_TERMINATOR = '\0';
 

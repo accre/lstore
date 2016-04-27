@@ -31,6 +31,7 @@ http://www.accre.vanderbilt.edu
 //  Generic MQ wrapper for GOP support
 //*************************************************************
 
+#include "gop/gop_visibility.h"
 #include "opque.h"
 #include "host_portal.h"
 #include "atomic_counter.h"
@@ -330,14 +331,14 @@ int mq_pipe_write(mq_socket_t *sock, char *buf);
 
 typedef mq_context_t *(mq_create_t)(inip_file_t *ifd, char *section);
 
-char *mq_id2str(char *id, int id_len, char *str, int str_len);
+GOP_API char *mq_id2str(char *id, int id_len, char *str, int str_len);
 
-mq_msg_t *mq_msg_new();
-int mq_get_frame(mq_frame_t *f, void **data, int *size);
-char *mq_frame_strdup(mq_frame_t *f);
-mq_frame_t *mq_msg_first(mq_msg_t *msg);
+GOP_API mq_msg_t *mq_msg_new();
+GOP_API int mq_get_frame(mq_frame_t *f, void **data, int *size);
+GOP_API char *mq_frame_strdup(mq_frame_t *f);
+GOP_API mq_frame_t *mq_msg_first(mq_msg_t *msg);
 mq_frame_t *mq_msg_last(mq_msg_t *msg);
-mq_frame_t *mq_msg_next(mq_msg_t *msg);
+GOP_API mq_frame_t *mq_msg_next(mq_msg_t *msg);
 mq_frame_t *mq_msg_prev(mq_msg_t *msg);
 mq_frame_t *mq_msg_current(mq_msg_t *msg);
 mq_frame_t *mq_frame_dup(mq_frame_t *f);
@@ -345,44 +346,44 @@ mq_frame_t *mq_msg_pluck(mq_msg_t *msg, int move_up);
 void mq_msg_insert_above(mq_msg_t *msg, mq_frame_t *f);
 void mq_msg_insert_below(mq_msg_t *msg, mq_frame_t *f);
 void mq_msg_push_frame(mq_msg_t *msg, mq_frame_t *f);
-void mq_msg_append_frame(mq_msg_t *msg, mq_frame_t *f);
+GOP_API void mq_msg_append_frame(mq_msg_t *msg, mq_frame_t *f);
 void mq_msg_append_msg(mq_msg_t *msg, mq_msg_t *extra, int mode);
 mq_msg_hash_t mq_msg_hash(mq_msg_t *msg);
-mq_frame_t *mq_frame_new(void *data, int len, int auto_free);
-void mq_frame_set(mq_frame_t *f, void *data, int len, int auto_free);
-void mq_frame_destroy(mq_frame_t *f);
-void mq_msg_destroy(mq_msg_t *msg);
+GOP_API mq_frame_t *mq_frame_new(void *data, int len, int auto_free);
+GOP_API void mq_frame_set(mq_frame_t *f, void *data, int len, int auto_free);
+GOP_API void mq_frame_destroy(mq_frame_t *f);
+GOP_API void mq_msg_destroy(mq_msg_t *msg);
 void mq_msg_push_mem(mq_msg_t *msg, void *data, int len, int auto_free);
-void mq_msg_append_mem(mq_msg_t *msg, void *data, int len, int auto_free);
+GOP_API void mq_msg_append_mem(mq_msg_t *msg, void *data, int len, int auto_free);
 int mq_msg_total_size(mq_msg_t *msg);
 
 mq_msg_t *mq_trackaddress_msg(char *host, mq_msg_t *raw_address, mq_frame_t *fid, int dup_frames);
-void mq_apply_return_address_msg(mq_msg_t *msg, mq_msg_t *raw_address, int dup_frames);
+GOP_API void mq_apply_return_address_msg(mq_msg_t *msg, mq_msg_t *raw_address, int dup_frames);
 
 void mq_stats_add(mq_command_stats_t *a, mq_command_stats_t *b);
 void mq_stats_print(int ll, char *tag, mq_command_stats_t *a);
-mq_task_t *mq_task_new(mq_context_t *ctx, mq_msg_t *msg, op_generic_t *gop, void *arg, int dt);
+GOP_API mq_task_t *mq_task_new(mq_context_t *ctx, mq_msg_t *msg, op_generic_t *gop, void *arg, int dt);
 int mq_task_set(mq_task_t *task, mq_context_t *ctx, mq_msg_t *msg, op_generic_t *gop,  void *arg, int dt);
 void mq_task_destroy(mq_task_t *task);
-op_generic_t *new_mq_op(mq_context_t *ctx, mq_msg_t *msg, op_status_t (*fn_response)(void *arg, int id), void *arg, void (*my_arg_free)(void *arg), int dt);
+GOP_API op_generic_t *new_mq_op(mq_context_t *ctx, mq_msg_t *msg, op_status_t (*fn_response)(void *arg, int id), void *arg, void (*my_arg_free)(void *arg), int dt);
 
 mq_command_t *mq_command_new(void *cmd, int cmd_size, void *arg, mq_fn_exec_t *fn);
-void mq_command_set(mq_command_table_t *table, void *cmd, int cmd_size, void *arg, mq_fn_exec_t *fn);
+GOP_API void mq_command_set(mq_command_table_t *table, void *cmd, int cmd_size, void *arg, mq_fn_exec_t *fn);
 void mq_command_exec(mq_command_table_t *t, mq_task_t *task, void *key, int klen);
 void mq_command_table_destroy(mq_command_table_t *t);
 mq_command_table_t *mq_command_table_new(void *arg, mq_fn_exec_t *fn_default);
 void mq_command_table_set_default(mq_command_table_t *table, void *arg, mq_fn_exec_t *fn);
 
 int mq_task_send(mq_context_t *mqc, mq_task_t *task);
-int mq_submit(mq_portal_t *p, mq_task_t *task);
-int mq_portal_install(mq_context_t *mqc, mq_portal_t *p);
-void mq_portal_remove(mq_context_t *mqc, mq_portal_t *p);
-void mq_portal_destroy(mq_portal_t *p);
-mq_portal_t *mq_portal_create(mq_context_t *mqc, char *host, int connect_mode);
+GOP_API int mq_submit(mq_portal_t *p, mq_task_t *task);
+GOP_API int mq_portal_install(mq_context_t *mqc, mq_portal_t *p);
+GOP_API void mq_portal_remove(mq_context_t *mqc, mq_portal_t *p);
+GOP_API void mq_portal_destroy(mq_portal_t *p);
+GOP_API mq_portal_t *mq_portal_create(mq_context_t *mqc, char *host, int connect_mode);
 mq_portal_t *mq_portal_lookup(mq_context_t *mqc, char *host, int connect_mode);
-mq_command_table_t *mq_portal_command_table(mq_portal_t *portal);
-mq_context_t *mq_create_context(inip_file_t *ifd, char *section);
-void mq_destroy_context(mq_context_t *mqp);
+GOP_API mq_command_table_t *mq_portal_command_table(mq_portal_t *portal);
+GOP_API mq_context_t *mq_create_context(inip_file_t *ifd, char *section);
+GOP_API void mq_destroy_context(mq_context_t *mqp);
 mq_socket_t *zero_create_socket(mq_socket_context_t *ctx, int stype);
 void zero_socket_context_destroy(mq_socket_context_t *ctx);
 mq_socket_context_t *zero_socket_context_new();

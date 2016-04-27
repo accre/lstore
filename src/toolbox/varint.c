@@ -31,6 +31,7 @@ http://www.accre.vanderbilt.edu
 #include <stdlib.h>
 #include <inttypes.h>
 #include <string.h>
+#include "varint.h"
 
 #define I64T "%" PRId64    //int64_t
 #define U64T "%" PRIu64    //uint64_t

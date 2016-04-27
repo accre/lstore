@@ -33,6 +33,7 @@ http://www.accre.vanderbilt.edu
 #ifndef __LOG_H_
 #define __LOG_H_
 
+#include "tbx/toolbox_visibility.h"
 #ifndef _DISABLE_LOG
 
 #include <unistd.h>
@@ -62,12 +63,12 @@ typedef struct {
 #define INFO_HEADER_THREAD 1
 #define INFO_HEADER_FULL   2
 
-info_fd_t *info_create(FILE *fd, int header_type, int level);
+TBX_API info_fd_t *info_create(FILE *fd, int header_type, int level);
 void info_destroy(info_fd_t *fd);
 void flush_info(info_fd_t *fd);
 //int info_printf(info_fd_t *fd, int level, const char *fmt, ...);
-extern int minfo_printf(info_fd_t *ifd, int module_index, int level, const char *fn, const char *fname, int line, const char *fmt, ...) __attribute__((format (printf, 7, 8)));
-void info_flush(info_fd_t *ifd);
+TBX_API extern int minfo_printf(info_fd_t *ifd, int module_index, int level, const char *fn, const char *fname, int line, const char *fmt, ...) __attribute__((format (printf, 7, 8)));
+TBX_API void info_flush(info_fd_t *ifd);
 #define info_printf(ifd, n, ...) minfo_printf(ifd, _log_module_index, n, __func__, _mlog_file_table[_log_module_index], __LINE__, __VA_ARGS__)
 #define get_info_header_type(fd) fd->header_type
 #define set_info_header_type(fd, new_type) fd->header_type = new_type
@@ -76,10 +77,10 @@ void info_flush(info_fd_t *ifd);
 
 
 extern int _mlog_table[_mlog_size];
-extern char *_mlog_file_table[_mlog_size];
+extern TBX_API char *_mlog_file_table[_mlog_size];
 
 extern FILE *_log_fd;
-extern int _log_level;
+extern TBX_API int _log_level;
 extern long int _log_maxsize;
 extern long int _log_currsize;
 extern int _log_special;
@@ -87,11 +88,11 @@ extern apr_thread_mutex_t *_log_lock;
 extern apr_pool_t *_log_mpool;
 extern char _log_fname[1024];
 
-void _open_log(char *fname, int dolock);
+TBX_API void _open_log(char *fname, int dolock);
 void _close_log();
-void flush_log();
-extern int mlog_printf(int suppress_header, int module_index, int level, const char *fn, const char *fname, int line, const char *fmt, ...) __attribute__((format (printf, 7, 8)));
-void mlog_load(char *fname, char *output_override, int log_level_override);
+void TBX_API flush_log();
+extern TBX_API int mlog_printf(int suppress_header, int module_index, int level, const char *fn, const char *fname, int line, const char *fmt, ...) __attribute__((format (printf, 7, 8)));
+TBX_API void mlog_load(char *fname, char *output_override, int log_level_override);
 
 #ifndef _log_module_index
 #define _log_module_index 0

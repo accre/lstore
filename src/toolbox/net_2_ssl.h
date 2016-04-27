@@ -33,6 +33,7 @@ http://www.accre.vanderbilt.edu
 #ifndef __NET_2_SSL_H_
 #define __NET_2_SSL_H_
 
+#include "tbx/toolbox_visibility.h"
 #define N_BUFSIZE  1024
 
 //#include <sys/select.h>

@@ -33,6 +33,7 @@ http://www.accre.vanderbilt.edu
 #ifndef __SKIPLIST_H_
 #define __SKIPLIST_H_
 
+#include "tbx/toolbox_visibility.h"
 #include <apr_thread_mutex.h>
 
 #ifdef __cplusplus
@@ -105,19 +106,19 @@ typedef struct {
 #define iter_search_skiplist(sl, nkey, round_mode) iter_search_skiplist_compare(sl, nkey, (sl)->compare, round_mode)
 
 skiplist_key_t *sl_passthru_dup(skiplist_key_t *key);
-void sl_no_key_free(skiplist_key_t *key);
-void sl_no_data_free(skiplist_data_t *data);
-void sl_simple_free(skiplist_data_t *data);
-skiplist_key_t *sl_string_dup(skiplist_key_t *data);
+TBX_API void sl_no_key_free(skiplist_key_t *key);
+TBX_API void sl_no_data_free(skiplist_data_t *data);
+TBX_API void sl_simple_free(skiplist_data_t *data);
+TBX_API skiplist_key_t *sl_string_dup(skiplist_key_t *data);
 
-extern skiplist_compare_t skiplist_compare_int;
-extern skiplist_compare_t skiplist_compare_strcmp;
+TBX_API extern skiplist_compare_t skiplist_compare_int;
+TBX_API extern skiplist_compare_t skiplist_compare_strcmp;
 extern skiplist_compare_t skiplist_compare_strcmp_descending;
 extern skiplist_compare_t skiplist_compare_ptr;
 
-void skiplist_strncmp_set(skiplist_compare_t *compare, int n);
+TBX_API void skiplist_strncmp_set(skiplist_compare_t *compare, int n);
 
-skiplist_t *create_skiplist_full(int maxlevels, double p, int allow_dups,
+TBX_API skiplist_t *create_skiplist_full(int maxlevels, double p, int allow_dups,
                                  skiplist_compare_t *compare,
                                  skiplist_key_t *(*dup)(skiplist_key_t *a),
                                  void (*key_free)(skiplist_key_t *a),
@@ -127,18 +128,18 @@ skiplist_t *create_skiplist(int allow_dups,
                             skiplist_key_t *(*dup)(skiplist_key_t *a),
                             void (*key_free)(skiplist_key_t *a),
                             void (*data_free)(skiplist_data_t *a));
-void destroy_skiplist(skiplist_t *sl);
-void empty_skiplist(skiplist_t *sl);
-int insert_skiplist(skiplist_t *sl, skiplist_key_t *key, skiplist_data_t *data);
-int remove_skiplist(skiplist_t *sl, skiplist_key_t *key, skiplist_data_t *data);
-int skiplist_key_count(skiplist_t *sl);
+TBX_API void destroy_skiplist(skiplist_t *sl);
+TBX_API void empty_skiplist(skiplist_t *sl);
+TBX_API int insert_skiplist(skiplist_t *sl, skiplist_key_t *key, skiplist_data_t *data);
+TBX_API int remove_skiplist(skiplist_t *sl, skiplist_key_t *key, skiplist_data_t *data);
+TBX_API int skiplist_key_count(skiplist_t *sl);
 int skiplist_element_count(skiplist_t *sl);
 
-skiplist_key_t *skiplist_first_key(skiplist_t *sl);
-skiplist_key_t *skiplist_last_key(skiplist_t *sl);
-skiplist_data_t *search_skiplist_compare(skiplist_t *sl, skiplist_key_t *key, skiplist_compare_t *compare);
-skiplist_iter_t iter_search_skiplist_compare(skiplist_t *sl, skiplist_key_t *nkey, skiplist_compare_t *compare, int round_mode);
-int next_skiplist(skiplist_iter_t *it, skiplist_key_t **nkey, skiplist_data_t **ndata);
+TBX_API skiplist_key_t *skiplist_first_key(skiplist_t *sl);
+TBX_API skiplist_key_t *skiplist_last_key(skiplist_t *sl);
+TBX_API skiplist_data_t *search_skiplist_compare(skiplist_t *sl, skiplist_key_t *key, skiplist_compare_t *compare);
+TBX_API skiplist_iter_t iter_search_skiplist_compare(skiplist_t *sl, skiplist_key_t *nkey, skiplist_compare_t *compare, int round_mode);
+TBX_API int next_skiplist(skiplist_iter_t *it, skiplist_key_t **nkey, skiplist_data_t **ndata);
 int iter_remove_skiplist(skiplist_iter_t *it);
 
 int find_key_compare(skiplist_t *sl, skiplist_node_t **ptr, skiplist_key_t *key, skiplist_compare_t *compare, int fixed_cmp);
