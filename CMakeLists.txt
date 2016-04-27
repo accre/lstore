@@ -6,6 +6,10 @@ set(CMAKE_BUILD_TYPE "Debug" CACHE STRING "Build type (Debug|Release)")
 
 set(LSTORE_PROJECT_VERSION "0.5.1-unknown_commit" CACHE STRING "Project version <major>.<minor>.<patch>[-<git-hash>[-<other-tags>]]")
 
+if(NOT LSTORE_PROJECT_VERSION)
+    set(LSTORE_PROJECT_VERSION "0.5.1-unknown_commit")
+endif()
+
 # Options
 option(BUILD_SHARED_LIBS "Build shared LStore libraries" ON)
 option(BUILD_TESTS "Build tests" ON)
