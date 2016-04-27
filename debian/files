@@ -1,0 +1,3 @@
+lstore-dbgsym_0.5.1_amd64.deb debug extra
+lstore-dev_0.5.1_amd64.deb libdevel optional
+lstore_0.5.1_amd64.deb libs optional
