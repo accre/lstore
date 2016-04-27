@@ -5,6 +5,10 @@ if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Debug)
 endif()
 
+if(NOT LSTORE_PROJECT_VERSION)
+    set(LSTORE_PROJECT_VERSION "0.5.1-unknown_commit")
+endif()
+
 # Options
 option(BUILD_SHARED_LIBS "Build shared LStore libraries" ON)
 option(BUILD_TESTS "Build tests" ON)
