@@ -82,6 +82,9 @@ node('docker') {
     deleteDir()
     unstash 'source'
     sh "bash scripts/generate-docker-base.sh"
+    if (env.'JOB_NAME' == "LStore-Master") {
+        env.'BRANCH_NAME' = 'master'
+    }
     build job: 'LStore-Publish',
             parameters: [[$class: 'StringParameterValue',
                             name: 'upstream',
