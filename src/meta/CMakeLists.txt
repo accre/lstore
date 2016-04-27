@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 2.8)
-install(DIRECTORY etc/lio DESTINATION "etc/"
+install(DIRECTORY etc/lio DESTINATION "/etc/"
         PATTERN "*.sh" PERMISSIONS OWNER_EXECUTE OWNER_WRITE OWNER_READ GROUP_EXECUTE GROUP_READ WORLD_READ)
-install(FILES etc/logrotate.d/lstore DESTINATION "etc/logrotate.d/")
+install(FILES etc/logrotate.d/lstore DESTINATION "/etc/logrotate.d/")
 set(CPACK_RPM_EXCLUDE_FROM_AUTO_FILELIST_ADDITION "/etc/logrotate.d")
 set(CPACK_RPM_USER_FILELIST "%config(noreplace) /etc/logrotate.d/lstore")
 set(CPACK_PACKAGING_INSTALL_PREFIX "/")
@@ -24,11 +24,5 @@ set(CPACK_DEBIAN_PACKAGE_DEPENDS
   "accre-gop, accre-ibp, accre-jerasure, accre-lio, accre-toolbox, libapr-accre1, libapr-accre-util1, czmq")
 set(CPACK_DEBIAN_PACKAGE_SUGGESTS "accre-gridftp")
 set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE ${PKG_ARCHITECTURE})
-
-# RPM specific
-set(CPACK_RPM_PACKAGE_REQUIRES "accre-lio")  # This should be sufficient and pull the other packages via deps
-set(CPACK_RPM_PACKAGE_SUGGESTS "accre-gridftp")
-# Note: CPackRPM.cmake has an issue with policy CMP0007 concerning empty list items when
-# CPACK_PACKAGING_INSTALL_PREFIX is "/" but it is benign and I don't see a good fix
 
 include(CPack)

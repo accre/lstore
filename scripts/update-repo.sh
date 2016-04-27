@@ -3,9 +3,24 @@ set -eu
 ABSOLUTE_PATH=$(cd `dirname "${BASH_SOURCE[0]}"` && pwd)
 source $ABSOLUTE_PATH/functions.sh
 
+OPTIND=1
+VOLUME_FROM=""
+BASE_DIR=""
+while getopts "v:d:" opt; do
+    case $opt in
+        v)
+            VOLUME_FROM="--volumes-from $OPTARG"
+            ;;
+        d)
+            BASE_DIR="-d $OPTARG"
+            ;;
+    esac
+done
+shift $((OPTIND-1))
+
 DISTROS=( "$@" )
 if [ ${#DISTROS[@]} -eq 0 ]; then
-    pushd $LSTORE_RELEASE_BASE/scripts/docker/base
+    pushd $LSTORE_RELEASE_BASE/scripts/docker/builder
     DISTROS=( */ )
     popd
 fi
@@ -42,7 +57,7 @@ for DISTRO in "${DISTROS[@]}"; do
     note "Starting docker container to update $DISTRO"
     set -x
     docker run --rm=true -v $LSTORE_RELEASE_RELATIVE:/tmp/source \
-            lstore/builder:$BARE_DISTRO_IMAGE \
-            /tmp/source/scripts/update-repo-internal.sh $DISTRO
+            $VOLUME_FROM lstore/builder:$BARE_DISTRO_IMAGE \
+            /tmp/source/scripts/update-repo-internal.sh $BASE_DIR $DISTRO
     set +x
 done

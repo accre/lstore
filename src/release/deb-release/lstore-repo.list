@@ -1,4 +1,0 @@
-## This file is installed by the lstore-repo package.
-
-deb http://www.accre.vanderbilt.edu/repos/lstore/@DIST@/@RELEASE@/packages/ /
-#deb-src http://www.accre.vanderbilt.edu/repos/lstore/@DIST@/@RELEASE@/packages/ /

@@ -4,6 +4,10 @@ cmake_minimum_required(VERSION 2.6)
 # make a project
 project( lstore-jerasure C )
 
+option(WANT_SHARED "Produce a shared library" ON)
+option(WANT_STATIC "Produce a static library" ON)
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC")
+
 # Build subdirectories
 add_subdirectory(src)
 
@@ -12,6 +16,8 @@ add_subdirectory(src)
 # TODO: automate doxygen documentation rebuild?
 
 set(CPACK_PACKAGE_VERSION "1.2a")
+set(CPACK_RPM_POST_INSTALL_SCRIPT_FILE "${CMAKE_SOURCE_DIR}/cmake/rpm-ldconfig.sh")
+set(CPACK_RPM_POST_UNINSTALL_SCRIPT_FILE "${CMAKE_SOURCE_DIR}/cmake/rpm-ldconfig.sh")
 if(NOT DEFINED CPACK_GENERATOR)
     set(CPACK_GENERATOR "DEB;RPM")
 endif(NOT DEFINED CPACK_GENERATOR)

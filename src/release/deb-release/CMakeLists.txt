@@ -1,5 +1,13 @@
 cmake_minimum_required(VERSION 2.8)
-install(FILES lstore-repo.list DESTINATION "usr/share/doc/lstore-repo/")
+set(LSTORE_REPO_URL "http://repo.accre.vanderbilt.edu"
+    CACHE STRING "Repository URL for LStore")
+if(INSTALL_DEB_RELEASE OR (NOT DEFINED INSTALL_DEB_RELEASE))
+    configure_file(lstore-repo.list.in ${CMAKE_BINARY_DIR}/lstore-repo.list)
+    install(FILES ${CMAKE_BINARY_DIR}/lstore-repo.list
+                DESTINATION "usr/share/doc/lstore-repo/"
+                COMPONENT lstore-deb-release)
+endif()
+
 set(CPACK_DEBIAN_PACKAGE_CONTROL_EXTRA ${CMAKE_CURRENT_SOURCE_DIR}/postinst)
 set(CPACK_PACKAGING_INSTALL_PREFIX "/")
 set(CPACK_PACKAGE_NAME "lstore-release")
@@ -7,7 +15,6 @@ set(CPACK_DEBIAN_PACKAGE_DESCRIPTION "Convenience package for adding the ACCRE L
 # At least set a short description ^^^^ because the decription file vvvv seems to get ignored
 set(CPACK_PACKAGE_DESCRIPTION_FILE ${CMAKE_CURRENT_SOURCE_DIR}/pkg-description)
 set(CPACK_PACKAGE_VERSION "1.0.0")
-set(CPACK_GENERATOR "DEB")
 set(CPACK_PACKAGE_RELEASE 1)
 set(CPACK_DEBIAN_PACKAGE_PREDEPENDS "lsb-release")
 set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE "all")
