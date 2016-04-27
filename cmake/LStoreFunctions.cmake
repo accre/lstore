@@ -1,4 +1,13 @@
 macro(lstore_project_common LSTORE_PROJECT_NAME)
+    # Extract version components, version string is expected be in the form:
+    #  <major>.<minor>.<patch>-<git-hash>[-<other-tags>]
+    string(REPLACE "." ";" VERSION_LIST "${LSTORE_PROJECT_VERSION}")
+    string(REPLACE "-" ";" VERSION_LIST "${VERSION_LIST}")
+    list(GET VERSION_LIST 0 LSTORE_PROJECT_VERSION_MAJOR)
+    list(GET VERSION_LIST 1 LSTORE_PROJECT_VERSION_MINOR)
+    list(GET VERSION_LIST 2 LSTORE_PROJECT_VERSION_PATCH)
+
+
     # Make the version file.
     include(${CMAKE_SOURCE_DIR}/cmake/Date.cmake)
     include(${CMAKE_SOURCE_DIR}/cmake/CompilerVersion.cmake)
@@ -14,6 +23,18 @@ macro(lstore_project_common LSTORE_PROJECT_NAME)
 
     # Build library
     add_library(${LSTORE_PROJECT_NAME} ${LSTORE_PROJECT_OBJS})
+
+    # Use the project version as the version for each library (for now at least)
+    set(LSTORE_LIBRARY_VERSION_MAJOR ${LSTORE_PROJECT_VERSION_MAJOR})
+    set(LSTORE_LIBRARY_VERSION_MINOR ${LSTORE_PROJECT_VERSION_MINOR})
+    set(LSTORE_LIBRARY_VERSION_PATCH ${LSTORE_PROJECT_VERSION_PATCH})
+    set(LSTORE_LIBRARY_VERSION_STRING ${LSTORE_LIBRARY_VERSION_MAJOR}.${LSTORE_LIBRARY_VERSION_MINOR}.${LSTORE_LIBRARY_VERSION_PATCH})
+    # Give our libraries versioning info
+    set_target_properties(${LSTORE_PROJECT_NAME} PROPERTIES VERSION ${LSTORE_LIBRARY_VERSION_STRING} SOVERSION ${LSTORE_LIBRARY_VERSION_MAJOR})
+
+    configure_file(${LSTORE_PROJECT_NAME}.pc.in ${LSTORE_PROJECT_NAME}.pc @ONLY)
+    install(FILES "${CMAKE_CURRENT_BINARY_DIR}/${LSTORE_PROJECT_NAME}.pc" DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig)
+
     target_link_libraries(${LSTORE_PROJECT_NAME} LINK_PUBLIC ${LSTORE_LIBS} m pthread)
     if(NOT BUILD_SHARED_LIBS)
         target_link_libraries(${LSTORE_PROJECT_NAME} LINK_PUBLIC ${LSTORE_LIBS} dl)
