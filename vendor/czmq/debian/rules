@@ -9,8 +9,11 @@ export DH_OPTIONS
 
 # skip tests within Jenkins because port limit issues cause occasional spurious test failures
 ifdef JENKINS_URL
-DEB_BUILD_OPTIONS:=$(DEB_BUILD_OPTIONS) nocheck
+DEB_BUILD_OPTIONS:=nocheck $(DEB_BUILD_OPTIONS)
 export DEB_BUILD_OPTIONS
+$(info Tests disabled)
+else
+$(info Tests enabled)
 endif
 
 %:
