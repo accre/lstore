@@ -7,14 +7,11 @@
 # This has to be exported to make some magic below work.
 export DH_OPTIONS
 
-# skip tests within Jenkins because port limit issues cause occasional spurious test failures
-ifdef JENKINS_URL
+# skip tests because within Jenkins port limit issues cause occasional spurious test failures
+# Docker gets in the way of Jenkins detection and being more selective about disabling tests
 DEB_BUILD_OPTIONS:=nocheck $(DEB_BUILD_OPTIONS)
 export DEB_BUILD_OPTIONS
 $(info Tests disabled)
-else
-$(info Tests enabled)
-endif
 
 %:
 	dh $@ 
