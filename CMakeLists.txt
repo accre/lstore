@@ -1,13 +1,10 @@
 # Root CMake file for LStore
 cmake_minimum_required(VERSION 2.8)
 project(LStore C)
-if(NOT CMAKE_BUILD_TYPE)
-    set(CMAKE_BUILD_TYPE Debug)
-endif()
 
-if(NOT LSTORE_PROJECT_VERSION)
-    set(LSTORE_PROJECT_VERSION "0.5.1-unknown_commit")
-endif()
+set(CMAKE_BUILD_TYPE "Debug" CACHE STRING "Build type (Debug|Release)")
+
+set(LSTORE_PROJECT_VERSION "0.5.1-unknown_commit" CACHE STRING "Project version <major>.<minor>.<patch>[-<git-hash>[-<other-tags>]]")
 
 # Options
 option(BUILD_SHARED_LIBS "Build shared LStore libraries" ON)
