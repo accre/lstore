@@ -153,8 +153,8 @@ void (*destroy)(segment_t *seg);
 typedef struct {
 ex_header_t header;
 segment_t *default_seg;
-list_t *block;
-list_t *view;
+tbx_list_t *block;
+tbx_list_t *view;
 } exnode_t;
  
 struct segment_s {

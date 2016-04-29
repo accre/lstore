@@ -65,7 +65,7 @@ lfs_mount_t *lfs_mount = NULL;
 
 apr_pool_t *_lc_mpool = NULL;
 apr_thread_mutex_t *_lc_lock = NULL;
-list_t *_lc_object_list = NULL;
+tbx_list_t *_lc_object_list = NULL;
 
 lio_config_t *lio_create_nl(char *fname, char *section, char *user, char *exe_name);
 void lio_destroy_nl(lio_config_t *lio);
@@ -579,8 +579,8 @@ lio_path_tuple_t lio_path_resolve(int auto_fuse_convert, char *lpath)
 
 void lc_object_remove_unused(int remove_all_unused)
 {
-    list_t *user_lc;
-    list_iter_t it;
+    tbx_list_t *user_lc;
+    tbx_list_iter_t it;
     lc_object_container_t *lcc, *lcc2;
     lio_path_tuple_t *tuple;
     lio_config_t *lc;
@@ -595,7 +595,7 @@ void lc_object_remove_unused(int remove_all_unused)
     //** Keep track of the anon creds for deletion
     user_lc = list_create(0, &list_string_compare, NULL, list_no_key_free, list_no_data_free);
     it = list_iter_search(_lc_object_list, "tuple:", 0);
-    while ((list_next(&it, (list_key_t **)&key, (list_data_t **)&lcc)) == 0) {
+    while ((list_next(&it, (tbx_list_key_t **)&key, (tbx_list_data_t **)&lcc)) == 0) {
         if (strncmp(lcc->key, "tuple:", 6) != 0) break;  //** No more tuples
         tuple = lcc->object;
         if (tuple->path == NULL) {
@@ -617,7 +617,7 @@ void lc_object_remove_unused(int remove_all_unused)
 
     //** Now iterate through all the LC's
     it = list_iter_search(_lc_object_list, "lc:", 0);
-    while ((list_next(&it, (list_key_t **)&key, (list_data_t **)&lcc)) == 0) {
+    while ((list_next(&it, (tbx_list_key_t **)&key, (tbx_list_data_t **)&lcc)) == 0) {
         if (strncmp(lcc->key, "lc:", 3) != 0) break;  //** No more LCs
         lc = lcc->object;
         log_printf(15, "checking key=%s lc=%s anon=%d count=%d\n", lcc->key, lc->section_name, lc->anonymous_creation, lcc->count);

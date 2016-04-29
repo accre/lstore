@@ -126,11 +126,11 @@ void ex_header_set_type(ex_header_t *h, char *type)
 // Attribute routines
 //*************************************************************************
 
-list_t *ex_header_get_attributes(ex_header_t *h)
+tbx_list_t *ex_header_get_attributes(ex_header_t *h)
 {
     return(h->attributes);
 }
-void ex_header_set_attributes(ex_header_t *h, list_t *attr)
+void ex_header_set_attributes(ex_header_t *h, tbx_list_t *attr)
 {
     h->attributes = attr;
 }

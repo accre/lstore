@@ -113,7 +113,7 @@ apr_hash_t *rid_changes = NULL;
 apr_pool_t *rid_mpool = NULL;
 
 apr_thread_mutex_t *lock = NULL;
-list_t *seg_index;
+tbx_list_t *seg_index;
 
 int shutdown_now = 0;
 apr_thread_mutex_t *shutdown_lock;
@@ -507,7 +507,7 @@ apr_hash_t *rebalance_pool(apr_pool_t *mpool, Stack_t *my_pool_list, char *key_r
     pool_entry_t *pe;
     Stack_t *pool_list;
     rid_prep_entry_t *re;
-    list_t *master;
+    tbx_list_t *master;
     char pool_text[4096], tstr[128];
     pool_entry_t *unspecified = NULL;
 
@@ -618,8 +618,8 @@ void dump_pools(info_fd_t *ifd, Stack_t *pools, int scale)
     char *key;
     double d1, d2;
     ex_off_t tneg, tpos, pneg, ppos;
-    list_t *master;
-    list_iter_t it;
+    tbx_list_t *master;
+    tbx_list_iter_t it;
     int total_finished, finished, total_todo, todo, total, ntodo, ptodo, total_ntodo, total_ptodo;
 
     move_to_top(pools);
@@ -658,7 +658,7 @@ void dump_pools(info_fd_t *ifd, Stack_t *pools, int scale)
                     ptodo, pretty_print_double_with_scale(scale, d2, pp1));
 
         it = list_iter_search(master, NULL, 0);
-        while (list_next(&it, (list_key_t **)&key, (list_data_t **)&rid) == 0) {
+        while (list_next(&it, (tbx_list_key_t **)&key, (tbx_list_data_t **)&rid) == 0) {
             d1 = rid->delta;
             d2 = rid->tolerance;
             info_printf(ifd, 0, "RID:%s  DELTA: %s TOL: %s STATE: %d\n", rid->ds_key, pretty_print_double_with_scale(scale, d1, pp1),

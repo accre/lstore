@@ -2946,7 +2946,7 @@ cache_stats_t segment_cache_stats(segment_t *seg)
 int cache_stats(cache_t *c, cache_stats_t *cs)
 {
     cache_segment_t *s;
-    list_iter_t it;
+    tbx_list_iter_t it;
     segment_t *seg2;
     ex_id_t *sid2;
     int i, n;
@@ -2960,7 +2960,7 @@ int cache_stats(cache_t *c, cache_stats_t *cs)
     n = list_key_count(c->segments);
     it = list_iter_search(c->segments, NULL, 0);
     for (i=0; i<n; i++) {
-        list_next(&it, (list_key_t **)&sid2, (list_data_t **)&seg2);
+        list_next(&it, (tbx_list_key_t **)&sid2, (tbx_list_data_t **)&seg2);
 
         if (seg2 != NULL) {
             if (apr_thread_mutex_trylock(seg2->lock) == APR_SUCCESS) {

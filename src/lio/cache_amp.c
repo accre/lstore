@@ -155,7 +155,7 @@ amp_page_stream_t *_amp_stream_get(cache_t *c, segment_t *seg, ex_off_t offset, 
     amp_stream_table_t *as = (amp_stream_table_t *)s->cache_priv;
 //  Stack_ele_t *ele;
     amp_page_stream_t *ps, *ps2;
-    list_iter_t it;
+    tbx_list_iter_t it;
     ex_off_t *poff, dn, pos;
 
     if (nbytes > 0) {
@@ -185,7 +185,7 @@ amp_page_stream_t *_amp_stream_get(cache_t *c, segment_t *seg, ex_off_t offset, 
         }
     } else {
         it = list_iter_search(as->streams, &offset, 0);
-        list_next(&it, (list_key_t **)&poff, (list_data_t **)&ps);
+        list_next(&it, (tbx_list_key_t **)&poff, (tbx_list_data_t **)&ps);
         if (ps != NULL) {
             dn = ps->last_offset - offset;
             if (dn > ps->nbytes) ps = NULL;
@@ -206,7 +206,7 @@ amp_page_stream_t *_amp_stream_get(cache_t *c, segment_t *seg, ex_off_t offset, 
 
                 *pse = ps2;
                 pos = ps2->last_offset + s->page_size;
-                list_next(&it, (list_key_t **)&poff, (list_data_t **)&ps2);
+                list_next(&it, (tbx_list_key_t **)&poff, (tbx_list_data_t **)&ps2);
             }
         }
     }
@@ -250,7 +250,7 @@ void *amp_dirty_thread(apr_thread_t *th, void *data)
         type_malloc(flush_list, segment_t *, n);
 
         it = list_iter_search(c->segments, NULL, 0);
-        list_next(&it, (list_key_t **)&id, (list_data_t **)&seg);
+        list_next(&it, (tbx_list_key_t **)&id, (tbx_list_data_t **)&seg);
         i = 0;
         while (id != NULL) {
             log_printf(15, "Flushing seg=" XIDT " i=%d\n", *id, i);
@@ -263,7 +263,7 @@ void *amp_dirty_thread(apr_thread_t *th, void *data)
             opque_add(q, gop);
             i++;
 
-            list_next(&it, (list_key_t **)&id, (list_data_t **)&seg);
+            list_next(&it, (tbx_list_key_t **)&id, (tbx_list_data_t **)&seg);
         }
         cache_unlock(c);
 
@@ -846,9 +846,9 @@ ex_off_t _amp_attempt_free_mem(cache_t *c, segment_t *page_seg, ex_off_t bytes_t
     amp_page_stream_t *ps;
     ex_off_t total_bytes, freed_bytes, pending_bytes;
     ex_id_t *segid;
-    list_iter_t sit;
+    tbx_list_iter_t sit;
     int count, n;
-    list_t *table;
+    tbx_list_t *table;
     page_table_t *ptable;
     pigeon_coop_hole_t pch, pt_pch;
 
@@ -861,7 +861,7 @@ ex_off_t _amp_attempt_free_mem(cache_t *c, segment_t *page_seg, ex_off_t bytes_t
 
     //** cache_lock(c) is already acquired
     pch = reserve_pigeon_coop_hole(cp->free_pending_tables);
-    table = *(list_t **)pigeon_coop_hole_data(&pch);
+    table = *(tbx_list_t **)pigeon_coop_hole_data(&pch);
 
     //** Get the list of pages to free
     move_to_bottom(cp->stack);
@@ -895,7 +895,7 @@ ex_off_t _amp_attempt_free_mem(cache_t *c, segment_t *page_seg, ex_off_t bytes_t
 
                 if (n == 0) { //** Couldn't perform an immediate release
                     if ((p->access_pending[CACHE_FLUSH] == 0) && ((p->bit_fields & C_ISDIRTY) != 0)) {  //** Make sure it's not already being flushed and it's dirty
-                        ptable = (page_table_t *)list_search(table, (list_key_t *)&(segment_id(p->seg)));
+                        ptable = (page_table_t *)list_search(table, (tbx_list_key_t *)&(segment_id(p->seg)));
                         if (ptable == NULL) {  //** Have to make a new segment entry
                             pt_pch = reserve_pigeon_coop_hole(cp->free_page_tables);
                             ptable = (page_table_t *)pigeon_coop_hole_data(&pt_pch);
@@ -964,7 +964,7 @@ ex_off_t _amp_attempt_free_mem(cache_t *c, segment_t *page_seg, ex_off_t bytes_t
 
     //** Cycle through creating the flush calls if needed
     sit = list_iter_search(table, list_first_key(table), 0);
-    list_next(&sit, (list_key_t **)&segid, (list_data_t **)&ptable);
+    list_next(&sit, (tbx_list_key_t **)&segid, (tbx_list_data_t **)&ptable);
     if (ptable != NULL) {
         q = new_opque();
 
@@ -977,7 +977,7 @@ ex_off_t _amp_attempt_free_mem(cache_t *c, segment_t *page_seg, ex_off_t bytes_t
             }
             opque_add(q, gop);
             release_pigeon_coop_hole(cp->free_page_tables, &(ptable->pch));
-            list_next(&sit, (list_key_t **)&segid, (list_data_t **)&ptable);
+            list_next(&sit, (tbx_list_key_t **)&segid, (tbx_list_data_t **)&ptable);
         }
 
         log_printf(15, "BEFORE waitall seg=" XIDT " bytes_to_free=" XOT " bytes_used=" XOT " freed_bytes=" XOT " pending_bytes=" XOT "\n",
@@ -1388,7 +1388,7 @@ cache_t *amp_cache_create(void *arg, data_attr_t *da, int timeout)
     c->dirty_max_wait = apr_time_make(1, 0);
     c->flush_in_progress = 0;
     c->limbo_pages = 0;
-    c->free_pending_tables = new_pigeon_coop("free_pending_tables", 50, sizeof(list_t *), cache->mpool, free_pending_table_new, free_pending_table_free);
+    c->free_pending_tables = new_pigeon_coop("free_pending_tables", 50, sizeof(tbx_list_t *), cache->mpool, free_pending_table_new, free_pending_table_free);
     c->free_page_tables = new_pigeon_coop("free_page_tables", 50, sizeof(page_table_t), cache->mpool, free_page_tables_new, free_page_tables_free);
 
     cache->fn.create_empty_page = _amp_create_empty_page;

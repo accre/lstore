@@ -61,7 +61,7 @@ int trigger_distance;
 typedef struct {
 int   max_streams;
 amp_page_stream_t *stream_table;
-list_t *streams;
+tbx_list_t *streams;
 int index;
 int start_apt_pages;
 } amp_stream_table_t;

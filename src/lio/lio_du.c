@@ -90,10 +90,10 @@ int main(int argc, char **argv)
     int i, j, ftype, rg_mode, start_index, start_option, nosort, prefix_len, plen;
     char *fname;
     du_entry_t *de;
-    list_t *table, *sum_table, *lt;
+    tbx_list_t *table, *sum_table, *lt;
     os_regex_table_t *rp_single, *ro_single;
     os_object_iter_t *it;
-    list_iter_t lit;
+    tbx_list_iter_t lit;
     char *key = "system.exnode.size";
     char *val, *file;
     int64_t bytes;
@@ -258,7 +258,7 @@ int main(int argc, char **argv)
                 if (val != NULL) sscanf(val, I64T, &bytes);
 
                 lit = list_iter_search(sum_table, NULL, 0);
-                while ((list_next(&lit, (list_key_t **)&file, (list_data_t **)&de)) == 0) {
+                while ((list_next(&lit, (tbx_list_key_t **)&file, (tbx_list_data_t **)&de)) == 0) {
                     if ((strncmp(de->fname, fname, strlen(de->fname)) == 0) && ((de->ftype & OS_OBJECT_DIR) > 0)) {
                         log_printf(15, "accum de->fname=%s fname=%s\n", de->fname, fname);
                         de->bytes += bytes;
@@ -307,7 +307,7 @@ int main(int argc, char **argv)
     lt = (sumonly == 1) ? sum_table : table;
 
     lit = list_iter_search(lt, "", 0);
-    while ((list_next(&lit, (list_key_t **)&fname, (list_data_t **)&de)) == 0) {
+    while ((list_next(&lit, (tbx_list_key_t **)&fname, (tbx_list_data_t **)&de)) == 0) {
         total_bytes += de->bytes;
         total_files += (de->ftype & OS_OBJECT_FILE) ? 1 : de->count;
         du_format_entry(lio_ifd, de, sumonly);

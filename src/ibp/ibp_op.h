@@ -95,7 +95,7 @@ ns_chksum_t ncs;
 portal_context_t *pc;
 pigeon_coop_t *coalesced_stacks;
 pigeon_coop_t *coalesced_gop_stacks;
-list_t   *coalesced_ops;  //** Ops available for coalescing go here
+tbx_list_t   *coalesced_ops;  //** Ops available for coalescing go here
 apr_thread_mutex_t *lock;
 apr_pool_t *mpool;
 atomic_int_t n_ops;

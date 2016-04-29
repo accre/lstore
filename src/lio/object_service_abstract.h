@@ -86,7 +86,7 @@ typedef struct os_authz_s os_authz_t;
 typedef struct {
 int q_mode;
 char *attr;
-} os_attr_list_t;
+} os_attr_tbx_list_t;
  
 typedef void os_fd_t;
 typedef void os_attr_iter_t;

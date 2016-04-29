@@ -80,7 +80,7 @@ struct lio_config_s {
     cache_t *cache;
     data_attr_t *da;
     tbx_inip_file_t *ifd;
-    list_t *open_index;
+    tbx_list_t *open_index;
     creds_t *creds;
     apr_thread_mutex_t *lock;
     apr_pool_t *mpool;
@@ -165,7 +165,7 @@ struct lio_file_handle_s {  //** Shared file handle
     int remove_on_close;
     ex_off_t readahead_end;
     atomic_int_t modified;
-    list_t *write_table;
+    tbx_list_t *write_table;
 };
 
 typedef struct lio_file_handle_s lio_file_handle_t;
@@ -289,7 +289,7 @@ op_status_t cp_lio2lio(lio_cp_file_t *cp);
 op_status_t cp_local2lio(lio_cp_file_t *cp);
 op_status_t cp_lio2local(lio_cp_file_t *cp);
 LIO_API op_status_t lio_cp_file_fn(void *arg, int id);
-int lio_cp_create_dir(list_t *table, lio_path_tuple_t tuple);
+int lio_cp_create_dir(tbx_list_t *table, lio_path_tuple_t tuple);
 LIO_API op_status_t lio_cp_path_fn(void *arg, int id);
 LIO_API op_generic_t *lioc_truncate(lio_path_tuple_t *tuple, ex_off_t new_size);
 

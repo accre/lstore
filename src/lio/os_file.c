@@ -1061,7 +1061,7 @@ int va_attr_link_get_attr(os_virtual_attr_t *myva, object_service_fn_t *os, cred
     osfile_fd_t *fd = (osfile_fd_t *)ofd;
     osfile_priv_t *osf = (osfile_priv_t *)fd->os->priv;
     os_virtual_attr_t *va;
-    list_iter_t it;
+    tbx_list_iter_t it;
     struct stat s;
     char buffer[OS_PATH_MAX];
     char *key;
@@ -1079,7 +1079,7 @@ int va_attr_link_get_attr(os_virtual_attr_t *myva, object_service_fn_t *os, cred
     //** Do a Virtual Attr check
     //** Check the prefix VA's first
     it = list_iter_search(osf->vattr_prefix, key, -1);
-    list_next(&it, (list_key_t **)&ca, (list_data_t **)&va);
+    list_next(&it, (tbx_list_key_t **)&ca, (tbx_list_data_t **)&va);
 
     if (va != NULL) {
         n = (int)(long)va->priv;  //*** HACKERY **** to get the attribute length
@@ -2881,7 +2881,7 @@ int osf_get_attr(object_service_fn_t *os, creds_t *creds, osfile_fd_t *ofd, char
 {
     osfile_priv_t *osf = (osfile_priv_t *)os->priv;
     os_virtual_attr_t *va;
-    list_iter_t it;
+    tbx_list_iter_t it;
     char *ca;
     FILE *fd;
     char fname[OS_PATH_MAX];
@@ -2897,7 +2897,7 @@ int osf_get_attr(object_service_fn_t *os, creds_t *creds, osfile_fd_t *ofd, char
     //** Do a Virtual Attr check
     //** Check the prefix VA's first
     it = list_iter_search(osf->vattr_prefix, attr, -1);
-    list_next(&it, (list_key_t **)&ca, (list_data_t **)&va);
+    list_next(&it, (tbx_list_key_t **)&ca, (tbx_list_data_t **)&va);
 
     if (va != NULL) {
         n = (int)(long)va->priv;  //*** HACKERY **** to get the attribute length
@@ -3136,7 +3136,7 @@ int lowlevel_set_attr(object_service_fn_t *os, char *attr_dir, char *attr, void 
 int osf_set_attr(object_service_fn_t *os, creds_t *creds, osfile_fd_t *ofd, char *attr, void *val, int v_size, int *atype, int append_val)
 {
     osfile_priv_t *osf = (osfile_priv_t *)os->priv;
-    list_iter_t it;
+    tbx_list_iter_t it;
     FILE *fd;
     os_virtual_attr_t *va;
     int n;
@@ -3151,7 +3151,7 @@ int osf_set_attr(object_service_fn_t *os, creds_t *creds, osfile_fd_t *ofd, char
     //** Do a Virtual Attr check
     //** Check the prefix VA's first
     it = list_iter_search(osf->vattr_prefix, attr, -1);
-    list_next(&it, (list_key_t **)&ca, (list_data_t **)&va);
+    list_next(&it, (tbx_list_key_t **)&ca, (tbx_list_data_t **)&va);
     if (va != NULL) {
         n = (int)(long)va->priv;  //*** HACKERY **** to get the attribute length
         if (strncmp(attr, va->attribute, n) == 0) {  //** Prefix matches

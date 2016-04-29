@@ -127,11 +127,11 @@ int main(int argc, char **argv)
     ex_off_t fcount;
     char *fname;
     ls_entry_t *lse;
-    list_t *table;
+    tbx_list_t *table;
 //  lio_path_tuple_t tuple;
     os_regex_table_t *rp_single, *ro_single;
     os_object_iter_t *it;
-    list_iter_t lit;
+    tbx_list_iter_t lit;
     opque_t *q;
     op_generic_t *gop;
     char *keys[] = { "system.owner", "system.exnode.size", "system.modify_data", "os.create",  "os.link_count" };
@@ -274,7 +274,7 @@ int main(int argc, char **argv)
     //** Now sort and print things if needed
     if (nosort == 0) {
         lit = list_iter_search(table, NULL, 0);
-        while ((list_next(&lit, (list_key_t **)&fname, (list_data_t **)&lse)) == 0) {
+        while ((list_next(&lit, (tbx_list_key_t **)&fname, (tbx_list_data_t **)&lse)) == 0) {
             ls_format_entry(lio_ifd, lse);
         }
     }

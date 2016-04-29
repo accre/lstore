@@ -69,9 +69,9 @@ typedef struct {
     os_authz_t *osaz;
     authn_t *authn;
     apr_pool_t *mpool;
-    list_t *fobj_table;
+    tbx_list_t *fobj_table;
     apr_hash_t *vattr_hash;
-    list_t *vattr_prefix;
+    tbx_list_t *vattr_prefix;
     apr_thread_mutex_t *fobj_lock;
     pigeon_coop_t *fobj_pc;
     pigeon_coop_t *task_pc;

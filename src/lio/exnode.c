@@ -118,7 +118,7 @@ op_status_t exnode_remove_func(void *arg, int gid)
 {
     exnode_clone_t *op = (exnode_clone_t *)arg;
     exnode_t *ex = op->src_ex;
-    list_iter_t it;
+    tbx_list_iter_t it;
     segment_t *seg;
     ex_id_t *id;
     int i, n;
@@ -134,11 +134,11 @@ op_status_t exnode_remove_func(void *arg, int gid)
 
     //** Start the cloning process
     it = list_iter_search(ex->view, NULL, 0);
-    list_next(&it, (list_key_t **)&id, (list_data_t **)&seg);
+    list_next(&it, (tbx_list_key_t **)&id, (tbx_list_data_t **)&seg);
     while (seg != NULL) {
         gop = segment_remove(seg, op->da, op->timeout);
         opque_add(q, gop);
-        list_next(&it, (list_key_t **)&id, (list_data_t **)&seg);
+        list_next(&it, (tbx_list_key_t **)&id, (tbx_list_data_t **)&seg);
     }
 
     //** Wait for everything to complete
@@ -178,7 +178,7 @@ op_status_t exnode_clone_func(void *arg, int gid)
     exnode_clone_t *exc = (exnode_clone_t *)arg;
     exnode_t *sex = exc->src_ex;
     exnode_t *ex = exc->dest_ex;
-    list_iter_t it;
+    tbx_list_iter_t it;
     segment_t *src_seg, **new_seg, **segptr;
     ex_id_t *id, did;
     int i, n, nfailed;
@@ -196,7 +196,7 @@ op_status_t exnode_clone_func(void *arg, int gid)
 
     //** Start the cloning process
     it = list_iter_search(sex->view, NULL, 0);
-    list_next(&it, (list_key_t **)&id, (list_data_t **)&src_seg);
+    list_next(&it, (tbx_list_key_t **)&id, (tbx_list_data_t **)&src_seg);
     i = 0;
     while (src_seg != NULL) {
         new_seg[i] = src_seg;
@@ -204,7 +204,7 @@ op_status_t exnode_clone_func(void *arg, int gid)
         gop = segment_clone(src_seg, exc->da, &(new_seg[i+1]), exc->mode, exc->arg, exc->timeout);
         gop_set_private(gop, &(new_seg[i]));
         opque_add(q, gop);
-        list_next(&it, (list_key_t **)&id, (list_data_t **)&src_seg);
+        list_next(&it, (tbx_list_key_t **)&id, (tbx_list_data_t **)&src_seg);
         i += 2;
     }
 
@@ -578,7 +578,7 @@ int exnode_serialize(exnode_t *ex, exnode_exchange_t *exp)
 
 void exnode_destroy(exnode_t *ex)
 {
-    list_iter_t it;
+    tbx_list_iter_t it;
     segment_t *seg;
     data_block_t *b;
     ex_id_t id;

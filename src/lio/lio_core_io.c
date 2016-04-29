@@ -238,9 +238,9 @@ int lio_update_exnode_attrs(lio_config_t *lc, creds_t *creds, exnode_t *ex, segm
 //    It also detroys the write_table
 //*****************************************************************
 
-void lio_store_and_release_adler32(lio_config_t *lc, creds_t *creds, list_t *write_table, char *fname)
+void lio_store_and_release_adler32(lio_config_t *lc, creds_t *creds, tbx_list_t *write_table, char *fname)
 {
-    list_iter_t it;
+    tbx_list_iter_t it;
     ex_off_t next, missing, overlap, dn, nbytes, pend;
     uLong cksum;
     unsigned int aval;
@@ -252,7 +252,7 @@ void lio_store_and_release_adler32(lio_config_t *lc, creds_t *creds, list_t *wri
     it = list_iter_search(write_table, 0, 0);
     cksum = adler32(0L, Z_NULL, 0);
     missing = next = overlap = nbytes = 0;
-    while (list_next(&it, (list_key_t **)&aoff, (list_data_t **)&a32) == 0) {
+    while (list_next(&it, (tbx_list_key_t **)&aoff, (tbx_list_data_t **)&a32) == 0) {
         aval = a32->adler32;
         pend = a32->offset + a32->len - 1;
         push(stack, a32);
@@ -331,7 +331,7 @@ int lio_load_file_handle_attrs(lio_config_t *lc, creds_t *creds, char *fname, ex
 
 lio_file_handle_t *_lio_get_file_handle(lio_config_t *lc, ex_id_t vid)
 {
-    return(list_search(lc->open_index, (list_key_t *)&vid));
+    return(list_search(lc->open_index, (tbx_list_key_t *)&vid));
 
 }
 
@@ -342,7 +342,7 @@ lio_file_handle_t *_lio_get_file_handle(lio_config_t *lc, ex_id_t vid)
 
 void _lio_add_file_handle(lio_config_t *lc, lio_file_handle_t *fh)
 {
-    list_insert(lc->open_index, (list_key_t *)&(fh->vid), (list_data_t *)fh);
+    list_insert(lc->open_index, (tbx_list_key_t *)&(fh->vid), (tbx_list_data_t *)fh);
 }
 
 
@@ -353,7 +353,7 @@ void _lio_add_file_handle(lio_config_t *lc, lio_file_handle_t *fh)
 
 void _lio_remove_file_handle(lio_config_t *lc, lio_file_handle_t *fh)
 {
-    list_remove(lc->open_index, (list_key_t *)&(fh->vid), (list_data_t *)fh);
+    list_remove(lc->open_index, (tbx_list_key_t *)&(fh->vid), (tbx_list_data_t *)fh);
 }
 
 //*************************************************************************
@@ -1443,7 +1443,7 @@ op_status_t lio_cp_file_fn(void *arg, int id)
 //     dir table
 //*************************************************************************
 
-int lio_cp_create_dir(list_t *table, lio_path_tuple_t tuple)
+int lio_cp_create_dir(tbx_list_t *table, lio_path_tuple_t tuple)
 {
     int i, n, err, error_code, skip_insert;
     struct stat s;
@@ -1498,7 +1498,7 @@ op_status_t lio_cp_path_fn(void *arg, int id)
     char *dstate;
     char dname[OS_PATH_MAX];
     char *fname, *dir, *file;
-    list_t *dir_table;
+    tbx_list_t *dir_table;
     lio_cp_file_t *cplist, *c;
     op_generic_t *gop;
     opque_t *q;

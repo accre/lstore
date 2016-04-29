@@ -106,8 +106,8 @@ typedef struct {
     void *cache_priv;
     segment_t *child_seg;
     thread_pool_context_t *tpc_unlimited;
-    list_t *pages;
-    list_t *partial_pages;
+    tbx_list_t *pages;
+    tbx_list_t *partial_pages;
     apr_thread_mutex_t *lock;
     apr_thread_cond_t  *flush_cond;
     apr_thread_cond_t  *ppages_cond;
@@ -180,7 +180,7 @@ struct cache_s {
     cache_fn_t fn;
     apr_pool_t *mpool;
     apr_thread_mutex_t *lock;
-    list_t *segments;
+    tbx_list_t *segments;
     pigeon_coop_t *cond_coop;
     data_attr_t *da;
     ex_off_t default_page_size;

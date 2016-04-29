@@ -241,7 +241,7 @@ int main(int argc, char **argv)
     int slot, v_size[2];
     os_object_iter_t *it;
     os_regex_table_t *rp_single, *ro_single;
-    list_t *master;
+    tbx_list_t *master;
     apr_hash_index_t *hi;
     apr_ssize_t klen;
     char *rkey, *config, *value;
@@ -253,7 +253,7 @@ int main(int argc, char **argv)
     char ppbuf[128], ppbuf2[128], ppbuf3[128];
     lio_path_tuple_t tuple;
     ex_off_t total, good, bad, nbytes, submitted, werr;
-    list_iter_t lit;
+    tbx_list_iter_t lit;
     Stack_t *stack;
     int recurse_depth = 10000;
     int summary_mode;
@@ -484,7 +484,7 @@ int main(int argc, char **argv)
     stack = new_stack();
     dtime_total = 0;
     lit = list_iter_search(master, NULL, 0);
-    while (list_next(&lit, (list_key_t **)&rkey, (list_data_t **)&mrid) == 0) {
+    while (list_next(&lit, (tbx_list_key_t **)&rkey, (tbx_list_data_t **)&mrid) == 0) {
         j++;
         nbytes += mrid->nbytes;
         good += mrid->good;

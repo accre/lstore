@@ -123,10 +123,10 @@ void free_page_tables_free(void *arg, int size, void *data)
 
 void *free_pending_table_new(void *arg, int size)
 {
-    list_t **shelf;
+    tbx_list_t **shelf;
     int i;
 
-    type_malloc_clear(shelf, list_t *, size);
+    type_malloc_clear(shelf, tbx_list_t *, size);
 
     log_printf(15, "making new shelf of size %d\n", size);
     for (i=0; i<size; i++) {
@@ -144,7 +144,7 @@ void *free_pending_table_new(void *arg, int size)
 
 void free_pending_table_free(void *arg, int size, void *data)
 {
-    list_t **shelf = (list_t **)data;
+    tbx_list_t **shelf = (tbx_list_t **)data;
     int i;
 
     log_printf(15, "destroying shelf of size %d\n", size);
