@@ -48,7 +48,9 @@ case $PARENT in
         ;;
     ubuntu|debian)
         find build/package/$DISTRO/ -name '*.deb' | \
-            xargs -I{} cp {} build/repo/$PARENT/$RELEASE/packages
+            xargs -I{} cp -u -v {} build/repo/$PARENT/$RELEASE/packages
+            # Since the deb file names don't have extra git versioning appended filenames
+            # may not be unique, 'cp -u' means we copy the newest version.
         pushd build/repo/$PARENT/$RELEASE/packages
         dpkg-scanpackages ./ | gzip >Packages.gz
         popd

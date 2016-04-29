@@ -8,14 +8,14 @@ Homepage: http://czmq.zeromq.org
 #Vcs-Git: git://git.debian.org/collab-maint/czmq.git
 #Vcs-Browser: http://git.debian.org/?p=collab-maint/czmq.git;a=summary
 
-Package: czmq
+Package: libczmq3
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
 Description: High-level C binding for ØMQ http://czmq.zeromq.org
  High-level C binding for ØMQ http://czmq.zeromq.org
  Built from the ACCRE fork https://github.com/accre/czmq
 
-Package: czmq-doc
+Package: libczmq3-doc
 Architecture: all
 Description: documentation for czmq
  Documentation for czmq a high-level C binding for ØMQ (http://czmq.zeromq.org)
