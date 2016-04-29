@@ -55,7 +55,7 @@ http://www.accre.vanderbilt.edu
 #include "os_file_priv.h"
 #include "append_printf.h"
 
-//atomic_int_t _path_parse_count = 0;
+//tbx_atomic_unit32_t _path_parse_count = 0;
 //apr_thread_mutex_t *_path_parse_lock = NULL;
 //apr_pool_t *_path_parse_pool = NULL;
 
@@ -160,7 +160,7 @@ typedef struct {
     creds_t *creds;
     os_regex_table_t *rpath;
     os_regex_table_t *object_regex;
-    atomic_int_t abort;
+    tbx_atomic_unit32_t abort;
     int obj_types;
     int recurse_depth;
 } osfile_remove_regex_op_t;
@@ -177,7 +177,7 @@ typedef struct {
     char *id;
     int *v_size;
     int n_keys;
-    atomic_int_t abort;
+    tbx_atomic_unit32_t abort;
 } osfile_regex_object_attr_op_t;
 
 typedef struct {

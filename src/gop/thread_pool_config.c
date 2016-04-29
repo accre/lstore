@@ -65,7 +65,7 @@ static portal_fn_t _tp_base_portal = {
 void thread_pool_stats_make();
 void thread_pool_stats_print();
 
-atomic_int_t _tp_context_count = 0;
+tbx_atomic_unit32_t _tp_context_count = 0;
 apr_thread_mutex_t *_tp_lock = NULL;
 apr_pool_t *_tp_pool = NULL;
 int _tp_stats = 0;

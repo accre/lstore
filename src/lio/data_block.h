@@ -59,8 +59,8 @@ typedef struct {
     ex_id_t  id;
     ex_off_t size;
     ex_off_t max_size;
-    atomic_int_t ref_count;
-    atomic_int_t initial_ref_count;
+    tbx_atomic_unit32_t ref_count;
+    tbx_atomic_unit32_t initial_ref_count;
     data_block_cap_t *cap;
     data_service_fn_t *ds;
     char *rid_key;

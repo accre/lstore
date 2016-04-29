@@ -39,7 +39,7 @@ http://www.accre.vanderbilt.edu
 #include "varint.h"
 #include "log.h"
 
-static atomic_int_t _id_counter = 0;
+static tbx_atomic_unit32_t _id_counter = 0;
 
 //***********************************************************************
 // mq_make_id_frame - Makes and generates and ID frame
@@ -47,9 +47,9 @@ static atomic_int_t _id_counter = 0;
 
 mq_frame_t *mq_make_id_frame()
 {
-    atomic_int_t *id;
+    tbx_atomic_unit32_t *id;
 
-    type_malloc(id, atomic_int_t, 1);
+    type_malloc(id, tbx_atomic_unit32_t, 1);
 
     *id = atomic_inc(_id_counter);
 
@@ -57,7 +57,7 @@ mq_frame_t *mq_make_id_frame()
         atomic_set(_id_counter, 0);
     }
 
-    return(mq_frame_new(id, sizeof(atomic_int_t), MQF_MSG_AUTO_FREE));
+    return(mq_frame_new(id, sizeof(tbx_atomic_unit32_t), MQF_MSG_AUTO_FREE));
 }
 
 

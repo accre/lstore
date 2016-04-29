@@ -41,7 +41,7 @@ http://www.accre.vanderbilt.edu
 typedef struct {
     int n_cache;
     cache_t **child;
-    atomic_int_t count;
+    tbx_atomic_unit32_t count;
 } cache_rr_t;
 
 //*************************************************************************

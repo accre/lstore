@@ -195,7 +195,7 @@ struct cache_s {
     int  shutdown_request;
 };
 
-extern atomic_int_t _cache_count;
+extern tbx_atomic_unit32_t _cache_count;
 
 #define unique_cache_id() atomic_inc(_cache_count);
 #define cache_lock(c) apr_thread_mutex_lock((c)->lock)

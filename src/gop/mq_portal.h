@@ -293,7 +293,7 @@ struct mq_context_s {      //** Main MQ context
     double min_ops_per_sec;    //** Minimum ops/sec needed to keep a connection open.
     apr_thread_mutex_t *lock;  //** Context lock
     apr_pool_t *mpool;         //** Context memory pool
-    atomic_int_t n_ops;        //** Operation count
+    tbx_atomic_unit32_t n_ops;        //** Operation count
     thread_pool_context_t *tp; //** Worker thread pool
     apr_hash_t  *client_portals;      //** List of all client or outgoing portals
     apr_hash_t  *server_portals;  //** List of all the server or incoming portals

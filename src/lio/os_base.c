@@ -49,7 +49,7 @@ http://www.accre.vanderbilt.edu
 
 apr_thread_mutex_t *_path_parse_lock = NULL;
 apr_pool_t *_path_parse_pool = NULL;
-atomic_int_t _path_parse_counter = 0;
+tbx_atomic_unit32_t _path_parse_counter = 0;
 
 //***********************************************************************
 // os_glob2regex - Converts a string in shell glob notation to regex

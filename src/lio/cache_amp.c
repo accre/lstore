@@ -45,7 +45,7 @@ cache_t *global_cache;
 //******************
 
 
-atomic_int_t amp_dummy = -1000;
+tbx_atomic_unit32_t amp_dummy = -1000;
 
 typedef struct {
     segment_t *seg;

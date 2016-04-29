@@ -61,7 +61,7 @@ typedef struct {
 int enable_tape;
 int shutdown;
 int mount_point_len;
-atomic_int_t counter;
+tbx_atomic_unit32_t counter;
 tbx_list_t *ino_index;
 lio_config_t *lc;
 apr_pool_t *mpool;

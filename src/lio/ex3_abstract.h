@@ -159,7 +159,7 @@ tbx_list_t *view;
  
 struct segment_s {
 ex_header_t header;
-atomic_int_t ref_count;
+tbx_atomic_unit32_t ref_count;
 segment_priv_t *priv;
 service_manager_t *ess;
 segment_fn_t fn;

@@ -39,7 +39,7 @@ http://www.accre.vanderbilt.edu
 #include "ex3_compare.h"
 #include "apr_wrapper.h"
 
-atomic_int_t lru_dummy = -1000;
+tbx_atomic_unit32_t lru_dummy = -1000;
 
 //*************************************************************************
 // _lru_max_bytes - REturns the max amount of space to use
