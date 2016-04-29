@@ -87,7 +87,7 @@ int64_t blocksize;   //** Checksum block size or how often to inject/extract the
 int64_t bytesleft;       //** Current byte count until a full block
 int    is_running;  //** Current state.  1=running
 int    is_valid;     //** Has a valid chksum stored
-chksum_t chksum;    //** Checksum to use
+tbx_chksum_t chksum;    //** Checksum to use
 } ns_chksum_t;
  
 typedef struct {
@@ -154,7 +154,7 @@ apr_thread_cond_t *cond;   //** cond used for blocking pending accept
 #define nm_get_host(nm) nm->address
  
 TBX_API int ns_chksum_reset(ns_chksum_t *ncs);
-TBX_API int ns_chksum_set(ns_chksum_t *ncs, chksum_t *chksum, size_t blocksize);
+TBX_API int ns_chksum_set(ns_chksum_t *ncs, tbx_chksum_t *chksum, size_t blocksize);
 TBX_API int ns_chksum_is_valid(ns_chksum_t *ncs);
  
 #define ns_chksum_init(ncs)    memset((ncs), 0, sizeof(ns_chksum_t))

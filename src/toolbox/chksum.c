@@ -189,7 +189,7 @@ int cipher ## _get(void *state, int type, char *data)         \
   return(i);                                \
 }                                                                 \
                                                                   \
-int cipher ## _set(chksum_t *cs)                                  \
+int cipher ## _set(tbx_chksum_t *cs)                                  \
 {                                                                 \
   int i = sizeof( CIPHER ## _CTX);                                \
   if (i > CHKSUM_STATE_SIZE) {                                    \
@@ -250,7 +250,7 @@ int blank_add(void *state, int type, tbuffer_t *data, int boff)
 //  blank_chksum_set - makes a blank chksum
 //*************************************************************************
 
-int blank_chksum_set(chksum_t *cs)
+int blank_chksum_set(tbx_chksum_t *cs)
 {
     cs->reset = blank_reset;
     cs->size = blank_size;
@@ -268,7 +268,7 @@ int blank_chksum_set(chksum_t *cs)
 //
 //*************************************************************************
 
-int chksum_set(chksum_t *cs, int chksum_type)
+int chksum_set(tbx_chksum_t *cs, int chksum_type)
 {
     int i = -1;
 

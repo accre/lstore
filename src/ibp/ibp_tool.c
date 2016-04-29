@@ -365,7 +365,7 @@ int cmd_get_chksum(char **argv, int argc)
     int info_only, cs_type, cs_size;
     ibp_off_t blocksize, nblocks, n_chksumbytes;
     int err, timeout;
-    chksum_t cs;
+    tbx_chksum_t cs;
 
     if (argc < 1) {
         printf("cmd_validate_chksum: Not enough parameters.  Received %d need 1\n", argc);

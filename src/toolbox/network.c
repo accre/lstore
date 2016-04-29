@@ -167,7 +167,7 @@ void unlock_ns(NetStream_t *ns)
 // ns_set_chksum - Associates a chksum to the stream
 //*********************************************************************
 
-int ns_chksum_set(ns_chksum_t *ncs, chksum_t *cks, size_t blocksize)
+int ns_chksum_set(ns_chksum_t *ncs, tbx_chksum_t *cks, size_t blocksize)
 {
     ncs->blocksize = blocksize;
     ncs->bytesleft = blocksize;

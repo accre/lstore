@@ -406,7 +406,7 @@ void ibp_op_set_cc(op_generic_t *gop, ibp_connect_context_t *cc)
 //     if cs == NULL the chksum is disabled
 //*************************************************************
 
-int ibp_chksum_set(ns_chksum_t *ncs, chksum_t *cs, int blocksize)
+int ibp_chksum_set(ns_chksum_t *ncs, tbx_chksum_t *cs, int blocksize)
 {
     if (cs == NULL) {
         ns_chksum_clear(ncs);

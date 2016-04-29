@@ -1392,7 +1392,7 @@ int main(int argc, char **argv)
     int no_async;
     int net_cs_type;
     rid_t rid1, rid2;
-    chksum_t cs;
+    tbx_chksum_t cs;
     ns_chksum_t ns_cs;
 
     printf("start!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");

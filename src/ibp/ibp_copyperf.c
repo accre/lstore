@@ -286,7 +286,7 @@ int main(int argc, char **argv)
     int port, cs_type;
     char buffer[1024];
     apr_time_t stime, dtime;
-    chksum_t cs;
+    tbx_chksum_t cs;
     ns_chksum_t ns_cs;
     int blocksize = -1;
     char *net_cs_name, *disk_cs_name;

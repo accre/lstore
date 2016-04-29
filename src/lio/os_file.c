@@ -1307,7 +1307,7 @@ int va_null_get_link_attr(os_virtual_attr_t *va, object_service_fn_t *os, creds_
 apr_thread_mutex_t *osf_retrieve_lock(object_service_fn_t *os, char *path, int *table_slot)
 {
     osfile_priv_t *osf = (osfile_priv_t *)os->priv;
-    chksum_t cs;
+    tbx_chksum_t cs;
     char  digest[OSF_LOCK_CHKSUM_SIZE];
     unsigned int *n;
     int nbytes, slot;

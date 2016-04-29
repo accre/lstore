@@ -84,27 +84,30 @@ extern "C" {
 // Alternate form of documentation: /*! */
 
 /*! Checksum reset function pointer */
-typedef int (*chksum_reset_fn_t)(void *state);
+typedef int (*tbx_chksum_reset_fn_t)(void *state);
 /*! Checksum sizeof function pointer */
-typedef int (*chksum_size_fn_t)(void *state, int type);
+typedef int (*tbx_chksum_size_fn_t)(void *state, int type);
 /*! Checksum return function pointer */
-typedef int (*chksum_get_fn_t)(void *state, int type, char *value);
+typedef int (*tbx_chksum_get_fn_t)(void *state, int type, char *value);
 /*! Checksum add data function pointer */
-typedef int (*chksum_add_fn_t)(void *state, int size, tbuffer_t *data, int doff);
+typedef int (*tbx_chksum_add_fn_t)(void *state, int size, tbuffer_t *data, int doff);
 
+
+/*! Generic checksum container (opaque) */
+typedef struct tbx_chksum_t tbx_chksum_t;
 
 /*! Generic Checksum container */
-typedef struct {
+struct tbx_chksum_t{
     // The //!< form tells doxygen to document the PREVIOUS statement instead
     // of the one after. Useful if you want to document values in-line
     char state[CHKSUM_STATE_SIZE];  //!< Used to store state information as an overlay record
     int type;                    //!< Checksum type
     char *name;                  //!< Pointer to the string version of the checksum type
-    chksum_reset_fn_t reset;   //!< Resets checksum to initial value
-    chksum_size_fn_t size;   //!< Size of checksum in bytes
-    chksum_get_fn_t get; //!< Returns the checksum string
-    chksum_add_fn_t add; //!< Adds the data to the checksum
-} chksum_t;
+    tbx_chksum_reset_fn_t reset;   //!< Resets checksum to initial value
+    tbx_chksum_size_fn_t size;   //!< Size of checksum in bytes
+    tbx_chksum_get_fn_t get; //!< Returns the checksum string
+    tbx_chksum_add_fn_t add; //!< Adds the data to the checksum
+};
 
 //** Provide usage shortcuts
 /*! @brief Return c-string representing the checksum's algorithm's name
@@ -163,7 +166,7 @@ TBX_API int chksum_valid_type(int type);
  * @param chksum_type Type of checksum
  * @returns 0 on success, error from library otherwise
  */
-TBX_API int chksum_set(chksum_t *cs, int chksum_type);
+TBX_API int chksum_set(tbx_chksum_t *cs, int chksum_type);
 
 /*! @brief Return checksum type corresponding to a given string
  * @param name Name of the checksum we desire
@@ -175,7 +178,7 @@ TBX_API int chksum_name_type(const char *name);
  * @param cs Checksum struct to initialize
  * @returns Always returns zero
  */
-int blank_chksum_set(chksum_t *cs);
+int blank_chksum_set(tbx_chksum_t *cs);
 
 #ifdef __cplusplus
 }
