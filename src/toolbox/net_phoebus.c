@@ -36,6 +36,7 @@ http://www.accre.vanderbilt.edu
 #include "debug.h"
 #include "log.h"
 #include "phoebus.h"
+#include "net_sock.h"
 
 #ifndef _ENABLE_PHOEBUS    //** Phoebus stub goes below
  
