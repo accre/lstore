@@ -117,13 +117,13 @@ function build_lstore_package() {
             ;;
         ubuntu-*|debian-*)
             CPACK_ARG="-G DEB"
-            CMAKE_ARG="-DCPACK_GENERATOR=DEB -DCPACK_SOURCE_GENERATOR=DEB"
+            CMAKE_ARG="-DCPACK_GENERATOR=DEB:TGZ:TBZ2 -DCPACK_SOURCE_GENERATOR=DEB"
             NATIVE_PKG="cp -ra $SOURCE_PATH ./ ; pushd $PACKAGE ; dpkg-buildpackage -uc -us ; popd"
             PKG_TYPE="deb"
             ;;
         centos-*)
             CPACK_ARG="-G RPM"
-            CMAKE_ARG="-DCPACK_GENERATOR=RPM -DCPACK_SOURCE_GENERATOR=RPM"
+            CMAKE_ARG="-DCPACK_GENERATOR=RPM:TGZ:TBZ2 -DCPACK_SOURCE_GENERATOR=RPM"
             NATIVE_PKG=""
             PKG_TYPE="rpm"
             ;;
@@ -145,19 +145,19 @@ function build_lstore_package() {
             # This is gross, but works for now..
             set -x
             cmake -DWANT_PACKAGE:BOOL=ON "-DLSTORE_PROJECT_VERSION=$TAG_NAME"\
-                    $CMAKE_ARG --debug --verbose $SOURCE_PATH
+                $(echo "$CMAKE_ARG" | tr ':' ';') --debug --verbose $SOURCE_PATH
             set +x
             make package
             ;;
         release)
             case $PKG_TYPE in
                 rpm)
-                    cmake $CMAKE_ARG --debug --verbose \
+                    cmake $(echo "$CMAKE_ARG" | tr ':' ';') --debug --verbose \
                         -DCMAKE_INSTALL_PREFIX="/" $SOURCE_PATH/rpm-release
                     make package
                     ;;
                 deb)
-                    cmake $CMAKE_ARG --debug --verbose \
+                    cmake $(echo "$CMAKE_ARG" | tr ':' ';') --debug --verbose \
                         -DCMAKE_INSTALL_PREFIX="/" $SOURCE_PATH/deb-release
                     make package
                     ;;

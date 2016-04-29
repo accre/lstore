@@ -7,12 +7,18 @@ def compile_map = [:]
 
 node('docker') {
     stage "Checkout"
+    step([$class: 'GitHubCommitNotifier',
+                resultOnFailure: 'FAILURE',
+                statusMessage: [content: 'LStoreRoboto']])
     deleteDir()
     checkout scm
+    sh "bash scripts/generate-docker-base.sh"
+    sh "bash scripts/build-docker-base.sh ubuntu-xenial"
+    zip archive: true, dir: '', glob: 'scripts/**', zipFile: 'scripts.zip'
+    archive 'scripts/**'
     sh "bash scripts/check-patch.sh"
     stash includes: '**, .git/', name: 'source', useDefaultExcludes: false
-    stage "Update-Docker-Images"
-    sh "bash scripts/build-docker-base.sh"
+    sh "env"
 }
 compile_map['unified'] = {
     node('xenial') {
@@ -48,6 +54,8 @@ compile_map['cppcheck'] = {
     }
 }
 
+// cmake -DBUILD_SHARED_LIBS:BOOL=OFF -DINSTALL_TESTS:BOOL=ON ../source/
+
 for (int i = 0 ; i < distros.size(); ++i) {
     def x = distros.get(i)
     compile_map["${x}"] = { node('docker') {
@@ -57,9 +65,9 @@ for (int i = 0 ; i < distros.size(); ++i) {
         sh "bash scripts/build-docker-base.sh ${x}"
         sh "bash scripts/package.sh ${x}"
         sh "bash scripts/update-repo.sh ${x}"
-        archive 'build/repo/**'
+        archive 'build/package/**'
         sh "bash scripts/test-repo.sh ${x}"
-        stash includes: 'build/repo/**', name: "${x}-repo"
+        stash includes: 'build/package/**', name: "${x}-package"
         dockerFingerprintFrom dockerfile: "scripts/docker/builder/${x}/Dockerfile", \
         image: "lstore/builder:${x}"
     } }
@@ -69,3 +77,19 @@ for (int i = 0 ; i < distros.size(); ++i) {
 stage "Packaging"
 parallel compile_map
 
+node('docker') {
+    stage "Deploying"
+    deleteDir()
+    unstash 'source'
+    sh "bash scripts/generate-docker-base.sh"
+    if (env.'JOB_NAME' == "LStore-Master") {
+        env.'BRANCH_NAME' = 'master'
+    }
+    build job: 'LStore-Publish',
+            parameters: [[$class: 'StringParameterValue',
+                            name: 'upstream',
+                            value: env.'BUILD_URL'], 
+                         [$class: 'StringParameterValue',
+                            name: 'branch',
+                            value: env.'BRANCH_NAME']]
+} 

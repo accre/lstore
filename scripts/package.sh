@@ -15,7 +15,7 @@ source $ABSOLUTE_PATH/functions.sh
 PACKAGE_EPOCH=$(date +%F-%H-%M-%S)
 DISTROS=( "$@" )
 if [ ${#DISTROS[@]} -eq 0 ]; then
-    pushd $LSTORE_RELEASE_BASE/scripts/docker/base
+    pushd $LSTORE_RELEASE_BASE/scripts/docker/builder
     DISTROS=( */ )
     popd
 fi
