@@ -58,7 +58,7 @@ int sync_transfer;
 int nthreads;
 int ns_mode;
 int print_progress;
-ns_chksum_t *ncs;
+tbx_ns_chksum_t *ncs;
 int disk_cs_type = CHKSUM_DEFAULT;
 ibp_off_t disk_blocksize = 0;
 
@@ -287,7 +287,7 @@ int main(int argc, char **argv)
     char buffer[1024];
     apr_time_t stime, dtime;
     tbx_chksum_t cs;
-    ns_chksum_t ns_cs;
+    tbx_ns_chksum_t ns_cs;
     int blocksize = -1;
     char *net_cs_name, *disk_cs_name;
 

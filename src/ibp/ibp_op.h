@@ -91,7 +91,7 @@ int rr_size;          //** Round robin connection count. Only used ir cmode = RR
 double transfer_rate; //** Transfer rate in bytes/sec used for calculating timeouts.  Set to 0 to disable function
 tbx_atomic_unit32_t rr_count; //** RR counter
 ibp_connect_context_t cc[IBP_MAX_NUM_CMDS+1];  //** Default connection contexts for EACH command
-ns_chksum_t ncs;
+tbx_ns_chksum_t ncs;
 portal_context_t *pc;
 pigeon_coop_t *coalesced_stacks;
 pigeon_coop_t *coalesced_gop_stacks;
@@ -250,7 +250,7 @@ op_data_t dop;
 Stack_t *hp_parent;  //** Only used for RW coalescing
 int primary_cmd;//** Primary sync IBP command family
 int sub_cmd;    //** sub command, if applicable
-ns_chksum_t ncs;  //** chksum associated with the command
+tbx_ns_chksum_t ncs;  //** chksum associated with the command
 union {         //** Holds the individual commands options
 ibp_op_validate_chksum_t validate_op;
 ibp_op_get_chksum_t      get_chksum_op;
@@ -276,7 +276,7 @@ ibp_op_version_t   ver_op;
 //** ibp_op.c **
 IBP_API void ibp_op_set_cc(op_generic_t *gop, ibp_connect_context_t *cc);
 IBP_API int ibp_cc_type(ibp_connect_context_t *cc);
-IBP_API void ibp_op_set_ncs(op_generic_t *gop, ns_chksum_t *ncs);
+IBP_API void ibp_op_set_ncs(op_generic_t *gop, tbx_ns_chksum_t *ncs);
 //void ibp_op_callback_append(op_generic_t *gop, callback_t *cb);
  
 IBP_API void init_ibp_op(ibp_context_t *ic, ibp_op_t *op);
@@ -385,8 +385,8 @@ int timeout);
 //** ibp_config.c **
 int ibp_rw_submit_coalesce(Stack_t *stack, Stack_ele_t *ele);
 int ibp_rw_coalesce(op_generic_t *gop);
-IBP_API int ibp_set_chksum(ibp_context_t *ic, ns_chksum_t *ncs);
-void ibp_get_chksum(ibp_context_t *ic, ns_chksum_t *ncs);
+IBP_API int ibp_set_chksum(ibp_context_t *ic, tbx_ns_chksum_t *ncs);
+void ibp_get_chksum(ibp_context_t *ic, tbx_ns_chksum_t *ncs);
 void ibp_set_abort_attempts(ibp_context_t *ic, int n);
 int  ibp_get_abort_attempts(ibp_context_t *ic);
 IBP_API void ibp_set_tcpsize(ibp_context_t *ic, int n);

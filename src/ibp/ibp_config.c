@@ -51,12 +51,12 @@ http://www.accre.vanderbilt.edu
 extern apr_thread_once_t *_err_once;
 
 //** These are in bip_op.c
-op_status_t vec_read_command(op_generic_t *gop, NetStream_t *ns);
-op_status_t vec_write_command(op_generic_t *gop, NetStream_t *ns);
+op_status_t vec_read_command(op_generic_t *gop, tbx_ns_t *ns);
+op_status_t vec_write_command(op_generic_t *gop, tbx_ns_t *ns);
 
 void *_ibp_dup_connect_context(void *connect_context);
 void _ibp_destroy_connect_context(void *connect_context);
-int _ibp_connect(NetStream_t *ns, void *connect_context, char *host, int port, Net_timeout_t timeout);
+int _ibp_connect(tbx_ns_t *ns, void *connect_context, char *host, int port, Net_timeout_t timeout);
 
 void _ibp_op_free(op_generic_t *op, int mode);
 void _ibp_submit_op(void *arg, op_generic_t *op);
@@ -457,7 +457,7 @@ void _ibp_destroy_connect_context(void *connect_context)
 //     connection is made.
 //**********************************************************
 
-int _ibp_connect(NetStream_t *ns, void *connect_context, char *host, int port, Net_timeout_t timeout)
+int _ibp_connect(tbx_ns_t *ns, void *connect_context, char *host, int port, Net_timeout_t timeout)
 {
     ibp_connect_context_t *cc = (ibp_connect_context_t *)connect_context;
     int i, n;
@@ -510,13 +510,13 @@ int _ibp_connect(NetStream_t *ns, void *connect_context, char *host, int port, N
 // set/unset routines for options
 //**********************************************************
 
-int ibp_set_chksum(ibp_context_t *ic, ns_chksum_t *ncs)
+int ibp_set_chksum(ibp_context_t *ic, tbx_ns_chksum_t *ncs)
 {
     ns_chksum_clear(&(ic->ncs));
     if (ncs != NULL) ic->ncs = *ncs;
     return(0);
 }
-void ibp_get_chksum(ibp_context_t *ic, ns_chksum_t *ncs)
+void ibp_get_chksum(ibp_context_t *ic, tbx_ns_chksum_t *ncs)
 {
     *ncs = ic->ncs;
 };

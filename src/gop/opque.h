@@ -104,9 +104,9 @@ typedef struct {   //** Command operation
     apr_time_t retry_wait; //** How long to wait in case of a dead socket, if 0 then retry immediately
     int64_t workload;   //** Workload for measuring channel usage
     int retry_count;//** Number of times retried
-    op_status_t (*send_command)(op_generic_t *gop, NetStream_t *ns);  //**Send command routine
-    op_status_t (*send_phase)(op_generic_t *gop, NetStream_t *ns);    //**Handle "sending" side of command
-    op_status_t (*recv_phase)(op_generic_t *gop, NetStream_t *ns);    //**Handle "receiving" half of command
+    op_status_t (*send_command)(op_generic_t *gop, tbx_ns_t *ns);  //**Send command routine
+    op_status_t (*send_phase)(op_generic_t *gop, tbx_ns_t *ns);    //**Handle "sending" side of command
+    op_status_t (*recv_phase)(op_generic_t *gop, tbx_ns_t *ns);    //**Handle "receiving" half of command
     int (*on_submit)(Stack_t *stack, Stack_ele_t *gop_ele);                      //** Executed during initial execution submission
     int (*before_exec)(op_generic_t *gop);                    //** Executed when popped off the globabl que
     int (*destroy_command)(op_generic_t *gop);                //**Destroys the data structure
@@ -120,8 +120,8 @@ typedef struct {   //** Command operation
 typedef struct {  //** Hportal specific implementation
     void *(*dup_connect_context)(void *connect_context);  //** Duplicates a ccon
     void (*destroy_connect_context)(void *connect_context);
-    int (*connect)(NetStream_t *ns, void *connect_context, char *host, int port, Net_timeout_t timeout);
-    void (*close_connection)(NetStream_t *ns);
+    int (*connect)(tbx_ns_t *ns, void *connect_context, char *host, int port, Net_timeout_t timeout);
+    void (*close_connection)(tbx_ns_t *ns);
     void (*sort_tasks)(void *arg, opque_t *q);        //** optional
     void (*submit)(void *arg, op_generic_t *op);
     void (*sync_exec)(void *arg, op_generic_t *op);   //** optional

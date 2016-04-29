@@ -288,7 +288,7 @@ int ds_ibp_get_attr(data_service_fn_t *arg, data_attr_t *dsa, int key, void *val
     ds_int_t *n = (ds_int_t *)val;
     ibp_depot_t *depot = (ibp_depot_t *)val;
     ibp_connect_context_t *cc = (ibp_connect_context_t *)val;
-    ns_chksum_t *ncs = (ns_chksum_t *)val;
+    tbx_ns_chksum_t *ncs = (tbx_ns_chksum_t *)val;
     int err = 0;
 
     switch (key) {
@@ -328,8 +328,8 @@ int ds_ibp_get_attr(data_service_fn_t *arg, data_attr_t *dsa, int key, void *val
         }
         break;
     case DS_IBP_ATTR_NET_CKSUM:
-        if (size < sizeof(ns_chksum_t)) {
-            err = sizeof(ns_chksum_t);
+        if (size < sizeof(tbx_ns_chksum_t)) {
+            err = sizeof(tbx_ns_chksum_t);
         } else {
             *ncs = a->ncs;
         }
@@ -379,7 +379,7 @@ int ds_ibp_set_attr(data_service_fn_t *arg, data_attr_t *dsa, int key, void *val
         a->cc = *((ibp_connect_context_t *)val);
         break;
     case DS_IBP_ATTR_NET_CKSUM:
-        a->ncs = *((ns_chksum_t *)val);
+        a->ncs = *((tbx_ns_chksum_t *)val);
         break;
     case DS_IBP_ATTR_DISK_CHKSUM_TYPE:
         a->disk_cs_type = *((int *)val);

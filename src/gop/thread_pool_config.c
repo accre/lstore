@@ -45,8 +45,8 @@ http://www.accre.vanderbilt.edu
 void  *thread_pool_exec_fn(apr_thread_t *th, void *arg);
 void *_tp_dup_connect_context(void *connect_context);
 void _tp_destroy_connect_context(void *connect_context);
-int _tp_connect(NetStream_t *ns, void *connect_context, char *host, int port, Net_timeout_t timeout);
-void _tp_close_connection(NetStream_t *ns);
+int _tp_connect(tbx_ns_t *ns, void *connect_context, char *host, int port, Net_timeout_t timeout);
+void _tp_close_connection(tbx_ns_t *ns);
 op_generic_t *_tpc_overflow_next(thread_pool_context_t *tpc);
 
 void _tp_op_free(op_generic_t *op, int mode);
@@ -198,7 +198,7 @@ void _tp_destroy_connect_context(void *connect_context)
 
 //**********************************************************
 
-int _tp_connect(NetStream_t *ns, void *connect_context, char *host, int port, Net_timeout_t timeout)
+int _tp_connect(tbx_ns_t *ns, void *connect_context, char *host, int port, Net_timeout_t timeout)
 {
     ns->id = ns_generate_id();
     return(0);
@@ -207,7 +207,7 @@ int _tp_connect(NetStream_t *ns, void *connect_context, char *host, int port, Ne
 
 //**********************************************************
 
-void _tp_close_connection(NetStream_t *ns)
+void _tp_close_connection(tbx_ns_t *ns)
 {
     return;
 }

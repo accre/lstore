@@ -57,7 +57,7 @@ typedef struct {
     ibp_attributes_t attr;
     ibp_depot_t depot;
     ibp_connect_context_t cc;
-    ns_chksum_t ncs;
+    tbx_ns_chksum_t ncs;
     int disk_cs_type;
     int disk_cs_blocksize;
 } ds_ibp_attr_t;

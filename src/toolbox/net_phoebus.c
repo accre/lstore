@@ -42,7 +42,7 @@ http://www.accre.vanderbilt.edu
  
 #include "net_phoebus.h"
  
-void ns_config_phoebus(NetStream_t *ns, phoebus_t *path, int tcpsize)
+void ns_config_phoebus(tbx_ns_t *ns, phoebus_t *path, int tcpsize)
 {
 ns_config_sock(ns, tcpsize);
 }
@@ -256,7 +256,7 @@ return(0);
 // ns_config_phoebus - Configure the connection to use "phoebus" sockets 
 //*********************************************************************
  
-void ns_config_phoebus(NetStream_t *ns, phoebus_t *path, int tcpsize)
+void ns_config_phoebus(tbx_ns_t *ns, phoebus_t *path, int tcpsize)
 {
 network_phoebus_t *sock = (network_phoebus_t *)malloc(sizeof(network_phoebus_t));
  

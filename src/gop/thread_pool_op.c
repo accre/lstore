@@ -141,7 +141,7 @@ int *_thread_local_depth_ptr()
 
 //*************************************************************
 
-op_status_t tp_command(op_generic_t *gop, NetStream_t *ns)
+op_status_t tp_command(op_generic_t *gop, tbx_ns_t *ns)
 {
     return(op_success_status);
 }

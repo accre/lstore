@@ -216,7 +216,7 @@ void *hc_send_thread(apr_thread_t *th, void *data)
 {
     host_connection_t *hc = (host_connection_t *)data;
     host_portal_t *hp = hc->hp;
-    NetStream_t *ns = hc->ns;
+    tbx_ns_t *ns = hc->ns;
     portal_context_t *hpc = hp->context;
     command_op_t *hop;
     op_generic_t *hsop;
@@ -397,7 +397,7 @@ void *hc_send_thread(apr_thread_t *th, void *data)
 void *hc_recv_thread(apr_thread_t *th, void *data)
 {
     host_connection_t *hc = (host_connection_t *)data;
-    NetStream_t *ns = hc->ns;
+    tbx_ns_t *ns = hc->ns;
     host_portal_t *hp = hc->hp;
     portal_context_t *hpc = hp->context;
     apr_status_t value;

@@ -593,7 +593,7 @@ int sock_native_fd(net_sock_t *nsock)
 // ns_config_sock - Configure the connection to use standard sockets
 //*********************************************************************
 
-void ns_config_sock(NetStream_t *ns, int tcpsize)
+void ns_config_sock(tbx_ns_t *ns, int tcpsize)
 {
     log_printf(10, "ns_config_sock: ns=%d, \n", ns->id);
 

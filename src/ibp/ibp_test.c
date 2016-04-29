@@ -64,7 +64,7 @@ typedef struct {
     iovec_t v;
 } rw_arg_t;
 
-ns_chksum_t *ncs;
+tbx_ns_chksum_t *ncs;
 ibp_context_t *ic = NULL;
 
 //*************************************************************************
@@ -1393,7 +1393,7 @@ int main(int argc, char **argv)
     int net_cs_type;
     rid_t rid1, rid2;
     tbx_chksum_t cs;
-    ns_chksum_t ns_cs;
+    tbx_ns_chksum_t ns_cs;
 
     printf("start!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
     fflush(stdout);

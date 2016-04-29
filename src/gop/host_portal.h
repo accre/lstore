@@ -101,7 +101,7 @@ int start_stable;
 int send_down;
 int closing;
 apr_time_t last_used;          //** Time the last command completed
-NetStream_t *ns;           //** Socket
+tbx_ns_t *ns;           //** Socket
 Stack_t *pending_stack;    //** Local task que. An op  is mpoved from the parent que to here
 Stack_ele_t *my_pos;       //** My position int the dp conn list
 op_generic_t *curr_op;   //** Sending phase op that could have failed

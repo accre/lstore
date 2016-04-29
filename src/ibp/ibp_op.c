@@ -49,16 +49,16 @@ http://www.accre.vanderbilt.edu
 
 Net_timeout_t global_dt = 1*1000000;
 apr_time_t gop_get_end_time(op_generic_t *gop, int *state);
-op_status_t gop_readline_with_timeout(NetStream_t *ns, char *buffer, int size, op_generic_t *gop);
-//op_status_t write_block(NetStream_t *ns, apr_time_t end_time, tbuffer_t *buffer, ibp_off_t pos, ibp_off_t size);
-op_status_t gop_write_block(NetStream_t *ns, op_generic_t *gop, tbuffer_t *buffer, ibp_off_t pos, ibp_off_t size);
-op_status_t gop_read_block(NetStream_t *ns, op_generic_t *gop, tbuffer_t *buffer, ibp_off_t pos, ibp_off_t size);
+op_status_t gop_readline_with_timeout(tbx_ns_t *ns, char *buffer, int size, op_generic_t *gop);
+//op_status_t write_block(tbx_ns_t *ns, apr_time_t end_time, tbuffer_t *buffer, ibp_off_t pos, ibp_off_t size);
+op_status_t gop_write_block(tbx_ns_t *ns, op_generic_t *gop, tbuffer_t *buffer, ibp_off_t pos, ibp_off_t size);
+op_status_t gop_read_block(tbx_ns_t *ns, op_generic_t *gop, tbuffer_t *buffer, ibp_off_t pos, ibp_off_t size);
 
-op_status_t status_get_recv(op_generic_t *gop, NetStream_t *ns);
+op_status_t status_get_recv(op_generic_t *gop, tbx_ns_t *ns);
 void _ibp_op_free(op_generic_t *op, int mode);
 
-op_status_t vec_read_command(op_generic_t *gop, NetStream_t *ns);
-op_status_t vec_write_command(op_generic_t *gop, NetStream_t *ns);
+op_status_t vec_read_command(op_generic_t *gop, tbx_ns_t *ns);
+op_status_t vec_write_command(op_generic_t *gop, tbx_ns_t *ns);
 
 op_status_t ibp_success_status = {OP_STATE_SUCCESS, IBP_OK};
 op_status_t ibp_failure_status = {OP_STATE_FAILURE, 0};
@@ -206,7 +206,7 @@ apr_time_t gop_get_end_time(op_generic_t *gop, int *state)
 // send_command - Sends a text string.  USed for sending IBP commands
 //*************************************************************
 
-op_status_t send_command(op_generic_t *gop, NetStream_t *ns, char *command)
+op_status_t send_command(op_generic_t *gop, tbx_ns_t *ns, char *command)
 {
     Net_timeout_t dt;
     set_net_timeout(&dt, 5, 0);
@@ -231,7 +231,7 @@ op_status_t send_command(op_generic_t *gop, NetStream_t *ns, char *command)
 //    command timeout
 //*************************************************************
 
-op_status_t gop_readline_with_timeout(NetStream_t *ns, char *buffer, int size, op_generic_t *gop)
+op_status_t gop_readline_with_timeout(tbx_ns_t *ns, char *buffer, int size, op_generic_t *gop)
 {
     int nbytes, n, nleft, pos;
     int err, state;
@@ -367,7 +367,7 @@ void init_ibp_base_op(ibp_op_t *iop, char *logstr, int timeout_sec, int workload
 //  Setter routines for optional fields
 //*************************************************************
 
-void ibp_op_set_ncs(op_generic_t *gop, ns_chksum_t *ncs)
+void ibp_op_set_ncs(op_generic_t *gop, tbx_ns_chksum_t *ncs)
 {
     if ( ncs == NULL) return;
 
@@ -406,7 +406,7 @@ void ibp_op_set_cc(op_generic_t *gop, ibp_connect_context_t *cc)
 //     if cs == NULL the chksum is disabled
 //*************************************************************
 
-int ibp_chksum_set(ns_chksum_t *ncs, tbx_chksum_t *cs, int blocksize)
+int ibp_chksum_set(tbx_ns_chksum_t *ncs, tbx_chksum_t *cs, int blocksize)
 {
     if (cs == NULL) {
         ns_chksum_clear(ncs);
@@ -480,7 +480,7 @@ op_generic_t *new_ibp_vec_read_op(ibp_context_t *ic, ibp_cap_t *cap, int n_vec, 
 
 //*************************************************************
 
-op_status_t vec_read_command(op_generic_t *gop, NetStream_t *ns)
+op_status_t vec_read_command(op_generic_t *gop, tbx_ns_t *ns)
 {
     ibp_op_t *op = ibp_get_iop(gop);
     int bufsize = 204800;
@@ -500,7 +500,7 @@ op_status_t vec_read_command(op_generic_t *gop, NetStream_t *ns)
         append_printf(buffer, &used, bufsize, "%d %d %s %s %d", IBPv040, IBP_VEC_READ, cmd->key, cmd->typekey, cmd->n_iovec_total);
     } else {
         append_printf(buffer, &used, bufsize, "%d %d %d " I64T " %s %s %d",
-                      IBPv040, IBP_VEC_READ_CHKSUM, ns_chksum_type(&(op->ncs)), ns_chksum_blocksize(&(op->ncs)),
+                      IBPv040, IBP_VEC_READ_CHKSUM, tbx_ns_chksum_type(&(op->ncs)), ns_chksum_blocksize(&(op->ncs)),
                       cmd->key, cmd->typekey, cmd->n_iovec_total);
     }
 
@@ -540,7 +540,7 @@ op_status_t vec_read_command(op_generic_t *gop, NetStream_t *ns)
 
 //*************************************************************
 
-op_status_t read_command(op_generic_t *gop, NetStream_t *ns)
+op_status_t read_command(op_generic_t *gop, tbx_ns_t *ns)
 {
     ibp_op_t *op = ibp_get_iop(gop);
     char buffer[1024];
@@ -555,7 +555,7 @@ op_status_t read_command(op_generic_t *gop, NetStream_t *ns)
                  IBPv040, IBP_LOAD, cmd->key, cmd->typekey, cmd->buf_single.iovec[0].offset, cmd->buf_single.size, (int)apr_time_sec(gop->op->cmd.timeout));
     } else {
         snprintf(buffer, sizeof(buffer), "%d %d %d " I64T " %s %s " I64T " " I64T " %d\n",
-                 IBPv040, IBP_LOAD_CHKSUM, ns_chksum_type(&(op->ncs)), ns_chksum_blocksize(&(op->ncs)),
+                 IBPv040, IBP_LOAD_CHKSUM, tbx_ns_chksum_type(&(op->ncs)), ns_chksum_blocksize(&(op->ncs)),
                  cmd->key, cmd->typekey, cmd->buf_single.iovec[0].offset, cmd->buf_single.size, (int)apr_time_sec(gop->op->cmd.timeout));
     }
 
@@ -572,7 +572,7 @@ op_status_t read_command(op_generic_t *gop, NetStream_t *ns)
 
 //*************************************************************
 
-op_status_t gop_read_block(NetStream_t *ns, op_generic_t *gop, tbuffer_t *buffer, ibp_off_t pos, ibp_off_t size)
+op_status_t gop_read_block(tbx_ns_t *ns, op_generic_t *gop, tbuffer_t *buffer, ibp_off_t pos, ibp_off_t size)
 {
     int nbytes, state, bpos, nleft;
     op_status_t status;
@@ -612,7 +612,7 @@ op_status_t gop_read_block(NetStream_t *ns, op_generic_t *gop, tbuffer_t *buffer
 
 //*************************************************************
 
-op_status_t read_recv(op_generic_t *gop, NetStream_t *ns)
+op_status_t read_recv(op_generic_t *gop, tbx_ns_t *ns)
 {
     ibp_op_t *op = ibp_get_iop(gop);
     ibp_off_t nbytes;
@@ -750,7 +750,7 @@ op_generic_t *new_ibp_vec_write_op(ibp_context_t *ic, ibp_cap_t *cap, int n_iove
 
 //*************************************************************
 
-op_status_t vec_write_command(op_generic_t *gop, NetStream_t *ns)
+op_status_t vec_write_command(op_generic_t *gop, tbx_ns_t *ns)
 {
     ibp_op_t *op = ibp_get_iop(gop);
     int bufsize = 204800;
@@ -771,7 +771,7 @@ op_status_t vec_write_command(op_generic_t *gop, NetStream_t *ns)
                       IBPv040, IBP_VEC_WRITE, cmd->key, cmd->typekey, cmd->n_iovec_total);
     } else {
         append_printf(buffer, &used, bufsize, "%d %d %d %d %s %s %d",
-                      IBPv040, IBP_VEC_WRITE_CHKSUM, ns_chksum_type(&(op->ncs)), ns_chksum_blocksize(&(op->ncs)),
+                      IBPv040, IBP_VEC_WRITE_CHKSUM, tbx_ns_chksum_type(&(op->ncs)), ns_chksum_blocksize(&(op->ncs)),
                       cmd->key, cmd->typekey, cmd->n_iovec_total);
     }
 
@@ -815,7 +815,7 @@ op_status_t vec_write_command(op_generic_t *gop, NetStream_t *ns)
 
 //*************************************************************
 
-op_status_t write_command(op_generic_t *gop, NetStream_t *ns)
+op_status_t write_command(op_generic_t *gop, tbx_ns_t *ns)
 {
     ibp_op_t *op = ibp_get_iop(gop);
     char buffer[1024];
@@ -831,7 +831,7 @@ op_status_t write_command(op_generic_t *gop, NetStream_t *ns)
                  IBPv040, IBP_WRITE, cmd->key, cmd->typekey, cmd->buf_single.iovec[0].offset, cmd->buf_single.size, (int)apr_time_sec(gop->op->cmd.timeout));
     } else {
         snprintf(buffer, sizeof(buffer), "%d %d %d " I64T " %s %s " I64T " " I64T " %d\n",
-                 IBPv040, IBP_WRITE_CHKSUM, ns_chksum_type(&(op->ncs)), ns_chksum_blocksize(&(op->ncs)),
+                 IBPv040, IBP_WRITE_CHKSUM, tbx_ns_chksum_type(&(op->ncs)), ns_chksum_blocksize(&(op->ncs)),
                  cmd->key, cmd->typekey, cmd->buf_single.iovec[0].offset, cmd->buf_single.size, (int)apr_time_sec(gop->op->cmd.timeout));
     }
 
@@ -852,7 +852,7 @@ op_status_t write_command(op_generic_t *gop, NetStream_t *ns)
 
 //*************************************************************
 
-op_status_t gop_write_block(NetStream_t *ns, op_generic_t *gop, tbuffer_t *buffer, ibp_off_t pos, ibp_off_t size)
+op_status_t gop_write_block(tbx_ns_t *ns, op_generic_t *gop, tbuffer_t *buffer, ibp_off_t pos, ibp_off_t size)
 {
     int nbytes, state, bpos, nleft;
     op_status_t status;
@@ -893,7 +893,7 @@ op_status_t gop_write_block(NetStream_t *ns, op_generic_t *gop, tbuffer_t *buffe
 
 //*************************************************************
 
-op_status_t write_send(op_generic_t *gop, NetStream_t *ns)
+op_status_t write_send(op_generic_t *gop, tbx_ns_t *ns)
 {
     ibp_op_t *iop = ibp_get_iop(gop);
     int i;
@@ -907,7 +907,7 @@ op_status_t write_send(op_generic_t *gop, NetStream_t *ns)
 
     //** Turn on chksumming if needed
     if (ns_chksum_is_valid(&(iop->ncs)) == 1) {
-        log_printf(15, "write_send: ns=%d chksum_type=%d\n", ns_getid(ns), ns_chksum_type(&(iop->ncs)));
+        log_printf(15, "write_send: ns=%d chksum_type=%d\n", ns_getid(ns), tbx_ns_chksum_type(&(iop->ncs)));
         ns_chksum_reset(&(iop->ncs));
         ns_write_chksum_set(ns, iop->ncs);
         ns_write_chksum_enable(ns);
@@ -941,7 +941,7 @@ op_status_t write_send(op_generic_t *gop, NetStream_t *ns)
 
 //*************************************************************
 
-op_status_t write_recv(op_generic_t *gop, NetStream_t *ns)
+op_status_t write_recv(op_generic_t *gop, tbx_ns_t *ns)
 {
     ibp_op_t *op = ibp_get_iop(gop);
     char buffer[1024];
@@ -1004,7 +1004,7 @@ op_status_t write_recv(op_generic_t *gop, NetStream_t *ns)
 
 //*************************************************************
 
-op_status_t append_command(op_generic_t *gop, NetStream_t *ns)
+op_status_t append_command(op_generic_t *gop, tbx_ns_t *ns)
 {
     ibp_op_t *op = ibp_get_iop(gop);
     char buffer[1024];
@@ -1019,7 +1019,7 @@ op_status_t append_command(op_generic_t *gop, NetStream_t *ns)
                  IBPv040, IBP_STORE, cmd->key, cmd->typekey, cmd->size, (int)apr_time_sec(gop->op->cmd.timeout));
     } else {
         snprintf(buffer, sizeof(buffer), "%d %d %d " I64T " %s %s " I64T " %d\n",
-                 IBPv040, IBP_STORE_CHKSUM, ns_chksum_type(&(op->ncs)), ns_chksum_blocksize(&(op->ncs)),
+                 IBPv040, IBP_STORE_CHKSUM, tbx_ns_chksum_type(&(op->ncs)), ns_chksum_blocksize(&(op->ncs)),
                  cmd->key, cmd->typekey, cmd->size, (int)apr_time_sec(gop->op->cmd.timeout));
     }
 
@@ -1144,7 +1144,7 @@ op_generic_t *new_ibp_rw_op(ibp_context_t *ic, int rw_type, ibp_cap_t *cap, ibp_
 
 //*************************************************************
 
-op_status_t validate_chksum_command(op_generic_t *gop, NetStream_t *ns)
+op_status_t validate_chksum_command(op_generic_t *gop, tbx_ns_t *ns)
 {
     ibp_op_t *op = ibp_get_iop(gop);
     char buffer[1024];
@@ -1167,7 +1167,7 @@ op_status_t validate_chksum_command(op_generic_t *gop, NetStream_t *ns)
 
 //*************************************************************
 
-op_status_t validate_chksum_recv(op_generic_t *gop, NetStream_t *ns)
+op_status_t validate_chksum_recv(op_generic_t *gop, tbx_ns_t *ns)
 {
     ibp_op_t *op = ibp_get_iop(gop);
     char buffer[1024];
@@ -1247,7 +1247,7 @@ op_generic_t *new_ibp_validate_chksum_op(ibp_context_t *ic, ibp_cap_t *mcap, int
 
 //*************************************************************
 
-op_status_t get_chksum_command(op_generic_t *gop, NetStream_t *ns)
+op_status_t get_chksum_command(op_generic_t *gop, tbx_ns_t *ns)
 {
     ibp_op_t *op = ibp_get_iop(gop);
     char buffer[1024];
@@ -1270,7 +1270,7 @@ op_status_t get_chksum_command(op_generic_t *gop, NetStream_t *ns)
 
 //*************************************************************
 
-op_status_t get_chksum_recv(op_generic_t *gop, NetStream_t *ns)
+op_status_t get_chksum_recv(op_generic_t *gop, tbx_ns_t *ns)
 {
     ibp_op_t *op = ibp_get_iop(gop);
     char buffer[1024];
@@ -1390,7 +1390,7 @@ op_generic_t *new_ibp_get_chksum_op(ibp_context_t *ic, ibp_cap_t *mcap, int chks
 
 //*************************************************************
 
-op_status_t allocate_command(op_generic_t *gop, NetStream_t *ns)
+op_status_t allocate_command(op_generic_t *gop, tbx_ns_t *ns)
 {
     ibp_op_t *op = ibp_get_iop(gop);
     char buffer[1024];
@@ -1429,7 +1429,7 @@ op_status_t allocate_command(op_generic_t *gop, NetStream_t *ns)
 
 //*************************************************************
 
-op_status_t split_allocate_command(op_generic_t *gop, NetStream_t *ns)
+op_status_t split_allocate_command(op_generic_t *gop, tbx_ns_t *ns)
 {
     ibp_op_t *op = ibp_get_iop(gop);
     char buffer[1024];
@@ -1462,7 +1462,7 @@ op_status_t split_allocate_command(op_generic_t *gop, NetStream_t *ns)
 
 //*************************************************************
 
-op_status_t allocate_recv(op_generic_t *gop, NetStream_t *ns)
+op_status_t allocate_recv(op_generic_t *gop, tbx_ns_t *ns)
 {
     ibp_op_t *op = ibp_get_iop(gop);
     int status, fin;
@@ -1630,7 +1630,7 @@ op_generic_t *new_ibp_split_alloc_op(ibp_context_t *ic, ibp_cap_t *mcap, ibp_cap
 
 //*************************************************************
 
-op_status_t rename_command(op_generic_t *gop, NetStream_t *ns)
+op_status_t rename_command(op_generic_t *gop, tbx_ns_t *ns)
 {
     ibp_op_t *op = ibp_get_iop(gop);
     char buffer[1024];
@@ -1698,7 +1698,7 @@ op_generic_t *new_ibp_rename_op(ibp_context_t *ic, ibp_capset_t *caps, ibp_cap_t
 
 //*************************************************************
 
-op_status_t merge_command(op_generic_t *gop, NetStream_t *ns)
+op_status_t merge_command(op_generic_t *gop, tbx_ns_t *ns)
 {
     ibp_op_t *op = ibp_get_iop(gop);
     char buffer[1024];
@@ -1767,7 +1767,7 @@ op_generic_t *new_ibp_merge_alloc_op(ibp_context_t *ic, ibp_cap_t *mcap, ibp_cap
 
 //*************************************************************
 
-op_status_t alias_allocate_command(op_generic_t *gop, NetStream_t *ns)
+op_status_t alias_allocate_command(op_generic_t *gop, tbx_ns_t *ns)
 {
     ibp_op_t *op = ibp_get_iop(gop);
     char buffer[1024];
@@ -1847,7 +1847,7 @@ op_generic_t *new_ibp_alias_alloc_op(ibp_context_t *ic, ibp_capset_t *caps, ibp_
 
 //*************************************************************
 
-op_status_t modify_count_command(op_generic_t *gop, NetStream_t *ns)
+op_status_t modify_count_command(op_generic_t *gop, tbx_ns_t *ns)
 {
     ibp_op_t *op = ibp_get_iop(gop);
     char buffer[1024];
@@ -1869,7 +1869,7 @@ op_status_t modify_count_command(op_generic_t *gop, NetStream_t *ns)
 
 //*************************************************************
 
-op_status_t alias_modify_count_command(op_generic_t *gop, NetStream_t *ns)
+op_status_t alias_modify_count_command(op_generic_t *gop, tbx_ns_t *ns)
 {
     ibp_op_t *op = ibp_get_iop(gop);
     char buffer[1024];
@@ -1893,7 +1893,7 @@ op_status_t alias_modify_count_command(op_generic_t *gop, NetStream_t *ns)
 
 //*************************************************************
 
-op_status_t status_get_recv(op_generic_t *gop, NetStream_t *ns)
+op_status_t status_get_recv(op_generic_t *gop, tbx_ns_t *ns)
 {
     int status, fin;
     char buffer[1025];
@@ -2010,7 +2010,7 @@ op_generic_t *new_ibp_alias_modify_count_op(ibp_context_t *ic, ibp_cap_t *cap, i
 
 //*************************************************************
 
-op_status_t modify_alloc_command(op_generic_t *gop, NetStream_t *ns)
+op_status_t modify_alloc_command(op_generic_t *gop, tbx_ns_t *ns)
 {
     ibp_op_t *op = ibp_get_iop(gop);
     char buffer[1024];
@@ -2089,7 +2089,7 @@ op_generic_t *new_ibp_modify_alloc_op(ibp_context_t *ic, ibp_cap_t *cap, ibp_off
 
 //*************************************************************
 
-op_status_t alias_modify_alloc_command(op_generic_t *gop, NetStream_t *ns)
+op_status_t alias_modify_alloc_command(op_generic_t *gop, tbx_ns_t *ns)
 {
     ibp_op_t *op = ibp_get_iop(gop);
     char buffer[1024];
@@ -2170,7 +2170,7 @@ op_generic_t *new_ibp_alias_modify_alloc_op(ibp_context_t *ic, ibp_cap_t *cap, i
 
 //*************************************************************
 
-op_status_t truncate_command(op_generic_t *gop, NetStream_t *ns)
+op_status_t truncate_command(op_generic_t *gop, tbx_ns_t *ns)
 {
     ibp_op_t *op = ibp_get_iop(gop);
     char buffer[1024];
@@ -2281,7 +2281,7 @@ op_generic_t *new_ibp_alias_remove_op(ibp_context_t *ic, ibp_cap_t *cap, ibp_cap
 
 //*************************************************************
 
-op_status_t probe_command(op_generic_t *gop, NetStream_t *ns)
+op_status_t probe_command(op_generic_t *gop, tbx_ns_t *ns)
 {
     ibp_op_t *op = ibp_get_iop(gop);
     char buffer[1024];
@@ -2305,7 +2305,7 @@ op_status_t probe_command(op_generic_t *gop, NetStream_t *ns)
 
 //*************************************************************
 
-op_status_t probe_recv(op_generic_t *gop, NetStream_t *ns)
+op_status_t probe_recv(op_generic_t *gop, tbx_ns_t *ns)
 {
     ibp_op_t *op = ibp_get_iop(gop);
     int status, fin;
@@ -2398,7 +2398,7 @@ op_generic_t *new_ibp_probe_op(ibp_context_t *ic, ibp_cap_t *cap, ibp_capstatus_
 
 //*************************************************************
 
-op_status_t alias_probe_command(op_generic_t *gop, NetStream_t *ns)
+op_status_t alias_probe_command(op_generic_t *gop, tbx_ns_t *ns)
 {
     ibp_op_t *op = ibp_get_iop(gop);
     char buffer[1024];
@@ -2422,7 +2422,7 @@ op_status_t alias_probe_command(op_generic_t *gop, NetStream_t *ns)
 
 //*************************************************************
 
-op_status_t alias_probe_recv(op_generic_t *gop, NetStream_t *ns)
+op_status_t alias_probe_recv(op_generic_t *gop, tbx_ns_t *ns)
 {
     ibp_op_t *op = ibp_get_iop(gop);
     int status, fin;
@@ -2509,7 +2509,7 @@ op_generic_t *new_ibp_alias_probe_op(ibp_context_t *ic, ibp_cap_t *cap, ibp_alia
 
 //*************************************************************
 
-op_status_t copyappend_command(op_generic_t *gop, NetStream_t *ns)
+op_status_t copyappend_command(op_generic_t *gop, tbx_ns_t *ns)
 {
     ibp_op_t *op = ibp_get_iop(gop);
     char buffer[1024];
@@ -2524,7 +2524,7 @@ op_status_t copyappend_command(op_generic_t *gop, NetStream_t *ns)
                  (int)apr_time_sec(gop->op->cmd.timeout), cmd->dest_timeout, cmd->dest_client_timeout);
     } else {
         snprintf(buffer, sizeof(buffer), "%d %d %d " I64T " %s %s %s %s " I64T " " I64T " %d %d %d\n",
-                 IBPv040, cmd->ibp_command, ns_chksum_type(&(op->ncs)), ns_chksum_blocksize(&(op->ncs)),
+                 IBPv040, cmd->ibp_command, tbx_ns_chksum_type(&(op->ncs)), ns_chksum_blocksize(&(op->ncs)),
                  cmd->path, cmd->src_key, cmd->destcap, cmd->src_typekey, cmd->src_offset, cmd->len,
                  (int)apr_time_sec(gop->op->cmd.timeout), cmd->dest_timeout, cmd->dest_client_timeout);
     }
@@ -2541,7 +2541,7 @@ op_status_t copyappend_command(op_generic_t *gop, NetStream_t *ns)
 
 //*************************************************************
 
-op_status_t copy_recv(op_generic_t *gop, NetStream_t *ns)
+op_status_t copy_recv(op_generic_t *gop, tbx_ns_t *ns)
 {
     ibp_op_t *op = ibp_get_iop(gop);
     int status, fin;
@@ -2649,7 +2649,7 @@ op_generic_t *new_ibp_copyappend_op(ibp_context_t *ic, int ns_type, char *path, 
 
 //*************************************************************
 
-op_status_t pushpull_command(op_generic_t *gop, NetStream_t *ns)
+op_status_t pushpull_command(op_generic_t *gop, tbx_ns_t *ns)
 {
     ibp_op_t *op = ibp_get_iop(gop);
     char buffer[1024];
@@ -2665,7 +2665,7 @@ op_status_t pushpull_command(op_generic_t *gop, NetStream_t *ns)
                  (int)apr_time_sec(gop->op->cmd.timeout), cmd->dest_timeout, cmd->dest_client_timeout);
     } else {
         snprintf(buffer, sizeof(buffer), "%d %d %d " I64T " %d %s %s %s %s " I64T " " I64T " " I64T " %d %d %d\n",
-                 IBPv040, cmd->ibp_command, ns_chksum_type(&(op->ncs)), ns_chksum_blocksize(&(op->ncs)),
+                 IBPv040, cmd->ibp_command, tbx_ns_chksum_type(&(op->ncs)), ns_chksum_blocksize(&(op->ncs)),
                  cmd->ctype, cmd->path, cmd->src_key, cmd->destcap, cmd->src_typekey,
                  cmd->src_offset, cmd->dest_offset, cmd->len,
                  (int)apr_time_sec(gop->op->cmd.timeout), cmd->dest_timeout, cmd->dest_client_timeout);
@@ -2756,7 +2756,7 @@ op_generic_t *new_ibp_copy_op(ibp_context_t *ic, int mode, int ns_type, char *pa
 //  routines to handle modifying a depot's resources
 //=============================================================
 
-op_status_t depot_modify_command(op_generic_t *gop, NetStream_t *ns)
+op_status_t depot_modify_command(op_generic_t *gop, tbx_ns_t *ns)
 {
     ibp_op_t *op = ibp_get_iop(gop);
     char buffer[1024];
@@ -2820,7 +2820,7 @@ op_generic_t *new_ibp_depot_modify_op(ibp_context_t *ic, ibp_depot_t *depot, cha
 //  routines to handle querying a depot's resource
 //=============================================================
 
-op_status_t depot_inq_command(op_generic_t *gop, NetStream_t *ns)
+op_status_t depot_inq_command(op_generic_t *gop, tbx_ns_t *ns)
 {
     ibp_op_t *op = ibp_get_iop(gop);
     char buffer[1024];
@@ -2897,7 +2897,7 @@ int process_inq(char *buffer, ibp_depotinfo_t *di)
 
 //*************************************************************
 
-op_status_t depot_inq_recv(op_generic_t *gop, NetStream_t *ns)
+op_status_t depot_inq_recv(op_generic_t *gop, tbx_ns_t *ns)
 {
     ibp_op_t *op = ibp_get_iop(gop);
     char buffer[1024];
@@ -2987,7 +2987,7 @@ op_generic_t *new_ibp_depot_inq_op(ibp_context_t *ic, ibp_depot_t *depot, char *
 // Get depot "version" routines
 //=============================================================
 
-op_status_t depot_version_command(op_generic_t *gop, NetStream_t *ns)
+op_status_t depot_version_command(op_generic_t *gop, tbx_ns_t *ns)
 {
     char buffer[1024];
     op_status_t err;
@@ -3006,7 +3006,7 @@ op_status_t depot_version_command(op_generic_t *gop, NetStream_t *ns)
 
 //*************************************************************
 
-op_status_t depot_version_recv(op_generic_t *gop, NetStream_t *ns)
+op_status_t depot_version_recv(op_generic_t *gop, tbx_ns_t *ns)
 {
     ibp_op_t *op = ibp_get_iop(gop);
     char buffer[1024], *bstate;
@@ -3096,7 +3096,7 @@ op_generic_t *new_ibp_version_op(ibp_context_t *ic, ibp_depot_t *depot, char *bu
 
 //*************************************************************
 
-op_status_t query_res_command(op_generic_t *gop, NetStream_t *ns)
+op_status_t query_res_command(op_generic_t *gop, tbx_ns_t *ns)
 {
     char buffer[1024];
     op_status_t err;
@@ -3115,7 +3115,7 @@ op_status_t query_res_command(op_generic_t *gop, NetStream_t *ns)
 
 //*************************************************************
 
-op_status_t query_res_recv(op_generic_t *gop, NetStream_t *ns)
+op_status_t query_res_recv(op_generic_t *gop, tbx_ns_t *ns)
 {
     ibp_op_t *op = ibp_get_iop(gop);
     char buffer[1024];

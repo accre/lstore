@@ -67,7 +67,7 @@ int sock_connection_request(net_sock_t *nsock, int timeout);
 net_sock_t *sock_accept(net_sock_t *nsock);
 int sock_bind(net_sock_t *nsock, char *address, int port);
 int sock_listen(net_sock_t *nsock, int max_pending);
-TBX_API void ns_config_sock(NetStream_t *ns, int tcpsize);
+TBX_API void ns_config_sock(tbx_ns_t *ns, int tcpsize);
 
 #ifdef __cplusplus
 }

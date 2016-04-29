@@ -64,7 +64,7 @@ int do_validate = 0;
 int identical_buffers = 1;
 int print_progress;
 ibp_connect_context_t *cc = NULL;
-ns_chksum_t *ncs;
+tbx_ns_chksum_t *ncs;
 int disk_cs_type = CHKSUM_DEFAULT;
 ibp_off_t disk_blocksize = 0;
 
@@ -664,7 +664,7 @@ int main(int argc, char **argv)
     phoebus_t pcc;
     char pstr[2048];
     tbx_chksum_t cs;
-    ns_chksum_t ns_cs;
+    tbx_ns_chksum_t ns_cs;
     int blocksize;
 
     base_caps = NULL;
