@@ -29,6 +29,7 @@
 # ifndef _IBP_ERRNO_H
 # define _IBP_ERRNO_H
 
+#include "ibp/ibp_visibility.h"
 # include "ibp_os.h"
 
 # ifdef __cplusplus
@@ -46,7 +47,7 @@ extern "C" {
 */
 # define PTHREAD_SUPPORTED 1
 #if PTHREAD_SUPPORTED
-extern int *_IBP_errno();
+IBP_API extern int *_IBP_errno();
 #define IBP_errno ( *_IBP_errno())
 #else
 extern int	IBP_errno;

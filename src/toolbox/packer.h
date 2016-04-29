@@ -34,6 +34,7 @@ http://www.accre.vanderbilt.edu
 #ifndef _PACKER_H_
 #define _PACKER_H_
 
+#include "tbx/toolbox_visibility.h"
 #include "zlib.h"
 
 #ifdef __cplusplus
@@ -94,8 +95,8 @@ struct pack_s {
 #define pack_write_flush(p) (p)->write_flush(p)
 
 void pack_init(pack_t *pack, int type, int mode, unsigned char *buffer, unsigned int bufsize);
-pack_t *pack_create(int type, int mode, unsigned char *buffer, unsigned int bufsize);
-void pack_destroy(pack_t *pack);
+TBX_API pack_t *pack_create(int type, int mode, unsigned char *buffer, unsigned int bufsize);
+TBX_API void pack_destroy(pack_t *pack);
 
 //void pack_end(pack_t *pack);
 //void pack_write_resized(pack_t *pack, char *buffer, int bufsize);

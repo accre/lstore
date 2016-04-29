@@ -42,10 +42,14 @@ set(LSTORE_PROJECT_OBJS
     io_wrapper.c iovec_sync.c 
 )
 
-set(LSTORE_PROJECT_INCLUDES
+set(LSTORE_PROJECT_INCLUDES_OLD
     ibp_ClientLib.h ibp_errno.h ibp.h ibp_misc.h ibp_nfu.h ibp_op.h ibp_os.h
     ibp_protocol.h ibp_types.h iovec_sync.h io_wrapper.h
 )
+set(LSTORE_PROJECT_INCLUDES_NAMESPACE ibp)
+set(LSTORE_PROJECT_INCLUDES
+        ibp/ibp_visibility.h
+    )
 
 set(LSTORE_PROJECT_EXECUTABLES 
     ibp_perf ibp_test ibp_copyperf ibp_tool ibp_find_drive

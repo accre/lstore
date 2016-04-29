@@ -31,6 +31,7 @@ http://www.accre.vanderbilt.edu
 
 #include <stdarg.h>
 #include "log.h"
+#include "append_printf.h"
 
 //***************************************************************************
 // append_printf - Appends data to the end of a string and also updates the

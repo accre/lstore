@@ -78,7 +78,7 @@ set(LSTORE_PROJECT_OBJS
     service_manager.c view_base.c
 )
     
-set(LSTORE_PROJECT_INCLUDES
+set(LSTORE_PROJECT_INCLUDES_OLD
     cache_amp.h blacklist.h data_block.h ex3_abstract.h ex3_linear_priv.h exnode.h
     rs_simple.h	 segment_jerasure.h segment_lun_priv.h cache_amp_priv.h
     data_service_abstract.h ex3_compare.h ex3_system.h lio.h rs_simple_priv.h
@@ -91,6 +91,10 @@ set(LSTORE_PROJECT_INCLUDES
     cache_round_robin.h resource_service_abstract.h object_service_abstract.h
     service_manager.h rs_zmq.h os_remote.h os_timecache.h
 )
+set(LSTORE_PROJECT_INCLUDES_NAMESPACE lio)
+set(LSTORE_PROJECT_INCLUDES
+        lio/lio_visibility.h
+    )
 
 set(LSTORE_PROJECT_EXECUTABLES
      arc_restore ds_read lio_find lio_ls lio_du lio_setattr lio_getattr lio_mv

@@ -58,7 +58,7 @@ extern "C" {
 #define MQ_TYPE_ZMQ "mq_zmq"
 #define MQ_AVAILABLE "mq_available"
 
-extern service_manager_t *exnode_service_set;
+LIO_API extern service_manager_t *exnode_service_set;
 
 
 //** ex3_global functions
@@ -69,8 +69,8 @@ resource_service_fn_t *ex3_get_default_rs();
 int ex3_set_default_os(object_service_fn_t *os);
 object_service_fn_t *ex3_get_default_os();
 
-service_manager_t *exnode_service_set_create();
-void exnode_service_set_destroy(service_manager_t *ess);
+LIO_API service_manager_t *exnode_service_set_create();
+LIO_API void exnode_service_set_destroy(service_manager_t *ess);
 int exnode_system_init();
 int exnode_system_config(service_manager_t *ess, data_service_fn_t *ds, resource_service_fn_t *rs, object_service_fn_t *os, thread_pool_context_t *tpc_unlimited, cache_t *cache);
 

@@ -35,7 +35,7 @@ set(TOOL_OBJS
 )
 
 set(LSTORE_PROJECT_OBJS ${TOOL_OBJS} ${NETWORK_OBJS})
-set(LSTORE_PROJECT_INCLUDES
+set(LSTORE_PROJECT_INCLUDES_OLD
                 apr_wrapper.h constructor_wrapper.h debug.h list.h net_2_ssl.h
                 fmttypes.h interval_skiplist.h net_1_ssl.h net_phoebus.h
                 net_fd.h network.h pigeon_hole.h stack.h net_sock.h
@@ -43,6 +43,10 @@ set(LSTORE_PROJECT_INCLUDES
                 string_token.h type_malloc.h transfer_buffer.h packer.h
                 append_printf.h chksum.h varint.h atomic_counter.h dns_cache.h
                 iniparse.h log.h assert_result.h)
+set(LSTORE_PROJECT_INCLUDES_NAMESPACE tbx)
+set(LSTORE_PROJECT_INCLUDES
+        tbx/toolbox_visibility.h
+    )
 set(LSTORE_PROJECT_EXECUTABLES sl_test isl_test varint_test constructor_test)
 set(LSTORE_LIBS ${APR_LIBRARY}
                     ${APRUTIL_LIBRARY}

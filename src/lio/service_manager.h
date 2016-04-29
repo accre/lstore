@@ -31,6 +31,7 @@ http://www.accre.vanderbilt.edu
 // Generic service manager header file
 //***********************************************************************
 
+#include "lio/lio_visibility.h"
 #include <apr_pools.h>
 #include <apr_thread_mutex.h>
 #include <apr_hash.h>
@@ -51,7 +52,7 @@ typedef struct {
 service_manager_t *clone_service_manager(service_manager_t *sm);
 service_manager_t *create_service_manager();
 void destroy_service_manager(service_manager_t *sm);
-void *lookup_service(service_manager_t *sm, char *service_section, char *service_name);
+LIO_API void *lookup_service(service_manager_t *sm, char *service_section, char *service_name);
 int add_service(service_manager_t *sm, char *service_section, char *service_name, void *service);
 int remove_service(service_manager_t *sm, char *service_section, char *service_name);
 //int set_service_type_arg(service_manager_t *sm, int sm_type, void *arg);

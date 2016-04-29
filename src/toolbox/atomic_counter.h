@@ -33,6 +33,7 @@ http://www.accre.vanderbilt.edu
 #ifndef __ATOMIC_COUNTER_H_
 #define __ATOMIC_COUNTER_H_
 
+#include "tbx/toolbox_visibility.h"
 #include "apr_atomic.h"
 
 typedef apr_uint32_t atomic_int_t;
@@ -43,14 +44,14 @@ typedef apr_uint32_t atomic_int_t;
 #define atomic_get(v) apr_atomic_read32(&(v))
 #define atomic_exchange(a, v) apr_atomic_xchg32(&a, v)
 
-int atomic_global_counter();
-int atomic_counter(atomic_int_t *counter);
+TBX_API int atomic_global_counter();
+TBX_API int atomic_counter(atomic_int_t *counter);
 
-extern int *_a_thread_id_ptr();
+extern TBX_API int *_a_thread_id_ptr();
 #define atomic_thread_id (*_a_thread_id_ptr())
 
-void atomic_init();
-void atomic_destroy();
+TBX_API void atomic_init();
+TBX_API void atomic_destroy();
 
 #endif
 

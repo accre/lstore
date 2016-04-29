@@ -35,6 +35,7 @@ http://www.accre.vanderbilt.edu
 
 #define N_BUFSIZE  1024
 
+#include "tbx/toolbox_visibility.h"
 #include <sys/select.h>
 #include <sys/time.h>
 #include <pthread.h>

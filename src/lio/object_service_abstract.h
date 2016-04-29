@@ -31,6 +31,7 @@ http://www.accre.vanderbilt.edu
 // Generic object service
 //***********************************************************************
 
+#include "lio/lio_visibility.h"
 #include <sys/types.h>
 #include <regex.h>
 #include "ex3_types.h"
@@ -209,14 +210,14 @@ typedef object_service_fn_t *(os_create_t)(service_manager_t *ess, inip_file_t *
 #define os_destroy(os) (os)->destroy_service(os)
  
  
-int os_local_filetype(char *path);
-int os_regex_is_fixed(os_regex_table_t *regex);
-void os_path_split(char *path, char **dir, char **file);
+LIO_API int os_local_filetype(char *path);
+LIO_API int os_regex_is_fixed(os_regex_table_t *regex);
+LIO_API void os_path_split(char *path, char **dir, char **file);
 os_regex_table_t *os_regex_table_create(int n);
-void os_regex_table_destroy(os_regex_table_t *table);
-os_regex_table_t *os_path_glob2regex(char *path);
-char *os_glob2regex(char *glob);
-os_regex_table_t *os_regex2table(char *regex);
+LIO_API void os_regex_table_destroy(os_regex_table_t *table);
+LIO_API os_regex_table_t *os_path_glob2regex(char *path);
+LIO_API char *os_glob2regex(char *glob);
+LIO_API os_regex_table_t *os_regex2table(char *regex);
 int os_regex_table_pack(os_regex_table_t *regex, unsigned char *buffer, int bufsize);
 os_regex_table_t *os_regex_table_unpack(unsigned char *buffer, int bufsize, int *used);
  

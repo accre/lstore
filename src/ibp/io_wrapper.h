@@ -33,10 +33,12 @@ http://www.accre.vanderbilt.edu
 #ifdef __cplusplus
 extern "C" {
 #endif
+#include "ibp/ibp_visibility.h"
+#include "opque.h"
 
-void io_set_mode(int sync_transfer, int print_progress, int nthreads);
-void io_start(opque_t *q);
-int io_waitall(opque_t *q);
+IBP_API void io_set_mode(int sync_transfer, int print_progress, int nthreads);
+IBP_API void io_start(opque_t *q);
+IBP_API int io_waitall(opque_t *q);
 
 #ifdef __cplusplus
 }

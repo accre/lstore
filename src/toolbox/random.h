@@ -34,14 +34,15 @@ http://www.accre.vanderbilt.edu
 #ifndef _RANDOM_H_
 #define _RANDOM_H_
 
+#include "tbx/toolbox_visibility.h"
 #include <inttypes.h>
 
-int init_random();
-int destroy_random();
-int get_random(void *buf, int nbytes);
+TBX_API int init_random();
+TBX_API int destroy_random();
+TBX_API int get_random(void *buf, int nbytes);
 void random_seed(const void *buf, int nbytes);
 double random_double(double lo, double hi);
-int64_t random_int(int64_t lo, int64_t hi);
+TBX_API int64_t random_int(int64_t lo, int64_t hi);
 
 #endif
 

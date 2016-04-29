@@ -203,14 +203,14 @@ extern atomic_int_t _cache_count;
 #define cache_get_handle(c) (c)->fn.get_handle(c)
 #define cache_destroy(c) (c)->fn.destroy(c)
 
-cache_stats_t get_cache_stats(cache_t *c);
+LIO_API cache_stats_t get_cache_stats(cache_t *c);
 cache_t *cache_base_handle(cache_t *);
 void cache_base_destroy(cache_t *c);
 void cache_base_create(cache_t *c, data_attr_t *da, int timeout);
 void *cache_cond_new(void *arg, int size);
 void cache_cond_free(void *arg, int size, void *data);
 op_generic_t *cache_flush_range(segment_t *seg, data_attr_t *da, ex_off_t lo, ex_off_t hi, int timeout);
-int cache_drop_pages(segment_t *seg, ex_off_t lo, ex_off_t hi);
+LIO_API int cache_drop_pages(segment_t *seg, ex_off_t lo, ex_off_t hi);
 int cache_release_pages(int n_pages, page_handle_t *page, int rw_mode);
 void _cache_drain_writes(segment_t *seg, cache_page_t *p);
 void cache_advise(segment_t *seg, segment_rw_hints_t *rw_hints, int rw_mode, ex_off_t lo, ex_off_t hi, page_handle_t *page, int *n_pages, int force_load);

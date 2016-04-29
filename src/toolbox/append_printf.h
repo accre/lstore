@@ -29,7 +29,8 @@ http://www.accre.vanderbilt.edu
 
 #ifndef _APPEND_PRINTF_H_
 #define _APPEND_PRINTF_H_
+#include "tbx/toolbox_visibility.h"
 
-int append_printf(char *buffer, int *used, int nbytes, const char *fmt, ...);
+TBX_API int append_printf(char *buffer, int *used, int nbytes, const char *fmt, ...);
 
 #endif

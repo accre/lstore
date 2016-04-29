@@ -33,6 +33,7 @@ http://www.accre.vanderbilt.edu
 #ifndef __NET_1_SSL_H_
 #define __NET_1_SSL_H_
 
+#include "tbx/toolbox_visibility.h"
 #define N_BUFSIZE  1024
 
 //#include <sys/select.h>
@@ -45,7 +46,7 @@ extern "C" {
 #endif
 
 int ns_socket2ssl(NetStream_t *ns);
-void ns_config_1_ssl(NetStream_t *ns, int fd, int tcpsize);
+TBX_API void ns_config_1_ssl(NetStream_t *ns, int fd, int tcpsize);
 
 #ifdef __cplusplus
 }

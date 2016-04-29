@@ -34,6 +34,7 @@ http://www.accre.vanderbilt.edu
 #ifdef __cplusplus
 extern "C" {
 #endif
+#include "ibp/ibp_visibility.h"
 
 /*********************************************************
  * Constant definition
@@ -175,25 +176,25 @@ typedef struct {  //** Alias cap status
 //*** ibp_types.c **
 ibp_depot_t *new_ibp_depot();
 void destroy_ibp_depot(ibp_depot_t *d);
-void set_ibp_depot(ibp_depot_t *d, char *host, int port, rid_t rid);
+IBP_API void set_ibp_depot(ibp_depot_t *d, char *host, int port, rid_t rid);
 ibp_attributes_t *new_ibp_attributes();
 void destroy_ibp_attributes(ibp_attributes_t *attr);
-void set_ibp_attributes(ibp_attributes_t *attr, time_t duration, int reliability, int type);
-void get_ibp_attributes(ibp_attributes_t *attr, time_t *duration, int *reliability, int *type);
+IBP_API void set_ibp_attributes(ibp_attributes_t *attr, time_t duration, int reliability, int type);
+IBP_API void get_ibp_attributes(ibp_attributes_t *attr, time_t *duration, int *reliability, int *type);
 ibp_timer_t *new_ibp_timer();
 void destroy_ibp_timer(ibp_timer_t *t);
-void set_ibp_timer(ibp_timer_t *t, int client_timeout, int server_timeout);
+IBP_API void set_ibp_timer(ibp_timer_t *t, int client_timeout, int server_timeout);
 void get_ibp_timer(ibp_timer_t *t, int *client_timeout, int *server_timeout);
-void destroy_ibp_cap(ibp_cap_t *cap);
+IBP_API void destroy_ibp_cap(ibp_cap_t *cap);
 ibp_cap_t *dup_ibp_cap(ibp_cap_t *src);
-ibp_capset_t *new_ibp_capset();
-void destroy_ibp_capset(ibp_capset_t *caps);
+IBP_API ibp_capset_t *new_ibp_capset();
+IBP_API void destroy_ibp_capset(ibp_capset_t *caps);
 void copy_ibp_capset(ibp_capset_t *src, ibp_capset_t *dest);
-ibp_cap_t *get_ibp_cap(ibp_capset_t *caps, int ctype);
+IBP_API ibp_cap_t *get_ibp_cap(ibp_capset_t *caps, int ctype);
 ibp_capstatus_t *new_ibp_capstatus();
 void destroy_ibp_capstatus(ibp_capstatus_t *cs);
 void copy_ibp_capstatus(ibp_capstatus_t *src, ibp_capstatus_t *dest);
-void get_ibp_capstatus(ibp_capstatus_t *cs, int *readcount, int *writecount,
+IBP_API void get_ibp_capstatus(ibp_capstatus_t *cs, int *readcount, int *writecount,
                        int *current_size, int *max_size, ibp_attributes_t *attrib);
 ibp_alias_capstatus_t *new_ibp_alias_capstatus();
 void destroy_ibp_alias_capstatus(ibp_alias_capstatus_t *cs);
@@ -201,14 +202,14 @@ void copy_ibp_alias_capstatus(ibp_alias_capstatus_t *src, ibp_alias_capstatus_t 
 void get_ibp_alias_capstatus(ibp_alias_capstatus_t *cs, int *readcount, int *writecount,
                              ibp_off_t *offset, ibp_off_t *size, int *duration);
 void ridlist_init(ibp_ridlist_t *rlist, int size);
-void ridlist_destroy(ibp_ridlist_t *rlist);
-int ridlist_get_size(ibp_ridlist_t *rlist);
-rid_t ridlist_get_element(ibp_ridlist_t *rlist, int index);
-char *ibp_rid2str(rid_t rid, char *buffer);
-rid_t ibp_str2rid(char *rid_str);
-void ibp_empty_rid(rid_t *rid);
-int ibp_rid_is_empty(rid_t rid);
-int ibp_compare_rid(rid_t rid1, rid_t rid2);
+IBP_API void ridlist_destroy(ibp_ridlist_t *rlist);
+IBP_API int ridlist_get_size(ibp_ridlist_t *rlist);
+IBP_API rid_t ridlist_get_element(ibp_ridlist_t *rlist, int index);
+IBP_API char *ibp_rid2str(rid_t rid, char *buffer);
+IBP_API rid_t ibp_str2rid(char *rid_str);
+IBP_API void ibp_empty_rid(rid_t *rid);
+IBP_API int ibp_rid_is_empty(rid_t rid);
+IBP_API int ibp_compare_rid(rid_t rid1, rid_t rid2);
 
 #ifdef __cplusplus
 }

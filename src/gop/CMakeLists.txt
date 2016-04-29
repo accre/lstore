@@ -39,10 +39,14 @@ set(LSTORE_PROJECT_OBJS
     mq_ongoing.c mq_stream.c mq_helpers.c mq_roundrobin.c
 )
 
-set(LSTORE_PROJECT_INCLUDES
+set(LSTORE_PROJECT_INCLUDES_OLD
     callback.h gop_config.h host_portal.h opque.h thread_pool.h mq_portal.h
     mq_helpers.h mq_stream.h mq_ongoing.h
 )
+set(LSTORE_PROJECT_INCLUDES_NAMESPACE gop)
+set(LSTORE_PROJECT_INCLUDES
+        gop/gop_visibility.h
+    )
 if(NOT APPLE)
     # OSX doesn't have eventfd.h
     set(LSTORE_PROJECT_EXECUTABLES

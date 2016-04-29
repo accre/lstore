@@ -35,6 +35,7 @@ http://www.accre.vanderbilt.edu
 #ifndef __OPQUE_H_
 #define __OPQUE_H_
 
+#include "gop/gop_visibility.h"
 #include <apr_thread_mutex.h>
 #include <apr_thread_cond.h>
 #include <apr_hash.h>
@@ -86,14 +87,14 @@ typedef struct {       //** Generic opcode status
     int error_code;         //** Low level op error code
 } op_status_t;
 
-extern op_status_t op_success_status;
-extern op_status_t op_failure_status;
+GOP_API extern op_status_t op_success_status;
+GOP_API extern op_status_t op_failure_status;
 extern op_status_t op_retry_status;
 extern op_status_t op_dead_status;
 extern op_status_t op_timeout_status;
 extern op_status_t op_invalid_host_status;
 extern op_status_t op_cant_connect_status;
-extern op_status_t op_error_status;
+GOP_API extern op_status_t op_error_status;
 
 typedef struct {   //** Command operation
     char *hostport; //** Depot hostname:port:type:...  Unique string for host/connect_context
@@ -255,44 +256,44 @@ int opque_get_failure_mode(opque_t *q);
 op_status_t opque_completion_status(opque_t *q);
 void opque_set_arg(opque_t *q, void *arg);
 void *opque_get_arg(opque_t *q);
-opque_t *new_opque();
+GOP_API opque_t *new_opque();
 void init_opque(opque_t *que);
-void init_opque_system();
-void destroy_opque_system();
-void opque_free(opque_t *que, int mode);
-int opque_add(opque_t *que, op_generic_t *gop);
+GOP_API void init_opque_system();
+GOP_API void destroy_opque_system();
+GOP_API void opque_free(opque_t *que, int mode);
+GOP_API int opque_add(opque_t *que, op_generic_t *gop);
 int internal_opque_add(opque_t *que, op_generic_t *gop, int dolock);
-void default_sort_ops(void *arg, opque_t *que);
+GOP_API void default_sort_ops(void *arg, opque_t *que);
 
-op_generic_t *gop_dummy(op_status_t state);
-void gop_free(op_generic_t *gop, int mode);
-void gop_set_auto_destroy(op_generic_t *gop, int val);
+GOP_API op_generic_t *gop_dummy(op_status_t state);
+GOP_API void gop_free(op_generic_t *gop, int mode);
+GOP_API void gop_set_auto_destroy(op_generic_t *gop, int val);
 void gop_set_success_state(op_generic_t *g, op_status_t state);
-void gop_callback_append(op_generic_t *q, callback_t *cb);
-op_generic_t *gop_get_next_finished(op_generic_t *gop);
-op_generic_t *gop_get_next_failed(op_generic_t *gop);
-int gop_tasks_failed(op_generic_t *gop);
-int gop_tasks_finished(op_generic_t *gop);
-int gop_tasks_left(op_generic_t *gop);
+GOP_API void gop_callback_append(op_generic_t *q, callback_t *cb);
+GOP_API op_generic_t *gop_get_next_finished(op_generic_t *gop);
+GOP_API op_generic_t *gop_get_next_failed(op_generic_t *gop);
+GOP_API int gop_tasks_failed(op_generic_t *gop);
+GOP_API int gop_tasks_finished(op_generic_t *gop);
+GOP_API int gop_tasks_left(op_generic_t *gop);
 int gop_will_block(op_generic_t *g);
-int gop_waitall(op_generic_t *gop);
-op_generic_t *gop_waitany(op_generic_t *gop);
-op_generic_t *gop_timed_waitany(op_generic_t *g, int dt);
+GOP_API int gop_waitall(op_generic_t *gop);
+GOP_API op_generic_t *gop_waitany(op_generic_t *gop);
+GOP_API op_generic_t *gop_timed_waitany(op_generic_t *g, int dt);
 int gop_timed_waitall(op_generic_t *g, int dt);
-void gop_start_execution(op_generic_t *gop);
-void gop_finished_submission(op_generic_t *gop);
-void gop_set_exec_mode(op_generic_t *g, int mode);
+GOP_API void gop_start_execution(op_generic_t *gop);
+GOP_API void gop_finished_submission(op_generic_t *gop);
+GOP_API void gop_set_exec_mode(op_generic_t *g, int mode);
 
-int gop_completed_successfully(op_generic_t *gop);
+GOP_API int gop_completed_successfully(op_generic_t *gop);
 
 void gop_mark_completed(op_generic_t *gop, op_status_t status);
-int gop_sync_exec(op_generic_t *gop);
-op_status_t gop_sync_exec_status(op_generic_t *gop);
-void gop_reset(op_generic_t *gop);
-void gop_init(op_generic_t *gop);
-void gop_generic_free(op_generic_t *gop, int mode);
+GOP_API int gop_sync_exec(op_generic_t *gop);
+GOP_API op_status_t gop_sync_exec_status(op_generic_t *gop);
+GOP_API void gop_reset(op_generic_t *gop);
+GOP_API void gop_init(op_generic_t *gop);
+GOP_API void gop_generic_free(op_generic_t *gop, int mode);
 void gop_callback_append(op_generic_t *gop, callback_t *cb);
-apr_time_t gop_exec_time(op_generic_t *gop);
+GOP_API apr_time_t gop_exec_time(op_generic_t *gop);
 apr_time_t gop_start_time(op_generic_t *gop);
 apr_time_t gop_end_time(op_generic_t *gop);
 

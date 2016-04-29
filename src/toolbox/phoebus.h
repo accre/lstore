@@ -31,6 +31,7 @@ http://www.accre.vanderbilt.edu
 #ifndef __PHOEBUS_H
 #define __PHOEBUS_H
 
+#include "tbx/toolbox_visibility.h"
 #include <stdio.h>
 #include "toolbox_config.h"
 #include "iniparse.h"
@@ -58,14 +59,14 @@ typedef struct {
 
 extern phoebus_t *global_phoebus;
 
-void phoebus_init(void);
-void phoebus_destroy(void);
-int phoebus_print(char *buffer, int *used, int nbytes);
-void phoebus_load_config(inip_file_t *kf);
-void phoebus_path_set(phoebus_t *p, const char *path);
+TBX_API void phoebus_init(void);
+TBX_API void phoebus_destroy(void);
+TBX_API int phoebus_print(char *buffer, int *used, int nbytes);
+TBX_API void phoebus_load_config(inip_file_t *kf);
+TBX_API void phoebus_path_set(phoebus_t *p, const char *path);
 void phoebus_path_destroy(phoebus_t *p);
-void phoebus_path_to_string(char *string, int max_size, phoebus_t *p);
-char *phoebus_get_key(phoebus_t *p);
+TBX_API void phoebus_path_to_string(char *string, int max_size, phoebus_t *p);
+TBX_API char *phoebus_get_key(phoebus_t *p);
 
 //char **split(char*, char*, int *);
 

@@ -33,6 +33,7 @@ http://www.accre.vanderbilt.edu
 #ifdef __cplusplus
 extern "C" {
 #endif
+#include "tbx/toolbox_visibility.h"
 
 typedef struct stack_ele {
     void *data;
@@ -44,32 +45,32 @@ typedef struct {
     int n;
 } Stack_t;
 
-int stack_size(Stack_t *);
-void init_stack(Stack_t *stack);
-Stack_t *new_stack();
-void dup_stack(Stack_t *new, Stack_t *old);
-void empty_stack(Stack_t *, int);
-void free_stack(Stack_t *, int);
-void *get_stack_ele_data(Stack_ele_t *ele);
+TBX_API int stack_size(Stack_t *);
+TBX_API void init_stack(Stack_t *stack);
+TBX_API Stack_t *new_stack();
+TBX_API void dup_stack(Stack_t *new, Stack_t *old);
+TBX_API void empty_stack(Stack_t *, int);
+TBX_API void free_stack(Stack_t *, int);
+TBX_API void *get_stack_ele_data(Stack_ele_t *ele);
 void set_stack_ele_data(Stack_ele_t *ele, void *data);
-void push_link(Stack_t *stack, Stack_ele_t *ele);
-void push(Stack_t *, void *);
+TBX_API void push_link(Stack_t *stack, Stack_ele_t *ele);
+TBX_API void push(Stack_t *, void *);
 Stack_ele_t *pop_link(Stack_t *stack);
-void *pop(Stack_t *);
-void *get_ele_data(Stack_t *);
-int move_to_top(Stack_t *);
-int move_to_bottom(Stack_t *);
+TBX_API void *pop(Stack_t *);
+TBX_API void *get_ele_data(Stack_t *);
+TBX_API int move_to_top(Stack_t *);
+TBX_API int move_to_bottom(Stack_t *);
 int move_to_link(Stack_t *, Stack_ele_t *ele);
-int move_down(Stack_t *);
-int move_up(Stack_t *);
+TBX_API int move_down(Stack_t *);
+TBX_API int move_up(Stack_t *);
 int insert_link_below(Stack_t *stack, Stack_ele_t *ele);
-int insert_below(Stack_t *, void *);
-int insert_link_above(Stack_t *stack, Stack_ele_t *ele);
-int insert_above(Stack_t *, void *);
-Stack_ele_t *stack_unlink_current(Stack_t *stack, int mv_up);
-int delete_current(Stack_t *, int, int);
-Stack_ele_t *get_ptr(Stack_t *);
-int move_to_ptr(Stack_t *, Stack_ele_t *);
+TBX_API int insert_below(Stack_t *, void *);
+TBX_API int insert_link_above(Stack_t *stack, Stack_ele_t *ele);
+TBX_API int insert_above(Stack_t *, void *);
+TBX_API Stack_ele_t *stack_unlink_current(Stack_t *stack, int mv_up);
+TBX_API int delete_current(Stack_t *, int, int);
+TBX_API Stack_ele_t *get_ptr(Stack_t *);
+TBX_API int move_to_ptr(Stack_t *, Stack_ele_t *);
 
 #ifdef __cplusplus
 }

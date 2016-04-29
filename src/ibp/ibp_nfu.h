@@ -35,6 +35,7 @@
 # ifndef _IBP_NFU_H
 # define _IBP_NFU_H
 
+#include "ibp/ibp_visibility.h"
 # include "ibp_ClientLib.h"
 
 # ifdef __cplusplus

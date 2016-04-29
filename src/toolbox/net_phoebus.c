@@ -39,7 +39,7 @@ http://www.accre.vanderbilt.edu
 
 #ifndef _ENABLE_PHOEBUS    //** Phoebus stub goes below
  
-#include "net_sock.h"
+#include "net_phoebus.h"
  
 void ns_config_phoebus(NetStream_t *ns, phoebus_t *path, int tcpsize)
 {

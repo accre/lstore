@@ -32,13 +32,12 @@ http://www.accre.vanderbilt.edu
 //***********************************************************************
 
 #define _log_module_index 213
-
+#include "string_token.h"
 #include "mq_helpers.h"
 #include "atomic_counter.h"
 #include "type_malloc.h"
 #include "varint.h"
 #include "log.h"
-#include "string_token.h"
 
 static atomic_int_t _id_counter = 0;
 
