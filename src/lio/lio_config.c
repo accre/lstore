@@ -147,10 +147,10 @@ void _lc_object_put(char *key, void *obj)
 // _lio_load_plugins - Loads the optional plugins
 //***************************************************************
 
-void _lio_load_plugins(lio_config_t *lio, inip_file_t *fd)
+void _lio_load_plugins(lio_config_t *lio, tbx_inip_file_t *fd)
 {
-    inip_group_t *g;
-    inip_element_t *ele;
+    tbx_inip_group_t *g;
+    tbx_inip_element_t *ele;
     char *key;
     apr_dso_handle_t *handle;
     int error;
@@ -671,7 +671,7 @@ void blacklist_destroy(blacklist_t *bl)
 // blacklist_load - Loads and creates a blacklist structure
 //***************************************************************
 
-blacklist_t *blacklist_load(inip_file_t *ifd, char *section)
+blacklist_t *blacklist_load(tbx_inip_file_t *ifd, char *section)
 {
     blacklist_t *bl;
 

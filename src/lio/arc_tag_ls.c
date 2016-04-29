@@ -117,9 +117,9 @@ void process_tag_file(char *tag_file, char *tag_name)
     char *regex_path = NULL;
     char *regex_object = NULL;
     int recurse_depth, obj_types;
-    inip_file_t *ini_fd;
-    inip_group_t *ini_g;
-    inip_element_t *ele;
+    tbx_inip_file_t *ini_fd;
+    tbx_inip_group_t *ini_g;
+    tbx_inip_element_t *ele;
     char *key, *value;
 
     /*** Check for tag file existence and read permission ***/

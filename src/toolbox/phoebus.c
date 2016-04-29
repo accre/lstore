@@ -52,7 +52,7 @@ int phoebus_print(char *buffer, int *used, int nbytes)
 {
     return(0);
 }
-void phoebus_load_config(inip_file_t *kf) { };
+void phoebus_load_config(tbx_inip_file_t *kf) { };
 void phoebus_path_set(phoebus_t *p, const char *path) { };
 void phoebus_path_destroy(phoebus_t *p) { };
 void phoebus_path_to_string(char *string, int max_size, phoebus_t *p)
@@ -216,7 +216,7 @@ int phoebus_print(char *buffer, int *used, int nbytes)
 // phoebus_load_config - Prints phoebus config
 //***************************************************************
 
-void phoebus_load_config(inip_file_t *kf)
+void phoebus_load_config(tbx_inip_file_t *kf)
 {
     if (global_phoebus == NULL) phoebus_init();
 

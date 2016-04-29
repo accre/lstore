@@ -3356,7 +3356,7 @@ int segcache_deserialize_text(segment_t *seg, ex_id_t myid, exnode_exchange_t *e
     int bufsize=1024;
     char seggrp[bufsize];
     char qname[512];
-    inip_file_t *fd;
+    tbx_inip_file_t *fd;
     ex_off_t n, child_size;
     ex_id_t id;
     int i;

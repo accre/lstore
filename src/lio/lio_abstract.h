@@ -79,7 +79,7 @@ struct lio_config_s {
     Stack_t *plugin_stack;
     cache_t *cache;
     data_attr_t *da;
-    inip_file_t *ifd;
+    tbx_inip_file_t *ifd;
     list_t *open_index;
     creds_t *creds;
     apr_thread_mutex_t *lock;

@@ -390,7 +390,7 @@ void build_send_deregister(mq_context_t *mqc, mq_portal_t *wp)
 mq_context_t *worker_make_context()
 {
     mq_context_t *mqc;
-    inip_file_t *ifd;
+    tbx_inip_file_t *ifd;
     char *text_parameters = "[mq_context]\n"
                             "min_conn = 1\n"
                             "max_conn = 4\n"

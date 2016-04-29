@@ -580,7 +580,7 @@ mq_context_t *client_make_context()
                         "  heartbeat_dt=1\n"
                         "  heartbeat_failure=10\n"
                         "  min_ops_per_sec=100\n";
-    inip_file_t *ifd;
+    tbx_inip_file_t *ifd;
     mq_context_t *mqc;
 
     ifd = inip_read_text(text_params);
@@ -1078,7 +1078,7 @@ mq_context_t *server_make_context()
                         "  heartbeat_dt=1\n"
                         "  heartbeat_failure=5\n"
                         "  min_ops_per_sec=100\n";
-    inip_file_t *ifd;
+    tbx_inip_file_t *ifd;
     mq_context_t *mqc;
 
     ifd = inip_read_text(text_params);

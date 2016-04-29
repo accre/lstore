@@ -195,7 +195,7 @@ void register_worker(void *arg, mq_task_t *task)
 
 mq_context_t *server_make_context()
 {
-    inip_file_t *ifd;
+    tbx_inip_file_t *ifd;
     mq_context_t *mqc;
     char *text_parameters = "[mq_context]\n\t"
                             "min_conn=1\n\t"
@@ -280,7 +280,7 @@ void *server_test_thread(apr_thread_t *th, void *arg)
 mq_context_t *client_make_context()
 {
     mq_context_t *mqc;
-    inip_file_t *ifd;
+    tbx_inip_file_t *ifd;
     char *text_parameters = "[mq_context]\n\t"
                             "min_conn=1\n\t"
                             "max_conn=4\n\t"
@@ -431,7 +431,7 @@ void bulk_worker_test(mq_context_t *mqc)
 mq_context_t *worker_make_context()
 {
     mq_context_t *mqc;
-    inip_file_t *ifd;
+    tbx_inip_file_t *ifd;
     char *text_parameters = "[mq_context]\n\t"
                             "min_conn=1\n\t"
                             "max_conn=4\n\t"

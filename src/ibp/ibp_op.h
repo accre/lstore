@@ -414,7 +414,7 @@ IBP_API void ibp_set_write_cc(ibp_context_t *ic, ibp_connect_context_t *cc);
 void ibp_set_transfer_rate(ibp_context_t *ic, double rate);
 double ibp_get_transfer_rate(ibp_context_t *ic);
  
-IBP_API int ibp_load_config(ibp_context_t *ic, inip_file_t *ifd, char *section);
+IBP_API int ibp_load_config(ibp_context_t *ic, tbx_inip_file_t *ifd, char *section);
 IBP_API int ibp_load_config_file(ibp_context_t *ic, char *fname, char *section);
 //void set_ibp_config(ibp_config_t *cfg);
 void default_ibp_config(ibp_context_t *ic);

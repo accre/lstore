@@ -893,7 +893,7 @@ void rw_test()
 
 void rw_load_options(char *cfgname, char *group)
 {
-    inip_file_t *fd;
+    tbx_inip_file_t *fd;
     char *str;
 
     fd = inip_read(cfgname);

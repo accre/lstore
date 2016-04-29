@@ -89,7 +89,7 @@ typedef struct {
 typedef struct {
 //  rid_change_entry_t rc;
     rid_inspect_tweak_t ri;
-    inip_group_t *ig;
+    tbx_inip_group_t *ig;
     int status;
     ex_off_t total;
     ex_off_t free;
@@ -250,11 +250,11 @@ void process_pool(pool_entry_t *pe, Stack_t *parent_rid_stack)
 // prep_rid_table - Preps the RID table for use in generating a pool config
 //*************************************************************************
 
-apr_hash_t *prep_rid_table(inip_file_t *fd, apr_pool_t *mpool)
+apr_hash_t *prep_rid_table(tbx_inip_file_t *fd, apr_pool_t *mpool)
 {
     apr_hash_t *table;
-    inip_group_t *ig;
-    inip_element_t *ele;
+    tbx_inip_group_t *ig;
+    tbx_inip_element_t *ele;
     rid_prep_entry_t *re;
     int n;
     char *key, *value;
@@ -307,7 +307,7 @@ apr_hash_t *prep_rid_table(inip_file_t *fd, apr_pool_t *mpool)
 
 void add_wildcard(pool_entry_t *p, apr_hash_t *rid_table, char *mkey, char *mvalue)
 {
-    inip_element_t *ele;
+    tbx_inip_element_t *ele;
     char *key, *value, *hkey;
     apr_ssize_t hlen;
     apr_hash_index_t *hi;
@@ -343,12 +343,12 @@ void add_wildcard(pool_entry_t *p, apr_hash_t *rid_table, char *mkey, char *mval
 //  load_pool - Loads a pool
 //*************************************************************************
 
-pool_entry_t *load_pool(Stack_t *pools, char *name, inip_file_t *pfd, inip_file_t *rfd, apr_hash_t *rid_table, inip_group_t *pg, pool_entry_t **unspecified)
+pool_entry_t *load_pool(Stack_t *pools, char *name, tbx_inip_file_t *pfd, tbx_inip_file_t *rfd, apr_hash_t *rid_table, tbx_inip_group_t *pg, pool_entry_t **unspecified)
 {
-    inip_element_t *ele;
+    tbx_inip_element_t *ele;
     char *key, *value;
     pool_entry_t *p;
-    inip_group_t *psg;
+    tbx_inip_group_t *psg;
     int n;
     char subgroup[4096];
 
@@ -424,9 +424,9 @@ pool_entry_t *load_pool(Stack_t *pools, char *name, inip_file_t *pfd, inip_file_
 
 apr_hash_t *load_pool_config(char *fname, apr_pool_t *mpool, Stack_t *my_pool_list)
 {
-    inip_file_t *pfd, *rfd;
+    tbx_inip_file_t *pfd, *rfd;
     char *rid_config, *key;
-    inip_group_t *ig;
+    tbx_inip_group_t *ig;
     apr_hash_t *rid_table;
     apr_hash_t *pools;
     pool_entry_t *pe;
@@ -499,9 +499,9 @@ apr_hash_t *load_pool_config(char *fname, apr_pool_t *mpool, Stack_t *my_pool_li
 
 apr_hash_t *rebalance_pool(apr_pool_t *mpool, Stack_t *my_pool_list, char *key_rebalance, double tolerance, int tolerance_mode)
 {
-    inip_file_t *pfd, *rfd;
+    tbx_inip_file_t *pfd, *rfd;
     char *rid_config, *key, *value;
-    inip_group_t *ig;
+    tbx_inip_group_t *ig;
     apr_hash_t *rid_table;
     apr_hash_t *pools;
     pool_entry_t *pe;
@@ -746,7 +746,7 @@ op_status_t inspect_task(void *arg, int id)
     segment_errors_t serr;
     int v_size[7], n, repair_mode;
     int whattodo, count, err;
-    inip_file_t *ifd;
+    tbx_inip_file_t *ifd;
     inspect_args_t args;
 
     whattodo = global_whattodo;

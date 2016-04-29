@@ -1888,7 +1888,7 @@ void _mq_submit_op(void *arg, op_generic_t *gop)
 //  mq_create_context - Creates a new MQ pool
 //**************************************************************
 
-mq_context_t *mq_create_context(inip_file_t *ifd, char *section)
+mq_context_t *mq_create_context(tbx_inip_file_t *ifd, char *section)
 {
     mq_context_t *mqc;
 

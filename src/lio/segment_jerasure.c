@@ -1993,7 +1993,7 @@ int segjerase_deserialize_text(segment_t *seg, ex_id_t id, exnode_exchange_t *ex
     int nbytes;
     char seggrp[bufsize];
     char *text;
-    inip_file_t *fd;
+    tbx_inip_file_t *fd;
 
     //** Parse the ini text
     fd = exp->text.fd;

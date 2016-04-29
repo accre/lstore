@@ -329,7 +329,7 @@ int mq_pipe_read(mq_socket_t *sock, char *buf);
 int mq_pipe_write(mq_socket_t *sock, char *buf);
 #endif
 
-typedef mq_context_t *(mq_create_t)(inip_file_t *ifd, char *section);
+typedef mq_context_t *(mq_create_t)(tbx_inip_file_t *ifd, char *section);
 
 GOP_API char *mq_id2str(char *id, int id_len, char *str, int str_len);
 
@@ -382,7 +382,7 @@ GOP_API void mq_portal_destroy(mq_portal_t *p);
 GOP_API mq_portal_t *mq_portal_create(mq_context_t *mqc, char *host, int connect_mode);
 GOP_API mq_portal_t *mq_portal_lookup(mq_context_t *mqc, char *host, int connect_mode);
 GOP_API mq_command_table_t *mq_portal_command_table(mq_portal_t *portal);
-GOP_API mq_context_t *mq_create_context(inip_file_t *ifd, char *section);
+GOP_API mq_context_t *mq_create_context(tbx_inip_file_t *ifd, char *section);
 GOP_API void mq_destroy_context(mq_context_t *mqp);
 mq_socket_t *zero_create_socket(mq_socket_context_t *ctx, int stype);
 void zero_socket_context_destroy(mq_socket_context_t *ctx);

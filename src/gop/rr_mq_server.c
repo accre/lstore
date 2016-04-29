@@ -323,7 +323,7 @@ void *queue_checker(apr_thread_t *thread, void *arg)
 
 mq_context_t *server_make_context()
 {
-    inip_file_t *ifd;
+    tbx_inip_file_t *ifd;
     mq_context_t *mqc;
     char *text_parameters = "[mq_context]\n"
                             "min_conn=1\n"

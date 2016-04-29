@@ -44,8 +44,8 @@ extern "C" {
 #define RS_TYPE_REMOTE_CLIENT "remote_client"
 #define RS_TYPE_REMOTE_SERVER "remote_server"
 
-resource_service_fn_t *rs_remote_client_create(void *arg, inip_file_t *fd, char *section);
-resource_service_fn_t *rs_remote_server_create(void *arg, inip_file_t *fd, char *section);
+resource_service_fn_t *rs_remote_client_create(void *arg, tbx_inip_file_t *fd, char *section);
+resource_service_fn_t *rs_remote_server_create(void *arg, tbx_inip_file_t *fd, char *section);
 
 #ifdef __cplusplus
 }

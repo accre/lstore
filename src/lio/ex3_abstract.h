@@ -169,7 +169,7 @@ apr_pool_t *mpool;
 };
  
  
-typedef data_service_fn_t *(ds_create_t)(service_manager_t *ess, inip_file_t *ifd, char *section);
+typedef data_service_fn_t *(ds_create_t)(service_manager_t *ess, tbx_inip_file_t *ifd, char *section);
 typedef segment_t *(segment_load_t)(void *arg, ex_id_t id, exnode_exchange_t *ex);
 typedef segment_t *(segment_create_t)(void *arg);
  

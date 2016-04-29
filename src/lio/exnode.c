@@ -413,9 +413,9 @@ void exnode_exchange_append(exnode_exchange_t *exp, exnode_exchange_t *exp_appen
 
 int exnode_deserialize_text(exnode_t *ex, exnode_exchange_t *exp, service_manager_t *ess)
 {
-    inip_group_t *g;
-    inip_element_t *ele;
-    inip_file_t *fd;
+    tbx_inip_group_t *g;
+    tbx_inip_element_t *ele;
+    tbx_inip_file_t *fd;
     segment_t *seg = NULL;
     ex_id_t id;
     int fin;

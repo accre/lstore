@@ -511,10 +511,10 @@ void rs_simple_rid_free(list_data_t *arg)
 //  rs_load_entry - Loads an RID entry fro mthe file
 //***********************************************************************
 
-rss_rid_entry_t *rss_load_entry(inip_group_t *grp)
+rss_rid_entry_t *rss_load_entry(tbx_inip_group_t *grp)
 {
     rss_rid_entry_t *rse;
-    inip_element_t *ele;
+    tbx_inip_element_t *ele;
     char *key, *value;
     // SO noisy
     //log_printf(0, "loading\n");
@@ -882,13 +882,13 @@ void *rss_check_thread(apr_thread_t *th, void *data)
 
 int _rs_simple_load(resource_service_fn_t *res, char *fname)
 {
-    inip_group_t *ig;
+    tbx_inip_group_t *ig;
     char *key;
     rss_rid_entry_t *rse;
     rs_simple_priv_t *rss = (rs_simple_priv_t *)res->priv;
     list_iter_t it;
     int i, n;
-    inip_file_t *kf;
+    tbx_inip_file_t *kf;
 
     log_printf(5, "START fname=%s n_rids=%d\n", fname, rss->n_rids);
 
@@ -1013,7 +1013,7 @@ void rs_simple_destroy(resource_service_fn_t *rs)
 //    the given file.
 //***********************************************************************
 
-resource_service_fn_t *rs_simple_create(void *arg, inip_file_t *kf, char *section)
+resource_service_fn_t *rs_simple_create(void *arg, tbx_inip_file_t *kf, char *section)
 {
     service_manager_t *ess = (service_manager_t *)arg;
     rs_simple_priv_t *rss;

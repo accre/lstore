@@ -471,7 +471,7 @@ void rs_remote_client_destroy(resource_service_fn_t *rs)
 //  rs_remote_client_create - Creates a remote client RS
 //***********************************************************************
 
-resource_service_fn_t *rs_remote_client_create(void *arg, inip_file_t *fd, char *section)
+resource_service_fn_t *rs_remote_client_create(void *arg, tbx_inip_file_t *fd, char *section)
 {
     service_manager_t *ess = (service_manager_t *)arg;
     resource_service_fn_t *rs;

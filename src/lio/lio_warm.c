@@ -74,9 +74,9 @@ static int dt = 86400;
 
 void parse_tag_file(char *fname)
 {
-    inip_file_t *fd;
-    inip_group_t *g;
-    inip_element_t *ele;
+    tbx_inip_file_t *fd;
+    tbx_inip_group_t *g;
+    tbx_inip_element_t *ele;
     char *key, *value, *v;
 
     fd = inip_read(fname);
@@ -123,7 +123,7 @@ op_status_t gen_warm_task(void *arg, int id)
     warm_t *w = (warm_t *)arg;
     op_status_t status;
     op_generic_t *gop;
-    inip_file_t *fd;
+    tbx_inip_file_t *fd;
     int i, j, nfailed;
     warm_hash_entry_t *wrid;
     char *etext;
@@ -131,7 +131,7 @@ op_status_t gen_warm_task(void *arg, int id)
 
     log_printf(15, "warming fname=%s, dt=%d\n", w->fname, dt);
     fd = inip_read_text(w->exnode);
-    inip_group_t *g;
+    tbx_inip_group_t *g;
 
     q = new_opque();
     opque_start_execution(q);
@@ -247,9 +247,9 @@ int main(int argc, char **argv)
     char *rkey, *config, *value;
     char *line_end;
     warm_hash_entry_t *mrid, *wrid;
-    inip_file_t *ifd;
-    inip_group_t *ig;
-    inip_element_t *ele;
+    tbx_inip_file_t *ifd;
+    tbx_inip_group_t *ig;
+    tbx_inip_element_t *ele;
     char ppbuf[128], ppbuf2[128], ppbuf3[128];
     lio_path_tuple_t tuple;
     ex_off_t total, good, bad, nbytes, submitted, werr;

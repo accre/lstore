@@ -65,9 +65,9 @@ void print_rid_summary(char *config, int base)
 {
     list_t *table;
     list_iter_t it;
-    inip_group_t *ig;
-    inip_file_t *kf;
-    inip_element_t *ele;
+    tbx_inip_group_t *ig;
+    tbx_inip_file_t *kf;
+    tbx_inip_element_t *ele;
     char *key, *value;
     char fbuf[20], ubuf[20], tbuf[20];
     char *state[5] = { "UP      ", "IGNORE  ", "NO_SPACE", "DOWN    ", "INVALID " };

@@ -264,7 +264,7 @@ void stream_data(mq_context_t *mqc)
 mq_context_t *client_make_context()
 {
     mq_context_t *mqc;
-    inip_file_t *ifd;
+    tbx_inip_file_t *ifd;
     char *text_parameters = "[mq_context]\n"
                             "min_conn=1\n"
                             "max_conn=4\n"

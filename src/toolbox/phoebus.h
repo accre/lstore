@@ -62,7 +62,7 @@ extern phoebus_t *global_phoebus;
 TBX_API void phoebus_init(void);
 TBX_API void phoebus_destroy(void);
 TBX_API int phoebus_print(char *buffer, int *used, int nbytes);
-TBX_API void phoebus_load_config(inip_file_t *kf);
+TBX_API void phoebus_load_config(tbx_inip_file_t *kf);
 TBX_API void phoebus_path_set(phoebus_t *p, const char *path);
 void phoebus_path_destroy(phoebus_t *p);
 TBX_API void phoebus_path_to_string(char *string, int max_size, phoebus_t *p);

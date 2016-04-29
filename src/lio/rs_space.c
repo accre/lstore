@@ -42,9 +42,9 @@ http://www.accre.vanderbilt.edu
 
 rs_space_t rs_space(char *config)
 {
-    inip_file_t *fd;
-    inip_group_t *grp;
-    inip_element_t *ele;
+    tbx_inip_file_t *fd;
+    tbx_inip_group_t *grp;
+    tbx_inip_element_t *ele;
     char *key, *value;
     int64_t nfree, nused, ntotal;
     int status;

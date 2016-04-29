@@ -952,7 +952,7 @@ void ds_ibp_destroy(data_service_fn_t *dsf)
 //  ds_ibp_create - Creates the IBP data service
 //***********************************************************************
 
-data_service_fn_t *ds_ibp_create(void *arg, inip_file_t *ifd, char *section)
+data_service_fn_t *ds_ibp_create(void *arg, tbx_inip_file_t *ifd, char *section)
 {
     int cs_type;
     data_service_fn_t *dsf;

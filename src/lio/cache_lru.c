@@ -911,7 +911,7 @@ cache_t *lru_cache_create(void *arg, data_attr_t *da, int timeout)
 // lru_cache_load -Creates and configures an LRU cache structure
 //*************************************************************************
 
-cache_t *lru_cache_load(void *arg, inip_file_t *fd, char *grp, data_attr_t *da, int timeout)
+cache_t *lru_cache_load(void *arg, tbx_inip_file_t *fd, char *grp, data_attr_t *da, int timeout)
 {
     cache_t *c;
     cache_lru_t *cp;

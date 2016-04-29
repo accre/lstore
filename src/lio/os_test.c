@@ -1794,9 +1794,9 @@ int check_lock_state(os_fd_t *foo_fd, char **active, int n_active, char **pendin
     creds_t  *creds = lio_gc->creds;
     int err, v_size, ai, pi, fin;
     char *key, *val, *lval, *tmp, *bstate;
-    inip_file_t *ifd;
-    inip_group_t *grp;
-    inip_element_t *ele;
+    tbx_inip_file_t *ifd;
+    tbx_inip_group_t *grp;
+    tbx_inip_element_t *ele;
 
     v_size = -10000;
     key = "os.lock";

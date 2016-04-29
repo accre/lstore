@@ -532,7 +532,7 @@ int segfile_deserialize_text(segment_t *seg, ex_id_t id, exnode_exchange_t *exp)
     char seggrp[bufsize];
     char qname[512];
     int err;
-    inip_file_t *fd;
+    tbx_inip_file_t *fd;
 
     err = 0;
 

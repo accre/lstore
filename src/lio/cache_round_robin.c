@@ -114,7 +114,7 @@ cache_t *round_robin_cache_create(void *arg, data_attr_t *da, int timeout)
 // round_robin_cache_load -Creates and configures an amp cache structure
 //*************************************************************************
 
-cache_t *round_robin_cache_load(void *arg, inip_file_t *fd, char *grp, data_attr_t *da, int timeout)
+cache_t *round_robin_cache_load(void *arg, tbx_inip_file_t *fd, char *grp, data_attr_t *da, int timeout)
 {
     cache_t *c;
     cache_rr_t *cp;

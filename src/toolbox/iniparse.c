@@ -123,11 +123,11 @@ char * _get_line(bfile_t *bfd)
 //  _parse_ele - Parses the element
 //***********************************************************************
 
-inip_element_t *_parse_ele(bfile_t *bfd)
+tbx_inip_element_t *_parse_ele(bfile_t *bfd)
 {
     char *text, *key, *val, *last, *isgroup;
     int fin;
-    inip_element_t *ele;
+    tbx_inip_element_t *ele;
 
     while ((text = _get_line(bfd)) != NULL) {
         isgroup = strchr(text, '[');  //** Start of a new group
@@ -143,7 +143,7 @@ inip_element_t *_parse_ele(bfile_t *bfd)
         if (fin == 0) {
             val = string_token(NULL, " =\r\n", &last, &fin);
 
-            type_malloc(ele,  inip_element_t, 1);
+            type_malloc(ele,  tbx_inip_element_t, 1);
 
             ele->key = strdup(key);
             ele->value = (val == NULL) ? NULL : strdup(val);
@@ -164,9 +164,9 @@ inip_element_t *_parse_ele(bfile_t *bfd)
 //  _parse_group - Parses the group
 //***********************************************************************
 
-void _parse_group(bfile_t *bfd, inip_group_t *group)
+void _parse_group(bfile_t *bfd, tbx_inip_group_t *group)
 {
-    inip_element_t *ele, *prev;
+    tbx_inip_element_t *ele, *prev;
 
     ele = _parse_ele(bfd);
     prev = ele;
@@ -183,10 +183,10 @@ void _parse_group(bfile_t *bfd, inip_group_t *group)
 //  _next_group - Retreives the next group from the input file
 //***********************************************************************
 
-inip_group_t *_next_group(bfile_t *bfd)
+tbx_inip_group_t *_next_group(bfile_t *bfd)
 {
     char *text, *start, *end;
-    inip_group_t *g;
+    tbx_inip_group_t *g;
 
     while ((text = _get_line(bfd)) != NULL) {
         bfd->curr->used = 0;
@@ -207,7 +207,7 @@ inip_group_t *_next_group(bfile_t *bfd)
 
             text = string_trim(start); //** Trim the whitespace
 //        text = string_token(start, " ", &last, &i);
-            type_malloc(g, inip_group_t, 1);
+            type_malloc(g, tbx_inip_group_t, 1);
             g->group = strdup(text);
             g->list = NULL;
             g->next = NULL;
@@ -224,7 +224,7 @@ inip_group_t *_next_group(bfile_t *bfd)
 //  _free_element - Frees an individual key/valure pair
 //***********************************************************************
 
-void _free_element(inip_element_t *ele)
+void _free_element(tbx_inip_element_t *ele)
 {
     free(ele->key);
     free(ele->value);
@@ -235,9 +235,9 @@ void _free_element(inip_element_t *ele)
 //  _free_list - Frees memory associated with the list
 //***********************************************************************
 
-void _free_list(inip_element_t *ele)
+void _free_list(tbx_inip_element_t *ele)
 {
-    inip_element_t *next;
+    tbx_inip_element_t *next;
 
     while (ele != NULL) {
         next = ele->next;
@@ -253,7 +253,7 @@ void _free_list(inip_element_t *ele)
 //  _free_group - Frees the memory associated with a group structure
 //***********************************************************************
 
-void _free_group(inip_group_t *group)
+void _free_group(tbx_inip_group_t *group)
 {
     log_printf(15, "_free_group: group=%s\n", group->group);
     _free_list(group->list);
@@ -265,9 +265,9 @@ void _free_group(inip_group_t *group)
 // inip_destroy - Destroys an inip structure
 //***********************************************************************
 
-void inip_destroy(inip_file_t *inip)
+void inip_destroy(tbx_inip_file_t *inip)
 {
-    inip_group_t *group, *next;
+    tbx_inip_group_t *group, *next;
     if (inip == NULL) return;
 
     group = inip->tree;
@@ -286,9 +286,9 @@ void inip_destroy(inip_file_t *inip)
 //  _find_key - Scans the group for the given key and returns the element
 //***********************************************************************
 
-inip_element_t *_find_key(inip_group_t *group, const char *name)
+tbx_inip_element_t *_find_key(tbx_inip_group_t *group, const char *name)
 {
-    inip_element_t *ele;
+    tbx_inip_element_t *ele;
 
     if (group == NULL) return(NULL);
 
@@ -303,9 +303,9 @@ inip_element_t *_find_key(inip_group_t *group, const char *name)
 //  inip_find_key - Scans the group for the given key and returns the value
 //***********************************************************************
 
-char *inip_find_key(inip_group_t *group, const char *name)
+char *inip_find_key(tbx_inip_group_t *group, const char *name)
 {
-    inip_element_t *ele;
+    tbx_inip_element_t *ele;
 
     ele = _find_key(group, name);
     if (ele == NULL) return(NULL);
@@ -318,9 +318,9 @@ char *inip_find_key(inip_group_t *group, const char *name)
 //  inip_find_group - Scans the tree for the given group
 //***********************************************************************
 
-inip_group_t *inip_find_group(inip_file_t *inip, const char *name)
+tbx_inip_group_t *inip_find_group(tbx_inip_file_t *inip, const char *name)
 {
-    inip_group_t *group;
+    tbx_inip_group_t *group;
 
     for (group = inip->tree; group != NULL; group = group->next) {
         if (strcmp(group->group, name) == 0) return(group);
@@ -334,11 +334,11 @@ inip_group_t *inip_find_group(inip_file_t *inip, const char *name)
 //       combination
 //***********************************************************************
 
-inip_element_t *_find_group_key(inip_file_t *inip, const char *group_name, const char *key)
+tbx_inip_element_t *_find_group_key(tbx_inip_file_t *inip, const char *group_name, const char *key)
 {
     log_printf(15, "_find_group_key: Looking for group=%s key=%s!\n", group_name, key);
 
-    inip_group_t *g = inip_find_group(inip, group_name);
+    tbx_inip_group_t *g = inip_find_group(inip, group_name);
     if (g == NULL) {
         log_printf(15, "_find_group_key: group=%s key=%s Can't find group!\n", group_name, key);
         return(NULL);
@@ -346,7 +346,7 @@ inip_element_t *_find_group_key(inip_file_t *inip, const char *group_name, const
 
     log_printf(15, "_find_group_key: Found group=%s\n", group_name);
 
-    inip_element_t *ele = _find_key(g, key);
+    tbx_inip_element_t *ele = _find_key(g, key);
 
     if (ele != NULL) {
         log_printf(15, "_find_group_key: group=%s key=%s value=%s\n", group_name, key, ele->value);
@@ -359,17 +359,17 @@ inip_element_t *_find_group_key(inip_file_t *inip, const char *group_name, const
 // inip_get_* - Routines for getting group/key values
 //***********************************************************************
 
-int64_t inip_get_integer(inip_file_t *inip, const char *group, const char *key, int64_t def)
+int64_t inip_get_integer(tbx_inip_file_t *inip, const char *group, const char *key, int64_t def)
 {
-    inip_element_t *ele = _find_group_key(inip, group, key);
+    tbx_inip_element_t *ele = _find_group_key(inip, group, key);
     if (ele == NULL) return(def);
 
     return(string_get_integer(ele->value));
 }
 
-uint64_t inip_get_unsigned_integer(inip_file_t *inip, const char *group, const char *key, uint64_t def)
+uint64_t inip_get_unsigned_integer(tbx_inip_file_t *inip, const char *group, const char *key, uint64_t def)
 {
-    inip_element_t *ele = _find_group_key(inip, group, key);
+    tbx_inip_element_t *ele = _find_group_key(inip, group, key);
     if (ele == NULL) return(def);
 
     uint64_t n;
@@ -379,9 +379,9 @@ uint64_t inip_get_unsigned_integer(inip_file_t *inip, const char *group, const c
 
 //***********************************************************************
 
-double inip_get_double(inip_file_t *inip, const char *group, const char *key, double def)
+double inip_get_double(tbx_inip_file_t *inip, const char *group, const char *key, double def)
 {
-    inip_element_t *ele = _find_group_key(inip, group, key);
+    tbx_inip_element_t *ele = _find_group_key(inip, group, key);
     if (ele == NULL) return(def);
 
     return(string_get_double(ele->value));
@@ -389,10 +389,10 @@ double inip_get_double(inip_file_t *inip, const char *group, const char *key, do
 
 //***********************************************************************
 
-char *inip_get_string(inip_file_t *inip, const char *group, const char *key, char *def)
+char *inip_get_string(tbx_inip_file_t *inip, const char *group, const char *key, char *def)
 {
     char *value = def;
-    inip_element_t *ele = _find_group_key(inip, group, key);
+    tbx_inip_element_t *ele = _find_group_key(inip, group, key);
     if (ele != NULL) value = ele->value;
 
     if (value == NULL) return(NULL);
@@ -405,10 +405,10 @@ char *inip_get_string(inip_file_t *inip, const char *group, const char *key, cha
 //  inip_read_fd - Loads the .ini file pointed to by the file descriptor
 //***********************************************************************
 
-inip_file_t *inip_read_fd(FILE *fd)
+tbx_inip_file_t *inip_read_fd(FILE *fd)
 {
-    inip_file_t *inip;
-    inip_group_t *group, *prev;
+    tbx_inip_file_t *inip;
+    tbx_inip_group_t *group, *prev;
     bfile_t bfd;
     bfile_entry_t *entry;
 
@@ -423,7 +423,7 @@ inip_file_t *inip_read_fd(FILE *fd)
     bfd.include_paths = new_stack();
     push(bfd.include_paths, strdup("."));  //** By default always look in the CWD 1st
 
-    type_malloc(inip, inip_file_t, 1);
+    type_malloc(inip, tbx_inip_file_t, 1);
 
     group = _next_group(&bfd);
     inip->tree = NULL;
@@ -462,7 +462,7 @@ inip_file_t *inip_read_fd(FILE *fd)
 //  inip_read - Reads a .ini file
 //***********************************************************************
 
-inip_file_t *inip_read(const char *fname)
+tbx_inip_file_t *inip_read(const char *fname)
 {
     FILE *fd;
 
@@ -481,7 +481,7 @@ inip_file_t *inip_read(const char *fname)
 //  inip_read_text - Converts a character array into a .ini file
 //***********************************************************************
 
-inip_file_t *inip_read_text(const char *text)
+tbx_inip_file_t *inip_read_text(const char *text)
 {
     FILE *fd = tmpfile();
     fprintf(fd, "%s\n", text);

@@ -680,7 +680,7 @@ void ibp_set_write_cc(ibp_context_t *ic, ibp_connect_context_t *cc)
 // cc_load - Stores a CC from the given keyfile
 //**********************************************************
 
-void cc_load(inip_file_t *kf, char *name, ibp_connect_context_t *cc)
+void cc_load(tbx_inip_file_t *kf, char *name, ibp_connect_context_t *cc)
 {
     char *type = inip_get_string(kf, "ibp_connect", name, NULL);
 
@@ -703,7 +703,7 @@ void cc_load(inip_file_t *kf, char *name, ibp_connect_context_t *cc)
 // ibp_cc_table_load - Loads the default connect_context for commands
 //**********************************************************
 
-void ibp_cc_load(inip_file_t *kf, ibp_context_t *cfg)
+void ibp_cc_load(tbx_inip_file_t *kf, ibp_context_t *cfg)
 {
     int i;
     ibp_connect_context_t cc;
@@ -735,7 +735,7 @@ void ibp_cc_load(inip_file_t *kf, ibp_context_t *cfg)
 // ibp_load_config - Loads the ibp client config
 //**********************************************************
 
-int ibp_load_config(ibp_context_t *ic, inip_file_t *keyfile, char *section)
+int ibp_load_config(ibp_context_t *ic, tbx_inip_file_t *keyfile, char *section)
 {
     apr_time_t t = 0;
 
@@ -779,7 +779,7 @@ int ibp_load_config(ibp_context_t *ic, inip_file_t *keyfile, char *section)
 
 int ibp_load_config_file(ibp_context_t *ic, char *fname, char *section)
 {
-    inip_file_t *keyfile;
+    tbx_inip_file_t *keyfile;
     int err;
 
     //* Load the config file

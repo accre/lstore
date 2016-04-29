@@ -213,7 +213,7 @@ free(rs);
 //********************************************************************
 // rs_zmq_create - Creates a zmq resource management service.
 //********************************************************************
-resource_service_fn_t *rs_zmq_create(void *arg, inip_file_t *kf, char *section)
+resource_service_fn_t *rs_zmq_create(void *arg, tbx_inip_file_t *kf, char *section)
 {
 service_manager_t *ess = (service_manager_t *)arg;
  

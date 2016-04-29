@@ -88,7 +88,7 @@ void lt_default_config()
 
 void lt_load_config(char *fname)
 {
-    inip_file_t *fd;
+    tbx_inip_file_t *fd;
     char *str;
     int n;
 

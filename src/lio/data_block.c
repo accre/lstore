@@ -225,9 +225,9 @@ data_block_t *data_block_deserialize_text(service_manager_t *sm, ex_id_t id, exn
     int i;
     data_block_t *b;
     data_service_fn_t *ds;
-    inip_file_t *cfd;
-    inip_group_t *cg;
-    inip_element_t *ele;
+    tbx_inip_file_t *cfd;
+    tbx_inip_group_t *cg;
+    tbx_inip_element_t *ele;
     char *key;
     data_block_attr_t *attr;
 

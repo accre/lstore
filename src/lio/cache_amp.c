@@ -1414,7 +1414,7 @@ cache_t *amp_cache_create(void *arg, data_attr_t *da, int timeout)
 // amp_cache_load -Creates and configures an amp cache structure
 //*************************************************************************
 
-cache_t *amp_cache_load(void *arg, inip_file_t *fd, char *grp, data_attr_t *da, int timeout)
+cache_t *amp_cache_load(void *arg, tbx_inip_file_t *fd, char *grp, data_attr_t *da, int timeout)
 {
     cache_t *c;
     cache_amp_t *cp;

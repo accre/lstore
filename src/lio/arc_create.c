@@ -260,9 +260,9 @@ int process_tag_file(char *tag_file, char *tag_name)
     char *regex_object = NULL;
     char *dest = NULL;
     int recurse_depth, obj_types, err;
-    inip_file_t *ini_fd;
-    inip_group_t *ini_g;
-    inip_element_t *ele;
+    tbx_inip_file_t *ini_fd;
+    tbx_inip_group_t *ini_g;
+    tbx_inip_element_t *ele;
     char *key, *value, *arc_server;
 
     err = 0;

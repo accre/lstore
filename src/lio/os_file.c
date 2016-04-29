@@ -4157,7 +4157,7 @@ void osfile_destroy(object_service_fn_t *os)
 //  object_service_file_create - Creates a file backed OS
 //***********************************************************************
 
-object_service_fn_t *object_service_file_create(service_manager_t *ess, inip_file_t *fd, char *section)
+object_service_fn_t *object_service_file_create(service_manager_t *ess, tbx_inip_file_t *fd, char *section)
 {
     object_service_fn_t *os;
     osfile_priv_t *osf;

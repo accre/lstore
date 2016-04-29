@@ -181,7 +181,7 @@ int vl_deserialize_text(view_t *v, ex_id_t id, exnode_exchange_t *exp)
     int bufsize = 1024;
     char grp[bufsize];
     ex_id_t lay_id;
-    inip_file_t *fd;
+    tbx_inip_file_t *fd;
 
     //** Parse the ini text
     fd = inip_read_text(exp->text);

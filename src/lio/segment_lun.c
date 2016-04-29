@@ -2752,9 +2752,9 @@ int seglun_deserialize_text(segment_t *seg, ex_id_t id, exnode_exchange_t *exp)
     int fin, i, fail;
     seglun_row_t *b;
     seglun_block_t *block;
-    inip_file_t *fd;
-    inip_group_t *g;
-    inip_element_t *ele;
+    tbx_inip_file_t *fd;
+    tbx_inip_group_t *g;
+    tbx_inip_element_t *ele;
 
     //** Parse the ini text
     fd = exp->text.fd;

@@ -59,7 +59,7 @@ void ex_iovec_destroy(ex_iovec_t *iov);
 
 typedef struct {
     char *text;
-    inip_file_t *fd;
+    tbx_inip_file_t *fd;
 } exnode_text_t;
 
 typedef struct {

@@ -1157,7 +1157,7 @@ int seglog_deserialize_text(segment_t *seg, ex_id_t id, exnode_exchange_t *exp)
     seglog_priv_t *s = (seglog_priv_t *)seg->priv;
     int bufsize=1024;
     char seggrp[bufsize];
-    inip_file_t *fd;
+    tbx_inip_file_t *fd;
 
     //** Parse the ini text
     fd = exp->text.fd;

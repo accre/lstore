@@ -3074,7 +3074,7 @@ void os_remote_server_destroy(object_service_fn_t *os)
 //  object_service_remote_client_create - Creates a remote client OS
 //***********************************************************************
 
-object_service_fn_t *object_service_remote_server_create(service_manager_t *ess, inip_file_t *fd, char *section)
+object_service_fn_t *object_service_remote_server_create(service_manager_t *ess, tbx_inip_file_t *fd, char *section)
 {
     object_service_fn_t *os;
     osrs_priv_t *osrs;

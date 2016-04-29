@@ -176,9 +176,9 @@ void mlog_load(char *fname, char *output_override, int log_level_override)
     char *group_index, *group_level;
     char *name, *value, *logname;
     int n, default_level;
-    inip_file_t *fd;
-    inip_group_t *g;
-    inip_element_t *ele;
+    tbx_inip_file_t *fd;
+    tbx_inip_group_t *g;
+    tbx_inip_element_t *ele;
 
 
     if (_log_lock == NULL) _log_init();
