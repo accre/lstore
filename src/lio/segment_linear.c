@@ -750,7 +750,7 @@ op_generic_t *seglin_remove(segment_t *seg, data_attr_t *da, int timeout)
 // seglin_inspect_func - Checks that all the segments are available and they are the right size
 //***********************************************************************
 
-op_generic_t *seglin_inspect_op(segment_t *seg, data_attr_t *da, info_fd_t *fd, int mode, ex_off_t buffer_size, inspect_args_t *args, int timeout)
+op_generic_t *seglin_inspect_op(segment_t *seg, data_attr_t *da, tbx_log_fd_t *fd, int mode, ex_off_t buffer_size, inspect_args_t *args, int timeout)
 {
     seglin_priv_t *s = (seglin_priv_t *)seg->priv;
     op_generic_t *gop;
@@ -794,7 +794,7 @@ op_generic_t *seglin_inspect_op(segment_t *seg, data_attr_t *da, info_fd_t *fd, 
 //  seglin_truncate_func - Does the actual segment truncat operations
 //***********************************************************************
 
-op_generic_t *seglin_inspect(segment_t *seg, data_attr_t *da, info_fd_t *fd, int mode, ex_off_t bufsize, inspect_args_t *args, int timeout)
+op_generic_t *seglin_inspect(segment_t *seg, data_attr_t *da, tbx_log_fd_t *fd, int mode, ex_off_t bufsize, inspect_args_t *args, int timeout)
 {
     seglin_priv_t *s = (seglin_priv_t *)seg->priv;
     op_generic_t *gop;

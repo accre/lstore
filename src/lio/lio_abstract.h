@@ -140,7 +140,7 @@ typedef struct {
 } lio_cp_path_t;
 
 LIO_API extern lio_config_t *lio_gc;
-LIO_API extern info_fd_t *lio_ifd;
+LIO_API extern tbx_log_fd_t *lio_ifd;
 LIO_API extern int lio_parallel_task_count;
 
 #define LIO_READ_MODE      1

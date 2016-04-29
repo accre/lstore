@@ -608,7 +608,7 @@ apr_hash_t *rebalance_pool(apr_pool_t *mpool, Stack_t *my_pool_list, char *key_r
 // dump_pools - Prints the pools
 //*************************************************************************
 
-void dump_pools(info_fd_t *ifd, Stack_t *pools, int scale)
+void dump_pools(tbx_log_fd_t *ifd, Stack_t *pools, int scale)
 {
     pool_entry_t *pe;
 //  rid_inspect_tweak_t *ri;

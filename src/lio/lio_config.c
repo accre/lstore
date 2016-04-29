@@ -56,7 +56,7 @@ int lio_parallel_task_count = 100;
 //** Define the global LIO config
 lio_config_t *lio_gc = NULL;
 cache_t *_lio_cache = NULL;
-info_fd_t *lio_ifd = NULL;
+tbx_log_fd_t *lio_ifd = NULL;
 FILE *_lio_ifd = NULL;
 char *_lio_exe_name = NULL;
 

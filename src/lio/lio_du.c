@@ -54,7 +54,7 @@ int base = 1;
 // ls_format_entry - Prints an LS entry
 //*************************************************************************
 
-void du_format_entry(info_fd_t *ifd, du_entry_t *de, int sumonly)
+void du_format_entry(tbx_log_fd_t *ifd, du_entry_t *de, int sumonly)
 {
     char *dname;
     char ppsize[128];

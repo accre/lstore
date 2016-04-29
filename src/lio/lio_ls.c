@@ -54,7 +54,7 @@ lio_path_tuple_t tuple;
 // ls_format_entry - Prints an LS entry
 //*************************************************************************
 
-void ls_format_entry(info_fd_t *ifd, ls_entry_t *lse)
+void ls_format_entry(tbx_log_fd_t *ifd, ls_entry_t *lse)
 {
     char *dtype;
     char *perms;

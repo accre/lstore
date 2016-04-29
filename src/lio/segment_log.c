@@ -997,7 +997,7 @@ op_generic_t *seglog_remove(segment_t *seg, data_attr_t *da, int timeout)
 // seglog_inspect - Inspects the log segment
 //***********************************************************************
 
-op_generic_t *seglog_inspect(segment_t *seg, data_attr_t *da, info_fd_t *fd, int mode, ex_off_t bufsize, inspect_args_t *args, int timeout)
+op_generic_t *seglog_inspect(segment_t *seg, data_attr_t *da, tbx_log_fd_t *fd, int mode, ex_off_t bufsize, inspect_args_t *args, int timeout)
 {
     seglog_priv_t *s = (seglog_priv_t *)seg->priv;
     opque_t *q = new_opque();

@@ -81,7 +81,7 @@ typedef struct {
 typedef struct {
     segment_t *seg;
     data_attr_t *da;
-    info_fd_t *fd;
+    tbx_log_fd_t *fd;
     inspect_args_t *args;
     ex_off_t bufsize;
     int inspect_mode;
@@ -2252,7 +2252,7 @@ fail:
 //  seglun_inspect_func - Does the actual segment inspection operations
 //***********************************************************************
 
-op_generic_t *seglun_inspect(segment_t *seg, data_attr_t *da, info_fd_t *fd, int mode, ex_off_t bufsize, inspect_args_t *args, int timeout)
+op_generic_t *seglun_inspect(segment_t *seg, data_attr_t *da, tbx_log_fd_t *fd, int mode, ex_off_t bufsize, inspect_args_t *args, int timeout)
 {
     seglun_priv_t *s = (seglun_priv_t *)seg->priv;
     tbx_isl_iter_t it;

@@ -237,7 +237,7 @@ void mlog_load(char *fname, char *output_override, int log_level_override)
 //***************************************************************
 
 __attribute__((format (printf, 7, 8)))
-int minfo_printf(info_fd_t *ifd, int module_index, int level, const char *fn, const char *fname, int line, const char *fmt, ...)
+int minfo_printf(tbx_log_fd_t *ifd, int module_index, int level, const char *fn, const char *fname, int line, const char *fmt, ...)
 {
     va_list args;
     int n = 0;
@@ -273,7 +273,7 @@ int minfo_printf(info_fd_t *ifd, int module_index, int level, const char *fn, co
 // info_flush - Flushes teh info device
 //***************************************************************
 
-void info_flush(info_fd_t *ifd)
+void info_flush(tbx_log_fd_t *ifd)
 {
     apr_thread_mutex_lock(ifd->lock);
     fflush(ifd->fd);
@@ -284,11 +284,11 @@ void info_flush(info_fd_t *ifd)
 // info_create - Creates an info FD device
 //***************************************************************
 
-info_fd_t *info_create(FILE *fd, int header_type, int level)
+tbx_log_fd_t *info_create(FILE *fd, int header_type, int level)
 {
-    info_fd_t *ifd;
+    tbx_log_fd_t *ifd;
 
-    type_malloc(ifd, info_fd_t, 1);
+    type_malloc(ifd, tbx_log_fd_t, 1);
 
     if (_log_lock == NULL) _log_init();  //** WE use the log mpool
 
@@ -304,7 +304,7 @@ info_fd_t *info_create(FILE *fd, int header_type, int level)
 // info_destroy - Destroys a previously created info device
 //***************************************************************
 
-void info_destroy(info_fd_t *ifd)
+void info_destroy(tbx_log_fd_t *ifd)
 {
     apr_thread_mutex_destroy(ifd->lock);
     free(ifd);
