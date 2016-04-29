@@ -6,7 +6,7 @@ endif()
 
 # Name this project
 set(LSTORE_PROJECT_NAME "toolbox")
-project(${LSTORE_PROJECT_NAME} C)
+project(${LSTORE_PROJECT_NAME} C CXX)
 
 # Include modules
 if(NOT USE_SUPERBUILD)
