@@ -59,7 +59,7 @@ typedef struct {
     int map_version;
     int inprogress_count;
     rs_mapping_notify_t notify;
-    interval_skiplist_t *isl;
+    tbx_isl_t *isl;
     resource_service_fn_t *rs;
     data_service_fn_t *ds;
     Stack_t *db_cleanup;

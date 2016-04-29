@@ -48,8 +48,8 @@ int main(int argc, char **argv)
     int lo, hi;
     interval_t *data_list, *d;
     double p;
-    interval_skiplist_t *isl;
-    interval_skiplist_iter_t it;
+    tbx_isl_t *isl;
+    tbx_isl_iter_t it;
 
     if (argc < 4) {
         printf("isl_test [-d log_level] n l_max p n_int_check\n");

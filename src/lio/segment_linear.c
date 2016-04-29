@@ -96,7 +96,7 @@ typedef struct {
     thread_pool_context_t *tpc;
     int n_rid_default;
     int hard_errors;
-    interval_skiplist_t *isl;
+    tbx_isl_t *isl;
     resource_service_fn_t *rs;
     data_service_fn_t *ds;
 } seglin_priv_t;
@@ -112,7 +112,7 @@ op_status_t _sl_grow(segment_t *seg, data_attr_t *da, ex_off_t new_size_arg, int
     ex_off_t off, dsize;
     seglin_priv_t *s = (seglin_priv_t *)seg->priv;
     seglin_slot_t *b, *bexpand;
-    interval_skiplist_iter_t it;
+    tbx_isl_iter_t it;
     op_generic_t *gop1, *gop2;
     opque_t *q;
     int n_blocks;
@@ -284,7 +284,7 @@ op_status_t _sl_shrink(segment_t *seg, data_attr_t *da, ex_off_t new_size, int t
 {
     seglin_priv_t *s = (seglin_priv_t *)seg->priv;
     op_generic_t *gop;
-    interval_skiplist_iter_t it;
+    tbx_isl_iter_t it;
     seglin_slot_t *b;
     opque_t *q = NULL;
     ex_off_t lo, hi, dsize;
@@ -431,7 +431,7 @@ op_status_t seglin_read_func(void *arg, int id)
     op_generic_t *gop;
     opque_t *q;
     seglin_slot_t *b;
-    interval_skiplist_iter_t it;
+    tbx_isl_iter_t it;
     ex_off_t lo, hi, start, end, blen, bpos;
     op_status_t err;
     int i;
@@ -536,7 +536,7 @@ op_generic_t *seglin_write_op(segment_t *seg, data_attr_t *da, segment_rw_hints_
     op_generic_t *gop;
     opque_t *q;
     seglin_slot_t *b;
-    interval_skiplist_iter_t it;
+    tbx_isl_iter_t it;
     ex_off_t lo, hi, start, end, blen, bpos;
     int i;
 
@@ -728,7 +728,7 @@ op_generic_t *seglin_remove(segment_t *seg, data_attr_t *da, int timeout)
     op_generic_t *gop;
     opque_t *q;
     seglin_slot_t *b;
-    interval_skiplist_iter_t it;
+    tbx_isl_iter_t it;
     int i, n;
 
     q = new_opque();
@@ -756,7 +756,7 @@ op_generic_t *seglin_inspect_op(segment_t *seg, data_attr_t *da, info_fd_t *fd, 
     op_generic_t *gop;
     opque_t *q;
     seglin_slot_t *b;
-    interval_skiplist_iter_t it;
+    tbx_isl_iter_t it;
     callback_t *cb;
     seglin_check_t *sp;
     int i;
@@ -842,7 +842,7 @@ op_status_t seglin_clone_func(void *arg, int id)
     seglin_clone_t *slc = (seglin_clone_t *)arg;
     seglin_priv_t *ss = (seglin_priv_t *)slc->sseg->priv;
     seglin_priv_t *sd = (seglin_priv_t *)slc->dseg->priv;
-    interval_skiplist_iter_t it;
+    tbx_isl_iter_t it;
     seglin_slot_t *bd, *bs;
     int n_blocks, dir, i;
     rs_request_t *req_list;
@@ -1035,7 +1035,7 @@ int seglin_serialize_text(segment_t *seg, exnode_exchange_t *exp)
     int sused;
     seglin_slot_t *b;
     exnode_exchange_t *cap_exp;
-    interval_skiplist_iter_t it;
+    tbx_isl_iter_t it;
 
     segbuf[0] = 0;
     cap_exp = exnode_exchange_create(EX_TEXT);
@@ -1241,7 +1241,7 @@ int seglin_deserialize(segment_t *seg, ex_id_t id, exnode_exchange_t *exp)
 void seglin_destroy(segment_t *seg)
 {
     int i, n;
-    interval_skiplist_iter_t it;
+    tbx_isl_iter_t it;
     seglin_slot_t **b_list;
     seglin_priv_t *s = (seglin_priv_t *)seg->priv;
 

@@ -132,7 +132,7 @@ typedef struct {
 void _slun_perform_remap(segment_t *seg)
 {
     seglun_priv_t *s = (seglun_priv_t *)seg->priv;
-    interval_skiplist_iter_t it;
+    tbx_isl_iter_t it;
     seglun_row_t *b;
     int i;
 
@@ -792,7 +792,7 @@ op_status_t _seglun_grow(segment_t *seg, data_attr_t *da, ex_off_t new_size_arg,
     seglun_priv_t *s = (seglun_priv_t *)seg->priv;
     seglun_row_t *b;
     seglun_block_t *block;
-    interval_skiplist_iter_t it;
+    tbx_isl_iter_t it;
     ex_off_t lo, hi, berr, new_size;
     op_status_t status;
     int block_status[s->n_devices];
@@ -952,7 +952,7 @@ op_status_t _seglun_shrink(segment_t *seg, data_attr_t *da, ex_off_t new_size, i
 {
     seglun_priv_t *s = (seglun_priv_t *)seg->priv;
     op_generic_t *gop;
-    interval_skiplist_iter_t it;
+    tbx_isl_iter_t it;
     seglun_row_t *b;
     opque_t *q = NULL;
     ex_off_t lo, hi, dsize, bstart_size, bstart_block_size, new_used;
@@ -1459,7 +1459,7 @@ op_status_t seglun_rw_op(segment_t *seg, data_attr_t *da, segment_rw_hints_t *rw
     op_status_t blacklist_status = {OP_STATE_FAILURE, -1234};
     opque_t *q;
     seglun_row_t *b, **bused;
-    interval_skiplist_iter_t it;
+    tbx_isl_iter_t it;
     ex_off_t lo, hi, start, end, blen, bpos;
     int i, j, maxerr, nerr, slot, n_bslots, bl_count, dev;
     int *bcount;
@@ -1903,7 +1903,7 @@ op_generic_t *seglun_remove(segment_t *seg, data_attr_t *da, int timeout)
     op_generic_t *gop;
     opque_t *q;
     seglun_row_t *b;
-    interval_skiplist_iter_t it;
+    tbx_isl_iter_t it;
     int i, j, n;
 
     q = new_opque();
@@ -1946,7 +1946,7 @@ op_status_t seglun_migrate_func(void *arg, int id)
     int soft_error_fail;
 
     op_status_t status = op_success_status;
-    interval_skiplist_iter_t it;
+    tbx_isl_iter_t it;
 
     soft_error_fail = (si->inspect_mode & INSPECT_SOFT_ERROR_FAIL);
 
@@ -2028,7 +2028,7 @@ op_status_t seglun_inspect_func(void *arg, int id)
     seglun_row_t *b;
     rs_query_t *query;
     op_status_t status;
-    interval_skiplist_iter_t it;
+    tbx_isl_iter_t it;
     int bufsize = 10*1024;
     char info[bufsize];
     ex_off_t sstripe, estripe;
@@ -2255,7 +2255,7 @@ fail:
 op_generic_t *seglun_inspect(segment_t *seg, data_attr_t *da, info_fd_t *fd, int mode, ex_off_t bufsize, inspect_args_t *args, int timeout)
 {
     seglun_priv_t *s = (seglun_priv_t *)seg->priv;
-    interval_skiplist_iter_t it;
+    tbx_isl_iter_t it;
     seglun_row_t *b;
     op_generic_t *gop;
     op_status_t err;
@@ -2345,7 +2345,7 @@ op_status_t seglun_clone_func(void *arg, int id)
     seglun_clone_t *slc = (seglun_clone_t *)arg;
     seglun_priv_t *ss = (seglun_priv_t *)slc->sseg->priv;
     seglun_priv_t *sd = (seglun_priv_t *)slc->dseg->priv;
-    interval_skiplist_iter_t its, itd;
+    tbx_isl_iter_t its, itd;
     seglun_row_t *bd, *bs;
     ex_off_t row_size, max_gops, n_gops, offset, d_offset, len, end;
     int err, dir, i, j, k, *max_index, n_rows, n;
@@ -2620,7 +2620,7 @@ int seglun_serialize_text_try(segment_t *seg, char *segbuf, int bufsize, exnode_
     char *ext, *etext;
     int sused, i, err;
     seglun_row_t *b;
-    interval_skiplist_iter_t it;
+    tbx_isl_iter_t it;
 
 
     sused = 0;
@@ -2870,7 +2870,7 @@ int seglun_deserialize(segment_t *seg, ex_id_t id, exnode_exchange_t *exp)
 void seglun_destroy(segment_t *seg)
 {
     int i, j, n;
-    interval_skiplist_iter_t it;
+    tbx_isl_iter_t it;
     seglun_row_t **b_list;
     data_block_t *db;
     seglun_priv_t *s = (seglun_priv_t *)seg->priv;

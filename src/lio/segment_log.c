@@ -123,7 +123,7 @@ int _slog_truncate_range(segment_t *seg, slog_range_t *r)
     int bufmax = 100;
     seglog_priv_t *s = (seglog_priv_t *)seg->priv;
     ex_off_t lo, hi;
-    interval_skiplist_iter_t it;
+    tbx_isl_iter_t it;
     slog_range_t *ir;
     slog_range_t *r_table[bufmax+1];
     int n, i;
@@ -197,7 +197,7 @@ int _slog_insert_range(segment_t *seg, slog_range_t *r)
 {
     seglog_priv_t *s = (seglog_priv_t *)seg->priv;
     ex_off_t irlo;
-    interval_skiplist_iter_t it;
+    tbx_isl_iter_t it;
     slog_range_t *ir, *ir2;
 
     //** If a truncate just do it and return
@@ -366,7 +366,7 @@ op_status_t seglog_read_func(void *arg, int id)
 {
     seglog_rw_t *sw = (seglog_rw_t *)arg;
     seglog_priv_t *s = (seglog_priv_t *)sw->seg->priv;
-    interval_skiplist_iter_t it;
+    tbx_isl_iter_t it;
     slog_range_t *ir;
     opque_t *q;
     op_generic_t *gop;
@@ -584,7 +584,7 @@ int _slog_load(segment_t *seg)
 ex_off_t slog_changes(segment_t *seg, ex_off_t lo, ex_off_t hi, Stack_t *stack)
 {
     seglog_priv_t *s = (seglog_priv_t *)seg->priv;
-    interval_skiplist_iter_t it;
+    tbx_isl_iter_t it;
     slog_range_t *ir;
     slog_changes_t *clog;
     ex_off_t nbytes, prev_end;
@@ -1229,7 +1229,7 @@ int seglog_deserialize(segment_t *seg, ex_id_t id, exnode_exchange_t *exp)
 void seglog_destroy(segment_t *seg)
 {
     int i, n;
-    interval_skiplist_iter_t it;
+    tbx_isl_iter_t it;
     slog_range_t **r_list;
     seglog_priv_t *s = (seglog_priv_t *)seg->priv;
 
@@ -1374,7 +1374,7 @@ op_status_t seglog_merge_with_base_func(void *arg, int id)
     tbuffer_t tbuf;
     ex_off_t pos, len, blen, bpos;
     int i, n_iov, err;
-    interval_skiplist_iter_t it;
+    tbx_isl_iter_t it;
 
     qin = new_opque();
     qout = new_opque();
