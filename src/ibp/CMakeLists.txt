@@ -44,7 +44,7 @@ set(LSTORE_PROJECT_OBJS
 
 set(LSTORE_PROJECT_INCLUDES
     ibp_ClientLib.h ibp_errno.h ibp.h ibp_misc.h ibp_nfu.h ibp_op.h ibp_os.h
-    ibp_protocol.h ibp_types.h iovec_sync.h io_wrapper.h
+    ibp_protocol.h ibp_types.h iovec_sync.h io_wrapper.h ibp/ibp_visibility.h
 )
 
 set(LSTORE_PROJECT_EXECUTABLES 

@@ -89,7 +89,7 @@ set(LSTORE_PROJECT_INCLUDES
     segment_file.h segment_lun.h cache.h authn_abstract.h authn_fake.h
     osaz_fake.h rs_remote.h archive.h lio_abstract.h lio_fuse.h
     cache_round_robin.h resource_service_abstract.h object_service_abstract.h
-    service_manager.h rs_zmq.h os_remote.h os_timecache.h
+    service_manager.h rs_zmq.h os_remote.h os_timecache.h lio/lio_visibility.h
 )
 
 set(LSTORE_PROJECT_EXECUTABLES
