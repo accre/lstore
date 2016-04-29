@@ -59,7 +59,7 @@ extern "C" {
 #define MQS_READ  0
 #define MQS_WRITE 1
 
-//*** Header format [state][pack_type][handle_len][..handle..]
+//*** Header format [state][tbx_pack_type][handle_len][..handle..]
 #define MQS_HEADER (1+1+1+sizeof(intptr_t))
 
 //** Header indices
@@ -90,7 +90,7 @@ typedef struct {
     unsigned char *data;
     apr_thread_t *flusher_thread;
     apr_time_t expire;
-    pack_t *pack;
+    tbx_pack_t *pack;
     int len;
     int bpos;
     int waiting;
@@ -119,7 +119,7 @@ GOP_API int mq_stream_write(mq_stream_t *mqs, void *buffer, int nbytes);
 
 void mq_stream_release_frame(mq_stream_t *mqs);
 GOP_API mq_stream_t *mq_stream_read_create(mq_context_t *mqc,  mq_ongoing_t *ongoing, char *host_id, int hid_len, mq_frame_t *fdata, mq_msg_t *remote_host, int to);
-GOP_API mq_stream_t *mq_stream_write_create(mq_context_t *mqc, mq_portal_t *server_portal, mq_ongoing_t *ongoing, char pack_type, int max_size, int timeout, mq_msg_t *address, mq_frame_t *fid, mq_frame_t *hid, int launch_flusher);
+GOP_API mq_stream_t *mq_stream_write_create(mq_context_t *mqc, mq_portal_t *server_portal, mq_ongoing_t *ongoing, char tbx_pack_type, int max_size, int timeout, mq_msg_t *address, mq_frame_t *fid, mq_frame_t *hid, int launch_flusher);
 
 GOP_API void mq_stream_destroy(mq_stream_t *mqs);
 

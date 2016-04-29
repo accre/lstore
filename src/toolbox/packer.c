@@ -52,9 +52,9 @@ http://www.accre.vanderbilt.edu
 //    of bytes retreived.
 //***********************************************************************
 
-int pack_read_zlib(pack_t *pack, unsigned char *data, int len)
+int pack_read_zlib(tbx_pack_t *pack, unsigned char *data, int len)
 {
-    pack_zlib_t *p = &(pack->zlib);
+    tbx_pack_zlib_t *p = &(pack->zlib);
     int nbytes;
 
     p->z.avail_out = len;
@@ -78,9 +78,9 @@ int pack_read_zlib(pack_t *pack, unsigned char *data, int len)
 //    provided.  The old data array should have been completely consumed!
 //***********************************************************************
 
-int pack_read_new_data_zlib(pack_t *pack, unsigned char *buffer, unsigned int bufsize)
+int pack_read_new_data_zlib(tbx_pack_t *pack, unsigned char *buffer, unsigned int bufsize)
 {
-    pack_zlib_t *p = &(pack->zlib);
+    tbx_pack_zlib_t *p = &(pack->zlib);
     int err = 0;
 
     if (p->z.avail_in > 0) err = PACK_ERROR;
@@ -99,9 +99,9 @@ int pack_read_new_data_zlib(pack_t *pack, unsigned char *buffer, unsigned int bu
 //    of bytes retreived.
 //***********************************************************************
 
-int pack_write_zlib(pack_t *pack, unsigned char *data, int len)
+int pack_write_zlib(tbx_pack_t *pack, unsigned char *data, int len)
 {
-    pack_zlib_t *p = &(pack->zlib);
+    tbx_pack_zlib_t *p = &(pack->zlib);
     int nbytes;
 
     if (len == 0) return(0);
@@ -123,9 +123,9 @@ int pack_write_zlib(pack_t *pack, unsigned char *data, int len)
 //    expanded one.  The old data should have been copied to the new array
 //***********************************************************************
 
-void pack_write_resized_zlib(pack_t *pack, unsigned char *buffer, unsigned int bufsize)
+void pack_write_resized_zlib(tbx_pack_t *pack, unsigned char *buffer, unsigned int bufsize)
 {
-    pack_zlib_t *p = &(pack->zlib);
+    tbx_pack_zlib_t *p = &(pack->zlib);
     int offset;
 
     assert(bufsize >= (p->bufsize - p->z.avail_out));
@@ -142,9 +142,9 @@ void pack_write_resized_zlib(pack_t *pack, unsigned char *buffer, unsigned int b
 // pack_consumed_zlib - Flags the write data as consumed.  Resetting the buffer
 //***********************************************************************
 
-void pack_consumed_zlib(pack_t *pack)
+void pack_consumed_zlib(tbx_pack_t *pack)
 {
-    pack_zlib_t *p = &(pack->zlib);
+    tbx_pack_zlib_t *p = &(pack->zlib);
 
     p->z.avail_out = p->bufsize;
     p->z.next_out = p->buffer;
@@ -154,9 +154,9 @@ void pack_consumed_zlib(pack_t *pack)
 // pack_end_zlib - Cleans up the ZLIB pack structure
 //***********************************************************************
 
-void pack_end_zlib(pack_t *pack)
+void pack_end_zlib(tbx_pack_t *pack)
 {
-    pack_zlib_t *p = &(pack->zlib);
+    tbx_pack_zlib_t *p = &(pack->zlib);
 
     if (pack->mode == PACK_READ) {
         inflateEnd(&(p->z));
@@ -171,9 +171,9 @@ void pack_end_zlib(pack_t *pack)
 // pack_used_zlib - Returns the number of buffer bytes used
 //***********************************************************************
 
-int pack_used_zlib(pack_t *pack)
+int pack_used_zlib(tbx_pack_t *pack)
 {
-    pack_zlib_t *p = &(pack->zlib);
+    tbx_pack_zlib_t *p = &(pack->zlib);
 
     return(p->bufsize - p->z.avail_out);
 }
@@ -183,9 +183,9 @@ int pack_used_zlib(pack_t *pack)
 //    available this routine may need to be called multiple times.
 //***********************************************************************
 
-int pack_write_flush_zlib(pack_t *pack)
+int pack_write_flush_zlib(tbx_pack_t *pack)
 {
-    pack_zlib_t *p = &(pack->zlib);
+    tbx_pack_zlib_t *p = &(pack->zlib);
     int err;
 
     log_printf(5, "start avail_out=%d\n", p->z.avail_out);
@@ -210,11 +210,11 @@ int pack_write_flush_zlib(pack_t *pack)
 // pack_init_zlib - Initializes a ZLIB pack object
 //***********************************************************************
 
-void pack_init_zlib(pack_t *pack, int type, int mode, unsigned char *buffer, unsigned int bufsize)
+void pack_init_zlib(tbx_pack_t *pack, int type, int mode, unsigned char *buffer, unsigned int bufsize)
 {
-    pack_zlib_t *p = &(pack->zlib);
+    tbx_pack_zlib_t *p = &(pack->zlib);
 
-    memset(pack, 0, sizeof(pack_t));
+    memset(pack, 0, sizeof(tbx_pack_t));
 
     pack->type = type;
     pack->mode = mode;
@@ -263,9 +263,9 @@ void pack_init_zlib(pack_t *pack, int type, int mode, unsigned char *buffer, uns
 //    of bytes stored.
 //***********************************************************************
 
-int pack_read_raw(pack_t *pack, unsigned char *data, int len)
+int pack_read_raw(tbx_pack_t *pack, unsigned char *data, int len)
 {
-    pack_raw_t *p = &(pack->raw);
+    tbx_pack_raw_t *p = &(pack->raw);
     int nbytes;
 
     nbytes = (len > p->nleft) ? p->nleft : len;
@@ -286,9 +286,9 @@ int pack_read_raw(pack_t *pack, unsigned char *data, int len)
 //    provided.  The old data array should have been completely consumed!
 //***********************************************************************
 
-int pack_read_new_data_raw(pack_t *pack, unsigned char *buffer, unsigned int bufsize)
+int pack_read_new_data_raw(tbx_pack_t *pack, unsigned char *buffer, unsigned int bufsize)
 {
-    pack_raw_t *p = &(pack->raw);
+    tbx_pack_raw_t *p = &(pack->raw);
     int err = 0;
 
     if (p->nleft > 0) err = PACK_ERROR;
@@ -308,9 +308,9 @@ int pack_read_new_data_raw(pack_t *pack, unsigned char *buffer, unsigned int buf
 //    stored PACK_FULL is returned.
 //***********************************************************************
 
-int pack_write_raw(pack_t *pack, unsigned char *data, int len)
+int pack_write_raw(tbx_pack_t *pack, unsigned char *data, int len)
 {
-    pack_raw_t *p = &(pack->raw);
+    tbx_pack_raw_t *p = &(pack->raw);
     int nbytes;
 
     nbytes = (len > p->nleft) ? p->nleft : len;
@@ -331,9 +331,9 @@ int pack_write_raw(pack_t *pack, unsigned char *data, int len)
 //    expanded one.  The old data should have been copied to the new array
 //***********************************************************************
 
-void pack_write_resized_raw(pack_t *pack, unsigned char *buffer, unsigned int bufsize)
+void pack_write_resized_raw(tbx_pack_t *pack, unsigned char *buffer, unsigned int bufsize)
 {
-    pack_raw_t *p = &(pack->raw);
+    tbx_pack_raw_t *p = &(pack->raw);
 
     assert(bufsize >= p->bpos);
 
@@ -346,9 +346,9 @@ void pack_write_resized_raw(pack_t *pack, unsigned char *buffer, unsigned int bu
 // pack_consumed_raw - Flags the write data as consumed.  Resetting the buffer
 //***********************************************************************
 
-void pack_consumed_raw(pack_t *pack)
+void pack_consumed_raw(tbx_pack_t *pack)
 {
-    pack_raw_t *p = &(pack->raw);
+    tbx_pack_raw_t *p = &(pack->raw);
 
     p->bpos = 0;
     p->nleft = p->bufsize;
@@ -358,7 +358,7 @@ void pack_consumed_raw(pack_t *pack)
 // pack_end_raw - Cleans up the RAW pack structure
 //***********************************************************************
 
-void pack_end_raw(pack_t *pack)
+void pack_end_raw(tbx_pack_t *pack)
 {
     return;
 }
@@ -367,7 +367,7 @@ void pack_end_raw(pack_t *pack)
 // pack_used_raw - Returns the number of buffer bytes used
 //***********************************************************************
 
-int pack_used_raw(pack_t *pack)
+int pack_used_raw(tbx_pack_t *pack)
 {
     return(pack->raw.bpos);
 }
@@ -376,7 +376,7 @@ int pack_used_raw(pack_t *pack)
 // pack_write_flush_raw - Flushes the write buffer
 //***********************************************************************
 
-int pack_write_flush_raw(pack_t *pack)
+int pack_write_flush_raw(tbx_pack_t *pack)
 {
     return(PACK_FINISHED);
 }
@@ -385,11 +385,11 @@ int pack_write_flush_raw(pack_t *pack)
 // pack_init_raw - Initializes a RAW pack object
 //***********************************************************************
 
-void pack_init_raw(pack_t *pack, int type, int mode, unsigned char *buffer, unsigned int bufsize)
+void pack_init_raw(tbx_pack_t *pack, int type, int mode, unsigned char *buffer, unsigned int bufsize)
 {
-    pack_raw_t *p = &(pack->raw);
+    tbx_pack_raw_t *p = &(pack->raw);
 
-    memset(pack, 0, sizeof(pack_t));
+    memset(pack, 0, sizeof(tbx_pack_t));
 
     pack->type = type;
     pack->mode = mode;
@@ -421,7 +421,7 @@ void pack_init_raw(pack_t *pack, int type, int mode, unsigned char *buffer, unsi
 // pack_destroy - Destroy's a pack structure
 //***********************************************************************
 
-void pack_destroy(pack_t *pack)
+void pack_destroy(tbx_pack_t *pack)
 {
     log_printf(15, "type=%d mode=%d\n", pack->type, pack->mode);
     pack_end(pack);
@@ -432,7 +432,7 @@ void pack_destroy(pack_t *pack)
 // pack_init - Initializes a pack structure
 //***********************************************************************
 
-void pack_init(pack_t *pack, int type, int mode, unsigned char *buffer, unsigned int bufsize)
+void pack_init(tbx_pack_t *pack, int type, int mode, unsigned char *buffer, unsigned int bufsize)
 {
     if (type == PACK_COMPRESS) {
         pack_init_zlib(pack, type, mode, buffer, bufsize);
@@ -446,13 +446,13 @@ void pack_init(pack_t *pack, int type, int mode, unsigned char *buffer, unsigned
 // pack_create - Creates a new pack structure and initializes it
 //***********************************************************************
 
-pack_t *pack_create(int type, int mode, unsigned char *buffer, unsigned int bufsize)
+tbx_pack_t *pack_create(int type, int mode, unsigned char *buffer, unsigned int bufsize)
 {
-    pack_t *pack;
+    tbx_pack_t *pack;
 
     log_printf(15, "type=%d mode=%d\n", type, mode);
 
-    type_malloc(pack, pack_t, 1);
+    type_malloc(pack, tbx_pack_t, 1);
     pack_init(pack, type, mode, buffer, bufsize);
     return(pack);
 }

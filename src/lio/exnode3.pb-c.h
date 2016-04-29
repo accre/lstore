@@ -172,7 +172,7 @@ size_t exnode3__allocation__get_packed_size
 size_t exnode3__allocation__pack
 (const Exnode3__Allocation   *message,
  uint8_t             *out);
-size_t exnode3__allocation__pack_to_buffer
+size_t exnode3__allocation__tbx_pack_to_buffer
 (const Exnode3__Allocation   *message,
  ProtobufCBuffer     *buffer);
 Exnode3__Allocation *
@@ -191,7 +191,7 @@ size_t exnode3__allocation__table__get_packed_size
 size_t exnode3__allocation__table__pack
 (const Exnode3__AllocationTable   *message,
  uint8_t             *out);
-size_t exnode3__allocation__table__pack_to_buffer
+size_t exnode3__allocation__table__tbx_pack_to_buffer
 (const Exnode3__AllocationTable   *message,
  ProtobufCBuffer     *buffer);
 Exnode3__AllocationTable *
@@ -210,7 +210,7 @@ size_t exnode3__block__get_packed_size
 size_t exnode3__block__pack
 (const Exnode3__Block   *message,
  uint8_t             *out);
-size_t exnode3__block__pack_to_buffer
+size_t exnode3__block__tbx_pack_to_buffer
 (const Exnode3__Block   *message,
  ProtobufCBuffer     *buffer);
 Exnode3__Block *
@@ -229,7 +229,7 @@ size_t exnode3__attribute__get_packed_size
 size_t exnode3__attribute__pack
 (const Exnode3__Attribute   *message,
  uint8_t             *out);
-size_t exnode3__attribute__pack_to_buffer
+size_t exnode3__attribute__tbx_pack_to_buffer
 (const Exnode3__Attribute   *message,
  ProtobufCBuffer     *buffer);
 Exnode3__Attribute *
@@ -248,7 +248,7 @@ size_t exnode3__segment_header__get_packed_size
 size_t exnode3__segment_header__pack
 (const Exnode3__SegmentHeader   *message,
  uint8_t             *out);
-size_t exnode3__segment_header__pack_to_buffer
+size_t exnode3__segment_header__tbx_pack_to_buffer
 (const Exnode3__SegmentHeader   *message,
  ProtobufCBuffer     *buffer);
 Exnode3__SegmentHeader *
@@ -267,7 +267,7 @@ size_t exnode3__jbob__get_packed_size
 size_t exnode3__jbob__pack
 (const Exnode3__JBOB   *message,
  uint8_t             *out);
-size_t exnode3__jbob__pack_to_buffer
+size_t exnode3__jbob__tbx_pack_to_buffer
 (const Exnode3__JBOB   *message,
  ProtobufCBuffer     *buffer);
 Exnode3__JBOB *
@@ -286,7 +286,7 @@ size_t exnode3__layout_segment__get_packed_size
 size_t exnode3__layout_segment__pack
 (const Exnode3__LayoutSegment   *message,
  uint8_t             *out);
-size_t exnode3__layout_segment__pack_to_buffer
+size_t exnode3__layout_segment__tbx_pack_to_buffer
 (const Exnode3__LayoutSegment   *message,
  ProtobufCBuffer     *buffer);
 Exnode3__LayoutSegment *
@@ -305,7 +305,7 @@ size_t exnode3__layout__get_packed_size
 size_t exnode3__layout__pack
 (const Exnode3__Layout   *message,
  uint8_t             *out);
-size_t exnode3__layout__pack_to_buffer
+size_t exnode3__layout__tbx_pack_to_buffer
 (const Exnode3__Layout   *message,
  ProtobufCBuffer     *buffer);
 Exnode3__Layout *
@@ -324,7 +324,7 @@ size_t exnode3__view__get_packed_size
 size_t exnode3__view__pack
 (const Exnode3__View   *message,
  uint8_t             *out);
-size_t exnode3__view__pack_to_buffer
+size_t exnode3__view__tbx_pack_to_buffer
 (const Exnode3__View   *message,
  ProtobufCBuffer     *buffer);
 Exnode3__View *
@@ -343,7 +343,7 @@ size_t exnode3__exnode__get_packed_size
 size_t exnode3__exnode__pack
 (const Exnode3__Exnode   *message,
  uint8_t             *out);
-size_t exnode3__exnode__pack_to_buffer
+size_t exnode3__exnode__tbx_pack_to_buffer
 (const Exnode3__Exnode   *message,
  ProtobufCBuffer     *buffer);
 Exnode3__Exnode *

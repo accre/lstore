@@ -383,7 +383,7 @@ mq_stream_t *mq_stream_read_create(mq_context_t *mqc, mq_ongoing_t *on, char *ho
     memcpy(mqs->stream_id, &(mqs->data[MQS_HANDLE_INDEX]), mqs->sid_len);
 
     ptype = (mqs->data[MQS_PACK_INDEX] == MQS_PACK_COMPRESS) ? PACK_COMPRESS : PACK_NONE;
-    log_printf(1, "msid=%d ptype=%d pack_type=%c\n", mqs->msid, ptype, mqs->data[MQS_PACK_INDEX]);
+    log_printf(1, "msid=%d ptype=%d tbx_pack_type=%c\n", mqs->msid, ptype, mqs->data[MQS_PACK_INDEX]);
     mqs->pack = pack_create(ptype, PACK_READ, &(mqs->data[MQS_HEADER]), mqs->len - MQS_HEADER);
 
     log_printf(5, "data_len=%d more=%c MQS_HEADER=%lu\n", mqs->len, mqs->data[MQS_STATE_INDEX], MQS_HEADER);
@@ -916,7 +916,7 @@ void mq_stream_write_destroy(mq_stream_t *mqs)
 // mq_stream_write_create - Creates an MQ stream for writing
 //***********************************************************************
 
-mq_stream_t *mq_stream_write_create(mq_context_t *mqc, mq_portal_t *server_portal, mq_ongoing_t *ongoing, char pack_type, int max_size, int timeout, mq_msg_t *address, mq_frame_t *fid, mq_frame_t *hid, int launch_flusher)
+mq_stream_t *mq_stream_write_create(mq_context_t *mqc, mq_portal_t *server_portal, mq_ongoing_t *ongoing, char tbx_pack_type, int max_size, int timeout, mq_msg_t *address, mq_frame_t *fid, mq_frame_t *hid, int launch_flusher)
 {
     mq_stream_t *mqs;
     intptr_t key;
@@ -943,12 +943,12 @@ mq_stream_t *mq_stream_write_create(mq_context_t *mqc, mq_portal_t *server_porta
     mqs->len = 4 * 1024;
     type_malloc_clear(mqs->data, unsigned char, mqs->len);
     mqs->data[MQS_STATE_INDEX] = MQS_MORE;
-    mqs->data[MQS_PACK_INDEX] = pack_type;
+    mqs->data[MQS_PACK_INDEX] = tbx_pack_type;
     mqs->data[MQS_HANDLE_SIZE_INDEX] = sizeof(intptr_t);
     key = (intptr_t)mqs;
     memcpy(&(mqs->data[MQS_HANDLE_INDEX]), &key, sizeof(key));
     ptype = (mqs->data[MQS_PACK_INDEX] == MQS_PACK_COMPRESS) ? PACK_COMPRESS : PACK_NONE;
-    log_printf(1, "msid=%d ptype=%d pack_type=%c\n", mqs->msid, ptype, mqs->data[MQS_PACK_INDEX]);
+    log_printf(1, "msid=%d ptype=%d tbx_pack_type=%c\n", mqs->msid, ptype, mqs->data[MQS_PACK_INDEX]);
     mqs->pack = pack_create(ptype, PACK_WRITE, &(mqs->data[MQS_HEADER]), mqs->len-MQS_HEADER);
 
     log_printf(5, "initial used bpos=%d\n", pack_used(mqs->pack));
