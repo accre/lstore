@@ -43,6 +43,7 @@ http://www.accre.vanderbilt.edu
 #include "type_malloc.h"
 #include "append_printf.h"
 #include "type_malloc.h"
+#include "string_token.h"
 
 #define ibp_set_status(v, opstat, errcode) (v).op_status = status; (v).error_code = errorcode
 

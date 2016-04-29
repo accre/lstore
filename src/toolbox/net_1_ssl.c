@@ -33,6 +33,7 @@ http://www.accre.vanderbilt.edu
 #define _log_module_index 116
 
 #include "network.h"
+#include "net_sock.h"
 #include "net_1_ssl.h"
 
 //@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
