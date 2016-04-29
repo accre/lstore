@@ -195,6 +195,7 @@ int cipher ## _set(chksum_t *cs)                                  \
   if (i > CHKSUM_STATE_SIZE) {                                    \
      printf( #cipher "_set: sizeof(" #CIPHER "_CTX)=%d and is bigger than CHKSUM_STATE_SIZE=%d!\n", i, CHKSUM_STATE_SIZE); \
      printf( #cipher "_set: Increase the size of CHKSUM_STATE_SIZE in chksum.h and recompile.\n"); \
+     printf( #cipher "NOTE from AMM (4/26/2016) TERRIBLE IDEA - this breaks ABI\n"); \
      fflush(stdout);                                              \
      abort();                                                     \
   }                                                               \
