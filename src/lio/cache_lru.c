@@ -67,7 +67,7 @@ void *lru_dirty_thread(apr_thread_t *th, void *data)
     opque_t *q;
     op_generic_t *gop;
     cache_segment_t *s;
-    skiplist_iter_t it;
+    tbx_sl_iter_t it;
     segment_t **flush_list;
 
     cache_lock(c);
@@ -603,7 +603,7 @@ ex_off_t _lru_attempt_free_mem(cache_t *c, segment_t *page_seg, ex_off_t bytes_t
         release_pigeon_coop_hole(cp->free_page_tables, &(ptable->pch));
         cache_unlock(c);
 
-        list_next(&sit, (skiplist_key_t **)&pseg, (skiplist_data_t **)&ptable);
+        list_next(&sit, (tbx_sl_key_t **)&pseg, (tbx_sl_data_t **)&ptable);
     }
 
     cache_lock(c);

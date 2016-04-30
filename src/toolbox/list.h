@@ -41,17 +41,17 @@ http://www.accre.vanderbilt.edu
 extern "C" {
 #endif
 
-typedef skiplist_key_t tbx_list_key_t;
-typedef skiplist_data_t tbx_list_data_t;
-typedef skiplist_compare_t tbx_list_compare_t;
-typedef skiplist_t tbx_list_t;
-typedef skiplist_iter_t tbx_list_iter_t;
+typedef tbx_sl_key_t tbx_list_key_t;
+typedef tbx_sl_data_t tbx_list_data_t;
+typedef tbx_sl_compare_t tbx_list_compare_t;
+typedef tbx_sl_t tbx_list_t;
+typedef tbx_sl_iter_t tbx_list_iter_t;
 
 #define list_strncmp_set(cmp, n) skiplist_strncmp_set(cmp, n)
-#define list_string_descending_compare skiplist_compare_strcmp_descending
-#define list_string_compare skiplist_compare_strcmp
+#define list_string_descending_compare tbx_sl_compare_strcmp_descending
+#define list_string_compare tbx_sl_compare_strcmp
 #define list_compare_ptr skiplist_compare_ptr
-#define list_compare_int skiplist_compare_int
+#define list_compare_int tbx_sl_compare_int
 #define list_string_dup sl_string_dup
 #define list_no_key_free sl_no_key_free
 #define list_no_data_free sl_no_data_free

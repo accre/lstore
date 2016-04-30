@@ -105,8 +105,8 @@ typedef struct {
     char *owner;
 } lio_fsck_check_t;
 
-int ex_id_compare_fn(void *arg, skiplist_key_t *a, skiplist_key_t *b);
-skiplist_compare_t ex_id_compare = {.fn=ex_id_compare_fn, .arg=NULL };
+int ex_id_compare_fn(void *arg, tbx_sl_key_t *a, tbx_sl_key_t *b);
+tbx_sl_compare_t ex_id_compare = {.fn=ex_id_compare_fn, .arg=NULL };
 
 //***********************************************************************
 // Core LFS functionality
@@ -116,7 +116,7 @@ skiplist_compare_t ex_id_compare = {.fn=ex_id_compare_fn, .arg=NULL };
 //  ex_id_compare_fn  - ID comparison function
 //************************************************************************
 
-int ex_id_compare_fn(void *arg, skiplist_key_t *a, skiplist_key_t *b)
+int ex_id_compare_fn(void *arg, tbx_sl_key_t *a, tbx_sl_key_t *b)
 {
     ex_id_t *al = (ex_id_t *)a;
     ex_id_t *bl = (ex_id_t *)b;

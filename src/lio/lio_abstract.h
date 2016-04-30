@@ -179,7 +179,7 @@ typedef struct {  //** Individual file descriptor
     ex_off_t curr_offset;
 } lio_fd_t;
 
-extern skiplist_compare_t ex_id_compare;
+extern tbx_sl_compare_t ex_id_compare;
 
 LIO_API op_generic_t *gop_lio_exists(lio_config_t *lc, creds_t *creds, char *path);
 LIO_API int lio_exists(lio_config_t *lc, creds_t *creds, char *path);

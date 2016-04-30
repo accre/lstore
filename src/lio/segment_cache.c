@@ -552,7 +552,7 @@ cache_page_t  *cache_page_force_get(segment_t *seg, segment_rw_hints_t *rw_hints
 
     cache_lock(s->c); //** Now get the lock
 
-    p = list_search(s->pages, (skiplist_key_t *)(&off_row));
+    p = list_search(s->pages, (tbx_sl_key_t *)(&off_row));
     log_printf(15, "cache_page_force_get: seg=" XIDT " offset=" XOT " p=%p count=%d\n", segment_id(seg), poff, p, skiplist_key_count(s->pages));
     flush_log();
     if (p == NULL) {  //** New page so may need to load it
@@ -562,7 +562,7 @@ cache_page_t  *cache_page_force_get(segment_t *seg, segment_rw_hints_t *rw_hints
         p->seg = seg;
 
         //** During the page creation we may have released and reacquired the lock letting another thread insert the page
-        p2 = list_search(s->pages, (skiplist_key_t *)(&off_row));
+        p2 = list_search(s->pages, (tbx_sl_key_t *)(&off_row));
         if (p2 == NULL) {    //** Not inserted so I do it
             s_cache_page_init(seg, p, off_row);  //** Add the page
             p->access_pending[rw_mode]++;  //** and mark it for my access mode
@@ -640,7 +640,7 @@ op_status_t cache_advise_fn(void *arg, int id)
     cache_segment_t *s = (cache_segment_t *)seg->priv;
     ex_off_t lo_row, hi_row, *poff, coff, poff2;
     cache_page_t *p, *p2, *np;
-    skiplist_iter_t it;
+    tbx_sl_iter_t it;
     int err, max_pages;
 
     //** Only works for READ ops
@@ -670,7 +670,7 @@ op_status_t cache_advise_fn(void *arg, int id)
     it = iter_search_skiplist(s->pages, &lo_row, 0);
     for (coff = lo_row; coff <= hi_row; coff += s->page_size) {
         //** Make sure the next page matches coff
-        next_skiplist(&it, (skiplist_key_t **)&poff, (skiplist_data_t **)&p);
+        next_skiplist(&it, (tbx_sl_key_t **)&poff, (tbx_sl_data_t **)&p);
         err = 0;
         if (p == NULL) {  //** End of range and no pages
             log_printf(15, "seg=" XIDT " coff=" XOT "p->offset=NULL err=1\n", segment_id(seg), coff);
@@ -697,7 +697,7 @@ op_status_t cache_advise_fn(void *arg, int id)
             flush_log();
             if (np != NULL) { //** This was an opportunistic request so it could be denied
                 //** During the page creation we may have released and reacquired the lock letting another thread insert the page
-                p2 = list_search(s->pages, (skiplist_key_t *)(&coff));
+                p2 = list_search(s->pages, (tbx_sl_key_t *)(&coff));
                 if (p2 == NULL) {    //** Not inserted so I do it
                     s_cache_page_init(seg, np, coff);
                     np->access_pending[ca->rw_mode]++;
@@ -750,7 +750,7 @@ void cache_advise(segment_t *seg, segment_rw_hints_t *rw_hints, int rw_mode, ex_
     cache_segment_t *s = (cache_segment_t *)seg->priv;
     ex_off_t lo_row, hi_row, nbytes, *poff;
     cache_page_t *p;
-    skiplist_iter_t it;
+    tbx_sl_iter_t it;
     cache_advise_op_t ca;
     int err;
 
@@ -770,14 +770,14 @@ void cache_advise(segment_t *seg, segment_rw_hints_t *rw_hints, int rw_mode, ex_
     //** Figure out if any pages need to be loaded
     cache_lock(s->c);
     it = iter_search_skiplist(s->pages, &lo_row, 0);
-    err = next_skiplist(&it, (skiplist_key_t **)&poff, (skiplist_data_t **)&p);
+    err = next_skiplist(&it, (tbx_sl_key_t **)&poff, (tbx_sl_data_t **)&p);
     while ((p != NULL) && (err == 0)) {
         log_printf(15, "CHECKING seg=" XIDT " p->offset=" XOT " nleft=" XOT "\n", segment_id(seg), p->offset, nbytes);
         if (p->offset <= hi_row) {
             nbytes -= s->page_size;
             log_printf(15, "IN loop seg=" XIDT " p->offset=" XOT " nleft=" XOT "\n", segment_id(seg), p->offset, nbytes);
 
-            err = next_skiplist(&it, (skiplist_key_t **)&poff, (skiplist_data_t **)&p);
+            err = next_skiplist(&it, (tbx_sl_key_t **)&poff, (tbx_sl_data_t **)&p);
         } else {
             err = 1;
         }
@@ -813,7 +813,7 @@ int cache_page_drop(segment_t *seg, ex_off_t lo, ex_off_t hi)
     cache_segment_t *s = (cache_segment_t *)seg->priv;
     ex_off_t lo_row, hi_row, *poff, coff;
 //  ex_off_t my_flush[3];
-    skiplist_iter_t it;
+    tbx_sl_iter_t it;
     cache_page_t *p;
     cache_page_t *page[CACHE_MAX_PAGES_RETURNED];
     int do_again, count, n;
@@ -838,7 +838,7 @@ int cache_page_drop(segment_t *seg, ex_off_t lo, ex_off_t hi)
 
         cache_lock(s->c);
         it = iter_search_skiplist(s->pages, &lo_row, 0);
-        next_skiplist(&it, (skiplist_key_t **)&poff, (skiplist_data_t **)&p);
+        next_skiplist(&it, (tbx_sl_key_t **)&poff, (tbx_sl_data_t **)&p);
         coff = (p == NULL) ? hi+1 : p->offset;
         log_printf(15, "seg=" XIDT " loop start coff=" XOT "\n", segment_id(seg), coff);
 
@@ -863,7 +863,7 @@ int cache_page_drop(segment_t *seg, ex_off_t lo, ex_off_t hi)
                 }
             }
 
-            next_skiplist(&it, (skiplist_key_t **)&poff, (skiplist_data_t **)&p);
+            next_skiplist(&it, (tbx_sl_key_t **)&poff, (tbx_sl_data_t **)&p);
             coff = (p == NULL) ? hi+1 : p->offset;
             log_printf(15, "seg=" XIDT " loop bottom coff=" XOT " p=%p\n", segment_id(seg), coff, p);
         }
@@ -909,7 +909,7 @@ int cache_dirty_pages_get(segment_t *seg, int mode, ex_off_t lo, ex_off_t hi, ex
 {
     cache_segment_t *s = (cache_segment_t *)seg->priv;
     ex_off_t lo_row, *poff, n, old_hi;
-    skiplist_iter_t it;
+    tbx_sl_iter_t it;
     cache_page_t *p;
     int err, skip_mode, can_get;
     cache_cond_t *cache_cond;
@@ -927,12 +927,12 @@ int cache_dirty_pages_get(segment_t *seg, int mode, ex_off_t lo, ex_off_t hi, ex
     //** we are in skipping mode
     skip_mode = 0;
     it = iter_search_skiplist(s->pages, &lo_row, 0);
-    err = next_skiplist(&it, (skiplist_key_t **)&poff, (skiplist_data_t **)&p);
+    err = next_skiplist(&it, (tbx_sl_key_t **)&poff, (tbx_sl_data_t **)&p);
     if (p != NULL) {
         if (p->offset > hi) err = 1;
         log_printf(15, "seg=" XIDT " p->offset=" XOT " bits=%d cf=%d\n", segment_id(seg), p->offset, p->bit_fields, p->access_pending[CACHE_FLUSH]);
         while (((p->bit_fields & C_ISDIRTY) == 0) || (p->access_pending[CACHE_FLUSH] > 0)) {
-            next_skiplist(&it, (skiplist_key_t **)&poff, (skiplist_data_t **)&p);
+            next_skiplist(&it, (tbx_sl_key_t **)&poff, (tbx_sl_data_t **)&p);
             if (p != NULL) {
                 log_printf(15, "seg=" XIDT " checking p->offset=" XOT " bits=%d cf=%d\n", segment_id(seg), p->offset, p->bit_fields, p->access_pending[CACHE_FLUSH]);
                 if (p->offset > hi) {
@@ -967,7 +967,7 @@ int cache_dirty_pages_get(segment_t *seg, int mode, ex_off_t lo, ex_off_t hi, ex
 
                 //** Need to reset iterator due to potential changes while waiting
                 it = iter_search_skiplist(s->pages, &(p->offset), 0);
-                next_skiplist(&it, (skiplist_key_t **)&poff, (skiplist_data_t **)&p);
+                next_skiplist(&it, (tbx_sl_key_t **)&poff, (tbx_sl_data_t **)&p);
             } else {
                 skip_mode = (p->access_pending[CACHE_WRITE] == 0) ? 0 : 1;
             }
@@ -1018,13 +1018,13 @@ int cache_dirty_pages_get(segment_t *seg, int mode, ex_off_t lo, ex_off_t hi, ex
                     if (n >= *n_pages) err = 1;
                 }
 
-                next_skiplist(&it, (skiplist_key_t **)&poff, (skiplist_data_t **)&p);
+                next_skiplist(&it, (tbx_sl_key_t **)&poff, (tbx_sl_data_t **)&p);
                 if ((p != NULL) && (err == 0)) {
                     old_hi = p->offset;
                     log_printf(15, "2a. seg=" XIDT " p->offset=" XOT " old_hi=" XOT " bits=%d fcount=%d\n", segment_id(seg), p->offset, old_hi, p->bit_fields, p->access_pending[CACHE_FLUSH]);
 
                     while ((((p->bit_fields & C_ISDIRTY) == 0) || (p->access_pending[CACHE_FLUSH] > 0)) && (err == 0)) {
-                        err = next_skiplist(&it, (skiplist_key_t **)&poff, (skiplist_data_t **)&p);
+                        err = next_skiplist(&it, (tbx_sl_key_t **)&poff, (tbx_sl_data_t **)&p);
                         if (p != NULL) {
                             old_hi = p->offset;
                             log_printf(15, "3. seg=" XIDT " lo=" XOT " hi=" XOT " err=%d p->offset=" XOT " bits=%d cf=%d err=%d\n", segment_id(seg), lo, hi, err, p->offset, p->bit_fields, p->access_pending[CACHE_FLUSH], err);
@@ -1067,7 +1067,7 @@ int cache_read_pages_get(segment_t *seg, segment_rw_hints_t *rw_hints, int mode,
 {
     cache_segment_t *s = (cache_segment_t *)seg->priv;
     ex_off_t lo_row, hi_row, *poff, n, old_hi, bpos, ppos, len;
-    skiplist_iter_t it;
+    tbx_sl_iter_t it;
     cache_page_t *p;
     tbx_tbuf_t tb;
     int err, i, skip_mode, can_get, max_pages;
@@ -1088,7 +1088,7 @@ int cache_read_pages_get(segment_t *seg, segment_rw_hints_t *rw_hints, int mode,
     //** we are in skipping mode
     skip_mode = 0;
     it = iter_search_skiplist(s->pages, &lo_row, 0);
-    err = next_skiplist(&it, (skiplist_key_t **)&poff, (skiplist_data_t **)&p);
+    err = next_skiplist(&it, (tbx_sl_key_t **)&poff, (tbx_sl_data_t **)&p);
 
     if (p != NULL) {
         log_printf(15, "seg=" XIDT " mode=%d lo=" XOT " hi=" XOT " p->offset=" XOT "\n", segment_id(seg), mode, lo, hi, p->offset);
@@ -1118,7 +1118,7 @@ int cache_read_pages_get(segment_t *seg, segment_rw_hints_t *rw_hints, int mode,
 
                 //** Need to reset iterator due to potential changes while waiting
                 it = iter_search_skiplist(s->pages, &(p->offset), 0);
-                err = next_skiplist(&it, (skiplist_key_t **)&poff, (skiplist_data_t **)&p);
+                err = next_skiplist(&it, (tbx_sl_key_t **)&poff, (tbx_sl_data_t **)&p);
             }
         }
     }
@@ -1176,7 +1176,7 @@ int cache_read_pages_get(segment_t *seg, segment_rw_hints_t *rw_hints, int mode,
                     n++;
                 }
 
-                err = next_skiplist(&it, (skiplist_key_t **)&poff, (skiplist_data_t **)&p);
+                err = next_skiplist(&it, (tbx_sl_key_t **)&poff, (tbx_sl_data_t **)&p);
 
                 if (p != NULL) {
                     if (*hi_got != (p->offset - 1)) {  //** Check for a hole
@@ -1245,7 +1245,7 @@ int cache_write_pages_get(segment_t *seg, segment_rw_hints_t *rw_hints, int mode
     cache_segment_t *s = (cache_segment_t *)seg->priv;
     ex_off_t lo_row, hi_row, *poff, n, old_hi, coff, pstart, page_off, bpos, ppos, len;
     tbx_tbuf_t tb;
-    skiplist_iter_t it;
+    tbx_sl_iter_t it;
     page_handle_t pload[2], pcheck;
     cache_page_t *p, *np;
     int pload_iov_index[2], i, ok;
@@ -1271,7 +1271,7 @@ int cache_write_pages_get(segment_t *seg, segment_rw_hints_t *rw_hints, int mode
     //** we are in skipping mode
     skip_mode = 0;
     it = iter_search_skiplist(s->pages, &lo_row, 0);
-    next_skiplist(&it, (skiplist_key_t **)&poff, (skiplist_data_t **)&p);
+    next_skiplist(&it, (tbx_sl_key_t **)&poff, (tbx_sl_data_t **)&p);
 
     n = 0;
     pload_count = 0;
@@ -1400,7 +1400,7 @@ int cache_write_pages_get(segment_t *seg, segment_rw_hints_t *rw_hints, int mode
 
                 //** Need to reset iterator due to potential changes while waiting
                 it = iter_search_skiplist(s->pages, &(p->offset), 0);
-                err = next_skiplist(&it, (skiplist_key_t **)&poff, (skiplist_data_t **)&p);
+                err = next_skiplist(&it, (tbx_sl_key_t **)&poff, (tbx_sl_data_t **)&p);
             }
         }
     }
@@ -1491,7 +1491,7 @@ int cache_write_pages_get(segment_t *seg, segment_rw_hints_t *rw_hints, int mode
                     n++;
                 }
 
-                err = next_skiplist(&it, (skiplist_key_t **)&poff, (skiplist_data_t **)&p);
+                err = next_skiplist(&it, (tbx_sl_key_t **)&poff, (tbx_sl_data_t **)&p);
 
                 if (p != NULL) {
                     if ((*hi_got != (p->offset - 1)) && (skip_mode == 0)) { //** Got a hole so see if we can fill it with blank pages
@@ -1567,7 +1567,7 @@ int cache_write_pages_get(segment_t *seg, segment_rw_hints_t *rw_hints, int mode
 
                         //** Reset the iterator cause the page could have been removed in the interim
                         it = iter_search_skiplist(s->pages, &page_off, 0);
-                        err = next_skiplist(&it, (skiplist_key_t **)&poff, (skiplist_data_t **)&p);
+                        err = next_skiplist(&it, (tbx_sl_key_t **)&poff, (tbx_sl_data_t **)&p);
 
                         if (coff < pstart) { //** Didn't make it up to the 1st loaded page
                             err = 1;
@@ -2065,7 +2065,7 @@ int _cache_ppages_flush_list(segment_t *seg, data_attr_t *da, tbx_stack_t *pp_li
         s->ppage_max = -1;
     } else {  //** Need to find the check the last partial page to determine the max offset
         s->ppage_max = *rng;  //** This is our backup value in case of an error.  It's soley an attempt to recover gracefully.
-        pp = list_search(s->partial_pages, (skiplist_key_t *)rng);
+        pp = list_search(s->partial_pages, (tbx_sl_key_t *)rng);
         if (pp == NULL) { //** This shouldn't happen so print some diagnostic info and do our best to recover.
             log_printf(0, "ERROR: sid=" XIDT " lost partial page!  Looking for pp->page_start=" XOT "\n", segment_id(seg), *rng);
             fprintf(stderr, "ERROR: sid=" XIDT " lost partial page!  Looking for pp->page_start=" XOT "\n", segment_id(seg), *rng);
@@ -2099,7 +2099,7 @@ int _cache_ppages_flush(segment_t *seg, data_attr_t *da)
     tbx_stack_t pp_list;
     ex_off_t ppoff;
     int err;
-    skiplist_iter_t it;
+    tbx_sl_iter_t it;
 
     if (stack_size(s->ppages_unused) == s->n_ppages) return(0);
 
@@ -2110,7 +2110,7 @@ int _cache_ppages_flush(segment_t *seg, data_attr_t *da)
     //** Cycle through the pages makng the write map for each page
     init_stack(&pp_list);
     it = iter_search_skiplist(s->partial_pages, NULL, 0);
-    while (next_skiplist(&it, (skiplist_key_t **)&ppoff, (skiplist_data_t **)&pp) == 0) {
+    while (next_skiplist(&it, (tbx_sl_key_t **)&ppoff, (tbx_sl_data_t **)&pp) == 0) {
         log_printf(5, "ppoff=" XOT " RSTACK=%p size=%d flags=%d\n", pp->page_start, pp->range_stack, stack_size(pp->range_stack), pp->flags);
         flush_log();
         insert_below(&pp_list, pp);
@@ -2137,7 +2137,7 @@ int cache_ppages_handle(segment_t *seg, data_attr_t *da, int rw_mode, ex_off_t *
     ex_off_t *rng;
     tbx_stack_t pp_flush;
     tbx_tbuf_t pptbuf;
-    skiplist_iter_t it;
+    tbx_sl_iter_t it;
     int do_flush, err, lo_mapped, hi_mapped;
 
     log_printf(5, "START lo=" XOT " hi=" XOT " bpos=" XOT "\n", *lo, *hi, *bpos);
@@ -2171,7 +2171,7 @@ int cache_ppages_handle(segment_t *seg, data_attr_t *da, int rw_mode, ex_off_t *
     bpos_new = *bpos;
 
     it = iter_search_skiplist(s->partial_pages, &lo_page, 0);
-    while (next_skiplist(&it, (skiplist_key_t **)&ppoff, (skiplist_data_t **)&pp) == 0) {
+    while (next_skiplist(&it, (tbx_sl_key_t **)&ppoff, (tbx_sl_data_t **)&pp) == 0) {
         log_printf(5, "LOOP seg=" XIDT " rw_mode=%d ppage pstart=" XOT " pend=" XOT "\n", segment_id(seg), rw_mode, pp->page_start, pp->page_end);
 
         if (*ppoff > *hi) break;  //** Out of bounds so kick out

@@ -229,7 +229,7 @@ void *amp_dirty_thread(apr_thread_t *th, void *data)
     opque_t *q;
     op_generic_t *gop;
     cache_segment_t *s;
-    skiplist_iter_t it;
+    tbx_sl_iter_t it;
     segment_t **flush_list;
 
     cache_lock(c);
@@ -411,7 +411,7 @@ op_status_t amp_prefetch_fn(void *arg, int id)
     page_amp_t *lp;
     amp_page_stream_t *ps;
     ex_off_t offset, *poff, trigger_offset, nbytes;
-    skiplist_iter_t it;
+    tbx_sl_iter_t it;
     int n_pages, i, nloaded, pending_read;
 
     nbytes = ap->hi + s->page_size - ap->lo;
@@ -429,7 +429,7 @@ op_status_t amp_prefetch_fn(void *arg, int id)
         if (n_pages == 0) { //** Hit an existing page
             cache_lock(s->c);
             it = iter_search_skiplist(s->pages, &offset, 0);
-            next_skiplist(&it, (skiplist_key_t **)&poff, (skiplist_data_t **)&p);
+            next_skiplist(&it, (tbx_sl_key_t **)&poff, (tbx_sl_data_t **)&p);
             log_printf(15, "seg=" XIDT " before while offset=" XOT " p=%p\n", segment_id(ap->seg), offset, p);
             while (p != NULL) {
                 log_printf(_amp_logging, "seg=" XIDT " p->offset=" XOT " offset=" XOT "\n", segment_id(ap->seg), p->offset, offset);
@@ -448,7 +448,7 @@ op_status_t amp_prefetch_fn(void *arg, int id)
                         }
 
                         //** Attempt to get the next page
-                        next_skiplist(&it, (skiplist_key_t **)&poff, (skiplist_data_t **)&p);
+                        next_skiplist(&it, (tbx_sl_key_t **)&poff, (tbx_sl_data_t **)&p);
                         offset += s->page_size;
                         if (p != NULL) {
                             if (p->offset != offset) p = NULL;  //** Hit a hole so kick out
@@ -1154,7 +1154,7 @@ void amp_update(cache_t *c, segment_t *seg, int rw_mode, ex_off_t lo, ex_off_t h
     cache_page_t *p2;
     page_amp_t *lp2;
     amp_page_stream_t *pps, *ps;
-    skiplist_iter_t it;
+    tbx_sl_iter_t it;
 
     if ((miss_info == NULL) || (rw_mode != CACHE_READ)) return;  //** Only used on a missed READ
 
@@ -1186,7 +1186,7 @@ void amp_update(cache_t *c, segment_t *seg, int rw_mode, ex_off_t lo, ex_off_t h
 
         offset = hi - ps->trigger_distance * s->page_size;
         it = iter_search_skiplist(s->pages, &offset, 0);
-        next_skiplist(&it, (skiplist_key_t **)&poff, (skiplist_data_t **)&p2);
+        next_skiplist(&it, (tbx_sl_key_t **)&poff, (tbx_sl_data_t **)&p2);
         if (p2) {
             if (*poff < hi) {
                 lp2 = (page_amp_t *)p2->priv;

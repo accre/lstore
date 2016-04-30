@@ -56,20 +56,20 @@ struct tbx_isl_node_t {
 
 typedef struct tbx_isl_t tbx_isl_t;
 struct tbx_isl_t {  //** Generic Interval Skip Lists container
-    skiplist_t *sl;
-    void (*data_free)(skiplist_data_t *a);
+    tbx_sl_t *sl;
+    void (*data_free)(tbx_sl_data_t *a);
     int n_intervals;
 };
 
 typedef struct tbx_isl_iter_t tbx_isl_iter_t;
 struct tbx_isl_iter_t {
-    skiplist_key_t *lo;
-    skiplist_key_t *hi;
+    tbx_sl_key_t *lo;
+    tbx_sl_key_t *hi;
     tbx_isl_t *isl;
-    skiplist_node_t *sn;
+    tbx_sl_node_t *sn;
     tbx_isl_node_t *isln;
     tbx_isl_data_t *ele;
-    skiplist_node_t *ptr[SKIPLIST_MAX_LEVEL];
+    tbx_sl_node_t *ptr[SKIPLIST_MAX_LEVEL];
     int mode;
     int ptr_level;
     int finished;
@@ -79,26 +79,26 @@ struct tbx_isl_iter_t {
 #define interval_skiplist_unlock(a) apr_thread_mutex_unlock((a)->sl->lock)
 #define interval_skiplist_count(a) (a)->n_intervals
 
-TBX_API skiplist_key_t *interval_skiplist_first_key(tbx_isl_t *isl);
-TBX_API skiplist_key_t *interval_skiplist_last_key(tbx_isl_t *isl);
+TBX_API tbx_sl_key_t *interval_skiplist_first_key(tbx_isl_t *isl);
+TBX_API tbx_sl_key_t *interval_skiplist_last_key(tbx_isl_t *isl);
 
 
 TBX_API tbx_isl_t *create_interval_skiplist_full(int maxlevels, double p,
-        skiplist_compare_t *compare,
-        skiplist_key_t *(*dup)(skiplist_key_t *a),
-        void (*key_free)(skiplist_key_t *a),
-        void (*data_free)(skiplist_data_t *a));
-TBX_API tbx_isl_t *create_interval_skiplist(skiplist_compare_t *compare,
-        skiplist_key_t *(*dup)(skiplist_key_t *a),
-        void (*key_free)(skiplist_key_t *a),
-        void (*data_free)(skiplist_data_t *a));
+        tbx_sl_compare_t *compare,
+        tbx_sl_key_t *(*dup)(tbx_sl_key_t *a),
+        void (*key_free)(tbx_sl_key_t *a),
+        void (*data_free)(tbx_sl_data_t *a));
+TBX_API tbx_isl_t *create_interval_skiplist(tbx_sl_compare_t *compare,
+        tbx_sl_key_t *(*dup)(tbx_sl_key_t *a),
+        void (*key_free)(tbx_sl_key_t *a),
+        void (*data_free)(tbx_sl_data_t *a));
 TBX_API void destroy_interval_skiplist(tbx_isl_t *isl);
-TBX_API int insert_interval_skiplist(tbx_isl_t *sl, skiplist_key_t *lo, skiplist_key_t *hi, skiplist_data_t *data);
-TBX_API int remove_interval_skiplist(tbx_isl_t *sl, skiplist_key_t *lo, skiplist_key_t *hi, skiplist_data_t *data);
-TBX_API int count_interval_skiplist(tbx_isl_t *sl, skiplist_key_t *lo, skiplist_key_t *hi);
+TBX_API int insert_interval_skiplist(tbx_isl_t *sl, tbx_sl_key_t *lo, tbx_sl_key_t *hi, tbx_sl_data_t *data);
+TBX_API int remove_interval_skiplist(tbx_isl_t *sl, tbx_sl_key_t *lo, tbx_sl_key_t *hi, tbx_sl_data_t *data);
+TBX_API int count_interval_skiplist(tbx_isl_t *sl, tbx_sl_key_t *lo, tbx_sl_key_t *hi);
 
-TBX_API tbx_isl_iter_t iter_search_interval_skiplist(tbx_isl_t *sl, skiplist_key_t *lo, skiplist_key_t *hi);
-TBX_API skiplist_data_t *next_interval_skiplist(tbx_isl_iter_t *it);
+TBX_API tbx_isl_iter_t iter_search_interval_skiplist(tbx_isl_t *sl, tbx_sl_key_t *lo, tbx_sl_key_t *hi);
+TBX_API tbx_sl_data_t *next_interval_skiplist(tbx_isl_iter_t *it);
 
 
 #ifdef __cplusplus

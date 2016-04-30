@@ -513,7 +513,7 @@ int exnode_serialize_text(exnode_t *ex, exnode_exchange_t *exp)
     int used = 0;
     segment_t *seg;
     ex_id_t *id;
-    skiplist_iter_t it;
+    tbx_sl_iter_t it;
 
     //** Store the header
     append_printf(buffer, &used, bufsize, "[exnode]\n");
@@ -532,8 +532,8 @@ int exnode_serialize_text(exnode_t *ex, exnode_exchange_t *exp)
     used = 0;
     append_printf(buffer, &used, bufsize, "\n[view]\n");
     if (ex->default_seg != NULL) append_printf(buffer, &used, bufsize, "default=" XIDT "\n", segment_id(ex->default_seg));
-    it = list_iter_search(ex->view, (skiplist_key_t *)NULL, 0);
-    while (list_next(&it, (skiplist_key_t **)&id, (skiplist_data_t **)&seg) == 0) {
+    it = list_iter_search(ex->view, (tbx_sl_key_t *)NULL, 0);
+    while (list_next(&it, (tbx_sl_key_t **)&id, (tbx_sl_data_t **)&seg) == 0) {
         log_printf(15, "exnode_serialize_text: Storing view segment " XIDT "\n", segment_id(seg));
         append_printf(buffer, &used, bufsize, "segment=" XIDT "\n", *id);
 
@@ -584,19 +584,19 @@ void exnode_destroy(exnode_t *ex)
     ex_id_t id;
 
     //** Remove the views
-    it = list_iter_search(ex->view, (skiplist_key_t *)NULL, 0);
-    while (list_next(&it, (skiplist_key_t *)&id, (skiplist_data_t *)&seg) == 0) {
+    it = list_iter_search(ex->view, (tbx_sl_key_t *)NULL, 0);
+    while (list_next(&it, (tbx_sl_key_t *)&id, (tbx_sl_data_t *)&seg) == 0) {
         atomic_dec(seg->ref_count);
         log_printf(15, "exnode_destroy: seg->id=" XIDT " ref_count=%d\n", segment_id(seg), seg->ref_count);
         segment_destroy(seg);
-        list_next(&it, (skiplist_key_t *)&id, (skiplist_data_t *)&seg);
+        list_next(&it, (tbx_sl_key_t *)&id, (tbx_sl_data_t *)&seg);
     }
 
     //** And any blocks
-    it = list_iter_search(ex->block, (skiplist_key_t *)NULL, 0);
-    while (list_next(&it, (skiplist_key_t *)&id, (skiplist_data_t *)&b) == 0) {
+    it = list_iter_search(ex->block, (tbx_sl_key_t *)NULL, 0);
+    while (list_next(&it, (tbx_sl_key_t *)&id, (tbx_sl_data_t *)&b) == 0) {
         data_block_destroy(b);
-        list_next(&it, (skiplist_key_t *)&id, (skiplist_data_t *)&b);
+        list_next(&it, (tbx_sl_key_t *)&id, (tbx_sl_data_t *)&b);
     }
 
     list_destroy(ex->view);

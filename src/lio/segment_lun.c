@@ -137,7 +137,7 @@ void _slun_perform_remap(segment_t *seg)
     int i;
 
     log_printf(5, "START\n");
-    it = iter_search_interval_skiplist(s->isl, (skiplist_key_t *)NULL, (skiplist_key_t *)NULL);
+    it = iter_search_interval_skiplist(s->isl, (tbx_sl_key_t *)NULL, (tbx_sl_key_t *)NULL);
     while ((b = (seglun_row_t *)next_interval_skiplist(&it)) != NULL) {
         for (i=0; i<s->n_devices; i++) {
             rs_translate_cap_set(s->rs, b->block[i].data->rid_key, b->block[i].data->cap);
@@ -828,7 +828,7 @@ op_status_t _seglun_grow(segment_t *seg, data_attr_t *da, ex_off_t new_size_arg,
     if ((s->total_size > 0) && (s->grow_break == 0)) {
         lo = s->total_size-1;
         hi = s->total_size;
-        it = iter_search_interval_skiplist(s->isl, (skiplist_key_t *)&lo, (skiplist_key_t *)&hi);
+        it = iter_search_interval_skiplist(s->isl, (tbx_sl_key_t *)&lo, (tbx_sl_key_t *)&hi);
         b = (seglun_row_t *)next_interval_skiplist(&it);
         if (b->row_len < s->max_row_size) {
             dsize = new_size - b->seg_offset;
@@ -838,7 +838,7 @@ op_status_t _seglun_grow(segment_t *seg, data_attr_t *da, ex_off_t new_size_arg,
 
             log_printf(15, "sid=" XIDT " increasing existing row seg_offset=" XOT " curr seg_end=" XOT " newmax=" XOT "\n", segment_id(seg), b->seg_offset, b->seg_end, new_size);
 
-            remove_interval_skiplist(s->isl, (skiplist_key_t *)&(b->seg_offset), (skiplist_key_t *)&(b->seg_end), (skiplist_data_t *)b);
+            remove_interval_skiplist(s->isl, (tbx_sl_key_t *)&(b->seg_offset), (tbx_sl_key_t *)&(b->seg_end), (tbx_sl_data_t *)b);
 
             old_len = b->block_len;
             b->block_len = dsize;
@@ -866,7 +866,7 @@ op_status_t _seglun_grow(segment_t *seg, data_attr_t *da, ex_off_t new_size_arg,
                 }
             }
 
-            insert_interval_skiplist(s->isl, (skiplist_key_t *)&(b->seg_offset), (skiplist_key_t *)&(b->seg_end), (skiplist_data_t *)b);
+            insert_interval_skiplist(s->isl, (tbx_sl_key_t *)&(b->seg_offset), (tbx_sl_key_t *)&(b->seg_end), (tbx_sl_data_t *)b);
 
             log_printf(15, "sid=" XIDT " enlarged row seg_offset=" XOT " seg_end=" XOT " row_len=" XOT " berr=" XOT "\n", segment_id(seg), b->seg_offset, b->seg_end, b->row_len, berr);
 
@@ -906,7 +906,7 @@ op_status_t _seglun_grow(segment_t *seg, data_attr_t *da, ex_off_t new_size_arg,
         err = err + slun_row_replace_fix(seg, da, b, block_status, s->n_devices, &args, timeout);
 
         if (err == 0) {
-            insert_interval_skiplist(s->isl, (skiplist_key_t *)&(b->seg_offset), (skiplist_key_t *)&(b->seg_end), (skiplist_data_t *)b);
+            insert_interval_skiplist(s->isl, (tbx_sl_key_t *)&(b->seg_offset), (tbx_sl_key_t *)&(b->seg_end), (tbx_sl_data_t *)b);
         } else {  //** Got an error so clean up and kick out
             for (i=0; i<s->n_devices; i++) {
                 if (block[i].data != NULL) {
@@ -974,7 +974,7 @@ op_status_t _seglun_shrink(segment_t *seg, data_attr_t *da, ex_off_t new_size, i
     log_printf(1, "_sl_shrink: sid=" XIDT " total_size=" XOT " new_size=" XOT "\n", segment_id(seg), hi, lo);
 
 
-    it = iter_search_interval_skiplist(s->isl, (skiplist_key_t *)&lo, (skiplist_key_t *)&hi);
+    it = iter_search_interval_skiplist(s->isl, (tbx_sl_key_t *)&lo, (tbx_sl_key_t *)&hi);
     b = (seglun_row_t *)next_interval_skiplist(&it);
     if ( b == NULL) {  //** Nothing to do
         err = OP_STATE_SUCCESS;
@@ -1049,7 +1049,7 @@ op_status_t _seglun_shrink(segment_t *seg, data_attr_t *da, ex_off_t new_size, i
             b->block[i].data->size = b->block_len;
         }
 
-        insert_interval_skiplist(s->isl, (skiplist_key_t *)&(b->seg_offset), (skiplist_key_t *)&(b->seg_end), (skiplist_data_t *)b);
+        insert_interval_skiplist(s->isl, (tbx_sl_key_t *)&(b->seg_offset), (tbx_sl_key_t *)&(b->seg_end), (tbx_sl_data_t *)b);
     }
 
 finished:
@@ -1521,7 +1521,7 @@ op_status_t seglun_rw_op(segment_t *seg, data_attr_t *da, segment_rw_hints_t *rw
         lo = iov[slot].offset;
 
         hi = lo + iov[slot].len - 1;
-        it = iter_search_interval_skiplist(s->isl, (skiplist_key_t *)&lo, (skiplist_key_t *)&hi);
+        it = iter_search_interval_skiplist(s->isl, (tbx_sl_key_t *)&lo, (tbx_sl_key_t *)&hi);
         b = (seglun_row_t *)next_interval_skiplist(&it);
         log_printf(15, "FOR sid=" XIDT " slot=%d n_iov=%d lo=" XOT " hi=" XOT " len=" XOT " b=%p\n", segment_id(seg), slot, n_iov, lo, hi, iov[slot].len, b);
 
@@ -1910,7 +1910,7 @@ op_generic_t *seglun_remove(segment_t *seg, data_attr_t *da, int timeout)
 
     segment_lock(seg);
     n = interval_skiplist_count(s->isl);
-    it = iter_search_interval_skiplist(s->isl, (skiplist_key_t *)NULL, (skiplist_key_t *)NULL);
+    it = iter_search_interval_skiplist(s->isl, (tbx_sl_key_t *)NULL, (tbx_sl_key_t *)NULL);
     for (i=0; i<n; i++) {
         b = (seglun_row_t *)next_interval_skiplist(&it);
         for (j=0; j < s->n_devices; j++) {
@@ -1956,7 +1956,7 @@ op_status_t seglun_migrate_func(void *arg, int id)
 
     nattempted = 0;
     nmigrated = 0;
-    it = iter_search_interval_skiplist(s->isl, (skiplist_key_t *)NULL, (skiplist_key_t *)NULL);
+    it = iter_search_interval_skiplist(s->isl, (tbx_sl_key_t *)NULL, (tbx_sl_key_t *)NULL);
     for (b = (seglun_row_t *)next_interval_skiplist(&it); b != NULL; b = (seglun_row_t *)next_interval_skiplist(&it)) {
         for (i=0; i < s->n_devices; i++) block_status[i] = 0;
 
@@ -2073,9 +2073,9 @@ op_status_t seglun_inspect_func(void *arg, int id)
 //info_printf(si->fd, 1, "local_query=%p\n", si->query);
     info_printf(si->fd, 1, XIDT ": segment information: n_devices=%d n_shift=%d chunk_size=" XOT "  used_size=" XOT " total_size=" XOT " mode=%d\n", segment_id(si->seg), s->n_devices, s->n_shift, s->chunk_size, s->used_size, s->total_size, si->inspect_mode);
 
-    si->args->n_dev_rows = count_interval_skiplist(s->isl, (skiplist_key_t *)NULL, (skiplist_key_t *)NULL);
+    si->args->n_dev_rows = count_interval_skiplist(s->isl, (tbx_sl_key_t *)NULL, (tbx_sl_key_t *)NULL);
     drow = -1;
-    it = iter_search_interval_skiplist(s->isl, (skiplist_key_t *)NULL, (skiplist_key_t *)NULL);
+    it = iter_search_interval_skiplist(s->isl, (tbx_sl_key_t *)NULL, (tbx_sl_key_t *)NULL);
     for (b = (seglun_row_t *)next_interval_skiplist(&it); b != NULL; b = (seglun_row_t *)next_interval_skiplist(&it)) {
         drow++;
         for (i=0; i < s->n_devices; i++) block_status[i] = 0;
@@ -2308,7 +2308,7 @@ op_generic_t *seglun_inspect(segment_t *seg, data_attr_t *da, tbx_log_fd_t *fd, 
     case (INSPECT_WRITE_ERRORS):
         segment_lock(seg);
         //** Cycle through the blocks counting the write errors
-        it = iter_search_interval_skiplist(s->isl, (skiplist_key_t *)NULL, (skiplist_key_t *)NULL);
+        it = iter_search_interval_skiplist(s->isl, (tbx_sl_key_t *)NULL, (tbx_sl_key_t *)NULL);
         err.error_code = 0;
         while ((b = (seglun_row_t *)next_interval_skiplist(&it)) != NULL) {
             //log_printf(10, "seg=" XIDT " block seg_off=" XOT " end=" XOT " row_len=" XOT "\n", segment_id(seg), b->seg_offset, b->seg_end, b->row_len);
@@ -2372,7 +2372,7 @@ op_status_t seglun_clone_func(void *arg, int id)
     type_malloc_clear(max_index, int, n_rows*ss->n_devices);
 
     //** Grow the file size but keep the same breaks as the original
-    its = iter_search_interval_skiplist(ss->isl, (skiplist_key_t *)NULL, (skiplist_key_t *)NULL);
+    its = iter_search_interval_skiplist(ss->isl, (tbx_sl_key_t *)NULL, (tbx_sl_key_t *)NULL);
     row_size = -1;
     bs = NULL;
     i = 0;
@@ -2426,8 +2426,8 @@ op_status_t seglun_clone_func(void *arg, int id)
     opque_start_execution(q);
     dir = ((slc->mode & DS_PULL) > 0) ? DS_PULL : DS_PUSH;
 
-    its = iter_search_interval_skiplist(ss->isl, (skiplist_key_t *)NULL, (skiplist_key_t *)NULL);
-    itd = iter_search_interval_skiplist(sd->isl, (skiplist_key_t *)NULL, (skiplist_key_t *)NULL);
+    its = iter_search_interval_skiplist(ss->isl, (tbx_sl_key_t *)NULL, (tbx_sl_key_t *)NULL);
+    itd = iter_search_interval_skiplist(sd->isl, (tbx_sl_key_t *)NULL, (tbx_sl_key_t *)NULL);
     j = 0;
     n = 0;
     while ((bs = (seglun_row_t *)next_interval_skiplist(&its)) != NULL) {
@@ -2656,7 +2656,7 @@ int seglun_serialize_text_try(segment_t *seg, char *segbuf, int bufsize, exnode_
     err = append_printf(segbuf, &sused, bufsize, "chunk_size=" XOT "\n", s->chunk_size);
 
     //** Cycle through the blocks storing both the segment block information and also the cap blocks
-    it = iter_search_interval_skiplist(s->isl, (skiplist_key_t *)NULL, (skiplist_key_t *)NULL);
+    it = iter_search_interval_skiplist(s->isl, (tbx_sl_key_t *)NULL, (tbx_sl_key_t *)NULL);
     while ((b = (seglun_row_t *)next_interval_skiplist(&it)) != NULL) {
 
 //log_printf(0, "seg=" XIDT " block seg_off=" XOT " end=" XOT " row_len=" XOT "\n", segment_id(seg), b->seg_offset, b->seg_end, b->row_len);
@@ -2829,7 +2829,7 @@ int seglun_deserialize_text(segment_t *seg, ex_id_t id, exnode_exchange_t *exp)
             free(token);
 
             //** Finally add it to the ISL
-            insert_interval_skiplist(s->isl, (skiplist_key_t *)&(b->seg_offset), (skiplist_key_t *)&(b->seg_end), (skiplist_data_t *)b);
+            insert_interval_skiplist(s->isl, (tbx_sl_key_t *)&(b->seg_offset), (tbx_sl_key_t *)&(b->seg_end), (tbx_sl_data_t *)b);
         }
 
         ele = inip_next_element(ele);
@@ -2887,7 +2887,7 @@ void seglun_destroy(segment_t *seg)
 
     n = interval_skiplist_count(s->isl);
     type_malloc_clear(b_list, seglun_row_t *, n);
-    it = iter_search_interval_skiplist(s->isl, (skiplist_key_t *)NULL, (skiplist_key_t *)NULL);
+    it = iter_search_interval_skiplist(s->isl, (tbx_sl_key_t *)NULL, (tbx_sl_key_t *)NULL);
     for (i=0; i<n; i++) {
         b_list[i] = (seglun_row_t *)next_interval_skiplist(&it);
     }
