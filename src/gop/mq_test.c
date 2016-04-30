@@ -55,8 +55,8 @@ typedef struct {
 apr_thread_mutex_t *lock = NULL;
 apr_thread_cond_t  *cond = NULL;
 char *handle = NULL;
-Stack_t *deferred_ready = NULL;
-Stack_t *deferred_pending = NULL;
+tbx_stack_t *deferred_ready = NULL;
+tbx_stack_t *deferred_pending = NULL;
 mq_command_stats_t server_stats;
 mq_portal_t *server_portal = NULL;
 
@@ -64,7 +64,7 @@ char *host = "tcp://127.0.0.1:6714";
 mq_pipe_t control_efd[2];
 mq_pipe_t server_efd[2];
 int shutdown_everything = 0;
-atomic_int_t ping_count = 0;
+tbx_atomic_unit32_t ping_count = 0;
 
 //***************************************************************************
 // pack_msg - Packs a message for sending
@@ -580,7 +580,7 @@ mq_context_t *client_make_context()
                         "  heartbeat_dt=1\n"
                         "  heartbeat_failure=10\n"
                         "  min_ops_per_sec=100\n";
-    inip_file_t *ifd;
+    tbx_inip_file_t *ifd;
     mq_context_t *mqc;
 
     ifd = inip_read_text(text_params);
@@ -1078,7 +1078,7 @@ mq_context_t *server_make_context()
                         "  heartbeat_dt=1\n"
                         "  heartbeat_failure=5\n"
                         "  min_ops_per_sec=100\n";
-    inip_file_t *ifd;
+    tbx_inip_file_t *ifd;
     mq_context_t *mqc;
 
     ifd = inip_read_text(text_params);

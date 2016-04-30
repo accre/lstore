@@ -113,7 +113,7 @@ extern "C" {
 
 typedef zmq_pollitem_t mq_pollitem_t;
 
-typedef Stack_t mq_msg_t;
+typedef tbx_stack_t mq_msg_t;
 
 typedef struct {
     int len;
@@ -264,8 +264,8 @@ struct mq_portal_s {   //** Container for managing connections to a single host
     int socket_type;           //** Socket type
     uint64_t n_ops;            //** Operation count
     double min_ops_per_sec;    //** Minimum ops/sec needed to keep a connection open.
-    Stack_t *tasks;            //** List of tasks
-    Stack_t *closed_conn;      //** List of closed connections that can be destroyed
+    tbx_stack_t *tasks;            //** List of tasks
+    tbx_stack_t *closed_conn;      //** List of closed connections that can be destroyed
     mq_pipe_t efd[2];
     apr_thread_mutex_t *lock;  //** Context lock
     apr_thread_cond_t *cond;   //** Shutdown complete cond
@@ -293,7 +293,7 @@ struct mq_context_s {      //** Main MQ context
     double min_ops_per_sec;    //** Minimum ops/sec needed to keep a connection open.
     apr_thread_mutex_t *lock;  //** Context lock
     apr_pool_t *mpool;         //** Context memory pool
-    atomic_int_t n_ops;        //** Operation count
+    tbx_atomic_unit32_t n_ops;        //** Operation count
     thread_pool_context_t *tp; //** Worker thread pool
     apr_hash_t  *client_portals;      //** List of all client or outgoing portals
     apr_hash_t  *server_portals;  //** List of all the server or incoming portals
@@ -329,7 +329,7 @@ int mq_pipe_read(mq_socket_t *sock, char *buf);
 int mq_pipe_write(mq_socket_t *sock, char *buf);
 #endif
 
-typedef mq_context_t *(mq_create_t)(inip_file_t *ifd, char *section);
+typedef mq_context_t *(mq_create_t)(tbx_inip_file_t *ifd, char *section);
 
 GOP_API char *mq_id2str(char *id, int id_len, char *str, int str_len);
 
@@ -382,7 +382,7 @@ GOP_API void mq_portal_destroy(mq_portal_t *p);
 GOP_API mq_portal_t *mq_portal_create(mq_context_t *mqc, char *host, int connect_mode);
 GOP_API mq_portal_t *mq_portal_lookup(mq_context_t *mqc, char *host, int connect_mode);
 GOP_API mq_command_table_t *mq_portal_command_table(mq_portal_t *portal);
-GOP_API mq_context_t *mq_create_context(inip_file_t *ifd, char *section);
+GOP_API mq_context_t *mq_create_context(tbx_inip_file_t *ifd, char *section);
 GOP_API void mq_destroy_context(mq_context_t *mqp);
 mq_socket_t *zero_create_socket(mq_socket_context_t *ctx, int stype);
 void zero_socket_context_destroy(mq_socket_context_t *ctx);

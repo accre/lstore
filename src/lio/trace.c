@@ -107,7 +107,7 @@ void trace_print_summary(trace_t *trace, FILE *fd)
 
 trace_t *trace_load(service_manager_t *exs, exnode_t *tex, data_attr_t *da, int timeout, char *fname)
 {
-    inip_file_t *tfd;
+    tbx_inip_file_t *tfd;
     int n_files, n_ops, i, j, k, fin;
     char *trace_fname;
     FILE *fd;

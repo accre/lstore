@@ -53,21 +53,21 @@ http://www.accre.vanderbilt.edu
 #include "net_2_ssl.h"
 #include "net_phoebus.h"
 
-int _read_netstream(NetStream_t *ns, tbuffer_t *buffer, int boff, int bsize, Net_timeout_t timeout, int dolock);
-int _read_netstream_block(NetStream_t *ns, apr_time_t end_time, tbuffer_t *buffer, int boff, int bsize, int dolock);
-int _write_netstream(NetStream_t *ns, tbuffer_t *buffer, int boff, int size, Net_timeout_t timeout, int dolock);
-int _write_netstream_block(NetStream_t *ns, apr_time_t end_time, tbuffer_t *buffer, int boff, int size, int dolock);
+int _read_netstream(tbx_ns_t *ns, tbx_tbuf_t *buffer, int boff, int bsize, Net_timeout_t timeout, int dolock);
+int _read_netstream_block(tbx_ns_t *ns, apr_time_t end_time, tbx_tbuf_t *buffer, int boff, int bsize, int dolock);
+int _write_netstream(tbx_ns_t *ns, tbx_tbuf_t *buffer, int boff, int size, Net_timeout_t timeout, int dolock);
+int _write_netstream_block(tbx_ns_t *ns, apr_time_t end_time, tbx_tbuf_t *buffer, int boff, int size, int dolock);
 
 int tcp_bufsize = 0;   //** 0 means use the default TCP buffer sizes for the OS
 
 //*** These are used for counters to track connections
-static atomic_int_t _cuid_counter = 0;
+static tbx_atomic_unit32_t _cuid_counter = 0;
 //apr_thread_mutex_t *_net_counter_lock = NULL;
 //apr_pool_t *_net_counter_pool = NULL;
 
 //------------------
 
-NetStream_t *_get_free_conn(Network_t *net);
+tbx_ns_t *_get_free_conn(tbx_network_t *net);
 
 int ns_generate_id()
 {
@@ -97,7 +97,7 @@ int get_network_tcpsize(int tcpsize)
 //  connection_is_pending - Returns if a new connection is needed
 //*********************************************************************
 
-int connection_is_pending(Network_t *net)
+int connection_is_pending(tbx_network_t *net)
 {
 
     apr_thread_mutex_lock(net->ns_lock);
@@ -111,28 +111,28 @@ int connection_is_pending(Network_t *net)
 //  Locks for R/W
 //*********************************************************************
 
-void lock_read_ns(NetStream_t *ns)
+void lock_read_ns(tbx_ns_t *ns)
 {
     apr_thread_mutex_lock(ns->read_lock);
 }
 
 //*********************************************************************
 
-void unlock_read_ns(NetStream_t *ns)
+void unlock_read_ns(tbx_ns_t *ns)
 {
     apr_thread_mutex_unlock(ns->read_lock);
 }
 
 //*********************************************************************
 
-void lock_write_ns(NetStream_t *ns)
+void lock_write_ns(tbx_ns_t *ns)
 {
     apr_thread_mutex_lock(ns->write_lock);
 }
 
 //*********************************************************************
 
-void unlock_write_ns(NetStream_t *ns)
+void unlock_write_ns(tbx_ns_t *ns)
 {
     apr_thread_mutex_unlock(ns->write_lock);
 }
@@ -141,7 +141,7 @@ void unlock_write_ns(NetStream_t *ns)
 // lock_ns - Locks a netstream
 //*********************************************************************
 
-void lock_ns(NetStream_t *ns)
+void lock_ns(tbx_ns_t *ns)
 {
     lock_read_ns(ns);
     lock_write_ns(ns);
@@ -151,7 +151,7 @@ void lock_ns(NetStream_t *ns)
 // unlock_ns - Unlocks a netstream
 //*********************************************************************
 
-void unlock_ns(NetStream_t *ns)
+void unlock_ns(tbx_ns_t *ns)
 {
     unlock_write_ns(ns);
     unlock_read_ns(ns);
@@ -167,7 +167,7 @@ void unlock_ns(NetStream_t *ns)
 // ns_set_chksum - Associates a chksum to the stream
 //*********************************************************************
 
-int ns_chksum_set(ns_chksum_t *ncs, chksum_t *cks, size_t blocksize)
+int ns_chksum_set(tbx_ns_chksum_t *ncs, tbx_chksum_t *cks, size_t blocksize)
 {
     ncs->blocksize = blocksize;
     ncs->bytesleft = blocksize;
@@ -182,7 +182,7 @@ int ns_chksum_set(ns_chksum_t *ncs, chksum_t *cks, size_t blocksize)
 // ns_chksum_is_valid - Returns if the chksum can be used
 //*********************************************************************
 
-int ns_chksum_is_valid(ns_chksum_t *ncs)
+int ns_chksum_is_valid(tbx_ns_chksum_t *ncs)
 {
     int i = 0;
 
@@ -199,11 +199,11 @@ int ns_chksum_is_valid(ns_chksum_t *ncs)
 //   the chksum and reads them and does a comparison
 //*********************************************************************
 
-int ns_read_chksum_flush(NetStream_t *ns)
+int ns_read_chksum_flush(tbx_ns_t *ns)
 {
     char ns_value[CHKSUM_MAX_SIZE], chksum_value[CHKSUM_MAX_SIZE];
     int err, n;
-    tbuffer_t buf;
+    tbx_tbuf_t buf;
 
     log_printf(15, "ns_read_chksum_flush: Reading chksum!  ns=%d type=%d bleft=" I64T " bsize=" I64T " state=%d\n",
                ns_getid(ns), chksum_type(&(ns->read_chksum.chksum)), ns->read_chksum.bytesleft, ns->read_chksum.blocksize, ns_read_chksum_state(ns));
@@ -252,11 +252,11 @@ int ns_read_chksum_flush(NetStream_t *ns)
 // ns_write_chksum_flush - Injects the chksum into the stream
 //*********************************************************************
 
-int ns_write_chksum_flush(NetStream_t *ns)
+int ns_write_chksum_flush(tbx_ns_t *ns)
 {
     char chksum_value[CHKSUM_MAX_SIZE];
     int err, n;
-    tbuffer_t buf;
+    tbx_tbuf_t buf;
 
     log_printf(15, "ns_write_chksum_flush: injecting chksum!  ns=%d type=%d bytesleft=" I64T " bsize=" I64T "\n",
                ns_getid(ns), chksum_type(&(ns->write_chksum.chksum)), ns->write_chksum.bytesleft, ns->write_chksum.blocksize);
@@ -290,7 +290,7 @@ int ns_write_chksum_flush(NetStream_t *ns)
 // ns_chksum_reset - Resets the chksum counter
 //*********************************************************************
 
-int ns_chksum_reset(ns_chksum_t *ncs)
+int ns_chksum_reset(tbx_ns_chksum_t *ncs)
 {
     ncs->bytesleft = ncs->blocksize;
     chksum_reset(&(ncs->chksum));
@@ -303,7 +303,7 @@ int ns_chksum_reset(ns_chksum_t *ncs)
 //     of sockets used so far
 //*********************************************************************
 
-int network_counter(Network_t *net)
+int network_counter(tbx_network_t *net)
 {
     int count;
 
@@ -341,7 +341,7 @@ Net_timeout_t *set_net_timeout(Net_timeout_t *tm, int sec, int us)
 // _ns_init - Inits a NetStream data structure assuming a connected state
 //*********************************************************************
 
-void _ns_init(NetStream_t *ns, int incid)
+void _ns_init(tbx_ns_t *ns, int incid)
 {
     //** Initialize the socket type information **
     ns->sock_type = NS_TYPE_UNKNOWN;
@@ -360,9 +360,9 @@ void _ns_init(NetStream_t *ns, int incid)
     ns->end = -1;
     memset(ns->peer_address, 0, sizeof(ns->peer_address));
 
-    memset(&(ns->write_chksum), 0, sizeof(ns_chksum_t));
+    memset(&(ns->write_chksum), 0, sizeof(tbx_ns_chksum_t));
     ns->write_chksum.is_valid = 0;
-    memset(&(ns->read_chksum), 0, sizeof(ns_chksum_t));
+    memset(&(ns->read_chksum), 0, sizeof(tbx_ns_chksum_t));
     ns->read_chksum.is_valid = 0;
 
     if (incid == 1)  ns->id = ns_generate_id();
@@ -373,10 +373,10 @@ void _ns_init(NetStream_t *ns, int incid)
 
 
 //*********************************************************************
-// ns_init - inits a NetStream_t data structure
+// ns_init - inits a tbx_ns_t data structure
 //*********************************************************************
 
-void ns_init(NetStream_t *ns)
+void ns_init(tbx_ns_t *ns)
 {
     _ns_init(ns, 1);
 }
@@ -387,7 +387,7 @@ void ns_init(NetStream_t *ns)
 //     not used properly.  Normally this field should be set to NULL
 //*********************************************************************
 
-void ns_clone(NetStream_t *dest_ns, NetStream_t *src_ns)
+void ns_clone(tbx_ns_t *dest_ns, tbx_ns_t *src_ns)
 {
     apr_thread_mutex_t *rl, *wl;
     apr_pool_t *mpool;
@@ -398,7 +398,7 @@ void ns_clone(NetStream_t *dest_ns, NetStream_t *src_ns)
     mpool = dest_ns->mpool;
 
     lock_ns(src_ns);
-    memcpy(dest_ns, src_ns, sizeof(NetStream_t));
+    memcpy(dest_ns, src_ns, sizeof(tbx_ns_t));
     unlock_ns(src_ns);
 
     dest_ns->read_lock = rl;
@@ -410,7 +410,7 @@ void ns_clone(NetStream_t *dest_ns, NetStream_t *src_ns)
 // net_connect - Creates a connection to a remote host.
 //*********************************************************************
 
-int net_connect(NetStream_t *ns, const char *hostname, int port, Net_timeout_t timeout)
+int net_connect(tbx_ns_t *ns, const char *hostname, int port, Net_timeout_t timeout)
 {
     int err;
 
@@ -455,8 +455,8 @@ int net_connect(NetStream_t *ns, const char *hostname, int port, Net_timeout_t t
 
 void *monitor_thread(apr_thread_t *th, void *data)
 {
-    ns_monitor_t *nm = (ns_monitor_t *)data;
-    NetStream_t *ns = nm->ns;
+    tbx_ns_monitor_t *nm = (tbx_ns_monitor_t *)data;
+    tbx_ns_t *ns = nm->ns;
     int i;
 
     log_printf(15, "monitor_thread: Monitoring port %d\n", nm->port);
@@ -517,10 +517,10 @@ void *monitor_thread(apr_thread_t *th, void *data)
 // bind_server_port - Creates the main port for listening
 //*********************************************************************
 
-int bind_server_port(Network_t *net, NetStream_t *ns, char *address, int port, int max_pending)
+int bind_server_port(tbx_network_t *net, tbx_ns_t *ns, char *address, int port, int max_pending)
 {
     int err, slot;
-    ns_monitor_t *nm;
+    tbx_ns_monitor_t *nm;
 
     apr_thread_mutex_lock(net->ns_lock);
 
@@ -568,7 +568,7 @@ int bind_server_port(Network_t *net, NetStream_t *ns, char *address, int port, i
 // close_server_port - Closes a server port
 //*********************************************************************
 
-void close_server_port(ns_monitor_t *nm)
+void close_server_port(tbx_ns_monitor_t *nm)
 {
     apr_status_t dummy;
 
@@ -606,13 +606,13 @@ void close_server_port(ns_monitor_t *nm)
 // network_init - Initialize the network for use
 //*********************************************************************
 
-Network_t *network_init()
+tbx_network_t *network_init()
 {
     int i;
-    Network_t *net;
+    tbx_network_t *net;
 
     //**** Allocate space for the data structures ***
-    net = (Network_t *)malloc(sizeof(Network_t)); assert(net != NULL);
+    net = (tbx_network_t *)malloc(sizeof(tbx_network_t)); assert(net != NULL);
 
 
     net->used_ports = 0;
@@ -634,7 +634,7 @@ Network_t *network_init()
 // _close_ns - Close a network connection
 //*********************************************************************
 
-void _close_ns(NetStream_t *ns)
+void _close_ns(tbx_ns_t *ns)
 {
 
     log_printf(10, "close_netstream:  Closing stream ns=%d type=%d\n", ns->id, ns->sock_type);
@@ -656,7 +656,7 @@ void _close_ns(NetStream_t *ns)
 // close_netstream - Close a network connection
 //*********************************************************************
 
-void close_netstream(NetStream_t *ns)
+void close_netstream(tbx_ns_t *ns)
 {
     lock_ns(ns);
     _close_ns(ns);
@@ -667,7 +667,7 @@ void close_netstream(NetStream_t *ns)
 // teardown_netstream - closes an NS and also frees the mutex
 //*********************************************************************
 
-void teardown_netstream(NetStream_t *ns)
+void teardown_netstream(tbx_ns_t *ns)
 {
     close_netstream(ns);
     apr_thread_mutex_destroy(ns->read_lock);
@@ -679,7 +679,7 @@ void teardown_netstream(NetStream_t *ns)
 // destroy_netstream - Completely destroys a netstream created with new_netstream
 //*********************************************************************
 
-void destroy_netstream(NetStream_t *ns)
+void destroy_netstream(tbx_ns_t *ns)
 {
     teardown_netstream(ns);
     free(ns);
@@ -689,9 +689,9 @@ void destroy_netstream(NetStream_t *ns)
 // new_netstream - Creates a new NS
 //*********************************************************************
 
-NetStream_t *new_netstream()
+tbx_ns_t *new_netstream()
 {
-    NetStream_t *ns = (NetStream_t *)malloc(sizeof(NetStream_t));
+    tbx_ns_t *ns = (tbx_ns_t *)malloc(sizeof(tbx_ns_t));
 
     if (ns == NULL) {
         log_printf(0, "new_netstream: Failed malloc!!\n");
@@ -713,7 +713,7 @@ NetStream_t *new_netstream()
 // network_close - Closes down all the network connections
 //*********************************************************************
 
-void network_close(Network_t *net)
+void network_close(tbx_network_t *net)
 {
     int i;
 
@@ -729,7 +729,7 @@ void network_close(Network_t *net)
 // network_destroy - Closes and destroys the network struct
 //*********************************************************************
 
-void network_destroy(Network_t *net)
+void network_destroy(tbx_network_t *net)
 {
     network_close(net);
 
@@ -745,7 +745,7 @@ void network_destroy(Network_t *net)
 // write_netstream - Writes characters to the stream with a max wait
 //*********************************************************************
 
-int _write_netstream(NetStream_t *ns, tbuffer_t *buffer, int boff, int bsize, Net_timeout_t timeout, int dolock)
+int _write_netstream(tbx_ns_t *ns, tbx_tbuf_t *buffer, int boff, int bsize, Net_timeout_t timeout, int dolock)
 {
     int total_bytes, i;
 
@@ -799,7 +799,7 @@ int _write_netstream(NetStream_t *ns, tbuffer_t *buffer, int boff, int bsize, Ne
 // write_netstream - Writes characters to the stream with a max wait
 //*********************************************************************
 
-int write_netstream(NetStream_t *ns, tbuffer_t *buffer, int boff, int bsize, Net_timeout_t timeout)
+int write_netstream(tbx_ns_t *ns, tbx_tbuf_t *buffer, int boff, int bsize, Net_timeout_t timeout)
 {
     return(_write_netstream(ns, buffer, boff, bsize, timeout, 1));
 }
@@ -809,7 +809,7 @@ int write_netstream(NetStream_t *ns, tbuffer_t *buffer, int boff, int bsize, Net
 //     data is sent or end_time is reached
 //*********************************************************************
 
-int _write_netstream_block(NetStream_t *ns, apr_time_t end_time, tbuffer_t *buffer, int boff, int size, int dolock)
+int _write_netstream_block(tbx_ns_t *ns, apr_time_t end_time, tbx_tbuf_t *buffer, int boff, int size, int dolock)
 {
     int pos, nleft, nbytes, err;
 
@@ -849,7 +849,7 @@ int _write_netstream_block(NetStream_t *ns, apr_time_t end_time, tbuffer_t *buff
 //     data is sent or end_time is reached
 //*********************************************************************
 
-int write_netstream_block(NetStream_t *ns, apr_time_t end_time, tbuffer_t *buffer, int boff, int bsize)
+int write_netstream_block(tbx_ns_t *ns, apr_time_t end_time, tbx_tbuf_t *buffer, int boff, int bsize)
 {
     return(_write_netstream_block(ns, end_time, buffer, boff, bsize, 1));
 }
@@ -859,7 +859,7 @@ int write_netstream_block(NetStream_t *ns, apr_time_t end_time, tbuffer_t *buffe
 //     data is sent or end_time is reached
 //*********************************************************************
 
-int _read_netstream_block(NetStream_t *ns, apr_time_t end_time, tbuffer_t *buffer, int pos, int size, int dolock)
+int _read_netstream_block(tbx_ns_t *ns, apr_time_t end_time, tbx_tbuf_t *buffer, int pos, int size, int dolock)
 {
     int nleft, nbytes, err;
 
@@ -898,7 +898,7 @@ int _read_netstream_block(NetStream_t *ns, apr_time_t end_time, tbuffer_t *buffe
 //     data is sent or end_time is reached
 //*********************************************************************
 
-int read_netstream_block(NetStream_t *ns, apr_time_t end_time, tbuffer_t *buffer, int boff, int bsize)
+int read_netstream_block(tbx_ns_t *ns, apr_time_t end_time, tbx_tbuf_t *buffer, int boff, int bsize)
 {
     return(_read_netstream_block(ns, end_time, buffer, boff, bsize, 1));
 }
@@ -950,10 +950,10 @@ int scan_and_copy_stream(char *inbuf, int insize, char *outbuf, int outsize, int
 // read_netstream - Reads characters from the stream with a max wait
 //*********************************************************************
 
-int _read_netstream(NetStream_t *ns, tbuffer_t *buffer, int boff, int size, Net_timeout_t timeout, int dolock)
+int _read_netstream(tbx_ns_t *ns, tbx_tbuf_t *buffer, int boff, int size, Net_timeout_t timeout, int dolock)
 {
     int total_bytes, i;
-    tbuffer_t ns_tb;
+    tbx_tbuf_t ns_tb;
 
     if (size == 0) return(0);
 
@@ -1027,7 +1027,7 @@ int _read_netstream(NetStream_t *ns, tbuffer_t *buffer, int boff, int size, Net_
 // read_netstream - Reads characters fomr the stream with a max wait
 //*********************************************************************
 
-int read_netstream(NetStream_t *ns, tbuffer_t *buffer, int boff, int bsize, Net_timeout_t timeout)
+int read_netstream(tbx_ns_t *ns, tbx_tbuf_t *buffer, int boff, int bsize, Net_timeout_t timeout)
 {
     return(_read_netstream(ns, buffer, boff, bsize, timeout, 1));
 }
@@ -1037,9 +1037,9 @@ int read_netstream(NetStream_t *ns, tbuffer_t *buffer, int boff, int bsize, Net_
 //    if it fails it returns the partial read
 //*********************************************************************
 
-int readline_netstream_raw(NetStream_t *ns, tbuffer_t *buffer, int boff, int size, Net_timeout_t timeout, int *status)
+int readline_netstream_raw(tbx_ns_t *ns, tbx_tbuf_t *buffer, int boff, int size, Net_timeout_t timeout, int *status)
 {
-    tbuffer_t ns_tb;
+    tbx_tbuf_t ns_tb;
     int nbytes, total_bytes, i;
     int finished = 0;
     char *buf;
@@ -1143,7 +1143,7 @@ int readline_netstream_raw(NetStream_t *ns, tbuffer_t *buffer, int boff, int siz
 // readline_netstream - Reads a line of text from the stream
 //*********************************************************************
 
-int readline_netstream(NetStream_t *ns, tbuffer_t *buffer, int boff, int bsize, Net_timeout_t timeout)
+int readline_netstream(tbx_ns_t *ns, tbx_tbuf_t *buffer, int boff, int bsize, Net_timeout_t timeout)
 {
     int status;
     int n = readline_netstream_raw(ns, buffer, boff, bsize, timeout, &status);
@@ -1167,10 +1167,10 @@ int readline_netstream(NetStream_t *ns, tbuffer_t *buffer, int boff, int bsize, 
 //    ns type
 //*********************************************************************
 
-int accept_pending_connection(Network_t *net, NetStream_t *ns)
+int accept_pending_connection(tbx_network_t *net, tbx_ns_t *ns)
 {
     int i, j, k, err;
-    ns_monitor_t *nm = NULL;
+    tbx_ns_monitor_t *nm = NULL;
 
     //** Get the global settings
     apr_thread_mutex_lock(net->ns_lock);
@@ -1229,7 +1229,7 @@ int accept_pending_connection(Network_t *net, NetStream_t *ns)
 // wait_for_connection - Waits for a new connection
 //*********************************************************************
 
-int wait_for_connection(Network_t *net, int max_wait)
+int wait_for_connection(tbx_network_t *net, int max_wait)
 {
     apr_time_t t;
     apr_time_t end_time = apr_time_now() + apr_time_make(max_wait, 0);
@@ -1260,7 +1260,7 @@ int wait_for_connection(Network_t *net, int max_wait)
 // wakeup_network - Wakes up the network monitor thread
 //*********************************************************************
 
-void wakeup_network(Network_t *net)
+void wakeup_network(tbx_network_t *net)
 {
     apr_thread_mutex_lock(net->ns_lock);
     net->accept_pending++;

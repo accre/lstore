@@ -64,7 +64,7 @@ int do_validate = 0;
 int identical_buffers = 1;
 int print_progress;
 ibp_connect_context_t *cc = NULL;
-ns_chksum_t *ncs;
+tbx_ns_chksum_t *ncs;
 int disk_cs_type = CHKSUM_DEFAULT;
 ibp_off_t disk_blocksize = 0;
 
@@ -306,7 +306,7 @@ void write_allocs(ibp_capset_t *caps, int n, int asize, int block_size)
     int i, j, nblocks, rem, len, err, slot;
     opque_t *q;
     op_generic_t *op;
-    tbuffer_t *buf;
+    tbx_tbuf_t *buf;
 
     char *buffer = (char *)malloc(block_size);
     init_buffer(buffer, 'W', block_size);
@@ -317,7 +317,7 @@ void write_allocs(ibp_capset_t *caps, int n, int asize, int block_size)
     rem = asize % block_size;
     if (rem > 0) nblocks++;
 
-    type_malloc_clear(buf, tbuffer_t, n*nblocks);
+    type_malloc_clear(buf, tbx_tbuf_t, n*nblocks);
 
 //for (j=0; j<nblocks; j++) {
     for (j=nblocks-1; j>= 0; j--) {
@@ -354,7 +354,7 @@ void read_allocs(ibp_capset_t *caps, int n, int asize, int block_size)
     int i, j, nblocks, rem, len, err, slot;
     opque_t *q;
     op_generic_t *op;
-    tbuffer_t *buf;
+    tbx_tbuf_t *buf;
 
     char *buffer = (char *)malloc(block_size);
 
@@ -364,7 +364,7 @@ void read_allocs(ibp_capset_t *caps, int n, int asize, int block_size)
     rem = asize % block_size;
     if (rem > 0) nblocks++;
 
-    type_malloc_clear(buf, tbuffer_t, n*nblocks);
+    type_malloc_clear(buf, tbx_tbuf_t, n*nblocks);
 
 //  for (j=0; j<nblocks; j++) {
     for (j=nblocks-1; j>= 0; j--) {
@@ -403,7 +403,7 @@ void random_allocs(ibp_capset_t *caps, int n, int asize, int block_size, double 
     opque_t *q;
     op_generic_t *op;
     double rnd;
-    tbuffer_t *buf;
+    tbx_tbuf_t *buf;
 
     char *rbuffer = (char *)malloc(block_size);
     char *wbuffer = (char *)malloc(block_size);
@@ -416,7 +416,7 @@ void random_allocs(ibp_capset_t *caps, int n, int asize, int block_size, double 
     rem = asize % block_size;
     if (rem > 0) nblocks++;
 
-    type_malloc_clear(buf, tbuffer_t, n*nblocks);
+    type_malloc_clear(buf, tbx_tbuf_t, n*nblocks);
 
     for (j=0; j<nblocks; j++) {
         for (i=0; i<n; i++) {
@@ -464,7 +464,7 @@ double small_write_allocs(ibp_capset_t *caps, int n, int asize, int small_count,
     op_generic_t *op;
     double rnd, lmin, lmax;
     double nbytes;
-    tbuffer_t *buf;
+    tbx_tbuf_t *buf;
 
     q = new_opque();
 
@@ -479,7 +479,7 @@ double small_write_allocs(ibp_capset_t *caps, int n, int asize, int small_count,
     char *buffer = (char *)malloc(max_size);
     init_buffer(buffer, 'a', max_size);
 
-    type_malloc_clear(buf, tbuffer_t, small_count);
+    type_malloc_clear(buf, tbx_tbuf_t, small_count);
 
     nbytes = 0;
     for (i=0; i<small_count; i++) {
@@ -524,7 +524,7 @@ double small_read_allocs(ibp_capset_t *caps, int n, int asize, int small_count, 
     op_generic_t *op;
     double rnd, lmin, lmax;
     double nbytes;
-    tbuffer_t *buf;
+    tbx_tbuf_t *buf;
 
     q = new_opque();
 
@@ -539,7 +539,7 @@ double small_read_allocs(ibp_capset_t *caps, int n, int asize, int small_count, 
     char *buffer = (char *)malloc(max_size);
     init_buffer(buffer, 'r', max_size);
 
-    type_malloc_clear(buf, tbuffer_t, small_count);
+    type_malloc_clear(buf, tbx_tbuf_t, small_count);
 
     nbytes = 0;
     for (i=0; i<small_count; i++) {
@@ -585,7 +585,7 @@ double small_random_allocs(ibp_capset_t *caps, int n, int asize, double readfrac
     op_generic_t *op;
     double rnd, lmin, lmax;
     double nbytes;
-    tbuffer_t *buf;
+    tbx_tbuf_t *buf;
 
     q = new_opque();
 
@@ -602,7 +602,7 @@ double small_random_allocs(ibp_capset_t *caps, int n, int asize, double readfrac
     init_buffer(rbuffer, '1', max_size);
     init_buffer(wbuffer, '2', max_size);
 
-    type_malloc_clear(buf, tbuffer_t, small_count);
+    type_malloc_clear(buf, tbx_tbuf_t, small_count);
 
     nbytes = 0;
     for (i=0; i<small_count; i++) {
@@ -661,10 +661,10 @@ int main(int argc, char **argv)
     double dt;
     char *ppath, *net_cs_name, *disk_cs_name, *out_fname;
     FILE *fd_out;
-    phoebus_t pcc;
+    tbx_phoebus_t pcc;
     char pstr[2048];
-    chksum_t cs;
-    ns_chksum_t ns_cs;
+    tbx_chksum_t cs;
+    tbx_ns_chksum_t ns_cs;
     int blocksize;
 
     base_caps = NULL;

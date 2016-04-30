@@ -56,9 +56,9 @@ extern int _tp_stats;
 
 static int _tp_concurrent_max;
 static int _tp_depth_concurrent_max[TP_MAX_DEPTH];
-static atomic_int_t _tp_depth_concurrent[TP_MAX_DEPTH];
-static atomic_int_t _tp_concurrent;
-static atomic_int_t _tp_depth_total[TP_MAX_DEPTH];
+static tbx_atomic_unit32_t _tp_depth_concurrent[TP_MAX_DEPTH];
+static tbx_atomic_unit32_t _tp_concurrent;
+static tbx_atomic_unit32_t _tp_depth_total[TP_MAX_DEPTH];
 
 apr_threadkey_t *thread_local_stats_key = NULL;
 apr_threadkey_t *thread_local_depth_key = NULL;
@@ -141,7 +141,7 @@ int *_thread_local_depth_ptr()
 
 //*************************************************************
 
-op_status_t tp_command(op_generic_t *gop, NetStream_t *ns)
+op_status_t tp_command(op_generic_t *gop, tbx_ns_t *ns)
 {
     return(op_success_status);
 }

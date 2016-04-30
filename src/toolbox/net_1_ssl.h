@@ -45,8 +45,8 @@ http://www.accre.vanderbilt.edu
 extern "C" {
 #endif
 
-int ns_socket2ssl(NetStream_t *ns);
-TBX_API void ns_config_1_ssl(NetStream_t *ns, int fd, int tcpsize);
+int ns_socket2ssl(tbx_ns_t *ns);
+TBX_API void ns_config_1_ssl(tbx_ns_t *ns, int fd, int tcpsize);
 
 #ifdef __cplusplus
 }

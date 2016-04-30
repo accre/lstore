@@ -51,7 +51,7 @@ typedef struct {  //** Contains the private raw socket network fields
     apr_thread_mutex_t *lock; //** Global lock
     int tcpsize;
     int state;
-} network_sock_t;
+} tbx_net_sock_t;
 
 #ifdef __cplusplus
 extern "C" {
@@ -60,14 +60,14 @@ extern "C" {
 void sock_set_peer(net_sock_t *sock, char *address, int add_size);
 int sock_status(net_sock_t *sock);
 int sock_close(net_sock_t *sock);
-long int sock_write(net_sock_t *sock, tbuffer_t *buf, size_t bpos, size_t size, Net_timeout_t tm);
-long int sock_read(net_sock_t *sock, tbuffer_t *buf, size_t bpos, size_t size, Net_timeout_t tm);
+long int sock_write(net_sock_t *sock, tbx_tbuf_t *buf, size_t bpos, size_t size, Net_timeout_t tm);
+long int sock_read(net_sock_t *sock, tbx_tbuf_t *buf, size_t bpos, size_t size, Net_timeout_t tm);
 int sock_connect(net_sock_t *sock, const char *hostname, int port, Net_timeout_t timeout);
 int sock_connection_request(net_sock_t *nsock, int timeout);
 net_sock_t *sock_accept(net_sock_t *nsock);
 int sock_bind(net_sock_t *nsock, char *address, int port);
 int sock_listen(net_sock_t *nsock, int max_pending);
-TBX_API void ns_config_sock(NetStream_t *ns, int tcpsize);
+TBX_API void ns_config_sock(tbx_ns_t *ns, int tcpsize);
 
 #ifdef __cplusplus
 }

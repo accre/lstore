@@ -115,9 +115,9 @@ int dev_row_replaced[128];
 } inspect_args_t;
  
 typedef struct {
-op_generic_t *(*read)(segment_t *seg, data_attr_t *da, segment_rw_hints_t *hints, int n_iov, ex_iovec_t *iov, tbuffer_t *buffer, ex_off_t boff, int timeout);
-op_generic_t *(*write)(segment_t *seg, data_attr_t *da, segment_rw_hints_t *hints, int n_iov, ex_iovec_t *iov, tbuffer_t *buffer, ex_off_t boff, int timeout);
-op_generic_t *(*inspect)(segment_t *seg, data_attr_t *da, info_fd_t *fd, int mode, ex_off_t buffer_size, inspect_args_t *args, int timeout);
+op_generic_t *(*read)(segment_t *seg, data_attr_t *da, segment_rw_hints_t *hints, int n_iov, ex_tbx_iovec_t *iov, tbx_tbuf_t *buffer, ex_off_t boff, int timeout);
+op_generic_t *(*write)(segment_t *seg, data_attr_t *da, segment_rw_hints_t *hints, int n_iov, ex_tbx_iovec_t *iov, tbx_tbuf_t *buffer, ex_off_t boff, int timeout);
+op_generic_t *(*inspect)(segment_t *seg, data_attr_t *da, tbx_log_fd_t *fd, int mode, ex_off_t buffer_size, inspect_args_t *args, int timeout);
 op_generic_t *(*truncate)(segment_t *seg, data_attr_t *da, ex_off_t new_size, int timeout);
 op_generic_t *(*remove)(segment_t *seg, data_attr_t *da, int timeout);
 op_generic_t *(*flush)(segment_t *seg, data_attr_t *da, ex_off_t lo, ex_off_t hi, int timeout);
@@ -153,13 +153,13 @@ void (*destroy)(segment_t *seg);
 typedef struct {
 ex_header_t header;
 segment_t *default_seg;
-list_t *block;
-list_t *view;
+tbx_list_t *block;
+tbx_list_t *view;
 } exnode_t;
  
 struct segment_s {
 ex_header_t header;
-atomic_int_t ref_count;
+tbx_atomic_unit32_t ref_count;
 segment_priv_t *priv;
 service_manager_t *ess;
 segment_fn_t fn;
@@ -169,7 +169,7 @@ apr_pool_t *mpool;
 };
  
  
-typedef data_service_fn_t *(ds_create_t)(service_manager_t *ess, inip_file_t *ifd, char *section);
+typedef data_service_fn_t *(ds_create_t)(service_manager_t *ess, tbx_inip_file_t *ifd, char *section);
 typedef segment_t *(segment_load_t)(void *arg, ex_id_t id, exnode_exchange_t *ex);
 typedef segment_t *(segment_create_t)(void *arg);
  

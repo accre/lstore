@@ -57,12 +57,12 @@ typedef struct {
     ibp_attributes_t attr;
     ibp_depot_t depot;
     ibp_connect_context_t cc;
-    ns_chksum_t ncs;
+    tbx_ns_chksum_t ncs;
     int disk_cs_type;
     int disk_cs_blocksize;
 } ds_ibp_attr_t;
 
-data_service_fn_t *ds_ibp_create(void *arg, inip_file_t *ifd, char *section);
+data_service_fn_t *ds_ibp_create(void *arg, tbx_inip_file_t *ifd, char *section);
 
 #ifdef __cplusplus
 }

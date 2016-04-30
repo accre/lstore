@@ -40,8 +40,8 @@ http://www.accre.vanderbilt.edu
 extern "C" {
 #endif
 
-extern skiplist_compare_t skiplist_compare_ex_off;
-extern skiplist_compare_t skiplist_compare_ex_id;
+extern tbx_sl_compare_t skiplist_compare_ex_off;
+extern tbx_sl_compare_t skiplist_compare_ex_id;
 
 #ifdef __cplusplus
 }

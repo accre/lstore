@@ -45,7 +45,7 @@ extern "C" {
 #define CACHE_TYPE_LRU "lru"
 
 cache_t *lru_cache_create(void *arg, data_attr_t *da, int timeout);
-cache_t *lru_cache_load(void *arg, inip_file_t *ifd, char *section, data_attr_t *da, int timeout);
+cache_t *lru_cache_load(void *arg, tbx_inip_file_t *ifd, char *section, data_attr_t *da, int timeout);
 
 
 #ifdef __cplusplus

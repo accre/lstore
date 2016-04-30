@@ -63,11 +63,11 @@ typedef struct {
 
 void print_rid_summary(char *config, int base)
 {
-    list_t *table;
-    list_iter_t it;
-    inip_group_t *ig;
-    inip_file_t *kf;
-    inip_element_t *ele;
+    tbx_list_t *table;
+    tbx_list_iter_t it;
+    tbx_inip_group_t *ig;
+    tbx_inip_file_t *kf;
+    tbx_inip_element_t *ele;
     char *key, *value;
     char fbuf[20], ubuf[20], tbuf[20];
     char *state[5] = { "UP      ", "IGNORE  ", "NO_SPACE", "DOWN    ", "INVALID " };
@@ -137,7 +137,7 @@ void print_rid_summary(char *config, int base)
     printf("        RID             State             Host                      Used       Free        Total\n");
     printf("--------------------  --------  ------------------------------   ---------   ---------   ---------\n");
     it = list_iter_search(table, NULL, 0);
-    while (list_next(&it, (list_key_t **)&key, (list_data_t **)&rsum) == 0) {
+    while (list_next(&it, (tbx_list_key_t **)&key, (tbx_list_data_t **)&rsum) == 0) {
         printf("%-20s  %8s  %-30s   %8s   %8s   %8s\n", rsum->rid, state[rsum->status], rsum->host,
                pretty_print_double_with_scale(base, (double)rsum->used, ubuf),
                pretty_print_double_with_scale(base, (double)rsum->free, fbuf),

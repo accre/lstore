@@ -238,21 +238,21 @@ int lio_update_exnode_attrs(lio_config_t *lc, creds_t *creds, exnode_t *ex, segm
 //    It also detroys the write_table
 //*****************************************************************
 
-void lio_store_and_release_adler32(lio_config_t *lc, creds_t *creds, list_t *write_table, char *fname)
+void lio_store_and_release_adler32(lio_config_t *lc, creds_t *creds, tbx_list_t *write_table, char *fname)
 {
-    list_iter_t it;
+    tbx_list_iter_t it;
     ex_off_t next, missing, overlap, dn, nbytes, pend;
     uLong cksum;
     unsigned int aval;
     lfs_adler32_t *a32;
-    Stack_t *stack;
+    tbx_stack_t *stack;
     ex_off_t *aoff;
     char value[256];
     stack = new_stack();
     it = list_iter_search(write_table, 0, 0);
     cksum = adler32(0L, Z_NULL, 0);
     missing = next = overlap = nbytes = 0;
-    while (list_next(&it, (list_key_t **)&aoff, (list_data_t **)&a32) == 0) {
+    while (list_next(&it, (tbx_list_key_t **)&aoff, (tbx_list_data_t **)&a32) == 0) {
         aval = a32->adler32;
         pend = a32->offset + a32->len - 1;
         push(stack, a32);
@@ -331,7 +331,7 @@ int lio_load_file_handle_attrs(lio_config_t *lc, creds_t *creds, char *fname, ex
 
 lio_file_handle_t *_lio_get_file_handle(lio_config_t *lc, ex_id_t vid)
 {
-    return(list_search(lc->open_index, (list_key_t *)&vid));
+    return(list_search(lc->open_index, (tbx_list_key_t *)&vid));
 
 }
 
@@ -342,7 +342,7 @@ lio_file_handle_t *_lio_get_file_handle(lio_config_t *lc, ex_id_t vid)
 
 void _lio_add_file_handle(lio_config_t *lc, lio_file_handle_t *fh)
 {
-    list_insert(lc->open_index, (list_key_t *)&(fh->vid), (list_data_t *)fh);
+    list_insert(lc->open_index, (tbx_list_key_t *)&(fh->vid), (tbx_list_data_t *)fh);
 }
 
 
@@ -353,7 +353,7 @@ void _lio_add_file_handle(lio_config_t *lc, lio_file_handle_t *fh)
 
 void _lio_remove_file_handle(lio_config_t *lc, lio_file_handle_t *fh)
 {
-    list_remove(lc->open_index, (list_key_t *)&(fh->vid), (list_data_t *)fh);
+    list_remove(lc->open_index, (tbx_list_key_t *)&(fh->vid), (tbx_list_data_t *)fh);
 }
 
 //*************************************************************************
@@ -701,11 +701,11 @@ op_generic_t *gop_lio_close_object(lio_fd_t *fd)
 typedef struct {
     lio_fd_t *fd;
     int n_iov;
-    ex_iovec_t *iov;
-    tbuffer_t *buffer;
+    ex_tbx_iovec_t *iov;
+    tbx_tbuf_t *buffer;
     segment_rw_hints_t *rw_hints;
-    ex_iovec_t iov_dummy;
-    tbuffer_t buffer_dummy;
+    ex_tbx_iovec_t iov_dummy;
+    tbx_tbuf_t buffer_dummy;
     ex_off_t boff;
 } lio_rw_op_t;
 
@@ -716,8 +716,8 @@ op_status_t lio_read_ex_fn(void *arg, int id)
     lio_rw_op_t *op = (lio_rw_op_t *)arg;
     lio_fd_t *fd = op->fd;
     lio_config_t *lc = fd->lc;
-    ex_iovec_t *iov = op->iov;
-    tbuffer_t *buffer = op->buffer;
+    ex_tbx_iovec_t *iov = op->iov;
+    tbx_tbuf_t *buffer = op->buffer;
     op_status_t status;
     int i, err, size;
     apr_time_t now;
@@ -776,7 +776,7 @@ op_status_t lio_read_ex_fn(void *arg, int id)
 
 //*************************************************************************
 
-op_generic_t *gop_lio_read_ex(lio_fd_t *fd, int n_iov, ex_iovec_t *ex_iov, tbuffer_t *buffer, ex_off_t boff, segment_rw_hints_t *rw_hints)
+op_generic_t *gop_lio_read_ex(lio_fd_t *fd, int n_iov, ex_tbx_iovec_t *ex_iov, tbx_tbuf_t *buffer, ex_off_t boff, segment_rw_hints_t *rw_hints)
 {
     lio_rw_op_t *op;
 
@@ -794,7 +794,7 @@ op_generic_t *gop_lio_read_ex(lio_fd_t *fd, int n_iov, ex_iovec_t *ex_iov, tbuff
 
 //*************************************************************************
 
-int lio_read_ex(lio_fd_t *fd, int n_iov, ex_iovec_t *ex_iov, tbuffer_t *buffer, ex_off_t boff, segment_rw_hints_t *rw_hints)
+int lio_read_ex(lio_fd_t *fd, int n_iov, ex_tbx_iovec_t *ex_iov, tbx_tbuf_t *buffer, ex_off_t boff, segment_rw_hints_t *rw_hints)
 {
     lio_rw_op_t op;
     op_status_t status;
@@ -812,7 +812,7 @@ int lio_read_ex(lio_fd_t *fd, int n_iov, ex_iovec_t *ex_iov, tbuffer_t *buffer, 
 
 //*************************************************************************
 
-op_generic_t *gop_lio_readv(lio_fd_t *fd, iovec_t *iov, int n_iov, ex_off_t size, ex_off_t off, segment_rw_hints_t *rw_hints)
+op_generic_t *gop_lio_readv(lio_fd_t *fd, tbx_iovec_t *iov, int n_iov, ex_off_t size, ex_off_t off, segment_rw_hints_t *rw_hints)
 {
     lio_rw_op_t *op;
     ex_off_t offset;
@@ -833,7 +833,7 @@ op_generic_t *gop_lio_readv(lio_fd_t *fd, iovec_t *iov, int n_iov, ex_off_t size
 
 //*************************************************************************
 
-int lio_readv(lio_fd_t *fd, iovec_t *iov, int n_iov, ex_off_t size, ex_off_t off, segment_rw_hints_t *rw_hints)
+int lio_readv(lio_fd_t *fd, tbx_iovec_t *iov, int n_iov, ex_off_t size, ex_off_t off, segment_rw_hints_t *rw_hints)
 {
     lio_rw_op_t op;
     ex_off_t offset;
@@ -974,8 +974,8 @@ op_status_t lio_write_ex_fn(void *arg, int id)
     lio_rw_op_t *op = (lio_rw_op_t *)arg;
     lio_fd_t *fd = op->fd;
     lio_config_t *lc = op->fd->fh->lc;
-    ex_iovec_t *iov = op->iov;
-    tbuffer_t *buffer = op->buffer;
+    ex_tbx_iovec_t *iov = op->iov;
+    tbx_tbuf_t *buffer = op->buffer;
     op_status_t status;
     int i, err, size;
     apr_time_t now;
@@ -1015,7 +1015,7 @@ op_status_t lio_write_ex_fn(void *arg, int id)
     flush_log();
 
     if (fd->fh->write_table != NULL) {
-        tbuffer_t tb;
+        tbx_tbuf_t tb;
         lfs_adler32_t *a32;
         unsigned char *buf = NULL;
         ex_off_t blen = 0;
@@ -1061,7 +1061,7 @@ op_status_t lio_write_ex_fn(void *arg, int id)
 
 //*************************************************************************
 
-op_generic_t *gop_lio_write_ex_fn(lio_fd_t *fd, int n_iov, ex_iovec_t *iov, tbuffer_t *buffer, ex_off_t boff, segment_rw_hints_t *rw_hints)
+op_generic_t *gop_lio_write_ex_fn(lio_fd_t *fd, int n_iov, ex_tbx_iovec_t *iov, tbx_tbuf_t *buffer, ex_off_t boff, segment_rw_hints_t *rw_hints)
 {
     lio_rw_op_t *op;
 
@@ -1079,7 +1079,7 @@ op_generic_t *gop_lio_write_ex_fn(lio_fd_t *fd, int n_iov, ex_iovec_t *iov, tbuf
 
 //*************************************************************************
 
-int lio_write_ex(lio_fd_t *fd, int n_iov, ex_iovec_t *ex_iov, tbuffer_t *buffer, ex_off_t boff, segment_rw_hints_t *rw_hints)
+int lio_write_ex(lio_fd_t *fd, int n_iov, ex_tbx_iovec_t *ex_iov, tbx_tbuf_t *buffer, ex_off_t boff, segment_rw_hints_t *rw_hints)
 {
     lio_rw_op_t op;
     op_status_t status;
@@ -1097,7 +1097,7 @@ int lio_write_ex(lio_fd_t *fd, int n_iov, ex_iovec_t *ex_iov, tbuffer_t *buffer,
 
 //*************************************************************************
 
-op_generic_t *gop_lio_writev(lio_fd_t *fd, iovec_t *iov, int n_iov, ex_off_t size, ex_off_t off, segment_rw_hints_t *rw_hints)
+op_generic_t *gop_lio_writev(lio_fd_t *fd, tbx_iovec_t *iov, int n_iov, ex_off_t size, ex_off_t off, segment_rw_hints_t *rw_hints)
 {
     lio_rw_op_t *op;
     type_malloc_clear(op, lio_rw_op_t, 1);
@@ -1118,7 +1118,7 @@ op_generic_t *gop_lio_writev(lio_fd_t *fd, iovec_t *iov, int n_iov, ex_off_t siz
 
 //*************************************************************************
 
-int lio_writev(lio_fd_t *fd, iovec_t *iov, int n_iov, ex_off_t size, ex_off_t off, segment_rw_hints_t *rw_hints)
+int lio_writev(lio_fd_t *fd, tbx_iovec_t *iov, int n_iov, ex_off_t size, ex_off_t off, segment_rw_hints_t *rw_hints)
 {
     lio_rw_op_t op;
     ex_off_t offset;
@@ -1443,7 +1443,7 @@ op_status_t lio_cp_file_fn(void *arg, int id)
 //     dir table
 //*************************************************************************
 
-int lio_cp_create_dir(list_t *table, lio_path_tuple_t tuple)
+int lio_cp_create_dir(tbx_list_t *table, lio_path_tuple_t tuple)
 {
     int i, n, err, error_code, skip_insert;
     struct stat s;
@@ -1498,7 +1498,7 @@ op_status_t lio_cp_path_fn(void *arg, int id)
     char *dstate;
     char dname[OS_PATH_MAX];
     char *fname, *dir, *file;
-    list_t *dir_table;
+    tbx_list_t *dir_table;
     lio_cp_file_t *cplist, *c;
     op_generic_t *gop;
     opque_t *q;

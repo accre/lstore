@@ -51,12 +51,12 @@ http://www.accre.vanderbilt.edu
 extern apr_thread_once_t *_err_once;
 
 //** These are in bip_op.c
-op_status_t vec_read_command(op_generic_t *gop, NetStream_t *ns);
-op_status_t vec_write_command(op_generic_t *gop, NetStream_t *ns);
+op_status_t vec_read_command(op_generic_t *gop, tbx_ns_t *ns);
+op_status_t vec_write_command(op_generic_t *gop, tbx_ns_t *ns);
 
 void *_ibp_dup_connect_context(void *connect_context);
 void _ibp_destroy_connect_context(void *connect_context);
-int _ibp_connect(NetStream_t *ns, void *connect_context, char *host, int port, Net_timeout_t timeout);
+int _ibp_connect(tbx_ns_t *ns, void *connect_context, char *host, int port, Net_timeout_t timeout);
 
 void _ibp_op_free(op_generic_t *op, int mode);
 void _ibp_submit_op(void *arg, op_generic_t *op);
@@ -74,13 +74,13 @@ static portal_fn_t _ibp_base_portal = {
 int _ibp_context_count = 0;
 
 typedef struct {
-    Stack_t stack;
+    tbx_stack_t stack;
 } rwc_gop_stack_t;
 
 typedef struct {
-//  Stack_t *hp_stack;
-    Stack_t list_stack;
-    pigeon_coop_hole_t pch;
+//  tbx_stack_t *hp_stack;
+    tbx_stack_t list_stack;
+    tbx_pch_t pch;
 } rw_coalesce_t;
 
 //*************************************************************
@@ -158,14 +158,14 @@ void rwc_stacks_free(void *arg, int size, void *data)
 //   be combined with other similar ops
 //*************************************************************
 
-int ibp_rw_submit_coalesce(Stack_t *stack, Stack_ele_t *ele)
+int ibp_rw_submit_coalesce(tbx_stack_t *stack, tbx_stack_ele_t *ele)
 {
     op_generic_t *gop = (op_generic_t *)get_stack_ele_data(ele);
     ibp_op_t *iop = ibp_get_iop(gop);
     ibp_context_t *ic = iop->ic;
     ibp_op_rw_t *cmd = &(iop->rw_op);
     rw_coalesce_t *rwc;
-    pigeon_coop_hole_t pch;
+    tbx_pch_t pch;
 
     apr_thread_mutex_lock(ic->lock);
 
@@ -216,13 +216,13 @@ int ibp_rw_coalesce(op_generic_t *gop1)
     op_generic_t *gop2;
     ibp_rw_buf_t **rwbuf;
     rw_coalesce_t *rwc;
-    Stack_ele_t *ele;
-    Stack_t *cstack;
+    tbx_stack_ele_t *ele;
+    tbx_stack_t *cstack;
     int64_t workload;
     int n, iov_sum, found_myself;
     rwc_gop_stack_t *rwcg;
-    pigeon_coop_hole_t pch;
-    Stack_t *my_hp = iop1->hp_parent;;
+    tbx_pch_t pch;
+    tbx_stack_t *my_hp = iop1->hp_parent;;
 
     apr_thread_mutex_lock(ic->lock);
 
@@ -240,7 +240,7 @@ int ibp_rw_coalesce(op_generic_t *gop1)
     }
 
     if (stack_size(&(rwc->list_stack)) == 1) { //** Nothing to do so exit
-        ele = (Stack_ele_t *)pop(&(rwc->list_stack));  //** The top most task should be me
+        ele = (tbx_stack_ele_t *)pop(&(rwc->list_stack));  //** The top most task should be me
         gop2 = (op_generic_t *)get_stack_ele_data(ele);
         if (gop2 != gop1) {
             log_printf(0, "ERROR! top stack element is not me! gid1=%d gid2=%d\n", gop_id(gop1), gop_id(gop2));
@@ -278,7 +278,7 @@ int ibp_rw_coalesce(op_generic_t *gop1)
     iov_sum = 0;
     found_myself = 0;
     move_to_top(&(rwc->list_stack));
-    ele = (Stack_ele_t *)get_ele_data(&(rwc->list_stack));
+    ele = (tbx_stack_ele_t *)get_ele_data(&(rwc->list_stack));
     do {
         gop2 = (op_generic_t *)get_stack_ele_data(ele);
         iop2 = ibp_get_iop(gop2);
@@ -300,33 +300,33 @@ int ibp_rw_coalesce(op_generic_t *gop1)
 
         //** Can only coalesce ops on the same hoststr
         if (iop2->hp_parent == my_hp) {
-            log_printf(15, "ibp_rw_coalesce: gop[%d]->gid=%d n_iov=%d io_total=%d\n", n, gop_id(gop2), cmd2->n_iovec_total, iov_sum);
+            log_printf(15, "ibp_rw_coalesce: gop[%d]->gid=%d n_iov=%d io_total=%d\n", n, gop_id(gop2), cmd2->n_tbx_iovec_total, iov_sum);
             rwbuf[n] = &(cmd2->buf_single);
-            iov_sum += cmd2->n_iovec_total;
+            iov_sum += cmd2->n_tbx_iovec_total;
             workload += cmd2->size;
             n++;
 
             delete_current(&(rwc->list_stack), 0, 0);  //** Remove it from the stack and move down to the next
             ele = NULL;
             if (workload < ic->max_coalesce) {
-                ele = (Stack_ele_t *)get_ele_data(&(rwc->list_stack));
+                ele = (tbx_stack_ele_t *)get_ele_data(&(rwc->list_stack));
             }
         } else {
-            log_printf(15, "SKIPPING: gop[-]->gid=%d n_iov=%d io_total=%d\n", gop_id(gop2), cmd2->n_iovec_total, iov_sum);
+            log_printf(15, "SKIPPING: gop[-]->gid=%d n_iov=%d io_total=%d\n", gop_id(gop2), cmd2->n_tbx_iovec_total, iov_sum);
             move_down(&(rwc->list_stack));
-            ele = (Stack_ele_t *)get_ele_data(&(rwc->list_stack));
+            ele = (tbx_stack_ele_t *)get_ele_data(&(rwc->list_stack));
         }
     } while ((ele != NULL) && (workload < ic->max_coalesce) && (iov_sum < 2000));
 
     if (found_myself == 0) {  //** Oops! Hit the max_coalesce workdload or size so Got to scan the list for myself
         move_to_top(&(rwc->list_stack));
-        while ((ele = (Stack_ele_t *)get_ele_data(&(rwc->list_stack))) != NULL) {
+        while ((ele = (tbx_stack_ele_t *)get_ele_data(&(rwc->list_stack))) != NULL) {
             gop2 = (op_generic_t *)get_stack_ele_data(ele);
             if (gop2 == gop1) {
                 iop2 = ibp_get_iop(gop2);
                 cmd2 = &(iop2->rw_op);
                 rwbuf[n] = &(cmd2->buf_single);
-                iov_sum += cmd2->n_iovec_total;
+                iov_sum += cmd2->n_tbx_iovec_total;
                 workload += cmd2->size;
                 n++;
 
@@ -349,7 +349,7 @@ int ibp_rw_coalesce(op_generic_t *gop1)
     if (stack_size(&(rwc->list_stack)) > 0) log_printf(1, "%d ops left on stack to coalesce\n", stack_size(&(rwc->list_stack)));
 
     cmd1->n_ops = n;
-    cmd1->n_iovec_total = iov_sum;
+    cmd1->n_tbx_iovec_total = iov_sum;
     cmd1->size = workload;
     gop1->op->cmd.workload = workload + ic->rw_new_command;
 
@@ -457,7 +457,7 @@ void _ibp_destroy_connect_context(void *connect_context)
 //     connection is made.
 //**********************************************************
 
-int _ibp_connect(NetStream_t *ns, void *connect_context, char *host, int port, Net_timeout_t timeout)
+int _ibp_connect(tbx_ns_t *ns, void *connect_context, char *host, int port, Net_timeout_t timeout)
 {
     ibp_connect_context_t *cc = (ibp_connect_context_t *)connect_context;
     int i, n;
@@ -510,13 +510,13 @@ int _ibp_connect(NetStream_t *ns, void *connect_context, char *host, int port, N
 // set/unset routines for options
 //**********************************************************
 
-int ibp_set_chksum(ibp_context_t *ic, ns_chksum_t *ncs)
+int ibp_set_chksum(ibp_context_t *ic, tbx_ns_chksum_t *ncs)
 {
     ns_chksum_clear(&(ic->ncs));
     if (ncs != NULL) ic->ncs = *ncs;
     return(0);
 }
-void ibp_get_chksum(ibp_context_t *ic, ns_chksum_t *ncs)
+void ibp_get_chksum(ibp_context_t *ic, tbx_ns_chksum_t *ncs)
 {
     *ncs = ic->ncs;
 };
@@ -680,7 +680,7 @@ void ibp_set_write_cc(ibp_context_t *ic, ibp_connect_context_t *cc)
 // cc_load - Stores a CC from the given keyfile
 //**********************************************************
 
-void cc_load(inip_file_t *kf, char *name, ibp_connect_context_t *cc)
+void cc_load(tbx_inip_file_t *kf, char *name, ibp_connect_context_t *cc)
 {
     char *type = inip_get_string(kf, "ibp_connect", name, NULL);
 
@@ -703,7 +703,7 @@ void cc_load(inip_file_t *kf, char *name, ibp_connect_context_t *cc)
 // ibp_cc_table_load - Loads the default connect_context for commands
 //**********************************************************
 
-void ibp_cc_load(inip_file_t *kf, ibp_context_t *cfg)
+void ibp_cc_load(tbx_inip_file_t *kf, ibp_context_t *cfg)
 {
     int i;
     ibp_connect_context_t cc;
@@ -735,7 +735,7 @@ void ibp_cc_load(inip_file_t *kf, ibp_context_t *cfg)
 // ibp_load_config - Loads the ibp client config
 //**********************************************************
 
-int ibp_load_config(ibp_context_t *ic, inip_file_t *keyfile, char *section)
+int ibp_load_config(ibp_context_t *ic, tbx_inip_file_t *keyfile, char *section)
 {
     apr_time_t t = 0;
 
@@ -779,7 +779,7 @@ int ibp_load_config(ibp_context_t *ic, inip_file_t *keyfile, char *section)
 
 int ibp_load_config_file(ibp_context_t *ic, char *fname, char *section)
 {
-    inip_file_t *keyfile;
+    tbx_inip_file_t *keyfile;
     int err;
 
     //* Load the config file

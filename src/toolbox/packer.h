@@ -41,37 +41,38 @@ http://www.accre.vanderbilt.edu
 extern "C" {
 #endif
 
-typedef struct {
+typedef struct tbx_pack_raw_t tbx_pack_raw_t;
+struct tbx_pack_raw_t {
     unsigned char *buffer;
     unsigned int bufsize;
     unsigned int bpos;
     int nleft;
-} pack_raw_t;
+};
 
-typedef struct {
+typedef struct tbx_pack_zlib_t tbx_pack_zlib_t;
+struct tbx_pack_zlib_t {
     unsigned char *buffer;
     unsigned int bufsize;
     unsigned int bpos;
     z_stream z;
-} pack_zlib_t;
+};
 
-typedef struct pack_s pack_t;
-
-struct pack_s {
+typedef struct tbx_pack_t tbx_pack_t;
+struct tbx_pack_t {
     int type;
     int mode;
     union {
-        pack_raw_t raw;
-        pack_zlib_t zlib;
+        tbx_pack_raw_t raw;
+        tbx_pack_zlib_t zlib;
     };
-    void (*end)(pack_t *pack);
-    void (*write_resized)(pack_t *pack, unsigned char *buffer, unsigned int bufsize);
-    int  (*write)(pack_t *pack, unsigned char *data, int nbytes);
-    int (*read_new_data)(pack_t *pack, unsigned char *buffer, unsigned int bufsize);
-    int  (*read)(pack_t *pack, unsigned char *data, int nbytes);
-    int  (*used)(pack_t *pack);
-    void (*consumed)(pack_t *pack);
-    int (*write_flush)(pack_t *pack);
+    void (*end)(tbx_pack_t *pack);
+    void (*write_resized)(tbx_pack_t *pack, unsigned char *buffer, unsigned int bufsize);
+    int  (*write)(tbx_pack_t *pack, unsigned char *data, int nbytes);
+    int (*read_new_data)(tbx_pack_t *pack, unsigned char *buffer, unsigned int bufsize);
+    int  (*read)(tbx_pack_t *pack, unsigned char *data, int nbytes);
+    int  (*used)(tbx_pack_t *pack);
+    void (*consumed)(tbx_pack_t *pack);
+    int (*write_flush)(tbx_pack_t *pack);
 };
 
 #define PACK_FINISHED -3
@@ -94,18 +95,18 @@ struct pack_s {
 #define pack_consumed(p) (p)->consumed(p)
 #define pack_write_flush(p) (p)->write_flush(p)
 
-void pack_init(pack_t *pack, int type, int mode, unsigned char *buffer, unsigned int bufsize);
-TBX_API pack_t *pack_create(int type, int mode, unsigned char *buffer, unsigned int bufsize);
-TBX_API void pack_destroy(pack_t *pack);
+void pack_init(tbx_pack_t *pack, int type, int mode, unsigned char *buffer, unsigned int bufsize);
+TBX_API tbx_pack_t *pack_create(int type, int mode, unsigned char *buffer, unsigned int bufsize);
+TBX_API void pack_destroy(tbx_pack_t *pack);
 
-//void pack_end(pack_t *pack);
-//void pack_write_resized(pack_t *pack, char *buffer, int bufsize);
-//int pack_write(pack_t *pack, unsigned char *data, int nbytes);
+//void pack_end(tbx_pack_t *pack);
+//void pack_write_resized(tbx_pack_t *pack, char *buffer, int bufsize);
+//int pack_write(tbx_pack_t *pack, unsigned char *data, int nbytes);
 
-//void pack_read_new_data(pack_t *pack, char *buffer, int bufsize);
-//int pack_read(pack_t *pack, unsigned char *data, int nbytes);
-//int pack_used(pack_t *pack);
-//int pack_consumed(pack_t *pack);
+//void pack_read_new_data(tbx_pack_t *pack, char *buffer, int bufsize);
+//int pack_read(tbx_pack_t *pack, unsigned char *data, int nbytes);
+//int pack_used(tbx_pack_t *pack);
+//int pack_consumed(tbx_pack_t *pack);
 
 #ifdef __cplusplus
 }

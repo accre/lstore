@@ -47,7 +47,7 @@ typedef struct {
     char *name;
     ex_id_t id;
     char *type;
-    list_t *attributes;  //should be a key/value pair struct?
+    tbx_list_t *attributes;  //should be a key/value pair struct?
 } ex_header_t;
 
 ex_header_t *ex_header_create();
@@ -60,8 +60,8 @@ ex_id_t ex_header_get_id(ex_header_t *h);
 void ex_header_set_id(ex_header_t *h, ex_id_t id);
 char  *ex_header_get_type(ex_header_t *h);
 void ex_header_set_type(ex_header_t *h, char *type);
-list_t *ex_header_get_attributes(ex_header_t *h);
-void ex_header_set_attributes(ex_header_t *h, list_t *attr);
+tbx_list_t *ex_header_get_attributes(ex_header_t *h);
+void ex_header_set_attributes(ex_header_t *h, tbx_list_t *attr);
 
 #ifdef __cplusplus
 }

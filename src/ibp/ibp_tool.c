@@ -365,7 +365,7 @@ int cmd_get_chksum(char **argv, int argc)
     int info_only, cs_type, cs_size;
     ibp_off_t blocksize, nblocks, n_chksumbytes;
     int err, timeout;
-    chksum_t cs;
+    tbx_chksum_t cs;
 
     if (argc < 1) {
         printf("cmd_validate_chksum: Not enough parameters.  Received %d need 1\n", argc);
@@ -718,7 +718,7 @@ int cmd_ridlist(char **argv, int argc)
 int main(int argc, char **argv)
 {
     int i, tcpsize;
-    phoebus_t pcc;
+    tbx_phoebus_t pcc;
     char *ppath = NULL;
     char **cmd_args;
     int  cmd_count;

@@ -59,7 +59,7 @@ typedef struct {
     int hardlink_path_len;
     int internal_lock_size;
     int hardlink_dir_size;
-    atomic_int_t hardlink_count;
+    tbx_atomic_unit32_t hardlink_count;
     char *base_path;
     char *file_path;
     char *hardlink_path;
@@ -69,12 +69,12 @@ typedef struct {
     os_authz_t *osaz;
     authn_t *authn;
     apr_pool_t *mpool;
-    list_t *fobj_table;
+    tbx_list_t *fobj_table;
     apr_hash_t *vattr_hash;
-    list_t *vattr_prefix;
+    tbx_list_t *vattr_prefix;
     apr_thread_mutex_t *fobj_lock;
-    pigeon_coop_t *fobj_pc;
-    pigeon_coop_t *task_pc;
+    tbx_pc_t *fobj_pc;
+    tbx_pc_t *task_pc;
     os_virtual_attr_t lock_va;
     os_virtual_attr_t link_va;
     os_virtual_attr_t link_count_va;

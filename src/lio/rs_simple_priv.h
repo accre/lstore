@@ -46,7 +46,7 @@ extern "C" {
 typedef struct {
     char *rid_key;
     char *ds_key;
-    list_t *attr;
+    tbx_list_t *attr;
     int  status;
     int  slot;
     ex_off_t space_total;
@@ -62,7 +62,7 @@ typedef struct {
 } rss_check_entry_t;
 
 typedef struct {
-    list_t *rid_table;
+    tbx_list_t *rid_table;
     rss_rid_entry_t **random_array;
     data_service_fn_t *ds;
     data_attr_t *da;

@@ -56,7 +56,7 @@ int lio_parallel_task_count = 100;
 //** Define the global LIO config
 lio_config_t *lio_gc = NULL;
 cache_t *_lio_cache = NULL;
-info_fd_t *lio_ifd = NULL;
+tbx_log_fd_t *lio_ifd = NULL;
 FILE *_lio_ifd = NULL;
 char *_lio_exe_name = NULL;
 
@@ -65,7 +65,7 @@ lfs_mount_t *lfs_mount = NULL;
 
 apr_pool_t *_lc_mpool = NULL;
 apr_thread_mutex_t *_lc_lock = NULL;
-list_t *_lc_object_list = NULL;
+tbx_list_t *_lc_object_list = NULL;
 
 lio_config_t *lio_create_nl(char *fname, char *section, char *user, char *exe_name);
 void lio_destroy_nl(lio_config_t *lio);
@@ -147,10 +147,10 @@ void _lc_object_put(char *key, void *obj)
 // _lio_load_plugins - Loads the optional plugins
 //***************************************************************
 
-void _lio_load_plugins(lio_config_t *lio, inip_file_t *fd)
+void _lio_load_plugins(lio_config_t *lio, tbx_inip_file_t *fd)
 {
-    inip_group_t *g;
-    inip_element_t *ele;
+    tbx_inip_group_t *g;
+    tbx_inip_element_t *ele;
     char *key;
     apr_dso_handle_t *handle;
     int error;
@@ -241,7 +241,7 @@ void _lio_destroy_plugins(lio_config_t *lio)
 
 void lio_find_lfs_mounts()
 {
-    Stack_t *stack;
+    tbx_stack_t *stack;
     FILE *fd;
     lfs_mount_t *entry;
     char *text, *prefix, *bstate;
@@ -579,13 +579,13 @@ lio_path_tuple_t lio_path_resolve(int auto_fuse_convert, char *lpath)
 
 void lc_object_remove_unused(int remove_all_unused)
 {
-    list_t *user_lc;
-    list_iter_t it;
+    tbx_list_t *user_lc;
+    tbx_list_iter_t it;
     lc_object_container_t *lcc, *lcc2;
     lio_path_tuple_t *tuple;
     lio_config_t *lc;
     char *key;
-    Stack_t *stack;
+    tbx_stack_t *stack;
 
     stack = new_stack();
 
@@ -595,7 +595,7 @@ void lc_object_remove_unused(int remove_all_unused)
     //** Keep track of the anon creds for deletion
     user_lc = list_create(0, &list_string_compare, NULL, list_no_key_free, list_no_data_free);
     it = list_iter_search(_lc_object_list, "tuple:", 0);
-    while ((list_next(&it, (list_key_t **)&key, (list_data_t **)&lcc)) == 0) {
+    while ((list_next(&it, (tbx_list_key_t **)&key, (tbx_list_data_t **)&lcc)) == 0) {
         if (strncmp(lcc->key, "tuple:", 6) != 0) break;  //** No more tuples
         tuple = lcc->object;
         if (tuple->path == NULL) {
@@ -617,7 +617,7 @@ void lc_object_remove_unused(int remove_all_unused)
 
     //** Now iterate through all the LC's
     it = list_iter_search(_lc_object_list, "lc:", 0);
-    while ((list_next(&it, (list_key_t **)&key, (list_data_t **)&lcc)) == 0) {
+    while ((list_next(&it, (tbx_list_key_t **)&key, (tbx_list_data_t **)&lcc)) == 0) {
         if (strncmp(lcc->key, "lc:", 3) != 0) break;  //** No more LCs
         lc = lcc->object;
         log_printf(15, "checking key=%s lc=%s anon=%d count=%d\n", lcc->key, lc->section_name, lc->anonymous_creation, lcc->count);
@@ -671,7 +671,7 @@ void blacklist_destroy(blacklist_t *bl)
 // blacklist_load - Loads and creates a blacklist structure
 //***************************************************************
 
-blacklist_t *blacklist_load(inip_file_t *ifd, char *section)
+blacklist_t *blacklist_load(tbx_inip_file_t *ifd, char *section)
 {
     blacklist_t *bl;
 

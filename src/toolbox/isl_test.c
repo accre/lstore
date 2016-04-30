@@ -48,8 +48,8 @@ int main(int argc, char **argv)
     int lo, hi;
     interval_t *data_list, *d;
     double p;
-    interval_skiplist_t *isl;
-    interval_skiplist_iter_t it;
+    tbx_isl_t *isl;
+    tbx_isl_iter_t it;
 
     if (argc < 4) {
         printf("isl_test [-d log_level] n l_max p n_int_check\n");
@@ -75,7 +75,7 @@ int main(int argc, char **argv)
     assert_result(apr_initialize(), APR_SUCCESS);
     atomic_init();
 
-    isl = create_interval_skiplist_full(l_max, p, &skiplist_compare_int, NULL, NULL, NULL);
+    isl = create_interval_skiplist_full(l_max, p, &tbx_sl_compare_int, NULL, NULL, NULL);
 
     data_list = (interval_t *)malloc(sizeof(interval_t)*n_max);
 
@@ -90,7 +90,7 @@ int main(int argc, char **argv)
 //    if (i>=(n_max-2)) key_list[i] = key_list[0];  //** Force dups
 
         printf("==============inserting interval[%d]=%d .. %d\n", data_list[i].index, data_list[i].lo, data_list[i].hi);
-        err = insert_interval_skiplist(isl, (skiplist_key_t *)&(data_list[i].lo), (skiplist_key_t *)&(data_list[i].hi), (skiplist_data_t *)&(data_list[i]));
+        err = insert_interval_skiplist(isl, (tbx_sl_key_t *)&(data_list[i].lo), (tbx_sl_key_t *)&(data_list[i].hi), (tbx_sl_data_t *)&(data_list[i]));
         if (err != 0) {
             printf("----------+Error inserting interval[%d]=%d .. %d\n", data_list[i].index, data_list[i].lo, data_list[i].hi);
         }
@@ -99,7 +99,7 @@ int main(int argc, char **argv)
 
     //** Iterate through the list to verify order
     printf("===============Iterating through Interval Skiplist\n");
-    it = iter_search_interval_skiplist(isl, (skiplist_key_t *)NULL, (skiplist_key_t *)NULL);
+    it = iter_search_interval_skiplist(isl, (tbx_sl_key_t *)NULL, (tbx_sl_key_t *)NULL);
     d = (interval_t *)next_interval_skiplist(&it);
     j = d->lo;
     i = 0;
@@ -145,7 +145,7 @@ int main(int argc, char **argv)
         fflush(stdout);
         flush_log();
 
-        it = iter_search_interval_skiplist(isl, (skiplist_key_t *)&lo, (skiplist_key_t *)&hi);
+        it = iter_search_interval_skiplist(isl, (tbx_sl_key_t *)&lo, (tbx_sl_key_t *)&hi);
 //    printf("    after iter creation\n"); fflush(stdout); flush_log();
         n = 0;
         d = next_interval_skiplist(&it);
@@ -181,7 +181,7 @@ int main(int argc, char **argv)
 //  for (i=0; i<n_max; i++) {
     for (i=n_max-1; i>=0; i--) {
         printf("==========Removing interval[%d]=%d .. %d\n", data_list[i].index, data_list[i].lo, data_list[i].hi);
-        err = remove_interval_skiplist(isl, (skiplist_key_t *)&(data_list[i].lo), (skiplist_key_t *)&(data_list[i].hi), (skiplist_data_t *)&(data_list[i]));
+        err = remove_interval_skiplist(isl, (tbx_sl_key_t *)&(data_list[i].lo), (tbx_sl_key_t *)&(data_list[i].hi), (tbx_sl_data_t *)&(data_list[i]));
         if (err != 0) {
             printf("----------Error removing interval[%d]=%d .. %d\n", data_list[i].index, data_list[i].lo, data_list[i].hi);
         }

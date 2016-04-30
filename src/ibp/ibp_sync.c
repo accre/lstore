@@ -203,7 +203,7 @@ unsigned long int IBP_write(ibp_cap_t *cap, ibp_timer_t  *timer, char *data,
 {
     ibp_op_t op;
     int err;
-    tbuffer_t buf;
+    tbx_tbuf_t buf;
 
     tbuffer_single(&buf, size, data);
 
@@ -227,7 +227,7 @@ unsigned long int IBP_store(ibp_cap_t *cap, ibp_timer_t  *timer, char *data,
 {
     ibp_op_t op;
     int err;
-    tbuffer_t buf;
+    tbx_tbuf_t buf;
 
     tbuffer_single(&buf, size, data);
 
@@ -251,7 +251,7 @@ unsigned long int IBP_load(ibp_cap_t *cap, ibp_timer_t  *timer, char *data,
 {
     ibp_op_t op;
     int err;
-    tbuffer_t buf;
+    tbx_tbuf_t buf;
 
     tbuffer_single(&buf, size, data);
 

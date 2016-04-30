@@ -198,7 +198,7 @@ void mq_msg_append_mem(mq_msg_t *msg, void *data, int len, int auto_free)
 
 void mq_msg_append_msg(mq_msg_t *msg, mq_msg_t *extra, int mode)
 {
-    Stack_ele_t *curr;
+    tbx_stack_ele_t *curr;
     mq_frame_t *f;
     char *data;
 
@@ -217,7 +217,7 @@ void mq_msg_append_msg(mq_msg_t *msg, mq_msg_t *extra, int mode)
 
 mq_msg_hash_t mq_msg_hash(mq_msg_t *msg)
 {
-    Stack_ele_t *curr;
+    tbx_stack_ele_t *curr;
     mq_frame_t *f;
     unsigned char *data;
     unsigned char *p;

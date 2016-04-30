@@ -86,7 +86,7 @@ typedef struct os_authz_s os_authz_t;
 typedef struct {
 int q_mode;
 char *attr;
-} os_attr_list_t;
+} os_attr_tbx_list_t;
  
 typedef void os_fd_t;
 typedef void os_attr_iter_t;
@@ -161,7 +161,7 @@ void (*destroy_attr_iter)(os_attr_iter_t *it);
 };
  
  
-typedef object_service_fn_t *(os_create_t)(service_manager_t *ess, inip_file_t *ifd, char *section);
+typedef object_service_fn_t *(os_create_t)(service_manager_t *ess, tbx_inip_file_t *ifd, char *section);
  
 #define os_type(os) (os)->type
 #define os_destroy_service(os) (os)->destroy_service(os)
@@ -234,7 +234,7 @@ void (*destroy)(os_authz_t *osa);
 };
  
  
-typedef os_authz_t *(osaz_create_t)(service_manager_t *ess, inip_file_t *ifd, char *section, object_service_fn_t *os);
+typedef os_authz_t *(osaz_create_t)(service_manager_t *ess, tbx_inip_file_t *ifd, char *section, object_service_fn_t *os);
  
 #define osaz_object_create(osa, c, path) (osa)->object_create(osa, c, path)
 #define osaz_object_remove(osa, c, path) (osa)->object_remove(osa, c, path)

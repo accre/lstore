@@ -45,7 +45,7 @@ typedef struct {
 //  pthread_mutex_t lock;
     int rfd;
     int wfd;
-} network_2ssl_t;
+} tbx_net_2ssl_t;
 
 #ifdef __cplusplus
 extern "C" {
@@ -54,7 +54,7 @@ extern "C" {
 int d_ssl_close(net_sock_t *sock);
 long int d_ssl_write(net_sock_t *sock, const void *buf, size_t count, Net_timeout_t tm);
 long int d_ssl_read(net_sock_t *sock, void *buf, size_t count, Net_timeout_t tm);
-int ns_merge_ssl(NetStream_t *ns1, NetStream_t *ns2);
+int ns_merge_ssl(tbx_ns_t *ns1, tbx_ns_t *ns2);
 
 #ifdef __cplusplus
 }

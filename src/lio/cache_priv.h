@@ -96,7 +96,7 @@ typedef struct {
 typedef struct {
     ex_off_t page_start;
     ex_off_t page_end;
-    Stack_t *range_stack;
+    tbx_stack_t *range_stack;
     char *data;
     int flags;
 } cache_partial_page_t;
@@ -106,13 +106,13 @@ typedef struct {
     void *cache_priv;
     segment_t *child_seg;
     thread_pool_context_t *tpc_unlimited;
-    list_t *pages;
-    list_t *partial_pages;
+    tbx_list_t *pages;
+    tbx_list_t *partial_pages;
     apr_thread_mutex_t *lock;
     apr_thread_cond_t  *flush_cond;
     apr_thread_cond_t  *ppages_cond;
-    Stack_t *flush_stack;
-    Stack_t *ppages_unused;
+    tbx_stack_t *flush_stack;
+    tbx_stack_t *ppages_unused;
     char *qname;
     cache_partial_page_t *ppage;
     char *ppages_buffer;
@@ -139,7 +139,7 @@ typedef struct {
     data_page_t data[2];
     void *priv;
     ex_off_t offset;
-    pigeon_coop_hole_t cond_pch;
+    tbx_pch_t cond_pch;
     int  bit_fields;
     int access_pending[3];
     int used_count;
@@ -152,10 +152,10 @@ typedef struct {
 } page_handle_t;
 
 typedef struct {
-    Stack_t *stack;
+    tbx_stack_t *stack;
     segment_t *seg;
     ex_id_t   id;
-    pigeon_coop_hole_t pch;
+    tbx_pch_t pch;
     ex_off_t lo, hi;
 } page_table_t;
 
@@ -180,8 +180,8 @@ struct cache_s {
     cache_fn_t fn;
     apr_pool_t *mpool;
     apr_thread_mutex_t *lock;
-    list_t *segments;
-    pigeon_coop_t *cond_coop;
+    tbx_list_t *segments;
+    tbx_pc_t *cond_coop;
     data_attr_t *da;
     ex_off_t default_page_size;
     cache_stats_t stats;
@@ -195,7 +195,7 @@ struct cache_s {
     int  shutdown_request;
 };
 
-extern atomic_int_t _cache_count;
+extern tbx_atomic_unit32_t _cache_count;
 
 #define unique_cache_id() atomic_inc(_cache_count);
 #define cache_lock(c) apr_thread_mutex_lock((c)->lock)

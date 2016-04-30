@@ -76,11 +76,11 @@ struct lio_config_s {
     mq_context_t *mqc;
     service_manager_t *ess;
     service_manager_t *ess_nocache;  //** Copy of ess but missing cache.  Kind of a kludge...
-    Stack_t *plugin_stack;
+    tbx_stack_t *plugin_stack;
     cache_t *cache;
     data_attr_t *da;
-    inip_file_t *ifd;
-    list_t *open_index;
+    tbx_inip_file_t *ifd;
+    tbx_list_t *open_index;
     creds_t *creds;
     apr_thread_mutex_t *lock;
     apr_pool_t *mpool;
@@ -140,7 +140,7 @@ typedef struct {
 } lio_cp_path_t;
 
 LIO_API extern lio_config_t *lio_gc;
-LIO_API extern info_fd_t *lio_ifd;
+LIO_API extern tbx_log_fd_t *lio_ifd;
 LIO_API extern int lio_parallel_task_count;
 
 #define LIO_READ_MODE      1
@@ -164,8 +164,8 @@ struct lio_file_handle_s {  //** Shared file handle
     int ref_count;
     int remove_on_close;
     ex_off_t readahead_end;
-    atomic_int_t modified;
-    list_t *write_table;
+    tbx_atomic_unit32_t modified;
+    tbx_list_t *write_table;
 };
 
 typedef struct lio_file_handle_s lio_file_handle_t;
@@ -179,7 +179,7 @@ typedef struct {  //** Individual file descriptor
     ex_off_t curr_offset;
 } lio_fd_t;
 
-extern skiplist_compare_t ex_id_compare;
+extern tbx_sl_compare_t ex_id_compare;
 
 LIO_API op_generic_t *gop_lio_exists(lio_config_t *lc, creds_t *creds, char *path);
 LIO_API int lio_exists(lio_config_t *lc, creds_t *creds, char *path);
@@ -205,18 +205,18 @@ LIO_API op_generic_t *gop_lio_close_object(lio_fd_t *fd);
 //NOT NEEDED NOW???? op_generic_t *gop_lio_abort_open_object(lio_config_t *lc, op_generic_t *gop);
 
 op_generic_t *gop_lio_read(lio_fd_t *fd, char *buf, ex_off_t size, ex_off_t off, segment_rw_hints_t *rw_hints);
-op_generic_t *gop_lio_readv(lio_fd_t *fd, iovec_t *iov, int n_iov, ex_off_t size, ex_off_t off, segment_rw_hints_t *rw_hints);
-op_generic_t *gop_lio_read_ex(lio_fd_t *fd, int n_iov, ex_iovec_t *iov, tbuffer_t *buffer, ex_off_t boff, segment_rw_hints_t *rw_hints);
+op_generic_t *gop_lio_readv(lio_fd_t *fd, tbx_iovec_t *iov, int n_iov, ex_off_t size, ex_off_t off, segment_rw_hints_t *rw_hints);
+op_generic_t *gop_lio_read_ex(lio_fd_t *fd, int n_iov, ex_tbx_iovec_t *iov, tbx_tbuf_t *buffer, ex_off_t boff, segment_rw_hints_t *rw_hints);
 op_generic_t *gop_lio_write(lio_fd_t *fd, char *buf, ex_off_t size, off_t off, segment_rw_hints_t *rw_hints);
-op_generic_t *gop_lio_writev(lio_fd_t *fd, iovec_t *iov, int n_iov, ex_off_t size, off_t off, segment_rw_hints_t *rw_hints);
-op_generic_t *gop_lio_write_ex(lio_fd_t *fd, int n_iov, ex_iovec_t *iov, tbuffer_t *buffer, ex_off_t boff, segment_rw_hints_t *rw_hints);
+op_generic_t *gop_lio_writev(lio_fd_t *fd, tbx_iovec_t *iov, int n_iov, ex_off_t size, off_t off, segment_rw_hints_t *rw_hints);
+op_generic_t *gop_lio_write_ex(lio_fd_t *fd, int n_iov, ex_tbx_iovec_t *iov, tbx_tbuf_t *buffer, ex_off_t boff, segment_rw_hints_t *rw_hints);
 
 int lio_read(lio_fd_t *fd, char *buf, ex_off_t size, off_t off, segment_rw_hints_t *rw_hints);
-int lio_readv(lio_fd_t *fd, iovec_t *iov, int n_iov, ex_off_t size, off_t off, segment_rw_hints_t *rw_hints);
-int lio_read_ex(lio_fd_t *fd, int n_iov, ex_iovec_t *iov, tbuffer_t *buffer, ex_off_t boff, segment_rw_hints_t *rw_hints);
+int lio_readv(lio_fd_t *fd, tbx_iovec_t *iov, int n_iov, ex_off_t size, off_t off, segment_rw_hints_t *rw_hints);
+int lio_read_ex(lio_fd_t *fd, int n_iov, ex_tbx_iovec_t *iov, tbx_tbuf_t *buffer, ex_off_t boff, segment_rw_hints_t *rw_hints);
 int lio_write(lio_fd_t *fd, char *buf, ex_off_t size, off_t off, segment_rw_hints_t *rw_hints);
-int lio_writev(lio_fd_t *fd, iovec_t *iov, int n_iov, ex_off_t size, off_t off, segment_rw_hints_t *rw_hints);
-int lio_write_ex(lio_fd_t *fd, int n_iov, ex_iovec_t *iov, tbuffer_t *buffer, ex_off_t boff, segment_rw_hints_t *rw_hints);
+int lio_writev(lio_fd_t *fd, tbx_iovec_t *iov, int n_iov, ex_off_t size, off_t off, segment_rw_hints_t *rw_hints);
+int lio_write_ex(lio_fd_t *fd, int n_iov, ex_tbx_iovec_t *iov, tbx_tbuf_t *buffer, ex_off_t boff, segment_rw_hints_t *rw_hints);
 
 mode_t ftype_lio2posix(int ftype);
 void _lio_parse_stat_vals(char *fname, struct stat *stat, char **val, int *v_size, char *mount_prefix, char **flink);
@@ -289,7 +289,7 @@ op_status_t cp_lio2lio(lio_cp_file_t *cp);
 op_status_t cp_local2lio(lio_cp_file_t *cp);
 op_status_t cp_lio2local(lio_cp_file_t *cp);
 LIO_API op_status_t lio_cp_file_fn(void *arg, int id);
-int lio_cp_create_dir(list_t *table, lio_path_tuple_t tuple);
+int lio_cp_create_dir(tbx_list_t *table, lio_path_tuple_t tuple);
 LIO_API op_status_t lio_cp_path_fn(void *arg, int id);
 LIO_API op_generic_t *lioc_truncate(lio_path_tuple_t *tuple, ex_off_t new_size);
 

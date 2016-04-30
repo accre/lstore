@@ -47,14 +47,14 @@ int main(int argc, char **argv)
 {
     int bufsize = 1024*1024;
     char buffer[bufsize+1];
-    tbuffer_t tbuf;
+    tbx_tbuf_t tbuf;
     int i, start_option, np, update_interval;
     char *trace_header;
     char *base_path;
     char *template_name = NULL;
     exnode_t *tex;
     exnode_exchange_t *template_exchange;
-    ex_iovec_t *iov;
+    ex_tbx_iovec_t *iov;
     op_generic_t *gop;
     trace_t *trace;
     trace_op_t *top;
@@ -117,7 +117,7 @@ int main(int argc, char **argv)
 
     //** Load the trace
     trace = trace_load(exnode_service_set, tex, lio_gc->da, lio_gc->timeout, trace_header);
-    type_malloc_clear(iov, ex_iovec_t, trace->n_files);
+    type_malloc_clear(iov, ex_tbx_iovec_t, trace->n_files);
 
     q = new_opque();
     tbuffer_single(&tbuf, bufsize, buffer);

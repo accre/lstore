@@ -44,7 +44,7 @@ extern "C" {
 #define CACHE_TYPE_AMP "amp"
 
 cache_t *amp_cache_create(void *arg, data_attr_t *da, int timeout);
-cache_t *amp_cache_load(void *arg, inip_file_t *ifd, char *section, data_attr_t *da, int timeout);
+cache_t *amp_cache_load(void *arg, tbx_inip_file_t *ifd, char *section, data_attr_t *da, int timeout);
 
 
 #ifdef __cplusplus

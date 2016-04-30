@@ -52,10 +52,10 @@ typedef struct {
 // ex_iovec_create
 //*************************************************************************
 
-ex_iovec_t *ex_iovec_create()
+ex_tbx_iovec_t *ex_iovec_create()
 {
-    ex_iovec_t *iov;
-    type_malloc_clear(iov, ex_iovec_t, 1);
+    ex_tbx_iovec_t *iov;
+    type_malloc_clear(iov, ex_tbx_iovec_t, 1);
     return(iov);
 }
 
@@ -63,7 +63,7 @@ ex_iovec_t *ex_iovec_create()
 // ex_iovec_destroy
 //*************************************************************************
 
-void ex_iovec_destroy(ex_iovec_t *iov)
+void ex_iovec_destroy(ex_tbx_iovec_t *iov)
 {
     free(iov);
 }
@@ -118,7 +118,7 @@ op_status_t exnode_remove_func(void *arg, int gid)
 {
     exnode_clone_t *op = (exnode_clone_t *)arg;
     exnode_t *ex = op->src_ex;
-    list_iter_t it;
+    tbx_list_iter_t it;
     segment_t *seg;
     ex_id_t *id;
     int i, n;
@@ -134,11 +134,11 @@ op_status_t exnode_remove_func(void *arg, int gid)
 
     //** Start the cloning process
     it = list_iter_search(ex->view, NULL, 0);
-    list_next(&it, (list_key_t **)&id, (list_data_t **)&seg);
+    list_next(&it, (tbx_list_key_t **)&id, (tbx_list_data_t **)&seg);
     while (seg != NULL) {
         gop = segment_remove(seg, op->da, op->timeout);
         opque_add(q, gop);
-        list_next(&it, (list_key_t **)&id, (list_data_t **)&seg);
+        list_next(&it, (tbx_list_key_t **)&id, (tbx_list_data_t **)&seg);
     }
 
     //** Wait for everything to complete
@@ -178,7 +178,7 @@ op_status_t exnode_clone_func(void *arg, int gid)
     exnode_clone_t *exc = (exnode_clone_t *)arg;
     exnode_t *sex = exc->src_ex;
     exnode_t *ex = exc->dest_ex;
-    list_iter_t it;
+    tbx_list_iter_t it;
     segment_t *src_seg, **new_seg, **segptr;
     ex_id_t *id, did;
     int i, n, nfailed;
@@ -196,7 +196,7 @@ op_status_t exnode_clone_func(void *arg, int gid)
 
     //** Start the cloning process
     it = list_iter_search(sex->view, NULL, 0);
-    list_next(&it, (list_key_t **)&id, (list_data_t **)&src_seg);
+    list_next(&it, (tbx_list_key_t **)&id, (tbx_list_data_t **)&src_seg);
     i = 0;
     while (src_seg != NULL) {
         new_seg[i] = src_seg;
@@ -204,7 +204,7 @@ op_status_t exnode_clone_func(void *arg, int gid)
         gop = segment_clone(src_seg, exc->da, &(new_seg[i+1]), exc->mode, exc->arg, exc->timeout);
         gop_set_private(gop, &(new_seg[i]));
         opque_add(q, gop);
-        list_next(&it, (list_key_t **)&id, (list_data_t **)&src_seg);
+        list_next(&it, (tbx_list_key_t **)&id, (tbx_list_data_t **)&src_seg);
         i += 2;
     }
 
@@ -413,9 +413,9 @@ void exnode_exchange_append(exnode_exchange_t *exp, exnode_exchange_t *exp_appen
 
 int exnode_deserialize_text(exnode_t *ex, exnode_exchange_t *exp, service_manager_t *ess)
 {
-    inip_group_t *g;
-    inip_element_t *ele;
-    inip_file_t *fd;
+    tbx_inip_group_t *g;
+    tbx_inip_element_t *ele;
+    tbx_inip_file_t *fd;
     segment_t *seg = NULL;
     ex_id_t id;
     int fin;
@@ -513,7 +513,7 @@ int exnode_serialize_text(exnode_t *ex, exnode_exchange_t *exp)
     int used = 0;
     segment_t *seg;
     ex_id_t *id;
-    skiplist_iter_t it;
+    tbx_sl_iter_t it;
 
     //** Store the header
     append_printf(buffer, &used, bufsize, "[exnode]\n");
@@ -532,8 +532,8 @@ int exnode_serialize_text(exnode_t *ex, exnode_exchange_t *exp)
     used = 0;
     append_printf(buffer, &used, bufsize, "\n[view]\n");
     if (ex->default_seg != NULL) append_printf(buffer, &used, bufsize, "default=" XIDT "\n", segment_id(ex->default_seg));
-    it = list_iter_search(ex->view, (skiplist_key_t *)NULL, 0);
-    while (list_next(&it, (skiplist_key_t **)&id, (skiplist_data_t **)&seg) == 0) {
+    it = list_iter_search(ex->view, (tbx_sl_key_t *)NULL, 0);
+    while (list_next(&it, (tbx_sl_key_t **)&id, (tbx_sl_data_t **)&seg) == 0) {
         log_printf(15, "exnode_serialize_text: Storing view segment " XIDT "\n", segment_id(seg));
         append_printf(buffer, &used, bufsize, "segment=" XIDT "\n", *id);
 
@@ -578,25 +578,25 @@ int exnode_serialize(exnode_t *ex, exnode_exchange_t *exp)
 
 void exnode_destroy(exnode_t *ex)
 {
-    list_iter_t it;
+    tbx_list_iter_t it;
     segment_t *seg;
     data_block_t *b;
     ex_id_t id;
 
     //** Remove the views
-    it = list_iter_search(ex->view, (skiplist_key_t *)NULL, 0);
-    while (list_next(&it, (skiplist_key_t *)&id, (skiplist_data_t *)&seg) == 0) {
+    it = list_iter_search(ex->view, (tbx_sl_key_t *)NULL, 0);
+    while (list_next(&it, (tbx_sl_key_t *)&id, (tbx_sl_data_t *)&seg) == 0) {
         atomic_dec(seg->ref_count);
         log_printf(15, "exnode_destroy: seg->id=" XIDT " ref_count=%d\n", segment_id(seg), seg->ref_count);
         segment_destroy(seg);
-        list_next(&it, (skiplist_key_t *)&id, (skiplist_data_t *)&seg);
+        list_next(&it, (tbx_sl_key_t *)&id, (tbx_sl_data_t *)&seg);
     }
 
     //** And any blocks
-    it = list_iter_search(ex->block, (skiplist_key_t *)NULL, 0);
-    while (list_next(&it, (skiplist_key_t *)&id, (skiplist_data_t *)&b) == 0) {
+    it = list_iter_search(ex->block, (tbx_sl_key_t *)NULL, 0);
+    while (list_next(&it, (tbx_sl_key_t *)&id, (tbx_sl_data_t *)&b) == 0) {
         data_block_destroy(b);
-        list_next(&it, (skiplist_key_t *)&id, (skiplist_data_t *)&b);
+        list_next(&it, (tbx_sl_key_t *)&id, (tbx_sl_data_t *)&b);
     }
 
     list_destroy(ex->view);

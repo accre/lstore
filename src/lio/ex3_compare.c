@@ -37,13 +37,13 @@ http://www.accre.vanderbilt.edu
 #include "skiplist.h"
 #include "log.h"
 
-int skiplist_compare_fn_ex_off(void *arg, skiplist_key_t *k1, skiplist_key_t *k2);
-skiplist_compare_t skiplist_compare_ex_off= {skiplist_compare_fn_ex_off, NULL};
+int skiplist_compare_fn_ex_off(void *arg, tbx_sl_key_t *k1, tbx_sl_key_t *k2);
+tbx_sl_compare_t skiplist_compare_ex_off= {skiplist_compare_fn_ex_off, NULL};
 
-int skiplist_compare_fn_ex_id(void *arg, skiplist_key_t *k1, skiplist_key_t *k2);
-skiplist_compare_t skiplist_compare_ex_id= {skiplist_compare_fn_ex_id, NULL};
+int skiplist_compare_fn_ex_id(void *arg, tbx_sl_key_t *k1, tbx_sl_key_t *k2);
+tbx_sl_compare_t skiplist_compare_ex_id= {skiplist_compare_fn_ex_id, NULL};
 
-int skiplist_compare_fn_ex_off(void *arg, skiplist_key_t *k1, skiplist_key_t *k2)
+int skiplist_compare_fn_ex_off(void *arg, tbx_sl_key_t *k1, tbx_sl_key_t *k2)
 {
     ex_off_t *a = (ex_off_t *)k1;
     ex_off_t *b = (ex_off_t *)k2;
@@ -61,7 +61,7 @@ int skiplist_compare_fn_ex_off(void *arg, skiplist_key_t *k1, skiplist_key_t *k2
 
 //*************************************************************************************
 
-int skiplist_compare_fn_ex_id(void *arg, skiplist_key_t *k1, skiplist_key_t *k2)
+int skiplist_compare_fn_ex_id(void *arg, tbx_sl_key_t *k1, tbx_sl_key_t *k2)
 {
     ex_id_t *a = (ex_id_t *)k1;
     ex_id_t *b = (ex_id_t *)k2;

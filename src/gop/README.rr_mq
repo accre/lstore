@@ -40,7 +40,7 @@ on the server. It is entirely possible to continue sending messages
 if free_slots = 0 if you delete the checks.
 
 The mq_worker_table_t and processing_queue structures are based on
-Stack_t. Helper functions for them are in rr_mq_roundrobin.c/h. Both
+tbx_stack_t. Helper functions for them are in rr_mq_roundrobin.c/h. Both
 of these also use mutexes to control access, because workers/messages
 are popped and pushed on and off of them by multiple threads.
 

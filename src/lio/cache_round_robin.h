@@ -44,7 +44,7 @@ extern "C" {
 #define CACHE_TYPE_ROUND_ROBIN "round_robin"
 
 cache_t *round_robin_cache_create(void *arg, data_attr_t *da, int timeout);
-cache_t *round_robin_cache_load(void *arg, inip_file_t *ifd, char *section, data_attr_t *da, int timeout);
+cache_t *round_robin_cache_load(void *arg, tbx_inip_file_t *ifd, char *section, data_attr_t *da, int timeout);
 
 
 #ifdef __cplusplus

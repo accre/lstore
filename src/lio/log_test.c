@@ -129,8 +129,8 @@ int main(int argc, char **argv)
     char log1_data[bufsize+1];
     char log2_data[bufsize+1];
     char log3_data[bufsize+1];
-    tbuffer_t tbuf;
-    ex_iovec_t ex_iov, ex_iov_table[n_chunks];
+    tbx_tbuf_t tbuf;
+    ex_tbx_iovec_t ex_iov, ex_iov_table[n_chunks];
     int i, err;
     char *fname = NULL;
     exnode_t *ex;

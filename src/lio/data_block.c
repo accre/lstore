@@ -49,7 +49,7 @@ http://www.accre.vanderbilt.edu
 // db_find_key - Scans the stack for the key
 //***********************************************************************
 
-data_block_attr_t *db_find_key(Stack_t *stack, char *key)
+data_block_attr_t *db_find_key(tbx_stack_t *stack, char *key)
 {
     data_block_attr_t *attr;
 
@@ -225,9 +225,9 @@ data_block_t *data_block_deserialize_text(service_manager_t *sm, ex_id_t id, exn
     int i;
     data_block_t *b;
     data_service_fn_t *ds;
-    inip_file_t *cfd;
-    inip_group_t *cg;
-    inip_element_t *ele;
+    tbx_inip_file_t *cfd;
+    tbx_inip_group_t *cg;
+    tbx_inip_element_t *ele;
     char *key;
     data_block_attr_t *attr;
 

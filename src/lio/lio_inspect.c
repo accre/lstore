@@ -69,8 +69,8 @@ typedef struct {
     int tolerance_mode;
     int unspecified;
     apr_hash_t *pick_from;
-    Stack_t *groups;
-    Stack_t *rids;
+    tbx_stack_t *groups;
+    tbx_stack_t *rids;
 } pool_entry_t;
 
 typedef struct {
@@ -89,7 +89,7 @@ typedef struct {
 typedef struct {
 //  rid_change_entry_t rc;
     rid_inspect_tweak_t ri;
-    inip_group_t *ig;
+    tbx_inip_group_t *ig;
     int status;
     ex_off_t total;
     ex_off_t free;
@@ -113,7 +113,7 @@ apr_hash_t *rid_changes = NULL;
 apr_pool_t *rid_mpool = NULL;
 
 apr_thread_mutex_t *lock = NULL;
-list_t *seg_index;
+tbx_list_t *seg_index;
 
 int shutdown_now = 0;
 apr_thread_mutex_t *shutdown_lock;
@@ -159,7 +159,7 @@ void install_signal_handler()
 //    lio_inspect expects.
 //*************************************************************************
 
-void process_pool(pool_entry_t *pe, Stack_t *parent_rid_stack)
+void process_pool(pool_entry_t *pe, tbx_stack_t *parent_rid_stack)
 {
     pool_entry_t *p;
     rid_prep_entry_t *re;
@@ -250,11 +250,11 @@ void process_pool(pool_entry_t *pe, Stack_t *parent_rid_stack)
 // prep_rid_table - Preps the RID table for use in generating a pool config
 //*************************************************************************
 
-apr_hash_t *prep_rid_table(inip_file_t *fd, apr_pool_t *mpool)
+apr_hash_t *prep_rid_table(tbx_inip_file_t *fd, apr_pool_t *mpool)
 {
     apr_hash_t *table;
-    inip_group_t *ig;
-    inip_element_t *ele;
+    tbx_inip_group_t *ig;
+    tbx_inip_element_t *ele;
     rid_prep_entry_t *re;
     int n;
     char *key, *value;
@@ -307,7 +307,7 @@ apr_hash_t *prep_rid_table(inip_file_t *fd, apr_pool_t *mpool)
 
 void add_wildcard(pool_entry_t *p, apr_hash_t *rid_table, char *mkey, char *mvalue)
 {
-    inip_element_t *ele;
+    tbx_inip_element_t *ele;
     char *key, *value, *hkey;
     apr_ssize_t hlen;
     apr_hash_index_t *hi;
@@ -343,12 +343,12 @@ void add_wildcard(pool_entry_t *p, apr_hash_t *rid_table, char *mkey, char *mval
 //  load_pool - Loads a pool
 //*************************************************************************
 
-pool_entry_t *load_pool(Stack_t *pools, char *name, inip_file_t *pfd, inip_file_t *rfd, apr_hash_t *rid_table, inip_group_t *pg, pool_entry_t **unspecified)
+pool_entry_t *load_pool(tbx_stack_t *pools, char *name, tbx_inip_file_t *pfd, tbx_inip_file_t *rfd, apr_hash_t *rid_table, tbx_inip_group_t *pg, pool_entry_t **unspecified)
 {
-    inip_element_t *ele;
+    tbx_inip_element_t *ele;
     char *key, *value;
     pool_entry_t *p;
-    inip_group_t *psg;
+    tbx_inip_group_t *psg;
     int n;
     char subgroup[4096];
 
@@ -422,15 +422,15 @@ pool_entry_t *load_pool(Stack_t *pools, char *name, inip_file_t *pfd, inip_file_
 // load_pool_config - Loads the rebalance pool configration
 //*************************************************************************
 
-apr_hash_t *load_pool_config(char *fname, apr_pool_t *mpool, Stack_t *my_pool_list)
+apr_hash_t *load_pool_config(char *fname, apr_pool_t *mpool, tbx_stack_t *my_pool_list)
 {
-    inip_file_t *pfd, *rfd;
+    tbx_inip_file_t *pfd, *rfd;
     char *rid_config, *key;
-    inip_group_t *ig;
+    tbx_inip_group_t *ig;
     apr_hash_t *rid_table;
     apr_hash_t *pools;
     pool_entry_t *pe;
-    Stack_t *pool_list;
+    tbx_stack_t *pool_list;
     rid_prep_entry_t *re;
     pool_entry_t *unspecified = NULL;
 
@@ -497,17 +497,17 @@ apr_hash_t *load_pool_config(char *fname, apr_pool_t *mpool, Stack_t *my_pool_li
 // rebalance_pool - Generates a rebalance pool based on the supplied RID key
 //*************************************************************************
 
-apr_hash_t *rebalance_pool(apr_pool_t *mpool, Stack_t *my_pool_list, char *key_rebalance, double tolerance, int tolerance_mode)
+apr_hash_t *rebalance_pool(apr_pool_t *mpool, tbx_stack_t *my_pool_list, char *key_rebalance, double tolerance, int tolerance_mode)
 {
-    inip_file_t *pfd, *rfd;
+    tbx_inip_file_t *pfd, *rfd;
     char *rid_config, *key, *value;
-    inip_group_t *ig;
+    tbx_inip_group_t *ig;
     apr_hash_t *rid_table;
     apr_hash_t *pools;
     pool_entry_t *pe;
-    Stack_t *pool_list;
+    tbx_stack_t *pool_list;
     rid_prep_entry_t *re;
-    list_t *master;
+    tbx_list_t *master;
     char pool_text[4096], tstr[128];
     pool_entry_t *unspecified = NULL;
 
@@ -608,7 +608,7 @@ apr_hash_t *rebalance_pool(apr_pool_t *mpool, Stack_t *my_pool_list, char *key_r
 // dump_pools - Prints the pools
 //*************************************************************************
 
-void dump_pools(info_fd_t *ifd, Stack_t *pools, int scale)
+void dump_pools(tbx_log_fd_t *ifd, tbx_stack_t *pools, int scale)
 {
     pool_entry_t *pe;
 //  rid_inspect_tweak_t *ri;
@@ -618,8 +618,8 @@ void dump_pools(info_fd_t *ifd, Stack_t *pools, int scale)
     char *key;
     double d1, d2;
     ex_off_t tneg, tpos, pneg, ppos;
-    list_t *master;
-    list_iter_t it;
+    tbx_list_t *master;
+    tbx_list_iter_t it;
     int total_finished, finished, total_todo, todo, total, ntodo, ptodo, total_ntodo, total_ptodo;
 
     move_to_top(pools);
@@ -658,7 +658,7 @@ void dump_pools(info_fd_t *ifd, Stack_t *pools, int scale)
                     ptodo, pretty_print_double_with_scale(scale, d2, pp1));
 
         it = list_iter_search(master, NULL, 0);
-        while (list_next(&it, (list_key_t **)&key, (list_data_t **)&rid) == 0) {
+        while (list_next(&it, (tbx_list_key_t **)&key, (tbx_list_data_t **)&rid) == 0) {
             d1 = rid->delta;
             d2 = rid->tolerance;
             info_printf(ifd, 0, "RID:%s  DELTA: %s TOL: %s STATE: %d\n", rid->ds_key, pretty_print_double_with_scale(scale, d1, pp1),
@@ -688,7 +688,7 @@ void dump_pools(info_fd_t *ifd, Stack_t *pools, int scale)
 // check_pools - Checks
 //*************************************************************************
 
-void check_pools(Stack_t *pools, apr_thread_mutex_t *lock, int todo_mode, int *finished, int *todo)
+void check_pools(tbx_stack_t *pools, apr_thread_mutex_t *lock, int todo_mode, int *finished, int *todo)
 {
     pool_entry_t *pe;
 //  rid_inspect_tweak_t *ri;
@@ -746,7 +746,7 @@ op_status_t inspect_task(void *arg, int id)
     segment_errors_t serr;
     int v_size[7], n, repair_mode;
     int whattodo, count, err;
-    inip_file_t *ifd;
+    tbx_inip_file_t *ifd;
     inspect_args_t args;
 
     whattodo = global_whattodo;
@@ -1071,7 +1071,7 @@ int main(int argc, char **argv)
     inspect_t *w;
     char *set_key, *set_success, *set_fail, *select_key, *select_value;
     int set_success_size, set_fail_size, select_mode, select_index;
-    Stack_t *pools;
+    tbx_stack_t *pools;
 
     bufsize = 20*1024*1024;
     base = 1;

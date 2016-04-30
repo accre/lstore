@@ -542,7 +542,7 @@ void change_all_hportal_conn(portal_context_t *hpc, int min_conn, int max_conn, 
 void _add_hportal_op(host_portal_t *hp, op_generic_t *hsop, int addtotop, int release_master)
 {
     command_op_t *hop = &(hsop->op->cmd);
-    Stack_ele_t *ele;
+    tbx_stack_ele_t *ele;
 
     hp->workload = hp->workload + hop->workload;
 

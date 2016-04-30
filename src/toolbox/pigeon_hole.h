@@ -41,7 +41,8 @@ http://www.accre.vanderbilt.edu
 extern "C" {
 #endif
 
-typedef struct {
+typedef struct tbx_ph_t tbx_ph_t;
+struct tbx_ph_t {
     apr_thread_mutex_t *lock;
     apr_pool_t *pool;
     int nholes;
@@ -49,23 +50,24 @@ typedef struct {
     int next_slot;
     char *hole;
     const char *name;
-}  pigeon_hole_t;
+};
 
-typedef struct {
-    pigeon_hole_t *ph;
+typedef struct tbx_ph_iter_t tbx_ph_iter_t;
+struct tbx_ph_iter_t {
+    tbx_ph_t *ph;
     int start_slot;
     int count;
     int found;
-} pigeon_hole_iter_t;
+};
 
-pigeon_hole_iter_t pigeon_hole_iterator_init(pigeon_hole_t *ph);
-int pigeon_hole_iterator_next(pigeon_hole_iter_t *pi);
-int pigeon_holes_used(pigeon_hole_t *ph);
-int pigeon_holes_free(pigeon_hole_t *ph);
-void release_pigeon_hole(pigeon_hole_t *ph, int slot);
-int reserve_pigeon_hole(pigeon_hole_t *ph);
-void destroy_pigeon_hole(pigeon_hole_t *ph);
-pigeon_hole_t *new_pigeon_hole(const char *name, int size);
+tbx_ph_iter_t pigeon_hole_iterator_init(tbx_ph_t *ph);
+int pigeon_hole_iterator_next(tbx_ph_iter_t *pi);
+int pigeon_holes_used(tbx_ph_t *ph);
+int pigeon_holes_free(tbx_ph_t *ph);
+void release_pigeon_hole(tbx_ph_t *ph, int slot);
+int reserve_pigeon_hole(tbx_ph_t *ph);
+void destroy_pigeon_hole(tbx_ph_t *ph);
+tbx_ph_t *new_pigeon_hole(const char *name, int size);
 
 #ifdef __cplusplus
 }

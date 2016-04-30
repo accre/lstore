@@ -63,7 +63,7 @@ typedef struct {
     int n_used;
     int n_snap;
     kvq_ele_t *list;
-} kvq_list_t;
+} kvq_tbx_list_t;
 
 typedef struct {
     int n_unique;
@@ -85,8 +85,8 @@ int rss_test(rsq_base_ele_t *q, rss_rid_entry_t *rse, int n_match, kvq_ele_t *un
     int v_unique, v_pickone, v_op;
     int err, i, nlen;
     char *key, *val, *str_tomatch;
-    list_iter_t it;
-    list_compare_t cmp_fn;
+    tbx_list_iter_t it;
+    tbx_list_compare_t cmp_fn;
 
     //** Factor the ops
     k_unique = q->key_op & RSQ_BASE_KV_UNIQUE;
@@ -103,7 +103,7 @@ int rss_test(rsq_base_ele_t *q, rss_rid_entry_t *rse, int n_match, kvq_ele_t *un
     list_strncmp_set(&cmp_fn, nlen);
     it = list_iter_search_compare(rse->attr, str_tomatch, &cmp_fn, 0);
     found = 0;
-    while ((found==0) && ((err=list_next(&it, (list_key_t **)&key, (list_data_t **)&val)) == 0)) {
+    while ((found==0) && ((err=list_next(&it, (tbx_list_key_t **)&key, (tbx_list_data_t **)&val)) == 0)) {
         //** First check the key for a comparison
         str_tomatch = (q->key != NULL) ? q->key : "";
         switch (k_op) {
@@ -207,7 +207,7 @@ op_generic_t *rs_simple_request(resource_service_fn_t *arg, data_attr_t *da, rs_
     rsq_base_ele_t *q;
     int slot, rnd_off, i, j, k, i_unique, i_pickone, found, err_cnt, loop, loop_end;
     int state, *a, *b, *op_state, unique_size;
-    Stack_t *stack;
+    tbx_stack_t *stack;
 
     log_printf(15, "rs_simple_request: START rss->n_rids=%d n_rid=%d req_size=%d fixed_size=%d\n", rss->n_rids, n_rid, req_size, fixed_size);
 
@@ -488,7 +488,7 @@ char *rs_simple_get_rid_value(resource_service_fn_t *arg, char *rid_key, char *k
 // rse_free - Frees the memory associated with the RID entry
 //***********************************************************************
 
-void rs_simple_rid_free(list_data_t *arg)
+void rs_simple_rid_free(tbx_list_data_t *arg)
 {
     rss_rid_entry_t *rse = (rss_rid_entry_t *)arg;
 
@@ -511,10 +511,10 @@ void rs_simple_rid_free(list_data_t *arg)
 //  rs_load_entry - Loads an RID entry fro mthe file
 //***********************************************************************
 
-rss_rid_entry_t *rss_load_entry(inip_group_t *grp)
+rss_rid_entry_t *rss_load_entry(tbx_inip_group_t *grp)
 {
     rss_rid_entry_t *rse;
-    inip_element_t *ele;
+    tbx_inip_element_t *ele;
     char *key, *value;
     // SO noisy
     //log_printf(0, "loading\n");
@@ -576,7 +576,7 @@ char *rss_get_rid_config(resource_service_fn_t *rs)
     rss_check_entry_t *ce;
     int used;
     apr_ssize_t klen;
-    list_iter_t ait;
+    tbx_list_iter_t ait;
 
     buffer = NULL;
 
@@ -603,8 +603,8 @@ char *rss_get_rid_config(resource_service_fn_t *rs)
             append_printf(buffer, &used, bufsize, "space_total=" XOT "\n", ce->re->space_total);
 
             //** Now cycle through printing the attributes
-            ait = list_iter_search(ce->re->attr, (list_key_t *)NULL, 0);
-            while (list_next(&ait, (list_key_t **)&key, (list_data_t **)&val) == 0) {
+            ait = list_iter_search(ce->re->attr, (tbx_list_key_t *)NULL, 0);
+            while (list_next(&ait, (tbx_list_key_t **)&key, (tbx_list_data_t **)&val) == 0) {
                 //if ((strcmp("rid_key", key) == 0) || (strcmp("ds_key", key) == 0)) append_printf(buffer, &used, bufsize, "%s=%s-BAD\n", key, val);
                 if ((strcmp("rid_key", key) != 0) && (strcmp("ds_key", key) != 0)) append_printf(buffer, &used, bufsize, "%s=%s\n", key, val);
             }
@@ -882,13 +882,13 @@ void *rss_check_thread(apr_thread_t *th, void *data)
 
 int _rs_simple_load(resource_service_fn_t *res, char *fname)
 {
-    inip_group_t *ig;
+    tbx_inip_group_t *ig;
     char *key;
     rss_rid_entry_t *rse;
     rs_simple_priv_t *rss = (rs_simple_priv_t *)res->priv;
-    list_iter_t it;
+    tbx_list_iter_t it;
     int i, n;
-    inip_file_t *kf;
+    tbx_inip_file_t *kf;
 
     log_printf(5, "START fname=%s n_rids=%d\n", fname, rss->n_rids);
 
@@ -920,9 +920,9 @@ int _rs_simple_load(resource_service_fn_t *res, char *fname)
         rss->rid_table = NULL;
     } else {
         type_malloc_clear(rss->random_array, rss_rid_entry_t *, rss->n_rids);
-        it = list_iter_search(rss->rid_table, (list_key_t *)NULL, 0);
+        it = list_iter_search(rss->rid_table, (tbx_list_key_t *)NULL, 0);
         for (i=0; i < rss->n_rids; i++) {
-            list_next(&it, (list_key_t **)&key, (list_data_t **)&rse);
+            list_next(&it, (tbx_list_key_t **)&key, (tbx_list_data_t **)&rse);
 
             n = random_int(0, rss->n_rids-1);
 //n = i;  //FIXME
@@ -1013,7 +1013,7 @@ void rs_simple_destroy(resource_service_fn_t *rs)
 //    the given file.
 //***********************************************************************
 
-resource_service_fn_t *rs_simple_create(void *arg, inip_file_t *kf, char *section)
+resource_service_fn_t *rs_simple_create(void *arg, tbx_inip_file_t *kf, char *section)
 {
     service_manager_t *ess = (service_manager_t *)arg;
     rs_simple_priv_t *rss;

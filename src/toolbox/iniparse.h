@@ -37,25 +37,25 @@ extern "C" {
 #include "tbx/toolbox_visibility.h"
 #include <stdio.h>
 #include <stdint.h>
-
-struct inip_element_s {  //** Key/Value pair
+typedef struct tbx_inip_element_t tbx_inip_element_t;
+struct tbx_inip_element_t {  //** Key/Value pair
     char *key;
     char *value;
     struct inip_element_s *next;
 };
-typedef struct inip_element_s inip_element_t;
 
-struct inip_group_s {  //** Group
+typedef struct tbx_inip_group_t tbx_inip_group_t;
+struct tbx_inip_group_t {  //** Group
     char *group;
-    inip_element_t *list;
+    tbx_inip_element_t *list;
     struct inip_group_s *next;
 };
-typedef struct inip_group_s inip_group_t;
 
-typedef struct {  //File
-    inip_group_t *tree;
+typedef struct tbx_inip_file_t tbx_inip_file_t;
+struct tbx_inip_file_t {  //File
+    tbx_inip_group_t *tree;
     int  n_groups;
-} inip_file_t;
+};
 
 
 #define inip_n_groups(inip)    (inip)->n_groups
@@ -67,16 +67,16 @@ typedef struct {  //File
 #define inip_get_element_key(ele) ((ele) == NULL) ? NULL : (ele)->key
 #define inip_get_element_value(ele) ((ele) == NULL) ? NULL : (ele)->value
 
-inip_file_t *inip_read_fd(FILE *fd);
-TBX_API inip_file_t *inip_read(const char *fname);
-TBX_API inip_file_t *inip_read_text(const char *text);
-TBX_API void inip_destroy(inip_file_t *inip);
-TBX_API char *inip_get_string(inip_file_t *inip, const char *group, const char *key, char *def);
-TBX_API int64_t inip_get_integer(inip_file_t *inip, const char *group, const char *key, int64_t def);
-uint64_t inip_get_unsigned_integer(inip_file_t *inip, const char *group, const char *key, uint64_t def);
-TBX_API double inip_get_double(inip_file_t *inip, const char *group, const char *key, double def);
-TBX_API inip_group_t *inip_find_group(inip_file_t *inip, const char *name);
-TBX_API char *inip_find_key(inip_group_t *group, const char *name);
+tbx_inip_file_t *inip_read_fd(FILE *fd);
+TBX_API tbx_inip_file_t *inip_read(const char *fname);
+TBX_API tbx_inip_file_t *inip_read_text(const char *text);
+TBX_API void inip_destroy(tbx_inip_file_t *inip);
+TBX_API char *inip_get_string(tbx_inip_file_t *inip, const char *group, const char *key, char *def);
+TBX_API int64_t inip_get_integer(tbx_inip_file_t *inip, const char *group, const char *key, int64_t def);
+uint64_t inip_get_unsigned_integer(tbx_inip_file_t *inip, const char *group, const char *key, uint64_t def);
+TBX_API double inip_get_double(tbx_inip_file_t *inip, const char *group, const char *key, double def);
+TBX_API tbx_inip_group_t *inip_find_group(tbx_inip_file_t *inip, const char *name);
+TBX_API char *inip_find_key(tbx_inip_group_t *group, const char *name);
 
 
 #ifdef __cplusplus

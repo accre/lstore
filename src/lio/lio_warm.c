@@ -64,7 +64,7 @@ typedef struct {
 
 apr_hash_t *tagged_rids = NULL;
 apr_pool_t *tagged_pool = NULL;
-Stack_t *tagged_keys = NULL;
+tbx_stack_t *tagged_keys = NULL;
 
 static int dt = 86400;
 
@@ -74,9 +74,9 @@ static int dt = 86400;
 
 void parse_tag_file(char *fname)
 {
-    inip_file_t *fd;
-    inip_group_t *g;
-    inip_element_t *ele;
+    tbx_inip_file_t *fd;
+    tbx_inip_group_t *g;
+    tbx_inip_element_t *ele;
     char *key, *value, *v;
 
     fd = inip_read(fname);
@@ -123,7 +123,7 @@ op_status_t gen_warm_task(void *arg, int id)
     warm_t *w = (warm_t *)arg;
     op_status_t status;
     op_generic_t *gop;
-    inip_file_t *fd;
+    tbx_inip_file_t *fd;
     int i, j, nfailed;
     warm_hash_entry_t *wrid;
     char *etext;
@@ -131,7 +131,7 @@ op_status_t gen_warm_task(void *arg, int id)
 
     log_printf(15, "warming fname=%s, dt=%d\n", w->fname, dt);
     fd = inip_read_text(w->exnode);
-    inip_group_t *g;
+    tbx_inip_group_t *g;
 
     q = new_opque();
     opque_start_execution(q);
@@ -241,20 +241,20 @@ int main(int argc, char **argv)
     int slot, v_size[2];
     os_object_iter_t *it;
     os_regex_table_t *rp_single, *ro_single;
-    list_t *master;
+    tbx_list_t *master;
     apr_hash_index_t *hi;
     apr_ssize_t klen;
     char *rkey, *config, *value;
     char *line_end;
     warm_hash_entry_t *mrid, *wrid;
-    inip_file_t *ifd;
-    inip_group_t *ig;
-    inip_element_t *ele;
+    tbx_inip_file_t *ifd;
+    tbx_inip_group_t *ig;
+    tbx_inip_element_t *ele;
     char ppbuf[128], ppbuf2[128], ppbuf3[128];
     lio_path_tuple_t tuple;
     ex_off_t total, good, bad, nbytes, submitted, werr;
-    list_iter_t lit;
-    Stack_t *stack;
+    tbx_list_iter_t lit;
+    tbx_stack_t *stack;
     int recurse_depth = 10000;
     int summary_mode;
     warm_t *w;
@@ -484,7 +484,7 @@ int main(int argc, char **argv)
     stack = new_stack();
     dtime_total = 0;
     lit = list_iter_search(master, NULL, 0);
-    while (list_next(&lit, (list_key_t **)&rkey, (list_data_t **)&mrid) == 0) {
+    while (list_next(&lit, (tbx_list_key_t **)&rkey, (tbx_list_data_t **)&mrid) == 0) {
         j++;
         nbytes += mrid->nbytes;
         good += mrid->good;

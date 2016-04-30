@@ -55,7 +55,7 @@ http://www.accre.vanderbilt.edu
 #include "os_file_priv.h"
 #include "append_printf.h"
 
-//atomic_int_t _path_parse_count = 0;
+//tbx_atomic_unit32_t _path_parse_count = 0;
 //apr_thread_mutex_t *_path_parse_lock = NULL;
 //apr_pool_t *_path_parse_pool = NULL;
 
@@ -139,7 +139,7 @@ typedef struct {
     creds_t *creds;
     os_attr_iter_t **it_attr;
     os_fd_t *fd;
-    Stack_t *recurse_stack;
+    tbx_stack_t *recurse_stack;
     char **key;
     void **val;
     int *v_size;
@@ -160,7 +160,7 @@ typedef struct {
     creds_t *creds;
     os_regex_table_t *rpath;
     os_regex_table_t *object_regex;
-    atomic_int_t abort;
+    tbx_atomic_unit32_t abort;
     int obj_types;
     int recurse_depth;
 } osfile_remove_regex_op_t;
@@ -177,7 +177,7 @@ typedef struct {
     char *id;
     int *v_size;
     int n_keys;
-    atomic_int_t abort;
+    tbx_atomic_unit32_t abort;
 } osfile_regex_object_attr_op_t;
 
 typedef struct {
@@ -215,11 +215,11 @@ typedef struct {
 } osfile_copy_attr_t;
 
 typedef struct {
-    Stack_t *stack;
-    Stack_t *active_stack;
+    tbx_stack_t *stack;
+    tbx_stack_t *active_stack;
     int read_count;
     int write_count;
-    pigeon_coop_hole_t pch;
+    tbx_pch_t pch;
 } fobj_lock_t;
 
 typedef struct {
@@ -510,7 +510,7 @@ void fobj_lock_free(void *arg, int size, void *data)
 int fobj_wait(object_service_fn_t *os, fobj_lock_t *fol, osfile_fd_t *fd, int max_wait)
 {
     osfile_priv_t *osf = (osfile_priv_t *)os->priv;
-    pigeon_coop_hole_t task_pch;
+    tbx_pch_t task_pch;
     fobj_lock_task_t *handle;
     int aborted, loop, dummy;
     apr_time_t timeout = apr_time_make(max_wait, 0);
@@ -592,7 +592,7 @@ int fobj_wait(object_service_fn_t *os, fobj_lock_t *fol, osfile_fd_t *fd, int ma
 int full_object_lock(osfile_fd_t *fd, int max_wait)
 {
     osfile_priv_t *osf = (osfile_priv_t *)fd->os->priv;
-    pigeon_coop_hole_t obj_pch;
+    tbx_pch_t obj_pch;
     fobj_lock_t *fol;
     fobj_lock_task_t *handle;
     int err;
@@ -1061,7 +1061,7 @@ int va_attr_link_get_attr(os_virtual_attr_t *myva, object_service_fn_t *os, cred
     osfile_fd_t *fd = (osfile_fd_t *)ofd;
     osfile_priv_t *osf = (osfile_priv_t *)fd->os->priv;
     os_virtual_attr_t *va;
-    list_iter_t it;
+    tbx_list_iter_t it;
     struct stat s;
     char buffer[OS_PATH_MAX];
     char *key;
@@ -1079,7 +1079,7 @@ int va_attr_link_get_attr(os_virtual_attr_t *myva, object_service_fn_t *os, cred
     //** Do a Virtual Attr check
     //** Check the prefix VA's first
     it = list_iter_search(osf->vattr_prefix, key, -1);
-    list_next(&it, (list_key_t **)&ca, (list_data_t **)&va);
+    list_next(&it, (tbx_list_key_t **)&ca, (tbx_list_data_t **)&va);
 
     if (va != NULL) {
         n = (int)(long)va->priv;  //*** HACKERY **** to get the attribute length
@@ -1307,11 +1307,11 @@ int va_null_get_link_attr(os_virtual_attr_t *va, object_service_fn_t *os, creds_
 apr_thread_mutex_t *osf_retrieve_lock(object_service_fn_t *os, char *path, int *table_slot)
 {
     osfile_priv_t *osf = (osfile_priv_t *)os->priv;
-    chksum_t cs;
+    tbx_chksum_t cs;
     char  digest[OSF_LOCK_CHKSUM_SIZE];
     unsigned int *n;
     int nbytes, slot;
-    tbuffer_t tbuf;
+    tbx_tbuf_t tbuf;
 
     nbytes = strlen(path);
     tbuffer_single(&tbuf, nbytes, path);
@@ -2881,7 +2881,7 @@ int osf_get_attr(object_service_fn_t *os, creds_t *creds, osfile_fd_t *ofd, char
 {
     osfile_priv_t *osf = (osfile_priv_t *)os->priv;
     os_virtual_attr_t *va;
-    list_iter_t it;
+    tbx_list_iter_t it;
     char *ca;
     FILE *fd;
     char fname[OS_PATH_MAX];
@@ -2897,7 +2897,7 @@ int osf_get_attr(object_service_fn_t *os, creds_t *creds, osfile_fd_t *ofd, char
     //** Do a Virtual Attr check
     //** Check the prefix VA's first
     it = list_iter_search(osf->vattr_prefix, attr, -1);
-    list_next(&it, (list_key_t **)&ca, (list_data_t **)&va);
+    list_next(&it, (tbx_list_key_t **)&ca, (tbx_list_data_t **)&va);
 
     if (va != NULL) {
         n = (int)(long)va->priv;  //*** HACKERY **** to get the attribute length
@@ -3136,7 +3136,7 @@ int lowlevel_set_attr(object_service_fn_t *os, char *attr_dir, char *attr, void 
 int osf_set_attr(object_service_fn_t *os, creds_t *creds, osfile_fd_t *ofd, char *attr, void *val, int v_size, int *atype, int append_val)
 {
     osfile_priv_t *osf = (osfile_priv_t *)os->priv;
-    list_iter_t it;
+    tbx_list_iter_t it;
     FILE *fd;
     os_virtual_attr_t *va;
     int n;
@@ -3151,7 +3151,7 @@ int osf_set_attr(object_service_fn_t *os, creds_t *creds, osfile_fd_t *ofd, char
     //** Do a Virtual Attr check
     //** Check the prefix VA's first
     it = list_iter_search(osf->vattr_prefix, attr, -1);
-    list_next(&it, (list_key_t **)&ca, (list_data_t **)&va);
+    list_next(&it, (tbx_list_key_t **)&ca, (tbx_list_data_t **)&va);
     if (va != NULL) {
         n = (int)(long)va->priv;  //*** HACKERY **** to get the attribute length
         if (strncmp(attr, va->attribute, n) == 0) {  //** Prefix matches
@@ -4157,7 +4157,7 @@ void osfile_destroy(object_service_fn_t *os)
 //  object_service_file_create - Creates a file backed OS
 //***********************************************************************
 
-object_service_fn_t *object_service_file_create(service_manager_t *ess, inip_file_t *fd, char *section)
+object_service_fn_t *object_service_file_create(service_manager_t *ess, tbx_inip_file_t *fd, char *section)
 {
     object_service_fn_t *os;
     osfile_priv_t *osf;

@@ -505,7 +505,7 @@ void rs_remote_server_destroy(resource_service_fn_t *rs)
 //  rs_remote_server_create - Creates a remote server RS
 //***********************************************************************
 
-resource_service_fn_t *rs_remote_server_create(void *arg, inip_file_t *fd, char *section)
+resource_service_fn_t *rs_remote_server_create(void *arg, tbx_inip_file_t *fd, char *section)
 {
     service_manager_t *ess = (service_manager_t *)arg;
     resource_service_fn_t *rs;

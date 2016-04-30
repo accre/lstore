@@ -43,7 +43,7 @@ http://www.accre.vanderbilt.edu
 #include "append_printf.h"
 #include "iniparse.h"
 
-phoebus_t *global_phoebus = NULL;
+tbx_phoebus_t *global_phoebus = NULL;
 
 #ifndef _ENABLE_PHOEBUS       //** Dummy phoebus routines
 void phoebus_init(void) { };
@@ -52,14 +52,14 @@ int phoebus_print(char *buffer, int *used, int nbytes)
 { 
 return(0); 
 }
-void phoebus_load_config(inip_file_t *kf) { };
-void phoebus_path_set(phoebus_t *p, const char *path) { };
-void phoebus_path_destroy(phoebus_t *p) { };
-void phoebus_path_to_string(char *string, int max_size, phoebus_t *p) 
+void phoebus_load_config(tbx_inip_file_t *kf) { };
+void phoebus_path_set(tbx_phoebus_t *p, const char *path) { };
+void phoebus_path_destroy(tbx_phoebus_t *p) { };
+void phoebus_path_to_string(char *string, int max_size, tbx_phoebus_t *p) 
 { 
 string[0] = '\0'; 
 };
-char *phoebus_get_key(phoebus_t *p) 
+char *phoebus_get_key(tbx_phoebus_t *p) 
 { 
 return(""); 
 }
@@ -70,7 +70,7 @@ return("");
 //  phoebus_path_set - Sets the phoebus data structure
 //***************************************************************
  
-void phoebus_path_set(phoebus_t *p, const char *path)
+void phoebus_path_set(tbx_phoebus_t *p, const char *path)
 {
 char *hop, *bstate;
 char *stage[100];
@@ -108,7 +108,7 @@ return;
 //  phoebus_path_destroy - Frees the internal phoebus data structure
 //***************************************************************
  
-void phoebus_path_destroy(phoebus_t *p)
+void phoebus_path_destroy(tbx_phoebus_t *p)
 {
 free(p->path_string);
 free(p->path);
@@ -119,7 +119,7 @@ free(p->key);
 // phoebus_path_to_string - Converts a pheobus path a character string
 //***************************************************************
  
-void phoebus_path_to_string(char *string, int max_size, phoebus_t *p)
+void phoebus_path_to_string(char *string, int max_size, tbx_phoebus_t *p)
 {
 int n, i, nleft;
 n = p->p_count-1;
@@ -138,7 +138,7 @@ strncat(string, p->path[n], nleft);
 // phoebus_get_key - Get's the unique Phoebus key for the path
 //***************************************************************
  
-char *phoebus_get_key(phoebus_t *p)
+char *phoebus_get_key(tbx_phoebus_t *p)
 {
 if (p != NULL) return(p->key);
 if (global_phoebus != NULL) return(global_phoebus->key);
@@ -155,7 +155,7 @@ void phoebus_init(void)
 {
 if (global_phoebus != NULL) return;
  
-global_phoebus = (phoebus_t *)malloc(sizeof(phoebus_t));
+global_phoebus = (tbx_phoebus_t *)malloc(sizeof(phoebus_t));
 if (global_phoebus == NULL) {
 log_printf(0, "phoebus_init:  Aborting programm!! Malloc failed!\n");
 abort();
@@ -216,7 +216,7 @@ return(i);
 // phoebus_load_config - Prints phoebus config
 //***************************************************************
  
-void phoebus_load_config(inip_file_t *kf)
+void phoebus_load_config(tbx_inip_file_t *kf)
 {
 if (global_phoebus == NULL) phoebus_init();
  

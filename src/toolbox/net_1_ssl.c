@@ -45,7 +45,7 @@ http://www.accre.vanderbilt.edu
 // ns_socket2ssl - Converts an existing socket ns to a *single* SSL
 //*********************************************************************
 
-int ns_socket2ssl(NetStream_t *ns)
+int ns_socket2ssl(tbx_ns_t *ns)
 {
     ns->sock_type = NS_TYPE_1_SSL;
 
@@ -56,7 +56,7 @@ int ns_socket2ssl(NetStream_t *ns)
 // ns_config_1_sock - Configure the connection to use a single SSL socket
 //*********************************************************************
 
-void ns_config_1_ssl(NetStream_t *ns, int fd, int tcpsize)
+void ns_config_1_ssl(tbx_ns_t *ns, int fd, int tcpsize)
 {
     ns_config_sock(ns, tcpsize);
 }

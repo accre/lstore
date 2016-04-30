@@ -43,8 +43,8 @@ http://www.accre.vanderbilt.edu
 
 //** Defined in opque.c
 void _opque_start_execution(opque_t *que);
-void _opque_print_stack(Stack_t *stack);
-extern pigeon_coop_t *_gop_control;
+void _opque_print_stack(tbx_stack_t *stack);
+extern tbx_pc_t *_gop_control;
 
 op_status_t op_success_status = {OP_STATE_SUCCESS, 0};
 op_status_t op_failure_status = {OP_STATE_FAILURE, 0};
@@ -65,7 +65,7 @@ apr_thread_t *gd_thread = NULL;
 apr_pool_t *gd_pool = NULL;
 apr_thread_mutex_t *gd_lock = NULL;
 apr_thread_cond_t *gd_cond = NULL;
-Stack_t *gd_stack = NULL;
+tbx_stack_t *gd_stack = NULL;
 
 void _gop_dummy_submit_op(void *arg, op_generic_t *op);
 
@@ -883,7 +883,7 @@ void gop_reset(op_generic_t *gop)
 
 void gop_init(op_generic_t *gop)
 {
-    pigeon_coop_hole_t pch;
+    tbx_pch_t pch;
 
     op_common_t *base = &(gop->base);
 

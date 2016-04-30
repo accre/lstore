@@ -288,7 +288,7 @@ int ds_ibp_get_attr(data_service_fn_t *arg, data_attr_t *dsa, int key, void *val
     ds_int_t *n = (ds_int_t *)val;
     ibp_depot_t *depot = (ibp_depot_t *)val;
     ibp_connect_context_t *cc = (ibp_connect_context_t *)val;
-    ns_chksum_t *ncs = (ns_chksum_t *)val;
+    tbx_ns_chksum_t *ncs = (tbx_ns_chksum_t *)val;
     int err = 0;
 
     switch (key) {
@@ -328,8 +328,8 @@ int ds_ibp_get_attr(data_service_fn_t *arg, data_attr_t *dsa, int key, void *val
         }
         break;
     case DS_IBP_ATTR_NET_CKSUM:
-        if (size < sizeof(ns_chksum_t)) {
-            err = sizeof(ns_chksum_t);
+        if (size < sizeof(tbx_ns_chksum_t)) {
+            err = sizeof(tbx_ns_chksum_t);
         } else {
             *ncs = a->ncs;
         }
@@ -379,7 +379,7 @@ int ds_ibp_set_attr(data_service_fn_t *arg, data_attr_t *dsa, int key, void *val
         a->cc = *((ibp_connect_context_t *)val);
         break;
     case DS_IBP_ATTR_NET_CKSUM:
-        a->ncs = *((ns_chksum_t *)val);
+        a->ncs = *((tbx_ns_chksum_t *)val);
         break;
     case DS_IBP_ATTR_DISK_CHKSUM_TYPE:
         a->disk_cs_type = *((int *)val);
@@ -732,7 +732,7 @@ op_generic_t *ds_ibp_probe(data_service_fn_t *dsf, data_attr_t *dattr, data_cap_
 // ds_ibp_read - Generates a read operation
 //***********************************************************************
 
-op_generic_t *ds_ibp_read(data_service_fn_t *dsf, data_attr_t *dattr, data_cap_t *rcap, ds_int_t off, tbuffer_t *dread, ds_int_t droff, ds_int_t size, int timeout)
+op_generic_t *ds_ibp_read(data_service_fn_t *dsf, data_attr_t *dattr, data_cap_t *rcap, ds_int_t off, tbx_tbuf_t *dread, ds_int_t droff, ds_int_t size, int timeout)
 {
     ds_ibp_priv_t *ds = (ds_ibp_priv_t *)(dsf->priv);
     ds_ibp_attr_t *attr = (ds_ibp_attr_t *)dattr;
@@ -751,7 +751,7 @@ op_generic_t *ds_ibp_read(data_service_fn_t *dsf, data_attr_t *dattr, data_cap_t
 // ds_ibp_write - Generates a write operation
 //***********************************************************************
 
-op_generic_t *ds_ibp_write(data_service_fn_t *dsf, data_attr_t *dattr, data_cap_t *wcap, ds_int_t off, tbuffer_t *dwrite, ds_int_t boff, ds_int_t size, int timeout)
+op_generic_t *ds_ibp_write(data_service_fn_t *dsf, data_attr_t *dattr, data_cap_t *wcap, ds_int_t off, tbx_tbuf_t *dwrite, ds_int_t boff, ds_int_t size, int timeout)
 {
     ds_ibp_priv_t *ds = (ds_ibp_priv_t *)(dsf->priv);
     ds_ibp_attr_t *attr = (ds_ibp_attr_t *)dattr;
@@ -770,7 +770,7 @@ op_generic_t *ds_ibp_write(data_service_fn_t *dsf, data_attr_t *dattr, data_cap_
 // ds_ibp_readv - Generates a vec read operation
 //***********************************************************************
 
-op_generic_t *ds_ibp_readv(data_service_fn_t *dsf, data_attr_t *dattr, data_cap_t *rcap, int n_iov, ex_iovec_t *iov, tbuffer_t *dread, ds_int_t droff, ds_int_t size, int timeout)
+op_generic_t *ds_ibp_readv(data_service_fn_t *dsf, data_attr_t *dattr, data_cap_t *rcap, int n_iov, ex_tbx_iovec_t *iov, tbx_tbuf_t *dread, ds_int_t droff, ds_int_t size, int timeout)
 {
     ds_ibp_priv_t *ds = (ds_ibp_priv_t *)(dsf->priv);
     ds_ibp_attr_t *attr = (ds_ibp_attr_t *)dattr;
@@ -789,7 +789,7 @@ op_generic_t *ds_ibp_readv(data_service_fn_t *dsf, data_attr_t *dattr, data_cap_
 // ds_ibp_writev - Generates a Vec write operation
 //***********************************************************************
 
-op_generic_t *ds_ibp_writev(data_service_fn_t *dsf, data_attr_t *dattr, data_cap_t *wcap, int n_iov, ex_iovec_t *iov, tbuffer_t *dwrite, ds_int_t boff, ds_int_t size, int timeout)
+op_generic_t *ds_ibp_writev(data_service_fn_t *dsf, data_attr_t *dattr, data_cap_t *wcap, int n_iov, ex_tbx_iovec_t *iov, tbx_tbuf_t *dwrite, ds_int_t boff, ds_int_t size, int timeout)
 {
     ds_ibp_priv_t *ds = (ds_ibp_priv_t *)(dsf->priv);
     ds_ibp_attr_t *attr = (ds_ibp_attr_t *)dattr;
@@ -808,7 +808,7 @@ op_generic_t *ds_ibp_writev(data_service_fn_t *dsf, data_attr_t *dattr, data_cap
 // ds_ibp_append - Generates a write append operation
 //***********************************************************************
 
-op_generic_t *ds_ibp_append(data_service_fn_t *dsf, data_attr_t *dattr, data_cap_t *wcap, tbuffer_t *dwrite, ds_int_t boff, ds_int_t size, int timeout)
+op_generic_t *ds_ibp_append(data_service_fn_t *dsf, data_attr_t *dattr, data_cap_t *wcap, tbx_tbuf_t *dwrite, ds_int_t boff, ds_int_t size, int timeout)
 {
     ds_ibp_priv_t *ds = (ds_ibp_priv_t *)(dsf->priv);
     ds_ibp_attr_t *attr = (ds_ibp_attr_t *)dattr;
@@ -952,7 +952,7 @@ void ds_ibp_destroy(data_service_fn_t *dsf)
 //  ds_ibp_create - Creates the IBP data service
 //***********************************************************************
 
-data_service_fn_t *ds_ibp_create(void *arg, inip_file_t *ifd, char *section)
+data_service_fn_t *ds_ibp_create(void *arg, tbx_inip_file_t *ifd, char *section)
 {
     int cs_type;
     data_service_fn_t *dsf;

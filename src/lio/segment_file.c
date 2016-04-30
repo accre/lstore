@@ -52,15 +52,15 @@ typedef struct {
     char *fname;
     char *qname;
     thread_pool_context_t *tpc;
-    atomic_int_t hard_errors;
-    atomic_int_t soft_errors;
-    atomic_int_t write_errors;
+    tbx_atomic_unit32_t hard_errors;
+    tbx_atomic_unit32_t soft_errors;
+    tbx_atomic_unit32_t write_errors;
 } segfile_priv_t;
 
 typedef struct {
     segment_t *seg;
-    tbuffer_t *buffer;
-    ex_iovec_t *iov;
+    tbx_tbuf_t *buffer;
+    ex_tbx_iovec_t *iov;
     ex_off_t  boff;
     ex_off_t len;
     int n_iov;
@@ -89,7 +89,7 @@ op_status_t segfile_rw_func(void *arg, int id)
     segfile_priv_t *s = (segfile_priv_t *)srw->seg->priv;
     ex_off_t bleft, boff;
     size_t nbytes, blen;
-    tbuffer_var_t tbv;
+    tbx_tbuf_var_t tbv;
     int i, err_cnt;
     op_status_t err;
 
@@ -162,7 +162,7 @@ op_status_t segfile_rw_func(void *arg, int id)
 // segfile_read - Read from a file segment
 //***********************************************************************
 
-op_generic_t *segfile_read(segment_t *seg, data_attr_t *da, segment_rw_hints_t *rw_hints, int n_iov, ex_iovec_t *iov, tbuffer_t *buffer, ex_off_t boff, int timeout)
+op_generic_t *segfile_read(segment_t *seg, data_attr_t *da, segment_rw_hints_t *rw_hints, int n_iov, ex_tbx_iovec_t *iov, tbx_tbuf_t *buffer, ex_off_t boff, int timeout)
 {
     segfile_priv_t *s = (segfile_priv_t *)seg->priv;
     segfile_rw_op_t *srw;
@@ -184,7 +184,7 @@ op_generic_t *segfile_read(segment_t *seg, data_attr_t *da, segment_rw_hints_t *
 // segfile_write - Writes to a linear segment
 //***********************************************************************
 
-op_generic_t *segfile_write(segment_t *seg, data_attr_t *da, segment_rw_hints_t *rw_hints, int n_iov, ex_iovec_t *iov, tbuffer_t *buffer, ex_off_t boff, int timeout)
+op_generic_t *segfile_write(segment_t *seg, data_attr_t *da, segment_rw_hints_t *rw_hints, int n_iov, ex_tbx_iovec_t *iov, tbx_tbuf_t *buffer, ex_off_t boff, int timeout)
 {
     segfile_priv_t *s = (segfile_priv_t *)seg->priv;
     segfile_rw_op_t *srw;
@@ -267,7 +267,7 @@ op_generic_t *segfile_truncate(segment_t *seg, data_attr_t *da, ex_off_t new_siz
 // segfile_inspect - Checks if the file exists
 //***********************************************************************
 
-op_generic_t *segfile_inspect(segment_t *seg, data_attr_t *da, info_fd_t *ifd, int mode, ex_off_t bufsize, inspect_args_t *args, int timeout)
+op_generic_t *segfile_inspect(segment_t *seg, data_attr_t *da, tbx_log_fd_t *ifd, int mode, ex_off_t bufsize, inspect_args_t *args, int timeout)
 {
     segfile_priv_t *s = (segfile_priv_t *)seg->priv;
     FILE *fd;
@@ -532,7 +532,7 @@ int segfile_deserialize_text(segment_t *seg, ex_id_t id, exnode_exchange_t *exp)
     char seggrp[bufsize];
     char qname[512];
     int err;
-    inip_file_t *fd;
+    tbx_inip_file_t *fd;
 
     err = 0;
 

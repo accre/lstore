@@ -67,7 +67,7 @@ segment_t *load_segment(service_manager_t *ess, ex_id_t id, exnode_exchange_t *e
 
     if (ex->type == EX_TEXT) {
         snprintf(name, sizeof(name), "segment-" XIDT, id);
-        inip_file_t *fd = ex->text.fd;
+        tbx_inip_file_t *fd = ex->text.fd;
         type = inip_get_string(fd, name, "type", "");
     } else if (ex->type == EX_PROTOCOL_BUFFERS) {
         log_printf(0, "load_segment:  segment exnode parsing goes here\n");
@@ -93,12 +93,12 @@ segment_t *load_segment(service_manager_t *ess, ex_id_t id, exnode_exchange_t *e
 op_status_t segment_copy_func(void *arg, int id)
 {
     segment_copy_t *sc = (segment_copy_t *)arg;
-    tbuffer_t *wbuf, *rbuf, *tmpbuf;
-    tbuffer_t tbuf1, tbuf2;
+    tbx_tbuf_t *wbuf, *rbuf, *tmpbuf;
+    tbx_tbuf_t tbuf1, tbuf2;
     int err;
     ex_off_t bufsize;
     ex_off_t rpos, wpos, rlen, wlen, tlen, nbytes, dend;
-    ex_iovec_t rex, wex;
+    ex_tbx_iovec_t rex, wex;
     opque_t *q;
     op_generic_t *rgop, *wgop;
     op_status_t status;
@@ -231,13 +231,13 @@ op_generic_t *segment_copy(thread_pool_context_t *tpc, data_attr_t *da, segment_
 op_status_t segment_get_func(void *arg, int id)
 {
     segment_copy_t *sc = (segment_copy_t *)arg;
-    tbuffer_t *wbuf, *rbuf, *tmpbuf;
-    tbuffer_t tbuf1, tbuf2;
+    tbx_tbuf_t *wbuf, *rbuf, *tmpbuf;
+    tbx_tbuf_t tbuf1, tbuf2;
     char *rb, *wb, *tb;
     ex_off_t bufsize;
     int err;
     ex_off_t rpos, wpos, rlen, wlen, tlen, nbytes, got, total;
-    ex_iovec_t rex;
+    ex_tbx_iovec_t rex;
     apr_time_t loop_start, file_start;
     double dt_loop, dt_file;
     op_generic_t *gop;
@@ -383,13 +383,13 @@ op_generic_t *segment_get(thread_pool_context_t *tpc, data_attr_t *da, segment_r
 op_status_t segment_put_func(void *arg, int id)
 {
     segment_copy_t *sc = (segment_copy_t *)arg;
-    tbuffer_t *wbuf, *rbuf, *tmpbuf;
-    tbuffer_t tbuf1, tbuf2;
+    tbx_tbuf_t *wbuf, *rbuf, *tmpbuf;
+    tbx_tbuf_t tbuf1, tbuf2;
     char *rb, *wb, *tb;
     ex_off_t bufsize;
     int err;
     ex_off_t rpos, wpos, rlen, wlen, tlen, nbytes, got, dend;
-    ex_iovec_t wex;
+    ex_tbx_iovec_t wex;
     op_generic_t *gop;
     op_status_t status;
     apr_time_t loop_start, file_start;

@@ -20,8 +20,8 @@
 // Socket type
 #define MQ_ROUND_ROBIN			1002
 
-typedef Stack_t mq_worker_table_t;
-typedef Stack_t mq_processing_queue;
+typedef tbx_stack_t mq_worker_table_t;
+typedef tbx_stack_t mq_processing_queue;
 
 typedef struct {
     int free_slots;

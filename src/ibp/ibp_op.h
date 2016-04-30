@@ -89,16 +89,16 @@ int coalesce_ops;     //** If 1 then Read and Write ops for the same allocation 
 int connection_mode;  //** Connection mode
 int rr_size;          //** Round robin connection count. Only used ir cmode = RR
 double transfer_rate; //** Transfer rate in bytes/sec used for calculating timeouts.  Set to 0 to disable function
-atomic_int_t rr_count; //** RR counter
+tbx_atomic_unit32_t rr_count; //** RR counter
 ibp_connect_context_t cc[IBP_MAX_NUM_CMDS+1];  //** Default connection contexts for EACH command
-ns_chksum_t ncs;
+tbx_ns_chksum_t ncs;
 portal_context_t *pc;
-pigeon_coop_t *coalesced_stacks;
-pigeon_coop_t *coalesced_gop_stacks;
-list_t   *coalesced_ops;  //** Ops available for coalescing go here
+tbx_pc_t *coalesced_stacks;
+tbx_pc_t *coalesced_gop_stacks;
+tbx_list_t   *coalesced_ops;  //** Ops available for coalescing go here
 apr_thread_mutex_t *lock;
 apr_pool_t *mpool;
-atomic_int_t n_ops;
+tbx_atomic_unit32_t n_ops;
 } ibp_context_t;
  
  
@@ -128,12 +128,12 @@ ibp_off_t *n_chksumbytes;
 } ibp_op_get_chksum_t;
  
 typedef struct {
-ibp_iovec_t *iovec;
-tbuffer_t *buffer;
+ibp_tbx_iovec_t *iovec;
+tbx_tbuf_t *buffer;
 ibp_off_t size;
 ibp_off_t boff;
 int n_iovec;
-ibp_iovec_t iovec_single;
+ibp_tbx_iovec_t iovec_single;
 } ibp_rw_buf_t;
  
 typedef struct {  //** Read/Write operation 
@@ -144,16 +144,16 @@ char       typekey[MAX_KEY_SIZE];
 //   ibp_off_t offset;
 //   ibp_off_t size;
 //   ibp_off_t boff;
-//   ibp_iovec_t *iovec;
+//   ibp_tbx_iovec_t *iovec;
 //   int   n_iovec;
-//   tbuffer_t *buffer;
+//   tbx_tbuf_t *buffer;
 int rw_mode;
 int n_ops;
-int n_iovec_total;
+int n_tbx_iovec_total;
 ibp_off_t size;
 ibp_rw_buf_t **rwbuf;
 ibp_rw_buf_t *bs_ptr;
-pigeon_coop_hole_t rwcg_pch;
+tbx_pch_t rwcg_pch;
 ibp_rw_buf_t buf_single;
 } ibp_op_rw_t;
  
@@ -247,10 +247,10 @@ typedef struct _ibp_op_s { //** Individual IO operation
 ibp_context_t *ic;
 op_generic_t gop;
 op_data_t dop;
-Stack_t *hp_parent;  //** Only used for RW coalescing
+tbx_stack_t *hp_parent;  //** Only used for RW coalescing
 int primary_cmd;//** Primary sync IBP command family
 int sub_cmd;    //** sub command, if applicable
-ns_chksum_t ncs;  //** chksum associated with the command
+tbx_ns_chksum_t ncs;  //** chksum associated with the command
 union {         //** Holds the individual commands options
 ibp_op_validate_chksum_t validate_op;
 ibp_op_get_chksum_t      get_chksum_op;
@@ -276,7 +276,7 @@ ibp_op_version_t   ver_op;
 //** ibp_op.c **
 IBP_API void ibp_op_set_cc(op_generic_t *gop, ibp_connect_context_t *cc);
 IBP_API int ibp_cc_type(ibp_connect_context_t *cc);
-IBP_API void ibp_op_set_ncs(op_generic_t *gop, ns_chksum_t *ncs);
+IBP_API void ibp_op_set_ncs(op_generic_t *gop, tbx_ns_chksum_t *ncs);
 //void ibp_op_callback_append(op_generic_t *gop, callback_t *cb);
  
 IBP_API void init_ibp_op(ibp_context_t *ic, ibp_op_t *op);
@@ -284,22 +284,22 @@ ibp_op_t *new_ibp_op(ibp_context_t *ic);
 void init_ibp_base_op(ibp_op_t *op, char *logstr, int timeout, int workload, char *hostport,
 int cmp_size, int primary_cmd, int sub_cmd);
  
-void set_ibp_rw_op(ibp_op_t *op, int rw_type, ibp_cap_t *cap, ibp_off_t offset, tbuffer_t *buffer, ibp_off_t boff, ibp_off_t len, int timeout);
-IBP_API op_generic_t *new_ibp_rw_op(ibp_context_t *ic, int rw_type, ibp_cap_t *cap, ibp_off_t offset, tbuffer_t *buffer, ibp_off_t boff, ibp_off_t len, int timeout);
+void set_ibp_rw_op(ibp_op_t *op, int rw_type, ibp_cap_t *cap, ibp_off_t offset, tbx_tbuf_t *buffer, ibp_off_t boff, ibp_off_t len, int timeout);
+IBP_API op_generic_t *new_ibp_rw_op(ibp_context_t *ic, int rw_type, ibp_cap_t *cap, ibp_off_t offset, tbx_tbuf_t *buffer, ibp_off_t boff, ibp_off_t len, int timeout);
  
-IBP_API op_generic_t *new_ibp_read_op(ibp_context_t *ic, ibp_cap_t *cap, ibp_off_t offset, tbuffer_t *buffer, ibp_off_t boff, ibp_off_t len, int timeout);
-IBP_API void set_ibp_read_op(ibp_op_t *op, ibp_cap_t *cap, ibp_off_t offset, tbuffer_t *buffer, ibp_off_t boff, ibp_off_t len, int timeout);
+IBP_API op_generic_t *new_ibp_read_op(ibp_context_t *ic, ibp_cap_t *cap, ibp_off_t offset, tbx_tbuf_t *buffer, ibp_off_t boff, ibp_off_t len, int timeout);
+IBP_API void set_ibp_read_op(ibp_op_t *op, ibp_cap_t *cap, ibp_off_t offset, tbx_tbuf_t *buffer, ibp_off_t boff, ibp_off_t len, int timeout);
  
-void set_ibp_vec_read_op(ibp_op_t *op, ibp_cap_t *cap, int n_vec, ibp_iovec_t *vec, tbuffer_t *buffer, ibp_off_t boff, ibp_off_t len, int timeout);
-IBP_API op_generic_t *new_ibp_vec_read_op(ibp_context_t *ic, ibp_cap_t *cap, int n_vec, ibp_iovec_t *vec, tbuffer_t *buffer, ibp_off_t boff, ibp_off_t len, int timeout);
+void set_ibp_vec_read_op(ibp_op_t *op, ibp_cap_t *cap, int n_vec, ibp_tbx_iovec_t *vec, tbx_tbuf_t *buffer, ibp_off_t boff, ibp_off_t len, int timeout);
+IBP_API op_generic_t *new_ibp_vec_read_op(ibp_context_t *ic, ibp_cap_t *cap, int n_vec, ibp_tbx_iovec_t *vec, tbx_tbuf_t *buffer, ibp_off_t boff, ibp_off_t len, int timeout);
  
-void set_ibp_vec_write_op(ibp_op_t *op, ibp_cap_t *cap, int n_iovec, ibp_iovec_t *iovec, tbuffer_t *buffer, ibp_off_t boff, ibp_off_t len, int timeout);
-IBP_API op_generic_t *new_ibp_vec_write_op(ibp_context_t *ic, ibp_cap_t *cap, int n_iovec, ibp_iovec_t *iovec, tbuffer_t *buffer, ibp_off_t boff, ibp_off_t len, int timeout);
+void set_ibp_vec_write_op(ibp_op_t *op, ibp_cap_t *cap, int n_iovec, ibp_tbx_iovec_t *iovec, tbx_tbuf_t *buffer, ibp_off_t boff, ibp_off_t len, int timeout);
+IBP_API op_generic_t *new_ibp_vec_write_op(ibp_context_t *ic, ibp_cap_t *cap, int n_iovec, ibp_tbx_iovec_t *iovec, tbx_tbuf_t *buffer, ibp_off_t boff, ibp_off_t len, int timeout);
  
-IBP_API op_generic_t *new_ibp_write_op(ibp_context_t *ic, ibp_cap_t *cap, ibp_off_t offset, tbuffer_t *buffer, ibp_off_t boff, ibp_off_t len, int timeout);
-IBP_API void set_ibp_write_op(ibp_op_t *op, ibp_cap_t *cap, ibp_off_t offset, tbuffer_t *buffer, ibp_off_t boff, ibp_off_t len, int timeout);
-IBP_API op_generic_t *new_ibp_append_op(ibp_context_t *ic, ibp_cap_t *cap, tbuffer_t *buffer, ibp_off_t boff, ibp_off_t len, int timeout);
-void set_ibp_append_op(ibp_op_t *op, ibp_cap_t *cap, tbuffer_t *buffer, ibp_off_t boff, ibp_off_t len, int timeout);
+IBP_API op_generic_t *new_ibp_write_op(ibp_context_t *ic, ibp_cap_t *cap, ibp_off_t offset, tbx_tbuf_t *buffer, ibp_off_t boff, ibp_off_t len, int timeout);
+IBP_API void set_ibp_write_op(ibp_op_t *op, ibp_cap_t *cap, ibp_off_t offset, tbx_tbuf_t *buffer, ibp_off_t boff, ibp_off_t len, int timeout);
+IBP_API op_generic_t *new_ibp_append_op(ibp_context_t *ic, ibp_cap_t *cap, tbx_tbuf_t *buffer, ibp_off_t boff, ibp_off_t len, int timeout);
+void set_ibp_append_op(ibp_op_t *op, ibp_cap_t *cap, tbx_tbuf_t *buffer, ibp_off_t boff, ibp_off_t len, int timeout);
  
 IBP_API op_generic_t *new_ibp_copyappend_op(ibp_context_t *ic, int ns_type, char *path, ibp_cap_t *srccap, ibp_cap_t *destcap, ibp_off_t src_offset, ibp_off_t size,
 int src_timeout, int  dest_timeout, int dest_client_timeout);
@@ -383,10 +383,10 @@ int timeout);
  
  
 //** ibp_config.c **
-int ibp_rw_submit_coalesce(Stack_t *stack, Stack_ele_t *ele);
+int ibp_rw_submit_coalesce(tbx_stack_t *stack, tbx_stack_ele_t *ele);
 int ibp_rw_coalesce(op_generic_t *gop);
-IBP_API int ibp_set_chksum(ibp_context_t *ic, ns_chksum_t *ncs);
-void ibp_get_chksum(ibp_context_t *ic, ns_chksum_t *ncs);
+IBP_API int ibp_set_chksum(ibp_context_t *ic, tbx_ns_chksum_t *ncs);
+void ibp_get_chksum(ibp_context_t *ic, tbx_ns_chksum_t *ncs);
 void ibp_set_abort_attempts(ibp_context_t *ic, int n);
 int  ibp_get_abort_attempts(ibp_context_t *ic);
 IBP_API void ibp_set_tcpsize(ibp_context_t *ic, int n);
@@ -414,7 +414,7 @@ IBP_API void ibp_set_write_cc(ibp_context_t *ic, ibp_connect_context_t *cc);
 void ibp_set_transfer_rate(ibp_context_t *ic, double rate);
 double ibp_get_transfer_rate(ibp_context_t *ic);
  
-IBP_API int ibp_load_config(ibp_context_t *ic, inip_file_t *ifd, char *section);
+IBP_API int ibp_load_config(ibp_context_t *ic, tbx_inip_file_t *ifd, char *section);
 IBP_API int ibp_load_config_file(ibp_context_t *ic, char *fname, char *section);
 //void set_ibp_config(ibp_config_t *cfg);
 void default_ibp_config(ibp_context_t *ic);

@@ -67,7 +67,7 @@ int do_validate = 0;
 int identical_buffers = 1;
 int print_progress;
 ibp_connect_context_t *cc = NULL;
-ns_chksum_t *ncs;
+tbx_ns_chksum_t *ncs;
 int disk_cs_type = CHKSUM_DEFAULT;
 ibp_off_t disk_blocksize = 0;
 
@@ -183,13 +183,13 @@ double write_allocs(ibp_capset_t *caps, int qlen, int n, int asize, int block_si
     apr_pollfd_t pfd;
     apr_time_t stime, dtime;
     int *tbuf_index;
-    tbuffer_t *buf;
-    Stack_t *tbuf_free;
+    tbx_tbuf_t *buf;
+    tbx_stack_t *tbuf_free;
 
 
     tbuf_free = new_stack();
     type_malloc_clear(tbuf_index, int, qlen);
-    type_malloc_clear(buf, tbuffer_t, qlen);
+    type_malloc_clear(buf, tbx_tbuf_t, qlen);
     for (i=0; i<qlen; i++) {
         tbuf_index[i] = i;
         push(tbuf_free, &(tbuf_index[i]));
@@ -383,10 +383,10 @@ int main(int argc, char **argv)
     apr_time_t stime, dtime;
     double dt;
     char *net_cs_name, *disk_cs_name;
-    phoebus_t pcc;
+    tbx_phoebus_t pcc;
     char pstr[2048];
-    chksum_t cs;
-    ns_chksum_t ns_cs;
+    tbx_chksum_t cs;
+    tbx_ns_chksum_t ns_cs;
     int blocksize = 0;
 
 

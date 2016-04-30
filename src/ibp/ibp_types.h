@@ -158,7 +158,7 @@ typedef struct ibp_set_of_caps ibp_capset_t;
 typedef struct {    //** I/O Vec array
     ibp_off_t offset;
     ibp_off_t len;
-} ibp_iovec_t;
+} ibp_tbx_iovec_t;
 
 typedef struct {  //** RID list structure
     int n;

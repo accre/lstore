@@ -25,12 +25,12 @@ size_t exnode3__allocation__pack
     PROTOBUF_C_ASSERT (message->base.descriptor == &exnode3__allocation__descriptor);
     return protobuf_c_message_pack ((const ProtobufCMessage*)message, out);
 }
-size_t exnode3__allocation__pack_to_buffer
+size_t exnode3__allocation__tbx_pack_to_buffer
 (const Exnode3__Allocation *message,
  ProtobufCBuffer *buffer)
 {
     PROTOBUF_C_ASSERT (message->base.descriptor == &exnode3__allocation__descriptor);
-    return protobuf_c_message_pack_to_buffer ((const ProtobufCMessage*)message, buffer);
+    return protobuf_c_message_tbx_pack_to_buffer ((const ProtobufCMessage*)message, buffer);
 }
 Exnode3__Allocation *
 exnode3__allocation__unpack
@@ -68,12 +68,12 @@ size_t exnode3__allocation__table__pack
     PROTOBUF_C_ASSERT (message->base.descriptor == &exnode3__allocation__table__descriptor);
     return protobuf_c_message_pack ((const ProtobufCMessage*)message, out);
 }
-size_t exnode3__allocation__table__pack_to_buffer
+size_t exnode3__allocation__table__tbx_pack_to_buffer
 (const Exnode3__AllocationTable *message,
  ProtobufCBuffer *buffer)
 {
     PROTOBUF_C_ASSERT (message->base.descriptor == &exnode3__allocation__table__descriptor);
-    return protobuf_c_message_pack_to_buffer ((const ProtobufCMessage*)message, buffer);
+    return protobuf_c_message_tbx_pack_to_buffer ((const ProtobufCMessage*)message, buffer);
 }
 Exnode3__AllocationTable *
 exnode3__allocation__table__unpack
@@ -111,12 +111,12 @@ size_t exnode3__block__pack
     PROTOBUF_C_ASSERT (message->base.descriptor == &exnode3__block__descriptor);
     return protobuf_c_message_pack ((const ProtobufCMessage*)message, out);
 }
-size_t exnode3__block__pack_to_buffer
+size_t exnode3__block__tbx_pack_to_buffer
 (const Exnode3__Block *message,
  ProtobufCBuffer *buffer)
 {
     PROTOBUF_C_ASSERT (message->base.descriptor == &exnode3__block__descriptor);
-    return protobuf_c_message_pack_to_buffer ((const ProtobufCMessage*)message, buffer);
+    return protobuf_c_message_tbx_pack_to_buffer ((const ProtobufCMessage*)message, buffer);
 }
 Exnode3__Block *
 exnode3__block__unpack
@@ -154,12 +154,12 @@ size_t exnode3__attribute__pack
     PROTOBUF_C_ASSERT (message->base.descriptor == &exnode3__attribute__descriptor);
     return protobuf_c_message_pack ((const ProtobufCMessage*)message, out);
 }
-size_t exnode3__attribute__pack_to_buffer
+size_t exnode3__attribute__tbx_pack_to_buffer
 (const Exnode3__Attribute *message,
  ProtobufCBuffer *buffer)
 {
     PROTOBUF_C_ASSERT (message->base.descriptor == &exnode3__attribute__descriptor);
-    return protobuf_c_message_pack_to_buffer ((const ProtobufCMessage*)message, buffer);
+    return protobuf_c_message_tbx_pack_to_buffer ((const ProtobufCMessage*)message, buffer);
 }
 Exnode3__Attribute *
 exnode3__attribute__unpack
@@ -197,12 +197,12 @@ size_t exnode3__segment_header__pack
     PROTOBUF_C_ASSERT (message->base.descriptor == &exnode3__segment_header__descriptor);
     return protobuf_c_message_pack ((const ProtobufCMessage*)message, out);
 }
-size_t exnode3__segment_header__pack_to_buffer
+size_t exnode3__segment_header__tbx_pack_to_buffer
 (const Exnode3__SegmentHeader *message,
  ProtobufCBuffer *buffer)
 {
     PROTOBUF_C_ASSERT (message->base.descriptor == &exnode3__segment_header__descriptor);
-    return protobuf_c_message_pack_to_buffer ((const ProtobufCMessage*)message, buffer);
+    return protobuf_c_message_tbx_pack_to_buffer ((const ProtobufCMessage*)message, buffer);
 }
 Exnode3__SegmentHeader *
 exnode3__segment_header__unpack
@@ -240,12 +240,12 @@ size_t exnode3__jbob__pack
     PROTOBUF_C_ASSERT (message->base.descriptor == &exnode3__jbob__descriptor);
     return protobuf_c_message_pack ((const ProtobufCMessage*)message, out);
 }
-size_t exnode3__jbob__pack_to_buffer
+size_t exnode3__jbob__tbx_pack_to_buffer
 (const Exnode3__JBOB *message,
  ProtobufCBuffer *buffer)
 {
     PROTOBUF_C_ASSERT (message->base.descriptor == &exnode3__jbob__descriptor);
-    return protobuf_c_message_pack_to_buffer ((const ProtobufCMessage*)message, buffer);
+    return protobuf_c_message_tbx_pack_to_buffer ((const ProtobufCMessage*)message, buffer);
 }
 Exnode3__JBOB *
 exnode3__jbob__unpack
@@ -283,12 +283,12 @@ size_t exnode3__layout_segment__pack
     PROTOBUF_C_ASSERT (message->base.descriptor == &exnode3__layout_segment__descriptor);
     return protobuf_c_message_pack ((const ProtobufCMessage*)message, out);
 }
-size_t exnode3__layout_segment__pack_to_buffer
+size_t exnode3__layout_segment__tbx_pack_to_buffer
 (const Exnode3__LayoutSegment *message,
  ProtobufCBuffer *buffer)
 {
     PROTOBUF_C_ASSERT (message->base.descriptor == &exnode3__layout_segment__descriptor);
-    return protobuf_c_message_pack_to_buffer ((const ProtobufCMessage*)message, buffer);
+    return protobuf_c_message_tbx_pack_to_buffer ((const ProtobufCMessage*)message, buffer);
 }
 Exnode3__LayoutSegment *
 exnode3__layout_segment__unpack
@@ -326,12 +326,12 @@ size_t exnode3__layout__pack
     PROTOBUF_C_ASSERT (message->base.descriptor == &exnode3__layout__descriptor);
     return protobuf_c_message_pack ((const ProtobufCMessage*)message, out);
 }
-size_t exnode3__layout__pack_to_buffer
+size_t exnode3__layout__tbx_pack_to_buffer
 (const Exnode3__Layout *message,
  ProtobufCBuffer *buffer)
 {
     PROTOBUF_C_ASSERT (message->base.descriptor == &exnode3__layout__descriptor);
-    return protobuf_c_message_pack_to_buffer ((const ProtobufCMessage*)message, buffer);
+    return protobuf_c_message_tbx_pack_to_buffer ((const ProtobufCMessage*)message, buffer);
 }
 Exnode3__Layout *
 exnode3__layout__unpack
@@ -369,12 +369,12 @@ size_t exnode3__view__pack
     PROTOBUF_C_ASSERT (message->base.descriptor == &exnode3__view__descriptor);
     return protobuf_c_message_pack ((const ProtobufCMessage*)message, out);
 }
-size_t exnode3__view__pack_to_buffer
+size_t exnode3__view__tbx_pack_to_buffer
 (const Exnode3__View *message,
  ProtobufCBuffer *buffer)
 {
     PROTOBUF_C_ASSERT (message->base.descriptor == &exnode3__view__descriptor);
-    return protobuf_c_message_pack_to_buffer ((const ProtobufCMessage*)message, buffer);
+    return protobuf_c_message_tbx_pack_to_buffer ((const ProtobufCMessage*)message, buffer);
 }
 Exnode3__View *
 exnode3__view__unpack
@@ -412,12 +412,12 @@ size_t exnode3__exnode__pack
     PROTOBUF_C_ASSERT (message->base.descriptor == &exnode3__exnode__descriptor);
     return protobuf_c_message_pack ((const ProtobufCMessage*)message, out);
 }
-size_t exnode3__exnode__pack_to_buffer
+size_t exnode3__exnode__tbx_pack_to_buffer
 (const Exnode3__Exnode *message,
  ProtobufCBuffer *buffer)
 {
     PROTOBUF_C_ASSERT (message->base.descriptor == &exnode3__exnode__descriptor);
-    return protobuf_c_message_pack_to_buffer ((const ProtobufCMessage*)message, buffer);
+    return protobuf_c_message_tbx_pack_to_buffer ((const ProtobufCMessage*)message, buffer);
 }
 Exnode3__Exnode *
 exnode3__exnode__unpack

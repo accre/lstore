@@ -46,8 +46,8 @@ http://www.accre.vanderbilt.edu
 
 typedef struct {
     segment_t *seg;
-    ex_iovec_t rex;
-    ex_iovec_t wex;
+    ex_tbx_iovec_t rex;
+    ex_tbx_iovec_t wex;
     ex_off_t seg_offset;
     ex_off_t lo;
     ex_off_t hi;
@@ -58,9 +58,9 @@ typedef struct {
     segment_t *seg;
     data_attr_t *da;
     segment_rw_hints_t *rw_hints;
-    ex_iovec_t  *iov;
+    ex_tbx_iovec_t  *iov;
     ex_off_t    boff;
-    tbuffer_t  *buffer;
+    tbx_tbuf_t  *buffer;
     int         n_iov;
     int         rw_mode;
     int timeout;
@@ -123,14 +123,14 @@ int _slog_truncate_range(segment_t *seg, slog_range_t *r)
     int bufmax = 100;
     seglog_priv_t *s = (seglog_priv_t *)seg->priv;
     ex_off_t lo, hi;
-    interval_skiplist_iter_t it;
+    tbx_isl_iter_t it;
     slog_range_t *ir;
     slog_range_t *r_table[bufmax+1];
     int n, i;
 
     lo = r->hi+1;  //** This is the new size
     hi = s->file_size;
-    it = iter_search_interval_skiplist(s->mapping, (skiplist_key_t *)&lo, (skiplist_key_t *)&hi);
+    it = iter_search_interval_skiplist(s->mapping, (tbx_sl_key_t *)&lo, (tbx_sl_key_t *)&hi);
     ir = (slog_range_t *)next_interval_skiplist(&it);
 
     log_printf(15, "seg=" XIDT " truncating new_size=" XOT " initial_intervals=%d\n", segment_id(seg), lo, interval_skiplist_count(s->mapping));
@@ -143,12 +143,12 @@ int _slog_truncate_range(segment_t *seg, slog_range_t *r)
     //** The 1st range is possibly truncated
     n = 0;
     if (ir->lo <= r->hi) { //** Straddles boundary
-        remove_interval_skiplist(s->mapping, (skiplist_key_t *)&(ir->lo), (skiplist_key_t *)&(ir->hi), (skiplist_data_t *)ir);
+        remove_interval_skiplist(s->mapping, (tbx_sl_key_t *)&(ir->lo), (tbx_sl_key_t *)&(ir->hi), (tbx_sl_data_t *)ir);
         ir->hi = r->hi;
-        insert_interval_skiplist(s->mapping, (skiplist_key_t *)&(ir->lo), (skiplist_key_t *)&(ir->hi), (skiplist_data_t *)ir);
+        insert_interval_skiplist(s->mapping, (tbx_sl_key_t *)&(ir->lo), (tbx_sl_key_t *)&(ir->hi), (tbx_sl_data_t *)ir);
 
         //** Restart the iter cause of the deletion
-        it = iter_search_interval_skiplist(s->mapping, (skiplist_key_t *)&lo, (skiplist_key_t *)&hi);
+        it = iter_search_interval_skiplist(s->mapping, (tbx_sl_key_t *)&lo, (tbx_sl_key_t *)&hi);
         next_interval_skiplist(&it);
     } else {  //** Completely dropped
         r_table[n] = ir;
@@ -161,17 +161,17 @@ int _slog_truncate_range(segment_t *seg, slog_range_t *r)
         n++;
         if (n == bufmax) {
             for (i=0; i<n; i++) {
-                remove_interval_skiplist(s->mapping, (skiplist_key_t *)&(r_table[i]->lo), (skiplist_key_t *)&(r_table[i]->hi), (skiplist_data_t *)r_table[i]);
+                remove_interval_skiplist(s->mapping, (tbx_sl_key_t *)&(r_table[i]->lo), (tbx_sl_key_t *)&(r_table[i]->hi), (tbx_sl_data_t *)r_table[i]);
                 free(r_table[i]);
             }
-            it = iter_search_interval_skiplist(s->mapping, (skiplist_key_t *)&lo, (skiplist_key_t *)&hi);
+            it = iter_search_interval_skiplist(s->mapping, (tbx_sl_key_t *)&lo, (tbx_sl_key_t *)&hi);
             n = 0;
         }
     }
 
     if (n>0) {
         for (i=0; i<n; i++) {
-            remove_interval_skiplist(s->mapping, (skiplist_key_t *)&(r_table[i]->lo), (skiplist_key_t *)&(r_table[i]->hi), (skiplist_data_t *)r_table[i]);
+            remove_interval_skiplist(s->mapping, (tbx_sl_key_t *)&(r_table[i]->lo), (tbx_sl_key_t *)&(r_table[i]->hi), (tbx_sl_data_t *)r_table[i]);
             free(r_table[i]);
         }
     }
@@ -197,28 +197,28 @@ int _slog_insert_range(segment_t *seg, slog_range_t *r)
 {
     seglog_priv_t *s = (seglog_priv_t *)seg->priv;
     ex_off_t irlo;
-    interval_skiplist_iter_t it;
+    tbx_isl_iter_t it;
     slog_range_t *ir, *ir2;
 
     //** If a truncate just do it and return
     if (r->lo == -1) return(_slog_truncate_range(seg, r));
 
-    it = iter_search_interval_skiplist(s->mapping, (skiplist_key_t *)&(r->lo), (skiplist_key_t *)&(r->hi));
+    it = iter_search_interval_skiplist(s->mapping, (tbx_sl_key_t *)&(r->lo), (tbx_sl_key_t *)&(r->hi));
     while ((ir = (slog_range_t *)next_interval_skiplist(&it)) != NULL) {
-        remove_interval_skiplist(s->mapping, (skiplist_key_t *)&(ir->lo), (skiplist_key_t *)&(ir->hi), (skiplist_data_t *)ir);
+        remove_interval_skiplist(s->mapping, (tbx_sl_key_t *)&(ir->lo), (tbx_sl_key_t *)&(ir->hi), (tbx_sl_data_t *)ir);
         if (ir->lo < r->lo) {  //** Need to truncate the 1st portion (and maybe the end)
             if (ir->hi > r->hi) {  //** Straddles r
                 type_malloc(ir2, slog_range_t, 1);  //** Do the end first
                 ir2->lo = r->hi+1;
                 ir2->hi = ir->hi;
                 ir2->data_offset = ir->data_offset + (ir2->lo - ir->lo);
-                insert_interval_skiplist(s->mapping, (skiplist_key_t *)&(ir2->lo), (skiplist_key_t *)&(ir2->hi), (skiplist_data_t *)ir2);
+                insert_interval_skiplist(s->mapping, (tbx_sl_key_t *)&(ir2->lo), (tbx_sl_key_t *)&(ir2->hi), (tbx_sl_data_t *)ir2);
 
                 ir->hi = r->lo-1;  //** Now do the front portion
-                insert_interval_skiplist(s->mapping, (skiplist_key_t *)&(ir->lo), (skiplist_key_t *)&(ir->hi), (skiplist_data_t *)ir);
+                insert_interval_skiplist(s->mapping, (tbx_sl_key_t *)&(ir->lo), (tbx_sl_key_t *)&(ir->hi), (tbx_sl_data_t *)ir);
             } else {  //** Truncate 1st half
                 ir->hi = r->lo-1;
-                insert_interval_skiplist(s->mapping, (skiplist_key_t *)&(ir->lo), (skiplist_key_t *)&(ir->hi), (skiplist_data_t *)ir);
+                insert_interval_skiplist(s->mapping, (tbx_sl_key_t *)&(ir->lo), (tbx_sl_key_t *)&(ir->hi), (tbx_sl_data_t *)ir);
             }
         } else if (ir->hi <= r->hi) {  //** Completely contained in r so drop
             free(ir);
@@ -226,15 +226,15 @@ int _slog_insert_range(segment_t *seg, slog_range_t *r)
             irlo = ir->lo;
             ir->lo = r->hi+1;
             ir->data_offset = ir->data_offset + (ir->lo - irlo);
-            insert_interval_skiplist(s->mapping, (skiplist_key_t *)&(ir->lo), (skiplist_key_t *)&(ir->hi), (skiplist_data_t *)ir);
+            insert_interval_skiplist(s->mapping, (tbx_sl_key_t *)&(ir->lo), (tbx_sl_key_t *)&(ir->hi), (tbx_sl_data_t *)ir);
         }
 
-        it = iter_search_interval_skiplist(s->mapping, (skiplist_key_t *)&(r->lo), (skiplist_key_t *)&(r->hi));
+        it = iter_search_interval_skiplist(s->mapping, (tbx_sl_key_t *)&(r->lo), (tbx_sl_key_t *)&(r->hi));
     }
 
     //** Check if this range can be combined with the previous
     irlo = r->lo - 1;
-    it = iter_search_interval_skiplist(s->mapping, (skiplist_key_t *)&irlo, (skiplist_key_t *)&(r->hi));
+    it = iter_search_interval_skiplist(s->mapping, (tbx_sl_key_t *)&irlo, (tbx_sl_key_t *)&(r->hi));
     ir = (slog_range_t *)next_interval_skiplist(&it);
     if (ir != NULL) {
         irlo = ir->data_offset + ir->hi - ir->lo + 1;
@@ -242,12 +242,12 @@ int _slog_insert_range(segment_t *seg, slog_range_t *r)
 //log_printf(0, "Combining ranges r=(" XOT ", " XOT ", " XOT ") ir=(" XOT ", " XOT ", " XOT ")\n", r->lo, r->hi, r->data_offset, ir->lo, ir->hi, ir->data_offset);
             r->lo = ir->lo;
             r->data_offset = ir->data_offset;
-            remove_interval_skiplist(s->mapping, (skiplist_key_t *)&(ir->lo), (skiplist_key_t *)&(ir->hi), (skiplist_data_t *)ir);
+            remove_interval_skiplist(s->mapping, (tbx_sl_key_t *)&(ir->lo), (tbx_sl_key_t *)&(ir->hi), (tbx_sl_data_t *)ir);
         }
     }
 
     //** Insert the new range
-    insert_interval_skiplist(s->mapping, (skiplist_key_t *)&(r->lo), (skiplist_key_t *)&(r->hi), (skiplist_data_t *)r);
+    insert_interval_skiplist(s->mapping, (tbx_sl_key_t *)&(r->lo), (tbx_sl_key_t *)&(r->hi), (tbx_sl_data_t *)r);
 
     log_printf(15, "r->lo=" XOT " r->hi=" XOT " r->data_offset=" XOT " curr_file_size=" XOT "\n", r->lo, r->hi, r->data_offset, s->file_size);
 
@@ -265,11 +265,11 @@ op_status_t seglog_write_func(void *arg, int id)
 {
     seglog_rw_t *sw = (seglog_rw_t *)arg;
     seglog_priv_t *s = (seglog_priv_t *)sw->seg->priv;
-    tbuffer_t tbuf;
+    tbx_tbuf_t tbuf;
     op_status_t status;
     int err, i;
     ex_off_t nbytes, table_offset, data_offset;
-    ex_iovec_t ex_iov_data, ex_iov_table;
+    ex_tbx_iovec_t ex_iov_data, ex_iov_table;
     slog_range_t r[sw->n_iov], *range;
     opque_t *q;
     op_generic_t *gop;
@@ -337,7 +337,7 @@ op_status_t seglog_write_func(void *arg, int id)
 // seglog_write - Performs a segment write operation
 //***********************************************************************
 
-op_generic_t *seglog_write(segment_t *seg, data_attr_t *da, segment_rw_hints_t *rw_hints, int n_iov, ex_iovec_t *iov, tbuffer_t *buffer, ex_off_t boff, int timeout)
+op_generic_t *seglog_write(segment_t *seg, data_attr_t *da, segment_rw_hints_t *rw_hints, int n_iov, ex_tbx_iovec_t *iov, tbx_tbuf_t *buffer, ex_off_t boff, int timeout)
 {
     seglog_priv_t *s = (seglog_priv_t *)seg->priv;
     seglog_rw_t *sw;
@@ -366,7 +366,7 @@ op_status_t seglog_read_func(void *arg, int id)
 {
     seglog_rw_t *sw = (seglog_rw_t *)arg;
     seglog_priv_t *s = (seglog_priv_t *)sw->seg->priv;
-    interval_skiplist_iter_t it;
+    tbx_isl_iter_t it;
     slog_range_t *ir;
     opque_t *q;
     op_generic_t *gop;
@@ -374,7 +374,7 @@ op_status_t seglog_read_func(void *arg, int id)
     op_status_t status;
     ex_off_t lo, hi, prev_end;
     ex_off_t bpos, pos, range_offset;
-    ex_iovec_t *ex_iov, *iov;
+    ex_tbx_iovec_t *ex_iov, *iov;
 
     q = new_opque();
     iov = sw->iov;
@@ -387,10 +387,10 @@ op_status_t seglog_read_func(void *arg, int id)
     for (i=0; i< sw->n_iov; i++) {
         lo = iov[i].offset;
         hi = lo + iov[i].len - 1;
-        n_iov += 2*count_interval_skiplist(s->mapping, (skiplist_key_t *)&lo, (skiplist_key_t *)&hi) + 1;
+        n_iov += 2*count_interval_skiplist(s->mapping, (tbx_sl_key_t *)&lo, (tbx_sl_key_t *)&hi) + 1;
     }
     n_iov += 10;  //** Just to be safe
-    type_malloc(ex_iov, ex_iovec_t, n_iov);
+    type_malloc(ex_iov, ex_tbx_iovec_t, n_iov);
 
     //** Now generate the actual task list
     bpos = sw->boff;
@@ -400,7 +400,7 @@ op_status_t seglog_read_func(void *arg, int id)
         hi = lo + iov[i].len - 1;
         pos = lo;
         prev_end = -1;
-        it = iter_search_interval_skiplist(s->mapping, (skiplist_key_t *)&lo, (skiplist_key_t *)&hi);
+        it = iter_search_interval_skiplist(s->mapping, (tbx_sl_key_t *)&lo, (tbx_sl_key_t *)&hi);
         while ((ir = (slog_range_t *)next_interval_skiplist(&it)) != NULL) {
             if (prev_end == -1) {  //** 1st time through
                 if (ir->lo > lo) {  //** Have a hole
@@ -485,7 +485,7 @@ op_status_t seglog_read_func(void *arg, int id)
 // seglog_read - Read from a log segment
 //***********************************************************************
 
-op_generic_t *seglog_read(segment_t *seg, data_attr_t *da, segment_rw_hints_t *rw_hints, int n_iov, ex_iovec_t *iov, tbuffer_t *buffer, ex_off_t boff, int timeout)
+op_generic_t *seglog_read(segment_t *seg, data_attr_t *da, segment_rw_hints_t *rw_hints, int n_iov, ex_tbx_iovec_t *iov, tbx_tbuf_t *buffer, ex_off_t boff, int timeout)
 {
     seglog_priv_t *s = (seglog_priv_t *)seg->priv;
     seglog_rw_t *sw;
@@ -520,8 +520,8 @@ int _slog_load(segment_t *seg)
     op_generic_t *gop;
     data_attr_t *da;
     slog_range_t *r;
-    ex_iovec_t ex_iov;
-    tbuffer_t tbuf;
+    ex_tbx_iovec_t ex_iov;
+    tbx_tbuf_t tbuf;
 
     da = ds_attr_create(s->ds);
 
@@ -581,10 +581,10 @@ int _slog_load(segment_t *seg)
 //    given range.
 //***********************************************************************
 
-ex_off_t slog_changes(segment_t *seg, ex_off_t lo, ex_off_t hi, Stack_t *stack)
+ex_off_t slog_changes(segment_t *seg, ex_off_t lo, ex_off_t hi, tbx_stack_t *stack)
 {
     seglog_priv_t *s = (seglog_priv_t *)seg->priv;
-    interval_skiplist_iter_t it;
+    tbx_isl_iter_t it;
     slog_range_t *ir;
     slog_changes_t *clog;
     ex_off_t nbytes, prev_end;
@@ -595,7 +595,7 @@ ex_off_t slog_changes(segment_t *seg, ex_off_t lo, ex_off_t hi, Stack_t *stack)
 
     segment_lock(seg);
     prev_end = -1;
-    it = iter_search_interval_skiplist(s->mapping, (skiplist_key_t *)&lo, (skiplist_key_t *)&hi);
+    it = iter_search_interval_skiplist(s->mapping, (tbx_sl_key_t *)&lo, (tbx_sl_key_t *)&hi);
     while ((ir = (slog_range_t *)next_interval_skiplist(&it)) != NULL) {
         if (prev_end == -1) {  //** 1st time through
             if (ir->lo > lo) {  //** Have a hole
@@ -665,13 +665,13 @@ op_status_t seglog_clone_func(void *arg, int id)
     ex_off_t nbytes_base, nbytes_log;
     int bufsize = 50*1024*1024;
     ex_off_t dt, pos, rpos, wpos, rlen, dlen;
-    tbuffer_t *wbuf, *rbuf, *tmpbuf;
-    tbuffer_t tbuf1, tbuf2;
+    tbx_tbuf_t *wbuf, *rbuf, *tmpbuf;
+    tbx_tbuf_t tbuf1, tbuf2;
     int err, do_segment_copy;
     char *buffer = NULL;
     slog_changes_t *clog;
     opque_t *q1, *q2, *q;
-    Stack_t *stack;
+    tbx_stack_t *stack;
     op_status_t status;
 
     do_segment_copy = 0;
@@ -875,8 +875,8 @@ op_status_t seglog_truncate_func(void *arg, int id)
     seglog_truncate_t *st = (seglog_truncate_t *)arg;
     seglog_priv_t *s = (seglog_priv_t *)st->seg->priv;
     op_status_t status;
-    tbuffer_t tbuf_table, tbuf_data;
-    ex_iovec_t ex_iov_table, ex_iov_data;
+    tbx_tbuf_t tbuf_table, tbuf_data;
+    ex_tbx_iovec_t ex_iov_table, ex_iov_data;
     ex_off_t table_offset, data_offset;
     char c = 0;
     int err;
@@ -997,7 +997,7 @@ op_generic_t *seglog_remove(segment_t *seg, data_attr_t *da, int timeout)
 // seglog_inspect - Inspects the log segment
 //***********************************************************************
 
-op_generic_t *seglog_inspect(segment_t *seg, data_attr_t *da, info_fd_t *fd, int mode, ex_off_t bufsize, inspect_args_t *args, int timeout)
+op_generic_t *seglog_inspect(segment_t *seg, data_attr_t *da, tbx_log_fd_t *fd, int mode, ex_off_t bufsize, inspect_args_t *args, int timeout)
 {
     seglog_priv_t *s = (seglog_priv_t *)seg->priv;
     opque_t *q = new_opque();
@@ -1157,7 +1157,7 @@ int seglog_deserialize_text(segment_t *seg, ex_id_t id, exnode_exchange_t *exp)
     seglog_priv_t *s = (seglog_priv_t *)seg->priv;
     int bufsize=1024;
     char seggrp[bufsize];
-    inip_file_t *fd;
+    tbx_inip_file_t *fd;
 
     //** Parse the ini text
     fd = exp->text.fd;
@@ -1229,7 +1229,7 @@ int seglog_deserialize(segment_t *seg, ex_id_t id, exnode_exchange_t *exp)
 void seglog_destroy(segment_t *seg)
 {
     int i, n;
-    interval_skiplist_iter_t it;
+    tbx_isl_iter_t it;
     slog_range_t **r_list;
     seglog_priv_t *s = (seglog_priv_t *)seg->priv;
 
@@ -1255,7 +1255,7 @@ void seglog_destroy(segment_t *seg)
     //** Now free the mapping table
     n = interval_skiplist_count(s->mapping);
     type_malloc_clear(r_list, slog_range_t *, n);
-    it = iter_search_interval_skiplist(s->mapping, (skiplist_key_t *)NULL, (skiplist_key_t *)NULL);
+    it = iter_search_interval_skiplist(s->mapping, (tbx_sl_key_t *)NULL, (tbx_sl_key_t *)NULL);
     for (i=0; i<n; i++) {
         r_list[i] = (slog_range_t *)next_interval_skiplist(&it);
     }
@@ -1369,24 +1369,24 @@ op_status_t seglog_merge_with_base_func(void *arg, int id)
     seglog_priv_t *s = (seglog_priv_t *)sm->seg->priv;
     opque_t *qin, *qout;
     op_generic_t *gop;
-    ex_iovec_t *ex_in, *ex_out;
+    ex_tbx_iovec_t *ex_in, *ex_out;
     slog_range_t *r;
-    tbuffer_t tbuf;
+    tbx_tbuf_t tbuf;
     ex_off_t pos, len, blen, bpos;
     int i, n_iov, err;
-    interval_skiplist_iter_t it;
+    tbx_isl_iter_t it;
 
     qin = new_opque();
     qout = new_opque();
 
     n_iov = interval_skiplist_count(s->mapping);
-    type_malloc(ex_in, ex_iovec_t, n_iov);
-    type_malloc(ex_out, ex_iovec_t, n_iov);
+    type_malloc(ex_in, ex_tbx_iovec_t, n_iov);
+    type_malloc(ex_out, ex_tbx_iovec_t, n_iov);
     tbuffer_single(&tbuf, sm->bufsize, sm->buffer);
 
     segment_lock(sm->seg);
 
-    it = iter_search_interval_skiplist(s->mapping, (skiplist_key_t *)NULL, (skiplist_key_t *)NULL);
+    it = iter_search_interval_skiplist(s->mapping, (tbx_sl_key_t *)NULL, (tbx_sl_key_t *)NULL);
     pos = 0;
     for (i=0; i<=n_iov; i++) {
         if (i < n_iov) {

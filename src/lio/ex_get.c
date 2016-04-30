@@ -46,7 +46,7 @@ int main(int argc, char **argv)
     int bufsize_mb = 10;
     ex_off_t bufsize;
     char *rbuf, *wbuf, *tmpbuf;
-    tbuffer_t tbuf;
+    tbx_tbuf_t tbuf;
     apr_time_t start_time, disk_start, cumulative_time, disk_cumulative;
     double dt, bandwidth, mbytes;
     ex_off_t i, err, size, rlen, wlen;
@@ -56,7 +56,7 @@ int main(int argc, char **argv)
     exnode_exchange_t *exp;
     segment_t *seg;
     op_generic_t *gop;
-    ex_iovec_t iov;
+    ex_tbx_iovec_t iov;
     FILE *fd;
 
 //printf("argc=%d\n", argc);

@@ -45,8 +45,8 @@ http://www.accre.vanderbilt.edu
 void  *thread_pool_exec_fn(apr_thread_t *th, void *arg);
 void *_tp_dup_connect_context(void *connect_context);
 void _tp_destroy_connect_context(void *connect_context);
-int _tp_connect(NetStream_t *ns, void *connect_context, char *host, int port, Net_timeout_t timeout);
-void _tp_close_connection(NetStream_t *ns);
+int _tp_connect(tbx_ns_t *ns, void *connect_context, char *host, int port, Net_timeout_t timeout);
+void _tp_close_connection(tbx_ns_t *ns);
 op_generic_t *_tpc_overflow_next(thread_pool_context_t *tpc);
 
 void _tp_op_free(op_generic_t *op, int mode);
@@ -65,7 +65,7 @@ static portal_fn_t _tp_base_portal = {
 void thread_pool_stats_make();
 void thread_pool_stats_print();
 
-atomic_int_t _tp_context_count = 0;
+tbx_atomic_unit32_t _tp_context_count = 0;
 apr_thread_mutex_t *_tp_lock = NULL;
 apr_pool_t *_tp_pool = NULL;
 int _tp_stats = 0;
@@ -198,7 +198,7 @@ void _tp_destroy_connect_context(void *connect_context)
 
 //**********************************************************
 
-int _tp_connect(NetStream_t *ns, void *connect_context, char *host, int port, Net_timeout_t timeout)
+int _tp_connect(tbx_ns_t *ns, void *connect_context, char *host, int port, Net_timeout_t timeout)
 {
     ns->id = ns_generate_id();
     return(0);
@@ -207,7 +207,7 @@ int _tp_connect(NetStream_t *ns, void *connect_context, char *host, int port, Ne
 
 //**********************************************************
 
-void _tp_close_connection(NetStream_t *ns)
+void _tp_close_connection(tbx_ns_t *ns)
 {
     return;
 }
@@ -294,7 +294,7 @@ thread_pool_context_t *thread_pool_create_context(char *tp_name, int min_threads
     atomic_set(tpc->n_running, 0);
 
     type_malloc(tpc->overflow_running_depth, int, tpc->recursion_depth);
-    type_malloc(tpc->reserve_stack, Stack_t *, tpc->recursion_depth);
+    type_malloc(tpc->reserve_stack, tbx_stack_t *, tpc->recursion_depth);
     for (i=0; i<tpc->recursion_depth; i++) {
         tpc->overflow_running_depth[i] = -1;
         tpc->reserve_stack[i] = new_stack();

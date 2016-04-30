@@ -210,7 +210,7 @@ mq_context_t *client_make_context()
                         "  min_ops_per_sec=100\n";
 
     char buffer[1024];
-    inip_file_t *ifd;
+    tbx_inip_file_t *ifd;
     mq_context_t *mqc;
 
     snprintf(buffer, sizeof(buffer), text_params, 100*nparallel);
@@ -528,7 +528,7 @@ mq_context_t *server_make_context()
                         "  heartbeat_failure=5\n"
                         "  min_ops_per_sec=100\n";
     char buffer[1024];
-    inip_file_t *ifd;
+    tbx_inip_file_t *ifd;
     mq_context_t *mqc;
 
     snprintf(buffer, sizeof(buffer), text_params, 100*nparallel);

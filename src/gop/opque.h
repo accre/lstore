@@ -79,7 +79,7 @@ typedef struct op_generic_s op_generic_t;
 typedef struct {
     apr_thread_mutex_t *lock;  //** shared lock
     apr_thread_cond_t *cond;   //** shared condition variable
-    pigeon_coop_hole_t  pch;   //** Pigeon coop hole for the lock and cond
+    tbx_pch_t  pch;   //** Pigeon coop hole for the lock and cond
 } gop_control_t;
 
 typedef struct {       //** Generic opcode status
@@ -104,14 +104,14 @@ typedef struct {   //** Command operation
     apr_time_t retry_wait; //** How long to wait in case of a dead socket, if 0 then retry immediately
     int64_t workload;   //** Workload for measuring channel usage
     int retry_count;//** Number of times retried
-    op_status_t (*send_command)(op_generic_t *gop, NetStream_t *ns);  //**Send command routine
-    op_status_t (*send_phase)(op_generic_t *gop, NetStream_t *ns);    //**Handle "sending" side of command
-    op_status_t (*recv_phase)(op_generic_t *gop, NetStream_t *ns);    //**Handle "receiving" half of command
-    int (*on_submit)(Stack_t *stack, Stack_ele_t *gop_ele);                      //** Executed during initial execution submission
+    op_status_t (*send_command)(op_generic_t *gop, tbx_ns_t *ns);  //**Send command routine
+    op_status_t (*send_phase)(op_generic_t *gop, tbx_ns_t *ns);    //**Handle "sending" side of command
+    op_status_t (*recv_phase)(op_generic_t *gop, tbx_ns_t *ns);    //**Handle "receiving" half of command
+    int (*on_submit)(tbx_stack_t *stack, tbx_stack_ele_t *gop_ele);                      //** Executed during initial execution submission
     int (*before_exec)(op_generic_t *gop);                    //** Executed when popped off the globabl que
     int (*destroy_command)(op_generic_t *gop);                //**Destroys the data structure
-    Stack_t  *coalesced_ops;                                  //** Stores any other coalesced ops
-    atomic_int_t on_top;
+    tbx_stack_t  *coalesced_ops;                                  //** Stores any other coalesced ops
+    tbx_atomic_unit32_t on_top;
     apr_time_t start_time;
     apr_time_t end_time;
 } command_op_t;
@@ -120,8 +120,8 @@ typedef struct {   //** Command operation
 typedef struct {  //** Hportal specific implementation
     void *(*dup_connect_context)(void *connect_context);  //** Duplicates a ccon
     void (*destroy_connect_context)(void *connect_context);
-    int (*connect)(NetStream_t *ns, void *connect_context, char *host, int port, Net_timeout_t timeout);
-    void (*close_connection)(NetStream_t *ns);
+    int (*connect)(tbx_ns_t *ns, void *connect_context, char *host, int port, Net_timeout_t timeout);
+    void (*close_connection)(tbx_ns_t *ns);
     void (*sort_tasks)(void *arg, opque_t *q);        //** optional
     void (*submit)(void *arg, op_generic_t *op);
     void (*sync_exec)(void *arg, op_generic_t *op);   //** optional
@@ -132,7 +132,7 @@ typedef struct {             //** Handle for maintaining all the ecopy connectio
     apr_hash_t *table;         //** Table containing the depot_portal structs
     apr_pool_t *pool;          //** Memory pool for hash table
     apr_time_t min_idle;       //** Idle time before closing connection
-    atomic_int_t running_threads;       //** currently running # of connections
+    tbx_atomic_unit32_t running_threads;       //** currently running # of connections
     int max_connections;       //** Max aggregate allowed number of threads
     int min_threads;           //** Max allowed number of threads/host
     int max_threads;           //** Max allowed number of threads/host
@@ -170,9 +170,9 @@ typedef struct {
 } op_common_t;
 
 typedef struct {
-    Stack_t *list;         //** List of tasks
-    Stack_t *finished;     //** lists that have completed and not yet processed
-    Stack_t *failed;       //** All lists that fail are also placed here
+    tbx_stack_t *list;         //** List of tasks
+    tbx_stack_t *finished;     //** lists that have completed and not yet processed
+    tbx_stack_t *failed;       //** All lists that fail are also placed here
     int nleft;             //** Number of lists left to be processed
     int nsubmitted;        //** Nunmber of submitted tasks (doesn't count sub q's)
     int finished_submission; //** No more tasks will be submitted so it's safe to free the data when finished
@@ -204,7 +204,7 @@ struct opque_s {
 };
 
 
-extern atomic_int_t _opque_counter;
+extern tbx_atomic_unit32_t _opque_counter;
 
 #define _op_set_status(v, opstat, errcode) (v).op_status = opstat; (v).error_code = errcode
 

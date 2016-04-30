@@ -51,7 +51,7 @@ int local_next_object(local_object_iter_t *it, char **myfname, int *prefix_len);
 local_object_iter_t *create_local_object_iter(os_regex_table_t *path, os_regex_table_t *object_regex, int object_types, int recurse_depth);
 void destroy_local_object_iter(local_object_iter_t *it);
 
-object_service_fn_t *object_service_file_create(service_manager_t *ess, inip_file_t *ifd, char *section);
+object_service_fn_t *object_service_file_create(service_manager_t *ess, tbx_inip_file_t *ifd, char *section);
 int osf_store_val(void *src, int src_size, void **dest, int *v_size);
 
 #ifdef __cplusplus

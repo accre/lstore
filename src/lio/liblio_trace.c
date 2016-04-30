@@ -52,13 +52,13 @@ http://www.accre.vanderbilt.edu
 lt_config_t ltc;
 lt_fn_t lt_fn;
 
-atomic_int_t _trace_count = 0;
+tbx_atomic_unit32_t _trace_count = 0;
 
 fd_trace_t *fd_table = NULL;
 fd_trace_t *fd_stats = NULL;
 
 apr_time_t start_time;
-atomic_int_t curr_fd_slot = 0;
+tbx_atomic_unit32_t curr_fd_slot = 0;
 
 //*************************************************************
 //*************************************************************
@@ -88,7 +88,7 @@ void lt_default_config()
 
 void lt_load_config(char *fname)
 {
-    inip_file_t *fd;
+    tbx_inip_file_t *fd;
     char *str;
     int n;
 

@@ -121,7 +121,7 @@ char *(*query_print)(resource_service_fn_t *arg, rs_query_t *q);
 void (*destroy_service)(resource_service_fn_t *rs);
 };
  
-typedef resource_service_fn_t *(rs_create_t)(void *arg, inip_file_t *ifd, char *section);
+typedef resource_service_fn_t *(rs_create_t)(void *arg, tbx_inip_file_t *ifd, char *section);
  
  
 #define rs_type(rs)  (rs)->type

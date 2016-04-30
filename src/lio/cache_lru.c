@@ -39,7 +39,7 @@ http://www.accre.vanderbilt.edu
 #include "ex3_compare.h"
 #include "apr_wrapper.h"
 
-atomic_int_t lru_dummy = -1000;
+tbx_atomic_unit32_t lru_dummy = -1000;
 
 //*************************************************************************
 // _lru_max_bytes - REturns the max amount of space to use
@@ -67,7 +67,7 @@ void *lru_dirty_thread(apr_thread_t *th, void *data)
     opque_t *q;
     op_generic_t *gop;
     cache_segment_t *s;
-    skiplist_iter_t it;
+    tbx_sl_iter_t it;
     segment_t **flush_list;
 
     cache_lock(c);
@@ -88,7 +88,7 @@ void *lru_dirty_thread(apr_thread_t *th, void *data)
         type_malloc(flush_list, segment_t *, n);
 
         it = list_iter_search(c->segments, NULL, 0);
-        list_next(&it, (list_key_t **)&id, (list_data_t **)&seg);
+        list_next(&it, (tbx_list_key_t **)&id, (tbx_list_data_t **)&seg);
         i = 0;
         while (seg != NULL) {
             log_printf(15, "Flushing seg=" XIDT " i=%d\n", *id, i);
@@ -101,7 +101,7 @@ void *lru_dirty_thread(apr_thread_t *th, void *data)
             opque_add(q, gop);
             i++;
 
-            list_next(&it, (list_key_t **)&id, (list_data_t **)&seg);
+            list_next(&it, (tbx_list_key_t **)&id, (tbx_list_data_t **)&seg);
         }
         cache_unlock(c);
 
@@ -384,7 +384,7 @@ int _lru_free_mem(cache_t *c, segment_t *pseg, ex_off_t bytes_to_free)
     cache_segment_t *s;
     cache_page_t *p;
     page_lru_t *lp;
-    Stack_ele_t *ele;
+    tbx_stack_ele_t *ele;
     apr_thread_mutex_t *plock;
     ex_off_t total_bytes, pending_bytes;
     int gotlock, count, bits, err;
@@ -449,17 +449,17 @@ ex_off_t _lru_attempt_free_mem(cache_t *c, segment_t *page_seg, ex_off_t bytes_t
     segment_t *pseg;
     cache_page_t *p;
     page_lru_t *lp;
-    Stack_ele_t *ele;
+    tbx_stack_ele_t *ele;
     op_generic_t *gop;
     opque_t *q;
     ex_off_t total_bytes, freed_bytes, pending_bytes, *poff;
     ex_off_t *segid;
     ex_off_t min_off, max_off;
-    list_iter_t sit;
+    tbx_list_iter_t sit;
     int count, bits, cw, flush_count;
-    list_t *table;
+    tbx_list_t *table;
     page_table_t *ptable;
-    pigeon_coop_hole_t pch, pt_pch;
+    tbx_pch_t pch, pt_pch;
 
     log_printf(15, "START seg=" XIDT " bytes_to_free=" XOT " bytes_used=" XOT " stack_size=%d\n", segment_id(page_seg), bytes_to_free, cp->bytes_used, stack_size(cp->stack));
 
@@ -469,7 +469,7 @@ ex_off_t _lru_attempt_free_mem(cache_t *c, segment_t *page_seg, ex_off_t bytes_t
 
     //** cache_lock(c) is already acquired
     pch = reserve_pigeon_coop_hole(cp->free_pending_tables);
-    table = *(list_t **)pigeon_coop_hole_data(&pch);
+    table = *(tbx_list_t **)pigeon_coop_hole_data(&pch);
 
     //** Get the list of pages to free
     move_to_bottom(cp->stack);
@@ -483,7 +483,7 @@ ex_off_t _lru_attempt_free_mem(cache_t *c, segment_t *page_seg, ex_off_t bytes_t
         flush_log();
 
         if ((bits & C_TORELEASE) == 0) { //** Skip it if already flagged for removal
-            ptable = (page_table_t *)list_search(table, (list_key_t *)&(segment_id(p->seg)));
+            ptable = (page_table_t *)list_search(table, (tbx_list_key_t *)&(segment_id(p->seg)));
             if (ptable == NULL) {  //** Have to make a new segment entry
                 pt_pch = reserve_pigeon_coop_hole(cp->free_page_tables);
                 ptable = (page_table_t *)pigeon_coop_hole_data(&pt_pch);
@@ -522,7 +522,7 @@ ex_off_t _lru_attempt_free_mem(cache_t *c, segment_t *page_seg, ex_off_t bytes_t
     //** Now cycle through the segments to be freed
     pending_bytes = 0;
     sit = list_iter_search(table, list_first_key(table), 0);
-    list_next(&sit, (list_key_t **)&segid, (list_data_t **)&ptable);
+    list_next(&sit, (tbx_list_key_t **)&segid, (tbx_list_data_t **)&ptable);
     while (ptable != NULL) {
         //** Verify the segment is still valid.  If not then just delete everything
         pseg = list_search(c->segments, segid);
@@ -586,7 +586,7 @@ ex_off_t _lru_attempt_free_mem(cache_t *c, segment_t *page_seg, ex_off_t bytes_t
                     }
                 }
 
-                list_next(&sit, (list_key_t **)&poff, (list_data_t **)&p);
+                list_next(&sit, (tbx_list_key_t **)&poff, (tbx_list_data_t **)&p);
             }
 
             segment_unlock(ptable->seg);
@@ -603,7 +603,7 @@ ex_off_t _lru_attempt_free_mem(cache_t *c, segment_t *page_seg, ex_off_t bytes_t
         release_pigeon_coop_hole(cp->free_page_tables, &(ptable->pch));
         cache_unlock(c);
 
-        list_next(&sit, (skiplist_key_t **)&pseg, (skiplist_data_t **)&ptable);
+        list_next(&sit, (tbx_sl_key_t **)&pseg, (tbx_sl_data_t **)&ptable);
     }
 
     cache_lock(c);
@@ -645,7 +645,7 @@ ex_off_t _lru_force_free_mem(cache_t *c, segment_t *page_seg, ex_off_t bytes_to_
     cache_lru_t *cp = (cache_lru_t *)c->fn.priv;
     ex_off_t freed_bytes, bytes_left;
     int top, finished;
-    pigeon_coop_hole_t pch;
+    tbx_pch_t pch;
     cache_cond_t *cache_cond;
 
     //** I'm holding this coming in but don't need it cause I can touch all segs
@@ -702,7 +702,7 @@ void _lru_wait_for_page(cache_t *c, segment_t *seg, int ontop)
     cache_lru_t *cp = (cache_lru_t *)c->fn.priv;
     cache_segment_t *s = (cache_segment_t *)seg->priv;
     lru_page_wait_t pw;
-    pigeon_coop_hole_t pch;
+    tbx_pch_t pch;
     cache_cond_t *cc;
     ex_off_t bytes_free, bytes_needed, n;
     int check_waiters_first;
@@ -885,7 +885,7 @@ cache_t *lru_cache_create(void *arg, data_attr_t *da, int timeout)
     c->dirty_max_wait = apr_time_make(1, 0);
     c->flush_in_progress = 0;
     c->limbo_pages = 0;
-    c->free_pending_tables = new_pigeon_coop("free_pending_tables", 50, sizeof(list_t *), cache->mpool, free_pending_table_new, free_pending_table_free);
+    c->free_pending_tables = new_pigeon_coop("free_pending_tables", 50, sizeof(tbx_list_t *), cache->mpool, free_pending_table_new, free_pending_table_free);
     c->free_page_tables = new_pigeon_coop("free_page_tables", 50, sizeof(page_table_t), cache->mpool, free_page_tables_new, free_page_tables_free);
 
     cache->fn.create_empty_page = lru_create_empty_page;
@@ -911,7 +911,7 @@ cache_t *lru_cache_create(void *arg, data_attr_t *da, int timeout)
 // lru_cache_load -Creates and configures an LRU cache structure
 //*************************************************************************
 
-cache_t *lru_cache_load(void *arg, inip_file_t *fd, char *grp, data_attr_t *da, int timeout)
+cache_t *lru_cache_load(void *arg, tbx_inip_file_t *fd, char *grp, data_attr_t *da, int timeout)
 {
     cache_t *c;
     cache_lru_t *cp;

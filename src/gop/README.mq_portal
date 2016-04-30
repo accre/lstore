@@ -176,7 +176,7 @@ on EXEC and TRACKEXEC commands.
 
 Typical usage for a client is:
 ------------------------------------
-inip_file_t *ifd = ....
+tbx_inip_file_t *ifd = ....
 mq_context_t *mqc;
 op_generic_t *gop;
 

@@ -80,8 +80,8 @@ typedef struct {
     int global_index;
     int local_index;
     int type;
-    tbuffer_t tbuf;
-    ex_iovec_t iov;
+    tbx_tbuf_t tbuf;
+    ex_tbx_iovec_t iov;
     char *buffer;
 } task_slot_t;
 
@@ -393,8 +393,8 @@ void perform_final_verify()
     char *buffer;
     int i, n, err, fail;
     ex_off_t off, len;
-    ex_iovec_t iov;
-    tbuffer_t tbuf;
+    ex_tbx_iovec_t iov;
+    tbx_tbuf_t tbuf;
     apr_time_t dt, dt2;
     double rate, dsec;
     int ll = 15;
@@ -676,7 +676,7 @@ void rw_test()
     task_slot_t *slot;
     double op_rate, mb_rate, dsec, dt;
     apr_time_t dtw, dtr, dtt, ds_start, ds_begin, ds, dstep;
-    Stack_t *free_slots;
+    tbx_stack_t *free_slots;
     cache_stats_t cs;
     int tbufsize = 10240;
     char text_buffer[tbufsize];
@@ -893,7 +893,7 @@ void rw_test()
 
 void rw_load_options(char *cfgname, char *group)
 {
-    inip_file_t *fd;
+    tbx_inip_file_t *fd;
     char *str;
 
     fd = inip_read(cfgname);
