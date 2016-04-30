@@ -106,7 +106,7 @@ typedef struct {
     apr_thread_cond_t *cond;
     apr_pool_t *mpool;
     apr_hash_t *active_table;   //** Queryable active table
-    Stack_t *active_lru;        //** LRU sorted active table
+    tbx_stack_t *active_lru;        //** LRU sorted active table
     mq_context_t *mqc;          //** Portal for connecting to he remote OS server
     mq_ongoing_t *ongoing;      //** Ongoing open files or iterators
     apr_hash_t *abort;          //** Abort open handles

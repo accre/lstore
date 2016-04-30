@@ -384,7 +384,7 @@ int _lru_free_mem(cache_t *c, segment_t *pseg, ex_off_t bytes_to_free)
     cache_segment_t *s;
     cache_page_t *p;
     page_lru_t *lp;
-    Stack_ele_t *ele;
+    tbx_stack_ele_t *ele;
     apr_thread_mutex_t *plock;
     ex_off_t total_bytes, pending_bytes;
     int gotlock, count, bits, err;
@@ -449,7 +449,7 @@ ex_off_t _lru_attempt_free_mem(cache_t *c, segment_t *page_seg, ex_off_t bytes_t
     segment_t *pseg;
     cache_page_t *p;
     page_lru_t *lp;
-    Stack_ele_t *ele;
+    tbx_stack_ele_t *ele;
     op_generic_t *gop;
     opque_t *q;
     ex_off_t total_bytes, freed_bytes, pending_bytes, *poff;

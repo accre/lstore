@@ -288,7 +288,7 @@ op_status_t _sl_shrink(segment_t *seg, data_attr_t *da, ex_off_t new_size, int t
     seglin_slot_t *b;
     opque_t *q = NULL;
     ex_off_t lo, hi, dsize;
-    Stack_t *stack;
+    tbx_stack_t *stack;
     seglin_slot_t *start_b;
     op_status_t status;
     int i, err1;

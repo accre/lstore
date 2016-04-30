@@ -247,7 +247,7 @@ typedef struct _ibp_op_s { //** Individual IO operation
 ibp_context_t *ic;
 op_generic_t gop;
 op_data_t dop;
-Stack_t *hp_parent;  //** Only used for RW coalescing
+tbx_stack_t *hp_parent;  //** Only used for RW coalescing
 int primary_cmd;//** Primary sync IBP command family
 int sub_cmd;    //** sub command, if applicable
 tbx_ns_chksum_t ncs;  //** chksum associated with the command
@@ -383,7 +383,7 @@ int timeout);
  
  
 //** ibp_config.c **
-int ibp_rw_submit_coalesce(Stack_t *stack, Stack_ele_t *ele);
+int ibp_rw_submit_coalesce(tbx_stack_t *stack, tbx_stack_ele_t *ele);
 int ibp_rw_coalesce(op_generic_t *gop);
 IBP_API int ibp_set_chksum(ibp_context_t *ic, tbx_ns_chksum_t *ncs);
 void ibp_get_chksum(ibp_context_t *ic, tbx_ns_chksum_t *ncs);

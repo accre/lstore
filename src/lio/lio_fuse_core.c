@@ -89,7 +89,7 @@ typedef struct {
     int v_size[_inode_key_size];
     char *dot_path;
     char *dotdot_path;
-    Stack_t *stack;
+    tbx_stack_t *stack;
     int state;
 } lfs_dir_iter_t;
 

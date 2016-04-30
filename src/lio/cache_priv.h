@@ -96,7 +96,7 @@ typedef struct {
 typedef struct {
     ex_off_t page_start;
     ex_off_t page_end;
-    Stack_t *range_stack;
+    tbx_stack_t *range_stack;
     char *data;
     int flags;
 } cache_partial_page_t;
@@ -111,8 +111,8 @@ typedef struct {
     apr_thread_mutex_t *lock;
     apr_thread_cond_t  *flush_cond;
     apr_thread_cond_t  *ppages_cond;
-    Stack_t *flush_stack;
-    Stack_t *ppages_unused;
+    tbx_stack_t *flush_stack;
+    tbx_stack_t *ppages_unused;
     char *qname;
     cache_partial_page_t *ppage;
     char *ppages_buffer;
@@ -152,7 +152,7 @@ typedef struct {
 } page_handle_t;
 
 typedef struct {
-    Stack_t *stack;
+    tbx_stack_t *stack;
     segment_t *seg;
     ex_id_t   id;
     pigeon_coop_hole_t pch;

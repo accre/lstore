@@ -53,7 +53,7 @@ typedef struct {
     char *name;
     portal_context_t *pc;
     apr_thread_pool_t *tp;
-    Stack_t **reserve_stack;
+    tbx_stack_t **reserve_stack;
     int *overflow_running_depth;
     tbx_atomic_unit32_t n_overflow;
     tbx_atomic_unit32_t n_ops;

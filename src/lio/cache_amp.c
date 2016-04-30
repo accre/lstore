@@ -70,7 +70,7 @@ void print_cache_table(int dolock)
 //  cache_segment_t *s;
     cache_page_t *p, *p0;
 //  page_amp_t *lp;
-    Stack_ele_t *ele;
+    tbx_stack_ele_t *ele;
     int n;
     int ll = 1;
 
@@ -153,7 +153,7 @@ amp_page_stream_t *_amp_stream_get(cache_t *c, segment_t *seg, ex_off_t offset, 
 {
     cache_segment_t *s = (cache_segment_t *)seg->priv;
     amp_stream_table_t *as = (amp_stream_table_t *)s->cache_priv;
-//  Stack_ele_t *ele;
+//  tbx_stack_ele_t *ele;
     amp_page_stream_t *ps, *ps2;
     tbx_list_iter_t it;
     ex_off_t *poff, dn, pos;
@@ -783,7 +783,7 @@ int _amp_free_mem(cache_t *c, segment_t *pseg, ex_off_t bytes_to_free)
     cache_segment_t *s;
     cache_page_t *p;
     page_amp_t *lp;
-    Stack_ele_t *ele;
+    tbx_stack_ele_t *ele;
     ex_off_t total_bytes, pending_bytes;
     int count, err;
 
@@ -840,7 +840,7 @@ ex_off_t _amp_attempt_free_mem(cache_t *c, segment_t *page_seg, ex_off_t bytes_t
     cache_segment_t *s;
     cache_page_t *p;
     page_amp_t *lp;
-    Stack_ele_t *ele, *curr_ele;
+    tbx_stack_ele_t *ele, *curr_ele;
     op_generic_t *gop;
     opque_t *q;
     amp_page_stream_t *ps;
@@ -1300,7 +1300,7 @@ int amp_cache_destroy(cache_t *c)
 {
     apr_status_t value;
     cache_page_t *p;
-    Stack_ele_t *ele;
+    tbx_stack_ele_t *ele;
     int n;
 
     cache_amp_t *cp = (cache_amp_t *)c->fn.priv;

@@ -444,11 +444,11 @@ int ostc_attr_cacheprep_ftype(ostc_cacheprep_t *cp)
 //   NOTE:  Assumes the cache lock is held
 //***********************************************************************
 
-int _ostc_cache_tree_walk(object_service_fn_t *os, char *fname, Stack_t *tree, ostcdb_object_t *replacement_obj, int add_terminal_ftype, int max_recurse)
+int _ostc_cache_tree_walk(object_service_fn_t *os, char *fname, tbx_stack_t *tree, ostcdb_object_t *replacement_obj, int add_terminal_ftype, int max_recurse)
 {
     ostc_priv_t *ostc = (ostc_priv_t *)os->priv;
     int i, n, start, end, loop, err;
-    Stack_t rtree;
+    tbx_stack_t rtree;
     ostcdb_object_t *curr, *next, *prev;
 
     log_printf(5, "fname=%s add_terminal_ftype=%d\n", fname, add_terminal_ftype);
@@ -582,9 +582,9 @@ finished:
 //   final object and attribute
 //***********************************************************************
 
-int _ostcdb_resolve_attr_link(object_service_fn_t *os, Stack_t *tree, char *alink, ostcdb_object_t **lobj, ostcdb_attr_t **lattr, int max_recurse)
+int _ostcdb_resolve_attr_link(object_service_fn_t *os, tbx_stack_t *tree, char *alink, ostcdb_object_t **lobj, ostcdb_attr_t **lattr, int max_recurse)
 {
-    Stack_t rtree;
+    tbx_stack_t rtree;
     int i, n;
     char *aname;
     ostcdb_object_t *lo;
@@ -659,7 +659,7 @@ finished:
 void ostc_cache_move_object(object_service_fn_t *os, creds_t *creds, char *src_path, char *dest_path)
 {
     ostc_priv_t *ostc = (ostc_priv_t *)os->priv;
-    Stack_t stree, dtree;
+    tbx_stack_t stree, dtree;
     ostcdb_object_t *obj;
 
     init_stack(&stree);
@@ -684,7 +684,7 @@ void ostc_cache_move_object(object_service_fn_t *os, creds_t *creds, char *src_p
 void ostc_cache_remove_object(object_service_fn_t *os, char *path)
 {
     ostc_priv_t *ostc = (ostc_priv_t *)os->priv;
-    Stack_t tree;
+    tbx_stack_t tree;
     ostcdb_object_t *obj, *parent;
 
     init_stack(&tree);
@@ -710,7 +710,7 @@ void ostc_cache_remove_object(object_service_fn_t *os, char *path)
 void ostc_cache_remove_attrs(object_service_fn_t *os, char *fname, char **key, int n)
 {
     ostc_priv_t *ostc = (ostc_priv_t *)os->priv;
-    Stack_t tree;
+    tbx_stack_t tree;
     ostcdb_object_t *obj;
     ostcdb_attr_t *attr;
 
@@ -744,7 +744,7 @@ finished:
 void ostc_cache_move_attrs(object_service_fn_t *os, char *fname, char **key_old, char **key_new, int n)
 {
     ostc_priv_t *ostc = (ostc_priv_t *)os->priv;
-    Stack_t tree;
+    tbx_stack_t tree;
     ostcdb_object_t *obj;
     ostcdb_attr_t *attr, *attr2;
     int i;
@@ -786,7 +786,7 @@ finished:
 void ostc_cache_process_attrs(object_service_fn_t *os, char *fname, int ftype, char **key_list, void **val, int *v_size, int n)
 {
     ostc_priv_t *ostc = (ostc_priv_t *)os->priv;
-    Stack_t tree;
+    tbx_stack_t tree;
     ostcdb_object_t *obj, *aobj;
     ostcdb_attr_t *attr;
     char *key, *lkey;
@@ -881,7 +881,7 @@ finished:
 op_status_t ostc_cache_fetch(object_service_fn_t *os, char *fname, char **key, void **val, int *v_size, int n)
 {
     ostc_priv_t *ostc = (ostc_priv_t *)os->priv;
-    Stack_t tree;
+    tbx_stack_t tree;
     ostcdb_object_t *obj, *lobj;
     ostcdb_attr_t *attr;
     op_status_t status = op_failure_status;
@@ -952,7 +952,7 @@ finished:
 void ostc_cache_update_attrs(object_service_fn_t *os, char *fname, char **key, void **val, int *v_size, int n)
 {
     ostc_priv_t *ostc = (ostc_priv_t *)os->priv;
-    Stack_t tree;
+    tbx_stack_t tree;
     ostcdb_object_t *obj;
     ostcdb_attr_t *attr;
     int i;
@@ -1001,7 +1001,7 @@ finished:
 int _ostc_cache_populate_prefix(object_service_fn_t *os, creds_t *creds, char *path, int prefix_len)
 {
     ostc_priv_t *ostc = (ostc_priv_t *)os->priv;
-    Stack_t tree;
+    tbx_stack_t tree;
     ostc_cacheprep_t cp;
     os_fd_t *fd = NULL;
     char *key_array[1], *val_array[1];
@@ -1954,7 +1954,7 @@ op_status_t ostc_open_object_fn(void *arg, int tid)
     ostc_priv_t *ostc = (ostc_priv_t *)op->os->priv;
     op_status_t status;
     ostc_fd_t *fd;
-    Stack_t tree;
+    tbx_stack_t tree;
     int err;
 
     log_printf(5, "mode=%d OS_MODE_READ_IMMEDIATE=%d fname=%s\n", op->mode, OS_MODE_READ_IMMEDIATE, op->path);

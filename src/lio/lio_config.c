@@ -241,7 +241,7 @@ void _lio_destroy_plugins(lio_config_t *lio)
 
 void lio_find_lfs_mounts()
 {
-    Stack_t *stack;
+    tbx_stack_t *stack;
     FILE *fd;
     lfs_mount_t *entry;
     char *text, *prefix, *bstate;
@@ -585,7 +585,7 @@ void lc_object_remove_unused(int remove_all_unused)
     lio_path_tuple_t *tuple;
     lio_config_t *lc;
     char *key;
-    Stack_t *stack;
+    tbx_stack_t *stack;
 
     stack = new_stack();
 

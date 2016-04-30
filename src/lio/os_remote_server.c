@@ -141,7 +141,7 @@ void osrs_update_active_table(object_service_fn_t *os, mq_frame_t *hid)
     osrs_priv_t *osrs = (osrs_priv_t *)os->priv;
     char *host_id;
     int id_len;
-    Stack_ele_t *ele;
+    tbx_stack_ele_t *ele;
     osrs_active_t *a;
 
     mq_get_frame(hid, (void **)&host_id, &id_len);

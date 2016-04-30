@@ -53,7 +53,7 @@ pigeon_coop_t *_gop_control = NULL;
 //  _opque_print_stack - Prints the list stack
 //*************************************************************
 
-void _opque_print_stack(Stack_t *stack)
+void _opque_print_stack(tbx_stack_t *stack)
 {
     op_generic_t *gop;
     int i=0;
@@ -284,7 +284,7 @@ opque_t *new_opque()
 // free_finished_stack - Frees an opque
 //*************************************************************
 
-void free_finished_stack(Stack_t *stack, int mode)
+void free_finished_stack(tbx_stack_t *stack, int mode)
 {
     op_generic_t *gop;
 
@@ -310,7 +310,7 @@ void free_finished_stack(Stack_t *stack, int mode)
 // free_list_stack - Frees an opque
 //*************************************************************
 
-void free_list_stack(Stack_t *stack, int mode)
+void free_list_stack(tbx_stack_t *stack, int mode)
 {
     op_generic_t *gop;
     callback_t *cb;
@@ -515,7 +515,7 @@ void default_sort_ops(void *arg, opque_t *que)
     void *ptr;
     op_generic_t *gop;
     que_data_t *q = &(que->qd);
-    Stack_t *q_list = new_stack();
+    tbx_stack_t *q_list = new_stack();
     n = stack_size(q->list);
     type_malloc(array, callback_t *, n);
 

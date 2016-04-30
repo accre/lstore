@@ -581,7 +581,7 @@ int _slog_load(segment_t *seg)
 //    given range.
 //***********************************************************************
 
-ex_off_t slog_changes(segment_t *seg, ex_off_t lo, ex_off_t hi, Stack_t *stack)
+ex_off_t slog_changes(segment_t *seg, ex_off_t lo, ex_off_t hi, tbx_stack_t *stack)
 {
     seglog_priv_t *s = (seglog_priv_t *)seg->priv;
     tbx_isl_iter_t it;
@@ -671,7 +671,7 @@ op_status_t seglog_clone_func(void *arg, int id)
     char *buffer = NULL;
     slog_changes_t *clog;
     opque_t *q1, *q2, *q;
-    Stack_t *stack;
+    tbx_stack_t *stack;
     op_status_t status;
 
     do_segment_copy = 0;

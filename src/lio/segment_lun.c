@@ -623,11 +623,11 @@ int slun_row_replace_fix(segment_t *seg, data_attr_t *da, seglun_row_t *b, int *
     rs_request_t req_list[n_devices];
     data_cap_set_t *cap_list[n_devices];
     char *key;
-    Stack_t *cleanup_stack;
+    tbx_stack_t *cleanup_stack;
     op_status_t status;
     rs_query_t *rsq;
     op_generic_t *gop;
-    Stack_t *attr_stack;
+    tbx_stack_t *attr_stack;
     int i, j, loop, err, m, ngood, nbad, kick_out;
     int missing[n_devices];
     rs_hints_t hints_list[n_devices];
@@ -956,7 +956,7 @@ op_status_t _seglun_shrink(segment_t *seg, data_attr_t *da, ex_off_t new_size, i
     seglun_row_t *b;
     opque_t *q = NULL;
     ex_off_t lo, hi, dsize, bstart_size, bstart_block_size, new_used;
-    Stack_t *stack;
+    tbx_stack_t *stack;
     seglun_row_t *start_b;
     op_status_t status;
     int i, err;
@@ -1463,7 +1463,7 @@ op_status_t seglun_rw_op(segment_t *seg, data_attr_t *da, segment_rw_hints_t *rw
     ex_off_t lo, hi, start, end, blen, bpos;
     int i, j, maxerr, nerr, slot, n_bslots, bl_count, dev;
     int *bcount;
-    Stack_t *stack;
+    tbx_stack_t *stack;
     lun_rw_row_t *rw_buf, *rwb_table;
     double dt;
     apr_time_t now, exec_time;
@@ -2349,7 +2349,7 @@ op_status_t seglun_clone_func(void *arg, int id)
     seglun_row_t *bd, *bs;
     ex_off_t row_size, max_gops, n_gops, offset, d_offset, len, end;
     int err, dir, i, j, k, *max_index, n_rows, n;
-    Stack_t **gop_stack;
+    tbx_stack_t **gop_stack;
     opque_t *q;
     apr_time_t dtus;
     double dts;
@@ -2418,7 +2418,7 @@ op_status_t seglun_clone_func(void *arg, int id)
 
     sd->grow_break = 0; //** Finished growing so undo the break flag
 
-    type_malloc_clear(gop_stack, Stack_t *, n_rows*ss->n_devices);
+    type_malloc_clear(gop_stack, tbx_stack_t *, n_rows*ss->n_devices);
     for (i=0; i<n_rows*ss->n_devices; i++) gop_stack[i] = new_stack();
 
     //** Generate the copy list
@@ -2475,7 +2475,7 @@ op_status_t seglun_clone_func(void *arg, int id)
     //** Loop through adding tasks as needed
     for (i=0; i<n; i++) {
         gop = opque_waitany(q);
-        gop_next = pop((Stack_t *)gop_get_private(gop));
+        gop_next = pop((tbx_stack_t *)gop_get_private(gop));
         if (gop_next != NULL) opque_add(q, gop_next);
 
         //** This is for diagnostics

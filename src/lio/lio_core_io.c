@@ -245,7 +245,7 @@ void lio_store_and_release_adler32(lio_config_t *lc, creds_t *creds, tbx_list_t 
     uLong cksum;
     unsigned int aval;
     lfs_adler32_t *a32;
-    Stack_t *stack;
+    tbx_stack_t *stack;
     ex_off_t *aoff;
     char value[256];
     stack = new_stack();

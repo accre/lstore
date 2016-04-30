@@ -207,7 +207,7 @@ op_generic_t *rs_simple_request(resource_service_fn_t *arg, data_attr_t *da, rs_
     rsq_base_ele_t *q;
     int slot, rnd_off, i, j, k, i_unique, i_pickone, found, err_cnt, loop, loop_end;
     int state, *a, *b, *op_state, unique_size;
-    Stack_t *stack;
+    tbx_stack_t *stack;
 
     log_printf(15, "rs_simple_request: START rss->n_rids=%d n_rid=%d req_size=%d fixed_size=%d\n", rss->n_rids, n_rid, req_size, fixed_size);
 

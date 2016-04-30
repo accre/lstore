@@ -64,7 +64,7 @@ typedef struct {
     data_block_cap_t *cap;
     data_service_fn_t *ds;
     char *rid_key;
-    Stack_t *attr_stack;
+    tbx_stack_t *attr_stack;
     data_block_warm_t *warm;
 } data_block_t;
 

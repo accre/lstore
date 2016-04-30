@@ -69,8 +69,8 @@ typedef struct {
     int tolerance_mode;
     int unspecified;
     apr_hash_t *pick_from;
-    Stack_t *groups;
-    Stack_t *rids;
+    tbx_stack_t *groups;
+    tbx_stack_t *rids;
 } pool_entry_t;
 
 typedef struct {
@@ -159,7 +159,7 @@ void install_signal_handler()
 //    lio_inspect expects.
 //*************************************************************************
 
-void process_pool(pool_entry_t *pe, Stack_t *parent_rid_stack)
+void process_pool(pool_entry_t *pe, tbx_stack_t *parent_rid_stack)
 {
     pool_entry_t *p;
     rid_prep_entry_t *re;
@@ -343,7 +343,7 @@ void add_wildcard(pool_entry_t *p, apr_hash_t *rid_table, char *mkey, char *mval
 //  load_pool - Loads a pool
 //*************************************************************************
 
-pool_entry_t *load_pool(Stack_t *pools, char *name, tbx_inip_file_t *pfd, tbx_inip_file_t *rfd, apr_hash_t *rid_table, tbx_inip_group_t *pg, pool_entry_t **unspecified)
+pool_entry_t *load_pool(tbx_stack_t *pools, char *name, tbx_inip_file_t *pfd, tbx_inip_file_t *rfd, apr_hash_t *rid_table, tbx_inip_group_t *pg, pool_entry_t **unspecified)
 {
     tbx_inip_element_t *ele;
     char *key, *value;
@@ -422,7 +422,7 @@ pool_entry_t *load_pool(Stack_t *pools, char *name, tbx_inip_file_t *pfd, tbx_in
 // load_pool_config - Loads the rebalance pool configration
 //*************************************************************************
 
-apr_hash_t *load_pool_config(char *fname, apr_pool_t *mpool, Stack_t *my_pool_list)
+apr_hash_t *load_pool_config(char *fname, apr_pool_t *mpool, tbx_stack_t *my_pool_list)
 {
     tbx_inip_file_t *pfd, *rfd;
     char *rid_config, *key;
@@ -430,7 +430,7 @@ apr_hash_t *load_pool_config(char *fname, apr_pool_t *mpool, Stack_t *my_pool_li
     apr_hash_t *rid_table;
     apr_hash_t *pools;
     pool_entry_t *pe;
-    Stack_t *pool_list;
+    tbx_stack_t *pool_list;
     rid_prep_entry_t *re;
     pool_entry_t *unspecified = NULL;
 
@@ -497,7 +497,7 @@ apr_hash_t *load_pool_config(char *fname, apr_pool_t *mpool, Stack_t *my_pool_li
 // rebalance_pool - Generates a rebalance pool based on the supplied RID key
 //*************************************************************************
 
-apr_hash_t *rebalance_pool(apr_pool_t *mpool, Stack_t *my_pool_list, char *key_rebalance, double tolerance, int tolerance_mode)
+apr_hash_t *rebalance_pool(apr_pool_t *mpool, tbx_stack_t *my_pool_list, char *key_rebalance, double tolerance, int tolerance_mode)
 {
     tbx_inip_file_t *pfd, *rfd;
     char *rid_config, *key, *value;
@@ -505,7 +505,7 @@ apr_hash_t *rebalance_pool(apr_pool_t *mpool, Stack_t *my_pool_list, char *key_r
     apr_hash_t *rid_table;
     apr_hash_t *pools;
     pool_entry_t *pe;
-    Stack_t *pool_list;
+    tbx_stack_t *pool_list;
     rid_prep_entry_t *re;
     tbx_list_t *master;
     char pool_text[4096], tstr[128];
@@ -608,7 +608,7 @@ apr_hash_t *rebalance_pool(apr_pool_t *mpool, Stack_t *my_pool_list, char *key_r
 // dump_pools - Prints the pools
 //*************************************************************************
 
-void dump_pools(tbx_log_fd_t *ifd, Stack_t *pools, int scale)
+void dump_pools(tbx_log_fd_t *ifd, tbx_stack_t *pools, int scale)
 {
     pool_entry_t *pe;
 //  rid_inspect_tweak_t *ri;
@@ -688,7 +688,7 @@ void dump_pools(tbx_log_fd_t *ifd, Stack_t *pools, int scale)
 // check_pools - Checks
 //*************************************************************************
 
-void check_pools(Stack_t *pools, apr_thread_mutex_t *lock, int todo_mode, int *finished, int *todo)
+void check_pools(tbx_stack_t *pools, apr_thread_mutex_t *lock, int todo_mode, int *finished, int *todo)
 {
     pool_entry_t *pe;
 //  rid_inspect_tweak_t *ri;
@@ -1071,7 +1071,7 @@ int main(int argc, char **argv)
     inspect_t *w;
     char *set_key, *set_success, *set_fail, *select_key, *select_value;
     int set_success_size, set_fail_size, select_mode, select_index;
-    Stack_t *pools;
+    tbx_stack_t *pools;
 
     bufsize = 20*1024*1024;
     base = 1;

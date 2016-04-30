@@ -62,7 +62,7 @@ typedef struct {
     tbx_isl_t *isl;
     resource_service_fn_t *rs;
     data_service_fn_t *ds;
-    Stack_t *db_cleanup;
+    tbx_stack_t *db_cleanup;
     blacklist_t *bl;
 } seglun_priv_t;
 

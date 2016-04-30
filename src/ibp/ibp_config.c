@@ -74,12 +74,12 @@ static portal_fn_t _ibp_base_portal = {
 int _ibp_context_count = 0;
 
 typedef struct {
-    Stack_t stack;
+    tbx_stack_t stack;
 } rwc_gop_stack_t;
 
 typedef struct {
-//  Stack_t *hp_stack;
-    Stack_t list_stack;
+//  tbx_stack_t *hp_stack;
+    tbx_stack_t list_stack;
     pigeon_coop_hole_t pch;
 } rw_coalesce_t;
 
@@ -158,7 +158,7 @@ void rwc_stacks_free(void *arg, int size, void *data)
 //   be combined with other similar ops
 //*************************************************************
 
-int ibp_rw_submit_coalesce(Stack_t *stack, Stack_ele_t *ele)
+int ibp_rw_submit_coalesce(tbx_stack_t *stack, tbx_stack_ele_t *ele)
 {
     op_generic_t *gop = (op_generic_t *)get_stack_ele_data(ele);
     ibp_op_t *iop = ibp_get_iop(gop);
@@ -216,13 +216,13 @@ int ibp_rw_coalesce(op_generic_t *gop1)
     op_generic_t *gop2;
     ibp_rw_buf_t **rwbuf;
     rw_coalesce_t *rwc;
-    Stack_ele_t *ele;
-    Stack_t *cstack;
+    tbx_stack_ele_t *ele;
+    tbx_stack_t *cstack;
     int64_t workload;
     int n, iov_sum, found_myself;
     rwc_gop_stack_t *rwcg;
     pigeon_coop_hole_t pch;
-    Stack_t *my_hp = iop1->hp_parent;;
+    tbx_stack_t *my_hp = iop1->hp_parent;;
 
     apr_thread_mutex_lock(ic->lock);
 
@@ -240,7 +240,7 @@ int ibp_rw_coalesce(op_generic_t *gop1)
     }
 
     if (stack_size(&(rwc->list_stack)) == 1) { //** Nothing to do so exit
-        ele = (Stack_ele_t *)pop(&(rwc->list_stack));  //** The top most task should be me
+        ele = (tbx_stack_ele_t *)pop(&(rwc->list_stack));  //** The top most task should be me
         gop2 = (op_generic_t *)get_stack_ele_data(ele);
         if (gop2 != gop1) {
             log_printf(0, "ERROR! top stack element is not me! gid1=%d gid2=%d\n", gop_id(gop1), gop_id(gop2));
@@ -278,7 +278,7 @@ int ibp_rw_coalesce(op_generic_t *gop1)
     iov_sum = 0;
     found_myself = 0;
     move_to_top(&(rwc->list_stack));
-    ele = (Stack_ele_t *)get_ele_data(&(rwc->list_stack));
+    ele = (tbx_stack_ele_t *)get_ele_data(&(rwc->list_stack));
     do {
         gop2 = (op_generic_t *)get_stack_ele_data(ele);
         iop2 = ibp_get_iop(gop2);
@@ -309,18 +309,18 @@ int ibp_rw_coalesce(op_generic_t *gop1)
             delete_current(&(rwc->list_stack), 0, 0);  //** Remove it from the stack and move down to the next
             ele = NULL;
             if (workload < ic->max_coalesce) {
-                ele = (Stack_ele_t *)get_ele_data(&(rwc->list_stack));
+                ele = (tbx_stack_ele_t *)get_ele_data(&(rwc->list_stack));
             }
         } else {
             log_printf(15, "SKIPPING: gop[-]->gid=%d n_iov=%d io_total=%d\n", gop_id(gop2), cmd2->n_iovec_total, iov_sum);
             move_down(&(rwc->list_stack));
-            ele = (Stack_ele_t *)get_ele_data(&(rwc->list_stack));
+            ele = (tbx_stack_ele_t *)get_ele_data(&(rwc->list_stack));
         }
     } while ((ele != NULL) && (workload < ic->max_coalesce) && (iov_sum < 2000));
 
     if (found_myself == 0) {  //** Oops! Hit the max_coalesce workdload or size so Got to scan the list for myself
         move_to_top(&(rwc->list_stack));
-        while ((ele = (Stack_ele_t *)get_ele_data(&(rwc->list_stack))) != NULL) {
+        while ((ele = (tbx_stack_ele_t *)get_ele_data(&(rwc->list_stack))) != NULL) {
             gop2 = (op_generic_t *)get_stack_ele_data(ele);
             if (gop2 == gop1) {
                 iop2 = ibp_get_iop(gop2);

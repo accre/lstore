@@ -80,10 +80,10 @@ int sleeping_conn;      //** Connections currently sleeping due to a depot load 
 int closing_conn;       //** Connetions currently being closed
 apr_time_t pause_until;     //** Forces the system to wait, if needed, before making new conn
 apr_time_t dt_connect;  //** Max time to wait when initiating a connection
-Stack_t *conn_list;     //** List of connections
-Stack_t *que;           //** Task que
-Stack_t *closed_que;    //** List of closed but not reaped connections
-Stack_t *direct_list;     //** List of dedicated dportal/dc for the traditional direct execution calls
+tbx_stack_t *conn_list;     //** List of connections
+tbx_stack_t *que;           //** Task que
+tbx_stack_t *closed_que;    //** List of closed but not reaped connections
+tbx_stack_t *direct_list;     //** List of dedicated dportal/dc for the traditional direct execution calls
 apr_thread_mutex_t *lock;  //** shared lock
 apr_thread_cond_t *cond;
 apr_pool_t *mpool;
@@ -102,8 +102,8 @@ int send_down;
 int closing;
 apr_time_t last_used;          //** Time the last command completed
 tbx_ns_t *ns;           //** Socket
-Stack_t *pending_stack;    //** Local task que. An op  is mpoved from the parent que to here
-Stack_ele_t *my_pos;       //** My position int the dp conn list
+tbx_stack_t *pending_stack;    //** Local task que. An op  is mpoved from the parent que to here
+tbx_stack_ele_t *my_pos;       //** My position int the dp conn list
 op_generic_t *curr_op;   //** Sending phase op that could have failed
 host_portal_t *hp;         //** Pointerto parent depot portal with the todo list
 apr_thread_mutex_t *lock;      //** shared lock

@@ -294,7 +294,7 @@ thread_pool_context_t *thread_pool_create_context(char *tp_name, int min_threads
     atomic_set(tpc->n_running, 0);
 
     type_malloc(tpc->overflow_running_depth, int, tpc->recursion_depth);
-    type_malloc(tpc->reserve_stack, Stack_t *, tpc->recursion_depth);
+    type_malloc(tpc->reserve_stack, tbx_stack_t *, tpc->recursion_depth);
     for (i=0; i<tpc->recursion_depth; i++) {
         tpc->overflow_running_depth[i] = -1;
         tpc->reserve_stack[i] = new_stack();

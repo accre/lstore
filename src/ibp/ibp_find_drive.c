@@ -184,7 +184,7 @@ double write_allocs(ibp_capset_t *caps, int qlen, int n, int asize, int block_si
     apr_time_t stime, dtime;
     int *tbuf_index;
     tbuffer_t *buf;
-    Stack_t *tbuf_free;
+    tbx_stack_t *tbuf_free;
 
 
     tbuf_free = new_stack();

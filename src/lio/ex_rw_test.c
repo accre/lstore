@@ -676,7 +676,7 @@ void rw_test()
     task_slot_t *slot;
     double op_rate, mb_rate, dsec, dt;
     apr_time_t dtw, dtr, dtt, ds_start, ds_begin, ds, dstep;
-    Stack_t *free_slots;
+    tbx_stack_t *free_slots;
     cache_stats_t cs;
     int tbufsize = 10240;
     char text_buffer[tbufsize];

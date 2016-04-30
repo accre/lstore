@@ -35,42 +35,44 @@ extern "C" {
 #endif
 #include "tbx/toolbox_visibility.h"
 
-typedef struct stack_ele {
+typedef struct tbx_stack_ele_t tbx_stack_ele_t;
+struct tbx_stack_ele_t {
     void *data;
-    struct stack_ele *down, *up;
-} Stack_ele_t;
+    struct tbx_stack_ele_t *down, *up;
+};
 
-typedef struct {
-    Stack_ele_t *top, *bottom, *curr;
+typedef struct tbx_stack_t tbx_stack_t;
+struct tbx_stack_t {
+    tbx_stack_ele_t *top, *bottom, *curr;
     int n;
-} Stack_t;
+};
 
-TBX_API int stack_size(Stack_t *);
-TBX_API void init_stack(Stack_t *stack);
-TBX_API Stack_t *new_stack();
-TBX_API void dup_stack(Stack_t *new, Stack_t *old);
-TBX_API void empty_stack(Stack_t *, int);
-TBX_API void free_stack(Stack_t *, int);
-TBX_API void *get_stack_ele_data(Stack_ele_t *ele);
-void set_stack_ele_data(Stack_ele_t *ele, void *data);
-TBX_API void push_link(Stack_t *stack, Stack_ele_t *ele);
-TBX_API void push(Stack_t *, void *);
-Stack_ele_t *pop_link(Stack_t *stack);
-TBX_API void *pop(Stack_t *);
-TBX_API void *get_ele_data(Stack_t *);
-TBX_API int move_to_top(Stack_t *);
-TBX_API int move_to_bottom(Stack_t *);
-int move_to_link(Stack_t *, Stack_ele_t *ele);
-TBX_API int move_down(Stack_t *);
-TBX_API int move_up(Stack_t *);
-int insert_link_below(Stack_t *stack, Stack_ele_t *ele);
-TBX_API int insert_below(Stack_t *, void *);
-TBX_API int insert_link_above(Stack_t *stack, Stack_ele_t *ele);
-TBX_API int insert_above(Stack_t *, void *);
-TBX_API Stack_ele_t *stack_unlink_current(Stack_t *stack, int mv_up);
-TBX_API int delete_current(Stack_t *, int, int);
-TBX_API Stack_ele_t *get_ptr(Stack_t *);
-TBX_API int move_to_ptr(Stack_t *, Stack_ele_t *);
+TBX_API int stack_size(tbx_stack_t *);
+TBX_API void init_stack(tbx_stack_t *stack);
+TBX_API tbx_stack_t *new_stack();
+TBX_API void dup_stack(tbx_stack_t *new, tbx_stack_t *old);
+TBX_API void empty_stack(tbx_stack_t *, int);
+TBX_API void free_stack(tbx_stack_t *, int);
+TBX_API void *get_stack_ele_data(tbx_stack_ele_t *ele);
+void set_stack_ele_data(tbx_stack_ele_t *ele, void *data);
+TBX_API void push_link(tbx_stack_t *stack, tbx_stack_ele_t *ele);
+TBX_API void push(tbx_stack_t *, void *);
+tbx_stack_ele_t *pop_link(tbx_stack_t *stack);
+TBX_API void *pop(tbx_stack_t *);
+TBX_API void *get_ele_data(tbx_stack_t *);
+TBX_API int move_to_top(tbx_stack_t *);
+TBX_API int move_to_bottom(tbx_stack_t *);
+int move_to_link(tbx_stack_t *, tbx_stack_ele_t *ele);
+TBX_API int move_down(tbx_stack_t *);
+TBX_API int move_up(tbx_stack_t *);
+int insert_link_below(tbx_stack_t *stack, tbx_stack_ele_t *ele);
+TBX_API int insert_below(tbx_stack_t *, void *);
+TBX_API int insert_link_above(tbx_stack_t *stack, tbx_stack_ele_t *ele);
+TBX_API int insert_above(tbx_stack_t *, void *);
+TBX_API tbx_stack_ele_t *stack_unlink_current(tbx_stack_t *stack, int mv_up);
+TBX_API int delete_current(tbx_stack_t *, int, int);
+TBX_API tbx_stack_ele_t *get_ptr(tbx_stack_t *);
+TBX_API int move_to_ptr(tbx_stack_t *, tbx_stack_ele_t *);
 
 #ifdef __cplusplus
 }

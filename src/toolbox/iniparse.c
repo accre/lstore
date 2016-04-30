@@ -23,8 +23,8 @@ typedef struct {
 
 typedef struct {  //** Used for Reading the ini file
     bfile_entry_t *curr;
-    Stack_t *stack;
-    Stack_t *include_paths;
+    tbx_stack_t *stack;
+    tbx_stack_t *include_paths;
 } bfile_t;
 
 //***********************************************************************
@@ -33,7 +33,7 @@ typedef struct {  //** Used for Reading the ini file
 //     IF the file cannot be found NULL is returned.
 //***********************************************************************
 
-FILE *bfile_fopen(Stack_t *include_paths, char *fname)
+FILE *bfile_fopen(tbx_stack_t *include_paths, char *fname)
 {
     FILE *fd;
     char fullpath[BUFMAX];

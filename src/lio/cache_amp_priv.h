@@ -46,7 +46,7 @@ extern "C" {
  
 typedef struct {
 cache_page_t page;  //** Actual page
-Stack_ele_t *ele;   //** LRU position
+tbx_stack_ele_t *ele;   //** LRU position
 ex_off_t stream_offset;
 int bit_fields;
 } page_amp_t;
@@ -67,9 +67,9 @@ int start_apt_pages;
 } amp_stream_table_t;
  
 typedef struct {
-Stack_t *stack;
-Stack_t *waiting_stack;
-Stack_t *pending_free_tasks;
+tbx_stack_t *stack;
+tbx_stack_t *waiting_stack;
+tbx_stack_t *pending_free_tasks;
 pigeon_coop_t *free_pending_tables;
 pigeon_coop_t *free_page_tables;
 apr_thread_cond_t *dirty_trigger;

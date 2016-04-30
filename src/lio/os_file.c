@@ -139,7 +139,7 @@ typedef struct {
     creds_t *creds;
     os_attr_iter_t **it_attr;
     os_fd_t *fd;
-    Stack_t *recurse_stack;
+    tbx_stack_t *recurse_stack;
     char **key;
     void **val;
     int *v_size;
@@ -215,8 +215,8 @@ typedef struct {
 } osfile_copy_attr_t;
 
 typedef struct {
-    Stack_t *stack;
-    Stack_t *active_stack;
+    tbx_stack_t *stack;
+    tbx_stack_t *active_stack;
     int read_count;
     int write_count;
     pigeon_coop_hole_t pch;

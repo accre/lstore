@@ -113,7 +113,7 @@ extern "C" {
 
 typedef zmq_pollitem_t mq_pollitem_t;
 
-typedef Stack_t mq_msg_t;
+typedef tbx_stack_t mq_msg_t;
 
 typedef struct {
     int len;
@@ -264,8 +264,8 @@ struct mq_portal_s {   //** Container for managing connections to a single host
     int socket_type;           //** Socket type
     uint64_t n_ops;            //** Operation count
     double min_ops_per_sec;    //** Minimum ops/sec needed to keep a connection open.
-    Stack_t *tasks;            //** List of tasks
-    Stack_t *closed_conn;      //** List of closed connections that can be destroyed
+    tbx_stack_t *tasks;            //** List of tasks
+    tbx_stack_t *closed_conn;      //** List of closed connections that can be destroyed
     mq_pipe_t efd[2];
     apr_thread_mutex_t *lock;  //** Context lock
     apr_thread_cond_t *cond;   //** Shutdown complete cond

@@ -1774,7 +1774,7 @@ void _cache_ppages_range_print(int ll, cache_partial_page_t *pp)
     int i;
     ex_off_t *rng, *crng;
     char *curr;
-    Stack_ele_t *cptr;
+    tbx_stack_ele_t *cptr;
 
     if (log_level() < ll) return;
 
@@ -1964,7 +1964,7 @@ void _cache_ppages_wait_for_flush_to_complete(cache_segment_t *s)
 //     NOTE:  Cache should be locked on entry
 //*******************************************************************************
 
-int _cache_ppages_flush_list(segment_t *seg, data_attr_t *da, Stack_t *pp_list)
+int _cache_ppages_flush_list(segment_t *seg, data_attr_t *da, tbx_stack_t *pp_list)
 {
     cache_segment_t *s = (cache_segment_t *)seg->priv;
     cache_partial_page_t *pp;
@@ -2096,7 +2096,7 @@ int _cache_ppages_flush(segment_t *seg, data_attr_t *da)
 {
     cache_segment_t *s = (cache_segment_t *)seg->priv;
     cache_partial_page_t *pp;
-    Stack_t pp_list;
+    tbx_stack_t pp_list;
     ex_off_t ppoff;
     int err;
     skiplist_iter_t it;
@@ -2135,7 +2135,7 @@ int cache_ppages_handle(segment_t *seg, data_attr_t *da, int rw_mode, ex_off_t *
     ex_off_t lo_page, hi_page, n_pages, *ppoff, poff, boff, nbytes, pend, nhandled, plo, phi;
     ex_off_t lo_new, hi_new, bpos_new;
     ex_off_t *rng;
-    Stack_t pp_flush;
+    tbx_stack_t pp_flush;
     tbuffer_t pptbuf;
     skiplist_iter_t it;
     int do_flush, err, lo_mapped, hi_mapped;
@@ -2469,7 +2469,7 @@ op_status_t cache_rw_func(void *arg, int id)
     page_handle_t page[CACHE_MAX_PAGES_RETURNED];
     iovec_t iov[CACHE_MAX_PAGES_RETURNED];
     int status, n_pages;
-    Stack_t stack;
+    tbx_stack_t stack;
     cache_range_t *curr, *r;
     int progress, tb_err, rerr, first_time;
     int mode, i, j, top_cnt, bottom_cnt;
@@ -2773,7 +2773,7 @@ op_status_t cache_flush_range_func(void *arg, int id)
     page_handle_t page[CACHE_MAX_PAGES_RETURNED];
     int status, n_pages, max_pages, total_pages;
     ex_off_t flush_id[3];
-    Stack_t stack;
+    tbx_stack_t stack;
     cache_range_t *curr, *r;
     int progress;
     int mode, err;

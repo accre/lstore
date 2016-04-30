@@ -64,7 +64,7 @@ typedef struct {
 
 apr_hash_t *tagged_rids = NULL;
 apr_pool_t *tagged_pool = NULL;
-Stack_t *tagged_keys = NULL;
+tbx_stack_t *tagged_keys = NULL;
 
 static int dt = 86400;
 
@@ -254,7 +254,7 @@ int main(int argc, char **argv)
     lio_path_tuple_t tuple;
     ex_off_t total, good, bad, nbytes, submitted, werr;
     tbx_list_iter_t lit;
-    Stack_t *stack;
+    tbx_stack_t *stack;
     int recurse_depth = 10000;
     int summary_mode;
     warm_t *w;

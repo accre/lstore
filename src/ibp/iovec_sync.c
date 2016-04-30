@@ -47,7 +47,7 @@ http://www.accre.vanderbilt.edu
 
 int ibp_sync_execute(opque_t *q, int nthreads)
 {
-    Stack_t *tasks;
+    tbx_stack_t *tasks;
     op_generic_t *gop;
 
     log_printf(15, "ibp_sync_execute: Start! ncommands=%d\n", stack_size(q->qd.list));

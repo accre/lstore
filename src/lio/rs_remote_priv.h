@@ -90,7 +90,7 @@ typedef struct {
     mq_context_t *mqc;            //** Portal to use.  The server creates this itself
     mq_portal_t *server_portal;
     char *hostname;
-    Stack_t *pending;
+    tbx_stack_t *pending;
 } rs_remote_server_priv_t;
 
 

@@ -55,8 +55,8 @@ typedef struct {
 apr_thread_mutex_t *lock = NULL;
 apr_thread_cond_t  *cond = NULL;
 char *handle = NULL;
-Stack_t *deferred_ready = NULL;
-Stack_t *deferred_pending = NULL;
+tbx_stack_t *deferred_ready = NULL;
+tbx_stack_t *deferred_pending = NULL;
 mq_command_stats_t server_stats;
 mq_portal_t *server_portal = NULL;
 

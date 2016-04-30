@@ -3138,7 +3138,7 @@ op_status_t query_res_recv(op_generic_t *gop, tbx_ns_t *ns)
     if (err.op_status != OP_STATE_SUCCESS) return(process_error(gop, &err, status, -1, &bstate));
 
     //** Ok now we just need to process the line **
-    Stack_t *list = new_stack();
+    tbx_stack_t *list = new_stack();
     p = string_token(NULL, " ", &bstate, &fin);
     while (fin == 0) {
 //    log_printf(0, "query_res_recv: ns=%d rid=%s\n", ns_getid(ns), p);
