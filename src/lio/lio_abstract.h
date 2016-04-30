@@ -205,18 +205,18 @@ LIO_API op_generic_t *gop_lio_close_object(lio_fd_t *fd);
 //NOT NEEDED NOW???? op_generic_t *gop_lio_abort_open_object(lio_config_t *lc, op_generic_t *gop);
 
 op_generic_t *gop_lio_read(lio_fd_t *fd, char *buf, ex_off_t size, ex_off_t off, segment_rw_hints_t *rw_hints);
-op_generic_t *gop_lio_readv(lio_fd_t *fd, iovec_t *iov, int n_iov, ex_off_t size, ex_off_t off, segment_rw_hints_t *rw_hints);
-op_generic_t *gop_lio_read_ex(lio_fd_t *fd, int n_iov, ex_iovec_t *iov, tbuffer_t *buffer, ex_off_t boff, segment_rw_hints_t *rw_hints);
+op_generic_t *gop_lio_readv(lio_fd_t *fd, tbx_iovec_t *iov, int n_iov, ex_off_t size, ex_off_t off, segment_rw_hints_t *rw_hints);
+op_generic_t *gop_lio_read_ex(lio_fd_t *fd, int n_iov, ex_tbx_iovec_t *iov, tbx_tbuf_t *buffer, ex_off_t boff, segment_rw_hints_t *rw_hints);
 op_generic_t *gop_lio_write(lio_fd_t *fd, char *buf, ex_off_t size, off_t off, segment_rw_hints_t *rw_hints);
-op_generic_t *gop_lio_writev(lio_fd_t *fd, iovec_t *iov, int n_iov, ex_off_t size, off_t off, segment_rw_hints_t *rw_hints);
-op_generic_t *gop_lio_write_ex(lio_fd_t *fd, int n_iov, ex_iovec_t *iov, tbuffer_t *buffer, ex_off_t boff, segment_rw_hints_t *rw_hints);
+op_generic_t *gop_lio_writev(lio_fd_t *fd, tbx_iovec_t *iov, int n_iov, ex_off_t size, off_t off, segment_rw_hints_t *rw_hints);
+op_generic_t *gop_lio_write_ex(lio_fd_t *fd, int n_iov, ex_tbx_iovec_t *iov, tbx_tbuf_t *buffer, ex_off_t boff, segment_rw_hints_t *rw_hints);
 
 int lio_read(lio_fd_t *fd, char *buf, ex_off_t size, off_t off, segment_rw_hints_t *rw_hints);
-int lio_readv(lio_fd_t *fd, iovec_t *iov, int n_iov, ex_off_t size, off_t off, segment_rw_hints_t *rw_hints);
-int lio_read_ex(lio_fd_t *fd, int n_iov, ex_iovec_t *iov, tbuffer_t *buffer, ex_off_t boff, segment_rw_hints_t *rw_hints);
+int lio_readv(lio_fd_t *fd, tbx_iovec_t *iov, int n_iov, ex_off_t size, off_t off, segment_rw_hints_t *rw_hints);
+int lio_read_ex(lio_fd_t *fd, int n_iov, ex_tbx_iovec_t *iov, tbx_tbuf_t *buffer, ex_off_t boff, segment_rw_hints_t *rw_hints);
 int lio_write(lio_fd_t *fd, char *buf, ex_off_t size, off_t off, segment_rw_hints_t *rw_hints);
-int lio_writev(lio_fd_t *fd, iovec_t *iov, int n_iov, ex_off_t size, off_t off, segment_rw_hints_t *rw_hints);
-int lio_write_ex(lio_fd_t *fd, int n_iov, ex_iovec_t *iov, tbuffer_t *buffer, ex_off_t boff, segment_rw_hints_t *rw_hints);
+int lio_writev(lio_fd_t *fd, tbx_iovec_t *iov, int n_iov, ex_off_t size, off_t off, segment_rw_hints_t *rw_hints);
+int lio_write_ex(lio_fd_t *fd, int n_iov, ex_tbx_iovec_t *iov, tbx_tbuf_t *buffer, ex_off_t boff, segment_rw_hints_t *rw_hints);
 
 mode_t ftype_lio2posix(int ftype);
 void _lio_parse_stat_vals(char *fname, struct stat *stat, char **val, int *v_size, char *mount_prefix, char **flink);

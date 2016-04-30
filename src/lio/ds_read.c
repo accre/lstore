@@ -52,11 +52,11 @@ int main(int argc, char **argv)
     char **buffer, **rcap, *fname, *p;
     char ppbuf[32];
     FILE *fd;
-    iovec_t **iov;
+    tbx_iovec_t **iov;
     opque_t *q;
     op_generic_t *gop, **gop_list;
     op_status_t status;
-    tbuffer_t *tbuf;
+    tbx_tbuf_t *tbuf;
 
     timeout = 60;
 
@@ -109,10 +109,10 @@ int main(int argc, char **argv)
     info_printf(lio_ifd, 0, "n_rcap=%d len=" XOT " n_iov_per_cap=%d fname=%s timeout=%d\n", n_rcap, len, n_iov, fname, timeout);
 
     //** Make the space
-    type_malloc(tbuf, tbuffer_t, n_rcap);
+    type_malloc(tbuf, tbx_tbuf_t, n_rcap);
     type_malloc(rcap, char *, n_rcap);
     type_malloc(buffer, char *, n_rcap);
-    type_malloc(iov, iovec_t *, n_rcap);
+    type_malloc(iov, tbx_iovec_t *, n_rcap);
     type_malloc(gop_list, op_generic_t *, n_rcap);
 
     offset = 0;
@@ -124,7 +124,7 @@ int main(int argc, char **argv)
         fgets(rcap[i], 256, fd);
         if ((p = index(rcap[i], '\n')) != NULL) *p = '\0';  //** Remove the \n if needed
 
-        type_malloc(iov[i], iovec_t, n_iov);
+        type_malloc(iov[i], tbx_iovec_t, n_iov);
         dn = len / n_iov;
         n = 0;
         for (j=0; j<n_iov-1; j++) {

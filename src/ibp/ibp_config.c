@@ -300,9 +300,9 @@ int ibp_rw_coalesce(op_generic_t *gop1)
 
         //** Can only coalesce ops on the same hoststr
         if (iop2->hp_parent == my_hp) {
-            log_printf(15, "ibp_rw_coalesce: gop[%d]->gid=%d n_iov=%d io_total=%d\n", n, gop_id(gop2), cmd2->n_iovec_total, iov_sum);
+            log_printf(15, "ibp_rw_coalesce: gop[%d]->gid=%d n_iov=%d io_total=%d\n", n, gop_id(gop2), cmd2->n_tbx_iovec_total, iov_sum);
             rwbuf[n] = &(cmd2->buf_single);
-            iov_sum += cmd2->n_iovec_total;
+            iov_sum += cmd2->n_tbx_iovec_total;
             workload += cmd2->size;
             n++;
 
@@ -312,7 +312,7 @@ int ibp_rw_coalesce(op_generic_t *gop1)
                 ele = (tbx_stack_ele_t *)get_ele_data(&(rwc->list_stack));
             }
         } else {
-            log_printf(15, "SKIPPING: gop[-]->gid=%d n_iov=%d io_total=%d\n", gop_id(gop2), cmd2->n_iovec_total, iov_sum);
+            log_printf(15, "SKIPPING: gop[-]->gid=%d n_iov=%d io_total=%d\n", gop_id(gop2), cmd2->n_tbx_iovec_total, iov_sum);
             move_down(&(rwc->list_stack));
             ele = (tbx_stack_ele_t *)get_ele_data(&(rwc->list_stack));
         }
@@ -326,7 +326,7 @@ int ibp_rw_coalesce(op_generic_t *gop1)
                 iop2 = ibp_get_iop(gop2);
                 cmd2 = &(iop2->rw_op);
                 rwbuf[n] = &(cmd2->buf_single);
-                iov_sum += cmd2->n_iovec_total;
+                iov_sum += cmd2->n_tbx_iovec_total;
                 workload += cmd2->size;
                 n++;
 
@@ -349,7 +349,7 @@ int ibp_rw_coalesce(op_generic_t *gop1)
     if (stack_size(&(rwc->list_stack)) > 0) log_printf(1, "%d ops left on stack to coalesce\n", stack_size(&(rwc->list_stack)));
 
     cmd1->n_ops = n;
-    cmd1->n_iovec_total = iov_sum;
+    cmd1->n_tbx_iovec_total = iov_sum;
     cmd1->size = workload;
     gop1->op->cmd.workload = workload + ic->rw_new_command;
 

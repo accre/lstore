@@ -90,7 +90,7 @@ typedef int (*tbx_chksum_size_fn_t)(void *state, int type);
 /*! Checksum return function pointer */
 typedef int (*tbx_chksum_get_fn_t)(void *state, int type, char *value);
 /*! Checksum add data function pointer */
-typedef int (*tbx_chksum_add_fn_t)(void *state, int size, tbuffer_t *data, int doff);
+typedef int (*tbx_chksum_add_fn_t)(void *state, int size, tbx_tbuf_t *data, int doff);
 
 
 /*! Generic checksum container (opaque) */

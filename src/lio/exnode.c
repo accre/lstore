@@ -52,10 +52,10 @@ typedef struct {
 // ex_iovec_create
 //*************************************************************************
 
-ex_iovec_t *ex_iovec_create()
+ex_tbx_iovec_t *ex_iovec_create()
 {
-    ex_iovec_t *iov;
-    type_malloc_clear(iov, ex_iovec_t, 1);
+    ex_tbx_iovec_t *iov;
+    type_malloc_clear(iov, ex_tbx_iovec_t, 1);
     return(iov);
 }
 
@@ -63,7 +63,7 @@ ex_iovec_t *ex_iovec_create()
 // ex_iovec_destroy
 //*************************************************************************
 
-void ex_iovec_destroy(ex_iovec_t *iov)
+void ex_iovec_destroy(ex_tbx_iovec_t *iov)
 {
     free(iov);
 }

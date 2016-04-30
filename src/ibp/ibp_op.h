@@ -128,12 +128,12 @@ ibp_off_t *n_chksumbytes;
 } ibp_op_get_chksum_t;
  
 typedef struct {
-ibp_iovec_t *iovec;
-tbuffer_t *buffer;
+ibp_tbx_iovec_t *iovec;
+tbx_tbuf_t *buffer;
 ibp_off_t size;
 ibp_off_t boff;
 int n_iovec;
-ibp_iovec_t iovec_single;
+ibp_tbx_iovec_t iovec_single;
 } ibp_rw_buf_t;
  
 typedef struct {  //** Read/Write operation 
@@ -144,12 +144,12 @@ char       typekey[MAX_KEY_SIZE];
 //   ibp_off_t offset;
 //   ibp_off_t size;
 //   ibp_off_t boff;
-//   ibp_iovec_t *iovec;
+//   ibp_tbx_iovec_t *iovec;
 //   int   n_iovec;
-//   tbuffer_t *buffer;
+//   tbx_tbuf_t *buffer;
 int rw_mode;
 int n_ops;
-int n_iovec_total;
+int n_tbx_iovec_total;
 ibp_off_t size;
 ibp_rw_buf_t **rwbuf;
 ibp_rw_buf_t *bs_ptr;
@@ -284,22 +284,22 @@ ibp_op_t *new_ibp_op(ibp_context_t *ic);
 void init_ibp_base_op(ibp_op_t *op, char *logstr, int timeout, int workload, char *hostport,
 int cmp_size, int primary_cmd, int sub_cmd);
  
-void set_ibp_rw_op(ibp_op_t *op, int rw_type, ibp_cap_t *cap, ibp_off_t offset, tbuffer_t *buffer, ibp_off_t boff, ibp_off_t len, int timeout);
-IBP_API op_generic_t *new_ibp_rw_op(ibp_context_t *ic, int rw_type, ibp_cap_t *cap, ibp_off_t offset, tbuffer_t *buffer, ibp_off_t boff, ibp_off_t len, int timeout);
+void set_ibp_rw_op(ibp_op_t *op, int rw_type, ibp_cap_t *cap, ibp_off_t offset, tbx_tbuf_t *buffer, ibp_off_t boff, ibp_off_t len, int timeout);
+IBP_API op_generic_t *new_ibp_rw_op(ibp_context_t *ic, int rw_type, ibp_cap_t *cap, ibp_off_t offset, tbx_tbuf_t *buffer, ibp_off_t boff, ibp_off_t len, int timeout);
  
-IBP_API op_generic_t *new_ibp_read_op(ibp_context_t *ic, ibp_cap_t *cap, ibp_off_t offset, tbuffer_t *buffer, ibp_off_t boff, ibp_off_t len, int timeout);
-IBP_API void set_ibp_read_op(ibp_op_t *op, ibp_cap_t *cap, ibp_off_t offset, tbuffer_t *buffer, ibp_off_t boff, ibp_off_t len, int timeout);
+IBP_API op_generic_t *new_ibp_read_op(ibp_context_t *ic, ibp_cap_t *cap, ibp_off_t offset, tbx_tbuf_t *buffer, ibp_off_t boff, ibp_off_t len, int timeout);
+IBP_API void set_ibp_read_op(ibp_op_t *op, ibp_cap_t *cap, ibp_off_t offset, tbx_tbuf_t *buffer, ibp_off_t boff, ibp_off_t len, int timeout);
  
-void set_ibp_vec_read_op(ibp_op_t *op, ibp_cap_t *cap, int n_vec, ibp_iovec_t *vec, tbuffer_t *buffer, ibp_off_t boff, ibp_off_t len, int timeout);
-IBP_API op_generic_t *new_ibp_vec_read_op(ibp_context_t *ic, ibp_cap_t *cap, int n_vec, ibp_iovec_t *vec, tbuffer_t *buffer, ibp_off_t boff, ibp_off_t len, int timeout);
+void set_ibp_vec_read_op(ibp_op_t *op, ibp_cap_t *cap, int n_vec, ibp_tbx_iovec_t *vec, tbx_tbuf_t *buffer, ibp_off_t boff, ibp_off_t len, int timeout);
+IBP_API op_generic_t *new_ibp_vec_read_op(ibp_context_t *ic, ibp_cap_t *cap, int n_vec, ibp_tbx_iovec_t *vec, tbx_tbuf_t *buffer, ibp_off_t boff, ibp_off_t len, int timeout);
  
-void set_ibp_vec_write_op(ibp_op_t *op, ibp_cap_t *cap, int n_iovec, ibp_iovec_t *iovec, tbuffer_t *buffer, ibp_off_t boff, ibp_off_t len, int timeout);
-IBP_API op_generic_t *new_ibp_vec_write_op(ibp_context_t *ic, ibp_cap_t *cap, int n_iovec, ibp_iovec_t *iovec, tbuffer_t *buffer, ibp_off_t boff, ibp_off_t len, int timeout);
+void set_ibp_vec_write_op(ibp_op_t *op, ibp_cap_t *cap, int n_iovec, ibp_tbx_iovec_t *iovec, tbx_tbuf_t *buffer, ibp_off_t boff, ibp_off_t len, int timeout);
+IBP_API op_generic_t *new_ibp_vec_write_op(ibp_context_t *ic, ibp_cap_t *cap, int n_iovec, ibp_tbx_iovec_t *iovec, tbx_tbuf_t *buffer, ibp_off_t boff, ibp_off_t len, int timeout);
  
-IBP_API op_generic_t *new_ibp_write_op(ibp_context_t *ic, ibp_cap_t *cap, ibp_off_t offset, tbuffer_t *buffer, ibp_off_t boff, ibp_off_t len, int timeout);
-IBP_API void set_ibp_write_op(ibp_op_t *op, ibp_cap_t *cap, ibp_off_t offset, tbuffer_t *buffer, ibp_off_t boff, ibp_off_t len, int timeout);
-IBP_API op_generic_t *new_ibp_append_op(ibp_context_t *ic, ibp_cap_t *cap, tbuffer_t *buffer, ibp_off_t boff, ibp_off_t len, int timeout);
-void set_ibp_append_op(ibp_op_t *op, ibp_cap_t *cap, tbuffer_t *buffer, ibp_off_t boff, ibp_off_t len, int timeout);
+IBP_API op_generic_t *new_ibp_write_op(ibp_context_t *ic, ibp_cap_t *cap, ibp_off_t offset, tbx_tbuf_t *buffer, ibp_off_t boff, ibp_off_t len, int timeout);
+IBP_API void set_ibp_write_op(ibp_op_t *op, ibp_cap_t *cap, ibp_off_t offset, tbx_tbuf_t *buffer, ibp_off_t boff, ibp_off_t len, int timeout);
+IBP_API op_generic_t *new_ibp_append_op(ibp_context_t *ic, ibp_cap_t *cap, tbx_tbuf_t *buffer, ibp_off_t boff, ibp_off_t len, int timeout);
+void set_ibp_append_op(ibp_op_t *op, ibp_cap_t *cap, tbx_tbuf_t *buffer, ibp_off_t boff, ibp_off_t len, int timeout);
  
 IBP_API op_generic_t *new_ibp_copyappend_op(ibp_context_t *ic, int ns_type, char *path, ibp_cap_t *srccap, ibp_cap_t *destcap, ibp_off_t src_offset, ibp_off_t size,
 int src_timeout, int  dest_timeout, int dest_client_timeout);

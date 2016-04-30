@@ -1311,7 +1311,7 @@ apr_thread_mutex_t *osf_retrieve_lock(object_service_fn_t *os, char *path, int *
     char  digest[OSF_LOCK_CHKSUM_SIZE];
     unsigned int *n;
     int nbytes, slot;
-    tbuffer_t tbuf;
+    tbx_tbuf_t tbuf;
 
     nbytes = strlen(path);
     tbuffer_single(&tbuf, nbytes, path);

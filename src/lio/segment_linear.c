@@ -71,9 +71,9 @@ typedef struct {
     segment_t *seg;
     data_attr_t *da;
     segment_rw_hints_t *rw_hints;
-    ex_iovec_t  *iov;
+    ex_tbx_iovec_t  *iov;
     ex_off_t    boff;
-    tbuffer_t  *buffer;
+    tbx_tbuf_t  *buffer;
     int         n_iov;
     int timeout;
 } seglin_rw_t;
@@ -120,7 +120,7 @@ op_status_t _sl_grow(segment_t *seg, data_attr_t *da, ex_off_t new_size_arg, int
     rs_request_t *req_list;
     data_cap_set_t **cap_list;
     seglin_slot_t **block;
-    tbuffer_t tbuf;
+    tbx_tbuf_t tbuf;
     op_status_t status;
     char c[1];
 
@@ -505,7 +505,7 @@ op_status_t seglin_read_func(void *arg, int id)
 // seglin_read - Read from a linear segment
 //***********************************************************************
 
-op_generic_t *seglin_read(segment_t *seg, data_attr_t *da, segment_rw_hints_t *rw_hints, int n_iov, ex_iovec_t *iov, tbuffer_t *buffer, ex_off_t boff, int timeout)
+op_generic_t *seglin_read(segment_t *seg, data_attr_t *da, segment_rw_hints_t *rw_hints, int n_iov, ex_tbx_iovec_t *iov, tbx_tbuf_t *buffer, ex_off_t boff, int timeout)
 {
     seglin_priv_t *s = (seglin_priv_t *)seg->priv;
     seglin_rw_t *sw;
@@ -530,7 +530,7 @@ op_generic_t *seglin_read(segment_t *seg, data_attr_t *da, segment_rw_hints_t *r
 // seglin_write_op - Writes to a linear segment
 //***********************************************************************
 
-op_generic_t *seglin_write_op(segment_t *seg, data_attr_t *da, segment_rw_hints_t *rw_hints, int n_iov, ex_iovec_t *iov, tbuffer_t *buffer, ex_off_t boff, int timeout)
+op_generic_t *seglin_write_op(segment_t *seg, data_attr_t *da, segment_rw_hints_t *rw_hints, int n_iov, ex_tbx_iovec_t *iov, tbx_tbuf_t *buffer, ex_off_t boff, int timeout)
 {
     seglin_priv_t *s = (seglin_priv_t *)seg->priv;
     op_generic_t *gop;
@@ -651,7 +651,7 @@ op_status_t seglin_write_func(void *arg, int id)
 // seglin_write - Performs a segment write operation
 //***********************************************************************
 
-op_generic_t *seglin_write(segment_t *seg, data_attr_t *da, segment_rw_hints_t *rw_hints, int n_iov, ex_iovec_t *iov, tbuffer_t *buffer, ex_off_t boff, int timeout)
+op_generic_t *seglin_write(segment_t *seg, data_attr_t *da, segment_rw_hints_t *rw_hints, int n_iov, ex_tbx_iovec_t *iov, tbx_tbuf_t *buffer, ex_off_t boff, int timeout)
 {
     seglin_priv_t *s = (seglin_priv_t *)seg->priv;
     seglin_rw_t *sw;

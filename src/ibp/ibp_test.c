@@ -61,7 +61,7 @@ typedef struct {
     int size;
     int pos;
     int nbytes;
-    iovec_t v;
+    tbx_iovec_t v;
 } rw_arg_t;
 
 tbx_ns_chksum_t *ncs;
@@ -82,7 +82,7 @@ void base_async_test(ibp_depot_t *depot)
     char *buffer, *buffer_cmp;
     char c;
     char block_buf[block+1];
-    tbuffer_t buf[block+1];
+    tbx_tbuf_t buf[block+1];
     ibp_attributes_t attr;
     ibp_capset_t caps;
     ibp_cap_t *cap;
@@ -260,10 +260,10 @@ void base_async_test(ibp_depot_t *depot)
 }
 
 //*************************************************************************
-// base_iovec_test - simple single allocation test of the iovec routines
+// base_tbx_iovec_test - simple single allocation test of the iovec routines
 //*************************************************************************
 
-void base_iovec_test(ibp_depot_t *depot)
+void base_tbx_iovec_test(ibp_depot_t *depot)
 {
 //  int size = 115;
 //  int block = 10;
@@ -273,8 +273,8 @@ void base_iovec_test(ibp_depot_t *depot)
     char *buffer, *buffer_cmp;
     char c;
     char block_buf[block+1];
-    tbuffer_t buf;
-    ibp_iovec_t *vec;
+    tbx_tbuf_t buf;
+    ibp_tbx_iovec_t *vec;
     ibp_attributes_t attr;
     ibp_capset_t caps;
     ibp_cap_t *cap;
@@ -284,7 +284,7 @@ void base_iovec_test(ibp_depot_t *depot)
     op_generic_t *op;
     opque_t *q;
 
-//printf("Skipping base_iovec_test. ########################################################\n");
+//printf("Skipping base_tbx_iovec_test. ########################################################\n");
 //return;
 
     buffer = (char *)malloc(size+1);
@@ -297,9 +297,9 @@ void base_iovec_test(ibp_depot_t *depot)
     remainder = size % block;
     n_ele = bcount;
     if (remainder > 0) n_ele++;
-    type_malloc_clear(vec, ibp_iovec_t, n_ele);
+    type_malloc_clear(vec, ibp_tbx_iovec_t, n_ele);
 
-    printf("base_iovec_test:  Starting simple test\n");
+    printf("base_tbx_iovec_test:  Starting simple test\n");
     fflush(stdout);
 
     //** Create the list for handling the commands
@@ -310,15 +310,15 @@ void base_iovec_test(ibp_depot_t *depot)
     op = new_ibp_alloc_op(ic, &caps, size, depot, &attr, disk_cs_type, disk_blocksize, ibp_timeout);
     opque_add(q, op);
     err = opque_waitall(q);
-    printf("base_iovec_test: after allocate: nfinished=%d\n", opque_tasks_finished(q));
+    printf("base_tbx_iovec_test: after allocate: nfinished=%d\n", opque_tasks_finished(q));
     if (err != OP_STATE_SUCCESS) {
-        printf("base_iovec_test: ibp_allocate error! * ibp_errno=%d\n", err);
+        printf("base_tbx_iovec_test: ibp_allocate error! * ibp_errno=%d\n", err);
         abort();
     }
 
-    printf("base_iovec_test: rcap=%s\n", get_ibp_cap(&caps, IBP_READCAP));
-    printf("base_iovec_test: wcap=%s\n", get_ibp_cap(&caps, IBP_WRITECAP));
-    printf("base_iovec_test: mcap=%s\n", get_ibp_cap(&caps, IBP_MANAGECAP));
+    printf("base_tbx_iovec_test: rcap=%s\n", get_ibp_cap(&caps, IBP_READCAP));
+    printf("base_tbx_iovec_test: wcap=%s\n", get_ibp_cap(&caps, IBP_WRITECAP));
+    printf("base_tbx_iovec_test: mcap=%s\n", get_ibp_cap(&caps, IBP_MANAGECAP));
 
     //** Init the buffers
     buffer[size] = '\0';
@@ -361,16 +361,16 @@ void base_iovec_test(ibp_depot_t *depot)
     opque_add(q, op);
 
     //** Now wait for them to complete
-    printf("base_iovec_test: waiting for upload to finish\n");
+    printf("base_tbx_iovec_test: waiting for upload to finish\n");
     fflush(stdout);
     start_time = apr_time_now();
     err = opque_waitall(q);
     end_time = apr_time_now() - start_time;
     dt = apr_time_as_msec(end_time) / 1000.0;
-    printf("base_iovec_test: after upload nfinished=%d dt=%lf\n", opque_tasks_finished(q), dt);
+    printf("base_tbx_iovec_test: after upload nfinished=%d dt=%lf\n", opque_tasks_finished(q), dt);
     fflush(stdout);
     if (err != OP_STATE_SUCCESS) {
-        printf("base_iovec_test: Error in stripe write! * ibp_errno=%d\n", err);
+        printf("base_tbx_iovec_test: Error in stripe write! * ibp_errno=%d\n", err);
         abort();
     }
 
@@ -403,16 +403,16 @@ void base_iovec_test(ibp_depot_t *depot)
     opque_add(q, op);
 
     //** Now wait for them to complete
-    printf("base_iovec_test: waiting for downloads to finish\n");
+    printf("base_tbx_iovec_test: waiting for downloads to finish\n");
     fflush(stdout);
     start_time = apr_time_now();
     err = opque_waitall(q);
     end_time = apr_time_now() - start_time;
     dt = apr_time_as_msec(end_time) / 1000.0;
-    printf("base_iovec_test: after download nfinished=%d dt=%lf\n", opque_tasks_finished(q), dt);
+    printf("base_tbx_iovec_test: after download nfinished=%d dt=%lf\n", opque_tasks_finished(q), dt);
     fflush(stdout);
     if (err != OP_STATE_SUCCESS) {
-        printf("base_iovec_test: Error in stripe read! * ibp_errno=%d\n", err);
+        printf("base_tbx_iovec_test: Error in stripe read! * ibp_errno=%d\n", err);
         abort();
     }
 
@@ -422,7 +422,7 @@ void base_iovec_test(ibp_depot_t *depot)
     i = strcmp(buffer, buffer_cmp);
     if (i != 0) {
         failed_tests++;
-        printf("base_iovec_test: FAILED! strcmp = %d\n", i);
+        printf("base_tbx_iovec_test: FAILED! strcmp = %d\n", i);
     }
 
     //-------------------------------
@@ -432,9 +432,9 @@ void base_iovec_test(ibp_depot_t *depot)
     op = new_ibp_remove_op(ic, get_ibp_cap(&caps, IBP_MANAGECAP), ibp_timeout);
     opque_add(q, op);
     err = opque_waitall(q);
-    printf("base_iovec_test: after remove nfinished=%d\n", opque_tasks_finished(q));
+    printf("base_tbx_iovec_test: after remove nfinished=%d\n", opque_tasks_finished(q));
     if (err != OP_STATE_SUCCESS) {
-        printf("base_iovec_test: Error removing the allocation!  ibp_errno=%d\n", err);
+        printf("base_tbx_iovec_test: Error removing the allocation!  ibp_errno=%d\n", err);
         abort();
     }
 
@@ -448,7 +448,7 @@ void base_iovec_test(ibp_depot_t *depot)
     free(buffer);
     free(buffer_cmp);
 
-    printf("base_iovec_test: PASSED\n");
+    printf("base_tbx_iovec_test: PASSED\n");
     fflush(stdout);
 }
 
@@ -464,7 +464,7 @@ void perform_big_alloc_tests(ibp_depot_t *depot)
     aoff = (aoff << 30) + 1;
     ibp_off_t asize = aoff + bufsize;
     char buffer[bufsize+1], buffer_cmp[bufsize+1];
-    tbuffer_t buf;
+    tbx_tbuf_t buf;
     int err;
     ibp_capstatus_t astat;
     ibp_attributes_t attr;
@@ -609,7 +609,7 @@ void perform_manage_truncate_tests(ibp_depot_t *depot)
     ibp_off_t asize = 2*bufsize;
     ibp_off_t pos;
     char buffer[bufsize+1], buffer_cmp[bufsize+1];
-    tbuffer_t buf;
+    tbx_tbuf_t buf;
     int err, dt;
     ibp_capstatus_t astat;
     ibp_capstatus_t astat2;
@@ -854,7 +854,7 @@ void perform_manage_truncate_tests(ibp_depot_t *depot)
 // my_next_block - My routine for getting data
 //*********************************************************************************
 
-int my_next_block(tbuffer_t *tb, size_t pos, tbuffer_var_t *tbv)
+int my_next_block(tbx_tbuf_t *tb, size_t pos, tbx_tbuf_var_t *tbv)
 {
     rw_arg_t *a = (rw_arg_t *)tb->arg;
     size_t nbytes;
@@ -900,7 +900,7 @@ void perform_user_rw_tests(ibp_depot_t *depot)
     int bufsize = 1024*1024;
 //  int bufsize = 100;
     char buffer[bufsize], rbuf[bufsize];
-    tbuffer_t buf;
+    tbx_tbuf_t buf;
     ibp_op_t op;
     ibp_attributes_t attr;
     ibp_capset_t caps;
@@ -1358,7 +1358,7 @@ void perform_pushpull_tests(ibp_depot_t *depot1, ibp_depot_t *depot2)
 void perform_transfer_buffer_tests()
 {
     int err;
-    err = tbuffer_test();
+    err = tbx_tbuf_test();
 
     if (err == 0) {
         printf("perform_transfer_buffer_tests: Passed!\n");
@@ -1698,7 +1698,7 @@ int main(int argc, char **argv)
         printf("=======================>>>>>> Skipping base_async and iovec tests <<<<<<<<=========================\n");
     } else {
         base_async_test(&depot1);
-        base_iovec_test(&depot1);
+        base_tbx_iovec_test(&depot1);
     }
 
     //** Now do a few of the extra tests for async only

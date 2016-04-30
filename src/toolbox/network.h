@@ -111,8 +111,8 @@ struct tbx_ns_t {
     tbx_ns_chksum_t write_chksum;     //Write chksum
     ns_native_fd_t (*native_fd)(net_sock_t *sock);  //** Native socket if supported
     int (*close)(net_sock_t *sock);  //** Close socket
-    long int(*write)(net_sock_t *sock, tbuffer_t *buf, size_t boff, size_t count, Net_timeout_t tm);
-    long int (*read)(net_sock_t *sock, tbuffer_t *buf, size_t boff, size_t count, Net_timeout_t tm);
+    long int(*write)(net_sock_t *sock, tbx_tbuf_t *buf, size_t boff, size_t count, Net_timeout_t tm);
+    long int (*read)(net_sock_t *sock, tbx_tbuf_t *buf, size_t boff, size_t count, Net_timeout_t tm);
     void (*set_peer)(net_sock_t *sock, char *address, int add_size);
     int (*sock_status)(net_sock_t *sock);
     int (*connect)(net_sock_t *sock, const char *hostname, int port, Net_timeout_t timeout);
@@ -206,12 +206,12 @@ TBX_API tbx_ns_t *new_netstream();
 void network_close(tbx_network_t *net);
 void network_destroy(tbx_network_t *net);
 int sniff_connection(tbx_ns_t *ns);
-TBX_API int write_netstream(tbx_ns_t *ns, tbuffer_t *buffer, int boff, int bsize, Net_timeout_t timeout);
-int write_netstream_block(tbx_ns_t *ns, apr_time_t end_time, tbuffer_t *buffer, int boff, int bsize);
-int read_netstream_block(tbx_ns_t *ns, apr_time_t end_time, tbuffer_t *buffer, int boff, int bsize);
-TBX_API int read_netstream(tbx_ns_t *ns, tbuffer_t *buffer, int boff, int size, Net_timeout_t timeout);
-TBX_API int readline_netstream_raw(tbx_ns_t *ns, tbuffer_t *buffer, int boff, int size, Net_timeout_t timeout, int *status);
-int readline_netstream(tbx_ns_t *ns, tbuffer_t *buffer, int boff, int size, Net_timeout_t timeout);
+TBX_API int write_netstream(tbx_ns_t *ns, tbx_tbuf_t *buffer, int boff, int bsize, Net_timeout_t timeout);
+int write_netstream_block(tbx_ns_t *ns, apr_time_t end_time, tbx_tbuf_t *buffer, int boff, int bsize);
+int read_netstream_block(tbx_ns_t *ns, apr_time_t end_time, tbx_tbuf_t *buffer, int boff, int bsize);
+TBX_API int read_netstream(tbx_ns_t *ns, tbx_tbuf_t *buffer, int boff, int size, Net_timeout_t timeout);
+TBX_API int readline_netstream_raw(tbx_ns_t *ns, tbx_tbuf_t *buffer, int boff, int size, Net_timeout_t timeout, int *status);
+int readline_netstream(tbx_ns_t *ns, tbx_tbuf_t *buffer, int boff, int size, Net_timeout_t timeout);
 int accept_pending_connection(tbx_network_t *net, tbx_ns_t *ns);
 TBX_API Net_timeout_t *set_net_timeout(Net_timeout_t *tm, int sec, int us);
 void get_net_timeout(Net_timeout_t tm, int *sec, int *us);

@@ -92,9 +92,9 @@ typedef struct {
     segment_t *seg;
     data_attr_t *da;
     segment_rw_hints_t *rw_hints;
-    ex_iovec_t  *iov;
+    ex_tbx_iovec_t  *iov;
     ex_off_t    boff;
-    tbuffer_t  *buffer;
+    tbx_tbuf_t  *buffer;
     int         n_iov;
     int         rw_mode;
     int timeout;
@@ -112,10 +112,10 @@ typedef struct {
 
 typedef struct {
     op_generic_t *gop;
-    ex_iovec_t *ex_iov;
-    iovec_t *iov;
+    ex_tbx_iovec_t *ex_iov;
+    tbx_iovec_t *iov;
     seglun_block_t *block;
-    tbuffer_t buffer;
+    tbx_tbuf_t buffer;
     int n_ex;
     int c_ex;
     int n_iov;
@@ -569,7 +569,7 @@ int slun_row_pad_fix(segment_t *seg, data_attr_t *da, seglun_row_t *b, int *bloc
     ex_off_t bstart;
     op_generic_t *gop;
     opque_t *q;
-    tbuffer_t tbuf;
+    tbx_tbuf_t tbuf;
     char c;
 
     q = new_opque();
@@ -1123,7 +1123,7 @@ op_generic_t *seglun_truncate(segment_t *seg, data_attr_t *da, ex_off_t new_size
 //    NOTE: start is relative to start of the row and not the file!
 //***********************************************************************
 
-void lun_row_decompose(segment_t *seg, lun_rw_row_t *rw_buf, seglun_row_t *b, ex_off_t start, tbuffer_t *buffer, ex_off_t bpos, ex_off_t rwlen)
+void lun_row_decompose(segment_t *seg, lun_rw_row_t *rw_buf, seglun_row_t *b, ex_off_t start, tbx_tbuf_t *buffer, ex_off_t bpos, ex_off_t rwlen)
 {
     seglun_priv_t *s = (seglun_priv_t *)seg->priv;
     lun_rw_row_t *rwb;
@@ -1131,7 +1131,7 @@ void lun_row_decompose(segment_t *seg, lun_rw_row_t *rw_buf, seglun_row_t *b, ex
     ex_off_t lo, hi, nleft, pos, chunk_off, chunk_end, stripe_off, begin, end, nbytes;
     int err, dev, ss, stripe_shift;
     ex_off_t offset[s->n_devices], len[s->n_devices];
-    tbuffer_var_t tbv;
+    tbx_tbuf_var_t tbv;
 //ex_off_t dummy;
 
     lo = start;
@@ -1154,9 +1154,9 @@ void lun_row_decompose(segment_t *seg, lun_rw_row_t *rw_buf, seglun_row_t *b, ex
         if (k < n_stripes) {
             rw_buf[i].c_iov += n_stripes - k + 1;
             if (rw_buf[i].iov == NULL) {
-                type_malloc(rw_buf[i].iov, iovec_t, rw_buf[i].c_iov);
+                type_malloc(rw_buf[i].iov, tbx_iovec_t, rw_buf[i].c_iov);
             } else {
-                type_realloc(rw_buf[i].iov, iovec_t, rw_buf[i].c_iov);
+                type_realloc(rw_buf[i].iov, tbx_iovec_t, rw_buf[i].c_iov);
             }
         }
     }
@@ -1194,7 +1194,7 @@ void lun_row_decompose(segment_t *seg, lun_rw_row_t *rw_buf, seglun_row_t *b, ex
                     k = rwb->n_iov + tbv.n_iov;
                     if (k >= rwb->c_iov) {
                         rwb->c_iov = 2*k;
-                        type_realloc(rwb->iov, iovec_t, rwb->c_iov);
+                        type_realloc(rwb->iov, tbx_iovec_t, rwb->c_iov);
                     }
                     for (k=0; k<tbv.n_iov; k++) {
                         rwb->iov[rwb->n_iov + k] = tbv.buffer[k];
@@ -1224,9 +1224,9 @@ void lun_row_decompose(segment_t *seg, lun_rw_row_t *rw_buf, seglun_row_t *b, ex
                 k = 2 * (j+1);
                 rw_buf[i].c_ex = k;
                 if (rw_buf[i].n_ex == 0) {
-                    type_malloc(rw_buf[i].ex_iov, ex_iovec_t, k);
+                    type_malloc(rw_buf[i].ex_iov, ex_tbx_iovec_t, k);
                 } else {
-                    type_realloc(rw_buf[i].ex_iov, ex_iovec_t, k);
+                    type_realloc(rw_buf[i].ex_iov, ex_tbx_iovec_t, k);
                 }
             }
             rw_buf[i].ex_iov[j].offset = offset[i];
@@ -1307,8 +1307,8 @@ int seglun_row_decompose_test()
     segment_t *seg;
     seglun_priv_t *s;
     lun_rw_row_t rw_buf[max_dev];
-    iovec_t *iov_ref[max_dev], *iovbuf;
-    tbuffer_t tbuf, tbuf_ref[max_dev];
+    tbx_iovec_t *iov_ref[max_dev], *iovbuf;
+    tbx_tbuf_t tbuf, tbuf_ref[max_dev];
     ex_off_t boff;
     seglun_row_t *b;  //**Fake row
     seglun_block_t *block;
@@ -1368,7 +1368,7 @@ int seglun_row_decompose_test()
         log_printf(0, "ndev=%d  chunk_size=" XOT " stripe_size=" XOT "   nrows=%d----------------------------------------------\n", ndev, s->chunk_size, s->stripe_size, nrows);
 
         for (i=0; i < s->n_devices; i++) {
-            type_malloc(iov_ref[i], iovec_t, nrows);
+            type_malloc(iov_ref[i], tbx_iovec_t, nrows);
             tbuffer_vec(&(tbuf_ref[i]), bufsize, nrows, iov_ref[i]);
         }
 
@@ -1388,7 +1388,7 @@ int seglun_row_decompose_test()
             log_printf(0, "ndev=%d  niov=%d----------------------------------------------------------------------\n", ndev, niov);
 
             //** Make the destination buf
-            type_malloc(iovbuf, iovec_t, niov);
+            type_malloc(iovbuf, tbx_iovec_t, niov);
 
             for (j=0; j < n_tests; j++) {  //** Random tests
 
@@ -1450,7 +1450,7 @@ int seglun_row_decompose_test()
 // seglun_rw_op - Reads/Writes to a LUN segment
 //***********************************************************************
 
-op_status_t seglun_rw_op(segment_t *seg, data_attr_t *da, segment_rw_hints_t *rw_hints, int n_iov, ex_iovec_t *iov, tbuffer_t *buffer, ex_off_t boff, int rw_mode, int timeout)
+op_status_t seglun_rw_op(segment_t *seg, data_attr_t *da, segment_rw_hints_t *rw_hints, int n_iov, ex_tbx_iovec_t *iov, tbx_tbuf_t *buffer, ex_off_t boff, int rw_mode, int timeout)
 {
     seglun_priv_t *s = (seglun_priv_t *)seg->priv;
     blacklist_t *bl = s->bl;
@@ -1845,7 +1845,7 @@ op_status_t seglun_rw_func(void *arg, int id)
 // seglun_write - Performs a segment write operation
 //***********************************************************************
 
-op_generic_t *seglun_write(segment_t *seg, data_attr_t *da, segment_rw_hints_t *rw_hints, int n_iov, ex_iovec_t *iov, tbuffer_t *buffer, ex_off_t boff, int timeout)
+op_generic_t *seglun_write(segment_t *seg, data_attr_t *da, segment_rw_hints_t *rw_hints, int n_iov, ex_tbx_iovec_t *iov, tbx_tbuf_t *buffer, ex_off_t boff, int timeout)
 {
     seglun_priv_t *s = (seglun_priv_t *)seg->priv;
     seglun_rw_t *sw;
@@ -1870,7 +1870,7 @@ op_generic_t *seglun_write(segment_t *seg, data_attr_t *da, segment_rw_hints_t *
 // seglun_read - Read from a linear segment
 //***********************************************************************
 
-op_generic_t *seglun_read(segment_t *seg, data_attr_t *da, segment_rw_hints_t *rw_hints, int n_iov, ex_iovec_t *iov, tbuffer_t *buffer, ex_off_t boff, int timeout)
+op_generic_t *seglun_read(segment_t *seg, data_attr_t *da, segment_rw_hints_t *rw_hints, int n_iov, ex_tbx_iovec_t *iov, tbx_tbuf_t *buffer, ex_off_t boff, int timeout)
 {
     seglun_priv_t *s = (seglun_priv_t *)seg->priv;
     seglun_rw_t *sw;

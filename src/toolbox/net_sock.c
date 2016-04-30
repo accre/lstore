@@ -166,11 +166,11 @@ int sock_io_wait(network_sock_t *sock, Net_timeout_t tm, int mode)
 // my_read
 //*********************************************************************
 
-apr_size_t my_read(network_sock_t *sock, tbuffer_t *buf, apr_size_t pos, apr_size_t len, apr_size_t *count)
+apr_size_t my_read(network_sock_t *sock, tbx_tbuf_t *buf, apr_size_t pos, apr_size_t len, apr_size_t *count)
 {
     ssize_t n;
     sock_apr_overlay_t *s = (sock_apr_overlay_t *)(sock->fd);
-    tbuffer_var_t tbv;
+    tbx_tbuf_var_t tbv;
 
     int leni, ni, nbi;
 
@@ -208,11 +208,11 @@ apr_size_t my_read(network_sock_t *sock, tbuffer_t *buf, apr_size_t pos, apr_siz
 // my_write
 //*********************************************************************
 
-apr_size_t my_write(network_sock_t *sock, tbuffer_t *buf, apr_size_t bpos, apr_size_t len, apr_size_t *count)
+apr_size_t my_write(network_sock_t *sock, tbx_tbuf_t *buf, apr_size_t bpos, apr_size_t len, apr_size_t *count)
 {
     ssize_t n;
     sock_apr_overlay_t *s = (sock_apr_overlay_t *)(sock->fd);
-    tbuffer_var_t tbv;
+    tbx_tbuf_var_t tbv;
 
     int leni, ni;
     apr_time_t start = apr_time_now();
@@ -265,7 +265,7 @@ apr_size_t my_write(network_sock_t *sock, tbuffer_t *buf, apr_size_t bpos, apr_s
 //  sock_write
 //*********************************************************************
 
-long int sock_write(net_sock_t *nsock, tbuffer_t *buf, size_t bpos, size_t len, Net_timeout_t tm)
+long int sock_write(net_sock_t *nsock, tbx_tbuf_t *buf, size_t bpos, size_t len, Net_timeout_t tm)
 {
     int err, ewait; // eno;
     apr_size_t nbytes;
@@ -296,7 +296,7 @@ long int sock_write(net_sock_t *nsock, tbuffer_t *buf, size_t bpos, size_t len, 
 //  sock_read
 //*********************************************************************
 
-long int sock_read(net_sock_t *nsock, tbuffer_t *buf, size_t bpos, size_t len, Net_timeout_t tm)
+long int sock_read(net_sock_t *nsock, tbx_tbuf_t *buf, size_t bpos, size_t len, Net_timeout_t tm)
 {
     int err, ewait; // eno;
     apr_size_t nbytes;
@@ -327,11 +327,11 @@ long int sock_read(net_sock_t *nsock, tbuffer_t *buf, size_t bpos, size_t len, N
 //  sock_apr_read
 //*********************************************************************
 
-long int sock_apr_read(net_sock_t *nsock, tbuffer_t *buf, size_t bpos, size_t len, Net_timeout_t tm)
+long int sock_apr_read(net_sock_t *nsock, tbx_tbuf_t *buf, size_t bpos, size_t len, Net_timeout_t tm)
 {
     int err;
     apr_size_t nbytes;
-    tbuffer_var_t tbv;
+    tbx_tbuf_var_t tbv;
     network_sock_t *sock = (network_sock_t *)nsock;
 
     if (sock == NULL) return(-1);   //** If closed return
@@ -361,11 +361,11 @@ long int sock_apr_read(net_sock_t *nsock, tbuffer_t *buf, size_t bpos, size_t le
 //  sock_apr_write
 //*********************************************************************
 
-long int sock_apr_write(net_sock_t *nsock, tbuffer_t *buf, size_t bpos, size_t len, Net_timeout_t tm)
+long int sock_apr_write(net_sock_t *nsock, tbx_tbuf_t *buf, size_t bpos, size_t len, Net_timeout_t tm)
 {
     int err;
     apr_size_t nbytes;
-    tbuffer_var_t tbv;
+    tbx_tbuf_var_t tbv;
     network_sock_t *sock = (network_sock_t *)nsock;
 
     if (sock == NULL) return(-1);   //** If closed return

@@ -53,10 +53,10 @@ http://www.accre.vanderbilt.edu
 #include "net_2_ssl.h"
 #include "net_phoebus.h"
 
-int _read_netstream(tbx_ns_t *ns, tbuffer_t *buffer, int boff, int bsize, Net_timeout_t timeout, int dolock);
-int _read_netstream_block(tbx_ns_t *ns, apr_time_t end_time, tbuffer_t *buffer, int boff, int bsize, int dolock);
-int _write_netstream(tbx_ns_t *ns, tbuffer_t *buffer, int boff, int size, Net_timeout_t timeout, int dolock);
-int _write_netstream_block(tbx_ns_t *ns, apr_time_t end_time, tbuffer_t *buffer, int boff, int size, int dolock);
+int _read_netstream(tbx_ns_t *ns, tbx_tbuf_t *buffer, int boff, int bsize, Net_timeout_t timeout, int dolock);
+int _read_netstream_block(tbx_ns_t *ns, apr_time_t end_time, tbx_tbuf_t *buffer, int boff, int bsize, int dolock);
+int _write_netstream(tbx_ns_t *ns, tbx_tbuf_t *buffer, int boff, int size, Net_timeout_t timeout, int dolock);
+int _write_netstream_block(tbx_ns_t *ns, apr_time_t end_time, tbx_tbuf_t *buffer, int boff, int size, int dolock);
 
 int tcp_bufsize = 0;   //** 0 means use the default TCP buffer sizes for the OS
 
@@ -203,7 +203,7 @@ int ns_read_chksum_flush(tbx_ns_t *ns)
 {
     char ns_value[CHKSUM_MAX_SIZE], chksum_value[CHKSUM_MAX_SIZE];
     int err, n;
-    tbuffer_t buf;
+    tbx_tbuf_t buf;
 
     log_printf(15, "ns_read_chksum_flush: Reading chksum!  ns=%d type=%d bleft=" I64T " bsize=" I64T " state=%d\n",
                ns_getid(ns), chksum_type(&(ns->read_chksum.chksum)), ns->read_chksum.bytesleft, ns->read_chksum.blocksize, ns_read_chksum_state(ns));
@@ -256,7 +256,7 @@ int ns_write_chksum_flush(tbx_ns_t *ns)
 {
     char chksum_value[CHKSUM_MAX_SIZE];
     int err, n;
-    tbuffer_t buf;
+    tbx_tbuf_t buf;
 
     log_printf(15, "ns_write_chksum_flush: injecting chksum!  ns=%d type=%d bytesleft=" I64T " bsize=" I64T "\n",
                ns_getid(ns), chksum_type(&(ns->write_chksum.chksum)), ns->write_chksum.bytesleft, ns->write_chksum.blocksize);
@@ -745,7 +745,7 @@ void network_destroy(tbx_network_t *net)
 // write_netstream - Writes characters to the stream with a max wait
 //*********************************************************************
 
-int _write_netstream(tbx_ns_t *ns, tbuffer_t *buffer, int boff, int bsize, Net_timeout_t timeout, int dolock)
+int _write_netstream(tbx_ns_t *ns, tbx_tbuf_t *buffer, int boff, int bsize, Net_timeout_t timeout, int dolock)
 {
     int total_bytes, i;
 
@@ -799,7 +799,7 @@ int _write_netstream(tbx_ns_t *ns, tbuffer_t *buffer, int boff, int bsize, Net_t
 // write_netstream - Writes characters to the stream with a max wait
 //*********************************************************************
 
-int write_netstream(tbx_ns_t *ns, tbuffer_t *buffer, int boff, int bsize, Net_timeout_t timeout)
+int write_netstream(tbx_ns_t *ns, tbx_tbuf_t *buffer, int boff, int bsize, Net_timeout_t timeout)
 {
     return(_write_netstream(ns, buffer, boff, bsize, timeout, 1));
 }
@@ -809,7 +809,7 @@ int write_netstream(tbx_ns_t *ns, tbuffer_t *buffer, int boff, int bsize, Net_ti
 //     data is sent or end_time is reached
 //*********************************************************************
 
-int _write_netstream_block(tbx_ns_t *ns, apr_time_t end_time, tbuffer_t *buffer, int boff, int size, int dolock)
+int _write_netstream_block(tbx_ns_t *ns, apr_time_t end_time, tbx_tbuf_t *buffer, int boff, int size, int dolock)
 {
     int pos, nleft, nbytes, err;
 
@@ -849,7 +849,7 @@ int _write_netstream_block(tbx_ns_t *ns, apr_time_t end_time, tbuffer_t *buffer,
 //     data is sent or end_time is reached
 //*********************************************************************
 
-int write_netstream_block(tbx_ns_t *ns, apr_time_t end_time, tbuffer_t *buffer, int boff, int bsize)
+int write_netstream_block(tbx_ns_t *ns, apr_time_t end_time, tbx_tbuf_t *buffer, int boff, int bsize)
 {
     return(_write_netstream_block(ns, end_time, buffer, boff, bsize, 1));
 }
@@ -859,7 +859,7 @@ int write_netstream_block(tbx_ns_t *ns, apr_time_t end_time, tbuffer_t *buffer, 
 //     data is sent or end_time is reached
 //*********************************************************************
 
-int _read_netstream_block(tbx_ns_t *ns, apr_time_t end_time, tbuffer_t *buffer, int pos, int size, int dolock)
+int _read_netstream_block(tbx_ns_t *ns, apr_time_t end_time, tbx_tbuf_t *buffer, int pos, int size, int dolock)
 {
     int nleft, nbytes, err;
 
@@ -898,7 +898,7 @@ int _read_netstream_block(tbx_ns_t *ns, apr_time_t end_time, tbuffer_t *buffer, 
 //     data is sent or end_time is reached
 //*********************************************************************
 
-int read_netstream_block(tbx_ns_t *ns, apr_time_t end_time, tbuffer_t *buffer, int boff, int bsize)
+int read_netstream_block(tbx_ns_t *ns, apr_time_t end_time, tbx_tbuf_t *buffer, int boff, int bsize)
 {
     return(_read_netstream_block(ns, end_time, buffer, boff, bsize, 1));
 }
@@ -950,10 +950,10 @@ int scan_and_copy_stream(char *inbuf, int insize, char *outbuf, int outsize, int
 // read_netstream - Reads characters from the stream with a max wait
 //*********************************************************************
 
-int _read_netstream(tbx_ns_t *ns, tbuffer_t *buffer, int boff, int size, Net_timeout_t timeout, int dolock)
+int _read_netstream(tbx_ns_t *ns, tbx_tbuf_t *buffer, int boff, int size, Net_timeout_t timeout, int dolock)
 {
     int total_bytes, i;
-    tbuffer_t ns_tb;
+    tbx_tbuf_t ns_tb;
 
     if (size == 0) return(0);
 
@@ -1027,7 +1027,7 @@ int _read_netstream(tbx_ns_t *ns, tbuffer_t *buffer, int boff, int size, Net_tim
 // read_netstream - Reads characters fomr the stream with a max wait
 //*********************************************************************
 
-int read_netstream(tbx_ns_t *ns, tbuffer_t *buffer, int boff, int bsize, Net_timeout_t timeout)
+int read_netstream(tbx_ns_t *ns, tbx_tbuf_t *buffer, int boff, int bsize, Net_timeout_t timeout)
 {
     return(_read_netstream(ns, buffer, boff, bsize, timeout, 1));
 }
@@ -1037,9 +1037,9 @@ int read_netstream(tbx_ns_t *ns, tbuffer_t *buffer, int boff, int bsize, Net_tim
 //    if it fails it returns the partial read
 //*********************************************************************
 
-int readline_netstream_raw(tbx_ns_t *ns, tbuffer_t *buffer, int boff, int size, Net_timeout_t timeout, int *status)
+int readline_netstream_raw(tbx_ns_t *ns, tbx_tbuf_t *buffer, int boff, int size, Net_timeout_t timeout, int *status)
 {
-    tbuffer_t ns_tb;
+    tbx_tbuf_t ns_tb;
     int nbytes, total_bytes, i;
     int finished = 0;
     char *buf;
@@ -1143,7 +1143,7 @@ int readline_netstream_raw(tbx_ns_t *ns, tbuffer_t *buffer, int boff, int size, 
 // readline_netstream - Reads a line of text from the stream
 //*********************************************************************
 
-int readline_netstream(tbx_ns_t *ns, tbuffer_t *buffer, int boff, int bsize, Net_timeout_t timeout)
+int readline_netstream(tbx_ns_t *ns, tbx_tbuf_t *buffer, int boff, int bsize, Net_timeout_t timeout)
 {
     int status;
     int n = readline_netstream_raw(ns, buffer, boff, bsize, timeout, &status);

@@ -142,12 +142,12 @@ int cipher ## _size(void *state, int type)  \
   return(i);                                \
 }                                           \
                                             \
-int cipher ## _add(void *state, int nbytes, tbuffer_t *data, int boff)   \
+int cipher ## _add(void *state, int nbytes, tbx_tbuf_t *data, int boff)   \
 {                                                  \
   int i, err = -1;                                 \
   size_t nleft;                                    \
-  iovec_t *iov;                                    \
-  tbuffer_var_t tbv;                               \
+  tbx_iovec_t *iov;                                    \
+  tbx_tbuf_var_t tbv;                               \
                                                    \
   tbuffer_var_init(&tbv);                          \
                                                    \
@@ -241,7 +241,7 @@ int blank_get(void *state, int type, char *value)
     value[0] = '\0';
     return(0);
 }
-int blank_add(void *state, int type, tbuffer_t *data, int boff)
+int blank_add(void *state, int type, tbx_tbuf_t *data, int boff)
 {
     return(0);
 }

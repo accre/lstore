@@ -50,12 +50,12 @@ extern "C" {
 typedef int64_t ex_off_t;
 typedef uint64_t ex_id_t;
 
-typedef ibp_iovec_t ex_iovec_t;
+typedef ibp_tbx_iovec_t ex_tbx_iovec_t;
 
 
 #define ex_iovec_single(iov, oset, nbytes) (iov)->offset = oset; (iov)->len = nbytes
-ex_iovec_t *ex_iovec_create();
-void ex_iovec_destroy(ex_iovec_t *iov);
+ex_tbx_iovec_t *ex_iovec_create();
+void ex_iovec_destroy(ex_tbx_iovec_t *iov);
 
 typedef struct {
     char *text;

@@ -214,7 +214,7 @@ void write_allocs(ibp_capset_t *caps, int n, int asize, int nthreads)
     int i, err;
     opque_t *q;
     op_generic_t *op;
-    tbuffer_t buf[n];
+    tbx_tbuf_t buf[n];
 
     char *buffer = (char *)malloc(asize);
     memset(buffer, 'W', asize);

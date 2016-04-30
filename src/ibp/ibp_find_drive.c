@@ -183,13 +183,13 @@ double write_allocs(ibp_capset_t *caps, int qlen, int n, int asize, int block_si
     apr_pollfd_t pfd;
     apr_time_t stime, dtime;
     int *tbuf_index;
-    tbuffer_t *buf;
+    tbx_tbuf_t *buf;
     tbx_stack_t *tbuf_free;
 
 
     tbuf_free = new_stack();
     type_malloc_clear(tbuf_index, int, qlen);
-    type_malloc_clear(buf, tbuffer_t, qlen);
+    type_malloc_clear(buf, tbx_tbuf_t, qlen);
     for (i=0; i<qlen; i++) {
         tbuf_index[i] = i;
         push(tbuf_free, &(tbuf_index[i]));

@@ -53,12 +53,12 @@ typedef struct {
 
 typedef struct {
     segment_t *seg;
-    tbuffer_t *buf;
+    tbx_tbuf_t *buf;
     data_attr_t *da;
     segment_rw_hints_t *rw_hints;
     ex_off_t   boff;
-    ex_iovec_t *iov;
-    ex_iovec_t iov_single;
+    ex_tbx_iovec_t *iov;
+    ex_tbx_iovec_t iov_single;
     int        rw_mode;
     int        n_iov;
     int skip_ppages;
@@ -79,14 +79,14 @@ typedef struct {
 
 typedef struct {
     op_generic_t *gop;
-    iovec_t *iov;
+    tbx_iovec_t *iov;
     page_handle_t *page;
-    ex_iovec_t ex_iov;
+    ex_tbx_iovec_t ex_iov;
     ex_off_t nbytes;
-    tbuffer_t buf;
+    tbx_tbuf_t buf;
     int n_iov;
     int myid;
-} cache_rw_iovec_t;
+} cache_rw_tbx_iovec_t;
 
 typedef struct {
     segment_t *sseg;
@@ -322,11 +322,11 @@ int cache_rw_pages(segment_t *seg, segment_rw_hints_t *rw_hints, page_handle_t *
 {
     cache_segment_t *s = (cache_segment_t *)seg->priv;
     page_handle_t *ph;
-    cache_rw_iovec_t *cio;
+    cache_rw_tbx_iovec_t *cio;
     opque_t *q;
     op_generic_t *gop;
     cache_cond_t *cache_cond;
-    iovec_t iovec[pl_size];
+    tbx_iovec_t iovec[pl_size];
     page_handle_t blank_pages[pl_size];
     cache_counters_t cc;
     int error_count, blank_count;
@@ -364,7 +364,7 @@ int cache_rw_pages(segment_t *seg, segment_rw_hints_t *rw_hints, page_handle_t *
         if ((ph->p->offset != off) || (ph->data == NULL)) {  //** Continuity break so bundle up the ops into a single command
             myid++;
             n = pli - contig_start;
-            type_malloc(cio, cache_rw_iovec_t, 1);
+            type_malloc(cio, cache_rw_tbx_iovec_t, 1);
             cio->n_iov = n;
             cio->myid = myid;
             cio->nbytes = s->page_size * n;
@@ -425,7 +425,7 @@ int cache_rw_pages(segment_t *seg, segment_rw_hints_t *rw_hints, page_handle_t *
     n = pl_size - contig_start;
     if (n > 0) {
         myid++;
-        type_malloc(cio, cache_rw_iovec_t, 1);
+        type_malloc(cio, cache_rw_tbx_iovec_t, 1);
         cio->n_iov = n;
         cio->myid = myid;
         cio->nbytes = s->page_size * n;
@@ -1063,13 +1063,13 @@ int cache_dirty_pages_get(segment_t *seg, int mode, ex_off_t lo, ex_off_t hi, ex
 //  cache_read_pages_get - Retrieves pages from cache for READING over the given range
 //*******************************************************************************
 
-int cache_read_pages_get(segment_t *seg, segment_rw_hints_t *rw_hints, int mode, ex_off_t lo, ex_off_t hi, ex_off_t *hi_got, page_handle_t *page, iovec_t *iov, int *n_pages, tbuffer_t *buf, ex_off_t bpos_start, void **cache_missed, ex_off_t master_size)
+int cache_read_pages_get(segment_t *seg, segment_rw_hints_t *rw_hints, int mode, ex_off_t lo, ex_off_t hi, ex_off_t *hi_got, page_handle_t *page, tbx_iovec_t *iov, int *n_pages, tbx_tbuf_t *buf, ex_off_t bpos_start, void **cache_missed, ex_off_t master_size)
 {
     cache_segment_t *s = (cache_segment_t *)seg->priv;
     ex_off_t lo_row, hi_row, *poff, n, old_hi, bpos, ppos, len;
     skiplist_iter_t it;
     cache_page_t *p;
-    tbuffer_t tb;
+    tbx_tbuf_t tb;
     int err, i, skip_mode, can_get, max_pages;
 
     //** Map the rage to the page boundaries
@@ -1240,11 +1240,11 @@ int cache_read_pages_get(segment_t *seg, segment_rw_hints_t *rw_hints, int mode,
 //  cache_write_pages_get - Retrieves pages from cache over the given range for WRITING
 //*******************************************************************************
 
-int cache_write_pages_get(segment_t *seg, segment_rw_hints_t *rw_hints, int mode, ex_off_t lo, ex_off_t hi, ex_off_t *hi_got, page_handle_t *page, iovec_t *iov, int *n_pages, tbuffer_t *buf, ex_off_t bpos_start, void **cache_missed, ex_off_t master_size)
+int cache_write_pages_get(segment_t *seg, segment_rw_hints_t *rw_hints, int mode, ex_off_t lo, ex_off_t hi, ex_off_t *hi_got, page_handle_t *page, tbx_iovec_t *iov, int *n_pages, tbx_tbuf_t *buf, ex_off_t bpos_start, void **cache_missed, ex_off_t master_size)
 {
     cache_segment_t *s = (cache_segment_t *)seg->priv;
     ex_off_t lo_row, hi_row, *poff, n, old_hi, coff, pstart, page_off, bpos, ppos, len;
-    tbuffer_t tb;
+    tbx_tbuf_t tb;
     skiplist_iter_t it;
     page_handle_t pload[2], pcheck;
     cache_page_t *p, *np;
@@ -1969,9 +1969,9 @@ int _cache_ppages_flush_list(segment_t *seg, data_attr_t *da, tbx_stack_t *pp_li
     cache_segment_t *s = (cache_segment_t *)seg->priv;
     cache_partial_page_t *pp;
     cache_rw_op_t cop;
-    ex_iovec_t *ex_iov;
-    iovec_t *iov;
-    tbuffer_t tbuf;
+    ex_tbx_iovec_t *ex_iov;
+    tbx_iovec_t *iov;
+    tbx_tbuf_t tbuf;
     ex_off_t *rng, r[2];
     int n_ranges, slot;
     ex_off_t nbytes, len;
@@ -1999,8 +1999,8 @@ int _cache_ppages_flush_list(segment_t *seg, data_attr_t *da, tbx_stack_t *pp_li
     }
 
     //** Fill in the RW op struct
-    type_malloc_clear(ex_iov, ex_iovec_t, n_ranges);
-    type_malloc_clear(iov, iovec_t, n_ranges);
+    type_malloc_clear(ex_iov, ex_tbx_iovec_t, n_ranges);
+    type_malloc_clear(iov, tbx_iovec_t, n_ranges);
     cop.seg = seg;
     cop.da = da;
     cop.n_iov = n_ranges;
@@ -2128,7 +2128,7 @@ int _cache_ppages_flush(segment_t *seg, data_attr_t *da)
 //     staging area
 //*******************************************************************************
 
-int cache_ppages_handle(segment_t *seg, data_attr_t *da, int rw_mode, ex_off_t *lo, ex_off_t *hi, ex_off_t *len, ex_off_t *bpos, tbuffer_t *tbuf)
+int cache_ppages_handle(segment_t *seg, data_attr_t *da, int rw_mode, ex_off_t *lo, ex_off_t *hi, ex_off_t *len, ex_off_t *bpos, tbx_tbuf_t *tbuf)
 {
     cache_segment_t *s = (cache_segment_t *)seg->priv;
     cache_partial_page_t *pp;
@@ -2136,7 +2136,7 @@ int cache_ppages_handle(segment_t *seg, data_attr_t *da, int rw_mode, ex_off_t *
     ex_off_t lo_new, hi_new, bpos_new;
     ex_off_t *rng;
     tbx_stack_t pp_flush;
-    tbuffer_t pptbuf;
+    tbx_tbuf_t pptbuf;
     skiplist_iter_t it;
     int do_flush, err, lo_mapped, hi_mapped;
 
@@ -2467,7 +2467,7 @@ op_status_t cache_rw_func(void *arg, int id)
     segment_t *seg = cop->seg;
     cache_segment_t *s = (cache_segment_t *)seg->priv;
     page_handle_t page[CACHE_MAX_PAGES_RETURNED];
-    iovec_t iov[CACHE_MAX_PAGES_RETURNED];
+    tbx_iovec_t iov[CACHE_MAX_PAGES_RETURNED];
     int status, n_pages;
     tbx_stack_t stack;
     cache_range_t *curr, *r;
@@ -2477,7 +2477,7 @@ op_status_t cache_rw_func(void *arg, int id)
     ex_off_t bpos2, bpos, poff, len, mylen, lo, hi, ngot, pstart, plen;
     ex_off_t hi_got, new_size, blen;
     ex_off_t total_bytes, hit_bytes;
-    tbuffer_t tb;
+    tbx_tbuf_t tb;
     void *cache_missed_table[100];
     void **cache_missed;
     apr_time_t hit_time, miss_time;
@@ -2720,7 +2720,7 @@ op_status_t cache_rw_func(void *arg, int id)
 // cache_read - Read from cache
 //***********************************************************************
 
-op_generic_t *cache_read(segment_t *seg, data_attr_t *da, segment_rw_hints_t *rw_hints, int n_iov, ex_iovec_t *iov, tbuffer_t *buffer, ex_off_t boff, int timeout)
+op_generic_t *cache_read(segment_t *seg, data_attr_t *da, segment_rw_hints_t *rw_hints, int n_iov, ex_tbx_iovec_t *iov, tbx_tbuf_t *buffer, ex_off_t boff, int timeout)
 {
     cache_rw_op_t *cop;
     cache_segment_t *s = (cache_segment_t *)seg->priv;
@@ -2743,7 +2743,7 @@ op_generic_t *cache_read(segment_t *seg, data_attr_t *da, segment_rw_hints_t *rw
 // cache_write - Write to cache
 //***********************************************************************
 
-op_generic_t *cache_write(segment_t *seg, data_attr_t *da, segment_rw_hints_t *rw_hints, int n_iov, ex_iovec_t *iov, tbuffer_t *buffer, ex_off_t boff, int timeout)
+op_generic_t *cache_write(segment_t *seg, data_attr_t *da, segment_rw_hints_t *rw_hints, int n_iov, ex_tbx_iovec_t *iov, tbx_tbuf_t *buffer, ex_off_t boff, int timeout)
 {
     cache_rw_op_t *cop;
     cache_segment_t *s = (cache_segment_t *)seg->priv;

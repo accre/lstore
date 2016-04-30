@@ -59,8 +59,8 @@ typedef struct {
 
 typedef struct {
     segment_t *seg;
-    tbuffer_t *buffer;
-    ex_iovec_t *iov;
+    tbx_tbuf_t *buffer;
+    ex_tbx_iovec_t *iov;
     ex_off_t  boff;
     ex_off_t len;
     int n_iov;
@@ -89,7 +89,7 @@ op_status_t segfile_rw_func(void *arg, int id)
     segfile_priv_t *s = (segfile_priv_t *)srw->seg->priv;
     ex_off_t bleft, boff;
     size_t nbytes, blen;
-    tbuffer_var_t tbv;
+    tbx_tbuf_var_t tbv;
     int i, err_cnt;
     op_status_t err;
 
@@ -162,7 +162,7 @@ op_status_t segfile_rw_func(void *arg, int id)
 // segfile_read - Read from a file segment
 //***********************************************************************
 
-op_generic_t *segfile_read(segment_t *seg, data_attr_t *da, segment_rw_hints_t *rw_hints, int n_iov, ex_iovec_t *iov, tbuffer_t *buffer, ex_off_t boff, int timeout)
+op_generic_t *segfile_read(segment_t *seg, data_attr_t *da, segment_rw_hints_t *rw_hints, int n_iov, ex_tbx_iovec_t *iov, tbx_tbuf_t *buffer, ex_off_t boff, int timeout)
 {
     segfile_priv_t *s = (segfile_priv_t *)seg->priv;
     segfile_rw_op_t *srw;
@@ -184,7 +184,7 @@ op_generic_t *segfile_read(segment_t *seg, data_attr_t *da, segment_rw_hints_t *
 // segfile_write - Writes to a linear segment
 //***********************************************************************
 
-op_generic_t *segfile_write(segment_t *seg, data_attr_t *da, segment_rw_hints_t *rw_hints, int n_iov, ex_iovec_t *iov, tbuffer_t *buffer, ex_off_t boff, int timeout)
+op_generic_t *segfile_write(segment_t *seg, data_attr_t *da, segment_rw_hints_t *rw_hints, int n_iov, ex_tbx_iovec_t *iov, tbx_tbuf_t *buffer, ex_off_t boff, int timeout)
 {
     segfile_priv_t *s = (segfile_priv_t *)seg->priv;
     segfile_rw_op_t *srw;

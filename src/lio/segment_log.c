@@ -46,8 +46,8 @@ http://www.accre.vanderbilt.edu
 
 typedef struct {
     segment_t *seg;
-    ex_iovec_t rex;
-    ex_iovec_t wex;
+    ex_tbx_iovec_t rex;
+    ex_tbx_iovec_t wex;
     ex_off_t seg_offset;
     ex_off_t lo;
     ex_off_t hi;
@@ -58,9 +58,9 @@ typedef struct {
     segment_t *seg;
     data_attr_t *da;
     segment_rw_hints_t *rw_hints;
-    ex_iovec_t  *iov;
+    ex_tbx_iovec_t  *iov;
     ex_off_t    boff;
-    tbuffer_t  *buffer;
+    tbx_tbuf_t  *buffer;
     int         n_iov;
     int         rw_mode;
     int timeout;
@@ -265,11 +265,11 @@ op_status_t seglog_write_func(void *arg, int id)
 {
     seglog_rw_t *sw = (seglog_rw_t *)arg;
     seglog_priv_t *s = (seglog_priv_t *)sw->seg->priv;
-    tbuffer_t tbuf;
+    tbx_tbuf_t tbuf;
     op_status_t status;
     int err, i;
     ex_off_t nbytes, table_offset, data_offset;
-    ex_iovec_t ex_iov_data, ex_iov_table;
+    ex_tbx_iovec_t ex_iov_data, ex_iov_table;
     slog_range_t r[sw->n_iov], *range;
     opque_t *q;
     op_generic_t *gop;
@@ -337,7 +337,7 @@ op_status_t seglog_write_func(void *arg, int id)
 // seglog_write - Performs a segment write operation
 //***********************************************************************
 
-op_generic_t *seglog_write(segment_t *seg, data_attr_t *da, segment_rw_hints_t *rw_hints, int n_iov, ex_iovec_t *iov, tbuffer_t *buffer, ex_off_t boff, int timeout)
+op_generic_t *seglog_write(segment_t *seg, data_attr_t *da, segment_rw_hints_t *rw_hints, int n_iov, ex_tbx_iovec_t *iov, tbx_tbuf_t *buffer, ex_off_t boff, int timeout)
 {
     seglog_priv_t *s = (seglog_priv_t *)seg->priv;
     seglog_rw_t *sw;
@@ -374,7 +374,7 @@ op_status_t seglog_read_func(void *arg, int id)
     op_status_t status;
     ex_off_t lo, hi, prev_end;
     ex_off_t bpos, pos, range_offset;
-    ex_iovec_t *ex_iov, *iov;
+    ex_tbx_iovec_t *ex_iov, *iov;
 
     q = new_opque();
     iov = sw->iov;
@@ -390,7 +390,7 @@ op_status_t seglog_read_func(void *arg, int id)
         n_iov += 2*count_interval_skiplist(s->mapping, (skiplist_key_t *)&lo, (skiplist_key_t *)&hi) + 1;
     }
     n_iov += 10;  //** Just to be safe
-    type_malloc(ex_iov, ex_iovec_t, n_iov);
+    type_malloc(ex_iov, ex_tbx_iovec_t, n_iov);
 
     //** Now generate the actual task list
     bpos = sw->boff;
@@ -485,7 +485,7 @@ op_status_t seglog_read_func(void *arg, int id)
 // seglog_read - Read from a log segment
 //***********************************************************************
 
-op_generic_t *seglog_read(segment_t *seg, data_attr_t *da, segment_rw_hints_t *rw_hints, int n_iov, ex_iovec_t *iov, tbuffer_t *buffer, ex_off_t boff, int timeout)
+op_generic_t *seglog_read(segment_t *seg, data_attr_t *da, segment_rw_hints_t *rw_hints, int n_iov, ex_tbx_iovec_t *iov, tbx_tbuf_t *buffer, ex_off_t boff, int timeout)
 {
     seglog_priv_t *s = (seglog_priv_t *)seg->priv;
     seglog_rw_t *sw;
@@ -520,8 +520,8 @@ int _slog_load(segment_t *seg)
     op_generic_t *gop;
     data_attr_t *da;
     slog_range_t *r;
-    ex_iovec_t ex_iov;
-    tbuffer_t tbuf;
+    ex_tbx_iovec_t ex_iov;
+    tbx_tbuf_t tbuf;
 
     da = ds_attr_create(s->ds);
 
@@ -665,8 +665,8 @@ op_status_t seglog_clone_func(void *arg, int id)
     ex_off_t nbytes_base, nbytes_log;
     int bufsize = 50*1024*1024;
     ex_off_t dt, pos, rpos, wpos, rlen, dlen;
-    tbuffer_t *wbuf, *rbuf, *tmpbuf;
-    tbuffer_t tbuf1, tbuf2;
+    tbx_tbuf_t *wbuf, *rbuf, *tmpbuf;
+    tbx_tbuf_t tbuf1, tbuf2;
     int err, do_segment_copy;
     char *buffer = NULL;
     slog_changes_t *clog;
@@ -875,8 +875,8 @@ op_status_t seglog_truncate_func(void *arg, int id)
     seglog_truncate_t *st = (seglog_truncate_t *)arg;
     seglog_priv_t *s = (seglog_priv_t *)st->seg->priv;
     op_status_t status;
-    tbuffer_t tbuf_table, tbuf_data;
-    ex_iovec_t ex_iov_table, ex_iov_data;
+    tbx_tbuf_t tbuf_table, tbuf_data;
+    ex_tbx_iovec_t ex_iov_table, ex_iov_data;
     ex_off_t table_offset, data_offset;
     char c = 0;
     int err;
@@ -1369,9 +1369,9 @@ op_status_t seglog_merge_with_base_func(void *arg, int id)
     seglog_priv_t *s = (seglog_priv_t *)sm->seg->priv;
     opque_t *qin, *qout;
     op_generic_t *gop;
-    ex_iovec_t *ex_in, *ex_out;
+    ex_tbx_iovec_t *ex_in, *ex_out;
     slog_range_t *r;
-    tbuffer_t tbuf;
+    tbx_tbuf_t tbuf;
     ex_off_t pos, len, blen, bpos;
     int i, n_iov, err;
     tbx_isl_iter_t it;
@@ -1380,8 +1380,8 @@ op_status_t seglog_merge_with_base_func(void *arg, int id)
     qout = new_opque();
 
     n_iov = interval_skiplist_count(s->mapping);
-    type_malloc(ex_in, ex_iovec_t, n_iov);
-    type_malloc(ex_out, ex_iovec_t, n_iov);
+    type_malloc(ex_in, ex_tbx_iovec_t, n_iov);
+    type_malloc(ex_out, ex_tbx_iovec_t, n_iov);
     tbuffer_single(&tbuf, sm->bufsize, sm->buffer);
 
     segment_lock(sm->seg);

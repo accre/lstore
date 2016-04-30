@@ -41,58 +41,58 @@ extern "C" {
 #define TBUFFER_OK 1
 #define TBUFFER_OUTOFSPACE 2
 
-typedef struct iovec iovec_t;
+typedef struct iovec tbx_iovec_t;
 
-typedef struct {
+typedef struct tbx_tbuf_info_t tbx_tbuf_info_t;
+struct tbx_tbuf_info_t {
     size_t total_bytes;
     int n;
-    iovec_t  *iov;
-    iovec_t  io_single;
-} tbinfo_t;
-
-typedef struct {
-    int    curr_slot;
-    int    slot_total_pos;
-    iovec_t single;
-} tbuf_state_t;
-
-typedef struct {
-    size_t nbytes;
-    iovec_t *buffer;
-    int    n_iov;
-    tbuf_state_t priv;
-} tbuffer_var_t;
-
-
-struct tbuffer_s;
-typedef struct tbuffer_s tbuffer_t;
-struct tbuffer_s {
-    void *arg;
-//  int (*next_block)(tbuffer_t *tb, size_t off, size_t *nbytes, int *n, iovec_t **buffer);
-    int (*next_block)(tbuffer_t *tb, size_t off, tbuffer_var_t *tbv);
-    tbinfo_t buf;
+    tbx_iovec_t  *iov;
+    tbx_iovec_t  io_single;
 };
 
-#define tbuffer_var_init(tbv) memset((tbv), 0, sizeof(tbuffer_var_t))
+typedef struct tbx_tbuf_state_t tbx_tbuf_state_t;
+struct tbx_tbuf_state_t {
+    int    curr_slot;
+    int    slot_total_pos;
+    tbx_iovec_t single;
+};
+
+typedef struct tbx_tbuf_var_t tbx_tbuf_var_t;
+struct tbx_tbuf_var_t {
+    size_t nbytes;
+    tbx_iovec_t *buffer;
+    int    n_iov;
+    tbx_tbuf_state_t priv;
+};
+
+typedef struct tbx_tbuf_t tbx_tbuf_t;
+struct tbx_tbuf_t {
+    void *arg;
+    int (*next_block)(tbx_tbuf_t *tb, size_t off, tbx_tbuf_var_t *tbv);
+    tbx_tbuf_info_t buf;
+};
+
+#define tbuffer_var_init(tbv) memset((tbv), 0, sizeof(tbx_tbuf_var_t))
 
 
-tbuffer_var_t *tbuffer_var_create();
-void tbuffer_var_destroy(tbuffer_var_t *tbv);
-tbuffer_t *tbuffer_create();
-void tbuffer_destroy(tbuffer_t *tb);
+tbx_tbuf_var_t *tbuffer_var_create();
+void tbuffer_var_destroy(tbx_tbuf_var_t *tbv);
+tbx_tbuf_t *tbuffer_create();
+void tbuffer_destroy(tbx_tbuf_t *tb);
 
-TBX_API void tbuffer_single(tbuffer_t *tb, size_t nbytes, char *buffer);
-TBX_API void tbuffer_vec(tbuffer_t *tb, size_t total_bytes, size_t n_vec, iovec_t *iov);
-TBX_API void tbuffer_fn(tbuffer_t *tb, size_t total_bytes, void *arg, int (*next_block)(tbuffer_t *tb, size_t pos, tbuffer_var_t *tbv));
+TBX_API void tbuffer_single(tbx_tbuf_t *tb, size_t nbytes, char *buffer);
+TBX_API void tbuffer_vec(tbx_tbuf_t *tb, size_t total_bytes, size_t n_vec, tbx_iovec_t *iov);
+TBX_API void tbuffer_fn(tbx_tbuf_t *tb, size_t total_bytes, void *arg, int (*next_block)(tbx_tbuf_t *tb, size_t pos, tbx_tbuf_var_t *tbv));
 
-TBX_API size_t tbuffer_size(tbuffer_t *tb);
-TBX_API int tbuffer_copy(tbuffer_t *tb_s, size_t off_s, tbuffer_t *tb_d, size_t off_d, size_t nbytes, int blank_missing);
-TBX_API int tbuffer_memset(tbuffer_t *buffer, size_t boff, int c, size_t nbytes);
+TBX_API size_t tbuffer_size(tbx_tbuf_t *tb);
+TBX_API int tbuffer_copy(tbx_tbuf_t *tb_s, size_t off_s, tbx_tbuf_t *tb_d, size_t off_d, size_t nbytes, int blank_missing);
+TBX_API int tbuffer_memset(tbx_tbuf_t *buffer, size_t boff, int c, size_t nbytes);
 
 #define tbuffer_next(tb, pos, tbv) (tb)->next_block(tb, pos, tbv)
 
 //** Testing routines
-TBX_API int tbuffer_test();
+TBX_API int tbx_tbuf_test();
 
 
 #ifdef __cplusplus

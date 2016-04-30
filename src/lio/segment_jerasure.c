@@ -84,10 +84,10 @@ typedef struct {
     segment_t *seg;
     data_attr_t *da;
     segment_rw_hints_t *rw_hints;
-    ex_iovec_t  *iov;
+    ex_tbx_iovec_t  *iov;
     ex_off_t    boff;
     ex_off_t    nbytes;
-    tbuffer_t  *buffer;
+    tbx_tbuf_t  *buffer;
     int         nstripes;
     int         n_iov;
     int         rw_mode;
@@ -331,7 +331,7 @@ op_status_t segjerase_inspect_full_func(void *arg, int id)
     int stripe_used[4], stripe_diag_size, stripe_buffer_size;
     int stripe_start_error[4], stripe_error[4], dstripe;
     ex_off_t nbytes, bufsize, boff, base_offset;
-    tbuffer_t tbuf_read, tbuf;
+    tbx_tbuf_t tbuf_read, tbuf;
     char stripe_msg[4][2048], *stripe_msg_label[4];
     char *buffer, *ptr[s->n_devs], parity[s->n_parity_devs*s->chunk_size];
     char *eptr[s->n_devs], *pwork[s->n_parity_devs], *stripe_magic, *check_magic;
@@ -339,9 +339,9 @@ op_status_t segjerase_inspect_full_func(void *arg, int id)
     char magic_key[s->n_devs*JE_MAGIC_SIZE];
     char print_buffer[2048];
     char ppbufr[128], ppbufw[128], ppbufp[128];
-    iovec_t *iov;
-    ex_iovec_t ex_read;
-    ex_iovec_t *ex_iov;
+    tbx_iovec_t *iov;
+    ex_tbx_iovec_t ex_read;
+    ex_tbx_iovec_t *ex_iov;
     apr_time_t now, clr_dt;
     double dtt, dtr, dtw, dtp, rater, ratew, ratep;
 
@@ -369,8 +369,8 @@ op_status_t segjerase_inspect_full_func(void *arg, int id)
     bufstripes = bufsize / s->stripe_size_with_magic;
 
     max_iov = bufstripes;
-    type_malloc(ex_iov, ex_iovec_t, bufstripes);
-    type_malloc(iov, iovec_t, bufstripes);
+    type_malloc(ex_iov, ex_tbx_iovec_t, bufstripes);
+    type_malloc(iov, tbx_iovec_t, bufstripes);
 
     for (i=0; i < s->n_parity_devs; i++) pwork[i] = &(parity[i*s->chunk_size]);
     memset(badmap_last, 0, sizeof(int)*s->n_devs);
@@ -590,8 +590,8 @@ op_status_t segjerase_inspect_full_func(void *arg, int id)
                                 n_iov++;
                                 if (n_iov >= max_iov) {
                                     max_iov = 1.5 * max_iov + 1;
-                                    ex_iov = (ex_iovec_t *)realloc(ex_iov, sizeof(ex_iovec_t) * max_iov);
-                                    iov = (iovec_t *)realloc(iov, sizeof(iovec_t) * max_iov);
+                                    ex_iov = (ex_tbx_iovec_t *)realloc(ex_iov, sizeof(ex_tbx_iovec_t) * max_iov);
+                                    iov = (tbx_iovec_t *)realloc(iov, sizeof(tbx_iovec_t) * max_iov);
                                 }
                             }
                         }
@@ -724,9 +724,9 @@ op_status_t segjerase_inspect_scan(segjerase_inspect_t *si)
     int maxstripes, curr_stripe, i, j, moff, magic_stripe, n_iov, start_stripe, stripe, total_stripes, n_empty;
     char *magic, empty_magic[JE_MAGIC_SIZE];
     int start_bad, do_fix, err, bad_count, empty, bufsize;
-    iovec_t *iov;
-    ex_iovec_t *ex_iov;
-    tbuffer_t tbuf;
+    tbx_iovec_t *iov;
+    ex_tbx_iovec_t *ex_iov;
+    tbx_tbuf_t tbuf;
     segjerase_full_t *sf;
     int error_code = 0;
 
@@ -744,8 +744,8 @@ op_status_t segjerase_inspect_scan(segjerase_inspect_t *si)
     maxstripes = 1024;
     bufsize = s->n_devs * maxstripes * JE_MAGIC_SIZE;
     type_malloc(magic, char, bufsize);
-    type_malloc(iov, iovec_t, s->n_devs*maxstripes);
-    type_malloc(ex_iov, ex_iovec_t, s->n_devs*maxstripes);
+    type_malloc(iov, tbx_iovec_t, s->n_devs*maxstripes);
+    type_malloc(ex_iov, ex_tbx_iovec_t, s->n_devs*maxstripes);
 
     memset(magic, 0, bufsize);
 
@@ -1176,12 +1176,12 @@ op_status_t segjerase_read_func(void *arg, int id)
     int soft_error, hard_error, do_recover, paranoid_mode;
     opque_t *q;
     op_generic_t *gop;
-    ex_iovec_t *ex_iov;
-    tbuffer_t *tbuf;
+    ex_tbx_iovec_t *ex_iov;
+    tbx_tbuf_t *tbuf;
     segment_rw_hints_t *rw_hints;
-    iovec_t *iov;
+    tbx_iovec_t *iov;
     segjerase_io_t *info;
-    tbuffer_var_t tbv;
+    tbx_tbuf_var_t tbv;
     int loop;
 
     loop = 0;
@@ -1217,9 +1217,9 @@ tryagain:  //** We first try allowing blacklisting to proceed as normal and then
 
 
     type_malloc_clear(magic, char, magic_stripe*sw->nstripes);
-    type_malloc(ex_iov, ex_iovec_t, sw->n_iov);
-    type_malloc(iov, iovec_t, 2*sw->nstripes*s->n_devs);
-    type_malloc(tbuf, tbuffer_t, sw->n_iov);
+    type_malloc(ex_iov, ex_tbx_iovec_t, sw->n_iov);
+    type_malloc(iov, tbx_iovec_t, 2*sw->nstripes*s->n_devs);
+    type_malloc(tbuf, tbx_tbuf_t, sw->n_iov);
     type_malloc_clear(rw_hints, segment_rw_hints_t, sw->n_iov);
     type_malloc(info, segjerase_io_t, sw->n_iov);
 
@@ -1494,11 +1494,11 @@ op_status_t segjerase_write_func(void *arg, int id)
     char *parity, *magic, **ptr, *stripe_magic, *empty;
     opque_t *q;
     op_generic_t *gop;
-    ex_iovec_t *ex_iov;
-    tbuffer_t *tbuf;
-    iovec_t *iov;
+    ex_tbx_iovec_t *ex_iov;
+    tbx_tbuf_t *tbuf;
+    tbx_iovec_t *iov;
     segment_rw_hints_t *rw_hints;
-    tbuffer_var_t tbv;
+    tbx_tbuf_var_t tbv;
     int loop;
 
     loop = 0;
@@ -1532,9 +1532,9 @@ tryagain: //** In case blacklisting failed we'll retry with it disabled
 
     type_malloc_clear(magic, char, JE_MAGIC_SIZE*sw->nstripes);
     type_malloc(ptr, char *, sw->nstripes*s->n_devs);
-    type_malloc(ex_iov, ex_iovec_t, sw->n_iov);
-    type_malloc(iov, iovec_t, 2*sw->nstripes*s->n_devs);
-    type_malloc(tbuf, tbuffer_t, sw->n_iov);
+    type_malloc(ex_iov, ex_tbx_iovec_t, sw->n_iov);
+    type_malloc(iov, tbx_iovec_t, 2*sw->nstripes*s->n_devs);
+    type_malloc(tbuf, tbx_tbuf_t, sw->n_iov);
     type_malloc_clear(rw_hints, segment_rw_hints_t, sw->n_iov);
 
 
@@ -1721,7 +1721,7 @@ tryagain: //** In case blacklisting failed we'll retry with it disabled
 // segjerase_write - Performs a segment write operation
 //***********************************************************************
 
-op_generic_t *segjerase_write(segment_t *seg, data_attr_t *da, segment_rw_hints_t *rw_hints, int n_iov, ex_iovec_t *iov, tbuffer_t *buffer, ex_off_t boff, int timeout)
+op_generic_t *segjerase_write(segment_t *seg, data_attr_t *da, segment_rw_hints_t *rw_hints, int n_iov, ex_tbx_iovec_t *iov, tbx_tbuf_t *buffer, ex_off_t boff, int timeout)
 {
     segjerase_priv_t *s = (segjerase_priv_t *)seg->priv;
     segjerase_rw_t *sw;
@@ -1767,7 +1767,7 @@ op_generic_t *segjerase_write(segment_t *seg, data_attr_t *da, segment_rw_hints_
 // segjerase_read - Performs a segment read operation
 //***********************************************************************
 
-op_generic_t *segjerase_read(segment_t *seg, data_attr_t *da, segment_rw_hints_t *rw_hints, int n_iov, ex_iovec_t *iov, tbuffer_t *buffer, ex_off_t boff, int timeout)
+op_generic_t *segjerase_read(segment_t *seg, data_attr_t *da, segment_rw_hints_t *rw_hints, int n_iov, ex_tbx_iovec_t *iov, tbx_tbuf_t *buffer, ex_off_t boff, int timeout)
 {
     segjerase_priv_t *s = (segjerase_priv_t *)seg->priv;
     segjerase_rw_t *sw;

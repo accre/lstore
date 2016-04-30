@@ -44,7 +44,7 @@ typedef struct {
 // vl_read - Reads data from the layout view
 //*************************************************************************
 
-op_generic_t *vl_read(view_t *v, data_attr_t *da, ex_off_t off, tbuffer_t *buffer, ex_off_t boff, ex_off_t len, int timeout)
+op_generic_t *vl_read(view_t *v, data_attr_t *da, ex_off_t off, tbx_tbuf_t *buffer, ex_off_t boff, ex_off_t len, int timeout)
 {
     view_layout_t *vl = (view_layout_t *)v->priv;
 
@@ -57,7 +57,7 @@ op_generic_t *vl_read(view_t *v, data_attr_t *da, ex_off_t off, tbuffer_t *buffe
 // vl_write - Writes data to the layout view
 //*************************************************************************
 
-op_generic_t *vl_write(view_t *v, data_attr_t *da, ex_off_t off, tbuffer_t *buffer, ex_off_t boff, ex_off_t len, int timeout)
+op_generic_t *vl_write(view_t *v, data_attr_t *da, ex_off_t off, tbx_tbuf_t *buffer, ex_off_t boff, ex_off_t len, int timeout)
 {
     view_layout_t *vl = (view_layout_t *)v->priv;
 

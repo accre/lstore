@@ -50,9 +50,9 @@ http://www.accre.vanderbilt.edu
 Net_timeout_t global_dt = 1*1000000;
 apr_time_t gop_get_end_time(op_generic_t *gop, int *state);
 op_status_t gop_readline_with_timeout(tbx_ns_t *ns, char *buffer, int size, op_generic_t *gop);
-//op_status_t write_block(tbx_ns_t *ns, apr_time_t end_time, tbuffer_t *buffer, ibp_off_t pos, ibp_off_t size);
-op_status_t gop_write_block(tbx_ns_t *ns, op_generic_t *gop, tbuffer_t *buffer, ibp_off_t pos, ibp_off_t size);
-op_status_t gop_read_block(tbx_ns_t *ns, op_generic_t *gop, tbuffer_t *buffer, ibp_off_t pos, ibp_off_t size);
+//op_status_t write_block(tbx_ns_t *ns, apr_time_t end_time, tbx_tbuf_t *buffer, ibp_off_t pos, ibp_off_t size);
+op_status_t gop_write_block(tbx_ns_t *ns, op_generic_t *gop, tbx_tbuf_t *buffer, ibp_off_t pos, ibp_off_t size);
+op_status_t gop_read_block(tbx_ns_t *ns, op_generic_t *gop, tbx_tbuf_t *buffer, ibp_off_t pos, ibp_off_t size);
 
 op_status_t status_get_recv(op_generic_t *gop, tbx_ns_t *ns);
 void _ibp_op_free(op_generic_t *op, int mode);
@@ -210,7 +210,7 @@ op_status_t send_command(op_generic_t *gop, tbx_ns_t *ns, char *command)
 {
     Net_timeout_t dt;
     set_net_timeout(&dt, 5, 0);
-    tbuffer_t buf;
+    tbx_tbuf_t buf;
     op_status_t status;
 
     log_printf(5, "send_command: ns=%d gid=%d command=%s\n", ns_getid(ns), gop_id(gop), command);
@@ -237,7 +237,7 @@ op_status_t gop_readline_with_timeout(tbx_ns_t *ns, char *buffer, int size, op_g
     int err, state;
     apr_time_t end_time;
     op_status_t status;
-    tbuffer_t tbuf;
+    tbx_tbuf_t tbuf;
 
     log_printf(15, "readline_with_timeout: START ns=%d size=%d\n", ns_getid(ns), size);
     state = 0;
@@ -431,7 +431,7 @@ int ibp_chksum_set(tbx_ns_chksum_t *ncs, tbx_chksum_t *cs, int blocksize)
 // set_ibp_read_op - Generates a new read operation
 //*************************************************************
 
-void set_ibp_read_op(ibp_op_t *op, ibp_cap_t *cap, ibp_off_t offset, tbuffer_t *buffer, ibp_off_t boff, ibp_off_t len, int timeout)
+void set_ibp_read_op(ibp_op_t *op, ibp_cap_t *cap, ibp_off_t offset, tbx_tbuf_t *buffer, ibp_off_t boff, ibp_off_t len, int timeout)
 {
     set_ibp_rw_op(op, IBP_READ, cap, offset, buffer, boff, len, timeout);
 }
@@ -440,7 +440,7 @@ void set_ibp_read_op(ibp_op_t *op, ibp_cap_t *cap, ibp_off_t offset, tbuffer_t *
 // new_ibp_read_op - Generates a new read operation
 //*************************************************************
 
-op_generic_t *new_ibp_read_op(ibp_context_t *ic, ibp_cap_t *cap, ibp_off_t offset, tbuffer_t *buffer, ibp_off_t boff, ibp_off_t len, int timeout)
+op_generic_t *new_ibp_read_op(ibp_context_t *ic, ibp_cap_t *cap, ibp_off_t offset, tbx_tbuf_t *buffer, ibp_off_t boff, ibp_off_t len, int timeout)
 {
     op_generic_t *op = new_ibp_rw_op(ic, IBP_READ, cap, offset, buffer, boff, len, timeout);
     return(op);
@@ -451,13 +451,13 @@ op_generic_t *new_ibp_read_op(ibp_context_t *ic, ibp_cap_t *cap, ibp_off_t offse
 // set_ibp_vec_read_op - Generates a new vector read operation
 //*************************************************************
 
-void set_ibp_vec_read_op(ibp_op_t *op, ibp_cap_t *cap, int n_vec, ibp_iovec_t *vec, tbuffer_t *buffer, ibp_off_t boff, ibp_off_t len, int timeout)
+void set_ibp_vec_read_op(ibp_op_t *op, ibp_cap_t *cap, int n_vec, ibp_tbx_iovec_t *vec, tbx_tbuf_t *buffer, ibp_off_t boff, ibp_off_t len, int timeout)
 {
     op_generic_t *gop = ibp_get_gop(op);
 
     set_ibp_rw_op(op, IBP_READ, cap, 0, buffer, boff, len, timeout);
     op->rw_op.n_ops = 1;
-    op->rw_op.n_iovec_total = n_vec;
+    op->rw_op.n_tbx_iovec_total = n_vec;
     op->rw_op.buf_single.n_iovec = n_vec;
     op->rw_op.buf_single.iovec = vec;
 
@@ -468,7 +468,7 @@ void set_ibp_vec_read_op(ibp_op_t *op, ibp_cap_t *cap, int n_vec, ibp_iovec_t *v
 // new_ibp_vec_read_op - Generates a new vector read operation
 //*************************************************************
 
-op_generic_t *new_ibp_vec_read_op(ibp_context_t *ic, ibp_cap_t *cap, int n_vec, ibp_iovec_t *vec, tbuffer_t *buffer, ibp_off_t boff, ibp_off_t len, int timeout)
+op_generic_t *new_ibp_vec_read_op(ibp_context_t *ic, ibp_cap_t *cap, int n_vec, ibp_tbx_iovec_t *vec, tbx_tbuf_t *buffer, ibp_off_t boff, ibp_off_t len, int timeout)
 {
     ibp_op_t *op = new_ibp_op(ic);
     if (op == NULL) return(NULL);
@@ -497,11 +497,11 @@ op_status_t vec_read_command(op_generic_t *gop, tbx_ns_t *ns)
 
     //** Store the base command
     if (ns_chksum_is_valid(&(op->ncs)) == 0) {
-        append_printf(buffer, &used, bufsize, "%d %d %s %s %d", IBPv040, IBP_VEC_READ, cmd->key, cmd->typekey, cmd->n_iovec_total);
+        append_printf(buffer, &used, bufsize, "%d %d %s %s %d", IBPv040, IBP_VEC_READ, cmd->key, cmd->typekey, cmd->n_tbx_iovec_total);
     } else {
         append_printf(buffer, &used, bufsize, "%d %d %d " I64T " %s %s %d",
                       IBPv040, IBP_VEC_READ_CHKSUM, tbx_ns_chksum_type(&(op->ncs)), ns_chksum_blocksize(&(op->ncs)),
-                      cmd->key, cmd->typekey, cmd->n_iovec_total);
+                      cmd->key, cmd->typekey, cmd->n_tbx_iovec_total);
     }
 
     //** Add the IO vec list
@@ -572,7 +572,7 @@ op_status_t read_command(op_generic_t *gop, tbx_ns_t *ns)
 
 //*************************************************************
 
-op_status_t gop_read_block(tbx_ns_t *ns, op_generic_t *gop, tbuffer_t *buffer, ibp_off_t pos, ibp_off_t size)
+op_status_t gop_read_block(tbx_ns_t *ns, op_generic_t *gop, tbx_tbuf_t *buffer, ibp_off_t pos, ibp_off_t size)
 {
     int nbytes, state, bpos, nleft;
     op_status_t status;
@@ -698,7 +698,7 @@ op_status_t read_recv(op_generic_t *gop, tbx_ns_t *ns)
 // set_ibp_write_op - Generates a new write operation
 //*************************************************************
 
-void set_ibp_write_op(ibp_op_t *op, ibp_cap_t *cap, ibp_off_t offset, tbuffer_t *buffer, ibp_off_t bpos, ibp_off_t len, int timeout)
+void set_ibp_write_op(ibp_op_t *op, ibp_cap_t *cap, ibp_off_t offset, tbx_tbuf_t *buffer, ibp_off_t bpos, ibp_off_t len, int timeout)
 {
     set_ibp_rw_op(op, IBP_WRITE, cap, offset, buffer, bpos, len, timeout);
 }
@@ -707,7 +707,7 @@ void set_ibp_write_op(ibp_op_t *op, ibp_cap_t *cap, ibp_off_t offset, tbuffer_t 
 // new_ibp_write_op - Creates/Generates a new write operation
 //*************************************************************
 
-op_generic_t *new_ibp_write_op(ibp_context_t *ic, ibp_cap_t *cap, ibp_off_t offset, tbuffer_t *buffer, ibp_off_t bpos, ibp_off_t len, int timeout)
+op_generic_t *new_ibp_write_op(ibp_context_t *ic, ibp_cap_t *cap, ibp_off_t offset, tbx_tbuf_t *buffer, ibp_off_t bpos, ibp_off_t len, int timeout)
 {
     op_generic_t *gop = new_ibp_rw_op(ic, IBP_WRITE, cap, offset, buffer, bpos, len, timeout);
 //   ibp_op_t *iop = ibp_get_iop(gop);
@@ -720,13 +720,13 @@ op_generic_t *new_ibp_write_op(ibp_context_t *ic, ibp_cap_t *cap, ibp_off_t offs
 // set_ibp_vec_write_op - Generates a new vec write operation
 //*************************************************************
 
-void set_ibp_vec_write_op(ibp_op_t *op, ibp_cap_t *cap, int n_iovec, ibp_iovec_t *iovec, tbuffer_t *buffer, ibp_off_t bpos, ibp_off_t len, int timeout)
+void set_ibp_vec_write_op(ibp_op_t *op, ibp_cap_t *cap, int n_iovec, ibp_tbx_iovec_t *iovec, tbx_tbuf_t *buffer, ibp_off_t bpos, ibp_off_t len, int timeout)
 {
     op_generic_t *gop = ibp_get_gop(op);
 
     set_ibp_rw_op(op, IBP_WRITE, cap, 0, buffer, bpos, len, timeout);
     op->rw_op.n_ops = 1;
-    op->rw_op.n_iovec_total = n_iovec;
+    op->rw_op.n_tbx_iovec_total = n_iovec;
     op->rw_op.buf_single.n_iovec = n_iovec;
     op->rw_op.buf_single.iovec = iovec;
 
@@ -738,7 +738,7 @@ void set_ibp_vec_write_op(ibp_op_t *op, ibp_cap_t *cap, int n_iovec, ibp_iovec_t
 // new_ibp_vec_write_op - Creates/Generates a new vec write operation
 //*************************************************************
 
-op_generic_t *new_ibp_vec_write_op(ibp_context_t *ic, ibp_cap_t *cap, int n_iovec, ibp_iovec_t *iovec, tbuffer_t *buffer, ibp_off_t bpos, ibp_off_t len, int timeout)
+op_generic_t *new_ibp_vec_write_op(ibp_context_t *ic, ibp_cap_t *cap, int n_iovec, ibp_tbx_iovec_t *iovec, tbx_tbuf_t *buffer, ibp_off_t bpos, ibp_off_t len, int timeout)
 {
     ibp_op_t *op = new_ibp_op(ic);
     if (op == NULL) return(NULL);
@@ -768,11 +768,11 @@ op_status_t vec_write_command(op_generic_t *gop, tbx_ns_t *ns)
     //** Store base command
     if (ns_chksum_is_valid(&(op->ncs)) == 0) {
         append_printf(buffer, &used, bufsize, "%d %d %s %s %d",
-                      IBPv040, IBP_VEC_WRITE, cmd->key, cmd->typekey, cmd->n_iovec_total);
+                      IBPv040, IBP_VEC_WRITE, cmd->key, cmd->typekey, cmd->n_tbx_iovec_total);
     } else {
         append_printf(buffer, &used, bufsize, "%d %d %d %d %s %s %d",
                       IBPv040, IBP_VEC_WRITE_CHKSUM, tbx_ns_chksum_type(&(op->ncs)), ns_chksum_blocksize(&(op->ncs)),
-                      cmd->key, cmd->typekey, cmd->n_iovec_total);
+                      cmd->key, cmd->typekey, cmd->n_tbx_iovec_total);
     }
 
 
@@ -852,7 +852,7 @@ op_status_t write_command(op_generic_t *gop, tbx_ns_t *ns)
 
 //*************************************************************
 
-op_status_t gop_write_block(tbx_ns_t *ns, op_generic_t *gop, tbuffer_t *buffer, ibp_off_t pos, ibp_off_t size)
+op_status_t gop_write_block(tbx_ns_t *ns, op_generic_t *gop, tbx_tbuf_t *buffer, ibp_off_t pos, ibp_off_t size)
 {
     int nbytes, state, bpos, nleft;
     op_status_t status;
@@ -1039,7 +1039,7 @@ op_status_t append_command(op_generic_t *gop, tbx_ns_t *ns)
 // new_ibp_append_op - Creates/Generates a new write operation
 //*************************************************************
 
-op_generic_t *new_ibp_append_op(ibp_context_t *ic, ibp_cap_t *cap, tbuffer_t *buffer, ibp_off_t bpos, ibp_off_t len, int timeout)
+op_generic_t *new_ibp_append_op(ibp_context_t *ic, ibp_cap_t *cap, tbx_tbuf_t *buffer, ibp_off_t bpos, ibp_off_t len, int timeout)
 {
     op_generic_t *gop = new_ibp_rw_op(ic, IBP_STORE, cap, 0, buffer, bpos, len, timeout);
     if (gop == NULL) return(NULL);
@@ -1052,7 +1052,7 @@ op_generic_t *new_ibp_append_op(ibp_context_t *ic, ibp_cap_t *cap, tbuffer_t *bu
 // set_ibp_append_op - Generates a new write operation
 //*************************************************************
 
-void set_ibp_append_op(ibp_op_t *op, ibp_cap_t *cap, tbuffer_t *buffer, ibp_off_t bpos, ibp_off_t len, int timeout)
+void set_ibp_append_op(ibp_op_t *op, ibp_cap_t *cap, tbx_tbuf_t *buffer, ibp_off_t bpos, ibp_off_t len, int timeout)
 {
     //** Dirty way to fill in the fields
     set_ibp_rw_op(op, IBP_WRITE, cap, 0, buffer, bpos, len, timeout);
@@ -1070,7 +1070,7 @@ void set_ibp_append_op(ibp_op_t *op, ibp_cap_t *cap, tbuffer_t *buffer, ibp_off_
 // set_ibp_rw_op - Generates a new IO operation
 //*************************************************************
 
-void set_ibp_rw_op(ibp_op_t *op, int rw_type, ibp_cap_t *cap, ibp_off_t offset, tbuffer_t *buffer, ibp_off_t bpos, ibp_off_t len, int timeout)
+void set_ibp_rw_op(ibp_op_t *op, int rw_type, ibp_cap_t *cap, ibp_off_t offset, tbx_tbuf_t *buffer, ibp_off_t bpos, ibp_off_t len, int timeout)
 {
     char hoststr[MAX_HOST_SIZE];
     int port;
@@ -1095,7 +1095,7 @@ void set_ibp_rw_op(ibp_op_t *op, int rw_type, ibp_cap_t *cap, ibp_off_t offset, 
     cmd->bs_ptr = rwbuf;
     cmd->rwbuf = &(cmd->bs_ptr);
     cmd->n_ops = 1;
-    cmd->n_iovec_total = 1;
+    cmd->n_tbx_iovec_total = 1;
     cmd->rw_mode = rw_type;
 
     rwbuf->iovec = &(rwbuf->iovec_single);
@@ -1128,7 +1128,7 @@ void set_ibp_rw_op(ibp_op_t *op, int rw_type, ibp_cap_t *cap, ibp_off_t offset, 
 // new_ibp_rw_op - Creates/Generates a new IO operation
 //*************************************************************
 
-op_generic_t *new_ibp_rw_op(ibp_context_t *ic, int rw_type, ibp_cap_t *cap, ibp_off_t offset, tbuffer_t *buffer, ibp_off_t bpos, ibp_off_t len, int timeout)
+op_generic_t *new_ibp_rw_op(ibp_context_t *ic, int rw_type, ibp_cap_t *cap, ibp_off_t offset, tbx_tbuf_t *buffer, ibp_off_t bpos, ibp_off_t len, int timeout)
 {
     ibp_op_t *op = new_ibp_op(ic);
     if (op == NULL) return(NULL);
@@ -1278,7 +1278,7 @@ op_status_t get_chksum_recv(op_generic_t *gop, tbx_ns_t *ns)
     int status, fin;
     ibp_op_get_chksum_t *cmd = &(op->get_chksum_op);
     char *bstate;
-    tbuffer_t buf;
+    tbx_tbuf_t buf;
 
     log_printf(15, "get_chksum_recv: Start!!! ns=%d\n", ns_getid(ns));
 

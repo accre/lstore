@@ -151,11 +151,11 @@ struct data_service_fn_s {
     op_generic_t *(*truncate)(data_service_fn_t *, data_attr_t *dattr, data_cap_t *mcap, ex_off_t new_size, int timeout);
     op_generic_t *(*probe)(data_service_fn_t *, data_attr_t *dattr, data_cap_t *mcap, data_probe_t *probe, int timeout);
     op_generic_t *(*modify_count)(data_service_fn_t *, data_attr_t *dattr, data_cap_t *mcap, int mode, int captype, int timeout);
-    op_generic_t *(*read)(data_service_fn_t *, data_attr_t *attr, data_cap_t *rcap, ds_int_t off, tbuffer_t *read, ex_off_t boff, ex_off_t len, int timeout);
-    op_generic_t *(*write)(data_service_fn_t *, data_attr_t *attr, data_cap_t *wcap, ds_int_t off, tbuffer_t *write, ex_off_t boff, ex_off_t len, int timeout);
-    op_generic_t *(*readv)(data_service_fn_t *, data_attr_t *attr, data_cap_t *rcap, int n_iov, ex_iovec_t *iov, tbuffer_t *read, ex_off_t boff, ex_off_t len, int timeout);
-    op_generic_t *(*writev)(data_service_fn_t *, data_attr_t *attr, data_cap_t *wcap, int n_iov, ex_iovec_t *iov, tbuffer_t *write, ex_off_t boff, ex_off_t len, int timeout);
-    op_generic_t *(*append)(data_service_fn_t *, data_attr_t *attr, data_cap_t *wcap, tbuffer_t *write, ex_off_t boff, ex_off_t len, int timeout);
+    op_generic_t *(*read)(data_service_fn_t *, data_attr_t *attr, data_cap_t *rcap, ds_int_t off, tbx_tbuf_t *read, ex_off_t boff, ex_off_t len, int timeout);
+    op_generic_t *(*write)(data_service_fn_t *, data_attr_t *attr, data_cap_t *wcap, ds_int_t off, tbx_tbuf_t *write, ex_off_t boff, ex_off_t len, int timeout);
+    op_generic_t *(*readv)(data_service_fn_t *, data_attr_t *attr, data_cap_t *rcap, int n_iov, ex_tbx_iovec_t *iov, tbx_tbuf_t *read, ex_off_t boff, ex_off_t len, int timeout);
+    op_generic_t *(*writev)(data_service_fn_t *, data_attr_t *attr, data_cap_t *wcap, int n_iov, ex_tbx_iovec_t *iov, tbx_tbuf_t *write, ex_off_t boff, ex_off_t len, int timeout);
+    op_generic_t *(*append)(data_service_fn_t *, data_attr_t *attr, data_cap_t *wcap, tbx_tbuf_t *write, ex_off_t boff, ex_off_t len, int timeout);
     op_generic_t *(*copy)(data_service_fn_t *, data_attr_t *attr, int mode, int ns_type, char *ppath, data_cap_t *src_cap, ds_int_t src_off,
                           data_cap_t *dest_cap, ds_int_t dest_off, ds_int_t len, int timeout);
 };
