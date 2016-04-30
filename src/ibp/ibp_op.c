@@ -105,9 +105,9 @@ void set_hostport(char *hostport, int max_size, char *host, int port, ibp_connec
     hostport[max_size-1] = '\0';
     if (type == NS_TYPE_PHOEBUS) {
         snprintf(hostport, max_size-1, "%s" HP_HOSTPORT_SEPARATOR "%d" HP_HOSTPORT_SEPARATOR "%d" HP_HOSTPORT_SEPARATOR "%s",
-                 host, port, type, phoebus_get_key((phoebus_t *)cc->data));
+                 host, port, type, phoebus_get_key((tbx_phoebus_t *)cc->data));
 //     snprintf(hostport, max_size-1, "%s" HP_HOSTPORT_SEPARATOR "%d" HP_HOSTPORT_SEPARATOR "%d" HP_HOSTPORT_SEPARATOR "%s",
-//            ip, port, type, phoebus_get_key((phoebus_t *)cc->data));
+//            ip, port, type, phoebus_get_key((tbx_phoebus_t *)cc->data));
     } else {
         snprintf(hostport, max_size-1, "%s" HP_HOSTPORT_SEPARATOR "%d" HP_HOSTPORT_SEPARATOR "%d" HP_HOSTPORT_SEPARATOR "0",
                  host, port, type);

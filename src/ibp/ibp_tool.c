@@ -718,7 +718,7 @@ int cmd_ridlist(char **argv, int argc)
 int main(int argc, char **argv)
 {
     int i, tcpsize;
-    phoebus_t pcc;
+    tbx_phoebus_t pcc;
     char *ppath = NULL;
     char **cmd_args;
     int  cmd_count;

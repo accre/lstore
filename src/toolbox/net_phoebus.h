@@ -39,7 +39,7 @@ http://www.accre.vanderbilt.edu
 #define N_BUFSIZE  1024
 
 typedef struct {
-    phoebus_t *p_path;
+    tbx_phoebus_t *p_path;
     liblslSess *sess;
     int family;
     int fd;
@@ -60,7 +60,7 @@ long int phoebus_read(net_sock_t *sock, void *buf, size_t count, Net_timeout_t t
 int phoebus_connect(net_sock_t *sock, const char *hostname, int port, Net_timeout_t timeout);
 #endif
  
-TBX_API void ns_config_phoebus(tbx_ns_t *ns, phoebus_t *path, int tcpsize);
+TBX_API void ns_config_phoebus(tbx_ns_t *ns, tbx_phoebus_t *path, int tcpsize);
  
 #ifdef __cplusplus
 }

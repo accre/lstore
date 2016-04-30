@@ -383,7 +383,7 @@ int main(int argc, char **argv)
     apr_time_t stime, dtime;
     double dt;
     char *net_cs_name, *disk_cs_name;
-    phoebus_t pcc;
+    tbx_phoebus_t pcc;
     char pstr[2048];
     tbx_chksum_t cs;
     tbx_ns_chksum_t ns_cs;

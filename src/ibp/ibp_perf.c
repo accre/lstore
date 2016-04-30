@@ -661,7 +661,7 @@ int main(int argc, char **argv)
     double dt;
     char *ppath, *net_cs_name, *disk_cs_name, *out_fname;
     FILE *fd_out;
-    phoebus_t pcc;
+    tbx_phoebus_t pcc;
     char pstr[2048];
     tbx_chksum_t cs;
     tbx_ns_chksum_t ns_cs;
