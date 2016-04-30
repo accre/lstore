@@ -44,9 +44,9 @@ http://www.accre.vanderbilt.edu
 // pigeon_hole_iterator_init - Initializes an iterator
 //***************************************************************************
 
-pigeon_hole_iter_t pigeon_hole_iterator_init(pigeon_hole_t *ph)
+tbx_ph_iter_t pigeon_hole_iterator_init(tbx_ph_t *ph)
 {
-    pigeon_hole_iter_t pi;
+    tbx_ph_iter_t pi;
 
     apr_thread_mutex_lock(ph->lock);
 
@@ -65,10 +65,10 @@ pigeon_hole_iter_t pigeon_hole_iterator_init(pigeon_hole_t *ph)
 // pigeon_hole_iterator_next - Returns the next used hole
 //***************************************************************************
 
-int pigeon_hole_iterator_next(pigeon_hole_iter_t *pi)
+int pigeon_hole_iterator_next(tbx_ph_iter_t *pi)
 {
     int i, slot;
-    pigeon_hole_t *ph = pi->ph;
+    tbx_ph_t *ph = pi->ph;
 
     if (pi->count == -1) return(-1);
 
@@ -95,7 +95,7 @@ int pigeon_hole_iterator_next(pigeon_hole_iter_t *pi)
 // pigeon_holes_used - Returns the number of holes used
 //***************************************************************************
 
-int pigeon_holes_used(pigeon_hole_t *ph)
+int pigeon_holes_used(tbx_ph_t *ph)
 {
     int n;
 
@@ -110,7 +110,7 @@ int pigeon_holes_used(pigeon_hole_t *ph)
 // pigeon_holes_free - Returns the number of holes free
 //***************************************************************************
 
-int pigeon_holes_free(pigeon_hole_t *ph)
+int pigeon_holes_free(tbx_ph_t *ph)
 {
     int n;
 
@@ -125,7 +125,7 @@ int pigeon_holes_free(pigeon_hole_t *ph)
 //  release_pigeon_hole - releases a pigeon hole for use
 //***************************************************************************
 
-void release_pigeon_hole(pigeon_hole_t *ph, int slot)
+void release_pigeon_hole(tbx_ph_t *ph, int slot)
 {
     apr_thread_mutex_lock(ph->lock);
     log_printf(15, "release_pigeon_hole: ph=%s nholes=%d start nused=%d slot=%d\n", ph->name, ph->nholes, ph->nused, slot);
@@ -151,7 +151,7 @@ void release_pigeon_hole(pigeon_hole_t *ph, int slot)
 //  reserve_pigeon_hole - Allocates a pigeon hole
 //***************************************************************************
 
-int reserve_pigeon_hole(pigeon_hole_t *ph)
+int reserve_pigeon_hole(tbx_ph_t *ph)
 {
     int i, slot;
 
@@ -188,7 +188,7 @@ int reserve_pigeon_hole(pigeon_hole_t *ph)
 // destroy_pigeon_hole - Destroys a pigeon hole structure
 //***************************************************************************
 
-void destroy_pigeon_hole(pigeon_hole_t *ph)
+void destroy_pigeon_hole(tbx_ph_t *ph)
 {
     apr_thread_mutex_destroy(ph->lock);
     apr_pool_destroy(ph->pool);
@@ -201,9 +201,9 @@ void destroy_pigeon_hole(pigeon_hole_t *ph)
 // new_pigeon_hole - Creates a new pigeon hole structure
 //***************************************************************************
 
-pigeon_hole_t *new_pigeon_hole(const char *name, int size)
+tbx_ph_t *new_pigeon_hole(const char *name, int size)
 {
-    pigeon_hole_t *ph = (pigeon_hole_t *)malloc(sizeof(pigeon_hole_t));
+    tbx_ph_t *ph = (tbx_ph_t *)malloc(sizeof(tbx_ph_t));
     assert(ph != NULL);
 
     ph->hole = (char *)malloc(size);

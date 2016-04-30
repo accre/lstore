@@ -80,7 +80,7 @@ typedef struct {
 typedef struct {
 //  tbx_stack_t *hp_stack;
     tbx_stack_t list_stack;
-    pigeon_coop_hole_t pch;
+    tbx_pch_t pch;
 } rw_coalesce_t;
 
 //*************************************************************
@@ -165,7 +165,7 @@ int ibp_rw_submit_coalesce(tbx_stack_t *stack, tbx_stack_ele_t *ele)
     ibp_context_t *ic = iop->ic;
     ibp_op_rw_t *cmd = &(iop->rw_op);
     rw_coalesce_t *rwc;
-    pigeon_coop_hole_t pch;
+    tbx_pch_t pch;
 
     apr_thread_mutex_lock(ic->lock);
 
@@ -221,7 +221,7 @@ int ibp_rw_coalesce(op_generic_t *gop1)
     int64_t workload;
     int n, iov_sum, found_myself;
     rwc_gop_stack_t *rwcg;
-    pigeon_coop_hole_t pch;
+    tbx_pch_t pch;
     tbx_stack_t *my_hp = iop1->hp_parent;;
 
     apr_thread_mutex_lock(ic->lock);

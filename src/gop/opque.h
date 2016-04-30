@@ -79,7 +79,7 @@ typedef struct op_generic_s op_generic_t;
 typedef struct {
     apr_thread_mutex_t *lock;  //** shared lock
     apr_thread_cond_t *cond;   //** shared condition variable
-    pigeon_coop_hole_t  pch;   //** Pigeon coop hole for the lock and cond
+    tbx_pch_t  pch;   //** Pigeon coop hole for the lock and cond
 } gop_control_t;
 
 typedef struct {       //** Generic opcode status

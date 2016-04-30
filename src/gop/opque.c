@@ -47,7 +47,7 @@ void gop_dummy_destroy();
 
 tbx_atomic_unit32_t _opque_counter = 0;
 apr_pool_t *_opque_pool = NULL;
-pigeon_coop_t *_gop_control = NULL;
+tbx_pc_t *_gop_control = NULL;
 
 //*************************************************************
 //  _opque_print_stack - Prints the list stack

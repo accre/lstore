@@ -45,7 +45,7 @@ http://www.accre.vanderbilt.edu
 // pigeon_coop_hole_data - Returns a pointer to the data
 //***************************************************************************
 
-void *pigeon_coop_hole_data(pigeon_coop_hole_t *pch)
+void *pigeon_coop_hole_data(tbx_pch_t *pch)
 {
     return(pch->data);
 }
@@ -54,9 +54,9 @@ void *pigeon_coop_hole_data(pigeon_coop_hole_t *pch)
 // pigeon_coop_iterator_init - Initializes an iterator
 //***************************************************************************
 
-pigeon_coop_iter_t pigeon_coop_iterator_init(pigeon_coop_t *pc)
+tbx_pc_iter_t pigeon_coop_iterator_init(tbx_pc_t *pc)
 {
-    pigeon_coop_iter_t pci;
+    tbx_pc_iter_t pci;
 
     apr_thread_mutex_lock(pc->lock);
 
@@ -74,12 +74,12 @@ pigeon_coop_iter_t pigeon_coop_iterator_init(pigeon_coop_t *pc)
 // pigeon_coop_iterator_next - Returns the next used hole
 //***************************************************************************
 
-pigeon_coop_hole_t pigeon_coop_iterator_next(pigeon_coop_iter_t *pci)
+tbx_pch_t pigeon_coop_iterator_next(tbx_pc_iter_t *pci)
 {
     int i, slot;
-    pigeon_coop_hole_t pch;
-    pigeon_hole_t *shelf;
-    pigeon_coop_t *pc = pci->pc;
+    tbx_pch_t pch;
+    tbx_ph_t *shelf;
+    tbx_pc_t *pc = pci->pc;
 
     if (pci->shelf == -1) {
         pch.shelf = -1;
@@ -159,7 +159,7 @@ pigeon_coop_hole_t pigeon_coop_iterator_next(pigeon_coop_iter_t *pci)
 //
 //***************************************************************************
 
-int release_pigeon_coop_hole(pigeon_coop_t *pc, pigeon_coop_hole_t *pch)
+int release_pigeon_coop_hole(tbx_pc_t *pc, tbx_pch_t *pch)
 {
     int i, n;
 
@@ -208,7 +208,7 @@ int release_pigeon_coop_hole(pigeon_coop_t *pc, pigeon_coop_hole_t *pch)
 
             //** Adjust the array sizes
             pc->nshelves = n;
-            pc->ph_shelf = (pigeon_hole_t **)realloc(pc->ph_shelf, pc->nshelves*sizeof(pigeon_hole_t *));
+            pc->ph_shelf = (tbx_ph_t **)realloc(pc->ph_shelf, pc->nshelves*sizeof(tbx_ph_t *));
             assert(pc->ph_shelf != NULL);
             pc->data_shelf = realloc(pc->data_shelf, pc->nshelves*sizeof(char *));
             assert(pc->data_shelf != NULL);
@@ -228,10 +228,10 @@ int release_pigeon_coop_hole(pigeon_coop_t *pc, pigeon_coop_hole_t *pch)
 //  reserve_pigeon_coop_hole - Allocates a pigeon hole from the coop
 //***************************************************************************
 
-pigeon_coop_hole_t reserve_pigeon_coop_hole(pigeon_coop_t *pc)
+tbx_pch_t reserve_pigeon_coop_hole(tbx_pc_t *pc)
 {
     int i, slot, n, start_shelf;
-    pigeon_coop_hole_t pch;
+    tbx_pch_t pch;
 
     apr_thread_mutex_lock(pc->lock);
 
@@ -256,7 +256,7 @@ pigeon_coop_hole_t reserve_pigeon_coop_hole(pigeon_coop_t *pc)
 
     //** No free slots so have to grow the coop by adding a shelf **
     pc->nshelves++;
-    pc->ph_shelf = (pigeon_hole_t **)realloc(pc->ph_shelf, pc->nshelves*sizeof(pigeon_hole_t *));
+    pc->ph_shelf = (tbx_ph_t **)realloc(pc->ph_shelf, pc->nshelves*sizeof(tbx_ph_t *));
     assert(pc->ph_shelf != NULL);
     pc->data_shelf = realloc(pc->data_shelf, pc->nshelves*sizeof(char *));
     assert(pc->data_shelf != NULL);
@@ -285,7 +285,7 @@ pigeon_coop_hole_t reserve_pigeon_coop_hole(pigeon_coop_t *pc)
 // destroy_pigeon_coop - Destroys a pigeon coop structure
 //***************************************************************************
 
-void destroy_pigeon_coop(pigeon_coop_t *pc)
+void destroy_pigeon_coop(tbx_pc_t *pc)
 {
     int i;
     apr_thread_mutex_destroy(pc->lock);
@@ -310,12 +310,12 @@ void destroy_pigeon_coop(pigeon_coop_t *pc)
 //   item_size - Size of each item.
 //***************************************************************************
 
-pigeon_coop_t *new_pigeon_coop(const char *name, int size, int item_size, void *new_arg, void *(*new)(void *arg, int size),
+tbx_pc_t *new_pigeon_coop(const char *name, int size, int item_size, void *new_arg, void *(*new)(void *arg, int size),
                                void (*free)(void *arg, int size, void *dshelf))
 {
     int i;
     int default_shelves = 1;
-    pigeon_coop_t *pc = (pigeon_coop_t *)malloc(sizeof(pigeon_coop_t));
+    tbx_pc_t *pc = (tbx_pc_t *)malloc(sizeof(tbx_pc_t));
     assert(pc != NULL);
 
     pc->name = name;
@@ -327,7 +327,7 @@ pigeon_coop_t *new_pigeon_coop(const char *name, int size, int item_size, void *
     pc->check_shelf = 0;
     pc->nused = 0;
     pc->nshelves = default_shelves;
-    pc->ph_shelf = (pigeon_hole_t **)malloc(default_shelves*sizeof(pigeon_hole_t *));
+    pc->ph_shelf = (tbx_ph_t **)malloc(default_shelves*sizeof(tbx_ph_t *));
     assert(pc->ph_shelf != NULL);
     pc->data_shelf = malloc(default_shelves*sizeof(char *));
     assert(pc->data_shelf != NULL);

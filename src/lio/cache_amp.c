@@ -850,7 +850,7 @@ ex_off_t _amp_attempt_free_mem(cache_t *c, segment_t *page_seg, ex_off_t bytes_t
     int count, n;
     tbx_list_t *table;
     page_table_t *ptable;
-    pigeon_coop_hole_t pch, pt_pch;
+    tbx_pch_t pch, pt_pch;
 
     log_printf(15, "START seg=" XIDT " bytes_to_free=" XOT " bytes_used=" XOT " stack_size=%d\n", segment_id(page_seg), bytes_to_free, cp->bytes_used, stack_size(cp->stack));
 
@@ -1022,7 +1022,7 @@ ex_off_t _amp_force_free_mem(cache_t *c, segment_t *page_seg, ex_off_t bytes_to_
     cache_amp_t *cp = (cache_amp_t *)c->fn.priv;
     ex_off_t freed_bytes, bytes_left;
     int top;
-    pigeon_coop_hole_t pch;
+    tbx_pch_t pch;
     cache_cond_t *cache_cond;
 
     top = 0;
@@ -1066,7 +1066,7 @@ void _amp_wait_for_page(cache_t *c, segment_t *seg, int ontop)
     cache_amp_t *cp = (cache_amp_t *)c->fn.priv;
     cache_segment_t *s = (cache_segment_t *)seg->priv;
     amp_page_wait_t pw;
-    pigeon_coop_hole_t pch;
+    tbx_pch_t pch;
     cache_cond_t *cc;
     ex_off_t bytes_free, bytes_needed, n;
     int check_waiters_first;

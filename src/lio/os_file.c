@@ -219,7 +219,7 @@ typedef struct {
     tbx_stack_t *active_stack;
     int read_count;
     int write_count;
-    pigeon_coop_hole_t pch;
+    tbx_pch_t pch;
 } fobj_lock_t;
 
 typedef struct {
@@ -510,7 +510,7 @@ void fobj_lock_free(void *arg, int size, void *data)
 int fobj_wait(object_service_fn_t *os, fobj_lock_t *fol, osfile_fd_t *fd, int max_wait)
 {
     osfile_priv_t *osf = (osfile_priv_t *)os->priv;
-    pigeon_coop_hole_t task_pch;
+    tbx_pch_t task_pch;
     fobj_lock_task_t *handle;
     int aborted, loop, dummy;
     apr_time_t timeout = apr_time_make(max_wait, 0);
@@ -592,7 +592,7 @@ int fobj_wait(object_service_fn_t *os, fobj_lock_t *fol, osfile_fd_t *fd, int ma
 int full_object_lock(osfile_fd_t *fd, int max_wait)
 {
     osfile_priv_t *osf = (osfile_priv_t *)fd->os->priv;
-    pigeon_coop_hole_t obj_pch;
+    tbx_pch_t obj_pch;
     fobj_lock_t *fol;
     fobj_lock_task_t *handle;
     int err;

@@ -302,7 +302,7 @@ void s_cache_page_init(segment_t *seg, cache_page_t *p, ex_off_t poff)
     log_printf(15, "s_cache_page_init: seg=" XIDT " p->offset=" XOT " start->offset=" XOT "\n", segment_id(seg), poff, p->offset);
     p->seg = seg;
     p->offset = poff;
-//  memset(&(p->cond_pch), 0, sizeof(pigeon_coop_hole_t));
+//  memset(&(p->cond_pch), 0, sizeof(tbx_pch_t));
     p->used_count = 0;;
 
     p->bit_fields = C_EMPTY;

@@ -44,7 +44,7 @@ http://www.accre.vanderbilt.edu
 //** Defined in opque.c
 void _opque_start_execution(opque_t *que);
 void _opque_print_stack(tbx_stack_t *stack);
-extern pigeon_coop_t *_gop_control;
+extern tbx_pc_t *_gop_control;
 
 op_status_t op_success_status = {OP_STATE_SUCCESS, 0};
 op_status_t op_failure_status = {OP_STATE_FAILURE, 0};
@@ -883,7 +883,7 @@ void gop_reset(op_generic_t *gop)
 
 void gop_init(op_generic_t *gop)
 {
-    pigeon_coop_hole_t pch;
+    tbx_pch_t pch;
 
     op_common_t *base = &(gop->base);
 

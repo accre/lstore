@@ -139,7 +139,7 @@ typedef struct {
     data_page_t data[2];
     void *priv;
     ex_off_t offset;
-    pigeon_coop_hole_t cond_pch;
+    tbx_pch_t cond_pch;
     int  bit_fields;
     int access_pending[3];
     int used_count;
@@ -155,7 +155,7 @@ typedef struct {
     tbx_stack_t *stack;
     segment_t *seg;
     ex_id_t   id;
-    pigeon_coop_hole_t pch;
+    tbx_pch_t pch;
     ex_off_t lo, hi;
 } page_table_t;
 
@@ -181,7 +181,7 @@ struct cache_s {
     apr_pool_t *mpool;
     apr_thread_mutex_t *lock;
     tbx_list_t *segments;
-    pigeon_coop_t *cond_coop;
+    tbx_pc_t *cond_coop;
     data_attr_t *da;
     ex_off_t default_page_size;
     cache_stats_t stats;

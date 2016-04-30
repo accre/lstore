@@ -49,8 +49,8 @@ typedef struct {
     tbx_stack_t *stack;
     tbx_stack_t *waiting_stack;
     tbx_stack_t *pending_free_tasks;
-    pigeon_coop_t *free_pending_tables;
-    pigeon_coop_t *free_page_tables;
+    tbx_pc_t *free_pending_tables;
+    tbx_pc_t *free_page_tables;
     apr_thread_cond_t *dirty_trigger;
     apr_thread_t *dirty_thread;
     apr_time_t dirty_max_wait;

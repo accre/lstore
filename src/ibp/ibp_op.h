@@ -93,8 +93,8 @@ tbx_atomic_unit32_t rr_count; //** RR counter
 ibp_connect_context_t cc[IBP_MAX_NUM_CMDS+1];  //** Default connection contexts for EACH command
 tbx_ns_chksum_t ncs;
 portal_context_t *pc;
-pigeon_coop_t *coalesced_stacks;
-pigeon_coop_t *coalesced_gop_stacks;
+tbx_pc_t *coalesced_stacks;
+tbx_pc_t *coalesced_gop_stacks;
 tbx_list_t   *coalesced_ops;  //** Ops available for coalescing go here
 apr_thread_mutex_t *lock;
 apr_pool_t *mpool;
@@ -153,7 +153,7 @@ int n_iovec_total;
 ibp_off_t size;
 ibp_rw_buf_t **rwbuf;
 ibp_rw_buf_t *bs_ptr;
-pigeon_coop_hole_t rwcg_pch;
+tbx_pch_t rwcg_pch;
 ibp_rw_buf_t buf_single;
 } ibp_op_rw_t;
  
