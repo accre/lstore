@@ -78,7 +78,7 @@ ns_config_sock(ns, tcpsize);
  
 void phoebus_set_peer(net_sock_t *nsock, char *address, int add_size)
 {
-network_phoebus_t *sock = (network_phoebus_t *)nsock;
+tbx_net_phoebus_t *sock = (tbx_net_phoebus_t *)nsock;
  
 if (sock == NULL) {
 address[0] = '\0';
@@ -96,7 +96,7 @@ return;
  
 int phoebus_status(net_sock_t *nsock)
 {
-network_phoebus_t *sock = (network_phoebus_t *)nsock;
+tbx_net_phoebus_t *sock = (tbx_net_phoebus_t *)nsock;
  
 if (sock == NULL) return(0);
 if (sock->fd != -1) return(1);
@@ -110,7 +110,7 @@ return(0);
  
 int phoebus_close(net_sock_t *nsock)
 {
-network_phoebus_t *sock = (network_phoebus_t *)nsock;
+tbx_net_phoebus_t *sock = (tbx_net_phoebus_t *)nsock;
  
 if (sock == NULL) return(0);
 if (sock->fd == -1) return(0);
@@ -130,7 +130,7 @@ return(err);
  
 long int phoebus_write(net_sock_t *nsock, const void *buf, size_t count, Net_timeout_t tm)
 {
-network_phoebus_t *sock = (network_phoebus_t *)nsock;
+tbx_net_phoebus_t *sock = (tbx_net_phoebus_t *)nsock;
  
 if (sock == NULL) return(-1);   //** If closed return
  
@@ -143,7 +143,7 @@ return(fd_write(sock->fd, buf, count, tm));
  
 long int phoebus_read(net_sock_t *nsock, void *buf, size_t count, Net_timeout_t tm)
 {
-network_phoebus_t *sock = (network_phoebus_t *)nsock;
+tbx_net_phoebus_t *sock = (tbx_net_phoebus_t *)nsock;
  
 if (sock == NULL) return(-1);   //** If closed return
  
@@ -157,7 +157,7 @@ return(fd_read(sock->fd, buf, count, tm));
  
 int phoebus_connect(net_sock_t *nsock, const char *hostname, int port, Net_timeout_t timeout)
 {
-network_phoebus_t *sock = (network_phoebus_t *)nsock;
+tbx_net_phoebus_t *sock = (tbx_net_phoebus_t *)nsock;
  
 char in_addr[16];
 int sfd, err;
@@ -258,7 +258,7 @@ return(0);
  
 void ns_config_phoebus(tbx_ns_t *ns, tbx_phoebus_t *path, int tcpsize)
 {
-network_phoebus_t *sock = (network_phoebus_t *)malloc(sizeof(network_phoebus_t));
+tbx_net_phoebus_t *sock = (tbx_net_phoebus_t *)malloc(sizeof(tbx_net_phoebus_t));
  
 _ns_init(ns, 0);
  

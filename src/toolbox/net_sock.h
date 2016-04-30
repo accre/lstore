@@ -51,7 +51,7 @@ typedef struct {  //** Contains the private raw socket network fields
     apr_thread_mutex_t *lock; //** Global lock
     int tcpsize;
     int state;
-} network_sock_t;
+} tbx_net_sock_t;
 
 #ifdef __cplusplus
 extern "C" {

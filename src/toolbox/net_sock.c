@@ -73,7 +73,7 @@ typedef struct {
 
 void sock_set_peer(net_sock_t *nsock, char *address, int add_size)
 {
-    network_sock_t *sock = (network_sock_t *)nsock;
+    tbx_net_sock_t *sock = (tbx_net_sock_t *)nsock;
     apr_sockaddr_t *sa;
 
     address[0] = '\0';
@@ -92,7 +92,7 @@ void sock_set_peer(net_sock_t *nsock, char *address, int add_size)
 
 int sock_status(net_sock_t *nsock)
 {
-    network_sock_t *sock = (network_sock_t *)nsock;
+    tbx_net_sock_t *sock = (tbx_net_sock_t *)nsock;
     if (sock == NULL) return(0);
 
     return(1);
@@ -104,7 +104,7 @@ int sock_status(net_sock_t *nsock)
 
 int sock_close(net_sock_t *nsock)
 {
-    network_sock_t *sock = (network_sock_t *)nsock;
+    tbx_net_sock_t *sock = (tbx_net_sock_t *)nsock;
 
     if (sock == NULL) return(0);
 
@@ -128,7 +128,7 @@ int sock_close(net_sock_t *nsock)
 // sock_io_wait
 //*********************************************************************
 
-int sock_io_wait(network_sock_t *sock, Net_timeout_t tm, int mode)
+int sock_io_wait(tbx_net_sock_t *sock, Net_timeout_t tm, int mode)
 {
     struct pollfd pfd;
     int state, dt;
@@ -166,7 +166,7 @@ int sock_io_wait(network_sock_t *sock, Net_timeout_t tm, int mode)
 // my_read
 //*********************************************************************
 
-apr_size_t my_read(network_sock_t *sock, tbx_tbuf_t *buf, apr_size_t pos, apr_size_t len, apr_size_t *count)
+apr_size_t my_read(tbx_net_sock_t *sock, tbx_tbuf_t *buf, apr_size_t pos, apr_size_t len, apr_size_t *count)
 {
     ssize_t n;
     sock_apr_overlay_t *s = (sock_apr_overlay_t *)(sock->fd);
@@ -208,7 +208,7 @@ apr_size_t my_read(network_sock_t *sock, tbx_tbuf_t *buf, apr_size_t pos, apr_si
 // my_write
 //*********************************************************************
 
-apr_size_t my_write(network_sock_t *sock, tbx_tbuf_t *buf, apr_size_t bpos, apr_size_t len, apr_size_t *count)
+apr_size_t my_write(tbx_net_sock_t *sock, tbx_tbuf_t *buf, apr_size_t bpos, apr_size_t len, apr_size_t *count)
 {
     ssize_t n;
     sock_apr_overlay_t *s = (sock_apr_overlay_t *)(sock->fd);
@@ -270,7 +270,7 @@ long int sock_write(net_sock_t *nsock, tbx_tbuf_t *buf, size_t bpos, size_t len,
     int err, ewait; // eno;
     apr_size_t nbytes;
 //  Net_timeout_t end_time;
-    network_sock_t *sock = (network_sock_t *)nsock;
+    tbx_net_sock_t *sock = (tbx_net_sock_t *)nsock;
 
 //if (sock == NULL) log_printf(15, "sock_write: sock == NULL\n");
 
@@ -301,7 +301,7 @@ long int sock_read(net_sock_t *nsock, tbx_tbuf_t *buf, size_t bpos, size_t len, 
     int err, ewait; // eno;
     apr_size_t nbytes;
 //  Net_timeout_t end_time;
-    network_sock_t *sock = (network_sock_t *)nsock;
+    tbx_net_sock_t *sock = (tbx_net_sock_t *)nsock;
 
     if (sock == NULL) return(-1);   //** If closed return
     if (sock->fd == NULL) return(-1);
@@ -332,7 +332,7 @@ long int sock_apr_read(net_sock_t *nsock, tbx_tbuf_t *buf, size_t bpos, size_t l
     int err;
     apr_size_t nbytes;
     tbx_tbuf_var_t tbv;
-    network_sock_t *sock = (network_sock_t *)nsock;
+    tbx_net_sock_t *sock = (tbx_net_sock_t *)nsock;
 
     if (sock == NULL) return(-1);   //** If closed return
     if (sock->fd == NULL) return(-1);
@@ -366,7 +366,7 @@ long int sock_apr_write(net_sock_t *nsock, tbx_tbuf_t *buf, size_t bpos, size_t 
     int err;
     apr_size_t nbytes;
     tbx_tbuf_var_t tbv;
-    network_sock_t *sock = (network_sock_t *)nsock;
+    tbx_net_sock_t *sock = (tbx_net_sock_t *)nsock;
 
     if (sock == NULL) return(-1);   //** If closed return
     if (sock->fd == NULL) return(-1);
@@ -400,7 +400,7 @@ int sock_connect(net_sock_t *nsock, const char *hostname, int port, Net_timeout_
     int err;
     Net_timeout_t tm;
 
-    network_sock_t *sock = (network_sock_t *)nsock;
+    tbx_net_sock_t *sock = (tbx_net_sock_t *)nsock;
 
     if (sock == NULL) return(-1);   //** If NULL exit
 
@@ -451,7 +451,7 @@ int sock_connection_request(net_sock_t *nsock, int timeout)
     apr_interval_time_t dt;
     const apr_pollfd_t *ret_fd;
 
-    network_sock_t *sock = (network_sock_t *)nsock;
+    tbx_net_sock_t *sock = (tbx_net_sock_t *)nsock;
 
 //dt= apr_time_make(0, 100*1000);
 //apr_sleep(dt);
@@ -478,11 +478,11 @@ net_sock_t *sock_accept(net_sock_t *nsock)
 {
     int err;
     Net_timeout_t tm;
-    network_sock_t *psock = (network_sock_t *)nsock;
+    tbx_net_sock_t *psock = (tbx_net_sock_t *)nsock;
 
-    network_sock_t *sock = (network_sock_t *)malloc(sizeof(network_sock_t));
+    tbx_net_sock_t *sock = (tbx_net_sock_t *)malloc(sizeof(tbx_net_sock_t));
     assert(sock != NULL);
-    memset(sock, 0, sizeof(network_sock_t));
+    memset(sock, 0, sizeof(tbx_net_sock_t));
 
     if (apr_pool_create(&(sock->mpool), NULL) != APR_SUCCESS) {
         free(sock);
@@ -516,7 +516,7 @@ net_sock_t *sock_accept(net_sock_t *nsock)
 int sock_bind(net_sock_t *nsock, char *address, int port)
 {
     int err;
-    network_sock_t *sock = (network_sock_t *)nsock;
+    tbx_net_sock_t *sock = (tbx_net_sock_t *)nsock;
 
     if (sock == NULL) return(1);
 
@@ -552,7 +552,7 @@ int sock_bind(net_sock_t *nsock, char *address, int port)
 int sock_listen(net_sock_t *nsock, int max_pending)
 {
     int err;
-    network_sock_t *sock = (network_sock_t *)nsock;
+    tbx_net_sock_t *sock = (tbx_net_sock_t *)nsock;
 
     if (sock == NULL) return(1);
 
@@ -580,7 +580,7 @@ int sock_listen(net_sock_t *nsock, int max_pending)
 
 int sock_native_fd(net_sock_t *nsock)
 {
-    network_sock_t *sock = (network_sock_t *)nsock;
+    tbx_net_sock_t *sock = (tbx_net_sock_t *)nsock;
     int fd;
 
     if (apr_os_sock_get(&fd, sock->fd) != APR_SUCCESS) fd = -1;
@@ -600,9 +600,9 @@ void ns_config_sock(tbx_ns_t *ns, int tcpsize)
     _ns_init(ns, 0);
 
     ns->sock_type = NS_TYPE_SOCK;
-    network_sock_t *sock = (network_sock_t *)malloc(sizeof(network_sock_t));
+    tbx_net_sock_t *sock = (tbx_net_sock_t *)malloc(sizeof(tbx_net_sock_t));
     assert(sock != NULL);
-    memset(sock, 0, sizeof(network_sock_t));
+    memset(sock, 0, sizeof(tbx_net_sock_t));
     ns->sock = (net_sock_t *)sock;
 //  assert_result_not(apr_pool_create(&(sock->mpool), NULL), APR_SUCCESS);
     int err = apr_pool_create(&(sock->mpool), NULL);

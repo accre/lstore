@@ -45,7 +45,7 @@ typedef struct {
     int fd;
     int tcpsize;
     char address[16];
-} network_phoebus_t;
+} tbx_net_phoebus_t;
 
 #ifdef __cplusplus
 extern "C" {

@@ -45,7 +45,7 @@ typedef struct {
 //  pthread_mutex_t lock;
     int rfd;
     int wfd;
-} network_2ssl_t;
+} tbx_net_2ssl_t;
 
 #ifdef __cplusplus
 extern "C" {
