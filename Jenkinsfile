@@ -92,11 +92,6 @@ compile_map['scan-build'] = {
     }
 }
 
-
-//  CC=clang cmake ../source/ -DCMAKE_INSTALL_PREFIX=local/ -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
-
-// scan-build cmake ../source/ -DCMAKE_INSTALL_PREFIX=local/ -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
-// scan-build -o clangScanBuildReports -v -v make VERBOSE=1 clean all
 compile_map['cppcheck'] = {
     node('xenial') {
         deleteDir()
@@ -107,8 +102,6 @@ compile_map['cppcheck'] = {
         }
     }
 }
-
-// cmake -DBUILD_SHARED_LIBS:BOOL=OFF -DINSTALL_TESTS:BOOL=ON ../source/
 
 for (int i = 0 ; i < distros.size(); ++i) {
     def x = distros.get(i)
