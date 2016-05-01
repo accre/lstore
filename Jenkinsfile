@@ -21,26 +21,40 @@ node('docker') {
     sh "env"
 }
 compile_map['unified'] = {
-    node('xenial') {
-        stage "Build-Unified"
-        deleteDir()
-        unstash 'source'
-        dir('build') {
-            sh "cmake -DBUILD_TESTS=on -DENABLE_COVERAGE=on -DENABLE_ASAN=on -DCMAKE_INSTALL_PREFIX=local/ .."
-            sh "make -j8 externals"
-            sh "make -j8 install 2>&1 | tee compile_log.txt"
-            stash includes: 'local/**, run-tests, run-benchmarks', name: "unified-build"
-            step([$class: 'WarningsPublisher', defaultEncoding: '', excludePattern: '', healthy: '', includePattern: '', messagesPattern: '', parserConfigurations: [[parserName: 'GNU Make + GNU C Compiler (gcc)', pattern: 'compile_log.txt']], unHealthy: ''])
+    parallel "gcc-build" : {
+        node('xenial') {
+            stage "Build-Unified"
+            deleteDir()
+            unstash 'source'
+            dir('build') {
+                sh "cmake -DBUILD_TESTS=on -DENABLE_COVERAGE=on -DENABLE_ASAN=on -DCMAKE_INSTALL_PREFIX=local/ .."
+                sh "make -j8 externals"
+                sh "make -j1 install 2>&1 | tee compile_log_gcc.txt"
+                stash includes: 'local/**, run-tests, run-benchmarks', name: "unified-build"
+                step([$class: 'WarningsPublisher', defaultEncoding: '', excludePattern: '', healthy: '', includePattern: '', messagesPattern: '', parserConfigurations: [[parserName: 'GNU Make + GNU C Compiler (gcc)', pattern: 'compile_log_gcc.txt']], unHealthy: ''])
+            }
         }
-    }
 
-    node('xenial') {
-        stage "UnitTests"
-        deleteDir()
-        unstash 'unified-build'
-        sh "bash -c 'set -o pipefail ; LD_LIBRARY_PATH=local/lib UV_TAP_OUTPUT=1 ./run-tests 2>&1 | tee tap.log'"
-        // step([$class: 'TapPublisher', testResults: 'tap.log'])
-    }
+        node('xenial') {
+            stage "UnitTests"
+            deleteDir()
+            unstash 'unified-build'
+            sh "bash -c 'set -o pipefail ; LD_LIBRARY_PATH=local/lib UV_TAP_OUTPUT=1 ./run-tests 2>&1 | tee tap.log'"
+            // step([$class: 'TapPublisher', testResults: 'tap.log'])
+        }},
+        "clang-build" : {
+            node('xenial') {
+                stage "Build-Unified"
+                deleteDir()
+                unstash 'source'
+                dir('build') {
+                    sh "CC=clang cmake -DBUILD_TESTS=on -DENABLE_COVERAGE=on -DENABLE_ASAN=on -DCMAKE_INSTALL_PREFIX=local/ .."
+                    sh "make -j8 externals"
+                    sh "make -j1 install 2>&1 | tee compile_log_clang.txt"
+                    step([$class: 'WarningsPublisher', defaultEncoding: '', excludePattern: '', healthy: '', includePattern: '', messagesPattern: '', parserConfigurations: [[parserName: 'GNU Make + GNU C Compiler (gcc)', pattern: 'compile_log_clang.txt']], unHealthy: ''])
+                }
+            }}
+
 }
 
 compile_map['cppcheck'] = {
