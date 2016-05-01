@@ -65,7 +65,7 @@ compile_map['unified-clang'] = {
 }
 
 
-compile_map['tidy'] {
+compile_map['tidy'] = {
     node('xenial') {
         deleteDir()
         unstash "source"
