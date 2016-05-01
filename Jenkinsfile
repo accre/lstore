@@ -20,6 +20,7 @@ node('docker') {
     stash includes: '**, .git/', name: 'source', useDefaultExcludes: false
     sh "env"
 }
+
 compile_map['unified-gcc'] = {
     node('xenial') {
         stage "Build-Unified"
@@ -39,7 +40,6 @@ compile_map['unified-gcc'] = {
         deleteDir()
         unstash 'unified-build'
         sh "bash -c 'set -o pipefail ; LD_LIBRARY_PATH=local/lib UV_TAP_OUTPUT=1 ./run-tests 2>&1 | tee tap.log'"
-        // step([$class: 'TapPublisher', testResults: 'tap.log'])
     }
 }
 
@@ -60,7 +60,6 @@ compile_map['unified-clang'] = {
         sh "bash -c 'set -o pipefail ; LD_LIBRARY_PATH=local/lib UV_TAP_OUTPUT=1 ./run-tests 2>&1 | tee tap.log'"
     }
 }
-
 
 compile_map['tidy'] = {
     node('xenial') {
@@ -89,18 +88,7 @@ compile_map['scan-build'] = {
             sh "mv clang-static-analyzer/* ../clang-report"
         }
         archive "clang-report/**"
-        publishHTML(target: [reportDir: 'clang-report/', reportFiles: 'index.html', reportName: 'Clang'])
-    }
-}
-
-compile_map['cppcheck'] = {
-    node('xenial') {
-        deleteDir()
-        unstash 'source'
-        dir('src') {
-            sh "cppcheck --enable=all --inconclusive --xml --xml-version=2 \$(pwd) > cppcheck.xml"
-            // step([$class: 'CppcheckPublisher'])
-        }
+        publishHTML(target: [reportDir: 'clang-report/', reportFiles: 'index.html', reportName: 'Clang static analysis'])
     }
 }
 
@@ -121,7 +109,6 @@ for (int i = 0 ; i < distros.size(); ++i) {
     } }
 }
 
-
 stage "Packaging"
 parallel compile_map
 node('xenial') {
@@ -132,7 +119,6 @@ node('xenial') {
     unstash "clang-tidy-log"
     step([$class: 'WarningsPublisher', defaultEncoding: '', excludePattern: '', healthy: '', includePattern: '', messagesPattern: '', parserConfigurations: [[parserName: 'GNU Make + GNU C Compiler (gcc)', pattern: '*.txt']], unHealthy: ''])
 }
-
 
 node('docker') {
     stage "Deploying"
