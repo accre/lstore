@@ -55,7 +55,7 @@ for DISTRO in "${DISTROS[@]}"; do
             PACKAGE_PREFIX="RUN apt-get update && apt-get install -y"
             PACKAGE_POSTFIX=" --no-install-recommends --no-upgrade && apt-get clean"
             GLOBAL_INSTALL="RUN apt-get update && apt-get install -y build-essential fakeroot devscripts --no-install-recommends --no-upgrade && apt-get clean"
-            JAVA_INSTALL="RUN apt-get update && apt-get install -y clang-tody cppcheck openjdk-8-jdk-headless lcov gcovr --no-install-recommends --no-upgrade && apt-get clean && mkdir /tmp/afl && cd /tmp/afl && wget http://lcamtuf.coredump.cx/afl/releases/afl-2.10b.tgz && tar -xzf afl-2.10b.tgz && cd afl-2.10b && make install && cd / && rm -rf /tmp/afl"
+            JAVA_INSTALL="RUN apt-get update && apt-get install -y clang-tidy cppcheck openjdk-8-jdk-headless lcov gcovr --no-install-recommends --no-upgrade && apt-get clean && mkdir /tmp/afl && cd /tmp/afl && wget http://lcamtuf.coredump.cx/afl/releases/afl-2.10b.tgz && tar -xzf afl-2.10b.tgz && cd afl-2.10b && make install && cd / && rm -rf /tmp/afl"
             ;;
         *)
             fatal "Unrecognized base image type: ${PARENT}"
