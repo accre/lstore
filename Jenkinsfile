@@ -70,7 +70,7 @@ compile_map['tidy'] = {
         dir('build') {
             sh "CC=clang cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DBUILD_TESTS=on -DCMAKE_INSTALL_PREFIX=local/ .."
             sh "make externals"
-            sh "clang-tidy -p=\$(pwd) '-header-filter=../src/*.h' ../src/*/*.c ../src/*/*.h -checks=-*,misc-*,google-runtime-*,modernize-*,cert-*,performance-*,cppcoreguidelines-*,-misc-unused-parameters | tee ../clang_tidy_log.txt"
+            sh "clang-tidy -p=\$(pwd) '-header-filter=../src/*.h' ../src/*/*.c ../src/*/*.h -checks=-*,misc-*,google-runtime-*,modernize-*,cert-*,performance-*,cppcoreguidelines-*,-misc-unused-parameters,*- -list-checks | tee ../clang_tidy_log.txt"
         }
         stash includes: "clang_tidy_log.txt", name: "clang-tidy-log"
     }
