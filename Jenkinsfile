@@ -53,7 +53,7 @@ compile_map['unified'] = {
                     sh "make -j1 install 2>&1 VERBOSE=1 | tee compile_log_clang.txt"
                     stash includes: "compile_log_clang.txt", name: "clang-log"
                 }
-            }}
+            }}]
         node('xenial') {
             deleteDir()
             unstash "source"
@@ -66,7 +66,7 @@ compile_map['unified'] = {
             step([$class: 'WarningsPublisher', defaultEncoding: '', excludePattern: '', healthy: '', includePattern: '', messagesPattern: '', parserConfigurations: [[parserName: 'GNU Make + GNU C Compiler (gcc)', pattern: '*.txt']], unHealthy: ''])
             step([$class: 'WarningsPublisher', defaultEncoding: '', excludePattern: '', healthy: '', includePattern: '', messagesPattern: '', parserConfigurations: [[parserName: 'Clang (LLVM based)', pattern: 'compile_log_clang.txt']], unHealthy: ''])
             step([$class: 'WarningsPublisher', defaultEncoding: '', excludePattern: '', healthy: '', includePattern: '', messagesPattern: '', parserConfigurations: [[parserName: 'GNU Make + GNU C Compiler (gcc)', pattern: 'clang_tidy_log.txt']], unHealthy: ''])
-        }]
+        }
 
 }
 //  CC=clang cmake ../source/ -DCMAKE_INSTALL_PREFIX=local/ -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
