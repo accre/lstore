@@ -68,13 +68,28 @@ compile_map['tidy'] = {
         deleteDir()
         unstash "source"
         dir('build') {
-            sh "CC=clang cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DBUILD_TESTS=on -DENABLE_COVERAGE=on -DENABLE_ASAN=on -DCMAKE_INSTALL_PREFIX=local/ .."
-            sh "make externals -j8"
+            sh "CC=clang cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DBUILD_TESTS=on -DCMAKE_INSTALL_PREFIX=local/ .."
+            sh "make externals"
             sh "clang-tidy -p=\$(pwd) ../src/*/*.c ../src/*/*.h -checks=misc-*,google-runtime-*,clang-analyzer-*,modernize-*,cert-*,performance-*,cppcoreguidelines-*,-misc-unused-parameters | tee ../clang_tidy_log.txt"
         }
         stash includes: "clang_tidy_log.txt", name: "clang-tidy-log"
     }
 }
+
+compile_map['scan-build'] = {
+    node('xenial') {
+        deleteDir()
+        unstash "source"
+        def scan_checks = "-enable-checker alpha.core.BoolAssignment -enable-checker alpha.core.CallAndMessageUnInitRefArg -enable-checker alpha.core.CastSize -enable-checker alpha.core.CastToStruct -enable-checker alpha.core.DynamicTypeChecker -enable-checker alpha.core.FixedAddr -enable-checker alpha.core.IdenticalExpr -enable-checker alpha.core.PointerArithm -enable-checker alpha.core.PointerSub -enable-checker alpha.core.SizeofPtr -enable-checker alpha.core.TestAfterDivZero -enable-checker alpha.cplusplus.VirtualCall -enable-checker alpha.deadcode.UnreachableCode -enable-checker alpha.security.ArrayBound -enable-checker alpha.security.ArrayBoundV2 -enable-checker alpha.security.MallocOverflow -enable-checker alpha.security.ReturnPtrRange -enable-checker alpha.security.taint.TaintPropagation -enable-checker alpha.unix.Chroot -enable-checker alpha.unix.PthreadLock -enable-checker alpha.unix.SimpleStream -enable-checker alpha.unix.Stream -enable-checker alpha.unix.cstring.BufferOverlap -enable-checker alpha.unix.cstring.NotNullTerminated -enable-checker alpha.unix.cstring.OutOfBounds"
+        dir('build') {
+            sh "CCC_CC=clang scan-build cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DBUILD_TESTS=on -DCMAKE_INSTALL_PREFIX=local/ .."
+            sh "CC=clang make externals"
+            sh "CCC_CC=clang scan-build -o clang-static-analyzer -v -v ${scan_checks} --keep-empty make && mv clang-static-analyzer/* clang-report"
+        }
+        publishHTML([allowMissing: true, alwaysLinkToLastBuild: true, keepAll: true, reportDir: 'build/clang-report', reportFiles: 'index.html', reportName: 'Clang static analysis'])
+    }
+}
+
 
 //  CC=clang cmake ../source/ -DCMAKE_INSTALL_PREFIX=local/ -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 
