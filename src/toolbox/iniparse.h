@@ -41,14 +41,14 @@ typedef struct tbx_inip_element_t tbx_inip_element_t;
 struct tbx_inip_element_t {  //** Key/Value pair
     char *key;
     char *value;
-    struct inip_element_s *next;
+    struct tbx_inip_element_t *next;
 };
 
 typedef struct tbx_inip_group_t tbx_inip_group_t;
 struct tbx_inip_group_t {  //** Group
     char *group;
     tbx_inip_element_t *list;
-    struct inip_group_s *next;
+    struct tbx_inip_group_t *next;
 };
 
 typedef struct tbx_inip_file_t tbx_inip_file_t;
