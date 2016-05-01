@@ -61,7 +61,7 @@ compile_map['unified'] = {
             unstash "clang-log"
             dir('build') {
                 sh "CC=clang cmake -DBUILD_TESTS=on -DENABLE_COVERAGE=on -DENABLE_ASAN=on -DCMAKE_INSTALL_PREFIX=local/ .."
-                sh "clang-tidy -p=$(pwd) ../src/*/*.{c,h} -checks=misc-*,google-runtime-*,clang-analyzer-*,modernize-*,cert-*,performance-*,cppcoreguidelines-*,-misc-unused-parameters | tee ../clang_tidy_log.txt"
+                sh "clang-tidy -p=\$(pwd) ../src/*/*.{c,h} -checks=misc-*,google-runtime-*,clang-analyzer-*,modernize-*,cert-*,performance-*,cppcoreguidelines-*,-misc-unused-parameters | tee ../clang_tidy_log.txt"
             }
             step([$class: 'WarningsPublisher', defaultEncoding: '', excludePattern: '', healthy: '', includePattern: '', messagesPattern: '', parserConfigurations: [[parserName: 'GNU Make + GNU C Compiler (gcc)', pattern: '*.txt']], unHealthy: ''])
             step([$class: 'WarningsPublisher', defaultEncoding: '', excludePattern: '', healthy: '', includePattern: '', messagesPattern: '', parserConfigurations: [[parserName: 'Clang (LLVM based)', pattern: 'compile_log_clang.txt']], unHealthy: ''])
