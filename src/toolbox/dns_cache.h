@@ -44,7 +44,7 @@ extern "C" {
 #define DNS_IPV4  0
 #define DNS_IPV6  1
 
-TBX_API int lookup_host(const char *, char *, char *);
+TBX_API int lookup_host(const char * name, char * byte_addr, char * ip_addr);
 TBX_API void dns_cache_init(int);
 TBX_API void finalize_dns_cache();
 
