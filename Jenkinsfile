@@ -29,9 +29,9 @@ compile_map['unified'] = {
             dir('build') {
                 sh "cmake -DBUILD_TESTS=on -DENABLE_COVERAGE=on -DENABLE_ASAN=on -DCMAKE_INSTALL_PREFIX=local/ .."
                 sh "make -j8 externals"
-                sh "make -j1 install 2>&1 | tee compile_log_gcc.txt"
+                sh "make -j1 install VERBOSE=1 2>&1 | tee compile_log_gcc.txt"
                 stash includes: 'local/**, run-tests, run-benchmarks', name: "unified-build"
-                step([$class: 'WarningsPublisher', defaultEncoding: '', excludePattern: '', healthy: '', includePattern: '', messagesPattern: '', parserConfigurations: [[parserName: 'GNU Make + GNU C Compiler (gcc)', pattern: 'compile_log_gcc.txt']], unHealthy: ''])
+                stash includes "compile_log_gcc.txt", name: "gcc-log"
             }
         }
 
@@ -50,13 +50,29 @@ compile_map['unified'] = {
                 dir('build') {
                     sh "CC=clang cmake -DBUILD_TESTS=on -DENABLE_COVERAGE=on -DENABLE_ASAN=on -DCMAKE_INSTALL_PREFIX=local/ .."
                     sh "make -j8 externals"
-                    sh "make -j1 install 2>&1 | tee compile_log_clang.txt"
-                    step([$class: 'WarningsPublisher', defaultEncoding: '', excludePattern: '', healthy: '', includePattern: '', messagesPattern: '', parserConfigurations: [[parserName: 'GNU Make + GNU C Compiler (gcc)', pattern: 'compile_log_clang.txt']], unHealthy: ''])
+                    sh "make -j1 install 2>&1 VERBOSE=1 | tee compile_log_clang.txt"
+                    stash includes "compile_log_clang.txt", name: "clang-log"
                 }
             }}
+        node('xenial') {
+            deleteDir()
+            unstash "source"
+            unstash "gcc-log"
+            unstash "clang-log"
+            dir('build') {
+                sh "CC=clang cmake -DBUILD_TESTS=on -DENABLE_COVERAGE=on -DENABLE_ASAN=on -DCMAKE_INSTALL_PREFIX=local/ .."
+                sh "clang-tidy -p=$(pwd) ../src/*/*.{c,h} -checks=misc-*,google-runtime-*,clang-analyzer-*,modernize-*,cert-*,performance-*,cppcoreguidelines-*,-misc-unused-parameters | tee ../clang_tidy_log.txt"
+            }
+            step([$class: 'WarningsPublisher', defaultEncoding: '', excludePattern: '', healthy: '', includePattern: '', messagesPattern: '', parserConfigurations: [[parserName: 'GNU Make + GNU C Compiler (gcc)', pattern: 'compile_log_*.txt']], unHealthy: ''])
+            step([$class: 'WarningsPublisher', defaultEncoding: '', excludePattern: '', healthy: '', includePattern: '', messagesPattern: '', parserConfigurations: [[parserName: 'Clang (LLVM based)', pattern: 'compile_log_clang.txt']], unHealthy: ''])
+            step([$class: 'WarningsPublisher', defaultEncoding: '', excludePattern: '', healthy: '', includePattern: '', messagesPattern: '', parserConfigurations: [[parserName: 'GNU Make + GNU C Compiler (gcc)', pattern: 'compile_log_*.txt']], unHealthy: ''])
+        }
 
 }
+//  CC=clang cmake ../source/ -DCMAKE_INSTALL_PREFIX=local/ -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 
+// scan-build cmake ../source/ -DCMAKE_INSTALL_PREFIX=local/ -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+// scan-build -o clangScanBuildReports -v -v make VERBOSE=1 clean all
 compile_map['cppcheck'] = {
     node('xenial') {
         deleteDir()
