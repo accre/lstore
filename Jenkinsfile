@@ -69,6 +69,7 @@ compile_map['tidy'] = {
         unstash "source"
         dir('build') {
             sh "CC=clang cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DBUILD_TESTS=on -DENABLE_COVERAGE=on -DENABLE_ASAN=on -DCMAKE_INSTALL_PREFIX=local/ .."
+            sh "make externals -j8"
             sh "clang-tidy -p=\$(pwd) ../src/*/*.c ../src/*/*.h -checks=misc-*,google-runtime-*,clang-analyzer-*,modernize-*,cert-*,performance-*,cppcoreguidelines-*,-misc-unused-parameters | tee ../clang_tidy_log.txt"
         }
         stash includes: "clang_tidy_log.txt", name: "clang-tidy-log"
