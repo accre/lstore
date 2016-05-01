@@ -21,7 +21,7 @@ node('docker') {
     sh "env"
 }
 compile_map['unified'] = {
-    parallel "gcc-build" : {
+    parallel ["gcc-build" : {
         node('xenial') {
             stage "Build-Unified"
             deleteDir()
@@ -66,7 +66,7 @@ compile_map['unified'] = {
             step([$class: 'WarningsPublisher', defaultEncoding: '', excludePattern: '', healthy: '', includePattern: '', messagesPattern: '', parserConfigurations: [[parserName: 'GNU Make + GNU C Compiler (gcc)', pattern: 'compile_log_*.txt']], unHealthy: ''])
             step([$class: 'WarningsPublisher', defaultEncoding: '', excludePattern: '', healthy: '', includePattern: '', messagesPattern: '', parserConfigurations: [[parserName: 'Clang (LLVM based)', pattern: 'compile_log_clang.txt']], unHealthy: ''])
             step([$class: 'WarningsPublisher', defaultEncoding: '', excludePattern: '', healthy: '', includePattern: '', messagesPattern: '', parserConfigurations: [[parserName: 'GNU Make + GNU C Compiler (gcc)', pattern: 'compile_log_*.txt']], unHealthy: ''])
-        }
+        }]
 
 }
 //  CC=clang cmake ../source/ -DCMAKE_INSTALL_PREFIX=local/ -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
