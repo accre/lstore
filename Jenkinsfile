@@ -71,7 +71,7 @@ compile_map['tidy'] = {
             sh "CC=clang cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DBUILD_TESTS=on -DENABLE_COVERAGE=on -DENABLE_ASAN=on -DCMAKE_INSTALL_PREFIX=local/ .."
             sh "clang-tidy -p=\$(pwd) ../src/*/*.c ../src/*/*.h -checks=misc-*,google-runtime-*,clang-analyzer-*,modernize-*,cert-*,performance-*,cppcoreguidelines-*,-misc-unused-parameters | tee ../clang_tidy_log.txt"
         }
-        step([$class: 'WarningsPublisher', defaultEncoding: '', excludePattern: '', healthy: '', includePattern: '', messagesPattern: '', parserConfigurations: [[parserName: 'GNU Make + GNU C Compiler (gcc)', pattern: 'clang_tidy_log.txt']], unHealthy: ''])
+        stash includes: "clang_tidy_log.txt", name: "clang-tidy-log"
     }
 }
 
@@ -117,8 +117,8 @@ node('xenial') {
     unstash "source"
     unstash "gcc-log"
     unstash "clang-log"
+    unstash "clang-tidy-log"
     step([$class: 'WarningsPublisher', defaultEncoding: '', excludePattern: '', healthy: '', includePattern: '', messagesPattern: '', parserConfigurations: [[parserName: 'GNU Make + GNU C Compiler (gcc)', pattern: '*.txt']], unHealthy: ''])
-    //step([$class: 'WarningsPublisher', defaultEncoding: '', excludePattern: '', healthy: '', includePattern: '', messagesPattern: '', parserConfigurations: [[parserName: 'Clang (LLVM based)', pattern: 'compile_log_clang.txt']], unHealthy: ''])
 }
 
 
