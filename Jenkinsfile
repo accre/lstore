@@ -84,7 +84,7 @@ compile_map['scan-build'] = {
         dir('build') {
             sh "CCC_CC=clang scan-build cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DBUILD_TESTS=on -DCMAKE_INSTALL_PREFIX=local/ .."
             sh "CC=clang make externals"
-            sh "CCC_CC=clang scan-build -o clang-static-analyzer -v -v ${scan_checks} --keep-empty make -j2"
+            sh "CCC_CC=clang scan-build -o clang-static-analyzer -v -v ${scan_checks} --keep-empty make -j4"
             sh "mv clang-static-analyzer/* ../clang-report"
         }
         archive "clang-report/**"
