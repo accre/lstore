@@ -88,7 +88,7 @@ compile_map['scan-build'] = {
             sh "mv clang-static-analyzer/* ../clang-report"
         }
         archive "clang-report/**"
-        publishHTML([reportDir: 'clang-report/', reportFiles: 'index.html', reportName: 'Clang'])
+        publishHTML(target: [reportDir: 'clang-report/', reportFiles: 'index.html', reportName: 'Clang'])
     }
 }
 
