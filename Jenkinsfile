@@ -84,7 +84,8 @@ compile_map['scan-build'] = {
         dir('build') {
             sh "CCC_CC=clang scan-build cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DBUILD_TESTS=on -DCMAKE_INSTALL_PREFIX=local/ .."
             sh "CC=clang make externals"
-            sh "CCC_CC=clang scan-build -o clang-static-analyzer -v -v ${scan_checks} --keep-empty make && mv clang-static-analyzer/* clang-report"
+            sh "CCC_CC=clang scan-build -o clang-static-analyzer -v -v ${scan_checks} --keep-empty make -j2"
+            sh "mv clang-static-analyzer/* clang-report"
         }
         publishHTML([allowMissing: true, alwaysLinkToLastBuild: true, keepAll: true, reportDir: 'build/clang-report', reportFiles: 'index.html', reportName: 'Clang static analysis'])
     }
