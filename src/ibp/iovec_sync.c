@@ -1,30 +1,17 @@
 /*
-Advanced Computing Center for Research and Education Proprietary License
-Version 1.0 (April 2006)
+   Copyright 2016 Vanderbilt University
 
-Copyright (c) 2006, Advanced Computing Center for Research and Education,
- Vanderbilt University, All rights reserved.
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
 
-This Work is the sole and exclusive property of the Advanced Computing Center
-for Research and Education department at Vanderbilt University.  No right to
-disclose or otherwise disseminate any of the information contained herein is
-granted by virtue of your possession of this software except in accordance with
-the terms and conditions of a separate License Agreement entered into with
-Vanderbilt University.
+       http://www.apache.org/licenses/LICENSE-2.0
 
-THE AUTHOR OR COPYRIGHT HOLDERS PROVIDES THE "WORK" ON AN "AS IS" BASIS,
-WITHOUT WARRANTY OF ANY KIND, EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT
-LIMITED TO THE WARRANTIES OF MERCHANTABILITY, TITLE, FITNESS FOR A PARTICULAR
-PURPOSE, AND NON-INFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
-HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
-ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
-WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
-Vanderbilt University
-Advanced Computing Center for Research and Education
-230 Appleton Place
-Nashville, TN 37203
-http://www.accre.vanderbilt.edu
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
 */
 
 #define _log_module_index 135
