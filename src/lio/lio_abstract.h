@@ -21,7 +21,7 @@
 #include "exnode.h"
 #include "blacklist.h"
 #include "mq_portal.h"
-#include "log.h"
+#include <tbx/log.h>
 
 #ifndef _LIO_ABSTRACT_H_
 #define _LIO_ABSTRACT_H_

@@ -17,16 +17,16 @@
 #define _log_module_index 171
 
 #include <assert.h>
-#include "assert_result.h"
+#include <tbx/assert_result.h>
 #include <math.h>
 #include <apr_time.h>
 
 #include "exnode.h"
-#include "log.h"
-#include "iniparse.h"
-#include "string_token.h"
-#include "type_malloc.h"
-#include "random.h"
+#include <tbx/log.h>
+#include <tbx/iniparse.h>
+#include <tbx/string_token.h>
+#include <tbx/type_malloc.h>
+#include <tbx/random.h>
 #include "opque.h"
 #include "lio.h"
 
@@ -106,7 +106,7 @@ void my_random_seed(unsigned int seed)
 
 //*************************************************************************
 
-int my_get_random(void *vbuf, int nbytes)
+int my_tbx_random_bytes_get(void *vbuf, int nbytes)
 {
     char *buf = (char *)vbuf;
     int i;
@@ -142,7 +142,7 @@ double my_random_double(double lo, double hi)
     uint64_t rn;
 
     rn = 0;
-    my_get_random(&rn, sizeof(rn));
+    my_tbx_random_bytes_get(&rn, sizeof(rn));
 //log_printf(10, "my_random_double: rn=" XIDT "\n", rn);
     dn = (1.0 * rn) / (UINT64_MAX + 1.0);
 //  dn = rn;
@@ -158,7 +158,7 @@ double my_random_double(double lo, double hi)
 
 //*******************************************************************
 
-int64_t my_random_int(int64_t lo, int64_t hi)
+int64_t my_tbx_random_int64(int64_t lo, int64_t hi)
 {
     int64_t n, dn;
 
@@ -252,11 +252,11 @@ void generate_task_list()
     base_tile = (tile_t *)realloc(base_tile, sizeof(tile_t)*tile_size);
 
     //** Make the actual buffer and fill it with random data
-    type_malloc_clear(tile_data, char, tile_bytes);
-    my_get_random(tile_data, tile_bytes);
+    tbx_type_malloc_clear(tile_data, char, tile_bytes);
+    my_tbx_random_bytes_get(tile_data, tile_bytes);
 
     //** Make the array defining the order or operations
-    type_malloc(tile_index, int, tile_size);
+    tbx_type_malloc(tile_index, int, tile_size);
 
     //** This is used for linear mode
     for (i=0; i<tile_size; i++) tile_index[i] = i;
@@ -267,7 +267,7 @@ void generate_task_list()
         log_printf(15, "generate_task_list: tile_compare_size=%d\n", tile_compare_size);
         qsort(tile_index, tile_size, sizeof(int), tile_compare);
 
-        if (log_level() > 10) {
+        if (tbx_log_level() > 10) {
             log_printf(10, "generate_task_list: -------------------Random order requested-----------------\n");
             for (i=0; i<tile_size; i++) {
                 j = tile_index[i];
@@ -308,20 +308,20 @@ void make_test_indices()
     if (rwc.read_sigma > total_scan_size) rwc.read_sigma = total_scan_size;
     if (rwc.write_sigma > total_scan_size) rwc.write_sigma = total_scan_size;
 
-    type_malloc(wc_span, char, total_scan_size);
+    tbx_type_malloc(wc_span, char, total_scan_size);
     memset(wc_span, '0', total_scan_size);
 
-    type_malloc_clear(read_index.span, int, rwc.read_sigma);
-    type_malloc_clear(write_index.span, int, rwc.write_sigma);
+    tbx_type_malloc_clear(read_index.span, int, rwc.read_sigma);
+    tbx_type_malloc_clear(write_index.span, int, rwc.write_sigma);
 
     read_index.base_index = 0;
     read_index.curr = (rwc.read_fraction == 0) ? tile_size : 0;
     write_index.base_index = 0;
     write_index.curr = 0;
 
-    type_malloc_clear(task_list, task_slot_t, rwc.n_parallel);
+    tbx_type_malloc_clear(task_list, task_slot_t, rwc.n_parallel);
     for (i=0; i<rwc.n_parallel; i++) {
-        type_malloc_clear(task_list[i].buffer, char, max_task_bytes);
+        tbx_type_malloc_clear(task_list[i].buffer, char, max_task_bytes);
     }
 }
 
@@ -386,24 +386,24 @@ void perform_final_verify()
     double rate, dsec;
     int ll = 15;
 
-    type_malloc(buffer, char, tile_bytes);
+    tbx_type_malloc(buffer, char, tile_bytes);
 
-    tbuffer_single(&tbuf, tile_bytes, buffer);
+    tbx_tbuf_single(&tbuf, tile_bytes, buffer);
 
-//set_log_level(20);
+//tbx_set_log_level(20);
 
     n = total_scan_bytes / tile_bytes;
     off = 0;
     fail = 0;
     log_printf(0, "-------------- Starting final verify -----------------------\n");
-    flush_log();
+    tbx_flush_log();
     dt = apr_time_now();
 
     for (i=0; i<n; i++) {
         log_printf(ll, "checking offset=" XOT "\n", off);
         memset(buffer, 'A', tile_bytes);
         ex_iovec_single(&iov, off, tile_bytes);
-        flush_log();
+        tbx_flush_log();
         dt2 = apr_time_now();
 
         err = gop_sync_exec(segment_read(seg, da, NULL, 1, &iov, &tbuf, 0, rwc.timeout));
@@ -414,14 +414,14 @@ void perform_final_verify()
         log_printf(0, "gop er=%d: Time: %lf secs  (%lf MB/s)\n", err, dsec, rate);
 
         log_printf(ll, "gop err=%d\n", err);
-        flush_log();
+        tbx_flush_log();
 
         if (err != OP_STATE_SUCCESS) {
             log_printf(0, "ERROR with read! block offset=" XOT "\n", off);
         }
         err = memcmp(buffer, tile_data, tile_bytes);
         log_printf(ll, "memcmp=%d\n", err);
-        flush_log();
+        tbx_flush_log();
 
 //err = 0;
         if (err != 0) {
@@ -465,7 +465,7 @@ void perform_final_verify()
         log_printf(0, "perform_final_verify:  FAILED\n");
     }
 
-    flush_log();
+    tbx_flush_log();
 
     free(buffer);
 }
@@ -484,7 +484,7 @@ op_generic_t *find_write_task(task_slot_t *tslot)
 
     write_index.curr++;
 
-    flip = my_random_int(0, rwc.write_sigma-1);
+    flip = my_tbx_random_int64(0, rwc.write_sigma-1);
     n = -1;
     for (i=0; i< rwc.write_sigma; i++) {
         j = (flip + i) % rwc.write_sigma;  //** Used to map the slot to the span range
@@ -496,19 +496,19 @@ op_generic_t *find_write_task(task_slot_t *tslot)
     }
 
     log_printf(my_log_level, "find_write_task: span global=%d flip=%d i=%d base=%d spanindex=%d\n", n, flip, i, write_index.base_index, (n%rwc.write_sigma));
-    flush_log();
+    tbx_flush_log();
 
     write_index.span[n%rwc.write_sigma] = 1;
     tslot->global_index = n;
     log_printf(my_log_level, "find_write_task: span slot=%d curr=%d base=%d global=%d\n", n, write_index.curr, write_index.base_index, tslot->global_index);
-    flush_log();
+    tbx_flush_log();
 
     tslot->local_index = (tslot->global_index) % tile_size;
     tslot->type = 0;
 
     slot = tile_index[tslot->local_index];
     offset = ((tslot->global_index) / tile_size) * tile_bytes + base_tile[slot].offset;
-    tbuffer_single(&(tslot->tbuf), base_tile[slot].len, &(tile_data[base_tile[slot].offset]));
+    tbx_tbuf_single(&(tslot->tbuf), base_tile[slot].len, &(tile_data[base_tile[slot].offset]));
     ex_iovec_single(&(tslot->iov), offset, base_tile[slot].len);
 
     gop = segment_write(seg, da, NULL, 1, &(tslot->iov), &(tslot->tbuf), 0, rwc.timeout);
@@ -516,11 +516,11 @@ op_generic_t *find_write_task(task_slot_t *tslot)
 
     n = total_scan_size - rwc.write_sigma;
     log_printf(my_log_level, "find_write_task: span_update max=%d base=%d\n", n, write_index.base_index);
-    flush_log();
+    tbx_flush_log();
     for (i=0; i<rwc.write_sigma; i++) {
         slot = write_index.base_index % rwc.write_sigma;
         log_printf(my_log_level, "find_write_task: span_update slot=%d i=%d base=%d span[slot]=%d\n", slot, i, write_index.base_index, write_index.span[slot]);
-        flush_log();
+        tbx_flush_log();
 
         if (write_index.span[slot] == 0) break;
         if ( write_index.base_index >= n) break;  //** Don't move the window beyond the end
@@ -543,18 +543,18 @@ op_generic_t *find_read_task(task_slot_t *tslot, int write_done)
 
     if (read_index.curr >= total_scan_size) return(NULL);  //** Nothing left to do
 
-    flip = my_random_int(0, rwc.read_sigma-1);
+    flip = my_tbx_random_int64(0, rwc.read_sigma-1);
 
     n = -1;
     for (i=0; i< rwc.read_sigma; i++) {
         j = (flip + i) % rwc.read_sigma;  //** Used to map the slot to the span range
         slot = (read_index.base_index + j) % rwc.read_sigma;
         log_printf(my_log_level, "find_read_task: span i=%d j=%d flip=%d base=%d spanslot=%d span[slot]=%d\n", i, j, flip,  read_index.base_index, slot, read_index.span[slot]);
-        flush_log();
+        tbx_flush_log();
         if (read_index.span[slot] == 0) {
             slot =  read_index.base_index + j;
             log_printf(my_log_level, "find_read_task: slot=%d wc=%c\n", slot, wc_span[slot]);
-            flush_log();
+            tbx_flush_log();
 
             if (wc_span[slot] == '1') {
                 n = read_index.base_index + j;
@@ -564,7 +564,7 @@ op_generic_t *find_read_task(task_slot_t *tslot, int write_done)
     }
 
     log_printf(my_log_level, "find_read_task: span global=%d flip=%d base=%d spanindex=%d\n", n, flip,  read_index.base_index, (n%rwc.read_sigma));
-    flush_log();
+    tbx_flush_log();
 
     if ((n<0) && (write_done >= total_scan_size)) {
         log_printf(0, "find_read_task:  ERROR!! No viable taks found!! Printing wc_span table (READ base=%d curr=%d  ---- WRITE base=%d curr=%d\n",
@@ -587,26 +587,26 @@ op_generic_t *find_read_task(task_slot_t *tslot, int write_done)
     tslot->type = 1;
 
     log_printf(my_log_level, "find_read_task: span slot=%d curr=%d base=%d global=%d\n", n, read_index.curr, read_index.base_index, tslot->global_index);
-    flush_log();
+    tbx_flush_log();
 
     slot = tile_index[tslot->local_index];
     offset = ((tslot->global_index) / tile_size) * tile_bytes + base_tile[slot].offset;
     memset(tslot->buffer, 'A', base_tile[slot].len);
-    tbuffer_single(&(tslot->tbuf), base_tile[slot].len, tslot->buffer);
+    tbx_tbuf_single(&(tslot->tbuf), base_tile[slot].len, tslot->buffer);
     ex_iovec_single(&(tslot->iov), offset, base_tile[slot].len);
 
     gop = segment_read(seg, da, NULL, 1, &(tslot->iov), &(tslot->tbuf), 0, rwc.timeout);
     log_printf(my_log_level, "find_read_task: global=%d off=" XOT " len=" XOT " gop=%p\n", tslot->global_index, offset, base_tile[slot].len, gop);
-    flush_log();
+    tbx_flush_log();
 
     gop_set_private(gop, (void *)tslot);
 
     //** Move up the read base index
     n = total_scan_size - rwc.read_sigma;
-//log_printf(my_log_level, "find_read_task: span_update max=%d base=%d\n", n, read_index.base_index); flush_log();
+//log_printf(my_log_level, "find_read_task: span_update max=%d base=%d\n", n, read_index.base_index); tbx_flush_log();
     for (i=0; i<rwc.read_sigma; i++) {
         slot = read_index.base_index % rwc.read_sigma;
-//log_printf(my_log_level, "find_read_task: span_update slot=%d i=%d base=%d span[slot]=%d\n", slot, i, read_index.base_index, read_index.span[slot]); flush_log();
+//log_printf(my_log_level, "find_read_task: span_update slot=%d i=%d base=%d span[slot]=%d\n", slot, i, read_index.base_index, read_index.span[slot]); tbx_flush_log();
 
         if (read_index.span[slot] == 0) break;
         if (read_index.base_index >= n) break;  //** Don't move the window beyond the end
@@ -670,20 +670,20 @@ void rw_test()
 
     //** Setup everything
     log_printf(0, "Generating tasks and random data\n");
-    flush_log();
+    tbx_flush_log();
     generate_task_list();
     make_test_indices();
     log_printf(0, "Completed task and data generation\n\n");
-    flush_log();
+    tbx_flush_log();
 
     //** Truncate the file to back to the correct size if needed
     if (rwc.preallocate == 1) {
         log_printf(0, "Preallocating all space\n\n");
-        flush_log();
+        tbx_flush_log();
         j = gop_sync_exec(segment_truncate(seg, da, total_scan_bytes, 10));
         if (j != OP_STATE_SUCCESS) {
             printf("Error truncating the file!\n");
-            flush_log();
+            tbx_flush_log();
             fflush(stdout);
             abort();
         }
@@ -691,8 +691,8 @@ void rw_test()
 
     q = new_opque();
 
-    free_slots = new_stack();  //** Slot 0 is hard coded below
-    for (i=1; i<rwc.n_parallel; i++) push(free_slots, &(task_list[i]));
+    free_slots = tbx_stack_new();  //** Slot 0 is hard coded below
+    for (i=1; i<rwc.n_parallel; i++) tbx_stack_push(free_slots, &(task_list[i]));
 
 //exit(1);
 
@@ -736,7 +736,7 @@ void rw_test()
             gop = find_write_task(slot);
         }
 
-        flush_log();
+        tbx_flush_log();
 
         if (gop != NULL) {
             log_printf(1, "rw_test: SUBMITTING i=%d gid=%d mode=%d global=%d off=" XOT " len=" XOT "\n", i, gop_id(gop), slot->type, slot->global_index, slot->iov.offset, slot->iov.len);
@@ -744,10 +744,10 @@ void rw_test()
             opque_add(q, gop);
         } else {
             log_printf(my_log_level, "Nothing to do. Waiting for write to complete.  Read: curr=%d done=%d  Write: curr=%d done=%d nleft=%d\n", read_index.curr, read_done, write_index.curr, write_done, opque_tasks_left(q));
-            push(free_slots, slot);
+            tbx_stack_push(free_slots, slot);
         }
 
-        if ((stack_size(free_slots) == 0) || (gop == NULL)) {
+        if ((tbx_stack_size(free_slots) == 0) || (gop == NULL)) {
             gop = opque_waitany(q);
 
             slot = gop_get_private(gop);
@@ -773,7 +773,7 @@ void rw_test()
             gop_free(gop, OP_DESTROY);
         } else {
             log_printf(my_log_level, "popping slot i=%d\n", i);
-            slot = (task_slot_t *)pop(free_slots);
+            slot = (task_slot_t *)tbx_stack_pop(free_slots);
         }
 
         log_printf(my_log_level, "rw_test: read_index.curr=%d (%d done) write_index.curr=%d (%d done) total_scan_size=%d\n", read_index.curr, read_done, write_index.curr, write_done, total_scan_size);
@@ -853,13 +853,13 @@ void rw_test()
 
     if (rwc.do_flush_check > 0) {
         log_printf(0, "============ Flushing data and doing a last verification =============\n");
-        flush_log();
+        tbx_flush_log();
         dtt = apr_time_now();
         gop_sync_exec(segment_flush(seg, da, 0, total_scan_bytes, 30));
         dtt = apr_time_now() - dtt;
         dsec = (1.0*dtt) / APR_USEC_PER_SEC;
         log_printf(0, "============ Flush completed (%lf s) Dropping pages as well =============\n", dsec);
-        flush_log();
+        tbx_flush_log();
         cache_drop_pages(seg, 0, total_scan_bytes+1);  //** Drop all the pages so they have to be reloaded on next test
         perform_final_verify();
 
@@ -871,7 +871,7 @@ void rw_test()
         printf("----------------------------------------------------------\n");
     }
 
-    free_stack(free_slots, 0);
+    tbx_free_stack(free_slots, 0);
 }
 
 //*************************************************************************
@@ -883,30 +883,30 @@ void rw_load_options(char *cfgname, char *group)
     tbx_inip_file_t *fd;
     char *str;
 
-    fd = inip_read(cfgname);
+    fd = tbx_inip_file_read(cfgname);
     if (fd == NULL) {
         printf("rw_load_config:  ERROR opening config file: %s\n", cfgname);
-        flush_log();
+        tbx_flush_log();
         fflush(stdout);
         abort();
     }
 
     //** Parse the global params
-    rwc.n_parallel = inip_get_integer(fd, group, "parallel", 1);
-    rwc.preallocate = inip_get_integer(fd, group, "preallocate", 0);
-    rwc.buffer_size = inip_get_integer(fd, group, "buffer_size", 10*1024*1024);
-    rwc.file_size = inip_get_integer(fd, group, "file_size", 10*1024*1024);
-    rwc.do_final_check = inip_get_integer(fd, group, "do_final_check", 1);
-    rwc.do_flush_check = inip_get_integer(fd, group, "do_flush_check", 1);
-    rwc.timeout = inip_get_integer(fd, group, "timeout", 10);
-    rwc.update_interval = inip_get_integer(fd, group, "update_interval", 1000);
-    rwc.filename = inip_get_string(fd, group, "file", "");
-    rwc.read_lag = inip_get_integer(fd, group, "read_lag", 10);
-    rwc.read_fraction = inip_get_double(fd, group, "read_fraction", 0.0);
-    rwc.seed = inip_get_integer(fd, group, "seed", 1);
+    rwc.n_parallel = tbx_inip_integer_get(fd, group, "parallel", 1);
+    rwc.preallocate = tbx_inip_integer_get(fd, group, "preallocate", 0);
+    rwc.buffer_size = tbx_inip_integer_get(fd, group, "buffer_size", 10*1024*1024);
+    rwc.file_size = tbx_inip_integer_get(fd, group, "file_size", 10*1024*1024);
+    rwc.do_final_check = tbx_inip_integer_get(fd, group, "do_final_check", 1);
+    rwc.do_flush_check = tbx_inip_integer_get(fd, group, "do_flush_check", 1);
+    rwc.timeout = tbx_inip_integer_get(fd, group, "timeout", 10);
+    rwc.update_interval = tbx_inip_integer_get(fd, group, "update_interval", 1000);
+    rwc.filename = tbx_inip_string_get(fd, group, "file", "");
+    rwc.read_lag = tbx_inip_integer_get(fd, group, "read_lag", 10);
+    rwc.read_fraction = tbx_inip_double_get(fd, group, "read_fraction", 0.0);
+    rwc.seed = tbx_inip_integer_get(fd, group, "seed", 1);
     my_random_seed(rwc.seed);
 
-    str = inip_get_string(fd, group, "mode", "linear");
+    str = tbx_inip_string_get(fd, group, "mode", "linear");
     if (strcasecmp(str, "linear") == 0) {
         rwc.mode = 0;
     } else if (strcasecmp(str, "random") == 0) {
@@ -914,23 +914,23 @@ void rw_load_options(char *cfgname, char *group)
     } else {
         printf("rw_load_options: ERROR loading mode. mode=%s\n", str);
         printf("rw_load_options: Should be either 'linear' or 'random'.\n");
-        flush_log();
+        tbx_flush_log();
         fflush(stdout);
         abort();
     }
     free(str);
 
-    rwc.min_size = 1024.0*inip_get_double(fd, group, "min_size", 1);
+    rwc.min_size = 1024.0*tbx_inip_double_get(fd, group, "min_size", 1);
     if (rwc.min_size == 0) rwc.min_size = 1;
-    rwc.max_size = 1024.0*inip_get_double(fd, group, "max_size", 10);
+    rwc.max_size = 1024.0*tbx_inip_double_get(fd, group, "max_size", 10);
     if (rwc.max_size == 0) rwc.max_size = 1;
     rwc.ln_min = log(rwc.min_size);
     rwc.ln_max = log(rwc.max_size);
 
-    rwc.read_sigma = inip_get_integer(fd, group, "read_sigma", 50);
-    rwc.write_sigma = inip_get_integer(fd, group, "write_sigma", 50);
+    rwc.read_sigma = tbx_inip_integer_get(fd, group, "read_sigma", 50);
+    rwc.write_sigma = tbx_inip_integer_get(fd, group, "write_sigma", 50);
 
-    inip_destroy(fd);
+    tbx_inip_destroy(fd);
 }
 
 //*************************************************************************
@@ -947,8 +947,8 @@ void rw_print_options(FILE *fd)
     fprintf(fd, "[%s]\n", group);
     fprintf(fd, "preallocate=%d\n", rwc.preallocate);
     fprintf(fd, "parallel=%d\n", rwc.n_parallel);
-    fprintf(fd, "buffer_size=%s\n", pretty_print_int_with_scale(rwc.buffer_size, ppbuf));
-    fprintf(fd, "file_size=%s\n", pretty_print_int_with_scale(rwc.file_size, ppbuf));
+    fprintf(fd, "buffer_size=%s\n", tbx_stk_pretty_print_int_with_scale(rwc.buffer_size, ppbuf));
+    fprintf(fd, "file_size=%s\n", tbx_stk_pretty_print_int_with_scale(rwc.file_size, ppbuf));
     fprintf(fd, "do_final_check=%d\n", rwc.do_final_check);
     fprintf(fd, "do_flush_check=%d\n", rwc.do_flush_check);
     fprintf(fd, "timeout=%d\n", rwc.timeout);
@@ -1022,7 +1022,7 @@ int main(int argc, char **argv)
 
     if (lio_gc->cfg_name == NULL) {
         printf("ex_rw_test:  Missing config file!\n");
-        flush_log();
+        tbx_flush_log();
         fflush(stdout);
         abort();
     }
@@ -1047,7 +1047,7 @@ int main(int argc, char **argv)
     seg = exnode_get_default(ex);
     if (seg == NULL) {
         printf("No default segment!  Aborting!\n");
-        flush_log();
+        tbx_flush_log();
         fflush(stdout);
         abort();
     }
@@ -1057,7 +1057,7 @@ int main(int argc, char **argv)
         err = gop_sync_exec(segment_truncate(seg, da, 0, 10));
         if (err != OP_STATE_SUCCESS) {
             printf("Error truncating the remote file!\n");
-            flush_log();
+            tbx_flush_log();
             fflush(stdout);
             abort();
         }
@@ -1098,7 +1098,7 @@ int main(int argc, char **argv)
     err = gop_sync_exec(segment_truncate(seg, da, 0, 10));
     if (err != OP_STATE_SUCCESS) {
         printf("Error truncating the file!\n");
-        flush_log();
+        tbx_flush_log();
         fflush(stdout);
         abort();
     }

@@ -23,9 +23,11 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <assert.h>
-#include "assert_result.h"
-#include "log.h"
+#include "tbx/assert_result.h"
+#include "tbx/log.h"
+#include "tbx/pigeon_hole.h"
 #include "pigeon_hole.h"
+#include "pigeon_coop.h"
 
 //***************************************************************************
 // pigeon_hole_iterator_init - Initializes an iterator
@@ -191,12 +193,12 @@ void destroy_pigeon_hole(tbx_ph_t *ph)
 tbx_ph_t *new_pigeon_hole(const char *name, int size)
 {
     tbx_ph_t *ph = (tbx_ph_t *)malloc(sizeof(tbx_ph_t));
+    memset((void *)ph, 0, sizeof(tbx_ph_t));
     assert(ph != NULL);
 
     ph->hole = (char *)malloc(size);
     assert(ph->hole != NULL);
 
-//log_printf(0, "new_pigeon_hole: size=%d\n", size);
     memset(ph->hole, 0, size);
     ph->name = name;
     apr_pool_create(&(ph->pool), NULL);

@@ -18,7 +18,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
-#include "assert_result.h"
+#include <tbx/assert_result.h>
 
 //******************************************************************************
 //  xor_block - XOR's a block of data

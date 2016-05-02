@@ -17,22 +17,21 @@
 #define _log_module_index 122
 
 #include <assert.h>
-#include "assert_result.h"
+#include <tbx/assert_result.h>
 #include <apr_pools.h>
 #include <apr_thread_proc.h>
 #include <apr_thread_pool.h>
 #include <apr_env.h>
-#include "apr_wrapper.h"
+#include <tbx/apr_wrapper.h>
 #include "opque.h"
 #include "thread_pool.h"
-#include "network.h"
-#include "log.h"
-#include "type_malloc.h"
+#include <tbx/network.h>
+#include <tbx/log.h>
+#include <tbx/type_malloc.h>
 
-void  *thread_pool_exec_fn(apr_thread_t *th, void *arg);
 void *_tp_dup_connect_context(void *connect_context);
 void _tp_destroy_connect_context(void *connect_context);
-int _tp_connect(tbx_ns_t *ns, void *connect_context, char *host, int port, Net_timeout_t timeout);
+int _tp_connect(tbx_ns_t *ns, void *connect_context, char *host, int port, tbx_ns_timeout_t timeout);
 void _tp_close_connection(tbx_ns_t *ns);
 op_generic_t *_tpc_overflow_next(thread_pool_context_t *tpc);
 
@@ -109,7 +108,7 @@ void _tp_op_free(op_generic_t *gop, int mode)
     int id = gop_id(gop);
 
     log_printf(15, "_tp_op_free: mode=%d gid=%d gop=%p\n", mode, gop_id(gop), gop);
-    flush_log();
+    tbx_flush_log();
 
     if (top->my_op_free != NULL) top->my_op_free(top->arg);
 
@@ -119,7 +118,7 @@ void _tp_op_free(op_generic_t *gop, int mode)
 
     if (mode == OP_DESTROY) free(gop->free_ptr);
     log_printf(15, "_tp_op_free: gid=%d END\n", id);
-    flush_log();
+    tbx_flush_log();
 
 }
 
@@ -133,26 +132,26 @@ void _tp_submit_op(void *arg, op_generic_t *gop)
 
     log_printf(15, "_tp_submit_op: gid=%d\n", gop_id(gop));
 
-    atomic_inc(op->tpc->n_submitted);
+    tbx_atomic_inc(op->tpc->n_submitted);
     op->via_submit = 1;
-    running = atomic_inc(op->tpc->n_running) + 1;
+    running = tbx_atomic_inc(op->tpc->n_running) + 1;
 
     if (running > op->tpc->max_concurrency) {
         apr_thread_mutex_lock(_tp_lock);
-        atomic_inc(op->tpc->n_overflow);
+        tbx_atomic_inc(op->tpc->n_overflow);
         if (op->depth >= op->tpc->recursion_depth) {  //** Check if we hit the max recursion
             log_printf(0, "GOP has a recursion depth >= max specified in the TP!!!! gop depth=%d  TPC max=%d\n", op->depth, op->tpc->recursion_depth);
-            push(op->tpc->reserve_stack[op->tpc->recursion_depth-1], gop);  //** Need to do the push and overflow check
+            tbx_stack_push(op->tpc->reserve_stack[op->tpc->recursion_depth-1], gop);  //** Need to do the push and overflow check
         } else {
-            push(op->tpc->reserve_stack[op->depth], gop);  //** Need to do the push and overflow check
+            tbx_stack_push(op->tpc->reserve_stack[op->depth], gop);  //** Need to do the push and overflow check
         }
         gop = _tpc_overflow_next(op->tpc);             //** along with the submit or rollback atomically
 
         if (gop) {
             op = gop_get_tp(gop);
-            aerr = apr_thread_pool_push(op->tpc->tp, thread_pool_exec_fn, gop, APR_THREAD_TASK_PRIORITY_NORMAL, NULL);
+            aerr = apr_thread_pool_push(op->tpc->tp,(void *(*)(apr_thread_t *, void *))thread_pool_exec_fn, gop, APR_THREAD_TASK_PRIORITY_NORMAL, NULL);
         } else {
-            atomic_dec(op->tpc->n_running);  //** We didn't actually submit anything
+            tbx_atomic_dec(op->tpc->n_running);  //** We didn't actually submit anything
             if (op->overflow_slot != -1) {   //** Check if we need to undo our overflow slot
                 op->tpc->overflow_running_depth[op->overflow_slot] = -1;
             }
@@ -161,7 +160,7 @@ void _tp_submit_op(void *arg, op_generic_t *gop)
         }
         apr_thread_mutex_unlock(_tp_lock);
     } else {
-        aerr = apr_thread_pool_push(op->tpc->tp, thread_pool_exec_fn, gop, APR_THREAD_TASK_PRIORITY_NORMAL, NULL);
+        aerr = apr_thread_pool_push(op->tpc->tp, (void *(*)(apr_thread_t *, void *))thread_pool_exec_fn, gop, APR_THREAD_TASK_PRIORITY_NORMAL, NULL);
     }
 
     if (aerr != APR_SUCCESS) {
@@ -185,9 +184,9 @@ void _tp_destroy_connect_context(void *connect_context)
 
 //**********************************************************
 
-int _tp_connect(tbx_ns_t *ns, void *connect_context, char *host, int port, Net_timeout_t timeout)
+int _tp_connect(tbx_ns_t *ns, void *connect_context, char *host, int port, tbx_ns_timeout_t timeout)
 {
-    ns->id = ns_generate_id();
+    tbx_ns_setid(ns, tbx_ns_generate_id());
     return(0);
 }
 
@@ -208,9 +207,9 @@ int thread_pool_direct(thread_pool_context_t *tpc, apr_thread_start_t fn, void *
 {
     int err = apr_thread_pool_push(tpc->tp, fn, arg, APR_THREAD_TASK_PRIORITY_NORMAL, NULL);
 
-    atomic_inc(tpc->n_direct);
+    tbx_atomic_inc(tpc->n_direct);
 
-    log_printf(10, "tpd=%d\n", atomic_get(tpc->n_direct));
+    log_printf(10, "tpd=%d\n", tbx_atomic_get(tpc->n_direct));
     if (err != APR_SUCCESS) {
         log_printf(0, "ERROR submiting task!  err=%d\n", err);
     }
@@ -246,9 +245,9 @@ thread_pool_context_t *thread_pool_create_context(char *tp_name, int min_threads
 
     log_printf(15, "count=%d\n", _tp_context_count);
 
-    type_malloc_clear(tpc, thread_pool_context_t, 1);
+    tbx_type_malloc_clear(tpc, thread_pool_context_t, 1);
 
-    if (atomic_inc(_tp_context_count) == 0) {
+    if (tbx_atomic_inc(_tp_context_count) == 0) {
         apr_pool_create(&_tp_pool, NULL);
         apr_thread_mutex_create(&_tp_lock, APR_THREAD_MUTEX_DEFAULT, _tp_pool);
         thread_pool_stats_init();
@@ -274,17 +273,17 @@ thread_pool_context_t *thread_pool_create_context(char *tp_name, int min_threads
     apr_thread_pool_threshold_set(tpc->tp, 0);
 
     tpc->name = (tp_name == NULL) ? NULL : strdup(tp_name);
-    atomic_set(tpc->n_ops, 0);
-    atomic_set(tpc->n_completed, 0);
-    atomic_set(tpc->n_started, 0);
-    atomic_set(tpc->n_submitted, 0);
-    atomic_set(tpc->n_running, 0);
+    tbx_atomic_set(tpc->n_ops, 0);
+    tbx_atomic_set(tpc->n_completed, 0);
+    tbx_atomic_set(tpc->n_started, 0);
+    tbx_atomic_set(tpc->n_submitted, 0);
+    tbx_atomic_set(tpc->n_running, 0);
 
-    type_malloc(tpc->overflow_running_depth, int, tpc->recursion_depth);
-    type_malloc(tpc->reserve_stack, tbx_stack_t *, tpc->recursion_depth);
+    tbx_type_malloc(tpc->overflow_running_depth, int, tpc->recursion_depth);
+    tbx_type_malloc(tpc->reserve_stack, tbx_stack_t *, tpc->recursion_depth);
     for (i=0; i<tpc->recursion_depth; i++) {
         tpc->overflow_running_depth[i] = -1;
-        tpc->reserve_stack[i] = new_stack();
+        tpc->reserve_stack[i] = tbx_stack_new();
     }
 
     return(tpc);
@@ -305,7 +304,7 @@ void thread_pool_destroy_context(thread_pool_context_t *tpc)
 
     apr_thread_pool_destroy(tpc->tp);
 
-    if (atomic_dec(_tp_context_count) == 0) {
+    if (tbx_atomic_dec(_tp_context_count) == 0) {
         if (_tp_stats > 0) thread_pool_stats_print();
         apr_thread_mutex_destroy(_tp_lock);
         apr_pool_destroy(_tp_pool);
@@ -314,7 +313,7 @@ void thread_pool_destroy_context(thread_pool_context_t *tpc)
     if (tpc->name != NULL) free(tpc->name);
 
     for (i=0; i<tpc->recursion_depth; i++) {
-        free_stack(tpc->reserve_stack[i], 0);
+        tbx_free_stack(tpc->reserve_stack[i], 0);
     }
     free(tpc->reserve_stack);
     free(tpc->overflow_running_depth);

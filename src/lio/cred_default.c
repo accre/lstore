@@ -20,9 +20,9 @@
 
 #define _log_module_index 185
 
-#include "list.h"
-#include "type_malloc.h"
-#include "log.h"
+#include <tbx/list.h>
+#include <tbx/type_malloc.h>
+#include <tbx/log.h>
 #include "authn_abstract.h"
 
 //***********************************************************************
@@ -90,7 +90,7 @@ void cdef_destroy(creds_t *c)
 creds_t *cred_default_create()
 {
     creds_t *c;
-    type_malloc_clear(c, creds_t, 1);
+    tbx_type_malloc_clear(c, creds_t, 1);
 
     c->get_type = cdef_get_type;
     c->get_type_field = cdef_get_type_field;

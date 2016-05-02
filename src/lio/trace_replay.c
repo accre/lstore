@@ -17,11 +17,11 @@
 #define _log_module_index 168
 
 #include <assert.h>
-#include "assert_result.h"
+#include <tbx/assert_result.h>
 #include "exnode.h"
-#include "log.h"
-#include "iniparse.h"
-#include "type_malloc.h"
+#include <tbx/log.h>
+#include <tbx/iniparse.h>
+#include <tbx/type_malloc.h>
 #include "thread_pool.h"
 #include "trace.h"
 #include "lio.h"
@@ -104,10 +104,10 @@ int main(int argc, char **argv)
 
     //** Load the trace
     trace = trace_load(exnode_service_set, tex, lio_gc->da, lio_gc->timeout, trace_header);
-    type_malloc_clear(iov, ex_tbx_iovec_t, trace->n_files);
+    tbx_type_malloc_clear(iov, ex_tbx_iovec_t, trace->n_files);
 
     q = new_opque();
-    tbuffer_single(&tbuf, bufsize, buffer);
+    tbx_tbuf_single(&tbuf, bufsize, buffer);
     start_time = apr_time_now();
     for (i=0; i<trace->n_ops; i++) {
         if ((i%update_interval) == 0) {

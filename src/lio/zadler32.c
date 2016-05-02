@@ -15,11 +15,12 @@
 */
 
 #include <assert.h>
-#include "assert_result.h"
+#include <tbx/assert_result.h>
 #include <stdio.h>
+#include <string.h>
 #include "zlib.h"
-#include "type_malloc.h"
-#include "string_token.h"
+#include <tbx/type_malloc.h>
+#include <tbx/string_token.h>
 
 //*************************************************************************
 // adler32_fd- Calculates the adler32 for the given FD
@@ -68,7 +69,7 @@ int main(int argc, char **argv)
 
         if (strcmp(argv[i], "-b") == 0) { //** Load the buffer
             i++;
-            bufsize = string_get_integer(argv[i]);
+            bufsize = tbx_stk_string_get_integer(argv[i]);
             i++;
         }
 
@@ -76,7 +77,7 @@ int main(int argc, char **argv)
     start_index = i;
 
     //** Make the buffer
-    type_malloc(buffer, unsigned char, bufsize);
+    tbx_type_malloc(buffer, unsigned char, bufsize);
 
     for (i=start_index; i<argc; i++) {
         fname = argv[i];

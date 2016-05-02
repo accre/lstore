@@ -19,50 +19,50 @@
 
 #define _log_module_index 103
 
-#include "atomic_counter.h"
+#include "tbx/atomic_counter.h"
 #include "apr_thread_proc.h"
 #include "stdlib.h"
 
-static tbx_atomic_unit32_t _atomic_global_counter = 0;
+static tbx_atomic_unit32_t _tbx_atomic_global_counter = 0;
 
-static apr_threadkey_t *atomic_thread_id_key;
+static apr_threadkey_t *tbx_atomic_thread_id_key;
 tbx_atomic_unit32_t _atomic_times_used = 0;
 apr_pool_t *_atomic_mpool = NULL;
 
 //*************************************************************************
-// atomic_global_counter - Returns the global counter and inc's it as well
+// tbx_atomic_global_counter - Returns the global counter and inc's it as well
 //*************************************************************************
 
-inline int atomic_counter(tbx_atomic_unit32_t *counter)
+inline int tbx_atomic_counter(tbx_atomic_unit32_t *counter)
 {
     int n;
-    n = atomic_inc(*counter);
-    if (n > 1073741824) atomic_set(*counter, 0);
+    n = tbx_atomic_inc(*counter);
+    if (n > 1073741824) tbx_atomic_set(*counter, 0);
     return(n);
 }
 
 //*************************************************************************
-// atomic_global_counter - Returns the global counter and inc's it as well
+// tbx_atomic_global_counter - Returns the global counter and inc's it as well
 //*************************************************************************
 
-inline int atomic_global_counter()
+inline int tbx_atomic_global_counter()
 {
-    return(atomic_counter(&_atomic_global_counter));
+    return(tbx_atomic_counter(&_tbx_atomic_global_counter));
 }
 
 //*************************************************************************
-// _a_thread_id_ptr - Returns the pointer to the thread unique id
+// tbx_a_thread_id_ptr - Returns the pointer to the thread unique id
 //*************************************************************************
 
-int *_a_thread_id_ptr()
+int *tbx_a_thread_id_ptr()
 {
     int *ptr = NULL;
 
-    apr_threadkey_private_get((void *)&ptr, atomic_thread_id_key);
+    apr_threadkey_private_get((void *)&ptr, tbx_atomic_thread_id_key);
     if (ptr == NULL ) {
         ptr = (int *)malloc(sizeof(int));
-        apr_threadkey_private_set(ptr, atomic_thread_id_key);
-        *ptr = atomic_global_counter();
+        apr_threadkey_private_set(ptr, tbx_atomic_thread_id_key);
+        *ptr = tbx_atomic_global_counter();
     }
 
     return(ptr);
@@ -76,26 +76,26 @@ void _atomic_destructor(void *ptr)
 }
 
 //*************************************************************************
-//  atomic_init - initializes the atomic routines. Only needed if using the
+//  tbx_atomic_startup - initializes the atomic routines. Only needed if using the
 //     thread_id or global counter routines
 //*************************************************************************
 
-void atomic_init()
+void tbx_atomic_startup()
 {
-    if (atomic_inc(_atomic_times_used) != 0) return;
+    if (tbx_atomic_inc(_atomic_times_used) != 0) return;
 
     apr_pool_create(&_atomic_mpool, NULL);
-    apr_threadkey_private_create(&atomic_thread_id_key,_atomic_destructor, _atomic_mpool);
+    apr_threadkey_private_create(&tbx_atomic_thread_id_key,_atomic_destructor, _atomic_mpool);
 }
 
 //*************************************************************************
-//  atomic_destroy - Destroys the atomic routines. Only needed if using the
+//  tbx_atomic_shutdown - Destroys the atomic routines. Only needed if using the
 //     thread_id or global counter routines
 //*************************************************************************
 
-void atomic_destroy()
+void tbx_atomic_shutdown()
 {
-    if (atomic_dec(_atomic_times_used) > 0) return;
+    if (tbx_atomic_dec(_atomic_times_used) > 0) return;
 
     apr_pool_destroy(_atomic_mpool);
 

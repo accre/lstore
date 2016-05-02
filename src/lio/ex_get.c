@@ -17,11 +17,11 @@
 #define _log_module_index 169
 
 #include <assert.h>
-#include "assert_result.h"
+#include <tbx/assert_result.h>
 #include "exnode.h"
-#include "log.h"
-#include "iniparse.h"
-#include "type_malloc.h"
+#include <tbx/log.h>
+#include <tbx/iniparse.h>
+#include <tbx/type_malloc.h>
 #include "thread_pool.h"
 #include "lio.h"
 
@@ -80,8 +80,8 @@ int main(int argc, char **argv)
     } while (start_option < i);
 
     bufsize = 1024*1024*bufsize_mb / 2;
-    type_malloc(rbuf, char, bufsize+1);
-    type_malloc(wbuf, char, bufsize+1);
+    tbx_type_malloc(rbuf, char, bufsize+1);
+    tbx_type_malloc(wbuf, char, bufsize+1);
     log_printf(1, "bufsize= 2 * " XOT " bytes (%d MB total)\n", bufsize, bufsize_mb);
 
     //** This is the remote file to download
@@ -142,13 +142,13 @@ int main(int argc, char **argv)
         wlen = rlen;
 
         rlen = ((i+bufsize)>=size) ? size%bufsize : bufsize;
-        tbuffer_single(&tbuf, rlen, rbuf);
+        tbx_tbuf_single(&tbuf, rlen, rbuf);
         ex_iovec_single(&iov, i, rlen);
         log_printf(1, "ex_get: i=" XOT " rlen=" XOT " wlen=" XOT "\n", i, rlen, wlen);
-        flush_log();
+        tbx_flush_log();
         gop = segment_read(seg, lio_gc->da, NULL, 1, &iov, &tbuf, 0, 5);
         log_printf(1, "ex_get: i=" XOT " gid=%d\n", i, gop_id(gop));
-        flush_log();
+        tbx_flush_log();
 
         //** Dump the data to disk
         if (firsttime == 0) {

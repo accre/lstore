@@ -20,15 +20,15 @@
 
 #define _log_module_index 146
 
-#include "type_malloc.h"
-#include "log.h"
+#include <tbx/type_malloc.h>
+#include <tbx/log.h>
 #include "data_service_abstract.h"
 #include "ds_ibp_priv.h"
 #include "ibp.h"
 #include "opque.h"
-#include "string_token.h"
-#include "type_malloc.h"
-#include "apr_wrapper.h"
+#include <tbx/string_token.h>
+#include <tbx/type_malloc.h>
+#include <tbx/apr_wrapper.h>
 
 int _ds_ibp_do_init = 1;
 
@@ -258,7 +258,7 @@ data_attr_t *ds_ibp_new_attr(data_service_fn_t *arg)
 
     ds_ibp_attr_t *a;
 
-    type_malloc(a, ds_ibp_attr_t, 1);
+    tbx_type_malloc(a, ds_ibp_attr_t, 1);
 
     *a = ds->attr_default;
 
@@ -444,11 +444,11 @@ int res2ibp(char *res, ibp_depot_t *depot)
     char *bstate, *tmp;
     int fin;
 
-    strncpy(depot->host, string_token(str, ":", &bstate, &fin), sizeof(depot->host)-1);
+    strncpy(depot->host, tbx_stk_string_token(str, ":", &bstate, &fin), sizeof(depot->host)-1);
     depot->host[sizeof(depot->host)-1] = '\0';
-    tmp = string_token(NULL, "/", &bstate, &fin);
+    tmp = tbx_stk_string_token(NULL, "/", &bstate, &fin);
     depot->port = atoi(tmp);
-    strncpy(depot->rid.name, string_token(NULL, ":/", &bstate, &fin), sizeof(depot->rid.name)-1);
+    strncpy(depot->rid.name, tbx_stk_string_token(NULL, ":/", &bstate, &fin), sizeof(depot->rid.name)-1);
     depot->rid.name[sizeof(depot->rid.name)-1] = '\0';
 
     log_printf(15, "ds_key=%s host=%s port=%d rid=%s\n", res, depot->host, depot->port, depot->rid.name);
@@ -478,7 +478,7 @@ data_inquire_t *ds_ibp_new_inquire(data_service_fn_t *arg)
 {
     ibp_depotinfo_t *d;
 
-    type_malloc_clear(d, ibp_depotinfo_t, 1);
+    tbx_type_malloc_clear(d, ibp_depotinfo_t, 1);
 
     return(d);
 }
@@ -527,7 +527,7 @@ ds_ibp_op_t *ds_ibp_op_create(ds_ibp_priv_t *ds, ds_ibp_attr_t *attr)
 //  ds_ibp_priv_t *ds = (ds_ibp_priv_t *)dsf->priv;
     ds_ibp_op_t *iop;
 
-    type_malloc_clear(iop, ds_ibp_op_t, 1);
+    tbx_type_malloc_clear(iop, ds_ibp_op_t, 1);
 
     iop->attr = (attr == NULL) ? &(ds->attr_default) : attr;
     return(iop);
@@ -542,7 +542,7 @@ void _ds_ibp_op_free(op_generic_t *gop, int mode)
     ds_ibp_op_t *iop = gop->free_ptr;
 
 //log_printf(0, "Freeing gid=%d\n", gop_id(gop));
-//flush_log();
+//tbx_flush_log();
 
     //** Call the original cleanup routine
     gop->free_ptr = iop->free_ptr;
@@ -946,26 +946,26 @@ data_service_fn_t *ds_ibp_create(void *arg, tbx_inip_file_t *ifd, char *section)
     ds_ibp_priv_t *ds;
     ibp_context_t *ic;
 
-    type_malloc_clear(dsf, data_service_fn_t, 1);
-    type_malloc_clear(ds, ds_ibp_priv_t , 1);
+    tbx_type_malloc_clear(dsf, data_service_fn_t, 1);
+    tbx_type_malloc_clear(ds, ds_ibp_priv_t , 1);
 
     //** Set the default attributes
     memset(&(ds->attr_default), 0, sizeof(ds_ibp_attr_t));
-    ds->attr_default.attr.duration = inip_get_integer(ifd, section, "duration", 3600);
+    ds->attr_default.attr.duration = tbx_inip_integer_get(ifd, section, "duration", 3600);
 
     ds->warm_duration = ds->attr_default.attr.duration;
     ds->warm_interval = 0.33 * ds->warm_duration;
-    ds->warm_interval = inip_get_integer(ifd, section, "warm_interval", ds->warm_interval);
-    ds->warm_duration = inip_get_integer(ifd, section, "warm_duration", ds->warm_duration);
+    ds->warm_interval = tbx_inip_integer_get(ifd, section, "warm_interval", ds->warm_interval);
+    ds->warm_duration = tbx_inip_integer_get(ifd, section, "warm_duration", ds->warm_duration);
 
-    cs_type = inip_get_integer(ifd, section, "chksum_type", CHKSUM_DEFAULT);
-    if ( ! ((chksum_valid_type(cs_type) == 0) || (cs_type == CHKSUM_DEFAULT) || (cs_type == CHKSUM_NONE)))  {
+    cs_type = tbx_inip_integer_get(ifd, section, "chksum_type", CHKSUM_DEFAULT);
+    if ( ! ((tbx_chksum_type_valid(cs_type) == 0) || (cs_type == CHKSUM_DEFAULT) || (cs_type == CHKSUM_NONE)))  {
         log_printf(0, "Invalid chksum type=%d resetting to CHKSUM_DEFAULT(%d)\n", cs_type, CHKSUM_DEFAULT);
         cs_type = CHKSUM_DEFAULT;
     }
     ds->attr_default.disk_cs_type = cs_type;
 
-    ds->attr_default.disk_cs_blocksize = inip_get_integer(ifd, section, "chksum_blocksize", 64*1024);
+    ds->attr_default.disk_cs_blocksize = tbx_inip_integer_get(ifd, section, "chksum_blocksize", 64*1024);
     if (ds->attr_default.disk_cs_blocksize <= 0) {
         log_printf(0, "Invalid chksum blocksize=%d resetting to %d\n", ds->attr_default.disk_cs_blocksize, 64*1024);
         ds->attr_default.disk_cs_blocksize = 64 *1024;
@@ -1020,7 +1020,7 @@ data_service_fn_t *ds_ibp_create(void *arg, tbx_inip_file_t *ifd, char *section)
     apr_thread_mutex_create(&(ds->lock), APR_THREAD_MUTEX_DEFAULT, ds->pool);
     apr_thread_cond_create(&(ds->cond), ds->pool);
     ds->warm_table = apr_hash_make(ds->pool);
-    thread_create_assert(&(ds->thread), NULL, ds_ibp_warm_thread, (void *)dsf, ds->pool);
+    tbx_thread_create_assert(&(ds->thread), NULL, ds_ibp_warm_thread, (void *)dsf, ds->pool);
 
     return(dsf);
 }

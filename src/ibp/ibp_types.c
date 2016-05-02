@@ -20,9 +20,9 @@
 #include <stdio.h>
 #include <string.h>
 #include <assert.h>
-#include "assert_result.h"
+#include <tbx/assert_result.h>
 #include "ibp.h"
-#include "log.h"
+#include <tbx/log.h>
 
 //*****************************************************************
 //  new_ibp_depot -Creates a new ibp_depot_t structure
@@ -361,7 +361,7 @@ void ridlist_init(ibp_ridlist_t *rlist, int size)
 
 //*****************************************************************
 
-void ridlist_destroy(ibp_ridlist_t *rlist)
+void ridtbx_list_destroy(ibp_ridlist_t *rlist)
 {
     free(rlist->rl);
 }

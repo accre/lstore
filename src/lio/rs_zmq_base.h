@@ -27,17 +27,17 @@ extern "C" {
 #endif
 
 #include <assert.h>
-#include "assert_result.h"
+#include <tbx/assert_result.h>
 #include <sys/uio.h>  //** ZMQ uses struct iovec but fogets to include the header
 #include <zmq.h>
 #include "resource_service_abstract.h"
 #include "rs_query_base.h"
 #include "rs_zmq_priv.h"
-#include "iniparse.h"
-#include "log.h"
-#include "type_malloc.h"
-#include "string_token.h"
-#include "random.h"
+#include <tbx/iniparse.h>
+#include <tbx/log.h>
+#include <tbx/type_malloc.h>
+#include <tbx/string_token.h>
+#include <tbx/random.h>
 #include "ds_ibp.h" //** This should be replaced by a generic data servic
 #include "rsz_request.pb-c.h"
 #include "rsz_response.pb-c.h"
@@ -92,10 +92,10 @@ int rs_zmq_recv(void *socket, void **buf);
  
 Rs__Zmq__RszReqSet **rs_zmq_reqlist_serialize(rs_request_t *req, int num_ele);
 rs_request_t *rs_zmq_reqlist_deserialize(Rs__Zmq__RszReqSet **reqlist, int num_ele);
-void rs_zmq_reqlist_destroy(Rs__Zmq__RszReqSet **req_set, int num_ele);
+void rs_zmq_reqtbx_list_destroy(Rs__Zmq__RszReqSet **req_set, int num_ele);
 Rs__Zmq__RszCapSet **rs_zmq_caplist_serialize(data_service_fn_t *ds, data_cap_set_t **caps, int num_ele);
 data_cap_set_t **rs_zmq_caplist_deserialize(data_service_fn_t *ds, Rs__Zmq__RszCapSet **caplist, int num_ele);
-void rs_zmq_caplist_destroy(Rs__Zmq__RszCapSet **cap_set, int num_ele);
+void rs_zmq_captbx_list_destroy(Rs__Zmq__RszCapSet **cap_set, int num_ele);
 void *rs_zmq_req_serialize(rs_zmq_req_t *req, int *len);
 void rs_zmq_req_deserialize(rs_zmq_req_t *req, void *buf, int len);
 int rs_zmq_req_recv(rs_zmq_req_t *req, void *socket);

@@ -22,10 +22,10 @@
 
 #include "ex3_abstract.h"
 #include "ex3_system.h"
-#include "list.h"
-#include "random.h"
-#include "type_malloc.h"
-#include "log.h"
+#include <tbx/list.h>
+#include <tbx/random.h>
+#include <tbx/type_malloc.h>
+#include <tbx/log.h>
 
 typedef struct {
     segment_t *src;
@@ -55,7 +55,7 @@ segment_t *load_segment(service_manager_t *ess, ex_id_t id, exnode_exchange_t *e
     if (ex->type == EX_TEXT) {
         snprintf(name, sizeof(name), "segment-" XIDT, id);
         tbx_inip_file_t *fd = ex->text.fd;
-        type = inip_get_string(fd, name, "type", "");
+        type = tbx_inip_string_get(fd, name, "type", "");
     } else if (ex->type == EX_PROTOCOL_BUFFERS) {
         log_printf(0, "load_segment:  segment exnode parsing goes here\n");
     } else {
@@ -92,8 +92,8 @@ op_status_t segment_copy_func(void *arg, int id)
 
     //** Set up the buffers
     bufsize = sc->bufsize / 2;  //** The buffer is split for R/W
-    tbuffer_single(&tbuf1, bufsize, sc->buffer);
-    tbuffer_single(&tbuf2, bufsize, &(sc->buffer[bufsize]));
+    tbx_tbuf_single(&tbuf1, bufsize, sc->buffer);
+    tbx_tbuf_single(&tbuf2, bufsize, &(sc->buffer[bufsize]));
     rbuf = &tbuf1;
     wbuf = &tbuf2;
 
@@ -193,7 +193,7 @@ op_generic_t *segment_copy(thread_pool_context_t *tpc, data_attr_t *da, segment_
 {
     segment_copy_t *sc;
 
-    type_malloc(sc, segment_copy_t, 1);
+    tbx_type_malloc(sc, segment_copy_t, 1);
 
     sc->da = da;
     sc->timeout = timeout;
@@ -234,8 +234,8 @@ op_status_t segment_get_func(void *arg, int id)
     bufsize = sc->bufsize / 2;  //** The buffer is split for R/W
     rb = sc->buffer;
     wb = &(sc->buffer[bufsize]);
-    tbuffer_single(&tbuf1, bufsize, rb);
-    tbuffer_single(&tbuf2, bufsize, wb);
+    tbx_tbuf_single(&tbuf1, bufsize, rb);
+    tbx_tbuf_single(&tbuf2, bufsize, wb);
     rbuf = &tbuf1;
     wbuf = &tbuf2;
 
@@ -348,7 +348,7 @@ op_generic_t *segment_get(thread_pool_context_t *tpc, data_attr_t *da, segment_r
 {
     segment_copy_t *sc;
 
-    type_malloc(sc, segment_copy_t, 1);
+    tbx_type_malloc(sc, segment_copy_t, 1);
 
     sc->da = da;
     sc->rw_hints = rw_hints;
@@ -386,8 +386,8 @@ op_status_t segment_put_func(void *arg, int id)
     bufsize = sc->bufsize / 2;  //** The buffer is split for R/W
     rb = sc->buffer;
     wb = &(sc->buffer[bufsize]);
-    tbuffer_single(&tbuf1, bufsize, rb);
-    tbuffer_single(&tbuf2, bufsize, wb);
+    tbx_tbuf_single(&tbuf1, bufsize, rb);
+    tbx_tbuf_single(&tbuf2, bufsize, wb);
     rbuf = &tbuf1;
     wbuf = &tbuf2;
 
@@ -509,7 +509,7 @@ op_generic_t *segment_put(thread_pool_context_t *tpc, data_attr_t *da, segment_r
 {
     segment_copy_t *sc;
 
-    type_malloc(sc, segment_copy_t, 1);
+    tbx_type_malloc(sc, segment_copy_t, 1);
 
     sc->da = da;
     sc->rw_hints = rw_hints;

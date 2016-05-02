@@ -21,7 +21,7 @@
 #include "gop/gop_visibility.h"
 #include "opque.h"
 #include "host_portal.h"
-#include "atomic_counter.h"
+#include <tbx/atomic_counter.h>
 #include <apr_thread_pool.h>
 
 #ifndef __THREAD_POOL_H_
@@ -81,7 +81,7 @@ GOP_API op_generic_t *new_thread_pool_op(thread_pool_context_t *tpc, char *que, 
 GOP_API thread_pool_context_t *thread_pool_create_context(char *tp_name, int min_threads, int max_threads, int max_recursion);
 GOP_API void thread_pool_destroy_context(thread_pool_context_t *tpc);
 
-void  *thread_pool_exec_fn(apr_thread_t *th, void *data);
+void thread_pool_exec_fn(void *arg, op_generic_t *op);
 
 #ifdef __cplusplus
 }

@@ -17,14 +17,14 @@
 #define _log_module_index 204
 
 #include <assert.h>
-#include "assert_result.h"
+#include <tbx/assert_result.h>
 #include "exnode.h"
-#include "log.h"
-#include "iniparse.h"
-#include "type_malloc.h"
+#include <tbx/log.h>
+#include <tbx/iniparse.h>
+#include <tbx/type_malloc.h>
 #include "thread_pool.h"
 #include "lio.h"
-#include "string_token.h"
+#include <tbx/string_token.h>
 
 //*************************************************************************
 //*************************************************************************
@@ -44,7 +44,7 @@ int main(int argc, char **argv)
         printf("\n");
         printf("lio_put LIO_COMMON_OPTIONS [-b bufsize] dest_file\n");
         lio_print_options(stdout);
-        printf("    -b bufsize         - Buffer size to use. Units supported (Default=%s)\n", pretty_print_int_with_scale(bufsize, ppbuf));
+        printf("    -b bufsize         - Buffer size to use. Units supported (Default=%s)\n", tbx_stk_pretty_print_int_with_scale(bufsize, ppbuf));
         printf("    dest_file          - Destination file\n");
         return(1);
     }
@@ -60,7 +60,7 @@ int main(int argc, char **argv)
 
         if (strcmp(argv[i], "-b") == 0) {  //** Get the buffer size
             i++;
-            bufsize = string_get_integer(argv[i]);
+            bufsize = tbx_stk_string_get_integer(argv[i]);
             i++;
         }
 
@@ -74,7 +74,7 @@ int main(int argc, char **argv)
     }
 
     //** Make the buffer
-    type_malloc(buffer, char, bufsize+1);
+    tbx_type_malloc(buffer, char, bufsize+1);
 
     //** Get the destination
     tuple = lio_path_resolve(lio_gc->auto_translate, argv[start_index]);

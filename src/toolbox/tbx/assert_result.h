@@ -14,31 +14,32 @@
    limitations under the License.
 */
 
-//***************************************
-//***************************************
+#pragma once
+#ifndef ACCRE_ASSERT_RESULT_H_INCLUDED
+#define ACCRE_ASSERT_RESULT_H_INCLUDED
 
-#ifndef __DNS_CACHE_H__
-#define __DNS_CACHE_H__
+#include <assert.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-#include "tbx/toolbox_visibility.h"
 
-//#define DNS_IPV4_LEN 4
-//#define DNS_IPV6_LEN 16
-#define DNS_ADDR_MAX 4
-#define DNS_IPV4  0
-#define DNS_IPV6  1
+// Preprocessor macros
+#ifndef NDEBUG
+#define assert_result(eval_this, expected_result) assert((eval_this) == expected_result)
+#define assert_result_not(eval_this, result) assert((eval_this) != result)
+#define assert_result_not_null(eval_this) assert((eval_this) != NULL)
+#define ASSERT_ALWAYS(expr) assert(expr)
+#else
+#define assert_result(eval_this, expected_result) (eval_this)
+#define assert_result_not(eval_this, result) (eval_this)
+#define assert_result_not_null(eval_this) (eval_this)
+#define ASSERT_ALWAYS(expr) do { expr } while (0)
+#endif
 
-TBX_API int lookup_host(const char * name, char * byte_addr, char * ip_addr);
-TBX_API void dns_cache_init(int);
-TBX_API void finalize_dns_cache();
 
 #ifdef __cplusplus
 }
 #endif
 
 #endif
-
-

@@ -20,20 +20,21 @@
 
 #define _log_module_index 214
 
+#include <tbx/assert_result.h>
 #include <apr_signal.h>
 #include "ex3_system.h"
 #include "object_service_abstract.h"
 #include "os_file.h"
-#include "type_malloc.h"
-#include "log.h"
-#include "atomic_counter.h"
+#include <tbx/type_malloc.h>
+#include <tbx/log.h>
+#include <tbx/atomic_counter.h>
 #include "thread_pool.h"
 #include "os_remote.h"
 #include "os_remote_priv.h"
-#include "append_printf.h"
+#include <tbx/append_printf.h>
 #include "mq_helpers.h"
-#include "varint.h"
-#include "string_token.h"
+#include <tbx/varint.h>
+#include <tbx/string_token.h>
 #include "mq_stream.h"
 #include "authn_fake.h"
 
@@ -85,14 +86,14 @@ void osrs_print_active_table(object_service_fn_t *os, FILE *fd)
     apr_ctime(sdate, apr_time_now());
     fprintf(fd, "#timestamp: %s\n", sdate);
     fprintf(fd, "#host|start_time|last_time|count\n");
-    move_to_top(osrs->active_lru);
-    a = get_ele_data(osrs->active_lru);
+    tbx_stack_move_to_top(osrs->active_lru);
+    a = tbx_get_ele_data(osrs->active_lru);
     while (a != NULL) {
         apr_ctime(sdate, a->start);
         apr_ctime(ldate, a->last);
         fprintf(fd, "%s|%s|%s|"XOT "\n", a->host_id, sdate, ldate, a->count);
-        move_down(osrs->active_lru);
-        a = get_ele_data(osrs->active_lru);
+        tbx_stack_move_down(osrs->active_lru);
+        a = tbx_get_ele_data(osrs->active_lru);
     }
     apr_thread_mutex_unlock(osrs->lock);
 }
@@ -138,18 +139,18 @@ void osrs_update_active_table(object_service_fn_t *os, mq_frame_t *hid)
     ele = apr_hash_get(osrs->active_table, host_id, id_len);
     if (ele == NULL) { //** 1st time so need to add it
         //** Check if we need to clean things up
-        if (stack_size(osrs->active_lru) >= osrs->max_active) {
-            move_to_bottom(osrs->active_lru);
-            a = (osrs_active_t *)get_ele_data(osrs->active_lru);
+        if (tbx_stack_size(osrs->active_lru) >= osrs->max_active) {
+            tbx_stack_move_to_bottom(osrs->active_lru);
+            a = (osrs_active_t *)tbx_get_ele_data(osrs->active_lru);
             apr_hash_set(osrs->active_table, a->host_id, a->host_id_len, NULL);
             if (a->host_id) free(a->host_id);
             free(a);
-            delete_current(osrs->active_lru, 1, 0);
+            tbx_delete_current(osrs->active_lru, 1, 0);
         }
 
         //** Now make the new entry
-        type_malloc(a, osrs_active_t, 1);
-        type_malloc(a->host_id, char, id_len+1);
+        tbx_type_malloc(a, osrs_active_t, 1);
+        tbx_type_malloc(a->host_id, char, id_len+1);
         memcpy(a->host_id, host_id, id_len);
         a->host_id[id_len] = 0;
         a->host_id_len = id_len;
@@ -157,20 +158,20 @@ void osrs_update_active_table(object_service_fn_t *os, mq_frame_t *hid)
         a->count = 0;
 
         //** add it
-        push(osrs->active_lru, a);
-        ele = get_ptr(osrs->active_lru);
+        tbx_stack_push(osrs->active_lru, a);
+        ele = tbx_get_ptr(osrs->active_lru);
         apr_hash_set(osrs->active_table, a->host_id, a->host_id_len, ele);
     }
 
     //** Get the handle
-    a = (osrs_active_t *)get_stack_ele_data(ele);
+    a = (osrs_active_t *)tbx_get_stack_ele_data(ele);
     a->last = apr_time_now();  //** Update it
     a->count++;
 
     //** and move it to the front
-    move_to_ptr(osrs->active_lru, ele);
-    stack_unlink_current(osrs->active_lru, 1);
-    push_link(osrs->active_lru, ele);
+    tbx_stack_move_to_ptr(osrs->active_lru, ele);
+    tbx_stack_unlink_current(osrs->active_lru, 1);
+    tbx_push_link(osrs->active_lru, ele);
 
     apr_thread_mutex_unlock(osrs->lock);
 }
@@ -237,8 +238,8 @@ creds_t *osrs_get_creds(object_service_fn_t *os, mq_frame_t *f)
     creds_t *creds;
     authn_fake_priv_t *a;
 
-    type_malloc(creds, creds_t, 1);
-    type_malloc(a, authn_fake_priv_t, 1);
+    tbx_type_malloc(creds, creds_t, 1);
+    tbx_type_malloc(a, authn_fake_priv_t, 1);
 
     *creds = *osrs->dummy_creds;
     creds->priv = a;
@@ -443,7 +444,7 @@ void osrs_create_object_cb(void *arg, mq_task_t *task)
 
     f = mq_msg_pop(msg);  //** This has the Object type
     mq_get_frame(f, (void **)&data, &nbytes);
-    zigzag_decode((unsigned char *)data, nbytes, &ftype);
+    tbx_zigzag_decode((unsigned char *)data, nbytes, &ftype);
 //log_printf(5, "ftype=%d\n", ftype);
     mq_frame_destroy(f);
 
@@ -581,7 +582,7 @@ void osrs_remove_regex_object_cb(void *arg, mq_task_t *task)
     object_regex = NULL;
     bpos = 0;
 
-    n = zigzag_decode(&(buffer[bpos]), fsize-bpos, &timeout);
+    n = tbx_zigzag_decode(&(buffer[bpos]), fsize-bpos, &timeout);
     if (n < 0) {
         timeout = 60;
 
@@ -597,12 +598,12 @@ void osrs_remove_regex_object_cb(void *arg, mq_task_t *task)
 
 
     //** Get the spin heartbeat handle ID
-    n = zigzag_decode(&(buffer[bpos]), fsize-bpos, &len);
+    n = tbx_zigzag_decode(&(buffer[bpos]), fsize-bpos, &len);
     if (n < 0)  goto fail;
     bpos += n;
 
     if ((bpos+len) > fsize) goto fail;
-    type_malloc(spin.key, char, len+1);
+    tbx_type_malloc(spin.key, char, len+1);
     memcpy(spin.key, &(buffer[bpos]), len);
     spin.key[len] = 0;
     spin.key_len = len;
@@ -613,15 +614,15 @@ void osrs_remove_regex_object_cb(void *arg, mq_task_t *task)
     apr_thread_mutex_unlock(osrs->lock);
 
     //** Spin Heartbeat timeout
-    n = zigzag_decode(&(buffer[bpos]), fsize-bpos, &hb_timeout);
+    n = tbx_zigzag_decode(&(buffer[bpos]), fsize-bpos, &hb_timeout);
     if (n < 0) goto fail;
     bpos += n;
 
-    n = zigzag_decode(&(buffer[bpos]), fsize-bpos, &recurse_depth);
+    n = tbx_zigzag_decode(&(buffer[bpos]), fsize-bpos, &recurse_depth);
     if (n < 0) goto fail;
     bpos += n;
 
-    n = zigzag_decode(&(buffer[bpos]), fsize-bpos, &obj_types);
+    n = tbx_zigzag_decode(&(buffer[bpos]), fsize-bpos, &obj_types);
     if (n < 0) goto fail;
     bpos += n;
 
@@ -681,8 +682,8 @@ fail:
     if (object_regex != NULL) os_regex_table_destroy(object_regex);
 
     //** Send the response
-    n = zigzag_encode(status.op_status, tbuf);
-    n = n + zigzag_encode(status.error_code, &(tbuf[n]));
+    n = tbx_zigzag_encode(status.op_status, tbuf);
+    n = n + tbx_zigzag_encode(status.error_code, &(tbuf[n]));
     mq_stream_write(mqs, tbuf, n);
     mq_stream_destroy(mqs);
 }
@@ -980,8 +981,8 @@ void osrs_open_object_cb(void *arg, mq_task_t *task)
 
     fmode = mq_msg_pop(msg);  //** Mode and max wait
     mq_get_frame(fmode, (void **)&data, &fsize);
-    n = zigzag_decode(data, fsize, &mode);
-    zigzag_decode(&(data[n]), fsize, &max_wait);
+    n = tbx_zigzag_decode(data, fsize, &mode);
+    tbx_zigzag_decode(&(data[n]), fsize, &max_wait);
     log_printf(5, "fname=%s mode=%" PRId64 " max_wait=%" PRId64 "\n", src_name, mode, max_wait);
 
     fhb = mq_msg_pop(msg);  //** Heartbeat frame on success
@@ -1203,37 +1204,37 @@ void osrs_get_mult_attr_cb(void *arg, mq_task_t *task)
     }
 
     //** Parse the attr list
-    i = zigzag_decode(data, fsize, &max_stream);
+    i = tbx_zigzag_decode(data, fsize, &max_stream);
     if (i<0) goto fail_fd;
     if ((max_stream <= 0) || (max_stream > osrs->max_stream)) max_stream = osrs->max_stream;
     bpos = i;
     fsize -= i;
 
-    i = zigzag_decode(&(data[bpos]), fsize, &timeout);
+    i = tbx_zigzag_decode(&(data[bpos]), fsize, &timeout);
     if (i<0) goto fail_fd;
     if (timeout < 0) timeout = 10;
     bpos += i;
     fsize -= i;
 
-    i = zigzag_decode(&(data[bpos]), fsize, &n);
+    i = tbx_zigzag_decode(&(data[bpos]), fsize, &n);
     if ((i<0) || (n<=0)) goto fail_fd;
     bpos += i;
     fsize -= i;
 
     log_printf(5, "max_stream=%" PRId64 " timeout=%" PRId64 " n=%" PRId64 "\n", max_stream, timeout, n);
-    type_malloc_clear(key, char *, n);
-    type_malloc_clear(val, void *, n);
-    type_malloc(v_size, int, n);
+    tbx_type_malloc_clear(key, char *, n);
+    tbx_type_malloc_clear(val, void *, n);
+    tbx_type_malloc(v_size, int, n);
 
     for (i=0; i<n; i++) {
-        nbytes = zigzag_decode(&(data[bpos]), fsize, &v);
+        nbytes = tbx_zigzag_decode(&(data[bpos]), fsize, &v);
         log_printf(5, "i=%d klen=" XOT " bpos=%d\n", i, v, bpos);
 
         if ((nbytes<0) || (v<=0)) goto fail;
         bpos += nbytes;
         fsize -= nbytes;
 
-        type_malloc(key[i], char, v+1);
+        tbx_type_malloc(key[i], char, v+1);
         if (v > fsize) goto fail;
         memcpy(key[i], &(data[bpos]), v);
         key[i][v] = 0;
@@ -1241,7 +1242,7 @@ void osrs_get_mult_attr_cb(void *arg, mq_task_t *task)
         fsize -= nbytes;
         log_printf(5, "i=%d key=%s bpos=%d\n", i, key[i], bpos);
 
-        nbytes = zigzag_decode(&(data[bpos]), fsize, &v);
+        nbytes = tbx_zigzag_decode(&(data[bpos]), fsize, &v);
         if (nbytes<0) goto fail;
         bpos += nbytes;
         fsize -= nbytes;
@@ -1264,8 +1265,8 @@ void osrs_get_mult_attr_cb(void *arg, mq_task_t *task)
     osrs_update_active_table(os, hid);  //** Update the active log
 
     //** Return the results
-    i = zigzag_encode(status.op_status, buffer);
-    i = i + zigzag_encode(status.error_code, &(buffer[i]));
+    i = tbx_zigzag_encode(status.op_status, buffer);
+    i = i + tbx_zigzag_encode(status.error_code, &(buffer[i]));
     mq_stream_write(mqs, buffer, i);
 
     log_printf(5, "status.op_status=%d status.error_code=%d len=%d\n", status.op_status, status.error_code, i);
@@ -1300,8 +1301,8 @@ fail:
         log_printf(5, "ERROR status being returned!\n");
         mqs = mq_stream_write_create(osrs->mqc, osrs->server_portal, osrs->ongoing, MQS_PACK_RAW, 1024, 30, msg, fid, hid, 0);
         status = op_failure_status;
-        i = zigzag_encode(status.op_status, buffer);
-        i = i + zigzag_encode(status.error_code, &(buffer[i]));
+        i = tbx_zigzag_encode(status.op_status, buffer);
+        i = i + tbx_zigzag_encode(status.error_code, &(buffer[i]));
         mq_stream_write(mqs, buffer, i);
         mq_stream_destroy(mqs);
     }
@@ -1382,31 +1383,31 @@ void osrs_set_mult_attr_cb(void *arg, mq_task_t *task)
 
     //** Parse the attr list
     bpos = 0;
-    i = zigzag_decode(&(data[bpos]), fsize, &timeout);
+    i = tbx_zigzag_decode(&(data[bpos]), fsize, &timeout);
     if (i<0) goto fail_fd;
     if (timeout < 0) timeout = 10;
     bpos += i;
     fsize -= i;
 
-    i = zigzag_decode(&(data[bpos]), fsize, &n);
+    i = tbx_zigzag_decode(&(data[bpos]), fsize, &n);
     if ((i<0) || (n<=0)) goto fail_fd;
     bpos += i;
     fsize -= i;
 
     log_printf(5, "timeout=%" PRId64 " n=%" PRId64 "\n", timeout, n);
-    type_malloc_clear(key, char *, n);
-    type_malloc_clear(val, char *, n);
-    type_malloc(v_size, int, n);
+    tbx_type_malloc_clear(key, char *, n);
+    tbx_type_malloc_clear(val, char *, n);
+    tbx_type_malloc(v_size, int, n);
 
     for (i=0; i<n; i++) {
-        nbytes = zigzag_decode(&(data[bpos]), fsize, &v);
+        nbytes = tbx_zigzag_decode(&(data[bpos]), fsize, &v);
         log_printf(5, "i=%d klen=" XOT " bpos=%d\n", i, v, bpos);
 
         if ((nbytes<0) || (v<=0)) goto fail;
         bpos += nbytes;
         fsize -= nbytes;
 
-        type_malloc(key[i], char, v+1);
+        tbx_type_malloc(key[i], char, v+1);
         if (v > fsize) goto fail;
         memcpy(key[i], &(data[bpos]), v);
         key[i][v] = 0;
@@ -1414,7 +1415,7 @@ void osrs_set_mult_attr_cb(void *arg, mq_task_t *task)
         fsize -= nbytes;
         log_printf(5, "i=%d key=%s bpos=%d\n", i, key[i], bpos);
 
-        nbytes = zigzag_decode(&(data[bpos]), fsize, &v);
+        nbytes = tbx_zigzag_decode(&(data[bpos]), fsize, &v);
         log_printf(5, "i=%d klen=" XOT " bpos=%d\n", i, v, bpos);
 
         if (nbytes<0) goto fail;
@@ -1423,7 +1424,7 @@ void osrs_set_mult_attr_cb(void *arg, mq_task_t *task)
 
         v_size[i] = v;
         if (v > 0) {
-            type_malloc(val[i], char, v+1);
+            tbx_type_malloc(val[i], char, v+1);
             if (v > fsize) goto fail;
             memcpy(val[i], &(data[bpos]), v);
             val[i][v] = 0;
@@ -1604,7 +1605,7 @@ void osrs_regex_set_mult_attr_cb(void *arg, mq_task_t *task)
     bpos = 0;
 
     //** Get the timeout
-    n = zigzag_decode(&(buffer[bpos]), fsize-bpos, &timeout);
+    n = tbx_zigzag_decode(&(buffer[bpos]), fsize-bpos, &timeout);
     if (n < 0) {
         timeout = 60;
     } else {
@@ -1616,12 +1617,12 @@ void osrs_regex_set_mult_attr_cb(void *arg, mq_task_t *task)
     if (n < 0) goto fail;
 
     //** Get the spin heartbeat handle ID
-    n = zigzag_decode(&(buffer[bpos]), fsize-bpos, &len);
+    n = tbx_zigzag_decode(&(buffer[bpos]), fsize-bpos, &len);
     if (n < 0)  goto fail;
     bpos += n;
 
     if ((bpos+len) > fsize) goto fail;
-    type_malloc(spin.key, char, len+1);
+    tbx_type_malloc(spin.key, char, len+1);
     memcpy(spin.key, &(buffer[bpos]), len);
     spin.key[len] = 0;
     spin.key_len = len;
@@ -1632,16 +1633,16 @@ void osrs_regex_set_mult_attr_cb(void *arg, mq_task_t *task)
     apr_thread_mutex_unlock(osrs->lock);
 
     //** Spin Heartbeat timeout
-    n = zigzag_decode(&(buffer[bpos]), fsize-bpos, &hb_timeout);
+    n = tbx_zigzag_decode(&(buffer[bpos]), fsize-bpos, &hb_timeout);
     if (n < 0) goto fail;
     bpos += n;
 
     //** Get the other params
-    n = zigzag_decode(&(buffer[bpos]), fsize-bpos, &recurse_depth);
+    n = tbx_zigzag_decode(&(buffer[bpos]), fsize-bpos, &recurse_depth);
     if (n < 0) goto fail;
     bpos += n;
 
-    n = zigzag_decode(&(buffer[bpos]), fsize-bpos, &obj_types);
+    n = tbx_zigzag_decode(&(buffer[bpos]), fsize-bpos, &obj_types);
     if (n < 0) goto fail;
     bpos += n;
 
@@ -1653,33 +1654,33 @@ void osrs_regex_set_mult_attr_cb(void *arg, mq_task_t *task)
     if (n == 0) goto fail;
     bpos += n;
 
-    n = zigzag_decode(&(buffer[bpos]), fsize-bpos, &n_attrs);
+    n = tbx_zigzag_decode(&(buffer[bpos]), fsize-bpos, &n_attrs);
     if (n < 0) goto fail;
     bpos += n;
 
-    type_malloc_clear(key, char *, n_attrs);
-    type_malloc_clear(val, char *, n_attrs);
-    type_malloc_clear(v_size, int, n_attrs);
+    tbx_type_malloc_clear(key, char *, n_attrs);
+    tbx_type_malloc_clear(val, char *, n_attrs);
+    tbx_type_malloc_clear(v_size, int, n_attrs);
 
     for (i=0; i<n_attrs; i++) {
-        n = zigzag_decode(&(buffer[bpos]), fsize-bpos, &len);
+        n = tbx_zigzag_decode(&(buffer[bpos]), fsize-bpos, &len);
         if (n < 0)  goto fail;
         bpos += n;
 
         if ((bpos+len) > fsize) goto fail;
-        type_malloc(key[i], char, len+1);
+        tbx_type_malloc(key[i], char, len+1);
         memcpy(key[i], &(buffer[bpos]), len);
         key[i][len] = 0;
         bpos += len;
 
-        n = zigzag_decode(&(buffer[bpos]), fsize-bpos, &len);
+        n = tbx_zigzag_decode(&(buffer[bpos]), fsize-bpos, &len);
         if (n < 0)  goto fail;
         bpos += n;
 
         v_size[i] = len;
         if ((len > 0) && ((bpos+len) > fsize)) goto fail;
         if (len > 0) {
-            type_malloc(val[i], char, len+1);
+            tbx_type_malloc(val[i], char, len+1);
             memcpy(val[i], &(buffer[bpos]), len);
             val[i][len] = 0;
         } else {
@@ -1753,8 +1754,8 @@ fail:
 
     log_printf(5, "END status=%d n_errs=%d\n", status.op_status, status.error_code);
     //** Send the response
-    n = zigzag_encode(status.op_status, tbuf);
-    n = n + zigzag_encode(status.error_code, &(tbuf[n]));
+    n = tbx_zigzag_encode(status.op_status, tbuf);
+    n = n + tbx_zigzag_encode(status.error_code, &(tbuf[n]));
     mq_stream_write(mqs, tbuf, n);
     mq_stream_destroy(mqs);
 }
@@ -1830,30 +1831,30 @@ void osrs_copy_mult_attr_cb(void *arg, mq_task_t *task)
 
     //** Parse the attr list
     bpos = 0;
-    i = zigzag_decode(&(data[bpos]), fsize, &timeout);
+    i = tbx_zigzag_decode(&(data[bpos]), fsize, &timeout);
     if (i<0) goto fail_fd;
     if (timeout < 0) timeout = 10;
     bpos += i;
     fsize -= i;
 
-    i = zigzag_decode(&(data[bpos]), fsize, &n);
+    i = tbx_zigzag_decode(&(data[bpos]), fsize, &n);
     if ((i<0) || (n<=0)) goto fail_fd;
     bpos += i;
     fsize -= i;
 
     log_printf(5, "timeout=%" PRId64 " n=%" PRId64 "\n", timeout, n);
-    type_malloc_clear(key_src, char *, n);
-    type_malloc_clear(key_dest, char *, n);
+    tbx_type_malloc_clear(key_src, char *, n);
+    tbx_type_malloc_clear(key_dest, char *, n);
 
     for (i=0; i<n; i++) {
-        nbytes = zigzag_decode(&(data[bpos]), fsize, &v);
+        nbytes = tbx_zigzag_decode(&(data[bpos]), fsize, &v);
         log_printf(5, "i=%d klen=" XOT " bpos=%d\n", i, v, bpos);
 
         if ((nbytes<0) || (v<=0)) goto fail;
         bpos += nbytes;
         fsize -= nbytes;
 
-        type_malloc(key_src[i], char, v+1);
+        tbx_type_malloc(key_src[i], char, v+1);
         if (v > fsize) goto fail;
         memcpy(key_src[i], &(data[bpos]), v);
         key_src[i][v] = 0;
@@ -1861,7 +1862,7 @@ void osrs_copy_mult_attr_cb(void *arg, mq_task_t *task)
         fsize -= nbytes;
         log_printf(5, "i=%d key_src=%s bpos=%d\n", i, key_src[i], bpos);
 
-        nbytes = zigzag_decode(&(data[bpos]), fsize, &v);
+        nbytes = tbx_zigzag_decode(&(data[bpos]), fsize, &v);
         log_printf(5, "i=%d klen=" XOT " bpos=%d\n", i, v, bpos);
 
         if (nbytes<0) goto fail;
@@ -1869,7 +1870,7 @@ void osrs_copy_mult_attr_cb(void *arg, mq_task_t *task)
         fsize -= nbytes;
 
 
-        type_malloc(key_dest[i], char, v+1);
+        tbx_type_malloc(key_dest[i], char, v+1);
         if (v > fsize) goto fail;
         memcpy(key_dest[i], &(data[bpos]), v);
         key_dest[i][v] = 0;
@@ -1985,30 +1986,30 @@ void osrs_move_mult_attr_cb(void *arg, mq_task_t *task)
 
     //** Parse the attr list
     bpos = 0;
-    i = zigzag_decode(&(data[bpos]), fsize, &timeout);
+    i = tbx_zigzag_decode(&(data[bpos]), fsize, &timeout);
     if (i<0) goto fail_fd;
     if (timeout < 0) timeout = 10;
     bpos += i;
     fsize -= i;
 
-    i = zigzag_decode(&(data[bpos]), fsize, &n);
+    i = tbx_zigzag_decode(&(data[bpos]), fsize, &n);
     if ((i<0) || (n<=0)) goto fail_fd;
     bpos += i;
     fsize -= i;
 
     log_printf(5, "timeout=%" PRId64 " n=%" PRId64 "\n", timeout, n);
-    type_malloc_clear(key_src, char *, n);
-    type_malloc_clear(key_dest, char *, n);
+    tbx_type_malloc_clear(key_src, char *, n);
+    tbx_type_malloc_clear(key_dest, char *, n);
 
     for (i=0; i<n; i++) {
-        nbytes = zigzag_decode(&(data[bpos]), fsize, &v);
+        nbytes = tbx_zigzag_decode(&(data[bpos]), fsize, &v);
         log_printf(5, "i=%d klen=" XOT " bpos=%d\n", i, v, bpos);
 
         if ((nbytes<0) || (v<=0)) goto fail;
         bpos += nbytes;
         fsize -= nbytes;
 
-        type_malloc(key_src[i], char, v+1);
+        tbx_type_malloc(key_src[i], char, v+1);
         if (v > fsize) goto fail;
         memcpy(key_src[i], &(data[bpos]), v);
         key_src[i][v] = 0;
@@ -2016,7 +2017,7 @@ void osrs_move_mult_attr_cb(void *arg, mq_task_t *task)
         fsize -= nbytes;
         log_printf(5, "i=%d key_src=%s bpos=%d\n", i, key_src[i], bpos);
 
-        nbytes = zigzag_decode(&(data[bpos]), fsize, &v);
+        nbytes = tbx_zigzag_decode(&(data[bpos]), fsize, &v);
         log_printf(5, "i=%d klen=" XOT " bpos=%d\n", i, v, bpos);
 
         if (nbytes<0) goto fail;
@@ -2024,7 +2025,7 @@ void osrs_move_mult_attr_cb(void *arg, mq_task_t *task)
         fsize -= nbytes;
 
 
-        type_malloc(key_dest[i], char, v+1);
+        tbx_type_malloc(key_dest[i], char, v+1);
         if (v > fsize) goto fail;
         memcpy(key_dest[i], &(data[bpos]), v);
         key_dest[i][v] = 0;
@@ -2139,30 +2140,30 @@ void osrs_symlink_mult_attr_cb(void *arg, mq_task_t *task)
 
     //** Parse the attr list
     bpos = 0;
-    i = zigzag_decode(&(data[bpos]), fsize, &timeout);
+    i = tbx_zigzag_decode(&(data[bpos]), fsize, &timeout);
     if (i<0) goto fail_fd;
     if (timeout < 0) timeout = 10;
     bpos += i;
     fsize -= i;
 
-    i = zigzag_decode(&(data[bpos]), fsize, &n);
+    i = tbx_zigzag_decode(&(data[bpos]), fsize, &n);
     if ((i<0) || (n<=0)) goto fail_fd;
     bpos += i;
     fsize -= i;
 
     log_printf(5, "timeout=%" PRId64 " n=%" PRId64 "\n", timeout, n);
-    type_malloc_clear(key_src, char *, n);
-    type_malloc_clear(key_dest, char *, n);
-    type_malloc_clear(src_path, char *, n);
+    tbx_type_malloc_clear(key_src, char *, n);
+    tbx_type_malloc_clear(key_dest, char *, n);
+    tbx_type_malloc_clear(src_path, char *, n);
 
     for (i=0; i<n; i++) {
-        nbytes = zigzag_decode(&(data[bpos]), fsize, &v);
+        nbytes = tbx_zigzag_decode(&(data[bpos]), fsize, &v);
         log_printf(5, "i=%d slen=" XOT " bpos=%d\n", i, v, bpos);
         if ((nbytes<0) || (v<=0)) goto fail;
         bpos += nbytes;
         fsize -= nbytes;
 
-        type_malloc(src_path[i], char, v+1);
+        tbx_type_malloc(src_path[i], char, v+1);
         if (v > fsize) goto fail;
         memcpy(src_path[i], &(data[bpos]), v);
         src_path[i][v] = 0;
@@ -2170,13 +2171,13 @@ void osrs_symlink_mult_attr_cb(void *arg, mq_task_t *task)
         fsize -= nbytes;
         log_printf(5, "i=%d src_path=%s bpos=%d\n", i, src_path[i], bpos);
 
-        nbytes = zigzag_decode(&(data[bpos]), fsize, &v);
+        nbytes = tbx_zigzag_decode(&(data[bpos]), fsize, &v);
         log_printf(5, "i=%d klen=" XOT " bpos=%d\n", i, v, bpos);
         if ((nbytes<0) || (v<=0)) goto fail;
         bpos += nbytes;
         fsize -= nbytes;
 
-        type_malloc(key_src[i], char, v+1);
+        tbx_type_malloc(key_src[i], char, v+1);
         if (v > fsize) goto fail;
         memcpy(key_src[i], &(data[bpos]), v);
         key_src[i][v] = 0;
@@ -2184,7 +2185,7 @@ void osrs_symlink_mult_attr_cb(void *arg, mq_task_t *task)
         fsize -= nbytes;
         log_printf(5, "i=%d key_src=%s bpos=%d\n", i, key_src[i], bpos);
 
-        nbytes = zigzag_decode(&(data[bpos]), fsize, &v);
+        nbytes = tbx_zigzag_decode(&(data[bpos]), fsize, &v);
         log_printf(5, "i=%d klen=" XOT " bpos=%d\n", i, v, bpos);
 
         if (nbytes<0) goto fail;
@@ -2192,7 +2193,7 @@ void osrs_symlink_mult_attr_cb(void *arg, mq_task_t *task)
         fsize -= nbytes;
 
 
-        type_malloc(key_dest[i], char, v+1);
+        tbx_type_malloc(key_dest[i], char, v+1);
         if (v > fsize) goto fail;
         memcpy(key_dest[i], &(data[bpos]), v);
         key_dest[i][v] = 0;
@@ -2300,7 +2301,7 @@ void osrs_object_iter_alist_cb(void *arg, mq_task_t *task)
     bpos = 0;
 
     //** Get the stream timeout
-    n = zigzag_decode(&(buffer[bpos]), fsize-bpos, &timeout);
+    n = tbx_zigzag_decode(&(buffer[bpos]), fsize-bpos, &timeout);
     if (n < 0) {
         timeout = 60;
         //** Create the stream so we can get the heartbeating while we work.  We need the timeout is why we do it here,
@@ -2312,34 +2313,34 @@ void osrs_object_iter_alist_cb(void *arg, mq_task_t *task)
     //** Create the stream so we can get the heartbeating while we work.  We need the timeout is why we do it here,
     mqs = mq_stream_write_create(osrs->mqc, osrs->server_portal, osrs->ongoing, MQS_PACK_COMPRESS, osrs->max_stream, timeout, msg, fid, hid, 0);
 
-    n = zigzag_decode(&(buffer[bpos]), fsize-bpos, &recurse_depth);
+    n = tbx_zigzag_decode(&(buffer[bpos]), fsize-bpos, &recurse_depth);
     if (n < 0) goto fail;
     bpos += n;
 
-    n = zigzag_decode(&(buffer[bpos]), fsize-bpos, &obj_types);
+    n = tbx_zigzag_decode(&(buffer[bpos]), fsize-bpos, &obj_types);
     if (n < 0) goto fail;
     bpos += n;
 
-    n = zigzag_decode(&(buffer[bpos]), fsize-bpos, &n_attrs);
+    n = tbx_zigzag_decode(&(buffer[bpos]), fsize-bpos, &n_attrs);
     if (n < 0) goto fail;
     bpos += n;
 
-    type_malloc_clear(key, char *, n_attrs);
-    type_malloc_clear(val, char *, n_attrs);
-    type_malloc_clear(v_size, int, n_attrs);
+    tbx_type_malloc_clear(key, char *, n_attrs);
+    tbx_type_malloc_clear(val, char *, n_attrs);
+    tbx_type_malloc_clear(v_size, int, n_attrs);
 
     for (i=0; i<n_attrs; i++) {
-        n = zigzag_decode(&(buffer[bpos]), fsize-bpos, &len);
+        n = tbx_zigzag_decode(&(buffer[bpos]), fsize-bpos, &len);
         if (n < 0)  goto fail;
         bpos += n;
 
         if ((bpos+len) > fsize) goto fail;
-        type_malloc(key[i], char, len+1);
+        tbx_type_malloc(key[i], char, len+1);
         memcpy(key[i], &(buffer[bpos]), len);
         key[i][len] = 0;
         bpos += len;
 
-        n = zigzag_decode(&(buffer[bpos]), fsize-bpos, &len);
+        n = tbx_zigzag_decode(&(buffer[bpos]), fsize-bpos, &len);
         if (n < 0)  goto fail;
         bpos += n;
         v_size[i] = -llabs(len);
@@ -2374,8 +2375,8 @@ void osrs_object_iter_alist_cb(void *arg, mq_task_t *task)
 fail:
     //** Encode the status
     status = (it != NULL) ? op_success_status : op_failure_status;
-    n = zigzag_encode(status.op_status, tbuf);
-    n = n + zigzag_encode(status.error_code, &(tbuf[n]));
+    n = tbx_zigzag_encode(status.op_status, tbuf);
+    n = n + tbx_zigzag_encode(status.error_code, &(tbuf[n]));
     mq_stream_write(mqs, tbuf, n);
 
     //** Check if we kick out due to an error
@@ -2387,16 +2388,16 @@ fail:
         osrs_update_active_table(os, hid);  //** Update the active log
 
         len = strlen(fname);
-        n = zigzag_encode(ftype, tbuf);
-        n += zigzag_encode(prefix_len, &(tbuf[n]));
-        n += zigzag_encode(len, &(tbuf[n]));
+        n = tbx_zigzag_encode(ftype, tbuf);
+        n += tbx_zigzag_encode(prefix_len, &(tbuf[n]));
+        n += tbx_zigzag_encode(len, &(tbuf[n]));
         err += mq_stream_write(mqs, tbuf, n);
         err += mq_stream_write(mqs, fname, len);
 
         log_printf(5, "ftype=%d prefix_len=%d len=%" PRId64 " fname=%s n_attrs=%" PRId64 "\n", ftype, prefix_len, len, fname, n_attrs);
         //** Now dump the attributes
         for (i=0; i<n_attrs; i++) {
-            n = zigzag_encode(v_size[i], tbuf);
+            n = tbx_zigzag_encode(v_size[i], tbuf);
             err += mq_stream_write(mqs, tbuf, n);
             log_printf(5, "v_size[%d]=%d\n", i, v_size[i]);
             if (v_size[i] > 0) {
@@ -2413,7 +2414,7 @@ fail:
     }
 
     //** Flag this as the last object
-    n = zigzag_encode(0, tbuf);
+    n = tbx_zigzag_encode(0, tbuf);
     mq_stream_write(mqs, tbuf, n);
 
     //** Destroy the object iterator
@@ -2493,7 +2494,7 @@ void osrs_object_iter_aregex_cb(void *arg, mq_task_t *task)
     object_regex = NULL;
     bpos = 0;
 
-    n = zigzag_decode(&(buffer[bpos]), fsize-bpos, &timeout);
+    n = tbx_zigzag_decode(&(buffer[bpos]), fsize-bpos, &timeout);
     if (n < 0) {
         timeout = 60;
 
@@ -2509,15 +2510,15 @@ void osrs_object_iter_aregex_cb(void *arg, mq_task_t *task)
     mqs = mq_stream_write_create(osrs->mqc, osrs->server_portal, osrs->ongoing, MQS_PACK_COMPRESS, osrs->max_stream, timeout, msg, fid, hid, 0);
 
 
-    n = zigzag_decode(&(buffer[bpos]), fsize-bpos, &recurse_depth);
+    n = tbx_zigzag_decode(&(buffer[bpos]), fsize-bpos, &recurse_depth);
     if (n < 0) goto fail;
     bpos += n;
 
-    n = zigzag_decode(&(buffer[bpos]), fsize-bpos, &obj_types);
+    n = tbx_zigzag_decode(&(buffer[bpos]), fsize-bpos, &obj_types);
     if (n < 0) goto fail;
     bpos += n;
 
-    n = zigzag_decode(&(buffer[bpos]), fsize-bpos, &v_max);
+    n = tbx_zigzag_decode(&(buffer[bpos]), fsize-bpos, &v_max);
     if (n < 0) goto fail;
     bpos += n;
 
@@ -2551,14 +2552,14 @@ void osrs_object_iter_aregex_cb(void *arg, mq_task_t *task)
 fail:
     //** Encode the status
     status = (it != NULL) ? op_success_status : op_failure_status;
-    n = zigzag_encode(status.op_status, tbuf);
-    n = n + zigzag_encode(status.error_code, &(tbuf[n]));
+    n = tbx_zigzag_encode(status.op_status, tbuf);
+    n = n + tbx_zigzag_encode(status.error_code, &(tbuf[n]));
     mq_stream_write(mqs, tbuf, n);
 
     //** Check if we kick out due to an error
     if (it == NULL) goto finished;
 
-    null_len = zigzag_encode(0, null);
+    null_len = tbx_zigzag_encode(0, null);
 
     //** Pack up the data and send it out
     err = 0;
@@ -2566,9 +2567,9 @@ fail:
         osrs_update_active_table(os, hid);  //** Update the active log
 
         len = strlen(fname);
-        n = zigzag_encode(ftype, tbuf);
-        n += zigzag_encode(prefix_len, &(tbuf[n]));
-        n += zigzag_encode(len, &(tbuf[n]));
+        n = tbx_zigzag_encode(ftype, tbuf);
+        n += tbx_zigzag_encode(prefix_len, &(tbuf[n]));
+        n += tbx_zigzag_encode(len, &(tbuf[n]));
         err += mq_stream_write(mqs, tbuf, n);
         err += mq_stream_write(mqs, fname, len);
 
@@ -2579,13 +2580,13 @@ fail:
             while (os_next_attr(osrs->os_child, ait, &key, (void **)&val, &v_size) == 0) {
                 log_printf(15, "key=%s v_size=%d\n", key, v_size);
                 len = strlen(key);
-                n = zigzag_encode(len, tbuf);
+                n = tbx_zigzag_encode(len, tbuf);
                 err += mq_stream_write(mqs, tbuf, n);
                 err += mq_stream_write(mqs, key, len);
                 free(key);
                 key = NULL;
 
-                n = zigzag_encode(v_size, tbuf);
+                n = tbx_zigzag_encode(v_size, tbuf);
                 err += mq_stream_write(mqs, tbuf, n);
                 if (v_size > 0) {
                     err += mq_stream_write(mqs, val, v_size);
@@ -2700,7 +2701,7 @@ void osrs_attr_iter_cb(void *arg, mq_task_t *task)
     attr_regex = NULL;
     bpos = 0;
 
-    n = zigzag_decode(&(buffer[bpos]), fsize-bpos, &timeout);
+    n = tbx_zigzag_decode(&(buffer[bpos]), fsize-bpos, &timeout);
     if (n < 0) {
         timeout = 60;
 
@@ -2716,7 +2717,7 @@ void osrs_attr_iter_cb(void *arg, mq_task_t *task)
     osrs_update_active_table(os, fhid);  //** Update the active log
 
 
-    n = zigzag_decode(&(buffer[bpos]), fsize-bpos, &v_size_init);
+    n = tbx_zigzag_decode(&(buffer[bpos]), fsize-bpos, &v_size_init);
     if (n < 0) goto fail;
     bpos += n;
 
@@ -2737,8 +2738,8 @@ fail:
 
     //** Encode the status
     status = (it != NULL) ? op_success_status : op_failure_status;
-    n = zigzag_encode(status.op_status, tbuf);
-    n = n + zigzag_encode(status.error_code, &(tbuf[n]));
+    n = tbx_zigzag_encode(status.op_status, tbuf);
+    n = n + tbx_zigzag_encode(status.error_code, &(tbuf[n]));
     mq_stream_write(mqs, tbuf, n);
 
     //** Check if we kick out due to an error
@@ -2750,12 +2751,12 @@ fail:
     while ((os_next_attr(osrs->os_child, it, &key, (void **)&val, &v_size) == 0) && (err == 0)) {
         log_printf(5, "err=%d key=%s v_size=%d\n", err, key, v_size);
         len = strlen(key);
-        n = zigzag_encode(len, tbuf);
+        n = tbx_zigzag_encode(len, tbuf);
         err += mq_stream_write(mqs, tbuf, n);
         err += mq_stream_write(mqs, key, len);
         free(key);
 
-        n = zigzag_encode(v_size, tbuf);
+        n = tbx_zigzag_encode(v_size, tbuf);
         err += mq_stream_write(mqs, tbuf, n);
         if (v_size > 0) {
             err += mq_stream_write(mqs, val, v_size);
@@ -2766,7 +2767,7 @@ fail:
     }
 
     //** Flag this as the last object
-    n = zigzag_encode(0, tbuf);
+    n = tbx_zigzag_encode(0, tbuf);
     mq_stream_write(mqs, tbuf, n);
 
     //** Destroy the object iterator
@@ -2832,7 +2833,7 @@ void osrs_fsck_iter_cb(void *arg, mq_task_t *task)
     fdata = mq_msg_pop(msg);  //** This has the path
     mq_get_frame(fdata, (void **)&buffer, &fsize);
     if (fsize > 0) {
-        type_malloc(path, char, fsize+1);
+        tbx_type_malloc(path, char, fsize+1);
         memcpy(path, buffer, fsize);
         path[fsize] = 0; //** NULL terminate the path name
     } else {
@@ -2845,8 +2846,8 @@ void osrs_fsck_iter_cb(void *arg, mq_task_t *task)
     timeout = 300;
     if (fsize > 0) {
         if (err == 0) {
-            n = zigzag_decode(buffer, fsize, &mode);
-            zigzag_decode(&(buffer[n]), fsize-n, &timeout);
+            n = tbx_zigzag_decode(buffer, fsize, &mode);
+            tbx_zigzag_decode(&(buffer[n]), fsize-n, &timeout);
         }
     } else {
         err = 1;
@@ -2877,8 +2878,8 @@ fail:
 
     //** Encode the status
     status = (err == 0) ? op_success_status : op_failure_status;
-    n = zigzag_encode(status.op_status, tbuf);
-    n = n + zigzag_encode(status.error_code, &(tbuf[n]));
+    n = tbx_zigzag_encode(status.op_status, tbuf);
+    n = n + tbx_zigzag_encode(status.error_code, &(tbuf[n]));
     mq_stream_write(mqs, tbuf, n);
 
     //** Check if we kick out due to an error
@@ -2891,18 +2892,18 @@ fail:
 
         log_printf(5, "err=%d bad_fname=%s bad_atype=%d\n", err, bad_fname, bad_atype);
         len = strlen(bad_fname);
-        n = zigzag_encode(len, tbuf);
+        n = tbx_zigzag_encode(len, tbuf);
         err += mq_stream_write(mqs, tbuf, n);
         err += mq_stream_write(mqs, bad_fname, len);
         free(bad_fname);
 
-        n = zigzag_encode(bad_atype, tbuf);
-        n += zigzag_encode(fsck_err, &(tbuf[n]));
+        n = tbx_zigzag_encode(bad_atype, tbuf);
+        n += tbx_zigzag_encode(fsck_err, &(tbuf[n]));
         err += mq_stream_write(mqs, tbuf, n);
     }
 
     //** Flag this as the last object
-    n = zigzag_encode(0, tbuf);
+    n = tbx_zigzag_encode(0, tbuf);
     mq_stream_write(mqs, tbuf, n);
 
     //** Destroy the object iterator
@@ -2958,7 +2959,7 @@ void osrs_fsck_object_cb(void *arg, mq_task_t *task)
     fdata = mq_msg_pop(msg);  //** This has the path
     mq_get_frame(fdata, (void **)&buffer, &fsize);
     if (fsize > 0) {
-        type_malloc(path, char, fsize+1);
+        tbx_type_malloc(path, char, fsize+1);
         memcpy(path, buffer, fsize);
         path[fsize] = 0; //** NULL terminate the path name
     } else {
@@ -2970,9 +2971,9 @@ void osrs_fsck_object_cb(void *arg, mq_task_t *task)
     mq_get_frame(fdata, (void **)&buffer, &fsize);
     if (fsize > 0) {
         if (err == 0) {
-            n = zigzag_decode(buffer, fsize, &ftype);
-            n += zigzag_decode(&(buffer[n]), fsize-n, &resolution);
-            zigzag_decode(&(buffer[n]), fsize-n, &timeout);
+            n = tbx_zigzag_decode(buffer, fsize, &ftype);
+            n += tbx_zigzag_decode(&(buffer[n]), fsize-n, &resolution);
+            tbx_zigzag_decode(&(buffer[n]), fsize-n, &timeout);
         }
     } else {
         err = 1;
@@ -3032,15 +3033,15 @@ void os_remote_server_destroy(object_service_fn_t *os)
 
 
     //** Cleanup the activity log
-    move_to_top(osrs->active_lru);
-    a = get_ele_data(osrs->active_lru);
+    tbx_stack_move_to_top(osrs->active_lru);
+    a = tbx_get_ele_data(osrs->active_lru);
     while (a != NULL) {
         if (a->host_id) free(a->host_id);
         free(a);
-        move_down(osrs->active_lru);
-        a = get_ele_data(osrs->active_lru);
+        tbx_stack_move_down(osrs->active_lru);
+        a = tbx_get_ele_data(osrs->active_lru);
     }
-    free_stack(osrs->active_lru, 0);
+    tbx_free_stack(osrs->active_lru, 0);
     //** The active_table hash gets destroyed when the pool is destroyed.
 
     //** Shutdown the child OS
@@ -3074,8 +3075,8 @@ object_service_fn_t *object_service_remote_server_create(service_manager_t *ess,
     log_printf(0, "START\n");
     if (section == NULL) section = "os_remote_server";
 
-    type_malloc_clear(os, object_service_fn_t, 1);
-    type_malloc_clear(osrs, osrs_priv_t, 1);
+    tbx_type_malloc_clear(os, object_service_fn_t, 1);
+    tbx_type_malloc_clear(osrs, osrs_priv_t, 1);
     os->priv = (void *)osrs;
 
     osrs->tpc = lookup_service(ess, ESS_RUNNING, ESS_TPC_UNLIMITED); assert(osrs->tpc != NULL);
@@ -3092,34 +3093,34 @@ object_service_fn_t *object_service_remote_server_create(service_manager_t *ess,
     assert(osrs->spin != NULL);
 
     //** Get the host name we bind to
-    osrs->hostname= inip_get_string(fd, section, "address", NULL);
+    osrs->hostname= tbx_inip_string_get(fd, section, "address", NULL);
 
     //** Get the activity log file
-    osrs->fname_activity = inip_get_string(fd, section, "log_activity", NULL);
+    osrs->fname_activity = tbx_inip_string_get(fd, section, "log_activity", NULL);
     log_printf(5, "section=%s log_activity=%s\n", section, osrs->fname_activity);
 
     //** Ongoing check interval
-    osrs->ongoing_interval = inip_get_integer(fd, section, "ongoing_interval", 300);
+    osrs->ongoing_interval = tbx_inip_integer_get(fd, section, "ongoing_interval", 300);
 
     //** Max Stream size
-    osrs->max_stream = inip_get_integer(fd, section, "max_stream", 1024*1024);
+    osrs->max_stream = tbx_inip_integer_get(fd, section, "max_stream", 1024*1024);
 
     //** Start the child OS.
-    stype = inip_get_string(fd, section, "os_local", NULL);
+    stype = tbx_inip_string_get(fd, section, "os_local", NULL);
     if (stype == NULL) {  //** Oops missing child OS
         log_printf(0, "ERROR: Mising child OS  section=%s key=rs_local!\n", section);
-        flush_log();
+        tbx_flush_log();
         free(stype);
         abort();
     }
 
     //** and load it
-    ctype = inip_get_string(fd, stype, "type", OS_TYPE_FILE);
+    ctype = tbx_inip_string_get(fd, stype, "type", OS_TYPE_FILE);
     os_create = lookup_service(ess, OS_AVAILABLE, ctype);
     osrs->os_child = (*os_create)(ess, fd, stype);
     if (osrs->os_child == NULL) {
         log_printf(1, "ERROR loading child OS!  type=%s section=%s\n", ctype, stype);
-        flush_log();
+        tbx_flush_log();
         abort();
     }
     free(ctype);
@@ -3179,10 +3180,10 @@ object_service_fn_t *object_service_remote_server_create(service_manager_t *ess,
     os->type = OS_TYPE_REMOTE_SERVER;
 
     //** This is for the active tables
-    osrs->fname_active = inip_get_string(fd, section, "active_output", "/lio/log/os_active.log");
-    osrs->max_active = inip_get_integer(fd, section, "active_size", 1024);
+    osrs->fname_active = tbx_inip_string_get(fd, section, "active_output", "/lio/log/os_active.log");
+    osrs->max_active = tbx_inip_integer_get(fd, section, "active_size", 1024);
     osrs->active_table = apr_hash_make(osrs->mpool);
-    osrs->active_lru = new_stack();
+    osrs->active_lru = tbx_stack_new();
 
     _os_global = os;
     apr_signal_unblock(SIGUSR1);

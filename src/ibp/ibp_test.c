@@ -21,14 +21,14 @@
 #include <stdlib.h>
 #include <time.h>
 #include <assert.h>
-#include "assert_result.h"
+#include <tbx/assert_result.h>
 #include "ibp.h"
-#include "log.h"
+#include <tbx/log.h>
 #include "ibp.h"
 #include "iovec_sync.h"
-#include "type_malloc.h"
-#include "random.h"
-#include "apr_wrapper.h"
+#include <tbx/type_malloc.h>
+#include <tbx/random.h>
+#include <tbx/apr_wrapper.h>
 
 #define A_DURATION 900
 
@@ -137,7 +137,7 @@ void base_async_test(ibp_depot_t *depot)
         c = 'A' + (i%27);
         memset(&(buffer_cmp[offset]), c, 2*block);
 
-        tbuffer_single(&(buf[i]), 2*block, &(buffer_cmp[offset]));
+        tbx_tbuf_single(&(buf[i]), 2*block, &(buffer_cmp[offset]));
         op = new_ibp_write_op(ic, cap, offset, &(buf[i]), 0, 2*block, ibp_timeout);
         opque_add(q, op);
 
@@ -147,7 +147,7 @@ void base_async_test(ibp_depot_t *depot)
     if (remainder>0)  {
         offset = bcount*2*block;
         memset(&(buffer_cmp[offset]), '@', remainder);
-        tbuffer_single(&(buf[bcount]), remainder, &(buffer_cmp[offset]));
+        tbx_tbuf_single(&(buf[bcount]), remainder, &(buffer_cmp[offset]));
         op = new_ibp_write_op(ic, cap, offset, &(buf[bcount]), 0, remainder, ibp_timeout);
         opque_add(q, op);
     }
@@ -174,7 +174,7 @@ void base_async_test(ibp_depot_t *depot)
     offset = 0;      // Now read the data in chunks
     cap = get_ibp_cap(&caps, IBP_READCAP);
     for (i=0; i<bcount; i++) {
-        tbuffer_single(&(buf[i]), block, &(buffer[offset]));
+        tbx_tbuf_single(&(buf[i]), block, &(buffer[offset]));
         op = new_ibp_read_op(ic, cap, offset, &(buf[i]), 0, block, ibp_timeout);
         opque_add(q, op);
 
@@ -183,7 +183,7 @@ void base_async_test(ibp_depot_t *depot)
 
     if (remainder>0)  {
 //printf("read remainder: rem=%d offset=%d\n", remainder, offset);
-        tbuffer_single(&(buf[bcount]), remainder, &(buffer[offset]));
+        tbx_tbuf_single(&(buf[bcount]), remainder, &(buffer[offset]));
         op = new_ibp_read_op(ic, cap, offset, &(buf[bcount]), 0, remainder, ibp_timeout);
         opque_add(q, op);
     }
@@ -234,9 +234,9 @@ void base_async_test(ibp_depot_t *depot)
     opque_finished_submission(q);
 
 //err=log_level();
-//set_log_level(20);
+//tbx_set_log_level(20);
     opque_free(q, OP_DESTROY);
-//set_log_level(err);
+//tbx_set_log_level(err);
 
     free(buffer);
     free(buffer_cmp);
@@ -284,7 +284,7 @@ void base_tbx_iovec_test(ibp_depot_t *depot)
     remainder = size % block;
     n_ele = bcount;
     if (remainder > 0) n_ele++;
-    type_malloc_clear(vec, ibp_tbx_iovec_t, n_ele);
+    tbx_type_malloc_clear(vec, ibp_tbx_iovec_t, n_ele);
 
     printf("base_tbx_iovec_test:  Starting simple test\n");
     fflush(stdout);
@@ -343,7 +343,7 @@ void base_tbx_iovec_test(ibp_depot_t *depot)
         vec[bcount].len = remainder;
     }
 
-    tbuffer_single(&buf, size, buffer_cmp);
+    tbx_tbuf_single(&buf, size, buffer_cmp);
     op = new_ibp_vec_write_op(ic, cap, n_ele, vec, &buf, 0, size, 60);
     opque_add(q, op);
 
@@ -385,7 +385,7 @@ void base_tbx_iovec_test(ibp_depot_t *depot)
     }
 
 
-    tbuffer_single(&buf, size, buffer);
+    tbx_tbuf_single(&buf, size, buffer);
     op = new_ibp_vec_read_op(ic, cap, n_ele, vec, &buf, 0, size, 60);
     opque_add(q, op);
 
@@ -428,9 +428,9 @@ void base_tbx_iovec_test(ibp_depot_t *depot)
     opque_finished_submission(q);
 
 //err=log_level();
-//set_log_level(20);
+//tbx_set_log_level(20);
     opque_free(q, OP_DESTROY);
-//set_log_level(err);
+//tbx_set_log_level(err);
 
     free(buffer);
     free(buffer_cmp);
@@ -511,7 +511,7 @@ void perform_big_alloc_tests(ibp_depot_t *depot)
     memset(buffer_cmp, '_', bufsize);
 
     //** Do the upload
-    tbuffer_single(&buf, bufsize, buffer_cmp);
+    tbx_tbuf_single(&buf, bufsize, buffer_cmp);
     op = new_ibp_write_op(ic, get_ibp_cap(&caps, IBP_WRITECAP), aoff, &buf, 0, bufsize, ibp_timeout);
     opque_add(q, op);
     err = opque_waitall(q);
@@ -542,7 +542,7 @@ void perform_big_alloc_tests(ibp_depot_t *depot)
 
     //** Attempt to Read it back
     cap = get_ibp_cap(&caps, IBP_READCAP);
-    tbuffer_single(&buf, bufsize, buffer);
+    tbx_tbuf_single(&buf, bufsize, buffer);
     op = new_ibp_read_op(ic, cap, aoff, &buf, 0, bufsize, ibp_timeout);
     opque_add(q, op);
     err = opque_waitall(q);
@@ -647,7 +647,7 @@ void perform_manage_truncate_tests(ibp_depot_t *depot)
 
 
     //** Do the initial upload
-    tbuffer_single(&buf, bufsize, buffer);
+    tbx_tbuf_single(&buf, bufsize, buffer);
     op = new_ibp_write_op(ic, get_ibp_cap(&caps, IBP_WRITECAP), 0, &buf, 0, bufsize, ibp_timeout);
     opque_add(q, op);
     err = opque_waitall(q);
@@ -792,7 +792,7 @@ void perform_manage_truncate_tests(ibp_depot_t *depot)
 
     //** Attempt to Read it back
     cap = get_ibp_cap(&caps, IBP_READCAP);
-    tbuffer_single(&buf, pos, buffer_cmp);
+    tbx_tbuf_single(&buf, pos, buffer_cmp);
     op = new_ibp_read_op(ic, get_ibp_cap(&caps, IBP_READCAP), 0, &buf, 0, pos, ibp_timeout);
     opque_add(q, op);
     err = opque_waitall(q);
@@ -921,7 +921,7 @@ void perform_user_rw_tests(ibp_depot_t *depot)
     rw_arg.buffer = buffer;
     rw_arg.size = bufsize;
     rw_arg.nbytes = nbytes + 1;
-    tbuffer_fn(&buf, bufsize, (void *)&rw_arg, my_next_block);
+    tbx_tbuf_fn(&buf, bufsize, (void *)&rw_arg, my_next_block);
     ibp_reset_iop(&op);
     set_ibp_write_op(&op, get_ibp_cap(&caps, IBP_WRITECAP), 0, &buf, 0, bufsize, ibp_timeout);
     err = ibp_sync_command(&op);
@@ -935,7 +935,7 @@ void perform_user_rw_tests(ibp_depot_t *depot)
     rw_arg.buffer = rbuf;
     rw_arg.size = bufsize;
     rw_arg.nbytes = nbytes -1;
-    tbuffer_fn(&buf, bufsize, (void *)&rw_arg, my_next_block);
+    tbx_tbuf_fn(&buf, bufsize, (void *)&rw_arg, my_next_block);
     ibp_reset_iop(&op);
     set_ibp_read_op(&op, get_ibp_cap(&caps, IBP_READCAP), 0, &buf, 0, bufsize, ibp_timeout);
     err = ibp_sync_command(&op);
@@ -1406,7 +1406,7 @@ int main(int argc, char **argv)
         return(-1);
     }
 
-    init_random();
+    tbx_random_startup();
 
 
     printf("1111111111111111111111111111111111111111111111111111111111111111\n");
@@ -1424,7 +1424,7 @@ int main(int argc, char **argv)
 
         if (strcmp(argv[i], "-d") == 0) {
             i++;
-            set_log_level(atoi(argv[i]));
+            tbx_set_log_level(atoi(argv[i]));
             i++;
         } else if (strcmp(argv[i], "-config") == 0) { //** Read the config file
             i++;
@@ -1436,23 +1436,23 @@ int main(int argc, char **argv)
             no_async = 1;
         } else if (strcmp(argv[i], "-network_chksum") == 0) { //** Add checksum capability
             i++;
-            net_cs_type = chksum_name_type(argv[i]);
+            net_cs_type = tbx_chksum_type_name(argv[i]);
             if (net_cs_type == -1) {
                 printf("Invalid chksum type.  Got %s should be SHA1, SHA256, SHA512, or MD5\n", argv[i]);
                 abort();
             }
-            chksum_set(&cs, net_cs_type);
+            tbx_chksum_set(&cs, net_cs_type);
             i++;
 
             blocksize = atoi(argv[i])*1024;
             i++;
-            ns_chksum_set(&ns_cs, &cs, blocksize);
+            tbx_ns_chksum_set(&ns_cs, &cs, blocksize);
             ncs = &ns_cs;
             ibp_set_chksum(ic, ncs);
             log_printf(0, "network_chksum enabled type=%d bs=%d\n", net_cs_type, blocksize);
         } else if (strcmp(argv[i], "-disk_chksum") == 0) { //** Add checksum capability
             i++;
-            disk_cs_type = chksum_name_type(argv[i]);
+            disk_cs_type = tbx_chksum_type_name(argv[i]);
             if (disk_cs_type < CHKSUM_DEFAULT) {
                 printf("Invalid chksum type.  Got %s should be SHA1, SHA256, SHA512, or MD5\n", argv[i]);
                 abort();
@@ -1718,7 +1718,7 @@ int main(int argc, char **argv)
         failed_tests++;
         printf("FAILED querying depot resource list. err=%d\n", err);
     }
-    ridlist_destroy(&rlist);
+    ridtbx_list_destroy(&rlist);
 
     perform_user_rw_tests(&depot1);  //** Perform the "user" version of the R/W functions
 
@@ -2092,7 +2092,7 @@ int main(int argc, char **argv)
 
 
     printf("\n\n");
-    printf("Final network connection counter: %d\n", network_counter(NULL));
+    printf("Final network connection counter: %d\n", tbx_network_counter(NULL));
     printf("Tests that failed: %d\n", failed_tests);
 
     ibp_destroy_context(ic);

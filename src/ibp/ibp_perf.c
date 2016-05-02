@@ -28,14 +28,14 @@
 #include <math.h>
 #include <signal.h>
 #include <apr_time.h>
-#include "network.h"
-#include "fmttypes.h"
-#include "network.h"
-#include "log.h"
+#include <tbx/network.h>
+#include <tbx/fmttypes.h>
+#include <tbx/network.h>
+#include <tbx/log.h>
 #include "ibp.h"
 #include "iovec_sync.h"
 #include "io_wrapper.h"
-#include "type_malloc.h"
+#include <tbx/type_malloc.h>
 
 int a_duration=900;   //** Default duration
 
@@ -304,7 +304,7 @@ void write_allocs(ibp_capset_t *caps, int n, int asize, int block_size)
     rem = asize % block_size;
     if (rem > 0) nblocks++;
 
-    type_malloc_clear(buf, tbx_tbuf_t, n*nblocks);
+    tbx_type_malloc_clear(buf, tbx_tbuf_t, n*nblocks);
 
 //for (j=0; j<nblocks; j++) {
     for (j=nblocks-1; j>= 0; j--) {
@@ -315,7 +315,7 @@ void write_allocs(ibp_capset_t *caps, int n, int asize, int block_size)
                 len = block_size;
             }
             slot = j*n + i;
-            tbuffer_single(&(buf[slot]), len, buffer);
+            tbx_tbuf_single(&(buf[slot]), len, buffer);
             op = new_ibp_write_op(ic, get_ibp_cap(&(caps[i]), IBP_WRITECAP), j*block_size, &(buf[slot]), 0, len, ibp_timeout);
             opque_add(q, op);
         }
@@ -351,7 +351,7 @@ void read_allocs(ibp_capset_t *caps, int n, int asize, int block_size)
     rem = asize % block_size;
     if (rem > 0) nblocks++;
 
-    type_malloc_clear(buf, tbx_tbuf_t, n*nblocks);
+    tbx_type_malloc_clear(buf, tbx_tbuf_t, n*nblocks);
 
 //  for (j=0; j<nblocks; j++) {
     for (j=nblocks-1; j>= 0; j--) {
@@ -362,7 +362,7 @@ void read_allocs(ibp_capset_t *caps, int n, int asize, int block_size)
                 len = block_size;
             }
             slot = j*n + i;
-            tbuffer_single(&(buf[slot]), len, buffer);
+            tbx_tbuf_single(&(buf[slot]), len, buffer);
             op = new_ibp_read_op(ic, get_ibp_cap(&(caps[i]), IBP_READCAP), j*block_size, &(buf[slot]), 0, len, ibp_timeout);
             opque_add(q, op);
         }
@@ -403,7 +403,7 @@ void random_allocs(ibp_capset_t *caps, int n, int asize, int block_size, double 
     rem = asize % block_size;
     if (rem > 0) nblocks++;
 
-    type_malloc_clear(buf, tbx_tbuf_t, n*nblocks);
+    tbx_type_malloc_clear(buf, tbx_tbuf_t, n*nblocks);
 
     for (j=0; j<nblocks; j++) {
         for (i=0; i<n; i++) {
@@ -418,10 +418,10 @@ void random_allocs(ibp_capset_t *caps, int n, int asize, int block_size, double 
             bslot = j*n + i;
 
             if (rnd < rfrac) {
-                tbuffer_single(&(buf[bslot]), len, rbuffer);
+                tbx_tbuf_single(&(buf[bslot]), len, rbuffer);
                 op = new_ibp_read_op(ic, get_ibp_cap(&(caps[i]), IBP_READCAP), j*block_size, &(buf[bslot]), 0, len, ibp_timeout);
             } else {
-                tbuffer_single(&(buf[bslot]), len, wbuffer);
+                tbx_tbuf_single(&(buf[bslot]), len, wbuffer);
                 op = new_ibp_write_op(ic, get_ibp_cap(&(caps[i]), IBP_WRITECAP), j*block_size, &(buf[bslot]), 0, len, ibp_timeout);
             }
             opque_add(q, op);
@@ -466,7 +466,7 @@ double small_write_allocs(ibp_capset_t *caps, int n, int asize, int small_count,
     char *buffer = (char *)malloc(max_size);
     init_buffer(buffer, 'a', max_size);
 
-    type_malloc_clear(buf, tbx_tbuf_t, small_count);
+    tbx_type_malloc_clear(buf, tbx_tbuf_t, small_count);
 
     nbytes = 0;
     for (i=0; i<small_count; i++) {
@@ -482,7 +482,7 @@ double small_write_allocs(ibp_capset_t *caps, int n, int asize, int small_count,
         rnd = rand()/(RAND_MAX+1.0);
         offset = (asize - io_size) * rnd;
 
-        tbuffer_single(&(buf[i]), io_size, buffer);
+        tbx_tbuf_single(&(buf[i]), io_size, buffer);
         op = new_ibp_write_op(ic, get_ibp_cap(&(caps[slot]), IBP_WRITECAP), offset, &(buf[i]), 0, io_size, ibp_timeout);
         opque_add(q, op);
     }
@@ -526,7 +526,7 @@ double small_read_allocs(ibp_capset_t *caps, int n, int asize, int small_count, 
     char *buffer = (char *)malloc(max_size);
     init_buffer(buffer, 'r', max_size);
 
-    type_malloc_clear(buf, tbx_tbuf_t, small_count);
+    tbx_type_malloc_clear(buf, tbx_tbuf_t, small_count);
 
     nbytes = 0;
     for (i=0; i<small_count; i++) {
@@ -542,7 +542,7 @@ double small_read_allocs(ibp_capset_t *caps, int n, int asize, int small_count, 
         rnd = rand()/(RAND_MAX+1.0);
         offset = (asize - io_size) * rnd;
 
-        tbuffer_single(&(buf[i]), io_size, buffer);
+        tbx_tbuf_single(&(buf[i]), io_size, buffer);
 
         op = new_ibp_read_op(ic, get_ibp_cap(&(caps[slot]), IBP_READCAP), offset, &(buf[i]), 0, io_size, ibp_timeout);
         opque_add(q, op);
@@ -589,7 +589,7 @@ double small_random_allocs(ibp_capset_t *caps, int n, int asize, double readfrac
     init_buffer(rbuffer, '1', max_size);
     init_buffer(wbuffer, '2', max_size);
 
-    type_malloc_clear(buf, tbx_tbuf_t, small_count);
+    tbx_type_malloc_clear(buf, tbx_tbuf_t, small_count);
 
     nbytes = 0;
     for (i=0; i<small_count; i++) {
@@ -609,10 +609,10 @@ double small_random_allocs(ibp_capset_t *caps, int n, int asize, double readfrac
 
         rnd = rand()/(RAND_MAX+1.0);
         if (rnd < readfrac) {
-            tbuffer_single(&(buf[i]), io_size, rbuffer);
+            tbx_tbuf_single(&(buf[i]), io_size, rbuffer);
             op = new_ibp_read_op(ic, get_ibp_cap(&(caps[slot]), IBP_READCAP), offset, &(buf[i]), 0, io_size, ibp_timeout);
         } else {
-            tbuffer_single(&(buf[i]), io_size, wbuffer);
+            tbx_tbuf_single(&(buf[i]), io_size, wbuffer);
             op = new_ibp_write_op(ic, get_ibp_cap(&(caps[slot]), IBP_WRITECAP), offset, &(buf[i]), 0, io_size, ibp_timeout);
         }
 
@@ -648,7 +648,7 @@ int main(int argc, char **argv)
     double dt;
     char *ppath, *net_cs_name, *disk_cs_name, *out_fname;
     FILE *fd_out;
-    tbx_phoebus_t pcc;
+    //tbx_phoebus_t pcc;
     char pstr[2048];
     tbx_chksum_t cs;
     tbx_ns_chksum_t ns_cs;
@@ -713,7 +713,7 @@ int main(int argc, char **argv)
         return(-1);
     }
 
-    set_log_level(-1);
+    tbx_set_log_level(-1);
 
     ic = ibp_create_context();  //** Initialize IBP
 
@@ -730,10 +730,10 @@ int main(int argc, char **argv)
         start_option = i;
 
         if (strcmp(argv[i], "-d") == 0) { //** Enable debugging
-            set_log_level(5);
+            tbx_set_log_level(5);
             i++;
         } else if (strcmp(argv[i], "-dd") == 0) { //** Enable debugging
-            set_log_level(20);
+            tbx_set_log_level(20);
             i++;
         } else if (strcmp(argv[i], "-random") == 0) { //** Random buffers
             i++;
@@ -741,23 +741,23 @@ int main(int argc, char **argv)
         } else if (strcmp(argv[i], "-network_chksum") == 0) { //** Add checksum capability
             i++;
             net_cs_name = argv[i];
-            cs_type = chksum_name_type(argv[i]);
+            cs_type = tbx_chksum_type_name(argv[i]);
             if (cs_type == -1) {
                 printf("Invalid chksum type.  Got %s should be SHA1, SHA256, SHA512, or MD5\n", argv[i]);
                 abort();
             }
-            chksum_set(&cs, cs_type);
+            tbx_chksum_set(&cs, cs_type);
             i++;
 
             blocksize = atoi(argv[i])*1024;
             i++;
-            ns_chksum_set(&ns_cs, &cs, blocksize);
+            tbx_ns_chksum_set(&ns_cs, &cs, blocksize);
             ncs = &ns_cs;
             ibp_set_chksum(ic, ncs);
         } else if (strcmp(argv[i], "-disk_chksum") == 0) { //** Add checksum capability
             i++;
             disk_cs_name = argv[i];
-            disk_cs_type = chksum_name_type(argv[i]);
+            disk_cs_type = tbx_chksum_type_name(argv[i]);
             if (disk_cs_type < CHKSUM_DEFAULT) {
                 printf("Invalid chksum type.  Got %s should be NONE, SHA1, SHA256, SHA512, or MD5\n", argv[i]);
                 abort();
@@ -786,6 +786,8 @@ int main(int argc, char **argv)
             } else {
                 fd_out = fopen(out_fname, "w"); assert(fd_out != NULL);
             }
+// FIXME trim
+#if 0
         } else if (strcmp(argv[i], "-phoebus") == 0) { //** Check if we want Phoebus transfers
             cc = (ibp_connect_context_t *)malloc(sizeof(ibp_connect_context_t));
             cc->type = NS_TYPE_PHOEBUS;
@@ -800,6 +802,7 @@ int main(int argc, char **argv)
             ibp_set_write_cc(ic, cc);
 
             i++;
+#endif
         } else if (strcmp(argv[i], "-tcpsize") == 0) { //** Check if we want sync tests
             i++;
             tcpsize = atoi(argv[i]) * 1024;
@@ -899,10 +902,13 @@ int main(int argc, char **argv)
         case NS_TYPE_SOCK:
             printf("Connection Type: SOCKET\n");
             break;
+// FIXME trim
+#if 0
         case NS_TYPE_PHOEBUS:
             phoebus_path_to_string(pstr, sizeof(pstr), &pcc);
             printf("Connection Type: PHOEBUS (%s)\n", pstr);
             break;
+#endif
         case NS_TYPE_1_SSL:
             printf("Connection Type: Single SSL\n");
             break;
@@ -1117,7 +1123,7 @@ int main(int argc, char **argv)
 
 
         //** If disk chksumming is enabled then validate it as well
-        if ((chksum_valid_type(disk_cs_type) == 1) && (do_validate == 1)) {
+        if ((tbx_chksum_type_valid(disk_cs_type) == 1) && (do_validate == 1)) {
             printf("Validating allocations....");
             fflush(stdout);
             stime = apr_time_now();
@@ -1146,7 +1152,7 @@ int main(int argc, char **argv)
         }
     }
 
-    printf("Final network connection counter: %d\n", network_counter(NULL));
+    printf("Final network connection counter: %d\n", tbx_network_counter(NULL));
 
     ibp_destroy_context(ic);  //** Shutdown IBP
 

@@ -17,12 +17,12 @@
 #define _log_module_index 205
 
 #include <assert.h>
-#include "assert_result.h"
+#include <tbx/assert_result.h>
 #include "exnode.h"
-#include "log.h"
-#include "iniparse.h"
-#include "string_token.h"
-#include "type_malloc.h"
+#include <tbx/log.h>
+#include <tbx/iniparse.h>
+#include <tbx/string_token.h>
+#include <tbx/type_malloc.h>
 #include "thread_pool.h"
 #include "lio.h"
 
@@ -65,7 +65,7 @@ int main(int argc, char **argv)
 
             if (strcmp(argv[i], "-dt") == 0) {  //** Command timeout
                 i++;
-                timeout = string_get_integer(argv[i]);
+                timeout = tbx_stk_string_get_integer(argv[i]);
                 i++;
             }
 
@@ -80,9 +80,9 @@ int main(int argc, char **argv)
     }
 
     //** Make the buffer
-    n_iov = string_get_integer(argv[start_index]);
+    n_iov = tbx_stk_string_get_integer(argv[start_index]);
     start_index++;
-    len = string_get_integer(argv[start_index]);
+    len = tbx_stk_string_get_integer(argv[start_index]);
     start_index++;
     fname = argv[start_index];
     start_index++;
@@ -91,27 +91,27 @@ int main(int argc, char **argv)
     assert(fd != NULL);
     fgets(ppbuf, sizeof(ppbuf), fd);
     if ((p = index(ppbuf, '\n')) != NULL) *p = 0;  //** Remove the \n if needed
-    n_rcap = string_get_integer(ppbuf);
+    n_rcap = tbx_stk_string_get_integer(ppbuf);
 
     info_printf(lio_ifd, 0, "n_rcap=%d len=" XOT " n_iov_per_cap=%d fname=%s timeout=%d\n", n_rcap, len, n_iov, fname, timeout);
 
     //** Make the space
-    type_malloc(tbuf, tbx_tbuf_t, n_rcap);
-    type_malloc(rcap, char *, n_rcap);
-    type_malloc(buffer, char *, n_rcap);
-    type_malloc(iov, tbx_iovec_t *, n_rcap);
-    type_malloc(gop_list, op_generic_t *, n_rcap);
+    tbx_type_malloc(tbuf, tbx_tbuf_t, n_rcap);
+    tbx_type_malloc(rcap, char *, n_rcap);
+    tbx_type_malloc(buffer, char *, n_rcap);
+    tbx_type_malloc(iov, tbx_iovec_t *, n_rcap);
+    tbx_type_malloc(gop_list, op_generic_t *, n_rcap);
 
     offset = 0;
     q = new_opque();
 //  opque_start_execution(q);
     for (i=0; i<n_rcap; i++) {
-        type_malloc(buffer[i], char, len+1);
-        type_malloc(rcap[i], char, 256);
+        tbx_type_malloc(buffer[i], char, len+1);
+        tbx_type_malloc(rcap[i], char, 256);
         fgets(rcap[i], 256, fd);
         if ((p = index(rcap[i], '\n')) != NULL) *p = '\0';  //** Remove the \n if needed
 
-        type_malloc(iov[i], tbx_iovec_t, n_iov);
+        tbx_type_malloc(iov[i], tbx_iovec_t, n_iov);
         dn = len / n_iov;
         n = 0;
         for (j=0; j<n_iov-1; j++) {
@@ -122,7 +122,7 @@ int main(int argc, char **argv)
         iov[i][n_iov-1].iov_base = buffer[i] + n;
         iov[i][n_iov-1].iov_len = len - n;
 
-        tbuffer_vec(&(tbuf[i]), len, n_iov, iov[i]);
+        tbx_tbuf_vec(&(tbuf[i]), len, n_iov, iov[i]);
         gop_list[i] = ds_read(lio_gc->ds, lio_gc->da, rcap[i], offset, tbuf, 0, len, timeout);
         info_printf(lio_ifd, 0, "i=%d gid=%d rcap=%s\n", i, gop_id(gop_list[i]), rcap[i]);
 

@@ -1,5 +1,6 @@
 #include <apr_general.h>
-#include "constructor_wrapper.h"
+#include <assert.h>
+#include <tbx/constructor_wrapper.h>
 #include "opque.h"
 
 #ifdef ACCRE_CONSTRUCTOR_PREPRAGMA_ARGS
@@ -19,7 +20,8 @@ ACCRE_DEFINE_DESTRUCTOR(gop_destruct_fn)
 #endif
 
 static void gop_construct_fn() {
-    apr_initialize();
+    apr_status_t ret = apr_initialize();
+    assert(ret == APR_SUCCESS);
     init_opque_system();
 }
 

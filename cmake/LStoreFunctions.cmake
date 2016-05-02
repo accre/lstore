@@ -36,6 +36,10 @@ macro(lstore_project_common LSTORE_PROJECT_NAME)
     install(FILES "${CMAKE_CURRENT_BINARY_DIR}/${LSTORE_PROJECT_NAME}.pc" DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig)
 
     target_link_libraries(${LSTORE_PROJECT_NAME} LINK_PUBLIC ${LSTORE_LIBS} m pthread)
+    set_target_properties(${LSTORE_PROJECT_NAME} PROPERTIES
+        COMPILE_FLAGS "-DLSTORE_HACK_EXPORT")
+
+
     if(NOT BUILD_SHARED_LIBS)
         target_link_libraries(${LSTORE_PROJECT_NAME} LINK_PUBLIC ${LSTORE_LIBS} dl)
     endif()
@@ -58,8 +62,12 @@ macro(lstore_project_common LSTORE_PROJECT_NAME)
             ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
             LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
     install(FILES ${LSTORE_PROJECT_INCLUDES}
-            DESTINATION include/${LSTORE_LSTORE_PROJECT_NAME}
+            DESTINATION include/${LSTORE_PROJECT_INCLUDES_NAMESPACE}
             COMPONENT devel)
+    install(FILES ${LSTORE_PROJECT_INCLUDES_OLD}
+            DESTINATION include/${LSTORE_PROJECT_NAME}
+            COMPONENT devel)
+
 
     # Export component info
 	set(${LSTORE_PROJECT_NAME}_INCLUDE_DIR ${PROJECT_SOURCE_DIR}

@@ -20,14 +20,14 @@
 #include <stdio.h>
 #include <string.h>
 #include <assert.h>
-#include "assert_result.h"
+#include <tbx/assert_result.h>
 #include "thread_pool.h"
-#include "fmttypes.h"
-#include "network.h"
-#include "log.h"
-#include "type_malloc.h"
-#include "append_printf.h"
-#include "atomic_counter.h"
+#include <tbx/fmttypes.h>
+#include <tbx/network.h>
+#include <tbx/log.h>
+#include <tbx/type_malloc.h>
+#include <tbx/append_printf.h>
+#include <tbx/atomic_counter.h>
 
 #define TP_MAX_DEPTH 100
 
@@ -65,7 +65,7 @@ void thread_pool_stats_print()
     log_printf(0, "Max Concurrency: %d\n", _tp_concurrent_max);
     log_printf(0, "Level  Concurrent     Total\n");
     for (i=0; i<TP_MAX_DEPTH; i++) {
-        total = atomic_get(_tp_depth_total[i]);
+        total = tbx_atomic_get(_tp_depth_total[i]);
         log_printf(0, " %2d    %10d  %10d\n", i, _tp_depth_concurrent_max[i], total);
     }
 }
@@ -81,8 +81,8 @@ void thread_pool_stats_make()
     _tp_concurrent_max = 0;
     for (i=0; i<TP_MAX_DEPTH; i++) {
         _tp_depth_concurrent_max[i] = 0;
-        atomic_set(_tp_depth_total[i], 0);
-        atomic_set(_tp_depth_concurrent[i], 0);
+        tbx_atomic_set(_tp_depth_total[i], 0);
+        tbx_atomic_set(_tp_depth_concurrent[i], 0);
     }
 }
 
@@ -96,7 +96,7 @@ thread_local_stats_t *_thread_local_stats_ptr()
 
     apr_threadkey_private_get((void *)&my, thread_local_stats_key);
     if (my == NULL ) {
-        type_malloc_clear(my, thread_local_stats_t, 1);
+        tbx_type_malloc_clear(my, thread_local_stats_t, 1);
         apr_thread_mutex_lock(_tp_lock);
         my->concurrent_max = _tp_concurrent_max;
         memcpy(my->depth_concurrent, _tp_depth_concurrent_max, sizeof(_tp_depth_concurrent_max));  //** Set to the current global
@@ -118,7 +118,7 @@ int *_thread_local_depth_ptr()
 
     apr_threadkey_private_get((void *)&my_depth, thread_local_depth_key);
     if (my_depth == NULL ) {
-        type_malloc_clear(my_depth, int, 1);
+        tbx_type_malloc_clear(my_depth, int, 1);
         *my_depth = 0;
         apr_threadkey_private_set(my_depth, thread_local_depth_key);
     }
@@ -149,7 +149,7 @@ op_generic_t *_tpc_overflow_next(thread_pool_context_t *tpc)
     //** Determine the currently running max depth
     dmax = -1;
     slot = -1;
-    if (atomic_get(tpc->n_running) >= tpc->max_concurrency) { //** Don't care about a slot if less than the max concurrency
+    if (tbx_atomic_get(tpc->n_running) >= tpc->max_concurrency) { //** Don't care about a slot if less than the max concurrency
         for (i=0; i<tpc->recursion_depth; i++) {
             if (tpc->overflow_running_depth[i] > dmax) dmax = tpc->overflow_running_depth[i];
             if (tpc->overflow_running_depth[i] == -1) slot = i;
@@ -158,9 +158,9 @@ op_generic_t *_tpc_overflow_next(thread_pool_context_t *tpc)
 
     //** Not look for a viable gop
     for (i=tpc->recursion_depth-1; i>dmax; i--) {
-        gop = pop(tpc->reserve_stack[i]);
+        gop = tbx_stack_pop(tpc->reserve_stack[i]);
         if (gop) {
-            atomic_dec(tpc->n_overflow);
+            tbx_atomic_dec(tpc->n_overflow);
             op = gop_get_tp(gop);
             op->overflow_slot = slot;
             if (slot > -1) tpc->overflow_running_depth[slot] = i;
@@ -169,18 +169,17 @@ op_generic_t *_tpc_overflow_next(thread_pool_context_t *tpc)
     }
 
 if (gop) {
-    log_printf(0, "dmax=%d reserve=%d slot=%d gid=%d n_running=%d max=%d\n", dmax, i, slot, gop_id(gop), atomic_get(tpc->n_running), tpc->max_concurrency);
+    log_printf(0, "dmax=%d reserve=%d slot=%d gid=%d n_running=%d max=%d\n", dmax, i, slot, gop_id(gop), tbx_atomic_get(tpc->n_running), tpc->max_concurrency);
 } else {
-    log_printf(0, "dmax=%d reserve=%d slot=%d gop=%p n_running=%d max=%d\n", dmax, i, slot, gop, atomic_get(tpc->n_running), tpc->max_concurrency);
+    log_printf(0, "dmax=%d reserve=%d slot=%d gop=%p n_running=%d max=%d\n", dmax, i, slot, gop, tbx_atomic_get(tpc->n_running), tpc->max_concurrency);
 }
     return(gop);
 }
 
 //*************************************************************
-
-void  *thread_pool_exec_fn(apr_thread_t *th, void *arg)
+void thread_pool_exec_fn(void *arg, op_generic_t *gop)
 {
-    op_generic_t *gop = (op_generic_t *)arg;
+    apr_thread_t *th = (apr_thread_t *) arg;
     thread_pool_op_t *op = gop_get_tp(gop);
     thread_pool_context_t *tpc = op->tpc;
     op_status_t status;
@@ -189,7 +188,7 @@ void  *thread_pool_exec_fn(apr_thread_t *th, void *arg)
     int tid;
     int concurrent, start_depth;
 
-    tid = atomic_thread_id;
+    tid = tbx_atomic_thread_id;
 
     op = gop_get_tp(gop);
     my_depth = _thread_local_depth_ptr();
@@ -202,7 +201,7 @@ void  *thread_pool_exec_fn(apr_thread_t *th, void *arg)
         if (tid != op->parent_tid) {
             //** Check if we set a new high for max concurrency
             my = _thread_local_stats_ptr();
-            concurrent = atomic_inc(_tp_concurrent) + 1;
+            concurrent = tbx_atomic_inc(_tp_concurrent) + 1;
             if (concurrent > my->concurrent_max) {
                 my->concurrent_max = concurrent;
                 apr_thread_mutex_lock(_tp_lock);  //** We passed the local check so now check the global
@@ -210,10 +209,10 @@ void  *thread_pool_exec_fn(apr_thread_t *th, void *arg)
                 apr_thread_mutex_unlock(_tp_lock);
             }
 
-            atomic_inc(_tp_depth_total[*my_depth]);
+            tbx_atomic_inc(_tp_depth_total[*my_depth]);
 
             //** Check if we may have set a new concurrency limit for the depth
-            concurrent = atomic_inc(_tp_depth_concurrent[*my_depth]) + 1;
+            concurrent = tbx_atomic_inc(_tp_depth_concurrent[*my_depth]) + 1;
             if (concurrent > my->depth_concurrent[*my_depth]) {
                 apr_thread_mutex_lock(_tp_lock);  //** We passed the local check so now check the global table
                 if (concurrent > _tp_depth_concurrent_max[*my_depth]) {
@@ -225,19 +224,19 @@ void  *thread_pool_exec_fn(apr_thread_t *th, void *arg)
         }
     }
 
-    log_printf(4, "tp_recv: Start!!! gid=%d tid=%d op->depth=%d op->overflow_slot=%d n_overflow=%d\n", gop_id(gop), tid, op->depth, op->overflow_slot, atomic_get(tpc->n_overflow));
+    log_printf(4, "tp_recv: Start!!! gid=%d tid=%d op->depth=%d op->overflow_slot=%d n_overflow=%d\n", gop_id(gop), tid, op->depth, op->overflow_slot, tbx_atomic_get(tpc->n_overflow));
 //    log_printf(4, "tp_recv: Start!!! gid=%d tid=%d depth=%d\n", gop_id(gop), tid, op->depth);
-    atomic_inc(tpc->n_started);
+    tbx_atomic_inc(tpc->n_started);
 
     status = op->fn(op->arg, gop_id(gop));
     if (_tp_stats > 0) {
         if (tid != op->parent_tid) {
-            atomic_dec(_tp_depth_concurrent[*(_thread_local_depth_ptr())]);
-            atomic_dec(_tp_concurrent);
+            tbx_atomic_dec(_tp_depth_concurrent[*(_thread_local_depth_ptr())]);
+            tbx_atomic_dec(_tp_concurrent);
         }
     }
 
-    log_printf(4, "tp_recv: end!!! gid=%d ptid=%d status=%d op->depth=%d op->overflow_slot=%d n_overflow=%d\n", gop_id(gop), op->parent_tid, status.op_status, op->depth, op->overflow_slot, atomic_get(tpc->n_overflow));
+    log_printf(4, "tp_recv: end!!! gid=%d ptid=%d status=%d op->depth=%d op->overflow_slot=%d n_overflow=%d\n", gop_id(gop), op->parent_tid, status.op_status, op->depth, op->overflow_slot, tbx_atomic_get(tpc->n_overflow));
 
     if (op->overflow_slot != -1) { //** Need to clean up our overflow slot
         apr_thread_mutex_lock(_tp_lock);
@@ -245,8 +244,8 @@ void  *thread_pool_exec_fn(apr_thread_t *th, void *arg)
         apr_thread_mutex_unlock(_tp_lock);
     }
 
-    atomic_inc(tpc->n_completed);
-    if (op->via_submit == 1) atomic_dec(tpc->n_running);  //** Update the concurrency if started by calling the proper submit fn
+    tbx_atomic_inc(tpc->n_completed);
+    if (op->via_submit == 1) tbx_atomic_dec(tpc->n_running);  //** Update the concurrency if started by calling the proper submit fn
 
     gop_mark_completed(gop, status);
 
@@ -254,7 +253,7 @@ void  *thread_pool_exec_fn(apr_thread_t *th, void *arg)
     *my_depth = start_depth;
 
     //** Check if we need to get something from the overflow que
-    if (atomic_get(tpc->n_overflow) > 0) {
+    if (tbx_atomic_get(tpc->n_overflow) > 0) {
         apr_thread_mutex_lock(_tp_lock);
         gop = _tpc_overflow_next(tpc);
 
@@ -268,8 +267,6 @@ void  *thread_pool_exec_fn(apr_thread_t *th, void *arg)
 
         if (gop) _tp_submit_op(NULL, gop); //** If we got one just loop around and process it
     }
-
-    return(NULL);
 }
 
 //*************************************************************
@@ -281,11 +278,11 @@ void init_tp_op(thread_pool_context_t *tpc, thread_pool_op_t *op)
     op_generic_t *gop;
 
     //** Clear it
-    type_memclear(op, thread_pool_op_t, 1);
+    tbx_type_memclear(op, thread_pool_op_t, 1);
 
     op->depth =  *(_thread_local_depth_ptr()) + 1; //** Store my recursion depth
     op->overflow_slot = -1;
-    op->parent_tid = atomic_thread_id;   //** Also store the parent TID so we can adjust the depth if needed
+    op->parent_tid = tbx_atomic_thread_id;   //** Also store the parent TID so we can adjust the depth if needed
 
     //** Now munge the pointers
     gop = &(op->gop);
@@ -324,9 +321,9 @@ op_generic_t *new_thread_pool_op(thread_pool_context_t *tpc, char *que, op_statu
     thread_pool_op_t *op;
 
     //** Make the struct and clear it
-    type_malloc(op, thread_pool_op_t, 1);
+    tbx_type_malloc(op, thread_pool_op_t, 1);
 
-    atomic_inc(tpc->n_ops);
+    tbx_atomic_inc(tpc->n_ops);
 
     init_tp_op(tpc, op);
 

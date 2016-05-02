@@ -21,13 +21,13 @@
 #define _log_module_index 150
 
 #include "ex3_types.h"
-#include "random.h"
-#include "log.h"
+#include <tbx/random.h>
+#include <tbx/log.h>
 
 void generate_ex_id(ex_id_t *id)
 {
     //** Fill with random data
-    get_random(id, sizeof(ex_id_t));
+    tbx_random_bytes_get(id, sizeof(ex_id_t));
 
     //** Mask the sign bit cause JAVA doesn't like unsigned numbers
     *id = (*id) << 1;

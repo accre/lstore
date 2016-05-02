@@ -2,16 +2,17 @@
 
 //#define _DISABLE_LOG 1
 
+#include <assert.h>
 #include <string.h>
 #include <stdio.h>
-#include <assert.h>
-#include "assert_result.h"
-#include "fmttypes.h"
-#include "type_malloc.h"
-#include "iniparse.h"
-#include "string_token.h"
-#include "log.h"
-#include "stack.h"
+#include <stdlib.h>
+#include "tbx/assert_result.h"
+#include "tbx/fmttypes.h"
+#include "tbx/type_malloc.h"
+#include "tbx/iniparse.h"
+#include "tbx/string_token.h"
+#include "tbx/log.h"
+#include "tbx/stack.h"
 
 #define BUFMAX 8192
 
@@ -26,6 +27,58 @@ typedef struct {  //** Used for Reading the ini file
     tbx_stack_t *stack;
     tbx_stack_t *include_paths;
 } bfile_t;
+
+struct tbx_inip_element_t {  //** Key/Value pair
+    char *key;
+    char *value;
+    struct tbx_inip_element_t *next;
+};
+
+struct tbx_inip_group_t {  //** Group
+    char *group;
+    tbx_inip_element_t *list;
+    struct tbx_inip_group_t *next;
+};
+
+struct tbx_inip_file_t {  //File
+    tbx_inip_group_t *tree;
+    int  n_groups;
+};
+
+// Accessors
+tbx_inip_element_t * tbx_inip_ele_first(tbx_inip_group_t *group) {
+    return group->list;
+}
+
+char *tbx_inip_ele_key_get(tbx_inip_element_t *ele) {
+    return ((ele) == NULL) ? NULL : (ele)->key;
+}
+
+char *tbx_inip_ele_value_get(tbx_inip_element_t *ele) {
+    return ((ele) == NULL) ? NULL : (ele)->value;
+}
+
+tbx_inip_element_t *tbx_inip_ele_next(tbx_inip_element_t *ele) {
+    return ((ele) == NULL) ? NULL : (ele)->next;
+}
+tbx_inip_group_t *tbx_inip_group_first(tbx_inip_file_t *inip) {
+    return inip->tree;
+}
+char *tbx_inip_group_get(tbx_inip_group_t *g) {
+    return g->group;
+}
+tbx_inip_group_t *tbx_inip_group_next(tbx_inip_group_t *g) {
+    return ((g) == NULL) ? NULL : (g)->next;
+}
+int tbx_inip_n_groups(tbx_inip_file_t *inip) {
+    return inip->n_groups;
+}
+void tbx_inip_group_free(tbx_inip_group_t *g) {
+    free(g->group);
+}
+void tbx_inip_group_set(tbx_inip_group_t *ig, char *value) {
+    ig->group = value;
+}
 
 //***********************************************************************
 // bfile_fopen - Opens the requested file scanning the include paths
@@ -44,14 +97,14 @@ FILE *bfile_fopen(tbx_stack_t *include_paths, char *fname)
     }
 
     //** Relative path so cycle through the prefixes
-    move_to_top(include_paths);
-    while ((path = get_ele_data(include_paths)) != NULL) {
+    tbx_stack_move_to_top(include_paths);
+    while ((path = tbx_get_ele_data(include_paths)) != NULL) {
         snprintf(fullpath, BUFMAX, "%s/%s", path, fname);
         fd = fopen(fullpath, "r");
         log_printf(15, "checking path=%s fname=%s fullpath=%s fd=%p\n", path, fname, fullpath, fd);
         if (fd != NULL) return(fd);   //** Found it so kick out
 
-        move_down(include_paths);
+        tbx_stack_move_down(include_paths);
     }
 
     return(NULL);
@@ -79,7 +132,7 @@ char * _get_line(bfile_t *bfd)
         fclose(bfd->curr->fd);
         free(bfd->curr);
 
-        bfd->curr = (bfile_entry_t *)pop(bfd->stack);
+        bfd->curr = (bfile_entry_t *) tbx_stack_pop(bfd->stack);
         if (bfd->curr == NULL) {
             return(NULL);   //** EOF or Error
         } else {
@@ -88,14 +141,14 @@ char * _get_line(bfile_t *bfd)
     }
 
     //** Remove any comments
-    comment = escape_strchr('\\', bfd->curr->buffer, '#');
+    comment = tbx_stk_escape_strchr('\\', bfd->curr->buffer, '#');
     if (comment != NULL) comment[0] = '\0';
 
     if (strncmp(bfd->curr->buffer, "%include ", 9) == 0) { //** In include them open and recurse
-        fname = string_token(&(bfd->curr->buffer[8]), " \n", &last, &fin);
+        fname = tbx_stk_string_token(&(bfd->curr->buffer[8]), " \n", &last, &fin);
         log_printf(10, "_get_line: Opening include file %s\n", fname);
 
-        type_malloc(entry, bfile_entry_t, 1);
+        tbx_type_malloc(entry, bfile_entry_t, 1);
         entry->fd = bfile_fopen(bfd->include_paths, fname);
         if (entry->fd == NULL) {  //** Can't open the file
             log_printf(1, "_get_line: Problem opening include file !%s!\n", fname);
@@ -103,15 +156,15 @@ char * _get_line(bfile_t *bfd)
             abort();
         }
         entry->used = 0;
-        push(bfd->stack, (void *)bfd->curr);
+        tbx_stack_push(bfd->stack, (void *)bfd->curr);
         bfd->curr = entry;
 
         return(_get_line(bfd));
     } else if (strncmp(bfd->curr->buffer, "%include_path ", 14) == 0) { //** Add an include path to the search list
-        fname = string_token(&(bfd->curr->buffer[13]), " \n", &last, &fin);
+        fname = tbx_stk_string_token(&(bfd->curr->buffer[13]), " \n", &last, &fin);
         log_printf(10, "_get_line: Adding include path %s\n", fname);
-        move_to_bottom(bfd->include_paths);
-        insert_below(bfd->include_paths, strdup(fname));
+        tbx_stack_move_to_bottom(bfd->include_paths);
+        tbx_stack_insert_below(bfd->include_paths, strdup(fname));
     }
 
     log_printf(15, "_get_line: buffer=%s\n", bfd->curr->buffer);
@@ -138,12 +191,12 @@ tbx_inip_element_t *_parse_ele(bfile_t *bfd)
 
         bfd->curr->used = 0;
 
-        key = string_token(text, " =\r\n", &last, &fin);
+        key = tbx_stk_string_token(text, " =\r\n", &last, &fin);
         log_printf(15, "_parse_ele: key=!%s!\n", key);
         if (fin == 0) {
-            val = string_token(NULL, " =\r\n", &last, &fin);
+            val = tbx_stk_string_token(NULL, " =\r\n", &last, &fin);
 
-            type_malloc(ele,  tbx_inip_element_t, 1);
+            tbx_type_malloc(ele,  tbx_inip_element_t, 1);
 
             ele->key = strdup(key);
             ele->value = (val == NULL) ? NULL : strdup(val);
@@ -205,9 +258,9 @@ tbx_inip_group_t *_next_group(bfile_t *bfd)
             end[0] = '\0';  //** Terminate the ending point
             start++;  //** Move the starting point to the next character
 
-            text = string_trim(start); //** Trim the whitespace
-//        text = string_token(start, " ", &last, &i);
-            type_malloc(g, tbx_inip_group_t, 1);
+            text = tbx_stk_string_trim(start); //** Trim the whitespace
+//        text = tbx_stk_string_token(start, " ", &last, &i);
+            tbx_type_malloc(g, tbx_inip_group_t, 1);
             g->group = strdup(text);
             g->list = NULL;
             g->next = NULL;
@@ -265,7 +318,7 @@ void _free_group(tbx_inip_group_t *group)
 // inip_destroy - Destroys an inip structure
 //***********************************************************************
 
-void inip_destroy(tbx_inip_file_t *inip)
+void tbx_inip_destroy(tbx_inip_file_t *inip)
 {
     tbx_inip_group_t *group, *next;
     if (inip == NULL) return;
@@ -303,7 +356,7 @@ tbx_inip_element_t *_find_key(tbx_inip_group_t *group, const char *name)
 //  inip_find_key - Scans the group for the given key and returns the value
 //***********************************************************************
 
-char *inip_find_key(tbx_inip_group_t *group, const char *name)
+char *tbx_inip_key_find(tbx_inip_group_t *group, const char *name)
 {
     tbx_inip_element_t *ele;
 
@@ -318,7 +371,7 @@ char *inip_find_key(tbx_inip_group_t *group, const char *name)
 //  inip_find_group - Scans the tree for the given group
 //***********************************************************************
 
-tbx_inip_group_t *inip_find_group(tbx_inip_file_t *inip, const char *name)
+tbx_inip_group_t *tbx_inip_group_find(tbx_inip_file_t *inip, const char *name)
 {
     tbx_inip_group_t *group;
 
@@ -338,7 +391,7 @@ tbx_inip_element_t *_find_group_key(tbx_inip_file_t *inip, const char *group_nam
 {
     log_printf(15, "_find_group_key: Looking for group=%s key=%s!\n", group_name, key);
 
-    tbx_inip_group_t *g = inip_find_group(inip, group_name);
+    tbx_inip_group_t *g = tbx_inip_group_find(inip, group_name);
     if (g == NULL) {
         log_printf(15, "_find_group_key: group=%s key=%s Can't find group!\n", group_name, key);
         return(NULL);
@@ -359,12 +412,12 @@ tbx_inip_element_t *_find_group_key(tbx_inip_file_t *inip, const char *group_nam
 // inip_get_* - Routines for getting group/key values
 //***********************************************************************
 
-int64_t inip_get_integer(tbx_inip_file_t *inip, const char *group, const char *key, int64_t def)
+int64_t tbx_inip_integer_get(tbx_inip_file_t *inip, const char *group, const char *key, int64_t def)
 {
     tbx_inip_element_t *ele = _find_group_key(inip, group, key);
     if (ele == NULL) return(def);
 
-    return(string_get_integer(ele->value));
+    return(tbx_stk_string_get_integer(ele->value));
 }
 
 uint64_t inip_get_unsigned_integer(tbx_inip_file_t *inip, const char *group, const char *key, uint64_t def)
@@ -379,17 +432,17 @@ uint64_t inip_get_unsigned_integer(tbx_inip_file_t *inip, const char *group, con
 
 //***********************************************************************
 
-double inip_get_double(tbx_inip_file_t *inip, const char *group, const char *key, double def)
+double tbx_inip_double_get(tbx_inip_file_t *inip, const char *group, const char *key, double def)
 {
     tbx_inip_element_t *ele = _find_group_key(inip, group, key);
     if (ele == NULL) return(def);
 
-    return(string_get_double(ele->value));
+    return(tbx_stk_string_get_double(ele->value));
 }
 
 //***********************************************************************
 
-char *inip_get_string(tbx_inip_file_t *inip, const char *group, const char *key, char *def)
+char *tbx_inip_string_get(tbx_inip_file_t *inip, const char *group, const char *key, char *def)
 {
     char *value = def;
     tbx_inip_element_t *ele = _find_group_key(inip, group, key);
@@ -412,18 +465,18 @@ tbx_inip_file_t *inip_read_fd(FILE *fd)
     bfile_t bfd;
     bfile_entry_t *entry;
 
-    type_malloc_clear(entry, bfile_entry_t, 1);
+    tbx_type_malloc_clear(entry, bfile_entry_t, 1);
     entry->fd = fd;
 
     rewind(fd);
 
     entry->used = 0;
     bfd.curr = entry;
-    bfd.stack = new_stack();
-    bfd.include_paths = new_stack();
-    push(bfd.include_paths, strdup("."));  //** By default always look in the CWD 1st
+    bfd.stack = tbx_stack_new();
+    bfd.include_paths = tbx_stack_new();
+    tbx_stack_push(bfd.include_paths, strdup("."));  //** By default always look in the CWD 1st
 
-    type_malloc(inip, tbx_inip_file_t, 1);
+    tbx_type_malloc(inip, tbx_inip_file_t, 1);
 
     group = _next_group(&bfd);
     inip->tree = NULL;
@@ -447,13 +500,13 @@ tbx_inip_file_t *inip_read_fd(FILE *fd)
         free(bfd.curr);
     }
 
-    while ((entry = (bfile_entry_t *)pop(bfd.stack)) != NULL) {
+    while ((entry = (bfile_entry_t *) tbx_stack_pop(bfd.stack)) != NULL) {
         fclose(entry->fd);
         free(entry);
     }
 
-    free_stack(bfd.stack, 1);
-    free_stack(bfd.include_paths, 1);
+    tbx_free_stack(bfd.stack, 1);
+    tbx_free_stack(bfd.include_paths, 1);
 
     return(inip);
 }
@@ -462,7 +515,7 @@ tbx_inip_file_t *inip_read_fd(FILE *fd)
 //  inip_read - Reads a .ini file
 //***********************************************************************
 
-tbx_inip_file_t *inip_read(const char *fname)
+tbx_inip_file_t *tbx_inip_file_read(const char *fname)
 {
     FILE *fd;
 
@@ -481,7 +534,7 @@ tbx_inip_file_t *inip_read(const char *fname)
 //  inip_read_text - Converts a character array into a .ini file
 //***********************************************************************
 
-tbx_inip_file_t *inip_read_text(const char *text)
+tbx_inip_file_t *tbx_inip_string_read(const char *text)
 {
     FILE *fd = tmpfile();
     fprintf(fd, "%s\n", text);

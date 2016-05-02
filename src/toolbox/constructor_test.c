@@ -1,5 +1,5 @@
 /* Test construction/destruction functionality */
-#include "constructor_wrapper.h"
+#include "tbx/constructor_wrapper.h"
 #include <fcntl.h>
 #include <stdio.h>
 #include <string.h>

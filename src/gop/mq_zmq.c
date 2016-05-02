@@ -22,10 +22,10 @@
 
 #include "mq_portal.h"
 #include "mq_roundrobin.h"
-#include "type_malloc.h"
-#include "log.h"
+#include <tbx/type_malloc.h>
+#include <tbx/log.h>
 #include "apr_signal.h"
-#include "random.h"
+#include <tbx/random.h>
 #include <stdlib.h>
 
 //*************************************************************
@@ -78,7 +78,7 @@ int zero_native_connect(mq_socket_t *socket, const char *format, ...)
     //** Set the ID
     if (socket->type != MQ_PAIR) {
         snprintf(buf, 255, format, args);
-        snprintf(id, 255, "%s:" I64T , buf, random_int(1, 1000000));
+        snprintf(id, 255, "%s:" I64T , buf, tbx_random_int64(1, 1000000));
         zsocket_set_identity(socket->arg, id);
         log_printf(4, "Unique hostname created = %s\n", id);
     }
@@ -129,11 +129,11 @@ int zero_native_send(mq_socket_t *socket, mq_msg_t *msg, int flags)
     n = 0;
     f = mq_msg_first(msg);
     if (f->len > 1) {
-        log_printf(5, "dest=!%.*s! nframes=%d\n", f->len, (char *)(f->data), stack_size(msg));
-        flush_log();
+        log_printf(5, "dest=!%.*s! nframes=%d\n", f->len, (char *)(f->data), tbx_stack_size(msg));
+        tbx_flush_log();
     } else {
-        log_printf(5, "dest=(single byte) nframes=%d\n", stack_size(msg));
-        flush_log();
+        log_printf(5, "dest=(single byte) nframes=%d\n", tbx_stack_size(msg));
+        tbx_flush_log();
     }
 
     while ((fn = mq_msg_next(msg)) != NULL) {
@@ -145,10 +145,10 @@ int zero_native_send(mq_socket_t *socket, mq_msg_t *msg, int flags)
             }
             loop++;
             log_printf(5, "sending frame=%d len=%d bytes=%d errno=%d loop=%d\n", count, f->len, bytes, errno, loop);
-            flush_log();
+            tbx_flush_log();
             if (f->len>0) {
                 log_printf(5, "byte=%uc\n", (unsigned char)f->data[0]);
-                flush_log();
+                tbx_flush_log();
             }
         } while ((bytes == -1) && (loop < 10));
         n += bytes;
@@ -187,7 +187,7 @@ int zero_native_recv(mq_socket_t *socket, mq_msg_t *msg, int flags)
     n = 0;
     nframes = 0;
     do {
-        type_malloc(f, mq_frame_t, 1);
+        tbx_type_malloc(f, mq_frame_t, 1);
 
         rc = zmq_msg_init(&(f->zmsg));
         assert (rc == 0);
@@ -219,7 +219,7 @@ mq_socket_t *zero_create_native_socket(mq_socket_context_t *ctx, int stype)
 {
     mq_socket_t *s;
 
-    type_malloc_clear(s, mq_socket_t, 1);
+    tbx_type_malloc_clear(s, mq_socket_t, 1);
 
     s->type = stype;
     s->arg = zsocket_new((zctx_t *)ctx->arg, stype);
@@ -266,7 +266,7 @@ mq_socket_t *zero_create_trace_router_socket(mq_socket_context_t *ctx)
 {
     mq_socket_t *s;
 
-    type_malloc_clear(s, mq_socket_t, 1);
+    tbx_type_malloc_clear(s, mq_socket_t, 1);
 
     s->type = MQ_TRACE_ROUTER;
     s->arg = zsocket_new((zctx_t *)ctx->arg, ZMQ_ROUTER);
@@ -293,7 +293,7 @@ mq_socket_t *zero_create_round_robin_socket(mq_socket_context_t *ctx)
 {
     mq_socket_t *s;
 
-    type_malloc_clear(s, mq_socket_t, 1);
+    tbx_type_malloc_clear(s, mq_socket_t, 1);
 
     s->type = MQ_ROUND_ROBIN;
     s->arg = zsocket_new((zctx_t *)ctx->arg, ZMQ_ROUTER);
@@ -340,7 +340,7 @@ mq_socket_t *zero_create_simple_router_socket(mq_socket_context_t *ctx)
 {
     mq_socket_t *s;
 
-    type_malloc_clear(s, mq_socket_t, 1);
+    tbx_type_malloc_clear(s, mq_socket_t, 1);
 
     s->type = MQ_SIMPLE_ROUTER;
     s->arg = zsocket_new((zctx_t *)ctx->arg, ZMQ_ROUTER);
@@ -401,10 +401,10 @@ void zero_socket_context_destroy(mq_socket_context_t *ctx)
     //** zctx_destroy() close them
 //  sleep(1);
     log_printf(5, "after sleep\n");
-    flush_log();
+    tbx_flush_log();
     zctx_destroy((zctx_t **)&(ctx->arg));
     log_printf(5, "after zctx_destroy\n");
-    flush_log();
+    tbx_flush_log();
     free(ctx);
 }
 
@@ -416,7 +416,7 @@ mq_socket_context_t *zero_socket_context_new()
 {
     mq_socket_context_t *ctx;
 
-    type_malloc_clear(ctx, mq_socket_context_t, 1);
+    tbx_type_malloc_clear(ctx, mq_socket_context_t, 1);
 
     ctx->arg = zctx_new();
     assert(ctx->arg != NULL);

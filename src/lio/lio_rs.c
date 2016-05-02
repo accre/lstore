@@ -18,16 +18,16 @@
 
 
 #include <assert.h>
-#include "assert_result.h"
+#include <tbx/assert_result.h>
 #include <apr_signal.h>
 #include "lio_fuse.h"
 #include "exnode.h"
-#include "log.h"
-#include "iniparse.h"
-#include "type_malloc.h"
+#include <tbx/log.h>
+#include <tbx/iniparse.h>
+#include <tbx/type_malloc.h>
 #include "thread_pool.h"
 #include "lio.h"
-#include "string_token.h"
+#include <tbx/string_token.h>
 
 apr_thread_mutex_t *lock;
 apr_thread_cond_t *cond;
@@ -67,23 +67,23 @@ void print_rid_summary(char *config, int base)
     up_total = up_free = up_used = n_usable = 0;
 
     //** Create the table where we hold the info
-    table = list_create(0, &list_string_compare, NULL, NULL, free);
+    table = tbx_list_create(0, &tbx_list_string_compare, NULL, NULL, free);
 
     //** Open the file
-    kf = inip_read_text(config); assert(kf);
+    kf = tbx_inip_string_read(config); assert(kf);
 
     //** And load it
-    ig = inip_first_group(kf);
+    ig = tbx_inip_group_first(kf);
     while (ig != NULL) {
-        key = inip_get_group(ig);
+        key = tbx_inip_group_get(ig);
         if (strcmp("rid", key) == 0) {  //** Found a resource
-            type_malloc_clear(rsum, rid_summary_t, 1);
+            tbx_type_malloc_clear(rsum, rid_summary_t, 1);
 
             //** Now cycle through the attributes
-            ele = inip_first_element(ig);
+            ele = tbx_inip_ele_first(ig);
             while (ele != NULL) {
-                key = inip_get_element_key(ele);
-                value = inip_get_element_value(ele);
+                key = tbx_inip_ele_key_get(ele);
+                value = tbx_inip_ele_value_get(ele);
                 if (strcmp(key, "rid_key") == 0) {  //** This is the RID so store it separate
                     rsum->rid = value;
                 } else if (strcmp(key, "ds_key") == 0) {  //** Data service key
@@ -104,7 +104,7 @@ void print_rid_summary(char *config, int base)
                     space_total += rsum->total;
                 }
 
-                ele = inip_next_element(ele);
+                ele = tbx_inip_ele_next(ele);
             }
 
             if (rsum->status == 0) {
@@ -113,38 +113,38 @@ void print_rid_summary(char *config, int base)
                 up_used += rsum->used;
                 up_total += rsum->total;
             }
-            list_insert(table, rsum->rid, rsum);
+            tbx_list_insert(table, rsum->rid, rsum);
         }
 
-        ig = inip_next_group(ig);
+        ig = tbx_inip_group_next(ig);
     }
 
 
     //** Now print the summary
     printf("        RID             State             Host                      Used       Free        Total\n");
     printf("--------------------  --------  ------------------------------   ---------   ---------   ---------\n");
-    it = list_iter_search(table, NULL, 0);
-    while (list_next(&it, (tbx_list_key_t **)&key, (tbx_list_data_t **)&rsum) == 0) {
+    it = tbx_list_iter_search(table, NULL, 0);
+    while (tbx_list_next(&it, (tbx_list_key_t **)&key, (tbx_list_data_t **)&rsum) == 0) {
         printf("%-20s  %8s  %-30s   %8s   %8s   %8s\n", rsum->rid, state[rsum->status], rsum->host,
-               pretty_print_double_with_scale(base, (double)rsum->used, ubuf),
-               pretty_print_double_with_scale(base, (double)rsum->free, fbuf),
-               pretty_print_double_with_scale(base, (double)rsum->total, tbuf));
+               tbx_stk_pretty_print_double_with_scale(base, (double)rsum->used, ubuf),
+               tbx_stk_pretty_print_double_with_scale(base, (double)rsum->free, fbuf),
+               tbx_stk_pretty_print_double_with_scale(base, (double)rsum->total, tbuf));
     }
 
     printf("--------------------------------------------------------------   ---------   ---------   ---------\n");
     printf("Usable Resources:%4d                                            %8s   %8s   %8s\n", n_usable,
-           pretty_print_double_with_scale(base, (double)up_used, ubuf),
-           pretty_print_double_with_scale(base, (double)up_free, fbuf),
-           pretty_print_double_with_scale(base, (double)up_total, tbuf));
-    printf("Total Resources: %4d                                            %8s   %8s   %8s\n", list_key_count(table),
-           pretty_print_double_with_scale(base, (double)space_used, ubuf),
-           pretty_print_double_with_scale(base, (double)space_free, fbuf),
-           pretty_print_double_with_scale(base, (double)space_total, tbuf));
+           tbx_stk_pretty_print_double_with_scale(base, (double)up_used, ubuf),
+           tbx_stk_pretty_print_double_with_scale(base, (double)up_free, fbuf),
+           tbx_stk_pretty_print_double_with_scale(base, (double)up_total, tbuf));
+    printf("Total Resources: %4d                                            %8s   %8s   %8s\n", tbx_list_key_count(table),
+           tbx_stk_pretty_print_double_with_scale(base, (double)space_used, ubuf),
+           tbx_stk_pretty_print_double_with_scale(base, (double)space_free, fbuf),
+           tbx_stk_pretty_print_double_with_scale(base, (double)space_total, tbuf));
 
-    list_destroy(table);
+    tbx_list_destroy(table);
 
     //** Close the file
-    inip_destroy(kf);
+    tbx_inip_destroy(kf);
 }
 
 //*************************************************************************
@@ -243,15 +243,15 @@ int main(int argc, char **argv)
     } while (watch == 1);
 
     info_printf(lio_ifd, 5, "BEFORE unregister\n");
-    info_flush(lio_ifd);
+    tbx_info_flush(lio_ifd);
     rs_unregister_mapping_updates(lio_gc->rs, &notify);
     info_printf(lio_ifd, 5, "AFTER unregister\n");
-    info_flush(lio_ifd);
+    tbx_info_flush(lio_ifd);
 
     //** Cleanup
     apr_pool_destroy(mpool);
 
-//  info_printf(lio_ifd, 5, "AFTER shutdown\n"); info_flush(lio_ifd);
+//  info_printf(lio_ifd, 5, "AFTER shutdown\n"); tbx_info_flush(lio_ifd);
     lio_shutdown();
 
     return(0);

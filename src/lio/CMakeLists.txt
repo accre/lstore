@@ -68,14 +68,14 @@ set(LSTORE_INCLUDE_PUBLIC ${toolbox_INCLUDE_DIR}
 # common objects
 set(LSTORE_PROJECT_OBJS
     archive.c authn_fake.c cache_amp.c cache_base.c cache_lru.c
-    cache_round_robin.c cred_default.c data_block.c ds_ibp.c erasure_tools.c
-    ex3_compare.c ex3_global.c ex3_header.c ex_id.c exnode.c exnode_config.c
-    lio_config.c lio_core.c lio_core_io.c lio_core_os.c lio_fuse_core.c
-    os_base.c os_file.c os_remote_client.c os_remote_server.c os_timecache.c
-    osaz_fake.c raid4.c rs_query_base.c rs_remote_client.c rs_remote_server.c
-    rs_simple.c rs_space.c segment_base.c segment_cache.c segment_file.c
-    segment_jerasure.c segment_linear.c segment_log.c segment_lun.c
-    service_manager.c view_base.c
+    cache_round_robin.c constructor.c cred_default.c data_block.c ds_ibp.c
+    erasure_tools.c ex3_compare.c ex3_global.c ex3_header.c ex_id.c exnode.c
+    exnode_config.c lio_config.c lio_core.c lio_core_io.c lio_core_os.c
+    lio_fuse_core.c os_base.c os_file.c os_remote_client.c os_remote_server.c
+    os_timecache.c osaz_fake.c raid4.c rs_query_base.c rs_remote_client.c
+    rs_remote_server.c rs_simple.c rs_space.c segment_base.c segment_cache.c
+    segment_file.c segment_jerasure.c segment_linear.c segment_log.c
+    segment_lun.c service_manager.c view_base.c
 )
     
 set(LSTORE_PROJECT_INCLUDES_OLD
@@ -120,3 +120,6 @@ else()
     target_include_directories(trace_replay PUBLIC ${LSTORE_INCLUDE_PUBLIC})
 endif()
 
+foreach(f ${LSTORE_PROJECT_EXECUTABLES} trace_replay)
+    set_target_properties(${f} PROPERTIES COMPILE_FLAGS "-DLSTORE_HACK_EXPORT")
+endforeach()

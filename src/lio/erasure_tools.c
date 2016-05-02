@@ -20,14 +20,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
-#include "assert_result.h"
+#include <tbx/assert_result.h>
 #include <jerasure/cauchy.h>
 #include <jerasure/liberation.h>
 #include <jerasure/reed_sol.h>
 #include <jerasure/jerasure.h>
 #include "raid4.h"
 #include "erasure_tools.h"
-#include "log.h"
+#include <tbx/log.h>
 
 
 const char *JE_method[N_JE_METHODS] = {"reed_sol_van", "reed_sol_r6_op", "cauchy_orig", "cauchy_good", "blaum_roth", "liberation", "liber8tion", "raid4"};

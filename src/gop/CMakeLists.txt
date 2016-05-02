@@ -53,6 +53,7 @@ if(NOT APPLE)
         rr_mq_client rr_mq_server rr_mq_test rr_mq_worker
     )
 endif(NOT APPLE)
+
 set(LSTORE_LIBS ${APR_LIBRARY}
                     ${APRUTIL_LIBRARY}
                     ${CZMQ_LIBRARY}
@@ -72,3 +73,8 @@ else()
     include(LStoreFunctions)
     lstore_project_common(gop)
 endif()
+
+foreach(f ${LSTORE_PROJECT_EXECUTABLES})
+    set_target_properties(${f} PROPERTIES COMPILE_FLAGS "-DLSTORE_HACK_EXPORT")
+endforeach()
+

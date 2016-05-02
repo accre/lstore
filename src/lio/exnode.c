@@ -17,12 +17,12 @@
 #define _log_module_index 151
 
 #include <string.h>
-#include "list.h"
+#include <tbx/list.h>
 #include "exnode.h"
-#include "type_malloc.h"
-#include "log.h"
-#include "append_printf.h"
-#include "string_token.h"
+#include <tbx/type_malloc.h>
+#include <tbx/log.h>
+#include <tbx/append_printf.h>
+#include <tbx/string_token.h>
 #include "ex3_compare.h"
 #include "ex3_system.h"
 
@@ -42,7 +42,7 @@ typedef struct {
 ex_tbx_iovec_t *ex_iovec_create()
 {
     ex_tbx_iovec_t *iov;
-    type_malloc_clear(iov, ex_tbx_iovec_t, 1);
+    tbx_type_malloc_clear(iov, ex_tbx_iovec_t, 1);
     return(iov);
 }
 
@@ -87,12 +87,12 @@ exnode_t *exnode_create()
 {
     exnode_t *ex;
 
-    type_malloc_clear(ex, exnode_t, 1);
+    tbx_type_malloc_clear(ex, exnode_t, 1);
 
     ex_header_init(&(ex->header));
 
-    ex->block = list_create(0, &skiplist_compare_ex_id, NULL, NULL, NULL);
-    ex->view = list_create(0, &skiplist_compare_ex_id, NULL, NULL, NULL);
+    ex->block = tbx_list_create(0, &skiplist_compare_ex_id, NULL, NULL, NULL);
+    ex->view = tbx_list_create(0, &skiplist_compare_ex_id, NULL, NULL, NULL);
 
     return(ex);
 }
@@ -113,19 +113,19 @@ op_status_t exnode_remove_func(void *arg, int gid)
     opque_t *q;
     op_status_t status;
 
-    n = list_key_count(ex->view);
+    n = tbx_list_key_count(ex->view);
     if (n == 0) return(op_success_status);
 
     q = new_opque();
     opque_start_execution(q);
 
     //** Start the cloning process
-    it = list_iter_search(ex->view, NULL, 0);
-    list_next(&it, (tbx_list_key_t **)&id, (tbx_list_data_t **)&seg);
+    it = tbx_list_iter_search(ex->view, NULL, 0);
+    tbx_list_next(&it, (tbx_list_key_t **)&id, (tbx_list_data_t **)&seg);
     while (seg != NULL) {
         gop = segment_remove(seg, op->da, op->timeout);
         opque_add(q, gop);
-        list_next(&it, (tbx_list_key_t **)&id, (tbx_list_data_t **)&seg);
+        tbx_list_next(&it, (tbx_list_key_t **)&id, (tbx_list_data_t **)&seg);
     }
 
     //** Wait for everything to complete
@@ -146,7 +146,7 @@ op_generic_t *exnode_remove(thread_pool_context_t *tpc, exnode_t *ex, data_attr_
     exnode_clone_t *exc;
     op_generic_t *gop;
 
-    type_malloc_clear(exc, exnode_clone_t, 1);
+    tbx_type_malloc_clear(exc, exnode_clone_t, 1);
     exc->src_ex = ex;
     exc->da = da;
     exc->timeout = timeout;
@@ -173,17 +173,17 @@ op_status_t exnode_clone_func(void *arg, int gid)
     opque_t *q;
     op_status_t status;
 
-    n = list_key_count(sex->view);
+    n = tbx_list_key_count(sex->view);
     if (n == 0) return(op_success_status);
 
     //** make space to store the segments as they are creted
-    type_malloc(new_seg, segment_t *, 2*n);
+    tbx_type_malloc(new_seg, segment_t *, 2*n);
     q = new_opque();
     opque_start_execution(q);
 
     //** Start the cloning process
-    it = list_iter_search(sex->view, NULL, 0);
-    list_next(&it, (tbx_list_key_t **)&id, (tbx_list_data_t **)&src_seg);
+    it = tbx_list_iter_search(sex->view, NULL, 0);
+    tbx_list_next(&it, (tbx_list_key_t **)&id, (tbx_list_data_t **)&src_seg);
     i = 0;
     while (src_seg != NULL) {
         new_seg[i] = src_seg;
@@ -191,7 +191,7 @@ op_status_t exnode_clone_func(void *arg, int gid)
         gop = segment_clone(src_seg, exc->da, &(new_seg[i+1]), exc->mode, exc->arg, exc->timeout);
         gop_set_private(gop, &(new_seg[i]));
         opque_add(q, gop);
-        list_next(&it, (tbx_list_key_t **)&id, (tbx_list_data_t **)&src_seg);
+        tbx_list_next(&it, (tbx_list_key_t **)&id, (tbx_list_data_t **)&src_seg);
         i += 2;
     }
 
@@ -209,8 +209,8 @@ op_status_t exnode_clone_func(void *arg, int gid)
             segment_destroy(segptr[1]);
         } else {
             if (did == segment_id(segptr[0])) ex->default_seg = segptr[1];
-            list_insert(ex->view, &segment_id(segptr[1]), segptr[1]);
-            atomic_inc(segptr[1]->ref_count);
+            tbx_list_insert(ex->view, &segment_id(segptr[1]), segptr[1]);
+            tbx_atomic_inc(segptr[1]->ref_count);
 //err = segptr[1]->ref_count;
 //log_printf(0, "new id=" XIDT " ctr=%d\n", segment_id(segptr[1]), err);
         }
@@ -242,7 +242,7 @@ op_generic_t *exnode_clone(thread_pool_context_t *tpc, exnode_t *src_ex, data_at
     if (src_ex->header.type != NULL) (*ex)->header.type = strdup(src_ex->header.type);
     generate_ex_id(&((*ex)->header.id));
 
-    type_malloc(exc, exnode_clone_t, 1);
+    tbx_type_malloc(exc, exnode_clone_t, 1);
     exc->src_ex = src_ex;
     exc->dest_ex = *ex;
     exc->da = da;
@@ -266,7 +266,7 @@ void exnode_exchange_free(exnode_exchange_t *exp)
         exp->text.text= NULL;
     }
     if (exp->text.fd != NULL) {
-        inip_destroy(exp->text.fd);
+        tbx_inip_destroy(exp->text.fd);
         exp->text.fd = NULL;
     }
 }
@@ -300,7 +300,7 @@ exnode_exchange_t *exnode_exchange_create(int type)
 {
     exnode_exchange_t *exp;
 
-    type_malloc(exp, exnode_exchange_t, 1);
+    tbx_type_malloc(exp, exnode_exchange_t, 1);
     exnode_exchange_init(exp, type);
 
     return(exp);
@@ -312,7 +312,7 @@ exnode_exchange_t *exnode_exchange_create(int type)
 
 ex_id_t exnode_exchange_get_default_view_id(exnode_exchange_t *exp)
 {
-    return(inip_get_integer(exp->text.fd, "view", "default", 0));
+    return(tbx_inip_integer_get(exp->text.fd, "view", "default", 0));
 }
 
 //*************************************************************************
@@ -326,7 +326,7 @@ exnode_exchange_t *exnode_exchange_text_parse(char *text)
     exp = exnode_exchange_create(EX_TEXT);
 
     exp->text.text = text;
-    exp->text.fd = inip_read_text(text);
+    exp->text.fd = tbx_inip_string_read(text);
 
     return(exp);
 }
@@ -347,7 +347,7 @@ exnode_exchange_t *exnode_exchange_load_file(char *fname)
     fseek(fd, 0, SEEK_END);
     i = ftell(fd);
 //  printf("exnode size=%d\n", i);
-    type_malloc(text, char, i + 2);
+    tbx_type_malloc(text, char, i + 2);
     fseek(fd, 0, SEEK_SET);
     fread(text, i, 1, fd);
     text[i] = '\n';
@@ -371,7 +371,7 @@ void exnode_exchange_append_text(exnode_exchange_t *exp, char *buffer)
 
     n = (exp->text.text == NULL) ? 0 : strlen(exp->text.text);
 
-    type_malloc_clear(text, char, n + strlen(buffer) + 3);
+    tbx_type_malloc_clear(text, char, n + strlen(buffer) + 3);
     if (n == 0) {
         sprintf(text, "%s", buffer);
         exp->text.text = text;
@@ -412,52 +412,52 @@ int exnode_deserialize_text(exnode_t *ex, exnode_exchange_t *exp, service_manage
     fd = exp->text.fd;
 
     //** Load the header
-    g = inip_find_group(fd, exgrp);
+    g = tbx_inip_group_find(fd, exgrp);
     if (g != NULL) {
-        ex->header.name =  inip_get_string(fd, exgrp, "name", "");
-        ex->header.id = inip_get_integer(fd, exgrp, "id", 0);
+        ex->header.name =  tbx_inip_string_get(fd, exgrp, "name", "");
+        ex->header.id = tbx_inip_integer_get(fd, exgrp, "id", 0);
     }
 
     //** and the views
-    g = inip_find_group(fd, "view");
+    g = tbx_inip_group_find(fd, "view");
     if (g == NULL) {
         log_printf(1, "exnode_deserialize_text: No views found!\n");
         return(1);
     }
 
-    ele = inip_first_element(g);
+    ele = tbx_inip_ele_first(g);
     while (ele != NULL) {
-        key = inip_get_element_key(ele);
+        key = tbx_inip_ele_key_get(ele);
         if (strcmp(key, "segment") == 0) {
 
             //** Parse the segment line
-            value = inip_get_element_value(ele);
+            value = tbx_inip_ele_value_get(ele);
             token = strdup(value);
             id = 0;
-            sscanf(string_token(token, ":", &bstate, &fin), XIDT, &id);
+            sscanf(tbx_stk_string_token(token, ":", &bstate, &fin), XIDT, &id);
             free(token);
 
             //** and load it
             log_printf(15, "exnode_load_text: Loading view segment " XIDT "\n", id);
             seg = load_segment(ess, id, exp);
             if (seg != NULL) {
-                atomic_inc(seg->ref_count);
-                list_insert(ex->view, &segment_id(seg), seg);
+                tbx_atomic_inc(seg->ref_count);
+                tbx_list_insert(ex->view, &segment_id(seg), seg);
             } else {
                 log_printf(0, "Bad segment!  sid=" XIDT "\n", id);
             }
         }
 
         //** Move to the next segmnet to load
-        ele = inip_next_element(ele);
+        ele = tbx_inip_ele_next(ele);
     }
 
     //** Now get the default segment to use
-    id = inip_get_integer(fd, "view", "default", 0);
+    id = tbx_inip_integer_get(fd, "view", "default", 0);
     if (id == 0) {   //** No default so use the last one loaded
         ex->default_seg = seg;
     } else {
-        ex->default_seg = list_search(ex->view, &id);
+        ex->default_seg = tbx_list_search(ex->view, &id);
     }
 
     return((ex->default_seg == NULL) ? 1 : 0);
@@ -503,31 +503,31 @@ int exnode_serialize_text(exnode_t *ex, exnode_exchange_t *exp)
     tbx_sl_iter_t it;
 
     //** Store the header
-    append_printf(buffer, &used, bufsize, "[exnode]\n");
+    tbx_append_printf(buffer, &used, bufsize, "[exnode]\n");
     if (ex->header.name != NULL) {
         if (strcmp(ex->header.name, "") != 0) {
-            etext = escape_text("=", '\\', ex->header.name);
-            append_printf(buffer, &used, bufsize, "name=%s\n", etext);
+            etext = tbx_stk_escape_text("=", '\\', ex->header.name);
+            tbx_append_printf(buffer, &used, bufsize, "name=%s\n", etext);
             free(etext);
         }
     }
-    append_printf(buffer, &used, bufsize, "id=" XIDT "\n\n", ex->header.id);
+    tbx_append_printf(buffer, &used, bufsize, "id=" XIDT "\n\n", ex->header.id);
 
     exnode_exchange_append_text(exp, buffer);
 
     //** and all the views
     used = 0;
-    append_printf(buffer, &used, bufsize, "\n[view]\n");
-    if (ex->default_seg != NULL) append_printf(buffer, &used, bufsize, "default=" XIDT "\n", segment_id(ex->default_seg));
-    it = list_iter_search(ex->view, (tbx_sl_key_t *)NULL, 0);
-    while (list_next(&it, (tbx_sl_key_t **)&id, (tbx_sl_data_t **)&seg) == 0) {
+    tbx_append_printf(buffer, &used, bufsize, "\n[view]\n");
+    if (ex->default_seg != NULL) tbx_append_printf(buffer, &used, bufsize, "default=" XIDT "\n", segment_id(ex->default_seg));
+    it = tbx_list_iter_search(ex->view, (tbx_sl_key_t *)NULL, 0);
+    while (tbx_list_next(&it, (tbx_sl_key_t **)&id, (tbx_sl_data_t **)&seg) == 0) {
         log_printf(15, "exnode_serialize_text: Storing view segment " XIDT "\n", segment_id(seg));
-        append_printf(buffer, &used, bufsize, "segment=" XIDT "\n", *id);
+        tbx_append_printf(buffer, &used, bufsize, "segment=" XIDT "\n", *id);
 
         segment_serialize(seg, exp);
     }
 
-    append_printf(buffer, &used, bufsize, "\n");
+    tbx_append_printf(buffer, &used, bufsize, "\n");
 
     exnode_exchange_append_text(exp, buffer);
 
@@ -571,23 +571,23 @@ void exnode_destroy(exnode_t *ex)
     ex_id_t id;
 
     //** Remove the views
-    it = list_iter_search(ex->view, (tbx_sl_key_t *)NULL, 0);
-    while (list_next(&it, (tbx_sl_key_t *)&id, (tbx_sl_data_t *)&seg) == 0) {
-        atomic_dec(seg->ref_count);
+    it = tbx_list_iter_search(ex->view, (tbx_sl_key_t *)NULL, 0);
+    while (tbx_list_next(&it, (tbx_sl_key_t *)&id, (tbx_sl_data_t *)&seg) == 0) {
+        tbx_atomic_dec(seg->ref_count);
         log_printf(15, "exnode_destroy: seg->id=" XIDT " ref_count=%d\n", segment_id(seg), seg->ref_count);
         segment_destroy(seg);
-        list_next(&it, (tbx_sl_key_t *)&id, (tbx_sl_data_t *)&seg);
+        tbx_list_next(&it, (tbx_sl_key_t *)&id, (tbx_sl_data_t *)&seg);
     }
 
     //** And any blocks
-    it = list_iter_search(ex->block, (tbx_sl_key_t *)NULL, 0);
-    while (list_next(&it, (tbx_sl_key_t *)&id, (tbx_sl_data_t *)&b) == 0) {
+    it = tbx_list_iter_search(ex->block, (tbx_sl_key_t *)NULL, 0);
+    while (tbx_list_next(&it, (tbx_sl_key_t *)&id, (tbx_sl_data_t *)&b) == 0) {
         data_block_destroy(b);
-        list_next(&it, (tbx_sl_key_t *)&id, (tbx_sl_data_t *)&b);
+        tbx_list_next(&it, (tbx_sl_key_t *)&id, (tbx_sl_data_t *)&b);
     }
 
-    list_destroy(ex->view);
-    list_destroy(ex->block);
+    tbx_list_destroy(ex->view);
+    tbx_list_destroy(ex->block);
 
     ex_header_release(&(ex->header));
 

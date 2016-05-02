@@ -21,7 +21,7 @@
 #define __CACHE_LRU_H_
 
 #include "cache_priv.h"
-#include "iniparse.h"
+#include <tbx/iniparse.h>
 
 
 #ifdef __cplusplus

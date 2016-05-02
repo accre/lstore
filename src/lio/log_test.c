@@ -35,11 +35,11 @@
 
 
 #include <assert.h>
-#include "assert_result.h"
+#include <tbx/assert_result.h>
 #include "exnode.h"
-#include "log.h"
-#include "iniparse.h"
-#include "type_malloc.h"
+#include <tbx/log.h>
+#include <tbx/iniparse.h>
+#include <tbx/type_malloc.h>
 #include "thread_pool.h"
 #include "segment_log_priv.h"
 #include "lio.h"
@@ -98,7 +98,7 @@ int compare_buffers_print(char *b1, char *b2, int len, ex_off_t offset)
 //i=(b1[last] == b2[last]) ? 0 : 1;
 //log_printf(0, "last compare=%d lst=%d\n", i, last);
 
-    flush_log();
+    tbx_flush_log();
     return(err);
 }
 
@@ -202,12 +202,12 @@ int main(int argc, char **argv)
     //** Make the base buffer and write it
     memset(base_data, 'B', bufsize);
     base_data[bufsize] = '\0';
-    tbuffer_single(&tbuf, bufsize, base_data);
+    tbx_tbuf_single(&tbuf, bufsize, base_data);
     ex_iovec_single(&ex_iov, 0, bufsize);
     assert_result(gop_sync_exec(segment_write(s->base_seg, lio_gc->da, NULL, 1, &ex_iov, &tbuf, 0, lio_gc->timeout)), OP_STATE_SUCCESS);
 
     s->file_size = bufsize;  //** Since we're peeking we have to adjust the file size
-    tbuffer_single(&tbuf, bufsize, buffer);  //** Read it directly back fro mthe base to make sure that works
+    tbx_tbuf_single(&tbuf, bufsize, buffer);  //** Read it directly back fro mthe base to make sure that works
     assert_result(gop_sync_exec(segment_read(s->base_seg, lio_gc->da, NULL, 1, &ex_iov, &tbuf, 0, lio_gc->timeout)), OP_STATE_SUCCESS);
     buffer[bufsize] = '\0';
     assert_result(strcmp(buffer, base_data), 0);

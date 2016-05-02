@@ -18,10 +18,10 @@
 
 #include <stdlib.h>
 #include <assert.h>
-#include "assert_result.h"
+#include <tbx/assert_result.h>
 #include "ibp.h"
 #include "host_portal.h"
-#include "log.h"
+#include <tbx/log.h>
 #include "opque.h"
 
 ibp_context_t *_ibp_sync = NULL;
@@ -118,7 +118,7 @@ int ibp_sync_command(ibp_op_t *iop)
         gop->op->cmd.hostport = NULL;
     }
 
-    log_printf(10, "ibp_sync_command: IBP_errno=%d\n", IBP_errno); //flush_log();
+    log_printf(10, "ibp_sync_command: IBP_errno=%d\n", IBP_errno); //tbx_flush_log();
 
     return(IBP_errno);
 }
@@ -192,7 +192,7 @@ unsigned long int IBP_write(ibp_cap_t *cap, ibp_timer_t  *timer, char *data,
     int err;
     tbx_tbuf_t buf;
 
-    tbuffer_single(&buf, size, data);
+    tbx_tbuf_single(&buf, size, data);
 
     make_ibp_sync_context();
 
@@ -216,7 +216,7 @@ unsigned long int IBP_store(ibp_cap_t *cap, ibp_timer_t  *timer, char *data,
     int err;
     tbx_tbuf_t buf;
 
-    tbuffer_single(&buf, size, data);
+    tbx_tbuf_single(&buf, size, data);
 
     make_ibp_sync_context();
 
@@ -240,7 +240,7 @@ unsigned long int IBP_load(ibp_cap_t *cap, ibp_timer_t  *timer, char *data,
     int err;
     tbx_tbuf_t buf;
 
-    tbuffer_single(&buf, size, data);
+    tbx_tbuf_single(&buf, size, data);
 
     make_ibp_sync_context();
 

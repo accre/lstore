@@ -29,7 +29,7 @@
 #include <pthread.h>
 #include <string.h>
 #include <assert.h>
-#include "assert_result.h"
+#include "tbx/assert_result.h"
 #include <apr_pools.h>
 #include <apr_thread_mutex.h>
 
@@ -37,9 +37,7 @@
 extern "C" {
 #endif
 
-#define _mlog_size 1024
 
-typedef struct tbx_log_fd_t tbx_log_fd_t;
 struct tbx_log_fd_t {
     apr_thread_mutex_t *lock;
     FILE *fd;
@@ -47,28 +45,17 @@ struct tbx_log_fd_t {
     int level;
 };
 
-#define INFO_HEADER_NONE   0
-#define INFO_HEADER_THREAD 1
-#define INFO_HEADER_FULL   2
-
-TBX_API tbx_log_fd_t *info_create(FILE *fd, int header_type, int level);
 void info_destroy(tbx_log_fd_t *fd);
 void flush_info(tbx_log_fd_t *fd);
 //int info_printf(tbx_log_fd_t *fd, int level, const char *fmt, ...);
-TBX_API extern int minfo_printf(tbx_log_fd_t *ifd, int module_index, int level, const char *fn, const char *fname, int line, const char *fmt, ...) __attribute__((format (printf, 7, 8)));
-TBX_API void info_flush(tbx_log_fd_t *ifd);
-#define info_printf(ifd, n, ...) minfo_printf(ifd, _log_module_index, n, __func__, _mlog_file_table[_log_module_index], __LINE__, __VA_ARGS__)
 #define get_info_header_type(fd) fd->header_type
 #define set_info_header_type(fd, new_type) fd->header_type = new_type
-#define get_info_level(fd) fd->level
 #define set_info_level(fd, new_level) fd->level = new_level
 
 
 extern int _mlog_table[_mlog_size];
-extern TBX_API char *_mlog_file_table[_mlog_size];
 
 extern FILE *_log_fd;
-extern TBX_API int _log_level;
 extern long int _log_maxsize;
 extern long int _log_currsize;
 extern int _log_special;
@@ -76,44 +63,31 @@ extern apr_thread_mutex_t *_log_lock;
 extern apr_pool_t *_log_mpool;
 extern char _log_fname[1024];
 
-TBX_API void _open_log(char *fname, int dolock);
 void _close_log();
-void TBX_API flush_log();
-extern TBX_API int mlog_printf(int suppress_header, int module_index, int level, const char *fn, const char *fname, int line, const char *fmt, ...) __attribute__((format (printf, 7, 8)));
-TBX_API void mlog_load(char *fname, char *output_override, int log_level_override);
-
-#ifndef _log_module_index
-#define _log_module_index 0
-#endif
 
 #define _lock_log() apr_thread_mutex_lock(_log_lock)
 #define _unlock_log() apr_thread_mutex_unlock(_log_lock)
 #define log_code(a) a
-#define log_level() _log_level
-#define set_log_level(n) _log_level = n
 #define set_log_maxsize(n) _log_maxsize = n
 #define close_log()  _close_log()
 #define log_fd()     _log_fd
 
-#define open_log(fname) _open_log(fname, 1)
-#define log_printf(n, ...) mlog_printf(0, _log_module_index, n, __func__, _mlog_file_table[_log_module_index], __LINE__, __VA_ARGS__)
-#define slog_printf(n, ...) mlog_printf(1, _log_module_index, n, __func__, _mlog_file_table[_log_module_index], __LINE__, __VA_ARGS__)
+#define open_log(fname) tbx_open_log(fname, 1)
 
 #define assign_log_fd(fd) _log_fd = fd
 
 #else
 
 #define log_code(a)
-#define set_log_level(n)
-#define log_level() -1
+#define tbx_set_log_level(n)
 #define open_log(fname)
 #define close_log()
 #define log_fd()     stdout
 #define truncate_log()
 #define assign_log_fd(fd)
-#define flush_log()
+#define tbx_flush_log()
 #define log_printf(n, ...)
-#define mlog_printf(mi, n, ...)
+#define tbx_mlog_printf(mi, n, ...)
 
 #endif
 

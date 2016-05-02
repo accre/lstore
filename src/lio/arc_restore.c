@@ -18,9 +18,9 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
-#include "iniparse.h"
+#include <tbx/iniparse.h>
 #include "lio.h"
-#include "type_malloc.h"
+#include <tbx/type_malloc.h>
 #include "thread_pool.h"
 #include "apr_time.h"
 #include "archive.h"
@@ -69,7 +69,7 @@ int run_lstore_copy(char *spath, char *dpath)
     buffer_size = 1024 * 1024 * 20;
 
 
-    type_malloc_clear(flist, lio_cp_path_t, 1);
+    tbx_type_malloc_clear(flist, lio_cp_path_t, 1);
     max_spawn = lio_parallel_task_count;
 
     // target in lio to download

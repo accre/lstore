@@ -31,9 +31,9 @@
 
 #define debug_code(a) a
 #define debug_printf(n, ...) log_printf(n, __VA_ARGS__)
-#define set_debug_level(n) set_log_level(n)
-#define flush_debug() flush_log()
-#define debug_level() log_level()
+#define set_debug_level(n) tbx_set_log_level(n)
+#define flush_debug() tbx_flush_log()
+#define debug_level() tbx_log_level()
 
 #else
 

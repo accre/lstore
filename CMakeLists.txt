@@ -2,8 +2,6 @@
 cmake_minimum_required(VERSION 2.8)
 project(LStore C)
 
-set(CMAKE_BUILD_TYPE "Debug" CACHE STRING "Build type (Debug|Release)")
-
 set(LSTORE_PROJECT_VERSION "0.5.1-unknown_commit" CACHE STRING "Project version <major>.<minor>.<patch>[-<git-hash>[-<other-tags>]]")
 
 # Options
@@ -26,6 +24,11 @@ option(INSTALL_DEB_RELEASE "Install deb lstore-release (may require root)" OFF)
 option(INSTALL_META "Install meta-package (may require root)" OFF)
 option(INSTALL_TESTS "Install test binaries" OFF)
 
+if(NOT CMAKE_BUILD_TYPE)
+    # Has to be handled differently :(
+    set(CMAKE_BUILD_TYPE "Debug" CACHE STRING "Build type" FORCE)
+endif()
+
 set(LSTORE_REPO_URL "http://repo.accre.vanderbilt.edu"
         CACHE STRING "URL for lstore-release")
 set(CMAKE_INSTALL_PREFIX "${CMAKE_BINARY_DIR}/local"
@@ -33,9 +36,8 @@ set(CMAKE_INSTALL_PREFIX "${CMAKE_BINARY_DIR}/local"
 # Defines
 set(USE_SUPERBUILD ON)
 set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -fPIC -D_REENTRANT -D_GNU_SOURCE -D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64 -fvisibility=hidden")
-set(CMAKE_C_FLAGS_RELEASE "-O3")
-set(CMAKE_C_FLAGS_DEBUG "-O0 -g3 -Wall -Wextra -Wno-unused-parameter -Wno-deprecated-declarations -Werror=format -Werror=implicit-function-declaration -Werror=incompatible-pointer-types")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -fPIC -D_REENTRANT -D_GNU_SOURCE -D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64 -fvisibility=hidden -Werror=implicit-function-declaration")
+set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -Wall -Wextra -Wno-unused-parameter -Wno-deprecated-declarations -Werror=format -Werror=implicit-function-declaration -Werror=incompatible-pointer-types")
 set(CMAKE_MACOSX_RPATH ON)
 if(INSTALL_EXTERNALS)
     set(EXTERNAL_INSTALL_DIR ${CMAKE_INSTALL_PREFIX})
@@ -44,20 +46,28 @@ else()
 endif()
 
 if(ENABLE_ASAN)
-    set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -fsanitize=address -fno-omit-frame-pointer -O1")
+    set(LSTORE_SANITIZE_FLAGS "${LSTORE_SANITIZE_FLAGS} -fsanitize=address -fno-omit-frame-pointer -fno-optimize-sibling-calls")
+    set(LSTORE_SANITIZE_LINK_FLAGS "${LSTORE_SANITIZE_LINK_FLAGS} -fsanitize=address")
 endif()
 if(ENABLE_MSAN)
-    set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -fsanitize=memory -fno-omit-frame-pointer -fno-optimize-sibling-calls -O1")
+    set(LSTORE_SANITIZE_FLAGS "${LSTORE_SANITIZE_FLAGS} -fsanitize=memory -fno-omit-frame-pointer -fno-optimize-sibling-calls -O1")
+    set(LSTORE_SANITIZE_LINK_FLAGS "${LSTORE_SANITIZE_LINK_FLAGS} -fsanitize=memory")
 endif()
 if(ENABLE_TSAN)
-    set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -fsanitize=thread -fno-omit-frame-pointer -pie")
+    set(LSTORE_SANITIZE_FLAGS "${LSTORE_SANITIZE_FLAGS} -fsanitize=thread -fno-omit-frame-pointer -pie")
+    set(LSTORE_SANITIZE_LINK_FLAGS "${LSTORE_SANITIZE_LINK_FLAGS} -fsanitize=thread")
 endif()
 if(ENABLE_UBSAN)
-    set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -fsanitize=undefined -fno-omit-frame-pointer")
+    set(LSTORE_SANITIZE_FLAGS "${LSTORE_SANITIZE_FLAGS} -fsanitize=undefined -fno-omit-frame-pointer")
+    set(LSTORE_SANITIZE_LINK_FLAGS "${LSTORE_SANITIZE_LINK_FLAGS} -fsanitize=undefined")
 endif()
 if(ENABLE_COVERAGE)
-    set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -fprofile-arcs -ftest-coverage")
+    set(LSTORE_SANITIZE_FLAGS "${LSTORE_SANITIZE_FLAGS} -fprofile-arcs -ftest-coverage")
 endif()
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${LSTORE_SANITIZE_FLAGS}")
+set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${LSTORE_SANITIZE_LINK_FLAGS}")
+set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} ${LSTORE_SANITIZE_LINK_FLAGS}")
+
 if(ENABLE_FUZZ)
     if("${CMAKE_C_COMPILER_ID}" STREQUAL "GNU")
         set(FUZZ_COMPILE_NAME "afl-gcc")
@@ -127,6 +137,8 @@ if(BUILD_TESTS)
                              test/benchmark-sizes.c)
     target_link_libraries(run-benchmarks pthread lio)
     target_include_directories(run-benchmarks SYSTEM PRIVATE ${APR_INCLUDE_DIR})
+    SET_TARGET_PROPERTIES(run-benchmarks PROPERTIES
+                            COMPILE_FLAGS "-DLSTORE_HACK_EXPORT")
     if(INSTALL_TESTS)
         install(TARGETS run-tests run-benchmarks
                 DESTINATION ${CMAKE_INSTALL_BINDIR}

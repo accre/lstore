@@ -22,13 +22,13 @@
 #include "tbx/toolbox_visibility.h"
 #include <apr_thread_mutex.h>
 #include <apr_pools.h>
-#include "pigeon_hole.h"
+#include "tbx/pigeon_hole.h"
+#include "tbx/pigeon_coop.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-typedef struct tbx_pc_t tbx_pc_t;
 struct tbx_pc_t {
     apr_thread_mutex_t *lock;
     apr_pool_t *pool;
@@ -45,28 +45,20 @@ struct tbx_pc_t {
     void (*free)(void *arg, int size, void *dshelf);
 };
 
-typedef struct tbx_pch_t tbx_pch_t;
 struct tbx_pch_t {
     int shelf;
     int hole;
     void *data;
 };
 
-typedef struct tbx_pc_iter_t tbx_pc_iter_t;
 struct tbx_pc_iter_t {
-    tbx_pc_t *pc;
+    struct tbx_pc_t *pc;
     int shelf;
     tbx_ph_iter_t pi;
 };
 
-tbx_pc_iter_t pigeon_coop_iterator_init(tbx_pc_t *ph);
-tbx_pch_t pigeon_coop_iterator_next(tbx_pc_iter_t *pci);
-TBX_API void *pigeon_coop_hole_data(tbx_pch_t *pch);
-TBX_API int release_pigeon_coop_hole(tbx_pc_t *ph, tbx_pch_t *pch);
-TBX_API tbx_pch_t reserve_pigeon_coop_hole(tbx_pc_t *pc);
-TBX_API void destroy_pigeon_coop(tbx_pc_t *ph);
-TBX_API tbx_pc_t *new_pigeon_coop(const char *name, int size, int item_size, void *new_arg, void *(*new)(void *arg, int size),
-                               void (*free)(void *arg, int size, void *dshelf));
+tbx_pc_iter_t pigeon_coop_iterator_init(struct tbx_pc_t *ph);
+tbx_pch_t pigeon_coop_iterator_next(struct tbx_pc_iter_t *pci);
 
 #ifdef __cplusplus
 }

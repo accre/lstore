@@ -16,12 +16,39 @@
 
 #define _log_module_index 165
 
+#include <assert.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+#include "tbx/transfer_buffer.h"
+#include "tbx/log.h"
+#include "tbx/type_malloc.h"
+#include "tbx/random.h"
 #include "transfer_buffer.h"
-#include "log.h"
-#include "type_malloc.h"
-#include "random.h"
+
+void tbx_tbuf_var_nbytes_set(tbx_tbuf_var_t *tbv, size_t nbytes) {
+    tbv->nbytes = nbytes;
+}
+
+tbx_iovec_t * tbx_tbuf_var_buffer_get(tbx_tbuf_var_t *tbv) {
+    return tbv->buffer;
+}
+
+int tbx_tbuf_var_n_iov_get(tbx_tbuf_var_t *tbv) {
+    return tbv->n_iov;
+}
+
+int tbx_tbuf_next_block(tbx_tbuf_t *tb, size_t off, tbx_tbuf_var_t *tbv) {
+    return tb->next_block(tb, off, tbv);
+}
+
+size_t tbx_tbuf_var_size() {
+    return sizeof(tbx_tbuf_var_t);
+}
+
+int tbx_tbuf_next(tbx_tbuf_t *tb, size_t off, tbx_tbuf_var_t *tbv) {
+    return tb->next_block(tb, off, tbv);
+}
 
 //*************************************************************
 // tbuffer_var_create - Creates a transfer buffer VARIABLE containing
@@ -32,8 +59,8 @@ tbx_tbuf_var_t *tbuffer_var_create()
 {
     tbx_tbuf_var_t *tbv;
 
-    type_malloc(tbv, tbx_tbuf_var_t, 1);
-    tbuffer_var_init(tbv);
+    tbx_type_malloc(tbv, tbx_tbuf_var_t, 1);
+    tbx_tbuf_var_init(tbv);
 
     return(tbv);
 }
@@ -56,7 +83,7 @@ tbx_tbuf_t *tbuffer_create()
 {
     tbx_tbuf_t *tb;
 
-    type_malloc_clear(tb, tbx_tbuf_t, 1);
+    tbx_type_malloc_clear(tb, tbx_tbuf_t, 1);
 
     return(tb);
 }
@@ -98,15 +125,15 @@ int tb_next_block(tbx_tbuf_t *tb, size_t pos, tbx_tbuf_var_t *tbv)
         tbv->priv.curr_slot = 0;
     }
 //log_printf(15, "tb_next_block: start slot=%d total_slots=%d iov[0]=%p\n", tbv->priv.curr_slot, ti->n, v);
-//flush_log();
+//tbx_flush_log();
 
 //dn = v[0].iov_len;
-//log_printf(15, "tb_next_block: v[0].len=%d\n", dn); flush_log();
+//log_printf(15, "tb_next_block: v[0].len=%d\n", dn); tbx_flush_log();
 
     slot = tbv->priv.curr_slot;
     for (i=tbv->priv.curr_slot; i<ti->n; i++) {
 //dn = v[i].iov_len;
-//log_printf(15, "tb_next_block: i=%d len=%d\n", i, dn); flush_log();
+//log_printf(15, "tb_next_block: i=%d len=%d\n", i, dn); tbx_flush_log();
         ds = sum + v[i].iov_len;
         if (ds > pos) {
             slot = i;
@@ -180,7 +207,7 @@ int tb_next_block(tbx_tbuf_t *tb, size_t pos, tbx_tbuf_var_t *tbv)
 //  tbuffer_single - Simple single buffer transfer
 //***************************************************************************
 
-void tbuffer_single(tbx_tbuf_t *tb, size_t nbytes, char *buffer)
+void tbx_tbuf_single(tbx_tbuf_t *tb, size_t nbytes, char *buffer)
 {
     tb->buf.n = 1;
     tb->buf.total_bytes = nbytes;
@@ -197,7 +224,7 @@ void tbuffer_single(tbx_tbuf_t *tb, size_t nbytes, char *buffer)
 //  tbuffer_vec - Mulitple buffer transfer
 //***************************************************************************
 
-void tbuffer_vec(tbx_tbuf_t *tb, size_t total_bytes, size_t n_vec, tbx_iovec_t *iov)
+void tbx_tbuf_vec(tbx_tbuf_t *tb, size_t total_bytes, size_t n_vec, tbx_iovec_t *iov)
 {
     tb->buf.n = n_vec;
     tb->buf.total_bytes = total_bytes;
@@ -212,7 +239,7 @@ void tbuffer_vec(tbx_tbuf_t *tb, size_t total_bytes, size_t n_vec, tbx_iovec_t *
 //  tbuffer_fn - User specified transfer function
 //***************************************************************************
 
-void tbuffer_fn(tbx_tbuf_t *tb, size_t total_bytes, void *arg, int (*next_block)(tbx_tbuf_t *tb, size_t pos, tbx_tbuf_var_t *tbv))
+void tbx_tbuf_fn(tbx_tbuf_t *tb, size_t total_bytes, void *arg, int (*next_block)(tbx_tbuf_t *tb, size_t pos, tbx_tbuf_var_t *tbv))
 
 {
     tb->arg = arg;
@@ -225,7 +252,7 @@ void tbuffer_fn(tbx_tbuf_t *tb, size_t total_bytes, void *arg, int (*next_block)
 //  tbuffer_size - Returns the buffer size
 //***************************************************************************
 
-size_t tbuffer_size(tbx_tbuf_t *tb)
+size_t tbx_tbuf_size(tbx_tbuf_t *tb)
 {
     return(tb->buf.total_bytes);
 }
@@ -233,20 +260,20 @@ size_t tbuffer_size(tbx_tbuf_t *tb)
 //***************************************************************************
 //  tbuffer_copy - Copies data between buffers
 //     This is done very simply by copying only 1 elemet of the tbx_iovec_t at a time
-//     and relying on the tbuffer_next() routine to keep track of the positions
+//     and relying on the tbx_tbuf_next() routine to keep track of the positions
 //     If the source destination is short and blank_missing = 1 then the corresponding
 //     destination blocks are 0'ed.  Otherwise they are left untouched.
 //***************************************************************************
 
-int tbuffer_copy(tbx_tbuf_t *tb_s, size_t off_s, tbx_tbuf_t *tb_d, size_t off_d, size_t nbytes, int blank_missing)
+int tbx_tbuf_copy(tbx_tbuf_t *tb_s, size_t off_s, tbx_tbuf_t *tb_d, size_t off_d, size_t nbytes, int blank_missing)
 {
     int si, di, n, err;
     size_t nleft, spos, dpos, len, sp_ele, dp_ele, slen_ele, dlen_ele, nskipped;
     tbx_tbuf_var_t stv;
     tbx_tbuf_var_t dtv;
 
-    tbuffer_var_init(&stv);
-    tbuffer_var_init(&dtv);
+    tbx_tbuf_var_init(&stv);
+    tbx_tbuf_var_init(&dtv);
 
     nskipped = 0;
     nleft = nbytes;
@@ -255,10 +282,10 @@ int tbuffer_copy(tbx_tbuf_t *tb_s, size_t off_s, tbx_tbuf_t *tb_d, size_t off_d,
     dpos = off_d;
     while ((nleft > 0) && (err == TBUFFER_OK)) {
         stv.nbytes = nleft;
-        err = tbuffer_next(tb_s, spos, &stv);
+        err = tbx_tbuf_next(tb_s, spos, &stv);
         if (err == TBUFFER_OK) {
             dtv.nbytes = nleft;
-            err = tbuffer_next(tb_d, dpos, &dtv);
+            err = tbx_tbuf_next(tb_d, dpos, &dtv);
             if (err == TBUFFER_OK) {
                 n = (stv.nbytes > dtv.nbytes) ? dtv.nbytes : stv.nbytes;
                 si = di = 0;
@@ -268,7 +295,7 @@ int tbuffer_copy(tbx_tbuf_t *tb_s, size_t off_s, tbx_tbuf_t *tb_d, size_t off_d,
                 while (n > 0) {
                     len = (slen_ele > dlen_ele) ? dlen_ele : slen_ele;
                     if ((dtv.buffer[di].iov_base != NULL) && (stv.buffer[si].iov_base != NULL)) {
-//log_printf(15, "dtv.buffer[%d].iov_base=%p stv.buffer[%d].iov_base=%p\n", di, dtv.buffer[di].iov_base, si, stv.buffer[si].iov_base); flush_log();
+//log_printf(15, "dtv.buffer[%d].iov_base=%p stv.buffer[%d].iov_base=%p\n", di, dtv.buffer[di].iov_base, si, stv.buffer[si].iov_base); tbx_flush_log();
                         memcpy(dtv.buffer[di].iov_base+dp_ele, stv.buffer[si].iov_base+sp_ele, len);
                     } else {
                         log_printf(15, "ERROR dtv.buffer[%d].iov_base=%p stv.buffer[%d].iov_base=%p\n", di, dtv.buffer[di].iov_base, si, stv.buffer[si].iov_base);
@@ -310,17 +337,17 @@ int tbuffer_copy(tbx_tbuf_t *tb_s, size_t off_s, tbx_tbuf_t *tb_d, size_t off_d,
 // tbuffer_memset - Similar to memset but for tbuffers
 //***************************************************************************
 
-int tbuffer_memset(tbx_tbuf_t *tb, size_t off, int c, size_t nbytes)
+int tbx_tbuf_memset(tbx_tbuf_t *tb, size_t off, int c, size_t nbytes)
 {
     tbx_iovec_t *v;
     int i;
     size_t nleft, dn, nclear, pos;
     tbx_tbuf_var_t tbv;
 
-    tbuffer_var_init(&tbv);
+    tbx_tbuf_var_init(&tbv);
 
     //** Make sure the buffer has enough space
-    nleft = tbuffer_size(tb) - off;
+    nleft = tbx_tbuf_size(tb) - off;
     if (nleft < nbytes) return(-1);
 
     //** Now actually do the setting
@@ -328,7 +355,7 @@ int tbuffer_memset(tbx_tbuf_t *tb, size_t off, int c, size_t nbytes)
     pos = off;
     while (nleft > 0) {
         tbv.nbytes = nleft;
-        tbuffer_next(tb, pos, &tbv);
+        tbx_tbuf_next(tb, pos, &tbv);
         v = tbv.buffer;
         nclear = 0;
         for (i=0; i<tbv.n_iov; i++) {
@@ -360,14 +387,14 @@ int tbx_tbuf_test_read(tbx_tbuf_t *tbuf, char *buffer, int bufsize, int off, int
 
 //log_printf(0, "tbx_tbuf_test_read: START n_iov=%d off=%d len=%d \n", tbuf->buf.n, off, len);
 
-    tbuffer_var_init(&tv);
+    tbx_tbuf_var_init(&tv);
 
     nleft = len;
     pos = off;
     opos = 0;
     while (nleft > 0) {
         tv.nbytes = nleft;
-        err = tbuffer_next(tbuf, pos, &tv);
+        err = tbx_tbuf_next(tbuf, pos, &tv);
         iov = tv.buffer;
         if (err != TBUFFER_OK) {
             log_printf(0, "tbx_tbuf_test_read:  Error from tbuffer_next! off=%d len=%d bufsize=%d nleft=%d pos=%d opos=%d\n", off, len, bufsize, nleft, pos, opos);
@@ -386,7 +413,7 @@ int tbx_tbuf_test_read(tbx_tbuf_t *tbuf, char *buffer, int bufsize, int off, int
 //log_printf(0, "tbx_tbuf_test_read: after loop n_iov=%d off=%d len=%d bufsize=%d nleft=%d pos=%d opos=%d\n", tv.n_iov, off, len, bufsize, nleft, pos, opos);
     }
 
-//flush_log();
+//tbx_flush_log();
 
     err = memcmp(&(buffer[off]), output, len);
     if (err != 0) {
@@ -432,7 +459,7 @@ int tbuffer_next_test_iovec(int n_iovec, int n_random, char *buffer, int bufsize
         frac = (i+1.0)/(n_iovec*1.0);
         maxlen = frac*bufsize - off;
 //log_printf(0, "tbuffer_next_text_iovec: n_iovec=%d i=%d frac=%lf maxlen=%d\n", n_iovec, i, frac,maxlen);
-        len = random_int(0, maxlen);
+        len = tbx_random_int64(0, maxlen);
         iov[i].iov_base = &(buffer[off]);
         iov[i].iov_len = len;
         off += len;
@@ -447,7 +474,7 @@ int tbuffer_next_test_iovec(int n_iovec, int n_random, char *buffer, int bufsize
 //  off += len;
 //}
 
-    tbuffer_vec(&tbuf, bufsize, n_iovec, iov);
+    tbx_tbuf_vec(&tbuf, bufsize, n_iovec, iov);
 
     //** Read and verify the buffer in a single read
     err = tbx_tbuf_test_read(&tbuf, buffer, bufsize, 0, bufsize);
@@ -458,8 +485,8 @@ int tbuffer_next_test_iovec(int n_iovec, int n_random, char *buffer, int bufsize
 
     //** Now do the random offset/len tests
     for (i=0; i<n_random; i++) {
-        off = random_int(0, bufsize);
-        len = random_int(0, bufsize - off);
+        off = tbx_random_int64(0, bufsize);
+        len = tbx_random_int64(0, bufsize - off);
         err = tbx_tbuf_test_read(&tbuf, buffer, bufsize, off, len);
         if (err != 0) {
             log_printf(0, "tbuffer_next_test_iovec: Error with random read: n_iovec=%d off=%d len=%d\n", n_iovec, off, len);
@@ -519,7 +546,7 @@ int tbuffer_copy_test_iovec(int n1_iovec, int n2_iovec, int n_random, char *buff
     for (i=0; i<n1_iovec; i++) {
         frac = (i+1.0)/(n1_iovec*1.0);
         maxlen = frac*bufsize - off1;
-        len = random_int(0, maxlen);
+        len = tbx_random_int64(0, maxlen);
         iov1[i].iov_base = &(buffer[off1]);
         iov1[i].iov_len = len;
         off1 += len;
@@ -534,14 +561,14 @@ int tbuffer_copy_test_iovec(int n1_iovec, int n2_iovec, int n_random, char *buff
 //  off1 += len;
 //}
 
-    tbuffer_vec(&tbuf1, bufsize, n1_iovec, iov1);
+    tbx_tbuf_vec(&tbuf1, bufsize, n1_iovec, iov1);
 
     //** Make the iov arrays
     off2 = 0;
     for (i=0; i<n2_iovec; i++) {
         frac = (i+1.0)/(n2_iovec*1.0);
         maxlen = frac*bufsize - off2;
-        len = random_int(0, maxlen);
+        len = tbx_random_int64(0, maxlen);
         iov2[i].iov_base = &(output[off2]);
         iov2[i].iov_len = len;
         off2 += len;
@@ -556,12 +583,12 @@ int tbuffer_copy_test_iovec(int n1_iovec, int n2_iovec, int n_random, char *buff
 //  off1 += len;
 //}
 
-    tbuffer_vec(&tbuf2, bufsize, n2_iovec, iov2);
+    tbx_tbuf_vec(&tbuf2, bufsize, n2_iovec, iov2);
 
     //** Read and verify the buffer in a single read
     memset(output, '-', bufsize);
     output[bufsize] = 0;
-    tbuffer_copy(&tbuf1, 0, &tbuf2, 0, bufsize, 1);
+    tbx_tbuf_copy(&tbuf1, 0, &tbuf2, 0, bufsize, 1);
     err = tbx_tbuf_test_read(&tbuf2, buffer, bufsize, 0, bufsize);
     if (err != 0) {
         log_printf(0, "tbuffer_copy_test_iovec: Error with single full read: n_iovec1=%d n_iovec2=%d\n", n1_iovec, n2_iovec);
@@ -570,13 +597,13 @@ int tbuffer_copy_test_iovec(int n1_iovec, int n2_iovec, int n_random, char *buff
 
     //** Now do the random offset/len tests
     for (i=0; i<n_random; i++) {
-        off1 = random_int(0, bufsize);
-        off2 = random_int(0, bufsize);
+        off1 = tbx_random_int64(0, bufsize);
+        off2 = tbx_random_int64(0, bufsize);
         len = (off1 > off2) ?  bufsize - off1 : bufsize - off2;
-        len = random_int(0, len);
+        len = tbx_random_int64(0, len);
         memset(output, '-', bufsize);
         output[bufsize] = 0;
-        tbuffer_copy(&tbuf1, 0, &tbuf2, 0, bufsize, 1);
+        tbx_tbuf_copy(&tbuf1, 0, &tbuf2, 0, bufsize, 1);
         err = tbx_tbuf_test_read(&tbuf2, buffer, bufsize, off2, len);
         if (err != 0) {
             log_printf(0, "tbuffer_next_test_iovec: Error with random read: n_iovec1=%d n_iovec2=%d off=%d len=%d\n", n1_iovec, n2_iovec, off2, len);

@@ -23,16 +23,19 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <assert.h>
-#include "assert_result.h"
-#include "log.h"
+#include "tbx/assert_result.h"
+#include "tbx/log.h"
+#include "tbx/pigeon_hole.h"
+#include "tbx/pigeon_coop.h"
 #include "pigeon_hole.h"
 #include "pigeon_coop.h"
+
 
 //***************************************************************************
 // pigeon_coop_hole_data - Returns a pointer to the data
 //***************************************************************************
 
-void *pigeon_coop_hole_data(tbx_pch_t *pch)
+void *tbx_pch_data(tbx_pch_t *pch)
 {
     return(pch->data);
 }
@@ -73,14 +76,14 @@ tbx_pch_t pigeon_coop_iterator_next(tbx_pc_iter_t *pci)
         pch.hole = -1;
         pch.data = NULL;
 
-//log_printf(10, "pigeon_coop_iterator_next: pc=%s nothing left 1\n", pc->name); flush_log();
+//log_printf(10, "pigeon_coop_iterator_next: pc=%s nothing left 1\n", pc->name); tbx_flush_log();
 
         return(pch);
     }
 
     apr_thread_mutex_lock(pc->lock);
 
-//log_printf(10, "pigeon_coop_iterator_next: pc=%s nshelves=%d nused=%d\n", pc->name, pc->nshelves, pc->nused); flush_log();
+//log_printf(10, "pigeon_coop_iterator_next: pc=%s nshelves=%d nused=%d\n", pc->name, pc->nshelves, pc->nused); tbx_flush_log();
 
     //** Check if coop contracted since last call
     if (pci->shelf >= pc->nshelves) {
@@ -89,7 +92,7 @@ tbx_pch_t pigeon_coop_iterator_next(tbx_pc_iter_t *pci)
         pch.hole = -1;
         pch.data = NULL;
 
-//log_printf(10, "pigeon_coop_iterator_next: pc=%s nothing left 2\n", pc->name); flush_log();
+//log_printf(10, "pigeon_coop_iterator_next: pc=%s nothing left 2\n", pc->name); tbx_flush_log();
         return(pch);
     }
 
@@ -100,7 +103,7 @@ tbx_pch_t pigeon_coop_iterator_next(tbx_pc_iter_t *pci)
         pch.hole = slot;
         pch.data = &(pc->data_shelf[pch.shelf][pch.hole*pc->item_size]);
 
-//log_printf(10, "pigeon_coop_iterator_next: pc=%s FOUND-1 shelf=%d slot=%d\n", pc->name, pch.shelf, pch.hole); flush_log();
+//log_printf(10, "pigeon_coop_iterator_next: pc=%s FOUND-1 shelf=%d slot=%d\n", pc->name, pch.shelf, pch.hole); tbx_flush_log();
 
         apr_thread_mutex_unlock(pc->lock);
 
@@ -116,7 +119,7 @@ tbx_pch_t pigeon_coop_iterator_next(tbx_pc_iter_t *pci)
                     pch.shelf = pci->shelf;
                     pch.hole = slot;
                     pch.data = (void *)&(pc->data_shelf[pch.shelf][pch.hole*pc->item_size]);
-//log_printf(10, "pigeon_coop_iterator_next: pc=%s FOUND-2 shelf=%d slot=%d\n", pc->name, pch.shelf, pch.hole); flush_log();
+//log_printf(10, "pigeon_coop_iterator_next: pc=%s FOUND-2 shelf=%d slot=%d\n", pc->name, pch.shelf, pch.hole); tbx_flush_log();
                     apr_thread_mutex_unlock(pc->lock);
                     return(pch);
                 }
@@ -146,7 +149,7 @@ tbx_pch_t pigeon_coop_iterator_next(tbx_pc_iter_t *pci)
 //
 //***************************************************************************
 
-int release_pigeon_coop_hole(tbx_pc_t *pc, tbx_pch_t *pch)
+int tbx_pch_release(tbx_pc_t *pc, tbx_pch_t *pch)
 {
     int i, n;
 
@@ -182,7 +185,7 @@ int release_pigeon_coop_hole(tbx_pc_t *pc, tbx_pch_t *pch)
         }
 
         log_printf(10, "release_pigeon_coop_hole: pc=%s Attempting to free shelves.  nshelves=%d last_used=%d nused=%d\n", pc->name, pc->nshelves, n, pc->nused);
-        flush_log();
+        tbx_flush_log();
         n = i+1;
 
         if (n < pc->nshelves) {
@@ -201,7 +204,7 @@ int release_pigeon_coop_hole(tbx_pc_t *pc, tbx_pch_t *pch)
             assert(pc->data_shelf != NULL);
 
             log_printf(10, "release_pigeon_coop_hole: pc=%s after free shelves.  nshelves=%d nused=%d\n", pc->name, pc->nshelves, pc->nused);
-            flush_log();
+            tbx_flush_log();
 
         }
     }
@@ -215,7 +218,7 @@ int release_pigeon_coop_hole(tbx_pc_t *pc, tbx_pch_t *pch)
 //  reserve_pigeon_coop_hole - Allocates a pigeon hole from the coop
 //***************************************************************************
 
-tbx_pch_t reserve_pigeon_coop_hole(tbx_pc_t *pc)
+tbx_pch_t tbx_pch_reserve(tbx_pc_t *pc)
 {
     int i, slot, n, start_shelf;
     tbx_pch_t pch;
@@ -272,14 +275,14 @@ tbx_pch_t reserve_pigeon_coop_hole(tbx_pc_t *pc)
 // destroy_pigeon_coop - Destroys a pigeon coop structure
 //***************************************************************************
 
-void destroy_pigeon_coop(tbx_pc_t *pc)
+void tbx_pc_destroy(tbx_pc_t *pc)
 {
     int i;
     apr_thread_mutex_destroy(pc->lock);
     apr_pool_destroy(pc->pool);
 
     for (i=0; i<pc->nshelves; i++) {
-//log_printf(10, "destroy_pigeon_coop: pc=%s nshelves=%d i=%d\n", pc->name, pc->nshelves, i); flush_log();
+//log_printf(10, "destroy_pigeon_coop: pc=%s nshelves=%d i=%d\n", pc->name, pc->nshelves, i); tbx_flush_log();
         destroy_pigeon_hole(pc->ph_shelf[i]);
         pc->free(pc->new_arg, pc->shelf_size, pc->data_shelf[i]);
     }
@@ -297,7 +300,7 @@ void destroy_pigeon_coop(tbx_pc_t *pc)
 //   item_size - Size of each item.
 //***************************************************************************
 
-tbx_pc_t *new_pigeon_coop(const char *name, int size, int item_size, void *new_arg, void *(*new)(void *arg, int size),
+tbx_pc_t *tbx_pc_new(const char *name, int size, int item_size, void *new_arg, void *(*new)(void *arg, int size),
                                void (*free)(void *arg, int size, void *dshelf))
 {
     int i;
@@ -323,8 +326,6 @@ tbx_pc_t *new_pigeon_coop(const char *name, int size, int item_size, void *new_a
         pc->ph_shelf[i] = new_pigeon_hole(pc->name, size);
         pc->data_shelf[i] = pc->new(new_arg, size);
     }
-
-//log_printf(0, "new_pigeon_coop: size=%d\n", size);
 
     apr_pool_create(&(pc->pool), NULL);
     apr_thread_mutex_create(&(pc->lock), APR_THREAD_MUTEX_DEFAULT, pc->pool);

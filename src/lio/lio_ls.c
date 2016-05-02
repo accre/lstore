@@ -17,11 +17,11 @@
 #define _log_module_index 196
 
 #include <assert.h>
-#include "assert_result.h"
+#include <tbx/assert_result.h>
 #include "exnode.h"
-#include "log.h"
-#include "iniparse.h"
-#include "type_malloc.h"
+#include <tbx/log.h>
+#include <tbx/iniparse.h>
+#include <tbx/type_malloc.h>
 #include "thread_pool.h"
 #include "lio.h"
 
@@ -182,7 +182,7 @@ int main(int argc, char **argv)
     fcount = 0;
 
     q = new_opque();
-    table = list_create(0, &list_string_compare, NULL, list_no_key_free, list_no_data_free);
+    table = tbx_list_create(0, &tbx_list_string_compare, NULL, tbx_list_no_key_free, tbx_list_no_data_free);
 
 
     for (j=start_index; j<argc; j++) {
@@ -206,7 +206,7 @@ int main(int argc, char **argv)
         }
 
         while ((ftype = lio_next_object(tuple.lc, it, &fname, &prefix_len)) > 0) {
-            type_malloc_clear(lse, ls_entry_t, 1);
+            tbx_type_malloc_clear(lse, ls_entry_t, 1);
             lse->fname = fname;
             lse->ftype = ftype;
             lse->prefix_len = prefix_len;
@@ -234,7 +234,7 @@ int main(int argc, char **argv)
             if (nosort == 1) {
                 ls_format_entry(lio_ifd, lse);
             } else {
-                list_insert(table, lse->fname, lse);
+                tbx_list_insert(table, lse->fname, lse);
             }
         }
 
@@ -260,13 +260,13 @@ int main(int argc, char **argv)
 
     //** Now sort and print things if needed
     if (nosort == 0) {
-        lit = list_iter_search(table, NULL, 0);
-        while ((list_next(&lit, (tbx_list_key_t **)&fname, (tbx_list_data_t **)&lse)) == 0) {
+        lit = tbx_list_iter_search(table, NULL, 0);
+        while ((tbx_list_next(&lit, (tbx_list_key_t **)&fname, (tbx_list_data_t **)&lse)) == 0) {
             ls_format_entry(lio_ifd, lse);
         }
     }
 
-    list_destroy(table);
+    tbx_list_destroy(table);
 
     if (fcount == 0) return_code = 2;
 

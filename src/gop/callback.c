@@ -17,7 +17,7 @@
 #define _log_module_index 127
 
 #include <stdlib.h>
-#include "log.h"
+#include <tbx/log.h>
 #include "callback.h"
 
 //*************************************************************

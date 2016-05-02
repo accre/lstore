@@ -23,7 +23,7 @@
 #define _log_module_index 115
 
 #include <assert.h>
-#include "assert_result.h"
+#include "tbx/assert_result.h"
 #include <limits.h>
 #include <stdlib.h>
 #include <string.h>
@@ -33,10 +33,10 @@
 #include <apr_time.h>
 #include <apr_network_io.h>
 
-#include "log.h"
-#include "fmttypes.h"
-#include "dns_cache.h"
-#include "string_token.h"
+#include "tbx/log.h"
+#include "tbx/fmttypes.h"
+#include "tbx/dns_cache.h"
+#include "tbx/string_token.h"
 
 #define BUF_SIZE 128
 
@@ -79,7 +79,7 @@ void wipe_entries(DNS_cache_t *cache)
 //
 //**************************************************************************
 
-int lookup_host(const char *name, char *byte_addr, char *ip_addr)
+int tbx_dnsc_lookup(const char *name, char *byte_addr, char *ip_addr)
 {
     char ip_buffer[256];
 //  char byte_buffer[256];
@@ -134,7 +134,7 @@ int lookup_host(const char *name, char *byte_addr, char *ip_addr)
 
     h->family = DNS_IPV4;
     i = 0;
-    for (s = string_token(ip_buffer, ".", &bstate, &err); err == 0; s = string_token(NULL, ".", &bstate, &err)) {
+    for (s = tbx_stk_string_token(ip_buffer, ".", &bstate, &err); err == 0; s = tbx_stk_string_token(NULL, ".", &bstate, &err)) {
         h->addr[i] = atoi(s);
 //n = h->addr[i];
 //log_printf(20, "lookup_host: err=%d i=%d n=%d s=%s\n", err, i, n, s);
@@ -158,9 +158,9 @@ int lookup_host(const char *name, char *byte_addr, char *ip_addr)
 
 //**************************************************************************
 
-void dns_cache_init(int size)
+void tbx_dnsc_init(int size)
 {
-    log_printf(20, "dns_cache_init: Start!!!!!!!!!!!!\n");
+    log_printf(20, "tbx_dnsc_init: Start!!!!!!!!!!!!\n");
 
     if (_cache != NULL) return;
 
@@ -177,7 +177,7 @@ void dns_cache_init(int size)
 
 //**************************************************************************
 
-void finalize_dns_cache()
+void tbx_dnsc_destroy()
 {
     apr_thread_mutex_destroy(_cache->lock);
 

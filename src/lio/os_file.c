@@ -25,22 +25,23 @@
 #include <dirent.h>
 #include <unistd.h>
 #include <assert.h>
-#include "assert_result.h"
+#include <tbx/assert_result.h>
 #include <apr_pools.h>
+#include <apr_network_io.h>
 #include <apr_thread_mutex.h>
 #include "opque.h"
 #include "exnode.h"
 #include "ex3_system.h"
 #include "object_service_abstract.h"
-#include "list.h"
-#include "random.h"
-#include "type_malloc.h"
-#include "log.h"
-#include "atomic_counter.h"
+#include <tbx/list.h>
+#include <tbx/random.h>
+#include <tbx/type_malloc.h>
+#include <tbx/log.h>
+#include <tbx/atomic_counter.h>
 #include "thread_pool.h"
 #include "os_file.h"
 #include "os_file_priv.h"
-#include "append_printf.h"
+#include <tbx/append_printf.h>
 
 //tbx_atomic_unit32_t _path_parse_count = 0;
 //apr_thread_mutex_t *_path_parse_lock = NULL;
@@ -385,8 +386,8 @@ int osf_resolve_attr_path(object_service_fn_t *os, char *real_path, char *path, 
 
 void fobj_add_active(fobj_lock_t *fol, osfile_fd_t *fd)
 {
-    move_to_bottom(fol->active_stack);
-    insert_below(fol->active_stack, fd);
+    tbx_stack_move_to_bottom(fol->active_stack);
+    tbx_stack_insert_below(fol->active_stack, fd);
 }
 
 //*************************************************************
@@ -398,15 +399,15 @@ int fobj_remove_active(fobj_lock_t *fol, osfile_fd_t *myfd)
     osfile_fd_t *fd;
     int success = 1;
 
-    move_to_top(fol->active_stack);
-    while ((fd = (osfile_fd_t *)get_ele_data(fol->active_stack)) != NULL) {
+    tbx_stack_move_to_top(fol->active_stack);
+    while ((fd = (osfile_fd_t *)tbx_get_ele_data(fol->active_stack)) != NULL) {
         if (fd == myfd) {  //** Found a match
-            delete_current(fol->active_stack, 0, 0);
+            tbx_delete_current(fol->active_stack, 0, 0);
             success = 0;
             break;
         }
 
-        move_down(fol->active_stack);
+        tbx_stack_move_down(fol->active_stack);
     }
 
     return(success);
@@ -422,7 +423,7 @@ void *fobj_lock_task_new(void *arg, int size)
     fobj_lock_task_t *shelf;
     int i;
 
-    type_malloc_clear(shelf, fobj_lock_task_t, size);
+    tbx_type_malloc_clear(shelf, fobj_lock_task_t, size);
 
     for (i=0; i<size; i++) {
         apr_thread_cond_create(&(shelf[i].cond), mpool);
@@ -458,11 +459,11 @@ void *fobj_lock_new(void *arg, int size)
     fobj_lock_t *shelf;
     int i;
 
-    type_malloc_clear(shelf, fobj_lock_t, size);
+    tbx_type_malloc_clear(shelf, fobj_lock_t, size);
 
     for (i=0; i<size; i++) {
-        shelf[i].stack = new_stack();
-        shelf[i].active_stack = new_stack();
+        shelf[i].stack = tbx_stack_new();
+        shelf[i].active_stack = tbx_stack_new();
         shelf[i].read_count = 0;
         shelf[i].write_count = 0;
     }
@@ -480,8 +481,8 @@ void fobj_lock_free(void *arg, int size, void *data)
     int i;
 
     for (i=0; i<size; i++) {
-        free_stack(shelf[i].stack, 0);
-        free_stack(shelf[i].active_stack, 0);
+        tbx_free_stack(shelf[i].stack, 0);
+        tbx_free_stack(shelf[i].active_stack, 0);
     }
 
     free(shelf);
@@ -504,15 +505,15 @@ int fobj_wait(object_service_fn_t *os, fobj_lock_t *fol, osfile_fd_t *fd, int ma
     apr_time_t dt, start_time;
 
     //** Get my slot
-    task_pch = reserve_pigeon_coop_hole(osf->task_pc);
-    handle = (fobj_lock_task_t *)pigeon_coop_hole_data(&task_pch);
+    task_pch = tbx_pch_reserve(osf->task_pc);
+    handle = (fobj_lock_task_t *)tbx_pch_data(&task_pch);
     handle->fd = fd;
     handle->abort = 1;
 
     log_printf(15, "SLEEPING id=%s fname=%s mymode=%d read_count=%d write_count=%d handle=%p max_wait=%d\n", fd->id, fd->object_name, fd->mode, fol->read_count, fol->write_count, handle, max_wait);
 
-    move_to_bottom(fol->stack);
-    insert_below(fol->stack, handle);
+    tbx_stack_move_to_bottom(fol->stack);
+    tbx_stack_insert_below(fol->stack, handle);
 
     //** Sleep until it's my turn.  Remember fobj_lock is already set upon entry
     start_time = apr_time_now();
@@ -521,8 +522,8 @@ int fobj_wait(object_service_fn_t *os, fobj_lock_t *fol, osfile_fd_t *fd, int ma
         apr_thread_cond_timedwait(handle->cond, osf->fobj_lock, timeout);
         aborted = handle->abort;
 
-//    move_to_top(fol->stack);
-//    handle = (fobj_lock_task_t *)get_ele_data(fol->stack);
+//    tbx_stack_move_to_top(fol->stack);
+//    handle = (fobj_lock_task_t *)tbx_get_ele_data(fol->stack);
 //    if (handle != NULL) {
 //       if (handle->fd->uuid == fd->uuid) loop = 1;
 //    }
@@ -539,29 +540,29 @@ int fobj_wait(object_service_fn_t *os, fobj_lock_t *fol, osfile_fd_t *fd, int ma
     log_printf(15, "AWAKE id=%s fname=%s mymode=%d read_count=%d write_count=%d handle=%p abort=%d uuid=" LU " dt=%d\n", fd->id, fd->object_name, fd->mode, fol->read_count, fol->write_count, handle, aborted, fd->uuid, dummy);
 
     //** I'm popped off the stack so just free my handle and update the counter
-    release_pigeon_coop_hole(osf->task_pc, &task_pch);
+    tbx_pch_release(osf->task_pc, &task_pch);
 
     if (aborted == 1) { //** Open was aborted so remove myself from the pending and kick out
-        move_to_top(fol->stack);
-        while ((handle = (fobj_lock_task_t *)get_ele_data(fol->stack)) != NULL) {
+        tbx_stack_move_to_top(fol->stack);
+        while ((handle = (fobj_lock_task_t *)tbx_get_ele_data(fol->stack)) != NULL) {
             if (handle->fd->uuid == fd->uuid) {
                 log_printf(15, "id=%s fname=%s uuid=" LU " ABORTED\n", fd->id, fd->object_name, fd->uuid);
-                delete_current(fol->stack, 1, 0);
+                tbx_delete_current(fol->stack, 1, 0);
                 break;
             }
-            move_down(fol->stack);
+            tbx_stack_move_down(fol->stack);
         }
 
         return(1);
     }
 
     //** Check if the next person should be woke up as well
-    if (stack_size(fol->stack) != 0) {
-        move_to_top(fol->stack);
-        handle = (fobj_lock_task_t *)get_ele_data(fol->stack);
+    if (tbx_stack_size(fol->stack) != 0) {
+        tbx_stack_move_to_top(fol->stack);
+        handle = (fobj_lock_task_t *)tbx_get_ele_data(fol->stack);
 
         if ((fd->mode == OS_MODE_READ_BLOCKING) && (handle->fd->mode == OS_MODE_READ_BLOCKING)) {
-            pop(fol->stack);  //** Clear it from the stack. It's already stored in handle above
+            tbx_stack_pop(fol->stack);  //** Clear it from the stack. It's already stored in handle above
             log_printf(15, "WAKEUP ALARM id=%s fname=%s mymode=%d read_count=%d write_count=%d handle=%p\n", fd->id, fd->object_name, fd->mode, fol->read_count, fol->write_count, handle);
 
             handle->abort = 0;
@@ -588,13 +589,13 @@ int full_object_lock(osfile_fd_t *fd, int max_wait)
 
     apr_thread_mutex_lock(osf->fobj_lock);
 
-    fol = list_search(osf->fobj_table, fd->object_name);
+    fol = tbx_list_search(osf->fobj_table, fd->object_name);
 
     if (fol == NULL) {  //** No one else is accessing the file
-        obj_pch =  reserve_pigeon_coop_hole(osf->fobj_pc);
-        fol = (fobj_lock_t *)pigeon_coop_hole_data(&obj_pch);
+        obj_pch =  tbx_pch_reserve(osf->fobj_pc);
+        fol = (fobj_lock_t *)tbx_pch_data(&obj_pch);
         fol->pch = obj_pch;  //** Reverse link my PCH for release later
-        list_insert(osf->fobj_table, fd->object_name, fol);
+        tbx_list_insert(osf->fobj_table, fd->object_name, fol);
         log_printf(15, "fname=%s new lock!\n", fd->object_name);
     }
 
@@ -604,9 +605,9 @@ int full_object_lock(osfile_fd_t *fd, int max_wait)
     if (fd->mode == OS_MODE_READ_BLOCKING) { //** I'm reading
         if (fol->write_count == 0) { //** No one currently writing
             //** Check and make sure the person waiting isn't a writer
-            if (stack_size(fol->stack) != 0) {
-                move_to_top(fol->stack);
-                handle = (fobj_lock_task_t *)get_ele_data(fol->stack);
+            if (tbx_stack_size(fol->stack) != 0) {
+                tbx_stack_move_to_top(fol->stack);
+                handle = (fobj_lock_task_t *)tbx_get_ele_data(fol->stack);
                 if (handle->fd->mode == OS_MODE_WRITE_BLOCKING) {  //** They want to write so sleep until my turn
                     err = fobj_wait(fd->os, fol, fd, max_wait);  //** The fobj_lock is released/acquired inside
                 }
@@ -617,7 +618,7 @@ int full_object_lock(osfile_fd_t *fd, int max_wait)
 
         if (err == 0) fol->read_count++;
     } else {   //** I'm writing
-        if ((fol->write_count != 0) || (fol->read_count != 0) || (stack_size(fol->stack) != 0)) {  //** Make sure no one else is doing anything
+        if ((fol->write_count != 0) || (fol->read_count != 0) || (tbx_stack_size(fol->stack) != 0)) {  //** Make sure no one else is doing anything
             err = fobj_wait(fd->os, fol, fd, max_wait);  //** The fobj_lock is released/acquired inside
         }
         if (err == 0) fol->write_count++;
@@ -647,7 +648,7 @@ void full_object_unlock(osfile_fd_t *fd)
 
     apr_thread_mutex_lock(osf->fobj_lock);
 
-    fol = list_search(osf->fobj_table, fd->object_name);
+    fol = tbx_list_search(osf->fobj_table, fd->object_name);
     if (fol == NULL) return;
 
     err = fobj_remove_active(fol, fd);
@@ -666,16 +667,16 @@ void full_object_unlock(osfile_fd_t *fd)
 
     log_printf(15, "fname=%s mymode=%d read_count=%d write_count=%d\n", fd->object_name, fd->mode, fol->read_count, fol->write_count);
 
-    if ((stack_size(fol->stack) == 0) && (fol->read_count == 0) && (fol->write_count == 0)) {  //** No one else is waiting so remove the entry
-        list_remove(osf->fobj_table, fd->object_name, NULL);
-        release_pigeon_coop_hole(osf->fobj_pc, &(fol->pch));
-    } else if (stack_size(fol->stack) > 0) { //** Wake up the next person
-        move_to_top(fol->stack);
-        handle = (fobj_lock_task_t *)get_ele_data(fol->stack);
+    if ((tbx_stack_size(fol->stack) == 0) && (fol->read_count == 0) && (fol->write_count == 0)) {  //** No one else is waiting so remove the entry
+        tbx_list_remove(osf->fobj_table, fd->object_name, NULL);
+        tbx_pch_release(osf->fobj_pc, &(fol->pch));
+    } else if (tbx_stack_size(fol->stack) > 0) { //** Wake up the next person
+        tbx_stack_move_to_top(fol->stack);
+        handle = (fobj_lock_task_t *)tbx_get_ele_data(fol->stack);
 
         if (((handle->fd->mode == OS_MODE_READ_BLOCKING) && (fol->write_count == 0)) ||
                 ((handle->fd->mode == OS_MODE_WRITE_BLOCKING) && (fol->write_count == 0) && (fol->read_count == 0))) {
-            pop(fol->stack);  //** Clear it from the stack. It's already stored in handle above
+            tbx_stack_pop(fol->stack);  //** Clear it from the stack. It's already stored in handle above
             log_printf(15, "WAKEUP ALARM fname=%s mymode=%d read_count=%d write_count=%d handle=%p\n", fd->object_name, fd->mode, fol->read_count, fol->write_count, handle);
             handle->abort = 0;
             apr_thread_cond_broadcast(handle->cond);   //** They will wake up when fobj_lock is released in the calling routine
@@ -940,7 +941,7 @@ int va_lock_get_attr(os_virtual_attr_t *va, object_service_fn_t *os, creds_t *cr
 
     apr_thread_mutex_lock(osf->fobj_lock);
 
-    fol = list_search(osf->fobj_table, fd->object_name);
+    fol = tbx_list_search(osf->fobj_table, fd->object_name);
     log_printf(15, "fol=%p\n", fol);
 
     if (fol == NULL) {
@@ -958,38 +959,38 @@ int va_lock_get_attr(os_virtual_attr_t *va, object_service_fn_t *os, creds_t *cr
     }
 
     used = 0;
-    append_printf(buf, &used, bufsize, "[os.lock]\n");
+    tbx_append_printf(buf, &used, bufsize, "[os.lock]\n");
 
     //** Print the active info
     if (fol->read_count > 0) {
-        append_printf(buf, &used, bufsize, "active_mode=READ\n");
-        append_printf(buf, &used, bufsize, "active_count=%d\n", fol->read_count);
+        tbx_append_printf(buf, &used, bufsize, "active_mode=READ\n");
+        tbx_append_printf(buf, &used, bufsize, "active_count=%d\n", fol->read_count);
     } else {
-        append_printf(buf, &used, bufsize, "active_mode=WRITE\n");
-        append_printf(buf, &used, bufsize, "active_count=%d\n", fol->write_count);
+        tbx_append_printf(buf, &used, bufsize, "active_mode=WRITE\n");
+        tbx_append_printf(buf, &used, bufsize, "active_count=%d\n", fol->write_count);
     }
 
-    move_to_top(fol->active_stack);
-    while ((pfd = (osfile_fd_t *)get_ele_data(fol->active_stack)) != NULL) {
+    tbx_stack_move_to_top(fol->active_stack);
+    while ((pfd = (osfile_fd_t *)tbx_get_ele_data(fol->active_stack)) != NULL) {
         if (pfd->mode == OS_MODE_READ_BLOCKING) {
-            append_printf(buf, &used, bufsize, "active_id=%s:" LU ":READ\n", pfd->id, pfd->uuid);
+            tbx_append_printf(buf, &used, bufsize, "active_id=%s:" LU ":READ\n", pfd->id, pfd->uuid);
         } else {
-            append_printf(buf, &used, bufsize, "active_id=%s:" LU ":WRITE\n", pfd->id, pfd->uuid);
+            tbx_append_printf(buf, &used, bufsize, "active_id=%s:" LU ":WRITE\n", pfd->id, pfd->uuid);
         }
-        move_down(fol->active_stack);
+        tbx_stack_move_down(fol->active_stack);
     }
 
 
-    append_printf(buf, &used, bufsize, "\n");
-    append_printf(buf, &used, bufsize, "pending_count=%d\n", stack_size(fol->stack));
-    move_to_top(fol->stack);
-    while ((handle = (fobj_lock_task_t *)get_ele_data(fol->stack)) != NULL) {
+    tbx_append_printf(buf, &used, bufsize, "\n");
+    tbx_append_printf(buf, &used, bufsize, "pending_count=%d\n", tbx_stack_size(fol->stack));
+    tbx_stack_move_to_top(fol->stack);
+    while ((handle = (fobj_lock_task_t *)tbx_get_ele_data(fol->stack)) != NULL) {
         if (handle->fd->mode == OS_MODE_READ_BLOCKING) {
-            append_printf(buf, &used, bufsize, "pending_id=%s:" LU ":READ\n", handle->fd->id, handle->fd->uuid);
+            tbx_append_printf(buf, &used, bufsize, "pending_id=%s:" LU ":READ\n", handle->fd->id, handle->fd->uuid);
         } else {
-            append_printf(buf, &used, bufsize, "pending_id=%s:" LU ":WRITE\n", handle->fd->id, handle->fd->uuid);
+            tbx_append_printf(buf, &used, bufsize, "pending_id=%s:" LU ":WRITE\n", handle->fd->id, handle->fd->uuid);
         }
-        move_down(fol->stack);
+        tbx_stack_move_down(fol->stack);
     }
 
     apr_thread_mutex_unlock(osf->fobj_lock);
@@ -1065,8 +1066,8 @@ int va_attr_link_get_attr(os_virtual_attr_t *myva, object_service_fn_t *os, cred
 
     //** Do a Virtual Attr check
     //** Check the prefix VA's first
-    it = list_iter_search(osf->vattr_prefix, key, -1);
-    list_next(&it, (tbx_list_key_t **)&ca, (tbx_list_data_t **)&va);
+    it = tbx_list_iter_search(osf->vattr_prefix, key, -1);
+    tbx_list_next(&it, (tbx_list_key_t **)&ca, (tbx_list_data_t **)&va);
 
     if (va != NULL) {
         n = (int)(long)va->priv;  //*** HACKERY **** to get the attribute length
@@ -1301,15 +1302,15 @@ apr_thread_mutex_t *osf_retrieve_lock(object_service_fn_t *os, char *path, int *
     tbx_tbuf_t tbuf;
 
     nbytes = strlen(path);
-    tbuffer_single(&tbuf, nbytes, path);
-    chksum_set(&cs, OSF_LOCK_CHKSUM);
-    chksum_add(&cs, nbytes, &tbuf, 0);
-    chksum_get(&cs, CHKSUM_DIGEST_BIN, digest);
+    tbx_tbuf_single(&tbuf, nbytes, path);
+    tbx_chksum_set(&cs, OSF_LOCK_CHKSUM);
+    tbx_chksum_add(&cs, nbytes, &tbuf, 0);
+    tbx_chksum_get(&cs, CHKSUM_DIGEST_BIN, digest);
 
     n = (unsigned int *)(&digest[OSF_LOCK_CHKSUM_SIZE-sizeof(unsigned int)]);
     slot = (*n) % osf->internal_lock_size;
     log_printf(15, "n=%u internal_lock_size=%d slot=%d path=!%s!\n", *n, osf->internal_lock_size, slot, path);
-    flush_log();
+    tbx_flush_log();
     if (table_slot != NULL) *table_slot = slot;
 
     return(osf->internal_lock[slot]);
@@ -1437,7 +1438,7 @@ osf_dir_t *my_opendir(char *fullname, char *frag)
 {
     osf_dir_t *d;
 
-    type_malloc(d, osf_dir_t, 1);
+    tbx_type_malloc(d, osf_dir_t, 1);
 
 //log_printf(0, "fullname=%s frag=%s\n", fullname, frag);
     if (frag == NULL) {
@@ -1513,13 +1514,13 @@ int osf_next_object(osf_object_iter_t *it, char **myfname, int *prefix_len)
     tweak = 0;
     if (it->table->n == 0) {
         *prefix_len = 1;
-        if (stack_size(it->recurse_stack) == 0) {  //**Make a fake level to get things going
-            type_malloc_clear(itl, osf_obj_level_t, 1);
+        if (tbx_stack_size(it->recurse_stack) == 0) {  //**Make a fake level to get things going
+            tbx_type_malloc_clear(itl, osf_obj_level_t, 1);
             strncpy(itl->path, "/", OS_PATH_MAX);
             itl->d = my_opendir(osf->file_path, NULL);
             itl->curr_pos = my_telldir(itl->d);
             itl->firstpass = 1;
-            push(it->recurse_stack, itl);
+            tbx_stack_push(it->recurse_stack, itl);
         }
     } else {
         it_top = &(it->level_info[it->table->n-1]);
@@ -1533,7 +1534,7 @@ int osf_next_object(osf_object_iter_t *it, char **myfname, int *prefix_len)
 
     do {
         if (it->curr_level >= it->table->n) {
-            itl = (osf_obj_level_t *)pop(it->recurse_stack);
+            itl = (osf_obj_level_t *)tbx_stack_pop(it->recurse_stack);
         } else {
             itl = &(it->level_info[it->curr_level]);
         }
@@ -1582,7 +1583,7 @@ int osf_next_object(osf_object_iter_t *it, char **myfname, int *prefix_len)
                                             if (*prefix_len == 0) *prefix_len = tweak;
                                         }
                                         log_printf(15, "MATCH=%s prefix=%d\n", fname, *prefix_len);
-                                        if (it->curr_level >= it->table->n) push(it->recurse_stack, itl);  //** Off the static table
+                                        if (it->curr_level >= it->table->n) tbx_stack_push(it->recurse_stack, itl);  //** Off the static table
                                         return(i);
                                     }
                                 }
@@ -1591,20 +1592,20 @@ int osf_next_object(osf_object_iter_t *it, char **myfname, int *prefix_len)
                                     itl->firstpass = 0;              //** Flag it as already processed
                                     my_seekdir(itl->d, itl->prev_pos);  //** Move the dirp back one slot
 
-                                    if (it->curr_level >= it->table->n) push(it->recurse_stack, itl);  //** Off the static table
+                                    if (it->curr_level >= it->table->n) tbx_stack_push(it->recurse_stack, itl);  //** Off the static table
 
                                     it->curr_level++;  //** Move to the next level which is *always* off the static table
 
                                     //** Make a new level and initialize it for use
                                     if (it->curr_level < it->max_level) {
-                                        type_malloc_clear(itl, osf_obj_level_t, 1);
+                                        tbx_type_malloc_clear(itl, osf_obj_level_t, 1);
                                         strncpy(itl->path, fname, OS_PATH_MAX);
                                         itl->d = my_opendir(fullname, itl->fragment);
                                         itl->curr_pos = my_telldir(itl->d);
                                         itl->firstpass = 1;
                                     } else {                //** Hit max recursion
                                         it->curr_level--;
-                                        if (it->curr_level >= it->table->n) pop(it->recurse_stack);
+                                        if (it->curr_level >= it->table->n) tbx_stack_pop(it->recurse_stack);
                                     }
                                 } else {  //** Already been here so just return the name
                                     itl->firstpass = 1;        //** Set up for the next dir
@@ -1617,7 +1618,7 @@ int osf_next_object(osf_object_iter_t *it, char **myfname, int *prefix_len)
                                             }
                                             *myfname=strdup(fname);
                                             log_printf(15, "MATCH=%s prefix=%d\n", fname, *prefix_len);
-                                            if (it->curr_level >= it->table->n) push(it->recurse_stack, itl);  //** Off the static table
+                                            if (it->curr_level >= it->table->n) tbx_stack_push(it->recurse_stack, itl);  //** Off the static table
                                             return(i);
                                         }
                                     }
@@ -1801,7 +1802,7 @@ op_generic_t *osfile_remove_object(object_service_fn_t *os, creds_t *creds, char
     osfile_priv_t *osf = (osfile_priv_t *)os->priv;
     osfile_mk_mv_rm_t *op;
 
-    type_malloc_clear(op, osfile_mk_mv_rm_t, 1);
+    tbx_type_malloc_clear(op, osfile_mk_mv_rm_t, 1);
 
     op->os = os;
     op->creds = creds;
@@ -1853,7 +1854,7 @@ op_status_t osfile_remove_regex_fn(void *arg, int id)
         count++;  //** Check for an abort
         if (count == 20) {
             count = 0;
-            if (atomic_get(op->abort) != 0) {
+            if (tbx_atomic_get(op->abort) != 0) {
                 status.op_status = OP_STATE_FAILURE;
                 break;
             }
@@ -1879,7 +1880,7 @@ op_generic_t *osfile_remove_regex_object(object_service_fn_t *os, creds_t *creds
     osfile_priv_t *osf = (osfile_priv_t *)os->priv;
     osfile_remove_regex_op_t *op;
 
-    type_malloc(op, osfile_remove_regex_op_t, 1);
+    tbx_type_malloc(op, osfile_remove_regex_op_t, 1);
 
     op->os = os;
     op->creds = creds;
@@ -1898,7 +1899,7 @@ op_status_t osfile_abort_remove_regex_object_fn(void *arg, int id)
 {
     osfile_remove_regex_op_t *op = (osfile_remove_regex_op_t *)arg;
 
-    atomic_set(op->abort, 1);
+    tbx_atomic_set(op->abort, 1);
 
     return(op_success_status);
 }
@@ -1947,7 +1948,7 @@ op_status_t osfile_regex_object_set_multiple_attrs_fn(void *arg, int id)
     op_open.mode = OS_MODE_READ_IMMEDIATE;
     op_open.id = NULL;
     op_open.uuid = 0;
-    get_random(&(op_open.uuid), sizeof(op_open.uuid));
+    tbx_random_bytes_get(&(op_open.uuid), sizeof(op_open.uuid));
     op_open.max_wait = 0;
 
     status = op_success_status;
@@ -1985,7 +1986,7 @@ op_status_t osfile_regex_object_set_multiple_attrs_fn(void *arg, int id)
         if (count == 20) {
 //     if (count == 1) {
             count = 0;
-            if (atomic_get(op->abort) != 0) {
+            if (tbx_atomic_get(op->abort) != 0) {
                 status.op_status = OP_STATE_FAILURE;
                 break;
             }
@@ -2011,7 +2012,7 @@ op_generic_t *osfile_regex_object_set_multiple_attrs(object_service_fn_t *os, cr
     osfile_priv_t *osf = (osfile_priv_t *)os->priv;
     osfile_regex_object_attr_op_t *op;
 
-    type_malloc(op, osfile_regex_object_attr_op_t, 1);
+    tbx_type_malloc(op, osfile_regex_object_attr_op_t, 1);
 
     op->os = os;
     op->creds = creds;
@@ -2037,7 +2038,7 @@ op_status_t osfile_abort_regex_object_set_multiple_attrs_fn(void *arg, int id)
 {
     osfile_regex_object_attr_op_t *op = (osfile_regex_object_attr_op_t *)arg;
 
-    atomic_set(op->abort, 1);
+    tbx_atomic_set(op->abort, 1);
 
     return(op_success_status);
 }
@@ -2086,7 +2087,7 @@ op_generic_t *osfile_exists(object_service_fn_t *os, creds_t *creds, char *path)
 
     if (path == NULL) return(gop_dummy(op_failure_status));
 
-    type_malloc_clear(op, osfile_mk_mv_rm_t, 1);
+    tbx_type_malloc_clear(op, osfile_mk_mv_rm_t, 1);
 
     op->os = os;
     op->creds = creds;
@@ -2177,7 +2178,7 @@ op_generic_t *osfile_create_object(object_service_fn_t *os, creds_t *creds, char
     osfile_priv_t *osf = (osfile_priv_t *)os->priv;
     osfile_mk_mv_rm_t *op;
 
-    type_malloc_clear(op, osfile_mk_mv_rm_t, 1);
+    tbx_type_malloc_clear(op, osfile_mk_mv_rm_t, 1);
 
     op->os = os;
     op->creds = creds;
@@ -2258,7 +2259,7 @@ op_generic_t *osfile_symlink_object(object_service_fn_t *os, creds_t *creds, cha
         return(gop_dummy(op_failure_status));
     }
 
-    type_malloc_clear(op, osfile_mk_mv_rm_t, 1);
+    tbx_type_malloc_clear(op, osfile_mk_mv_rm_t, 1);
 
     op->os = os;
     op->creds = creds;
@@ -2285,8 +2286,8 @@ int osf_file2hardlink(object_service_fn_t *os, char *src_path)
 
     //** Pick a hardlink location
     id = 0;
-    get_random(&id, sizeof(id));
-    slot = atomic_counter(&(osf->hardlink_count)) % osf->hardlink_dir_size;
+    tbx_random_bytes_get(&id, sizeof(id));
+    slot = tbx_atomic_counter(&(osf->hardlink_count)) % osf->hardlink_dir_size;
     snprintf(fullname, OS_PATH_MAX, "%s/%d/" XIDT, osf->hardlink_path, slot, id);
     snprintf(sfname, OS_PATH_MAX, "%s%s", osf->file_path, src_path);
     hattr = object_attr_dir(os, "", fullname, OS_OBJECT_FILE);
@@ -2484,7 +2485,7 @@ op_generic_t *osfile_hardlink_object(object_service_fn_t *os, creds_t *creds, ch
         return(gop_dummy(op_failure_status));
     }
 
-    type_malloc_clear(op, osfile_mk_mv_rm_t, 1);
+    tbx_type_malloc_clear(op, osfile_mk_mv_rm_t, 1);
 
     op->os = os;
     op->creds = creds;
@@ -2548,7 +2549,7 @@ op_generic_t *osfile_move_object(object_service_fn_t *os, creds_t *creds, char *
     osfile_priv_t *osf = (osfile_priv_t *)os->priv;
     osfile_mk_mv_rm_t *op;
 
-    type_malloc_clear(op, osfile_mk_mv_rm_t, 1);
+    tbx_type_malloc_clear(op, osfile_mk_mv_rm_t, 1);
 
     op->os = os;
     op->creds = creds;
@@ -2632,7 +2633,7 @@ op_generic_t *osfile_copy_multiple_attrs(object_service_fn_t *os, creds_t *creds
     osfile_priv_t *osf = (osfile_priv_t *)os->priv;
     osfile_copy_attr_t *op;
 
-    type_malloc_clear(op, osfile_copy_attr_t, 1);
+    tbx_type_malloc_clear(op, osfile_copy_attr_t, 1);
 
     op->os = os;
     op->creds = creds;
@@ -2654,7 +2655,7 @@ op_generic_t *osfile_copy_attr(object_service_fn_t *os, creds_t *creds, os_fd_t 
     osfile_priv_t *osf = (osfile_priv_t *)os->priv;
     osfile_copy_attr_t *op;
 
-    type_malloc_clear(op, osfile_copy_attr_t, 1);
+    tbx_type_malloc_clear(op, osfile_copy_attr_t, 1);
 
     op->os = os;
     op->creds = creds;
@@ -2728,7 +2729,7 @@ op_generic_t *osfile_symlink_multiple_attrs(object_service_fn_t *os, creds_t *cr
     osfile_priv_t *osf = (osfile_priv_t *)os->priv;
     osfile_copy_attr_t *op;
 
-    type_malloc_clear(op, osfile_copy_attr_t, 1);
+    tbx_type_malloc_clear(op, osfile_copy_attr_t, 1);
 
     op->os = os;
     op->creds = creds;
@@ -2750,7 +2751,7 @@ op_generic_t *osfile_symlink_attr(object_service_fn_t *os, creds_t *creds, char 
     osfile_priv_t *osf = (osfile_priv_t *)os->priv;
     osfile_copy_attr_t *op;
 
-    type_malloc_clear(op, osfile_copy_attr_t, 1);
+    tbx_type_malloc_clear(op, osfile_copy_attr_t, 1);
 
     op->os = os;
     op->creds = creds;
@@ -2825,7 +2826,7 @@ op_generic_t *osfile_move_multiple_attrs(object_service_fn_t *os, creds_t *creds
     osfile_priv_t *osf = (osfile_priv_t *)os->priv;
     osfile_move_attr_t *op;
 
-    type_malloc_clear(op, osfile_move_attr_t, 1);
+    tbx_type_malloc_clear(op, osfile_move_attr_t, 1);
 
     op->os = os;
     op->creds = creds;
@@ -2846,7 +2847,7 @@ op_generic_t *osfile_move_attr(object_service_fn_t *os, creds_t *creds, os_fd_t 
     osfile_priv_t *osf = (osfile_priv_t *)os->priv;
     osfile_move_attr_t *op;
 
-    type_malloc_clear(op, osfile_move_attr_t, 1);
+    tbx_type_malloc_clear(op, osfile_move_attr_t, 1);
 
     op->os = os;
     op->creds = creds;
@@ -2883,8 +2884,8 @@ int osf_get_attr(object_service_fn_t *os, creds_t *creds, osfile_fd_t *ofd, char
 
     //** Do a Virtual Attr check
     //** Check the prefix VA's first
-    it = list_iter_search(osf->vattr_prefix, attr, -1);
-    list_next(&it, (tbx_list_key_t **)&ca, (tbx_list_data_t **)&va);
+    it = tbx_list_iter_search(osf->vattr_prefix, attr, -1);
+    tbx_list_next(&it, (tbx_list_key_t **)&ca, (tbx_list_data_t **)&va);
 
     if (va != NULL) {
         n = (int)(long)va->priv;  //*** HACKERY **** to get the attribute length
@@ -3053,7 +3054,7 @@ op_generic_t *osfile_get_attr(object_service_fn_t *os, creds_t *creds, os_fd_t *
     osfile_priv_t *osf = (osfile_priv_t *)os->priv;
     osfile_attr_op_t *op;
 
-    type_malloc(op, osfile_attr_op_t, 1);
+    tbx_type_malloc(op, osfile_attr_op_t, 1);
 
     op->os = os;
     op->creds = creds;
@@ -3080,7 +3081,7 @@ op_generic_t *osfile_get_multiple_attrs(object_service_fn_t *os, creds_t *creds,
     osfile_priv_t *osf = (osfile_priv_t *)os->priv;
     osfile_attr_op_t *op;
 
-    type_malloc(op, osfile_attr_op_t, 1);
+    tbx_type_malloc(op, osfile_attr_op_t, 1);
 
     op->os = os;
     op->creds = creds;
@@ -3137,8 +3138,8 @@ int osf_set_attr(object_service_fn_t *os, creds_t *creds, osfile_fd_t *ofd, char
 
     //** Do a Virtual Attr check
     //** Check the prefix VA's first
-    it = list_iter_search(osf->vattr_prefix, attr, -1);
-    list_next(&it, (tbx_list_key_t **)&ca, (tbx_list_data_t **)&va);
+    it = tbx_list_iter_search(osf->vattr_prefix, attr, -1);
+    tbx_list_next(&it, (tbx_list_key_t **)&ca, (tbx_list_data_t **)&va);
     if (va != NULL) {
         n = (int)(long)va->priv;  //*** HACKERY **** to get the attribute length
         if (strncmp(attr, va->attribute, n) == 0) {  //** Prefix matches
@@ -3220,7 +3221,7 @@ op_generic_t *osfile_set_attr(object_service_fn_t *os, creds_t *creds, os_fd_t *
     osfile_priv_t *osf = (osfile_priv_t *)os->priv;
     osfile_attr_op_t *op;
 
-    type_malloc(op, osfile_attr_op_t, 1);
+    tbx_type_malloc(op, osfile_attr_op_t, 1);
 
     op->os = os;
     op->creds = creds;
@@ -3246,7 +3247,7 @@ op_generic_t *osfile_set_multiple_attrs(object_service_fn_t *os, creds_t *creds,
     osfile_priv_t *osf = (osfile_priv_t *)os->priv;
     osfile_attr_op_t *op;
 
-    type_malloc(op, osfile_attr_op_t, 1);
+    tbx_type_malloc(op, osfile_attr_op_t, 1);
 
     op->os = os;
     op->creds = creds;
@@ -3337,7 +3338,7 @@ os_attr_iter_t *osfile_create_attr_iter(object_service_fn_t *os, creds_t *creds,
     osfile_priv_t *osf = (osfile_priv_t *)fd->os->priv;
     osfile_attr_iter_t *it;
 
-    type_malloc_clear(it, osfile_attr_iter_t, 1);
+    tbx_type_malloc_clear(it, osfile_attr_iter_t, 1);
 
     it->os = os;
 
@@ -3405,7 +3406,7 @@ int osfile_next_object(os_object_iter_t *oit, char **fname, int *prefix_len)
                 op.id = NULL;
                 op.max_wait = 0;
                 op.uuid = 0;
-                get_random(&(op.uuid), sizeof(op.uuid));
+                tbx_random_bytes_get(&(op.uuid), sizeof(op.uuid));
                 status = osfile_open_object_fn(&op, 0);
                 if (status.op_status != OP_STATE_SUCCESS) return(-1);
 
@@ -3421,7 +3422,7 @@ int osfile_next_object(os_object_iter_t *oit, char **fname, int *prefix_len)
             op.id = NULL;
             op.max_wait = 0;
             op.uuid = 0;
-            get_random(&(op.uuid), sizeof(op.uuid));
+            tbx_random_bytes_get(&(op.uuid), sizeof(op.uuid));
             status = osfile_open_object_fn(&op, 0);
             if (status.op_status != OP_STATE_SUCCESS) return(-1);
 
@@ -3464,7 +3465,7 @@ os_object_iter_t *osfile_create_object_iter(object_service_fn_t *os, creds_t *cr
     osf_obj_level_t *itl;
     int i;
 
-    type_malloc_clear(it, osf_object_iter_t, 1);
+    tbx_type_malloc_clear(it, osf_object_iter_t, 1);
 
     it->os = os;
     it->table = path;
@@ -3477,10 +3478,10 @@ os_object_iter_t *osfile_create_object_iter(object_service_fn_t *os, creds_t *cr
     it->it_attr = it_attr;
     if (it_attr != NULL) *it_attr = NULL;
     it->n_list = (it_attr == NULL) ? 0 : -1;  //**  Using the attr iter if -1
-    it->recurse_stack = new_stack();
+    it->recurse_stack = tbx_stack_new();
     it->object_types = object_types;
 
-    type_malloc_clear(it->level_info, osf_obj_level_t, it->table->n);
+    tbx_type_malloc_clear(it->level_info, osf_obj_level_t, it->table->n);
     for (i=0; i<it->table->n; i++) {
         itl = &(it->level_info[i]);
         itl->firstpass = 1;
@@ -3532,7 +3533,7 @@ os_object_iter_t *osfile_create_object_iter_alist(object_service_fn_t *os, creds
     it->key = key;
     it->val = val;
     it->v_size = v_size;
-    type_malloc(it->v_size_user, int, it->n_list);
+    tbx_type_malloc(it->v_size_user, int, it->n_list);
     memcpy(it->v_size_user, v_size, sizeof(int)*it->n_list);
 
     it->v_fixed = 1;
@@ -3563,7 +3564,7 @@ void osfile_destroy_object_iter(os_object_iter_t *oit)
         if (it->level_info[i].d != NULL) my_closedir(it->level_info[i].d);
     }
 
-    while ((itl = (osf_obj_level_t *)pop(it->recurse_stack)) != NULL) {
+    while ((itl = (osf_obj_level_t *)tbx_stack_pop(it->recurse_stack)) != NULL) {
         my_closedir(itl->d);
         free(itl);
     }
@@ -3588,7 +3589,7 @@ void osfile_destroy_object_iter(os_object_iter_t *oit)
 
     if (it->v_size_user != NULL) free(it->v_size_user);
 
-    free_stack(it->recurse_stack, 1);
+    tbx_free_stack(it->recurse_stack, 1);
     free(it->level_info);
     free(it);
 }
@@ -3638,7 +3639,7 @@ op_status_t osfile_open_object_fn(void *arg, int id)
     lock = osf_retrieve_lock(op->os, op->path, NULL);
     osf_obj_lock(lock);
 
-    type_malloc(fd, osfile_fd_t, 1);
+    tbx_type_malloc(fd, osfile_fd_t, 1);
 
     fd->os = op->os;
     fd->ftype = ftype;
@@ -3678,7 +3679,7 @@ op_generic_t *osfile_open_object(object_service_fn_t *os, creds_t *creds, char *
     osfile_priv_t *osf = (osfile_priv_t *)os->priv;
     osfile_open_op_t *op;
 
-    type_malloc(op, osfile_open_op_t, 1);
+    tbx_type_malloc(op, osfile_open_op_t, 1);
 
     op->os = os;
     op->creds = creds;
@@ -3688,7 +3689,7 @@ op_generic_t *osfile_open_object(object_service_fn_t *os, creds_t *creds, char *
     op->mode = mode;
     op->id = (id == NULL) ? strdup(osf->host_id) : strdup(id);
     op->uuid = 0;
-    get_random(&(op->uuid), sizeof(op->uuid));
+    tbx_random_bytes_get(&(op->uuid), sizeof(op->uuid));
 
     return(new_thread_pool_op(osf->tpc, NULL, osfile_open_object_fn, (void *)op, osfile_free_open, 1));
 }
@@ -3709,20 +3710,20 @@ op_status_t osfile_abort_open_object_fn(void *arg, int id)
 
     apr_thread_mutex_lock(osf->fobj_lock);
 
-    fol = list_search(osf->fobj_table, op->path);
+    fol = tbx_list_search(osf->fobj_table, op->path);
 
     //** Find the task in the pending list and remove it
     status = op_failure_status;
-    move_to_top(fol->stack);
-    while ((handle = (fobj_lock_task_t *)get_ele_data(fol->stack)) != NULL) {
+    tbx_stack_move_to_top(fol->stack);
+    while ((handle = (fobj_lock_task_t *)tbx_get_ele_data(fol->stack)) != NULL) {
         if (handle->fd->uuid == op->uuid) {
-            delete_current(fol->stack, 1, 0);
+            tbx_delete_current(fol->stack, 1, 0);
             status = op_success_status;
             handle->abort = 1;
             apr_thread_cond_signal(handle->cond);   //** They will wake up when fobj_lock is released
             break;
         }
-        move_down(fol->stack);
+        tbx_stack_move_down(fol->stack);
     }
 
     apr_thread_mutex_unlock(osf->fobj_lock);
@@ -3773,7 +3774,7 @@ op_generic_t *osfile_close_object(object_service_fn_t *os, os_fd_t *ofd)
     osfile_priv_t *osf = (osfile_priv_t *)os->priv;
     osfile_open_op_t *op;
 
-    type_malloc(op, osfile_open_op_t, 1);
+    tbx_type_malloc(op, osfile_open_op_t, 1);
 
     op->os = os;
     op->cfd = (osfile_fd_t *)ofd;
@@ -3996,7 +3997,7 @@ op_generic_t *osfile_fsck_object(object_service_fn_t *os, creds_t *creds, char *
     osfile_priv_t *osf = (osfile_priv_t *)os->priv;
     osfile_open_op_t *op;
 
-    type_malloc_clear(op, osfile_open_op_t, 1);
+    tbx_type_malloc_clear(op, osfile_open_op_t, 1);
 
     op->os = os;
     op->creds = creds;
@@ -4046,7 +4047,7 @@ os_fsck_iter_t *osfile_create_fsck_iter(object_service_fn_t *os, creds_t *creds,
 {
     osfile_fsck_iter_t *it;
 
-    type_malloc_clear(it, osfile_fsck_iter_t, 1);
+    tbx_type_malloc_clear(it, osfile_fsck_iter_t, 1);
 
     it->os = os;
     it->creds = creds;
@@ -4110,7 +4111,7 @@ void osfile_destroy(object_service_fn_t *os)
     osfile_priv_t *osf = (osfile_priv_t *)os->priv;
     int i;
 
-//  i = atomic_dec(_path_parse_count);
+//  i = tbx_atomic_dec(_path_parse_count);
 //  if (i <= 0) {
 //     apr_thread_mutex_destroy(_path_parse_lock);
 //     apr_pool_destroy(_path_parse_pool);
@@ -4122,10 +4123,10 @@ void osfile_destroy(object_service_fn_t *os)
     free(osf->internal_lock);
 
     apr_thread_mutex_destroy(osf->fobj_lock);
-    list_destroy(osf->fobj_table);
-    list_destroy(osf->vattr_prefix);
-    destroy_pigeon_coop(osf->fobj_pc);
-    destroy_pigeon_coop(osf->task_pc);
+    tbx_list_destroy(osf->fobj_table);
+    tbx_list_destroy(osf->vattr_prefix);
+    tbx_pc_destroy(osf->fobj_pc);
+    tbx_pc_destroy(osf->task_pc);
 
     osaz_destroy(osf->osaz);
     authn_destroy(osf->authn);
@@ -4156,8 +4157,8 @@ object_service_fn_t *object_service_file_create(service_manager_t *ess, tbx_inip
 
     if (section == NULL) section = "osfile";
 
-    type_malloc_clear(os, object_service_fn_t, 1);
-    type_malloc_clear(osf, osfile_priv_t, 1);
+    tbx_type_malloc_clear(os, object_service_fn_t, 1);
+    tbx_type_malloc_clear(osf, osfile_priv_t, 1);
     os->priv = (void *)osf;
 
     osf->tpc = lookup_service(ess, ESS_RUNNING, ESS_TPC_UNLIMITED);
@@ -4172,12 +4173,12 @@ object_service_fn_t *object_service_file_create(service_manager_t *ess, tbx_inip
         osf->max_copy = 1024*1024;
         osf->hardlink_dir_size = 256;
     } else {
-        osf->base_path = inip_get_string(fd, section, "base_path", "./osfile");
-        osf->internal_lock_size = inip_get_integer(fd, section, "lock_table_size", 200);
-        osf->max_copy = inip_get_integer(fd, section, "max_copy", 1024*1024);
-        osf->hardlink_dir_size = inip_get_integer(fd, section, "hardlink_dir_size", 256);
-        asection = inip_get_string(fd, section, "authz", NULL);
-        atype = (asection == NULL) ? strdup(OSAZ_TYPE_FAKE) : inip_get_string(fd, asection, "type", OSAZ_TYPE_FAKE);
+        osf->base_path = tbx_inip_string_get(fd, section, "base_path", "./osfile");
+        osf->internal_lock_size = tbx_inip_integer_get(fd, section, "lock_table_size", 200);
+        osf->max_copy = tbx_inip_integer_get(fd, section, "max_copy", 1024*1024);
+        osf->hardlink_dir_size = tbx_inip_integer_get(fd, section, "hardlink_dir_size", 256);
+        asection = tbx_inip_string_get(fd, section, "authz", NULL);
+        atype = (asection == NULL) ? strdup(OSAZ_TYPE_FAKE) : tbx_inip_string_get(fd, asection, "type", OSAZ_TYPE_FAKE);
         osaz_create = lookup_service(ess, OSAZ_AVAILABLE, atype);
         osf->osaz = (*osaz_create)(ess, fd, asection, os);
         free(atype);
@@ -4189,8 +4190,8 @@ object_service_fn_t *object_service_file_create(service_manager_t *ess, tbx_inip
             return(NULL);
         }
 
-        asection = inip_get_string(fd, section, "authn", NULL);
-        atype = (asection == NULL) ? strdup(AUTHN_TYPE_FAKE) : inip_get_string(fd, asection, "type", AUTHN_TYPE_FAKE);
+        asection = tbx_inip_string_get(fd, section, "authn", NULL);
+        atype = (asection == NULL) ? strdup(AUTHN_TYPE_FAKE) : tbx_inip_string_get(fd, asection, "type", AUTHN_TYPE_FAKE);
         authn_create = lookup_service(ess, AUTHN_AVAILABLE, atype);
         osf->authn = (*authn_create)(ess, fd, asection);
         free(atype);
@@ -4212,15 +4213,15 @@ object_service_fn_t *object_service_file_create(service_manager_t *ess, tbx_inip
     osf->hardlink_path_len = strlen(osf->hardlink_path);
 
     apr_pool_create(&osf->mpool, NULL);
-    type_malloc_clear(osf->internal_lock, apr_thread_mutex_t *, osf->internal_lock_size);
+    tbx_type_malloc_clear(osf->internal_lock, apr_thread_mutex_t *, osf->internal_lock_size);
     for (i=0; i<osf->internal_lock_size; i++) {
         apr_thread_mutex_create(&(osf->internal_lock[i]), APR_THREAD_MUTEX_DEFAULT, osf->mpool);
     }
 
     apr_thread_mutex_create(&(osf->fobj_lock), APR_THREAD_MUTEX_DEFAULT, osf->mpool);
-    osf->fobj_table = list_create(0, &list_string_compare, list_string_dup, list_simple_free, list_no_data_free);
-    osf->fobj_pc = new_pigeon_coop("fobj_pc", 50, sizeof(fobj_lock_t), osf->mpool, fobj_lock_new, fobj_lock_free);
-    osf->task_pc = new_pigeon_coop("fobj_task_pc", 50, sizeof(fobj_lock_task_t), osf->mpool, fobj_lock_task_new, fobj_lock_task_free);
+    osf->fobj_table = tbx_list_create(0, &tbx_list_string_compare, tbx_list_string_dup, tbx_list_simple_free, tbx_list_no_data_free);
+    osf->fobj_pc = tbx_pc_new("fobj_pc", 50, sizeof(fobj_lock_t), osf->mpool, fobj_lock_new, fobj_lock_free);
+    osf->task_pc = tbx_pc_new("fobj_task_pc", 50, sizeof(fobj_lock_task_t), osf->mpool, fobj_lock_task_new, fobj_lock_task_free);
 
     osf->base_path_len = strlen(osf->base_path);
 
@@ -4231,7 +4232,7 @@ object_service_fn_t *object_service_file_create(service_manager_t *ess, tbx_inip
 
     //** Make and install the virtual attributes
     osf->vattr_hash = apr_hash_make(osf->mpool);
-    osf->vattr_prefix = list_create(0, &list_string_compare, list_string_dup, list_simple_free, list_no_data_free);
+    osf->vattr_prefix = tbx_list_create(0, &tbx_list_string_compare, tbx_list_string_dup, tbx_list_simple_free, tbx_list_no_data_free);
 
     osf->lock_va.attribute = "os.lock";
     osf->lock_va.priv = os;
@@ -4293,10 +4294,10 @@ object_service_fn_t *object_service_file_create(service_manager_t *ess, tbx_inip
     osf->append_pva.set = va_append_set_attr;
     osf->append_pva.get_link = va_timestamp_get_link_attr;  //** The timestamp routine just peels off the PVA so can reuse it
 
-    list_insert(osf->vattr_prefix, osf->attr_link_pva.attribute, &(osf->attr_link_pva));
-    list_insert(osf->vattr_prefix, osf->attr_type_pva.attribute, &(osf->attr_type_pva));
-    list_insert(osf->vattr_prefix, osf->timestamp_pva.attribute, &(osf->timestamp_pva));
-    list_insert(osf->vattr_prefix, osf->append_pva.attribute, &(osf->append_pva));
+    tbx_list_insert(osf->vattr_prefix, osf->attr_link_pva.attribute, &(osf->attr_link_pva));
+    tbx_list_insert(osf->vattr_prefix, osf->attr_type_pva.attribute, &(osf->attr_type_pva));
+    tbx_list_insert(osf->vattr_prefix, osf->timestamp_pva.attribute, &(osf->timestamp_pva));
+    tbx_list_insert(osf->vattr_prefix, osf->append_pva.attribute, &(osf->append_pva));
 
     os->type = OS_TYPE_FILE;
 
@@ -4430,12 +4431,12 @@ local_object_iter_t *create_local_object_iter(os_regex_table_t *path, os_regex_t
     local_object_iter_t *it;
     osfile_priv_t *osf;
 
-    type_malloc_clear(it, local_object_iter_t, 1);
+    tbx_type_malloc_clear(it, local_object_iter_t, 1);
 
     //** Make a bare bones os_file object
-    type_malloc_clear(it->os, object_service_fn_t, 1);
-    type_malloc_clear(osf, osfile_priv_t, 1);
-    type_malloc_clear(osf->osaz, os_authz_t, 1);
+    tbx_type_malloc_clear(it->os, object_service_fn_t, 1);
+    tbx_type_malloc_clear(osf, osfile_priv_t, 1);
+    tbx_type_malloc_clear(osf->osaz, os_authz_t, 1);
     it->os->priv = (void *)osf;
     osf->file_path = "";
     osf->osaz->object_access = local_osaz_access;

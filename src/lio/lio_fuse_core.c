@@ -24,7 +24,8 @@
 #endif
 
 #include <assert.h>
-#include "assert_result.h"
+#include <apr_network_io.h>
+#include <tbx/assert_result.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -33,17 +34,17 @@
 #include "lio_fuse.h"
 #include "exnode.h"
 #include "ex3_compare.h"
-#include "log.h"
-#include "iniparse.h"
-#include "type_malloc.h"
+#include <tbx/log.h>
+#include <tbx/iniparse.h>
+#include <tbx/type_malloc.h>
 #include "thread_pool.h"
 #include "lio.h"
-#include "append_printf.h"
-#include "string_token.h"
-#include "apr_wrapper.h"
+#include <tbx/append_printf.h>
+#include <tbx/string_token.h>
+#include <tbx/apr_wrapper.h>
 
-//#define lfs_lock(lfs)  log_printf(0, "lfs_lock\n"); flush_log(); apr_thread_mutex_lock((lfs)->lock)
-//#define lfs_unlock(lfs) log_printf(0, "lfs_unlock\n");  flush_log(); apr_thread_mutex_unlock((lfs)->lock)
+//#define lfs_lock(lfs)  log_printf(0, "lfs_lock\n"); tbx_flush_log(); apr_thread_mutex_lock((lfs)->lock)
+//#define lfs_unlock(lfs) log_printf(0, "lfs_unlock\n");  tbx_flush_log(); apr_thread_mutex_unlock((lfs)->lock)
 #define lfs_lock(lfs)    apr_thread_mutex_lock((lfs)->lock)
 #define lfs_unlock(lfs)  apr_thread_mutex_unlock((lfs)->lock)
 
@@ -223,7 +224,7 @@ int lfs_stat(const char *fname, struct stat *stat)
     int v_size[_inode_key_size], i, err;
 
     log_printf(1, "fname=%s\n", fname);
-    flush_log();
+    tbx_flush_log();
 
     for (i=0; i<_inode_key_size; i++) v_size[i] = -lfs->lc->max_attr;
     err = lio_get_multiple_attrs(lfs->lc, lfs->lc->creds, fname, NULL, _inode_keys, (void **)val, v_size, _inode_key_size);
@@ -234,7 +235,7 @@ int lfs_stat(const char *fname, struct stat *stat)
     _lfs_parse_stat_vals(lfs, (char *)fname, stat, val, v_size);
 
     log_printf(1, "END fname=%s err=%d\n", fname, err);
-    flush_log();
+    tbx_flush_log();
 
     return(0);
 }
@@ -253,14 +254,14 @@ int lfs_closedir_real(lfs_dir_iter_t *dit)
     if (dit->dotdot_path) free(dit->dotdot_path);
 
     //** Cyle through releasing all the entries
-    while ((de = (lfs_dir_entry_t *)pop(dit->stack)) != NULL) {
+    while ((de = (lfs_dir_entry_t *)tbx_stack_pop(dit->stack)) != NULL) {
         log_printf(0, "fname=%s\n", de->dentry);
-        flush_log();
+        tbx_flush_log();
         free(de->dentry);
         free(de);
     }
 
-    free_stack(dit->stack, 0);
+    tbx_free_stack(dit->stack, 0);
 
     lio_destroy_object_iter(dit->lfs->lc, dit->it);
     os_regex_table_destroy(dit->path_regex);
@@ -289,9 +290,9 @@ int lfs_opendir(const char *fname, struct fuse_file_info *fi)
     lfs_dir_entry_t *de, *de2;
     int i;
     log_printf(1, "fname=%s\n", fname);
-    flush_log();
+    tbx_flush_log();
 
-    type_malloc_clear(dit, lfs_dir_iter_t, 1);
+    tbx_type_malloc_clear(dit, lfs_dir_iter_t, 1);
 
     for (i=0; i<_inode_key_size; i++) {
         dit->v_size[i] = -lfs->lc->max_attr;
@@ -304,20 +305,20 @@ int lfs_opendir(const char *fname, struct fuse_file_info *fi)
 
     dit->it = lio_create_object_iter_alist(dit->lfs->lc, dit->lfs->lc->creds, dit->path_regex, NULL, OS_OBJECT_ANY, 0, _inode_keys, (void **)dit->val, dit->v_size, _inode_key_size);
 
-    dit->stack = new_stack();
+    dit->stack = tbx_stack_new();
 
     dit->state = 0;
 
     //** Add "."
     dit->dot_path = strdup(fname);
-    type_malloc(de, lfs_dir_entry_t, 1);
+    tbx_type_malloc(de, lfs_dir_entry_t, 1);
     if (lfs_stat(fname, &(de->stat)) != 0) {
         lfs_closedir_real(dit);
         free(de);
         return(-ENOENT);
     }
     de->dentry = strdup(".");
-    insert_below(dit->stack, de);
+    tbx_stack_insert_below(dit->stack, de);
 
     //** And ".."
     if (strcmp(fname, "/") != 0) {
@@ -330,14 +331,14 @@ int lfs_opendir(const char *fname, struct fuse_file_info *fi)
 
     log_printf(1, "dot=%s dotdot=%s\n", dit->dot_path, dit->dotdot_path);
 
-    type_malloc(de2, lfs_dir_entry_t, 1);
+    tbx_type_malloc(de2, lfs_dir_entry_t, 1);
     if (lfs_stat(dit->dotdot_path, &(de2->stat)) != 0) {
         lfs_closedir_real(dit);
         free(de2);
         return(-ENOENT);
     }
     de2->dentry = strdup("..");
-    insert_below(dit->stack, de2);
+    tbx_stack_insert_below(dit->stack, de2);
 
     //** Compose our reply
     fi->fh = (uint64_t)dit;
@@ -358,8 +359,8 @@ int lfs_readdir(const char *dname, void *buf, fuse_fill_dir_t filler, off_t off,
     apr_time_t now;
     double dt;
     int off2 = off;
-    log_printf(1, "dname=%s off=%d stack_size=%d\n", dname, off2, stack_size(dit->stack));
-    flush_log();
+    log_printf(1, "dname=%s off=%d stack_size=%d\n", dname, off2, tbx_stack_size(dit->stack));
+    tbx_flush_log();
     now = apr_time_now();
 
     if (dit == NULL) {
@@ -369,12 +370,12 @@ int lfs_readdir(const char *dname, void *buf, fuse_fill_dir_t filler, off_t off,
     off++;  //** This is the *next* slot to get where the stack top is off=1
 
     memset(&stbuf, 0, sizeof(stbuf));
-    n = stack_size(dit->stack);
+    n = tbx_stack_size(dit->stack);
     if (n>=off) { //** Rewind
-        move_to_bottom(dit->stack);  //** Go from the bottom up.
-        for (i=n; i>off; i--) move_up(dit->stack);
+        tbx_stack_move_to_bottom(dit->stack);  //** Go from the bottom up.
+        for (i=n; i>off; i--) tbx_stack_move_up(dit->stack);
 
-        de = get_ele_data(dit->stack);
+        de = tbx_get_ele_data(dit->stack);
         while (de != NULL) {
             if (filler(buf, de->dentry, &(de->stat), off) == 1) {
                 dt = apr_time_now() - now;
@@ -384,8 +385,8 @@ int lfs_readdir(const char *dname, void *buf, fuse_fill_dir_t filler, off_t off,
             }
 
             off++;
-            move_down(dit->stack);
-            de = get_ele_data(dit->stack);
+            tbx_stack_move_down(dit->stack);
+            de = tbx_get_ele_data(dit->stack);
         }
     }
 
@@ -402,14 +403,14 @@ int lfs_readdir(const char *dname, void *buf, fuse_fill_dir_t filler, off_t off,
             return(0);
         }
 
-        type_malloc(de, lfs_dir_entry_t, 1);
+        tbx_type_malloc(de, lfs_dir_entry_t, 1);
         de->dentry = strdup(fname+prefix_len+1);
         _lfs_parse_stat_vals(dit->lfs, fname, &(de->stat), dit->val, dit->v_size);
         free(fname);
         log_printf(1, "next fname=%s ftype=%d prefix_len=%d ino=" XIDT " off=" XOT "\n", de->dentry, ftype, prefix_len, de->stat.st_ino, off);
 
-        move_to_bottom(dit->stack);
-        insert_below(dit->stack, de);
+        tbx_stack_move_to_bottom(dit->stack);
+        tbx_stack_insert_below(dit->stack, de);
 
         if (filler(buf, de->dentry, &(de->stat), off) == 1) {
             dt = apr_time_now() - now;
@@ -435,7 +436,7 @@ int lfs_object_create(lio_fuse_t *lfs, const char *fname, mode_t mode, int ftype
     int err, n;
 
     log_printf(1, "fname=%s\n", fname);
-    flush_log();
+    tbx_flush_log();
 
     //** Make sure it doesn't exists
     n = lioc_exists(lfs->lc, lfs->lc->creds, (char *)fname);
@@ -507,7 +508,7 @@ int lfs_object_remove(lio_fuse_t *lfs, const char *fname)
     lio_fuse_open_file_t *fop;
 
     log_printf(1, "fname=%s\n", fname);
-    flush_log();
+    tbx_flush_log();
 
     //** Check if it's open.  If so do a delayed removal
     lfs_lock(lfs);
@@ -579,7 +580,7 @@ int lfs_open(const char *fname, struct fuse_file_info *fi)
     lfs_lock(lfs);
     fop = apr_hash_get(lfs->open_files, fname, APR_HASH_KEY_STRING);
     if (fop == NULL) {
-        type_malloc_clear(fop, lio_fuse_open_file_t, 1);
+        tbx_type_malloc_clear(fop, lio_fuse_open_file_t, 1);
         fop->fname = strdup(fd->path);
         fop->sid = segment_id(fd->fh->seg);
         apr_hash_set(lfs->open_files, fop->fname, APR_HASH_KEY_STRING, fop);
@@ -660,7 +661,7 @@ int lfs_read(const char *fname, char *buf, size_t size, off_t off, struct fuse_f
 
     fd = (lio_fd_t *)fi->fh;
     log_printf(1, "fname=%s size=" XOT " off=" XOT " fd=%p\n", fname, t1, t2, fd);
-    flush_log();
+    tbx_flush_log();
     if (fd == NULL) {
         log_printf(0, "ERROR: Got a null file desriptor\n");
         return(-EBADF);
@@ -671,7 +672,7 @@ int lfs_read(const char *fname, char *buf, size_t size, off_t off, struct fuse_f
     //** Do the read op
     nbytes = lio_read(fd, buf, size, off, lfs->rw_hints);
 
-    if (log_level() > 0) {
+    if (tbx_log_level() > 0) {
         t2 = size+off-1;
         log_printf(1, "LFS_READ:START " XOT " %zu\n", off, size);
         log_printf(1, "LFS_READ:END " XOT "\n", t2);
@@ -680,7 +681,7 @@ int lfs_read(const char *fname, char *buf, size_t size, off_t off, struct fuse_f
     dt = apr_time_now() - now;
     dt /= APR_USEC_PER_SEC;
     log_printf(1, "END fname=%s seg=" XIDT " size=" XOT " off=%zu nbytes=" XOT " dt=%lf\n", fname, segment_id(fd->fh->seg), t1, size, nbytes, dt);
-    flush_log();
+    tbx_flush_log();
 
 //  if (err != OP_STATE_SUCCESS) {
 //     log_printf(1, "ERROR with read! fname=%s\n", fname);
@@ -727,7 +728,7 @@ int lfs_flush(const char *fname, struct fuse_file_info *fi)
     now = apr_time_now();
 
     log_printf(1, "START fname=%s\n", fname);
-    flush_log();
+    tbx_flush_log();
 
     fd = (lio_fd_t *)fi->fh;
     if (fd == NULL) {
@@ -742,7 +743,7 @@ int lfs_flush(const char *fname, struct fuse_file_info *fi)
     dt = apr_time_now() - now;
     dt /= APR_USEC_PER_SEC;
     log_printf(1, "END fname=%s dt=%lf\n", fname, dt);
-    flush_log();
+    tbx_flush_log();
 
     return(0);
 }
@@ -763,7 +764,7 @@ int lfs_fsync(const char *fname, int datasync, struct fuse_file_info *fi)
 
     fd = (lio_fd_t *)fi->fh;
     log_printf(1, "START fname=%s fd=%p\n", fname, fd);
-    flush_log();
+    tbx_flush_log();
     if (fd == NULL) {
         return(-EBADF);
     }
@@ -776,7 +777,7 @@ int lfs_fsync(const char *fname, int datasync, struct fuse_file_info *fi)
     dt = apr_time_now() - now;
     dt /= APR_USEC_PER_SEC;
     log_printf(1, "END fname=%s dt=%lf\n", fname, dt);
-    flush_log();
+    tbx_flush_log();
 
     return(0);
 }
@@ -792,7 +793,7 @@ int lfs_rename(const char *oldname, const char *newname)
     int err;
 
     log_printf(1, "oldname=%s newname=%s\n", oldname, newname);
-    flush_log();
+    tbx_flush_log();
 
     lfs_lock(lfs);
     fop = apr_hash_get(lfs->open_files, oldname, APR_HASH_KEY_STRING);
@@ -824,7 +825,7 @@ int lfs_ftruncate(const char *fname, off_t new_size, struct fuse_file_info *fi)
     int err;
 
     log_printf(1, "fname=%s\n", fname);
-    flush_log();
+    tbx_flush_log();
 
     fd = (lio_fd_t *)fi->fh;
     if (fd == NULL) {
@@ -849,7 +850,7 @@ int lfs_truncate(const char *fname, off_t new_size)
     int result;
 
     log_printf(1, "fname=%s\n", fname);
-    flush_log();
+    tbx_flush_log();
 
     ts = new_size;
     log_printf(15, "adjusting size=" XOT "\n", ts);
@@ -890,7 +891,7 @@ int lfs_utimens(const char *fname, const struct timespec tv[2])
 
 
     log_printf(1, "fname=%s\n", fname);
-    flush_log();
+    tbx_flush_log();
 
     key = "system.modify_attr";
     ts = tv[1].tv_sec;
@@ -927,7 +928,7 @@ int lfs_listxattr(const char *fname, char *list, size_t size)
 
     bpos= size;
     log_printf(1, "fname=%s size=%d\n", fname, bpos);
-    flush_log();
+    tbx_flush_log();
 
     //** Make an iterator
     attr_regex = os_path_glob2regex("user.*");
@@ -944,7 +945,7 @@ int lfs_listxattr(const char *fname, char *list, size_t size)
 
     //** Cycle through the keys
     bufsize = 10*1024;
-    type_malloc_clear(buf, char, bufsize);
+    tbx_type_malloc_clear(buf, char, bufsize);
     val = NULL;
     bpos = 0;
 
@@ -1002,7 +1003,7 @@ void lfs_set_tape_attr(lio_fuse_t *lfs, char *fname, char *mytape_val, int tape_
     exnode_exchange_t *exp;
     exnode_t *ex, *cex;
 
-    type_malloc(tape_val, char, tape_size+1);
+    tbx_type_malloc(tape_val, char, tape_size+1);
     memcpy(tape_val, mytape_val, tape_size);
     tape_val[tape_size] = 0;  //** Just to be safe with the string/prints routines
 
@@ -1018,7 +1019,7 @@ void lfs_set_tape_attr(lio_fuse_t *lfs, char *fname, char *mytape_val, int tape_
     nkeys = (ftype & OS_OBJECT_SYMLINK) ? 1 : _tape_key_size;
 
     //** The 1st key should be n_keys
-    tmp = string_token(tape_val, "=\n", &bstate, &fin);
+    tmp = tbx_stk_string_token(tape_val, "=\n", &bstate, &fin);
     if (strcmp(tmp, "n_keys") != 0) { //*
         log_printf(0, "ERROR parsing tape attribute! Missing n_keys! fname=%s\n", fname);
         log_printf(0, "Tape attribute follows:\n%s\n", mytape_val);
@@ -1027,7 +1028,7 @@ void lfs_set_tape_attr(lio_fuse_t *lfs, char *fname, char *mytape_val, int tape_
     }
 
     n = -1;
-    sscanf(string_token(NULL, "=\n", &bstate, &fin), "%d", &n);
+    sscanf(tbx_stk_string_token(NULL, "=\n", &bstate, &fin), "%d", &n);
     log_printf(15, "fname=%s n=%d nkeys=%d ftype=%d\n", fname, n, nkeys, ftype);
     if (n != nkeys) {
         log_printf(0, "ERROR parsing n_keys size fname=%s\n", fname);
@@ -1045,9 +1046,9 @@ void lfs_set_tape_attr(lio_fuse_t *lfs, char *fname, char *mytape_val, int tape_
 
     //** Parse the sizes
     for (i=0; i<nkeys; i++) {
-        tmp = string_token(NULL, "=\n", &bstate, &fin);
+        tmp = tbx_stk_string_token(NULL, "=\n", &bstate, &fin);
         if (strcmp(tmp, _tape_keys[i]) == 0) {
-            sscanf(string_token(NULL, "=\n", &bstate, &fin), "%d", &(v_size[i]));
+            sscanf(tbx_stk_string_token(NULL, "=\n", &bstate, &fin), "%d", &(v_size[i]));
             if (v_size[i] < 0) {
                 log_printf(0, "ERROR parsing key=%s size=%d fname=%s\n", tmp, v_size[i], fname);
                 log_printf(0, "Tape attribute follows:\n%s\n", mytape_val);
@@ -1067,7 +1068,7 @@ void lfs_set_tape_attr(lio_fuse_t *lfs, char *fname, char *mytape_val, int tape_
     for (i=0; i<nkeys; i++) {
         val[i] = NULL;
         if (v_size[i] > 0) {
-            type_malloc(val[i], char, v_size[i]+1);
+            tbx_type_malloc(val[i], char, v_size[i]+1);
             memcpy(val[i], &(bstate[n]), v_size[i]);
             val[i][v_size[i]] = 0;
             n = n + v_size[i];
@@ -1165,16 +1166,16 @@ void lfs_get_tape_attr(lio_fuse_t *lfs, char *fname, char **tape_val, int *tape_
     //** Figure out how much space we need
     n = 0;
     used = 0;
-    append_printf(header, &used, hmax, "n_keys=%d\n", nkeys);
+    tbx_append_printf(header, &used, hmax, "n_keys=%d\n", nkeys);
     for (i=0; i<nkeys; i++) {
         j = (v_size[i] > 0) ? v_size[i] : 0;
         n = n + 1 + j;
-        append_printf(header, &used, hmax, "%s=%d\n", _tape_keys[i], j);
+        tbx_append_printf(header, &used, hmax, "%s=%d\n", _tape_keys[i], j);
     }
 
     //** Copy all the data into the buffer;
     n = n + used;
-    type_malloc_clear(buffer, char, n);
+    tbx_type_malloc_clear(buffer, char, n);
     n = used;
     memcpy(buffer, header, used);
     for (i=0; i<nkeys; i++) {
@@ -1209,7 +1210,7 @@ int lfs_getxattr(const char *fname, const char *name, char *buf, size_t size, ui
 
     v_size= size;
     log_printf(1, "fname=%s size=%zu attr_name=%s\n", fname, size, name);
-    flush_log();
+    tbx_flush_log();
 
     v_size = (size == 0) ? -lfs->lc->max_attr : -size;
     val = NULL;
@@ -1253,7 +1254,7 @@ int lfs_setxattr(const char *fname, const char *name, const char *fval, size_t s
 
     v_size= size;
     log_printf(1, "fname=%s size=%zu attr_name=%s\n", fname, size, name);
-    flush_log();
+    tbx_flush_log();
 
     if (flags != 0) { //** Got an XATTR_CREATE/XATTR_REPLACE
         v_size = 0;
@@ -1294,7 +1295,7 @@ int lfs_removexattr(const char *fname, const char *name)
     int v_size, err;
 
     log_printf(1, "fname=%s attr_name=%s\n", fname, name);
-    flush_log();
+    tbx_flush_log();
 
     if ((lfs->enable_tape == 1) && (strcmp(name, LFS_TAPE_ATTR) == 0)) {
         return(0);
@@ -1319,7 +1320,7 @@ int lfs_hardlink(const char *oldname, const char *newname)
     int err;
 
     log_printf(1, "oldname=%s newname=%s\n", oldname, newname);
-    flush_log();
+    tbx_flush_log();
 
     //** Now do the hard link
     err = gop_sync_exec(gop_lio_link_object(lfs->lc, lfs->lc->creds, 0, (char *)oldname, (char *)newname, lfs->id));
@@ -1341,7 +1342,7 @@ int lfs_readlink(const char *fname, char *buf, size_t bsize)
     char *val;
 
     log_printf(15, "fname=%s\n", fname);
-    flush_log();
+    tbx_flush_log();
 
     v_size = -lfs->lc->max_attr;
     val = NULL;
@@ -1364,7 +1365,7 @@ int lfs_readlink(const char *fname, char *buf, size_t bsize)
 
     i=bsize;
     log_printf(15, "fname=%s bsize=%d link=%s mountpoint=%s\n", fname, i, buf, lfs->mount_point);
-    flush_log();
+    tbx_flush_log();
 
     return(0);
 }
@@ -1380,7 +1381,7 @@ int lfs_symlink(const char *link, const char *newname)
     int err;
 
     log_printf(1, "link=%s newname=%s\n", link, newname);
-    flush_log();
+    tbx_flush_log();
 
     //** If the link is an absolute path we need to peel off the mount point to the get attribs to link correctly
     //** We only support symlinks within LFS
@@ -1450,8 +1451,8 @@ int lfs_statfs(const char *fname, struct statvfs *fs)
 //*************************************************************************
 
 void *lfs_init_real(struct fuse_conn_info *conn,
-                    const int argc,
-                    const char **argv,
+                    int argc,
+                    char **argv,
                     const char *mount_point)
 {
     lio_fuse_t *lfs;
@@ -1499,13 +1500,13 @@ void *lfs_init_real(struct fuse_conn_info *conn,
         }
     }
 
-    type_malloc_clear(lfs, lio_fuse_t, 1);
+    tbx_type_malloc_clear(lfs, lio_fuse_t, 1);
 
     lfs->lc = init_args->lc;
     lfs->mount_point = strdup(init_args->mount_point);
     lfs->mount_point_len = strlen(init_args->mount_point);
 
-    lfs->enable_tape = inip_get_integer(lfs->lc->ifd, section, "enable_tape", 0);
+    lfs->enable_tape = tbx_inip_integer_get(lfs->lc->ifd, section, "enable_tape", 0);
 
     apr_pool_create(&(lfs->mpool), NULL);
     apr_thread_mutex_create(&(lfs->lock), APR_THREAD_MUTEX_DEFAULT, lfs->mpool);
@@ -1542,7 +1543,7 @@ void lfs_destroy(void *private_data)
     lio_fuse_t *lfs;
 
     log_printf(0, "shutting down\n");
-    flush_log();
+    tbx_flush_log();
 
     lfs = (lio_fuse_t*)private_data;
     if (lfs == NULL) {

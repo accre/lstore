@@ -24,16 +24,16 @@
 #include "ibp/ibp_visibility.h"
 #include <apr_time.h>
 #include <apr_pools.h>
-#include "stack.h"
-#include "network.h"
+#include <tbx/stack.h>
+#include <tbx/network.h>
 #include "opque.h"
 #include "host_portal.h"
 #include "ibp_types.h"
-#include "transfer_buffer.h"
-#include "pigeon_coop.h"
-#include "list.h"
-#include "atomic_counter.h"
-#include "iniparse.h"
+#include <tbx/transfer_buffer.h>
+#include <tbx/pigeon_coop.h>
+#include <tbx/list.h>
+#include <tbx/atomic_counter.h>
+#include <tbx/iniparse.h>
 
 #ifdef __cplusplus
 extern "C" {

@@ -16,10 +16,31 @@
 
 #define _log_module_index 107
 
-#include "chksum.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/uio.h>
+
+#include "tbx/chksum.h"
+#include "tbx/transfer_buffer.h"
+// Private interface
+#include "chksum.h"
+
+/*! @brief Given a binary string, return the hexidecimal representation
+ *
+ * @param in_size Length of input string
+ * @param in Input string
+ * @param out String to write to
+ * @returns Always returns zero
+ **/
+int convert_bin2hex(int in_size, const unsigned char *in, char *out);
+
+/*! @brief Initializes cs to a completely blank checksum
+ * @param cs Checksum struct to initialize
+ * @returns Always returns zero
+ */
+int blank_tbx_chksum_set(tbx_chksum_t *cs);
+
 
 #define CHKSUM_SHA1_LEN   (2*SHA1_DIGEST_LENGTH)
 #define CHKSUM_SHA256_LEN (2*SHA256_DIGEST_LENGTH)
@@ -83,7 +104,7 @@ int convert_bin2hex(int in_size, const unsigned char *in, char *out)
 //    or -2 if invalid
 //**********************************************************************
 
-int chksum_name_type(const char *name)
+int tbx_chksum_type_name(const char *name)
 {
     int i;
 
@@ -102,7 +123,7 @@ int chksum_name_type(const char *name)
 //    Returns 1 if the type is valid and 0 otherwise
 //**********************************************************************
 
-int chksum_valid_type(int type)
+int tbx_chksum_type_valid(int type)
 {
     if ((type > 0) && (type < CHKSUM_MAX_TYPE)) return(1);
 
@@ -133,23 +154,33 @@ int cipher ## _add(void *state, int nbytes, tbx_tbuf_t *data, int boff)   \
 {                                                  \
   int i, err = -1;                                 \
   size_t nleft;                                    \
-  tbx_iovec_t *iov;                                    \
-  tbx_tbuf_var_t tbv;                               \
-                                                   \
-  tbuffer_var_init(&tbv);                          \
+  tbx_iovec_t *iov;                                \
+  tbx_tbuf_var_t *tbv;                             \
+  tbv = (tbx_tbuf_var_t*) malloc(tbx_tbuf_var_size()); \
+  if (!tbv) { \
+      return -1; \
+  } \
+  tbx_tbuf_var_init(tbv);                          \
                                                    \
   nleft = nbytes;                                  \
   while (nbytes > 0) {                             \
-     tbv.nbytes = nleft;                           \
-     i = tbuffer_next(data, boff, &tbv);           \
-     iov = tbv.buffer;                             \
-     if (i != TBUFFER_OK) return(0);               \
-     for (i=0; i<tbv.n_iov; i++) {                 \
+     tbx_tbuf_var_nbytes_set(tbv, nleft);          \
+     i = tbx_tbuf_next_block(data, boff, tbv);    \
+     iov = tbx_tbuf_var_buffer_get(tbv);          \
+     if (i != TBUFFER_OK) { \
+         free(tbv); \
+         return(0); \
+     } \
+     int n_iov = tbx_tbuf_var_n_iov_get(tbv);      \
+     for (i=0; i<n_iov; i++) {                 \
         err = CIPHER ## _Update((CIPHER ## _CTX *)state, iov[i].iov_base, iov[i].iov_len); \
         nleft = nleft - iov[i].iov_len;            \
         boff = boff + iov[i].iov_len;              \
-        if (nleft <= 0) return(err);               \
-     }                                             \
+        if (nleft <= 0) { \
+            free(tbv); \
+            return(err);               \
+        } \
+    }                                             \
   }                                                \
                                                    \
   return(err);                                     \
@@ -237,7 +268,7 @@ int blank_add(void *state, int type, tbx_tbuf_t *data, int boff)
 //  blank_chksum_set - makes a blank chksum
 //*************************************************************************
 
-int blank_chksum_set(tbx_chksum_t *cs)
+int blank_tbx_chksum_set(tbx_chksum_t *cs)
 {
     cs->reset = blank_reset;
     cs->size = blank_size;
@@ -255,13 +286,13 @@ int blank_chksum_set(tbx_chksum_t *cs)
 //
 //*************************************************************************
 
-int chksum_set(tbx_chksum_t *cs, int chksum_type)
+int tbx_chksum_set(tbx_chksum_t *cs, int tbx_chksum_type)
 {
     int i = -1;
 
     cs->type = CHKSUM_NONE;
 
-    switch (chksum_type) {
+    switch (tbx_chksum_type) {
     case CHKSUM_SHA1:
         i = sha1_set(cs);
         break;
@@ -275,7 +306,7 @@ int chksum_set(tbx_chksum_t *cs, int chksum_type)
         i = md5_set(cs);
         break;
     case CHKSUM_NONE:
-        i = blank_chksum_set(cs);
+        i = blank_tbx_chksum_set(cs);
         break;
     }
 

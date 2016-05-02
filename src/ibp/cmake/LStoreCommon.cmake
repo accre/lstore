@@ -104,6 +104,10 @@ configure_file(${CMAKE_SOURCE_DIR}/${LSTORE_PROJECT_NAME}_version.c.in
 set(LSTORE_PROJECT_OBJS ${LSTORE_PROJECT_OBJS} ${LSTORE_PROJECT_NAME}_version.c)
 
 add_library(library SHARED ${LSTORE_PROJECT_OBJS})
+target_include_directories(library PUBLIC ${LSTORE_INCLUDE_PUBLIC})
+set_target_properties(library PROPERTIES
+        COMPILE_FLAGS "-DLSTORE_HACK_EXPORT")
+
 
 # Possibly override the library filename
 if(DEFINED LSTORE_LIBRARY_NAME)
@@ -124,6 +128,9 @@ if(WANT_STATIC)
     else()
         set_target_properties(library-static PROPERTIES OUTPUT_NAME "${LSTORE_PROJECT_NAME}")
     endif(DEFINED LSTORE_LIBRARY_NAME)
+    target_include_directories(library-static PUBLIC ${LSTORE_INCLUDE_PUBLIC})
+    set_target_properties(library-static PROPERTIES
+                    COMPILE_FLAGS "-DLSTORE_HACK_EXPORT")
 else()
     message(STATUS "NOT building a static library")
     SET(library_lib library)
@@ -156,6 +163,7 @@ foreach(f ${LSTORE_PROJECT_EXECUTABLES})
     else()
         target_link_libraries(${f} ${library_lib})
     endif(WANT_STATIC)
+    target_include_directories(${f} PUBLIC ${LSTORE_INCLUDE_PUBLIC})
     install(TARGETS ${f} DESTINATION ${CMAKE_INSTALL_BINDIR})
 endforeach(f)
 

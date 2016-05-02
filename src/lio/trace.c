@@ -18,10 +18,10 @@
 
 #include <math.h>
 #include "trace.h"
-#include "iniparse.h"
-#include "type_malloc.h"
-#include "log.h"
-#include "string_token.h"
+#include <tbx/iniparse.h>
+#include <tbx/type_malloc.h>
+#include <tbx/log.h>
+#include <tbx/string_token.h>
 
 //**********************************************************************
 // trace_rw_dist_print - Prints the R/W distribution table
@@ -107,11 +107,11 @@ trace_t *trace_load(service_manager_t *exs, exnode_t *tex, data_attr_t *da, int 
 //  char *template;
     segment_t *tseg;
 
-    tfd = inip_read(fname);
+    tfd = tbx_inip_file_read(fname);
 
-    n_files = inip_get_integer(tfd, "trace", "n_files", -1);
-    n_ops = inip_get_integer(tfd, "trace", "n_ops", -1);
-    trace_fname = inip_get_string(tfd, "trace", "trace", "");
+    n_files = tbx_inip_integer_get(tfd, "trace", "n_files", -1);
+    n_ops = tbx_inip_integer_get(tfd, "trace", "n_ops", -1);
+    trace_fname = tbx_inip_string_get(tfd, "trace", "trace", "");
 
     assert(n_files > 0);
     assert(n_ops > 0);
@@ -123,9 +123,9 @@ trace_t *trace_load(service_manager_t *exs, exnode_t *tex, data_attr_t *da, int 
         assert(fd != NULL);
     }
 
-    type_malloc_clear(trace, trace_t, 1);
-    type_malloc_clear(trace->ops, trace_op_t, n_ops);
-    type_malloc_clear(trace->files, trace_file_t, n_files);
+    tbx_type_malloc_clear(trace, trace_t, 1);
+    tbx_type_malloc_clear(trace->ops, trace_op_t, n_ops);
+    tbx_type_malloc_clear(trace->files, trace_file_t, n_files);
 
     trace->da = da;
     trace->header = fname;
@@ -156,10 +156,10 @@ trace_t *trace_load(service_manager_t *exs, exnode_t *tex, data_attr_t *da, int 
     for (i=0; i<n_ops; i++) {
         op = &(trace->ops[i]);
         fgets(buffer, 1024, fd);
-        sscanf(string_token(buffer, " ,", &bstate, &fin), "%d", &(op->fd));
-        sscanf(string_token(NULL, " ,", &bstate, &fin), XOT, &(op->offset));
-        sscanf(string_token(NULL, " ,", &bstate, &fin), XOT, &(op->len));
-        str = string_token(NULL, " ,", &bstate, &fin);
+        sscanf(tbx_stk_string_token(buffer, " ,", &bstate, &fin), "%d", &(op->fd));
+        sscanf(tbx_stk_string_token(NULL, " ,", &bstate, &fin), XOT, &(op->offset));
+        sscanf(tbx_stk_string_token(NULL, " ,", &bstate, &fin), XOT, &(op->len));
+        str = tbx_stk_string_token(NULL, " ,", &bstate, &fin);
         if ((str[0] == 'R') || (str[0] == 'r')) {
             op->cmd = CMD_WRITE;
         }

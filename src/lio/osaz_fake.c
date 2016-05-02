@@ -20,9 +20,9 @@
 
 #define _log_module_index 186
 
-#include "list.h"
-#include "type_malloc.h"
-#include "log.h"
+#include <tbx/list.h>
+#include <tbx/type_malloc.h>
+#include <tbx/log.h>
 #include "authn_abstract.h"
 #include "object_service_abstract.h"
 
@@ -70,7 +70,7 @@ os_authz_t *osaz_fake_create(service_manager_t *ess, tbx_inip_file_t *ifd, char 
 {
     os_authz_t *osaz;
 
-    type_malloc(osaz, os_authz_t, 1);
+    tbx_type_malloc(osaz, os_authz_t, 1);
 
     osaz->priv = NULL;
     osaz->object_create = osaz_fake_object_create_remove;

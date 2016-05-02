@@ -21,8 +21,8 @@
 #include <string.h>
 #include <apr_signal.h>
 #include "ibp.h"
-#include "log.h"
-#include "string_token.h"
+#include <tbx/log.h>
+#include <tbx/string_token.h>
 
 
 //*************************************************************
@@ -55,7 +55,7 @@ void ibppc_form_host(ibp_context_t *ic, char *hoststr, int n_host, char *host, r
     case IBP_CMODE_ROUND_ROBIN:
         hoststr[i] = '#';
         i++;
-        n = atomic_inc(ic->rr_count);
+        n = tbx_atomic_inc(ic->rr_count);
         n = n % ic->rr_size;
         snprintf(rr, sizeof(rr), "%d", n);
 //log_printf(0, "HOST rr=%s i=%d\n", rr, i);
@@ -102,19 +102,19 @@ int parse_cap(ibp_context_t *ic, ibp_cap_t *cap, char *host, int *port, char *ke
 
     char *temp = strdup(cap);
     char *ptr;
-    string_token(temp, "/", &bstate, &finished); //** gets the ibp:/
+    tbx_stk_string_token(temp, "/", &bstate, &finished); //** gets the ibp:/
 //log_printf(15, "1 ptr=%s\n", ptr);
-    ptr = string_token(NULL, ":", &bstate, &finished); //** This should be the hostname
+    ptr = tbx_stk_string_token(NULL, ":", &bstate, &finished); //** This should be the hostname
 //log_printf(15, "2 ptr=%s\n", ptr);
     ptr = &(ptr[1]);  //** Skip the extra "/"
 //log_printf(15, "3 ptr=%s\n", ptr);
-    sscanf(string_token(NULL, "/", &bstate, &finished), "%d", port);
+    sscanf(tbx_stk_string_token(NULL, "/", &bstate, &finished), "%d", port);
     strncpy(host,  ptr, MAX_HOST_SIZE-1); //** This should be the host name
 
 //log_printf(15, "ptr=%s host=%s ccmode=%d\n", ptr, host, ic->connection_mode);
 
-    strncpy(key, string_token(NULL, "/", &bstate, &finished), 255);
-    strncpy(typekey, string_token(NULL, "/", &bstate, &finished), 255);
+    strncpy(key, tbx_stk_string_token(NULL, "/", &bstate, &finished), 255);
+    strncpy(typekey, tbx_stk_string_token(NULL, "/", &bstate, &finished), 255);
 
     switch (ic->connection_mode) {
     case IBP_CMODE_RID:
@@ -132,7 +132,7 @@ int parse_cap(ibp_context_t *ic, ibp_cap_t *cap, char *host, int *port, char *ke
         }
         break;
     case IBP_CMODE_ROUND_ROBIN:
-        n = atomic_inc(ic->rr_count);
+        n = tbx_atomic_inc(ic->rr_count);
         n = n % ic->rr_size;
         snprintf(rr, sizeof(rr), "%d", n);
         n = strlen(host);

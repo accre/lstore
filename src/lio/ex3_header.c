@@ -20,8 +20,8 @@
 #include <stdlib.h>
 #include "ex3_header.h"
 #include <assert.h>
-#include "assert_result.h"
-#include "list.h"
+#include <tbx/assert_result.h>
+#include <tbx/list.h>
 
 //*************************************************************************
 // ex_header_init - Initializes an existing exnode header
@@ -31,7 +31,7 @@ void ex_header_init(ex_header_t *eh)
 {
     assert(eh != NULL);
     memset(eh, 0, sizeof(ex_header_t));
-//  eh->attributes = list_create(1, &list_string_compare, list_string_dup, list_simple_free, list_simple_free);
+//  eh->attributes = tbx_list_create(1, &tbx_list_string_compare, tbx_list_string_dup, tbx_list_simple_free, tbx_list_simple_free);
 }
 
 //*************************************************************************
@@ -43,7 +43,7 @@ void ex_header_release(ex_header_t *h)
 {
     if (h->name != NULL) free(h->name);
 //  if (h->type != NULL) free(h->type);
-//  list_destroy(h->attributes);
+//  tbx_list_destroy(h->attributes);
 }
 
 

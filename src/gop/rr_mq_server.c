@@ -2,12 +2,12 @@
  * Round robin server
  *****************************/
 
-#include "apr_wrapper.h"
+#include <tbx/apr_wrapper.h>
 #include "mq_portal.h"
 #include "mq_roundrobin.h"
 #include "mqs_roundrobin.h"
-#include "log.h"
-#include "type_malloc.h"
+#include <tbx/log.h>
+#include <tbx/type_malloc.h>
 #include <sys/eventfd.h>
 
 char *host_string = "tcp://127.0.0.1:6714";
@@ -113,7 +113,7 @@ void process_register_worker(mq_portal_t *p, mq_socket_t *sock, mq_msg_t *msg)
 
     f = mq_msg_last(msg);
     mq_get_frame(f, (void **)&data, &err);
-    type_malloc(worker_address, char, err + 1);
+    tbx_type_malloc(worker_address, char, err + 1);
     memcpy(worker_address, data, err);
     worker_address[err] = '\0';
 
@@ -161,7 +161,7 @@ void process_deregister_worker(mq_portal_t *p, mq_socket_t *sock, mq_msg_t *msg)
     f = mq_msg_last(msg);
     mq_get_frame(f, (void **)&data, &err);
     printf("err = %d\n", err);
-    type_malloc(worker_address, char, err + 1);
+    tbx_type_malloc(worker_address, char, err + 1);
     memcpy(worker_address, data, err);
     worker_address[err] = '\0';
     log_printf(10, "SERVER: Attempting to delete worker with address %s\n", worker_address);
@@ -190,7 +190,7 @@ void process_increment_worker(mq_portal_t *p, mq_socket_t *sock, mq_msg_t *msg)
     f = mq_msg_last(msg);
     mq_get_frame(f, (void **)&data, &err);
     printf("err = %d\n", err);
-    type_malloc(worker_address, char, err + 1);
+    tbx_type_malloc(worker_address, char, err + 1);
     memcpy(worker_address, data, err);
     worker_address[err] = '\0';
     log_printf(10, "SERVER: Attempting to increment worker with address %s\n", worker_address);
@@ -336,13 +336,13 @@ mq_context_t *server_make_context()
                             "min_ops_per_sec=100\n"
                             "socket_type=1002\n"; // Set socket type to MQF_ROUND_ROBIN
 
-    flush_log();
-    ifd = inip_read_text(text_parameters);
+    tbx_flush_log();
+    ifd = tbx_inip_string_read(text_parameters);
 
     //log_printf(15, "SERVER: Creating context...\n");
     mqc = mq_create_context(ifd, "mq_context");
     assert(mqc != NULL);
-    inip_destroy(ifd);
+    tbx_inip_destroy(ifd);
 
     return mqc;
 }
@@ -387,10 +387,10 @@ void server_test()
 
     log_printf(15, "SERVER: Starting processing queue thread...\n");
     apr_pool_create(&pqueue_pool, NULL);
-    thread_create_assert(&queue_checker_thread, NULL, queue_checker, worker_table, pqueue_pool);
+    tbx_thread_create_assert(&queue_checker_thread, NULL, queue_checker, worker_table, pqueue_pool);
 
     log_printf(1, "SERVER: Up and running!\n");
-    type_malloc(user_command, char, 20);
+    tbx_type_malloc(user_command, char, 20);
     while(!complete) {
         printf("> ");
         scanf("%s", user_command);
@@ -422,7 +422,7 @@ int main(int argc, char **argv)
 
     if (argc > 2) {
         if(strcmp(argv[1], "-d") == 0)
-            set_log_level(atol(argv[2]));
+            tbx_set_log_level(atol(argv[2]));
         else {
             printf("%s -d <log_level>\n", argv[0]);
             return 1;
@@ -446,7 +446,7 @@ int main(int argc, char **argv)
     assert_result(apr_thread_mutex_create(&queue_lock, APR_THREAD_MUTEX_DEFAULT, mpool), APR_SUCCESS);
 
     // Create thread for server
-    thread_create_assert(&server_thread, NULL, server_test_thread, NULL, mpool);
+    tbx_thread_create_assert(&server_thread, NULL, server_test_thread, NULL, mpool);
 
     apr_thread_join(&dummy, server_thread);
 

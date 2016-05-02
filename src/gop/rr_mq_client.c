@@ -8,9 +8,9 @@
 #include "mq_ongoing.h"
 #include "mq_roundrobin.h"
 #include "mqs_roundrobin.h"
-#include "apr_wrapper.h"
-#include "log.h"
-#include "type_malloc.h"
+#include <tbx/apr_wrapper.h>
+#include <tbx/log.h>
+#include <tbx/type_malloc.h>
 #include <sys/eventfd.h>
 
 #define NUM_TEST		1
@@ -44,11 +44,11 @@ op_status_t read_stream(void *arg, int tid)
 
     int n_read, n_left, offset, n_bytes;
 
-    flush_log();
+    tbx_flush_log();
     log_printf(10, "CLIENT: Message frames BEFORE destroying:\n");
     display_msg_frames(msg);
 
-    type_malloc(buffer, char, test_size);
+    tbx_type_malloc(buffer, char, test_size);
 
     mq_remove_header(msg, 1);
     fdata = mq_msg_pop(msg);
@@ -216,7 +216,7 @@ mq_msg_t *pack_ping_msg(int track)
         mq_msg_append_mem(msg, MQF_TRACKEXEC_KEY, MQF_TRACKEXEC_SIZE, MQF_MSG_KEEP_DATA);
 
     id = malloc(sizeof(uint64_t));
-    *id = atomic_global_counter();
+    *id = tbx_atomic_global_counter();
     mq_msg_append_mem(msg, id, sizeof(uint64_t), MQF_MSG_KEEP_DATA);
     mq_msg_append_mem(msg, MQF_PING_KEY, MQF_PING_SIZE, MQF_MSG_KEEP_DATA);
     mq_msg_append_mem(msg, NULL, 0, MQF_MSG_KEEP_DATA);
@@ -278,10 +278,10 @@ mq_context_t *client_make_context()
 
     char buffer[1024];
     snprintf(buffer, sizeof(buffer), text_parameters, nparallel);
-    ifd = inip_read_text(buffer);
+    ifd = tbx_inip_string_read(buffer);
 
     mqc = mq_create_context(ifd, "mq_context");
-    inip_destroy(ifd);
+    tbx_inip_destroy(ifd);
 
     return mqc;
 }
@@ -392,7 +392,7 @@ void client_test()
 {
     mq_context_t *mqc;
 
-    flush_log();
+    tbx_flush_log();
     log_printf(1, "CLIENT: Starting...\n");
 
     log_printf(15, "CLIENT: Creating context...\n");
@@ -401,7 +401,7 @@ void client_test()
     ongoing = mq_ongoing_create(mqc, NULL, ongoing_client_interval, ONGOING_CLIENT);
 
     log_printf(1, "CLIENT: Up and running!\n");
-    type_malloc(user_command, char, 20);
+    tbx_type_malloc(user_command, char, 20);
     int num;
     while(!complete) {
         printf("> ");
@@ -445,7 +445,7 @@ int main(int argc, char **argv)
 
     if (argc > 2) {
         if(strcmp(argv[1], "-d") == 0)
-            set_log_level(atol(argv[2]));
+            tbx_set_log_level(atol(argv[2]));
         else {
             printf("%s -d <log_level>\n", argv[0]);
             return 1;
@@ -467,7 +467,7 @@ int main(int argc, char **argv)
     server = mq_string_to_address(server_string);
 
     // Start the main thread
-    thread_create_assert(&client_thread, NULL, client_test_thread, NULL, mpool);
+    tbx_thread_create_assert(&client_thread, NULL, client_test_thread, NULL, mpool);
 
     apr_thread_join(&dummy, client_thread);
 

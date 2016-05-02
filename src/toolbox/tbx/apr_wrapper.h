@@ -14,24 +14,29 @@
    limitations under the License.
 */
 
-//*************************************************************
-//  APR Wrapper to safely start/stop the APR system in
-//  applications with multiple libraries using APR and
-//  starting/stopping it themselves
-//
-//  Also provides wrappers for checking on threa creations
-//*************************************************************
+#pragma once
+#ifndef ACCRE_APR_WRAPPER_H_INCLUDED
+#define ACCRE_APR_WRAPPER_H_INCLUDED
 
-#ifndef __APR_WRAPPER_H_
-#define __APR_WRAPPER_H_
+#include "tbx/assert_result.h"
+#include "tbx/toolbox_visibility.h"
 
-#define thread_create_warn(err, thread, attr, thread_fn, arg, mpool) \
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+// Precompiler macros
+#define tbx_thread_create_warn(err, thread, attr, thread_fn, arg, mpool) \
   if ((err = apr_thread_create(thread, attr, thread_fn, arg, mpool)) != APR_SUCCESS) { \
      log_printf(0, "WARN: Possible deadlock can occur!  Failed launching new thread!  Increase maxproc in limit/ulimit.\n"); \
      fprintf(stderr, "WARN: Possible deadlock can occur!  Failed launching new thread!  Increase maxproc in limit/ulimit.\n"); \
   }
 
-#define thread_create_assert(thread, attr, thread_fn, arg, mpool) \
+#define tbx_thread_create_assert(thread, attr, thread_fn, arg, mpool) \
   assert_result(apr_thread_create(thread, attr, thread_fn, arg, mpool), APR_SUCCESS);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

@@ -20,8 +20,8 @@
 
 #include "ex3_types.h"
 #include "data_service_abstract.h"
-#include "atomic_counter.h"
-#include "stack.h"
+#include <tbx/atomic_counter.h>
+#include <tbx/stack.h>
 
 #ifndef _DATA_BLOCK_H_
 #define _DATA_BLOCK_H_

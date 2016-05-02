@@ -21,17 +21,18 @@
 
 #define _log_module_index 177
 
+#include <tbx/assert_result.h>
 #include "ex3_abstract.h"
 #include "ex3_system.h"
-#include "interval_skiplist.h"
+#include <tbx/interval_skiplist.h>
 #include "ex3_compare.h"
-#include "log.h"
-#include "string_token.h"
+#include <tbx/log.h>
+#include <tbx/string_token.h>
 #include "segment_lun.h"
-#include "iniparse.h"
-#include "random.h"
-#include "append_printf.h"
-#include "type_malloc.h"
+#include <tbx/iniparse.h>
+#include <tbx/random.h>
+#include <tbx/append_printf.h>
+#include <tbx/type_malloc.h>
 #include "rs_query_base.h"
 #include "segment_lun_priv.h"
 
@@ -124,8 +125,8 @@ void _slun_perform_remap(segment_t *seg)
     int i;
 
     log_printf(5, "START\n");
-    it = iter_search_interval_skiplist(s->isl, (tbx_sl_key_t *)NULL, (tbx_sl_key_t *)NULL);
-    while ((b = (seglun_row_t *)next_interval_skiplist(&it)) != NULL) {
+    it = tbx_isl_iter_search(s->isl, (tbx_sl_key_t *)NULL, (tbx_sl_key_t *)NULL);
+    while ((b = (seglun_row_t *)tbx_isl_next(&it)) != NULL) {
         for (i=0; i<s->n_devices; i++) {
             rs_translate_cap_set(s->rs, b->block[i].data->rid_key, b->block[i].data->cap);
             log_printf(15, "i=%d rcap=%p\n", i, ds_get_cap(s->ds, b->block[i].data->cap, DS_CAP_READ));
@@ -365,7 +366,7 @@ int slun_row_placement_fix(segment_t *seg, data_attr_t *da, seglun_row_t *b, int
 
                     dbd->size = dbs->size;
                     dbd->max_size = dbs->max_size;
-                    atomic_inc(dbd->ref_count);
+                    tbx_atomic_inc(dbd->ref_count);
                     dbd->attr_stack = dbs->attr_stack;
                     dbs->attr_stack = NULL;
 
@@ -384,8 +385,8 @@ int slun_row_placement_fix(segment_t *seg, data_attr_t *da, seglun_row_t *b, int
                         gop = ds_remove(dbd->ds, da, ds_get_cap(dbd->ds, dbd->cap, DS_CAP_MANAGE), timeout);
                         opque_add(args->qf, gop);  //** This gets placed on the failed queue so we can roll it back if needed
                     }
-                    if (s->db_cleanup == NULL) s->db_cleanup = new_stack();
-                    push(s->db_cleanup, dbs);  //** Dump the data block here cause the cap is needed for the gop.  We'll cleanup up on destroy()
+                    if (s->db_cleanup == NULL) s->db_cleanup = tbx_stack_new();
+                    tbx_stack_push(s->db_cleanup, dbs);  //** Dump the data block here cause the cap is needed for the gop.  We'll cleanup up on destroy()
                 } else {  //** Copy failed so remove the destintation
                     gop_free(gop, OP_DESTROY);
                     gop = ds_remove(db[j]->ds, da, ds_get_cap(db[j]->ds, db[j]->cap, DS_CAP_MANAGE), timeout);
@@ -419,7 +420,7 @@ int slun_row_placement_fix(segment_t *seg, data_attr_t *da, seglun_row_t *b, int
         //** Clean up
         for (i=0; i<k; i++) {
 //log_printf(0, "dbold[%d]=%d\n", i, dbold[i]->ref_count);
-            atomic_dec(dbold[i]->ref_count);
+            tbx_atomic_dec(dbold[i]->ref_count);
             data_block_destroy(dbold[i]);
         }
 
@@ -562,7 +563,7 @@ int slun_row_pad_fix(segment_t *seg, data_attr_t *da, seglun_row_t *b, int *bloc
     q = new_opque();
 
     c = 0;
-    tbuffer_single(&tbuf, 1, &c);
+    tbx_tbuf_single(&tbuf, 1, &c);
     err = 0;
     for (i=0; i < n_devices; i++) {
         log_printf(10, "seg=" XIDT " seg_offset=" XOT " i=%d block_status=%d\n", segment_id(seg), b->seg_offset, i, block_status[i]);
@@ -664,8 +665,8 @@ int slun_row_replace_fix(segment_t *seg, data_attr_t *da, seglun_row_t *b, int *
                         gop = ds_remove(s->ds, da, ds_get_cap(db->ds, db->cap, DS_CAP_MANAGE), timeout);
                         opque_add(args->qs, gop);  //** This gets placed on the success queue so we can roll it back if needed
                     }
-                    if (s->db_cleanup == NULL) s->db_cleanup = new_stack();
-                    push(s->db_cleanup, db);   //** Dump the data block here cause the cap is needed for the gop.  We'll cleanup up on destroy()
+                    if (s->db_cleanup == NULL) s->db_cleanup = tbx_stack_new();
+                    tbx_stack_push(s->db_cleanup, db);   //** Dump the data block here cause the cap is needed for the gop.  We'll cleanup up on destroy()
 
                     b->block[i].data = data_block_create(s->ds);
                 } else {
@@ -727,15 +728,15 @@ int slun_row_replace_fix(segment_t *seg, data_attr_t *da, seglun_row_t *b, int *
                 block_status[i] = 2;  //** Mark the block for padding
                 data_block_auto_warm(b->block[i].data);  //** Add it to be auto-warmed
                 b->block[i].data->rid_key = req_list[j].rid_key;
-                atomic_inc(b->block[i].data->ref_count);
+                tbx_atomic_inc(b->block[i].data->ref_count);
                 req_list[j].rid_key = NULL; //** Cleanup
                 err++;
             } else {  //** Make sure we exclude the RID key on the next round due to the failure
                 if (req_list[j].rid_key != NULL) {
                     log_printf(15, "Excluding rid_key=%s on next round\n", req_list[j].rid_key);
-                    if (cleanup_stack == NULL) cleanup_stack = new_stack();
+                    if (cleanup_stack == NULL) cleanup_stack = tbx_stack_new();
                     key = req_list[j].rid_key;
-                    push(cleanup_stack, key);
+                    tbx_stack_push(cleanup_stack, key);
                     req_list[j].rid_key = NULL;  //** Don't want to accidentally free it below
                     rs_query_add(s->rs, &rsq, RSQ_BASE_OP_KV, "rid_key", RSQ_BASE_KV_EXACT, key, RSQ_BASE_KV_EXACT);
                     rs_query_add(s->rs, &rsq, RSQ_BASE_OP_NOT, NULL, 0, NULL, 0);
@@ -763,7 +764,7 @@ oops:
             rs_query_destroy(s->rs, hints_list[i].local_rsq);
         }
     }
-    if (cleanup_stack != NULL) free_stack(cleanup_stack, 1);
+    if (cleanup_stack != NULL) tbx_free_stack(cleanup_stack, 1);
 
     return(err);
 }
@@ -815,8 +816,8 @@ op_status_t _seglun_grow(segment_t *seg, data_attr_t *da, ex_off_t new_size_arg,
     if ((s->total_size > 0) && (s->grow_break == 0)) {
         lo = s->total_size-1;
         hi = s->total_size;
-        it = iter_search_interval_skiplist(s->isl, (tbx_sl_key_t *)&lo, (tbx_sl_key_t *)&hi);
-        b = (seglun_row_t *)next_interval_skiplist(&it);
+        it = tbx_isl_iter_search(s->isl, (tbx_sl_key_t *)&lo, (tbx_sl_key_t *)&hi);
+        b = (seglun_row_t *)tbx_isl_next(&it);
         if (b->row_len < s->max_row_size) {
             dsize = new_size - b->seg_offset;
             dsize /= s->n_devices;
@@ -825,7 +826,7 @@ op_status_t _seglun_grow(segment_t *seg, data_attr_t *da, ex_off_t new_size_arg,
 
             log_printf(15, "sid=" XIDT " increasing existing row seg_offset=" XOT " curr seg_end=" XOT " newmax=" XOT "\n", segment_id(seg), b->seg_offset, b->seg_end, new_size);
 
-            remove_interval_skiplist(s->isl, (tbx_sl_key_t *)&(b->seg_offset), (tbx_sl_key_t *)&(b->seg_end), (tbx_sl_data_t *)b);
+            tbx_isl_remove(s->isl, (tbx_sl_key_t *)&(b->seg_offset), (tbx_sl_key_t *)&(b->seg_end), (tbx_sl_data_t *)b);
 
             old_len = b->block_len;
             b->block_len = dsize;
@@ -853,7 +854,7 @@ op_status_t _seglun_grow(segment_t *seg, data_attr_t *da, ex_off_t new_size_arg,
                 }
             }
 
-            insert_interval_skiplist(s->isl, (tbx_sl_key_t *)&(b->seg_offset), (tbx_sl_key_t *)&(b->seg_end), (tbx_sl_data_t *)b);
+            tbx_isl_insert(s->isl, (tbx_sl_key_t *)&(b->seg_offset), (tbx_sl_key_t *)&(b->seg_end), (tbx_sl_data_t *)b);
 
             log_printf(15, "sid=" XIDT " enlarged row seg_offset=" XOT " seg_end=" XOT " row_len=" XOT " berr=" XOT "\n", segment_id(seg), b->seg_offset, b->seg_end, b->row_len, berr);
 
@@ -867,8 +868,8 @@ op_status_t _seglun_grow(segment_t *seg, data_attr_t *da, ex_off_t new_size_arg,
     //** Create the additional caps and commands
     err = 0;
     for (off=lo; off<new_size; off = off + s->max_row_size) {
-        type_malloc_clear(b, seglun_row_t, 1);
-        type_malloc_clear(block, seglun_block_t, s->n_devices);
+        tbx_type_malloc_clear(b, seglun_row_t, 1);
+        tbx_type_malloc_clear(block, seglun_block_t, s->n_devices);
         b->block = block;
         b->rwop_index = -1;
         b->seg_offset = off;
@@ -893,12 +894,12 @@ op_status_t _seglun_grow(segment_t *seg, data_attr_t *da, ex_off_t new_size_arg,
         err = err + slun_row_replace_fix(seg, da, b, block_status, s->n_devices, &args, timeout);
 
         if (err == 0) {
-            insert_interval_skiplist(s->isl, (tbx_sl_key_t *)&(b->seg_offset), (tbx_sl_key_t *)&(b->seg_end), (tbx_sl_data_t *)b);
+            tbx_isl_insert(s->isl, (tbx_sl_key_t *)&(b->seg_offset), (tbx_sl_key_t *)&(b->seg_end), (tbx_sl_data_t *)b);
         } else {  //** Got an error so clean up and kick out
             for (i=0; i<s->n_devices; i++) {
                 if (block[i].data != NULL) {
-                    cnt = atomic_get(block[i].data->ref_count);
-                    if ( cnt > 0) atomic_dec(block[i].data->ref_count);
+                    cnt = tbx_atomic_get(block[i].data->ref_count);
+                    if ( cnt > 0) tbx_atomic_dec(block[i].data->ref_count);
                     data_block_destroy(block[i].data);
                 }
             }
@@ -961,14 +962,14 @@ op_status_t _seglun_shrink(segment_t *seg, data_attr_t *da, ex_off_t new_size, i
     log_printf(1, "_sl_shrink: sid=" XIDT " total_size=" XOT " new_size=" XOT "\n", segment_id(seg), hi, lo);
 
 
-    it = iter_search_interval_skiplist(s->isl, (tbx_sl_key_t *)&lo, (tbx_sl_key_t *)&hi);
-    b = (seglun_row_t *)next_interval_skiplist(&it);
+    it = tbx_isl_iter_search(s->isl, (tbx_sl_key_t *)&lo, (tbx_sl_key_t *)&hi);
+    b = (seglun_row_t *)tbx_isl_next(&it);
     if ( b == NULL) {  //** Nothing to do
         err = OP_STATE_SUCCESS;
         goto finished;
     }
 
-    stack = new_stack();
+    stack = tbx_stack_new();
     q = new_opque();
 
     //** The 1st row maybe a partial removal
@@ -980,7 +981,7 @@ op_status_t _seglun_shrink(segment_t *seg, data_attr_t *da, ex_off_t new_size, i
             gop = ds_remove(b->block[i].data->ds, da, ds_get_cap(b->block[i].data->ds, b->block[i].data->cap, DS_CAP_MANAGE), timeout);
             opque_add(q, gop);
         }
-        push(stack, (void *)b);
+        tbx_stack_push(stack, (void *)b);
         start_b = NULL;
     } else {
         log_printf(15, "_sl_shrink: sid=" XIDT " shrinking  seg_off=" XOT " to=" XOT "\n", segment_id(seg), b->seg_offset, dsize);
@@ -993,16 +994,16 @@ op_status_t _seglun_shrink(segment_t *seg, data_attr_t *da, ex_off_t new_size, i
     }
 
     //** Set up for the rest of the blocks
-    b = (seglun_row_t *)next_interval_skiplist(&it);
+    b = (seglun_row_t *)tbx_isl_next(&it);
     while (b != NULL) {
         log_printf(15, "_sl_shrink: sid=" XIDT " removing seg_off=" XOT "\n", segment_id(seg), b->seg_offset);
-        push(stack, (void *)b);
+        tbx_stack_push(stack, (void *)b);
         for (i=0; i < s->n_devices; i++) {
             gop = ds_remove(b->block[i].data->ds, da, ds_get_cap(b->block[i].data->ds, b->block[i].data->cap, DS_CAP_MANAGE), timeout);
             opque_add(q, gop);
         }
 
-        b = (seglun_row_t *)next_interval_skiplist(&it);
+        b = (seglun_row_t *)tbx_isl_next(&it);
     }
 
     //** Do the removal
@@ -1010,23 +1011,23 @@ op_status_t _seglun_shrink(segment_t *seg, data_attr_t *da, ex_off_t new_size, i
     opque_free(q, OP_DESTROY);
 
     //** And now clean up
-    while ((b = (seglun_row_t *)pop(stack)) != NULL) {
-        i = remove_interval_skiplist(s->isl, &(b->seg_offset), &(b->seg_end), b);
+    while ((b = (seglun_row_t *)tbx_stack_pop(stack)) != NULL) {
+        i = tbx_isl_remove(s->isl, &(b->seg_offset), &(b->seg_end), b);
         log_printf(15, "_sl_shrink: sid=" XIDT " removing from interval seg_off=" XOT " remove_isl=%d\n", segment_id(seg), b->seg_offset, i);
         for (i=0; i < s->n_devices; i++) {
-            atomic_dec(b->block[i].data->ref_count);
+            tbx_atomic_dec(b->block[i].data->ref_count);
             data_block_destroy(b->block[i].data);
         }
         free(b->block);
         free(b);
     }
 
-    free_stack(stack, 0);
+    tbx_free_stack(stack, 0);
 
     //** If needed tweak the initial block
     if (start_b != NULL) {
         b = start_b;
-        remove_interval_skiplist(s->isl, &(b->seg_offset), &(b->seg_end), b);
+        tbx_isl_remove(s->isl, &(b->seg_offset), &(b->seg_end), b);
         b->seg_end = b->seg_offset + bstart_size - 1;
         b->block_len = bstart_block_size;
         b->row_len = bstart_size;
@@ -1036,7 +1037,7 @@ op_status_t _seglun_shrink(segment_t *seg, data_attr_t *da, ex_off_t new_size, i
             b->block[i].data->size = b->block_len;
         }
 
-        insert_interval_skiplist(s->isl, (tbx_sl_key_t *)&(b->seg_offset), (tbx_sl_key_t *)&(b->seg_end), (tbx_sl_data_t *)b);
+        tbx_isl_insert(s->isl, (tbx_sl_key_t *)&(b->seg_offset), (tbx_sl_key_t *)&(b->seg_end), (tbx_sl_data_t *)b);
     }
 
 finished:
@@ -1094,7 +1095,7 @@ op_generic_t *seglun_truncate(segment_t *seg, data_attr_t *da, ex_off_t new_size
 
     seglun_truncate_t *st;
 
-    type_malloc_clear(st, seglun_truncate_t, 1);
+    tbx_type_malloc_clear(st, seglun_truncate_t, 1);
 
     st->seg = seg;
     st->new_size = new_size;
@@ -1130,7 +1131,7 @@ void lun_row_decompose(segment_t *seg, lun_rw_row_t *rw_buf, seglun_row_t *b, ex
     log_printf(15, "lo=" XOT " hi= " XOT " len=" XOT "\n", lo, hi, rwlen);
     log_printf(15, "start_stripe=%d end_stripe=%d n_stripes=%d\n", start_stripe, end_stripe, n_stripes);
 
-    tbuffer_var_init(&tbv);
+    tbx_tbuf_var_init(&tbv);
 
     for (i=0; i < s->n_devices; i++) {
         offset[i] = -1;
@@ -1141,9 +1142,9 @@ void lun_row_decompose(segment_t *seg, lun_rw_row_t *rw_buf, seglun_row_t *b, ex
         if (k < n_stripes) {
             rw_buf[i].c_iov += n_stripes - k + 1;
             if (rw_buf[i].iov == NULL) {
-                type_malloc(rw_buf[i].iov, tbx_iovec_t, rw_buf[i].c_iov);
+                tbx_type_malloc(rw_buf[i].iov, tbx_iovec_t, rw_buf[i].c_iov);
             } else {
-                type_realloc(rw_buf[i].iov, tbx_iovec_t, rw_buf[i].c_iov);
+                tbx_type_realloc(rw_buf[i].iov, tbx_iovec_t, rw_buf[i].c_iov);
             }
         }
     }
@@ -1177,11 +1178,11 @@ void lun_row_decompose(segment_t *seg, lun_rw_row_t *rw_buf, seglun_row_t *b, ex
                 tbv.nbytes = nleft;
                 err = TBUFFER_OK;
                 while ((nleft > 0) && (err == TBUFFER_OK)) {
-                    err = tbuffer_next(buffer, pos, &tbv);
+                    err = tbx_tbuf_next(buffer, pos, &tbv);
                     k = rwb->n_iov + tbv.n_iov;
                     if (k >= rwb->c_iov) {
                         rwb->c_iov = 2*k;
-                        type_realloc(rwb->iov, tbx_iovec_t, rwb->c_iov);
+                        tbx_type_realloc(rwb->iov, tbx_iovec_t, rwb->c_iov);
                     }
                     for (k=0; k<tbv.n_iov; k++) {
                         rwb->iov[rwb->n_iov + k] = tbv.buffer[k];
@@ -1211,9 +1212,9 @@ void lun_row_decompose(segment_t *seg, lun_rw_row_t *rw_buf, seglun_row_t *b, ex
                 k = 2 * (j+1);
                 rw_buf[i].c_ex = k;
                 if (rw_buf[i].n_ex == 0) {
-                    type_malloc(rw_buf[i].ex_iov, ex_tbx_iovec_t, k);
+                    tbx_type_malloc(rw_buf[i].ex_iov, ex_tbx_iovec_t, k);
                 } else {
-                    type_realloc(rw_buf[i].ex_iov, ex_tbx_iovec_t, k);
+                    tbx_type_realloc(rw_buf[i].ex_iov, ex_tbx_iovec_t, k);
                 }
             }
             rw_buf[i].ex_iov[j].offset = offset[i];
@@ -1321,8 +1322,8 @@ int seglun_row_decompose_test()
     s = (seglun_priv_t *)seg->priv;
 
     //** Make the fake row
-    type_malloc_clear(b, seglun_row_t, 1);
-    type_malloc_clear(block, seglun_block_t, max_dev);
+    tbx_type_malloc_clear(b, seglun_row_t, 1);
+    tbx_type_malloc_clear(block, seglun_block_t, max_dev);
     b->block = block;
     b->seg_offset = 0;
     for (i=0; i<max_dev; i++) {
@@ -1333,8 +1334,8 @@ int seglun_row_decompose_test()
     }
 
     //** Make the test buffers
-    type_malloc(ref_buf, char, bufsize);
-    type_malloc_clear(buf, char, bufsize);
+    tbx_type_malloc(ref_buf, char, bufsize);
+    tbx_type_malloc_clear(buf, char, bufsize);
     for (i=0; i<bufsize; i++) ref_buf[i] = base[i%nbase];
 
 
@@ -1355,8 +1356,8 @@ int seglun_row_decompose_test()
         log_printf(0, "ndev=%d  chunk_size=" XOT " stripe_size=" XOT "   nrows=%d----------------------------------------------\n", ndev, s->chunk_size, s->stripe_size, nrows);
 
         for (i=0; i < s->n_devices; i++) {
-            type_malloc(iov_ref[i], tbx_iovec_t, nrows);
-            tbuffer_vec(&(tbuf_ref[i]), bufsize, nrows, iov_ref[i]);
+            tbx_type_malloc(iov_ref[i], tbx_iovec_t, nrows);
+            tbx_tbuf_vec(&(tbuf_ref[i]), bufsize, nrows, iov_ref[i]);
         }
 
         for (j=0; j < nrows; j++) {
@@ -1375,13 +1376,13 @@ int seglun_row_decompose_test()
             log_printf(0, "ndev=%d  niov=%d----------------------------------------------------------------------\n", ndev, niov);
 
             //** Make the destination buf
-            type_malloc(iovbuf, tbx_iovec_t, niov);
+            tbx_type_malloc(iovbuf, tbx_iovec_t, niov);
 
             for (j=0; j < n_tests; j++) {  //** Random tests
 
                 //** Init the dest buf for the test
-                len = random_int(0, bufsize-1);
-                offset = random_int(0,bufsize-len-1);
+                len = tbx_random_int64(0, bufsize-1);
+                offset = tbx_random_int64(0,bufsize-len-1);
 //len = 30000;
 //offset = 8000;
                 k = len / niov;
@@ -1390,10 +1391,10 @@ int seglun_row_decompose_test()
                     iovbuf[i].iov_len = k;
                 }
                 iovbuf[niov-1].iov_len = len - (niov-1)*k;
-                tbuffer_vec(&tbuf, len, niov, iovbuf);
+                tbx_tbuf_vec(&tbuf, len, niov, iovbuf);
 
                 log_printf(0, "ndev=%d  niov=%d j=%d  len=%d off=%d k=%d\n", ndev, niov, j, len, offset, k);
-                flush_log();
+                tbx_flush_log();
 
                 //** Do the test
                 memset(buf, 0, bufsize);
@@ -1401,7 +1402,7 @@ int seglun_row_decompose_test()
 
                 for (i=0; i < s->n_devices; i++) {
                     if (rw_buf[i].n_ex > 0) {
-                        tbuffer_copy(&(tbuf_ref[i]), rw_buf[i].ex_iov[0].offset, &(rw_buf[i].buffer), 0, rw_buf[i].ex_iov[0].len, 1);
+                        tbx_tbuf_copy(&(tbuf_ref[i]), rw_buf[i].ex_iov[0].offset, &(rw_buf[i].buffer), 0, rw_buf[i].ex_iov[0].len, 1);
                     }
                 }
 
@@ -1493,23 +1494,23 @@ op_status_t seglun_rw_op(segment_t *seg, data_attr_t *da, segment_rw_hints_t *rw
 
     s->inprogress_count++;  //** Flag that we are doing an I/O op
 
-    type_malloc(bused, seglun_row_t *, interval_skiplist_count(s->isl));
-    type_malloc(bcount, int, s->n_devices * interval_skiplist_count(s->isl));
-    type_malloc(rwb_table, lun_rw_row_t, s->n_devices * interval_skiplist_count(s->isl));
+    tbx_type_malloc(bused, seglun_row_t *, tbx_isl_count(s->isl));
+    tbx_type_malloc(bcount, int, s->n_devices * tbx_isl_count(s->isl));
+    tbx_type_malloc(rwb_table, lun_rw_row_t, s->n_devices * tbx_isl_count(s->isl));
 
     q = new_opque();
-    stack = new_stack();
+    stack = tbx_stack_new();
     bpos = boff;
 
-    log_printf(15, "START sid=" XIDT " n_iov=%d rw_mode=%d intervals=%d\n", segment_id(seg), n_iov, rw_mode, interval_skiplist_count(s->isl));
+    log_printf(15, "START sid=" XIDT " n_iov=%d rw_mode=%d intervals=%d\n", segment_id(seg), n_iov, rw_mode, tbx_isl_count(s->isl));
 
     n_bslots = 0;
     for (slot=0; slot<n_iov; slot++) {
         lo = iov[slot].offset;
 
         hi = lo + iov[slot].len - 1;
-        it = iter_search_interval_skiplist(s->isl, (tbx_sl_key_t *)&lo, (tbx_sl_key_t *)&hi);
-        b = (seglun_row_t *)next_interval_skiplist(&it);
+        it = tbx_isl_iter_search(s->isl, (tbx_sl_key_t *)&lo, (tbx_sl_key_t *)&hi);
+        b = (seglun_row_t *)tbx_isl_next(&it);
         log_printf(15, "FOR sid=" XIDT " slot=%d n_iov=%d lo=" XOT " hi=" XOT " len=" XOT " b=%p\n", segment_id(seg), slot, n_iov, lo, hi, iov[slot].len, b);
 
         while (b != NULL) {
@@ -1519,7 +1520,7 @@ op_status_t seglun_rw_op(segment_t *seg, data_attr_t *da, segment_rw_hints_t *rw
 
             log_printf(15, "sid=" XIDT " soff=" XOT " bpos=" XOT " blen=" XOT " seg_off=" XOT " seg_len=" XOT " seg_end=" XOT " rwop_index=%d\n", segment_id(seg),
                        start, bpos, blen, b->seg_offset, b->row_len, b->seg_end, b->rwop_index);
-            flush_log();
+            tbx_flush_log();
 
             if (b->rwop_index < 0) {
                 bused[n_bslots] = b;
@@ -1536,7 +1537,7 @@ op_status_t seglun_rw_op(segment_t *seg, data_attr_t *da, segment_rw_hints_t *rw
 
             bpos = bpos + blen;
 
-            b = (seglun_row_t *)next_interval_skiplist(&it);
+            b = (seglun_row_t *)tbx_isl_next(&it);
         }
         log_printf(15, "bottom sid=" XIDT " slot=%d\n", segment_id(seg), slot);
 
@@ -1582,7 +1583,7 @@ op_status_t seglun_rw_op(segment_t *seg, data_attr_t *da, segment_rw_hints_t *rw
                 }
 
                 //** Form the op
-                tbuffer_vec(&(rwb_table[j + i].buffer), rwb_table[j + i].len, rwb_table[j+i].n_iov, rwb_table[j+i].iov);
+                tbx_tbuf_vec(&(rwb_table[j + i].buffer), rwb_table[j + i].len, rwb_table[j+i].n_iov, rwb_table[j+i].iov);
                 if (rw_mode== 0) {
                     if (rwb_table[j+i].n_iov == 1) {
                         gop = (bl_rid == NULL) ? ds_read(b->block[i].data->ds, da, ds_get_cap(b->block[i].data->ds, b->block[i].data->cap, DS_CAP_READ),
@@ -1647,7 +1648,7 @@ op_status_t seglun_rw_op(segment_t *seg, data_attr_t *da, segment_rw_hints_t *rw
                     dt /= exec_time;
                     log_printf(5, "dt=%lf min_bw=" XOT "\n", dt, bl->min_bandwidth);
                     if (dt < bl->min_bandwidth) { // ** Blacklist it
-                        type_malloc(bl_rid, blacklist_rid_t, 1);
+                        tbx_type_malloc(bl_rid, blacklist_rid_t, 1);
                         bl_rid->rid = strdup(rwb_table[gop_get_myid(gop)].block->data->rid_key);
                         bl_rid->recheck_time = apr_time_now() + bl->timeout;
                         log_printf(2, "Blacklisting RID=%s dt=%lf\n", bl_rid->rid, dt);
@@ -1676,7 +1677,7 @@ op_status_t seglun_rw_op(segment_t *seg, data_attr_t *da, segment_rw_hints_t *rw
                     if (gop_completed_successfully(rwb_table[j+i].gop) != OP_STATE_SUCCESS) {  //** Error
                         nerr++;  //** Increment the error count
                         if (rw_mode == 0) {
-                            tbuffer_memset(&(rwb_table[j+i].buffer), 0, 0, rwb_table[j+i].len); //** Blank the data on READs
+                            tbx_tbuf_memset(&(rwb_table[j+i].buffer), 0, 0, rwb_table[j+i].len); //** Blank the data on READs
                             rwb_table[j+i].block->read_err_count++;
                         } else {
                             rwb_table[j+i].block->write_err_count++;
@@ -1716,7 +1717,7 @@ op_status_t seglun_rw_op(segment_t *seg, data_attr_t *da, segment_rw_hints_t *rw
     free(rwb_table);
     free(bcount);
     free(bused);
-    free_stack(stack, 0);
+    tbx_free_stack(stack, 0);
     opque_free(q, OP_DESTROY);
 
     dt = apr_time_now() - tstart;
@@ -1784,7 +1785,7 @@ op_status_t seglun_rw_func(void *arg, int id)
     }
     segment_unlock(sw->seg);
 
-    if (log_level() > 0) {  //** Add some logging
+    if (tbx_log_level() > 0) {  //** Add some logging
         label = (sw->rw_mode == 1) ? "LUN_WRITE" : "LUN_READ";
         for (i=0; i<sw->n_iov; i++) {
             t1 = sw->iov[i].offset;
@@ -1806,7 +1807,7 @@ op_status_t seglun_rw_func(void *arg, int id)
     log_printf(15, "oldused=" XOT " maxpos=" XOT "\n", s->used_size, maxpos);
 
 
-    if (log_level() > 0) {  //** Add some logging
+    if (tbx_log_level() > 0) {  //** Add some logging
         dt = (double) now / APR_USEC_PER_SEC;
 
         label = (sw->rw_mode == 1) ? "LUN_WRITE" : "LUN_READ";
@@ -1838,7 +1839,7 @@ op_generic_t *seglun_write(segment_t *seg, data_attr_t *da, segment_rw_hints_t *
     seglun_rw_t *sw;
     op_generic_t *gop;
 
-    type_malloc(sw, seglun_rw_t, 1);
+    tbx_type_malloc(sw, seglun_rw_t, 1);
     sw->seg = seg;
     sw->da = da;
     sw->rw_hints = rw_hints;
@@ -1863,7 +1864,7 @@ op_generic_t *seglun_read(segment_t *seg, data_attr_t *da, segment_rw_hints_t *r
     seglun_rw_t *sw;
     op_generic_t *gop;
 
-    type_malloc(sw, seglun_rw_t, 1);
+    tbx_type_malloc(sw, seglun_rw_t, 1);
     sw->seg = seg;
     sw->da = da;
     sw->rw_hints = rw_hints;
@@ -1896,10 +1897,10 @@ op_generic_t *seglun_remove(segment_t *seg, data_attr_t *da, int timeout)
     q = new_opque();
 
     segment_lock(seg);
-    n = interval_skiplist_count(s->isl);
-    it = iter_search_interval_skiplist(s->isl, (tbx_sl_key_t *)NULL, (tbx_sl_key_t *)NULL);
+    n = tbx_isl_count(s->isl);
+    it = tbx_isl_iter_search(s->isl, (tbx_sl_key_t *)NULL, (tbx_sl_key_t *)NULL);
     for (i=0; i<n; i++) {
-        b = (seglun_row_t *)next_interval_skiplist(&it);
+        b = (seglun_row_t *)tbx_isl_next(&it);
         for (j=0; j < s->n_devices; j++) {
             gop = ds_remove(b->block[j].data->ds, da, ds_get_cap(b->block[j].data->ds, b->block[j].data->cap, DS_CAP_MANAGE), timeout);
             opque_add(q, gop);
@@ -1943,8 +1944,8 @@ op_status_t seglun_migrate_func(void *arg, int id)
 
     nattempted = 0;
     nmigrated = 0;
-    it = iter_search_interval_skiplist(s->isl, (tbx_sl_key_t *)NULL, (tbx_sl_key_t *)NULL);
-    for (b = (seglun_row_t *)next_interval_skiplist(&it); b != NULL; b = (seglun_row_t *)next_interval_skiplist(&it)) {
+    it = tbx_isl_iter_search(s->isl, (tbx_sl_key_t *)NULL, (tbx_sl_key_t *)NULL);
+    for (b = (seglun_row_t *)tbx_isl_next(&it); b != NULL; b = (seglun_row_t *)tbx_isl_next(&it)) {
         for (i=0; i < s->n_devices; i++) block_status[i] = 0;
 
         sstripe = b->seg_offset / s->stripe_size;
@@ -1958,8 +1959,8 @@ op_status_t seglun_migrate_func(void *arg, int id)
         for (i=0; i < s->n_devices; i++) block_status[i] = 0;
         err = slun_row_placement_check(si->seg, si->da, b, block_status, s->n_devices, soft_error_fail, si->args->query, si->args, si->timeout);
         used = 0;
-        append_printf(info, &used, bufsize, XIDT ":     slun_row_placement_check:", segment_id(si->seg));
-        for (i=0; i < s->n_devices; i++) append_printf(info, &used, bufsize, " %d", block_status[i]);
+        tbx_append_printf(info, &used, bufsize, XIDT ":     slun_row_placement_check:", segment_id(si->seg));
+        for (i=0; i < s->n_devices; i++) tbx_append_printf(info, &used, bufsize, " %d", block_status[i]);
         info_printf(si->fd, 1, "%s\n", info);
         if ((err > 0) || (si->args->rid_changes != NULL)) {
             memcpy(block_copy, block_status, sizeof(int)*s->n_devices);
@@ -1982,8 +1983,8 @@ op_status_t seglun_migrate_func(void *arg, int id)
             }
 
             used =0;
-            append_printf(info, &used, bufsize, XIDT ":     slun_row_placement_fix:", segment_id(si->seg));
-            for (i=0; i < s->n_devices; i++) append_printf(info, &used, bufsize, " %d", block_status[i]);
+            tbx_append_printf(info, &used, bufsize, XIDT ":     slun_row_placement_fix:", segment_id(si->seg));
+            for (i=0; i < s->n_devices; i++) tbx_append_printf(info, &used, bufsize, " %d", block_status[i]);
             info_printf(si->fd, 1, "%s\n", info);
         } else {
             nattempted = nattempted + err;
@@ -2060,10 +2061,10 @@ op_status_t seglun_inspect_func(void *arg, int id)
 //info_printf(si->fd, 1, "local_query=%p\n", si->query);
     info_printf(si->fd, 1, XIDT ": segment information: n_devices=%d n_shift=%d chunk_size=" XOT "  used_size=" XOT " total_size=" XOT " mode=%d\n", segment_id(si->seg), s->n_devices, s->n_shift, s->chunk_size, s->used_size, s->total_size, si->inspect_mode);
 
-    si->args->n_dev_rows = count_interval_skiplist(s->isl, (tbx_sl_key_t *)NULL, (tbx_sl_key_t *)NULL);
+    si->args->n_dev_rows = tbx_isl_count2(s->isl, (tbx_sl_key_t *)NULL, (tbx_sl_key_t *)NULL);
     drow = -1;
-    it = iter_search_interval_skiplist(s->isl, (tbx_sl_key_t *)NULL, (tbx_sl_key_t *)NULL);
-    for (b = (seglun_row_t *)next_interval_skiplist(&it); b != NULL; b = (seglun_row_t *)next_interval_skiplist(&it)) {
+    it = tbx_isl_iter_search(s->isl, (tbx_sl_key_t *)NULL, (tbx_sl_key_t *)NULL);
+    for (b = (seglun_row_t *)tbx_isl_next(&it); b != NULL; b = (seglun_row_t *)tbx_isl_next(&it)) {
         drow++;
         for (i=0; i < s->n_devices; i++) block_status[i] = 0;
 
@@ -2077,7 +2078,7 @@ op_status_t seglun_inspect_func(void *arg, int id)
 
         nlost = slun_row_size_check(si->seg, si->da, b, block_status, dt, s->n_devices, force_repair, si->timeout);
         used = 0;
-        append_printf(info, &used, bufsize, XIDT ":     slun_row_size_check:", segment_id(si->seg));
+        tbx_append_printf(info, &used, bufsize, XIDT ":     slun_row_size_check:", segment_id(si->seg));
         for (i=0; i < s->n_devices; i++) {
             if ((b->block[i].read_err_count > 0) && ((si->inspect_mode & INSPECT_FIX_READ_ERROR) > 0)) {
                 if (block_status[i] == 0) nlost++;
@@ -2087,13 +2088,13 @@ op_status_t seglun_inspect_func(void *arg, int id)
                 if (block_status[i] == 0) nlost++;
                 block_status[i] += 8;
             }
-            append_printf(info, &used, bufsize, " %d", block_status[i]);
+            tbx_append_printf(info, &used, bufsize, " %d", block_status[i]);
         }
 
         //** Add the timing info
-        append_printf(info, &used, bufsize, "  [");
+        tbx_append_printf(info, &used, bufsize, "  [");
         for (i=0; i < s->n_devices; i++) {
-            append_printf(info, &used, bufsize, " %s", pretty_print_double_with_scale(1000, (double)dt[i], pp));
+            tbx_append_printf(info, &used, bufsize, " %s", tbx_stk_pretty_print_double_with_scale(1000, (double)dt[i], pp));
         }
         info_printf(si->fd, 1, "%s (us)]\n", info);
 
@@ -2107,8 +2108,8 @@ op_status_t seglun_inspect_func(void *arg, int id)
             err = slun_row_pad_fix(si->seg, si->da, b, block_status, s->n_devices, si->timeout);
 
             used = 0;
-            append_printf(info, &used, bufsize, XIDT ":     slun_row_pad_fix:", segment_id(si->seg));
-            for (i=0; i < s->n_devices; i++) append_printf(info, &used, bufsize, " %d", block_status[i]);
+            tbx_append_printf(info, &used, bufsize, XIDT ":     slun_row_pad_fix:", segment_id(si->seg));
+            for (i=0; i < s->n_devices; i++) tbx_append_printf(info, &used, bufsize, " %d", block_status[i]);
             info_printf(si->fd, 1, "%s\n", info);
 
             for (i=0; i < s->n_devices; i++) {
@@ -2129,8 +2130,8 @@ op_status_t seglun_inspect_func(void *arg, int id)
                 }
 
                 used = 0;
-                append_printf(info, &used, bufsize, XIDT ":     slun_row_replace_fix:", segment_id(si->seg));
-                for (i=0; i < s->n_devices; i++) append_printf(info, &used, bufsize, " %d", block_status[i]);
+                tbx_append_printf(info, &used, bufsize, XIDT ":     slun_row_replace_fix:", segment_id(si->seg));
+                for (i=0; i < s->n_devices; i++) tbx_append_printf(info, &used, bufsize, " %d", block_status[i]);
                 info_printf(si->fd, 1, "%s\n", info);
 
                 j++;
@@ -2145,12 +2146,12 @@ op_status_t seglun_inspect_func(void *arg, int id)
 
         log_printf(0, "BEFORE_PLACEMENT_CHECK\n");
         err = slun_row_placement_check(si->seg, si->da, b, block_status, s->n_devices, soft_error_fail, query, &args, si->timeout);
-        for (i=0; i < s->n_devices; i++) append_printf(info, &used, bufsize, " %d", block_status[i]);
+        for (i=0; i < s->n_devices; i++) tbx_append_printf(info, &used, bufsize, " %d", block_status[i]);
 
         total_migrate += err;
         used = 0;
-        append_printf(info, &used, bufsize, XIDT ":     slun_row_placement_check:", segment_id(si->seg));
-        for (i=0; i < s->n_devices; i++) append_printf(info, &used, bufsize, " %d", block_status[i]);
+        tbx_append_printf(info, &used, bufsize, XIDT ":     slun_row_placement_check:", segment_id(si->seg));
+        for (i=0; i < s->n_devices; i++) tbx_append_printf(info, &used, bufsize, " %d", block_status[i]);
         info_printf(si->fd, 1, "%s\n", info);
         log_printf(0, "AFTER_PLACEMENT_CHECK\n");
         if ((err > 0) && ((option == INSPECT_QUICK_REPAIR) || (option == INSPECT_SCAN_REPAIR) || (option == INSPECT_FULL_REPAIR))) {
@@ -2186,8 +2187,8 @@ op_status_t seglun_inspect_func(void *arg, int id)
                 }
 
                 used = 0;
-                append_printf(info, &used, bufsize, XIDT ":     slun_row_placement_fix:", segment_id(si->seg));
-                for (i=0; i < s->n_devices; i++) append_printf(info, &used, bufsize, " %d", block_status[i]);
+                tbx_append_printf(info, &used, bufsize, XIDT ":     slun_row_placement_fix:", segment_id(si->seg));
+                for (i=0; i < s->n_devices; i++) tbx_append_printf(info, &used, bufsize, " %d", block_status[i]);
                 info_printf(si->fd, 1, "%s\n", info);
             } else if (force_repair > 0) {  //** Don't want to use depot-depot copies so instead make a blank allocation and let the higher level handle things
                 j = 0;  //** Iteratively try and repair the row
@@ -2201,8 +2202,8 @@ op_status_t seglun_inspect_func(void *arg, int id)
                         if ((block_copy[i] != 0) && (block_status[i] == 0)) info_printf(si->fd, 2, XIDT ":     dev=%i replaced rcap=%p\n", segment_id(si->seg), i, ds_get_cap(s->ds, b->block[i].data->cap, DS_CAP_READ));
                     }
                     used = 0;
-                    append_printf(info, &used, bufsize, XIDT ":     slun_row_replace_fix:", segment_id(si->seg));
-                    for (i=0; i < s->n_devices; i++) append_printf(info, &used, bufsize, " %d", block_status[i]);
+                    tbx_append_printf(info, &used, bufsize, XIDT ":     slun_row_replace_fix:", segment_id(si->seg));
+                    for (i=0; i < s->n_devices; i++) tbx_append_printf(info, &used, bufsize, " %d", block_status[i]);
                     info_printf(si->fd, 1, "%s\n", info);
                     j++;
                 } while ((err > 0) && (j<5));
@@ -2252,7 +2253,7 @@ op_generic_t *seglun_inspect(segment_t *seg, data_attr_t *da, tbx_log_fd_t *fd, 
     gop = NULL;
     option = mode & INSPECT_COMMAND_BITS;
 
-//log_printf(0, "mode=%d option=%d\n", mode, option); flush_log();
+//log_printf(0, "mode=%d option=%d\n", mode, option); tbx_flush_log();
 //printf("mode=%d option=%d\n", mode, option); fflush(stdout);
 
     switch (option) {
@@ -2262,7 +2263,7 @@ op_generic_t *seglun_inspect(segment_t *seg, data_attr_t *da, tbx_log_fd_t *fd, 
     case (INSPECT_QUICK_REPAIR):
     case (INSPECT_SCAN_REPAIR):
     case (INSPECT_FULL_REPAIR):
-        type_malloc(si, seglun_inspect_t, 1);
+        tbx_type_malloc(si, seglun_inspect_t, 1);
         si->seg = seg;
         si->da = da;
         si->fd = fd;
@@ -2274,7 +2275,7 @@ op_generic_t *seglun_inspect(segment_t *seg, data_attr_t *da, tbx_log_fd_t *fd, 
         break;
     case (INSPECT_MIGRATE):
 //log_printf(0, "INSPECT_MIGRATE\n");
-        type_malloc(si, seglun_inspect_t, 1);
+        tbx_type_malloc(si, seglun_inspect_t, 1);
         si->seg = seg;
         si->da = da;
         si->fd = fd;
@@ -2295,9 +2296,9 @@ op_generic_t *seglun_inspect(segment_t *seg, data_attr_t *da, tbx_log_fd_t *fd, 
     case (INSPECT_WRITE_ERRORS):
         segment_lock(seg);
         //** Cycle through the blocks counting the write errors
-        it = iter_search_interval_skiplist(s->isl, (tbx_sl_key_t *)NULL, (tbx_sl_key_t *)NULL);
+        it = tbx_isl_iter_search(s->isl, (tbx_sl_key_t *)NULL, (tbx_sl_key_t *)NULL);
         err.error_code = 0;
-        while ((b = (seglun_row_t *)next_interval_skiplist(&it)) != NULL) {
+        while ((b = (seglun_row_t *)tbx_isl_next(&it)) != NULL) {
             //log_printf(10, "seg=" XIDT " block seg_off=" XOT " end=" XOT " row_len=" XOT "\n", segment_id(seg), b->seg_offset, b->seg_end, b->row_len);
             for (i=0; i < s->n_devices; i++) {
                 err.error_code += b->block[i].write_err_count;
@@ -2355,16 +2356,16 @@ op_status_t seglun_clone_func(void *arg, int id)
     segment_lock(slc->sseg);
 
     //** Determine how many elements and reserve the space for it.
-    n_rows = interval_skiplist_count(ss->isl);
-    type_malloc_clear(max_index, int, n_rows*ss->n_devices);
+    n_rows = tbx_isl_count(ss->isl);
+    tbx_type_malloc_clear(max_index, int, n_rows*ss->n_devices);
 
     //** Grow the file size but keep the same breaks as the original
-    its = iter_search_interval_skiplist(ss->isl, (tbx_sl_key_t *)NULL, (tbx_sl_key_t *)NULL);
+    its = tbx_isl_iter_search(ss->isl, (tbx_sl_key_t *)NULL, (tbx_sl_key_t *)NULL);
     row_size = -1;
     bs = NULL;
     i = 0;
     max_gops = 0;
-    while ((bs = (seglun_row_t *)next_interval_skiplist(&its)) != NULL) {
+    while ((bs = (seglun_row_t *)tbx_isl_next(&its)) != NULL) {
         row_size = bs->row_len;
         if (bs->row_len != ss->max_row_size) {
             //** grow the destination to the same size as the source
@@ -2405,20 +2406,20 @@ op_status_t seglun_clone_func(void *arg, int id)
 
     sd->grow_break = 0; //** Finished growing so undo the break flag
 
-    type_malloc_clear(gop_stack, tbx_stack_t *, n_rows*ss->n_devices);
-    for (i=0; i<n_rows*ss->n_devices; i++) gop_stack[i] = new_stack();
+    tbx_type_malloc_clear(gop_stack, tbx_stack_t *, n_rows*ss->n_devices);
+    for (i=0; i<n_rows*ss->n_devices; i++) gop_stack[i] = tbx_stack_new();
 
     //** Generate the copy list
     q = new_opque();
     opque_start_execution(q);
     dir = ((slc->mode & DS_PULL) > 0) ? DS_PULL : DS_PUSH;
 
-    its = iter_search_interval_skiplist(ss->isl, (tbx_sl_key_t *)NULL, (tbx_sl_key_t *)NULL);
-    itd = iter_search_interval_skiplist(sd->isl, (tbx_sl_key_t *)NULL, (tbx_sl_key_t *)NULL);
+    its = tbx_isl_iter_search(ss->isl, (tbx_sl_key_t *)NULL, (tbx_sl_key_t *)NULL);
+    itd = tbx_isl_iter_search(sd->isl, (tbx_sl_key_t *)NULL, (tbx_sl_key_t *)NULL);
     j = 0;
     n = 0;
-    while ((bs = (seglun_row_t *)next_interval_skiplist(&its)) != NULL) {
-        bd = (seglun_row_t *)next_interval_skiplist(&itd);
+    while ((bs = (seglun_row_t *)tbx_isl_next(&its)) != NULL) {
+        bd = (seglun_row_t *)tbx_isl_next(&itd);
 
         for (i=0; i < ss->n_devices; i++) {
             len = slc->max_transfer;
@@ -2442,8 +2443,8 @@ op_status_t seglun_clone_func(void *arg, int id)
                 if (k<1) {  //** Start executing the 1st couple for each allocation
                     opque_add(q, gop);
                 } else {    //** The rest we place on a stack
-                    move_to_bottom(gop_stack[j]);
-                    insert_below(gop_stack[j], gop);
+                    tbx_stack_move_to_bottom(gop_stack[j]);
+                    tbx_stack_insert_below(gop_stack[j], gop);
                 }
 
                 d_offset += len;
@@ -2462,7 +2463,7 @@ op_status_t seglun_clone_func(void *arg, int id)
     //** Loop through adding tasks as needed
     for (i=0; i<n; i++) {
         gop = opque_waitany(q);
-        gop_next = pop((tbx_stack_t *)gop_get_private(gop));
+        gop_next = tbx_stack_pop((tbx_stack_t *)gop_get_private(gop));
         if (gop_next != NULL) opque_add(q, gop_next);
 
         //** This is for diagnostics
@@ -2482,7 +2483,7 @@ op_status_t seglun_clone_func(void *arg, int id)
 
     opque_free(q, OP_DESTROY);
     free(max_index);
-    for (i=0; i<n_rows*ss->n_devices; i++) free_stack(gop_stack[i], 0);
+    for (i=0; i<n_rows*ss->n_devices; i++) tbx_free_stack(gop_stack[i], 0);
     free(gop_stack);
     return(status);
 }
@@ -2539,7 +2540,7 @@ op_generic_t *seglun_clone(segment_t *seg, data_attr_t *da, segment_t **clone_se
             gop = gop_dummy(op_success_status);
         }
     } else {
-        type_malloc(slc, seglun_clone_t, 1);
+        tbx_type_malloc(slc, seglun_clone_t, 1);
         slc->sseg = seg;
         slc->dseg = clone;
         slc->da = da;
@@ -2588,11 +2589,11 @@ int seglun_signature(segment_t *seg, char *buffer, int *used, int bufsize)
 {
     seglun_priv_t *s = (seglun_priv_t *)seg->priv;
 
-    append_printf(buffer, used, bufsize, "lun(\n");
-    append_printf(buffer, used, bufsize, "    n_devices=%d\n", s->n_devices);
-    append_printf(buffer, used, bufsize, "    n_shift=%d\n", s->n_shift);
-    append_printf(buffer, used, bufsize, "    chunk_size=" XOT "\n", s->chunk_size);
-    append_printf(buffer, used, bufsize, ")\n");
+    tbx_append_printf(buffer, used, bufsize, "lun(\n");
+    tbx_append_printf(buffer, used, bufsize, "    n_devices=%d\n", s->n_devices);
+    tbx_append_printf(buffer, used, bufsize, "    n_shift=%d\n", s->n_shift);
+    tbx_append_printf(buffer, used, bufsize, "    chunk_size=" XOT "\n", s->chunk_size);
+    tbx_append_printf(buffer, used, bufsize, ")\n");
 
     return(0);
 }
@@ -2614,48 +2615,48 @@ int seglun_serialize_text_try(segment_t *seg, char *segbuf, int bufsize, exnode_
     segbuf[0] = 0;
 
     //** Store the segment header
-    append_printf(segbuf, &sused, bufsize, "[segment-" XIDT "]\n", seg->header.id);
+    tbx_append_printf(segbuf, &sused, bufsize, "[segment-" XIDT "]\n", seg->header.id);
     if ((seg->header.name != NULL) && (strcmp(seg->header.name, "") != 0)) {
-        etext = escape_text("=", '\\', seg->header.name);
-        append_printf(segbuf, &sused, bufsize, "name=%s\n", etext);
+        etext = tbx_stk_escape_text("=", '\\', seg->header.name);
+        tbx_append_printf(segbuf, &sused, bufsize, "name=%s\n", etext);
         free(etext);
     }
-    append_printf(segbuf, &sused, bufsize, "type=%s\n", SEGMENT_TYPE_LUN);
-    append_printf(segbuf, &sused, bufsize, "ref_count=%d\n", seg->ref_count);
+    tbx_append_printf(segbuf, &sused, bufsize, "type=%s\n", SEGMENT_TYPE_LUN);
+    tbx_append_printf(segbuf, &sused, bufsize, "ref_count=%d\n", seg->ref_count);
 
     //** default resource query
     if (s->rsq != NULL) {
         ext = rs_query_print(s->rs, s->rsq);
-        etext = escape_text("=", '\\', ext);
-        append_printf(segbuf, &sused, bufsize, "query_default=%s\n", etext);
+        etext = tbx_stk_escape_text("=", '\\', ext);
+        tbx_append_printf(segbuf, &sused, bufsize, "query_default=%s\n", etext);
         free(etext);
         free(ext);
     }
 
-    append_printf(segbuf, &sused, bufsize, "n_devices=%d\n", s->n_devices);
-    append_printf(segbuf, &sused, bufsize, "n_shift=%d\n", s->n_shift);
+    tbx_append_printf(segbuf, &sused, bufsize, "n_devices=%d\n", s->n_devices);
+    tbx_append_printf(segbuf, &sused, bufsize, "n_shift=%d\n", s->n_shift);
 
     //** Basic size info
-    append_printf(segbuf, &sused, bufsize, "max_block_size=" XOT "\n", s->max_block_size);
-    append_printf(segbuf, &sused, bufsize, "excess_block_size=" XOT "\n", s->excess_block_size);
-    append_printf(segbuf, &sused, bufsize, "max_size=" XOT "\n", s->total_size);
-    append_printf(segbuf, &sused, bufsize, "used_size=" XOT "\n", s->used_size);
-    err = append_printf(segbuf, &sused, bufsize, "chunk_size=" XOT "\n", s->chunk_size);
+    tbx_append_printf(segbuf, &sused, bufsize, "max_block_size=" XOT "\n", s->max_block_size);
+    tbx_append_printf(segbuf, &sused, bufsize, "excess_block_size=" XOT "\n", s->excess_block_size);
+    tbx_append_printf(segbuf, &sused, bufsize, "max_size=" XOT "\n", s->total_size);
+    tbx_append_printf(segbuf, &sused, bufsize, "used_size=" XOT "\n", s->used_size);
+    err = tbx_append_printf(segbuf, &sused, bufsize, "chunk_size=" XOT "\n", s->chunk_size);
 
     //** Cycle through the blocks storing both the segment block information and also the cap blocks
-    it = iter_search_interval_skiplist(s->isl, (tbx_sl_key_t *)NULL, (tbx_sl_key_t *)NULL);
-    while ((b = (seglun_row_t *)next_interval_skiplist(&it)) != NULL) {
+    it = tbx_isl_iter_search(s->isl, (tbx_sl_key_t *)NULL, (tbx_sl_key_t *)NULL);
+    while ((b = (seglun_row_t *)tbx_isl_next(&it)) != NULL) {
 
 //log_printf(0, "seg=" XIDT " block seg_off=" XOT " end=" XOT " row_len=" XOT "\n", segment_id(seg), b->seg_offset, b->seg_end, b->row_len);
 
         //** Add the segment stripe information
-        append_printf(segbuf, &sused, bufsize, "row=" XOT ":" XOT ":" XOT, b->seg_offset, b->seg_end, b->row_len);
+        tbx_append_printf(segbuf, &sused, bufsize, "row=" XOT ":" XOT ":" XOT, b->seg_offset, b->seg_end, b->row_len);
         for (i=0; i < s->n_devices; i++) {
             data_block_serialize(b->block[i].data, cap_exp); //** Add the cap
 //log_printf(0, "seg=" XIDT "        dev=%d bid=" XIDT " cap_offset=" XOT "\n", segment_id(seg), i, b->block[i].data->id, b->block[i].cap_offset);
-            append_printf(segbuf, &sused, bufsize, ":" XIDT ":" XOT, b->block[i].data->id, b->block[i].cap_offset);
+            tbx_append_printf(segbuf, &sused, bufsize, ":" XIDT ":" XOT, b->block[i].data->id, b->block[i].cap_offset);
         }
-        err = append_printf(segbuf, &sused, bufsize, "\n");
+        err = tbx_append_printf(segbuf, &sused, bufsize, "\n");
         if (err == -1) break;  //** Kick out on the first error
 //log_printf(0, "seg=" XIDT " bufsize=%d sused=%d err=%d\n", segment_id(seg), bufsize, sused, err);
 
@@ -2684,7 +2685,7 @@ int seglun_serialize_text(segment_t *seg, exnode_exchange_t *exp)
             exnode_exchange_destroy(cap_exp);
 
             bufsize = 2*bufsize;
-            type_malloc(segbuf, char, bufsize);
+            tbx_type_malloc(segbuf, char, bufsize);
             log_printf(1, "Growing buffer bufsize=%d\n", bufsize);
         }
     } while (err == -1);
@@ -2754,25 +2755,25 @@ int seglun_deserialize_text(segment_t *seg, ex_id_t id, exnode_exchange_t *exp)
     //** Get the segment header info
     seg->header.id = id;
     seg->header.type = SEGMENT_TYPE_LUN;
-    seg->header.name = inip_get_string(fd, seggrp, "name", "");
+    seg->header.name = tbx_inip_string_get(fd, seggrp, "name", "");
 
     //** default resource query
-    etext = inip_get_string(fd, seggrp, "query_default", "");
-    text = unescape_text('\\', etext);
+    etext = tbx_inip_string_get(fd, seggrp, "query_default", "");
+    text = tbx_stk_unescape_text('\\', etext);
     s->rsq = rs_query_parse(s->rs, text);
     free(text);
     free(etext);
 
-    s->n_devices = inip_get_integer(fd, seggrp, "n_devices", 2);
+    s->n_devices = tbx_inip_integer_get(fd, seggrp, "n_devices", 2);
 
     //** Basic size info
-    s->max_block_size = inip_get_integer(fd, seggrp, "max_block_size", 10*1024*1024);
-    s->excess_block_size = inip_get_integer(fd, seggrp, "excess_block_size", s->max_block_size/4);
-    s->total_size = inip_get_integer(fd, seggrp, "max_size", 0);
-    s->used_size = inip_get_integer(fd, seggrp, "used_size", 0);
+    s->max_block_size = tbx_inip_integer_get(fd, seggrp, "max_block_size", 10*1024*1024);
+    s->excess_block_size = tbx_inip_integer_get(fd, seggrp, "excess_block_size", s->max_block_size/4);
+    s->total_size = tbx_inip_integer_get(fd, seggrp, "max_size", 0);
+    s->used_size = tbx_inip_integer_get(fd, seggrp, "used_size", 0);
     if (s->used_size > s->total_size) s->used_size = s->total_size;  //** Sanity check the size
-    s->chunk_size = inip_get_integer(fd, seggrp, "chunk_size", 16*1024);
-    s->n_shift = inip_get_integer(fd, seggrp, "n_shift", 1);
+    s->chunk_size = tbx_inip_integer_get(fd, seggrp, "chunk_size", 16*1024);
+    s->n_shift = tbx_inip_integer_get(fd, seggrp, "n_shift", 1);
 
     //** Make sure the mac block size is a mulitple of the chunk size
     s->max_block_size = (s->max_block_size / s->chunk_size);
@@ -2781,27 +2782,27 @@ int seglun_deserialize_text(segment_t *seg, ex_id_t id, exnode_exchange_t *exp)
     s->stripe_size = s->n_devices * s->chunk_size;
 
     //** Cycle through the blocks storing both the segment block information and also the cap blocks
-    g = inip_find_group(fd, seggrp);
-    ele = inip_first_element(g);
+    g = tbx_inip_group_find(fd, seggrp);
+    ele = tbx_inip_ele_first(g);
     while (ele != NULL) {
-        key = inip_get_element_key(ele);
+        key = tbx_inip_ele_key_get(ele);
         if (strcmp(key, "row") == 0) {
-            type_malloc_clear(b, seglun_row_t, 1);
-            type_malloc_clear(block, seglun_block_t, s->n_devices);
+            tbx_type_malloc_clear(b, seglun_row_t, 1);
+            tbx_type_malloc_clear(block, seglun_block_t, s->n_devices);
             b->block = block;
             b->rwop_index = -1;
 
             //** Parse the segment line
-            value = inip_get_element_value(ele);
+            value = tbx_inip_ele_value_get(ele);
             token = strdup(value);
-            sscanf(escape_string_token(token, ":", '\\', 0, &bstate, &fin), XOT, &(b->seg_offset));
-            sscanf(escape_string_token(NULL, ":", '\\', 0, &bstate, &fin), XOT, &(b->seg_end));
-            sscanf(escape_string_token(NULL, ":", '\\', 0, &bstate, &fin), XOT, &(b->row_len));
+            sscanf(tbx_stk_escape_string_token(token, ":", '\\', 0, &bstate, &fin), XOT, &(b->seg_offset));
+            sscanf(tbx_stk_escape_string_token(NULL, ":", '\\', 0, &bstate, &fin), XOT, &(b->seg_end));
+            sscanf(tbx_stk_escape_string_token(NULL, ":", '\\', 0, &bstate, &fin), XOT, &(b->row_len));
             b->block_len = b->row_len / s->n_devices;
 
             for (i=0; i< s->n_devices; i++) {
-                sscanf(escape_string_token(NULL, ":", '\\', 0, &bstate, &fin), XIDT, &id);
-                sscanf(escape_string_token(NULL, ":", '\\', 0, &bstate, &fin), XOT, &(block[i].cap_offset));
+                sscanf(tbx_stk_escape_string_token(NULL, ":", '\\', 0, &bstate, &fin), XIDT, &id);
+                sscanf(tbx_stk_escape_string_token(NULL, ":", '\\', 0, &bstate, &fin), XOT, &(block[i].cap_offset));
 
                 //** Find the cooresponding cap
                 block[i].data = data_block_deserialize(seg->ess, id, exp);
@@ -2809,17 +2810,17 @@ int seglun_deserialize_text(segment_t *seg, ex_id_t id, exnode_exchange_t *exp)
                     log_printf(0, "Missing data block!  block id=" XIDT " seg=" XIDT "\n", id, segment_id(seg));
                     fail = 1;
                 } else {
-                    atomic_inc(block[i].data->ref_count);
+                    tbx_atomic_inc(block[i].data->ref_count);
                 }
 
             }
             free(token);
 
             //** Finally add it to the ISL
-            insert_interval_skiplist(s->isl, (tbx_sl_key_t *)&(b->seg_offset), (tbx_sl_key_t *)&(b->seg_end), (tbx_sl_data_t *)b);
+            tbx_isl_insert(s->isl, (tbx_sl_key_t *)&(b->seg_offset), (tbx_sl_key_t *)&(b->seg_end), (tbx_sl_data_t *)b);
         }
 
-        ele = inip_next_element(ele);
+        ele = tbx_inip_ele_next(ele);
     }
 
     return(fail);
@@ -2872,18 +2873,18 @@ void seglun_destroy(segment_t *seg)
     apr_thread_mutex_destroy(s->notify.lock);
     apr_thread_cond_destroy(s->notify.cond);
 
-    n = interval_skiplist_count(s->isl);
-    type_malloc_clear(b_list, seglun_row_t *, n);
-    it = iter_search_interval_skiplist(s->isl, (tbx_sl_key_t *)NULL, (tbx_sl_key_t *)NULL);
+    n = tbx_isl_count(s->isl);
+    tbx_type_malloc_clear(b_list, seglun_row_t *, n);
+    it = tbx_isl_iter_search(s->isl, (tbx_sl_key_t *)NULL, (tbx_sl_key_t *)NULL);
     for (i=0; i<n; i++) {
-        b_list[i] = (seglun_row_t *)next_interval_skiplist(&it);
+        b_list[i] = (seglun_row_t *)tbx_isl_next(&it);
     }
-    destroy_interval_skiplist(s->isl);
+    tbx_isl_del(s->isl);
 
     for (i=0; i<n; i++) {
         for (j=0; j<s->n_devices; j++) {
             if (b_list[i]->block[j].data != NULL) {
-                atomic_dec(b_list[i]->block[j].data->ref_count);
+                tbx_atomic_dec(b_list[i]->block[j].data->ref_count);
                 data_block_destroy(b_list[i]->block[j].data);
             }
         }
@@ -2893,12 +2894,12 @@ void seglun_destroy(segment_t *seg)
     free(b_list);
 
     if (s->db_cleanup != NULL) {
-        while ((db = pop(s->db_cleanup)) != NULL) {
-            atomic_dec(db->ref_count);
+        while ((db = tbx_stack_pop(s->db_cleanup)) != NULL) {
+            tbx_atomic_dec(db->ref_count);
             data_block_destroy(db);
         }
 
-        free_stack(s->db_cleanup, 0);
+        tbx_free_stack(s->db_cleanup, 0);
     }
 
     if (s->rsq != NULL) rs_query_destroy(s->rs, s->rsq);
@@ -2928,10 +2929,10 @@ segment_t *segment_lun_create(void *arg)
 
 //log_printf(15, "creating new segment\n");
     //** Make the space
-    type_malloc_clear(seg, segment_t, 1);
-    type_malloc_clear(s, seglun_priv_t, 1);
+    tbx_type_malloc_clear(seg, segment_t, 1);
+    tbx_type_malloc_clear(s, seglun_priv_t, 1);
 
-    s->isl = create_interval_skiplist(&skiplist_compare_ex_off, NULL, NULL, NULL);
+    s->isl = tbx_isl_new(&skiplist_compare_ex_off, NULL, NULL, NULL);
     seg->priv = s;
     s->grow_break = 0;
     s->total_size = 0;
@@ -2948,7 +2949,7 @@ segment_t *segment_lun_create(void *arg)
     s->grow_count = 0;
 
     generate_ex_id(&(seg->header.id));
-    atomic_set(seg->ref_count, 0);
+    tbx_atomic_set(seg->ref_count, 0);
     seg->header.type = SEGMENT_TYPE_LUN;
 
     assert_result(apr_pool_create(&(seg->mpool), NULL), APR_SUCCESS);

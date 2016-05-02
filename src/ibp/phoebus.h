@@ -21,7 +21,7 @@
 #include "ibp/ibp_visibility.h"
 #include <stdio.h>
 #include "config.h"
-#include "iniparse.h"
+#include <tbx/iniparse.h>
 
 #ifdef _ENABLE_PHOEBUS
 #include "liblsl_client.h"

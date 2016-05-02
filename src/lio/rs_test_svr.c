@@ -16,11 +16,11 @@
 #define _log_module_index 182
 
 #include <assert.h>
-#include "assert_result.h"
+#include <tbx/assert_result.h>
 #include "exnode.h"
-#include "log.h"
-#include "iniparse.h"
-#include "type_malloc.h"
+#include <tbx/log.h>
+#include <tbx/iniparse.h>
+#include <tbx/type_malloc.h>
 #include "thread_pool.h"
 #include "lio.h"
 #include "rs_zmq_base.h"
@@ -65,10 +65,10 @@ int main(int argc, char **argv)
     char *svr_proto, *svr_addr, *svr_port, *zmq_svr;
 
     //** Retrieves remote zmq server name, transport protocol, and lisenting port
-    svr_proto = inip_get_string(lio_gc->ifd, "zmq_server", "protocol", RS_ZMQ_DFT_PROTO);
-    svr_addr = inip_get_string(lio_gc->ifd, "zmq_server", "server", NULL);
-    svr_port = inip_get_string(lio_gc->ifd, "zmq_server", "port", RS_ZMQ_DFT_PORT);
-    asprintf(&zmq_svr, "%s://%s:%s", string_trim(svr_proto), string_trim(svr_addr), string_trim(svr_port));
+    svr_proto = tbx_inip_string_get(lio_gc->ifd, "zmq_server", "protocol", RS_ZMQ_DFT_PROTO);
+    svr_addr = tbx_inip_string_get(lio_gc->ifd, "zmq_server", "server", NULL);
+    svr_port = tbx_inip_string_get(lio_gc->ifd, "zmq_server", "port", RS_ZMQ_DFT_PORT);
+    asprintf(&zmq_svr, "%s://%s:%s", tbx_stk_string_trim(svr_proto), tbx_stk_string_trim(svr_addr), tbx_stk_string_trim(svr_port));
 
 
     //** Creates zmq context
@@ -102,11 +102,11 @@ int main(int argc, char **argv)
     printf("Launching threads...\n");
     int thread_count;
     rs_zmq_thread_arg_t **arg;
-    type_malloc_clear(arg, rs_zmq_thread_arg_t *, thread_nbr);
+    tbx_type_malloc_clear(arg, rs_zmq_thread_arg_t *, thread_nbr);
     pthread_t *workers;
-    type_malloc_clear(workers, pthread_t, thread_nbr);
+    tbx_type_malloc_clear(workers, pthread_t, thread_nbr);
     for (thread_count = 0; thread_count < thread_nbr; thread_count++) {
-        type_malloc_clear(arg[thread_count], rs_zmq_thread_arg_t, 1);
+        tbx_type_malloc_clear(arg[thread_count], rs_zmq_thread_arg_t, 1);
         arg[thread_count]->zmq_context = context;
         arg[thread_count]->rs = lio_gc->rs;
         arg[thread_count]->da = ds_attr_create(lio_gc->ds);

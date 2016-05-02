@@ -22,13 +22,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
-#include "assert_result.h"
-#include "log.h"
-#include "phoebus.h"
+#include <tbx/assert_result.h>
+#include <tbx/log.h>
+#include <tbx/phoebus.h>
 #include "errno.h"
-#include "string_token.h"
-#include "append_printf.h"
-#include "iniparse.h"
+#include <tbx/string_token.h>
+#include <tbx/append_printf.h>
+#include <tbx/iniparse.h>
 
 tbx_phoebus_t *global_phoebus = NULL;
 
@@ -76,11 +76,11 @@ p->path_string = strdup(path);
  
 p->key = strdup(path);
  
-hop = string_token(p->path_string, ",", &bstate, &finished);
+hop = tbx_stk_string_token(p->path_string, ",", &bstate, &finished);
 while (finished == 0) {
 stage[p->p_count] = hop;
 p->p_count++;
-hop = string_token(NULL, ",", &bstate, &finished);
+hop = tbx_stk_string_token(NULL, ",", &bstate, &finished);
 }
  
 //** Copy the path to the final location
@@ -186,15 +186,15 @@ int phoebus_print(char *buffer, int *used, int nbytes)
 {
 int i, n;
  
-append_printf(buffer, used, nbytes, "[phoebus]\n");
+tbx_append_printf(buffer, used, nbytes, "[phoebus]\n");
 if (global_phoebus->p_count <= 0) return(0);
  
-append_printf(buffer, used, nbytes, "gateway = ");
+tbx_append_printf(buffer, used, nbytes, "gateway = ");
 n = global_phoebus->p_count-1;
 for (i=0; i<n; i++) {
-append_printf(buffer, used, nbytes, "%s,", global_phoebus->path[i]);
+tbx_append_printf(buffer, used, nbytes, "%s,", global_phoebus->path[i]);
 }
-i = append_printf(buffer, used, nbytes, "%s\n", global_phoebus->path[n]);
+i = tbx_append_printf(buffer, used, nbytes, "%s\n", global_phoebus->path[n]);
  
 return(i);
 }
@@ -207,7 +207,7 @@ void phoebus_load_config(tbx_inip_file_t *kf)
 {
 if (global_phoebus == NULL) phoebus_init();
  
-char *gateway = inip_get_string(kf, "phoebus", "gateway", NULL);
+char *gateway = tbx_inip_string_get(kf, "phoebus", "gateway", NULL);
  
 if (gateway != NULL) {
 phoebus_path_set(global_phoebus, gateway);

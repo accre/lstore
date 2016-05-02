@@ -20,21 +20,21 @@
 #include <stdio.h>
 #include <string.h>
 #include <assert.h>
-#include "assert_result.h"
+#include <tbx/assert_result.h>
 #include <dlfcn.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <apr_time.h>
 #include <stdarg.h>
-#include "apr_wrapper.h"
-#include "fmttypes.h"
-#include "log.h"
-#include "type_malloc.h"
+#include <tbx/apr_wrapper.h>
+#include <tbx/fmttypes.h>
+#include <tbx/log.h>
+#include <tbx/type_malloc.h>
 #include "liblio_trace.h"
-#include "iniparse.h"
-#include "append_printf.h"
-#include "atomic_counter.h"
+#include <tbx/iniparse.h>
+#include <tbx/append_printf.h>
+#include <tbx/atomic_counter.h>
 
 lt_config_t ltc;
 lt_fn_t lt_fn;
@@ -61,7 +61,7 @@ static void  __attribute__ ((destructor)) liblio_trace_fini(void);
 
 void lt_default_config()
 {
-    set_log_level(15);
+    tbx_set_log_level(15);
     open_log("trace.log");
 
     ltc.trace_name = "output.trace";
@@ -79,25 +79,25 @@ void lt_load_config(char *fname)
     char *str;
     int n;
 
-    fd = inip_read(fname);
+    fd = tbx_inip_file_read(fname);
 
-    n = inip_get_integer(fd, LIBLIO_TRACE_SECTION, "log_level", log_level());
-    set_log_level(n);
+    n = tbx_inip_integer_get(fd, LIBLIO_TRACE_SECTION, "log_level", tbx_log_level());
+    tbx_set_log_level(n);
 
-    str = inip_get_string(fd, LIBLIO_TRACE_SECTION, "log_file", NULL);
+    str = tbx_inip_string_get(fd, LIBLIO_TRACE_SECTION, "log_file", NULL);
     if (str != NULL) open_log(str);
 
-    str = inip_get_string(fd, LIBLIO_TRACE_SECTION, "output", NULL);
+    str = tbx_inip_string_get(fd, LIBLIO_TRACE_SECTION, "output", NULL);
     if (str != NULL) ltc.trace_name = str;
 
-    str = inip_get_string(fd, LIBLIO_TRACE_SECTION, "header", NULL);
+    str = tbx_inip_string_get(fd, LIBLIO_TRACE_SECTION, "header", NULL);
     if (str != NULL) ltc.trace_header = str;
 
-    ltc.max_fd = inip_get_integer(fd, LIBLIO_TRACE_SECTION, "max_fd", ltc.max_fd);
+    ltc.max_fd = tbx_inip_integer_get(fd, LIBLIO_TRACE_SECTION, "max_fd", ltc.max_fd);
 
     ltc.logfd = STDERR_FILENO;
 
-    inip_destroy(fd);
+    tbx_inip_destroy(fd);
 }
 
 //*************************************************************
@@ -140,8 +140,8 @@ static void __attribute__((constructor)) liblio_trace_init()
     log_printf(10, "liblio_trace_init: lseek=%p\n",lt_fn.lseek);
 
 
-    type_malloc_clear(fd_stats, fd_trace_t, ltc.max_fd);
-    type_malloc_clear(fd_table, fd_trace_t, ltc.max_fd);
+    tbx_type_malloc_clear(fd_stats, fd_trace_t, ltc.max_fd);
+    tbx_type_malloc_clear(fd_table, fd_trace_t, ltc.max_fd);
     for (i=0; i<ltc.max_fd; i++) {
         fd_table[i].fd = -1;
     }
@@ -180,23 +180,23 @@ static void __attribute__((destructor)) liblio_trace_fini()
     used = 0;
     header[0] = '\0';
 
-    append_printf(header, &used, bufsize, "[trace]\n");
-    append_printf(header, &used, bufsize, "n_files=%d\n", curr_fd_slot);
-    append_printf(header, &used, bufsize, "trace=%s\n", ltc.trace_name);
-    n_ops = atomic_get(_trace_count);
-    append_printf(header, &used, bufsize, "n_ops=%d\n", n_ops);
-    append_printf(header, &used, bufsize, "\n");
+    tbx_append_printf(header, &used, bufsize, "[trace]\n");
+    tbx_append_printf(header, &used, bufsize, "n_files=%d\n", curr_fd_slot);
+    tbx_append_printf(header, &used, bufsize, "trace=%s\n", ltc.trace_name);
+    n_ops = tbx_atomic_get(_trace_count);
+    tbx_append_printf(header, &used, bufsize, "n_ops=%d\n", n_ops);
+    tbx_append_printf(header, &used, bufsize, "\n");
 
-    n = atomic_get(curr_fd_slot);
+    n = tbx_atomic_get(curr_fd_slot);
     for (i=0; i<n; i++) {
         fdt = &(fd_stats[i]);
 
-        append_printf(header, &used, bufsize, "[file-%d]\n", fdt->fd);
-        append_printf(header, &used, bufsize, "path=%s\n", fdt->fname);
-        append_printf(header, &used, bufsize, "init_size=%ld\n", fdt->init_size);
-        append_printf(header, &used, bufsize, "max_size=%ld\n", fdt->max_size);
-        append_printf(header, &used, bufsize, "block_size=%ld\n", fdt->block_size);
-        append_printf(header, &used, bufsize, "\n");
+        tbx_append_printf(header, &used, bufsize, "[file-%d]\n", fdt->fd);
+        tbx_append_printf(header, &used, bufsize, "path=%s\n", fdt->fname);
+        tbx_append_printf(header, &used, bufsize, "init_size=%ld\n", fdt->init_size);
+        tbx_append_printf(header, &used, bufsize, "max_size=%ld\n", fdt->max_size);
+        tbx_append_printf(header, &used, bufsize, "block_size=%ld\n", fdt->block_size);
+        tbx_append_printf(header, &used, bufsize, "\n");
     }
 
     log_printf(10, "liblio_trace_destroy: LOG Storing header in %s:\n%s\n", ltc.trace_header, header);
@@ -235,7 +235,7 @@ int open(const char *pathname, int flags, ...)
 
     if (fd == -1) return(-1);
 
-    fd_table[fd].fd = atomic_inc(curr_fd_slot);
+    fd_table[fd].fd = tbx_atomic_inc(curr_fd_slot);
     fd_table[fd].init_size = lt_fn.lseek(fd, 0L, SEEK_END);
     lt_fn.lseek(fd, 0L, SEEK_SET);  //** Reposition to the beginning
     fd_table[fd].pos = 0;
@@ -279,7 +279,7 @@ ssize_t read(int fd, void *buf, size_t count)
     char text[1024];
     double dt;
 
-    atomic_inc(_trace_count);
+    tbx_atomic_inc(_trace_count);
 
     result = lt_fn.read(fd, buf, count);
     if (fd_table[fd].fd < 0) return(result);
@@ -314,7 +314,7 @@ ssize_t write(int fd, const void *buf, size_t count)
     char text[1024];
     double dt;
 
-    atomic_inc(_trace_count);
+    tbx_atomic_inc(_trace_count);
 
     result = lt_fn.write(fd, buf, count);
     err = result;

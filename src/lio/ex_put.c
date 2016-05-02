@@ -17,10 +17,10 @@
 #define _log_module_index 170
 
 #include <assert.h>
-#include "assert_result.h"
+#include <tbx/assert_result.h>
 #include "exnode.h"
-#include "log.h"
-#include "type_malloc.h"
+#include <tbx/log.h>
+#include <tbx/type_malloc.h>
 #include "lio.h"
 
 //*************************************************************************
@@ -79,8 +79,8 @@ int main(int argc, char **argv)
     } while (start_option < i);
 
     bufsize = 1024*1024*bufsize_mb / 2;
-    type_malloc(rbuf, char, bufsize+1);
-    type_malloc(wbuf, char, bufsize+1);
+    tbx_type_malloc(rbuf, char, bufsize+1);
+    tbx_type_malloc(wbuf, char, bufsize+1);
     log_printf(1, "bufsize= 2 * " XOT " bytes (%d MB total)\n", bufsize, bufsize_mb);
 
     //** Open the source file
@@ -146,13 +146,13 @@ int main(int argc, char **argv)
 //     log_printf(15, "ex_put: pos=%d rlen=%d text=!%s!\n", i, len, buffer);
         log_printf(1, "ex_put: pos=" XOT " rlen=" XOT " wlen=" XOT "\n", i, rlen, wlen);
         //** Start the write
-        tbuffer_single(&tbuf, wlen, wbuf);
+        tbx_tbuf_single(&tbuf, wlen, wbuf);
         ex_iovec_single(&iov, i, wlen);
         gop = segment_write(seg, lio_gc->da, NULL, 1, &iov, &tbuf, 0, lio_gc->timeout);
         gop_start_execution(gop);
 
         log_printf(1, "ex_put: i=" XOT " gid=%d\n", i, gop_id(gop));
-        flush_log();
+        tbx_flush_log();
 
         //** Read in the next block
         disk_start = apr_time_now();
@@ -162,10 +162,10 @@ int main(int argc, char **argv)
 
         err = gop_waitall(gop);
         log_printf(1, "ex_put: i=" XOT " gid=%d err=%d\n", i, gop_id(gop), err);
-        flush_log();
+        tbx_flush_log();
         if (err != OP_STATE_SUCCESS) {
             printf("ex_put: Error writing offset=" XOT " wlen=" XOT "!\n",i, wlen);
-            flush_log();
+            tbx_flush_log();
             fflush(stdout);
             abort();
         }
@@ -176,7 +176,7 @@ int main(int argc, char **argv)
 
     //** Flush everything to backing store
     log_printf(1, "Flushing to disk size=" XOT "\n", segment_size(seg));
-    flush_log();
+    tbx_flush_log();
     gop_sync_exec(segment_flush(seg, lio_gc->da, 0, segment_size(seg)+1, lio_gc->timeout));
     log_printf(1, "Flush completed\n");
     cumulative_time = apr_time_now() - start_time;

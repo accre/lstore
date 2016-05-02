@@ -17,16 +17,16 @@
 #define _log_module_index 188
 
 #include <assert.h>
-#include "assert_result.h"
+#include <tbx/assert_result.h>
 #include "exnode.h"
-#include "log.h"
-#include "iniparse.h"
-#include "type_malloc.h"
+#include <tbx/log.h>
+#include <tbx/iniparse.h>
+#include <tbx/type_malloc.h>
 #include "thread_pool.h"
 #include "lio.h"
 #include "object_service_abstract.h"
-#include "iniparse.h"
-#include "string_token.h"
+#include <tbx/iniparse.h>
+#include <tbx/string_token.h>
 
 int main(int argc, char **argv)
 {
@@ -74,7 +74,7 @@ int main(int argc, char **argv)
     info_printf(lio_ifd, 0, "Using path=%s and mode=%d (%d=manual, %d=delete, %d=repair)\n", path, mode, OS_FSCK_MANUAL, OS_FSCK_REMOVE, OS_FSCK_REPAIR);
     info_printf(lio_ifd, 0, "Possible error states: %d=missing attr, %d=missing object\n", OS_FSCK_MISSING_ATTR, OS_FSCK_MISSING_OBJECT);
     info_printf(lio_ifd, 0, "--------------------------------------------------------------------\n");
-    info_flush(lio_ifd);
+    tbx_info_flush(lio_ifd);
 
     n = 0;
     nfailed = 0;
