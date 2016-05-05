@@ -59,6 +59,10 @@ function build_lstore_binary_outof_tree() {
     case $TO_BUILD in
         apr-accre)
             # Keep this in sync with CPackConfig.cmake in our fork
+            ( set -eu
+                cd ${SOURCE_PATH}
+                ./buildconf
+            )
             ${SOURCE_PATH}/configure \
                         --prefix=${INSTALL_PREFIX} \
                         --includedir=${INSTALL_PREFIX}/include/apr-ACCRE-1 \
@@ -131,6 +135,12 @@ function build_lstore_package() {
             fatal "Unexpected distro name $DISTRO_NAME"
             ;;
     esac
+    if [ "$TO_BUILD" == "apr-accre" ]; then
+        ( set -eu
+            cd ${SOURCE_PATH}
+            ./buildconf
+        )
+    fi
     case $TO_BUILD in
         apr-accre|apr-util-accre)
             ls -l $SOURCE_PATH/CPackConfig.cmake
