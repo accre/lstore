@@ -45,7 +45,7 @@ struct tbx_log_fd_t {
     int level;
 };
 
-void info_destroy(tbx_log_fd_t *fd);
+void info_destroy(tbx_log_fd_t *ifd);
 void flush_info(tbx_log_fd_t *fd);
 //int info_printf(tbx_log_fd_t *fd, int level, const char *fmt, ...);
 #define get_info_header_type(fd) fd->header_type

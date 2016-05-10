@@ -52,7 +52,7 @@ typedef struct {
 //} sock_apr_union_t;
 
 //#define SOCK_DEFAULT_TIMEOUT 1000*1000
-#define SOCK_DEFAULT_TIMEOUT 100*1000
+#define SOCK_DEFAULT_TIMEOUT (100*1000)
 #define SOCK_WAIT_READ  POLLIN
 #define SOCK_WAIT_WRITE POLLOUT
 

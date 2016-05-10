@@ -30,7 +30,7 @@ tbx_sl_node_t *create_skiplist_node(int level);
 int skiplist_compare_fn_int(void *arg, tbx_sl_key_t *k1, tbx_sl_key_t *k2);
 int skiplist_compare_fn_strcmp(void *arg, tbx_sl_key_t *k1, tbx_sl_key_t *k2);
 int skiplist_compare_fn_strncmp(void *arg, tbx_sl_key_t *k1, tbx_sl_key_t *k2);
-int skiplist_compare_fn_ptr(void *arg, tbx_sl_key_t *k1, tbx_sl_key_t *k2);
+int skiplist_compare_fn_ptr(void *arg, tbx_sl_key_t *a, tbx_sl_key_t *b);
 
 tbx_sl_compare_t tbx_sl_compare_int= {skiplist_compare_fn_int, (void *)(int)(long)(1)};
 tbx_sl_compare_t tbx_sl_compare_strcmp= {skiplist_compare_fn_strcmp, (void *)(int)(long)1};

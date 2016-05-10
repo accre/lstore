@@ -45,12 +45,12 @@ struct tbx_net_sock_t {  //** Contains the private raw socket network fields
 extern "C" {
 #endif
 
-void sock_set_peer(net_sock_t *sock, char *address, int add_size);
-int sock_status(net_sock_t *sock);
-int sock_close(net_sock_t *sock);
-long int sock_write(net_sock_t *sock, tbx_tbuf_t *buf, size_t bpos, size_t size, tbx_ns_timeout_t tm);
-long int sock_read(net_sock_t *sock, tbx_tbuf_t *buf, size_t bpos, size_t size, tbx_ns_timeout_t tm);
-int sock_connect(net_sock_t *sock, const char *hostname, int port, tbx_ns_timeout_t timeout);
+void sock_set_peer(net_sock_t *nsock, char *address, int add_size);
+int sock_status(net_sock_t *nsock);
+int sock_close(net_sock_t *nsock);
+long int sock_write(net_sock_t *nsock, tbx_tbuf_t *buf, size_t bpos, size_t len, tbx_ns_timeout_t tm);
+long int sock_read(net_sock_t *nsock, tbx_tbuf_t *buf, size_t bpos, size_t len, tbx_ns_timeout_t tm);
+int sock_connect(net_sock_t *nsock, const char *hostname, int port, tbx_ns_timeout_t timeout);
 int sock_connection_request(net_sock_t *nsock, int timeout);
 net_sock_t *sock_accept(net_sock_t *nsock);
 int sock_bind(net_sock_t *nsock, char *address, int port);

@@ -41,7 +41,7 @@ TBX_API int tbx_tbuf_copy(tbx_tbuf_t *tb_s, size_t off_s, tbx_tbuf_t *tb_d, size
 
 TBX_API void tbx_tbuf_fn(tbx_tbuf_t *tb, size_t total_bytes, void *arg, int (*next_block)(tbx_tbuf_t *tb, size_t pos, tbx_tbuf_var_t *tbv));
 
-TBX_API int tbx_tbuf_memset(tbx_tbuf_t *buffer, size_t boff, int c, size_t nbytes);
+TBX_API int tbx_tbuf_memset(tbx_tbuf_t *tb, size_t off, int c, size_t nbytes);
 
 TBX_API void tbx_tbuf_single(tbx_tbuf_t *tb, size_t nbytes, char *buffer);
 

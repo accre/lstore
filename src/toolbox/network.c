@@ -64,9 +64,9 @@ void tbx_ns_chksum_write_clear(tbx_ns_t *ns) { (ns)->write_chksum.is_valid = 0; 
 void tbx_ns_chksum_write_enable(tbx_ns_t *ns) { (ns)->write_chksum.is_running = 1; }
 
 // Forward declarations
-int _tbx_ns_read(tbx_ns_t *ns, tbx_tbuf_t *buffer, int boff, int bsize, tbx_ns_timeout_t timeout, int dolock);
-int _read_netstream_block(tbx_ns_t *ns, apr_time_t end_time, tbx_tbuf_t *buffer, int boff, int bsize, int dolock);
-int _tbx_ns_write(tbx_ns_t *ns, tbx_tbuf_t *buffer, int boff, int size, tbx_ns_timeout_t timeout, int dolock);
+int _tbx_ns_read(tbx_ns_t *ns, tbx_tbuf_t *buffer, int boff, int size, tbx_ns_timeout_t timeout, int dolock);
+int _read_netstream_block(tbx_ns_t *ns, apr_time_t end_time, tbx_tbuf_t *buffer, int pos, int size, int dolock);
+int _tbx_ns_write(tbx_ns_t *ns, tbx_tbuf_t *buffer, int boff, int bsize, tbx_ns_timeout_t timeout, int dolock);
 int _write_netstream_block(tbx_ns_t *ns, apr_time_t end_time, tbx_tbuf_t *buffer, int boff, int size, int dolock);
 
 int tcp_bufsize = 0;   //** 0 means use the default TCP buffer sizes for the OS
@@ -1041,9 +1041,9 @@ int _tbx_ns_read(tbx_ns_t *ns, tbx_tbuf_t *buffer, int boff, int size, tbx_ns_ti
 // read_netstream - Reads characters fomr the stream with a max wait
 //*********************************************************************
 
-int tbx_ns_read(tbx_ns_t *ns, tbx_tbuf_t *buffer, int boff, int bsize, tbx_ns_timeout_t timeout)
+int tbx_ns_read(tbx_ns_t *ns, tbx_tbuf_t *buffer, int boff, int size, tbx_ns_timeout_t timeout)
 {
-    return(_tbx_ns_read(ns, buffer, boff, bsize, timeout, 1));
+    return(_tbx_ns_read(ns, buffer, boff, size, timeout, 1));
 }
 
 //*********************************************************************

@@ -44,7 +44,7 @@ TBX_API void tbx_ns_close(tbx_ns_t *ns);
 
 TBX_API void tbx_ns_destroy(tbx_ns_t *ns);
 
-TBX_API int tbx_ns_connect(tbx_ns_t *ns, const char *host, int port, tbx_ns_timeout_t timeout);
+TBX_API int tbx_ns_connect(tbx_ns_t *ns, const char *hostname, int port, tbx_ns_timeout_t timeout);
 
 TBX_API int tbx_network_counter(tbx_network_t *net);
 
@@ -54,7 +54,7 @@ TBX_API int tbx_ns_chksum_is_valid(tbx_ns_chksum_t *ncs);
 
 TBX_API int tbx_ns_chksum_reset(tbx_ns_chksum_t *ncs);
 
-TBX_API int tbx_ns_chksum_set(tbx_ns_chksum_t *ncs, tbx_chksum_t *chksum, size_t blocksize);
+TBX_API int tbx_ns_chksum_set(tbx_ns_chksum_t *ncs, tbx_chksum_t *cks, size_t blocksize);
 
 TBX_API int tbx_ns_generate_id();
 

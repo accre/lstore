@@ -63,7 +63,7 @@ TBX_API void tbx_sl_empty(tbx_sl_t *sl);
 
 TBX_API int tbx_sl_insert(tbx_sl_t *sl, tbx_sl_key_t *key, tbx_sl_data_t *data);
 
-TBX_API tbx_sl_iter_t tbx_sl_iter_search_compare(tbx_sl_t *sl, tbx_sl_key_t *nkey, tbx_sl_compare_t *compare, int round_mode);
+TBX_API tbx_sl_iter_t tbx_sl_iter_search_compare(tbx_sl_t *sl, tbx_sl_key_t *key, tbx_sl_compare_t *compare, int round_mode);
 
 TBX_API int tbx_sl_next(tbx_sl_iter_t *it, tbx_sl_key_t **nkey, tbx_sl_data_t **ndata);
 
@@ -85,7 +85,7 @@ TBX_API void tbx_sl_no_key_free(tbx_sl_key_t *key);
 
 TBX_API void tbx_sl_simple_free(tbx_sl_data_t *data);
 
-TBX_API tbx_sl_key_t *tbx_sl_string_dup(tbx_sl_key_t *data);
+TBX_API tbx_sl_key_t *tbx_sl_string_dup(tbx_sl_key_t *key);
 
 TBX_API extern tbx_sl_compare_t tbx_sl_compare_int;
 

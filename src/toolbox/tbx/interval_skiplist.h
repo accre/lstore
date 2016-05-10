@@ -34,7 +34,7 @@ typedef struct tbx_isl_node_t tbx_isl_node_t;
 typedef struct tbx_isl_t tbx_isl_t;
 
 // Functions
-TBX_API int tbx_isl_count2(tbx_isl_t *sl, tbx_sl_key_t *lo, tbx_sl_key_t *hi);
+TBX_API int tbx_isl_count2(tbx_isl_t *isl, tbx_sl_key_t *lo, tbx_sl_key_t *hi);
 
 TBX_API tbx_isl_t *tbx_isl_new(tbx_sl_compare_t *compare,
         tbx_sl_key_t *(*dup)(tbx_sl_key_t *a),
@@ -49,17 +49,17 @@ TBX_API tbx_isl_t *tbx_isl_new_full(int maxlevels, double p,
 
 TBX_API void tbx_isl_del(tbx_isl_t *isl);
 
-TBX_API int tbx_isl_insert(tbx_isl_t *sl, tbx_sl_key_t *lo, tbx_sl_key_t *hi, tbx_sl_data_t *data);
+TBX_API int tbx_isl_insert(tbx_isl_t *isl, tbx_sl_key_t *lo, tbx_sl_key_t *hi, tbx_sl_data_t *data);
 
 TBX_API tbx_sl_key_t *tbx_isl_key_first(tbx_isl_t *isl);
 
 TBX_API tbx_sl_key_t *tbx_isl_key_last(tbx_isl_t *isl);
 
-TBX_API tbx_isl_iter_t tbx_isl_iter_search(tbx_isl_t *sl, tbx_sl_key_t *lo, tbx_sl_key_t *hi);
+TBX_API tbx_isl_iter_t tbx_isl_iter_search(tbx_isl_t *isl, tbx_sl_key_t *lo, tbx_sl_key_t *hi);
 
 TBX_API tbx_sl_data_t *tbx_isl_next(tbx_isl_iter_t *it);
 
-TBX_API int tbx_isl_remove(tbx_isl_t *sl, tbx_sl_key_t *lo, tbx_sl_key_t *hi, tbx_sl_data_t *data);
+TBX_API int tbx_isl_remove(tbx_isl_t *isl, tbx_sl_key_t *lo, tbx_sl_key_t *hi, tbx_sl_data_t *data);
 
 // Preprocessor macros
 #define tbx_isl_count(a) (a)->n_intervals

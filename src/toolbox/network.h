@@ -156,7 +156,7 @@ void network_destroy(tbx_network_t *net);
 int sniff_connection(tbx_ns_t *ns);
 int write_netstream_block(tbx_ns_t *ns, apr_time_t end_time, tbx_tbuf_t *buffer, int boff, int bsize);
 int read_netstream_block(tbx_ns_t *ns, apr_time_t end_time, tbx_tbuf_t *buffer, int boff, int bsize);
-int readline_netstream(tbx_ns_t *ns, tbx_tbuf_t *buffer, int boff, int size, tbx_ns_timeout_t timeout);
+int readline_netstream(tbx_ns_t *ns, tbx_tbuf_t *buffer, int boff, int bsize, tbx_ns_timeout_t timeout);
 int accept_pending_connection(tbx_network_t *net, tbx_ns_t *ns);
 void get_net_timeout(tbx_ns_timeout_t tm, int *sec, int *us);
 void ns_init(tbx_ns_t *ns);
