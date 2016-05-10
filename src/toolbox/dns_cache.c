@@ -158,11 +158,16 @@ int tbx_dnsc_lookup(const char *name, char *byte_addr, char *ip_addr)
 
 //**************************************************************************
 
-void tbx_dnsc_init(int size)
+int tbx_dnsc_startup()
 {
-    log_printf(20, "tbx_dnsc_init: Start!!!!!!!!!!!!\n");
+    return tbx_dnsc_startup_sized(100);
+}
 
-    if (_cache != NULL) return;
+//**************************************************************************
+
+int tbx_dnsc_startup_sized(int size)
+{
+    if (_cache != NULL) return 0;
 
     _cache = (DNS_cache_t *)malloc(sizeof(DNS_cache_t));
     assert(_cache != NULL);
@@ -173,11 +178,12 @@ void tbx_dnsc_init(int size)
     apr_thread_mutex_create(&(_cache->lock), APR_THREAD_MUTEX_DEFAULT,_cache->lockpool);
 
     wipe_entries(_cache);
+    return 0;
 }
 
 //**************************************************************************
 
-void tbx_dnsc_destroy()
+int tbx_dnsc_shutdown()
 {
     apr_thread_mutex_destroy(_cache->lock);
 
@@ -187,6 +193,7 @@ void tbx_dnsc_destroy()
     free(_cache);
 
     _cache = NULL;
+    return 0;
 }
 
 

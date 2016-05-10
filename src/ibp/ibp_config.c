@@ -820,7 +820,7 @@ ibp_context_t *ibp_create_context()
     memset(ic, 0, sizeof(ibp_context_t));
 
     if (_ibp_context_count == 0) {
-        tbx_dnsc_init(100);
+        tbx_dnsc_startup();
 
         ibp_configure_signals();
     }
@@ -869,7 +869,7 @@ void ibp_destroy_context(ibp_context_t *ic)
 
     _ibp_context_count--;
     if (_ibp_context_count == 0) {
-        tbx_dnsc_destroy();
+        tbx_dnsc_shutdown();
     }
 
     free(ic);
