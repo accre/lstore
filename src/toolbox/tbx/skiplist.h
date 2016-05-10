@@ -21,6 +21,7 @@
 #include <apr_pools.h>
 #include <apr_thread_mutex.h>
 #include "tbx/toolbox_visibility.h"
+#include "tbx/tbx_decl.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -39,18 +40,25 @@ typedef struct tbx_sl_iter_t tbx_sl_iter_t;
 
 typedef struct tbx_sl_node_t tbx_sl_node_t;
 
-typedef struct tbx_sl_t tbx_sl_t;
-
-
-// Functions
+TBX_TYPE(tbx_sl_t, tbx_sl);
 TBX_API tbx_sl_t *tbx_sl_create_full(int maxlevels, double p, int allow_dups,
                                         tbx_sl_compare_t *compare,
                                         tbx_sl_key_t *(*dup)(tbx_sl_key_t *a),
                                         void (*key_free)(tbx_sl_key_t *a),
                                         void (*data_free)(tbx_sl_data_t *a));
+TBX_TYPE_NEW(tbx_sl_t, tbx_sl_new_full, int maxlevels, double p, int allow_dups,
+                        tbx_sl_compare_t *compare,
+                        tbx_sl_key_t *(*dup)(tbx_sl_key_t *a),
+                        void (*key_free)(tbx_sl_key_t *a),
+                        void (*data_free)(tbx_sl_data_t *a));
+TBX_TYPE_INIT(tbx_sl_t, tbx_sl_init_full, tbx_sl_t * self,
+                        int maxlevels, double p, int allow_dups,
+                        tbx_sl_compare_t *compare,
+                        tbx_sl_key_t *(*dup)(tbx_sl_key_t *a),
+                        void (*key_free)(tbx_sl_key_t *a),
+                        void (*data_free)(tbx_sl_data_t *a));
 
-TBX_API void tbx_sl_destroy(tbx_sl_t *sl);
-
+// Functions
 TBX_API void tbx_sl_empty(tbx_sl_t *sl);
 
 TBX_API int tbx_sl_insert(tbx_sl_t *sl, tbx_sl_key_t *key, tbx_sl_data_t *data);

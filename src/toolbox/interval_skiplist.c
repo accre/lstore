@@ -225,7 +225,7 @@ tbx_isl_t *tbx_isl_new_full(int maxlevels, double p,
 
     isl->n_intervals = 0;
     isl->data_free = (data_free == NULL) ? tbx_sl_no_data_free : data_free;
-    isl->sl = tbx_sl_create_full(maxlevels, p, 1, compare, dup, key_free, tbx_sl_no_data_free);
+    isl->sl = tbx_sl_new_full(maxlevels, p, 1, compare, dup, key_free, tbx_sl_no_data_free);
 
     return(isl);
 }
@@ -260,7 +260,7 @@ void tbx_isl_del(tbx_isl_t *isl)
         sn = sn->next[0];
     }
 
-    tbx_sl_destroy(sl);
+    tbx_sl_del(sl);
     free(isl);
 
     return;

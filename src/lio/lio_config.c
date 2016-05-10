@@ -1043,7 +1043,7 @@ lio_config_t *lio_create_nl(char *fname, char *section, char *user, char *exe_na
     add_service(lio->ess, ESS_RUNNING, ESS_CACHE, lio->cache);
 
     //** Table of open files
-    lio->open_index = tbx_sl_create_full(10, 0.5, 0, &ex_id_compare, NULL, NULL, NULL);
+    lio->open_index = tbx_sl_new_full(10, 0.5, 0, &ex_id_compare, NULL, NULL, NULL);
 
     assert_result(apr_pool_create(&(lio->mpool), NULL), APR_SUCCESS);
     apr_thread_mutex_create(&(lio->lock), APR_THREAD_MUTEX_DEFAULT, lio->mpool);

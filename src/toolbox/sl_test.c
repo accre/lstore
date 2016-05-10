@@ -64,7 +64,7 @@ int main(int argc, char **argv)
 
     check_slot = n_max / 2;
 
-    sl = tbx_sl_create_full(l_max, p, 1, &tbx_sl_compare_int, NULL, NULL, NULL);
+    sl = tbx_sl_new_full(l_max, p, 1, &tbx_sl_compare_int, NULL, NULL, NULL);
 
     //** Make sure everything works fine with an empty list
     i = 12345;
@@ -340,7 +340,7 @@ int main(int argc, char **argv)
         printf("ERROR! key!=j (%d!=%d)!!!!!\n", *key, j);
     }
 
-    tbx_sl_destroy(sl);
+    tbx_sl_del(sl);
     fflush(stdout);
     tbx_flush_log();
 

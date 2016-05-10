@@ -24,9 +24,9 @@ extern "C" {
 
 // Precompiler macros
 #define tbx_list_create(allow_dups, cmp, dup_fn, key_free_fn, data_free_fn) \
-    tbx_sl_create_full(20, 0.5, allow_dups, cmp, dup_fn, key_free_fn, data_free_fn)
+    tbx_sl_new_full(20, 0.5, allow_dups, cmp, dup_fn, key_free_fn, data_free_fn)
 
-#define tbx_list_destroy(sl) tbx_sl_destroy(sl)
+#define tbx_list_destroy(sl) tbx_sl_del(sl)
 
 #define tbx_list_first_key(a) tbx_sl_first_key(a)
 
