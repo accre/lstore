@@ -442,21 +442,15 @@ int sock_connection_request(net_sock_t *nsock, int timeout)
 
     tbx_net_sock_t *sock = (tbx_net_sock_t *)nsock;
 
-//dt= apr_time_make(0, 100*1000);
-//apr_sleep(dt);
-
     if (sock == NULL) return(-1);
     dt = apr_time_make(timeout,0);
     n = 0;
     apr_pollset_poll(sock->pollset, dt, &n, &ret_fd);
-//int i=n;
-//log_printf(15, "sock_connection_request: err=%d n=%d APR_SUCCESS=%d\n", err, i, APR_SUCCESS);
     if (n == 1) {
         return(1);
     } else {
         return(0);
     }
-    return(-1);
 }
 
 //*********************************************************************

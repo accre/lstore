@@ -161,6 +161,67 @@ tbx_sl_t *create_skiplist(int allow_dups,
     return(tbx_sl_new_full(16, 0.25, allow_dups, compare, dup, key_free, data_free));
 }
 
+//*********************************************************************************
+// Boilerplace for tbx_sl_ele_t
+//*********************************************************************************
+tbx_sl_ele_t *create_skiplist_ele()
+{
+    tbx_sl_ele_t *se = (tbx_sl_ele_t *)malloc(sizeof(tbx_sl_ele_t));
+    return(se);
+}
+
+//*********************************************************************************
+//  Boilerplate for tbx_sl_node_t
+//*********************************************************************************
+tbx_sl_node_t *create_skiplist_node(int level)
+{
+    tbx_sl_node_t *sn = (tbx_sl_node_t *)malloc(sizeof(tbx_sl_node_t));
+    if (!sn)
+        goto error_1;
+
+    sn->next = (tbx_sl_node_t **)malloc(sizeof(tbx_sl_node_t *)*(level+1));
+    if (!sn->next)
+        goto error_2;
+
+    sn->key = NULL;
+    sn->level = level;
+    sn->ele.data = NULL;
+    sn->ele.next = NULL;
+    memset(sn->next, 0, sizeof(tbx_sl_node_t *)*(level+1));
+
+    return sn;
+
+error_2:
+    free(sn);
+error_1:
+    return NULL;
+}
+
+void destroy_skiplist_node(tbx_sl_t *sl, tbx_sl_node_t *sn)
+{
+    tbx_sl_ele_t *se2;
+    tbx_sl_ele_t *se = &(sn->ele);
+
+    log_printf(15, "destroying node\n");
+
+    if (se) {
+        if (se->data) sl->data_free(se->data);
+
+        se = se->next;
+        while (se != NULL) {
+            se2 = se;
+            se = se->next;
+            sl->data_free(se2->data);
+            free(se2);
+        }
+    }
+
+    sl->key_free(sn->key);
+
+    free(sn->next);
+    free(sn);
+    return;
+}
 
 //*********************************************************************************
 // Routines to handle NULL dup and free
@@ -262,70 +323,6 @@ void tbx_sl_strncmp_set(tbx_sl_compare_t *compare, int n)
     compare->fn = skiplist_compare_fn_strncmp;
     compare->arg = (void *)l;    //****************HACKERY INVOLVED***********************
 }
-
-//*********************************************************************************
-//  create_skiplist_ele - Creates a skiplist element
-//*********************************************************************************
-
-tbx_sl_ele_t *create_skiplist_ele()
-{
-    tbx_sl_ele_t *se = (tbx_sl_ele_t *)malloc(sizeof(tbx_sl_ele_t));
-    assert(se != 0);
-
-    return(se);
-}
-
-//*********************************************************************************
-//  create_skiplist_node - Creates a new skiplist node
-//*********************************************************************************
-
-tbx_sl_node_t *create_skiplist_node(int level)
-{
-    tbx_sl_node_t *sn = (tbx_sl_node_t *)malloc(sizeof(tbx_sl_node_t));
-    assert(sn != NULL);
-
-    sn->level = level;
-    sn->key = NULL;
-    sn->next = (tbx_sl_node_t **)malloc(sizeof(tbx_sl_node_t *)*(level+1));
-    assert(sn->next != NULL);
-    memset(sn->next, 0, sizeof(tbx_sl_node_t *)*(level+1));
-
-    sn->ele.data = NULL;
-    sn->ele.next = NULL;
-
-    return(sn);
-}
-
-//*********************************************************************************
-// destroy_skiplist_node - Destroys a skiplist node
-//*********************************************************************************
-
-void destroy_skiplist_node(tbx_sl_t *sl, tbx_sl_node_t *sn)
-{
-    tbx_sl_ele_t *se2;
-    tbx_sl_ele_t *se = &(sn->ele);
-
-    log_printf(15, "destroying node\n");
-
-    if (se) {
-        if (se->data) sl->data_free(se->data);
-
-        se = se->next;
-        while (se != NULL) {
-            se2 = se;
-            se = se->next;
-            sl->data_free(se2->data);
-            free(se2);
-        }
-    }
-
-    sl->key_free(sn->key);
-
-    free(sn->next);
-    free(sn);
-    return;
-}
-
 //*********************************************************************************
 // skiplist_key_count - Returns the number of keys in the skiplist
 //*********************************************************************************
@@ -629,33 +626,6 @@ int tbx_sl_remove(tbx_sl_t *sl, tbx_sl_key_t *key, tbx_sl_data_t *data)
     return(found);
 }
 
-//*********************************************************************************
-//  iter_search_skiplist_compare - Returns an iterator starting at the requested key
-//     or the next smallest key.
-//    If key == NULL then it start at the 1st key
-//*********************************************************************************
-
-tbx_sl_iter_t OLD_tbx_sl_iter_search_compare(tbx_sl_t *sl, tbx_sl_key_t *key, tbx_sl_compare_t *compare)
-{
-    tbx_sl_iter_t it;
-
-    it.sl = sl;
-    it.ele = NULL;
-    it.curr = NULL;
-    it.prev = NULL;
-    it.sn = NULL;
-    it.compare = compare;
-    memset(it.ptr, 0, sizeof(it.ptr));
-    find_key_compare(sl, it.ptr, key, compare, 1);
-    log_printf(15, "iter_search_skiplist: it.sn=%p\n", it.ptr[0]->next[0]);
-
-    if (it.ptr[0]->next[0] != NULL) {
-        it.sn = it.ptr[0]->next[0];
-        it.ele = &(it.sn->ele);
-    }
-
-    return(it);
-}
 
 //*********************************************************************************
 //  iter_search_skiplist_compare - Returns an iterator starting at the requested key

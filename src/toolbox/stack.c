@@ -376,8 +376,10 @@ int tbx_stack_insert_below(tbx_stack_t *stack, void *data)
 
     ele =(tbx_stack_ele_t *) malloc(sizeof(tbx_stack_ele_t));
     ele->data = data;
-
-    return(insert_link_below(stack, ele));
+    int ret = insert_link_below(stack, ele);
+    if (!ret)
+        free(ele);
+    return ret;
 }
 
 
@@ -424,9 +426,10 @@ int tbx_stack_insert_above(tbx_stack_t *stack, void *data)
 
     ele =(tbx_stack_ele_t *) malloc(sizeof(tbx_stack_ele_t));
     ele->data = data;
-
-    return(tbx_stack_insert_link_above(stack, ele));
-
+    int ret = tbx_stack_insert_link_above(stack, ele);
+    if (!ret)
+        free(ele);
+    return ret;
 }
 
 
