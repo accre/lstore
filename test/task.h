@@ -78,6 +78,17 @@ typedef enum {
   PIPE
 } stream_type;
 
+/* Notice */
+#define NOTE(msg)                                        \
+  do {                                                    \
+    fprintf(stderr,                                       \
+            "Note in %s on line %d: %s\n",         \
+            __FILE__,                                     \
+            __LINE__,                                     \
+            msg);                                         \
+    fflush(stderr);                                       \
+  } while (0)
+
 /* Die with fatal error. */
 #define FATAL(msg)                                        \
   do {                                                    \
