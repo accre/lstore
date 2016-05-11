@@ -63,6 +63,15 @@ if(ENABLE_UBSAN)
 endif()
 if(ENABLE_COVERAGE)
     set(LSTORE_SANITIZE_FLAGS "${LSTORE_SANITIZE_FLAGS} -fprofile-arcs -ftest-coverage")
+    add_custom_target(coverage
+        COMMAND lcov --zerocounters --directory .
+        COMMAND lcov --initial --capture --directory . --output-file lstore.base
+        COMMAND ./run-tests
+        COMMAND lcov --capture --directory . --output-file lstore.unit --rc lcov_branch_coverage=1
+        COMMAND lcov --add lstore.base --add lstore.unit --output-file lstore.total --rc lcov_branch_coverage=1
+        COMMAND genhtml -o coverage-html --branch-coverage --function-coverage lstore.total --rc lcov_branch_coverage=1
+        DEPENDS run-tests
+        COMMENT "Executes code coverage tests")
 endif()
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${LSTORE_SANITIZE_FLAGS}")
 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${LSTORE_SANITIZE_LINK_FLAGS}")

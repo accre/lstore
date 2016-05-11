@@ -27,18 +27,16 @@ compile_map['unified-gcc'] = {
         deleteDir()
         unstash 'source'
         dir('build') {
-            sh "cmake -DBUILD_TESTS=on -DENABLE_COVERAGE=on -DENABLE_ASAN=on -DCMAKE_INSTALL_PREFIX=local/ .."
+            sh "cmake -DBUILD_TESTS=on -DENABLE_COVERAGE=on -DCMAKE_INSTALL_PREFIX=local/ .."
             sh "make -j8 externals"
             sh "bash -c 'set -o pipefail ; make -j1 install VERBOSE=1 2>&1 | tee compile_log_gcc.txt'"
             stash includes: 'local/**, run-tests, run-benchmarks', name: "unified-gcc"
             stash includes: "compile_log_gcc.txt", name: "gcc-log"
+            sh "bash -c 'set -o pipefail ; LD_LIBRARY_PATH=local/lib UV_TAP_OUTPUT=1 ./run-tests | tee tap.log'"
+            sh "make coverage"
+            archive "coverage-html/**"
+            publishHTML(target: [reportDir: 'coverage-html/', reportFiles: 'index.html', reportName: 'Test Coverage',keepAll: true])
         }
-    }
-    node('xenial') {
-        stage "UnitTests"
-        deleteDir()
-        unstash 'unified-gcc'
-        sh "bash -c 'set -o pipefail ; LD_LIBRARY_PATH=local/lib UV_TAP_OUTPUT=1 ./run-tests 2>&1 | tee tap.log'"
     }
 }
 
@@ -47,17 +45,13 @@ compile_map['unified-clang'] = {
         deleteDir()
         unstash 'source'
         dir('build') {
-            sh "CC=clang cmake -DBUILD_TESTS=on -DENABLE_COVERAGE=on -DENABLE_ASAN=on -DCMAKE_INSTALL_PREFIX=local/ .."
+            sh "CC=clang cmake -DBUILD_TESTS=on -DENABLE_COVERAGE=on -DCMAKE_INSTALL_PREFIX=local/ .."
             sh "make -j8 externals"
             sh "bash -c 'set -o pipefail ; make -j1 install 2>&1 VERBOSE=1 | tee compile_log_clang.txt'"
             stash includes: 'local/**, run-tests, run-benchmarks', name: "unified-clang"
             stash includes: "compile_log_clang.txt", name: "clang-log"
+            sh "bash -c 'set -o pipefail ; LD_LIBRARY_PATH=local/lib UV_TAP_OUTPUT=1 ./run-tests | tee tap.log'"
         }
-    }
-    node('xenial') {
-        deleteDir()
-        unstash 'unified-clang'
-        sh "bash -c 'set -o pipefail ; LD_LIBRARY_PATH=local/lib UV_TAP_OUTPUT=1 ./run-tests 2>&1 | tee tap.log'"
     }
 }
 
@@ -84,12 +78,12 @@ compile_map['scan-build'] = {
         dir('build') {
             sh "mkdir clang-static-analyzer"
             sh "CCC_CC=clang scan-build cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DBUILD_TESTS=on -DCMAKE_INSTALL_PREFIX=local/ .."
-            sh "CC=clang make externals"
-            sh "CCC_CC=clang scan-build -o clang-static-analyzer -v -v ${scan_checks} --keep-empty make -j4"
+            sh "CC=clang make externals -j2"
+            sh "CCC_CC=clang scan-build -o clang-static-analyzer -v -v ${scan_checks} --keep-empty make -j16"
             sh "mv clang-static-analyzer/* ../clang-report"
         }
         archive "clang-report/**"
-        publishHTML(target: [reportDir: 'clang-report/', reportFiles: 'index.html', reportName: 'Clang static analysis'])
+        publishHTML(target: [reportDir: 'clang-report/', reportFiles: 'index.html', reportName: 'Clang static analysis', keepAll: true])
     }
 }
 
