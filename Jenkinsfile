@@ -23,7 +23,6 @@ node('docker') {
 
 compile_map['unified-gcc'] = {
     node('xenial') {
-        stage "Build-Unified"
         deleteDir()
         unstash 'source'
         dir('build') {
