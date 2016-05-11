@@ -24,20 +24,20 @@
 #define _log_module_index 216
 
 #include "object_service_abstract.h"
-#include "type_malloc.h"
-#include "log.h"
-#include "atomic_counter.h"
+#include <tbx/type_malloc.h>
+#include <tbx/log.h>
+#include <tbx/atomic_counter.h>
 #include "thread_pool.h"
 #include "resource_service_abstract.h"
 #include "rs_simple.h"
 #include "rs_remote.h"
 #include "rs_remote_priv.h"
-#include "append_printf.h"
-#include "type_malloc.h"
-#include "random.h"
+#include <tbx/append_printf.h>
+#include <tbx/type_malloc.h>
+#include <tbx/random.h>
 #include "rs_query_base.h"
 #include "ex3_system.h"
-#include "apr_wrapper.h"
+#include <tbx/apr_wrapper.h>
 
 typedef struct {
     mq_msg_t *msg;
@@ -57,7 +57,7 @@ void rsrs_update_register(resource_service_fn_t *rs, mq_frame_t *fid, mq_msg_t *
     rs_remote_server_priv_t *rsrs = (rs_remote_server_priv_t *)rs->priv;
     rsrs_update_handle_t *h;
 
-    type_malloc(h, rsrs_update_handle_t, 1);
+    tbx_type_malloc(h, rsrs_update_handle_t, 1);
 
     //** Form the core message
     h->msg = mq_msg_new();
@@ -93,7 +93,7 @@ void rsrs_update_register(resource_service_fn_t *rs, mq_frame_t *fid, mq_msg_t *
     apr_thread_mutex_lock(rsrs->lock);
 
     //** Add it to the queue
-    push(rsrs->pending, h);
+    tbx_stack_push(rsrs->pending, h);
 
     //** Check if we need to change when we wake up
     if ((h->reply_time < rsrs->wakeup_time) || (rsrs->wakeup_time == 0)) rsrs->wakeup_time = h->reply_time;
@@ -202,17 +202,17 @@ void rsrs_abort_cb(void *arg, mq_task_t *task)
     log_printf(5, "Looking for mqid=%s\n", mq_id2str(data, n, buffer, bufsize));
     //** Scan through the list looking for the id
     apr_thread_mutex_lock(rsrs->lock);
-    move_to_top(rsrs->pending);
-    while ((h = get_ele_data(rsrs->pending)) != NULL) {
+    tbx_stack_move_to_top(rsrs->pending);
+    while ((h = tbx_get_ele_data(rsrs->pending)) != NULL) {
         if (mq_data_compare(data, n, h->id, h->id_size) == 0) {  //** Found a match
             log_printf(5, "Aborting task\n");
-            delete_current(rsrs->pending, 0, 0);
+            tbx_delete_current(rsrs->pending, 0, 0);
             mq_submit(rsrs->server_portal, mq_task_new(rsrs->mqc, h->msg, NULL, NULL, 30));
             free(h);  //** The msg is deleted after sending
             break;
         }
 
-        move_down(rsrs->pending);
+        tbx_stack_move_down(rsrs->pending);
     }
     apr_thread_mutex_unlock(rsrs->lock);
 
@@ -381,20 +381,20 @@ void rsrs_client_notify(resource_service_fn_t *rs, int everyone)
     vlen = strlen(version);
 
     //** Cycle through looking for commands about to expire and sending a response
-    move_to_top(rsrs->pending);
-    while ((h = get_ele_data(rsrs->pending)) != NULL) {
+    tbx_stack_move_to_top(rsrs->pending);
+    while ((h = tbx_get_ele_data(rsrs->pending)) != NULL) {
         if ((h->reply_time < now) || (everyone == 1)) {
             log_printf(5, "sending update to a client everyone=%d\n", everyone);
             mq_frame_set(h->version_frame, strdup(version), vlen, MQF_MSG_AUTO_FREE);
             mq_frame_set(h->config_frame, strdup(config), clen, MQF_MSG_AUTO_FREE);
             mq_submit(rsrs->server_portal, mq_task_new(rsrs->mqc, h->msg, NULL, NULL, 30));
-            delete_current(rsrs->pending, 0, 0);
+            tbx_delete_current(rsrs->pending, 0, 0);
             free(h);  //** The msg is auto destroyed after being sent
         } else if ((new_wakeup_time > h->reply_time) || (new_wakeup_time == 0)) {
             new_wakeup_time = h->reply_time;
         }
 
-        move_down(rsrs->pending);
+        tbx_stack_move_down(rsrs->pending);
     }
 
     //** Change our wakeup time
@@ -434,7 +434,7 @@ void *rsrs_monitor_thread(apr_thread_t *th, void *data)
         }
         shutdown = rsrs->shutdown;
         wakeup_time = rsrs->wakeup_time;
-        log_printf(5, "checking.... pending=%d now=" TT " wakeup=" TT "\n", stack_size(rsrs->pending), apr_time_now(), wakeup_time);
+        log_printf(5, "checking.... pending=%d now=" TT " wakeup=" TT "\n", tbx_stack_size(rsrs->pending), apr_time_now(), wakeup_time);
         apr_thread_mutex_unlock(rsrs->lock);
 
         if (changed == 1) { //** RID table has changed so propagate it to everone
@@ -481,7 +481,7 @@ void rs_remote_server_destroy(resource_service_fn_t *rs)
 
     //** Now do the normal cleanup
     apr_pool_destroy(rsrs->mpool);
-    free_stack(rsrs->pending, 0);
+    tbx_free_stack(rsrs->pending, 0);
     free(rsrs->hostname);
     free(rsrs);
     free(rs);
@@ -503,8 +503,8 @@ resource_service_fn_t *rs_remote_server_create(void *arg, tbx_inip_file_t *fd, c
 
     if (section == NULL) section = "rs_remote_server";
 
-    type_malloc_clear(rs, resource_service_fn_t, 1);
-    type_malloc_clear(rsrs, rs_remote_server_priv_t, 1);
+    tbx_type_malloc_clear(rs, resource_service_fn_t, 1);
+    tbx_type_malloc_clear(rsrs, rs_remote_server_priv_t, 1);
     rs->priv = (void *)rsrs;
 
     //** Make the locks and cond variables
@@ -512,31 +512,31 @@ resource_service_fn_t *rs_remote_server_create(void *arg, tbx_inip_file_t *fd, c
     apr_thread_mutex_create(&(rsrs->lock), APR_THREAD_MUTEX_DEFAULT, rsrs->mpool);
     apr_thread_cond_create(&(rsrs->cond), rsrs->mpool);
 
-    rsrs->pending = new_stack();
+    rsrs->pending = tbx_stack_new();
     memset(&(rsrs->my_map_version), 0, sizeof(rsrs->my_map_version));
     memset(&(rsrs->notify_map_version), 0, sizeof(rsrs->notify_map_version));
     rsrs->notify_map_version.lock = rsrs->lock;
     rsrs->notify_map_version.cond = rsrs->cond;
 
     //** Get the host name we bind to
-    rsrs->hostname= inip_get_string(fd, section, "address", NULL);
+    rsrs->hostname= tbx_inip_string_get(fd, section, "address", NULL);
 
     //** Start the child RS.   The update above should have dumped a RID config for it to load
-    stype = inip_get_string(fd, section, "rs_local", NULL);
+    stype = tbx_inip_string_get(fd, section, "rs_local", NULL);
     if (stype == NULL) {  //** Oops missing child RS
         log_printf(0, "ERROR: Mising child RS  section=%s key=rs_local!\n", section);
-        flush_log();
+        tbx_flush_log();
         free(stype);
         abort();
     }
 
     //** and load it
-    ctype = inip_get_string(fd, stype, "type", RS_TYPE_SIMPLE);
+    ctype = tbx_inip_string_get(fd, stype, "type", RS_TYPE_SIMPLE);
     rs_create = lookup_service(ess, RS_SM_AVAILABLE, ctype);
     rsrs->rs_child = (*rs_create)(ess, fd, stype);
     if (rsrs->rs_child == NULL) {
         log_printf(1, "ERROR loading child RS!  type=%s section=%s\n", ctype, stype);
-        flush_log();
+        tbx_flush_log();
         abort();
     }
     free(ctype);
@@ -554,7 +554,7 @@ resource_service_fn_t *rs_remote_server_create(void *arg, tbx_inip_file_t *fd, c
     mq_portal_install(rsrs->mqc, rsrs->server_portal);
 
     //** Launch the config changes thread
-    thread_create_assert(&(rsrs->monitor_thread), NULL, rsrs_monitor_thread, (void *)rs, rsrs->mpool);
+    tbx_thread_create_assert(&(rsrs->monitor_thread), NULL, rsrs_monitor_thread, (void *)rs, rsrs->mpool);
 
     //** Set up the fn ptrs.  This is just for syncing the rid configuration and state
     //** so very little is implemented

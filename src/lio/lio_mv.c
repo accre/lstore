@@ -17,15 +17,15 @@
 #define _log_module_index 202
 
 #include <assert.h>
-#include "assert_result.h"
+#include <tbx/assert_result.h>
 #include "exnode.h"
-#include "log.h"
-#include "iniparse.h"
-#include "type_malloc.h"
+#include <tbx/log.h>
+#include <tbx/iniparse.h>
+#include <tbx/type_malloc.h>
 #include "thread_pool.h"
 #include "lio.h"
-#include "string_token.h"
-#include "random.h"
+#include <tbx/string_token.h>
+#include <tbx/random.h>
 
 int max_spawn;
 
@@ -52,7 +52,7 @@ op_status_t mv_fn(void *arg, int id)
     op_status_t status;
 
     log_printf(15, "START src=%s dest=%s\n", mv->src_tuple.path, mv->dest_tuple.path);
-    flush_log();
+    tbx_flush_log();
 
     status = op_success_status;
 
@@ -62,7 +62,7 @@ op_status_t mv_fn(void *arg, int id)
         return(op_failure_status);
     }
 
-    type_malloc_clear(src_fname, char *, max_spawn);
+    tbx_type_malloc_clear(src_fname, char *, max_spawn);
 
     q = new_opque();
     nerr = 0;
@@ -178,7 +178,7 @@ int main(int argc, char **argv)
     n_paths = argc - start_index - 1;
     log_printf(15, "n_paths=%d argc=%d si=%d dtype=%d\n", n_paths, argc, start_index, dtype);
 
-    type_malloc_clear(flist, mv_t, n_paths);
+    tbx_type_malloc_clear(flist, mv_t, n_paths);
 
     for (i=0; i<n_paths; i++) {
         flist[i].src_tuple = lio_path_resolve(lio_gc->auto_translate, argv[i+start_index]);
@@ -201,7 +201,7 @@ int main(int argc, char **argv)
         goto finished;
     } else if (n_paths == 1) {
         log_printf(15, "11111111\n");
-        flush_log();
+        tbx_flush_log();
         if (((dtype & OS_OBJECT_FILE) > 0) || (dtype == 0)) {  //** Single path and dest is an existing file or doesn't exist
             if (os_regex_is_fixed(flist[0].regex) == 0) {  //** Uh oh we have a wildcard with a single file dest
                 info_printf(lio_ifd, 0, "ERROR: Single wildcard path(%s) selected but the dest(%s) is a file or doesn't exist!\n", flist[0].src_tuple.path, dtuple.path);
@@ -210,15 +210,15 @@ int main(int argc, char **argv)
         }
 
         log_printf(15, "2222222222222222 fixed=%d exp=%s\n", os_regex_is_fixed(flist[0].regex), flist[0].regex->regex_entry[0].expression);
-        flush_log();
+        tbx_flush_log();
 
         //**if it's a fixed src with a dir dest we skip and use the mv_fn routines
         if ((os_regex_is_fixed(flist[0].regex) == 1) && ((dtype == 0) || ((dtype & OS_OBJECT_FILE) > 0))) {
             //** IF we made it here we have a simple mv but we need to preserve the dest file if things go wrong
             fname = NULL;
             if ((dtype & OS_OBJECT_FILE) > 0) { //** Existing file so rename it for backup
-                type_malloc(fname, char, strlen(dtuple.path) + 40);
-                get_random(&ui, sizeof(ui));  //** MAke the random name
+                tbx_type_malloc(fname, char, strlen(dtuple.path) + 40);
+                tbx_random_bytes_get(&ui, sizeof(ui));  //** MAke the random name
                 sprintf(fname, "%s.mv.%ud", dtuple.path, ui);
                 err = gop_sync_exec(gop_lio_move_object(dtuple.lc, dtuple.creds, flist[0].src_tuple.path, fname));
                 if (err != OP_STATE_SUCCESS) {
@@ -229,7 +229,7 @@ int main(int argc, char **argv)
             }
 
             log_printf(15, "333333333333333333\n");
-            flush_log();
+            tbx_flush_log();
 
             //** Now do the simple mv
             err = gop_sync_exec(gop_lio_move_object(dtuple.lc, dtuple.creds, flist[0].src_tuple.path, dtuple.path));
@@ -242,7 +242,7 @@ int main(int argc, char **argv)
             }
 
             log_printf(15, "4444444444444444444\n");
-            flush_log();
+            tbx_flush_log();
 
             //** Clean up by removing the original dest if needed
             if (fname != NULL) {
@@ -256,7 +256,7 @@ int main(int argc, char **argv)
             }
 
             log_printf(15, "55555555555555555\n");
-            flush_log();
+            tbx_flush_log();
 
             goto finished;
         }

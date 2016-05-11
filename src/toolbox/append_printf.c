@@ -17,15 +17,15 @@
 #define _log_module_index 102
 
 #include <stdarg.h>
-#include "log.h"
-#include "append_printf.h"
+#include "tbx/log.h"
+#include "tbx/append_printf.h"
 
 //***************************************************************************
 // append_printf - Appends data to the end of a string and also updates the
 //     length.
 //***************************************************************************
 
-int append_printf(char *buffer, int *used, int nbytes, const char *fmt, ...)
+int tbx_append_printf(char *buffer, int *used, int nbytes, const char *fmt, ...)
 {
     va_list args;
     int n, nleft;

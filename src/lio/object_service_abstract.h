@@ -199,7 +199,7 @@ typedef object_service_fn_t *(os_create_t)(service_manager_t *ess, tbx_inip_file
  
 LIO_API int os_local_filetype(char *path);
 LIO_API int os_regex_is_fixed(os_regex_table_t *regex);
-LIO_API void os_path_split(char *path, char **dir, char **file);
+LIO_API void os_path_split(const char *path, char **dir, char **file);
 os_regex_table_t *os_regex_table_create(int n);
 LIO_API void os_regex_table_destroy(os_regex_table_t *table);
 LIO_API os_regex_table_t *os_path_glob2regex(char *path);

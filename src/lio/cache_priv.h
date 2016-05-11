@@ -20,10 +20,10 @@
 #ifndef __CACHE_PRIV_H_
 #define __CACHE_PRIV_H_
 
-#include "list.h"
-#include "pigeon_coop.h"
+#include <tbx/list.h>
+#include <tbx/pigeon_coop.h>
 #include "ex3_abstract.h"
-#include "atomic_counter.h"
+#include <tbx/atomic_counter.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -184,7 +184,7 @@ struct cache_s {
 
 extern tbx_atomic_unit32_t _cache_count;
 
-#define unique_cache_id() atomic_inc(_cache_count);
+#define unique_cache_id() tbx_atomic_inc(_cache_count);
 #define cache_lock(c) apr_thread_mutex_lock((c)->lock)
 #define cache_unlock(c) apr_thread_mutex_unlock((c)->lock)
 #define cache_get_handle(c) (c)->fn.get_handle(c)

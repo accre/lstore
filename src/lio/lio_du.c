@@ -17,14 +17,14 @@
 #define _log_module_index 194
 
 #include <assert.h>
-#include "assert_result.h"
+#include <tbx/assert_result.h>
 #include "exnode.h"
-#include "log.h"
-#include "iniparse.h"
-#include "type_malloc.h"
+#include <tbx/log.h>
+#include <tbx/iniparse.h>
+#include <tbx/type_malloc.h>
 #include "thread_pool.h"
 #include "lio.h"
-#include "string_token.h"
+#include <tbx/string_token.h>
 
 typedef struct {
     char *fname;
@@ -52,7 +52,7 @@ void du_format_entry(tbx_log_fd_t *ifd, du_entry_t *de, int sumonly)
     if (base == 1) {
         sprintf(ppsize, I64T, de->bytes);
     } else {
-        pretty_print_double_with_scale(base, fsize, ppsize);
+        tbx_stk_pretty_print_double_with_scale(base, fsize, ppsize);
     }
 
     dname = de->fname;
@@ -148,7 +148,7 @@ int main(int argc, char **argv)
 
     if (sumonly == 1) {
         nosort = 0;  //** Doing a tally overides the no sort option
-        sum_table = list_create(0, &list_string_compare, NULL, list_no_key_free, list_no_data_free);
+        sum_table = tbx_list_create(0, &tbx_list_string_compare, NULL, tbx_list_no_key_free, tbx_list_no_data_free);
     }
 
     if (rg_mode == 0) {
@@ -171,7 +171,7 @@ int main(int argc, char **argv)
         info_printf(lio_ifd, 0, "----------  ------------------------------\n");
     }
 
-    table = list_create(0, &list_string_compare, NULL, list_no_key_free, list_no_data_free);
+    table = tbx_list_create(0, &tbx_list_string_compare, NULL, tbx_list_no_key_free, tbx_list_no_data_free);
 
     total_files = total_bytes = 0;
 
@@ -202,9 +202,9 @@ int main(int argc, char **argv)
                 if (((ftype & OS_OBJECT_SYMLINK) > 0) && (ignoreln == 1)) continue;  //** Ignoring links
 
                 log_printf(15, "sumonly inserting fname=%s\n", fname);
-                type_malloc_clear(de, du_entry_t, 1);
+                tbx_type_malloc_clear(de, du_entry_t, 1);
                 plen = strlen(fname);
-                type_malloc(de->fname, char, plen + 2);
+                tbx_type_malloc(de->fname, char, plen + 2);
                 memcpy(de->fname, fname, plen);
                 de->fname[plen] = '/';
                 de->fname[plen+1] = 0;
@@ -212,7 +212,7 @@ int main(int argc, char **argv)
                 de->ftype = ftype;
 
                 if (val != NULL) sscanf(val, I64T, &(de->bytes));
-                list_insert(sum_table, de->fname, de);
+                tbx_list_insert(sum_table, de->fname, de);
 
                 v_size = -1024;
                 free(val);
@@ -221,7 +221,7 @@ int main(int argc, char **argv)
 
             lio_destroy_object_iter(tuple.lc, it);
 
-            log_printf(15, "sum_table=%d\n", list_key_count(sum_table));
+            log_printf(15, "sum_table=%d\n", tbx_list_key_count(sum_table));
         }
 
         log_printf(15, "MAIN LOOP\n");
@@ -244,8 +244,8 @@ int main(int argc, char **argv)
                 bytes = 0;
                 if (val != NULL) sscanf(val, I64T, &bytes);
 
-                lit = list_iter_search(sum_table, NULL, 0);
-                while ((list_next(&lit, (tbx_list_key_t **)&file, (tbx_list_data_t **)&de)) == 0) {
+                lit = tbx_list_iter_search(sum_table, NULL, 0);
+                while ((tbx_list_next(&lit, (tbx_list_key_t **)&file, (tbx_list_data_t **)&de)) == 0) {
                     if ((strncmp(de->fname, fname, strlen(de->fname)) == 0) && ((de->ftype & OS_OBJECT_DIR) > 0)) {
                         log_printf(15, "accum de->fname=%s fname=%s\n", de->fname, fname);
                         de->bytes += bytes;
@@ -254,7 +254,7 @@ int main(int argc, char **argv)
                 }
                 free(fname);
             } else {
-                type_malloc_clear(de, du_entry_t, 1);
+                tbx_type_malloc_clear(de, du_entry_t, 1);
                 de->fname = fname;
                 de->ftype = ftype;
 
@@ -266,7 +266,7 @@ int main(int argc, char **argv)
                     free(de->fname);
                     free(de);
                 } else {
-                    list_insert(table, de->fname, de);
+                    tbx_list_insert(table, de->fname, de);
                 }
             }
 
@@ -293,8 +293,8 @@ int main(int argc, char **argv)
     //** Now summarize and print things
     lt = (sumonly == 1) ? sum_table : table;
 
-    lit = list_iter_search(lt, "", 0);
-    while ((list_next(&lit, (tbx_list_key_t **)&fname, (tbx_list_data_t **)&de)) == 0) {
+    lit = tbx_list_iter_search(lt, "", 0);
+    while ((tbx_list_next(&lit, (tbx_list_key_t **)&fname, (tbx_list_data_t **)&de)) == 0) {
         total_bytes += de->bytes;
         total_files += (de->ftype & OS_OBJECT_FILE) ? 1 : de->count;
         du_format_entry(lio_ifd, de, sumonly);
@@ -312,8 +312,8 @@ int main(int argc, char **argv)
     du_total.ftype = OS_OBJECT_DIR;
     du_format_entry(lio_ifd, &du_total, sumonly);
 
-    if (sumonly == 1) list_destroy(sum_table);
-    list_destroy(table);
+    if (sumonly == 1) tbx_list_destroy(sum_table);
+    tbx_list_destroy(table);
 
 finished:
     lio_shutdown();

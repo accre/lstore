@@ -24,11 +24,11 @@
 #include "mq_ongoing.h"
 #include "mq_stream.h"
 #include "mq_helpers.h"
-#include "type_malloc.h"
-#include "log.h"
-#include "varint.h"
-#include "packer.h"
-#include "apr_wrapper.h"
+#include <tbx/type_malloc.h>
+#include <tbx/log.h>
+#include <tbx/varint.h>
+#include <tbx/packer.h>
+#include <tbx/apr_wrapper.h>
 
 //***********************************************************************
 // mqs_response_client_more - Handles a response for more data from the server
@@ -59,7 +59,7 @@ op_status_t mqs_response_client_more(void *task_arg, int tid)
 
     //** Can accept the data
     mq_get_frame(mq_msg_first(task->response), (void **)&(mqs->data), &(mqs->len));
-    pack_read_new_data(mqs->pack, &(mqs->data[MQS_HEADER]), mqs->len-MQS_HEADER);
+    tbx_pack_read_new_data(mqs->pack, &(mqs->data[MQS_HEADER]), mqs->len-MQS_HEADER);
 
     //** Notify the consumer it's available
     mqs->waiting = -2;
@@ -232,7 +232,7 @@ int mq_stream_read(mq_stream_t *mqs, void *rdata, int len)
     dpos = 0;
     err = 0;
     do {
-        nbytes = pack_read(mqs->pack, &(data[dpos]), nleft);
+        nbytes = tbx_pack_read(mqs->pack, &(data[dpos]), nleft);
         log_printf(2, "msid=%d len=%d nleft=%d dpos=%d nbytes=%d err=%d\n", mqs->msid, len, nleft, dpos, nbytes, err);
 
         if (nbytes >= 0) {  //** Read some data
@@ -264,14 +264,14 @@ int64_t mq_stream_read_varint(mq_stream_t *mqs, int *error)
 
     for (i=0; i<16; i++) {
         err = mq_stream_read(mqs, &(buffer[i]), 1);
-//log_printf(15, "i=%d buffer[i]=%u varint_need_more=%d, err=%d bpos=%d\n", i, buffer[i], varint_need_more(buffer[i]), err, mqs->bpos);
+//log_printf(15, "i=%d buffer[i]=%u varint_need_more=%d, err=%d bpos=%d\n", i, buffer[i], tbx_varint_need_more(buffer[i]), err, mqs->bpos);
         if (err != 0) break;
-        if (varint_need_more(buffer[i]) == 0) break;
+        if (tbx_varint_need_more(buffer[i]) == 0) break;
     }
 
     if (err == 0) {
         *error = 0;
-        zigzag_decode(buffer, i+1, &value);
+        tbx_zigzag_decode(buffer, i+1, &value);
     } else {
         value = 0;
         *error = err;
@@ -292,7 +292,7 @@ void mq_stream_read_destroy(mq_stream_t *mqs)
     log_printf(1, "START msid=%d\n", mqs->msid);
 
     if (mqs->mpool == NULL) {  //** Nothing to do
-        pack_destroy(mqs->pack);
+        tbx_pack_destroy(mqs->pack);
         if (mqs->stream_id != NULL) free(mqs->stream_id);
         free(mqs);
         return;
@@ -313,7 +313,7 @@ void mq_stream_read_destroy(mq_stream_t *mqs)
         apr_thread_mutex_lock(mqs->lock);
     }
 
-    if (log_level() >= 15) {
+    if (tbx_log_level() >= 15) {
         char *rhost = mq_address_to_string(mqs->remote_host);
         log_printf(15, "remote_host as string = %s\n", rhost);
         if (rhost) free(rhost);
@@ -326,7 +326,7 @@ void mq_stream_read_destroy(mq_stream_t *mqs)
 
     //** Clean up
     if (mqs->stream_id != NULL) free(mqs->stream_id);
-    pack_destroy(mqs->pack);
+    tbx_pack_destroy(mqs->pack);
     apr_thread_mutex_destroy(mqs->lock);
     apr_thread_cond_destroy(mqs->cond);
     apr_pool_destroy(mqs->mpool);
@@ -346,7 +346,7 @@ mq_stream_t *mq_stream_read_create(mq_context_t *mqc, mq_ongoing_t *on, char *ho
     mq_stream_t *mqs;
     int ptype;
 
-    type_malloc_clear(mqs, mq_stream_t, 1);
+    tbx_type_malloc_clear(mqs, mq_stream_t, 1);
 
     mqs->mqc = mqc;
     mqs->ongoing = on;
@@ -355,9 +355,9 @@ mq_stream_t *mq_stream_read_create(mq_context_t *mqc, mq_ongoing_t *on, char *ho
     mqs->host_id = host_id;
     mqs->hid_len = hid_len;
     mqs->timeout = to;
-    mqs->msid = atomic_global_counter();
+    mqs->msid = tbx_atomic_global_counter();
 
-    if (log_level() > 5) {
+    if (tbx_log_level() > 5) {
         char *str = mq_address_to_string(remote_host);
         log_printf(5, "remote_host=%s\n", str);
         if (str) free(str);
@@ -366,12 +366,12 @@ mq_stream_t *mq_stream_read_create(mq_context_t *mqc, mq_ongoing_t *on, char *ho
     mq_get_frame(fdata, (void **)&(mqs->data), &(mqs->len));
 
     mqs->sid_len = mqs->data[MQS_HANDLE_SIZE_INDEX];
-    type_malloc(mqs->stream_id, char, mqs->sid_len);
+    tbx_type_malloc(mqs->stream_id, char, mqs->sid_len);
     memcpy(mqs->stream_id, &(mqs->data[MQS_HANDLE_INDEX]), mqs->sid_len);
 
     ptype = (mqs->data[MQS_PACK_INDEX] == MQS_PACK_COMPRESS) ? PACK_COMPRESS : PACK_NONE;
     log_printf(1, "msid=%d ptype=%d tbx_pack_type=%c\n", mqs->msid, ptype, mqs->data[MQS_PACK_INDEX]);
-    mqs->pack = pack_create(ptype, PACK_READ, &(mqs->data[MQS_HEADER]), mqs->len - MQS_HEADER);
+    mqs->pack = tbx_pack_create(ptype, PACK_READ, &(mqs->data[MQS_HEADER]), mqs->len - MQS_HEADER);
 
     log_printf(5, "data_len=%d more=%c MQS_HEADER=%lu\n", mqs->len, mqs->data[MQS_STATE_INDEX], MQS_HEADER);
 
@@ -385,7 +385,7 @@ mq_stream_t *mq_stream_read_create(mq_context_t *mqc, mq_ongoing_t *on, char *ho
         mqs->remote_host = mq_msg_new();
         mq_msg_append_msg(mqs->remote_host, remote_host, MQF_MSG_AUTO_FREE);
 
-        if (log_level() >=15) {
+        if (tbx_log_level() >=15) {
             char *rhost = mq_address_to_string(mqs->remote_host);
             log_printf(15, "remote_host as string = %s\n", rhost);
             if (rhost) free(rhost);
@@ -421,34 +421,34 @@ int mqs_write_send(mq_stream_t *mqs, mq_msg_t *address, mq_frame_t *fid)
 
     if (mqs->data == NULL) return(-1);
 
-    log_printf(1, "msid=%d address frame count=%d state_index=%c\n", mqs->msid, stack_size(address), mqs->data[MQS_STATE_INDEX]);
+    log_printf(1, "msid=%d address frame count=%d state_index=%c\n", mqs->msid, tbx_stack_size(address), mqs->data[MQS_STATE_INDEX]);
     response = mq_make_response_core_msg(address, fid);
-    mq_msg_append_mem(response, mqs->data, MQS_HEADER + pack_used(mqs->pack), MQF_MSG_AUTO_FREE);
+    mq_msg_append_mem(response, mqs->data, MQS_HEADER + tbx_pack_used(mqs->pack), MQF_MSG_AUTO_FREE);
     mq_msg_append_mem(response, NULL, 0, MQF_MSG_KEEP_DATA);  //** Empty frame
 
 //char buffer[1024];
-//int n = MQS_HEADER + pack_used(mqs->pack);
+//int n = MQS_HEADER + tbx_pack_used(mqs->pack);
 //if (n > 50) n = 50;
 //int i;
 //n=MQS_HEADER;
 //for (i=0; i<MQS_HEADER; i++) log_printf(2, "i=%d c=%c\n", i, mqs->data[i]);
 //log_printf(2, "printing 1st 50 bytes mqsbuf=%s\n", mq_id2str((char *)mqs->data, n, buffer, 1024));
 
-    log_printf(2, "nbytes=%d more=%c\n", pack_used(mqs->pack), mqs->data[MQS_STATE_INDEX]);
+    log_printf(2, "nbytes=%d more=%c\n", tbx_pack_used(mqs->pack), mqs->data[MQS_STATE_INDEX]);
 
     mqs->unsent_data = 0;
     if (mqs->data[MQS_STATE_INDEX] == MQS_MORE) {
-        type_malloc(new_data, unsigned char, mqs->len);
+        tbx_type_malloc(new_data, unsigned char, mqs->len);
         memcpy(new_data, mqs->data, MQS_HEADER);
         mqs->data = new_data;
         mqs->unsent_data = 1;
 
         //** Reset the packer to use the new buffer
-        pack_consumed(mqs->pack);
-        pack_write_resized(mqs->pack, &(mqs->data[MQS_HEADER]), mqs->len-MQS_HEADER);
+        tbx_pack_consumed(mqs->pack);
+        tbx_pack_write_resized(mqs->pack, &(mqs->data[MQS_HEADER]), mqs->len-MQS_HEADER);
     } else {
-        pack_consumed(mqs->pack);
-        pack_write_resized(mqs->pack, NULL, 0);
+        tbx_pack_consumed(mqs->pack);
+        tbx_pack_write_resized(mqs->pack, NULL, 0);
         mqs->data = NULL;  //** Make sure it's not accidentally referenced
     }
 
@@ -460,7 +460,7 @@ int mqs_write_send(mq_stream_t *mqs, mq_msg_t *address, mq_frame_t *fid)
         mqs->want_more = MQS_ABORT;
     }
 
-//flush_log();
+//tbx_flush_log();
 //sleep(5);
     return(err);
 }
@@ -499,11 +499,11 @@ void *mqs_flusher_thread(apr_thread_t *th, void *arg)
     }
 
     mqs_write_send(mqs, mqs->address, mqs->fid);
-    pack_consumed(mqs->pack);
+    tbx_pack_consumed(mqs->pack);
     mqs->expire = 0;  //** The new stream request will set this
     mqs->ready = 0;
     mqs->waiting = 0;
-    pack_consumed(mqs->pack);
+    tbx_pack_consumed(mqs->pack);
     apr_thread_cond_broadcast(mqs->cond);
 
     apr_thread_mutex_unlock(mqs->lock);
@@ -575,7 +575,7 @@ void mqs_server_more_cb(void *arg, mq_task_t *task)
     }
 
     //** Now read the timeout
-//  zigzag_decode(&(data[1]), len-1, &timeout);
+//  tbx_zigzag_decode(&(data[1]), len-1, &timeout);
     timeout = mqs->timeout;
 
     mq_frame_destroy(f);
@@ -629,7 +629,7 @@ void mqs_server_more_cb(void *arg, mq_task_t *task)
     mqs->waiting = 0;
     mqs->expire = 0;
     err = mqs->msid;
-    pack_consumed(mqs->pack);
+    tbx_pack_consumed(mqs->pack);
     apr_thread_cond_broadcast(mqs->cond);
     apr_thread_mutex_unlock(mqs->lock);
 
@@ -721,11 +721,11 @@ int mq_stream_write(mq_stream_t *mqs, void *vdata, int len)
         apr_thread_mutex_lock(mqs->lock);
     }
 
-    log_printf(5, "START bpos=%d len=%d msid=%d\n", pack_used(mqs->pack), len, mqs->msid);
+    log_printf(5, "START bpos=%d len=%d msid=%d\n", tbx_pack_used(mqs->pack), len, mqs->msid);
 
     do {
         grew_space = 0;
-        nbytes = mqs->len - pack_used(mqs->pack) - MQS_HEADER;
+        nbytes = mqs->len - tbx_pack_used(mqs->pack) - MQS_HEADER;
         log_printf(5, "nbytes=%d mqs->len=%d mqs->max_size=%d\n", nbytes, mqs->len, mqs->max_size);
         if (nbytes < nleft) { //** See if we can grow the space
             if (mqs->len < mqs->max_size) {
@@ -733,20 +733,20 @@ int mq_stream_write(mq_stream_t *mqs, void *vdata, int len)
                 if (nbytes > mqs->max_size) nbytes = mqs->max_size;
 
                 log_printf(5, "growing space=%d\n", nbytes);
-                type_realloc(mqs->data, unsigned char, nbytes);
+                tbx_type_realloc(mqs->data, unsigned char, nbytes);
                 mqs->len = nbytes;
-                pack_write_resized(mqs->pack, &(mqs->data[MQS_HEADER]), mqs->len - MQS_HEADER);
+                tbx_pack_write_resized(mqs->pack, &(mqs->data[MQS_HEADER]), mqs->len - MQS_HEADER);
                 grew_space = 1;
             }
         }
 
-        nbytes = pack_write(mqs->pack, &(data[dpos]), nleft);
+        nbytes = tbx_pack_write(mqs->pack, &(data[dpos]), nleft);
         log_printf(5, "nbytes_packed=%d nleft=%d mqs->len=%d\n", nbytes, nleft, mqs->len);
         if (nbytes > 0) {  //** Stored some data
             nleft -= nbytes;
             dpos += nbytes;
         } else if (nbytes == PACK_ERROR) {
-            pack_consumed(mqs->pack);    //** Rest so garbage data isn't sent
+            tbx_pack_consumed(mqs->pack);    //** Rest so garbage data isn't sent
         }
 
         if ((nleft > 0) && (grew_space == 0)) {  //** Need to flush the data
@@ -772,10 +772,10 @@ int mq_stream_write(mq_stream_t *mqs, void *vdata, int len)
             err = 0;
             do {
                 //** Last set of writes so flush everything
-                nbytes = pack_write_flush(mqs->pack);
+                nbytes = tbx_pack_write_flush(mqs->pack);
                 log_printf(5, "msid=%d pack_write_flush=%d\n", mqs->msid, nbytes);
                 if ((nbytes == PACK_FINISHED) || (nbytes == PACK_ERROR)) {
-                    if (nbytes == PACK_ERROR) pack_consumed(mqs->pack);  //** Remove garbage data
+                    if (nbytes == PACK_ERROR) tbx_pack_consumed(mqs->pack);  //** Remove garbage data
                     mqs->want_more = MQS_FINISHED;
                     if (mqs->data) mqs->data[MQS_STATE_INDEX] = MQS_FINISHED;
                 } else {
@@ -794,7 +794,7 @@ int mq_stream_write(mq_stream_t *mqs, void *vdata, int len)
                 if (mqs->sent_data == 0) { //** 1st send
                     mqs_write_send(mqs, mqs->address, mqs->fid);
                     mqs->sent_data = 1;
-                    pack_consumed(mqs->pack);
+                    tbx_pack_consumed(mqs->pack);
                 } else {  //** Got a pending request so just do a flush
                     if (mqs->mpool != NULL) apr_thread_mutex_unlock(mqs->lock);
                     err = mq_stream_write_flush(mqs);
@@ -808,7 +808,7 @@ fail:
         }
     } while ((nleft > 0) && (err == 0));
 
-    log_printf(5, "END msid=%d bpos=%d\n", mqs->msid, pack_used(mqs->pack));
+    log_printf(5, "END msid=%d bpos=%d\n", mqs->msid, tbx_pack_used(mqs->pack));
     if (mqs->mpool != NULL) {
         apr_thread_mutex_unlock(mqs->lock);
     }
@@ -825,7 +825,7 @@ int mq_stream_write_varint(mq_stream_t *mqs, int64_t value)
     unsigned char buffer[16];
     int i;
 
-    i = zigzag_encode(value, buffer);
+    i = tbx_zigzag_encode(value, buffer);
 
     return(mq_stream_write(mqs, buffer, i));
 }
@@ -890,7 +890,7 @@ void mq_stream_write_destroy(mq_stream_t *mqs)
 
     if (mqs->hid != NULL) mq_frame_destroy(mqs->hid);
 
-    pack_destroy(mqs->pack);
+    tbx_pack_destroy(mqs->pack);
     if (mqs->unsent_data == 1) free(mqs->data);
 
     log_printf(5, "END msid=%d\n", mqs->msid);
@@ -909,7 +909,7 @@ mq_stream_t *mq_stream_write_create(mq_context_t *mqc, mq_portal_t *server_porta
     intptr_t key;
     int ptype;
 
-    type_malloc_clear(mqs, mq_stream_t, 1);
+    tbx_type_malloc_clear(mqs, mq_stream_t, 1);
 
     mqs->mqc = mqc;
     mqs->type = MQS_WRITE;
@@ -922,13 +922,13 @@ mq_stream_t *mq_stream_write_create(mq_context_t *mqc, mq_portal_t *server_porta
     mqs->max_size = max_size;
     mqs->want_more = MQS_MORE;
     mqs->expire = apr_time_from_sec(timeout) + apr_time_now();
-    mqs->msid = atomic_global_counter();
+    mqs->msid = tbx_atomic_global_counter();
 
     mq_get_frame(hid, (void **)&(mqs->host_id), &(mqs->hid_len));
 
     //** Make the initial data block which has the header
     mqs->len = 4 * 1024;
-    type_malloc_clear(mqs->data, unsigned char, mqs->len);
+    tbx_type_malloc_clear(mqs->data, unsigned char, mqs->len);
     mqs->data[MQS_STATE_INDEX] = MQS_MORE;
     mqs->data[MQS_PACK_INDEX] = tbx_pack_type;
     mqs->data[MQS_HANDLE_SIZE_INDEX] = sizeof(intptr_t);
@@ -936,9 +936,9 @@ mq_stream_t *mq_stream_write_create(mq_context_t *mqc, mq_portal_t *server_porta
     memcpy(&(mqs->data[MQS_HANDLE_INDEX]), &key, sizeof(key));
     ptype = (mqs->data[MQS_PACK_INDEX] == MQS_PACK_COMPRESS) ? PACK_COMPRESS : PACK_NONE;
     log_printf(1, "msid=%d ptype=%d tbx_pack_type=%c\n", mqs->msid, ptype, mqs->data[MQS_PACK_INDEX]);
-    mqs->pack = pack_create(ptype, PACK_WRITE, &(mqs->data[MQS_HEADER]), mqs->len-MQS_HEADER);
+    mqs->pack = tbx_pack_create(ptype, PACK_WRITE, &(mqs->data[MQS_HEADER]), mqs->len-MQS_HEADER);
 
-    log_printf(5, "initial used bpos=%d\n", pack_used(mqs->pack));
+    log_printf(5, "initial used bpos=%d\n", tbx_pack_used(mqs->pack));
 
     //** Launch the flusher now if requested
     if (launch_flusher == 1) {
@@ -947,7 +947,7 @@ mq_stream_t *mq_stream_write_create(mq_context_t *mqc, mq_portal_t *server_porta
         apr_thread_cond_create(&(mqs->cond), mqs->mpool);
         mqs->oo = mq_ongoing_add(mqs->ongoing, 0, mqs->host_id, mqs->hid_len, mqs, mqs_write_on_fail, NULL);
         mqs->sent_data = 1;
-        thread_create_assert(&(mqs->flusher_thread), NULL, mqs_flusher_thread,  (void *)mqs, mqs->mpool);
+        tbx_thread_create_assert(&(mqs->flusher_thread), NULL, mqs_flusher_thread,  (void *)mqs, mqs->mpool);
     }
 
     return(mqs);

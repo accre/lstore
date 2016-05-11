@@ -28,7 +28,6 @@
 extern "C" {
 #endif
 
-typedef struct tbx_ph_t tbx_ph_t;
 struct tbx_ph_t {
     apr_thread_mutex_t *lock;
     apr_pool_t *pool;
@@ -39,7 +38,6 @@ struct tbx_ph_t {
     const char *name;
 };
 
-typedef struct tbx_ph_iter_t tbx_ph_iter_t;
 struct tbx_ph_iter_t {
     tbx_ph_t *ph;
     int start_slot;

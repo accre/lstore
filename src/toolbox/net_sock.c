@@ -27,19 +27,21 @@
 #include <stdlib.h>
 #include <time.h>
 #include <assert.h>
-#include "assert_result.h"
+#include "tbx/assert_result.h"
 #include <signal.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <limits.h>
-#include "network.h"
-#include "debug.h"
-#include "log.h"
-#include "dns_cache.h"
-#include "fmttypes.h"
-#include "net_sock.h"
+#include "tbx/network.h"
+#include "tbx/log.h"
+#include "tbx/dns_cache.h"
+#include "tbx/fmttypes.h"
+#include "tbx/net_sock.h"
 #include <poll.h>
-
+// Private implementations
+#include "net_sock.h"
+#include "transfer_buffer.h"
+#include "network.h"
 typedef struct {
     apr_pool_t *pool;
     int fd;
@@ -50,7 +52,7 @@ typedef struct {
 //} sock_apr_union_t;
 
 //#define SOCK_DEFAULT_TIMEOUT 1000*1000
-#define SOCK_DEFAULT_TIMEOUT 100*1000
+#define SOCK_DEFAULT_TIMEOUT (100*1000)
 #define SOCK_WAIT_READ  POLLIN
 #define SOCK_WAIT_WRITE POLLOUT
 
@@ -115,7 +117,7 @@ int sock_close(net_sock_t *nsock)
 // sock_io_wait
 //*********************************************************************
 
-int sock_io_wait(tbx_net_sock_t *sock, Net_timeout_t tm, int mode)
+int sock_io_wait(tbx_net_sock_t *sock, tbx_ns_timeout_t tm, int mode)
 {
     struct pollfd pfd;
     int state, dt;
@@ -123,7 +125,7 @@ int sock_io_wait(tbx_net_sock_t *sock, Net_timeout_t tm, int mode)
 
     apr_time_t start = apr_time_now();
     double ddt;
-//log_printf(10, "sock_io_wait: START tm=" TT " mode=%d\n", tm, mode);  flush_log();
+//log_printf(10, "sock_io_wait: START tm=" TT " mode=%d\n", tm, mode);  tbx_flush_log();
 
     dt = tm / 1000;
     if (dt == 0) dt = 1;
@@ -161,11 +163,11 @@ apr_size_t my_read(tbx_net_sock_t *sock, tbx_tbuf_t *buf, apr_size_t pos, apr_si
 
     int leni, ni, nbi;
 
-    tbuffer_var_init(&tbv);
+    tbx_tbuf_var_init(&tbv);
 
     do {
         tbv.nbytes = len;
-        tbuffer_next(buf, pos, &tbv);
+        tbx_tbuf_next(buf, pos, &tbv);
         if (tbv.n_iov > IOV_MAX) tbv.n_iov = IOV_MAX;  //** Make sure we don't have to many entries
         n = readv(s->fd, tbv.buffer, tbv.n_iov);
         leni=tbv.buffer[0].iov_len;
@@ -205,7 +207,7 @@ apr_size_t my_write(tbx_net_sock_t *sock, tbx_tbuf_t *buf, apr_size_t bpos, apr_
     apr_time_t start = apr_time_now();
     double dt;
 
-    tbuffer_var_init(&tbv);
+    tbx_tbuf_var_init(&tbv);
 //ni=bpos;
 //log_printf(15, "START bpos=%d\n", ni);
 
@@ -215,11 +217,11 @@ apr_size_t my_write(tbx_net_sock_t *sock, tbx_tbuf_t *buf, apr_size_t bpos, apr_
         tbv.nbytes = len;
 //len2 = 1024*1024;
 //if (len > len2) tbv.nbytes = len2;
-        tbuffer_next(buf, bpos, &tbv);
+        tbx_tbuf_next(buf, bpos, &tbv);
 //leni=len;
 //len2 = tbv.nbytes;
 //ni=tbv.n_iov;
-//log_printf(15, "s->fd=%d requested=%d got tbv.nbytes=%d tbv.n_iov=%d\n", s->fd, leni, len2, ni); flush_log();
+//log_printf(15, "s->fd=%d requested=%d got tbv.nbytes=%d tbv.n_iov=%d\n", s->fd, leni, len2, ni); tbx_flush_log();
         if (tbv.n_iov > IOV_MAX) tbv.n_iov = IOV_MAX;  //** Make sure we don't have to many entries
         n = writev(s->fd, tbv.buffer, tbv.n_iov);
         leni=tbv.buffer->iov_len;
@@ -252,11 +254,11 @@ apr_size_t my_write(tbx_net_sock_t *sock, tbx_tbuf_t *buf, apr_size_t bpos, apr_
 //  sock_write
 //*********************************************************************
 
-long int sock_write(net_sock_t *nsock, tbx_tbuf_t *buf, size_t bpos, size_t len, Net_timeout_t tm)
+long int sock_write(net_sock_t *nsock, tbx_tbuf_t *buf, size_t bpos, size_t len, tbx_ns_timeout_t tm)
 {
     int err, ewait; // eno;
     apr_size_t nbytes;
-//  Net_timeout_t end_time;
+//  tbx_ns_timeout_t end_time;
     tbx_net_sock_t *sock = (tbx_net_sock_t *)nsock;
 
 //if (sock == NULL) log_printf(15, "sock_write: sock == NULL\n");
@@ -283,11 +285,11 @@ long int sock_write(net_sock_t *nsock, tbx_tbuf_t *buf, size_t bpos, size_t len,
 //  sock_read
 //*********************************************************************
 
-long int sock_read(net_sock_t *nsock, tbx_tbuf_t *buf, size_t bpos, size_t len, Net_timeout_t tm)
+long int sock_read(net_sock_t *nsock, tbx_tbuf_t *buf, size_t bpos, size_t len, tbx_ns_timeout_t tm)
 {
     int err, ewait; // eno;
     apr_size_t nbytes;
-//  Net_timeout_t end_time;
+//  tbx_ns_timeout_t end_time;
     tbx_net_sock_t *sock = (tbx_net_sock_t *)nsock;
 
     if (sock == NULL) return(-1);   //** If closed return
@@ -314,7 +316,7 @@ long int sock_read(net_sock_t *nsock, tbx_tbuf_t *buf, size_t bpos, size_t len, 
 //  sock_apr_read
 //*********************************************************************
 
-long int sock_apr_read(net_sock_t *nsock, tbx_tbuf_t *buf, size_t bpos, size_t len, Net_timeout_t tm)
+long int sock_apr_read(net_sock_t *nsock, tbx_tbuf_t *buf, size_t bpos, size_t len, tbx_ns_timeout_t tm)
 {
     int err;
     apr_size_t nbytes;
@@ -324,9 +326,9 @@ long int sock_apr_read(net_sock_t *nsock, tbx_tbuf_t *buf, size_t bpos, size_t l
     if (sock == NULL) return(-1);   //** If closed return
     if (sock->fd == NULL) return(-1);
 
-    tbuffer_var_init(&tbv);
+    tbx_tbuf_var_init(&tbv);
     tbv.nbytes = len;
-    tbuffer_next(buf, bpos, &tbv);
+    tbx_tbuf_next(buf, bpos, &tbv);
     if (tbv.n_iov > IOV_MAX) tbv.n_iov = IOV_MAX;  //** Make sure we don't have to many entries
 
     err = apr_socket_recvv(sock->fd, tbv.buffer, tbv.n_iov, &nbytes);
@@ -348,7 +350,7 @@ long int sock_apr_read(net_sock_t *nsock, tbx_tbuf_t *buf, size_t bpos, size_t l
 //  sock_apr_write
 //*********************************************************************
 
-long int sock_apr_write(net_sock_t *nsock, tbx_tbuf_t *buf, size_t bpos, size_t len, Net_timeout_t tm)
+long int sock_apr_write(net_sock_t *nsock, tbx_tbuf_t *buf, size_t bpos, size_t len, tbx_ns_timeout_t tm)
 {
     int err;
     apr_size_t nbytes;
@@ -358,9 +360,9 @@ long int sock_apr_write(net_sock_t *nsock, tbx_tbuf_t *buf, size_t bpos, size_t 
     if (sock == NULL) return(-1);   //** If closed return
     if (sock->fd == NULL) return(-1);
 
-    tbuffer_var_init(&tbv);
+    tbx_tbuf_var_init(&tbv);
     tbv.nbytes = len;
-    tbuffer_next(buf, bpos, &tbv);
+    tbx_tbuf_next(buf, bpos, &tbv);
     if (tbv.n_iov > IOV_MAX) tbv.n_iov = IOV_MAX;  //** Make sure we don't have to many entries
 
     err = apr_socket_sendv(sock->fd, tbv.buffer, tbv.n_iov, &nbytes);
@@ -382,10 +384,10 @@ long int sock_apr_write(net_sock_t *nsock, tbx_tbuf_t *buf, size_t bpos, size_t 
 // sock_connect - Creates a connection to a remote host
 //*********************************************************************
 
-int sock_connect(net_sock_t *nsock, const char *hostname, int port, Net_timeout_t timeout)
+int sock_connect(net_sock_t *nsock, const char *hostname, int port, tbx_ns_timeout_t timeout)
 {
     int err;
-    Net_timeout_t tm;
+    tbx_ns_timeout_t tm;
 
     tbx_net_sock_t *sock = (tbx_net_sock_t *)nsock;
 
@@ -417,10 +419,10 @@ int sock_connect(net_sock_t *nsock, const char *hostname, int port, Net_timeout_
     }
 
     err = apr_socket_connect(sock->fd, sock->sa);
-//log_printf(0, "sock_connect: apr_socket_connect: err=%d\n", err); flush_log();
+//log_printf(0, "sock_connect: apr_socket_connect: err=%d\n", err); tbx_flush_log();
 
     //** Set a default timeout
-    set_net_timeout(&tm, 0, SOCK_DEFAULT_TIMEOUT);
+    tbx_ns_timeout_set(&tm, 0, SOCK_DEFAULT_TIMEOUT);
     apr_socket_timeout_set(sock->fd, tm);
 
     return(err);
@@ -440,21 +442,15 @@ int sock_connection_request(net_sock_t *nsock, int timeout)
 
     tbx_net_sock_t *sock = (tbx_net_sock_t *)nsock;
 
-//dt= apr_time_make(0, 100*1000);
-//apr_sleep(dt);
-
     if (sock == NULL) return(-1);
     dt = apr_time_make(timeout,0);
     n = 0;
     apr_pollset_poll(sock->pollset, dt, &n, &ret_fd);
-//int i=n;
-//log_printf(15, "sock_connection_request: err=%d n=%d APR_SUCCESS=%d\n", err, i, APR_SUCCESS);
     if (n == 1) {
         return(1);
     } else {
         return(0);
     }
-    return(-1);
 }
 
 //*********************************************************************
@@ -464,7 +460,7 @@ int sock_connection_request(net_sock_t *nsock, int timeout)
 net_sock_t *sock_accept(net_sock_t *nsock)
 {
     int err;
-    Net_timeout_t tm;
+    tbx_ns_timeout_t tm;
     tbx_net_sock_t *psock = (tbx_net_sock_t *)nsock;
 
     tbx_net_sock_t *sock = (tbx_net_sock_t *)malloc(sizeof(tbx_net_sock_t));
@@ -489,7 +485,7 @@ net_sock_t *sock_accept(net_sock_t *nsock)
         apr_thread_mutex_create(&(sock->lock), APR_THREAD_MUTEX_DEFAULT,sock->mpool);
 
         //** Set the with a minimal timeout of 10ms
-        set_net_timeout(&tm, 0, SOCK_DEFAULT_TIMEOUT);
+        tbx_ns_timeout_set(&tm, 0, SOCK_DEFAULT_TIMEOUT);
         apr_socket_timeout_set(sock->fd, tm);
     }
 
@@ -580,7 +576,7 @@ int sock_native_fd(net_sock_t *nsock)
 // ns_config_sock - Configure the connection to use standard sockets
 //*********************************************************************
 
-void ns_config_sock(tbx_ns_t *ns, int tcpsize)
+void tbx_ns_sock_config(tbx_ns_t *ns, int tcpsize)
 {
     log_printf(10, "ns_config_sock: ns=%d, \n", ns->id);
 
@@ -590,12 +586,12 @@ void ns_config_sock(tbx_ns_t *ns, int tcpsize)
     tbx_net_sock_t *sock = (tbx_net_sock_t *)malloc(sizeof(tbx_net_sock_t));
     assert(sock != NULL);
     memset(sock, 0, sizeof(tbx_net_sock_t));
-    ns->sock = (net_sock_t *)sock;
+    ns->sock = (tbx_net_sock_t *)sock;
 //  assert_result_not(apr_pool_create(&(sock->mpool), NULL), APR_SUCCESS);
     int err = apr_pool_create(&(sock->mpool), NULL);
     if (err != APR_SUCCESS) {
         log_printf(0, "ns_config_sock:  apr_pool_crete error = %d\n", err);
-        flush_log();
+        tbx_flush_log();
         assert(err == APR_SUCCESS);
     }
 

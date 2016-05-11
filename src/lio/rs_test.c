@@ -17,11 +17,11 @@
 #define _log_module_index 182
 
 #include <assert.h>
-#include "assert_result.h"
+#include <tbx/assert_result.h>
 #include "exnode.h"
-#include "log.h"
-#include "iniparse.h"
-#include "type_malloc.h"
+#include <tbx/log.h>
+#include <tbx/iniparse.h>
+#include <tbx/type_malloc.h>
 #include "thread_pool.h"
 #include "lio.h"
 
@@ -76,8 +76,8 @@ int main(int argc, char **argv)
     rsq = rs_query_parse(lio_gc->rs, qstr);
 
     //** Generate the data request
-    type_malloc_clear(req_list, rs_request_t, n_alloc);
-    type_malloc_clear(cap_list, data_cap_set_t *, n_alloc);
+    tbx_type_malloc_clear(req_list, rs_request_t, n_alloc);
+    tbx_type_malloc_clear(cap_list, data_cap_set_t *, n_alloc);
 
     for (i=0; i<n_alloc; i++) {
         cap_list[i] = ds_cap_set_create(lio_gc->ds);

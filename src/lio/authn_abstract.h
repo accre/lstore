@@ -19,7 +19,7 @@
 //***********************************************************************
 
 #include "service_manager.h"
-#include "iniparse.h"
+#include <tbx/iniparse.h>
 
 #ifndef _AUTHN_ABSTRACT_H_
 #define _AUTHN_ABSTRACT_H_

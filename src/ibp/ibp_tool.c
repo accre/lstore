@@ -26,10 +26,10 @@
 #include <string.h>
 #include <math.h>
 #include <signal.h>
-#include "network.h"
-#include "fmttypes.h"
-#include "network.h"
-#include "log.h"
+#include <tbx/network.h>
+#include <tbx/fmttypes.h>
+#include <tbx/network.h>
+#include <tbx/log.h>
 #include "ibp.h"
 
 #define table_len(t) (sizeof(t) / sizeof(char *))
@@ -372,8 +372,8 @@ int cmd_get_chksum(char **argv, int argc)
         return(0);
     }
 
-    chksum_set(&cs, cs_type);
-    printf("Chksum type: %s (%d)  Size: %d  Block Size: " I64T "\n", chksum_name(&cs), cs_type, cs_size, blocksize);
+    tbx_chksum_set(&cs, cs_type);
+    printf("Chksum type: %s (%d)  Size: %d  Block Size: " I64T "\n", tbx_chksum_name(&cs), cs_type, cs_size, blocksize);
     printf("Total blocks: " I64T " Chksum bytes: " I64T "\n", nblocks, n_chksumbytes);
 
     return(0);
@@ -705,7 +705,7 @@ int cmd_ridlist(char **argv, int argc)
 int main(int argc, char **argv)
 {
     int i, tcpsize;
-    tbx_phoebus_t pcc;
+    // tbx_phoebus_t pcc;
     char *ppath = NULL;
     char **cmd_args;
     int  cmd_count;
@@ -754,7 +754,7 @@ int main(int argc, char **argv)
 
     if (strcmp(argv[i], "-d") == 0) { //** Enable debugging
         i++;
-        set_log_level(atoi(argv[i]));
+        tbx_set_log_level(atoi(argv[i]));
         i++;
     }
 
@@ -764,6 +764,8 @@ int main(int argc, char **argv)
         i++;
     }
 
+// FIXME Clean!
+#if 0
     if (strcmp(argv[i], "-phoebus") == 0) { //** Check if we want Phoebus transfers
         cc = (ibp_connect_context_t *)malloc(sizeof(ibp_connect_context_t));
         cc->type = NS_TYPE_PHOEBUS;
@@ -778,6 +780,7 @@ int main(int argc, char **argv)
 
         i++;
     }
+#endif
 
     if (strcmp(argv[i], "-tcpsize") == 0) { //** Check if we want sync tests
         i++;
@@ -832,7 +835,7 @@ int main(int argc, char **argv)
         }
     }
 
-//  printf("Final network connection counter: %d\n", network_counter(NULL));
+//  printf("Final network connection counter: %d\n", tbx_network_counter(NULL));
 
     ibp_destroy_context(ic);  //** Shutdown IBP
 

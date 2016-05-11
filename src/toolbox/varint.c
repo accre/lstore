@@ -18,7 +18,7 @@
 #include <stdlib.h>
 #include <inttypes.h>
 #include <string.h>
-#include "varint.h"
+#include "tbx/varint.h"
 
 #define I64T "%" PRId64    //int64_t
 #define U64T "%" PRIu64    //uint64_t
@@ -73,7 +73,7 @@ int varint_decode(uint8_t *buffer, int bufsize, uint64_t *value)
 //  zigzag_encode - Uses zigzag encoding to store the integer
 //*******************************************************************************
 
-int zigzag_encode(int64_t value, uint8_t *buffer)
+int tbx_zigzag_encode(int64_t value, uint8_t *buffer)
 {
     uint64_t zz;
 
@@ -86,7 +86,7 @@ int zigzag_encode(int64_t value, uint8_t *buffer)
 // zigzag_decode - Decodes the zigzaged number
 //*******************************************************************************
 
-int zigzag_decode(uint8_t *buffer, int bufsize, int64_t *value)
+int tbx_zigzag_decode(uint8_t *buffer, int bufsize, int64_t *value)
 {
     uint64_t zz;
     int n;
@@ -103,7 +103,7 @@ int zigzag_decode(uint8_t *buffer, int bufsize, int64_t *value)
 // varint_test - Test routine
 //*******************************************************************************
 
-int varint_test()
+int tbx_varint_test()
 {
     int i, j, bytes, dbytes;
     int asize = 11;
@@ -137,9 +137,9 @@ int varint_test()
         for (j=-1; j<2; j += 2) {
             memset(buffer, 0, sizeof(buffer));
             zz_value = j * varray[i];
-            bytes = zigzag_encode(zz_value, buffer);
+            bytes = tbx_zigzag_encode(zz_value, buffer);
 
-            dbytes = zigzag_decode(buffer, 20, &zz_result);
+            dbytes = tbx_zigzag_decode(buffer, 20, &zz_result);
             printf("v=" I64T " r=" I64T "\n", zz_value, zz_result);
             if (bytes != dbytes) {
                 printf("ZIGZAG DECODE Bytes used mismatch value=" I64T " used=%d should be=%d\n", zz_value, bytes, dbytes);

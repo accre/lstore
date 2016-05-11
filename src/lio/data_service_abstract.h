@@ -22,7 +22,7 @@
 #define _DATA_SERVICE_H_
 
 #include "ex3_types.h"
-#include "transfer_buffer.h"
+#include <tbx/transfer_buffer.h>
 #include "opque.h"
 
 #ifdef __cplusplus

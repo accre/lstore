@@ -1,8 +1,8 @@
 #include "mq_portal.h"
 #include "mq_roundrobin.h"
-#include "apr_wrapper.h"
-#include "log.h"
-#include "type_malloc.h"
+#include <tbx/apr_wrapper.h>
+#include <tbx/log.h>
+#include <tbx/type_malloc.h>
 #include <sys/eventfd.h>
 
 char *host_string = "tcp://127.0.0.1:6714";
@@ -106,7 +106,7 @@ void unpack_register_msg(mq_portal_t *p, mq_msg_t *msg)
     pid = mq_msg_current(msg); // worker_host frame
     mq_get_frame(pid, (void **)&data, &err); //should be worker_host
     if(mq_data_compare(data, err, worker_host_string, strlen(worker_host_string)) == 0) {
-        type_malloc(worker_address, char, err+1);
+        tbx_type_malloc(worker_address, char, err+1);
         memcpy(worker_address, data, err);
         log_printf(15, "SERVER: Received correct worker host address = %s, size = %d\n", worker_address, err);
     } else {
@@ -165,7 +165,7 @@ void process_register_worker(mq_portal_t *p, mq_socket_t *sock, mq_msg_t *msg)
         mq_frame_destroy(mq_msg_pluck(msg, 0)); //argument frame (REGISTER)
 
         f = mq_msg_current(msg);
-        type_malloc(worker_address, char, 21);
+        tbx_type_malloc(worker_address, char, 21);
         mq_get_frame(f, (void **)worker_address, &err);
         mq_frame_destroy(mq_msg_pluck(msg, 0)); //address frame
 
@@ -208,13 +208,13 @@ mq_context_t *server_make_context()
                             "min_ops_per_sec=100\n\t"
                             "socket_type=1002\n"; // Set socket type to MQF_ROUND_ROBIN
 
-    flush_log();
-    ifd = inip_read_text(text_parameters);
+    tbx_flush_log();
+    ifd = tbx_inip_string_read(text_parameters);
 
     //log_printf(15, "SERVER: Creating context...\n");
     mqc = mq_create_context(ifd, "mq_context");
     assert(mqc != NULL);
-    inip_destroy(ifd);
+    tbx_inip_destroy(ifd);
 
     return mqc;
 }
@@ -292,10 +292,10 @@ mq_context_t *client_make_context()
                             "min_ops_per_sec=100\n\t"
                             "socket_type=1002\n"; // Set socket type to MQF_ROUND_ROBIN
 
-    ifd = inip_read_text(text_parameters);
+    ifd = tbx_inip_string_read(text_parameters);
 
     mqc = mq_create_context(ifd, "mq_context");
-    inip_destroy(ifd);
+    tbx_inip_destroy(ifd);
 
     return mqc;
 }
@@ -386,7 +386,7 @@ void bulk_worker_test(mq_context_t *mqc)
     char *address;
 
     queue = new_opque();
-    type_malloc(address, char, 21); // address is 20 char long, +1 for \0
+    tbx_type_malloc(address, char, 21); // address is 20 char long, +1 for \0
 
     log_printf(5, "WORKER: Starting bulk REGISTER test...\n");
 
@@ -415,7 +415,7 @@ void bulk_worker_test(mq_context_t *mqc)
             log_printf(5, "WORKER: Success: n = %d, status = %d\n", current, status);
             success++;
         }
-        flush_log();
+        tbx_flush_log();
     }
 
     log_printf(5, "WORKER: Sleeping...\n");
@@ -443,10 +443,10 @@ mq_context_t *worker_make_context()
                             "min_ops_per_sec=100\n";
     // omitting socket_type for workers
 
-    ifd = inip_read_text(text_parameters);
+    ifd = tbx_inip_string_read(text_parameters);
 
     mqc = mq_create_context(ifd, "mq_context");
-    inip_destroy(ifd);
+    tbx_inip_destroy(ifd);
 
     return mqc;
 }
@@ -543,7 +543,7 @@ int main(int argc, char **argv)
 
     if (argc > 2) {
         if(strcmp(argv[1], "-d") == 0)
-            set_log_level(atol(argv[2]));
+            tbx_set_log_level(atol(argv[2]));
         else {
             printf("rr_mq_test -d <log_level>\n");
             return 1;
@@ -571,9 +571,9 @@ int main(int argc, char **argv)
     assert(control_efd != -1);
 
     // Create threads for server, client, and worker
-    thread_create_assert(&server_thread, NULL, server_test_thread, NULL, mpool);
-    thread_create_assert(&client_thread, NULL, client_ping_test_thread, NULL, mpool);
-    thread_create_assert(&worker_thread, NULL, worker_test_thread, NULL, mpool);
+    tbx_thread_create_assert(&server_thread, NULL, server_test_thread, NULL, mpool);
+    tbx_thread_create_assert(&client_thread, NULL, client_ping_test_thread, NULL, mpool);
+    tbx_thread_create_assert(&worker_thread, NULL, worker_test_thread, NULL, mpool);
 
     // Join the threads when they complete
     apr_thread_join(&dummy, client_thread);

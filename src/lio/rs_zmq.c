@@ -22,20 +22,20 @@
 #define _log_module_index 183
 
 #include <assert.h>
-#include "assert_result.h"
+#include <tbx/assert_result.h>
 #include <sys/uio.h>
 #include <zmq.h>
 #include "ex3_system.h"
-#include "list.h"
+#include <tbx/list.h>
 #include "resource_service_abstract.h"
 #include "rs_query_base.h"
 #include "rs_zmq.h"
 #include "rs_zmq_priv.h"
-#include "iniparse.h"
-#include "log.h"
-#include "stack.h"
-#include "type_malloc.h"
-#include "random.h"
+#include <tbx/iniparse.h>
+#include <tbx/log.h>
+#include <tbx/stack.h>
+#include <tbx/type_malloc.h>
+#include <tbx/random.h>
 #include "rsz_request.pb-c.h"
 #include "zhelpers.h"
 #include "ds_ibp.h" //** This should be replaced by a generic data service
@@ -71,7 +71,7 @@ printf("Sent request %d bytes\n", len);
 //** Receives response through ZMQ 
 //** ReqList and CapList are filled in here
 rs_zmq_rep_t *rep;
-type_malloc_clear(rep, rs_zmq_rep_t, 1);
+tbx_type_malloc_clear(rep, rs_zmq_rep_t, 1);
 rep->ds = rsz->ds;
  
 len = rs_zmq_rep_recv(rep, rsz->zmq_socket);
@@ -119,7 +119,7 @@ op_generic_t *rs_zmq_request(resource_service_fn_t *arg, data_attr_t *da, rs_que
 {
 //** Allocates handle
 rs_zmq_req_t *rsr;  //** Is the fifth argument of new_thread_pool gonna free this space????
-type_malloc_clear(rsr, rs_zmq_req_t, 1);
+tbx_type_malloc_clear(rsr, rs_zmq_req_t, 1);
  
 //** Fills in handle
 rsr->rs = arg;
@@ -155,7 +155,7 @@ rs_zmq_priv_t *rsz = (rs_zmq_priv_t *)arg->priv;
 //** Sends the ridkey 
 int len;
 rs_zmq_rid_key_t *keys;
-type_malloc_clear(keys, rs_zmq_rid_key_t, 1);
+tbx_type_malloc_clear(keys, rs_zmq_rid_key_t, 1);
 keys->rid_key = rid_key;
 keys->key = key;
 len = rs_zmq_ridkey_send(keys, rsz->zmq_socket);
@@ -165,7 +165,7 @@ fflush(stdout);
  
 //** Receives ridvalue 
 rs_zmq_rid_value_t *value;
-type_malloc_clear(value, rs_zmq_rid_value_t, 1);
+tbx_type_malloc_clear(value, rs_zmq_rid_value_t, 1);
 len = rs_zmq_ridvalue_recv(value, rsz->zmq_socket);
 printf("Length of recvd ridvalue:%d bytes\n", len);
 fflush(stdout);
@@ -205,7 +205,7 @@ resource_service_fn_t *rs_zmq_create(void *arg, tbx_inip_file_t *kf, char *secti
 service_manager_t *ess = (service_manager_t *)arg;
  
 log_printf(15, "START!!!!!!!!!!!!!!!!!!\n"); 
-flush_log();
+tbx_flush_log();
 //** Creates zmq context
 void *context = zmq_ctx_new();
 assert(context != NULL);
@@ -216,7 +216,7 @@ assert(socket != NULL);
  
 //** Creates rs zmq private data 
 rs_zmq_priv_t *rsz;
-type_malloc_clear(rsz, rs_zmq_priv_t, 1);
+tbx_type_malloc_clear(rsz, rs_zmq_priv_t, 1);
 rsz->zmq_context = context;
 rsz->zmq_socket = socket;
 rsz->ds = lookup_service(ess, ESS_RUNNING, ESS_DS);
@@ -227,10 +227,10 @@ rsz->tpc = lookup_service(ess, ESS_RUNNING, ESS_TPC_UNLIMITED); //** Refers to l
 char *svr_proto, *svr_addr, *svr_port;
  
 //** Retrieves remote zmq server name, transport protocol, and lisenting port
-svr_proto = inip_get_string(kf, section, "protocol", RS_ZMQ_DFT_PROTO);
-svr_addr = inip_get_string(kf, section, "server", NULL);
-svr_port = inip_get_string(kf, section, "port", RS_ZMQ_DFT_PORT);
-asprintf(&rsz->zmq_svr, "%s://%s:%s", string_trim(svr_proto), string_trim(svr_addr), string_trim(svr_port));
+svr_proto = tbx_inip_string_get(kf, section, "protocol", RS_ZMQ_DFT_PROTO);
+svr_addr = tbx_inip_string_get(kf, section, "server", NULL);
+svr_port = tbx_inip_string_get(kf, section, "port", RS_ZMQ_DFT_PORT);
+asprintf(&rsz->zmq_svr, "%s://%s:%s", tbx_stk_string_trim(svr_proto), tbx_stk_string_trim(svr_addr), tbx_stk_string_trim(svr_port));
  
 free(svr_proto);
 free(svr_addr);
@@ -238,7 +238,7 @@ free(svr_port);
  
 //** Creates the resource service
 resource_service_fn_t *rs;
-type_malloc_clear(rs, resource_service_fn_t, 1);
+tbx_type_malloc_clear(rs, resource_service_fn_t, 1);
  
 //** zmq version related fields 
 rs->priv = rsz;

@@ -36,7 +36,7 @@ void *rs_zmq_worker_routine(void *arg)
     rs_zmq_req_t *req = NULL;
     rs_zmq_rep_t *response = NULL;
 
-    type_malloc_clear(req, rs_zmq_req_t, 1);
+    tbx_type_malloc_clear(req, rs_zmq_req_t, 1);
     req->da = thread_arg->da;
     req->rs = thread_arg->rs;
     req->timeout = thread_arg->timeout;
@@ -70,7 +70,7 @@ void *rs_zmq_worker_routine(void *arg)
         printf("Finished with receiving request. Now start to send response.\n");
 
         //** Creates reponse
-        type_malloc_clear(response, rs_zmq_rep_t, 1);
+        tbx_type_malloc_clear(response, rs_zmq_rep_t, 1);
         response->n_ele = req->n_rid;  //** Is this always true that cap list and req list have the same number of elements?
         response->caps = req->caps;
         response->req = req->req;
@@ -154,11 +154,11 @@ Rs__Zmq__RszReqSet **rs_zmq_reqlist_serialize(rs_request_t *req, int num_ele)
 {
     //** Creates req sets
     Rs__Zmq__RszReqSet **req_set;
-    type_malloc_clear(req_set, Rs__Zmq__RszReqSet *, num_ele);
+    tbx_type_malloc_clear(req_set, Rs__Zmq__RszReqSet *, num_ele);
 
     int i;
     for (i = 0; i < num_ele; i++) {
-        type_malloc_clear(req_set[i], Rs__Zmq__RszReqSet, 1);
+        tbx_type_malloc_clear(req_set[i], Rs__Zmq__RszReqSet, 1);
         rs__zmq__rsz_req_set__init(req_set[i]);
 
         //** Assigns request list
@@ -180,7 +180,7 @@ Rs__Zmq__RszReqSet **rs_zmq_reqlist_serialize(rs_request_t *req, int num_ele)
 //********************************************************************
 // rs_zmq_reqlist_destroy - Destroy reqlist
 //********************************************************************
-void rs_zmq_reqlist_destroy(Rs__Zmq__RszReqSet **req_set, int num_ele)
+void rs_zmq_reqtbx_list_destroy(Rs__Zmq__RszReqSet **req_set, int num_ele)
 {
     int i;
 
@@ -198,11 +198,11 @@ Rs__Zmq__RszCapSet **rs_zmq_caplist_serialize(data_service_fn_t *ds, data_cap_se
 {
     //** Creates cap sets
     Rs__Zmq__RszCapSet **cap_set;
-    type_malloc_clear(cap_set, Rs__Zmq__RszCapSet *, num_ele);
+    tbx_type_malloc_clear(cap_set, Rs__Zmq__RszCapSet *, num_ele);
 
     int i;
     for (i = 0; i < num_ele; i++) {
-        type_malloc_clear(cap_set[i], Rs__Zmq__RszCapSet, 1);
+        tbx_type_malloc_clear(cap_set[i], Rs__Zmq__RszCapSet, 1);
         rs__zmq__rsz_cap_set__init(cap_set[i]);
 
         //** Assigns caps
@@ -231,7 +231,7 @@ Rs__Zmq__RszCapSet **rs_zmq_caplist_serialize(data_service_fn_t *ds, data_cap_se
 //********************************************************************
 // rs_zmq_caplist_destroy - Destroy caplist
 //********************************************************************
-void rs_zmq_caplist_destroy(Rs__Zmq__RszCapSet **cap_set, int num_ele)
+void rs_zmq_captbx_list_destroy(Rs__Zmq__RszCapSet **cap_set, int num_ele)
 {
     int i;
     for (i = 0; i < num_ele; i++) {
@@ -310,8 +310,8 @@ void *rs_zmq_req_serialize(rs_zmq_req_t *req, int *len)
 
     //** Free allocated space
     free(msg.rs_query);
-    rs_zmq_caplist_destroy(cap_set, req->n_rid);
-    rs_zmq_reqlist_destroy(req_set, req->n_rid);
+    rs_zmq_captbx_list_destroy(cap_set, req->n_rid);
+    rs_zmq_reqtbx_list_destroy(req_set, req->n_rid);
 
     return buf;
 }
@@ -343,11 +343,11 @@ char *rs_query_type_replace(char *query, char *old_rst, char *new_rst)
 data_cap_set_t **rs_zmq_caplist_deserialize(data_service_fn_t *ds, Rs__Zmq__RszCapSet **caplist, int num_ele)
 {
     data_cap_set_t **caps;
-    type_malloc_clear(caps, data_cap_set_t *, num_ele);
+    tbx_type_malloc_clear(caps, data_cap_set_t *, num_ele);
 
     int i;
     for (i = 0; i < num_ele; i++) {
-        //type_malloc_clear(req->caps[i], data_cap_set_t, 1);
+        //tbx_type_malloc_clear(req->caps[i], data_cap_set_t, 1);
         caps[i] = ds_cap_set_create(ds);
 
         //** The NULL pointer is treated as an empty string in Protobuf-c which allows people to leave required strings blank.
@@ -375,7 +375,7 @@ data_cap_set_t **rs_zmq_caplist_deserialize(data_service_fn_t *ds, Rs__Zmq__RszC
 rs_request_t *rs_zmq_reqlist_deserialize(Rs__Zmq__RszReqSet **reqlist, int num_ele)
 {
     rs_request_t *req;
-    type_malloc_clear(req, rs_request_t, num_ele);
+    tbx_type_malloc_clear(req, rs_request_t, num_ele);
 
     int i;
     for (i = 0; i < num_ele; i++) {
@@ -445,7 +445,7 @@ void rs_zmq_req_deserialize(rs_zmq_req_t* req, void *buf, int len)
 
     //** req->da should be created and rs->priv should be initialized before calling this function
     //** Sets some of its values
-    //** type_malloc_clear(req->da, data_attr_t, 1);
+    //** tbx_type_malloc_clear(req->da, data_attr_t, 1);
     rs_simple_priv_t *rsz = (rs_simple_priv_t *)req->rs->priv; //** Notice that rs is simple resource service
 
     ds_set_attr(rsz->ds, req->da, DS_ATTR_DURATION, &msg->data_attr->duration );
@@ -533,8 +533,8 @@ void *rs_zmq_rep_serialize(rs_zmq_rep_t *rep, int *len)
 #endif
 
     //** Free allocated space
-    rs_zmq_caplist_destroy(cap_set, rep->n_ele);
-    rs_zmq_reqlist_destroy(req_set, rep->n_ele);
+    rs_zmq_captbx_list_destroy(cap_set, rep->n_ele);
+    rs_zmq_reqtbx_list_destroy(req_set, rep->n_ele);
 
     return buf;
 }
@@ -828,8 +828,8 @@ void rs_zmq_send_rid_value(resource_service_fn_t *rs, void *socket)
     rs_zmq_rid_key_t *keys;
     rs_zmq_rid_value_t *value;
 
-    type_malloc_clear(keys, rs_zmq_rid_key_t, 1);
-    type_malloc_clear(value, rs_zmq_rid_value_t, 1);
+    tbx_type_malloc_clear(keys, rs_zmq_rid_key_t, 1);
+    tbx_type_malloc_clear(value, rs_zmq_rid_value_t, 1);
 
     int len = rs_zmq_ridkey_recv(keys, socket);
     printf("Received ridkey %s length %d\n", keys->rid_key, len);

@@ -23,7 +23,7 @@
 #include "ibp.h"
 #include "ibp_misc.h"
 #include "host_portal.h"
-#include "log.h"
+#include <tbx/log.h>
 
 //=============================================================
 
@@ -37,22 +37,22 @@ int ibp_sync_execute(opque_t *q, int nthreads)
     tbx_stack_t *tasks;
     op_generic_t *gop;
 
-    log_printf(15, "ibp_sync_execute: Start! ncommands=%d\n", stack_size(q->qd.list));
+    log_printf(15, "ibp_sync_execute: Start! ncommands=%d\n", tbx_stack_size(q->qd.list));
     default_sort_ops(NULL, q);
 
     q = new_opque();
     opque_start_execution(q);
 
     tasks = q->qd.list;
-    q->qd.list = new_stack();
+    q->qd.list = tbx_stack_new();
 
-    while ((  gop = (op_generic_t *)pop(tasks)) != NULL) {
+    while ((  gop = (op_generic_t *)tbx_stack_pop(tasks)) != NULL) {
         opque_add(q, gop);
         if (opque_tasks_left(q) >= nthreads) {
             opque_waitany(q);
         }
 
-        pop(tasks);
+        tbx_stack_pop(tasks);
     }
 
 

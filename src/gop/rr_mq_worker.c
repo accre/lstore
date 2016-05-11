@@ -2,15 +2,15 @@
  * Round robin worker
  *****************************/
 
-#include "apr_wrapper.h"
+#include <tbx/apr_wrapper.h>
 #include "mq_portal.h"
 #include "mq_stream.h"
 #include "mq_ongoing.h"
 #include "mq_roundrobin.h"
 #include "mqs_roundrobin.h"
-#include "random.h"
-#include "log.h"
-#include "type_malloc.h"
+#include <tbx/random.h>
+#include <tbx/log.h>
+#include <tbx/type_malloc.h>
 #include <sys/eventfd.h>
 
 #define NUM_WORKERS 9
@@ -216,10 +216,10 @@ void process_stream(mq_portal_t *p, mq_task_t *task, mq_msg_t *msg)
     memset(test_data, TEST_DATA, size_to_send);
 
     while(n_left > 0) {
-        n_bytes = random_int(1, TEST_SIZE);
+        n_bytes = tbx_random_int64(1, TEST_SIZE);
         if(n_bytes > n_left)
             n_bytes = n_left;
-        offset = random_int(0, size_to_send - n_bytes);
+        offset = tbx_random_int64(0, size_to_send - n_bytes);
 
         log_printf(5, "WORKER: n_sent = %d  offset = %d n_bytes = %d\n", n_sent, offset, n_bytes);
         err = mq_stream_write(mqs, &offset, sizeof(int));
@@ -402,10 +402,10 @@ mq_context_t *worker_make_context()
                             "min_ops_per_sec = 100\n";
     // omitting socket_type for workers
 
-    ifd = inip_read_text(text_parameters);
+    ifd = tbx_inip_string_read(text_parameters);
 
     mqc = mq_create_context(ifd, "mq_context");
-    inip_destroy(ifd);
+    tbx_inip_destroy(ifd);
 
     return mqc;
 }
@@ -442,7 +442,7 @@ void start_bulk_worker_test(mq_context_t *mqc, int n)
     int i;
     for(i = 0; i < n; i++) {
         bulk_workers[i].id = i;
-        thread_create_assert(&bulk_workers[i].thread, NULL, start_bulk_worker_test_thread, &(bulk_workers[i].id), mqc->mpool);
+        tbx_thread_create_assert(&bulk_workers[i].thread, NULL, start_bulk_worker_test_thread, &(bulk_workers[i].id), mqc->mpool);
     }
     log_printf(1, "WORKER: Minions created!\n");
 }
@@ -469,7 +469,7 @@ void worker_test()
     mq_context_t *mqc;
     //mq_command_table_t *table;
     //mq_portal_t *worker_portal;
-    flush_log();
+    tbx_flush_log();
     log_printf(1, "WORKER: Starting...\n");
 
     log_printf(10, "WORKER: Creating context...\n");
@@ -477,7 +477,7 @@ void worker_test()
     parent_portal = malloc(sizeof(mq_portal_t));
 
     log_printf(1, "WORKER: Up and running!\n");
-    type_malloc(user_command, char, 20);
+    tbx_type_malloc(user_command, char, 20);
     while(!complete) {
         printf("> ");
         scanf("%s", user_command);
@@ -523,7 +523,7 @@ int main(int argc, char **argv)
 
     if (argc > 2) {
         if(strcmp(argv[1], "-d") == 0)
-            set_log_level(atol(argv[2]));
+            tbx_set_log_level(atol(argv[2]));
         else {
             printf("%s -d <log_level>\n", argv[0]);
             return 1;
@@ -546,7 +546,7 @@ int main(int argc, char **argv)
     server = mq_string_to_address(server_string);
 
     // Create threads for server
-    thread_create_assert(&worker_thread, NULL, worker_test_thread, NULL, mpool);
+    tbx_thread_create_assert(&worker_thread, NULL, worker_test_thread, NULL, mpool);
 
     apr_thread_join(&dummy, worker_thread);
 

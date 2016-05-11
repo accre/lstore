@@ -29,16 +29,15 @@ compile_map['unified-gcc'] = {
         dir('build') {
             sh "cmake -DBUILD_TESTS=on -DENABLE_COVERAGE=on -DENABLE_ASAN=on -DCMAKE_INSTALL_PREFIX=local/ .."
             sh "make -j8 externals"
-            sh "make -j1 install VERBOSE=1 2>&1 | tee compile_log_gcc.txt"
-            stash includes: 'local/**, run-tests, run-benchmarks', name: "unified-build"
+            sh "bash -c 'set -o pipefail ; make -j1 install VERBOSE=1 2>&1 | tee compile_log_gcc.txt'"
+            stash includes: 'local/**, run-tests, run-benchmarks', name: "unified-gcc"
             stash includes: "compile_log_gcc.txt", name: "gcc-log"
         }
     }
-
     node('xenial') {
         stage "UnitTests"
         deleteDir()
-        unstash 'unified-build'
+        unstash 'unified-gcc'
         sh "bash -c 'set -o pipefail ; LD_LIBRARY_PATH=local/lib UV_TAP_OUTPUT=1 ./run-tests 2>&1 | tee tap.log'"
     }
 }
@@ -50,13 +49,14 @@ compile_map['unified-clang'] = {
         dir('build') {
             sh "CC=clang cmake -DBUILD_TESTS=on -DENABLE_COVERAGE=on -DENABLE_ASAN=on -DCMAKE_INSTALL_PREFIX=local/ .."
             sh "make -j8 externals"
-            sh "make -j1 install 2>&1 VERBOSE=1 | tee compile_log_clang.txt"
+            sh "bash -c 'set -o pipefail ; make -j1 install 2>&1 VERBOSE=1 | tee compile_log_clang.txt'"
+            stash includes: 'local/**, run-tests, run-benchmarks', name: "unified-clang"
             stash includes: "compile_log_clang.txt", name: "clang-log"
         }
     }
     node('xenial') {
         deleteDir()
-        unstash 'unified-build'
+        unstash 'unified-clang'
         sh "bash -c 'set -o pipefail ; LD_LIBRARY_PATH=local/lib UV_TAP_OUTPUT=1 ./run-tests 2>&1 | tee tap.log'"
     }
 }
@@ -82,6 +82,7 @@ compile_map['scan-build'] = {
         unstash "source"
         def scan_checks = "-enable-checker alpha.core.BoolAssignment -enable-checker alpha.core.CallAndMessageUnInitRefArg -enable-checker alpha.core.CastSize -enable-checker alpha.core.CastToStruct -enable-checker alpha.core.DynamicTypeChecker -enable-checker alpha.core.FixedAddr -enable-checker alpha.core.IdenticalExpr -enable-checker alpha.core.PointerArithm -enable-checker alpha.core.PointerSub -enable-checker alpha.core.SizeofPtr -enable-checker alpha.core.TestAfterDivZero -enable-checker alpha.cplusplus.VirtualCall -enable-checker alpha.deadcode.UnreachableCode -enable-checker alpha.security.ArrayBound -enable-checker alpha.security.ArrayBoundV2 -enable-checker alpha.security.MallocOverflow -enable-checker alpha.security.ReturnPtrRange -enable-checker alpha.security.taint.TaintPropagation -enable-checker alpha.unix.Chroot -enable-checker alpha.unix.PthreadLock -enable-checker alpha.unix.SimpleStream -enable-checker alpha.unix.Stream -enable-checker alpha.unix.cstring.BufferOverlap -enable-checker alpha.unix.cstring.NotNullTerminated -enable-checker alpha.unix.cstring.OutOfBounds"
         dir('build') {
+            sh "mkdir clang-static-analyzer"
             sh "CCC_CC=clang scan-build cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DBUILD_TESTS=on -DCMAKE_INSTALL_PREFIX=local/ .."
             sh "CC=clang make externals"
             sh "CCC_CC=clang scan-build -o clang-static-analyzer -v -v ${scan_checks} --keep-empty make -j4"

@@ -18,12 +18,25 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include "tbx/stack.h"
 #include "stack.h"
 
 #define MOVE_NOTHING 0
 #define MOVE_TOP     1
 #define MOVE_BOTTOM  2
 #define MOVE_BOTH    3
+
+// Accessors
+tbx_stack_ele_t * tbx_stack_top_get(tbx_stack_t * stack) {
+    return stack->top;
+}
+
+tbx_stack_ele_t * tbx_stack_ele_down_get(tbx_stack_ele_t * stack) {
+    return stack->down;
+}
+void *tbx_stack_ele_data_get(tbx_stack_ele_t *ele) {
+    return ele->data;
+}
 
 //**************************************
 // check_ends - Checks to see if an
@@ -45,7 +58,7 @@ int check_ends(tbx_stack_t *stack)
 // stack_size - Returns the number of elements in the stack
 //**************************************
 
-int stack_size(tbx_stack_t *stack)
+int tbx_stack_size(tbx_stack_t *stack)
 {
     return(stack->n);
 }
@@ -54,7 +67,7 @@ int stack_size(tbx_stack_t *stack)
 // get_stack_ele_data - Returns the data associated with a tbx_stack_ele_t structure
 //**************************************
 
-void *get_stack_ele_data(tbx_stack_ele_t *ele)
+void *tbx_get_stack_ele_data(tbx_stack_ele_t *ele)
 {
     if (ele == NULL) return(NULL);
     return(ele->data);
@@ -70,10 +83,10 @@ void set_stack_ele_data(tbx_stack_ele_t *ele, void *data)
 }
 
 //**************************************
-//new_stack - Creates a new stack
+//tbx_stack_new - Creates a new stack
 //**************************************
 
-void init_stack(tbx_stack_t *stack)
+void tbx_stack_init(tbx_stack_t *stack)
 {
     stack->top = NULL;
     stack->bottom = NULL;
@@ -82,46 +95,46 @@ void init_stack(tbx_stack_t *stack)
 }
 
 //**************************************
-//new_stack - Creates a new stack
+//tbx_stack_new - Creates a new stack
 //**************************************
 
-tbx_stack_t *new_stack()
+tbx_stack_t *tbx_stack_new()
 {
     tbx_stack_t *stack;
 
     stack = (tbx_stack_t *)malloc(sizeof(tbx_stack_t));
 
-    init_stack(stack);
+    tbx_stack_init(stack);
 
     return(stack);
 }
 
 //***************************************************
-//empty_stack - REmoves all stack entries.
+//tbx_stack_empty - REmoves all stack entries.
 //   If data_also == 1 then the data is also freed.
 //***************************************************
 
-void empty_stack(tbx_stack_t *stack, int data_also)
+void tbx_stack_empty(tbx_stack_t *stack, int data_also)
 {
     void *ptr;
 
     if (data_also == 1) {
-        while ((ptr = pop(stack)) != NULL) {
+        while ((ptr = tbx_stack_pop(stack)) != NULL) {
             free(ptr);
         }
     } else {
-        while ((ptr = pop(stack)) != NULL) { };
+        while ((ptr = tbx_stack_pop(stack)) != NULL) { };
     }
 }
 
 //***************************************************
-//free_stack - frees a stack.  If data_also == 1 then
+//tbx_free_stack - frees a stack.  If data_also == 1 then
 //     the data is also freed.
 //***************************************************
 
-void free_stack(tbx_stack_t *stack, int data_also)
+void tbx_free_stack(tbx_stack_t *stack, int data_also)
 {
-    empty_stack(stack, data_also);
+    tbx_stack_empty(stack, data_also);
     free(stack);
 }
 
@@ -129,14 +142,14 @@ void free_stack(tbx_stack_t *stack, int data_also)
 //  dup_stack - Duplicates a stack
 //***************************************************
 
-void dup_stack(tbx_stack_t *new, tbx_stack_t *old)
+void tbx_dup_stack(tbx_stack_t *new, tbx_stack_t *old)
 {
     void *ptr;
 
-    move_to_bottom(old);
-    while ((ptr = get_ele_data(old)) != NULL) {
-        push(new, ptr);
-        move_up(old);
+    tbx_stack_move_to_bottom(old);
+    while ((ptr = tbx_get_ele_data(old)) != NULL) {
+        tbx_stack_push(new, ptr);
+        tbx_stack_move_up(old);
     }
 }
 
@@ -144,7 +157,7 @@ void dup_stack(tbx_stack_t *new, tbx_stack_t *old)
 // push_link - push an unlinked element on top of the stack
 //***************************************************
 
-void push_link(tbx_stack_t *stack, tbx_stack_ele_t *ele)
+void tbx_push_link(tbx_stack_t *stack, tbx_stack_ele_t *ele)
 {
     ele->down = stack->top;
     ele->up = NULL;
@@ -165,14 +178,14 @@ void push_link(tbx_stack_t *stack, tbx_stack_ele_t *ele)
 // push - push an element on top of the stack
 //***************************************************
 
-void push(tbx_stack_t *stack, void *data)
+void tbx_stack_push(tbx_stack_t *stack, void *data)
 {
     tbx_stack_ele_t *ele;
 
     ele = (tbx_stack_ele_t *)malloc(sizeof(tbx_stack_ele_t));
     ele->data = data;
 
-    push_link(stack, ele);
+    tbx_push_link(stack, ele);
 }
 
 //***************************************************
@@ -181,16 +194,16 @@ void push(tbx_stack_t *stack, void *data)
 
 tbx_stack_ele_t *pop_link(tbx_stack_t *stack)
 {
-    move_to_top(stack);
+    tbx_stack_move_to_top(stack);
 
-    return(stack_unlink_current(stack, 0));
+    return(tbx_stack_unlink_current(stack, 0));
 }
 
 //***************************************************
 // pop - push an element on top of the stack
 //***************************************************
 
-void *pop(tbx_stack_t *stack)
+void *tbx_stack_pop(tbx_stack_t *stack)
 {
     tbx_stack_ele_t *ele;
     void *data;
@@ -223,10 +236,10 @@ void *pop(tbx_stack_t *stack)
 }
 
 //***************************************************
-//  get_ptr - Returns a ptr to the current stack element
+//  tbx_get_ptr - Returns a ptr to the current stack element
 //***************************************************
 
-tbx_stack_ele_t *get_ptr(tbx_stack_t *stack)
+tbx_stack_ele_t *tbx_get_ptr(tbx_stack_t *stack)
 {
 
     if (stack->curr) {
@@ -237,10 +250,10 @@ tbx_stack_ele_t *get_ptr(tbx_stack_t *stack)
 }
 
 //***************************************************
-//  get_ele_data - Returns the current elements data
+//  tbx_get_ele_data - Returns the current elements data
 //***************************************************
 
-void *get_ele_data(tbx_stack_t *stack)
+void *tbx_get_ele_data(tbx_stack_t *stack)
 {
 
     if (stack->curr) {
@@ -254,7 +267,7 @@ void *get_ele_data(tbx_stack_t *stack)
 // move_to_ptr - Moves to the "ptr" element
 //***************************************************
 
-int move_to_ptr(tbx_stack_t *stack, tbx_stack_ele_t *ptr)
+int tbx_stack_move_to_ptr(tbx_stack_t *stack, tbx_stack_ele_t *ptr)
 {
 
     stack->curr = ptr;
@@ -266,7 +279,7 @@ int move_to_ptr(tbx_stack_t *stack, tbx_stack_ele_t *ptr)
 //    current element.
 //***************************************************
 
-int move_to_top(tbx_stack_t *stack)
+int tbx_stack_move_to_top(tbx_stack_t *stack)
 {
 
     stack->curr = stack->top;
@@ -279,7 +292,7 @@ int move_to_top(tbx_stack_t *stack)
 //    current element.
 //***************************************************
 
-int move_to_bottom(tbx_stack_t *stack)
+int tbx_stack_move_to_bottom(tbx_stack_t *stack)
 {
 
     stack->curr = stack->bottom;
@@ -291,7 +304,7 @@ int move_to_bottom(tbx_stack_t *stack)
 // move_down - Move the pointer "down" to the next element.
 //***************************************************
 
-int move_down(tbx_stack_t *stack)
+int tbx_stack_move_down(tbx_stack_t *stack)
 {
 
     if (stack->curr) {
@@ -306,7 +319,7 @@ int move_down(tbx_stack_t *stack)
 // move_up - Moves the pointer "up" to the next element.
 //***************************************************
 
-int move_up(tbx_stack_t *stack)
+int tbx_stack_move_up(tbx_stack_t *stack)
 {
 
     if (stack->curr) {
@@ -345,7 +358,7 @@ int insert_link_below(tbx_stack_t *stack, tbx_stack_ele_t *ele)
         printf("insert_link_below: Can't determine position!!!!!!!! move_ends = %d\n",move_ends);
         return(0);         // Can't determine position since curr=NULL
     } else {
-        push_link(stack, ele);
+        tbx_push_link(stack, ele);
         return(1);
     }
 }
@@ -357,14 +370,16 @@ int insert_link_below(tbx_stack_t *stack, tbx_stack_ele_t *ele)
 //    current element
 //***************************************************
 
-int insert_below(tbx_stack_t *stack, void *data)
+int tbx_stack_insert_below(tbx_stack_t *stack, void *data)
 {
     tbx_stack_ele_t *ele;
 
     ele =(tbx_stack_ele_t *) malloc(sizeof(tbx_stack_ele_t));
     ele->data = data;
-
-    return(insert_link_below(stack, ele));
+    int ret = insert_link_below(stack, ele);
+    if (!ret)
+        free(ele);
+    return ret;
 }
 
 
@@ -373,7 +388,7 @@ int insert_below(tbx_stack_t *stack, void *data)
 //    "above" the current element.
 //***************************************************
 
-int insert_link_above(tbx_stack_t *stack, tbx_stack_ele_t *ele)
+int tbx_stack_insert_link_above(tbx_stack_t *stack, tbx_stack_ele_t *ele)
 {
     int move_ends;
 
@@ -395,7 +410,7 @@ int insert_link_above(tbx_stack_t *stack, tbx_stack_ele_t *ele)
     } else if (stack->top) {
         return(0);         // Can't determine position since curr=NULL
     } else {
-        push_link(stack, ele);
+        tbx_push_link(stack, ele);
         return(1);
     }
 }
@@ -405,15 +420,16 @@ int insert_link_above(tbx_stack_t *stack, tbx_stack_ele_t *ele)
 //    current element.
 //***************************************************
 
-int insert_above(tbx_stack_t *stack, void *data)
+int tbx_stack_insert_above(tbx_stack_t *stack, void *data)
 {
     tbx_stack_ele_t *ele;
 
     ele =(tbx_stack_ele_t *) malloc(sizeof(tbx_stack_ele_t));
     ele->data = data;
-
-    return(insert_link_above(stack, ele));
-
+    int ret = tbx_stack_insert_link_above(stack, ele);
+    if (!ret)
+        free(ele);
+    return ret;
 }
 
 
@@ -422,7 +438,7 @@ int insert_above(tbx_stack_t *stack, void *data)
 //     returns the unlinked stack element or NULL.
 //***************************************************
 
-tbx_stack_ele_t *stack_unlink_current(tbx_stack_t *stack, int mv_up)
+tbx_stack_ele_t *tbx_stack_unlink_current(tbx_stack_t *stack, int mv_up)
 {
     tbx_stack_ele_t *ele, *up, *down;
     int move_ends;
@@ -460,9 +476,9 @@ tbx_stack_ele_t *stack_unlink_current(tbx_stack_t *stack, int mv_up)
 //     below (mv_up=0) the deleted element.
 //***************************************************
 
-int delete_current(tbx_stack_t *stack, int mv_up, int data_also)
+int tbx_delete_current(tbx_stack_t *stack, int mv_up, int data_also)
 {
-    tbx_stack_ele_t *ele = stack_unlink_current(stack, mv_up);
+    tbx_stack_ele_t *ele = tbx_stack_unlink_current(stack, mv_up);
 
     if (ele != NULL) {
         if (data_also) free(ele->data);

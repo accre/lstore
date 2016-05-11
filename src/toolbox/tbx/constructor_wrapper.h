@@ -1,4 +1,20 @@
 /*
+   Copyright 2016 Vanderbilt University
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+*/
+
+/*
  * We occasionally need to perform menial initialization/destruction tasks to
  * set up the environment for subsystems. For instance, subsystem 'foo' needs
  * an APR pool to work, so it has init_foo()/destroy_foo(). Problem is, any
@@ -14,8 +30,8 @@
  *
  * The following example use will execute construct_fn/destruct_fn before/after
  * main():
- * 
- *    #include "constructor_wrapper.h"
+ *
+ *    #include "tbx/constructor_wrapper.h"
  *    #ifdef ACCRE_CONSTRUCTOR_PREPRAGMA_ARGS
  *    #pragma ACCRE_CONSTRUCTOR_PREPRAGMA_ARGS(construct_fn)
  *    #endif
@@ -23,7 +39,7 @@
  *    #ifdef ACCRE_CONSTRUCTOR_POSTPRAGMA_ARGS
  *    #pragma ACCRE_CONSTRUCTOR_POSTPRAGMA_ARGS(construct_fn)
  *    #endif
- *    
+ *
  *    #ifdef ACCRE_DESTRUCTOR_PREPRAGMA_ARGS
  *    #pragma ACCRE_DESTRUCTOR_PREPRAGMA_ARGS(destruct_fn)
  *    #endif
@@ -31,18 +47,18 @@
  *    #ifdef ACCRE_DESTRUCTOR_POSTPRAGMA_ARGS
  *    #pragma ACCRE_DESTRUCTOR_POSTPRAGMA_ARGS(destruct_fn)
  *    #endif
- *    
+ *
  *    static void construct_fn() {  }
- *    
+ *
  *    static void destruct_fn() {  }
- * 
+ *
  * Unfortunately, implementing this under some compilers requires using
  * #pragma, which cannot be properly nested in a #define. Later C standards
  * declare a _Pragma() token, which can be used properly (it is handled
  * properly by the preprocessor). Support isn't universal, so we must do the
  * #ifdef/#pragma/#endif sequence to properly push/pop pragmas around the
  * declarations.
- *    
+ *
  */
 
 #ifndef INCLUDED_ACCRE_TOOLBOX_CONSTRUCTOR_WRAPPER_H

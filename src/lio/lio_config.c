@@ -20,11 +20,11 @@
 #include <unistd.h>
 #include <apr_dso.h>
 #include "lio.h"
-#include "type_malloc.h"
-#include "log.h"
-#include "apr_wrapper.h"
-#include "log.h"
-#include "string_token.h"
+#include <tbx/type_malloc.h>
+#include <tbx/log.h>
+#include <tbx/apr_wrapper.h>
+#include <tbx/log.h>
+#include <tbx/string_token.h>
 #include "mq_ongoing.h"
 
 typedef struct {
@@ -69,14 +69,14 @@ int _lc_object_destroy(char *key)
     int count = 0;
     lc_object_container_t *lcc;
 
-    lcc = list_search(_lc_object_list, key);
+    lcc = tbx_list_search(_lc_object_list, key);
     if (lcc != NULL) {
         lcc->count--;
         count = lcc->count;
         log_printf(15, "REMOVE key=%s count=%d lcc=%p\n", key, count, lcc);
 
         if (lcc->count <= 0) {
-            list_remove(_lc_object_list, key, lcc);
+            tbx_list_remove(_lc_object_list, key, lcc);
             free(lcc->key);
             free(lcc);
         }
@@ -96,7 +96,7 @@ void *_lc_object_get(char *key)
     void *obj = NULL;
     lc_object_container_t *lcc;
 
-    lcc = list_search(_lc_object_list, key);
+    lcc = tbx_list_search(_lc_object_list, key);
     if (lcc != NULL) {
         lcc->count++;
         obj = lcc->object;
@@ -118,14 +118,14 @@ void _lc_object_put(char *key, void *obj)
 {
     lc_object_container_t *lcc;
 
-    type_malloc(lcc, lc_object_container_t, 1);
+    tbx_type_malloc(lcc, lc_object_container_t, 1);
 
     log_printf(15, "PUT key=%s count=1 lcc=%p\n", key, lcc);
 
     lcc->count = 1;
     lcc->object = obj;
     lcc->key = strdup(key);
-    list_insert(_lc_object_list, lcc->key, lcc);
+    tbx_list_insert(_lc_object_list, lcc->key, lcc);
 
     return;
 }
@@ -145,25 +145,25 @@ void _lio_load_plugins(lio_config_t *lio, tbx_inip_file_t *fd)
     char *section, *name, *library, *symbol;
     char buffer[1024];
 
-    g = inip_first_group(fd);
+    g = tbx_inip_group_first(fd);
     while (g) {
-        if (strcmp(inip_get_group(g), "plugin") == 0) { //** Got a Plugin section
+        if (strcmp(tbx_inip_group_get(g), "plugin") == 0) { //** Got a Plugin section
             //** Parse the plugin section
-            ele = inip_first_element(g);
+            ele = tbx_inip_ele_first(g);
             section = name = library = symbol = NULL;
             while (ele != NULL) {
-                key = inip_get_element_key(ele);
+                key = tbx_inip_ele_key_get(ele);
                 if (strcmp(key, "section") == 0) {
-                    section = inip_get_element_value(ele);
+                    section = tbx_inip_ele_value_get(ele);
                 } else if (strcmp(key, "name") == 0) {
-                    name = inip_get_element_value(ele);
+                    name = tbx_inip_ele_value_get(ele);
                 } else if (strcmp(key, "library") == 0) {
-                    library = inip_get_element_value(ele);
+                    library = tbx_inip_ele_value_get(ele);
                 } else if (strcmp(key, "symbol") == 0) {
-                    symbol = inip_get_element_value(ele);
+                    symbol = tbx_inip_ele_value_get(ele);
                 }
 
-                ele = inip_next_element(ele);
+                ele = tbx_inip_ele_next(ele);
             }
 
             //** Sanity check it
@@ -180,9 +180,9 @@ void _lio_load_plugins(lio_config_t *lio, tbx_inip_file_t *fd)
             }
             if (apr_dso_sym(&sym, handle, symbol) != APR_SUCCESS) goto fail;
 
-            if (lio->plugin_stack == NULL) lio->plugin_stack = new_stack();
+            if (lio->plugin_stack == NULL) lio->plugin_stack = tbx_stack_new();
             log_printf(5, "library=%s\n", buffer);
-            push(lio->plugin_stack, strdup(buffer));
+            tbx_stack_push(lio->plugin_stack, strdup(buffer));
             add_service(lio->ess, section, name, sym);
 
             error = 0;  //** Skip cleanup
@@ -191,7 +191,7 @@ fail:
                 log_printf(0, "ERROR loading plugin!  section=%s name=%s library=%s symbol=%s\n", section, name, library, symbol);
             }
         }
-        g = inip_next_group(g);
+        g = tbx_inip_group_next(g);
     }
 }
 
@@ -207,7 +207,7 @@ void _lio_destroy_plugins(lio_config_t *lio)
 
     if (lio->plugin_stack == NULL) return;
 
-    while ((library_key = pop(lio->plugin_stack)) != NULL) {
+    while ((library_key = tbx_stack_pop(lio->plugin_stack)) != NULL) {
         log_printf(5, "library_key=%s\n", library_key);
         count = _lc_object_destroy(library_key);
         if (count <= 0) {
@@ -217,7 +217,7 @@ void _lio_destroy_plugins(lio_config_t *lio)
         free(library_key);
     }
 
-    free_stack(lio->plugin_stack, 0);
+    tbx_free_stack(lio->plugin_stack, 0);
 }
 
 
@@ -235,20 +235,20 @@ void lio_find_lfs_mounts()
     int i, fin;
     size_t ns;
 
-    stack = new_stack();
+    stack = tbx_stack_new();
 
     fd = fopen("/proc/mounts", "r");
     text = NULL;
     while (getline(&text, &ns, fd) != -1) {
         log_printf(5, "getline=%s", text);
         if (strncmp(text, "lfs:", 4) == 0) { //** Found a match
-            string_token(text, " ", &bstate, &fin);
-            prefix = string_token(NULL, " ", &bstate, &fin);
+            tbx_stk_string_token(text, " ", &bstate, &fin);
+            prefix = tbx_stk_string_token(NULL, " ", &bstate, &fin);
             if (prefix != NULL) { //** Add it
-                type_malloc_clear(entry, lfs_mount_t, 1);
+                tbx_type_malloc_clear(entry, lfs_mount_t, 1);
                 entry->prefix = strdup(prefix);
                 entry->len = strlen(entry->prefix);
-                push(stack, entry);
+                tbx_stack_push(stack, entry);
                 log_printf(5, "mount prefix=%s len=%d\n", entry->prefix, entry->len);
             }
         }
@@ -261,16 +261,16 @@ void lio_find_lfs_mounts()
     if (text != NULL) free(text);  //** Getline() always returns something
 
     //** Convert it to a simple array
-    _lfs_mount_count = stack_size(stack);
-    type_malloc(lfs_mount, lfs_mount_t, _lfs_mount_count);
+    _lfs_mount_count = tbx_stack_size(stack);
+    tbx_type_malloc(lfs_mount, lfs_mount_t, _lfs_mount_count);
     for (i=0; i<_lfs_mount_count; i++) {
-        entry = pop(stack);
+        entry = tbx_stack_pop(stack);
         lfs_mount[i].prefix = entry->prefix;
         lfs_mount[i].len = entry->len;
         free(entry);
     }
 
-    free_stack(stack, 0);
+    tbx_free_stack(stack, 0);
 }
 
 //***************************************************************
@@ -470,7 +470,7 @@ lio_path_tuple_t lio_path_resolve_base(char *lpath)
         cred_args[0] = tuple.lc->cfg_name;
         cred_args[1] = strdup(userid);
         tuple.creds = os_cred_init(tuple.lc->os, OS_CREDS_INI_TYPE, (void **)cred_args);
-        type_malloc_clear(tuple2, lio_path_tuple_t, 1);
+        tbx_type_malloc_clear(tuple2, lio_path_tuple_t, 1);
         tuple2->creds = tuple.creds;
         tuple2->lc = tuple.lc;
         tuple2->path = "ANONYMOUS";
@@ -574,28 +574,28 @@ void lc_object_remove_unused(int remove_all_unused)
     char *key;
     tbx_stack_t *stack;
 
-    stack = new_stack();
+    stack = tbx_stack_new();
 
     apr_thread_mutex_lock(_lc_lock);
 
     //** Make a list of all the different LC's in use from the tuples
     //** Keep track of the anon creds for deletion
-    user_lc = list_create(0, &list_string_compare, NULL, list_no_key_free, list_no_data_free);
-    it = list_iter_search(_lc_object_list, "tuple:", 0);
-    while ((list_next(&it, (tbx_list_key_t **)&key, (tbx_list_data_t **)&lcc)) == 0) {
+    user_lc = tbx_list_create(0, &tbx_list_string_compare, NULL, tbx_list_no_key_free, tbx_list_no_data_free);
+    it = tbx_list_iter_search(_lc_object_list, "tuple:", 0);
+    while ((tbx_list_next(&it, (tbx_list_key_t **)&key, (tbx_list_data_t **)&lcc)) == 0) {
         if (strncmp(lcc->key, "tuple:", 6) != 0) break;  //** No more tuples
         tuple = lcc->object;
         if (tuple->path == NULL) {
-            list_insert(user_lc, tuple->lc->section_name, tuple->lc);
+            tbx_list_insert(user_lc, tuple->lc->section_name, tuple->lc);
             log_printf(15, "user_lc adding key=%s lc=%s\n", lcc->key, tuple->lc->section_name);
         } else {
             log_printf(15, "user_lc marking creds key=%s for removal\n", lcc->key);
-            if (strcmp(tuple->path, "ANONYMOUS") == 0) push(stack, lcc);
+            if (strcmp(tuple->path, "ANONYMOUS") == 0) tbx_stack_push(stack, lcc);
         }
     }
 
     //** Go ahead and delete the anonymously created creds (as long as they aren't the LC default
-    while ((lcc = pop(stack)) != NULL) {
+    while ((lcc = tbx_stack_pop(stack)) != NULL) {
         tuple = lcc->object;
         _lc_object_destroy(lcc->key);
 //     if (strcmp(tuple->path, "ANONYMOUS") == 0) os_cred_destroy(tuple->lc->os, tuple->creds);
@@ -603,22 +603,22 @@ void lc_object_remove_unused(int remove_all_unused)
     }
 
     //** Now iterate through all the LC's
-    it = list_iter_search(_lc_object_list, "lc:", 0);
-    while ((list_next(&it, (tbx_list_key_t **)&key, (tbx_list_data_t **)&lcc)) == 0) {
+    it = tbx_list_iter_search(_lc_object_list, "lc:", 0);
+    while ((tbx_list_next(&it, (tbx_list_key_t **)&key, (tbx_list_data_t **)&lcc)) == 0) {
         if (strncmp(lcc->key, "lc:", 3) != 0) break;  //** No more LCs
         lc = lcc->object;
         log_printf(15, "checking key=%s lc=%s anon=%d count=%d\n", lcc->key, lc->section_name, lc->anonymous_creation, lcc->count);
-        lcc2 = list_search(user_lc, lc->section_name);
+        lcc2 = tbx_list_search(user_lc, lc->section_name);
         if (lcc2 == NULL) {  //** No user@lc reference so safe to delete from that standpoint
             log_printf(15, "not in user_lc key=%s lc=%s anon=%d count=%d\n", lcc->key, lc->section_name, lc->anonymous_creation, lcc->count);
             if (((lc->anonymous_creation == 1) && (lcc->count <= 1)) ||
                     ((remove_all_unused == 1) && (lcc->count <= 0))) {
-                push(stack, lcc);
+                tbx_stack_push(stack, lcc);
             }
         }
     }
 
-    while ((lcc = pop(stack)) != NULL) {
+    while ((lcc = tbx_stack_pop(stack)) != NULL) {
         lc = lcc->object;
         _lc_object_destroy(lcc->key);
         lio_destroy_nl(lc);
@@ -626,8 +626,8 @@ void lc_object_remove_unused(int remove_all_unused)
 
     apr_thread_mutex_unlock(_lc_lock);
 
-    free_stack(stack, 0);
-    list_destroy(user_lc);
+    tbx_free_stack(stack, 0);
+    tbx_list_destroy(user_lc);
 
     return;
 }
@@ -636,7 +636,7 @@ void lc_object_remove_unused(int remove_all_unused)
 // blacklist_destroy - Destroys a blacklist structure
 //***************************************************************
 
-void blacklist_destroy(blacklist_t *bl)
+void blacktbx_list_destroy(blacklist_t *bl)
 {
     apr_ssize_t hlen;
     apr_hash_index_t *hi;
@@ -662,15 +662,15 @@ blacklist_t *blacklist_load(tbx_inip_file_t *ifd, char *section)
 {
     blacklist_t *bl;
 
-    type_malloc_clear(bl, blacklist_t, 1);
+    tbx_type_malloc_clear(bl, blacklist_t, 1);
 
     assert_result(apr_pool_create(&(bl->mpool), NULL), APR_SUCCESS);
     apr_thread_mutex_create(&(bl->lock), APR_THREAD_MUTEX_DEFAULT, bl->mpool);
     bl->table = apr_hash_make(bl->mpool);
 
-    bl->timeout = inip_get_integer(ifd, section, "timeout", apr_time_from_sec(120));
-    bl->min_bandwidth = inip_get_integer(ifd, section, "min_bandwidth", 5*1024*1024);  //** default ro 5MB
-    bl->min_io_time = inip_get_integer(ifd, section, "min_io_time", apr_time_from_sec(1));  //** default ro 5MB
+    bl->timeout = tbx_inip_integer_get(ifd, section, "timeout", apr_time_from_sec(120));
+    bl->min_bandwidth = tbx_inip_integer_get(ifd, section, "min_bandwidth", 5*1024*1024);  //** default ro 5MB
+    bl->min_io_time = tbx_inip_integer_get(ifd, section, "min_io_time", apr_time_from_sec(1));  //** default ro 5MB
 
     return(bl);
 }
@@ -708,7 +708,7 @@ void lio_destroy_nl(lio_config_t *lio)
     char buffer[128];
 
     //** The creds is a little tricky cause we need to get the tuple first
-    lcc = list_search(_lc_object_list, lio->creds_name);
+    lcc = tbx_list_search(_lc_object_list, lio->creds_name);
     tuple = (lcc != NULL) ? lcc->object : NULL;
     if (_lc_object_destroy(lio->creds_name) <= 0) {
         os_cred_destroy(lio->os, lio->creds);
@@ -777,13 +777,13 @@ void lio_destroy_nl(lio_config_t *lio)
     exnode_service_set_destroy(lio->ess);
     exnode_service_set_destroy(lio->ess_nocache);
 
-    inip_destroy(lio->ifd);
+    tbx_inip_destroy(lio->ifd);
 
     //** Table of open files
-    list_destroy(lio->open_index);
+    tbx_list_destroy(lio->open_index);
 
     //** Blacklist if used
-    if (lio->blacklist != NULL) blacklist_destroy(lio->blacklist);
+    if (lio->blacklist != NULL) blacktbx_list_destroy(lio->blacklist);
 
     apr_thread_mutex_destroy(lio->lock);
     apr_pool_destroy(lio->mpool);
@@ -834,7 +834,7 @@ lio_config_t *lio_create_nl(char *fname, char *section, char *user, char *exe_na
         return(lio);
     }
 
-    type_malloc_clear(lio, lio_config_t, 1);
+    tbx_type_malloc_clear(lio, lio_config_t, 1);
     lio->ess = exnode_service_set_create();
     lio->auto_translate = 1;
     if (exe_name) lio->exe_name = strdup(exe_name);
@@ -847,18 +847,18 @@ lio_config_t *lio_create_nl(char *fname, char *section, char *user, char *exe_na
     lio->cfg_name = strdup(fname);
     lio->section_name = strdup(section);
 
-    lio->ifd = inip_read(lio->cfg_name);
+    lio->ifd = tbx_inip_file_read(lio->cfg_name);
 
     _lio_load_plugins(lio, lio->ifd);  //** Load the plugins
 
-    lio->timeout = inip_get_integer(lio->ifd, section, "timeout", 120);
-    lio->max_attr = inip_get_integer(lio->ifd, section, "max_attr_size", 10*1024*1024);
-    lio->calc_adler32 = inip_get_integer(lio->ifd, section, "calc_adler32", 0);
-    lio->readahead = inip_get_integer(lio->ifd, section, "readahead", 0);
-    lio->readahead_trigger = lio->readahead * inip_get_double(lio->ifd, section, "readahead_trigger", 1.0);
+    lio->timeout = tbx_inip_integer_get(lio->ifd, section, "timeout", 120);
+    lio->max_attr = tbx_inip_integer_get(lio->ifd, section, "max_attr_size", 10*1024*1024);
+    lio->calc_adler32 = tbx_inip_integer_get(lio->ifd, section, "calc_adler32", 0);
+    lio->readahead = tbx_inip_integer_get(lio->ifd, section, "readahead", 0);
+    lio->readahead_trigger = lio->readahead * tbx_inip_double_get(lio->ifd, section, "readahead_trigger", 1.0);
 
     //** Check and see if we need to enable the blacklist
-    stype = inip_get_string(lio->ifd, section, "blacklist", NULL);
+    stype = tbx_inip_string_get(lio->ifd, section, "blacklist", NULL);
     if (stype != NULL) { //** Yup we need to parse and load those params
         lio->blacklist = blacklist_load(lio->ifd, stype);
         add_service(lio->ess, ESS_RUNNING, "blacklist", lio->blacklist);
@@ -866,12 +866,12 @@ lio_config_t *lio_create_nl(char *fname, char *section, char *user, char *exe_na
     }
 
     //** Add the Jerase paranoid option
-    type_malloc(val, int, 1);  //** NOTE: this is not freed on a destroy
-    *val = inip_get_integer(lio->ifd, section, "jerase_paranoid", 0);
+    tbx_type_malloc(val, int, 1);  //** NOTE: this is not freed on a destroy
+    *val = tbx_inip_integer_get(lio->ifd, section, "jerase_paranoid", 0);
     add_service(lio->ess, ESS_RUNNING, "jerase_paranoid", val);
 
-    cores = inip_get_integer(lio->ifd, section, "tpc_unlimited", 200);
-    max_recursion = inip_get_integer(lio->ifd, section, "tpc_max_recursion", 10);
+    cores = tbx_inip_integer_get(lio->ifd, section, "tpc_unlimited", 200);
+    max_recursion = tbx_inip_integer_get(lio->ifd, section, "tpc_max_recursion", 10);
     sprintf(buffer, "tpc:%d", cores);
     stype = buffer;
     lio->tpc_unlimited_section = strdup(stype);
@@ -893,7 +893,7 @@ lio_config_t *lio_create_nl(char *fname, char *section, char *user, char *exe_na
     add_service(lio->ess, ESS_RUNNING, ESS_TPC_UNLIMITED, lio->tpc_unlimited);
 
 
-    cores = inip_get_integer(lio->ifd, section, "tpc_cache", 100);
+    cores = tbx_inip_integer_get(lio->ifd, section, "tpc_cache", 100);
     sprintf(buffer, "tpc-cache:%d", cores);
     stype = buffer;
     lio->tpc_cache_section = strdup(stype);
@@ -915,7 +915,7 @@ lio_config_t *lio_create_nl(char *fname, char *section, char *user, char *exe_na
     add_service(lio->ess, ESS_RUNNING, ESS_TPC_CACHE, lio->tpc_cache);
 
 
-    stype = inip_get_string(lio->ifd, section, "mq", "mq_context");
+    stype = tbx_inip_string_get(lio->ifd, section, "mq", "mq_context");
     lio->mq_section = stype;
     lio->mqc = _lc_object_get(stype);
     if (lio->mqc == NULL) {  //** Need to load it
@@ -936,11 +936,11 @@ lio_config_t *lio_create_nl(char *fname, char *section, char *user, char *exe_na
     mq_ongoing_t *on = mq_ongoing_create(lio->mqc, NULL, 1, ONGOING_CLIENT);
     add_service(lio->ess, ESS_RUNNING, ESS_ONGOING_CLIENT, on);
 
-    stype = inip_get_string(lio->ifd, section, "ds", DS_TYPE_IBP);
+    stype = tbx_inip_string_get(lio->ifd, section, "ds", DS_TYPE_IBP);
     lio->ds_section = stype;
     lio->ds = _lc_object_get(stype);
     if (lio->ds == NULL) {  //** Need to load it
-        ctype = inip_get_string(lio->ifd, stype, "type", DS_TYPE_IBP);
+        ctype = tbx_inip_string_get(lio->ifd, stype, "type", DS_TYPE_IBP);
         ds_create = lookup_service(lio->ess, DS_SM_AVAILABLE, ctype);
         lio->ds = (*ds_create)(lio->ess, lio->ifd, stype);
         if (lio->ds == NULL) {
@@ -960,11 +960,11 @@ lio_config_t *lio_create_nl(char *fname, char *section, char *user, char *exe_na
     add_service(lio->ess, ESS_RUNNING, ESS_DS, lio->ds);  //** This is needed by the RS service
     add_service(lio->ess, ESS_RUNNING, ESS_DA, lio->da);  //** This is needed by the RS service
 
-    stype = inip_get_string(lio->ifd, section, "rs", RS_TYPE_SIMPLE);
+    stype = tbx_inip_string_get(lio->ifd, section, "rs", RS_TYPE_SIMPLE);
     lio->rs_section = stype;
     lio->rs = _lc_object_get(stype);
     if (lio->rs == NULL) {  //** Need to load it
-        ctype = inip_get_string(lio->ifd, stype, "type", RS_TYPE_SIMPLE);
+        ctype = tbx_inip_string_get(lio->ifd, stype, "type", RS_TYPE_SIMPLE);
         rs_create = lookup_service(lio->ess, RS_SM_AVAILABLE, ctype);
         lio->rs = (*rs_create)(lio->ess, lio->ifd, stype);
         if (lio->rs == NULL) {
@@ -979,11 +979,11 @@ lio_config_t *lio_create_nl(char *fname, char *section, char *user, char *exe_na
     }
     add_service(lio->ess, ESS_RUNNING, ESS_RS, lio->rs);
 
-    stype = inip_get_string(lio->ifd, section, "os", "osfile");
+    stype = tbx_inip_string_get(lio->ifd, section, "os", "osfile");
     lio->os_section = stype;
     lio->os = _lc_object_get(stype);
     if (lio->os == NULL) {  //** Need to load it
-        ctype = inip_get_string(lio->ifd, stype, "type", OS_TYPE_FILE);
+        ctype = tbx_inip_string_get(lio->ifd, stype, "type", OS_TYPE_FILE);
         os_create = lookup_service(lio->ess, OS_AVAILABLE, ctype);
         lio->os = (*os_create)(lio->ess, lio->ifd, stype);
         if (lio->os == NULL) {
@@ -999,14 +999,14 @@ lio_config_t *lio_create_nl(char *fname, char *section, char *user, char *exe_na
     add_service(lio->ess, ESS_RUNNING, ESS_OS, lio->os);
 
     cred_args[0] = lio->cfg_name;
-    cred_args[1] = (user == NULL) ? inip_get_string(lio->ifd, section, "user", "guest") : strdup(user);
+    cred_args[1] = (user == NULL) ? tbx_inip_string_get(lio->ifd, section, "user", "guest") : strdup(user);
     snprintf(buffer, sizeof(buffer), "tuple:%s@%s", cred_args[1], lio->section_name);
     stype = buffer;
     lio->creds_name = strdup(buffer);
     tuple = _lc_object_get(stype);
     if (tuple == NULL) {  //** Need to load it
         lio->creds = os_cred_init(lio->os, OS_CREDS_INI_TYPE, (void **)cred_args);
-        type_malloc_clear(tuple, lio_path_tuple_t, 1);
+        tbx_type_malloc_clear(tuple, lio_path_tuple_t, 1);
         tuple->creds = lio->creds;
         tuple->lc = lio;
         _lc_object_put(stype, tuple);  //** Add it to the table
@@ -1020,8 +1020,8 @@ lio_config_t *lio_create_nl(char *fname, char *section, char *user, char *exe_na
     _lc_object_get(buffer);
 
     if (_lio_cache == NULL) {
-        stype = inip_get_string(lio->ifd, section, "cache", CACHE_TYPE_AMP);
-        ctype = inip_get_string(lio->ifd, stype, "type", CACHE_TYPE_AMP);
+        stype = tbx_inip_string_get(lio->ifd, section, "cache", CACHE_TYPE_AMP);
+        ctype = tbx_inip_string_get(lio->ifd, stype, "type", CACHE_TYPE_AMP);
         cache_create = lookup_service(lio->ess, CACHE_LOAD_AVAILABLE, ctype);
         _lio_cache = (*cache_create)(lio->ess, lio->ifd, stype, lio->da, lio->timeout);
         if (_lio_cache == NULL) {
@@ -1043,7 +1043,7 @@ lio_config_t *lio_create_nl(char *fname, char *section, char *user, char *exe_na
     add_service(lio->ess, ESS_RUNNING, ESS_CACHE, lio->cache);
 
     //** Table of open files
-    lio->open_index = create_skiplist_full(10, 0.5, 0, &ex_id_compare, NULL, NULL, NULL);
+    lio->open_index = tbx_sl_new_full(10, 0.5, 0, &ex_id_compare, NULL, NULL, NULL);
 
     assert_result(apr_pool_create(&(lio->mpool), NULL), APR_SUCCESS);
     apr_thread_mutex_create(&(lio->lock), APR_THREAD_MUTEX_DEFAULT, lio->mpool);
@@ -1148,24 +1148,24 @@ int env2args(char *env, int *argc, char ***eargv)
     char *bstate, **argv;
 
     n = 100;
-    type_malloc_clear(argv, char *, n);
+    tbx_type_malloc_clear(argv, char *, n);
 
     i = 0;
-    argv[i] = string_token(env, " ", &bstate, &fin);
+    argv[i] = tbx_stk_string_token(env, " ", &bstate, &fin);
     while (fin == 0) {
         i++;
         if (i==n) {
             n += 10;
-            type_realloc(argv, char *, n);
+            tbx_type_realloc(argv, char *, n);
         }
-        argv[i] = string_token(NULL, " ", &bstate, &fin);
+        argv[i] = tbx_stk_string_token(NULL, " ", &bstate, &fin);
     }
 
     *argc = i;
     if (i == 0) {
         *argv = NULL;
     } else {
-        type_realloc(argv, char *, i);
+        tbx_type_realloc(argv, char *, i);
     }
 
     *eargv = argv;
@@ -1202,7 +1202,7 @@ int lio_init(int *argc, char ***argvp)
         return 0;
     }
 
-    set_log_level(-1);  //** Disables log output
+    tbx_set_log_level(-1);  //** Disables log output
 
     argv = *argvp;
 
@@ -1211,7 +1211,7 @@ int lio_init(int *argc, char ***argvp)
     //** Create the lio object container
     apr_pool_create(&_lc_mpool, NULL);
     apr_thread_mutex_create(&_lc_lock, APR_THREAD_MUTEX_DEFAULT, _lc_mpool);
-    _lc_object_list = list_create(0, &list_string_compare, NULL, list_no_key_free, list_no_data_free);
+    _lc_object_list = tbx_list_create(0, &tbx_list_string_compare, NULL, tbx_list_no_key_free, tbx_list_no_data_free);
 
 //argv = *argvp;
 //printf("start argc=%d\n", *argc);
@@ -1246,7 +1246,7 @@ int lio_init(int *argc, char ***argvp)
 
         if (neargs > 0) {
             ll = *argc + neargs;
-            type_malloc_clear(myargv, char *, ll);
+            tbx_type_malloc_clear(myargv, char *, ll);
             myargv[0] = argv[0];
             memcpy(&(myargv[1]), eargv, sizeof(char *)*neargs);
             if (*argc > 1) memcpy(&(myargv[neargs+1]), &(argv[1]), sizeof(char *)*(*argc - 1));
@@ -1261,7 +1261,7 @@ int lio_init(int *argc, char ***argvp)
         }
     }
 
-    type_malloc_clear(myargv, char *, *argc);
+    tbx_type_malloc_clear(myargv, char *, *argc);
 
 
     //** Parse any arguments
@@ -1346,7 +1346,7 @@ no_args:
 
     if (_lio_ifd == NULL) _lio_ifd = stdout;
 
-    lio_ifd = info_create(_lio_ifd, if_mode, ifll);
+    lio_ifd = tbx_info_create(_lio_ifd, if_mode, ifll);
 
 
     //** Adjust argv to reflect the parsed arguments
@@ -1370,7 +1370,7 @@ no_args:
 
 
     if (cfg_name != NULL) {
-        mlog_load(cfg_name, out_override, ll_override);
+        tbx_mlog_load(cfg_name, out_override, ll_override);
 
         lio_gc = lio_create(cfg_name, section_name, userid, name);
         lio_gc->ref_cnt = 1;

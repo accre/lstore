@@ -20,7 +20,7 @@
 #include "opque.h"
 #include "ibp.h"
 #include "iovec_sync.h"
-#include "log.h"
+#include <tbx/log.h>
 
 int _sync_transfer = 0;
 int _print_progress = 0;
@@ -80,7 +80,7 @@ int io_waitall(opque_t *q)
         }
 
         log_printf(15, "io_waitall: err=%d nfailed=%d nleft=%d\n", err, opque_tasks_failed(q), opque_tasks_left(q));
-//flush_log();
+//tbx_flush_log();
     }
 
     return(err);

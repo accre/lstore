@@ -20,20 +20,22 @@
 
 #define _log_module_index 162
 
+#include <unistd.h>
+#include <sys/types.h>
 #include <libgen.h>
 #include "ex3_abstract.h"
 #include "ex3_system.h"
-#include "interval_skiplist.h"
+#include <tbx/interval_skiplist.h>
 #include "ex3_compare.h"
-#include "log.h"
-#include "string_token.h"
+#include <tbx/log.h>
+#include <tbx/string_token.h>
 #include "segment_linear.h"
-#include "iniparse.h"
-#include "random.h"
-#include "append_printf.h"
-#include "type_malloc.h"
+#include <tbx/iniparse.h>
+#include <tbx/random.h>
+#include <tbx/append_printf.h>
+#include <tbx/type_malloc.h>
 #include "segment_file.h"
-#include "atomic_counter.h"
+#include <tbx/atomic_counter.h>
 
 typedef struct {
     char *fname;
@@ -93,9 +95,9 @@ op_status_t segfile_rw_func(void *arg, int id)
     FILE *fd = fopen(s->fname, "r+");
     if (fd == NULL) fd = fopen(s->fname, "w+");
 
-    log_printf(15, "segfile_rw_func: tid=%d fname=%s n_iov=%d off[0]=" XOT " len[0]=" XOT " mode=%d\n", atomic_thread_id, s->fname, srw->n_iov, srw->iov[0].offset, srw->iov[0].len, srw->mode);
-    flush_log();
-    tbuffer_var_init(&tbv);
+    log_printf(15, "segfile_rw_func: tid=%d fname=%s n_iov=%d off[0]=" XOT " len[0]=" XOT " mode=%d\n", tbx_atomic_thread_id, s->fname, srw->n_iov, srw->iov[0].offset, srw->iov[0].len, srw->mode);
+    tbx_flush_log();
+    tbx_tbuf_var_init(&tbv);
 
     blen = srw->len;
     boff = srw->boff;
@@ -107,7 +109,7 @@ op_status_t segfile_rw_func(void *arg, int id)
         err = op_success_status;
         while ((bleft > 0) && (err.op_status == OP_STATE_SUCCESS)) {
             tbv.nbytes = bleft;
-            tbuffer_next(srw->buffer, boff, &tbv);
+            tbx_tbuf_next(srw->buffer, boff, &tbv);
             blen = tbv.nbytes;
             if (srw->mode == 0) {
                 nbytes = readv(fileno(fd), tbv.buffer, tbv.n_iov);
@@ -117,8 +119,8 @@ op_status_t segfile_rw_func(void *arg, int id)
 
             int ib = blen;
             int inb = nbytes;
-            log_printf(15, "segfile_rw_func: tid=%d fname=%s n_iov=%d off[0]=" XOT " len[0]=" XOT " blen=%d nbytes=%d err_cnt=%d\n", atomic_thread_id, s->fname, srw->n_iov, srw->iov[0].offset, srw->iov[0].len, ib, inb, err_cnt);
-            flush_log();
+            log_printf(15, "segfile_rw_func: tid=%d fname=%s n_iov=%d off[0]=" XOT " len[0]=" XOT " blen=%d nbytes=%d err_cnt=%d\n", tbx_atomic_thread_id, s->fname, srw->n_iov, srw->iov[0].offset, srw->iov[0].len, ib, inb, err_cnt);
+            tbx_flush_log();
 
             if (nbytes > 0) {
                 boff = boff + nbytes;
@@ -133,13 +135,13 @@ op_status_t segfile_rw_func(void *arg, int id)
     err =  (err_cnt > 0) ? op_failure_status : op_success_status;
 
     if (err_cnt > 0) {  //** Update the error count if needed
-        log_printf(15, "segfile_rw_func: ERROR tid=%d fname=%s n_iov=%d off[0]=" XOT " len[0]=" XOT " bleft=" XOT " err_cnt=%d\n", atomic_thread_id, s->fname, srw->n_iov, srw->iov[0].offset, srw->iov[0].len, bleft, err_cnt);
-        atomic_inc(s->hard_errors);
-        if (srw->mode != 0) atomic_inc(s->write_errors);
+        log_printf(15, "segfile_rw_func: ERROR tid=%d fname=%s n_iov=%d off[0]=" XOT " len[0]=" XOT " bleft=" XOT " err_cnt=%d\n", tbx_atomic_thread_id, s->fname, srw->n_iov, srw->iov[0].offset, srw->iov[0].len, bleft, err_cnt);
+        tbx_atomic_inc(s->hard_errors);
+        if (srw->mode != 0) tbx_atomic_inc(s->write_errors);
     }
 
-    log_printf(15, "segfile_rw_func: tid=%d fname=%s n_iov=%d off[0]=" XOT " len[0]=" XOT " bleft=" XOT " err_cnt=%d\n", atomic_thread_id, s->fname, srw->n_iov, srw->iov[0].offset, srw->iov[0].len, bleft, err_cnt);
-    flush_log();
+    log_printf(15, "segfile_rw_func: tid=%d fname=%s n_iov=%d off[0]=" XOT " len[0]=" XOT " bleft=" XOT " err_cnt=%d\n", tbx_atomic_thread_id, s->fname, srw->n_iov, srw->iov[0].offset, srw->iov[0].len, bleft, err_cnt);
+    tbx_flush_log();
 //log_printf(15, "segfile_rw_func: buf=%20s\n", (char *)srw->buffer->buf.iov[0].iov_base);
     fclose(fd);
     return(err);
@@ -154,7 +156,7 @@ op_generic_t *segfile_read(segment_t *seg, data_attr_t *da, segment_rw_hints_t *
     segfile_priv_t *s = (segfile_priv_t *)seg->priv;
     segfile_rw_op_t *srw;
 
-    type_malloc_clear(srw, segfile_rw_op_t, 1);
+    tbx_type_malloc_clear(srw, segfile_rw_op_t, 1);
 
     srw->seg = seg;
     srw->n_iov = n_iov;
@@ -176,7 +178,7 @@ op_generic_t *segfile_write(segment_t *seg, data_attr_t *da, segment_rw_hints_t 
     segfile_priv_t *s = (segfile_priv_t *)seg->priv;
     segfile_rw_op_t *srw;
 
-    type_malloc_clear(srw, segfile_rw_op_t, 1);
+    tbx_type_malloc_clear(srw, segfile_rw_op_t, 1);
 
     srw->seg = seg;
     srw->n_iov = n_iov;
@@ -222,7 +224,7 @@ op_generic_t *segfile_remove(segment_t *seg, data_attr_t *da, int timeout)
     segfile_priv_t *s = (segfile_priv_t *)seg->priv;
     segfile_multi_op_t *cmd;
 
-    type_malloc_clear(cmd, segfile_multi_op_t, 1);
+    tbx_type_malloc_clear(cmd, segfile_multi_op_t, 1);
 
     cmd->seg = seg;
     cmd->new_size = -1;
@@ -241,7 +243,7 @@ op_generic_t *segfile_truncate(segment_t *seg, data_attr_t *da, ex_off_t new_siz
 
     if (new_size < 0) return(gop_dummy(op_success_status));  //** Reserve call which we ignore
 
-    type_malloc_clear(cmd, segfile_multi_op_t, 1);
+    tbx_type_malloc_clear(cmd, segfile_multi_op_t, 1);
 
     cmd->seg = seg;
     cmd->new_size = new_size;
@@ -285,15 +287,15 @@ op_generic_t *segfile_inspect(segment_t *seg, data_attr_t *da, tbx_log_fd_t *ifd
         }
         break;
     case (INSPECT_SOFT_ERRORS):
-        err.error_code = atomic_get(s->soft_errors);
+        err.error_code = tbx_atomic_get(s->soft_errors);
         err.op_status = (err.error_code == 0) ? OP_STATE_SUCCESS : OP_STATE_FAILURE;
         break;
     case (INSPECT_HARD_ERRORS):
-        err.error_code = atomic_get(s->hard_errors);
+        err.error_code = tbx_atomic_get(s->hard_errors);
         err.op_status = (err.error_code == 0) ? OP_STATE_SUCCESS : OP_STATE_FAILURE;
         break;
     case (INSPECT_WRITE_ERRORS):
-        err.error_code = atomic_get(s->write_errors);
+        err.error_code = tbx_atomic_get(s->write_errors);
         err.op_status = (err.error_code == 0) ? OP_STATE_SUCCESS : OP_STATE_FAILURE;
         break;
     }
@@ -316,7 +318,7 @@ op_generic_t *segfile_flush(segment_t *seg, data_attr_t *da, ex_off_t lo, ex_off
 
 int segfile_signature(segment_t *seg, char *buffer, int *used, int bufsize)
 {
-    append_printf(buffer, used, bufsize, "file()\n");
+    tbx_append_printf(buffer, used, bufsize, "file()\n");
 
     return(0);
 }
@@ -352,7 +354,7 @@ op_status_t segfile_clone_func(void *arg, int id)
         return(op_success_status);
     }
 
-    type_malloc(buffer, char, bufsize);
+    tbx_type_malloc(buffer, char, bufsize);
     while ((n = fread(buffer, 1, bufsize, sfd)) > 0) {
         m = fwrite(buffer, 1, n, dfd);
 //log_printf(0, "r=%d w=%d bufsize=%d\n", n, m, bufsize);
@@ -407,7 +409,7 @@ op_generic_t *segfile_clone(segment_t *seg, data_attr_t *da, segment_t **clone_s
         }
     }
 
-    type_malloc(sfc, segfile_clone_t, 1);
+    tbx_type_malloc(sfc, segfile_clone_t, 1);
     sfc->sseg = seg;
     sfc->dseg = clone;
     sfc->copy_data = 0;
@@ -467,15 +469,15 @@ int segfile_serialize_text(segment_t *seg, exnode_exchange_t *exp)
     sused = 0;
 
     //** Store the segment header
-    append_printf(segbuf, &sused, bufsize, "[segment-" XIDT "]\n", seg->header.id);
+    tbx_append_printf(segbuf, &sused, bufsize, "[segment-" XIDT "]\n", seg->header.id);
     if ((seg->header.name != NULL) && (strcmp(seg->header.name, "") != 0)) {
-        etext = escape_text("=", '\\', seg->header.name);
-        append_printf(segbuf, &sused, bufsize, "name=%s\n", etext);
+        etext = tbx_stk_escape_text("=", '\\', seg->header.name);
+        tbx_append_printf(segbuf, &sused, bufsize, "name=%s\n", etext);
         free(etext);
     }
-    append_printf(segbuf, &sused, bufsize, "type=%s\n", seg->header.type);
-    append_printf(segbuf, &sused, bufsize, "ref_count=%d\n", seg->ref_count);
-    append_printf(segbuf, &sused, bufsize, "file=%s\n\n", s->fname);
+    tbx_append_printf(segbuf, &sused, bufsize, "type=%s\n", seg->header.type);
+    tbx_append_printf(segbuf, &sused, bufsize, "ref_count=%d\n", seg->ref_count);
+    tbx_append_printf(segbuf, &sused, bufsize, "file=%s\n\n", s->fname);
 
     exnode_exchange_append_text(exp, segbuf);
 
@@ -536,10 +538,10 @@ int segfile_deserialize_text(segment_t *seg, ex_id_t id, exnode_exchange_t *exp)
     s->qname = strdup(qname);
 
     seg->header.type = SEGMENT_TYPE_FILE;
-    seg->header.name = inip_get_string(fd, seggrp, "name", "");
+    seg->header.name = tbx_inip_string_get(fd, seggrp, "name", "");
 
     //** and the local file name
-    s->fname = inip_get_string(fd, seggrp, "file", "");
+    s->fname = tbx_inip_string_get(fd, seggrp, "file", "");
 
     if (strcmp(s->fname, "") == 0) {
         s->fname = NULL;
@@ -631,13 +633,13 @@ segment_t *segment_file_create(void *arg)
     char qname[512];
 
     //** Make the space
-    type_malloc_clear(seg, segment_t, 1);
-    type_malloc_clear(s, segfile_priv_t, 1);
+    tbx_type_malloc_clear(seg, segment_t, 1);
+    tbx_type_malloc_clear(s, segfile_priv_t, 1);
 
     s->fname = NULL;
 
     generate_ex_id(&(seg->header.id));
-    atomic_set(seg->ref_count, 0);
+    tbx_atomic_set(seg->ref_count, 0);
     seg->header.type = SEGMENT_TYPE_FILE;
 
     s->tpc = lookup_service(es, ESS_RUNNING, ESS_TPC_UNLIMITED);

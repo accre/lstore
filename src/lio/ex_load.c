@@ -17,10 +17,10 @@
 #define _log_module_index 172
 
 #include <assert.h>
-#include "assert_result.h"
+#include <tbx/assert_result.h>
 #include "exnode.h"
-#include "log.h"
-#include "type_malloc.h"
+#include <tbx/log.h>
+#include <tbx/type_malloc.h>
 #include "lio.h"
 
 //*************************************************************************

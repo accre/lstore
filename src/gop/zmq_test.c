@@ -1,9 +1,9 @@
-#include "type_malloc.h"
-#include "log.h"
+#include <tbx/type_malloc.h>
+#include <tbx/log.h>
 #include "apr_signal.h"
-#include "apr_wrapper.h"
+#include <tbx/apr_wrapper.h>
 #include "opque.h"
-#include "random.h"
+#include <tbx/random.h>
 #include <stdlib.h>
 #include <zmq.h>
 #include <czmq.h>
@@ -75,7 +75,7 @@ int socket_connect(void *socket, const char *format, ...)
     snprintf(buf, 255, format, args);
 //  snprintf(id, 255, "%s:%ld", buf, random());
 
-    snprintf(id, 255, "%ld", random_int(1, 1000));
+    snprintf(id, 255, "%ld", tbx_random_int64(1, 1000));
     zsocket_set_identity(socket, strdup(id));
 
     err = zsocket_connect(socket, format, args);
@@ -217,7 +217,7 @@ int main(int argc, char **argv)
 
         if (strcmp(argv[i], "-d") == 0) { //** Enable debugging
             i++;
-            set_log_level(atol(argv[i]));
+            tbx_set_log_level(atol(argv[i]));
             i++;
         } else if (strcmp(argv[i], "-c") == 0) { //** Client mode
             i++;
@@ -233,7 +233,7 @@ int main(int argc, char **argv)
     } while ((start_option < i) && (i<argc));
 
 
-    init_random();
+    tbx_random_startup();
 
     if (test_mode == MODE_CLIENT) {
         run_client();

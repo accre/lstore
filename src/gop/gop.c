@@ -17,16 +17,17 @@
 #define _log_module_index 124
 
 #include <assert.h>
-#include "assert_result.h"
+#include <tbx/assert_result.h>
+#include <apr_thread_proc.h>
 #include <apr_thread_mutex.h>
 #include <apr_thread_cond.h>
 #include <stdlib.h>
 #include <string.h>
-#include "type_malloc.h"
-#include "log.h"
+#include <tbx/type_malloc.h>
+#include <tbx/log.h>
 #include "opque.h"
-#include "atomic_counter.h"
-#include "apr_wrapper.h"
+#include <tbx/atomic_counter.h>
+#include <tbx/apr_wrapper.h>
 
 //** Defined in opque.c
 void _opque_start_execution(opque_t *que);
@@ -100,7 +101,7 @@ void *gd_thread_func(apr_thread_t *th, void *data)
     apr_thread_mutex_lock(gd_lock);
     while (gd_shutdown == 0) {
         //** Execute everything on the stack
-        while ((gop = (op_generic_t *)pop(gd_stack)) != NULL) {
+        while ((gop = (op_generic_t *)tbx_stack_pop(gd_stack)) != NULL) {
             log_printf(15, "DUMMY gid=%d status=%d\n", gop_id(gop), gop->base.status.op_status);
             apr_thread_mutex_unlock(gd_lock);
             gop_mark_completed(gop, gop->base.status);
@@ -126,10 +127,10 @@ void gop_dummy_init()
     assert_result(apr_pool_create(&gd_pool, NULL), APR_SUCCESS);
     assert_result(apr_thread_mutex_create(&gd_lock, APR_THREAD_MUTEX_DEFAULT, gd_pool), APR_SUCCESS);
     assert_result(apr_thread_cond_create(&gd_cond, gd_pool), APR_SUCCESS);
-    gd_stack = new_stack();
+    gd_stack = tbx_stack_new();
 
     //** and launch the thread
-    thread_create_assert(&gd_thread, NULL, gd_thread_func, NULL, gd_pool);
+    tbx_thread_create_assert(&gd_thread, NULL, gd_thread_func, NULL, gd_pool);
 }
 
 //***********************************************************************
@@ -150,7 +151,7 @@ void gop_dummy_destroy()
     apr_thread_join(&tstat, gd_thread);
 
     //** Clean up;
-    free_stack(gd_stack, 0);
+    tbx_free_stack(gd_stack, 0);
     apr_thread_mutex_destroy(gd_lock);
     apr_thread_cond_destroy(gd_cond);
     apr_pool_destroy(gd_pool);
@@ -167,7 +168,7 @@ void _gop_dummy_submit_op(void *arg, op_generic_t *op)
     log_printf(15, "gid=%d\n", gop_id(op));
 //  if (op->base.cb != NULL) {  //** gop is on a q
     apr_thread_mutex_lock(gd_lock);
-    push(gd_stack, op);
+    tbx_stack_push(gd_stack, op);
     apr_thread_cond_signal(gd_cond);
     apr_thread_mutex_unlock(gd_lock);
     return;
@@ -210,10 +211,10 @@ op_generic_t *gop_dummy(op_status_t state)
 {
     op_generic_t *gop;
 
-    type_malloc_clear(gop, op_generic_t, 1);
+    tbx_type_malloc_clear(gop, op_generic_t, 1);
 
     log_printf(15, " state=%d\n", state.op_status);
-    flush_log();
+    tbx_flush_log();
 
     gop_init(gop);
     gop->base.pc = &_gop_dummy_pc;
@@ -259,7 +260,7 @@ int _gop_completed_successfully(op_generic_t *g)
     int status;
 
     if (gop_get_type(g) == Q_TYPE_QUE) {
-        status = stack_size(g->q->failed);
+        status = tbx_stack_size(g->q->failed);
         status = (status == 0) ? g->base.status.op_status : OP_STATE_FAILURE;
     } else {
         status = g->base.status.op_status;
@@ -294,7 +295,7 @@ op_generic_t *gop_get_next_finished(op_generic_t *g)
 
     lock_gop(g);
     if (gop_get_type(g) == Q_TYPE_QUE) {
-        gop = (op_generic_t *)pop(g->q->finished);
+        gop = (op_generic_t *)tbx_stack_pop(g->q->finished);
     } else {
         gop = NULL;
         if (g->base.failure_mode != OP_FM_GET_END) {
@@ -318,7 +319,7 @@ op_generic_t *gop_get_next_failed(op_generic_t *g)
 
     lock_gop(g);
     if (gop_get_type(g) == Q_TYPE_QUE) {
-        gop = (op_generic_t *)pop(g->q->failed);
+        gop = (op_generic_t *)tbx_stack_pop(g->q->failed);
     } else {
         gop = NULL;
         if (g->base.failure_mode != OP_FM_GET_END) {
@@ -342,7 +343,7 @@ int gop_tasks_failed(op_generic_t *g)
 
     lock_gop(g);
     if (gop_get_type(g) == Q_TYPE_QUE) {
-        nf = stack_size(g->q->failed);
+        nf = tbx_stack_size(g->q->failed);
     } else {
         nf = (g->base.status.op_status == OP_STATE_SUCCESS) ? 0 : 1;
     }
@@ -361,7 +362,7 @@ int gop_tasks_finished(op_generic_t *g)
 
     lock_gop(g);
     if (gop_get_type(g) == Q_TYPE_QUE) {
-        nf = stack_size(g->q->finished);
+        nf = tbx_stack_size(g->q->finished);
     } else {
         nf = (g->base.state == 1) ? 1 : 0;
     }
@@ -482,7 +483,7 @@ void gop_free(op_generic_t *gop, int mode)
 {
     int type;
 
-    log_printf(15, "gop_free: gid=%d tid=%d\n", gop_id(gop), atomic_thread_id);
+    log_printf(15, "gop_free: gid=%d tid=%d\n", gop_id(gop), tbx_atomic_thread_id);
     //** Get the status
     type = gop_get_type(gop);
     if (type == Q_TYPE_QUE) {
@@ -521,7 +522,7 @@ int gop_will_block(op_generic_t *g)
 
     lock_gop(g);
     if (gop_get_type(g) == Q_TYPE_QUE) {
-        if ((stack_size(g->q->finished) == 0) && (g->q->nleft > 0)) status = 1;
+        if ((tbx_stack_size(g->q->finished) == 0) && (g->q->nleft > 0)) status = 1;
     } else {
         if (g->base.state == 0) status = 1;
     }
@@ -543,19 +544,19 @@ op_generic_t *gop_waitany(op_generic_t *g)
     lock_gop(g);
 
     if (gop_get_type(g) == Q_TYPE_QUE) {
-        log_printf(15, "sync_exec_que_check gid=%d stack_size=%d started_exec=%d\n", gop_id(g), stack_size(g->q->opque->qd.list), g->base.started_execution);
-        if ((stack_size(g->q->opque->qd.list) == 1) && (g->base.started_execution == 0)) {  //** See if we can directly exec
+        log_printf(15, "sync_exec_que_check gid=%d stack_size=%d started_exec=%d\n", gop_id(g), tbx_stack_size(g->q->opque->qd.list), g->base.started_execution);
+        if ((tbx_stack_size(g->q->opque->qd.list) == 1) && (g->base.started_execution == 0)) {  //** See if we can directly exec
             g->base.started_execution = 1;
-            cb = (callback_t *)pop(g->q->opque->qd.list);
+            cb = (callback_t *)tbx_stack_pop(g->q->opque->qd.list);
             gop = (op_generic_t *)cb->priv;
             log_printf(15, "sync_exec_que -- waiting for pgid=%d cgid=%d to complete\n", gop_id(g), gop_id(gop));
             unlock_gop(g);
             gop_waitany(gop);
-            pop(g->q->finished); //** Remove it from the finished list.
+            tbx_stack_pop(g->q->finished); //** Remove it from the finished list.
             return(gop);
         } else {
             _gop_start_execution(g);  //** Make sure things have been submitted
-            while (((gop = (op_generic_t *)pop(g->q->finished)) == NULL) && (g->q->nleft > 0)) {
+            while (((gop = (op_generic_t *)tbx_stack_pop(g->q->finished)) == NULL) && (g->q->nleft > 0)) {
                 apr_thread_cond_wait(g->base.ctl->cond, g->base.ctl->lock); //** Sleep until something completes
             }
         }
@@ -565,7 +566,7 @@ op_generic_t *gop_waitany(op_generic_t *g)
 //_opque_print_stack(g->q->finished);
     } else {
         log_printf(15, "gop_waitany: BEFORE (type=op) While gid=%d state=%d\n", gop_id(g), g->base.state);
-        flush_log();
+        tbx_flush_log();
         if ((g->base.pc->fn->sync_exec != NULL) && (g->base.started_execution == 0)) {  //** See if we can directly exec
             unlock_gop(g);  //** Don't need this for a direct exec
             log_printf(15, "sync_exec -- waiting for gid=%d to complete\n", gop_id(g));
@@ -581,7 +582,7 @@ op_generic_t *gop_waitany(op_generic_t *g)
             }
         }
         log_printf(15, "gop_waitany: AFTER (type=op) While gid=%d state=%d\n", gop_id(g), g->base.state);
-        flush_log();
+        tbx_flush_log();
     }
     unlock_gop(g);
 
@@ -605,11 +606,11 @@ int gop_waitall(op_generic_t *g)
     lock_gop(g);
 
     if (gop_get_type(g) == Q_TYPE_QUE) {
-        log_printf(15, "sync_exec_que_check gid=%d stack_size=%d started_exec=%d\n", gop_id(g), stack_size(g->q->opque->qd.list), g->base.started_execution);
+        log_printf(15, "sync_exec_que_check gid=%d stack_size=%d started_exec=%d\n", gop_id(g), tbx_stack_size(g->q->opque->qd.list), g->base.started_execution);
 
-        if ((stack_size(g->q->opque->qd.list) == 1) && (g->base.started_execution == 0)) {  //** See if we can directly exec
+        if ((tbx_stack_size(g->q->opque->qd.list) == 1) && (g->base.started_execution == 0)) {  //** See if we can directly exec
             log_printf(15, "sync_exec_que -- waiting for gid=%d to complete\n", gop_id(g));
-            cb = (callback_t *)pop(g->q->opque->qd.list);
+            cb = (callback_t *)tbx_stack_pop(g->q->opque->qd.list);
             g2 = (op_generic_t *)cb->priv;
             unlock_gop(g);  //** Don't need this for a direct exec
             status = gop_waitall(g2);
@@ -663,7 +664,7 @@ op_generic_t *gop_timed_waitany(op_generic_t *g, int dt)
 
     loop = 0;
     if (gop_get_type(g) == Q_TYPE_QUE) {
-        while (((gop = (op_generic_t *)pop(g->q->finished)) == NULL) && (g->q->nleft > 0) && (loop == 0)) {
+        while (((gop = (op_generic_t *)tbx_stack_pop(g->q->finished)) == NULL) && (g->q->nleft > 0) && (loop == 0)) {
             apr_thread_cond_timedwait(g->base.ctl->cond, g->base.ctl->lock, adt); //** Sleep until something completes
             loop++;
         }
@@ -774,7 +775,7 @@ void gop_mark_completed(op_generic_t *gop, op_status_t status)
     if (gop->op != NULL) {
         cop = &(gop->op->cmd);
         if (cop->coalesced_ops != NULL) {
-            while ((sgop = (op_generic_t *)pop(cop->coalesced_ops)) != NULL) {
+            while ((sgop = (op_generic_t *)tbx_stack_pop(cop->coalesced_ops)) != NULL) {
                 single_gop_mark_completed(sgop, status);
             }
         }
@@ -853,7 +854,7 @@ op_status_t gop_sync_exec_status(op_generic_t *gop)
 
 void gop_reset(op_generic_t *gop)
 {
-    gop->base.id = atomic_global_counter();
+    gop->base.id = tbx_atomic_global_counter();
 
     unlock_gop(gop);
     gop->base.cb = NULL;
@@ -874,15 +875,15 @@ void gop_init(op_generic_t *gop)
 
     op_common_t *base = &(gop->base);
 
-    type_memclear(gop, op_generic_t, 1);
+    tbx_type_memclear(gop, op_generic_t, 1);
 
-    base->id = atomic_global_counter();
+    base->id = tbx_atomic_global_counter();
 
     log_printf(15, "gop ptr=%p gid=%d\n", gop, gop_id(gop));
 
     //** Get the control struct
-    pch = reserve_pigeon_coop_hole(_gop_control);
-    gop->base.ctl = (gop_control_t *)pigeon_coop_hole_data(&pch);
+    pch = tbx_pch_reserve(_gop_control);
+    gop->base.ctl = (gop_control_t *)tbx_pch_data(&pch);
     gop->base.ctl->pch = pch;
 }
 
@@ -900,7 +901,7 @@ void gop_generic_free(op_generic_t *gop, int mode)
     callback_destroy(gop->base.cb);  //** Free the callback chain as well
 
     unlock_gop(gop);  //** Make sure the lock is left in the proper state for reuse
-    release_pigeon_coop_hole(_gop_control, &(gop->base.ctl->pch));
+    tbx_pch_release(_gop_control, &(gop->base.ctl->pch));
 }
 
 //*************************************************************

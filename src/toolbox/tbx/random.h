@@ -14,24 +14,28 @@
    limitations under the License.
 */
 
-//**************************************************************
-//  Random number interface
-//**************************************************************
+#pragma once
+#ifndef ACCRE_RANDOM_H_INCLUDED
+#define ACCRE_RANDOM_H_INCLUDED
 
-#ifndef _RANDOM_H_
-#define _RANDOM_H_
-
-#include "tbx/toolbox_visibility.h"
 #include <inttypes.h>
+#include "tbx/toolbox_visibility.h"
 
-TBX_API int init_random();
-TBX_API int destroy_random();
-TBX_API int get_random(void *buf, int nbytes);
-void random_seed(const void *buf, int nbytes);
-double random_double(double lo, double hi);
-TBX_API int64_t random_int(int64_t lo, int64_t hi);
-
+#ifdef __cplusplus
+extern "C" {
 #endif
 
+// Functions
+TBX_API int tbx_random_shutdown();
 
+TBX_API int tbx_random_bytes_get(void *buf, int nbytes);
 
+TBX_API int tbx_random_startup();
+
+TBX_API int64_t tbx_random_int64(int64_t lo, int64_t hi);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif

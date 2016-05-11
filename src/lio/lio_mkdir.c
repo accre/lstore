@@ -17,11 +17,11 @@
 #define _log_module_index 199
 
 #include <assert.h>
-#include "assert_result.h"
+#include <tbx/assert_result.h>
 #include "exnode.h"
-#include "log.h"
-#include "iniparse.h"
-#include "type_malloc.h"
+#include <tbx/log.h>
+#include <tbx/iniparse.h>
+#include <tbx/type_malloc.h>
 #include "thread_pool.h"
 #include "lio.h"
 
@@ -119,7 +119,7 @@ int main(int argc, char **argv)
         fseek(fd, 0, SEEK_END);
 
         i = ftell(fd);
-        type_malloc(exnode_data, char, i+1);
+        tbx_type_malloc(exnode_data, char, i+1);
         exnode_data[i] = 0;
 
         fseek(fd, 0, SEEK_SET);
@@ -134,7 +134,7 @@ int main(int argc, char **argv)
 
     //** Spawn the tasks
     n = argc - start_index;
-    type_malloc(flist, lio_path_tuple_t, n);
+    tbx_type_malloc(flist, lio_path_tuple_t, n);
 
     q = new_opque();
     opque_start_execution(q);

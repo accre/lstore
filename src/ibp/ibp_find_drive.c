@@ -31,14 +31,14 @@
 #include <apr_file_io.h>
 #include <apr_poll.h>
 #include <unistd.h>
-#include "network.h"
-#include "fmttypes.h"
-#include "network.h"
-#include "log.h"
+#include <tbx/network.h>
+#include <tbx/fmttypes.h>
+#include <tbx/network.h>
+#include <tbx/log.h>
 #include "ibp.h"
 #include "iovec_sync.h"
 #include "io_wrapper.h"
-#include "type_malloc.h"
+#include <tbx/type_malloc.h>
 
 int a_duration=900;   //** Default duration
 
@@ -174,12 +174,12 @@ double write_allocs(ibp_capset_t *caps, int qlen, int n, int asize, int block_si
     tbx_stack_t *tbuf_free;
 
 
-    tbuf_free = new_stack();
-    type_malloc_clear(tbuf_index, int, qlen);
-    type_malloc_clear(buf, tbx_tbuf_t, qlen);
+    tbuf_free = tbx_stack_new();
+    tbx_type_malloc_clear(tbuf_index, int, qlen);
+    tbx_type_malloc_clear(buf, tbx_tbuf_t, qlen);
     for (i=0; i<qlen; i++) {
         tbuf_index[i] = i;
-        push(tbuf_free, &(tbuf_index[i]));
+        tbx_stack_push(tbuf_free, &(tbuf_index[i]));
     }
 
     //** Make the stuff to capture the kbd
@@ -217,7 +217,7 @@ double write_allocs(ibp_capset_t *caps, int qlen, int n, int asize, int block_si
 
     while (finished == 0) {
 //    nleft = qlen - opque_tasks_left(q);
-        nleft = stack_size(tbuf_free);
+        nleft = tbx_stack_size(tbuf_free);
 //    printf("\nLOOP: nleft=%d qlen=%d\n", nleft, qlen);
         if (nleft > 0) {
             for (j=block_start; j < nblocks; j++) {
@@ -229,7 +229,7 @@ double write_allocs(ibp_capset_t *caps, int qlen, int n, int asize, int block_si
                         goto skip_submit;
                     }
 
-                    slot = (int *)pop(tbuf_free);
+                    slot = (int *)tbx_stack_pop(tbuf_free);
 
                     if ((j==(nblocks-1)) && (rem > 0)) {
                         len = rem;
@@ -238,7 +238,7 @@ double write_allocs(ibp_capset_t *caps, int qlen, int n, int asize, int block_si
                     }
 //             printf("%d=(%d,%d) ", count, j, i);
 
-                    tbuffer_single(&(buf[*slot]), len, buffer);
+                    tbx_tbuf_single(&(buf[*slot]), len, buffer);
                     op = new_ibp_write_op(ic, get_ibp_cap(&(caps[i]), IBP_WRITECAP), j*block_size, &(buf[*slot]), 0, len, ibp_timeout);
                     gop_set_id(op, *slot);
                     ibp_op_set_cc(ibp_get_iop(op), cc);
@@ -266,7 +266,7 @@ skip_submit:
 
             count++;
             i = gop_get_id(op);
-            nbytes = nbytes + tbuffer_size(&(buf[i]));
+            nbytes = nbytes + tbx_tbuf_size(&(buf[i]));
             if (nbytes > print_bytes) {
                 dbytes = nbytes / (1.0*1024*1024*1024);
                 dtime = apr_time_now() - stime;
@@ -279,7 +279,7 @@ skip_submit:
                 stime = apr_time_now();
             }
 
-            push(tbuf_free, &(tbuf_index[i]));
+            tbx_stack_push(tbuf_free, &(tbuf_index[i]));
             gop_free(op, OP_DESTROY);
         } while (opque_tasks_finished(q) > 0);
     }
@@ -290,7 +290,7 @@ skip_submit:
     }
     opque_free(q, OP_DESTROY);
 
-    free_stack(tbuf_free, 0);
+    tbx_free_stack(tbuf_free, 0);
     free(tbuf_index);
     free(buf);
     free(buffer);
@@ -370,7 +370,7 @@ int main(int argc, char **argv)
     apr_time_t stime, dtime;
     double dt;
     char *net_cs_name, *disk_cs_name;
-    tbx_phoebus_t pcc;
+    //tbx_phoebus_t pcc;
     char pstr[2048];
     tbx_chksum_t cs;
     tbx_ns_chksum_t ns_cs;
@@ -431,28 +431,28 @@ int main(int argc, char **argv)
         if (strcmp(argv[i], "-d") == 0) { //** Enable debugging
             i++;
             llevel = atoi(argv[i]);
-            set_log_level(llevel);
+            tbx_set_log_level(llevel);
             i++;
         } else if (strcmp(argv[i], "-network_chksum") == 0) { //** Add checksum capability
             i++;
             net_cs_name = argv[i];
-            cs_type = chksum_name_type(argv[i]);
+            cs_type = tbx_chksum_type_name(argv[i]);
             if (cs_type == -1) {
                 printf("Invalid chksum type.  Got %s should be SHA1, SHA256, SHA512, or MD5\n", argv[i]);
                 abort();
             }
-            chksum_set(&cs, cs_type);
+            tbx_chksum_set(&cs, cs_type);
             i++;
 
             blocksize = atoi(argv[i])*1024;
             i++;
-            ns_chksum_set(&ns_cs, &cs, blocksize);
+            tbx_ns_chksum_set(&ns_cs, &cs, blocksize);
             ncs = &ns_cs;
             ibp_set_chksum(ic, ncs);
         } else if (strcmp(argv[i], "-disk_chksum") == 0) { //** Add checksum capability
             i++;
             disk_cs_name = argv[i];
-            disk_cs_type = chksum_name_type(argv[i]);
+            disk_cs_type = tbx_chksum_type_name(argv[i]);
             if (disk_cs_type < CHKSUM_DEFAULT) {
                 printf("Invalid chksum type.  Got %s should be NONE, SHA1, SHA256, SHA512, or MD5\n", argv[i]);
                 abort();
@@ -560,10 +560,13 @@ int main(int argc, char **argv)
         case NS_TYPE_SOCK:
             printf("Connection Type: SOCKET\n");
             break;
+// FIXME trim
+#if 0
         case NS_TYPE_PHOEBUS:
             phoebus_path_to_string(pstr, sizeof(pstr), &pcc);
             printf("Connection Type: PHOEBUS (%s)\n", pstr);
             break;
+#endif
         case NS_TYPE_1_SSL:
             printf("Connection Type: Single SSL\n");
             break;
@@ -636,7 +639,7 @@ int main(int argc, char **argv)
 
 //  printf("min_threads=%d max_threads=%d\n", ibp_get_min_depot_threads(), ibp_get_max_depot_threads());
 
-    printf("Final network connection counter: %d\n", network_counter(NULL));
+    printf("Final network connection counter: %d\n", tbx_network_counter(NULL));
 
     ibp_destroy_context(ic);  //** Shutdown IBP
 

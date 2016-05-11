@@ -18,7 +18,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <assert.h>
-#include "assert_result.h"
+#include <tbx/assert_result.h>
 #include "archive.h"
 
 // concatenates two strings together

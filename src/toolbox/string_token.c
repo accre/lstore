@@ -16,13 +16,19 @@
 
 #define _log_module_index 112
 
+#include <assert.h>
+#include <stdlib.h>
 #include <string.h>
 #include <strings.h>
 #include <stdio.h>
 #include <math.h>
-#include "fmttypes.h"
-#include "type_malloc.h"
-#include "string_token.h"
+#include "tbx/fmttypes.h"
+#include "tbx/type_malloc.h"
+#include "tbx/string_token.h"
+
+// Forward declarations
+int escape_count(char *special_chars, char escape_char, char *data);
+int64_t split_token_into_number_and_scale(char *token);
 
 char NULL_TERMINATOR = '\0';
 
@@ -32,7 +38,7 @@ char NULL_TERMINATOR = '\0';
 //   IF no more strings exist finished == 1;
 //*****************************************************************
 
-char *string_token(char *str, const char *sep, char **last, int *finished)
+char *tbx_stk_string_token(char *str, const char *sep, char **last, int *finished)
 {
     char *token = strtok_r(str, sep, last);
 
@@ -51,7 +57,7 @@ char *string_token(char *str, const char *sep, char **last, int *finished)
 //     format for passing to printf
 //*****************************************************************
 
-char *argv2format(char *arg)
+char *tbx_stk_argv2format(char *arg)
 {
     int i, j, k, n, sub;
     char special[] = { 'a', 'b', 'f', 'n', 'r', 't', 'v', '\\' };
@@ -97,7 +103,7 @@ char *argv2format(char *arg)
 //   parsing escape sequences.
 //*****************************************************************
 
-char *escape_string_token(char *str, const char *delims, char escape_char, int compress_delims, char **last, int *finished)
+char *tbx_stk_escape_string_token(char *str, const char *delims, char escape_char, int compress_delims, char **last, int *finished)
 {
     int n, ndata;
     char *ptr, *token;
@@ -147,7 +153,7 @@ char *escape_string_token(char *str, const char *delims, char escape_char, int c
 // escape_strchr - Same as strchr but supports escaping of text
 //***********************************************************************
 
-char *escape_strchr(char escape_char, char *data, char match)
+char *tbx_stk_escape_strchr(char escape_char, char *data, char match)
 {
     int n, ndata;
 
@@ -184,7 +190,7 @@ int escape_count(char *special_chars, char escape_char, char *data)
 //  escape_text - Simple routine to escape text in a string
 //***********************************************************************
 
-char *escape_text(char *special_chars, char escape_char, char *data)
+char *tbx_stk_escape_text(char *special_chars, char escape_char, char *data)
 {
     char *str;
     int n, i, j, nchar;
@@ -192,7 +198,7 @@ char *escape_text(char *special_chars, char escape_char, char *data)
     n = escape_count(special_chars, escape_char, data);
 
     nchar = strlen(data);
-    type_malloc_clear(str, char, nchar + n + 1);
+    tbx_type_malloc_clear(str, char, nchar + n + 1);
 
     j = 0;
     for (i=0; i<nchar; i++) {
@@ -214,13 +220,13 @@ char *escape_text(char *special_chars, char escape_char, char *data)
 //  unescape_text - Removes the escape text in a string
 //***********************************************************************
 
-char *unescape_text(char escape_char, char *data)
+char *tbx_stk_unescape_text(char escape_char, char *data)
 {
     char *str;
     int ndata, i, j;
 
     ndata = strlen(data);
-    type_malloc_clear(str, char, ndata + 1);
+    tbx_type_malloc_clear(str, char, ndata + 1);
 
     j = 0;
     i = 0;
@@ -302,7 +308,7 @@ int64_t split_token_into_number_and_scale(char *token)
 //      The string can include a scale unit
 //***********************************************************************
 
-int64_t string_get_integer(char *value)
+int64_t tbx_stk_string_get_integer(char *value)
 {
     char *string;
     int64_t scale, n;
@@ -322,7 +328,7 @@ int64_t string_get_integer(char *value)
 //      The string can include a scale unit
 //***********************************************************************
 
-double string_get_double(char *value)
+double tbx_stk_string_get_double(char *value)
 {
     char *string;
     double scale, n;
@@ -347,7 +353,7 @@ double string_get_double(char *value)
 //           which must be freed.
 //***********************************************************************
 
-char *pretty_print_int_with_scale(int64_t value, char *buffer)
+char *tbx_stk_pretty_print_int_with_scale(int64_t value, char *buffer)
 {
     int64_t base, n;
     int i;
@@ -361,7 +367,7 @@ char *pretty_print_int_with_scale(int64_t value, char *buffer)
         base = 1;
     }
 
-    if (buffer == NULL) type_malloc(buffer, char, 30);
+    if (buffer == NULL) tbx_type_malloc(buffer, char, 30);
 
     if (base == 1) {
         sprintf(buffer, I64T, value);
@@ -403,13 +409,13 @@ char *pretty_print_int_with_scale(int64_t value, char *buffer)
 //           which must be freed.
 //***********************************************************************
 
-char *pretty_print_double_with_scale(int base, double value, char *buffer)
+char *tbx_stk_pretty_print_double_with_scale(int base, double value, char *buffer)
 {
     double n;
     int i;
     char *unit=" KMGTPE";
 
-    if (buffer == NULL) type_malloc(buffer, char, 30);
+    if (buffer == NULL) tbx_type_malloc(buffer, char, 30);
 
     if (base == 1) {
         sprintf(buffer, "%lf", value);
@@ -441,7 +447,7 @@ char *pretty_print_double_with_scale(int base, double value, char *buffer)
 // string_trim - TRims the whitespace around a string
 //***********************************************************************
 
-char *string_trim(char *str)
+char *tbx_stk_string_trim(char *str)
 {
     int i, n;
     char *start;

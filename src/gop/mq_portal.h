@@ -21,9 +21,9 @@
 #include "gop/gop_visibility.h"
 #include "opque.h"
 #include "host_portal.h"
-#include "atomic_counter.h"
+#include <tbx/atomic_counter.h>
 #include "thread_pool.h"
-#include "iniparse.h"
+#include <tbx/iniparse.h>
 #include <zmq.h>
 #include <czmq.h>
 #include <apr_thread_pool.h>
@@ -117,7 +117,7 @@ typedef struct {
 #define mq_data_compare(A, sA, B, sB) (((sA) == (sB)) ? memcmp(A, B, sA) : 1)
 
 #define mq_poll(items, n, wait_ms) zmq_poll(items, n, wait_ms)
-#define mq_msg_pop(A) (mq_frame_t *)pop(A)
+#define mq_msg_pop(A) (mq_frame_t *)tbx_stack_pop(A)
 #define mq_socket_new(ctx, type) (ctx)->create_socket(ctx, type)
 #define mq_socket_destroy(ctx, socket) (socket)->destroy(ctx, socket)
 #define mq_socket_context_new()  zero_socket_context_new()
@@ -330,8 +330,8 @@ mq_frame_t *mq_msg_prev(mq_msg_t *msg);
 GOP_API mq_frame_t *mq_msg_current(mq_msg_t *msg);
 mq_frame_t *mq_frame_dup(mq_frame_t *f);
 GOP_API mq_frame_t *mq_msg_pluck(mq_msg_t *msg, int move_up);
-void mq_msg_insert_above(mq_msg_t *msg, mq_frame_t *f);
-void mq_msg_insert_below(mq_msg_t *msg, mq_frame_t *f);
+void mq_msg_tbx_stack_insert_above(mq_msg_t *msg, mq_frame_t *f);
+void mq_msg_tbx_stack_insert_below(mq_msg_t *msg, mq_frame_t *f);
 void mq_msg_push_frame(mq_msg_t *msg, mq_frame_t *f);
 GOP_API void mq_msg_append_frame(mq_msg_t *msg, mq_frame_t *f);
 GOP_API void mq_msg_append_msg(mq_msg_t *msg, mq_msg_t *extra, int mode);

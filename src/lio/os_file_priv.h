@@ -20,7 +20,7 @@
 
 #include "object_service_abstract.h"
 #include "authn_abstract.h"
-#include "chksum.h"
+#include <tbx/chksum.h>
 #include <openssl/md5.h>
 
 #ifndef _OS_FILE_PRIV_H_

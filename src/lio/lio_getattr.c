@@ -17,14 +17,14 @@
 #define _log_module_index 201
 
 #include <assert.h>
-#include "assert_result.h"
+#include <tbx/assert_result.h>
 #include "exnode.h"
-#include "log.h"
-#include "iniparse.h"
-#include "type_malloc.h"
+#include <tbx/log.h>
+#include <tbx/iniparse.h>
+#include <tbx/type_malloc.h>
 #include "thread_pool.h"
 #include "lio.h"
-#include "string_token.h"
+#include <tbx/string_token.h>
 
 #define MAX_SET 1000
 
@@ -49,7 +49,7 @@ void load_file(char *fname, char **val, int *v_size)
     fseek(fd, 0, SEEK_END);
 
     i = ftell(fd);
-    type_malloc(*val, char, i+1);
+    tbx_type_malloc(*val, char, i+1);
     (*val)[i] = 0;
     *v_size = i;
 
@@ -90,7 +90,7 @@ int main(int argc, char **argv)
     int obj_types = OS_OBJECT_FILE;
     return_code = 0;
 
-//estr = argv2format(argv[1]);
+//estr = tbx_stk_argv2format(argv[1]);
 //printf("argv[1]=!%s! str=!%s!\n", argv[1], estr);
     if (argc < 2) {
         printf("\n");
@@ -191,11 +191,11 @@ int main(int argc, char **argv)
             i++;
         } else if (strcmp(argv[i], "-al") == 0) {  //**  Attribute list
             i++;
-            key[0]=string_token(argv[i], ",", &bstate, &fin);
+            key[0]=tbx_stk_string_token(argv[i], ",", &bstate, &fin);
             n_keys = 0;
             do {
                 n_keys++;
-                key[n_keys] = string_token(NULL, ",", &bstate, &fin);
+                key[n_keys] = tbx_stk_string_token(NULL, ",", &bstate, &fin);
             } while (fin == 0);
             n_keys_al = n_keys;
             i++;
@@ -205,10 +205,10 @@ int main(int argc, char **argv)
     start_index = i;
 
     //** Convert all the format strings
-    new_obj_fmt = argv2format(new_obj_fmt);
-    end_obj_fmt = argv2format(end_obj_fmt);
-    attr_fmt = argv2format(attr_fmt);
-    attr_sep = argv2format(attr_sep);
+    new_obj_fmt = tbx_stk_argv2format(new_obj_fmt);
+    end_obj_fmt = tbx_stk_argv2format(end_obj_fmt);
+    attr_fmt = tbx_stk_argv2format(attr_fmt);
+    attr_sep = tbx_stk_argv2format(attr_sep);
 
     //** MAke the path if needed
     if (rg_mode == 0) {

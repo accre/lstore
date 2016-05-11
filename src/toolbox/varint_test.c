@@ -1,8 +1,8 @@
 
-#include "varint.h"
+#include "tbx/varint.h"
 
 int main(int argc, char **argv)
 {
-    return(varint_test());
+    return(tbx_varint_test());
 }
 

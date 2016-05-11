@@ -17,17 +17,17 @@
 #define _log_module_index 207
 
 #include <assert.h>
-#include "assert_result.h"
+#include <tbx/assert_result.h>
 #include <apr_pools.h>
 #include "exnode.h"
-#include "log.h"
-#include "iniparse.h"
-#include "type_malloc.h"
+#include <tbx/log.h>
+#include <tbx/iniparse.h>
+#include <tbx/type_malloc.h>
 #include "thread_pool.h"
 #include "lio.h"
 #include "ds_ibp_priv.h"
 #include "ibp.h"
-#include "string_token.h"
+#include <tbx/string_token.h>
 
 
 typedef struct {
@@ -66,33 +66,33 @@ void parse_tag_file(char *fname)
     tbx_inip_element_t *ele;
     char *key, *value, *v;
 
-    fd = inip_read(fname);
+    fd = tbx_inip_file_read(fname);
     if (fd == NULL) return;
 
     apr_pool_create(&tagged_pool, NULL);
     tagged_rids = apr_hash_make(tagged_pool);
-    tagged_keys = new_stack();
+    tagged_keys = tbx_stack_new();
 
     //** Cycle through the blocks storing both the segment block information and also the cap blocks
-    g = inip_find_group(fd, "tag");
-    ele = inip_first_element(g);
+    g = tbx_inip_group_find(fd, "tag");
+    ele = tbx_inip_ele_first(g);
     while (ele != NULL) {
-        key = inip_get_element_key(ele);
+        key = tbx_inip_ele_key_get(ele);
         if (strcmp(key, "rid_key") == 0) {
-            v = inip_get_element_value(ele);
+            v = tbx_inip_ele_value_get(ele);
             value = strdup(v);
             info_printf(lio_ifd, 0, "Tagging RID %s\n", value);
             apr_hash_set(tagged_rids, value, APR_HASH_KEY_STRING, value);
-            push(tagged_keys, value);
+            tbx_stack_push(tagged_keys, value);
         }
 
-        ele = inip_next_element(ele);
+        ele = tbx_inip_ele_next(ele);
     }
 
-    inip_destroy(fd);
+    tbx_inip_destroy(fd);
 
     if (apr_hash_count(tagged_rids) == 0) {
-        free_stack(tagged_keys, 0);
+        tbx_free_stack(tagged_keys, 0);
         apr_pool_destroy(tagged_pool);
         tagged_pool = NULL;
         tagged_rids = NULL;
@@ -117,23 +117,23 @@ op_status_t gen_warm_task(void *arg, int id)
     opque_t *q;
 
     log_printf(15, "warming fname=%s, dt=%d\n", w->fname, dt);
-    fd = inip_read_text(w->exnode);
+    fd = tbx_inip_string_read(w->exnode);
     tbx_inip_group_t *g;
 
     q = new_opque();
     opque_start_execution(q);
 
-    type_malloc(w->cap, char *, inip_n_groups(fd));
-    g = inip_first_group(fd);
+    tbx_type_malloc(w->cap, char *, tbx_inip_n_groups(fd));
+    g = tbx_inip_group_first(fd);
     w->n = 0;
     while (g) {
-        if (strncmp(inip_get_group(g), "block-", 6) == 0) { //** Got a data block
+        if (strncmp(tbx_inip_group_get(g), "block-", 6) == 0) { //** Got a data block
             //** Get the RID key
-            etext = inip_get_string(fd, inip_get_group(g), "rid_key", NULL);
+            etext = tbx_inip_string_get(fd, tbx_inip_group_get(g), "rid_key", NULL);
             if (etext != NULL) {
                 wrid = apr_hash_get(w->hash, etext, APR_HASH_KEY_STRING);
                 if (wrid == NULL) { //** 1st time so need to make an entry
-                    type_malloc_clear(wrid, warm_hash_entry_t, 1);
+                    tbx_type_malloc_clear(wrid, warm_hash_entry_t, 1);
                     wrid->rid_key = etext;
                     apr_hash_set(w->hash, wrid->rid_key, APR_HASH_KEY_STRING, wrid);
                 } else {
@@ -142,12 +142,12 @@ op_status_t gen_warm_task(void *arg, int id)
             }
 
             //** Get the data size and update thr counts
-            wrid->nbytes += inip_get_integer(fd, inip_get_group(g), "max_size", 0);
+            wrid->nbytes += tbx_inip_integer_get(fd, tbx_inip_group_get(g), "max_size", 0);
 
             //** Get the manage cap
-            etext = inip_get_string(fd, inip_get_group(g), "manage_cap", "");
+            etext = tbx_inip_string_get(fd, tbx_inip_group_get(g), "manage_cap", "");
             log_printf(1, "fname=%s cap[%d]=%s\n", w->fname, w->n, etext);
-            w->cap[w->n] = unescape_text('\\', etext);
+            w->cap[w->n] = tbx_stk_unescape_text('\\', etext);
             free(etext);
 
             //** Add the task
@@ -166,10 +166,10 @@ op_status_t gen_warm_task(void *arg, int id)
                 }
             }
         }
-        g = inip_next_group(g);
+        g = tbx_inip_group_next(g);
     }
 
-    inip_destroy(fd);
+    tbx_inip_destroy(fd);
 
     nfailed = 0;
     while ((gop = opque_waitany(q)) != NULL) {
@@ -308,7 +308,7 @@ int main(int argc, char **argv)
     q = new_opque();
     opque_start_execution(q);
 
-    type_malloc_clear(w, warm_t, lio_parallel_task_count);
+    tbx_type_malloc_clear(w, warm_t, lio_parallel_task_count);
     for (j=0; j<lio_parallel_task_count; j++) {
         apr_pool_create(&(w[j].mpool), NULL);
         w[j].hash = apr_hash_make(w[j].mpool);
@@ -413,14 +413,14 @@ int main(int argc, char **argv)
     if (submitted == 0) goto cleanup;
 
     //** Merge the data from all the tables
-    master = list_create(0, &list_string_compare, list_string_dup, list_simple_free, list_no_data_free);
+    master = tbx_list_create(0, &tbx_list_string_compare, tbx_list_string_dup, tbx_list_simple_free, tbx_list_no_data_free);
     for (i=0; i<lio_parallel_task_count; i++) {
         hi = apr_hash_first(NULL, w[i].hash);
         while (hi != NULL) {
             apr_hash_this(hi, (const void **)&rkey, &klen, (void **)&wrid);
-            mrid = list_search(master, wrid->rid_key);
+            mrid = tbx_list_search(master, wrid->rid_key);
             if (mrid == NULL) {
-                list_insert(master, wrid->rid_key, wrid);
+                tbx_list_insert(master, wrid->rid_key, wrid);
             } else {
                 mrid->good += wrid->good;
                 mrid->bad += wrid->bad;
@@ -438,28 +438,28 @@ int main(int argc, char **argv)
 
     //** Get the RID config which is used in the summary
     config = rs_get_rid_config(lio_gc->rs);
-    ifd = inip_read_text(config); assert(ifd);
+    ifd = tbx_inip_string_read(config); assert(ifd);
 
     //** Convert it for easier lookup
-    ig = inip_first_group(ifd);
+    ig = tbx_inip_group_first(ifd);
     while (ig != NULL) {
-        rkey = inip_get_group(ig);
+        rkey = tbx_inip_group_get(ig);
         if (strcmp("rid", rkey) == 0) {  //** Found a resource
             //** Now cycle through the attributes
-            ele = inip_first_element(ig);
+            ele = tbx_inip_ele_first(ig);
             while (ele != NULL) {
-                rkey = inip_get_element_key(ele);
-                value = inip_get_element_value(ele);
+                rkey = tbx_inip_ele_key_get(ele);
+                value = tbx_inip_ele_value_get(ele);
                 if (strcmp(rkey, "rid_key") == 0) {
-                    free(ig->group);
-                    ig->group = strdup(value);
+                    tbx_inip_group_free(ig);
+                    tbx_inip_group_set(ig, value);
                 }
 
-                ele = inip_next_element(ele);
+                ele = tbx_inip_ele_next(ele);
             }
         }
 
-        ig = inip_next_group(ig);
+        ig = tbx_inip_group_next(ig);
     }
 
     //** Print the summary
@@ -468,10 +468,10 @@ int main(int argc, char **argv)
     info_printf(lio_ifd, 0, "                 RID Key                    Size    Avg Time(us)   Total       Good         Bad\n");
     info_printf(lio_ifd, 0, "----------------------------------------  ---------  ---------   ----------  ----------  ----------\n");
     nbytes = good = bad = j = i = 0;
-    stack = new_stack();
+    stack = tbx_stack_new();
     dtime_total = 0;
-    lit = list_iter_search(master, NULL, 0);
-    while (list_next(&lit, (tbx_list_key_t **)&rkey, (tbx_list_data_t **)&mrid) == 0) {
+    lit = tbx_list_iter_search(master, NULL, 0);
+    while (tbx_list_next(&lit, (tbx_list_key_t **)&rkey, (tbx_list_data_t **)&mrid) == 0) {
         j++;
         nbytes += mrid->nbytes;
         good += mrid->good;
@@ -479,15 +479,15 @@ int main(int argc, char **argv)
         total = mrid->good + mrid->bad;
         if (mrid->bad > 0) i++;
 
-        push(stack, mrid);
+        tbx_stack_push(stack, mrid);
 
         if ((summary_mode == 0) || ((summary_mode == 1) && (mrid->bad == 0))) continue;
         dtime_total += mrid->dtime;
         dtime = mrid->dtime / (double)total;
         line_end = (mrid->bad == 0) ? "\n" : "  RID_ERR\n";
-        rkey = inip_get_string(ifd, mrid->rid_key, "ds_key", mrid->rid_key);
+        rkey = tbx_inip_string_get(ifd, mrid->rid_key, "ds_key", mrid->rid_key);
         info_printf(lio_ifd, 0, "%-40s  %s  %s   %10" PXOT "  %10" PXOT "  %10" PXOT "%s", rkey,
-                    pretty_print_double_with_scale(1024, (double)mrid->nbytes, ppbuf),  pretty_print_double_with_scale(1024, dtime, ppbuf2),
+                    tbx_stk_pretty_print_double_with_scale(1024, (double)mrid->nbytes, ppbuf),  tbx_stk_pretty_print_double_with_scale(1024, dtime, ppbuf2),
                     total, mrid->good, mrid->bad, line_end);
         free(rkey);
     }
@@ -497,18 +497,18 @@ int main(int argc, char **argv)
     total = good + bad;
     dtime_total = dtime_total / (double)total;
     info_printf(lio_ifd, 0, "%-40s  %s  %s   %10" PXOT "  %10" PXOT "  %10" PXOT "\n", ppbuf2,
-                pretty_print_double_with_scale(1024, (double)nbytes, ppbuf), pretty_print_double_with_scale(1024, dtime_total, ppbuf3), total, good, bad);
+                tbx_stk_pretty_print_double_with_scale(1024, (double)nbytes, ppbuf), tbx_stk_pretty_print_double_with_scale(1024, dtime_total, ppbuf3), total, good, bad);
 
-    list_destroy(master);
+    tbx_list_destroy(master);
 
-    inip_destroy(ifd);
+    tbx_inip_destroy(ifd);
     free(config);
 
-    while ((mrid = pop(stack)) != NULL) {
+    while ((mrid = tbx_stack_pop(stack)) != NULL) {
         free(mrid->rid_key);
         free(mrid);
     }
-    free_stack(stack, 0);
+    tbx_free_stack(stack, 0);
 cleanup:
     for (j=0; j<lio_parallel_task_count; j++) {
         apr_pool_destroy(w[j].mpool);
@@ -518,7 +518,7 @@ cleanup:
 
 finished:
     if (tagged_rids != NULL) {
-        free_stack(tagged_keys, 1);
+        tbx_free_stack(tagged_keys, 1);
         apr_pool_destroy(tagged_pool);
     }
 

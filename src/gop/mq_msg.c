@@ -19,8 +19,8 @@
 //*************************************************************
 
 #include "mq_portal.h"
-#include "type_malloc.h"
-#include "log.h"
+#include <tbx/type_malloc.h>
+#include <tbx/log.h>
 #include <stdlib.h>
 
 //**************************************************************
@@ -56,7 +56,7 @@ char *mq_frame_strdup(mq_frame_t *f)
 
     if (data == NULL) return(NULL);
 
-    type_malloc(str, char, n+1);
+    tbx_type_malloc(str, char, n+1);
     str[n] = 0;
     memcpy(str, data, n);
 
@@ -69,54 +69,54 @@ char *mq_frame_strdup(mq_frame_t *f)
 
 mq_msg_t *mq_msg_new()
 {
-    return(new_stack());
+    return(tbx_stack_new());
 }
 mq_frame_t *mq_msg_first(mq_msg_t *msg)
 {
-    move_to_top(msg);
-    return((mq_frame_t *)get_ele_data(msg));
+    tbx_stack_move_to_top(msg);
+    return((mq_frame_t *)tbx_get_ele_data(msg));
 }
 mq_frame_t *mq_msg_last(mq_msg_t *msg)
 {
-    move_to_bottom(msg);
-    return((mq_frame_t *)get_ele_data(msg));
+    tbx_stack_move_to_bottom(msg);
+    return((mq_frame_t *)tbx_get_ele_data(msg));
 }
 mq_frame_t *mq_msg_next(mq_msg_t *msg)
 {
-    move_down(msg);
-    return((mq_frame_t *)get_ele_data(msg));
+    tbx_stack_move_down(msg);
+    return((mq_frame_t *)tbx_get_ele_data(msg));
 }
 mq_frame_t *mq_msg_prev(mq_msg_t *msg)
 {
-    move_up(msg);
-    return((mq_frame_t *)get_ele_data(msg));
+    tbx_stack_move_up(msg);
+    return((mq_frame_t *)tbx_get_ele_data(msg));
 }
 mq_frame_t *mq_msg_current(mq_msg_t *msg)
 {
-    return((mq_frame_t *)get_ele_data(msg));
+    return((mq_frame_t *)tbx_get_ele_data(msg));
 }
 mq_frame_t *mq_msg_pluck(mq_msg_t *msg, int move_up)
 {
-    mq_frame_t *f = get_ele_data(msg);
-    delete_current(msg, move_up, 0);
+    mq_frame_t *f = tbx_get_ele_data(msg);
+    tbx_delete_current(msg, move_up, 0);
     return(f);
 }
-void mq_msg_insert_above(mq_msg_t *msg, mq_frame_t *f)
+void mq_msg_tbx_stack_insert_above(mq_msg_t *msg, mq_frame_t *f)
 {
-    insert_above(msg, f);
+    tbx_stack_insert_above(msg, f);
 }
-void mq_msg_insert_below(mq_msg_t *msg, mq_frame_t *f)
+void mq_msg_tbx_stack_insert_below(mq_msg_t *msg, mq_frame_t *f)
 {
-    insert_below(msg, f);
+    tbx_stack_insert_below(msg, f);
 }
 void mq_msg_push_frame(mq_msg_t *msg, mq_frame_t *f)
 {
-    push(msg, f);
+    tbx_stack_push(msg, f);
 }
 void mq_msg_append_frame(mq_msg_t *msg, mq_frame_t *f)
 {
-    move_to_bottom(msg);
-    insert_below(msg, f);
+    tbx_stack_move_to_bottom(msg);
+    tbx_stack_insert_below(msg, f);
 }
 
 void mq_frame_set(mq_frame_t *f, void *data, int len, int auto_free)
@@ -130,7 +130,7 @@ mq_frame_t *mq_frame_new(void *data, int len, int auto_free)
 {
     mq_frame_t *f;
 
-    type_malloc(f, mq_frame_t, 1);
+    tbx_type_malloc(f, mq_frame_t, 1);
     mq_frame_set(f, data, len, auto_free);
 
     return(f);
@@ -145,7 +145,7 @@ mq_frame_t *mq_frame_dup(mq_frame_t *f)
     if (size == 0) {
         copy = NULL;
     } else {
-        type_malloc(copy, void, size);
+        tbx_type_malloc(copy, void, size);
         memcpy(copy, data, size);
     }
 
@@ -166,21 +166,21 @@ void mq_msg_destroy(mq_msg_t *msg)
 {
     mq_frame_t *f;
 
-    while ((f = pop(msg)) != NULL) {
+    while ((f = tbx_stack_pop(msg)) != NULL) {
         mq_frame_destroy(f);
     }
 
-    free_stack(msg, 0);
+    tbx_free_stack(msg, 0);
 }
 
 void mq_msg_push_mem(mq_msg_t *msg, void *data, int len, int auto_free)
 {
-    push(msg, mq_frame_new(data, len, auto_free));
+    tbx_stack_push(msg, mq_frame_new(data, len, auto_free));
 }
 void mq_msg_append_mem(mq_msg_t *msg, void *data, int len, int auto_free)
 {
-    move_to_bottom(msg);
-    insert_below(msg, mq_frame_new(data, len, auto_free));
+    tbx_stack_move_to_bottom(msg);
+    tbx_stack_insert_below(msg, mq_frame_new(data, len, auto_free));
 }
 
 void mq_msg_append_msg(mq_msg_t *msg, mq_msg_t *extra, int mode)
@@ -189,15 +189,17 @@ void mq_msg_append_msg(mq_msg_t *msg, mq_msg_t *extra, int mode)
     mq_frame_t *f;
     char *data;
 
-    move_to_top(msg);
-    for (curr = extra->top; curr != NULL; curr = curr->down) {
-        f = (mq_frame_t *)curr->data;
+    tbx_stack_move_to_top(msg);
+    for (curr = tbx_stack_top_get(msg); 
+            curr != NULL;
+            curr = tbx_stack_ele_down_get(curr)) {
+        f = (mq_frame_t *)tbx_stack_ele_data_get(curr);
         if (mode == MQF_MSG_AUTO_FREE) {
-            type_malloc(data, char, f->len);
+            tbx_type_malloc(data, char, f->len);
             memcpy(data, f->data, f->len);
-            insert_below(msg, mq_frame_new(data, f->len, MQF_MSG_AUTO_FREE));
+            tbx_stack_insert_below(msg, mq_frame_new(data, f->len, MQF_MSG_AUTO_FREE));
         } else {
-            insert_below(msg, mq_frame_new(f->data, f->len, MQF_MSG_KEEP_DATA));
+            tbx_stack_insert_below(msg, mq_frame_new(f->data, f->len, MQF_MSG_KEEP_DATA));
         }
     }
 }
@@ -213,8 +215,10 @@ mq_msg_hash_t mq_msg_hash(mq_msg_t *msg)
 
     n = 0;
     h.full_hash = h.even_hash = 0;
-    for (curr = msg->top; curr != NULL; curr = curr->down) {
-        f = (mq_frame_t *)curr->data;
+    for (curr = tbx_stack_top_get(msg); 
+            curr != NULL;
+            curr = tbx_stack_ele_down_get(curr)) {
+        f = (mq_frame_t *)tbx_stack_ele_data_get(curr);
         mq_get_frame(f, (void **)&data, &size);
         for (p = data; size > 0; p++, size--) {
             h.full_hash = h.full_hash * 33 + *p;
@@ -237,10 +241,10 @@ int mq_msg_total_size(mq_msg_t *msg)
     int n;
 
     n = 0;
-    move_to_top(msg);
-    while ((f = get_ele_data(msg)) != NULL) {
+    tbx_stack_move_to_top(msg);
+    while ((f = tbx_get_ele_data(msg)) != NULL) {
         n += f->len;
-        move_down(msg);
+        tbx_stack_move_down(msg);
     }
 
     return(n);

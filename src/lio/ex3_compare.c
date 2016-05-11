@@ -21,8 +21,8 @@
 #define _log_module_index 147
 
 #include "ex3_abstract.h"
-#include "skiplist.h"
-#include "log.h"
+#include <tbx/skiplist.h>
+#include <tbx/log.h>
 
 int skiplist_compare_fn_ex_off(void *arg, tbx_sl_key_t *k1, tbx_sl_key_t *k2);
 tbx_sl_compare_t skiplist_compare_ex_off= {skiplist_compare_fn_ex_off, NULL};

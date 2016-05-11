@@ -14,21 +14,32 @@
    limitations under the License.
 */
 
-//******************************************************************
-//  Header file to simplify using "?printf" routines and different
-//  data types, like size_t.
-//******************************************************************
+#pragma once
+#ifndef ACCRE_DNS_CACHE_H_INCLUDED
+#define ACCRE_DNS_CACHE_H_INCLUDED
 
-#ifndef __FMTTYPES_
-#define __FMTTYPES_
+#include "tbx/toolbox_visibility.h"
 
-#include <inttypes.h>
-#include <apr_time.h>
-#define I64T "%" PRId64    //int64_t
-#define LU   "%" PRIu64    //uint64_t
-#define OT   I64T          // ibp_off_t
-#define ST   "%zu"          // size_t
-#define TT   "%" APR_TIME_T_FMT  // time format
-
+#ifdef __cplusplus
+extern "C" {
 #endif
 
+// Functions
+TBX_API int tbx_dnsc_startup();
+
+TBX_API int tbx_dnsc_shutdown();
+
+TBX_API int tbx_dnsc_startup_sized(int size);
+
+TBX_API int tbx_dnsc_lookup(const char * name, char * byte_addr, char * ip_addr);
+
+// Preprocessor macros
+#define DNS_ADDR_MAX 4
+#define DNS_IPV4  0
+#define DNS_IPV6  1
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif

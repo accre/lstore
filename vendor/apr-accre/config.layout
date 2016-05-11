@@ -11,7 +11,7 @@
 
 #   Classical APR path layout designed for parallel installs.
 <Layout apr>
-    prefix:        /usr/local/apr
+    prefix:        /usr/local/apr-ACCRE
     exec_prefix:   ${prefix}
     bindir:        ${exec_prefix}/bin
     sbindir:       ${exec_prefix}/bin
@@ -20,15 +20,15 @@
     mandir:        ${prefix}/man
     sysconfdir:    ${prefix}/conf
     datadir:       ${prefix}
-    installbuilddir: ${datadir}/build-${APR_MAJOR_VERSION}
-    includedir:    ${prefix}/include/apr-${APR_MAJOR_VERSION}
+    installbuilddir: ${datadir}/build-ACCRE-${APR_MAJOR_VERSION}
+    includedir:    ${prefix}/include/apr-ACCRE-${APR_MAJOR_VERSION}
     localstatedir: ${prefix}
     libsuffix:     -${APR_MAJOR_VERSION}
 </Layout>
 
 #   Classical single-installation APR path layout.
 <Layout classic>
-    prefix:        /usr/local/apr
+    prefix:        /usr/local/apr-ACCRE
     exec_prefix:   ${prefix}
     bindir:        ${exec_prefix}/bin
     sbindir:       ${exec_prefix}/bin
@@ -101,19 +101,19 @@
     bindir:        ${prefix}/bin
     sbindir:       ${prefix}/sbin
     libdir:        ${prefix}/lib
-    libexecdir:    ${prefix}/lib/apr
+    libexecdir:    ${prefix}/lib/apr-ACCRE
     mandir:        ${prefix}/man
     sysconfdir:    /etc/httpd/conf
     datadir:       /var/www
     installbuilddir: ${datadir}/build
-    includedir:    ${prefix}/include/apr
+    includedir:    ${prefix}/include/apr-ACCRE
     localstatedir: /var
     runtimedir:    ${localstatedir}/run
 </Layout>     
 
 #   According to the /opt filesystem conventions
 <Layout opt>
-    prefix:        /opt/apr
+    prefix:        /opt/apr-ACCRE
     exec_prefix:   ${prefix}
     bindir:        ${exec_prefix}/bin
     sbindir:       ${exec_prefix}/sbin
@@ -152,12 +152,12 @@
     bindir:        ${prefix}/bin
     sbindir:       ${prefix}/sbin
     libdir:        ${prefix}/lib
-    libexecdir:    ${prefix}/lib/apr
+    libexecdir:    ${prefix}/lib/apr-ACCRE
     mandir:        ${prefix}/share/man
     sysconfdir:    /etc/httpd
     datadir:       /usr/local/httpd
     installbuilddir: ${datadir}/build
-    includedir:    ${prefix}/include/apr
+    includedir:    ${prefix}/include/apr-ACCRE
     localstatedir: /var/lib/httpd
     runtimedir:    /var/run
 </Layout>
@@ -169,27 +169,27 @@
     bindir:        ${exec_prefix}/bin
     sbindir:       ${exec_prefix}/bin
     libdir:        ${exec_prefix}/lib
-    libexecdir:    ${exec_prefix}/libexec/apr
+    libexecdir:    ${exec_prefix}/libexec/apr-ACCRE
     mandir:        ${exec_prefix}/man
     sysconfdir:    ${prefix}/conf
     datadir:       ${prefix}
     installbuilddir: ${datadir}/build
-    includedir:    ${exec_prefix}/include/apr
+    includedir:    ${exec_prefix}/include/apr-ACCRE
     localstatedir: /var
     runtimedir:    ${localstatedir}/run
 </Layout>
 
 #   Solaris 8 Layout
 <Layout Solaris>
-    prefix:        /usr/apr
+    prefix:        /usr/apr-ACCRE
     exec_prefix:   ${prefix}
     bindir:        ${exec_prefix}/bin
     sbindir:       ${exec_prefix}/bin
     libdir:        ${exec_prefix}/lib
     libexecdir:    ${exec_prefix}/libexec
     mandir:        ${exec_prefix}/man
-    sysconfdir:    /etc/apr
-    datadir:       /var/apr
+    sysconfdir:    /etc/apr-ACCRE
+    datadir:       /var/apr-ACCRE
     installbuilddir: ${datadir}/build
     includedir:    ${exec_prefix}/include
     localstatedir: ${prefix}
@@ -203,12 +203,12 @@
     bindir:        ${exec_prefix}/bin
     sbindir:       ${exec_prefix}/sbin
     libdir:        ${exec_prefix}/lib
-    libexecdir:    ${exec_prefix}/lib/apr/modules
+    libexecdir:    ${exec_prefix}/lib/apr-ACCRE/modules
     mandir:        ${exec_prefix}/share/man
     sysconfdir:    ${prefix}/conf
     datadir:       ${prefix}
     installbuilddir: ${prefix}/build
-    includedir:    ${exec_prefix}/lib/apr/include
+    includedir:    ${exec_prefix}/lib/apr-ACCRE/include
     localstatedir: ${prefix}
     runtimedir:    ${prefix}/logs
 </Layout>
@@ -220,12 +220,12 @@
     bindir:        ${exec_prefix}/bin
     sbindir:       ${exec_prefix}/sbin
     libdir:        ${exec_prefix}/lib
-    libexecdir:    ${exec_prefix}/lib/apr/modules
+    libexecdir:    ${exec_prefix}/lib/apr-ACCRE/modules
     mandir:        ${exec_prefix}/share/man
-    datadir:       ${exec_prefix}/share/apr
-    includedir:    ${exec_prefix}/include/apr-${APR_MAJOR_VERSION}
+    datadir:       ${exec_prefix}/share/apr-ACCRE
+    includedir:    ${exec_prefix}/include/apr-ACCRE-${APR_MAJOR_VERSION}
     localstatedir: ${prefix}/var/run
     runtimedir:    ${prefix}/var/run
     infodir:       ${exec_prefix}/share/info
-    libsuffix:    -${APR_MAJOR_VERSION}
+    libsuffix:     -${APR_MAJOR_VERSION}
 </Layout>

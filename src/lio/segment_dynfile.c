@@ -23,12 +23,12 @@
 #include <libgen.h>
 #include "ex3_abstract.h"
 #include "ex3_system.h"
-#include "interval_skiplist.h"
+#include <tbx/interval_skiplist.h>
 #include "ex3_compare.h"
-#include "log.h"
-#include "iniparse.h"
+#include <tbx/log.h>
+#include <tbx/iniparse.h>
 #include "segment_file.h"
-#include "atomic_counter.h"
+#include <tbx/atomic_counter.h>
 
 #define SEGMENT_TYPE_DYNFILE "dynfile"
 

@@ -20,10 +20,13 @@
 
 #define _log_module_index 185
 
-#include "fmttypes.h"
-#include "list.h"
-#include "type_malloc.h"
-#include "log.h"
+#include <stdlib.h>
+#include <sys/types.h>
+#include <unistd.h>
+#include <tbx/fmttypes.h>
+#include <tbx/list.h>
+#include <tbx/type_malloc.h>
+#include <tbx/log.h>
 #include "authn_abstract.h"
 
 extern char *_lio_exe_name;  //** This is set by lio_init long before we would ever be called.
@@ -113,7 +116,7 @@ creds_t *authn_fake_cred_init(authn_t *an, int type, void **args)
 
     c = cred_default_create();
 
-    type_malloc_clear(c->priv, authn_fake_priv_t, 1);
+    tbx_type_malloc_clear(c->priv, authn_fake_priv_t, 1);
     c->get_type = authn_fake_get_type;
     c->get_type_field = authn_fake_get_type_field;
     c->set_id = authn_fake_set_id;
@@ -139,7 +142,7 @@ authn_t *authn_fake_create(service_manager_t *ess, tbx_inip_file_t *ifd, char *s
 {
     authn_t *an;
 
-    type_malloc(an, authn_t, 1);
+    tbx_type_malloc(an, authn_t, 1);
 
     an->cred_init = authn_fake_cred_init;
     an->destroy = authn_fake_destroy;

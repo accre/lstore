@@ -18,7 +18,7 @@
 //*************************************************************************
 
 #include "cache_priv.h"
-#include "iniparse.h"
+#include <tbx/iniparse.h>
 
 #ifndef __CACHE_ROUND_ROBIN_H_
 #define __CACHE_ROUND_ROBIN_H_

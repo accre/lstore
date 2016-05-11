@@ -16,10 +16,10 @@
 #   $ENV{CMAKE_INCLUDE_PATH}/toolbox
 #)
 
-find_path(tb_inc toolbox/toolbox_config.h)
+find_path(tb_inc tbx/toolbox_config.h)
 
 if (tb_inc)
-   find_path(TOOLBOX_INCLUDE_DIR toolbox_config.h ${tb_inc}/toolbox)
+   find_path(TOOLBOX_INCLUDE_DIR tbx/toolbox_config.h ${tb_inc})
 endif (tb_inc)
 
 find_library(TOOLBOX_LIBRARY NAMES toolbox)

@@ -15,10 +15,10 @@
 */
 
 #include "mq_portal.h"
-#include "apr_wrapper.h"
-#include "log.h"
-#include "type_malloc.h"
-#include "apr_wrapper.h"
+#include <tbx/apr_wrapper.h>
+#include <tbx/log.h>
+#include <tbx/type_malloc.h>
+#include <tbx/apr_wrapper.h>
 
 #define CMD_PING 1
 #define CMD_PONG 2
@@ -369,7 +369,7 @@ int client_trackexec_ping_test(mq_context_t *mqc, int delay, int address_reply, 
 
     //** Compose the PING message
     memset(&td, 0, sizeof(td));
-    td.id = atomic_global_counter();
+    td.id = tbx_atomic_global_counter();
     td.command = CMD_PING;
     td.delay = delay;
     td.address_reply = address_reply;
@@ -394,7 +394,7 @@ fail:
     } else {
         log_printf(0, "TEST: (END) client_trackexec_ping_test(mqc, delay=%d, reply=%d, dt=%d) = FAIL (g=%d, s=%d)\n", delay, address_reply, dt, err, success_value);
     }
-    flush_log();
+    tbx_flush_log();
     return(status);
 }
 
@@ -408,7 +408,7 @@ void test_data_set(test_data_t *td, int delay, int address_reply, int dt)
 
     //** Compose the PING message
     memset(td, 0, sizeof(test_data_t));
-    td->id = atomic_global_counter();
+    td->id = tbx_atomic_global_counter();
     td->command = CMD_PING;
     td->delay = delay;
     td->address_reply = address_reply;
@@ -431,7 +431,7 @@ void generate_tasks(mq_context_t *mqc, opque_t *q, int count, test_data_t *td_ba
     mq_msg_t *msg;
 
     for (i=0; i< count; i++) {
-        type_malloc(td, test_data_t, 1);
+        tbx_type_malloc(td, test_data_t, 1);
         *td = *td_base;
 
         msg = pack_msg(1, td);
@@ -497,19 +497,19 @@ int bulk_test(mq_context_t *mqc)
         dt = apr_time_now() - start_time;
         ttime = (1.0*dt) / APR_USEC_PER_SEC;
         log_printf(0, "BULK n=%d err=%d gid=%d dt=%lf sid=%s (delay=%d reply=%d dt=%d) got=%d shouldbe=%d\n", n, err, gop_id(gop), ttime, mq_id2str((char *)&(td->id), sizeof(td->id), b64, sizeof(b64)), td->delay, td->address_reply, td->dt, status.op_status, td->success_value);
-        flush_log();
+        tbx_flush_log();
         dt = apr_time_now();
         gop_free(gop, OP_DESTROY);
         dt = apr_time_now() - dt;
         ttime = (1.0*dt) / APR_USEC_PER_SEC;
         log_printf(0, "BULK gop_free dt=%lf\n", ttime);
-        flush_log();
+        tbx_flush_log();
     }
 
     dt = apr_time_now() - start_time;
     ttime = (1.0*dt) / APR_USEC_PER_SEC;
     log_printf(0, "TEST: (END) Completed %d tasks in bulk test failed=%d dt=%lf\n", opque_task_count(q), err, ttime);
-    flush_log();
+    tbx_flush_log();
     if (ttime > expire) {
         log_printf(0, "TEST: (END) !!WARNING!! Execution time %lf > %d sec!!!! The dt=%d was used for the commands so I would expect failures!\n", ttime, expire, expire);
         log_printf(0, "TEST: (END) !!WARNING!! This probably means you are running under valgrind and is to be expected.\n");
@@ -570,10 +570,10 @@ mq_context_t *client_make_context()
     tbx_inip_file_t *ifd;
     mq_context_t *mqc;
 
-    ifd = inip_read_text(text_params);
+    ifd = tbx_inip_string_read(text_params);
     mqc = mq_create_context(ifd, "mq_context");
     assert(mqc != NULL);
-    inip_destroy(ifd);
+    tbx_inip_destroy(ifd);
 
     return(mqc);
 }
@@ -595,14 +595,14 @@ void *client_test_thread(apr_thread_t *th, void *arg)
 
     //** perform ths simple base direct client test
     nfail_total += client_direct();
-    flush_log();
+    tbx_flush_log();
 
     //** The rest of the tests all go through the mq_portal so we need to configure that now
     //** Make the portal
     mqc = client_make_context();
 
     nfail_total += client_exec_ping_test(mqc);  //** Simple exec ping test.  No tracking
-    flush_log();
+    tbx_flush_log();
 
     min = 0;
     if (min == 1) {
@@ -618,15 +618,15 @@ void *client_test_thread(apr_thread_t *th, void *arg)
 
         //** Check edge cases
         log_printf(0, "Checking edge cases (ROUND=%d)\n", i);
-        flush_log();
+        tbx_flush_log();
 //     nfail += client_edge_tests(mqc);
 
         log_printf(0, "Switching to bulk tests (ROUND=%d)\n", i);
-        flush_log();
+        tbx_flush_log();
         nfail += bulk_test(mqc);
 
         log_printf(0, "Completed round %d of tests. failed:%d\n", i, nfail);
-        flush_log();
+        tbx_flush_log();
 
         nfail_total += nfail;
 
@@ -678,14 +678,14 @@ int proc_ping(mq_socket_t *sock, mq_msg_t *msg)
 
     pid = mq_msg_pluck(msg, 0);  //Ping ID
 
-    atomic_inc(ping_count);
+    tbx_atomic_inc(ping_count);
 
     pong = mq_msg_new();
 
     //** Push the address in reverse order (including the empty frame)
     while ((f = mq_msg_pop(msg)) != NULL) {
 //i=mq_get_frame(f, &data, &err);
-//log_printf(5, "data=%s len=%d i=%d\n", (char *)data, err, i); flush_log();
+//log_printf(5, "data=%s len=%d i=%d\n", (char *)data, err, i); tbx_flush_log();
 //log_printf(5, "add=%d\n", err);
         mq_msg_push_frame(pong, f);
     }
@@ -745,7 +745,7 @@ int proc_exec_ping(mq_socket_t *sock, mq_msg_t *msg)
     //** Notify the sender;
     mq_get_frame(pid, (void **)&data, &err);
     apr_thread_mutex_lock(lock);
-    type_malloc_clear(handle, char, err+1);
+    tbx_type_malloc_clear(handle, char, err+1);
     memcpy(handle, data, err);
     log_printf(5, "setting handle=%s nbytes=%d\n", handle, err);
     apr_thread_cond_broadcast(cond);
@@ -766,14 +766,14 @@ int server_handle_deferred(mq_socket_t *sock)
     int err;
     char v;
 
-    log_printf(5, "deferred responses to handle %d (server_portal=%p)\n", stack_size(deferred_ready), server_portal);
+    log_printf(5, "deferred responses to handle %d (server_portal=%p)\n", tbx_stack_size(deferred_ready), server_portal);
 
     err = 0;
-    while ((defer = pop(deferred_ready)) != NULL) {
+    while ((defer = tbx_stack_pop(deferred_ready)) != NULL) {
         if (server_portal == NULL) mq_pipe_read(server_efd[0], &v);
         log_printf(5, "Processing deferred response\n");
 
-        defer->td->ping_count = atomic_get(ping_count) - defer->td->ping_count;  //** Send back the ping count since it was sent
+        defer->td->ping_count = tbx_atomic_get(ping_count) - defer->td->ping_count;  //** Send back the ping count since it was sent
 
         //** Send the response
         if (server_portal == NULL) apr_thread_mutex_lock(lock);
@@ -872,13 +872,13 @@ int proc_trackexec_ping(mq_portal_t *p, mq_socket_t *sock, mq_msg_t *msg)
 
     } else if (td->delay > 0) {
         log_printf(3, "delay>0.  Deferring response.\n");
-        type_malloc(defer, defer_t, 1);
+        tbx_type_malloc(defer, defer_t, 1);
         defer->msg = response;
         defer->td = td;
-        defer->td->ping_count = atomic_get(ping_count);
+        defer->td->ping_count = tbx_atomic_get(ping_count);
         defer->expire = apr_time_now() + apr_time_from_sec(td->delay);
         apr_thread_mutex_lock(lock);
-        push(deferred_pending, defer);
+        tbx_stack_push(deferred_pending, defer);
         apr_thread_cond_signal(cond);
         apr_thread_mutex_unlock(lock);
     } else {
@@ -1022,16 +1022,16 @@ fail:
 
     mq_stats_print(0, "Server RAW", &server_stats);
     log_printf(0, "END\n");
-    flush_log();
+    tbx_flush_log();
     mq_socket_destroy(ctx, sock);
 
 
     log_printf(0, "before ctx destroy\n");
-    flush_log();
+    tbx_flush_log();
     mq_socket_context_destroy(ctx);
 
     log_printf(0, "after ctx destroy\n");
-    flush_log();
+    tbx_flush_log();
 
     return(NULL);
 }
@@ -1043,10 +1043,10 @@ fail:
 void cb_ping(void *arg, mq_task_t *task)
 {
     log_printf(3, "START\n");
-    flush_log();
+    tbx_flush_log();
     proc_trackexec_ping(server_portal, NULL, task->msg);
     log_printf(3, "END\n");
-    flush_log();
+    tbx_flush_log();
     task->msg = NULL;  //** The proc routine free's this
 }
 
@@ -1068,10 +1068,10 @@ mq_context_t *server_make_context()
     tbx_inip_file_t *ifd;
     mq_context_t *mqc;
 
-    ifd = inip_read_text(text_params);
+    ifd = tbx_inip_string_read(text_params);
     mqc = mq_create_context(ifd, "mq_context");
     assert(mqc != NULL);
-    inip_destroy(ifd);
+    tbx_inip_destroy(ifd);
 
     return(mqc);
 }
@@ -1119,12 +1119,12 @@ void *server_test_thread(apr_thread_t *th, void *arg)
 
     //** Do the raw socket tests
     log_printf(0, "Using raw socket for event loop\n");
-    flush_log();
+    tbx_flush_log();
     server_test_raw_socket();
 
     //** Now do the same but usingthe MQ event loop.
     log_printf(0, "Switching to using MQ event loop\n");
-    flush_log();
+    tbx_flush_log();
     server_test_mq_loop();
 
     //** Wake up the deferred thread and tell it to shut down
@@ -1156,27 +1156,27 @@ void *server_deferred_thread(apr_thread_t *th, void *arg)
         if (dt > max_wait) dt = max_wait;
         apr_thread_cond_timedwait(cond, lock, dt);
 
-        log_printf(5, "checking deferred_pending stack_size=%d\n", stack_size(deferred_pending));
+        log_printf(5, "checking deferred_pending stack_size=%d\n", tbx_stack_size(deferred_pending));
         //** Move anything expired to the ready queue
         //** Keeping track of the next wakeup call
         dt = apr_time_make(100, 0);
         now = apr_time_now();
-        move_to_top(deferred_pending);
+        tbx_stack_move_to_top(deferred_pending);
         n = 0;
-        while ((defer = get_ele_data(deferred_pending)) != NULL) {
+        while ((defer = tbx_get_ele_data(deferred_pending)) != NULL) {
             if (defer->expire < now) {  //** Expired so move it for sending
-                delete_current(deferred_pending, 0, 0);
-                push(deferred_ready, defer);
+                tbx_delete_current(deferred_pending, 0, 0);
+                tbx_stack_push(deferred_ready, defer);
                 n++;
             } else if (dt > defer->expire) {  //** Keep track of when to wake up next
                 dt = defer->expire;
-                move_down(deferred_pending);
+                tbx_stack_move_down(deferred_pending);
             } else {
-                move_down(deferred_pending);
+                tbx_stack_move_down(deferred_pending);
             }
         }
 
-        log_printf(5, "deferred_ready=%d deferred_pending=%d n= " LU " server_portal=%p\n", stack_size(deferred_ready), stack_size(deferred_pending), n, server_portal);
+        log_printf(5, "deferred_ready=%d deferred_pending=%d n= " LU " server_portal=%p\n", tbx_stack_size(deferred_ready), tbx_stack_size(deferred_pending), n, server_portal);
 
         if (n > 0) { //** Got tasks to send
             if (server_portal == NULL) {
@@ -1216,7 +1216,7 @@ int main(int argc, char **argv)
 
         if (strcmp(argv[i], "-d") == 0) { //** Enable debugging
             i++;
-            set_log_level(atol(argv[i]));
+            tbx_set_log_level(atol(argv[i]));
             i++;
         } else if (strcmp(argv[i], "-h") == 0) { //** Print help
             printf("mq_test [-d log_level]\n");
@@ -1238,12 +1238,12 @@ int main(int argc, char **argv)
     mq_pipe_create(ctx, server_efd);
 
     //** Make the stacks for controlling deferred replies
-    deferred_ready = new_stack();
-    deferred_pending = new_stack();
+    deferred_ready = tbx_stack_new();
+    deferred_pending = tbx_stack_new();
 
-    thread_create_assert(&client_thread, NULL, client_test_thread, NULL, mpool);
-    thread_create_assert(&server_thread, NULL, server_test_thread, NULL, mpool);
-    thread_create_assert(&deferred_thread, NULL, server_deferred_thread, NULL, mpool);
+    tbx_thread_create_assert(&client_thread, NULL, client_test_thread, NULL, mpool);
+    tbx_thread_create_assert(&server_thread, NULL, server_test_thread, NULL, mpool);
+    tbx_thread_create_assert(&deferred_thread, NULL, server_deferred_thread, NULL, mpool);
 
     apr_thread_join(&dummy, client_thread);
 
@@ -1253,8 +1253,8 @@ int main(int argc, char **argv)
     apr_thread_join(&dummy, server_thread);
     apr_thread_join(&dummy, deferred_thread);
 
-    free_stack(deferred_ready, 0);
-    free_stack(deferred_pending, 0);
+    tbx_free_stack(deferred_ready, 0);
+    tbx_free_stack(deferred_pending, 0);
 
     mq_pipe_destroy(ctx, control_efd);
     mq_pipe_destroy(ctx, server_efd);

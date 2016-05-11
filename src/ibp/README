@@ -62,7 +62,7 @@ void get_ibp_capstatus(ibp_capstatus_t *cs, int *readcount, int *writecount,
 
 -----------------RID list management and RID conversion functions---------
 void ridlist_init(ibp_ridlist_t *rlist, int size);
-void ridlist_destroy(ibp_ridlist_t *rlist);
+void ridtbx_list_destroy(ibp_ridlist_t *rlist);
 int ridlist_get_size(ibp_ridlist_t *rlist);
 rid_t ridlist_get_element(ibp_ridlist_t *rlist, int index);
 char *ibp_rid2str(rid_t rid, char *buffer);

@@ -21,10 +21,10 @@
 #define _log_module_index 166
 
 #include "ex3_abstract.h"
-#include "list.h"
-#include "random.h"
-#include "type_malloc.h"
-#include "log.h"
+#include <tbx/list.h>
+#include <tbx/random.h>
+#include <tbx/type_malloc.h>
+#include <tbx/log.h>
 
 
 //***********************************************************************
@@ -33,9 +33,9 @@
 
 int view_insert(exnode_t *ex, segment_t *seg)
 {
-    atomic_inc(seg->ref_count);
+    tbx_atomic_inc(seg->ref_count);
 
-    return(list_insert(ex->view, &segment_id(seg), seg));
+    return(tbx_list_insert(ex->view, &segment_id(seg), seg));
 }
 
 //***********************************************************************
@@ -44,9 +44,9 @@ int view_insert(exnode_t *ex, segment_t *seg)
 
 int view_remove(exnode_t *ex, segment_t *seg)
 {
-    atomic_dec(seg->ref_count);
+    tbx_atomic_dec(seg->ref_count);
 
-    list_remove(ex->view, &segment_id(seg), seg);
+    tbx_list_remove(ex->view, &segment_id(seg), seg);
 
     return(0);
 }

@@ -16,10 +16,10 @@
 
 #define _log_module_index 189
 
-#include "type_malloc.h"
+#include <tbx/type_malloc.h>
 #include "lio.h"
-#include "log.h"
-#include "string_token.h"
+#include <tbx/log.h>
+#include <tbx/string_token.h>
 
 //***********************************************************************
 // Core LIO functionality
@@ -177,8 +177,8 @@ void lio_get_timestamp(char *val, int *timestamp, char **id)
     int fin;
 
     *timestamp = 0;
-    sscanf(string_token(val, "|", &bstate, &fin), "%d", timestamp);
-    if (id != NULL) *id = string_token(NULL, "|", &bstate, &fin);
+    sscanf(tbx_stk_string_token(val, "|", &bstate, &fin), "%d", timestamp);
+    if (id != NULL) *id = tbx_stk_string_token(NULL, "|", &bstate, &fin);
     return;
 }
 
@@ -585,7 +585,7 @@ op_generic_t *lioc_remove_object(lio_config_t *lc, creds_t *creds, char *path, c
 {
     lioc_mk_mv_rm_t *op;
 
-    type_malloc_clear(op, lioc_mk_mv_rm_t, 1);
+    tbx_type_malloc_clear(op, lioc_mk_mv_rm_t, 1);
 
     op->lc = lc;
     op->creds = creds;
@@ -670,7 +670,7 @@ op_generic_t *lioc_remove_regex_object(lio_config_t *lc, creds_t *creds, os_rege
 {
     lioc_remove_regex_t *op;
 
-    type_malloc_clear(op, lioc_remove_regex_t, 1);
+    tbx_type_malloc_clear(op, lioc_remove_regex_t, 1);
 
     op->lc = lc;
     op->creds = creds;
@@ -821,7 +821,7 @@ op_status_t lioc_create_object_fn(void *arg, int id)
     v_size[6] = 1;
 
     log_printf(15, "NEW ino=%s exnode=%s\n", val[4], val[ex_key]);
-    flush_log();
+    tbx_flush_log();
 
     err = gop_sync_exec(os_set_multiple_attrs(op->lc->os, op->creds, fd, _lioc_create_keys, (void **)val, v_size, (op->type & OS_OBJECT_FILE) ? _n_lioc_file_keys : _n_lioc_dir_keys));
     if (err != OP_STATE_SUCCESS) {
@@ -855,7 +855,7 @@ op_generic_t *lioc_create_object(lio_config_t *lc, creds_t *creds, char *path, i
 {
     lioc_mk_mv_rm_t *op;
 
-    type_malloc_clear(op, lioc_mk_mv_rm_t, 1);
+    tbx_type_malloc_clear(op, lioc_mk_mv_rm_t, 1);
 
     op->lc = lc;
     op->creds = creds;
@@ -965,7 +965,7 @@ op_generic_t *lioc_link_object(lio_config_t *lc, creds_t *creds, int symlink, ch
 {
     lioc_mk_mv_rm_t *op;
 
-    type_malloc_clear(op, lioc_mk_mv_rm_t, 1);
+    tbx_type_malloc_clear(op, lioc_mk_mv_rm_t, 1);
 
     op->lc = lc;
     op->creds = creds;
@@ -999,7 +999,7 @@ unified_object_iter_t *unified_create_object_iter(lio_path_tuple_t tuple, os_reg
 {
     unified_object_iter_t *it;
 
-    type_malloc_clear(it, unified_object_iter_t, 1);
+    tbx_type_malloc_clear(it, unified_object_iter_t, 1);
 
     it->tuple = tuple;
     if (tuple.is_lio == 1) {
@@ -1165,7 +1165,7 @@ op_status_t cp_lio2lio(lio_cp_file_t *cp)
         log_printf(5, "src=%s  clone gid=%d\n", cp->src_tuple.path, gop_id(gop));
     } else {
         info_printf(lio_ifd, 1, "Slow copy:( %s->%s\n", cp->src_tuple.path, cp->dest_tuple.path);
-        type_malloc(buffer, char, cp->bufsize+1);
+        tbx_type_malloc(buffer, char, cp->bufsize+1);
         gop = segment_copy(cp->dest_tuple.lc->tpc_unlimited, cp->dest_tuple.lc->da, cp->rw_hints, sseg, dseg, 0, 0, -1, cp->bufsize, buffer, 1, cp->dest_tuple.lc->timeout);
     }
     err = gop_waitall(gop);
@@ -1283,7 +1283,7 @@ op_status_t cp_local2lio(lio_cp_file_t *cp)
         goto finished;
     }
 
-    type_malloc(buffer, char, cp->bufsize+1);
+    tbx_type_malloc(buffer, char, cp->bufsize+1);
 
     log_printf(0, "BEFORE PUT\n");
     err = gop_sync_exec(segment_put(cp->dest_tuple.lc->tpc_unlimited, cp->dest_tuple.lc->da, cp->rw_hints, fd, seg, 0, -1, cp->bufsize, buffer, 1, 3600));
@@ -1378,7 +1378,7 @@ op_status_t cp_lio2local(lio_cp_file_t *cp)
         goto finished;
     }
 
-    type_malloc(buffer, char, cp->bufsize+1);
+    tbx_type_malloc(buffer, char, cp->bufsize+1);
     gop_sync_exec(segment_get(cp->src_tuple.lc->tpc_unlimited, cp->src_tuple.lc->da, cp->rw_hints, seg, fd, 0, -1, cp->bufsize, buffer, 3600));
     free(buffer);
 
@@ -1490,7 +1490,7 @@ op_generic_t *lioc_truncate(lio_path_tuple_t *tuple, ex_off_t new_size)
 {
     lioc_trunc_t *op;
 
-    type_malloc_clear(op, lioc_trunc_t, 1);
+    tbx_type_malloc_clear(op, lioc_trunc_t, 1);
 
     op->tuple = *tuple;
     op->new_size = new_size;

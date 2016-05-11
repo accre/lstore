@@ -22,7 +22,7 @@
 #define __TYPE_MALLOC_H_
 
 #include <assert.h>
-#include "assert_result.h"
+#include "tbx/assert_result.h"
 #include "stdlib.h"
 #include "string.h"
 
@@ -30,11 +30,11 @@
 extern "C" {
 #endif
 
-#define type_malloc_clear(var, type, count) type_malloc(var, type, count); type_memclear(var, type, count)
+#define tbx_type_malloc_clear(var, type, count) tbx_type_malloc(var, type, count); tbx_type_memclear(var, type, count)
 
-#define type_malloc(var, type, count) var = (type *)malloc(sizeof(type)*(count)); assert(var != NULL)
-#define type_realloc(var, type, count) var = (type *)realloc(var, sizeof(type)*(count)); assert(var != NULL)
-#define type_memclear(var, type, count) memset(var, 0, sizeof(type)*(count))
+#define tbx_type_malloc(var, type, count) var = (type *)malloc(sizeof(type)*(count)); assert(var != NULL)
+#define tbx_type_realloc(var, type, count) var = (type *)realloc(var, sizeof(type)*(count)); assert(var != NULL)
+#define tbx_type_memclear(var, type, count) memset(var, 0, sizeof(type)*(count))
 
 #ifdef __cplusplus
 }

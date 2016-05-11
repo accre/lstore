@@ -17,14 +17,14 @@
 #define _log_module_index 200
 
 #include <assert.h>
-#include "assert_result.h"
+#include <tbx/assert_result.h>
 #include "exnode.h"
-#include "log.h"
-#include "iniparse.h"
-#include "type_malloc.h"
+#include <tbx/log.h>
+#include <tbx/iniparse.h>
+#include <tbx/type_malloc.h>
 #include "thread_pool.h"
 #include "lio.h"
-#include "string_token.h"
+#include <tbx/string_token.h>
 
 #define MAX_SET 1000
 
@@ -49,7 +49,7 @@ void load_file(char *fname, char **val, int *v_size)
     fseek(fd, 0, SEEK_END);
 
     i = ftell(fd);
-    type_malloc(*val, char, i+1);
+    tbx_type_malloc(*val, char, i+1);
     (*val)[i] = 0;
     *v_size = i;
 
@@ -142,7 +142,7 @@ int main(int argc, char **argv)
             i++;
         } else if (strcmp(argv[i], "-as") == 0) {  //** String attribute
             i++;
-            key[n_keys] = string_token(argv[i], delims, &bstate, &fin);
+            key[n_keys] = tbx_stk_string_token(argv[i], delims, &bstate, &fin);
             val[n_keys] = bstate;  //** Everything else is the value
             v_size[n_keys] = strlen(val[n_keys]);
             if (strcmp(val[n_keys], "") == 0) val[n_keys] = NULL;
@@ -150,21 +150,21 @@ int main(int argc, char **argv)
             i++;
         } else if (strcmp(argv[i], "-ar") == 0) {  //** Remove the attribute
             i++;
-            key[n_keys] = string_token(argv[i], delims, &bstate, &fin);
+            key[n_keys] = tbx_stk_string_token(argv[i], delims, &bstate, &fin);
             val[n_keys] = NULL;
             v_size[n_keys] = -1;
             n_keys++;
             i++;
         } else if (strcmp(argv[i], "-af") == 0) {  //** File attribute
             i++;
-            key[n_keys] = string_token(argv[i], delims, &bstate, &fin);
-            load_file(string_token(NULL, delims, &bstate, &fin), &(val[n_keys]), &(v_size[n_keys]));
+            key[n_keys] = tbx_stk_string_token(argv[i], delims, &bstate, &fin);
+            load_file(tbx_stk_string_token(NULL, delims, &bstate, &fin), &(val[n_keys]), &(v_size[n_keys]));
             n_keys++;
             i++;
         } else if (strcmp(argv[i], "-al") == 0) {  //** Symlink attributes
             i++;
-            dkey[n_skeys] = string_token(argv[i], delims, &bstate, &fin);
-            tmp = string_token(NULL, delims, &bstate, &fin);
+            dkey[n_skeys] = tbx_stk_string_token(argv[i], delims, &bstate, &fin);
+            tmp = tbx_stk_string_token(NULL, delims, &bstate, &fin);
             os_path_split(tmp, &(sobj[n_skeys]), &(skey[n_skeys]));
             n_skeys++;
             i++;

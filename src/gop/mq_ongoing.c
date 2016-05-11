@@ -20,12 +20,13 @@
 
 #define _log_module_index 222
 
-#include "apr_wrapper.h"
+#include <tbx/assert_result.h>
+#include <tbx/apr_wrapper.h>
 #include "opque.h"
 #include "mq_ongoing.h"
 #include "mq_helpers.h"
-#include "type_malloc.h"
-#include "log.h"
+#include <tbx/type_malloc.h>
+#include <tbx/log.h>
 
 //***********************************************************************
 // ongoing_response_status - Handles a response that just returns the status
@@ -78,7 +79,7 @@ void *ongoing_heartbeat_thread(apr_thread_t *th, void *data)
             apr_hash_this(hit, (const void **)&remote_hash, &id_len, (void **)&table);
 
             k = apr_hash_count(table->table);
-            if (log_level() > 1) {
+            if (tbx_log_level() > 1) {
                 remote_host_string = mq_address_to_string(table->remote_host);
                 log_printf(1, "host=%s count=%d\n", remote_host_string, k);
                 free(remote_host_string);
@@ -94,7 +95,7 @@ void *ongoing_heartbeat_thread(apr_thread_t *th, void *data)
                                         oh->id,
                                         ((apr_time_t) apr_time_sec(apr_time_now())),
                                         oh->heartbeat);
-                    flush_log();
+                    tbx_flush_log();
                     //** Form the message
                     msg = mq_make_exec_core_msg(table->remote_host, 1);
                     mq_msg_append_mem(msg, ONGOING_KEY, ONGOING_SIZE, MQF_MSG_KEEP_DATA);
@@ -200,13 +201,13 @@ void mq_ongoing_host_inc(mq_ongoing_t *on, mq_msg_t *remote_host, char *my_id, i
     hash = mq_msg_hash(remote_host);
     table = apr_hash_get(on->table, &hash, sizeof(mq_msg_hash_t));  //** Look up the remote host
 
-    if (log_level() > 5) {
+    if (tbx_log_level() > 5) {
         remote_host_string = mq_address_to_string(remote_host);
         log_printf(5, "remote_host=%s hb=%d table=%p\n", remote_host_string, heartbeat, table);
         free(remote_host_string);
     }
     if (table == NULL) { //** New host so add it
-        type_malloc_clear(table, ongoing_table_t, 1);
+        tbx_type_malloc_clear(table, ongoing_table_t, 1);
         table->table = apr_hash_make(on->mpool); assert(table->table != NULL);
         table->remote_host = mq_msg_new();
         mq_msg_append_msg(table->remote_host, remote_host, MQF_MSG_AUTO_FREE);
@@ -218,14 +219,14 @@ void mq_ongoing_host_inc(mq_ongoing_t *on, mq_msg_t *remote_host, char *my_id, i
 
     oh = apr_hash_get(table->table, my_id, id_len);  //** Look up the id
     if (oh == NULL) { //** New host so add it
-        type_malloc_clear(oh, ongoing_hb_t, 1);
-        type_malloc(oh->id, char, id_len);
+        tbx_type_malloc_clear(oh, ongoing_hb_t, 1);
+        tbx_type_malloc(oh->id, char, id_len);
         memcpy(oh->id, my_id, id_len);
         oh->id_len = id_len;
         oh->heartbeat = heartbeat / on->send_divisor;
         if (oh->heartbeat < 1) oh->heartbeat = 1;
 
-        if (log_level() > 5) {
+        if (tbx_log_level() > 5) {
             remote_host_string = mq_address_to_string(remote_host);
             log_printf(5, "remote_host=%s final hb=%d \n", remote_host_string, oh->heartbeat);
             free(remote_host_string);
@@ -278,7 +279,7 @@ mq_ongoing_object_t *mq_ongoing_add(mq_ongoing_t *mqon, int auto_clean, char *id
     mq_ongoing_object_t *ongoing;
     mq_ongoing_host_t *oh;
 
-    type_malloc(ongoing, mq_ongoing_object_t, 1);
+    tbx_type_malloc(ongoing, mq_ongoing_object_t, 1);
     ongoing->handle = handle;
     ongoing->key = (intptr_t)handle;
     ongoing->on_fail = on_fail;
@@ -295,8 +296,8 @@ mq_ongoing_object_t *mq_ongoing_add(mq_ongoing_t *mqon, int auto_clean, char *id
     if (oh == NULL) {
         log_printf(5, "new host=%s\n", id);
 
-        type_malloc(oh, mq_ongoing_host_t, 1);
-        type_malloc(oh->id, char, id_len+1);
+        tbx_type_malloc(oh, mq_ongoing_host_t, 1);
+        tbx_type_malloc(oh->id, char, id_len+1);
         memcpy(oh->id, id, id_len);
         oh->id[id_len] = 0;  //** NULL terminate the string
         oh->id_len = id_len;
@@ -438,7 +439,7 @@ void mq_ongoing_cb(void *arg, mq_task_t *task)
 
     log_printf(1, "Processing incoming request. EXEC START now=" TT "\n",
                     ((apr_time_t) apr_time_sec(apr_time_now())));
-    flush_log();
+    tbx_flush_log();
 
     //** Parse the command.
     msg = task->msg;
@@ -662,7 +663,7 @@ mq_ongoing_t *mq_ongoing_create(mq_context_t *mqc, mq_portal_t *server_portal, i
     mq_ongoing_t *mqon;
     mq_command_table_t *ctable;
 
-    type_malloc_clear(mqon, mq_ongoing_t, 1);
+    tbx_type_malloc_clear(mqon, mq_ongoing_t, 1);
 
     mqon->mqc = mqc;
     mqon->server_portal = server_portal;
@@ -679,14 +680,14 @@ mq_ongoing_t *mq_ongoing_create(mq_context_t *mqc, mq_portal_t *server_portal, i
 
         ctable = mq_portal_command_table(server_portal);
         mq_command_set(ctable, ONGOING_KEY, ONGOING_SIZE, mqon, mq_ongoing_cb);
-        thread_create_assert(&(mqon->ongoing_server_thread), NULL, mq_ongoing_server_thread, (void *)mqon, mqon->mpool);
+        tbx_thread_create_assert(&(mqon->ongoing_server_thread), NULL, mq_ongoing_server_thread, (void *)mqon, mqon->mpool);
     }
 
     if (mode & ONGOING_CLIENT) {
         mqon->table = apr_hash_make(mqon->mpool);
         assert(mqon->table != NULL);
 
-        thread_create_assert(&(mqon->ongoing_heartbeat_thread), NULL, ongoing_heartbeat_thread, (void *)mqon, mqon->mpool);
+        tbx_thread_create_assert(&(mqon->ongoing_heartbeat_thread), NULL, ongoing_heartbeat_thread, (void *)mqon, mqon->mpool);
     }
     return(mqon);
 }

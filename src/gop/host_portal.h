@@ -26,8 +26,8 @@
 #include <apr_thread_proc.h>
 #include <apr_thread_mutex.h>
 #include <apr_thread_cond.h>
-#include "fmttypes.h"
-#include "network.h"
+#include <tbx/fmttypes.h>
+#include <tbx/network.h>
 #include "opque.h"
 
 #ifdef __cplusplus
@@ -103,7 +103,7 @@ apr_pool_t   *mpool;       //** MEmory pool for
  
  
  
-extern Net_timeout_t global_dt;
+extern tbx_ns_timeout_t global_dt;
  
 //** Routines from hportal.c
 #define hportal_trylock(hp)   apr_thread_mutex_trylock(hp->lock)

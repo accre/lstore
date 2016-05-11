@@ -14,38 +14,21 @@
    limitations under the License.
 */
 
-//*************************************************************************
-//*************************************************************************
-
-#ifndef __NET_2_SSL_H_
-#define __NET_2_SSL_H_
+#pragma once
+#ifndef ACCRE_APPEND_PRINTF_H_INCLUDED
+#define ACCRE_APPEND_PRINTF_H_INCLUDED
 
 #include "tbx/toolbox_visibility.h"
-#define N_BUFSIZE  1024
-
-//#include <sys/select.h>
-//#include <sys/time.h>
-//#include <pthread.h>
-#include "network.h"
-
-typedef struct {
-//  pthread_mutex_t lock;
-    int rfd;
-    int wfd;
-} tbx_net_2ssl_t;
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-int d_ssl_close(net_sock_t *sock);
-long int d_ssl_write(net_sock_t *sock, const void *buf, size_t count, Net_timeout_t tm);
-long int d_ssl_read(net_sock_t *sock, void *buf, size_t count, Net_timeout_t tm);
-int ns_merge_ssl(tbx_ns_t *ns1, tbx_ns_t *ns2);
+// Functions
+TBX_API int tbx_append_printf(char *buffer, int *used, int nbytes, const char *fmt, ...);
 
 #ifdef __cplusplus
 }
 #endif
 
 #endif
-

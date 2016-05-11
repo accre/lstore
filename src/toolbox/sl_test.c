@@ -19,10 +19,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
-#include "assert_result.h"
+#include "tbx/assert_result.h"
+#include "tbx/log.h"
 #include "log.h"
+#include "tbx/skiplist.h"
 #include "skiplist.h"
-#include "atomic_counter.h"
+#include "tbx/atomic_counter.h"
 
 int main(int argc, char **argv)
 {
@@ -40,7 +42,7 @@ int main(int argc, char **argv)
     }
 
     assert_result(apr_initialize(), APR_SUCCESS);
-    atomic_init();
+    tbx_atomic_startup();
 
     open_log("stdout");
 
@@ -49,7 +51,7 @@ int main(int argc, char **argv)
         i++;
         j = atoi(argv[i]);
         i++;
-        set_log_level(j);
+        tbx_set_log_level(j);
     }
     n_max = atol(argv[i]);
     i++;
@@ -62,12 +64,12 @@ int main(int argc, char **argv)
 
     check_slot = n_max / 2;
 
-    sl = create_skiplist_full(l_max, p, 1, &tbx_sl_compare_int, NULL, NULL, NULL);
+    sl = tbx_sl_new_full(l_max, p, 1, &tbx_sl_compare_int, NULL, NULL, NULL);
 
     //** Make sure everything works fine with an empty list
     i = 12345;
-    it = iter_search_skiplist(sl, (tbx_sl_key_t *)&i, 0);
-    next_skiplist(&it, (tbx_sl_key_t **)&key, (tbx_sl_data_t **)&data);
+    it = tbx_sl_iter_search(sl, (tbx_sl_key_t *)&i, 0);
+    tbx_sl_next(&it, (tbx_sl_key_t **)&key, (tbx_sl_data_t **)&data);
     if (data != NULL) {
         printf("ERROR got something from an EMPTY list\n");
     }
@@ -87,7 +89,7 @@ int main(int argc, char **argv)
 
         data_list[i] = i;
         printf("inserting key[%d]=%d\n", i, key_list[i]);
-        err = insert_skiplist(sl, (tbx_sl_key_t *)&(key_list[i]), (tbx_sl_data_t *)&(data_list[i]));
+        err = tbx_sl_insert(sl, (tbx_sl_key_t *)&(key_list[i]), (tbx_sl_data_t *)&(data_list[i]));
         if (err != 0) {
             printf("ERROR inserting key_list[%d]=%d\n", i, key_list[i]);
         }
@@ -99,10 +101,10 @@ int main(int argc, char **argv)
     //**Check phase
     for (i=0; i<n_max; i++) {
         printf("Looking for key[%d]=%d\n", i, key_list[i]);
-        it = iter_search_skiplist(sl, (tbx_sl_key_t *)&(key_list[i]), 0);
+        it = tbx_sl_iter_search(sl, (tbx_sl_key_t *)&(key_list[i]), 0);
         j = 0;
         do {
-            err = next_skiplist(&it, (tbx_sl_key_t *)&key, (tbx_sl_data_t *)&data);
+            err = tbx_sl_next(&it, (tbx_sl_key_t *)&key, (tbx_sl_data_t *)&data);
             if (err != 0) {
                 printf("Err locating key_list[%d]=%d\n", i, key_list[i]);
             }
@@ -119,62 +121,62 @@ int main(int argc, char **argv)
     //** Check that I can get the start/end keys
 
     printf("Checking access to the 1st key\n");
-    key = skiplist_first_key(sl);
+    key = tbx_sl_first_key(sl);
     if (*key != min_key) {
         printf("ERROR getting 1st key! min_key=%d got=%d\n", min_key, *key);
     }
 
     printf("Checking query for min_key-1\n");
     j = min_key - 1;
-    it = iter_search_skiplist(sl, (tbx_sl_key_t *)&j, 0);
-    next_skiplist(&it, (tbx_sl_key_t *)&key, (tbx_sl_data_t *)&data);
+    it = tbx_sl_iter_search(sl, (tbx_sl_key_t *)&j, 0);
+    tbx_sl_next(&it, (tbx_sl_key_t *)&key, (tbx_sl_data_t *)&data);
     if (*key != min_key) {
         printf("ERROR getting 1st key using min_key-1! min_key-1=%d got=%d\n", j, *key);
     }
 
     printf("Checking query for min_key\n");
     j = min_key;
-    it = iter_search_skiplist(sl, (tbx_sl_key_t *)&j, 0);
-    next_skiplist(&it, (tbx_sl_key_t *)&key, (tbx_sl_data_t *)&data);
+    it = tbx_sl_iter_search(sl, (tbx_sl_key_t *)&j, 0);
+    tbx_sl_next(&it, (tbx_sl_key_t *)&key, (tbx_sl_data_t *)&data);
     if (*key != min_key) {
         printf("ERROR getting 1st key using min_key! min_key=%d got=%d\n", j, *key);
     }
 
     printf("Checking query for min_key+1\n");
     j = min_key + 1;
-    it = iter_search_skiplist(sl, (tbx_sl_key_t *)&j, 0);
-    next_skiplist(&it, (tbx_sl_key_t *)&key, (tbx_sl_data_t *)&data);
+    it = tbx_sl_iter_search(sl, (tbx_sl_key_t *)&j, 0);
+    tbx_sl_next(&it, (tbx_sl_key_t *)&key, (tbx_sl_data_t *)&data);
     if (*key <= min_key) {
         printf("ERROR querying min_key+1! min_key+1=%d got=%d\n", j, *key);
     }
 
 
     printf("Checking access to the last key\n");
-    key = skiplist_last_key(sl);
+    key = tbx_sl_last_key(sl);
     if (*key != max_key) {
         printf("ERROR getting last key! max_key=%d got=%d\n", max_key, *key);
     }
 
     printf("Checking query for max_key-1\n");
     j = max_key - 1;
-    it = iter_search_skiplist(sl, (tbx_sl_key_t *)&j, 0);
-    next_skiplist(&it, (tbx_sl_key_t *)&key, (tbx_sl_data_t *)&data);
+    it = tbx_sl_iter_search(sl, (tbx_sl_key_t *)&j, 0);
+    tbx_sl_next(&it, (tbx_sl_key_t *)&key, (tbx_sl_data_t *)&data);
     if (*key != max_key) {
         printf("ERROR with last key query using max_key-1! max_key-1=%d got=%d\n", j, *key);
     }
 
     printf("Checking query for max_key\n");
     j = max_key;
-    it = iter_search_skiplist(sl, (tbx_sl_key_t *)&j, 0);
-    next_skiplist(&it, (tbx_sl_key_t *)&key, (tbx_sl_data_t *)&data);
+    it = tbx_sl_iter_search(sl, (tbx_sl_key_t *)&j, 0);
+    tbx_sl_next(&it, (tbx_sl_key_t *)&key, (tbx_sl_data_t *)&data);
     if (*key != max_key) {
         printf("ERROR getting last key using max_key! max_key=%d got=%d\n", j, *key);
     }
 
     printf("Checking query for max_key+1\n");
     j = max_key + 1;
-    it = iter_search_skiplist(sl, (tbx_sl_key_t *)&j, 0);
-    next_skiplist(&it, (tbx_sl_key_t *)&key, (tbx_sl_data_t *)&data);
+    it = tbx_sl_iter_search(sl, (tbx_sl_key_t *)&j, 0);
+    tbx_sl_next(&it, (tbx_sl_key_t *)&key, (tbx_sl_data_t *)&data);
     if (key != NULL) {
         printf("ERROR getting key using max_key+1! max_key+1=%d got=%d should be NULL\n", j, *key);
     }
@@ -182,15 +184,15 @@ int main(int argc, char **argv)
     //** Iterate through the list to verify order
     printf("Iterating through the list to verify order\n");
     j = -1;
-    it = iter_search_skiplist(sl, (tbx_sl_key_t *)NULL, 0);
-    err = next_skiplist(&it, (tbx_sl_key_t *)&key, (tbx_sl_data_t *)&data);
+    it = tbx_sl_iter_search(sl, (tbx_sl_key_t *)NULL, 0);
+    err = tbx_sl_next(&it, (tbx_sl_key_t *)&key, (tbx_sl_data_t *)&data);
     i = 0;
     while (err == 0) {
         printf("i=%d key=%d data=%d\n", i, *key, *data);
         if (j>*key) {
             printf("ERROR! in order! i=%d prev=%d curr=%d\n", i, j, *key);
         }
-        err = next_skiplist(&it, (tbx_sl_key_t *)&key, (tbx_sl_data_t *)&data);
+        err = tbx_sl_next(&it, (tbx_sl_key_t *)&key, (tbx_sl_data_t *)&data);
         i++;
     }
     printf("After iteration through the list.  i=%d n_max=%d\n", i, n_max);
@@ -200,8 +202,8 @@ int main(int argc, char **argv)
 
     printf("Checking that we return the key or the next higher key\n");
     j = key_list[check_slot]-1;
-    it = iter_search_skiplist(sl, (tbx_sl_key_t *)&j, 0);
-    next_skiplist(&it, (tbx_sl_key_t *)&key, (tbx_sl_data_t *)&data);
+    it = tbx_sl_iter_search(sl, (tbx_sl_key_t *)&j, 0);
+    tbx_sl_next(&it, (tbx_sl_key_t *)&key, (tbx_sl_data_t *)&data);
     printf("Checking for j=%d key_list[%d]=%d got key=%d\n", j, check_slot, key_list[check_slot], *key);
     if (*key != key_list[check_slot]) {
         printf("ERROR! key<j (%d<%d)!!!!!\n", *key, j);
@@ -209,8 +211,8 @@ int main(int argc, char **argv)
 
     printf("Checking that round down works\n");
     j = key_list[check_slot]+1;
-    it = iter_search_skiplist(sl, (tbx_sl_key_t *)&j, -1);
-    next_skiplist(&it, (tbx_sl_key_t *)&key, (tbx_sl_data_t *)&data);
+    it = tbx_sl_iter_search(sl, (tbx_sl_key_t *)&j, -1);
+    tbx_sl_next(&it, (tbx_sl_key_t *)&key, (tbx_sl_data_t *)&data);
     printf("Checking for j=%d key_list[%d]=%d got key=%d\n", j, check_slot, key_list[check_slot], *key);
     if (*key != key_list[check_slot]) {
         printf("ERROR! key>j (%d<%d)!!!!!\n", *key, j);
@@ -218,8 +220,8 @@ int main(int argc, char **argv)
 
     printf("min_key:  Checking that round down works\n");
     j = min_key+1;
-    it = iter_search_skiplist(sl, (tbx_sl_key_t *)&j, -1);
-    next_skiplist(&it, (tbx_sl_key_t *)&key, (tbx_sl_data_t *)&data);
+    it = tbx_sl_iter_search(sl, (tbx_sl_key_t *)&j, -1);
+    tbx_sl_next(&it, (tbx_sl_key_t *)&key, (tbx_sl_data_t *)&data);
     printf("Checking for j=%d min_key=%d got key=%d\n", j, min_key, *key);
     if (*key != min_key) {
         printf("ERROR! key>j (%d<%d)!!!!!\n", *key, j);
@@ -227,8 +229,8 @@ int main(int argc, char **argv)
 
 
     j = key_list[check_slot];
-    it = iter_search_skiplist(sl, (tbx_sl_key_t *)&j, 0);
-    next_skiplist(&it, (tbx_sl_key_t *)&key, (tbx_sl_data_t *)&data);
+    it = tbx_sl_iter_search(sl, (tbx_sl_key_t *)&j, 0);
+    tbx_sl_next(&it, (tbx_sl_key_t *)&key, (tbx_sl_data_t *)&data);
     printf("Checking for j=%d key_list[%d]=%d got key=%d\n", j, check_slot, key_list[check_slot], *key);
     if (*key != j) {
         printf("ERROR! key!=j (%d!=%d)!!!!!\n", *key, j);
@@ -238,8 +240,8 @@ int main(int argc, char **argv)
     dummy = -1;
     for (i=0; i<rnd_max; i++) {
         n = rand();
-        it = iter_search_skiplist(sl, (tbx_sl_key_t *)&n, 0);
-        err = next_skiplist(&it, (tbx_sl_key_t *)&key, (tbx_sl_data_t *)&data);
+        it = tbx_sl_iter_search(sl, (tbx_sl_key_t *)&n, 0);
+        err = tbx_sl_next(&it, (tbx_sl_key_t *)&key, (tbx_sl_data_t *)&data);
         best = -1;
         best_n = -1;
         for (j=0; j<n_max; j++) {
@@ -266,8 +268,8 @@ int main(int argc, char **argv)
     dummy = -1;
     for (i=0; i<rnd_max; i++) {
         n = rand();
-        it = iter_search_skiplist(sl, (tbx_sl_key_t *)&n, -1);
-        err = next_skiplist(&it, (tbx_sl_key_t *)&key, (tbx_sl_data_t *)&data);
+        it = tbx_sl_iter_search(sl, (tbx_sl_key_t *)&n, -1);
+        err = tbx_sl_next(&it, (tbx_sl_key_t *)&key, (tbx_sl_data_t *)&data);
         best = -1;
         best_n = -1;
         for (j=0; j<n_max; j++) {
@@ -297,7 +299,7 @@ int main(int argc, char **argv)
         printf("removing key[%d]=%d\n", i, key_list[i]);
         fflush(stdout);
         fflush(stderr);
-        err = remove_skiplist(sl, (tbx_sl_key_t *)&(key_list[i]), (tbx_sl_data_t *)&(data_list[i]));
+        err = tbx_sl_remove(sl, (tbx_sl_key_t *)&(key_list[i]), (tbx_sl_data_t *)&(data_list[i]));
         if (err != 0) {
             printf("ERROR removing key_list[%d]=%d\n", i, key_list[i]);
             fflush(stdout);
@@ -309,43 +311,43 @@ int main(int argc, char **argv)
     //** Now insert a couple of elements and "empty and repeat"
     printf("Checking empty_skiplist\n");
     for (i=0; i<n_max; i++) {
-        err = insert_skiplist(sl, (tbx_sl_key_t *)&(key_list[i]), (tbx_sl_data_t *)&(data_list[i]));
+        err = tbx_sl_insert(sl, (tbx_sl_key_t *)&(key_list[i]), (tbx_sl_data_t *)&(data_list[i]));
         if (err != 0) {
             printf("empty 1 ERROR inserting key_list[%d]=%d\n", i, key_list[i]);
         }
     }
     j = key_list[check_slot];
-    it = iter_search_skiplist(sl, (tbx_sl_key_t *)&j, 0);
-    next_skiplist(&it, (tbx_sl_key_t *)&key, (tbx_sl_data_t *)&data);
+    it = tbx_sl_iter_search(sl, (tbx_sl_key_t *)&j, 0);
+    tbx_sl_next(&it, (tbx_sl_key_t *)&key, (tbx_sl_data_t *)&data);
     printf("empty 1 Checking for j=%d key_list[%d]=%d got key=%d\n", j, check_slot, key_list[check_slot], *key);
     if (*key != j) {
         printf("ERROR! key!=j (%d!=%d)!!!!!\n", *key, j);
     }
 
-    empty_skiplist(sl);
+    tbx_sl_empty(sl);
 
     for (i=0; i<n_max; i++) {
-        err = insert_skiplist(sl, (tbx_sl_key_t *)&(key_list[i]), (tbx_sl_data_t *)&(data_list[i]));
+        err = tbx_sl_insert(sl, (tbx_sl_key_t *)&(key_list[i]), (tbx_sl_data_t *)&(data_list[i]));
         if (err != 0) {
             printf("empty 2 ERROR inserting key_list[%d]=%d\n", i, key_list[i]);
         }
     }
     j = key_list[check_slot];
-    it = iter_search_skiplist(sl, (tbx_sl_key_t *)&j, 0);
-    next_skiplist(&it, (tbx_sl_key_t *)&key, (tbx_sl_data_t *)&data);
+    it = tbx_sl_iter_search(sl, (tbx_sl_key_t *)&j, 0);
+    tbx_sl_next(&it, (tbx_sl_key_t *)&key, (tbx_sl_data_t *)&data);
     printf("empty 2 Checking for j=%d key_list[%d]=%d got key=%d\n", j, check_slot, key_list[check_slot], *key);
     if (*key != j) {
         printf("ERROR! key!=j (%d!=%d)!!!!!\n", *key, j);
     }
 
-    destroy_skiplist(sl);
+    tbx_sl_del(sl);
     fflush(stdout);
-    flush_log();
+    tbx_flush_log();
 
     free(key_list);
     free(data_list);
 
-    atomic_destroy();
+    tbx_atomic_shutdown();
     apr_terminate();
     return(0);
 }

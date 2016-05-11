@@ -189,7 +189,7 @@ void copy_ibp_alias_capstatus(ibp_alias_capstatus_t *src, ibp_alias_capstatus_t 
 void get_ibp_alias_capstatus(ibp_alias_capstatus_t *cs, int *readcount, int *writecount,
                              ibp_off_t *offset, ibp_off_t *size, int *duration);
 void ridlist_init(ibp_ridlist_t *rlist, int size);
-IBP_API void ridlist_destroy(ibp_ridlist_t *rlist);
+IBP_API void ridtbx_list_destroy(ibp_ridlist_t *rlist);
 IBP_API int ridlist_get_size(ibp_ridlist_t *rlist);
 IBP_API rid_t ridlist_get_element(ibp_ridlist_t *rlist, int index);
 IBP_API char *ibp_rid2str(rid_t rid, char *buffer);

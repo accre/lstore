@@ -15,14 +15,14 @@
 */
 
 #include <assert.h>
-#include "assert_result.h"
+#include <tbx/assert_result.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
-#include "iniparse.h"
+#include <tbx/iniparse.h>
 #include "lio.h"
-#include "type_malloc.h"
+#include <tbx/type_malloc.h>
 #include "object_service_abstract.h"
 
 
@@ -115,15 +115,15 @@ void process_tag_file(char *tag_file, char *tag_name)
         exit(1);
     } else {
         /*** process tag file ***/
-        ini_fd = inip_read(tag_file); assert(ini_fd);
-        ini_g = inip_first_group(ini_fd);
+        ini_fd = tbx_inip_file_read(tag_file); assert(ini_fd);
+        ini_g = tbx_inip_group_first(ini_fd);
         obj_types = OS_OBJECT_ANY;
         while (ini_g != NULL) {
-            if (strcmp(inip_get_group(ini_g), "TAG") == 0) {
-                ele = inip_first_element(ini_g);
+            if (strcmp(tbx_inip_group_get(ini_g), "TAG") == 0) {
+                ele = tbx_inip_ele_first(ini_g);
                 while (ele != NULL) {
-                    key = inip_get_element_key(ele);
-                    value = inip_get_element_value(ele);
+                    key = tbx_inip_ele_key_get(ele);
+                    value = tbx_inip_ele_value_get(ele);
                     if (strcmp(key, "name") == 0) {
                         name = value;
                     } else if (strcmp(key, "path") == 0) {
@@ -137,16 +137,16 @@ void process_tag_file(char *tag_file, char *tag_name)
                     } else if (strcmp(key, "object_types") == 0) {
                         obj_types = atoi(value);
                     }
-                    ele = inip_next_element(ele);
+                    ele = tbx_inip_ele_next(ele);
                 }
                 if ((tag_name == NULL) || (strcmp(tag_name, name) == 0)) {
                     run_ls(path, regex_path, regex_object, obj_types, recurse_depth);
                 }
             }
-            ini_g = inip_next_group(ini_g);
+            ini_g = tbx_inip_group_next(ini_g);
         }
         /*** proper cleanup ***/
-        inip_destroy(ini_fd);
+        tbx_inip_destroy(ini_fd);
     }
 }
 

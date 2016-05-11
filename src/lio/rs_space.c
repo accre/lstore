@@ -22,10 +22,10 @@
 #define _log_module_index 217
 
 #include <assert.h>
-#include "assert_result.h"
+#include <tbx/assert_result.h>
 #include "resource_service_abstract.h"
-#include "iniparse.h"
-#include "string_token.h"
+#include <tbx/iniparse.h>
+#include <tbx/string_token.h>
 
 rs_space_t rs_space(char *config)
 {
@@ -41,34 +41,34 @@ rs_space_t rs_space(char *config)
 
     if (config == NULL) return(space);
 
-    fd = inip_read_text(config); assert(fd);
+    fd = tbx_inip_string_read(config); assert(fd);
 
-    grp = inip_first_group(fd);
+    grp = tbx_inip_group_first(fd);
     while (grp != NULL) {
-        key = inip_get_group(grp);
+        key = tbx_inip_group_get(grp);
         if (strcmp("rid", key) == 0) {  //** Found a resource
             space.n_rids_total++;
 
-            ele = inip_first_element(grp);
+            ele = tbx_inip_ele_first(grp);
             status = nfree = nused = ntotal = 0;
             while (ele != NULL) {
-                key = inip_get_element_key(ele);
-                value = inip_get_element_value(ele);
+                key = tbx_inip_ele_key_get(ele);
+                value = tbx_inip_ele_value_get(ele);
                 if (strcmp(key, "space_free") == 0) {  //** Space free
-                    nfree = string_get_integer(value);
+                    nfree = tbx_stk_string_get_integer(value);
                     if (nfree > 0) space.n_rids_free++;
                 } else if (strcmp(key, "space_used") == 0) {  //** Space used
-                    nused = string_get_integer(value);
+                    nused = tbx_stk_string_get_integer(value);
                 } else if (strcmp(key, "space_total") == 0) {  //** total space
-                    ntotal = string_get_integer(value);
+                    ntotal = tbx_stk_string_get_integer(value);
                 } else if (strcmp(key, "status") == 0) {  //** Status
-                    status = string_get_integer(value);
+                    status = tbx_stk_string_get_integer(value);
                     if ((status >= 0) && (status<=2)) {
                         space.n_rids_status[status]++;
                     }
                 }
 
-                ele = inip_next_element(ele);
+                ele = tbx_inip_ele_next(ele);
             }
 
             //** Always add it to the totals
@@ -84,10 +84,10 @@ rs_space_t rs_space(char *config)
             }
         }
 
-        grp = inip_next_group(grp);
+        grp = tbx_inip_group_next(grp);
     }
 
-    inip_destroy(fd);
+    tbx_inip_destroy(fd);
 
     return(space);
 }

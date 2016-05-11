@@ -20,15 +20,15 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <assert.h>
-#include "assert_result.h"
+#include <tbx/assert_result.h>
 #include "exnode.h"
-#include "log.h"
-#include "iniparse.h"
-#include "type_malloc.h"
+#include <tbx/log.h>
+#include <tbx/iniparse.h>
+#include <tbx/type_malloc.h>
 #include "thread_pool.h"
 #include "lio.h"
-#include "string_token.h"
-#include "random.h"
+#include <tbx/string_token.h>
+#include <tbx/random.h>
 
 //*************************************************************************
 //*************************************************************************
@@ -59,7 +59,7 @@ int main(int argc, char **argv)
         printf("\n");
         printf("    -ln                - Follow links.  Otherwise they are ignored\n");
         printf("    -rd recurse_depth  - Max recursion depth on directories. Defaults to %d\n", recurse_depth);
-        printf("    -b bufsize         - Buffer size to use for *each* transfer. Units supported (Default=%s)\n", pretty_print_int_with_scale(bufsize, ppbuf));
+        printf("    -b bufsize         - Buffer size to use for *each* transfer. Units supported (Default=%s)\n", tbx_stk_pretty_print_int_with_scale(bufsize, ppbuf));
         printf("    -f                 - Force a slow or traditional copy by reading from the source and copying to the destination\n");
         printf("    src_path*          - Source path glob to copy\n");
         printf("    dest_path          - Destination file or directory\n");
@@ -98,7 +98,7 @@ int main(int argc, char **argv)
             i++;
         } else if (strcmp(argv[i], "-b") == 0) {  //** Get the buffer size
             i++;
-            bufsize = string_get_integer(argv[i]);
+            bufsize = tbx_stk_string_get_integer(argv[i]);
             i++;
         }
 
@@ -130,7 +130,7 @@ int main(int argc, char **argv)
         return(1);
     }
 
-    type_malloc_clear(flist, lio_cp_path_t, n_paths);
+    tbx_type_malloc_clear(flist, lio_cp_path_t, n_paths);
 
     max_spawn = lio_parallel_task_count / n_paths;
     if (max_spawn <= 0) max_spawn = 1;
@@ -159,7 +159,7 @@ int main(int argc, char **argv)
         goto finished;
     } else if (n_paths == 1) {
         log_printf(15, "11111111\n");
-        flush_log();
+        tbx_flush_log();
         if (((dtype & OS_OBJECT_FILE) > 0) || (dtype == 0)) {  //** Single path and dest is an existing file or doesn't exist
             if (os_regex_is_fixed(flist[0].path_regex) == 0) {  //** Uh oh we have a wildcard with a single file dest
                 info_printf(lio_ifd, 0, "ERROR: Single wildcard path(%s) selected but the dest(%s) is a file or doesn't exist!\n", flist[0].src_tuple.path, dtuple.path);
@@ -168,7 +168,7 @@ int main(int argc, char **argv)
         }
 
         log_printf(15, "2222222222222222 fixed=%d exp=%s dtype=%d\n", os_regex_is_fixed(flist[0].path_regex), flist[0].path_regex->regex_entry[0].expression, dtype);
-        flush_log();
+        tbx_flush_log();
 
         //**if it's a fixed src with a dir dest we skip and use the cp_fn routines
         if ((os_regex_is_fixed(flist[0].path_regex) == 1) && ((dtype == 0) || ((dtype & OS_OBJECT_FILE) > 0))) {
@@ -186,7 +186,7 @@ int main(int argc, char **argv)
                 goto finished;
             }
             log_printf(15, "333333333333333333\n");
-            flush_log();
+            tbx_flush_log();
 
             goto finished;
         }
@@ -233,7 +233,7 @@ finished:
 
     if (n_errors > 0) info_printf(lio_ifd, 0, "Failed copying %d file(s)!\n", n_errors);
 
-//set_log_level(20);
+//tbx_set_log_level(20);
 //printf("Before shutdown\n");
 //apr_time_t dt = apr_time_now();
     lio_shutdown();

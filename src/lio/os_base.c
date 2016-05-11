@@ -25,14 +25,14 @@
 #include <unistd.h>
 #include <libgen.h>
 #include "ex3_abstract.h"
-#include "list.h"
-#include "type_malloc.h"
-#include "log.h"
+#include <tbx/list.h>
+#include <tbx/type_malloc.h>
+#include <tbx/log.h>
 #include "object_service_abstract.h"
-#include "string_token.h"
-#include "log.h"
-#include "varint.h"
-#include "atomic_counter.h"
+#include <tbx/string_token.h>
+#include <tbx/log.h>
+#include <tbx/varint.h>
+#include <tbx/atomic_counter.h>
 
 apr_thread_mutex_t *_path_parse_lock = NULL;
 apr_pool_t *_path_parse_pool = NULL;
@@ -49,7 +49,7 @@ char *os_glob2regex(char *glob)
 
     n = strlen(glob);
     n_regex = 2*n + 10;
-    type_malloc(reg, char, n_regex);
+    tbx_type_malloc(reg, char, n_regex);
 
     j = 0;
     reg[j] = '^';
@@ -184,7 +184,7 @@ os_regex_table_t *os_path_glob2regex(char *path)
 
     //** Cycle through the fragments converting them
     i = 0;
-    frag = escape_string_token(p2, "/", '\\', 1, &bstate, &fin);
+    frag = tbx_stk_escape_string_token(p2, "/", '\\', 1, &bstate, &fin);
     fin = 0;
     table->regex_entry[0].expression = NULL;
     while (frag[0] != 0 ) {
@@ -193,7 +193,7 @@ os_regex_table_t *os_path_glob2regex(char *path)
                 n = strlen(table->regex_entry[i].expression);
                 table->regex_entry[i].fixed_prefix = n;
                 n = n + strlen(frag) + 2;
-                type_malloc(f2, char, n);
+                tbx_type_malloc(f2, char, n);
                 snprintf(f2, n, "%s/%s", table->regex_entry[i].expression, frag);
                 free(table->regex_entry[i].expression);
                 table->regex_entry[i].expression = f2;
@@ -211,7 +211,7 @@ os_regex_table_t *os_path_glob2regex(char *path)
             err = regcomp(&(table->regex_entry[i].compiled), table->regex_entry[i].expression, REG_NOSUB|REG_EXTENDED);
             if (err != 0) {
                 os_regex_table_destroy(table);
-                log_printf(0, "os_path_glob2regex: Error with fragment %s err=%d tid=%d\n", table->regex_entry[i].expression, err, atomic_thread_id);
+                log_printf(0, "os_path_glob2regex: Error with fragment %s err=%d tid=%d\n", table->regex_entry[i].expression, err, tbx_atomic_thread_id);
                 free(p2);
                 return(NULL);
             }
@@ -219,12 +219,12 @@ os_regex_table_t *os_path_glob2regex(char *path)
             i++;
         }
 
-        frag = escape_string_token(NULL, "/", '\\', 1, &bstate, &fin);
+        frag = tbx_stk_escape_string_token(NULL, "/", '\\', 1, &bstate, &fin);
     }
 
     table->n = (table->regex_entry[i].fixed == 1) ? i+1 : i; //** Adjust the table size
 
-    if (log_level() >= 15) {
+    if (tbx_log_level() >= 15) {
         for (i=0; i<table->n; i++) {
             log_printf(15, "i=%d fixed=%d frag=%s fixed_prefix=%d\n", i, table->regex_entry[i].fixed, table->regex_entry[i].expression, table->regex_entry[i].fixed_prefix);
         }
@@ -241,8 +241,8 @@ os_regex_table_t *os_regex_table_create(int n)
 {
     os_regex_table_t *table;
 
-    type_malloc_clear(table, os_regex_table_t, 1);
-    if ( n> 0) type_malloc_clear(table->regex_entry, os_regex_entry_t, n);
+    tbx_type_malloc_clear(table, os_regex_table_t, 1);
+    if ( n> 0) tbx_type_malloc_clear(table->regex_entry, os_regex_entry_t, n);
     table->n = n;
 
     return(table);
@@ -263,7 +263,7 @@ os_regex_table_t *os_regex2table(char *regex)
     err = regcomp(&(table->regex_entry[0].compiled), table->regex_entry[0].expression, REG_NOSUB|REG_EXTENDED);
     if (err != 0) {
         os_regex_table_destroy(table);
-        log_printf(0, "Error with fragment %s err=%d tid=%d\n", table->regex_entry[0].expression, err, atomic_thread_id);
+        log_printf(0, "Error with fragment %s err=%d tid=%d\n", table->regex_entry[0].expression, err, tbx_atomic_thread_id);
         return(NULL);
     }
 
@@ -298,7 +298,7 @@ void os_regex_table_destroy(os_regex_table_t *table)
 //  path_split - Splits the path into a basename and dirname
 //***********************************************************************
 
-void os_path_split(char *path, char **dir, char **file)
+void os_path_split(const char *path, char **dir, char **file)
 {
     char *ptr;
 
@@ -307,24 +307,24 @@ void os_path_split(char *path, char **dir, char **file)
     ptr = strdup(path);
 
     if (_path_parse_lock == NULL) {
-        if (atomic_inc(_path_parse_counter) == 0) {   //** Only init if needed
+        if (tbx_atomic_inc(_path_parse_counter) == 0) {   //** Only init if needed
             apr_pool_create(&_path_parse_pool, NULL);
             apr_thread_mutex_create(&_path_parse_lock, APR_THREAD_MUTEX_DEFAULT, _path_parse_pool);
-            atomic_set(_path_parse_counter, 1000000);
+            tbx_atomic_set(_path_parse_counter, 1000000);
         } else {
-            while (atomic_get(_path_parse_counter) != 1000000) {
+            while (tbx_atomic_get(_path_parse_counter) != 1000000) {
                 usleep(100);
             }
         }
     }
 
     apr_thread_mutex_lock(_path_parse_lock);
-
+    
     *dir = strdup(dirname(ptr));
 
     free(ptr);
     ptr = strdup(path);
-    *file = strdup(basename(path));
+    *file = strdup(basename(ptr));
     free(ptr);
 
     apr_thread_mutex_unlock(_path_parse_lock);
@@ -343,14 +343,14 @@ int os_regex_table_pack(os_regex_table_t *regex, unsigned char *buffer, int bufs
     int i, err, n, bpos, len;
 
     if (regex == NULL) {
-        n = zigzag_encode(0, buffer);
+        n = tbx_zigzag_encode(0, buffer);
         return(n);
     }
 
     err = 0;
     bpos = 0;
     n = -1;
-    if ((bpos + 4) < bufsize) n = zigzag_encode(regex->n, &(buffer[bpos]));
+    if ((bpos + 4) < bufsize) n = tbx_zigzag_encode(regex->n, &(buffer[bpos]));
     if (n < 0) {
         err = 1;
         n=4;
@@ -360,7 +360,7 @@ int os_regex_table_pack(os_regex_table_t *regex, unsigned char *buffer, int bufs
     for (i=0; i<regex->n; i++) {
         log_printf(5, "level=%d fixed=%d fixed_prefix=%d expression=%s bpos=%d\n", i, regex->regex_entry[i].fixed, regex->regex_entry[i].fixed_prefix, regex->regex_entry[i].expression, bpos);
         n = -1;
-        if ((bpos + 4) < bufsize) n = zigzag_encode(regex->regex_entry[i].fixed, &(buffer[bpos]));
+        if ((bpos + 4) < bufsize) n = tbx_zigzag_encode(regex->regex_entry[i].fixed, &(buffer[bpos]));
         if (n < 0) {
             err = 1;
             n=4;
@@ -368,7 +368,7 @@ int os_regex_table_pack(os_regex_table_t *regex, unsigned char *buffer, int bufs
         bpos += n;
 
         n = -1;
-        if ((bpos + 4) < bufsize) n = zigzag_encode(regex->regex_entry[i].fixed_prefix, &(buffer[bpos]));
+        if ((bpos + 4) < bufsize) n = tbx_zigzag_encode(regex->regex_entry[i].fixed_prefix, &(buffer[bpos]));
         if (n < 0) {
             err = 1;
             n=4;
@@ -377,7 +377,7 @@ int os_regex_table_pack(os_regex_table_t *regex, unsigned char *buffer, int bufs
 
         len = strlen(regex->regex_entry[i].expression);
         n = -1;
-        if ((bpos + 4) < bufsize) n = zigzag_encode(len, &(buffer[bpos]));
+        if ((bpos + 4) < bufsize) n = tbx_zigzag_encode(len, &(buffer[bpos]));
         if (n < 0) {
             err = 1;
             n=4;
@@ -411,7 +411,7 @@ os_regex_table_t *os_regex_table_unpack(unsigned char *buffer, int bufsize, int 
     os_regex_table_t *regex;
 
     bpos = 0;
-    n = zigzag_decode(&(buffer[bpos]), bufsize, &value);
+    n = tbx_zigzag_decode(&(buffer[bpos]), bufsize, &value);
     log_printf(5, "n_levels=" I64T " n=%d bufsize=%d\n", value, n, bufsize);
 
     if (n < 0) {
@@ -428,24 +428,24 @@ os_regex_table_t *os_regex_table_unpack(unsigned char *buffer, int bufsize, int 
     regex = os_regex_table_create(value);
 
     for (i=0; i<regex->n; i++) {
-        n = zigzag_decode(&(buffer[bpos]), bufsize, &value);
+        n = tbx_zigzag_decode(&(buffer[bpos]), bufsize, &value);
         log_printf(5, "i=%d n=%d fixed=" I64T "\n", i, n, value);
         if (n < 0) goto fail;
         regex->regex_entry[i].fixed = value;
         bpos += n;
         bufsize -= n;
 
-        n = zigzag_decode(&(buffer[bpos]), bufsize, &value);
+        n = tbx_zigzag_decode(&(buffer[bpos]), bufsize, &value);
         log_printf(5, "i=%d n=%d fixed_prefix=" I64T "\n", i, n, value);
         if (n < 0) goto fail;
         regex->regex_entry[i].fixed_prefix = value;
         bpos += n;
         bufsize -= n;
 
-        n = zigzag_decode(&(buffer[bpos]), bufsize, &value);
+        n = tbx_zigzag_decode(&(buffer[bpos]), bufsize, &value);
         log_printf(5, "i=%d n=%d exp_len=" I64T " bufsize=%d bpos=%d\n", i, n, value, bufsize, bpos);
         if (n < 0) goto fail;
-        type_malloc(regex->regex_entry[i].expression, char, value+1);
+        tbx_type_malloc(regex->regex_entry[i].expression, char, value+1);
         bpos += n;
         bufsize -= n;
 

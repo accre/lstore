@@ -26,9 +26,9 @@
 #include <math.h>
 #include <signal.h>
 #include <apr_time.h>
-#include "fmttypes.h"
-#include "network.h"
-#include "log.h"
+#include <tbx/fmttypes.h>
+#include <tbx/network.h>
+#include <tbx/log.h>
 #include "ibp.h"
 #include "iovec_sync.h"
 #include "io_wrapper.h"
@@ -209,7 +209,7 @@ void write_allocs(ibp_capset_t *caps, int n, int asize, int nthreads)
     q = new_opque();
 
     for (i=0; i<n; i++) {
-        tbuffer_single(&(buf[i]), asize, buffer);
+        tbx_tbuf_single(&(buf[i]), asize, buffer);
         op = new_ibp_write_op(ic, get_ibp_cap(&(caps[i]), IBP_WRITECAP), 0, &(buf[i]), 0, asize, ibp_timeout);
         opque_add(q, op);
     }
@@ -339,31 +339,31 @@ int main(int argc, char **argv)
         start_option = i;
 
         if (strcmp(argv[i], "-d") == 0) { //** Enable debugging
-            set_log_level(5);
+            tbx_set_log_level(5);
             i++;
         } else if (strcmp(argv[i], "-dd") == 0) { //** Enable debugging
-            set_log_level(20);
+            tbx_set_log_level(20);
             i++;
         } else if (strcmp(argv[i], "-network_chksum") == 0) { //** Add checksum capability
             i++;
             net_cs_name = argv[i];
-            cs_type = chksum_name_type(net_cs_name);
+            cs_type = tbx_chksum_type_name(net_cs_name);
             if (cs_type == -1) {
                 printf("Invalid chksum type.  Got %s should be SHA1, SHA256, SHA512, or MD5\n", argv[i]);
                 abort();
             }
-            chksum_set(&cs, cs_type);
+            tbx_chksum_set(&cs, cs_type);
             i++;
 
             blocksize = atoi(argv[i])*1024;
             i++;
-            ns_chksum_set(&ns_cs, &cs, blocksize);
+            tbx_ns_chksum_set(&ns_cs, &cs, blocksize);
             ncs = &ns_cs;
             ibp_set_chksum(ic, ncs);
         } else if (strcmp(argv[i], "-disk_chksum") == 0) { //** Add checksum capability
             i++;
             disk_cs_name = argv[i];
-            disk_cs_type = chksum_name_type(argv[i]);
+            disk_cs_type = tbx_chksum_type_name(argv[i]);
             if (disk_cs_type < CHKSUM_DEFAULT) {
                 printf("Invalid chksum type.  Got %s should be NONE, SHA1, SHA256, SHA512, or MD5\n", argv[i]);
                 abort();
@@ -566,7 +566,7 @@ int main(int argc, char **argv)
     printf(" %lf removes/sec (%.2lf sec total) \n", r1, dt);
     printf("\n");
 
-    printf("Final network connection counter: %d\n", network_counter(NULL));
+    printf("Final network connection counter: %d\n", tbx_network_counter(NULL));
 
     ibp_destroy_context(ic);  //** Shutdown IBP
 

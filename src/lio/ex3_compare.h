@@ -21,7 +21,7 @@
 #ifndef _EX3_COMPARE_H_
 #define _EX3_COMPARE_H_
 
-#include "skiplist.h"
+#include <tbx/skiplist.h>
 
 #ifdef __cplusplus
 extern "C" {

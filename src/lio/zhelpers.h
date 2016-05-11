@@ -19,7 +19,7 @@ extern "C" {
 #include <string.h>
 #include <errno.h>
 #include <assert.h>
-#include "assert_result.h"
+#include <tbx/assert_result.h>
 #include <unistd.h>
 #include <signal.h>
 #include <ctype.h>

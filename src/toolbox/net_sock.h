@@ -27,9 +27,10 @@
 #include "tbx/toolbox_visibility.h"
 #include <apr_network_io.h>
 #include <apr_poll.h>
+#include "tbx/network.h"
 #include "network.h"
 
-typedef struct {  //** Contains the private raw socket network fields
+struct tbx_net_sock_t {  //** Contains the private raw socket network fields
     apr_socket_t  *fd;
     apr_sockaddr_t *sa;
     apr_pollset_t *pollset;
@@ -38,23 +39,22 @@ typedef struct {  //** Contains the private raw socket network fields
     apr_thread_mutex_t *lock; //** Global lock
     int tcpsize;
     int state;
-} tbx_net_sock_t;
+};
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-void sock_set_peer(net_sock_t *sock, char *address, int add_size);
-int sock_status(net_sock_t *sock);
-int sock_close(net_sock_t *sock);
-long int sock_write(net_sock_t *sock, tbx_tbuf_t *buf, size_t bpos, size_t size, Net_timeout_t tm);
-long int sock_read(net_sock_t *sock, tbx_tbuf_t *buf, size_t bpos, size_t size, Net_timeout_t tm);
-int sock_connect(net_sock_t *sock, const char *hostname, int port, Net_timeout_t timeout);
+void sock_set_peer(net_sock_t *nsock, char *address, int add_size);
+int sock_status(net_sock_t *nsock);
+int sock_close(net_sock_t *nsock);
+long int sock_write(net_sock_t *nsock, tbx_tbuf_t *buf, size_t bpos, size_t len, tbx_ns_timeout_t tm);
+long int sock_read(net_sock_t *nsock, tbx_tbuf_t *buf, size_t bpos, size_t len, tbx_ns_timeout_t tm);
+int sock_connect(net_sock_t *nsock, const char *hostname, int port, tbx_ns_timeout_t timeout);
 int sock_connection_request(net_sock_t *nsock, int timeout);
 net_sock_t *sock_accept(net_sock_t *nsock);
 int sock_bind(net_sock_t *nsock, char *address, int port);
 int sock_listen(net_sock_t *nsock, int max_pending);
-TBX_API void ns_config_sock(tbx_ns_t *ns, int tcpsize);
 
 #ifdef __cplusplus
 }

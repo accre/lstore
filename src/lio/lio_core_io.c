@@ -17,10 +17,10 @@
 #define _log_module_index 189
 
 #include <stdio.h>
-#include "type_malloc.h"
+#include <tbx/type_malloc.h>
 #include "lio.h"
-#include "log.h"
-#include "string_token.h"
+#include <tbx/log.h>
+#include <tbx/string_token.h>
 #include "zlib.h"
 #include "ex3_compare.h"
 
@@ -235,14 +235,14 @@ void lio_store_and_release_adler32(lio_config_t *lc, creds_t *creds, tbx_list_t 
     tbx_stack_t *stack;
     ex_off_t *aoff;
     char value[256];
-    stack = new_stack();
-    it = list_iter_search(write_table, 0, 0);
+    stack = tbx_stack_new();
+    it = tbx_list_iter_search(write_table, 0, 0);
     cksum = adler32(0L, Z_NULL, 0);
     missing = next = overlap = nbytes = 0;
-    while (list_next(&it, (tbx_list_key_t **)&aoff, (tbx_list_data_t **)&a32) == 0) {
+    while (tbx_list_next(&it, (tbx_list_key_t **)&aoff, (tbx_list_data_t **)&a32) == 0) {
         aval = a32->adler32;
         pend = a32->offset + a32->len - 1;
-        push(stack, a32);
+        tbx_stack_push(stack, a32);
 
         if (a32->offset != next) {
             dn = a32->offset - next;
@@ -262,8 +262,8 @@ void lio_store_and_release_adler32(lio_config_t *lc, creds_t *creds, tbx_list_t 
         next = a32->offset + a32->len;
     }
 
-    list_destroy(write_table);
-    free_stack(stack, 1);
+    tbx_list_destroy(write_table);
+    tbx_free_stack(stack, 1);
 
     //** Store the attribute
     aval = cksum;
@@ -318,7 +318,7 @@ int lio_load_file_handle_attrs(lio_config_t *lc, creds_t *creds, char *fname, ex
 
 lio_file_handle_t *_lio_get_file_handle(lio_config_t *lc, ex_id_t vid)
 {
-    return(list_search(lc->open_index, (tbx_list_key_t *)&vid));
+    return(tbx_list_search(lc->open_index, (tbx_list_key_t *)&vid));
 
 }
 
@@ -329,7 +329,7 @@ lio_file_handle_t *_lio_get_file_handle(lio_config_t *lc, ex_id_t vid)
 
 void _lio_add_file_handle(lio_config_t *lc, lio_file_handle_t *fh)
 {
-    list_insert(lc->open_index, (tbx_list_key_t *)&(fh->vid), (tbx_list_data_t *)fh);
+    tbx_list_insert(lc->open_index, (tbx_list_key_t *)&(fh->vid), (tbx_list_data_t *)fh);
 }
 
 
@@ -340,7 +340,7 @@ void _lio_add_file_handle(lio_config_t *lc, lio_file_handle_t *fh)
 
 void _lio_remove_file_handle(lio_config_t *lc, lio_file_handle_t *fh)
 {
-    list_remove(lc->open_index, (tbx_list_key_t *)&(fh->vid), (tbx_list_data_t *)fh);
+    tbx_list_remove(lc->open_index, (tbx_list_key_t *)&(fh->vid), (tbx_list_data_t *)fh);
 }
 
 //*************************************************************************
@@ -402,7 +402,7 @@ op_status_t lio_myopen_fn(void *arg, int id)
     }
 
     //** Make the space for the FD
-    type_malloc_clear(fd, lio_fd_t, 1);
+    tbx_type_malloc_clear(fd, lio_fd_t, 1);
     fd->path = op->path;
     fd->mode = op->mode;
     fd->creds = op->creds;
@@ -443,7 +443,7 @@ op_status_t lio_myopen_fn(void *arg, int id)
     }
 
     //** New file to open
-    type_malloc_clear(fh, lio_file_handle_t, 1);
+    tbx_type_malloc_clear(fh, lio_file_handle_t, 1);
     fh->vid = vid;
     fh->ref_count++;
     fh->lc = lc;
@@ -464,7 +464,7 @@ op_status_t lio_myopen_fn(void *arg, int id)
         goto cleanup;
     }
 
-    if (lc->calc_adler32) fh->write_table = list_create(0, &skiplist_compare_ex_off, NULL, NULL, NULL);
+    if (lc->calc_adler32) fh->write_table = tbx_list_create(0, &skiplist_compare_ex_off, NULL, NULL, NULL);
 
     //Add it to the file open table
     _lio_add_file_handle(lc, fh);
@@ -511,7 +511,7 @@ op_generic_t *gop_lio_open_object(lio_config_t *lc, creds_t *creds, char *path, 
 {
     lio_fd_op_t *op;
 
-    type_malloc_clear(op, lio_fd_op_t, 1);
+    tbx_type_malloc_clear(op, lio_fd_op_t, 1);
 
     op->lc = lc;
     op->creds = creds;
@@ -548,7 +548,7 @@ op_status_t lio_myclose_fn(void *arg, int id)
     double dt;
 
     log_printf(1, "fname=%s modified=%d count=%d\n", fd->path, fd->fh->modified, fd->fh->ref_count);
-    flush_log();
+    tbx_flush_log();
 
     status = op_success_status;
 
@@ -579,7 +579,7 @@ op_status_t lio_myclose_fn(void *arg, int id)
     log_printf(1, "FLUSH fname=%s dt=%lf\n", fd->path, dt);
 
     log_printf(5, "starting update process fname=%s modified=%d\n", fd->path, fh->modified);
-    flush_log();
+    tbx_flush_log();
 
     //** Ok no one has the file opened so teardown the segment/exnode
     //** IF not modified just tear down and clean up
@@ -717,7 +717,7 @@ op_status_t lio_read_ex_fn(void *arg, int id)
     t1 = iov[0].len;
     t2 = iov[0].offset;
     log_printf(1, "fname=%s n_iov=%d iov[0].len=" XOT " iov[0].offset=" XOT "\n", fd->path, op->n_iov, t1, t2);
-    flush_log();
+    tbx_flush_log();
 
     if (fd == NULL) {
         log_printf(0, "ERROR: Got a null file desriptor\n");
@@ -725,7 +725,7 @@ op_status_t lio_read_ex_fn(void *arg, int id)
         return(status);
     }
 
-    if (log_level() > 0) {
+    if (tbx_log_level() > 0) {
         for (i=0; i < op->n_iov; i++) {
             t2 = iov[i].offset+iov[i].len-1;
             log_printf(1, "LFS_READ:START " XOT " " XOT "\n", iov[i].offset, t2);
@@ -741,7 +741,7 @@ op_status_t lio_read_ex_fn(void *arg, int id)
     dt = apr_time_now() - now;
     dt /= APR_USEC_PER_SEC;
     log_printf(1, "END fname=%s seg=" XIDT " dt=%lf\n", fd->path, segment_id(fd->fh->seg), dt);
-    flush_log();
+    tbx_flush_log();
 
     if (err != OP_STATE_SUCCESS) {
         log_printf(1, "ERROR with read! fname=%s\n", fd->path);
@@ -767,7 +767,7 @@ op_generic_t *gop_lio_read_ex(lio_fd_t *fd, int n_iov, ex_tbx_iovec_t *ex_iov, t
 {
     lio_rw_op_t *op;
 
-    type_malloc_clear(op, lio_rw_op_t, 1);
+    tbx_type_malloc_clear(op, lio_rw_op_t, 1);
 
     op->fd = fd;
     op->n_iov = n_iov;
@@ -803,7 +803,7 @@ op_generic_t *gop_lio_readv(lio_fd_t *fd, tbx_iovec_t *iov, int n_iov, ex_off_t 
 {
     lio_rw_op_t *op;
     ex_off_t offset;
-    type_malloc_clear(op, lio_rw_op_t, 1);
+    tbx_type_malloc_clear(op, lio_rw_op_t, 1);
 
     op->fd = fd;
     op->n_iov = 1;
@@ -812,7 +812,7 @@ op_generic_t *gop_lio_readv(lio_fd_t *fd, tbx_iovec_t *iov, int n_iov, ex_off_t 
     op->boff = 0;
     op->rw_hints = rw_hints;
 
-    tbuffer_vec(&(op->buffer_dummy), size, n_iov, iov);
+    tbx_tbuf_vec(&(op->buffer_dummy), size, n_iov, iov);
     offset = (off < 0) ? fd->curr_offset : off;
     ex_iovec_single(op->iov, offset, size);
     return(new_thread_pool_op(fd->lc->tpc_unlimited, NULL, lio_read_ex_fn, (void *)op, free, 1));
@@ -833,7 +833,7 @@ int lio_readv(lio_fd_t *fd, tbx_iovec_t *iov, int n_iov, ex_off_t size, ex_off_t
     op.boff = 0;
     op.rw_hints = rw_hints;
 
-    tbuffer_vec(&(op.buffer_dummy), size, n_iov, iov);
+    tbx_tbuf_vec(&(op.buffer_dummy), size, n_iov, iov);
     offset = (off < 0) ? fd->curr_offset : off;
     ex_iovec_single(op.iov, offset, size);
     status = lio_read_ex_fn((void *)&op, -1);
@@ -896,7 +896,7 @@ int _gop_lio_read(lio_rw_op_t *op, lio_fd_t *fd, char *buf, ex_off_t size, off_t
     op->boff = 0;
     op->rw_hints = rw_hints;
 
-    tbuffer_single(op->buffer, size, buf);  //** This is the buffer size
+    tbx_tbuf_single(op->buffer, size, buf);  //** This is the buffer size
     ex_iovec_single(op->iov, off, rsize); //** This is the buffer+readahead.  The extra doesn't get stored in the buffer.  Just in page cache.
     return(0);
 }
@@ -909,7 +909,7 @@ op_generic_t *gop_lio_read(lio_fd_t *fd, char *buf, ex_off_t size, off_t off, se
     op_status_t status;
     int err;
 
-    type_malloc_clear(op, lio_rw_op_t, 1);
+    tbx_type_malloc_clear(op, lio_rw_op_t, 1);
 
     err = _gop_lio_read(op, fd, buf, size, off, rw_hints);
     if (err == 0) {
@@ -975,8 +975,8 @@ op_status_t lio_write_ex_fn(void *arg, int id)
     t1 = iov[0].len;
     t2 = iov[0].offset;
     log_printf(1, "START fname=%s n_iov=%d iov[0].len=" XOT " iov[0].offset=" XOT "\n", fd->path, op->n_iov, t1, t2);
-    flush_log();
-    if (log_level() > 0) {
+    tbx_flush_log();
+    if (tbx_log_level() > 0) {
         for (i=0; i < op->n_iov; i++) {
             t2 = iov[i].offset+iov[i].len-1;
             log_printf(1, "LFS_WRITE:START " XOT " " XOT "\n", iov[i].offset, t2);
@@ -986,7 +986,7 @@ op_status_t lio_write_ex_fn(void *arg, int id)
 
     now = apr_time_now();
 
-    atomic_set(fd->fh->modified, 1);  //** Flag it as modified
+    tbx_atomic_set(fd->fh->modified, 1);  //** Flag it as modified
 
     //** Do the write op
     err = gop_sync_exec(segment_write(fd->fh->seg, lc->da, op->rw_hints, op->n_iov, iov, op->buffer, op->boff, lc->timeout));
@@ -999,7 +999,7 @@ op_status_t lio_write_ex_fn(void *arg, int id)
     dt = apr_time_now() - now;
     dt /= APR_USEC_PER_SEC;
     log_printf(1, "END fname=%s seg=" XIDT " dt=%lf\n", fd->path, segment_id(fd->fh->seg), dt);
-    flush_log();
+    tbx_flush_log();
 
     if (fd->fh->write_table != NULL) {
         tbx_tbuf_t tb;
@@ -1008,7 +1008,7 @@ op_status_t lio_write_ex_fn(void *arg, int id)
         ex_off_t blen = 0;
         ex_off_t bpos = op->boff;
         for (i=0; i < op->n_iov; i++) {
-            type_malloc(a32, lfs_adler32_t, 1);
+            tbx_type_malloc(a32, lfs_adler32_t, 1);
             a32->offset = iov[i].offset;
             a32->len = iov[i].len;
             a32->adler32 = adler32(0L, Z_NULL, 0);
@@ -1018,13 +1018,13 @@ op_status_t lio_write_ex_fn(void *arg, int id)
             if (blen < a32->len) {
                 if (buf != NULL) free(buf);
                 blen = a32->len;
-                type_malloc(buf, unsigned char, blen);
+                tbx_type_malloc(buf, unsigned char, blen);
             }
-            tbuffer_single(&tb, a32->len, (char *)buf);
-            tbuffer_copy(buffer, bpos, &tb, 0, a32->len, 1);
+            tbx_tbuf_single(&tb, a32->len, (char *)buf);
+            tbx_tbuf_copy(buffer, bpos, &tb, 0, a32->len, 1);
             a32->adler32 = adler32(a32->adler32, buf, a32->len);
             segment_lock(fd->fh->seg);
-            list_insert(fd->fh->write_table, &(a32->offset), a32);
+            tbx_list_insert(fd->fh->write_table, &(a32->offset), a32);
             segment_unlock(fd->fh->seg);
 
             bpos += a32->len;
@@ -1052,7 +1052,7 @@ op_generic_t *gop_lio_write_ex_fn(lio_fd_t *fd, int n_iov, ex_tbx_iovec_t *iov, 
 {
     lio_rw_op_t *op;
 
-    type_malloc_clear(op, lio_rw_op_t, 1);
+    tbx_type_malloc_clear(op, lio_rw_op_t, 1);
 
     op->fd = fd;
     op->n_iov = n_iov;
@@ -1087,7 +1087,7 @@ int lio_write_ex(lio_fd_t *fd, int n_iov, ex_tbx_iovec_t *ex_iov, tbx_tbuf_t *bu
 op_generic_t *gop_lio_writev(lio_fd_t *fd, tbx_iovec_t *iov, int n_iov, ex_off_t size, ex_off_t off, segment_rw_hints_t *rw_hints)
 {
     lio_rw_op_t *op;
-    type_malloc_clear(op, lio_rw_op_t, 1);
+    tbx_type_malloc_clear(op, lio_rw_op_t, 1);
     ex_off_t offset;
 
     op->fd = fd;
@@ -1097,7 +1097,7 @@ op_generic_t *gop_lio_writev(lio_fd_t *fd, tbx_iovec_t *iov, int n_iov, ex_off_t
     op->boff = 0;
     op->rw_hints = rw_hints;
 
-    tbuffer_vec(&(op->buffer_dummy), size, n_iov, iov);
+    tbx_tbuf_vec(&(op->buffer_dummy), size, n_iov, iov);
     offset = (off < 0) ? fd->curr_offset : off;
     ex_iovec_single(op->iov, offset, size);
     return(new_thread_pool_op(fd->lc->tpc_unlimited, NULL, lio_write_ex_fn, (void *)op, free, 1));
@@ -1118,7 +1118,7 @@ int lio_writev(lio_fd_t *fd, tbx_iovec_t *iov, int n_iov, ex_off_t size, ex_off_
     op.boff = 0;
     op.rw_hints = rw_hints;
 
-    tbuffer_vec(&(op.buffer_dummy), size, n_iov, iov);
+    tbx_tbuf_vec(&(op.buffer_dummy), size, n_iov, iov);
     offset = (off < 0) ? fd->curr_offset : off;
     ex_iovec_single(op.iov, offset, size);
     status = lio_write_ex_fn((void *)&op, -1);
@@ -1132,7 +1132,7 @@ op_generic_t *gop_lio_write(lio_fd_t *fd, char *buf, ex_off_t size, off_t off, s
     lio_rw_op_t *op;
     ex_off_t offset;
 
-    type_malloc_clear(op, lio_rw_op_t, 1);
+    tbx_type_malloc_clear(op, lio_rw_op_t, 1);
 
     op->fd = fd;
     op->n_iov = 1;
@@ -1141,7 +1141,7 @@ op_generic_t *gop_lio_write(lio_fd_t *fd, char *buf, ex_off_t size, off_t off, s
     op->boff = 0;
     op->rw_hints = rw_hints;
 
-    tbuffer_single(op->buffer, size, buf);
+    tbx_tbuf_single(op->buffer, size, buf);
     offset = (off < 0) ? fd->curr_offset : off;
     ex_iovec_single(op->iov, offset, size);
     return(new_thread_pool_op(fd->lc->tpc_unlimited, NULL, lio_write_ex_fn, (void *)op, free, 1));
@@ -1162,7 +1162,7 @@ int lio_write(lio_fd_t *fd, char *buf, ex_off_t size, off_t off, segment_rw_hint
     op.boff = 0;
     op.rw_hints = rw_hints;
 
-    tbuffer_single(op.buffer, size, buf);
+    tbx_tbuf_single(op.buffer, size, buf);
     offset = (off < 0) ? fd->curr_offset : off;
     ex_iovec_single(op.iov, offset, size);
     status = lio_write_ex_fn((void *)&op, -1);
@@ -1201,7 +1201,7 @@ op_status_t lio_cp_local2lio_fn(void *arg, int id)
     bufsize = (op->bufsize <= 0) ? LIO_COPY_BUFSIZE-1 : op->bufsize-1;
 
     if (buffer == NULL) { //** Need to make it ourself
-        type_malloc(buffer, char, bufsize+1);
+        tbx_type_malloc(buffer, char, bufsize+1);
     }
 
     status = gop_sync_exec_status(segment_put(lfh->lc->tpc_unlimited, lfh->lc->da, op->rw_hints, ffd, lfh->seg, 0, -1, bufsize, buffer, 1, 3600));
@@ -1219,7 +1219,7 @@ op_generic_t *gop_lio_cp_local2lio(FILE *sfd, lio_fd_t *dfd, ex_off_t bufsize, c
 {
     lio_cp_fn_t *op;
 
-    type_malloc_clear(op, lio_cp_fn_t, 1);
+    tbx_type_malloc_clear(op, lio_cp_fn_t, 1);
 
     op->buffer = buffer;
     op->bufsize = bufsize;
@@ -1248,7 +1248,7 @@ op_status_t lio_cp_lio2local_fn(void *arg, int id)
     bufsize = (op->bufsize <= 0) ? LIO_COPY_BUFSIZE-1 : op->bufsize-1;
 
     if (buffer == NULL) { //** Need to make it ourself
-        type_malloc(buffer, char, bufsize+1);
+        tbx_type_malloc(buffer, char, bufsize+1);
     }
 
     status = gop_sync_exec_status(segment_get(lfh->lc->tpc_unlimited, lfh->lc->da, op->rw_hints, lfh->seg, ffd, 0, -1, bufsize, buffer, 3600));
@@ -1265,7 +1265,7 @@ op_generic_t *gop_lio_cp_lio2local(lio_fd_t *sfd, FILE *dfd, ex_off_t bufsize, c
 {
     lio_cp_fn_t *op;
 
-    type_malloc_clear(op, lio_cp_fn_t, 1);
+    tbx_type_malloc_clear(op, lio_cp_fn_t, 1);
 
     op->buffer = buffer;
     op->bufsize = bufsize;
@@ -1307,7 +1307,7 @@ op_status_t lio_cp_lio2lio_fn(void *arg, int id)
         bufsize = (op->bufsize <= 0) ? LIO_COPY_BUFSIZE-1 : op->bufsize-1;
 
         if (buffer == NULL) { //** Need to make it ourself
-            type_malloc(buffer, char, bufsize+1);
+            tbx_type_malloc(buffer, char, bufsize+1);
         }
         status = gop_sync_exec_status(segment_copy(dfh->lc->tpc_unlimited, dfh->lc->da, op->rw_hints, sfh->seg, dfh->seg, 0, 0, -1, bufsize, buffer, 1, dfh->lc->timeout));
 
@@ -1326,7 +1326,7 @@ op_generic_t *gop_lio_cp_lio2lio(lio_fd_t *sfd, lio_fd_t *dfd, ex_off_t bufsize,
 {
     lio_cp_fn_t *op;
 
-    type_malloc_clear(op, lio_cp_fn_t, 1);
+    tbx_type_malloc_clear(op, lio_cp_fn_t, 1);
 
     op->buffer = buffer;
     op->bufsize = bufsize;
@@ -1378,7 +1378,7 @@ op_status_t lio_cp_file_fn(void *arg, int id)
             if (dlfd == NULL) info_printf(lio_ifd, 0, "ERROR: Failed opening destination file!  path=%s\n", cp->dest_tuple.path);
             status = op_failure_status;
         } else {
-            type_malloc(buffer, char, cp->bufsize+1);
+            tbx_type_malloc(buffer, char, cp->bufsize+1);
             status = gop_sync_exec_status(gop_lio_cp_local2lio(sffd, dlfd, cp->bufsize, buffer, cp->rw_hints));
         }
         if (dlfd != NULL) {
@@ -1396,7 +1396,7 @@ op_status_t lio_cp_file_fn(void *arg, int id)
             if (dffd == NULL) info_printf(lio_ifd, 0, "ERROR: Failed opening destination file!  path=%s\n", cp->dest_tuple.path);
             status = op_failure_status;
         } else {
-            type_malloc(buffer, char, cp->bufsize+1);
+            tbx_type_malloc(buffer, char, cp->bufsize+1);
             status = gop_sync_exec_status(gop_lio_cp_lio2local(slfd, dffd, cp->bufsize, buffer, cp->rw_hints));
         }
         if (slfd != NULL) gop_sync_exec(gop_lio_close_object(slfd));
@@ -1410,7 +1410,7 @@ op_status_t lio_cp_file_fn(void *arg, int id)
             if (dlfd == NULL) info_printf(lio_ifd, 0, "ERROR: Failed opening destination file!  path=%s\n", cp->dest_tuple.path);
             status = op_failure_status;
         } else {
-            type_malloc(buffer, char, cp->bufsize+1);
+            tbx_type_malloc(buffer, char, cp->bufsize+1);
             status = gop_sync_exec_status(gop_lio_cp_lio2lio(slfd, dlfd, cp->bufsize, buffer, cp->slow, cp->rw_hints));
         }
         if (slfd != NULL) gop_sync_exec(gop_lio_close_object(slfd));
@@ -1441,7 +1441,7 @@ int lio_cp_create_dir(tbx_list_t *table, lio_path_tuple_t tuple)
     n = strlen(dname);
     for (i=1; i<n; i++) {
         if ((dname[i] == '/') || (i==n-1)) {
-            dstate = list_search(table, dname);
+            dstate = tbx_list_search(table, dname);
             if (dstate == NULL) {  //** Need to make the dir
                 skip_insert = 0;
                 if (i<n-1) dname[i] = 0;
@@ -1462,7 +1462,7 @@ int lio_cp_create_dir(tbx_list_t *table, lio_path_tuple_t tuple)
 
                 //** Add the path to the table
                 if (err != OP_STATE_SUCCESS) error_code = 1;
-                if (skip_insert == 0) list_insert(table, dname, dname);
+                if (skip_insert == 0) tbx_list_insert(table, dname, dname);
 
                 if (i<n-1) dname[i] = '/';
             }
@@ -1492,7 +1492,7 @@ op_status_t lio_cp_path_fn(void *arg, int id)
     op_status_t status;
 
     log_printf(15, "START src=%s dest=%s max_spawn=%d bufsize=" XOT "\n", cp->src_tuple.path, cp->dest_tuple.path, cp->max_spawn, cp->bufsize);
-    flush_log();
+    tbx_flush_log();
 
     it = unified_create_object_iter(cp->src_tuple, cp->path_regex, cp->obj_regex, cp->obj_types, cp->recurse_depth);
     if (it == NULL) {
@@ -1500,8 +1500,8 @@ op_status_t lio_cp_path_fn(void *arg, int id)
         return(op_failure_status);
     }
 
-    type_malloc_clear(cplist, lio_cp_file_t, cp->max_spawn);
-    dir_table = list_create(0, &list_string_compare, list_string_dup, list_simple_free, NULL);
+    tbx_type_malloc_clear(cplist, lio_cp_file_t, cp->max_spawn);
+    dir_table = tbx_list_create(0, &tbx_list_string_compare, tbx_list_string_dup, tbx_list_simple_free, NULL);
 
     q = new_opque();
     nerr = 0;
@@ -1512,7 +1512,7 @@ op_status_t lio_cp_path_fn(void *arg, int id)
 //info_printf(lio_ifd, 0, "copy dtuple=%s sfname=%s  dfname=%s plen=%d\n", cp->dest_tuple.path, fname, dname, prefix_len);
 
         if ((ftype & OS_OBJECT_DIR) > 0) { //** Got a directory
-            dstate = list_search(dir_table, fname);
+            dstate = tbx_list_search(dir_table, fname);
             if (dstate == NULL) { //** New dir so have to check and possibly create it
                 create_tuple = cp->dest_tuple;
                 create_tuple.path = fname;
@@ -1524,7 +1524,7 @@ op_status_t lio_cp_path_fn(void *arg, int id)
         }
 
         os_path_split(dname, &dir, &file);
-        dstate = list_search(dir_table, dir);
+        dstate = tbx_list_search(dir_table, dir);
         if (dstate == NULL) { //** New dir so have to check and possibly create it
             create_tuple = cp->dest_tuple;
             create_tuple.path = dir;
@@ -1590,7 +1590,7 @@ op_status_t lio_cp_path_fn(void *arg, int id)
     opque_free(q, OP_DESTROY);
 
     free(cplist);
-    list_destroy(dir_table);
+    tbx_list_destroy(dir_table);
 
     status = op_success_status;
     if (nerr > 0) {
@@ -1698,7 +1698,7 @@ op_generic_t *gop_lio_truncate(lio_fd_t *fd, ex_off_t newsize)
 {
     lio_cp_fn_t *op;
 
-    type_malloc_clear(op, lio_cp_fn_t, 1);
+    tbx_type_malloc_clear(op, lio_cp_fn_t, 1);
 
     op->bufsize = newsize;
     op->slfd = fd;

@@ -14,30 +14,30 @@
    limitations under the License.
 */
 
-//*************************************************************************
-//*************************************************************************
+#pragma once
+#ifndef ACCRE_VARINT_H_INCLUDED
+#define ACCRE_VARINT_H_INCLUDED
 
-#ifndef __NET_1_SSL_H_
-#define __NET_1_SSL_H_
-
+#include <inttypes.h>
 #include "tbx/toolbox_visibility.h"
-#define N_BUFSIZE  1024
-
-//#include <sys/select.h>
-//#include <sys/time.h>
-//#include <pthread.h>
-#include "network.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-int ns_socket2ssl(tbx_ns_t *ns);
-TBX_API void ns_config_1_ssl(tbx_ns_t *ns, int fd, int tcpsize);
+
+// Functions
+TBX_API int tbx_varint_test();
+
+TBX_API int tbx_zigzag_decode(uint8_t *buffer, int bufsize, int64_t *value);
+
+TBX_API int tbx_zigzag_encode(int64_t value, uint8_t *buffer);
+
+// Precompiler macros
+#define tbx_varint_need_more(B) ((B) & 0x80)
 
 #ifdef __cplusplus
 }
 #endif
 
 #endif
-

@@ -23,18 +23,19 @@
 
 #define _log_module_index 178
 
+#include <tbx/assert_result.h>
 #include <zlib.h>
 #include "ex3_abstract.h"
 #include "ex3_system.h"
-#include "interval_skiplist.h"
+#include <tbx/interval_skiplist.h>
 #include "ex3_compare.h"
-#include "log.h"
-#include "string_token.h"
+#include <tbx/log.h>
+#include <tbx/string_token.h>
 #include "segment_lun.h"
-#include "iniparse.h"
-#include "random.h"
-#include "append_printf.h"
-#include "type_malloc.h"
+#include <tbx/iniparse.h>
+#include <tbx/random.h>
+#include <tbx/append_printf.h>
+#include <tbx/type_malloc.h>
 #include "rs_query_base.h"
 #include "segment_lun.h"
 #include "segment_lun_priv.h"
@@ -244,9 +245,9 @@ int jerase_brute_recurse(int level, int *index, erasure_plan_t *plan, int chunk_
 
         logbuf[0] = 0;
         nbytes = 0;
-        append_printf(logbuf, &nbytes, sizeof(logbuf), "jerase_control_check=%d devmap: ", n);
+        tbx_append_printf(logbuf, &nbytes, sizeof(logbuf), "jerase_control_check=%d devmap: ", n);
         for (i=0; i<n_devs; i++) {
-            append_printf(logbuf, &nbytes, sizeof(logbuf), " %d", badmap[i]);
+            tbx_append_printf(logbuf, &nbytes, sizeof(logbuf), " %d", badmap[i]);
         }
         log_printf(1, "%s\n", logbuf);
 
@@ -352,12 +353,12 @@ op_status_t segjerase_inspect_full_func(void *arg, int id)
     log_printf(0, "lo=" XOT " hi= " XOT " nbytes=" XOT " total_stripes=%d data_size=%d\n", sf->lo, sf->hi, nbytes, total_stripes, s->data_size);
     bufsize = (ex_off_t)total_stripes * (ex_off_t)s->stripe_size_with_magic;
     if (bufsize > si->bufsize) bufsize = si->bufsize;
-    type_malloc(buffer, char, bufsize);
+    tbx_type_malloc(buffer, char, bufsize);
     bufstripes = bufsize / s->stripe_size_with_magic;
 
     max_iov = bufstripes;
-    type_malloc(ex_iov, ex_tbx_iovec_t, bufstripes);
-    type_malloc(iov, tbx_iovec_t, bufstripes);
+    tbx_type_malloc(ex_iov, ex_tbx_iovec_t, bufstripes);
+    tbx_type_malloc(iov, tbx_iovec_t, bufstripes);
 
     for (i=0; i < s->n_parity_devs; i++) pwork[i] = &(parity[i*s->chunk_size]);
     memset(badmap_last, 0, sizeof(int)*s->n_devs);
@@ -394,7 +395,7 @@ op_status_t segjerase_inspect_full_func(void *arg, int id)
         if (sf->do_print == 1) info_printf(si->fd, 1, XIDT ": checking stripes: (%d, %d)\n", segment_id(si->seg), stripe, stripe+nstripes-1);
 
         //** Read the data in
-        tbuffer_single(&tbuf_read, ex_read.len, buffer);
+        tbx_tbuf_single(&tbuf_read, ex_read.len, buffer);
         clr_dt = apr_time_now();
         memset(buffer, 0, bufsize);
         clr_dt = apr_time_now() - clr_dt;
@@ -455,7 +456,7 @@ op_status_t segjerase_inspect_full_func(void *arg, int id)
             check_magic = (s->magic_cksum == 0) ? NULL : stripe_magic;
             good_magic = memcmp(empty_magic, stripe_magic, JE_MAGIC_SIZE);
             if (good_magic == 0) {
-//           append_printf(stripe_msg[0], &stripe_used[0], stripe_buffer_size, "Empty stripe.  empty chunks: %d\n", magic_count[index]);
+//           tbx_append_printf(stripe_msg[0], &stripe_used[0], stripe_buffer_size, "Empty stripe.  empty chunks: %d\n", magic_count[index]);
                 log_printf(0, "Empty stripe.  empty chunks: %d magic_used=%d stripe=%d\n", magic_count[index], magic_used, stripe+i);
                 stripe_error[0] = 1;
                 if (magic_count[index] == s->n_devs) { //** Completely empty stripe so skip to the next loop
@@ -486,7 +487,7 @@ op_status_t segjerase_inspect_full_func(void *arg, int id)
                     }
                 }
 
-                append_printf(stripe_msg[1], &stripe_used[1], stripe_buffer_size, "Unrecoverable error!  Matching magic:%d  Need:%d", magic_count[index], s->n_data_devs);
+                tbx_append_printf(stripe_msg[1], &stripe_used[1], stripe_buffer_size, "Unrecoverable error!  Matching magic:%d  Need:%d", magic_count[index], s->n_data_devs);
                 stripe_error[1] = 1;
             } else {  //** Either all the data is good or we have a have a few bad blocks
                 //** Make the decoding structure
@@ -517,23 +518,23 @@ op_status_t segjerase_inspect_full_func(void *arg, int id)
                         memcpy(badmap_brute, badmap, sizeof(int)*s->n_devs);  //** Got a correctable error
 
 
-                        append_printf(stripe_msg[2], &stripe_used[2], stripe_buffer_size, "Recoverable same magic. devmap:");
+                        tbx_append_printf(stripe_msg[2], &stripe_used[2], stripe_buffer_size, "Recoverable same magic. devmap:");
                         for (d=0; d<s->n_devs; d++) {
-                            append_printf(stripe_msg[2], &stripe_used[2], stripe_buffer_size, " %d", badmap[d]);
+                            tbx_append_printf(stripe_msg[2], &stripe_used[2], stripe_buffer_size, " %d", badmap[d]);
                         }
                         stripe_error[2] = 1;
 
-                        append_printf(stripe_msg[2], &stripe_used[2], stripe_buffer_size, "\nPrinting magic table --n_magic=%d\n",magic_used);
+                        tbx_append_printf(stripe_msg[2], &stripe_used[2], stripe_buffer_size, "\nPrinting magic table --n_magic=%d\n",magic_used);
                         for (k=0; k < magic_used; k++) {
                             match = k*s->n_devs;
-                            append_printf(stripe_msg[2], &stripe_used[2], stripe_buffer_size, "%d: count=%d empty=%d devs=",k, magic_count[k], memcmp(empty_magic, &(magic_key[k*JE_MAGIC_SIZE]), JE_MAGIC_SIZE));
+                            tbx_append_printf(stripe_msg[2], &stripe_used[2], stripe_buffer_size, "%d: count=%d empty=%d devs=",k, magic_count[k], memcmp(empty_magic, &(magic_key[k*JE_MAGIC_SIZE]), JE_MAGIC_SIZE));
                             for (j=0; j< magic_count[k]; j++) { //** Copy the magic over and mark the dev as bad
-                                append_printf(stripe_msg[2], &stripe_used[2], stripe_buffer_size, " %d", magic_devs[match+j]);
+                                tbx_append_printf(stripe_msg[2], &stripe_used[2], stripe_buffer_size, " %d", magic_devs[match+j]);
                             }
-                            append_printf(stripe_msg[2], &stripe_used[2], stripe_buffer_size, "\n");
+                            tbx_append_printf(stripe_msg[2], &stripe_used[2], stripe_buffer_size, "\n");
                         }
                     } else {
-                        append_printf(stripe_msg[3], &stripe_used[3], stripe_buffer_size, "Unrecoverable data+parity mismatch.");
+                        tbx_append_printf(stripe_msg[3], &stripe_used[3], stripe_buffer_size, "Unrecoverable data+parity mismatch.");
                         stripe_error[3] = 1;
                         skip = 1;
                         unrecoverable_count++;
@@ -588,13 +589,13 @@ op_status_t segjerase_inspect_full_func(void *arg, int id)
 
 next:  //** Jump to here if an empty stripe
 
-            if ((get_info_level(si->fd) > 1) && (tmp != bad_count)) {   //** Print some diag info if needed
+            if ((tbx_get_info_level(si->fd) > 1) && (tmp != bad_count)) {   //** Print some diag info if needed
                 oops = (((repair_errors+unrecoverable_count) > 0) && (fail_quick > 0) && (i== nstripes-1)) ? 1 : 0;
 
                 if ((stripe+i-1 != last_bad) || (memcmp(badmap_last, badmap, sizeof(int)*s->n_devs) != 0)) {
-                    append_printf(print_buffer, &used, sizeof(print_buffer), XIDT ": [DEVMAP] stripe=%d   devmap:", segment_id(si->seg), stripe+i);
+                    tbx_append_printf(print_buffer, &used, sizeof(print_buffer), XIDT ": [DEVMAP] stripe=%d   devmap:", segment_id(si->seg), stripe+i);
                     for (k=0; k<s->n_devs; k++) {
-                        append_printf(print_buffer, &used, sizeof(print_buffer), " %d", badmap[k]);
+                        tbx_append_printf(print_buffer, &used, sizeof(print_buffer), " %d", badmap[k]);
                     }
                     info_printf(si->fd, 1, "%s\n", print_buffer);
                     memcpy(badmap_last, badmap, sizeof(int)*s->n_devs);
@@ -630,7 +631,7 @@ next:  //** Jump to here if an empty stripe
         //** Perform any updates if needed
         now = apr_time_now();
         if (n_iov > 0) {
-            tbuffer_vec(&tbuf, nbytes, n_iov, iov);
+            tbx_tbuf_vec(&tbuf, nbytes, n_iov, iov);
             err = gop_sync_exec(segment_write(s->child_seg, si->da, NULL, n_iov, ex_iov, &tbuf, 0, si->timeout));
             log_printf(0, "gop_status=%d nbytes=" XOT " n_iov=%d\n", err, nbytes, n_iov);
             if (err != OP_STATE_SUCCESS) {
@@ -648,8 +649,8 @@ next:  //** Jump to here if an empty stripe
 
         if (sf->do_print == 1) {
             info_printf(si->fd, 1, XIDT ": R[%lf sec %s/s] P[%lf sec %s/s] W[%lf sec %s/s] T[%lf sec] bad stripe count: %d  --- Repair errors: %d   Unrecoverable errors:%d  Empty stripes: %d   Silent errors: %d\n",
-                        segment_id(si->seg), dtr, pretty_print_double_with_scale(1024, rater, ppbufr), dtp, pretty_print_double_with_scale(1024, ratep, ppbufp),
-                        dtw, pretty_print_double_with_scale(1024, ratew, ppbufw), dtt, bad_count, repair_errors, unrecoverable_count, n_empty, erasure_errors);
+                        segment_id(si->seg), dtr, tbx_stk_pretty_print_double_with_scale(1024, rater, ppbufr), dtp, tbx_stk_pretty_print_double_with_scale(1024, ratep, ppbufp),
+                        dtw, tbx_stk_pretty_print_double_with_scale(1024, ratew, ppbufw), dtt, bad_count, repair_errors, unrecoverable_count, n_empty, erasure_errors);
         }
 
         if (((repair_errors+unrecoverable_count) > 0) && (fail_quick > 0)) {
@@ -683,7 +684,7 @@ op_generic_t *segjerase_inspect_full(segjerase_inspect_t *si, int do_print, ex_o
     segjerase_full_t *sf;
     op_generic_t *gop;
 
-    type_malloc(sf, segjerase_full_t, 1);
+    tbx_type_malloc(sf, segjerase_full_t, 1);
     sf->si = si;
     sf->lo = lo;
     sf->hi = hi;
@@ -730,9 +731,9 @@ op_status_t segjerase_inspect_scan(segjerase_inspect_t *si)
     fsize = segment_size(si->seg);
     maxstripes = 1024;
     bufsize = s->n_devs * maxstripes * JE_MAGIC_SIZE;
-    type_malloc(magic, char, bufsize);
-    type_malloc(iov, tbx_iovec_t, s->n_devs*maxstripes);
-    type_malloc(ex_iov, ex_tbx_iovec_t, s->n_devs*maxstripes);
+    tbx_type_malloc(magic, char, bufsize);
+    tbx_type_malloc(iov, tbx_iovec_t, s->n_devs*maxstripes);
+    tbx_type_malloc(ex_iov, ex_tbx_iovec_t, s->n_devs*maxstripes);
 
     memset(magic, 0, bufsize);
 
@@ -754,7 +755,7 @@ op_status_t segjerase_inspect_scan(segjerase_inspect_t *si)
             info_printf(si->fd, 1, XIDT ": checking stripes: (%d, %d)\n", segment_id(si->seg), start_stripe, start_stripe+curr_stripe-1);
 
             log_printf(0, "i=%d n_iov=%d size=%d\n", i, n_iov, n_iov*JE_MAGIC_SIZE);
-            tbuffer_vec(&tbuf, n_iov*JE_MAGIC_SIZE, n_iov, iov);
+            tbx_tbuf_vec(&tbuf, n_iov*JE_MAGIC_SIZE, n_iov, iov);
             gop_sync_exec(segment_read(s->child_seg, si->da, NULL, n_iov, ex_iov, &tbuf, 0, si->timeout));
 
             //** Check for errors and fire off repairs
@@ -1024,7 +1025,7 @@ op_generic_t *segjerase_inspect(segment_t *seg, data_attr_t *da, tbx_log_fd_t *f
     case (INSPECT_QUICK_REPAIR):
     case (INSPECT_SCAN_REPAIR):
     case (INSPECT_FULL_REPAIR):
-        type_malloc(si, segjerase_inspect_t, 1);
+        tbx_type_malloc(si, segjerase_inspect_t, 1);
         si->seg = seg;
         si->da = da;
         si->fd = fd;
@@ -1070,7 +1071,7 @@ op_status_t segjerase_clone_func(void *arg, int id)
     status = (gop_waitall(cop->gop) == OP_STATE_SUCCESS) ? op_success_status : op_failure_status;
     gop_free(cop->gop, OP_DESTROY);
 
-    atomic_inc(ds->child_seg->ref_count);
+    tbx_atomic_inc(ds->child_seg->ref_count);
     return(status);
 }
 
@@ -1089,7 +1090,7 @@ op_generic_t *segjerase_clone(segment_t *seg, data_attr_t *da, segment_t **clone
     ex_off_t nbytes;
     int use_existing = (*clone_seg != NULL) ? 1 : 0;
 
-    type_malloc(cop, segjerase_clone_t, 1);
+    tbx_type_malloc(cop, segjerase_clone_t, 1);
 
     //** Make the base segment
     if (use_existing == 0) *clone_seg = segment_jerasure_create(seg->ess);
@@ -1105,12 +1106,12 @@ op_generic_t *segjerase_clone(segment_t *seg, data_attr_t *da, segment_t **clone
 
     if (mode == CLONE_STRUCTURE) sd->magic_cksum = 1;  //** If only cloning the structure we always enble storing a cksum for the magic
 
-    int cref = atomic_get(sd->child_seg->ref_count);
+    int cref = tbx_atomic_get(sd->child_seg->ref_count);
     log_printf(15, "use_existing=%d sseg=" XIDT " dseg=" XIDT " cref=%d\n", use_existing, segment_id(seg), segment_id(clone), cref);
     if (use_existing == 1) {
         sd->child_seg = child;
         sd->plan = cplan;
-        atomic_dec(child->ref_count);
+        tbx_atomic_dec(child->ref_count);
     } else {   //** Need to contstruct a plan
         sd->child_seg = NULL;
 
@@ -1177,7 +1178,7 @@ op_status_t segjerase_read_func(void *arg, int id)
 tryagain:  //** We first try allowing blacklisting to proceed as normal and then start over if that fails
 
     q = new_opque();
-    tbuffer_var_init(&tbv);
+    tbx_tbuf_var_init(&tbv);
     magic_stripe = JE_MAGIC_SIZE*s->n_devs;
     status = op_success_status;
     soft_error = 0;
@@ -1200,15 +1201,15 @@ tryagain:  //** We first try allowing blacklisting to proceed as normal and then
             log_printf(1, "seg=" XIDT " Parity to small.  Growing to parity_len=" XOT " s->max_parity=" XOT "\n", segment_id(sw->seg), parity_len, s->max_parity);
         }
     }
-    type_malloc(parity, char, parity_len);
+    tbx_type_malloc(parity, char, parity_len);
 
 
-    type_malloc_clear(magic, char, magic_stripe*sw->nstripes);
-    type_malloc(ex_iov, ex_tbx_iovec_t, sw->n_iov);
-    type_malloc(iov, tbx_iovec_t, 2*sw->nstripes*s->n_devs);
-    type_malloc(tbuf, tbx_tbuf_t, sw->n_iov);
-    type_malloc_clear(rw_hints, segment_rw_hints_t, sw->n_iov);
-    type_malloc(info, segjerase_io_t, sw->n_iov);
+    tbx_type_malloc_clear(magic, char, magic_stripe*sw->nstripes);
+    tbx_type_malloc(ex_iov, ex_tbx_iovec_t, sw->n_iov);
+    tbx_type_malloc(iov, tbx_iovec_t, 2*sw->nstripes*s->n_devs);
+    tbx_type_malloc(tbuf, tbx_tbuf_t, sw->n_iov);
+    tbx_type_malloc_clear(rw_hints, segment_rw_hints_t, sw->n_iov);
+    tbx_type_malloc(info, segjerase_io_t, sw->n_iov);
 
     //** Set up the blacklist structure
     if (sw->rw_hints == NULL) {
@@ -1392,7 +1393,7 @@ tryagain:  //** We first try allowing blacklisting to proceed as normal and then
             magic_off = curr_stripe*magic_stripe;
             for (j=0; j<nstripes; j++) {
                 tbv.nbytes = s->data_size;
-                tbuffer_next(sw->buffer, boff, &tbv);
+                tbx_tbuf_next(sw->buffer, boff, &tbv);
                 assert((tbv.n_iov == 1) && (tbv.nbytes == s->data_size));
 
                 //** Make the encoding and transfer data structs
@@ -1425,7 +1426,7 @@ tryagain:  //** We first try allowing blacklisting to proceed as normal and then
             }
 
             boff = sw->boff + curr_bytes;
-            tbuffer_vec(&(tbuf[i]), ex_iov[i].len, n_iov - iov_start, &(iov[iov_start]));
+            tbx_tbuf_vec(&(tbuf[i]), ex_iov[i].len, n_iov - iov_start, &(iov[iov_start]));
             gop = segment_read(s->child_seg, sw->da, &(rw_hints[i]), 1, &(ex_iov[i]), &(tbuf[i]), boff, sw->timeout);
             gop_set_myid(gop, i);
             opque_add(q, gop);
@@ -1494,7 +1495,7 @@ tryagain: //** In case blacklisting failed we'll retry with it disabled
 
     q = new_opque();
 //  opque_start_execution(q);
-    tbuffer_var_init(&tbv);
+    tbx_tbuf_var_init(&tbv);
     status = op_success_status;
     soft_error = 0;
     hard_error = 0;
@@ -1514,15 +1515,15 @@ tryagain: //** In case blacklisting failed we'll retry with it disabled
             log_printf(1, "Parity to small.  Growing to parity_len=" XOT " s->max_parity=" XOT "\n", parity_len, s->max_parity);
         }
     }
-    type_malloc(parity, char, parity_len + s->chunk_size);
+    tbx_type_malloc(parity, char, parity_len + s->chunk_size);
     empty = NULL;
 
-    type_malloc_clear(magic, char, JE_MAGIC_SIZE*sw->nstripes);
-    type_malloc(ptr, char *, sw->nstripes*s->n_devs);
-    type_malloc(ex_iov, ex_tbx_iovec_t, sw->n_iov);
-    type_malloc(iov, tbx_iovec_t, 2*sw->nstripes*s->n_devs);
-    type_malloc(tbuf, tbx_tbuf_t, sw->n_iov);
-    type_malloc_clear(rw_hints, segment_rw_hints_t, sw->n_iov);
+    tbx_type_malloc_clear(magic, char, JE_MAGIC_SIZE*sw->nstripes);
+    tbx_type_malloc(ptr, char *, sw->nstripes*s->n_devs);
+    tbx_type_malloc(ex_iov, ex_tbx_iovec_t, sw->n_iov);
+    tbx_type_malloc(iov, tbx_iovec_t, 2*sw->nstripes*s->n_devs);
+    tbx_type_malloc(tbuf, tbx_tbuf_t, sw->n_iov);
+    tbx_type_malloc_clear(rw_hints, segment_rw_hints_t, sw->n_iov);
 
 
     //** Set up the blacklist structure
@@ -1596,7 +1597,7 @@ tryagain: //** In case blacklisting failed we'll retry with it disabled
             for (j=0; j<nstripes; j++) {
                 tbv.nbytes = s->data_size;
 //           boff += s->chunk_size;
-                tbuffer_next(sw->buffer, boff, &tbv);
+                tbx_tbuf_next(sw->buffer, boff, &tbv);
                 assert((tbv.n_iov == 1) && (tbv.nbytes == s->data_size));
 
                 //** Make the encoding and transfer data structs
@@ -1647,7 +1648,7 @@ tryagain: //** In case blacklisting failed we'll retry with it disabled
             }
 
             boff = sw->boff + curr_bytes;
-            tbuffer_vec(&(tbuf[i]), nstripes*s->stripe_size_with_magic, n_iov - iov_start, &(iov[iov_start]));
+            tbx_tbuf_vec(&(tbuf[i]), nstripes*s->stripe_size_with_magic, n_iov - iov_start, &(iov[iov_start]));
             gop = segment_write(s->child_seg, sw->da, &(rw_hints[i]), 1, &(ex_iov[i]), &(tbuf[i]), boff, sw->timeout);
             gop_set_myid(gop, i);
             opque_add(q, gop);
@@ -1732,7 +1733,7 @@ op_generic_t *segjerase_write(segment_t *seg, data_attr_t *da, segment_rw_hints_
     }
 
     //** I/O is on stripe boundaries so proceed
-    type_malloc(sw, segjerase_rw_t, 1);
+    tbx_type_malloc(sw, segjerase_rw_t, 1);
     sw->seg = seg;
     sw->da = da;
     sw->rw_hints = rw_hints;
@@ -1780,7 +1781,7 @@ op_generic_t *segjerase_read(segment_t *seg, data_attr_t *da, segment_rw_hints_t
 
     //** I/O is on stripe boundaries so proceed
 
-    type_malloc(sw, segjerase_rw_t, 1);
+    tbx_type_malloc(sw, segjerase_rw_t, 1);
     sw->seg = seg;
     sw->da = da;
     sw->rw_hints = rw_hints;
@@ -1874,14 +1875,14 @@ int segjerase_signature(segment_t *seg, char *buffer, int *used, int bufsize)
 {
     segjerase_priv_t *s = (segjerase_priv_t *)seg->priv;
 
-    append_printf(buffer, used, bufsize, "jerase(\n");
-    append_printf(buffer, used, bufsize, "    method=%s\n", JE_method[s->method]);
-    append_printf(buffer, used, bufsize, "    n_data_devs=%d\n", s->n_data_devs);
-    append_printf(buffer, used, bufsize, "    n_parity_devs=%d\n", s->n_parity_devs);
-    append_printf(buffer, used, bufsize, "    chunk_size=%d\n", s->chunk_size);
-    append_printf(buffer, used, bufsize, "    magic_cksum=%d\n", s->magic_cksum);
-    append_printf(buffer, used, bufsize, "    w=%d\n", s->w);
-    append_printf(buffer, used, bufsize, ")\n");
+    tbx_append_printf(buffer, used, bufsize, "jerase(\n");
+    tbx_append_printf(buffer, used, bufsize, "    method=%s\n", JE_method[s->method]);
+    tbx_append_printf(buffer, used, bufsize, "    n_data_devs=%d\n", s->n_data_devs);
+    tbx_append_printf(buffer, used, bufsize, "    n_parity_devs=%d\n", s->n_parity_devs);
+    tbx_append_printf(buffer, used, bufsize, "    chunk_size=%d\n", s->chunk_size);
+    tbx_append_printf(buffer, used, bufsize, "    magic_cksum=%d\n", s->magic_cksum);
+    tbx_append_printf(buffer, used, bufsize, "    w=%d\n", s->w);
+    tbx_append_printf(buffer, used, bufsize, ")\n");
 
     return(segment_signature(s->child_seg, buffer, used, bufsize));
 }
@@ -1909,27 +1910,27 @@ int segjerase_serialize_text(segment_t *seg, exnode_exchange_t *exp)
     segment_serialize(s->child_seg, child_exp);
 
     //** Store the segment header
-    append_printf(segbuf, &sused, bufsize, "[segment-" XIDT "]\n", seg->header.id);
+    tbx_append_printf(segbuf, &sused, bufsize, "[segment-" XIDT "]\n", seg->header.id);
     if ((seg->header.name != NULL) && (strcmp(seg->header.name, "") != 0)) {
-        etext = escape_text("=", '\\', seg->header.name);
-        append_printf(segbuf, &sused, bufsize, "name=%s\n", etext);
+        etext = tbx_stk_escape_text("=", '\\', seg->header.name);
+        tbx_append_printf(segbuf, &sused, bufsize, "name=%s\n", etext);
         free(etext);
     }
-    append_printf(segbuf, &sused, bufsize, "type=%s\n", SEGMENT_TYPE_JERASURE);
-    append_printf(segbuf, &sused, bufsize, "ref_count=%d\n", seg->ref_count);
+    tbx_append_printf(segbuf, &sused, bufsize, "type=%s\n", SEGMENT_TYPE_JERASURE);
+    tbx_append_printf(segbuf, &sused, bufsize, "ref_count=%d\n", seg->ref_count);
 
     //** And the params
-    append_printf(segbuf, &sused, bufsize, "segment=" XIDT "\n", segment_id(s->child_seg));
-    append_printf(segbuf, &sused, bufsize, "method=%s\n", JE_method[s->method]);
-    append_printf(segbuf, &sused, bufsize, "n_data_devs=%d\n", s->n_data_devs);
-    append_printf(segbuf, &sused, bufsize, "n_parity_devs=%d\n", s->n_parity_devs);
-    append_printf(segbuf, &sused, bufsize, "chunk_size=%d\n", s->chunk_size);
-    append_printf(segbuf, &sused, bufsize, "w=%d\n", s->w);
-    append_printf(segbuf, &sused, bufsize, "max_parity=" XOT "\n", s->max_parity);
-    append_printf(segbuf, &sused, bufsize, "magic_cksum=%d\n", s->magic_cksum);
+    tbx_append_printf(segbuf, &sused, bufsize, "segment=" XIDT "\n", segment_id(s->child_seg));
+    tbx_append_printf(segbuf, &sused, bufsize, "method=%s\n", JE_method[s->method]);
+    tbx_append_printf(segbuf, &sused, bufsize, "n_data_devs=%d\n", s->n_data_devs);
+    tbx_append_printf(segbuf, &sused, bufsize, "n_parity_devs=%d\n", s->n_parity_devs);
+    tbx_append_printf(segbuf, &sused, bufsize, "chunk_size=%d\n", s->chunk_size);
+    tbx_append_printf(segbuf, &sused, bufsize, "w=%d\n", s->w);
+    tbx_append_printf(segbuf, &sused, bufsize, "max_parity=" XOT "\n", s->max_parity);
+    tbx_append_printf(segbuf, &sused, bufsize, "magic_cksum=%d\n", s->magic_cksum);
 
     if (s->write_errors > 0) {
-        append_printf(segbuf, &sused, bufsize, "write_errors=%d\n", s->write_errors);
+        tbx_append_printf(segbuf, &sused, bufsize, "write_errors=%d\n", s->write_errors);
     }
 
     //** Merge the exnodes together
@@ -1991,10 +1992,10 @@ int segjerase_deserialize_text(segment_t *seg, ex_id_t id, exnode_exchange_t *ex
     //** Get the segment header info
     seg->header.id = id;
     seg->header.type = SEGMENT_TYPE_JERASURE;
-    seg->header.name = inip_get_string(fd, seggrp, "name", "");
+    seg->header.name = tbx_inip_string_get(fd, seggrp, "name", "");
 
     //** Load the child segemnt (should be a LUN segment)
-    id = inip_get_integer(fd, seggrp, "segment", 0);
+    id = tbx_inip_integer_get(fd, seggrp, "segment", 0);
     if (id == 0) {
         return (-1);
     }
@@ -2004,28 +2005,28 @@ int segjerase_deserialize_text(segment_t *seg, ex_id_t id, exnode_exchange_t *ex
         return(-2);
     }
 
-    atomic_inc(s->child_seg->ref_count);
+    tbx_atomic_inc(s->child_seg->ref_count);
 
     //** Load the params
-    s->write_errors = inip_get_integer(fd, seggrp, "write_errors", 0);
+    s->write_errors = tbx_inip_integer_get(fd, seggrp, "write_errors", 0);
     if ((s->paranoid_check == 0) && (s->write_errors > 0)) s->paranoid_check = 1;
 
-    s->magic_cksum = inip_get_integer(fd, seggrp, "magic_cksum", 0);
+    s->magic_cksum = tbx_inip_integer_get(fd, seggrp, "magic_cksum", 0);
     if (s->magic_cksum == 0) {
         if (segment_size(s->child_seg) == 0) s->magic_cksum = 1;  //** If empty file enable adler32 magic
     }
-    s->n_data_devs = inip_get_integer(fd, seggrp, "n_data_devs", 6);
-    s->n_parity_devs = inip_get_integer(fd, seggrp, "n_parity_devs", 3);
+    s->n_data_devs = tbx_inip_integer_get(fd, seggrp, "n_data_devs", 6);
+    s->n_parity_devs = tbx_inip_integer_get(fd, seggrp, "n_parity_devs", 3);
     s->n_devs = s->n_data_devs + s->n_parity_devs;
-    s->w = inip_get_integer(fd, seggrp, "w", -1);
-    s->max_parity = inip_get_integer(fd, seggrp, "max_parity", 16*1024*1024);
-    s->chunk_size = inip_get_integer(fd, seggrp, "chunk_size", 16*1024);
+    s->w = tbx_inip_integer_get(fd, seggrp, "w", -1);
+    s->max_parity = tbx_inip_integer_get(fd, seggrp, "max_parity", 16*1024*1024);
+    s->chunk_size = tbx_inip_integer_get(fd, seggrp, "chunk_size", 16*1024);
     s->stripe_size = s->chunk_size * s->n_devs;
     s->data_size = s->chunk_size * s->n_data_devs;
     s->parity_size = s->chunk_size * s->n_parity_devs;
     s->chunk_size_with_magic = s->chunk_size + JE_MAGIC_SIZE;
     s->stripe_size_with_magic = s->chunk_size_with_magic * s->n_devs;
-    text = inip_get_string(fd, seggrp, "method", (char *)JE_method[CAUCHY_GOOD]);
+    text = tbx_inip_string_get(fd, seggrp, "method", (char *)JE_method[CAUCHY_GOOD]);
     s->method = et_method_type(text);
     free(text);
     if (s->method < 0) return(-3);
@@ -2044,7 +2045,7 @@ int segjerase_deserialize_text(segment_t *seg, ex_id_t id, exnode_exchange_t *ex
 
     if (slun->chunk_size != (s->chunk_size + JE_MAGIC_SIZE)) {
         log_printf(0, "Child chunk_size(%" PRId64 ") != JE chunksize(%d) + JE_MAGIC_SIZE(%d)!\n", slun->chunk_size, s->chunk_size, JE_MAGIC_SIZE);
-        inip_destroy(fd);
+        tbx_inip_destroy(fd);
         return(-6);
     }
 
@@ -2100,7 +2101,7 @@ void segjerase_destroy(segment_t *seg)
 
     //** Destroy the child segment as well
     if (s->child_seg != NULL) {
-        atomic_dec(s->child_seg->ref_count);
+        tbx_atomic_dec(s->child_seg->ref_count);
         segment_destroy(s->child_seg);
     }
 
@@ -2131,13 +2132,13 @@ segment_t *segment_jerasure_create(void *arg)
     int *paranoid;
 
     //** Make the space
-    type_malloc_clear(seg, segment_t, 1);
-    type_malloc_clear(s, segjerase_priv_t, 1);
+    tbx_type_malloc_clear(seg, segment_t, 1);
+    tbx_type_malloc_clear(s, segjerase_priv_t, 1);
 
     seg->priv = s;
 
     generate_ex_id(&(seg->header.id));
-    atomic_set(seg->ref_count, 0);
+    tbx_atomic_set(seg->ref_count, 0);
     seg->header.type = SEGMENT_TYPE_JERASURE;
     assert_result(apr_pool_create(&(seg->mpool), NULL), APR_SUCCESS);
     apr_thread_mutex_create(&(seg->lock), APR_THREAD_MUTEX_DEFAULT, seg->mpool);

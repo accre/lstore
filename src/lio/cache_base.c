@@ -20,13 +20,13 @@
 
 #define _log_module_index 142
 
-#include "list.h"
-#include "type_malloc.h"
-#include "log.h"
+#include <tbx/list.h>
+#include <tbx/type_malloc.h>
+#include <tbx/log.h>
 #include "cache.h"
 #include "ex3_abstract.h"
 #include "ex3_compare.h"
-#include "pigeon_coop.h"
+#include <tbx/pigeon_coop.h>
 
 //*************************************************************************
 //  cache_base_handle  - Simple get_handle method
@@ -43,8 +43,8 @@ cache_t *cache_base_handle(cache_t *c)
 
 void cache_base_destroy(cache_t *c)
 {
-    list_destroy(c->segments);
-    destroy_pigeon_coop(c->cond_coop);
+    tbx_list_destroy(c->segments);
+    tbx_pc_destroy(c->cond_coop);
     apr_thread_mutex_destroy(c->lock);
     apr_pool_destroy(c->mpool);
 }
@@ -57,8 +57,8 @@ void cache_base_create(cache_t *c, data_attr_t *da, int timeout)
 {
     apr_pool_create(&(c->mpool), NULL);
     apr_thread_mutex_create(&(c->lock), APR_THREAD_MUTEX_DEFAULT, c->mpool);
-    c->segments = list_create(0, &skiplist_compare_ex_id, NULL, NULL, NULL);
-    c->cond_coop = new_pigeon_coop("cache_cond_coop", 50, sizeof(cache_cond_t), c->mpool, cache_cond_new, cache_cond_free);
+    c->segments = tbx_list_create(0, &skiplist_compare_ex_id, NULL, NULL, NULL);
+    c->cond_coop = tbx_pc_new("cache_cond_coop", 50, sizeof(cache_cond_t), c->mpool, cache_cond_new, cache_cond_free);
     c->da = da;
     c->timeout = timeout;
     c->default_page_size = 16*1024;
@@ -74,11 +74,11 @@ void *free_page_tables_new(void *arg, int size)
     page_table_t *shelf;
     int i;
 
-    type_malloc_clear(shelf, page_table_t, size);
+    tbx_type_malloc_clear(shelf, page_table_t, size);
 
     log_printf(15, "making new shelf of size %d\n", size);
     for (i=0; i<size; i++) {
-        shelf[i].stack = new_stack();
+        shelf[i].stack = tbx_stack_new();
     }
 
     return((void *)shelf);
@@ -96,7 +96,7 @@ void free_page_tables_free(void *arg, int size, void *data)
     log_printf(15, "destroying shelf of size %d\n", size);
 
     for (i=0; i<size; i++) {
-        free_stack(shelf[i].stack, 0);
+        tbx_free_stack(shelf[i].stack, 0);
     }
 
     free(shelf);
@@ -113,15 +113,15 @@ void *free_pending_table_new(void *arg, int size)
     tbx_list_t **shelf;
     int i;
 
-    type_malloc_clear(shelf, tbx_list_t *, size);
+    tbx_type_malloc_clear(shelf, tbx_list_t *, size);
 
     log_printf(15, "making new shelf of size %d\n", size);
     for (i=0; i<size; i++) {
-        shelf[i] = list_create(0, &skiplist_compare_ex_id, NULL, NULL, NULL);
+        shelf[i] = tbx_list_create(0, &skiplist_compare_ex_id, NULL, NULL, NULL);
     }
 
     log_printf(15, " shelf[0]->max_levels=%d\n", shelf[0]->max_levels);
-    flush_log();
+    tbx_flush_log();
     return((void *)shelf);
 }
 
@@ -137,7 +137,7 @@ void free_pending_table_free(void *arg, int size, void *data)
     log_printf(15, "destroying shelf of size %d\n", size);
 
     for (i=0; i<size; i++) {
-        list_destroy(shelf[i]);
+        tbx_list_destroy(shelf[i]);
     }
 
     free(shelf);

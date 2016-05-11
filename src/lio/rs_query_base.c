@@ -21,14 +21,14 @@
 #define _log_module_index 158
 
 #include <assert.h>
-#include "assert_result.h"
+#include <tbx/assert_result.h>
 #include <stdlib.h>
 #include "resource_service_abstract.h"
 #include "rs_query_base.h"
-#include "string_token.h"
-#include "log.h"
-#include "type_malloc.h"
-#include "append_printf.h"
+#include <tbx/string_token.h>
+#include <tbx/log.h>
+#include <tbx/type_malloc.h>
+#include <tbx/append_printf.h>
 #include "service_manager.h"
 
 //***********************************************************************
@@ -86,7 +86,7 @@ rs_query_t *rs_query_base_new(resource_service_fn_t *rs)
 {
     rsq_base_t *q;
 
-    type_malloc_clear(q, rsq_base_t, 1);
+    tbx_type_malloc_clear(q, rsq_base_t, 1);
     q->rs = rs;
 
     return((rs_query_t *)q);
@@ -111,7 +111,7 @@ int rs_query_base_add(resource_service_fn_t *rs, rs_query_t **rsq, int op, char 
     if ((val_op & RSQ_BASE_KV_UNIQUE) && (val_op & RSQ_BASE_KV_UNIQUE)) return(5);
 
     //** Ok make the query
-    type_malloc_clear(q, rsq_base_ele_t, 1);
+    tbx_type_malloc_clear(q, rsq_base_ele_t, 1);
     q->op = op;
     q->key_op = key_op;
     q->key = (key == NULL) ? NULL : strdup(key);
@@ -121,7 +121,7 @@ int rs_query_base_add(resource_service_fn_t *rs, rs_query_t **rsq, int op, char 
 
     //** and append it;
     if (*query == NULL) {
-        type_malloc_clear(*query, rsq_base_t, 1);
+        tbx_type_malloc_clear(*query, rsq_base_t, 1);
         (*query)->rs = rs;
 
         (*query)->head = q;
@@ -159,7 +159,7 @@ rs_query_t *rs_query_base_dup(resource_service_fn_t *rs, rs_query_t *rsq)
 
     for (q = query->head; q != NULL; q = q->next) {
         log_printf(15, "rs_query_phase_dup: Adding element\n");
-        type_malloc_clear(qn, rsq_base_ele_t, 1);
+        tbx_type_malloc_clear(qn, rsq_base_ele_t, 1);
         if (new_query->head == NULL) new_query->head = qn;
         if (prev != NULL) prev->next = qn;
 
@@ -197,7 +197,7 @@ void rs_query_base_append(resource_service_fn_t *rs, rs_query_t *rsq, rs_query_t
 
     for (q = query_append->head; q != NULL; q = q->next) {
         log_printf(15, "Adding element\n");
-        type_malloc_clear(qn, rsq_base_ele_t, 1);
+        tbx_type_malloc_clear(qn, rsq_base_ele_t, 1);
         if (query->head == NULL) query->head = qn;
         if (prev != NULL) prev->next = qn;
 
@@ -235,15 +235,15 @@ char *rs_query_base_print(resource_service_fn_t *rs, rs_query_t *rsq)
     if (query == NULL) return(NULL);
 
     used = 0;
-    append_printf(buffer, &used, bufsize, "%s:", rs->type);
+    tbx_append_printf(buffer, &used, bufsize, "%s:", rs->type);
 
     q = query->head;
     while (q != NULL) {
         key = (q->key == NULL) ? "" : q->key;
         val = (q->val == NULL) ? "" : q->val;
-        ekey = escape_text(":", '\\', key);
-        eval = escape_text(":", '\\', val);
-        append_printf(buffer, &used, bufsize, "%d:%s:%d:%s:%d", q->op, ekey, q->key_op, eval, q->val_op);
+        ekey = tbx_stk_escape_text(":", '\\', key);
+        eval = tbx_stk_escape_text(":", '\\', val);
+        tbx_append_printf(buffer, &used, bufsize, "%d:%s:%d:%s:%d", q->op, ekey, q->key_op, eval, q->val_op);
 
         log_printf(15, "rs_query_base_print: Adding element\n");
 
@@ -251,7 +251,7 @@ char *rs_query_base_print(resource_service_fn_t *rs, rs_query_t *rsq)
         free(eval);
 
         q = q->next;
-        if (q != NULL) append_printf(buffer, &used, bufsize, ";");
+        if (q != NULL) tbx_append_printf(buffer, &used, bufsize, ";");
     }
 
     log_printf(15, "rs_query_base_print: END rsq=%s\n", buffer);
@@ -275,11 +275,11 @@ rs_query_t *rs_query_base_parse(resource_service_fn_t *rs, char *qstring)
 
     log_printf(15, "rs_query_base_parse: Parsing=%s!\n", buffer);
 
-    token = escape_string_token(buffer, ";", '\\', 0, &bstate, &bfin);
+    token = tbx_stk_escape_string_token(buffer, ";", '\\', 0, &bstate, &bfin);
     log_printf(15, "rs_query_base_parse: initial token=%s!\n", token);
-    t2 = escape_string_token(token, ":", '\\', 0, &tstate, &fin);
+    t2 = tbx_stk_escape_string_token(token, ":", '\\', 0, &tstate, &fin);
     log_printf(15, "rs_query_base_parse: rs_type=%s\n", t2);
-    ekey = unescape_text('\\', t2);
+    ekey = tbx_stk_unescape_text('\\', t2);
     log_printf(15, "rs_query_base_parse: ekey=%s\n", ekey);
 //  if (strcmp(rs->type, ekey) != 0) {
 //     log_printf(0, "rs_query_base_parse: Mismatch RS types  parent=%s got=%s!\n", rs->type, ekey);
@@ -288,7 +288,7 @@ rs_query_t *rs_query_base_parse(resource_service_fn_t *rs, char *qstring)
 //  }
     free(ekey);
 
-    type_malloc(query, rsq_base_t, 1);
+    tbx_type_malloc(query, rsq_base_t, 1);
     query->rs = rs;
 
     log_printf(15, "rs_query_base_parse: bfin=%d!\n", bfin);
@@ -296,19 +296,19 @@ rs_query_t *rs_query_base_parse(resource_service_fn_t *rs, char *qstring)
     root = NULL;
     tail = NULL;
     do {
-        type_malloc_clear(q, rsq_base_ele_t, 1);
+        tbx_type_malloc_clear(q, rsq_base_ele_t, 1);
         if (root == NULL) root = q;
 
-        t2 = escape_string_token(NULL, ":", '\\', 0, &tstate, &fin);
+        t2 = tbx_stk_escape_string_token(NULL, ":", '\\', 0, &tstate, &fin);
 
         q->op = atoi(t2);
-        t2 = escape_string_token(NULL, ":", '\\', 0, &tstate, &fin);
-        q->key = unescape_text('\\', t2);
-        t2 = escape_string_token(NULL, ":", '\\', 0, &tstate, &fin);
+        t2 = tbx_stk_escape_string_token(NULL, ":", '\\', 0, &tstate, &fin);
+        q->key = tbx_stk_unescape_text('\\', t2);
+        t2 = tbx_stk_escape_string_token(NULL, ":", '\\', 0, &tstate, &fin);
         q->key_op = atoi(t2);
-        t2 = escape_string_token(NULL, ":", '\\', 0, &tstate, &fin);
-        q->val = unescape_text('\\', t2);
-        t2 = escape_string_token(NULL, ":", '\\', 0, &tstate, &fin);
+        t2 = tbx_stk_escape_string_token(NULL, ":", '\\', 0, &tstate, &fin);
+        q->val = tbx_stk_unescape_text('\\', t2);
+        t2 = tbx_stk_escape_string_token(NULL, ":", '\\', 0, &tstate, &fin);
         q->val_op = atoi(t2);
 
         log_printf(15, "rs_query_base_parse: element=OP(%d):KEY(%s):KEY_OP(%d):VAL(%s):VAL_OP(%d)\n", q->op, q->key, q->key_op, q->val, q->val_op);
@@ -316,7 +316,7 @@ rs_query_t *rs_query_base_parse(resource_service_fn_t *rs, char *qstring)
         if (tail != NULL) tail->next = q;
         tail = q;
 
-        token = escape_string_token(NULL, ";", '\\', 0, &bstate, &bfin);
+        token = tbx_stk_escape_string_token(NULL, ";", '\\', 0, &bstate, &bfin);
         tstate = token;
     } while (strlen(token) > 0);
 

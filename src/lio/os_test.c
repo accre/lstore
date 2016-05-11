@@ -17,16 +17,16 @@
 #define _log_module_index 187
 
 #include <assert.h>
-#include "assert_result.h"
+#include <tbx/assert_result.h>
 #include "exnode.h"
-#include "log.h"
-#include "iniparse.h"
-#include "type_malloc.h"
+#include <tbx/log.h>
+#include <tbx/iniparse.h>
+#include <tbx/type_malloc.h>
 #include "thread_pool.h"
 #include "lio.h"
 #include "object_service_abstract.h"
-#include "iniparse.h"
-#include "string_token.h"
+#include <tbx/iniparse.h>
+#include <tbx/string_token.h>
 
 int nfailed = 0;
 char *prefix = NULL;
@@ -64,13 +64,13 @@ int path_scan_and_check(char *path, char **match, int n_match, int recurse_depth
     }
 
     n_max = n_match + 1;
-    type_malloc_clear(name, char *, n_max);
+    tbx_type_malloc_clear(name, char *, n_max);
     n = 0;
     while (os_next_object(lio_gc->os, it, &(name[n]), &plen) > 0) {
         n++;
         if (n>=n_max) {
             n_max = n_max + 5;
-            type_realloc(name, char *, n_max);
+            tbx_type_realloc(name, char *, n_max);
         }
     }
     os_destroy_object_iter(lio_gc->os, it);
@@ -128,7 +128,7 @@ void os_create_remove_tests()
     os_regex_table_t *regex;
 
     for (i=0; i<10; i++) {
-        type_malloc_clear(match_path[i], char, PATH_LEN);
+        tbx_type_malloc_clear(match_path[i], char, PATH_LEN);
     }
 
     // ** Create FILE foo
@@ -788,11 +788,11 @@ void os_attribute_tests()
     int m_size[10];
     int64_t dt, now, got;
 
-    type_malloc(mkey, char *, 10);
-    type_malloc(mval, char *, 10);
-    type_malloc(mrval, char *, 10);
+    tbx_type_malloc(mkey, char *, 10);
+    tbx_type_malloc(mval, char *, 10);
+    tbx_type_malloc(mrval, char *, 10);
     for (i=0; i<10; i++) {
-        type_malloc_clear(match[i], char, PATH_LEN);
+        tbx_type_malloc_clear(match[i], char, PATH_LEN);
     }
 
     // ** Create FILE foo
@@ -1113,12 +1113,12 @@ void os_attribute_tests()
     rval=NULL;
     log_printf(15, "PTR1 after2 val=%s\n", val);
     log_printf(15, "PTR rval=%p *rval=%s\n", &rval, rval);
-    flush_log();
+    tbx_flush_log();
     err = gop_sync_exec(os_get_attr(os, creds, foo_fd, key, (void **)&rval, &v_size));
     log_printf(15, "PTR rval=%p *rval=%s v_size=%d\n", &rval, rval, v_size);
-    flush_log();
+    tbx_flush_log();
     log_printf(15, "PTR1 after3 val=%s\n", val);
-    flush_log();
+    tbx_flush_log();
     if (err != OP_STATE_SUCCESS) {
         nfailed++;
         log_printf(0, "ERROR: getting attr=%s err=%d\n", key, err);
@@ -1579,7 +1579,7 @@ void os_attribute_tests()
     mkey[1] = "user.bar3";
     mval[1] = "user.dummy";
     log_printf(15, "COPY_START\n");
-    flush_log();
+    tbx_flush_log();
     err = gop_sync_exec(os_copy_multiple_attrs(os, creds, foo_fd, mkey, bar_fd, mval, 2));
     if (err != OP_STATE_SUCCESS) {
         nfailed++;
@@ -1587,7 +1587,7 @@ void os_attribute_tests()
         return;
     }
     log_printf(0, "COPY_END\n");
-    flush_log();
+    tbx_flush_log();
 
 
     //** Verify it worked
@@ -1621,7 +1621,7 @@ void os_attribute_tests()
     path[0] = foo_path;
     path[1] = foo_path;
     log_printf(15, "LINK_START\n");
-    flush_log();
+    tbx_flush_log();
     err = gop_sync_exec(os_symlink_multiple_attrs(os, creds, path, mkey, bar_fd, mval, 2));
     if (err != OP_STATE_SUCCESS) {
         nfailed++;
@@ -1710,7 +1710,7 @@ void os_attribute_tests()
         }
     }
     log_printf(15, "LINK_END\n");
-    flush_log();
+    tbx_flush_log();
 
 
     //** Close the 2 files
@@ -1802,17 +1802,17 @@ int check_lock_state(os_fd_t *foo_fd, char **active, int n_active, char **pendin
 
     err = 0;
 
-    ifd = inip_read_text(lval);
-    grp = inip_find_group(ifd, "os.lock");
+    ifd = tbx_inip_string_read(lval);
+    grp = tbx_inip_group_find(ifd, "os.lock");
 
-    ele = inip_first_element(grp);
+    ele = tbx_inip_ele_first(grp);
     ai = pi = 0;
     while (ele != NULL) {
-        key = inip_get_element_key(ele);
+        key = tbx_inip_ele_key_get(ele);
         if (strcmp(key, "active_id") == 0) {
             if (ai < n_active) {
-                val = inip_get_element_value(ele);
-                tmp = string_token(val, ":", &bstate, &fin);
+                val = tbx_inip_ele_value_get(ele);
+                tmp = tbx_stk_string_token(val, ":", &bstate, &fin);
                 if (strcmp(tmp, active[ai]) != 0) {
                     err++;
                     log_printf(0, "Active slot mismatch!  active_id[%d]=%s should be %s\n", ai, val, active[ai]);
@@ -1824,8 +1824,8 @@ int check_lock_state(os_fd_t *foo_fd, char **active, int n_active, char **pendin
             ai++;
         } else if (strcmp(key, "pending_id") == 0) {
             if (pi < n_pending) {
-                val = inip_get_element_value(ele);
-                tmp = string_token(val, ":", &bstate, &fin);
+                val = tbx_inip_ele_value_get(ele);
+                tmp = tbx_stk_string_token(val, ":", &bstate, &fin);
                 if (strcmp(tmp, pending[pi]) != 0) {
                     err++;
                     log_printf(0, "Pending slot mismatch!  pending_id[%d]=%s should be %s\n", pi, val, pending[pi]);
@@ -1838,7 +1838,7 @@ int check_lock_state(os_fd_t *foo_fd, char **active, int n_active, char **pendin
         }
 
         //** Move to the next segmnet to load
-        ele = inip_next_element(ele);
+        ele = tbx_inip_ele_next(ele);
     }
 
     if ((ai != n_active) || ( pi != n_pending)) {
@@ -1852,7 +1852,7 @@ int check_lock_state(os_fd_t *foo_fd, char **active, int n_active, char **pendin
         log_printf(0, "---------------------------------------------------------------\n");
     }
 
-    inip_destroy(ifd);
+    tbx_inip_destroy(ifd);
 
     free(lval);
 
@@ -1966,7 +1966,7 @@ void os_locking_tests()
     dt = apr_time_now() - start;
     sec = apr_time_sec(dt);
     log_printf(0, "STATE:  active=r0,r1,r2  pending=w0,w1,a0,a1,r3,r4,w2 dt=%d\n", sec);
-    flush_log();
+    tbx_flush_log();
 
 
     //** Wait for the opens to complete
@@ -2021,7 +2021,7 @@ void os_locking_tests()
     }
 
     log_printf(0, "STATE: active=w0  pending=w1,a0,a1,r3,r4,w2\n");
-    flush_log();
+    tbx_flush_log();
 
     dt = apr_time_now() - start;
     sec = apr_time_sec(dt);
@@ -2049,7 +2049,7 @@ void os_locking_tests()
 
 
     log_printf(0, "STATE: ABORT_TIMEOUT(a0)  active=w0  pending=w1,a1,r3,r4,w2\n");
-    flush_log();
+    tbx_flush_log();
 
     //** Let's do the aborts now
     err = gop_waitall(gop_abort[0]);  //** This should timeout on it's own
@@ -2078,7 +2078,7 @@ void os_locking_tests()
     }
 
     log_printf(0, "STATE: ABORT_CMD(a1)  active=w0  pending=w1,r3,r4,w2\n");
-    flush_log();
+    tbx_flush_log();
 
     //** Issue an abort for a1
     err = gop_sync_exec(os_abort_open_object(os, gop_abort[1]));
@@ -2114,7 +2114,7 @@ void os_locking_tests()
     log_printf(0, "After close w0 dt=%d\n", sec);
 
     log_printf(0, "STATE: active=w1  pending=r3,r4,w2\n");
-    flush_log();
+    tbx_flush_log();
 
     //** Wait for the opens to complete
     gop_waitany(gop_write[1]);
@@ -2140,7 +2140,7 @@ void os_locking_tests()
     log_printf(0, "After close w1 dt=%d\n", sec);
 
     log_printf(0, "STATE: active=r3,r4  pending=w2\n");
-    flush_log();
+    tbx_flush_log();
 
     //** Wait for the opens to complete
     gop_waitany(gop_read[3]);
@@ -2170,7 +2170,7 @@ void os_locking_tests()
 
 
     log_printf(0, "STATE: active=w2  pending=\n");
-    flush_log();
+    tbx_flush_log();
 
     //** Wait for the opens to complete
     gop_waitany(gop_write[2]);
@@ -2192,7 +2192,7 @@ void os_locking_tests()
     }
 
     log_printf(0, "Performing lock test cleanup\n");
-    flush_log();
+    tbx_flush_log();
 
     //** Close the inital foo_fd
     err = gop_sync_exec(os_close_object(os, foo_fd));
@@ -2253,7 +2253,7 @@ int main(int argc, char **argv)
     log_printf(0, "--------------------------------------------------------------------\n");
     log_printf(0, "Using prefix=%s\n", prefix);
     log_printf(0, "--------------------------------------------------------------------\n");
-    flush_log();
+    tbx_flush_log();
 
     os_create_remove_tests();
     if (nfailed > 0) goto oops;

@@ -18,7 +18,7 @@
 // Remote client resource managment implementation
 //***********************************************************************
 
-#include "list.h"
+#include <tbx/list.h>
 #include "data_service_abstract.h"
 #include "opque.h"
 #include "service_manager.h"

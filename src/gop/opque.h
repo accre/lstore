@@ -26,11 +26,11 @@
 #include <apr_thread_mutex.h>
 #include <apr_thread_cond.h>
 #include <apr_hash.h>
-#include "atomic_counter.h"
-#include "network.h"
-#include "stack.h"
+#include <tbx/atomic_counter.h>
+#include <tbx/network.h>
+#include <tbx/stack.h>
 #include "callback.h"
-#include "pigeon_coop.h"
+#include <tbx/pigeon_coop.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -107,7 +107,7 @@ typedef struct {   //** Command operation
 typedef struct {  //** Hportal specific implementation
     void *(*dup_connect_context)(void *connect_context);  //** Duplicates a ccon
     void (*destroy_connect_context)(void *connect_context);
-    int (*connect)(tbx_ns_t *ns, void *connect_context, char *host, int port, Net_timeout_t timeout);
+    int (*connect)(tbx_ns_t *ns, void *connect_context, char *host, int port, tbx_ns_timeout_t timeout);
     void (*close_connection)(tbx_ns_t *ns);
     void (*sort_tasks)(void *arg, opque_t *q);        //** optional
     void (*submit)(void *arg, op_generic_t *op);
@@ -133,7 +133,7 @@ typedef struct {             //** Handle for maintaining all the ecopy connectio
     int max_retry;             //** Default max number of times to retry an op
     int count;                 //** Internal Counter
     apr_time_t   next_check;       //** Time for next compact_dportal call
-    Net_timeout_t dt;          //** Default wait time
+    tbx_ns_timeout_t dt;          //** Default wait time
     void *arg;
     portal_fn_t *fn;       //** Actual implementaion for application
 } portal_context_t;

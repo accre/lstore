@@ -16,10 +16,10 @@
 
 #define _log_module_index 189
 
-#include "type_malloc.h"
+#include <tbx/type_malloc.h>
 #include "lio.h"
-#include "log.h"
-#include "string_token.h"
+#include <tbx/log.h>
+#include <tbx/string_token.h>
 
 #define _n_fsck_keys 4
 static char *_fsck_keys[] = { "system.owner", "system.inode", "system.exnode", "system.exnode.size" };
@@ -300,7 +300,7 @@ op_status_t lio_create_object_fn(void *arg, int id)
     v_size[6] = 1;
 
     log_printf(15, "NEW ino=%s exnode=%s\n", val[4], val[ex_key]);
-    flush_log();
+    tbx_flush_log();
 
     err = gop_sync_exec(os_set_multiple_attrs(op->lc->os, op->creds, fd, _lio_create_keys, (void **)val, v_size, (op->type & OS_OBJECT_FILE) ? _n_lio_file_keys : _n_lio_dir_keys));
     if (err != OP_STATE_SUCCESS) {
@@ -333,7 +333,7 @@ op_generic_t *gop_lio_create_object(lio_config_t *lc, creds_t *creds, char *path
 {
     lio_mk_mv_rm_t *op;
 
-    type_malloc_clear(op, lio_mk_mv_rm_t, 1);
+    tbx_type_malloc_clear(op, lio_mk_mv_rm_t, 1);
 
     op->lc = lc;
     op->creds = creds;
@@ -440,7 +440,7 @@ op_generic_t *gop_lio_remove_object(lio_config_t *lc, creds_t *creds, char *path
 {
     lio_mk_mv_rm_t *op;
 
-    type_malloc_clear(op, lio_mk_mv_rm_t, 1);
+    tbx_type_malloc_clear(op, lio_mk_mv_rm_t, 1);
 
     op->lc = lc;
     op->creds = creds;
@@ -525,7 +525,7 @@ op_generic_t *gop_lio_remove_regex_object(lio_config_t *lc, creds_t *creds, os_r
 {
     lio_remove_regex_t *op;
 
-    type_malloc_clear(op, lio_remove_regex_t, 1);
+    tbx_type_malloc_clear(op, lio_remove_regex_t, 1);
 
     op->lc = lc;
     op->creds = creds;
@@ -664,7 +664,7 @@ op_generic_t *gop_lio_link_object(lio_config_t *lc, creds_t *creds, int symlink,
 {
     lio_mk_mv_rm_t *op;
 
-    type_malloc_clear(op, lio_mk_mv_rm_t, 1);
+    tbx_type_malloc_clear(op, lio_mk_mv_rm_t, 1);
 
     op->lc = lc;
     op->creds = creds;
@@ -805,7 +805,7 @@ op_status_t lio_get_multiple_attrs_fn(void *arg, int id)
 op_generic_t *gop_lio_get_multiple_attrs(lio_config_t *lc, creds_t *creds, const char *path, char *id, char **key, void **val, int *v_size, int n_keys)
 {
     lio_attrs_op_t *op;
-    type_malloc_clear(op, lio_attrs_op_t, 1);
+    tbx_type_malloc_clear(op, lio_attrs_op_t, 1);
 
     op->lc = lc;
     op->creds = creds;
@@ -870,7 +870,7 @@ op_status_t lio_get_attr_fn(void *arg, int id)
 op_generic_t *gop_lio_get_attr(lio_config_t *lc, creds_t *creds, const char *path, char *id, char *key, void **val, int *v_size)
 {
     lio_attrs_op_t *op;
-    type_malloc_clear(op, lio_attrs_op_t, 1);
+    tbx_type_malloc_clear(op, lio_attrs_op_t, 1);
 
     op->lc = lc;
     op->creds = creds;
@@ -950,7 +950,7 @@ op_status_t lio_set_multiple_attrs_fn(void *arg, int id)
 op_generic_t *gop_lio_set_multiple_attrs(lio_config_t *lc, creds_t *creds, const char *path, char *id, char **key, void **val, int *v_size, int n_keys)
 {
     lio_attrs_op_t *op;
-    type_malloc_clear(op, lio_attrs_op_t, 1);
+    tbx_type_malloc_clear(op, lio_attrs_op_t, 1);
 
     op->lc = lc;
     op->creds = creds;
@@ -1029,7 +1029,7 @@ op_status_t lio_set_attr_fn(void *arg, int id)
 op_generic_t *gop_lio_set_attr(lio_config_t *lc, creds_t *creds, const char *path, char *id, char *key, void *val, int v_size)
 {
     lio_attrs_op_t *op;
-    type_malloc_clear(op, lio_attrs_op_t, 1);
+    tbx_type_malloc_clear(op, lio_attrs_op_t, 1);
 
     op->lc = lc;
     op->creds = creds;
@@ -1129,7 +1129,7 @@ void _lio_parse_stat_vals(char *fname, struct stat *stat, char **val, int *v_siz
         if (link[0] == '/') { //** If an absolute link then we need to add the mount prefix back
             readlink += strlen(mount_prefix) + 1;
             if (flink != NULL) {
-                type_malloc(*flink, char, readlink+1);
+                tbx_type_malloc(*flink, char, readlink+1);
                 snprintf(*flink, readlink+1, "%s%s", mount_prefix, link);
             }
         } else if (flink != NULL) {
@@ -1173,7 +1173,7 @@ int lio_stat(lio_config_t *lc, creds_t *creds, char *fname, struct stat *stat, c
     int v_size[_lio_stat_key_size], i, err;
 
     log_printf(1, "fname=%s\n", fname);
-    flush_log();
+    tbx_flush_log();
 
     for (i=0; i<_lio_stat_key_size; i++) v_size[i] = -lc->max_attr;
     err = lio_get_multiple_attrs(lc, creds, fname, NULL, _lio_stat_keys, (void **)val, v_size, _lio_stat_key_size);
@@ -1184,7 +1184,7 @@ int lio_stat(lio_config_t *lc, creds_t *creds, char *fname, struct stat *stat, c
     _lio_parse_stat_vals(fname, stat, val, v_size, mount_prefix, readlink);
 
     log_printf(1, "END fname=%s err=%d\n", fname, err);
-    flush_log();
+    tbx_flush_log();
 
     return(0);
 
@@ -1401,7 +1401,7 @@ op_status_t lio_fsck_object_fn(void *arg, int id)
     char *val[_n_fsck_keys];
     int v_size[_n_fsck_keys];
     log_printf(15, "fname=%s START\n", op->path);
-    flush_log();
+    tbx_flush_log();
 
     if (op->ftype <= 0) { //** Bad Ftype so see if we can figure it out
         op->ftype = lio_exists(op->lc, op->creds, op->path);
@@ -1415,7 +1415,7 @@ op_status_t lio_fsck_object_fn(void *arg, int id)
 
     if (op->full == 0) {
         log_printf(15, "fname=%s getting attrs\n", op->path);
-        flush_log();
+        tbx_flush_log();
         for (i=0; i<_n_fsck_keys; i++) {
             val[i] = NULL;
             v_size[i] = -op->lc->max_attr;
@@ -1442,9 +1442,9 @@ op_generic_t *lio_fsck_object(lio_config_t *lc, creds_t *creds, char *fname, int
     lio_fsck_check_t *op;
 
     log_printf(15, "fname=%s START\n", fname);
-    flush_log();
+    tbx_flush_log();
 
-    type_malloc_clear(op, lio_fsck_check_t, 1);
+    tbx_type_malloc_clear(op, lio_fsck_check_t, 1);
 
     op->lc = lc;
     op->creds = creds;
@@ -1465,7 +1465,7 @@ op_generic_t *lio_fsck_object_full(lio_config_t *lc, creds_t *creds, char *fname
 {
     lio_fsck_check_t *op;
 
-    type_malloc(op, lio_fsck_check_t, 1);
+    tbx_type_malloc(op, lio_fsck_check_t, 1);
 
     op->lc = lc;
     op->creds = creds;
@@ -1565,7 +1565,7 @@ lio_fsck_iter_t *lio_create_fsck_iter(lio_config_t *lc, creds_t *creds, char *pa
     lio_fsck_iter_t *it;
     int i;
 
-    type_malloc_clear(it, lio_fsck_iter_t, 1);
+    tbx_type_malloc_clear(it, lio_fsck_iter_t, 1);
 
     it->lc = lc;
     it->creds = creds;
@@ -1589,7 +1589,7 @@ lio_fsck_iter_t *lio_create_fsck_iter(lio_config_t *lc, creds_t *creds, char *pa
 
     it->n = lio_parallel_task_count;
     it->firsttime = 1;
-    type_malloc_clear(it->task, lio_fsck_task_t, it->n);
+    tbx_type_malloc_clear(it->task, lio_fsck_task_t, it->n);
     it->q = new_opque();
     opque_start_execution(it->q);
 

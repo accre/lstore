@@ -23,7 +23,7 @@
 #define _log_module_index 115
 
 #include <assert.h>
-#include "assert_result.h"
+#include "tbx/assert_result.h"
 #include <limits.h>
 #include <stdlib.h>
 #include <string.h>
@@ -33,10 +33,10 @@
 #include <apr_time.h>
 #include <apr_network_io.h>
 
-#include "log.h"
-#include "fmttypes.h"
-#include "dns_cache.h"
-#include "string_token.h"
+#include "tbx/log.h"
+#include "tbx/fmttypes.h"
+#include "tbx/dns_cache.h"
+#include "tbx/string_token.h"
 
 #define BUF_SIZE 128
 
@@ -79,7 +79,7 @@ void wipe_entries(DNS_cache_t *cache)
 //
 //**************************************************************************
 
-int lookup_host(const char *name, char *byte_addr, char *ip_addr)
+int tbx_dnsc_lookup(const char *name, char *byte_addr, char *ip_addr)
 {
     char ip_buffer[256];
 //  char byte_buffer[256];
@@ -134,7 +134,7 @@ int lookup_host(const char *name, char *byte_addr, char *ip_addr)
 
     h->family = DNS_IPV4;
     i = 0;
-    for (s = string_token(ip_buffer, ".", &bstate, &err); err == 0; s = string_token(NULL, ".", &bstate, &err)) {
+    for (s = tbx_stk_string_token(ip_buffer, ".", &bstate, &err); err == 0; s = tbx_stk_string_token(NULL, ".", &bstate, &err)) {
         h->addr[i] = atoi(s);
 //n = h->addr[i];
 //log_printf(20, "lookup_host: err=%d i=%d n=%d s=%s\n", err, i, n, s);
@@ -158,11 +158,16 @@ int lookup_host(const char *name, char *byte_addr, char *ip_addr)
 
 //**************************************************************************
 
-void dns_cache_init(int size)
+int tbx_dnsc_startup()
 {
-    log_printf(20, "dns_cache_init: Start!!!!!!!!!!!!\n");
+    return tbx_dnsc_startup_sized(100);
+}
 
-    if (_cache != NULL) return;
+//**************************************************************************
+
+int tbx_dnsc_startup_sized(int size)
+{
+    if (_cache != NULL) return 0;
 
     _cache = (DNS_cache_t *)malloc(sizeof(DNS_cache_t));
     assert(_cache != NULL);
@@ -173,11 +178,12 @@ void dns_cache_init(int size)
     apr_thread_mutex_create(&(_cache->lock), APR_THREAD_MUTEX_DEFAULT,_cache->lockpool);
 
     wipe_entries(_cache);
+    return 0;
 }
 
 //**************************************************************************
 
-void finalize_dns_cache()
+int tbx_dnsc_shutdown()
 {
     apr_thread_mutex_destroy(_cache->lock);
 
@@ -187,6 +193,7 @@ void finalize_dns_cache()
     free(_cache);
 
     _cache = NULL;
+    return 0;
 }
 
 

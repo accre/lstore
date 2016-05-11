@@ -24,13 +24,13 @@
 #include "ex3_abstract.h"
 #include "service_manager.h"
 #include "data_service_abstract.h"
-#include "interval_skiplist.h"
-#include "append_printf.h"
-#include "string_token.h"
-#include "type_malloc.h"
-#include "iniparse.h"
-#include "log.h"
-#include "random.h"
+#include <tbx/interval_skiplist.h>
+#include <tbx/append_printf.h>
+#include <tbx/string_token.h>
+#include <tbx/type_malloc.h>
+#include <tbx/iniparse.h>
+#include <tbx/log.h>
+#include <tbx/random.h>
 
 //***********************************************************************
 // db_find_key - Scans the stack for the key
@@ -42,12 +42,12 @@ data_block_attr_t *db_find_key(tbx_stack_t *stack, char *key)
 
     if (stack == NULL) return(NULL);
 
-    move_to_top(stack);
-    while ((attr = (data_block_attr_t *)get_ele_data(stack)) != NULL) {
+    tbx_stack_move_to_top(stack);
+    while ((attr = (data_block_attr_t *)tbx_get_ele_data(stack)) != NULL) {
         if (strcmp(attr->key, key) == 0) {
             return(attr);
         }
-        move_down(stack);
+        tbx_stack_move_down(stack);
     }
 
     return(NULL);
@@ -86,15 +86,15 @@ int data_block_set_attr(data_block_t *b, char *key, char *val)
     attr = db_find_key(b->attr_stack, key);
 
     if (attr == NULL) {  //** See if we need to add the attribute
-        type_malloc_clear(attr, data_block_attr_t, 1);
+        tbx_type_malloc_clear(attr, data_block_attr_t, 1);
         attr->key = strdup(key);
     }
 
     if (attr->value != NULL) free(attr->value);  //** Free the old value
     attr->value = (val != NULL) ? strdup(val) : NULL;  //** Store the new one
 
-    if (b->attr_stack == NULL) b->attr_stack = new_stack();
-    push(b->attr_stack, attr);
+    if (b->attr_stack == NULL) b->attr_stack = tbx_stack_new();
+    tbx_stack_push(b->attr_stack, attr);
 
     return(0);
 }
@@ -132,30 +132,30 @@ int data_block_serialize_text(data_block_t *b, exnode_exchange_t *exp)
 
     cused = 0;
 
-    append_printf(capsbuf, &cused, bufsize, "[block-" XIDT "]\n", b->id);
-    append_printf(capsbuf, &cused, bufsize, "type=%s\n", ds_type(b->ds));
-    append_printf(capsbuf, &cused, bufsize, "rid_key=%s\n", b->rid_key);
-    append_printf(capsbuf, &cused, bufsize, "size=" XOT "\n", b->size);
-    append_printf(capsbuf, &cused, bufsize, "max_size=" XOT "\n", b->max_size);
-    refcount = atomic_get(b->ref_count);
-    append_printf(capsbuf, &cused, bufsize, "ref_count=%d\n", refcount);
+    tbx_append_printf(capsbuf, &cused, bufsize, "[block-" XIDT "]\n", b->id);
+    tbx_append_printf(capsbuf, &cused, bufsize, "type=%s\n", ds_type(b->ds));
+    tbx_append_printf(capsbuf, &cused, bufsize, "rid_key=%s\n", b->rid_key);
+    tbx_append_printf(capsbuf, &cused, bufsize, "size=" XOT "\n", b->size);
+    tbx_append_printf(capsbuf, &cused, bufsize, "max_size=" XOT "\n", b->max_size);
+    refcount = tbx_atomic_get(b->ref_count);
+    tbx_append_printf(capsbuf, &cused, bufsize, "ref_count=%d\n", refcount);
 
-    etext = escape_text("=#[]", '\\', ds_get_cap(b->ds, b->cap, DS_CAP_READ));
-    append_printf(capsbuf, &cused, bufsize, "read_cap=%s\n", etext);
+    etext = tbx_stk_escape_text("=#[]", '\\', ds_get_cap(b->ds, b->cap, DS_CAP_READ));
+    tbx_append_printf(capsbuf, &cused, bufsize, "read_cap=%s\n", etext);
     free(etext);
-    etext = escape_text("=#[]", '\\', ds_get_cap(b->ds, b->cap, DS_CAP_WRITE));
-    append_printf(capsbuf, &cused, bufsize, "write_cap=%s\n", etext);
+    etext = tbx_stk_escape_text("=#[]", '\\', ds_get_cap(b->ds, b->cap, DS_CAP_WRITE));
+    tbx_append_printf(capsbuf, &cused, bufsize, "write_cap=%s\n", etext);
     free(etext);
-    etext = escape_text("=#[]", '\\', ds_get_cap(b->ds, b->cap, DS_CAP_MANAGE));
-    append_printf(capsbuf, &cused, bufsize, "manage_cap=%s\n", etext);
+    etext = tbx_stk_escape_text("=#[]", '\\', ds_get_cap(b->ds, b->cap, DS_CAP_MANAGE));
+    tbx_append_printf(capsbuf, &cused, bufsize, "manage_cap=%s\n", etext);
     free(etext);
 
     if (b->attr_stack != NULL) {  //** Deserialze the other attributes
-        while ((attr = (data_block_attr_t *)pop(b->attr_stack)) != NULL) {
+        while ((attr = (data_block_attr_t *)tbx_stack_pop(b->attr_stack)) != NULL) {
             if (attr->value != NULL) {
-                ekey = escape_text("=#[]", '\\', attr->key);
-                etext = escape_text("=#[]", '\\', attr->value);
-                append_printf(capsbuf, &cused, bufsize, "%s=%s\n", ekey, etext);
+                ekey = tbx_stk_escape_text("=#[]", '\\', attr->key);
+                etext = tbx_stk_escape_text("=#[]", '\\', attr->value);
+                tbx_append_printf(capsbuf, &cused, bufsize, "%s=%s\n", ekey, etext);
                 free(etext);
                 free(ekey);
                 free(attr->value);
@@ -166,7 +166,7 @@ int data_block_serialize_text(data_block_t *b, exnode_exchange_t *exp)
         }
     }
 
-    append_printf(capsbuf, &cused, bufsize, "\n");
+    tbx_append_printf(capsbuf, &cused, bufsize, "\n");
 
     //** Merge everything together and return it
     exnode_exchange_t cexp;
@@ -223,14 +223,14 @@ data_block_t *data_block_deserialize_text(service_manager_t *sm, ex_id_t id, exn
 
     //** Find the cooresponding cap
     snprintf(capgrp, bufsize, "block-" XIDT, id);
-    cg = inip_find_group(cfd, capgrp);
+    cg = tbx_inip_group_find(cfd, capgrp);
     if (cg == NULL) {
         log_printf(0, "data_block_deserialize_text: id=" XIDT " not found!\n", id);
         return(NULL);
     }
 
     //** Determine the type and make a blank block
-    text = inip_get_string(cfd, capgrp, "type", "");
+    text = tbx_inip_string_get(cfd, capgrp, "type", "");
     ds = lookup_service(sm, DS_SM_RUNNING, text);
     if (ds == NULL) {
         log_printf(0, "data_block_deserialize_text: b->id=" XIDT " Unknown data service tpye=%s!\n", id, text);
@@ -239,44 +239,44 @@ data_block_t *data_block_deserialize_text(service_manager_t *sm, ex_id_t id, exn
     free(text);
 
     //** Make the space
-    type_malloc_clear(b, data_block_t, 1);
+    tbx_type_malloc_clear(b, data_block_t, 1);
     b->id = id;
     b->ds = ds;
     b->cap = ds_cap_set_create(b->ds);
 
     //** and parse the fields
-    b->rid_key = inip_get_string(cfd, capgrp, "rid_key", "");
-    b->size = inip_get_integer(cfd, capgrp, "size", b->size);
-    b->max_size = inip_get_integer(cfd, capgrp, "max_size", b->max_size);
-    i = inip_get_integer(cfd, capgrp, "ref_count", b->ref_count);
-    atomic_set(b->ref_count, 0);
-    atomic_set(b->initial_ref_count, i);
-    etext = inip_get_string(cfd, capgrp, "read_cap", "");
-    ds_set_cap(b->ds, b->cap, DS_CAP_READ, unescape_text('\\', etext));
+    b->rid_key = tbx_inip_string_get(cfd, capgrp, "rid_key", "");
+    b->size = tbx_inip_integer_get(cfd, capgrp, "size", b->size);
+    b->max_size = tbx_inip_integer_get(cfd, capgrp, "max_size", b->max_size);
+    i = tbx_inip_integer_get(cfd, capgrp, "ref_count", b->ref_count);
+    tbx_atomic_set(b->ref_count, 0);
+    tbx_atomic_set(b->initial_ref_count, i);
+    etext = tbx_inip_string_get(cfd, capgrp, "read_cap", "");
+    ds_set_cap(b->ds, b->cap, DS_CAP_READ, tbx_stk_unescape_text('\\', etext));
     free(etext);
-    etext = inip_get_string(cfd, capgrp, "write_cap", "");
-    ds_set_cap(b->ds, b->cap, DS_CAP_WRITE, unescape_text('\\', etext));
+    etext = tbx_inip_string_get(cfd, capgrp, "write_cap", "");
+    ds_set_cap(b->ds, b->cap, DS_CAP_WRITE, tbx_stk_unescape_text('\\', etext));
     free(etext);
-    etext = inip_get_string(cfd, capgrp, "manage_cap", "");
-    ds_set_cap(b->ds, b->cap, DS_CAP_MANAGE, unescape_text('\\', etext));
+    etext = tbx_inip_string_get(cfd, capgrp, "manage_cap", "");
+    ds_set_cap(b->ds, b->cap, DS_CAP_MANAGE, tbx_stk_unescape_text('\\', etext));
     free(etext);
 
     //** Now cycle through any misc attributes set
-    ele = inip_first_element(inip_find_group(cfd, capgrp));
+    ele = tbx_inip_ele_first(tbx_inip_group_find(cfd, capgrp));
     while (ele != NULL) {
-        key = inip_get_element_key(ele);
+        key = tbx_inip_ele_key_get(ele);
 
         //** Ignore the builtin commands
         if ((strcmp("rid_key", key) != 0) && (strcmp("size", key) != 0) && (strcmp("max_size", key) != 0) && (strcmp("type", key) != 0) &&
                 (strcmp("ref_count", key) != 0) && (strcmp("read_cap", key) != 0) && (strcmp("write_cap", key) != 0) && (strcmp("manage_cap", key) != 0)) {
-            type_malloc(attr, data_block_attr_t, 1);
-            attr->key = unescape_text('\\', inip_get_element_key(ele));
-            attr->value = unescape_text('\\', inip_get_element_value(ele));
-            if (b->attr_stack == NULL) b->attr_stack = new_stack();
-            push(b->attr_stack, attr);
+            tbx_type_malloc(attr, data_block_attr_t, 1);
+            attr->key = tbx_stk_unescape_text('\\', tbx_inip_ele_key_get(ele));
+            attr->value = tbx_stk_unescape_text('\\', tbx_inip_ele_value_get(ele));
+            if (b->attr_stack == NULL) b->attr_stack = tbx_stack_new();
+            tbx_stack_push(b->attr_stack, attr);
         }
 
-        ele = inip_next_element(ele);
+        ele = tbx_inip_ele_next(ele);
     }
 
     return(b);
@@ -314,7 +314,7 @@ data_block_t *data_block_create(data_service_fn_t *ds)
 {
     data_block_t *b;
 
-    type_malloc_clear(b, data_block_t, 1);
+    tbx_type_malloc_clear(b, data_block_t, 1);
 
     b->ds = ds;
     b->cap = ds_cap_set_create(b->ds);
@@ -337,7 +337,7 @@ void data_block_destroy(data_block_t *b)
 
     if (b->ref_count > 0) return;
 
-    if (b->attr_stack != NULL) free_stack(b->attr_stack, 1);
+    if (b->attr_stack != NULL) tbx_free_stack(b->attr_stack, 1);
 
     ds_cap_set_destroy(b->ds, b->cap, 1);
     if (b->rid_key != NULL) free(b->rid_key);

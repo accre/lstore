@@ -22,20 +22,20 @@
 
 #include "ex3_system.h"
 #include "object_service_abstract.h"
-#include "type_malloc.h"
-#include "log.h"
-#include "atomic_counter.h"
+#include <tbx/type_malloc.h>
+#include <tbx/log.h>
+#include <tbx/atomic_counter.h>
 #include "thread_pool.h"
 #include "resource_service_abstract.h"
 #include "rs_simple.h"
 #include "rs_remote.h"
 #include "rs_remote_priv.h"
-#include "append_printf.h"
-#include "type_malloc.h"
-#include "random.h"
+#include <tbx/append_printf.h>
+#include <tbx/type_malloc.h>
+#include <tbx/random.h>
 #include "rs_query_base.h"
 #include "mq_portal.h"
-#include "apr_wrapper.h"
+#include <tbx/apr_wrapper.h>
 
 typedef struct {
     uint64_t id;
@@ -236,7 +236,7 @@ op_status_t rsrc_response_get_config(void *task_arg, int tid)
     if (n_config > 0) {
         //** Dump the data in a temp file
         n = strlen(rsrc->child_target_file)+10;
-        type_malloc(fname_tmp, char, n);
+        tbx_type_malloc(fname_tmp, char, n);
         snprintf(fname_tmp, n, "%s.tmp", rsrc->child_target_file);
 
         fd = fopen(fname_tmp, "w");
@@ -272,10 +272,10 @@ op_generic_t *rsrc_update_config_op(resource_service_fn_t *rs, int mode, int tim
     rsrc_gop_rid_config_t *arg;
     op_generic_t *gop;
 
-    type_malloc_clear(arg, rsrc_gop_rid_config_t, 1);
+    tbx_type_malloc_clear(arg, rsrc_gop_rid_config_t, 1);
 
     //** Form the message
-    get_random(&(arg->id), sizeof(arg->id));
+    tbx_random_bytes_get(&(arg->id), sizeof(arg->id));
     if (mode != 0) rsrc->update_id = arg->id;  //** Only update the id for an actual wait and update
     msg = mq_msg_new();
     mq_msg_append_mem(msg, rsrc->host_remote_rs, strlen(rsrc->host_remote_rs), MQF_MSG_KEEP_DATA);
@@ -388,7 +388,7 @@ void *rsrc_check_thread(apr_thread_t *th, void *data)
         log_printf(15, "before gop_timed_waitany gid=%d timeout=%d\n", gop_id(gop), rsrc->check_interval);
         g = gop_timed_waitany(gop, 1);
         log_printf(15, "after gop_waitany g=%p\n", g);
-        flush_log();
+        tbx_flush_log();
 
         apr_thread_mutex_lock(rsrc->lock);
         n = rsrc->shutdown;
@@ -397,7 +397,7 @@ void *rsrc_check_thread(apr_thread_t *th, void *data)
         if (g != NULL) {
             status = gop_get_status(gop);
             log_printf(15, "update completed status=%d\n", status.op_status);
-            flush_log();
+            tbx_flush_log();
             gop_free(gop, OP_DESTROY);
             gop = NULL;
         }
@@ -433,7 +433,7 @@ void rs_remote_client_destroy(resource_service_fn_t *rs)
     apr_thread_mutex_lock(rsrc->lock);
     rsrc->shutdown = 1;
     log_printf(15, "SHUTDOWN rsrc->shutdown=%d\n", rsrc->shutdown);
-    flush_log();
+    tbx_flush_log();
 
     _rsrc_update_abort(rs);  //** Abort any pending check
     apr_thread_mutex_unlock(rsrc->lock);
@@ -468,8 +468,8 @@ resource_service_fn_t *rs_remote_client_create(void *arg, tbx_inip_file_t *fd, c
 
     if (section == NULL) section = "rs_remote_client";
 
-    type_malloc_clear(rs, resource_service_fn_t, 1);
-    type_malloc_clear(rsrc, rs_remote_client_priv_t, 1);
+    tbx_type_malloc_clear(rs, resource_service_fn_t, 1);
+    tbx_type_malloc_clear(rsrc, rs_remote_client_priv_t, 1);
     rs->priv = (void *)rsrc;
 
     //** Make the locks and cond variables
@@ -478,23 +478,23 @@ resource_service_fn_t *rs_remote_client_create(void *arg, tbx_inip_file_t *fd, c
     apr_thread_cond_create(&(rsrc->cond), rsrc->mpool);
 
     //** Now get the other params
-    rsrc->child_target_file = inip_get_string(fd, section, "child_fname", NULL);
-    rsrc->host_remote_rs = inip_get_string(fd, section, "remote_address", NULL);
-    rsrc->dynamic_mapping = inip_get_integer(fd, section, "dynamic_mapping", 0);
-    rsrc->check_interval = inip_get_integer(fd, section, "check_interval", 3600);
+    rsrc->child_target_file = tbx_inip_string_get(fd, section, "child_fname", NULL);
+    rsrc->host_remote_rs = tbx_inip_string_get(fd, section, "remote_address", NULL);
+    rsrc->dynamic_mapping = tbx_inip_integer_get(fd, section, "dynamic_mapping", 0);
+    rsrc->check_interval = tbx_inip_integer_get(fd, section, "check_interval", 3600);
 
     //** Get the MQC
     rsrc->mqc = lookup_service(ess, ESS_RUNNING, ESS_MQ); assert(rsrc->mqc != NULL);
 
     //** Check if we are running the remote RS locally.  This means we are doing testing
-    stype = inip_get_string(fd, section, "rrs_test", NULL);
+    stype = tbx_inip_string_get(fd, section, "rrs_test", NULL);
     if (stype != NULL) {
-        ctype = inip_get_string(fd, stype, "type", RS_TYPE_SIMPLE);
+        ctype = tbx_inip_string_get(fd, stype, "type", RS_TYPE_SIMPLE);
         rs_create = lookup_service(ess, RS_SM_AVAILABLE, ctype);
         rsrc->rrs_test = (*rs_create)(ess, fd, stype);
         if (rsrc->rrs_test == NULL) {
             log_printf(1, "ERROR loading test RRS!  type=%s section=%s\n", ctype, stype);
-            flush_log();
+            tbx_flush_log();
             abort();
         }
         free(ctype);
@@ -504,12 +504,12 @@ resource_service_fn_t *rs_remote_client_create(void *arg, tbx_inip_file_t *fd, c
     //** Contact the Remote RS and get the initial config
     if (_rsrc_update_config(rs) != 0) {
         log_printf(0, "ERROR: Remote RS is down!  section=%s remote_host=%s!\n", section, rsrc->host_remote_rs);
-        flush_log();
+        tbx_flush_log();
         abort();
     }
 
     //** Launch the config changes thread
-    thread_create_assert(&(rsrc->check_thread), NULL, rsrc_check_thread, (void *)rs, rsrc->mpool);
+    tbx_thread_create_assert(&(rsrc->check_thread), NULL, rsrc_check_thread, (void *)rs, rsrc->mpool);
 
     //** Wait and make sure we have an actual config to pass to the rs_local before continuing on.
     int loop = 0;
@@ -519,26 +519,26 @@ resource_service_fn_t *rs_remote_client_create(void *arg, tbx_inip_file_t *fd, c
     }
     if (loop>=300) {
         log_printf(0, "ERROR: Remote RS is down! Unable to get cleint config from server! section=%s remote_host=%s!\n", section, rsrc->host_remote_rs);
-        flush_log();
+        tbx_flush_log();
         abort();
     }
 
     //** Start the child RS.   The update above should have dumped a RID config for it to load
-    stype = inip_get_string(fd, section, "rs_local", NULL);
+    stype = tbx_inip_string_get(fd, section, "rs_local", NULL);
     if (stype == NULL) {  //** Oops missing child RS
         log_printf(0, "ERROR: Mising child RS  section=%s key=rs_local!\n", section);
-        flush_log();
+        tbx_flush_log();
         free(stype);
         abort();
     }
 
     //** and load it
-    ctype = inip_get_string(fd, stype, "type", RS_TYPE_SIMPLE);
+    ctype = tbx_inip_string_get(fd, stype, "type", RS_TYPE_SIMPLE);
     rs_create = lookup_service(ess, RS_SM_AVAILABLE, ctype);
     rsrc->rs_child = (*rs_create)(ess, fd, stype);
     if (rsrc->rs_child == NULL) {
         log_printf(1, "ERROR loading child RS!  type=%s section=%s\n", ctype, stype);
-        flush_log();
+        tbx_flush_log();
         abort();
     }
     free(ctype);

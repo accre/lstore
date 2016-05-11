@@ -14,17 +14,17 @@
    limitations under the License.
 */
 
-#include "apr_wrapper.h"
-#include "log.h"
-#include "type_malloc.h"
+#include <tbx/apr_wrapper.h>
+#include <tbx/log.h>
+#include <tbx/type_malloc.h>
 #include "opque.h"
 #include "mq_portal.h"
 #include "mq_stream.h"
 #include "mq_ongoing.h"
 #include "mq_helpers.h"
-#include "random.h"
-#include "string_token.h"
-#include "apr_wrapper.h"
+#include <tbx/random.h>
+#include <tbx/string_token.h>
+#include <tbx/apr_wrapper.h>
 
 #define MQS_TEST_KEY  "mqs_test"
 #define MQS_TEST_SIZE 8
@@ -94,7 +94,7 @@ op_status_t client_read_stream(void *task_arg, int tid)
     log_printf(0, "START: gid=%d test_gop(f=%d, cd=%d sd=%d, mp=%d, sb=%d, to=%d) = %d\n", op->gid, op->launch_flusher, op->client_delay, op->delay, op->max_packet, op->send_bytes, op->timeout, op->shouldbe);
 
     client_delay = op->client_delay;
-    type_malloc(buffer, char, test_size);
+    tbx_type_malloc(buffer, char, test_size);
 
     status = op_success_status;
 
@@ -201,10 +201,10 @@ mq_context_t *client_make_context()
     mq_context_t *mqc;
 
     snprintf(buffer, sizeof(buffer), text_params, 100*nparallel);
-    ifd = inip_read_text(buffer);
+    ifd = tbx_inip_string_read(buffer);
     mqc = mq_create_context(ifd, "mq_context");
     assert(mqc != NULL);
-    inip_destroy(ifd);
+    tbx_inip_destroy(ifd);
 
     return(mqc);
 }
@@ -222,7 +222,7 @@ op_generic_t *test_gop(mq_context_t *mqc, int flusher, int client_delay, int del
     log_printf(0, "START\n");
 
     //** Fill in the structure
-    type_malloc_clear(op, test_gop_t, 1);
+    tbx_type_malloc_clear(op, test_gop_t, 1);
     op->launch_flusher = flusher;
     op->delay = delay;
     op->client_delay = client_delay;
@@ -247,7 +247,7 @@ op_generic_t *test_gop(mq_context_t *mqc, int flusher, int client_delay, int del
     gop_set_myid(gop, myid);
 
     log_printf(0, "CREATE: gid=%d myid=%d test_gop(f=%d, cd=%d, sd=%d, mp=%d, sb=%d, to=%d) = %d\n", gop_id(gop), myid, op->launch_flusher, op->client_delay, op->delay, op->max_packet, op->send_bytes, op->timeout, op->shouldbe);
-    flush_log();
+    tbx_flush_log();
 
     return(gop);
 }
@@ -264,25 +264,25 @@ op_generic_t *new_bulk_task(mq_context_t *mqc, int myid)
     to_min = 10;
     to_max = 20;
 
-    transfer_bytes = random_int(send_min, send_max);
-    packet_bytes = random_int(packet_min, packet_max);
-    to = random_int(to_min, to_max);
-    delay = random_int(1, 10);
+    transfer_bytes = tbx_random_int64(send_min, send_max);
+    packet_bytes = tbx_random_int64(packet_min, packet_max);
+    to = tbx_random_int64(to_min, to_max);
+    delay = tbx_random_int64(1, 10);
     if (delay == 1) {
-        delay = random_int(to_min, to_max);
+        delay = tbx_random_int64(to_min, to_max);
         if (delay == to) delay += 2;
     } else {
         delay = 0;
     }
-    flusher = random_int(1, 3);
+    flusher = tbx_random_int64(1, 3);
 //flusher = 1;
     if (flusher != 1) {
         flusher = 0;
     }
 
-    client_delay = random_int(1, 10);
+    client_delay = tbx_random_int64(1, 10);
     if (client_delay == 1) {
-        client_delay = random_int(to_min, to_max);
+        client_delay = tbx_random_int64(to_min, to_max);
         if (client_delay == to) client_delay -= 2;
     } else {
         client_delay = 0;
@@ -314,7 +314,7 @@ int client_consume_result(op_generic_t *gop)
         n = 0;
         log_printf(0, "SUCCESS with stream test! gid=%d myid=%d test_gop(f=%d, cd=%d sd=%d, mp=%d, sb=%d, to=%d) = %d got=%d\n", gop_id(gop), gop_get_myid(gop), op->launch_flusher, op->client_delay, op->delay, op->max_packet, op->send_bytes, op->timeout, op->shouldbe, status.op_status);
     }
-    flush_log();
+    tbx_flush_log();
 
     gop_free(gop, OP_DESTROY);
     free(op);
@@ -408,7 +408,7 @@ skip:
     if (q != NULL) opque_free(q, OP_DESTROY);
 
     log_printf(0, "END\n");
-    flush_log();
+    tbx_flush_log();
 
     return(NULL);
 }
@@ -457,9 +457,9 @@ void cb_write_stream(void *arg, mq_task_t *task)
     nleft = op->send_bytes;
     nsent = 0;
     do {
-        nbytes = random_int(1, test_size);
+        nbytes = tbx_random_int64(1, test_size);
         if (nbytes > nleft) nbytes = nleft;
-        offset = random_int(0, test_size-nbytes);
+        offset = tbx_random_int64(0, test_size-nbytes);
 
         log_printf(0, "nsent=%d  offset=%d nbytes=%d\n", nsent, offset, nbytes);
         err = mq_stream_write(mqs, &offset, sizeof(int));
@@ -490,7 +490,7 @@ fail:
     mq_stream_destroy(mqs);
 
     log_printf(0, "END gid=%d\n", err);
-    flush_log();
+    tbx_flush_log();
 
     apr_thread_mutex_lock(lock);
     in_process--;
@@ -519,10 +519,10 @@ mq_context_t *server_make_context()
     mq_context_t *mqc;
 
     snprintf(buffer, sizeof(buffer), text_params, 100*nparallel);
-    ifd = inip_read_text(buffer);
+    ifd = tbx_inip_string_read(buffer);
     mqc = mq_create_context(ifd, "mq_context");
     assert(mqc != NULL);
-    inip_destroy(ifd);
+    tbx_inip_destroy(ifd);
 
     return(mqc);
 }
@@ -572,7 +572,7 @@ void *server_test_thread(apr_thread_t *th, void *arg)
     mq_destroy_context(mqc);
 
     log_printf(0, "END\n");
-    flush_log();
+    tbx_flush_log();
 
     return(NULL);
 }
@@ -602,8 +602,8 @@ int main(int argc, char **argv)
         printf("-d log_level\n");
         printf("-log log_file  Log file for storing output.  Defaults to stdout\n");
         printf("-log_size size Log file size.  Can use unit abbreviations.\n");
-        printf("-t min max     Range of total bytes to transfer for bulk tests. Defaults is %s to %s\n", pretty_print_int_with_scale(send_min, buf1), pretty_print_int_with_scale(send_max, buf2));
-        printf("-p min max     Range of max stream packet sizes for bulk tests. Defaults is %s to %s\n", pretty_print_int_with_scale(packet_min, buf1), pretty_print_int_with_scale(packet_max, buf2));
+        printf("-t min max     Range of total bytes to transfer for bulk tests. Defaults is %s to %s\n", tbx_stk_pretty_print_int_with_scale(send_min, buf1), tbx_stk_pretty_print_int_with_scale(send_max, buf2));
+        printf("-p min max     Range of max stream packet sizes for bulk tests. Defaults is %s to %s\n", tbx_stk_pretty_print_int_with_scale(packet_min, buf1), tbx_stk_pretty_print_int_with_scale(packet_max, buf2));
         printf("-np nparallel  Number of parallel streams to execute.  Default is %d\n", nparallel);
         printf("-nt ntotal     Total number of bulk operations to perform.  Default is %d\n", ntotal);
         printf("-z             Enable data compression\n");
@@ -626,23 +626,23 @@ int main(int argc, char **argv)
             return(0);
         } else if (strcmp(argv[i], "-t") == 0) { //** Change number of total bytes transferred
             i++;
-            send_min = string_get_integer(argv[i]);
+            send_min = tbx_stk_string_get_integer(argv[i]);
             i++;
-            send_max = string_get_integer(argv[i]);
+            send_max = tbx_stk_string_get_integer(argv[i]);
             i++;
         } else if (strcmp(argv[i], "-p") == 0) { //** Max number of bytes to transfer / packet
             i++;
-            packet_min = string_get_integer(argv[i]);
+            packet_min = tbx_stk_string_get_integer(argv[i]);
             i++;
-            packet_max = string_get_integer(argv[i]);
+            packet_max = tbx_stk_string_get_integer(argv[i]);
             i++;
         } else if (strcmp(argv[i], "-np") == 0) { //** Parallel transfers
             i++;
-            nparallel = string_get_integer(argv[i]);
+            nparallel = tbx_stk_string_get_integer(argv[i]);
             i++;
         } else if (strcmp(argv[i], "-nt") == 0) { //** Total number of transfers
             i++;
-            ntotal = string_get_integer(argv[i]);
+            ntotal = tbx_stk_string_get_integer(argv[i]);
             i++;
         } else if (strcmp(argv[i], "-log") == 0) { //** Log file
             i++;
@@ -650,7 +650,7 @@ int main(int argc, char **argv)
             i++;
         } else if (strcmp(argv[i], "-log_size") == 0) { //** Log file size
             i++;
-            lsize = string_get_integer(argv[i]);
+            lsize = tbx_stk_string_get_integer(argv[i]);
             i++;
         } else if (strcmp(argv[i], "-z") == 0) { //** Enable compression
             i++;
@@ -668,16 +668,16 @@ int main(int argc, char **argv)
 //log_printf(0, "before wrapper opque_count=%d\n", _opque_counter);
     log_printf(0, "after wrapper opque_count=%d\n", _opque_counter);
     log_printf(0, "after init opque_count=%d\n", _opque_counter);
-    init_random();
+    tbx_random_startup();
 
     if (logfile != NULL) open_log(logfile);
     if (lsize != 0) set_log_maxsize(lsize);
 
-    set_log_level(ll);
+    tbx_set_log_level(ll);
 
     //** Make the test_data to pluck info from
-    type_malloc_clear(test_data, char, test_size);
-    if (do_random == 1) get_random(test_data, test_size);
+    tbx_type_malloc_clear(test_data, char, test_size);
+    if (do_random == 1) tbx_random_bytes_get(test_data, test_size);
 
     //** Make the locking structures for client/server communication
     apr_pool_create(&mpool, NULL);
@@ -691,9 +691,9 @@ int main(int argc, char **argv)
     ctx = mq_socket_context_new();
     mq_pipe_create(ctx, control_efd);
 
-    thread_create_assert(&server_thread, NULL, server_test_thread, NULL, mpool);
+    tbx_thread_create_assert(&server_thread, NULL, server_test_thread, NULL, mpool);
     sleep(5); //** Make surethe server gets fired up
-    thread_create_assert(&client_thread, NULL, client_test_thread, NULL, mpool);
+    tbx_thread_create_assert(&client_thread, NULL, client_test_thread, NULL, mpool);
 
     apr_thread_join(&dummy, client_thread);
 

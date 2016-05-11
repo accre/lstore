@@ -24,12 +24,34 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
-#include "assert_result.h"
+#include "tbx/assert_result.h"
+#include "tbx/packer.h"
+#include "tbx/type_malloc.h"
+#include "tbx/log.h"
 #include "packer.h"
-#include "type_malloc.h"
-#include "log.h"
-//#include "random.h"
 
+// Accessors
+int tbx_pack_read_new_data(tbx_pack_t *pack, unsigned char *buffer, unsigned int bufsize) {
+    return pack->read_new_data(pack, buffer, bufsize);
+}
+int tbx_pack_read(tbx_pack_t *pack, unsigned char *data, int nbytes) {
+    return pack->read(pack, data, nbytes);
+}
+int tbx_pack_used(tbx_pack_t *pack) {
+    return pack->used(pack);
+}
+void tbx_pack_consumed(tbx_pack_t *pack) {
+    pack->consumed(pack);
+}
+void tbx_pack_write_resized(tbx_pack_t *pack, unsigned char *buffer, unsigned int bufsize) {
+    pack->write_resized(pack, buffer, bufsize);
+}
+int tbx_pack_write(tbx_pack_t *pack, unsigned char *data, int nbytes) {
+    return pack->write(pack, data, nbytes);
+}
+int tbx_pack_write_flush(tbx_pack_t *pack) {
+    return pack->write_flush(pack);
+}
 //***********************************************************************
 //-------------------- Compressed routines ------------------------------
 //***********************************************************************
@@ -96,7 +118,7 @@ int pack_write_zlib(tbx_pack_t *pack, unsigned char *data, int len)
     p->z.avail_in = len;
     p->z.next_in = data;
     nbytes = deflate(&(p->z), Z_NO_FLUSH);
-//log_printf(5, "deflate_error=%d len=%d avail_in=%d pack_used=%d\n", nbytes, len, p->z.avail_in, pack_used(pack));
+//log_printf(5, "deflate_error=%d len=%d avail_in=%d pack_used=%d\n", nbytes, len, p->z.avail_in, tbx_pack_used(pack));
 //double r = random_double(0, 1);
 //if (r > 0.25) { log_printf(0, "FORCING PACK_ERROR\n"); return(PACK_ERROR); }
 
@@ -408,10 +430,10 @@ void pack_init_raw(tbx_pack_t *pack, int type, int mode, unsigned char *buffer, 
 // pack_destroy - Destroy's a pack structure
 //***********************************************************************
 
-void pack_destroy(tbx_pack_t *pack)
+void tbx_pack_destroy(tbx_pack_t *pack)
 {
     log_printf(15, "type=%d mode=%d\n", pack->type, pack->mode);
-    pack_end(pack);
+    tbx_pack_end(pack);
     free(pack);
 }
 
@@ -433,13 +455,13 @@ void pack_init(tbx_pack_t *pack, int type, int mode, unsigned char *buffer, unsi
 // pack_create - Creates a new pack structure and initializes it
 //***********************************************************************
 
-tbx_pack_t *pack_create(int type, int mode, unsigned char *buffer, unsigned int bufsize)
+tbx_pack_t *tbx_pack_create(int type, int mode, unsigned char *buffer, unsigned int bufsize)
 {
     tbx_pack_t *pack;
 
     log_printf(15, "type=%d mode=%d\n", type, mode);
 
-    type_malloc(pack, tbx_pack_t, 1);
+    tbx_type_malloc(pack, tbx_pack_t, 1);
     pack_init(pack, type, mode, buffer, bufsize);
     return(pack);
 }

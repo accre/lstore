@@ -38,6 +38,7 @@ set(LSTORE_INCLUDE_PUBLIC ${toolbox_INCLUDE_DIR}
 
 # common objects
 set(LSTORE_PROJECT_OBJS
+    constructor.c
     ibp_config.c ibp_errno.c ibp_misc.c ibp_op.c ibp_sync.c ibp_types.c
     io_wrapper.c iovec_sync.c 
 )
@@ -63,3 +64,7 @@ else()
     include(LStoreFunctions)
     lstore_project_common(ibp)
 endif()
+
+foreach(f ${LSTORE_PROJECT_EXECUTABLES})
+    set_target_properties(${f} PROPERTIES COMPILE_FLAGS "-DLSTORE_HACK_EXPORT")
+endforeach()

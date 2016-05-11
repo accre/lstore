@@ -16,10 +16,13 @@
 
 #define _log_module_index 105
 
-#include <stdlib.h>
 #include <assert.h>
-#include "assert_result.h"
-#include "log.h"
+#include <stdlib.h>
+#include <string.h>
+#include "tbx/assert_result.h"
+#include "tbx/log.h"
+#include "tbx/skiplist.h"
+#include "tbx/interval_skiplist.h"
 #include "skiplist.h"
 #include "interval_skiplist.h"
 
@@ -193,25 +196,25 @@ void destroy_isl_node(tbx_isl_node_t *isln)
 // interval_skiplist_first_key - Returns the 1st key
 //*********************************************************************************
 
-tbx_sl_key_t *interval_skiplist_first_key(tbx_isl_t *isl)
+tbx_sl_key_t *tbx_isl_key_first(tbx_isl_t *isl)
 {
-    return(skiplist_first_key(isl->sl));
+    return(tbx_sl_first_key(isl->sl));
 }
 
 //*********************************************************************************
 // interval_skiplist_last_key - Returns the last key
 //*********************************************************************************
 
-tbx_sl_key_t *interval_skiplist_last_key(tbx_isl_t *isl)
+tbx_sl_key_t *tbx_isl_key_last(tbx_isl_t *isl)
 {
-    return(skiplist_last_key(isl->sl));
+    return(tbx_sl_last_key(isl->sl));
 }
 
 //*********************************************************************************
 //  create_interval_skiplist_full - Creates a new interval skip list
 //*********************************************************************************
 
-tbx_isl_t *create_interval_skiplist_full(int maxlevels, double p,
+tbx_isl_t *tbx_isl_new_full(int maxlevels, double p,
         tbx_sl_compare_t *compare,
         tbx_sl_key_t *(*dup)(tbx_sl_key_t *a),
         void (*key_free)(tbx_sl_key_t *a),
@@ -221,8 +224,8 @@ tbx_isl_t *create_interval_skiplist_full(int maxlevels, double p,
     assert(isl != NULL);
 
     isl->n_intervals = 0;
-    isl->data_free = (data_free == NULL) ? sl_no_data_free : data_free;
-    isl->sl = create_skiplist_full(maxlevels, p, 1, compare, dup, key_free, sl_no_data_free);
+    isl->data_free = (data_free == NULL) ? tbx_sl_no_data_free : data_free;
+    isl->sl = tbx_sl_new_full(maxlevels, p, 1, compare, dup, key_free, tbx_sl_no_data_free);
 
     return(isl);
 }
@@ -231,19 +234,19 @@ tbx_isl_t *create_interval_skiplist_full(int maxlevels, double p,
 // create_interval_skiplist - Shortcut to create a new interval skiplist using default values
 //*********************************************************************************
 
-tbx_isl_t *create_interval_skiplist(tbx_sl_compare_t *compare,
+tbx_isl_t *tbx_isl_new(tbx_sl_compare_t *compare,
         tbx_sl_key_t *(*dup)(tbx_sl_key_t *a),
         void (*key_free)(tbx_sl_key_t *a),
         void (*data_free)(tbx_sl_data_t *a))
 {
-    return(create_interval_skiplist_full(16, 0.25, compare, dup, key_free, data_free));
+    return(tbx_isl_new_full(16, 0.25, compare, dup, key_free, data_free));
 }
 
 //*********************************************************************************
 // destroy_interval_skiplist - Destroys a skiplist
 //*********************************************************************************
 
-void destroy_interval_skiplist(tbx_isl_t *isl)
+void tbx_isl_del(tbx_isl_t *isl)
 {
     tbx_sl_node_t *sn;
     tbx_isl_node_t *isln;
@@ -257,7 +260,7 @@ void destroy_interval_skiplist(tbx_isl_t *isl)
         sn = sn->next[0];
     }
 
-    destroy_skiplist(sl);
+    tbx_sl_del(sl);
     free(isl);
 
     return;
@@ -268,7 +271,7 @@ void destroy_interval_skiplist(tbx_isl_t *isl)
 // insert_interval_skiplist - Inserts the interval into the skiplist
 //*********************************************************************************
 
-int insert_interval_skiplist(tbx_isl_t *isl, tbx_sl_key_t *lo, tbx_sl_key_t *hi, tbx_sl_data_t *data)
+int tbx_isl_insert(tbx_isl_t *isl, tbx_sl_key_t *lo, tbx_sl_key_t *hi, tbx_sl_data_t *data)
 {
     tbx_isl_node_t *isl_node;
     tbx_sl_node_t *ptr[SKIPLIST_MAX_LEVEL];
@@ -287,7 +290,7 @@ int insert_interval_skiplist(tbx_isl_t *isl, tbx_sl_key_t *lo, tbx_sl_key_t *hi,
     sn = NULL;
     if (cmp != 0) {  //** End point doesn't exist so need to create it.
         isl_node = create_isl_node();
-        sn = pos_insert_skiplist(sl, ptr, isl->sl->dup(hi), isl_node);
+        sn = pos_tbx_sl_insert(sl, ptr, isl->sl->dup(hi), isl_node);
         add_isl_node_level(isl_node, sn->level);
         for (i=0; i<=sn->level; i++) {
             if ((ptr[i] != NULL) && (ptr[i] != isl->sl->head)) copy_isl_data(((tbx_isl_node_t *)(ptr[i]->ele.data))->edge[i], &(isl_node->edge[i]));
@@ -305,7 +308,7 @@ int insert_interval_skiplist(tbx_isl_t *isl, tbx_sl_key_t *lo, tbx_sl_key_t *hi,
 
     if (cmp != 0) {  //** Starting point doesn't exist so need to create it.
         isl_node = create_isl_node();
-        sn = pos_insert_skiplist(sl, ptr, isl->sl->dup(lo), isl_node);
+        sn = pos_tbx_sl_insert(sl, ptr, isl->sl->dup(lo), isl_node);
         add_isl_node_level(isl_node, sn->level);
         for (i=0; i<=sn->level; i++) {
             if ((ptr[i] != NULL) && (ptr[i] != isl->sl->head)) copy_isl_data(((tbx_isl_node_t *)(ptr[i]->ele.data))->edge[i], &(isl_node->edge[i]));
@@ -357,7 +360,7 @@ int insert_interval_skiplist(tbx_isl_t *isl, tbx_sl_key_t *lo, tbx_sl_key_t *hi,
 //     If the element(data) can't be located 1 is returned. Success returns 0.
 //*********************************************************************************
 
-int remove_interval_skiplist(tbx_isl_t *isl, tbx_sl_key_t *lo, tbx_sl_key_t *hi, tbx_sl_data_t *data)
+int tbx_isl_remove(tbx_isl_t *isl, tbx_sl_key_t *lo, tbx_sl_key_t *hi, tbx_sl_data_t *data)
 {
     tbx_sl_node_t *ptr[SKIPLIST_MAX_LEVEL];
     tbx_sl_node_t *sn, *sn2, *sn_lo;
@@ -385,7 +388,7 @@ int remove_interval_skiplist(tbx_isl_t *isl, tbx_sl_key_t *lo, tbx_sl_key_t *hi,
         err = remove_isl_data(isl, &(isln->point), data);
         if (isl_node_is_empty(isln, sn->level) == 1) {
             remove_isl_node(sn->level, isln);
-            remove_skiplist(isl->sl, lo, NULL);
+            tbx_sl_remove(isl->sl, lo, NULL);
         }
         isl->data_free(data);
         return(err);
@@ -406,7 +409,7 @@ int remove_interval_skiplist(tbx_isl_t *isl, tbx_sl_key_t *lo, tbx_sl_key_t *hi,
             sn2 = sn->next[i];
             if (sn2 != NULL) {
                 cmp = isl->sl->compare->fn(isl->sl->compare->arg, sn2->key, hi);
-//log_printf(15, "remove_interval_skiplist: level=%d cmp=%d\n", i, cmp);  flush_log();
+//log_printf(15, "remove_interval_skiplist: level=%d cmp=%d\n", i, cmp);  tbx_flush_log();
                 if (cmp < 1) {
                     j = i;
                     remove_isl_data(isl, &(((tbx_isl_node_t *)(sn->ele.data))->edge[j]), data);
@@ -417,34 +420,34 @@ int remove_interval_skiplist(tbx_isl_t *isl, tbx_sl_key_t *lo, tbx_sl_key_t *hi,
         sn = sn->next[i];  //** Jump to the next element
     }
 
-//log_printf(15, "remove_interval_skiplist: AFTER LOOP\n");  flush_log();
+//log_printf(15, "remove_interval_skiplist: AFTER LOOP\n");  tbx_flush_log();
 
     //** Now check if we remove the end points
     isln = (tbx_isl_node_t *)(sn->ele.data);
     isln->n_end--;
 
-//log_printf(15, "remove_interval_skiplist: aaaaaaa err=%d\n", err);  flush_log();
+//log_printf(15, "remove_interval_skiplist: aaaaaaa err=%d\n", err);  tbx_flush_log();
 
     if (isl_node_is_empty(isln, sn->level) == 1) {
         remove_isl_node(sn->level, isln);
-        remove_skiplist(isl->sl, hi, NULL);
+        tbx_sl_remove(isl->sl, hi, NULL);
     }
 
-//log_printf(15, "remove_interval_skiplist: bbbbbbbbb\n");  flush_log();
+//log_printf(15, "remove_interval_skiplist: bbbbbbbbb\n");  tbx_flush_log();
 
     if (sn != sn_lo) {     //** Remove the beginning if needed
        isln = (tbx_isl_node_t *)(sn_lo->ele.data);
        if (isl_node_is_empty(isln, sn_lo->level) == 1) {
            remove_isl_node(sn_lo->level, isln);
-           remove_skiplist(isl->sl, lo, NULL);
+           tbx_sl_remove(isl->sl, lo, NULL);
        }
     }
-//log_printf(15, "remove_interval_skiplist: before data free\n");  flush_log();
+//log_printf(15, "remove_interval_skiplist: before data free\n");  tbx_flush_log();
 
     //** Lastly free the data
     isl->data_free(data);
 
-//log_printf(15, "remove_interval_skiplist: after data free\n");  flush_log();
+//log_printf(15, "remove_interval_skiplist: after data free\n");  tbx_flush_log();
 
     return(err);
 }
@@ -455,7 +458,7 @@ int remove_interval_skiplist(tbx_isl_t *isl, tbx_sl_key_t *lo, tbx_sl_key_t *hi,
 //      1st interval.  Likewise if hi == NULL the iterator runs to the end.
 //*********************************************************************************
 
-tbx_isl_iter_t iter_search_interval_skiplist(tbx_isl_t *isl, tbx_sl_key_t *lo, tbx_sl_key_t *hi)
+tbx_isl_iter_t tbx_isl_iter_search(tbx_isl_t *isl, tbx_sl_key_t *lo, tbx_sl_key_t *hi)
 {
     tbx_isl_iter_t it;
 
@@ -496,7 +499,7 @@ tbx_isl_iter_t iter_search_interval_skiplist(tbx_isl_t *isl, tbx_sl_key_t *lo, t
 //     4. Scan the hi nodes point and start list
 //*********************************************************************************
 
-tbx_sl_data_t *next_interval_skiplist(tbx_isl_iter_t *it)
+tbx_sl_data_t *tbx_isl_next(tbx_isl_iter_t *it)
 {
     int i, cmp;
     tbx_isl_node_t *isln;
@@ -506,7 +509,7 @@ tbx_sl_data_t *next_interval_skiplist(tbx_isl_iter_t *it)
 
     if (it->finished == 1) return(NULL);
 
-//log_printf(15, "next_interval_skiplist: START ptr_level=%d mode=%d\n", it->ptr_level, it->mode); flush_log();
+//log_printf(15, "next_interval_skiplist: START ptr_level=%d mode=%d\n", it->ptr_level, it->mode); tbx_flush_log();
 
     if (it->ele != NULL) {  //** Got a match on the current chain
         data = it->ele->data;
@@ -518,7 +521,7 @@ tbx_sl_data_t *next_interval_skiplist(tbx_isl_iter_t *it)
     if (it->ptr_level > -1) {  //** Need to scan down the ptr list
         for (i=it->ptr_level; i>-1; i--) {
             if (it->ptr[i] != NULL) {
-//log_printf(15, "next_interval_skiplist: ptr_level=%d i=%d\n", it->ptr_level, i); flush_log();
+//log_printf(15, "next_interval_skiplist: ptr_level=%d i=%d\n", it->ptr_level, i); tbx_flush_log();
                 isln = (tbx_isl_node_t *)(it->ptr[i]->ele.data);
                 if (isln != NULL) {
                     if (isln->edge[i] != NULL) {
@@ -550,7 +553,7 @@ tbx_sl_data_t *next_interval_skiplist(tbx_isl_iter_t *it)
             for (i=it->mode; i<2;  i++) {
                 if (i == 0) {  //** Check if we handle the point list next
                     if (isln->point != NULL) {
-//log_printf(15, "next_interval_skiplist: POINT ptr_level=%d mode=%d i=%d\n", it->ptr_level, it->mode, i); flush_log();
+//log_printf(15, "next_interval_skiplist: POINT ptr_level=%d mode=%d i=%d\n", it->ptr_level, it->mode, i); tbx_flush_log();
                         it->ele = isln->point;
                         data = it->ele->data;
                         it->ele = it->ele->next;
@@ -560,7 +563,7 @@ tbx_sl_data_t *next_interval_skiplist(tbx_isl_iter_t *it)
                     }
                 } else if (i == 1) {   //** or the start list
                     if (isln->start != NULL) {
-//log_printf(15, "next_interval_skiplist: START ptr_level=%d mode=%d i=%d\n", it->ptr_level, it->mode, i); flush_log();
+//log_printf(15, "next_interval_skiplist: START ptr_level=%d mode=%d i=%d\n", it->ptr_level, it->mode, i); tbx_flush_log();
                         it->ele = isln->start;
                         data = it->ele->data;
                         it->ele = it->ele->next;
@@ -608,13 +611,13 @@ tbx_sl_data_t *next_interval_skiplist(tbx_isl_iter_t *it)
 // count_interval_skiplist - Returns the number of intervals overlapping the range
 //*********************************************************************************
 
-int count_interval_skiplist(tbx_isl_t *isl, tbx_sl_key_t *lo, tbx_sl_key_t *hi)
+int tbx_isl_count2(tbx_isl_t *isl, tbx_sl_key_t *lo, tbx_sl_key_t *hi)
 {
     tbx_isl_iter_t it;
     int count = 0;
 
-    it = iter_search_interval_skiplist(isl, lo, hi);
-    while (next_interval_skiplist(&it) != NULL) {
+    it = tbx_isl_iter_search(isl, lo, hi);
+    while (tbx_isl_next(&it) != NULL) {
         count++;
     }
 

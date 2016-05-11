@@ -24,29 +24,26 @@ configure_file(${PROJECT_SOURCE_DIR}/${LSTORE_PROJECT_NAME}_config.h.in
 # Find dependencies.
 # common objects
 set(NETWORK_OBJS 
-    net_1_ssl.c net_2_ssl.c net_fd.c net_phoebus.c net_sock.c network.c
-    phoebus.c 
+    net_sock.c network.c
 )
 
 set(TOOL_OBJS  
-    append_printf.c atomic_counter.c chksum.c dns_cache.c
+    append_printf.c atomic_counter.c chksum.c constructor.c dns_cache.c
     iniparse.c interval_skiplist.c log.c packer.c pigeon_coop.c pigeon_hole.c
     random.c skiplist.c stack.c string_token.c transfer_buffer.c varint.c
 )
 
 set(LSTORE_PROJECT_OBJS ${TOOL_OBJS} ${NETWORK_OBJS})
-set(LSTORE_PROJECT_INCLUDES_OLD
-                apr_wrapper.h constructor_wrapper.h debug.h list.h net_2_ssl.h
-                fmttypes.h interval_skiplist.h net_1_ssl.h net_phoebus.h
-                net_fd.h network.h pigeon_hole.h stack.h net_sock.h
-                pigeon_coop.h skiplist.h toolbox_config.h phoebus.h random.h
-                string_token.h type_malloc.h transfer_buffer.h packer.h
-                append_printf.h chksum.h varint.h atomic_counter.h dns_cache.h
-                iniparse.h log.h assert_result.h)
-set(LSTORE_PROJECT_INCLUDES_NAMESPACE tbx)
 set(LSTORE_PROJECT_INCLUDES
-        tbx/toolbox_visibility.h
-    )
+                tbx/apr_wrapper.h tbx/constructor_wrapper.h
+                tbx/fmttypes.h tbx/interval_skiplist.h tbx/list.h
+                tbx/network.h tbx/pigeon_hole.h tbx/stack.h tbx/net_sock.h
+                tbx/pigeon_coop.h tbx/skiplist.h toolbox_config.h tbx/random.h
+                tbx/string_token.h tbx/type_malloc.h tbx/transfer_buffer.h tbx/packer.h
+                tbx/append_printf.h tbx/chksum.h tbx/varint.h tbx/atomic_counter.h tbx/dns_cache.h
+                tbx/iniparse.h tbx/log.h tbx/assert_result.h tbx/toolbox_visibility.h
+                tbx/tbx_decl.h)
+set(LSTORE_PROJECT_INCLUDES_NAMESPACE tbx)
 set(LSTORE_PROJECT_EXECUTABLES sl_test isl_test varint_test constructor_test)
 set(LSTORE_LIBS ${APR_LIBRARY}
                     ${APRUTIL_LIBRARY}
@@ -58,7 +55,7 @@ set(LSTORE_INCLUDE_SYSTEM ${APR_INCLUDE_DIR}
                     ${OPENSSL_INCLUDE_DIR}
                     ${ZLIB_INCLUDE_DIR}
     )
-set(LSTORE_INCLUDE_PUBLIC)
+set(LSTORE_INCLUDE_PUBLIC ${PROJECT_SOURCE_DIR})
 
 
 # Common functionality is stored here

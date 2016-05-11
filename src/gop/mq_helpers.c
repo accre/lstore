@@ -19,12 +19,12 @@
 //***********************************************************************
 
 #define _log_module_index 213
-#include "string_token.h"
+#include <tbx/string_token.h>
 #include "mq_helpers.h"
-#include "atomic_counter.h"
-#include "type_malloc.h"
-#include "varint.h"
-#include "log.h"
+#include <tbx/atomic_counter.h>
+#include <tbx/type_malloc.h>
+#include <tbx/varint.h>
+#include <tbx/log.h>
 
 static tbx_atomic_unit32_t _id_counter = 0;
 
@@ -36,12 +36,12 @@ mq_frame_t *mq_make_id_frame()
 {
     tbx_atomic_unit32_t *id;
 
-    type_malloc(id, tbx_atomic_unit32_t, 1);
+    tbx_type_malloc(id, tbx_atomic_unit32_t, 1);
 
-    *id = atomic_inc(_id_counter);
+    *id = tbx_atomic_inc(_id_counter);
 
     if (*id > 1000000000) {
-        atomic_set(_id_counter, 0);
+        tbx_atomic_set(_id_counter, 0);
     }
 
     return(mq_frame_new(id, sizeof(tbx_atomic_unit32_t), MQF_MSG_AUTO_FREE));
@@ -61,9 +61,9 @@ op_status_t mq_read_status_frame(mq_frame_t *f, int destroy)
 
     mq_get_frame(f, (void **)&data, &nbytes);
 
-    n = zigzag_decode((unsigned char *)data, nbytes, &value);
+    n = tbx_zigzag_decode((unsigned char *)data, nbytes, &value);
     status.op_status = value;
-    zigzag_decode((unsigned char *)&(data[n]), nbytes-n, &value);
+    tbx_zigzag_decode((unsigned char *)&(data[n]), nbytes-n, &value);
     status.error_code = value;
 
     if (destroy == 1) mq_frame_destroy(f);
@@ -81,9 +81,9 @@ mq_frame_t *mq_make_status_frame(op_status_t status)
     unsigned char *bytes;
     int n;
 
-    n = zigzag_encode(status.op_status, buffer);
-    n = n + zigzag_encode(status.error_code, &(buffer[n]));
-    type_malloc(bytes, unsigned char, n);
+    n = tbx_zigzag_encode(status.op_status, buffer);
+    n = n + tbx_zigzag_encode(status.error_code, &(buffer[n]));
+    tbx_type_malloc(bytes, unsigned char, n);
     memcpy(bytes, buffer, n);
     return(mq_frame_new(bytes, n, MQF_MSG_AUTO_FREE));
 }
@@ -211,11 +211,11 @@ mq_msg_t *mq_string_to_address(char *string)
     if (string == NULL) return(NULL);
 
     address = mq_msg_new();
-    token = string_token(string, ",", &bstate, &fin);
+    token = tbx_stk_string_token(string, ",", &bstate, &fin);
     while(fin == 0) {
         log_printf(5, "host frame=%s\n", token);
         mq_msg_append_mem(address, token, strlen(token), MQF_MSG_KEEP_DATA);
-        token = string_token(NULL, ",", &bstate, &fin);
+        token = tbx_stk_string_token(NULL, ",", &bstate, &fin);
     }
 
     return address;

@@ -14,10 +14,22 @@
    limitations under the License.
 */
 
-#ifndef _APPEND_PRINTF_H_
-#define _APPEND_PRINTF_H_
+#pragma once
+#ifndef ACCRE_TYPE_MALLOC_H_INCLUDED
+#define ACCRE_TYPE_MALLOC_H_INCLUDED
+
+#include <assert.h>
+#include <stdlib.h>
 #include "tbx/toolbox_visibility.h"
 
-TBX_API int append_printf(char *buffer, int *used, int nbytes, const char *fmt, ...);
+// Preprocessor macros
+#define tbx_type_malloc_clear(var, type, count) \
+            tbx_type_malloc(var, type, count); tbx_type_memclear(var, type, count)
+#define tbx_type_malloc(var, type, count) \
+            var = (type *)malloc(sizeof(type)*(count)); assert(var != NULL)
+#define tbx_type_realloc(var, type, count) \
+            var = (type *)realloc(var, sizeof(type)*(count)); assert(var != NULL)
+#define tbx_type_memclear(var, type, count) \
+            memset(var, 0, sizeof(type)*(count))
 
 #endif

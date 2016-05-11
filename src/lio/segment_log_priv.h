@@ -21,7 +21,7 @@
 #ifndef _SEGMENT_LOG_PRIV_H_
 #define _SEGMENT_LOG_PRIV_H_
 
-#include "interval_skiplist.h"
+#include <tbx/interval_skiplist.h>
 
 #ifdef __cplusplus
 extern "C" {

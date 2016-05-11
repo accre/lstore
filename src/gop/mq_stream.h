@@ -22,7 +22,7 @@
 #include "opque.h"
 #include "mq_portal.h"
 #include "mq_ongoing.h"
-#include "packer.h"
+#include <tbx/packer.h>
 
 #ifndef _MQ_STREAM_H_
 #define _MQ_STREAM_H_

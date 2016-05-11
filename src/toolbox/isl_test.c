@@ -19,11 +19,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
-#include "assert_result.h"
-#include "log.h"
+#include "tbx/assert_result.h"
+#include "tbx/log.h"
+#include "tbx/skiplist.h"
 #include "skiplist.h"
+#include "tbx/interval_skiplist.h"
 #include "interval_skiplist.h"
-#include "atomic_counter.h"
+#include "tbx/atomic_counter.h"
 
 typedef struct {
     int lo, hi, index, match;
@@ -48,7 +50,7 @@ int main(int argc, char **argv)
         i++;
         j = atoi(argv[i]);
         i++;
-        set_log_level(j);
+        tbx_set_log_level(j);
     }
     n_max = atol(argv[i]);
     i++;
@@ -60,9 +62,9 @@ int main(int argc, char **argv)
     i++;
 
     assert_result(apr_initialize(), APR_SUCCESS);
-    atomic_init();
+    tbx_atomic_startup();
 
-    isl = create_interval_skiplist_full(l_max, p, &tbx_sl_compare_int, NULL, NULL, NULL);
+    isl = tbx_isl_new_full(l_max, p, &tbx_sl_compare_int, NULL, NULL, NULL);
 
     data_list = (interval_t *)malloc(sizeof(interval_t)*n_max);
 
@@ -77,7 +79,7 @@ int main(int argc, char **argv)
 //    if (i>=(n_max-2)) key_list[i] = key_list[0];  //** Force dups
 
         printf("==============inserting interval[%d]=%d .. %d\n", data_list[i].index, data_list[i].lo, data_list[i].hi);
-        err = insert_interval_skiplist(isl, (tbx_sl_key_t *)&(data_list[i].lo), (tbx_sl_key_t *)&(data_list[i].hi), (tbx_sl_data_t *)&(data_list[i]));
+        err = tbx_isl_insert(isl, (tbx_sl_key_t *)&(data_list[i].lo), (tbx_sl_key_t *)&(data_list[i].hi), (tbx_sl_data_t *)&(data_list[i]));
         if (err != 0) {
             printf("----------+Error inserting interval[%d]=%d .. %d\n", data_list[i].index, data_list[i].lo, data_list[i].hi);
         }
@@ -86,8 +88,8 @@ int main(int argc, char **argv)
 
     //** Iterate through the list to verify order
     printf("===============Iterating through Interval Skiplist\n");
-    it = iter_search_interval_skiplist(isl, (tbx_sl_key_t *)NULL, (tbx_sl_key_t *)NULL);
-    d = (interval_t *)next_interval_skiplist(&it);
+    it = tbx_isl_iter_search(isl, (tbx_sl_key_t *)NULL, (tbx_sl_key_t *)NULL);
+    d = (interval_t *)tbx_isl_next(&it);
     j = d->lo;
     i = 0;
     while (d != NULL) {
@@ -97,7 +99,7 @@ int main(int argc, char **argv)
         }
         j = d->lo;
 
-        d = (interval_t *)next_interval_skiplist(&it);
+        d = (interval_t *)tbx_isl_next(&it);
         i++;
     }
 
@@ -125,18 +127,18 @@ int main(int argc, char **argv)
                 printf("    %d: %d .. %d\n", j, d->lo, d->hi);
             }
             fflush(stdout);
-            flush_log();
+            tbx_flush_log();
         }
 
         printf("----manual matches=%d\n", k);
         fflush(stdout);
-        flush_log();
+        tbx_flush_log();
 
-        it = iter_search_interval_skiplist(isl, (tbx_sl_key_t *)&lo, (tbx_sl_key_t *)&hi);
-//    printf("    after iter creation\n"); fflush(stdout); flush_log();
+        it = tbx_isl_iter_search(isl, (tbx_sl_key_t *)&lo, (tbx_sl_key_t *)&hi);
+//    printf("    after iter creation\n"); fflush(stdout); tbx_flush_log();
         n = 0;
-        d = next_interval_skiplist(&it);
-//    printf("    after initial next\n"); fflush(stdout); flush_log();
+        d = tbx_isl_next(&it);
+//    printf("    after initial next\n"); fflush(stdout); tbx_flush_log();
         while (d != NULL) {
             n++;
             printf("    %d: %d .. %d\n", d->index, d->lo, d->hi);
@@ -148,15 +150,15 @@ int main(int argc, char **argv)
                 printf("----------Error!  Found incorrect match!\n");
             }
             fflush(stdout);
-            flush_log();
+            tbx_flush_log();
 
-            d = next_interval_skiplist(&it);
+            d = tbx_isl_next(&it);
         }
 
 
         printf("----iter matches=%d\n", n);
         fflush(stdout);
-        flush_log();
+        tbx_flush_log();
 
         if (n != k) {
             printf("----------Error mismatch match count k=%d n=%d\n", k, n);
@@ -168,19 +170,19 @@ int main(int argc, char **argv)
 //  for (i=0; i<n_max; i++) {
     for (i=n_max-1; i>=0; i--) {
         printf("==========Removing interval[%d]=%d .. %d\n", data_list[i].index, data_list[i].lo, data_list[i].hi);
-        err = remove_interval_skiplist(isl, (tbx_sl_key_t *)&(data_list[i].lo), (tbx_sl_key_t *)&(data_list[i].hi), (tbx_sl_data_t *)&(data_list[i]));
+        err = tbx_isl_remove(isl, (tbx_sl_key_t *)&(data_list[i].lo), (tbx_sl_key_t *)&(data_list[i].hi), (tbx_sl_data_t *)&(data_list[i]));
         if (err != 0) {
             printf("----------Error removing interval[%d]=%d .. %d\n", data_list[i].index, data_list[i].lo, data_list[i].hi);
         }
     }
 
-    destroy_interval_skiplist(isl);
+    tbx_isl_del(isl);
     fflush(stdout);
-    flush_log();
+    tbx_flush_log();
 
     free(data_list);
 
-    atomic_destroy();
+    tbx_atomic_shutdown();
     apr_terminate();
     return(0);
 }

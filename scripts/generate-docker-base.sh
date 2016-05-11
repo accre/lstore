@@ -44,7 +44,7 @@ for DISTRO in "${DISTROS[@]}"; do
             PACKAGE_POSTFIX="&& yum clean all"
             JAVA_INSTALL=""
             if [ $PARENT == "centos" ]; then
-                GLOBAL_INSTALL="RUN yum groupinstall -y 'Development Tools' && yum install -y epel-release && yum clean all"
+                GLOBAL_INSTALL="RUN yum groupinstall -y 'Development Tools' && yum install -y epel-release git && yum clean all"
             else
                 # Fedora includes epel-releease already
                 GLOBAL_INSTALL="RUN yum groupinstall -y 'Development Tools' && yum clean all"
@@ -54,7 +54,7 @@ for DISTRO in "${DISTROS[@]}"; do
             PACKAGER="deb"
             PACKAGE_PREFIX="RUN apt-get update && apt-get install -y"
             PACKAGE_POSTFIX=" --no-install-recommends --no-upgrade && apt-get clean"
-            GLOBAL_INSTALL="RUN apt-get update && apt-get install -y build-essential fakeroot devscripts --no-install-recommends --no-upgrade && apt-get clean"
+            GLOBAL_INSTALL="RUN apt-get update && apt-get install -y build-essential fakeroot devscripts git ca-certificates --no-install-recommends --no-upgrade && apt-get clean"
             JAVA_INSTALL="RUN apt-get update && apt-get install -y clang-tidy cppcheck openjdk-8-jdk-headless lcov gcovr python-sphinx doxygen --no-install-recommends --no-upgrade && apt-get clean && mkdir /tmp/afl && cd /tmp/afl && wget http://lcamtuf.coredump.cx/afl/releases/afl-2.10b.tgz && tar -xzf afl-2.10b.tgz && cd afl-2.10b && make install && cd / && rm -rf /tmp/afl"
             ;;
         *)
@@ -64,13 +64,16 @@ for DISTRO in "${DISTROS[@]}"; do
     case $PACKAGER in
         rpm)
             ADDITIONAL_PACKAGES=(
+                                    autoconf
                                     curl
                                     createrepo
                                     czmq-devel
                                     expat-devel
                                     fuse-devel
                                     globus-gridftp-server-devel
+                                    libtool
                                     openssl-devel
+                                    python
                                     rsync
                                     tar
                                     wget
@@ -80,6 +83,7 @@ for DISTRO in "${DISTROS[@]}"; do
             ;;
         deb)
             ADDITIONAL_PACKAGES=(
+                                    autoconf
                                     ca-certificates
                                     cmake
                                     curl
@@ -90,9 +94,11 @@ for DISTRO in "${DISTROS[@]}"; do
                                     libfuse-dev
                                     libglobus-gridftp-server-dev
                                     libssl-dev
+                                    libtool
                                     libz-dev
                                     libzmq3-dev
                                     lsb-release
+                                    python
                                     rsync
                                     wget
                                 )
@@ -105,6 +111,11 @@ for DISTRO in "${DISTROS[@]}"; do
                                libczmq-dev
                              )
     fi
+    case $RELEASE in
+        vivid|wily|xenial|yakkety|jessie)
+            ADDITIONAL_PACKAGES+=( libtool-bin )
+            ;;
+    esac
     if [ "${#ADDITIONAL_PACKAGES[0]}" -ne 0 ]; then
         PACKAGE_INSTALL=$PACKAGE_PREFIX
         for VAL in ${ADDITIONAL_PACKAGES[@]}; do
@@ -122,16 +133,16 @@ for DISTRO in "${DISTROS[@]}"; do
 FROM $FROM
 MAINTAINER http://lstore.org
 $GLOBAL_INSTALL
-$PACKAGE_INSTALL
 RUN cd /tmp && \
     git clone https://github.com/Kitware/CMake.git && \
     cd CMake && \
     git checkout v3.5.1 && \
     ./bootstrap && \
-    make && \
+    make -j16 && \
     make install && \
     cd .. && \
     rm -rf CMake
+$PACKAGE_INSTALL
 EOF
     BUILDSLAVE_DIR=$LSTORE_RELEASE_BASE/scripts/docker/buildslave/$DISTRO
     if [[ -d "$BUILDSLAVE_DIR" && ! -z "$JAVA_INSTALL" ]]; then

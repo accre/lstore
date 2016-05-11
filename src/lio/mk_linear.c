@@ -17,7 +17,7 @@
 #define _log_module_index 173
 
 #include "exnode.h"
-#include "log.h"
+#include <tbx/log.h>
 #include "lio.h"
 
 //*************************************************************************

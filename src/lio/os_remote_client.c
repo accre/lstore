@@ -20,19 +20,21 @@
 
 #define _log_module_index 213
 
+#include <apr_network_io.h>
+#include <tbx/assert_result.h>
 #include "ex3_system.h"
 #include "object_service_abstract.h"
-#include "type_malloc.h"
-#include "log.h"
-#include "atomic_counter.h"
+#include <tbx/type_malloc.h>
+#include <tbx/log.h>
+#include <tbx/atomic_counter.h>
 #include "thread_pool.h"
 #include "os_remote.h"
 #include "os_remote_priv.h"
-#include "append_printf.h"
-#include "random.h"
+#include <tbx/append_printf.h>
+#include <tbx/random.h>
 #include "mq_helpers.h"
 #include "mq_stream.h"
-#include "varint.h"
+#include <tbx/varint.h>
 #include "authn_fake.h"
 
 //#define OSRS_HANDLE(ofd) ((osrs_ongoing_object_t *)((ofd)->data))->handle
@@ -231,19 +233,19 @@ op_status_t osrc_remove_regex_object_func(void *arg, int id)
     osrc_add_creds(op->os, op->creds, msg);
 
     bufsize = 4096;
-    type_malloc(buffer, unsigned char, bufsize);
+    tbx_type_malloc(buffer, unsigned char, bufsize);
     do {
         again = 0;
         bpos = 0;
 
-        n = zigzag_encode(osrc->timeout, buffer);
+        n = tbx_zigzag_encode(osrc->timeout, buffer);
         if (n<0) {
             again = 1;
             n=4;
         }
         bpos += n;
 
-        n = zigzag_encode(sizeof(op->my_id), &(buffer[bpos]));
+        n = tbx_zigzag_encode(sizeof(op->my_id), &(buffer[bpos]));
         if (n<0) {
             again = 1;
             n=4;
@@ -252,21 +254,21 @@ op_status_t osrc_remove_regex_object_func(void *arg, int id)
         memcpy(&(buffer[bpos]), &(op->my_id), sizeof(op->my_id));
         bpos += sizeof(op->my_id);
 
-        n = zigzag_encode(osrc->spin_fail, &(buffer[bpos]));
+        n = tbx_zigzag_encode(osrc->spin_fail, &(buffer[bpos]));
         if (n<0) {
             again = 1;
             n=4;
         }
         bpos += n;
 
-        n = zigzag_encode(op->recurse_depth, &(buffer[bpos]));
+        n = tbx_zigzag_encode(op->recurse_depth, &(buffer[bpos]));
         if (n<0) {
             again = 1;
             n=4;
         }
         bpos += n;
 
-        n = zigzag_encode(op->obj_types, &(buffer[bpos]));
+        n = tbx_zigzag_encode(op->obj_types, &(buffer[bpos]));
         if (n<0) {
             again = 1;
             n=4;
@@ -290,7 +292,7 @@ op_status_t osrc_remove_regex_object_func(void *arg, int id)
         if (again == 1) {
             bufsize = bpos + 10;
             free(buffer);
-            type_malloc(buffer, unsigned char, bufsize);
+            tbx_type_malloc(buffer, unsigned char, bufsize);
         }
     } while (again == 1);
 
@@ -344,7 +346,7 @@ op_generic_t *osrc_remove_regex_object(object_service_fn_t *os, creds_t *creds, 
     osrc_remove_regex_t *op;
     op_generic_t *gop;
 
-    type_malloc(op, osrc_remove_regex_t, 1);
+    tbx_type_malloc(op, osrc_remove_regex_t, 1);
     op->os = os;
     op->creds = creds;
     op->path = path;
@@ -352,7 +354,7 @@ op_generic_t *osrc_remove_regex_object(object_service_fn_t *os, creds_t *creds, 
     op->obj_types = obj_types;
     op->recurse_depth = recurse_depth;
     op->my_id = 0;
-    get_random(&(op->my_id), sizeof(op->my_id));
+    tbx_random_bytes_get(&(op->my_id), sizeof(op->my_id));
 
     gop = new_thread_pool_op(osrc->tpc, NULL, osrc_remove_regex_object_func, (void *)op, free, 1);
     return(gop);
@@ -380,7 +382,7 @@ op_generic_t *osrc_abort_remove_regex_object(object_service_fn_t *os, op_generic
     mq_msg_append_mem(msg, osrc->host_id, osrc->host_id_len, MQF_MSG_KEEP_DATA);
     osrc_add_creds(os, op->creds, msg);
 
-    bpos = zigzag_encode(sizeof(op->my_id), buf);
+    bpos = tbx_zigzag_encode(sizeof(op->my_id), buf);
     memcpy(&(buf[bpos]), &(op->my_id), sizeof(op->my_id));
     bpos += sizeof(op->my_id);
     mq_msg_append_mem(msg, buf, bpos, MQF_MSG_KEEP_DATA);
@@ -454,19 +456,19 @@ op_status_t osrc_regex_object_set_multiple_attrs_func(void *arg, int id)
     }
 
     bufsize = 4096;
-    type_malloc(buffer, unsigned char, bufsize);
+    tbx_type_malloc(buffer, unsigned char, bufsize);
     do {
         again = 0;
         bpos = 0;
 
-        n = zigzag_encode(osrc->timeout, buffer);
+        n = tbx_zigzag_encode(osrc->timeout, buffer);
         if (n<0) {
             again = 1;
             n=4;
         }
         bpos += n;
 
-        n = zigzag_encode(sizeof(op->my_id), &(buffer[bpos]));
+        n = tbx_zigzag_encode(sizeof(op->my_id), &(buffer[bpos]));
         if (n<0) {
             again = 1;
             n=4;
@@ -475,21 +477,21 @@ op_status_t osrc_regex_object_set_multiple_attrs_func(void *arg, int id)
         memcpy(&(buffer[bpos]), &(op->my_id), sizeof(op->my_id));
         bpos += sizeof(op->my_id);
 
-        n = zigzag_encode(osrc->spin_fail, &(buffer[bpos]));
+        n = tbx_zigzag_encode(osrc->spin_fail, &(buffer[bpos]));
         if (n<0) {
             again = 1;
             n=4;
         }
         bpos += n;
 
-        n = zigzag_encode(op->recurse_depth, &(buffer[bpos]));
+        n = tbx_zigzag_encode(op->recurse_depth, &(buffer[bpos]));
         if (n<0) {
             again = 1;
             n=4;
         }
         bpos += n;
 
-        n = zigzag_encode(op->obj_types, &(buffer[bpos]));
+        n = tbx_zigzag_encode(op->obj_types, &(buffer[bpos]));
         if (n<0) {
             again = 1;
             n=4;
@@ -513,15 +515,15 @@ op_status_t osrc_regex_object_set_multiple_attrs_func(void *arg, int id)
         if (again == 1) {
             bufsize = bpos + 10;
             free(buffer);
-            type_malloc(buffer, unsigned char, bufsize);
+            tbx_type_malloc(buffer, unsigned char, bufsize);
         }
 
-        bpos += zigzag_encode(op->n_attrs, (unsigned char *)&(buffer[bpos]));
+        bpos += tbx_zigzag_encode(op->n_attrs, (unsigned char *)&(buffer[bpos]));
 
         for (i=0; i<op->n_attrs; i++) {
             log_printf(15, "i=%d key=%s val=%p bpos=%d\n", i, op->key[i], op->val[i], bpos);
             len = strlen(op->key[i]);
-            n = (again == 0) ? zigzag_encode(len, (unsigned char *)&(buffer[bpos])) : 4;
+            n = (again == 0) ? tbx_zigzag_encode(len, (unsigned char *)&(buffer[bpos])) : 4;
             if (n<0) {
                 again = 1;
                 n=4;
@@ -531,7 +533,7 @@ op_status_t osrc_regex_object_set_multiple_attrs_func(void *arg, int id)
             bpos += len;
 
             len = op->v_size[i];
-            n = (again == 0) ? zigzag_encode(len, (unsigned char *)&(buffer[bpos])) : 4;
+            n = (again == 0) ? tbx_zigzag_encode(len, (unsigned char *)&(buffer[bpos])) : 4;
             if (n<0) {
                 again = 1;
                 n=4;
@@ -592,7 +594,7 @@ op_generic_t *osrc_regex_object_set_multiple_attrs(object_service_fn_t *os, cred
     osrc_set_regex_t *op;
     op_generic_t *gop;
 
-    type_malloc(op, osrc_set_regex_t, 1);
+    tbx_type_malloc(op, osrc_set_regex_t, 1);
     op->os = os;
     op->creds = creds;
     op->id = id;
@@ -605,7 +607,7 @@ op_generic_t *osrc_regex_object_set_multiple_attrs(object_service_fn_t *os, cred
     op->v_size= v_size;
     op->n_attrs = n_attrs;
     op->my_id = 0;
-    get_random(&(op->my_id), sizeof(op->my_id));
+    tbx_random_bytes_get(&(op->my_id), sizeof(op->my_id));
 
     gop = new_thread_pool_op(osrc->tpc, NULL, osrc_regex_object_set_multiple_attrs_func, (void *)op, free, 1);
     gop_set_private(gop, op);
@@ -635,7 +637,7 @@ op_generic_t *osrc_abort_regex_object_set_multiple_attrs(object_service_fn_t *os
     mq_msg_append_mem(msg, osrc->host_id, osrc->host_id_len, MQF_MSG_KEEP_DATA);
     osrc_add_creds(os, op->creds, msg);
 
-    bpos = zigzag_encode(sizeof(op->my_id), buf);
+    bpos = tbx_zigzag_encode(sizeof(op->my_id), buf);
     memcpy(&(buf[bpos]), &(op->my_id), sizeof(op->my_id));
     bpos += sizeof(op->my_id);
     mq_msg_append_mem(msg, buf, bpos, MQF_MSG_KEEP_DATA);
@@ -700,8 +702,8 @@ op_generic_t *osrc_create_object(object_service_fn_t *os, creds_t *creds, char *
     osrc_add_creds(os, creds, msg);
     mq_msg_append_mem(msg, path, strlen(path)+1, MQF_MSG_KEEP_DATA);
 
-    n = zigzag_encode(type, buffer);
-    type_malloc(sent, unsigned char, n);
+    n = tbx_zigzag_encode(type, buffer);
+    tbx_type_malloc(sent, unsigned char, n);
     memcpy(sent, buffer, n);
     mq_msg_append_frame(msg, mq_frame_new(sent, n, MQF_MSG_AUTO_FREE));
 
@@ -849,18 +851,18 @@ op_generic_t *osrc_copy_mult_attrs_internal(object_service_fn_t *os, osrc_mult_a
     for (i=0; i<ma->n; i++) {
         nmax += strlen(ma->key[i]) + 4 + strlen(ma->key_dest[i]) + 4;
     }
-    type_malloc(data, char, nmax);
+    tbx_type_malloc(data, char, nmax);
     bpos = 0;
-    bpos += zigzag_encode(osrc->timeout, (unsigned char *)&(data[bpos]));
-    bpos += zigzag_encode(ma->n, (unsigned char *)&(data[bpos]));
+    bpos += tbx_zigzag_encode(osrc->timeout, (unsigned char *)&(data[bpos]));
+    bpos += tbx_zigzag_encode(ma->n, (unsigned char *)&(data[bpos]));
     for (i=0; i<ma->n; i++) {
         len = strlen(ma->key[i]);
-        bpos += zigzag_encode(len, (unsigned char *)&(data[bpos]));
+        bpos += tbx_zigzag_encode(len, (unsigned char *)&(data[bpos]));
         memcpy(&(data[bpos]), ma->key[i], len);
         bpos += len;
 
         len = strlen(ma->key_dest[i]);
-        bpos += zigzag_encode(len, (unsigned char *)&(data[bpos]));
+        bpos += tbx_zigzag_encode(len, (unsigned char *)&(data[bpos]));
         memcpy(&(data[bpos]), ma->key_dest[i], len);
         bpos += len;
     }
@@ -885,7 +887,7 @@ op_generic_t *osrc_copy_multiple_attrs(object_service_fn_t *os, creds_t *creds, 
 {
     osrc_mult_attr_t *ma;
 
-    type_malloc_clear(ma, osrc_mult_attr_t, 1);
+    tbx_type_malloc_clear(ma, osrc_mult_attr_t, 1);
     ma->os = os;
     ma->fd = fd_src;
     ma->fd_dest = fd_dest;
@@ -905,7 +907,7 @@ op_generic_t *osrc_copy_attr(object_service_fn_t *os, creds_t *creds, os_fd_t *f
 {
     osrc_mult_attr_t *ma;
 
-    type_malloc_clear(ma, osrc_mult_attr_t, 1);
+    tbx_type_malloc_clear(ma, osrc_mult_attr_t, 1);
     ma->os = os;
     ma->fd = fd_src;
     ma->fd_dest = fd_dest;
@@ -950,23 +952,23 @@ op_generic_t *osrc_symlink_mult_attrs_internal(object_service_fn_t *os, osrc_mul
     for (i=0; i<ma->n; i++) {
         nmax += strlen(ma->src_path[i]) + 4 + strlen(ma->key[i]) + 4 + strlen(ma->key_dest[i]) + 4;
     }
-    type_malloc(data, char, nmax);
+    tbx_type_malloc(data, char, nmax);
     bpos = 0;
-    bpos += zigzag_encode(osrc->timeout, (unsigned char *)&(data[bpos]));
-    bpos += zigzag_encode(ma->n, (unsigned char *)&(data[bpos]));
+    bpos += tbx_zigzag_encode(osrc->timeout, (unsigned char *)&(data[bpos]));
+    bpos += tbx_zigzag_encode(ma->n, (unsigned char *)&(data[bpos]));
     for (i=0; i<ma->n; i++) {
         len = strlen(ma->src_path[i]);
-        bpos += zigzag_encode(len, (unsigned char *)&(data[bpos]));
+        bpos += tbx_zigzag_encode(len, (unsigned char *)&(data[bpos]));
         memcpy(&(data[bpos]), ma->src_path[i], len);
         bpos += len;
 
         len = strlen(ma->key[i]);
-        bpos += zigzag_encode(len, (unsigned char *)&(data[bpos]));
+        bpos += tbx_zigzag_encode(len, (unsigned char *)&(data[bpos]));
         memcpy(&(data[bpos]), ma->key[i], len);
         bpos += len;
 
         len = strlen(ma->key_dest[i]);
-        bpos += zigzag_encode(len, (unsigned char *)&(data[bpos]));
+        bpos += tbx_zigzag_encode(len, (unsigned char *)&(data[bpos]));
         memcpy(&(data[bpos]), ma->key_dest[i], len);
         bpos += len;
     }
@@ -991,7 +993,7 @@ op_generic_t *osrc_symlink_multiple_attrs(object_service_fn_t *os, creds_t *cred
 {
     osrc_mult_attr_t *ma;
 
-    type_malloc_clear(ma, osrc_mult_attr_t, 1);
+    tbx_type_malloc_clear(ma, osrc_mult_attr_t, 1);
     ma->os = os;
     ma->src_path = src_path;
     ma->key = key_src;
@@ -1011,7 +1013,7 @@ op_generic_t *osrc_symlink_attr(object_service_fn_t *os, creds_t *creds, char *s
 {
     osrc_mult_attr_t *ma;
 
-    type_malloc_clear(ma, osrc_mult_attr_t, 1);
+    tbx_type_malloc_clear(ma, osrc_mult_attr_t, 1);
     ma->os = os;
     ma->src_path = &(ma->src_tmp);
     ma->src_tmp = src_path;
@@ -1055,18 +1057,18 @@ op_generic_t *osrc_move_mult_attrs_internal(object_service_fn_t *os, osrc_mult_a
     for (i=0; i<ma->n; i++) {
         nmax += strlen(ma->key[i]) + 4 + strlen(ma->key_dest[i]) + 4;
     }
-    type_malloc(data, char, nmax);
+    tbx_type_malloc(data, char, nmax);
     bpos = 0;
-    bpos += zigzag_encode(osrc->timeout, (unsigned char *)&(data[bpos]));
-    bpos += zigzag_encode(ma->n, (unsigned char *)&(data[bpos]));
+    bpos += tbx_zigzag_encode(osrc->timeout, (unsigned char *)&(data[bpos]));
+    bpos += tbx_zigzag_encode(ma->n, (unsigned char *)&(data[bpos]));
     for (i=0; i<ma->n; i++) {
         len = strlen(ma->key[i]);
-        bpos += zigzag_encode(len, (unsigned char *)&(data[bpos]));
+        bpos += tbx_zigzag_encode(len, (unsigned char *)&(data[bpos]));
         memcpy(&(data[bpos]), ma->key[i], len);
         bpos += len;
 
         len = strlen(ma->key_dest[i]);
-        bpos += zigzag_encode(len, (unsigned char *)&(data[bpos]));
+        bpos += tbx_zigzag_encode(len, (unsigned char *)&(data[bpos]));
         memcpy(&(data[bpos]), ma->key_dest[i], len);
         bpos += len;
     }
@@ -1091,7 +1093,7 @@ op_generic_t *osrc_move_multiple_attrs(object_service_fn_t *os, creds_t *creds, 
 {
     osrc_mult_attr_t *ma;
 
-    type_malloc_clear(ma, osrc_mult_attr_t, 1);
+    tbx_type_malloc_clear(ma, osrc_mult_attr_t, 1);
     ma->os = os;
     ma->fd = fd;
     ma->key = key_old;
@@ -1110,7 +1112,7 @@ op_generic_t *osrc_move_attr(object_service_fn_t *os, creds_t *creds, os_fd_t *f
 {
     osrc_mult_attr_t *ma;
 
-    type_malloc_clear(ma, osrc_mult_attr_t, 1);
+    tbx_type_malloc_clear(ma, osrc_mult_attr_t, 1);
     ma->os = os;
     ma->fd = fd;
     ma->key = &(ma->key_tmp);
@@ -1249,16 +1251,16 @@ op_generic_t *osrc_get_mult_attrs_internal(object_service_fn_t *os, osrc_mult_at
     for (i=0; i<ma->n; i++) {
         nmax += strlen(ma->key[i]) + 4 + 4;
     }
-    type_malloc(data, char, nmax);
-    bpos = zigzag_encode(osrc->max_stream, (unsigned char *)data);
-    bpos += zigzag_encode(osrc->timeout, (unsigned char *)&(data[bpos]));
-    bpos += zigzag_encode(ma->n, (unsigned char *)&(data[bpos]));
+    tbx_type_malloc(data, char, nmax);
+    bpos = tbx_zigzag_encode(osrc->max_stream, (unsigned char *)data);
+    bpos += tbx_zigzag_encode(osrc->timeout, (unsigned char *)&(data[bpos]));
+    bpos += tbx_zigzag_encode(ma->n, (unsigned char *)&(data[bpos]));
     for (i=0; i<ma->n; i++) {
         len = strlen(ma->key[i]);
-        bpos += zigzag_encode(len, (unsigned char *)&(data[bpos]));
+        bpos += tbx_zigzag_encode(len, (unsigned char *)&(data[bpos]));
         memcpy(&(data[bpos]), ma->key[i], len);
         bpos += len;
-        bpos += zigzag_encode(ma->v_size[i], (unsigned char *)&(data[bpos]));
+        bpos += tbx_zigzag_encode(ma->v_size[i], (unsigned char *)&(data[bpos]));
     }
     mq_msg_append_mem(msg, data, bpos, MQF_MSG_AUTO_FREE);
 
@@ -1282,7 +1284,7 @@ op_generic_t *osrc_get_multiple_attrs(object_service_fn_t *os, creds_t *creds, o
 {
     osrc_mult_attr_t *ma;
 
-    type_malloc_clear(ma, osrc_mult_attr_t, 1);
+    tbx_type_malloc_clear(ma, osrc_mult_attr_t, 1);
     ma->os = os;
     ma->fd = fd;
     ma->key = key;
@@ -1303,7 +1305,7 @@ op_generic_t *osrc_get_attr(object_service_fn_t *os, creds_t *creds, os_fd_t *fd
 {
     osrc_mult_attr_t *ma;
 
-    type_malloc_clear(ma, osrc_mult_attr_t, 1);
+    tbx_type_malloc_clear(ma, osrc_mult_attr_t, 1);
     ma->os = os;
     ma->fd = fd;
     ma->key = &(ma->key_tmp);
@@ -1345,17 +1347,17 @@ op_generic_t *osrc_set_mult_attrs_internal(object_service_fn_t *os, osrc_mult_at
     for (i=0; i<ma->n; i++) {
         nmax += strlen(ma->key[i]) + 4 + ma->v_size[i] + 4;
     }
-    type_malloc(data, char, nmax);
+    tbx_type_malloc(data, char, nmax);
     bpos = 0;
-    bpos += zigzag_encode(osrc->timeout, (unsigned char *)&(data[bpos]));
-    bpos += zigzag_encode(ma->n, (unsigned char *)&(data[bpos]));
+    bpos += tbx_zigzag_encode(osrc->timeout, (unsigned char *)&(data[bpos]));
+    bpos += tbx_zigzag_encode(ma->n, (unsigned char *)&(data[bpos]));
     for (i=0; i<ma->n; i++) {
         len = strlen(ma->key[i]);
-        bpos += zigzag_encode(len, (unsigned char *)&(data[bpos]));
+        bpos += tbx_zigzag_encode(len, (unsigned char *)&(data[bpos]));
         memcpy(&(data[bpos]), ma->key[i], len);
         bpos += len;
 
-        bpos += zigzag_encode(ma->v_size[i], (unsigned char *)&(data[bpos]));
+        bpos += tbx_zigzag_encode(ma->v_size[i], (unsigned char *)&(data[bpos]));
         if (ma->v_size[i] > 0) {
             memcpy(&(data[bpos]), ma->val[i], ma->v_size[i]);
             bpos += ma->v_size[i];
@@ -1383,7 +1385,7 @@ op_generic_t *osrc_set_multiple_attrs(object_service_fn_t *os, creds_t *creds, o
 {
     osrc_mult_attr_t *ma;
 
-    type_malloc_clear(ma, osrc_mult_attr_t, 1);
+    tbx_type_malloc_clear(ma, osrc_mult_attr_t, 1);
     ma->os = os;
     ma->fd = fd;
     ma->key = key;
@@ -1404,7 +1406,7 @@ op_generic_t *osrc_set_attr(object_service_fn_t *os, creds_t *creds, os_fd_t *fd
 {
     osrc_mult_attr_t *ma;
 
-    type_malloc_clear(ma, osrc_mult_attr_t, 1);
+    tbx_type_malloc_clear(ma, osrc_mult_attr_t, 1);
     ma->os = os;
     ma->fd = fd;
     ma->key = &(ma->key_tmp);
@@ -1461,7 +1463,7 @@ int osrc_next_attr(os_attr_iter_t *oit, char **key, void **val, int *v_size)
 
     //** Valid key so read it
     if (key != NULL) {
-        type_malloc(*key, char, n+1);
+        tbx_type_malloc(*key, char, n+1);
         (*key)[n] = 0;
         err = mq_stream_read(it->mqs, *key, n);
     } else {
@@ -1569,13 +1571,13 @@ os_attr_iter_t *osrc_create_attr_iter(object_service_fn_t *os, creds_t *creds, o
     mq_msg_append_mem(msg, ofd->data, ofd->size, MQF_MSG_KEEP_DATA);
 
     bufsize = 4096;
-    type_malloc(buffer, unsigned char, bufsize);
+    tbx_type_malloc(buffer, unsigned char, bufsize);
     do {
         again = 0;
         bpos = 0;
 
-        bpos += zigzag_encode(osrc->timeout, buffer);
-        bpos += zigzag_encode(v_max, &(buffer[bpos]));
+        bpos += tbx_zigzag_encode(osrc->timeout, buffer);
+        bpos += tbx_zigzag_encode(v_max, &(buffer[bpos]));
 
         n = os_regex_table_pack(attr, &(buffer[(again==0) ? bpos : 0]), bufsize-bpos);
         if (n < 0) {
@@ -1587,7 +1589,7 @@ os_attr_iter_t *osrc_create_attr_iter(object_service_fn_t *os, creds_t *creds, o
         if (again == 1) {
             bufsize = bpos + 10;
             free(buffer);
-            type_malloc(buffer, unsigned char, bufsize);
+            tbx_type_malloc(buffer, unsigned char, bufsize);
         }
     } while (again == 1);
 
@@ -1596,7 +1598,7 @@ os_attr_iter_t *osrc_create_attr_iter(object_service_fn_t *os, creds_t *creds, o
 
 
     //** Make the iterator handle
-    type_malloc_clear(it, osrc_attr_iter_t, 1);
+    tbx_type_malloc_clear(it, osrc_attr_iter_t, 1);
     it->os = os;
     it->v_max = v_max;
 
@@ -1688,7 +1690,7 @@ int osrc_next_object(os_object_iter_t *oit, char **fname, int *prefix_len)
         log_printf(5, "ERROR reading object len!");
         return(-1);
     }
-    type_malloc(*fname, char, n+1);
+    tbx_type_malloc(*fname, char, n+1);
     (*fname)[n] = 0;
     err = mq_stream_read(it->mqs, *fname, n);
     if (err != 0) {
@@ -1797,15 +1799,15 @@ os_object_iter_t *osrc_create_object_iter(object_service_fn_t *os, creds_t *cred
     osrc_add_creds(os, creds, msg);
 
     bufsize = 4096;
-    type_malloc(buffer, unsigned char, bufsize);
+    tbx_type_malloc(buffer, unsigned char, bufsize);
     do {
         again = 0;
         bpos = 0;
 
-        bpos += zigzag_encode(osrc->timeout, buffer);
-        bpos += zigzag_encode(recurse_depth, &(buffer[bpos]));
-        bpos += zigzag_encode(object_types, &(buffer[bpos]));
-        bpos += zigzag_encode(v_max, &(buffer[bpos]));
+        bpos += tbx_zigzag_encode(osrc->timeout, buffer);
+        bpos += tbx_zigzag_encode(recurse_depth, &(buffer[bpos]));
+        bpos += tbx_zigzag_encode(object_types, &(buffer[bpos]));
+        bpos += tbx_zigzag_encode(v_max, &(buffer[bpos]));
 
         n = os_regex_table_pack(path, &(buffer[(again==0) ? bpos : 0]), bufsize-bpos);
         if (n < 0) {
@@ -1832,7 +1834,7 @@ os_object_iter_t *osrc_create_object_iter(object_service_fn_t *os, creds_t *cred
         if (again == 1) {
             bufsize = bpos + 10;
             free(buffer);
-            type_malloc(buffer, unsigned char, bufsize);
+            tbx_type_malloc(buffer, unsigned char, bufsize);
         }
     } while (again == 1);
 
@@ -1841,7 +1843,7 @@ os_object_iter_t *osrc_create_object_iter(object_service_fn_t *os, creds_t *cred
 
 
     //** Make the iterator handle
-    type_malloc_clear(it, osrc_object_iter_t, 1);
+    tbx_type_malloc_clear(it, osrc_object_iter_t, 1);
     it->iter_type = OSRC_ITER_AREGEX;
     it->os = os;
     it->v_max = v_max;
@@ -1859,7 +1861,7 @@ os_object_iter_t *osrc_create_object_iter(object_service_fn_t *os, creds_t *cred
 
     //** Go ahead and make the regex attr iter if needed
     if (it_attr != NULL) {
-        type_malloc_clear(ait, osrc_attr_iter_t, 1);
+        tbx_type_malloc_clear(ait, osrc_attr_iter_t, 1);
         ait->os = os;
         ait->v_max = v_max;
         ait->is_sub_iter = 1;
@@ -1906,22 +1908,22 @@ os_object_iter_t *osrc_create_object_iter_alist(object_service_fn_t *os, creds_t
     }
 
     bufsize = 4096 + n_keys + 2*n + 1;
-    type_malloc(buffer, unsigned char, bufsize);
+    tbx_type_malloc(buffer, unsigned char, bufsize);
     do {
         again = 0;
         bpos = 0;
 
-        bpos += zigzag_encode(osrc->timeout, buffer);
-        bpos += zigzag_encode(recurse_depth, &(buffer[bpos]));
-        bpos += zigzag_encode(object_types, &(buffer[bpos]));
+        bpos += tbx_zigzag_encode(osrc->timeout, buffer);
+        bpos += tbx_zigzag_encode(recurse_depth, &(buffer[bpos]));
+        bpos += tbx_zigzag_encode(object_types, &(buffer[bpos]));
 
-        bpos += zigzag_encode(n_keys, &(buffer[bpos]));
+        bpos += tbx_zigzag_encode(n_keys, &(buffer[bpos]));
         for (i=0; i< n_keys; i++) {
             n = strlen(key[i]);
-            bpos += zigzag_encode(n, &(buffer[bpos]));
+            bpos += tbx_zigzag_encode(n, &(buffer[bpos]));
             memcpy(&(buffer[bpos]), key[i], n);
             bpos += n;
-            bpos += zigzag_encode(v_size[i], &(buffer[bpos]));
+            bpos += tbx_zigzag_encode(v_size[i], &(buffer[bpos]));
         }
 
         n = os_regex_table_pack(path, &(buffer[(again==0) ? bpos : 0]), bufsize-bpos);
@@ -1942,7 +1944,7 @@ os_object_iter_t *osrc_create_object_iter_alist(object_service_fn_t *os, creds_t
         if (again == 1) {
             bufsize = bpos + 10;
             free(buffer);
-            type_malloc(buffer, unsigned char, bufsize);
+            tbx_type_malloc(buffer, unsigned char, bufsize);
         }
     } while (again == 1);
 
@@ -1951,13 +1953,13 @@ os_object_iter_t *osrc_create_object_iter_alist(object_service_fn_t *os, creds_t
 
 
     //** Make the iterator handle
-    type_malloc_clear(it, osrc_object_iter_t, 1);
+    tbx_type_malloc_clear(it, osrc_object_iter_t, 1);
     it->iter_type = OSRC_ITER_ALIST;
     it->os = os;
     it->val = val;
     it->v_size = v_size;
     it->n_keys = n_keys;
-    type_malloc(it->v_size_initial, int, n_keys);
+    tbx_type_malloc(it->v_size_initial, int, n_keys);
     memcpy(it->v_size_initial, it->v_size, n_keys*sizeof(int));
 
     //** Make the gop and execute it
@@ -2016,7 +2018,7 @@ op_status_t osrc_response_open(void *task_arg, int tid)
 
     status = mq_read_status_frame(mq_msg_first(task->response), 0);
     if (status.op_status == OP_STATE_SUCCESS) {
-        type_malloc(fd, osrc_object_fd_t, 1);
+        tbx_type_malloc(fd, osrc_object_fd_t, 1);
         fd->os = arg->os;
 //mq_frame_t *frame = mq_msg_next(task->response);
 //mq_get_frame(frame, (void **)&data, &(fd->size));
@@ -2027,7 +2029,7 @@ op_status_t osrc_response_open(void *task_arg, int tid)
 //mq_get_frame(frame, (void **)&kptr, &(fd->size));
 //intptr_t key = *kptr;
 //log_printf(5, "PTR key=%" PRIdPTR " size=%d\n", key, fd->size);
-        type_malloc(fd->data, char, fd->size);
+        tbx_type_malloc(fd->data, char, fd->size);
         memcpy(fd->data, data, fd->size);
         *(arg->pfd) = fd;
 //     mq_ongoing_host_inc(osrc->ongoing, osrc->remote_host, fd->data, fd->size, osrc->heartbeat);
@@ -2058,10 +2060,10 @@ op_generic_t *osrc_open_object(object_service_fn_t *os, creds_t *creds, char *pa
     int n, hlen;
 
     log_printf(5, "START fname=%s id=%s\n", path, id);
-    type_malloc(arg, osrc_open_t, 1);
+    tbx_type_malloc(arg, osrc_open_t, 1);
     arg->os = os;
     arg->pfd = (osrc_object_fd_t **)pfd;
-    hlen = snprintf(arg->handle, 1024, "%s:%d", osrc->host_id, atomic_global_counter());
+    hlen = snprintf(arg->handle, 1024, "%s:%d", osrc->host_id, tbx_atomic_global_counter());
 
     //** Form the message
     msg = mq_make_exec_core_msg(osrc->remote_host, 1);
@@ -2076,9 +2078,9 @@ op_generic_t *osrc_open_object(object_service_fn_t *os, creds_t *creds, char *pa
     mq_msg_append_mem(msg, path, strlen(path)+1, MQF_MSG_KEEP_DATA);
 
     //** Same for the mode
-    n = zigzag_encode(mode, buffer);
-    n += zigzag_encode(max_wait, &(buffer[n]));
-    type_malloc(sent, unsigned char, n);
+    n = tbx_zigzag_encode(mode, buffer);
+    n += tbx_zigzag_encode(max_wait, &(buffer[n]));
+    tbx_type_malloc(sent, unsigned char, n);
     memcpy(sent, buffer, n);
     mq_msg_append_frame(msg, mq_frame_new(sent, n, MQF_MSG_AUTO_FREE));
 
@@ -2211,9 +2213,9 @@ op_generic_t *osrc_fsck_object(object_service_fn_t *os, creds_t *creds, char *fn
     osrc_add_creds(os, creds, msg);
     mq_msg_append_mem(msg, fname, strlen(fname), MQF_MSG_KEEP_DATA);
 
-    n = zigzag_encode(ftype, buf);
-    n += zigzag_encode(resolution, &(buf[n]));
-    n += zigzag_encode(osrc->timeout, &(buf[n]));
+    n = tbx_zigzag_encode(ftype, buf);
+    n += tbx_zigzag_encode(resolution, &(buf[n]));
+    n += tbx_zigzag_encode(osrc->timeout, &(buf[n]));
     mq_msg_append_mem(msg, buf, n, MQF_MSG_KEEP_DATA);
     mq_msg_append_mem(msg, NULL, 0, MQF_MSG_KEEP_DATA);
 
@@ -2253,7 +2255,7 @@ int osrc_next_fsck(object_service_fn_t *os, os_fsck_iter_t *oit, char **bad_fnam
     }
 
     //** Valid object name so read it
-    type_malloc(*bad_fname, char, n+1);
+    tbx_type_malloc(*bad_fname, char, n+1);
     (*bad_fname)[n] = 0;
     err = mq_stream_read(it->mqs, *bad_fname, n);
     if (err != 0) {
@@ -2351,13 +2353,13 @@ os_fsck_iter_t *osrc_create_fsck_iter(object_service_fn_t *os, creds_t *creds, c
     osrc_add_creds(os, creds, msg);
     mq_msg_append_mem(msg, path, strlen(path), MQF_MSG_KEEP_DATA);
 
-    n = zigzag_encode(mode, buf);
-    n += zigzag_encode(osrc->timeout, &(buf[n]));
+    n = tbx_zigzag_encode(mode, buf);
+    n += tbx_zigzag_encode(osrc->timeout, &(buf[n]));
     mq_msg_append_mem(msg, buf, n, MQF_MSG_KEEP_DATA);
     mq_msg_append_mem(msg, NULL, 0, MQF_MSG_KEEP_DATA);
 
     //** Make the iterator handle
-    type_malloc_clear(it, osrc_fsck_iter_t, 1);
+    tbx_type_malloc_clear(it, osrc_fsck_iter_t, 1);
     it->os = os;
     it->mode = mode;
 
@@ -2469,11 +2471,11 @@ object_service_fn_t *object_service_remote_client_create(service_manager_t *ess,
     log_printf(10, "START\n");
     if (section == NULL) section = "os_remote_client";
 
-    type_malloc_clear(os, object_service_fn_t, 1);
-    type_malloc_clear(osrc, osrc_priv_t, 1);
+    tbx_type_malloc_clear(os, object_service_fn_t, 1);
+    tbx_type_malloc_clear(osrc, osrc_priv_t, 1);
     os->priv = (void *)osrc;
 
-    str = inip_get_string(fd, section, "os_temp", NULL);
+    str = tbx_inip_string_get(fd, section, "os_temp", NULL);
     if (str != NULL) {  //** Running in test/temp
         log_printf(0, "NOTE: Running in debug mode by loading Remote server locally!\n");
         osrc->os_remote = object_service_remote_server_create(ess, fd, str);
@@ -2481,30 +2483,30 @@ object_service_fn_t *object_service_remote_client_create(service_manager_t *ess,
         osrc->os_temp = ((osrs_priv_t *)(osrc->os_remote->priv))->os_child;
         free(str);
     } else {
-        asection = inip_get_string(fd, section, "authn", NULL);
-        atype = (asection == NULL) ? strdup(AUTHN_TYPE_FAKE) : inip_get_string(fd, asection, "type", AUTHN_TYPE_FAKE);
+        asection = tbx_inip_string_get(fd, section, "authn", NULL);
+        atype = (asection == NULL) ? strdup(AUTHN_TYPE_FAKE) : tbx_inip_string_get(fd, asection, "type", AUTHN_TYPE_FAKE);
         authn_create = lookup_service(ess, AUTHN_AVAILABLE, atype);
         osrc->authn = (*authn_create)(ess, fd, asection);
         free(atype);
         free(asection);
     }
 
-    osrc->timeout = inip_get_integer(fd, section, "timeout", 60);
-    osrc->heartbeat = inip_get_integer(fd, section, "heartbeat", 600);
-    osrc->remote_host_string = inip_get_string(fd, section, "remote_address", NULL);
+    osrc->timeout = tbx_inip_integer_get(fd, section, "timeout", 60);
+    osrc->heartbeat = tbx_inip_integer_get(fd, section, "heartbeat", 600);
+    osrc->remote_host_string = tbx_inip_string_get(fd, section, "remote_address", NULL);
     osrc->remote_host = mq_string_to_address(osrc->remote_host_string);
 
-    osrc->max_stream = inip_get_integer(fd, section, "max_stream", 1024*1024);
-    osrc->stream_timeout = inip_get_integer(fd, section, "stream_timeout", 65);
-    osrc->spin_interval = inip_get_integer(fd, section, "spin_interval", 1);
-    osrc->spin_fail = inip_get_integer(fd, section, "spin_fail", 4);
+    osrc->max_stream = tbx_inip_integer_get(fd, section, "max_stream", 1024*1024);
+    osrc->stream_timeout = tbx_inip_integer_get(fd, section, "stream_timeout", 65);
+    osrc->spin_interval = tbx_inip_integer_get(fd, section, "spin_interval", 1);
+    osrc->spin_fail = tbx_inip_integer_get(fd, section, "spin_fail", 4);
 
     apr_pool_create(&osrc->mpool, NULL);
     apr_thread_mutex_create(&(osrc->lock), APR_THREAD_MUTEX_DEFAULT, osrc->mpool);
     apr_thread_cond_create(&(osrc->cond), osrc->mpool);
     apr_gethostname(hostname, sizeof(hostname), osrc->mpool);
     n = 0;
-    get_random(&n, sizeof(n));
+    tbx_random_bytes_get(&n, sizeof(n));
     snprintf(buffer, sizeof(buffer), "%d:%s:%s:%u", osrc->heartbeat, hostname, _lio_exe_name, n);
     osrc->host_id = strdup(buffer);
     osrc->host_id_len = strlen(osrc->host_id)+1;

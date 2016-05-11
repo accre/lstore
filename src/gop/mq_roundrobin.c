@@ -1,25 +1,25 @@
 #include "mq_portal.h"
 #include "mq_roundrobin.h"
-#include "type_malloc.h"
-#include "log.h"
+#include <tbx/type_malloc.h>
+#include <tbx/log.h>
 
 mq_worker_t *mq_worker_table_first(mq_worker_table_t *table)
 {
-    move_to_top(table);
-    return (mq_worker_t *)get_ele_data(table);
+    tbx_stack_move_to_top(table);
+    return (mq_worker_t *)tbx_get_ele_data(table);
 }
 
 mq_worker_t *mq_worker_table_next(mq_worker_table_t *table)
 {
-    move_down(table);
-    return (mq_worker_t *)get_ele_data(table);
+    tbx_stack_move_down(table);
+    return (mq_worker_t *)tbx_get_ele_data(table);
 }
 
 mq_worker_t *mq_worker_create(char *address, int free_slots)
 {
 
     mq_worker_t *worker;
-    type_malloc(worker, mq_worker_t, 1);
+    tbx_type_malloc(worker, mq_worker_t, 1);
 
     worker->address = address;
     worker->free_slots = free_slots;
@@ -30,19 +30,19 @@ mq_worker_t *mq_worker_create(char *address, int free_slots)
 
 mq_worker_table_t *mq_worker_table_create()
 {
-    return (new_stack());
+    return (tbx_stack_new());
 }
 
 void mq_worker_table_destroy(mq_worker_table_t *table)
 {
     log_printf(5, "Destroying worker table\n");
-    move_to_top(table);
+    tbx_stack_move_to_top(table);
     mq_worker_t *worker;
-    while( (worker = (mq_worker_t *)pop(table)) != NULL) {
+    while( (worker = (mq_worker_t *)tbx_stack_pop(table)) != NULL) {
         free(worker->address);
         free(worker);
     }
-    free_stack(table, 0);
+    tbx_free_stack(table, 0);
     log_printf(5, "Successfully destroyed worker table\n");
 }
 
@@ -52,14 +52,14 @@ void mq_worker_table_destroy(mq_worker_table_t *table)
 mq_worker_t *mq_get_worker(mq_worker_table_t *table, char *address)
 {
     if(address == NULL) {
-        return (mq_worker_t *)pop(table);
+        return (mq_worker_t *)tbx_stack_pop(table);
     } else {
         mq_worker_t *worker;
         log_printf(10, "Address %s requested\n", address);
         for(worker = mq_worker_table_first(table); worker != NULL; worker = mq_worker_table_next(table)) {
             if(mq_data_compare(worker->address, strlen(worker->address), address, strlen(address)) == 0) {
                 log_printf(10, "Found worker!\n");
-                delete_current(table, 0, 0);
+                tbx_delete_current(table, 0, 0);
                 return worker;
             }
         }
@@ -76,7 +76,7 @@ mq_worker_t *mq_get_available_worker(mq_worker_table_t *table)
     mq_worker_t *worker;
     for(worker = mq_worker_table_first(table); worker != NULL; worker = mq_worker_table_next(table)) {
         if(worker->free_slots > 0) {
-            delete_current(table, 0, 0);
+            tbx_delete_current(table, 0, 0);
             return worker;
         }
     }
@@ -86,8 +86,8 @@ mq_worker_t *mq_get_available_worker(mq_worker_table_t *table)
 
 void mq_worker_table_add(mq_worker_table_t *table, mq_worker_t *worker)
 {
-    move_to_bottom(table);
-    insert_below(table, worker);
+    tbx_stack_move_to_bottom(table);
+    tbx_stack_insert_below(table, worker);
     log_printf(15, "Added worker with address = %s\tslots = %d\n", worker->address, worker->free_slots);
 }
 
@@ -112,7 +112,7 @@ void mq_deregister_worker(mq_worker_table_t *table, char *address)
     for(worker = mq_worker_table_first(table); worker != NULL; worker = mq_worker_table_next(table)) {
         if(mq_data_compare(worker->address, strlen(worker->address), address, strlen(address)) == 0) {
             log_printf(5, "Removing worker with address %s, free slots %d\n", worker->address, worker->free_slots);
-            delete_current(table, 0, 0);
+            tbx_delete_current(table, 0, 0);
             free(worker->address);
             free(worker);
             return;
@@ -194,14 +194,14 @@ int mq_send_message(mq_msg_t *msg, mq_worker_table_t *table, mq_portal_t *portal
 
 mq_processing_queue *processing_queue_new()
 {
-    return new_stack();
+    return tbx_stack_new();
 }
 
 void processing_queue_destroy(mq_processing_queue *queue)
 {
     mq_msg_t *msg;
-    move_to_top(queue);
-    while((msg = (mq_msg_t *)pop(queue)) != NULL) {
+    tbx_stack_move_to_top(queue);
+    while((msg = (mq_msg_t *)tbx_stack_pop(queue)) != NULL) {
         mq_msg_destroy(msg);
     }
     free(queue);
@@ -209,32 +209,32 @@ void processing_queue_destroy(mq_processing_queue *queue)
 
 void processing_queue_add(mq_processing_queue *queue, mq_msg_t *msg)
 {
-    move_to_bottom(queue);
-    insert_below(queue, msg);
+    tbx_stack_move_to_bottom(queue);
+    tbx_stack_insert_below(queue, msg);
     //printf("test: length = %d after adding\n", processing_queue_length(queue));
 }
 
 void processing_queue_push(mq_processing_queue *queue, mq_msg_t *msg)
 {
-    move_to_top(queue);
-    insert_above(queue, msg);
+    tbx_stack_move_to_top(queue);
+    tbx_stack_insert_above(queue, msg);
 }
 
 mq_msg_t *processing_queue_get(mq_processing_queue *queue)
 {
-    //move_to_top(queue);
-    return (mq_msg_t *)pop(queue);
+    //tbx_stack_move_to_top(queue);
+    return (mq_msg_t *)tbx_stack_pop(queue);
 }
 
 int processing_queue_length(mq_processing_queue *queue)
 {
     mq_msg_t *m;
     int i = 0;
-    move_to_top(queue);
-    m = (mq_msg_t *)get_ele_data(queue);
+    tbx_stack_move_to_top(queue);
+    m = (mq_msg_t *)tbx_get_ele_data(queue);
     while(m != NULL) {
-        move_down(queue);
-        m = (mq_msg_t *)get_ele_data(queue);
+        tbx_stack_move_down(queue);
+        m = (mq_msg_t *)tbx_get_ele_data(queue);
         i++;
     }
     return i;

@@ -16,12 +16,12 @@
 
 #include <string.h>
 #include "exnode.h"
-#include "append_printf.h"
-#include "string_token.h"
-#include "iniparse.h"
-#include "type_malloc.h"
-#include "random.h"
-#include "log.h"
+#include <tbx/append_printf.h>
+#include <tbx/string_token.h>
+#include <tbx/iniparse.h>
+#include <tbx/type_malloc.h>
+#include <tbx/random.h>
+#include <tbx/log.h>
 
 typedef struct {
     layout_t *lay;
@@ -120,10 +120,10 @@ int vl_serialize_text(view_t *v, exnode_exchange_t *exp)
     layout_serialize(vl->lay, exp);
 
     //** and my view
-    append_printf(buffer, &used, bufsize, "\n[view-" XIDT "]\n", v->header.id);
-    append_printf(buffer, &used, bufsize, "type=%s\n", view_type(v));
-    append_printf(buffer, &used, bufsize, "layout=" XIDT "\n",layout_id(vl->lay));
-    append_printf(buffer, &used, bufsize, "ref_count=" XIDT "\n\n",v->ref_count);
+    tbx_append_printf(buffer, &used, bufsize, "\n[view-" XIDT "]\n", v->header.id);
+    tbx_append_printf(buffer, &used, bufsize, "type=%s\n", view_type(v));
+    tbx_append_printf(buffer, &used, bufsize, "layout=" XIDT "\n",layout_id(vl->lay));
+    tbx_append_printf(buffer, &used, bufsize, "ref_count=" XIDT "\n\n",v->ref_count);
 
     //** Merge everything together and return it
     exnode_exchange_append_text(exp, buffer);
@@ -171,7 +171,7 @@ int vl_deserialize_text(view_t *v, ex_id_t id, exnode_exchange_t *exp)
     tbx_inip_file_t *fd;
 
     //** Parse the ini text
-    fd = inip_read_text(exp->text);
+    fd = tbx_inip_string_read(exp->text);
 
     //** Make the layout section name
     snprintf(grp, bufsize, "view-" XIDT, id);
@@ -179,7 +179,7 @@ int vl_deserialize_text(view_t *v, ex_id_t id, exnode_exchange_t *exp)
     //** Get the header info
     v->header.id = id;
     v->header.type = VIEW_TYPE_LAYOUT;
-    v->header.name = inip_get_string(fd, grp, "name", "");
+    v->header.name = tbx_inip_string_get(fd, grp, "name", "");
 
     //** and the layout to use
     lay_id = inip_get_unsigned_integer(fd, grp, "layout", 0);
@@ -188,13 +188,13 @@ int vl_deserialize_text(view_t *v, ex_id_t id, exnode_exchange_t *exp)
         return(1);
     }
 
-    inip_destroy(fd);
+    tbx_inip_destroy(fd);
 
     log_printf(0, "vl_deserialize_text: Attempting to load layot id=" XIDT "\n", lay_id);
 
     //** load the layout
     vl->lay = load_layout(lay_id, exp);
-    atomic_inc(vl->lay->ref_count);
+    tbx_atomic_inc(vl->lay->ref_count);
 
     if (vl->lay == NULL) return(-1);
     if (vl->lay == NULL) return(-1);
@@ -238,7 +238,7 @@ int view_layout_set(view_t *v, layout_t *lay)
     view_layout_t *vl = (view_layout_t *)v->priv;
 
     vl->lay = lay;
-    atomic_inc(lay->ref_count);
+    tbx_atomic_inc(lay->ref_count);
 
     return(0);
 }
@@ -255,7 +255,7 @@ void vl_destroy(view_t *v)
     if (v->ref_count > 0) return;
 
     ex_header_release(&(v->header));
-    atomic_dec(vl->lay->ref_count);
+    tbx_atomic_dec(vl->lay->ref_count);
     layout_destroy(vl->lay);
     free(vl);
     free(v);
@@ -271,13 +271,13 @@ view_t *view_layout_create(void *arg)
     view_t *v;
     view_layout_t *vl;
 
-    type_malloc_clear(v, view_t, 1);
-    type_malloc_clear(vl, view_layout_t, 1);
+    tbx_type_malloc_clear(v, view_t, 1);
+    tbx_type_malloc_clear(vl, view_layout_t, 1);
 
     v->priv = (void *)vl;
     generate_ex_id(&(v->header.id));
     v->header.type = VIEW_TYPE_LAYOUT;
-    atomic_set(v->ref_count, 0);
+    tbx_atomic_set(v->ref_count, 0);
 
     v->fn.read = vl_read;
     v->fn.write = vl_write;

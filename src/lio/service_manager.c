@@ -22,8 +22,8 @@
 
 #include <apr_strings.h>
 #include "service_manager.h"
-#include "type_malloc.h"
-#include "log.h"
+#include <tbx/type_malloc.h>
+#include <tbx/log.h>
 
 //***********************************************************************
 //  remove_service - Removes a service
@@ -149,7 +149,7 @@ service_manager_t *create_service_manager()
 {
     service_manager_t *sm;
 
-    type_malloc_clear(sm, service_manager_t, 1);
+    tbx_type_malloc_clear(sm, service_manager_t, 1);
 
     apr_pool_create(&sm->pool, NULL);
     apr_thread_mutex_create(&sm->lock, APR_THREAD_MUTEX_DEFAULT, sm->pool);

@@ -16,11 +16,11 @@
 
 
 #include <assert.h>
-#include "assert_result.h"
+#include <tbx/assert_result.h>
 #include <stdio.h>
-#include "type_malloc.h"
-#include "fmttypes.h"
-#include "string_token.h"
+#include <tbx/type_malloc.h>
+#include <tbx/fmttypes.h>
+#include <tbx/string_token.h>
 
 //*************************************************************************
 // compare_buffers - Compares the byte ranges.  Single byte matches are suppressed
@@ -114,11 +114,11 @@ int main(int argc, char **argv)
             start_option = i;
             if (strcmp(argv[i], "-b") == 0) { //** Block size
                 i++;
-                block_size = string_get_integer(argv[i]);
+                block_size = tbx_stk_string_get_integer(argv[i]);
                 i++;
             } else if (strcmp(argv[i], "-s") == 0) { //** Buffer size
                 i++;
-                buf_size = string_get_integer(argv[i]);
+                buf_size = tbx_stk_string_get_integer(argv[i]);
                 i++;
             }
         } while ((start_option < i) && (i<argc));
@@ -152,8 +152,8 @@ int main(int argc, char **argv)
 
     buf_size /= 2;  //** It's split between the 2 buffers
 
-    type_malloc(buf1, char, buf_size);
-    type_malloc(buf2, char, buf_size);
+    tbx_type_malloc(buf1, char, buf_size);
+    tbx_type_malloc(buf2, char, buf_size);
 
     max_size = (fsize1 > fsize2) ? fsize2 : fsize1;
 

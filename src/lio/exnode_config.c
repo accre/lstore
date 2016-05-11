@@ -22,9 +22,9 @@
 
 #include "service_manager.h"
 #include "exnode.h"
-#include "list.h"
-#include "type_malloc.h"
-#include "random.h"
+#include <tbx/list.h>
+#include <tbx/type_malloc.h>
+#include <tbx/random.h>
 
 service_manager_t *exnode_service_set = NULL;
 
@@ -91,7 +91,7 @@ void exnode_service_set_destroy(service_manager_t *ess)
 
 int exnode_system_init()
 {
-    init_random();
+    tbx_random_startup();
 
     exnode_service_set = exnode_service_set_create();
 
@@ -120,7 +120,7 @@ int exnode_system_config(service_manager_t *ess, data_service_fn_t *ds, resource
 
 void exnode_system_destroy()
 {
-    destroy_random();
+    tbx_random_shutdown();
 
     exnode_service_set_destroy(exnode_service_set);
 }
