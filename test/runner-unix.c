@@ -264,7 +264,7 @@ int process_wait(process_info_t* vec, int n, int timeout) {
     /* Timeout. Kill all the children. */
     for (i = 0; i < n; i++) {
       p = (process_info_t*)(vec + i * sizeof(process_info_t));
-      kill(p->pid, SIGTERM);
+      kill(p->pid, SIGABRT);
     }
     retval = -2;
   }
