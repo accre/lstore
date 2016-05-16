@@ -37,7 +37,7 @@ set(CMAKE_INSTALL_PREFIX "${CMAKE_BINARY_DIR}/local"
 set(USE_SUPERBUILD ON)
 set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -fPIC -D_REENTRANT -D_GNU_SOURCE -D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64 -fvisibility=hidden -Werror=implicit-function-declaration")
-set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -Wall -Wextra -Wno-unused-parameter -Wno-deprecated-declarations -Werror=format -Werror=implicit-function-declaration -Werror=incompatible-pointer-types")
+set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -Wall -Wextra -Wno-unused-parameter -Wno-deprecated-declarations -Werror=format -Werror=implicit-function-declaration")
 set(CMAKE_MACOSX_RPATH ON)
 if(INSTALL_EXTERNALS)
     set(EXTERNAL_INSTALL_DIR ${CMAKE_INSTALL_PREFIX})
@@ -87,6 +87,13 @@ if(ENABLE_FUZZ)
                 "install AFL from http://lcamtuf.coredump.cx/afl/")
     endif()
     find_program(CMAKE_C_COMPILER ${FUZZ_COMPILE_NAME})
+endif()
+
+# Detect compiler flags
+include(CheckCCompilerFlag)
+check_c_compiler_flag(-Werror=incompatible-pointer-types HAS_INCOMPATIBLE_POINTER_WERROR)
+if(HAS_INCOMPATIBLE_POINTER_WERROR)
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Werror=incompatible-pointer-types")
 endif()
 
 # Use gnu-style paths
