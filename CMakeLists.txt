@@ -162,6 +162,23 @@ if(BUILD_TESTS)
     endif()
 endif()
 
+# Build documentation
+find_program(DOXYGEN_PATH doxygen
+             DOC "Path to doxygen executable")
+add_custom_target(docs COMMENT "Build documentation")
+add_custom_target(doxygen COMMAND "${DOXYGEN_PATH}"
+                    WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}/doc/"
+                    COMMENT "Document code with doxygen")
+add_custom_target(sphinx-html COMMAND $(MAKE) "html"
+                    WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}/doc/"
+                    COMMENT "Produce sphinx documentation (HTML)")
+add_custom_target(sphinx-man COMMAND $(MAKE) "man"
+                    WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}/doc/"
+                    COMMENT "Produce sphinx documentation (Man Pages)")
+add_dependencies(sphinx-html doxygen)
+add_dependencies(sphinx-man doxygen)
+add_dependencies(docs sphinx-html sphinx-man)
+
 # Import packaging
 include(LStorePackaging)
 
