@@ -231,27 +231,27 @@ ibp_ridlist_t *rlist;
 } ibp_op_rid_inq_t;
  
 typedef struct _ibp_op_s { //** Individual IO operation
-ibp_context_t *ic;
-op_generic_t gop;
-op_data_t dop;
-tbx_stack_t *hp_parent;  //** Only used for RW coalescing
-int primary_cmd;//** Primary sync IBP command family
-int sub_cmd;    //** sub command, if applicable
-tbx_ns_chksum_t ncs;  //** chksum associated with the command
-union {         //** Holds the individual commands options
-ibp_op_validate_chksum_t validate_op;
-ibp_op_get_chksum_t      get_chksum_op;
-ibp_op_alloc_t  alloc_op;
-ibp_op_merge_alloc_t  merge_op;
-ibp_op_probe_t  probe_op;
-ibp_op_rw_t     rw_op;
-ibp_op_copy_t   copy_op;
-ibp_op_depot_modify_t depot_modify_op;
-ibp_op_depot_inq_t depot_inq_op;
-ibp_op_modify_alloc_t mod_alloc_op;
-ibp_op_rid_inq_t   rid_op;
-ibp_op_version_t   ver_op;
-};
+    ibp_context_t *ic;
+    op_generic_t gop;
+    op_data_t dop;
+    tbx_stack_t *hp_parent;  //** Only used for RW coalescing
+    int primary_cmd;//** Primary sync IBP command family
+    int sub_cmd;    //** sub command, if applicable
+    tbx_ns_chksum_t ncs;  //** chksum associated with the command
+    union {         //** Holds the individual commands options
+        ibp_op_validate_chksum_t validate_op;
+        ibp_op_get_chksum_t      get_chksum_op;
+        ibp_op_alloc_t  alloc_op;
+        ibp_op_merge_alloc_t  merge_op;
+        ibp_op_probe_t  probe_op;
+        ibp_op_rw_t     rw_op;
+        ibp_op_copy_t   copy_op;
+        ibp_op_depot_modify_t depot_modify_op;
+        ibp_op_depot_inq_t depot_inq_op;
+        ibp_op_modify_alloc_t mod_alloc_op;
+        ibp_op_rid_inq_t   rid_op;
+        ibp_op_version_t   ver_op;
+    } ops;
  
 } ibp_op_t;
  

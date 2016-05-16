@@ -53,7 +53,7 @@ typedef struct {
     union {
         ds_ibp_alloc_op_t alloc;
         ds_ibp_truncate_op_t truncate;
-    };
+    } ops;
 }  ds_ibp_op_t;
 
 typedef struct {

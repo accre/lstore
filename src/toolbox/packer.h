@@ -25,6 +25,8 @@
 #include "zlib.h"
 
 #ifdef __cplusplus
+id (*write_resized)(tbx_pack_t *pack, unsigned char *buffer, unsigned int bufsize);
+
 extern "C" {
 #endif
 
@@ -48,7 +50,7 @@ struct tbx_pack_t {
     union {
         tbx_pack_raw_t raw;
         tbx_pack_zlib_t zlib;
-    };
+    } data;
     void (*end)(tbx_pack_t *pack);
     void (*write_resized)(tbx_pack_t *pack, unsigned char *buffer, unsigned int bufsize);
     int  (*write)(tbx_pack_t *pack, unsigned char *data, int nbytes);

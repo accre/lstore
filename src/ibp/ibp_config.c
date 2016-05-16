@@ -147,7 +147,7 @@ int ibp_rw_submit_coalesce(tbx_stack_t *stack, tbx_stack_ele_t *ele)
     op_generic_t *gop = (op_generic_t *)tbx_get_stack_ele_data(ele);
     ibp_op_t *iop = ibp_get_iop(gop);
     ibp_context_t *ic = iop->ic;
-    ibp_op_rw_t *cmd = &(iop->rw_op);
+    ibp_op_rw_t *cmd = &(iop->ops.rw_op);
     rw_coalesce_t *rwc;
     tbx_pch_t pch;
 
@@ -195,7 +195,7 @@ int ibp_rw_coalesce(op_generic_t *gop1)
     ibp_op_t *iop1 = ibp_get_iop(gop1);
     ibp_op_t *iop2;
     ibp_context_t *ic = iop1->ic;
-    ibp_op_rw_t *cmd1 = &(iop1->rw_op);
+    ibp_op_rw_t *cmd1 = &(iop1->ops.rw_op);
     ibp_op_rw_t *cmd2;
     op_generic_t *gop2;
     ibp_rw_buf_t **rwbuf;
@@ -266,7 +266,7 @@ int ibp_rw_coalesce(op_generic_t *gop1)
     do {
         gop2 = (op_generic_t *)tbx_get_stack_ele_data(ele);
         iop2 = ibp_get_iop(gop2);
-        cmd2 = &(iop2->rw_op);
+        cmd2 = &(iop2->ops.rw_op);
 
         //** Unlink the element if needed
         if (gop2 != gop1) {
@@ -308,7 +308,7 @@ int ibp_rw_coalesce(op_generic_t *gop1)
             gop2 = (op_generic_t *)tbx_get_stack_ele_data(ele);
             if (gop2 == gop1) {
                 iop2 = ibp_get_iop(gop2);
-                cmd2 = &(iop2->rw_op);
+                cmd2 = &(iop2->ops.rw_op);
                 rwbuf[n] = &(cmd2->buf_single);
                 iov_sum += cmd2->n_tbx_iovec_total;
                 workload += cmd2->size;
@@ -374,8 +374,8 @@ void _ibp_op_free(op_generic_t *gop, int mode)
     if (gop->op->cmd.coalesced_ops != NULL) {  //** Coalesced R/W op so free the stack
         log_printf(15, "gid=%d Freeing rwbuf\n", gop_id(gop));
         iop = ibp_get_iop(gop);
-        tbx_pch_release(iop->ic->coalesced_gop_stacks, &(iop->rw_op.rwcg_pch));
-        free(iop->rw_op.rwbuf);
+        tbx_pch_release(iop->ic->coalesced_gop_stacks, &(iop->ops.rw_op.rwcg_pch));
+        free(iop->ops.rw_op.rwbuf);
         gop->op->cmd.coalesced_ops = NULL;
     }
     gop_generic_free(gop, OP_FINALIZE);  //** I free the actual op

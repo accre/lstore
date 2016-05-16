@@ -51,9 +51,7 @@ typedef struct {
 
 typedef struct {
     int type;
-    union {
-        exnode_text_t text;
-    };
+    exnode_text_t text;
 } exnode_exchange_t;
 
 #ifdef __cplusplus
