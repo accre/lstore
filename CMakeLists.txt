@@ -106,10 +106,16 @@ endif()
 if(ENABLE_CCACHE)
     message(STATUS "Enabling ccache")
     set(LSTORE_COMPILER_WRAPPER "ccache ")
+    set(LSTORE_COMPILER_WRAPPER_CMAKE "-DCMAKE_C_COMPILER=ccache"
+                                      "-DCMAKE_CXX_COMPILER=ccache"
+                                      "-DCMAKE_C_COMPILER_ARG1=${CMAKE_C_COMPILER}"
+                                      `"-DCMAKE_CXX_COMPILER_ARG1=${CMAKE_CXX_COMPILER}")
     set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE ccache)
     set_property(GLOBAL PROPERTY RULE_LAUNCH_LINK ccache)
 else()
     set(LSTORE_COMPILER_WRAPPER "")
+    set(LSTORE_COMPILER_WRAPPER_CMAKE "-DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}"
+                                      "-DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}")
 endif()
 
 # Detect compiler flags
