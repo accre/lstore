@@ -36,7 +36,12 @@ done
 if [[ -z "${CCACHE_DIR:-}" ]]; then
     CCACHE_DIR=/tmp/source/build/ccache
     mkdir -p $CCACHE_DIR
+else
+    if [[ -e "$CCACHE_DIR" ]]; then
+        EXTRA_ARGS="$EXTRA_ARGS -v $CCACHE_DIR:$CCACHE_DIR"
+    fi
 fi
+EXTRA_ARGS="$EXTRA_ARGS -e CCACHE_DIR=$CCACHE_DIR"
 
 if [[ ! -z "${HOST_VOLUME_PATH:-}" && ! -z "${CONTAINER_VOLUME_PATH:-}" ]]; then
     LSTORE_RELEASE_RELATIVE="${HOST_VOLUME_PATH}/$(realpath $(pwd) --relative-to "$CONTAINER_VOLUME_PATH")"
@@ -46,7 +51,6 @@ else
     CCACHE_DIR_RELATIVE="$CCACHE_DIR"
 fi
 
-EXTRA_ARGS="$EXTRA_ARGS -e CCACHE_DIR=$CCACHE_DIR_RELATIVE"
 
 for DISTRO in "${DISTROS[@]}"; do
     note "Starting docker container to package $DISTRO"
