@@ -47,7 +47,8 @@ else
     CCACHE_DIR_RELATIVE="$CCACHE_DIR"
 fi
 
-if [[ ! -z "${CCACHE_DEFAULT:-}" && -d "$CCACHE_DIR" ]]; then
+note "ccache default: ${CCACHE_DEFAULT:-} ccache_dir $CCACHE_DIR"
+if [[ -z "${CCACHE_DEFAULT:-}" && -d "$CCACHE_DIR" ]]; then
     EXTRA_ARGS="$EXTRA_ARGS -e CCACHE_DIR=/tmp/ccache"
     EXTRA_ARGS="$EXTRA_ARGS -v $CCACHE_DIR_RELATIVE:/tmp/ccache"
 else
