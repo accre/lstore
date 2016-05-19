@@ -70,7 +70,7 @@ make $PACKAGE_SUFFIX VERBOSE=1
     umask 000
     mkdir -p $PACKAGE_REPO
     cp -r {,s}rpm_output/ $PACKAGE_REPO
-    chmod 666 $PACKAGE_REPO/*
+    chmod -R u=rwX,g=rwX,o=rwX $PACKAGE_REPO/*
     # Update lstore-release if we built it
     if test -n "$(shopt -s nullglob; set +u; echo lstore-release*.rpm)"; then
         cp lstore-release*.rpm $REPO_BASE/lstore-release.rpm
