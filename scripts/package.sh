@@ -47,11 +47,11 @@ else
     CCACHE_DIR_RELATIVE="$CCACHE_DIR"
 fi
 
-if [[ ! -z "${CCACHE_DEFAULT:-}" && -e "$CCACHE_DIR" ]]; then
+if [[ ! -z "${CCACHE_DEFAULT:-}" && -d "$CCACHE_DIR" ]]; then
     EXTRA_ARGS="$EXTRA_ARGS -e CCACHE_DIR=/tmp/ccache"
     EXTRA_ARGS="$EXTRA_ARGS -v $CCACHE_DIR_RELATIVE:/tmp/ccache"
 else
-    EXTRA_ARGS="$EXTRA_ARGS -v $CCACHE_DIR:$CCACHE_DIR"
+    EXTRA_ARGS="$EXTRA_ARGS -e CCACHE_DIR=$CCACHE_DIR"
 fi
 
 for DISTRO in "${DISTROS[@]}"; do
