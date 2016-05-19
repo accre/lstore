@@ -76,6 +76,7 @@ if((NOT CZMQ_FOUND) OR (CZMQ_LIBRARY MATCHES "^${EXTERNAL_INSTALL_DIR}"))
             INSTALL_DIR "${EXTERNAL_INSTALL_DIR}"
             CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${EXTERNAL_INSTALL_DIR}
                         -DBUILD_SHARED_LIBS:BOOL=OFF
+                        -DCMAKE_C_FLAGS="-fPIC"
                         ${LSTORE_COMPILER_WRAPPER_CMAKE}
             TEST_COMMAND $(MAKE) "test"
             INSTALL_COMMAND $(MAKE) "install"

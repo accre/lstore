@@ -107,9 +107,21 @@ if(ENABLE_CCACHE)
     message(STATUS "Enabling ccache")
     set(LSTORE_COMPILER_WRAPPER "ccache ")
     set(LSTORE_COMPILER_WRAPPER_CMAKE "-DCMAKE_C_COMPILER=ccache"
-                                      "-DCMAKE_CXX_COMPILER=ccache"
-                                      "-DCMAKE_C_COMPILER_ARG1=${CMAKE_C_COMPILER}"
-                                      `"-DCMAKE_CXX_COMPILER_ARG1=${CMAKE_CXX_COMPILER}")
+                                      "-DCMAKE_CXX_COMPILER=ccache")
+    if(CMAKE_C_COMPILER)
+        list(APPEND LSTORE_COMPILER_WRAPPER_CMAKE 
+                    "-DCMAKE_C_COMPILER_ARG1=${CMAKE_C_COMPILER}")
+    else()
+        list(APPEND LSTORE_COMPILER_WRAPPER_CMAKE 
+                    "-DCMAKE_C_COMPILER_ARG1=cc")
+    endif()
+    if(CMAKE_CXX_COMPILER)
+        list(APPEND LSTORE_COMPILER_WRAPPER_CMAKE 
+                    "-DCMAKE_CXX_COMPILER_ARG1=${CMAKE_CXX_COMPILER}")
+    else()
+        list(APPEND LSTORE_COMPILER_WRAPPER_CMAKE 
+                    "-DCMAKE_CXX_COMPILER_ARG1=c++")
+    endif()
     set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE ccache)
     set_property(GLOBAL PROPERTY RULE_LAUNCH_LINK ccache)
 else()

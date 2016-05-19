@@ -53,7 +53,7 @@ if(UNIX)
         -D "_srcrpmdir ${CMAKE_BINARY_DIR}/srpm_output"
         -ta ${CPACK_SOURCE_PACKAGE_FILE_NAME}.tar.gz)
     ADD_DEPENDENCIES(rpm dist)
-    ADD_CUSTOM_TARGET(deb dpkg-buildpackage -uc -us ${CMAKE_SOURCE_DIR})
+    ADD_CUSTOM_TARGET(deb dpkg-buildpackage -uc -us)
 endif()
 
 include(CPack)

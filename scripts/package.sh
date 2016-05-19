@@ -62,7 +62,7 @@ for DISTRO in "${DISTROS[@]}"; do
             INTERNAL_CMD="/tmp/source/scripts/package-internal.sh $DISTRO"
             ;;
         debian*|ubuntu*)
-            INTERNAL_CMD="/tmp/source/scripts/package-internal-separate.sh $DISTRO"
+            INTERNAL_CMD="/tmp/source/scripts/package-internal.sh $DISTRO"
             ;;
     esac
     set -x
