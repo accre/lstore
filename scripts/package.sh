@@ -46,7 +46,7 @@ else
     CCACHE_DIR_RELATIVE="$CCACHE_DIR"
 fi
 
-EXTRA_ARGS="$EXTRA_ARGS -e CCACHE_DIR=$CCACHE_DIR"
+EXTRA_ARGS="$EXTRA_ARGS -e CCACHE_DIR=$CCACHE_DIR_RELATIVE"
 
 for DISTRO in "${DISTROS[@]}"; do
     note "Starting docker container to package $DISTRO"
