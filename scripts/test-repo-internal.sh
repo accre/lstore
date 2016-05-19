@@ -23,7 +23,7 @@ gpgcheck=0
 protect=1
 EOF
         yum install -y epel-release
-        yum install -y accre-lio which
+        yum install -y lstore which
         yum clean all
         ;;
     ubuntu-*|debian-*)
