@@ -50,7 +50,7 @@ fi
 note "ccache default: ${CCACHE_DEFAULT:-} ccache_dir $CCACHE_DIR"
 if [[ -z "${CCACHE_DEFAULT:-}" && -d "$CCACHE_DIR" ]]; then
     EXTRA_ARGS="$EXTRA_ARGS -e CCACHE_DIR=/tmp/ccache"
-    EXTRA_ARGS="$EXTRA_ARGS -v $CCACHE_DIR:/tmp/ccache"
+    EXTRA_ARGS="$EXTRA_ARGS -v $CCACHE_DIR_RELATIVE:/tmp/ccache"
 else
     EXTRA_ARGS="$EXTRA_ARGS -e CCACHE_DIR=$CCACHE_DIR"
 fi
