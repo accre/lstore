@@ -13,7 +13,7 @@ if(BUILD_APR OR (NOT APR-ACCRE_FOUND) OR (APR_LIBRARY MATCHES "^${EXTERNAL_INSTA
 								"--includedir=${EXTERNAL_INSTALL_DIR}/include/apr-ACCRE-1"
 								"--with-installbuilddir=${EXTERNAL_INSTALL_DIR}/lib/apr-ACCRE-1/build"
                                 "--enable-static=yes" "--enable-shared=no" "--with-pic"
-                                "CC=${CMAKE_C_COMPILER}"
+                                "CC=${LSTORE_COMPILER_WRAPPER}${CMAKE_C_COMPILER}"
             BUILD_COMMAND $(MAKE)
             TEST_COMMAND $(MAKE) "test"
             INSTALL_COMMAND $(MAKE) "install"
@@ -43,7 +43,7 @@ if(BUILD_APU OR (NOT APRUTIL-ACCRE_FOUND) OR (APU_LIBRARY MATCHES "^${EXTERNAL_I
 								"--includedir=${EXTERNAL_INSTALL_DIR}/include/apr-util-ACCRE-1"
 								"--with-installbuilddir=${EXTERNAL_INSTALL_DIR}/lib/apr-util-ACCRE-1/build"
                                 "--enable-static=yes" "--enable-shared=no" "--with-pic"
-                                "CC=${CMAKE_C_COMPILER}"
+                                "CC=${LSTORE_COMPILER_WRAPPER}${CMAKE_C_COMPILER}"
             BUILD_COMMAND $(MAKE)
             TEST_COMMAND $(MAKE) "test"
             INSTALL_COMMAND $(MAKE) "install"

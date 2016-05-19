@@ -105,15 +105,15 @@ for (int i = 0 ; i < distros.size(); ++i) {
     compile_map["${x}"] = { node('docker') {
         deleteDir()
         unstash 'source'
-        sh "bash scripts/generate-docker-base.sh ${x}"
-        sh "bash scripts/build-docker-base.sh ${x}"
-        sh "bash scripts/package.sh ${x}"
-        sh "bash scripts/update-repo.sh ${x}"
+        sh """bash scripts/generate-docker-base.sh ${x}
+              bash scripts/build-docker-base.sh ${x}
+              bash scripts/package.sh ${x}"""
+        sh """bash scripts/update-repo.sh ${x}
+              bash scripts/test-repo.sh ${x}"""
         archive 'build/package/**'
-        sh "bash scripts/test-repo.sh ${x}"
         stash includes: 'build/package/**', name: "${x}-package"
         dockerFingerprintFrom dockerfile: "scripts/docker/builder/${x}/Dockerfile", \
-        image: "lstore/builder:${x}"
+                                image: "lstore/builder:${x}"
     } }
 }
 

@@ -32,18 +32,36 @@ for PROXY in http_proxy HTTPS_PROXY; do
     fi
 done
 
+# Set up ccache to speed multiple compilations
+if [[ -z "${CCACHE_DIR:-}" ]]; then
+    CCACHE_DIR=/tmp/source/build/ccache
+    mkdir -p $CCACHE_DIR
+fi
+
 if [[ ! -z "${HOST_VOLUME_PATH:-}" && ! -z "${CONTAINER_VOLUME_PATH:-}" ]]; then
     LSTORE_RELEASE_RELATIVE="${HOST_VOLUME_PATH}/$(realpath $(pwd) --relative-to "$CONTAINER_VOLUME_PATH")"
+    CCACHE_DIR_RELATIVE="${HOST_VOLUME_PATH}/$(realpath "$CCACHE_DIR" --relative-to "$CONTAINER_VOLUME_PATH")"
 else
     LSTORE_RELEASE_RELATIVE="$LSTORE_RELEASE_BASE"
+    CCACHE_DIR_RELATIVE="$CCACHE_DIR"
 fi
+
+EXTRA_ARGS="$EXTRA_ARGS -e CCACHE_DIR=$CCACHE_DIR"
 
 for DISTRO in "${DISTROS[@]}"; do
     note "Starting docker container to package $DISTRO"
+    case $DISTRO in
+        centos*)
+            INTERNAL_CMD="/tmp/source/scripts/package-internal.sh $DISTRO"
+            ;;
+        debian*|ubuntu*)
+            INTERNAL_CMD="/tmp/source/scripts/package-internal-separate.sh $DISTRO"
+            ;;
+    esac
     set -x
     docker run --rm=true -v $LSTORE_RELEASE_RELATIVE:/tmp/source \
             $EXTRA_ARGS \
             lstore/builder:${DISTRO} \
-            /tmp/source/scripts/package-internal.sh $DISTRO
+            $INTERNAL_CMD
     set +x
 done
