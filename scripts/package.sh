@@ -34,6 +34,7 @@ done
 
 # Set up ccache to speed multiple compilations
 if [[ -z "${CCACHE_DIR:-}" ]]; then
+    CCACHE_DEFAULT=1
     CCACHE_DIR=/tmp/source/build/ccache
     mkdir -p $CCACHE_DIR
 fi
@@ -46,7 +47,13 @@ else
     CCACHE_DIR_RELATIVE="$CCACHE_DIR"
 fi
 
-EXTRA_ARGS="$EXTRA_ARGS -e CCACHE_DIR=$CCACHE_DIR"
+note "ccache default: ${CCACHE_DEFAULT:-} ccache_dir $CCACHE_DIR"
+if [[ -z "${CCACHE_DEFAULT:-}" && -d "$CCACHE_DIR" ]]; then
+    EXTRA_ARGS="$EXTRA_ARGS -e CCACHE_DIR=/tmp/ccache"
+    EXTRA_ARGS="$EXTRA_ARGS -v $CCACHE_DIR_RELATIVE:/tmp/ccache"
+else
+    EXTRA_ARGS="$EXTRA_ARGS -e CCACHE_DIR=$CCACHE_DIR"
+fi
 
 for DISTRO in "${DISTROS[@]}"; do
     note "Starting docker container to package $DISTRO"
@@ -55,7 +62,7 @@ for DISTRO in "${DISTROS[@]}"; do
             INTERNAL_CMD="/tmp/source/scripts/package-internal.sh $DISTRO"
             ;;
         debian*|ubuntu*)
-            INTERNAL_CMD="/tmp/source/scripts/package-internal-separate.sh $DISTRO"
+            INTERNAL_CMD="/tmp/source/scripts/package-internal.sh $DISTRO"
             ;;
     esac
     set -x

@@ -61,12 +61,10 @@ set -x
 mkdir -p $PACKAGE_BASE/build
 cp -r ${LSTORE_RELEASE_BASE}/{scripts,src,vendor,doc,debian,test,cmake,CMakeLists.txt,lstore.spec} \
         $PACKAGE_BASE
-cd $PACKAGE_BASE/build
 
 if [[ $PACKAGE_SUFFIX == deb ]]; then
     cd $PACKAGE_BASE
     dpkg-buildpackage -uc -us
-
 (
     umask 000
     mkdir -p $PACKAGE_REPO
