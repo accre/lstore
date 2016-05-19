@@ -17,7 +17,7 @@ Source: https://github.com/accre/lstore-release/archive/LStore-%{_version}.tar.g
 LStore - Logistical Storage.
 
 %prep
-%setup -n LStore-%{_version}
+%setup -q -n LStore-%{_version}
 
 %build
 CFLAGS="-I%{_prefix}/include $RPM_OPT_FLAGS"
@@ -28,6 +28,7 @@ cmake $CMAKE_FLAGS .
 make  %{?_smp_mflags}
 
 %install
+rm -rf $RPM_BUILD_ROOT
 make DESTDIR=$RPM_BUILD_ROOT install
 
 %clean
@@ -39,8 +40,8 @@ rm -rf $RPM_BUILD_ROOT
 
 %files
 %defattr(-,root,root,-)
-/usr/bin
-/usr/lib64
+%{_bindir}/*
+%{_libdir}/*
 
 %changelog
 * Sat Apr 23 2016 Andrew Melo <andrew.m.melo@vanderbilt.edu> 0.5.1-1
@@ -53,7 +54,7 @@ Requires: lstore
 %description devel
 Development files for LStore
 %files devel
-/usr/include
+%{_includedir}/*
 
 %package meta
 Summary: Default LStore configuration
