@@ -65,6 +65,7 @@ for DISTRO in "${DISTROS[@]}"; do
         rpm)
             ADDITIONAL_PACKAGES=(
                                     autoconf
+                                    ccache
                                     curl
                                     createrepo
                                     czmq-devel
@@ -85,6 +86,7 @@ for DISTRO in "${DISTROS[@]}"; do
             ADDITIONAL_PACKAGES=(
                                     autoconf
                                     ca-certificates
+                                    ccache
                                     cmake
                                     curl
                                     debhelper
