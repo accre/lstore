@@ -15,6 +15,7 @@ endif()
 
 # Options
 option(BUILD_SHARED_LIBS "Build shared LStore libraries" ON)
+option(BUILD_SHARED_EXES "Build shared LStore executables" ON)
 option(BUILD_TESTS "Build tests" ON)
 option(BUILD_APR "Build APR from source" ON)
 option(BUILD_APU "Build APR-Util from source" ON)
@@ -37,6 +38,11 @@ option(INSTALL_TESTS "Install test binaries" OFF)
 if(NOT CMAKE_BUILD_TYPE)
     # Has to be handled differently :(
     set(CMAKE_BUILD_TYPE "Debug" CACHE STRING "Build type" FORCE)
+endif()
+
+if(NOT BUILD_SHARED_EXES)
+    set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static-libgcc -static-libstdc++")
 endif()
 
 set(LSTORE_REPO_URL "http://repo.accre.vanderbilt.edu"
