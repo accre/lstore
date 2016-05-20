@@ -207,7 +207,7 @@ void phoebus_load_config(tbx_inip_file_t *kf)
 {
 if (global_phoebus == NULL) phoebus_init();
  
-char *gateway = tbx_inip_string_get(kf, "phoebus", "gateway", NULL);
+char *gateway = tbx_inip_get_string(kf, "phoebus", "gateway", NULL);
  
 if (gateway != NULL) {
 phoebus_path_set(global_phoebus, gateway);

@@ -79,7 +79,7 @@ void *lru_dirty_thread(apr_thread_t *th, void *data)
         i = 0;
         while (seg != NULL) {
             log_printf(15, "Flushing seg=" XIDT " i=%d\n", *id, i);
-            tbx_flush_log();
+            tbx_log_flush();
             flush_list[i] = seg;
             s = (cache_segment_t *)seg->priv;
             tbx_atomic_set(s->cache_check_in_progress, 1);  //** Flag it as being checked
@@ -100,7 +100,7 @@ void *lru_dirty_thread(apr_thread_t *th, void *data)
             s = (cache_segment_t *)flush_list[i]->priv;
 
             log_printf(15, "Flush completed seg=" XIDT " i=%d\n", segment_id(flush_list[i]), i);
-            tbx_flush_log();
+            tbx_log_flush();
             tbx_atomic_set(s->cache_check_in_progress, 0);  //** Flag it as being finished
             segment_unlock(flush_list[i]);
 
@@ -174,7 +174,7 @@ cache_page_t *_lru_new_page(cache_t *c, segment_t *seg)
 
     //** Store my position
     tbx_stack_push(cp->stack, p);
-    lp->ele = tbx_get_ptr(cp->stack);
+    lp->ele = tbx_stack_get_current_ptr(cp->stack);
 
     log_printf(15, " seg=" XIDT " page created initial->offset=" XOT " page_size=" XOT " data[0]=%p bytes_used=" XOT " stack_size=%d\n", segment_id(seg), p->offset, s->page_size, p->curr_data->ptr, cp->bytes_used, tbx_stack_size(cp->stack));
     return(p);
@@ -203,17 +203,17 @@ void _lru_process_waiters(cache_t *c)
         bytes_free = _lru_max_bytes(c) - cp->bytes_used;
 
         tbx_stack_move_to_top(cp->waiting_stack);
-        pw = tbx_get_ele_data(cp->waiting_stack);
+        pw = tbx_stack_get_current_data(cp->waiting_stack);
         bytes_needed = pw->bytes_needed;
         while ((bytes_needed <= bytes_free) && (pw != NULL)) {
             bytes_free -= bytes_needed;
-            tbx_delete_current(cp->waiting_stack, 1, 0);
+            tbx_stack_delete_current(cp->waiting_stack, 1, 0);
             log_printf(15, "waking up waiting stack pw=%p\n", pw);
 
             apr_thread_cond_signal(pw->cond);    //** Wake up the paused thread
 
             //** Get the next one if available
-            pw = tbx_get_ele_data(cp->waiting_stack);
+            pw = tbx_stack_get_current_data(cp->waiting_stack);
             bytes_needed = (pw == NULL) ? bytes_free + 1 : pw->bytes_needed;
         }
     }
@@ -247,7 +247,7 @@ int lru_pages_release(cache_t *c, cache_page_t **page, int n_pages)
             cp->bytes_used -= s->page_size;
             if (lp->ele != NULL) {
                 tbx_stack_move_to_ptr(cp->stack, lp->ele);
-                tbx_delete_current(cp->stack, 0, 0);
+                tbx_stack_delete_current(cp->stack, 0, 0);
             } else {
                 cp->limbo_pages--;
                 log_printf(15, "seg=" XIDT " limbo page p->offset=" XOT " limbo=%d\n", segment_id(p->seg), p->offset, cp->limbo_pages);
@@ -308,7 +308,7 @@ void lru_pages_destroy(cache_t *c, cache_page_t **page, int n_pages, int remove_
 
             if (lp->ele != NULL) {
                 tbx_stack_move_to_ptr(cp->stack, lp->ele);
-                tbx_delete_current(cp->stack, 0, 0);
+                tbx_stack_delete_current(cp->stack, 0, 0);
             }
 
             if (remove_from_segment == 1) {
@@ -351,7 +351,7 @@ int lru_page_access(cache_t *c, cache_page_t *p, int rw_mode, ex_off_t request_l
             tbx_stack_move_to_ptr(cp->stack, lp->ele);
             tbx_stack_unlink_current(cp->stack, 1);
             tbx_stack_move_to_top(cp->stack);
-            tbx_stack_insert_link_above(cp->stack, lp->ele);
+            tbx_stack_link_insert_above(cp->stack, lp->ele);
         }
         cache_unlock(c);
     }
@@ -382,9 +382,9 @@ int _lru_free_mem(cache_t *c, segment_t *pseg, ex_off_t bytes_to_free)
     log_printf(15, "START seg=" XIDT " bytes_to_free=" XOT " bytes_used=" XOT " stack_size=%d\n", segment_id(pseg), bytes_to_free, cp->bytes_used, tbx_stack_size(cp->stack));
 
     tbx_stack_move_to_bottom(cp->stack);
-    ele = tbx_get_ptr(cp->stack);
+    ele = tbx_stack_get_current_ptr(cp->stack);
     while ((total_bytes < bytes_to_free) && (ele != NULL) && (err == 0)) {
-        p = (cache_page_t *)tbx_get_stack_ele_data(ele);
+        p = (cache_page_t *)tbx_stack_ele_get_data(ele);
         lp = (page_lru_t *)p->priv;
         plock = p->seg->lock;
         gotlock = apr_thread_mutex_trylock(plock);
@@ -398,7 +398,7 @@ int _lru_free_mem(cache_t *c, segment_t *pseg, ex_off_t bytes_to_free)
                         total_bytes += s->page_size;
                         log_printf(15, "lru_free_mem: freeing page seg=" XIDT " p->offset=" XOT " bits=%d\n", segment_id(p->seg), p->offset, bits);
                         tbx_list_remove(s->pages, &(p->offset), p);  //** Have to do this here cause p->offset is the key var
-                        tbx_delete_current(cp->stack, 1, 0);
+                        tbx_stack_delete_current(cp->stack, 1, 0);
                         if (p->data[0].ptr) free(p->data[0].ptr);
                         if (p->data[1].ptr) free(p->data[1].ptr);
                         free(lp);
@@ -414,7 +414,7 @@ int _lru_free_mem(cache_t *c, segment_t *pseg, ex_off_t bytes_to_free)
             err = 1;
         }
 
-        if ((total_bytes < bytes_to_free) && (err == 0)) ele = tbx_get_ptr(cp->stack);
+        if ((total_bytes < bytes_to_free) && (err == 0)) ele = tbx_stack_get_current_ptr(cp->stack);
     }
 
     cp->bytes_used -= total_bytes;
@@ -462,12 +462,12 @@ ex_off_t _lru_attempt_free_mem(cache_t *c, segment_t *page_seg, ex_off_t bytes_t
     tbx_stack_move_to_bottom(cp->stack);
     ele = tbx_stack_unlink_current(cp->stack, 1);
     while ((total_bytes < bytes_to_free) && (ele != NULL)) {
-        p = (cache_page_t *)tbx_get_stack_ele_data(ele);
+        p = (cache_page_t *)tbx_stack_ele_get_data(ele);
         lp = (page_lru_t *)p->priv;
 
         bits = tbx_atomic_get(p->bit_fields);
         log_printf(15, "checking page for release seg=" XIDT " p->offset=" XOT " bits=%d\n", segment_id(p->seg), p->offset, bits);
-        tbx_flush_log();
+        tbx_log_flush();
 
         if ((bits & C_TORELEASE) == 0) { //** Skip it if already flagged for removal
             ptable = (page_table_t *)tbx_list_search(table, (tbx_list_key_t *)&(segment_id(p->seg)));
@@ -825,9 +825,9 @@ int lru_cache_destroy(cache_t *c)
 
     cache_base_destroy(c);
 
-    tbx_free_stack(cp->stack, 0);
-    tbx_free_stack(cp->waiting_stack, 0);
-    tbx_free_stack(cp->pending_free_tasks, 0);
+    tbx_stack_free(cp->stack, 0);
+    tbx_stack_free(cp->waiting_stack, 0);
+    tbx_stack_free(cp->pending_free_tasks, 0);
 
     tbx_pc_destroy(cp->free_pending_tables);
     tbx_pc_destroy(cp->free_page_tables);
@@ -911,17 +911,17 @@ cache_t *lru_cache_load(void *arg, tbx_inip_file_t *fd, char *grp, data_attr_t *
     cp = (cache_lru_t *)c->fn.priv;
 
     cache_lock(c);
-    cp->max_bytes = tbx_inip_integer_get(fd, grp, "max_bytes", cp->max_bytes);
-    cp->dirty_fraction = tbx_inip_double_get(fd, grp, "dirty_fraction", cp->dirty_fraction);
+    cp->max_bytes = tbx_inip_get_integer(fd, grp, "max_bytes", cp->max_bytes);
+    cp->dirty_fraction = tbx_inip_get_double(fd, grp, "dirty_fraction", cp->dirty_fraction);
     cp->dirty_bytes_trigger = cp->dirty_fraction * cp->max_bytes;
-    c->default_page_size = tbx_inip_integer_get(fd, grp, "default_page_size", c->default_page_size);
-    dt = tbx_inip_integer_get(fd, grp, "dirty_max_wait", apr_time_sec(cp->dirty_max_wait));
+    c->default_page_size = tbx_inip_get_integer(fd, grp, "default_page_size", c->default_page_size);
+    dt = tbx_inip_get_integer(fd, grp, "dirty_max_wait", apr_time_sec(cp->dirty_max_wait));
     cp->dirty_max_wait = apr_time_make(dt, 0);
-    c->max_fetch_fraction = tbx_inip_double_get(fd, grp, "max_fetch_fraction", c->max_fetch_fraction);
+    c->max_fetch_fraction = tbx_inip_get_double(fd, grp, "max_fetch_fraction", c->max_fetch_fraction);
     c->max_fetch_size = c->max_fetch_fraction * cp->max_bytes;
-    c->write_temp_overflow_fraction = tbx_inip_double_get(fd, grp, "write_temp_overflow_fraction", c->write_temp_overflow_fraction);
+    c->write_temp_overflow_fraction = tbx_inip_get_double(fd, grp, "write_temp_overflow_fraction", c->write_temp_overflow_fraction);
     c->write_temp_overflow_size = c->write_temp_overflow_fraction * cp->max_bytes;
-    c->n_ppages = tbx_inip_integer_get(fd, grp, "ppages", c->n_ppages);
+    c->n_ppages = tbx_inip_get_integer(fd, grp, "ppages", c->n_ppages);
 
     log_printf(0, "COP size=" XOT "\n", c->write_temp_overflow_size);
 

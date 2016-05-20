@@ -27,7 +27,7 @@
 void generate_ex_id(ex_id_t *id)
 {
     //** Fill with random data
-    tbx_random_bytes_get(id, sizeof(ex_id_t));
+    tbx_random_get_bytes(id, sizeof(ex_id_t));
 
     //** Mask the sign bit cause JAVA doesn't like unsigned numbers
     *id = (*id) << 1;

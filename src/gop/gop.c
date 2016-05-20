@@ -151,7 +151,7 @@ void gop_dummy_destroy()
     apr_thread_join(&tstat, gd_thread);
 
     //** Clean up;
-    tbx_free_stack(gd_stack, 0);
+    tbx_stack_free(gd_stack, 0);
     apr_thread_mutex_destroy(gd_lock);
     apr_thread_cond_destroy(gd_cond);
     apr_pool_destroy(gd_pool);
@@ -214,7 +214,7 @@ op_generic_t *gop_dummy(op_status_t state)
     tbx_type_malloc_clear(gop, op_generic_t, 1);
 
     log_printf(15, " state=%d\n", state.op_status);
-    tbx_flush_log();
+    tbx_log_flush();
 
     gop_init(gop);
     gop->base.pc = &_gop_dummy_pc;
@@ -566,7 +566,7 @@ op_generic_t *gop_waitany(op_generic_t *g)
 //_opque_print_stack(g->q->finished);
     } else {
         log_printf(15, "gop_waitany: BEFORE (type=op) While gid=%d state=%d\n", gop_id(g), g->base.state);
-        tbx_flush_log();
+        tbx_log_flush();
         if ((g->base.pc->fn->sync_exec != NULL) && (g->base.started_execution == 0)) {  //** See if we can directly exec
             unlock_gop(g);  //** Don't need this for a direct exec
             log_printf(15, "sync_exec -- waiting for gid=%d to complete\n", gop_id(g));
@@ -582,7 +582,7 @@ op_generic_t *gop_waitany(op_generic_t *g)
             }
         }
         log_printf(15, "gop_waitany: AFTER (type=op) While gid=%d state=%d\n", gop_id(g), g->base.state);
-        tbx_flush_log();
+        tbx_log_flush();
     }
     unlock_gop(g);
 

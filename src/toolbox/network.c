@@ -221,7 +221,7 @@ int tbx_ns_chksum_read_flush(tbx_ns_t *ns)
 
     log_printf(15, "ns_read_chksum_flush: Reading chksum!  ns=%d type=%d bleft=" I64T " bsize=" I64T " state=%d\n",
                tbx_ns_getid(ns), tbx_chksum_type(&(ns->read_chksum.chksum)), ns->read_chksum.bytesleft, ns->read_chksum.blocksize, ns_read_chksum_state(ns));
-    tbx_flush_log();
+    tbx_log_flush();
 
     if (ns_read_chksum_state(ns) == 0) return(0);
     if (ns->read_chksum.bytesleft == ns->read_chksum.blocksize) return(0);  //** Nothing to do
@@ -236,7 +236,7 @@ int tbx_ns_chksum_read_flush(tbx_ns_t *ns)
     ns->read_chksum.is_running = 1;
 
     log_printf(15, "ns_read_chksum_flush: Finished reading chksum!  ns=%d\n", tbx_ns_getid(ns));
-    tbx_flush_log();
+    tbx_log_flush();
 
     if (err != 0) {
         log_printf(10, "ns_read_chksum_flush: ns=%d Error reading chksum! error=%d\n", tbx_ns_getid(ns), err);
@@ -245,7 +245,7 @@ int tbx_ns_chksum_read_flush(tbx_ns_t *ns)
 
     tbx_chksum_get(&(ns->read_chksum.chksum), CHKSUM_DIGEST_HEX, chksum_value);
     log_printf(15, "ns_read_chksum_flush: after tbx_chksum_get!  ns=%d\n", tbx_ns_getid(ns));
-    tbx_flush_log();
+    tbx_log_flush();
     err = (strncmp(chksum_value, ns_value, n) == 0) ? 0 : 1;
 
     log_printf(15, "ns_read_chksum_flush: ns=%d     ns_value=%s  cmp=%d\n", tbx_ns_getid(ns), ns_value, err);
@@ -257,7 +257,7 @@ int tbx_ns_chksum_read_flush(tbx_ns_t *ns)
     }
 
     log_printf(15, "ns_read_chksum_flush: end of routine!  ns=%d\n err=%d", tbx_ns_getid(ns), err);
-    tbx_flush_log();
+    tbx_log_flush();
 
     return(err);
 }
@@ -274,7 +274,7 @@ int tbx_ns_chksum_write_flush(tbx_ns_t *ns)
 
     log_printf(15, "ns_write_chksum_flush: injecting chksum!  ns=%d type=%d bytesleft=" I64T " bsize=" I64T "\n",
                tbx_ns_getid(ns), tbx_chksum_type(&(ns->write_chksum.chksum)), ns->write_chksum.bytesleft, ns->write_chksum.blocksize);
-    tbx_flush_log();
+    tbx_log_flush();
 
     if (ns_write_chksum_state(ns) == 0) return(0);
     if (ns->write_chksum.bytesleft == ns->write_chksum.blocksize) return(0);  //** Nothing to do
@@ -295,7 +295,7 @@ int tbx_ns_chksum_write_flush(tbx_ns_t *ns)
     chksum_value[n] = '\0';
     log_printf(15, "ns_write_chksum_flush: ns=%d chksum_value=%s\n", tbx_ns_getid(ns), chksum_value);
     log_printf(15, "ns_write_chksum_flush: end of routine!  ns=%d\n err=%d", tbx_ns_getid(ns), err);
-    tbx_flush_log();
+    tbx_log_flush();
 
     return(err);
 }
@@ -590,20 +590,20 @@ void close_server_port(tbx_ns_monitor_t *nm)
     apr_thread_mutex_lock(nm->lock);
     nm->shutdown_request = 1;
     log_printf(15, "close_server_port: port=%d Before cond_signal\n", nm->port);
-    tbx_flush_log();
+    tbx_log_flush();
     apr_thread_cond_signal(nm->cond);
     log_printf(15, "close_server_port: port=%d After cond_signal\n", nm->port);
-    tbx_flush_log();
+    tbx_log_flush();
     apr_thread_mutex_unlock(nm->lock);
 
     log_printf(15, "close_server_port: port=%d After unlock\n", nm->port);
-    tbx_flush_log();
+    tbx_log_flush();
 
     //** Wait until the thread closes
     apr_thread_join(&dummy, nm->thread);
 
     log_printf(15, "close_server_port: port=%d After join\n", nm->port);
-    tbx_flush_log();
+    tbx_log_flush();
 
     //** Free the actual struct
     free(nm->address);
@@ -652,7 +652,7 @@ void _close_ns(tbx_ns_t *ns)
 {
 
     log_printf(10, "tbx_ns_close:  Closing stream ns=%d type=%d\n", ns->id, ns->sock_type);
-    tbx_flush_log();
+    tbx_log_flush();
 
     ns->cuid = -1;
     if (ns->sock == NULL) return;

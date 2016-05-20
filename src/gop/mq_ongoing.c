@@ -95,7 +95,7 @@ void *ongoing_heartbeat_thread(apr_thread_t *th, void *data)
                                         oh->id,
                                         ((apr_time_t) apr_time_sec(apr_time_now())),
                                         oh->heartbeat);
-                    tbx_flush_log();
+                    tbx_log_flush();
                     //** Form the message
                     msg = mq_make_exec_core_msg(table->remote_host, 1);
                     mq_msg_append_mem(msg, ONGOING_KEY, ONGOING_SIZE, MQF_MSG_KEEP_DATA);
@@ -439,7 +439,7 @@ void mq_ongoing_cb(void *arg, mq_task_t *task)
 
     log_printf(1, "Processing incoming request. EXEC START now=" TT "\n",
                     ((apr_time_t) apr_time_sec(apr_time_now())));
-    tbx_flush_log();
+    tbx_log_flush();
 
     //** Parse the command.
     msg = task->msg;

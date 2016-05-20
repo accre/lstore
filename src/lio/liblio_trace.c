@@ -79,21 +79,21 @@ void lt_load_config(char *fname)
     char *str;
     int n;
 
-    fd = tbx_inip_file_read(fname);
+    fd = tbx_inip_read_file(fname);
 
-    n = tbx_inip_integer_get(fd, LIBLIO_TRACE_SECTION, "log_level", tbx_log_level());
+    n = tbx_inip_get_integer(fd, LIBLIO_TRACE_SECTION, "log_level", tbx_log_level());
     tbx_set_log_level(n);
 
-    str = tbx_inip_string_get(fd, LIBLIO_TRACE_SECTION, "log_file", NULL);
+    str = tbx_inip_get_string(fd, LIBLIO_TRACE_SECTION, "log_file", NULL);
     if (str != NULL) open_log(str);
 
-    str = tbx_inip_string_get(fd, LIBLIO_TRACE_SECTION, "output", NULL);
+    str = tbx_inip_get_string(fd, LIBLIO_TRACE_SECTION, "output", NULL);
     if (str != NULL) ltc.trace_name = str;
 
-    str = tbx_inip_string_get(fd, LIBLIO_TRACE_SECTION, "header", NULL);
+    str = tbx_inip_get_string(fd, LIBLIO_TRACE_SECTION, "header", NULL);
     if (str != NULL) ltc.trace_header = str;
 
-    ltc.max_fd = tbx_inip_integer_get(fd, LIBLIO_TRACE_SECTION, "max_fd", ltc.max_fd);
+    ltc.max_fd = tbx_inip_get_integer(fd, LIBLIO_TRACE_SECTION, "max_fd", ltc.max_fd);
 
     ltc.logfd = STDERR_FILENO;
 

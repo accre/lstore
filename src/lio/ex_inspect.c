@@ -134,9 +134,9 @@ int main(int argc, char **argv)
     printf("whattodo=%d\n", whattodo);
     //** Execute the inspection operation
     gop = segment_inspect(seg, lio_gc->da, lio_ifd, whattodo, bufsize, NULL, lio_gc->timeout);
-    tbx_flush_log();
+    tbx_log_flush();
     gop_waitany(gop);
-    tbx_flush_log();
+    tbx_log_flush();
     status = gop_get_status(gop);
     gop_free(gop, OP_DESTROY);
 

@@ -66,7 +66,7 @@ void parse_tag_file(char *fname)
     tbx_inip_element_t *ele;
     char *key, *value, *v;
 
-    fd = tbx_inip_file_read(fname);
+    fd = tbx_inip_read_file(fname);
     if (fd == NULL) return;
 
     apr_pool_create(&tagged_pool, NULL);
@@ -77,9 +77,9 @@ void parse_tag_file(char *fname)
     g = tbx_inip_group_find(fd, "tag");
     ele = tbx_inip_ele_first(g);
     while (ele != NULL) {
-        key = tbx_inip_ele_key_get(ele);
+        key = tbx_inip_ele_get_key(ele);
         if (strcmp(key, "rid_key") == 0) {
-            v = tbx_inip_ele_value_get(ele);
+            v = tbx_inip_ele_get_value(ele);
             value = strdup(v);
             info_printf(lio_ifd, 0, "Tagging RID %s\n", value);
             apr_hash_set(tagged_rids, value, APR_HASH_KEY_STRING, value);
@@ -92,7 +92,7 @@ void parse_tag_file(char *fname)
     tbx_inip_destroy(fd);
 
     if (apr_hash_count(tagged_rids) == 0) {
-        tbx_free_stack(tagged_keys, 0);
+        tbx_stack_free(tagged_keys, 0);
         apr_pool_destroy(tagged_pool);
         tagged_pool = NULL;
         tagged_rids = NULL;
@@ -117,19 +117,19 @@ op_status_t gen_warm_task(void *arg, int id)
     opque_t *q;
 
     log_printf(15, "warming fname=%s, dt=%d\n", w->fname, dt);
-    fd = tbx_inip_string_read(w->exnode);
+    fd = tbx_inip_read_string(w->exnode);
     tbx_inip_group_t *g;
 
     q = new_opque();
     opque_start_execution(q);
 
-    tbx_type_malloc(w->cap, char *, tbx_inip_n_groups(fd));
+    tbx_type_malloc(w->cap, char *, tbx_inip_group_count(fd));
     g = tbx_inip_group_first(fd);
     w->n = 0;
     while (g) {
         if (strncmp(tbx_inip_group_get(g), "block-", 6) == 0) { //** Got a data block
             //** Get the RID key
-            etext = tbx_inip_string_get(fd, tbx_inip_group_get(g), "rid_key", NULL);
+            etext = tbx_inip_get_string(fd, tbx_inip_group_get(g), "rid_key", NULL);
             if (etext != NULL) {
                 wrid = apr_hash_get(w->hash, etext, APR_HASH_KEY_STRING);
                 if (wrid == NULL) { //** 1st time so need to make an entry
@@ -142,10 +142,10 @@ op_status_t gen_warm_task(void *arg, int id)
             }
 
             //** Get the data size and update thr counts
-            wrid->nbytes += tbx_inip_integer_get(fd, tbx_inip_group_get(g), "max_size", 0);
+            wrid->nbytes += tbx_inip_get_integer(fd, tbx_inip_group_get(g), "max_size", 0);
 
             //** Get the manage cap
-            etext = tbx_inip_string_get(fd, tbx_inip_group_get(g), "manage_cap", "");
+            etext = tbx_inip_get_string(fd, tbx_inip_group_get(g), "manage_cap", "");
             log_printf(1, "fname=%s cap[%d]=%s\n", w->fname, w->n, etext);
             w->cap[w->n] = tbx_stk_unescape_text('\\', etext);
             free(etext);
@@ -438,7 +438,7 @@ int main(int argc, char **argv)
 
     //** Get the RID config which is used in the summary
     config = rs_get_rid_config(lio_gc->rs);
-    ifd = tbx_inip_string_read(config); assert(ifd);
+    ifd = tbx_inip_read_string(config); assert(ifd);
 
     //** Convert it for easier lookup
     ig = tbx_inip_group_first(ifd);
@@ -448,8 +448,8 @@ int main(int argc, char **argv)
             //** Now cycle through the attributes
             ele = tbx_inip_ele_first(ig);
             while (ele != NULL) {
-                rkey = tbx_inip_ele_key_get(ele);
-                value = tbx_inip_ele_value_get(ele);
+                rkey = tbx_inip_ele_get_key(ele);
+                value = tbx_inip_ele_get_value(ele);
                 if (strcmp(rkey, "rid_key") == 0) {
                     tbx_inip_group_free(ig);
                     tbx_inip_group_set(ig, value);
@@ -485,7 +485,7 @@ int main(int argc, char **argv)
         dtime_total += mrid->dtime;
         dtime = mrid->dtime / (double)total;
         line_end = (mrid->bad == 0) ? "\n" : "  RID_ERR\n";
-        rkey = tbx_inip_string_get(ifd, mrid->rid_key, "ds_key", mrid->rid_key);
+        rkey = tbx_inip_get_string(ifd, mrid->rid_key, "ds_key", mrid->rid_key);
         info_printf(lio_ifd, 0, "%-40s  %s  %s   %10" PXOT "  %10" PXOT "  %10" PXOT "%s", rkey,
                     tbx_stk_pretty_print_double_with_scale(1024, (double)mrid->nbytes, ppbuf),  tbx_stk_pretty_print_double_with_scale(1024, dtime, ppbuf2),
                     total, mrid->good, mrid->bad, line_end);
@@ -508,7 +508,7 @@ int main(int argc, char **argv)
         free(mrid->rid_key);
         free(mrid);
     }
-    tbx_free_stack(stack, 0);
+    tbx_stack_free(stack, 0);
 cleanup:
     for (j=0; j<lio_parallel_task_count; j++) {
         apr_pool_destroy(w[j].mpool);
@@ -518,7 +518,7 @@ cleanup:
 
 finished:
     if (tagged_rids != NULL) {
-        tbx_free_stack(tagged_keys, 1);
+        tbx_stack_free(tagged_keys, 1);
         apr_pool_destroy(tagged_pool);
     }
 

@@ -394,7 +394,7 @@ fail:
     } else {
         log_printf(0, "TEST: (END) client_trackexec_ping_test(mqc, delay=%d, reply=%d, dt=%d) = FAIL (g=%d, s=%d)\n", delay, address_reply, dt, err, success_value);
     }
-    tbx_flush_log();
+    tbx_log_flush();
     return(status);
 }
 
@@ -497,19 +497,19 @@ int bulk_test(mq_context_t *mqc)
         dt = apr_time_now() - start_time;
         ttime = (1.0*dt) / APR_USEC_PER_SEC;
         log_printf(0, "BULK n=%d err=%d gid=%d dt=%lf sid=%s (delay=%d reply=%d dt=%d) got=%d shouldbe=%d\n", n, err, gop_id(gop), ttime, mq_id2str((char *)&(td->id), sizeof(td->id), b64, sizeof(b64)), td->delay, td->address_reply, td->dt, status.op_status, td->success_value);
-        tbx_flush_log();
+        tbx_log_flush();
         dt = apr_time_now();
         gop_free(gop, OP_DESTROY);
         dt = apr_time_now() - dt;
         ttime = (1.0*dt) / APR_USEC_PER_SEC;
         log_printf(0, "BULK gop_free dt=%lf\n", ttime);
-        tbx_flush_log();
+        tbx_log_flush();
     }
 
     dt = apr_time_now() - start_time;
     ttime = (1.0*dt) / APR_USEC_PER_SEC;
     log_printf(0, "TEST: (END) Completed %d tasks in bulk test failed=%d dt=%lf\n", opque_task_count(q), err, ttime);
-    tbx_flush_log();
+    tbx_log_flush();
     if (ttime > expire) {
         log_printf(0, "TEST: (END) !!WARNING!! Execution time %lf > %d sec!!!! The dt=%d was used for the commands so I would expect failures!\n", ttime, expire, expire);
         log_printf(0, "TEST: (END) !!WARNING!! This probably means you are running under valgrind and is to be expected.\n");
@@ -570,7 +570,7 @@ mq_context_t *client_make_context()
     tbx_inip_file_t *ifd;
     mq_context_t *mqc;
 
-    ifd = tbx_inip_string_read(text_params);
+    ifd = tbx_inip_read_string(text_params);
     mqc = mq_create_context(ifd, "mq_context");
     assert(mqc != NULL);
     tbx_inip_destroy(ifd);
@@ -595,14 +595,14 @@ void *client_test_thread(apr_thread_t *th, void *arg)
 
     //** perform ths simple base direct client test
     nfail_total += client_direct();
-    tbx_flush_log();
+    tbx_log_flush();
 
     //** The rest of the tests all go through the mq_portal so we need to configure that now
     //** Make the portal
     mqc = client_make_context();
 
     nfail_total += client_exec_ping_test(mqc);  //** Simple exec ping test.  No tracking
-    tbx_flush_log();
+    tbx_log_flush();
 
     min = 0;
     if (min == 1) {
@@ -618,15 +618,15 @@ void *client_test_thread(apr_thread_t *th, void *arg)
 
         //** Check edge cases
         log_printf(0, "Checking edge cases (ROUND=%d)\n", i);
-        tbx_flush_log();
+        tbx_log_flush();
 //     nfail += client_edge_tests(mqc);
 
         log_printf(0, "Switching to bulk tests (ROUND=%d)\n", i);
-        tbx_flush_log();
+        tbx_log_flush();
         nfail += bulk_test(mqc);
 
         log_printf(0, "Completed round %d of tests. failed:%d\n", i, nfail);
-        tbx_flush_log();
+        tbx_log_flush();
 
         nfail_total += nfail;
 
@@ -685,7 +685,7 @@ int proc_ping(mq_socket_t *sock, mq_msg_t *msg)
     //** Push the address in reverse order (including the empty frame)
     while ((f = mq_msg_pop(msg)) != NULL) {
 //i=mq_get_frame(f, &data, &err);
-//log_printf(5, "data=%s len=%d i=%d\n", (char *)data, err, i); tbx_flush_log();
+//log_printf(5, "data=%s len=%d i=%d\n", (char *)data, err, i); tbx_log_flush();
 //log_printf(5, "add=%d\n", err);
         mq_msg_push_frame(pong, f);
     }
@@ -1022,16 +1022,16 @@ fail:
 
     mq_stats_print(0, "Server RAW", &server_stats);
     log_printf(0, "END\n");
-    tbx_flush_log();
+    tbx_log_flush();
     mq_socket_destroy(ctx, sock);
 
 
     log_printf(0, "before ctx destroy\n");
-    tbx_flush_log();
+    tbx_log_flush();
     mq_socket_context_destroy(ctx);
 
     log_printf(0, "after ctx destroy\n");
-    tbx_flush_log();
+    tbx_log_flush();
 
     return(NULL);
 }
@@ -1043,10 +1043,10 @@ fail:
 void cb_ping(void *arg, mq_task_t *task)
 {
     log_printf(3, "START\n");
-    tbx_flush_log();
+    tbx_log_flush();
     proc_trackexec_ping(server_portal, NULL, task->msg);
     log_printf(3, "END\n");
-    tbx_flush_log();
+    tbx_log_flush();
     task->msg = NULL;  //** The proc routine free's this
 }
 
@@ -1068,7 +1068,7 @@ mq_context_t *server_make_context()
     tbx_inip_file_t *ifd;
     mq_context_t *mqc;
 
-    ifd = tbx_inip_string_read(text_params);
+    ifd = tbx_inip_read_string(text_params);
     mqc = mq_create_context(ifd, "mq_context");
     assert(mqc != NULL);
     tbx_inip_destroy(ifd);
@@ -1119,12 +1119,12 @@ void *server_test_thread(apr_thread_t *th, void *arg)
 
     //** Do the raw socket tests
     log_printf(0, "Using raw socket for event loop\n");
-    tbx_flush_log();
+    tbx_log_flush();
     server_test_raw_socket();
 
     //** Now do the same but usingthe MQ event loop.
     log_printf(0, "Switching to using MQ event loop\n");
-    tbx_flush_log();
+    tbx_log_flush();
     server_test_mq_loop();
 
     //** Wake up the deferred thread and tell it to shut down
@@ -1163,9 +1163,9 @@ void *server_deferred_thread(apr_thread_t *th, void *arg)
         now = apr_time_now();
         tbx_stack_move_to_top(deferred_pending);
         n = 0;
-        while ((defer = tbx_get_ele_data(deferred_pending)) != NULL) {
+        while ((defer = tbx_stack_get_current_data(deferred_pending)) != NULL) {
             if (defer->expire < now) {  //** Expired so move it for sending
-                tbx_delete_current(deferred_pending, 0, 0);
+                tbx_stack_delete_current(deferred_pending, 0, 0);
                 tbx_stack_push(deferred_ready, defer);
                 n++;
             } else if (dt > defer->expire) {  //** Keep track of when to wake up next
@@ -1253,8 +1253,8 @@ int main(int argc, char **argv)
     apr_thread_join(&dummy, server_thread);
     apr_thread_join(&dummy, deferred_thread);
 
-    tbx_free_stack(deferred_ready, 0);
-    tbx_free_stack(deferred_pending, 0);
+    tbx_stack_free(deferred_ready, 0);
+    tbx_stack_free(deferred_pending, 0);
 
     mq_pipe_destroy(ctx, control_efd);
     mq_pipe_destroy(ctx, server_efd);

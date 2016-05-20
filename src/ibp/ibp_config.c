@@ -144,7 +144,7 @@ void rwc_stacks_free(void *arg, int size, void *data)
 
 int ibp_rw_submit_coalesce(tbx_stack_t *stack, tbx_stack_ele_t *ele)
 {
-    op_generic_t *gop = (op_generic_t *)tbx_get_stack_ele_data(ele);
+    op_generic_t *gop = (op_generic_t *)tbx_stack_ele_get_data(ele);
     ibp_op_t *iop = ibp_get_iop(gop);
     ibp_context_t *ic = iop->ic;
     ibp_op_rw_t *cmd = &(iop->ops.rw_op);
@@ -225,10 +225,10 @@ int ibp_rw_coalesce(op_generic_t *gop1)
 
     if (tbx_stack_size(&(rwc->list_stack)) == 1) { //** Nothing to do so exit
         ele = (tbx_stack_ele_t *)tbx_stack_pop(&(rwc->list_stack));  //** The top most task should be me
-        gop2 = (op_generic_t *)tbx_get_stack_ele_data(ele);
+        gop2 = (op_generic_t *)tbx_stack_ele_get_data(ele);
         if (gop2 != gop1) {
             log_printf(0, "ERROR! top stack element is not me! gid1=%d gid2=%d\n", gop_id(gop1), gop_id(gop2));
-            tbx_flush_log();
+            tbx_log_flush();
             abort();
         }
 
@@ -262,9 +262,9 @@ int ibp_rw_coalesce(op_generic_t *gop1)
     iov_sum = 0;
     found_myself = 0;
     tbx_stack_move_to_top(&(rwc->list_stack));
-    ele = (tbx_stack_ele_t *)tbx_get_ele_data(&(rwc->list_stack));
+    ele = (tbx_stack_ele_t *)tbx_stack_get_current_data(&(rwc->list_stack));
     do {
-        gop2 = (op_generic_t *)tbx_get_stack_ele_data(ele);
+        gop2 = (op_generic_t *)tbx_stack_ele_get_data(ele);
         iop2 = ibp_get_iop(gop2);
         cmd2 = &(iop2->ops.rw_op);
 
@@ -275,7 +275,7 @@ int ibp_rw_coalesce(op_generic_t *gop1)
 //           tbx_stack_unlink_current(rwc->hp_stack, 0);
                 tbx_stack_move_to_ptr(iop2->hp_parent, ele);
                 tbx_stack_unlink_current(iop2->hp_parent, 0);
-                tbx_push_link(cstack, ele);
+                tbx_stack_link_push(cstack, ele);
             }
         } else {
             found_myself = 1;
@@ -290,22 +290,22 @@ int ibp_rw_coalesce(op_generic_t *gop1)
             workload += cmd2->size;
             n++;
 
-            tbx_delete_current(&(rwc->list_stack), 0, 0);  //** Remove it from the stack and move down to the next
+            tbx_stack_delete_current(&(rwc->list_stack), 0, 0);  //** Remove it from the stack and move down to the next
             ele = NULL;
             if (workload < ic->max_coalesce) {
-                ele = (tbx_stack_ele_t *)tbx_get_ele_data(&(rwc->list_stack));
+                ele = (tbx_stack_ele_t *)tbx_stack_get_current_data(&(rwc->list_stack));
             }
         } else {
             log_printf(15, "SKIPPING: gop[-]->gid=%d n_iov=%d io_total=%d\n", gop_id(gop2), cmd2->n_tbx_iovec_total, iov_sum);
             tbx_stack_move_down(&(rwc->list_stack));
-            ele = (tbx_stack_ele_t *)tbx_get_ele_data(&(rwc->list_stack));
+            ele = (tbx_stack_ele_t *)tbx_stack_get_current_data(&(rwc->list_stack));
         }
     } while ((ele != NULL) && (workload < ic->max_coalesce) && (iov_sum < 2000));
 
     if (found_myself == 0) {  //** Oops! Hit the max_coalesce workdload or size so Got to scan the list for myself
         tbx_stack_move_to_top(&(rwc->list_stack));
-        while ((ele = (tbx_stack_ele_t *)tbx_get_ele_data(&(rwc->list_stack))) != NULL) {
-            gop2 = (op_generic_t *)tbx_get_stack_ele_data(ele);
+        while ((ele = (tbx_stack_ele_t *)tbx_stack_get_current_data(&(rwc->list_stack))) != NULL) {
+            gop2 = (op_generic_t *)tbx_stack_ele_get_data(ele);
             if (gop2 == gop1) {
                 iop2 = ibp_get_iop(gop2);
                 cmd2 = &(iop2->ops.rw_op);
@@ -314,7 +314,7 @@ int ibp_rw_coalesce(op_generic_t *gop1)
                 workload += cmd2->size;
                 n++;
 
-                tbx_delete_current(&(rwc->list_stack), 0, 0);
+                tbx_stack_delete_current(&(rwc->list_stack), 0, 0);
                 found_myself = 1;
                 break;
             }
@@ -324,7 +324,7 @@ int ibp_rw_coalesce(op_generic_t *gop1)
 
         if (found_myself == 0) {
             log_printf(0, "ERROR! Scanned entire list and couldnt find myself! gid1=%d\n", gop_id(gop1));
-            tbx_flush_log();
+            tbx_log_flush();
             abort();
         }
     }
@@ -364,7 +364,7 @@ void _ibp_op_free(op_generic_t *gop, int mode)
     ibp_op_t *iop;
 
     log_printf(15, "_ibp_op_free: mode=%d gid=%d gop=%p\n", mode, gop_id(gop), gop);
-    tbx_flush_log();
+    tbx_log_flush();
 
     if (gop->op->cmd.hostport != NULL) {
         free(gop->op->cmd.hostport);
@@ -382,7 +382,7 @@ void _ibp_op_free(op_generic_t *gop, int mode)
 
     if (mode == OP_DESTROY) free(gop->free_ptr);
     log_printf(15, "_ibp_op_free: END\n");
-    tbx_flush_log();
+    tbx_log_flush();
 
 }
 
@@ -448,9 +448,9 @@ int _ibp_connect(tbx_ns_t *ns, void *connect_context, char *host, int port, tbx_
 
     int to = timeout;
     log_printf(0, "HOST host=%s to=%d\n", host, to);
-//log_printf(15, "cc=%p\n", cc); tbx_flush_log();
-//log_printf(15, "cc->type=%d\n", cc->type); tbx_flush_log();
-//log_printf(15, "cc->tcpsize=%d\n", cc->tcpsize); tbx_flush_log();
+//log_printf(15, "cc=%p\n", cc); tbx_log_flush();
+//log_printf(15, "cc->type=%d\n", cc->type); tbx_log_flush();
+//log_printf(15, "cc->tcpsize=%d\n", cc->tcpsize); tbx_log_flush();
 
     if (cc != NULL) {
         switch(cc->type) {
@@ -657,7 +657,7 @@ void ibp_set_write_cc(ibp_context_t *ic, ibp_connect_context_t *cc)
 
 void cc_load(tbx_inip_file_t *kf, char *name, ibp_connect_context_t *cc)
 {
-    char *type = tbx_inip_string_get(kf, "ibp_connect", name, NULL);
+    char *type = tbx_inip_get_string(kf, "ibp_connect", name, NULL);
 
     if (type == NULL) return;
 
@@ -716,26 +716,26 @@ int ibp_load_config(ibp_context_t *ic, tbx_inip_file_t *keyfile, char *section)
 
     if (section == NULL) section = "ibp";
 
-    ic->abort_conn_attempts = tbx_inip_integer_get(keyfile, section, "abort_attempts", ic->abort_conn_attempts);
-    t = tbx_inip_integer_get(keyfile, section, "min_idle", 0);
+    ic->abort_conn_attempts = tbx_inip_get_integer(keyfile, section, "abort_attempts", ic->abort_conn_attempts);
+    t = tbx_inip_get_integer(keyfile, section, "min_idle", 0);
     if (t != 0) ic->min_idle = t;
-    ic->tcpsize = tbx_inip_integer_get(keyfile, section, "tcpsize", ic->tcpsize);
-    ic->min_threads = tbx_inip_integer_get(keyfile, section, "min_depot_threads", ic->min_threads);
-    ic->max_threads = tbx_inip_integer_get(keyfile, section, "max_depot_threads", ic->max_threads);
-    ic->dt_connect = tbx_inip_integer_get(keyfile, section, "dt_connect_us", ic->dt_connect);
-    ic->max_connections = tbx_inip_integer_get(keyfile, section, "max_connections", ic->max_connections);
-    ic->rw_new_command = tbx_inip_integer_get(keyfile, section, "rw_command_weight", ic->rw_new_command);
-    ic->other_new_command = tbx_inip_integer_get(keyfile, section, "other_command_weight", ic->other_new_command);
-    ic->max_workload = tbx_inip_integer_get(keyfile, section, "max_thread_workload", ic->max_workload);
-    ic->max_coalesce = tbx_inip_integer_get(keyfile, section, "max_coalesce_workload", ic->max_coalesce);
-    ic->coalesce_enable = tbx_inip_integer_get(keyfile, section, "coalesce_enable", ic->coalesce_enable);
-    ic->max_wait = tbx_inip_integer_get(keyfile, section, "max_wait", ic->max_wait);
-    ic->wait_stable_time = tbx_inip_integer_get(keyfile, section, "wait_stable_time", ic->wait_stable_time);
-    ic->check_connection_interval = tbx_inip_integer_get(keyfile, section, "check_interval", ic->check_connection_interval);
-    ic->max_retry = tbx_inip_integer_get(keyfile, section, "max_retry", ic->max_retry);
-    ic->connection_mode = tbx_inip_integer_get(keyfile, section, "connection_mode", ic->connection_mode);
-    ic->transfer_rate = tbx_inip_double_get(keyfile, section, "transfer_rate", ic->transfer_rate);
-    ic->rr_size = tbx_inip_integer_get(keyfile, section, "rr_size", ic->rr_size);
+    ic->tcpsize = tbx_inip_get_integer(keyfile, section, "tcpsize", ic->tcpsize);
+    ic->min_threads = tbx_inip_get_integer(keyfile, section, "min_depot_threads", ic->min_threads);
+    ic->max_threads = tbx_inip_get_integer(keyfile, section, "max_depot_threads", ic->max_threads);
+    ic->dt_connect = tbx_inip_get_integer(keyfile, section, "dt_connect_us", ic->dt_connect);
+    ic->max_connections = tbx_inip_get_integer(keyfile, section, "max_connections", ic->max_connections);
+    ic->rw_new_command = tbx_inip_get_integer(keyfile, section, "rw_command_weight", ic->rw_new_command);
+    ic->other_new_command = tbx_inip_get_integer(keyfile, section, "other_command_weight", ic->other_new_command);
+    ic->max_workload = tbx_inip_get_integer(keyfile, section, "max_thread_workload", ic->max_workload);
+    ic->max_coalesce = tbx_inip_get_integer(keyfile, section, "max_coalesce_workload", ic->max_coalesce);
+    ic->coalesce_enable = tbx_inip_get_integer(keyfile, section, "coalesce_enable", ic->coalesce_enable);
+    ic->max_wait = tbx_inip_get_integer(keyfile, section, "max_wait", ic->max_wait);
+    ic->wait_stable_time = tbx_inip_get_integer(keyfile, section, "wait_stable_time", ic->wait_stable_time);
+    ic->check_connection_interval = tbx_inip_get_integer(keyfile, section, "check_interval", ic->check_connection_interval);
+    ic->max_retry = tbx_inip_get_integer(keyfile, section, "max_retry", ic->max_retry);
+    ic->connection_mode = tbx_inip_get_integer(keyfile, section, "connection_mode", ic->connection_mode);
+    ic->transfer_rate = tbx_inip_get_double(keyfile, section, "transfer_rate", ic->transfer_rate);
+    ic->rr_size = tbx_inip_get_integer(keyfile, section, "rr_size", ic->rr_size);
 
     ibp_cc_load(keyfile, ic);
 
@@ -756,7 +756,7 @@ int ibp_load_config_file(ibp_context_t *ic, char *fname, char *section)
     int err;
 
     //* Load the config file
-    keyfile = tbx_inip_file_read(fname);
+    keyfile = tbx_inip_read_file(fname);
     if (keyfile == NULL) {
         log_printf(0, "Error parsing config file! file=%s\n", fname);
         return(-1);

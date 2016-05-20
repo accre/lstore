@@ -59,7 +59,7 @@ void mq_pipe_create(mq_socket_context_t *ctx, mq_socket_t **pfd)
     assert_result_not_null(pfd[1] = mq_socket_new(ctx, MQ_PAIR));
  
     //** Connect them together
-    tbx_random_bytes_get(&r, sizeof(r));
+    tbx_random_get_bytes(&r, sizeof(r));
     snprintf(hname, sizeof(hname), "inproc://" LU, r);
     assert_result(mq_bind(pfd[1], hname),0);
     assert_result(mq_bind(pfd[0], hname),0);
@@ -306,7 +306,7 @@ int mq_submit(mq_portal_t *p, mq_task_t *task)
     tbx_stack_insert_below(p->tasks, task);
     backlog = tbx_stack_size(p->tasks);
     log_printf(2, "portal=%s backlog=%d active_conn=%d max_conn=%d total_conn=%d\n", p->host, backlog, p->active_conn, p->max_conn, p->total_conn);
-    tbx_flush_log();
+    tbx_log_flush();
 
 //** Noitify the connections
     c = 1;
@@ -337,7 +337,7 @@ int mq_submit(mq_portal_t *p, mq_task_t *task)
     }
 
     log_printf(2, "END portal=%s err=%d backlog=%d active_conn=%d total_conn=%d max_conn=%d\n", p->host, err, backlog, p->active_conn, p->total_conn, p->max_conn);
-    tbx_flush_log();
+    tbx_log_flush();
 
     apr_thread_mutex_unlock(p->lock);
 
@@ -461,7 +461,7 @@ void *mqt_exec(apr_thread_t *th, void *arg)
     mq_msg_next(task->msg);     //** MQ command
     f = mq_msg_next(task->msg);     //** Skip the ID
     mq_get_frame(f, &key, &n);
-//log_printf(1, "execing sid=%s  EXEC SUBMIT now=" TT "\n", mq_id2str(key, n, b64, sizeof(b64)), apr_time_sec(apr_time_now()));  tbx_flush_log();
+//log_printf(1, "execing sid=%s  EXEC SUBMIT now=" TT "\n", mq_id2str(key, n, b64, sizeof(b64)), apr_time_sec(apr_time_now()));  tbx_log_flush();
     log_printf(1, "execing sid=%s\n", mq_id2str(key, n, b64, sizeof(b64)));
     f = mq_msg_next(task->msg); //** and get the user command
     mq_get_frame(f, &key, &n);
@@ -528,7 +528,7 @@ void mqc_response(mq_conn_t *c, mq_msg_t *msg, int do_exec)
     char b64[1024];
 
     log_printf(5, "start\n");
-    tbx_flush_log();
+    tbx_log_flush();
 
     f = mq_msg_next(msg);  //** This should be the task ID
     mq_get_frame(f, (void **)&id, &size);
@@ -538,7 +538,7 @@ void mqc_response(mq_conn_t *c, mq_msg_t *msg, int do_exec)
     tn = apr_hash_get(c->waiting, id, size);
     if (tn == NULL) {  //** Nothing matches so drop it
         log_printf(1, "ERROR: No matching ID! sid=%s\n", mq_id2str(id, size, b64, sizeof(b64)));
-        tbx_flush_log();
+        tbx_log_flush();
         mq_msg_destroy(msg);
         return;
     }
@@ -553,7 +553,7 @@ void mqc_response(mq_conn_t *c, mq_msg_t *msg, int do_exec)
 //** Execute the task in the thread pool
     if(do_exec != 0) {
         log_printf(5, "Submitting repsonse for exec gid=%d\n", gop_id(tn->task->gop));
-        tbx_flush_log();
+        tbx_log_flush();
         tn->task->response = msg;
         _tp_submit_op(NULL, tn->task->gop);
     }
@@ -562,7 +562,7 @@ void mqc_response(mq_conn_t *c, mq_msg_t *msg, int do_exec)
     free(tn);
 
     log_printf(5, "end\n");
-    tbx_flush_log();
+    tbx_log_flush();
 }
 
 //**************************************************************
@@ -841,9 +841,9 @@ int mqc_heartbeat_cleanup(mq_conn_t *c)
 
 //** Submit the fail task
         log_printf(1, "Failed task uuid=%s\n", c->mq_uuid);
-        tbx_flush_log();
+        tbx_log_flush();
         log_printf(1, "Failed task tn->task=%p tn->task->gop=%p\n", tn->task, tn->task->gop);
-        tbx_flush_log();
+        tbx_log_flush();
         assert(tn->task);
         assert(tn->task->gop);
         thread_pool_direct(c->pc->tp, mqtp_failure, tn->task);
@@ -902,7 +902,7 @@ int mqc_heartbeat(mq_conn_t *c, int npoll)
     double dts;
     apr_time_t start = apr_time_now();
     log_printf(6, "START host=%s\n", c->mq_uuid);
-    tbx_flush_log();
+    tbx_log_flush();
     dt_fail = apr_time_make(c->pc->heartbeat_failure, 0);
     dt_check = apr_time_make(c->pc->heartbeat_dt, 0);
     pending_count = 0;
@@ -933,9 +933,9 @@ int mqc_heartbeat(mq_conn_t *c, int npoll)
 
 //** Submit the fail task
                     log_printf(6, "Failed task uuid=%s sid=%s\n", c->mq_uuid, mq_id2str(key, klen, b64, sizeof(b64)));
-                    tbx_flush_log();
+                    tbx_log_flush();
                     log_printf(6, "Failed task tn->task=%p tn->task->gop=%p\n", tn->task, tn->task->gop);
-                    tbx_flush_log();
+                    tbx_log_flush();
                     assert(tn->task);
                     assert(tn->task->gop);
                     thread_pool_direct(c->pc->tp, mqtp_failure, tn->task);
@@ -989,9 +989,9 @@ next:
 
 //** Submit the fail task
             log_printf(6, "Failed task uuid=%s hash_count=%u sid=%s\n", c->mq_uuid, apr_hash_count(c->waiting), mq_id2str(key, klen, b64, sizeof(b64)));
-            tbx_flush_log();
+            tbx_log_flush();
             log_printf(6, "Failed task tn->task=%p tn->task->gop=%p gid=%d\n", tn->task, tn->task->gop, gop_id(tn->task->gop));
-            tbx_flush_log();
+            tbx_log_flush();
             assert(tn->task);
             assert(tn->task->gop);
             thread_pool_direct(c->pc->tp, mqtp_failure, tn->task);
@@ -1061,7 +1061,7 @@ int mqc_process_incoming(mq_conn_t *c, int *nproc)
             goto skip;
         }
 
-//log_printf(5, "111111111111111111111\n"); tbx_flush_log();
+//log_printf(5, "111111111111111111111\n"); tbx_log_flush();
 //** and the correct version
         f = mq_msg_next(msg);
         mq_get_frame(f, (void **)&data, &size);
@@ -1071,29 +1071,29 @@ int mqc_process_incoming(mq_conn_t *c, int *nproc)
             goto skip;
         }
 
-//log_printf(5, "222222222222222222\n"); tbx_flush_log();
+//log_printf(5, "222222222222222222\n"); tbx_log_flush();
 
 //** This is the command frame
         f = mq_msg_next(msg);
         mq_get_frame(f, (void **)&data, &size);
         if (mq_data_compare(MQF_PING_KEY, MQF_PING_SIZE, data, size) == 0) {
             log_printf(15, "Processing MQF_PING_KEY\n");
-            tbx_flush_log();
+            tbx_log_flush();
             c->stats.incoming[MQS_PING_INDEX]++;
             mqc_ping(c, msg);
         } else if (mq_data_compare(MQF_PONG_KEY, MQF_PONG_SIZE, data, size) == 0) {
             log_printf(15, "Processing MQF_PONG_KEY\n");
-            tbx_flush_log();
+            tbx_log_flush();
             c->stats.incoming[MQS_PONG_INDEX]++;
             mqc_pong(c, msg);
         } else if (mq_data_compare(MQF_TRACKADDRESS_KEY, MQF_TRACKADDRESS_SIZE, data, size) == 0) {
             log_printf(15, "Processing MQF_TRACKADDRESS_KEY\n");
-            tbx_flush_log();
+            tbx_log_flush();
             c->stats.incoming[MQS_TRACKADDRESS_INDEX]++;
             mqc_trackaddress(c, msg);
         } else if (mq_data_compare(MQF_RESPONSE_KEY, MQF_RESPONSE_SIZE, data, size) == 0) {
             log_printf(15, "Processing MQF_RESPONSE_KEY\n");
-            tbx_flush_log();
+            tbx_log_flush();
             c->stats.incoming[MQS_RESPONSE_INDEX]++;
             mqc_response(c, msg, 1);
         } else if ((mq_data_compare(MQF_EXEC_KEY, MQF_EXEC_SIZE, data, size) == 0) ||
@@ -1101,11 +1101,11 @@ int mqc_process_incoming(mq_conn_t *c, int *nproc)
 
             if (mq_data_compare(MQF_TRACKEXEC_KEY, MQF_TRACKEXEC_SIZE, data, size) == 0) {
                 log_printf(15, "Processing MQF_TRACKEXEC_KEY\n");
-                tbx_flush_log();
+                tbx_log_flush();
                 c->stats.incoming[MQS_TRACKEXEC_INDEX]++;
             } else {
                 log_printf(15, "Processing MQF_EXEC_KEY\n");
-                tbx_flush_log();
+                tbx_log_flush();
                 c->stats.incoming[MQS_EXEC_INDEX]++;
 
             }
@@ -1129,7 +1129,7 @@ skip:
 
     *nproc += count;  //** Inc processed commands
     log_printf(5, "processing incoming end n=%d\n", n);
-    tbx_flush_log();
+    tbx_log_flush();
 
     return(0);
 }
@@ -1461,7 +1461,7 @@ void *mq_conn_thread(apr_thread_t *th, void *data)
             log_printf(5, "after process_incoming finished=%d\n", finished);
         } else if (k < 0) {
             log_printf(0, "ERROR on socket uuid=%s errno=%d\n", c->mq_uuid, errno);
-            tbx_flush_log();
+            tbx_log_flush();
             goto cleanup;
         }
 
@@ -1502,7 +1502,7 @@ cleanup:
     //** This is done on portal cleanup
     mq_stats_print(2, c->mq_uuid, &(c->stats));
     log_printf(2, "END: uuid=%s total_incoming=" I64T " total_processed=" I64T " oops=%d\n", c->mq_uuid, total_incoming, total_proc, oops);
-    tbx_flush_log();
+    tbx_log_flush();
 
     mq_conn_teardown(c);
 
@@ -1520,7 +1520,7 @@ cleanup:
     apr_thread_mutex_unlock(c->pc->lock);
 
     log_printf(2, "END: final\n");
-    tbx_flush_log();
+    tbx_log_flush();
 
 
     return(NULL);
@@ -1641,7 +1641,7 @@ void mq_portal_destroy(mq_portal_t *p)
 //** Tell how many connections to close
     apr_thread_mutex_lock(p->lock);
     log_printf(2, "host=%s active_conn=%d total_conn=%d\n", p->host, p->active_conn, p->total_conn);
-    tbx_flush_log();
+    tbx_log_flush();
     p->n_close = p->active_conn;
     n = p->n_close;
     apr_thread_mutex_unlock(p->lock);
@@ -1658,7 +1658,7 @@ void mq_portal_destroy(mq_portal_t *p)
     apr_thread_mutex_unlock(p->lock);
 
     log_printf(2, "host=%s closed_size=%d total_conn=%d\n", p->host, tbx_stack_size(p->closed_conn), p->total_conn);
-    tbx_flush_log();
+    tbx_log_flush();
 
     //** Clean up 
     //** Don;t have to worry about locking cause no one else exists
@@ -1682,8 +1682,8 @@ void mq_portal_destroy(mq_portal_t *p)
     mq_pipe_destroy(p->ctx, p->efd);
     if (p->ctx != NULL) mq_socket_context_destroy(p->ctx);
 
-    tbx_free_stack(p->closed_conn, 0);
-    tbx_free_stack(p->tasks, 0);
+    tbx_stack_free(p->closed_conn, 0);
+    tbx_stack_free(p->tasks, 0);
 
     free(p->host);
     free(p);
@@ -1818,29 +1818,29 @@ void mq_destroy_context(mq_context_t *mqc)
     void *val;
 
     log_printf(5, "Shutting down client_portals\n");
-    tbx_flush_log();
+    tbx_log_flush();
     for (hi=apr_hash_first(mqc->mpool, mqc->client_portals); hi != NULL; hi = apr_hash_next(hi)) {
         apr_hash_this(hi, NULL, NULL, &val);
         p = (mq_portal_t *)val;
         apr_hash_set(mqc->client_portals, p->host, APR_HASH_KEY_STRING, NULL);
         log_printf(5, "destroying p->host=%s\n", p->host);
-        tbx_flush_log();
+        tbx_log_flush();
         mq_portal_destroy(p);
     }
     log_printf(5, "Shutting down server_portals\n");
-    tbx_flush_log();
+    tbx_log_flush();
     for (hi=apr_hash_first(mqc->mpool, mqc->server_portals); hi != NULL; hi = apr_hash_next(hi)) {
         apr_hash_this(hi, NULL, NULL, &val);
         p = (mq_portal_t *)val;
         apr_hash_set(mqc->server_portals, p->host, APR_HASH_KEY_STRING, NULL);
         log_printf(5, "destroying p->host=%s\n", p->host);
-        tbx_flush_log();
+        tbx_log_flush();
         mq_portal_destroy(p);
     }
     log_printf(5, "Completed portal shutdown\n");
-    tbx_flush_log();
+    tbx_log_flush();
     //sleep(1);
-    //log_printf(5, "AFTER SLEEP\n"); tbx_flush_log();
+    //log_printf(5, "AFTER SLEEP\n"); tbx_log_flush();
 
     mq_stats_print(2, "Portal total", &(mqc->stats));
 
@@ -1855,7 +1855,7 @@ void mq_destroy_context(mq_context_t *mqc)
 
     //sleep(1);
     log_printf(5, "AFTER SLEEP2\n");
-    tbx_flush_log();
+    tbx_log_flush();
 }
 
 //**************************************************************
@@ -1882,18 +1882,18 @@ mq_context_t *mq_create_context(tbx_inip_file_t *ifd, char *section)
 
     tbx_type_malloc_clear(mqc, mq_context_t, 1);
 
-    mqc->min_conn = tbx_inip_integer_get(ifd, section, "min_conn", 1);
-    mqc->max_conn = tbx_inip_integer_get(ifd, section, "max_conn", 3);
-    mqc->min_threads = tbx_inip_integer_get(ifd, section, "min_threads", 2);
-    mqc->max_threads = tbx_inip_integer_get(ifd, section, "max_threads", 20);
-    mqc->max_recursion = tbx_inip_integer_get(ifd, section, "max_recursion", 5);
-    mqc->backlog_trigger = tbx_inip_integer_get(ifd, section, "backlog_trigger", 100);
-    mqc->heartbeat_dt = tbx_inip_integer_get(ifd, section, "heartbeat_dt", 5);
-    mqc->heartbeat_failure = tbx_inip_integer_get(ifd, section, "heartbeat_failure", 60);
-    mqc->min_ops_per_sec = tbx_inip_integer_get(ifd, section, "min_ops_per_sec", 100);
+    mqc->min_conn = tbx_inip_get_integer(ifd, section, "min_conn", 1);
+    mqc->max_conn = tbx_inip_get_integer(ifd, section, "max_conn", 3);
+    mqc->min_threads = tbx_inip_get_integer(ifd, section, "min_threads", 2);
+    mqc->max_threads = tbx_inip_get_integer(ifd, section, "max_threads", 20);
+    mqc->max_recursion = tbx_inip_get_integer(ifd, section, "max_recursion", 5);
+    mqc->backlog_trigger = tbx_inip_get_integer(ifd, section, "backlog_trigger", 100);
+    mqc->heartbeat_dt = tbx_inip_get_integer(ifd, section, "heartbeat_dt", 5);
+    mqc->heartbeat_failure = tbx_inip_get_integer(ifd, section, "heartbeat_failure", 60);
+    mqc->min_ops_per_sec = tbx_inip_get_integer(ifd, section, "min_ops_per_sec", 100);
 
     // New socket_type parameter
-    mqc->socket_type = tbx_inip_integer_get(ifd, section, "socket_type", MQ_TRACE_ROUTER);
+    mqc->socket_type = tbx_inip_get_integer(ifd, section, "socket_type", MQ_TRACE_ROUTER);
 
     apr_pool_create(&(mqc->mpool), NULL);
     apr_thread_mutex_create(&(mqc->lock), APR_THREAD_MUTEX_DEFAULT, mqc->mpool);

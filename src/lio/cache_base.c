@@ -96,7 +96,7 @@ void free_page_tables_free(void *arg, int size, void *data)
     log_printf(15, "destroying shelf of size %d\n", size);
 
     for (i=0; i<size; i++) {
-        tbx_free_stack(shelf[i].stack, 0);
+        tbx_stack_free(shelf[i].stack, 0);
     }
 
     free(shelf);
@@ -121,7 +121,7 @@ void *free_pending_table_new(void *arg, int size)
     }
 
     log_printf(15, " shelf[0]->max_levels=%d\n", shelf[0]->max_levels);
-    tbx_flush_log();
+    tbx_log_flush();
     return((void *)shelf);
 }
 

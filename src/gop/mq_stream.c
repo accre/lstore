@@ -460,7 +460,7 @@ int mqs_write_send(mq_stream_t *mqs, mq_msg_t *address, mq_frame_t *fid)
         mqs->want_more = MQS_ABORT;
     }
 
-//tbx_flush_log();
+//tbx_log_flush();
 //sleep(5);
     return(err);
 }

@@ -290,7 +290,7 @@ skip_submit:
     }
     opque_free(q, OP_DESTROY);
 
-    tbx_free_stack(tbuf_free, 0);
+    tbx_stack_free(tbuf_free, 0);
     free(tbuf_index);
     free(buf);
     free(buffer);

@@ -201,7 +201,7 @@ mq_context_t *client_make_context()
     mq_context_t *mqc;
 
     snprintf(buffer, sizeof(buffer), text_params, 100*nparallel);
-    ifd = tbx_inip_string_read(buffer);
+    ifd = tbx_inip_read_string(buffer);
     mqc = mq_create_context(ifd, "mq_context");
     assert(mqc != NULL);
     tbx_inip_destroy(ifd);
@@ -247,7 +247,7 @@ op_generic_t *test_gop(mq_context_t *mqc, int flusher, int client_delay, int del
     gop_set_myid(gop, myid);
 
     log_printf(0, "CREATE: gid=%d myid=%d test_gop(f=%d, cd=%d, sd=%d, mp=%d, sb=%d, to=%d) = %d\n", gop_id(gop), myid, op->launch_flusher, op->client_delay, op->delay, op->max_packet, op->send_bytes, op->timeout, op->shouldbe);
-    tbx_flush_log();
+    tbx_log_flush();
 
     return(gop);
 }
@@ -264,25 +264,25 @@ op_generic_t *new_bulk_task(mq_context_t *mqc, int myid)
     to_min = 10;
     to_max = 20;
 
-    transfer_bytes = tbx_random_int64(send_min, send_max);
-    packet_bytes = tbx_random_int64(packet_min, packet_max);
-    to = tbx_random_int64(to_min, to_max);
-    delay = tbx_random_int64(1, 10);
+    transfer_bytes = tbx_random_get_int64(send_min, send_max);
+    packet_bytes = tbx_random_get_int64(packet_min, packet_max);
+    to = tbx_random_get_int64(to_min, to_max);
+    delay = tbx_random_get_int64(1, 10);
     if (delay == 1) {
-        delay = tbx_random_int64(to_min, to_max);
+        delay = tbx_random_get_int64(to_min, to_max);
         if (delay == to) delay += 2;
     } else {
         delay = 0;
     }
-    flusher = tbx_random_int64(1, 3);
+    flusher = tbx_random_get_int64(1, 3);
 //flusher = 1;
     if (flusher != 1) {
         flusher = 0;
     }
 
-    client_delay = tbx_random_int64(1, 10);
+    client_delay = tbx_random_get_int64(1, 10);
     if (client_delay == 1) {
-        client_delay = tbx_random_int64(to_min, to_max);
+        client_delay = tbx_random_get_int64(to_min, to_max);
         if (client_delay == to) client_delay -= 2;
     } else {
         client_delay = 0;
@@ -314,7 +314,7 @@ int client_consume_result(op_generic_t *gop)
         n = 0;
         log_printf(0, "SUCCESS with stream test! gid=%d myid=%d test_gop(f=%d, cd=%d sd=%d, mp=%d, sb=%d, to=%d) = %d got=%d\n", gop_id(gop), gop_get_myid(gop), op->launch_flusher, op->client_delay, op->delay, op->max_packet, op->send_bytes, op->timeout, op->shouldbe, status.op_status);
     }
-    tbx_flush_log();
+    tbx_log_flush();
 
     gop_free(gop, OP_DESTROY);
     free(op);
@@ -408,7 +408,7 @@ skip:
     if (q != NULL) opque_free(q, OP_DESTROY);
 
     log_printf(0, "END\n");
-    tbx_flush_log();
+    tbx_log_flush();
 
     return(NULL);
 }
@@ -457,9 +457,9 @@ void cb_write_stream(void *arg, mq_task_t *task)
     nleft = op->send_bytes;
     nsent = 0;
     do {
-        nbytes = tbx_random_int64(1, test_size);
+        nbytes = tbx_random_get_int64(1, test_size);
         if (nbytes > nleft) nbytes = nleft;
-        offset = tbx_random_int64(0, test_size-nbytes);
+        offset = tbx_random_get_int64(0, test_size-nbytes);
 
         log_printf(0, "nsent=%d  offset=%d nbytes=%d\n", nsent, offset, nbytes);
         err = mq_stream_write(mqs, &offset, sizeof(int));
@@ -490,7 +490,7 @@ fail:
     mq_stream_destroy(mqs);
 
     log_printf(0, "END gid=%d\n", err);
-    tbx_flush_log();
+    tbx_log_flush();
 
     apr_thread_mutex_lock(lock);
     in_process--;
@@ -519,7 +519,7 @@ mq_context_t *server_make_context()
     mq_context_t *mqc;
 
     snprintf(buffer, sizeof(buffer), text_params, 100*nparallel);
-    ifd = tbx_inip_string_read(buffer);
+    ifd = tbx_inip_read_string(buffer);
     mqc = mq_create_context(ifd, "mq_context");
     assert(mqc != NULL);
     tbx_inip_destroy(ifd);
@@ -572,7 +572,7 @@ void *server_test_thread(apr_thread_t *th, void *arg)
     mq_destroy_context(mqc);
 
     log_printf(0, "END\n");
-    tbx_flush_log();
+    tbx_log_flush();
 
     return(NULL);
 }
@@ -677,7 +677,7 @@ int main(int argc, char **argv)
 
     //** Make the test_data to pluck info from
     tbx_type_malloc_clear(test_data, char, test_size);
-    if (do_random == 1) tbx_random_bytes_get(test_data, test_size);
+    if (do_random == 1) tbx_random_get_bytes(test_data, test_size);
 
     //** Make the locking structures for client/server communication
     apr_pool_create(&mpool, NULL);

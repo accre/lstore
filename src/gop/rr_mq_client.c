@@ -44,7 +44,7 @@ op_status_t read_stream(void *arg, int tid)
 
     int n_read, n_left, offset, n_bytes;
 
-    tbx_flush_log();
+    tbx_log_flush();
     log_printf(10, "CLIENT: Message frames BEFORE destroying:\n");
     display_msg_frames(msg);
 
@@ -278,7 +278,7 @@ mq_context_t *client_make_context()
 
     char buffer[1024];
     snprintf(buffer, sizeof(buffer), text_parameters, nparallel);
-    ifd = tbx_inip_string_read(buffer);
+    ifd = tbx_inip_read_string(buffer);
 
     mqc = mq_create_context(ifd, "mq_context");
     tbx_inip_destroy(ifd);
@@ -392,7 +392,7 @@ void client_test()
 {
     mq_context_t *mqc;
 
-    tbx_flush_log();
+    tbx_log_flush();
     log_printf(1, "CLIENT: Starting...\n");
 
     log_printf(15, "CLIENT: Creating context...\n");

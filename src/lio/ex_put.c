@@ -152,7 +152,7 @@ int main(int argc, char **argv)
         gop_start_execution(gop);
 
         log_printf(1, "ex_put: i=" XOT " gid=%d\n", i, gop_id(gop));
-        tbx_flush_log();
+        tbx_log_flush();
 
         //** Read in the next block
         disk_start = apr_time_now();
@@ -162,10 +162,10 @@ int main(int argc, char **argv)
 
         err = gop_waitall(gop);
         log_printf(1, "ex_put: i=" XOT " gid=%d err=%d\n", i, gop_id(gop), err);
-        tbx_flush_log();
+        tbx_log_flush();
         if (err != OP_STATE_SUCCESS) {
             printf("ex_put: Error writing offset=" XOT " wlen=" XOT "!\n",i, wlen);
-            tbx_flush_log();
+            tbx_log_flush();
             fflush(stdout);
             abort();
         }
@@ -176,7 +176,7 @@ int main(int argc, char **argv)
 
     //** Flush everything to backing store
     log_printf(1, "Flushing to disk size=" XOT "\n", segment_size(seg));
-    tbx_flush_log();
+    tbx_log_flush();
     gop_sync_exec(segment_flush(seg, lio_gc->da, 0, segment_size(seg)+1, lio_gc->timeout));
     log_printf(1, "Flush completed\n");
     cumulative_time = apr_time_now() - start_time;

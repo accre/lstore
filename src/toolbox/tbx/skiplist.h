@@ -75,17 +75,17 @@ TBX_API tbx_sl_key_t *tbx_sl_first_key(tbx_sl_t *sl);
 
 TBX_API int tbx_sl_key_count(tbx_sl_t *sl);
 
-TBX_API tbx_sl_key_t *tbx_sl_last_key(tbx_sl_t *sl);
+TBX_API tbx_sl_key_t *tbx_sl_key_last(tbx_sl_t *sl);
 
-TBX_API void tbx_sl_strncmp_set(tbx_sl_compare_t *compare, int n);
+TBX_API void tbx_sl_set_strncmp(tbx_sl_compare_t *compare, int n);
 
-TBX_API void tbx_sl_no_data_free(tbx_sl_data_t *data);
+TBX_API void tbx_sl_free_no_data(tbx_sl_data_t *data);
 
-TBX_API void tbx_sl_no_key_free(tbx_sl_key_t *key);
+TBX_API void tbx_sl_free_no_key(tbx_sl_key_t *key);
 
-TBX_API void tbx_sl_simple_free(tbx_sl_data_t *data);
+TBX_API void tbx_sl_free_simple(tbx_sl_data_t *data);
 
-TBX_API tbx_sl_key_t *tbx_sl_string_dup(tbx_sl_key_t *key);
+TBX_API tbx_sl_key_t *tbx_sl_dup_string(tbx_sl_key_t *key);
 
 TBX_API extern tbx_sl_compare_t tbx_sl_compare_int;
 

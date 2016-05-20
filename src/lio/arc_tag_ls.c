@@ -115,15 +115,15 @@ void process_tag_file(char *tag_file, char *tag_name)
         exit(1);
     } else {
         /*** process tag file ***/
-        ini_fd = tbx_inip_file_read(tag_file); assert(ini_fd);
+        ini_fd = tbx_inip_read_file(tag_file); assert(ini_fd);
         ini_g = tbx_inip_group_first(ini_fd);
         obj_types = OS_OBJECT_ANY;
         while (ini_g != NULL) {
             if (strcmp(tbx_inip_group_get(ini_g), "TAG") == 0) {
                 ele = tbx_inip_ele_first(ini_g);
                 while (ele != NULL) {
-                    key = tbx_inip_ele_key_get(ele);
-                    value = tbx_inip_ele_value_get(ele);
+                    key = tbx_inip_ele_get_key(ele);
+                    value = tbx_inip_ele_get_value(ele);
                     if (strcmp(key, "name") == 0) {
                         name = value;
                     } else if (strcmp(key, "path") == 0) {

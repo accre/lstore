@@ -40,21 +40,21 @@ extern "C" {
 
 #define tbx_list_next(it, nkey, ndata) tbx_sl_next(it, nkey, ndata)
 
-#define tbx_list_no_data_free tbx_sl_no_data_free
+#define tbx_list_no_data_free tbx_sl_free_no_data
 
-#define tbx_list_no_key_free tbx_sl_no_key_free
+#define tbx_list_no_key_free tbx_sl_free_no_key
 
 #define tbx_list_remove(sl, key, data) tbx_sl_remove(sl, key, data)
 
 #define tbx_list_search(sl, key) tbx_sl_search_compare(sl, key, (sl)->compare)
 
-#define tbx_list_simple_free tbx_sl_simple_free
+#define tbx_list_simple_free tbx_sl_free_simple
 
 #define tbx_list_string_compare tbx_sl_compare_strcmp
 
-#define tbx_list_string_dup tbx_sl_string_dup
+#define tbx_list_string_dup tbx_sl_dup_string
 
-#define tbx_list_strncmp_set(cmp, n) tbx_sl_strncmp_set(cmp, n)
+#define tbx_list_strncmp_set(cmp, n) tbx_sl_set_strncmp(cmp, n)
 // TEMPORARY
 #if !defined toolbox_EXPORTS && defined LSTORE_HACK_EXPORT
 #   include <tbx/skiplist.h>

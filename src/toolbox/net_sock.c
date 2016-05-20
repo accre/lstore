@@ -125,7 +125,7 @@ int sock_io_wait(tbx_net_sock_t *sock, tbx_ns_timeout_t tm, int mode)
 
     apr_time_t start = apr_time_now();
     double ddt;
-//log_printf(10, "sock_io_wait: START tm=" TT " mode=%d\n", tm, mode);  tbx_flush_log();
+//log_printf(10, "sock_io_wait: START tm=" TT " mode=%d\n", tm, mode);  tbx_log_flush();
 
     dt = tm / 1000;
     if (dt == 0) dt = 1;
@@ -221,7 +221,7 @@ apr_size_t my_write(tbx_net_sock_t *sock, tbx_tbuf_t *buf, apr_size_t bpos, apr_
 //leni=len;
 //len2 = tbv.nbytes;
 //ni=tbv.n_iov;
-//log_printf(15, "s->fd=%d requested=%d got tbv.nbytes=%d tbv.n_iov=%d\n", s->fd, leni, len2, ni); tbx_flush_log();
+//log_printf(15, "s->fd=%d requested=%d got tbv.nbytes=%d tbv.n_iov=%d\n", s->fd, leni, len2, ni); tbx_log_flush();
         if (tbv.n_iov > IOV_MAX) tbv.n_iov = IOV_MAX;  //** Make sure we don't have to many entries
         n = writev(s->fd, tbv.buffer, tbv.n_iov);
         leni=tbv.buffer->iov_len;
@@ -419,7 +419,7 @@ int sock_connect(net_sock_t *nsock, const char *hostname, int port, tbx_ns_timeo
     }
 
     err = apr_socket_connect(sock->fd, sock->sa);
-//log_printf(0, "sock_connect: apr_socket_connect: err=%d\n", err); tbx_flush_log();
+//log_printf(0, "sock_connect: apr_socket_connect: err=%d\n", err); tbx_log_flush();
 
     //** Set a default timeout
     tbx_ns_timeout_set(&tm, 0, SOCK_DEFAULT_TIMEOUT);
@@ -591,7 +591,7 @@ void tbx_ns_sock_config(tbx_ns_t *ns, int tcpsize)
     int err = apr_pool_create(&(sock->mpool), NULL);
     if (err != APR_SUCCESS) {
         log_printf(0, "ns_config_sock:  apr_pool_crete error = %d\n", err);
-        tbx_flush_log();
+        tbx_log_flush();
         assert(err == APR_SUCCESS);
     }
 

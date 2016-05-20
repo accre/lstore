@@ -98,7 +98,7 @@ int compare_buffers_print(char *b1, char *b2, int len, ex_off_t offset)
 //i=(b1[last] == b2[last]) ? 0 : 1;
 //log_printf(0, "last compare=%d lst=%d\n", i, last);
 
-    tbx_flush_log();
+    tbx_log_flush();
     return(err);
 }
 

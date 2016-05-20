@@ -56,7 +56,7 @@ int rr_cache_destroy(cache_t *c)
     cache_rr_t *cp = (cache_rr_t *)c->fn.priv;
 
     log_printf(15, "Shutting down\n");
-    tbx_flush_log();
+    tbx_log_flush();
 
     for (i=0; i<cp->n_cache; i++) {
         cache_destroy(cp->child[i]);
@@ -116,9 +116,9 @@ cache_t *round_robin_cache_load(void *arg, tbx_inip_file_t *fd, char *grp, data_
     cp = (cache_rr_t *)c->fn.priv;
 
     cache_lock(c);
-    cp->n_cache = tbx_inip_integer_get(fd, grp, "n_cache", 2);
-    child_section = tbx_inip_string_get(fd, grp, "child", "cache-amp");
-    ctype = tbx_inip_string_get(fd, child_section, "type", NULL);
+    cp->n_cache = tbx_inip_get_integer(fd, grp, "n_cache", 2);
+    child_section = tbx_inip_get_string(fd, grp, "child", "cache-amp");
+    ctype = tbx_inip_get_string(fd, child_section, "type", NULL);
 
     tbx_type_malloc(cp->child, cache_t *, cp->n_cache);
     for (i=0; i<cp->n_cache; i++) {

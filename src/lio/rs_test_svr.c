@@ -65,9 +65,9 @@ int main(int argc, char **argv)
     char *svr_proto, *svr_addr, *svr_port, *zmq_svr;
 
     //** Retrieves remote zmq server name, transport protocol, and lisenting port
-    svr_proto = tbx_inip_string_get(lio_gc->ifd, "zmq_server", "protocol", RS_ZMQ_DFT_PROTO);
-    svr_addr = tbx_inip_string_get(lio_gc->ifd, "zmq_server", "server", NULL);
-    svr_port = tbx_inip_string_get(lio_gc->ifd, "zmq_server", "port", RS_ZMQ_DFT_PORT);
+    svr_proto = tbx_inip_get_string(lio_gc->ifd, "zmq_server", "protocol", RS_ZMQ_DFT_PROTO);
+    svr_addr = tbx_inip_get_string(lio_gc->ifd, "zmq_server", "server", NULL);
+    svr_port = tbx_inip_get_string(lio_gc->ifd, "zmq_server", "port", RS_ZMQ_DFT_PORT);
     asprintf(&zmq_svr, "%s://%s:%s", tbx_stk_string_trim(svr_proto), tbx_stk_string_trim(svr_addr), tbx_stk_string_trim(svr_port));
 
 

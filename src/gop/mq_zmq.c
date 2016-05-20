@@ -78,7 +78,7 @@ int zero_native_connect(mq_socket_t *socket, const char *format, ...)
     //** Set the ID
     if (socket->type != MQ_PAIR) {
         snprintf(buf, 255, format, args);
-        snprintf(id, 255, "%s:" I64T , buf, tbx_random_int64(1, 1000000));
+        snprintf(id, 255, "%s:" I64T , buf, tbx_random_get_int64(1, 1000000));
         zsocket_set_identity(socket->arg, id);
         log_printf(4, "Unique hostname created = %s\n", id);
     }
@@ -130,10 +130,10 @@ int zero_native_send(mq_socket_t *socket, mq_msg_t *msg, int flags)
     f = mq_msg_first(msg);
     if (f->len > 1) {
         log_printf(5, "dest=!%.*s! nframes=%d\n", f->len, (char *)(f->data), tbx_stack_size(msg));
-        tbx_flush_log();
+        tbx_log_flush();
     } else {
         log_printf(5, "dest=(single byte) nframes=%d\n", tbx_stack_size(msg));
-        tbx_flush_log();
+        tbx_log_flush();
     }
 
     while ((fn = mq_msg_next(msg)) != NULL) {
@@ -145,10 +145,10 @@ int zero_native_send(mq_socket_t *socket, mq_msg_t *msg, int flags)
             }
             loop++;
             log_printf(5, "sending frame=%d len=%d bytes=%d errno=%d loop=%d\n", count, f->len, bytes, errno, loop);
-            tbx_flush_log();
+            tbx_log_flush();
             if (f->len>0) {
                 log_printf(5, "byte=%uc\n", (unsigned char)f->data[0]);
-                tbx_flush_log();
+                tbx_log_flush();
             }
         } while ((bytes == -1) && (loop < 10));
         n += bytes;
@@ -401,10 +401,10 @@ void zero_socket_context_destroy(mq_socket_context_t *ctx)
     //** zctx_destroy() close them
 //  sleep(1);
     log_printf(5, "after sleep\n");
-    tbx_flush_log();
+    tbx_log_flush();
     zctx_destroy((zctx_t **)&(ctx->arg));
     log_printf(5, "after zctx_destroy\n");
-    tbx_flush_log();
+    tbx_log_flush();
     free(ctx);
 }
 

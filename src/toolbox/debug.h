@@ -32,7 +32,7 @@
 #define debug_code(a) a
 #define debug_printf(n, ...) log_printf(n, __VA_ARGS__)
 #define set_debug_level(n) tbx_set_log_level(n)
-#define flush_debug() tbx_flush_log()
+#define flush_debug() tbx_log_flush()
 #define debug_level() tbx_log_level()
 
 #else

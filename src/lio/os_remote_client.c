@@ -354,7 +354,7 @@ op_generic_t *osrc_remove_regex_object(object_service_fn_t *os, creds_t *creds, 
     op->obj_types = obj_types;
     op->recurse_depth = recurse_depth;
     op->my_id = 0;
-    tbx_random_bytes_get(&(op->my_id), sizeof(op->my_id));
+    tbx_random_get_bytes(&(op->my_id), sizeof(op->my_id));
 
     gop = new_thread_pool_op(osrc->tpc, NULL, osrc_remove_regex_object_func, (void *)op, free, 1);
     return(gop);
@@ -607,7 +607,7 @@ op_generic_t *osrc_regex_object_set_multiple_attrs(object_service_fn_t *os, cred
     op->v_size= v_size;
     op->n_attrs = n_attrs;
     op->my_id = 0;
-    tbx_random_bytes_get(&(op->my_id), sizeof(op->my_id));
+    tbx_random_get_bytes(&(op->my_id), sizeof(op->my_id));
 
     gop = new_thread_pool_op(osrc->tpc, NULL, osrc_regex_object_set_multiple_attrs_func, (void *)op, free, 1);
     gop_set_private(gop, op);
@@ -2475,7 +2475,7 @@ object_service_fn_t *object_service_remote_client_create(service_manager_t *ess,
     tbx_type_malloc_clear(osrc, osrc_priv_t, 1);
     os->priv = (void *)osrc;
 
-    str = tbx_inip_string_get(fd, section, "os_temp", NULL);
+    str = tbx_inip_get_string(fd, section, "os_temp", NULL);
     if (str != NULL) {  //** Running in test/temp
         log_printf(0, "NOTE: Running in debug mode by loading Remote server locally!\n");
         osrc->os_remote = object_service_remote_server_create(ess, fd, str);
@@ -2483,30 +2483,30 @@ object_service_fn_t *object_service_remote_client_create(service_manager_t *ess,
         osrc->os_temp = ((osrs_priv_t *)(osrc->os_remote->priv))->os_child;
         free(str);
     } else {
-        asection = tbx_inip_string_get(fd, section, "authn", NULL);
-        atype = (asection == NULL) ? strdup(AUTHN_TYPE_FAKE) : tbx_inip_string_get(fd, asection, "type", AUTHN_TYPE_FAKE);
+        asection = tbx_inip_get_string(fd, section, "authn", NULL);
+        atype = (asection == NULL) ? strdup(AUTHN_TYPE_FAKE) : tbx_inip_get_string(fd, asection, "type", AUTHN_TYPE_FAKE);
         authn_create = lookup_service(ess, AUTHN_AVAILABLE, atype);
         osrc->authn = (*authn_create)(ess, fd, asection);
         free(atype);
         free(asection);
     }
 
-    osrc->timeout = tbx_inip_integer_get(fd, section, "timeout", 60);
-    osrc->heartbeat = tbx_inip_integer_get(fd, section, "heartbeat", 600);
-    osrc->remote_host_string = tbx_inip_string_get(fd, section, "remote_address", NULL);
+    osrc->timeout = tbx_inip_get_integer(fd, section, "timeout", 60);
+    osrc->heartbeat = tbx_inip_get_integer(fd, section, "heartbeat", 600);
+    osrc->remote_host_string = tbx_inip_get_string(fd, section, "remote_address", NULL);
     osrc->remote_host = mq_string_to_address(osrc->remote_host_string);
 
-    osrc->max_stream = tbx_inip_integer_get(fd, section, "max_stream", 1024*1024);
-    osrc->stream_timeout = tbx_inip_integer_get(fd, section, "stream_timeout", 65);
-    osrc->spin_interval = tbx_inip_integer_get(fd, section, "spin_interval", 1);
-    osrc->spin_fail = tbx_inip_integer_get(fd, section, "spin_fail", 4);
+    osrc->max_stream = tbx_inip_get_integer(fd, section, "max_stream", 1024*1024);
+    osrc->stream_timeout = tbx_inip_get_integer(fd, section, "stream_timeout", 65);
+    osrc->spin_interval = tbx_inip_get_integer(fd, section, "spin_interval", 1);
+    osrc->spin_fail = tbx_inip_get_integer(fd, section, "spin_fail", 4);
 
     apr_pool_create(&osrc->mpool, NULL);
     apr_thread_mutex_create(&(osrc->lock), APR_THREAD_MUTEX_DEFAULT, osrc->mpool);
     apr_thread_cond_create(&(osrc->cond), osrc->mpool);
     apr_gethostname(hostname, sizeof(hostname), osrc->mpool);
     n = 0;
-    tbx_random_bytes_get(&n, sizeof(n));
+    tbx_random_get_bytes(&n, sizeof(n));
     snprintf(buffer, sizeof(buffer), "%d:%s:%s:%u", osrc->heartbeat, hostname, _lio_exe_name, n);
     osrc->host_id = strdup(buffer);
     osrc->host_id_len = strlen(osrc->host_id)+1;

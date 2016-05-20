@@ -43,8 +43,8 @@
 #include <tbx/string_token.h>
 #include <tbx/apr_wrapper.h>
 
-//#define lfs_lock(lfs)  log_printf(0, "lfs_lock\n"); tbx_flush_log(); apr_thread_mutex_lock((lfs)->lock)
-//#define lfs_unlock(lfs) log_printf(0, "lfs_unlock\n");  tbx_flush_log(); apr_thread_mutex_unlock((lfs)->lock)
+//#define lfs_lock(lfs)  log_printf(0, "lfs_lock\n"); tbx_log_flush(); apr_thread_mutex_lock((lfs)->lock)
+//#define lfs_unlock(lfs) log_printf(0, "lfs_unlock\n");  tbx_log_flush(); apr_thread_mutex_unlock((lfs)->lock)
 #define lfs_lock(lfs)    apr_thread_mutex_lock((lfs)->lock)
 #define lfs_unlock(lfs)  apr_thread_mutex_unlock((lfs)->lock)
 
@@ -224,7 +224,7 @@ int lfs_stat(const char *fname, struct stat *stat)
     int v_size[_inode_key_size], i, err;
 
     log_printf(1, "fname=%s\n", fname);
-    tbx_flush_log();
+    tbx_log_flush();
 
     for (i=0; i<_inode_key_size; i++) v_size[i] = -lfs->lc->max_attr;
     err = lio_get_multiple_attrs(lfs->lc, lfs->lc->creds, fname, NULL, _inode_keys, (void **)val, v_size, _inode_key_size);
@@ -235,7 +235,7 @@ int lfs_stat(const char *fname, struct stat *stat)
     _lfs_parse_stat_vals(lfs, (char *)fname, stat, val, v_size);
 
     log_printf(1, "END fname=%s err=%d\n", fname, err);
-    tbx_flush_log();
+    tbx_log_flush();
 
     return(0);
 }
@@ -256,12 +256,12 @@ int lfs_closedir_real(lfs_dir_iter_t *dit)
     //** Cyle through releasing all the entries
     while ((de = (lfs_dir_entry_t *)tbx_stack_pop(dit->stack)) != NULL) {
         log_printf(0, "fname=%s\n", de->dentry);
-        tbx_flush_log();
+        tbx_log_flush();
         free(de->dentry);
         free(de);
     }
 
-    tbx_free_stack(dit->stack, 0);
+    tbx_stack_free(dit->stack, 0);
 
     lio_destroy_object_iter(dit->lfs->lc, dit->it);
     os_regex_table_destroy(dit->path_regex);
@@ -290,7 +290,7 @@ int lfs_opendir(const char *fname, struct fuse_file_info *fi)
     lfs_dir_entry_t *de, *de2;
     int i;
     log_printf(1, "fname=%s\n", fname);
-    tbx_flush_log();
+    tbx_log_flush();
 
     tbx_type_malloc_clear(dit, lfs_dir_iter_t, 1);
 
@@ -360,7 +360,7 @@ int lfs_readdir(const char *dname, void *buf, fuse_fill_dir_t filler, off_t off,
     double dt;
     int off2 = off;
     log_printf(1, "dname=%s off=%d stack_size=%d\n", dname, off2, tbx_stack_size(dit->stack));
-    tbx_flush_log();
+    tbx_log_flush();
     now = apr_time_now();
 
     if (dit == NULL) {
@@ -375,7 +375,7 @@ int lfs_readdir(const char *dname, void *buf, fuse_fill_dir_t filler, off_t off,
         tbx_stack_move_to_bottom(dit->stack);  //** Go from the bottom up.
         for (i=n; i>off; i--) tbx_stack_move_up(dit->stack);
 
-        de = tbx_get_ele_data(dit->stack);
+        de = tbx_stack_get_current_data(dit->stack);
         while (de != NULL) {
             if (filler(buf, de->dentry, &(de->stat), off) == 1) {
                 dt = apr_time_now() - now;
@@ -386,7 +386,7 @@ int lfs_readdir(const char *dname, void *buf, fuse_fill_dir_t filler, off_t off,
 
             off++;
             tbx_stack_move_down(dit->stack);
-            de = tbx_get_ele_data(dit->stack);
+            de = tbx_stack_get_current_data(dit->stack);
         }
     }
 
@@ -436,7 +436,7 @@ int lfs_object_create(lio_fuse_t *lfs, const char *fname, mode_t mode, int ftype
     int err, n;
 
     log_printf(1, "fname=%s\n", fname);
-    tbx_flush_log();
+    tbx_log_flush();
 
     //** Make sure it doesn't exists
     n = lioc_exists(lfs->lc, lfs->lc->creds, (char *)fname);
@@ -508,7 +508,7 @@ int lfs_object_remove(lio_fuse_t *lfs, const char *fname)
     lio_fuse_open_file_t *fop;
 
     log_printf(1, "fname=%s\n", fname);
-    tbx_flush_log();
+    tbx_log_flush();
 
     //** Check if it's open.  If so do a delayed removal
     lfs_lock(lfs);
@@ -661,7 +661,7 @@ int lfs_read(const char *fname, char *buf, size_t size, off_t off, struct fuse_f
 
     fd = (lio_fd_t *)fi->fh;
     log_printf(1, "fname=%s size=" XOT " off=" XOT " fd=%p\n", fname, t1, t2, fd);
-    tbx_flush_log();
+    tbx_log_flush();
     if (fd == NULL) {
         log_printf(0, "ERROR: Got a null file desriptor\n");
         return(-EBADF);
@@ -681,7 +681,7 @@ int lfs_read(const char *fname, char *buf, size_t size, off_t off, struct fuse_f
     dt = apr_time_now() - now;
     dt /= APR_USEC_PER_SEC;
     log_printf(1, "END fname=%s seg=" XIDT " size=" XOT " off=%zu nbytes=" XOT " dt=%lf\n", fname, segment_id(fd->fh->seg), t1, size, nbytes, dt);
-    tbx_flush_log();
+    tbx_log_flush();
 
 //  if (err != OP_STATE_SUCCESS) {
 //     log_printf(1, "ERROR with read! fname=%s\n", fname);
@@ -728,7 +728,7 @@ int lfs_flush(const char *fname, struct fuse_file_info *fi)
     now = apr_time_now();
 
     log_printf(1, "START fname=%s\n", fname);
-    tbx_flush_log();
+    tbx_log_flush();
 
     fd = (lio_fd_t *)fi->fh;
     if (fd == NULL) {
@@ -743,7 +743,7 @@ int lfs_flush(const char *fname, struct fuse_file_info *fi)
     dt = apr_time_now() - now;
     dt /= APR_USEC_PER_SEC;
     log_printf(1, "END fname=%s dt=%lf\n", fname, dt);
-    tbx_flush_log();
+    tbx_log_flush();
 
     return(0);
 }
@@ -764,7 +764,7 @@ int lfs_fsync(const char *fname, int datasync, struct fuse_file_info *fi)
 
     fd = (lio_fd_t *)fi->fh;
     log_printf(1, "START fname=%s fd=%p\n", fname, fd);
-    tbx_flush_log();
+    tbx_log_flush();
     if (fd == NULL) {
         return(-EBADF);
     }
@@ -777,7 +777,7 @@ int lfs_fsync(const char *fname, int datasync, struct fuse_file_info *fi)
     dt = apr_time_now() - now;
     dt /= APR_USEC_PER_SEC;
     log_printf(1, "END fname=%s dt=%lf\n", fname, dt);
-    tbx_flush_log();
+    tbx_log_flush();
 
     return(0);
 }
@@ -793,7 +793,7 @@ int lfs_rename(const char *oldname, const char *newname)
     int err;
 
     log_printf(1, "oldname=%s newname=%s\n", oldname, newname);
-    tbx_flush_log();
+    tbx_log_flush();
 
     lfs_lock(lfs);
     fop = apr_hash_get(lfs->open_files, oldname, APR_HASH_KEY_STRING);
@@ -825,7 +825,7 @@ int lfs_ftruncate(const char *fname, off_t new_size, struct fuse_file_info *fi)
     int err;
 
     log_printf(1, "fname=%s\n", fname);
-    tbx_flush_log();
+    tbx_log_flush();
 
     fd = (lio_fd_t *)fi->fh;
     if (fd == NULL) {
@@ -850,7 +850,7 @@ int lfs_truncate(const char *fname, off_t new_size)
     int result;
 
     log_printf(1, "fname=%s\n", fname);
-    tbx_flush_log();
+    tbx_log_flush();
 
     ts = new_size;
     log_printf(15, "adjusting size=" XOT "\n", ts);
@@ -891,7 +891,7 @@ int lfs_utimens(const char *fname, const struct timespec tv[2])
 
 
     log_printf(1, "fname=%s\n", fname);
-    tbx_flush_log();
+    tbx_log_flush();
 
     key = "system.modify_attr";
     ts = tv[1].tv_sec;
@@ -928,7 +928,7 @@ int lfs_listxattr(const char *fname, char *list, size_t size)
 
     bpos= size;
     log_printf(1, "fname=%s size=%d\n", fname, bpos);
-    tbx_flush_log();
+    tbx_log_flush();
 
     //** Make an iterator
     attr_regex = os_path_glob2regex("user.*");
@@ -1210,7 +1210,7 @@ int lfs_getxattr(const char *fname, const char *name, char *buf, size_t size, ui
 
     v_size= size;
     log_printf(1, "fname=%s size=%zu attr_name=%s\n", fname, size, name);
-    tbx_flush_log();
+    tbx_log_flush();
 
     v_size = (size == 0) ? -lfs->lc->max_attr : -size;
     val = NULL;
@@ -1254,7 +1254,7 @@ int lfs_setxattr(const char *fname, const char *name, const char *fval, size_t s
 
     v_size= size;
     log_printf(1, "fname=%s size=%zu attr_name=%s\n", fname, size, name);
-    tbx_flush_log();
+    tbx_log_flush();
 
     if (flags != 0) { //** Got an XATTR_CREATE/XATTR_REPLACE
         v_size = 0;
@@ -1295,7 +1295,7 @@ int lfs_removexattr(const char *fname, const char *name)
     int v_size, err;
 
     log_printf(1, "fname=%s attr_name=%s\n", fname, name);
-    tbx_flush_log();
+    tbx_log_flush();
 
     if ((lfs->enable_tape == 1) && (strcmp(name, LFS_TAPE_ATTR) == 0)) {
         return(0);
@@ -1320,7 +1320,7 @@ int lfs_hardlink(const char *oldname, const char *newname)
     int err;
 
     log_printf(1, "oldname=%s newname=%s\n", oldname, newname);
-    tbx_flush_log();
+    tbx_log_flush();
 
     //** Now do the hard link
     err = gop_sync_exec(gop_lio_link_object(lfs->lc, lfs->lc->creds, 0, (char *)oldname, (char *)newname, lfs->id));
@@ -1342,7 +1342,7 @@ int lfs_readlink(const char *fname, char *buf, size_t bsize)
     char *val;
 
     log_printf(15, "fname=%s\n", fname);
-    tbx_flush_log();
+    tbx_log_flush();
 
     v_size = -lfs->lc->max_attr;
     val = NULL;
@@ -1365,7 +1365,7 @@ int lfs_readlink(const char *fname, char *buf, size_t bsize)
 
     i=bsize;
     log_printf(15, "fname=%s bsize=%d link=%s mountpoint=%s\n", fname, i, buf, lfs->mount_point);
-    tbx_flush_log();
+    tbx_log_flush();
 
     return(0);
 }
@@ -1381,7 +1381,7 @@ int lfs_symlink(const char *link, const char *newname)
     int err;
 
     log_printf(1, "link=%s newname=%s\n", link, newname);
-    tbx_flush_log();
+    tbx_log_flush();
 
     //** If the link is an absolute path we need to peel off the mount point to the get attribs to link correctly
     //** We only support symlinks within LFS
@@ -1506,7 +1506,7 @@ void *lfs_init_real(struct fuse_conn_info *conn,
     lfs->mount_point = strdup(init_args->mount_point);
     lfs->mount_point_len = strlen(init_args->mount_point);
 
-    lfs->enable_tape = tbx_inip_integer_get(lfs->lc->ifd, section, "enable_tape", 0);
+    lfs->enable_tape = tbx_inip_get_integer(lfs->lc->ifd, section, "enable_tape", 0);
 
     apr_pool_create(&(lfs->mpool), NULL);
     apr_thread_mutex_create(&(lfs->lock), APR_THREAD_MUTEX_DEFAULT, lfs->mpool);
@@ -1543,7 +1543,7 @@ void lfs_destroy(void *private_data)
     lio_fuse_t *lfs;
 
     log_printf(0, "shutting down\n");
-    tbx_flush_log();
+    tbx_log_flush();
 
     lfs = (lio_fuse_t*)private_data;
     if (lfs == NULL) {

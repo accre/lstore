@@ -145,10 +145,10 @@ int main(int argc, char **argv)
         tbx_tbuf_single(&tbuf, rlen, rbuf);
         ex_iovec_single(&iov, i, rlen);
         log_printf(1, "ex_get: i=" XOT " rlen=" XOT " wlen=" XOT "\n", i, rlen, wlen);
-        tbx_flush_log();
+        tbx_log_flush();
         gop = segment_read(seg, lio_gc->da, NULL, 1, &iov, &tbuf, 0, 5);
         log_printf(1, "ex_get: i=" XOT " gid=%d\n", i, gop_id(gop));
-        tbx_flush_log();
+        tbx_log_flush();
 
         //** Dump the data to disk
         if (firsttime == 0) {

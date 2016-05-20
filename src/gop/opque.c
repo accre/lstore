@@ -48,7 +48,7 @@ void _opque_print_stack(tbx_stack_t *stack)
     if (tbx_log_level() <= 15) return;
 
     tbx_stack_move_to_top(stack);
-    while ((gop = (op_generic_t *)tbx_get_ele_data(stack)) != NULL) {
+    while ((gop = (op_generic_t *)tbx_stack_get_current_data(stack)) != NULL) {
         log_printf(15, "    i=%d gid=%d type=%d\n", i, gop_id(gop), gop_get_type(gop));
         i++;
         tbx_stack_move_down(stack);
@@ -167,7 +167,7 @@ void _opque_cb(void *v, int mode)
 
     q->nleft--;
     log_printf(15, "_opque_cb: qid=%d gid=%d nleft=%d tbx_stack_size(q->failed)=%d tbx_stack_size(q->finished)=%d\n", gop_id(&(q->opque->op)), gop_id(gop), q->nleft, tbx_stack_size(q->failed), tbx_stack_size(q->finished));
-    tbx_flush_log();
+    tbx_log_flush();
 
     if (q->nleft <= 0) {  //** we're finished
         if (tbx_stack_size(q->failed) == 0) {
@@ -191,7 +191,7 @@ void _opque_cb(void *v, int mode)
 
             //** If retrying don't send the broadcast
             log_printf(15, "_opque_cb: RETRY END qid=%d gid=%d\n", gop_id(&(q->opque->op)), gop_id(gop));
-            tbx_flush_log();
+            tbx_log_flush();
         } else {
             //** Finished with errors but trigger the signal for anybody listening
             apr_thread_cond_broadcast(q->opque->op.base.ctl->cond);
@@ -202,7 +202,7 @@ void _opque_cb(void *v, int mode)
     }
 
     log_printf(15, "_opque_cb: END qid=%d gid=%d\n", gop_id(&(q->opque->op)), gop_id(gop));
-    tbx_flush_log();
+    tbx_log_flush();
 
     unlock_opque(q);
 }
@@ -279,10 +279,10 @@ void free_finished_stack(tbx_stack_t *stack, int mode)
     while (gop != NULL) {
 //log_printf(15, "gid=%d\n", gop_id(gop));
         if (gop->type == Q_TYPE_QUE) {
-//log_printf(15, "free_opque_stack: gop->type=QUE\n"); tbx_flush_log();
+//log_printf(15, "free_opque_stack: gop->type=QUE\n"); tbx_log_flush();
             opque_free(gop->q->opque, mode);
         } else {
-//log_printf(15, "free_opque_stack: gop->type=OPER\n"); tbx_flush_log();
+//log_printf(15, "free_opque_stack: gop->type=OPER\n"); tbx_log_flush();
 //DONE in op_generic_destroy        callback_destroy(gop->base.cb);  //** Free the callback chain as well
             if (gop->base.free != NULL) gop->base.free(gop, mode);
         }
@@ -290,7 +290,7 @@ void free_finished_stack(tbx_stack_t *stack, int mode)
         gop = (op_generic_t *)tbx_stack_pop(stack);
     }
 
-    tbx_free_stack(stack, 0);
+    tbx_stack_free(stack, 0);
 }
 
 //*************************************************************
@@ -307,10 +307,10 @@ void free_list_stack(tbx_stack_t *stack, int mode)
         gop = (op_generic_t *)cb->priv;
         log_printf(15, "gid=%d\n", gop_id(gop));
         if (gop->type == Q_TYPE_QUE) {
-//log_printf(15, "free_opque_stack: gop->type=QUE\n"); tbx_flush_log();
+//log_printf(15, "free_opque_stack: gop->type=QUE\n"); tbx_log_flush();
             opque_free(gop->q->opque, mode);
         } else {
-//log_printf(15, "free_opque_stack: gop->type=OPER\n"); tbx_flush_log();
+//log_printf(15, "free_opque_stack: gop->type=OPER\n"); tbx_log_flush();
 //DONE in op_generic_destroy        callback_destroy(gop->base.cb);  //** Free the callback chain as well
             if (gop->base.free != NULL) gop->base.free(gop, mode);
         }
@@ -318,7 +318,7 @@ void free_list_stack(tbx_stack_t *stack, int mode)
         cb = (callback_t *)tbx_stack_pop(stack);
     }
 
-    tbx_free_stack(stack, 0);
+    tbx_stack_free(stack, 0);
 }
 
 //*************************************************************
@@ -336,7 +336,7 @@ void opque_free(opque_t *opq, int mode)
     lock_opque(&(opq->qd));  //** Lock it to make sure Everything is finished and safe to free
 
     //** Free the stacks
-    tbx_free_stack(q->failed, 0);
+    tbx_stack_free(q->failed, 0);
     free_finished_stack(q->finished, mode);
     free_list_stack(q->list, mode);
 
@@ -533,7 +533,7 @@ void default_sort_ops(void *arg, opque_t *que)
         tbx_stack_push(q->list, ptr);
     }
 
-    tbx_free_stack(q_list, 0);
+    tbx_stack_free(q_list, 0);
     free(array);
 }
 

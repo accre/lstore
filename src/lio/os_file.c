@@ -400,9 +400,9 @@ int fobj_remove_active(fobj_lock_t *fol, osfile_fd_t *myfd)
     int success = 1;
 
     tbx_stack_move_to_top(fol->active_stack);
-    while ((fd = (osfile_fd_t *)tbx_get_ele_data(fol->active_stack)) != NULL) {
+    while ((fd = (osfile_fd_t *)tbx_stack_get_current_data(fol->active_stack)) != NULL) {
         if (fd == myfd) {  //** Found a match
-            tbx_delete_current(fol->active_stack, 0, 0);
+            tbx_stack_delete_current(fol->active_stack, 0, 0);
             success = 0;
             break;
         }
@@ -481,8 +481,8 @@ void fobj_lock_free(void *arg, int size, void *data)
     int i;
 
     for (i=0; i<size; i++) {
-        tbx_free_stack(shelf[i].stack, 0);
-        tbx_free_stack(shelf[i].active_stack, 0);
+        tbx_stack_free(shelf[i].stack, 0);
+        tbx_stack_free(shelf[i].active_stack, 0);
     }
 
     free(shelf);
@@ -523,7 +523,7 @@ int fobj_wait(object_service_fn_t *os, fobj_lock_t *fol, osfile_fd_t *fd, int ma
         aborted = handle->abort;
 
 //    tbx_stack_move_to_top(fol->stack);
-//    handle = (fobj_lock_task_t *)tbx_get_ele_data(fol->stack);
+//    handle = (fobj_lock_task_t *)tbx_stack_get_current_data(fol->stack);
 //    if (handle != NULL) {
 //       if (handle->fd->uuid == fd->uuid) loop = 1;
 //    }
@@ -544,10 +544,10 @@ int fobj_wait(object_service_fn_t *os, fobj_lock_t *fol, osfile_fd_t *fd, int ma
 
     if (aborted == 1) { //** Open was aborted so remove myself from the pending and kick out
         tbx_stack_move_to_top(fol->stack);
-        while ((handle = (fobj_lock_task_t *)tbx_get_ele_data(fol->stack)) != NULL) {
+        while ((handle = (fobj_lock_task_t *)tbx_stack_get_current_data(fol->stack)) != NULL) {
             if (handle->fd->uuid == fd->uuid) {
                 log_printf(15, "id=%s fname=%s uuid=" LU " ABORTED\n", fd->id, fd->object_name, fd->uuid);
-                tbx_delete_current(fol->stack, 1, 0);
+                tbx_stack_delete_current(fol->stack, 1, 0);
                 break;
             }
             tbx_stack_move_down(fol->stack);
@@ -559,7 +559,7 @@ int fobj_wait(object_service_fn_t *os, fobj_lock_t *fol, osfile_fd_t *fd, int ma
     //** Check if the next person should be woke up as well
     if (tbx_stack_size(fol->stack) != 0) {
         tbx_stack_move_to_top(fol->stack);
-        handle = (fobj_lock_task_t *)tbx_get_ele_data(fol->stack);
+        handle = (fobj_lock_task_t *)tbx_stack_get_current_data(fol->stack);
 
         if ((fd->mode == OS_MODE_READ_BLOCKING) && (handle->fd->mode == OS_MODE_READ_BLOCKING)) {
             tbx_stack_pop(fol->stack);  //** Clear it from the stack. It's already stored in handle above
@@ -607,7 +607,7 @@ int full_object_lock(osfile_fd_t *fd, int max_wait)
             //** Check and make sure the person waiting isn't a writer
             if (tbx_stack_size(fol->stack) != 0) {
                 tbx_stack_move_to_top(fol->stack);
-                handle = (fobj_lock_task_t *)tbx_get_ele_data(fol->stack);
+                handle = (fobj_lock_task_t *)tbx_stack_get_current_data(fol->stack);
                 if (handle->fd->mode == OS_MODE_WRITE_BLOCKING) {  //** They want to write so sleep until my turn
                     err = fobj_wait(fd->os, fol, fd, max_wait);  //** The fobj_lock is released/acquired inside
                 }
@@ -672,7 +672,7 @@ void full_object_unlock(osfile_fd_t *fd)
         tbx_pch_release(osf->fobj_pc, &(fol->pch));
     } else if (tbx_stack_size(fol->stack) > 0) { //** Wake up the next person
         tbx_stack_move_to_top(fol->stack);
-        handle = (fobj_lock_task_t *)tbx_get_ele_data(fol->stack);
+        handle = (fobj_lock_task_t *)tbx_stack_get_current_data(fol->stack);
 
         if (((handle->fd->mode == OS_MODE_READ_BLOCKING) && (fol->write_count == 0)) ||
                 ((handle->fd->mode == OS_MODE_WRITE_BLOCKING) && (fol->write_count == 0) && (fol->read_count == 0))) {
@@ -971,7 +971,7 @@ int va_lock_get_attr(os_virtual_attr_t *va, object_service_fn_t *os, creds_t *cr
     }
 
     tbx_stack_move_to_top(fol->active_stack);
-    while ((pfd = (osfile_fd_t *)tbx_get_ele_data(fol->active_stack)) != NULL) {
+    while ((pfd = (osfile_fd_t *)tbx_stack_get_current_data(fol->active_stack)) != NULL) {
         if (pfd->mode == OS_MODE_READ_BLOCKING) {
             tbx_append_printf(buf, &used, bufsize, "active_id=%s:" LU ":READ\n", pfd->id, pfd->uuid);
         } else {
@@ -984,7 +984,7 @@ int va_lock_get_attr(os_virtual_attr_t *va, object_service_fn_t *os, creds_t *cr
     tbx_append_printf(buf, &used, bufsize, "\n");
     tbx_append_printf(buf, &used, bufsize, "pending_count=%d\n", tbx_stack_size(fol->stack));
     tbx_stack_move_to_top(fol->stack);
-    while ((handle = (fobj_lock_task_t *)tbx_get_ele_data(fol->stack)) != NULL) {
+    while ((handle = (fobj_lock_task_t *)tbx_stack_get_current_data(fol->stack)) != NULL) {
         if (handle->fd->mode == OS_MODE_READ_BLOCKING) {
             tbx_append_printf(buf, &used, bufsize, "pending_id=%s:" LU ":READ\n", handle->fd->id, handle->fd->uuid);
         } else {
@@ -1310,7 +1310,7 @@ apr_thread_mutex_t *osf_retrieve_lock(object_service_fn_t *os, char *path, int *
     n = (unsigned int *)(&digest[OSF_LOCK_CHKSUM_SIZE-sizeof(unsigned int)]);
     slot = (*n) % osf->internal_lock_size;
     log_printf(15, "n=%u internal_lock_size=%d slot=%d path=!%s!\n", *n, osf->internal_lock_size, slot, path);
-    tbx_flush_log();
+    tbx_log_flush();
     if (table_slot != NULL) *table_slot = slot;
 
     return(osf->internal_lock[slot]);
@@ -1948,7 +1948,7 @@ op_status_t osfile_regex_object_set_multiple_attrs_fn(void *arg, int id)
     op_open.mode = OS_MODE_READ_IMMEDIATE;
     op_open.id = NULL;
     op_open.uuid = 0;
-    tbx_random_bytes_get(&(op_open.uuid), sizeof(op_open.uuid));
+    tbx_random_get_bytes(&(op_open.uuid), sizeof(op_open.uuid));
     op_open.max_wait = 0;
 
     status = op_success_status;
@@ -2286,7 +2286,7 @@ int osf_file2hardlink(object_service_fn_t *os, char *src_path)
 
     //** Pick a hardlink location
     id = 0;
-    tbx_random_bytes_get(&id, sizeof(id));
+    tbx_random_get_bytes(&id, sizeof(id));
     slot = tbx_atomic_counter(&(osf->hardlink_count)) % osf->hardlink_dir_size;
     snprintf(fullname, OS_PATH_MAX, "%s/%d/" XIDT, osf->hardlink_path, slot, id);
     snprintf(sfname, OS_PATH_MAX, "%s%s", osf->file_path, src_path);
@@ -3406,7 +3406,7 @@ int osfile_next_object(os_object_iter_t *oit, char **fname, int *prefix_len)
                 op.id = NULL;
                 op.max_wait = 0;
                 op.uuid = 0;
-                tbx_random_bytes_get(&(op.uuid), sizeof(op.uuid));
+                tbx_random_get_bytes(&(op.uuid), sizeof(op.uuid));
                 status = osfile_open_object_fn(&op, 0);
                 if (status.op_status != OP_STATE_SUCCESS) return(-1);
 
@@ -3422,7 +3422,7 @@ int osfile_next_object(os_object_iter_t *oit, char **fname, int *prefix_len)
             op.id = NULL;
             op.max_wait = 0;
             op.uuid = 0;
-            tbx_random_bytes_get(&(op.uuid), sizeof(op.uuid));
+            tbx_random_get_bytes(&(op.uuid), sizeof(op.uuid));
             status = osfile_open_object_fn(&op, 0);
             if (status.op_status != OP_STATE_SUCCESS) return(-1);
 
@@ -3589,7 +3589,7 @@ void osfile_destroy_object_iter(os_object_iter_t *oit)
 
     if (it->v_size_user != NULL) free(it->v_size_user);
 
-    tbx_free_stack(it->recurse_stack, 1);
+    tbx_stack_free(it->recurse_stack, 1);
     free(it->level_info);
     free(it);
 }
@@ -3689,7 +3689,7 @@ op_generic_t *osfile_open_object(object_service_fn_t *os, creds_t *creds, char *
     op->mode = mode;
     op->id = (id == NULL) ? strdup(osf->host_id) : strdup(id);
     op->uuid = 0;
-    tbx_random_bytes_get(&(op->uuid), sizeof(op->uuid));
+    tbx_random_get_bytes(&(op->uuid), sizeof(op->uuid));
 
     return(new_thread_pool_op(osf->tpc, NULL, osfile_open_object_fn, (void *)op, osfile_free_open, 1));
 }
@@ -3715,9 +3715,9 @@ op_status_t osfile_abort_open_object_fn(void *arg, int id)
     //** Find the task in the pending list and remove it
     status = op_failure_status;
     tbx_stack_move_to_top(fol->stack);
-    while ((handle = (fobj_lock_task_t *)tbx_get_ele_data(fol->stack)) != NULL) {
+    while ((handle = (fobj_lock_task_t *)tbx_stack_get_current_data(fol->stack)) != NULL) {
         if (handle->fd->uuid == op->uuid) {
-            tbx_delete_current(fol->stack, 1, 0);
+            tbx_stack_delete_current(fol->stack, 1, 0);
             status = op_success_status;
             handle->abort = 1;
             apr_thread_cond_signal(handle->cond);   //** They will wake up when fobj_lock is released
@@ -4173,12 +4173,12 @@ object_service_fn_t *object_service_file_create(service_manager_t *ess, tbx_inip
         osf->max_copy = 1024*1024;
         osf->hardlink_dir_size = 256;
     } else {
-        osf->base_path = tbx_inip_string_get(fd, section, "base_path", "./osfile");
-        osf->internal_lock_size = tbx_inip_integer_get(fd, section, "lock_table_size", 200);
-        osf->max_copy = tbx_inip_integer_get(fd, section, "max_copy", 1024*1024);
-        osf->hardlink_dir_size = tbx_inip_integer_get(fd, section, "hardlink_dir_size", 256);
-        asection = tbx_inip_string_get(fd, section, "authz", NULL);
-        atype = (asection == NULL) ? strdup(OSAZ_TYPE_FAKE) : tbx_inip_string_get(fd, asection, "type", OSAZ_TYPE_FAKE);
+        osf->base_path = tbx_inip_get_string(fd, section, "base_path", "./osfile");
+        osf->internal_lock_size = tbx_inip_get_integer(fd, section, "lock_table_size", 200);
+        osf->max_copy = tbx_inip_get_integer(fd, section, "max_copy", 1024*1024);
+        osf->hardlink_dir_size = tbx_inip_get_integer(fd, section, "hardlink_dir_size", 256);
+        asection = tbx_inip_get_string(fd, section, "authz", NULL);
+        atype = (asection == NULL) ? strdup(OSAZ_TYPE_FAKE) : tbx_inip_get_string(fd, asection, "type", OSAZ_TYPE_FAKE);
         osaz_create = lookup_service(ess, OSAZ_AVAILABLE, atype);
         osf->osaz = (*osaz_create)(ess, fd, asection, os);
         free(atype);
@@ -4190,8 +4190,8 @@ object_service_fn_t *object_service_file_create(service_manager_t *ess, tbx_inip
             return(NULL);
         }
 
-        asection = tbx_inip_string_get(fd, section, "authn", NULL);
-        atype = (asection == NULL) ? strdup(AUTHN_TYPE_FAKE) : tbx_inip_string_get(fd, asection, "type", AUTHN_TYPE_FAKE);
+        asection = tbx_inip_get_string(fd, section, "authn", NULL);
+        atype = (asection == NULL) ? strdup(AUTHN_TYPE_FAKE) : tbx_inip_get_string(fd, asection, "type", AUTHN_TYPE_FAKE);
         authn_create = lookup_service(ess, AUTHN_AVAILABLE, atype);
         osf->authn = (*authn_create)(ess, fd, asection);
         free(atype);

@@ -152,7 +152,7 @@ int main(int argc, char **argv)
 
 
     printf("Checking access to the last key\n");
-    key = tbx_sl_last_key(sl);
+    key = tbx_sl_key_last(sl);
     if (*key != max_key) {
         printf("ERROR getting last key! max_key=%d got=%d\n", max_key, *key);
     }
@@ -342,7 +342,7 @@ int main(int argc, char **argv)
 
     tbx_sl_del(sl);
     fflush(stdout);
-    tbx_flush_log();
+    tbx_log_flush();
 
     free(key_list);
     free(data_list);

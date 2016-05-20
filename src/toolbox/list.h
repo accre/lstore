@@ -36,13 +36,13 @@ typedef tbx_sl_iter_t tbx_list_iter_t;
 #define list_string_descending_compare tbx_sl_compare_strcmp_descending
 #define list_compare_ptr skiplist_compare_ptr
 #define list_compare_int tbx_sl_compare_int
-#define tbx_list_no_key_free tbx_sl_no_key_free
+#define tbx_list_no_key_free tbx_sl_free_no_key
 
 #define list_lock(a) apr_thread_mutex_lock((a)->lock)
 #define list_unlock(a) apr_thread_mutex_unlock((a)->lock)
 #define list_ele_count(a) (a)->n_ele
 
-#define list_last_key(a) tbx_sl_last_key(a)
+#define list_last_key(a) tbx_sl_key_last(a)
 
 #define list_find_key_compare(sl, ptr, key, compare) find_key_compare(sl, ptr, key, compare)
 #define list_find_key(sl, ptr, key) find_key_compare(sl, ptr, key, (sl)->compare)

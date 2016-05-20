@@ -108,7 +108,7 @@ void _tp_op_free(op_generic_t *gop, int mode)
     int id = gop_id(gop);
 
     log_printf(15, "_tp_op_free: mode=%d gid=%d gop=%p\n", mode, gop_id(gop), gop);
-    tbx_flush_log();
+    tbx_log_flush();
 
     if (top->my_op_free != NULL) top->my_op_free(top->arg);
 
@@ -118,7 +118,7 @@ void _tp_op_free(op_generic_t *gop, int mode)
 
     if (mode == OP_DESTROY) free(gop->free_ptr);
     log_printf(15, "_tp_op_free: gid=%d END\n", id);
-    tbx_flush_log();
+    tbx_log_flush();
 
 }
 
@@ -313,7 +313,7 @@ void thread_pool_destroy_context(thread_pool_context_t *tpc)
     if (tpc->name != NULL) free(tpc->name);
 
     for (i=0; i<tpc->recursion_depth; i++) {
-        tbx_free_stack(tpc->reserve_stack[i], 0);
+        tbx_stack_free(tpc->reserve_stack[i], 0);
     }
     free(tpc->reserve_stack);
     free(tpc->overflow_running_depth);

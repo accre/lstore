@@ -69,7 +69,7 @@ void destroy_host_connection(host_connection_t *hc)
 {
     log_printf(15, "host=%s ns=%d\n", hc->hp->host, tbx_ns_getid(hc->ns));
     tbx_ns_destroy(hc->ns);
-    tbx_free_stack(hc->pending_stack, 0);
+    tbx_stack_free(hc->pending_stack, 0);
     apr_thread_mutex_destroy(hc->lock);
     apr_thread_cond_destroy(hc->send_cond);
     apr_thread_cond_destroy(hc->recv_cond);
@@ -258,7 +258,7 @@ void *hc_send_thread(apr_thread_t *th, void *data)
         hp->failed_conn_attempts++;
     }
     tbx_stack_push(hp->conn_list, (void *)hc);
-    hc->my_pos = tbx_get_ptr(hp->conn_list);
+    hc->my_pos = tbx_stack_get_current_ptr(hp->conn_list);
     hportal_unlock(hp);
 
     //** Now we start the main loop
@@ -421,7 +421,7 @@ void *hc_recv_thread(apr_thread_t *th, void *data)
     while (finished != 1) {
         lock_hc(hc);
         tbx_stack_move_to_bottom(hc->pending_stack);//** Get the next recv command
-        hsop = (op_generic_t *)tbx_get_ele_data(hc->pending_stack);
+        hsop = (op_generic_t *)tbx_stack_get_current_data(hc->pending_stack);
         unlock_hc(hc);
 
         if (hsop != NULL) {
@@ -446,7 +446,7 @@ void *hc_recv_thread(apr_thread_t *th, void *data)
             hc->last_used = apr_time_now();
             hc->curr_workload -= hop->workload;
             tbx_stack_move_to_bottom(hc->pending_stack);
-            tbx_delete_current(hc->pending_stack, 1, 0);
+            tbx_stack_delete_current(hc->pending_stack, 1, 0);
             hc_send_signal(hc);  //** Wake up send_thread if needed
             unlock_hc(hc);
 
@@ -572,7 +572,7 @@ void *hc_recv_thread(apr_thread_t *th, void *data)
     if (hp->n_conn < 0) hp->oops_neg++;
     if (hp->n_conn > 0) hp->n_conn--;
     tbx_stack_move_to_ptr(hp->conn_list, hc->my_pos);
-    tbx_delete_current(hp->conn_list, 1, 0);
+    tbx_stack_delete_current(hp->conn_list, 1, 0);
 
     log_printf(6, "hc_recv_thread: ns=%d cmd_pause_time=" TT " max_wait=%d pending=%d sleeping=%d start_stable=%d cmd_count=%d\n", tbx_ns_getid(ns), cmd_pause_time, hp->context->max_wait, pending, hp->sleeping_conn, hc->start_stable, hc->cmd_count);
 

@@ -203,10 +203,10 @@ void rsrs_abort_cb(void *arg, mq_task_t *task)
     //** Scan through the list looking for the id
     apr_thread_mutex_lock(rsrs->lock);
     tbx_stack_move_to_top(rsrs->pending);
-    while ((h = tbx_get_ele_data(rsrs->pending)) != NULL) {
+    while ((h = tbx_stack_get_current_data(rsrs->pending)) != NULL) {
         if (mq_data_compare(data, n, h->id, h->id_size) == 0) {  //** Found a match
             log_printf(5, "Aborting task\n");
-            tbx_delete_current(rsrs->pending, 0, 0);
+            tbx_stack_delete_current(rsrs->pending, 0, 0);
             mq_submit(rsrs->server_portal, mq_task_new(rsrs->mqc, h->msg, NULL, NULL, 30));
             free(h);  //** The msg is deleted after sending
             break;
@@ -382,13 +382,13 @@ void rsrs_client_notify(resource_service_fn_t *rs, int everyone)
 
     //** Cycle through looking for commands about to expire and sending a response
     tbx_stack_move_to_top(rsrs->pending);
-    while ((h = tbx_get_ele_data(rsrs->pending)) != NULL) {
+    while ((h = tbx_stack_get_current_data(rsrs->pending)) != NULL) {
         if ((h->reply_time < now) || (everyone == 1)) {
             log_printf(5, "sending update to a client everyone=%d\n", everyone);
             mq_frame_set(h->version_frame, strdup(version), vlen, MQF_MSG_AUTO_FREE);
             mq_frame_set(h->config_frame, strdup(config), clen, MQF_MSG_AUTO_FREE);
             mq_submit(rsrs->server_portal, mq_task_new(rsrs->mqc, h->msg, NULL, NULL, 30));
-            tbx_delete_current(rsrs->pending, 0, 0);
+            tbx_stack_delete_current(rsrs->pending, 0, 0);
             free(h);  //** The msg is auto destroyed after being sent
         } else if ((new_wakeup_time > h->reply_time) || (new_wakeup_time == 0)) {
             new_wakeup_time = h->reply_time;
@@ -481,7 +481,7 @@ void rs_remote_server_destroy(resource_service_fn_t *rs)
 
     //** Now do the normal cleanup
     apr_pool_destroy(rsrs->mpool);
-    tbx_free_stack(rsrs->pending, 0);
+    tbx_stack_free(rsrs->pending, 0);
     free(rsrs->hostname);
     free(rsrs);
     free(rs);
@@ -519,24 +519,24 @@ resource_service_fn_t *rs_remote_server_create(void *arg, tbx_inip_file_t *fd, c
     rsrs->notify_map_version.cond = rsrs->cond;
 
     //** Get the host name we bind to
-    rsrs->hostname= tbx_inip_string_get(fd, section, "address", NULL);
+    rsrs->hostname= tbx_inip_get_string(fd, section, "address", NULL);
 
     //** Start the child RS.   The update above should have dumped a RID config for it to load
-    stype = tbx_inip_string_get(fd, section, "rs_local", NULL);
+    stype = tbx_inip_get_string(fd, section, "rs_local", NULL);
     if (stype == NULL) {  //** Oops missing child RS
         log_printf(0, "ERROR: Mising child RS  section=%s key=rs_local!\n", section);
-        tbx_flush_log();
+        tbx_log_flush();
         free(stype);
         abort();
     }
 
     //** and load it
-    ctype = tbx_inip_string_get(fd, stype, "type", RS_TYPE_SIMPLE);
+    ctype = tbx_inip_get_string(fd, stype, "type", RS_TYPE_SIMPLE);
     rs_create = lookup_service(ess, RS_SM_AVAILABLE, ctype);
     rsrs->rs_child = (*rs_create)(ess, fd, stype);
     if (rsrs->rs_child == NULL) {
         log_printf(1, "ERROR loading child RS!  type=%s section=%s\n", ctype, stype);
-        tbx_flush_log();
+        tbx_log_flush();
         abort();
     }
     free(ctype);

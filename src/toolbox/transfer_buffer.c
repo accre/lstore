@@ -125,15 +125,15 @@ int tb_next_block(tbx_tbuf_t *tb, size_t pos, tbx_tbuf_var_t *tbv)
         tbv->priv.curr_slot = 0;
     }
 //log_printf(15, "tb_next_block: start slot=%d total_slots=%d iov[0]=%p\n", tbv->priv.curr_slot, ti->n, v);
-//tbx_flush_log();
+//tbx_log_flush();
 
 //dn = v[0].iov_len;
-//log_printf(15, "tb_next_block: v[0].len=%d\n", dn); tbx_flush_log();
+//log_printf(15, "tb_next_block: v[0].len=%d\n", dn); tbx_log_flush();
 
     slot = tbv->priv.curr_slot;
     for (i=tbv->priv.curr_slot; i<ti->n; i++) {
 //dn = v[i].iov_len;
-//log_printf(15, "tb_next_block: i=%d len=%d\n", i, dn); tbx_flush_log();
+//log_printf(15, "tb_next_block: i=%d len=%d\n", i, dn); tbx_log_flush();
         ds = sum + v[i].iov_len;
         if (ds > pos) {
             slot = i;
@@ -295,7 +295,7 @@ int tbx_tbuf_copy(tbx_tbuf_t *tb_s, size_t off_s, tbx_tbuf_t *tb_d, size_t off_d
                 while (n > 0) {
                     len = (slen_ele > dlen_ele) ? dlen_ele : slen_ele;
                     if ((dtv.buffer[di].iov_base != NULL) && (stv.buffer[si].iov_base != NULL)) {
-//log_printf(15, "dtv.buffer[%d].iov_base=%p stv.buffer[%d].iov_base=%p\n", di, dtv.buffer[di].iov_base, si, stv.buffer[si].iov_base); tbx_flush_log();
+//log_printf(15, "dtv.buffer[%d].iov_base=%p stv.buffer[%d].iov_base=%p\n", di, dtv.buffer[di].iov_base, si, stv.buffer[si].iov_base); tbx_log_flush();
                         memcpy(dtv.buffer[di].iov_base+dp_ele, stv.buffer[si].iov_base+sp_ele, len);
                     } else {
                         log_printf(15, "ERROR dtv.buffer[%d].iov_base=%p stv.buffer[%d].iov_base=%p\n", di, dtv.buffer[di].iov_base, si, stv.buffer[si].iov_base);
@@ -413,7 +413,7 @@ int tbx_tbuf_test_read(tbx_tbuf_t *tbuf, char *buffer, int bufsize, int off, int
 //log_printf(0, "tbx_tbuf_test_read: after loop n_iov=%d off=%d len=%d bufsize=%d nleft=%d pos=%d opos=%d\n", tv.n_iov, off, len, bufsize, nleft, pos, opos);
     }
 
-//tbx_flush_log();
+//tbx_log_flush();
 
     err = memcmp(&(buffer[off]), output, len);
     if (err != 0) {
@@ -459,7 +459,7 @@ int tbuffer_next_test_iovec(int n_iovec, int n_random, char *buffer, int bufsize
         frac = (i+1.0)/(n_iovec*1.0);
         maxlen = frac*bufsize - off;
 //log_printf(0, "tbuffer_next_text_iovec: n_iovec=%d i=%d frac=%lf maxlen=%d\n", n_iovec, i, frac,maxlen);
-        len = tbx_random_int64(0, maxlen);
+        len = tbx_random_get_int64(0, maxlen);
         iov[i].iov_base = &(buffer[off]);
         iov[i].iov_len = len;
         off += len;
@@ -485,8 +485,8 @@ int tbuffer_next_test_iovec(int n_iovec, int n_random, char *buffer, int bufsize
 
     //** Now do the random offset/len tests
     for (i=0; i<n_random; i++) {
-        off = tbx_random_int64(0, bufsize);
-        len = tbx_random_int64(0, bufsize - off);
+        off = tbx_random_get_int64(0, bufsize);
+        len = tbx_random_get_int64(0, bufsize - off);
         err = tbx_tbuf_test_read(&tbuf, buffer, bufsize, off, len);
         if (err != 0) {
             log_printf(0, "tbuffer_next_test_iovec: Error with random read: n_iovec=%d off=%d len=%d\n", n_iovec, off, len);
@@ -546,7 +546,7 @@ int tbuffer_copy_test_iovec(int n1_iovec, int n2_iovec, int n_random, char *buff
     for (i=0; i<n1_iovec; i++) {
         frac = (i+1.0)/(n1_iovec*1.0);
         maxlen = frac*bufsize - off1;
-        len = tbx_random_int64(0, maxlen);
+        len = tbx_random_get_int64(0, maxlen);
         iov1[i].iov_base = &(buffer[off1]);
         iov1[i].iov_len = len;
         off1 += len;
@@ -568,7 +568,7 @@ int tbuffer_copy_test_iovec(int n1_iovec, int n2_iovec, int n_random, char *buff
     for (i=0; i<n2_iovec; i++) {
         frac = (i+1.0)/(n2_iovec*1.0);
         maxlen = frac*bufsize - off2;
-        len = tbx_random_int64(0, maxlen);
+        len = tbx_random_get_int64(0, maxlen);
         iov2[i].iov_base = &(output[off2]);
         iov2[i].iov_len = len;
         off2 += len;
@@ -597,10 +597,10 @@ int tbuffer_copy_test_iovec(int n1_iovec, int n2_iovec, int n_random, char *buff
 
     //** Now do the random offset/len tests
     for (i=0; i<n_random; i++) {
-        off1 = tbx_random_int64(0, bufsize);
-        off2 = tbx_random_int64(0, bufsize);
+        off1 = tbx_random_get_int64(0, bufsize);
+        off2 = tbx_random_get_int64(0, bufsize);
         len = (off1 > off2) ?  bufsize - off1 : bufsize - off2;
-        len = tbx_random_int64(0, len);
+        len = tbx_random_get_int64(0, len);
         memset(output, '-', bufsize);
         output[bufsize] = 0;
         tbx_tbuf_copy(&tbuf1, 0, &tbuf2, 0, bufsize, 1);

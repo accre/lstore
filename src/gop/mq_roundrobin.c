@@ -6,13 +6,13 @@
 mq_worker_t *mq_worker_table_first(mq_worker_table_t *table)
 {
     tbx_stack_move_to_top(table);
-    return (mq_worker_t *)tbx_get_ele_data(table);
+    return (mq_worker_t *)tbx_stack_get_current_data(table);
 }
 
 mq_worker_t *mq_worker_table_next(mq_worker_table_t *table)
 {
     tbx_stack_move_down(table);
-    return (mq_worker_t *)tbx_get_ele_data(table);
+    return (mq_worker_t *)tbx_stack_get_current_data(table);
 }
 
 mq_worker_t *mq_worker_create(char *address, int free_slots)
@@ -42,7 +42,7 @@ void mq_worker_table_destroy(mq_worker_table_t *table)
         free(worker->address);
         free(worker);
     }
-    tbx_free_stack(table, 0);
+    tbx_stack_free(table, 0);
     log_printf(5, "Successfully destroyed worker table\n");
 }
 
@@ -59,7 +59,7 @@ mq_worker_t *mq_get_worker(mq_worker_table_t *table, char *address)
         for(worker = mq_worker_table_first(table); worker != NULL; worker = mq_worker_table_next(table)) {
             if(mq_data_compare(worker->address, strlen(worker->address), address, strlen(address)) == 0) {
                 log_printf(10, "Found worker!\n");
-                tbx_delete_current(table, 0, 0);
+                tbx_stack_delete_current(table, 0, 0);
                 return worker;
             }
         }
@@ -76,7 +76,7 @@ mq_worker_t *mq_get_available_worker(mq_worker_table_t *table)
     mq_worker_t *worker;
     for(worker = mq_worker_table_first(table); worker != NULL; worker = mq_worker_table_next(table)) {
         if(worker->free_slots > 0) {
-            tbx_delete_current(table, 0, 0);
+            tbx_stack_delete_current(table, 0, 0);
             return worker;
         }
     }
@@ -112,7 +112,7 @@ void mq_deregister_worker(mq_worker_table_t *table, char *address)
     for(worker = mq_worker_table_first(table); worker != NULL; worker = mq_worker_table_next(table)) {
         if(mq_data_compare(worker->address, strlen(worker->address), address, strlen(address)) == 0) {
             log_printf(5, "Removing worker with address %s, free slots %d\n", worker->address, worker->free_slots);
-            tbx_delete_current(table, 0, 0);
+            tbx_stack_delete_current(table, 0, 0);
             free(worker->address);
             free(worker);
             return;
@@ -231,10 +231,10 @@ int processing_queue_length(mq_processing_queue *queue)
     mq_msg_t *m;
     int i = 0;
     tbx_stack_move_to_top(queue);
-    m = (mq_msg_t *)tbx_get_ele_data(queue);
+    m = (mq_msg_t *)tbx_stack_get_current_data(queue);
     while(m != NULL) {
         tbx_stack_move_down(queue);
-        m = (mq_msg_t *)tbx_get_ele_data(queue);
+        m = (mq_msg_t *)tbx_stack_get_current_data(queue);
         i++;
     }
     return i;

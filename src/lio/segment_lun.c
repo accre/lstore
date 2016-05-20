@@ -764,7 +764,7 @@ oops:
             rs_query_destroy(s->rs, hints_list[i].local_rsq);
         }
     }
-    if (cleanup_stack != NULL) tbx_free_stack(cleanup_stack, 1);
+    if (cleanup_stack != NULL) tbx_stack_free(cleanup_stack, 1);
 
     return(err);
 }
@@ -1022,7 +1022,7 @@ op_status_t _seglun_shrink(segment_t *seg, data_attr_t *da, ex_off_t new_size, i
         free(b);
     }
 
-    tbx_free_stack(stack, 0);
+    tbx_stack_free(stack, 0);
 
     //** If needed tweak the initial block
     if (start_b != NULL) {
@@ -1381,8 +1381,8 @@ int seglun_row_decompose_test()
             for (j=0; j < n_tests; j++) {  //** Random tests
 
                 //** Init the dest buf for the test
-                len = tbx_random_int64(0, bufsize-1);
-                offset = tbx_random_int64(0,bufsize-len-1);
+                len = tbx_random_get_int64(0, bufsize-1);
+                offset = tbx_random_get_int64(0,bufsize-len-1);
 //len = 30000;
 //offset = 8000;
                 k = len / niov;
@@ -1394,7 +1394,7 @@ int seglun_row_decompose_test()
                 tbx_tbuf_vec(&tbuf, len, niov, iovbuf);
 
                 log_printf(0, "ndev=%d  niov=%d j=%d  len=%d off=%d k=%d\n", ndev, niov, j, len, offset, k);
-                tbx_flush_log();
+                tbx_log_flush();
 
                 //** Do the test
                 memset(buf, 0, bufsize);
@@ -1520,7 +1520,7 @@ op_status_t seglun_rw_op(segment_t *seg, data_attr_t *da, segment_rw_hints_t *rw
 
             log_printf(15, "sid=" XIDT " soff=" XOT " bpos=" XOT " blen=" XOT " seg_off=" XOT " seg_len=" XOT " seg_end=" XOT " rwop_index=%d\n", segment_id(seg),
                        start, bpos, blen, b->seg_offset, b->row_len, b->seg_end, b->rwop_index);
-            tbx_flush_log();
+            tbx_log_flush();
 
             if (b->rwop_index < 0) {
                 bused[n_bslots] = b;
@@ -1717,7 +1717,7 @@ op_status_t seglun_rw_op(segment_t *seg, data_attr_t *da, segment_rw_hints_t *rw
     free(rwb_table);
     free(bcount);
     free(bused);
-    tbx_free_stack(stack, 0);
+    tbx_stack_free(stack, 0);
     opque_free(q, OP_DESTROY);
 
     dt = apr_time_now() - tstart;
@@ -2253,7 +2253,7 @@ op_generic_t *seglun_inspect(segment_t *seg, data_attr_t *da, tbx_log_fd_t *fd, 
     gop = NULL;
     option = mode & INSPECT_COMMAND_BITS;
 
-//log_printf(0, "mode=%d option=%d\n", mode, option); tbx_flush_log();
+//log_printf(0, "mode=%d option=%d\n", mode, option); tbx_log_flush();
 //printf("mode=%d option=%d\n", mode, option); fflush(stdout);
 
     switch (option) {
@@ -2483,7 +2483,7 @@ op_status_t seglun_clone_func(void *arg, int id)
 
     opque_free(q, OP_DESTROY);
     free(max_index);
-    for (i=0; i<n_rows*ss->n_devices; i++) tbx_free_stack(gop_stack[i], 0);
+    for (i=0; i<n_rows*ss->n_devices; i++) tbx_stack_free(gop_stack[i], 0);
     free(gop_stack);
     return(status);
 }
@@ -2755,25 +2755,25 @@ int seglun_deserialize_text(segment_t *seg, ex_id_t id, exnode_exchange_t *exp)
     //** Get the segment header info
     seg->header.id = id;
     seg->header.type = SEGMENT_TYPE_LUN;
-    seg->header.name = tbx_inip_string_get(fd, seggrp, "name", "");
+    seg->header.name = tbx_inip_get_string(fd, seggrp, "name", "");
 
     //** default resource query
-    etext = tbx_inip_string_get(fd, seggrp, "query_default", "");
+    etext = tbx_inip_get_string(fd, seggrp, "query_default", "");
     text = tbx_stk_unescape_text('\\', etext);
     s->rsq = rs_query_parse(s->rs, text);
     free(text);
     free(etext);
 
-    s->n_devices = tbx_inip_integer_get(fd, seggrp, "n_devices", 2);
+    s->n_devices = tbx_inip_get_integer(fd, seggrp, "n_devices", 2);
 
     //** Basic size info
-    s->max_block_size = tbx_inip_integer_get(fd, seggrp, "max_block_size", 10*1024*1024);
-    s->excess_block_size = tbx_inip_integer_get(fd, seggrp, "excess_block_size", s->max_block_size/4);
-    s->total_size = tbx_inip_integer_get(fd, seggrp, "max_size", 0);
-    s->used_size = tbx_inip_integer_get(fd, seggrp, "used_size", 0);
+    s->max_block_size = tbx_inip_get_integer(fd, seggrp, "max_block_size", 10*1024*1024);
+    s->excess_block_size = tbx_inip_get_integer(fd, seggrp, "excess_block_size", s->max_block_size/4);
+    s->total_size = tbx_inip_get_integer(fd, seggrp, "max_size", 0);
+    s->used_size = tbx_inip_get_integer(fd, seggrp, "used_size", 0);
     if (s->used_size > s->total_size) s->used_size = s->total_size;  //** Sanity check the size
-    s->chunk_size = tbx_inip_integer_get(fd, seggrp, "chunk_size", 16*1024);
-    s->n_shift = tbx_inip_integer_get(fd, seggrp, "n_shift", 1);
+    s->chunk_size = tbx_inip_get_integer(fd, seggrp, "chunk_size", 16*1024);
+    s->n_shift = tbx_inip_get_integer(fd, seggrp, "n_shift", 1);
 
     //** Make sure the mac block size is a mulitple of the chunk size
     s->max_block_size = (s->max_block_size / s->chunk_size);
@@ -2785,7 +2785,7 @@ int seglun_deserialize_text(segment_t *seg, ex_id_t id, exnode_exchange_t *exp)
     g = tbx_inip_group_find(fd, seggrp);
     ele = tbx_inip_ele_first(g);
     while (ele != NULL) {
-        key = tbx_inip_ele_key_get(ele);
+        key = tbx_inip_ele_get_key(ele);
         if (strcmp(key, "row") == 0) {
             tbx_type_malloc_clear(b, seglun_row_t, 1);
             tbx_type_malloc_clear(block, seglun_block_t, s->n_devices);
@@ -2793,7 +2793,7 @@ int seglun_deserialize_text(segment_t *seg, ex_id_t id, exnode_exchange_t *exp)
             b->rwop_index = -1;
 
             //** Parse the segment line
-            value = tbx_inip_ele_value_get(ele);
+            value = tbx_inip_ele_get_value(ele);
             token = strdup(value);
             sscanf(tbx_stk_escape_string_token(token, ":", '\\', 0, &bstate, &fin), XOT, &(b->seg_offset));
             sscanf(tbx_stk_escape_string_token(NULL, ":", '\\', 0, &bstate, &fin), XOT, &(b->seg_end));
@@ -2899,7 +2899,7 @@ void seglun_destroy(segment_t *seg)
             data_block_destroy(db);
         }
 
-        tbx_free_stack(s->db_cleanup, 0);
+        tbx_stack_free(s->db_cleanup, 0);
     }
 
     if (s->rsq != NULL) rs_query_destroy(s->rs, s->rsq);

@@ -216,10 +216,10 @@ void process_stream(mq_portal_t *p, mq_task_t *task, mq_msg_t *msg)
     memset(test_data, TEST_DATA, size_to_send);
 
     while(n_left > 0) {
-        n_bytes = tbx_random_int64(1, TEST_SIZE);
+        n_bytes = tbx_random_get_int64(1, TEST_SIZE);
         if(n_bytes > n_left)
             n_bytes = n_left;
-        offset = tbx_random_int64(0, size_to_send - n_bytes);
+        offset = tbx_random_get_int64(0, size_to_send - n_bytes);
 
         log_printf(5, "WORKER: n_sent = %d  offset = %d n_bytes = %d\n", n_sent, offset, n_bytes);
         err = mq_stream_write(mqs, &offset, sizeof(int));
@@ -402,7 +402,7 @@ mq_context_t *worker_make_context()
                             "min_ops_per_sec = 100\n";
     // omitting socket_type for workers
 
-    ifd = tbx_inip_string_read(text_parameters);
+    ifd = tbx_inip_read_string(text_parameters);
 
     mqc = mq_create_context(ifd, "mq_context");
     tbx_inip_destroy(ifd);
@@ -469,7 +469,7 @@ void worker_test()
     mq_context_t *mqc;
     //mq_command_table_t *table;
     //mq_portal_t *worker_portal;
-    tbx_flush_log();
+    tbx_log_flush();
     log_printf(1, "WORKER: Starting...\n");
 
     log_printf(10, "WORKER: Creating context...\n");

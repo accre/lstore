@@ -84,7 +84,7 @@ void random_seed(const void *buf, int nbytes)
 // get_random - Gets nbytes  of random data and placed it in buf.
 //*******************************************************************
 
-int tbx_random_bytes_get(void *buf, int nbytes)
+int tbx_random_get_bytes(void *buf, int nbytes)
 {
     int err;
 
@@ -108,7 +108,7 @@ double random_double(double lo, double hi)
     uint64_t rn;
 
     rn = 0;
-    tbx_random_bytes_get(&rn, sizeof(rn));
+    tbx_random_get_bytes(&rn, sizeof(rn));
     dn = (1.0 * rn) / (UINT64_MAX + 1.0);
 
     n = lo + (hi - lo) * dn;
@@ -120,7 +120,7 @@ double random_double(double lo, double hi)
 // Returns a random integer within the given range
 //*******************************************************************
 
-int64_t tbx_random_int64(int64_t lo, int64_t hi)
+int64_t tbx_random_get_int64(int64_t lo, int64_t hi)
 {
     int64_t n, dn;
 

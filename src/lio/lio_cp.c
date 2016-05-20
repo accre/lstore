@@ -159,7 +159,7 @@ int main(int argc, char **argv)
         goto finished;
     } else if (n_paths == 1) {
         log_printf(15, "11111111\n");
-        tbx_flush_log();
+        tbx_log_flush();
         if (((dtype & OS_OBJECT_FILE) > 0) || (dtype == 0)) {  //** Single path and dest is an existing file or doesn't exist
             if (os_regex_is_fixed(flist[0].path_regex) == 0) {  //** Uh oh we have a wildcard with a single file dest
                 info_printf(lio_ifd, 0, "ERROR: Single wildcard path(%s) selected but the dest(%s) is a file or doesn't exist!\n", flist[0].src_tuple.path, dtuple.path);
@@ -168,7 +168,7 @@ int main(int argc, char **argv)
         }
 
         log_printf(15, "2222222222222222 fixed=%d exp=%s dtype=%d\n", os_regex_is_fixed(flist[0].path_regex), flist[0].path_regex->regex_entry[0].expression, dtype);
-        tbx_flush_log();
+        tbx_log_flush();
 
         //**if it's a fixed src with a dir dest we skip and use the cp_fn routines
         if ((os_regex_is_fixed(flist[0].path_regex) == 1) && ((dtype == 0) || ((dtype & OS_OBJECT_FILE) > 0))) {
@@ -186,7 +186,7 @@ int main(int argc, char **argv)
                 goto finished;
             }
             log_printf(15, "333333333333333333\n");
-            tbx_flush_log();
+            tbx_log_flush();
 
             goto finished;
         }

@@ -50,11 +50,11 @@ tbx_inip_element_t * tbx_inip_ele_first(tbx_inip_group_t *group) {
     return group->list;
 }
 
-char *tbx_inip_ele_key_get(tbx_inip_element_t *ele) {
+char *tbx_inip_ele_get_key(tbx_inip_element_t *ele) {
     return ((ele) == NULL) ? NULL : (ele)->key;
 }
 
-char *tbx_inip_ele_value_get(tbx_inip_element_t *ele) {
+char *tbx_inip_ele_get_value(tbx_inip_element_t *ele) {
     return ((ele) == NULL) ? NULL : (ele)->value;
 }
 
@@ -70,7 +70,7 @@ char *tbx_inip_group_get(tbx_inip_group_t *g) {
 tbx_inip_group_t *tbx_inip_group_next(tbx_inip_group_t *g) {
     return ((g) == NULL) ? NULL : (g)->next;
 }
-int tbx_inip_n_groups(tbx_inip_file_t *inip) {
+int tbx_inip_group_count(tbx_inip_file_t *inip) {
     return inip->n_groups;
 }
 void tbx_inip_group_free(tbx_inip_group_t *g) {
@@ -98,7 +98,7 @@ FILE *bfile_fopen(tbx_stack_t *include_paths, char *fname)
 
     //** Relative path so cycle through the prefixes
     tbx_stack_move_to_top(include_paths);
-    while ((path = tbx_get_ele_data(include_paths)) != NULL) {
+    while ((path = tbx_stack_get_current_data(include_paths)) != NULL) {
         snprintf(fullpath, BUFMAX, "%s/%s", path, fname);
         fd = fopen(fullpath, "r");
         log_printf(15, "checking path=%s fname=%s fullpath=%s fd=%p\n", path, fname, fullpath, fd);
@@ -356,7 +356,7 @@ tbx_inip_element_t *_find_key(tbx_inip_group_t *group, const char *name)
 //  inip_find_key - Scans the group for the given key and returns the value
 //***********************************************************************
 
-char *tbx_inip_key_find(tbx_inip_group_t *group, const char *name)
+char *tbx_inip_find_key(tbx_inip_group_t *group, const char *name)
 {
     tbx_inip_element_t *ele;
 
@@ -412,7 +412,7 @@ tbx_inip_element_t *_find_group_key(tbx_inip_file_t *inip, const char *group_nam
 // inip_get_* - Routines for getting group/key values
 //***********************************************************************
 
-int64_t tbx_inip_integer_get(tbx_inip_file_t *inip, const char *group, const char *key, int64_t def)
+int64_t tbx_inip_get_integer(tbx_inip_file_t *inip, const char *group, const char *key, int64_t def)
 {
     tbx_inip_element_t *ele = _find_group_key(inip, group, key);
     if (ele == NULL) return(def);
@@ -432,7 +432,7 @@ uint64_t inip_get_unsigned_integer(tbx_inip_file_t *inip, const char *group, con
 
 //***********************************************************************
 
-double tbx_inip_double_get(tbx_inip_file_t *inip, const char *group, const char *key, double def)
+double tbx_inip_get_double(tbx_inip_file_t *inip, const char *group, const char *key, double def)
 {
     tbx_inip_element_t *ele = _find_group_key(inip, group, key);
     if (ele == NULL) return(def);
@@ -442,7 +442,7 @@ double tbx_inip_double_get(tbx_inip_file_t *inip, const char *group, const char 
 
 //***********************************************************************
 
-char *tbx_inip_string_get(tbx_inip_file_t *inip, const char *group, const char *key, char *def)
+char *tbx_inip_get_string(tbx_inip_file_t *inip, const char *group, const char *key, char *def)
 {
     char *value = def;
     tbx_inip_element_t *ele = _find_group_key(inip, group, key);
@@ -505,8 +505,8 @@ tbx_inip_file_t *inip_read_fd(FILE *fd)
         free(entry);
     }
 
-    tbx_free_stack(bfd.stack, 1);
-    tbx_free_stack(bfd.include_paths, 1);
+    tbx_stack_free(bfd.stack, 1);
+    tbx_stack_free(bfd.include_paths, 1);
 
     return(inip);
 }
@@ -515,7 +515,7 @@ tbx_inip_file_t *inip_read_fd(FILE *fd)
 //  inip_read - Reads a .ini file
 //***********************************************************************
 
-tbx_inip_file_t *tbx_inip_file_read(const char *fname)
+tbx_inip_file_t *tbx_inip_read_file(const char *fname)
 {
     FILE *fd;
 
@@ -537,7 +537,7 @@ tbx_inip_file_t *tbx_inip_file_read(const char *fname)
 //  inip_read_text - Converts a character array into a .ini file
 //***********************************************************************
 
-tbx_inip_file_t *tbx_inip_string_read(const char *text)
+tbx_inip_file_t *tbx_inip_read_string(const char *text)
 {
     FILE *fd = tmpfile();
     fprintf(fd, "%s\n", text);
