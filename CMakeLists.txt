@@ -4,8 +4,18 @@ project(LStore C)
 
 set(LSTORE_PROJECT_VERSION "0.5.1-unknown_commit" CACHE STRING "Project version <major>.<minor>.<patch>[-<git-hash>[-<other-tags>]]")
 
+# Preliminary configuration. Need to find ccache to set the defaults for the
+# corresponding option
+find_program(FOUND_CCACHE ccache)
+if(FOUND_CCACHE)
+    set(ENABLE_CCACHE_DEFAULT ON)
+else()
+    set(ENABLE_CCACHE_DEFAULT OFF)
+endif()
+
 # Options
 option(BUILD_SHARED_LIBS "Build shared LStore libraries" ON)
+option(BUILD_SHARED_EXES "Build shared LStore executables" ON)
 option(BUILD_TESTS "Build tests" ON)
 option(BUILD_APR "Build APR from source" ON)
 option(BUILD_APU "Build APR-Util from source" ON)
@@ -17,6 +27,7 @@ option(ENABLE_MSAN "Enable memory sanitizer" OFF)
 option(ENABLE_TSAN "Enable thread sanitizer" OFF)
 option(ENABLE_UBSAN "Enable undefined behaviour sanitizer" OFF)
 option(ENABLE_FUZZ "Build with AFL fuzz support" OFF)
+option(ENABLE_CCACHE "Build with ccache" ${ENABLE_CCACHE_DEFAULT})
 
 option(INSTALL_EXTERNALS "Install externals to \$CMAKE_INSTALL_PATH" OFF)
 option(INSTALL_YUM_RELEASE "Install yum lstore-release (may require root)" OFF)
@@ -29,6 +40,11 @@ if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE "Debug" CACHE STRING "Build type" FORCE)
 endif()
 
+if(NOT BUILD_SHARED_EXES)
+    set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static-libgcc -static-libstdc++")
+endif()
+
 set(LSTORE_REPO_URL "http://repo.accre.vanderbilt.edu"
         CACHE STRING "URL for lstore-release")
 set(CMAKE_INSTALL_PREFIX "${CMAKE_BINARY_DIR}/local"
@@ -37,7 +53,7 @@ set(CMAKE_INSTALL_PREFIX "${CMAKE_BINARY_DIR}/local"
 set(USE_SUPERBUILD ON)
 set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -fPIC -D_REENTRANT -D_GNU_SOURCE -D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64 -fvisibility=hidden -Werror=implicit-function-declaration")
-set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -Wall -Wextra -Wno-unused-parameter -Wno-deprecated-declarations -Werror=format -Werror=implicit-function-declaration -Werror=incompatible-pointer-types")
+set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -Wall -Wextra -Wno-unused-parameter -Wno-deprecated-declarations -Werror=format -Werror=implicit-function-declaration")
 set(CMAKE_MACOSX_RPATH ON)
 if(INSTALL_EXTERNALS)
     set(EXTERNAL_INSTALL_DIR ${CMAKE_INSTALL_PREFIX})
@@ -77,6 +93,10 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${LSTORE_SANITIZE_FLAGS}")
 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${LSTORE_SANITIZE_LINK_FLAGS}")
 set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} ${LSTORE_SANITIZE_LINK_FLAGS}")
 
+if(ENABLE_FUZZ AND ENABLE_CCACHE)
+    message(FATAL "Don't have proper support for nested wrappers yet")
+endif()
+
 if(ENABLE_FUZZ)
     if("${CMAKE_C_COMPILER_ID}" STREQUAL "GNU")
         set(FUZZ_COMPILE_NAME "afl-gcc")
@@ -87,6 +107,40 @@ if(ENABLE_FUZZ)
                 "install AFL from http://lcamtuf.coredump.cx/afl/")
     endif()
     find_program(CMAKE_C_COMPILER ${FUZZ_COMPILE_NAME})
+endif()
+
+if(ENABLE_CCACHE)
+    message(STATUS "Enabling ccache")
+    set(LSTORE_COMPILER_WRAPPER "ccache ")
+    set(LSTORE_COMPILER_WRAPPER_CMAKE "-DCMAKE_C_COMPILER=ccache"
+                                      "-DCMAKE_CXX_COMPILER=ccache")
+    if(CMAKE_C_COMPILER)
+        list(APPEND LSTORE_COMPILER_WRAPPER_CMAKE 
+                    "-DCMAKE_C_COMPILER_ARG1=${CMAKE_C_COMPILER}")
+    else()
+        list(APPEND LSTORE_COMPILER_WRAPPER_CMAKE 
+                    "-DCMAKE_C_COMPILER_ARG1=cc")
+    endif()
+    if(CMAKE_CXX_COMPILER)
+        list(APPEND LSTORE_COMPILER_WRAPPER_CMAKE 
+                    "-DCMAKE_CXX_COMPILER_ARG1=${CMAKE_CXX_COMPILER}")
+    else()
+        list(APPEND LSTORE_COMPILER_WRAPPER_CMAKE 
+                    "-DCMAKE_CXX_COMPILER_ARG1=c++")
+    endif()
+    set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE ccache)
+    set_property(GLOBAL PROPERTY RULE_LAUNCH_LINK ccache)
+else()
+    set(LSTORE_COMPILER_WRAPPER "")
+    set(LSTORE_COMPILER_WRAPPER_CMAKE "-DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}"
+                                      "-DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}")
+endif()
+
+# Detect compiler flags
+include(CheckCCompilerFlag)
+check_c_compiler_flag(-Werror=incompatible-pointer-types HAS_INCOMPATIBLE_POINTER_WERROR)
+if(HAS_INCOMPATIBLE_POINTER_WERROR)
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Werror=incompatible-pointer-types")
 endif()
 
 # Use gnu-style paths
@@ -154,6 +208,23 @@ if(BUILD_TESTS)
                 COMPONENT tests)
     endif()
 endif()
+
+# Build documentation
+find_program(DOXYGEN_PATH doxygen
+             DOC "Path to doxygen executable")
+add_custom_target(docs COMMENT "Build documentation")
+add_custom_target(doxygen COMMAND "${DOXYGEN_PATH}"
+                    WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}/doc/"
+                    COMMENT "Document code with doxygen")
+add_custom_target(sphinx-html COMMAND $(MAKE) "html"
+                    WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}/doc/"
+                    COMMENT "Produce sphinx documentation (HTML)")
+add_custom_target(sphinx-man COMMAND $(MAKE) "man"
+                    WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}/doc/"
+                    COMMENT "Produce sphinx documentation (Man Pages)")
+add_dependencies(sphinx-html doxygen)
+add_dependencies(sphinx-man doxygen)
+add_dependencies(docs sphinx-html sphinx-man)
 
 # Import packaging
 include(LStorePackaging)

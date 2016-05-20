@@ -13,7 +13,7 @@ if(BUILD_APR OR (NOT APR-ACCRE_FOUND) OR (APR_LIBRARY MATCHES "^${EXTERNAL_INSTA
 								"--includedir=${EXTERNAL_INSTALL_DIR}/include/apr-ACCRE-1"
 								"--with-installbuilddir=${EXTERNAL_INSTALL_DIR}/lib/apr-ACCRE-1/build"
                                 "--enable-static=yes" "--enable-shared=no" "--with-pic"
-                                "CC=${CMAKE_C_COMPILER}"
+                                "CC=${LSTORE_COMPILER_WRAPPER}${CMAKE_C_COMPILER}"
             BUILD_COMMAND $(MAKE)
             TEST_COMMAND $(MAKE) "test"
             INSTALL_COMMAND $(MAKE) "install"
@@ -43,7 +43,7 @@ if(BUILD_APU OR (NOT APRUTIL-ACCRE_FOUND) OR (APU_LIBRARY MATCHES "^${EXTERNAL_I
 								"--includedir=${EXTERNAL_INSTALL_DIR}/include/apr-util-ACCRE-1"
 								"--with-installbuilddir=${EXTERNAL_INSTALL_DIR}/lib/apr-util-ACCRE-1/build"
                                 "--enable-static=yes" "--enable-shared=no" "--with-pic"
-                                "CC=${CMAKE_C_COMPILER}"
+                                "CC=${LSTORE_COMPILER_WRAPPER}${CMAKE_C_COMPILER}"
             BUILD_COMMAND $(MAKE)
             TEST_COMMAND $(MAKE) "test"
             INSTALL_COMMAND $(MAKE) "install"
@@ -61,7 +61,7 @@ if(BUILD_JERASURE OR (NOT JERASURE_FOUND) OR (JERASURE_LIBRARY MATCHES "^${EXTER
             INSTALL_DIR "${EXTERNAL_INSTALL_DIR}"
             CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${EXTERNAL_INSTALL_DIR}
                         -DWANT_SHARED:BOOL=OFF -DWANT_STATIC:BOOL=ON
-                        "-DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}"
+                        ${LSTORE_COMPILER_WRAPPER_CMAKE}
 			TEST_COMMAND ""
             INSTALL_COMMAND $(MAKE) "install"
 		)
@@ -76,7 +76,8 @@ if((NOT CZMQ_FOUND) OR (CZMQ_LIBRARY MATCHES "^${EXTERNAL_INSTALL_DIR}"))
             INSTALL_DIR "${EXTERNAL_INSTALL_DIR}"
             CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${EXTERNAL_INSTALL_DIR}
                         -DBUILD_SHARED_LIBS:BOOL=OFF
-                        "-DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}"
+                        -DCMAKE_C_FLAGS="-fPIC"
+                        ${LSTORE_COMPILER_WRAPPER_CMAKE}
             TEST_COMMAND $(MAKE) "test"
             INSTALL_COMMAND $(MAKE) "install"
 			TEST_EXCLUDE_FROM_MAIN 1

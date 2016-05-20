@@ -36,12 +36,14 @@ macro(lstore_project_common LSTORE_PROJECT_NAME)
     install(FILES "${CMAKE_CURRENT_BINARY_DIR}/${LSTORE_PROJECT_NAME}.pc" DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig)
 
     target_link_libraries(${LSTORE_PROJECT_NAME} LINK_PUBLIC ${LSTORE_LIBS} m pthread)
-    set_target_properties(${LSTORE_PROJECT_NAME} PROPERTIES
-        COMPILE_FLAGS "-DLSTORE_HACK_EXPORT")
-
 
     if(NOT BUILD_SHARED_LIBS)
         target_link_libraries(${LSTORE_PROJECT_NAME} LINK_PUBLIC ${LSTORE_LIBS} dl)
+        set_target_properties(${LSTORE_PROJECT_NAME} PROPERTIES COMPILE_FLAGS
+                                "-D${LSTORE_PROJECT_NAME}_EXPORTS -DLSTORE_HACK_EXPORT")
+    else()
+        set_target_properties(${LSTORE_PROJECT_NAME} PROPERTIES
+                            COMPILE_FLAGS "-DLSTORE_HACK_EXPORT")
     endif()
     target_include_directories(${LSTORE_PROJECT_NAME} SYSTEM PRIVATE ${LSTORE_INCLUDE_SYSTEM})
     target_include_directories(${LSTORE_PROJECT_NAME} PUBLIC ${LSTORE_INCLUDE_PUBLIC})
@@ -53,6 +55,10 @@ macro(lstore_project_common LSTORE_PROJECT_NAME)
         target_link_libraries(${f} ${LSTORE_PROJECT_NAME})
         target_include_directories(${f} SYSTEM PRIVATE ${LSTORE_INCLUDE_SYSTEM})
         target_include_directories(${f} PUBLIC ${LSTORE_INCLUDE_PUBLIC})
+        if(NOT BUILD_SHARED_EXES)
+            set_target_properties(${f} PROPERTIES LINK_SEARCH_START_STATIC 1)
+            set_target_properties(${f} PROPERTIES LINK_SEARCH_END_STATIC 1)
+        endif()
         install(TARGETS ${f} DESTINATION ${CMAKE_INSTALL_BINDIR}
                              COMPONENT bin)
     endforeach(f)
@@ -62,7 +68,7 @@ macro(lstore_project_common LSTORE_PROJECT_NAME)
             ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
             LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
     install(FILES ${LSTORE_PROJECT_INCLUDES}
-            DESTINATION include/${LSTORE_PROJECT_INCLUDES_NAMESPACE}
+            DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${LSTORE_PROJECT_INCLUDES_NAMESPACE}
             COMPONENT devel)
     install(FILES ${LSTORE_PROJECT_INCLUDES_OLD}
             DESTINATION include/${LSTORE_PROJECT_NAME}

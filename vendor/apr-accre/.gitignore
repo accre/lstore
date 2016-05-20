@@ -27,6 +27,7 @@ exports.c
 include/apr.h
 include/arch/unix/apr_private.h
 include/arch/unix/apr_private.h.in
+include/arch/unix/apr_private.h.in~
 include/private/
 libapr-ACCRE-1.la
 libtool

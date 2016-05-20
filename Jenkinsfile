@@ -52,7 +52,7 @@ compile_map['unified-clang'] = {
         unstash 'source'
         dir('build') {
             try {
-                sh '''CC=clang CXX=clang cmake -DBUILD_TESTS=on -DENABLE_COVERAGE=on -DCMAKE_INSTALL_PREFIX=local/ ..
+                sh '''cmake -DBUILD_TESTS=on -DENABLE_COVERAGE=on -DCMAKE_INSTALL_PREFIX=local/ ..
                     make -j8 externals
                     bash -c 'set -o pipefail ; make -j1 install VERBOSE=1 2>&1 | tee compile_log_clang.txt' '''
             } catch (e) {
@@ -74,7 +74,7 @@ compile_map['tidy'] = {
         unstash "source"
         def tidy_checks="-*,misc-*,google-runtime-*,modernize-*,cert-*,performance-*,cppcoreguidelines-*,-misc-unused-parameters,readability-*,-readability-else-after-return,-readability-braces-around-statements" 
         dir('build') {
-            sh "CC=clang cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DBUILD_TESTS=on -DCMAKE_INSTALL_PREFIX=local/ .."
+            sh "cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DBUILD_TESTS=on -DCMAKE_INSTALL_PREFIX=local/ .."
             sh "make externals"
             sh "clang-tidy -p=\$(pwd) '-header-filter=src/\\.*h\$' ../src/*/*.c ../src/*/*.h -checks=${tidy_checks} -list-checks | tee ../clang_tidy_log.txt"
             sh "clang-tidy -p=\$(pwd) '-header-filter=src/\\.*h\$' ../src/*/*.c ../src/*/*.h -checks=${tidy_checks} | tee -a ../clang_tidy_log.txt"
@@ -89,11 +89,15 @@ compile_map['scan-build'] = {
         unstash "source"
         def scan_checks = "-enable-checker alpha.core.BoolAssignment -enable-checker alpha.core.CallAndMessageUnInitRefArg -enable-checker alpha.core.CastSize -enable-checker alpha.core.CastToStruct -enable-checker alpha.core.DynamicTypeChecker -enable-checker alpha.core.FixedAddr -enable-checker alpha.core.IdenticalExpr -enable-checker alpha.core.PointerArithm -enable-checker alpha.core.PointerSub -enable-checker alpha.core.SizeofPtr -enable-checker alpha.core.TestAfterDivZero -enable-checker alpha.cplusplus.VirtualCall -enable-checker alpha.deadcode.UnreachableCode -enable-checker alpha.security.ArrayBound -enable-checker alpha.security.ArrayBoundV2 -enable-checker alpha.security.MallocOverflow -enable-checker alpha.security.ReturnPtrRange -enable-checker alpha.security.taint.TaintPropagation -enable-checker alpha.unix.Chroot -enable-checker alpha.unix.PthreadLock -enable-checker alpha.unix.SimpleStream -enable-checker alpha.unix.Stream -enable-checker alpha.unix.cstring.BufferOverlap -enable-checker alpha.unix.cstring.NotNullTerminated -enable-checker alpha.unix.cstring.OutOfBounds"
         dir('build') {
-            sh "mkdir clang-static-analyzer"
-            sh "CCC_CC=clang scan-build cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DBUILD_TESTS=on -DCMAKE_INSTALL_PREFIX=local/ .."
-            sh "CC=clang make externals -j2"
-            sh "CCC_CC=clang scan-build -o clang-static-analyzer -v -v ${scan_checks} --keep-empty make -j16"
-            sh "mv clang-static-analyzer/* ../clang-report"
+            sh """mkdir clang-static-analyzer
+            env
+            ls -lah /ccache
+            ln -s \$(which ccache) clang
+            PATH="\$(pwd):\$PATH"
+            CCC_CC=\$(pwd)/clang scan-build --use-analyzer=\$(pwd)/clang cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DBUILD_TESTS=on -DCMAKE_INSTALL_PREFIX=local/ -DENABLE_CCACHE=OFF ..
+            CCC_CC=\$(pwd)/clang make externals -j2 VERBOSE=1
+            CCC_CC=\$(pwd)/clang scan-build --use-analyzer=\$(pwd)/clang -o clang-static-analyzer -v -v ${scan_checks} --keep-empty make -j16 VERBOSE=1
+            mv clang-static-analyzer/* ../clang-report"""
         }
         archive "clang-report/**"
         publishHTML(target: [reportDir: 'clang-report/', reportFiles: 'index.html', reportName: 'Clang static analysis', keepAll: true])
@@ -105,15 +109,15 @@ for (int i = 0 ; i < distros.size(); ++i) {
     compile_map["${x}"] = { node('docker') {
         deleteDir()
         unstash 'source'
-        sh "bash scripts/generate-docker-base.sh ${x}"
-        sh "bash scripts/build-docker-base.sh ${x}"
-        sh "bash scripts/package.sh ${x}"
-        sh "bash scripts/update-repo.sh ${x}"
+        sh """bash scripts/generate-docker-base.sh ${x}
+              bash scripts/build-docker-base.sh ${x}
+              bash scripts/package.sh ${x}"""
+        sh """bash scripts/update-repo.sh ${x}
+              bash scripts/test-repo.sh ${x}"""
         archive 'build/package/**'
-        sh "bash scripts/test-repo.sh ${x}"
         stash includes: 'build/package/**', name: "${x}-package"
         dockerFingerprintFrom dockerfile: "scripts/docker/builder/${x}/Dockerfile", \
-        image: "lstore/builder:${x}"
+                                image: "lstore/builder:${x}"
     } }
 }
 

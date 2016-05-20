@@ -577,7 +577,7 @@ op_generic_t *ds_ibp_res_inquire(data_service_fn_t *dsf, char *res, data_attr_t 
     ds_ibp_alloc_op_t *cmd;
 
     ds_ibp_op_t *iop = ds_ibp_op_create(ds, attr);
-    cmd = &(iop->alloc);
+    cmd = &(iop->ops.alloc);
 
     //** Fill in the depot structure
     res2ibp(res, &(cmd->depot));
@@ -601,7 +601,7 @@ op_generic_t *ds_ibp_allocate(data_service_fn_t *dsf, char *res, data_attr_t *da
     ds_ibp_alloc_op_t *cmd;
 
     ds_ibp_op_t *iop = ds_ibp_op_create(ds, attr);
-    cmd = &(iop->alloc);
+    cmd = &(iop->ops.alloc);
 
     //** Fill in the depot structure
     res2ibp(res, &(cmd->depot));

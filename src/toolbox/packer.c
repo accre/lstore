@@ -63,7 +63,7 @@ int tbx_pack_write_flush(tbx_pack_t *pack) {
 
 int pack_read_zlib(tbx_pack_t *pack, unsigned char *data, int len)
 {
-    tbx_pack_zlib_t *p = &(pack->zlib);
+    tbx_pack_zlib_t *p = &(pack->data.zlib);
     int nbytes;
 
     p->z.avail_out = len;
@@ -89,7 +89,7 @@ int pack_read_zlib(tbx_pack_t *pack, unsigned char *data, int len)
 
 int pack_read_new_data_zlib(tbx_pack_t *pack, unsigned char *buffer, unsigned int bufsize)
 {
-    tbx_pack_zlib_t *p = &(pack->zlib);
+    tbx_pack_zlib_t *p = &(pack->data.zlib);
     int err = 0;
 
     if (p->z.avail_in > 0) err = PACK_ERROR;
@@ -110,7 +110,7 @@ int pack_read_new_data_zlib(tbx_pack_t *pack, unsigned char *buffer, unsigned in
 
 int pack_write_zlib(tbx_pack_t *pack, unsigned char *data, int len)
 {
-    tbx_pack_zlib_t *p = &(pack->zlib);
+    tbx_pack_zlib_t *p = &(pack->data.zlib);
     int nbytes;
 
     if (len == 0) return(0);
@@ -134,7 +134,7 @@ int pack_write_zlib(tbx_pack_t *pack, unsigned char *data, int len)
 
 void pack_write_resized_zlib(tbx_pack_t *pack, unsigned char *buffer, unsigned int bufsize)
 {
-    tbx_pack_zlib_t *p = &(pack->zlib);
+    tbx_pack_zlib_t *p = &(pack->data.zlib);
     int offset;
 
     assert(bufsize >= (p->bufsize - p->z.avail_out));
@@ -153,7 +153,7 @@ void pack_write_resized_zlib(tbx_pack_t *pack, unsigned char *buffer, unsigned i
 
 void pack_consumed_zlib(tbx_pack_t *pack)
 {
-    tbx_pack_zlib_t *p = &(pack->zlib);
+    tbx_pack_zlib_t *p = &(pack->data.zlib);
 
     p->z.avail_out = p->bufsize;
     p->z.next_out = p->buffer;
@@ -165,7 +165,7 @@ void pack_consumed_zlib(tbx_pack_t *pack)
 
 void pack_end_zlib(tbx_pack_t *pack)
 {
-    tbx_pack_zlib_t *p = &(pack->zlib);
+    tbx_pack_zlib_t *p = &(pack->data.zlib);
 
     if (pack->mode == PACK_READ) {
         inflateEnd(&(p->z));
@@ -182,7 +182,7 @@ void pack_end_zlib(tbx_pack_t *pack)
 
 int pack_used_zlib(tbx_pack_t *pack)
 {
-    tbx_pack_zlib_t *p = &(pack->zlib);
+    tbx_pack_zlib_t *p = &(pack->data.zlib);
 
     return(p->bufsize - p->z.avail_out);
 }
@@ -194,7 +194,7 @@ int pack_used_zlib(tbx_pack_t *pack)
 
 int pack_write_flush_zlib(tbx_pack_t *pack)
 {
-    tbx_pack_zlib_t *p = &(pack->zlib);
+    tbx_pack_zlib_t *p = &(pack->data.zlib);
     int err;
 
     log_printf(5, "start avail_out=%d\n", p->z.avail_out);
@@ -221,7 +221,7 @@ int pack_write_flush_zlib(tbx_pack_t *pack)
 
 void pack_init_zlib(tbx_pack_t *pack, int type, int mode, unsigned char *buffer, unsigned int bufsize)
 {
-    tbx_pack_zlib_t *p = &(pack->zlib);
+    tbx_pack_zlib_t *p = &(pack->data.zlib);
 
     memset(pack, 0, sizeof(tbx_pack_t));
 
@@ -274,7 +274,7 @@ void pack_init_zlib(tbx_pack_t *pack, int type, int mode, unsigned char *buffer,
 
 int pack_read_raw(tbx_pack_t *pack, unsigned char *data, int len)
 {
-    tbx_pack_raw_t *p = &(pack->raw);
+    tbx_pack_raw_t *p = &(pack->data.raw);
     int nbytes;
 
     nbytes = (len > p->nleft) ? p->nleft : len;
@@ -297,7 +297,7 @@ int pack_read_raw(tbx_pack_t *pack, unsigned char *data, int len)
 
 int pack_read_new_data_raw(tbx_pack_t *pack, unsigned char *buffer, unsigned int bufsize)
 {
-    tbx_pack_raw_t *p = &(pack->raw);
+    tbx_pack_raw_t *p = &(pack->data.raw);
     int err = 0;
 
     if (p->nleft > 0) err = PACK_ERROR;
@@ -319,7 +319,7 @@ int pack_read_new_data_raw(tbx_pack_t *pack, unsigned char *buffer, unsigned int
 
 int pack_write_raw(tbx_pack_t *pack, unsigned char *data, int len)
 {
-    tbx_pack_raw_t *p = &(pack->raw);
+    tbx_pack_raw_t *p = &(pack->data.raw);
     int nbytes;
 
     nbytes = (len > p->nleft) ? p->nleft : len;
@@ -342,7 +342,7 @@ int pack_write_raw(tbx_pack_t *pack, unsigned char *data, int len)
 
 void pack_write_resized_raw(tbx_pack_t *pack, unsigned char *buffer, unsigned int bufsize)
 {
-    tbx_pack_raw_t *p = &(pack->raw);
+    tbx_pack_raw_t *p = &(pack->data.raw);
 
     assert(bufsize >= p->bpos);
 
@@ -357,7 +357,7 @@ void pack_write_resized_raw(tbx_pack_t *pack, unsigned char *buffer, unsigned in
 
 void pack_consumed_raw(tbx_pack_t *pack)
 {
-    tbx_pack_raw_t *p = &(pack->raw);
+    tbx_pack_raw_t *p = &(pack->data.raw);
 
     p->bpos = 0;
     p->nleft = p->bufsize;
@@ -378,7 +378,7 @@ void pack_end_raw(tbx_pack_t *pack)
 
 int pack_used_raw(tbx_pack_t *pack)
 {
-    return(pack->raw.bpos);
+    return(pack->data.raw.bpos);
 }
 
 //***********************************************************************
@@ -396,7 +396,7 @@ int pack_write_flush_raw(tbx_pack_t *pack)
 
 void pack_init_raw(tbx_pack_t *pack, int type, int mode, unsigned char *buffer, unsigned int bufsize)
 {
-    tbx_pack_raw_t *p = &(pack->raw);
+    tbx_pack_raw_t *p = &(pack->data.raw);
 
     memset(pack, 0, sizeof(tbx_pack_t));
 
