@@ -13,6 +13,7 @@ Structure
   * package - Storage with built RPMs
   * repo    - Default YUM/APT repositories
   * local   - Installation path for packages built with build-*.sh
+  * ccache  - Default ccache location for docker builds
 
 Build process
 ----------------------------------------------
