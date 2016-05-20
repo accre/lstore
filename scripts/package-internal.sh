@@ -64,14 +64,23 @@ cp -r ${LSTORE_RELEASE_BASE}/{scripts,src,vendor,doc,debian,test,cmake,CMakeList
 
 if [[ $PACKAGE_SUFFIX == deb ]]; then
     cd $PACKAGE_BASE
-    cmake .
-    make $PACKAGE_SUFFIX VERBOSE=1
+    dpkg-buildpackage -uc -us
+
+(
+    umask 000
+    mkdir -p $PACKAGE_REPO
+    cp -r ../lstore*.{deb,tar.*z,changes} $PACKAGE_REPO
+    chmod -R u=rwX,g=rwX,o=rwX $PACKAGE_REPO/*
+    # Update lstore-release if we built it
+    if test -n "$(shopt -s nullglob; set +u; echo lstore-release*.deb)"; then
+        cp lstore-release*.deb $REPO_BASE/lstore-release.deb
+    fi
+)
+
 else
     cd $PACKAGE_BASE/build
     cmake ..
     make $PACKAGE_SUFFIX VERBOSE=1
-fi
-
 (
     umask 000
     mkdir -p $PACKAGE_REPO
@@ -82,6 +91,8 @@ fi
         cp lstore-release*.rpm $REPO_BASE/lstore-release.rpm
     fi
 )
+fi
+
 set +x 
 
-note "Done! The new packages can be found in ./package/$PACKAGE_SUBDIR"
+note "Done! The new packages can be found in ./build/package/$PACKAGE_SUBDIR"
