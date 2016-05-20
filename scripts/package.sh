@@ -13,6 +13,29 @@ set -eu
 ABSOLUTE_PATH=$(cd `dirname "${BASH_SOURCE[0]}"` && pwd)
 source $ABSOLUTE_PATH/functions.sh
 PACKAGE_EPOCH=$(date +%F-%H-%M-%S)
+
+#
+# Argument parsing
+#
+PACKAGE_ARGS=""
+while getopts ":c:ht" opt; do
+    case $opt in
+        c)
+            PACKAGE_ARGS="$PACKAGE_ARGS -c $OPTARG"
+            ;;
+        t)
+            PACKAGE_ARGS="$PACKAGE_ARGS -t"
+            ;;
+        \?|h)
+            1>&2 echo "Usage: $0 [-t] [-c ARGUMENT] [distribution ...]"
+            1>&2 echo "       -t: Produce static tarballs only"
+            1>&2 echo "       -c: Add ARGUMENT to cmake"
+            exit 1
+            ;;
+    esac
+done
+shift $((OPTIND-1))
+
 DISTROS=( "$@" )
 if [ ${#DISTROS[@]} -eq 0 ]; then
     pushd $LSTORE_RELEASE_BASE/scripts/docker/builder
@@ -57,18 +80,10 @@ fi
 
 for DISTRO in "${DISTROS[@]}"; do
     note "Starting docker container to package $DISTRO"
-    case $DISTRO in
-        centos*)
-            INTERNAL_CMD="/tmp/source/scripts/package-internal.sh $DISTRO"
-            ;;
-        debian*|ubuntu*)
-            INTERNAL_CMD="/tmp/source/scripts/package-internal.sh $DISTRO"
-            ;;
-    esac
     set -x
     docker run --rm=true -v $LSTORE_RELEASE_RELATIVE:/tmp/source \
             $EXTRA_ARGS \
             lstore/builder:${DISTRO} \
-            $INTERNAL_CMD
+            /tmp/source/scripts/package-internal.sh $PACKAGE_ARGS $DISTRO
     set +x
 done
