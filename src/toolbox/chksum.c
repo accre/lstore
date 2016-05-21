@@ -180,9 +180,9 @@ int cipher ## _add(void *state, int nbytes, tbx_tbuf_t *data, int boff)   \
             free(tbv); \
             return(err);               \
         } \
-    }                                             \
+    }                                              \
   }                                                \
-                                                   \
+  free(tbv);                                       \
   return(err);                                     \
 }                                                  \
                                                    \
