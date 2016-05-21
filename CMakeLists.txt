@@ -202,8 +202,10 @@ if(BUILD_TESTS)
     target_include_directories(run-benchmarks SYSTEM PRIVATE ${APR_INCLUDE_DIR})
     SET_TARGET_PROPERTIES(run-benchmarks PROPERTIES
                             COMPILE_FLAGS "-DLSTORE_HACK_EXPORT")
+    add_executable(fuzz-config test/fuzz-config.c)
+    target_link_libraries(fuzz-config toolbox)
     if(INSTALL_TESTS)
-        install(TARGETS run-tests run-benchmarks
+        install(TARGETS run-tests run-benchmarks fuzz-config
                 DESTINATION ${CMAKE_INSTALL_BINDIR}
                 COMPONENT tests)
     endif()
