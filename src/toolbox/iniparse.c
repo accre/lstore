@@ -520,8 +520,11 @@ tbx_inip_file_t *tbx_inip_file_read(const char *fname)
     FILE *fd;
 
     log_printf(15, "Parsing file %s\n", fname);
-
-    fd = fopen(fname, "r");
+    if(!strcmp(fname, "-")) {
+        fd = stdin;
+    } else {
+        fd = fopen(fname, "r");
+    }
     if (fd == NULL) {  //** Can't open the file
         log_printf(1, "Problem opening file %s\n", fname);
         return(NULL);

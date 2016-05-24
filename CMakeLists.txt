@@ -1,6 +1,5 @@
 # Root CMake file for LStore
 cmake_minimum_required(VERSION 2.8)
-project(LStore C)
 
 set(LSTORE_PROJECT_VERSION "0.5.1-unknown_commit" CACHE STRING "Project version <major>.<minor>.<patch>[-<git-hash>[-<other-tags>]]")
 
@@ -41,7 +40,11 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 
 if(NOT BUILD_SHARED_EXES)
-    set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
+    IF(WIN32)
+        SET(CMAKE_FIND_LIBRARY_SUFFIXES .lib .a ${CMAKE_FIND_LIBRARY_SUFFIXES})
+    ELSE(WIN32)
+        SET(CMAKE_FIND_LIBRARY_SUFFIXES .a ${CMAKE_FIND_LIBRARY_SUFFIXES})
+    ENDIF(WIN32)
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static-libgcc -static-libstdc++")
 endif()
 
@@ -49,6 +52,64 @@ set(LSTORE_REPO_URL "http://repo.accre.vanderbilt.edu"
         CACHE STRING "URL for lstore-release")
 set(CMAKE_INSTALL_PREFIX "${CMAKE_BINARY_DIR}/local"
         CACHE STRING "Installation path")
+if(ENABLE_FUZZ AND ENABLE_CCACHE)
+    message(FATAL_MESSAGE "Don't have proper support for nested wrappers yet")
+endif()
+
+if(ENABLE_FUZZ)
+    if(LINUX AND NOT OSX)
+        set(FUZZ_COMPILER_NAME "afl-gcc" CACHE STRING "AFL Wrapper")
+    elseif(OSX)
+        set(FUZZ_COMPILER_NAME "afl-clang" CACHE STRING "AFL Wrapper")
+    endif()
+    if(CMAKE_C_COMPILER)
+        set(ENV{AFL_CC} "${CMAKE_C_COMPILER}")
+    endif()
+    if(DEFINED ENV{CC})
+        set(ENV{AFL_CC} "$ENV{CC}")
+    endif()
+    find_program(AFL_PATH ${FUZZ_COMPILE_NAME} afl-gcc afl-clang)
+    if(NOT AFL_PATH)
+        message(FATAL_ERROR "Could not find AFL, but ENABLE_FUZZ is set. "
+                    "Please install AFL from http://lcamtuf.coredump.cx/afl/")
+    endif()
+    set(CMAKE_C_COMPILER "${AFL_PATH}")
+endif()
+
+if(ENABLE_CCACHE)
+    message(STATUS "Enabling ccache")
+    set(LSTORE_COMPILER_WRAPPER "ccache ")
+    set(LSTORE_COMPILER_WRAPPER_CMAKE "-DCMAKE_C_COMPILER=ccache"
+                                      "-DCMAKE_CXX_COMPILER=ccache")
+    if(CMAKE_C_COMPILER)
+        list(APPEND LSTORE_COMPILER_WRAPPER_CMAKE
+                    "-DCMAKE_C_COMPILER_ARG1=${CMAKE_C_COMPILER}")
+    else()
+        list(APPEND LSTORE_COMPILER_WRAPPER_CMAKE
+                    "-DCMAKE_C_COMPILER_ARG1=cc")
+    endif()
+    if(CMAKE_CXX_COMPILER)
+        list(APPEND LSTORE_COMPILER_WRAPPER_CMAKE
+                    "-DCMAKE_CXX_COMPILER_ARG1=${CMAKE_CXX_COMPILER}")
+    else()
+        list(APPEND LSTORE_COMPILER_WRAPPER_CMAKE
+                    "-DCMAKE_CXX_COMPILER_ARG1=c++")
+    endif()
+    set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE ccache)
+    set_property(GLOBAL PROPERTY RULE_LAUNCH_LINK ccache)
+else()
+    set(LSTORE_COMPILER_WRAPPER "")
+    if(CMAKE_C_COMPILER)
+        set(LSTORE_COMPILER_WRAPPER_CMAKE "-DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}"
+                                        "-DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}")
+    endif()
+endif()
+
+# Now that we know what compiler we're using, we can "start" the project. If
+# you do it in the other order, cmake complains and reruns the CMakeLists.txt
+# compilation.
+project(LStore C)
+
 # Defines
 set(USE_SUPERBUILD ON)
 set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
@@ -93,48 +154,6 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${LSTORE_SANITIZE_FLAGS}")
 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${LSTORE_SANITIZE_LINK_FLAGS}")
 set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} ${LSTORE_SANITIZE_LINK_FLAGS}")
 
-if(ENABLE_FUZZ AND ENABLE_CCACHE)
-    message(FATAL "Don't have proper support for nested wrappers yet")
-endif()
-
-if(ENABLE_FUZZ)
-    if("${CMAKE_C_COMPILER_ID}" STREQUAL "GNU")
-        set(FUZZ_COMPILE_NAME "afl-gcc")
-    elseif("${CMAKE_C_COMPILER_ID}" STREQUAL "Clang")
-        set(FUZZ_COMPILE_NAME "afl-clang")
-    else()
-        message(FATAL "Could not find AFL, but ENABLE_FUZZ is set. Please "
-                "install AFL from http://lcamtuf.coredump.cx/afl/")
-    endif()
-    find_program(CMAKE_C_COMPILER ${FUZZ_COMPILE_NAME})
-endif()
-
-if(ENABLE_CCACHE)
-    message(STATUS "Enabling ccache")
-    set(LSTORE_COMPILER_WRAPPER "ccache ")
-    set(LSTORE_COMPILER_WRAPPER_CMAKE "-DCMAKE_C_COMPILER=ccache"
-                                      "-DCMAKE_CXX_COMPILER=ccache")
-    if(CMAKE_C_COMPILER)
-        list(APPEND LSTORE_COMPILER_WRAPPER_CMAKE 
-                    "-DCMAKE_C_COMPILER_ARG1=${CMAKE_C_COMPILER}")
-    else()
-        list(APPEND LSTORE_COMPILER_WRAPPER_CMAKE 
-                    "-DCMAKE_C_COMPILER_ARG1=cc")
-    endif()
-    if(CMAKE_CXX_COMPILER)
-        list(APPEND LSTORE_COMPILER_WRAPPER_CMAKE 
-                    "-DCMAKE_CXX_COMPILER_ARG1=${CMAKE_CXX_COMPILER}")
-    else()
-        list(APPEND LSTORE_COMPILER_WRAPPER_CMAKE 
-                    "-DCMAKE_CXX_COMPILER_ARG1=c++")
-    endif()
-    set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE ccache)
-    set_property(GLOBAL PROPERTY RULE_LAUNCH_LINK ccache)
-else()
-    set(LSTORE_COMPILER_WRAPPER "")
-    set(LSTORE_COMPILER_WRAPPER_CMAKE "-DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}"
-                                      "-DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}")
-endif()
 
 # Detect compiler flags
 include(CheckCCompilerFlag)
@@ -202,8 +221,10 @@ if(BUILD_TESTS)
     target_include_directories(run-benchmarks SYSTEM PRIVATE ${APR_INCLUDE_DIR})
     SET_TARGET_PROPERTIES(run-benchmarks PROPERTIES
                             COMPILE_FLAGS "-DLSTORE_HACK_EXPORT")
+    add_executable(fuzz-config test/fuzz-config.c)
+    target_link_libraries(fuzz-config toolbox)
     if(INSTALL_TESTS)
-        install(TARGETS run-tests run-benchmarks
+        install(TARGETS run-tests run-benchmarks fuzz-config
                 DESTINATION ${CMAKE_INSTALL_BINDIR}
                 COMPONENT tests)
     endif()
