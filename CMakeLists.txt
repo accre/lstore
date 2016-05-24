@@ -52,50 +52,6 @@ set(LSTORE_REPO_URL "http://repo.accre.vanderbilt.edu"
         CACHE STRING "URL for lstore-release")
 set(CMAKE_INSTALL_PREFIX "${CMAKE_BINARY_DIR}/local"
         CACHE STRING "Installation path")
-# Defines
-set(USE_SUPERBUILD ON)
-set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -fPIC -D_REENTRANT -D_GNU_SOURCE -D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64 -fvisibility=hidden -Werror=implicit-function-declaration")
-set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -Wall -Wextra -Wno-unused-parameter -Wno-deprecated-declarations -Werror=format -Werror=implicit-function-declaration")
-set(CMAKE_MACOSX_RPATH ON)
-if(INSTALL_EXTERNALS)
-    set(EXTERNAL_INSTALL_DIR ${CMAKE_INSTALL_PREFIX})
-else()
-    set(EXTERNAL_INSTALL_DIR ${CMAKE_BINARY_DIR})
-endif()
-
-if(ENABLE_ASAN)
-    set(LSTORE_SANITIZE_FLAGS "${LSTORE_SANITIZE_FLAGS} -fsanitize=address -fno-omit-frame-pointer -fno-optimize-sibling-calls")
-    set(LSTORE_SANITIZE_LINK_FLAGS "${LSTORE_SANITIZE_LINK_FLAGS} -fsanitize=address")
-endif()
-if(ENABLE_MSAN)
-    set(LSTORE_SANITIZE_FLAGS "${LSTORE_SANITIZE_FLAGS} -fsanitize=memory -fno-omit-frame-pointer -fno-optimize-sibling-calls -O1")
-    set(LSTORE_SANITIZE_LINK_FLAGS "${LSTORE_SANITIZE_LINK_FLAGS} -fsanitize=memory")
-endif()
-if(ENABLE_TSAN)
-    set(LSTORE_SANITIZE_FLAGS "${LSTORE_SANITIZE_FLAGS} -fsanitize=thread -fno-omit-frame-pointer -pie")
-    set(LSTORE_SANITIZE_LINK_FLAGS "${LSTORE_SANITIZE_LINK_FLAGS} -fsanitize=thread")
-endif()
-if(ENABLE_UBSAN)
-    set(LSTORE_SANITIZE_FLAGS "${LSTORE_SANITIZE_FLAGS} -fsanitize=undefined -fno-omit-frame-pointer")
-    set(LSTORE_SANITIZE_LINK_FLAGS "${LSTORE_SANITIZE_LINK_FLAGS} -fsanitize=undefined")
-endif()
-if(ENABLE_COVERAGE)
-    set(LSTORE_SANITIZE_FLAGS "${LSTORE_SANITIZE_FLAGS} -fprofile-arcs -ftest-coverage")
-    add_custom_target(coverage
-        COMMAND lcov -q --zerocounters --directory .
-        COMMAND lcov -q --initial --capture --directory . --output-file lstore.base
-        COMMAND ./run-tests
-        COMMAND lcov -q --capture --directory . --output-file lstore.unit --rc lcov_branch_coverage=1
-        COMMAND lcov -q --add lstore.base --add lstore.unit --output-file lstore.total --rc lcov_branch_coverage=1
-        COMMAND genhtml -q -o coverage-html --branch-coverage --function-coverage lstore.total --rc lcov_branch_coverage=1
-        DEPENDS run-tests
-        COMMENT "Executes code coverage tests")
-endif()
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${LSTORE_SANITIZE_FLAGS}")
-set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${LSTORE_SANITIZE_LINK_FLAGS}")
-set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} ${LSTORE_SANITIZE_LINK_FLAGS}")
-
 if(ENABLE_FUZZ AND ENABLE_CCACHE)
     message(FATAL_MESSAGE "Don't have proper support for nested wrappers yet")
 endif()
@@ -143,14 +99,62 @@ if(ENABLE_CCACHE)
     set_property(GLOBAL PROPERTY RULE_LAUNCH_LINK ccache)
 else()
     set(LSTORE_COMPILER_WRAPPER "")
-    set(LSTORE_COMPILER_WRAPPER_CMAKE "-DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}"
-                                      "-DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}")
+    if(CMAKE_C_COMPILER)
+        set(LSTORE_COMPILER_WRAPPER_CMAKE "-DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}"
+                                        "-DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}")
+    endif()
 endif()
 
 # Now that we know what compiler we're using, we can "start" the project. If
 # you do it in the other order, cmake complains and reruns the CMakeLists.txt
 # compilation.
 project(LStore C)
+
+# Defines
+set(USE_SUPERBUILD ON)
+set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -fPIC -D_REENTRANT -D_GNU_SOURCE -D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64 -fvisibility=hidden -Werror=implicit-function-declaration")
+set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -Wall -Wextra -Wno-unused-parameter -Wno-deprecated-declarations -Werror=format -Werror=implicit-function-declaration")
+set(CMAKE_MACOSX_RPATH ON)
+if(INSTALL_EXTERNALS)
+    set(EXTERNAL_INSTALL_DIR ${CMAKE_INSTALL_PREFIX})
+else()
+    set(EXTERNAL_INSTALL_DIR ${CMAKE_BINARY_DIR})
+endif()
+
+if(ENABLE_ASAN)
+    set(LSTORE_SANITIZE_FLAGS "${LSTORE_SANITIZE_FLAGS} -fsanitize=address -fno-omit-frame-pointer -fno-optimize-sibling-calls")
+    set(LSTORE_SANITIZE_LINK_FLAGS "${LSTORE_SANITIZE_LINK_FLAGS} -fsanitize=address")
+endif()
+if(ENABLE_MSAN)
+    set(LSTORE_SANITIZE_FLAGS "${LSTORE_SANITIZE_FLAGS} -fsanitize=memory -fno-omit-frame-pointer -fno-optimize-sibling-calls -O1")
+    set(LSTORE_SANITIZE_LINK_FLAGS "${LSTORE_SANITIZE_LINK_FLAGS} -fsanitize=memory")
+endif()
+if(ENABLE_TSAN)
+    set(LSTORE_SANITIZE_FLAGS "${LSTORE_SANITIZE_FLAGS} -fsanitize=thread -fno-omit-frame-pointer -pie")
+    set(LSTORE_SANITIZE_LINK_FLAGS "${LSTORE_SANITIZE_LINK_FLAGS} -fsanitize=thread")
+endif()
+if(ENABLE_UBSAN)
+    set(LSTORE_SANITIZE_FLAGS "${LSTORE_SANITIZE_FLAGS} -fsanitize=undefined -fno-omit-frame-pointer")
+    set(LSTORE_SANITIZE_LINK_FLAGS "${LSTORE_SANITIZE_LINK_FLAGS} -fsanitize=undefined")
+endif()
+if(ENABLE_COVERAGE)
+    set(LSTORE_SANITIZE_FLAGS "${LSTORE_SANITIZE_FLAGS} -fprofile-arcs -ftest-coverage")
+    add_custom_target(coverage
+        COMMAND lcov -q --zerocounters --directory .
+        COMMAND lcov -q --initial --capture --directory . --output-file lstore.base
+        COMMAND ./run-tests
+        COMMAND lcov -q --capture --directory . --output-file lstore.unit --rc lcov_branch_coverage=1
+        COMMAND lcov -q --add lstore.base --add lstore.unit --output-file lstore.total --rc lcov_branch_coverage=1
+        COMMAND genhtml -q -o coverage-html --branch-coverage --function-coverage lstore.total --rc lcov_branch_coverage=1
+        DEPENDS run-tests
+        COMMENT "Executes code coverage tests")
+endif()
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${LSTORE_SANITIZE_FLAGS}")
+set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${LSTORE_SANITIZE_LINK_FLAGS}")
+set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} ${LSTORE_SANITIZE_LINK_FLAGS}")
+
+
 # Detect compiler flags
 include(CheckCCompilerFlag)
 check_c_compiler_flag(-Werror=incompatible-pointer-types HAS_INCOMPATIBLE_POINTER_WERROR)
