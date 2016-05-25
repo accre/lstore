@@ -33,7 +33,7 @@
     TBX_API void FUNCNAME ## _del(); \
     TBX_API TBX_NONNULL int FUNCNAME ## _init(TYPENAME * self); \
     TBX_API void FUNCNAME ## _fini(TYPENAME * self); \
-    TBX_API size_t FUNCNAME ## _size()
+    TBX_API size_t FUNCNAME ## _sizeof()
 
 #define TBX_TYPE_INIT(TYPENAME, FUNCNAME, ...) \
     TBX_API TBX_NONNULL_SOME(1) int FUNCNAME(__VA_ARGS__)
@@ -41,6 +41,40 @@
 #define TBX_TYPE_NEW(TYPENAME, FUNCNAME, ...) \
     TBX_API TBX_MALLOC TYPENAME * FUNCNAME(__VA_ARGS__)
 
+#define TBX_TYPE_NEW_DEFAULT(TYPENAME, FUNCNAME) \
+    TYPENAME * FUNCNAME ## _new() { \
+        TYPENAME * self = malloc(sizeof(TYPENAME)); \
+        if (!self) { \
+            return NULL; \
+        } \
+        int ret = FUNCNAME ## _init(self); \
+        if (ret) { \
+            FUNCNAME ## _del(); \
+            return NULL; \
+        } \
+        return self; \
+    }
+
+#define TBX_TYPE_DEL_DEFAULT(TYPENAME, FUNCNAME) \
+    void FUNCNAME ## _del(TYPENAME * self) { \
+        if (self) { \
+            free(self); \
+        } \
+    }
+
+#define TBX_TYPE_INIT_DEFAULT(TYPENAME, FUNCNAME) \
+    int FUNCNAME ## _init(TYPENAME * self) { \
+        memset((void *) self, 0, FUNCNAME ## _sizeof()); \
+        return 0; \
+    }
+
+#define TBX_TYPE_FINI_DEFAULT(TYPENAME, FUNCNAME) \
+    void FUNCNAME ## _fini(TYPENAME * self) { }
+
+#define TBX_TYPE_SIZEOF_DEFAULT(TYPENAME, FUNCNAME) \
+    size_t FUNCNAME ## _sizeof() { \
+        return sizeof(TYPENAME); \
+    }
 
 #ifdef __GNUC__
 #   define TBX_NONNULL __attribute__((nonnull))
