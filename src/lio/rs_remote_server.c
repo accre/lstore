@@ -434,7 +434,7 @@ void *rsrs_monitor_thread(apr_thread_t *th, void *data)
         }
         shutdown = rsrs->shutdown;
         wakeup_time = rsrs->wakeup_time;
-        log_printf(5, "checking.... pending=%d now=" TT " wakeup=" TT "\n", tbx_stack_size(rsrs->pending), apr_time_now(), wakeup_time);
+        log_printf(5, "checking.... pending=%d now=" TT " wakeup=" TT "\n", tbx_stack_count(rsrs->pending), apr_time_now(), wakeup_time);
         apr_thread_mutex_unlock(rsrs->lock);
 
         if (changed == 1) { //** RID table has changed so propagate it to everone

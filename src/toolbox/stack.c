@@ -18,6 +18,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include "tbx/stack.h"
 #include "stack.h"
 
@@ -27,13 +28,23 @@
 #define MOVE_BOTH    3
 
 // Accessors
-tbx_stack_ele_t * tbx_stack_top_get(tbx_stack_t * stack) {
+tbx_stack_ele_t * tbx_stack_get_top(tbx_stack_t * stack) {
     return stack->top;
 }
 
 tbx_stack_ele_t * tbx_stack_ele_get_down(tbx_stack_ele_t * stack) {
     return stack->down;
 }
+
+// Boilerplate for tbs_stack_t
+TBX_TYPE_SIZEOF_DEFAULT(tbx_stack_t, tbx_stack);
+TBX_TYPE_INIT_DEFAULT(tbx_stack_t, tbx_stack);
+TBX_TYPE_FINI_DEFAULT(tbx_stack_t, tbx_stack);
+TBX_TYPE_NEW_DEFAULT(tbx_stack_t, tbx_stack);
+TBX_TYPE_DEL_DEFAULT(tbx_stack_t, tbx_stack);
+
+
+
 //void *tbx_stack_ele_get_data(tbx_stack_ele_t *ele) {
 //    return ele->data;
 //}
@@ -58,7 +69,7 @@ int check_ends(tbx_stack_t *stack)
 // stack_size - Returns the number of elements in the stack
 //**************************************
 
-int tbx_stack_size(tbx_stack_t *stack)
+int tbx_stack_count(tbx_stack_t *stack)
 {
     return(stack->n);
 }
@@ -80,33 +91,6 @@ void *tbx_stack_ele_get_data(tbx_stack_ele_t *ele)
 void set_stack_ele_data(tbx_stack_ele_t *ele, void *data)
 {
     if (ele != NULL) ele->data = data;
-}
-
-//**************************************
-//tbx_stack_new - Creates a new stack
-//**************************************
-
-void tbx_stack_init(tbx_stack_t *stack)
-{
-    stack->top = NULL;
-    stack->bottom = NULL;
-    stack->curr = NULL;
-    stack->n = 0;
-}
-
-//**************************************
-//tbx_stack_new - Creates a new stack
-//**************************************
-
-tbx_stack_t *tbx_stack_new()
-{
-    tbx_stack_t *stack;
-
-    stack = (tbx_stack_t *)malloc(sizeof(tbx_stack_t));
-
-    tbx_stack_init(stack);
-
-    return(stack);
 }
 
 //***************************************************

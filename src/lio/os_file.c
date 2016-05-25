@@ -557,7 +557,7 @@ int fobj_wait(object_service_fn_t *os, fobj_lock_t *fol, osfile_fd_t *fd, int ma
     }
 
     //** Check if the next person should be woke up as well
-    if (tbx_stack_size(fol->stack) != 0) {
+    if (tbx_stack_count(fol->stack) != 0) {
         tbx_stack_move_to_top(fol->stack);
         handle = (fobj_lock_task_t *)tbx_stack_get_current_data(fol->stack);
 
@@ -605,7 +605,7 @@ int full_object_lock(osfile_fd_t *fd, int max_wait)
     if (fd->mode == OS_MODE_READ_BLOCKING) { //** I'm reading
         if (fol->write_count == 0) { //** No one currently writing
             //** Check and make sure the person waiting isn't a writer
-            if (tbx_stack_size(fol->stack) != 0) {
+            if (tbx_stack_count(fol->stack) != 0) {
                 tbx_stack_move_to_top(fol->stack);
                 handle = (fobj_lock_task_t *)tbx_stack_get_current_data(fol->stack);
                 if (handle->fd->mode == OS_MODE_WRITE_BLOCKING) {  //** They want to write so sleep until my turn
@@ -618,7 +618,7 @@ int full_object_lock(osfile_fd_t *fd, int max_wait)
 
         if (err == 0) fol->read_count++;
     } else {   //** I'm writing
-        if ((fol->write_count != 0) || (fol->read_count != 0) || (tbx_stack_size(fol->stack) != 0)) {  //** Make sure no one else is doing anything
+        if ((fol->write_count != 0) || (fol->read_count != 0) || (tbx_stack_count(fol->stack) != 0)) {  //** Make sure no one else is doing anything
             err = fobj_wait(fd->os, fol, fd, max_wait);  //** The fobj_lock is released/acquired inside
         }
         if (err == 0) fol->write_count++;
@@ -667,10 +667,10 @@ void full_object_unlock(osfile_fd_t *fd)
 
     log_printf(15, "fname=%s mymode=%d read_count=%d write_count=%d\n", fd->object_name, fd->mode, fol->read_count, fol->write_count);
 
-    if ((tbx_stack_size(fol->stack) == 0) && (fol->read_count == 0) && (fol->write_count == 0)) {  //** No one else is waiting so remove the entry
+    if ((tbx_stack_count(fol->stack) == 0) && (fol->read_count == 0) && (fol->write_count == 0)) {  //** No one else is waiting so remove the entry
         tbx_list_remove(osf->fobj_table, fd->object_name, NULL);
         tbx_pch_release(osf->fobj_pc, &(fol->pch));
-    } else if (tbx_stack_size(fol->stack) > 0) { //** Wake up the next person
+    } else if (tbx_stack_count(fol->stack) > 0) { //** Wake up the next person
         tbx_stack_move_to_top(fol->stack);
         handle = (fobj_lock_task_t *)tbx_stack_get_current_data(fol->stack);
 
@@ -982,7 +982,7 @@ int va_lock_get_attr(os_virtual_attr_t *va, object_service_fn_t *os, creds_t *cr
 
 
     tbx_append_printf(buf, &used, bufsize, "\n");
-    tbx_append_printf(buf, &used, bufsize, "pending_count=%d\n", tbx_stack_size(fol->stack));
+    tbx_append_printf(buf, &used, bufsize, "pending_count=%d\n", tbx_stack_count(fol->stack));
     tbx_stack_move_to_top(fol->stack);
     while ((handle = (fobj_lock_task_t *)tbx_stack_get_current_data(fol->stack)) != NULL) {
         if (handle->fd->mode == OS_MODE_READ_BLOCKING) {
@@ -1514,7 +1514,7 @@ int osf_next_object(osf_object_iter_t *it, char **myfname, int *prefix_len)
     tweak = 0;
     if (it->table->n == 0) {
         *prefix_len = 1;
-        if (tbx_stack_size(it->recurse_stack) == 0) {  //**Make a fake level to get things going
+        if (tbx_stack_count(it->recurse_stack) == 0) {  //**Make a fake level to get things going
             tbx_type_malloc_clear(itl, osf_obj_level_t, 1);
             strncpy(itl->path, "/", OS_PATH_MAX);
             itl->d = my_opendir(osf->file_path, NULL);

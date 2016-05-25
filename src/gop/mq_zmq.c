@@ -129,10 +129,10 @@ int zero_native_send(mq_socket_t *socket, mq_msg_t *msg, int flags)
     n = 0;
     f = mq_msg_first(msg);
     if (f->len > 1) {
-        log_printf(5, "dest=!%.*s! nframes=%d\n", f->len, (char *)(f->data), tbx_stack_size(msg));
+        log_printf(5, "dest=!%.*s! nframes=%d\n", f->len, (char *)(f->data), tbx_stack_count(msg));
         tbx_log_flush();
     } else {
-        log_printf(5, "dest=(single byte) nframes=%d\n", tbx_stack_size(msg));
+        log_printf(5, "dest=(single byte) nframes=%d\n", tbx_stack_count(msg));
         tbx_log_flush();
     }
 

@@ -348,7 +348,7 @@ op_generic_t *rs_simple_request(resource_service_fn_t *arg, data_attr_t *da, rs_
                     tbx_type_malloc(op_state, int, 1);
                     *op_state = state;
                     tbx_stack_push(stack, (void *)op_state);
-                    log_printf(15, " stack_size=%d loop=%d push state=%d\n",tbx_stack_size(stack), loop, state);
+                    log_printf(15, " stack_size=%d loop=%d push state=%d\n",tbx_stack_count(stack), loop, state);
                     tbx_log_flush();
                     q = q->next;
                 }

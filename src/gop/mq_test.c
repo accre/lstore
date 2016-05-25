@@ -766,7 +766,7 @@ int server_handle_deferred(mq_socket_t *sock)
     int err;
     char v;
 
-    log_printf(5, "deferred responses to handle %d (server_portal=%p)\n", tbx_stack_size(deferred_ready), server_portal);
+    log_printf(5, "deferred responses to handle %d (server_portal=%p)\n", tbx_stack_count(deferred_ready), server_portal);
 
     err = 0;
     while ((defer = tbx_stack_pop(deferred_ready)) != NULL) {
@@ -1156,7 +1156,7 @@ void *server_deferred_thread(apr_thread_t *th, void *arg)
         if (dt > max_wait) dt = max_wait;
         apr_thread_cond_timedwait(cond, lock, dt);
 
-        log_printf(5, "checking deferred_pending stack_size=%d\n", tbx_stack_size(deferred_pending));
+        log_printf(5, "checking deferred_pending stack_size=%d\n", tbx_stack_count(deferred_pending));
         //** Move anything expired to the ready queue
         //** Keeping track of the next wakeup call
         dt = apr_time_make(100, 0);
@@ -1176,7 +1176,7 @@ void *server_deferred_thread(apr_thread_t *th, void *arg)
             }
         }
 
-        log_printf(5, "deferred_ready=%d deferred_pending=%d n= " LU " server_portal=%p\n", tbx_stack_size(deferred_ready), tbx_stack_size(deferred_pending), n, server_portal);
+        log_printf(5, "deferred_ready=%d deferred_pending=%d n= " LU " server_portal=%p\n", tbx_stack_count(deferred_ready), tbx_stack_count(deferred_pending), n, server_portal);
 
         if (n > 0) { //** Got tasks to send
             if (server_portal == NULL) {

@@ -224,7 +224,7 @@ void process_pool(pool_entry_t *pe, tbx_stack_t *parent_rid_stack)
     int cnt = 0;
     log_printf(0, "parent_rid_stack=%p pe->rids=%p\n", parent_rid_stack, pe->rids);
     while ((re = tbx_stack_pop(pe->rids)) != NULL) {
-        log_printf(0, "count=%d stack_size=%d\n", cnt, tbx_stack_size(pe->rids));
+        log_printf(0, "count=%d stack_size=%d\n", cnt, tbx_stack_count(pe->rids));
         cnt++;
         log_printf(5, "re->ri.rid->rid_key=%s re=%p\n", re->ri.rid->rid_key, re);
         tbx_stack_push(parent_rid_stack, re);

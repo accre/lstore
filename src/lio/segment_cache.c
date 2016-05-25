@@ -1767,7 +1767,7 @@ void _cache_ppages_range_print(int ll, cache_partial_page_t *pp)
 
     if (tbx_log_level() < ll) return;
 
-    log_printf(ll, "page_start=" XOT " page_end=" XOT " n_ranges=%d full=%d\n", pp->page_start, pp->page_end, tbx_stack_size(pp->range_stack), pp->flags);
+    log_printf(ll, "page_start=" XOT " page_end=" XOT " n_ranges=%d full=%d\n", pp->page_start, pp->page_end, tbx_stack_count(pp->range_stack), pp->flags);
 
     crng = tbx_stack_get_current_data(pp->range_stack);
     cptr = tbx_stack_get_current_ptr(pp->range_stack);
@@ -1812,10 +1812,10 @@ int _cache_ppages_range_collapse(cache_partial_page_t *pp)
         }
     }
 
-    log_printf(5, "n_ranges=%d\n", tbx_stack_size(pp->range_stack));
+    log_printf(5, "n_ranges=%d\n", tbx_stack_count(pp->range_stack));
 
     //** Check if we have a full page
-    if (tbx_stack_size(pp->range_stack) == 1) {
+    if (tbx_stack_count(pp->range_stack) == 1) {
         tbx_stack_move_to_top(pp->range_stack);
         rng = tbx_stack_get_current_data(pp->range_stack);
         log_printf(5, "lo=" XOT " gi=" XOT "\n", rng[0], rng[1]);
@@ -1844,7 +1844,7 @@ int _cache_ppages_range_merge(segment_t *seg, cache_partial_page_t *pp, ex_off_t
     _cache_ppages_range_print(5, pp);
 
     //** If an empty stack can handle it quickly
-    if (tbx_stack_size(pp->range_stack) == 0) {
+    if (tbx_stack_count(pp->range_stack) == 0) {
         if ((lo == 0) && (hi == s->page_size-1)) { //** See if a full page
             pp->flags = 1;
             return(1);
@@ -1854,7 +1854,7 @@ int _cache_ppages_range_merge(segment_t *seg, cache_partial_page_t *pp, ex_off_t
         rng[0] = lo;
         rng[1] = hi;
         tbx_stack_push(pp->range_stack, rng);
-        log_printf(5, "seg=" XIDT " END stack_size=%d\n", segment_id(seg), tbx_stack_size(pp->range_stack));
+        log_printf(5, "seg=" XIDT " END stack_size=%d\n", segment_id(seg), tbx_stack_count(pp->range_stack));
 
         return(0);
     }
@@ -1898,7 +1898,7 @@ int _cache_ppages_range_merge(segment_t *seg, cache_partial_page_t *pp, ex_off_t
                 log_printf(5, "seg=" XIDT " collapsing prlo=" XOT " prhi=" XOT "\n", segment_id(seg), prng[0], prng[1]);
                 tbx_stack_move_up(pp->range_stack);
                 full = _cache_ppages_range_collapse(pp);
-            } else if (tbx_stack_size(pp->range_stack) == 1) {   //** Check if we have a full page
+            } else if (tbx_stack_count(pp->range_stack) == 1) {   //** Check if we have a full page
                 if ((prng[0] == 0) && (prng[1] == (pp->page_end - pp->page_start))) {
                     pp->flags = 1;
                 }
@@ -1966,24 +1966,24 @@ int _cache_ppages_flush_list(segment_t *seg, data_attr_t *da, tbx_stack_t *pp_li
     ex_off_t nbytes, len;
     op_status_t status;
 
-    if (tbx_stack_size(pp_list) == 0) return(0);
+    if (tbx_stack_count(pp_list) == 0) return(0);
 
     if (s->ppages_flushing != 0) _cache_ppages_wait_for_flush_to_complete(s);   //** Flushing ppages so wait until finished
 
     s->ppages_flushing = 1;  //** Let everyone know I'm flushing now
 
-    log_printf(5, "Flushing ppages seg=" XIDT " tbx_stack_size(pp_list)=%d  ppages_unused=%d\n", segment_id(seg), tbx_stack_size(pp_list), tbx_stack_size(s->ppages_unused));
+    log_printf(5, "Flushing ppages seg=" XIDT " tbx_stack_count(pp_list)=%d  ppages_unused=%d\n", segment_id(seg), tbx_stack_count(pp_list), tbx_stack_count(s->ppages_unused));
 
     //** Cycle through the pages makng the write map for each page
     n_ranges = 0;
     tbx_stack_move_to_top(pp_list);
     while ((pp = tbx_stack_get_current_data(pp_list)) != NULL) {
-        log_printf(5, "START ppoff=" XOT " RSTACK=%p size=%d flags=%d\n", pp->page_start, pp->range_stack, tbx_stack_size(pp->range_stack), pp->flags);
+        log_printf(5, "START ppoff=" XOT " RSTACK=%p size=%d flags=%d\n", pp->page_start, pp->range_stack, tbx_stack_count(pp->range_stack), pp->flags);
         tbx_log_flush();
 
-        n_ranges += (pp->flags == 1) ? 1 : tbx_stack_size(pp->range_stack);
+        n_ranges += (pp->flags == 1) ? 1 : tbx_stack_count(pp->range_stack);
         tbx_stack_move_down(pp_list);
-        log_printf(5, "END ppoff=" XOT " RSTACK=%p size=%d full=%d n_ranges=%d\n", pp->page_start, pp->range_stack, tbx_stack_size(pp->range_stack), pp->flags, n_ranges);
+        log_printf(5, "END ppoff=" XOT " RSTACK=%p size=%d full=%d n_ranges=%d\n", pp->page_start, pp->range_stack, tbx_stack_count(pp->range_stack), pp->flags, n_ranges);
         tbx_log_flush();
     }
 
@@ -2090,7 +2090,7 @@ int _cache_ppages_flush(segment_t *seg, data_attr_t *da)
     int err;
     tbx_sl_iter_t it;
 
-    if (tbx_stack_size(s->ppages_unused) == s->n_ppages) return(0);
+    if (tbx_stack_count(s->ppages_unused) == s->n_ppages) return(0);
 
     if (s->ppages_flushing != 0) _cache_ppages_wait_for_flush_to_complete(s);   //** Flushing ppages so wait until finished
 
@@ -2100,7 +2100,7 @@ int _cache_ppages_flush(segment_t *seg, data_attr_t *da)
     tbx_stack_init(&pp_list);
     it = tbx_sl_iter_search(s->partial_pages, NULL, 0);
     while (tbx_sl_next(&it, (tbx_sl_key_t **)&ppoff, (tbx_sl_data_t **)&pp) == 0) {
-        log_printf(5, "ppoff=" XOT " RSTACK=%p size=%d flags=%d\n", pp->page_start, pp->range_stack, tbx_stack_size(pp->range_stack), pp->flags);
+        log_printf(5, "ppoff=" XOT " RSTACK=%p size=%d flags=%d\n", pp->page_start, pp->range_stack, tbx_stack_count(pp->range_stack), pp->flags);
         tbx_log_flush();
         tbx_stack_insert_below(&pp_list, pp);
     }
@@ -2343,7 +2343,7 @@ int cache_ppages_handle(segment_t *seg, data_attr_t *da, int rw_mode, ex_off_t *
     //------------------------------------------------------------------
 
     //** See if we have enough free ppages to store the ends. If not flush
-    if (tbx_stack_size(s->ppages_unused) < (2 - lo_mapped - hi_mapped)) {
+    if (tbx_stack_count(s->ppages_unused) < (2 - lo_mapped - hi_mapped)) {
         log_printf(5, "Triggering a flush\n");
 
         err = _cache_ppages_flush(seg, da);
@@ -2504,7 +2504,7 @@ op_status_t cache_rw_func(void *arg, int id)
         log_printf(15, "gid=%d START i=%d lo=" XOT " hi=" XOT " new_size=" XOT " rw_mode=%d rerr=%d\n", id, i, lo, hi, new_size, cop->rw_mode, rerr);
     }
 
-    if (tbx_stack_size(&stack) == 0) { //** Handled via ppages
+    if (tbx_stack_count(&stack) == 0) { //** Handled via ppages
         log_printf(15, "seg=" XIDT " Nothing to do. Handled by the ppage code.  rerr=%d\n", segment_id(cop->seg), rerr);
         return((rerr == 0) ? op_success_status : op_failure_status);
     }
@@ -2648,7 +2648,7 @@ op_status_t cache_rw_func(void *arg, int id)
             log_printf(15, "completed cycle through list top=%d bottom=%d progress=%d\n", top_cnt, bottom_cnt, progress);
             if (first_time == 1) miss_time = apr_time_now();
             first_time = 0;
-            top_cnt = tbx_stack_size(&stack);
+            top_cnt = tbx_stack_count(&stack);
             bottom_cnt = 0;
             if (progress == 0) mode = CACHE_DOBLOCK;
             progress = 0;

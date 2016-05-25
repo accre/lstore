@@ -747,7 +747,7 @@ void rw_test()
             tbx_stack_push(free_slots, slot);
         }
 
-        if ((tbx_stack_size(free_slots) == 0) || (gop == NULL)) {
+        if ((tbx_stack_count(free_slots) == 0) || (gop == NULL)) {
             gop = opque_waitany(q);
 
             slot = gop_get_private(gop);

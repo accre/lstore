@@ -261,7 +261,7 @@ void lio_find_lfs_mounts()
     if (text != NULL) free(text);  //** Getline() always returns something
 
     //** Convert it to a simple array
-    _lfs_mount_count = tbx_stack_size(stack);
+    _lfs_mount_count = tbx_stack_count(stack);
     tbx_type_malloc(lfs_mount, lfs_mount_t, _lfs_mount_count);
     for (i=0; i<_lfs_mount_count; i++) {
         entry = tbx_stack_pop(stack);

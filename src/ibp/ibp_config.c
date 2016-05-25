@@ -179,7 +179,7 @@ int ibp_rw_submit_coalesce(tbx_stack_t *stack, tbx_stack_ele_t *ele)
     tbx_stack_insert_below(&(rwc->list_stack), ele);
     iop->hp_parent = stack;
 
-    log_printf(15, "ibp_rw_submit_coalesce: gid=%d cap=%s count=%d\n", gop_id(gop), cmd->cap, tbx_stack_size(&(rwc->list_stack)));
+    log_printf(15, "ibp_rw_submit_coalesce: gid=%d cap=%s count=%d\n", gop_id(gop), cmd->cap, tbx_stack_count(&(rwc->list_stack)));
 
     apr_thread_mutex_unlock(ic->lock);
 
@@ -223,7 +223,7 @@ int ibp_rw_coalesce(op_generic_t *gop1)
         return(0);
     }
 
-    if (tbx_stack_size(&(rwc->list_stack)) == 1) { //** Nothing to do so exit
+    if (tbx_stack_count(&(rwc->list_stack)) == 1) { //** Nothing to do so exit
         ele = (tbx_stack_ele_t *)tbx_stack_pop(&(rwc->list_stack));  //** The top most task should be me
         gop2 = (op_generic_t *)tbx_stack_ele_get_data(ele);
         if (gop2 != gop1) {
@@ -239,10 +239,10 @@ int ibp_rw_coalesce(op_generic_t *gop1)
         return(0);
     }
 
-    log_printf(15, "ibp_rw_coalesce: gid=%d cap=%s count=%d\n", gop_id(gop1), cmd1->cap, tbx_stack_size(&(rwc->list_stack)));
+    log_printf(15, "ibp_rw_coalesce: gid=%d cap=%s count=%d\n", gop_id(gop1), cmd1->cap, tbx_stack_count(&(rwc->list_stack)));
 
     workload = 0;
-    n = tbx_stack_size(&(rwc->list_stack))+1;
+    n = tbx_stack_count(&(rwc->list_stack))+1;
     tbx_type_malloc(rwbuf, ibp_rw_buf_t *, n);
     pch = tbx_pch_reserve(ic->coalesced_gop_stacks);
     rwcg = (rwc_gop_stack_t *)tbx_pch_data(&pch);
@@ -330,14 +330,14 @@ int ibp_rw_coalesce(op_generic_t *gop1)
     }
 
     if (n > 0) log_printf(1, " Coalescing %d ops totaling " I64T " bytes  iov_sum=%d\n", n, workload, iov_sum);
-    if (tbx_stack_size(&(rwc->list_stack)) > 0) log_printf(1, "%d ops left on stack to coalesce\n", tbx_stack_size(&(rwc->list_stack)));
+    if (tbx_stack_count(&(rwc->list_stack)) > 0) log_printf(1, "%d ops left on stack to coalesce\n", tbx_stack_count(&(rwc->list_stack)));
 
     cmd1->n_ops = n;
     cmd1->n_tbx_iovec_total = iov_sum;
     cmd1->size = workload;
     gop1->op->cmd.workload = workload + ic->rw_new_command;
 
-    if (tbx_stack_size(&(rwc->list_stack)) == 0) {  //** Nothing left so free it
+    if (tbx_stack_count(&(rwc->list_stack)) == 0) {  //** Nothing left so free it
         tbx_list_remove(ic->coalesced_ops, cmd1->cap, NULL);
         tbx_pch_release(ic->coalesced_stacks, &(rwc->pch));
     }

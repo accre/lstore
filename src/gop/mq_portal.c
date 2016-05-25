@@ -299,12 +299,12 @@ int mq_submit(mq_portal_t *p, mq_task_t *task)
     apr_thread_mutex_lock(p->lock);
 
 //** Do a quick check for connections that need to be reaped
-    if (tbx_stack_size(p->closed_conn) > 0) _mq_reap_closed(p);
+    if (tbx_stack_count(p->closed_conn) > 0) _mq_reap_closed(p);
 
 //** Add the task and get the backlog
     tbx_stack_move_to_bottom(p->tasks);
     tbx_stack_insert_below(p->tasks, task);
-    backlog = tbx_stack_size(p->tasks);
+    backlog = tbx_stack_count(p->tasks);
     log_printf(2, "portal=%s backlog=%d active_conn=%d max_conn=%d total_conn=%d\n", p->host, backlog, p->active_conn, p->max_conn, p->total_conn);
     tbx_log_flush();
 
@@ -670,7 +670,7 @@ void mqc_trackaddress(mq_conn_t *c, mq_msg_t *msg)
 
         //** What's left is the address until an empty frame
         size = mq_msg_total_size(msg);
-        log_printf(5, " msg_total_size=%d frames=%d\n", size, tbx_stack_size(msg));
+        log_printf(5, " msg_total_size=%d frames=%d\n", size, tbx_stack_count(msg));
         tbx_type_malloc_clear(address, char, size+1);
         n = 0;
         for (f=mq_msg_first(msg); f != NULL; f=mq_msg_next(msg)) {
@@ -1657,7 +1657,7 @@ void mq_portal_destroy(mq_portal_t *p)
     }
     apr_thread_mutex_unlock(p->lock);
 
-    log_printf(2, "host=%s closed_size=%d total_conn=%d\n", p->host, tbx_stack_size(p->closed_conn), p->total_conn);
+    log_printf(2, "host=%s closed_size=%d total_conn=%d\n", p->host, tbx_stack_count(p->closed_conn), p->total_conn);
     tbx_log_flush();
 
     //** Clean up 

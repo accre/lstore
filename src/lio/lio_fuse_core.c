@@ -359,7 +359,7 @@ int lfs_readdir(const char *dname, void *buf, fuse_fill_dir_t filler, off_t off,
     apr_time_t now;
     double dt;
     int off2 = off;
-    log_printf(1, "dname=%s off=%d stack_size=%d\n", dname, off2, tbx_stack_size(dit->stack));
+    log_printf(1, "dname=%s off=%d stack_size=%d\n", dname, off2, tbx_stack_count(dit->stack));
     tbx_log_flush();
     now = apr_time_now();
 
@@ -370,7 +370,7 @@ int lfs_readdir(const char *dname, void *buf, fuse_fill_dir_t filler, off_t off,
     off++;  //** This is the *next* slot to get where the stack top is off=1
 
     memset(&stbuf, 0, sizeof(stbuf));
-    n = tbx_stack_size(dit->stack);
+    n = tbx_stack_count(dit->stack);
     if (n>=off) { //** Rewind
         tbx_stack_move_to_bottom(dit->stack);  //** Go from the bottom up.
         for (i=n; i>off; i--) tbx_stack_move_up(dit->stack);

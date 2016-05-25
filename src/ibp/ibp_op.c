@@ -3121,7 +3121,7 @@ op_status_t query_res_recv(op_generic_t *gop, tbx_ns_t *ns)
         p = tbx_stk_string_token(NULL, " ", &bstate, &fin);
     }
 
-    n = tbx_stack_size(list);
+    n = tbx_stack_count(list);
     ridlist_init(cmd->rlist, n);
     tbx_stack_move_to_bottom(list);
     for (i=0; i<n; i++) {

@@ -139,7 +139,7 @@ void osrs_update_active_table(object_service_fn_t *os, mq_frame_t *hid)
     ele = apr_hash_get(osrs->active_table, host_id, id_len);
     if (ele == NULL) { //** 1st time so need to add it
         //** Check if we need to clean things up
-        if (tbx_stack_size(osrs->active_lru) >= osrs->max_active) {
+        if (tbx_stack_count(osrs->active_lru) >= osrs->max_active) {
             tbx_stack_move_to_bottom(osrs->active_lru);
             a = (osrs_active_t *)tbx_stack_get_current_data(osrs->active_lru);
             apr_hash_set(osrs->active_table, a->host_id, a->host_id_len, NULL);

@@ -13,7 +13,7 @@ TEST_IMPL(tb_stack) {
     NOTE("STACK");
     ASSERT(tbx_stack_get_current_data(stack) == NULL);
     NOTE("STACK");
-    ASSERT(tbx_stack_size(stack) == 0);
+    ASSERT(tbx_stack_count(stack) == 0);
     NOTE("STACK");
     
     tbx_stack_empty(stack, 0);

@@ -63,7 +63,7 @@ void print_cache_table(int dolock)
 
     if (dolock) cache_lock(c);
 
-    log_printf(ll, "Checking table.  n_pages=%d top=%p bottom=%p\n", tbx_stack_size(cp->stack), cp->stack->top, cp->stack->bottom);
+    log_printf(ll, "Checking table.  n_pages=%d top=%p bottom=%p\n", tbx_stack_count(cp->stack), cp->stack->top, cp->stack->bottom);
     tbx_log_flush();
     if (cp->stack->top != NULL) {
         p = (cache_page_t *)cp->stack->top->data;
@@ -110,8 +110,8 @@ void print_cache_table(int dolock)
     }
 
 finished:
-    if (n != tbx_stack_size(cp->stack)) {
-        log_printf(ll, "ERROR:  missing pages!  n=%d stack=%d\n", n, tbx_stack_size(cp->stack));
+    if (n != tbx_stack_count(cp->stack)) {
+        log_printf(ll, "ERROR:  missing pages!  n=%d stack=%d\n", n, tbx_stack_count(cp->stack));
         tbx_log_flush();
     }
 
@@ -337,7 +337,7 @@ cache_page_t *_amp_new_page(cache_t *c, segment_t *seg)
     tbx_stack_push(cp->stack, p);
     lp->ele = tbx_stack_get_current_ptr(cp->stack);
 
-    log_printf(_amp_logging, " seg=" XIDT " MRU page created initial->offset=" XOT " page_size=" XOT " bytes_used=" XOT " stack_size=%d\n", segment_id(seg), p->offset, s->page_size, cp->bytes_used, tbx_stack_size(cp->stack));
+    log_printf(_amp_logging, " seg=" XIDT " MRU page created initial->offset=" XOT " page_size=" XOT " bytes_used=" XOT " stack_size=%d\n", segment_id(seg), p->offset, s->page_size, cp->bytes_used, tbx_stack_count(cp->stack));
     return(p);
 }
 
@@ -352,15 +352,15 @@ void _amp_process_waiters(cache_t *c)
     cache_cond_t *cache_cond;
     ex_off_t bytes_free, bytes_needed;
 
-    log_printf(15, "tbx_stack_size(pending_free_tasks)=%d tbx_stack_size(cp->waiting_stack)=%d\n", tbx_stack_size(cp->pending_free_tasks), tbx_stack_size(cp->waiting_stack));
-    if (tbx_stack_size(cp->pending_free_tasks) > 0) {  //**Check on pending free tasks 1st
+    log_printf(15, "tbx_stack_count(pending_free_tasks)=%d tbx_stack_count(cp->waiting_stack)=%d\n", tbx_stack_count(cp->pending_free_tasks), tbx_stack_count(cp->waiting_stack));
+    if (tbx_stack_count(cp->pending_free_tasks) > 0) {  //**Check on pending free tasks 1st
         while ((cache_cond = (cache_cond_t *)tbx_stack_pop(cp->pending_free_tasks)) != NULL) {
-            log_printf(15, "waking up pending task cache_cond=%p stack_size left=%d\n", cache_cond, tbx_stack_size(cp->pending_free_tasks));
+            log_printf(15, "waking up pending task cache_cond=%p stack_size left=%d\n", cache_cond, tbx_stack_count(cp->pending_free_tasks));
             apr_thread_cond_signal(cache_cond->cond);    //** Wake up the paused thread
         }
     }
 
-    if (tbx_stack_size(cp->waiting_stack) > 0) {  //** Also handle the tasks waiting for flushes to complete
+    if (tbx_stack_count(cp->waiting_stack) > 0) {  //** Also handle the tasks waiting for flushes to complete
         bytes_free = _amp_max_bytes(c) - cp->bytes_used;
 
         tbx_stack_move_to_top(cp->waiting_stack);
@@ -601,7 +601,7 @@ int _amp_pages_release(cache_t *c, cache_page_t **page, int n_pages)
         p = page[i];
         log_printf(15, "seg=" XIDT " p->offset=" XOT " bits=%d bytes_used=" XOT "\n", segment_id(p->seg), p->offset, p->bit_fields, cp->bytes_used);
         if ((p->bit_fields & C_TORELEASE) > 0) {
-            log_printf(15, "DESTROYING seg=" XIDT " p->offset=" XOT " bits=%d bytes_used=" XOT "cache_pages=%d\n", segment_id(p->seg), p->offset, p->bit_fields, cp->bytes_used, tbx_stack_size(cp->stack));
+            log_printf(15, "DESTROYING seg=" XIDT " p->offset=" XOT " bits=%d bytes_used=" XOT "cache_pages=%d\n", segment_id(p->seg), p->offset, p->bit_fields, cp->bytes_used, tbx_stack_count(cp->stack));
             s = (cache_segment_t *)p->seg->priv;
             lp = (page_amp_t *)p->priv;
 
@@ -777,7 +777,7 @@ int _amp_free_mem(cache_t *c, segment_t *pseg, ex_off_t bytes_to_free)
     total_bytes = 0;
     err = 0;
 
-    log_printf(_amp_logging, "START seg=" XIDT " bytes_to_free=" XOT " bytes_used=" XOT " stack_size=%d\n", segment_id(pseg), bytes_to_free, cp->bytes_used, tbx_stack_size(cp->stack));
+    log_printf(_amp_logging, "START seg=" XIDT " bytes_to_free=" XOT " bytes_used=" XOT " stack_size=%d\n", segment_id(pseg), bytes_to_free, cp->bytes_used, tbx_stack_count(cp->stack));
 
     tbx_stack_move_to_bottom(cp->stack);
     ele = tbx_stack_get_current_ptr(cp->stack);
@@ -839,7 +839,7 @@ ex_off_t _amp_attempt_free_mem(cache_t *c, segment_t *page_seg, ex_off_t bytes_t
     page_table_t *ptable;
     tbx_pch_t pch, pt_pch;
 
-    log_printf(15, "START seg=" XIDT " bytes_to_free=" XOT " bytes_used=" XOT " stack_size=%d\n", segment_id(page_seg), bytes_to_free, cp->bytes_used, tbx_stack_size(cp->stack));
+    log_printf(15, "START seg=" XIDT " bytes_to_free=" XOT " bytes_used=" XOT " stack_size=%d\n", segment_id(page_seg), bytes_to_free, cp->bytes_used, tbx_stack_count(cp->stack));
 
     freed_bytes = 0;
     pending_bytes = 0;
@@ -1308,8 +1308,8 @@ int amp_cache_destroy(cache_t *c)
 
     cache_base_destroy(c);
 
-    if (tbx_stack_size(cp->stack) > 0) {
-        log_printf(0, "cache_stack_size=%d\n", tbx_stack_size(cp->stack));
+    if (tbx_stack_count(cp->stack) > 0) {
+        log_printf(0, "cache_stack_size=%d\n", tbx_stack_count(cp->stack));
 
         tbx_stack_move_to_top(cp->stack);
         n = 0;

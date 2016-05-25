@@ -443,7 +443,7 @@ int _ostc_cache_tree_walk(object_service_fn_t *os, char *fname, tbx_stack_t *tre
     if ((fname == NULL) || (max_recurse <= 0)) return(1);
 
     i=0;
-    if ((tbx_stack_size(tree) == 0) || (fname[i] == '/')) {
+    if ((tbx_stack_count(tree) == 0) || (fname[i] == '/')) {
         curr = ostc->cache_root;
         tbx_stack_empty(tree, 0);
     } else {
@@ -555,7 +555,7 @@ finished:
     log_printf(15, "fname=%s err=%d\n", fname, err);
     ostcdb_object_t *lo;
     tbx_stack_move_to_top(tree);
-    log_printf(15, "stack_size=%d\n", tbx_stack_size(tree));
+    log_printf(15, "stack_size=%d\n", tbx_stack_count(tree));
     while ((lo = tbx_stack_get_current_data(tree)) != NULL) {
         log_printf(15, "pwalk lo=%s ftype=%d\n", lo->fname, lo->ftype);
         tbx_stack_move_down(tree);
@@ -599,7 +599,7 @@ int _ostcdb_resolve_attr_link(object_service_fn_t *os, tbx_stack_t *tree, char *
     tbx_stack_dup(&rtree, tree);
 
     tbx_stack_move_to_top(&rtree);
-    log_printf(5, "stack_size=%d org=%d\n", tbx_stack_size(&rtree), tbx_stack_size(tree));
+    log_printf(5, "stack_size=%d org=%d\n", tbx_stack_count(&rtree), tbx_stack_count(tree));
     while ((lo = tbx_stack_get_current_data(&rtree)) != NULL) {
         log_printf(5, "pwalk lo=%s ftype=%d\n", lo->fname, lo->ftype);
         tbx_stack_move_down(&rtree);
@@ -784,7 +784,7 @@ void ostc_cache_process_attrs(object_service_fn_t *os, char *fname, int ftype, c
     OSTC_LOCK(ostc);
     if (_ostc_cache_tree_walk(os, fname, &tree, NULL, ftype, OSTC_MAX_RECURSE) != 0) goto finished;
 
-    log_printf(5, "fname=%s stack_size=%d\n", fname, tbx_stack_size(&tree));
+    log_printf(5, "fname=%s stack_size=%d\n", fname, tbx_stack_count(&tree));
 
     tbx_stack_move_to_bottom(&tree);
     obj = tbx_stack_get_current_data(&tree);
