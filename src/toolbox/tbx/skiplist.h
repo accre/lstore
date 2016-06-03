@@ -59,33 +59,25 @@ TBX_TYPE_INIT(tbx_sl_t, tbx_sl_init_full, tbx_sl_t * self,
                         void (*data_free)(tbx_sl_data_t *a));
 
 // Functions
-TBX_API void tbx_sl_empty(tbx_sl_t *sl);
-
-TBX_API int tbx_sl_insert(tbx_sl_t *sl, tbx_sl_key_t *key, tbx_sl_data_t *data);
-
-TBX_API tbx_sl_iter_t tbx_sl_iter_search_compare(tbx_sl_t *sl, tbx_sl_key_t *key, tbx_sl_compare_t *compare, int round_mode);
-
-TBX_API int tbx_sl_next(tbx_sl_iter_t *it, tbx_sl_key_t **nkey, tbx_sl_data_t **ndata);
-
-TBX_API int tbx_sl_remove(tbx_sl_t *sl, tbx_sl_key_t *key, tbx_sl_data_t *data);
-
-TBX_API tbx_sl_data_t *tbx_sl_search_compare(tbx_sl_t *sl, tbx_sl_key_t *key, tbx_sl_compare_t *compare);
-
-TBX_API tbx_sl_key_t *tbx_sl_first_key(tbx_sl_t *sl);
-
-TBX_API int tbx_sl_key_count(tbx_sl_t *sl);
-
-TBX_API tbx_sl_key_t *tbx_sl_key_last(tbx_sl_t *sl);
-
-TBX_API void tbx_sl_set_strncmp(tbx_sl_compare_t *compare, int n);
-
-TBX_API void tbx_sl_free_no_data(tbx_sl_data_t *data);
-
-TBX_API void tbx_sl_free_no_key(tbx_sl_key_t *key);
-
-TBX_API void tbx_sl_free_simple(tbx_sl_data_t *data);
-
 TBX_API tbx_sl_key_t *tbx_sl_dup_string(tbx_sl_key_t *key);
+TBX_API void tbx_sl_empty(tbx_sl_t *sl);
+TBX_API tbx_sl_key_t *tbx_sl_first_key(tbx_sl_t *sl);
+TBX_API void tbx_sl_free_no_data(tbx_sl_data_t *data);
+TBX_API void tbx_sl_free_no_key(tbx_sl_key_t *key);
+TBX_API void tbx_sl_free_simple(tbx_sl_data_t *data);
+TBX_API int tbx_sl_insert(tbx_sl_t *sl, tbx_sl_key_t *key, tbx_sl_data_t *data);
+TBX_API tbx_sl_iter_t tbx_sl_iter_search_compare(tbx_sl_t *sl,
+                                                 tbx_sl_key_t *key,
+                                                 tbx_sl_compare_t *compare,
+                                                 int round_mode);
+TBX_API int tbx_sl_key_count(tbx_sl_t *sl);
+TBX_API tbx_sl_key_t *tbx_sl_key_last(tbx_sl_t *sl);
+TBX_API int tbx_sl_next(tbx_sl_iter_t *it, tbx_sl_key_t **nkey,
+                        tbx_sl_data_t **ndata);
+TBX_API int tbx_sl_remove(tbx_sl_t *sl, tbx_sl_key_t *key, tbx_sl_data_t *data);
+TBX_API tbx_sl_data_t *tbx_sl_search_compare(tbx_sl_t *sl, tbx_sl_key_t *key,
+                                                tbx_sl_compare_t *compare);
+TBX_API void tbx_sl_set_strncmp(tbx_sl_compare_t *compare, int n);
 
 TBX_API extern tbx_sl_compare_t tbx_sl_compare_int;
 
