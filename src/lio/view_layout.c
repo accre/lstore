@@ -171,7 +171,7 @@ int vl_deserialize_text(view_t *v, ex_id_t id, exnode_exchange_t *exp)
     tbx_inip_file_t *fd;
 
     //** Parse the ini text
-    fd = tbx_inip_read_string(exp->text);
+    fd = tbx_inip_string_read(exp->text);
 
     //** Make the layout section name
     snprintf(grp, bufsize, "view-" XIDT, id);

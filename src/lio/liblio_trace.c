@@ -79,7 +79,7 @@ void lt_load_config(char *fname)
     char *str;
     int n;
 
-    fd = tbx_inip_read_file(fname);
+    fd = tbx_inip_file_read(fname);
 
     n = tbx_inip_get_integer(fd, LIBLIO_TRACE_SECTION, "log_level", tbx_log_level());
     tbx_set_log_level(n);

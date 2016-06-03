@@ -41,7 +41,7 @@ rs_space_t rs_space(char *config)
 
     if (config == NULL) return(space);
 
-    fd = tbx_inip_read_string(config); assert(fd);
+    fd = tbx_inip_string_read(config); assert(fd);
 
     grp = tbx_inip_group_first(fd);
     while (grp != NULL) {

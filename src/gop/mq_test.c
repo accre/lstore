@@ -570,7 +570,7 @@ mq_context_t *client_make_context()
     tbx_inip_file_t *ifd;
     mq_context_t *mqc;
 
-    ifd = tbx_inip_read_string(text_params);
+    ifd = tbx_inip_string_read(text_params);
     mqc = mq_create_context(ifd, "mq_context");
     assert(mqc != NULL);
     tbx_inip_destroy(ifd);
@@ -1068,7 +1068,7 @@ mq_context_t *server_make_context()
     tbx_inip_file_t *ifd;
     mq_context_t *mqc;
 
-    ifd = tbx_inip_read_string(text_params);
+    ifd = tbx_inip_string_read(text_params);
     mqc = mq_create_context(ifd, "mq_context");
     assert(mqc != NULL);
     tbx_inip_destroy(ifd);

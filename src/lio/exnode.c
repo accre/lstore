@@ -326,7 +326,7 @@ exnode_exchange_t *exnode_exchange_text_parse(char *text)
     exp = exnode_exchange_create(EX_TEXT);
 
     exp->text.text = text;
-    exp->text.fd = tbx_inip_read_string(text);
+    exp->text.fd = tbx_inip_string_read(text);
 
     return(exp);
 }

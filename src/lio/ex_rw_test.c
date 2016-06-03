@@ -883,7 +883,7 @@ void rw_load_options(char *cfgname, char *group)
     tbx_inip_file_t *fd;
     char *str;
 
-    fd = tbx_inip_read_file(cfgname);
+    fd = tbx_inip_file_read(cfgname);
     if (fd == NULL) {
         printf("rw_load_config:  ERROR opening config file: %s\n", cfgname);
         tbx_log_flush();

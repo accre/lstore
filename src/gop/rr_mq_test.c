@@ -209,7 +209,7 @@ mq_context_t *server_make_context()
                             "socket_type=1002\n"; // Set socket type to MQF_ROUND_ROBIN
 
     tbx_log_flush();
-    ifd = tbx_inip_read_string(text_parameters);
+    ifd = tbx_inip_string_read(text_parameters);
 
     //log_printf(15, "SERVER: Creating context...\n");
     mqc = mq_create_context(ifd, "mq_context");
@@ -292,7 +292,7 @@ mq_context_t *client_make_context()
                             "min_ops_per_sec=100\n\t"
                             "socket_type=1002\n"; // Set socket type to MQF_ROUND_ROBIN
 
-    ifd = tbx_inip_read_string(text_parameters);
+    ifd = tbx_inip_string_read(text_parameters);
 
     mqc = mq_create_context(ifd, "mq_context");
     tbx_inip_destroy(ifd);
@@ -443,7 +443,7 @@ mq_context_t *worker_make_context()
                             "min_ops_per_sec=100\n";
     // omitting socket_type for workers
 
-    ifd = tbx_inip_read_string(text_parameters);
+    ifd = tbx_inip_string_read(text_parameters);
 
     mqc = mq_create_context(ifd, "mq_context");
     tbx_inip_destroy(ifd);

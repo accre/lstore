@@ -259,7 +259,7 @@ int process_tag_file(char *tag_file, char *tag_name)
         exit(1);
     } else {
         /*** process tag file ***/
-        ini_fd = tbx_inip_read_file(tag_file); assert(ini_fd);
+        ini_fd = tbx_inip_file_read(tag_file); assert(ini_fd);
         ini_g = tbx_inip_group_first(ini_fd);
         obj_types = OS_OBJECT_ANY;
         while (ini_g != NULL) {

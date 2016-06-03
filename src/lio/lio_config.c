@@ -847,7 +847,7 @@ lio_config_t *lio_create_nl(char *fname, char *section, char *user, char *exe_na
     lio->cfg_name = strdup(fname);
     lio->section_name = strdup(section);
 
-    lio->ifd = tbx_inip_read_file(lio->cfg_name);
+    lio->ifd = tbx_inip_file_read(lio->cfg_name);
 
     _lio_load_plugins(lio, lio->ifd);  //** Load the plugins
 

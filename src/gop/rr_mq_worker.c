@@ -402,7 +402,7 @@ mq_context_t *worker_make_context()
                             "min_ops_per_sec = 100\n";
     // omitting socket_type for workers
 
-    ifd = tbx_inip_read_string(text_parameters);
+    ifd = tbx_inip_string_read(text_parameters);
 
     mqc = mq_create_context(ifd, "mq_context");
     tbx_inip_destroy(ifd);

@@ -179,7 +179,7 @@ void tbx_mlog_load(char *fname, char *output_override, int log_level_override)
     group_level = "log_level";
 
     //** Open the file
-    fd = tbx_inip_read_file(fname);
+    fd = tbx_inip_file_read(fname);
     if (fd == NULL) {
         log_printf(0, "Error loading module definitions!  fname=%s\n", fname);
         return;

@@ -278,7 +278,7 @@ mq_context_t *client_make_context()
 
     char buffer[1024];
     snprintf(buffer, sizeof(buffer), text_parameters, nparallel);
-    ifd = tbx_inip_read_string(buffer);
+    ifd = tbx_inip_string_read(buffer);
 
     mqc = mq_create_context(ifd, "mq_context");
     tbx_inip_destroy(ifd);

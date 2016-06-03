@@ -515,7 +515,7 @@ tbx_inip_file_t *inip_read_fd(FILE *fd)
 //  inip_read - Reads a .ini file
 //***********************************************************************
 
-tbx_inip_file_t *tbx_inip_read_file(const char *fname)
+tbx_inip_file_t *tbx_inip_file_read(const char *fname)
 {
     FILE *fd;
 
@@ -537,7 +537,7 @@ tbx_inip_file_t *tbx_inip_read_file(const char *fname)
 //  inip_read_text - Converts a character array into a .ini file
 //***********************************************************************
 
-tbx_inip_file_t *tbx_inip_read_string(const char *text)
+tbx_inip_file_t *tbx_inip_string_read(const char *text)
 {
     FILE *fd = tmpfile();
     fprintf(fd, "%s\n", text);

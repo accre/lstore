@@ -427,11 +427,11 @@ apr_hash_t *load_pool_config(char *fname, apr_pool_t *mpool, tbx_stack_t *my_poo
     pool_list = (my_pool_list == NULL) ? tbx_stack_new() : my_pool_list;
 
     //** Load the pool config
-    pfd = tbx_inip_read_file(fname); assert(pfd != NULL);
+    pfd = tbx_inip_file_read(fname); assert(pfd != NULL);
 
     //** Do the same for RID config converting it to something useful
     rid_config = rs_get_rid_config(lio_gc->rs); assert(rid_config != NULL);
-    rfd = tbx_inip_read_string(rid_config); assert(rfd != NULL);
+    rfd = tbx_inip_string_read(rid_config); assert(rfd != NULL);
 
     //** Load the RID config into a usable table for converting to pools
     rid_table = prep_rid_table(rfd, mpool);
@@ -513,7 +513,7 @@ apr_hash_t *rebalance_pool(apr_pool_t *mpool, tbx_stack_t *my_pool_list, char *k
 
     //** Process the RID config converting it to something useful
     rid_config = rs_get_rid_config(lio_gc->rs); assert(rid_config != NULL);
-    rfd = tbx_inip_read_string(rid_config); assert(rfd != NULL);
+    rfd = tbx_inip_string_read(rid_config); assert(rfd != NULL);
 
     //** Load the RID config into a usable table for converting to pools
     rid_table = prep_rid_table(rfd, mpool);
@@ -526,7 +526,7 @@ apr_hash_t *rebalance_pool(apr_pool_t *mpool, tbx_stack_t *my_pool_list, char *k
                  "_unspecified\n", tstr);
 
         //** and load it
-        pfd = tbx_inip_read_string(pool_text); assert(pfd != NULL);
+        pfd = tbx_inip_string_read(pool_text); assert(pfd != NULL);
         load_pool(pool_list, "all", pfd, rfd, rid_table, tbx_inip_group_first(pfd), &unspecified);
         tbx_inip_destroy(pfd);
         add_wildcard(unspecified, rid_table, NULL, NULL);  //** This populates the unspecified wildcard
@@ -549,7 +549,7 @@ apr_hash_t *rebalance_pool(apr_pool_t *mpool, tbx_stack_t *my_pool_list, char *k
                                  "%s=%s\n", value, tstr, key_rebalance, value);
 
                         //** and load it
-                        pfd = tbx_inip_read_string(pool_text); assert(pfd != NULL);
+                        pfd = tbx_inip_string_read(pool_text); assert(pfd != NULL);
                         pe = load_pool(pool_list, value, pfd, rfd, rid_table, tbx_inip_group_first(pfd), &unspecified);
                         tbx_inip_destroy(pfd);
 
@@ -753,7 +753,7 @@ op_status_t inspect_task(void *arg, int id)
     }
 
     //** Kind of kludgy to load the ex twice but this is more of a prototype fn
-    ifd = tbx_inip_read_string(w->exnode);
+    ifd = tbx_inip_string_read(w->exnode);
     dsegid = tbx_inip_get_string(ifd, "view", "default", NULL);
     tbx_inip_destroy(ifd);
     if (dsegid == NULL) {
