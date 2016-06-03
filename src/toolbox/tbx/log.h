@@ -29,20 +29,13 @@ extern "C" {
 typedef struct tbx_log_fd_t tbx_log_fd_t;
 
 // Functions
-TBX_API void tbx_log_open(char *fname, int dolock);
-
 TBX_API tbx_log_fd_t *tbx_info_create(FILE *fd, int header_type, int level);
-
 TBX_API void tbx_info_flush(tbx_log_fd_t *ifd);
-
-TBX_API int tbx_minfo_printf(tbx_log_fd_t *ifd, int module_index, int level, const char *fn, const char *fname, int line, const char *fmt, ...) __attribute__((format (printf, 7, 8)));
-
-TBX_API void tbx_mlog_load(char *fname, char *output_override, int log_level_override);
-
-TBX_API int tbx_mlog_printf(int suppress_header, int module_index, int level, const char *fn, const char *fname, int line, const char *fmt, ...) __attribute__((format (printf, 7, 8)));
-
 TBX_API void tbx_log_flush();
-
+TBX_API void tbx_log_open(char *fname, int dolock);
+TBX_API int tbx_minfo_printf(tbx_log_fd_t *ifd, int module_index, int level, const char *fn, const char *fname, int line, const char *fmt, ...) __attribute__((format (printf, 7, 8)));
+TBX_API void tbx_mlog_load(char *fname, char *output_override, int log_level_override);
+TBX_API int tbx_mlog_printf(int suppress_header, int module_index, int level, const char *fn, const char *fname, int line, const char *fmt, ...) __attribute__((format (printf, 7, 8)));
 TBX_API int tbx_stack_get_info_level(tbx_log_fd_t *fd);
 
 // Preprocessor macros
