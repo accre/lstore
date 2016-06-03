@@ -26,13 +26,10 @@ extern "C" {
 #endif
 
 // Functions
-TBX_API int tbx_random_shutdown();
-
 TBX_API int tbx_random_get_bytes(void *buf, int nbytes);
-
-TBX_API int tbx_random_startup();
-
 TBX_API int64_t tbx_random_get_int64(int64_t lo, int64_t hi);
+TBX_API int tbx_random_shutdown();
+TBX_API int tbx_random_startup();
 
 #ifdef __cplusplus
 }
