@@ -20,7 +20,7 @@
 #include <tbx/iniparse.h>
 
 int main(int argc, char **argv) {
-    tbx_inip_file_t *ini = tbx_inip_file_read("-");
+    tbx_inip_file_t *ini = tbx_inip_read_file("-");
     tbx_inip_destroy(ini);
     return 0;
 }
