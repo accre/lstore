@@ -53,7 +53,7 @@ set(LSTORE_PROJECT_INCLUDES
     )
 
 set(LSTORE_PROJECT_EXECUTABLES 
-    ibp_perf ibp_test ibp_copyperf ibp_tool ibp_find_drive
+    ibp_perf ibp_copyperf ibp_tool ibp_find_drive
 )
 
 # Common functionality is stored here
