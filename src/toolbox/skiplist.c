@@ -21,6 +21,7 @@
 #include "tbx/assert_result.h"
 #include "tbx/log.h"
 #include "tbx/skiplist.h"
+#include "tbx/type_malloc.h"
 #include "skiplist.h"
 
 // Forward declarations
@@ -180,7 +181,7 @@ tbx_sl_node_t *create_skiplist_node(unsigned int level)
     if (!sn)
         goto error_1;
 
-    sn->next = (tbx_sl_node_t **)malloc(sizeof(tbx_sl_node_t *)*(level+1));
+    tbx_type_malloc(sn->next, tbx_sl_node_t *, level + 1);
     if (!sn->next)
         goto error_2;
 

@@ -23,6 +23,7 @@
 #include "tbx/log.h"
 #include "tbx/skiplist.h"
 #include "tbx/interval_skiplist.h"
+#include "tbx/type_malloc.h"
 #include "skiplist.h"
 #include "interval_skiplist.h"
 
@@ -159,7 +160,7 @@ int isl_node_is_empty(tbx_isl_node_t *isln, int level)
 
 int add_isl_node_level(tbx_isl_node_t *isln, int level)
 {
-    isln->edge = (tbx_isl_data_t **)malloc(sizeof(tbx_isl_data_t *)*(level+1));
+    tbx_type_malloc(isln->edge, tbx_isl_data_t *, level + 1);
     assert(isln->edge != NULL);
     memset(isln->edge, 0, sizeof(tbx_isl_data_t *)*(level+1));
 
