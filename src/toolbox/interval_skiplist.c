@@ -473,12 +473,13 @@ tbx_isl_iter_t tbx_isl_iter_search(tbx_isl_t *isl, tbx_sl_key_t *lo, tbx_sl_key_
     it.ptr_level = isl->sl->current_max;
     memset(it.ptr, 0, sizeof(it.ptr));
     find_key(isl->sl, it.ptr, lo, 1);
-    log_printf(15, "iter_search_interval_skiplist: it.sn=%p\n", it.ptr[0]->next[0]);
 
     if (it.ptr[0] != NULL) {
+        log_printf(15, "iter_search_interval_skiplist: it.sn=%p\n", it.ptr[0]->next[0]);
         it.sn = it.ptr[0]->next[0];
         it.ele = NULL;
     } else {
+        log_printf(15, "iter_search_interval_skiplist: it.sn=NULL\n");
         it.finished = 1;
     }
 
