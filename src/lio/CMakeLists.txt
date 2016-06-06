@@ -67,7 +67,7 @@ set(LSTORE_INCLUDE_PUBLIC ${toolbox_INCLUDE_DIR}
 
 # common objects
 set(LSTORE_PROJECT_OBJS
-    archive.c authn_fake.c cache_amp.c cache_base.c cache_lru.c
+    authn_fake.c cache_amp.c cache_base.c cache_lru.c
     cache_round_robin.c constructor.c cred_default.c data_block.c ds_ibp.c
     erasure_tools.c ex3_compare.c ex3_global.c ex3_header.c ex_id.c exnode.c
     exnode_config.c lio_config.c lio_core.c lio_core_io.c lio_core_os.c
@@ -87,7 +87,7 @@ set(LSTORE_PROJECT_INCLUDES_OLD
     ex3_header.h exnode3.h raid4.h segment_cache_priv.h segment_log_priv.h
     view_layout.h cache_priv.h erasure_tools.h ex3_linear.h rs_query_base.h
     segment_file.h segment_lun.h cache.h authn_abstract.h authn_fake.h
-    osaz_fake.h rs_remote.h archive.h lio_abstract.h lio_fuse.h
+    osaz_fake.h rs_remote.h lio_abstract.h lio_fuse.h
     cache_round_robin.h resource_service_abstract.h object_service_abstract.h
     service_manager.h rs_zmq.h os_remote.h os_timecache.h
 )
@@ -97,9 +97,9 @@ set(LSTORE_PROJECT_INCLUDES
     )
 
 set(LSTORE_PROJECT_EXECUTABLES
-     arc_restore ds_read lio_find lio_ls lio_du lio_setattr lio_getattr lio_mv
-     lio_cp lio_put lio_fuse arc_tag_create arc_tag_destroy arc_tag arc_tag_ls
-     arc_create lio_get lio_signature lio_warm lio_inspect lio_fsck lio_rs
+     ds_read lio_find lio_ls lio_du lio_setattr lio_getattr lio_mv
+     lio_cp lio_put lio_fuse
+     lio_get lio_signature lio_warm lio_inspect lio_fsck lio_rs
      lio_server mk_linear ex_load ex_get ex_put ex_inspect ex_clone ex_rw_test
      log_test rs_test os_test os_fsck lio_touch lio_mkdir lio_rmdir lio_rm
      lio_ln zadler32 ldiff
