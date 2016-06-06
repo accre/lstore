@@ -544,38 +544,79 @@ int bind_server_port(tbx_network_t *net, tbx_ns_t *ns, char *address, int port, 
     log_printf(15, "bind_server_port: connection=%s:%d being stored in slot=%d\n", address, port, slot);
 
     err = ns->bind(ns->sock, address, port);
-    if (err != 0) {
+    if (err != APR_SUCCESS) {
         log_printf(0, "bind_server_port: Error with bind address=%s port=%d err=%d\n", address, port, err);
-        return(err);
+        goto error1;
     }
 
     err = ns->listen(ns->sock, max_pending);
-    if (err != 0) {
+    if (err != APR_SUCCESS) {
         log_printf(0, "bind_server_port: Error with listen address=%s port=%d err=%d\n", address, port, err);
-        return(err);
+        goto error2;
     }
 
-    apr_pool_create(&(nm->mpool), NULL);
-    apr_thread_mutex_create(&(nm->lock), APR_THREAD_MUTEX_DEFAULT, nm->mpool);
-    apr_thread_cond_create(&(nm->cond), nm->mpool);
+    if (apr_pool_create(&(nm->mpool), NULL) != APR_SUCCESS) {
+        err = -1;
+        log_printf(0, "bind_server_port: Failed to create pool\n");
+        goto error3;
+    }
+
+    if (apr_thread_mutex_create(&(nm->lock),
+                                APR_THREAD_MUTEX_DEFAULT,
+                                nm->mpool) != APR_SUCCESS) {
+        err = -1;
+        log_printf(0, "bind_server_port: Failed to create mutex\n");
+        goto error4;
+    }
+    if (apr_thread_cond_create(&(nm->cond), nm->mpool) != APR_SUCCESS) {
+        err = -1;
+        log_printf(0, "bind_server_port: Failed to create cond\n");
+        goto error5;
+    }
 
     nm->shutdown_request = 0;
     nm->is_pending = 0;
     nm->ns = ns;
     nm->address = strdup(address);
+    if (!nm->address) {
+        err = errno;
+        log_printf(0, "bind_server_port: couldn't strdup\n");
+        goto error6;
+    }
     nm->port = port;
     nm->trigger_cond = net->cond;
     nm->trigger_lock = net->ns_lock;
     nm->trigger_count = &(net->accept_pending);
     ns->id = tbx_ns_generate_id();
 
-    apr_pool_create(&(nm->mpool), NULL);
-    apr_thread_create(&(nm->thread), NULL, monitor_thread, (void *)nm, nm->mpool);
+    if (apr_thread_create(&(nm->thread), 
+                          NULL, 
+                          monitor_thread,
+                          (void *)nm, nm->mpool) != APR_SUCCESS) {
+        err = -1;
+        log_printf(0, "bind_server_port: couldn't make worker thread\n");
+        goto error7;
+    }
 
     net->used_ports++;
     apr_thread_mutex_unlock(net->ns_lock);
 
     return(0);
+error7:
+    free(nm->address);
+error6:
+    apr_thread_cond_destroy(nm->cond);
+error5:
+    apr_thread_mutex_destroy(nm->lock);
+error4:
+    apr_pool_destroy(nm->mpool);
+error3:
+    // ns->unlisten()
+error2:
+    ns->close(ns->sock);
+error1:
+    apr_thread_mutex_unlock(net->ns_lock);
+    return err;
 }
 
 //*********************************************************************
