@@ -67,7 +67,7 @@ set(LSTORE_INCLUDE_PUBLIC ${toolbox_INCLUDE_DIR}
 
 # common objects
 set(LSTORE_PROJECT_OBJS
-    authn_fake.c cache_amp.c cache_base.c cache_lru.c
+    authn_fake.c cache_amp.c cache_base.c
     cache_round_robin.c constructor.c cred_default.c data_block.c ds_ibp.c
     erasure_tools.c ex3_compare.c ex3_global.c ex3_header.c ex_id.c exnode.c
     exnode_config.c lio_config.c lio_core.c lio_core_io.c lio_core_os.c
@@ -82,8 +82,8 @@ set(LSTORE_PROJECT_INCLUDES_OLD
     cache_amp.h blacklist.h data_block.h ex3_abstract.h ex3_linear_priv.h exnode.h
     rs_simple.h	 segment_jerasure.h segment_lun_priv.h cache_amp_priv.h
     data_service_abstract.h ex3_compare.h ex3_system.h lio.h rs_simple_priv.h
-    segment_linear.h trace.h cache_lru.h ds_ibp.h ex3_fmttypes.h ex3_types.h
-    os_file.h segment_cache.h segment_log.h cache_lru_priv.h ds_ibp_priv.h
+    segment_linear.h trace.h ds_ibp.h ex3_fmttypes.h ex3_types.h
+    os_file.h segment_cache.h segment_log.h ds_ibp_priv.h
     ex3_header.h exnode3.h raid4.h segment_cache_priv.h segment_log_priv.h
     view_layout.h cache_priv.h erasure_tools.h ex3_linear.h rs_query_base.h
     segment_file.h segment_lun.h cache.h authn_abstract.h authn_fake.h

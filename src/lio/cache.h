@@ -21,7 +21,6 @@
 #define __CACHE_H_
 
 #include "cache_priv.h"
-#include "cache_lru.h"
 #include "cache_amp.h"
 #include "cache_round_robin.h"
 
