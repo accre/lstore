@@ -530,8 +530,11 @@ tbx_inip_file_t *tbx_inip_file_read(const char *fname)
         log_printf(1, "Problem opening file %s\n", fname);
         return(NULL);
     }
-
-    return(inip_read_fd(fd));
+    tbx_inip_file_t *ret = inip_read_fd(fd);
+    if (fd != stdin) {
+        fclose(fd);
+    }
+    return ret;
 }
 
 //***********************************************************************
@@ -550,7 +553,9 @@ tbx_inip_file_t *tbx_inip_string_read(const char *text)
     }
     fprintf(fd, "%s\n", text);
 
-    return(inip_read_fd(fd));
+    tbx_inip_file_t *ret = inip_read_fd(fd);
+    fclose(fd);
+    return ret;
 
 error2:
     close(file_temp);
