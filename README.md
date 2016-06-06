@@ -3,35 +3,27 @@ LStore Release Tools
  
 Structure
 -----------------------------------------------
-* scripts   - Build scripts
-  * docker  - Cached Dockerfiles
-    * base  - Bare images with only LStore dependencies and build tools installed
-* src       - Source repositories
-* vendor    - External dependencies
-* build     - Location where all sources are built
-  * logs    - Build logs
-  * package - Storage with built RPMs
-  * repo    - Default YUM/APT repositories
-  * local   - Installation path for packages built with build-*.sh
-  * ccache  - Default ccache location for docker builds
+* build          - Location where all sources are built
+  * logs         - Build logs
+  * package      - Storage with built RPMs
+  * repo         - Default YUM/APT repositories
+  * local        - Installation path for packages built with build-*.sh
+  * ccache       - Default ccache location for docker builds
+* cmake          - Additional CMake modules
+* debian         - Configurations for dpkg-buildpackage
+* doc            - Documentation source
+* scripts        - Build scripts
+  * docker       - Cached Dockerfiles
+    * builder    - Bare images with only LStore dependencies and build tools
+                   installed
+    * buildslave - Larger image with a number of developer tools 
+* src            - Source repositories
+* test           - Test, benchmark, fuzz harness and cases
+* vendor         - External dependencies
 
-Build process
+Dependencies
 ----------------------------------------------
-The build is broken into 2 steps.
-
-1. Building the external dependencies
-2. Building local packages
-
-If the external packages are already installed you can skip step 1 and 
-proceed directly to step 2. 
-
-Building the external packages
-----------------------------------------------
-All the external dependencies can be built using:
->    ./scripts/build-external.sh
-
-These only include ACCRE-modified externals. You will need to bring your own
-copies of:
+You will need to bring your own copies of:
 
 * openssl-devel
 * czmq-devel
@@ -53,10 +45,19 @@ yum install cmake openssl-devel czmq-devel zmq-devel zlib-devel fuse-devel
 
 If the local CMake installation is too old, we install a local copy into build/
 
-Building the local project packages
+Building
 ----------------------------------------------
-All of the local dependencies can be built using:
->    ./scripts/build-local.sh
+LStore uses CMake as its meta build system. To initialize the build system,
+execute:
+```
+cd build
+cmake ..
+```
+
+Once the Makefile is initialized, commonly used targets include:
+* `make externals` - build any neccessary external packages
+* `make all`       - build LStore libraries and binaries
+* `make docs`      - build LStore documentation
 
 Packaging LStore
 ----------------------------------------------
