@@ -276,7 +276,8 @@ int tbx_isl_insert(tbx_isl_t *isl, tbx_sl_key_t *lo, tbx_sl_key_t *hi, tbx_sl_da
     tbx_isl_node_t *isl_node;
     tbx_sl_node_t *ptr[SKIPLIST_MAX_LEVEL];
     tbx_sl_node_t *sn, *sn2, *sn_hi;
-    int cmp, i, j;
+    int cmp, j;
+    unsigned int i;
 
     tbx_sl_t *sl = isl->sl;
 
@@ -336,7 +337,8 @@ int tbx_isl_insert(tbx_isl_t *isl, tbx_sl_key_t *lo, tbx_sl_key_t *hi, tbx_sl_da
         //** Find the highest edge and tag it
         i = sn->level+1;
         j = -1;
-        while ((i>= 0) && (j == -1)) {
+        // The level has to be >=, so i has to be >=1
+        while ((i>= 1) && (j == -1)) {
             i--;
             sn2 = sn->next[i];
             if (sn2 != NULL) {

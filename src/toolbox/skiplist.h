@@ -34,7 +34,7 @@ struct tbx_sl_ele_t {
 };
 
 struct tbx_sl_node_t {
-    int level;                //** level of node
+    unsigned int level;                //** level of node
     tbx_sl_key_t *key;      //** Node value
     tbx_sl_node_t **next;   //** Pointers to the next node for each level
     tbx_sl_ele_t ele;       //** Pointer to the data list
@@ -46,8 +46,8 @@ struct tbx_sl_compare_t {
 };
 
 struct tbx_sl_t {  //** Generic Skip Lists container
-    int max_levels;         //** Max number of pointers/levels
-    int current_max;        //** Current Max level
+    unsigned int max_levels;         //** Max number of pointers/levels
+    unsigned int current_max;        //** Current Max level
     int allow_dups;         //** Allow duplicate keys if 1
     int n_keys;             //** Number of unique keys
     int n_ele;              //** Number of elements
