@@ -21,7 +21,6 @@
 //*************************************************************
 
 #include "mq_portal.h"
-#include "mq_roundrobin.h"
 #include <tbx/type_malloc.h>
 #include <tbx/log.h>
 #include "apr_signal.h"
@@ -287,33 +286,6 @@ mq_socket_t *zero_create_trace_router_socket(mq_socket_context_t *ctx)
 }
 
 //*************************************************************
-// ROUND ROBIN socket
-//*************************************************************
-mq_socket_t *zero_create_round_robin_socket(mq_socket_context_t *ctx)
-{
-    mq_socket_t *s;
-
-    tbx_type_malloc_clear(s, mq_socket_t, 1);
-
-    s->type = MQ_ROUND_ROBIN;
-    s->arg = zsocket_new((zctx_t *)ctx->arg, ZMQ_ROUTER);
-    assert(s->arg);
-    zsocket_set_linger(s->arg, 0);
-    zsocket_set_sndhwm(s->arg, 100000);
-    zsocket_set_rcvhwm(s->arg, 100000);
-    s->destroy = zero_native_destroy;
-    s->bind = zero_native_bind;
-    s->connect = zero_native_connect;
-    s->disconnect = zero_native_disconnect;
-    s->poll_handle = zero_native_poll_handle;
-    s->monitor = zero_native_monitor;
-    s->send = zero_native_send;
-    s->recv = zero_trace_router_recv;
-
-    return(s);
-}
-
-//*************************************************************
 //   SIMPLE_ROUTER routines
 //      Send: Pop and route
 //      Recv: pass thru
@@ -378,9 +350,6 @@ mq_socket_t *zero_create_socket(mq_socket_context_t *ctx, int stype)
         break;
     case MQ_SIMPLE_ROUTER:
         s = zero_create_simple_router_socket(ctx);
-        break;
-    case MQ_ROUND_ROBIN:
-        s = zero_create_round_robin_socket(ctx);
         break;
     default:
         log_printf(0, "Unknown socket type: %d\n", stype);

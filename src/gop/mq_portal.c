@@ -17,7 +17,6 @@
 #include <tbx/log.h>
 #include <tbx/assert_result.h>
 #include "mq_portal.h"
-#include "mq_roundrobin.h"
 #include <tbx/type_malloc.h>
 #include "apr_base64.h"
 #include <tbx/apr_wrapper.h>

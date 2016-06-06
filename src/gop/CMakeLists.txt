@@ -36,7 +36,7 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DMQ_PIPE_COMM")
 set(LSTORE_PROJECT_OBJS 
     callback.c constructor.c gop.c hconnection.c hportal.c opque.c
     thread_pool_config.c thread_pool_op.c mq_msg.c mq_zmq.c mq_portal.c
-    mq_ongoing.c mq_stream.c mq_helpers.c mq_roundrobin.c
+    mq_ongoing.c mq_stream.c mq_helpers.c
 )
 
 set(LSTORE_PROJECT_INCLUDES_OLD
@@ -47,12 +47,6 @@ set(LSTORE_PROJECT_INCLUDES_NAMESPACE gop)
 set(LSTORE_PROJECT_INCLUDES
         gop/gop_visibility.h
     )
-if(NOT APPLE)
-    # OSX doesn't have eventfd.h
-    set(LSTORE_PROJECT_EXECUTABLES
-        rr_mq_client rr_mq_server rr_mq_test rr_mq_worker
-    )
-endif(NOT APPLE)
 
 set(LSTORE_LIBS ${APR_LIBRARY}
                     ${APRUTIL_LIBRARY}
