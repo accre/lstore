@@ -40,6 +40,13 @@ typedef struct tbx_sl_iter_t tbx_sl_iter_t;
 
 typedef struct tbx_sl_node_t tbx_sl_node_t;
 
+typedef tbx_sl_key_t *(*tbx_sl_dup_fn_t)(tbx_sl_key_t *a);
+
+typedef void (*tbx_sl_key_free_fn_t)(tbx_sl_key_t *a);
+
+typedef void (*tbx_sl_data_free_fn_t)(tbx_sl_data_t *a);
+
+
 TBX_TYPE(tbx_sl_t, tbx_sl);
 TBX_API tbx_sl_t *tbx_sl_create_full(int maxlevels, double p, int allow_dups,
                                         tbx_sl_compare_t *compare,
@@ -48,15 +55,16 @@ TBX_API tbx_sl_t *tbx_sl_create_full(int maxlevels, double p, int allow_dups,
                                         void (*data_free)(tbx_sl_data_t *a));
 TBX_TYPE_NEW(tbx_sl_t, tbx_sl_new_full, int maxlevels, double p, int allow_dups,
                         tbx_sl_compare_t *compare,
-                        tbx_sl_key_t *(*dup)(tbx_sl_key_t *a),
-                        void (*key_free)(tbx_sl_key_t *a),
-                        void (*data_free)(tbx_sl_data_t *a));
+                        tbx_sl_dup_fn_t dup,
+                        tbx_sl_key_free_fn_t key_free,
+                        tbx_sl_data_free_fn_t data_free);
+                        
 TBX_TYPE_INIT(tbx_sl_t, tbx_sl_init_full, tbx_sl_t * self,
                         int maxlevels, double p, int allow_dups,
                         tbx_sl_compare_t *compare,
-                        tbx_sl_key_t *(*dup)(tbx_sl_key_t *a),
-                        void (*key_free)(tbx_sl_key_t *a),
-                        void (*data_free)(tbx_sl_data_t *a));
+                        tbx_sl_dup_fn_t dup,
+                        tbx_sl_key_free_fn_t key_free,
+                        tbx_sl_data_free_fn_t data_free);
 
 // Functions
 TBX_API tbx_sl_key_t *tbx_sl_dup_string(tbx_sl_key_t *key);
