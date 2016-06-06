@@ -466,6 +466,7 @@ tbx_isl_iter_t tbx_isl_iter_search(tbx_isl_t *isl, tbx_sl_key_t *lo, tbx_sl_key_
 
     it.isl = isl;
     it.ele = NULL;
+    it.sn = NULL;
     it.lo = lo;
     it.hi = hi;
     it.mode = 0;
