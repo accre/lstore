@@ -44,7 +44,7 @@ set(LSTORE_PROJECT_INCLUDES
                 tbx/iniparse.h tbx/log.h tbx/assert_result.h tbx/toolbox_visibility.h
                 tbx/tbx_decl.h)
 set(LSTORE_PROJECT_INCLUDES_NAMESPACE tbx)
-set(LSTORE_PROJECT_EXECUTABLES sl_test isl_test varint_test constructor_test)
+set(LSTORE_PROJECT_EXECUTABLES)
 set(LSTORE_LIBS ${APR_LIBRARY}
                     ${APRUTIL_LIBRARY}
                     ${ZLIB_LIBRARY}
