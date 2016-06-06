@@ -34,39 +34,22 @@ typedef struct tbx_inip_group_t tbx_inip_group_t;
 
 // Functions
 TBX_API void tbx_inip_destroy(tbx_inip_file_t *inip);
-
-TBX_API tbx_inip_group_t *tbx_inip_group_find(tbx_inip_file_t *inip, const char *name);
-
-TBX_API char *tbx_inip_key_find(tbx_inip_group_t *group, const char *name);
-
 TBX_API tbx_inip_element_t *tbx_inip_ele_first(tbx_inip_group_t *group);
-
-TBX_API tbx_inip_group_t *tbx_inip_group_first(tbx_inip_file_t *inip);
-
-TBX_API char *tbx_inip_group_get(tbx_inip_group_t *g);
-
-TBX_API double tbx_inip_double_get(tbx_inip_file_t *inip, const char *group, const char *key, double def);
-
-TBX_API char *tbx_inip_ele_key_get(tbx_inip_element_t *ele);
-
-TBX_API char *tbx_inip_ele_value_get(tbx_inip_element_t *ele);
-
-TBX_API int64_t tbx_inip_integer_get(tbx_inip_file_t *inip, const char *group, const char *key, int64_t def);
-
-TBX_API char *tbx_inip_string_get(tbx_inip_file_t *inip, const char *group, const char *key, char *def);
-
-TBX_API void tbx_inip_group_free(tbx_inip_group_t *g);
-
-TBX_API void tbx_inip_group_set(tbx_inip_group_t *ig, char *value);
-
-TBX_API int tbx_inip_n_groups(tbx_inip_file_t *inip);
-
+TBX_API char *tbx_inip_ele_get_key(tbx_inip_element_t *ele);
+TBX_API char *tbx_inip_ele_get_value(tbx_inip_element_t *ele);
 TBX_API tbx_inip_element_t *tbx_inip_ele_next(tbx_inip_element_t *ele);
-
-TBX_API tbx_inip_group_t *tbx_inip_group_next(tbx_inip_group_t *g);
-
 TBX_API tbx_inip_file_t *tbx_inip_file_read(const char *fname);
-
+TBX_API char *tbx_inip_find_key(tbx_inip_group_t *group, const char *name);
+TBX_API double tbx_inip_get_double(tbx_inip_file_t *inip, const char *group, const char *key, double def);
+TBX_API int64_t tbx_inip_get_integer(tbx_inip_file_t *inip, const char *group, const char *key, int64_t def);
+TBX_API char *tbx_inip_get_string(tbx_inip_file_t *inip, const char *group, const char *key, char *def);
+TBX_API int tbx_inip_group_count(tbx_inip_file_t *inip);
+TBX_API tbx_inip_group_t *tbx_inip_group_find(tbx_inip_file_t *inip, const char *name);
+TBX_API tbx_inip_group_t *tbx_inip_group_first(tbx_inip_file_t *inip);
+TBX_API void tbx_inip_group_free(tbx_inip_group_t *g);
+TBX_API char *tbx_inip_group_get(tbx_inip_group_t *g);
+TBX_API tbx_inip_group_t *tbx_inip_group_next(tbx_inip_group_t *g);
+TBX_API void tbx_inip_group_set(tbx_inip_group_t *ig, char *value);
 TBX_API tbx_inip_file_t *tbx_inip_string_read(const char *text);
 
 #ifdef __cplusplus

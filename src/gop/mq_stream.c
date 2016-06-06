@@ -421,7 +421,7 @@ int mqs_write_send(mq_stream_t *mqs, mq_msg_t *address, mq_frame_t *fid)
 
     if (mqs->data == NULL) return(-1);
 
-    log_printf(1, "msid=%d address frame count=%d state_index=%c\n", mqs->msid, tbx_stack_size(address), mqs->data[MQS_STATE_INDEX]);
+    log_printf(1, "msid=%d address frame count=%d state_index=%c\n", mqs->msid, tbx_stack_count(address), mqs->data[MQS_STATE_INDEX]);
     response = mq_make_response_core_msg(address, fid);
     mq_msg_append_mem(response, mqs->data, MQS_HEADER + tbx_pack_used(mqs->pack), MQF_MSG_AUTO_FREE);
     mq_msg_append_mem(response, NULL, 0, MQF_MSG_KEEP_DATA);  //** Empty frame
@@ -460,7 +460,7 @@ int mqs_write_send(mq_stream_t *mqs, mq_msg_t *address, mq_frame_t *fid)
         mqs->want_more = MQS_ABORT;
     }
 
-//tbx_flush_log();
+//tbx_log_flush();
 //sleep(5);
     return(err);
 }

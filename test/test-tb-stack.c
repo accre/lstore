@@ -9,11 +9,11 @@ TEST_IMPL(tb_stack) {
     NOTE("STACK");
     ASSERT(stack != 0);
     NOTE("STACK");
-    ASSERT(tbx_get_ptr(stack) == NULL);
+    ASSERT(tbx_stack_get_current_ptr(stack) == NULL);
     NOTE("STACK");
-    ASSERT(tbx_get_ele_data(stack) == NULL);
+    ASSERT(tbx_stack_get_current_data(stack) == NULL);
     NOTE("STACK");
-    ASSERT(tbx_stack_size(stack) == 0);
+    ASSERT(tbx_stack_count(stack) == 0);
     NOTE("STACK");
     
     tbx_stack_empty(stack, 0);
@@ -31,9 +31,9 @@ TEST_IMPL(tb_stack) {
     ASSERT(stack2 != 0);
     NOTE("STACK");
 
-    tbx_free_stack(stack, 1);
+    tbx_stack_free(stack, 1);
     NOTE("STACK");
-    tbx_free_stack(stack2, 1);
+    tbx_stack_free(stack2, 1);
     NOTE("STACK");
     
     return 0;

@@ -821,7 +821,7 @@ op_status_t lioc_create_object_fn(void *arg, int id)
     v_size[6] = 1;
 
     log_printf(15, "NEW ino=%s exnode=%s\n", val[4], val[ex_key]);
-    tbx_flush_log();
+    tbx_log_flush();
 
     err = gop_sync_exec(os_set_multiple_attrs(op->lc->os, op->creds, fd, _lioc_create_keys, (void **)val, v_size, (op->type & OS_OBJECT_FILE) ? _n_lioc_file_keys : _n_lioc_dir_keys));
     if (err != OP_STATE_SUCCESS) {

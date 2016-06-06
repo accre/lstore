@@ -82,8 +82,8 @@ void print_rid_summary(char *config, int base)
             //** Now cycle through the attributes
             ele = tbx_inip_ele_first(ig);
             while (ele != NULL) {
-                key = tbx_inip_ele_key_get(ele);
-                value = tbx_inip_ele_value_get(ele);
+                key = tbx_inip_ele_get_key(ele);
+                value = tbx_inip_ele_get_value(ele);
                 if (strcmp(key, "rid_key") == 0) {  //** This is the RID so store it separate
                     rsum->rid = value;
                 } else if (strcmp(key, "ds_key") == 0) {  //** Data service key

@@ -205,7 +205,7 @@ resource_service_fn_t *rs_zmq_create(void *arg, tbx_inip_file_t *kf, char *secti
 service_manager_t *ess = (service_manager_t *)arg;
  
 log_printf(15, "START!!!!!!!!!!!!!!!!!!\n"); 
-tbx_flush_log();
+tbx_log_flush();
 //** Creates zmq context
 void *context = zmq_ctx_new();
 assert(context != NULL);
@@ -227,9 +227,9 @@ rsz->tpc = lookup_service(ess, ESS_RUNNING, ESS_TPC_UNLIMITED); //** Refers to l
 char *svr_proto, *svr_addr, *svr_port;
  
 //** Retrieves remote zmq server name, transport protocol, and lisenting port
-svr_proto = tbx_inip_string_get(kf, section, "protocol", RS_ZMQ_DFT_PROTO);
-svr_addr = tbx_inip_string_get(kf, section, "server", NULL);
-svr_port = tbx_inip_string_get(kf, section, "port", RS_ZMQ_DFT_PORT);
+svr_proto = tbx_inip_get_string(kf, section, "protocol", RS_ZMQ_DFT_PROTO);
+svr_addr = tbx_inip_get_string(kf, section, "server", NULL);
+svr_port = tbx_inip_get_string(kf, section, "port", RS_ZMQ_DFT_PORT);
 asprintf(&rsz->zmq_svr, "%s://%s:%s", tbx_stk_string_trim(svr_proto), tbx_stk_string_trim(svr_addr), tbx_stk_string_trim(svr_port));
  
 free(svr_proto);

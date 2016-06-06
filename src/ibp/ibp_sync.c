@@ -118,7 +118,7 @@ int ibp_sync_command(ibp_op_t *iop)
         gop->op->cmd.hostport = NULL;
     }
 
-    log_printf(10, "ibp_sync_command: IBP_errno=%d\n", IBP_errno); //tbx_flush_log();
+    log_printf(10, "ibp_sync_command: IBP_errno=%d\n", IBP_errno); //tbx_log_flush();
 
     return(IBP_errno);
 }

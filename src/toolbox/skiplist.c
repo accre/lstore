@@ -140,8 +140,8 @@ int tbx_sl_init_full(tbx_sl_t * self,
     self->allow_dups = allow_dups;
     self->compare = compare;
     self->dup = (dup == NULL) ? sl_passthru_dup : dup;
-    self->key_free = (key_free == NULL) ? tbx_sl_no_key_free : key_free;
-    self->data_free = (data_free == NULL) ? tbx_sl_no_data_free : data_free;
+    self->key_free = (key_free == NULL) ? tbx_sl_free_no_key : key_free;
+    self->data_free = (data_free == NULL) ? tbx_sl_free_no_data : data_free;
     self->head = create_skiplist_node(maxlevels-1);
     if (!self->head)
         goto error_1;
@@ -231,23 +231,23 @@ tbx_sl_key_t *sl_passthru_dup(tbx_sl_key_t *key)
 {
     return(key);
 }
-void tbx_sl_no_key_free(tbx_sl_key_t *key)
+void tbx_sl_free_no_key(tbx_sl_key_t *key)
 {
     log_printf(15, "key p=%p\n", key);
     return;
 }
-void tbx_sl_no_data_free(tbx_sl_data_t *data)
+void tbx_sl_free_no_data(tbx_sl_data_t *data)
 {
     log_printf(15, "data p=%p\n", data);
     return;
 }
-void tbx_sl_simple_free(tbx_sl_data_t *data)
+void tbx_sl_free_simple(tbx_sl_data_t *data)
 {
     log_printf(15, "p=%p\n", data);
     free(data);
 }
 
-tbx_sl_key_t *tbx_sl_string_dup(tbx_sl_key_t *key)
+tbx_sl_key_t *tbx_sl_dup_string(tbx_sl_key_t *key)
 {
     char *dup = strdup((char *)key);
     return((tbx_sl_key_t *)dup);
@@ -317,7 +317,7 @@ int skiplist_compare_fn_strncmp(void *arg, tbx_sl_key_t *k1, tbx_sl_key_t *k2)
     return(strncmp(a,b, n));
 }
 
-void tbx_sl_strncmp_set(tbx_sl_compare_t *compare, int n)
+void tbx_sl_set_strncmp(tbx_sl_compare_t *compare, int n)
 {
     long l = n;
     compare->fn = skiplist_compare_fn_strncmp;
@@ -442,7 +442,7 @@ tbx_sl_key_t *tbx_sl_first_key(tbx_sl_t *sl)
 // skiplist_last_key - Returns the last key in the list
 //*********************************************************************************
 
-tbx_sl_key_t *tbx_sl_last_key(tbx_sl_t *sl)
+tbx_sl_key_t *tbx_sl_key_last(tbx_sl_t *sl)
 {
     tbx_sl_node_t *ptr[SKIPLIST_MAX_LEVEL];
     if (sl->n_keys <= 0) return(NULL);

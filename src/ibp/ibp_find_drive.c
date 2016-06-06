@@ -217,7 +217,7 @@ double write_allocs(ibp_capset_t *caps, int qlen, int n, int asize, int block_si
 
     while (finished == 0) {
 //    nleft = qlen - opque_tasks_left(q);
-        nleft = tbx_stack_size(tbuf_free);
+        nleft = tbx_stack_count(tbuf_free);
 //    printf("\nLOOP: nleft=%d qlen=%d\n", nleft, qlen);
         if (nleft > 0) {
             for (j=block_start; j < nblocks; j++) {
@@ -290,7 +290,7 @@ skip_submit:
     }
     opque_free(q, OP_DESTROY);
 
-    tbx_free_stack(tbuf_free, 0);
+    tbx_stack_free(tbuf_free, 0);
     free(tbuf_index);
     free(buf);
     free(buffer);

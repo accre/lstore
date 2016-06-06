@@ -152,15 +152,15 @@ void _lio_load_plugins(lio_config_t *lio, tbx_inip_file_t *fd)
             ele = tbx_inip_ele_first(g);
             section = name = library = symbol = NULL;
             while (ele != NULL) {
-                key = tbx_inip_ele_key_get(ele);
+                key = tbx_inip_ele_get_key(ele);
                 if (strcmp(key, "section") == 0) {
-                    section = tbx_inip_ele_value_get(ele);
+                    section = tbx_inip_ele_get_value(ele);
                 } else if (strcmp(key, "name") == 0) {
-                    name = tbx_inip_ele_value_get(ele);
+                    name = tbx_inip_ele_get_value(ele);
                 } else if (strcmp(key, "library") == 0) {
-                    library = tbx_inip_ele_value_get(ele);
+                    library = tbx_inip_ele_get_value(ele);
                 } else if (strcmp(key, "symbol") == 0) {
-                    symbol = tbx_inip_ele_value_get(ele);
+                    symbol = tbx_inip_ele_get_value(ele);
                 }
 
                 ele = tbx_inip_ele_next(ele);
@@ -217,7 +217,7 @@ void _lio_destroy_plugins(lio_config_t *lio)
         free(library_key);
     }
 
-    tbx_free_stack(lio->plugin_stack, 0);
+    tbx_stack_free(lio->plugin_stack, 0);
 }
 
 
@@ -261,7 +261,7 @@ void lio_find_lfs_mounts()
     if (text != NULL) free(text);  //** Getline() always returns something
 
     //** Convert it to a simple array
-    _lfs_mount_count = tbx_stack_size(stack);
+    _lfs_mount_count = tbx_stack_count(stack);
     tbx_type_malloc(lfs_mount, lfs_mount_t, _lfs_mount_count);
     for (i=0; i<_lfs_mount_count; i++) {
         entry = tbx_stack_pop(stack);
@@ -270,7 +270,7 @@ void lio_find_lfs_mounts()
         free(entry);
     }
 
-    tbx_free_stack(stack, 0);
+    tbx_stack_free(stack, 0);
 }
 
 //***************************************************************
@@ -626,7 +626,7 @@ void lc_object_remove_unused(int remove_all_unused)
 
     apr_thread_mutex_unlock(_lc_lock);
 
-    tbx_free_stack(stack, 0);
+    tbx_stack_free(stack, 0);
     tbx_list_destroy(user_lc);
 
     return;
@@ -668,9 +668,9 @@ blacklist_t *blacklist_load(tbx_inip_file_t *ifd, char *section)
     apr_thread_mutex_create(&(bl->lock), APR_THREAD_MUTEX_DEFAULT, bl->mpool);
     bl->table = apr_hash_make(bl->mpool);
 
-    bl->timeout = tbx_inip_integer_get(ifd, section, "timeout", apr_time_from_sec(120));
-    bl->min_bandwidth = tbx_inip_integer_get(ifd, section, "min_bandwidth", 5*1024*1024);  //** default ro 5MB
-    bl->min_io_time = tbx_inip_integer_get(ifd, section, "min_io_time", apr_time_from_sec(1));  //** default ro 5MB
+    bl->timeout = tbx_inip_get_integer(ifd, section, "timeout", apr_time_from_sec(120));
+    bl->min_bandwidth = tbx_inip_get_integer(ifd, section, "min_bandwidth", 5*1024*1024);  //** default ro 5MB
+    bl->min_io_time = tbx_inip_get_integer(ifd, section, "min_io_time", apr_time_from_sec(1));  //** default ro 5MB
 
     return(bl);
 }
@@ -851,14 +851,14 @@ lio_config_t *lio_create_nl(char *fname, char *section, char *user, char *exe_na
 
     _lio_load_plugins(lio, lio->ifd);  //** Load the plugins
 
-    lio->timeout = tbx_inip_integer_get(lio->ifd, section, "timeout", 120);
-    lio->max_attr = tbx_inip_integer_get(lio->ifd, section, "max_attr_size", 10*1024*1024);
-    lio->calc_adler32 = tbx_inip_integer_get(lio->ifd, section, "calc_adler32", 0);
-    lio->readahead = tbx_inip_integer_get(lio->ifd, section, "readahead", 0);
-    lio->readahead_trigger = lio->readahead * tbx_inip_double_get(lio->ifd, section, "readahead_trigger", 1.0);
+    lio->timeout = tbx_inip_get_integer(lio->ifd, section, "timeout", 120);
+    lio->max_attr = tbx_inip_get_integer(lio->ifd, section, "max_attr_size", 10*1024*1024);
+    lio->calc_adler32 = tbx_inip_get_integer(lio->ifd, section, "calc_adler32", 0);
+    lio->readahead = tbx_inip_get_integer(lio->ifd, section, "readahead", 0);
+    lio->readahead_trigger = lio->readahead * tbx_inip_get_double(lio->ifd, section, "readahead_trigger", 1.0);
 
     //** Check and see if we need to enable the blacklist
-    stype = tbx_inip_string_get(lio->ifd, section, "blacklist", NULL);
+    stype = tbx_inip_get_string(lio->ifd, section, "blacklist", NULL);
     if (stype != NULL) { //** Yup we need to parse and load those params
         lio->blacklist = blacklist_load(lio->ifd, stype);
         add_service(lio->ess, ESS_RUNNING, "blacklist", lio->blacklist);
@@ -867,11 +867,11 @@ lio_config_t *lio_create_nl(char *fname, char *section, char *user, char *exe_na
 
     //** Add the Jerase paranoid option
     tbx_type_malloc(val, int, 1);  //** NOTE: this is not freed on a destroy
-    *val = tbx_inip_integer_get(lio->ifd, section, "jerase_paranoid", 0);
+    *val = tbx_inip_get_integer(lio->ifd, section, "jerase_paranoid", 0);
     add_service(lio->ess, ESS_RUNNING, "jerase_paranoid", val);
 
-    cores = tbx_inip_integer_get(lio->ifd, section, "tpc_unlimited", 200);
-    max_recursion = tbx_inip_integer_get(lio->ifd, section, "tpc_max_recursion", 10);
+    cores = tbx_inip_get_integer(lio->ifd, section, "tpc_unlimited", 200);
+    max_recursion = tbx_inip_get_integer(lio->ifd, section, "tpc_max_recursion", 10);
     sprintf(buffer, "tpc:%d", cores);
     stype = buffer;
     lio->tpc_unlimited_section = strdup(stype);
@@ -893,7 +893,7 @@ lio_config_t *lio_create_nl(char *fname, char *section, char *user, char *exe_na
     add_service(lio->ess, ESS_RUNNING, ESS_TPC_UNLIMITED, lio->tpc_unlimited);
 
 
-    cores = tbx_inip_integer_get(lio->ifd, section, "tpc_cache", 100);
+    cores = tbx_inip_get_integer(lio->ifd, section, "tpc_cache", 100);
     sprintf(buffer, "tpc-cache:%d", cores);
     stype = buffer;
     lio->tpc_cache_section = strdup(stype);
@@ -915,7 +915,7 @@ lio_config_t *lio_create_nl(char *fname, char *section, char *user, char *exe_na
     add_service(lio->ess, ESS_RUNNING, ESS_TPC_CACHE, lio->tpc_cache);
 
 
-    stype = tbx_inip_string_get(lio->ifd, section, "mq", "mq_context");
+    stype = tbx_inip_get_string(lio->ifd, section, "mq", "mq_context");
     lio->mq_section = stype;
     lio->mqc = _lc_object_get(stype);
     if (lio->mqc == NULL) {  //** Need to load it
@@ -936,11 +936,11 @@ lio_config_t *lio_create_nl(char *fname, char *section, char *user, char *exe_na
     mq_ongoing_t *on = mq_ongoing_create(lio->mqc, NULL, 1, ONGOING_CLIENT);
     add_service(lio->ess, ESS_RUNNING, ESS_ONGOING_CLIENT, on);
 
-    stype = tbx_inip_string_get(lio->ifd, section, "ds", DS_TYPE_IBP);
+    stype = tbx_inip_get_string(lio->ifd, section, "ds", DS_TYPE_IBP);
     lio->ds_section = stype;
     lio->ds = _lc_object_get(stype);
     if (lio->ds == NULL) {  //** Need to load it
-        ctype = tbx_inip_string_get(lio->ifd, stype, "type", DS_TYPE_IBP);
+        ctype = tbx_inip_get_string(lio->ifd, stype, "type", DS_TYPE_IBP);
         ds_create = lookup_service(lio->ess, DS_SM_AVAILABLE, ctype);
         lio->ds = (*ds_create)(lio->ess, lio->ifd, stype);
         if (lio->ds == NULL) {
@@ -960,11 +960,11 @@ lio_config_t *lio_create_nl(char *fname, char *section, char *user, char *exe_na
     add_service(lio->ess, ESS_RUNNING, ESS_DS, lio->ds);  //** This is needed by the RS service
     add_service(lio->ess, ESS_RUNNING, ESS_DA, lio->da);  //** This is needed by the RS service
 
-    stype = tbx_inip_string_get(lio->ifd, section, "rs", RS_TYPE_SIMPLE);
+    stype = tbx_inip_get_string(lio->ifd, section, "rs", RS_TYPE_SIMPLE);
     lio->rs_section = stype;
     lio->rs = _lc_object_get(stype);
     if (lio->rs == NULL) {  //** Need to load it
-        ctype = tbx_inip_string_get(lio->ifd, stype, "type", RS_TYPE_SIMPLE);
+        ctype = tbx_inip_get_string(lio->ifd, stype, "type", RS_TYPE_SIMPLE);
         rs_create = lookup_service(lio->ess, RS_SM_AVAILABLE, ctype);
         lio->rs = (*rs_create)(lio->ess, lio->ifd, stype);
         if (lio->rs == NULL) {
@@ -979,11 +979,11 @@ lio_config_t *lio_create_nl(char *fname, char *section, char *user, char *exe_na
     }
     add_service(lio->ess, ESS_RUNNING, ESS_RS, lio->rs);
 
-    stype = tbx_inip_string_get(lio->ifd, section, "os", "osfile");
+    stype = tbx_inip_get_string(lio->ifd, section, "os", "osfile");
     lio->os_section = stype;
     lio->os = _lc_object_get(stype);
     if (lio->os == NULL) {  //** Need to load it
-        ctype = tbx_inip_string_get(lio->ifd, stype, "type", OS_TYPE_FILE);
+        ctype = tbx_inip_get_string(lio->ifd, stype, "type", OS_TYPE_FILE);
         os_create = lookup_service(lio->ess, OS_AVAILABLE, ctype);
         lio->os = (*os_create)(lio->ess, lio->ifd, stype);
         if (lio->os == NULL) {
@@ -999,7 +999,7 @@ lio_config_t *lio_create_nl(char *fname, char *section, char *user, char *exe_na
     add_service(lio->ess, ESS_RUNNING, ESS_OS, lio->os);
 
     cred_args[0] = lio->cfg_name;
-    cred_args[1] = (user == NULL) ? tbx_inip_string_get(lio->ifd, section, "user", "guest") : strdup(user);
+    cred_args[1] = (user == NULL) ? tbx_inip_get_string(lio->ifd, section, "user", "guest") : strdup(user);
     snprintf(buffer, sizeof(buffer), "tuple:%s@%s", cred_args[1], lio->section_name);
     stype = buffer;
     lio->creds_name = strdup(buffer);
@@ -1020,8 +1020,8 @@ lio_config_t *lio_create_nl(char *fname, char *section, char *user, char *exe_na
     _lc_object_get(buffer);
 
     if (_lio_cache == NULL) {
-        stype = tbx_inip_string_get(lio->ifd, section, "cache", CACHE_TYPE_AMP);
-        ctype = tbx_inip_string_get(lio->ifd, stype, "type", CACHE_TYPE_AMP);
+        stype = tbx_inip_get_string(lio->ifd, section, "cache", CACHE_TYPE_AMP);
+        ctype = tbx_inip_get_string(lio->ifd, stype, "type", CACHE_TYPE_AMP);
         cache_create = lookup_service(lio->ess, CACHE_LOAD_AVAILABLE, ctype);
         _lio_cache = (*cache_create)(lio->ess, lio->ifd, stype, lio->da, lio->timeout);
         if (_lio_cache == NULL) {

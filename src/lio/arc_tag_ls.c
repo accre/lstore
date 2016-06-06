@@ -122,8 +122,8 @@ void process_tag_file(char *tag_file, char *tag_name)
             if (strcmp(tbx_inip_group_get(ini_g), "TAG") == 0) {
                 ele = tbx_inip_ele_first(ini_g);
                 while (ele != NULL) {
-                    key = tbx_inip_ele_key_get(ele);
-                    value = tbx_inip_ele_value_get(ele);
+                    key = tbx_inip_ele_get_key(ele);
+                    value = tbx_inip_ele_get_value(ele);
                     if (strcmp(key, "name") == 0) {
                         name = value;
                     } else if (strcmp(key, "path") == 0) {

@@ -72,7 +72,7 @@ void _close_log();
 #define close_log()  _close_log()
 #define log_fd()     _log_fd
 
-#define open_log(fname) tbx_open_log(fname, 1)
+#define open_log(fname) tbx_log_open(fname, 1)
 
 #define assign_log_fd(fd) _log_fd = fd
 
@@ -85,7 +85,7 @@ void _close_log();
 #define log_fd()     stdout
 #define truncate_log()
 #define assign_log_fd(fd)
-#define tbx_flush_log()
+#define tbx_log_flush()
 #define log_printf(n, ...)
 #define tbx_mlog_printf(mi, n, ...)
 

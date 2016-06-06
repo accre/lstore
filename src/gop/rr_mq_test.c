@@ -208,7 +208,7 @@ mq_context_t *server_make_context()
                             "min_ops_per_sec=100\n\t"
                             "socket_type=1002\n"; // Set socket type to MQF_ROUND_ROBIN
 
-    tbx_flush_log();
+    tbx_log_flush();
     ifd = tbx_inip_string_read(text_parameters);
 
     //log_printf(15, "SERVER: Creating context...\n");
@@ -415,7 +415,7 @@ void bulk_worker_test(mq_context_t *mqc)
             log_printf(5, "WORKER: Success: n = %d, status = %d\n", current, status);
             success++;
         }
-        tbx_flush_log();
+        tbx_log_flush();
     }
 
     log_printf(5, "WORKER: Sleeping...\n");

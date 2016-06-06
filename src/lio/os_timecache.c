@@ -443,11 +443,11 @@ int _ostc_cache_tree_walk(object_service_fn_t *os, char *fname, tbx_stack_t *tre
     if ((fname == NULL) || (max_recurse <= 0)) return(1);
 
     i=0;
-    if ((tbx_stack_size(tree) == 0) || (fname[i] == '/')) {
+    if ((tbx_stack_count(tree) == 0) || (fname[i] == '/')) {
         curr = ostc->cache_root;
         tbx_stack_empty(tree, 0);
     } else {
-        curr = tbx_get_ele_data(tree);
+        curr = tbx_stack_get_current_data(tree);
     }
     tbx_stack_move_to_bottom(tree);
     tbx_stack_insert_below(tree, curr);
@@ -505,8 +505,8 @@ int _ostc_cache_tree_walk(object_service_fn_t *os, char *fname, tbx_stack_t *tre
                 } else if (n == 2) {
                     if (fname[start+1] == '.') { //** Got a ".."
                         tbx_stack_move_to_bottom(tree);
-                        tbx_delete_current(tree, 1, 0);
-                        curr = tbx_get_ele_data(tree);
+                        tbx_stack_delete_current(tree, 1, 0);
+                        curr = tbx_stack_get_current_data(tree);
                         continue;
                     }
                 }
@@ -517,14 +517,14 @@ int _ostc_cache_tree_walk(object_service_fn_t *os, char *fname, tbx_stack_t *tre
             if (fname[i] != 0) { //** If not at the end we need to follow it
                 //*** Need to make a new stack and recurse it only keeping the bottom element
                 tbx_stack_init(&rtree);
-                tbx_dup_stack(tree, &rtree);
+                tbx_stack_dup(tree, &rtree);
                 if (_ostc_cache_tree_walk(os, next->link, &rtree, NULL, add_terminal_ftype, max_recurse-1) != 0) {
                     tbx_stack_empty(&rtree, 0);
                     err = -1;
                     goto finished;
                 }
                 tbx_stack_move_to_bottom(&rtree);
-                next = tbx_get_ele_data(&rtree);  //** This will get placed as the next object on the stack
+                next = tbx_stack_get_current_data(&rtree);  //** This will get placed as the next object on the stack
                 tbx_stack_empty(&rtree, 0);
             }
         }
@@ -539,14 +539,14 @@ int _ostc_cache_tree_walk(object_service_fn_t *os, char *fname, tbx_stack_t *tre
     //** With the one provided
     if (replacement_obj != NULL) {
         tbx_stack_move_up(tree);
-        prev = tbx_get_ele_data(tree);
+        prev = tbx_stack_get_current_data(tree);
         apr_hash_set(prev->objects, curr->fname, APR_HASH_KEY_STRING, NULL);
         apr_hash_set(prev->objects, replacement_obj->fname, strlen(replacement_obj->fname), replacement_obj);
 
         free_ostcdb_object(curr);
 
         tbx_stack_move_to_bottom(tree);
-        tbx_delete_current(tree, 1, 0);
+        tbx_stack_delete_current(tree, 1, 0);
         tbx_stack_insert_below(tree, replacement_obj);
     }
 
@@ -555,8 +555,8 @@ finished:
     log_printf(15, "fname=%s err=%d\n", fname, err);
     ostcdb_object_t *lo;
     tbx_stack_move_to_top(tree);
-    log_printf(15, "stack_size=%d\n", tbx_stack_size(tree));
-    while ((lo = tbx_get_ele_data(tree)) != NULL) {
+    log_printf(15, "stack_size=%d\n", tbx_stack_count(tree));
+    while ((lo = tbx_stack_get_current_data(tree)) != NULL) {
         log_printf(15, "pwalk lo=%s ftype=%d\n", lo->fname, lo->ftype);
         tbx_stack_move_down(tree);
     }
@@ -596,11 +596,11 @@ int _ostcdb_resolve_attr_link(object_service_fn_t *os, tbx_stack_t *tree, char *
 
     //** Copy the stack
     tbx_stack_init(&rtree);
-    tbx_dup_stack(&rtree, tree);
+    tbx_stack_dup(&rtree, tree);
 
     tbx_stack_move_to_top(&rtree);
-    log_printf(5, "stack_size=%d org=%d\n", tbx_stack_size(&rtree), tbx_stack_size(tree));
-    while ((lo = tbx_get_ele_data(&rtree)) != NULL) {
+    log_printf(5, "stack_size=%d org=%d\n", tbx_stack_count(&rtree), tbx_stack_count(tree));
+    while ((lo = tbx_stack_get_current_data(&rtree)) != NULL) {
         log_printf(5, "pwalk lo=%s ftype=%d\n", lo->fname, lo->ftype);
         tbx_stack_move_down(&rtree);
     }
@@ -608,14 +608,14 @@ int _ostcdb_resolve_attr_link(object_service_fn_t *os, tbx_stack_t *tree, char *
 
     //** and pop the terminal which is up.  This will pop us up to the directory for the walk
     tbx_stack_move_to_bottom(&rtree);
-    tbx_delete_current(&rtree, 1, 0);
+    tbx_stack_delete_current(&rtree, 1, 0);
     if (_ostc_cache_tree_walk(os, alink, &rtree, NULL, 0, OSTC_MAX_RECURSE) != 0) {
         if (i> -1) alink[i] = '/';
         goto finished;
     }
     if (i> -1) alink[i] = '/'; //** Undo our string munge if needed
     tbx_stack_move_to_bottom(&rtree);
-    lo = tbx_get_ele_data(&rtree);  //** This will get placed as the next object on the stack
+    lo = tbx_stack_get_current_data(&rtree);  //** This will get placed as the next object on the stack
 
     if (lo == NULL) goto finished;
     la = apr_hash_get(lo->attrs, aname, APR_HASH_KEY_STRING);
@@ -654,7 +654,7 @@ void ostc_cache_move_object(object_service_fn_t *os, creds_t *creds, char *src_p
     OSTC_LOCK(ostc);
     if (_ostc_cache_tree_walk(os, src_path, &stree, NULL, 0, OSTC_MAX_RECURSE) == 0) {
         tbx_stack_move_to_bottom(&stree);
-        obj = tbx_get_ele_data(&stree);
+        obj = tbx_stack_get_current_data(&stree);
         tbx_stack_init(&dtree);
         _ostc_cache_tree_walk(os, src_path, &dtree, obj, obj->ftype, OSTC_MAX_RECURSE);  //** Do the walk and substitute
         tbx_stack_empty(&dtree, 0);
@@ -679,9 +679,9 @@ void ostc_cache_remove_object(object_service_fn_t *os, char *path)
     OSTC_LOCK(ostc);
     if (_ostc_cache_tree_walk(os, path, &tree, NULL, 0, OSTC_MAX_RECURSE) == 0) {
         tbx_stack_move_to_bottom(&tree);
-        obj = tbx_get_ele_data(&tree);
+        obj = tbx_stack_get_current_data(&tree);
         tbx_stack_move_up(&tree);
-        parent = tbx_get_ele_data(&tree);
+        parent = tbx_stack_get_current_data(&tree);
         apr_hash_set(parent->objects, obj->fname, APR_HASH_KEY_STRING, NULL);
         free_ostcdb_object(obj);
     }
@@ -709,7 +709,7 @@ void ostc_cache_remove_attrs(object_service_fn_t *os, char *fname, char **key, i
     if (_ostc_cache_tree_walk(os, fname, &tree, NULL, 0, OSTC_MAX_RECURSE) != 0) goto finished;
 
     tbx_stack_move_to_bottom(&tree);
-    obj = tbx_get_ele_data(&tree);
+    obj = tbx_stack_get_current_data(&tree);
     for (i=0; i<n; i++) {
         attr = apr_hash_get(obj->attrs, key[i], APR_HASH_KEY_STRING);
         if (attr != NULL) {
@@ -742,7 +742,7 @@ void ostc_cache_move_attrs(object_service_fn_t *os, char *fname, char **key_old,
     if (_ostc_cache_tree_walk(os, fname, &tree, NULL, 0, OSTC_MAX_RECURSE) != 0) goto finished;
 
     tbx_stack_move_to_bottom(&tree);
-    obj = tbx_get_ele_data(&tree);
+    obj = tbx_stack_get_current_data(&tree);
     for (i=0; i<n; i++) {
         attr = apr_hash_get(obj->attrs, key_old[i], APR_HASH_KEY_STRING);
         if (attr != NULL) {
@@ -784,10 +784,10 @@ void ostc_cache_process_attrs(object_service_fn_t *os, char *fname, int ftype, c
     OSTC_LOCK(ostc);
     if (_ostc_cache_tree_walk(os, fname, &tree, NULL, ftype, OSTC_MAX_RECURSE) != 0) goto finished;
 
-    log_printf(5, "fname=%s stack_size=%d\n", fname, tbx_stack_size(&tree));
+    log_printf(5, "fname=%s stack_size=%d\n", fname, tbx_stack_count(&tree));
 
     tbx_stack_move_to_bottom(&tree);
-    obj = tbx_get_ele_data(&tree);
+    obj = tbx_stack_get_current_data(&tree);
 
     if (obj->link) {
         free(obj->link);
@@ -884,7 +884,7 @@ op_status_t ostc_cache_fetch(object_service_fn_t *os, char *fname, char **key, v
     if (_ostc_cache_tree_walk(os, fname, &tree, NULL, 0, OSTC_MAX_RECURSE) != 0) goto finished;
 
     tbx_stack_move_to_bottom(&tree);
-    obj = tbx_get_ele_data(&tree);
+    obj = tbx_stack_get_current_data(&tree);
     oops = 1;
     for (i=0; i<n; i++) {
         attr = apr_hash_get(obj->attrs, key[i], APR_HASH_KEY_STRING);
@@ -952,7 +952,7 @@ void ostc_cache_update_attrs(object_service_fn_t *os, char *fname, char **key, v
     if (_ostc_cache_tree_walk(os, fname, &tree, NULL, 0, OSTC_MAX_RECURSE) != 0) goto finished;
 
     tbx_stack_move_to_bottom(&tree);
-    obj = tbx_get_ele_data(&tree);
+    obj = tbx_stack_get_current_data(&tree);
     for (i=0; i<n; i++) {
         attr = apr_hash_get(obj->attrs, key[i], APR_HASH_KEY_STRING);
         if (attr == NULL) continue;  //** Not in cache so ignore updating it
@@ -2185,9 +2185,9 @@ object_service_fn_t *object_service_timecache_create(service_manager_t *ess, tbx
     tbx_type_malloc_clear(ostc, ostc_priv_t, 1);
     os->priv = (void *)ostc;
 
-    str = tbx_inip_string_get(fd, section, "os_child", NULL);
+    str = tbx_inip_get_string(fd, section, "os_child", NULL);
     if (str != NULL) {  //** Running in test/temp
-        ctype = tbx_inip_string_get(fd, str, "type", OS_TYPE_REMOTE_CLIENT);
+        ctype = tbx_inip_get_string(fd, str, "type", OS_TYPE_REMOTE_CLIENT);
         os_create = lookup_service(ess, OS_AVAILABLE, ctype);
         ostc->os_child = (*os_create)(ess, fd, str);
         if (ostc->os_child == NULL) {
@@ -2203,8 +2203,8 @@ object_service_fn_t *object_service_timecache_create(service_manager_t *ess, tbx
         abort();
     }
 
-    ostc->entry_timeout = apr_time_from_sec(tbx_inip_integer_get(fd, section, "entry_timeout", 20));
-    ostc->cleanup_interval = apr_time_from_sec(tbx_inip_integer_get(fd, section, "cleanup_interval", 120));
+    ostc->entry_timeout = apr_time_from_sec(tbx_inip_get_integer(fd, section, "entry_timeout", 20));
+    ostc->cleanup_interval = apr_time_from_sec(tbx_inip_get_integer(fd, section, "cleanup_interval", 120));
 
     apr_pool_create(&ostc->mpool, NULL);
     apr_thread_mutex_create(&(ostc->lock), APR_THREAD_MUTEX_DEFAULT, ostc->mpool);

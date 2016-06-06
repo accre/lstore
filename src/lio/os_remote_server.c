@@ -87,13 +87,13 @@ void osrs_print_active_table(object_service_fn_t *os, FILE *fd)
     fprintf(fd, "#timestamp: %s\n", sdate);
     fprintf(fd, "#host|start_time|last_time|count\n");
     tbx_stack_move_to_top(osrs->active_lru);
-    a = tbx_get_ele_data(osrs->active_lru);
+    a = tbx_stack_get_current_data(osrs->active_lru);
     while (a != NULL) {
         apr_ctime(sdate, a->start);
         apr_ctime(ldate, a->last);
         fprintf(fd, "%s|%s|%s|"XOT "\n", a->host_id, sdate, ldate, a->count);
         tbx_stack_move_down(osrs->active_lru);
-        a = tbx_get_ele_data(osrs->active_lru);
+        a = tbx_stack_get_current_data(osrs->active_lru);
     }
     apr_thread_mutex_unlock(osrs->lock);
 }
@@ -139,13 +139,13 @@ void osrs_update_active_table(object_service_fn_t *os, mq_frame_t *hid)
     ele = apr_hash_get(osrs->active_table, host_id, id_len);
     if (ele == NULL) { //** 1st time so need to add it
         //** Check if we need to clean things up
-        if (tbx_stack_size(osrs->active_lru) >= osrs->max_active) {
+        if (tbx_stack_count(osrs->active_lru) >= osrs->max_active) {
             tbx_stack_move_to_bottom(osrs->active_lru);
-            a = (osrs_active_t *)tbx_get_ele_data(osrs->active_lru);
+            a = (osrs_active_t *)tbx_stack_get_current_data(osrs->active_lru);
             apr_hash_set(osrs->active_table, a->host_id, a->host_id_len, NULL);
             if (a->host_id) free(a->host_id);
             free(a);
-            tbx_delete_current(osrs->active_lru, 1, 0);
+            tbx_stack_delete_current(osrs->active_lru, 1, 0);
         }
 
         //** Now make the new entry
@@ -159,19 +159,19 @@ void osrs_update_active_table(object_service_fn_t *os, mq_frame_t *hid)
 
         //** add it
         tbx_stack_push(osrs->active_lru, a);
-        ele = tbx_get_ptr(osrs->active_lru);
+        ele = tbx_stack_get_current_ptr(osrs->active_lru);
         apr_hash_set(osrs->active_table, a->host_id, a->host_id_len, ele);
     }
 
     //** Get the handle
-    a = (osrs_active_t *)tbx_get_stack_ele_data(ele);
+    a = (osrs_active_t *)tbx_stack_ele_get_data(ele);
     a->last = apr_time_now();  //** Update it
     a->count++;
 
     //** and move it to the front
     tbx_stack_move_to_ptr(osrs->active_lru, ele);
     tbx_stack_unlink_current(osrs->active_lru, 1);
-    tbx_push_link(osrs->active_lru, ele);
+    tbx_stack_link_push(osrs->active_lru, ele);
 
     apr_thread_mutex_unlock(osrs->lock);
 }
@@ -3034,14 +3034,14 @@ void os_remote_server_destroy(object_service_fn_t *os)
 
     //** Cleanup the activity log
     tbx_stack_move_to_top(osrs->active_lru);
-    a = tbx_get_ele_data(osrs->active_lru);
+    a = tbx_stack_get_current_data(osrs->active_lru);
     while (a != NULL) {
         if (a->host_id) free(a->host_id);
         free(a);
         tbx_stack_move_down(osrs->active_lru);
-        a = tbx_get_ele_data(osrs->active_lru);
+        a = tbx_stack_get_current_data(osrs->active_lru);
     }
-    tbx_free_stack(osrs->active_lru, 0);
+    tbx_stack_free(osrs->active_lru, 0);
     //** The active_table hash gets destroyed when the pool is destroyed.
 
     //** Shutdown the child OS
@@ -3093,34 +3093,34 @@ object_service_fn_t *object_service_remote_server_create(service_manager_t *ess,
     assert(osrs->spin != NULL);
 
     //** Get the host name we bind to
-    osrs->hostname= tbx_inip_string_get(fd, section, "address", NULL);
+    osrs->hostname= tbx_inip_get_string(fd, section, "address", NULL);
 
     //** Get the activity log file
-    osrs->fname_activity = tbx_inip_string_get(fd, section, "log_activity", NULL);
+    osrs->fname_activity = tbx_inip_get_string(fd, section, "log_activity", NULL);
     log_printf(5, "section=%s log_activity=%s\n", section, osrs->fname_activity);
 
     //** Ongoing check interval
-    osrs->ongoing_interval = tbx_inip_integer_get(fd, section, "ongoing_interval", 300);
+    osrs->ongoing_interval = tbx_inip_get_integer(fd, section, "ongoing_interval", 300);
 
     //** Max Stream size
-    osrs->max_stream = tbx_inip_integer_get(fd, section, "max_stream", 1024*1024);
+    osrs->max_stream = tbx_inip_get_integer(fd, section, "max_stream", 1024*1024);
 
     //** Start the child OS.
-    stype = tbx_inip_string_get(fd, section, "os_local", NULL);
+    stype = tbx_inip_get_string(fd, section, "os_local", NULL);
     if (stype == NULL) {  //** Oops missing child OS
         log_printf(0, "ERROR: Mising child OS  section=%s key=rs_local!\n", section);
-        tbx_flush_log();
+        tbx_log_flush();
         free(stype);
         abort();
     }
 
     //** and load it
-    ctype = tbx_inip_string_get(fd, stype, "type", OS_TYPE_FILE);
+    ctype = tbx_inip_get_string(fd, stype, "type", OS_TYPE_FILE);
     os_create = lookup_service(ess, OS_AVAILABLE, ctype);
     osrs->os_child = (*os_create)(ess, fd, stype);
     if (osrs->os_child == NULL) {
         log_printf(1, "ERROR loading child OS!  type=%s section=%s\n", ctype, stype);
-        tbx_flush_log();
+        tbx_log_flush();
         abort();
     }
     free(ctype);
@@ -3180,8 +3180,8 @@ object_service_fn_t *object_service_remote_server_create(service_manager_t *ess,
     os->type = OS_TYPE_REMOTE_SERVER;
 
     //** This is for the active tables
-    osrs->fname_active = tbx_inip_string_get(fd, section, "active_output", "/lio/log/os_active.log");
-    osrs->max_active = tbx_inip_integer_get(fd, section, "active_size", 1024);
+    osrs->fname_active = tbx_inip_get_string(fd, section, "active_output", "/lio/log/os_active.log");
+    osrs->max_active = tbx_inip_get_integer(fd, section, "active_size", 1024);
     osrs->active_table = apr_hash_make(osrs->mpool);
     osrs->active_lru = tbx_stack_new();
 

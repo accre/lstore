@@ -263,7 +263,7 @@ void lio_store_and_release_adler32(lio_config_t *lc, creds_t *creds, tbx_list_t 
     }
 
     tbx_list_destroy(write_table);
-    tbx_free_stack(stack, 1);
+    tbx_stack_free(stack, 1);
 
     //** Store the attribute
     aval = cksum;
@@ -548,7 +548,7 @@ op_status_t lio_myclose_fn(void *arg, int id)
     double dt;
 
     log_printf(1, "fname=%s modified=%d count=%d\n", fd->path, fd->fh->modified, fd->fh->ref_count);
-    tbx_flush_log();
+    tbx_log_flush();
 
     status = op_success_status;
 
@@ -579,7 +579,7 @@ op_status_t lio_myclose_fn(void *arg, int id)
     log_printf(1, "FLUSH fname=%s dt=%lf\n", fd->path, dt);
 
     log_printf(5, "starting update process fname=%s modified=%d\n", fd->path, fh->modified);
-    tbx_flush_log();
+    tbx_log_flush();
 
     //** Ok no one has the file opened so teardown the segment/exnode
     //** IF not modified just tear down and clean up
@@ -717,7 +717,7 @@ op_status_t lio_read_ex_fn(void *arg, int id)
     t1 = iov[0].len;
     t2 = iov[0].offset;
     log_printf(1, "fname=%s n_iov=%d iov[0].len=" XOT " iov[0].offset=" XOT "\n", fd->path, op->n_iov, t1, t2);
-    tbx_flush_log();
+    tbx_log_flush();
 
     if (fd == NULL) {
         log_printf(0, "ERROR: Got a null file desriptor\n");
@@ -741,7 +741,7 @@ op_status_t lio_read_ex_fn(void *arg, int id)
     dt = apr_time_now() - now;
     dt /= APR_USEC_PER_SEC;
     log_printf(1, "END fname=%s seg=" XIDT " dt=%lf\n", fd->path, segment_id(fd->fh->seg), dt);
-    tbx_flush_log();
+    tbx_log_flush();
 
     if (err != OP_STATE_SUCCESS) {
         log_printf(1, "ERROR with read! fname=%s\n", fd->path);
@@ -975,7 +975,7 @@ op_status_t lio_write_ex_fn(void *arg, int id)
     t1 = iov[0].len;
     t2 = iov[0].offset;
     log_printf(1, "START fname=%s n_iov=%d iov[0].len=" XOT " iov[0].offset=" XOT "\n", fd->path, op->n_iov, t1, t2);
-    tbx_flush_log();
+    tbx_log_flush();
     if (tbx_log_level() > 0) {
         for (i=0; i < op->n_iov; i++) {
             t2 = iov[i].offset+iov[i].len-1;
@@ -999,7 +999,7 @@ op_status_t lio_write_ex_fn(void *arg, int id)
     dt = apr_time_now() - now;
     dt /= APR_USEC_PER_SEC;
     log_printf(1, "END fname=%s seg=" XIDT " dt=%lf\n", fd->path, segment_id(fd->fh->seg), dt);
-    tbx_flush_log();
+    tbx_log_flush();
 
     if (fd->fh->write_table != NULL) {
         tbx_tbuf_t tb;
@@ -1492,7 +1492,7 @@ op_status_t lio_cp_path_fn(void *arg, int id)
     op_status_t status;
 
     log_printf(15, "START src=%s dest=%s max_spawn=%d bufsize=" XOT "\n", cp->src_tuple.path, cp->dest_tuple.path, cp->max_spawn, cp->bufsize);
-    tbx_flush_log();
+    tbx_log_flush();
 
     it = unified_create_object_iter(cp->src_tuple, cp->path_regex, cp->obj_regex, cp->obj_types, cp->recurse_depth);
     if (it == NULL) {

@@ -63,8 +63,8 @@ void print_cache_table(int dolock)
 
     if (dolock) cache_lock(c);
 
-    log_printf(ll, "Checking table.  n_pages=%d top=%p bottom=%p\n", tbx_stack_size(cp->stack), cp->stack->top, cp->stack->bottom);
-    tbx_flush_log();
+    log_printf(ll, "Checking table.  n_pages=%d top=%p bottom=%p\n", tbx_stack_count(cp->stack), cp->stack->top, cp->stack->bottom);
+    tbx_log_flush();
     if (cp->stack->top != NULL) {
         p = (cache_page_t *)cp->stack->top->data;
         log_printf(11, "top: p=%p   p->seg=" XIDT " p->offset=" XOT "\n", p, segment_id(p->seg), p->offset);
@@ -79,23 +79,23 @@ void print_cache_table(int dolock)
     if ( cp->stack->top == NULL) {
         if (cp->stack->bottom != NULL) {
             log_printf(ll, "ERROR: top=NULL bottom=%p\n", cp->stack->bottom);
-            tbx_flush_log();
+            tbx_log_flush();
         }
         goto finished;
     }
 
     tbx_stack_move_to_top(cp->stack);
-    ele = tbx_get_ptr(cp->stack);
-    p = (cache_page_t *)tbx_get_stack_ele_data(ele);
+    ele = tbx_stack_get_current_ptr(cp->stack);
+    p = (cache_page_t *)tbx_stack_ele_get_data(ele);
     p0 = p;
     n++;
     tbx_stack_move_down(cp->stack);
-    while ((ele = tbx_get_ptr(cp->stack)) != NULL) {
+    while ((ele = tbx_stack_get_current_ptr(cp->stack)) != NULL) {
         n++;
-        p = (cache_page_t *)tbx_get_stack_ele_data(ele);
+        p = (cache_page_t *)tbx_stack_ele_get_data(ele);
         if (p0->seg != p->seg) {
             log_printf(ll, "ERROR p0->seg=" XIDT " p->seg=" XIDT " n=%d\n", segment_id(p0->seg), segment_id(p->seg), n);
-            tbx_flush_log();
+            tbx_log_flush();
         }
         tbx_stack_move_down(cp->stack);
     }
@@ -104,15 +104,15 @@ void print_cache_table(int dolock)
     p = (cache_page_t *)cp->stack->bottom->data;
     if (p0 != p) {
         log_printf(ll, "ERROR bottom(%p) != last page(%p) n=%d\n", p, p0, n);
-        tbx_flush_log();
+        tbx_log_flush();
         log_printf(ll, "ERROR bottom->seg=" XIDT " last->seg=" XIDT "\n", segment_id(p->seg), segment_id(p0->seg));
         log_printf(ll, "ERROR bottom->off=" XOT " last->off=" XOT "\n", p->offset, p0->offset);
     }
 
 finished:
-    if (n != tbx_stack_size(cp->stack)) {
-        log_printf(ll, "ERROR:  missing pages!  n=%d stack=%d\n", n, tbx_stack_size(cp->stack));
-        tbx_flush_log();
+    if (n != tbx_stack_count(cp->stack)) {
+        log_printf(ll, "ERROR:  missing pages!  n=%d stack=%d\n", n, tbx_stack_count(cp->stack));
+        tbx_log_flush();
     }
 
     if (dolock) cache_unlock(c);
@@ -241,7 +241,7 @@ void *amp_dirty_thread(apr_thread_t *th, void *data)
         i = 0;
         while (id != NULL) {
             log_printf(15, "Flushing seg=" XIDT " i=%d\n", *id, i);
-            tbx_flush_log();
+            tbx_log_flush();
             flush_list[i] = seg;
             s = (cache_segment_t *)seg->priv;
             s->cache_check_in_progress++;  //** Flag it as being checked
@@ -261,7 +261,7 @@ void *amp_dirty_thread(apr_thread_t *th, void *data)
             s = (cache_segment_t *)flush_list[i]->priv;
 
             log_printf(15, "Flush completed seg=" XIDT " i=%d\n", segment_id(flush_list[i]), i);
-            tbx_flush_log();
+            tbx_log_flush();
             cache_lock(c);
             s->cache_check_in_progress--;  //** Flag it as being finished
             cache_unlock(c);
@@ -335,9 +335,9 @@ cache_page_t *_amp_new_page(cache_t *c, segment_t *seg)
 
     //** Store my position
     tbx_stack_push(cp->stack, p);
-    lp->ele = tbx_get_ptr(cp->stack);
+    lp->ele = tbx_stack_get_current_ptr(cp->stack);
 
-    log_printf(_amp_logging, " seg=" XIDT " MRU page created initial->offset=" XOT " page_size=" XOT " bytes_used=" XOT " stack_size=%d\n", segment_id(seg), p->offset, s->page_size, cp->bytes_used, tbx_stack_size(cp->stack));
+    log_printf(_amp_logging, " seg=" XIDT " MRU page created initial->offset=" XOT " page_size=" XOT " bytes_used=" XOT " stack_size=%d\n", segment_id(seg), p->offset, s->page_size, cp->bytes_used, tbx_stack_count(cp->stack));
     return(p);
 }
 
@@ -352,31 +352,31 @@ void _amp_process_waiters(cache_t *c)
     cache_cond_t *cache_cond;
     ex_off_t bytes_free, bytes_needed;
 
-    log_printf(15, "tbx_stack_size(pending_free_tasks)=%d tbx_stack_size(cp->waiting_stack)=%d\n", tbx_stack_size(cp->pending_free_tasks), tbx_stack_size(cp->waiting_stack));
-    if (tbx_stack_size(cp->pending_free_tasks) > 0) {  //**Check on pending free tasks 1st
+    log_printf(15, "tbx_stack_count(pending_free_tasks)=%d tbx_stack_count(cp->waiting_stack)=%d\n", tbx_stack_count(cp->pending_free_tasks), tbx_stack_count(cp->waiting_stack));
+    if (tbx_stack_count(cp->pending_free_tasks) > 0) {  //**Check on pending free tasks 1st
         while ((cache_cond = (cache_cond_t *)tbx_stack_pop(cp->pending_free_tasks)) != NULL) {
-            log_printf(15, "waking up pending task cache_cond=%p stack_size left=%d\n", cache_cond, tbx_stack_size(cp->pending_free_tasks));
+            log_printf(15, "waking up pending task cache_cond=%p stack_size left=%d\n", cache_cond, tbx_stack_count(cp->pending_free_tasks));
             apr_thread_cond_signal(cache_cond->cond);    //** Wake up the paused thread
         }
     }
 
-    if (tbx_stack_size(cp->waiting_stack) > 0) {  //** Also handle the tasks waiting for flushes to complete
+    if (tbx_stack_count(cp->waiting_stack) > 0) {  //** Also handle the tasks waiting for flushes to complete
         bytes_free = _amp_max_bytes(c) - cp->bytes_used;
 
         tbx_stack_move_to_top(cp->waiting_stack);
-        pw = tbx_get_ele_data(cp->waiting_stack);
+        pw = tbx_stack_get_current_data(cp->waiting_stack);
         bytes_needed = pw->bytes_needed;
         log_printf(15, "START free=" XOT " needed=" XOT "\n", bytes_free, bytes_needed);
 
         while ((bytes_needed <= bytes_free) && (pw != NULL)) {
             bytes_free -= bytes_needed;
-            tbx_delete_current(cp->waiting_stack, 1, 0);
+            tbx_stack_delete_current(cp->waiting_stack, 1, 0);
             log_printf(15, "waking up waiting stack pw=%p\n", pw);
 
             apr_thread_cond_signal(pw->cond);    //** Wake up the paused thread
 
             //** Get the next one if available
-            pw = tbx_get_ele_data(cp->waiting_stack);
+            pw = tbx_stack_get_current_data(cp->waiting_stack);
             bytes_needed = (pw == NULL) ? bytes_free + 1 : pw->bytes_needed;
         }
     }
@@ -576,7 +576,7 @@ void _amp_prefetch(segment_t *seg, ex_off_t lo, ex_off_t hi, int start_prefetch,
     gop = new_thread_pool_op(s->tpc_unlimited, NULL, amp_prefetch_fn, (void *)ca, free, 1);
     ca->gop = gop;
 //log_printf(15, "tid=%d seg=" XIDT " lo=" XOT " hi=" XOT " rw_mode=%d ca=%p gid=%d\n", tid, segment_id(seg), lo, hi, rw_mode, ca, gop_id(gop));
-//tbx_flush_log();
+//tbx_log_flush();
 
     gop_set_auto_destroy(gop, 1);
 
@@ -601,14 +601,14 @@ int _amp_pages_release(cache_t *c, cache_page_t **page, int n_pages)
         p = page[i];
         log_printf(15, "seg=" XIDT " p->offset=" XOT " bits=%d bytes_used=" XOT "\n", segment_id(p->seg), p->offset, p->bit_fields, cp->bytes_used);
         if ((p->bit_fields & C_TORELEASE) > 0) {
-            log_printf(15, "DESTROYING seg=" XIDT " p->offset=" XOT " bits=%d bytes_used=" XOT "cache_pages=%d\n", segment_id(p->seg), p->offset, p->bit_fields, cp->bytes_used, tbx_stack_size(cp->stack));
+            log_printf(15, "DESTROYING seg=" XIDT " p->offset=" XOT " bits=%d bytes_used=" XOT "cache_pages=%d\n", segment_id(p->seg), p->offset, p->bit_fields, cp->bytes_used, tbx_stack_count(cp->stack));
             s = (cache_segment_t *)p->seg->priv;
             lp = (page_amp_t *)p->priv;
 
             cp->bytes_used -= s->page_size;
             if (lp->ele != NULL) {
                 tbx_stack_move_to_ptr(cp->stack, lp->ele);
-                tbx_delete_current(cp->stack, 0, 0);
+                tbx_stack_delete_current(cp->stack, 0, 0);
             } else {
                 cp->limbo_pages--;
                 log_printf(15, "seg=" XIDT " limbo page p->offset=" XOT " limbo=%d\n", segment_id(p->seg), p->offset, cp->limbo_pages);
@@ -661,7 +661,7 @@ void _amp_pages_destroy(cache_t *c, cache_page_t **page, int n_pages, int remove
 
             if (lp->ele != NULL) {
                 tbx_stack_move_to_ptr(cp->stack, lp->ele);
-                tbx_delete_current(cp->stack, 0, 0);
+                tbx_stack_delete_current(cp->stack, 0, 0);
             }
 
             if (remove_from_segment == 1) {
@@ -708,7 +708,7 @@ int _amp_page_access(cache_t *c, cache_page_t *p, int rw_mode, ex_off_t request_
             tbx_stack_move_to_ptr(cp->stack, lp->ele);
             tbx_stack_unlink_current(cp->stack, 1);
             tbx_stack_move_to_top(cp->stack);
-            tbx_stack_insert_link_above(cp->stack, lp->ele);
+            tbx_stack_link_insert_above(cp->stack, lp->ele);
         }
 
         if (rw_mode == CACHE_WRITE) {  //** Write update so return
@@ -777,12 +777,12 @@ int _amp_free_mem(cache_t *c, segment_t *pseg, ex_off_t bytes_to_free)
     total_bytes = 0;
     err = 0;
 
-    log_printf(_amp_logging, "START seg=" XIDT " bytes_to_free=" XOT " bytes_used=" XOT " stack_size=%d\n", segment_id(pseg), bytes_to_free, cp->bytes_used, tbx_stack_size(cp->stack));
+    log_printf(_amp_logging, "START seg=" XIDT " bytes_to_free=" XOT " bytes_used=" XOT " stack_size=%d\n", segment_id(pseg), bytes_to_free, cp->bytes_used, tbx_stack_count(cp->stack));
 
     tbx_stack_move_to_bottom(cp->stack);
-    ele = tbx_get_ptr(cp->stack);
+    ele = tbx_stack_get_current_ptr(cp->stack);
     while ((total_bytes < bytes_to_free) && (ele != NULL) && (err == 0)) {
-        p = (cache_page_t *)tbx_get_stack_ele_data(ele);
+        p = (cache_page_t *)tbx_stack_ele_get_data(ele);
         lp = (page_amp_t *)p->priv;
         if ((p->bit_fields & C_TORELEASE) == 0) { //** Skip it if already flagged for removal
             count = p->access_pending[CACHE_READ] + p->access_pending[CACHE_WRITE] + p->access_pending[CACHE_FLUSH];
@@ -792,7 +792,7 @@ int _amp_free_mem(cache_t *c, segment_t *pseg, ex_off_t bytes_to_free)
                     total_bytes += s->page_size;
                     log_printf(_amp_logging, "amp_free_mem: freeing page seg=" XIDT " p->offset=" XOT " bits=%d\n", segment_id(p->seg), p->offset, p->bit_fields);
                     tbx_list_remove(s->pages, &(p->offset), p);  //** Have to do this here cause p->offset is the key var
-                    tbx_delete_current(cp->stack, 1, 0);
+                    tbx_stack_delete_current(cp->stack, 1, 0);
                     if (p->data[0].ptr) free(p->data[0].ptr);
                     if (p->data[1].ptr) free(p->data[1].ptr);
                     free(lp);
@@ -806,7 +806,7 @@ int _amp_free_mem(cache_t *c, segment_t *pseg, ex_off_t bytes_to_free)
             tbx_stack_move_up(cp->stack);
         }
 
-        ele = tbx_get_ptr(cp->stack);
+        ele = tbx_stack_get_current_ptr(cp->stack);
     }
 
     cp->bytes_used -= total_bytes;
@@ -839,7 +839,7 @@ ex_off_t _amp_attempt_free_mem(cache_t *c, segment_t *page_seg, ex_off_t bytes_t
     page_table_t *ptable;
     tbx_pch_t pch, pt_pch;
 
-    log_printf(15, "START seg=" XIDT " bytes_to_free=" XOT " bytes_used=" XOT " stack_size=%d\n", segment_id(page_seg), bytes_to_free, cp->bytes_used, tbx_stack_size(cp->stack));
+    log_printf(15, "START seg=" XIDT " bytes_to_free=" XOT " bytes_used=" XOT " stack_size=%d\n", segment_id(page_seg), bytes_to_free, cp->bytes_used, tbx_stack_count(cp->stack));
 
     freed_bytes = 0;
     pending_bytes = 0;
@@ -852,14 +852,14 @@ ex_off_t _amp_attempt_free_mem(cache_t *c, segment_t *page_seg, ex_off_t bytes_t
 
     //** Get the list of pages to free
     tbx_stack_move_to_bottom(cp->stack);
-    ele = tbx_get_ptr(cp->stack);
+    ele = tbx_stack_get_current_ptr(cp->stack);
     while ((total_bytes < bytes_to_free) && (ele != NULL)) {
-        p = (cache_page_t *)tbx_get_stack_ele_data(ele);
+        p = (cache_page_t *)tbx_stack_ele_get_data(ele);
         lp = (page_amp_t *)p->priv;
         s = (cache_segment_t *)p->seg->priv;
 
         log_printf(15, "checking page for release seg=" XIDT " p->offset=" XOT " bits=%d\n", segment_id(p->seg), p->offset, p->bit_fields);
-        tbx_flush_log();
+        tbx_log_flush();
 
         if ((p->bit_fields & C_TORELEASE) == 0) { //** Skip it if already flagged for removal
             if ((lp->bit_fields & (CAMP_OLD|CAMP_ACCESSED)) > 0) {  //** Already used once or cycled so ok to evict
@@ -872,7 +872,7 @@ ex_off_t _amp_attempt_free_mem(cache_t *c, segment_t *page_seg, ex_off_t bytes_t
                         freed_bytes += s->page_size;
                         log_printf(_amp_logging, "freeing page seg=" XIDT " p->offset=" XOT " bits=%d\n", segment_id(p->seg), p->offset, p->bit_fields);
                         tbx_list_remove(s->pages, &(p->offset), p);  //** Have to do this here cause p->offset is the key var
-                        tbx_delete_current(cp->stack, 1, 0);
+                        tbx_stack_delete_current(cp->stack, 1, 0);
                         if (p->data[0].ptr) free(p->data[0].ptr);
                         if (p->data[1].ptr) free(p->data[1].ptr);
                         free(lp);
@@ -916,9 +916,9 @@ ex_off_t _amp_attempt_free_mem(cache_t *c, segment_t *page_seg, ex_off_t bytes_t
                 log_printf(_amp_logging, "seg=" XIDT " MRU retry offset=" XOT "\n", segment_id(p->seg), p->offset);
 
                 tbx_stack_unlink_current(cp->stack, 1);  //** and move it to the MRU slot.  This is ele
-                curr_ele = tbx_get_ptr(cp->stack);
+                curr_ele = tbx_stack_get_current_ptr(cp->stack);
                 tbx_stack_move_to_top(cp->stack);
-                tbx_stack_insert_link_above(cp->stack, lp->ele);
+                tbx_stack_link_insert_above(cp->stack, lp->ele);
                 tbx_stack_move_to_ptr(cp->stack, curr_ele);
 
                 //** Tweak the stream info
@@ -934,7 +934,7 @@ ex_off_t _amp_attempt_free_mem(cache_t *c, segment_t *page_seg, ex_off_t bytes_t
         }
 
         total_bytes = freed_bytes + pending_bytes;
-        if (total_bytes < bytes_to_free) ele = tbx_get_ptr(cp->stack);
+        if (total_bytes < bytes_to_free) ele = tbx_stack_get_current_ptr(cp->stack);
     }
 
 
@@ -1293,7 +1293,7 @@ int amp_cache_destroy(cache_t *c)
     cache_amp_t *cp = (cache_amp_t *)c->fn.priv;
 
     log_printf(15, "Shutting down\n");
-    tbx_flush_log();
+    tbx_log_flush();
 
     //** Shutdown the dirty thread
     cache_lock(c);
@@ -1304,29 +1304,29 @@ int amp_cache_destroy(cache_t *c)
     apr_thread_join(&value, cp->dirty_thread);  //** Wait for it to complete
 
     log_printf(15, "Dirty thread has completed\n");
-    tbx_flush_log();
+    tbx_log_flush();
 
     cache_base_destroy(c);
 
-    if (tbx_stack_size(cp->stack) > 0) {
-        log_printf(0, "cache_stack_size=%d\n", tbx_stack_size(cp->stack));
+    if (tbx_stack_count(cp->stack) > 0) {
+        log_printf(0, "cache_stack_size=%d\n", tbx_stack_count(cp->stack));
 
         tbx_stack_move_to_top(cp->stack);
         n = 0;
         tbx_stack_move_down(cp->stack);
-        while ((ele = tbx_get_ptr(cp->stack)) != NULL) {
+        while ((ele = tbx_stack_get_current_ptr(cp->stack)) != NULL) {
             n++;
-            p = (cache_page_t *)tbx_get_stack_ele_data(ele);
+            p = (cache_page_t *)tbx_stack_ele_get_data(ele);
             log_printf(0, "ERROR n=%d p->seg=" XIDT " offset=" XOT "\n", n, segment_id(p->seg), p->offset);
-            tbx_flush_log();
+            tbx_log_flush();
             tbx_stack_move_down(cp->stack);
         }
         log_printf(0, "-------------------\n");
     }
 
-    tbx_free_stack(cp->stack, 1);
-    tbx_free_stack(cp->waiting_stack, 0);
-    tbx_free_stack(cp->pending_free_tasks, 0);
+    tbx_stack_free(cp->stack, 1);
+    tbx_stack_free(cp->waiting_stack, 0);
+    tbx_stack_free(cp->pending_free_tasks, 0);
 
     tbx_pc_destroy(cp->free_pending_tables);
     tbx_pc_destroy(cp->free_page_tables);
@@ -1416,20 +1416,20 @@ cache_t *amp_cache_load(void *arg, tbx_inip_file_t *fd, char *grp, data_attr_t *
     global_cache = c;
 
     cache_lock(c);
-    cp->max_bytes = tbx_inip_integer_get(fd, grp, "max_bytes", cp->max_bytes);
-    cp->max_streams = tbx_inip_integer_get(fd, grp, "max_streams", cp->max_streams);
-    cp->dirty_fraction = tbx_inip_double_get(fd, grp, "dirty_fraction", cp->dirty_fraction);
+    cp->max_bytes = tbx_inip_get_integer(fd, grp, "max_bytes", cp->max_bytes);
+    cp->max_streams = tbx_inip_get_integer(fd, grp, "max_streams", cp->max_streams);
+    cp->dirty_fraction = tbx_inip_get_double(fd, grp, "dirty_fraction", cp->dirty_fraction);
     cp->dirty_bytes_trigger = cp->dirty_fraction * cp->max_bytes;
-    c->default_page_size = tbx_inip_integer_get(fd, grp, "default_page_size", c->default_page_size);
-    cp->async_prefetch_threshold = tbx_inip_integer_get(fd, grp, "async_prefetch_threshold", cp->async_prefetch_threshold);
-    cp->min_prefetch_size = tbx_inip_integer_get(fd, grp, "min_prefetch_bytes", cp->min_prefetch_size);
-    dt = tbx_inip_integer_get(fd, grp, "dirty_max_wait", apr_time_sec(cp->dirty_max_wait));
+    c->default_page_size = tbx_inip_get_integer(fd, grp, "default_page_size", c->default_page_size);
+    cp->async_prefetch_threshold = tbx_inip_get_integer(fd, grp, "async_prefetch_threshold", cp->async_prefetch_threshold);
+    cp->min_prefetch_size = tbx_inip_get_integer(fd, grp, "min_prefetch_bytes", cp->min_prefetch_size);
+    dt = tbx_inip_get_integer(fd, grp, "dirty_max_wait", apr_time_sec(cp->dirty_max_wait));
     cp->dirty_max_wait = apr_time_make(dt, 0);
-    c->max_fetch_fraction = tbx_inip_double_get(fd, grp, "max_fetch_fraction", c->max_fetch_fraction);
+    c->max_fetch_fraction = tbx_inip_get_double(fd, grp, "max_fetch_fraction", c->max_fetch_fraction);
     c->max_fetch_size = c->max_fetch_fraction * cp->max_bytes;
-    c->write_temp_overflow_fraction = tbx_inip_double_get(fd, grp, "write_temp_overflow_fraction", c->write_temp_overflow_fraction);
+    c->write_temp_overflow_fraction = tbx_inip_get_double(fd, grp, "write_temp_overflow_fraction", c->write_temp_overflow_fraction);
     c->write_temp_overflow_size = c->write_temp_overflow_fraction * cp->max_bytes;
-    c->n_ppages = tbx_inip_integer_get(fd, grp, "ppages", c->n_ppages);
+    c->n_ppages = tbx_inip_get_integer(fd, grp, "ppages", c->n_ppages);
 
     cache_unlock(c);
 

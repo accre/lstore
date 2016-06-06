@@ -127,18 +127,18 @@ int main(int argc, char **argv)
                 printf("    %d: %d .. %d\n", j, d->lo, d->hi);
             }
             fflush(stdout);
-            tbx_flush_log();
+            tbx_log_flush();
         }
 
         printf("----manual matches=%d\n", k);
         fflush(stdout);
-        tbx_flush_log();
+        tbx_log_flush();
 
         it = tbx_isl_iter_search(isl, (tbx_sl_key_t *)&lo, (tbx_sl_key_t *)&hi);
-//    printf("    after iter creation\n"); fflush(stdout); tbx_flush_log();
+//    printf("    after iter creation\n"); fflush(stdout); tbx_log_flush();
         n = 0;
         d = tbx_isl_next(&it);
-//    printf("    after initial next\n"); fflush(stdout); tbx_flush_log();
+//    printf("    after initial next\n"); fflush(stdout); tbx_log_flush();
         while (d != NULL) {
             n++;
             printf("    %d: %d .. %d\n", d->index, d->lo, d->hi);
@@ -150,7 +150,7 @@ int main(int argc, char **argv)
                 printf("----------Error!  Found incorrect match!\n");
             }
             fflush(stdout);
-            tbx_flush_log();
+            tbx_log_flush();
 
             d = tbx_isl_next(&it);
         }
@@ -158,7 +158,7 @@ int main(int argc, char **argv)
 
         printf("----iter matches=%d\n", n);
         fflush(stdout);
-        tbx_flush_log();
+        tbx_log_flush();
 
         if (n != k) {
             printf("----------Error mismatch match count k=%d n=%d\n", k, n);
@@ -178,7 +178,7 @@ int main(int argc, char **argv)
 
     tbx_isl_del(isl);
     fflush(stdout);
-    tbx_flush_log();
+    tbx_log_flush();
 
     free(data_list);
 

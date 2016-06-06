@@ -312,7 +312,7 @@ exnode_exchange_t *exnode_exchange_create(int type)
 
 ex_id_t exnode_exchange_get_default_view_id(exnode_exchange_t *exp)
 {
-    return(tbx_inip_integer_get(exp->text.fd, "view", "default", 0));
+    return(tbx_inip_get_integer(exp->text.fd, "view", "default", 0));
 }
 
 //*************************************************************************
@@ -414,8 +414,8 @@ int exnode_deserialize_text(exnode_t *ex, exnode_exchange_t *exp, service_manage
     //** Load the header
     g = tbx_inip_group_find(fd, exgrp);
     if (g != NULL) {
-        ex->header.name =  tbx_inip_string_get(fd, exgrp, "name", "");
-        ex->header.id = tbx_inip_integer_get(fd, exgrp, "id", 0);
+        ex->header.name =  tbx_inip_get_string(fd, exgrp, "name", "");
+        ex->header.id = tbx_inip_get_integer(fd, exgrp, "id", 0);
     }
 
     //** and the views
@@ -427,11 +427,11 @@ int exnode_deserialize_text(exnode_t *ex, exnode_exchange_t *exp, service_manage
 
     ele = tbx_inip_ele_first(g);
     while (ele != NULL) {
-        key = tbx_inip_ele_key_get(ele);
+        key = tbx_inip_ele_get_key(ele);
         if (strcmp(key, "segment") == 0) {
 
             //** Parse the segment line
-            value = tbx_inip_ele_value_get(ele);
+            value = tbx_inip_ele_get_value(ele);
             token = strdup(value);
             id = 0;
             sscanf(tbx_stk_string_token(token, ":", &bstate, &fin), XIDT, &id);
@@ -453,7 +453,7 @@ int exnode_deserialize_text(exnode_t *ex, exnode_exchange_t *exp, service_manage
     }
 
     //** Now get the default segment to use
-    id = tbx_inip_integer_get(fd, "view", "default", 0);
+    id = tbx_inip_get_integer(fd, "view", "default", 0);
     if (id == 0) {   //** No default so use the last one loaded
         ex->default_seg = seg;
     } else {

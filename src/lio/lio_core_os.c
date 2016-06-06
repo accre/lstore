@@ -300,7 +300,7 @@ op_status_t lio_create_object_fn(void *arg, int id)
     v_size[6] = 1;
 
     log_printf(15, "NEW ino=%s exnode=%s\n", val[4], val[ex_key]);
-    tbx_flush_log();
+    tbx_log_flush();
 
     err = gop_sync_exec(os_set_multiple_attrs(op->lc->os, op->creds, fd, _lio_create_keys, (void **)val, v_size, (op->type & OS_OBJECT_FILE) ? _n_lio_file_keys : _n_lio_dir_keys));
     if (err != OP_STATE_SUCCESS) {
@@ -1173,7 +1173,7 @@ int lio_stat(lio_config_t *lc, creds_t *creds, char *fname, struct stat *stat, c
     int v_size[_lio_stat_key_size], i, err;
 
     log_printf(1, "fname=%s\n", fname);
-    tbx_flush_log();
+    tbx_log_flush();
 
     for (i=0; i<_lio_stat_key_size; i++) v_size[i] = -lc->max_attr;
     err = lio_get_multiple_attrs(lc, creds, fname, NULL, _lio_stat_keys, (void **)val, v_size, _lio_stat_key_size);
@@ -1184,7 +1184,7 @@ int lio_stat(lio_config_t *lc, creds_t *creds, char *fname, struct stat *stat, c
     _lio_parse_stat_vals(fname, stat, val, v_size, mount_prefix, readlink);
 
     log_printf(1, "END fname=%s err=%d\n", fname, err);
-    tbx_flush_log();
+    tbx_log_flush();
 
     return(0);
 
@@ -1401,7 +1401,7 @@ op_status_t lio_fsck_object_fn(void *arg, int id)
     char *val[_n_fsck_keys];
     int v_size[_n_fsck_keys];
     log_printf(15, "fname=%s START\n", op->path);
-    tbx_flush_log();
+    tbx_log_flush();
 
     if (op->ftype <= 0) { //** Bad Ftype so see if we can figure it out
         op->ftype = lio_exists(op->lc, op->creds, op->path);
@@ -1415,7 +1415,7 @@ op_status_t lio_fsck_object_fn(void *arg, int id)
 
     if (op->full == 0) {
         log_printf(15, "fname=%s getting attrs\n", op->path);
-        tbx_flush_log();
+        tbx_log_flush();
         for (i=0; i<_n_fsck_keys; i++) {
             val[i] = NULL;
             v_size[i] = -op->lc->max_attr;
@@ -1442,7 +1442,7 @@ op_generic_t *lio_fsck_object(lio_config_t *lc, creds_t *creds, char *fname, int
     lio_fsck_check_t *op;
 
     log_printf(15, "fname=%s START\n", fname);
-    tbx_flush_log();
+    tbx_log_flush();
 
     tbx_type_malloc_clear(op, lio_fsck_check_t, 1);
 

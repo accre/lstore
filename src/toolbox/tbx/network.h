@@ -40,62 +40,36 @@ typedef struct tbx_ns_t tbx_ns_t;
 typedef apr_time_t tbx_ns_timeout_t;
 
 // Functions
-TBX_API void tbx_ns_close(tbx_ns_t *ns);
-
-TBX_API void tbx_ns_destroy(tbx_ns_t *ns);
-
-TBX_API int tbx_ns_connect(tbx_ns_t *ns, const char *hostname, int port, tbx_ns_timeout_t timeout);
-
-TBX_API int tbx_network_counter(tbx_network_t *net);
-
-TBX_API tbx_ns_t *tbx_ns_new();
-
-TBX_API int tbx_ns_chksum_is_valid(tbx_ns_chksum_t *ncs);
-
-TBX_API int tbx_ns_chksum_reset(tbx_ns_chksum_t *ncs);
-
-TBX_API int tbx_ns_chksum_set(tbx_ns_chksum_t *ncs, tbx_chksum_t *cks, size_t blocksize);
-
-TBX_API int tbx_ns_generate_id();
-
-TBX_API int tbx_ns_getid(tbx_ns_t *ns);
-
-TBX_API int tbx_ns_chksum_read_flush(tbx_ns_t *ns);
-
 TBX_API void  tbx_ns_setid(tbx_ns_t *ns, int id);
-
+TBX_API int tbx_network_counter(tbx_network_t *net);
+TBX_API int tbx_ns_chksum_is_valid(tbx_ns_chksum_t *ncs);
 TBX_API void tbx_ns_chksum_read_clear(tbx_ns_t *ns);
-
 TBX_API void tbx_ns_chksum_read_disable(tbx_ns_t *ns);
-
 TBX_API void tbx_ns_chksum_read_enable(tbx_ns_t *ns);
-
+TBX_API int tbx_ns_chksum_read_flush(tbx_ns_t *ns);
 TBX_API void tbx_ns_chksum_read_set(tbx_ns_t *ns, tbx_ns_chksum_t ncs);
-
-TBX_API int tbx_ns_chksum_write_flush(tbx_ns_t *ns);
-
+TBX_API int tbx_ns_chksum_reset(tbx_ns_chksum_t *ncs);
+TBX_API int tbx_ns_chksum_set(tbx_ns_chksum_t *ncs, tbx_chksum_t *cks, size_t blocksize);
 TBX_API void tbx_ns_chksum_write_clear(tbx_ns_t *ns);
-
 TBX_API void tbx_ns_chksum_write_disable(tbx_ns_t *ns);
-
 TBX_API void tbx_ns_chksum_write_enable(tbx_ns_t *ns);
-
+TBX_API int tbx_ns_chksum_write_flush(tbx_ns_t *ns);
 TBX_API void tbx_ns_chksum_write_set(tbx_ns_t *ns, tbx_ns_chksum_t ncs);
-
+TBX_API void tbx_ns_close(tbx_ns_t *ns);
+TBX_API int tbx_ns_connect(tbx_ns_t *ns, const char *hostname, int port, tbx_ns_timeout_t timeout);
+TBX_API void tbx_ns_destroy(tbx_ns_t *ns);
+TBX_API int tbx_ns_generate_id();
+TBX_API int tbx_ns_getid(tbx_ns_t *ns);
+TBX_API tbx_ns_t *tbx_ns_new();
 TBX_API int tbx_ns_read(tbx_ns_t *ns, tbx_tbuf_t *buffer, int boff, int size, tbx_ns_timeout_t timeout);
-
 TBX_API int tbx_ns_readline_raw(tbx_ns_t *ns, tbx_tbuf_t *buffer, int boff, int size, tbx_ns_timeout_t timeout, int *status);
-
 TBX_API tbx_ns_timeout_t *tbx_ns_timeout_set(tbx_ns_timeout_t *tm, int sec, int us);
-
 TBX_API int tbx_ns_write(tbx_ns_t *ns, tbx_tbuf_t *buffer, int boff, int bsize, tbx_ns_timeout_t timeout);
 
 // Stubs for unused code
 // FIXME: Delete these
 TBX_API void tbx_ns_config_1_ssl(tbx_ns_t *ns, int fd, int tcpsize);
 TBX_API void tbx_ns_config_2_ssl(tbx_ns_t *ns, int tcpsize);
-
-
 
 // Precompiler macros
 #define tbx_ns_chksum_type(ncs) (ncs)->chksum.type
@@ -111,8 +85,6 @@ TBX_API void tbx_ns_config_2_ssl(tbx_ns_t *ns, int tcpsize);
 #define NS_TYPE_2_SSL    4      //** Dual SSL connection -- Allows use of separate R/W locks over SSL much faster than prev
 #define NS_TYPE_ZSOCK	 5	//** ZMQ implementation
 #define NS_TYPE_MAX      6      //** Not an actual type just the number of different types
-
-
 
 // TEMPORARY
 #if !defined toolbox_EXPORTS && defined LSTORE_HACK_EXPORT

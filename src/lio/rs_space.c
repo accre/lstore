@@ -52,8 +52,8 @@ rs_space_t rs_space(char *config)
             ele = tbx_inip_ele_first(grp);
             status = nfree = nused = ntotal = 0;
             while (ele != NULL) {
-                key = tbx_inip_ele_key_get(ele);
-                value = tbx_inip_ele_value_get(ele);
+                key = tbx_inip_ele_get_key(ele);
+                value = tbx_inip_ele_get_value(ele);
                 if (strcmp(key, "space_free") == 0) {  //** Space free
                     nfree = tbx_stk_string_get_integer(value);
                     if (nfree > 0) space.n_rids_free++;

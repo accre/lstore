@@ -40,6 +40,13 @@ typedef struct tbx_sl_iter_t tbx_sl_iter_t;
 
 typedef struct tbx_sl_node_t tbx_sl_node_t;
 
+typedef tbx_sl_key_t *(*tbx_sl_dup_fn_t)(tbx_sl_key_t *a);
+
+typedef void (*tbx_sl_key_free_fn_t)(tbx_sl_key_t *a);
+
+typedef void (*tbx_sl_data_free_fn_t)(tbx_sl_data_t *a);
+
+
 TBX_TYPE(tbx_sl_t, tbx_sl);
 TBX_API tbx_sl_t *tbx_sl_create_full(int maxlevels, double p, int allow_dups,
                                         tbx_sl_compare_t *compare,
@@ -48,44 +55,37 @@ TBX_API tbx_sl_t *tbx_sl_create_full(int maxlevels, double p, int allow_dups,
                                         void (*data_free)(tbx_sl_data_t *a));
 TBX_TYPE_NEW(tbx_sl_t, tbx_sl_new_full, int maxlevels, double p, int allow_dups,
                         tbx_sl_compare_t *compare,
-                        tbx_sl_key_t *(*dup)(tbx_sl_key_t *a),
-                        void (*key_free)(tbx_sl_key_t *a),
-                        void (*data_free)(tbx_sl_data_t *a));
+                        tbx_sl_dup_fn_t dup,
+                        tbx_sl_key_free_fn_t key_free,
+                        tbx_sl_data_free_fn_t data_free);
+                        
 TBX_TYPE_INIT(tbx_sl_t, tbx_sl_init_full, tbx_sl_t * self,
                         int maxlevels, double p, int allow_dups,
                         tbx_sl_compare_t *compare,
-                        tbx_sl_key_t *(*dup)(tbx_sl_key_t *a),
-                        void (*key_free)(tbx_sl_key_t *a),
-                        void (*data_free)(tbx_sl_data_t *a));
+                        tbx_sl_dup_fn_t dup,
+                        tbx_sl_key_free_fn_t key_free,
+                        tbx_sl_data_free_fn_t data_free);
 
 // Functions
+TBX_API tbx_sl_key_t *tbx_sl_dup_string(tbx_sl_key_t *key);
 TBX_API void tbx_sl_empty(tbx_sl_t *sl);
-
-TBX_API int tbx_sl_insert(tbx_sl_t *sl, tbx_sl_key_t *key, tbx_sl_data_t *data);
-
-TBX_API tbx_sl_iter_t tbx_sl_iter_search_compare(tbx_sl_t *sl, tbx_sl_key_t *key, tbx_sl_compare_t *compare, int round_mode);
-
-TBX_API int tbx_sl_next(tbx_sl_iter_t *it, tbx_sl_key_t **nkey, tbx_sl_data_t **ndata);
-
-TBX_API int tbx_sl_remove(tbx_sl_t *sl, tbx_sl_key_t *key, tbx_sl_data_t *data);
-
-TBX_API tbx_sl_data_t *tbx_sl_search_compare(tbx_sl_t *sl, tbx_sl_key_t *key, tbx_sl_compare_t *compare);
-
 TBX_API tbx_sl_key_t *tbx_sl_first_key(tbx_sl_t *sl);
-
+TBX_API void tbx_sl_free_no_data(tbx_sl_data_t *data);
+TBX_API void tbx_sl_free_no_key(tbx_sl_key_t *key);
+TBX_API void tbx_sl_free_simple(tbx_sl_data_t *data);
+TBX_API int tbx_sl_insert(tbx_sl_t *sl, tbx_sl_key_t *key, tbx_sl_data_t *data);
+TBX_API tbx_sl_iter_t tbx_sl_iter_search_compare(tbx_sl_t *sl,
+                                                 tbx_sl_key_t *key,
+                                                 tbx_sl_compare_t *compare,
+                                                 int round_mode);
 TBX_API int tbx_sl_key_count(tbx_sl_t *sl);
-
-TBX_API tbx_sl_key_t *tbx_sl_last_key(tbx_sl_t *sl);
-
-TBX_API void tbx_sl_strncmp_set(tbx_sl_compare_t *compare, int n);
-
-TBX_API void tbx_sl_no_data_free(tbx_sl_data_t *data);
-
-TBX_API void tbx_sl_no_key_free(tbx_sl_key_t *key);
-
-TBX_API void tbx_sl_simple_free(tbx_sl_data_t *data);
-
-TBX_API tbx_sl_key_t *tbx_sl_string_dup(tbx_sl_key_t *key);
+TBX_API tbx_sl_key_t *tbx_sl_key_last(tbx_sl_t *sl);
+TBX_API int tbx_sl_next(tbx_sl_iter_t *it, tbx_sl_key_t **nkey,
+                        tbx_sl_data_t **ndata);
+TBX_API int tbx_sl_remove(tbx_sl_t *sl, tbx_sl_key_t *key, tbx_sl_data_t *data);
+TBX_API tbx_sl_data_t *tbx_sl_search_compare(tbx_sl_t *sl, tbx_sl_key_t *key,
+                                                tbx_sl_compare_t *compare);
+TBX_API void tbx_sl_set_strncmp(tbx_sl_compare_t *compare, int n);
 
 TBX_API extern tbx_sl_compare_t tbx_sl_compare_int;
 

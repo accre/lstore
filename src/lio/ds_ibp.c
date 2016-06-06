@@ -542,7 +542,7 @@ void _ds_ibp_op_free(op_generic_t *gop, int mode)
     ds_ibp_op_t *iop = gop->free_ptr;
 
 //log_printf(0, "Freeing gid=%d\n", gop_id(gop));
-//tbx_flush_log();
+//tbx_log_flush();
 
     //** Call the original cleanup routine
     gop->free_ptr = iop->free_ptr;
@@ -951,21 +951,21 @@ data_service_fn_t *ds_ibp_create(void *arg, tbx_inip_file_t *ifd, char *section)
 
     //** Set the default attributes
     memset(&(ds->attr_default), 0, sizeof(ds_ibp_attr_t));
-    ds->attr_default.attr.duration = tbx_inip_integer_get(ifd, section, "duration", 3600);
+    ds->attr_default.attr.duration = tbx_inip_get_integer(ifd, section, "duration", 3600);
 
     ds->warm_duration = ds->attr_default.attr.duration;
     ds->warm_interval = 0.33 * ds->warm_duration;
-    ds->warm_interval = tbx_inip_integer_get(ifd, section, "warm_interval", ds->warm_interval);
-    ds->warm_duration = tbx_inip_integer_get(ifd, section, "warm_duration", ds->warm_duration);
+    ds->warm_interval = tbx_inip_get_integer(ifd, section, "warm_interval", ds->warm_interval);
+    ds->warm_duration = tbx_inip_get_integer(ifd, section, "warm_duration", ds->warm_duration);
 
-    cs_type = tbx_inip_integer_get(ifd, section, "chksum_type", CHKSUM_DEFAULT);
+    cs_type = tbx_inip_get_integer(ifd, section, "chksum_type", CHKSUM_DEFAULT);
     if ( ! ((tbx_chksum_type_valid(cs_type) == 0) || (cs_type == CHKSUM_DEFAULT) || (cs_type == CHKSUM_NONE)))  {
         log_printf(0, "Invalid chksum type=%d resetting to CHKSUM_DEFAULT(%d)\n", cs_type, CHKSUM_DEFAULT);
         cs_type = CHKSUM_DEFAULT;
     }
     ds->attr_default.disk_cs_type = cs_type;
 
-    ds->attr_default.disk_cs_blocksize = tbx_inip_integer_get(ifd, section, "chksum_blocksize", 64*1024);
+    ds->attr_default.disk_cs_blocksize = tbx_inip_get_integer(ifd, section, "chksum_blocksize", 64*1024);
     if (ds->attr_default.disk_cs_blocksize <= 0) {
         log_printf(0, "Invalid chksum blocksize=%d resetting to %d\n", ds->attr_default.disk_cs_blocksize, 64*1024);
         ds->attr_default.disk_cs_blocksize = 64 *1024;

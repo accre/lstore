@@ -157,7 +157,7 @@ void process_pool(pool_entry_t *pe, tbx_stack_t *parent_rid_stack)
 
     //** Recursively handle all the groups
     tbx_stack_move_to_top(pe->groups);
-    while ((p = tbx_get_ele_data(pe->groups)) != NULL) {
+    while ((p = tbx_stack_get_current_data(pe->groups)) != NULL) {
         log_printf(5, " p->name=%s\n", p->name);
         process_pool(p, pe->rids);
         tbx_stack_move_down(pe->groups);
@@ -170,7 +170,7 @@ void process_pool(pool_entry_t *pe, tbx_stack_t *parent_rid_stack)
         //** Need to get the total size to calculate the fraction taget
         total_used = total_bytes = 0;
         tbx_stack_move_to_top(pe->rids);
-        while ((re = tbx_get_ele_data(pe->rids)) != NULL) {
+        while ((re = tbx_stack_get_current_data(pe->rids)) != NULL) {
             total_used += re->used;
             total_bytes += re->total;
             log_printf(5, "AUTO RID=%s used=" XOT " total=" XOT "\n", re->ri.rid->rid_key, re->used, re->total);
@@ -182,7 +182,7 @@ void process_pool(pool_entry_t *pe, tbx_stack_t *parent_rid_stack)
         //** Make the tweaks
         dsum = 0;
         tbx_stack_move_to_top(pe->rids);
-        while ((re = tbx_get_ele_data(pe->rids)) != NULL) {
+        while ((re = tbx_stack_get_current_data(pe->rids)) != NULL) {
             re->ri.rid->delta = avg * re->total - re->used;
             re->ri.rid->tolerance = 0.05*re->total;
             re->ri.rid->tolerance = (pe->tolerance_mode == DELTA_MODE_ABS) ? fabs(pe->tolerance) : percent * re->total;
@@ -201,7 +201,7 @@ void process_pool(pool_entry_t *pe, tbx_stack_t *parent_rid_stack)
     case (DELTA_MODE_ABS) :
         //** Make the tweaks
         tbx_stack_move_to_top(pe->rids);
-        while ((re = tbx_get_ele_data(pe->rids)) != NULL) {
+        while ((re = tbx_stack_get_current_data(pe->rids)) != NULL) {
             re->ri.rid->delta = (pe->delta_mode == DELTA_MODE_PERCENT) ? pe->delta/100.0 * re->total : pe->delta;
             re->ri.rid->tolerance = (pe->tolerance_mode == DELTA_MODE_PERCENT) ? fabs(pe->tolerance)/100.0 * re->total : fabs(pe->tolerance);
             d1 = re->ri.rid->delta;
@@ -224,7 +224,7 @@ void process_pool(pool_entry_t *pe, tbx_stack_t *parent_rid_stack)
     int cnt = 0;
     log_printf(0, "parent_rid_stack=%p pe->rids=%p\n", parent_rid_stack, pe->rids);
     while ((re = tbx_stack_pop(pe->rids)) != NULL) {
-        log_printf(0, "count=%d stack_size=%d\n", cnt, tbx_stack_size(pe->rids));
+        log_printf(0, "count=%d stack_size=%d\n", cnt, tbx_stack_count(pe->rids));
         cnt++;
         log_printf(5, "re->ri.rid->rid_key=%s re=%p\n", re->ri.rid->rid_key, re);
         tbx_stack_push(parent_rid_stack, re);
@@ -259,8 +259,8 @@ apr_hash_t *prep_rid_table(tbx_inip_file_t *fd, apr_pool_t *mpool)
             //** Now cycle through the attributes
             ele = tbx_inip_ele_first(ig);
             while (ele != NULL) {
-                key = tbx_inip_ele_key_get(ele);
-                value = tbx_inip_ele_value_get(ele);
+                key = tbx_inip_ele_get_key(ele);
+                value = tbx_inip_ele_get_value(ele);
                 if (strcmp(key, "rid_key") == 0) {  //** This is the RID so store it separate
                     re->ri.rid->rid_key = strdup(value);
                 } else if (strcmp(key, "ds_key") == 0) {  //** This is the RID so store it separate
@@ -307,8 +307,8 @@ void add_wildcard(pool_entry_t *p, apr_hash_t *rid_table, char *mkey, char *mval
         match = 0;
         if (mkey != NULL) {
             for (ele=tbx_inip_ele_first(re->ig); ele != NULL; ele = tbx_inip_ele_next(ele)) {
-                key = tbx_inip_ele_key_get(ele);
-                value = tbx_inip_ele_value_get(ele);
+                key = tbx_inip_ele_get_key(ele);
+                value = tbx_inip_ele_get_value(ele);
 
                 if ((strcmp(key, mkey) == 0) && (strcmp(value, mvalue) == 0)) {
                     match = 1;
@@ -349,8 +349,8 @@ pool_entry_t *load_pool(tbx_stack_t *pools, char *name, tbx_inip_file_t *pfd, tb
     //** Now cycle through the attributes
     ele = tbx_inip_ele_first(pg);
     while (ele != NULL) {
-        key = tbx_inip_ele_key_get(ele);
-        value = tbx_inip_ele_value_get(ele);
+        key = tbx_inip_ele_get_key(ele);
+        value = tbx_inip_ele_get_value(ele);
         if (strcmp(key, "_delta") == 0) {  //** Delta value
             if (strcmp(value, "auto") == 0) {
                 p->delta_mode = DELTA_MODE_AUTO;
@@ -455,7 +455,7 @@ apr_hash_t *load_pool_config(char *fname, apr_pool_t *mpool, tbx_stack_t *my_poo
 
     //** Now make the final pass since the "unspecified" has been resolved.
     tbx_stack_move_to_top(pool_list);
-    while ((pe = tbx_get_ele_data(pool_list)) != NULL) {
+    while ((pe = tbx_stack_get_current_data(pool_list)) != NULL) {
         process_pool(pe, NULL);
 
         pe->pick_from = apr_hash_make(mpool);
@@ -470,7 +470,7 @@ apr_hash_t *load_pool_config(char *fname, apr_pool_t *mpool, tbx_stack_t *my_poo
         tbx_stack_move_down(pool_list);
     }
 
-    if (my_pool_list == NULL) tbx_free_stack(pool_list, 1);
+    if (my_pool_list == NULL) tbx_stack_free(pool_list, 1);
 
     free(rid_config);
     tbx_inip_destroy(rfd);
@@ -537,7 +537,7 @@ apr_hash_t *rebalance_pool(apr_pool_t *mpool, tbx_stack_t *my_pool_list, char *k
             key = tbx_inip_group_get(ig);
             log_printf(5, "key=%s\n", key);
             if (strcmp("rid", key) == 0) {  //** Found a RID so check it for the key
-                value = tbx_inip_key_find(ig, key_rebalance);  //** Get the value
+                value = tbx_inip_find_key(ig, key_rebalance);  //** Get the value
                 log_printf(5, "%s=%s\n", key_rebalance, value);
                 if (value != NULL) { //** If it exists
                     pe = tbx_list_search(master, value); //** Check if we already have a pool with the value
@@ -567,7 +567,7 @@ apr_hash_t *rebalance_pool(apr_pool_t *mpool, tbx_stack_t *my_pool_list, char *k
 
     //** Now make the final pass since the "unspecified" has been resolved.
     tbx_stack_move_to_top(pool_list);
-    while ((pe = tbx_get_ele_data(pool_list)) != NULL) {
+    while ((pe = tbx_stack_get_current_data(pool_list)) != NULL) {
         process_pool(pe, NULL);
 
         pe->pick_from = apr_hash_make(mpool);
@@ -582,7 +582,7 @@ apr_hash_t *rebalance_pool(apr_pool_t *mpool, tbx_stack_t *my_pool_list, char *k
         tbx_stack_move_down(pool_list);
     }
 
-    if (my_pool_list == NULL) tbx_free_stack(pool_list, 1);
+    if (my_pool_list == NULL) tbx_stack_free(pool_list, 1);
 
     free(rid_config);
     tbx_inip_destroy(rfd);
@@ -612,7 +612,7 @@ void dump_pools(tbx_log_fd_t *ifd, tbx_stack_t *pools, int scale)
     tbx_stack_move_to_top(pools);
     tneg = tpos = 0;
     total_ntodo = total_ptodo = total_todo = total_finished = 0;
-    while ((pe = tbx_get_ele_data(pools)) != NULL) {
+    while ((pe = tbx_stack_get_current_data(pools)) != NULL) {
 
         //** Make the sorted list by DS-key
         master = tbx_list_create(0, &tbx_list_string_compare, tbx_list_string_dup, tbx_list_simple_free, tbx_list_no_data_free);
@@ -686,7 +686,7 @@ void check_pools(tbx_stack_t *pools, apr_thread_mutex_t *lock, int todo_mode, in
     if (lock) apr_thread_mutex_lock(lock);
     tbx_stack_move_to_top(pools);
     *finished = *todo = ntodo = ptodo = 0;
-    while ((pe = tbx_get_ele_data(pools)) != NULL) {
+    while ((pe = tbx_stack_get_current_data(pools)) != NULL) {
         for (hi = apr_hash_first(NULL, pe->pick_from); hi != NULL; hi = apr_hash_next(hi)) {
             apr_hash_this(hi, NULL, NULL, (void **)&rid);
             if (rid->state == 0) {
@@ -754,7 +754,7 @@ op_status_t inspect_task(void *arg, int id)
 
     //** Kind of kludgy to load the ex twice but this is more of a prototype fn
     ifd = tbx_inip_string_read(w->exnode);
-    dsegid = tbx_inip_string_get(ifd, "view", "default", NULL);
+    dsegid = tbx_inip_get_string(ifd, "view", "default", NULL);
     tbx_inip_destroy(ifd);
     if (dsegid == NULL) {
         info_printf(lio_ifd, 0, "ERROR  Failed with file %s (ftype=%d). No default segment!\n", w->fname, w->ftype);
@@ -765,10 +765,10 @@ op_status_t inspect_task(void *arg, int id)
 
     apr_thread_mutex_lock(lock);
     log_printf(15, "checking fname=%s segid=%s\n", w->fname, dsegid);
-    tbx_flush_log();
+    tbx_log_flush();
     ptr = tbx_list_search(seg_index, dsegid);
     log_printf(15, "checking fname=%s segid=%s got=%s\n", w->fname, dsegid, ptr);
-    tbx_flush_log();
+    tbx_log_flush();
     if (ptr != NULL) {
         apr_thread_mutex_unlock(lock);
         info_printf(lio_ifd, 0, "Skipping file %s (ftype=%d). Already loaded/processed.\n", w->fname, w->ftype);
@@ -821,9 +821,9 @@ op_status_t inspect_task(void *arg, int id)
 
     log_printf(15, "fname=%s inspect_gid=%d whattodo=%d bufsize=" XOT "\n", w->fname, gop_id(gop), whattodo, bufsize);
 
-    tbx_flush_log();
+    tbx_log_flush();
     gop_waitall(gop);
-    tbx_flush_log();
+    tbx_log_flush();
     status = gop_get_status(gop);
     log_printf(15, "fname=%s inspect_gid=%d status=%d %d\n", w->fname, gop_id(gop), status.op_status, status.error_code);
 

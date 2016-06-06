@@ -212,7 +212,7 @@ op_generic_t *rs_simple_request(resource_service_fn_t *arg, data_attr_t *da, rs_
     rs_query_count(arg, rsq, &i, &(kvq_global.n_unique), &(kvq_global.n_pickone));
 
     log_printf(15, "rs_simple_request: n_unique=%d n_pickone=%d\n", kvq_global.n_unique, kvq_global.n_pickone);
-    tbx_flush_log();
+    tbx_log_flush();
 
     //** Make space the for the uniq and pickone fields.
     //** Make sure we have space for at least 1 more than we need of each to pass to the routines even though they aren't used
@@ -246,7 +246,7 @@ op_generic_t *rs_simple_request(resource_service_fn_t *arg, data_attr_t *da, rs_
         found = 0;
         loop_end = 1;
         query_local = NULL;
-        rnd_off = tbx_random_int64(0, rss->n_rids-1);
+        rnd_off = tbx_random_get_int64(0, rss->n_rids-1);
 //rnd_off = 0;  //FIXME
 
         if (hints_list != NULL) {
@@ -317,7 +317,7 @@ op_generic_t *rs_simple_request(resource_service_fn_t *arg, data_attr_t *da, rs_
                     case RSQ_BASE_OP_KV:
                         state = rss_test(q, rse, i, kvq->unique[i_unique], &(kvq->pickone[i_pickone]));
                         log_printf(0, "KV: key=%s val=%s i_unique=%d i_pickone=%d loop=%d rss_test=%d rse->rid_key=%s\n", q->key, q->val, i_unique, i_pickone, loop, state, rse->rid_key);
-                        tbx_flush_log();
+                        tbx_log_flush();
                         if ((q->key_op & RSQ_BASE_KV_UNIQUE) || (q->val_op & RSQ_BASE_KV_UNIQUE)) i_unique++;
                         if ((q->key_op & RSQ_BASE_KV_PICKONE) || (q->val_op & RSQ_BASE_KV_PICKONE)) i_pickone++;
                         break;
@@ -348,8 +348,8 @@ op_generic_t *rs_simple_request(resource_service_fn_t *arg, data_attr_t *da, rs_
                     tbx_type_malloc(op_state, int, 1);
                     *op_state = state;
                     tbx_stack_push(stack, (void *)op_state);
-                    log_printf(15, " stack_size=%d loop=%d push state=%d\n",tbx_stack_size(stack), loop, state);
-                    tbx_flush_log();
+                    log_printf(15, " stack_size=%d loop=%d push state=%d\n",tbx_stack_count(stack), loop, state);
+                    tbx_log_flush();
                     q = q->next;
                 }
 
@@ -423,7 +423,7 @@ op_generic_t *rs_simple_request(resource_service_fn_t *arg, data_attr_t *da, rs_
     free(kvq_local.unique);
     free(kvq_local.pickone);
 
-    tbx_free_stack(stack, 1);
+    tbx_stack_free(stack, 1);
 
     log_printf(15, "rs_simple_request: END n_rid=%d\n", n_rid);
 
@@ -480,7 +480,7 @@ void rs_simple_rid_free(tbx_list_data_t *arg)
     rss_rid_entry_t *rse = (rss_rid_entry_t *)arg;
 
     log_printf(15, "START\n");
-    tbx_flush_log();
+    tbx_log_flush();
 
     if (rse == NULL) return;
 
@@ -513,8 +513,8 @@ rss_rid_entry_t *rss_load_entry(tbx_inip_group_t *grp)
     //** Now cycle through the attributes
     ele = tbx_inip_ele_first(grp);
     while (ele != NULL) {
-        key = tbx_inip_ele_key_get(ele);
-        value = tbx_inip_ele_value_get(ele);
+        key = tbx_inip_ele_get_key(ele);
+        value = tbx_inip_ele_get_value(ele);
         if (strcmp(key, "rid_key") == 0) {  //** This is the RID so store it separate
             rse->rid_key = strdup(value);
             tbx_list_insert(rse->attr, key, rse->rid_key);
@@ -672,7 +672,7 @@ void rss_mapping_notify(resource_service_fn_t *rs, int new_version, int status_c
     apr_ssize_t klen;
     void *rid;
 
-    if (status_change > 0) status_change = tbx_random_int64(0, 100000);
+    if (status_change > 0) status_change = tbx_random_get_int64(0, 100000);
 
     apr_thread_mutex_lock(rss->update_lock);
     for (hi = apr_hash_first(NULL, rss->mapping_updates); hi != NULL; hi = apr_hash_next(hi)) {
@@ -911,7 +911,7 @@ int _rs_simple_load(resource_service_fn_t *res, char *fname)
         for (i=0; i < rss->n_rids; i++) {
             tbx_list_next(&it, (tbx_list_key_t **)&key, (tbx_list_data_t **)&rse);
 
-            n = tbx_random_int64(0, rss->n_rids-1);
+            n = tbx_random_get_int64(0, rss->n_rids-1);
 //n = i;  //FIXME
             while (rss->random_array[n] != NULL) {
                 n = (n+1) % rss->n_rids;
@@ -971,7 +971,7 @@ void rs_simple_destroy(resource_service_fn_t *rs)
     apr_status_t value;
 
     log_printf(15, "rs_simple_destroy: sl=%p\n", rss->rid_table);
-    tbx_flush_log();
+    tbx_log_flush();
 
     //** Notify the depot check thread
     apr_thread_mutex_lock(rss->lock);
@@ -1039,11 +1039,11 @@ resource_service_fn_t *rs_simple_create(void *arg, tbx_inip_file_t *kf, char *se
     rs->type = RS_TYPE_SIMPLE;
 
     //** This is the file to use for loading the RID table
-    rss->fname = tbx_inip_string_get(kf, section, "fname", NULL);
-    rss->dynamic_mapping = tbx_inip_integer_get(kf, section, "dynamic_mapping", 0);
-    rss->check_interval = tbx_inip_integer_get(kf, section, "check_interval", 300);
-    rss->check_timeout = tbx_inip_integer_get(kf, section, "check_timeout", 60);
-    rss->min_free = tbx_inip_integer_get(kf, section, "min_free", 100*1024*1024);
+    rss->fname = tbx_inip_get_string(kf, section, "fname", NULL);
+    rss->dynamic_mapping = tbx_inip_get_integer(kf, section, "dynamic_mapping", 0);
+    rss->check_interval = tbx_inip_get_integer(kf, section, "check_interval", 300);
+    rss->check_timeout = tbx_inip_get_integer(kf, section, "check_timeout", 60);
+    rss->min_free = tbx_inip_get_integer(kf, section, "min_free", 100*1024*1024);
 
     //** Set the modify time to force a change
     rss->modify_time = 0;

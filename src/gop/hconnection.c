@@ -69,7 +69,7 @@ void destroy_host_connection(host_connection_t *hc)
 {
     log_printf(15, "host=%s ns=%d\n", hc->hp->host, tbx_ns_getid(hc->ns));
     tbx_ns_destroy(hc->ns);
-    tbx_free_stack(hc->pending_stack, 0);
+    tbx_stack_free(hc->pending_stack, 0);
     apr_thread_mutex_destroy(hc->lock);
     apr_thread_cond_destroy(hc->send_cond);
     apr_thread_cond_destroy(hc->recv_cond);
@@ -139,14 +139,14 @@ int check_workload(host_connection_t *hc)
     while ((hc->curr_workload >= hc->hp->context->max_workload) && (hc->shutdown_request == 0)) {
         dt = apr_time_now();
         sec = dt / APR_USEC_PER_SEC;
-        log_printf(15, "check_workload: *workload loop* shutdown_request=%d stack_size=%d curr_workload=%d time=%d sec\n", hc->shutdown_request, tbx_stack_size(hc->pending_stack), hc->curr_workload, sec);
+        log_printf(15, "check_workload: *workload loop* shutdown_request=%d stack_size=%d curr_workload=%d time=%d sec\n", hc->shutdown_request, tbx_stack_count(hc->pending_stack), hc->curr_workload, sec);
         apr_thread_cond_wait(hc->send_cond, hc->lock);
         dt = apr_time_now() - dt;
         sec = dt / APR_USEC_PER_SEC;
-        log_printf(15, "check_workload: *workload loop* AFTER sleep shutdown_request=%d stack_size=%d curr_workload=%d slept=%d sec\n", hc->shutdown_request, tbx_stack_size(hc->pending_stack), hc->curr_workload, sec);
+        log_printf(15, "check_workload: *workload loop* AFTER sleep shutdown_request=%d stack_size=%d curr_workload=%d slept=%d sec\n", hc->shutdown_request, tbx_stack_count(hc->pending_stack), hc->curr_workload, sec);
     }
 
-    psize = tbx_stack_size(hc->pending_stack);
+    psize = tbx_stack_count(hc->pending_stack);
     unlock_hc(hc);
 
     return(psize);
@@ -160,8 +160,8 @@ int check_workload(host_connection_t *hc)
 void empty_work_que(host_connection_t *hc)
 {
     lock_hc(hc);
-    while (tbx_stack_size(hc->pending_stack) != 0) {
-        log_printf(15, "empty_work_que: shutdown_request=%d stack_size=%d curr_workload=%d\n", hc->shutdown_request, tbx_stack_size(hc->pending_stack), hc->curr_workload);
+    while (tbx_stack_count(hc->pending_stack) != 0) {
+        log_printf(15, "empty_work_que: shutdown_request=%d stack_size=%d curr_workload=%d\n", hc->shutdown_request, tbx_stack_count(hc->pending_stack), hc->curr_workload);
         apr_thread_cond_signal(hc->recv_cond);
         apr_thread_cond_wait(hc->send_cond, hc->lock);
     }
@@ -187,7 +187,7 @@ void empty_hp_que(host_portal_t *hp, op_status_t err_code)
 void recv_wait_for_work(host_connection_t *hc)
 {
     lock_hc(hc);
-    while ((hc->shutdown_request == 0) && (tbx_stack_size(hc->pending_stack) == 0)) {
+    while ((hc->shutdown_request == 0) && (tbx_stack_count(hc->pending_stack) == 0)) {
         hc_send_signal(hc);
         log_printf(5, "shutdown_request=%d\n", hc->shutdown_request);
         apr_thread_cond_wait(hc->recv_cond, hc->lock);
@@ -258,7 +258,7 @@ void *hc_send_thread(apr_thread_t *th, void *data)
         hp->failed_conn_attempts++;
     }
     tbx_stack_push(hp->conn_list, (void *)hc);
-    hc->my_pos = tbx_get_ptr(hp->conn_list);
+    hc->my_pos = tbx_stack_get_current_ptr(hp->conn_list);
     hportal_unlock(hp);
 
     //** Now we start the main loop
@@ -293,7 +293,7 @@ void *hc_send_thread(apr_thread_t *th, void *data)
 
             lock_hc(hc);  //** Check if this command is on top
             hc->curr_op = hsop;  //** Make sure the current op doesn't get lost if needed
-            if (tbx_stack_size(hc->pending_stack) == 0) tbx_atomic_set(hop->on_top, 1);
+            if (tbx_stack_count(hc->pending_stack) == 0) tbx_atomic_set(hop->on_top, 1);
             unlock_hc(hc);
 
             finished = (hop->send_command != NULL) ? hop->send_command(hsop, ns) : op_success_status;
@@ -303,7 +303,7 @@ void *hc_send_thread(apr_thread_t *th, void *data)
                 hc->last_used = apr_time_now();  //** Update  the time.  The recv thread does this also
                 hc->curr_workload += hop->workload;  //** Inc the current workload
                 if (tbx_atomic_get(hop->on_top) == 0) {
-                    if (tbx_stack_size(hc->pending_stack) == 0) {
+                    if (tbx_stack_count(hc->pending_stack) == 0) {
                         tbx_atomic_set(hop->on_top, 1);
                         hop->start_time = apr_time_now();  //** This is the real start/end time now
                         hop->end_time = hop->start_time + hop->timeout;
@@ -329,7 +329,7 @@ void *hc_send_thread(apr_thread_t *th, void *data)
 
         lock_hc(hc);
 
-        if (tbx_stack_size(hc->pending_stack) == 0) {
+        if (tbx_stack_count(hc->pending_stack) == 0) {
             dtime = apr_time_now() - hc->last_used; //** Exit if not busy
             if (dtime >= hpc->min_idle) {
                 hc->shutdown_request = 1;
@@ -347,7 +347,7 @@ void *hc_send_thread(apr_thread_t *th, void *data)
         }
 
         log_printf(15, "hc_send_thread: ns=%d shutdown=%d stack_size=%d curr_workload=%d time=" TT " last_used=" TT "\n", tbx_ns_getid(ns),
-                   hc->shutdown_request, tbx_stack_size(hc->pending_stack), hc->curr_workload, apr_time_now(), hc->last_used);
+                   hc->shutdown_request, tbx_stack_count(hc->pending_stack), hc->curr_workload, apr_time_now(), hc->last_used);
         unlock_hc(hc);
     }
 
@@ -357,7 +357,7 @@ void *hc_send_thread(apr_thread_t *th, void *data)
 
     log_printf(15, "hc_send_thread: Exiting! (ns=%d, host=%s:%d)\n", tbx_ns_getid(ns), hp->host, hp->port);
 
-    hc->shutdown_request = (tbx_stack_size(hc->pending_stack) == 0) ? 1 : 2;
+    hc->shutdown_request = (tbx_stack_count(hc->pending_stack) == 0) ? 1 : 2;
     apr_thread_cond_signal(hc->recv_cond);
     unlock_hc(hc);
 
@@ -421,7 +421,7 @@ void *hc_recv_thread(apr_thread_t *th, void *data)
     while (finished != 1) {
         lock_hc(hc);
         tbx_stack_move_to_bottom(hc->pending_stack);//** Get the next recv command
-        hsop = (op_generic_t *)tbx_get_ele_data(hc->pending_stack);
+        hsop = (op_generic_t *)tbx_stack_get_current_data(hc->pending_stack);
         unlock_hc(hc);
 
         if (hsop != NULL) {
@@ -446,7 +446,7 @@ void *hc_recv_thread(apr_thread_t *th, void *data)
             hc->last_used = apr_time_now();
             hc->curr_workload -= hop->workload;
             tbx_stack_move_to_bottom(hc->pending_stack);
-            tbx_delete_current(hc->pending_stack, 1, 0);
+            tbx_stack_delete_current(hc->pending_stack, 1, 0);
             hc_send_signal(hc);  //** Wake up send_thread if needed
             unlock_hc(hc);
 
@@ -541,7 +541,7 @@ void *hc_recv_thread(apr_thread_t *th, void *data)
         }
         hportal_unlock(hp);
     } else {
-        log_printf(15, "hc_recv_thread: ns=%d stack_size=%d\n", tbx_ns_getid(ns), tbx_stack_size(hc->pending_stack));
+        log_printf(15, "hc_recv_thread: ns=%d stack_size=%d\n", tbx_ns_getid(ns), tbx_stack_count(hc->pending_stack));
 
         if (hc->curr_op != NULL) {  //** This is from the sending thread
             log_printf(15, "hc_recv_thread: ns=%d Pushing sending thread task on stack gid=%d\n", tbx_ns_getid(ns), gop_id(hc->curr_op));
@@ -566,13 +566,13 @@ void *hc_recv_thread(apr_thread_t *th, void *data)
     hportal_lock(hp);
 
     //** Now remove myself from the hportal
-//  if (hp->n_conn != tbx_stack_size(hp->conn_list)) log_printf(0, "hc_recv_thread: ns=%d hp->n_conn=%d tbx_stack_size(hp->conn_list)=%d N_CONN ERROR!!!!!!\n", tbx_ns_getid(ns), hp->n_conn, tbx_stack_size(hp->conn_list));
+//  if (hp->n_conn != tbx_stack_count(hp->conn_list)) log_printf(0, "hc_recv_thread: ns=%d hp->n_conn=%d tbx_stack_count(hp->conn_list)=%d N_CONN ERROR!!!!!!\n", tbx_ns_getid(ns), hp->n_conn, tbx_stack_count(hp->conn_list));
 
     hp->oops_recv_end++;
     if (hp->n_conn < 0) hp->oops_neg++;
     if (hp->n_conn > 0) hp->n_conn--;
     tbx_stack_move_to_ptr(hp->conn_list, hc->my_pos);
-    tbx_delete_current(hp->conn_list, 1, 0);
+    tbx_stack_delete_current(hp->conn_list, 1, 0);
 
     log_printf(6, "hc_recv_thread: ns=%d cmd_pause_time=" TT " max_wait=%d pending=%d sleeping=%d start_stable=%d cmd_count=%d\n", tbx_ns_getid(ns), cmd_pause_time, hp->context->max_wait, pending, hp->sleeping_conn, hc->start_stable, hc->cmd_count);
 

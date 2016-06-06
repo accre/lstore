@@ -44,7 +44,7 @@ op_status_t read_stream(void *arg, int tid)
 
     int n_read, n_left, offset, n_bytes;
 
-    tbx_flush_log();
+    tbx_log_flush();
     log_printf(10, "CLIENT: Message frames BEFORE destroying:\n");
     display_msg_frames(msg);
 
@@ -392,7 +392,7 @@ void client_test()
 {
     mq_context_t *mqc;
 
-    tbx_flush_log();
+    tbx_log_flush();
     log_printf(1, "CLIENT: Starting...\n");
 
     log_printf(15, "CLIENT: Creating context...\n");

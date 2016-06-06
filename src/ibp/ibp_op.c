@@ -241,7 +241,7 @@ op_status_t gop_readline_with_timeout(tbx_ns_t *ns, char *buffer, int size, op_g
                 log_printf(15, "readline_with_timeout: END Client timeout time=" TT " end_time=" TT "ns=%d\n", apr_time_now(), end_time, tbx_ns_getid(ns));
             } else {
                 log_printf(0, "readline_with_timeout:  END Out of sync issue!! nbytes=%d size=%d ns=%d\n", nbytes, size, tbx_ns_getid(ns));
-                tbx_flush_log();
+                tbx_log_flush();
                 err = 0; //** GEnerate a core dump
 //           err = 1 / err;
             }
@@ -687,7 +687,7 @@ op_generic_t *new_ibp_write_op(ibp_context_t *ic, ibp_cap_t *cap, ibp_off_t offs
     op_generic_t *gop = new_ibp_rw_op(ic, IBP_WRITE, cap, offset, buffer, bpos, len, timeout);
 //   ibp_op_t *iop = ibp_get_iop(gop);
 
-//log_printf(15, "new_ibp_write_op: gid=%d next_block=%p\n", gop_id(gop), iop->ops.rw_op.next_block); tbx_flush_log();
+//log_printf(15, "new_ibp_write_op: gid=%d next_block=%p\n", gop_id(gop), iop->ops.rw_op.next_block); tbx_log_flush();
     return(gop);
 }
 
@@ -2335,7 +2335,7 @@ void set_ibp_probe_op(ibp_op_t *op, ibp_cap_t *cap, ibp_capstatus_t *probe, int 
     init_ibp_base_op(op, "probe", timeout, op->ic->other_new_command, NULL, 1, IBP_MANAGE, IBP_PROBE);
 
     log_printf(15, "AFTER cctype=%d\n", op->ic->cc[IBP_MANAGE].type);
-    tbx_flush_log();
+    tbx_log_flush();
 
     cmd = &(op->ops.probe_op);
 
@@ -3121,16 +3121,16 @@ op_status_t query_res_recv(op_generic_t *gop, tbx_ns_t *ns)
         p = tbx_stk_string_token(NULL, " ", &bstate, &fin);
     }
 
-    n = tbx_stack_size(list);
+    n = tbx_stack_count(list);
     ridlist_init(cmd->rlist, n);
     tbx_stack_move_to_bottom(list);
     for (i=0; i<n; i++) {
-        p = tbx_get_ele_data(list);
+        p = tbx_stack_get_current_data(list);
         cmd->rlist->rl[i] = ibp_str2rid(p);
         tbx_stack_move_up(list);
     }
 
-    tbx_free_stack(list, 0);
+    tbx_stack_free(list, 0);
 
     return(err);
 }

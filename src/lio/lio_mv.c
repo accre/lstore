@@ -52,7 +52,7 @@ op_status_t mv_fn(void *arg, int id)
     op_status_t status;
 
     log_printf(15, "START src=%s dest=%s\n", mv->src_tuple.path, mv->dest_tuple.path);
-    tbx_flush_log();
+    tbx_log_flush();
 
     status = op_success_status;
 
@@ -201,7 +201,7 @@ int main(int argc, char **argv)
         goto finished;
     } else if (n_paths == 1) {
         log_printf(15, "11111111\n");
-        tbx_flush_log();
+        tbx_log_flush();
         if (((dtype & OS_OBJECT_FILE) > 0) || (dtype == 0)) {  //** Single path and dest is an existing file or doesn't exist
             if (os_regex_is_fixed(flist[0].regex) == 0) {  //** Uh oh we have a wildcard with a single file dest
                 info_printf(lio_ifd, 0, "ERROR: Single wildcard path(%s) selected but the dest(%s) is a file or doesn't exist!\n", flist[0].src_tuple.path, dtuple.path);
@@ -210,7 +210,7 @@ int main(int argc, char **argv)
         }
 
         log_printf(15, "2222222222222222 fixed=%d exp=%s\n", os_regex_is_fixed(flist[0].regex), flist[0].regex->regex_entry[0].expression);
-        tbx_flush_log();
+        tbx_log_flush();
 
         //**if it's a fixed src with a dir dest we skip and use the mv_fn routines
         if ((os_regex_is_fixed(flist[0].regex) == 1) && ((dtype == 0) || ((dtype & OS_OBJECT_FILE) > 0))) {
@@ -218,7 +218,7 @@ int main(int argc, char **argv)
             fname = NULL;
             if ((dtype & OS_OBJECT_FILE) > 0) { //** Existing file so rename it for backup
                 tbx_type_malloc(fname, char, strlen(dtuple.path) + 40);
-                tbx_random_bytes_get(&ui, sizeof(ui));  //** MAke the random name
+                tbx_random_get_bytes(&ui, sizeof(ui));  //** MAke the random name
                 sprintf(fname, "%s.mv.%ud", dtuple.path, ui);
                 err = gop_sync_exec(gop_lio_move_object(dtuple.lc, dtuple.creds, flist[0].src_tuple.path, fname));
                 if (err != OP_STATE_SUCCESS) {
@@ -229,7 +229,7 @@ int main(int argc, char **argv)
             }
 
             log_printf(15, "333333333333333333\n");
-            tbx_flush_log();
+            tbx_log_flush();
 
             //** Now do the simple mv
             err = gop_sync_exec(gop_lio_move_object(dtuple.lc, dtuple.creds, flist[0].src_tuple.path, dtuple.path));
@@ -242,7 +242,7 @@ int main(int argc, char **argv)
             }
 
             log_printf(15, "4444444444444444444\n");
-            tbx_flush_log();
+            tbx_log_flush();
 
             //** Clean up by removing the original dest if needed
             if (fname != NULL) {
@@ -256,7 +256,7 @@ int main(int argc, char **argv)
             }
 
             log_printf(15, "55555555555555555\n");
-            tbx_flush_log();
+            tbx_log_flush();
 
             goto finished;
         }

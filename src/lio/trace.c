@@ -109,9 +109,9 @@ trace_t *trace_load(service_manager_t *exs, exnode_t *tex, data_attr_t *da, int 
 
     tfd = tbx_inip_file_read(fname);
 
-    n_files = tbx_inip_integer_get(tfd, "trace", "n_files", -1);
-    n_ops = tbx_inip_integer_get(tfd, "trace", "n_ops", -1);
-    trace_fname = tbx_inip_string_get(tfd, "trace", "trace", "");
+    n_files = tbx_inip_get_integer(tfd, "trace", "n_files", -1);
+    n_ops = tbx_inip_get_integer(tfd, "trace", "n_ops", -1);
+    trace_fname = tbx_inip_get_string(tfd, "trace", "trace", "");
 
     assert(n_files > 0);
     assert(n_ops > 0);

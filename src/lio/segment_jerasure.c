@@ -589,7 +589,7 @@ op_status_t segjerase_inspect_full_func(void *arg, int id)
 
 next:  //** Jump to here if an empty stripe
 
-            if ((tbx_get_info_level(si->fd) > 1) && (tmp != bad_count)) {   //** Print some diag info if needed
+            if ((tbx_stack_get_info_level(si->fd) > 1) && (tmp != bad_count)) {   //** Print some diag info if needed
                 oops = (((repair_errors+unrecoverable_count) > 0) && (fail_quick > 0) && (i== nstripes-1)) ? 1 : 0;
 
                 if ((stripe+i-1 != last_bad) || (memcmp(badmap_last, badmap, sizeof(int)*s->n_devs) != 0)) {
@@ -1992,10 +1992,10 @@ int segjerase_deserialize_text(segment_t *seg, ex_id_t id, exnode_exchange_t *ex
     //** Get the segment header info
     seg->header.id = id;
     seg->header.type = SEGMENT_TYPE_JERASURE;
-    seg->header.name = tbx_inip_string_get(fd, seggrp, "name", "");
+    seg->header.name = tbx_inip_get_string(fd, seggrp, "name", "");
 
     //** Load the child segemnt (should be a LUN segment)
-    id = tbx_inip_integer_get(fd, seggrp, "segment", 0);
+    id = tbx_inip_get_integer(fd, seggrp, "segment", 0);
     if (id == 0) {
         return (-1);
     }
@@ -2008,25 +2008,25 @@ int segjerase_deserialize_text(segment_t *seg, ex_id_t id, exnode_exchange_t *ex
     tbx_atomic_inc(s->child_seg->ref_count);
 
     //** Load the params
-    s->write_errors = tbx_inip_integer_get(fd, seggrp, "write_errors", 0);
+    s->write_errors = tbx_inip_get_integer(fd, seggrp, "write_errors", 0);
     if ((s->paranoid_check == 0) && (s->write_errors > 0)) s->paranoid_check = 1;
 
-    s->magic_cksum = tbx_inip_integer_get(fd, seggrp, "magic_cksum", 0);
+    s->magic_cksum = tbx_inip_get_integer(fd, seggrp, "magic_cksum", 0);
     if (s->magic_cksum == 0) {
         if (segment_size(s->child_seg) == 0) s->magic_cksum = 1;  //** If empty file enable adler32 magic
     }
-    s->n_data_devs = tbx_inip_integer_get(fd, seggrp, "n_data_devs", 6);
-    s->n_parity_devs = tbx_inip_integer_get(fd, seggrp, "n_parity_devs", 3);
+    s->n_data_devs = tbx_inip_get_integer(fd, seggrp, "n_data_devs", 6);
+    s->n_parity_devs = tbx_inip_get_integer(fd, seggrp, "n_parity_devs", 3);
     s->n_devs = s->n_data_devs + s->n_parity_devs;
-    s->w = tbx_inip_integer_get(fd, seggrp, "w", -1);
-    s->max_parity = tbx_inip_integer_get(fd, seggrp, "max_parity", 16*1024*1024);
-    s->chunk_size = tbx_inip_integer_get(fd, seggrp, "chunk_size", 16*1024);
+    s->w = tbx_inip_get_integer(fd, seggrp, "w", -1);
+    s->max_parity = tbx_inip_get_integer(fd, seggrp, "max_parity", 16*1024*1024);
+    s->chunk_size = tbx_inip_get_integer(fd, seggrp, "chunk_size", 16*1024);
     s->stripe_size = s->chunk_size * s->n_devs;
     s->data_size = s->chunk_size * s->n_data_devs;
     s->parity_size = s->chunk_size * s->n_parity_devs;
     s->chunk_size_with_magic = s->chunk_size + JE_MAGIC_SIZE;
     s->stripe_size_with_magic = s->chunk_size_with_magic * s->n_devs;
-    text = tbx_inip_string_get(fd, seggrp, "method", (char *)JE_method[CAUCHY_GOOD]);
+    text = tbx_inip_get_string(fd, seggrp, "method", (char *)JE_method[CAUCHY_GOOD]);
     s->method = et_method_type(text);
     free(text);
     if (s->method < 0) return(-3);

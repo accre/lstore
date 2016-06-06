@@ -75,7 +75,7 @@ int socket_connect(void *socket, const char *format, ...)
     snprintf(buf, 255, format, args);
 //  snprintf(id, 255, "%s:%ld", buf, random());
 
-    snprintf(id, 255, "%ld", tbx_random_int64(1, 1000));
+    snprintf(id, 255, "%ld", tbx_random_get_int64(1, 1000));
     zsocket_set_identity(socket, strdup(id));
 
     err = zsocket_connect(socket, format, args);

@@ -27,25 +27,27 @@ extern "C" {
 
 // Functions
 TBX_API char *tbx_stk_argv2format(char *arg);
-
 TBX_API char *tbx_stk_escape_strchr(char escape_char, char *data, char match);
-
-TBX_API char *tbx_stk_escape_string_token(char *str, const char *delims, char escape_char, int compress_delims, char **last, int *finished);
-
-TBX_API char *tbx_stk_escape_text(char *special_chars, char escape_char, char *data);
-
-TBX_API char *tbx_stk_pretty_print_double_with_scale(int base, double value, char *buffer);
-
+TBX_API char *tbx_stk_escape_string_token(char *str,
+                                            const char *delims,
+                                            char escape_char,
+                                            int compress_delims,
+                                            char **last,
+                                            int *finished);
+TBX_API char *tbx_stk_escape_text(char *special_chars,
+                                    char escape_char,
+                                    char *data);
+TBX_API char *tbx_stk_pretty_print_double_with_scale(int base,
+                                                        double value,
+                                                        char *buffer);
 TBX_API char *tbx_stk_pretty_print_int_with_scale(int64_t value, char *buffer);
-
 TBX_API double tbx_stk_string_get_double(char *value);
-
 TBX_API int64_t tbx_stk_string_get_integer(char *value);
-
-TBX_API char *tbx_stk_string_token(char *str, const char *sep, char **last, int *finished);
-
+TBX_API char *tbx_stk_string_token(char *str,
+                                    const char *sep,
+                                    char **last,
+                                    int *finished);
 TBX_API char *tbx_stk_string_trim(char *str);
-
 TBX_API char *tbx_stk_unescape_text(char escape_char, char *data);
 
 #ifdef __cplusplus

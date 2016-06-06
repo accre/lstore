@@ -709,7 +709,7 @@ op_status_t seglog_clone_func(void *arg, int id)
 
     if (err != OP_STATE_SUCCESS) {
         log_printf(1, "Error during intial cloning phase:  src=" XIDT "\n", segment_id(slc->sseg));
-        if (stack != NULL) tbx_free_stack(stack, 1);
+        if (stack != NULL) tbx_stack_free(stack, 1);
         opque_free(q, OP_DESTROY);
         return(op_failure_status);
     }
@@ -732,7 +732,7 @@ op_status_t seglog_clone_func(void *arg, int id)
         rlen = 0;
         q1 = q;
         q2 = new_opque();
-        while ((clog = (slog_changes_t *)tbx_get_ele_data(stack)) != NULL) {
+        while ((clog = (slog_changes_t *)tbx_stack_get_current_data(stack)) != NULL) {
             pos = 0;
             rpos = clog->seg_offset;
             wpos = clog->lo;
@@ -756,7 +756,7 @@ op_status_t seglog_clone_func(void *arg, int id)
                     opque_free(q1, OP_DESTROY);  //** Free the space
                     if (err != OP_STATE_SUCCESS) {
                         log_printf(1, "Error during log copy phase:  src=" XIDT "\n", segment_id(slc->sseg));
-                        tbx_free_stack(stack, 1);
+                        tbx_stack_free(stack, 1);
                         free(buffer);
                         opque_free(q2, OP_DESTROY);
                         return(op_failure_status);
@@ -805,7 +805,7 @@ op_status_t seglog_clone_func(void *arg, int id)
     }
 
     //** Clean up
-    if (stack != NULL) tbx_free_stack(stack, 1);
+    if (stack != NULL) tbx_stack_free(stack, 1);
     if (buffer != NULL) free(buffer);
     if (q2 == NULL) {
         opque_free(q, OP_DESTROY);
@@ -1156,22 +1156,22 @@ int seglog_deserialize_text(segment_t *seg, ex_id_t id, exnode_exchange_t *exp)
     //** Get the segment header info
     seg->header.id = id;
     seg->header.type = SEGMENT_TYPE_LOG;
-    seg->header.name = tbx_inip_string_get(fd, seggrp, "name", "");
+    seg->header.name = tbx_inip_get_string(fd, seggrp, "name", "");
 
     //** Load the child segments
-    id = tbx_inip_integer_get(fd, seggrp, "log", 0);
+    id = tbx_inip_get_integer(fd, seggrp, "log", 0);
     if (id == 0) return (-1);
     s->table_seg = load_segment(seg->ess, id, exp);
     if (s->table_seg == NULL) return(-2);
     tbx_atomic_inc(s->table_seg->ref_count);
 
-    id = tbx_inip_integer_get(fd, seggrp, "data", 0);
+    id = tbx_inip_get_integer(fd, seggrp, "data", 0);
     if (id == 0) return (-1);
     s->data_seg = load_segment(seg->ess, id, exp);
     if (s->data_seg == NULL) return(-2);
     tbx_atomic_inc(s->data_seg->ref_count);
 
-    id = tbx_inip_integer_get(fd, seggrp, "base", 0);
+    id = tbx_inip_get_integer(fd, seggrp, "base", 0);
     if (id == 0) return (-1);
     s->base_seg = load_segment(seg->ess, id, exp);
     if (s->base_seg == NULL) return(-2);

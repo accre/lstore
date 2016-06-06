@@ -25,13 +25,10 @@ extern "C" {
 #endif
 
 // Functions
-TBX_API int tbx_dnsc_startup();
-
-TBX_API int tbx_dnsc_shutdown();
-
-TBX_API int tbx_dnsc_startup_sized(int size);
-
 TBX_API int tbx_dnsc_lookup(const char * name, char * byte_addr, char * ip_addr);
+TBX_API int tbx_dnsc_shutdown();
+TBX_API int tbx_dnsc_startup();
+TBX_API int tbx_dnsc_startup_sized(int size);
 
 // Preprocessor macros
 #define DNS_ADDR_MAX 4

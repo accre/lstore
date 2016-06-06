@@ -183,7 +183,7 @@ op_status_t _sl_grow(segment_t *seg, data_attr_t *da, ex_off_t new_size_arg, int
     }
 
     log_printf(15, "_sl_grow: sid=" XIDT " before exec gop2=%p\n", segment_id(seg), gop2);
-    tbx_flush_log();
+    tbx_log_flush();
 
     //** Ececute it(them)
     if (gop1 == NULL) {
@@ -333,7 +333,7 @@ op_status_t _sl_shrink(segment_t *seg, data_attr_t *da, ex_off_t new_size, int t
         free(b);
     }
 
-    tbx_free_stack(stack, 0);
+    tbx_stack_free(stack, 0);
 
     //** If needed tweak the initial block
     if (start_b != NULL) {
@@ -446,7 +446,7 @@ op_status_t seglin_read_func(void *arg, int id)
 
             log_printf(15, "seglin_read: sid=" XIDT " bid=" XIDT " soff=" XOT " bpos=" XOT " blen=" XOT "\n", segment_id(sr->seg),
                        data_block_id(b->data), start, bpos, blen);
-            tbx_flush_log();
+            tbx_log_flush();
 
             gop = ds_read(b->data->ds, sr->da, ds_get_cap(b->data->ds, b->data->cap, DS_CAP_READ), start, sr->buffer, bpos, blen, sr->timeout);
 
@@ -549,7 +549,7 @@ op_generic_t *seglin_write_op(segment_t *seg, data_attr_t *da, segment_rw_hints_
 
             log_printf(15, "seglin_write_op: sid=" XIDT " bid=" XIDT " soff=" XOT " bpos=" XOT " blen=" XOT " seg_off=" XOT " seg_len=" XOT " seg_end=" XOT "\n", segment_id(seg),
                        data_block_id(b->data), start, bpos, blen, b->seg_offset, b->len, b->seg_end);
-            tbx_flush_log();
+            tbx_log_flush();
 
             gop = ds_write(b->data->ds, da, ds_get_cap(b->data->ds, b->data->cap, DS_CAP_WRITE), start, buffer, bpos, blen, timeout);
 
@@ -1143,32 +1143,32 @@ int seglin_deserialize_text(segment_t *seg, ex_id_t id, exnode_exchange_t *exp)
     //** Get the segment header info
     seg->header.id = id;
     seg->header.type = SEGMENT_TYPE_LINEAR;
-    seg->header.name = tbx_inip_string_get(fd, seggrp, "name", "");
+    seg->header.name = tbx_inip_get_string(fd, seggrp, "name", "");
 
     //** default resource query
-    etext = tbx_inip_string_get(fd, seggrp, "query_default", "");
+    etext = tbx_inip_get_string(fd, seggrp, "query_default", "");
     text = tbx_stk_unescape_text('\\', etext);
     s->rsq = rs_query_parse(s->rs, text);
     free(text);
     free(etext);
-    s->n_rid_default = tbx_inip_integer_get(fd, seggrp, "n_rid_default", 2);
+    s->n_rid_default = tbx_inip_get_integer(fd, seggrp, "n_rid_default", 2);
 
     //** Basic size info
-    s->max_block_size = tbx_inip_integer_get(fd, seggrp, "max_block_size", 10*1024*1024);
-    s->excess_block_size = tbx_inip_integer_get(fd, seggrp, "excess_block_size", s->max_block_size/4);
-    s->total_size = tbx_inip_integer_get(fd, seggrp, "max_size", 0);
-    s->used_size = tbx_inip_integer_get(fd, seggrp, "used_size", 0);
+    s->max_block_size = tbx_inip_get_integer(fd, seggrp, "max_block_size", 10*1024*1024);
+    s->excess_block_size = tbx_inip_get_integer(fd, seggrp, "excess_block_size", s->max_block_size/4);
+    s->total_size = tbx_inip_get_integer(fd, seggrp, "max_size", 0);
+    s->used_size = tbx_inip_get_integer(fd, seggrp, "used_size", 0);
 
     //** Cycle through the blocks storing both the segment block information and also the cap blocks
     g = tbx_inip_group_find(fd, seggrp);
     ele = tbx_inip_ele_first(g);
     while (ele != NULL) {
-        key = tbx_inip_ele_key_get(ele);
+        key = tbx_inip_ele_get_key(ele);
         if (strcmp(key, "block") == 0) {
             tbx_type_malloc_clear(b, seglin_slot_t, 1);
 
             //** Parse the segment line
-            value = tbx_inip_ele_value_get(ele);
+            value = tbx_inip_ele_get_value(ele);
             token = strdup(value);
             sscanf(tbx_stk_escape_string_token(token, ":", '\\', 0, &bstate, &fin), XIDT, &id);
             sscanf(tbx_stk_escape_string_token(NULL, ":", '\\', 0, &bstate, &fin), XOT, &(b->seg_offset));

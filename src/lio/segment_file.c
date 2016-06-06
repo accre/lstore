@@ -96,7 +96,7 @@ op_status_t segfile_rw_func(void *arg, int id)
     if (fd == NULL) fd = fopen(s->fname, "w+");
 
     log_printf(15, "segfile_rw_func: tid=%d fname=%s n_iov=%d off[0]=" XOT " len[0]=" XOT " mode=%d\n", tbx_atomic_thread_id, s->fname, srw->n_iov, srw->iov[0].offset, srw->iov[0].len, srw->mode);
-    tbx_flush_log();
+    tbx_log_flush();
     tbx_tbuf_var_init(&tbv);
 
     blen = srw->len;
@@ -120,7 +120,7 @@ op_status_t segfile_rw_func(void *arg, int id)
             int ib = blen;
             int inb = nbytes;
             log_printf(15, "segfile_rw_func: tid=%d fname=%s n_iov=%d off[0]=" XOT " len[0]=" XOT " blen=%d nbytes=%d err_cnt=%d\n", tbx_atomic_thread_id, s->fname, srw->n_iov, srw->iov[0].offset, srw->iov[0].len, ib, inb, err_cnt);
-            tbx_flush_log();
+            tbx_log_flush();
 
             if (nbytes > 0) {
                 boff = boff + nbytes;
@@ -141,7 +141,7 @@ op_status_t segfile_rw_func(void *arg, int id)
     }
 
     log_printf(15, "segfile_rw_func: tid=%d fname=%s n_iov=%d off[0]=" XOT " len[0]=" XOT " bleft=" XOT " err_cnt=%d\n", tbx_atomic_thread_id, s->fname, srw->n_iov, srw->iov[0].offset, srw->iov[0].len, bleft, err_cnt);
-    tbx_flush_log();
+    tbx_log_flush();
 //log_printf(15, "segfile_rw_func: buf=%20s\n", (char *)srw->buffer->buf.iov[0].iov_base);
     fclose(fd);
     return(err);
@@ -538,10 +538,10 @@ int segfile_deserialize_text(segment_t *seg, ex_id_t id, exnode_exchange_t *exp)
     s->qname = strdup(qname);
 
     seg->header.type = SEGMENT_TYPE_FILE;
-    seg->header.name = tbx_inip_string_get(fd, seggrp, "name", "");
+    seg->header.name = tbx_inip_get_string(fd, seggrp, "name", "");
 
     //** and the local file name
-    s->fname = tbx_inip_string_get(fd, seggrp, "file", "");
+    s->fname = tbx_inip_get_string(fd, seggrp, "file", "");
 
     if (strcmp(s->fname, "") == 0) {
         s->fname = NULL;

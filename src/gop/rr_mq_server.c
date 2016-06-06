@@ -336,7 +336,7 @@ mq_context_t *server_make_context()
                             "min_ops_per_sec=100\n"
                             "socket_type=1002\n"; // Set socket type to MQF_ROUND_ROBIN
 
-    tbx_flush_log();
+    tbx_log_flush();
     ifd = tbx_inip_string_read(text_parameters);
 
     //log_printf(15, "SERVER: Creating context...\n");

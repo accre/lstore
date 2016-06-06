@@ -33,21 +33,13 @@ typedef struct tbx_pack_zlib_t tbx_pack_zlib_t;
 
 // Functions
 TBX_API void tbx_pack_consumed(tbx_pack_t *pack);
-
 TBX_API tbx_pack_t *tbx_pack_create(int type, int mode, unsigned char *buffer, unsigned int bufsize);
-
 TBX_API void tbx_pack_destroy(tbx_pack_t *pack);
-
 TBX_API int tbx_pack_read(tbx_pack_t *pack, unsigned char *data, int nbytes);
-
 TBX_API int tbx_pack_read_new_data(tbx_pack_t *pack, unsigned char *buffer, unsigned int bufsize);
-
 TBX_API int tbx_pack_used(tbx_pack_t *pack);
-
 TBX_API int tbx_pack_write(tbx_pack_t *pack, unsigned char *data, int nbytes);
-
 TBX_API int tbx_pack_write_flush(tbx_pack_t *pack);
-
 TBX_API void tbx_pack_write_resized(tbx_pack_t *pack, unsigned char *buffer, unsigned int bufsize);
 
 // Preprocessor Macros

@@ -55,7 +55,7 @@ segment_t *load_segment(service_manager_t *ess, ex_id_t id, exnode_exchange_t *e
     if (ex->type == EX_TEXT) {
         snprintf(name, sizeof(name), "segment-" XIDT, id);
         tbx_inip_file_t *fd = ex->text.fd;
-        type = tbx_inip_string_get(fd, name, "type", "");
+        type = tbx_inip_get_string(fd, name, "type", "");
     } else if (ex->type == EX_PROTOCOL_BUFFERS) {
         log_printf(0, "load_segment:  segment exnode parsing goes here\n");
     } else {

@@ -179,7 +179,7 @@ int vl_deserialize_text(view_t *v, ex_id_t id, exnode_exchange_t *exp)
     //** Get the header info
     v->header.id = id;
     v->header.type = VIEW_TYPE_LAYOUT;
-    v->header.name = tbx_inip_string_get(fd, grp, "name", "");
+    v->header.name = tbx_inip_get_string(fd, grp, "name", "");
 
     //** and the layout to use
     lay_id = inip_get_unsigned_integer(fd, grp, "layout", 0);

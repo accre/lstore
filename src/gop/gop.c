@@ -151,7 +151,7 @@ void gop_dummy_destroy()
     apr_thread_join(&tstat, gd_thread);
 
     //** Clean up;
-    tbx_free_stack(gd_stack, 0);
+    tbx_stack_free(gd_stack, 0);
     apr_thread_mutex_destroy(gd_lock);
     apr_thread_cond_destroy(gd_cond);
     apr_pool_destroy(gd_pool);
@@ -214,7 +214,7 @@ op_generic_t *gop_dummy(op_status_t state)
     tbx_type_malloc_clear(gop, op_generic_t, 1);
 
     log_printf(15, " state=%d\n", state.op_status);
-    tbx_flush_log();
+    tbx_log_flush();
 
     gop_init(gop);
     gop->base.pc = &_gop_dummy_pc;
@@ -260,7 +260,7 @@ int _gop_completed_successfully(op_generic_t *g)
     int status;
 
     if (gop_get_type(g) == Q_TYPE_QUE) {
-        status = tbx_stack_size(g->q->failed);
+        status = tbx_stack_count(g->q->failed);
         status = (status == 0) ? g->base.status.op_status : OP_STATE_FAILURE;
     } else {
         status = g->base.status.op_status;
@@ -343,7 +343,7 @@ int gop_tasks_failed(op_generic_t *g)
 
     lock_gop(g);
     if (gop_get_type(g) == Q_TYPE_QUE) {
-        nf = tbx_stack_size(g->q->failed);
+        nf = tbx_stack_count(g->q->failed);
     } else {
         nf = (g->base.status.op_status == OP_STATE_SUCCESS) ? 0 : 1;
     }
@@ -362,7 +362,7 @@ int gop_tasks_finished(op_generic_t *g)
 
     lock_gop(g);
     if (gop_get_type(g) == Q_TYPE_QUE) {
-        nf = tbx_stack_size(g->q->finished);
+        nf = tbx_stack_count(g->q->finished);
     } else {
         nf = (g->base.state == 1) ? 1 : 0;
     }
@@ -522,7 +522,7 @@ int gop_will_block(op_generic_t *g)
 
     lock_gop(g);
     if (gop_get_type(g) == Q_TYPE_QUE) {
-        if ((tbx_stack_size(g->q->finished) == 0) && (g->q->nleft > 0)) status = 1;
+        if ((tbx_stack_count(g->q->finished) == 0) && (g->q->nleft > 0)) status = 1;
     } else {
         if (g->base.state == 0) status = 1;
     }
@@ -544,8 +544,8 @@ op_generic_t *gop_waitany(op_generic_t *g)
     lock_gop(g);
 
     if (gop_get_type(g) == Q_TYPE_QUE) {
-        log_printf(15, "sync_exec_que_check gid=%d stack_size=%d started_exec=%d\n", gop_id(g), tbx_stack_size(g->q->opque->qd.list), g->base.started_execution);
-        if ((tbx_stack_size(g->q->opque->qd.list) == 1) && (g->base.started_execution == 0)) {  //** See if we can directly exec
+        log_printf(15, "sync_exec_que_check gid=%d stack_size=%d started_exec=%d\n", gop_id(g), tbx_stack_count(g->q->opque->qd.list), g->base.started_execution);
+        if ((tbx_stack_count(g->q->opque->qd.list) == 1) && (g->base.started_execution == 0)) {  //** See if we can directly exec
             g->base.started_execution = 1;
             cb = (callback_t *)tbx_stack_pop(g->q->opque->qd.list);
             gop = (op_generic_t *)cb->priv;
@@ -566,7 +566,7 @@ op_generic_t *gop_waitany(op_generic_t *g)
 //_opque_print_stack(g->q->finished);
     } else {
         log_printf(15, "gop_waitany: BEFORE (type=op) While gid=%d state=%d\n", gop_id(g), g->base.state);
-        tbx_flush_log();
+        tbx_log_flush();
         if ((g->base.pc->fn->sync_exec != NULL) && (g->base.started_execution == 0)) {  //** See if we can directly exec
             unlock_gop(g);  //** Don't need this for a direct exec
             log_printf(15, "sync_exec -- waiting for gid=%d to complete\n", gop_id(g));
@@ -582,7 +582,7 @@ op_generic_t *gop_waitany(op_generic_t *g)
             }
         }
         log_printf(15, "gop_waitany: AFTER (type=op) While gid=%d state=%d\n", gop_id(g), g->base.state);
-        tbx_flush_log();
+        tbx_log_flush();
     }
     unlock_gop(g);
 
@@ -606,9 +606,9 @@ int gop_waitall(op_generic_t *g)
     lock_gop(g);
 
     if (gop_get_type(g) == Q_TYPE_QUE) {
-        log_printf(15, "sync_exec_que_check gid=%d stack_size=%d started_exec=%d\n", gop_id(g), tbx_stack_size(g->q->opque->qd.list), g->base.started_execution);
+        log_printf(15, "sync_exec_que_check gid=%d stack_size=%d started_exec=%d\n", gop_id(g), tbx_stack_count(g->q->opque->qd.list), g->base.started_execution);
 
-        if ((tbx_stack_size(g->q->opque->qd.list) == 1) && (g->base.started_execution == 0)) {  //** See if we can directly exec
+        if ((tbx_stack_count(g->q->opque->qd.list) == 1) && (g->base.started_execution == 0)) {  //** See if we can directly exec
             log_printf(15, "sync_exec_que -- waiting for gid=%d to complete\n", gop_id(g));
             cb = (callback_t *)tbx_stack_pop(g->q->opque->qd.list);
             g2 = (op_generic_t *)cb->priv;

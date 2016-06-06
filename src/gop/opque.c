@@ -48,13 +48,13 @@ void _opque_print_stack(tbx_stack_t *stack)
     if (tbx_log_level() <= 15) return;
 
     tbx_stack_move_to_top(stack);
-    while ((gop = (op_generic_t *)tbx_get_ele_data(stack)) != NULL) {
+    while ((gop = (op_generic_t *)tbx_stack_get_current_data(stack)) != NULL) {
         log_printf(15, "    i=%d gid=%d type=%d\n", i, gop_id(gop), gop_get_type(gop));
         i++;
         tbx_stack_move_down(stack);
     }
 
-    if (tbx_stack_size(stack) != i) log_printf(0, "Stack size mismatch! stack_size=%d i=%d\n", tbx_stack_size(stack), i);
+    if (tbx_stack_count(stack) != i) log_printf(0, "Stack size mismatch! stack_size=%d i=%d\n", tbx_stack_count(stack), i);
 }
 
 
@@ -143,8 +143,8 @@ void _opque_cb(void *v, int mode)
     //** Get the status (gop is already locked)
     type = gop_get_type(gop);
     if (type == Q_TYPE_QUE) {
-        n = tbx_stack_size(gop->q->failed);
-        log_printf(15, "_opque_cb: qid=%d gid=%d  tbx_stack_size(q->failed)=%d gop->status=%d\n", gop_id(&(q->opque->op)), gop_id(gop), n, gop->base.status.op_status);
+        n = tbx_stack_count(gop->q->failed);
+        log_printf(15, "_opque_cb: qid=%d gid=%d  tbx_stack_count(q->failed)=%d gop->status=%d\n", gop_id(&(q->opque->op)), gop_id(gop), n, gop->base.status.op_status);
         success = (n == 0) ? gop->base.status : op_failure_status;
     } else {
         success = gop->base.status;
@@ -166,11 +166,11 @@ void _opque_cb(void *v, int mode)
     if (success.op_status == OP_STATE_FAILURE) tbx_stack_push(q->failed, gop); //** Push it on the failed list if needed
 
     q->nleft--;
-    log_printf(15, "_opque_cb: qid=%d gid=%d nleft=%d tbx_stack_size(q->failed)=%d tbx_stack_size(q->finished)=%d\n", gop_id(&(q->opque->op)), gop_id(gop), q->nleft, tbx_stack_size(q->failed), tbx_stack_size(q->finished));
-    tbx_flush_log();
+    log_printf(15, "_opque_cb: qid=%d gid=%d nleft=%d tbx_stack_count(q->failed)=%d tbx_stack_count(q->finished)=%d\n", gop_id(&(q->opque->op)), gop_id(gop), q->nleft, tbx_stack_count(q->failed), tbx_stack_count(q->finished));
+    tbx_log_flush();
 
     if (q->nleft <= 0) {  //** we're finished
-        if (tbx_stack_size(q->failed) == 0) {
+        if (tbx_stack_count(q->failed) == 0) {
             q->opque->op.base.status = op_success_status;
             callback_execute(q->opque->op.base.cb, OP_STATE_SUCCESS);
 
@@ -191,7 +191,7 @@ void _opque_cb(void *v, int mode)
 
             //** If retrying don't send the broadcast
             log_printf(15, "_opque_cb: RETRY END qid=%d gid=%d\n", gop_id(&(q->opque->op)), gop_id(gop));
-            tbx_flush_log();
+            tbx_log_flush();
         } else {
             //** Finished with errors but trigger the signal for anybody listening
             apr_thread_cond_broadcast(q->opque->op.base.ctl->cond);
@@ -202,7 +202,7 @@ void _opque_cb(void *v, int mode)
     }
 
     log_printf(15, "_opque_cb: END qid=%d gid=%d\n", gop_id(&(q->opque->op)), gop_id(gop));
-    tbx_flush_log();
+    tbx_log_flush();
 
     unlock_opque(q);
 }
@@ -279,10 +279,10 @@ void free_finished_stack(tbx_stack_t *stack, int mode)
     while (gop != NULL) {
 //log_printf(15, "gid=%d\n", gop_id(gop));
         if (gop->type == Q_TYPE_QUE) {
-//log_printf(15, "free_opque_stack: gop->type=QUE\n"); tbx_flush_log();
+//log_printf(15, "free_opque_stack: gop->type=QUE\n"); tbx_log_flush();
             opque_free(gop->q->opque, mode);
         } else {
-//log_printf(15, "free_opque_stack: gop->type=OPER\n"); tbx_flush_log();
+//log_printf(15, "free_opque_stack: gop->type=OPER\n"); tbx_log_flush();
 //DONE in op_generic_destroy        callback_destroy(gop->base.cb);  //** Free the callback chain as well
             if (gop->base.free != NULL) gop->base.free(gop, mode);
         }
@@ -290,7 +290,7 @@ void free_finished_stack(tbx_stack_t *stack, int mode)
         gop = (op_generic_t *)tbx_stack_pop(stack);
     }
 
-    tbx_free_stack(stack, 0);
+    tbx_stack_free(stack, 0);
 }
 
 //*************************************************************
@@ -307,10 +307,10 @@ void free_list_stack(tbx_stack_t *stack, int mode)
         gop = (op_generic_t *)cb->priv;
         log_printf(15, "gid=%d\n", gop_id(gop));
         if (gop->type == Q_TYPE_QUE) {
-//log_printf(15, "free_opque_stack: gop->type=QUE\n"); tbx_flush_log();
+//log_printf(15, "free_opque_stack: gop->type=QUE\n"); tbx_log_flush();
             opque_free(gop->q->opque, mode);
         } else {
-//log_printf(15, "free_opque_stack: gop->type=OPER\n"); tbx_flush_log();
+//log_printf(15, "free_opque_stack: gop->type=OPER\n"); tbx_log_flush();
 //DONE in op_generic_destroy        callback_destroy(gop->base.cb);  //** Free the callback chain as well
             if (gop->base.free != NULL) gop->base.free(gop, mode);
         }
@@ -318,7 +318,7 @@ void free_list_stack(tbx_stack_t *stack, int mode)
         cb = (callback_t *)tbx_stack_pop(stack);
     }
 
-    tbx_free_stack(stack, 0);
+    tbx_stack_free(stack, 0);
 }
 
 //*************************************************************
@@ -331,12 +331,12 @@ void opque_free(opque_t *opq, int mode)
 {
     que_data_t *q = &(opq->qd);
 
-    log_printf(15, "qid=%d nfin=%d nlist=%d nfailed=%d\n", gop_id(&(opq->op)), tbx_stack_size(q->finished), tbx_stack_size(q->list), tbx_stack_size(q->failed));
+    log_printf(15, "qid=%d nfin=%d nlist=%d nfailed=%d\n", gop_id(&(opq->op)), tbx_stack_count(q->finished), tbx_stack_count(q->list), tbx_stack_count(q->failed));
 
     lock_opque(&(opq->qd));  //** Lock it to make sure Everything is finished and safe to free
 
     //** Free the stacks
-    tbx_free_stack(q->failed, 0);
+    tbx_stack_free(q->failed, 0);
     free_finished_stack(q->finished, mode);
     free_list_stack(q->list, mode);
 
@@ -413,7 +413,7 @@ op_status_t opque_completion_status(opque_t *que)
     op_status_t status;
 
     lock_opque(q);
-    status = (tbx_stack_size(q->failed) == 0) ? q->opque->op.base.status : op_failure_status;
+    status = (tbx_stack_count(q->failed) == 0) ? q->opque->op.base.status : op_failure_status;
     unlock_opque(q);
 
     return(status);
@@ -437,7 +437,7 @@ void _opque_start_execution(opque_t *que)
 
     gop->base.started_execution = 1;
 
-    n = tbx_stack_size(q->list);
+    n = tbx_stack_count(q->list);
     tbx_stack_move_to_top(q->list);
     for (i=0; i<n; i++) {
         cb = (callback_t *)tbx_stack_pop(q->list);
@@ -503,7 +503,7 @@ void default_sort_ops(void *arg, opque_t *que)
     op_generic_t *gop;
     que_data_t *q = &(que->qd);
     tbx_stack_t *q_list = tbx_stack_new();
-    n = tbx_stack_size(q->list);
+    n = tbx_stack_count(q->list);
     tbx_type_malloc(array, callback_t *, n);
 
     //**Create the linear array used for qsort
@@ -533,7 +533,7 @@ void default_sort_ops(void *arg, opque_t *que)
         tbx_stack_push(q->list, ptr);
     }
 
-    tbx_free_stack(q_list, 0);
+    tbx_stack_free(q_list, 0);
     free(array);
 }
 
