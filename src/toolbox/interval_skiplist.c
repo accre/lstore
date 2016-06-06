@@ -474,9 +474,6 @@ tbx_isl_iter_t tbx_isl_iter_search(tbx_isl_t *isl, tbx_sl_key_t *lo, tbx_sl_key_
     log_printf(15, "iter_search_interval_skiplist: it.sn=%p\n", it.ptr[0]->next[0]);
 
     if (it.ptr[0] != NULL) {
-        it.sn = it.ptr[0];
-//     it.isln = (tbx_isl_node_t *)(it.sn->ele.data);
-//     it.ele = it.isln->start;
         it.sn = it.ptr[0]->next[0];
         it.ele = NULL;
     } else {
