@@ -3,6 +3,7 @@
 //#define _DISABLE_LOG 1
 
 #include <assert.h>
+#include <unistd.h>
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -539,8 +540,20 @@ tbx_inip_file_t *tbx_inip_file_read(const char *fname)
 
 tbx_inip_file_t *tbx_inip_string_read(const char *text)
 {
-    FILE *fd = tmpfile();
+    int file_temp = mkstemp("tbx_inip_XXXXXX");
+    if (file_temp == -1) {
+        goto error1;
+    }
+    FILE *fd = fdopen(file_temp, "r");
+    if (!fd) {
+        goto error2;
+    }
     fprintf(fd, "%s\n", text);
 
     return(inip_read_fd(fd));
+
+error2:
+    close(file_temp);
+error1:
+    return NULL;
 }
