@@ -8,4 +8,5 @@ Contents:
 
     assert
     checksum
+    dns_cache
 

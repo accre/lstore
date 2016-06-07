@@ -14,6 +14,10 @@
    limitations under the License.
 */
 
+/*! \file
+ * Wrappers for cached DNS resolution
+ */
+
 #pragma once
 #ifndef ACCRE_DNS_CACHE_H_INCLUDED
 #define ACCRE_DNS_CACHE_H_INCLUDED
@@ -25,10 +29,21 @@ extern "C" {
 #endif
 
 // Functions
+/*! \brief Resolve a hostname via DNS, caching results
+ *  \param name Hostname to resolve
+ *  \param byte_addr Resulting IP address in binary form
+ *  \param ip_addr Resulting IP address in text form
+ *  \return Zero on success
+ *
+ *  The caller is responsible for freeing ip_addr and byte_addr
+ */
 TBX_API int tbx_dnsc_lookup(const char * name, char * byte_addr, char * ip_addr);
+/*! @brief Performs global initialization. Called automatically on startup
+ */
 TBX_API int tbx_dnsc_shutdown();
+/*! @brief Performs global deinitialization. Called automatically on shutdown
+ */
 TBX_API int tbx_dnsc_startup();
-TBX_API int tbx_dnsc_startup_sized(int size);
 
 // Preprocessor macros
 #define DNS_ADDR_MAX 4

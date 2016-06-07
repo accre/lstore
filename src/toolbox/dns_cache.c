@@ -57,6 +57,8 @@ typedef struct {
 } DNS_cache_t;
 
 DNS_cache_t *_cache = NULL;
+// Forward declaration
+int tbx_dnsc_startup_sized(int size);
 
 
 //**************************************************************************
