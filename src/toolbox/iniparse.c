@@ -547,6 +547,15 @@ tbx_inip_file_t *tbx_inip_file_read(const char *fname)
 
 tbx_inip_file_t *tbx_inip_string_read(const char *text)
 {
+    /* POSIX requires mkstemp sets the permissions of the resulting file to
+     * 0600. Coverity assumes the much broader stance that mkstemp is influenced
+     * by the current umask, so it complains that you need to set umask to 0000
+     * before calling mkstemp. It doesn't really make sense anyway, you can't
+     * safely set umask in a multithreaded application. Sinec it's only obscure
+     * versions of libc that have the other behavior, just tell coverity to
+     * ignore it
+     */
+    // coverity[secure_temp]
     int file_temp = mkstemp("tbx_inip_XXXXXX");
     if (file_temp == -1) {
         goto error1;
