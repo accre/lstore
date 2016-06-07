@@ -27,7 +27,7 @@
 #include "tbx/string_token.h"
 
 // Forward declarations
-int escape_count(char *special_chars, char escape_char, char *data);
+unsigned int escape_count(char *special_chars, char escape_char, char *data);
 int64_t split_token_into_number_and_scale(char *token);
 
 char NULL_TERMINATOR = '\0';
@@ -173,13 +173,12 @@ char *tbx_stk_escape_strchr(char escape_char, char *data, char match)
 // escape_count - Counts the number of escape characters
 //***********************************************************************
 
-int escape_count(char *special_chars, char escape_char, char *data)
+unsigned int escape_count(char *special_chars, char escape_char, char *data)
 {
-    int i, n, count;
+    unsigned int i, count;
 
-    n = strlen(data);
     count = 0;
-    for (i=0; i<n; i++) {
+    for (i=0; data[i] != '\0'; i++) {
         if ((data[i] == escape_char) || (index(special_chars, data[i]) != NULL)) count++;
     }
 
@@ -193,24 +192,28 @@ int escape_count(char *special_chars, char escape_char, char *data)
 char *tbx_stk_escape_text(char *special_chars, char escape_char, char *data)
 {
     char *str;
-    int n, i, j, nchar;
+    unsigned int n, i, j, nchar;
 
     n = escape_count(special_chars, escape_char, data);
 
     nchar = strlen(data);
-    tbx_type_malloc_clear(str, char, nchar + n + 1);
+    size_t output_len = nchar + n + 1;
+    tbx_type_malloc_clear(str, char, output_len);
 
     j = 0;
     for (i=0; i<nchar; i++) {
         if ((data[i] == escape_char) || (index(special_chars, data[i]) != NULL)) {
+            assert(j < output_len);
             str[j] = escape_char;
             j++;
         }
 
+        assert(j < output_len);
         str[j] = data[i];
         j++;
     }
 
+    assert(j < output_len);
     str[j] = '\0';
 
     return(str);

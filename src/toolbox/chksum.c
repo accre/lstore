@@ -189,17 +189,20 @@ int cipher ## _add(void *state, int nbytes, tbx_tbuf_t *data, int boff)   \
 int cipher ## _get(void *state, int type, char *data)         \
 {                                                             \
   unsigned char md[CHKSUM_ ## CIPHER ## _LEN + 1];             \
-  char s2[CHKSUM_STATE_SIZE];               \
+  CIPHER ## _CTX s2;                        \
   int i = -1;                               \
                                             \
-  memcpy(s2, state, CHKSUM_STATE_SIZE);     \
+  memcpy(&s2, state, sizeof(CIPHER ## _CTX));\
                                             \
   switch (type) {                           \
     case CHKSUM_DIGEST_BIN:                 \
-        i = CIPHER ## _Final((unsigned char *)data, (CIPHER ## _CTX *)s2); \
+        i = CIPHER ## _Final((unsigned char *)data, &s2); \
         break;       \
     case CHKSUM_DIGEST_HEX:                 \
-        i = CIPHER ## _Final((unsigned char *)md, (CIPHER ## _CTX *)s2); \
+        i = CIPHER ## _Final((unsigned char *)md, &s2); \
+        if (i) {                            \
+            break;                          \
+        }                                   \
         i = convert_bin2hex(CIPHER ## _DIGEST_LENGTH, md, data);            \
         break;       \
   }                                         \
@@ -236,11 +239,9 @@ int cipher ## _set(tbx_chksum_t *cs)                                  \
 #define SHA1_CTX SHA_CTX
 #define SHA1_DIGEST_LENGTH SHA_DIGEST_LENGTH
 _openssl_chksum(SHA1, sha1)
-
 _openssl_chksum(SHA256, sha256)
 _openssl_chksum(SHA512, sha512)
 _openssl_chksum(MD5, md5)
-
 
 //*************************************************************************
 // blank chksum dummy routines

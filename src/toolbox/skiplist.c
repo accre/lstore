@@ -21,11 +21,12 @@
 #include "tbx/assert_result.h"
 #include "tbx/log.h"
 #include "tbx/skiplist.h"
+#include "tbx/type_malloc.h"
 #include "skiplist.h"
 
 // Forward declarations
 void destroy_skiplist_node(tbx_sl_t *sl, tbx_sl_node_t *sn);
-tbx_sl_node_t *create_skiplist_node(int level);
+tbx_sl_node_t *create_skiplist_node(unsigned int level);
 
 int skiplist_compare_fn_int(void *arg, tbx_sl_key_t *k1, tbx_sl_key_t *k2);
 int skiplist_compare_fn_strcmp(void *arg, tbx_sl_key_t *k1, tbx_sl_key_t *k2);
@@ -107,7 +108,7 @@ size_t tbx_sl_size()
     return sizeof(tbx_sl_t);
 }
 
-tbx_sl_t * tbx_sl_new_full(int maxlevels, double p, int allow_dups,
+tbx_sl_t * tbx_sl_new_full(unsigned int maxlevels, double p, int allow_dups,
                         tbx_sl_compare_t *compare,
                         tbx_sl_key_t *(*dup)(tbx_sl_key_t *a),
                         void (*key_free)(tbx_sl_key_t *a),
@@ -126,12 +127,13 @@ tbx_sl_t * tbx_sl_new_full(int maxlevels, double p, int allow_dups,
 }
 
 int tbx_sl_init_full(tbx_sl_t * self,
-                        int maxlevels, double p, int allow_dups,
+                        unsigned int maxlevels, double p, int allow_dups,
                         tbx_sl_compare_t *compare,
                         tbx_sl_key_t *(*dup)(tbx_sl_key_t *a),
                         void (*key_free)(tbx_sl_key_t *a),
                         void (*data_free)(tbx_sl_data_t *a))
 {
+    assert(maxlevels > 0);
     self->n_keys = 0;
     self->n_ele = 0;
     self->current_max = 0;
@@ -173,13 +175,13 @@ tbx_sl_ele_t *create_skiplist_ele()
 //*********************************************************************************
 //  Boilerplate for tbx_sl_node_t
 //*********************************************************************************
-tbx_sl_node_t *create_skiplist_node(int level)
+tbx_sl_node_t *create_skiplist_node(unsigned int level)
 {
     tbx_sl_node_t *sn = (tbx_sl_node_t *)malloc(sizeof(tbx_sl_node_t));
     if (!sn)
         goto error_1;
 
-    sn->next = (tbx_sl_node_t **)malloc(sizeof(tbx_sl_node_t *)*(level+1));
+    tbx_type_malloc(sn->next, tbx_sl_node_t *, level + 1);
     if (!sn->next)
         goto error_2;
 
@@ -366,7 +368,6 @@ void tbx_sl_empty(tbx_sl_t *sl)
     while (sn != NULL) {
         sn2 = sn;
         sn = sn->next[0];
-//    sl->key_free(sn2->key);
         destroy_skiplist_node(sl, sn2);
     }
 
@@ -377,9 +378,9 @@ void tbx_sl_empty(tbx_sl_t *sl)
 // get_random_level - Returns the nodes random level
 //*********************************************************************************
 
-int get_random_level(int max_level, double p, int current_max)
+unsigned int get_random_level(unsigned int max_level, double p, unsigned int current_max)
 {
-    int level = 0;
+    unsigned int level = 0;
     double r;
 
     max_level--;
@@ -460,7 +461,7 @@ tbx_sl_key_t *tbx_sl_key_last(tbx_sl_t *sl)
 tbx_sl_node_t *pos_tbx_sl_insert(tbx_sl_t *sl, tbx_sl_node_t **ptr, tbx_sl_key_t *key, tbx_sl_data_t *data)
 {
     tbx_sl_node_t *sn2;
-    int level, i;
+    unsigned int level, i;
 
     //** New node has to be inserted
     level = get_random_level(sl->max_levels, sl->p, sl->current_max);
@@ -538,7 +539,8 @@ int tbx_sl_remove(tbx_sl_t *sl, tbx_sl_key_t *key, tbx_sl_data_t *data)
     tbx_sl_node_t *ptr[SKIPLIST_MAX_LEVEL];
     tbx_sl_node_t *sn2;
     tbx_sl_ele_t *se, *se2, *prev;
-    int cmp, i, empty_node, found;
+    int cmp, empty_node, found;
+    unsigned int i;
 
     found = 0;
     empty_node = 0;
@@ -706,7 +708,7 @@ tbx_sl_data_t *tbx_sl_search_compare(tbx_sl_t *sl, tbx_sl_key_t *key, tbx_sl_com
 
 int tbx_sl_next(tbx_sl_iter_t *it, tbx_sl_key_t **nkey, tbx_sl_data_t **ndata)
 {
-    int i;
+    unsigned int i;
     tbx_sl_node_t *sn2;
 
     if (it->ele == NULL) { //** Nothing left for this key so skip to the next one
@@ -754,7 +756,8 @@ int tbx_sl_next(tbx_sl_iter_t *it, tbx_sl_key_t **nkey, tbx_sl_data_t **ndata)
 
 int iter_tbx_sl_remove(tbx_sl_iter_t *it)
 {
-    int empty_node, i;
+    int empty_node;
+    unsigned int i;
     tbx_sl_ele_t *se;
     tbx_sl_node_t *sn2;
 

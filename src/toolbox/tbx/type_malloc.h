@@ -24,9 +24,9 @@
 
 // Preprocessor macros
 #define tbx_type_malloc_clear(var, type, count) \
-            tbx_type_malloc(var, type, count); tbx_type_memclear(var, type, count)
+            tbx_type_malloc(var, type, count)
 #define tbx_type_malloc(var, type, count) \
-            var = (type *)malloc(sizeof(type)*(count)); assert(var != NULL)
+            var = (type *)calloc(count, sizeof(type)); assert(var != NULL)
 #define tbx_type_realloc(var, type, count) \
             var = (type *)realloc(var, sizeof(type)*(count)); assert(var != NULL)
 #define tbx_type_memclear(var, type, count) \

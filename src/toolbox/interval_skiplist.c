@@ -17,12 +17,14 @@
 #define _log_module_index 105
 
 #include <assert.h>
+#include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
 #include "tbx/assert_result.h"
 #include "tbx/log.h"
 #include "tbx/skiplist.h"
 #include "tbx/interval_skiplist.h"
+#include "tbx/type_malloc.h"
 #include "skiplist.h"
 #include "interval_skiplist.h"
 
@@ -159,7 +161,7 @@ int isl_node_is_empty(tbx_isl_node_t *isln, int level)
 
 int add_isl_node_level(tbx_isl_node_t *isln, int level)
 {
-    isln->edge = (tbx_isl_data_t **)malloc(sizeof(tbx_isl_data_t *)*(level+1));
+    tbx_type_malloc(isln->edge, tbx_isl_data_t *, level + 1);
     assert(isln->edge != NULL);
     memset(isln->edge, 0, sizeof(tbx_isl_data_t *)*(level+1));
 
@@ -276,7 +278,8 @@ int tbx_isl_insert(tbx_isl_t *isl, tbx_sl_key_t *lo, tbx_sl_key_t *hi, tbx_sl_da
     tbx_isl_node_t *isl_node;
     tbx_sl_node_t *ptr[SKIPLIST_MAX_LEVEL];
     tbx_sl_node_t *sn, *sn2, *sn_hi;
-    int cmp, i, j;
+    int cmp, j;
+    unsigned int i;
 
     tbx_sl_t *sl = isl->sl;
 
@@ -336,7 +339,8 @@ int tbx_isl_insert(tbx_isl_t *isl, tbx_sl_key_t *lo, tbx_sl_key_t *hi, tbx_sl_da
         //** Find the highest edge and tag it
         i = sn->level+1;
         j = -1;
-        while ((i>= 0) && (j == -1)) {
+        // The level has to be >=, so i has to be >=1
+        while ((i>= 1) && (j == -1)) {
             i--;
             sn2 = sn->next[i];
             if (sn2 != NULL) {
@@ -365,8 +369,9 @@ int tbx_isl_remove(tbx_isl_t *isl, tbx_sl_key_t *lo, tbx_sl_key_t *hi, tbx_sl_da
     tbx_sl_node_t *ptr[SKIPLIST_MAX_LEVEL];
     tbx_sl_node_t *sn, *sn2, *sn_lo;
     tbx_isl_node_t *isln;
-    int cmp, i, j, err;
-
+    unsigned int i, j;
+    int cmp, err;
+    bool found = false;
 //log_printf(15, "remove_interval_skiplist: START\n");
     memset(ptr, 0, sizeof(ptr));
     cmp = find_key(isl->sl, ptr, lo, 0);
@@ -403,8 +408,7 @@ int tbx_isl_remove(tbx_isl_t *isl, tbx_sl_key_t *lo, tbx_sl_key_t *hi, tbx_sl_da
     while (isl->sl->compare->fn(isl->sl->compare->arg, sn->key, hi) < 0) {
         //** Find the highest edge and untag it
         i = sn->level+1;
-        j = -1;
-        while ((i>= 0) && (j == -1)) {
+        while ((i> 0) && (!found)) {
             i--;
             sn2 = sn->next[i];
             if (sn2 != NULL) {
@@ -416,7 +420,10 @@ int tbx_isl_remove(tbx_isl_t *isl, tbx_sl_key_t *lo, tbx_sl_key_t *hi, tbx_sl_da
                 }
             }
         }
-
+        if (sn->next[i] == NULL) {
+            // Out of elements
+            break;
+        }
         sn = sn->next[i];  //** Jump to the next element
     }
 
@@ -464,6 +471,7 @@ tbx_isl_iter_t tbx_isl_iter_search(tbx_isl_t *isl, tbx_sl_key_t *lo, tbx_sl_key_
 
     it.isl = isl;
     it.ele = NULL;
+    it.sn = NULL;
     it.lo = lo;
     it.hi = hi;
     it.mode = 0;
@@ -471,15 +479,13 @@ tbx_isl_iter_t tbx_isl_iter_search(tbx_isl_t *isl, tbx_sl_key_t *lo, tbx_sl_key_
     it.ptr_level = isl->sl->current_max;
     memset(it.ptr, 0, sizeof(it.ptr));
     find_key(isl->sl, it.ptr, lo, 1);
-    log_printf(15, "iter_search_interval_skiplist: it.sn=%p\n", it.ptr[0]->next[0]);
 
     if (it.ptr[0] != NULL) {
-        it.sn = it.ptr[0];
-//     it.isln = (tbx_isl_node_t *)(it.sn->ele.data);
-//     it.ele = it.isln->start;
+        log_printf(15, "iter_search_interval_skiplist: it.sn=%p\n", it.ptr[0]->next[0]);
         it.sn = it.ptr[0]->next[0];
         it.ele = NULL;
     } else {
+        log_printf(15, "iter_search_interval_skiplist: it.sn=NULL\n");
         it.finished = 1;
     }
 

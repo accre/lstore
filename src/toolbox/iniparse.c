@@ -3,9 +3,11 @@
 //#define _DISABLE_LOG 1
 
 #include <assert.h>
-#include <string.h>
+#include <unistd.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include "tbx/assert_result.h"
 #include "tbx/fmttypes.h"
 #include "tbx/type_malloc.h"
@@ -518,19 +520,25 @@ tbx_inip_file_t *inip_read_fd(FILE *fd)
 tbx_inip_file_t *tbx_inip_file_read(const char *fname)
 {
     FILE *fd;
+    bool is_stdin;
 
     log_printf(15, "Parsing file %s\n", fname);
     if(!strcmp(fname, "-")) {
         fd = stdin;
+        is_stdin = true;
     } else {
         fd = fopen(fname, "r");
+        is_stdin = false;
     }
     if (fd == NULL) {  //** Can't open the file
         log_printf(1, "Problem opening file %s\n", fname);
         return(NULL);
     }
-
-    return(inip_read_fd(fd));
+    tbx_inip_file_t *ret = inip_read_fd(fd);
+    if (!is_stdin) {
+        fclose(fd);
+    }
+    return ret;
 }
 
 //***********************************************************************
@@ -539,8 +547,22 @@ tbx_inip_file_t *tbx_inip_file_read(const char *fname)
 
 tbx_inip_file_t *tbx_inip_string_read(const char *text)
 {
-    FILE *fd = tmpfile();
+    int file_temp = mkstemp("tbx_inip_XXXXXX");
+    if (file_temp == -1) {
+        goto error1;
+    }
+    FILE *fd = fdopen(file_temp, "r");
+    if (!fd) {
+        goto error2;
+    }
     fprintf(fd, "%s\n", text);
 
-    return(inip_read_fd(fd));
+    tbx_inip_file_t *ret = inip_read_fd(fd);
+    fclose(fd);
+    return ret;
+
+error2:
+    close(file_temp);
+error1:
+    return NULL;
 }

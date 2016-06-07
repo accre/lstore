@@ -13,30 +13,22 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 */
+#include "task.h"
+#include <tbx/string_token.h>
+#include <string.h>
 
-#pragma once
-#ifndef ACCRE_DNS_CACHE_H_INCLUDED
-#define ACCRE_DNS_CACHE_H_INCLUDED
+TEST_IMPL(tb_stk_escape_text) {
+    char *ret;
+    ASSERT(strlen(ret = tbx_stk_escape_text("a", '$', "1")) == 1);
+    NOTE(ret);
+    ASSERT(strlen(ret = tbx_stk_escape_text("a", '$', "a")) == 2);
+    NOTE(ret);
+    ASSERT(strlen(ret = tbx_stk_escape_text("a", '$', "$")) == 2);
+    NOTE(ret);
+    ASSERT(strlen(ret = tbx_stk_escape_text("a", '$', "$a")) == 4);
+    NOTE(ret);
+    ASSERT(strlen(ret = tbx_stk_escape_text("a", '$', "a$")) == 4);
+    NOTE(ret);
 
-#include "tbx/toolbox_visibility.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-// Functions
-TBX_API int tbx_dnsc_lookup(const char * name, char * byte_addr, char * ip_addr);
-TBX_API int tbx_dnsc_shutdown();
-TBX_API int tbx_dnsc_startup();
-TBX_API int tbx_dnsc_startup_sized(int size);
-
-// Preprocessor macros
-#define DNS_ADDR_MAX 16
-#define DNS_IPV4  0
-#define DNS_IPV6  1
-
-#ifdef __cplusplus
+    return 0;
 }
-#endif
-
-#endif

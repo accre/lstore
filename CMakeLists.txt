@@ -211,6 +211,7 @@ if(BUILD_TESTS)
                              test/runner.c
                              test/runner-unix.c
                              test/test-harness.c
+                             test/test-tb-stk.c
                              test/test-tb-stack.c)
     target_link_libraries(run-tests pthread lio)
     add_executable(run-benchmarks test/run-benchmarks.c

@@ -199,24 +199,7 @@ void *tbx_stack_pop(tbx_stack_t *stack)
     free(ele);
 
     return(data);
-//--------------
 
-    if (stack->top) {
-        stack->n--;
-        data = stack->top->data;
-        ele = stack->top;
-        stack->top = stack->top->down;
-        if (stack->top) {
-            stack->top->up = NULL;
-        } else {
-            stack->bottom = NULL;   //** Empty stack
-        }
-        free(ele);
-    } else {
-        data = NULL;
-    }
-
-    return(data);
 }
 
 //***************************************************

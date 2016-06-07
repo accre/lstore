@@ -61,10 +61,10 @@ TBX_API void tbx_ns_destroy(tbx_ns_t *ns);
 TBX_API int tbx_ns_generate_id();
 TBX_API int tbx_ns_getid(tbx_ns_t *ns);
 TBX_API tbx_ns_t *tbx_ns_new();
-TBX_API int tbx_ns_read(tbx_ns_t *ns, tbx_tbuf_t *buffer, int boff, int size, tbx_ns_timeout_t timeout);
-TBX_API int tbx_ns_readline_raw(tbx_ns_t *ns, tbx_tbuf_t *buffer, int boff, int size, tbx_ns_timeout_t timeout, int *status);
+TBX_API int tbx_ns_read(tbx_ns_t *ns, tbx_tbuf_t *buffer, unsigned int boff, int size, tbx_ns_timeout_t timeout);
+TBX_API int tbx_ns_readline_raw(tbx_ns_t *ns, tbx_tbuf_t *buffer, unsigned int boff, int size, tbx_ns_timeout_t timeout, int *status);
 TBX_API tbx_ns_timeout_t *tbx_ns_timeout_set(tbx_ns_timeout_t *tm, int sec, int us);
-TBX_API int tbx_ns_write(tbx_ns_t *ns, tbx_tbuf_t *buffer, int boff, int bsize, tbx_ns_timeout_t timeout);
+TBX_API int tbx_ns_write(tbx_ns_t *ns, tbx_tbuf_t *buffer, unsigned int boff, int bsize, tbx_ns_timeout_t timeout);
 
 // Stubs for unused code
 // FIXME: Delete these
