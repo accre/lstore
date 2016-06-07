@@ -14,6 +14,10 @@
    limitations under the License.
 */
 
+/*! \file
+ * Configuration parsing
+ */
+
 #pragma once
 #ifndef ACCRE_INIPARSE_H_INCLUDED
 #define ACCRE_INIPARSE_H_INCLUDED
@@ -26,10 +30,13 @@ extern "C" {
 #endif
 
 // Types
+/*! A single configuration value (opaque) */
 typedef struct tbx_inip_element_t tbx_inip_element_t;
 
+/*! Parsed configuration object (opaque) */
 typedef struct tbx_inip_file_t tbx_inip_file_t;
 
+/*! Configuration group which contains many elements (opaque) */
 typedef struct tbx_inip_group_t tbx_inip_group_t;
 
 // Functions
