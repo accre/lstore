@@ -20,15 +20,38 @@
 
 #include <assert.h>
 
+/*! \file
+ * Wrap assert to support side-effects. This is a temporary utility while we
+ * remove those cases
+ */
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 // Preprocessor macros
 #ifndef NDEBUG
-#define assert_result(eval_this, expected_result) assert((eval_this) == expected_result)
+/*! \brief Evaluates an expression. If assertions are enabled, assert the result
+ *         is equal to the result
+ *  @param eval_this Expression to evaluate
+ *  @param result Desired result of expression
+ */
+#define assert_result(eval_this, result) assert((eval_this) == result)
+/*! \brief Evaluates an expression. If assertions are enabled, assert the result
+ *         is not equal to the result
+ *  @param eval_this Expression to evaluate
+ *  @param result Undesired result of expression
+ */
 #define assert_result_not(eval_this, result) assert((eval_this) != result)
+/*! \brief Evaluates an expression. If assertions are enabled, assert the result
+ *         is not NULL
+ *  @param eval_this Expression to evaluate
+ */
 #define assert_result_not_null(eval_this) assert((eval_this) != NULL)
+/*! \brief Always evaluate an expression. Perform an assertion if asserts are
+ *         enabled
+ *  @param expr Expression to evaluate and possibly assert
+ */
 #define ASSERT_ALWAYS(expr) assert(expr)
 #else
 #define assert_result(eval_this, expected_result) (eval_this)
