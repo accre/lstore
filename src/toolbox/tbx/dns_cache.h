@@ -31,7 +31,7 @@ TBX_API int tbx_dnsc_startup();
 TBX_API int tbx_dnsc_startup_sized(int size);
 
 // Preprocessor macros
-#define DNS_ADDR_MAX 4
+#define DNS_ADDR_MAX 16
 #define DNS_IPV4  0
 #define DNS_IPV6  1
 
