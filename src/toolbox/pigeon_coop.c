@@ -300,9 +300,10 @@ void tbx_pc_destroy(tbx_pc_t *pc)
 //   size - Number of items to store in each shelf
 //   item_size - Size of each item.
 //***************************************************************************
-
-tbx_pc_t *tbx_pc_new(const char *name, int size, int item_size, void *new_arg, void *(*new)(void *arg, int size),
-                               void (*free)(void *arg, int size, void *dshelf))
+TBX_API tbx_pc_t *tbx_pc_new(const char *name, int size, int item_size,
+                                void *new_arg,
+                                tbx_pc_new_fn_t new_fn,
+                                tbx_pc_free_fn_t free)
 {
     int i;
     int default_shelves = 1;
@@ -310,7 +311,7 @@ tbx_pc_t *tbx_pc_new(const char *name, int size, int item_size, void *new_arg, v
     assert(pc != NULL);
 
     pc->name = name;
-    pc->new = new;
+    pc->new = new_fn;
     pc->free = free;
     pc->new_arg = new_arg;
     pc->shelf_size = size;
