@@ -4,9 +4,10 @@
 
 #include <assert.h>
 #include <unistd.h>
-#include <string.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include "tbx/assert_result.h"
 #include "tbx/fmttypes.h"
 #include "tbx/type_malloc.h"
@@ -519,19 +520,22 @@ tbx_inip_file_t *inip_read_fd(FILE *fd)
 tbx_inip_file_t *tbx_inip_file_read(const char *fname)
 {
     FILE *fd;
+    bool is_stdin;
 
     log_printf(15, "Parsing file %s\n", fname);
     if(!strcmp(fname, "-")) {
         fd = stdin;
+        is_stdin = true;
     } else {
         fd = fopen(fname, "r");
+        is_stdin = false;
     }
     if (fd == NULL) {  //** Can't open the file
         log_printf(1, "Problem opening file %s\n", fname);
         return(NULL);
     }
     tbx_inip_file_t *ret = inip_read_fd(fd);
-    if (fd != stdin) {
+    if (!is_stdin) {
         fclose(fd);
     }
     return ret;
