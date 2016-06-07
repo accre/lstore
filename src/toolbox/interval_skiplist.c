@@ -17,6 +17,7 @@
 #define _log_module_index 105
 
 #include <assert.h>
+#include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
 #include "tbx/assert_result.h"
@@ -368,8 +369,9 @@ int tbx_isl_remove(tbx_isl_t *isl, tbx_sl_key_t *lo, tbx_sl_key_t *hi, tbx_sl_da
     tbx_sl_node_t *ptr[SKIPLIST_MAX_LEVEL];
     tbx_sl_node_t *sn, *sn2, *sn_lo;
     tbx_isl_node_t *isln;
-    int cmp, i, j, err;
-
+    unsigned int i, j;
+    int cmp, err;
+    bool found = false;
 //log_printf(15, "remove_interval_skiplist: START\n");
     memset(ptr, 0, sizeof(ptr));
     cmp = find_key(isl->sl, ptr, lo, 0);
@@ -406,8 +408,7 @@ int tbx_isl_remove(tbx_isl_t *isl, tbx_sl_key_t *lo, tbx_sl_key_t *hi, tbx_sl_da
     while (isl->sl->compare->fn(isl->sl->compare->arg, sn->key, hi) < 0) {
         //** Find the highest edge and untag it
         i = sn->level+1;
-        j = -1;
-        while ((i>= 0) && (j == -1)) {
+        while ((i> 0) && (!found)) {
             i--;
             sn2 = sn->next[i];
             if (sn2 != NULL) {
@@ -419,7 +420,10 @@ int tbx_isl_remove(tbx_isl_t *isl, tbx_sl_key_t *lo, tbx_sl_key_t *hi, tbx_sl_da
                 }
             }
         }
-
+        if (sn->next[i] == NULL) {
+            // Out of elements
+            break;
+        }
         sn = sn->next[i];  //** Jump to the next element
     }
 
