@@ -76,8 +76,13 @@ int pack_read_zlib(tbx_pack_t *pack, unsigned char *data, int len)
     nbytes = inflate(&(p->z), Z_NO_FLUSH);
     log_printf(15, "inflate=%d\n", nbytes);
 
-    nbytes = ((nbytes == Z_OK) || (nbytes == Z_STREAM_END) || (nbytes == Z_BUF_ERROR)) ? len - p->z.avail_out : PACK_ERROR;
-
+    if ((nbytes == Z_OK) ||
+            (nbytes == Z_STREAM_END) ||
+            (nbytes == Z_BUF_ERROR)) {
+        nbytes = len - p->z.avail_out;
+    } else {
+        nbytes = PACK_ERROR;
+    }
     log_printf(15, "END z.avail_out=%d z.avail_in=%d len=%d nbytes=%d\n", p->z.avail_out, p->z.avail_in, len, nbytes);
     return(nbytes);
 }
@@ -118,11 +123,11 @@ int pack_write_zlib(tbx_pack_t *pack, unsigned char *data, int len)
     p->z.avail_in = len;
     p->z.next_in = data;
     nbytes = deflate(&(p->z), Z_NO_FLUSH);
-//log_printf(5, "deflate_error=%d len=%d avail_in=%d pack_used=%d\n", nbytes, len, p->z.avail_in, tbx_pack_used(pack));
-//double r = random_double(0, 1);
-//if (r > 0.25) { log_printf(0, "FORCING PACK_ERROR\n"); return(PACK_ERROR); }
-
-    nbytes = ((nbytes == Z_OK) || (nbytes == Z_BUF_ERROR)) ? len - p->z.avail_in : PACK_ERROR;
+    if ((nbytes == Z_OK) || (nbytes == Z_BUF_ERROR)) {
+        nbytes = len - p->z.avail_in;
+    } else {
+        nbytes = PACK_ERROR;
+    }
 
     return(nbytes);
 }
