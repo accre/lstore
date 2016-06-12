@@ -20,7 +20,7 @@
 
 #define _log_module_index 223
 
-#include "opque.h"
+#include "gop.h"
 #include "mq_ongoing.h"
 #include "mq_stream.h"
 #include "mq_helpers.h"

@@ -1,5 +1,6 @@
 #include "task.h"
 #include <opque.h>
+#include <portal.h>
 
 BENCHMARK_IMPL(sizes) {
   fprintf(stderr, "gop_control_t: %u bytes\n", (unsigned int) sizeof(gop_control_t));

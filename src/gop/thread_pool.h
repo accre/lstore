@@ -19,7 +19,7 @@
 //*************************************************************
 
 #include "gop/gop_visibility.h"
-#include "opque.h"
+#include "gop.h"
 #include "host_portal.h"
 #include <tbx/atomic_counter.h>
 #include <apr_thread_pool.h>

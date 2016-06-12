@@ -28,7 +28,7 @@
 #include <apr_thread_cond.h>
 #include <tbx/fmttypes.h>
 #include <tbx/network.h>
-#include "opque.h"
+#include "gop.h"
 
 #ifdef __cplusplus
 extern "C" {

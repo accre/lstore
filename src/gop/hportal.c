@@ -33,6 +33,7 @@
 #include <tbx/network.h>
 #include <tbx/log.h>
 #include <tbx/string_token.h>
+#include "portal.h"
 
 //***************************************************************************
 //  hportal_wait - Waits up to the specified time for the condition

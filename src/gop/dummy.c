@@ -23,9 +23,9 @@
 #include <string.h>
 #include <tbx/type_malloc.h>
 #include <tbx/log.h>
-#include "opque.h"
 #include <tbx/atomic_counter.h>
 #include <tbx/apr_wrapper.h>
+#include "portal.h"
 
 static void gop_dummy_submit_op(void *arg, op_generic_t *op);
 

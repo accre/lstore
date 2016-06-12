@@ -25,7 +25,8 @@
 #include <apr_thread_mutex.h>
 #include <apr_thread_cond.h>
 #include <apr_time.h>
-#include "opque.h"
+#include "gop.h"
+#include "portal.h"
 #include "host_portal.h"
 #include <tbx/log.h>
 #include <tbx/network.h>

@@ -23,7 +23,8 @@
 #include <tbx/apr_wrapper.h>
 #include <tbx/iniparse.h>
 #include <tbx/dns_cache.h>
-#include "opque.h"
+#include "gop.h"
+#include "portal.h"
 #include "ibp.h"
 #include "ibp_misc.h"
 #include <tbx/network.h>

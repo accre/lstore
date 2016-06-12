@@ -41,7 +41,7 @@ set(LSTORE_PROJECT_OBJS
 
 set(LSTORE_PROJECT_INCLUDES_OLD
     callback.h gop_config.h host_portal.h opque.h thread_pool.h mq_portal.h
-    mq_helpers.h mq_stream.h mq_ongoing.h
+    mq_helpers.h mq_stream.h mq_ongoing.h portal.h gop.h types.h
 )
 set(LSTORE_PROJECT_INCLUDES_NAMESPACE gop)
 set(LSTORE_PROJECT_INCLUDES

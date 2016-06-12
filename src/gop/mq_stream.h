@@ -19,7 +19,7 @@
 //***********************************************************************
 
 #include "gop/gop_visibility.h"
-#include "opque.h"
+#include "gop.h"
 #include "mq_portal.h"
 #include "mq_ongoing.h"
 #include <tbx/packer.h>

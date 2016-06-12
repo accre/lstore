@@ -24,6 +24,7 @@
 #include <apr_env.h>
 #include <tbx/apr_wrapper.h>
 #include "opque.h"
+#include "portal.h"
 #include "thread_pool.h"
 #include <tbx/network.h>
 #include <tbx/log.h>

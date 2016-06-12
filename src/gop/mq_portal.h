@@ -19,7 +19,6 @@
 //*************************************************************
 
 #include "gop/gop_visibility.h"
-#include "opque.h"
 #include "host_portal.h"
 #include <tbx/atomic_counter.h>
 #include "thread_pool.h"
@@ -28,6 +27,7 @@
 #include <czmq.h>
 #include <apr_thread_pool.h>
 #include <apr_thread_proc.h>
+#include "portal.h"
 
 #ifndef __MQ_PORTAL_H_
 #define __MQ_PORTAL_H_

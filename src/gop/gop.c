@@ -26,6 +26,8 @@
 #include <tbx/type_malloc.h>
 #include <tbx/log.h>
 #include "opque.h"
+#include "gop.h"
+#include "portal.h"
 #include <tbx/atomic_counter.h>
 #include <tbx/apr_wrapper.h>
 
