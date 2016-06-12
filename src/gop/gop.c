@@ -748,11 +748,3 @@ apr_time_t gop_end_time(op_generic_t *gop)
 {
     return(gop->op->cmd.end_time);
 }
-
-
-
-
-
-
-
-
