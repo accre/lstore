@@ -394,7 +394,6 @@ void *mq_ongoing_remove(mq_ongoing_t *mqon, char *id, int id_len, intptr_t key)
 {
     mq_ongoing_object_t *ongoing;
     mq_ongoing_host_t *oh;
-//  intptr_t key;
     void *ptr = NULL;
 
     apr_thread_mutex_lock(mqon->lock);
@@ -489,12 +488,9 @@ int _mq_ongoing_close(mq_ongoing_t *mqon, mq_ongoing_host_t *oh, opque_t *q)
     mq_ongoing_object_t *oo;
     op_generic_t *gop;
     int ntasks;
-//  opque_t *q;
 
     int n = apr_hash_count(oh->table);
     log_printf(2, "closing host=%s task_count=%d now=" TT " next_check=" TT " hb=%d\n", oh->id, n, apr_time_now(), oh->next_check, oh->heartbeat);
-//  q = new_opque();
-//  opque_start_execution(q);
 
     ntasks = 0;
 
@@ -509,14 +505,6 @@ int _mq_ongoing_close(mq_ongoing_t *mqon, mq_ongoing_host_t *oh, opque_t *q)
 
         ntasks++;
     }
-
-//  while ((gop = opque_waitany(q)) != NULL) {
-//     oo = gop_get_private(gop);
-//    if (oo->auto_clean) free(oo);
-//     gop_free(gop, OP_DESTROY);
-//  }
-
-//  opque_free(q, OP_DESTROY);
 
     return(ntasks);
 }

@@ -105,7 +105,6 @@ void mq_stream_read_request(mq_stream_t *mqs)
     mq_msg_append_mem(msg, mqs->stream_id, mqs->sid_len, MQF_MSG_KEEP_DATA);
     mq_msg_append_mem(msg, &(mqs->want_more), 1, MQF_MSG_KEEP_DATA);  //** Want more data
     mq_msg_append_mem(msg, NULL, 0, MQF_MSG_KEEP_DATA);
-//DELETE???  mq_apply_return_address_msg(msg, mqs->remote_host, 0);
 
     //** Make the gop
     mqs->gop_waiting = new_mq_op(mqs->mqc, msg, mqs_response_client_more, mqs, NULL, mqs->timeout);
@@ -264,7 +263,6 @@ int64_t mq_stream_read_varint(mq_stream_t *mqs, int *error)
 
     for (i=0; i<16; i++) {
         err = mq_stream_read(mqs, &(buffer[i]), 1);
-//log_printf(15, "i=%d buffer[i]=%u varint_need_more=%d, err=%d bpos=%d\n", i, buffer[i], tbx_varint_need_more(buffer[i]), err, mqs->bpos);
         if (err != 0) break;
         if (tbx_varint_need_more(buffer[i]) == 0) break;
     }
@@ -426,14 +424,6 @@ int mqs_write_send(mq_stream_t *mqs, mq_msg_t *address, mq_frame_t *fid)
     mq_msg_append_mem(response, mqs->data, MQS_HEADER + tbx_pack_used(mqs->pack), MQF_MSG_AUTO_FREE);
     mq_msg_append_mem(response, NULL, 0, MQF_MSG_KEEP_DATA);  //** Empty frame
 
-//char buffer[1024];
-//int n = MQS_HEADER + tbx_pack_used(mqs->pack);
-//if (n > 50) n = 50;
-//int i;
-//n=MQS_HEADER;
-//for (i=0; i<MQS_HEADER; i++) log_printf(2, "i=%d c=%c\n", i, mqs->data[i]);
-//log_printf(2, "printing 1st 50 bytes mqsbuf=%s\n", mq_id2str((char *)mqs->data, n, buffer, 1024));
-
     log_printf(2, "nbytes=%d more=%c\n", tbx_pack_used(mqs->pack), mqs->data[MQS_STATE_INDEX]);
 
     mqs->unsent_data = 0;
@@ -460,8 +450,6 @@ int mqs_write_send(mq_stream_t *mqs, mq_msg_t *address, mq_frame_t *fid)
         mqs->want_more = MQS_ABORT;
     }
 
-//tbx_log_flush();
-//sleep(5);
     return(err);
 }
 
@@ -510,9 +498,8 @@ void *mqs_flusher_thread(apr_thread_t *th, void *arg)
 
     log_printf(1, "END: msid=%d\n", mqs->msid);
 
-//** We can exit now cause it's up to the caller to send a new request
-//** Which will be handled by the callback
-
+    //** We can exit now cause it's up to the caller to send a new request
+    //** Which will be handled by the callback
     return(NULL);
 }
 
@@ -575,7 +562,6 @@ void mqs_server_more_cb(void *arg, mq_task_t *task)
     }
 
     //** Now read the timeout
-//  tbx_zigzag_decode(&(data[1]), len-1, &timeout);
     timeout = mqs->timeout;
 
     mq_frame_destroy(f);

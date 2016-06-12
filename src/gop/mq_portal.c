@@ -279,8 +279,8 @@ void mq_command_exec(mq_command_table_t *t, mq_task_t *task, void *key, int klen
     log_printf(3, "cmd=%p klen=%d\n", cmd, klen);
     if (cmd == NULL) {
         log_printf(0, "Unknown command!\n");
-//display_msg_frames(task->msg); //testing to see if the worker is returning a message and it's getting dropped here
-        if (t->fn_default != NULL) t->fn_default(t->arg_default, task);
+        if (t->fn_default != NULL)
+            t->fn_default(t->arg_default, task);
     } else {
         cmd->fn(cmd->arg, task);
     }
@@ -297,21 +297,22 @@ int mq_submit(mq_portal_t *p, mq_task_t *task)
     mq_task_t *t;
     apr_thread_mutex_lock(p->lock);
 
-//** Do a quick check for connections that need to be reaped
-    if (tbx_stack_count(p->closed_conn) > 0) _mq_reap_closed(p);
+    //** Do a quick check for connections that need to be reaped
+    if (tbx_stack_count(p->closed_conn) > 0)
+        _mq_reap_closed(p);
 
-//** Add the task and get the backlog
+    //** Add the task and get the backlog
     tbx_stack_move_to_bottom(p->tasks);
     tbx_stack_insert_below(p->tasks, task);
     backlog = tbx_stack_count(p->tasks);
     log_printf(2, "portal=%s backlog=%d active_conn=%d max_conn=%d total_conn=%d\n", p->host, backlog, p->active_conn, p->max_conn, p->total_conn);
     tbx_log_flush();
 
-//** Noitify the connections
+    //** Noitify the connections
     c = 1;
     mq_pipe_write(p->efd[1], &c);
 
-//** Check if we need more connections
+    //** Check if we need more connections
     err = 0;
     if (backlog > p->backlog_trigger) {
         if (p->total_conn == 0) { //** No current connections so try and make one
@@ -360,7 +361,7 @@ int mq_task_send(mq_context_t *mqc, mq_task_t *task)
 
     mq_get_frame(f, (void **)&host, &size);
 
-//** Look up the portal
+    //** Look up the portal
     apr_thread_mutex_lock(mqc->lock);
     p = (mq_portal_t *)(apr_hash_get(mqc->client_portals, host, size));
     if (p == NULL) {  //** New host so create the portal
@@ -460,12 +461,11 @@ void *mqt_exec(apr_thread_t *th, void *arg)
     mq_msg_next(task->msg);     //** MQ command
     f = mq_msg_next(task->msg);     //** Skip the ID
     mq_get_frame(f, &key, &n);
-//log_printf(1, "execing sid=%s  EXEC SUBMIT now=" TT "\n", mq_id2str(key, n, b64, sizeof(b64)), apr_time_sec(apr_time_now()));  tbx_log_flush();
     log_printf(1, "execing sid=%s\n", mq_id2str(key, n, b64, sizeof(b64)));
     f = mq_msg_next(task->msg); //** and get the user command
     mq_get_frame(f, &key, &n);
 
-//** Lookup and see if the envelope command is supported.
+    //** Lookup and see if the envelope command is supported.
     mq_command_exec(p->command_table, task, key, n);
 
     mq_task_destroy(task);
@@ -533,7 +533,7 @@ void mqc_response(mq_conn_t *c, mq_msg_t *msg, int do_exec)
     mq_get_frame(f, (void **)&id, &size);
     log_printf(5, "id_size=%d\n", size);
 
-//** Find the task
+    //** Find the task
     tn = apr_hash_get(c->waiting, id, size);
     if (tn == NULL) {  //** Nothing matches so drop it
         log_printf(1, "ERROR: No matching ID! sid=%s\n", mq_id2str(id, size, b64, sizeof(b64)));
@@ -542,14 +542,14 @@ void mqc_response(mq_conn_t *c, mq_msg_t *msg, int do_exec)
         return;
     }
 
-//** We have a match if we made it here
-//** Remove us from the waiting table
+    //** We have a match if we made it here
+    //** Remove us from the waiting table
     apr_hash_set(c->waiting, id, size, NULL);
 
-//** and also dec the heartbeat entry
+    //** and also dec the heartbeat entry
     if (tn->tracking != NULL) mqc_heartbeat_dec(c, tn->tracking);
 
-//** Execute the task in the thread pool
+    //** Execute the task in the thread pool
     if(do_exec != 0) {
         log_printf(5, "Submitting repsonse for exec gid=%d\n", gop_id(tn->task->gop));
         tbx_log_flush();
@@ -557,7 +557,7 @@ void mqc_response(mq_conn_t *c, mq_msg_t *msg, int do_exec)
         _tp_submit_op(NULL, tn->task->gop);
     }
 
-//** Free the tracking number container
+    //** Free the tracking number container
     free(tn);
 
     log_printf(5, "end\n");
@@ -613,19 +613,19 @@ mq_msg_t *mq_trackaddress_msg(char *host, mq_msg_t *raw_address, mq_frame_t *fid
         mq_msg_append_frame(track_response, fid);
     }
 
-//** Add the address. We skip frame 0 (empty) and frame 1 (sender -- he knows who he is)
+    //** Add the address. We skip frame 0 (empty) and frame 1 (sender -- he knows who he is)
     mq_msg_first(raw_address);
     mq_msg_next(raw_address);
     while ((f = mq_msg_next(raw_address)) != NULL) {
         mq_msg_append_frame(track_response, mq_frame_dup(f));  //** Always dup frames
     }
 
-//** Need to add ourselves and the empty frame to the tracking address
+    //** Need to add ourselves and the empty frame to the tracking address
     mq_msg_append_mem(track_response, host, strlen(host), MQF_MSG_KEEP_DATA);
     mq_msg_append_mem(track_response, NULL, 0, MQF_MSG_KEEP_DATA);
 
-//** Lastly add the return addres.  We always dup the frames here cause they are used
-//** in the address already if not duped.
+    //** Lastly add the return addres.  We always dup the frames here cause they are used
+    //** in the address already if not duped.
     mq_apply_return_address_msg(track_response, raw_address, dup_frames);
 
     return(track_response);
@@ -682,7 +682,7 @@ void mqc_trackaddress(mq_conn_t *c, mq_msg_t *msg)
         address[n] = 0;
         log_printf(5, "full address=%s\n", address);
 
-//** Remove anything else
+        //** Remove anything else
         f = mq_msg_next(msg);
         while (f != NULL) {
             f = mq_msg_pluck(msg, 0);
@@ -690,7 +690,7 @@ void mqc_trackaddress(mq_conn_t *c, mq_msg_t *msg)
             f = mq_msg_current(msg);
         }
 
-//** Make sure its not already stored
+        //** Make sure its not already stored
         hb = apr_hash_get(c->heartbeat_dest, address, n);
         if (hb == NULL) {  //** Make the new entry
             tbx_type_malloc_clear(hb, mq_heartbeat_entry_t, 1);
@@ -699,8 +699,8 @@ void mqc_trackaddress(mq_conn_t *c, mq_msg_t *msg)
             hb->lut_id = tbx_atomic_global_counter();
 
             log_printf(5, "trackaddress hb_lut=" LU "\n", hb->lut_id);
-//** Form the heartbeat msg
-//** Right now we just have the address which should have an empty last frame
+            //** Form the heartbeat msg
+            //** Right now we just have the address which should have an empty last frame
             mq_msg_append_mem(msg, MQF_VERSION_KEY, MQF_VERSION_SIZE, MQF_MSG_KEEP_DATA);
             mq_msg_append_mem(msg, MQF_PING_KEY, MQF_PING_SIZE, MQF_MSG_KEEP_DATA);
             mq_msg_append_mem(msg, &(hb->lut_id), sizeof(uint64_t), MQF_MSG_KEEP_DATA);
@@ -709,7 +709,7 @@ void mqc_trackaddress(mq_conn_t *c, mq_msg_t *msg)
             hb->address = msg;
             msg = NULL;  //** Don't want it deleated
 
-//** Finish creeating the structure
+            //** Finish creeating the structure
             apr_hash_set(c->heartbeat_dest, hb->key, n, hb);
             apr_hash_set(c->heartbeat_lut, &(hb->lut_id), sizeof(uint64_t), hb);
             tn->last_check = apr_time_now();
@@ -718,7 +718,7 @@ void mqc_trackaddress(mq_conn_t *c, mq_msg_t *msg)
             free(address);  //** Alredy exists so just free the key
         }
 
-//** Store the heartbeat tracking entry
+        //** Store the heartbeat tracking entry
         tn->tracking = hb;
         hb->count++;
     }
@@ -737,12 +737,6 @@ int mqc_ping(mq_conn_t *c, mq_msg_t *msg)
     mq_msg_t *pong;
     mq_frame_t *f, *pid;
     int err;
-
-//void *data;
-//for (f = mq_msg_first(msg), i=0; f != NULL; f = mq_msg_next(msg), i++) {
-//  mq_get_frame(f, &data, &err);
-//  log_printf(5, "fsize[%d]=%d\n", i, err);
-//}
 
     //** Peel off the top frames and just leave the return address
     mq_msg_first(msg);
@@ -792,15 +786,14 @@ void mqc_pong(mq_conn_t *c, mq_msg_t *msg)
     f = mq_msg_next(msg);  //** This should be the ID which is actually the entry
     mq_get_frame(f, &ptr, &size);
 
-//** Validate the entry
+    //** Validate the entry
     entry = apr_hash_get(c->heartbeat_lut, ptr, sizeof(uint64_t));
     if (entry != NULL) {
         entry->last_check = apr_time_now();
     }
 
     log_printf(5, "pong entry=%p ptr=%p\n", entry, ptr);
-//log_printf(5, "pong entry->key=%.10s\n", entry->key);
-//** Clean up
+    //** Clean up
     mq_msg_destroy(msg);
 }
 
@@ -818,8 +811,8 @@ int mqc_heartbeat_cleanup(mq_conn_t *c)
     mq_heartbeat_entry_t *entry;
     mq_task_monitor_t *tn;
 
-//** Clean out the heartbeat info
-//** NOTE: using internal non-threadsafe iterator.  Should be ok in this case
+    //** Clean out the heartbeat info
+    //** NOTE: using internal non-threadsafe iterator.  Should be ok in this case
     for (hi = apr_hash_first(NULL, c->heartbeat_dest); hi != NULL; hi = apr_hash_next(hi)) {
         apr_hash_this(hi, (const void **)&key, &klen, (void **)&entry);
 
@@ -830,15 +823,15 @@ int mqc_heartbeat_cleanup(mq_conn_t *c)
         free(entry);
     }
 
-//** Fail all the commands
-//** NOTE: using internal non-threadsafe iterator.  Should be ok in this case
+    //** Fail all the commands
+    //** NOTE: using internal non-threadsafe iterator.  Should be ok in this case
     for (hit = apr_hash_first(NULL, c->waiting); hit != NULL; hit = apr_hash_next(hit)) {
         apr_hash_this(hit, (const void **)&key, &klen, (void **)&tn);
 
-//** Clear it out
+        //** Clear it out
         apr_hash_set(c->waiting, key, klen, NULL);
 
-//** Submit the fail task
+        //** Submit the fail task
         log_printf(1, "Failed task uuid=%s\n", c->mq_uuid);
         tbx_log_flush();
         log_printf(1, "Failed task tn->task=%p tn->task->gop=%p\n", tn->task, tn->task->gop);
@@ -847,7 +840,7 @@ int mqc_heartbeat_cleanup(mq_conn_t *c)
         assert(tn->task->gop);
         thread_pool_direct(c->pc->tp, mqtp_failure, tn->task);
 
-//** Free the container. The mq_task_t is handled by the response
+        //** Free the container. The mq_task_t is handled by the response
         free(tn);
     }
 
@@ -909,8 +902,8 @@ int mqc_heartbeat(mq_conn_t *c, int npoll)
 
     do_conn_hb = 0;  //** Keep track of if I'm HBing my direct uplink.
 
-//** Check the heartbeat dest table
-//** NOTE: using internal non-threadsafe iterator.  Should be ok in this case
+    //** Check the heartbeat dest table
+    //** NOTE: using internal non-threadsafe iterator.  Should be ok in this case
     hi = apr_hash_first(NULL, c->heartbeat_dest);
     while (hi != NULL) {
         apr_hash_this(hi, (const void **)&key, &klen, (void **)&entry);
@@ -923,14 +916,14 @@ int mqc_heartbeat(mq_conn_t *c, int npoll)
             klen = apr_time_sec(dt);
             log_printf(8, "hb->key=%s FAIL dt=%zd\n", entry->key, klen);
             log_printf(6, "before waiting size=%d\n", apr_hash_count(c->waiting));
-//** NOTE: using internal non-threadsafe iterator.  Should be ok in this case
-            for (hit = apr_hash_first(NULL, c->waiting); hit != NULL; hit = apr_hash_next(hit)) {
+                //** NOTE: using internal non-threadsafe iterator.  Should be ok in this case
+                for (hit = apr_hash_first(NULL, c->waiting); hit != NULL; hit = apr_hash_next(hit)) {
                 apr_hash_this(hit, (const void **)&key, &klen, (void **)&tn);
                 if (tn->tracking == entry) {
-//** Clear it out
+                    //** Clear it out
                     apr_hash_set(c->waiting, key, klen, NULL);
 
-//** Submit the fail task
+                    //** Submit the fail task
                     log_printf(6, "Failed task uuid=%s sid=%s\n", c->mq_uuid, mq_id2str(key, klen, b64, sizeof(b64)));
                     tbx_log_flush();
                     log_printf(6, "Failed task tn->task=%p tn->task->gop=%p\n", tn->task, tn->task->gop);
@@ -939,14 +932,14 @@ int mqc_heartbeat(mq_conn_t *c, int npoll)
                     assert(tn->task->gop);
                     thread_pool_direct(c->pc->tp, mqtp_failure, tn->task);
 
-//** Free the container. The mq_task_t is handled by the response
+                    //** Free the container. The mq_task_t is handled by the response
                     free(tn);
                 }
             }
 
             log_printf(6, "after waiting size=%d\n", apr_hash_count(c->waiting));
 
-//** Remove the entry and clean up
+            //** Remove the entry and clean up
             apr_hash_set(c->heartbeat_dest, entry->key, entry->key_size, NULL);
             apr_hash_set(c->heartbeat_lut, &(entry->lut_id), sizeof(uint64_t), NULL);
             free(entry->key);
@@ -970,9 +963,9 @@ next:
         hi = apr_hash_next(hi);
     }
 
-//** Do the same for individual commands
+    //** Do the same for individual commands
     now = apr_time_now();
-//** NOTE: using internal non-threadsafe iterator.  Should be ok in this case
+    //** NOTE: using internal non-threadsafe iterator.  Should be ok in this case
     hi = apr_hash_first(NULL, c->waiting);
     log_printf(6, "before waiting size=%d\n", apr_hash_count(c->waiting));
     while (hi != NULL) {
@@ -983,10 +976,10 @@ next:
                 mqc_heartbeat_dec(c, tn->tracking);
             }
 
-//** Clear it out
+            //** Clear it out
             apr_hash_set(c->waiting, key, klen, NULL);
 
-//** Submit the fail task
+            //** Submit the fail task
             log_printf(6, "Failed task uuid=%s hash_count=%u sid=%s\n", c->mq_uuid, apr_hash_count(c->waiting), mq_id2str(key, klen, b64, sizeof(b64)));
             tbx_log_flush();
             log_printf(6, "Failed task tn->task=%p tn->task->gop=%p gid=%d\n", tn->task, tn->task->gop, gop_id(tn->task->gop));
@@ -995,7 +988,7 @@ next:
             assert(tn->task->gop);
             thread_pool_direct(c->pc->tp, mqtp_failure, tn->task);
 
-//** Free the container. The mq_task_t is handled by the response
+            //** Free the container. The mq_task_t is handled by the response
             free(tn);
         } else {
             pending_count++;  //** Keep track of pending responses
@@ -1017,7 +1010,7 @@ next:
         }
     }
 
-//** Determine if it's time to exit
+    //** Determine if it's time to exit
     n = 0;
     if (npoll == 1) {
         if (pending_count == 0) n = 1;
@@ -1043,25 +1036,23 @@ int mqc_process_incoming(mq_conn_t *c, int *nproc)
     int size;
 
     log_printf(5, "processing incoming start\n");
-//** Process all that are on the wire
+    //** Process all that are on the wire
     msg = mq_msg_new();
     count = 0;
     while ((n = mq_recv(c->sock, msg, MQ_DONTWAIT)) == 0) {
         count++;
         log_printf(5, "Got a message count=%d\n", count);
-//** verify we have an empty frame
+        //** verify we have an empty frame
         f = mq_msg_first(msg);
         mq_get_frame(f, (void **)&data, &size);
         if (size != 0) {
             log_printf(0, "ERROR: Missing empty frame!\n");
-//mq_msg_destroy(msg);
             task = mq_task_new(c->pc->mqc, msg, NULL, c->pc, -1);
             mqt_exec(NULL, task);
             goto skip;
         }
 
-//log_printf(5, "111111111111111111111\n"); tbx_log_flush();
-//** and the correct version
+        //** and the correct version
         f = mq_msg_next(msg);
         mq_get_frame(f, (void **)&data, &size);
         if (mq_data_compare(data, size, MQF_VERSION_KEY, MQF_VERSION_SIZE) != 0) {
@@ -1070,9 +1061,7 @@ int mqc_process_incoming(mq_conn_t *c, int *nproc)
             goto skip;
         }
 
-//log_printf(5, "222222222222222222\n"); tbx_log_flush();
-
-//** This is the command frame
+        //** This is the command frame
         f = mq_msg_next(msg);
         mq_get_frame(f, (void **)&data, &size);
         if (mq_data_compare(MQF_PING_KEY, MQF_PING_SIZE, data, size) == 0) {
@@ -1109,7 +1098,7 @@ int mqc_process_incoming(mq_conn_t *c, int *nproc)
 
             }
 
-//** It's up to the task to send any tracking information back.
+            //** It's up to the task to send any tracking information back.
             log_printf(5, "Submiting task for execution\n");
             task = mq_task_new(c->pc->mqc, msg, NULL, c->pc, -1);
             thread_pool_direct(c->pc->tp, mqt_exec, task);
@@ -1149,10 +1138,10 @@ int mqc_process_task(mq_conn_t *c, int *npoll, int *nproc)
     char *data, v;
     int i, size, tracking;
 
-//** Read an event
+    //** Read an event
     i = mq_pipe_read(c->pc->efd[0], &v);
 
-//** Get the new task or start a wind down if requested
+    //** Get the new task or start a wind down if requested
     apr_thread_mutex_lock(c->pc->lock);
     if (c->pc->n_close > 0) { //** Wind down request
         c->pc->n_close--;
@@ -1166,7 +1155,7 @@ int mqc_process_task(mq_conn_t *c, int *npoll, int *nproc)
         log_printf(1, "OOPS! read=-1 task=%p!\n", task);
     }
 
-//** Wind down triggered so return
+    //** Wind down triggered so return
     if (*npoll == 1) return(0);
 
     if (task == NULL) {
@@ -1176,12 +1165,12 @@ int mqc_process_task(mq_conn_t *c, int *npoll, int *nproc)
 
     (*nproc)++;  //** Inc processed commands
 
-//** Convert the MAx exec time in sec to an abs timeout in usec
+    //** Convert the MAx exec time in sec to an abs timeout in usec
     task->timeout = apr_time_now() + apr_time_from_sec(task->timeout);
 
 
-//** Check if we expect a response
-//** Skip over the address
+    //** Check if we expect a response
+    //** Skip over the address
     f = mq_msg_first(task->msg);
     mq_get_frame(f, (void **)&data, &size);
     log_printf(10, "address length = %d\n", size);
@@ -1195,7 +1184,7 @@ int mqc_process_task(mq_conn_t *c, int *npoll, int *nproc)
         return(1);
     }
 
-//** Verify the version
+    //** Verify the version
     f = mq_msg_next(task->msg);
     mq_get_frame(f, (void **)&data, &size);
     if (mq_data_compare(data, size, MQF_VERSION_KEY, MQF_VERSION_SIZE) != 0) {  //** Bad version number
@@ -1206,12 +1195,12 @@ int mqc_process_task(mq_conn_t *c, int *npoll, int *nproc)
 
     log_printf(10, "MQF_VERSION_KEY found\n");
     log_printf(5, "task pass_through = %d\n", task->pass_through);
-//** This is the command
+    //** This is the command
     f = mq_msg_next(task->msg);
     mq_get_frame(f, (void **)&data, &size);
     tracking = 0;
     if ( (mq_data_compare(data, size, MQF_TRACKEXEC_KEY, MQF_TRACKEXEC_SIZE) == 0) && (task->pass_through == 0) ) { //** We track it - But only if it is not a pass-through task
-//** Get the ID here.  The send will munge my frame position
+        //** Get the ID here.  The send will munge my frame position
         f = mq_msg_next(task->msg);
         mq_get_frame(f, (void **)&data, &size);
         tracking = 1;
@@ -1236,7 +1225,7 @@ int mqc_process_task(mq_conn_t *c, int *npoll, int *nproc)
         log_printf(10, "Unknown key found! key = %s\n", data);
     }
 
-//** Send it on
+    //** Send it on
     i = mq_send(c->sock, task->msg, 0);
     if (i == -1) {
         log_printf(0, "Error sending msg! errno=%d\n", errno);
@@ -1249,7 +1238,7 @@ int mqc_process_task(mq_conn_t *c, int *npoll, int *nproc)
     } else {                 //** Track the task
         log_printf(1, "TRACKING id_size=%d sid=%s\n", size, mq_id2str(data, size, b64, sizeof(b64)));
         if (task->gop != NULL) log_printf(1, "TRACKING gid=%d\n", gop_id(task->gop));
-//** Insert it in the monitoring table
+        //** Insert it in the monitoring table
         tbx_type_malloc_clear(tn, mq_task_monitor_t, 1);
         tn->task = task;
         tn->id = data;
@@ -1278,11 +1267,11 @@ int mq_conn_make(mq_conn_t *c)
 
     log_printf(5, "START host=%s\n", c->pc->host);
 
-//** Determing the type of socket to make based on
-//** the mq_conn_t* passed in
-//** Old version:
-//** c->sock = mq_socket_new(c->pc->ctx, MQ_TRACE_ROUTER);
-//** Hardcoded MQ_TRACE_ROUTER socket type
+    //** Determing the type of socket to make based on
+    //** the mq_conn_t* passed in
+    //** Old version:
+    //** c->sock = mq_socket_new(c->pc->ctx, MQ_TRACE_ROUTER);
+    //** Hardcoded MQ_TRACE_ROUTER socket type
     c->sock = mq_socket_new(c->pc->ctx, c->pc->socket_type);
     log_printf(0, "host = %s, connect_mode = %d\n", c->pc->host, c->pc->connect_mode);
     if (c->pc->connect_mode == MQ_CMODE_CLIENT) {
@@ -1299,7 +1288,7 @@ int mq_conn_make(mq_conn_t *c)
     err = 1; //** Defaults to failure
     frame = -1;
 
-//** Form the ping message and make the base hearbeat message
+    //** Form the ping message and make the base hearbeat message
     tbx_type_malloc_clear(hb, mq_heartbeat_entry_t, 1);
     hb->key = strdup(c->pc->host);
     hb->key_size = strlen(c->pc->host);
@@ -1319,12 +1308,12 @@ int mq_conn_make(mq_conn_t *c)
 
     msg = mq_msg_new();  //** This is for the pong response
 
-//** Finish creating the structure
+    //** Finish creating the structure
     apr_hash_set(c->heartbeat_dest, hb->key, hb->key_size, hb);
     apr_hash_set(c->heartbeat_lut, &(hb->lut_id), sizeof(uint64_t), hb);
     hb->last_check = apr_time_now();
 
-//** Send it
+    //** Send it
     pfd.socket = mq_poll_handle(c->sock);
     pfd.events = MQ_POLLOUT;
 
@@ -1343,7 +1332,7 @@ int mq_conn_make(mq_conn_t *c)
         mq_poll(&pfd, 1, 1000);
     }
 
-//** Wait for a connection
+    //** Wait for a connection
     pfd.socket = mq_poll_handle(c->sock);
     pfd.events = MQ_POLLIN;
 
@@ -1405,16 +1394,15 @@ void *mq_conn_thread(apr_thread_t *th, void *data)
     double proc_rate, dt;
     char v;
 
-//log_printf(2, "START: uuid=%s heartbeat_dt=%d\n", c->mq_uuid, c->pc->heartbeat_dt);
     log_printf(2, "START: host=%s heartbeat_dt=%d\n", c->pc->host, c->pc->heartbeat_dt);
-//** Try and make the connection
-//** Right now the portal is locked so this routine can assume that.
+    //** Try and make the connection
+    //** Right now the portal is locked so this routine can assume that.
     oops = err = mq_conn_make(c);
     log_printf(2, "START(2): uuid=%s oops=%d\n", c->mq_uuid, oops);
 
 
-//** Notify the parent about the connections status via c->cefd
-//** It is then safe to manipulate c->pc->lock
+    //** Notify the parent about the connections status via c->cefd
+    //** It is then safe to manipulate c->pc->lock
     v = (err == 0) ? 1 : 2;  //** Make 1 success and 2 failure
 
     log_printf(5, "after conn_make err=%d\n", err);
@@ -1427,13 +1415,13 @@ void *mq_conn_thread(apr_thread_t *th, void *data)
 
     if (err != 0) goto cleanup;  //** if no connection shutdown
 
-//**Make the poll structure
+    //**Make the poll structure
     memset(pfd, 0, sizeof(pfd));
     mq_pipe_poll_store(&(pfd[PI_EFD]), c->pc->efd[0], MQ_POLLIN);
     pfd[PI_CONN].socket = mq_poll_handle(c->sock);
     pfd[PI_CONN].events = MQ_POLLIN;
 
-//** Main processing loop
+    //** Main processing loop
     finished = 0;
     heartbeat_ms = c->pc->heartbeat_dt * 1000;
     npoll = 2;
@@ -1508,8 +1496,8 @@ cleanup:
     //** Update the conn_count, stats and place mysealf on the reaper stack
     apr_thread_mutex_lock(c->pc->lock);
     mq_stats_add(&(c->pc->stats), &(c->stats));
-//** We only update the connection counts if we actually made a connection.  The original thread that created us was already notified
-//** if we made a valid connection and it increments the connection counts.
+    //** We only update the connection counts if we actually made a connection.  The original thread that created us was already notified
+    //** if we made a valid connection and it increments the connection counts.
     if (oops == 0) {
         if (slow_exit == 0) c->pc->active_conn--;
         c->pc->total_conn--;
@@ -1637,7 +1625,7 @@ void mq_portal_destroy(mq_portal_t *p)
     int i, n;
     char c;
 
-//** Tell how many connections to close
+    //** Tell how many connections to close
     apr_thread_mutex_lock(p->lock);
     log_printf(2, "host=%s active_conn=%d total_conn=%d\n", p->host, p->active_conn, p->total_conn);
     tbx_log_flush();
@@ -1645,7 +1633,7 @@ void mq_portal_destroy(mq_portal_t *p)
     n = p->n_close;
     apr_thread_mutex_unlock(p->lock);
 
-//** Signal them
+    //** Signal them
     c = 1;
     for (i=0; i<n; i++) mq_pipe_write(p->efd[1], &c);
 
@@ -1838,8 +1826,6 @@ void mq_destroy_context(mq_context_t *mqc)
     }
     log_printf(5, "Completed portal shutdown\n");
     tbx_log_flush();
-    //sleep(1);
-    //log_printf(5, "AFTER SLEEP\n"); tbx_log_flush();
 
     mq_stats_print(2, "Portal total", &(mqc->stats));
 
@@ -1852,7 +1838,6 @@ void mq_destroy_context(mq_context_t *mqc)
 
     free(mqc);
 
-    //sleep(1);
     log_printf(5, "AFTER SLEEP2\n");
     tbx_log_flush();
 }

@@ -42,7 +42,6 @@ op_status_t op_retry_status = {OP_STATE_RETRY, 0};
 op_status_t op_dead_status = {OP_STATE_DEAD, 0};
 op_status_t op_timeout_status = {OP_STATE_TIMEOUT, 0};
 op_status_t op_invalid_host_status = {OP_STATE_INVALID_HOST, 0};
-//op_status_t op_cant_connect_status = {OP_STATE_CANT_CONNECT, 0};
 op_status_t op_cant_connect_status = {OP_STATE_FAILURE, OP_STATE_CANT_CONNECT};
 op_status_t op_error_status = {OP_STATE_ERROR, 0};
 
@@ -273,19 +272,13 @@ void gop_finished_submission(op_generic_t *g)
 int gop_wait(op_generic_t *gop)
 {
     op_status_t status;
-//log_printf(15, "gop_wait: START gid=%d state=%d\n", gop_id(gop), gop->base.state);
-
     lock_gop(gop);
-
-//log_printf(15, "gop_wait: after lock gid=%d state=%d\n", gop_id(gop), gop->base.state);
-
     while (gop->base.state == 0) {
         log_printf(15, "gop_wait: WHILE gid=%d state=%d\n", gop_id(gop), gop->base.state);
         apr_thread_cond_wait(gop->base.ctl->cond, gop->base.ctl->lock); //** Sleep until something completes
     }
 
     status = gop_get_status(gop);
-//  state = _gop_completed_successfully(gop);
     log_printf(15, "gop_wait: FINISHED gid=%d status=%d err=%d\n", gop_id(gop), status.op_status, status.error_code);
 
     unlock_gop(gop);
@@ -380,8 +373,6 @@ op_generic_t *gop_waitany(op_generic_t *g)
         }
 
         if (gop != NULL) log_printf(15, "POP finished qid=%d gid=%d\n", gop_id(g), gop_id(gop));
-//log_printf(15, "Printing qid=%d finished stack\n", gop_id(g));
-//_opque_print_stack(g->q->finished);
     } else {
         log_printf(15, "gop_waitany: BEFORE (type=op) While gid=%d state=%d\n", gop_id(g), g->base.state);
         tbx_log_flush();
@@ -419,7 +410,6 @@ int gop_waitall(op_generic_t *g)
     op_generic_t *g2;
     callback_t *cb;
 
-//log_printf(15, "START gid=%d type=%d\n", gop_id(g), gop_get_type(g));
     log_printf(5, "START gid=%d type=%d\n", gop_id(g), gop_get_type(g));
     lock_gop(g);
 
@@ -589,7 +579,6 @@ void gop_mark_completed(op_generic_t *gop, op_status_t status)
     op_generic_t *sgop;
 
     //** Process any slaved ops first
-//  lock_gop(gop);
     if (gop->op != NULL) {
         cop = &(gop->op->cmd);
         if (cop->coalesced_ops != NULL) {
@@ -598,7 +587,6 @@ void gop_mark_completed(op_generic_t *gop, op_status_t status)
             }
         }
     }
-//  unlock_gop(gop);
 
     //** And lastly the initial op that triggered the coalescing
     //** It's done last to do any coalescing cleanup.

@@ -247,10 +247,7 @@ void init_opque(opque_t *q)
     que->nleft = 0;
     que->nsubmitted = 0;
     gop->base.retries = 0;
-//  que->started_execution = 0;
     que->finished_submission = 0;
-//  que->success = OP_STATE_FAILURE;
-//  que->success = 12345;
 }
 
 //*************************************************************
@@ -277,13 +274,9 @@ void free_finished_stack(tbx_stack_t *stack, int mode)
 
     gop = (op_generic_t *)tbx_stack_pop(stack);
     while (gop != NULL) {
-//log_printf(15, "gid=%d\n", gop_id(gop));
         if (gop->type == Q_TYPE_QUE) {
-//log_printf(15, "free_opque_stack: gop->type=QUE\n"); tbx_log_flush();
             opque_free(gop->q->opque, mode);
         } else {
-//log_printf(15, "free_opque_stack: gop->type=OPER\n"); tbx_log_flush();
-//DONE in op_generic_destroy        callback_destroy(gop->base.cb);  //** Free the callback chain as well
             if (gop->base.free != NULL) gop->base.free(gop, mode);
         }
 
@@ -307,11 +300,8 @@ void free_list_stack(tbx_stack_t *stack, int mode)
         gop = (op_generic_t *)cb->priv;
         log_printf(15, "gid=%d\n", gop_id(gop));
         if (gop->type == Q_TYPE_QUE) {
-//log_printf(15, "free_opque_stack: gop->type=QUE\n"); tbx_log_flush();
             opque_free(gop->q->opque, mode);
         } else {
-//log_printf(15, "free_opque_stack: gop->type=OPER\n"); tbx_log_flush();
-//DONE in op_generic_destroy        callback_destroy(gop->base.cb);  //** Free the callback chain as well
             if (gop->base.free != NULL) gop->base.free(gop, mode);
         }
 
@@ -366,10 +356,8 @@ int internal_opque_add(opque_t *que, op_generic_t *gop, int dolock)
     log_printf(15, "opque_add: qid=%d gid=%d\n", que->op.base.id, gop_get_id(gop));
 
     //** Add the list CB to the the op
-//  lock_gop(gop)
     gop->base.parent_q = que;
     callback_append(&(gop->base.cb), cb);
-//  unlock_gop(gop)
 
     //**Add the op to the q
     q->nsubmitted++;
@@ -525,7 +513,6 @@ void default_sort_ops(void *arg, opque_t *que)
     //** Now place them back on the list **
     for (i=0; i<count; i++) {
         tbx_stack_push(q->list, (void *)array[i]);
-//    log_printf(15, "sort_io_list: i=%d hostdepot=%s size=%d\n", i, array[i]->hop.hostport, array[i]->hop.cmp_size);
     }
 
     //** with the que on the top.

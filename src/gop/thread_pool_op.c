@@ -225,7 +225,6 @@ void thread_pool_exec_fn(void *arg, op_generic_t *gop)
     }
 
     log_printf(4, "tp_recv: Start!!! gid=%d tid=%d op->depth=%d op->overflow_slot=%d n_overflow=%d\n", gop_id(gop), tid, op->depth, op->overflow_slot, tbx_atomic_get(tpc->n_overflow));
-//    log_printf(4, "tp_recv: Start!!! gid=%d tid=%d depth=%d\n", gop_id(gop), tid, op->depth);
     tbx_atomic_inc(tpc->n_started);
 
     status = op->fn(op->arg, gop_id(gop));

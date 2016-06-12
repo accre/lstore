@@ -368,11 +368,8 @@ void zero_socket_context_destroy(mq_socket_context_t *ctx)
 {
     //** Kludge to get around race issues in 0mq when closing sockets manually vs letting
     //** zctx_destroy() close them
-//  sleep(1);
-    log_printf(5, "after sleep\n");
     tbx_log_flush();
     zctx_destroy((zctx_t **)&(ctx->arg));
-    log_printf(5, "after zctx_destroy\n");
     tbx_log_flush();
     free(ctx);
 }

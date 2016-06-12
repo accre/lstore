@@ -228,7 +228,6 @@ void default_thread_pool_config(thread_pool_context_t *tpc)
     tpc->min_threads = 1;
     tpc->max_threads = 4;
 
-//log_printf(15, "default_thread_pool_config: max_threads=%d\n", cores);
     tpc->name = NULL;
 }
 

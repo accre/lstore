@@ -43,7 +43,6 @@ host_connection_t *new_host_connection(apr_pool_t *mpool)
     host_connection_t *hc;
 
     tbx_type_malloc_clear(hc, host_connection_t, 1);
-//  {hc = (host_connection_t *)malloc(sizeof(host_connection_t)); assert(hc != NULL); }
 
     hc->mpool = mpool;
     apr_thread_mutex_create(&(hc->lock), APR_THREAD_MUTEX_DEFAULT, mpool);
@@ -354,7 +353,6 @@ void *hc_send_thread(apr_thread_t *th, void *data)
 
     //** Make sure and trigger the recv if their was a problem **
     lock_hc(hc);
-//Done earlier  hc->curr_op = hsop;  //** Make sure the current op doesn't get lost if needed
 
     log_printf(15, "hc_send_thread: Exiting! (ns=%d, host=%s:%d)\n", tbx_ns_getid(ns), hp->host, hp->port);
 
@@ -567,7 +565,6 @@ void *hc_recv_thread(apr_thread_t *th, void *data)
     hportal_lock(hp);
 
     //** Now remove myself from the hportal
-//  if (hp->n_conn != tbx_stack_count(hp->conn_list)) log_printf(0, "hc_recv_thread: ns=%d hp->n_conn=%d tbx_stack_count(hp->conn_list)=%d N_CONN ERROR!!!!!!\n", tbx_ns_getid(ns), hp->n_conn, tbx_stack_count(hp->conn_list));
 
     hp->oops_recv_end++;
     if (hp->n_conn < 0) hp->oops_neg++;
