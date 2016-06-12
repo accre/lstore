@@ -34,7 +34,7 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DMQ_PIPE_COMM")
 
 # common objects
 set(LSTORE_PROJECT_OBJS 
-    callback.c constructor.c gop.c hconnection.c hportal.c opque.c
+    callback.c constructor.c dummy.c  gop.c hconnection.c hportal.c opque.c
     thread_pool_config.c thread_pool_op.c mq_msg.c mq_zmq.c mq_portal.c
     mq_ongoing.c mq_stream.c mq_helpers.c
 )

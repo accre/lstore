@@ -31,7 +31,6 @@ void opque_free(opque_t *q, int mode);
 void gop_dummy_init();
 void gop_dummy_destroy();
 
-
 tbx_atomic_unit32_t _opque_counter = 0;
 apr_pool_t *_opque_pool = NULL;
 tbx_pc_t *_gop_control = NULL;
