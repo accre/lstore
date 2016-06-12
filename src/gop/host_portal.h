@@ -37,8 +37,8 @@ extern "C" {
 #define HP_COMPACT_TIME 10   //** How often to run the garbage collector
 #define HP_HOSTPORT_SEPARATOR "|"
  
- 
-typedef struct {       //** Contains information about the depot including all connections
+typedef struct host_portal_t host_portal_t;
+struct host_portal_t {       //** Contains information about the depot including all connections
     char skey[512];         //** Search key used for lookups its "host:port:type:..." Same as for the op
     char host[512];         //** Hostname
     int oops_neg;           //** All the oops are just for tracking down a bug and should be removed once it's found and fixed.
@@ -76,9 +76,10 @@ typedef struct {       //** Contains information about the depot including all c
     apr_pool_t *mpool;
     void *connect_context;   //** Private information needed to make a host connection
     portal_context_t *context;  //** Specific portal implementaion
-} host_portal_t;
+};
  
-typedef struct {            //** Individual depot connection in conn_list
+typedef struct host_connection_t host_connection_t;
+struct host_connection_t {            //** Individual depot connection in conn_list
     int recv_up;
     int cmd_count;
     int curr_workload;
@@ -99,9 +100,7 @@ typedef struct {            //** Individual depot connection in conn_list
     apr_thread_t *send_thread; //** Sending thread
     apr_thread_t *recv_thread; //** recving thread
     apr_pool_t   *mpool;       //** MEmory pool for
-} host_connection_t;
- 
- 
+};
  
 extern tbx_ns_timeout_t global_dt;
  

@@ -37,24 +37,26 @@ extern "C" {
 
 typedef op_generic_t *(mq_ongoing_fail_t)(void *arg, void *handle);
 
-typedef struct {
+typedef struct ongoing_hb_t ongoing_hb_t;
+struct ongoing_hb_t {
     char *id;
     int id_len;
     int heartbeat;
     int in_progress;
     int count;
     apr_time_t next_check;
-} ongoing_hb_t;
+};
 
-typedef struct {
+typedef struct ongoing_table_t ongoing_table_t;
+struct ongoing_table_t {
     apr_hash_t *table;
     mq_msg_hash_t remote_host_hash;
     mq_msg_t *remote_host;
     int count;
-} ongoing_table_t;
+};
 
-
-typedef struct {
+typedef struct mq_ongoing_object_t mq_ongoing_object_t;
+struct mq_ongoing_object_t {
     int type;
     int count;
     int auto_clean;
@@ -62,18 +64,20 @@ typedef struct {
     intptr_t key;
     mq_ongoing_fail_t *on_fail;
     void *on_fail_arg;
-} mq_ongoing_object_t;
+};
 
-typedef struct {
+typedef struct mq_ongoing_host_t mq_ongoing_host_t;
+struct mq_ongoing_host_t {
     int heartbeat;
     apr_time_t next_check;
     char *id;
     int id_len;
     apr_hash_t *table;
     apr_pool_t *mpool;
-} mq_ongoing_host_t;
+};
 
-typedef struct {
+typedef struct mq_ongoing_t mq_ongoing_t;
+struct mq_ongoing_t {
     apr_pool_t *mpool;
     apr_thread_mutex_t *lock;
     apr_thread_cond_t *cond;
@@ -86,7 +90,7 @@ typedef struct {
     int check_interval;
     int shutdown;
     int send_divisor;
-} mq_ongoing_t;
+};
 
 GOP_API void mq_ongoing_host_inc(mq_ongoing_t *on, mq_msg_t *remote_host, char *id, int id_len, int heartbeat);
 GOP_API void mq_ongoing_host_dec(mq_ongoing_t *on, mq_msg_t *remote_host, char *id, int id_len);

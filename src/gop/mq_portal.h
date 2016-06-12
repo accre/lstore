@@ -36,6 +36,190 @@
 extern "C" {
 #endif
 
+
+// Preprocessor defines required for structs
+#define MQS_PING_INDEX         0
+#define MQS_PONG_INDEX         1
+#define MQS_EXEC_INDEX         2
+#define MQS_TRACKEXEC_INDEX    3
+#define MQS_TRACKADDRESS_INDEX 4
+#define MQS_RESPONSE_INDEX     5
+#define MQS_HEARTBEAT_INDEX    6
+#define MQS_UNKNOWN_INDEX      7
+#define MQS_SIZE               8
+
+// Types
+typedef zmq_pollitem_t mq_pollitem_t;
+typedef tbx_stack_t mq_msg_t;
+typedef struct mq_frame_t mq_frame_t;
+typedef struct mq_msg_hash_t mq_msg_hash_t;
+typedef struct mq_portal_t mq_portal_t;
+typedef struct mq_context_t mq_context_t;
+typedef struct mq_socket_context_t mq_socket_context_t;
+typedef struct mq_socket_t mq_socket_t;
+typedef struct mq_task_t mq_task_t;
+typedef void (mq_fn_exec_t)(void *arg, mq_task_t *task);
+typedef struct mq_command_t mq_command_t;
+typedef struct mq_command_table_t mq_command_table_t;
+typedef struct mq_heartbeat_entry_t mq_heartbeat_entry_t;
+typedef struct mq_task_monitor_t mq_task_monitor_t;
+typedef struct mq_command_stats_t mq_command_stats_t;
+typedef struct mq_conn_t mq_conn_t;
+typedef mq_context_t *(mq_create_t)(tbx_inip_file_t *ifd, char *section);
+
+#ifdef MQ_PIPE_COMM
+typedef int mq_pipe_t;       //** Event notification FD
+#else
+typedef mq_socket_t* mq_pipe_t;    //** ZMQ_PAIR sockets
+#endif
+
+struct mq_frame_t {
+    int len;
+    int auto_free;
+    char *data;
+    zmq_msg_t zmsg;
+};
+
+struct mq_msg_hash_t {
+    unsigned int full_hash;
+    unsigned int even_hash;
+};
+
+struct mq_socket_t {
+    int type;
+    void *arg;
+    void (*destroy)(mq_socket_context_t *ctx, mq_socket_t  *socket);
+    int (*bind)(mq_socket_t *socket, const char *format, ...);
+    int (*connect)(mq_socket_t *socket, const char *format, ...);
+    int (*disconnect)(mq_socket_t *socket, const char *format, ...);  //** Need host since multiple simul endpoints are supported.
+    void *(*poll_handle)(mq_socket_t *socket);
+    int (*monitor)(mq_socket_t *socket, char *address, int events);
+    int (*send)(mq_socket_t *socket, mq_msg_t *msg, int flags);
+    int (*recv)(mq_socket_t *socket, mq_msg_t *msg, int flags);
+};
+
+struct mq_socket_context_t {
+    void *arg;
+    mq_socket_t *(*create_socket)(mq_socket_context_t *ctx, int stype);
+    void (*destroy)(mq_socket_context_t *ctx);
+};
+
+struct mq_command_t {
+    mq_fn_exec_t *fn;
+    void *cmd;
+    int cmd_size;
+    void *arg;
+};
+
+struct mq_command_table_t {
+    mq_fn_exec_t *fn_default;
+    void *arg_default;
+    apr_hash_t *table;
+    apr_pool_t *mpool;
+    apr_thread_mutex_t *lock;
+};
+
+struct mq_task_t {      //** Generic containter for MQ messages for both the server and GOP (or client). If the variable is not used it's value is NULL.
+    mq_msg_t *msg;          //** Actual message to send with address (Server+GOP)
+    mq_msg_t *response;     //** Response message (GOP)
+    op_generic_t *gop;      //** GOP corresponding to the task.  This could be NULL if a direct submission is used (GOP)
+    mq_context_t *ctx;      //** Portal context for sending responses. (Server+GOP)
+    void *arg;              //** Optional argument when calling mq_command_add() or new_mq_op() (server+GOP)
+    apr_time_t timeout;     //** Initially the DT in sec for the command to complete and converted to abs timeout when sent
+    void (*my_arg_free)(void *arg);  //** Function for cleaning up the GOP arg. (GOP)
+    int pass_through;       //** Flag to set when a task is only used to pass a message; no heartbeating necessary
+};
+
+struct mq_heartbeat_entry_t {
+    mq_msg_t *address;
+    char *key;
+    uint64_t lut_id;
+    int key_size;
+    int count;
+    apr_time_t last_check;
+};
+
+struct mq_task_monitor_t {
+    mq_task_t *task;
+    mq_heartbeat_entry_t *tracking;
+    char *id;
+    int id_size;
+    apr_time_t last_check;
+    apr_time_t timeout;
+};
+
+struct mq_command_stats_t {
+    int incoming[MQS_SIZE];
+    int outgoing[MQS_SIZE];
+};
+
+struct mq_conn_t {  //** MQ connection container
+    mq_portal_t *pc;   //** Parent MQ portal
+    char *mq_uuid;     //** MQ UUID
+    mq_socket_t *sock; //** MQ connection socket
+    apr_hash_t *waiting;  //** Tasks waiting for a response (key = task ID)
+    apr_hash_t *heartbeat_dest;  //** List of unique destinations for heartbeats (key = tracking address)
+    apr_hash_t *heartbeat_lut;  //** This is a table of valid heartbeat pointers
+    apr_time_t check_start;  //** Last check time
+    apr_thread_t *thread;     //** thread handle
+    mq_heartbeat_entry_t *hb_conn;  //** Immediate connection uplink
+    uint64_t  n_ops;         //** Numbr of ops the connection has processed
+    int cefd[2];             //** Private event FD for initial connection handshake
+    mq_command_stats_t stats;//** Command stats
+    apr_pool_t *mpool;       //** MEmory pool for connection/thread. APR mpools aren't thread safe!!!!!!!
+};
+
+struct mq_portal_t {   //** Container for managing connections to a single host
+    char *host;       //** Host address
+    int connect_mode; //** Connection mode connect vs bind
+    int min_conn;     //** Min connections to MQ host
+    int max_conn;     //** Max number of connections to MQ host
+    int active_conn;  //** Active connection count
+    int total_conn;   //** Active+closing connection count
+    int backlog_trigger;       //** Number of backlog ops to trigger a new connection
+    int heartbeat_dt;          //** Heartbeat interval
+    int heartbeat_failure;     //** Missing heartbeat DT for failure classification
+    int counter;               //** Connections counter
+    int n_close;               //** Number of connections being requested to close
+    int socket_type;           //** Socket type
+    uint64_t n_ops;            //** Operation count
+    double min_ops_per_sec;    //** Minimum ops/sec needed to keep a connection open.
+    tbx_stack_t *tasks;            //** List of tasks
+    tbx_stack_t *closed_conn;      //** List of closed connections that can be destroyed
+    mq_pipe_t efd[2];
+    apr_thread_mutex_t *lock;  //** Context lock
+    apr_thread_cond_t *cond;   //** Shutdown complete cond
+    mq_command_table_t *command_table; //** Server command ops for execution
+    void *implementation_arg; //** Implementation-specific pointer for general use. Round robin uses this as worker table
+    apr_pool_t *mpool;         //** Context memory pool
+    thread_pool_context_t *tp; //** Worker thread pool to use
+    portal_fn_t pcfn;
+    mq_socket_context_t *ctx;  //** Socket context
+    mq_context_t *mqc;
+    mq_command_stats_t stats;//** Command stats
+};
+
+struct mq_context_t {      //** Main MQ context
+    int min_conn;              //** Min connections to MQ host
+    int max_conn;              //** Max number of connections to MQ host
+    int min_threads;           //** Min number of worker threads
+    int max_threads;           //** Max number of worker threads
+    int max_recursion;         //** Max recursion depth expected to eliminate GOP tree deadlocks
+    int backlog_trigger;       //** Number of backlog ops to trigger a new connection
+    int heartbeat_dt;          //** Heartbeat interval
+    int heartbeat_failure;     //** Missing heartbeat DT for failure classification
+    int socket_type;           //** NEW: Type of socket to use (TRACE_ROUTER or ROUND_ROBIN)
+    double min_ops_per_sec;    //** Minimum ops/sec needed to keep a connection open.
+    apr_thread_mutex_t *lock;  //** Context lock
+    apr_pool_t *mpool;         //** Context memory pool
+    tbx_atomic_unit32_t n_ops;        //** Operation count
+    thread_pool_context_t *tp; //** Worker thread pool
+    apr_hash_t  *client_portals;      //** List of all client or outgoing portals
+    apr_hash_t  *server_portals;  //** List of all the server or incoming portals
+    portal_fn_t pcfn;          //** Portal contect used to overide the submit op for the TP
+    mq_command_stats_t stats;//** Command stats
+};
+
 //******* MQ Message Auto_Free modes
 #define MQF_MSG_AUTO_FREE     0  //** Auto free data on destroy
 #define MQF_MSG_KEEP_DATA     1  //** Skip free'ing of data on destroy.  App is responsible.
@@ -57,15 +241,6 @@ extern "C" {
 #define MQF_RESPONSE_KEY       "\006"
 #define MQF_RESPONSE_SIZE      1
 
-#define MQS_PING_INDEX         0
-#define MQS_PONG_INDEX         1
-#define MQS_EXEC_INDEX         2
-#define MQS_TRACKEXEC_INDEX    3
-#define MQS_TRACKADDRESS_INDEX 4
-#define MQS_RESPONSE_INDEX     5
-#define MQS_HEARTBEAT_INDEX    6
-#define MQS_UNKNOWN_INDEX      7
-#define MQS_SIZE               8
 
 //****** Error states
 #define MQ_E_ERROR      OP_STATE_FAILURE
@@ -98,21 +273,6 @@ extern "C" {
 //******** Send/Recv flags
 #define MQ_DONTWAIT ZMQ_DONTWAIT
 
-typedef zmq_pollitem_t mq_pollitem_t;
-
-typedef tbx_stack_t mq_msg_t;
-
-typedef struct {
-    int len;
-    int auto_free;
-    char *data;
-    zmq_msg_t zmsg;
-} mq_frame_t;
-
-typedef struct {
-    unsigned int full_hash;
-    unsigned int even_hash;
-} mq_msg_hash_t;
 
 #define mq_data_compare(A, sA, B, sB) (((sA) == (sB)) ? memcmp(A, B, sA) : 1)
 
@@ -129,165 +289,6 @@ typedef struct {
 #define mq_send(sock, msg, flags)  (sock)->send(sock, msg, flags)
 #define mq_recv(sock, msg, flags)  (sock)->recv(sock, msg, flags)
 #define mq_poll_handle(sock)  (sock)->poll_handle(sock)
-
-struct mq_portal_s;
-typedef struct mq_portal_s mq_portal_t;
-struct mq_context_s;
-typedef struct mq_context_s mq_context_t;
-
-struct mq_socket_context_s;
-typedef struct mq_socket_context_s mq_socket_context_t;
-
-struct mq_socket_s;
-typedef struct mq_socket_s mq_socket_t;
-
-struct mq_task_s;
-typedef struct mq_task_s mq_task_t;
-
-#ifdef MQ_PIPE_COMM
-typedef int mq_pipe_t;       //** Event notification FD
-#else
-typedef mq_socket_t* mq_pipe_t;    //** ZMQ_PAIR sockets
-#endif
-
-struct mq_socket_s {
-    int type;
-    void *arg;
-    void (*destroy)(mq_socket_context_t *ctx, mq_socket_t  *socket);
-    int (*bind)(mq_socket_t *socket, const char *format, ...);
-    int (*connect)(mq_socket_t *socket, const char *format, ...);
-    int (*disconnect)(mq_socket_t *socket, const char *format, ...);  //** Need host since multiple simul endpoints are supported.
-    void *(*poll_handle)(mq_socket_t *socket);
-    int (*monitor)(mq_socket_t *socket, char *address, int events);
-    int (*send)(mq_socket_t *socket, mq_msg_t *msg, int flags);
-    int (*recv)(mq_socket_t *socket, mq_msg_t *msg, int flags);
-};
-
-struct mq_socket_context_s {
-    void *arg;
-    mq_socket_t *(*create_socket)(mq_socket_context_t *ctx, int stype);
-    void (*destroy)(mq_socket_context_t *ctx);
-};
-
-typedef void (mq_fn_exec_t)(void *arg, mq_task_t *task);
-
-typedef struct {
-    mq_fn_exec_t *fn;
-    void *cmd;
-    int cmd_size;
-    void *arg;
-} mq_command_t;
-
-typedef struct {
-    mq_fn_exec_t *fn_default;
-    void *arg_default;
-    apr_hash_t *table;
-    apr_pool_t *mpool;
-    apr_thread_mutex_t *lock;
-} mq_command_table_t;
-
-struct mq_task_s {      //** Generic containter for MQ messages for both the server and GOP (or client). If the variable is not used it's value is NULL.
-    mq_msg_t *msg;          //** Actual message to send with address (Server+GOP)
-    mq_msg_t *response;     //** Response message (GOP)
-    op_generic_t *gop;      //** GOP corresponding to the task.  This could be NULL if a direct submission is used (GOP)
-    mq_context_t *ctx;      //** Portal context for sending responses. (Server+GOP)
-    void *arg;              //** Optional argument when calling mq_command_add() or new_mq_op() (server+GOP)
-    apr_time_t timeout;     //** Initially the DT in sec for the command to complete and converted to abs timeout when sent
-    void (*my_arg_free)(void *arg);  //** Function for cleaning up the GOP arg. (GOP)
-    int pass_through;       //** Flag to set when a task is only used to pass a message; no heartbeating necessary
-};
-
-typedef struct {
-    mq_msg_t *address;
-    char *key;
-    uint64_t lut_id;
-    int key_size;
-    int count;
-    apr_time_t last_check;
-} mq_heartbeat_entry_t;
-
-typedef struct {
-    mq_task_t *task;
-    mq_heartbeat_entry_t *tracking;
-    char *id;
-    int id_size;
-    apr_time_t last_check;
-    apr_time_t timeout;
-} mq_task_monitor_t;
-
-typedef struct {
-    int incoming[MQS_SIZE];
-    int outgoing[MQS_SIZE];
-} mq_command_stats_t;
-
-typedef struct {  //** MQ connection container
-    mq_portal_t *pc;   //** Parent MQ portal
-    char *mq_uuid;     //** MQ UUID
-    mq_socket_t *sock; //** MQ connection socket
-    apr_hash_t *waiting;  //** Tasks waiting for a response (key = task ID)
-    apr_hash_t *heartbeat_dest;  //** List of unique destinations for heartbeats (key = tracking address)
-    apr_hash_t *heartbeat_lut;  //** This is a table of valid heartbeat pointers
-    apr_time_t check_start;  //** Last check time
-    apr_thread_t *thread;     //** thread handle
-    mq_heartbeat_entry_t *hb_conn;  //** Immediate connection uplink
-    uint64_t  n_ops;         //** Numbr of ops the connection has processed
-    int cefd[2];             //** Private event FD for initial connection handshake
-    mq_command_stats_t stats;//** Command stats
-    apr_pool_t *mpool;       //** MEmory pool for connection/thread. APR mpools aren't thread safe!!!!!!!
-} mq_conn_t;
-
-struct mq_portal_s {   //** Container for managing connections to a single host
-    char *host;       //** Host address
-    int connect_mode; //** Connection mode connect vs bind
-    int min_conn;     //** Min connections to MQ host
-    int max_conn;     //** Max number of connections to MQ host
-    int active_conn;  //** Active connection count
-    int total_conn;   //** Active+closing connection count
-    int backlog_trigger;       //** Number of backlog ops to trigger a new connection
-    int heartbeat_dt;          //** Heartbeat interval
-    int heartbeat_failure;     //** Missing heartbeat DT for failure classification
-    int counter;               //** Connections counter
-    int n_close;               //** Number of connections being requested to close
-    int socket_type;           //** Socket type
-    uint64_t n_ops;            //** Operation count
-    double min_ops_per_sec;    //** Minimum ops/sec needed to keep a connection open.
-    tbx_stack_t *tasks;            //** List of tasks
-    tbx_stack_t *closed_conn;      //** List of closed connections that can be destroyed
-    mq_pipe_t efd[2];
-    apr_thread_mutex_t *lock;  //** Context lock
-    apr_thread_cond_t *cond;   //** Shutdown complete cond
-    mq_command_table_t *command_table; //** Server command ops for execution
-    void *implementation_arg; //** Implementation-specific pointer for general use. Round robin uses this as worker table
-    apr_pool_t *mpool;         //** Context memory pool
-    thread_pool_context_t *tp; //** Worker thread pool to use
-    portal_fn_t pcfn;
-    mq_socket_context_t *ctx;  //** Socket context
-    mq_context_t *mqc;
-    mq_command_stats_t stats;//** Command stats
-};
-
-
-struct mq_context_s {      //** Main MQ context
-    int min_conn;              //** Min connections to MQ host
-    int max_conn;              //** Max number of connections to MQ host
-    int min_threads;           //** Min number of worker threads
-    int max_threads;           //** Max number of worker threads
-    int max_recursion;         //** Max recursion depth expected to eliminate GOP tree deadlocks
-    int backlog_trigger;       //** Number of backlog ops to trigger a new connection
-    int heartbeat_dt;          //** Heartbeat interval
-    int heartbeat_failure;     //** Missing heartbeat DT for failure classification
-    int socket_type;           //** NEW: Type of socket to use (TRACE_ROUTER or ROUND_ROBIN)
-    double min_ops_per_sec;    //** Minimum ops/sec needed to keep a connection open.
-    apr_thread_mutex_t *lock;  //** Context lock
-    apr_pool_t *mpool;         //** Context memory pool
-    tbx_atomic_unit32_t n_ops;        //** Operation count
-    thread_pool_context_t *tp; //** Worker thread pool
-    apr_hash_t  *client_portals;      //** List of all client or outgoing portals
-    apr_hash_t  *server_portals;  //** List of all the server or incoming portals
-    portal_fn_t pcfn;          //** Portal contect used to overide the submit op for the TP
-    mq_command_stats_t stats;//** Command stats
-};
-
 
 //--------------------------------------------------------------
 //  Code for performing MQ portal <-> client communication.
@@ -315,8 +316,6 @@ void mq_pipe_destroy(mq_socket_context_t *ctx, mq_socket_t **pfd);
 int mq_pipe_read(mq_socket_t *sock, char *buf);
 int mq_pipe_write(mq_socket_t *sock, char *buf);
 #endif
-
-typedef mq_context_t *(mq_create_t)(tbx_inip_file_t *ifd, char *section);
 
 GOP_API char *mq_id2str(char *id, int id_len, char *str, int str_len);
 

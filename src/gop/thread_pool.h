@@ -35,8 +35,8 @@ extern "C" {
 #define TP_E_OK                 OP_STATE_SUCCESS
 #define TP_E_NOP               -1
 #define TP_E_IGNORE            -2
-
-typedef struct {
+typedef struct thread_pool_context_t thread_pool_context_t;
+struct thread_pool_context_t {
     char *name;
     portal_context_t *pc;
     apr_thread_pool_t *tp;
@@ -54,9 +54,9 @@ typedef struct {
     int max_threads;
     int recursion_depth;
     int max_concurrency;
-} thread_pool_context_t;
-
-typedef struct {
+};
+typedef struct thread_pool_op_t thread_pool_op_t;
+struct thread_pool_op_t {
     thread_pool_context_t *tpc;
     op_generic_t gop;
     op_data_t dop;
@@ -67,7 +67,7 @@ typedef struct {
     int parent_tid;
     int via_submit;
     int overflow_slot;
-} thread_pool_op_t;
+};
 
 #define tp_get_gop(top) &((top)->gop)
 #define gop_get_tp(gop) (gop)->op->priv

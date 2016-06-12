@@ -55,7 +55,8 @@ extern "C" {
 #define MQS_HANDLE_SIZE_INDEX 2
 #define MQS_HANDLE_INDEX      3
 
-typedef struct {
+typedef struct mq_stream_t mq_stream_t;
+struct mq_stream_t {
     apr_pool_t *mpool;
     apr_thread_mutex_t *lock;
     apr_thread_cond_t *cond;
@@ -92,7 +93,7 @@ typedef struct {
     int transfer_packets;  //** Number of packets exchanged
     int msid;              //** Stream ID
     int dead_connection;   //** Connections is hosed so don;t even try sending anything
-} mq_stream_t;
+};
 
 GOP_API void mqs_server_more_cb(void *arg, mq_task_t *task);
 

@@ -28,14 +28,14 @@ extern "C" {
 #endif
 #include "gop/gop_visibility.h"
 
-struct callback_s {   //** Used for application level callback
+typedef struct callback_t callback_t;
+struct callback_t {   //** Used for application level callback
     void *priv;
     void (*fn)(void *priv, int value);
-    struct callback_s *next;
-    struct callback_s *tail;
+    callback_t *next;
+    callback_t *tail;
 };
 
-typedef struct callback_s callback_t;
 
 GOP_API void callback_set(callback_t *cb, void (*fn)(void *priv, int value), void *priv);
 void callback_append(callback_t **root_cb, callback_t *cb);
