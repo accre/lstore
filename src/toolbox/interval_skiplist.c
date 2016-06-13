@@ -317,8 +317,6 @@ int tbx_isl_insert(tbx_isl_t *isl, tbx_sl_key_t *lo, tbx_sl_key_t *hi, tbx_sl_da
             if ((ptr[i] != NULL) && (ptr[i] != isl->sl->head)) copy_isl_data(((tbx_isl_node_t *)(ptr[i]->ele.data))->edge[i], &(isl_node->edge[i]));
         }
 
-        memset(ptr, 0, sizeof(ptr));
-        find_key(sl, ptr, lo, 0);
     }
 
     isl_node = (tbx_isl_node_t *)(sn->ele.data);
@@ -472,6 +470,7 @@ tbx_isl_iter_t tbx_isl_iter_search(tbx_isl_t *isl, tbx_sl_key_t *lo, tbx_sl_key_
     it.isl = isl;
     it.ele = NULL;
     it.sn = NULL;
+    it.isln = NULL;
     it.lo = lo;
     it.hi = hi;
     it.mode = 0;
