@@ -1,6 +1,9 @@
 The short version:
 ---------------------------------------------------------------------------------------------------
 
+Note: ubuntu-xenial is used as an example, replace with your desired distro-release or a space separated list
+      example: "sudo ./scripts/package.sh centos-6 centos-7 ubuntu-trusty"
+
 Only run once after cloning lstore-release or when new subprojects are added upstream:
   ./scripts/init-source.sh
 

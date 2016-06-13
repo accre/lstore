@@ -23,7 +23,8 @@ gpgcheck=0
 protect=1
 EOF
         yum install -y epel-release
-        yum install -y accre-lio accre-gridftp globus-gridftp-server-progs which
+        yum install -y accre-lio which
+        #yum install -y accre-gridftp globus-gridftp-server-progs
         yum clean all
         ;;
     ubuntu-*|debian-*)
@@ -37,9 +38,10 @@ deb file://${REPO_BASE}/  packages/
 EOF
         apt-get update
         apt-get install -y --force-yes --no-install-recommends --no-upgrade \
-                    accre-lio accre-gridftp globus-gridftp-server-progs \
+                    accre-lio \
                     accre-toolbox accre-gop accre-ibp libapr-accre1 \
                     libapr-accre-util1 accre-jerasure czmq libexpat1
+        #apt-get install -y --force-yes --no-install-recommends --no-upgrade accre-gridftp globus-gridftp-server-progs 
         apt-get clean
         # --force-yes needed to install unsigned / self-signed packages The
         # second line of packages should be pulled in as deps and unnecessary
