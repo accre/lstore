@@ -39,7 +39,7 @@ set(LSTORE_INCLUDE_PUBLIC ${toolbox_INCLUDE_DIR}
 # common objects
 set(LSTORE_PROJECT_OBJS
     constructor.c
-    ibp_config.c ibp_errno.c ibp_misc.c ibp_op.c ibp_sync.c ibp_types.c
+    ibp_config.c ibp_errno.c ibp_misc.c ibp_op.c ibp_types.c
     io_wrapper.c iovec_sync.c
 )
 
@@ -53,7 +53,7 @@ set(LSTORE_PROJECT_INCLUDES
     )
 
 set(LSTORE_PROJECT_EXECUTABLES
-    ibp_perf ibp_copyperf ibp_tool ibp_find_drive
+    ibp_perf ibp_copyperf
 )
 
 # Common functionality is stored here

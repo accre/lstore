@@ -388,15 +388,6 @@ int ibp_tbx_chksum_set(tbx_ns_chksum_t *ncs, tbx_chksum_t *cs, int blocksize)
 //=============================================================
 
 //*************************************************************
-// set_ibp_read_op - Generates a new read operation
-//*************************************************************
-
-void set_ibp_read_op(ibp_op_t *op, ibp_cap_t *cap, ibp_off_t offset, tbx_tbuf_t *buffer, ibp_off_t boff, ibp_off_t len, int timeout)
-{
-    set_ibp_rw_op(op, IBP_READ, cap, offset, buffer, boff, len, timeout);
-}
-
-//*************************************************************
 // new_ibp_read_op - Generates a new read operation
 //*************************************************************
 
@@ -404,24 +395,6 @@ op_generic_t *new_ibp_read_op(ibp_context_t *ic, ibp_cap_t *cap, ibp_off_t offse
 {
     op_generic_t *op = new_ibp_rw_op(ic, IBP_READ, cap, offset, buffer, boff, len, timeout);
     return(op);
-}
-
-
-//*************************************************************
-// set_ibp_vec_read_op - Generates a new vector read operation
-//*************************************************************
-
-void set_ibp_vec_read_op(ibp_op_t *op, ibp_cap_t *cap, int n_vec, ibp_tbx_iovec_t *vec, tbx_tbuf_t *buffer, ibp_off_t boff, ibp_off_t len, int timeout)
-{
-    op_generic_t *gop = ibp_get_gop(op);
-
-    set_ibp_rw_op(op, IBP_READ, cap, 0, buffer, boff, len, timeout);
-    op->ops.rw_op.n_ops = 1;
-    op->ops.rw_op.n_tbx_iovec_total = n_vec;
-    op->ops.rw_op.buf_single.n_iovec = n_vec;
-    op->ops.rw_op.buf_single.iovec = vec;
-
-    gop->op->cmd.send_command = vec_read_command;
 }
 
 //*************************************************************
@@ -433,7 +406,15 @@ op_generic_t *new_ibp_vec_read_op(ibp_context_t *ic, ibp_cap_t *cap, int n_vec, 
     ibp_op_t *op = new_ibp_op(ic);
     if (op == NULL) return(NULL);
 
-    set_ibp_vec_read_op(op, cap, n_vec, vec, buffer, boff, len, timeout);
+    op_generic_t *gop = ibp_get_gop(op);
+
+    set_ibp_rw_op(op, IBP_READ, cap, 0, buffer, boff, len, timeout);
+    op->ops.rw_op.n_ops = 1;
+    op->ops.rw_op.n_tbx_iovec_total = n_vec;
+    op->ops.rw_op.buf_single.n_iovec = n_vec;
+    op->ops.rw_op.buf_single.iovec = vec;
+
+    gop->op->cmd.send_command = vec_read_command;
 
     return(ibp_get_gop(op));
 }
@@ -640,26 +621,12 @@ op_status_t read_recv(op_generic_t *gop, tbx_ns_t *ns)
                    tbx_ns_getid(ns), cmd->cap, rwbuf->iovec[0].offset, rwbuf->size, err.error_code);
     }
 
-    //**  If coalesced ops then free the coalesced mallocs
-//  if (cmd->n_ops > 1) {
-//     free(cmd->rwbuf);
-//  }
-
     return(err);
 }
 
 //=============================================================
 //  Write routines
 //=============================================================
-
-//*************************************************************
-// set_ibp_write_op - Generates a new write operation
-//*************************************************************
-
-void set_ibp_write_op(ibp_op_t *op, ibp_cap_t *cap, ibp_off_t offset, tbx_tbuf_t *buffer, ibp_off_t bpos, ibp_off_t len, int timeout)
-{
-    set_ibp_rw_op(op, IBP_WRITE, cap, offset, buffer, bpos, len, timeout);
-}
 
 //*************************************************************
 // new_ibp_write_op - Creates/Generates a new write operation
@@ -672,11 +639,13 @@ op_generic_t *new_ibp_write_op(ibp_context_t *ic, ibp_cap_t *cap, ibp_off_t offs
 }
 
 //*************************************************************
-// set_ibp_vec_write_op - Generates a new vec write operation
+// new_ibp_vec_write_op - Creates/Generates a new vec write operation
 //*************************************************************
 
-void set_ibp_vec_write_op(ibp_op_t *op, ibp_cap_t *cap, int n_iovec, ibp_tbx_iovec_t *iovec, tbx_tbuf_t *buffer, ibp_off_t bpos, ibp_off_t len, int timeout)
+op_generic_t *new_ibp_vec_write_op(ibp_context_t *ic, ibp_cap_t *cap, int n_iovec, ibp_tbx_iovec_t *iovec, tbx_tbuf_t *buffer, ibp_off_t bpos, ibp_off_t len, int timeout)
 {
+    ibp_op_t *op = new_ibp_op(ic);
+    if (op == NULL) return(NULL);
     op_generic_t *gop = ibp_get_gop(op);
 
     set_ibp_rw_op(op, IBP_WRITE, cap, 0, buffer, bpos, len, timeout);
@@ -686,19 +655,6 @@ void set_ibp_vec_write_op(ibp_op_t *op, ibp_cap_t *cap, int n_iovec, ibp_tbx_iov
     op->ops.rw_op.buf_single.iovec = iovec;
 
     gop->op->cmd.send_command = vec_write_command;
-
-}
-
-//*************************************************************
-// new_ibp_vec_write_op - Creates/Generates a new vec write operation
-//*************************************************************
-
-op_generic_t *new_ibp_vec_write_op(ibp_context_t *ic, ibp_cap_t *cap, int n_iovec, ibp_tbx_iovec_t *iovec, tbx_tbuf_t *buffer, ibp_off_t bpos, ibp_off_t len, int timeout)
-{
-    ibp_op_t *op = new_ibp_op(ic);
-    if (op == NULL) return(NULL);
-
-    set_ibp_vec_write_op(op, cap, n_iovec, iovec, buffer, bpos, len, timeout);
 
     return(ibp_get_gop(op));
 }
@@ -986,24 +942,6 @@ op_generic_t *new_ibp_append_op(ibp_context_t *ic, ibp_cap_t *cap, tbx_tbuf_t *b
 }
 
 //*************************************************************
-// set_ibp_append_op - Generates a new write operation
-//*************************************************************
-
-void set_ibp_append_op(ibp_op_t *op, ibp_cap_t *cap, tbx_tbuf_t *buffer, ibp_off_t bpos, ibp_off_t len, int timeout)
-{
-    //** Dirty way to fill in the fields
-    set_ibp_rw_op(op, IBP_WRITE, cap, 0, buffer, bpos, len, timeout);
-    op_generic_t *gop = ibp_get_gop(op);
-
-    gop->op->cmd.send_command = append_command;
-    gop->op->cmd.send_phase = write_send;
-    gop->op->cmd.recv_phase = write_recv;
-}
-
-//=============================================================
-//=============================================================
-
-//*************************************************************
 // set_ibp_rw_op - Generates a new IO operation
 //*************************************************************
 
@@ -1135,12 +1073,13 @@ op_status_t validate_chksum_recv(op_generic_t *gop, tbx_ns_t *ns)
 }
 
 //*************************************************************
-//  set_ibp_validate_chksum_op - Generates a new IBP_VALIDATE_CHKSUM operation
+//  new_ibp_validate_chksum_op - Creates a new IBP_VALIDATE_CHKSUM operation
 //*************************************************************
 
-void set_ibp_validate_chksum_op(ibp_op_t *op, ibp_cap_t *mcap, int correct_errors, int *n_bad_blocks,
-                                int timeout)
+op_generic_t *new_ibp_validate_chksum_op(ibp_context_t *ic, ibp_cap_t *mcap, int correct_errors, int *n_bad_blocks,
+        int timeout)
 {
+    ibp_op_t *op = new_ibp_op(ic);
     char hoststr[MAX_HOST_SIZE];
     char host[MAX_HOST_SIZE];
     ibp_op_validate_chksum_t *cmd;
@@ -1162,18 +1101,6 @@ void set_ibp_validate_chksum_op(ibp_op_t *op, ibp_cap_t *mcap, int correct_error
     gop->op->cmd.send_command = validate_chksum_command;
     gop->op->cmd.send_phase = NULL;
     gop->op->cmd.recv_phase = validate_chksum_recv;
-}
-
-//*************************************************************
-//  new_ibp_validate_chksum_op - Creates a new IBP_VALIDATE_CHKSUM operation
-//*************************************************************
-
-op_generic_t *new_ibp_validate_chksum_op(ibp_context_t *ic, ibp_cap_t *mcap, int correct_errors, int *n_bad_blocks,
-        int timeout)
-{
-    ibp_op_t *op = new_ibp_op(ic);
-
-    set_ibp_validate_chksum_op(op, mcap, correct_errors, n_bad_blocks, timeout);
 
     return(ibp_get_gop(op));
 }
@@ -1267,14 +1194,15 @@ op_status_t get_chksum_recv(op_generic_t *gop, tbx_ns_t *ns)
 }
 
 //*************************************************************
-//  set_ibp_get_chksum_op - Generates a new IBP_VALIDATE_CHKSUM operation
+//  new_ibp_get_chksum_op - Creates a new IBP_GET_CHKSUM operation
 //*************************************************************
 
-
-void set_ibp_get_chksum_op(ibp_op_t *op, ibp_cap_t *mcap, int chksum_info_only,
-                           int *cs_type, int *cs_size, ibp_off_t *blocksize, ibp_off_t *nblocks, ibp_off_t *n_chksumbytes, char *buffer, ibp_off_t bufsize,
-                           int timeout)
-{
+op_generic_t *new_ibp_get_chksum_op(ibp_context_t *ic, ibp_cap_t *mcap,
+        int chksum_info_only, int *cs_type, int *cs_size, ibp_off_t *blocksize,
+        ibp_off_t *nblocks, ibp_off_t *nbytes, char *buffer, ibp_off_t bufsize,
+        int timeout) {
+    ibp_op_t *op = new_ibp_op(ic);
+    
     char hoststr[MAX_HOST_SIZE];
     char host[MAX_HOST_SIZE];
     ibp_op_get_chksum_t *cmd;
@@ -1296,25 +1224,11 @@ void set_ibp_get_chksum_op(ibp_op_t *op, ibp_cap_t *mcap, int chksum_info_only,
     cmd->cs_size = cs_size;
     cmd->blocksize = blocksize;
     cmd->nblocks = nblocks;
-    cmd->n_chksumbytes = n_chksumbytes;
+    cmd->n_chksumbytes = nbytes;
 
     gop->op->cmd.send_command = get_chksum_command;
     gop->op->cmd.send_phase = NULL;
     gop->op->cmd.recv_phase = get_chksum_recv;
-}
-
-//*************************************************************
-//  new_ibp_get_chksum_op - Creates a new IBP_GET_CHKSUM operation
-//*************************************************************
-
-op_generic_t *new_ibp_get_chksum_op(ibp_context_t *ic, ibp_cap_t *mcap,
-        int chksum_info_only, int *cs_type, int *cs_size, ibp_off_t *blocksize,
-        ibp_off_t *nblocks, ibp_off_t *nbytes, char *buffer, ibp_off_t bufsize,
-        int timeout) {
-    ibp_op_t *op = new_ibp_op(ic);
-    set_ibp_get_chksum_op(op, mcap, chksum_info_only, cs_type, cs_size,
-                            blocksize, nblocks, nbytes, buffer, bufsize,
-                            timeout);
 
     return(ibp_get_gop(op));
 }
@@ -1452,12 +1366,14 @@ op_status_t allocate_recv(op_generic_t *gop, tbx_ns_t *ns)
 }
 
 //*************************************************************
-//  set_ibp_alloc_op - generates a new IBP_ALLOC operation
+//  new_ibp_alloc_op - Creates a new IBP_ALLOC operation
 //*************************************************************
 
-void set_ibp_alloc_op(ibp_op_t *op, ibp_capset_t *caps, ibp_off_t size, ibp_depot_t *depot,
-                      ibp_attributes_t *attr, int disk_cs_type, ibp_off_t disk_blocksize, int timeout)
+op_generic_t *new_ibp_alloc_op(ibp_context_t *ic, ibp_capset_t *caps, ibp_off_t size, ibp_depot_t *depot, ibp_attributes_t *attr,
+                               int disk_cs_type, ibp_off_t disk_blocksize, int timeout)
 {
+    ibp_op_t *op = new_ibp_op(ic);
+
     char hoststr[MAX_HOST_SIZE];
     char pchost[MAX_HOST_SIZE];
     ibp_op_alloc_t *cmd;
@@ -1483,29 +1399,19 @@ void set_ibp_alloc_op(ibp_op_t *op, ibp_capset_t *caps, ibp_off_t size, ibp_depo
     gop->op->cmd.send_command = allocate_command;
     gop->op->cmd.send_phase = NULL;
     gop->op->cmd.recv_phase = allocate_recv;
-}
-
-//*************************************************************
-//  new_ibp_alloc_op - Creates a new IBP_ALLOC operation
-//*************************************************************
-
-op_generic_t *new_ibp_alloc_op(ibp_context_t *ic, ibp_capset_t *caps, ibp_off_t size, ibp_depot_t *depot, ibp_attributes_t *attr,
-                               int disk_cs_type, ibp_off_t disk_blocksize, int timeout)
-{
-    ibp_op_t *op = new_ibp_op(ic);
-
-    set_ibp_alloc_op(op, caps, size, depot, attr, disk_cs_type, disk_blocksize, timeout);
-
+    
     return(ibp_get_gop(op));
 }
 
 //*************************************************************
-//  set_ibp_split_alloc_op - generates a new IBP_SPLIT_ALLOCATION operation
+//  new_ibp_split_alloc_op - generates a new IBP_SPLIT_ALLOCATION operation
 //*************************************************************
 
-void set_ibp_split_alloc_op(ibp_op_t *op, ibp_cap_t *mcap, ibp_capset_t *caps, ibp_off_t size,
-                            ibp_attributes_t *attr, int disk_cs_type, ibp_off_t disk_blocksize, int timeout)
+op_generic_t *new_ibp_split_alloc_op(ibp_context_t *ic, ibp_cap_t *mcap, ibp_capset_t *caps, ibp_off_t size,
+                                     ibp_attributes_t *attr, int disk_cs_type, ibp_off_t disk_blocksize, int timeout)
 {
+    ibp_op_t *op = new_ibp_op(ic);
+
     char hoststr[MAX_HOST_SIZE];
     char host[MAX_HOST_SIZE];
     ibp_op_alloc_t *cmd;
@@ -1534,18 +1440,6 @@ void set_ibp_split_alloc_op(ibp_op_t *op, ibp_cap_t *mcap, ibp_capset_t *caps, i
     gop->op->cmd.send_command = split_allocate_command;
     gop->op->cmd.send_phase = NULL;
     gop->op->cmd.recv_phase = allocate_recv;
-}
-
-//*************************************************************
-//  new_ibp_split_alloc_op - generates a new IBP_SPLIT_ALLOCATION operation
-//*************************************************************
-
-op_generic_t *new_ibp_split_alloc_op(ibp_context_t *ic, ibp_cap_t *mcap, ibp_capset_t *caps, ibp_off_t size,
-                                     ibp_attributes_t *attr, int disk_cs_type, ibp_off_t disk_blocksize, int timeout)
-{
-    ibp_op_t *op = new_ibp_op(ic);
-
-    set_ibp_split_alloc_op(op, mcap, caps, size, attr, disk_cs_type, disk_blocksize, timeout);
 
     return(ibp_get_gop(op));
 }
@@ -1577,11 +1471,12 @@ op_status_t rename_command(op_generic_t *gop, tbx_ns_t *ns)
 }
 
 //*************************************************************
-//  set_ibp_rename_op - generates a new IBP_RENAME operation
+//  new_ibp_rename_op - Creates a new IBP_RENAME operation
 //*************************************************************
 
-void set_ibp_rename_op(ibp_op_t *op, ibp_capset_t *caps, ibp_cap_t *mcap, int timeout)
+op_generic_t *new_ibp_rename_op(ibp_context_t *ic, ibp_capset_t *caps, ibp_cap_t *mcap, int timeout)
 {
+    ibp_op_t *op = new_ibp_op(ic);
     char hoststr[MAX_HOST_SIZE];
     char host[MAX_HOST_SIZE];
     ibp_op_alloc_t *cmd;
@@ -1603,17 +1498,6 @@ void set_ibp_rename_op(ibp_op_t *op, ibp_capset_t *caps, ibp_cap_t *mcap, int ti
     gop->op->cmd.send_command = rename_command;
     gop->op->cmd.send_phase = NULL;
     gop->op->cmd.recv_phase = allocate_recv;
-}
-
-//*************************************************************
-//  new_ibp_rename_op - Creates a new IBP_RENAME operation
-//*************************************************************
-
-op_generic_t *new_ibp_rename_op(ibp_context_t *ic, ibp_capset_t *caps, ibp_cap_t *mcap, int timeout)
-{
-    ibp_op_t *op = new_ibp_op(ic);
-
-    set_ibp_rename_op(op, caps, mcap, timeout);
 
     return(ibp_get_gop(op));
 }
@@ -1645,11 +1529,12 @@ op_status_t merge_command(op_generic_t *gop, tbx_ns_t *ns)
 }
 
 //*************************************************************
-//  set_ibp_merge_alloc_op - generates a new IBP_MERGE_ALLOCATE operation
+//  new_ibp_merge_alloc_op - Creates a new IBP_MERGE_ALLOCATION operation
 //*************************************************************
 
-void set_ibp_merge_alloc_op(ibp_op_t *op, ibp_cap_t *mcap, ibp_cap_t *ccap, int timeout)
+op_generic_t *new_ibp_merge_alloc_op(ibp_context_t *ic, ibp_cap_t *mcap, ibp_cap_t *ccap, int timeout)
 {
+    ibp_op_t *op = new_ibp_op(ic);
     char hoststr[MAX_HOST_SIZE];
     char host[MAX_HOST_SIZE];
     char chost[MAX_HOST_SIZE];
@@ -1672,17 +1557,6 @@ void set_ibp_merge_alloc_op(ibp_op_t *op, ibp_cap_t *mcap, ibp_cap_t *ccap, int 
     gop->op->cmd.send_command = merge_command;
     gop->op->cmd.send_phase = NULL;
     gop->op->cmd.recv_phase = status_get_recv;
-}
-
-//*************************************************************
-//  new_ibp_merge_alloc_op - Creates a new IBP_MERGE_ALLOCATION operation
-//*************************************************************
-
-op_generic_t *new_ibp_merge_alloc_op(ibp_context_t *ic, ibp_cap_t *mcap, ibp_cap_t *ccap, int timeout)
-{
-    ibp_op_t *op = new_ibp_op(ic);
-
-    set_ibp_merge_alloc_op(op, mcap, ccap, timeout);
 
     return(ibp_get_gop(op));
 }
@@ -1714,12 +1588,13 @@ op_status_t alias_allocate_command(op_generic_t *gop, tbx_ns_t *ns)
 }
 
 //*************************************************************
-//  set_ibp_alias_alloc_op - generates a new IBP_ALIAS_ALLOC operation
+//  new_ibp_alias_alloc_op - Creates a new IBP_ALIAS_ALLOC operation
 //*************************************************************
 
-void set_ibp_alias_alloc_op(ibp_op_t *op, ibp_capset_t *caps, ibp_cap_t *mcap, ibp_off_t offset, ibp_off_t size,
-                            int duration, int timeout)
+op_generic_t *new_ibp_alias_alloc_op(ibp_context_t *ic, ibp_capset_t *caps, ibp_cap_t *mcap, ibp_off_t offset, ibp_off_t size,
+                                     int duration, int timeout)
 {
+    ibp_op_t *op = new_ibp_op(ic);
     char hoststr[MAX_HOST_SIZE];
     char host[MAX_HOST_SIZE];
     ibp_op_alloc_t *cmd;
@@ -1750,18 +1625,6 @@ void set_ibp_alias_alloc_op(ibp_op_t *op, ibp_capset_t *caps, ibp_cap_t *mcap, i
     gop->op->cmd.send_command = alias_allocate_command;
     gop->op->cmd.send_phase = NULL;
     gop->op->cmd.recv_phase = allocate_recv;
-}
-
-//*************************************************************
-//  new_ibp_alias_alloc_op - Creates a new IBP_ALIAS_ALLOC operation
-//*************************************************************
-
-op_generic_t *new_ibp_alias_alloc_op(ibp_context_t *ic, ibp_capset_t *caps, ibp_cap_t *mcap, ibp_off_t offset, ibp_off_t size,
-                                     int duration, int timeout)
-{
-    ibp_op_t *op = new_ibp_op(ic);
-
-    set_ibp_alias_alloc_op(op, caps, mcap, offset, size, duration, timeout);
 
     return(ibp_get_gop(op));
 }
@@ -1893,13 +1756,6 @@ void set_ibp_generic_modify_count_op(int command, ibp_op_t *op, ibp_cap_t *cap, 
 //     an allocations reference count
 //*************************************************************
 
-void set_ibp_modify_count_op(ibp_op_t *op, ibp_cap_t *cap, int mode, int captype, int timeout)
-{
-    set_ibp_generic_modify_count_op(IBP_MANAGE, op, cap, NULL, mode, captype, timeout);
-}
-
-//***************************
-
 op_generic_t *new_ibp_modify_count_op(ibp_context_t *ic, ibp_cap_t *cap, int mode, int captype, int timeout)
 {
     ibp_op_t *op = new_ibp_op(ic);
@@ -1914,11 +1770,6 @@ op_generic_t *new_ibp_modify_count_op(ibp_context_t *ic, ibp_cap_t *cap, int mod
 //     a ALIAS allocations reference count
 //*************************************************************
 
-void set_ibp_alias_modify_count_op(ibp_op_t *op, ibp_cap_t *cap, ibp_cap_t *mcap, int mode, int captype, int timeout)
-{
-    set_ibp_generic_modify_count_op(IBP_ALIAS_MANAGE, op, cap, mcap, mode, captype, timeout);
-}
-
 op_generic_t *new_ibp_alias_modify_count_op(ibp_context_t *ic, ibp_cap_t *cap, ibp_cap_t *mcap, int mode, int captype, int timeout)
 {
     ibp_op_t *op = new_ibp_op(ic);
@@ -1931,8 +1782,6 @@ op_generic_t *new_ibp_alias_modify_count_op(ibp_context_t *ic, ibp_cap_t *cap, i
 //=============================================================
 // Modify allocation routines
 //=============================================================
-
-//*************************************************************
 
 op_status_t modify_alloc_command(op_generic_t *gop, tbx_ns_t *ns)
 {
@@ -1961,14 +1810,9 @@ op_status_t modify_alloc_command(op_generic_t *gop, tbx_ns_t *ns)
     return(err);
 }
 
-//*************************************************************
-// set_ibp_modify_alloc_op - Modifes the size, duration, and
-//   reliability of an existing allocation.
-//*************************************************************
-
-void set_ibp_modify_alloc_op(ibp_op_t *op, ibp_cap_t *cap, ibp_off_t size, int duration, int reliability,
-                             int timeout)
+op_generic_t *new_ibp_modify_alloc_op(ibp_context_t *ic, ibp_cap_t *cap, ibp_off_t size, int duration, int reliability, int timeout)
 {
+    ibp_op_t *op = new_ibp_op(ic);
     char hoststr[MAX_HOST_SIZE];
     int port;
     char host[MAX_HOST_SIZE];
@@ -1991,16 +1835,6 @@ void set_ibp_modify_alloc_op(ibp_op_t *op, ibp_cap_t *cap, ibp_off_t size, int d
     gop->op->cmd.send_command = modify_alloc_command;
     gop->op->cmd.send_phase = NULL;
     gop->op->cmd.recv_phase = status_get_recv;
-
-}
-
-//*************************************************************
-
-op_generic_t *new_ibp_modify_alloc_op(ibp_context_t *ic, ibp_cap_t *cap, ibp_off_t size, int duration, int reliability, int timeout)
-{
-    ibp_op_t *op = new_ibp_op(ic);
-
-    set_ibp_modify_alloc_op(op, cap, size, duration, reliability, timeout);
 
     return(ibp_get_gop(op));
 }
@@ -2041,9 +1875,9 @@ op_status_t alias_modify_alloc_command(op_generic_t *gop, tbx_ns_t *ns)
 //   reliability of an existing allocation.
 //*************************************************************
 
-void set_ibp_alias_modify_alloc_op(ibp_op_t *op, ibp_cap_t *cap, ibp_cap_t *mcap, ibp_off_t offset, ibp_off_t size, int duration,
-                                   int timeout)
+op_generic_t *new_ibp_alias_modify_alloc_op(ibp_context_t *ic, ibp_cap_t *cap, ibp_cap_t *mcap, ibp_off_t offset, ibp_off_t size, int duration, int timeout)
 {
+    ibp_op_t *op = new_ibp_op(ic);
     char hoststr[MAX_HOST_SIZE];
     int port;
     char host[MAX_HOST_SIZE];
@@ -2069,24 +1903,12 @@ void set_ibp_alias_modify_alloc_op(ibp_op_t *op, ibp_cap_t *cap, ibp_cap_t *mcap
     gop->op->cmd.send_phase = NULL;
     gop->op->cmd.recv_phase = status_get_recv;
 
-}
-
-//*************************************************************
-
-op_generic_t *new_ibp_alias_modify_alloc_op(ibp_context_t *ic, ibp_cap_t *cap, ibp_cap_t *mcap, ibp_off_t offset, ibp_off_t size, int duration, int timeout)
-{
-    ibp_op_t *op = new_ibp_op(ic);
-
-    set_ibp_alias_modify_alloc_op(op, cap, mcap, offset, size, duration, timeout);
-
     return(ibp_get_gop(op));
 }
 
 //=============================================================
 // IBP_TRUNCATE routines
 //=============================================================
-
-//*************************************************************
 
 op_status_t truncate_command(op_generic_t *gop, tbx_ns_t *ns)
 {
@@ -2110,13 +1932,9 @@ op_status_t truncate_command(op_generic_t *gop, tbx_ns_t *ns)
     return(err);
 }
 
-//*************************************************************
-// set_ibp_truncate_op - Modifes the size, duration, and
-//   reliability of an existing allocation.
-//*************************************************************
-
-void set_ibp_truncate_op(ibp_op_t *op, ibp_cap_t *cap, ibp_off_t size, int timeout)
+op_generic_t *new_ibp_truncate_op(ibp_context_t *ic, ibp_cap_t *cap, ibp_off_t size, int timeout)
 {
+    ibp_op_t *op = new_ibp_op(ic);
     char hoststr[MAX_HOST_SIZE];
     int port;
     char host[MAX_HOST_SIZE];
@@ -2138,16 +1956,6 @@ void set_ibp_truncate_op(ibp_op_t *op, ibp_cap_t *cap, ibp_off_t size, int timeo
     gop->op->cmd.send_phase = NULL;
     gop->op->cmd.recv_phase = status_get_recv;
 
-}
-
-//*************************************************************
-
-op_generic_t *new_ibp_truncate_op(ibp_context_t *ic, ibp_cap_t *cap, ibp_off_t size, int timeout)
-{
-    ibp_op_t *op = new_ibp_op(ic);
-
-    set_ibp_truncate_op(op, cap, size, timeout);
-
     return(ibp_get_gop(op));
 }
 
@@ -2156,30 +1964,12 @@ op_generic_t *new_ibp_truncate_op(ibp_context_t *ic, ibp_cap_t *cap, ibp_off_t s
 //=============================================================
 
 //*************************************************************
-//  set_ibp_remove_op - Generates a remove allocation operation
-//*************************************************************
-
-void set_ibp_remove_op(ibp_op_t *op, ibp_cap_t *cap, int timeout)
-{
-    set_ibp_modify_count_op(op, cap, IBP_DECR, IBP_READCAP, timeout);
-}
-
-//*************************************************************
 //  new_ibp_remove_op - Generates/Creates a remove allocation operation
 //*************************************************************
 
 op_generic_t *new_ibp_remove_op(ibp_context_t *ic, ibp_cap_t *cap, int timeout)
 {
     return(new_ibp_modify_count_op(ic, cap, IBP_DECR, IBP_READCAP, timeout));
-}
-
-//*************************************************************
-//  set_ibp_alias_remove_op - Generates a remove alias allocation operation
-//*************************************************************
-
-void set_ibp_alias_remove_op(ibp_op_t *op, ibp_cap_t *cap, ibp_cap_t *mcap, int timeout)
-{
-    set_ibp_alias_modify_count_op(op, cap, mcap, IBP_DECR, IBP_READCAP, timeout);
 }
 
 //*************************************************************
@@ -2260,12 +2050,13 @@ op_status_t probe_recv(op_generic_t *gop, tbx_ns_t *ns)
 }
 
 //*************************************************************
-//  set_ibp_probe_op - Generates a new IBP_PROBE command to get
-//     information about an existing allocation
+//  new_ibp_probe_op - Creats and generates  a new IBP_PROBE
+//     command to get information about an existing allocation
 //*************************************************************
 
-void set_ibp_probe_op(ibp_op_t *op, ibp_cap_t *cap, ibp_capstatus_t *probe, int timeout)
+op_generic_t *new_ibp_probe_op(ibp_context_t *ic, ibp_cap_t *cap, ibp_capstatus_t *probe, int timeout)
 {
+    ibp_op_t *op = new_ibp_op(ic);
     char hoststr[MAX_HOST_SIZE];
     int port;
     char host[MAX_HOST_SIZE];
@@ -2292,18 +2083,6 @@ void set_ibp_probe_op(ibp_op_t *op, ibp_cap_t *cap, ibp_capstatus_t *probe, int 
     gop->op->cmd.send_command = probe_command;
     gop->op->cmd.send_phase = NULL;
     gop->op->cmd.recv_phase = probe_recv;
-}
-
-//*************************************************************
-//  new_ibp_probe_op - Creats and generates  a new IBP_PROBE
-//     command to get information about an existing allocation
-//*************************************************************
-
-op_generic_t *new_ibp_probe_op(ibp_context_t *ic, ibp_cap_t *cap, ibp_capstatus_t *probe, int timeout)
-{
-    ibp_op_t *op = new_ibp_op(ic);
-
-    set_ibp_probe_op(op, cap, probe, timeout);
 
     return(ibp_get_gop(op));
 }
@@ -2373,12 +2152,13 @@ op_status_t alias_probe_recv(op_generic_t *gop, tbx_ns_t *ns)
 }
 
 //*************************************************************
-//  set_ibp_alias_probe_op - Generates a new IBP_PROBE command to get
-//     information about an existing ALIAS allocation
+//  new_ibp_alias_probe_op - Creats and generates  a new IBP_PROBE
+//     command to get information about an existing ALIAS allocation
 //*************************************************************
 
-void set_ibp_alias_probe_op(ibp_op_t *op, ibp_cap_t *cap, ibp_alias_capstatus_t *probe, int timeout)
+op_generic_t *new_ibp_alias_probe_op(ibp_context_t *ic, ibp_cap_t *cap, ibp_alias_capstatus_t *probe, int timeout)
 {
+    ibp_op_t *op = new_ibp_op(ic);
     char hoststr[MAX_HOST_SIZE];
     int port;
     char host[MAX_HOST_SIZE];
@@ -2399,18 +2179,6 @@ void set_ibp_alias_probe_op(ibp_op_t *op, ibp_cap_t *cap, ibp_alias_capstatus_t 
     gop->op->cmd.send_command = alias_probe_command;
     gop->op->cmd.send_phase = NULL;
     gop->op->cmd.recv_phase = alias_probe_recv;
-}
-
-//*************************************************************
-//  new_ibp_alias_probe_op - Creats and generates  a new IBP_PROBE
-//     command to get information about an existing ALIAS allocation
-//*************************************************************
-
-op_generic_t *new_ibp_alias_probe_op(ibp_context_t *ic, ibp_cap_t *cap, ibp_alias_capstatus_t *probe, int timeout)
-{
-    ibp_op_t *op = new_ibp_op(ic);
-
-    set_ibp_alias_probe_op(op, cap, probe, timeout);
 
     return(ibp_get_gop(op));
 }
@@ -2494,12 +2262,15 @@ op_status_t copy_recv(op_generic_t *gop, tbx_ns_t *ns)
 
 
 //*************************************************************
-// set_ibp_copyappend_op - Generates a new depot copy operation
+// new_ibp_copyappend_op - Generates a new depot copy operation
 //*************************************************************
 
-void set_ibp_copyappend_op(ibp_op_t *op, int ns_type, char *path, ibp_cap_t *srccap, ibp_cap_t *destcap, ibp_off_t src_offset, ibp_off_t size,
-                           int src_timeout, int  dest_timeout, int dest_client_timeout)
+op_generic_t *new_ibp_copyappend_op(ibp_context_t *ic, int ns_type, char *path, ibp_cap_t *srccap, ibp_cap_t *destcap, ibp_off_t src_offset, ibp_off_t size,
+                                    int src_timeout, int  dest_timeout, int dest_client_timeout)
 {
+    ibp_op_t *op = new_ibp_op(ic);
+    if (op == NULL) return(NULL);
+
     char hoststr[MAX_HOST_SIZE];
     int port;
     char host[MAX_HOST_SIZE];
@@ -2542,17 +2313,6 @@ void set_ibp_copyappend_op(ibp_op_t *op, int ns_type, char *path, ibp_cap_t *src
     gop->op->cmd.send_command = copyappend_command;
     gop->op->cmd.send_phase = NULL;
     gop->op->cmd.recv_phase = copy_recv;
-}
-
-//*************************************************************
-
-op_generic_t *new_ibp_copyappend_op(ibp_context_t *ic, int ns_type, char *path, ibp_cap_t *srccap, ibp_cap_t *destcap, ibp_off_t src_offset, ibp_off_t size,
-                                    int src_timeout, int  dest_timeout, int dest_client_timeout)
-{
-    ibp_op_t *op = new_ibp_op(ic);
-    if (op == NULL) return(NULL);
-
-    set_ibp_copyappend_op(op, ns_type, path, srccap, destcap, src_offset, size, src_timeout, dest_timeout, dest_client_timeout);
 
     return(ibp_get_gop(op));
 }
@@ -2562,8 +2322,6 @@ op_generic_t *new_ibp_copyappend_op(ibp_context_t *ic, int ns_type, char *path, 
 // These routines allow you to push an allocation between
 // depots.
 //=============================================================
-
-//*************************************************************
 
 op_status_t pushpull_command(op_generic_t *gop, tbx_ns_t *ns)
 {
@@ -2597,16 +2355,18 @@ op_status_t pushpull_command(op_generic_t *gop, tbx_ns_t *ns)
     return(err);
 }
 
-//*************************************************************
 
 //*************************************************************
 // set_ibp_copy_op - Generates a new depot copy operation
 //*************************************************************
 
-void set_ibp_copy_op(ibp_op_t *op, int mode, int ns_type, char *path, ibp_cap_t *srccap, ibp_cap_t *destcap,
-                     ibp_off_t src_offset, ibp_off_t dest_offset, ibp_off_t size, int src_timeout, int  dest_timeout,
-                     int dest_client_timeout)
+op_generic_t *new_ibp_copy_op(ibp_context_t *ic, int mode, int ns_type, char *path, ibp_cap_t *srccap, ibp_cap_t *destcap,
+                              ibp_off_t src_offset, ibp_off_t dest_offset, ibp_off_t size, int src_timeout,
+                              int  dest_timeout, int dest_client_timeout)
 {
+    ibp_op_t *op = new_ibp_op(ic);
+    if (op == NULL) return(NULL);
+    
     char hoststr[MAX_HOST_SIZE];
     int port;
     char host[MAX_HOST_SIZE];
@@ -2651,18 +2411,6 @@ void set_ibp_copy_op(ibp_op_t *op, int mode, int ns_type, char *path, ibp_cap_t 
     gop->op->cmd.send_command = pushpull_command;
     gop->op->cmd.send_phase = NULL;
     gop->op->cmd.recv_phase = copy_recv;
-}
-
-//*************************************************************
-
-op_generic_t *new_ibp_copy_op(ibp_context_t *ic, int mode, int ns_type, char *path, ibp_cap_t *srccap, ibp_cap_t *destcap,
-                              ibp_off_t src_offset, ibp_off_t dest_offset, ibp_off_t size, int src_timeout,
-                              int  dest_timeout, int dest_client_timeout)
-{
-    ibp_op_t *op = new_ibp_op(ic);
-    if (op == NULL) return(NULL);
-
-    set_ibp_copy_op(op, mode, ns_type, path, srccap, destcap, src_offset, dest_offset, size, src_timeout, dest_timeout, dest_client_timeout);
 
     return(ibp_get_gop(op));
 }
@@ -2699,9 +2447,12 @@ op_status_t depot_modify_command(op_generic_t *gop, tbx_ns_t *ns)
 //  set_ibp_depot_modify - Modify the settings of a depot/RID
 //*************************************************************
 
-void set_ibp_depot_modify_op(ibp_op_t *op, ibp_depot_t *depot, char *password, ibp_off_t hard, ibp_off_t soft,
-                             int duration, int timeout)
+op_generic_t *new_ibp_depot_modify_op(ibp_context_t *ic, ibp_depot_t *depot, char *password, ibp_off_t hard, ibp_off_t soft,
+                                      int duration, int timeout)
 {
+    ibp_op_t *op = new_ibp_op(ic);
+    if (op == NULL) return(NULL);
+
     ibp_op_depot_modify_t *cmd = &(op->ops.depot_modify_op);
 
     init_ibp_base_op(op, "depot_modify", timeout, op->ic->other_new_command, NULL,
@@ -2717,17 +2468,6 @@ void set_ibp_depot_modify_op(ibp_op_t *op, ibp_depot_t *depot, char *password, i
     gop->op->cmd.send_command = depot_modify_command;
     gop->op->cmd.send_phase = NULL;
     gop->op->cmd.recv_phase = status_get_recv;
-}
-
-//*************************************************************
-
-op_generic_t *new_ibp_depot_modify_op(ibp_context_t *ic, ibp_depot_t *depot, char *password, ibp_off_t hard, ibp_off_t soft,
-                                      int duration, int timeout)
-{
-    ibp_op_t *op = new_ibp_op(ic);
-    if (op == NULL) return(NULL);
-
-    set_ibp_depot_modify_op(op, depot, password, hard, soft, duration, timeout);
 
     return(ibp_get_gop(op));
 }
@@ -2863,8 +2603,11 @@ op_status_t depot_inq_recv(op_generic_t *gop, tbx_ns_t *ns)
 //  set_ibp_depot_inq - Inquires about a depots resource
 //*************************************************************
 
-void set_ibp_depot_inq_op(ibp_op_t *op, ibp_depot_t *depot, char *password, ibp_depotinfo_t *di, int timeout)
+op_generic_t *new_ibp_depot_inq_op(ibp_context_t *ic, ibp_depot_t *depot, char *password, ibp_depotinfo_t *di, int timeout)
 {
+    ibp_op_t *op = new_ibp_op(ic);
+    if (op == NULL) return(NULL);
+
     char hoststr[MAX_HOST_SIZE];
     char pchost[MAX_HOST_SIZE];
     ibp_op_depot_inq_t *cmd = &(op->ops.depot_inq_op);
@@ -2883,16 +2626,6 @@ void set_ibp_depot_inq_op(ibp_op_t *op, ibp_depot_t *depot, char *password, ibp_
     gop->op->cmd.send_command = depot_inq_command;
     gop->op->cmd.send_phase = NULL;
     gop->op->cmd.recv_phase = depot_inq_recv;
-}
-
-//*************************************************************
-
-op_generic_t *new_ibp_depot_inq_op(ibp_context_t *ic, ibp_depot_t *depot, char *password, ibp_depotinfo_t *di, int timeout)
-{
-    ibp_op_t *op = new_ibp_op(ic);
-    if (op == NULL) return(NULL);
-
-    set_ibp_depot_inq_op(op, depot, password, di, timeout);
 
     return(ibp_get_gop(op));
 }
@@ -2917,8 +2650,6 @@ op_status_t depot_version_command(op_generic_t *gop, tbx_ns_t *ns)
 
     return(err);
 }
-
-//*************************************************************
 
 op_status_t depot_version_recv(op_generic_t *gop, tbx_ns_t *ns)
 {
@@ -2967,11 +2698,11 @@ op_status_t depot_version_recv(op_generic_t *gop, tbx_ns_t *ns)
     return(err);
 }
 
-
-//*************************************************************
-
-void set_ibp_version_op(ibp_op_t *op, ibp_depot_t *depot, char *buffer, int buffer_size, int timeout)
+op_generic_t *new_ibp_version_op(ibp_context_t *ic, ibp_depot_t *depot, char *buffer, int buffer_size, int timeout)
 {
+    ibp_op_t *op = new_ibp_op(ic);
+    if (op == NULL) return(NULL);
+
     char hoststr[MAX_HOST_SIZE];
     char pchoststr[MAX_HOST_SIZE];
     ibp_op_version_t *cmd = &(op->ops.ver_op);
@@ -2990,16 +2721,6 @@ void set_ibp_version_op(ibp_op_t *op, ibp_depot_t *depot, char *buffer, int buff
     gop->op->cmd.send_command = depot_version_command;
     gop->op->cmd.send_phase = NULL;
     gop->op->cmd.recv_phase = depot_version_recv;
-}
-
-//*************************************************************
-
-op_generic_t *new_ibp_version_op(ibp_context_t *ic, ibp_depot_t *depot, char *buffer, int buffer_size, int timeout)
-{
-    ibp_op_t *op = new_ibp_op(ic);
-    if (op == NULL) return(NULL);
-
-    set_ibp_version_op(op, depot, buffer, buffer_size, timeout);
 
     return(ibp_get_gop(op));
 }
@@ -3007,8 +2728,6 @@ op_generic_t *new_ibp_version_op(ibp_context_t *ic, ibp_depot_t *depot, char *bu
 //=============================================================
 // routines for getting the list or resources from a depot
 //=============================================================
-
-//*************************************************************
 
 op_status_t query_res_command(op_generic_t *gop, tbx_ns_t *ns)
 {
@@ -3027,8 +2746,6 @@ op_status_t query_res_command(op_generic_t *gop, tbx_ns_t *ns)
     return(err);
 }
 
-//*************************************************************
-
 op_status_t query_res_recv(op_generic_t *gop, tbx_ns_t *ns)
 {
     ibp_op_t *op = ibp_get_iop(gop);
@@ -3045,8 +2762,6 @@ op_status_t query_res_recv(op_generic_t *gop, tbx_ns_t *ns)
     err = gop_readline_with_timeout(ns, buffer, sizeof(buffer), gop);
     if (err.op_status != OP_STATE_SUCCESS) return(err);
 
-//  log_printf(0, "query_res_recv: ns=%d buffer=!%s!\n", tbx_ns_getid(ns), buffer);
-
     //** check to make sure the depot supports the command
     status = atoi(tbx_stk_string_token(buffer, " ", &bstate, &fin));
     if (err.op_status != OP_STATE_SUCCESS) return(process_error(gop, &err, status, -1, &bstate));
@@ -3055,7 +2770,6 @@ op_status_t query_res_recv(op_generic_t *gop, tbx_ns_t *ns)
     tbx_stack_t *list = tbx_stack_new();
     p = tbx_stk_string_token(NULL, " ", &bstate, &fin);
     while (fin == 0) {
-//    log_printf(0, "query_res_recv: ns=%d rid=%s\n", tbx_ns_getid(ns), p);
         tbx_stack_push(list, p);
         p = tbx_stk_string_token(NULL, " ", &bstate, &fin);
     }
@@ -3074,40 +2788,28 @@ op_status_t query_res_recv(op_generic_t *gop, tbx_ns_t *ns)
     return(err);
 }
 
-//*************************************************************
-
-void set_ibp_query_resources_op(ibp_op_t *op, ibp_depot_t *depot, ibp_ridlist_t *rlist, int timeout)
-{
-    {
-        char hoststr[MAX_HOST_SIZE];
-        char pchoststr[MAX_HOST_SIZE];
-        ibp_op_rid_inq_t *cmd = &(op->ops.rid_op);
-
-        ibppc_form_host(op->ic, pchoststr, sizeof(pchoststr), depot->host, depot->rid);
-        set_hostport(hoststr, sizeof(hoststr), pchoststr, depot->port, &(op->ic->cc[IBP_STATUS]));
-
-        init_ibp_base_op(op, "query_resources", timeout, op->ic->other_new_command, strdup(hoststr),
-                         op->ic->other_new_command, IBP_STATUS, IBP_ST_RES);
-
-        cmd->depot = depot;
-        cmd->rlist = rlist;
-
-        op_generic_t *gop = ibp_get_gop(op);
-        gop->op->cmd.send_command = query_res_command;
-        gop->op->cmd.send_phase = NULL;
-        gop->op->cmd.recv_phase = query_res_recv;
-    }
-
-}
-
-//*************************************************************
-
 op_generic_t *new_ibp_query_resources_op(ibp_context_t *ic, ibp_depot_t *depot, ibp_ridlist_t *rlist, int timeout)
 {
     ibp_op_t *op = new_ibp_op(ic);
     if (op == NULL) return(NULL);
+    
+    char hoststr[MAX_HOST_SIZE];
+    char pchoststr[MAX_HOST_SIZE];
+    ibp_op_rid_inq_t *cmd = &(op->ops.rid_op);
 
-    set_ibp_query_resources_op(op, depot, rlist, timeout);
+    ibppc_form_host(op->ic, pchoststr, sizeof(pchoststr), depot->host, depot->rid);
+    set_hostport(hoststr, sizeof(hoststr), pchoststr, depot->port, &(op->ic->cc[IBP_STATUS]));
 
+    init_ibp_base_op(op, "query_resources", timeout, op->ic->other_new_command, strdup(hoststr),
+                        op->ic->other_new_command, IBP_STATUS, IBP_ST_RES);
+
+    cmd->depot = depot;
+    cmd->rlist = rlist;
+
+    op_generic_t *gop = ibp_get_gop(op);
+    gop->op->cmd.send_command = query_res_command;
+    gop->op->cmd.send_phase = NULL;
+    gop->op->cmd.recv_phase = query_res_recv;
+    
     return(ibp_get_gop(op));
 }
