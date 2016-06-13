@@ -973,6 +973,7 @@ data_service_fn_t *ds_ibp_create(void *arg, tbx_inip_file_t *ifd, char *section)
     ds->attr_default.attr.reliability = IBP_HARD;
     ds->attr_default.attr.type = IBP_BYTEARRAY;
 
+
     ic = ibp_create_context();
     ibp_load_config(ic, ifd, section);
     ds->ic = ic;
