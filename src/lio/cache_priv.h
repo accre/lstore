@@ -43,24 +43,27 @@ extern "C" {
 #define C_EMPTY     2
 #define C_TORELEASE 4
 
-struct cache_s;
-typedef struct cache_s cache_t;
+struct cache_t;
+typedef struct cache_t cache_t;
 
-typedef struct {
+typedef struct cache_range_t cache_range_t;
+struct cache_range_t {
     ex_off_t lo;
     ex_off_t hi;
     ex_off_t boff;
     int iov_index;
-} cache_range_t;
+};
 
-typedef struct {
+typedef struct cache_counters_t cache_counters_t;
+struct cache_counters_t {
     ex_off_t read_count;
     ex_off_t write_count;
     ex_off_t read_bytes;
     ex_off_t write_bytes;
-} cache_counters_t;
+};
 
-typedef struct {
+typedef struct cache_stats_t cache_stats_t;
+struct cache_stats_t {
     cache_counters_t user;
     cache_counters_t system;
     ex_off_t dirty_bytes;
@@ -69,26 +72,29 @@ typedef struct {
     ex_off_t unused_bytes;
     apr_time_t hit_time;
     apr_time_t miss_time;
-} cache_stats_t;
+};
 
-typedef struct {
+typedef struct cache_cond_t cache_cond_t;
+struct cache_cond_t {
     apr_thread_cond_t *cond;
     int count;
-} cache_cond_t;
+};
 
 #define CPP_BEGIN 1
 #define CPP_END   2
 #define CPP_FULL  4
 
-typedef struct {
+typedef struct cache_partial_page_t cache_partial_page_t;
+struct cache_partial_page_t {
     ex_off_t page_start;
     ex_off_t page_end;
     tbx_stack_t *range_stack;
     char *data;
     int flags;
-} cache_partial_page_t;
+};
 
-typedef struct {
+typedef struct cache_segment_t cache_segment_t;
+struct cache_segment_t {
     cache_t *c;
     void *cache_priv;
     segment_t *child_seg;
@@ -113,14 +119,16 @@ typedef struct {
     ex_off_t child_last_page;
     ex_off_t total_size;
     cache_stats_t stats;
-} cache_segment_t;
+};
 
-typedef struct {
+typedef struct data_page_t data_page_t;
+struct data_page_t {
     char *ptr;
     int  usage_count;
-} data_page_t;
+};
 
-typedef struct {
+typedef struct cache_page_t cache_page_t;
+struct cache_page_t {
     segment_t *seg;
     data_page_t *curr_data;
     data_page_t data[2];
@@ -131,24 +139,25 @@ typedef struct {
     int access_pending[3];
     int used_count;
     int current_index;
-}  cache_page_t;
+};
 
-typedef struct {
+typedef struct page_handle_t page_handle_t;
+struct page_handle_t {
     cache_page_t *p;
     data_page_t *data;
-} page_handle_t;
+};
 
-typedef struct {
+typedef struct page_table_t page_table_t;
+struct page_table_t {
     tbx_stack_t *stack;
     segment_t *seg;
     ex_id_t   id;
     tbx_pch_t pch;
     ex_off_t lo, hi;
-} page_table_t;
+};
 
-typedef struct cache_fn_s cache_fn_t;
-
-struct cache_fn_s {
+typedef struct cache_fn_t cache_fn_t;
+struct cache_fn_t {
     void *priv;
     void (*adding_segment)(cache_t *c, segment_t *seg);
     void (*removing_segment)(cache_t *c, segment_t *seg);
@@ -163,7 +172,7 @@ struct cache_fn_s {
     int (*destroy)(cache_t *c);
 };
 
-struct cache_s {
+struct cache_t {
     cache_fn_t fn;
     apr_pool_t *mpool;
     apr_thread_mutex_t *lock;

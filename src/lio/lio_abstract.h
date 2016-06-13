@@ -47,14 +47,14 @@ extern "C" {
 extern char *_lio_stat_keys[];
 #define  _lio_stat_key_size 7
 
-typedef struct lio_config_s lio_config_t;
-typedef struct lio_fn_s lio_fn_t;
-typedef struct lio_fsck_iter_s lio_fsck_iter_t;
+typedef struct lio_config_t lio_config_t;
+typedef struct lio_fn_t lio_fn_t;
+typedef struct lio_fsck_iter_t lio_fsck_iter_t;
 
 LIO_API extern FILE *_lio_ifd;  //** Default information log device
 extern char *_lio_exe_name;  //** Executable name
 
-struct lio_config_s {
+struct lio_config_t {
     data_service_fn_t *ds;
     object_service_fn_t *os;
     resource_service_fn_t *rs;
@@ -92,28 +92,32 @@ struct lio_config_s {
     int ref_cnt;
 };
 
-typedef struct {
+typedef struct lio_path_tuple_t lio_path_tuple_t;
+struct lio_path_tuple_t {
     creds_t *creds;
     lio_config_t *lc;
     char *path;
     int is_lio;
-} lio_path_tuple_t;
+};
 
-typedef struct {
+typedef struct unified_object_iter_t unified_object_iter_t;
+struct unified_object_iter_t {
     lio_path_tuple_t tuple;
     os_object_iter_t *oit;
     local_object_iter_t *lit;
-} unified_object_iter_t;
+};
 
-typedef struct {
+typedef struct lio_cp_file_t lio_cp_file_t;
+struct lio_cp_file_t {
     segment_rw_hints_t *rw_hints;
     lio_path_tuple_t src_tuple;
     lio_path_tuple_t dest_tuple;
     ex_off_t bufsize;
     int slow;
-} lio_cp_file_t;
+};
 
-typedef struct {
+typedef struct lio_cp_path_t lio_cp_path_t;
+struct lio_cp_path_t {
     lio_path_tuple_t src_tuple;
     lio_path_tuple_t dest_tuple;
     os_regex_table_t *path_regex;
@@ -124,7 +128,7 @@ typedef struct {
     int max_spawn;
     int slow;
     ex_off_t bufsize;
-} lio_cp_path_t;
+};
 
 LIO_API extern lio_config_t *lio_gc;
 LIO_API extern tbx_log_fd_t *lio_ifd;
@@ -143,7 +147,7 @@ LIO_API extern int lio_parallel_task_count;
 #define lio_lock(s) apr_thread_mutex_lock((s)->lock)
 #define lio_unlock(s) apr_thread_mutex_unlock((s)->lock)
 
-struct lio_file_handle_s {  //** Shared file handle
+struct lio_file_handle_t {  //** Shared file handle
     exnode_t *ex;
     segment_t *seg;
     lio_config_t *lc;
@@ -155,16 +159,17 @@ struct lio_file_handle_s {  //** Shared file handle
     tbx_list_t *write_table;
 };
 
-typedef struct lio_file_handle_s lio_file_handle_t;
+typedef struct lio_file_handle_t lio_file_handle_t;
 
-typedef struct {  //** Individual file descriptor
+typedef struct lio_fd_t lio_fd_t;
+struct lio_fd_t {  //** Individual file descriptor
     lio_config_t *lc;
     lio_file_handle_t *fh;  //** Shared handle
     creds_t *creds;
     char *path;
     int mode;         //** R/W mode
     ex_off_t curr_offset;
-} lio_fd_t;
+};
 
 extern tbx_sl_compare_t ex_id_compare;
 

@@ -32,17 +32,20 @@ extern "C" {
 
 typedef void data_block_cap_t;
 
-typedef struct {
+typedef struct data_block_warm_t data_block_warm_t;
+struct data_block_warm_t {
     data_block_cap_t *cap;
     data_service_fn_t *ds;
-} data_block_warm_t;
+};
 
-typedef struct {
+typedef struct data_block_attr_t data_block_attr_t;
+struct data_block_attr_t {
     char *key;
     char *value;
-} data_block_attr_t;
+};
 
-typedef struct {
+typedef struct data_block_t data_block_t;
+struct data_block_t {
     ex_id_t  id;
     ex_off_t size;
     ex_off_t max_size;
@@ -53,7 +56,7 @@ typedef struct {
     char *rid_key;
     tbx_stack_t *attr_stack;
     data_block_warm_t *warm;
-} data_block_t;
+};
 
 #define data_block_id(db) (db)->id
 

@@ -40,14 +40,15 @@ extern "C" {
 #define DS_IBP_ATTR_DISK_CHKSUM_TYPE 7
 #define DS_IBP_ATTR_DISK_CHKSUM_BLOCKSIZE 8
 
-typedef struct {
+typedef struct ds_ibp_attr_t ds_ibp_attr_t;
+struct ds_ibp_attr_t {
     ibp_attributes_t attr;
     ibp_depot_t depot;
     ibp_connect_context_t cc;
     tbx_ns_chksum_t ncs;
     int disk_cs_type;
     int disk_cs_blocksize;
-} ds_ibp_attr_t;
+};
 
 data_service_fn_t *ds_ibp_create(void *arg, tbx_inip_file_t *ifd, char *section);
 

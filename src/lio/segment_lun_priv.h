@@ -27,7 +27,8 @@
 extern "C" {
 #endif
 
-typedef struct {
+typedef struct seglun_priv_t seglun_priv_t;
+struct seglun_priv_t {
     ex_off_t used_size;
     ex_off_t total_size;
     ex_off_t max_block_size;
@@ -51,7 +52,7 @@ typedef struct {
     data_service_fn_t *ds;
     tbx_stack_t *db_cleanup;
     blacklist_t *bl;
-} seglun_priv_t;
+};
 
 #ifdef __cplusplus
 }

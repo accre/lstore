@@ -30,29 +30,33 @@ extern "C" {
 #define CAMP_TAG      2  //** Tag page for pretech
 #define CAMP_OLD      4  //** Page has been recycled without a hit
 
-typedef struct {
+typedef struct page_amp_t page_amp_t;
+struct page_amp_t {
     cache_page_t page;  //** Actual page
     tbx_stack_ele_t *ele;   //** LRU position
     ex_off_t stream_offset;
     int bit_fields;
-} page_amp_t;
+};
 
-typedef struct {
+typedef struct amp_page_stream_t amp_page_stream_t;
+struct amp_page_stream_t {
     ex_off_t last_offset;
     ex_off_t nbytes;
     int prefetch_size;
     int trigger_distance;
-} amp_page_stream_t;
+};
 
-typedef struct {
+typedef struct amp_stream_table_t amp_stream_table_t;
+struct amp_stream_table_t {
     int   max_streams;
     amp_page_stream_t *stream_table;
     tbx_list_t *streams;
     int index;
     int start_apt_pages;
-} amp_stream_table_t;
+};
 
-typedef struct {
+typedef struct cache_amp_t cache_amp_t;
+struct cache_amp_t {
     tbx_stack_t *stack;
     tbx_stack_t *waiting_stack;
     tbx_stack_t *pending_free_tasks;
@@ -71,12 +75,13 @@ typedef struct {
     int      max_streams;
     int      flush_in_progress;
     int      limbo_pages;
-} cache_amp_t;
+};
 
-typedef struct {
+typedef struct amp_page_wait_t amp_page_wait_t;
+struct amp_page_wait_t {
     apr_thread_cond_t *cond;
     ex_off_t  bytes_needed;
-} amp_page_wait_t;
+};
 
 #ifdef __cplusplus
 }

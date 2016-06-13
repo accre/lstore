@@ -68,35 +68,37 @@ extern "C" {
 
 #define OS_CREDS_INI_TYPE 0  //** Load creds from file
 
-typedef struct os_authz_s os_authz_t;
+typedef struct os_authz_t os_authz_t;
 
-typedef struct {
+typedef struct os_attr_tbx_list_t os_attr_tbx_list_t;
+struct os_attr_tbx_list_t {
     int q_mode;
     char *attr;
-} os_attr_tbx_list_t;
+};
 
 typedef void os_fd_t;
 typedef void os_attr_iter_t;
 typedef void os_object_iter_t;
 typedef void os_fsck_iter_t;
 
-typedef struct {
+typedef struct os_regex_entry_t os_regex_entry_t;
+struct os_regex_entry_t {
     char *expression;
     int fixed;
     int fixed_prefix;
     regex_t compiled;
-} os_regex_entry_t;
+};
 
-typedef struct {
+typedef struct os_regex_table_t os_regex_table_t;
+struct os_regex_table_t {
     int n;
     os_regex_entry_t *regex_entry;
-} os_regex_table_t;
+};
 
-struct object_service_fn_s;
-typedef struct object_service_fn_s object_service_fn_t;
-typedef struct os_virtual_attr_s os_virtual_attr_t;
+typedef struct object_service_fn_t object_service_fn_t;
+typedef struct os_virtual_attr_t os_virtual_attr_t;
 
-struct object_service_fn_s {
+struct object_service_fn_t {
     void *priv;
     char *type;
     void (*destroy_service)(object_service_fn_t *os);
@@ -209,7 +211,7 @@ int os_regex_table_pack(os_regex_table_t *regex, unsigned char *buffer, int bufs
 os_regex_table_t *os_regex_table_unpack(unsigned char *buffer, int bufsize, int *used);
 
 
-struct os_authz_s {
+struct os_authz_t {
     void *priv;
     int (*object_create)(os_authz_t *osa, creds_t *c, char *path);
     int (*object_remove)(os_authz_t *osa, creds_t *c, char *path);
@@ -230,7 +232,7 @@ typedef os_authz_t *(osaz_create_t)(service_manager_t *ess, tbx_inip_file_t *ifd
 #define osaz_attr_access(osa, c, path, key, mode) (osa)->attr_access(osa, c, path, key, mode)
 #define osaz_destroy(osa) (osa)->destroy(osa)
 
-struct os_virtual_attr_s {
+struct os_virtual_attr_t {
     char *attribute;
     void *priv;
     int (*get)(os_virtual_attr_t *va, object_service_fn_t *os, creds_t *creds, os_fd_t *fd, char *key, void **val, int *v_size, int *atype);

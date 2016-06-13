@@ -44,15 +44,17 @@ typedef ibp_tbx_iovec_t ex_tbx_iovec_t;
 ex_tbx_iovec_t *ex_iovec_create();
 void ex_iovec_destroy(ex_tbx_iovec_t *iov);
 
-typedef struct {
+typedef struct exnode_text_t exnode_text_t;
+struct exnode_text_t {
     char *text;
     tbx_inip_file_t *fd;
-} exnode_text_t;
+};
 
-typedef struct {
+typedef struct exnode_exchange_t exnode_exchange_t;
+struct exnode_exchange_t {
     int type;
     exnode_text_t text;
-} exnode_exchange_t;
+};
 
 #ifdef __cplusplus
 }

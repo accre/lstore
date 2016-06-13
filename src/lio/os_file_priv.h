@@ -39,7 +39,8 @@ extern "C" {
 #define OSF_LOCK_CHKSUM CHKSUM_MD5
 #define OSF_LOCK_CHKSUM_SIZE MD5_DIGEST_LENGTH
 
-typedef struct {
+typedef struct osfile_priv_t osfile_priv_t;
+struct osfile_priv_t {
     int base_path_len;
     int file_path_len;
     int hardlink_path_len;
@@ -71,8 +72,7 @@ typedef struct {
     os_virtual_attr_t timestamp_pva;
     os_virtual_attr_t append_pva;
     int max_copy;
-} osfile_priv_t;
-
+};
 
 #ifdef __cplusplus
 }

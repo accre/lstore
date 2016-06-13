@@ -30,7 +30,8 @@
 extern "C" {
 #endif
 
-typedef struct {
+typedef struct rss_rid_entry_t rss_rid_entry_t;
+struct rss_rid_entry_t {
     char *rid_key;
     char *ds_key;
     tbx_list_t *attr;
@@ -39,16 +40,18 @@ typedef struct {
     ex_off_t space_total;
     ex_off_t space_used;
     ex_off_t space_free;
-} rss_rid_entry_t;
+};
 
-typedef struct {
+typedef struct rss_check_entry_t rss_check_entry_t;
+struct rss_check_entry_t {
     char *ds_key;
     char *rid_key;
     data_inquire_t *space;
     rss_rid_entry_t *re;
-} rss_check_entry_t;
+};
 
-typedef struct {
+typedef struct rs_simple_priv_t rs_simple_priv_t;
+struct rs_simple_priv_t {
     tbx_list_t *rid_table;
     rss_rid_entry_t **random_array;
     data_service_fn_t *ds;
@@ -71,7 +74,7 @@ typedef struct {
     int check_interval;
     int check_timeout;
     int last_config_size;
-} rs_simple_priv_t;
+};
 
 #ifdef __cplusplus
 }

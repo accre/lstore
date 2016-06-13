@@ -27,13 +27,14 @@ extern "C" {
 #include "data_service_abstract.h"
 #include "thread_pool.h"
 
-typedef struct {
+typedef struct rs_zmq_priv_t rs_zmq_priv_t;
+struct rs_zmq_priv_t {
     void *zmq_context;
     void *zmq_socket;
     char *zmq_svr; //** Format: protocol://host:port
     data_service_fn_t *ds; //** Used for getting the data attribute
     thread_pool_context_t *tpc; //** Contains a new thread pool context for rs zmq
-} rs_zmq_priv_t;
+};
 
 #ifdef __cplusplus
 }

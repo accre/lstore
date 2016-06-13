@@ -86,7 +86,8 @@ extern "C" {
 #define OSR_ONGOING_ATTR_ITER   2
 #define OSR_ONGOING_FSCK_ITER   3
 
-typedef struct {
+typedef struct osrs_priv_t osrs_priv_t;
+struct osrs_priv_t {
     object_service_fn_t *os_child;  //** Actual OS used
     apr_thread_mutex_t *lock;
     apr_thread_mutex_t *abort_lock;
@@ -109,9 +110,10 @@ typedef struct {
     creds_t *dummy_creds;       //** Dummy creds. Should be replaced when proper AuthN/AuthZ is added
     char *fname_active;         //** Filename for logging ACTIVE operations.
     char *fname_activity;       //** Filename for logging create/remove/move operations.
-} osrs_priv_t;
+};
 
-typedef struct {
+typedef struct osrc_priv_t osrc_priv_t;
+struct osrc_priv_t {
     object_service_fn_t *os_temp;  //** Used only for initial debugging of the client/server
     object_service_fn_t *os_remote;//** Used only for initial debugging of the client/server
     apr_thread_mutex_t *lock;
@@ -134,7 +136,7 @@ typedef struct {
     int heartbeat;
     int shutdown;
     int max_stream;
-} osrc_priv_t;
+};
 
 #ifdef __cplusplus
 }

@@ -19,36 +19,39 @@
 //*************************************************************
 
 #ifndef __LIBLIO_TRACE_H_
-#define __LILIO_TRACE_H_
+#define __LIBLIO_TRACE_H_
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-typedef struct {
+typedef struct lt_fn_t lt_fn_t;
+struct lt_fn_t {
     int (*open)(const char *pathname, int flags, ...);
     int (*close)(int fd);
     ssize_t (*read)(int fd, void *buf, size_t count);
     ssize_t (*write)(int fd, const void *buf, size_t count);
     off_t (*lseek)(int fd, off_t offset, int whence);
-} lt_fn_t;
+};
 
-typedef struct {
+typedef struct lt_config_t lt_config_t;
+struct lt_config_t {
     char *trace_name;
     char *trace_header;
     int fd;
     int max_fd;
     int logfd;
-} lt_config_t;
+};
 
-typedef struct {
+typedef struct fd_trace_t fd_trace_t;
+struct fd_trace_t {
     char *fname;
     int fd;
     long int init_size;
     long int max_size;
     long int block_size;
     long int pos;
-} fd_trace_t;
+};
 
 extern lt_config_t ltc;
 

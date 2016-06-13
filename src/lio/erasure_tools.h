@@ -43,9 +43,8 @@ extern int _debug;
 extern const char *JE_method[N_JE_METHODS];
 
 
-typedef struct erasure_plan_s erasure_plan_t;
-
-struct erasure_plan_s {    //** Contains the erasure parameters
+typedef struct erasure_plan_t erasure_plan_t;
+struct erasure_plan_t {    //** Contains the erasure parameters
     long long int strip_size;   //** Size of each data strip
     int method;                 //** Encoding/Decoding method used
     int data_strips;            //** Number of data devices

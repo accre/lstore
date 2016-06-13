@@ -45,7 +45,8 @@ extern "C" {
 #include "rs_simple_priv.h"
 
 //** Contains rs request
-typedef struct {
+typedef struct rs_zmq_req_t rs_zmq_req_t;
+struct rs_zmq_req_t {
     resource_service_fn_t *rs;
     data_attr_t *da;
     rs_query_t *rsq;
@@ -56,35 +57,39 @@ typedef struct {
     int fixed_size;
     int n_rid;
     int timeout;
-} rs_zmq_req_t;
+};
 
 //** Contains rs reponse
-typedef struct {
+typedef struct rs_zmq_rep_t rs_zmq_rep_t;
+struct rs_zmq_rep_t {
     data_service_fn_t *ds;
     data_cap_set_t **caps;
     rs_request_t *req;
     int n_ele;
-} rs_zmq_rep_t;
+};
 
 //** Contains thread arguments
-typedef struct {
+typedef struct rs_zmq_thread_arg_t rs_zmq_thread_arg_t;
+struct rs_zmq_thread_arg_t {
     void *zmq_context;
     resource_service_fn_t *rs;
     data_service_fn_t *ds;
     data_attr_t *da;
     int timeout;
-} rs_zmq_thread_arg_t;
+};
 
 //** Contains rs rid keys
-typedef struct {
+typedef struct rs_zmq_rid_key_t rs_zmq_rid_key_t;
+struct rs_zmq_rid_key_t {
     char *rid_key;
     char *key;
-} rs_zmq_rid_key_t;
+};
 
 //** Contains rs rid value
-typedef struct {
+typedef struct rs_zmq_rid_value_t rs_zmq_rid_value_t;
+struct rs_zmq_rid_value_t {
     char *rid_value;
-} rs_zmq_rid_value_t;
+};
 
 void *rs_zmq_worker_routine(void *arg);
 int rs_zmq_send(void *socket, void *buf, int len);

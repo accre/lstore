@@ -31,19 +31,21 @@
 extern "C" {
 #endif
 
-typedef struct {
+typedef struct blacklist_rid_t blacklist_rid_t;
+struct blacklist_rid_t {
     char *rid;
     apr_time_t recheck_time;
-} blacklist_rid_t;
+};
 
-typedef struct {
+typedef struct blacklist_t blacklist_t;
+struct blacklist_t {
     apr_pool_t *mpool;
     apr_thread_mutex_t *lock;
     apr_hash_t *table;
     ex_off_t  min_bandwidth;
     apr_time_t min_io_time;
     apr_time_t timeout;
-} blacklist_t;
+};
 
 #ifdef __cplusplus
 }

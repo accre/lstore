@@ -28,11 +28,13 @@
 extern "C" {
 #endif
 
-typedef struct {
+typedef struct ds_ibp_alloc_op_t ds_ibp_alloc_op_t;
+struct ds_ibp_alloc_op_t {
     ibp_depot_t depot;
-} ds_ibp_alloc_op_t;
+};
 
-typedef struct {
+typedef struct ds_ibp_truncate_op_t ds_ibp_truncate_op_t;
+struct ds_ibp_truncate_op_t {
     int state;
     int timeout;
     ibp_off_t new_size;
@@ -42,9 +44,10 @@ typedef struct {
     ds_ibp_attr_t *attr;
     opque_t *q;
     ibp_cap_t *mcap;
-} ds_ibp_truncate_op_t;
+};
 
-typedef struct {
+typedef struct ds_ibp_op_t ds_ibp_op_t;
+struct ds_ibp_op_t {
     void *sf_ptr;
     ds_ibp_attr_t *attr;
     op_generic_t *gop;
@@ -54,9 +57,10 @@ typedef struct {
         ds_ibp_alloc_op_t alloc;
         ds_ibp_truncate_op_t truncate;
     } ops;
-}  ds_ibp_op_t;
+};
 
-typedef struct {
+typedef struct ds_ibp_priv_t ds_ibp_priv_t;
+struct ds_ibp_priv_t {
     ds_ibp_attr_t attr_default;
     ibp_context_t *ic;
 
@@ -69,12 +73,10 @@ typedef struct {
     int warm_interval;
     int warm_duration;
     int warm_stop;
-} ds_ibp_priv_t;
-
+};
 
 #ifdef __cplusplus
 }
 #endif
 
 #endif
-

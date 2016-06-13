@@ -44,22 +44,22 @@ extern "C" {
 #define RSQ_BASE_KV_UNIQUE   64
 #define RSQ_BASE_KV_PICKONE 128
 
-struct rsq_base_ele_s {
+typedef struct rsq_base_ele_t rsq_base_ele_t;
+struct rsq_base_ele_t {
     int op;          //** Query operation
     char *key;
     char *val;
     int key_op;
     int val_op;
-    struct rsq_base_ele_s *next;
+    struct rsq_base_ele_t *next;
 };
 
-typedef struct rsq_base_ele_s rsq_base_ele_t;
-
-typedef struct {
+typedef struct rsq_base_t rsq_base_t;
+struct rsq_base_t {
     resource_service_fn_t *rs;
     rsq_base_ele_t *head;
     rsq_base_ele_t *tail;
-} rsq_base_t;
+};
 
 int rs_query_base_add(resource_service_fn_t *rs, rs_query_t **q, int op, char *key, int key_op, char *val, int val_op);
 void rs_query_base_append(resource_service_fn_t *rs, rs_query_t *rsq, rs_query_t *rsq_append);

@@ -43,7 +43,8 @@ extern "C" {
 
 typedef struct lio_fuse_file_handle_s lio_fuse_file_handle_t;
 
-typedef struct {
+typedef struct lio_fuse_t lio_fuse_t;
+struct lio_fuse_t {
 int enable_tape;
 int shutdown;
 int mount_point_len;
@@ -57,14 +58,15 @@ struct fuse_operations fops;
 char *id;
 char *mount_point;
 segment_rw_hints_t *rw_hints;
-} lio_fuse_t;
+};
 
-typedef struct {
+typedef struct lio_fuse_init_args_t lio_fuse_init_args_t;
+struct lio_fuse_init_args_t {
 lio_config_t *lc;
 char *mount_point;
 int lio_argc;
 char **lio_argv;
-} lio_fuse_init_args_t;
+};
 
 LIO_API extern struct fuse_operations lfs_fops;
 

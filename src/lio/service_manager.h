@@ -30,11 +30,12 @@
 extern "C" {
 #endif
 
-typedef struct {
+typedef struct service_manager_t service_manager_t;
+struct service_manager_t {
     apr_pool_t *pool;
     apr_thread_mutex_t *lock;
     apr_hash_t *table;
-} service_manager_t;
+};
 
 service_manager_t *clone_service_manager(service_manager_t *sm);
 service_manager_t *create_service_manager();

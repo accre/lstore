@@ -36,13 +36,14 @@ typedef void liblslSess;
 extern "C" {
 #endif
 
-typedef struct {
+typedef struct tbx_phoebus_t tbx_phoebus_t;
+struct tbx_phoebus_t {
     char *key;
     char *path_string;
     char **path;
     int p_count;
     int free_path;
-} tbx_phoebus_t;
+};
 
 extern tbx_phoebus_t *global_phoebus;
 

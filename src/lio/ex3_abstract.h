@@ -78,20 +78,22 @@ extern "C" {
 
 typedef void segment_priv_t;
 
-struct segment_s;
-typedef struct segment_s segment_t;
+typedef struct segment_t segment_t;
 
-typedef struct {     //** Structure for contaiing hints to the various segment drivers
+typedef struct segment_rw_hints_t segment_rw_hints_t;
+struct segment_rw_hints_t {     //** Structure for contaiing hints to the various segment drivers
     int lun_max_blacklist;  //** Max number of devs to blacklist per stripe for performance
     int number_blacklisted;
-} segment_rw_hints_t;
+};
 
-typedef struct {
+typedef struct rid_inspect_tweak_t rid_inspect_tweak_t;
+struct rid_inspect_tweak_t {
     rid_change_entry_t *rid;
     apr_hash_t *pick_pool;
-} rid_inspect_tweak_t;
+};
 
-typedef struct {
+typedef struct inspect_args_t inspect_args_t;
+struct inspect_args_t {
     rs_query_t *query;   //** Generic extra query
     opque_t *qs;         //** Cleanup Que on success
     opque_t *qf;         //** Cleanup Que for failure
@@ -99,9 +101,10 @@ typedef struct {
     apr_thread_mutex_t *rid_lock;     //** Lock for manipulating the rid_changes table
     int n_dev_rows;
     int dev_row_replaced[128];
-} inspect_args_t;
+};
 
-typedef struct {
+typedef struct segment_fn_t segment_fn_t;
+struct segment_fn_t {
     op_generic_t *(*read)(segment_t *seg, data_attr_t *da, segment_rw_hints_t *hints, int n_iov, ex_tbx_iovec_t *iov, tbx_tbuf_t *buffer, ex_off_t boff, int timeout);
     op_generic_t *(*write)(segment_t *seg, data_attr_t *da, segment_rw_hints_t *hints, int n_iov, ex_tbx_iovec_t *iov, tbx_tbuf_t *buffer, ex_off_t boff, int timeout);
     op_generic_t *(*inspect)(segment_t *seg, data_attr_t *da, tbx_log_fd_t *fd, int mode, ex_off_t buffer_size, inspect_args_t *args, int timeout);
@@ -115,7 +118,7 @@ typedef struct {
     int (*serialize)(segment_t *seg, exnode_exchange_t *exp);
     int (*deserialize)(segment_t *seg, ex_id_t id, exnode_exchange_t *exp);
     void (*destroy)(segment_t *seg);
-} segment_fn_t;
+};
 
 //#define inspect_printf(fd, ...) if ((fd) != NULL) fprintf(fd, __VA_ARGS__)
 
@@ -137,14 +140,15 @@ typedef struct {
 #define segment_lock(s) apr_thread_mutex_lock((s)->lock)
 #define segment_unlock(s) apr_thread_mutex_unlock((s)->lock)
 
-typedef struct {
+typedef struct exnode_t exnode_t;
+struct exnode_t {
     ex_header_t header;
     segment_t *default_seg;
     tbx_list_t *block;
     tbx_list_t *view;
-} exnode_t;
+};
 
-struct segment_s {
+struct segment_t {
     ex_header_t header;
     tbx_atomic_unit32_t ref_count;
     segment_priv_t *priv;
@@ -160,11 +164,12 @@ typedef data_service_fn_t *(ds_create_t)(service_manager_t *ess, tbx_inip_file_t
 typedef segment_t *(segment_load_t)(void *arg, ex_id_t id, exnode_exchange_t *ex);
 typedef segment_t *(segment_create_t)(void *arg);
 
-typedef struct {
+typedef struct segment_errors_t segment_errors_t;
+struct segment_errors_t {
     int soft;
     int hard;
     int write;
-} segment_errors_t;
+};
 
 //** Exnode related functions
 LIO_API exnode_t *exnode_create();

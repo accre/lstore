@@ -61,7 +61,7 @@ typedef struct {
     int ftype;
 } lio_fsck_task_t;
 
-struct lio_fsck_iter_s {
+struct lio_fsck_iter_t {
     lio_config_t *lc;
     creds_t *creds;
     char *path;

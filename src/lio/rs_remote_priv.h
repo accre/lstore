@@ -39,7 +39,8 @@ extern "C" {
 #define RSR_ABORT_SIZE              5
 
 
-typedef struct {
+typedef struct rs_remote_client_priv_t rs_remote_client_priv_t;
+struct rs_remote_client_priv_t {
     data_service_fn_t *ds;
     data_attr_t *da;
     apr_thread_mutex_t *lock;
@@ -60,10 +61,11 @@ typedef struct {
     mq_context_t *mqc;            //** Portal for connecting to he remote RS server
     char *host_remote_rs;               //** Address of the Remote RS server
     char *child_target_file;      //** File child is looking at for changes
-} rs_remote_client_priv_t;
+};
 
 
-typedef struct {
+typedef struct rs_remote_server_priv_t rs_remote_server_priv_t;
+struct rs_remote_server_priv_t {
     int shutdown;
     apr_thread_mutex_t *lock;
     apr_thread_cond_t *cond;
@@ -78,8 +80,7 @@ typedef struct {
     mq_portal_t *server_portal;
     char *hostname;
     tbx_stack_t *pending;
-} rs_remote_server_priv_t;
-
+};
 
 #ifdef __cplusplus
 }

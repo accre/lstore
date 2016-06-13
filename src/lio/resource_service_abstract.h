@@ -44,17 +44,19 @@ extern "C" {
 #define RS_STATUS_OUT_OF_SPACE 2  //** The RID is disabled due to space
 #define RS_STATUS_DOWN         3  //** Can't connect to RID
 
-typedef struct resource_service_fn_s resource_service_fn_t;
+typedef struct resource_service_fn_t resource_service_fn_t;
 
-typedef struct {
+typedef struct rid_change_entry_t rid_change_entry_t;
+struct rid_change_entry_t {
     char *rid_key;      //** RID key
     char *ds_key;       //** Data service key
     int state;          //** Tweaking state
     ex_off_t delta;     //** How much to change the space by in bytes.  Negative means remove and postive means add space to the RID
     ex_off_t tolerance; //** Tolerance in bytes.  When abs(delta)<tolerance we stop tweaking the RID
-} rid_change_entry_t;
+};
 
-typedef struct {
+typedef struct rs_space_t rs_space_t;
+struct rs_space_t {
     int n_rids_total;
     int n_rids_free;
     int n_rids_status[3];
@@ -64,32 +66,35 @@ typedef struct {
     int64_t used_up;;     //** Just totals for depot up, i.e. RS_STATUS_ON
     int64_t free_up;
     int64_t total_up;
-} rs_space_t;
+};
 
 typedef void rs_query_t;
 
-typedef struct {  //** Used for passing existing RID's and individual queries to the RS requestor and validation or repair
+typedef struct rs_hints_t rs_hints_t;
+struct  rs_hints_t {  //** Used for passing existing RID's and individual queries to the RS requestor and validation or repair
     char *fixed_rid_key;  //** RID key for existing/fixed index
     int  status;    //** Status of the fixed match or INVALID_LOCAL if a problem occurs with the local_rsq.  Returns one of the error codes above
     rs_query_t *local_rsq;  //** Local query appended to the global queury just for this allocation  used for both fixed and new
     apr_hash_t *pick_from;  //** List of resources to pick from
-} rs_hints_t;
+};
 
-typedef struct {
+typedef struct rs_request_t rs_request_t;
+struct rs_request_t {
     op_generic_t *gop;
     int rid_index;
     ex_off_t size;
     char *rid_key;
-} rs_request_t;
+};
 
-typedef struct {
+typedef struct rs_mapping_notify_t rs_mapping_notify_t;
+struct rs_mapping_notify_t {
     apr_thread_mutex_t *lock;
     apr_thread_cond_t *cond;
     int map_version;
     int status_version;
-} rs_mapping_notify_t;
+};
 
-struct resource_service_fn_s {
+struct resource_service_fn_t {
     void *priv;
     char *type;
     char *(*get_rid_value)(resource_service_fn_t *arg, char *rid_key, char *key);

@@ -98,10 +98,8 @@ typedef void data_inquire_t;
 #define ds_copy(ds, attr, mode, ns_type, ppath, src_cap, src_off, dest_cap, dest_off, len, to) \
               (ds)->copy(ds, attr, mode, ns_type, ppath, src_cap, src_off, dest_cap, dest_off, len, to)
 
-struct data_service_fn_s;
-typedef struct data_service_fn_s data_service_fn_t;
-
-struct data_service_fn_s {
+typedef struct data_service_fn_t data_service_fn_t;
+struct data_service_fn_t {
     void *priv;
     char *type;
     void (*destroy_service)(data_service_fn_t *);
