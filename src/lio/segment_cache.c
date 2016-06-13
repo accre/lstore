@@ -3451,7 +3451,7 @@ void segcache_destroy(segment_t *seg)
     log_printf(2, "segcache_destroy: seg->id=" XIDT " ref_count=%d sptr=%p\n", segment_id(seg), seg->ref_count, seg);
 
     if (seg->ref_count > 0) return;
-    
+
     CACHE_PRINT;
 
     //** If s->c == NULL then we are just cloning the structure or serial/deserializing an exnode

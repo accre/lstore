@@ -589,8 +589,8 @@ int bind_server_port(tbx_network_t *net, tbx_ns_t *ns, char *address, int port, 
     nm->trigger_count = &(net->accept_pending);
     ns->id = tbx_ns_generate_id();
 
-    if (apr_thread_create(&(nm->thread), 
-                          NULL, 
+    if (apr_thread_create(&(nm->thread),
+                          NULL,
                           monitor_thread,
                           (void *)nm, nm->mpool) != APR_SUCCESS) {
         err = -1;

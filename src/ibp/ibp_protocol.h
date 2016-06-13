@@ -87,7 +87,7 @@
 # define   IBP_ST_INQ      1
 # define   IBP_ST_CHANGE   2
 # define   IBP_ST_RES      3       //***Added for StoreCore support to get list of resources
- 
+
 # define   IBP_E_GENERIC              -1
 # define   IBP_E_SOCK_READ            -2
 # define   IBP_E_SOCK_WRITE           -3
@@ -155,8 +155,8 @@
 # define   IBP_E_CHKSUM_BLOCKSIZE      -65
 # define   IBP_E_OUT_OF_SOCKETS        -66
 # define   IBP_MAX_ERROR                67
- 
- 
+
+
 # define E_USAGE		-101
 # define E_HOMEDIR	        -102
 # define E_FQDN 		-103
@@ -179,44 +179,44 @@
 # define E_PORT                 -120
 # define E_ALLOC                -121
 # define E_CMDPAR		-122
- 
- 
+
+
 # define E_BOOT          -1001
 # define E_DECODEPAR     -1002
 # define E_GETCONFIG     -1003
 # define E_RECOVER       -1004
- 
- 
+
+
 # define   IBP_SOFT                  1
 # define   IBP_HARD                  2
 # define   IBP_VOLATILE       	     IBP_SOFT
 # define   IBP_STABLE	      	     IBP_HARD
- 
+
 # define   IBP_ROUTINE_CHECK         3
- 
+
 # define   IBP_BYTEARRAY             1
 # define   IBP_BUFFER                2
 # define   IBP_FIFO                  3
 # define   IBP_CIRQ                  4
- 
+
 # define   IBP_DATA_PORT             6714
 # define   IBP_MAXCONN               100
- 
+
 # define   IBP_RECOVER_TIME          5
 # define   IBP_PERIOD_TIME           180
 # define   IBP_FREESIZE              150000000
- 
+
 # define   IBP_K_MAXSOCKADDR         65535
- 
+
 # define   MAX_RID_LEN              8
- 
+
 # define  DM_TCP   1
 # define  DM_RUDP  2
 # define  DM_UUDP  3
- 
+
 # define  RS_DISK  1
 # define  RS_RAM   2
- 
+
 # define ST_VERSION           "VS"
 # define ST_RESOURCELIST      "RL"
 # define ST_DATAMOVERTYPE     "DT"
@@ -233,14 +233,14 @@
 # define ST_ALLOC_HARD_SZ     "AH"
 # define ST_DURATION          "DR"
 # define ST_RS_END            "RE"
- 
+
 #if  0
 # define ST_HARDSIZE          "HS"
 # define ST_FREE_HARDSIZE     "FHS"
 # define ST_SOFTSIZE          "SS"
 # define ST_FREE_SOFTSIZE     "FSS"
 #endif
- 
+
 /* ----  for Data Movers ---- */
 # define DM_CLIENT  34
 # define DM_SERVER  35

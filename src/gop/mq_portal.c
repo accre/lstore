@@ -56,7 +56,7 @@ void mq_pipe_create(mq_socket_context_t *ctx, mq_socket_t **pfd)
 
     assert_result_not_null(pfd[0] = mq_socket_new(ctx, MQ_PAIR));
     assert_result_not_null(pfd[1] = mq_socket_new(ctx, MQ_PAIR));
- 
+
     //** Connect them together
     tbx_random_get_bytes(&r, sizeof(r));
     snprintf(hname, sizeof(hname), "inproc://" LU, r);
@@ -229,16 +229,16 @@ void mq_command_table_set_default(mq_command_table_t *table, void *arg, mq_fn_ex
 mq_command_table_t *mq_command_table_new(void *arg, mq_fn_exec_t *fn_default)
 {
     mq_command_table_t *t;
-    
+
     tbx_type_malloc(t, mq_command_table_t, 1);
-    
+
     t->fn_default = fn_default;
     t->arg_default = arg;
     apr_pool_create(&(t->mpool), NULL);
     assert_result(apr_thread_mutex_create(&(t->lock), APR_THREAD_MUTEX_DEFAULT,t->mpool),
                   APR_SUCCESS);
     t->table = apr_hash_make(t->mpool); assert(t->table != NULL);
-    
+
     return(t);
 }
 
@@ -1526,9 +1526,9 @@ int mq_conn_create_actual(mq_portal_t *p, int dowait)
     mq_conn_t *c;
     int err;
     char v;
-    
+
     tbx_type_malloc_clear(c, mq_conn_t, 1);
-    
+
     c->pc = p;
     assert_result(apr_pool_create(&(c->mpool), NULL), APR_SUCCESS);
     assert_result_not_null(c->waiting = apr_hash_make(c->mpool));
@@ -1647,11 +1647,11 @@ void mq_portal_destroy(mq_portal_t *p)
     log_printf(2, "host=%s closed_size=%d total_conn=%d\n", p->host, tbx_stack_count(p->closed_conn), p->total_conn);
     tbx_log_flush();
 
-    //** Clean up 
+    //** Clean up
     //** Don;t have to worry about locking cause no one else exists
 
 
-    _mq_reap_closed(p); 
+    _mq_reap_closed(p);
     //** Destroy the command table
     mq_command_table_destroy(p->command_table);
 

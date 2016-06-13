@@ -7,7 +7,7 @@ libdir=${prefix}/@CMAKE_INSTALL_LIBDIR@
 includedir=${prefix}/@CMAKE_INSTALL_INCLUDEDIR@
 
 Name: @LSTORE_PROJECT_NAME@
-Description: The L-Store Logistical I/O library 
+Description: The L-Store Logistical I/O library
 Version: @LSTORE_LIBRARY_VERSION_STRING@
 Libs: -L${libdir} -llio
 Libs.private: @PRIVATE_LIBS@

@@ -23,6 +23,6 @@ static void tbx_construct_fn() {
     assert(ret == APR_SUCCESS);
 }
 
-static void tbx_destruct_fn() { 
+static void tbx_destruct_fn() {
     apr_terminate();
 }

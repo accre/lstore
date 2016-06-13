@@ -43,7 +43,7 @@
 #include "rs_zmq_base.h"
 
 //********************************************************************
-// rs_zmq_req_func - Does the actual zmq RS request operation 
+// rs_zmq_req_func - Does the actual zmq RS request operation
 //********************************************************************
 op_status_t rs_zmq_req_func(void *arg, int id)
 {
@@ -68,7 +68,7 @@ op_status_t rs_zmq_req_func(void *arg, int id)
 
     printf("Sent request %d bytes\n", len);
 
-    //** Receives response through ZMQ 
+    //** Receives response through ZMQ
     //** ReqList and CapList are filled in here
     rs_zmq_rep_t *rep;
     tbx_type_malloc_clear(rep, rs_zmq_rep_t, 1);
@@ -113,7 +113,7 @@ op_status_t rs_zmq_req_func(void *arg, int id)
 }
 
 //********************************************************************
-// rs_zmq_request - Requests a zmq resource service 
+// rs_zmq_request - Requests a zmq resource service
 //********************************************************************
 op_generic_t *rs_zmq_request(resource_service_fn_t *arg, data_attr_t *da, rs_query_t *rsq, data_cap_set_t **caps, rs_request_t *req, int req_size, rs_hints_t *hints_list, int fixed_size, int n_rid, int timeout)
 {
@@ -137,22 +137,22 @@ op_generic_t *rs_zmq_request(resource_service_fn_t *arg, data_attr_t *da, rs_que
     op_generic_t *gop;
     rs_zmq_priv_t *rsz = (rs_zmq_priv_t *)arg->priv;
 
-    //** Which thread context am I supposed to use?  
+    //** Which thread context am I supposed to use?
     gop = new_thread_pool_op(rsz->tpc, NULL, rs_zmq_req_func, (void *)rsr, free, 1);
 
     return(gop);
 }
 
 //********************************************************************
-// rs_zmq_get_rid_value - Sends a zmq request to find the value 
-// associated with the RID key provided. 
+// rs_zmq_get_rid_value - Sends a zmq request to find the value
+// associated with the RID key provided.
 //********************************************************************
-char *rs_zmq_get_rid_value(resource_service_fn_t *arg, char *rid_key, char *key) 
+char *rs_zmq_get_rid_value(resource_service_fn_t *arg, char *rid_key, char *key)
 {
 
     rs_zmq_priv_t *rsz = (rs_zmq_priv_t *)arg->priv;
 
-    //** Sends the ridkey 
+    //** Sends the ridkey
     int len;
     rs_zmq_rid_key_t *keys;
     tbx_type_malloc_clear(keys, rs_zmq_rid_key_t, 1);
@@ -163,7 +163,7 @@ char *rs_zmq_get_rid_value(resource_service_fn_t *arg, char *rid_key, char *key)
     printf("Length of serialized ridkey: %d bytes\n", len);
     fflush(stdout);
 
-    //** Receives ridvalue 
+    //** Receives ridvalue
     rs_zmq_rid_value_t *value;
     tbx_type_malloc_clear(value, rs_zmq_rid_value_t, 1);
     len = rs_zmq_ridvalue_recv(value, rsz->zmq_socket);
@@ -204,7 +204,7 @@ resource_service_fn_t *rs_zmq_create(void *arg, tbx_inip_file_t *kf, char *secti
 {
     service_manager_t *ess = (service_manager_t *)arg;
 
-    log_printf(15, "START!!!!!!!!!!!!!!!!!!\n"); 
+    log_printf(15, "START!!!!!!!!!!!!!!!!!!\n");
     tbx_log_flush();
     //** Creates zmq context
     void *context = zmq_ctx_new();
@@ -214,14 +214,14 @@ resource_service_fn_t *rs_zmq_create(void *arg, tbx_inip_file_t *kf, char *secti
     void *socket = zmq_socket(context, ZMQ_REQ);
     assert(socket != NULL);
 
-    //** Creates rs zmq private data 
+    //** Creates rs zmq private data
     rs_zmq_priv_t *rsz;
     tbx_type_malloc_clear(rsz, rs_zmq_priv_t, 1);
     rsz->zmq_context = context;
     rsz->zmq_socket = socket;
     rsz->ds = lookup_service(ess, ESS_RUNNING, ESS_DS);
 
-    //** Don't know which thread pool context I should use. So create a new one for rs zmq. 
+    //** Don't know which thread pool context I should use. So create a new one for rs zmq.
     rsz->tpc = lookup_service(ess, ESS_RUNNING, ESS_TPC_UNLIMITED); //** Refers to lio_gc->tpc_unlimited in lio_login.c
 
     char *svr_proto, *svr_addr, *svr_port;
@@ -240,14 +240,14 @@ resource_service_fn_t *rs_zmq_create(void *arg, tbx_inip_file_t *kf, char *secti
     resource_service_fn_t *rs;
     tbx_type_malloc_clear(rs, resource_service_fn_t, 1);
 
-    //** zmq version related fields 
+    //** zmq version related fields
     rs->priv = rsz;
     rs->get_rid_value = rs_zmq_get_rid_value;
     rs->data_request = rs_zmq_request;
     rs->destroy_service = rs_zmq_destroy;
     rs->type = RS_TYPE_ZMQ;
 
-    //** Leave the following fields unchanged 
+    //** Leave the following fields unchanged
     rs->query_dup = rs_query_base_dup;
     rs->query_add = rs_query_base_add;
     rs->query_append = rs_query_base_append;

@@ -94,7 +94,7 @@ void tbx_sl_del(tbx_sl_t * self)
 
 int tbx_sl_init(tbx_sl_t * self)
 {
-    return tbx_sl_init_full(self, 20, 0.25, 0, &tbx_sl_compare_int, NULL, NULL, NULL); 
+    return tbx_sl_init_full(self, 20, 0.25, 0, &tbx_sl_compare_int, NULL, NULL, NULL);
 }
 
 void tbx_sl_fini(tbx_sl_t * self)

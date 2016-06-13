@@ -8,7 +8,7 @@ endif()
 set(LSTORE_PROJECT_NAME "gop")
 project(${LSTORE_PROJECT_NAME} C CXX)
 
-# Include modules 
+# Include modules
 if(NOT USE_SUPERBUILD)
     set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 endif()
@@ -33,7 +33,7 @@ endif()
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DMQ_PIPE_COMM")
 
 # common objects
-set(LSTORE_PROJECT_OBJS 
+set(LSTORE_PROJECT_OBJS
     callback.c constructor.c dummy.c  gop.c hconnection.c hportal.c opque.c
     thread_pool_config.c thread_pool_op.c mq_msg.c mq_zmq.c mq_portal.c
     mq_ongoing.c mq_stream.c mq_helpers.c

@@ -8,7 +8,7 @@ endif()
 set(LSTORE_PROJECT_NAME "lio")
 project(${LSTORE_PROJECT_NAME} C CXX)
 
-# Include modules 
+# Include modules
 if(NOT USE_SUPERBUILD)
     set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 endif()
@@ -29,7 +29,7 @@ if(NOT USE_SUPERBUILD)
     find_package(ZMQ REQUIRED)
     find_package(CZMQ REQUIRED)
     find_package(FUSE REQUIRED)
-    include_directories(   
+    include_directories(
         ${JERASURE_INCLUDE_DIR} ${TOOLBOX_INCLUDE_DIR} ${GOP_INCLUDE_DIR}
         ${IBP_INCLUDE_DIR} ${FUSE_INCLUDE_DIR} ${CZMQ_INCLUDE_DIR}
     )
@@ -77,7 +77,7 @@ set(LSTORE_PROJECT_OBJS
     segment_file.c segment_jerasure.c segment_linear.c segment_log.c
     segment_lun.c service_manager.c view_base.c
 )
-    
+
 set(LSTORE_PROJECT_INCLUDES_OLD
     cache_amp.h blacklist.h data_block.h ex3_abstract.h ex3_linear_priv.h exnode.h
     rs_simple.h	 segment_jerasure.h segment_lun_priv.h cache_amp_priv.h

@@ -59,7 +59,7 @@ _apr_invoke(APR_VERSION   ""        --version)
 
 list(GET APR_LIBTOOL 0 APR_LIBTOOL_ARG0)
 
-get_filename_component(APR_LIBTOOL_BASE ${APR_LIBTOOL_ARG0} PATH ) 
+get_filename_component(APR_LIBTOOL_BASE ${APR_LIBTOOL_ARG0} PATH )
 FIND_LIBRARY(APR_LIBRARY NAMES apr-accre-1 apr-ACCRE-1 PATHS ${APR_LIBTOOL_BASE})
 
 # compatibility, allow this CMake module to work with the various CMakeList.txt files

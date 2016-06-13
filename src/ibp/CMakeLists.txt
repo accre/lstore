@@ -8,7 +8,7 @@ endif()
 set(LSTORE_PROJECT_NAME "ibp")
 project(${LSTORE_PROJECT_NAME} C CXX)
 
-# Include modules 
+# Include modules
 if(NOT USE_SUPERBUILD)
     set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 endif()
@@ -40,7 +40,7 @@ set(LSTORE_INCLUDE_PUBLIC ${toolbox_INCLUDE_DIR}
 set(LSTORE_PROJECT_OBJS
     constructor.c
     ibp_config.c ibp_errno.c ibp_misc.c ibp_op.c ibp_sync.c ibp_types.c
-    io_wrapper.c iovec_sync.c 
+    io_wrapper.c iovec_sync.c
 )
 
 set(LSTORE_PROJECT_INCLUDES_OLD
@@ -52,7 +52,7 @@ set(LSTORE_PROJECT_INCLUDES
         ibp/ibp_visibility.h
     )
 
-set(LSTORE_PROJECT_EXECUTABLES 
+set(LSTORE_PROJECT_EXECUTABLES
     ibp_perf ibp_copyperf ibp_tool ibp_find_drive
 )
 

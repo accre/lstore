@@ -3,8 +3,8 @@
 # Helper script to make this L-Store installation line up with the Vandy
 # configuration
 
-DEF_IP=$(hostname -I | cut -d ' ' -f 1)                                            
-IP=${1:-$DEF_IP} 
+DEF_IP=$(hostname -I | cut -d ' ' -f 1)
+IP=${1:-$DEF_IP}
 
 # First, make the /lio tree
 mkdir -p /lio/{log,lfs,osfile}

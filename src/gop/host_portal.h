@@ -36,7 +36,7 @@ extern "C" {
 
 #define HP_COMPACT_TIME 10   //** How often to run the garbage collector
 #define HP_HOSTPORT_SEPARATOR "|"
- 
+
 typedef struct host_portal_t host_portal_t;
 struct host_portal_t {       //** Contains information about the depot including all connections
     char skey[512];         //** Search key used for lookups its "host:port:type:..." Same as for the op
@@ -77,7 +77,7 @@ struct host_portal_t {       //** Contains information about the depot including
     void *connect_context;   //** Private information needed to make a host connection
     portal_context_t *context;  //** Specific portal implementaion
 };
- 
+
 typedef struct host_connection_t host_connection_t;
 struct host_connection_t {            //** Individual depot connection in conn_list
     int recv_up;
@@ -101,15 +101,15 @@ struct host_connection_t {            //** Individual depot connection in conn_l
     apr_thread_t *recv_thread; //** recving thread
     apr_pool_t   *mpool;       //** MEmory pool for
 };
- 
+
 extern tbx_ns_timeout_t global_dt;
- 
+
 //** Routines from hportal.c
 #define hportal_trylock(hp)   apr_thread_mutex_trylock(hp->lock)
 #define hportal_lock(hp)   apr_thread_mutex_lock(hp->lock)
 #define hportal_unlock(hp) apr_thread_mutex_unlock(hp->lock)
 #define hportal_signal(hp) apr_thread_cond_broadcast(hp->cond)
- 
+
 void _reap_hportal(host_portal_t *hp, int quick);
 op_generic_t *_get_hportal_op(host_portal_t *hp);
 void hportal_wait(host_portal_t *hp, int dt);
@@ -127,23 +127,23 @@ void check_hportal_connections(host_portal_t *hp);
 GOP_API int submit_hp_direct_op(portal_context_t *hpc, op_generic_t *op);
 GOP_API int submit_hportal(host_portal_t *dp, op_generic_t *op, int addtotop, int release_master);
 GOP_API int submit_hp_que_op(portal_context_t *hpc, op_generic_t *op);
- 
+
 //** Routines for hconnection.c
 #define trylock_hc(a) apr_thread_mutex_trylock(a->lock)
 #define lock_hc(a) apr_thread_mutex_lock(a->lock)
 #define unlock_hc(a) apr_thread_mutex_unlock(a->lock)
 #define hc_send_signal(hc) apr_thread_cond_signal(hc->send_cond)
 #define hc_recv_signal(hc) apr_thread_cond_signal(hc->recv_cond)
- 
+
 host_connection_t *new_host_connection();
 void destroy_host_connection(host_connection_t *hc);
 void close_hc(host_connection_t *dc, int quick);
 int create_host_connection(host_portal_t *hp);
- 
+
 #ifdef __cplusplus
 }
 #endif
- 
+
 #endif
- 
- 
+
+

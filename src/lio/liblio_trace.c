@@ -209,7 +209,7 @@ static void __attribute__((destructor)) liblio_trace_fini()
 
     free(fd_table);
     free(fd_stats);
-    
+
     apr_terminate();
 
     return;

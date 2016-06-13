@@ -48,7 +48,7 @@ path taken and send a reply back to the message originator.
 empty frame
 ----------------------------------------
 Empty frames are used to separate an address from the rest of the command and it's arguments.
-It's also used as a sanity check on message integrity.  
+It's also used as a sanity check on message integrity.
 
 Version frame
 ----------------------------------------
@@ -64,7 +64,7 @@ MQF_PONG_KEY - Pong response to a ping command
 MQF_EXEC_KEY - Send the message to the remote address.  No tracking or response is allowed.
    Upon receipt at the destination the message is passed to the application for execution.
 MQF_TRACKEXEC_KEY - Same as MQF_EXEC_KEY but the command is tracked at the source.  This allows
-   for detection of closed or dead hosts.  Optionally a MQF_TRACKADDRESSS_KEY can be sent 
+   for detection of closed or dead hosts.  Optionally a MQF_TRACKADDRESSS_KEY can be sent
    as a response while the remote host processes the command.  The message ID frame is used in
    any response (MQF_TRACKADDRESS_KEY or MQF_RESPONSE_KEY).
    Since the command is tracked a response is exptected in the form of a MQF_RESPONSE_KEY command.
@@ -114,7 +114,7 @@ Server Sends: <client address>/<empty>/LMQv100/TRACKADDRESS/id/<server address><
 Client Recvs: <empty>/LMQv100/TRACKADDRESS/id/<server address>><empty><reversed server address>
 
 Once the TRACKADDRESS record is reicved the MQ portal then enables heartbeating to the server until
-the command timeout is reached or a RESPONSE is received.  TRACKADDRESS commands are internal to the 
+the command timeout is reached or a RESPONSE is received.  TRACKADDRESS commands are internal to the
 MQ system.  The application never sees these commands.
 
 Server Sends: <client address>/<empty>/LMQv100/RESPONSE/id/<response args><empty>
@@ -124,7 +124,7 @@ Client Recvs: <empty>/LMQv100/RESPONSE/id/<response args><empty><reversed server
 ============================================================================================
 MQ devices/socket types
 ============================================================================================
-The MQ layer supports several different devices.  Additional devices can be added.  These are based on the 
+The MQ layer supports several different devices.  Additional devices can be added.  These are based on the
 ZeroMQ devices so look to those for queue limits, etc.
 
 ---------MQ_PAIR, MQ_DEALER---------
@@ -162,14 +162,14 @@ mq_test.c - Test program
 Usage
 ============================================================================================
 The MQ layer is designed to work within the GOP framework for dispatching tasks to remote
-servers and recveiving responses.  It has the ability to provide network overlay and do 
-complex routing between hosts.  Each task has a timeout and can be tracked.  This allows 
+servers and recveiving responses.  It has the ability to provide network overlay and do
+complex routing between hosts.  Each task has a timeout and can be tracked.  This allows
 detection of remote host failures through heartbeating.  The number of connections
 to a remote host varies between a user supplied min and max number of connections.  The command
 backlog is used to decide when to spawn additional connections.  Likewise if a connection
 is not sustainiang a user supplied minimum command throughput then the connection is culled.
 
-Additionally an MQ portal can be created to accept incoming connections like that used on a 
+Additionally an MQ portal can be created to accept incoming connections like that used on a
 server.  Tasks can be submitted either by the GOP tools or via mq_submit.  In server mode
 user supplied commands can be installed for execution.  These key off the first argumaent frame
 on EXEC and TRACKEXEC commands.

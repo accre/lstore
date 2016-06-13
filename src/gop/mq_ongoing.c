@@ -374,7 +374,7 @@ void mq_ongoing_release(mq_ongoing_t *mqon, char *id, int id_len, intptr_t key)
 
             log_printf(2, "Updating heartbeat for %s hb=%d expire=" TT "\n",
                             id,
-                            oh->heartbeat, 
+                            oh->heartbeat,
                             ((apr_time_t) apr_time_sec(oh->next_check)));
 
             apr_thread_cond_broadcast(mqon->cond); //** Let everyone know it;'s been released
@@ -542,7 +542,7 @@ void *mq_ongoing_server_thread(apr_thread_t *th, void *data)
         for (hi = apr_hash_first(NULL, mqon->id_table); hi != NULL; hi = apr_hash_next(hi)) {
             apr_hash_this(hi, (const void **)&key, &klen, (void **)&oh);
 
-            log_printf(10, "host=%s now=" TT " next_check=" TT "\n", oh->id, 
+            log_printf(10, "host=%s now=" TT " next_check=" TT "\n", oh->id,
                     ((apr_time_t) apr_time_sec(apr_time_now())),
                     ((apr_time_t) apr_time_sec(oh->next_check)));
             if ((oh->next_check < now) && (oh->next_check > 0)) { //** Expired heartbeat so shut everything associated with the connection

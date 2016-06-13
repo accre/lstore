@@ -316,7 +316,7 @@ void os_path_split(const char *path, char **dir, char **file)
     }
 
     apr_thread_mutex_lock(_path_parse_lock);
-    
+
     *dir = strdup(dirname(ptr));
 
     free(ptr);

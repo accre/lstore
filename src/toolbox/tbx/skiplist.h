@@ -58,7 +58,7 @@ TBX_TYPE_NEW(tbx_sl_t, tbx_sl_new_full, unsigned int maxlevels, double p, int al
                         tbx_sl_dup_fn_t dup,
                         tbx_sl_key_free_fn_t key_free,
                         tbx_sl_data_free_fn_t data_free);
-                        
+
 TBX_TYPE_INIT(tbx_sl_t, tbx_sl_init_full, tbx_sl_t * self,
                         unsigned int maxlevels, double p, int allow_dups,
                         tbx_sl_compare_t *compare,

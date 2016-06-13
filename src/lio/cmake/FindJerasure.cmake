@@ -10,9 +10,9 @@
 #  JERASURE_LIBRARY and JERASURE_LIBRARY, where to find the APR library.
 
 FIND_PATH(JERASURE_INCLUDE_DIR NAMES jerasure/jerasure.h
-                    jerasure/galois.h 
-                    jerasure/cauchy.h 
-                    jerasure/reed_sol.h 
+                    jerasure/galois.h
+                    jerasure/cauchy.h
+                    jerasure/reed_sol.h
                     jerasure/liberation.h)
 
 SET(JERASURE_NAMES jerasure Jerasure)

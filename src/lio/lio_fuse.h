@@ -40,9 +40,9 @@ extern "C" {
 #define LFS_INODE_OK     0  //** Everythings fine
 #define LFS_INODE_DROP   1  //** Drop the inode from the cache
 #define LFS_INODE_DELETE 2  //** Remove it from cache and delete the file contents
- 
+
 typedef struct lio_fuse_file_handle_s lio_fuse_file_handle_t;
- 
+
 typedef struct {
 int enable_tape;
 int shutdown;
@@ -58,23 +58,23 @@ char *id;
 char *mount_point;
 segment_rw_hints_t *rw_hints;
 } lio_fuse_t;
- 
+
 typedef struct {
 lio_config_t *lc;
 char *mount_point;
 int lio_argc;
 char **lio_argv;
 } lio_fuse_init_args_t;
- 
+
 LIO_API extern struct fuse_operations lfs_fops;
- 
+
 void *lfs_init(struct fuse_conn_info *conn);  // returns pointer to lio_fuse_t on success, otherwise NULL
 void lfs_destroy(void *lfs); // expects a lio_fuse_t* as the argument
- 
+
 #ifdef __cplusplus
 }
 #endif
- 
+
 #endif
- 
- 
+
+

@@ -44,7 +44,7 @@ extern "C" {
 #include "rsz_rid_key_value.pb-c.h"
 #include "rs_simple_priv.h"
 
-//** Contains rs request 
+//** Contains rs request
 typedef struct {
     resource_service_fn_t *rs;
     data_attr_t *da;

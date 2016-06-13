@@ -23,6 +23,6 @@ static void ibp_construct_fn() {
     assert(ret == APR_SUCCESS);
 }
 
-static void ibp_destruct_fn() { 
+static void ibp_destruct_fn() {
     apr_terminate();
 }

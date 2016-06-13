@@ -23,11 +23,11 @@ configure_file(${PROJECT_SOURCE_DIR}/${LSTORE_PROJECT_NAME}_config.h.in
 
 # Find dependencies.
 # common objects
-set(NETWORK_OBJS 
+set(NETWORK_OBJS
     net_sock.c network.c
 )
 
-set(TOOL_OBJS  
+set(TOOL_OBJS
     append_printf.c atomic_counter.c chksum.c constructor.c dns_cache.c
     iniparse.c interval_skiplist.c log.c packer.c pigeon_coop.c pigeon_hole.c
     random.c skiplist.c stack.c string_token.c transfer_buffer.c varint.c

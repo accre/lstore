@@ -25,7 +25,7 @@ static void gop_construct_fn() {
     init_opque_system();
 }
 
-static void gop_destruct_fn() { 
+static void gop_destruct_fn() {
     destroy_opque_system();
     apr_terminate();
 }
