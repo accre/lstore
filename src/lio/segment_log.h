@@ -33,11 +33,7 @@ segment_t *segment_log_load(void *arg, ex_id_t id, exnode_exchange_t *ex);
 segment_t *segment_log_create(void *arg);
 segment_t *slog_make(service_manager_t *sm, segment_t *table, segment_t *data, segment_t *base);  //** Makes a new log segment using
 
-//redundant---op_generic_t *slog_compact(segment_t *seg);  //** Compatcts the table/data log and optionally destroy's the old
 LIO_API op_generic_t *slog_merge_with_base(segment_t *seg, data_attr_t *da, ex_off_t bufsize, char *buffer, int truncate_old_log, int timeout);  //** Merges the current log with the base
-//segment_clone -- Does a recursive merge_with_base by performing a deep copy
-//int slog_get_segments(segment_t *seg, segment_t **table, segment_t **data, segment_t **base);
-//int slog_set_segments(segment_t *seg, segment_t *table, segment_t *data, segment_t *base);
 
 #ifdef __cplusplus
 }

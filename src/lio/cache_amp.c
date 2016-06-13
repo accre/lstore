@@ -54,9 +54,7 @@ void print_cache_table(int dolock)
 {
     cache_t *c = global_cache;
     cache_amp_t *cp = (cache_amp_t *)c->fn.priv;
-//  cache_segment_t *s;
     cache_page_t *p, *p0;
-//  page_amp_t *lp;
     tbx_stack_ele_t *ele;
     int n;
     int ll = 1;
@@ -140,7 +138,6 @@ amp_page_stream_t *_amp_stream_get(cache_t *c, segment_t *seg, ex_off_t offset, 
 {
     cache_segment_t *s = (cache_segment_t *)seg->priv;
     amp_stream_table_t *as = (amp_stream_table_t *)s->cache_priv;
-//  tbx_stack_ele_t *ele;
     amp_page_stream_t *ps, *ps2;
     tbx_list_iter_t it;
     ex_off_t *poff, dn, pos;
@@ -514,8 +511,6 @@ void _amp_prefetch(segment_t *seg, ex_off_t lo, ex_off_t hi, int start_prefetch,
     op_generic_t *gop;
     int tid;
 
-//return;
-
     tid = tbx_atomic_thread_id;
     log_printf(_amp_slog, "tid=%d START seg=" XIDT " lo=" XOT " hi=" XOT " total_size=" XOT "\n", tid, segment_id(seg), lo, hi, s->total_size);
 
@@ -539,7 +534,6 @@ void _amp_prefetch(segment_t *seg, ex_off_t lo, ex_off_t hi, int start_prefetch,
 
     //** To much fetching going on so truncate the fetch
     dn = s->c->max_fetch_size - cp->prefetch_in_process;
-//  if (dn <= 0) {
     if (cp->prefetch_in_process > 0) {    //** This forces only 1 prefetch to occur at a time
         log_printf(1, "to much prefetching.\n");
         return;
@@ -575,8 +569,6 @@ void _amp_prefetch(segment_t *seg, ex_off_t lo, ex_off_t hi, int start_prefetch,
     ca->start_trigger = start_trigger;
     gop = new_thread_pool_op(s->tpc_unlimited, NULL, amp_prefetch_fn, (void *)ca, free, 1);
     ca->gop = gop;
-//log_printf(15, "tid=%d seg=" XIDT " lo=" XOT " hi=" XOT " rw_mode=%d ca=%p gid=%d\n", tid, segment_id(seg), lo, hi, rw_mode, ca, gop_id(gop));
-//tbx_log_flush();
 
     gop_set_auto_destroy(gop, 1);
 
@@ -888,7 +880,6 @@ ex_off_t _amp_attempt_free_mem(cache_t *c, segment_t *page_seg, ex_off_t bytes_t
                             ptable = (page_table_t *)tbx_pch_data(&pt_pch);
                             ptable->seg = p->seg;
                             ptable->id = segment_id(p->seg);
-//                   s->dumping_pages++;  //** This makes sure we don't free the segment
                             ptable->pch = pt_pch;
                             tbx_list_insert(table, &(ptable->id), ptable);
                             ptable->lo = p->offset;
@@ -907,7 +898,6 @@ ex_off_t _amp_attempt_free_mem(cache_t *c, segment_t *page_seg, ex_off_t bytes_t
                     free(lp->ele);
                     lp->ele = NULL;  //** Mark it as removed from the list so a page_release doesn't free also
                     cp->limbo_pages++;
-//log_printf(_amp_logging, "UNLINKING seg=" XIDT " p->offset=" XOT " bits=%d limbo=%d\n", segment_id(p->seg), p->offset, p->bit_fields, cp->limbo_pages);
                     log_printf(15, "UNLINKING seg=" XIDT " p->offset=" XOT " bits=%d limbo=%d\n", segment_id(p->seg), p->offset, p->bit_fields, cp->limbo_pages);
                 }
             } else {
@@ -1156,7 +1146,6 @@ void amp_update(cache_t *c, segment_t *seg, int rw_mode, ex_off_t lo, ex_off_t h
     nbytes = npages * s->page_size;
 
     //** Get the missed offset and free the pointer
-//  miss_off = *(ex_off_t *)miss_info;
     free(miss_info);
 
     //** Adjust the read range prefetch params

@@ -32,7 +32,6 @@ extern "C" {
 
 #define SAFE_MIN_LEN 2
 
-//#define FILE_ATTR_PREFIX "##FILE_ATTRIBUTES##"
 #define FILE_ATTR_PREFIX "_^FA^_"
 #define FILE_ATTR_PREFIX_LEN 6
 

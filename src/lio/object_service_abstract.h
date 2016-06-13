@@ -220,7 +220,6 @@ int (*attr_access)(os_authz_t *osa, creds_t *c, char *path, char *key, int mode)
 void (*destroy)(os_authz_t *osa);
 };
  
- 
 typedef os_authz_t *(osaz_create_t)(service_manager_t *ess, tbx_inip_file_t *ifd, char *section, object_service_fn_t *os);
  
 #define osaz_object_create(osa, c, path) (osa)->object_create(osa, c, path)
@@ -230,10 +229,6 @@ typedef os_authz_t *(osaz_create_t)(service_manager_t *ess, tbx_inip_file_t *ifd
 #define osaz_attr_remove(osa, c, path, key) (osa)->attr_remove(osa, c, path, key)
 #define osaz_attr_access(osa, c, path, key, mode) (osa)->attr_access(osa, c, path, key, mode)
 #define osaz_destroy(osa) (osa)->destroy(osa)
- 
-//int install_os_authz_service(char *type, os_authz_t *(*osa_create)(char *fname, object_service_fn_t *os));
-//os_authz_t *create_os_authz_service(char *type, char *fname, object_service_fn_t *os);
- 
  
 struct os_virtual_attr_s {
 char *attribute;

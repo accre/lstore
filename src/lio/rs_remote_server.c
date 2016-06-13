@@ -344,7 +344,6 @@ void rsrs_rid_config_cb(void *arg, mq_task_t *task)
     if (do_config == 1) {
         rsrs_config_send(rs, fid, msg);
     } else {
-//     mq_submit(rsrs->server_portal,  mq_task_new(rsrs->mqc, mq_trackaddress_msg(rsrs->hostname, msg, fid, 1), NULL, NULL, 20));
         rsrs_update_register(rs, fid, msg, timeout);
     }
 

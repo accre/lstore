@@ -52,8 +52,6 @@ void ls_format_entry(tbx_log_fd_t *ifd, ls_entry_t *lse)
     long int fsize;
     int nlink;
 
-//printf("lsfe: ftype=%d fname=%s\n", lse->ftype, lse->fname);
-
     if ((lse->ftype & OS_OBJECT_SYMLINK) > 0) {
         if ((lse->ftype & OS_OBJECT_BROKEN_LINK) > 0) {
             perms = "L---------";
@@ -115,7 +113,6 @@ int main(int argc, char **argv)
     char *fname;
     ls_entry_t *lse;
     tbx_list_t *table;
-//  lio_path_tuple_t tuple;
     os_regex_table_t *rp_single, *ro_single;
     os_object_iter_t *it;
     tbx_list_iter_t lit;
@@ -129,7 +126,6 @@ int main(int argc, char **argv)
     int obj_types = OS_OBJECT_ANY;
     int return_code = 0;
 
-//printf("argc=%d\n", argc);
     if (argc < 2) {
         printf("\n");
         printf("lio_ls LIO_COMMON_OPTIONS [-rd recurse_depth] [-ns] LIO_PATH_OPTIONS\n");

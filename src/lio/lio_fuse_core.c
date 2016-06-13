@@ -683,12 +683,6 @@ int lfs_read(const char *fname, char *buf, size_t size, off_t off, struct fuse_f
     log_printf(1, "END fname=%s seg=" XIDT " size=" XOT " off=%zu nbytes=" XOT " dt=%lf\n", fname, segment_id(fd->fh->seg), t1, size, nbytes, dt);
     tbx_log_flush();
 
-//  if (err != OP_STATE_SUCCESS) {
-//     log_printf(1, "ERROR with read! fname=%s\n", fname);
-//     printf("got value %d\n", err);
-//     return(-EIO);
-//  }
-
     return(nbytes);
 }
 
@@ -949,7 +943,6 @@ int lfs_listxattr(const char *fname, char *list, size_t size)
     val = NULL;
     bpos = 0;
 
-//  if ((lfs->enable_tape == 1) && ((ftype & OS_OBJECT_SYMLINK) == 0)) { //** Add the tape attribute
     if (lfs->enable_tape == 1)  { //** Add the tape attribute
         strcpy(buf, LFS_TAPE_ATTR);
         bpos = strlen(buf) + 1;
@@ -1431,9 +1424,6 @@ int lfs_statfs(const char *fname, struct statvfs *fs)
     fs->f_bavail = fs->f_bfree;
     fs->f_files = 1;
     fs->f_ffree = 10*1024*1024;
-//  fs->f_favail =
-//  fs->f_fsid =
-//  fs->f_flag =
     fs->f_namemax = 4096 - 100;
 
     return(0);
@@ -1584,7 +1574,6 @@ struct fuse_operations lfs_fops = { //All lfs instances should use the same func
     .open = lfs_open,
     .release = lfs_release,
     .read = lfs_read,
-//  .read = lfs_read_test_ex,
     .write = lfs_write,
     .flush = lfs_flush,
     .fsync = lfs_fsync,

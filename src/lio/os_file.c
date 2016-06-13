@@ -43,10 +43,6 @@
 #include "os_file_priv.h"
 #include <tbx/append_printf.h>
 
-//tbx_atomic_unit32_t _path_parse_count = 0;
-//apr_thread_mutex_t *_path_parse_lock = NULL;
-//apr_pool_t *_path_parse_pool = NULL;
-
 typedef struct {
     DIR *d;
     struct dirent *entry;
@@ -230,7 +226,6 @@ typedef struct {
 #define osf_obj_lock(lock)  apr_thread_mutex_lock(lock)
 #define osf_obj_unlock(lock)  apr_thread_mutex_unlock(lock)
 
-//void path_split(char *path, char **dir, char **file);
 char *resolve_hardlink(object_service_fn_t *os, char *src_path, int add_prefix);
 apr_thread_mutex_t *osf_retrieve_lock(object_service_fn_t *os, char *path, int *table_slot);
 int osf_set_attr(object_service_fn_t *os, creds_t *creds, osfile_fd_t *ofd, char *attr, void *val, int v_size, int *atype, int append_val);
@@ -288,8 +283,6 @@ int osf_store_val(void *src, int src_size, void **dest, int *v_size)
 
 void osf_make_attr_symlink(object_service_fn_t *os, char *link_path, char *dest_path, char *dest_key)
 {
-//  osfile_priv_t *osf = (osfile_priv_t *)os->priv;
-
     snprintf(link_path, OS_PATH_MAX, "%s/%s", dest_path, dest_key);
 }
 
@@ -522,18 +515,11 @@ int fobj_wait(object_service_fn_t *os, fobj_lock_t *fol, osfile_fd_t *fd, int ma
         apr_thread_cond_timedwait(handle->cond, osf->fobj_lock, timeout);
         aborted = handle->abort;
 
-//    tbx_stack_move_to_top(fol->stack);
-//    handle = (fobj_lock_task_t *)tbx_stack_get_current_data(fol->stack);
-//    if (handle != NULL) {
-//       if (handle->fd->uuid == fd->uuid) loop = 1;
-//    }
         dt = apr_time_now() - start_time;
 
         dummy = apr_time_sec(dt);
         log_printf(15, "CHECKING id=%s fname=%s mymode=%d read_count=%d write_count=%d handle=%p abort=%d uuid=" LU " dt=%d\n", fd->id, fd->object_name, fd->mode, fol->read_count, fol->write_count, handle, aborted, fd->uuid, dummy);
 
-//    if ((aborted == 1) || (dt > timeout)) loop = 1;
-//    if ((dt < timeout)) loop = 0;
     } while (loop == 0);
 
     dummy = apr_time_sec(dt);
@@ -1026,7 +1012,6 @@ int va_attr_type_get_attr(os_virtual_attr_t *myva, object_service_fn_t *os, cred
     if (va != NULL) {
         ftype = OS_OBJECT_VIRTUAL;
     } else {
-//    n = osf_resolve_attr_path(os, fullname, fd->object_name, key, fd->ftype, &ftype, 10);
         snprintf(fullname, OS_PATH_MAX, "%s/%s", fd->attr_dir, key);
         ftype = os_local_filetype(fullname);
         if (ftype & OS_OBJECT_BROKEN_LINK) ftype = ftype ^ OS_OBJECT_BROKEN_LINK;
@@ -1058,8 +1043,6 @@ int va_attr_link_get_attr(os_virtual_attr_t *myva, object_service_fn_t *os, cred
     char fullname[OS_PATH_MAX];
 
     *atype = OS_OBJECT_VIRTUAL;
-
-//log_printf(15, "val=%p, *val=%s\n", val, (char *)(*val));
 
     n = (int)(long)myva->priv;  //** HACKERY ** to get the attribute prefix length
     key = &(fullkey[n+1]);
@@ -1102,9 +1085,6 @@ int va_attr_link_get_attr(os_virtual_attr_t *myva, object_service_fn_t *os, cred
             buffer[n] = 0;
             log_printf(15, "readlink(%s)=%s  n=%d\n", fullname, buffer, n);
             log_printf(15, "munged path=%s\n", buffer);
-//        os_path_split(buffer, &dname, &aname);
-//        snprintf(buffer, OS_PATH_MAX, "%s\n%s", dname, aname);
-//        free(dname); free(aname);
             return(osf_store_val(buffer, n, val, v_size));
         }
     }
@@ -1121,7 +1101,6 @@ int va_attr_link_get_attr(os_virtual_attr_t *myva, object_service_fn_t *os, cred
 int va_timestamp_set_attr(os_virtual_attr_t *va, object_service_fn_t *os, creds_t *creds, os_fd_t *ofd, char *fullkey, void *val, int v_size, int *atype)
 {
     osfile_fd_t *fd = (osfile_fd_t *)ofd;
-//  osfile_priv_t *osf = (osfile_priv_t *)fd->os->priv;
     char buffer[512];
     char *key;
     int64_t curr_time;
@@ -1157,7 +1136,6 @@ int va_timestamp_set_attr(os_virtual_attr_t *va, object_service_fn_t *os, creds_
 int va_timestamp_get_attr(os_virtual_attr_t *va, object_service_fn_t *os, creds_t *creds, os_fd_t *ofd, char *fullkey, void **val, int *v_size, int *atype)
 {
     osfile_fd_t *fd = (osfile_fd_t *)ofd;
-//  osfile_priv_t *osf = (osfile_priv_t *)fd->os->priv;
     char buffer[32];
     char *key;
     int64_t curr_time;
@@ -1349,11 +1327,9 @@ char *object_attr_dir(object_service_fn_t *os, char *prefix, char *path, int fty
     if ((ftype & (OS_OBJECT_FILE|OS_OBJECT_SYMLINK)) != 0) {
         strncpy(fname, path, OS_PATH_MAX);
         os_path_split(fname, &dir, &base);
-        //log_printf(15, "fname=%s dir=%s base=%s file_path=%s\n", fname, dir, base, osf->file_path);
         n = strlen(dir);
         if (dir[n-1] == '/') dir[n-1] = 0; //** Peel off a trialing /
         snprintf(fname, OS_PATH_MAX, "%s%s/%s/%s%s", prefix, dir, FILE_ATTR_PREFIX, FILE_ATTR_PREFIX, base);
-        //log_printf(15, "attr_dir=%s\n", fname);
         attr_dir = strdup(fname);
         free(dir);
         free(base);
@@ -1417,18 +1393,13 @@ char *my_readdir(osf_dir_t *d)
         d->entry = readdir(d->d);
         if (d->entry == NULL) return(NULL);
         fname = &(d->entry->d_name[0]);
-//log_printf(0, "fname=%s\n", fname);
         return(fname);
     }
 
     if (d->slot < 1) {
         d->slot++;
-//log_printf(0, "frag=%s slot=%d\n", d->frag, d->slot);
         return(d->frag);
     }
-
-//log_printf(0, "fname=NULL slot=%d\n", d->slot);
-
     return(NULL);
 }
 
@@ -1440,7 +1411,6 @@ osf_dir_t *my_opendir(char *fullname, char *frag)
 
     tbx_type_malloc(d, osf_dir_t, 1);
 
-//log_printf(0, "fullname=%s frag=%s\n", fullname, frag);
     if (frag == NULL) {
         d->type = 0;
         d->d = opendir(fullname);
@@ -1835,8 +1805,6 @@ op_status_t osfile_remove_regex_fn(void *arg, int id)
     count = 0;
     while (osfile_next_object(it, &fname, &prefix_len) > 0) {
         log_printf(15, "removing fname=%s\n", fname);
-//usleep(0.5*1000000); log_printf(5, "SLEEP (fix count as well!) fname=%s\n", fname);
-
         if (osaz_object_remove(osf->osaz, op->creds, fname) == 0) {
             status.op_status = OP_STATE_FAILURE;
             status.error_code++;
@@ -1956,7 +1924,6 @@ op_status_t osfile_regex_object_set_multiple_attrs_fn(void *arg, int id)
     it = osfile_create_object_iter(op->os, op->creds, op->rpath, op->object_regex, op->object_types, NULL, op->recurse_depth, NULL, 0);
     count = 0;
     while (osfile_next_object(it, &fname, &prefix_len) > 0) {
-//usleep(0.5*1000000); log_printf(5, "SLEEP (fix count as well!) fname=%s\n", fname);
 
         if (osaz_object_access(osf->osaz, op->creds, fname, OS_MODE_WRITE_IMMEDIATE) == 0) {
             status.op_status = OP_STATE_FAILURE;
@@ -1984,7 +1951,6 @@ op_status_t osfile_regex_object_set_multiple_attrs_fn(void *arg, int id)
 
         count++;  //** Check for an abort
         if (count == 20) {
-//     if (count == 1) {
             count = 0;
             if (tbx_atomic_get(op->abort) != 0) {
                 status.op_status = OP_STATE_FAILURE;
@@ -2365,8 +2331,6 @@ char *resolve_hardlink(object_service_fn_t *os, char *src_path, int add_prefix)
     buffer[n] = 0;
     log_printf(15, "file_path=%s fullname=%s link=%s\n", osf->file_path, src_path, buffer);
 
-//  offset = osf->hardlink_path_len;
-//  hpath = &(buffer[osf->hardlink_path_len]);
     hpath = buffer;
     tmp = strstr(hpath, FILE_ATTR_PREFIX "/" FILE_ATTR_PREFIX);
     n = FILE_ATTR_PREFIX_LEN + 1 + FILE_ATTR_PREFIX_LEN;
@@ -2875,8 +2839,6 @@ int osf_get_attr(object_service_fn_t *os, creds_t *creds, osfile_fd_t *ofd, char
     char fname[OS_PATH_MAX];
     int n, bsize;
 
-//log_printf(15, "PTR val=%p *val=%p\n", val, *val);
-
     if (osaz_attr_access(osf->osaz, creds, ofd->object_name, attr, OS_MODE_READ_BLOCKING) == 0) {
         *atype = 0;
         return(1);
@@ -2889,9 +2851,6 @@ int osf_get_attr(object_service_fn_t *os, creds_t *creds, osfile_fd_t *ofd, char
 
     if (va != NULL) {
         n = (int)(long)va->priv;  //*** HACKERY **** to get the attribute length
-//     log_printf(15, "va=%s attr=%s n=%d\n", va->attribute, attr, n);
-//int d=strncmp(attr, va->attribute, n);
-//     log_printf(15, "strncmp=%d\n", d);
         if (strncmp(attr, va->attribute, n) == 0) {  //** Prefix matches
             return(va->get(va, os, creds, ofd, attr, val, v_size, atype));
         }
@@ -2906,7 +2865,6 @@ int osf_get_attr(object_service_fn_t *os, creds_t *creds, osfile_fd_t *ofd, char
 
     //** Lastly look at the actual attributes
     n = osf_resolve_attr_path(os, fname, ofd->object_name, attr, ofd->ftype, atype, 20);
-//  snprintf(fname, OS_PATH_MAX, "%s/%s", ofd->attr_dir, attr);
     log_printf(15, "fname=%s *v_size=%d resolve=%d\n", fname, *v_size, n);
     if (n != 0) {
         if (*v_size < 0) *val = NULL;
@@ -2936,7 +2894,6 @@ int osf_get_attr(object_service_fn_t *os, creds_t *creds, osfile_fd_t *ofd, char
     }
 
     *v_size = fread(*val, 1, *v_size, fd);
-//  if (add_term == 1) (*val)[*v_size] = 0;  //** Add a NULL terminator in case it may be a string
     if (bsize > *v_size) {
         ca = (char *)(*val);    //** Add a NULL terminator in case it may be a string
         ca[*v_size] = 0;
@@ -2990,8 +2947,6 @@ op_status_t osf_get_ma_links(void *arg, int id, int first_link)
 op_status_t osf_get_multiple_attr_fn(void *arg, int id)
 {
     osfile_attr_op_t *op = (osfile_attr_op_t *)arg;
-//  apr_time_t date;
-//  char timestamp[OS_PATH_MAX];
     int err, i, j, atype, v_start[op->n], oops;
     op_status_t status;
     apr_thread_mutex_t *lock;
@@ -3018,10 +2973,6 @@ op_status_t osf_get_multiple_attr_fn(void *arg, int id)
     }
 
     //** Update the access time attribute
-//  date = apr_time_sec(apr_time_now());
-//  snprintf(timestamp, OS_PATH_MAX, TT "|%s|%s", date, cred_get_id(op->creds), op->fd->id);
-//  lowlevel_set_attr(op->os, op->fd->attr_dir, "system.access", timestamp, strlen(timestamp));
-
     osf_obj_unlock(lock);
 
     if (oops == 1) { //** Multi object locking required
@@ -3037,8 +2988,6 @@ op_status_t osf_get_multiple_attr_fn(void *arg, int id)
 
         return(osf_get_ma_links(arg, id, i));
     }
-
-//  if (err != 0) status = op_failure_status;
 
     return(status);
 }
@@ -3173,7 +3122,6 @@ int osf_set_attr(object_service_fn_t *os, creds_t *creds, osfile_fd_t *ofd, char
 
     fd = fopen(fname, (append_val == 0) ? "w" : "a");
 
-//log_printf(15, "fd=%p\n", fd);
     if (fd == NULL) log_printf(0, "ERROR opening attr file attr=%s val=%p v_size=%d fname=%s append=%d\n", attr, val, v_size, fname, append_val);
     if (fd == NULL) return(-1);
     if (v_size > 0) fwrite(val, v_size, 1, fd);
@@ -3274,9 +3222,6 @@ int osfile_next_attr(os_attr_iter_t *oit, char **key, void **val, int *v_size)
     struct dirent *entry;
     os_regex_table_t *rex = it->regex;
 
-
-//log_printf(15, "va_index=%p\n", it->va_index);
-
     //** Check the VA's 1st
     while (it->va_index != NULL) {
         apr_hash_this(it->va_index, (const void **)key, &klen, (void **)&va);
@@ -3292,8 +3237,6 @@ int osfile_next_attr(os_attr_iter_t *oit, char **key, void **val, int *v_size)
                 }
             }
         }
-
-//     it->va_index = apr_hash_next(it->va_index);
     }
 
     if (it->d == NULL) {
@@ -3303,7 +3246,6 @@ int osfile_next_attr(os_attr_iter_t *oit, char **key, void **val, int *v_size)
 
     while ((entry = readdir(it->d)) != NULL) {
         for (i=0; i<rex->n; i++) {
-//       n = regexec(&(rex->regex_entry[i].compiled), entry->d_name, 0, NULL, 0);
             n = (rex->regex_entry[i].fixed == 1) ? strcmp(rex->regex_entry[i].expression, entry->d_name) : regexec(&(rex->regex_entry[i].compiled), entry->d_name, 0, NULL, 0);
             log_printf(15, "key=%s match=%d\n", entry->d_name, n);
             if (n == 0) {
@@ -3518,7 +3460,6 @@ os_object_iter_t *osfile_create_object_iter(object_service_fn_t *os, creds_t *cr
 os_object_iter_t *osfile_create_object_iter_alist(object_service_fn_t *os, creds_t *creds, os_regex_table_t *path, os_regex_table_t *object_regex, int object_types,
         int recurse_depth, char **key, void **val, int *v_size, int n_keys)
 {
-//  osfile_priv_t *osf = (osfile_priv_t *)os->priv;
     osf_object_iter_t *it;
     int i;
 
@@ -3578,14 +3519,6 @@ void osfile_destroy_object_iter(os_object_iter_t *oit)
         open_op.os = it->os;
         osfile_close_object_fn(&open_op, 0);
     }
-
-//  if ((it->v_fixed != 1) && (it->n_list > 0)) {
-//     for (i=0; i < it->n_list; i++) {  //** Free any allocated memory before the next call
-//        if (it->v_size_user[i] < 0) {
-//           if (it->val[i] != NULL) free(it->val[i]);
-//        }
-//     }
-//  }
 
     if (it->v_size_user != NULL) free(it->v_size_user);
 
@@ -3878,7 +3811,6 @@ int osf_fsck_check_dir(object_service_fn_t *os, creds_t *creds, char *fname, int
 
     //** Make sure the FA directory exists
     faname = object_attr_dir(os, osf->file_path, fname, OS_OBJECT_DIR);
-//  snprintf(fullname, OS_PATH_MAX, "%s%s", osf->file_path, faname);
     ftype = os_local_filetype(faname);
     log_printf(15, "fname=%s faname=%s ftype=%d\n", fname, faname, ftype);
     if ((ftype & OS_OBJECT_DIR) == 0) {
@@ -3942,12 +3874,10 @@ int osf_next_fsck(os_fsck_iter_t *oit, char **fname)
 
     if (atype & OS_OBJECT_DIR) {  //** Got a directory so prep scanning it for next round
         faname = object_attr_dir(it->os, osf->file_path, *fname, OS_OBJECT_DIR);
-//     snprintf(fullname, OS_PATH_MAX, "%s%s", osf->file_path, *fname);
         it->ad = opendir(faname);
         log_printf(15, "ad_path faname=%s ad=%p\n", faname, it->ad);
         free(faname);
         if (it->ad != NULL) it->ad_path = strdup(*fname);
-//log_printf(15, "strdup(ad_path=%s)\n", it->ad_path);
     }
 
     return(atype);
@@ -3978,7 +3908,6 @@ int osfile_fsck_object_check(object_service_fn_t *os, creds_t *creds, char *fnam
 op_status_t osfile_fsck_object_fn(void *arg, int id)
 {
     osfile_open_op_t *op = (osfile_open_op_t *)arg;
-//  osfile_priv_t *osf = (osfile_priv_t *)op->os->priv;
     op_status_t status;
 
     status = op_success_status;
@@ -4093,12 +4022,6 @@ void osfile_destroy_fsck_iter(object_service_fn_t *os, os_fsck_iter_t *oit)
 
 void osfile_cred_destroy(object_service_fn_t *os, creds_t *creds)
 {
-//  osfile_priv_t *osf = (osfile_priv_t *)os->priv;
-//  char *user;
-
-//  user = cred_get_id(creds);
-//  if (user != NULL) free(user);
-
     an_cred_destroy(creds);
 }
 
@@ -4110,12 +4033,6 @@ void osfile_destroy(object_service_fn_t *os)
 {
     osfile_priv_t *osf = (osfile_priv_t *)os->priv;
     int i;
-
-//  i = tbx_atomic_dec(_path_parse_count);
-//  if (i <= 0) {
-//     apr_thread_mutex_destroy(_path_parse_lock);
-//     apr_pool_destroy(_path_parse_pool);
-//  }
 
     for (i=0; i<osf->internal_lock_size; i++) {
         apr_thread_mutex_destroy(osf->internal_lock[i]);

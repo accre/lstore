@@ -185,7 +185,7 @@ op_status_t _sl_grow(segment_t *seg, data_attr_t *da, ex_off_t new_size_arg, int
     log_printf(15, "_sl_grow: sid=" XIDT " before exec gop2=%p\n", segment_id(seg), gop2);
     tbx_log_flush();
 
-    //** Ececute it(them)
+    //** Execute it(them)
     if (gop1 == NULL) {
         err = gop_waitall(gop2);
         gop_free(gop2, OP_DESTROY);
@@ -1005,8 +1005,6 @@ ex_off_t seglin_size(segment_t *seg)
 
 ex_off_t seglin_block_size(segment_t *seg)
 {
-//  seglin_priv_t *s = (seglin_priv_t *)seg->priv;
-
     return(1);
 }
 
@@ -1082,8 +1080,6 @@ int seglin_serialize_text(segment_t *seg, exnode_exchange_t *exp)
 
 int seglin_serialize_proto(segment_t *seg, exnode_exchange_t *exp)
 {
-//  seglin_priv_t *s = (seglin_priv_t *)seg->priv;
-
     return(-1);
 }
 

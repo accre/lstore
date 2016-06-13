@@ -157,16 +157,12 @@ void flush_wait(segment_t *seg, ex_off_t *my_flush)
     int finished;
     ex_off_t *check;
 
-//return;  //** Testing if this is actually needed
-
     segment_lock(seg);
 
     do {
         finished = 1;
         tbx_stack_move_to_bottom(s->flush_stack);
         while ((check = (ex_off_t *)tbx_stack_get_current_data(s->flush_stack)) != NULL) {
-//log_printf(0, "check[2]=" XOT " me[2]=" XOT "\n", check[2], my_flush[2]);
-
             if (check[2] < my_flush[2]) {
                 if ((check[0] <= my_flush[0]) && (check[1] >= my_flush[0])) {
                     finished = 0;
@@ -291,7 +287,6 @@ void s_cache_page_init(segment_t *seg, cache_page_t *p, ex_off_t poff)
     log_printf(15, "s_cache_page_init: seg=" XIDT " p->offset=" XOT " start->offset=" XOT "\n", segment_id(seg), poff, p->offset);
     p->seg = seg;
     p->offset = poff;
-//  memset(&(p->cond_pch), 0, sizeof(tbx_pch_t));
     p->used_count = 0;;
 
     p->bit_fields = C_EMPTY;
@@ -335,7 +330,6 @@ int cache_rw_pages(segment_t *seg, segment_rw_hints_t *rw_hints, page_handle_t *
     //** Figure out the contiguous blocks
     q = new_opque();
     myid = -1;
-//  for (pli=0; pli<pl_size; pli++) {
     pli = 0;
     while (pli<pl_size) {
         if (plist[pli].data->ptr != NULL) {
@@ -751,7 +745,6 @@ void cache_advise(segment_t *seg, segment_rw_hints_t *rw_hints, int rw_mode, ex_
     nbytes = hi_row - nbytes + 1;
     hi_row = hi_row * s->page_size;
     nbytes = nbytes * s->page_size;
-//nbytes = hi - lo + 1;
 
     ex_off_t len = hi - lo + 1;
     log_printf(15, "START seg=" XIDT " lo=" XOT " hi=" XOT " lo_row=" XOT " hi_row=" XOT " nbytes=" XOT " hi-lo-1=" XOT "\n", segment_id(seg), lo, hi, lo_row, hi_row, nbytes, len);
@@ -837,7 +830,6 @@ int cache_page_drop(segment_t *seg, ex_off_t lo, ex_off_t hi)
             log_printf(15, "PAGE_GET seg=" XIDT " get p->offset=" XOT " cr=%d cw=%d cf=%d bit_fields=%d usage=%d index=%d\n", segment_id(seg), p->offset,
                        p->access_pending[CACHE_READ], p->access_pending[CACHE_WRITE], p->access_pending[CACHE_FLUSH], p->bit_fields, p->curr_data->usage_count, p->current_index);
 
-//log_printf(15, "cache_page_drop: tid=%d seg=" XIDT " p->offset=" XOT " count=%d\n", tid, segment_id(seg), p->offset, count);
             if (count > 0) {
                 do_again = 1;
             } else {
@@ -1370,7 +1362,6 @@ int cache_write_pages_get(segment_t *seg, segment_rw_hints_t *rw_hints, int mode
                         i = (p->current_index+1) % 2;
                         if (p->data[i].ptr == NULL) {  //** We can use the COW space
                             skip_mode = 0;
-//log_printf(0, "seg=" XIDT " p->offset=" XOT " COP triggered used=" XOT " usage=%d\n", segment_id(seg), p->offset, s->c->write_temp_overflow_used, p->curr_data->usage_count);
                             flush_skip = 0;
                         } else {
                             flush_skip = 2;
@@ -1414,8 +1405,6 @@ int cache_write_pages_get(segment_t *seg, segment_rw_hints_t *rw_hints, int mode
                             p->current_index = i;
                             p->curr_data = &(p->data[i]);
                             can_get = 1;
-//log_printf(0, "seg=" XIDT " p->offset=" XOT " COP triggered used=" XOT " usage=%d\n", segment_id(seg), p->offset, s->c->write_temp_overflow_used, p->curr_data->usage_count);
-//flush_skip = 0;
                         } else {
                             flush_skip = 4;
                         }
@@ -2562,11 +2551,6 @@ op_status_t cache_rw_func(void *arg, int id)
         if (status == 0) {  //** Got some data to process
             progress = 1;  //** Flag that progress was made
 
-//log_printf(15, "Printing page table n_pages=%d\n", n_pages);
-//for (i=0; i<n_pages; i++) {
-//  log_printf(15, "   p[%d]->offset=" XOT "\n", i, page[i]->offset);
-//}
-
             if (n_pages > 0) {  //** Had to wait or fetch pages so we handle them
                 pstart = page[0].p->offset;  //** Get the current starting offset
 
@@ -2589,8 +2573,6 @@ op_status_t cache_rw_func(void *arg, int id)
                 if (blen > len) {
                     blen = len;
                 }
-
-//log_printf(0, "first=%d hit=" XOT "\n", first_time, hit_bytes);
 
                 log_printf(15, "lo=" XOT " hi=" XOT " rw_mode=%d pstart=" XOT " poff=" XOT " bpos=" XOT " len=" XOT "\n",
                            curr->lo, curr->hi, cop->rw_mode, pstart, poff, bpos, blen);
@@ -2659,10 +2641,8 @@ op_status_t cache_rw_func(void *arg, int id)
         free(curr);
     }
 
-//log_printf(0, "hit_start=" XOT " miss_start=" XOT "\n", hit_time, miss_time);
     hit_time = miss_time - hit_time;
     miss_time = apr_time_now() - miss_time;
-//log_printf(0, "hit_time=" XOT " miss_time=" XOT "\n", hit_time, miss_time);
 
     //** Let the caching aglorithm now of the 1st missed pages
     for (i=0; i < cop->n_iov; i++) {
@@ -2698,8 +2678,6 @@ op_status_t cache_rw_func(void *arg, int id)
     log_printf(15, "END size=" XOT "\n", s->total_size);
 
     segment_unlock(seg);
-
-//***  if (tb_err != 0) err = op_failure_status;
 
     return(err);
 }
@@ -2943,9 +2921,6 @@ int cache_stats(cache_t *c, cache_stats_t *cs)
     cache_lock(c);
 
     *cs = c->stats;
-//log_printf(0, "core hit=" XOT "\n", cs->hit_bytes);
-//log_printf(0, "core miss=" XOT "\n", cs->miss_bytes);
-
     n = tbx_list_key_count(c->segments);
     it = tbx_list_iter_search(c->segments, NULL, 0);
     for (i=0; i<n; i++) {
@@ -2974,8 +2949,6 @@ int cache_stats(cache_t *c, cache_stats_t *cs)
                 n++;
             }
         }
-//log_printf(0, "after cycle hit=" XOT "\n", cs->hit_bytes);
-//log_printf(0, "after cycle miss=" XOT "\n", cs->miss_bytes);
 
     }
 
@@ -3015,9 +2988,6 @@ int cache_stats_print(cache_stats_t *cs, char *buffer, int *used, int nmax)
 
     d1 = cs->unused_bytes * 1.0 / (1024.0*1024.0*1024.0);
     n += tbx_append_printf(buffer, used, nmax, "Unused " XOT " bytes (%lf GiB)\n", cs->unused_bytes, d1);
-
-//log_printf(0, "hit=" XOT "\n", cs->hit_bytes);
-//log_printf(0, "miss=" XOT "\n", cs->miss_bytes);
 
     dt = cs->hit_time;
     dt = dt / (1.0*APR_USEC_PER_SEC);
@@ -3164,7 +3134,6 @@ op_generic_t *segcache_truncate(segment_t *seg, data_attr_t *da, ex_off_t new_si
 op_status_t segcache_clone_func(void *arg, int id)
 {
     cache_clone_t *cop = (cache_clone_t *)arg;
-//  cache_segment_t *ss = (cache_segment_t *)cop->sseg->priv;
     cache_segment_t *ds = (cache_segment_t *)cop->dseg->priv;
     op_status_t status;
 
@@ -3315,8 +3284,6 @@ int segcache_serialize_text(segment_t *seg, exnode_exchange_t *exp)
 
 int segcache_serialize_proto(segment_t *seg, exnode_exchange_t *exp)
 {
-//  cache_segment_t *s = (cache_segment_t *)seg->priv;
-
     return(-1);
 }
 
@@ -3428,7 +3395,6 @@ int segcache_deserialize_text(segment_t *seg, ex_id_t myid, exnode_exchange_t *e
             s->ppage[i].data = &(s->ppages_buffer[i*s->page_size]);
             s->ppage[i].range_stack = tbx_stack_new();
             tbx_stack_push(s->ppages_unused, &(s->ppage[i]));
-//log_printf(0, "RSTACK[%d]=%p\n", i, s->ppage[i].range_stack);
         }
     }
 
@@ -3483,13 +3449,9 @@ void segcache_destroy(segment_t *seg)
 
     //** Check if it's still in use
     log_printf(2, "segcache_destroy: seg->id=" XIDT " ref_count=%d sptr=%p\n", segment_id(seg), seg->ref_count, seg);
-//tbx_log_flush();
-
-//log_printf(2, "CACHE-PTR seg=" XIDT " s->c=%p\n", segment_id(seg), s->c);
 
     if (seg->ref_count > 0) return;
-
-//log_printf(0, "Before close/flush seg=" XIDT "\n", segment_id(seg));
+    
     CACHE_PRINT;
 
     //** If s->c == NULL then we are just cloning the structure or serial/deserializing an exnode
@@ -3545,7 +3507,6 @@ void segcache_destroy(segment_t *seg)
     apr_thread_cond_destroy(s->flush_cond);
     tbx_stack_free(s->flush_stack, 0);
 
-//log_printf(0, "After flush/drop seg=" XIDT "\n", segment_id(seg));
     CACHE_PRINT;
 
     log_printf(5, "seg=" XIDT " Starting segment destruction\n", segment_id(seg));

@@ -45,7 +45,6 @@ int main(int argc, char **argv)
 
     bufsize = 20*1024*1024;
 
-//printf("argc=%d\n", argc);
     if (argc < 2) {
         printf("\n");
         printf("lio_get LIO_COMMON_OPTIONS [-b bufsize] src_file1 .. src_file_N\n");

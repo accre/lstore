@@ -45,10 +45,6 @@ void *cdef_get_type_field(creds_t *c, int index, int *len)
 char *cdef_get_id(creds_t *c)
 {
     return(c->id);
-//  if (c->id != NULL) {
-//     return(strdup(c->id));
-//  }
-//  return(NULL);
 }
 
 //***********************************************************************

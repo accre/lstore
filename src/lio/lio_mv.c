@@ -133,12 +133,10 @@ int main(int argc, char **argv)
     int keepln, err, dtype;
     op_status_t status;
 
-//printf("argc=%d\n", argc);
     if (argc < 2) {
         printf("\n");
         printf("lio_mv LIO_COMMON_OPTIONS [-ln] src_path1 .. src_pathN dest_path\n");
         lio_print_options(stdout);
-//     lio_print_path_options(stdout);
         printf("\n");
         printf("    -ln                    - Follow links.  Otherwise they are ignored\n");
         printf("    src_path1 .. src_pathN - Source path glob to move\n");

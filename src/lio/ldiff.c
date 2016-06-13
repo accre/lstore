@@ -69,7 +69,6 @@ void compare_buffers(char *b1, char *b2, int64_t len, int64_t offset, int64_t *b
                     boe = end % block_size;
                     bl = be - bs + 1;
                     printf("  DIFFER : " I64T " -> " I64T " (" I64T " bytes) [" I64T "%%" I64T  " -> " I64T "%%" I64T " (" I64T " blocks)]\n", start, end, k, bs, bos, be, boe, bl);
-//            printf("  DIFFER : " I64T " -> " I64T " (" I64T " bytes) [" I64T " -> " I64T " (" I64T " blocks)]\n", start, end, k, bs, be, bl);
 
                     start = offset + i;
                     mode = 0;

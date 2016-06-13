@@ -281,11 +281,6 @@ rs_query_t *rs_query_base_parse(resource_service_fn_t *rs, char *qstring)
     log_printf(15, "rs_query_base_parse: rs_type=%s\n", t2);
     ekey = tbx_stk_unescape_text('\\', t2);
     log_printf(15, "rs_query_base_parse: ekey=%s\n", ekey);
-//  if (strcmp(rs->type, ekey) != 0) {
-//     log_printf(0, "rs_query_base_parse: Mismatch RS types  parent=%s got=%s!\n", rs->type, ekey);
-//     free(buffer);
-//     return(NULL);
-//  }
     free(ekey);
 
     tbx_type_malloc(query, rsq_base_t, 1);

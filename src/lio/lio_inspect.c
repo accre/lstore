@@ -74,7 +74,6 @@ typedef struct {
 } inspect_t;
 
 typedef struct {
-//  rid_change_entry_t rc;
     rid_inspect_tweak_t ri;
     tbx_inip_group_t *ig;
     int status;
@@ -208,9 +207,6 @@ void process_pool(pool_entry_t *pe, tbx_stack_t *parent_rid_stack)
             d2 = re->ri.rid->tolerance;
             re->ri.rid->state = ((fabs(d1) <= d2) || (re->ri.rid->tolerance == 0) || (re->total == 0)) ? 1 : 0;
 
-//log_printf(5, "RID=%s state=%d\n", re->ri.rid->rid_key, re->ri.rid->state);
-//log_printf(5, "delta=" XOT "\n", re->ri.rid->delta);
-//log_printf(5, "tol=" XOT "\n", re->ri.rid->tolerance);
             log_printf(5, "RID=%s delta=" XOT " tol=" XOT " state=%d\n", re->ri.rid->rid_key, re->ri.rid->delta, re->ri.rid->tolerance, re->ri.rid->state);
 
             tbx_stack_move_down(pe->rids);
@@ -678,7 +674,6 @@ void dump_pools(tbx_log_fd_t *ifd, tbx_stack_t *pools, int scale)
 void check_pools(tbx_stack_t *pools, apr_thread_mutex_t *lock, int todo_mode, int *finished, int *todo)
 {
     pool_entry_t *pe;
-//  rid_inspect_tweak_t *ri;
     rid_change_entry_t *rid;
     apr_hash_index_t *hi;
     int ntodo, ptodo;
@@ -863,10 +858,6 @@ op_status_t inspect_task(void *arg, int id)
         //** Store the updated exnode back to disk
         exp_out = exnode_exchange_create(EX_TEXT);
         exnode_serialize(ex, exp_out);
-        //printf("Updated remote: %s\n", w->fname);
-        //printf("-----------------------------------------------------\n");
-        //printf("%s", exp_out->text.text);
-        //printf("-----------------------------------------------------\n");
 
         val[0] = NULL;
         v_size[0] = 0;
@@ -1067,7 +1058,6 @@ int main(int argc, char **argv)
     todo_mode = 0;
     from_stdin = 0;
 
-//printf("argc=%d\n", argc);
     if (argc < 2) {
         printf("\n");
         printf("lio_inspect LIO_COMMON_OPTIONS [-rd recurse_depth] [-b bufsize] [-es] [-eh] [-ew] [-rerr] [-werr] [-h | -hi][-f] [-s] [-r]\n");
@@ -1586,5 +1576,3 @@ finished:
 
     return(err);
 }
-
-

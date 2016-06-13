@@ -40,7 +40,6 @@ int main(int argc, char **argv)
     os_regex_table_t *rp_single, *ro_single;
     lio_path_tuple_t tuple;
 
-//printf("argc=%d\n", argc);
     if (argc < 2) {
         printf("\n");
         printf("lio_rmdir LIO_COMMON_OPTIONS LIO_PATH_OPTIONS\n");

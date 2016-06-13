@@ -74,7 +74,6 @@ int main(int argc, char **argv)
     char *error_table[] = { "", "ERROR Failed to update modify timestamp", "ERROR creating file" };
     FILE *fd;
 
-//printf("argc=%d\n", argc);
     if (argc < 2) {
         printf("\n");
         printf("lio_touch LIO_COMMON_OPTIONS [-ex exnode.ex3] file1 file2 ...\n");

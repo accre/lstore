@@ -45,7 +45,6 @@ int main(int argc, char **argv)
     op_generic_t *gop;
     FILE *fd, *fd_out;
 
-//printf("argc=%d\n", argc);
     if (argc < 2) {
         printf("\n");
         printf("ex_put LIO_COMMON_OPTIONS [-i] [-b bufsize] local_file remote_file.ex3\n");
@@ -105,10 +104,6 @@ int main(int argc, char **argv)
     //** Load it
     exp = exnode_exchange_load_file(fname);
 
-//  printf("Initial exnode=====================================\n");
-//  printf("%s", exp->text);
-//  printf("===================================================\n");
-
     //** and parse it
     ex = exnode_create();
     exnode_deserialize(ex, exp, lio_gc->ess);
@@ -124,7 +119,6 @@ int main(int argc, char **argv)
     err = gop_sync_exec(segment_truncate(seg, lio_gc->da, 0, 10));
     if (err != OP_STATE_SUCCESS) {
         printf("Error truncating the remote file!\n");
-//     abort();
     }
 
     start_time = apr_time_now();
@@ -143,7 +137,6 @@ int main(int argc, char **argv)
         rlen = wlen;
         wlen = tlen;
 
-//     log_printf(15, "ex_put: pos=%d rlen=%d text=!%s!\n", i, len, buffer);
         log_printf(1, "ex_put: pos=" XOT " rlen=" XOT " wlen=" XOT "\n", i, rlen, wlen);
         //** Start the write
         tbx_tbuf_single(&tbuf, wlen, wbuf);
@@ -200,10 +193,6 @@ int main(int argc, char **argv)
     //** Store the updated exnode back to disk
     exp_out = exnode_exchange_create(EX_TEXT);
     exnode_serialize(ex, exp_out);
-//  printf("Updated remote: %s\n", fname);
-//  printf("-----------------------------------------------------\n");
-//  printf("%s", exp_out->text);
-//  printf("-----------------------------------------------------\n");
 
     fd_out = fopen(fname, "w");
     fprintf(fd_out, "%s", exp_out->text.text);

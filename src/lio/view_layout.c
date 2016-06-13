@@ -147,8 +147,6 @@ int vl_serialize_proto(view_t *v, exnode_exchange_t *exp)
 
 int vl_serialize(view_t *v, exnode_exchange_t *exp)
 {
-//  view_layout_t *vl = (view_layout_t *)v->priv;
-
     if (exp->type == EX_TEXT) {
         return(vl_serialize_text(v, exp));
     } else if (exp->type == EX_PROTOCOL_BUFFERS) {

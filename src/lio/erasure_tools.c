@@ -580,15 +580,6 @@ int et_decode(erasure_plan_t *plan, long long int fsize, const char *fname, long
             fwrite(data[i], 1, bpos, fd_file);
         }
 
-//     bpos = ppos;
-//     for (i=0; i<plan->parity_strips; i++) {
-//         if (missing_parity[i] == 1) {
-//            fseek(fd_parity, bpos, SEEK_SET);
-//            fwrite(parity[i], 1, bsize, fd_parity);
-//         }
-//         bpos = bpos + plan->strip_size;
-//     }
-
         //** Update the file positions
         ppos = ppos + block_size;
         apos = apos + block_size;
@@ -653,7 +644,6 @@ erasure_plan_t *et_new_plan(int method, long long int strip_size,
         plan->decode_block = schedule_decode_block;
         break;
     case CAUCHY_GOOD:
-//log_printf(15, "making cauchy_good plan\n");
         plan->form_encoding_matrix = cauchy_good_form_encoding_matrix;
         plan->form_decoding_matrix = cauchy_good_form_coding_matrix;
         plan->encode_block = schedule_encode_block;
@@ -784,15 +774,10 @@ erasure_plan_t *et_generate_plan(long long int file_size, int method,
     if (strip_size < 4*1024) {
         plow = strip_size/4;
         phigh = strip_size;
-//     plow = 16; phigh = 256;
-//  } else if (strip_size < 10*1024) {
-//     plow = 256; phigh = 736;
     } else {
         plow = 512;
         phigh = 4096;
     }
-//plow = strip_size/4;
-//phigh = strip_size;
 
     if (packet_low < 0) packet_low = plow;
     if (packet_high < 0) packet_high = phigh;
@@ -888,7 +873,6 @@ erasure_plan_t *et_generate_plan(long long int file_size, int method,
     smallest_excess = 10*file_size;
     packet_best = -1;
 
-//  for (packet_size = packet_low; packet_size < packet_high; packet_size = packet_size + base_unit) {
     for (packet_size = packet_high; packet_size > packet_low; packet_size = packet_size - base_unit) {
         i = data_strips*w*packet_size*base_unit;
         new_size = file_size;
@@ -905,9 +889,6 @@ erasure_plan_t *et_generate_plan(long long int file_size, int method,
             increase = (1.0*j) / file_size * 100;
             if (increase < 1) break;
         }
-
-//     increase = (1.0*j) / file_size * 100;
-//     log_printf(15, "Divisor=%d New size=%lld Orig size=%lld increase=%d (%f\%)\n", i, new_size, file_size, j, increase);
     }
 
     packet_size = packet_best;

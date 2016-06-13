@@ -90,8 +90,6 @@ int main(int argc, char **argv)
     int obj_types = OS_OBJECT_FILE;
     return_code = 0;
 
-//estr = tbx_stk_argv2format(argv[1]);
-//printf("argv[1]=!%s! str=!%s!\n", argv[1], estr);
     if (argc < 2) {
         printf("\n");
         printf("lio_getattr LIO_COMMON_OPTIONS [-rd recurse_depth] [-t object_types] [-vmax max_val] PRINT_OPTIONS [-ga attr_glob | -ra attr_regex | -al key1,key2,...keyN] LIO_PATH_OPTIONS\n");

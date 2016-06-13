@@ -59,8 +59,6 @@ int skiplist_compare_fn_ex_id(void *arg, tbx_sl_key_t *k1, tbx_sl_key_t *k2)
     } else if ( *a == *b) {
         cmp = 0;
     }
-
-//  log_printf(15, "skiplist_compare_fn_ex_id: cmp(" XIDT ", " XIDT ")=%d\n", *a, *b, cmp);
     return(cmp);
 }
 

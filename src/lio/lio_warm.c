@@ -222,7 +222,6 @@ int main(int argc, char **argv)
     opque_t *q;
     op_generic_t *gop;
     op_status_t status;
-//  char *ex;
     char *keys[] = { "system.exnode", "system.write_errors" };
     char *vals[2];
     int slot, v_size[2];
@@ -247,7 +246,6 @@ int main(int argc, char **argv)
     warm_t *w;
     double dtime, dtime_total;
 
-//printf("argc=%d\n", argc);
     if (argc < 2) {
         printf("\n");
         printf("lio_warm LIO_COMMON_OPTIONS [-t tag.cfg] [-rd recurse_depth] [-dt time] [-sb] [-sf] LIO_PATH_OPTIONS\n");
@@ -357,7 +355,6 @@ int main(int argc, char **argv)
             gop = new_thread_pool_op(lio_gc->tpc_unlimited, NULL, gen_warm_task, (void *)&(w[slot]), NULL, 1);
             gop_set_myid(gop, slot);
             log_printf(0, "gid=%d i=%d fname=%s\n", gop_id(gop), slot, fname);
-//info_printf(lio_ifd, 0, "n=%d gid=%d slot=%d fname=%s\n", submitted, gop_id(gop), slot, fname);
             opque_add(q, gop);
 
             if (submitted >= lio_parallel_task_count) {

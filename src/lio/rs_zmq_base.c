@@ -64,7 +64,6 @@ void *rs_zmq_worker_routine(void *arg)
 
         if (status.op_status != OP_STATE_SUCCESS) {
             printf("Error with data request! err_code=%d\n", status.error_code);
-            //abort();
         }
 
         printf("Finished with receiving request. Now start to send response.\n");
@@ -97,19 +96,6 @@ void *rs_zmq_worker_routine(void *arg)
         free(qstr);
 
         //** Now destroy the allocation I just created
-//        opque_t *q = new_opque();
-//        for (i=0; i<req->n_rid; i++) {
-//            gop = ds_remove(thread_arg->ds, thread_arg->da, ds_get_cap(thread_arg->ds, req->caps[i], DS_CAP_MANAGE), thread_arg->timeout);
-//            opque_add(q, gop);
-//        }
-
-        //** Wait for it to complete
-//        int err = opque_waitall(q);
-//        opque_free(q, OP_DESTROY);
-
-//        if (err != OP_STATE_SUCCESS) {
-//            printf("Error removing allocations!\n");
-//        }
 
         //** Destroy the caps and reqs
         for (i=0; i<req->n_rid; i++) {

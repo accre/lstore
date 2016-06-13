@@ -46,7 +46,6 @@ int main(int argc, char **argv)
     ex_tbx_iovec_t iov;
     FILE *fd;
 
-//printf("argc=%d\n", argc);
     if (argc < 2) {
         printf("\n");
         printf("ex_get LIO_COMMON_OPTIONS [-i] [-b bufsize] remote_file.ex3 local_file\n");
@@ -95,11 +94,6 @@ int main(int argc, char **argv)
     //** Load it
     exp = exnode_exchange_load_file(fname);
 
-//  printf("Initial exnode=====================================\n");
-//  printf("%s", exp->text);
-//  printf("===================================================\n");
-
-
     //** Open the local destination file
     if (strcmp(argv[i], "-") == 0) {
         fd = stdout;
@@ -126,8 +120,6 @@ int main(int argc, char **argv)
 
     //** Get the object size
     size = segment_size(seg);
-
-//FILE *fd2 = fopen("test.out", "w");
 
     start_time = apr_time_now();
     disk_cumulative = 0;
@@ -164,15 +156,11 @@ int main(int argc, char **argv)
 
         }
 
-//fwrite(rbuf, rlen, 1, fd2);
-
         gop_free(gop, OP_DESTROY);
 
         firsttime = 0;
         i = i + rlen;
     } while (rlen == bufsize);
-
-//fclose(fd2);
 
     //** Dump the last block to disk
     disk_start = apr_time_now();
@@ -207,5 +195,3 @@ int main(int argc, char **argv)
 
     return(0);
 }
-
-

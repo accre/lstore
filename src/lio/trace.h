@@ -41,7 +41,6 @@ typedef struct {
 typedef struct {
     exnode_t *ex;
     segment_t *seg;
-//  os_fd_t *fd;
     int op_count;
     ex_off_t max_offset;
     ex_off_t max_len;

@@ -53,7 +53,6 @@ int main(int argc, char **argv)
 
     bufsize = 20*1024*1024;
 
-//printf("argc=%d\n", argc);
     if (argc < 2) {
         printf("\n");
         printf("adler32 [-b bsize] file1 file2 ...\n");

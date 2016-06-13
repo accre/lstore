@@ -42,8 +42,6 @@ void destroy_service_manager(service_manager_t *sm);
 LIO_API void *lookup_service(service_manager_t *sm, char *service_section, char *service_name);
 int add_service(service_manager_t *sm, char *service_section, char *service_name, void *service);
 int remove_service(service_manager_t *sm, char *service_section, char *service_name);
-//int set_service_type_arg(service_manager_t *sm, int sm_type, void *arg);
-//void *get_service_type_arg(service_manager_t *sm, int sm_type);
 
 #ifdef __cplusplus
 }

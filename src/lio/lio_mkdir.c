@@ -75,7 +75,6 @@ int main(int argc, char **argv)
     FILE *fd;
     int return_code = 0;
 
-//printf("argc=%d\n", argc);
     if (argc < 2) {
         printf("\n");
         printf("lio_mkdir LIO_COMMON_OPTIONS [-ex exnode.ex3] dir1 dir2 ...\n");

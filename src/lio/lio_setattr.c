@@ -60,8 +60,6 @@ void load_file(char *fname, char **val, int *v_size)
     }
     fclose(fd);
 
-//info_printf(lio_ifd, 0, "fname=%s size=%d val=%s\n", fname, i, *val);
-
 }
 
 //*************************************************************************
@@ -95,7 +93,6 @@ int main(int argc, char **argv)
     int obj_types = OS_OBJECT_FILE;
     return_code = 0;
 
-//printf("argc=%d\n", argc);
     if (argc < 2) {
         printf("\n");
         printf("lio_setattr LIO_COMMON_OPTIONS [-rd recurse_depth] [-t object_types] -as key=value | -ar key | -af key=vfilename | -al key=obj_path/dkey LIO_PATH_OPTIONS\n");

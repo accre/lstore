@@ -31,7 +31,6 @@ void ex_header_init(ex_header_t *eh)
 {
     assert(eh != NULL);
     memset(eh, 0, sizeof(ex_header_t));
-//  eh->attributes = tbx_list_create(1, &tbx_list_string_compare, tbx_list_string_dup, tbx_list_simple_free, tbx_list_simple_free);
 }
 
 //*************************************************************************
@@ -42,8 +41,6 @@ void ex_header_init(ex_header_t *eh)
 void ex_header_release(ex_header_t *h)
 {
     if (h->name != NULL) free(h->name);
-//  if (h->type != NULL) free(h->type);
-//  tbx_list_destroy(h->attributes);
 }
 
 
@@ -121,5 +118,3 @@ void ex_header_set_attributes(ex_header_t *h, tbx_list_t *attr)
 {
     h->attributes = attr;
 }
-
-

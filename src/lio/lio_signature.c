@@ -41,7 +41,6 @@ int main(int argc, char **argv)
     int v_size;
     lio_path_tuple_t tuple;
 
-//printf("argc=%d\n", argc);
     if (argc < 2) {
         printf("\n");
         printf("lio_signature LIO_COMMON_OPTIONS file\n");

@@ -83,7 +83,6 @@ int main(int argc, char **argv)
 
     //** Parse the query
     rq = rs_query_parse(lio_gc->rs, query_text);
-//  rs_query_add(rs, &rq, RSQ_BASE_OP_AND, "lun", RSQ_BASE_KV_EXACT, "", RSQ_BASE_KV_ANY);
     if (rq == NULL) {
         printf("Error parsing RS query: %s\n", query_text);
         printf("Exiting!\n");

@@ -37,7 +37,6 @@
 #include <tbx/varint.h>
 #include "authn_fake.h"
 
-//#define OSRS_HANDLE(ofd) ((osrs_ongoing_object_t *)((ofd)->data))->handle
 #define OSRS_HANDLE(ofd) (void *)(*(intptr_t *)(ofd)->data)
 
 #define OSRC_ITER_ALIST  0
@@ -76,7 +75,6 @@ typedef struct {
 
 typedef struct {
     object_service_fn_t *os;
-//  void *it;
     os_attr_iter_t **ait;
     void **val;
     int *v_size;
@@ -691,8 +689,6 @@ op_generic_t *osrc_create_object(object_service_fn_t *os, creds_t *creds, char *
     op_generic_t *gop;
     unsigned char buffer[10], *sent;
     int n;
-
-//return(os_create_object(osrc->os_temp, creds, path, type, id));
 
     log_printf(5, "START fname=%s\n", path);
 
@@ -2020,25 +2016,15 @@ op_status_t osrc_response_open(void *task_arg, int tid)
     if (status.op_status == OP_STATE_SUCCESS) {
         tbx_type_malloc(fd, osrc_object_fd_t, 1);
         fd->os = arg->os;
-//mq_frame_t *frame = mq_msg_next(task->response);
-//mq_get_frame(frame, (void **)&data, &(fd->size));
         mq_get_frame(mq_msg_next(task->response), (void **)&data, &(fd->size));
-//     log_printf(5, "fd->size=%d\n", fd->size);
-
-//intptr_t *kptr;
-//mq_get_frame(frame, (void **)&kptr, &(fd->size));
-//intptr_t key = *kptr;
-//log_printf(5, "PTR key=%" PRIdPTR " size=%d\n", key, fd->size);
         tbx_type_malloc(fd->data, char, fd->size);
         memcpy(fd->data, data, fd->size);
         *(arg->pfd) = fd;
-//     mq_ongoing_host_inc(osrc->ongoing, osrc->remote_host, fd->data, fd->size, osrc->heartbeat);
         mq_ongoing_host_inc(osrc->ongoing, osrc->remote_host, osrc->host_id, osrc->host_id_len, osrc->heartbeat);
     } else {
         *(arg->pfd) = NULL;
     }
 
-//  if (arg->handle != NULL) free(arg->handle);
     log_printf(5, "END status=%d %d\n", status.op_status, status.error_code);
 
     return(status);
@@ -2175,9 +2161,6 @@ op_generic_t *osrc_close_object(object_service_fn_t *os, os_fd_t *ofd)
 
     log_printf(5, "START fd->size=%d\n", fd->size);
 
-//intptr_t key = *(intptr_t *)fd->data;
-//log_printf(5, "PTR key=%" PRIdPTR "\n", key);
-
     //** Form the message
     msg = mq_make_exec_core_msg(osrc->remote_host, 1);
     mq_msg_append_mem(msg, OSR_CLOSE_OBJECT_KEY, OSR_CLOSE_OBJECT_SIZE, MQF_MSG_KEEP_DATA);
@@ -2239,7 +2222,7 @@ int osrc_next_fsck(object_service_fn_t *os, os_fsck_iter_t *oit, char **bad_fnam
     *bad_atype = 0;
     if (it->finished == 1) return(OS_FSCK_FINISHED);
 
-//** Read the bad fname len
+    //** Read the bad fname len
     n = mq_stream_read_varint(it->mqs, &err);
     if (err != 0) {
         log_printf(5, "ERROR reading key len!\n");
@@ -2442,10 +2425,7 @@ void osrc_destroy(object_service_fn_t *os)
         os_destroy(osrc->os_remote);
     }
 
-//  osaz_destroy(osrc->osaz);
     if (osrc->authn != NULL) authn_destroy(osrc->authn);
-
-//  apr_pool_destroy(osrc->mpool);
 
     free(osrc->host_id);
     mq_msg_destroy(osrc->remote_host);
@@ -2528,32 +2508,32 @@ object_service_fn_t *object_service_remote_client_create(service_manager_t *ess,
     os->destroy_service = osrc_destroy;
     os->cred_init = osrc_cred_init;
     os->cred_destroy = osrc_cred_destroy;
-    os->exists = osrc_exists;//DONE
-    os->create_object = osrc_create_object;//DONE
-    os->remove_object = osrc_remove_object;//DONE
-    os->remove_regex_object = osrc_remove_regex_object;//DONE
-    os->abort_remove_regex_object = osrc_abort_remove_regex_object;//DONE
-    os->move_object = osrc_move_object;//DONE
-    os->symlink_object = osrc_symlink_object;//DONE
-    os->hardlink_object = osrc_hardlink_object;//DONE
+    os->exists = osrc_exists;
+    os->create_object = osrc_create_object;
+    os->remove_object = osrc_remove_object;
+    os->remove_regex_object = osrc_remove_regex_object;
+    os->abort_remove_regex_object = osrc_abort_remove_regex_object;
+    os->move_object = osrc_move_object;
+    os->symlink_object = osrc_symlink_object;
+    os->hardlink_object = osrc_hardlink_object;
     os->create_object_iter = osrc_create_object_iter;
-    os->create_object_iter_alist = osrc_create_object_iter_alist;//DONE
-    os->next_object = osrc_next_object;//1/2 DONE
-    os->destroy_object_iter = osrc_destroy_object_iter;//1/2 DONE
-    os->open_object = osrc_open_object;//DONE
-    os->close_object = osrc_close_object;//DONE
-    os->abort_open_object = osrc_abort_open_object;//DONE
-    os->get_attr = osrc_get_attr;//DONE
-    os->set_attr = osrc_set_attr;//DONE
-    os->symlink_attr = osrc_symlink_attr;//DONE
-    os->copy_attr = osrc_copy_attr;//DONE
-    os->get_multiple_attrs = osrc_get_multiple_attrs;//DONE
-    os->set_multiple_attrs = osrc_set_multiple_attrs;//DONE
-    os->copy_multiple_attrs = osrc_copy_multiple_attrs;//DONE
-    os->symlink_multiple_attrs = osrc_symlink_multiple_attrs;//DONE
-    os->move_attr = osrc_move_attr;//DONE
-    os->move_multiple_attrs = osrc_move_multiple_attrs;//DONE
-    os->regex_object_set_multiple_attrs = osrc_regex_object_set_multiple_attrs;//DONE
+    os->create_object_iter_alist = osrc_create_object_iter_alist;
+    os->next_object = osrc_next_object;
+    os->destroy_object_iter = osrc_destroy_object_iter;
+    os->open_object = osrc_open_object;
+    os->close_object = osrc_close_object;
+    os->abort_open_object = osrc_abort_open_object;
+    os->get_attr = osrc_get_attr;
+    os->set_attr = osrc_set_attr;
+    os->symlink_attr = osrc_symlink_attr;
+    os->copy_attr = osrc_copy_attr;
+    os->get_multiple_attrs = osrc_get_multiple_attrs;
+    os->set_multiple_attrs = osrc_set_multiple_attrs;
+    os->copy_multiple_attrs = osrc_copy_multiple_attrs;
+    os->symlink_multiple_attrs = osrc_symlink_multiple_attrs;
+    os->move_attr = osrc_move_attr;
+    os->move_multiple_attrs = osrc_move_multiple_attrs;
+    os->regex_object_set_multiple_attrs = osrc_regex_object_set_multiple_attrs;
     os->abort_regex_object_set_multiple_attrs = osrc_abort_regex_object_set_multiple_attrs;
     os->create_attr_iter = osrc_create_attr_iter;
     os->next_attr = osrc_next_attr;

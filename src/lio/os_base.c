@@ -90,7 +90,6 @@ char *os_glob2regex(char *glob)
                 reg[j] = '*';
                 j++;
             } else {
-//log_printf(15, "*else j=%d\n", j);
                 reg[j] = '.';
                 reg[j+1] = '*';
                 j+=2;
@@ -110,8 +109,6 @@ char *os_glob2regex(char *glob)
             n_regex *= 2;
             reg = realloc(reg, n_regex);
         }
-//reg[j] = 0;
-//log_printf(15, "i=%d j=%d glob=%s regex=%s\n", i, j, glob, reg);
 
     }
 

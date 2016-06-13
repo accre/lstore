@@ -31,7 +31,6 @@ extern "C" {
 
 segment_t *segment_lun_load(void *arg, ex_id_t id, exnode_exchange_t *ex);
 segment_t *segment_lun_create(void *arg);
-//op_generic_t *segment_lun_make(segment_t *seg, data_attr_t *da, rs_query_t *rsq, int n_rid, ex_off_t block_size, ex_off_t total_size, int timeout);
 int seglun_row_decompose_test();
 
 #ifdef __cplusplus

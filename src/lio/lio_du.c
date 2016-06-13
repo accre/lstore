@@ -90,7 +90,6 @@ int main(int argc, char **argv)
     int return_code = 0;
     du_entry_t du_total;
 
-//printf("argc=%d\n", argc);
     if (argc < 2) {
         printf("\n");
         printf("lio_du LIO_COMMON_OPTIONS [-rd recurse_depth] [-ns] [-h|-hi] [-s] [-ln] LIO_PATH_OPTIONS\n");
@@ -159,9 +158,6 @@ int main(int argc, char **argv)
     } else {
         start_index--;  //** Ther 1st entry will be the rp created in lio_parse_path_options
     }
-
-//log_printf(15, "argv[%d]=%s\n", i, argv[i]);
-
 
     if (sumonly == 1) {
         info_printf(lio_ifd, 0, "  Size      File count            Filename\n");
@@ -236,9 +232,7 @@ int main(int argc, char **argv)
         }
 
         while ((ftype = lio_next_object(tuple.lc, it, &fname, &prefix_len)) > 0) {
-//printf("fname=%s\n", fname);
             if (((ftype & OS_OBJECT_SYMLINK) > 0) && (ignoreln == 1)) continue;  //** Ignoring links
-//printf("fname2=%s\n", fname);
 
             if ((sumonly == 1) && ((ftype & OS_OBJECT_FILE) > 0)) {
                 bytes = 0;
@@ -260,7 +254,6 @@ int main(int argc, char **argv)
 
                 if (val != NULL) sscanf(val, I64T, &(de->bytes));
 
-//printf("fname=%s size=" I64T "\n", de->fname, de->bytes);
                 if (nosort == 1) {
                     du_format_entry(lio_ifd, de, sumonly);
                     free(de->fname);

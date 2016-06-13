@@ -51,7 +51,6 @@ int main(int argc, char **argv)
     recurse_depth = 10000;
     bufsize = 20*1024*1024;
 
-//printf("argc=%d\n", argc);
     if (argc < 2) {
         printf("\n");
         printf("lio_cp LIO_COMMON_OPTIONS [-rd recurse_depth] [-ln] [-b bufsize_mb] [-f] src_path1 .. src_pathN dest_path\n");
@@ -233,14 +232,7 @@ finished:
 
     if (n_errors > 0) info_printf(lio_ifd, 0, "Failed copying %d file(s)!\n", n_errors);
 
-//tbx_set_log_level(20);
-//printf("Before shutdown\n");
-//apr_time_t dt = apr_time_now();
     lio_shutdown();
-//dt = apr_time_now() - dt;
-//double sec = dt;
-//sec = sec / (1.0*APR_USEC_PER_SEC);
-//printf("After shutdown dt=%lf\n", sec);
 
     return((n_errors == 0) ? 0 : 1);
 }

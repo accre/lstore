@@ -150,8 +150,6 @@ static void __attribute__((constructor)) liblio_trace_init()
     if (ltc.fd == -1) {
         ltc.fd = lt_fn.open(ltc.trace_name, O_WRONLY|O_CREAT, S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH);
     }
-//  sprintf(logstr, "liblio_trace_destroy: trace fd=%d\n", ltc.fd);
-//  lt_fn.write(ltc.logfd, logstr, strlen(logstr));
 
     start_time = apr_time_now();
 

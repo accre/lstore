@@ -157,8 +157,6 @@ int main(int argc, char **argv)
     apr_time_t dt;
     char *config;
 
-//printf("argc=%d\n", argc);
-
     if (argc < 2) {
         printf("\n");
         printf("lio_rs LIO_COMMON_OPTIONS [-w] [-b2 | -b10] [-s | -f]\n");
@@ -200,12 +198,6 @@ int main(int argc, char **argv)
     assert_result(apr_pool_create(&mpool, NULL), APR_SUCCESS);
     apr_thread_mutex_create(&lock, APR_THREAD_MUTEX_DEFAULT, mpool);
     apr_thread_cond_create(&cond, mpool);
-
-//if (watch == 1) {
-//  printf("Sleeping for 60s\n"); fflush(stdout);
-//  sleep(60);
-//  printf("Woken up\n"); fflush(stdout);
-//}
 
     memset(&notify, 0, sizeof(notify));
     notify.lock = lock;
@@ -251,7 +243,6 @@ int main(int argc, char **argv)
     //** Cleanup
     apr_pool_destroy(mpool);
 
-//  info_printf(lio_ifd, 5, "AFTER shutdown\n"); tbx_info_flush(lio_ifd);
     lio_shutdown();
 
     return(0);

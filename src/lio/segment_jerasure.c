@@ -281,10 +281,6 @@ int jerase_brute_recovery(erasure_plan_t *plan, int chunk_size, int n_devs, int 
     //** See if we get lucky and the initial badmap is good
     if (jerase_control_check(plan, chunk_size, n_devs, n_parity_devs, badmap, ptr, eptr, pwork, magic) == 0) return(0);
 
-//FILE *fd = fopen("stripe.dat", "w");
-//for (i=0; i<n_devs; i++) fwrite(ptr[i], chunk_size, 1, fd);
-//fclose(fd);
-
     //** No luck have to run through the perms
     memset(badmap, 0, sizeof(int)*n_devs);
 
@@ -456,7 +452,6 @@ op_status_t segjerase_inspect_full_func(void *arg, int id)
             check_magic = (s->magic_cksum == 0) ? NULL : stripe_magic;
             good_magic = memcmp(empty_magic, stripe_magic, JE_MAGIC_SIZE);
             if (good_magic == 0) {
-//           tbx_append_printf(stripe_msg[0], &stripe_used[0], stripe_buffer_size, "Empty stripe.  empty chunks: %d\n", magic_count[index]);
                 log_printf(0, "Empty stripe.  empty chunks: %d magic_used=%d stripe=%d\n", magic_count[index], magic_used, stripe+i);
                 stripe_error[0] = 1;
                 if (magic_count[index] == s->n_devs) { //** Completely empty stripe so skip to the next loop
@@ -544,19 +539,6 @@ op_status_t segjerase_inspect_full_func(void *arg, int id)
                 } else {
                     if (s->magic_cksum != 0) skip = 1;  //** All is good nothing to store
                 }
-
-//if (stripe+i==20693) {
-//  FILE *fd = fopen("repaired.dat", "w");
-//  for (k=0; k<s->n_devs; k++) {
-//     if (eptr[k] != ptr[k]) {
-//        fwrite(eptr[k], s->chunk_size, 1, fd);
-//    } else {
-//        fwrite(ptr[k], s->chunk_size, 1, fd);
-//     }
-//  }
-//  fclose(fd);
-//}
-
                 if ((skip == 0) && (do_fix == 1)) { //** Got some data to update
                     if (s->magic_cksum == 0) { //** Got to dump everything back to get the correct magic
                         je_cksum_calc(stripe_magic, eptr, s->n_devs, s->chunk_size);
@@ -748,8 +730,6 @@ op_status_t segjerase_inspect_scan(segjerase_inspect_t *si)
 
     log_printf(0, "fsize=" XOT " data_size=%d total_stripes=%d\n", fsize, s->data_size, total_stripes);
 
-//  inspect_printf(si->fd, XIDT ": Total number of stripes:%d\n", segment_id(si->seg), total_stripes);
-
     for (stripe=0; stripe <= total_stripes; stripe++) {
         if ((curr_stripe >= maxstripes) || (stripe == total_stripes)) {
             info_printf(si->fd, 1, XIDT ": checking stripes: (%d, %d)\n", segment_id(si->seg), start_stripe, start_stripe+curr_stripe-1);
@@ -890,7 +870,6 @@ op_status_t segjerase_inspect_func(void *arg, int id)
     status = gop_get_status(gop);
     gop_free(gop, OP_DESTROY);
     si->max_replaced = (status.error_code & INSPECT_RESULT_COUNT_MASK);  //** NOTE: This needs to be checks for edge cases.
-//  si->max_replaced = status.error_code;
     si->bad_stripes = -1;
     child_replaced = si->max_replaced;
     migrate_errors = status.error_code & INSPECT_RESULT_MIGRATE_ERROR;
@@ -908,10 +887,8 @@ op_status_t segjerase_inspect_func(void *arg, int id)
 
     //** The INSPECT_QUICK_* options are handled by the LUN driver. If force_reconstruct is set then we probably need to do a scan
     option = si->inspect_mode & INSPECT_COMMAND_BITS;
-    repair = ((option == INSPECT_QUICK_REPAIR) || (option == INSPECT_SCAN_REPAIR) || (option == INSPECT_FULL_REPAIR)) ? 1 : 0;
 //  force_reconstruct = si->inspect_mode & INSPECT_FORCE_REPAIR;
     log_printf(5, "repair=%d child_replaced=%d option=%d inspect_mode=%d INSPECT_QUICK_REPAIR=%d\n", repair, child_replaced, option, si->inspect_mode, INSPECT_QUICK_REPAIR);
-//  if ((repair > 0) && (force_reconstruct > 0) && (child_replaced > 0) && (option == INSPECT_QUICK_REPAIR)) {
     if ((repair > 0) && ((child_replaced > 0) || (s->magic_cksum == 0) || (s->write_errors > 0)) && (option == INSPECT_QUICK_REPAIR)) {
         info_printf(si->fd, 1, XIDT ": Child segment repaired or existing write errors.  Forcing a full file check.\n", segment_id(si->seg));
         si->inspect_mode -= option;
@@ -997,8 +974,6 @@ fail:
     } else {
         info_printf(si->fd, 1, XIDT ": status: FAILURE (%d devices, %d stripes)\n", segment_id(si->seg), si->max_replaced, si->bad_stripes);
     }
-
-//  status.error_code = si->max_replaced;
 
     return(status);
 }
@@ -1223,7 +1198,6 @@ tryagain:  //** We first try allowing blacklisting to proceed as normal and then
             match = 0;
         }
     }
-//----if (match > 0) match++;  //** This will force a failure and retry
 
     for (i=0; i<sw->n_iov; i++) rw_hints[i].lun_max_blacklist = match;
 
@@ -1494,7 +1468,6 @@ op_status_t segjerase_write_func(void *arg, int id)
 tryagain: //** In case blacklisting failed we'll retry with it disabled
 
     q = new_opque();
-//  opque_start_execution(q);
     tbx_tbuf_var_init(&tbv);
     status = op_success_status;
     soft_error = 0;
@@ -1538,7 +1511,6 @@ tryagain: //** In case blacklisting failed we'll retry with it disabled
             k = 0;
         }
     }
-//----if (k > 0) k++;  //** This will force a failure and retry
 
     for (i=0; i<sw->n_iov; i++) rw_hints[i].lun_max_blacklist = k;
 
@@ -1653,23 +1625,6 @@ tryagain: //** In case blacklisting failed we'll retry with it disabled
             gop_set_myid(gop, i);
             opque_add(q, gop);
             curr_bytes += len;
-//        parity_used += s->parity_size * nstripes;
-
-//uint32_t *uptr;
-//int d;
-//char pbuffer[s->chunk_size+1];
-//log_printf(15, "seg=" XIDT " off=" XOT " len=" XOT "\n", segment_id(sw->seg), ex_iov[i].offset, ex_iov[i].len);
-//for (k=iov_start; k<n_iov; k += 2*s->n_devs) {
-//   log_printf(15, "PRINT iov=%d----------------\n", k);
-//   for (j=0; j < s->n_data_devs; j++) {
-//      uptr = (uint32_t *)iov[k+2*j].iov_base;
-//      d = *uptr;
-//      log_printf(15, "dev=%d magic=%d\n", j, d);
-//      memcpy(pbuffer, iov[k+2*j+1].iov_base, s->chunk_size);
-//      pbuffer[s->chunk_size] = '\0';
-//      log_printf(15, "        data=!%s!\n", pbuffer);
-//   }
-//}
         }
     }
 
@@ -1949,8 +1904,6 @@ int segjerase_serialize_text(segment_t *seg, exnode_exchange_t *exp)
 
 int segjerase_serialize_proto(segment_t *seg, exnode_exchange_t *exp)
 {
-//  segjerase_priv_t *s = (segjerase_priv_t *)seg->priv;
-
     return(-1);
 }
 

@@ -72,9 +72,6 @@ typedef authn_t *(authn_create_t)(service_manager_t *ess, tbx_inip_file_t *ifd, 
 #define authn_cred_init(an, type, args) (an)->cred_init(an, type, args)
 #define authn_destroy(an) (an)->destroy(an)
 
-//int install_authn_service(char *type, authn_t *(*create)(char *fname));
-//authn_t *create_authn_service(char *type, char *fname);
-
 #ifdef __cplusplus
 }
 #endif

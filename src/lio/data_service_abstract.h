@@ -101,13 +101,6 @@ typedef void data_inquire_t;
 struct data_service_fn_s;
 typedef struct data_service_fn_s data_service_fn_t;
 
-//typedef struct {
-//  char *rid_key;
-//  char *ds_key;
-//  void *ds_priv;
-//  void *rs_priv;
-//} data_service_mapping_t;
-
 struct data_service_fn_s {
     void *priv;
     char *type;

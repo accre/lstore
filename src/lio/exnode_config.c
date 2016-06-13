@@ -67,7 +67,6 @@ service_manager_t *exnode_service_set_create()
 
     add_service(ess, OSAZ_AVAILABLE, OSAZ_TYPE_FAKE, osaz_fake_create);
 
-//***UNDOME  add_service(ess, CACHE_LOAD_AVAILABLE, CACHE_TYPE_LRU, lru_cache_load);   add_service(ess, CACHE_CREATE_AVAILABLE, CACHE_TYPE_LRU, lru_cache_create);
     add_service(ess, CACHE_LOAD_AVAILABLE, CACHE_TYPE_AMP, amp_cache_load);
     add_service(ess, CACHE_CREATE_AVAILABLE, CACHE_TYPE_AMP, amp_cache_create);
     add_service(ess, CACHE_LOAD_AVAILABLE, CACHE_TYPE_ROUND_ROBIN, round_robin_cache_load);

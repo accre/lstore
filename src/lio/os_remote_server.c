@@ -445,7 +445,6 @@ void osrs_create_object_cb(void *arg, mq_task_t *task)
     f = mq_msg_pop(msg);  //** This has the Object type
     mq_get_frame(f, (void **)&data, &nbytes);
     tbx_zigzag_decode((unsigned char *)data, nbytes, &ftype);
-//log_printf(5, "ftype=%d\n", ftype);
     mq_frame_destroy(f);
 
     f = mq_msg_pop(msg);  //** This has the ID used for the create attribute
@@ -2782,7 +2781,6 @@ finished:
     mq_frame_destroy(fdata);
     mq_frame_destroy(fcred);
     mq_frame_destroy(ffd);
-//  mq_frame_destroy(fhid);
 
     if (attr_regex != NULL) os_regex_table_destroy(attr_regex);
 
@@ -2914,7 +2912,6 @@ finished:
     //** Clean up
     osrs_release_creds(os, creds);
     mq_frame_destroy(fcred);
-//  mq_frame_destroy(fhid);
 
     if (path != NULL) free(path);
 

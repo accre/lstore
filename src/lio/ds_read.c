@@ -49,7 +49,6 @@ int main(int argc, char **argv)
 
     _lio_ifd = stderr;  //** Default to all information going to stderr since the output is file data.
 
-//printf("argc=%d\n", argc);
     if (argc < 2) {
         printf("\n");
         printf("ds_read LIO_COMMON_OPTIONS [-dt timeout] n_iov_per_rcap len_per_rcap rcap_file\n");
@@ -104,7 +103,6 @@ int main(int argc, char **argv)
 
     offset = 0;
     q = new_opque();
-//  opque_start_execution(q);
     for (i=0; i<n_rcap; i++) {
         tbx_type_malloc(buffer[i], char, len+1);
         tbx_type_malloc(rcap[i], char, 256);
@@ -128,11 +126,7 @@ int main(int argc, char **argv)
 
         gop_set_myid(gop_list[i], i);
         opque_add(q, gop_list[i]);
-//     apr_sleep(0.1*APR_USEC_PER_SEC);
     }
-
-
-//return(0);
 
     err = 0;
     start_time = apr_time_now();
@@ -150,9 +144,6 @@ int main(int argc, char **argv)
             info_printf(lio_ifd, 0, "i=%d SUCCESS: op_status=%d error_code=%d dt=%lf\n", i, status.op_status, status.error_code, dt);
         }
     }
-
-//  free(iov);
-//  free(buffer);
 
     lio_shutdown();
 

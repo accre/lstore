@@ -49,7 +49,6 @@ int main(int argc, char **argv)
     op_status_t status;
     FILE *fd;
 
-//printf("argc=%d\n", argc);
     if (argc < 2) {
         printf("\n");
         printf("ex_inspect LIO_COMMON_OPTIONS [-bufsize n] [-force] inspect_opt file.ex3\n");
@@ -170,10 +169,6 @@ int main(int argc, char **argv)
     //** Store the updated exnode back to disk
     exp_out = exnode_exchange_create(EX_TEXT);
     exnode_serialize(ex, exp_out);
-//  printf("Updated remote: %s\n", fname);
-//  printf("-----------------------------------------------------\n");
-//  printf("%s", exp_out->text);
-//  printf("-----------------------------------------------------\n");
 
     fd = fopen(fname, "w");
     fprintf(fd, "%s", exp_out->text.text);

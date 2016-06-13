@@ -427,10 +427,6 @@ op_generic_t *rs_simple_request(resource_service_fn_t *arg, data_attr_t *da, rs_
 
     log_printf(15, "rs_simple_request: END n_rid=%d\n", n_rid);
 
-//callback_t *cb = (callback_t *)que->qd.list->top->data;
-//op_generic_t *gop = (op_generic_t *)cb->priv;
-//log_printf(15, "top gid=%d reg=%d\n", gop_id(gop), gop_id(req[0].gop));
-
     apr_thread_mutex_unlock(rss->lock);
 
     if ((found == 0) || (err_cnt>0)) {
@@ -488,7 +484,6 @@ void rs_simple_rid_free(tbx_list_data_t *arg)
 
     tbx_list_destroy(rse->attr);
 
-//QWERTY  if (rse->rid_key != NULL) free(rse->rid_key);
     if (rse->ds_key != NULL) free(rse->ds_key);
 
     free(rse);
@@ -503,8 +498,6 @@ rss_rid_entry_t *rss_load_entry(tbx_inip_group_t *grp)
     rss_rid_entry_t *rse;
     tbx_inip_element_t *ele;
     char *key, *value;
-    // SO noisy
-    //log_printf(0, "loading\n");
     //** Create the new RS list
     tbx_type_malloc_clear(rse, rss_rid_entry_t, 1);
     rse->status = RS_STATUS_UP;
@@ -518,7 +511,6 @@ rss_rid_entry_t *rss_load_entry(tbx_inip_group_t *grp)
         if (strcmp(key, "rid_key") == 0) {  //** This is the RID so store it separate
             rse->rid_key = strdup(value);
             tbx_list_insert(rse->attr, key, rse->rid_key);
-//QWERTY        tbx_list_insert(rse->attr, key, strdup(value));
         } else if (strcmp(key, "ds_key") == 0) {  //** This is what gets passed to the data service
             rse->ds_key = strdup(value);
         } else if (strcmp(key, "status") == 0) {  //** Current status
@@ -726,11 +718,9 @@ int rss_perform_check(resource_service_fn_t *rs)
     apr_thread_mutex_lock(rss->lock);
     for (hi = apr_hash_first(NULL, rss->rid_mapping); hi != NULL; hi = apr_hash_next(hi)) {
         apr_hash_this(hi, (const void **)&rid, &klen, (void **)&ce);
-//     if (ce->re->status != RS_STATUS_IGNORE) {
         gop = ds_res_inquire(rss->ds, ce->ds_key, rss->da, ce->space, rss->check_timeout);
         gop_set_private(gop, ce);
         opque_add(q, gop);
-//     }
     }
     apr_thread_mutex_unlock(rss->lock);
 
@@ -912,7 +902,6 @@ int _rs_simple_load(resource_service_fn_t *res, char *fname)
             tbx_list_next(&it, (tbx_list_key_t **)&key, (tbx_list_data_t **)&rse);
 
             n = tbx_random_get_int64(0, rss->n_rids-1);
-//n = i;  //FIXME
             while (rss->random_array[n] != NULL) {
                 n = (n+1) % rss->n_rids;
             }
@@ -938,9 +927,6 @@ int _rs_simple_refresh(resource_service_fn_t *rs)
     rs_simple_priv_t *rss = (rs_simple_priv_t *)rs->priv;
     struct stat sbuf;
     int err;
-
-//log_printf(0, "SKIPPING refresh\n");
-//return(0);
 
     if (stat(rss->fname, &sbuf) != 0) {
         log_printf(1, "RS file missing!!! Using old definition. fname=%s\n", rss->fname);

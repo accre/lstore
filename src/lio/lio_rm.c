@@ -41,7 +41,6 @@ int main(int argc, char **argv)
     int recurse_depth = 0;
     int obj_types = OS_OBJECT_ANY;
 
-//printf("argc=%d\n", argc);
     if (argc < 2) {
         printf("\n");
         printf("lio_rm LIO_COMMON_OPTIONS [-rd recurse_depth] [-t object_types] LIO_PATH_OPTIONS\n");

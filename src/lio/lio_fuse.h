@@ -35,7 +35,6 @@ extern "C" {
 #define LFS_READ_MODE  1
 #define LFS_WRITE_MODE 2
 
-//#define LFS_TAPE_ATTR "user.tape_system"
 #define LFS_TAPE_ATTR "system.tape"
 
 #define LFS_INODE_OK     0  //** Everythings fine

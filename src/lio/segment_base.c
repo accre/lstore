@@ -147,7 +147,6 @@ op_status_t segment_copy_func(void *arg, int id)
         opque_add(q, wgop);
 
         //** Read in the next block
-//     rlen = (nbytes > bufsize) ? bufsize : nbytes;
         if (nbytes < 0) {
             rlen = bufsize;
         } else {

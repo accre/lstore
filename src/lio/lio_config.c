@@ -310,7 +310,6 @@ void lio_path_local_make_absolute(lio_path_tuple_t *tuple)
 
     log_printf(5, "initial path=%s\n", tuple->path);
     if (tuple->path == NULL) return;
-//  if (tuple->path[0] == '/') return;  //** Already an absolute path
 
     p = tuple->path;
     n = strlen(p);
@@ -767,8 +766,6 @@ void lio_destroy_nl(lio_config_t *lio)
     }
     free(lio->mq_section);
 
-//----
-
     if (lio->cfg_name != NULL) free(lio->cfg_name);
     if (lio->section_name != NULL) free(lio->section_name);
 
@@ -1089,7 +1086,6 @@ void lio_print_path_options(FILE *fd)
 int lio_parse_path_options(int *argc, char **argv, int auto_mode, lio_path_tuple_t *tuple, os_regex_table_t **rp, os_regex_table_t **ro)
 {
     int nargs, i;
-//  char *myargv[*argc];
 
     *rp = NULL;
     *ro = NULL;
@@ -1097,11 +1093,9 @@ int lio_parse_path_options(int *argc, char **argv, int auto_mode, lio_path_tuple
     if (*argc == 1) return(0);
 
     nargs = 1;  //** argv[0] is preserved as the calling name
-//  myargv[0] = argv[0];
 
     i=1;
     do {
-//log_printf(0, "argv[%d]=%s\n", i, argv[i]);
         if (strcmp(argv[i], "-rp") == 0) { //** Regex for path
             i++;
             *tuple = lio_path_resolve(auto_mode, argv[i]);  //** Pick off the user/host
@@ -1121,7 +1115,6 @@ int lio_parse_path_options(int *argc, char **argv, int auto_mode, lio_path_tuple
             *ro = os_path_glob2regex(argv[i]);
             i++;
         } else {
-//       myargv[nargs] = argv[i];
             if (i!=nargs)argv[nargs] = argv[i];
             nargs++;
             i++;
@@ -1131,10 +1124,8 @@ int lio_parse_path_options(int *argc, char **argv, int auto_mode, lio_path_tuple
     if (*argc == nargs) return(0);  //** Nothing was processed
 
     //** Adjust argv to reflect the parsed arguments
-//  memcpy(argv, myargv, sizeof(char *)*nargs);
     *argc = nargs;
 
-//for (i=0; i<nargs; i++) log_printf(0, "myargv[%d]=%s\n", i, argv[i]);
     return(1);
 }
 
@@ -1213,12 +1204,6 @@ int lio_init(int *argc, char ***argvp)
     apr_thread_mutex_create(&_lc_lock, APR_THREAD_MUTEX_DEFAULT, _lc_mpool);
     _lc_object_list = tbx_list_create(0, &tbx_list_string_compare, NULL, tbx_list_no_key_free, tbx_list_no_data_free);
 
-//argv = *argvp;
-//printf("start argc=%d\n", *argc);
-//for (i=0; i<*argc; i++) {
-//  printf("start argv[%d]=%s\n", i, argv[i]);
-//}
-
     //** Grab the exe name
 
     //** Determine the preferred environment variable based on the calling name to use for the args
@@ -1234,7 +1219,6 @@ int lio_init(int *argc, char ***argvp)
         i++;
     }
     var[k+i] = 0;
-//  free(name);
 
     env = getenv(var); //** Get the exe based options if available
     if (env == NULL) env = getenv("LIO_OPTIONS");  //** If not get the global default
@@ -1254,10 +1238,7 @@ int lio_init(int *argc, char ***argvp)
             *argvp = myargv;
             *argc = ll;
             free(eargv);
-//printf("after merge argc=%d\n", *argc);
-//for (i=0; i<*argc; i++) {
-//  printf("merge argv[%d]=%s\n", i, argv[i]);
-//}
+
         }
     }
 
@@ -1277,7 +1258,6 @@ int lio_init(int *argc, char ***argvp)
     if (*argc < 2) goto no_args;  //** Nothing to parse
 
     do {
-//printf("argv[%d]=%s\n", i, argv[i]);
         if (strcmp(argv[i], "-d") == 0) { //** Enable debugging
             i++;
             ll_override = atoi(argv[i]);
@@ -1324,7 +1304,6 @@ int lio_init(int *argc, char ***argvp)
             i++;
         } else {
             myargv[nargs] = argv[i];
-//printf("myargv[%d]=%s\n", nargs, argv[i]);
             nargs++;
             i++;
         }
@@ -1382,12 +1361,6 @@ no_args:
     if (userid != NULL) free(userid);
 
     lio_find_lfs_mounts();  //** Make the global mount prefix table
-
-//argv = *argvp;
-//printf("end argc=%d\n", *argc);
-//for (i=0; i<*argc; i++) {
-//  printf("end argv[%d]=%s\n", i, argv[i]);
-//}
 
     log_printf(1, "INIT completed\n");
 

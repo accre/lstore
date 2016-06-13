@@ -211,8 +211,6 @@ op_status_t exnode_clone_func(void *arg, int gid)
             if (did == segment_id(segptr[0])) ex->default_seg = segptr[1];
             tbx_list_insert(ex->view, &segment_id(segptr[1]), segptr[1]);
             tbx_atomic_inc(segptr[1]->ref_count);
-//err = segptr[1]->ref_count;
-//log_printf(0, "new id=" XIDT " ctr=%d\n", segment_id(segptr[1]), err);
         }
 
         gop_free(gop, OP_DESTROY);
@@ -346,7 +344,6 @@ exnode_exchange_t *exnode_exchange_load_file(char *fname)
     assert(fd != NULL);
     fseek(fd, 0, SEEK_END);
     i = ftell(fd);
-//  printf("exnode size=%d\n", i);
     tbx_type_malloc(text, char, i + 2);
     fseek(fd, 0, SEEK_SET);
     fread(text, i, 1, fd);

@@ -50,7 +50,6 @@ int main(int argc, char **argv)
 
     double dt;
 
-//printf("argc=%d\n", argc);
     if (argc < 2) {
         printf("\n");
         printf("trace_replay LIO_COMMON_OPTIONS [-np n_at_once] [-i update_interval] [-path base_path] -template template.ex3 -t header.trh \n");

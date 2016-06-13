@@ -227,7 +227,6 @@ int _slog_insert_range(segment_t *seg, slog_range_t *r)
     if (ir != NULL) {
         irlo = ir->data_offset + ir->hi - ir->lo + 1;
         if (irlo == r->data_offset) {  //** Can combine ranges
-//log_printf(0, "Combining ranges r=(" XOT ", " XOT ", " XOT ") ir=(" XOT ", " XOT ", " XOT ")\n", r->lo, r->hi, r->data_offset, ir->lo, ir->hi, ir->data_offset);
             r->lo = ir->lo;
             r->data_offset = ir->data_offset;
             tbx_isl_remove(s->mapping, (tbx_sl_key_t *)&(ir->lo), (tbx_sl_key_t *)&(ir->hi), (tbx_sl_data_t *)ir);

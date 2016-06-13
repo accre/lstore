@@ -108,7 +108,6 @@ typedef struct {
     int c_ex;
     int n_iov;
     int c_iov;
-//  ex_off_t offset;
     ex_off_t len;
 } lun_rw_row_t;
 
@@ -310,7 +309,6 @@ int slun_row_placement_fix(segment_t *seg, data_attr_t *da, seglun_row_t *b, int
         opque_start_execution(q);
         for (j=0; j<m; j++) {
             i = missing[j];
-//log_printf(0, "missing[%d]=%d rid_key=%s\n", j, missing[j], req[j].rid_key);
             if (ds_get_cap(db[j]->ds, db[j]->cap, DS_CAP_READ) != NULL) {
                 db[j]->rid_key = req[j].rid_key;
                 req[j].rid_key = NULL;  //** Cleanup
@@ -323,7 +321,6 @@ int slun_row_placement_fix(segment_t *seg, data_attr_t *da, seglun_row_t *b, int
                 gop_set_myid(gop, j);
                 opque_add(q, gop);
             } else {  //** Make sure we exclude the RID key on the next round due to the failure
-//           log_printf(15, "Excluding rid_key=%s on next round\n", req[j].rid_key);
                 data_block_destroy(db[j]);
 
                 if (req[j].rid_key != NULL) {
@@ -334,9 +331,6 @@ int slun_row_placement_fix(segment_t *seg, data_attr_t *da, seglun_row_t *b, int
                     cleanup_index++;
                     rs_query_add(s->rs, &rsq, RSQ_BASE_OP_NOT, NULL, 0, NULL, 0);
                     rs_query_add(s->rs, &rsq, RSQ_BASE_OP_AND, NULL, 0, NULL, 0);
-//char *qstr = rs_query_print(s->rs, rsq);
-//log_printf(0, "rsq=%s\n", qstr);
-//free(qstr);
                 } else if (block_status[i] == -103) {  //** Can't move the allocation so unflag it
                     if (rid_pending[i] != NULL) {
                         apr_thread_mutex_lock(rid_lock);
@@ -419,17 +413,12 @@ int slun_row_placement_fix(segment_t *seg, data_attr_t *da, seglun_row_t *b, int
 
         //** Clean up
         for (i=0; i<k; i++) {
-//log_printf(0, "dbold[%d]=%d\n", i, dbold[i]->ref_count);
             tbx_atomic_dec(dbold[i]->ref_count);
             data_block_destroy(dbold[i]);
         }
 
         todo= 0;
         for (i=0; i<n_devices; i++) if (block_status[i] != 0) todo++;
-
-//this leads to placement violations!!!!     todo = n_devices;
-//     for (i=0; i<n_devices; i++) if ((block_status[i] == 0) || (block_status[i] == -103)) todo--;
-
         loop++;
     } while ((loop < 5) && (todo > 0));
 
@@ -441,8 +430,6 @@ int slun_row_placement_fix(segment_t *seg, data_attr_t *da, seglun_row_t *b, int
         }
     }
     rs_query_destroy(s->rs, rsq);
-
-//log_printf(0, "todo=%d\n", todo);
 
     return(todo);
 }
@@ -502,20 +489,6 @@ int slun_row_size_check(segment_t *seg, data_attr_t *da, seglun_row_t *b, int *b
                 block_status[i] = 1;
                 n_missing++;
             } else {   //** Size is screwed up
-//####
-//if (i == 0) {
-//log_printf(0, "dbg_trigger=%d\n", dbg_trigger);
-//  if (dbg_trigger > 0) {
-//log_printf(0, "dbg_trigger=%d FORCING a FAILURE\n", dbg_trigger);
-//     gop = gop_dummy(op_failure_status);
-//  } else {
-//     gop = ds_truncate(b->block[i].data->ds, da, ds_get_cap(b->block[i].data->ds, b->block[i].data->cap, DS_CAP_MANAGE), seg_size, timeout);
-//  }
-//  dbg_trigger++;
-//} else {
-//  gop = ds_truncate(b->block[i].data->ds, da, ds_get_cap(b->block[i].data->ds, b->block[i].data->cap, DS_CAP_MANAGE), seg_size, timeout);
-//}
-//#### ====to enable code uncomment block above and comment the line below=====
                 gop = ds_truncate(b->block[i].data->ds, da, ds_get_cap(b->block[i].data->ds, b->block[i].data->cap, DS_CAP_MANAGE), seg_size, timeout);
                 gop_set_myid(gop, i);
                 opque_add(q, gop);
@@ -652,10 +625,8 @@ int slun_row_replace_fix(segment_t *seg, data_attr_t *da, seglun_row_t *b, int *
                 req_list[m].size = b->block_len;
 
                 //** Make a new block and copy the old data
-//log_printf(0, "block[%d].data=%p\n", i, b->block[i].data);
                 attr_stack = NULL;
                 if (b->block[i].data != NULL) {
-//log_printf(0, "old b.data->id=" XIDT "\n", b->block[i].data->id);
                     db = b->block[i].data;
                     attr_stack = db->attr_stack;
                     db->attr_stack = NULL;
@@ -672,7 +643,6 @@ int slun_row_replace_fix(segment_t *seg, data_attr_t *da, seglun_row_t *b, int *
                 } else {
                     b->block[i].data = data_block_create(s->ds);
                 }
-//log_printf(0, "new b.data->id=" XIDT "\n", b->block[i].data->id);
                 cap_list[m] = b->block[i].data->cap;
                 b->block[i].data->rid_key = NULL;
                 b->block[i].data->attr_stack = attr_stack;
@@ -691,12 +661,10 @@ int slun_row_replace_fix(segment_t *seg, data_attr_t *da, seglun_row_t *b, int *
 
             migrate = data_block_get_attr(b->block[i].data, "migrate");
             if (migrate != NULL) {
-//log_printf(0, "i=%d migrate[" XIDT "]=%s\n", i, b->block[i].data->id, migrate);
                 hints_list[j].local_rsq = rs_query_parse(s->rs, migrate);
             } else {
                 hints_list[j].local_rsq = NULL;
             }
-//log_printf(0, "i=%d ngood=%d nbad=%d\n", i, ngood, nbad);
         }
 
         //** Execute the Query
@@ -1120,7 +1088,6 @@ void lun_row_decompose(segment_t *seg, lun_rw_row_t *rw_buf, seglun_row_t *b, ex
     int err, dev, ss, stripe_shift;
     ex_off_t offset[s->n_devices], len[s->n_devices];
     tbx_tbuf_var_t tbv;
-//ex_off_t dummy;
 
     lo = start;
     hi = lo + rwlen - 1;
@@ -1153,13 +1120,11 @@ void lun_row_decompose(segment_t *seg, lun_rw_row_t *rw_buf, seglun_row_t *b, ex
     stripe_shift = ss*s->n_shift;
     stripe_off = ss * s->stripe_size;
     while (stripe_off <= hi) {
-//log_printf(15, "ss=%d stripe_off=" XOT " stripe_shift=%d\n", ss, stripe_off, stripe_shift);
         for (i=0; i< s->n_devices; i++) {
             dev = (i+stripe_shift) % s->n_devices;
             chunk_off = stripe_off + dev * s->chunk_size;
             chunk_end = chunk_off + s->chunk_size - 1;
             rwb = &(rw_buf[i]);
-//log_printf(15, " i=%d dev=%d chunk_off=" XOT " chunk_end=" XOT "\n", i, dev, chunk_off, chunk_end);
 
             if ((chunk_end >= lo) && (chunk_off <= hi)) {
                 begin = (chunk_off < lo) ? lo - chunk_off: 0;
@@ -1172,7 +1137,6 @@ void lun_row_decompose(segment_t *seg, lun_rw_row_t *rw_buf, seglun_row_t *b, ex
                 len[i] += nbytes;
 
                 pos = bpos + chunk_off + begin - lo;
-//log_printf(15, "begin=" XOT " end=" XOT " nbytes=" XOT " bpos=" XOT "\n", begin, end, nbytes, pos);
 
                 nleft = nbytes;
                 tbv.nbytes = nleft;
@@ -1186,8 +1150,6 @@ void lun_row_decompose(segment_t *seg, lun_rw_row_t *rw_buf, seglun_row_t *b, ex
                     }
                     for (k=0; k<tbv.n_iov; k++) {
                         rwb->iov[rwb->n_iov + k] = tbv.buffer[k];
-//dummy = iov[i][c_iov[i]+k].iov_len;
-//log_printf(15, "iov[%d][%d] -- iov_len=" XOT " iov_base=%p\n", i, c_iov[i]+k, dummy, iov[i][c_iov[i]+k].iov_base);
                     }
                     rwb->n_iov += tbv.n_iov;
 
@@ -1205,7 +1167,6 @@ void lun_row_decompose(segment_t *seg, lun_rw_row_t *rw_buf, seglun_row_t *b, ex
     }
 
     for (i=0; i < s->n_devices; i++) {
-//log_printf(15, "i=%d off=" XOT " len=" XOT " n_iov=%d\n", i, rw_buf[i].offset, rw_buf[i].len, c_iov[i]);
         if (offset[i] >= 0) {
             j = rw_buf[i].n_ex;
             if (rw_buf[i].n_ex == rw_buf[i].c_ex) {
@@ -1345,7 +1306,6 @@ int seglun_row_decompose_test()
 
         s->n_devices = ndev;
         s->chunk_size = 16*1024;
-//s->chunk_size = 16000;
         s->stripe_size = s->n_devices * s->chunk_size;
         s->n_shift = 1;
 
@@ -1383,8 +1343,6 @@ int seglun_row_decompose_test()
                 //** Init the dest buf for the test
                 len = tbx_random_get_int64(0, bufsize-1);
                 offset = tbx_random_get_int64(0,bufsize-len-1);
-//len = 30000;
-//offset = 8000;
                 k = len / niov;
                 for (i=0; i<niov; i++) {
                     iovbuf[i].iov_base = &(buf[i*k]);
@@ -1595,10 +1553,6 @@ op_status_t seglun_rw_op(segment_t *seg, data_attr_t *da, segment_rw_hints_t *rw
                               gop_dummy(blacklist_status);
                     }
                 } else {
-//FORCE ERROR -- Force a failure on all writes to the first allocation for testing purposes
-//if (i==0) {
-//  rwb_table[i].len = 0;
-//} else {
                     if (rwb_table[j+i].n_iov == 1) {
                         gop = (bl_rid == NULL) ? ds_write(b->block[i].data->ds, da, ds_get_cap(b->block[i].data->ds, b->block[i].data->cap, DS_CAP_WRITE),
                                                           rwb_table[j+i].ex_iov[0].offset, &(rwb_table[j+i].buffer), 0, rwb_table[j+i].len, timeout) :
@@ -1608,7 +1562,6 @@ op_status_t seglun_rw_op(segment_t *seg, data_attr_t *da, segment_rw_hints_t *rw
                                                            rwb_table[j + i].n_ex, rwb_table[j+i].ex_iov, &(rwb_table[j+i].buffer), 0, rwb_table[j+i].len, timeout) :
                               gop_dummy(blacklist_status);
                     }
-//}
                 }
 
                 rwb_table[j+i].gop = gop;
@@ -1693,7 +1646,6 @@ op_status_t seglun_rw_op(segment_t *seg, data_attr_t *da, segment_rw_hints_t *rw
             }
 
             if (nerr > maxerr) maxerr = nerr;
-//        free(rwb_table);
         }
 
         log_printf(15, "END stage maxerr=%d\n", maxerr);
@@ -1748,14 +1700,11 @@ op_status_t seglun_rw_func(void *arg, int id)
     log_printf(2, "sid=" XIDT " n_iov=%d off[0]=" XOT " len[0]=" XOT " max_size=" XOT " used_size=" XOT "\n",
                segment_id(sw->seg), sw->n_iov, sw->iov[0].offset, sw->iov[0].len, s->total_size, s->used_size);
 
-//  err = OP_STATE_SUCCESS;
-
     //** Find the max extent;
     maxpos = 0;
     for (i=0; i<sw->n_iov; i++) {
         pos = sw->iov[i].offset + sw->iov[i].len - 1;
         if (pos > maxpos) maxpos = pos;
-//log_printf(15, "i=%d off=" XOT " len=" XOT " pos=" XOT " maxpos=" XOT "\n", i, sw->iov[i].offset, sw->iov[i].len, pos, maxpos);
     }
 
 
@@ -1800,7 +1749,6 @@ op_status_t seglun_rw_func(void *arg, int id)
     now = apr_time_now();
     status = seglun_rw_op(sw->seg, sw->da, sw->rw_hints, sw->n_iov, sw->iov, sw->buffer, sw->boff, sw->rw_mode, sw->timeout);
     now = apr_time_now() - now;
-//  if (status.op_status != OP_STATE_SUCCESS) err = OP_STATE_FAILURE;
     log_printf(15, "After exec err=%d\n", status.op_status);
 
     segment_lock(sw->seg);
@@ -2058,7 +2006,6 @@ op_status_t seglun_inspect_func(void *arg, int id)
     }
     args.query = query;
 
-//info_printf(si->fd, 1, "local_query=%p\n", si->query);
     info_printf(si->fd, 1, XIDT ": segment information: n_devices=%d n_shift=%d chunk_size=" XOT "  used_size=" XOT " total_size=" XOT " mode=%d\n", segment_id(si->seg), s->n_devices, s->n_shift, s->chunk_size, s->used_size, s->total_size, si->inspect_mode);
 
     si->args->n_dev_rows = tbx_isl_count2(s->isl, (tbx_sl_key_t *)NULL, (tbx_sl_key_t *)NULL);
@@ -2253,9 +2200,6 @@ op_generic_t *seglun_inspect(segment_t *seg, data_attr_t *da, tbx_log_fd_t *fd, 
     gop = NULL;
     option = mode & INSPECT_COMMAND_BITS;
 
-//log_printf(0, "mode=%d option=%d\n", mode, option); tbx_log_flush();
-//printf("mode=%d option=%d\n", mode, option); fflush(stdout);
-
     switch (option) {
     case (INSPECT_QUICK_CHECK):
     case (INSPECT_SCAN_CHECK):
@@ -2274,7 +2218,6 @@ op_generic_t *seglun_inspect(segment_t *seg, data_attr_t *da, tbx_log_fd_t *fd, 
         gop = new_thread_pool_op(s->tpc, NULL, seglun_inspect_func, (void *)si, free, 1);
         break;
     case (INSPECT_MIGRATE):
-//log_printf(0, "INSPECT_MIGRATE\n");
         tbx_type_malloc(si, seglun_inspect_t, 1);
         si->seg = seg;
         si->da = da;
@@ -2299,7 +2242,6 @@ op_generic_t *seglun_inspect(segment_t *seg, data_attr_t *da, tbx_log_fd_t *fd, 
         it = tbx_isl_iter_search(s->isl, (tbx_sl_key_t *)NULL, (tbx_sl_key_t *)NULL);
         err.error_code = 0;
         while ((b = (seglun_row_t *)tbx_isl_next(&it)) != NULL) {
-            //log_printf(10, "seg=" XIDT " block seg_off=" XOT " end=" XOT " row_len=" XOT "\n", segment_id(seg), b->seg_offset, b->seg_end, b->row_len);
             for (i=0; i < s->n_devices; i++) {
                 err.error_code += b->block[i].write_err_count;
             }
@@ -2503,9 +2445,7 @@ op_generic_t *seglun_clone(segment_t *seg, data_attr_t *da, segment_t **clone_se
     int use_existing = (*clone_seg != NULL) ? 1 : 0;
 
     //** Make the base segment
-//log_printf(0, " before clone create\n");
     if (use_existing == 0) *clone_seg = segment_lun_create(seg->ess);
-//log_printf(0, " after clone create\n");
     clone = *clone_seg;
     sd = (seglun_priv_t *)clone->priv;
 
@@ -2646,20 +2586,14 @@ int seglun_serialize_text_try(segment_t *seg, char *segbuf, int bufsize, exnode_
     //** Cycle through the blocks storing both the segment block information and also the cap blocks
     it = tbx_isl_iter_search(s->isl, (tbx_sl_key_t *)NULL, (tbx_sl_key_t *)NULL);
     while ((b = (seglun_row_t *)tbx_isl_next(&it)) != NULL) {
-
-//log_printf(0, "seg=" XIDT " block seg_off=" XOT " end=" XOT " row_len=" XOT "\n", segment_id(seg), b->seg_offset, b->seg_end, b->row_len);
-
         //** Add the segment stripe information
         tbx_append_printf(segbuf, &sused, bufsize, "row=" XOT ":" XOT ":" XOT, b->seg_offset, b->seg_end, b->row_len);
         for (i=0; i < s->n_devices; i++) {
             data_block_serialize(b->block[i].data, cap_exp); //** Add the cap
-//log_printf(0, "seg=" XIDT "        dev=%d bid=" XIDT " cap_offset=" XOT "\n", segment_id(seg), i, b->block[i].data->id, b->block[i].cap_offset);
             tbx_append_printf(segbuf, &sused, bufsize, ":" XIDT ":" XOT, b->block[i].data->id, b->block[i].cap_offset);
         }
         err = tbx_append_printf(segbuf, &sused, bufsize, "\n");
         if (err == -1) break;  //** Kick out on the first error
-//log_printf(0, "seg=" XIDT " bufsize=%d sused=%d err=%d\n", segment_id(seg), bufsize, sused, err);
-
     }
 
     return(err);
@@ -2707,8 +2641,6 @@ int seglun_serialize_text(segment_t *seg, exnode_exchange_t *exp)
 
 int seglun_serialize_proto(segment_t *seg, exnode_exchange_t *exp)
 {
-//  seglun_priv_t *s = (seglun_priv_t *)seg->priv;
-
     return(-1);
 }
 
@@ -2924,10 +2856,6 @@ segment_t *segment_lun_create(void *arg)
     seglun_priv_t *s;
     segment_t *seg;
 
-//log_printf(15, "ESS es=%p\n", es);
-//log_printf(15, "ESS es->rs=%p\n", es->rs);
-
-//log_printf(15, "creating new segment\n");
     //** Make the space
     tbx_type_malloc_clear(seg, segment_t, 1);
     tbx_type_malloc_clear(s, seglun_priv_t, 1);

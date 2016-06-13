@@ -40,7 +40,6 @@
 typedef struct {
     uint64_t id;
     int mode;
-//  char **config;
     resource_service_fn_t *rs;
 }  rsrc_gop_rid_config_t;
 
@@ -543,8 +542,6 @@ resource_service_fn_t *rs_remote_client_create(void *arg, tbx_inip_file_t *fd, c
     }
     free(ctype);
     free(stype);
-
-
 
     //** Set up the fn ptrs
     rs->get_rid_config = rsrc_get_rid_config;

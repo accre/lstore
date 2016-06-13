@@ -39,8 +39,6 @@ int main(int argc, char **argv)
     lio_path_tuple_t stuple, dtuple;
     char fullname[OS_PATH_MAX];
 
-//printf("argc=%d\n", argc);
-
     if (argc < 3) {
         printf("\n");
         printf("lio_ln LIO_COMMON_OPTIONS [-s] [-f] source_file linked_dest_file\n");
