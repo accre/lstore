@@ -40,7 +40,7 @@ struct service_manager_t {
 service_manager_t *clone_service_manager(service_manager_t *sm);
 service_manager_t *create_service_manager();
 void destroy_service_manager(service_manager_t *sm);
-LIO_API void *lookup_service(service_manager_t *sm, char *service_section, char *service_name);
+LIO_API void *lio_lookup_service(service_manager_t *sm, char *service_section, char *service_name);
 int add_service(service_manager_t *sm, char *service_section, char *service_name, void *service);
 int remove_service(service_manager_t *sm, char *service_section, char *service_name);
 

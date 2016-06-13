@@ -102,14 +102,14 @@ int main(int argc, char **argv)
     }
 
     //** Load it
-    exp = exnode_exchange_load_file(fname);
+    exp = lio_exnode_exchange_load_file(fname);
 
     //** and parse it
-    ex = exnode_create();
-    exnode_deserialize(ex, exp, lio_gc->ess);
+    ex = lio_exnode_create();
+    lio_exnode_deserialize(ex, exp, lio_gc->ess);
 
     //** Get the default view to use
-    seg = exnode_get_default(ex);
+    seg = lio_exnode_default_get(ex);
     if (seg == NULL) {
         printf("No default segment!  Aborting!\n");
         abort();
@@ -191,18 +191,18 @@ int main(int argc, char **argv)
     }
 
     //** Store the updated exnode back to disk
-    exp_out = exnode_exchange_create(EX_TEXT);
-    exnode_serialize(ex, exp_out);
+    exp_out = lio_exnode_exchange_create(EX_TEXT);
+    lio_exnode_serialize(ex, exp_out);
 
     fd_out = fopen(fname, "w");
     fprintf(fd_out, "%s", exp_out->text.text);
     fclose(fd_out);
-    exnode_exchange_destroy(exp_out);
+    lio_exnode_exchange_destroy(exp_out);
 
-    exnode_exchange_destroy(exp);
+    lio_exnode_exchange_destroy(exp);
 
     //** Shut everything down;
-    exnode_destroy(ex);
+    lio_exnode_destroy(ex);
 
     lio_shutdown();
 

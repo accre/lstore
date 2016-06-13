@@ -181,11 +181,11 @@ int main(int argc, char **argv)
             attr_fmt = "\t%s\\n";
         } else if (strcmp(argv[i], "-ga") == 0) {  //**  Attribute glob
             i++;
-            attr_regex = os_path_glob2regex(argv[i]);
+            attr_regex = lio_os_path_glob2regex(argv[i]);
             i++;
         } else if (strcmp(argv[i], "-ra") == 0) {  //**  Attribute regex
             i++;
-            attr_regex = os_regex2table(argv[i]);
+            attr_regex = lio_os_regex2table(argv[i]);
             i++;
         } else if (strcmp(argv[i], "-al") == 0) {  //**  Attribute list
             i++;
@@ -219,7 +219,7 @@ int main(int argc, char **argv)
     }
 
     if ((n_keys_al == 0) && (attr_regex == NULL)) { //** No attributes specified so default to everything
-        attr_regex = os_path_glob2regex("*");
+        attr_regex = lio_os_path_glob2regex("*");
     }
 
 
@@ -229,7 +229,7 @@ int main(int argc, char **argv)
             //** Create the simple path iterator
             tuple = lio_path_resolve(lio_gc->auto_translate, argv[j]);
             lio_path_wildcard_auto_append(&tuple);
-            rp_single = os_path_glob2regex(tuple.path);
+            rp_single = lio_os_path_glob2regex(tuple.path);
         } else {
             rg_mode = 0;  //** Use the initial rp
         }
@@ -290,11 +290,11 @@ int main(int argc, char **argv)
 
         lio_path_release(&tuple);
         if (rp_single != NULL) {
-            os_regex_table_destroy(rp_single);
+            lio_os_regex_table_destroy(rp_single);
             rp_single = NULL;
         }
         if (ro_single != NULL) {
-            os_regex_table_destroy(ro_single);
+            lio_os_regex_table_destroy(ro_single);
             ro_single = NULL;
         }
     }
@@ -302,7 +302,7 @@ int main(int argc, char **argv)
     log_printf(15, "after main loop\n");
 
     if (attr_regex != NULL) {
-        os_regex_table_destroy(attr_regex);
+        lio_os_regex_table_destroy(attr_regex);
     }
 
     free(new_obj_fmt);

@@ -118,14 +118,14 @@ struct op_generic_t {
 #define OP_EXEC_QUEUE    100
 #define OP_EXEC_DIRECT   101
 
-GOP_API extern op_status_t op_success_status;
-GOP_API extern op_status_t op_failure_status;
+GOP_API extern op_status_t gop_success_status;
+GOP_API extern op_status_t gop_failure_status;
 extern op_status_t op_retry_status;
 extern op_status_t op_dead_status;
 extern op_status_t op_timeout_status;
 extern op_status_t op_invalid_host_status;
 extern op_status_t op_cant_connect_status;
-GOP_API extern op_status_t op_error_status;
+GOP_API extern op_status_t gop_error_status;
 
 
 extern tbx_atomic_unit32_t _opque_counter;
@@ -161,7 +161,7 @@ GOP_API int gop_tasks_left(op_generic_t *gop);
 int gop_will_block(op_generic_t *g);
 GOP_API int gop_waitall(op_generic_t *gop);
 GOP_API op_generic_t *gop_waitany(op_generic_t *gop);
-GOP_API op_generic_t *gop_timed_waitany(op_generic_t *g, int dt);
+GOP_API op_generic_t *gop_waitany_timed(op_generic_t *g, int dt);
 int gop_timed_waitall(op_generic_t *g, int dt);
 GOP_API void gop_start_execution(op_generic_t *gop);
 GOP_API void gop_finished_submission(op_generic_t *gop);

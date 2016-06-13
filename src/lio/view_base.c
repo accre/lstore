@@ -28,10 +28,10 @@
 
 
 //***********************************************************************
-// view_insert - Inserts a view into an existing exnode
+// lio_view_insert - Inserts a view into an existing exnode
 //***********************************************************************
 
-int view_insert(exnode_t *ex, segment_t *seg)
+int lio_view_insert(exnode_t *ex, segment_t *seg)
 {
     tbx_atomic_inc(seg->ref_count);
 

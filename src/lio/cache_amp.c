@@ -228,7 +228,7 @@ void *amp_dirty_thread(apr_thread_t *th, void *data)
         log_printf(15, "Dirty thread running.  dirty fraction=%lf dirty bytes=" XOT " inprogress=%d  cached segments=%d\n", df, c->stats.dirty_bytes, cp->flush_in_progress, tbx_list_key_count(c->segments));
 
         cp->flush_in_progress = 1;
-        q = new_opque();
+        q = gop_opque_new();
 
         n = tbx_list_key_count(c->segments);
         tbx_type_malloc(flush_list, segment_t *, n);
@@ -244,7 +244,7 @@ void *amp_dirty_thread(apr_thread_t *th, void *data)
             s->cache_check_in_progress++;  //** Flag it as being checked
             gop = cache_flush_range(seg, s->c->da, 0, -1, s->c->timeout);
             gop_set_myid(gop, i);
-            opque_add(q, gop);
+            gop_opque_add(q, gop);
             i++;
 
             tbx_list_next(&it, (tbx_list_key_t **)&id, (tbx_list_data_t **)&seg);
@@ -265,7 +265,7 @@ void *amp_dirty_thread(apr_thread_t *th, void *data)
 
             gop_free(gop, OP_DESTROY);
         }
-        opque_free(q, OP_DESTROY);
+        gop_opque_free(q, OP_DESTROY);
 
 
         cache_lock(c);
@@ -494,7 +494,7 @@ op_status_t amp_prefetch_fn(void *arg, int id)
     s->cache_check_in_progress--;  //** Flag it as being finished
     cache_unlock(s->c);
 
-    return(op_success_status);
+    return(gop_success_status);
 }
 
 //*******************************************************************************
@@ -567,7 +567,7 @@ void _amp_prefetch(segment_t *seg, ex_off_t lo, ex_off_t hi, int start_prefetch,
     ca->hi = hi_row;
     ca->start_prefetch = start_prefetch;
     ca->start_trigger = start_trigger;
-    gop = new_thread_pool_op(s->tpc_unlimited, NULL, amp_prefetch_fn, (void *)ca, free, 1);
+    gop = gop_tp_op_new(s->tpc_unlimited, NULL, amp_prefetch_fn, (void *)ca, free, 1);
     ca->gop = gop;
 
     gop_set_auto_destroy(gop, 1);
@@ -943,7 +943,7 @@ ex_off_t _amp_attempt_free_mem(cache_t *c, segment_t *page_seg, ex_off_t bytes_t
     sit = tbx_list_iter_search(table, tbx_list_first_key(table), 0);
     tbx_list_next(&sit, (tbx_list_key_t **)&segid, (tbx_list_data_t **)&ptable);
     if (ptable != NULL) {
-        q = new_opque();
+        q = gop_opque_new();
 
         while (ptable != NULL) {
             if ((ptable->hi - ptable->lo) < 10*s->page_size) ptable->hi = ptable->lo + 10*s->page_size;
@@ -952,7 +952,7 @@ ex_off_t _amp_attempt_free_mem(cache_t *c, segment_t *page_seg, ex_off_t bytes_t
             } else {
                 gop = cache_flush_range(ptable->seg, s->c->da, ptable->lo, ptable->hi + s->page_size - 1, s->c->timeout);
             }
-            opque_add(q, gop);
+            gop_opque_add(q, gop);
             tbx_pch_release(cp->free_page_tables, &(ptable->pch));
             tbx_list_next(&sit, (tbx_list_key_t **)&segid, (tbx_list_data_t **)&ptable);
         }
@@ -964,7 +964,7 @@ ex_off_t _amp_attempt_free_mem(cache_t *c, segment_t *page_seg, ex_off_t bytes_t
 
         //** Wait for any tasks to complete
         opque_waitall(q);
-        opque_free(q, OP_DESTROY);
+        gop_opque_free(q, OP_DESTROY);
 
         //** Had this when we came in
         cache_lock(c);

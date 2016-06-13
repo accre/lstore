@@ -155,48 +155,48 @@ op_status_t rsrc_response_get_config(void *task_arg, int tid)
 
     log_printf(5, "Processing rid_config response gid=%d\n", gop_id(task->gop));
 
-    status = op_success_status;
+    status = gop_success_status;
     arg = gop_get_private(task->gop);
     rsrc = (rs_remote_client_priv_t *)arg->rs->priv;
 
     //** Parse the response
     msg = task->response;
 
-    f = mq_msg_first(msg);
-    mq_get_frame(f, (void **)&data, &n);
+    f = gop_mq_msg_first(msg);
+    gop_mq_get_frame(f, (void **)&data, &n);
     if (n != 0) {  //** SHould be an empty frame
         log_printf(0, " ERROR:  Missing initial empty frame!\n");
-        status = op_failure_status;
+        status = gop_failure_status;
         goto fail;
     }
-    f = mq_msg_next(msg);
-    mq_get_frame(f, (void **)&data, &n);
+    f = gop_mq_msg_next(msg);
+    gop_mq_get_frame(f, (void **)&data, &n);
     if (mq_data_compare(data, n, MQF_VERSION_KEY, MQF_VERSION_SIZE) != 0) {
         log_printf(0, "ERROR:  Missing version frame!\n");
-        status = op_failure_status;
+        status = gop_failure_status;
         goto fail;
     }
-    f = mq_msg_next(msg);
-    mq_get_frame(f, (void **)&data, &n);
+    f = gop_mq_msg_next(msg);
+    gop_mq_get_frame(f, (void **)&data, &n);
     if (mq_data_compare(data, n, MQF_RESPONSE_KEY, MQF_RESPONSE_SIZE) != 0) {
         log_printf(0, " ERROR: Bad RESPONSE command frame\n");
-        status = op_failure_status;
+        status = gop_failure_status;
         goto fail;
     }
-    f = mq_msg_next(msg);
-    mq_get_frame(f, (void **)&id, &n);
+    f = gop_mq_msg_next(msg);
+    gop_mq_get_frame(f, (void **)&id, &n);
     if (n != sizeof(uint64_t)) {
         log_printf(0, " ERROR: Bad ID size!  Got %d should be sizeof(uint64_t)=%lu\n", n, sizeof(uint64_t));
-        status = op_failure_status;
+        status = gop_failure_status;
         goto fail;
     }
 
     //** Version frame
-    f = mq_msg_next(msg);
-    mq_get_frame(f, (void **)&data, &n);
+    f = gop_mq_msg_next(msg);
+    gop_mq_get_frame(f, (void **)&data, &n);
     if (n == 0) {
         log_printf(0, " ERROR: Missing version!\n");
-        status = op_failure_status;
+        status = gop_failure_status;
         goto fail;
     }
     data[n-1] = '\0';  //** The last character in a '\n' so replace it with a NULL terminator
@@ -206,27 +206,27 @@ op_status_t rsrc_response_get_config(void *task_arg, int tid)
     log_printf(5, "version=%s\n", data);
 
     //** Config frame
-    f = mq_msg_next(msg);
-    mq_get_frame(f, (void **)&config, &n_config);
+    f = gop_mq_msg_next(msg);
+    gop_mq_get_frame(f, (void **)&config, &n_config);
     if ((n_config == 0) && (arg->mode == 1)) {
         log_printf(0, " ERROR: Empty config!\n");
-        status = op_failure_status;
+        status = gop_failure_status;
         goto fail;
     }
     log_printf(5, "rid_config_len=%d\n", n_config);
 
     if (arg->id != *id) {
         log_printf(0, " ERROR: ID mismatch! id=" LU " gid=" LU "\n", *id, arg->id);
-        status = op_failure_status;
+        status = gop_failure_status;
         goto fail;
     }
-    log_printf(5, "mqid=%s\n", mq_id2str((char *)&(arg->id), sizeof(uint64_t), dt, sizeof(dt)));
+    log_printf(5, "mqid=%s\n", gop_mq_id2str((char *)&(arg->id), sizeof(uint64_t), dt, sizeof(dt)));
 
-    f = mq_msg_next(msg);
-    mq_get_frame(f, (void **)&data, &n);
+    f = gop_mq_msg_next(msg);
+    gop_mq_get_frame(f, (void **)&data, &n);
     if (n != 0) {  //** SHould be an empty frame
         log_printf(0, " ERROR:  Final initial empty frame!\n");
-        status = op_failure_status;
+        status = gop_failure_status;
         goto fail;
     }
 
@@ -245,7 +245,7 @@ op_status_t rsrc_response_get_config(void *task_arg, int tid)
         //** Now move it into the place of the child target
         err = apr_file_rename(fname_tmp, rsrc->child_target_file, rsrc->mpool);
         if (err != APR_SUCCESS) {
-            status = op_failure_status;
+            status = gop_failure_status;
             log_printf(0, "ERROR: updating target file!  tmp=%s targe=%s err=%d\n", fname_tmp, rsrc->child_target_file, err);
             fprintf(stderr, "ERROR: updating target file!  tmp=%s targe=%s err=%d\n", fname_tmp, rsrc->child_target_file, err);
         }
@@ -276,33 +276,33 @@ op_generic_t *rsrc_update_config_op(resource_service_fn_t *rs, int mode, int tim
     //** Form the message
     tbx_random_get_bytes(&(arg->id), sizeof(arg->id));
     if (mode != 0) rsrc->update_id = arg->id;  //** Only update the id for an actual wait and update
-    msg = mq_msg_new();
-    mq_msg_append_mem(msg, rsrc->host_remote_rs, strlen(rsrc->host_remote_rs), MQF_MSG_KEEP_DATA);
-    mq_msg_append_mem(msg, NULL, 0, MQF_MSG_KEEP_DATA);
-    mq_msg_append_mem(msg, MQF_VERSION_KEY, MQF_VERSION_SIZE, MQF_MSG_KEEP_DATA);
-    mq_msg_append_mem(msg, MQF_TRACKEXEC_KEY, MQF_TRACKEXEC_SIZE, MQF_MSG_KEEP_DATA);
+    msg = gop_mq_msg_new();
+    gop_mq_msg_append_mem(msg, rsrc->host_remote_rs, strlen(rsrc->host_remote_rs), MQF_MSG_KEEP_DATA);
+    gop_mq_msg_append_mem(msg, NULL, 0, MQF_MSG_KEEP_DATA);
+    gop_mq_msg_append_mem(msg, MQF_VERSION_KEY, MQF_VERSION_SIZE, MQF_MSG_KEEP_DATA);
+    gop_mq_msg_append_mem(msg, MQF_TRACKEXEC_KEY, MQF_TRACKEXEC_SIZE, MQF_MSG_KEEP_DATA);
 
-    mq_msg_append_mem(msg, &(arg->id), sizeof(uint64_t), MQF_MSG_KEEP_DATA);
+    gop_mq_msg_append_mem(msg, &(arg->id), sizeof(uint64_t), MQF_MSG_KEEP_DATA);
 
     if (mode == 0) {
-        mq_msg_append_mem(msg, RSR_GET_RID_CONFIG_KEY, RSR_GET_RID_CONFIG_SIZE, MQF_MSG_KEEP_DATA);
+        gop_mq_msg_append_mem(msg, RSR_GET_RID_CONFIG_KEY, RSR_GET_RID_CONFIG_SIZE, MQF_MSG_KEEP_DATA);
     } else {
-        mq_msg_append_mem(msg, RSR_GET_UPDATE_CONFIG_KEY, RSR_GET_UPDATE_CONFIG_SIZE, MQF_MSG_KEEP_DATA);
+        gop_mq_msg_append_mem(msg, RSR_GET_UPDATE_CONFIG_KEY, RSR_GET_UPDATE_CONFIG_SIZE, MQF_MSG_KEEP_DATA);
         snprintf(dt, sizeof(dt), "%d\n", timeout);
-        mq_msg_append_mem(msg, strdup(dt), strlen(dt), MQF_MSG_AUTO_FREE);
+        gop_mq_msg_append_mem(msg, strdup(dt), strlen(dt), MQF_MSG_AUTO_FREE);
         snprintf(dt, sizeof(dt), "%d %d\n", rsrc->version.map_version, rsrc->version.status_version);
-        mq_msg_append_mem(msg, strdup(dt), strlen(dt), MQF_MSG_AUTO_FREE);
+        gop_mq_msg_append_mem(msg, strdup(dt), strlen(dt), MQF_MSG_AUTO_FREE);
     }
-    mq_msg_append_mem(msg, NULL, 0, MQF_MSG_KEEP_DATA);
+    gop_mq_msg_append_mem(msg, NULL, 0, MQF_MSG_KEEP_DATA);
 
     arg->rs = rs;
     arg->mode = mode;
 
     //** Make the gop
-    gop = new_mq_op(rsrc->mqc, msg, rsrc_response_get_config, arg, free, timeout);
+    gop = gop_mq_op_new(rsrc->mqc, msg, rsrc_response_get_config, arg, free, timeout);
     gop_set_private(gop, arg);
 
-    log_printf(5, "mqid=%s timeout=%d gid=%d\n", mq_id2str((char *)&(arg->id), sizeof(uint64_t), dt, sizeof(dt)), timeout, gop_id(gop));
+    log_printf(5, "mqid=%s timeout=%d gid=%d\n", gop_mq_id2str((char *)&(arg->id), sizeof(uint64_t), dt, sizeof(dt)), timeout, gop_id(gop));
 
     return(gop);
 }
@@ -347,20 +347,20 @@ void _rsrc_update_abort(resource_service_fn_t *rs)
 
     if (update_id == 0) return;
 
-    log_printf(5, "aborting mqid=%s\n", mq_id2str((char *)&update_id, sizeof(uint64_t), dt, sizeof(dt)));
+    log_printf(5, "aborting mqid=%s\n", gop_mq_id2str((char *)&update_id, sizeof(uint64_t), dt, sizeof(dt)));
 
     //** Form the message
-    msg = mq_msg_new();
-    mq_msg_append_mem(msg, rsrc->host_remote_rs, strlen(rsrc->host_remote_rs), MQF_MSG_KEEP_DATA);
-    mq_msg_append_mem(msg, NULL, 0, MQF_MSG_KEEP_DATA);
-    mq_msg_append_mem(msg, MQF_VERSION_KEY, MQF_VERSION_SIZE, MQF_MSG_KEEP_DATA);
-    mq_msg_append_mem(msg, MQF_EXEC_KEY, MQF_EXEC_SIZE, MQF_MSG_KEEP_DATA);
-    mq_msg_append_mem(msg, &update_id, sizeof(uint64_t), MQF_MSG_KEEP_DATA);
-    mq_msg_append_mem(msg, RSR_ABORT_KEY, RSR_ABORT_SIZE, MQF_MSG_KEEP_DATA);
-    mq_msg_append_mem(msg, NULL, 0, MQF_MSG_KEEP_DATA);
+    msg = gop_mq_msg_new();
+    gop_mq_msg_append_mem(msg, rsrc->host_remote_rs, strlen(rsrc->host_remote_rs), MQF_MSG_KEEP_DATA);
+    gop_mq_msg_append_mem(msg, NULL, 0, MQF_MSG_KEEP_DATA);
+    gop_mq_msg_append_mem(msg, MQF_VERSION_KEY, MQF_VERSION_SIZE, MQF_MSG_KEEP_DATA);
+    gop_mq_msg_append_mem(msg, MQF_EXEC_KEY, MQF_EXEC_SIZE, MQF_MSG_KEEP_DATA);
+    gop_mq_msg_append_mem(msg, &update_id, sizeof(uint64_t), MQF_MSG_KEEP_DATA);
+    gop_mq_msg_append_mem(msg, RSR_ABORT_KEY, RSR_ABORT_SIZE, MQF_MSG_KEEP_DATA);
+    gop_mq_msg_append_mem(msg, NULL, 0, MQF_MSG_KEEP_DATA);
 
     //** Make the gop
-    gop = new_mq_op(rsrc->mqc, msg, NULL, NULL, free, 60);
+    gop = gop_mq_op_new(rsrc->mqc, msg, NULL, NULL, free, 60);
 
     //** And execute it
     gop_waitany(gop);
@@ -384,8 +384,8 @@ void *rsrc_check_thread(apr_thread_t *th, void *data)
         if (gop == NULL) {
             gop = rsrc_update_config_op(rs, 1, rsrc->check_interval);
         }
-        log_printf(15, "before gop_timed_waitany gid=%d timeout=%d\n", gop_id(gop), rsrc->check_interval);
-        g = gop_timed_waitany(gop, 1);
+        log_printf(15, "before gop_waitany_timed gid=%d timeout=%d\n", gop_id(gop), rsrc->check_interval);
+        g = gop_waitany_timed(gop, 1);
         log_printf(15, "after gop_waitany g=%p\n", g);
         tbx_log_flush();
 
@@ -406,7 +406,7 @@ void *rsrc_check_thread(apr_thread_t *th, void *data)
     //** Still have a pending GOP so abort it
     if (gop != NULL) {
         _rsrc_update_abort(rs);
-        op_generic_t *g = gop_timed_waitany(gop, 10);
+        op_generic_t *g = gop_waitany_timed(gop, 10);
         if (g) {
             gop_free(gop, OP_DESTROY);
         } else {
@@ -483,13 +483,13 @@ resource_service_fn_t *rs_remote_client_create(void *arg, tbx_inip_file_t *fd, c
     rsrc->check_interval = tbx_inip_get_integer(fd, section, "check_interval", 3600);
 
     //** Get the MQC
-    rsrc->mqc = lookup_service(ess, ESS_RUNNING, ESS_MQ); assert(rsrc->mqc != NULL);
+    rsrc->mqc = lio_lookup_service(ess, ESS_RUNNING, ESS_MQ); assert(rsrc->mqc != NULL);
 
     //** Check if we are running the remote RS locally.  This means we are doing testing
     stype = tbx_inip_get_string(fd, section, "rrs_test", NULL);
     if (stype != NULL) {
         ctype = tbx_inip_get_string(fd, stype, "type", RS_TYPE_SIMPLE);
-        rs_create = lookup_service(ess, RS_SM_AVAILABLE, ctype);
+        rs_create = lio_lookup_service(ess, RS_SM_AVAILABLE, ctype);
         rsrc->rrs_test = (*rs_create)(ess, fd, stype);
         if (rsrc->rrs_test == NULL) {
             log_printf(1, "ERROR loading test RRS!  type=%s section=%s\n", ctype, stype);
@@ -533,7 +533,7 @@ resource_service_fn_t *rs_remote_client_create(void *arg, tbx_inip_file_t *fd, c
 
     //** and load it
     ctype = tbx_inip_get_string(fd, stype, "type", RS_TYPE_SIMPLE);
-    rs_create = lookup_service(ess, RS_SM_AVAILABLE, ctype);
+    rs_create = lio_lookup_service(ess, RS_SM_AVAILABLE, ctype);
     rsrc->rs_child = (*rs_create)(ess, fd, stype);
     if (rsrc->rs_child == NULL) {
         log_printf(1, "ERROR loading child RS!  type=%s section=%s\n", ctype, stype);

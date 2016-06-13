@@ -143,7 +143,7 @@ int osrc_add_creds(object_service_fn_t *os, creds_t *creds, mq_msg_t *msg)
     int len;
 
     chandle = an_cred_get_type_field(creds, AUTHN_INDEX_SHARED_HANDLE, &len);
-    mq_msg_append_mem(msg, chandle, len, MQF_MSG_KEEP_DATA);
+    gop_mq_msg_append_mem(msg, chandle, len, MQF_MSG_KEEP_DATA);
 
     return(0);
 }
@@ -160,9 +160,9 @@ op_status_t osrc_response_status(void *task_arg, int tid)
     log_printf(5, "START\n");
 
     //** Parse the response
-    mq_remove_header(task->response, 1);
+    gop_mq_remove_header(task->response, 1);
 
-    status = mq_read_status_frame(mq_msg_first(task->response), 0);
+    status = gop_mq_read_status_frame(gop_mq_msg_first(task->response), 0);
     log_printf(5, "END status=%d %d\n", status.op_status, status.error_code);
 
     return(status);
@@ -183,22 +183,22 @@ op_status_t osrc_response_stream_status(void *task_arg, int tid)
 
     log_printf(5, "START\n");
 
-    status = op_success_status;
+    status = gop_success_status;
 
     //** Parse the response
-    mq_remove_header(task->response, 1);
+    gop_mq_remove_header(task->response, 1);
 
-    mqs = mq_stream_read_create(osrc->mqc, osrc->ongoing, osrc->host_id, osrc->host_id_len, mq_msg_first(task->response), osrc->remote_host, osrc->stream_timeout);
+    mqs = gop_gop_mq_stream_read_create(osrc->mqc, osrc->ongoing, osrc->host_id, osrc->host_id_len, gop_mq_msg_first(task->response), osrc->remote_host, osrc->stream_timeout);
 
     //** Parse the status
-    status.op_status = mq_stream_read_varint(mqs, &err);
+    status.op_status = gop_gop_mq_stream_read_varint(mqs, &err);
     log_printf(15, "op_status=%d\n", status.op_status);
-    status.error_code = mq_stream_read_varint(mqs, &err);
+    status.error_code = gop_gop_mq_stream_read_varint(mqs, &err);
     log_printf(15, "error_code%d\n", status.error_code);
 
-    mq_stream_destroy(mqs);
+    gop_mq_stream_destroy(mqs);
 
-    if (err != 0) status = op_failure_status;
+    if (err != 0) status = gop_failure_status;
     log_printf(5, "END err=%d status=%d %d\n", err, status.op_status, status.error_code);
 
     return(status);
@@ -225,9 +225,9 @@ op_status_t osrc_remove_regex_object_func(void *arg, int id)
     log_printf(5, "START\n");
 
     //** Form the message
-    msg = mq_make_exec_core_msg(osrc->remote_host, 1);
-    mq_msg_append_mem(msg, OSR_REMOVE_REGEX_OBJECT_KEY, OSR_REMOVE_REGEX_OBJECT_SIZE, MQF_MSG_KEEP_DATA);
-    mq_msg_append_mem(msg, osrc->host_id, osrc->host_id_len, MQF_MSG_KEEP_DATA);
+    msg = gop_mq_make_exec_core_msg(osrc->remote_host, 1);
+    gop_mq_msg_append_mem(msg, OSR_REMOVE_REGEX_OBJECT_KEY, OSR_REMOVE_REGEX_OBJECT_SIZE, MQF_MSG_KEEP_DATA);
+    gop_mq_msg_append_mem(msg, osrc->host_id, osrc->host_id_len, MQF_MSG_KEEP_DATA);
     osrc_add_creds(op->os, op->creds, msg);
 
     bufsize = 4096;
@@ -295,26 +295,26 @@ op_status_t osrc_remove_regex_object_func(void *arg, int id)
     } while (again == 1);
 
 
-    mq_msg_append_mem(msg, buffer, bpos, MQF_MSG_AUTO_FREE);
-    mq_msg_append_mem(msg, NULL, 0, MQF_MSG_KEEP_DATA);
+    gop_mq_msg_append_mem(msg, buffer, bpos, MQF_MSG_AUTO_FREE);
+    gop_mq_msg_append_mem(msg, NULL, 0, MQF_MSG_KEEP_DATA);
 
     log_printf(5, "END\n");
 
     //** Make the gop and submit it
-    gop = new_mq_op(osrc->mqc, msg, osrc_response_stream_status, op->os, NULL, osrc->timeout);
+    gop = gop_mq_op_new(osrc->mqc, msg, osrc_response_stream_status, op->os, NULL, osrc->timeout);
     gop_start_execution(gop);
 
     //** Wait for it to complete Sending hearbeats as needed
-    while ((g = gop_timed_waitany(gop, osrc->spin_interval)) == NULL) {
+    while ((g = gop_waitany_timed(gop, osrc->spin_interval)) == NULL) {
         //** Form the spin message
-        spin = mq_make_exec_core_msg(osrc->remote_host, 0);
-        mq_msg_append_mem(spin, OSR_SPIN_HB_KEY, OSR_SPIN_HB_SIZE, MQF_MSG_KEEP_DATA);
-        mq_msg_append_mem(spin, osrc->host_id, osrc->host_id_len, MQF_MSG_KEEP_DATA);
+        spin = gop_mq_make_exec_core_msg(osrc->remote_host, 0);
+        gop_mq_msg_append_mem(spin, OSR_SPIN_HB_KEY, OSR_SPIN_HB_SIZE, MQF_MSG_KEEP_DATA);
+        gop_mq_msg_append_mem(spin, osrc->host_id, osrc->host_id_len, MQF_MSG_KEEP_DATA);
         osrc_add_creds(op->os, op->creds, spin);
-        mq_msg_append_mem(spin, &(op->my_id), sizeof(op->my_id), MQF_MSG_KEEP_DATA);
+        gop_mq_msg_append_mem(spin, &(op->my_id), sizeof(op->my_id), MQF_MSG_KEEP_DATA);
 
         //** And send it
-        g = new_mq_op(osrc->mqc, spin, NULL, NULL, NULL, osrc->timeout);
+        g = gop_mq_op_new(osrc->mqc, spin, NULL, NULL, NULL, osrc->timeout);
         log_printf(5, "spin hb sent. gid=%d\n", gop_id(g));
         gop_set_auto_destroy(g, 1);
         gop_start_execution(g);
@@ -354,7 +354,7 @@ op_generic_t *osrc_remove_regex_object(object_service_fn_t *os, creds_t *creds, 
     op->my_id = 0;
     tbx_random_get_bytes(&(op->my_id), sizeof(op->my_id));
 
-    gop = new_thread_pool_op(osrc->tpc, NULL, osrc_remove_regex_object_func, (void *)op, free, 1);
+    gop = gop_tp_op_new(osrc->tpc, NULL, osrc_remove_regex_object_func, (void *)op, free, 1);
     return(gop);
 }
 
@@ -375,20 +375,20 @@ op_generic_t *osrc_abort_remove_regex_object(object_service_fn_t *os, op_generic
     op = gop_get_private(gop);
 
     //** Form the message
-    msg = mq_make_exec_core_msg(osrc->remote_host, 1);
-    mq_msg_append_mem(msg, OSR_ABORT_REMOVE_REGEX_OBJECT_KEY, OSR_ABORT_REMOVE_REGEX_OBJECT_SIZE, MQF_MSG_KEEP_DATA);
-    mq_msg_append_mem(msg, osrc->host_id, osrc->host_id_len, MQF_MSG_KEEP_DATA);
+    msg = gop_mq_make_exec_core_msg(osrc->remote_host, 1);
+    gop_mq_msg_append_mem(msg, OSR_ABORT_REMOVE_REGEX_OBJECT_KEY, OSR_ABORT_REMOVE_REGEX_OBJECT_SIZE, MQF_MSG_KEEP_DATA);
+    gop_mq_msg_append_mem(msg, osrc->host_id, osrc->host_id_len, MQF_MSG_KEEP_DATA);
     osrc_add_creds(os, op->creds, msg);
 
     bpos = tbx_zigzag_encode(sizeof(op->my_id), buf);
     memcpy(&(buf[bpos]), &(op->my_id), sizeof(op->my_id));
     bpos += sizeof(op->my_id);
-    mq_msg_append_mem(msg, buf, bpos, MQF_MSG_KEEP_DATA);
+    gop_mq_msg_append_mem(msg, buf, bpos, MQF_MSG_KEEP_DATA);
 
-    mq_msg_append_mem(msg, NULL, 0, MQF_MSG_KEEP_DATA);
+    gop_mq_msg_append_mem(msg, NULL, 0, MQF_MSG_KEEP_DATA);
 
     //** Make the gop
-    g = new_mq_op(osrc->mqc, msg, osrc_response_status, NULL, NULL, osrc->timeout);
+    g = gop_mq_op_new(osrc->mqc, msg, osrc_response_status, NULL, NULL, osrc->timeout);
 
     log_printf(5, "END\n");
 
@@ -408,14 +408,14 @@ op_generic_t *osrc_remove_object(object_service_fn_t *os, creds_t *creds, char *
     log_printf(5, "START fname=%s\n", path);
 
     //** Form the message
-    msg = mq_make_exec_core_msg(osrc->remote_host, 1);
-    mq_msg_append_mem(msg, OSR_REMOVE_OBJECT_KEY, OSR_REMOVE_OBJECT_SIZE, MQF_MSG_KEEP_DATA);
+    msg = gop_mq_make_exec_core_msg(osrc->remote_host, 1);
+    gop_mq_msg_append_mem(msg, OSR_REMOVE_OBJECT_KEY, OSR_REMOVE_OBJECT_SIZE, MQF_MSG_KEEP_DATA);
     osrc_add_creds(os, creds, msg);
-    mq_msg_append_mem(msg, path, strlen(path)+1, MQF_MSG_KEEP_DATA);
-    mq_msg_append_mem(msg, NULL, 0, MQF_MSG_KEEP_DATA);
+    gop_mq_msg_append_mem(msg, path, strlen(path)+1, MQF_MSG_KEEP_DATA);
+    gop_mq_msg_append_mem(msg, NULL, 0, MQF_MSG_KEEP_DATA);
 
     //** Make the gop
-    gop = new_mq_op(osrc->mqc, msg, osrc_response_status, NULL, NULL, osrc->timeout);
+    gop = gop_mq_op_new(osrc->mqc, msg, osrc_response_status, NULL, NULL, osrc->timeout);
 
     log_printf(5, "END\n");
 
@@ -443,14 +443,14 @@ op_status_t osrc_regex_object_set_multiple_attrs_func(void *arg, int id)
     log_printf(5, "START\n");
 
     //** Form the message
-    msg = mq_make_exec_core_msg(osrc->remote_host, 1);
-    mq_msg_append_mem(msg, OSR_REGEX_SET_MULT_ATTR_KEY, OSR_REGEX_SET_MULT_ATTR_SIZE, MQF_MSG_KEEP_DATA);
-    mq_msg_append_mem(msg, osrc->host_id, osrc->host_id_len, MQF_MSG_KEEP_DATA);
+    msg = gop_mq_make_exec_core_msg(osrc->remote_host, 1);
+    gop_mq_msg_append_mem(msg, OSR_REGEX_SET_MULT_ATTR_KEY, OSR_REGEX_SET_MULT_ATTR_SIZE, MQF_MSG_KEEP_DATA);
+    gop_mq_msg_append_mem(msg, osrc->host_id, osrc->host_id_len, MQF_MSG_KEEP_DATA);
     osrc_add_creds(op->os, op->creds, msg);
     if (op->id != NULL) {
-        mq_msg_append_mem(msg, op->id, strlen(op->id), MQF_MSG_KEEP_DATA);
+        gop_mq_msg_append_mem(msg, op->id, strlen(op->id), MQF_MSG_KEEP_DATA);
     } else {
-        mq_msg_append_mem(msg, NULL, 0, MQF_MSG_KEEP_DATA);
+        gop_mq_msg_append_mem(msg, NULL, 0, MQF_MSG_KEEP_DATA);
     }
 
     bufsize = 4096;
@@ -545,25 +545,25 @@ op_status_t osrc_regex_object_set_multiple_attrs_func(void *arg, int id)
     } while (again == 1);
 
 
-    mq_msg_append_mem(msg, buffer, bpos, MQF_MSG_AUTO_FREE);
-    mq_msg_append_mem(msg, NULL, 0, MQF_MSG_KEEP_DATA);
+    gop_mq_msg_append_mem(msg, buffer, bpos, MQF_MSG_AUTO_FREE);
+    gop_mq_msg_append_mem(msg, NULL, 0, MQF_MSG_KEEP_DATA);
 
 
     //** Make the gop and submit it
-    gop = new_mq_op(osrc->mqc, msg, osrc_response_stream_status, op->os, NULL, osrc->timeout);
+    gop = gop_mq_op_new(osrc->mqc, msg, osrc_response_stream_status, op->os, NULL, osrc->timeout);
     gop_start_execution(gop);
 
     //** Wait for it to complete Sending hearbeats as needed
-    while ((g = gop_timed_waitany(gop, osrc->spin_interval)) == NULL) {
+    while ((g = gop_waitany_timed(gop, osrc->spin_interval)) == NULL) {
         //** Form the spin message
-        spin = mq_make_exec_core_msg(osrc->remote_host, 0);
-        mq_msg_append_mem(spin, OSR_SPIN_HB_KEY, OSR_SPIN_HB_SIZE, MQF_MSG_KEEP_DATA);
-        mq_msg_append_mem(spin, osrc->host_id, osrc->host_id_len, MQF_MSG_KEEP_DATA);
+        spin = gop_mq_make_exec_core_msg(osrc->remote_host, 0);
+        gop_mq_msg_append_mem(spin, OSR_SPIN_HB_KEY, OSR_SPIN_HB_SIZE, MQF_MSG_KEEP_DATA);
+        gop_mq_msg_append_mem(spin, osrc->host_id, osrc->host_id_len, MQF_MSG_KEEP_DATA);
         osrc_add_creds(op->os, op->creds, spin);
-        mq_msg_append_mem(spin, &(op->my_id), sizeof(op->my_id), MQF_MSG_KEEP_DATA);
+        gop_mq_msg_append_mem(spin, &(op->my_id), sizeof(op->my_id), MQF_MSG_KEEP_DATA);
 
         //** And send it
-        g = new_mq_op(osrc->mqc, spin, NULL, NULL, NULL, osrc->timeout);
+        g = gop_mq_op_new(osrc->mqc, spin, NULL, NULL, NULL, osrc->timeout);
         log_printf(5, "spin hb sent. gid=%d\n", gop_id(g));
         gop_set_auto_destroy(g, 1);
         gop_start_execution(g);
@@ -607,7 +607,7 @@ op_generic_t *osrc_regex_object_set_multiple_attrs(object_service_fn_t *os, cred
     op->my_id = 0;
     tbx_random_get_bytes(&(op->my_id), sizeof(op->my_id));
 
-    gop = new_thread_pool_op(osrc->tpc, NULL, osrc_regex_object_set_multiple_attrs_func, (void *)op, free, 1);
+    gop = gop_tp_op_new(osrc->tpc, NULL, osrc_regex_object_set_multiple_attrs_func, (void *)op, free, 1);
     gop_set_private(gop, op);
 
     return(gop);
@@ -630,20 +630,20 @@ op_generic_t *osrc_abort_regex_object_set_multiple_attrs(object_service_fn_t *os
     op = gop_get_private(gop);
 
     //** Form the message
-    msg = mq_make_exec_core_msg(osrc->remote_host, 1);
-    mq_msg_append_mem(msg, OSR_ABORT_REGEX_SET_MULT_ATTR_KEY, OSR_ABORT_REGEX_SET_MULT_ATTR_SIZE, MQF_MSG_KEEP_DATA);
-    mq_msg_append_mem(msg, osrc->host_id, osrc->host_id_len, MQF_MSG_KEEP_DATA);
+    msg = gop_mq_make_exec_core_msg(osrc->remote_host, 1);
+    gop_mq_msg_append_mem(msg, OSR_ABORT_REGEX_SET_MULT_ATTR_KEY, OSR_ABORT_REGEX_SET_MULT_ATTR_SIZE, MQF_MSG_KEEP_DATA);
+    gop_mq_msg_append_mem(msg, osrc->host_id, osrc->host_id_len, MQF_MSG_KEEP_DATA);
     osrc_add_creds(os, op->creds, msg);
 
     bpos = tbx_zigzag_encode(sizeof(op->my_id), buf);
     memcpy(&(buf[bpos]), &(op->my_id), sizeof(op->my_id));
     bpos += sizeof(op->my_id);
-    mq_msg_append_mem(msg, buf, bpos, MQF_MSG_KEEP_DATA);
+    gop_mq_msg_append_mem(msg, buf, bpos, MQF_MSG_KEEP_DATA);
 
-    mq_msg_append_mem(msg, NULL, 0, MQF_MSG_KEEP_DATA);
+    gop_mq_msg_append_mem(msg, NULL, 0, MQF_MSG_KEEP_DATA);
 
     //** Make the gop
-    g = new_mq_op(osrc->mqc, msg, osrc_response_status, NULL, NULL, osrc->timeout);
+    g = gop_mq_op_new(osrc->mqc, msg, osrc_response_status, NULL, NULL, osrc->timeout);
 
     log_printf(5, "END\n");
 
@@ -664,14 +664,14 @@ op_generic_t *osrc_exists(object_service_fn_t *os, creds_t *creds, char *path)
     log_printf(5, "START fname=%s\n", path);
 
     //** Form the message
-    msg = mq_make_exec_core_msg(osrc->remote_host, 1);
-    mq_msg_append_mem(msg, OSR_EXISTS_KEY, OSR_EXISTS_SIZE, MQF_MSG_KEEP_DATA);
+    msg = gop_mq_make_exec_core_msg(osrc->remote_host, 1);
+    gop_mq_msg_append_mem(msg, OSR_EXISTS_KEY, OSR_EXISTS_SIZE, MQF_MSG_KEEP_DATA);
     osrc_add_creds(os, creds, msg);
-    mq_msg_append_mem(msg, path, strlen(path)+1, MQF_MSG_KEEP_DATA);
-    mq_msg_append_mem(msg, NULL, 0, MQF_MSG_KEEP_DATA);
+    gop_mq_msg_append_mem(msg, path, strlen(path)+1, MQF_MSG_KEEP_DATA);
+    gop_mq_msg_append_mem(msg, NULL, 0, MQF_MSG_KEEP_DATA);
 
     //** Make the gop
-    gop = new_mq_op(osrc->mqc, msg, osrc_response_status, NULL, NULL, osrc->timeout);
+    gop = gop_mq_op_new(osrc->mqc, msg, osrc_response_status, NULL, NULL, osrc->timeout);
 
     log_printf(5, "END\n");
 
@@ -693,25 +693,25 @@ op_generic_t *osrc_create_object(object_service_fn_t *os, creds_t *creds, char *
     log_printf(5, "START fname=%s\n", path);
 
     //** Form the message
-    msg = mq_make_exec_core_msg(osrc->remote_host, 1);
-    mq_msg_append_mem(msg, OSR_CREATE_OBJECT_KEY, OSR_CREATE_OBJECT_SIZE, MQF_MSG_KEEP_DATA);
+    msg = gop_mq_make_exec_core_msg(osrc->remote_host, 1);
+    gop_mq_msg_append_mem(msg, OSR_CREATE_OBJECT_KEY, OSR_CREATE_OBJECT_SIZE, MQF_MSG_KEEP_DATA);
     osrc_add_creds(os, creds, msg);
-    mq_msg_append_mem(msg, path, strlen(path)+1, MQF_MSG_KEEP_DATA);
+    gop_mq_msg_append_mem(msg, path, strlen(path)+1, MQF_MSG_KEEP_DATA);
 
     n = tbx_zigzag_encode(type, buffer);
     tbx_type_malloc(sent, unsigned char, n);
     memcpy(sent, buffer, n);
-    mq_msg_append_frame(msg, mq_frame_new(sent, n, MQF_MSG_AUTO_FREE));
+    gop_mq_msg_append_frame(msg, gop_mq_frame_new(sent, n, MQF_MSG_AUTO_FREE));
 
     if (id == NULL) {
-        mq_msg_append_mem(msg, NULL, 0, MQF_MSG_KEEP_DATA);
+        gop_mq_msg_append_mem(msg, NULL, 0, MQF_MSG_KEEP_DATA);
     } else {
-        mq_msg_append_mem(msg, id, strlen(id)+1, MQF_MSG_KEEP_DATA);
+        gop_mq_msg_append_mem(msg, id, strlen(id)+1, MQF_MSG_KEEP_DATA);
     }
-    mq_msg_append_mem(msg, NULL, 0, MQF_MSG_KEEP_DATA);
+    gop_mq_msg_append_mem(msg, NULL, 0, MQF_MSG_KEEP_DATA);
 
     //** Make the gop
-    gop = new_mq_op(osrc->mqc, msg, osrc_response_status, NULL, NULL, osrc->timeout);
+    gop = gop_mq_op_new(osrc->mqc, msg, osrc_response_status, NULL, NULL, osrc->timeout);
 
     log_printf(5, "END\n");
 
@@ -732,20 +732,20 @@ op_generic_t *osrc_symlink_object(object_service_fn_t *os, creds_t *creds, char 
     log_printf(5, "START src_fname=%s\n", src_path);
 
     //** Form the message
-    msg = mq_make_exec_core_msg(osrc->remote_host, 1);
-    mq_msg_append_mem(msg, OSR_SYMLINK_OBJECT_KEY, OSR_SYMLINK_OBJECT_SIZE, MQF_MSG_KEEP_DATA);
+    msg = gop_mq_make_exec_core_msg(osrc->remote_host, 1);
+    gop_mq_msg_append_mem(msg, OSR_SYMLINK_OBJECT_KEY, OSR_SYMLINK_OBJECT_SIZE, MQF_MSG_KEEP_DATA);
     osrc_add_creds(os, creds, msg);
-    mq_msg_append_mem(msg, src_path, strlen(src_path)+1, MQF_MSG_KEEP_DATA);
-    mq_msg_append_mem(msg, dest_path, strlen(dest_path)+1, MQF_MSG_KEEP_DATA);
+    gop_mq_msg_append_mem(msg, src_path, strlen(src_path)+1, MQF_MSG_KEEP_DATA);
+    gop_mq_msg_append_mem(msg, dest_path, strlen(dest_path)+1, MQF_MSG_KEEP_DATA);
     if (id == NULL) {
-        mq_msg_append_mem(msg, NULL, 0, MQF_MSG_KEEP_DATA);
+        gop_mq_msg_append_mem(msg, NULL, 0, MQF_MSG_KEEP_DATA);
     } else {
-        mq_msg_append_mem(msg, id, strlen(id)+1, MQF_MSG_KEEP_DATA);
+        gop_mq_msg_append_mem(msg, id, strlen(id)+1, MQF_MSG_KEEP_DATA);
     }
-    mq_msg_append_mem(msg, NULL, 0, MQF_MSG_KEEP_DATA);
+    gop_mq_msg_append_mem(msg, NULL, 0, MQF_MSG_KEEP_DATA);
 
     //** Make the gop
-    gop = new_mq_op(osrc->mqc, msg, osrc_response_status, NULL, NULL, osrc->timeout);
+    gop = gop_mq_op_new(osrc->mqc, msg, osrc_response_status, NULL, NULL, osrc->timeout);
 
     log_printf(5, "END\n");
 
@@ -766,20 +766,20 @@ op_generic_t *osrc_hardlink_object(object_service_fn_t *os, creds_t *creds, char
     log_printf(5, "START src_fname=%s\n", src_path);
 
     //** Form the message
-    msg = mq_make_exec_core_msg(osrc->remote_host, 1);
-    mq_msg_append_mem(msg, OSR_HARDLINK_OBJECT_KEY, OSR_HARDLINK_OBJECT_SIZE, MQF_MSG_KEEP_DATA);
+    msg = gop_mq_make_exec_core_msg(osrc->remote_host, 1);
+    gop_mq_msg_append_mem(msg, OSR_HARDLINK_OBJECT_KEY, OSR_HARDLINK_OBJECT_SIZE, MQF_MSG_KEEP_DATA);
     osrc_add_creds(os, creds, msg);
-    mq_msg_append_mem(msg, src_path, strlen(src_path)+1, MQF_MSG_KEEP_DATA);
-    mq_msg_append_mem(msg, dest_path, strlen(dest_path)+1, MQF_MSG_KEEP_DATA);
+    gop_mq_msg_append_mem(msg, src_path, strlen(src_path)+1, MQF_MSG_KEEP_DATA);
+    gop_mq_msg_append_mem(msg, dest_path, strlen(dest_path)+1, MQF_MSG_KEEP_DATA);
     if (id == NULL) {
-        mq_msg_append_mem(msg, NULL, 0, MQF_MSG_KEEP_DATA);
+        gop_mq_msg_append_mem(msg, NULL, 0, MQF_MSG_KEEP_DATA);
     } else {
-        mq_msg_append_mem(msg, id, strlen(id)+1, MQF_MSG_KEEP_DATA);
+        gop_mq_msg_append_mem(msg, id, strlen(id)+1, MQF_MSG_KEEP_DATA);
     }
-    mq_msg_append_mem(msg, NULL, 0, MQF_MSG_KEEP_DATA);
+    gop_mq_msg_append_mem(msg, NULL, 0, MQF_MSG_KEEP_DATA);
 
     //** Make the gop
-    gop = new_mq_op(osrc->mqc, msg, osrc_response_status, NULL, NULL, osrc->timeout);
+    gop = gop_mq_op_new(osrc->mqc, msg, osrc_response_status, NULL, NULL, osrc->timeout);
 
     log_printf(5, "END\n");
 
@@ -800,15 +800,15 @@ op_generic_t *osrc_move_object(object_service_fn_t *os, creds_t *creds, char *sr
     log_printf(5, "START src_fname=%s\n", src_path);
 
     //** Form the message
-    msg = mq_make_exec_core_msg(osrc->remote_host, 1);
-    mq_msg_append_mem(msg, OSR_MOVE_OBJECT_KEY, OSR_MOVE_OBJECT_SIZE, MQF_MSG_KEEP_DATA);
+    msg = gop_mq_make_exec_core_msg(osrc->remote_host, 1);
+    gop_mq_msg_append_mem(msg, OSR_MOVE_OBJECT_KEY, OSR_MOVE_OBJECT_SIZE, MQF_MSG_KEEP_DATA);
     osrc_add_creds(os, creds, msg);
-    mq_msg_append_mem(msg, src_path, strlen(src_path)+1, MQF_MSG_KEEP_DATA);
-    mq_msg_append_mem(msg, dest_path, strlen(dest_path)+1, MQF_MSG_KEEP_DATA);
-    mq_msg_append_mem(msg, NULL, 0, MQF_MSG_KEEP_DATA);
+    gop_mq_msg_append_mem(msg, src_path, strlen(src_path)+1, MQF_MSG_KEEP_DATA);
+    gop_mq_msg_append_mem(msg, dest_path, strlen(dest_path)+1, MQF_MSG_KEEP_DATA);
+    gop_mq_msg_append_mem(msg, NULL, 0, MQF_MSG_KEEP_DATA);
 
     //** Make the gop
-    gop = new_mq_op(osrc->mqc, msg, osrc_response_status, NULL, NULL, osrc->timeout);
+    gop = gop_mq_op_new(osrc->mqc, msg, osrc_response_status, NULL, NULL, osrc->timeout);
 
     log_printf(5, "END\n");
 
@@ -833,14 +833,14 @@ op_generic_t *osrc_copy_mult_attrs_internal(object_service_fn_t *os, osrc_mult_a
     log_printf(5, "START\n");
 
     //** Form the message
-    msg = mq_make_exec_core_msg(osrc->remote_host, 1);
-    mq_msg_append_mem(msg, OSR_COPY_MULTIPLE_ATTR_KEY, OSR_COPY_MULTIPLE_ATTR_SIZE, MQF_MSG_KEEP_DATA);
+    msg = gop_mq_make_exec_core_msg(osrc->remote_host, 1);
+    gop_mq_msg_append_mem(msg, OSR_COPY_MULTIPLE_ATTR_KEY, OSR_COPY_MULTIPLE_ATTR_SIZE, MQF_MSG_KEEP_DATA);
     osrc_add_creds(os, creds, msg);
 
     //** Form the heartbeat and handle frames
-    mq_msg_append_mem(msg, osrc->host_id, osrc->host_id_len, MQF_MSG_KEEP_DATA);
-    mq_msg_append_mem(msg, sfd->data, sfd->size, MQF_MSG_KEEP_DATA);
-    mq_msg_append_mem(msg, dfd->data, dfd->size, MQF_MSG_KEEP_DATA);
+    gop_mq_msg_append_mem(msg, osrc->host_id, osrc->host_id_len, MQF_MSG_KEEP_DATA);
+    gop_mq_msg_append_mem(msg, sfd->data, sfd->size, MQF_MSG_KEEP_DATA);
+    gop_mq_msg_append_mem(msg, dfd->data, dfd->size, MQF_MSG_KEEP_DATA);
 
     //** Form the attribute frame
     nmax = 12;  //** Add just a little extra
@@ -862,12 +862,12 @@ op_generic_t *osrc_copy_mult_attrs_internal(object_service_fn_t *os, osrc_mult_a
         memcpy(&(data[bpos]), ma->key_dest[i], len);
         bpos += len;
     }
-    mq_msg_append_mem(msg, data, bpos, MQF_MSG_AUTO_FREE);
+    gop_mq_msg_append_mem(msg, data, bpos, MQF_MSG_AUTO_FREE);
 
-    mq_msg_append_mem(msg, NULL, 0, MQF_MSG_KEEP_DATA);
+    gop_mq_msg_append_mem(msg, NULL, 0, MQF_MSG_KEEP_DATA);
 
     //** Make the gop
-    gop = new_mq_op(osrc->mqc, msg, osrc_response_status, ma, free, osrc->timeout);
+    gop = gop_mq_op_new(osrc->mqc, msg, osrc_response_status, ma, free, osrc->timeout);
 
     log_printf(5, "END\n");
 
@@ -935,13 +935,13 @@ op_generic_t *osrc_symlink_mult_attrs_internal(object_service_fn_t *os, osrc_mul
     log_printf(5, "START\n");
 
     //** Form the message
-    msg = mq_make_exec_core_msg(osrc->remote_host, 1);
-    mq_msg_append_mem(msg, OSR_SYMLINK_MULTIPLE_ATTR_KEY, OSR_SYMLINK_MULTIPLE_ATTR_SIZE, MQF_MSG_KEEP_DATA);
+    msg = gop_mq_make_exec_core_msg(osrc->remote_host, 1);
+    gop_mq_msg_append_mem(msg, OSR_SYMLINK_MULTIPLE_ATTR_KEY, OSR_SYMLINK_MULTIPLE_ATTR_SIZE, MQF_MSG_KEEP_DATA);
     osrc_add_creds(os, creds, msg);
 
     //** Form the heartbeat and handle frames
-    mq_msg_append_mem(msg, osrc->host_id, osrc->host_id_len, MQF_MSG_KEEP_DATA);
-    mq_msg_append_mem(msg, dfd->data, dfd->size, MQF_MSG_KEEP_DATA);
+    gop_mq_msg_append_mem(msg, osrc->host_id, osrc->host_id_len, MQF_MSG_KEEP_DATA);
+    gop_mq_msg_append_mem(msg, dfd->data, dfd->size, MQF_MSG_KEEP_DATA);
 
     //** Form the attribute frame
     nmax = 12;  //** Add just a little extra
@@ -968,12 +968,12 @@ op_generic_t *osrc_symlink_mult_attrs_internal(object_service_fn_t *os, osrc_mul
         memcpy(&(data[bpos]), ma->key_dest[i], len);
         bpos += len;
     }
-    mq_msg_append_mem(msg, data, bpos, MQF_MSG_AUTO_FREE);
+    gop_mq_msg_append_mem(msg, data, bpos, MQF_MSG_AUTO_FREE);
 
-    mq_msg_append_mem(msg, NULL, 0, MQF_MSG_KEEP_DATA);
+    gop_mq_msg_append_mem(msg, NULL, 0, MQF_MSG_KEEP_DATA);
 
     //** Make the gop
-    gop = new_mq_op(osrc->mqc, msg, osrc_response_status, ma, free, osrc->timeout);
+    gop = gop_mq_op_new(osrc->mqc, msg, osrc_response_status, ma, free, osrc->timeout);
 
     log_printf(5, "END\n");
 
@@ -1040,13 +1040,13 @@ op_generic_t *osrc_move_mult_attrs_internal(object_service_fn_t *os, osrc_mult_a
     log_printf(5, "START\n");
 
     //** Form the message
-    msg = mq_make_exec_core_msg(osrc->remote_host, 1);
-    mq_msg_append_mem(msg, OSR_MOVE_MULTIPLE_ATTR_KEY, OSR_MOVE_MULTIPLE_ATTR_SIZE, MQF_MSG_KEEP_DATA);
+    msg = gop_mq_make_exec_core_msg(osrc->remote_host, 1);
+    gop_mq_msg_append_mem(msg, OSR_MOVE_MULTIPLE_ATTR_KEY, OSR_MOVE_MULTIPLE_ATTR_SIZE, MQF_MSG_KEEP_DATA);
     osrc_add_creds(os, creds, msg);
 
     //** Form the heartbeat and handle frames
-    mq_msg_append_mem(msg, osrc->host_id, osrc->host_id_len, MQF_MSG_KEEP_DATA);
-    mq_msg_append_mem(msg, sfd->data, sfd->size, MQF_MSG_KEEP_DATA);
+    gop_mq_msg_append_mem(msg, osrc->host_id, osrc->host_id_len, MQF_MSG_KEEP_DATA);
+    gop_mq_msg_append_mem(msg, sfd->data, sfd->size, MQF_MSG_KEEP_DATA);
 
     //** Form the attribute frame
     nmax = 12;  //** Add just a little extra
@@ -1068,12 +1068,12 @@ op_generic_t *osrc_move_mult_attrs_internal(object_service_fn_t *os, osrc_mult_a
         memcpy(&(data[bpos]), ma->key_dest[i], len);
         bpos += len;
     }
-    mq_msg_append_mem(msg, data, bpos, MQF_MSG_AUTO_FREE);
+    gop_mq_msg_append_mem(msg, data, bpos, MQF_MSG_AUTO_FREE);
 
-    mq_msg_append_mem(msg, NULL, 0, MQF_MSG_KEEP_DATA);
+    gop_mq_msg_append_mem(msg, NULL, 0, MQF_MSG_KEEP_DATA);
 
     //** Make the gop
-    gop = new_mq_op(osrc->mqc, msg, osrc_response_status, ma, free, osrc->timeout);
+    gop = gop_mq_op_new(osrc->mqc, msg, osrc_response_status, ma, free, osrc->timeout);
 
     log_printf(5, "END\n");
 
@@ -1133,7 +1133,7 @@ int osrc_store_val(mq_stream_t *mqs, int src_size, void **dest, int *v_size)
     if (*v_size >= 0) {
         if (*v_size < src_size) {
             *v_size = -src_size;
-            mq_stream_read(mqs, NULL, src_size);  //** This drops the values
+            gop_mq_stream_read(mqs, NULL, src_size);  //** This drops the values
             return(1);
         } else if (dest && (*v_size > src_size)) {
             buf = *dest;
@@ -1153,9 +1153,9 @@ int osrc_store_val(mq_stream_t *mqs, int src_size, void **dest, int *v_size)
 
     *v_size = src_size;
     if (dest) {
-        mq_stream_read(mqs, *dest, src_size);
+        gop_mq_stream_read(mqs, *dest, src_size);
     } else {
-        mq_stream_read(mqs, NULL, src_size);  //** Just drop it
+        gop_mq_stream_read(mqs, NULL, src_size);  //** Just drop it
     }
 
     return(0);
@@ -1176,17 +1176,17 @@ op_status_t osrc_response_get_multiple_attrs(void *task_arg, int tid)
 
     log_printf(5, "START\n");
 
-    status = op_success_status;
+    status = gop_success_status;
 
     //** Parse the response
-    mq_remove_header(task->response, 1);
+    gop_mq_remove_header(task->response, 1);
 
-    mqs = mq_stream_read_create(osrc->mqc, osrc->ongoing, osrc->host_id, osrc->host_id_len, mq_msg_first(task->response), osrc->remote_host, osrc->stream_timeout);
+    mqs = gop_gop_mq_stream_read_create(osrc->mqc, osrc->ongoing, osrc->host_id, osrc->host_id_len, gop_mq_msg_first(task->response), osrc->remote_host, osrc->stream_timeout);
 
     //** Parse the status
-    status.op_status = mq_stream_read_varint(mqs, &err);
+    status.op_status = gop_gop_mq_stream_read_varint(mqs, &err);
     log_printf(15, "op_status=%d\n", status.op_status);
-    status.error_code = mq_stream_read_varint(mqs, &err);
+    status.error_code = gop_gop_mq_stream_read_varint(mqs, &err);
     log_printf(15, "error_code%d\n", status.error_code);
 
     if (err != 0) {
@@ -1196,9 +1196,9 @@ op_status_t osrc_response_get_multiple_attrs(void *task_arg, int tid)
 
     //** Not get the attributes
     for (i=0; i < ma->n; i++) {
-        len = mq_stream_read_varint(mqs, &err);
+        len = gop_gop_mq_stream_read_varint(mqs, &err);
         if (err != 0) {
-            status = op_failure_status;
+            status = gop_failure_status;
             goto fail;
         }
 
@@ -1207,7 +1207,7 @@ op_status_t osrc_response_get_multiple_attrs(void *task_arg, int tid)
     }
 
 fail:
-    mq_stream_destroy(mqs);
+    gop_mq_stream_destroy(mqs);
 
     log_printf(5, "END status=%d %d\n", status.op_status, status.error_code);
 
@@ -1233,14 +1233,14 @@ op_generic_t *osrc_get_mult_attrs_internal(object_service_fn_t *os, osrc_mult_at
     log_printf(5, "START\n");
 
     //** Form the message
-    msg = mq_make_exec_core_msg(osrc->remote_host, 1);
-    mq_msg_append_mem(msg, OSR_GET_MULTIPLE_ATTR_KEY, OSR_GET_MULTIPLE_ATTR_SIZE, MQF_MSG_KEEP_DATA);
-    mq_msg_append_mem(msg, osrc->host_id, osrc->host_id_len, MQF_MSG_KEEP_DATA);
+    msg = gop_mq_make_exec_core_msg(osrc->remote_host, 1);
+    gop_mq_msg_append_mem(msg, OSR_GET_MULTIPLE_ATTR_KEY, OSR_GET_MULTIPLE_ATTR_SIZE, MQF_MSG_KEEP_DATA);
+    gop_mq_msg_append_mem(msg, osrc->host_id, osrc->host_id_len, MQF_MSG_KEEP_DATA);
     osrc_add_creds(os, creds, msg);
 
     //** Form the heartbeat and handle frames
-    mq_msg_append_mem(msg, osrc->host_id, osrc->host_id_len, MQF_MSG_KEEP_DATA);
-    mq_msg_append_mem(msg, ofd->data, ofd->size, MQF_MSG_KEEP_DATA);
+    gop_mq_msg_append_mem(msg, osrc->host_id, osrc->host_id_len, MQF_MSG_KEEP_DATA);
+    gop_mq_msg_append_mem(msg, ofd->data, ofd->size, MQF_MSG_KEEP_DATA);
 
     //** Form the attribute frame
     nmax = 12;  //** Add just a little extra
@@ -1258,12 +1258,12 @@ op_generic_t *osrc_get_mult_attrs_internal(object_service_fn_t *os, osrc_mult_at
         bpos += len;
         bpos += tbx_zigzag_encode(ma->v_size[i], (unsigned char *)&(data[bpos]));
     }
-    mq_msg_append_mem(msg, data, bpos, MQF_MSG_AUTO_FREE);
+    gop_mq_msg_append_mem(msg, data, bpos, MQF_MSG_AUTO_FREE);
 
-    mq_msg_append_mem(msg, NULL, 0, MQF_MSG_KEEP_DATA);
+    gop_mq_msg_append_mem(msg, NULL, 0, MQF_MSG_KEEP_DATA);
 
     //** Make the gop
-    gop = new_mq_op(osrc->mqc, msg, osrc_response_get_multiple_attrs, ma, free, osrc->timeout);
+    gop = gop_mq_op_new(osrc->mqc, msg, osrc_response_get_multiple_attrs, ma, free, osrc->timeout);
 
     log_printf(5, "END\n");
 
@@ -1330,13 +1330,13 @@ op_generic_t *osrc_set_mult_attrs_internal(object_service_fn_t *os, osrc_mult_at
     log_printf(5, "START\n");
 
     //** Form the message
-    msg = mq_make_exec_core_msg(osrc->remote_host, 1);
-    mq_msg_append_mem(msg, OSR_SET_MULTIPLE_ATTR_KEY, OSR_SET_MULTIPLE_ATTR_SIZE, MQF_MSG_KEEP_DATA);
+    msg = gop_mq_make_exec_core_msg(osrc->remote_host, 1);
+    gop_mq_msg_append_mem(msg, OSR_SET_MULTIPLE_ATTR_KEY, OSR_SET_MULTIPLE_ATTR_SIZE, MQF_MSG_KEEP_DATA);
     osrc_add_creds(os, creds, msg);
 
     //** Form the heartbeat and handle frames
-    mq_msg_append_mem(msg, osrc->host_id, osrc->host_id_len, MQF_MSG_KEEP_DATA);
-    mq_msg_append_mem(msg, ofd->data, ofd->size, MQF_MSG_KEEP_DATA);
+    gop_mq_msg_append_mem(msg, osrc->host_id, osrc->host_id_len, MQF_MSG_KEEP_DATA);
+    gop_mq_msg_append_mem(msg, ofd->data, ofd->size, MQF_MSG_KEEP_DATA);
 
     //** Form the attribute frame
     nmax = 8;  //** Add just a little extra
@@ -1359,12 +1359,12 @@ op_generic_t *osrc_set_mult_attrs_internal(object_service_fn_t *os, osrc_mult_at
             bpos += ma->v_size[i];
         }
     }
-    mq_msg_append_mem(msg, data, bpos, MQF_MSG_AUTO_FREE);
+    gop_mq_msg_append_mem(msg, data, bpos, MQF_MSG_AUTO_FREE);
 
-    mq_msg_append_mem(msg, NULL, 0, MQF_MSG_KEEP_DATA);
+    gop_mq_msg_append_mem(msg, NULL, 0, MQF_MSG_KEEP_DATA);
 
     //** Make the gop
-    gop = new_mq_op(osrc->mqc, msg, osrc_response_status, ma, free, osrc->timeout);
+    gop = gop_mq_op_new(osrc->mqc, msg, osrc_response_status, ma, free, osrc->timeout);
 
     log_printf(5, "END\n");
 
@@ -1441,7 +1441,7 @@ int osrc_next_attr(os_attr_iter_t *oit, char **key, void **val, int *v_size)
     }
 
     //** Read the key len
-    n = mq_stream_read_varint(it->mqs, &err);
+    n = gop_gop_mq_stream_read_varint(it->mqs, &err);
     if (err != 0) {
         log_printf(5, "ERROR reading key len!\n");
         *v_size = -1;
@@ -1461,9 +1461,9 @@ int osrc_next_attr(os_attr_iter_t *oit, char **key, void **val, int *v_size)
     if (key != NULL) {
         tbx_type_malloc(*key, char, n+1);
         (*key)[n] = 0;
-        err = mq_stream_read(it->mqs, *key, n);
+        err = gop_mq_stream_read(it->mqs, *key, n);
     } else {
-        err = mq_stream_read(it->mqs, NULL, n); //** Want to drop the key name
+        err = gop_mq_stream_read(it->mqs, NULL, n); //** Want to drop the key name
     }
     if (err != 0) {
         log_printf(5, "ERROR reading key!");
@@ -1477,7 +1477,7 @@ int osrc_next_attr(os_attr_iter_t *oit, char **key, void **val, int *v_size)
     }
 
     //** Read the value len
-    n = mq_stream_read_varint(it->mqs, &err);
+    n = gop_gop_mq_stream_read_varint(it->mqs, &err);
     if (err != 0) {
         log_printf(5, "ERROR reading prefix_len!");
         it->no_more_attr = 1;
@@ -1511,24 +1511,24 @@ op_status_t osrc_response_attr_iter(void *task_arg, int tid)
 
     log_printf(5, "START\n");
 
-    status = op_success_status;
+    status = gop_success_status;
 
     //** Parse the response
-    mq_remove_header(task->response, 1);
+    gop_mq_remove_header(task->response, 1);
 
-    it->mqs = mq_stream_read_create(osrc->mqc, osrc->ongoing, osrc->host_id, osrc->host_id_len, mq_msg_first(task->response), osrc->remote_host, osrc->stream_timeout);
+    it->mqs = gop_gop_mq_stream_read_create(osrc->mqc, osrc->ongoing, osrc->host_id, osrc->host_id_len, gop_mq_msg_first(task->response), osrc->remote_host, osrc->stream_timeout);
 
     //** Parse the status
-    status.op_status = mq_stream_read_varint(it->mqs, &err);
+    status.op_status = gop_gop_mq_stream_read_varint(it->mqs, &err);
     log_printf(15, "op_status=%d\n", status.op_status);
-    status.error_code = mq_stream_read_varint(it->mqs, &err);
+    status.error_code = gop_gop_mq_stream_read_varint(it->mqs, &err);
     log_printf(15, "error_code%d\n", status.error_code);
 
     if (err != 0) {
         status.op_status= OP_STATE_FAILURE;    //** Trigger a failure if error reading from the stream
     }
     if (status.op_status == OP_STATE_FAILURE) {
-        mq_stream_destroy(it->mqs);
+        gop_mq_stream_destroy(it->mqs);
     } else {
         //** Remove the response from the task to keep it from being freed.
         //** We'll do it manually
@@ -1560,11 +1560,11 @@ os_attr_iter_t *osrc_create_attr_iter(object_service_fn_t *os, creds_t *creds, o
     log_printf(5, "START\n");
 
     //** Form the message
-    msg = mq_make_exec_core_msg(osrc->remote_host, 1);
-    mq_msg_append_mem(msg, OSR_ATTR_ITER_KEY, OSR_ATTR_ITER_SIZE, MQF_MSG_KEEP_DATA);
-    mq_msg_append_mem(msg, osrc->host_id, strlen(osrc->host_id)+1, MQF_MSG_KEEP_DATA);
+    msg = gop_mq_make_exec_core_msg(osrc->remote_host, 1);
+    gop_mq_msg_append_mem(msg, OSR_ATTR_ITER_KEY, OSR_ATTR_ITER_SIZE, MQF_MSG_KEEP_DATA);
+    gop_mq_msg_append_mem(msg, osrc->host_id, strlen(osrc->host_id)+1, MQF_MSG_KEEP_DATA);
     osrc_add_creds(os, creds, msg);
-    mq_msg_append_mem(msg, ofd->data, ofd->size, MQF_MSG_KEEP_DATA);
+    gop_mq_msg_append_mem(msg, ofd->data, ofd->size, MQF_MSG_KEEP_DATA);
 
     bufsize = 4096;
     tbx_type_malloc(buffer, unsigned char, bufsize);
@@ -1589,8 +1589,8 @@ os_attr_iter_t *osrc_create_attr_iter(object_service_fn_t *os, creds_t *creds, o
         }
     } while (again == 1);
 
-    mq_msg_append_mem(msg, buffer, bpos, MQF_MSG_AUTO_FREE);
-    mq_msg_append_mem(msg, NULL, 0, MQF_MSG_KEEP_DATA);
+    gop_mq_msg_append_mem(msg, buffer, bpos, MQF_MSG_AUTO_FREE);
+    gop_mq_msg_append_mem(msg, NULL, 0, MQF_MSG_KEEP_DATA);
 
 
     //** Make the iterator handle
@@ -1599,7 +1599,7 @@ os_attr_iter_t *osrc_create_attr_iter(object_service_fn_t *os, creds_t *creds, o
     it->v_max = v_max;
 
     //** Make the gop and execute it
-    gop = new_mq_op(osrc->mqc, msg, osrc_response_attr_iter, it, NULL, osrc->timeout);
+    gop = gop_mq_op_new(osrc->mqc, msg, osrc_response_attr_iter, it, NULL, osrc->timeout);
     err = gop_waitall(gop);
     if (err != OP_STATE_SUCCESS) {
         log_printf(5, "ERROR status=%d\n", err);
@@ -1622,8 +1622,8 @@ void osrc_destroy_attr_iter(os_attr_iter_t *oit)
 {
     osrc_attr_iter_t *it = (osrc_attr_iter_t *)oit;
 
-    if (it->mqs != NULL) mq_stream_destroy(it->mqs);
-    if ((it->response != NULL) && (it->is_sub_iter == 0)) mq_msg_destroy(it->response);
+    if (it->mqs != NULL) gop_mq_stream_destroy(it->mqs);
+    if ((it->response != NULL) && (it->is_sub_iter == 0)) gop_mq_msg_destroy(it->response);
 
     free(it);
 }
@@ -1659,7 +1659,7 @@ int osrc_next_object(os_object_iter_t *oit, char **fname, int *prefix_len)
     }
 
     //** Read the object type
-    ftype = mq_stream_read_varint(it->mqs, &err);
+    ftype = gop_gop_mq_stream_read_varint(it->mqs, &err);
     if (err != 0) {
         log_printf(5, "ERROR reading object type!\n");
         return(0);
@@ -1674,21 +1674,21 @@ int osrc_next_object(os_object_iter_t *oit, char **fname, int *prefix_len)
     }
 
     //** Read the prefix len
-    *prefix_len = mq_stream_read_varint(it->mqs, &err);
+    *prefix_len = gop_gop_mq_stream_read_varint(it->mqs, &err);
     if (err != 0) {
         log_printf(5, "ERROR reading prefix_len!");
         return(-1);
     }
 
     //** Read the object name
-    n = mq_stream_read_varint(it->mqs, &err);
+    n = gop_gop_mq_stream_read_varint(it->mqs, &err);
     if (err != 0) {
         log_printf(5, "ERROR reading object len!");
         return(-1);
     }
     tbx_type_malloc(*fname, char, n+1);
     (*fname)[n] = 0;
-    err = mq_stream_read(it->mqs, *fname, n);
+    err = gop_mq_stream_read(it->mqs, *fname, n);
     if (err != 0) {
         log_printf(5, "ERROR reading fname!");
         free(*fname);
@@ -1704,7 +1704,7 @@ int osrc_next_object(os_object_iter_t *oit, char **fname, int *prefix_len)
         }
 
         for (i=0; i < it->n_keys; i++) {
-            n = mq_stream_read_varint(it->mqs, &err);
+            n = gop_gop_mq_stream_read_varint(it->mqs, &err);
             if (err != 0) {
                 log_printf(5, "ERROR reading attribute #%d!", i);
                 return(-1);
@@ -1738,24 +1738,24 @@ op_status_t osrc_response_object_iter(void *task_arg, int tid)
 
     log_printf(5, "START\n");
 
-    status = op_success_status;
+    status = gop_success_status;
 
     //** Parse the response
-    mq_remove_header(task->response, 1);
+    gop_mq_remove_header(task->response, 1);
 
-    it->mqs = mq_stream_read_create(osrc->mqc, osrc->ongoing, osrc->host_id, osrc->host_id_len, mq_msg_first(task->response), osrc->remote_host, osrc->stream_timeout);
+    it->mqs = gop_gop_mq_stream_read_create(osrc->mqc, osrc->ongoing, osrc->host_id, osrc->host_id_len, gop_mq_msg_first(task->response), osrc->remote_host, osrc->stream_timeout);
 
     //** Parse the status
-    status.op_status = mq_stream_read_varint(it->mqs, &err);
+    status.op_status = gop_gop_mq_stream_read_varint(it->mqs, &err);
     log_printf(15, "op_status=%d\n", status.op_status);
-    status.error_code = mq_stream_read_varint(it->mqs, &err);
+    status.error_code = gop_gop_mq_stream_read_varint(it->mqs, &err);
     log_printf(15, "error_code%d\n", status.error_code);
 
     if (err != 0) {
         status.op_status= OP_STATE_FAILURE;    //** Trigger a failure if error reading from the stream
     }
     if (status.op_status == OP_STATE_FAILURE) {
-        mq_stream_destroy(it->mqs);
+        gop_mq_stream_destroy(it->mqs);
     } else {
         //** Remove the response from the task to keep it from being freed.
         //** We'll do it manually
@@ -1789,9 +1789,9 @@ os_object_iter_t *osrc_create_object_iter(object_service_fn_t *os, creds_t *cred
     log_printf(5, "START\n");
 
     //** Form the message
-    msg = mq_make_exec_core_msg(osrc->remote_host, 1);
-    mq_msg_append_mem(msg, OSR_OBJECT_ITER_AREGEX_KEY, OSR_OBJECT_ITER_AREGEX_SIZE, MQF_MSG_KEEP_DATA);
-    mq_msg_append_mem(msg, osrc->host_id, osrc->host_id_len, MQF_MSG_KEEP_DATA);
+    msg = gop_mq_make_exec_core_msg(osrc->remote_host, 1);
+    gop_mq_msg_append_mem(msg, OSR_OBJECT_ITER_AREGEX_KEY, OSR_OBJECT_ITER_AREGEX_SIZE, MQF_MSG_KEEP_DATA);
+    gop_mq_msg_append_mem(msg, osrc->host_id, osrc->host_id_len, MQF_MSG_KEEP_DATA);
     osrc_add_creds(os, creds, msg);
 
     bufsize = 4096;
@@ -1834,8 +1834,8 @@ os_object_iter_t *osrc_create_object_iter(object_service_fn_t *os, creds_t *cred
         }
     } while (again == 1);
 
-    mq_msg_append_mem(msg, buffer, bpos, MQF_MSG_AUTO_FREE);
-    mq_msg_append_mem(msg, NULL, 0, MQF_MSG_KEEP_DATA);
+    gop_mq_msg_append_mem(msg, buffer, bpos, MQF_MSG_AUTO_FREE);
+    gop_mq_msg_append_mem(msg, NULL, 0, MQF_MSG_KEEP_DATA);
 
 
     //** Make the iterator handle
@@ -1846,7 +1846,7 @@ os_object_iter_t *osrc_create_object_iter(object_service_fn_t *os, creds_t *cred
     it->ait = it_attr;
 
     //** Make the gop and execute it
-    gop = new_mq_op(osrc->mqc, msg, osrc_response_object_iter, it, NULL, osrc->timeout);
+    gop = gop_mq_op_new(osrc->mqc, msg, osrc_response_object_iter, it, NULL, osrc->timeout);
     err = gop_waitall(gop);
     if (err != OP_STATE_SUCCESS) {
         log_printf(5, "ERROR status=%d\n", err);
@@ -1892,9 +1892,9 @@ os_object_iter_t *osrc_create_object_iter_alist(object_service_fn_t *os, creds_t
     log_printf(5, "START\n");
 
     //** Form the message
-    msg = mq_make_exec_core_msg(osrc->remote_host, 1);
-    mq_msg_append_mem(msg, OSR_OBJECT_ITER_ALIST_KEY, OSR_OBJECT_ITER_ALIST_SIZE, MQF_MSG_KEEP_DATA);
-    mq_msg_append_mem(msg, osrc->host_id, osrc->host_id_len, MQF_MSG_KEEP_DATA);
+    msg = gop_mq_make_exec_core_msg(osrc->remote_host, 1);
+    gop_mq_msg_append_mem(msg, OSR_OBJECT_ITER_ALIST_KEY, OSR_OBJECT_ITER_ALIST_SIZE, MQF_MSG_KEEP_DATA);
+    gop_mq_msg_append_mem(msg, osrc->host_id, osrc->host_id_len, MQF_MSG_KEEP_DATA);
     osrc_add_creds(os, creds, msg);
 
     //** Estimate the size of the keys
@@ -1944,8 +1944,8 @@ os_object_iter_t *osrc_create_object_iter_alist(object_service_fn_t *os, creds_t
         }
     } while (again == 1);
 
-    mq_msg_append_mem(msg, buffer, bpos, MQF_MSG_AUTO_FREE);
-    mq_msg_append_mem(msg, NULL, 0, MQF_MSG_KEEP_DATA);
+    gop_mq_msg_append_mem(msg, buffer, bpos, MQF_MSG_AUTO_FREE);
+    gop_mq_msg_append_mem(msg, NULL, 0, MQF_MSG_KEEP_DATA);
 
 
     //** Make the iterator handle
@@ -1959,7 +1959,7 @@ os_object_iter_t *osrc_create_object_iter_alist(object_service_fn_t *os, creds_t
     memcpy(it->v_size_initial, it->v_size, n_keys*sizeof(int));
 
     //** Make the gop and execute it
-    gop = new_mq_op(osrc->mqc, msg, osrc_response_object_iter, it, NULL, osrc->timeout);
+    gop = gop_mq_op_new(osrc->mqc, msg, osrc_response_object_iter, it, NULL, osrc->timeout);
     err = gop_waitall(gop);
     if (err != OP_STATE_SUCCESS) {
         log_printf(5, "ERROR status=%d\n", err);
@@ -1986,8 +1986,8 @@ void osrc_destroy_object_iter(os_object_iter_t *oit)
         return;
     }
 
-    if (it->mqs != NULL) mq_stream_destroy(it->mqs);
-    if (it->response != NULL) mq_msg_destroy(it->response);
+    if (it->mqs != NULL) gop_mq_stream_destroy(it->mqs);
+    if (it->response != NULL) gop_mq_msg_destroy(it->response);
     if (it->v_size_initial != NULL) free(it->v_size_initial);
     if (it->ait != NULL) free(*(it->ait));
 
@@ -2010,17 +2010,17 @@ op_status_t osrc_response_open(void *task_arg, int tid)
     log_printf(5, "START\n");
 
     //** Parse the response
-    mq_remove_header(task->response, 1);
+    gop_mq_remove_header(task->response, 1);
 
-    status = mq_read_status_frame(mq_msg_first(task->response), 0);
+    status = gop_mq_read_status_frame(gop_mq_msg_first(task->response), 0);
     if (status.op_status == OP_STATE_SUCCESS) {
         tbx_type_malloc(fd, osrc_object_fd_t, 1);
         fd->os = arg->os;
-        mq_get_frame(mq_msg_next(task->response), (void **)&data, &(fd->size));
+        gop_mq_get_frame(gop_mq_msg_next(task->response), (void **)&data, &(fd->size));
         tbx_type_malloc(fd->data, char, fd->size);
         memcpy(fd->data, data, fd->size);
         *(arg->pfd) = fd;
-        mq_ongoing_host_inc(osrc->ongoing, osrc->remote_host, osrc->host_id, osrc->host_id_len, osrc->heartbeat);
+        gop_mq_ongoing_host_inc(osrc->ongoing, osrc->remote_host, osrc->host_id, osrc->host_id_len, osrc->heartbeat);
     } else {
         *(arg->pfd) = NULL;
     }
@@ -2052,35 +2052,35 @@ op_generic_t *osrc_open_object(object_service_fn_t *os, creds_t *creds, char *pa
     hlen = snprintf(arg->handle, 1024, "%s:%d", osrc->host_id, tbx_atomic_global_counter());
 
     //** Form the message
-    msg = mq_make_exec_core_msg(osrc->remote_host, 1);
-    mq_msg_append_mem(msg, OSR_OPEN_OBJECT_KEY, OSR_OPEN_OBJECT_SIZE, MQF_MSG_KEEP_DATA);
+    msg = gop_mq_make_exec_core_msg(osrc->remote_host, 1);
+    gop_mq_msg_append_mem(msg, OSR_OPEN_OBJECT_KEY, OSR_OPEN_OBJECT_SIZE, MQF_MSG_KEEP_DATA);
     osrc_add_creds(os, creds, msg);
     if (id != NULL) {
-        mq_msg_append_mem(msg, id, strlen(id)+1, MQF_MSG_KEEP_DATA);
+        gop_mq_msg_append_mem(msg, id, strlen(id)+1, MQF_MSG_KEEP_DATA);
     } else {
-        mq_msg_append_mem(msg, NULL, 0, MQF_MSG_KEEP_DATA);
+        gop_mq_msg_append_mem(msg, NULL, 0, MQF_MSG_KEEP_DATA);
     }
 
-    mq_msg_append_mem(msg, path, strlen(path)+1, MQF_MSG_KEEP_DATA);
+    gop_mq_msg_append_mem(msg, path, strlen(path)+1, MQF_MSG_KEEP_DATA);
 
     //** Same for the mode
     n = tbx_zigzag_encode(mode, buffer);
     n += tbx_zigzag_encode(max_wait, &(buffer[n]));
     tbx_type_malloc(sent, unsigned char, n);
     memcpy(sent, buffer, n);
-    mq_msg_append_frame(msg, mq_frame_new(sent, n, MQF_MSG_AUTO_FREE));
+    gop_mq_msg_append_frame(msg, gop_mq_frame_new(sent, n, MQF_MSG_AUTO_FREE));
 
     //** Form the heartbeat and handle frames
     log_printf(5, "host_id=%s\n", osrc->host_id);
     log_printf(5, "handle=%s hlen=%d\n", arg->handle, hlen);
 
-    mq_msg_append_mem(msg, osrc->host_id, osrc->host_id_len, MQF_MSG_KEEP_DATA);
-    mq_msg_append_mem(msg, arg->handle, hlen+1, MQF_MSG_KEEP_DATA);
+    gop_mq_msg_append_mem(msg, osrc->host_id, osrc->host_id_len, MQF_MSG_KEEP_DATA);
+    gop_mq_msg_append_mem(msg, arg->handle, hlen+1, MQF_MSG_KEEP_DATA);
 
-    mq_msg_append_mem(msg, NULL, 0, MQF_MSG_KEEP_DATA);
+    gop_mq_msg_append_mem(msg, NULL, 0, MQF_MSG_KEEP_DATA);
 
     //** Make the gop
-    gop = new_mq_op(osrc->mqc, msg, osrc_response_open, arg, free, osrc->timeout);
+    gop = gop_mq_op_new(osrc->mqc, msg, osrc_response_open, arg, free, osrc->timeout);
     gop_set_private(gop, arg);
 
     log_printf(5, "END\n");
@@ -2101,13 +2101,13 @@ op_generic_t *osrc_abort_open_object(object_service_fn_t *os, op_generic_t *gop)
     mq_msg_t *msg;
 
     //** Form the message
-    msg = mq_make_exec_core_msg(osrc->remote_host, 1);
-    mq_msg_append_mem(msg, OSR_ABORT_OPEN_OBJECT_KEY, OSR_ABORT_OPEN_OBJECT_SIZE, MQF_MSG_KEEP_DATA);
-    mq_msg_append_mem(msg, arg->handle, strlen(arg->handle)+1, MQF_MSG_KEEP_DATA);
-    mq_msg_append_mem(msg, NULL, 0, MQF_MSG_KEEP_DATA);
+    msg = gop_mq_make_exec_core_msg(osrc->remote_host, 1);
+    gop_mq_msg_append_mem(msg, OSR_ABORT_OPEN_OBJECT_KEY, OSR_ABORT_OPEN_OBJECT_SIZE, MQF_MSG_KEEP_DATA);
+    gop_mq_msg_append_mem(msg, arg->handle, strlen(arg->handle)+1, MQF_MSG_KEEP_DATA);
+    gop_mq_msg_append_mem(msg, NULL, 0, MQF_MSG_KEEP_DATA);
 
     //** Make the gop
-    gop = new_mq_op(osrc->mqc, msg, osrc_response_status, NULL, NULL, osrc->timeout);
+    gop = gop_mq_op_new(osrc->mqc, msg, osrc_response_status, NULL, NULL, osrc->timeout);
 
     log_printf(5, "END\n");
 
@@ -2133,12 +2133,12 @@ op_status_t osrc_response_close_object(void *task_arg, int tid)
     log_printf(5, "START\n");
 
     //** Parse the response
-    mq_remove_header(task->response, 1);
+    gop_mq_remove_header(task->response, 1);
 
-    status = mq_read_status_frame(mq_msg_first(task->response), 0);
+    status = gop_mq_read_status_frame(gop_mq_msg_first(task->response), 0);
 
     //** Quit tracking it
-    mq_ongoing_host_dec(osrc->ongoing, osrc->remote_host, fd->data, fd->size);
+    gop_mq_ongoing_host_dec(osrc->ongoing, osrc->remote_host, fd->data, fd->size);
 
     log_printf(5, "END status=%d %d\n", status.op_status, status.error_code);
 
@@ -2162,14 +2162,14 @@ op_generic_t *osrc_close_object(object_service_fn_t *os, os_fd_t *ofd)
     log_printf(5, "START fd->size=%d\n", fd->size);
 
     //** Form the message
-    msg = mq_make_exec_core_msg(osrc->remote_host, 1);
-    mq_msg_append_mem(msg, OSR_CLOSE_OBJECT_KEY, OSR_CLOSE_OBJECT_SIZE, MQF_MSG_KEEP_DATA);
-    mq_msg_append_mem(msg, osrc->host_id, strlen(osrc->host_id)+1, MQF_MSG_KEEP_DATA);
-    mq_msg_append_mem(msg, fd->data, fd->size, MQF_MSG_KEEP_DATA);
-    mq_msg_append_mem(msg, NULL, 0, MQF_MSG_KEEP_DATA);
+    msg = gop_mq_make_exec_core_msg(osrc->remote_host, 1);
+    gop_mq_msg_append_mem(msg, OSR_CLOSE_OBJECT_KEY, OSR_CLOSE_OBJECT_SIZE, MQF_MSG_KEEP_DATA);
+    gop_mq_msg_append_mem(msg, osrc->host_id, strlen(osrc->host_id)+1, MQF_MSG_KEEP_DATA);
+    gop_mq_msg_append_mem(msg, fd->data, fd->size, MQF_MSG_KEEP_DATA);
+    gop_mq_msg_append_mem(msg, NULL, 0, MQF_MSG_KEEP_DATA);
 
     //** Make the gop
-    gop = new_mq_op(osrc->mqc, msg, osrc_response_close_object, fd, NULL, osrc->timeout);
+    gop = gop_mq_op_new(osrc->mqc, msg, osrc_response_close_object, fd, NULL, osrc->timeout);
 
     log_printf(5, "END\n");
 
@@ -2191,19 +2191,19 @@ op_generic_t *osrc_fsck_object(object_service_fn_t *os, creds_t *creds, char *fn
     log_printf(5, "START\n");
 
     //** Form the message
-    msg = mq_make_exec_core_msg(osrc->remote_host, 1);
-    mq_msg_append_mem(msg, OSR_FSCK_OBJECT_KEY, OSR_FSCK_OBJECT_SIZE, MQF_MSG_KEEP_DATA);
+    msg = gop_mq_make_exec_core_msg(osrc->remote_host, 1);
+    gop_mq_msg_append_mem(msg, OSR_FSCK_OBJECT_KEY, OSR_FSCK_OBJECT_SIZE, MQF_MSG_KEEP_DATA);
     osrc_add_creds(os, creds, msg);
-    mq_msg_append_mem(msg, fname, strlen(fname), MQF_MSG_KEEP_DATA);
+    gop_mq_msg_append_mem(msg, fname, strlen(fname), MQF_MSG_KEEP_DATA);
 
     n = tbx_zigzag_encode(ftype, buf);
     n += tbx_zigzag_encode(resolution, &(buf[n]));
     n += tbx_zigzag_encode(osrc->timeout, &(buf[n]));
-    mq_msg_append_mem(msg, buf, n, MQF_MSG_KEEP_DATA);
-    mq_msg_append_mem(msg, NULL, 0, MQF_MSG_KEEP_DATA);
+    gop_mq_msg_append_mem(msg, buf, n, MQF_MSG_KEEP_DATA);
+    gop_mq_msg_append_mem(msg, NULL, 0, MQF_MSG_KEEP_DATA);
 
     //** Make the gop
-    gop = new_mq_op(osrc->mqc, msg, osrc_response_status, NULL, NULL, osrc->timeout);
+    gop = gop_mq_op_new(osrc->mqc, msg, osrc_response_status, NULL, NULL, osrc->timeout);
 
     return(gop);
 }
@@ -2223,7 +2223,7 @@ int osrc_next_fsck(object_service_fn_t *os, os_fsck_iter_t *oit, char **bad_fnam
     if (it->finished == 1) return(OS_FSCK_FINISHED);
 
     //** Read the bad fname len
-    n = mq_stream_read_varint(it->mqs, &err);
+    n = gop_gop_mq_stream_read_varint(it->mqs, &err);
     if (err != 0) {
         log_printf(5, "ERROR reading key len!\n");
         it->finished = 1;
@@ -2240,7 +2240,7 @@ int osrc_next_fsck(object_service_fn_t *os, os_fsck_iter_t *oit, char **bad_fnam
     //** Valid object name so read it
     tbx_type_malloc(*bad_fname, char, n+1);
     (*bad_fname)[n] = 0;
-    err = mq_stream_read(it->mqs, *bad_fname, n);
+    err = gop_mq_stream_read(it->mqs, *bad_fname, n);
     if (err != 0) {
         log_printf(5, "ERROR reading key!");
         free(*bad_fname);
@@ -2250,7 +2250,7 @@ int osrc_next_fsck(object_service_fn_t *os, os_fsck_iter_t *oit, char **bad_fnam
     }
 
     //** Read the object type
-    *bad_atype = mq_stream_read_varint(it->mqs, &err);
+    *bad_atype = gop_gop_mq_stream_read_varint(it->mqs, &err);
     if (err != 0) {
         log_printf(5, "ERROR reading object type!");
         it->finished = 1;
@@ -2258,7 +2258,7 @@ int osrc_next_fsck(object_service_fn_t *os, os_fsck_iter_t *oit, char **bad_fnam
     }
 
     //** Read the  FSCK error
-    fsck_err = mq_stream_read_varint(it->mqs, &err);
+    fsck_err = gop_gop_mq_stream_read_varint(it->mqs, &err);
     if (err != 0) {
         log_printf(5, "ERROR reading FSCK error!");
         it->finished = 1;
@@ -2283,24 +2283,24 @@ op_status_t osrc_response_fsck_iter(void *task_arg, int tid)
 
     log_printf(5, "START\n");
 
-    status = op_success_status;
+    status = gop_success_status;
 
     //** Parse the response
-    mq_remove_header(task->response, 1);
+    gop_mq_remove_header(task->response, 1);
 
-    it->mqs = mq_stream_read_create(osrc->mqc, osrc->ongoing, osrc->host_id, osrc->host_id_len, mq_msg_first(task->response), osrc->remote_host, osrc->stream_timeout);
+    it->mqs = gop_gop_mq_stream_read_create(osrc->mqc, osrc->ongoing, osrc->host_id, osrc->host_id_len, gop_mq_msg_first(task->response), osrc->remote_host, osrc->stream_timeout);
 
     //** Parse the status
-    status.op_status = mq_stream_read_varint(it->mqs, &err);
+    status.op_status = gop_gop_mq_stream_read_varint(it->mqs, &err);
     log_printf(15, "op_status=%d\n", status.op_status);
-    status.error_code = mq_stream_read_varint(it->mqs, &err);
+    status.error_code = gop_gop_mq_stream_read_varint(it->mqs, &err);
     log_printf(15, "error_code%d\n", status.error_code);
 
     if (err != 0) {
         status.op_status= OP_STATE_FAILURE;    //** Trigger a failure if error reading from the stream
     }
     if (status.op_status == OP_STATE_FAILURE) {
-        mq_stream_destroy(it->mqs);
+        gop_mq_stream_destroy(it->mqs);
     } else {
         //** Remove the response from the task to keep it from being freed.
         //** We'll do it manually
@@ -2330,16 +2330,16 @@ os_fsck_iter_t *osrc_create_fsck_iter(object_service_fn_t *os, creds_t *creds, c
     log_printf(5, "START\n");
 
     //** Form the message
-    msg = mq_make_exec_core_msg(osrc->remote_host, 1);
-    mq_msg_append_mem(msg, OSR_FSCK_ITER_KEY, OSR_FSCK_ITER_SIZE, MQF_MSG_KEEP_DATA);
-    mq_msg_append_mem(msg, osrc->host_id, strlen(osrc->host_id)+1, MQF_MSG_KEEP_DATA);
+    msg = gop_mq_make_exec_core_msg(osrc->remote_host, 1);
+    gop_mq_msg_append_mem(msg, OSR_FSCK_ITER_KEY, OSR_FSCK_ITER_SIZE, MQF_MSG_KEEP_DATA);
+    gop_mq_msg_append_mem(msg, osrc->host_id, strlen(osrc->host_id)+1, MQF_MSG_KEEP_DATA);
     osrc_add_creds(os, creds, msg);
-    mq_msg_append_mem(msg, path, strlen(path), MQF_MSG_KEEP_DATA);
+    gop_mq_msg_append_mem(msg, path, strlen(path), MQF_MSG_KEEP_DATA);
 
     n = tbx_zigzag_encode(mode, buf);
     n += tbx_zigzag_encode(osrc->timeout, &(buf[n]));
-    mq_msg_append_mem(msg, buf, n, MQF_MSG_KEEP_DATA);
-    mq_msg_append_mem(msg, NULL, 0, MQF_MSG_KEEP_DATA);
+    gop_mq_msg_append_mem(msg, buf, n, MQF_MSG_KEEP_DATA);
+    gop_mq_msg_append_mem(msg, NULL, 0, MQF_MSG_KEEP_DATA);
 
     //** Make the iterator handle
     tbx_type_malloc_clear(it, osrc_fsck_iter_t, 1);
@@ -2347,7 +2347,7 @@ os_fsck_iter_t *osrc_create_fsck_iter(object_service_fn_t *os, creds_t *creds, c
     it->mode = mode;
 
     //** Make the gop and execute it
-    gop = new_mq_op(osrc->mqc, msg, osrc_response_fsck_iter, it, NULL, osrc->timeout);
+    gop = gop_mq_op_new(osrc->mqc, msg, osrc_response_fsck_iter, it, NULL, osrc->timeout);
     err = gop_waitall(gop);
     if (err != OP_STATE_SUCCESS) {
         log_printf(5, "ERROR status=%d\n", err);
@@ -2368,8 +2368,8 @@ void osrc_destroy_fsck_iter(object_service_fn_t *os, os_fsck_iter_t *oit)
 {
     osrc_fsck_iter_t *it = (osrc_fsck_iter_t *)oit;
 
-    if (it->mqs != NULL) mq_stream_destroy(it->mqs);
-    if (it->response != NULL) mq_msg_destroy(it->response);
+    if (it->mqs != NULL) gop_mq_stream_destroy(it->mqs);
+    if (it->response != NULL) gop_mq_msg_destroy(it->response);
 
     free(it);
 }
@@ -2428,7 +2428,7 @@ void osrc_destroy(object_service_fn_t *os)
     if (osrc->authn != NULL) authn_destroy(osrc->authn);
 
     free(osrc->host_id);
-    mq_msg_destroy(osrc->remote_host);
+    gop_mq_msg_destroy(osrc->remote_host);
     free(osrc->remote_host_string);
     free(osrc);
     free(os);
@@ -2465,7 +2465,7 @@ object_service_fn_t *object_service_remote_client_create(service_manager_t *ess,
     } else {
         asection = tbx_inip_get_string(fd, section, "authn", NULL);
         atype = (asection == NULL) ? strdup(AUTHN_TYPE_FAKE) : tbx_inip_get_string(fd, asection, "type", AUTHN_TYPE_FAKE);
-        authn_create = lookup_service(ess, AUTHN_AVAILABLE, atype);
+        authn_create = lio_lookup_service(ess, AUTHN_AVAILABLE, atype);
         osrc->authn = (*authn_create)(ess, fd, asection);
         free(atype);
         free(asection);
@@ -2474,7 +2474,7 @@ object_service_fn_t *object_service_remote_client_create(service_manager_t *ess,
     osrc->timeout = tbx_inip_get_integer(fd, section, "timeout", 60);
     osrc->heartbeat = tbx_inip_get_integer(fd, section, "heartbeat", 600);
     osrc->remote_host_string = tbx_inip_get_string(fd, section, "remote_address", NULL);
-    osrc->remote_host = mq_string_to_address(osrc->remote_host_string);
+    osrc->remote_host = gop_mq_string_to_address(osrc->remote_host_string);
 
     osrc->max_stream = tbx_inip_get_integer(fd, section, "max_stream", 1024*1024);
     osrc->stream_timeout = tbx_inip_get_integer(fd, section, "stream_timeout", 65);
@@ -2494,13 +2494,13 @@ object_service_fn_t *object_service_remote_client_create(service_manager_t *ess,
     log_printf(1, "My host_id=%s\n", osrc->host_id);
 
     //** Get the MQC
-    osrc->mqc = lookup_service(ess, ESS_RUNNING, ESS_MQ); assert(osrc->mqc != NULL);
+    osrc->mqc = lio_lookup_service(ess, ESS_RUNNING, ESS_MQ); assert(osrc->mqc != NULL);
 
     //** Get the Global ongoing handle
-    osrc->ongoing = lookup_service(ess, ESS_RUNNING, ESS_ONGOING_CLIENT); assert(osrc->ongoing != NULL);
+    osrc->ongoing = lio_lookup_service(ess, ESS_RUNNING, ESS_ONGOING_CLIENT); assert(osrc->ongoing != NULL);
 
     //** Get the thread pool to use
-    osrc->tpc = lookup_service(ess, ESS_RUNNING, ESS_TPC_UNLIMITED); assert(osrc->tpc != NULL);
+    osrc->tpc = lio_lookup_service(ess, ESS_RUNNING, ESS_TPC_UNLIMITED); assert(osrc->tpc != NULL);
 
     //** Set up the fn ptrs
     os->type = OS_TYPE_REMOTE_CLIENT;

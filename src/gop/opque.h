@@ -62,20 +62,20 @@ int opque_get_failure_mode(opque_t *q);
 op_status_t opque_completion_status(opque_t *q);
 void opque_set_arg(opque_t *q, void *arg);
 void *opque_get_arg(opque_t *q);
-GOP_API opque_t *new_opque();
+GOP_API opque_t *gop_opque_new();
 void init_opque(opque_t *que);
-GOP_API void init_opque_system();
-GOP_API void destroy_opque_system();
-GOP_API void opque_free(opque_t *que, int mode);
-GOP_API int opque_add(opque_t *que, op_generic_t *gop);
-int internal_opque_add(opque_t *que, op_generic_t *gop, int dolock);
-GOP_API void default_sort_ops(void *arg, opque_t *que);
+GOP_API void gop_init_opque_system();
+GOP_API void gop_shutdown();
+GOP_API void gop_opque_free(opque_t *que, int mode);
+GOP_API int gop_opque_add(opque_t *que, op_generic_t *gop);
+int internal_gop_opque_add(opque_t *que, op_generic_t *gop, int dolock);
+GOP_API void gop_default_sort_ops(void *arg, opque_t *que);
 
 // Preprocessor Macros
 #define lock_opque(q)   log_printf(15, "lock_opque: qid=%d\n", (q)->opque->op.base.id); apr_thread_mutex_lock((q)->opque->op.base.ctl->lock)
 #define unlock_opque(q) log_printf(15, "unlock_opque: qid=%d\n", (q)->opque->op.base.id); apr_thread_mutex_unlock((q)->opque->op.base.ctl->lock)
 #define opque_get_gop(q) &((q)->op)
-#define opque_failure_callback_set(q, fn, priv) callback_set(&(q->failure_cb), fn, priv)
+#define opque_failure_gop_cb_set(q, fn, priv) gop_cb_set(&(q->failure_cb), fn, priv)
 #define opque_callback_append(q, cb) gop_callback_append(opque_get_gop(q), (cb))
 #define opque_get_next_finished(q) gop_get_next_finished(opque_get_gop(q))
 #define opque_get_next_failed(q) gop_get_next_failed(opque_get_gop(q))

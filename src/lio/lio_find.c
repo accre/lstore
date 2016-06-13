@@ -97,7 +97,7 @@ int main(int argc, char **argv)
             //** Create the simple path iterator
             tuple = lio_path_resolve(lio_gc->auto_translate, argv[j]);
             lio_path_wildcard_auto_append(&tuple);
-            rp_single = os_path_glob2regex(tuple.path);
+            rp_single = lio_os_path_glob2regex(tuple.path);
         } else {
             rg_mode = 0;  //** Use the initial rp
         }
@@ -124,11 +124,11 @@ int main(int argc, char **argv)
 
         lio_path_release(&tuple);
         if (rp_single != NULL) {
-            os_regex_table_destroy(rp_single);
+            lio_os_regex_table_destroy(rp_single);
             rp_single = NULL;
         }
         if (ro_single != NULL) {
-            os_regex_table_destroy(ro_single);
+            lio_os_regex_table_destroy(ro_single);
             ro_single = NULL;
         }
     }

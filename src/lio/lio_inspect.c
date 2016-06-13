@@ -738,13 +738,13 @@ op_status_t inspect_task(void *arg, int id)
 
     if (w->get_exnode == 1) {
         count = - lio_gc->max_attr;
-        lio_get_attr(lio_gc, lio_gc->creds, w->fname, NULL, "system.exnode", (void **)&w->exnode, &count);
+        lio_getattr(lio_gc, lio_gc->creds, w->fname, NULL, "system.exnode", (void **)&w->exnode, &count);
     }
 
     if (w->exnode == NULL) {
         info_printf(lio_ifd, 0, "ERROR  Failed with file %s (ftype=%d). No exnode!\n", w->fname, w->ftype);
         free(w->fname);
-        return(op_failure_status);
+        return(gop_failure_status);
     }
 
     //** Kind of kludgy to load the ex twice but this is more of a prototype fn
@@ -755,7 +755,7 @@ op_status_t inspect_task(void *arg, int id)
         info_printf(lio_ifd, 0, "ERROR  Failed with file %s (ftype=%d). No default segment!\n", w->fname, w->ftype);
         free(w->exnode);
         free(w->fname);
-        return(op_failure_status);
+        return(gop_failure_status);
     }
 
     apr_thread_mutex_lock(lock);
@@ -770,18 +770,18 @@ op_status_t inspect_task(void *arg, int id)
         free(dsegid);
         free(w->exnode);
         free(w->fname);
-        return(op_success_status);
+        return(gop_success_status);
     }
     tbx_list_insert(seg_index, dsegid, dsegid);
     apr_thread_mutex_unlock(lock);
 
     //** If we made it here the exnode is unique and loaded.
     //** Load it
-    exp = exnode_exchange_text_parse(w->exnode);
-    ex = exnode_create();
-    if (exnode_deserialize(ex, exp, lio_gc->ess) != 0) {
+    exp = lio_exnode_exchange_text_parse(w->exnode);
+    ex = lio_exnode_create();
+    if (lio_exnode_deserialize(ex, exp, lio_gc->ess) != 0) {
         info_printf(lio_ifd, 0, "ERROR  Failed with file %s (ftype=%d). Problem parsing exnode!\n", w->fname, w->ftype);
-        status = op_failure_status;
+        status = gop_failure_status;
         goto finished;
     }
 
@@ -791,10 +791,10 @@ op_status_t inspect_task(void *arg, int id)
 
 
     //** Get the default view to use
-    seg = exnode_get_default(ex);
+    seg = lio_exnode_default_get(ex);
     if (seg == NULL) {
         info_printf(lio_ifd, 0, "ERROR  Failed with file %s (ftype=%d). No default segment!\n", w->fname, w->ftype);
-        status = op_failure_status;
+        status = gop_failure_status;
         goto finished;
     }
 
@@ -806,12 +806,12 @@ op_status_t inspect_task(void *arg, int id)
     args.rid_lock = rid_lock;
     args.rid_changes = rid_changes;
     args.query = query;
-    args.qs = new_opque();
-    args.qf = new_opque();
+    args.qs = gop_opque_new();
+    args.qf = gop_opque_new();
     gop = segment_inspect(seg, lio_gc->da, lio_ifd, whattodo, bufsize, &args, lio_gc->timeout);
     if (gop == NULL) {
         printf("File not found.\n");
-        return(op_failure_status);
+        return(gop_failure_status);
     }
 
     log_printf(15, "fname=%s inspect_gid=%d whattodo=%d bufsize=" XOT "\n", w->fname, gop_id(gop), whattodo, bufsize);
@@ -856,8 +856,8 @@ op_status_t inspect_task(void *arg, int id)
     //** NOTE:  if status.error_code & INSPECT_RESULT_FULL_CHECK that means the underlying segment inspect did a full byte level check.
     if ((status.op_status == OP_STATE_SUCCESS) && (status.error_code & INSPECT_RESULT_FULL_CHECK)) {
         //** Store the updated exnode back to disk
-        exp_out = exnode_exchange_create(EX_TEXT);
-        exnode_serialize(ex, exp_out);
+        exp_out = lio_exnode_exchange_create(EX_TEXT);
+        lio_exnode_serialize(ex, exp_out);
 
         val[0] = NULL;
         v_size[0] = 0;
@@ -880,7 +880,7 @@ op_status_t inspect_task(void *arg, int id)
         if (count != 0) {  //** Do a further check to make sure the exnode hans't changed during the inspection
             count = -lio_gc->max_attr;
             exnode2 = NULL;
-            lio_get_attr(lio_gc, creds, w->fname, NULL, "system.exnode", (void **)&exnode2, &count);
+            lio_getattr(lio_gc, creds, w->fname, NULL, "system.exnode", (void **)&exnode2, &count);
             if (exnode2 != NULL) {
                 count = strcmp(exnode2, exp->text.text);
                 free(exnode2);
@@ -906,9 +906,9 @@ op_status_t inspect_task(void *arg, int id)
             v_size[n] = w->set_success_size;
             n++;
         }
-        err= lio_set_multiple_attrs(lio_gc, creds, w->fname, NULL, keys, (void **)val, v_size, n);
+        err= lio_multiple_setattr_op(lio_gc, creds, w->fname, NULL, keys, (void **)val, v_size, n);
         if (err != OP_STATE_SUCCESS) status.op_status = OP_STATE_FAILURE;
-        exnode_exchange_destroy(exp_out);
+        lio_exnode_exchange_destroy(exp_out);
     } else {
         n = 1;
         val[0] = NULL;
@@ -934,13 +934,13 @@ op_status_t inspect_task(void *arg, int id)
 
         exp_out = NULL;
         if (status.op_status == OP_STATE_SUCCESS) { //** Only store an updated exnode on success
-            exp_out = exnode_exchange_create(EX_TEXT);
-            exnode_serialize(ex, exp_out);
+            exp_out = lio_exnode_exchange_create(EX_TEXT);
+            lio_exnode_serialize(ex, exp_out);
             count = strcmp(exp->text.text, exp_out->text.text);  //** Only update the exnode if it's changed
             if (count != 0) {  //** Do a further check to make sure the exnode hans't changed during the inspection
                 count = -lio_gc->max_attr;
                 exnode2 = NULL;
-                lio_get_attr(lio_gc, creds, w->fname, NULL, "system.exnode", (void **)&exnode2, &count);
+                lio_getattr(lio_gc, creds, w->fname, NULL, "system.exnode", (void **)&exnode2, &count);
                 if (exnode2 != NULL) {
                     count = strcmp(exnode2, exp->text.text);
                     free(exnode2);
@@ -968,9 +968,9 @@ op_status_t inspect_task(void *arg, int id)
             n += lio_encode_error_counts(&serr, &(keys[n]), &(val[n]), ebuf, &(v_size[n]), 0);
         }
 
-        err = lio_set_multiple_attrs(lio_gc, creds, w->fname, NULL, keys, (void **)val, v_size, n);
+        err = lio_multiple_setattr_op(lio_gc, creds, w->fname, NULL, keys, (void **)val, v_size, n);
         if (err != OP_STATE_SUCCESS) status.op_status = OP_STATE_FAILURE;
-        if (exp_out != NULL) exnode_exchange_destroy(exp_out);  //** Free the output exnode if it exists
+        if (exp_out != NULL) lio_exnode_exchange_destroy(exp_out);  //** Free the output exnode if it exists
     }
 
 
@@ -982,13 +982,13 @@ op_status_t inspect_task(void *arg, int id)
     } else {
         opque_waitall(args.qf);
     }
-    opque_free(args.qs, OP_DESTROY);
-    opque_free(args.qf, OP_DESTROY);
+    gop_opque_free(args.qs, OP_DESTROY);
+    gop_opque_free(args.qf, OP_DESTROY);
 
 finished:
-    exnode_exchange_destroy(exp);
+    lio_exnode_exchange_destroy(exp);
 
-    exnode_destroy(ex);
+    lio_exnode_destroy(ex);
 
     free(w->fname);
 
@@ -1373,7 +1373,7 @@ int main(int argc, char **argv)
     assert_result(apr_pool_create(&mpool, NULL), APR_SUCCESS);
     apr_thread_mutex_create(&lock, APR_THREAD_MUTEX_DEFAULT, mpool);
 
-    q = new_opque();
+    q = gop_opque_new();
     opque_start_execution(q);
 
     slot = pslot = 0;
@@ -1397,7 +1397,7 @@ int main(int argc, char **argv)
             //** Create the simple path iterator
             tuple = lio_path_resolve(lio_gc->auto_translate, path);
             lio_path_wildcard_auto_append(&tuple);
-            rp_single = os_path_glob2regex(tuple.path);
+            rp_single = lio_os_path_glob2regex(tuple.path);
         } else {
             rg_mode = 0;  //** Use the initial rp
         }
@@ -1481,11 +1481,11 @@ int main(int argc, char **argv)
                 fname = NULL;
 
                 submitted++;
-                gop = new_thread_pool_op(lio_gc->tpc_unlimited, NULL, inspect_task, (void *)&(w[slot]), NULL, 1);
+                gop = gop_tp_op_new(lio_gc->tpc_unlimited, NULL, inspect_task, (void *)&(w[slot]), NULL, 1);
                 gop_set_myid(gop, slot);
                 log_printf(0, "gid=%d i=%d fname=%s\n", gop_id(gop), slot, fname);
 //info_printf(lio_ifd, 0, "n=%d gid=%d slot=%d fname=%s\n", submitted, gop_id(gop), slot, fname);
-                opque_add(q, gop);
+                gop_opque_add(q, gop);
 
                 if (submitted >= lio_parallel_task_count) {
                     gop = opque_waitany(q);
@@ -1519,11 +1519,11 @@ int main(int argc, char **argv)
         lio_destroy_object_iter(tuple.lc, it);
 
         if (rp_single != NULL) {
-            os_regex_table_destroy(rp_single);
+            lio_os_regex_table_destroy(rp_single);
             rp_single = NULL;
         }
         if (ro_single != NULL) {
-            os_regex_table_destroy(ro_single);
+            lio_os_regex_table_destroy(ro_single);
             ro_single = NULL;
         }
         lio_path_release(&tuple);
@@ -1541,7 +1541,7 @@ int main(int argc, char **argv)
     }
 
 
-    opque_free(q, OP_DESTROY);
+    gop_opque_free(q, OP_DESTROY);
 
     apr_thread_mutex_destroy(lock);
     apr_pool_destroy(mpool);

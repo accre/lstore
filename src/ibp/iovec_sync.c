@@ -38,16 +38,16 @@ int ibp_sync_execute(opque_t *q, int nthreads)
     op_generic_t *gop;
 
     log_printf(15, "ibp_sync_execute: Start! ncommands=%d\n", tbx_stack_count(q->qd.list));
-    default_sort_ops(NULL, q);
+    gop_default_sort_ops(NULL, q);
 
-    q = new_opque();
+    q = gop_opque_new();
     opque_start_execution(q);
 
     tasks = q->qd.list;
     q->qd.list = tbx_stack_new();
 
     while ((  gop = (op_generic_t *)tbx_stack_pop(tasks)) != NULL) {
-        opque_add(q, gop);
+        gop_opque_add(q, gop);
         if (opque_tasks_left(q) >= nthreads) {
             opque_waitany(q);
         }

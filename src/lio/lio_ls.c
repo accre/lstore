@@ -177,7 +177,7 @@ int main(int argc, char **argv)
 
     fcount = 0;
 
-    q = new_opque();
+    q = gop_opque_new();
     table = tbx_list_create(0, &tbx_list_string_compare, NULL, tbx_list_no_key_free, tbx_list_no_data_free);
 
 
@@ -187,7 +187,7 @@ int main(int argc, char **argv)
             //** Create the simple path iterator
             tuple = lio_path_resolve(lio_gc->auto_translate, argv[j]);
             lio_path_wildcard_auto_append(&tuple);
-            rp_single = os_path_glob2regex(tuple.path);
+            rp_single = lio_os_path_glob2regex(tuple.path);
         } else {
             rg_mode = 0;  //** Use the initial rp
         }
@@ -215,9 +215,9 @@ int main(int argc, char **argv)
             //** Check if we have a link.  If so we need to resolve the link path
             if ((ftype & OS_OBJECT_SYMLINK) > 0) {
                 lse->link_size = -64*1024;
-                gop = gop_lio_get_attr(tuple.lc, tuple.creds, lse->fname, NULL, "os.link", (void **)&(lse->link), &(lse->link_size));
+                gop = lio_getattr_op(tuple.lc, tuple.creds, lse->fname, NULL, "os.link", (void **)&(lse->link), &(lse->link_size));
                 gop_set_private(gop, lse);
-                opque_add(q, gop);
+                gop_opque_add(q, gop);
                 if (nosort == 1) opque_waitall(q);
             }
 
@@ -238,11 +238,11 @@ int main(int argc, char **argv)
 
         lio_path_release(&tuple);
         if (rp_single != NULL) {
-            os_regex_table_destroy(rp_single);
+            lio_os_regex_table_destroy(rp_single);
             rp_single = NULL;
         }
         if (ro_single != NULL) {
-            os_regex_table_destroy(ro_single);
+            lio_os_regex_table_destroy(ro_single);
             ro_single = NULL;
         }
     }
@@ -267,7 +267,7 @@ int main(int argc, char **argv)
     if (fcount == 0) return_code = 2;
 
 finished:
-    opque_free(q, OP_DESTROY);
+    gop_opque_free(q, OP_DESTROY);
 
     lio_shutdown();
 

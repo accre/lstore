@@ -22,7 +22,7 @@
 
 //*************************************************************
 
-void callback_set(callback_t *cb, void (*fn)(void *, int), void *priv)
+void gop_cb_set(callback_t *cb, void (*fn)(void *, int), void *priv)
 {
     cb->priv = priv;
     cb->fn = fn;
@@ -89,7 +89,7 @@ void callback_execute(callback_t *root_cb, int value)
     callback_t *cb = root_cb;
 
     while (cb != NULL) {
-        cb_next = cb->next;  //** Need this to handle the opque_free() race condition of the current cb
+        cb_next = cb->next;  //** Need this to handle the gop_opque_free() race condition of the current cb
         log_printf(15, " cb_exec:  cb=%p cb->next=%p\n", cb, cb_next);
         callback_single_execute(cb, value);
         cb = cb_next;

@@ -102,7 +102,7 @@ int main(int argc, char **argv)
     tbx_type_malloc(gop_list, op_generic_t *, n_rcap);
 
     offset = 0;
-    q = new_opque();
+    q = gop_opque_new();
     for (i=0; i<n_rcap; i++) {
         tbx_type_malloc(buffer[i], char, len+1);
         tbx_type_malloc(rcap[i], char, 256);
@@ -125,7 +125,7 @@ int main(int argc, char **argv)
         info_printf(lio_ifd, 0, "i=%d gid=%d rcap=%s\n", i, gop_id(gop_list[i]), rcap[i]);
 
         gop_set_myid(gop_list[i], i);
-        opque_add(q, gop_list[i]);
+        gop_opque_add(q, gop_list[i]);
     }
 
     err = 0;

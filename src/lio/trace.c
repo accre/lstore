@@ -134,7 +134,7 @@ trace_t *trace_load(service_manager_t *exs, exnode_t *tex, data_attr_t *da, int 
     trace->n_files = n_files;
 
     //** Load the files
-    tseg = exnode_get_default(tex);
+    tseg = lio_exnode_default_get(tex);
     if (tseg == NULL) {
         printf("No default segment!  Aborting!\n");
         abort();
@@ -144,9 +144,9 @@ trace_t *trace_load(service_manager_t *exs, exnode_t *tex, data_attr_t *da, int 
         file = &(trace->files[i]);
 
         file->seg = NULL;
-        file->ex = exnode_create();
+        file->ex = lio_exnode_create();
         segment_clone(tseg, da, &(file->seg), CLONE_STRUCTURE, NULL, timeout);
-        view_insert(file->ex, file->seg);
+        lio_view_insert(file->ex, file->seg);
     }
 
     //** and the commands
@@ -202,16 +202,16 @@ void trace_destroy(trace_t *trace)
     op_generic_t *gop;
     opque_t *q;
 
-    q = new_opque();
+    q = gop_opque_new();
     for (i=0; i<trace->n_files; i++) {
         gop = segment_truncate(trace->files[i].seg, trace->da, 0, 60);
-        opque_add(q, gop);
+        gop_opque_add(q, gop);
     }
 
     opque_waitall(q);
 
     for (i=0; i<trace->n_files; i++) {
-        exnode_destroy(trace->files[i].ex);
+        lio_exnode_destroy(trace->files[i].ex);
     }
 
     free(trace->files);

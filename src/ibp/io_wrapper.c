@@ -27,10 +27,10 @@ int _print_progress = 0;
 int _nthreads = 1;
 
 //*************************************************************************
-// io_set_mode - Sets the IO mode
+// ibp_io_mode_set - Sets the IO mode
 //*************************************************************************
 
-void io_set_mode(int sync_transfer, int print_progress, int nthreads)
+void ibp_io_mode_set(int sync_transfer, int print_progress, int nthreads)
 {
     _sync_transfer = sync_transfer;
     _print_progress = print_progress;
@@ -38,24 +38,24 @@ void io_set_mode(int sync_transfer, int print_progress, int nthreads)
 }
 
 //*************************************************************************
-//  io_start - Simple wrapper for sync/async to start execution
+//  ibp_io_start - Simple wrapper for sync/async to start execution
 //*************************************************************************
 
-void io_start(opque_t *q)
+void ibp_io_start(opque_t *q)
 {
     if (_sync_transfer == 0) opque_start_execution(q);
 }
 
 //*************************************************************************
-//  io_waitall - Simple wrapper for sync/async waitall
+//  ibp_io_waitall - Simple wrapper for sync/async waitall
 //*************************************************************************
 
-int io_waitall(opque_t *q)
+int ibp_io_waitall(opque_t *q)
 {
     int ibp_err, err, nleft;
     op_generic_t *op;
 
-    log_printf(15, "io_waitall: sync_transfer=%d\n", _sync_transfer);
+    log_printf(15, "ibp_io_waitall: sync_transfer=%d\n", _sync_transfer);
     if (_sync_transfer == 1) {
         ibp_err = ibp_sync_execute(q, _nthreads);
         err = ( ibp_err == IBP_OK) ? 0 : 1;
@@ -79,7 +79,7 @@ int io_waitall(opque_t *q)
             err = opque_tasks_failed(q);
         }
 
-        log_printf(15, "io_waitall: err=%d nfailed=%d nleft=%d\n", err, opque_tasks_failed(q), opque_tasks_left(q));
+        log_printf(15, "ibp_io_waitall: err=%d nfailed=%d nleft=%d\n", err, opque_tasks_failed(q), opque_tasks_left(q));
     }
 
     return(err);

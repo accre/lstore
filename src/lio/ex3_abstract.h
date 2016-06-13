@@ -172,24 +172,24 @@ struct segment_errors_t {
 };
 
 //** Exnode related functions
-LIO_API exnode_t *exnode_create();
+LIO_API exnode_t *lio_exnode_create();
 op_generic_t *exnode_remove(thread_pool_context_t *tpc, exnode_t *ex, data_attr_t *da, int timeout);
-LIO_API op_generic_t *exnode_clone(thread_pool_context_t *tpc, exnode_t *ex, data_attr_t *da, exnode_t **clone_ex, void *arg, int mode, int timeout);
-LIO_API void exnode_destroy(exnode_t *ex);
+LIO_API op_generic_t *lio_exnode_clone(thread_pool_context_t *tpc, exnode_t *ex, data_attr_t *da, exnode_t **clone_ex, void *arg, int mode, int timeout);
+LIO_API void lio_exnode_destroy(exnode_t *ex);
 void exnode_exchange_append_text(exnode_exchange_t *exp, char *buffer);
 void exnode_exchange_append(exnode_exchange_t *exp, exnode_exchange_t *exp_append);
-LIO_API int exnode_serialize(exnode_t *ex, exnode_exchange_t *exp);
-LIO_API int exnode_deserialize(exnode_t *ex, exnode_exchange_t *exp, service_manager_t *ess);
+LIO_API int lio_exnode_serialize(exnode_t *ex, exnode_exchange_t *exp);
+LIO_API int lio_exnode_deserialize(exnode_t *ex, exnode_exchange_t *exp, service_manager_t *ess);
 ex_header_t *exnode_get_header(exnode_t *ex);
 //Exnode3__Exnode *exnode_native2pb(exnode_t *exnode);
 void exnode_exchange_init(exnode_exchange_t *exp, int type);
-LIO_API exnode_exchange_t *exnode_exchange_create(int type);
-LIO_API void exnode_exchange_destroy(exnode_exchange_t *exp);
+LIO_API exnode_exchange_t *lio_exnode_exchange_create(int type);
+LIO_API void lio_exnode_exchange_destroy(exnode_exchange_t *exp);
 void exnode_exchange_free(exnode_exchange_t *exp);
-LIO_API exnode_exchange_t *exnode_exchange_load_file(char *fname);
-LIO_API exnode_exchange_t *exnode_exchange_text_parse(char *text);
+LIO_API exnode_exchange_t *lio_exnode_exchange_load_file(char *fname);
+LIO_API exnode_exchange_t *lio_exnode_exchange_text_parse(char *text);
 ex_id_t exnode_exchange_get_default_view_id(exnode_exchange_t *exp);
-LIO_API segment_t *exnode_get_default(exnode_t *ex);
+LIO_API segment_t *lio_exnode_default_get(exnode_t *ex);
 void exnode_set_default(exnode_t *ex, segment_t *seg);
 
 //exnode_t *exnode_pb2native(Exnode3__Exnode *pb);
@@ -198,7 +198,7 @@ exnode_t *exnode_load(char *fname);
 int exnode_save(char *fname, exnode_t *ex);
 
 //** View related functions
-LIO_API int view_insert(exnode_t *ex, segment_t *view);
+LIO_API int lio_view_insert(exnode_t *ex, segment_t *view);
 int view_remove(exnode_t *ex, segment_t *view);
 segment_t *view_search_by_name(exnode_t *ex, char *name);
 segment_t *view_search_by_id(exnode_t *ex, ex_id_t id);
@@ -206,7 +206,7 @@ segment_t *view_search_by_id(exnode_t *ex, ex_id_t id);
 //** Segment related functions
 #define segment_get_header(seg) &((seg)->header)
 #define segment_set_header(seg, new_head) (seg)->header = *(new_head)
-LIO_API op_generic_t *segment_copy(thread_pool_context_t *tpc, data_attr_t *da, segment_rw_hints_t *rw_hints, segment_t *src_seg, segment_t *dest_seg, ex_off_t src_offset, ex_off_t dest_offset, ex_off_t len, ex_off_t bufsize, char *buffer, int do_truncate, int timoeut);
+LIO_API op_generic_t *lio_segment_copy(thread_pool_context_t *tpc, data_attr_t *da, segment_rw_hints_t *rw_hints, segment_t *src_seg, segment_t *dest_seg, ex_off_t src_offset, ex_off_t dest_offset, ex_off_t len, ex_off_t bufsize, char *buffer, int do_truncate, int timoeut);
 op_generic_t *segment_put(thread_pool_context_t *tpc, data_attr_t *da, segment_rw_hints_t *rw_hints, FILE *fd, segment_t *dest_seg, ex_off_t dest_offset, ex_off_t len, ex_off_t bufsize, char *buffer, int do_truncate, int timeout);
 op_generic_t *segment_get(thread_pool_context_t *tpc, data_attr_t *da, segment_rw_hints_t *rw_hints, segment_t *src_seg, FILE *fd, ex_off_t src_offset, ex_off_t len, ex_off_t bufsize, char *buffer, int timeout);
 segment_t *load_segment(service_manager_t *ess, ex_id_t id, exnode_exchange_t *ex);

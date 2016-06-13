@@ -211,7 +211,7 @@ void _lio_destroy_plugins(lio_config_t *lio)
         log_printf(5, "library_key=%s\n", library_key);
         count = _lc_object_destroy(library_key);
         if (count <= 0) {
-            handle = lookup_service(lio->ess, "plugin", library_key);
+            handle = lio_lookup_service(lio->ess, "plugin", library_key);
             if (handle != NULL) apr_dso_unload(handle);
         }
         free(library_key);
@@ -748,21 +748,21 @@ void lio_destroy_nl(lio_config_t *lio)
     free(lio->os_section);
 
     if (_lc_object_destroy(lio->tpc_unlimited_section) <= 0) {
-        thread_pool_destroy_context(lio->tpc_unlimited);
+        gop_tp_context_destroy(lio->tpc_unlimited);
     }
     free(lio->tpc_unlimited_section);
 
     if (_lc_object_destroy(lio->tpc_cache_section) <= 0) {
-        thread_pool_destroy_context(lio->tpc_cache);
+        gop_tp_context_destroy(lio->tpc_cache);
     }
     free(lio->tpc_cache_section);
 
     if (_lc_object_destroy(lio->mq_section) <= 0) {  //** Destroy the MQ context
-        mq_ongoing_t *on = lookup_service(lio->ess, ESS_RUNNING, ESS_ONGOING_CLIENT);
+        mq_ongoing_t *on = lio_lookup_service(lio->ess, ESS_RUNNING, ESS_ONGOING_CLIENT);
         if (on != NULL) {  //** And also the ongoing client
-            mq_ongoing_destroy(on);
+            gop_mq_ongoing_destroy(on);
         }
-        mq_destroy_context(lio->mqc);
+        gop_mq_destroy_context(lio->mqc);
     }
     free(lio->mq_section);
 
@@ -771,8 +771,8 @@ void lio_destroy_nl(lio_config_t *lio)
 
     _lio_destroy_plugins(lio);
 
-    exnode_service_set_destroy(lio->ess);
-    exnode_service_set_destroy(lio->ess_nocache);
+    lio_lio_exnode_service_set_destroy(lio->ess);
+    lio_lio_exnode_service_set_destroy(lio->ess_nocache);
 
     tbx_inip_destroy(lio->ifd);
 
@@ -832,7 +832,7 @@ lio_config_t *lio_create_nl(char *fname, char *section, char *user, char *exe_na
     }
 
     tbx_type_malloc_clear(lio, lio_config_t, 1);
-    lio->ess = exnode_service_set_create();
+    lio->ess = lio_lio_exnode_service_set_create();
     lio->auto_translate = 1;
     if (exe_name) lio->exe_name = strdup(exe_name);
 
@@ -877,7 +877,7 @@ lio_config_t *lio_create_nl(char *fname, char *section, char *user, char *exe_na
         n = 0.1 * cores;
         if (n > 10) n = 10;
         if (n <= 0) n = 1;
-        lio->tpc_unlimited = thread_pool_create_context("UNLIMITED", n, cores, max_recursion);
+        lio->tpc_unlimited = gop_tp_context_create("UNLIMITED", n, cores, max_recursion);
         if (lio->tpc_unlimited == NULL) {
             log_printf(0, "Error loading tpc_unlimited threadpool!  n=%d\n", cores);
             fprintf(stderr, "ERROR createing tpc_unlimited threadpool! n=%d\n", cores);
@@ -899,7 +899,7 @@ lio_config_t *lio_create_nl(char *fname, char *section, char *user, char *exe_na
         n = 0.1 * cores;
         if (n > 10) n = 10;
         if (n <= 0) n = 1;
-        lio->tpc_cache = thread_pool_create_context("CACHE", n, cores, max_recursion);
+        lio->tpc_cache = gop_tp_context_create("CACHE", n, cores, max_recursion);
         if (lio->tpc_cache == NULL) {
             log_printf(0, "Error loading tpc_cache threadpool!  n=%d\n", cores);
             fprintf(stderr, "ERROR createing tpc_cache threadpool! n=%d\n", cores);
@@ -916,7 +916,7 @@ lio_config_t *lio_create_nl(char *fname, char *section, char *user, char *exe_na
     lio->mq_section = stype;
     lio->mqc = _lc_object_get(stype);
     if (lio->mqc == NULL) {  //** Need to load it
-        lio->mqc = mq_create_context(lio->ifd, stype);
+        lio->mqc = gop_mq_create_context(lio->ifd, stype);
         if (lio->mqc == NULL) {
             log_printf(1, "Error loading MQ service! stype=%s\n", stype);
             fprintf(stderr, "ERROR loading MQ service! stype=%s\n", stype);
@@ -930,7 +930,7 @@ lio_config_t *lio_create_nl(char *fname, char *section, char *user, char *exe_na
     }
 
     //** Add the shared ongoing object
-    mq_ongoing_t *on = mq_ongoing_create(lio->mqc, NULL, 1, ONGOING_CLIENT);
+    mq_ongoing_t *on = gop_mq_ongoing_create(lio->mqc, NULL, 1, ONGOING_CLIENT);
     add_service(lio->ess, ESS_RUNNING, ESS_ONGOING_CLIENT, on);
 
     stype = tbx_inip_get_string(lio->ifd, section, "ds", DS_TYPE_IBP);
@@ -938,7 +938,7 @@ lio_config_t *lio_create_nl(char *fname, char *section, char *user, char *exe_na
     lio->ds = _lc_object_get(stype);
     if (lio->ds == NULL) {  //** Need to load it
         ctype = tbx_inip_get_string(lio->ifd, stype, "type", DS_TYPE_IBP);
-        ds_create = lookup_service(lio->ess, DS_SM_AVAILABLE, ctype);
+        ds_create = lio_lookup_service(lio->ess, DS_SM_AVAILABLE, ctype);
         lio->ds = (*ds_create)(lio->ess, lio->ifd, stype);
         if (lio->ds == NULL) {
             log_printf(1, "Error loading data service!  type=%s\n", ctype);
@@ -962,7 +962,7 @@ lio_config_t *lio_create_nl(char *fname, char *section, char *user, char *exe_na
     lio->rs = _lc_object_get(stype);
     if (lio->rs == NULL) {  //** Need to load it
         ctype = tbx_inip_get_string(lio->ifd, stype, "type", RS_TYPE_SIMPLE);
-        rs_create = lookup_service(lio->ess, RS_SM_AVAILABLE, ctype);
+        rs_create = lio_lookup_service(lio->ess, RS_SM_AVAILABLE, ctype);
         lio->rs = (*rs_create)(lio->ess, lio->ifd, stype);
         if (lio->rs == NULL) {
             log_printf(1, "Error loading resource service!  type=%s section=%s\n", ctype, stype);
@@ -981,7 +981,7 @@ lio_config_t *lio_create_nl(char *fname, char *section, char *user, char *exe_na
     lio->os = _lc_object_get(stype);
     if (lio->os == NULL) {  //** Need to load it
         ctype = tbx_inip_get_string(lio->ifd, stype, "type", OS_TYPE_FILE);
-        os_create = lookup_service(lio->ess, OS_AVAILABLE, ctype);
+        os_create = lio_lookup_service(lio->ess, OS_AVAILABLE, ctype);
         lio->os = (*os_create)(lio->ess, lio->ifd, stype);
         if (lio->os == NULL) {
             log_printf(1, "Error loading object service!  type=%s section=%s\n", ctype, stype);
@@ -1019,7 +1019,7 @@ lio_config_t *lio_create_nl(char *fname, char *section, char *user, char *exe_na
     if (_lio_cache == NULL) {
         stype = tbx_inip_get_string(lio->ifd, section, "cache", CACHE_TYPE_AMP);
         ctype = tbx_inip_get_string(lio->ifd, stype, "type", CACHE_TYPE_AMP);
-        cache_create = lookup_service(lio->ess, CACHE_LOAD_AVAILABLE, ctype);
+        cache_create = lio_lookup_service(lio->ess, CACHE_LOAD_AVAILABLE, ctype);
         _lio_cache = (*cache_create)(lio->ess, lio->ifd, stype, lio->da, lio->timeout);
         if (_lio_cache == NULL) {
             log_printf(0, "Error loading cache service!  type=%s\n", ctype);
@@ -1099,20 +1099,20 @@ int lio_parse_path_options(int *argc, char **argv, int auto_mode, lio_path_tuple
         if (strcmp(argv[i], "-rp") == 0) { //** Regex for path
             i++;
             *tuple = lio_path_resolve(auto_mode, argv[i]);  //** Pick off the user/host
-            *rp = os_regex2table(tuple->path);
+            *rp = lio_os_regex2table(tuple->path);
             i++;
         } else if (strcmp(argv[i], "-ro") == 0) {  //** Regex for object
             i++;
-            *ro = os_regex2table(argv[i]);
+            *ro = lio_os_regex2table(argv[i]);
             i++;
         } else if (strcmp(argv[i], "-gp") == 0) {  //** Glob for path
             i++;
             *tuple = lio_path_resolve(auto_mode, argv[i]);  //** Pick off the user/host
-            *rp = os_path_glob2regex(tuple->path);
+            *rp = lio_os_path_glob2regex(tuple->path);
             i++;
         } else if (strcmp(argv[i], "-go") == 0) {  //** Glob for object
             i++;
-            *ro = os_path_glob2regex(argv[i]);
+            *ro = lio_os_path_glob2regex(argv[i]);
             i++;
         } else {
             if (i!=nargs)argv[nargs] = argv[i];
@@ -1207,7 +1207,7 @@ int lio_init(int *argc, char ***argvp)
     //** Grab the exe name
 
     //** Determine the preferred environment variable based on the calling name to use for the args
-    os_path_split(argv[0], &dummy, &name);
+    lio_os_path_split(argv[0], &dummy, &name);
     _lio_exe_name = name;
     if (dummy != NULL) free(dummy);
     j = strncmp(name, "lio_", 4) == 0 ? 4 : 0;
@@ -1334,14 +1334,14 @@ no_args:
 
     //** TRy to see if we can find a default config somewhere
     if (cfg_name == NULL) {
-        if (os_local_filetype("lio.cfg") != 0) {
+        if (lio_os_local_filetype("lio.cfg") != 0) {
             cfg_name = "lio.cfg";
         } else {
             home = getenv("HOME");
             snprintf(buffer, sizeof(buffer), "%s/.lio/lio.cfg", home);
-            if (os_local_filetype(buffer) != 0) {
+            if (lio_os_local_filetype(buffer) != 0) {
                 cfg_name = strdup(buffer);
-            } else if (os_local_filetype("/etc/lio/lio.cfg") != 0) {
+            } else if (lio_os_local_filetype("/etc/lio/lio.cfg") != 0) {
                 cfg_name = "/etc/lio/lio.cfg";
             }
         }

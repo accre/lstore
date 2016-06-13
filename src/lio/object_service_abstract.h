@@ -199,14 +199,14 @@ typedef object_service_fn_t *(os_create_t)(service_manager_t *ess, tbx_inip_file
 #define os_destroy(os) (os)->destroy_service(os)
 
 
-LIO_API int os_local_filetype(char *path);
-LIO_API int os_regex_is_fixed(os_regex_table_t *regex);
-LIO_API void os_path_split(const char *path, char **dir, char **file);
+LIO_API int lio_os_local_filetype(char *path);
+LIO_API int lio_os_regex_is_fixed(os_regex_table_t *regex);
+LIO_API void lio_os_path_split(const char *path, char **dir, char **file);
 os_regex_table_t *os_regex_table_create(int n);
-LIO_API void os_regex_table_destroy(os_regex_table_t *table);
-LIO_API os_regex_table_t *os_path_glob2regex(char *path);
-LIO_API char *os_glob2regex(char *glob);
-LIO_API os_regex_table_t *os_regex2table(char *regex);
+LIO_API void lio_os_regex_table_destroy(os_regex_table_t *table);
+LIO_API os_regex_table_t *lio_os_path_glob2regex(char *path);
+LIO_API char *lio_os_glob2regex(char *glob);
+LIO_API os_regex_table_t *lio_os_regex2table(char *regex);
 int os_regex_table_pack(os_regex_table_t *regex, unsigned char *buffer, int bufsize);
 os_regex_table_t *os_regex_table_unpack(unsigned char *buffer, int bufsize, int *used);
 

@@ -66,23 +66,23 @@ int main(int argc, char **argv)
     tbx_type_malloc(flist, lio_path_tuple_t, n);
     tbx_type_malloc(rpath, os_regex_table_t *, n);
 
-    q = new_opque();
+    q = gop_opque_new();
     opque_start_execution(q);
 
     if (rg_mode == 1) {
-        gop = gop_lio_remove_regex_object(tuple.lc, tuple.creds, rp_single, ro_single, OS_OBJECT_DIR, 0, lio_parallel_task_count);
+        gop = lio_remove_regex_op(tuple.lc, tuple.creds, rp_single, ro_single, OS_OBJECT_DIR, 0, lio_parallel_task_count);
         gop_set_myid(gop, -1);
-        opque_add(q, gop);
+        gop_opque_add(q, gop);
     }
 
 
     for (i=0; i<n; i++) {
         flist[i] = lio_path_resolve(lio_gc->auto_translate, argv[i+1]);
-        rpath[i] = os_path_glob2regex(flist[i].path);
-        gop = gop_lio_remove_regex_object(flist[i].lc, flist[i].creds, rpath[i], NULL, OS_OBJECT_DIR, 0, lio_parallel_task_count);
+        rpath[i] = lio_os_path_glob2regex(flist[i].path);
+        gop = lio_remove_regex_op(flist[i].lc, flist[i].creds, rpath[i], NULL, OS_OBJECT_DIR, 0, lio_parallel_task_count);
         gop_set_myid(gop, i);
         log_printf(0, "gid=%d i=%d fname=%s\n", gop_id(gop), i, flist[i].path);
-        opque_add(q, gop);
+        gop_opque_add(q, gop);
 
         if (opque_tasks_left(q) > lio_parallel_task_count) {
             gop = opque_waitany(q);
@@ -111,13 +111,13 @@ int main(int argc, char **argv)
         }
     }
 
-    opque_free(q, OP_DESTROY);
+    gop_opque_free(q, OP_DESTROY);
 
     if (rg_mode == 1) lio_path_release(&tuple);
 
     for(i=0; i<n; i++) {
         lio_path_release(&(flist[i]));
-        os_regex_table_destroy(rpath[i]);
+        lio_os_regex_table_destroy(rpath[i]);
     }
 
     free(flist);

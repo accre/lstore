@@ -80,16 +80,16 @@ int mq_pipe_read(mq_socket_t *sock, char *buf)
 {
     int nbytes = 0;
     int len = 1;
-    mq_msg_t *msg = mq_msg_new();
+    mq_msg_t *msg = gop_mq_msg_new();
     mq_frame_t *f;
 
     if (mq_recv(sock, msg, 0) == 0) {  //** Got something
-        f = mq_msg_first(msg);
+        f = gop_mq_msg_first(msg);
         nbytes = (f->len > len) ? len : f->len;
         if (nbytes > 0) memcpy(buf, f->data, nbytes);
     }
 
-    mq_msg_destroy(msg);
+    gop_mq_msg_destroy(msg);
 
     return(nbytes);
 }
@@ -98,13 +98,13 @@ int mq_pipe_write(mq_socket_t *sock, char *buf)
 {
     int nbytes = 0;
     int len = 1;
-    mq_msg_t *msg = mq_msg_new();
-    mq_frame_t *f = mq_frame_new(buf, len, MQF_MSG_KEEP_DATA);
+    mq_msg_t *msg = gop_mq_msg_new();
+    mq_frame_t *f = gop_mq_frame_new(buf, len, MQF_MSG_KEEP_DATA);
 
-    mq_msg_append_frame(msg, f);
+    gop_mq_msg_append_frame(msg, f);
     if (mq_send(sock, msg, 0) == 0) nbytes = len;
 
-    mq_msg_destroy(msg);
+    gop_mq_msg_destroy(msg);
 
     return(nbytes);
 }
@@ -114,10 +114,10 @@ int mq_pipe_write(mq_socket_t *sock, char *buf)
 //------------------- mq_pipe_*() end ------------------------------
 
 //**************************************************************
-// mq_id2str - Convert the command id to a printable string
+// gop_mq_id2str - Convert the command id to a printable string
 //**************************************************************
 
-char *mq_id2str(char *id, int id_len, char *str, int str_len)
+char *gop_mq_id2str(char *id, int id_len, char *str, int str_len)
 {
     assert(str_len > 2*id_len+1);
     apr_base64_encode(str, id, id_len);
@@ -178,10 +178,10 @@ mq_command_t *mq_command_new(void *cmd, int cmd_size, void *arg, mq_fn_exec_t *f
 }
 
 //**************************************************************
-//  mq_command_set - Adds/removes and RPC call to the local host
+//  gop_mq_command_set - Adds/removes and RPC call to the local host
 //**************************************************************
 
-void mq_command_set(mq_command_table_t *table, void *cmd, int cmd_size, void *arg, mq_fn_exec_t *fn)
+void gop_mq_command_set(mq_command_table_t *table, void *cmd, int cmd_size, void *arg, mq_fn_exec_t *fn)
 {
     mq_command_t *mqc;
 
@@ -212,7 +212,7 @@ void mq_command_set(mq_command_table_t *table, void *cmd, int cmd_size, void *ar
 //  mq_command_table_new - Creates a new RPC table
 //**************************************************************
 
-void mq_command_table_set_default(mq_command_table_t *table, void *arg, mq_fn_exec_t *fn_default)
+void gop_mq_command_table_set_default(mq_command_table_t *table, void *arg, mq_fn_exec_t *fn_default)
 {
     apr_thread_mutex_lock(table->lock);
     table->fn_default = fn_default;
@@ -287,10 +287,10 @@ void mq_command_exec(mq_command_table_t *t, mq_task_t *task, void *key, int klen
 }
 
 //**************************************************************
-// mq_submit - Submits a task for processing
+// gop_mq_submit - Submits a task for processing
 //**************************************************************
 
-int mq_submit(mq_portal_t *p, mq_task_t *task)
+int gop_mq_submit(mq_portal_t *p, mq_task_t *task)
 {
     char c;
     int backlog, err;
@@ -355,23 +355,23 @@ int mq_task_send(mq_context_t *mqc, mq_task_t *task)
     char *host;
     int size;
 
-    f = mq_msg_first(task->msg);
+    f = gop_mq_msg_first(task->msg);
 
     if (f == NULL) return(1);
 
-    mq_get_frame(f, (void **)&host, &size);
+    gop_mq_get_frame(f, (void **)&host, &size);
 
     //** Look up the portal
     apr_thread_mutex_lock(mqc->lock);
     p = (mq_portal_t *)(apr_hash_get(mqc->client_portals, host, size));
     if (p == NULL) {  //** New host so create the portal
         log_printf(10, "Creating MQ_CMODE_CLIENT portal for outgoing connections host = %s size = %d\n", host, size);
-        p = mq_portal_create(mqc, host, MQ_CMODE_CLIENT);
+        p = gop_mq_portal_create(mqc, host, MQ_CMODE_CLIENT);
         apr_hash_set(mqc->client_portals, p->host, APR_HASH_KEY_STRING, p);
     }
     apr_thread_mutex_unlock(mqc->lock);
 
-    return(mq_submit(p, task));
+    return(gop_mq_submit(p, task));
 }
 
 //**************************************************************
@@ -380,8 +380,8 @@ int mq_task_send(mq_context_t *mqc, mq_task_t *task)
 
 void mq_task_destroy(mq_task_t *task)
 {
-    if (task->msg != NULL) mq_msg_destroy(task->msg);
-    if (task->response != NULL) mq_msg_destroy(task->response);
+    if (task->msg != NULL) gop_mq_msg_destroy(task->msg);
+    if (task->response != NULL) gop_mq_msg_destroy(task->response);
     if (task->my_arg_free) task->my_arg_free(task->arg);
     free(task);
 }
@@ -414,10 +414,10 @@ int mq_task_set(mq_task_t *task, mq_context_t *ctx, mq_msg_t *msg, op_generic_t 
 }
 
 //**************************************************************
-// mq_task_new - Creates and initializes a task for use
+// gop_mq_task_new - Creates and initializes a task for use
 //**************************************************************
 
-mq_task_t *mq_task_new(mq_context_t *ctx, mq_msg_t *msg, op_generic_t *gop, void *arg, int dt)
+mq_task_t *gop_mq_task_new(mq_context_t *ctx, mq_msg_t *msg, op_generic_t *gop, void *arg, int dt)
 {
     mq_task_t *task;
 
@@ -429,15 +429,15 @@ mq_task_t *mq_task_new(mq_context_t *ctx, mq_msg_t *msg, op_generic_t *gop, void
 }
 
 //*************************************************************
-// new_thread_pool_op - Allocates space for a new op
+// gop_tp_op_new - Allocates space for a new op
 //*************************************************************
 
-op_generic_t *new_mq_op(mq_context_t *ctx, mq_msg_t *msg, op_status_t (*fn_response)(void *arg, int id), void *arg, void (*my_arg_free)(void *arg), int dt)
+op_generic_t *gop_mq_op_new(mq_context_t *ctx, mq_msg_t *msg, op_status_t (*fn_response)(void *arg, int id), void *arg, void (*my_arg_free)(void *arg), int dt)
 {
     mq_task_t *task;
 
-    task = mq_task_new(ctx, msg, NULL, arg, dt);
-    task->gop = new_thread_pool_op(ctx->tp, "mq", fn_response, task, mq_arg_free, 1);
+    task = gop_mq_task_new(ctx, msg, NULL, arg, dt);
+    task->gop = gop_tp_op_new(ctx->tp, "mq", fn_response, task, mq_arg_free, 1);
     task->my_arg_free = my_arg_free;
     return(task->gop);
 }
@@ -456,14 +456,14 @@ void *mqt_exec(apr_thread_t *th, void *arg)
     void *key;
     int n;
 
-    mq_msg_first(task->msg);    //** Empty frame
-    mq_msg_next(task->msg);     //** Version
-    mq_msg_next(task->msg);     //** MQ command
-    f = mq_msg_next(task->msg);     //** Skip the ID
-    mq_get_frame(f, &key, &n);
-    log_printf(1, "execing sid=%s\n", mq_id2str(key, n, b64, sizeof(b64)));
-    f = mq_msg_next(task->msg); //** and get the user command
-    mq_get_frame(f, &key, &n);
+    gop_mq_msg_first(task->msg);    //** Empty frame
+    gop_mq_msg_next(task->msg);     //** Version
+    gop_mq_msg_next(task->msg);     //** MQ command
+    f = gop_mq_msg_next(task->msg);     //** Skip the ID
+    gop_mq_get_frame(f, &key, &n);
+    log_printf(1, "execing sid=%s\n", gop_mq_id2str(key, n, b64, sizeof(b64)));
+    f = gop_mq_msg_next(task->msg); //** and get the user command
+    gop_mq_get_frame(f, &key, &n);
 
     //** Lookup and see if the envelope command is supported.
     mq_command_exec(p->command_table, task, key, n);
@@ -481,7 +481,7 @@ void *mqtp_success(apr_thread_t *th, void *arg)
 {
     mq_task_t *task = (mq_task_t *)arg;
 
-    gop_mark_completed(task->gop, op_success_status);
+    gop_mark_completed(task->gop, gop_success_status);
 
     return(NULL);
 }
@@ -494,7 +494,7 @@ void *mqtp_failure(apr_thread_t *th, void *arg)
 {
     mq_task_t *task = (mq_task_t *)arg;
 
-    gop_mark_completed(task->gop, op_failure_status);
+    gop_mark_completed(task->gop, gop_failure_status);
 
     return(NULL);
 }
@@ -529,16 +529,16 @@ void mqc_response(mq_conn_t *c, mq_msg_t *msg, int do_exec)
     log_printf(5, "start\n");
     tbx_log_flush();
 
-    f = mq_msg_next(msg);  //** This should be the task ID
-    mq_get_frame(f, (void **)&id, &size);
+    f = gop_mq_msg_next(msg);  //** This should be the task ID
+    gop_mq_get_frame(f, (void **)&id, &size);
     log_printf(5, "id_size=%d\n", size);
 
     //** Find the task
     tn = apr_hash_get(c->waiting, id, size);
     if (tn == NULL) {  //** Nothing matches so drop it
-        log_printf(1, "ERROR: No matching ID! sid=%s\n", mq_id2str(id, size, b64, sizeof(b64)));
+        log_printf(1, "ERROR: No matching ID! sid=%s\n", gop_mq_id2str(id, size, b64, sizeof(b64)));
         tbx_log_flush();
-        mq_msg_destroy(msg);
+        gop_mq_msg_destroy(msg);
         return;
     }
 
@@ -565,17 +565,17 @@ void mqc_response(mq_conn_t *c, mq_msg_t *msg, int do_exec)
 }
 
 //**************************************************************
-// mq_apply_return_address_msg - Converts the raw return address
+// gop_mq_apply_return_address_msg - Converts the raw return address
 //  to a "Sender" address o nteh message
 //  NOTE: The raw address should have the empty frame!
 //        if dup_frames == 0 then raw_address frames are consumed!
 //**************************************************************
 
-void mq_apply_return_address_msg(mq_msg_t *msg, mq_msg_t *raw_address, int dup_frames)
+void gop_mq_apply_return_address_msg(mq_msg_t *msg, mq_msg_t *raw_address, int dup_frames)
 {
     mq_frame_t *f;
 
-    f = mq_msg_first(raw_address);
+    f = gop_mq_msg_first(raw_address);
     if (dup_frames == 0) f = mq_msg_pop(raw_address);
     while (f != NULL) {
         if (dup_frames == 1) {
@@ -584,7 +584,7 @@ void mq_apply_return_address_msg(mq_msg_t *msg, mq_msg_t *raw_address, int dup_f
             mq_msg_push_frame(msg, f);
         }
 
-        f = (dup_frames == 0) ? mq_msg_pop(raw_address) : mq_msg_next(raw_address);
+        f = (dup_frames == 0) ? mq_msg_pop(raw_address) : gop_mq_msg_next(raw_address);
     }
 
     return;
@@ -603,30 +603,30 @@ mq_msg_t *mq_trackaddress_msg(char *host, mq_msg_t *raw_address, mq_frame_t *fid
     mq_msg_t *track_response;
     mq_frame_t *f;
 
-    track_response = mq_msg_new();
-    mq_msg_append_mem(track_response, MQF_VERSION_KEY, MQF_VERSION_SIZE, MQF_MSG_KEEP_DATA);
-    mq_msg_append_mem(track_response, MQF_TRACKADDRESS_KEY, MQF_TRACKADDRESS_SIZE, MQF_MSG_KEEP_DATA);
+    track_response = gop_mq_msg_new();
+    gop_mq_msg_append_mem(track_response, MQF_VERSION_KEY, MQF_VERSION_SIZE, MQF_MSG_KEEP_DATA);
+    gop_mq_msg_append_mem(track_response, MQF_TRACKADDRESS_KEY, MQF_TRACKADDRESS_SIZE, MQF_MSG_KEEP_DATA);
 
     if (dup_frames == 1) {
-        mq_msg_append_frame(track_response, mq_frame_dup(fid));
+        gop_mq_msg_append_frame(track_response, mq_frame_dup(fid));
     } else {
-        mq_msg_append_frame(track_response, fid);
+        gop_mq_msg_append_frame(track_response, fid);
     }
 
     //** Add the address. We skip frame 0 (empty) and frame 1 (sender -- he knows who he is)
-    mq_msg_first(raw_address);
-    mq_msg_next(raw_address);
-    while ((f = mq_msg_next(raw_address)) != NULL) {
-        mq_msg_append_frame(track_response, mq_frame_dup(f));  //** Always dup frames
+    gop_mq_msg_first(raw_address);
+    gop_mq_msg_next(raw_address);
+    while ((f = gop_mq_msg_next(raw_address)) != NULL) {
+        gop_mq_msg_append_frame(track_response, mq_frame_dup(f));  //** Always dup frames
     }
 
     //** Need to add ourselves and the empty frame to the tracking address
-    mq_msg_append_mem(track_response, host, strlen(host), MQF_MSG_KEEP_DATA);
-    mq_msg_append_mem(track_response, NULL, 0, MQF_MSG_KEEP_DATA);
+    gop_mq_msg_append_mem(track_response, host, strlen(host), MQF_MSG_KEEP_DATA);
+    gop_mq_msg_append_mem(track_response, NULL, 0, MQF_MSG_KEEP_DATA);
 
     //** Lastly add the return addres.  We always dup the frames here cause they are used
     //** in the address already if not duped.
-    mq_apply_return_address_msg(track_response, raw_address, dup_frames);
+    gop_mq_apply_return_address_msg(track_response, raw_address, dup_frames);
 
     return(track_response);
 }
@@ -643,16 +643,16 @@ void mqc_trackaddress(mq_conn_t *c, mq_msg_t *msg)
     mq_task_monitor_t *tn;
     mq_heartbeat_entry_t *hb;
 
-    f = mq_msg_next(msg);  //** This should be the task ID
-    mq_get_frame(f, (void **)&id, &size);
+    f = gop_mq_msg_next(msg);  //** This should be the task ID
+    gop_mq_get_frame(f, (void **)&id, &size);
 
     //** Find the task
     tn = apr_hash_get(c->waiting, id, size);
     log_printf(5, "trackaddress status tn=%p id_size=%d\n", tn, size);
     void *data;
     int i;
-    for (f = mq_msg_first(msg), i=0; f != NULL; f = mq_msg_next(msg), i++) {
-        mq_get_frame(f, &data, &n);
+    for (f = gop_mq_msg_first(msg), i=0; f != NULL; f = gop_mq_msg_next(msg), i++) {
+        gop_mq_get_frame(f, &data, &n);
         log_printf(5, "fsize[%d]=%d\n", i, n);
     }
 
@@ -661,19 +661,19 @@ void mqc_trackaddress(mq_conn_t *c, mq_msg_t *msg)
         if (tn->tracking != NULL) goto cleanup;  //** Duplicate so drop and ignore
 
         //** Form the address key but first strip off the gunk we don't care about to determine the size
-        mq_msg_first(msg);
-        mq_frame_destroy(mq_msg_pluck(msg, 0)); // empty
-        mq_frame_destroy(mq_msg_pluck(msg, 0));  // version
-        mq_frame_destroy(mq_msg_pluck(msg, 0));  // TRACKADDRESS command
-        mq_frame_destroy(mq_msg_pluck(msg, 0));  // id
+        gop_mq_msg_first(msg);
+        gop_mq_frame_destroy(gop_mq_msg_pluck(msg, 0)); // empty
+        gop_mq_frame_destroy(gop_mq_msg_pluck(msg, 0));  // version
+        gop_mq_frame_destroy(gop_mq_msg_pluck(msg, 0));  // TRACKADDRESS command
+        gop_mq_frame_destroy(gop_mq_msg_pluck(msg, 0));  // id
 
         //** What's left is the address until an empty frame
         size = mq_msg_total_size(msg);
         log_printf(5, " msg_total_size=%d frames=%d\n", size, tbx_stack_count(msg));
         tbx_type_malloc_clear(address, char, size+1);
         n = 0;
-        for (f=mq_msg_first(msg); f != NULL; f=mq_msg_next(msg)) {
-            mq_get_frame(f, (void **)&id, &size);
+        for (f=gop_mq_msg_first(msg); f != NULL; f=gop_mq_msg_next(msg)) {
+            gop_mq_get_frame(f, (void **)&id, &size);
             log_printf(5, "ta element=%d\n", size);
             memcpy(&(address[n]), id, size);
             n = n + size;
@@ -683,11 +683,11 @@ void mqc_trackaddress(mq_conn_t *c, mq_msg_t *msg)
         log_printf(5, "full address=%s\n", address);
 
         //** Remove anything else
-        f = mq_msg_next(msg);
+        f = gop_mq_msg_next(msg);
         while (f != NULL) {
-            f = mq_msg_pluck(msg, 0);
-            mq_frame_destroy(f);
-            f = mq_msg_current(msg);
+            f = gop_mq_msg_pluck(msg, 0);
+            gop_mq_frame_destroy(f);
+            f = gop_mq_msg_current(msg);
         }
 
         //** Make sure its not already stored
@@ -701,10 +701,10 @@ void mqc_trackaddress(mq_conn_t *c, mq_msg_t *msg)
             log_printf(5, "trackaddress hb_lut=" LU "\n", hb->lut_id);
             //** Form the heartbeat msg
             //** Right now we just have the address which should have an empty last frame
-            mq_msg_append_mem(msg, MQF_VERSION_KEY, MQF_VERSION_SIZE, MQF_MSG_KEEP_DATA);
-            mq_msg_append_mem(msg, MQF_PING_KEY, MQF_PING_SIZE, MQF_MSG_KEEP_DATA);
-            mq_msg_append_mem(msg, &(hb->lut_id), sizeof(uint64_t), MQF_MSG_KEEP_DATA);
-            mq_msg_append_mem(msg, NULL, 0, MQF_MSG_KEEP_DATA);
+            gop_mq_msg_append_mem(msg, MQF_VERSION_KEY, MQF_VERSION_SIZE, MQF_MSG_KEEP_DATA);
+            gop_mq_msg_append_mem(msg, MQF_PING_KEY, MQF_PING_SIZE, MQF_MSG_KEEP_DATA);
+            gop_mq_msg_append_mem(msg, &(hb->lut_id), sizeof(uint64_t), MQF_MSG_KEEP_DATA);
+            gop_mq_msg_append_mem(msg, NULL, 0, MQF_MSG_KEEP_DATA);
 
             hb->address = msg;
             msg = NULL;  //** Don't want it deleated
@@ -725,7 +725,7 @@ void mqc_trackaddress(mq_conn_t *c, mq_msg_t *msg)
 
 cleanup:
 //** Clean up
-    if (msg != NULL) mq_msg_destroy(msg);
+    if (msg != NULL) gop_mq_msg_destroy(msg);
 }
 
 //***************************************************************************
@@ -739,32 +739,32 @@ int mqc_ping(mq_conn_t *c, mq_msg_t *msg)
     int err;
 
     //** Peel off the top frames and just leave the return address
-    mq_msg_first(msg);
-    mq_frame_destroy(mq_msg_pluck(msg, 0));  //blank
-    mq_frame_destroy(mq_msg_pluck(msg, 0));  //version
-    mq_frame_destroy(mq_msg_pluck(msg,0));  //command
+    gop_mq_msg_first(msg);
+    gop_mq_frame_destroy(gop_mq_msg_pluck(msg, 0));  //blank
+    gop_mq_frame_destroy(gop_mq_msg_pluck(msg, 0));  //version
+    gop_mq_frame_destroy(gop_mq_msg_pluck(msg,0));  //command
 
-    pid = mq_msg_pluck(msg, 0);  //Ping ID
+    pid = gop_mq_msg_pluck(msg, 0);  //Ping ID
 
-    pong = mq_msg_new();
+    pong = gop_mq_msg_new();
 
     //** Push the address in reverse order (including the empty frame)
     while ((f = mq_msg_pop(msg)) != NULL) {
         mq_msg_push_frame(pong, f);
     }
 
-    mq_msg_destroy(msg);
+    gop_mq_msg_destroy(msg);
     //** Now add the command
-    mq_msg_append_mem(pong, MQF_VERSION_KEY, MQF_VERSION_SIZE, MQF_MSG_KEEP_DATA);
-    mq_msg_append_mem(pong, MQF_PONG_KEY, MQF_PONG_SIZE, MQF_MSG_KEEP_DATA);
-    mq_msg_append_frame(pong, pid);
-    mq_msg_append_mem(pong, NULL, 0, MQF_MSG_KEEP_DATA);
+    gop_mq_msg_append_mem(pong, MQF_VERSION_KEY, MQF_VERSION_SIZE, MQF_MSG_KEEP_DATA);
+    gop_mq_msg_append_mem(pong, MQF_PONG_KEY, MQF_PONG_SIZE, MQF_MSG_KEEP_DATA);
+    gop_mq_msg_append_frame(pong, pid);
+    gop_mq_msg_append_mem(pong, NULL, 0, MQF_MSG_KEEP_DATA);
 
     c->stats.incoming[MQS_PONG_INDEX]++;
 
     err = mq_send(c->sock, pong, MQ_DONTWAIT);
 
-    mq_msg_destroy(pong);
+    gop_mq_msg_destroy(pong);
 
     return(err);
 }
@@ -783,8 +783,8 @@ void mqc_pong(mq_conn_t *c, mq_msg_t *msg)
     mq_heartbeat_entry_t *entry;
     void *ptr;
 
-    f = mq_msg_next(msg);  //** This should be the ID which is actually the entry
-    mq_get_frame(f, &ptr, &size);
+    f = gop_mq_msg_next(msg);  //** This should be the ID which is actually the entry
+    gop_mq_get_frame(f, &ptr, &size);
 
     //** Validate the entry
     entry = apr_hash_get(c->heartbeat_lut, ptr, sizeof(uint64_t));
@@ -794,7 +794,7 @@ void mqc_pong(mq_conn_t *c, mq_msg_t *msg)
 
     log_printf(5, "pong entry=%p ptr=%p\n", entry, ptr);
     //** Clean up
-    mq_msg_destroy(msg);
+    gop_mq_msg_destroy(msg);
 }
 
 
@@ -819,7 +819,7 @@ int mqc_heartbeat_cleanup(mq_conn_t *c)
         apr_hash_set(c->heartbeat_dest, key, klen, NULL);
         apr_hash_set(c->heartbeat_lut, &(entry->lut_id), sizeof(uint64_t), NULL);
         free(entry->key);
-        mq_msg_destroy(entry->address);
+        gop_mq_msg_destroy(entry->address);
         free(entry);
     }
 
@@ -860,7 +860,7 @@ void mqc_heartbeat_dec(mq_conn_t *c, mq_heartbeat_entry_t *hb)
         apr_hash_set(c->heartbeat_dest, hb->key, hb->key_size, NULL);
         apr_hash_set(c->heartbeat_lut, &(hb->lut_id), sizeof(uint64_t), NULL);
         free(hb->key);
-        mq_msg_destroy(hb->address);
+        gop_mq_msg_destroy(hb->address);
         free(hb);
     }
 }
@@ -924,7 +924,7 @@ int mqc_heartbeat(mq_conn_t *c, int npoll)
                     apr_hash_set(c->waiting, key, klen, NULL);
 
                     //** Submit the fail task
-                    log_printf(6, "Failed task uuid=%s sid=%s\n", c->mq_uuid, mq_id2str(key, klen, b64, sizeof(b64)));
+                    log_printf(6, "Failed task uuid=%s sid=%s\n", c->mq_uuid, gop_mq_id2str(key, klen, b64, sizeof(b64)));
                     tbx_log_flush();
                     log_printf(6, "Failed task tn->task=%p tn->task->gop=%p\n", tn->task, tn->task->gop);
                     tbx_log_flush();
@@ -943,7 +943,7 @@ int mqc_heartbeat(mq_conn_t *c, int npoll)
             apr_hash_set(c->heartbeat_dest, entry->key, entry->key_size, NULL);
             apr_hash_set(c->heartbeat_lut, &(entry->lut_id), sizeof(uint64_t), NULL);
             free(entry->key);
-            mq_msg_destroy(entry->address);
+            gop_mq_msg_destroy(entry->address);
             free(entry);
         } else if (dt > dt_check) {  //** Send a heartbeat check
             klen = apr_time_sec(dt);
@@ -980,7 +980,7 @@ next:
             apr_hash_set(c->waiting, key, klen, NULL);
 
             //** Submit the fail task
-            log_printf(6, "Failed task uuid=%s hash_count=%u sid=%s\n", c->mq_uuid, apr_hash_count(c->waiting), mq_id2str(key, klen, b64, sizeof(b64)));
+            log_printf(6, "Failed task uuid=%s hash_count=%u sid=%s\n", c->mq_uuid, apr_hash_count(c->waiting), gop_mq_id2str(key, klen, b64, sizeof(b64)));
             tbx_log_flush();
             log_printf(6, "Failed task tn->task=%p tn->task->gop=%p gid=%d\n", tn->task, tn->task->gop, gop_id(tn->task->gop));
             tbx_log_flush();
@@ -1037,33 +1037,33 @@ int mqc_process_incoming(mq_conn_t *c, int *nproc)
 
     log_printf(5, "processing incoming start\n");
     //** Process all that are on the wire
-    msg = mq_msg_new();
+    msg = gop_mq_msg_new();
     count = 0;
     while ((n = mq_recv(c->sock, msg, MQ_DONTWAIT)) == 0) {
         count++;
         log_printf(5, "Got a message count=%d\n", count);
         //** verify we have an empty frame
-        f = mq_msg_first(msg);
-        mq_get_frame(f, (void **)&data, &size);
+        f = gop_mq_msg_first(msg);
+        gop_mq_get_frame(f, (void **)&data, &size);
         if (size != 0) {
             log_printf(0, "ERROR: Missing empty frame!\n");
-            task = mq_task_new(c->pc->mqc, msg, NULL, c->pc, -1);
+            task = gop_mq_task_new(c->pc->mqc, msg, NULL, c->pc, -1);
             mqt_exec(NULL, task);
             goto skip;
         }
 
         //** and the correct version
-        f = mq_msg_next(msg);
-        mq_get_frame(f, (void **)&data, &size);
+        f = gop_mq_msg_next(msg);
+        gop_mq_get_frame(f, (void **)&data, &size);
         if (mq_data_compare(data, size, MQF_VERSION_KEY, MQF_VERSION_SIZE) != 0) {
             log_printf(0, "ERROR: Invalid version!\n");
-            mq_msg_destroy(msg);
+            gop_mq_msg_destroy(msg);
             goto skip;
         }
 
         //** This is the command frame
-        f = mq_msg_next(msg);
-        mq_get_frame(f, (void **)&data, &size);
+        f = gop_mq_msg_next(msg);
+        gop_mq_get_frame(f, (void **)&data, &size);
         if (mq_data_compare(MQF_PING_KEY, MQF_PING_SIZE, data, size) == 0) {
             log_printf(15, "Processing MQF_PING_KEY\n");
             tbx_log_flush();
@@ -1100,20 +1100,20 @@ int mqc_process_incoming(mq_conn_t *c, int *nproc)
 
             //** It's up to the task to send any tracking information back.
             log_printf(5, "Submiting task for execution\n");
-            task = mq_task_new(c->pc->mqc, msg, NULL, c->pc, -1);
+            task = gop_mq_task_new(c->pc->mqc, msg, NULL, c->pc, -1);
             thread_pool_direct(c->pc->tp, mqt_exec, task);
         } else {   //** Unknwon command so drop it
             log_printf(5, "ERROR: Unknown command.  Dropping\n");
             c->stats.incoming[MQS_UNKNOWN_INDEX]++;
-            mq_msg_destroy(msg);
+            gop_mq_msg_destroy(msg);
             goto skip;
         }
 skip:
-        msg = mq_msg_new(); //**  The old one is destroyed after it's consumed
+        msg = gop_mq_msg_new(); //**  The old one is destroyed after it's consumed
         if (count > 10) break;  //** Kick out for other processing
     }
 
-    mq_msg_destroy(msg);  //** Clean up
+    gop_mq_msg_destroy(msg);  //** Clean up
 
     *nproc += count;  //** Inc processed commands
     log_printf(5, "processing incoming end n=%d\n", n);
@@ -1171,12 +1171,12 @@ int mqc_process_task(mq_conn_t *c, int *npoll, int *nproc)
 
     //** Check if we expect a response
     //** Skip over the address
-    f = mq_msg_first(task->msg);
-    mq_get_frame(f, (void **)&data, &size);
+    f = gop_mq_msg_first(task->msg);
+    gop_mq_get_frame(f, (void **)&data, &size);
     log_printf(10, "address length = %d\n", size);
     while ((f != NULL) && (size != 0)) {
-        f = mq_msg_next(task->msg);
-        mq_get_frame(f, (void **)&data, &size);
+        f = gop_mq_msg_next(task->msg);
+        gop_mq_get_frame(f, (void **)&data, &size);
         log_printf(10, "length = %d\n", size);
     }
     if (f == NULL) { //** Bad command
@@ -1185,8 +1185,8 @@ int mqc_process_task(mq_conn_t *c, int *npoll, int *nproc)
     }
 
     //** Verify the version
-    f = mq_msg_next(task->msg);
-    mq_get_frame(f, (void **)&data, &size);
+    f = gop_mq_msg_next(task->msg);
+    gop_mq_get_frame(f, (void **)&data, &size);
     if (mq_data_compare(data, size, MQF_VERSION_KEY, MQF_VERSION_SIZE) != 0) {  //** Bad version number
         log_printf(0, "Invalid version!\n");
         log_printf(0, "length = %d\n", size);
@@ -1196,13 +1196,13 @@ int mqc_process_task(mq_conn_t *c, int *npoll, int *nproc)
     log_printf(10, "MQF_VERSION_KEY found\n");
     log_printf(5, "task pass_through = %d\n", task->pass_through);
     //** This is the command
-    f = mq_msg_next(task->msg);
-    mq_get_frame(f, (void **)&data, &size);
+    f = gop_mq_msg_next(task->msg);
+    gop_mq_get_frame(f, (void **)&data, &size);
     tracking = 0;
     if ( (mq_data_compare(data, size, MQF_TRACKEXEC_KEY, MQF_TRACKEXEC_SIZE) == 0) && (task->pass_through == 0) ) { //** We track it - But only if it is not a pass-through task
         //** Get the ID here.  The send will munge my frame position
-        f = mq_msg_next(task->msg);
-        mq_get_frame(f, (void **)&data, &size);
+        f = gop_mq_msg_next(task->msg);
+        gop_mq_get_frame(f, (void **)&data, &size);
         tracking = 1;
 
         log_printf(5, "tracking enabled id_size=%d\n", size);
@@ -1236,7 +1236,7 @@ int mqc_process_task(mq_conn_t *c, int *npoll, int *nproc)
     if (tracking == 0) {     //** Exec the callback if not tracked
         mq_task_complete(c, task, OP_STATE_SUCCESS);
     } else {                 //** Track the task
-        log_printf(1, "TRACKING id_size=%d sid=%s\n", size, mq_id2str(data, size, b64, sizeof(b64)));
+        log_printf(1, "TRACKING id_size=%d sid=%s\n", size, gop_mq_id2str(data, size, b64, sizeof(b64)));
         if (task->gop != NULL) log_printf(1, "TRACKING gid=%d\n", gop_id(task->gop));
         //** Insert it in the monitoring table
         tbx_type_malloc_clear(tn, mq_task_monitor_t, 1);
@@ -1296,17 +1296,17 @@ int mq_conn_make(mq_conn_t *c)
     hb->count = 1;
 
 //** This is the ping message
-    msg = mq_msg_new();
-    mq_msg_append_mem(msg, c->pc->host, strlen(c->pc->host), MQF_MSG_KEEP_DATA);
-    mq_msg_append_mem(msg, NULL, 0, MQF_MSG_KEEP_DATA);
-    mq_msg_append_mem(msg, MQF_VERSION_KEY, MQF_VERSION_SIZE, MQF_MSG_KEEP_DATA);
-    mq_msg_append_mem(msg, MQF_PING_KEY, MQF_PING_SIZE, MQF_MSG_KEEP_DATA);
-    mq_msg_append_mem(msg, &(hb->lut_id), sizeof(uint64_t), MQF_MSG_KEEP_DATA);
-    mq_msg_append_mem(msg, NULL, 0, MQF_MSG_KEEP_DATA);
+    msg = gop_mq_msg_new();
+    gop_mq_msg_append_mem(msg, c->pc->host, strlen(c->pc->host), MQF_MSG_KEEP_DATA);
+    gop_mq_msg_append_mem(msg, NULL, 0, MQF_MSG_KEEP_DATA);
+    gop_mq_msg_append_mem(msg, MQF_VERSION_KEY, MQF_VERSION_SIZE, MQF_MSG_KEEP_DATA);
+    gop_mq_msg_append_mem(msg, MQF_PING_KEY, MQF_PING_SIZE, MQF_MSG_KEEP_DATA);
+    gop_mq_msg_append_mem(msg, &(hb->lut_id), sizeof(uint64_t), MQF_MSG_KEEP_DATA);
+    gop_mq_msg_append_mem(msg, NULL, 0, MQF_MSG_KEEP_DATA);
     hb->address = msg;
     c->hb_conn = hb;
 
-    msg = mq_msg_new();  //** This is for the pong response
+    msg = gop_mq_msg_new();  //** This is for the pong response
 
     //** Finish creating the structure
     apr_hash_set(c->heartbeat_dest, hb->key, hb->key_size, hb);
@@ -1342,24 +1342,24 @@ int mq_conn_make(mq_conn_t *c)
     while (dt < 10) {
         mq_poll(&pfd, 1, 1000);
         if (mq_recv(c->sock, msg, MQ_DONTWAIT) == 0) {
-            f = mq_msg_first(msg);
+            f = gop_mq_msg_first(msg);
             frame = 1;
-            mq_get_frame(f, (void **)&data, &n);
+            gop_mq_get_frame(f, (void **)&data, &n);
             if (n != 0) goto fail;
 
-            f = mq_msg_next(msg);
+            f = gop_mq_msg_next(msg);
             frame = 1;
-            mq_get_frame(f, (void **)&data, &n);
+            gop_mq_get_frame(f, (void **)&data, &n);
             if (mq_data_compare(data, n, MQF_VERSION_KEY, MQF_VERSION_SIZE) != 0) goto fail;
 
-            f = mq_msg_next(msg);
+            f = gop_mq_msg_next(msg);
             frame = 2;
-            mq_get_frame(f, (void **)&data, &n);
+            gop_mq_get_frame(f, (void **)&data, &n);
             if (mq_data_compare(data, n, MQF_PONG_KEY, MQF_PONG_SIZE) != 0) goto fail;
 
-            f = mq_msg_next(msg);
+            f = gop_mq_msg_next(msg);
             frame = 3;
-            mq_get_frame(f, (void **)&data, &n);
+            gop_mq_get_frame(f, (void **)&data, &n);
             if (mq_data_compare(data, n, &(hb->lut_id), sizeof(uint64_t)) != 0) goto fail;
 
             err = 0;  //** Good pong response
@@ -1375,7 +1375,7 @@ int mq_conn_make(mq_conn_t *c)
 
 fail:
     log_printf(5, "END status=%d dt=%ld frame=%d\n", err, dt, frame);
-    mq_msg_destroy(msg);
+    gop_mq_msg_destroy(msg);
     return(err);
 }
 
@@ -1617,10 +1617,10 @@ void _mq_reap_closed(mq_portal_t *p)
 }
 
 //**************************************************************
-// mq_portal_destroy - Destroys the MQ portal
+// gop_mq_portal_destroy - Destroys the MQ portal
 //**************************************************************
 
-void mq_portal_destroy(mq_portal_t *p)
+void gop_mq_portal_destroy(mq_portal_t *p)
 {
     int i, n;
     char c;
@@ -1677,10 +1677,10 @@ void mq_portal_destroy(mq_portal_t *p)
 }
 
 //**************************************************************
-// mq_portal_lookup - Looks up a portal context
+// gop_mq_portal_lookup - Looks up a portal context
 //**************************************************************
 
-mq_portal_t *mq_portal_lookup(mq_context_t *mqc, char *hostname, int connect_mode)
+mq_portal_t *gop_mq_portal_lookup(mq_context_t *mqc, char *hostname, int connect_mode)
 {
     apr_hash_t *ptable;
     mq_portal_t *p;
@@ -1694,19 +1694,19 @@ mq_portal_t *mq_portal_lookup(mq_context_t *mqc, char *hostname, int connect_mod
 }
 
 //**************************************************************
-// mq_portal_command_table - Retrieves the portal command table
+// gop_mq_portal_command_table - Retrieves the portal command table
 //**************************************************************
 
-mq_command_table_t *mq_portal_command_table(mq_portal_t *portal)
+mq_command_table_t *gop_mq_portal_command_table(mq_portal_t *portal)
 {
     return(portal->command_table);
 }
 
 //**************************************************************
-// mq_portal_remove - Removes a server portal in the context
+// gop_mq_portal_remove - Removes a server portal in the context
 //**************************************************************
 
-void mq_portal_remove(mq_context_t *mqc, mq_portal_t *p)
+void gop_mq_portal_remove(mq_context_t *mqc, mq_portal_t *p)
 {
     apr_thread_mutex_lock(mqc->lock);
     apr_hash_set(mqc->server_portals, p->host, APR_HASH_KEY_STRING, NULL);
@@ -1714,10 +1714,10 @@ void mq_portal_remove(mq_context_t *mqc, mq_portal_t *p)
 }
 
 //**************************************************************
-// mq_portal_install - Installs a server portal into the context
+// gop_mq_portal_install - Installs a server portal into the context
 //**************************************************************
 
-int mq_portal_install(mq_context_t *mqc, mq_portal_t *p)
+int gop_mq_portal_install(mq_context_t *mqc, mq_portal_t *p)
 {
 
     mq_portal_t *p2;
@@ -1749,10 +1749,10 @@ int mq_portal_install(mq_context_t *mqc, mq_portal_t *p)
 }
 
 //**************************************************************
-// mq_portal_create - Creates a new MQ portal
+// gop_mq_portal_create - Creates a new MQ portal
 //**************************************************************
 
-mq_portal_t *mq_portal_create(mq_context_t *mqc, char *host, int connect_mode)
+mq_portal_t *gop_mq_portal_create(mq_context_t *mqc, char *host, int connect_mode)
 {
     mq_portal_t *p;
 
@@ -1795,10 +1795,10 @@ mq_portal_t *mq_portal_create(mq_context_t *mqc, char *host, int connect_mode)
 }
 
 //**************************************************************
-// mq_destroy_context - Destroys the MQ context
+// gop_mq_destroy_context - Destroys the MQ context
 //**************************************************************
 
-void mq_destroy_context(mq_context_t *mqc)
+void gop_mq_destroy_context(mq_context_t *mqc)
 {
     apr_hash_index_t *hi;
     mq_portal_t *p;
@@ -1812,7 +1812,7 @@ void mq_destroy_context(mq_context_t *mqc)
         apr_hash_set(mqc->client_portals, p->host, APR_HASH_KEY_STRING, NULL);
         log_printf(5, "destroying p->host=%s\n", p->host);
         tbx_log_flush();
-        mq_portal_destroy(p);
+        gop_mq_portal_destroy(p);
     }
     log_printf(5, "Shutting down server_portals\n");
     tbx_log_flush();
@@ -1822,7 +1822,7 @@ void mq_destroy_context(mq_context_t *mqc)
         apr_hash_set(mqc->server_portals, p->host, APR_HASH_KEY_STRING, NULL);
         log_printf(5, "destroying p->host=%s\n", p->host);
         tbx_log_flush();
-        mq_portal_destroy(p);
+        gop_mq_portal_destroy(p);
     }
     log_printf(5, "Completed portal shutdown\n");
     tbx_log_flush();
@@ -1831,7 +1831,7 @@ void mq_destroy_context(mq_context_t *mqc)
 
     apr_hash_clear(mqc->client_portals);
 
-    thread_pool_destroy_context(mqc->tp);
+    gop_tp_context_destroy(mqc->tp);
 
     apr_thread_mutex_destroy(mqc->lock);
     apr_pool_destroy(mqc->mpool);
@@ -1843,10 +1843,10 @@ void mq_destroy_context(mq_context_t *mqc)
 }
 
 //**************************************************************
-// _mq_submit - GOP submit routine for MQ objects
+// _gop_mq_submit - GOP submit routine for MQ objects
 //**************************************************************
 
-void _mq_submit_op(void *arg, op_generic_t *gop)
+void _gop_mq_submit_op(void *arg, op_generic_t *gop)
 {
     thread_pool_op_t *op = gop_get_tp(gop);
     mq_task_t *task = (mq_task_t *)op->arg;
@@ -1857,10 +1857,10 @@ void _mq_submit_op(void *arg, op_generic_t *gop)
 }
 
 //**************************************************************
-//  mq_create_context - Creates a new MQ pool
+//  gop_mq_create_context - Creates a new MQ pool
 //**************************************************************
 
-mq_context_t *mq_create_context(tbx_inip_file_t *ifd, char *section)
+mq_context_t *gop_mq_create_context(tbx_inip_file_t *ifd, char *section)
 {
     mq_context_t *mqc;
 
@@ -1884,9 +1884,9 @@ mq_context_t *mq_create_context(tbx_inip_file_t *ifd, char *section)
 
     //** Make the thread pool.  All GOP commands run through here.  We replace
     //**  the TP submit routine with our own.
-    mqc->tp = thread_pool_create_context("mq", mqc->min_threads, mqc->max_threads, mqc->max_recursion);
+    mqc->tp = gop_tp_context_create("mq", mqc->min_threads, mqc->max_threads, mqc->max_recursion);
     mqc->pcfn = *(mqc->tp->pc->fn);
-    mqc->pcfn.submit = _mq_submit_op;
+    mqc->pcfn.submit = _gop_mq_submit_op;
     mqc->pcfn.sync_exec = NULL;
     mqc->tp->pc->fn = &(mqc->pcfn);
     assert_result_not_null(mqc->client_portals = apr_hash_make(mqc->mpool));

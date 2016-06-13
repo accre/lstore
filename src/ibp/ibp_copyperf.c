@@ -67,20 +67,20 @@ ibp_capset_t *create_alias_allocs(int nallocs, ibp_capset_t *base_caps, int n_ba
 
     ibp_capset_t *caps = (ibp_capset_t *)malloc(sizeof(ibp_capset_t)*nallocs);
 
-    q = new_opque();
+    q = gop_opque_new();
 
     for (i=0; i<nallocs; i++) {
         bcap = &(base_caps[i % n_base]);
-        op = new_ibp_alias_alloc_op(ic, &(caps[i]), get_ibp_cap(bcap, IBP_MANAGECAP), 0, 0, 0, ibp_timeout);
-        opque_add(q, op);
+        op = ibp_alias_alloc_op(ic, &(caps[i]), ibp_cap_get(bcap, IBP_MANAGECAP), 0, 0, 0, ibp_timeout);
+        gop_opque_add(q, op);
     }
 
-    io_start(q);
-    err = io_waitall(q);
+    ibp_io_start(q);
+    err = ibp_io_waitall(q);
     if (err != 0) {
         printf("create_alias_allocs: At least 1 error occured! * ibp_errno=%d * nfailed=%d\n", err, opque_tasks_failed(q));
     }
-    opque_free(q, OP_DESTROY);
+    gop_opque_free(q, OP_DESTROY);
 
     return(caps);
 }
@@ -95,27 +95,27 @@ void alias_remove_allocs(ibp_capset_t *caps_list, ibp_capset_t *mcaps_list, int 
     opque_t *q;
     op_generic_t *op;
 
-    q = new_opque();
+    q = gop_opque_new();
 
     for (i=0; i<nallocs; i++) {
         j = i % mallocs;
-        op = new_ibp_alias_remove_op(ic, get_ibp_cap(&(caps_list[i]), IBP_MANAGECAP),
-                                     get_ibp_cap(&(mcaps_list[j]), IBP_MANAGECAP), ibp_timeout);
-        opque_add(q, op);
+        op = ibp_alias_remove_op(ic, ibp_cap_get(&(caps_list[i]), IBP_MANAGECAP),
+                                     ibp_cap_get(&(mcaps_list[j]), IBP_MANAGECAP), ibp_timeout);
+        gop_opque_add(q, op);
     }
 
-    io_start(q);
-    err = io_waitall(q);
+    ibp_io_start(q);
+    err = ibp_io_waitall(q);
     if (err != 0) {
         printf("alias_remove_allocs: At least 1 error occured! * ibp_errno=%d * nfailed=%d\n", err, opque_tasks_failed(q));
     }
-    opque_free(q, OP_DESTROY);
+    gop_opque_free(q, OP_DESTROY);
 
     //** Lastly free all the caps and the array
     for (i=0; i<nallocs; i++) {
-        destroy_ibp_cap(get_ibp_cap(&(caps_list[i]), IBP_READCAP));
-        destroy_ibp_cap(get_ibp_cap(&(caps_list[i]), IBP_WRITECAP));
-        destroy_ibp_cap(get_ibp_cap(&(caps_list[i]), IBP_MANAGECAP));
+        ibp_cap_destroy(ibp_cap_get(&(caps_list[i]), IBP_READCAP));
+        ibp_cap_destroy(ibp_cap_get(&(caps_list[i]), IBP_WRITECAP));
+        ibp_cap_destroy(ibp_cap_get(&(caps_list[i]), IBP_MANAGECAP));
     }
 
     free(caps_list);
@@ -138,20 +138,20 @@ ibp_capset_t *create_allocs(int nallocs, int asize, int nthreads, ibp_depot_t *d
     ibp_capset_t *caps = (ibp_capset_t *)malloc(sizeof(ibp_capset_t)*nallocs);
 
     set_ibp_attributes(&attr, time(NULL) + a_duration, IBP_HARD, IBP_BYTEARRAY);
-    q = new_opque();
+    q = gop_opque_new();
 
     for (i=0; i<nallocs; i++) {
         depot = &(depot_list[i % n_depots]);
-        op = new_ibp_alloc_op(ic, &(caps[i]), asize, depot, &attr, disk_cs_type, disk_blocksize, ibp_timeout);
-        opque_add(q, op);
+        op = ibp_alloc_op(ic, &(caps[i]), asize, depot, &attr, disk_cs_type, disk_blocksize, ibp_timeout);
+        gop_opque_add(q, op);
     }
 
-    io_start(q);
-    err = io_waitall(q);
+    ibp_io_start(q);
+    err = ibp_io_waitall(q);
     if (err != 0) {
         printf("create_allocs: At least 1 error occured! * ibp_errno=%d * nfailed=%d\n", err, opque_tasks_failed(q));
     }
-    opque_free(q, OP_DESTROY);
+    gop_opque_free(q, OP_DESTROY);
 
     return(caps);
 }
@@ -166,25 +166,25 @@ void remove_allocs(ibp_capset_t *caps_list, int nallocs, int nthreads)
     opque_t *q;
     op_generic_t *op;
 
-    q = new_opque();
+    q = gop_opque_new();
 
     for (i=0; i<nallocs; i++) {
-        op = new_ibp_remove_op(ic, get_ibp_cap(&(caps_list[i]), IBP_MANAGECAP), ibp_timeout);
-        opque_add(q, op);
+        op = ibp_remove_op(ic, ibp_cap_get(&(caps_list[i]), IBP_MANAGECAP), ibp_timeout);
+        gop_opque_add(q, op);
     }
 
-    io_start(q);
-    err = io_waitall(q);
+    ibp_io_start(q);
+    err = ibp_io_waitall(q);
     if (err != 0) {
         printf("remove_allocs: At least 1 error occured! * ibp_errno=%d * nfailed=%d\n", err, opque_tasks_failed(q));
     }
-    opque_free(q, OP_DESTROY);
+    gop_opque_free(q, OP_DESTROY);
 
     //** Lastly free all the caps and the array
     for (i=0; i<nallocs; i++) {
-        destroy_ibp_cap(get_ibp_cap(&(caps_list[i]), IBP_READCAP));
-        destroy_ibp_cap(get_ibp_cap(&(caps_list[i]), IBP_WRITECAP));
-        destroy_ibp_cap(get_ibp_cap(&(caps_list[i]), IBP_MANAGECAP));
+        ibp_cap_destroy(ibp_cap_get(&(caps_list[i]), IBP_READCAP));
+        ibp_cap_destroy(ibp_cap_get(&(caps_list[i]), IBP_WRITECAP));
+        ibp_cap_destroy(ibp_cap_get(&(caps_list[i]), IBP_MANAGECAP));
     }
 
     free(caps_list);
@@ -206,20 +206,20 @@ void write_allocs(ibp_capset_t *caps, int n, int asize, int nthreads)
     char *buffer = (char *)malloc(asize);
     memset(buffer, 'W', asize);
 
-    q = new_opque();
+    q = gop_opque_new();
 
     for (i=0; i<n; i++) {
         tbx_tbuf_single(&(buf[i]), asize, buffer);
-        op = new_ibp_write_op(ic, get_ibp_cap(&(caps[i]), IBP_WRITECAP), 0, &(buf[i]), 0, asize, ibp_timeout);
-        opque_add(q, op);
+        op = ibp_write_op(ic, ibp_cap_get(&(caps[i]), IBP_WRITECAP), 0, &(buf[i]), 0, asize, ibp_timeout);
+        gop_opque_add(q, op);
     }
 
-    io_start(q);
-    err = io_waitall(q);
+    ibp_io_start(q);
+    err = ibp_io_waitall(q);
     if (err != 0) {
         printf("write_allocs: At least 1 error occured! * ibp_errno=%d * nfailed=%d\n", err, opque_tasks_failed(q));
     }
-    opque_free(q, OP_DESTROY);
+    gop_opque_free(q, OP_DESTROY);
 
     free(buffer);
 }
@@ -237,21 +237,21 @@ void copy_allocs(char *path, ibp_capset_t *src_caps, ibp_capset_t *dest_caps, in
     char *buffer = (char *)malloc(asize);
     memset(buffer, 'W', asize);
 
-    q = new_opque();
+    q = gop_opque_new();
 
     for (i=0; i<n_dest; i++) {
         j = i % n_src;
-        op = new_ibp_copyappend_op(ic, ns_mode, path, get_ibp_cap(&(src_caps[j]), IBP_READCAP), get_ibp_cap(&(dest_caps[i]), IBP_WRITECAP),
+        op = ibp_copyappend_op(ic, ns_mode, path, ibp_cap_get(&(src_caps[j]), IBP_READCAP), ibp_cap_get(&(dest_caps[i]), IBP_WRITECAP),
                                    0, asize, ibp_timeout, ibp_timeout, ibp_timeout);
-        opque_add(q, op);
+        gop_opque_add(q, op);
     }
 
-    io_start(q);
-    err = io_waitall(q);
+    ibp_io_start(q);
+    err = ibp_io_waitall(q);
     if (err != 0) {
         printf("copy_allocs: At least 1 error occured! * ibp_errno=%d * nfailed=%d\n", err, opque_tasks_failed(q));
     }
-    opque_free(q, OP_DESTROY);
+    gop_opque_free(q, OP_DESTROY);
 
     free(buffer);
 }
@@ -323,7 +323,7 @@ int main(int argc, char **argv)
         return(-1);
     }
 
-    ic = ibp_create_context();  //** Initialize IBP
+    ic = ibp_context_create();  //** Initialize IBP
 
     net_cs_name = NULL;
     disk_cs_name = NULL;
@@ -359,7 +359,7 @@ int main(int argc, char **argv)
             i++;
             tbx_ns_chksum_set(&ns_cs, &cs, blocksize);
             ncs = &ns_cs;
-            ibp_set_chksum(ic, ncs);
+            ibp_chksum_set(ic, ncs);
         } else if (strcmp(argv[i], "-disk_chksum") == 0) { //** Add checksum capability
             i++;
             disk_cs_name = argv[i];
@@ -373,7 +373,7 @@ int main(int argc, char **argv)
             i++;
         } else if (strcmp(argv[i], "-config") == 0) { //** Read the config file
             i++;
-            ibp_load_config_file(ic, argv[i], NULL);
+            ibp_config_load_file(ic, argv[i], NULL);
             i++;
         } else if (strcmp(argv[i], "-phoebus") == 0) { //** Check if we want phoebus transfers
             ns_mode = NS_TYPE_PHOEBUS;
@@ -426,9 +426,9 @@ int main(int argc, char **argv)
     //*** Get thread count ***
     nthreads = atoi(argv[i]);
     if (nthreads <= 0) {
-        nthreads = ibp_get_max_depot_threads(ic);
+        nthreads = ibp_max_depot_threads_get(ic);
     } else {
-        ibp_set_max_depot_threads(ic, nthreads);
+        ibp_max_depot_threads_set(ic, nthreads);
     }
     i++;
 
@@ -497,7 +497,7 @@ int main(int argc, char **argv)
     printf("Approximate data for sequential tests: %lfMB\n", r1);
     printf("\n");
 
-    io_set_mode(sync_transfer, print_progress, nthreads);
+    ibp_io_mode_set(sync_transfer, print_progress, nthreads);
 
     //**************** Perform the tests ***************************
     i = count/nthreads;
@@ -568,7 +568,7 @@ int main(int argc, char **argv)
 
     printf("Final network connection counter: %d\n", tbx_network_counter(NULL));
 
-    ibp_destroy_context(ic);  //** Shutdown IBP
+    ibp_context_destroy(ic);  //** Shutdown IBP
 
     return(0);
 }

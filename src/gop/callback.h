@@ -37,7 +37,7 @@ struct callback_t {   //** Used for application level callback
 };
 
 
-GOP_API void callback_set(callback_t *cb, void (*fn)(void *priv, int value), void *priv);
+GOP_API void gop_cb_set(callback_t *cb, void (*fn)(void *priv, int value), void *priv);
 void callback_append(callback_t **root_cb, callback_t *cb);
 void callback_destroy(callback_t *root_cb);
 void callback_execute(callback_t *cb, int value);

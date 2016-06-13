@@ -170,7 +170,7 @@ backlog is used to decide when to spawn additional connections.  Likewise if a c
 is not sustainiang a user supplied minimum command throughput then the connection is culled.
 
 Additionally an MQ portal can be created to accept incoming connections like that used on a
-server.  Tasks can be submitted either by the GOP tools or via mq_submit.  In server mode
+server.  Tasks can be submitted either by the GOP tools or via gop_mq_submit.  In server mode
 user supplied commands can be installed for execution.  These key off the first argumaent frame
 on EXEC and TRACKEXEC commands.
 
@@ -181,16 +181,16 @@ mq_context_t *mqc;
 op_generic_t *gop;
 
 //** Create the context
-mqc = mq_create_context(ifd, "mq_context");
+mqc = gop_mq_create_context(ifd, "mq_context");
 
 //** Generate the task
-gop = new_mq_op(mqc, msg, client_response_pong, td, free, td->dt);
+gop = gop_mq_op_new(mqc, msg, client_response_pong, td, free, td->dt);
 
 //** Wait for it to complete
 gop_waitall(gop);
 
 //** Destroy when finished
-mq_destroy_context(mqc);
+gop_mq_destroy_context(mqc);
 --------------------------------------
 
 Look at client_test_thread() in mq_test.c for a fully working example.  The format for the repsonse handler,
@@ -206,7 +206,7 @@ typedef struct {
   mq_msg_t *response;     //** Response message
   op_generic_t *gop;      //** GOP corresponding to the task.
   mq_context_t *ctx;      //** Portal context for sending responses.
-  void *arg;              //** Optional argument when calling new_mq_op().  This was free() in the above example.
+  void *arg;              //** Optional argument when calling gop_mq_op_new().  This was free() in the above example.
   apr_time_t timeout;     //** Initially the DT in sec for the command to complete and converted to abs timeout when sent
   void (*my_arg_free)(void *arg);  //** Function for cleaning up the GOP arg on GOP destruction.
 } mq_task_t;
@@ -221,26 +221,26 @@ uint64_t n;
 log_printf(0, "START\n");
 
 //** Make the server context
-mqc = mq_create_context(ifd, "mq_context");
+mqc = gop_mq_create_context(ifd, "mq_context");
 
 //** Make the server portal
-server_portal = mq_portal_create(mqc, host, MQ_CMODE_SERVER);
+server_portal = gop_mq_portal_create(mqc, host, MQ_CMODE_SERVER);
 
 //** Get the command table from the newly created MQ portal
-table = mq_portal_command_table(server_portal);
+table = gop_mq_portal_command_table(server_portal);
 
 //** Install your commands
 mq_command_add(table, MQF_PING_KEY, MQF_PING_SIZE, NULL, cb_ping);
 
 //** Make available for use
-mq_portal_install(mqc, server_portal);
+gop_mq_portal_install(mqc, server_portal);
 
 //** Wait for a shutdown using an eventFD.  Not reuqired Just one way to trigger a shutdown.
 //**  Could also do it via another command
 read(control_efd, &n, sizeof(n));
 
 //** Destroy the portal
-mq_destroy_context(mqc);
+gop_mq_destroy_context(mqc);
 
 --------------------------------------
 
@@ -266,17 +266,17 @@ typedef struct {
 
 
 Servers normally send responses directly in more of a fire and forget approach, bypassing the GOP framework. In this case one
-uses mq_submit():
+uses gop_mq_submit():
 
-	int mq_submit(mq_portal_t *p, mq_task_t *task);
+	int gop_mq_submit(mq_portal_t *p, mq_task_t *task);
 
 The easist way to generate the task is to use the helper function:
 
-	mq_task_t *mq_task_new(mq_context_t *ctx, mq_msg_t *msg, op_generic_t *gop, void *arg, int dt);
+	mq_task_t *gop_mq_task_new(mq_context_t *ctx, mq_msg_t *msg, op_generic_t *gop, void *arg, int dt);
 
 In the cb_ping() example above translates to
 
-        err = mq_submit(server_portal, mq_task_new(server_portal->mqc, response, NULL, NULL, 5));
+        err = gop_mq_submit(server_portal, gop_mq_task_new(server_portal->mqc, response, NULL, NULL, 5));
 
 in proc_trackexec_ping() which is called from cb_ping();
 

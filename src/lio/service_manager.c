@@ -77,10 +77,10 @@ int add_service(service_manager_t *sm, char *service_section, char *service_name
 }
 
 //***********************************************************************
-// lookup_service - Returns the currrent object associated with the service
+// lio_lookup_service - Returns the currrent object associated with the service
 //***********************************************************************
 
-void *lookup_service(service_manager_t *sm, char *service_section, char *service_name)
+void *lio_lookup_service(service_manager_t *sm, char *service_section, char *service_name)
 {
     void *s;
     apr_hash_t *section;

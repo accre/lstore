@@ -28,7 +28,7 @@
 #include "portal.h"
 #include <tbx/atomic_counter.h>
 
-void opque_free(opque_t *q, int mode);
+void gop_opque_free(opque_t *q, int mode);
 void gop_dummy_init();
 void gop_dummy_destroy();
 
@@ -96,12 +96,12 @@ void gop_control_free(void *arg, int size, void *data)
 }
 
 //*************************************************************
-//  init_opque_system - Initializes the OpQue system
+//  gop_init_opque_system - Initializes the OpQue system
 //*************************************************************
 
-void init_opque_system()
+void gop_init_opque_system()
 {
-    log_printf(15, "init_opque_system: counter=%d\n", _opque_counter);
+    log_printf(15, "gop_init_opque_system: counter=%d\n", _opque_counter);
     if (tbx_atomic_inc(_opque_counter) == 0) {   //** Only init if needed
         assert_result(apr_pool_create(&_opque_pool, NULL), APR_SUCCESS);
         _gop_control = tbx_pc_new("gop_control", 50, sizeof(gop_control_t), NULL, gop_control_new, gop_control_free);
@@ -112,12 +112,12 @@ void init_opque_system()
 }
 
 //*************************************************************
-//  destroy_opque_system - Initializes the OpQue system
+//  gop_shutdown - Initializes the OpQue system
 //*************************************************************
 
-void destroy_opque_system()
+void gop_shutdown()
 {
-    log_printf(15, "destroy_opque_system: counter=%d\n", _opque_counter);
+    log_printf(15, "gop_shutdown: counter=%d\n", _opque_counter);
     if (tbx_atomic_dec(_opque_counter) == 0) {   //** Only wipe if not used
         tbx_pc_destroy(_gop_control);
         apr_pool_destroy(_opque_pool);
@@ -145,7 +145,7 @@ void _opque_cb(void *v, int mode)
     if (type == Q_TYPE_QUE) {
         n = tbx_stack_count(gop->q->failed);
         log_printf(15, "_opque_cb: qid=%d gid=%d  tbx_stack_count(q->failed)=%d gop->status=%d\n", gop_id(&(q->opque->op)), gop_id(gop), n, gop->base.status.op_status);
-        success = (n == 0) ? gop->base.status : op_failure_status;
+        success = (n == 0) ? gop->base.status : gop_failure_status;
     } else {
         success = gop->base.status;
     }
@@ -171,7 +171,7 @@ void _opque_cb(void *v, int mode)
 
     if (q->nleft <= 0) {  //** we're finished
         if (tbx_stack_count(q->failed) == 0) {
-            q->opque->op.base.status = op_success_status;
+            q->opque->op.base.status = gop_success_status;
             callback_execute(q->opque->op.base.cb, OP_STATE_SUCCESS);
 
             //** Lastly trigger the signal. for anybody listening
@@ -184,7 +184,7 @@ void _opque_cb(void *v, int mode)
             callback_execute(&(q->failure_cb), OP_STATE_FAILURE);  //** Attempt to fix things
 
             if (q->opque->op.base.failure_mode == 0) {  //** No retry
-                q->opque->op.base.status = op_failure_status;
+                q->opque->op.base.status = gop_failure_status;
                 callback_execute(q->opque->op.base.cb, OP_STATE_FAILURE);  //**Execute the other CBs
                 apr_thread_cond_broadcast(q->opque->op.base.ctl->cond);  //** and fail for good
             }
@@ -251,10 +251,10 @@ void init_opque(opque_t *q)
 }
 
 //*************************************************************
-// new_opque - Generates a new que container
+// gop_opque_new - Generates a new que container
 //*************************************************************
 
-opque_t *new_opque()
+opque_t *gop_opque_new()
 {
     opque_t *q;
 
@@ -275,7 +275,7 @@ void free_finished_stack(tbx_stack_t *stack, int mode)
     gop = (op_generic_t *)tbx_stack_pop(stack);
     while (gop != NULL) {
         if (gop->type == Q_TYPE_QUE) {
-            opque_free(gop->q->opque, mode);
+            gop_opque_free(gop->q->opque, mode);
         } else {
             if (gop->base.free != NULL) gop->base.free(gop, mode);
         }
@@ -300,7 +300,7 @@ void free_list_stack(tbx_stack_t *stack, int mode)
         gop = (op_generic_t *)cb->priv;
         log_printf(15, "gid=%d\n", gop_id(gop));
         if (gop->type == Q_TYPE_QUE) {
-            opque_free(gop->q->opque, mode);
+            gop_opque_free(gop->q->opque, mode);
         } else {
             if (gop->base.free != NULL) gop->base.free(gop, mode);
         }
@@ -312,12 +312,12 @@ void free_list_stack(tbx_stack_t *stack, int mode)
 }
 
 //*************************************************************
-//  opque_free - Frees the que container and optionally
+//  gop_opque_free - Frees the que container and optionally
 //    the container itself allowing it to be reused based
 //    on the mode
 //*************************************************************
 
-void opque_free(opque_t *opq, int mode)
+void gop_opque_free(opque_t *opq, int mode)
 {
     que_data_t *q = &(opq->qd);
 
@@ -337,11 +337,11 @@ void opque_free(opque_t *opq, int mode)
 }
 
 //*************************************************************
-// internal_opque_add - Adds a task or list to the que with
+// internal_gop_opque_add - Adds a task or list to the que with
 //   optional locking.  Designed for use withing a callback
 //*************************************************************
 
-int internal_opque_add(opque_t *que, op_generic_t *gop, int dolock)
+int internal_gop_opque_add(opque_t *que, op_generic_t *gop, int dolock)
 {
     int err = 0;
     callback_t *cb;
@@ -349,11 +349,11 @@ int internal_opque_add(opque_t *que, op_generic_t *gop, int dolock)
 
     //** Create the callback **
     tbx_type_malloc(cb, callback_t, 1);
-    callback_set(cb, _opque_cb, (void *)gop); //** Set the global callback for the list
+    gop_cb_set(cb, _opque_cb, (void *)gop); //** Set the global callback for the list
 
     if (dolock != 0) lock_opque(q);
 
-    log_printf(15, "opque_add: qid=%d gid=%d\n", que->op.base.id, gop_get_id(gop));
+    log_printf(15, "gop_opque_add: qid=%d gid=%d\n", que->op.base.id, gop_get_id(gop));
 
     //** Add the list CB to the the op
     gop->base.parent_q = que;
@@ -383,12 +383,12 @@ int internal_opque_add(opque_t *que, op_generic_t *gop, int dolock)
 }
 
 //*************************************************************
-// opque_add - Adds a task or list to the que
+// gop_opque_add - Adds a task or list to the que
 //*************************************************************
 
-int opque_add(opque_t *que, op_generic_t *gop)
+int gop_opque_add(opque_t *que, op_generic_t *gop)
 {
-    return(internal_opque_add(que, gop, 1));
+    return(internal_gop_opque_add(que, gop, 1));
 }
 
 //*************************************************************
@@ -401,7 +401,7 @@ op_status_t opque_completion_status(opque_t *que)
     op_status_t status;
 
     lock_opque(q);
-    status = (tbx_stack_count(q->failed) == 0) ? q->opque->op.base.status : op_failure_status;
+    status = (tbx_stack_count(q->failed) == 0) ? q->opque->op.base.status : gop_failure_status;
     unlock_opque(q);
 
     return(status);
@@ -477,12 +477,12 @@ int compare_ops(const void *arg1, const void *arg2)
 
 
 //*************************************************************
-// default_sort_ops - Default routine to sort ops.
+// gop_default_sort_ops - Default routine to sort ops.
 //   Ops are sorted to group ops for the same host together in
 //   descending amount of work.
 //*************************************************************
 
-void default_sort_ops(void *arg, opque_t *que)
+void gop_default_sort_ops(void *arg, opque_t *que)
 {
     int i, n, count;
     callback_t **array;

@@ -215,10 +215,10 @@ int lioc_get_multiple_attrs(lio_config_t *lc, creds_t *creds, char *path, char *
 }
 
 //***********************************************************************
-// lioc_get_attr - Returns an attribute
+// lioc_getattr - Returns an attribute
 //***********************************************************************
 
-int lioc_get_attr(lio_config_t *lc, creds_t *creds, char *path, char *id, char *key, void **val, int *v_size)
+int lioc_getattr(lio_config_t *lc, creds_t *creds, char *path, char *id, char *key, void **val, int *v_size)
 {
     int err, serr;
     os_fd_t *fd;
@@ -295,10 +295,10 @@ int lioc_set_multiple_attrs(lio_config_t *lc, creds_t *creds, char *path, char *
 }
 
 //***********************************************************************
-// lioc_set_attr_real - Sets an attribute
+// lioc_setattr_real - Sets an attribute
 //***********************************************************************
 
-int lioc_set_attr_real(lio_config_t *lc, creds_t *creds, char *path, char *id, char *key, void *val, int v_size)
+int lioc_setattr_real(lio_config_t *lc, creds_t *creds, char *path, char *id, char *key, void *val, int v_size)
 {
     int err, serr;
     os_fd_t *fd;
@@ -326,17 +326,17 @@ int lioc_set_attr_real(lio_config_t *lc, creds_t *creds, char *path, char *id, c
 }
 
 //***********************************************************************
-// lioc_set_attr - Sets a single attribute
+// lioc_setattr - Sets a single attribute
 //***********************************************************************
 
-int lioc_set_attr(lio_config_t *lc, creds_t *creds, char *path, char *id, char *key, void *val, int v_size)
+int lioc_setattr(lio_config_t *lc, creds_t *creds, char *path, char *id, char *key, void *val, int v_size)
 {
     int err;
 
-    err = lioc_set_attr_real(lc, creds, path, id, key, val, v_size);
+    err = lioc_setattr_real(lc, creds, path, id, key, val, v_size);
     if (err != OP_STATE_SUCCESS) {  //** Got an error
         sleep(1);  //** Wait a bit before retrying
-        err = lioc_set_attr_real(lc, creds, path, id, key, val, v_size);
+        err = lioc_setattr_real(lc, creds, path, id, key, val, v_size);
     }
 
     return(err);
@@ -454,8 +454,8 @@ int lioc_update_exnode_attrs(lio_config_t *lc, creds_t *creds, exnode_t *ex, seg
     if (serr == NULL) serr = &my_serr; //** If caller doesn't care about errors use my own space
 
     //** Serialize the exnode
-    exp = exnode_exchange_create(EX_TEXT);
-    exnode_serialize(ex, exp);
+    exp = lio_exnode_exchange_create(EX_TEXT);
+    lio_exnode_serialize(ex, exp);
     ssize = segment_size(seg);
 
     //** Get any errors that may have occured
@@ -484,7 +484,7 @@ int lioc_update_exnode_attrs(lio_config_t *lc, creds_t *creds, exnode_t *ex, seg
         ret += 2;
     }
 
-    exnode_exchange_destroy(exp);
+    lio_exnode_exchange_destroy(exp);
 
     return(ret);
 }
@@ -501,7 +501,7 @@ op_status_t lioc_remove_object_fn(void *arg, int id)
     exnode_exchange_t *exp;
     exnode_t *ex;
     int err, v_size, ex_remove, vs[2], n;
-    op_status_t status = op_success_status;
+    op_status_t status = gop_success_status;
 
     //** First remove and data associated with the object
     v_size = -op->lc->max_attr;
@@ -518,7 +518,7 @@ op_status_t lioc_remove_object_fn(void *arg, int id)
         if (val[0] == NULL) {
             log_printf(15, "Missing link count for fname=%s\n", op->src_path);
             if (val[1] != NULL) free(val[1]);
-            return(op_failure_status);
+            return(gop_failure_status);
         }
 
         n = 100;
@@ -540,37 +540,37 @@ op_status_t lioc_remove_object_fn(void *arg, int id)
 
     ex_data = op->ex;
     if ((op->ex == NULL) && (ex_remove == 1)) {
-        lioc_get_attr(op->lc, op->creds, op->src_path, op->id, "system.exnode", (void **)&ex_data, &v_size);
+        lioc_getattr(op->lc, op->creds, op->src_path, op->id, "system.exnode", (void **)&ex_data, &v_size);
     }
 
     //** Load the exnode and remove it if needed.
     //** Only done for normal files.  No links or dirs
     if ((ex_remove == 1) && (ex_data != NULL)) {
         //** Deserialize it
-        exp = exnode_exchange_text_parse(ex_data);
-        ex = exnode_create();
-        if (exnode_deserialize(ex, exp, op->lc->ess) != 0) {
+        exp = lio_exnode_exchange_text_parse(ex_data);
+        ex = lio_exnode_create();
+        if (lio_exnode_deserialize(ex, exp, op->lc->ess) != 0) {
             log_printf(15, "ERROR removing data for object fname=%s\n", op->src_path);
-            status = op_failure_status;
+            status = gop_failure_status;
         } else {  //** Execute the remove operation since we have a good exnode
             err = gop_sync_exec(exnode_remove(op->lc->tpc_unlimited, ex, op->lc->da, op->lc->timeout));
             if (err != OP_STATE_SUCCESS) {
                 log_printf(15, "ERROR removing data for object fname=%s\n", op->src_path);
-                status = op_failure_status;
+                status = gop_failure_status;
             }
         }
 
         //** Clean up
         if (op->ex != NULL) exp->text.text = NULL;  //** The inital exnode is free() by the TP op
-        exnode_exchange_destroy(exp);
-        exnode_destroy(ex);
+        lio_exnode_exchange_destroy(exp);
+        lio_exnode_destroy(ex);
     }
 
     //** Now we can remove the OS entry
     err = gop_sync_exec(os_remove_object(op->lc->os, op->creds, op->src_path));
     if (err != OP_STATE_SUCCESS) {
         log_printf(0, "ERROR: removing file: %s err=%d\n", op->src_path, err);
-        status = op_failure_status;
+        status = gop_failure_status;
     }
 
 
@@ -592,7 +592,7 @@ op_generic_t *lioc_remove_object(lio_config_t *lc, creds_t *creds, char *path, c
     op->src_path = strdup(path);
     op->ex = ex_optional;
     op->type = ftype_optional;
-    return(new_thread_pool_op(lc->tpc_unlimited, NULL, lioc_remove_object_fn, (void *)op, lioc_free_mk_mv_rm, 1));
+    return(gop_tp_op_new(lc->tpc_unlimited, NULL, lioc_remove_object_fn, (void *)op, lioc_free_mk_mv_rm, 1));
 }
 
 //***********************************************************************
@@ -610,7 +610,7 @@ op_status_t lioc_remove_regex_object_fn(void *arg, int id)
     char *key[1];
     int v_size[1];
     op_status_t status2;
-    op_status_t status = op_success_status;
+    op_status_t status = gop_success_status;
 
     key[0] = "system.exnode";
     ex = NULL;
@@ -618,11 +618,11 @@ op_status_t lioc_remove_regex_object_fn(void *arg, int id)
     it = os_create_object_iter_alist(op->lc->os, op->creds, op->rpath, op->robj, op->obj_types, op->recurse_depth, key, (void **)&ex, v_size, 1);
     if (it == NULL) {
         log_printf(0, "ERROR: Failed with object_iter creation\n");
-        return(op_failure_status);
+        return(gop_failure_status);
     }
 
     //** Cycle through removing the objects
-    q = new_opque();
+    q = gop_opque_new();
     n = 0;
     nfailed = 0;
     while ((atype = os_next_object(op->lc->os, it, &fname, &prefix_len)) > 0) {
@@ -636,7 +636,7 @@ op_status_t lioc_remove_regex_object_fn(void *arg, int id)
         gop = lioc_remove_object(op->lc, op->creds, fname, ex, atype);
         ex = NULL;  //** Freed in lioc_remove_object
         free(fname);
-        opque_add(q, gop);
+        gop_opque_add(q, gop);
 
         if (opque_tasks_left(q) > op->np) {
             gop = opque_waitany(q);
@@ -655,7 +655,7 @@ op_status_t lioc_remove_regex_object_fn(void *arg, int id)
 
     opque_waitall(q);
     nfailed += opque_tasks_failed(q);
-    opque_free(q, OP_DESTROY);
+    gop_opque_free(q, OP_DESTROY);
 
     status.op_status = (nfailed > 0) ? OP_STATE_FAILURE : OP_STATE_SUCCESS;
     status.error_code = n;
@@ -680,7 +680,7 @@ op_generic_t *lioc_remove_regex_object(lio_config_t *lc, creds_t *creds, os_rege
     op->recurse_depth = recurse_depth;
     op->np = np;
 
-    return(new_thread_pool_op(lc->tpc_unlimited, NULL, lioc_remove_regex_object_fn, (void *)op, free, 1));
+    return(gop_tp_op_new(lc->tpc_unlimited, NULL, lioc_remove_regex_object_fn, (void *)op, free, 1));
 }
 
 
@@ -703,7 +703,7 @@ op_status_t lioc_create_object_fn(void *arg, int id)
     int err;
     int ex_key = 5;
 
-    status = op_success_status;
+    status = gop_success_status;
 
     val[ex_key] = NULL;
 
@@ -713,20 +713,20 @@ op_status_t lioc_create_object_fn(void *arg, int id)
     err = gop_sync_exec(os_create_object(op->lc->os, op->creds, op->src_path, op->type, op->id));
     if (err != OP_STATE_SUCCESS) {
         log_printf(15, "ERROR creating object fname=%s\n", op->src_path);
-        status = op_failure_status;
+        status = gop_failure_status;
         goto fail_bad;
     }
 
     //** Get the parent exnode to dup
     if (op->ex == NULL) {
-        os_path_split(op->src_path, &dir, &fname);
+        lio_os_path_split(op->src_path, &dir, &fname);
         log_printf(15, "dir=%s\n fname=%s\n", dir, fname);
 
         err = gop_sync_exec(os_open_object(op->lc->os, op->creds, dir, OS_MODE_READ_IMMEDIATE, op->id, &fd, op->lc->timeout));
         if (err != OP_STATE_SUCCESS) {
             log_printf(15, "ERROR opening parent=%s\n", dir);
             free(dir);
-            status = op_failure_status;
+            status = gop_failure_status;
             goto fail;
         }
         free(fname);
@@ -736,7 +736,7 @@ op_status_t lioc_create_object_fn(void *arg, int id)
         if (err != OP_STATE_SUCCESS) {
             log_printf(15, "ERROR opening parent=%s\n", dir);
             free(dir);
-            status = op_failure_status;
+            status = gop_failure_status;
             goto fail;
         }
 
@@ -745,7 +745,7 @@ op_status_t lioc_create_object_fn(void *arg, int id)
         if (err != OP_STATE_SUCCESS) {
             log_printf(15, "ERROR closing parent fname=%s\n", dir);
             free(dir);
-            status = op_failure_status;
+            status = gop_failure_status;
             goto fail;
         }
 
@@ -762,35 +762,35 @@ op_status_t lioc_create_object_fn(void *arg, int id)
         //** same segment being serialized/deserialized.
 
         //** Deserialize it
-        exp = exnode_exchange_text_parse(val[ex_key]);
-        ex = exnode_create();
-        if (exnode_deserialize(ex, exp, op->lc->ess_nocache) != 0) {
+        exp = lio_exnode_exchange_text_parse(val[ex_key]);
+        ex = lio_exnode_create();
+        if (lio_exnode_deserialize(ex, exp, op->lc->ess_nocache) != 0) {
             log_printf(15, "ERROR parsing parent exnode of op->src_path=%s\n", op->src_path);
-            status = op_failure_status;
-            exnode_exchange_destroy(exp);
-            exnode_destroy(ex);
+            status = gop_failure_status;
+            lio_exnode_exchange_destroy(exp);
+            lio_exnode_destroy(ex);
             goto fail;
         }
 
         //** Execute the clone operation
-        err = gop_sync_exec(exnode_clone(op->lc->tpc_unlimited, ex, op->lc->da, &cex, NULL, CLONE_STRUCTURE, op->lc->timeout));
+        err = gop_sync_exec(lio_exnode_clone(op->lc->tpc_unlimited, ex, op->lc->da, &cex, NULL, CLONE_STRUCTURE, op->lc->timeout));
         if (err != OP_STATE_SUCCESS) {
             log_printf(15, "ERROR cloning parent src_path=%s\n", op->src_path);
-            status = op_failure_status;
-            exnode_exchange_destroy(exp);
-            exnode_destroy(ex);
-            exnode_destroy(cex);
+            status = gop_failure_status;
+            lio_exnode_exchange_destroy(exp);
+            lio_exnode_destroy(ex);
+            lio_exnode_destroy(cex);
             goto fail;
         }
 
         //** Serialize it for storage
         exnode_exchange_free(exp);
-        exnode_serialize(cex, exp);
+        lio_exnode_serialize(cex, exp);
         val[ex_key] = exp->text.text;
         exp->text.text = NULL;
-        exnode_exchange_destroy(exp);
-        exnode_destroy(ex);
-        exnode_destroy(cex);
+        lio_exnode_exchange_destroy(exp);
+        lio_exnode_destroy(ex);
+        lio_exnode_destroy(cex);
     }
 
 
@@ -798,7 +798,7 @@ op_status_t lioc_create_object_fn(void *arg, int id)
     err = gop_sync_exec(os_open_object(op->lc->os, op->creds, op->src_path, OS_MODE_WRITE_IMMEDIATE, op->id, &fd, op->lc->timeout));
     if (err != OP_STATE_SUCCESS) {
         log_printf(15, "ERROR opening object fname=%s\n", op->src_path);
-        status = op_failure_status;
+        status = gop_failure_status;
         goto fail;
     }
 
@@ -826,7 +826,7 @@ op_status_t lioc_create_object_fn(void *arg, int id)
     err = gop_sync_exec(os_set_multiple_attrs(op->lc->os, op->creds, fd, _lioc_create_keys, (void **)val, v_size, (op->type & OS_OBJECT_FILE) ? _n_lioc_file_keys : _n_lioc_dir_keys));
     if (err != OP_STATE_SUCCESS) {
         log_printf(15, "ERROR setting default attr fname=%s\n", op->src_path);
-        status = op_failure_status;
+        status = gop_failure_status;
     }
 
 
@@ -834,7 +834,7 @@ op_status_t lioc_create_object_fn(void *arg, int id)
     err = gop_sync_exec(os_close_object(op->lc->os, fd));
     if (err != OP_STATE_SUCCESS) {
         log_printf(15, "ERROR closing object fname=%s\n", op->src_path);
-        status = op_failure_status;
+        status = gop_failure_status;
     }
 
 fail:
@@ -863,7 +863,7 @@ op_generic_t *lioc_create_object(lio_config_t *lc, creds_t *creds, char *path, i
     op->type = type;
     op->id = (id != NULL) ? strdup(id) : NULL;
     op->ex = (ex != NULL) ? strdup(ex) : NULL;
-    return(new_thread_pool_op(lc->tpc_unlimited, NULL, lioc_create_object_fn, (void *)op, lioc_free_mk_mv_rm, 1));
+    return(gop_tp_op_new(lc->tpc_unlimited, NULL, lioc_create_object_fn, (void *)op, lioc_free_mk_mv_rm, 1));
 }
 
 
@@ -894,30 +894,30 @@ op_status_t lioc_link_object_fn(void *arg, int id)
     }
     if (err != OP_STATE_SUCCESS) {
         log_printf(15, "ERROR linking base object sfname=%s dfname=%s\n", op->src_path, op->dest_path);
-        status = op_failure_status;
+        status = gop_failure_status;
         goto finished;
     }
 
     if (op->type == 0) {  //** HArd link so exit
-        status = op_success_status;
+        status = gop_success_status;
         goto finished;
     }
 
-    q = new_opque();
+    q = gop_opque_new();
 
     //** Open the Destination object
-    opque_add(q, os_open_object(op->lc->os, op->creds, op->dest_path, OS_MODE_READ_IMMEDIATE, op->id, &dfd, op->lc->timeout));
+    gop_opque_add(q, os_open_object(op->lc->os, op->creds, op->dest_path, OS_MODE_READ_IMMEDIATE, op->id, &dfd, op->lc->timeout));
     err = opque_waitall(q);
     if (err != OP_STATE_SUCCESS) {
         log_printf(15, "ERROR opening src(%s) or dest(%s) file\n", op->src_path, op->dest_path);
-        status = op_failure_status;
+        status = gop_failure_status;
         goto open_fail;
     }
 
     //** Now link the exnode and size
     spath[0] = op->src_path;
     spath[1] = op->src_path;
-    opque_add(q, os_symlink_multiple_attrs(op->lc->os, op->creds, spath, lkeys, dfd, lkeys, 2));
+    gop_opque_add(q, os_symlink_multiple_attrs(op->lc->os, op->creds, spath, lkeys, dfd, lkeys, 2));
 
     //** Store the owner, inode, and dates
     val[0] = an_cred_get_id(op->creds);
@@ -933,24 +933,24 @@ op_status_t lioc_link_object_fn(void *arg, int id)
     vsize[3] = vsize[2];
     val[4] = op->id;
     vsize[4] = vsize[2];
-    opque_add(q, os_set_multiple_attrs(op->lc->os, op->creds, dfd, vkeys, (void **)val, vsize, 5));
+    gop_opque_add(q, os_set_multiple_attrs(op->lc->os, op->creds, dfd, vkeys, (void **)val, vsize, 5));
 
 
     //** Wait for everything to complete
     err = opque_waitall(q);
     if (err != OP_STATE_SUCCESS) {
         log_printf(15, "ERROR with attr link or owner set src(%s) or dest(%s) file\n", op->src_path, op->dest_path);
-        status = op_failure_status;
+        status = gop_failure_status;
         goto open_fail;
     }
 
-    status = op_success_status;
+    status = gop_success_status;
 
 open_fail:
-    if (dfd != NULL) opque_add(q, os_close_object(op->lc->os, dfd));
+    if (dfd != NULL) gop_opque_add(q, os_close_object(op->lc->os, dfd));
     opque_waitall(q);
 
-    opque_free(q, OP_DESTROY);
+    gop_opque_free(q, OP_DESTROY);
 
 finished:
     return(status);
@@ -973,7 +973,7 @@ op_generic_t *lioc_link_object(lio_config_t *lc, creds_t *creds, int symlink, ch
     op->src_path = strdup(src_path);
     op->dest_path = strdup(dest_path);
     op->id = (id != NULL) ? strdup(id) : NULL;
-    return(new_thread_pool_op(lc->tpc_unlimited, NULL, lioc_link_object_fn, (void *)op, lioc_free_mk_mv_rm, 1));
+    return(gop_tp_op_new(lc->tpc_unlimited, NULL, lioc_link_object_fn, (void *)op, lioc_free_mk_mv_rm, 1));
 }
 
 //***********************************************************************
@@ -992,10 +992,10 @@ op_generic_t *lioc_move_object(lio_config_t *lc, creds_t *creds, char *src_path,
 
 
 //*************************************************************************
-//  unified_create_object_iter - Create an ls object iterator
+//  lio_unified_object_iter_create - Create an ls object iterator
 //*************************************************************************
 
-unified_object_iter_t *unified_create_object_iter(lio_path_tuple_t tuple, os_regex_table_t *path_regex, os_regex_table_t *obj_regex, int obj_types, int rd)
+unified_object_iter_t *lio_unified_object_iter_create(lio_path_tuple_t tuple, os_regex_table_t *path_regex, os_regex_table_t *obj_regex, int obj_types, int rd)
 {
     unified_object_iter_t *it;
 
@@ -1012,10 +1012,10 @@ unified_object_iter_t *unified_create_object_iter(lio_path_tuple_t tuple, os_reg
 }
 
 //*************************************************************************
-//  unified_destroy_object_iter - Destroys an ls object iterator
+//  lio_unified_object_iter_destroy - Destroys an ls object iterator
 //*************************************************************************
 
-void unified_destroy_object_iter(unified_object_iter_t *it)
+void lio_unified_object_iter_destroy(unified_object_iter_t *it)
 {
 
     if (it->tuple.is_lio == 1) {
@@ -1028,10 +1028,10 @@ void unified_destroy_object_iter(unified_object_iter_t *it)
 }
 
 //*************************************************************************
-//  unified_next_object - Returns the next object to work on
+//  lio_unified_next_object - Returns the next object to work on
 //*************************************************************************
 
-int unified_next_object(unified_object_iter_t *it, char **fname, int *prefix_len)
+int lio_unified_next_object(unified_object_iter_t *it, char **fname, int *prefix_len)
 {
     int err = 0;
 
@@ -1073,9 +1073,9 @@ op_status_t cp_lio2lio(lio_cp_file_t *cp)
 
     info_printf(lio_ifd, 0, "copy %s@%s:%s %s@%s:%s\n", an_cred_get_id(cp->src_tuple.creds), cp->src_tuple.lc->section_name, cp->src_tuple.path, an_cred_get_id(cp->dest_tuple.creds), cp->dest_tuple.lc->section_name, cp->dest_tuple.path);
 
-    status = op_failure_status;
+    status = gop_failure_status;
     err = status.op_status;
-    q = new_opque();
+    q = gop_opque_new();
     hard_errors = 0;
     sexp = dexp = NULL;
     sex = dex = NULL;
@@ -1088,7 +1088,7 @@ op_status_t cp_lio2lio(lio_cp_file_t *cp)
     log_printf(5, "src=%s dest=%s dtype=%d\n", cp->src_tuple.path, cp->dest_tuple.path, dtype);
 
     if (dtype == 0) { //** Need to create it
-        err = gop_sync_exec(gop_lio_create_object(cp->dest_tuple.lc, cp->dest_tuple.creds, cp->dest_tuple.path, OS_OBJECT_FILE, NULL, NULL));
+        err = gop_sync_exec(lio_create_op(cp->dest_tuple.lc, cp->dest_tuple.creds, cp->dest_tuple.path, OS_OBJECT_FILE, NULL, NULL));
         if (err != OP_STATE_SUCCESS) {
             info_printf(lio_ifd, 1, "ERROR creating file(%s)!\n", cp->dest_tuple.path);
             goto finished;
@@ -1099,8 +1099,8 @@ op_status_t cp_lio2lio(lio_cp_file_t *cp)
     }
 
     //** Now get both the exnodes
-    opque_add(q, os_open_object(cp->src_tuple.lc->os, cp->src_tuple.creds, cp->src_tuple.path, OS_MODE_READ_BLOCKING, NULL, &sfd, cp->src_tuple.lc->timeout));
-    opque_add(q, os_open_object(cp->dest_tuple.lc->os, cp->dest_tuple.creds, cp->dest_tuple.path, OS_MODE_READ_BLOCKING, NULL, &dfd, cp->dest_tuple.lc->timeout));
+    gop_opque_add(q, os_open_object(cp->src_tuple.lc->os, cp->src_tuple.creds, cp->src_tuple.path, OS_MODE_READ_BLOCKING, NULL, &sfd, cp->src_tuple.lc->timeout));
+    gop_opque_add(q, os_open_object(cp->dest_tuple.lc->os, cp->dest_tuple.creds, cp->dest_tuple.path, OS_MODE_READ_BLOCKING, NULL, &dfd, cp->dest_tuple.lc->timeout));
 
     //** Wait for the opens to complete
     err = opque_waitall(q);
@@ -1113,8 +1113,8 @@ op_status_t cp_lio2lio(lio_cp_file_t *cp)
     sex_data = dex_data = NULL;
     sv_size[0] = -cp->src_tuple.lc->max_attr;
     dv_size[0] = -cp->dest_tuple.lc->max_attr;
-    opque_add(q, os_get_attr(cp->src_tuple.lc->os, cp->src_tuple.creds, sfd, "system.exnode", (void **)&sex_data, sv_size));
-    opque_add(q, os_get_attr(cp->dest_tuple.lc->os, cp->dest_tuple.creds, dfd, "system.exnode", (void **)&dex_data, dv_size));
+    gop_opque_add(q, os_get_attr(cp->src_tuple.lc->os, cp->src_tuple.creds, sfd, "system.exnode", (void **)&sex_data, sv_size));
+    gop_opque_add(q, os_get_attr(cp->dest_tuple.lc->os, cp->dest_tuple.creds, dfd, "system.exnode", (void **)&dex_data, dv_size));
 
     //** Wait for the exnode retrieval to complete
     err = opque_waitall(q);
@@ -1126,28 +1126,28 @@ op_status_t cp_lio2lio(lio_cp_file_t *cp)
     }
 
     //** Deserailize them
-    sexp = exnode_exchange_text_parse(sex_data);
-    sex = exnode_create();
-    if (exnode_deserialize(sex, sexp, cp->src_tuple.lc->ess) != 0) {
+    sexp = lio_exnode_exchange_text_parse(sex_data);
+    sex = lio_exnode_create();
+    if (lio_exnode_deserialize(sex, sexp, cp->src_tuple.lc->ess) != 0) {
         info_printf(lio_ifd, 0, "ERROR parsing source exnode(%s)!\n", cp->src_tuple.path);
         goto finished;
     }
 
-    sseg = exnode_get_default(sex);
+    sseg = lio_exnode_default_get(sex);
     if (sseg == NULL) {
         info_printf(lio_ifd, 0, "No default segment for source(%s)!\n", cp->src_tuple.path);
         if (dex_data != NULL) free(dex_data);
         goto finished;
     }
 
-    dexp = exnode_exchange_text_parse(dex_data);
-    dex = exnode_create();
-    if (exnode_deserialize(dex, dexp, cp->dest_tuple.lc->ess) != 0) {
+    dexp = lio_exnode_exchange_text_parse(dex_data);
+    dex = lio_exnode_create();
+    if (lio_exnode_deserialize(dex, dexp, cp->dest_tuple.lc->ess) != 0) {
         info_printf(lio_ifd, 0, "ERROR parsing destination exnode(%s)!\n", cp->dest_tuple.path);
         goto finished;
     }
 
-    dseg = exnode_get_default(dex);
+    dseg = lio_exnode_default_get(dex);
     if (dseg == NULL) {
         info_printf(lio_ifd, 0, "No default segment for source(%s)!\n", cp->dest_tuple.path);
         goto finished;
@@ -1166,7 +1166,7 @@ op_status_t cp_lio2lio(lio_cp_file_t *cp)
     } else {
         info_printf(lio_ifd, 1, "Slow copy:( %s->%s\n", cp->src_tuple.path, cp->dest_tuple.path);
         tbx_type_malloc(buffer, char, cp->bufsize+1);
-        gop = segment_copy(cp->dest_tuple.lc->tpc_unlimited, cp->dest_tuple.lc->da, cp->rw_hints, sseg, dseg, 0, 0, -1, cp->bufsize, buffer, 1, cp->dest_tuple.lc->timeout);
+        gop = lio_segment_copy(cp->dest_tuple.lc->tpc_unlimited, cp->dest_tuple.lc->da, cp->rw_hints, sseg, dseg, 0, 0, -1, cp->bufsize, buffer, 1, cp->dest_tuple.lc->timeout);
     }
     err = gop_waitall(gop);
 
@@ -1189,20 +1189,20 @@ op_status_t cp_lio2lio(lio_cp_file_t *cp)
 finished:
 
     //** Close the files
-    if (sfd != NULL) opque_add(q, os_close_object(cp->src_tuple.lc->os, sfd));
-    if (dfd != NULL) opque_add(q, os_close_object(cp->dest_tuple.lc->os, dfd));
+    if (sfd != NULL) gop_opque_add(q, os_close_object(cp->src_tuple.lc->os, sfd));
+    if (dfd != NULL) gop_opque_add(q, os_close_object(cp->dest_tuple.lc->os, dfd));
     opque_waitall(q);
 
-    opque_free(q, OP_DESTROY);
+    gop_opque_free(q, OP_DESTROY);
 
-    if (sex != NULL) exnode_destroy(sex);
-    if (sexp != NULL) exnode_exchange_destroy(sexp);
-    if (dex != NULL) exnode_destroy(dex);
-    if (dexp != NULL) exnode_exchange_destroy(dexp);
+    if (sex != NULL) lio_exnode_destroy(sex);
+    if (sexp != NULL) lio_exnode_exchange_destroy(sexp);
+    if (dex != NULL) lio_exnode_destroy(dex);
+    if (dexp != NULL) lio_exnode_exchange_destroy(dexp);
 
     log_printf(15, "hard_errors=%d err=%d\n", hard_errors, err);
 
-    if ((hard_errors == 0) && (err == OP_STATE_SUCCESS)) status = op_success_status;
+    if ((hard_errors == 0) && (err == OP_STATE_SUCCESS)) status = gop_success_status;
 
     if (status.op_status != OP_STATE_SUCCESS) { //** Destroy the file
         log_printf(5, "ERROR with copy.  Destroying file=%s\n", cp->dest_tuple.path);
@@ -1230,7 +1230,7 @@ op_status_t cp_local2lio(lio_cp_file_t *cp)
 
     info_printf(lio_ifd, 0, "copy %s %s@%s:%s\n", cp->src_tuple.path, an_cred_get_id(cp->dest_tuple.creds), cp->dest_tuple.lc->section_name, cp->dest_tuple.path);
 
-    status = op_failure_status;
+    status = gop_failure_status;
 
     //** Check if it exists and if not create it
     dtype = lioc_exists(cp->dest_tuple.lc, cp->dest_tuple.creds, cp->dest_tuple.path);
@@ -1238,7 +1238,7 @@ op_status_t cp_local2lio(lio_cp_file_t *cp)
     log_printf(5, "src=%s dest=%s dtype=%d bufsize=" XOT "\n", cp->src_tuple.path, cp->dest_tuple.path, dtype, cp->bufsize);
 
     if (dtype == 0) { //** Need to create it
-        err = gop_sync_exec(gop_lio_create_object(cp->dest_tuple.lc, cp->dest_tuple.creds, cp->dest_tuple.path, OS_OBJECT_FILE, NULL, NULL));
+        err = gop_sync_exec(lio_create_op(cp->dest_tuple.lc, cp->dest_tuple.creds, cp->dest_tuple.path, OS_OBJECT_FILE, NULL, NULL));
         if (err != OP_STATE_SUCCESS) {
             info_printf(lio_ifd, 1, "ERROR creating file(%s)!\n", cp->dest_tuple.path);
             goto finished;
@@ -1250,7 +1250,7 @@ op_status_t cp_local2lio(lio_cp_file_t *cp)
 
     //** Get the exnode
     v_size[0] = -cp->dest_tuple.lc->max_attr;
-    err = lioc_get_attr(cp->dest_tuple.lc, cp->dest_tuple.creds, cp->dest_tuple.path, NULL, "system.exnode", (void **)&ex_data, v_size);
+    err = lioc_getattr(cp->dest_tuple.lc, cp->dest_tuple.creds, cp->dest_tuple.path, NULL, "system.exnode", (void **)&ex_data, v_size);
     if (err != OP_STATE_SUCCESS) {
         info_printf(lio_ifd, 0, "ERROR: Failed retrieving exnode!  path=%s\n", cp->dest_tuple.path);
         goto finished;
@@ -1263,22 +1263,22 @@ op_status_t cp_local2lio(lio_cp_file_t *cp)
     }
 
     //** Load it
-    exp = exnode_exchange_text_parse(ex_data);
-    ex = exnode_create();
-    if (exnode_deserialize(ex, exp, cp->dest_tuple.lc->ess) != 0) {
+    exp = lio_exnode_exchange_text_parse(ex_data);
+    ex = lio_exnode_create();
+    if (lio_exnode_deserialize(ex, exp, cp->dest_tuple.lc->ess) != 0) {
         info_printf(lio_ifd, 0, "ERROR parsing exnode!  Aborting!\n");
-        exnode_destroy(ex);
-        exnode_exchange_destroy(exp);
+        lio_exnode_destroy(ex);
+        lio_exnode_exchange_destroy(exp);
         fclose(fd);
         goto finished;
     }
 
     //** Get the default view to use
-    seg = exnode_get_default(ex);
+    seg = lio_exnode_default_get(ex);
     if (seg == NULL) {
         info_printf(lio_ifd, 0, "No default segment!  Aborting!\n");
-        exnode_destroy(ex);
-        exnode_exchange_destroy(exp);
+        lio_exnode_destroy(ex);
+        lio_exnode_exchange_destroy(exp);
         fclose(fd);
         goto finished;
     }
@@ -1302,12 +1302,12 @@ op_status_t cp_local2lio(lio_cp_file_t *cp)
     //** Update the dest exnode and misc attributes
     err2 = lioc_update_exnode_attrs(cp->dest_tuple.lc, cp->dest_tuple.creds, ex, seg, cp->dest_tuple.path, &errcnts);
 
-    exnode_destroy(ex);
-    exnode_exchange_destroy(exp);
+    lio_exnode_destroy(ex);
+    lio_exnode_exchange_destroy(exp);
 
     free(buffer);
 
-    if ((errcnts.hard == 0) && (err == OP_STATE_SUCCESS) && (err2 == 0)) status = op_success_status;
+    if ((errcnts.hard == 0) && (err == OP_STATE_SUCCESS) && (err2 == 0)) status = gop_success_status;
 
 finished:
 
@@ -1331,7 +1331,7 @@ op_status_t cp_lio2local(lio_cp_file_t *cp)
 
     info_printf(lio_ifd, 0, "copy %s@%s:%s %s\n", an_cred_get_id(cp->src_tuple.creds), cp->src_tuple.lc->section_name, cp->src_tuple.path, cp->dest_tuple.path);
 
-    status = op_failure_status;
+    status = gop_failure_status;
 
     //** Check if it exists
     ftype = lioc_exists(cp->src_tuple.lc, cp->src_tuple.creds, cp->src_tuple.path);
@@ -1345,36 +1345,36 @@ op_status_t cp_lio2local(lio_cp_file_t *cp)
 
     //** Get the exnode
     v_size = -cp->src_tuple.lc->max_attr;
-    err = lioc_get_attr(cp->src_tuple.lc, cp->src_tuple.creds, cp->src_tuple.path, NULL, "system.exnode", (void **)&ex_data, &v_size);
+    err = lioc_getattr(cp->src_tuple.lc, cp->src_tuple.creds, cp->src_tuple.path, NULL, "system.exnode", (void **)&ex_data, &v_size);
     if (err != OP_STATE_SUCCESS) {
         info_printf(lio_ifd, 0, "ERROR: Failed retrieving exnode!  path=%s\n", cp->src_tuple.path);
         goto finished;
     }
 
     //** Load it
-    exp = exnode_exchange_text_parse(ex_data);
-    ex = exnode_create();
-    if (exnode_deserialize(ex, exp, cp->src_tuple.lc->ess) != 0) {
+    exp = lio_exnode_exchange_text_parse(ex_data);
+    ex = lio_exnode_create();
+    if (lio_exnode_deserialize(ex, exp, cp->src_tuple.lc->ess) != 0) {
         info_printf(lio_ifd, 0, "ERROR parsing exnode!  Aborting!\n");
-        exnode_destroy(ex);
-        exnode_exchange_destroy(exp);
+        lio_exnode_destroy(ex);
+        lio_exnode_exchange_destroy(exp);
         goto finished;
     }
 
     //** Get the default view to use
-    seg = exnode_get_default(ex);
+    seg = lio_exnode_default_get(ex);
     if (seg == NULL) {
         info_printf(lio_ifd, 0, "No default segment!  Aborting!\n");
-        exnode_destroy(ex);
-        exnode_exchange_destroy(exp);
+        lio_exnode_destroy(ex);
+        lio_exnode_exchange_destroy(exp);
         goto finished;
     }
 
     fd = fopen(cp->dest_tuple.path, "w");
     if (fd == NULL) {
         info_printf(lio_ifd, 0, "ERROR: Failed opending dest file!  path=%s\n", cp->dest_tuple.path);
-        exnode_destroy(ex);
-        exnode_exchange_destroy(exp);
+        lio_exnode_destroy(ex);
+        lio_exnode_exchange_destroy(exp);
         goto finished;
     }
 
@@ -1390,10 +1390,10 @@ op_status_t cp_lio2local(lio_cp_file_t *cp)
         info_printf(lio_ifd, 0, "ERROR: Hard error during download! hard_errors=%d  path=%s\n", hard_errors, cp->dest_tuple.path);
     }
 
-    exnode_destroy(ex);
-    exnode_exchange_destroy(exp);
+    lio_exnode_destroy(ex);
+    lio_exnode_exchange_destroy(exp);
 
-    if (hard_errors == 0) status = op_success_status;
+    if (hard_errors == 0) status = gop_success_status;
 
 finished:
     return(status);
@@ -1415,7 +1415,7 @@ op_status_t lioc_truncate_fn(void *arg, int tid)
     int v_size[3], err, hard_errors, ftype;
     op_status_t status;
 
-    status = op_failure_status;
+    status = gop_failure_status;
 
     //** Check if it exists
     ftype = lioc_exists(op->tuple.lc, op->tuple.creds, op->tuple.path);
@@ -1429,28 +1429,28 @@ op_status_t lioc_truncate_fn(void *arg, int tid)
 
     //** Get the exnode
     v_size[0] = -op->tuple.lc->max_attr;
-    err = lioc_get_attr(op->tuple.lc, op->tuple.creds, op->tuple.path, NULL, "system.exnode", (void **)&ex_data, v_size);
+    err = lioc_getattr(op->tuple.lc, op->tuple.creds, op->tuple.path, NULL, "system.exnode", (void **)&ex_data, v_size);
     if (err != OP_STATE_SUCCESS) {
         info_printf(lio_ifd, 0, "Failed retrieving exnode!  path=%s\n", op->tuple.path);
         goto finished;
     }
 
     //** Load it
-    exp = exnode_exchange_text_parse(ex_data);
-    ex = exnode_create();
-    if (exnode_deserialize(ex, exp, op->tuple.lc->ess) != 0) {
+    exp = lio_exnode_exchange_text_parse(ex_data);
+    ex = lio_exnode_create();
+    if (lio_exnode_deserialize(ex, exp, op->tuple.lc->ess) != 0) {
         info_printf(lio_ifd, 0, "ERROR parsing exnode!  Aborting!\n");
-        exnode_destroy(ex);
-        exnode_exchange_destroy(exp);
+        lio_exnode_destroy(ex);
+        lio_exnode_exchange_destroy(exp);
         goto finished;
     }
 
     //** Get the default view to use
-    seg = exnode_get_default(ex);
+    seg = lio_exnode_default_get(ex);
     if (seg == NULL) {
         info_printf(lio_ifd, 0, "No default segment!  Aborting!\n");
-        exnode_destroy(ex);
-        exnode_exchange_destroy(exp);
+        lio_exnode_destroy(ex);
+        lio_exnode_exchange_destroy(exp);
         goto finished;
     }
 
@@ -1458,7 +1458,7 @@ op_status_t lioc_truncate_fn(void *arg, int tid)
 
     //** Serialize the exnode
     exnode_exchange_free(exp);
-    exnode_serialize(ex, exp);
+    lio_exnode_serialize(ex, exp);
 
     //** Update the OS exnode
     val[0] = exp->text.text;
@@ -1473,10 +1473,10 @@ op_status_t lioc_truncate_fn(void *arg, int tid)
     //**Update the error counts if needed
     hard_errors = lioc_update_error_counts(op->tuple.lc, op->tuple.creds, op->tuple.path, seg, 0);
 
-    exnode_destroy(ex);
-    exnode_exchange_destroy(exp);
+    lio_exnode_destroy(ex);
+    lio_exnode_exchange_destroy(exp);
 
-    if (hard_errors == 0) status = op_success_status;
+    if (hard_errors == 0) status = gop_success_status;
 
 finished:
     return(status);
@@ -1494,6 +1494,6 @@ op_generic_t *lioc_truncate(lio_path_tuple_t *tuple, ex_off_t new_size)
 
     op->tuple = *tuple;
     op->new_size = new_size;
-    return(new_thread_pool_op(tuple->lc->tpc_unlimited, NULL, lioc_truncate_fn, (void *)op, free, 1));
+    return(gop_tp_op_new(tuple->lc->tpc_unlimited, NULL, lioc_truncate_fn, (void *)op, free, 1));
 }
 

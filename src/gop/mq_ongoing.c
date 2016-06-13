@@ -40,9 +40,9 @@ op_status_t ongoing_response_status(void *task_arg, int tid)
     log_printf(2, "START\n");
 
     //** Parse the response
-    mq_remove_header(task->response, 1);
+    gop_mq_remove_header(task->response, 1);
 
-    status = mq_read_status_frame(mq_msg_first(task->response), 0);
+    status = gop_mq_read_status_frame(gop_mq_msg_first(task->response), 0);
     log_printf(2, "END status=%d %d\n", status.op_status, status.error_code);
 
     return(status);
@@ -73,7 +73,7 @@ void *ongoing_heartbeat_thread(apr_thread_t *th, void *data)
     do {
         now = apr_time_now() - apr_time_from_sec(5);  //** Give our selves a little buffer
         log_printf(5, "Loop Start now=" TT "\n", apr_time_now());
-        q = new_opque();
+        q = gop_opque_new();
 //     opque_start_execution(q);
         for (hit = apr_hash_first(NULL, on->table); hit != NULL; hit = apr_hash_next(hit)) {
             apr_hash_this(hit, (const void **)&remote_hash, &id_len, (void **)&table);
@@ -97,15 +97,15 @@ void *ongoing_heartbeat_thread(apr_thread_t *th, void *data)
                                         oh->heartbeat);
                     tbx_log_flush();
                     //** Form the message
-                    msg = mq_make_exec_core_msg(table->remote_host, 1);
-                    mq_msg_append_mem(msg, ONGOING_KEY, ONGOING_SIZE, MQF_MSG_KEEP_DATA);
-                    mq_msg_append_mem(msg, oh->id, oh->id_len, MQF_MSG_KEEP_DATA);
-                    mq_msg_append_mem(msg, NULL, 0, MQF_MSG_KEEP_DATA);
+                    msg = gop_mq_make_exec_core_msg(table->remote_host, 1);
+                    gop_mq_msg_append_mem(msg, ONGOING_KEY, ONGOING_SIZE, MQF_MSG_KEEP_DATA);
+                    gop_mq_msg_append_mem(msg, oh->id, oh->id_len, MQF_MSG_KEEP_DATA);
+                    gop_mq_msg_append_mem(msg, NULL, 0, MQF_MSG_KEEP_DATA);
 
                     //** Make the gop
-                    gop = new_mq_op(on->mqc, msg, ongoing_response_status, NULL, NULL, oh->heartbeat);
+                    gop = gop_mq_op_new(on->mqc, msg, ongoing_response_status, NULL, NULL, oh->heartbeat);
                     gop_set_private(gop, table);
-                    opque_add(q, gop);
+                    gop_opque_add(q, gop);
 
                     oh->in_progress = 1; //** Flag it as in progress so it doesn't get deleted behind the scenes
                 }
@@ -142,7 +142,7 @@ void *ongoing_heartbeat_thread(apr_thread_t *th, void *data)
 
             gop_free(gop, OP_DESTROY);
         }
-        opque_free(q, OP_DESTROY);
+        gop_opque_free(q, OP_DESTROY);
 
         now = apr_time_now();
         log_printf(2, "sleeping %d now=%ld\n", on->check_interval, now);
@@ -169,7 +169,7 @@ void *ongoing_heartbeat_thread(apr_thread_t *th, void *data)
         }
 
         apr_hash_set(on->table, &(table->remote_host_hash), sizeof(mq_msg_hash_t), NULL);
-        mq_msg_destroy(table->remote_host);
+        gop_mq_msg_destroy(table->remote_host);
         free(table);
     }
 
@@ -182,10 +182,10 @@ void *ongoing_heartbeat_thread(apr_thread_t *th, void *data)
 
 
 //***********************************************************************
-// mq_ongoing_host_inc - Adds a host for ongoing heartbeats
+// gop_mq_ongoing_host_inc - Adds a host for ongoing heartbeats
 //***********************************************************************
 
-void mq_ongoing_host_inc(mq_ongoing_t *on, mq_msg_t *remote_host, char *my_id, int id_len, int heartbeat)
+void gop_mq_ongoing_host_inc(mq_ongoing_t *on, mq_msg_t *remote_host, char *my_id, int id_len, int heartbeat)
 {
     ongoing_hb_t *oh;
     ongoing_table_t *table;
@@ -209,8 +209,8 @@ void mq_ongoing_host_inc(mq_ongoing_t *on, mq_msg_t *remote_host, char *my_id, i
     if (table == NULL) { //** New host so add it
         tbx_type_malloc_clear(table, ongoing_table_t, 1);
         table->table = apr_hash_make(on->mpool); assert(table->table != NULL);
-        table->remote_host = mq_msg_new();
-        mq_msg_append_msg(table->remote_host, remote_host, MQF_MSG_AUTO_FREE);
+        table->remote_host = gop_mq_msg_new();
+        gop_mq_msg_append_msg(table->remote_host, remote_host, MQF_MSG_AUTO_FREE);
         table->remote_host_hash = hash;
         apr_hash_set(on->table, &(table->remote_host_hash), sizeof(mq_msg_hash_t), table);
     }
@@ -240,10 +240,10 @@ void mq_ongoing_host_inc(mq_ongoing_t *on, mq_msg_t *remote_host, char *my_id, i
 }
 
 //***********************************************************************
-// mq_ongoing_host_dec - Decrements the tracking count to a host for ongoing heartbeats
+// gop_mq_ongoing_host_dec - Decrements the tracking count to a host for ongoing heartbeats
 //***********************************************************************
 
-void mq_ongoing_host_dec(mq_ongoing_t *on, mq_msg_t *remote_host, char *id, int id_len)
+void gop_mq_ongoing_host_dec(mq_ongoing_t *on, mq_msg_t *remote_host, char *id, int id_len)
 {
     ongoing_hb_t *oh;
     ongoing_table_t *table;
@@ -271,10 +271,10 @@ fail:
 }
 
 //***********************************************************************
-// mq_ongoing_add - Adds an onging object to the tracking tables
+// gop_mq_ongoing_add - Adds an onging object to the tracking tables
 //***********************************************************************
 
-mq_ongoing_object_t *mq_ongoing_add(mq_ongoing_t *mqon, int auto_clean, char *id, int id_len, void *handle, mq_ongoing_fail_t *on_fail, void *on_fail_arg)
+mq_ongoing_object_t *gop_mq_ongoing_add(mq_ongoing_t *mqon, int auto_clean, char *id, int id_len, void *handle, mq_ongoing_fail_t *on_fail, void *on_fail_arg)
 {
     mq_ongoing_object_t *ongoing;
     mq_ongoing_host_t *oh;
@@ -322,10 +322,10 @@ mq_ongoing_object_t *mq_ongoing_add(mq_ongoing_t *mqon, int auto_clean, char *id
 
 
 //***********************************************************************
-// mq_ongoing_get - Retreives the handle if it's active
+// gop_mq_ongoing_get - Retreives the handle if it's active
 //***********************************************************************
 
-void *mq_ongoing_get(mq_ongoing_t *mqon, char *id, int id_len, intptr_t key)
+void *gop_mq_ongoing_get(mq_ongoing_t *mqon, char *id, int id_len, intptr_t key)
 {
     mq_ongoing_object_t *ongoing;
     mq_ongoing_host_t *oh;
@@ -352,10 +352,10 @@ void *mq_ongoing_get(mq_ongoing_t *mqon, char *id, int id_len, intptr_t key)
 }
 
 //***********************************************************************
-// mq_ongoing_release - Releases the handle active handle
+// gop_mq_ongoing_release - Releases the handle active handle
 //***********************************************************************
 
-void mq_ongoing_release(mq_ongoing_t *mqon, char *id, int id_len, intptr_t key)
+void gop_mq_ongoing_release(mq_ongoing_t *mqon, char *id, int id_len, intptr_t key)
 {
     mq_ongoing_object_t *ongoing;
     mq_ongoing_host_t *oh;
@@ -387,10 +387,10 @@ void mq_ongoing_release(mq_ongoing_t *mqon, char *id, int id_len, intptr_t key)
 }
 
 //***********************************************************************
-// mq_ongoing_remove - Removes an onging object from the tracking table
+// gop_mq_ongoing_remove - Removes an onging object from the tracking table
 //***********************************************************************
 
-void *mq_ongoing_remove(mq_ongoing_t *mqon, char *id, int id_len, intptr_t key)
+void *gop_mq_ongoing_remove(mq_ongoing_t *mqon, char *id, int id_len, intptr_t key)
 {
     mq_ongoing_object_t *ongoing;
     mq_ongoing_host_t *oh;
@@ -442,13 +442,13 @@ void mq_ongoing_cb(void *arg, mq_task_t *task)
 
     //** Parse the command.
     msg = task->msg;
-    mq_remove_header(msg, 0);
+    gop_mq_remove_header(msg, 0);
 
     fid = mq_msg_pop(msg);  //** This is the ID for responses
-    mq_frame_destroy(mq_msg_pop(msg));  //** Drop the application command frame
+    gop_mq_frame_destroy(mq_msg_pop(msg));  //** Drop the application command frame
 
     fuid = mq_msg_pop(msg);  //** Host/user ID
-    mq_get_frame(fuid, (void **)&id, &fsize);
+    gop_mq_get_frame(fuid, (void **)&id, &fsize);
 
     log_printf(2, "looking up %s\n", id);
 
@@ -456,23 +456,23 @@ void mq_ongoing_cb(void *arg, mq_task_t *task)
     apr_thread_mutex_lock(mqon->lock);
     oh = apr_hash_get(mqon->id_table, id, fsize);
     if (oh != NULL) {
-        status = op_success_status;
+        status = gop_success_status;
         oh->next_check = apr_time_now() + apr_time_from_sec(oh->heartbeat);
         log_printf(2, "Updating heartbeat for %s hb=%d expire=" TT "\n", id, oh->heartbeat, oh->next_check);
     } else {
-        status = op_failure_status;
+        status = gop_failure_status;
     }
     apr_thread_mutex_unlock(mqon->lock);
 
-    mq_frame_destroy(fuid);
+    gop_mq_frame_destroy(fuid);
 
     //** Form the response
-    response = mq_make_response_core_msg(msg, fid);
-    mq_msg_append_frame(response, mq_make_status_frame(status));
-    mq_msg_append_mem(response, NULL, 0, MQF_MSG_KEEP_DATA);  //** Empty frame
+    response = gop_mq_make_response_core_msg(msg, fid);
+    gop_mq_msg_append_frame(response, gop_mq_make_status_frame(status));
+    gop_mq_msg_append_mem(response, NULL, 0, MQF_MSG_KEEP_DATA);  //** Empty frame
 
     //** Lastly send it
-    mq_submit(mqon->server_portal, mq_task_new(mqon->mqc, response, NULL, NULL, 30));
+    gop_mq_submit(mqon->server_portal, gop_mq_task_new(mqon->mqc, response, NULL, NULL, 30));
 }
 
 //***********************************************************************
@@ -501,7 +501,7 @@ int _mq_ongoing_close(mq_ongoing_t *mqon, mq_ongoing_host_t *oh, opque_t *q)
 
         gop = oo->on_fail(oo->on_fail_arg, oo->handle);
         gop_set_private(gop, oo);
-        opque_add(q, gop);
+        gop_opque_add(q, gop);
 
         ntasks++;
     }
@@ -529,7 +529,7 @@ void *mq_ongoing_server_thread(apr_thread_t *th, void *data)
 
     timeout = apr_time_make(mqon->check_interval, 0);
 
-    q = new_opque();
+    q = gop_opque_new();
     opque_start_execution(q);
 
     apr_thread_mutex_lock(mqon->lock);
@@ -608,16 +608,16 @@ void *mq_ongoing_server_thread(apr_thread_t *th, void *data)
 
     log_printf(15, "EXITING\n");
 
-    opque_free(q, OP_DESTROY);
+    gop_opque_free(q, OP_DESTROY);
 
     return(NULL);
 }
 
 //***********************************************************************
-// mq_ongoing_destroy - Destroys an ongoing task tracker
+// gop_mq_ongoing_destroy - Destroys an ongoing task tracker
 //***********************************************************************
 
-void mq_ongoing_destroy(mq_ongoing_t *mqon)
+void gop_mq_ongoing_destroy(mq_ongoing_t *mqon)
 {
     apr_status_t value;
     mq_command_table_t *ctable;
@@ -630,8 +630,8 @@ void mq_ongoing_destroy(mq_ongoing_t *mqon)
 
     //** Wait for it to shutdown
     if (mqon->ongoing_server_thread) {
-        ctable = mq_portal_command_table(mqon->server_portal);
-        mq_command_set(ctable, ONGOING_KEY, ONGOING_SIZE, mqon, NULL);
+        ctable = gop_mq_portal_command_table(mqon->server_portal);
+        gop_mq_command_set(ctable, ONGOING_KEY, ONGOING_SIZE, mqon, NULL);
 
         apr_thread_join(&value, mqon->ongoing_server_thread);
     }
@@ -643,10 +643,10 @@ void mq_ongoing_destroy(mq_ongoing_t *mqon)
 }
 
 //***********************************************************************
-// mq_ongoing_create - Creates an object to handle ongoing tasks
+// gop_mq_ongoing_create - Creates an object to handle ongoing tasks
 //***********************************************************************
 
-mq_ongoing_t *mq_ongoing_create(mq_context_t *mqc, mq_portal_t *server_portal, int check_interval, int mode)
+mq_ongoing_t *gop_mq_ongoing_create(mq_context_t *mqc, mq_portal_t *server_portal, int check_interval, int mode)
 {
     mq_ongoing_t *mqon;
     mq_command_table_t *ctable;
@@ -666,8 +666,8 @@ mq_ongoing_t *mq_ongoing_create(mq_context_t *mqc, mq_portal_t *server_portal, i
         mqon->id_table = apr_hash_make(mqon->mpool);
         assert(mqon->id_table != NULL);
 
-        ctable = mq_portal_command_table(server_portal);
-        mq_command_set(ctable, ONGOING_KEY, ONGOING_SIZE, mqon, mq_ongoing_cb);
+        ctable = gop_mq_portal_command_table(server_portal);
+        gop_mq_command_set(ctable, ONGOING_KEY, ONGOING_SIZE, mqon, mq_ongoing_cb);
         tbx_thread_create_assert(&(mqon->ongoing_server_thread), NULL, mq_ongoing_server_thread, (void *)mqon, mqon->mpool);
     }
 

@@ -130,7 +130,7 @@ int *_thread_local_depth_ptr()
 
 op_status_t tp_command(op_generic_t *gop, tbx_ns_t *ns)
 {
-    return(op_success_status);
+    return(gop_success_status);
 }
 
 //*************************************************************
@@ -312,10 +312,10 @@ int set_thread_pool_op(thread_pool_op_t *op, thread_pool_context_t *tpc, char *q
 }
 
 //*************************************************************
-// new_thread_pool_op - Allocates space for a new op
+// gop_tp_op_new - Allocates space for a new op
 //*************************************************************
 
-op_generic_t *new_thread_pool_op(thread_pool_context_t *tpc, char *que, op_status_t (*fn)(void *arg, int id), void *arg, void (*my_op_free)(void *arg), int workload)
+op_generic_t *gop_tp_op_new(thread_pool_context_t *tpc, char *que, op_status_t (*fn)(void *arg, int id), void *arg, void (*my_op_free)(void *arg), int workload)
 {
     thread_pool_op_t *op;
 

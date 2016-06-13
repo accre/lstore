@@ -37,7 +37,7 @@ op_status_t mkdir_fn(void *arg, int id)
     int ftype, err;
     op_status_t status;
 
-    status = op_success_status;
+    status = gop_success_status;
 
     //** Make sure it doesn't exist
     ftype = lio_exists(tuple->lc, tuple->creds, tuple->path);
@@ -49,7 +49,7 @@ op_status_t mkdir_fn(void *arg, int id)
     }
 
     //** Now create the object
-    err = gop_sync_exec(gop_lio_create_object(tuple->lc, tuple->creds, tuple->path, OS_OBJECT_DIR, exnode_data, NULL));
+    err = gop_sync_exec(lio_create_op(tuple->lc, tuple->creds, tuple->path, OS_OBJECT_DIR, exnode_data, NULL));
     if (err != OP_STATE_SUCCESS) {
         log_printf(1, "ERROR creating dir!\n");
         status.op_status = OP_STATE_FAILURE;
@@ -135,14 +135,14 @@ int main(int argc, char **argv)
     n = argc - start_index;
     tbx_type_malloc(flist, lio_path_tuple_t, n);
 
-    q = new_opque();
+    q = gop_opque_new();
     opque_start_execution(q);
     for (i=0; i<n; i++) {
         flist[i] = lio_path_resolve(lio_gc->auto_translate, argv[i+start_index]);
-        gop = new_thread_pool_op(lio_gc->tpc_unlimited, NULL, mkdir_fn, (void *)&(flist[i]), NULL, 1);
+        gop = gop_tp_op_new(lio_gc->tpc_unlimited, NULL, mkdir_fn, (void *)&(flist[i]), NULL, 1);
         gop_set_myid(gop, i);
         log_printf(0, "gid=%d i=%d fname=%s\n", gop_id(gop), i, flist[i].path);
-        opque_add(q, gop);
+        gop_opque_add(q, gop);
 
         if (opque_tasks_left(q) > lio_parallel_task_count) {
             gop = opque_waitany(q);
@@ -166,7 +166,7 @@ int main(int argc, char **argv)
         }
     }
 
-    opque_free(q, OP_DESTROY);
+    gop_opque_free(q, OP_DESTROY);
 
     for(i=0; i<n; i++) {
         lio_path_release(&(flist[i]));

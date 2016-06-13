@@ -23,7 +23,7 @@ typedef char ibp_cap_t;
 typedef struct ibp_set_of_caps ibp_capset_t;
 
 There is also a new type "ibp_ridlist_t" for getting the list of resources from a depot. One can then use
-the traditional IBP_status calls to probe the individual resources.  There are also a large number of
+the traditional ibp_status calls to probe the individual resources.  There are also a large number of
 accessor functions to hid the internal struct definitions from the user.  The expection to this is
 "ibp_depotinfo_t" datatype.  I'm not sure what a lot of the fields mean and so left it "as is".
 Listed below are all the available accessor functions from ibp/ibp_types.h:
@@ -37,7 +37,7 @@ void set_ibp_depot(ibp_depot_t *d, char *host, int port, rid_t rid);
 ibp_attributes_t *new_ibp_attributes();
 void destroy_ibp_attributes(ibp_attributes_t *attr);
 void set_ibp_attributes(ibp_attributes_t *attr, time_t duration, int reliability, int type);
-void get_ibp_attributes(ibp_attributes_t *attr, time_t *duration, int *reliability, int *type);
+void ibp_attributes_get(ibp_attributes_t *attr, time_t *duration, int *reliability, int *type);
 
 ----------------ibp_timer_t-------------------------
 ibp_timer_t *new_ibp_timer();
@@ -46,28 +46,28 @@ void set_ibp_timer(ibp_timer_t *t, int client_timeout, int server_timeout);
 void get_ibp_timer(ibp_timer_t *t, int *client_timeout, int *server_timeout);
 
 -----------------ibp_cap_t and ibp_capset_t----------
-void destroy_ibp_cap(ibp_cap_t *cap);
+void ibp_cap_destroy(ibp_cap_t *cap);
 ibp_cap_t *dup_ibp_cap(ibp_cap_t *src);
-ibp_capset_t *new_ibp_capset();
-void destroy_ibp_capset(ibp_capset_t *caps);
+ibp_capset_t *ibp_capset_new();
+void ibp_cap_destroyset(ibp_capset_t *caps);
 void copy_ibp_capset(ibp_capset_t *src, ibp_capset_t *dest);
-ibp_cap_t *get_ibp_cap(ibp_capset_t *caps, int ctype);
+ibp_cap_t *ibp_cap_get(ibp_capset_t *caps, int ctype);
 
------------------ibp_capstatus_t (gleaned from IBP_manage calls)---------
+-----------------ibp_capstatus_t (gleaned from ibp_manage calls)---------
 ibp_capstatus_t *new_ibp_capstatus();
-void destroy_ibp_capstatus(ibp_capstatus_t *cs);
+void ibp_cap_destroystatus(ibp_capstatus_t *cs);
 void copy_ibp_capstatus(ibp_capstatus_t *src, ibp_capstatus_t *dest);
-void get_ibp_capstatus(ibp_capstatus_t *cs, int *readcount, int *writecount,
+void ibp_cap_getstatus(ibp_capstatus_t *cs, int *readcount, int *writecount,
     int *current_size, int *max_size, ibp_attributes_t *attrib);
 
 -----------------RID list management and RID conversion functions---------
 void ridlist_init(ibp_ridlist_t *rlist, int size);
-void ridtbx_list_destroy(ibp_ridlist_t *rlist);
-int ridlist_get_size(ibp_ridlist_t *rlist);
-rid_t ridlist_get_element(ibp_ridlist_t *rlist, int index);
+void ibp_ridlist_destroy(ibp_ridlist_t *rlist);
+int ibp_ridlist_size_get(ibp_ridlist_t *rlist);
+rid_t ibp_ridlist_element_get(ibp_ridlist_t *rlist, int index);
 char *ibp_rid2str(rid_t rid, char *buffer);
 rid_t ibp_str2rid(char *rid_str);
-void ibp_empty_rid(rid_t *rid);
+void ibp_rid_empty(rid_t *rid);
 
 
 Most of the stuff above is self-explanatory if you are familiar with IBP.  I do want to highlight the
@@ -108,7 +108,7 @@ ibp_capset_t *create_allocs(int nallocs, int asize, ibp_depot_t *depot)
 
   //*** Main loop for creating the allocation ops ***
   for (i=0; i<nallocs; i++) {
-     op = new_ibp_alloc_op(&(caps[i]), asize, depot, &attr, ibp_timeout, NULL);  //**This is the actual alloc op
+     op = ibp_alloc_op(&(caps[i]), asize, depot, &attr, ibp_timeout, NULL);  //**This is the actual alloc op
      add_ibp_oplist(oplist, op);   //** Now add it to the list and start execution
   }
 
@@ -197,7 +197,7 @@ recv_phase.  If there are enough commands in the global queue then there is no i
 This is because the issue_command and send_phase ops is still being processed and overlaps the initial recv_phase.
 The first 7 commands, all the issue_command and send_phase calls, are all sent as fast as the network will
 transmit them.  There is no waiting for completion.  This approach can eliminate much of the performace
-difference between local are remote depot access for lightweight operations, like IBP_allocate or IBP_mange()
+difference between local are remote depot access for lightweight operations, like ibp_allocate or IBP_mange()
 calls.  The async depot connection is actually 2 separate threads.  Each managing one side of the connection:
 send or recv.
 
@@ -249,39 +249,39 @@ void set_ibp_user_read_op(ibp_op_t *op, ibp_cap_t *cap, int offset, int size,
        int (*next_block)(int, void *, int *, char **), void *arg, int timeout, oplist_app_notify_t *an);
 ibp_op_t *new_ibp_user_read_op(ibp_cap_t *cap, int offset, int size,
        int (*next_block)(int, void *, int *, char **), void *arg, int timeout, oplist_app_notify_t *an);
-ibp_op_t *new_ibp_read_op(ibp_cap_t *cap, int offset, int size, char *buffer, int timeout, oplist_app_notify_t *an);
+ibp_op_t *ibp_read_op(ibp_cap_t *cap, int offset, int size, char *buffer, int timeout, oplist_app_notify_t *an);
 void set_ibp_read_op(ibp_op_t *op, ibp_cap_t *cap, int offset, int size, char *buffer, int timeout, oplist_app_notify_t *an);
 void set_ibp_user_write_op(ibp_op_t *op, ibp_cap_t *cap, int offset, int size,
        int (*next_block)(int, void *, int *, char **), void *arg, int timeout, oplist_app_notify_t *an);
 ibp_op_t *new_ibp_user_write_op(ibp_cap_t *cap, int offset, int size,
        int (*next_block)(int, void *, int *, char **), void *arg, int timeout, oplist_app_notify_t *an);
-ibp_op_t *new_ibp_write_op(ibp_cap_t *cap, int offset, int size, char *buffer, int timeout, oplist_app_notify_t *an);
+ibp_op_t *ibp_write_op(ibp_cap_t *cap, int offset, int size, char *buffer, int timeout, oplist_app_notify_t *an);
 void set_ibp_write_op(ibp_op_t *op, ibp_cap_t *cap, int offset, int size, char *buffer, int timeout, oplist_app_notify_t *an);
 
 
 ---- Append operations - These just append data to an allocation -----
-ibp_op_t *new_ibp_append_op(ibp_cap_t *cap, int size, char *buffer, int timeout, oplist_app_notify_t *an);
+ibp_op_t *ibp_append_op(ibp_cap_t *cap, int size, char *buffer, int timeout, oplist_app_notify_t *an);
 void set_ibp_append_op(ibp_op_t *op, ibp_cap_t *cap, int size, char *buffer, int timeout, oplist_app_notify_t *an);
-ibp_op_t *new_ibp_append_op(ibp_cap_t *cap, int size, char *buffer, int timeout, oplist_app_notify_t *an);
+ibp_op_t *ibp_append_op(ibp_cap_t *cap, int size, char *buffer, int timeout, oplist_app_notify_t *an);
 void set_ibp_append_op(ibp_op_t *op, ibp_cap_t *cap, int size, char *buffer, int timeout, oplist_app_notify_t *an);
 
 -----------IBP allocate/remove operations-----------------------
 I've made an explicit ibp_remove_op to decr the appropriate allocation's ref count.  This is just a
 macro for an ibp_manage() cal with a IBP_DECR command.
 
-ibp_op_t *new_ibp_alloc_op(ibp_capset_t *caps, int size, ibp_depot_t *depot, ibp_attributes_t *attr, int timeout, oplist_app_notify_t *an);
+ibp_op_t *ibp_alloc_op(ibp_capset_t *caps, int size, ibp_depot_t *depot, ibp_attributes_t *attr, int timeout, oplist_app_notify_t *an);
 void set_ibp_alloc_op(ibp_op_t *op, ibp_capset_t *caps, int size, ibp_depot_t *depot, ibp_attributes_t *attr, int timeout, oplist_app_notify_t *an);
-ibp_op_t *new_ibp_remove_op(ibp_cap_t *cap, int timeout, oplist_app_notify_t *an);
+ibp_op_t *ibp_remove_op(ibp_cap_t *cap, int timeout, oplist_app_notify_t *an);
 void set_ibp_remove_op(ibp_op_t *op, ibp_cap_t *cap, int timeout, oplist_app_notify_t *an);
 
 ----------------Modify an allocations reference count--------------------
-ibp_op_t *new_ibp_modify_count_op(ibp_cap_t *cap, int mode, int captype, int timeout, oplist_app_notify_t *an);
+ibp_op_t *ibp_modify_count_op(ibp_cap_t *cap, int mode, int captype, int timeout, oplist_app_notify_t *an);
 void set_ibp_modify_count_op(ibp_op_t *op, ibp_cap_t *cap, int mode, int captype, int timeout, oplist_app_notify_t *an);
 void set_ibp_modify_alloc_op(ibp_op_t *op, ibp_cap_t *cap, size_t size, time_t duration, int reliability, int timeout, oplist_app_notify_t *an);
-ibp_op_t *new_ibp_modify_alloc_op(ibp_cap_t *cap, size_t size, time_t duration, int reliability, int timeout, oplist_app_notify_t *an);
+ibp_op_t *ibp_modify_alloc_op(ibp_cap_t *cap, size_t size, time_t duration, int reliability, int timeout, oplist_app_notify_t *an);
 
 --------------- Probe an allocation for details------------------
-ibp_op_t *new_ibp_probe_op(ibp_cap_t *cap, ibp_capstatus_t *probe, int timeout, oplist_app_notify_t *an);
+ibp_op_t *ibp_probe_op(ibp_cap_t *cap, ibp_capstatus_t *probe, int timeout, oplist_app_notify_t *an);
 void set_ibp_probe_op(ibp_op_t *op, ibp_cap_t *cap, ibp_capstatus_t *probe, int timeout, oplist_app_notify_t *an);
 
 ----------------Depot-depot copy---------------------------------
@@ -290,7 +290,7 @@ source caps offset and length which is *appended* to the destination cap.  As a 
 becomes full it is *impossible* to specify it as a destination cap for future depot-depot copies.
 Ideally a new command could be added to specify a dest offset and a command for truncating an allocation.
 
-ibp_op_t *new_ibp_copyappend_op(ibp_cap_t *srccap, ibp_cap_t *destcap, int src_offset, int size,
+ibp_op_t *ibp_copyappend_op(ibp_cap_t *srccap, ibp_cap_t *destcap, int src_offset, int size,
         int src_timeout, int  dest_timeout, int dest_client_timeout, oplist_app_notify_t *an);
 void set_ibp_copyappend_op(ibp_op_t *op, ibp_cap_t *srccap, ibp_cap_t *destcap, int src_offset, int size,
         int src_timeout, int  dest_timeout, int dest_client_timeout, oplist_app_notify_t *an);
@@ -301,22 +301,22 @@ void set_ibp_depot_modify_op(ibp_op_t *op, ibp_depot_t *depot, char *password, s
 ibp_op_t *new_ibp_depot_modify_op(ibp_depot_t *depot, char *password, size_t hard, size_t soft,
       time_t duration, int timeout, oplist_app_notify_t *an);
 
----------------Depot Inquiry calls aka IBP_status()----------------------
+---------------Depot Inquiry calls aka ibp_status()----------------------
 void set_ibp_depot_inq_op(ibp_op_t *op, ibp_depot_t *depot, char *password, ibp_depotinfo_t *di, int timeout, oplist_app_notify_t *an);
-ibp_op_t *new_ibp_depot_inq_op(ibp_depot_t *depot, char *password, ibp_depotinfo_t *di, int timeout, oplist_app_notify_t *an);
+ibp_op_t *ibp_depot_inq_op(ibp_depot_t *depot, char *password, ibp_depotinfo_t *di, int timeout, oplist_app_notify_t *an);
 
 ---------------Depot version call-----------------------------------------
 This is a new command added to the ACCRE depot.  It returns a free form character string.  The string is
 terminated by having "END\n" on a single line.  This is similar to the "help->About" widgets for GUI apps.
 
 void set_ibp_version_op(ibp_op_t *op, ibp_depot_t *depot, char *buffer, int buffer_size, int timeout, oplist_app_notify_t *an);
-ibp_op_t *new_ibp_version_op(ibp_depot_t *depot, char *buffer, int buffer_size, int timeout, oplist_app_notify_t *an);
+ibp_op_t *ibp_version_op(ibp_depot_t *depot, char *buffer, int buffer_size, int timeout, oplist_app_notify_t *an);
 
 -----------------Request list or depot resources--------------------------
 This command was added by Nevoa Networks to probe a depot for its resource list.
 
 void set_ibp_query_resources_op(ibp_op_t *op, ibp_depot_t *depot, ibp_ridlist_t *rlist, int timeout, oplist_app_notify_t *an);
-ibp_op_t *new_ibp_query_resources_op(ibp_depot_t *depot, ibp_ridlist_t *rlist, int timeout, oplist_app_notify_t *an);
+ibp_op_t *ibp_query_resources_op(ibp_depot_t *depot, ibp_ridlist_t *rlist, int timeout, oplist_app_notify_t *an);
 
 
 oplist_t operations
@@ -421,15 +421,15 @@ void ibp_finalize();  -- Shuts down IBP subsystem
 char *ibp_client_version() - Returns an arbitrary character string with version information
 
 -----------Load config from file or store config-----------
-int ibp_load_config(char *fname);
+int ibp_config_load(char *fname);
 void set_ibp_config(ibp_config_t *cfg);
 void default_ibp_config();
 
 ---------------Modify parameter routines-----------
 void ibp_set_min_depot_threads(int n);
 int  ibp_get_min_depot_threads();
-void ibp_set_max_depot_threads(int n);
-int  ibp_get_max_depot_threads();
+void ibp_max_depot_threads_set(int n);
+int  ibp_max_depot_threads_get();
 void ibp_set_max_connections(int n);
 int  ibp_get_max_connections();
 void ibp_set_command_weight(int n);

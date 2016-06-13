@@ -97,15 +97,15 @@ int main(int argc, char **argv)
     assert(template_name == NULL);
 
     //** Load the template
-    template_exchange = exnode_exchange_load_file(template_name);
-    tex = exnode_create();
-    exnode_deserialize(tex, template_exchange, lio_gc->ess);
+    template_exchange = lio_exnode_exchange_load_file(template_name);
+    tex = lio_exnode_create();
+    lio_exnode_deserialize(tex, template_exchange, lio_gc->ess);
 
     //** Load the trace
-    trace = trace_load(exnode_service_set, tex, lio_gc->da, lio_gc->timeout, trace_header);
+    trace = trace_load(lio_exnode_service_set, tex, lio_gc->da, lio_gc->timeout, trace_header);
     tbx_type_malloc_clear(iov, ex_tbx_iovec_t, trace->n_files);
 
-    q = new_opque();
+    q = gop_opque_new();
     tbx_tbuf_single(&tbuf, bufsize, buffer);
     start_time = apr_time_now();
     for (i=0; i<trace->n_ops; i++) {
@@ -122,7 +122,7 @@ int main(int argc, char **argv)
         }
 
         gop_set_id(gop, i);
-        opque_add(q, gop);
+        gop_opque_add(q, gop);
         if (opque_tasks_left(q) >= np) {
             gop = opque_waitany(q);
             if (gop_completed_successfully(gop) != OP_STATE_SUCCESS) {
@@ -144,7 +144,7 @@ int main(int argc, char **argv)
     trace_destroy(trace);
 
     //** Shut everything down;
-    exnode_destroy(tex);
+    lio_exnode_destroy(tex);
 
     lio_shutdown();
 

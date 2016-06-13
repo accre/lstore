@@ -158,7 +158,7 @@ int lio_update_error_counts(lio_config_t *lc, creds_t *creds, char *path, segmen
     lio_get_error_counts(lc, seg, &serr);
     n = lio_encode_error_counts(&serr, keys, val, buf, v_size, mode);
     if (n > 0) {
-        lio_set_multiple_attrs(lc, creds, path, NULL, keys, (void **)val, v_size, n);
+        lio_multiple_setattr_op(lc, creds, path, NULL, keys, (void **)val, v_size, n);
     }
 
     return(serr.hard);
@@ -183,8 +183,8 @@ int lio_update_exnode_attrs(lio_config_t *lc, creds_t *creds, exnode_t *ex, segm
     if (serr == NULL) serr = &my_serr; //** If caller doesn't care about errors use my own space
 
     //** Serialize the exnode
-    exp = exnode_exchange_create(EX_TEXT);
-    exnode_serialize(ex, exp);
+    exp = lio_exnode_exchange_create(EX_TEXT);
+    lio_exnode_serialize(ex, exp);
     ssize = segment_size(seg);
 
     //** Get any errors that may have occured
@@ -207,13 +207,13 @@ int lio_update_exnode_attrs(lio_config_t *lc, creds_t *creds, exnode_t *ex, segm
         ret += 1;
     }
 
-    err = lio_set_multiple_attrs(lc, creds, fname, NULL, key, (void **)val, v_size, n);
+    err = lio_multiple_setattr_op(lc, creds, fname, NULL, key, (void **)val, v_size, n);
     if (err != OP_STATE_SUCCESS) {
         log_printf(0, "ERROR updating exnode+attrs! fname=%s\n", fname);
         ret += 2;
     }
 
-    exnode_exchange_destroy(exp);
+    lio_exnode_exchange_destroy(exp);
 
     return(ret);
 }
@@ -268,7 +268,7 @@ void lio_store_and_release_adler32(lio_config_t *lc, creds_t *creds, tbx_list_t 
     //** Store the attribute
     aval = cksum;
     dn = snprintf(value, sizeof(value), "%08x:" XOT ":" XOT ":" XOT, aval, missing, overlap, nbytes);
-    lio_set_attr(lc, creds, fname, NULL, "user.lfs_write", value, dn);
+    lio_setattr(lc, creds, fname, NULL, "user.lfs_write", value, dn);
 }
 
 //***********************************************************************
@@ -344,7 +344,7 @@ void _lio_remove_file_handle(lio_config_t *lc, lio_file_handle_t *fh)
 }
 
 //*************************************************************************
-// gop_lio_open_object - Attempt to open the object for R/W
+// lio_open_op - Attempt to open the object for R/W
 //*************************************************************************
 
 typedef struct {
@@ -371,34 +371,34 @@ op_status_t lio_myopen_fn(void *arg, int id)
     op_status_t status;
     int dtype, err;
 
-    status = op_success_status;
+    status = gop_success_status;
 
     //** Check if it exists
     dtype = lio_exists(lc, op->creds, op->path);
 
     if ((op->mode & (LIO_WRITE_MODE|LIO_CREATE_MODE)) != 0) {  //** Writing and they want to create it if it doesn't exist
         if (dtype == 0) { //** Need to create it
-            err = gop_sync_exec(gop_lio_create_object(lc, op->creds, op->path, OS_OBJECT_FILE, NULL, NULL));
+            err = gop_sync_exec(lio_create_op(lc, op->creds, op->path, OS_OBJECT_FILE, NULL, NULL));
             if (err != OP_STATE_SUCCESS) {
                 info_printf(lio_ifd, 1, "ERROR creating file(%s)!\n", op->path);
                 log_printf(1, "ERROR creating file(%s)!\n", op->path);
                 free(op->path);
                 *op->fd = NULL;
-                return(op_failure_status);
+                return(gop_failure_status);
             }
         } else if ((dtype & OS_OBJECT_DIR) > 0) { //** It's a dir so fail
             info_printf(lio_ifd, 1, "Destination(%s) is a dir!\n", op->path);
             log_printf(1, "ERROR: Destination(%s) is a dir!\n", op->path);
             free(op->path);
             *op->fd = NULL;
-            return(op_failure_status);
+            return(gop_failure_status);
         }
     } else if (dtype == 0) { //** No file so return an error
         info_printf(lio_ifd, 20, "Destination(%s) doesn't exist!\n", op->path);
         log_printf(1, "ERROR: Destination(%s) doesn't exist!\n", op->path);
         free(op->path);
         *op->fd = NULL;
-        return(op_failure_status);
+        return(gop_failure_status);
     }
 
     //** Make the space for the FD
@@ -414,19 +414,19 @@ op_status_t lio_myopen_fn(void *arg, int id)
         free(fd);
         *op->fd = NULL;
         free(op->path);
-        return(op_failure_status);
+        return(gop_failure_status);
     }
 
     //** Load the exnode and get the default view ID
-    exp = exnode_exchange_text_parse(exnode);
+    exp = lio_exnode_exchange_text_parse(exnode);
     vid = exnode_exchange_get_default_view_id(exp);
     if (vid == 0) {  //** Make sure the vid is valid.
         log_printf(1, "ERROR loading exnode! fname=%s\n", op->path);
         free(fd);
         *op->fd = NULL;
         free(op->path);
-        exnode_exchange_destroy(exp);
-        return(op_failure_status);
+        lio_exnode_exchange_destroy(exp);
+        return(gop_failure_status);
     }
 
     lio_lock(lc);
@@ -438,8 +438,8 @@ op_status_t lio_myopen_fn(void *arg, int id)
         fd->fh = fh;
         lio_unlock(lc);
         *op->fd = fd;
-        exnode_exchange_destroy(exp);
-        return(op_success_status);
+        lio_exnode_exchange_destroy(exp);
+        return(gop_success_status);
     }
 
     //** New file to open
@@ -449,8 +449,8 @@ op_status_t lio_myopen_fn(void *arg, int id)
     fh->lc = lc;
 
     //** Load it
-    fh->ex = exnode_create();
-    if (exnode_deserialize(fh->ex, exp, lc->ess) != 0) {
+    fh->ex = lio_exnode_create();
+    if (lio_exnode_deserialize(fh->ex, exp, lc->ess) != 0) {
         log_printf(0, "ERROR: Bad exnode! fname=%s\n", fd->path);
         status.op_status = OP_STATE_FAILURE;
         status.error_code = -EFAULT;
@@ -458,7 +458,7 @@ op_status_t lio_myopen_fn(void *arg, int id)
     }
 
     //** Get the default view to use
-    fh->seg = exnode_get_default(fh->ex);
+    fh->seg = lio_exnode_default_get(fh->ex);
     if (fh->seg == NULL) {
         log_printf(0, "ERROR: No default segment!  Aborting! fname=%s\n", fd->path);
         goto cleanup;
@@ -486,15 +486,15 @@ op_status_t lio_myopen_fn(void *arg, int id)
         }
     }
 
-    exnode_exchange_destroy(exp);  //** Clean up
+    lio_exnode_exchange_destroy(exp);  //** Clean up
 
     return(status);
 
 cleanup:  //** We only make it here on a failure
     log_printf(1, "ERROR in cleanup! fname=%s\n", op->path);
 
-    exnode_destroy(fh->ex);
-    exnode_exchange_destroy(exp);
+    lio_exnode_destroy(fh->ex);
+    lio_exnode_exchange_destroy(exp);
     free(fd->path);
     free(fh);
     free(fd);
@@ -507,7 +507,7 @@ cleanup:  //** We only make it here on a failure
 
 //*************************************************************************
 
-op_generic_t *gop_lio_open_object(lio_config_t *lc, creds_t *creds, char *path, int mode, char *id, lio_fd_t **fd, int max_wait)
+op_generic_t *lio_open_op(lio_config_t *lc, creds_t *creds, char *path, int mode, char *id, lio_fd_t **fd, int max_wait)
 {
     lio_fd_op_t *op;
 
@@ -521,12 +521,12 @@ op_generic_t *gop_lio_open_object(lio_config_t *lc, creds_t *creds, char *path, 
     op->fd = fd;
     op->max_wait = max_wait;
 
-    return(new_thread_pool_op(lc->tpc_unlimited, NULL, lio_myopen_fn, (void *)op, free, 1));
+    return(gop_tp_op_new(lc->tpc_unlimited, NULL, lio_myopen_fn, (void *)op, free, 1));
 }
 
 
 //*************************************************************************
-// gop_lio_close_object - Rotuines for closing a previously opened file
+// lio_close_op - Rotuines for closing a previously opened file
 //*************************************************************************
 
 //*************************************************************************
@@ -550,7 +550,7 @@ op_status_t lio_myclose_fn(void *arg, int id)
     log_printf(1, "fname=%s modified=%d count=%d\n", fd->path, fd->fh->modified, fd->fh->ref_count);
     tbx_log_flush();
 
-    status = op_success_status;
+    status = gop_success_status;
 
     //** Get the handles
     fh = fd->fh;
@@ -591,7 +591,7 @@ op_status_t lio_myclose_fn(void *arg, int id)
             log_printf(1, "ERROR: fname=%s hard_errors=%d soft_errors=%d write_errors=%d\n", fd->path, serr.hard, serr.soft, serr.write);
         }
         if (n > 0) {
-            err = lio_set_multiple_attrs(lc, fd->creds, fd->path, NULL, key, (void **)val, v_size, n);
+            err = lio_multiple_setattr_op(lc, fd->creds, fd->path, NULL, key, (void **)val, v_size, n);
             if (err != OP_STATE_SUCCESS) {
                 log_printf(0, "ERROR updating exnode! fname=%s\n", fd->path);
             }
@@ -607,12 +607,12 @@ op_status_t lio_myclose_fn(void *arg, int id)
         }
 
         //** Tear everything down
-        exnode_destroy(fh->ex);
+        lio_exnode_destroy(fh->ex);
         _lio_remove_file_handle(lc, fh);
         lio_unlock(lc);
 
         if (fh->write_table != NULL) lio_store_and_release_adler32(lc, fd->creds, fh->write_table, fd->path);
-        if (fh->remove_on_close == 1) status = gop_sync_exec_status(gop_lio_remove_object(lc, fd->creds, fd->path, NULL, lio_exists(lc, fd->creds, fd->path)));
+        if (fh->remove_on_close == 1) status = gop_sync_exec_status(lio_remove_op(lc, fd->creds, fd->path, NULL, lio_exists(lc, fd->creds, fd->path)));
 
         free(fh);
         if (fd->path != NULL) free(fd->path);
@@ -651,33 +651,33 @@ op_status_t lio_myclose_fn(void *arg, int id)
 
     //** Clean up
     now = apr_time_now();
-    exnode_destroy(fh->ex); //** This is done in the lock to make sure the exnode isn't loaded twice
+    lio_exnode_destroy(fh->ex); //** This is done in the lock to make sure the exnode isn't loaded twice
     _lio_remove_file_handle(lc, fh);
 
     lio_unlock(lc);
 
     dt = apr_time_now() - now;
     dt /= APR_USEC_PER_SEC;
-    log_printf(1, "exnode_destroy fname=%s dt=%lf\n", fd->path, dt);
+    log_printf(1, "lio_exnode_destroy fname=%s dt=%lf\n", fd->path, dt);
     if (fh->write_table != NULL) lio_store_and_release_adler32(lc, fd->creds, fh->write_table, fd->path);
 
 
-    if (fh->remove_on_close) status = gop_sync_exec_status(gop_lio_remove_object(lc, fd->creds, fd->path, NULL, lio_exists(lc, fd->creds, fd->path)));
+    if (fh->remove_on_close) status = gop_sync_exec_status(lio_remove_op(lc, fd->creds, fd->path, NULL, lio_exists(lc, fd->creds, fd->path)));
 
     free(fh);
     if (fd->path != NULL) free(fd->path);
     free(fd);
 
-    if (serr.hard != 0) status = op_failure_status;
+    if (serr.hard != 0) status = gop_failure_status;
     log_printf(1, "hard=%d soft=%d status=%d\n", serr.hard, serr.soft, status.op_status);
     return(status);
 }
 
 //*************************************************************************
 
-op_generic_t *gop_lio_close_object(lio_fd_t *fd)
+op_generic_t *lio_close_op(lio_fd_t *fd)
 {
-    return(new_thread_pool_op(fd->lc->tpc_unlimited, NULL, lio_myclose_fn, (void *)fd, NULL, 1));
+    return(gop_tp_op_new(fd->lc->tpc_unlimited, NULL, lio_myclose_fn, (void *)fd, NULL, 1));
 }
 
 
@@ -711,7 +711,7 @@ op_status_t lio_read_ex_fn(void *arg, int id)
     double dt;
     ex_off_t t1, t2;
 
-    status = op_success_status;
+    status = gop_success_status;
     if (op->n_iov <=0) return(status);
 
     t1 = iov[0].len;
@@ -776,7 +776,7 @@ op_generic_t *gop_lio_read_ex(lio_fd_t *fd, int n_iov, ex_tbx_iovec_t *ex_iov, t
     op->boff = boff;
     op->rw_hints = rw_hints;
 
-    return(new_thread_pool_op(fd->lc->tpc_unlimited, NULL, lio_read_ex_fn, (void *)op, free, 1));
+    return(gop_tp_op_new(fd->lc->tpc_unlimited, NULL, lio_read_ex_fn, (void *)op, free, 1));
 }
 
 //*************************************************************************
@@ -815,7 +815,7 @@ op_generic_t *gop_lio_readv(lio_fd_t *fd, tbx_iovec_t *iov, int n_iov, ex_off_t 
     tbx_tbuf_vec(&(op->buffer_dummy), size, n_iov, iov);
     offset = (off < 0) ? fd->curr_offset : off;
     ex_iovec_single(op->iov, offset, size);
-    return(new_thread_pool_op(fd->lc->tpc_unlimited, NULL, lio_read_ex_fn, (void *)op, free, 1));
+    return(gop_tp_op_new(fd->lc->tpc_unlimited, NULL, lio_read_ex_fn, (void *)op, free, 1));
 }
 
 //*************************************************************************
@@ -913,10 +913,10 @@ op_generic_t *gop_lio_read(lio_fd_t *fd, char *buf, ex_off_t size, off_t off, se
 
     err = _gop_lio_read(op, fd, buf, size, off, rw_hints);
     if (err == 0) {
-        return(new_thread_pool_op(fd->lc->tpc_unlimited, NULL, lio_read_ex_fn, (void *)op, free, 1));
+        return(gop_tp_op_new(fd->lc->tpc_unlimited, NULL, lio_read_ex_fn, (void *)op, free, 1));
     } else if (err == 1) {
         free(op);
-        return(gop_dummy(op_success_status));
+        return(gop_dummy(gop_success_status));
     } else {
         free(op);
         _op_set_status(status, OP_STATE_FAILURE, err);
@@ -939,7 +939,7 @@ int lio_read(lio_fd_t *fd, char *buf, ex_off_t size, off_t off, segment_rw_hints
         status = lio_read_ex_fn((void *)&op, -1);
         if (status.op_status == OP_STATE_SUCCESS) status.error_code = size; // ** Adjust the size to hide any readahead that may have occurred
     } else if (err == 1) {
-        status = op_success_status;
+        status = gop_success_status;
     } else {
         _op_set_status(status, OP_STATE_FAILURE, err);
     }
@@ -969,8 +969,8 @@ op_status_t lio_write_ex_fn(void *arg, int id)
     double dt;
     ex_off_t t1, t2;
 
-    if ((fd->mode & LIO_WRITE_MODE) == 0) return(op_failure_status);
-    if (op->n_iov <=0) return(op_success_status);
+    if ((fd->mode & LIO_WRITE_MODE) == 0) return(gop_failure_status);
+    if (op->n_iov <=0) return(gop_success_status);
 
     t1 = iov[0].len;
     t2 = iov[0].offset;
@@ -1061,7 +1061,7 @@ op_generic_t *gop_lio_write_ex_fn(lio_fd_t *fd, int n_iov, ex_tbx_iovec_t *iov, 
     op->boff = boff;
     op->rw_hints = rw_hints;
 
-    return(new_thread_pool_op(fd->lc->tpc_unlimited, NULL, lio_write_ex_fn, (void *)op, free, 1));
+    return(gop_tp_op_new(fd->lc->tpc_unlimited, NULL, lio_write_ex_fn, (void *)op, free, 1));
 }
 
 //*************************************************************************
@@ -1100,7 +1100,7 @@ op_generic_t *gop_lio_writev(lio_fd_t *fd, tbx_iovec_t *iov, int n_iov, ex_off_t
     tbx_tbuf_vec(&(op->buffer_dummy), size, n_iov, iov);
     offset = (off < 0) ? fd->curr_offset : off;
     ex_iovec_single(op->iov, offset, size);
-    return(new_thread_pool_op(fd->lc->tpc_unlimited, NULL, lio_write_ex_fn, (void *)op, free, 1));
+    return(gop_tp_op_new(fd->lc->tpc_unlimited, NULL, lio_write_ex_fn, (void *)op, free, 1));
 }
 
 //*************************************************************************
@@ -1144,7 +1144,7 @@ op_generic_t *gop_lio_write(lio_fd_t *fd, char *buf, ex_off_t size, off_t off, s
     tbx_tbuf_single(op->buffer, size, buf);
     offset = (off < 0) ? fd->curr_offset : off;
     ex_iovec_single(op->iov, offset, size);
-    return(new_thread_pool_op(fd->lc->tpc_unlimited, NULL, lio_write_ex_fn, (void *)op, free, 1));
+    return(gop_tp_op_new(fd->lc->tpc_unlimited, NULL, lio_write_ex_fn, (void *)op, free, 1));
 }
 
 //*************************************************************************
@@ -1215,7 +1215,7 @@ op_status_t lio_cp_local2lio_fn(void *arg, int id)
 
 //***********************************************************************
 
-op_generic_t *gop_lio_cp_local2lio(FILE *sfd, lio_fd_t *dfd, ex_off_t bufsize, char *buffer, segment_rw_hints_t *rw_hints)
+op_generic_t *lio_cp_local2lio_op(FILE *sfd, lio_fd_t *dfd, ex_off_t bufsize, char *buffer, segment_rw_hints_t *rw_hints)
 {
     lio_cp_fn_t *op;
 
@@ -1227,7 +1227,7 @@ op_generic_t *gop_lio_cp_local2lio(FILE *sfd, lio_fd_t *dfd, ex_off_t bufsize, c
     op->dlfd = dfd;
     op->rw_hints = rw_hints;
 
-    return(new_thread_pool_op(dfd->lc->tpc_unlimited, NULL, lio_cp_local2lio_fn, (void *)op, free, 1));
+    return(gop_tp_op_new(dfd->lc->tpc_unlimited, NULL, lio_cp_local2lio_fn, (void *)op, free, 1));
 
 }
 
@@ -1261,7 +1261,7 @@ op_status_t lio_cp_lio2local_fn(void *arg, int id)
 
 //***********************************************************************
 
-op_generic_t *gop_lio_cp_lio2local(lio_fd_t *sfd, FILE *dfd, ex_off_t bufsize, char *buffer, segment_rw_hints_t *rw_hints)
+op_generic_t *lio_cp_lio2local_op(lio_fd_t *sfd, FILE *dfd, ex_off_t bufsize, char *buffer, segment_rw_hints_t *rw_hints)
 {
     lio_cp_fn_t *op;
 
@@ -1273,7 +1273,7 @@ op_generic_t *gop_lio_cp_lio2local(lio_fd_t *sfd, FILE *dfd, ex_off_t bufsize, c
     op->dffd = dfd;
     op->rw_hints = rw_hints;
 
-    return(new_thread_pool_op(sfd->lc->tpc_unlimited, NULL, lio_cp_lio2local_fn, (void *)op, free, 1));
+    return(gop_tp_op_new(sfd->lc->tpc_unlimited, NULL, lio_cp_lio2local_fn, (void *)op, free, 1));
 }
 
 
@@ -1309,7 +1309,7 @@ op_status_t lio_cp_lio2lio_fn(void *arg, int id)
         if (buffer == NULL) { //** Need to make it ourself
             tbx_type_malloc(buffer, char, bufsize+1);
         }
-        status = gop_sync_exec_status(segment_copy(dfh->lc->tpc_unlimited, dfh->lc->da, op->rw_hints, sfh->seg, dfh->seg, 0, 0, -1, bufsize, buffer, 1, dfh->lc->timeout));
+        status = gop_sync_exec_status(lio_segment_copy(dfh->lc->tpc_unlimited, dfh->lc->da, op->rw_hints, sfh->seg, dfh->seg, 0, 0, -1, bufsize, buffer, 1, dfh->lc->timeout));
 
         //** Clean up
         if (op->buffer == NULL) free(buffer);
@@ -1335,14 +1335,14 @@ op_generic_t *gop_lio_cp_lio2lio(lio_fd_t *sfd, lio_fd_t *dfd, ex_off_t bufsize,
     op->hints = hints;
     op->rw_hints = rw_hints;
 
-    return(new_thread_pool_op(dfd->lc->tpc_unlimited, NULL, lio_cp_lio2lio_fn, (void *)op, free, 1));
+    return(gop_tp_op_new(dfd->lc->tpc_unlimited, NULL, lio_cp_lio2lio_fn, (void *)op, free, 1));
 }
 
 //*************************************************************************
-// lio_cp_file_fn - Actual cp function.  Copies a regex to a dest *dir*
+// lio_file_copy_op - Actual cp function.  Copies a regex to a dest *dir*
 //*************************************************************************
 
-op_status_t lio_cp_file_fn(void *arg, int id)
+op_status_t lio_file_copy_op(void *arg, int id)
 {
     lio_cp_file_t *cp = (lio_cp_file_t *)arg;
     op_status_t status, close_status;
@@ -1354,7 +1354,7 @@ op_status_t lio_cp_file_fn(void *arg, int id)
 
     if ((cp->src_tuple.is_lio == 0) && (cp->dest_tuple.is_lio == 0)) {  //** Not allowed to both go to disk
         info_printf(lio_ifd, 0, "Both source(%s) and destination(%s) are local files!\n", cp->src_tuple.path, cp->dest_tuple.path);
-        return(op_failure_status);
+        return(gop_failure_status);
     }
 
 
@@ -1363,51 +1363,51 @@ op_status_t lio_cp_file_fn(void *arg, int id)
         sffd = fopen(cp->src_tuple.path, "r");
         info_printf(lio_ifd, 0, "copy %s %s@%s:%s\n", cp->src_tuple.path, an_cred_get_id(cp->dest_tuple.creds), cp->dest_tuple.lc->section_name, cp->dest_tuple.path);
 
-        gop_sync_exec(gop_lio_open_object(cp->dest_tuple.lc, cp->dest_tuple.creds, cp->dest_tuple.path, lio_fopen_flags("w"), NULL, &dlfd, 60));
+        gop_sync_exec(lio_open_op(cp->dest_tuple.lc, cp->dest_tuple.creds, cp->dest_tuple.path, lio_fopen_flags("w"), NULL, &dlfd, 60));
 
         if ((sffd == NULL) || (dlfd == NULL)) { //** Got an error
             if (sffd == NULL) info_printf(lio_ifd, 0, "ERROR: Failed opening source file!  path=%s\n", cp->src_tuple.path);
             if (dlfd == NULL) info_printf(lio_ifd, 0, "ERROR: Failed opening destination file!  path=%s\n", cp->dest_tuple.path);
-            status = op_failure_status;
+            status = gop_failure_status;
         } else {
             tbx_type_malloc(buffer, char, cp->bufsize+1);
-            status = gop_sync_exec_status(gop_lio_cp_local2lio(sffd, dlfd, cp->bufsize, buffer, cp->rw_hints));
+            status = gop_sync_exec_status(lio_cp_local2lio_op(sffd, dlfd, cp->bufsize, buffer, cp->rw_hints));
         }
         if (dlfd != NULL) {
-            close_status = gop_sync_exec_status(gop_lio_close_object(dlfd));
+            close_status = gop_sync_exec_status(lio_close_op(dlfd));
             if (close_status.op_status != OP_STATE_SUCCESS) status = close_status;
         }
         if (sffd != NULL) fclose(sffd);
     } else if (cp->dest_tuple.is_lio == 0) {  //** Source is lio and dest is local
         info_printf(lio_ifd, 0, "copy %s@%s:%s %s\n", an_cred_get_id(cp->src_tuple.creds), cp->src_tuple.lc->section_name, cp->src_tuple.path, cp->dest_tuple.path);
-        gop_sync_exec(gop_lio_open_object(cp->src_tuple.lc, cp->src_tuple.creds, cp->src_tuple.path, lio_fopen_flags("r"), NULL, &slfd, 60));
+        gop_sync_exec(lio_open_op(cp->src_tuple.lc, cp->src_tuple.creds, cp->src_tuple.path, lio_fopen_flags("r"), NULL, &slfd, 60));
         dffd = fopen(cp->dest_tuple.path, "w");
 
         if ((dffd == NULL) || (slfd == NULL)) { //** Got an error
             if (slfd == NULL) info_printf(lio_ifd, 0, "ERROR: Failed opening source file!  path=%s\n", cp->src_tuple.path);
             if (dffd == NULL) info_printf(lio_ifd, 0, "ERROR: Failed opening destination file!  path=%s\n", cp->dest_tuple.path);
-            status = op_failure_status;
+            status = gop_failure_status;
         } else {
             tbx_type_malloc(buffer, char, cp->bufsize+1);
-            status = gop_sync_exec_status(gop_lio_cp_lio2local(slfd, dffd, cp->bufsize, buffer, cp->rw_hints));
+            status = gop_sync_exec_status(lio_cp_lio2local_op(slfd, dffd, cp->bufsize, buffer, cp->rw_hints));
         }
-        if (slfd != NULL) gop_sync_exec(gop_lio_close_object(slfd));
+        if (slfd != NULL) gop_sync_exec(lio_close_op(slfd));
         if (dffd != NULL) fclose(dffd);
     } else {               //** both source and dest are lio
         info_printf(lio_ifd, 0, "copy %s@%s:%s %s@%s:%s\n", an_cred_get_id(cp->src_tuple.creds), cp->src_tuple.lc->section_name, cp->src_tuple.path, an_cred_get_id(cp->dest_tuple.creds), cp->dest_tuple.lc->section_name, cp->dest_tuple.path);
-        gop_sync_exec(gop_lio_open_object(cp->src_tuple.lc, cp->src_tuple.creds, cp->src_tuple.path, LIO_READ_MODE, NULL, &slfd, 60));
-        gop_sync_exec(gop_lio_open_object(cp->dest_tuple.lc, cp->dest_tuple.creds, cp->dest_tuple.path, lio_fopen_flags("w"), NULL, &dlfd, 60));
+        gop_sync_exec(lio_open_op(cp->src_tuple.lc, cp->src_tuple.creds, cp->src_tuple.path, LIO_READ_MODE, NULL, &slfd, 60));
+        gop_sync_exec(lio_open_op(cp->dest_tuple.lc, cp->dest_tuple.creds, cp->dest_tuple.path, lio_fopen_flags("w"), NULL, &dlfd, 60));
         if ((dlfd == NULL) || (slfd == NULL)) { //** Got an error
             if (slfd == NULL) info_printf(lio_ifd, 0, "ERROR: Failed opening source file!  path=%s\n", cp->src_tuple.path);
             if (dlfd == NULL) info_printf(lio_ifd, 0, "ERROR: Failed opening destination file!  path=%s\n", cp->dest_tuple.path);
-            status = op_failure_status;
+            status = gop_failure_status;
         } else {
             tbx_type_malloc(buffer, char, cp->bufsize+1);
             status = gop_sync_exec_status(gop_lio_cp_lio2lio(slfd, dlfd, cp->bufsize, buffer, cp->slow, cp->rw_hints));
         }
-        if (slfd != NULL) gop_sync_exec(gop_lio_close_object(slfd));
+        if (slfd != NULL) gop_sync_exec(lio_close_op(slfd));
         if (dlfd != NULL) {
-            close_status = gop_sync_exec_status(gop_lio_close_object(dlfd));
+            close_status = gop_sync_exec_status(lio_close_op(dlfd));
             if (close_status.op_status != OP_STATE_SUCCESS) status = close_status;
         }
     }
@@ -1444,7 +1444,7 @@ int lio_cp_create_dir(tbx_list_t *table, lio_path_tuple_t tuple)
                     }
                     err = (err == 0) ? OP_STATE_SUCCESS : OP_STATE_FAILURE;
                 } else {
-                    err = gop_sync_exec(gop_lio_create_object(tuple.lc, tuple.creds, dname, OS_OBJECT_DIR, NULL, NULL));
+                    err = gop_sync_exec(lio_create_op(tuple.lc, tuple.creds, dname, OS_OBJECT_DIR, NULL, NULL));
                     if (err != OP_STATE_SUCCESS) {  //** See if it was created by someone else
                         err = lio_exists(tuple.lc, tuple.creds, dname);
                         err = ((err & OS_OBJECT_DIR) > 0) ? OP_STATE_SUCCESS : OP_STATE_FAILURE;
@@ -1465,10 +1465,10 @@ int lio_cp_create_dir(tbx_list_t *table, lio_path_tuple_t tuple)
 }
 
 //*************************************************************************
-// lio_cp_path_fn - Copies a regex to a dest *dir*
+// lio_path_copy_op - Copies a regex to a dest *dir*
 //*************************************************************************
 
-op_status_t lio_cp_path_fn(void *arg, int id)
+op_status_t lio_path_copy_op(void *arg, int id)
 {
     lio_cp_path_t *cp = (lio_cp_path_t *)arg;
     unified_object_iter_t *it;
@@ -1486,20 +1486,20 @@ op_status_t lio_cp_path_fn(void *arg, int id)
     log_printf(15, "START src=%s dest=%s max_spawn=%d bufsize=" XOT "\n", cp->src_tuple.path, cp->dest_tuple.path, cp->max_spawn, cp->bufsize);
     tbx_log_flush();
 
-    it = unified_create_object_iter(cp->src_tuple, cp->path_regex, cp->obj_regex, cp->obj_types, cp->recurse_depth);
+    it = lio_unified_object_iter_create(cp->src_tuple, cp->path_regex, cp->obj_regex, cp->obj_types, cp->recurse_depth);
     if (it == NULL) {
         info_printf(lio_ifd, 0, "ERROR: Failed with object_iter creation src_path=%s\n", cp->src_tuple.path);
-        return(op_failure_status);
+        return(gop_failure_status);
     }
 
     tbx_type_malloc_clear(cplist, lio_cp_file_t, cp->max_spawn);
     dir_table = tbx_list_create(0, &tbx_list_string_compare, tbx_list_string_dup, tbx_list_simple_free, NULL);
 
-    q = new_opque();
+    q = gop_opque_new();
     nerr = 0;
     slot = 0;
     count = 0;
-    while ((ftype = unified_next_object(it, &fname, &prefix_len)) > 0) {
+    while ((ftype = lio_unified_next_object(it, &fname, &prefix_len)) > 0) {
         snprintf(dname, OS_PATH_MAX, "%s/%s", cp->dest_tuple.path, &(fname[prefix_len+1]));
 //info_printf(lio_ifd, 0, "copy dtuple=%s sfname=%s  dfname=%s plen=%d\n", cp->dest_tuple.path, fname, dname, prefix_len);
 
@@ -1515,7 +1515,7 @@ op_status_t lio_cp_path_fn(void *arg, int id)
             continue;  //** Nothing else to do so go to the next file.
         }
 
-        os_path_split(dname, &dir, &file);
+        lio_os_path_split(dname, &dir, &file);
         dstate = tbx_list_search(dir_table, dir);
         if (dstate == NULL) { //** New dir so have to check and possibly create it
             create_tuple = cp->dest_tuple;
@@ -1539,10 +1539,10 @@ op_status_t lio_cp_path_fn(void *arg, int id)
         c->bufsize = cp->bufsize;
         c->slow = cp->slow;
 
-        gop = new_thread_pool_op(lio_gc->tpc_unlimited, NULL, lio_cp_file_fn, (void *)c, NULL, 1);
+        gop = gop_tp_op_new(lio_gc->tpc_unlimited, NULL, lio_file_copy_op, (void *)c, NULL, 1);
         gop_set_myid(gop, slot);
         log_printf(1, "gid=%d i=%d sname=%s dname=%s\n", gop_id(gop), slot, fname, dname);
-        opque_add(q, gop);
+        gop_opque_add(q, gop);
 
         count++;
 
@@ -1563,7 +1563,7 @@ op_status_t lio_cp_path_fn(void *arg, int id)
         }
     }
 
-    unified_destroy_object_iter(it);
+    lio_unified_object_iter_destroy(it);
 
     while ((gop = opque_waitany(q)) != NULL) {
         status = gop_get_status(gop);
@@ -1579,12 +1579,12 @@ op_status_t lio_cp_path_fn(void *arg, int id)
         gop_free(gop, OP_DESTROY);
     }
 
-    opque_free(q, OP_DESTROY);
+    gop_opque_free(q, OP_DESTROY);
 
     free(cplist);
     tbx_list_destroy(dir_table);
 
-    status = op_success_status;
+    status = gop_success_status;
     if (nerr > 0) {
         status.op_status = OP_STATE_FAILURE;
         status.error_code = nerr;
@@ -1678,7 +1678,7 @@ op_status_t lio_truncate_fn(void *arg, int id)
         segment_lock(fh->seg);
         op->slfd->curr_offset = op->bufsize;
         segment_unlock(fh->seg);
-        status = op_success_status;
+        status = gop_success_status;
     }
 
     return(status);
@@ -1695,7 +1695,7 @@ op_generic_t *gop_lio_truncate(lio_fd_t *fd, ex_off_t newsize)
     op->bufsize = newsize;
     op->slfd = fd;
 
-    return(new_thread_pool_op(fd->lc->tpc_unlimited, NULL, lio_truncate_fn, (void *)op, free, 1));
+    return(gop_tp_op_new(fd->lc->tpc_unlimited, NULL, lio_truncate_fn, (void *)op, free, 1));
 }
 
 

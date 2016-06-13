@@ -51,7 +51,7 @@ static portal_fn_t _ibp_base_portal = {
     .destroy_connect_context = _ibp_destroy_connect_context,
     .connect = _ibp_connect,
     .close_connection = tbx_ns_close,
-    .sort_tasks = default_sort_ops,
+    .sort_tasks = gop_default_sort_ops,
     .submit = _ibp_submit_op,
     .sync_exec = NULL
 };
@@ -392,9 +392,9 @@ void _ibp_submit_op(void *arg, op_generic_t *gop)
     log_printf(15, "_ibp_submit_op: hpc=%p hpc->table=%p gop=%p gid=%d\n", pc, pc->table, gop, gop_id(gop));
 
     if (gop->base.execution_mode == OP_EXEC_DIRECT) {
-        submit_hp_direct_op(pc, gop);
+        gop_hp_direct_submit(pc, gop);
     } else {
-        submit_hp_que_op(pc, gop);
+        gop_hp_que_op_submit(pc, gop);
     }
 }
 
@@ -477,7 +477,7 @@ int _ibp_connect(tbx_ns_t *ns, void *connect_context, char *host, int port, tbx_
 // set/unset routines for options
 //**********************************************************
 
-int ibp_set_chksum(ibp_context_t *ic, tbx_ns_chksum_t *ncs)
+int ibp_chksum_set(ibp_context_t *ic, tbx_ns_chksum_t *ncs)
 {
     tbx_ns_chksum_clear(&(ic->ncs));
     if (ncs != NULL) ic->ncs = *ncs;
@@ -496,11 +496,11 @@ int  ibp_get_abort_attempts(ibp_context_t *ic)
 {
     return(ic->abort_conn_attempts);
 }
-void ibp_set_tcpsize(ibp_context_t *ic, int n)
+void ibp_tcpsize_set(ibp_context_t *ic, int n)
 {
     ic->tcpsize = n;
 }
-int  ibp_get_tcpsize(ibp_context_t *ic)
+int  ibp_tcpsize_get(ibp_context_t *ic)
 {
     return(ic->tcpsize);
 }
@@ -508,19 +508,19 @@ void ibp_set_min_depot_threads(ibp_context_t *ic, int n)
 {
     ic->min_threads = n;
     ic->pc->min_threads = n;
-    change_all_hportal_conn(ic->pc, ic->min_threads, ic->max_threads, ic->dt_connect);
+    gop_change_all_hportal_conn(ic->pc, ic->min_threads, ic->max_threads, ic->dt_connect);
 }
 int  ibp_get_min_depot_threads(ibp_context_t *ic)
 {
     return(ic->min_threads);
 }
-void ibp_set_max_depot_threads(ibp_context_t *ic, int n)
+void ibp_max_depot_threads_set(ibp_context_t *ic, int n)
 {
     ic->max_threads = n;
     ic->pc->max_threads = n;
-    change_all_hportal_conn(ic->pc, ic->min_threads, ic->max_threads, ic->dt_connect);
+    gop_change_all_hportal_conn(ic->pc, ic->min_threads, ic->max_threads, ic->dt_connect);
 }
-int  ibp_get_max_depot_threads(ibp_context_t *ic)
+int  ibp_max_depot_threads_get(ibp_context_t *ic)
 {
     return(ic->max_threads);
 }
@@ -627,7 +627,7 @@ void copy_ibp_config(ibp_context_t *cfg)
 // Set the default CC's for read or write
 //**********************************************************
 
-void ibp_set_read_cc(ibp_context_t *ic, ibp_connect_context_t *cc)
+void ibp_read_cc_set(ibp_context_t *ic, ibp_connect_context_t *cc)
 {
 
     ic->cc[IBP_LOAD] = *cc;
@@ -637,7 +637,7 @@ void ibp_set_read_cc(ibp_context_t *ic, ibp_connect_context_t *cc)
 
 //**********************************************************
 
-void ibp_set_write_cc(ibp_context_t *ic, ibp_connect_context_t *cc)
+void ibp_write_cc_set(ibp_context_t *ic, ibp_connect_context_t *cc)
 {
     ic->cc[IBP_WRITE] = *cc;
     ic->cc[IBP_STORE] = *cc;
@@ -699,10 +699,10 @@ void ibp_cc_load(tbx_inip_file_t *kf, ibp_context_t *cfg)
 
 
 //**********************************************************
-// ibp_load_config - Loads the ibp client config
+// ibp_config_load - Loads the ibp client config
 //**********************************************************
 
-int ibp_load_config(ibp_context_t *ic, tbx_inip_file_t *keyfile, char *section)
+int ibp_config_load(ibp_context_t *ic, tbx_inip_file_t *keyfile, char *section)
 {
     apr_time_t t = 0;
 
@@ -739,10 +739,10 @@ int ibp_load_config(ibp_context_t *ic, tbx_inip_file_t *keyfile, char *section)
 }
 
 //**********************************************************
-// ibp_load_config_file - Loads the ibp client config from a text file
+// ibp_config_load_file - Loads the ibp client config from a text file
 //**********************************************************
 
-int ibp_load_config_file(ibp_context_t *ic, char *fname, char *section)
+int ibp_config_load_file(ibp_context_t *ic, char *fname, char *section)
 {
     tbx_inip_file_t *keyfile;
     int err;
@@ -754,7 +754,7 @@ int ibp_load_config_file(ibp_context_t *ic, char *fname, char *section)
         return(-1);
     }
 
-    err = ibp_load_config(ic, keyfile, section);
+    err = ibp_config_load(ic, keyfile, section);
 
     tbx_inip_destroy(keyfile);
 
@@ -801,10 +801,10 @@ void default_ibp_config(ibp_context_t *ic)
 
 
 //**********************************************************
-//  ibp_create_context - Creates an IBP context
+//  ibp_context_create - Creates an IBP context
 //**********************************************************
 
-ibp_context_t *ibp_create_context()
+ibp_context_t *ibp_context_create()
 {
     ibp_context_t *ic = (ibp_context_t *)malloc(sizeof(ibp_context_t));
     assert(ic != NULL);
@@ -816,7 +816,7 @@ ibp_context_t *ibp_create_context()
         ibp_configure_signals();
     }
 
-    ic->pc = create_hportal_context(&_ibp_base_portal);
+    ic->pc = gop_hp_context_create(&_ibp_base_portal);
 
     default_ibp_config(ic);
 
@@ -840,15 +840,15 @@ ibp_context_t *ibp_create_context()
 
 
 //**********************************************************
-//  ibp_destroy_context - Shuts down the IBP subsystem
+//  ibp_context_destroy - Shuts down the IBP subsystem
 //**********************************************************
 
-void ibp_destroy_context(ibp_context_t *ic)
+void ibp_context_destroy(ibp_context_t *ic)
 {
-    log_printf(15, "ibp_destroy_context: Shutting down! count=%d\n", _ibp_context_count);
+    log_printf(15, "ibp_context_destroy: Shutting down! count=%d\n", _ibp_context_count);
 
-    shutdown_hportal(ic->pc);
-    destroy_hportal_context(ic->pc);
+    gop_hp_shutdown(ic->pc);
+    gop_hp_context_destroy(ic->pc);
 
     tbx_pc_destroy(ic->coalesced_stacks);
     tbx_pc_destroy(ic->coalesced_gop_stacks);

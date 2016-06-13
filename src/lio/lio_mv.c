@@ -54,27 +54,27 @@ op_status_t mv_fn(void *arg, int id)
     log_printf(15, "START src=%s dest=%s\n", mv->src_tuple.path, mv->dest_tuple.path);
     tbx_log_flush();
 
-    status = op_success_status;
+    status = gop_success_status;
 
     it = lio_create_object_iter(mv->src_tuple.lc, mv->src_tuple.creds, mv->regex, NULL, OS_OBJECT_ANY, NULL, 0, NULL, 0);
     if (it == NULL) {
         info_printf(lio_ifd, 0, "ERROR: Failed with object_iter creation src_path=%s\n", mv->src_tuple.path);
-        return(op_failure_status);
+        return(gop_failure_status);
     }
 
     tbx_type_malloc_clear(src_fname, char *, max_spawn);
 
-    q = new_opque();
+    q = gop_opque_new();
     nerr = 0;
     slot = 0;
     count = 0;
 //  tweak = (strcmp(mv->dest_tuple.path, "/") == 0) ? 1 : 0;  //** Tweak things for the root path
     while ((ftype = lio_next_object(mv->src_tuple.lc, it, &src_fname[slot], &prefix_len)) > 0) {
         snprintf(dname, OS_PATH_MAX, "%s/%s", mv->dest_tuple.path, &(src_fname[slot][prefix_len+1]));
-        gop = gop_lio_move_object(mv->src_tuple.lc, mv->src_tuple.creds, src_fname[slot], dname);
+        gop = lio_move_op(mv->src_tuple.lc, mv->src_tuple.creds, src_fname[slot], dname);
         gop_set_myid(gop, slot);
         log_printf(0, "gid=%d i=%d sname=%s dname=%s\n", gop_id(gop), slot, src_fname[slot], dname);
-        opque_add(q, gop);
+        gop_opque_add(q, gop);
 
         count++;
 
@@ -106,11 +106,11 @@ op_status_t mv_fn(void *arg, int id)
         gop_free(gop, OP_DESTROY);
     }
 
-    opque_free(q, OP_DESTROY);
+    gop_opque_free(q, OP_DESTROY);
 
     free(src_fname);
 
-    status = op_success_status;
+    status = gop_success_status;
     if (nerr > 0) {
         status.op_status = OP_STATE_FAILURE;
         status.error_code = nerr;
@@ -180,7 +180,7 @@ int main(int argc, char **argv)
 
     for (i=0; i<n_paths; i++) {
         flist[i].src_tuple = lio_path_resolve(lio_gc->auto_translate, argv[i+start_index]);
-        flist[i].regex = os_path_glob2regex(flist[i].src_tuple.path);
+        flist[i].regex = lio_os_path_glob2regex(flist[i].src_tuple.path);
         flist[i].dest_tuple = dtuple;
         flist[i].dest_type = dtype;
         if (flist[i].src_tuple.lc != dtuple.lc) {
@@ -201,24 +201,24 @@ int main(int argc, char **argv)
         log_printf(15, "11111111\n");
         tbx_log_flush();
         if (((dtype & OS_OBJECT_FILE) > 0) || (dtype == 0)) {  //** Single path and dest is an existing file or doesn't exist
-            if (os_regex_is_fixed(flist[0].regex) == 0) {  //** Uh oh we have a wildcard with a single file dest
+            if (lio_os_regex_is_fixed(flist[0].regex) == 0) {  //** Uh oh we have a wildcard with a single file dest
                 info_printf(lio_ifd, 0, "ERROR: Single wildcard path(%s) selected but the dest(%s) is a file or doesn't exist!\n", flist[0].src_tuple.path, dtuple.path);
                 goto finished;
             }
         }
 
-        log_printf(15, "2222222222222222 fixed=%d exp=%s\n", os_regex_is_fixed(flist[0].regex), flist[0].regex->regex_entry[0].expression);
+        log_printf(15, "2222222222222222 fixed=%d exp=%s\n", lio_os_regex_is_fixed(flist[0].regex), flist[0].regex->regex_entry[0].expression);
         tbx_log_flush();
 
         //**if it's a fixed src with a dir dest we skip and use the mv_fn routines
-        if ((os_regex_is_fixed(flist[0].regex) == 1) && ((dtype == 0) || ((dtype & OS_OBJECT_FILE) > 0))) {
+        if ((lio_os_regex_is_fixed(flist[0].regex) == 1) && ((dtype == 0) || ((dtype & OS_OBJECT_FILE) > 0))) {
             //** IF we made it here we have a simple mv but we need to preserve the dest file if things go wrong
             fname = NULL;
             if ((dtype & OS_OBJECT_FILE) > 0) { //** Existing file so rename it for backup
                 tbx_type_malloc(fname, char, strlen(dtuple.path) + 40);
                 tbx_random_get_bytes(&ui, sizeof(ui));  //** MAke the random name
                 sprintf(fname, "%s.mv.%ud", dtuple.path, ui);
-                err = gop_sync_exec(gop_lio_move_object(dtuple.lc, dtuple.creds, flist[0].src_tuple.path, fname));
+                err = gop_sync_exec(lio_move_op(dtuple.lc, dtuple.creds, flist[0].src_tuple.path, fname));
                 if (err != OP_STATE_SUCCESS) {
                     info_printf(lio_ifd, 0, "ERROR renaming dest(%s) to %s!\n", dtuple.path, fname);
                     free(fname);
@@ -230,12 +230,12 @@ int main(int argc, char **argv)
             tbx_log_flush();
 
             //** Now do the simple mv
-            err = gop_sync_exec(gop_lio_move_object(dtuple.lc, dtuple.creds, flist[0].src_tuple.path, dtuple.path));
+            err = gop_sync_exec(lio_move_op(dtuple.lc, dtuple.creds, flist[0].src_tuple.path, dtuple.path));
             if (err != OP_STATE_SUCCESS) {
                 info_printf(lio_ifd, 0, "ERROR renaming dest(%s) to %s!\n", dtuple.path, fname);
 
                 //** Mv the original back due to the error
-                if (fname != NULL) err = gop_sync_exec(gop_lio_move_object(dtuple.lc, dtuple.creds, fname, dtuple.path));
+                if (fname != NULL) err = gop_sync_exec(lio_move_op(dtuple.lc, dtuple.creds, fname, dtuple.path));
                 goto finished;
             }
 
@@ -244,7 +244,7 @@ int main(int argc, char **argv)
 
             //** Clean up by removing the original dest if needed
             if (fname != NULL) {
-                err = gop_sync_exec(gop_lio_remove_object(dtuple.lc, dtuple.creds, fname, NULL, dtype));
+                err = gop_sync_exec(lio_remove_op(dtuple.lc, dtuple.creds, fname, NULL, dtype));
                 if (err != OP_STATE_SUCCESS) {
                     info_printf(lio_ifd, 0, "ERROR removing temp dest(%s)!\n", fname);
                     free(fname);
@@ -266,13 +266,13 @@ int main(int argc, char **argv)
     max_spawn = lio_parallel_task_count / n_paths;
     if (max_spawn <= 0) max_spawn = 1;
 
-    q = new_opque();
+    q = gop_opque_new();
     opque_start_execution(q);
     for (i=0; i<n_paths; i++) {
-        gop = new_thread_pool_op(lio_gc->tpc_unlimited, NULL, mv_fn, (void *)&(flist[i]), NULL, 1);
+        gop = gop_tp_op_new(lio_gc->tpc_unlimited, NULL, mv_fn, (void *)&(flist[i]), NULL, 1);
         gop_set_myid(gop, i);
         log_printf(0, "gid=%d i=%d fname=%s\n", gop_id(gop), i, flist[i].src_tuple.path);
-        opque_add(q, gop);
+        gop_opque_add(q, gop);
 
         if (opque_tasks_left(q) > lio_parallel_task_count) {
             gop = opque_waitany(q);
@@ -291,14 +291,14 @@ int main(int argc, char **argv)
         }
     }
 
-    opque_free(q, OP_DESTROY);
+    gop_opque_free(q, OP_DESTROY);
 
 
 finished:
     lio_path_release(&dtuple);
     for(i=0; i<n_paths; i++) {
         lio_path_release(&(flist[i].src_tuple));
-        os_regex_table_destroy(flist[i].regex);
+        lio_os_regex_table_destroy(flist[i].regex);
     }
 
     free(flist);

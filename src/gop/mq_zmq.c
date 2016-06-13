@@ -126,7 +126,7 @@ int zero_native_send(mq_socket_t *socket, mq_msg_t *msg, int flags)
     int count = 0;
 
     n = 0;
-    f = mq_msg_first(msg);
+    f = gop_mq_msg_first(msg);
     if (f->len > 1) {
         log_printf(5, "dest=!%.*s! nframes=%d\n", f->len, (char *)(f->data), tbx_stack_count(msg));
         tbx_log_flush();
@@ -135,7 +135,7 @@ int zero_native_send(mq_socket_t *socket, mq_msg_t *msg, int flags)
         tbx_log_flush();
     }
 
-    while ((fn = mq_msg_next(msg)) != NULL) {
+    while ((fn = gop_mq_msg_next(msg)) != NULL) {
         loop = 0;
         do {
             bytes = zmq_send(socket->arg, f->data, f->len, ZMQ_SNDMORE);
@@ -201,7 +201,7 @@ int zero_native_recv(mq_socket_t *socket, mq_msg_t *msg, int flags)
         f->data = zmq_msg_data(&(f->zmsg));
         f->auto_free = MQF_MSG_INTERNAL_FREE;
 
-        mq_msg_append_frame(msg, f);
+        gop_mq_msg_append_frame(msg, f);
         n += f->len;
         nframes++;
         log_printf(5, "more=" I64T "\n", more);
@@ -254,7 +254,7 @@ int zero_trace_router_recv(mq_socket_t *socket, mq_msg_t *msg, int flags)
 
     if (n != -1) {  //** Move the sender from the top to the bottom
         f = mq_msg_pop(msg);
-        mq_msg_append_frame(msg, f);
+        gop_mq_msg_append_frame(msg, f);
     }
     return(n);
 }
@@ -301,7 +301,7 @@ int zero_simple_router_recv(mq_socket_t *socket, mq_msg_t *msg, int flags)
 
     if (n != -1) {  //** Remove sender which 0MQ router added
         f = mq_msg_pop(msg);
-        mq_frame_destroy(f);
+        gop_mq_frame_destroy(f);
     }
     return(n);
 }

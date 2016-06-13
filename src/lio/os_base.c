@@ -39,10 +39,10 @@ apr_pool_t *_path_parse_pool = NULL;
 tbx_atomic_unit32_t _path_parse_counter = 0;
 
 //***********************************************************************
-// os_glob2regex - Converts a string in shell glob notation to regex
+// lio_os_glob2regex - Converts a string in shell glob notation to regex
 //***********************************************************************
 
-char *os_glob2regex(char *glob)
+char *lio_os_glob2regex(char *glob)
 {
     char *reg;
     int i, j, n, n_regex;
@@ -142,10 +142,10 @@ int check_for_glob(char *glob)
 }
 
 //***********************************************************************
-// os_regex_is_fixed - Returns 1 if the regex is a fixed path otherwise 0
+// lio_os_regex_is_fixed - Returns 1 if the regex is a fixed path otherwise 0
 //***********************************************************************
 
-int os_regex_is_fixed(os_regex_table_t *regex)
+int lio_os_regex_is_fixed(os_regex_table_t *regex)
 {
 
     if (regex->n == 0) return(1);
@@ -155,10 +155,10 @@ int os_regex_is_fixed(os_regex_table_t *regex)
 }
 
 //***********************************************************************
-// os_path_glob2regex - Converts a path glob to a regex table
+// lio_os_path_glob2regex - Converts a path glob to a regex table
 //***********************************************************************
 
-os_regex_table_t *os_path_glob2regex(char *path)
+os_regex_table_t *lio_os_path_glob2regex(char *path)
 {
     os_regex_table_t *table;
     char *bstate, *p2, *frag, *f2;
@@ -203,12 +203,12 @@ os_regex_table_t *os_path_glob2regex(char *path)
         } else {
             if (table->regex_entry[i].fixed == 1) i++;
 
-            table->regex_entry[i].expression = os_glob2regex(frag);
+            table->regex_entry[i].expression = lio_os_glob2regex(frag);
             log_printf(15, "   i=%d glob=%s  regex=%s\n", i, frag, table->regex_entry[i].expression);
             err = regcomp(&(table->regex_entry[i].compiled), table->regex_entry[i].expression, REG_NOSUB|REG_EXTENDED);
             if (err != 0) {
-                os_regex_table_destroy(table);
-                log_printf(0, "os_path_glob2regex: Error with fragment %s err=%d tid=%d\n", table->regex_entry[i].expression, err, tbx_atomic_thread_id);
+                lio_os_regex_table_destroy(table);
+                log_printf(0, "lio_os_path_glob2regex: Error with fragment %s err=%d tid=%d\n", table->regex_entry[i].expression, err, tbx_atomic_thread_id);
                 free(p2);
                 return(NULL);
             }
@@ -246,10 +246,10 @@ os_regex_table_t *os_regex_table_create(int n)
 }
 
 //***********************************************************************
-// os_regex2table - Creates a regex table from the regular expression
+// lio_os_regex2table - Creates a regex table from the regular expression
 //***********************************************************************
 
-os_regex_table_t *os_regex2table(char *regex)
+os_regex_table_t *lio_os_regex2table(char *regex)
 {
     int err;
     os_regex_table_t *table;
@@ -259,7 +259,7 @@ os_regex_table_t *os_regex2table(char *regex)
     table->regex_entry[0].expression = strdup(regex);
     err = regcomp(&(table->regex_entry[0].compiled), table->regex_entry[0].expression, REG_NOSUB|REG_EXTENDED);
     if (err != 0) {
-        os_regex_table_destroy(table);
+        lio_os_regex_table_destroy(table);
         log_printf(0, "Error with fragment %s err=%d tid=%d\n", table->regex_entry[0].expression, err, tbx_atomic_thread_id);
         return(NULL);
     }
@@ -268,10 +268,10 @@ os_regex_table_t *os_regex2table(char *regex)
 }
 
 //***********************************************************************
-// os_regex_table_destroy - Destroys a regex table
+// lio_os_regex_table_destroy - Destroys a regex table
 //***********************************************************************
 
-void os_regex_table_destroy(os_regex_table_t *table)
+void lio_os_regex_table_destroy(os_regex_table_t *table)
 {
     int i;
     os_regex_entry_t *re;
@@ -295,7 +295,7 @@ void os_regex_table_destroy(os_regex_table_t *table)
 //  path_split - Splits the path into a basename and dirname
 //***********************************************************************
 
-void os_path_split(const char *path, char **dir, char **file)
+void lio_os_path_split(const char *path, char **dir, char **file)
 {
     char *ptr;
 
@@ -466,16 +466,16 @@ os_regex_table_t *os_regex_table_unpack(unsigned char *buffer, int bufsize, int 
     return(regex);
 
 fail:
-    os_regex_table_destroy(regex);
+    lio_os_regex_table_destroy(regex);
     *used = bpos;
     return(NULL);
 }
 
 //***********************************************************************
-// os_local_filetype - Determines the file type
+// lio_os_local_filetype - Determines the file type
 //***********************************************************************
 
-int os_local_filetype(char *path)
+int lio_os_local_filetype(char *path)
 {
     struct stat s;
     int err, ftype;

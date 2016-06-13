@@ -22,10 +22,10 @@ ACCRE_DEFINE_DESTRUCTOR(gop_destruct_fn)
 static void gop_construct_fn() {
     apr_status_t ret = apr_initialize();
     assert(ret == APR_SUCCESS);
-    init_opque_system();
+    gop_init_opque_system();
 }
 
 static void gop_destruct_fn() {
-    destroy_opque_system();
+    gop_shutdown();
     apr_terminate();
 }

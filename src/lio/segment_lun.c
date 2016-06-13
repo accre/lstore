@@ -238,7 +238,7 @@ int slun_row_placement_fix(segment_t *seg, data_attr_t *da, seglun_row_t *b, int
     cleanup_index = 0;
     loop = 0;
     do {
-        q = new_opque();
+        q = gop_opque_new();
 
         //** Make the fixed list mapping table
         memset(db, 0, sizeof(db));
@@ -319,7 +319,7 @@ int slun_row_placement_fix(segment_t *seg, data_attr_t *da, seglun_row_t *b, int
                               ds_get_cap(db[j]->ds, db[j]->cap, DS_CAP_WRITE), 0,
                               b->block_len, timeout);
                 gop_set_myid(gop, j);
-                opque_add(q, gop);
+                gop_opque_add(q, gop);
             } else {  //** Make sure we exclude the RID key on the next round due to the failure
                 data_block_destroy(db[j]);
 
@@ -374,10 +374,10 @@ int slun_row_placement_fix(segment_t *seg, data_attr_t *da, seglun_row_t *b, int
 
                     if (args->qs) { //** Remove the old data on complete success
                         gop = ds_remove(dbs->ds, da, ds_get_cap(dbs->ds, dbs->cap, DS_CAP_MANAGE), timeout);
-                        opque_add(args->qs, gop);  //** This gets placed on the success queue so we can roll it back if needed
+                        gop_opque_add(args->qs, gop);  //** This gets placed on the success queue so we can roll it back if needed
                     } else {       //** Remove the just created allocation on failure
                         gop = ds_remove(dbd->ds, da, ds_get_cap(dbd->ds, dbd->cap, DS_CAP_MANAGE), timeout);
-                        opque_add(args->qf, gop);  //** This gets placed on the failed queue so we can roll it back if needed
+                        gop_opque_add(args->qf, gop);  //** This gets placed on the failed queue so we can roll it back if needed
                     }
                     if (s->db_cleanup == NULL) s->db_cleanup = tbx_stack_new();
                     tbx_stack_push(s->db_cleanup, dbs);  //** Dump the data block here cause the cap is needed for the gop.  We'll cleanup up on destroy()
@@ -387,7 +387,7 @@ int slun_row_placement_fix(segment_t *seg, data_attr_t *da, seglun_row_t *b, int
                     gop_set_myid(gop, -1);
                     dbold[k] = db[j];
                     k++;
-                    opque_add(q, gop);
+                    gop_opque_add(q, gop);
 
                     if (rid_pending[i] != NULL) { //** Cleanup RID changes
                         apr_thread_mutex_lock(rid_lock);
@@ -409,7 +409,7 @@ int slun_row_placement_fix(segment_t *seg, data_attr_t *da, seglun_row_t *b, int
         }
 
         opque_waitall(q);  //** Wait for the removal to complete.  Don't care if there are errors we can still continue
-        opque_free(q, OP_DESTROY);
+        gop_opque_free(q, OP_DESTROY);
 
         //** Clean up
         for (i=0; i<k; i++) {
@@ -451,7 +451,7 @@ int slun_row_size_check(segment_t *seg, data_attr_t *da, seglun_row_t *b, int *b
     op_generic_t *gop;
     ex_off_t psize, seg_size;
     apr_time_t start_time;
-    q = new_opque();
+    q = gop_opque_new();
 
     start_time = apr_time_now();
     for (i=0; i<n_devices; i++) {
@@ -460,7 +460,7 @@ int slun_row_size_check(segment_t *seg, data_attr_t *da, seglun_row_t *b, int *b
         gop = ds_probe(b->block[i].data->ds, da, ds_get_cap(b->block[i].data->ds, b->block[i].data->cap, DS_CAP_MANAGE), probe[i], timeout);
         gop_set_myid(gop, i);
 
-        opque_add(q, gop);
+        gop_opque_add(q, gop);
     }
 
     // ** Collect the timing information for hte probe if requested
@@ -473,9 +473,9 @@ int slun_row_size_check(segment_t *seg, data_attr_t *da, seglun_row_t *b, int *b
     } else {
         opque_waitall(q);
     }
-    opque_free(q, OP_DESTROY);
+    gop_opque_free(q, OP_DESTROY);
 
-    q = new_opque();
+    q = gop_opque_new();
     n_missing = 0;
     n_size = 0;
     for (i=0; i<n_devices; i++) {
@@ -491,7 +491,7 @@ int slun_row_size_check(segment_t *seg, data_attr_t *da, seglun_row_t *b, int *b
             } else {   //** Size is screwed up
                 gop = ds_truncate(b->block[i].data->ds, da, ds_get_cap(b->block[i].data->ds, b->block[i].data->cap, DS_CAP_MANAGE), seg_size, timeout);
                 gop_set_myid(gop, i);
-                opque_add(q, gop);
+                gop_opque_add(q, gop);
                 block_status[i] = 2;
                 n_size++;
             }
@@ -513,7 +513,7 @@ int slun_row_size_check(segment_t *seg, data_attr_t *da, seglun_row_t *b, int *b
         }
     }
 
-    opque_free(q, OP_DESTROY);
+    gop_opque_free(q, OP_DESTROY);
 
     for (i=0; i<n_devices; i++) ds_probe_destroy(b->block[i].data->ds, probe[i]);
 
@@ -533,7 +533,7 @@ int slun_row_pad_fix(segment_t *seg, data_attr_t *da, seglun_row_t *b, int *bloc
     tbx_tbuf_t tbuf;
     char c;
 
-    q = new_opque();
+    q = gop_opque_new();
 
     c = 0;
     tbx_tbuf_single(&tbuf, 1, &c);
@@ -547,7 +547,7 @@ int slun_row_pad_fix(segment_t *seg, data_attr_t *da, seglun_row_t *b, int *bloc
 
             gop = ds_write(b->block[i].data->ds, da, ds_get_cap(b->block[i].data->ds, b->block[i].data->cap, DS_CAP_WRITE), bstart, &tbuf, 0, 1, timeout);
             gop_set_myid(gop, i);
-            opque_add(q, gop);
+            gop_opque_add(q, gop);
             err++;
         } else if (block_status[i] == -2) {  //** Failed on the grow
             err++;
@@ -569,7 +569,7 @@ int slun_row_pad_fix(segment_t *seg, data_attr_t *da, seglun_row_t *b, int *bloc
         gop_free(gop, OP_DESTROY);
     }
 
-    opque_free(q, OP_DESTROY);
+    gop_opque_free(q, OP_DESTROY);
 
     return(err);
 }
@@ -634,7 +634,7 @@ int slun_row_replace_fix(segment_t *seg, data_attr_t *da, seglun_row_t *b, int *
                     //** Make the cleanup operations
                     if (args->qs) {
                         gop = ds_remove(s->ds, da, ds_get_cap(db->ds, db->cap, DS_CAP_MANAGE), timeout);
-                        opque_add(args->qs, gop);  //** This gets placed on the success queue so we can roll it back if needed
+                        gop_opque_add(args->qs, gop);  //** This gets placed on the success queue so we can roll it back if needed
                     }
                     if (s->db_cleanup == NULL) s->db_cleanup = tbx_stack_new();
                     tbx_stack_push(s->db_cleanup, db);   //** Dump the data block here cause the cap is needed for the gop.  We'll cleanup up on destroy()
@@ -760,7 +760,7 @@ op_status_t _seglun_grow(segment_t *seg, data_attr_t *da, ex_off_t new_size_arg,
     if (new_size < 0) { //** Reserve space call
         new_size = - new_size_arg;
         log_printf(5, "reserving space: current=" XOT " new=" XOT "\n", s->total_size, new_size);
-        if (new_size < s->total_size) return(op_success_status);  //** Already have enough space reserved
+        if (new_size < s->total_size) return(gop_success_status);  //** Already have enough space reserved
     }
 
     memset(&args, 0, sizeof(args));
@@ -892,9 +892,9 @@ oops:
     if (err == 0) {
         s->total_size = new_size;
         if (new_size_arg > -1) s->used_size = new_size;  //** Only update the used size for a non-reserve space call
-        status = op_success_status;
+        status = gop_success_status;
     } else {
-        status =  op_failure_status;
+        status =  gop_failure_status;
     }
 
     return(status);
@@ -938,7 +938,7 @@ op_status_t _seglun_shrink(segment_t *seg, data_attr_t *da, ex_off_t new_size, i
     }
 
     stack = tbx_stack_new();
-    q = new_opque();
+    q = gop_opque_new();
 
     //** The 1st row maybe a partial removal
     dsize = new_size - b->seg_offset;
@@ -947,7 +947,7 @@ op_status_t _seglun_shrink(segment_t *seg, data_attr_t *da, ex_off_t new_size, i
         log_printf(15, "_sl_shrink: sid=" XIDT " removing seg_off=" XOT "\n", segment_id(seg), b->seg_offset);
         for (i=0; i < s->n_devices; i++) {
             gop = ds_remove(b->block[i].data->ds, da, ds_get_cap(b->block[i].data->ds, b->block[i].data->cap, DS_CAP_MANAGE), timeout);
-            opque_add(q, gop);
+            gop_opque_add(q, gop);
         }
         tbx_stack_push(stack, (void *)b);
         start_b = NULL;
@@ -956,7 +956,7 @@ op_status_t _seglun_shrink(segment_t *seg, data_attr_t *da, ex_off_t new_size, i
         bstart_block_size = dsize / s->n_devices;
         for (i=0; i < s->n_devices; i++) {
             gop = ds_truncate(b->block[i].data->ds, da, ds_get_cap(b->block[i].data->ds, b->block[i].data->cap, DS_CAP_MANAGE), bstart_block_size, timeout);
-            opque_add(q, gop);
+            gop_opque_add(q, gop);
         }
         start_b = b;
     }
@@ -968,7 +968,7 @@ op_status_t _seglun_shrink(segment_t *seg, data_attr_t *da, ex_off_t new_size, i
         tbx_stack_push(stack, (void *)b);
         for (i=0; i < s->n_devices; i++) {
             gop = ds_remove(b->block[i].data->ds, da, ds_get_cap(b->block[i].data->ds, b->block[i].data->cap, DS_CAP_MANAGE), timeout);
-            opque_add(q, gop);
+            gop_opque_add(q, gop);
         }
 
         b = (seglun_row_t *)tbx_isl_next(&it);
@@ -976,7 +976,7 @@ op_status_t _seglun_shrink(segment_t *seg, data_attr_t *da, ex_off_t new_size, i
 
     //** Do the removal
     err = opque_waitall(q);
-    opque_free(q, OP_DESTROY);
+    gop_opque_free(q, OP_DESTROY);
 
     //** And now clean up
     while ((b = (seglun_row_t *)tbx_stack_pop(stack)) != NULL) {
@@ -1013,7 +1013,7 @@ finished:
     s->total_size = new_size;
     s->used_size = new_used;
 
-    status = (err == OP_STATE_SUCCESS) ? op_success_status : op_failure_status;
+    status = (err == OP_STATE_SUCCESS) ? gop_success_status : gop_failure_status;
     return(status);
 }
 
@@ -1024,7 +1024,7 @@ finished:
 op_status_t _slun_truncate(segment_t *seg, data_attr_t *da, ex_off_t new_size, int timeout)
 {
     seglun_priv_t *s = (seglun_priv_t *)seg->priv;
-    op_status_t err = op_success_status;
+    op_status_t err = gop_success_status;
 
     if (new_size < 0) { //Reserve space call
         err = _seglun_grow(seg, da, new_size, timeout);
@@ -1070,7 +1070,7 @@ op_generic_t *seglun_truncate(segment_t *seg, data_attr_t *da, ex_off_t new_size
     st->timeout = timeout;
     st->da = da;
 
-    return(new_thread_pool_op(s->tpc, NULL, seglun_truncate_func, (void *)st, free, 1));
+    return(gop_tp_op_new(s->tpc, NULL, seglun_truncate_func, (void *)st, free, 1));
 }
 
 //***********************************************************************
@@ -1279,7 +1279,7 @@ int seglun_row_decompose_test()
 
     //** Make an empty segment for testing.
     //** The only variables used by lun_row_decompose are s->{n_devices,stripe_size,chunk_size}.
-    seg = segment_lun_create((void *)exnode_service_set);
+    seg = segment_lun_create((void *)lio_exnode_service_set);
     s = (seglun_priv_t *)seg->priv;
 
     //** Make the fake row
@@ -1456,7 +1456,7 @@ op_status_t seglun_rw_op(segment_t *seg, data_attr_t *da, segment_rw_hints_t *rw
     tbx_type_malloc(bcount, int, s->n_devices * tbx_isl_count(s->isl));
     tbx_type_malloc(rwb_table, lun_rw_row_t, s->n_devices * tbx_isl_count(s->isl));
 
-    q = new_opque();
+    q = gop_opque_new();
     stack = tbx_stack_new();
     bpos = boff;
 
@@ -1566,7 +1566,7 @@ op_status_t seglun_rw_op(segment_t *seg, data_attr_t *da, segment_rw_hints_t *rw
 
                 rwb_table[j+i].gop = gop;
                 rwb_table[j+i].block = &(b->block[i]);
-                opque_add(q, rwb_table[j+i].gop);
+                gop_opque_add(q, rwb_table[j+i].gop);
                 gop_set_myid(rwb_table[j+i].gop, j+i);
                 gop_set_private(gop, b->block[i].data->rid_key);
             }
@@ -1579,7 +1579,7 @@ op_status_t seglun_rw_op(segment_t *seg, data_attr_t *da, segment_rw_hints_t *rw
 
     if (opque_task_count(q) == 0) {
         log_printf(0, "ERROR Nothing to do\n");
-        status = op_failure_status;
+        status = gop_failure_status;
     } else {
         tstart2 = apr_time_now();
         op_status_t dt_status;
@@ -1652,7 +1652,7 @@ op_status_t seglun_rw_op(segment_t *seg, data_attr_t *da, segment_rw_hints_t *rw
 
         if (maxerr == 0) {
             log_printf(15, "success\n");
-            status = op_success_status;
+            status = gop_success_status;
         } else {
             log_printf(15, "failure maxerr=%d\n", maxerr);
             status.op_status = OP_STATE_FAILURE;
@@ -1670,7 +1670,7 @@ op_status_t seglun_rw_op(segment_t *seg, data_attr_t *da, segment_rw_hints_t *rw
     free(bcount);
     free(bused);
     tbx_stack_free(stack, 0);
-    opque_free(q, OP_DESTROY);
+    gop_opque_free(q, OP_DESTROY);
 
     dt = apr_time_now() - tstart;
     dt /= (APR_USEC_PER_SEC*1.0);
@@ -1797,7 +1797,7 @@ op_generic_t *seglun_write(segment_t *seg, data_attr_t *da, segment_rw_hints_t *
     sw->buffer = buffer;
     sw->timeout = timeout;
     sw->rw_mode = 1;
-    gop = new_thread_pool_op(s->tpc, NULL, seglun_rw_func, (void *)sw, free, 1);
+    gop = gop_tp_op_new(s->tpc, NULL, seglun_rw_func, (void *)sw, free, 1);
 
     return(gop);
 }
@@ -1822,7 +1822,7 @@ op_generic_t *seglun_read(segment_t *seg, data_attr_t *da, segment_rw_hints_t *r
     sw->buffer = buffer;
     sw->timeout = timeout;
     sw->rw_mode = 0;
-    gop = new_thread_pool_op(s->tpc, NULL, seglun_rw_func, (void *)sw, free, 1);
+    gop = gop_tp_op_new(s->tpc, NULL, seglun_rw_func, (void *)sw, free, 1);
 
     return(gop);
 }
@@ -1842,7 +1842,7 @@ op_generic_t *seglun_remove(segment_t *seg, data_attr_t *da, int timeout)
     tbx_isl_iter_t it;
     int i, j, n;
 
-    q = new_opque();
+    q = gop_opque_new();
 
     segment_lock(seg);
     n = tbx_isl_count(s->isl);
@@ -1851,15 +1851,15 @@ op_generic_t *seglun_remove(segment_t *seg, data_attr_t *da, int timeout)
         b = (seglun_row_t *)tbx_isl_next(&it);
         for (j=0; j < s->n_devices; j++) {
             gop = ds_remove(b->block[j].data->ds, da, ds_get_cap(b->block[j].data->ds, b->block[j].data->cap, DS_CAP_MANAGE), timeout);
-            opque_add(q, gop);
+            gop_opque_add(q, gop);
         }
     }
     segment_unlock(seg);
 
     log_printf(15, "seg=" XIDT " qid=%d ntasks=%d\n", segment_id(seg), gop_id(opque_get_gop(q)), opque_task_count(q));
     if (n == 0) {
-        opque_free(q, OP_DESTROY);
-        return(gop_dummy(op_success_status));
+        gop_opque_free(q, OP_DESTROY);
+        return(gop_dummy(gop_success_status));
     }
     return(opque_get_gop(q));
 }
@@ -1881,7 +1881,7 @@ op_status_t seglun_migrate_func(void *arg, int id)
     int nattempted, nmigrated, err, i;
     int soft_error_fail;
 
-    op_status_t status = op_success_status;
+    op_status_t status = gop_success_status;
     tbx_isl_iter_t it;
 
     soft_error_fail = (si->inspect_mode & INSPECT_SOFT_ERROR_FAIL);
@@ -1944,7 +1944,7 @@ op_status_t seglun_migrate_func(void *arg, int id)
 
     if (nattempted != nmigrated) {
         info_printf(si->fd, 1, XIDT ": status: FAILURE (%d needed migrating, %d migrated)\n", segment_id(si->seg), nattempted, nmigrated);
-        status = op_failure_status;
+        status = gop_failure_status;
     } else {
         info_printf(si->fd, 1, XIDT ": status: SUCCESS (%d needed migrating, %d migrated)\n", segment_id(si->seg), nattempted, nmigrated);
     }
@@ -1981,7 +1981,7 @@ op_status_t seglun_inspect_func(void *arg, int id)
     args_blank.rid_changes = NULL;
     args_blank.rid_lock = NULL;
 
-    status = op_success_status;
+    status = gop_success_status;
     max_lost = 0;
     total_lost = 0;
     total_repaired = 0;
@@ -2170,7 +2170,7 @@ fail:
     i = total_lost - total_repaired + total_migrate - nmigrated;
     if (i != 0) {
         info_printf(si->fd, 1, XIDT ": status: FAILURE (%d max dev/row lost, %d lost, %d repaired, %d need(s) moving, %d moved)\n", segment_id(si->seg), max_lost, total_lost, total_repaired, total_migrate, nmigrated);
-        status = op_failure_status;
+        status = gop_failure_status;
     } else {
         info_printf(si->fd, 1, XIDT ": status: SUCCESS (%d max dev/row lost, %d lost, %d repaired, %d need(s) moving, %d moved)\n", segment_id(si->seg), max_lost, total_lost, total_repaired, total_migrate, nmigrated);
     }
@@ -2215,7 +2215,7 @@ op_generic_t *seglun_inspect(segment_t *seg, data_attr_t *da, tbx_log_fd_t *fd, 
         si->bufsize = bufsize;
         si->timeout = timeout;
         si->args = args;
-        gop = new_thread_pool_op(s->tpc, NULL, seglun_inspect_func, (void *)si, free, 1);
+        gop = gop_tp_op_new(s->tpc, NULL, seglun_inspect_func, (void *)si, free, 1);
         break;
     case (INSPECT_MIGRATE):
         tbx_type_malloc(si, seglun_inspect_t, 1);
@@ -2226,7 +2226,7 @@ op_generic_t *seglun_inspect(segment_t *seg, data_attr_t *da, tbx_log_fd_t *fd, 
         si->bufsize = bufsize;
         si->timeout = timeout;
         si->args = args;
-        gop = new_thread_pool_op(s->tpc, NULL, seglun_migrate_func, (void *)si, free, 1);
+        gop = gop_tp_op_new(s->tpc, NULL, seglun_migrate_func, (void *)si, free, 1);
         break;
     case (INSPECT_SOFT_ERRORS):
     case (INSPECT_HARD_ERRORS):
@@ -2263,7 +2263,7 @@ op_generic_t *seglun_inspect(segment_t *seg, data_attr_t *da, tbx_log_fd_t *fd, 
 
 op_generic_t *seglun_flush(segment_t *seg, data_attr_t *da, ex_off_t lo, ex_off_t hi, int timeout)
 {
-    return(gop_dummy(op_success_status));
+    return(gop_dummy(gop_success_status));
 }
 
 //***********************************************************************
@@ -2292,7 +2292,7 @@ op_status_t seglun_clone_func(void *arg, int id)
         gop_sync_exec(segment_truncate(slc->dseg, slc->da, 0, slc->timeout));
     }
 
-    if (ss->total_size == 0) return(op_success_status);  //** No data to clone
+    if (ss->total_size == 0) return(gop_success_status);  //** No data to clone
 
 
     segment_lock(slc->sseg);
@@ -2318,7 +2318,7 @@ op_status_t seglun_clone_func(void *arg, int id)
                 sd->grow_break = 0; //** Undo the break flag
                 free(max_index);
                 segment_unlock(slc->sseg);
-                return(op_failure_status);
+                return(gop_failure_status);
             }
             sd->used_size = ss->used_size;
             sd->grow_break = 1; //** Flag a break for the next grow operation
@@ -2341,7 +2341,7 @@ op_status_t seglun_clone_func(void *arg, int id)
             sd->grow_break = 0; //** Undo the break flag
             free(max_index);
             segment_unlock(slc->sseg);
-            return(op_failure_status);
+            return(gop_failure_status);
         }
         sd->used_size = ss->used_size;
     }
@@ -2352,7 +2352,7 @@ op_status_t seglun_clone_func(void *arg, int id)
     for (i=0; i<n_rows*ss->n_devices; i++) gop_stack[i] = tbx_stack_new();
 
     //** Generate the copy list
-    q = new_opque();
+    q = gop_opque_new();
     opque_start_execution(q);
     dir = ((slc->mode & DS_PULL) > 0) ? DS_PULL : DS_PUSH;
 
@@ -2383,7 +2383,7 @@ op_status_t seglun_clone_func(void *arg, int id)
                 n++;
 
                 if (k<1) {  //** Start executing the 1st couple for each allocation
-                    opque_add(q, gop);
+                    gop_opque_add(q, gop);
                 } else {    //** The rest we place on a stack
                     tbx_stack_move_to_bottom(gop_stack[j]);
                     tbx_stack_insert_below(gop_stack[j], gop);
@@ -2406,7 +2406,7 @@ op_status_t seglun_clone_func(void *arg, int id)
     for (i=0; i<n; i++) {
         gop = opque_waitany(q);
         gop_next = tbx_stack_pop((tbx_stack_t *)gop_get_private(gop));
-        if (gop_next != NULL) opque_add(q, gop_next);
+        if (gop_next != NULL) gop_opque_add(q, gop_next);
 
         //** This is for diagnostics
         dtus = gop->op->cmd.end_time - gop->op->cmd.start_time;
@@ -2421,9 +2421,9 @@ op_status_t seglun_clone_func(void *arg, int id)
 
     //** Wait for the copying to finish
     opque_waitall(q);
-    status = (opque_tasks_failed(q) == 0) ? op_success_status : op_failure_status;
+    status = (opque_tasks_failed(q) == 0) ? gop_success_status : gop_failure_status;
 
-    opque_free(q, OP_DESTROY);
+    gop_opque_free(q, OP_DESTROY);
     free(max_index);
     for (i=0; i<n_rows*ss->n_devices; i++) tbx_stack_free(gop_stack[i], 0);
     free(gop_stack);
@@ -2477,7 +2477,7 @@ op_generic_t *seglun_clone(segment_t *seg, data_attr_t *da, segment_t **clone_se
         if (use_existing == 1) {
             gop = segment_truncate(clone, da, 0, timeout);
         } else {
-            gop = gop_dummy(op_success_status);
+            gop = gop_dummy(gop_success_status);
         }
     } else {
         tbx_type_malloc(slc, seglun_clone_t, 1);
@@ -2488,7 +2488,7 @@ op_generic_t *seglun_clone(segment_t *seg, data_attr_t *da, segment_t **clone_se
         slc->timeout = timeout;
         slc->trunc = use_existing;
         slc->max_transfer = 20*1024*1024;
-        gop = new_thread_pool_op(sd->tpc, NULL, seglun_clone_func, (void *)slc, free, 1);
+        gop = gop_tp_op_new(sd->tpc, NULL, seglun_clone_func, (void *)slc, free, 1);
     }
 
     return(gop);
@@ -2612,11 +2612,11 @@ int seglun_serialize_text(segment_t *seg, exnode_exchange_t *exp)
     int err;
 
     do {
-        cap_exp = exnode_exchange_create(EX_TEXT);
+        cap_exp = lio_exnode_exchange_create(EX_TEXT);
         err = seglun_serialize_text_try(seg, segbuf, bufsize, cap_exp);
         if (err == -1) { //** Need to grow the buffer
             if (staticbuf != segbuf) free(segbuf);
-            exnode_exchange_destroy(cap_exp);
+            lio_exnode_exchange_destroy(cap_exp);
 
             bufsize = 2*bufsize;
             tbx_type_malloc(segbuf, char, bufsize);
@@ -2626,7 +2626,7 @@ int seglun_serialize_text(segment_t *seg, exnode_exchange_t *exp)
 
     //** Merge everything together and return it
     exnode_exchange_append(exp, cap_exp);
-    exnode_exchange_destroy(cap_exp);
+    lio_exnode_exchange_destroy(cap_exp);
 
     exnode_exchange_append_text(exp, segbuf);
 
@@ -2885,10 +2885,10 @@ segment_t *segment_lun_create(void *arg)
     apr_thread_cond_create(&(seg->cond), seg->mpool);
 
     seg->ess = es;
-    s->tpc = lookup_service(es, ESS_RUNNING, ESS_TPC_UNLIMITED);
-    s->rs = lookup_service(es, ESS_RUNNING, ESS_RS);
-    s->ds = lookup_service(es, ESS_RUNNING, ESS_DS);
-    s->bl = lookup_service(es, ESS_RUNNING, "blacklist");
+    s->tpc = lio_lookup_service(es, ESS_RUNNING, ESS_TPC_UNLIMITED);
+    s->rs = lio_lookup_service(es, ESS_RUNNING, ESS_RS);
+    s->ds = lio_lookup_service(es, ESS_RUNNING, ESS_DS);
+    s->bl = lio_lookup_service(es, ESS_RUNNING, "blacklist");
 
     //** Set up remap notifications
     apr_thread_mutex_create(&(s->notify.lock), APR_THREAD_MUTEX_DEFAULT, seg->mpool);

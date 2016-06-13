@@ -92,7 +92,7 @@ int main(int argc, char **argv)
     }
 
     //** Load it
-    exp = exnode_exchange_load_file(fname);
+    exp = lio_exnode_exchange_load_file(fname);
 
     //** Open the local destination file
     if (strcmp(argv[i], "-") == 0) {
@@ -108,11 +108,11 @@ int main(int argc, char **argv)
 
 
     //** and parse the remote exnode
-    ex = exnode_create();
-    exnode_deserialize(ex, exp, lio_gc->ess);
+    ex = lio_exnode_create();
+    lio_exnode_deserialize(ex, exp, lio_gc->ess);
 
     //** Get the default view to use
-    seg = exnode_get_default(ex);
+    seg = lio_exnode_default_get(ex);
     if (seg == NULL) {
         printf("No default segment!  Aborting!\n");
         abort();
@@ -184,9 +184,9 @@ int main(int argc, char **argv)
         printf("\n");
     }
 
-    exnode_exchange_destroy(exp);
+    lio_exnode_exchange_destroy(exp);
 
-    exnode_destroy(ex);
+    lio_exnode_destroy(ex);
 
     lio_shutdown();
 

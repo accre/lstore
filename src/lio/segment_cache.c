@@ -328,7 +328,7 @@ int cache_rw_pages(segment_t *seg, segment_rw_hints_t *rw_hints, page_handle_t *
     last_page = -1;
 
     //** Figure out the contiguous blocks
-    q = new_opque();
+    q = gop_opque_new();
     myid = -1;
     pli = 0;
     while (pli<pl_size) {
@@ -378,7 +378,7 @@ int cache_rw_pages(segment_t *seg, segment_rw_hints_t *rw_hints, page_handle_t *
 
             gop_set_myid(cio->gop, myid);
             gop_set_private(cio->gop, (void *)cio);
-            opque_add(q, cio->gop);
+            gop_opque_add(q, cio->gop);
 
             //** Skip error pages
             while (pli<pl_size) {
@@ -440,7 +440,7 @@ int cache_rw_pages(segment_t *seg, segment_rw_hints_t *rw_hints, page_handle_t *
         gop_set_myid(cio->gop, myid);
         gop_set_private(cio->gop, (void *)cio);
 
-        opque_add(q, cio->gop);
+        gop_opque_add(q, cio->gop);
     }
 
     //** Dump the blank pages
@@ -513,7 +513,7 @@ int cache_rw_pages(segment_t *seg, segment_rw_hints_t *rw_hints, page_handle_t *
     }
 
     //** And final clean up
-    opque_free(q, OP_DESTROY);
+    gop_opque_free(q, OP_DESTROY);
 
     log_printf(15, "END error_count=%d blank_count=%d rw_mode=%d\n", error_count, blank_count, rw_mode);
     return(error_count);
@@ -629,7 +629,7 @@ op_status_t cache_advise_fn(void *arg, int id)
     //** Only works for READ ops
     if (ca->rw_mode != CACHE_READ) {
         *ca->n_pages = 0;
-        return(op_success_status);
+        return(gop_success_status);
     }
 
     //** Map the range to the page boundaries
@@ -721,7 +721,7 @@ op_status_t cache_advise_fn(void *arg, int id)
 
     log_printf(5, "END seg=" XIDT " lo=" XOT " hi=" XOT " n_pages=%d\n", segment_id(seg), ca->lo, ca->hi, *ca->n_pages);
 
-    return(op_success_status);
+    return(gop_success_status);
 }
 
 //*******************************************************************************
@@ -867,7 +867,7 @@ int cache_page_drop(segment_t *seg, ex_off_t lo, ex_off_t hi)
 
 
 //*******************************************************************************
-//  cache_drop_pages - Permanately removes pages from cache within the given range
+//  lio_cache_pages_drop - Permanately removes pages from cache within the given range
 //     Pages are not flushed before removal!  This is mainly used for a truncate
 //     or semenget close operation
 //
@@ -875,7 +875,7 @@ int cache_page_drop(segment_t *seg, ex_off_t lo, ex_off_t hi)
 //     rotuine is deisgned to be used by segment_cache routines only
 //*******************************************************************************
 
-int cache_drop_pages(segment_t *seg, ex_off_t lo, ex_off_t hi)
+int lio_cache_pages_drop(segment_t *seg, ex_off_t lo, ex_off_t hi)
 {
     if (strcmp(seg->header.type, SEGMENT_TYPE_CACHE) != 0) return(0);
 
@@ -2461,7 +2461,7 @@ op_status_t cache_rw_func(void *arg, int id)
     apr_time_t hit_time, miss_time;
 
     tb_err = 0;
-    err = op_success_status;
+    err = gop_success_status;
     if (cop->n_iov == 0) return(err);  //** Nothing to do so kick out
 
     tbx_stack_init(&stack);
@@ -2495,7 +2495,7 @@ op_status_t cache_rw_func(void *arg, int id)
 
     if (tbx_stack_count(&stack) == 0) { //** Handled via ppages
         log_printf(15, "seg=" XIDT " Nothing to do. Handled by the ppage code.  rerr=%d\n", segment_id(cop->seg), rerr);
-        return((rerr == 0) ? op_success_status : op_failure_status);
+        return((rerr == 0) ? gop_success_status : gop_failure_status);
     }
 
 //   hit_bytes = bpos - cop->boff;
@@ -2511,7 +2511,7 @@ op_status_t cache_rw_func(void *arg, int id)
         while ((r = tbx_stack_pop(&stack)) != NULL) {
             free(r);
         }
-        return(op_failure_status);
+        return(gop_failure_status);
     }
 
     //** Make space the cache miss info
@@ -2541,7 +2541,7 @@ op_status_t cache_rw_func(void *arg, int id)
             status = cache_write_pages_get(seg, cop->rw_hints, mode, curr->lo, curr->hi, &hi_got, page, iov, &n_pages, cop->buf, curr->boff, &(cache_missed[curr->iov_index]), cop->iov[curr->iov_index].len);
         } else {
             log_printf(0, "ERROR invalid rw_mode!!!!!! rw_mode=%d\n", cop->rw_mode);
-            err = op_error_status;
+            err = gop_error_status;
         }
 
         if (hi_got > curr->hi) hi_got = curr->hi;  //** Returned value is based on page size so may need to truncate
@@ -2702,7 +2702,7 @@ op_generic_t *cache_read(segment_t *seg, data_attr_t *da, segment_rw_hints_t *rw
     cop->boff = boff;
     cop->buf = buffer;
 
-    return(new_thread_pool_op(s->tpc_unlimited, s->qname, cache_rw_func, (void *)cop, free, 1));
+    return(gop_tp_op_new(s->tpc_unlimited, s->qname, cache_rw_func, (void *)cop, free, 1));
 }
 
 
@@ -2725,7 +2725,7 @@ op_generic_t *cache_write(segment_t *seg, data_attr_t *da, segment_rw_hints_t *r
     cop->boff = boff;
     cop->buf = buffer;
 
-    return(new_thread_pool_op(s->tpc_unlimited, s->qname, cache_rw_func, (void *)cop, free, 1));
+    return(gop_tp_op_new(s->tpc_unlimited, s->qname, cache_rw_func, (void *)cop, free, 1));
 }
 
 
@@ -2856,7 +2856,7 @@ finished:
     dt = apr_time_now() - now;
     dt /= APR_USEC_PER_SEC;
     log_printf(1, "END seg=" XIDT " lo=" XOT " hi=" XOT " flush_id=" XOT " total_pages=%d status=%d dt=%lf\n", segment_id(cop->seg), lo, hi, flush_id[2], total_pages, err, dt);
-    return((err == OP_STATE_SUCCESS) ? op_success_status : op_failure_status);
+    return((err == OP_STATE_SUCCESS) ? gop_success_status : gop_failure_status);
 }
 
 //***********************************************************************
@@ -2885,18 +2885,18 @@ op_generic_t *cache_flush_range(segment_t *seg, data_attr_t *da, ex_off_t lo, ex
     s->flushing_count++;
     segment_unlock(seg);
 
-    return(new_thread_pool_op(s->tpc_unlimited, s->qname, cache_flush_range_func, (void *)cop, free, 1));
+    return(gop_tp_op_new(s->tpc_unlimited, s->qname, cache_flush_range_func, (void *)cop, free, 1));
 }
 
 
 //***********************************************************************
-// segment_cache_stats - Returns the cache stats for the segment
+// segment_lio_cache_stats_get - Returns the cache stats for the segment
 //***********************************************************************
 
-cache_stats_t segment_cache_stats(segment_t *seg)
+lio_cache_stats_get_t segment_lio_cache_stats_get(segment_t *seg)
 {
     cache_segment_t *s = (cache_segment_t *)seg->priv;
-    cache_stats_t cs;
+    lio_cache_stats_get_t cs;
 
     segment_lock(seg);
     cs = s->stats;
@@ -2906,11 +2906,11 @@ cache_stats_t segment_cache_stats(segment_t *seg)
 }
 
 //***********************************************************************
-// cache_stats - Returns the overal cache stats
+// lio_cache_stats_get - Returns the overal cache stats
 //   Returns the number of skipped segments due to locking
 //***********************************************************************
 
-int cache_stats(cache_t *c, cache_stats_t *cs)
+int lio_cache_stats_get(cache_t *c, lio_cache_stats_get_t *cs)
 {
     cache_segment_t *s;
     tbx_list_iter_t it;
@@ -2958,10 +2958,10 @@ int cache_stats(cache_t *c, cache_stats_t *cs)
 }
 
 //***********************************************************************
-// cache_stats_print - Prints the cache stats to a string
+// lio_cache_stats_get_print - Prints the cache stats to a string
 //***********************************************************************
 
-int cache_stats_print(cache_stats_t *cs, char *buffer, int *used, int nmax)
+int lio_cache_stats_get_print(lio_cache_stats_get_t *cs, char *buffer, int *used, int nmax)
 {
     int n = 0;
     ex_off_t tsum1, tsum2, sum1, sum2;
@@ -3025,7 +3025,7 @@ op_generic_t *segcache_inspect(segment_t *seg, data_attr_t *da, tbx_log_fd_t *fd
         //** Check the file size first
         if (segment_size(s->child_seg) < segment_size(seg)) {
             info_printf(fd, 1, XIDT ": ERROR Cache segment size(" XOT ") > child segment size(" XOT ")!\n", segment_id(seg), segment_size(seg), segment_size(s->child_seg));
-            return(gop_dummy(op_failure_status));
+            return(gop_dummy(gop_failure_status));
         }
     }
 
@@ -3094,7 +3094,7 @@ op_status_t segcache_truncate_func(void *arg, int id)
 
     gop_free(gop, OP_DESTROY);
 
-    status = ((err1 == OP_STATE_SUCCESS) && (err2 == OP_STATE_SUCCESS)) ? op_success_status : op_failure_status;
+    status = ((err1 == OP_STATE_SUCCESS) && (err2 == OP_STATE_SUCCESS)) ? gop_success_status : gop_failure_status;
     return(status);
 }
 
@@ -3121,7 +3121,7 @@ op_generic_t *segcache_truncate(segment_t *seg, data_attr_t *da, ex_off_t new_si
     cop->new_size = new_size;
     cop->timeout = timeout;
 
-    gop = new_thread_pool_op(s->tpc_unlimited, NULL, segcache_truncate_func, (void *)cop, free, 1);
+    gop = gop_tp_op_new(s->tpc_unlimited, NULL, segcache_truncate_func, (void *)cop, free, 1);
 
 
     return(gop);
@@ -3137,7 +3137,7 @@ op_status_t segcache_clone_func(void *arg, int id)
     cache_segment_t *ds = (cache_segment_t *)cop->dseg->priv;
     op_status_t status;
 
-    status = (gop_waitall(cop->gop) == OP_STATE_SUCCESS) ? op_success_status : op_failure_status;
+    status = (gop_waitall(cop->gop) == OP_STATE_SUCCESS) ? gop_success_status : gop_failure_status;
     gop_free(cop->gop, OP_DESTROY);
 
     tbx_atomic_inc(ds->child_seg->ref_count);
@@ -3188,7 +3188,7 @@ op_generic_t *segcache_clone(segment_t *seg, data_attr_t *da, segment_t **clone_
     cop->gop = segment_clone(ss->child_seg, da, &(sd->child_seg), mode, arg, timeout);
 
     log_printf(5, "child_clone gid=%d\n", gop_id(cop->gop));
-    return(new_thread_pool_op(ss->tpc_unlimited, NULL, segcache_clone_func, (void *)cop, free, 1));
+    return(gop_tp_op_new(ss->tpc_unlimited, NULL, segcache_clone_func, (void *)cop, free, 1));
 }
 
 
@@ -3266,12 +3266,12 @@ int segcache_serialize_text(segment_t *seg, exnode_exchange_t *exp)
     tbx_append_printf(segbuf, &sused, bufsize, "segment=" XIDT "\n", segment_id(s->child_seg));
 
     //** Serialize the child as well
-    child_exp = exnode_exchange_create(EX_TEXT);
+    child_exp = lio_exnode_exchange_create(EX_TEXT);
     segment_serialize(s->child_seg, child_exp);
 
     //** And merge everything together
     exnode_exchange_append(exp, child_exp);
-    exnode_exchange_destroy(child_exp);
+    lio_exnode_exchange_destroy(child_exp);
     exnode_exchange_append_text(exp, segbuf);
 
     return(0);
@@ -3567,7 +3567,7 @@ segment_t *segment_cache_create(void *arg)
     apr_thread_cond_create(&(s->ppages_cond), seg->mpool);
 
     s->flush_stack = tbx_stack_new();
-    s->tpc_unlimited = lookup_service(es, ESS_RUNNING, ESS_TPC_CACHE);
+    s->tpc_unlimited = lio_lookup_service(es, ESS_RUNNING, ESS_TPC_CACHE);
     assert(s->tpc_unlimited != NULL);
 
     s->pages = tbx_list_create(0, &skiplist_compare_ex_off, NULL, NULL, NULL);
@@ -3575,7 +3575,7 @@ segment_t *segment_cache_create(void *arg)
     s->ppages_unused = tbx_stack_new();
     s->partial_pages = tbx_list_create(0, &skiplist_compare_ex_off, NULL, NULL, NULL);
 
-    s->c = lookup_service(es, ESS_RUNNING, ESS_CACHE);
+    s->c = lio_lookup_service(es, ESS_RUNNING, ESS_CACHE);
     if (s->c != NULL) s->c = cache_get_handle(s->c);
     s->page_size = 64*1024;
     s->n_ppages = 0;

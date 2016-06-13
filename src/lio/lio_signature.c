@@ -71,22 +71,22 @@ int main(int argc, char **argv)
 
     //** Get the exnode
     v_size = -tuple.lc->max_attr;
-    err = lio_get_attr(tuple.lc, tuple.creds, tuple.path, NULL, "system.exnode", (void **)&ex_data, &v_size);
+    err = lio_getattr(tuple.lc, tuple.creds, tuple.path, NULL, "system.exnode", (void **)&ex_data, &v_size);
     if (err != OP_STATE_SUCCESS) {
         info_printf(lio_ifd, 0, "Failed retrieving exnode! err=%d path=%s\n", err, tuple.path);
         goto finished;
     }
 
     //** Load it
-    exp = exnode_exchange_text_parse(ex_data);
-    ex = exnode_create();
-    if (exnode_deserialize(ex, exp, tuple.lc->ess) != 0) {
+    exp = lio_exnode_exchange_text_parse(ex_data);
+    ex = lio_exnode_create();
+    if (lio_exnode_deserialize(ex, exp, tuple.lc->ess) != 0) {
         info_printf(lio_ifd, 0, "No default segment!  Aborting!\n");
         goto finished;
     }
 
     //** Get the default view to use
-    seg = exnode_get_default(ex);
+    seg = lio_exnode_default_get(ex);
     if (seg == NULL) {
         info_printf(lio_ifd, 0, "No default segment!  Aborting!\n");
         goto finished;
@@ -98,8 +98,8 @@ int main(int argc, char **argv)
 
     info_printf(lio_ifd, 0, "%s", buffer);
 
-    exnode_destroy(ex);
-    exnode_exchange_destroy(exp);
+    lio_exnode_destroy(ex);
+    lio_exnode_exchange_destroy(exp);
 
 finished:
     lio_path_release(&tuple);

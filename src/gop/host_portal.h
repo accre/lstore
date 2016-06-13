@@ -116,17 +116,17 @@ void hportal_wait(host_portal_t *hp, int dt);
 int get_hpc_thread_count(portal_context_t *hpc);
 void modify_hpc_thread_count(portal_context_t *hpc, int n);
 host_portal_t *create_hportal(portal_context_t *hpc, void *connect_context, char *hostport, int min_conn, int max_conn, apr_time_t dt_connect);
-GOP_API portal_context_t *create_hportal_context(portal_fn_t *hpi);
-GOP_API void destroy_hportal_context(portal_context_t *hpc);
+GOP_API portal_context_t *gop_hp_context_create(portal_fn_t *hpi);
+GOP_API void gop_hp_context_destroy(portal_context_t *hpc);
 void finalize_hportal_context(portal_context_t *hpc);
-GOP_API void shutdown_hportal(portal_context_t *hpc);
+GOP_API void gop_hp_shutdown(portal_context_t *hpc);
 void compact_dportals(portal_context_t *hpc);
-GOP_API void change_all_hportal_conn(portal_context_t *hpc, int min_conn, int max_conn, apr_time_t dt_connect);
+GOP_API void gop_change_all_hportal_conn(portal_context_t *hpc, int min_conn, int max_conn, apr_time_t dt_connect);
 void _hp_fail_tasks(host_portal_t *hp, op_status_t err_code);
 void check_hportal_connections(host_portal_t *hp);
-GOP_API int submit_hp_direct_op(portal_context_t *hpc, op_generic_t *op);
-GOP_API int submit_hportal(host_portal_t *dp, op_generic_t *op, int addtotop, int release_master);
-GOP_API int submit_hp_que_op(portal_context_t *hpc, op_generic_t *op);
+GOP_API int gop_hp_direct_submit(portal_context_t *hpc, op_generic_t *op);
+GOP_API int gop_hp_submit(host_portal_t *dp, op_generic_t *op, int addtotop, int release_master);
+GOP_API int gop_hp_que_op_submit(portal_context_t *hpc, op_generic_t *op);
 
 //** Routines for hconnection.c
 #define trylock_hc(a) apr_thread_mutex_trylock(a->lock)

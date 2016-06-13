@@ -264,7 +264,7 @@ int lfs_closedir_real(lfs_dir_iter_t *dit)
     tbx_stack_free(dit->stack, 0);
 
     lio_destroy_object_iter(dit->lfs->lc, dit->it);
-    os_regex_table_destroy(dit->path_regex);
+    lio_os_regex_table_destroy(dit->path_regex);
     free(dit);
 
     return(0);
@@ -301,7 +301,7 @@ int lfs_opendir(const char *fname, struct fuse_file_info *fi)
 
     dit->lfs = lfs;
     snprintf(path, OS_PATH_MAX, "%s/*", fname);
-    dit->path_regex = os_path_glob2regex(path);
+    dit->path_regex = lio_os_path_glob2regex(path);
 
     dit->it = lio_create_object_iter_alist(dit->lfs->lc, dit->lfs->lc->creds, dit->path_regex, NULL, OS_OBJECT_ANY, 0, _inode_keys, (void **)dit->val, dit->v_size, _inode_key_size);
 
@@ -322,7 +322,7 @@ int lfs_opendir(const char *fname, struct fuse_file_info *fi)
 
     //** And ".."
     if (strcmp(fname, "/") != 0) {
-        os_path_split((char *)fname, &dir, &file);
+        lio_os_path_split((char *)fname, &dir, &file);
         dit->dotdot_path = dir;
         free(file);
     } else {
@@ -447,7 +447,7 @@ int lfs_object_create(lio_fuse_t *lfs, const char *fname, mode_t mode, int ftype
 
     //** If we made it here it's a new file or dir
     //** Create the new object
-    err = gop_sync_exec(gop_lio_create_object(lfs->lc, lfs->lc->creds, (char *)fname, ftype, NULL, lfs->id));
+    err = gop_sync_exec(lio_create_op(lfs->lc, lfs->lc->creds, (char *)fname, ftype, NULL, lfs->id));
     if (err != OP_STATE_SUCCESS) {
         log_printf(1, "Error creating object! fname=%s\n", fullname);
         if (strlen(fullname) > 3900) {  //** Probably a path length issue
@@ -487,7 +487,7 @@ int lfs_mkdir(const char *fname, mode_t mode)
 int lfs_actual_remove(lio_fuse_t *lfs, const char *fname, int ftype)
 {
     int err;
-    err = gop_sync_exec(gop_lio_remove_object(lfs->lc, lfs->lc->creds, (char *)fname, NULL, 0));
+    err = gop_sync_exec(lio_remove_op(lfs->lc, lfs->lc->creds, (char *)fname, NULL, 0));
 
     log_printf(1, "remove err=%d\n", err);
     if (err == OP_STATE_SUCCESS) {
@@ -568,7 +568,7 @@ int lfs_open(const char *fname, struct fuse_file_info *fi)
     if (fi->flags & O_TRUNC) mode |= LIO_TRUNCATE_MODE;
 
     fi->fh = 0;
-    gop_sync_exec(gop_lio_open_object(lfs->lc, lfs->lc->creds, (char *)fname, mode, NULL, &fd, 60));
+    gop_sync_exec(lio_open_op(lfs->lc, lfs->lc->creds, (char *)fname, mode, NULL, &fd, 60));
     log_printf(2, "fname=%s fd=%p\n", fname, fd);
     if (fd == NULL) {
         log_printf(0, "Failed opening file!  path=%s\n", fname);
@@ -631,7 +631,7 @@ int lfs_release(const char *fname, struct fuse_file_info *fi)
         fd->path = strdup(fname);
     }
 
-    err = gop_sync_exec(gop_lio_close_object(fd)); // ** Close it but keep track of the error
+    err = gop_sync_exec(lio_close_op(fd)); // ** Close it but keep track of the error
     lfs_unlock(lfs);
 
     if (err != OP_STATE_SUCCESS) {
@@ -800,7 +800,7 @@ int lfs_rename(const char *oldname, const char *newname)
     lfs_unlock(lfs);
 
     //** Do the move
-    err = gop_sync_exec(gop_lio_move_object(lfs->lc, lfs->lc->creds, (char *)oldname, (char *)newname));
+    err = gop_sync_exec(lio_move_op(lfs->lc, lfs->lc->creds, (char *)oldname, (char *)newname));
     if (err != OP_STATE_SUCCESS) {
         return(-EIO);
     }
@@ -849,7 +849,7 @@ int lfs_truncate(const char *fname, off_t new_size)
     ts = new_size;
     log_printf(15, "adjusting size=" XOT "\n", ts);
 
-    gop_sync_exec(gop_lio_open_object(lfs->lc, lfs->lc->creds, (char *)fname, LIO_RW_MODE, NULL, &fd, 60));
+    gop_sync_exec(lio_open_op(lfs->lc, lfs->lc->creds, (char *)fname, LIO_RW_MODE, NULL, &fd, 60));
     if (fd == NULL) {
         log_printf(0, "Failed opening file!  path=%s\n", fname);
         return(-EIO);
@@ -861,7 +861,7 @@ int lfs_truncate(const char *fname, off_t new_size)
         result = -EIO;
     }
 
-    if (gop_sync_exec(gop_lio_close_object(fd)) != OP_STATE_SUCCESS) {
+    if (gop_sync_exec(lio_close_op(fd)) != OP_STATE_SUCCESS) {
         log_printf(0, "Failed closing file!  path=%s\n", fname);
         result = -EIO;
     }
@@ -897,7 +897,7 @@ int lfs_utimens(const char *fname, const struct timespec tv[2])
 //  val = lfs->id;
 //  v_size = strlen(val);
 
-    err = lioc_set_attr(lfs->lc, lfs->lc->creds, (char *)fname, NULL, key, (void *)val, v_size);
+    err = lioc_setattr(lfs->lc, lfs->lc->creds, (char *)fname, NULL, key, (void *)val, v_size);
     if (err != OP_STATE_SUCCESS) {
         log_printf(0, "ERROR updating stat! fname=%s\n", fname);
         return(-EBADE);
@@ -925,7 +925,7 @@ int lfs_listxattr(const char *fname, char *list, size_t size)
     tbx_log_flush();
 
     //** Make an iterator
-    attr_regex = os_path_glob2regex("user.*");
+    attr_regex = lio_os_path_glob2regex("user.*");
     err = gop_sync_exec(os_open_object(lfs->lc->os, lfs->lc->creds, (char *)fname, OS_MODE_READ_IMMEDIATE, lfs->id, &fd, lfs->lc->timeout));
     if (err != OP_STATE_SUCCESS) {
         log_printf(15, "ERROR: opening file: %s err=%d\n", fname, err);
@@ -967,7 +967,7 @@ int lfs_listxattr(const char *fname, char *list, size_t size)
 
     os_destroy_attr_iter(lfs->lc->os, it);
     gop_sync_exec(os_close_object(lfs->lc->os, fd));
-    os_regex_table_destroy(attr_regex);
+    lio_os_regex_table_destroy(attr_regex);
 
     log_printf(15, "bpos=%d size=%zu buf=%s\n", bpos, size, buf);
 
@@ -1076,36 +1076,36 @@ void lfs_set_tape_attr(lio_fuse_t *lfs, char *fname, char *mytape_val, int tape_
         //** to the global cache table cause there could be multiple copies of the
         //** same segment being serialized/deserialized.
         //** Deserialize it
-        exp = exnode_exchange_text_parse(val[ex_key]);
-        ex = exnode_create();
-        err = exnode_deserialize(ex, exp, lfs->lc->ess_nocache);
+        exp = lio_exnode_exchange_text_parse(val[ex_key]);
+        ex = lio_exnode_create();
+        err = lio_exnode_deserialize(ex, exp, lfs->lc->ess_nocache);
         exnode_exchange_free(exp);
         val[ex_key] = NULL;
 
         if (err != 0) {
             log_printf(1, "ERROR parsing parent exnode fname=%s\n", fname);
-            exnode_exchange_destroy(exp);
-            exnode_destroy(ex);
+            lio_exnode_exchange_destroy(exp);
+            lio_exnode_destroy(ex);
         }
 
         //** Execute the clone operation
-        err = gop_sync_exec(exnode_clone(lfs->lc->tpc_unlimited, ex, lfs->lc->da, &cex, NULL, CLONE_STRUCTURE, lfs->lc->timeout));
+        err = gop_sync_exec(lio_exnode_clone(lfs->lc->tpc_unlimited, ex, lfs->lc->da, &cex, NULL, CLONE_STRUCTURE, lfs->lc->timeout));
         if (err != OP_STATE_SUCCESS) {
             log_printf(15, "ERROR cloning parent fname=%s\n", fname);
         }
 
         //** Serialize it for storage
-        exnode_serialize(cex, exp);
+        lio_exnode_serialize(cex, exp);
         val[ex_key] = exp->text.text;
         v_size[ex_key] = strlen(val[ex_key]);
         exp->text.text = NULL;
-        exnode_exchange_destroy(exp);
-        exnode_destroy(ex);
-        exnode_destroy(cex);
+        lio_exnode_exchange_destroy(exp);
+        lio_exnode_destroy(ex);
+        lio_exnode_destroy(cex);
     }
 
     //** Store them
-    err = lio_set_multiple_attrs(lfs->lc, lfs->lc->creds, (char *)fname, NULL, _tape_keys, (void **)val, v_size, nkeys);
+    err = lio_multiple_setattr_op(lfs->lc, lfs->lc->creds, (char *)fname, NULL, _tape_keys, (void **)val, v_size, nkeys);
     if (err != OP_STATE_SUCCESS) {
         log_printf(0, "ERROR updating exnode! fname=%s\n", fname);
     }
@@ -1210,7 +1210,7 @@ int lfs_getxattr(const char *fname, const char *name, char *buf, size_t size, ui
     if ((lfs->enable_tape == 1) && (strcmp(name, LFS_TAPE_ATTR) == 0)) {  //** Want the tape backup attr
         lfs_get_tape_attr(lfs, (char *)fname, &val, &v_size);
     } else {
-        err = lio_get_attr(lfs->lc, lfs->lc->creds, (char *)fname, NULL, (char *)name, (void **)&val, &v_size);
+        err = lio_getattr(lfs->lc, lfs->lc->creds, (char *)fname, NULL, (char *)name, (void **)&val, &v_size);
         if (err != OP_STATE_SUCCESS) {
             return(-ENOENT);
         }
@@ -1252,7 +1252,7 @@ int lfs_setxattr(const char *fname, const char *name, const char *fval, size_t s
     if (flags != 0) { //** Got an XATTR_CREATE/XATTR_REPLACE
         v_size = 0;
         val = NULL;
-        err = lio_get_attr(lfs->lc, lfs->lc->creds, (char *)fname, NULL, (char *)name, (void **)&val, &v_size);
+        err = lio_getattr(lfs->lc, lfs->lc->creds, (char *)fname, NULL, (char *)name, (void **)&val, &v_size);
         if (flags == XATTR_CREATE) {
             if (err == OP_STATE_SUCCESS) {
                 return(-EEXIST);
@@ -1269,7 +1269,7 @@ int lfs_setxattr(const char *fname, const char *name, const char *fval, size_t s
         lfs_set_tape_attr(lfs, (char *)fname, (char *)fval, v_size);
         return(0);
     } else {
-        err = lio_set_attr(lfs->lc, lfs->lc->creds, (char *)fname, NULL, (char *)name, (void *)fval, v_size);
+        err = lio_setattr(lfs->lc, lfs->lc->creds, (char *)fname, NULL, (char *)name, (void *)fval, v_size);
         if (err != OP_STATE_SUCCESS) {
             return(-ENOENT);
         }
@@ -1295,7 +1295,7 @@ int lfs_removexattr(const char *fname, const char *name)
     }
 
     v_size = -1;
-    err = lio_set_attr(lfs->lc, lfs->lc->creds, (char *)fname, NULL, (char *)name, NULL, v_size);
+    err = lio_setattr(lfs->lc, lfs->lc->creds, (char *)fname, NULL, (char *)name, NULL, v_size);
     if (err != OP_STATE_SUCCESS) {
         return(-ENOENT);
     }
@@ -1316,7 +1316,7 @@ int lfs_hardlink(const char *oldname, const char *newname)
     tbx_log_flush();
 
     //** Now do the hard link
-    err = gop_sync_exec(gop_lio_link_object(lfs->lc, lfs->lc->creds, 0, (char *)oldname, (char *)newname, lfs->id));
+    err = gop_sync_exec(lio_link_op(lfs->lc, lfs->lc->creds, 0, (char *)oldname, (char *)newname, lfs->id));
     if (err != OP_STATE_SUCCESS) {
         return(-EIO);
     }
@@ -1339,7 +1339,7 @@ int lfs_readlink(const char *fname, char *buf, size_t bsize)
 
     v_size = -lfs->lc->max_attr;
     val = NULL;
-    err = lio_get_attr(lfs->lc, lfs->lc->creds, (char *)fname, NULL, "os.link", (void **)&val, &v_size);
+    err = lio_getattr(lfs->lc, lfs->lc->creds, (char *)fname, NULL, "os.link", (void **)&val, &v_size);
     if (err != OP_STATE_SUCCESS) {
         buf[0] = 0;
         return(-EIO);
@@ -1389,7 +1389,7 @@ int lfs_symlink(const char *link, const char *newname)
     }
 
     //** Now do the sym link
-    err = gop_sync_exec(gop_lio_link_object(lfs->lc, lfs->lc->creds, 1, (char *)link2, (char *)newname, lfs->id));
+    err = gop_sync_exec(lio_link_op(lfs->lc, lfs->lc->creds, 1, (char *)link2, (char *)newname, lfs->id));
     if (err != OP_STATE_SUCCESS) {
         return(-EIO);
     }

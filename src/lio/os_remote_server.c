@@ -132,7 +132,7 @@ void osrs_update_active_table(object_service_fn_t *os, mq_frame_t *hid)
     tbx_stack_ele_t *ele;
     osrs_active_t *a;
 
-    mq_get_frame(hid, (void **)&host_id, &id_len);
+    gop_mq_get_frame(hid, (void **)&host_id, &id_len);
 
     apr_thread_mutex_lock(osrs->lock);
 
@@ -243,7 +243,7 @@ creds_t *osrs_get_creds(object_service_fn_t *os, mq_frame_t *f)
 
     *creds = *osrs->dummy_creds;
     creds->priv = a;
-    mq_get_frame(f, (void **)&(a->handle), &(a->len));
+    gop_mq_get_frame(f, (void **)&(a->handle), &(a->len));
 
     return(creds);
 }
@@ -287,7 +287,7 @@ op_status_t osrs_perform_abort_handle(object_service_fn_t *os, char *handle, int
     op_generic_t *gop;
     op_status_t status;
 
-    status = op_failure_status;
+    status = gop_failure_status;
 
     apr_thread_mutex_lock(osrs->abort_lock);
     ah = apr_hash_get(osrs->abort, handle, handle_len);
@@ -323,16 +323,16 @@ void osrs_exists_cb(void *arg, mq_task_t *task)
 
     //** Parse the command. Don't have to
     msg = task->msg;
-    mq_remove_header(msg, 0);
+    gop_mq_remove_header(msg, 0);
 
     fid = mq_msg_pop(msg);  //** This is the ID
-    mq_frame_destroy(mq_msg_pop(msg));  //** Drop the application command frame
+    gop_mq_frame_destroy(mq_msg_pop(msg));  //** Drop the application command frame
 
     fcred = mq_msg_pop(msg);  //** This has the creds
     creds = osrs_get_creds(os, fcred);
 
     fname = mq_msg_pop(msg);  //** This has the filename
-    mq_get_frame(fname, (void **)&name, &fsize);
+    gop_mq_get_frame(fname, (void **)&name, &fsize);
 
     if (creds != NULL) {
         gop = os_exists(osrs->os_child, creds, name);
@@ -340,21 +340,21 @@ void osrs_exists_cb(void *arg, mq_task_t *task)
         status = gop_get_status(gop);
         gop_free(gop, OP_DESTROY);
     } else {
-        status = op_failure_status;
+        status = gop_failure_status;
     }
 
     osrs_release_creds(os, creds);
 
-    mq_frame_destroy(fname);
-    mq_frame_destroy(fcred);
+    gop_mq_frame_destroy(fname);
+    gop_mq_frame_destroy(fcred);
 
     //** Form the response
-    response = mq_make_response_core_msg(msg, fid);
-    mq_msg_append_frame(response, mq_make_status_frame(status));
-    mq_msg_append_mem(response, NULL, 0, MQF_MSG_KEEP_DATA);  //** Empty frame
+    response = gop_mq_make_response_core_msg(msg, fid);
+    gop_mq_msg_append_frame(response, gop_mq_make_status_frame(status));
+    gop_mq_msg_append_mem(response, NULL, 0, MQF_MSG_KEEP_DATA);  //** Empty frame
 
     //** Lastly send it
-    mq_submit(osrs->server_portal, mq_task_new(osrs->mqc, response, NULL, NULL, 30));
+    gop_mq_submit(osrs->server_portal, gop_mq_task_new(osrs->mqc, response, NULL, NULL, 30));
 
     log_printf(5, "END\n");
 
@@ -379,17 +379,17 @@ void osrs_spin_hb_cb(void *arg, mq_task_t *task)
 
     //** Parse the command. Don't have to
     msg = task->msg;
-    mq_remove_header(msg, 0);
+    gop_mq_remove_header(msg, 0);
 
-    mq_frame_destroy(mq_msg_pop(msg));  //** This is the ID
-    mq_frame_destroy(mq_msg_pop(msg));  //** Drop the application command frame
-    mq_frame_destroy(mq_msg_pop(msg));  //** Host/user ID
+    gop_mq_frame_destroy(mq_msg_pop(msg));  //** This is the ID
+    gop_mq_frame_destroy(mq_msg_pop(msg));  //** Drop the application command frame
+    gop_mq_frame_destroy(mq_msg_pop(msg));  //** Host/user ID
 
     fcred = mq_msg_pop(msg);  //** This has the creds
     creds = osrs_get_creds(os, fcred);
 
     fspin = mq_msg_pop(msg);  //** This has the Spin ID
-    mq_get_frame(fspin, (void **)&spin_hb, &fsize);
+    gop_mq_get_frame(fspin, (void **)&spin_hb, &fsize);
 
     //** Now check if the handle is valid
     apr_thread_mutex_lock(osrs->lock);
@@ -402,8 +402,8 @@ void osrs_spin_hb_cb(void *arg, mq_task_t *task)
 
     osrs_release_creds(os, creds);
 
-    mq_frame_destroy(fspin);
-    mq_frame_destroy(fcred);
+    gop_mq_frame_destroy(fspin);
+    gop_mq_frame_destroy(fcred);
 
 
     log_printf(5, "END\n");
@@ -431,27 +431,27 @@ void osrs_create_object_cb(void *arg, mq_task_t *task)
 
     //** Parse the command.
     msg = task->msg;
-    mq_remove_header(msg, 0);
+    gop_mq_remove_header(msg, 0);
 
     fid = mq_msg_pop(msg);  //** This is the ID
-    mq_frame_destroy(mq_msg_pop(msg));  //** Drop the application command frame
+    gop_mq_frame_destroy(mq_msg_pop(msg));  //** Drop the application command frame
 
     fcred = mq_msg_pop(msg);  //** This has the creds
     creds = osrs_get_creds(os, fcred);
 
     fname = mq_msg_pop(msg);  //** This has the filename
-    mq_get_frame(fname, (void **)&name, &fsize);
+    gop_mq_get_frame(fname, (void **)&name, &fsize);
 
     f = mq_msg_pop(msg);  //** This has the Object type
-    mq_get_frame(f, (void **)&data, &nbytes);
+    gop_mq_get_frame(f, (void **)&data, &nbytes);
     tbx_zigzag_decode((unsigned char *)data, nbytes, &ftype);
-    mq_frame_destroy(f);
+    gop_mq_frame_destroy(f);
 
     f = mq_msg_pop(msg);  //** This has the ID used for the create attribute
-    mq_get_frame(f, (void **)&data, &nbytes);
+    gop_mq_get_frame(f, (void **)&data, &nbytes);
 
     if (creds != NULL) {
-        data = mq_frame_strdup(f);
+        data = gop_mq_frame_strdup(f);
         osrs_log_printf(os, creds, "CREATE(%s)\n", name);
         gop = os_create_object(osrs->os_child, creds, name, ftype, data);
         gop_waitall(gop);
@@ -459,22 +459,22 @@ void osrs_create_object_cb(void *arg, mq_task_t *task)
         status = gop_get_status(gop);
         gop_free(gop, OP_DESTROY);
     } else {
-        status = op_failure_status;
+        status = gop_failure_status;
     }
 
     osrs_release_creds(os, creds);
 
-    mq_frame_destroy(fname);
-    mq_frame_destroy(fcred);
-    mq_frame_destroy(f);
+    gop_mq_frame_destroy(fname);
+    gop_mq_frame_destroy(fcred);
+    gop_mq_frame_destroy(f);
 
     //** Form the response
-    response = mq_make_response_core_msg(msg, fid);
-    mq_msg_append_frame(response, mq_make_status_frame(status));
-    mq_msg_append_mem(response, NULL, 0, MQF_MSG_KEEP_DATA);  //** Empty frame
+    response = gop_mq_make_response_core_msg(msg, fid);
+    gop_mq_msg_append_frame(response, gop_mq_make_status_frame(status));
+    gop_mq_msg_append_mem(response, NULL, 0, MQF_MSG_KEEP_DATA);  //** Empty frame
 
     //** Lastly send it
-    mq_submit(osrs->server_portal, mq_task_new(osrs->mqc, response, NULL, NULL, 30));
+    gop_mq_submit(osrs->server_portal, gop_mq_task_new(osrs->mqc, response, NULL, NULL, 30));
 
     log_printf(5, "END\n");
 }
@@ -499,16 +499,16 @@ void osrs_remove_object_cb(void *arg, mq_task_t *task)
 
     //** Parse the command.
     msg = task->msg;
-    mq_remove_header(msg, 0);
+    gop_mq_remove_header(msg, 0);
 
     fid = mq_msg_pop(msg);  //** This is the ID
-    mq_frame_destroy(mq_msg_pop(msg));  //** Drop the application command frame
+    gop_mq_frame_destroy(mq_msg_pop(msg));  //** Drop the application command frame
 
     fcred = mq_msg_pop(msg);  //** This has the creds
     creds = osrs_get_creds(os, fcred);
 
     fname = mq_msg_pop(msg);  //** This has the filename
-    mq_get_frame(fname, (void **)&name, &fsize);
+    gop_mq_get_frame(fname, (void **)&name, &fsize);
 
     if (creds != NULL) {
         osrs_log_printf(os, creds, "REMOVE(%s)\n", name);
@@ -518,21 +518,21 @@ void osrs_remove_object_cb(void *arg, mq_task_t *task)
         status = gop_get_status(gop);
         gop_free(gop, OP_DESTROY);
     } else {
-        status = op_failure_status;
+        status = gop_failure_status;
     }
 
     osrs_release_creds(os, creds);
 
-    mq_frame_destroy(fname);
-    mq_frame_destroy(fcred);
+    gop_mq_frame_destroy(fname);
+    gop_mq_frame_destroy(fcred);
 
     //** Form the response
-    response = mq_make_response_core_msg(msg, fid);
-    mq_msg_append_frame(response, mq_make_status_frame(status));
-    mq_msg_append_mem(response, NULL, 0, MQF_MSG_KEEP_DATA);  //** Empty frame
+    response = gop_mq_make_response_core_msg(msg, fid);
+    gop_mq_msg_append_frame(response, gop_mq_make_status_frame(status));
+    gop_mq_msg_append_mem(response, NULL, 0, MQF_MSG_KEEP_DATA);  //** Empty frame
 
     //** Lastly send it
-    mq_submit(osrs->server_portal, mq_task_new(osrs->mqc, response, NULL, NULL, 30));
+    gop_mq_submit(osrs->server_portal, gop_mq_task_new(osrs->mqc, response, NULL, NULL, 30));
 }
 
 //***********************************************************************
@@ -559,22 +559,22 @@ void osrs_remove_regex_object_cb(void *arg, mq_task_t *task)
 
     log_printf(5, "Processing incoming request\n");
 
-    status = op_failure_status;
+    status = gop_failure_status;
     memset(&spin, 0, sizeof(spin));
 
     //** Parse the command.
     msg = task->msg;
-    mq_remove_header(msg, 0);
+    gop_mq_remove_header(msg, 0);
 
     fid = mq_msg_pop(msg);  //** This is the ID
-    mq_frame_destroy(mq_msg_pop(msg));  //** Drop the application command frame
+    gop_mq_frame_destroy(mq_msg_pop(msg));  //** Drop the application command frame
     hid = mq_msg_pop(msg);  //** This is the Host ID
 
     fcred = mq_msg_pop(msg);  //** This has the creds
     creds = osrs_get_creds(os, fcred);
 
     fdata = mq_msg_pop(msg);  //** This has the data
-    mq_get_frame(fdata, (void **)&buffer, &fsize);
+    gop_mq_get_frame(fdata, (void **)&buffer, &fsize);
 
     //** Parse the buffer
     path = NULL;
@@ -586,14 +586,14 @@ void osrs_remove_regex_object_cb(void *arg, mq_task_t *task)
         timeout = 60;
 
         //** Create the stream so we can get the heartbeating while we work
-        mqs = mq_stream_write_create(osrs->mqc, osrs->server_portal, osrs->ongoing, MQS_PACK_COMPRESS, osrs->max_stream, timeout, msg, fid, hid, 0);
+        mqs = gop_gop_mq_stream_write_create(osrs->mqc, osrs->server_portal, osrs->ongoing, MQS_PACK_COMPRESS, osrs->max_stream, timeout, msg, fid, hid, 0);
 
         goto fail;
     }
     bpos += n;
 
     //** Create the stream so we can get the heartbeating while we work
-    mqs = mq_stream_write_create(osrs->mqc, osrs->server_portal, osrs->ongoing, MQS_PACK_COMPRESS, osrs->max_stream, timeout, msg, fid, hid, 0);
+    mqs = gop_gop_mq_stream_write_create(osrs->mqc, osrs->server_portal, osrs->ongoing, MQS_PACK_COMPRESS, osrs->max_stream, timeout, msg, fid, hid, 0);
 
 
     //** Get the spin heartbeat handle ID
@@ -637,7 +637,7 @@ void osrs_remove_regex_object_cb(void *arg, mq_task_t *task)
         gop = os_remove_regex_object(osrs->os_child, creds, path, object_regex, obj_types, recurse_depth);
 
         loop = 0;
-        while ((g = gop_timed_waitany(gop, 1)) == NULL) {
+        while ((g = gop_waitany_timed(gop, 1)) == NULL) {
             if ((loop%10) == 0) osrs_update_active_table(os, hid);
             loop++;
 
@@ -660,7 +660,7 @@ void osrs_remove_regex_object_cb(void *arg, mq_task_t *task)
         status = gop_get_status(gop);
         gop_free(gop, OP_DESTROY);
     } else {
-        status = op_failure_status;
+        status = gop_failure_status;
     }
 
 fail:
@@ -674,17 +674,17 @@ fail:
 
     osrs_release_creds(os, creds);
 
-    mq_frame_destroy(fdata);
-    mq_frame_destroy(fcred);
+    gop_mq_frame_destroy(fdata);
+    gop_mq_frame_destroy(fcred);
 
-    if (path != NULL) os_regex_table_destroy(path);
-    if (object_regex != NULL) os_regex_table_destroy(object_regex);
+    if (path != NULL) lio_os_regex_table_destroy(path);
+    if (object_regex != NULL) lio_os_regex_table_destroy(object_regex);
 
     //** Send the response
     n = tbx_zigzag_encode(status.op_status, tbuf);
     n = n + tbx_zigzag_encode(status.error_code, &(tbuf[n]));
-    mq_stream_write(mqs, tbuf, n);
-    mq_stream_destroy(mqs);
+    gop_mq_stream_write(mqs, tbuf, n);
+    gop_mq_stream_destroy(mqs);
 }
 
 //***********************************************************************
@@ -706,21 +706,21 @@ void osrs_abort_remove_regex_object_cb(void *arg, mq_task_t *task)
 
     log_printf(5, "Processing incoming request\n");
 
-    status = op_failure_status;  //** Store a default response
+    status = gop_failure_status;  //** Store a default response
 
     //** Parse the command. Don't have to
     msg = task->msg;
-    mq_remove_header(msg, 0);
+    gop_mq_remove_header(msg, 0);
 
-    mq_frame_destroy(mq_msg_pop(msg));  //** This is the ID
-    mq_frame_destroy(mq_msg_pop(msg));  //** Drop the application command frame
+    gop_mq_frame_destroy(mq_msg_pop(msg));  //** This is the ID
+    gop_mq_frame_destroy(mq_msg_pop(msg));  //** Drop the application command frame
     fid = mq_msg_pop(msg);  //** Host/user ID
 
     fcred = mq_msg_pop(msg);  //** This has the creds
     creds = osrs_get_creds(os, fcred);
 
     fspin = mq_msg_pop(msg);  //** This has the Spin ID
-    mq_get_frame(fspin, (void **)&spin_hb, &fsize);
+    gop_mq_get_frame(fspin, (void **)&spin_hb, &fsize);
 
     //** Now check if the handle is valid
     apr_thread_mutex_lock(osrs->lock);
@@ -735,18 +735,18 @@ void osrs_abort_remove_regex_object_cb(void *arg, mq_task_t *task)
     apr_thread_mutex_unlock(osrs->lock);
 
     //** Form the response
-    response = mq_make_response_core_msg(msg, fid);
-    mq_msg_append_frame(response, mq_make_status_frame(status));
-    mq_msg_append_mem(response, NULL, 0, MQF_MSG_KEEP_DATA);  //** Empty frame
+    response = gop_mq_make_response_core_msg(msg, fid);
+    gop_mq_msg_append_frame(response, gop_mq_make_status_frame(status));
+    gop_mq_msg_append_mem(response, NULL, 0, MQF_MSG_KEEP_DATA);  //** Empty frame
 
     log_printf(5, "status.op_status=%d\n", status.op_status);
     //** Lastly send it
-    mq_submit(osrs->server_portal, mq_task_new(osrs->mqc, response, NULL, NULL, 30));
+    gop_mq_submit(osrs->server_portal, gop_mq_task_new(osrs->mqc, response, NULL, NULL, 30));
 
     osrs_release_creds(os, creds);
 
-    mq_frame_destroy(fspin);
-    mq_frame_destroy(fcred);
+    gop_mq_frame_destroy(fspin);
+    gop_mq_frame_destroy(fcred);
 
 
     log_printf(5, "END\n");
@@ -773,24 +773,24 @@ void osrs_symlink_object_cb(void *arg, mq_task_t *task)
 
     //** Parse the command. Don't have to
     msg = task->msg;
-    mq_remove_header(msg, 0);
+    gop_mq_remove_header(msg, 0);
 
     fid = mq_msg_pop(msg);  //** This is the ID
-    mq_frame_destroy(mq_msg_pop(msg));  //** Drop the application command frame
+    gop_mq_frame_destroy(mq_msg_pop(msg));  //** Drop the application command frame
 
     fcred = mq_msg_pop(msg);  //** This has the creds
     creds = osrs_get_creds(os, fcred);
 
     fsname = mq_msg_pop(msg);  //** Source file
-    mq_get_frame(fsname, (void **)&src_name, &fsize);
+    gop_mq_get_frame(fsname, (void **)&src_name, &fsize);
 
     fdname = mq_msg_pop(msg);  //** Destination file
-    mq_get_frame(fdname, (void **)&dest_name, &fsize);
+    gop_mq_get_frame(fdname, (void **)&dest_name, &fsize);
 
     fuserid = mq_msg_pop(msg);  //** User ID
 
     if (creds != NULL) {
-        userid = mq_frame_strdup(fuserid);
+        userid = gop_mq_frame_strdup(fuserid);
         osrs_log_printf(os, creds, "SYMLINK(%s, %s)\n", src_name, dest_name);
         gop = os_symlink_object(osrs->os_child, creds, src_name, dest_name, userid);
         gop_waitall(gop);
@@ -798,23 +798,23 @@ void osrs_symlink_object_cb(void *arg, mq_task_t *task)
         gop_free(gop, OP_DESTROY);
         if (userid != NULL) free(userid);
     } else {
-        status = op_failure_status;
+        status = gop_failure_status;
     }
 
     osrs_release_creds(os, creds);
 
-    mq_frame_destroy(fsname);
-    mq_frame_destroy(fdname);
-    mq_frame_destroy(fuserid);
-    mq_frame_destroy(fcred);
+    gop_mq_frame_destroy(fsname);
+    gop_mq_frame_destroy(fdname);
+    gop_mq_frame_destroy(fuserid);
+    gop_mq_frame_destroy(fcred);
 
     //** Form the response
-    response = mq_make_response_core_msg(msg, fid);
-    mq_msg_append_frame(response, mq_make_status_frame(status));
-    mq_msg_append_mem(response, NULL, 0, MQF_MSG_KEEP_DATA);  //** Empty frame
+    response = gop_mq_make_response_core_msg(msg, fid);
+    gop_mq_msg_append_frame(response, gop_mq_make_status_frame(status));
+    gop_mq_msg_append_mem(response, NULL, 0, MQF_MSG_KEEP_DATA);  //** Empty frame
 
     //** Lastly send it
-    mq_submit(osrs->server_portal, mq_task_new(osrs->mqc, response, NULL, NULL, 30));
+    gop_mq_submit(osrs->server_portal, gop_mq_task_new(osrs->mqc, response, NULL, NULL, 30));
 }
 
 //***********************************************************************
@@ -837,24 +837,24 @@ void osrs_hardlink_object_cb(void *arg, mq_task_t *task)
 
     //** Parse the command. Don't have to
     msg = task->msg;
-    mq_remove_header(msg, 0);
+    gop_mq_remove_header(msg, 0);
 
     fid = mq_msg_pop(msg);  //** This is the ID
-    mq_frame_destroy(mq_msg_pop(msg));  //** Drop the application command frame
+    gop_mq_frame_destroy(mq_msg_pop(msg));  //** Drop the application command frame
 
     fcred = mq_msg_pop(msg);  //** This has the creds
     creds = osrs_get_creds(os, fcred);
 
     fsname = mq_msg_pop(msg);  //** Source file
-    mq_get_frame(fsname, (void **)&src_name, &fsize);
+    gop_mq_get_frame(fsname, (void **)&src_name, &fsize);
 
     fdname = mq_msg_pop(msg);  //** Destination file
-    mq_get_frame(fdname, (void **)&dest_name, &fsize);
+    gop_mq_get_frame(fdname, (void **)&dest_name, &fsize);
 
     fuserid = mq_msg_pop(msg);  //** User ID
 
     if (creds != NULL) {
-        userid = mq_frame_strdup(fuserid);
+        userid = gop_mq_frame_strdup(fuserid);
         osrs_log_printf(os, creds, "HARDLINK(%s, %s)\n", src_name, dest_name);
         gop = os_hardlink_object(osrs->os_child, creds, src_name, dest_name, userid);
         gop_waitall(gop);
@@ -862,23 +862,23 @@ void osrs_hardlink_object_cb(void *arg, mq_task_t *task)
         gop_free(gop, OP_DESTROY);
         if (userid != NULL) free(userid);
     } else {
-        status = op_failure_status;
+        status = gop_failure_status;
     }
 
     osrs_release_creds(os, creds);
 
-    mq_frame_destroy(fsname);
-    mq_frame_destroy(fdname);
-    mq_frame_destroy(fuserid);
-    mq_frame_destroy(fcred);
+    gop_mq_frame_destroy(fsname);
+    gop_mq_frame_destroy(fdname);
+    gop_mq_frame_destroy(fuserid);
+    gop_mq_frame_destroy(fcred);
 
     //** Form the response
-    response = mq_make_response_core_msg(msg, fid);
-    mq_msg_append_frame(response, mq_make_status_frame(status));
-    mq_msg_append_mem(response, NULL, 0, MQF_MSG_KEEP_DATA);  //** Empty frame
+    response = gop_mq_make_response_core_msg(msg, fid);
+    gop_mq_msg_append_frame(response, gop_mq_make_status_frame(status));
+    gop_mq_msg_append_mem(response, NULL, 0, MQF_MSG_KEEP_DATA);  //** Empty frame
 
     //** Lastly send it
-    mq_submit(osrs->server_portal, mq_task_new(osrs->mqc, response, NULL, NULL, 30));
+    gop_mq_submit(osrs->server_portal, gop_mq_task_new(osrs->mqc, response, NULL, NULL, 30));
 }
 
 //***********************************************************************
@@ -901,19 +901,19 @@ void osrs_move_object_cb(void *arg, mq_task_t *task)
 
     //** Parse the command. Don't have to
     msg = task->msg;
-    mq_remove_header(msg, 0);
+    gop_mq_remove_header(msg, 0);
 
     fid = mq_msg_pop(msg);  //** This is the ID
-    mq_frame_destroy(mq_msg_pop(msg));  //** Drop the application command frame
+    gop_mq_frame_destroy(mq_msg_pop(msg));  //** Drop the application command frame
 
     fcred = mq_msg_pop(msg);  //** This has the creds
     creds = osrs_get_creds(os, fcred);
 
     fsname = mq_msg_pop(msg);  //** Source file
-    mq_get_frame(fsname, (void **)&src_name, &fsize);
+    gop_mq_get_frame(fsname, (void **)&src_name, &fsize);
 
     fdname = mq_msg_pop(msg);  //** Destination file
-    mq_get_frame(fdname, (void **)&dest_name, &fsize);
+    gop_mq_get_frame(fdname, (void **)&dest_name, &fsize);
 
     if (creds != NULL) {
         osrs_log_printf(os, creds, "MOVE(%s, %s)\n", src_name, dest_name);
@@ -922,22 +922,22 @@ void osrs_move_object_cb(void *arg, mq_task_t *task)
         status = gop_get_status(gop);
         gop_free(gop, OP_DESTROY);
     } else {
-        status = op_failure_status;
+        status = gop_failure_status;
     }
 
     osrs_release_creds(os, creds);
 
-    mq_frame_destroy(fsname);
-    mq_frame_destroy(fdname);
-    mq_frame_destroy(fcred);
+    gop_mq_frame_destroy(fsname);
+    gop_mq_frame_destroy(fdname);
+    gop_mq_frame_destroy(fcred);
 
     //** Form the response
-    response = mq_make_response_core_msg(msg, fid);
-    mq_msg_append_frame(response, mq_make_status_frame(status));
-    mq_msg_append_mem(response, NULL, 0, MQF_MSG_KEEP_DATA);  //** Empty frame
+    response = gop_mq_make_response_core_msg(msg, fid);
+    gop_mq_msg_append_frame(response, gop_mq_make_status_frame(status));
+    gop_mq_msg_append_mem(response, NULL, 0, MQF_MSG_KEEP_DATA);  //** Empty frame
 
     //** Lastly send it
-    mq_submit(osrs->server_portal, mq_task_new(osrs->mqc, response, NULL, NULL, 30));
+    gop_mq_submit(osrs->server_portal, gop_mq_task_new(osrs->mqc, response, NULL, NULL, 30));
 }
 
 
@@ -965,10 +965,10 @@ void osrs_open_object_cb(void *arg, mq_task_t *task)
 
     //** Parse the command. Don't have to
     msg = task->msg;
-    mq_remove_header(msg, 0);
+    gop_mq_remove_header(msg, 0);
 
     fid = mq_msg_pop(msg);  //** This is the ID
-    mq_frame_destroy(mq_msg_pop(msg));  //** Drop the application command frame
+    gop_mq_frame_destroy(mq_msg_pop(msg));  //** Drop the application command frame
 
     fcred = mq_msg_pop(msg);  //** This has the creds
     creds = osrs_get_creds(os, fcred);
@@ -976,10 +976,10 @@ void osrs_open_object_cb(void *arg, mq_task_t *task)
     fuid = mq_msg_pop(msg);  //** User ID for storing in lock attribute
 
     fsname = mq_msg_pop(msg);  //** Source file
-    mq_get_frame(fsname, (void **)&src_name, &fsize);
+    gop_mq_get_frame(fsname, (void **)&src_name, &fsize);
 
     fmode = mq_msg_pop(msg);  //** Mode and max wait
-    mq_get_frame(fmode, (void **)&data, &fsize);
+    gop_mq_get_frame(fmode, (void **)&data, &fsize);
     n = tbx_zigzag_decode(data, fsize, &mode);
     tbx_zigzag_decode(&(data[n]), fsize, &max_wait);
     log_printf(5, "fname=%s mode=%" PRId64 " max_wait=%" PRId64 "\n", src_name, mode, max_wait);
@@ -987,9 +987,9 @@ void osrs_open_object_cb(void *arg, mq_task_t *task)
     fhb = mq_msg_pop(msg);  //** Heartbeat frame on success
     fhandle = mq_msg_pop(msg);  //** Handle for aborts
     if (creds != NULL) {
-        mq_get_frame(fhandle, (void **)&(ah.handle), &n);
+        gop_mq_get_frame(fhandle, (void **)&(ah.handle), &n);
         ah.handle_len = n;
-        id = mq_frame_strdup(fuid);
+        id = gop_mq_frame_strdup(fuid);
         ah.gop = os_open_object(osrs->os_child, creds, src_name, mode, id, &fd, max_wait);
         osrs_add_abort_handle(os, &ah);  //** Add us to the abort list
 
@@ -1001,40 +1001,40 @@ void osrs_open_object_cb(void *arg, mq_task_t *task)
         status = gop_get_status(ah.gop);
         gop_free(ah.gop, OP_DESTROY);
     } else {
-        status = op_failure_status;
+        status = gop_failure_status;
     }
 
     //** Form the response
-    response = mq_make_response_core_msg(msg, fid);
-    mq_msg_append_frame(response, mq_make_status_frame(status));
+    response = gop_mq_make_response_core_msg(msg, fid);
+    gop_mq_msg_append_frame(response, gop_mq_make_status_frame(status));
 
     //** On success add us to the ongoing monitor thread and return the handle
     if (status.op_status == OP_STATE_SUCCESS) {
         handle = NULL;
-        mq_get_frame(fhb, (void **)&handle, &handle_len);
+        gop_mq_get_frame(fhb, (void **)&handle, &handle_len);
         log_printf(5, "handle=%s\n", handle);
         log_printf(5, "handle_len=%d\n", handle_len);
-        oo = mq_ongoing_add(osrs->ongoing, 1, handle, handle_len, (void *)fd, (mq_ongoing_fail_t *)osrs->os_child->close_object, osrs->os_child);
+        oo = gop_mq_ongoing_add(osrs->ongoing, 1, handle, handle_len, (void *)fd, (mq_ongoing_fail_t *)osrs->os_child->close_object, osrs->os_child);
 
         n=sizeof(intptr_t);
         log_printf(5, "PTR key=%" PRIdPTR " len=%d\n", oo->key, n);
-        mq_msg_append_mem(response, &(oo->key), sizeof(intptr_t), MQF_MSG_KEEP_DATA);
+        gop_mq_msg_append_mem(response, &(oo->key), sizeof(intptr_t), MQF_MSG_KEEP_DATA);
     }
 
     //** Do some house cleaning
     osrs_release_creds(os, creds);
 
-    mq_frame_destroy(fhb);
-    mq_frame_destroy(fsname);
-    mq_frame_destroy(fcred);
-    mq_frame_destroy(fuid);
-    mq_frame_destroy(fmode);
-    mq_frame_destroy(fhandle);
+    gop_mq_frame_destroy(fhb);
+    gop_mq_frame_destroy(fsname);
+    gop_mq_frame_destroy(fcred);
+    gop_mq_frame_destroy(fuid);
+    gop_mq_frame_destroy(fmode);
+    gop_mq_frame_destroy(fhandle);
 
-    mq_msg_append_mem(response, NULL, 0, MQF_MSG_KEEP_DATA);  //** Empty frame
+    gop_mq_msg_append_mem(response, NULL, 0, MQF_MSG_KEEP_DATA);  //** Empty frame
 
     //** Lastly send it
-    mq_submit(osrs->server_portal, mq_task_new(osrs->mqc, response, NULL, NULL, 30));
+    gop_mq_submit(osrs->server_portal, gop_mq_task_new(osrs->mqc, response, NULL, NULL, 30));
 }
 
 //***********************************************************************
@@ -1058,23 +1058,23 @@ void osrs_close_object_cb(void *arg, mq_task_t *task)
 
     //** Parse the command.
     msg = task->msg;
-    mq_remove_header(msg, 0);
+    gop_mq_remove_header(msg, 0);
 
     fid = mq_msg_pop(msg);  //** This is the ID for responses
-    mq_frame_destroy(mq_msg_pop(msg));  //** Drop the application command frame
+    gop_mq_frame_destroy(mq_msg_pop(msg));  //** Drop the application command frame
 
     fuid = mq_msg_pop(msg);  //** Host/user ID
-    mq_get_frame(fuid, (void **)&id, &fsize);
+    gop_mq_get_frame(fuid, (void **)&id, &fsize);
 
     fhid = mq_msg_pop(msg);  //** Host handle
-    mq_get_frame(fhid, (void **)&fhandle, &hsize);
+    gop_mq_get_frame(fhid, (void **)&fhandle, &hsize);
     assert(hsize == sizeof(intptr_t));
 
     key = *(intptr_t *)fhandle;
     log_printf(5, "PTR key=%" PRIdPTR "\n", key);
 
     //** Do the host lookup
-    if ((handle = mq_ongoing_remove(osrs->ongoing, id, fsize, key)) != NULL) {
+    if ((handle = gop_mq_ongoing_remove(osrs->ongoing, id, fsize, key)) != NULL) {
         log_printf(6, "Found handle\n");
 
         gop = os_close_object(osrs->os_child, handle);
@@ -1083,19 +1083,19 @@ void osrs_close_object_cb(void *arg, mq_task_t *task)
         gop_free(gop, OP_DESTROY);
     } else {
         log_printf(6, "ERROR missing host=%s\n", id);
-        status = op_failure_status;
+        status = gop_failure_status;
     }
 
-    mq_frame_destroy(fhid);
-    mq_frame_destroy(fuid);
+    gop_mq_frame_destroy(fhid);
+    gop_mq_frame_destroy(fuid);
 
     //** Form the response
-    response = mq_make_response_core_msg(msg, fid);
-    mq_msg_append_frame(response, mq_make_status_frame(status));
-    mq_msg_append_mem(response, NULL, 0, MQF_MSG_KEEP_DATA);  //** Empty frame
+    response = gop_mq_make_response_core_msg(msg, fid);
+    gop_mq_msg_append_frame(response, gop_mq_make_status_frame(status));
+    gop_mq_msg_append_mem(response, NULL, 0, MQF_MSG_KEEP_DATA);  //** Empty frame
 
     //** Lastly send it
-    mq_submit(osrs->server_portal, mq_task_new(osrs->mqc, response, NULL, NULL, 30));
+    gop_mq_submit(osrs->server_portal, gop_mq_task_new(osrs->mqc, response, NULL, NULL, 30));
 }
 
 //***********************************************************************
@@ -1116,26 +1116,26 @@ void osrs_abort_open_object_cb(void *arg, mq_task_t *task)
 
     //** Parse the command.
     msg = task->msg;
-    mq_remove_header(msg, 0);
+    gop_mq_remove_header(msg, 0);
 
     fid = mq_msg_pop(msg);  //** This is the ID for responses
-    mq_frame_destroy(mq_msg_pop(msg));  //** Drop the application command frame
+    gop_mq_frame_destroy(mq_msg_pop(msg));  //** Drop the application command frame
 
     fuid = mq_msg_pop(msg);  //** Host/user ID
-    mq_get_frame(fuid, (void **)&id, &fsize);
+    gop_mq_get_frame(fuid, (void **)&id, &fsize);
 
     //** Perform the abort
     status = osrs_perform_abort_handle(os, id, fsize);
 
-    mq_frame_destroy(fuid);
+    gop_mq_frame_destroy(fuid);
 
     //** Form the response
-    response = mq_make_response_core_msg(msg, fid);
-    mq_msg_append_frame(response, mq_make_status_frame(status));
-    mq_msg_append_mem(response, NULL, 0, MQF_MSG_KEEP_DATA);  //** Empty frame
+    response = gop_mq_make_response_core_msg(msg, fid);
+    gop_mq_msg_append_frame(response, gop_mq_make_status_frame(status));
+    gop_mq_msg_append_mem(response, NULL, 0, MQF_MSG_KEEP_DATA);  //** Empty frame
 
     //** Lastly send it
-    mq_submit(osrs->server_portal, mq_task_new(osrs->mqc, response, NULL, NULL, 30));
+    gop_mq_submit(osrs->server_portal, gop_mq_task_new(osrs->mqc, response, NULL, NULL, 30));
 }
 
 //***********************************************************************
@@ -1172,32 +1172,32 @@ void osrs_get_mult_attr_cb(void *arg, mq_task_t *task)
 
     //** Parse the command.
     msg = task->msg;
-    mq_remove_header(msg, 0);
+    gop_mq_remove_header(msg, 0);
 
     fid = mq_msg_pop(msg);  //** This is the ID for responses
-    mq_frame_destroy(mq_msg_pop(msg));  //** Drop the application command frame
+    gop_mq_frame_destroy(mq_msg_pop(msg));  //** Drop the application command frame
     hid = mq_msg_pop(msg);  //** This is the Host ID for the ongoing stream
 
     fcred = mq_msg_pop(msg);  //** This has the creds
     creds = osrs_get_creds(os, fcred);
 
     fuid = mq_msg_pop(msg);  //** Host/user ID
-    mq_get_frame(fuid, (void **)&id, &id_size);
+    gop_mq_get_frame(fuid, (void **)&id, &id_size);
 
     //** Get the fd handle
     ffd = mq_msg_pop(msg);  //** Host/user ID
-    mq_get_frame(ffd, (void **)&data, &len);
+    gop_mq_get_frame(ffd, (void **)&data, &len);
     fd_key = *(intptr_t *)data;
 
     log_printf(5, "PTR key=%" PRIdPTR " len=%d\n", fd_key, len);
 
     fdata = mq_msg_pop(msg);  //** attr list
-    mq_get_frame(fdata, (void **)&data, &fsize);
+    gop_mq_get_frame(fdata, (void **)&data, &fsize);
 
     log_printf(5, "PTR key=%" PRIdPTR " len=%d id=%s id_len=%d\n", fd_key, len, id, id_size);
 
     //** Now check if the handle is valid
-    if ((fd = mq_ongoing_get(osrs->ongoing, (char *)id, id_size, fd_key)) == NULL) {
+    if ((fd = gop_mq_ongoing_get(osrs->ongoing, (char *)id, id_size, fd_key)) == NULL) {
         log_printf(5, "Invalid handle!\n");
         goto fail_fd;
     }
@@ -1256,24 +1256,24 @@ void osrs_get_mult_attr_cb(void *arg, mq_task_t *task)
         status = gop_get_status(gop);
         gop_free(gop, OP_DESTROY);
     } else {
-        status = op_failure_status;
+        status = gop_failure_status;
     }
 
     //** Create the stream
-    mqs = mq_stream_write_create(osrs->mqc, osrs->server_portal, osrs->ongoing, MQS_PACK_COMPRESS, max_stream, timeout, msg, fid, hid, 0);
+    mqs = gop_gop_mq_stream_write_create(osrs->mqc, osrs->server_portal, osrs->ongoing, MQS_PACK_COMPRESS, max_stream, timeout, msg, fid, hid, 0);
     osrs_update_active_table(os, hid);  //** Update the active log
 
     //** Return the results
     i = tbx_zigzag_encode(status.op_status, buffer);
     i = i + tbx_zigzag_encode(status.error_code, &(buffer[i]));
-    mq_stream_write(mqs, buffer, i);
+    gop_mq_stream_write(mqs, buffer, i);
 
     log_printf(5, "status.op_status=%d status.error_code=%d len=%d\n", status.op_status, status.error_code, i);
     if (status.op_status == OP_STATE_SUCCESS) {
         for (i=0; i<n; i++) {
-            mq_stream_write_varint(mqs, v_size[i]);
+            gop_gop_mq_stream_write_varint(mqs, v_size[i]);
             if (v_size[i] > 0) {
-                mq_stream_write(mqs, val[i], v_size[i]);
+                gop_mq_stream_write(mqs, val[i], v_size[i]);
             }
             if (v_size[i] > 0) {
                 log_printf(15, "val[%d]=%s\n", i, (char *)val[i]);
@@ -1285,25 +1285,25 @@ void osrs_get_mult_attr_cb(void *arg, mq_task_t *task)
 
 fail_fd:
 fail:
-    if (fd != NULL) mq_ongoing_release(osrs->ongoing, (char *)id, id_size, fd_key);
+    if (fd != NULL) gop_mq_ongoing_release(osrs->ongoing, (char *)id, id_size, fd_key);
 
     osrs_release_creds(os, creds);
 
-    mq_frame_destroy(ffd);
-    mq_frame_destroy(fuid);
-    mq_frame_destroy(fdata);
-    mq_frame_destroy(fcred);
+    gop_mq_frame_destroy(ffd);
+    gop_mq_frame_destroy(fuid);
+    gop_mq_frame_destroy(fdata);
+    gop_mq_frame_destroy(fcred);
 
     if (mqs != NULL) {
-        mq_stream_destroy(mqs);  //** This also flushes the data to the client
+        gop_mq_stream_destroy(mqs);  //** This also flushes the data to the client
     } else {  //** there was an error processing the record
         log_printf(5, "ERROR status being returned!\n");
-        mqs = mq_stream_write_create(osrs->mqc, osrs->server_portal, osrs->ongoing, MQS_PACK_RAW, 1024, 30, msg, fid, hid, 0);
-        status = op_failure_status;
+        mqs = gop_gop_mq_stream_write_create(osrs->mqc, osrs->server_portal, osrs->ongoing, MQS_PACK_RAW, 1024, 30, msg, fid, hid, 0);
+        status = gop_failure_status;
         i = tbx_zigzag_encode(status.op_status, buffer);
         i = i + tbx_zigzag_encode(status.error_code, &(buffer[i]));
-        mq_stream_write(mqs, buffer, i);
-        mq_stream_destroy(mqs);
+        gop_mq_stream_write(mqs, buffer, i);
+        gop_mq_stream_destroy(mqs);
     }
 
     if (key) {
@@ -1347,35 +1347,35 @@ void osrs_set_mult_attr_cb(void *arg, mq_task_t *task)
     key = NULL;
     val = NULL;
     v_size = NULL;
-    status = op_failure_status;
+    status = gop_failure_status;
 
     //** Parse the command.
     msg = task->msg;
-    mq_remove_header(msg, 0);
+    gop_mq_remove_header(msg, 0);
 
     fid = mq_msg_pop(msg);  //** This is the ID for responses
-    mq_frame_destroy(mq_msg_pop(msg));  //** Drop the application command frame
+    gop_mq_frame_destroy(mq_msg_pop(msg));  //** Drop the application command frame
 
     fcred = mq_msg_pop(msg);  //** This has the creds
     creds = osrs_get_creds(os, fcred);
 
     fuid = mq_msg_pop(msg);  //** Host/user ID
-    mq_get_frame(fuid, (void **)&id, &id_size);
+    gop_mq_get_frame(fuid, (void **)&id, &id_size);
 
     //** Get the fd handle
     ffd = mq_msg_pop(msg);  //** Host/user ID
-    mq_get_frame(ffd, (void **)&data, &len);
+    gop_mq_get_frame(ffd, (void **)&data, &len);
     fd_key = *(intptr_t *)data;
 
     log_printf(5, "PTR key=%" PRIdPTR " len=%d\n", fd_key, len);
 
     fdata = mq_msg_pop(msg);  //** attr list to set
-    mq_get_frame(fdata, (void **)&data, &fsize);
+    gop_mq_get_frame(fdata, (void **)&data, &fsize);
 
     log_printf(5, "PTR key=%" PRIdPTR " len=%d id=%s id_len=%d\n", fd_key, len, id, id_size);
 
     //** Now check if the handle is valid
-    if ((fd = mq_ongoing_get(osrs->ongoing, (char *)id, id_size, fd_key)) == NULL) {
+    if ((fd = gop_mq_ongoing_get(osrs->ongoing, (char *)id, id_size, fd_key)) == NULL) {
         log_printf(5, "Invalid handle!\n");
         goto fail_fd;
     }
@@ -1444,29 +1444,29 @@ void osrs_set_mult_attr_cb(void *arg, mq_task_t *task)
         status = gop_get_status(gop);
         gop_free(gop, OP_DESTROY);
     } else {
-        status = op_failure_status;
+        status = gop_failure_status;
     }
 
 fail_fd:
 fail:
-    if (fd != NULL) mq_ongoing_release(osrs->ongoing, (char *)id, id_size, fd_key);
+    if (fd != NULL) gop_mq_ongoing_release(osrs->ongoing, (char *)id, id_size, fd_key);
 
     osrs_release_creds(os, creds);
 
-    mq_frame_destroy(ffd);
-    mq_frame_destroy(fuid);
-    mq_frame_destroy(fdata);
-    mq_frame_destroy(fcred);
+    gop_mq_frame_destroy(ffd);
+    gop_mq_frame_destroy(fuid);
+    gop_mq_frame_destroy(fdata);
+    gop_mq_frame_destroy(fcred);
 
 
     //** Form the response
-    response = mq_make_response_core_msg(msg, fid);
-    mq_msg_append_frame(response, mq_make_status_frame(status));
-    mq_msg_append_mem(response, NULL, 0, MQF_MSG_KEEP_DATA);  //** Empty frame
+    response = gop_mq_make_response_core_msg(msg, fid);
+    gop_mq_msg_append_frame(response, gop_mq_make_status_frame(status));
+    gop_mq_msg_append_mem(response, NULL, 0, MQF_MSG_KEEP_DATA);  //** Empty frame
 
     log_printf(5, "status.op_status=%d\n", status.op_status);
     //** Lastly send it
-    mq_submit(osrs->server_portal, mq_task_new(osrs->mqc, response, NULL, NULL, 30));
+    gop_mq_submit(osrs->server_portal, gop_mq_task_new(osrs->mqc, response, NULL, NULL, 30));
 
     if (key) {
         for (i=0; i<n; i++) if (key[i]) free(key[i]);
@@ -1501,21 +1501,21 @@ void osrs_abort_regex_set_mult_attr_cb(void *arg, mq_task_t *task)
 
     log_printf(5, "Processing incoming request\n");
 
-    status = op_failure_status;  //** Store a default response
+    status = gop_failure_status;  //** Store a default response
 
     //** Parse the command. Don't have to
     msg = task->msg;
-    mq_remove_header(msg, 0);
+    gop_mq_remove_header(msg, 0);
 
-    mq_frame_destroy(mq_msg_pop(msg));  //** This is the ID
-    mq_frame_destroy(mq_msg_pop(msg));  //** Drop the application command frame
+    gop_mq_frame_destroy(mq_msg_pop(msg));  //** This is the ID
+    gop_mq_frame_destroy(mq_msg_pop(msg));  //** Drop the application command frame
     fid = mq_msg_pop(msg);  //** Host/user ID
 
     fcred = mq_msg_pop(msg);  //** This has the creds
     creds = osrs_get_creds(os, fcred);
 
     fspin = mq_msg_pop(msg);  //** This has the Spin ID
-    mq_get_frame(fspin, (void **)&spin_hb, &fsize);
+    gop_mq_get_frame(fspin, (void **)&spin_hb, &fsize);
 
     //** Now check if the handle is valid
     apr_thread_mutex_lock(osrs->lock);
@@ -1530,18 +1530,18 @@ void osrs_abort_regex_set_mult_attr_cb(void *arg, mq_task_t *task)
     apr_thread_mutex_unlock(osrs->lock);
 
     //** Form the response
-    response = mq_make_response_core_msg(msg, fid);
-    mq_msg_append_frame(response, mq_make_status_frame(status));
-    mq_msg_append_mem(response, NULL, 0, MQF_MSG_KEEP_DATA);  //** Empty frame
+    response = gop_mq_make_response_core_msg(msg, fid);
+    gop_mq_msg_append_frame(response, gop_mq_make_status_frame(status));
+    gop_mq_msg_append_mem(response, NULL, 0, MQF_MSG_KEEP_DATA);  //** Empty frame
 
     log_printf(5, "status.op_status=%d\n", status.op_status);
     //** Lastly send it
-    mq_submit(osrs->server_portal, mq_task_new(osrs->mqc, response, NULL, NULL, 30));
+    gop_mq_submit(osrs->server_portal, gop_mq_task_new(osrs->mqc, response, NULL, NULL, 30));
 
     osrs_release_creds(os, creds);
 
-    mq_frame_destroy(fspin);
-    mq_frame_destroy(fcred);
+    gop_mq_frame_destroy(fspin);
+    gop_mq_frame_destroy(fcred);
 
 
     log_printf(5, "END\n");
@@ -1575,7 +1575,7 @@ void osrs_regex_set_mult_attr_cb(void *arg, mq_task_t *task)
 
     log_printf(5, "Processing incoming request\n");
 
-    status = op_failure_status;
+    status = gop_failure_status;
     memset(&spin, 0, sizeof(spin));
     key = NULL;
     val = NULL, v_size = NULL;
@@ -1583,20 +1583,20 @@ void osrs_regex_set_mult_attr_cb(void *arg, mq_task_t *task)
 
     //** Parse the command.
     msg = task->msg;
-    mq_remove_header(msg, 0);
+    gop_mq_remove_header(msg, 0);
 
     fid = mq_msg_pop(msg);  //** This is the ID
-    mq_frame_destroy(mq_msg_pop(msg));  //** Drop the application command frame
+    gop_mq_frame_destroy(mq_msg_pop(msg));  //** Drop the application command frame
     hid = mq_msg_pop(msg);  //** This is the Host ID for the ongoing stream
 
     fcred = mq_msg_pop(msg);  //** This has the creds
     creds = osrs_get_creds(os, fcred);
 
     fcid = mq_msg_pop(msg);  //** This has the call ID
-    call_id = mq_frame_strdup(fcid);
+    call_id = gop_mq_frame_strdup(fcid);
 
     fdata = mq_msg_pop(msg);  //** This has the data
-    mq_get_frame(fdata, (void **)&buffer, &fsize);
+    gop_mq_get_frame(fdata, (void **)&buffer, &fsize);
 
     //** Parse the buffer
     path = NULL;
@@ -1612,7 +1612,7 @@ void osrs_regex_set_mult_attr_cb(void *arg, mq_task_t *task)
     }
 
     //** Create the stream so we can get the heartbeating while we work
-    mqs = mq_stream_write_create(osrs->mqc, osrs->server_portal, osrs->ongoing, MQS_PACK_COMPRESS, osrs->max_stream, timeout, msg, fid, hid, 0);
+    mqs = gop_gop_mq_stream_write_create(osrs->mqc, osrs->server_portal, osrs->ongoing, MQS_PACK_COMPRESS, osrs->max_stream, timeout, msg, fid, hid, 0);
     if (n < 0) goto fail;
 
     //** Get the spin heartbeat handle ID
@@ -1696,7 +1696,7 @@ void osrs_regex_set_mult_attr_cb(void *arg, mq_task_t *task)
         spin.gop = os_regex_object_set_multiple_attrs(osrs->os_child, creds, call_id, path, object_regex, obj_types, recurse_depth, key, (void **)val, v_size, n_attrs);
 
         loop= 0;
-        while ((g = gop_timed_waitany(spin.gop, 1)) == NULL) {
+        while ((g = gop_waitany_timed(spin.gop, 1)) == NULL) {
             if ((loop%10) == 0) osrs_update_active_table(os, hid);
             loop++;
 
@@ -1718,7 +1718,7 @@ void osrs_regex_set_mult_attr_cb(void *arg, mq_task_t *task)
         gop_waitall(spin.gop);
         status = gop_get_status(spin.gop);
     } else {
-        status = op_failure_status;
+        status = gop_failure_status;
     }
 
 fail:
@@ -1734,12 +1734,12 @@ fail:
 
     osrs_release_creds(os, creds);
 
-    mq_frame_destroy(fdata);
-    mq_frame_destroy(fcred);
-    mq_frame_destroy(fcid);
+    gop_mq_frame_destroy(fdata);
+    gop_mq_frame_destroy(fcred);
+    gop_mq_frame_destroy(fcid);
 
-    if (path != NULL) os_regex_table_destroy(path);
-    if (object_regex != NULL) os_regex_table_destroy(object_regex);
+    if (path != NULL) lio_os_regex_table_destroy(path);
+    if (object_regex != NULL) lio_os_regex_table_destroy(object_regex);
 
     if (key != NULL) {
         for (i=0; i<n_attrs; i++) {
@@ -1755,8 +1755,8 @@ fail:
     //** Send the response
     n = tbx_zigzag_encode(status.op_status, tbuf);
     n = n + tbx_zigzag_encode(status.error_code, &(tbuf[n]));
-    mq_stream_write(mqs, tbuf, n);
-    mq_stream_destroy(mqs);
+    gop_mq_stream_write(mqs, tbuf, n);
+    gop_mq_stream_destroy(mqs);
 }
 
 //***********************************************************************
@@ -1787,43 +1787,43 @@ void osrs_copy_mult_attr_cb(void *arg, mq_task_t *task)
     fd_dest = NULL;
     key_src = NULL;
     key_dest = NULL;
-    status = op_failure_status;
+    status = gop_failure_status;
 
     //** Parse the command.
     msg = task->msg;
-    mq_remove_header(msg, 0);
+    gop_mq_remove_header(msg, 0);
 
     fid = mq_msg_pop(msg);  //** This is the ID for responses
-    mq_frame_destroy(mq_msg_pop(msg));  //** Drop the application command frame
+    gop_mq_frame_destroy(mq_msg_pop(msg));  //** Drop the application command frame
 
     fcred = mq_msg_pop(msg);  //** This has the creds
     creds = osrs_get_creds(os, fcred);
 
     fuid = mq_msg_pop(msg);  //** Host/user ID
-    mq_get_frame(fuid, (void **)&id, &id_size);
+    gop_mq_get_frame(fuid, (void **)&id, &id_size);
 
     //** Get the fd handles
     ffd_src = mq_msg_pop(msg);  //** Host/user ID
-    mq_get_frame(ffd_src, (void **)&data, &len);
+    gop_mq_get_frame(ffd_src, (void **)&data, &len);
     fd_key_src = *(intptr_t *)data;
 
     ffd_dest = mq_msg_pop(msg);  //** Host/user ID
-    mq_get_frame(ffd_dest, (void **)&data, &len);
+    gop_mq_get_frame(ffd_dest, (void **)&data, &len);
     fd_key_dest = *(intptr_t *)data;
 
     log_printf(5, "PTR key_src=%" PRIdPTR " len=%d\n", fd_key_src, len);
 
     fdata = mq_msg_pop(msg);  //** attr list to set
-    mq_get_frame(fdata, (void **)&data, &fsize);
+    gop_mq_get_frame(fdata, (void **)&data, &fsize);
 
     log_printf(5, "PTR key_src=%" PRIdPTR " len=%d id=%s id_len=%d\n", fd_key_src, len, id, id_size);
 
     //** Now check if the handles are valid
-    if ((fd_src = mq_ongoing_get(osrs->ongoing, (char *)id, id_size, fd_key_src)) == NULL) {
+    if ((fd_src = gop_mq_ongoing_get(osrs->ongoing, (char *)id, id_size, fd_key_src)) == NULL) {
         log_printf(5, "Invalid SOURCE handle!\n");
         goto fail_fd;
     }
-    if ((fd_dest = mq_ongoing_get(osrs->ongoing, (char *)id, id_size, fd_key_dest)) == NULL) {
+    if ((fd_dest = gop_mq_ongoing_get(osrs->ongoing, (char *)id, id_size, fd_key_dest)) == NULL) {
         log_printf(5, "Invalid DEST handle!\n");
         goto fail_fd;
     }
@@ -1885,32 +1885,32 @@ void osrs_copy_mult_attr_cb(void *arg, mq_task_t *task)
         status = gop_get_status(gop);
         gop_free(gop, OP_DESTROY);
     } else {
-        status = op_failure_status;
+        status = gop_failure_status;
     }
 
 fail_fd:
 fail:
 
-    if (fd_src != NULL) mq_ongoing_release(osrs->ongoing, (char *)id, id_size, fd_key_src);
-    if (fd_dest != NULL) mq_ongoing_release(osrs->ongoing, (char *)id, id_size, fd_key_dest);
+    if (fd_src != NULL) gop_mq_ongoing_release(osrs->ongoing, (char *)id, id_size, fd_key_src);
+    if (fd_dest != NULL) gop_mq_ongoing_release(osrs->ongoing, (char *)id, id_size, fd_key_dest);
 
     osrs_release_creds(os, creds);
 
-    mq_frame_destroy(ffd_src);
-    mq_frame_destroy(ffd_dest);
-    mq_frame_destroy(fuid);
-    mq_frame_destroy(fdata);
-    mq_frame_destroy(fcred);
+    gop_mq_frame_destroy(ffd_src);
+    gop_mq_frame_destroy(ffd_dest);
+    gop_mq_frame_destroy(fuid);
+    gop_mq_frame_destroy(fdata);
+    gop_mq_frame_destroy(fcred);
 
 
     //** Form the response
-    response = mq_make_response_core_msg(msg, fid);
-    mq_msg_append_frame(response, mq_make_status_frame(status));
-    mq_msg_append_mem(response, NULL, 0, MQF_MSG_KEEP_DATA);  //** Empty frame
+    response = gop_mq_make_response_core_msg(msg, fid);
+    gop_mq_msg_append_frame(response, gop_mq_make_status_frame(status));
+    gop_mq_msg_append_mem(response, NULL, 0, MQF_MSG_KEEP_DATA);  //** Empty frame
 
     log_printf(5, "status.op_status=%d\n", status.op_status);
     //** Lastly send it
-    mq_submit(osrs->server_portal, mq_task_new(osrs->mqc, response, NULL, NULL, 30));
+    gop_mq_submit(osrs->server_portal, gop_mq_task_new(osrs->mqc, response, NULL, NULL, 30));
 
     if (key_src) {
         for (i=0; i<n; i++) if (key_src[i]) free(key_src[i]);
@@ -1950,35 +1950,35 @@ void osrs_move_mult_attr_cb(void *arg, mq_task_t *task)
 
     key_src = NULL;
     key_dest = NULL;
-    status = op_failure_status;
+    status = gop_failure_status;
 
     //** Parse the command.
     msg = task->msg;
-    mq_remove_header(msg, 0);
+    gop_mq_remove_header(msg, 0);
 
     fid = mq_msg_pop(msg);  //** This is the ID for responses
-    mq_frame_destroy(mq_msg_pop(msg));  //** Drop the application command frame
+    gop_mq_frame_destroy(mq_msg_pop(msg));  //** Drop the application command frame
 
     fcred = mq_msg_pop(msg);  //** This has the creds
     creds = osrs_get_creds(os, fcred);
 
     fuid = mq_msg_pop(msg);  //** Host/user ID
-    mq_get_frame(fuid, (void **)&id, &id_size);
+    gop_mq_get_frame(fuid, (void **)&id, &id_size);
 
     //** Get the fd handles
     ffd_src = mq_msg_pop(msg);  //** Host/user ID
-    mq_get_frame(ffd_src, (void **)&data, &len);
+    gop_mq_get_frame(ffd_src, (void **)&data, &len);
     fd_key_src = *(intptr_t *)data;
 
     log_printf(5, "PTR key_src=%" PRIdPTR " len=%d\n", fd_key_src, len);
 
     fdata = mq_msg_pop(msg);  //** attr list to set
-    mq_get_frame(fdata, (void **)&data, &fsize);
+    gop_mq_get_frame(fdata, (void **)&data, &fsize);
 
     log_printf(5, "PTR key_src=%" PRIdPTR " len=%d id=%s id_len=%d\n", fd_key_src, len, id, id_size);
 
     //** Now check if the handles are valid
-    if ((fd_src = mq_ongoing_get(osrs->ongoing, (char *)id, id_size, fd_key_src)) == NULL) {
+    if ((fd_src = gop_mq_ongoing_get(osrs->ongoing, (char *)id, id_size, fd_key_src)) == NULL) {
         log_printf(5, "Invalid SOURCE handle!\n");
         goto fail_fd;
     }
@@ -2040,30 +2040,30 @@ void osrs_move_mult_attr_cb(void *arg, mq_task_t *task)
         status = gop_get_status(gop);
         gop_free(gop, OP_DESTROY);
     } else {
-        status = op_failure_status;
+        status = gop_failure_status;
     }
 
 fail_fd:
 fail:
 
-    if (fd_src != NULL) mq_ongoing_release(osrs->ongoing, (char *)id, id_size, fd_key_src);
+    if (fd_src != NULL) gop_mq_ongoing_release(osrs->ongoing, (char *)id, id_size, fd_key_src);
 
     osrs_release_creds(os, creds);
 
-    mq_frame_destroy(ffd_src);
-    mq_frame_destroy(fuid);
-    mq_frame_destroy(fdata);
-    mq_frame_destroy(fcred);
+    gop_mq_frame_destroy(ffd_src);
+    gop_mq_frame_destroy(fuid);
+    gop_mq_frame_destroy(fdata);
+    gop_mq_frame_destroy(fcred);
 
 
     //** Form the response
-    response = mq_make_response_core_msg(msg, fid);
-    mq_msg_append_frame(response, mq_make_status_frame(status));
-    mq_msg_append_mem(response, NULL, 0, MQF_MSG_KEEP_DATA);  //** Empty frame
+    response = gop_mq_make_response_core_msg(msg, fid);
+    gop_mq_msg_append_frame(response, gop_mq_make_status_frame(status));
+    gop_mq_msg_append_mem(response, NULL, 0, MQF_MSG_KEEP_DATA);  //** Empty frame
 
     log_printf(5, "status.op_status=%d\n", status.op_status);
     //** Lastly send it
-    mq_submit(osrs->server_portal, mq_task_new(osrs->mqc, response, NULL, NULL, 30));
+    gop_mq_submit(osrs->server_portal, gop_mq_task_new(osrs->mqc, response, NULL, NULL, 30));
 
     if (key_src) {
         for (i=0; i<n; i++) if (key_src[i]) free(key_src[i]);
@@ -2104,35 +2104,35 @@ void osrs_symlink_mult_attr_cb(void *arg, mq_task_t *task)
     key_src = NULL;
     key_dest = NULL;
     src_path = NULL;
-    status = op_failure_status;
+    status = gop_failure_status;
 
     //** Parse the command.
     msg = task->msg;
-    mq_remove_header(msg, 0);
+    gop_mq_remove_header(msg, 0);
 
     fid = mq_msg_pop(msg);  //** This is the ID for responses
-    mq_frame_destroy(mq_msg_pop(msg));  //** Drop the application command frame
+    gop_mq_frame_destroy(mq_msg_pop(msg));  //** Drop the application command frame
 
     fcred = mq_msg_pop(msg);  //** This has the creds
     creds = osrs_get_creds(os, fcred);
 
     fuid = mq_msg_pop(msg);  //** Host/user ID
-    mq_get_frame(fuid, (void **)&id, &id_size);
+    gop_mq_get_frame(fuid, (void **)&id, &id_size);
 
     //** Get the fd handles
     ffd_dest = mq_msg_pop(msg);  //** Host/user ID
-    mq_get_frame(ffd_dest, (void **)&data, &len);
+    gop_mq_get_frame(ffd_dest, (void **)&data, &len);
     fd_key_dest = *(intptr_t *)data;
 
     log_printf(5, "PTR key_dest=%" PRIdPTR " len=%d\n", fd_key_dest, len);
 
     fdata = mq_msg_pop(msg);  //** attr list to set
-    mq_get_frame(fdata, (void **)&data, &fsize);
+    gop_mq_get_frame(fdata, (void **)&data, &fsize);
 
     log_printf(5, "PTR key_dest=%" PRIdPTR " len=%d id=%s id_len=%d\n", fd_key_dest, len, id, id_size);
 
     //** Now check if the handles are valid
-    if ((fd_dest = mq_ongoing_get(osrs->ongoing, (char *)id, id_size, fd_key_dest)) == NULL) {
+    if ((fd_dest = gop_mq_ongoing_get(osrs->ongoing, (char *)id, id_size, fd_key_dest)) == NULL) {
         log_printf(5, "Invalid SOURCE handle!\n");
         goto fail_fd;
     }
@@ -2208,30 +2208,30 @@ void osrs_symlink_mult_attr_cb(void *arg, mq_task_t *task)
         status = gop_get_status(gop);
         gop_free(gop, OP_DESTROY);
     } else {
-        status = op_failure_status;
+        status = gop_failure_status;
     }
 
 fail_fd:
 fail:
 
-    if (fd_dest != NULL) mq_ongoing_release(osrs->ongoing, (char *)id, id_size, fd_key_dest);
+    if (fd_dest != NULL) gop_mq_ongoing_release(osrs->ongoing, (char *)id, id_size, fd_key_dest);
 
     osrs_release_creds(os, creds);
 
-    mq_frame_destroy(ffd_dest);
-    mq_frame_destroy(fuid);
-    mq_frame_destroy(fdata);
-    mq_frame_destroy(fcred);
+    gop_mq_frame_destroy(ffd_dest);
+    gop_mq_frame_destroy(fuid);
+    gop_mq_frame_destroy(fdata);
+    gop_mq_frame_destroy(fcred);
 
 
     //** Form the response
-    response = mq_make_response_core_msg(msg, fid);
-    mq_msg_append_frame(response, mq_make_status_frame(status));
-    mq_msg_append_mem(response, NULL, 0, MQF_MSG_KEEP_DATA);  //** Empty frame
+    response = gop_mq_make_response_core_msg(msg, fid);
+    gop_mq_msg_append_frame(response, gop_mq_make_status_frame(status));
+    gop_mq_msg_append_mem(response, NULL, 0, MQF_MSG_KEEP_DATA);  //** Empty frame
 
     log_printf(5, "status.op_status=%d\n", status.op_status);
     //** Lastly send it
-    mq_submit(osrs->server_portal, mq_task_new(osrs->mqc, response, NULL, NULL, 30));
+    gop_mq_submit(osrs->server_portal, gop_mq_task_new(osrs->mqc, response, NULL, NULL, 30));
 
     if (key_src) {
         for (i=0; i<n; i++) if (key_src[i]) free(key_src[i]);
@@ -2282,17 +2282,17 @@ void osrs_object_iter_alist_cb(void *arg, mq_task_t *task)
 
     //** Parse the command.
     msg = task->msg;
-    mq_remove_header(msg, 0);
+    gop_mq_remove_header(msg, 0);
 
     fid = mq_msg_pop(msg);  //** This is the ID
-    mq_frame_destroy(mq_msg_pop(msg));  //** Drop the application command frame
+    gop_mq_frame_destroy(mq_msg_pop(msg));  //** Drop the application command frame
     hid = mq_msg_pop(msg);  //** This is the Host ID for the ongoing stream
 
     fcred = mq_msg_pop(msg);  //** This has the creds
     creds = osrs_get_creds(os, fcred);
 
     fdata = mq_msg_pop(msg);  //** This has the data
-    mq_get_frame(fdata, (void **)&buffer, &fsize);
+    gop_mq_get_frame(fdata, (void **)&buffer, &fsize);
 
     //** Parse the buffer
     path = NULL;
@@ -2304,13 +2304,13 @@ void osrs_object_iter_alist_cb(void *arg, mq_task_t *task)
     if (n < 0) {
         timeout = 60;
         //** Create the stream so we can get the heartbeating while we work.  We need the timeout is why we do it here,
-        mqs = mq_stream_write_create(osrs->mqc, osrs->server_portal, osrs->ongoing, MQS_PACK_COMPRESS, osrs->max_stream, timeout, msg, fid, hid, 0);
+        mqs = gop_gop_mq_stream_write_create(osrs->mqc, osrs->server_portal, osrs->ongoing, MQS_PACK_COMPRESS, osrs->max_stream, timeout, msg, fid, hid, 0);
         goto fail;
     }
     bpos += n;
 
     //** Create the stream so we can get the heartbeating while we work.  We need the timeout is why we do it here,
-    mqs = mq_stream_write_create(osrs->mqc, osrs->server_portal, osrs->ongoing, MQS_PACK_COMPRESS, osrs->max_stream, timeout, msg, fid, hid, 0);
+    mqs = gop_gop_mq_stream_write_create(osrs->mqc, osrs->server_portal, osrs->ongoing, MQS_PACK_COMPRESS, osrs->max_stream, timeout, msg, fid, hid, 0);
 
     n = tbx_zigzag_decode(&(buffer[bpos]), fsize-bpos, &recurse_depth);
     if (n < 0) goto fail;
@@ -2373,10 +2373,10 @@ void osrs_object_iter_alist_cb(void *arg, mq_task_t *task)
 
 fail:
     //** Encode the status
-    status = (it != NULL) ? op_success_status : op_failure_status;
+    status = (it != NULL) ? gop_success_status : gop_failure_status;
     n = tbx_zigzag_encode(status.op_status, tbuf);
     n = n + tbx_zigzag_encode(status.error_code, &(tbuf[n]));
-    mq_stream_write(mqs, tbuf, n);
+    gop_mq_stream_write(mqs, tbuf, n);
 
     //** Check if we kick out due to an error
     if (it == NULL) goto finished;
@@ -2390,18 +2390,18 @@ fail:
         n = tbx_zigzag_encode(ftype, tbuf);
         n += tbx_zigzag_encode(prefix_len, &(tbuf[n]));
         n += tbx_zigzag_encode(len, &(tbuf[n]));
-        err += mq_stream_write(mqs, tbuf, n);
-        err += mq_stream_write(mqs, fname, len);
+        err += gop_mq_stream_write(mqs, tbuf, n);
+        err += gop_mq_stream_write(mqs, fname, len);
 
         log_printf(5, "ftype=%d prefix_len=%d len=%" PRId64 " fname=%s n_attrs=%" PRId64 "\n", ftype, prefix_len, len, fname, n_attrs);
         //** Now dump the attributes
         for (i=0; i<n_attrs; i++) {
             n = tbx_zigzag_encode(v_size[i], tbuf);
-            err += mq_stream_write(mqs, tbuf, n);
+            err += gop_mq_stream_write(mqs, tbuf, n);
             log_printf(5, "v_size[%d]=%d\n", i, v_size[i]);
             if (v_size[i] > 0) {
                 log_printf(5, "val[%d]=%s\n", i, val[i]);
-                err += mq_stream_write(mqs, val[i], v_size[i]);
+                err += gop_mq_stream_write(mqs, val[i], v_size[i]);
                 free(val[i]);
                 val[i] = NULL;
             }
@@ -2414,7 +2414,7 @@ fail:
 
     //** Flag this as the last object
     n = tbx_zigzag_encode(0, tbuf);
-    mq_stream_write(mqs, tbuf, n);
+    gop_mq_stream_write(mqs, tbuf, n);
 
     //** Destroy the object iterator
     os_destroy_object_iter(osrs->os_child, it);
@@ -2422,15 +2422,15 @@ fail:
 finished:
     osrs_release_creds(os, creds);
 
-    mq_frame_destroy(fdata);
-    mq_frame_destroy(fcred);
+    gop_mq_frame_destroy(fdata);
+    gop_mq_frame_destroy(fcred);
 
     //** Flush the buffer
-    mq_stream_destroy(mqs);
+    gop_mq_stream_destroy(mqs);
 
     //** Clean up
-    if (path != NULL) os_regex_table_destroy(path);
-    if (object_regex != NULL) os_regex_table_destroy(object_regex);
+    if (path != NULL) lio_os_regex_table_destroy(path);
+    if (object_regex != NULL) lio_os_regex_table_destroy(object_regex);
 
     if (key != NULL) {
         for (i=0; i<n_attrs; i++) {
@@ -2476,17 +2476,17 @@ void osrs_object_iter_aregex_cb(void *arg, mq_task_t *task)
 
     //** Parse the command.
     msg = task->msg;
-    mq_remove_header(msg, 0);
+    gop_mq_remove_header(msg, 0);
 
     fid = mq_msg_pop(msg);  //** This is the ID
-    mq_frame_destroy(mq_msg_pop(msg));  //** Drop the application command frame
+    gop_mq_frame_destroy(mq_msg_pop(msg));  //** Drop the application command frame
     hid = mq_msg_pop(msg);  //** This is the Host ID for the ongoing stream
 
     fcred = mq_msg_pop(msg);  //** This has the creds
     creds = osrs_get_creds(os, fcred);
 
     fdata = mq_msg_pop(msg);  //** This has the data
-    mq_get_frame(fdata, (void **)&buffer, &fsize);
+    gop_mq_get_frame(fdata, (void **)&buffer, &fsize);
 
     //** Parse the buffer
     path = NULL;
@@ -2498,7 +2498,7 @@ void osrs_object_iter_aregex_cb(void *arg, mq_task_t *task)
         timeout = 60;
 
         //** Create the stream so things don't break
-        mqs = mq_stream_write_create(osrs->mqc, osrs->server_portal, osrs->ongoing, MQS_PACK_COMPRESS, osrs->max_stream, timeout, msg, fid, hid, 0);
+        mqs = gop_gop_mq_stream_write_create(osrs->mqc, osrs->server_portal, osrs->ongoing, MQS_PACK_COMPRESS, osrs->max_stream, timeout, msg, fid, hid, 0);
 
         goto fail;
     }
@@ -2506,7 +2506,7 @@ void osrs_object_iter_aregex_cb(void *arg, mq_task_t *task)
 
 
     //** Create the stream so we can get the heartbeating while we work
-    mqs = mq_stream_write_create(osrs->mqc, osrs->server_portal, osrs->ongoing, MQS_PACK_COMPRESS, osrs->max_stream, timeout, msg, fid, hid, 0);
+    mqs = gop_gop_mq_stream_write_create(osrs->mqc, osrs->server_portal, osrs->ongoing, MQS_PACK_COMPRESS, osrs->max_stream, timeout, msg, fid, hid, 0);
 
 
     n = tbx_zigzag_decode(&(buffer[bpos]), fsize-bpos, &recurse_depth);
@@ -2550,10 +2550,10 @@ void osrs_object_iter_aregex_cb(void *arg, mq_task_t *task)
 
 fail:
     //** Encode the status
-    status = (it != NULL) ? op_success_status : op_failure_status;
+    status = (it != NULL) ? gop_success_status : gop_failure_status;
     n = tbx_zigzag_encode(status.op_status, tbuf);
     n = n + tbx_zigzag_encode(status.error_code, &(tbuf[n]));
-    mq_stream_write(mqs, tbuf, n);
+    gop_mq_stream_write(mqs, tbuf, n);
 
     //** Check if we kick out due to an error
     if (it == NULL) goto finished;
@@ -2569,8 +2569,8 @@ fail:
         n = tbx_zigzag_encode(ftype, tbuf);
         n += tbx_zigzag_encode(prefix_len, &(tbuf[n]));
         n += tbx_zigzag_encode(len, &(tbuf[n]));
-        err += mq_stream_write(mqs, tbuf, n);
-        err += mq_stream_write(mqs, fname, len);
+        err += gop_mq_stream_write(mqs, tbuf, n);
+        err += gop_mq_stream_write(mqs, fname, len);
 
         log_printf(5, "ftype=%d prefix_len=%d len=%" PRId64 " fname=%s\n", ftype, prefix_len, len, fname);
         //** Now dump the attributes
@@ -2580,15 +2580,15 @@ fail:
                 log_printf(15, "key=%s v_size=%d\n", key, v_size);
                 len = strlen(key);
                 n = tbx_zigzag_encode(len, tbuf);
-                err += mq_stream_write(mqs, tbuf, n);
-                err += mq_stream_write(mqs, key, len);
+                err += gop_mq_stream_write(mqs, tbuf, n);
+                err += gop_mq_stream_write(mqs, key, len);
                 free(key);
                 key = NULL;
 
                 n = tbx_zigzag_encode(v_size, tbuf);
-                err += mq_stream_write(mqs, tbuf, n);
+                err += gop_mq_stream_write(mqs, tbuf, n);
                 if (v_size > 0) {
-                    err += mq_stream_write(mqs, val, v_size);
+                    err += gop_mq_stream_write(mqs, val, v_size);
                     free(val);
                     val = NULL;
                 }
@@ -2596,7 +2596,7 @@ fail:
             }
 
             //** Flag this as the last attr
-            mq_stream_write(mqs, null, null_len);
+            gop_mq_stream_write(mqs, null, null_len);
         }
 
 
@@ -2604,7 +2604,7 @@ fail:
     }
 
     //** Flag this as the last object
-    mq_stream_write(mqs, null, null_len);
+    gop_mq_stream_write(mqs, null, null_len);
 
     //** Destroy the object iterator
     os_destroy_object_iter(osrs->os_child, it);
@@ -2612,16 +2612,16 @@ fail:
 finished:
     osrs_release_creds(os, creds);
 
-    mq_frame_destroy(fdata);
-    mq_frame_destroy(fcred);
+    gop_mq_frame_destroy(fdata);
+    gop_mq_frame_destroy(fcred);
 
     //** Flush the buffer
-    mq_stream_destroy(mqs);
+    gop_mq_stream_destroy(mqs);
 
     //** Clean up
-    if (path != NULL) os_regex_table_destroy(path);
-    if (object_regex != NULL) os_regex_table_destroy(object_regex);
-    if (attr_regex != NULL) os_regex_table_destroy(attr_regex);
+    if (path != NULL) lio_os_regex_table_destroy(path);
+    if (object_regex != NULL) lio_os_regex_table_destroy(object_regex);
+    if (attr_regex != NULL) lio_os_regex_table_destroy(attr_regex);
 }
 
 //***********************************************************************
@@ -2659,21 +2659,21 @@ void osrs_attr_iter_cb(void *arg, mq_task_t *task)
 
     //** Parse the command.
     msg = task->msg;
-    mq_remove_header(msg, 0);
+    gop_mq_remove_header(msg, 0);
 
     fid = mq_msg_pop(msg);  //** This is the ID
-    mq_frame_destroy(mq_msg_pop(msg));  //** Drop the application command frame
+    gop_mq_frame_destroy(mq_msg_pop(msg));  //** Drop the application command frame
     fhid = mq_msg_pop(msg);  //** Host handle
-    mq_get_frame(fhid, (void **)&id, &id_size);
+    gop_mq_get_frame(fhid, (void **)&id, &id_size);
 
     fcred = mq_msg_pop(msg);  //** This has the creds
     creds = osrs_get_creds(os, fcred);
 
     ffd = mq_msg_pop(msg);  //** This has the file handle
-    mq_get_frame(ffd, (void **)&fhandle, &hsize);
+    gop_mq_get_frame(ffd, (void **)&fhandle, &hsize);
 
     fdata = mq_msg_pop(msg);  //** This has the data
-    mq_get_frame(fdata, (void **)&buffer, &fsize);
+    gop_mq_get_frame(fdata, (void **)&buffer, &fsize);
 
     //** Check if the file handle is the correect size
     if (hsize != sizeof(intptr_t)) {
@@ -2681,7 +2681,7 @@ void osrs_attr_iter_cb(void *arg, mq_task_t *task)
 
         //** Create the stream so we can get the heartbeating while we work
         timeout = 60;
-        mqs = mq_stream_write_create(osrs->mqc, osrs->server_portal, osrs->ongoing, MQS_PACK_COMPRESS, osrs->max_stream, timeout, msg, fid, fhid, 0);
+        mqs = gop_gop_mq_stream_write_create(osrs->mqc, osrs->server_portal, osrs->ongoing, MQS_PACK_COMPRESS, osrs->max_stream, timeout, msg, fid, fhid, 0);
         osrs_update_active_table(os, fhid);  //** Update the active log
 
         goto fail;
@@ -2692,7 +2692,7 @@ void osrs_attr_iter_cb(void *arg, mq_task_t *task)
     log_printf(5, "PTR key=%p\n", key);
 
     //** Do the host lookup for the file handle
-    if ((handle = mq_ongoing_get(osrs->ongoing, id, id_size, fhkey)) == NULL) {
+    if ((handle = gop_mq_ongoing_get(osrs->ongoing, id, id_size, fhkey)) == NULL) {
         log_printf(6, "ERROR missing host=%s\n", id);
     }
 
@@ -2705,14 +2705,14 @@ void osrs_attr_iter_cb(void *arg, mq_task_t *task)
         timeout = 60;
 
         //** Create the stream so we can get the heartbeating while we work
-        mqs = mq_stream_write_create(osrs->mqc, osrs->server_portal, osrs->ongoing, MQS_PACK_COMPRESS, osrs->max_stream, timeout, msg, fid, fhid, 0);
+        mqs = gop_gop_mq_stream_write_create(osrs->mqc, osrs->server_portal, osrs->ongoing, MQS_PACK_COMPRESS, osrs->max_stream, timeout, msg, fid, fhid, 0);
         osrs_update_active_table(os, fhid);  //** Update the active log
         goto fail;
     }
     bpos += n;
 
     //** Create the stream so we can get the heartbeating while we work
-    mqs = mq_stream_write_create(osrs->mqc, osrs->server_portal, osrs->ongoing, MQS_PACK_COMPRESS, osrs->max_stream, timeout, msg, fid, fhid, 0);
+    mqs = gop_gop_mq_stream_write_create(osrs->mqc, osrs->server_portal, osrs->ongoing, MQS_PACK_COMPRESS, osrs->max_stream, timeout, msg, fid, fhid, 0);
     osrs_update_active_table(os, fhid);  //** Update the active log
 
 
@@ -2736,10 +2736,10 @@ void osrs_attr_iter_cb(void *arg, mq_task_t *task)
 fail:
 
     //** Encode the status
-    status = (it != NULL) ? op_success_status : op_failure_status;
+    status = (it != NULL) ? gop_success_status : gop_failure_status;
     n = tbx_zigzag_encode(status.op_status, tbuf);
     n = n + tbx_zigzag_encode(status.error_code, &(tbuf[n]));
-    mq_stream_write(mqs, tbuf, n);
+    gop_mq_stream_write(mqs, tbuf, n);
 
     //** Check if we kick out due to an error
     if (it == NULL) goto finished;
@@ -2751,14 +2751,14 @@ fail:
         log_printf(5, "err=%d key=%s v_size=%d\n", err, key, v_size);
         len = strlen(key);
         n = tbx_zigzag_encode(len, tbuf);
-        err += mq_stream_write(mqs, tbuf, n);
-        err += mq_stream_write(mqs, key, len);
+        err += gop_mq_stream_write(mqs, tbuf, n);
+        err += gop_mq_stream_write(mqs, key, len);
         free(key);
 
         n = tbx_zigzag_encode(v_size, tbuf);
-        err += mq_stream_write(mqs, tbuf, n);
+        err += gop_mq_stream_write(mqs, tbuf, n);
         if (v_size > 0) {
-            err += mq_stream_write(mqs, val, v_size);
+            err += gop_mq_stream_write(mqs, val, v_size);
             free(val);
         }
 
@@ -2767,25 +2767,25 @@ fail:
 
     //** Flag this as the last object
     n = tbx_zigzag_encode(0, tbuf);
-    mq_stream_write(mqs, tbuf, n);
+    gop_mq_stream_write(mqs, tbuf, n);
 
     //** Destroy the object iterator
     os_destroy_attr_iter(osrs->os_child, it);
 
 finished:
 
-    if (handle != NULL) mq_ongoing_release(osrs->ongoing, (char *)id, id_size, fhkey);
+    if (handle != NULL) gop_mq_ongoing_release(osrs->ongoing, (char *)id, id_size, fhkey);
 
     //** Clean up
     osrs_release_creds(os, creds);
-    mq_frame_destroy(fdata);
-    mq_frame_destroy(fcred);
-    mq_frame_destroy(ffd);
+    gop_mq_frame_destroy(fdata);
+    gop_mq_frame_destroy(fcred);
+    gop_mq_frame_destroy(ffd);
 
-    if (attr_regex != NULL) os_regex_table_destroy(attr_regex);
+    if (attr_regex != NULL) lio_os_regex_table_destroy(attr_regex);
 
     //** Flush the buffer
-    mq_stream_destroy(mqs);
+    gop_mq_stream_destroy(mqs);
 
 }
 
@@ -2817,19 +2817,19 @@ void osrs_fsck_iter_cb(void *arg, mq_task_t *task)
 
     //** Parse the command.
     msg = task->msg;
-    mq_remove_header(msg, 0);
+    gop_mq_remove_header(msg, 0);
 
     fid = mq_msg_pop(msg);  //** This is the ID
-    mq_frame_destroy(mq_msg_pop(msg));  //** Drop the application command frame
+    gop_mq_frame_destroy(mq_msg_pop(msg));  //** Drop the application command frame
 
     fhid = mq_msg_pop(msg);  //** Host handle
-    mq_get_frame(fhid, (void **)&id, &id_size);
+    gop_mq_get_frame(fhid, (void **)&id, &id_size);
 
     fcred = mq_msg_pop(msg);  //** This has the creds
     creds = osrs_get_creds(os, fcred);
 
     fdata = mq_msg_pop(msg);  //** This has the path
-    mq_get_frame(fdata, (void **)&buffer, &fsize);
+    gop_mq_get_frame(fdata, (void **)&buffer, &fsize);
     if (fsize > 0) {
         tbx_type_malloc(path, char, fsize+1);
         memcpy(path, buffer, fsize);
@@ -2837,10 +2837,10 @@ void osrs_fsck_iter_cb(void *arg, mq_task_t *task)
     } else {
         err = 1;
     }
-    mq_frame_destroy(fdata);
+    gop_mq_frame_destroy(fdata);
 
     fdata = mq_msg_pop(msg);  //** This has the mode and timeout
-    mq_get_frame(fdata, (void **)&buffer, &fsize);
+    gop_mq_get_frame(fdata, (void **)&buffer, &fsize);
     timeout = 300;
     if (fsize > 0) {
         if (err == 0) {
@@ -2850,10 +2850,10 @@ void osrs_fsck_iter_cb(void *arg, mq_task_t *task)
     } else {
         err = 1;
     }
-    mq_frame_destroy(fdata);
+    gop_mq_frame_destroy(fdata);
 
     //** Create the stream so we can get the heartbeating while we work
-    mqs = mq_stream_write_create(osrs->mqc, osrs->server_portal, osrs->ongoing, MQS_PACK_COMPRESS, osrs->max_stream, timeout, msg, fid, fhid, 0);
+    mqs = gop_gop_mq_stream_write_create(osrs->mqc, osrs->server_portal, osrs->ongoing, MQS_PACK_COMPRESS, osrs->max_stream, timeout, msg, fid, fhid, 0);
 
     log_printf(5, "1.err=%d\n", err);
 
@@ -2875,10 +2875,10 @@ void osrs_fsck_iter_cb(void *arg, mq_task_t *task)
 fail:
 
     //** Encode the status
-    status = (err == 0) ? op_success_status : op_failure_status;
+    status = (err == 0) ? gop_success_status : gop_failure_status;
     n = tbx_zigzag_encode(status.op_status, tbuf);
     n = n + tbx_zigzag_encode(status.error_code, &(tbuf[n]));
-    mq_stream_write(mqs, tbuf, n);
+    gop_mq_stream_write(mqs, tbuf, n);
 
     //** Check if we kick out due to an error
     if (it == NULL) goto finished;
@@ -2891,18 +2891,18 @@ fail:
         log_printf(5, "err=%d bad_fname=%s bad_atype=%d\n", err, bad_fname, bad_atype);
         len = strlen(bad_fname);
         n = tbx_zigzag_encode(len, tbuf);
-        err += mq_stream_write(mqs, tbuf, n);
-        err += mq_stream_write(mqs, bad_fname, len);
+        err += gop_mq_stream_write(mqs, tbuf, n);
+        err += gop_mq_stream_write(mqs, bad_fname, len);
         free(bad_fname);
 
         n = tbx_zigzag_encode(bad_atype, tbuf);
         n += tbx_zigzag_encode(fsck_err, &(tbuf[n]));
-        err += mq_stream_write(mqs, tbuf, n);
+        err += gop_mq_stream_write(mqs, tbuf, n);
     }
 
     //** Flag this as the last object
     n = tbx_zigzag_encode(0, tbuf);
-    mq_stream_write(mqs, tbuf, n);
+    gop_mq_stream_write(mqs, tbuf, n);
 
     //** Destroy the object iterator
     os_destroy_fsck_iter(osrs->os_child, it);
@@ -2911,12 +2911,12 @@ finished:
 
     //** Clean up
     osrs_release_creds(os, creds);
-    mq_frame_destroy(fcred);
+    gop_mq_frame_destroy(fcred);
 
     if (path != NULL) free(path);
 
     //** Flush the buffer
-    mq_stream_destroy(mqs);
+    gop_mq_stream_destroy(mqs);
 
 }
 
@@ -2945,16 +2945,16 @@ void osrs_fsck_object_cb(void *arg, mq_task_t *task)
 
     //** Parse the command.
     msg = task->msg;
-    mq_remove_header(msg, 0);
+    gop_mq_remove_header(msg, 0);
 
     fid = mq_msg_pop(msg);  //** This is the ID
-    mq_frame_destroy(mq_msg_pop(msg));  //** Drop the application command frame
+    gop_mq_frame_destroy(mq_msg_pop(msg));  //** Drop the application command frame
 
     fcred = mq_msg_pop(msg);  //** This has the creds
     creds = osrs_get_creds(os, fcred);
 
     fdata = mq_msg_pop(msg);  //** This has the path
-    mq_get_frame(fdata, (void **)&buffer, &fsize);
+    gop_mq_get_frame(fdata, (void **)&buffer, &fsize);
     if (fsize > 0) {
         tbx_type_malloc(path, char, fsize+1);
         memcpy(path, buffer, fsize);
@@ -2962,10 +2962,10 @@ void osrs_fsck_object_cb(void *arg, mq_task_t *task)
     } else {
         err = 1;
     }
-    mq_frame_destroy(fdata);
+    gop_mq_frame_destroy(fdata);
 
     fdata = mq_msg_pop(msg);  //** This has the ftype and resolution
-    mq_get_frame(fdata, (void **)&buffer, &fsize);
+    gop_mq_get_frame(fdata, (void **)&buffer, &fsize);
     if (fsize > 0) {
         if (err == 0) {
             n = tbx_zigzag_decode(buffer, fsize, &ftype);
@@ -2975,11 +2975,11 @@ void osrs_fsck_object_cb(void *arg, mq_task_t *task)
     } else {
         err = 1;
     }
-    mq_frame_destroy(fdata);
+    gop_mq_frame_destroy(fdata);
 
     log_printf(5, "err=%d\n", err);
     if ((err != 0) || (creds == NULL)) {
-        status = op_failure_status;
+        status = gop_failure_status;
     } else {
         gop = os_fsck_object(osrs->os_child, creds, path, ftype, resolution);
         gop_waitall(gop);
@@ -2988,16 +2988,16 @@ void osrs_fsck_object_cb(void *arg, mq_task_t *task)
     }
 
     //** Form the response
-    response = mq_make_response_core_msg(msg, fid);
-    mq_msg_append_frame(response, mq_make_status_frame(status));
-    mq_msg_append_mem(response, NULL, 0, MQF_MSG_KEEP_DATA);  //** Empty frame
+    response = gop_mq_make_response_core_msg(msg, fid);
+    gop_mq_msg_append_frame(response, gop_mq_make_status_frame(status));
+    gop_mq_msg_append_mem(response, NULL, 0, MQF_MSG_KEEP_DATA);  //** Empty frame
 
     //** Lastly send it
-    mq_submit(osrs->server_portal, mq_task_new(osrs->mqc, response, NULL, NULL, 30));
+    gop_mq_submit(osrs->server_portal, gop_mq_task_new(osrs->mqc, response, NULL, NULL, 30));
 
     //** Clean up
     osrs_release_creds(os, creds);
-    mq_frame_destroy(fcred);
+    gop_mq_frame_destroy(fcred);
 
     if (path != NULL) free(path);
 }
@@ -3013,13 +3013,13 @@ void os_remote_server_destroy(object_service_fn_t *os)
     osrs_active_t *a;
 
     //** Remove the server portal
-    mq_portal_remove(osrs->mqc, osrs->server_portal);
+    gop_mq_portal_remove(osrs->mqc, osrs->server_portal);
 
     //** Shutdown the ongoing thread and task
-    mq_ongoing_destroy(osrs->ongoing);
+    gop_mq_ongoing_destroy(osrs->ongoing);
 
     //** Now destroy it
-    mq_portal_destroy(osrs->server_portal);
+    gop_mq_portal_destroy(osrs->server_portal);
 
     //** Drop the fake creds
     an_cred_destroy(osrs->dummy_creds);
@@ -3076,7 +3076,7 @@ object_service_fn_t *object_service_remote_server_create(service_manager_t *ess,
     tbx_type_malloc_clear(osrs, osrs_priv_t, 1);
     os->priv = (void *)osrs;
 
-    osrs->tpc = lookup_service(ess, ESS_RUNNING, ESS_TPC_UNLIMITED); assert(osrs->tpc != NULL);
+    osrs->tpc = lio_lookup_service(ess, ESS_RUNNING, ESS_TPC_UNLIMITED); assert(osrs->tpc != NULL);
 
     //** Make the locks and cond variables
     assert_result(apr_pool_create(&(osrs->mpool), NULL), APR_SUCCESS);
@@ -3113,7 +3113,7 @@ object_service_fn_t *object_service_remote_server_create(service_manager_t *ess,
 
     //** and load it
     ctype = tbx_inip_get_string(fd, stype, "type", OS_TYPE_FILE);
-    os_create = lookup_service(ess, OS_AVAILABLE, ctype);
+    os_create = lio_lookup_service(ess, OS_AVAILABLE, ctype);
     osrs->os_child = (*os_create)(ess, fd, stype);
     if (osrs->os_child == NULL) {
         log_printf(1, "ERROR loading child OS!  type=%s section=%s\n", ctype, stype);
@@ -3126,49 +3126,49 @@ object_service_fn_t *object_service_remote_server_create(service_manager_t *ess,
     //** Make the dummy credentials
     cred_args[0] = NULL;
     cred_args[1] = "FIXME_tacketar";
-    authn_create = lookup_service(ess, AUTHN_AVAILABLE, AUTHN_TYPE_FAKE);
+    authn_create = lio_lookup_service(ess, AUTHN_AVAILABLE, AUTHN_TYPE_FAKE);
     osrs->authn = (*authn_create)(ess, fd, "missing");
     osrs->dummy_creds = authn_cred_init(osrs->authn, OS_CREDS_INI_TYPE, (void **)cred_args);
     an_cred_set_id(osrs->dummy_creds, cred_args[1]);
 
 
     //** Get the MQC
-    osrs->mqc = lookup_service(ess, ESS_RUNNING, ESS_MQ); assert(osrs->mqc != NULL);
+    osrs->mqc = lio_lookup_service(ess, ESS_RUNNING, ESS_MQ); assert(osrs->mqc != NULL);
 
     //** Make the server portal
-    osrs->server_portal = mq_portal_create(osrs->mqc, osrs->hostname, MQ_CMODE_SERVER);
-    ctable = mq_portal_command_table(osrs->server_portal);
-    mq_command_set(ctable, OSR_SPIN_HB_KEY, OSR_SPIN_HB_SIZE, os, osrs_spin_hb_cb);
-    mq_command_set(ctable, OSR_EXISTS_KEY, OSR_EXISTS_SIZE, os, osrs_exists_cb);
-    mq_command_set(ctable, OSR_CREATE_OBJECT_KEY, OSR_CREATE_OBJECT_SIZE, os, osrs_create_object_cb);
-    mq_command_set(ctable, OSR_REMOVE_OBJECT_KEY, OSR_REMOVE_OBJECT_SIZE, os, osrs_remove_object_cb);
-    mq_command_set(ctable, OSR_REMOVE_REGEX_OBJECT_KEY, OSR_REMOVE_REGEX_OBJECT_SIZE, os, osrs_remove_regex_object_cb);
-    mq_command_set(ctable, OSR_ABORT_REMOVE_REGEX_OBJECT_KEY, OSR_ABORT_REMOVE_REGEX_OBJECT_SIZE, os, osrs_abort_remove_regex_object_cb);
-    mq_command_set(ctable, OSR_MOVE_OBJECT_KEY, OSR_MOVE_OBJECT_SIZE, os, osrs_move_object_cb);
-    mq_command_set(ctable, OSR_SYMLINK_OBJECT_KEY, OSR_SYMLINK_OBJECT_SIZE, os, osrs_symlink_object_cb);
-    mq_command_set(ctable, OSR_HARDLINK_OBJECT_KEY, OSR_HARDLINK_OBJECT_SIZE, os, osrs_hardlink_object_cb);
-    mq_command_set(ctable, OSR_OPEN_OBJECT_KEY, OSR_OPEN_OBJECT_SIZE, os, osrs_open_object_cb);
-    mq_command_set(ctable, OSR_CLOSE_OBJECT_KEY, OSR_CLOSE_OBJECT_SIZE, os, osrs_close_object_cb);
-    mq_command_set(ctable, OSR_ABORT_OPEN_OBJECT_KEY, OSR_ABORT_OPEN_OBJECT_SIZE, os, osrs_abort_open_object_cb);
-    mq_command_set(ctable, OSR_REGEX_SET_MULT_ATTR_KEY, OSR_REGEX_SET_MULT_ATTR_SIZE, os, osrs_regex_set_mult_attr_cb);
-    mq_command_set(ctable, OSR_ABORT_REGEX_SET_MULT_ATTR_KEY, OSR_ABORT_REGEX_SET_MULT_ATTR_SIZE, os, osrs_abort_regex_set_mult_attr_cb);
-    mq_command_set(ctable, OSR_GET_MULTIPLE_ATTR_KEY, OSR_GET_MULTIPLE_ATTR_SIZE, os, osrs_get_mult_attr_cb);
-    mq_command_set(ctable, OSR_SET_MULTIPLE_ATTR_KEY, OSR_SET_MULTIPLE_ATTR_SIZE, os, osrs_set_mult_attr_cb);
-    mq_command_set(ctable, OSR_COPY_MULTIPLE_ATTR_KEY, OSR_COPY_MULTIPLE_ATTR_SIZE, os, osrs_copy_mult_attr_cb);
-    mq_command_set(ctable, OSR_MOVE_MULTIPLE_ATTR_KEY, OSR_MOVE_MULTIPLE_ATTR_SIZE, os, osrs_move_mult_attr_cb);
-    mq_command_set(ctable, OSR_SYMLINK_MULTIPLE_ATTR_KEY, OSR_SYMLINK_MULTIPLE_ATTR_SIZE, os, osrs_symlink_mult_attr_cb);
-    mq_command_set(ctable, OSR_OBJECT_ITER_ALIST_KEY, OSR_OBJECT_ITER_ALIST_SIZE, os, osrs_object_iter_alist_cb);
-    mq_command_set(ctable, OSR_OBJECT_ITER_AREGEX_KEY, OSR_OBJECT_ITER_AREGEX_SIZE, os, osrs_object_iter_aregex_cb);
-    mq_command_set(ctable, OSR_ATTR_ITER_KEY, OSR_ATTR_ITER_SIZE, os, osrs_attr_iter_cb);
-    mq_command_set(ctable, OSR_FSCK_ITER_KEY, OSR_FSCK_ITER_SIZE, os, osrs_fsck_iter_cb);
-    mq_command_set(ctable, OSR_FSCK_OBJECT_KEY, OSR_FSCK_OBJECT_SIZE, os, osrs_fsck_object_cb);
+    osrs->server_portal = gop_mq_portal_create(osrs->mqc, osrs->hostname, MQ_CMODE_SERVER);
+    ctable = gop_mq_portal_command_table(osrs->server_portal);
+    gop_mq_command_set(ctable, OSR_SPIN_HB_KEY, OSR_SPIN_HB_SIZE, os, osrs_spin_hb_cb);
+    gop_mq_command_set(ctable, OSR_EXISTS_KEY, OSR_EXISTS_SIZE, os, osrs_exists_cb);
+    gop_mq_command_set(ctable, OSR_CREATE_OBJECT_KEY, OSR_CREATE_OBJECT_SIZE, os, osrs_create_object_cb);
+    gop_mq_command_set(ctable, OSR_REMOVE_OBJECT_KEY, OSR_REMOVE_OBJECT_SIZE, os, osrs_remove_object_cb);
+    gop_mq_command_set(ctable, OSR_REMOVE_REGEX_OBJECT_KEY, OSR_REMOVE_REGEX_OBJECT_SIZE, os, osrs_remove_regex_object_cb);
+    gop_mq_command_set(ctable, OSR_ABORT_REMOVE_REGEX_OBJECT_KEY, OSR_ABORT_REMOVE_REGEX_OBJECT_SIZE, os, osrs_abort_remove_regex_object_cb);
+    gop_mq_command_set(ctable, OSR_MOVE_OBJECT_KEY, OSR_MOVE_OBJECT_SIZE, os, osrs_move_object_cb);
+    gop_mq_command_set(ctable, OSR_SYMLINK_OBJECT_KEY, OSR_SYMLINK_OBJECT_SIZE, os, osrs_symlink_object_cb);
+    gop_mq_command_set(ctable, OSR_HARDLINK_OBJECT_KEY, OSR_HARDLINK_OBJECT_SIZE, os, osrs_hardlink_object_cb);
+    gop_mq_command_set(ctable, OSR_OPEN_OBJECT_KEY, OSR_OPEN_OBJECT_SIZE, os, osrs_open_object_cb);
+    gop_mq_command_set(ctable, OSR_CLOSE_OBJECT_KEY, OSR_CLOSE_OBJECT_SIZE, os, osrs_close_object_cb);
+    gop_mq_command_set(ctable, OSR_ABORT_OPEN_OBJECT_KEY, OSR_ABORT_OPEN_OBJECT_SIZE, os, osrs_abort_open_object_cb);
+    gop_mq_command_set(ctable, OSR_REGEX_SET_MULT_ATTR_KEY, OSR_REGEX_SET_MULT_ATTR_SIZE, os, osrs_regex_set_mult_attr_cb);
+    gop_mq_command_set(ctable, OSR_ABORT_REGEX_SET_MULT_ATTR_KEY, OSR_ABORT_REGEX_SET_MULT_ATTR_SIZE, os, osrs_abort_regex_set_mult_attr_cb);
+    gop_mq_command_set(ctable, OSR_GET_MULTIPLE_ATTR_KEY, OSR_GET_MULTIPLE_ATTR_SIZE, os, osrs_get_mult_attr_cb);
+    gop_mq_command_set(ctable, OSR_SET_MULTIPLE_ATTR_KEY, OSR_SET_MULTIPLE_ATTR_SIZE, os, osrs_set_mult_attr_cb);
+    gop_mq_command_set(ctable, OSR_COPY_MULTIPLE_ATTR_KEY, OSR_COPY_MULTIPLE_ATTR_SIZE, os, osrs_copy_mult_attr_cb);
+    gop_mq_command_set(ctable, OSR_MOVE_MULTIPLE_ATTR_KEY, OSR_MOVE_MULTIPLE_ATTR_SIZE, os, osrs_move_mult_attr_cb);
+    gop_mq_command_set(ctable, OSR_SYMLINK_MULTIPLE_ATTR_KEY, OSR_SYMLINK_MULTIPLE_ATTR_SIZE, os, osrs_symlink_mult_attr_cb);
+    gop_mq_command_set(ctable, OSR_OBJECT_ITER_ALIST_KEY, OSR_OBJECT_ITER_ALIST_SIZE, os, osrs_object_iter_alist_cb);
+    gop_mq_command_set(ctable, OSR_OBJECT_ITER_AREGEX_KEY, OSR_OBJECT_ITER_AREGEX_SIZE, os, osrs_object_iter_aregex_cb);
+    gop_mq_command_set(ctable, OSR_ATTR_ITER_KEY, OSR_ATTR_ITER_SIZE, os, osrs_attr_iter_cb);
+    gop_mq_command_set(ctable, OSR_FSCK_ITER_KEY, OSR_FSCK_ITER_SIZE, os, osrs_fsck_iter_cb);
+    gop_mq_command_set(ctable, OSR_FSCK_OBJECT_KEY, OSR_FSCK_OBJECT_SIZE, os, osrs_fsck_object_cb);
 
     //** Make the ongoing checker
-    osrs->ongoing = mq_ongoing_create(osrs->mqc, osrs->server_portal, osrs->ongoing_interval, ONGOING_SERVER);
+    osrs->ongoing = gop_mq_ongoing_create(osrs->mqc, osrs->server_portal, osrs->ongoing_interval, ONGOING_SERVER);
     assert(osrs->ongoing != NULL);
 
     //** This is to handle client stream responses
-    mq_command_set(ctable, MQS_MORE_DATA_KEY, MQS_MORE_DATA_SIZE, osrs->ongoing, mqs_server_more_cb);
+    gop_mq_command_set(ctable, MQS_MORE_DATA_KEY, MQS_MORE_DATA_SIZE, osrs->ongoing, gop_mqs_server_more_cb);
 
     //** Set up the fn ptrs.  This is just for shutdown
     //** so very little is implemented
@@ -3187,7 +3187,7 @@ object_service_fn_t *object_service_remote_server_create(service_manager_t *ess,
     apr_signal(SIGUSR1, signal_print_active_table);
 
     //** Activate it
-    mq_portal_install(osrs->mqc, osrs->server_portal);
+    gop_mq_portal_install(osrs->mqc, osrs->server_portal);
 
     log_printf(0, "END\n");
 

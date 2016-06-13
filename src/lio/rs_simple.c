@@ -204,7 +204,7 @@ op_generic_t *rs_simple_request(resource_service_fn_t *arg, data_attr_t *da, rs_
     i = _rs_simple_refresh(arg);  //** Check if we need to refresh the data
     if (i != 0) {
         apr_thread_mutex_unlock(rss->lock);
-        return(gop_dummy(op_failure_status));
+        return(gop_dummy(gop_failure_status));
     }
 
     //** Determine the query sizes and make the processing arrays
@@ -233,9 +233,9 @@ op_generic_t *rs_simple_request(resource_service_fn_t *arg, data_attr_t *da, rs_
     tbx_type_malloc_clear(kvq_local.unique, kvq_ele_t *, 1);
     tbx_type_malloc_clear(kvq_local.unique[0], kvq_ele_t, n_rid);
 
-    status = op_success_status;
+    status = gop_success_status;
 
-    que = new_opque();
+    que = gop_opque_new();
     stack = tbx_stack_new();
 
     err_cnt = 0;
@@ -381,7 +381,7 @@ op_generic_t *rs_simple_request(resource_service_fn_t *arg, data_attr_t *da, rs_
                         log_printf(15, "rs_simple_request: i=%d ds_key=%s, rid_key=%s size=" XOT "\n", i, rse->ds_key, rse->rid_key, req[k].size);
                         req[k].rid_key = strdup(rse->rid_key);
                         req[k].gop = ds_allocate(rss->ds, rse->ds_key, da, req[k].size, caps[k], timeout);
-                        opque_add(que, req[k].gop);
+                        gop_opque_add(que, req[k].gop);
                     }
                 }
 
@@ -430,7 +430,7 @@ op_generic_t *rs_simple_request(resource_service_fn_t *arg, data_attr_t *da, rs_
     apr_thread_mutex_unlock(rss->lock);
 
     if ((found == 0) || (err_cnt>0)) {
-        opque_free(que, OP_DESTROY);
+        gop_opque_free(que, OP_DESTROY);
 
         if (status.error_code == 0) {
             log_printf(1, "rs_simple_request: Can't find enough RIDs! requested=%d found=%d err_cnt=%d\n", n_rid, found, err_cnt);
@@ -712,7 +712,7 @@ int rss_perform_check(resource_service_fn_t *rs)
     log_printf(5, "START\n");
 
     //** Generate the task list
-    q = new_opque();
+    q = gop_opque_new();
 
     status_change = 0;
     apr_thread_mutex_lock(rss->lock);
@@ -720,7 +720,7 @@ int rss_perform_check(resource_service_fn_t *rs)
         apr_hash_this(hi, (const void **)&rid, &klen, (void **)&ce);
         gop = ds_res_inquire(rss->ds, ce->ds_key, rss->da, ce->space, rss->check_timeout);
         gop_set_private(gop, ce);
-        opque_add(q, gop);
+        gop_opque_add(q, gop);
     }
     apr_thread_mutex_unlock(rss->lock);
 
@@ -756,7 +756,7 @@ int rss_perform_check(resource_service_fn_t *rs)
 
     }
 
-    opque_free(q, OP_DESTROY);
+    gop_opque_free(q, OP_DESTROY);
     apr_thread_mutex_unlock(rss->lock);
 
     log_printf(5, "END status_change=%d\n", status_change);
@@ -1002,8 +1002,8 @@ resource_service_fn_t *rs_simple_create(void *arg, tbx_inip_file_t *kf, char *se
     rss->rid_mapping = apr_hash_make(rss->mpool);
     rss->mapping_updates = apr_hash_make(rss->mpool);
 
-    rss->ds = lookup_service(ess, ESS_RUNNING, ESS_DS);
-    rss->da = lookup_service(ess, ESS_RUNNING, ESS_DA);
+    rss->ds = lio_lookup_service(ess, ESS_RUNNING, ESS_DS);
+    rss->da = lio_lookup_service(ess, ESS_RUNNING, ESS_DA);
 
     //** Set the resource service fn ptrs
     tbx_type_malloc_clear(rs, resource_service_fn_t, 1);

@@ -120,7 +120,7 @@ op_status_t gen_warm_task(void *arg, int id)
     fd = tbx_inip_string_read(w->exnode);
     tbx_inip_group_t *g;
 
-    q = new_opque();
+    q = gop_opque_new();
     opque_start_execution(q);
 
     tbx_type_malloc(w->cap, char *, tbx_inip_group_count(fd));
@@ -151,10 +151,10 @@ op_status_t gen_warm_task(void *arg, int id)
             free(etext);
 
             //** Add the task
-            gop = new_ibp_modify_alloc_op(w->ic, w->cap[w->n], -1, dt, -1, lio_gc->timeout);
+            gop = ibp_modify_alloc_op(w->ic, w->cap[w->n], -1, dt, -1, lio_gc->timeout);
             gop_set_myid(gop, w->n);
             gop_set_private(gop, wrid);
-            opque_add(q, gop);
+            gop_opque_add(q, gop);
             w->n++;
 
             //** Check if it was tagged
@@ -190,18 +190,18 @@ op_status_t gen_warm_task(void *arg, int id)
     }
 
     if (nfailed == 0) {
-        status = op_success_status;
+        status = gop_success_status;
         info_printf(lio_ifd, 0, "Succeeded with file %s with %d allocations\n", w->fname, w->n);
     } else {
-        status = op_failure_status;
+        status = gop_failure_status;
         info_printf(lio_ifd, 0, "Failed with file %s on %d out of %d allocations\n", w->fname, nfailed, w->n);
     }
 
     etext = NULL;
     i = 0;
-    lio_set_attr(lio_gc, w->creds, w->fname, NULL, "os.timestamp.system.warm", (void *)etext, i);
+    lio_setattr(lio_gc, w->creds, w->fname, NULL, "os.timestamp.system.warm", (void *)etext, i);
 
-    opque_free(q, OP_DESTROY);
+    gop_opque_free(q, OP_DESTROY);
 
     free(w->exnode);
     free(w->fname);
@@ -303,7 +303,7 @@ int main(int argc, char **argv)
         start_index--;  //** Ther 1st entry will be the rp created in lio_parse_path_options
     }
 
-    q = new_opque();
+    q = gop_opque_new();
     opque_start_execution(q);
 
     tbx_type_malloc_clear(w, warm_t, lio_parallel_task_count);
@@ -320,7 +320,7 @@ int main(int argc, char **argv)
             //** Create the simple path iterator
             tuple = lio_path_resolve(lio_gc->auto_translate, argv[j]);
             lio_path_wildcard_auto_append(&tuple);
-            rp_single = os_path_glob2regex(tuple.path);
+            rp_single = lio_os_path_glob2regex(tuple.path);
         } else {
             rg_mode = 0;  //** Use the initial rp
         }
@@ -352,10 +352,10 @@ int main(int argc, char **argv)
             vals[0] = NULL;
             fname = NULL;
             submitted++;
-            gop = new_thread_pool_op(lio_gc->tpc_unlimited, NULL, gen_warm_task, (void *)&(w[slot]), NULL, 1);
+            gop = gop_tp_op_new(lio_gc->tpc_unlimited, NULL, gen_warm_task, (void *)&(w[slot]), NULL, 1);
             gop_set_myid(gop, slot);
             log_printf(0, "gid=%d i=%d fname=%s\n", gop_id(gop), slot, fname);
-            opque_add(q, gop);
+            gop_opque_add(q, gop);
 
             if (submitted >= lio_parallel_task_count) {
                 gop = opque_waitany(q);
@@ -386,16 +386,16 @@ int main(int argc, char **argv)
 
         lio_path_release(&tuple);
         if (rp_single != NULL) {
-            os_regex_table_destroy(rp_single);
+            lio_os_regex_table_destroy(rp_single);
             rp_single = NULL;
         }
         if (ro_single != NULL) {
-            os_regex_table_destroy(ro_single);
+            lio_os_regex_table_destroy(ro_single);
             ro_single = NULL;
         }
     }
 
-    opque_free(q, OP_DESTROY);
+    gop_opque_free(q, OP_DESTROY);
 
     info_printf(lio_ifd, 0, "--------------------------------------------------------------------\n");
     info_printf(lio_ifd, 0, "Submitted: " XOT "   Success: " XOT "   Fail: " XOT "    Write Errors: " XOT "\n", submitted, good, bad, werr);

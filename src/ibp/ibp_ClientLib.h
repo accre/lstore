@@ -56,7 +56,7 @@ extern "C" {
  * IBP Client APIs definition
  *********************************************************/
 
-IBP_API IBP_set_of_caps  IBP_allocate(  IBP_depot  ps_depot,
+IBP_API IBP_set_of_caps  ibp_allocate(  IBP_depot  ps_depot,
                                 IBP_timer   ps_timeout,
                                 unsigned long int pl_size,
                                 IBP_attributes ps_attr);
@@ -105,13 +105,13 @@ unsigned long int  IBP_datamover (  IBP_cap pc_TargetCap,
                                     int dm_port,
                                     int dm_service);
 
-IBP_API int IBP_manage(   IBP_cap   pc_manCap,
+IBP_API int ibp_manage(   IBP_cap   pc_manCap,
                   IBP_timer ps_timeout,
                   int  pi_cmd,
                   int  pi_capType,
                   IBP_CapStatus  ps_info);
 
-IBP_API IBP_DptInfo  IBP_status(  IBP_depot ps_depot,
+IBP_API IBP_DptInfo  ibp_status(  IBP_depot ps_depot,
                           int       pi_StCmd,
                           IBP_timer ps_timeout,
                           char     *pc_password,

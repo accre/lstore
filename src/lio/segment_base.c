@@ -40,7 +40,7 @@ typedef struct {
     ex_off_t bufsize;
     int timeout;
     int truncate;
-} segment_copy_t;
+} lio_segment_copy_t;
 
 //***********************************************************************
 // load_segment - Loads the given segment from the file/struct
@@ -63,7 +63,7 @@ segment_t *load_segment(service_manager_t *ess, ex_id_t id, exnode_exchange_t *e
         return(NULL);
     }
 
-    sload = lookup_service(ess, SEG_SM_LOAD, type);
+    sload = lio_lookup_service(ess, SEG_SM_LOAD, type);
     if (sload == NULL) {
         log_printf(0, "load_segment:  No matching driver for type=%s  id=" XIDT "\n", type, id);
         return(NULL);
@@ -74,12 +74,12 @@ segment_t *load_segment(service_manager_t *ess, ex_id_t id, exnode_exchange_t *e
 }
 
 //***********************************************************************
-// segment_copy_func - Does the actual segment copy operation
+// lio_segment_copy_func - Does the actual segment copy operation
 //***********************************************************************
 
-op_status_t segment_copy_func(void *arg, int id)
+op_status_t lio_segment_copy_func(void *arg, int id)
 {
-    segment_copy_t *sc = (segment_copy_t *)arg;
+    lio_segment_copy_t *sc = (lio_segment_copy_t *)arg;
     tbx_tbuf_t *wbuf, *rbuf, *tmpbuf;
     tbx_tbuf_t tbuf1, tbuf2;
     int err;
@@ -124,11 +124,11 @@ op_status_t segment_copy_func(void *arg, int id)
     if (err != OP_STATE_SUCCESS) {
         log_printf(1, "Intial read failed! src=%" PRIu64 " rpos=" XOT " len=" XOT "\n", segment_id(sc->src), rpos, rlen);
         gop_free(rgop, OP_DESTROY);
-        return(op_failure_status);
+        return(gop_failure_status);
     }
     gop_free(rgop, OP_DESTROY);
 
-    q = new_opque();
+    q = gop_opque_new();
     do {
         //** Swap the buffers
         tmpbuf = rbuf;
@@ -144,7 +144,7 @@ op_status_t segment_copy_func(void *arg, int id)
         ex_iovec_single(&wex, wpos, wlen);
         wpos += wlen;
         wgop = segment_write(sc->dest, sc->da, sc->rw_hints, 1, &wex, wbuf, 0, sc->timeout);
-        opque_add(q, wgop);
+        gop_opque_add(q, wgop);
 
         //** Read in the next block
         if (nbytes < 0) {
@@ -157,42 +157,42 @@ op_status_t segment_copy_func(void *arg, int id)
             rpos += rlen;
             nbytes -= rlen;
             rgop = segment_read(sc->src, sc->da, sc->rw_hints, 1, &rex, rbuf, 0, sc->timeout);
-            opque_add(q, rgop);
+            gop_opque_add(q, rgop);
         }
 
         err = opque_waitall(q);
         if (err != OP_STATE_SUCCESS) {
             log_printf(1, "ERROR read/write failed! src=" XIDT " rpos=" XOT " len=" XOT "\n", segment_id(sc->src), rpos, rlen);
-            opque_free(q, OP_DESTROY);
-            return(op_failure_status);
+            gop_opque_free(q, OP_DESTROY);
+            return(gop_failure_status);
         }
     } while (rlen > 0);
 
-    opque_free(q, OP_DESTROY);
+    gop_opque_free(q, OP_DESTROY);
 
     if (sc->truncate == 1) {  //** Truncate if wanted
         gop_sync_exec(segment_truncate(sc->dest, sc->da, wpos, sc->timeout));
     }
 
-    status = op_success_status;
+    status = gop_success_status;
     status.error_code = rpos;
 
     return(status);
 }
 
 //***********************************************************************
-// segment_copy - Copies data between segments.  This copy is performed
+// lio_segment_copy - Copies data between segments.  This copy is performed
 //      by reading from the source and writing to the destination.
 //      This is not a depot-depot copy.  The data goes through the client.
 //
 //      If len == -1 then all available data from src is copied
 //***********************************************************************
 
-op_generic_t *segment_copy(thread_pool_context_t *tpc, data_attr_t *da, segment_rw_hints_t *rw_hints, segment_t *src_seg, segment_t *dest_seg, ex_off_t src_offset, ex_off_t dest_offset, ex_off_t len, ex_off_t bufsize, char *buffer, int do_truncate, int timeout)
+op_generic_t *lio_segment_copy(thread_pool_context_t *tpc, data_attr_t *da, segment_rw_hints_t *rw_hints, segment_t *src_seg, segment_t *dest_seg, ex_off_t src_offset, ex_off_t dest_offset, ex_off_t len, ex_off_t bufsize, char *buffer, int do_truncate, int timeout)
 {
-    segment_copy_t *sc;
+    lio_segment_copy_t *sc;
 
-    tbx_type_malloc(sc, segment_copy_t, 1);
+    tbx_type_malloc(sc, lio_segment_copy_t, 1);
 
     sc->da = da;
     sc->timeout = timeout;
@@ -206,7 +206,7 @@ op_generic_t *segment_copy(thread_pool_context_t *tpc, data_attr_t *da, segment_
     sc->buffer = buffer;
     sc->truncate = do_truncate;
 
-    return(new_thread_pool_op(tpc, NULL, segment_copy_func, (void *)sc, free, 1));
+    return(gop_tp_op_new(tpc, NULL, lio_segment_copy_func, (void *)sc, free, 1));
 }
 
 
@@ -216,7 +216,7 @@ op_generic_t *segment_copy(thread_pool_context_t *tpc, data_attr_t *da, segment_
 
 op_status_t segment_get_func(void *arg, int id)
 {
-    segment_copy_t *sc = (segment_copy_t *)arg;
+    lio_segment_copy_t *sc = (lio_segment_copy_t *)arg;
     tbx_tbuf_t *wbuf, *rbuf, *tmpbuf;
     tbx_tbuf_t tbuf1, tbuf2;
     char *rb, *wb, *tb;
@@ -238,7 +238,7 @@ op_status_t segment_get_func(void *arg, int id)
     rbuf = &tbuf1;
     wbuf = &tbuf2;
 
-    status = op_success_status;
+    status = gop_success_status;
 
     //** Read the initial block
     rpos = sc->src_offset;
@@ -262,7 +262,7 @@ op_status_t segment_get_func(void *arg, int id)
     if (err != OP_STATE_SUCCESS) {
         log_printf(1, "Intial read failed! src=" XIDT " rpos=" XOT " len=" XOT "\n", segment_id(sc->src), rpos, rlen);
         gop_free(gop, OP_DESTROY);
-        return(op_failure_status);
+        return(gop_failure_status);
     }
     gop_free(gop, OP_DESTROY);
 
@@ -306,7 +306,7 @@ op_status_t segment_get_func(void *arg, int id)
         log_printf(5, "sid=" XIDT " fwrite(wb,1," XOT ", sc->fd)=" XOT " total=" XOT "\n", segment_id(sc->src), wlen, got, total);
         if (wlen != got) {
             log_printf(1, "ERROR from fread=%d  dest sid=" XIDT "\n", errno, segment_id(sc->dest));
-            status = op_failure_status;
+            status = gop_failure_status;
             gop_waitall(gop);
             gop_free(gop, OP_DESTROY);
             goto fail;
@@ -320,7 +320,7 @@ op_status_t segment_get_func(void *arg, int id)
             gop_free(gop, OP_DESTROY);
             if (err != OP_STATE_SUCCESS) {
                 log_printf(1, "ERROR write(dseg=" XIDT ") failed! wpos=" XOT " len=" XOT "\n", segment_id(sc->dest), wpos, wlen);
-                status = op_failure_status;
+                status = gop_failure_status;
                 goto fail;
             }
         }
@@ -345,9 +345,9 @@ fail:
 
 op_generic_t *segment_get(thread_pool_context_t *tpc, data_attr_t *da, segment_rw_hints_t *rw_hints, segment_t *src_seg, FILE *fd, ex_off_t src_offset, ex_off_t len, ex_off_t bufsize, char *buffer, int timeout)
 {
-    segment_copy_t *sc;
+    lio_segment_copy_t *sc;
 
-    tbx_type_malloc(sc, segment_copy_t, 1);
+    tbx_type_malloc(sc, lio_segment_copy_t, 1);
 
     sc->da = da;
     sc->rw_hints = rw_hints;
@@ -359,7 +359,7 @@ op_generic_t *segment_get(thread_pool_context_t *tpc, data_attr_t *da, segment_r
     sc->bufsize = bufsize;
     sc->buffer = buffer;
 
-    return(new_thread_pool_op(tpc, NULL, segment_get_func, (void *)sc, free, 1));
+    return(gop_tp_op_new(tpc, NULL, segment_get_func, (void *)sc, free, 1));
 }
 
 //***********************************************************************
@@ -368,7 +368,7 @@ op_generic_t *segment_get(thread_pool_context_t *tpc, data_attr_t *da, segment_r
 
 op_status_t segment_put_func(void *arg, int id)
 {
-    segment_copy_t *sc = (segment_copy_t *)arg;
+    lio_segment_copy_t *sc = (lio_segment_copy_t *)arg;
     tbx_tbuf_t *wbuf, *rbuf, *tmpbuf;
     tbx_tbuf_t tbuf1, tbuf2;
     char *rb, *wb, *tb;
@@ -391,7 +391,7 @@ op_status_t segment_put_func(void *arg, int id)
     wbuf = &tbuf2;
 
     nbytes = sc->len;
-    status = op_success_status;
+    status = gop_success_status;
 
     //** Go ahead and reserve the space in the destintaion
     dend = sc->dest_offset + nbytes;
@@ -419,7 +419,7 @@ op_status_t segment_put_func(void *arg, int id)
     if (got == 0) {
         if (feof(sc->fd) == 0)  {
             log_printf(1, "ERROR from fread=%d  dest sid=" XIDT " rlen=" XOT " got=" XOT "\n", errno, segment_id(sc->dest), rlen, got);
-            status = op_failure_status;
+            status = gop_failure_status;
         }
         goto finished;
     }
@@ -460,7 +460,7 @@ op_status_t segment_put_func(void *arg, int id)
             if (got == 0) {
                 if (feof(sc->fd) == 0)  {
                     log_printf(1, "ERROR from fread=%d  dest sid=" XIDT " got=" XOT " rlen=" XOT "\n", errno, segment_id(sc->dest), got, rlen);
-                    status = op_failure_status;
+                    status = gop_failure_status;
                     gop_waitall(gop);
                     gop_free(gop, OP_DESTROY);
                     goto finished;
@@ -480,7 +480,7 @@ op_status_t segment_put_func(void *arg, int id)
 
         if (err != OP_STATE_SUCCESS) {
             log_printf(1, "ERROR write(dseg=" XIDT ") failed! wpos=" XOT " len=" XOT "\n", segment_id(sc->dest), wpos, wlen);
-            status = op_failure_status;
+            status = gop_failure_status;
             gop_free(gop, OP_DESTROY);
             goto finished;
         }
@@ -506,9 +506,9 @@ finished:
 
 op_generic_t *segment_put(thread_pool_context_t *tpc, data_attr_t *da, segment_rw_hints_t *rw_hints, FILE *fd, segment_t *dest_seg, ex_off_t dest_offset, ex_off_t len, ex_off_t bufsize, char *buffer, int do_truncate, int timeout)
 {
-    segment_copy_t *sc;
+    lio_segment_copy_t *sc;
 
-    tbx_type_malloc(sc, segment_copy_t, 1);
+    tbx_type_malloc(sc, lio_segment_copy_t, 1);
 
     sc->da = da;
     sc->rw_hints = rw_hints;
@@ -521,6 +521,6 @@ op_generic_t *segment_put(thread_pool_context_t *tpc, data_attr_t *da, segment_r
     sc->buffer = buffer;
     sc->truncate = do_truncate;
 
-    return(new_thread_pool_op(tpc, NULL, segment_put_func, (void *)sc, free, 1));
+    return(gop_tp_op_new(tpc, NULL, segment_put_func, (void *)sc, free, 1));
 }
 

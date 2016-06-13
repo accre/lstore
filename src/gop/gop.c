@@ -36,14 +36,14 @@ void _opque_start_execution(opque_t *que);
 void _opque_print_stack(tbx_stack_t *stack);
 extern tbx_pc_t *_gop_control;
 
-op_status_t op_success_status = {OP_STATE_SUCCESS, 0};
-op_status_t op_failure_status = {OP_STATE_FAILURE, 0};
+op_status_t gop_success_status = {OP_STATE_SUCCESS, 0};
+op_status_t gop_failure_status = {OP_STATE_FAILURE, 0};
 op_status_t op_retry_status = {OP_STATE_RETRY, 0};
 op_status_t op_dead_status = {OP_STATE_DEAD, 0};
 op_status_t op_timeout_status = {OP_STATE_TIMEOUT, 0};
 op_status_t op_invalid_host_status = {OP_STATE_INVALID_HOST, 0};
 op_status_t op_cant_connect_status = {OP_STATE_FAILURE, OP_STATE_CANT_CONNECT};
-op_status_t op_error_status = {OP_STATE_ERROR, 0};
+op_status_t gop_error_status = {OP_STATE_ERROR, 0};
 
 //*************************************************************
 //  gop_callback_append
@@ -298,7 +298,7 @@ void gop_free(op_generic_t *gop, int mode)
     //** Get the status
     type = gop_get_type(gop);
     if (type == Q_TYPE_QUE) {
-        opque_free(gop->q->opque, mode);
+        gop_opque_free(gop->q->opque, mode);
     } else {
         //** the gop is locked in gop_generic_free before freeing
         gop->base.free(gop, mode);
@@ -457,11 +457,11 @@ int gop_waitall(op_generic_t *g)
 
 
 //*************************************************************
-// gop_timed_waitany - waits until any given task completes and
+// gop_waitany_timed - waits until any given task completes and
 //   returns the operation.
 //*************************************************************
 
-op_generic_t *gop_timed_waitany(op_generic_t *g, int dt)
+op_generic_t *gop_waitany_timed(op_generic_t *g, int dt)
 {
     op_generic_t *gop = NULL;
     apr_interval_time_t adt = apr_time_from_sec(dt);
@@ -665,7 +665,7 @@ void gop_reset(op_generic_t *gop)
     unlock_gop(gop);
     gop->base.cb = NULL;
     gop->base.state = 0;
-    gop->base.status = op_failure_status;
+    gop->base.status = gop_failure_status;
     gop->base.started_execution = 0;
     gop->base.auto_destroy = 0;
 }

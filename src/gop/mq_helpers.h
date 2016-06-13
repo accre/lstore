@@ -28,15 +28,15 @@
 extern "C" {
 #endif
 
-GOP_API void mq_remove_header(mq_msg_t *msg, int drop_extra);
-GOP_API op_status_t mq_read_status_frame(mq_frame_t *f, int destroy);
-GOP_API mq_frame_t *mq_make_status_frame(op_status_t status);
+GOP_API void gop_mq_remove_header(mq_msg_t *msg, int drop_extra);
+GOP_API op_status_t gop_mq_read_status_frame(mq_frame_t *f, int destroy);
+GOP_API mq_frame_t *gop_mq_make_status_frame(op_status_t status);
 mq_frame_t *mq_make_id_frame();
-GOP_API mq_msg_t *mq_make_exec_core_msg(mq_msg_t *address, int do_track);
-GOP_API mq_msg_t *mq_make_response_core_msg(mq_msg_t *address, mq_frame_t *fid);
+GOP_API mq_msg_t *gop_mq_make_exec_core_msg(mq_msg_t *address, int do_track);
+GOP_API mq_msg_t *gop_mq_make_response_core_msg(mq_msg_t *address, mq_frame_t *fid);
 int mq_num_frames(mq_msg_t *msg);
 char *mq_address_to_string(mq_msg_t *address);
-GOP_API mq_msg_t *mq_string_to_address(char *string);
+GOP_API mq_msg_t *gop_mq_string_to_address(char *string);
 
 
 #ifdef __cplusplus

@@ -262,7 +262,7 @@ op_status_t seglog_write_func(void *arg, int id)
     op_generic_t *gop;
 
     log_printf(15, "seg=%p n_iov=%d offset[0]=" XOT " len[0]=" XOT "\n", sw->seg, sw->n_iov, sw->iov[0].offset, sw->iov[0].len);
-    q = new_opque();
+    q = gop_opque_new();
 
     segment_lock(sw->seg);
 
@@ -286,22 +286,22 @@ op_status_t seglog_write_func(void *arg, int id)
     //** Do the table and data writes
     ex_iovec_single(&ex_iov_data, data_offset, nbytes);
     gop = segment_write(s->data_seg, sw->da, sw->rw_hints, 1, &ex_iov_data, sw->buffer, sw->boff, sw->timeout);
-    opque_add(q, gop);
+    gop_opque_add(q, gop);
 
     i = sw->n_iov*sizeof(slog_range_t);
     ex_iovec_single(&ex_iov_table, table_offset, i);
     tbx_tbuf_single(&tbuf, i, (char *)r);
     gop = segment_write(s->table_seg, sw->da, sw->rw_hints, 1, &ex_iov_table, &tbuf, 0, sw->timeout);
-    opque_add(q, gop);
+    gop_opque_add(q, gop);
 
     err = opque_waitall(q);
     if (err != OP_STATE_SUCCESS) {
-        status = op_failure_status;
+        status = gop_failure_status;
         segment_lock(sw->seg);
         s->hard_errors++;
         segment_unlock(sw->seg);
     } else {
-        status = op_success_status;
+        status = gop_success_status;
 
         //** Update the mappings
         segment_lock(sw->seg);
@@ -315,7 +315,7 @@ op_status_t seglog_write_func(void *arg, int id)
         segment_unlock(sw->seg);
     }
 
-    opque_free(q, OP_DESTROY);
+    gop_opque_free(q, OP_DESTROY);
 
     return(status);
 }
@@ -340,7 +340,7 @@ op_generic_t *seglog_write(segment_t *seg, data_attr_t *da, segment_rw_hints_t *
     sw->buffer = buffer;
     sw->timeout = timeout;
     sw->rw_mode = 1;
-    gop = new_thread_pool_op(s->tpc, NULL, seglog_write_func, (void *)sw, free, 1);
+    gop = gop_tp_op_new(s->tpc, NULL, seglog_write_func, (void *)sw, free, 1);
 
     return(gop);
 }
@@ -363,7 +363,7 @@ op_status_t seglog_read_func(void *arg, int id)
     ex_off_t bpos, pos, range_offset;
     ex_tbx_iovec_t *ex_iov, *iov;
 
-    q = new_opque();
+    q = gop_opque_new();
     iov = sw->iov;
 
     //** Do the mapping of where to retreive the data
@@ -401,7 +401,7 @@ op_status_t seglog_read_func(void *arg, int id)
                 ex_iov[slot].offset = pos;
                 ex_iov[slot].len = ir->lo - pos;
                 gop = segment_read(s->base_seg, sw->da, sw->rw_hints, 1, &(ex_iov[slot]), sw->buffer, bpos, sw->timeout);
-                opque_add(q, gop);
+                gop_opque_add(q, gop);
                 pos = pos + ex_iov[slot].len;
                 bpos = bpos + ex_iov[slot].len;
                 slot++;
@@ -426,7 +426,7 @@ op_status_t seglog_read_func(void *arg, int id)
                 gop = segment_read(s->data_seg, sw->da, sw->rw_hints, 1, &(ex_iov[slot]), sw->buffer, bpos, sw->timeout);
             }
 
-            opque_add(q, gop);
+            gop_opque_add(q, gop);
             pos = pos + ex_iov[slot].len;
             bpos = bpos + ex_iov[slot].len;
             prev_end = ir->hi;
@@ -437,14 +437,14 @@ op_status_t seglog_read_func(void *arg, int id)
             ex_iov[slot].offset = lo;
             ex_iov[slot].len = hi - lo + 1;
             gop = segment_read(s->base_seg, sw->da, sw->rw_hints, 1, &(ex_iov[slot]), sw->buffer, bpos, sw->timeout);
-            opque_add(q, gop);
+            gop_opque_add(q, gop);
             bpos = bpos + ex_iov[slot].len;
             slot++;
         } else if (prev_end < hi) {    //** Check if we read from the base on the end
             ex_iov[slot].offset = pos;
             ex_iov[slot].len = hi - (prev_end+1) + 1;
             gop = segment_read(s->base_seg, sw->da, sw->rw_hints, 1, &(ex_iov[slot]), sw->buffer, bpos, sw->timeout);
-            opque_add(q, gop);
+            gop_opque_add(q, gop);
             bpos = bpos + ex_iov[slot].len;
             slot++;
         }
@@ -454,15 +454,15 @@ op_status_t seglog_read_func(void *arg, int id)
 
     err = opque_waitall(q);
     if (err != OP_STATE_SUCCESS) {
-        status = op_failure_status;
+        status = gop_failure_status;
         segment_lock(sw->seg);
         s->hard_errors++;
         segment_unlock(sw->seg);
     } else {
-        status = op_success_status;
+        status = gop_success_status;
     }
 
-    opque_free(q, OP_DESTROY);
+    gop_opque_free(q, OP_DESTROY);
     free(ex_iov);
 
     return(status);
@@ -488,7 +488,7 @@ op_generic_t *seglog_read(segment_t *seg, data_attr_t *da, segment_rw_hints_t *r
     sw->buffer = buffer;
     sw->timeout = timeout;
     sw->rw_mode = 0;
-    gop = new_thread_pool_op(s->tpc, NULL, seglog_read_func, (void *)sw, free, 1);
+    gop = gop_tp_op_new(s->tpc, NULL, seglog_read_func, (void *)sw, free, 1);
 
     return(gop);
 }
@@ -654,30 +654,30 @@ op_status_t seglog_clone_func(void *arg, int id)
     ex_off_t dt, pos, rpos, wpos, rlen, dlen;
     tbx_tbuf_t *wbuf, *rbuf, *tmpbuf;
     tbx_tbuf_t tbuf1, tbuf2;
-    int err, do_segment_copy;
+    int err, do_lio_segment_copy;
     char *buffer = NULL;
     slog_changes_t *clog;
     opque_t *q1, *q2, *q;
     tbx_stack_t *stack;
     op_status_t status;
 
-    do_segment_copy = 0;
+    do_lio_segment_copy = 0;
     stack = NULL;
     q2 = NULL;
 
-    q = new_opque();
+    q = gop_opque_new();
     opque_start_execution(q);
 
     //** SEe if we are using an old seg.  If so we need to trunc it first
     if (slc->trunc == 1) {
-        opque_add(q, segment_truncate(sd->table_seg, slc->da, 0, slc->timeout));
-        opque_add(q, segment_truncate(sd->data_seg, slc->da, 0, slc->timeout));
-        opque_add(q, segment_truncate(sd->base_seg, slc->da, 0, slc->timeout));
+        gop_opque_add(q, segment_truncate(sd->table_seg, slc->da, 0, slc->timeout));
+        gop_opque_add(q, segment_truncate(sd->data_seg, slc->da, 0, slc->timeout));
+        gop_opque_add(q, segment_truncate(sd->base_seg, slc->da, 0, slc->timeout));
     }
 
     //** Go ahead and start cloning the log
-    opque_add(q, segment_clone(ss->table_seg, slc->da, &(sd->table_seg), CLONE_STRUCTURE, slc->attr, slc->timeout));
-    opque_add(q, segment_clone(ss->data_seg, slc->da, &(sd->data_seg), CLONE_STRUCTURE, slc->attr, slc->timeout));
+    gop_opque_add(q, segment_clone(ss->table_seg, slc->da, &(sd->table_seg), CLONE_STRUCTURE, slc->attr, slc->timeout));
+    gop_opque_add(q, segment_clone(ss->data_seg, slc->da, &(sd->data_seg), CLONE_STRUCTURE, slc->attr, slc->timeout));
 
     //** Check and see how much data will be transferred if using base
     base = _slog_find_base(ss->base_seg);
@@ -685,7 +685,7 @@ op_status_t seglog_clone_func(void *arg, int id)
     opque_waitall(q);
 
     if (slc->mode == CLONE_STRUCTURE) {  //** Only cloning the structure
-        opque_add(q, segment_clone(base, slc->da, &(sd->base_seg), CLONE_STRUCTURE, slc->attr, slc->timeout));
+        gop_opque_add(q, segment_clone(base, slc->da, &(sd->base_seg), CLONE_STRUCTURE, slc->attr, slc->timeout));
     } else {
         nbytes_base = segment_size(base);
         stack = tbx_stack_new();
@@ -698,8 +698,8 @@ op_status_t seglog_clone_func(void *arg, int id)
         dt = 2*nbytes_log + nbytes_base / 5;
         log_printf(15, "dt=" XOT " nbytes_log=" XOT " nbytes_base=" XOT " ss->file_size=" XOT "\n", dt, nbytes_log, nbytes_base, ss->file_size);
         if (dt > ss->file_size) {
-            do_segment_copy = 1;
-            opque_add(q, segment_clone(base, slc->da, &(sd->base_seg), CLONE_STRUCTURE, slc->attr, slc->timeout));
+            do_lio_segment_copy = 1;
+            gop_opque_add(q, segment_clone(base, slc->da, &(sd->base_seg), CLONE_STRUCTURE, slc->attr, slc->timeout));
         }
     }
 
@@ -709,17 +709,17 @@ op_status_t seglog_clone_func(void *arg, int id)
     if (err != OP_STATE_SUCCESS) {
         log_printf(1, "Error during intial cloning phase:  src=" XIDT "\n", segment_id(slc->sseg));
         if (stack != NULL) tbx_stack_free(stack, 1);
-        opque_free(q, OP_DESTROY);
-        return(op_failure_status);
+        gop_opque_free(q, OP_DESTROY);
+        return(gop_failure_status);
     }
 
     //** Now copy the data if needed
-    if (do_segment_copy == 1) {  //** segment_copy() method
+    if (do_lio_segment_copy == 1) {  //** lio_segment_copy() method
         tbx_type_malloc(buffer, char, bufsize);
-        opque_add(q, segment_copy(ss->tpc, slc->da, NULL, slc->sseg, slc->dseg, 0, 0, ss->file_size, bufsize, buffer, 0, slc->timeout));
+        gop_opque_add(q, lio_segment_copy(ss->tpc, slc->da, NULL, slc->sseg, slc->dseg, 0, 0, ss->file_size, bufsize, buffer, 0, slc->timeout));
     } else if (slc->mode == CLONE_STRUCT_AND_DATA) {  //** Use the incremental log+base method
         //** First clone the base struct and data
-        opque_add(q, segment_clone(base, slc->da, &(sd->base_seg), CLONE_STRUCT_AND_DATA, slc->attr, slc->timeout));
+        gop_opque_add(q, segment_clone(base, slc->da, &(sd->base_seg), CLONE_STRUCT_AND_DATA, slc->attr, slc->timeout));
 
         //** Now do the logs
         //** Set up the buffers
@@ -730,7 +730,7 @@ op_status_t seglog_clone_func(void *arg, int id)
         wbuf = &tbuf2;
         rlen = 0;
         q1 = q;
-        q2 = new_opque();
+        q2 = gop_opque_new();
         while ((clog = (slog_changes_t *)tbx_stack_get_current_data(stack)) != NULL) {
             pos = 0;
             rpos = clog->seg_offset;
@@ -739,11 +739,11 @@ op_status_t seglog_clone_func(void *arg, int id)
                 dlen = clog->len - pos;
                 ex_iovec_single(&(clog->rex), rpos, dlen);
                 gop = segment_read(clog->seg, slc->da, NULL, 1, &(clog->rex), rbuf, rlen, slc->timeout);
-                opque_add(q1, gop);
+                gop_opque_add(q1, gop);
 
                 ex_iovec_single(&(clog->wex), wpos, dlen);
                 gop = segment_write(clog->seg, slc->da, NULL, 1, &(clog->wex), wbuf, rlen, slc->timeout);
-                opque_add(q2, gop);
+                gop_opque_add(q2, gop);
 
                 pos += dlen;
                 rpos += dlen;
@@ -752,13 +752,13 @@ op_status_t seglog_clone_func(void *arg, int id)
 
                 if (rlen <= 0) {  //** Time to flush the data
                     err = opque_waitall(q1);  //** Wait for the data to be R/W
-                    opque_free(q1, OP_DESTROY);  //** Free the space
+                    gop_opque_free(q1, OP_DESTROY);  //** Free the space
                     if (err != OP_STATE_SUCCESS) {
                         log_printf(1, "Error during log copy phase:  src=" XIDT "\n", segment_id(slc->sseg));
                         tbx_stack_free(stack, 1);
                         free(buffer);
-                        opque_free(q2, OP_DESTROY);
-                        return(op_failure_status);
+                        gop_opque_free(q2, OP_DESTROY);
+                        return(gop_failure_status);
                     }
 
                     //** Swap the tasks and start executing them
@@ -766,7 +766,7 @@ op_status_t seglog_clone_func(void *arg, int id)
                     rbuf = wbuf;
                     wbuf = tmpbuf;
                     q1 = q2;
-                    q2 = new_opque();  //** Make a new que but don't start execution.  Have to wait for the reads to finish
+                    q2 = gop_opque_new();  //** Make a new que but don't start execution.  Have to wait for the reads to finish
                     opque_start_execution(q1);  //** Start the previous write tasks executing while we add read tasks to it
 
                     rlen = 0;
@@ -778,11 +778,11 @@ op_status_t seglog_clone_func(void *arg, int id)
 
     }
 
-    status = op_success_status;
+    status = gop_success_status;
     err = opque_waitall(q);
     if (err != OP_STATE_SUCCESS) {
         log_printf(1, "Error during log copy phase:  src=" XIDT "\n", segment_id(slc->sseg));
-        status = op_failure_status;
+        status = gop_failure_status;
     }
 
     //** Make sure we don't have an empty log
@@ -791,7 +791,7 @@ op_status_t seglog_clone_func(void *arg, int id)
             err = opque_waitall(q2);  //** Wait for the data to be R/W
             if (err != OP_STATE_SUCCESS) {
                 log_printf(1, "Error during log copy phase:  src=" XIDT "\n", segment_id(slc->sseg));
-                status = op_failure_status;
+                status = gop_failure_status;
             }
         }
     }
@@ -807,10 +807,10 @@ op_status_t seglog_clone_func(void *arg, int id)
     if (stack != NULL) tbx_stack_free(stack, 1);
     if (buffer != NULL) free(buffer);
     if (q2 == NULL) {
-        opque_free(q, OP_DESTROY);
+        gop_opque_free(q, OP_DESTROY);
     } else {
-        opque_free(q1, OP_DESTROY);
-        opque_free(q2, OP_DESTROY);
+        gop_opque_free(q1, OP_DESTROY);
+        gop_opque_free(q2, OP_DESTROY);
     }
 
     return(status);
@@ -848,7 +848,7 @@ op_generic_t *seglog_clone(segment_t *seg, data_attr_t *da, segment_t **clone_se
     slc->timeout = timeout;
     slc->attr = attr;
     slc->trunc = use_existing;
-    gop = new_thread_pool_op(sd->tpc, NULL, seglog_clone_func, (void *)slc, free, 1);
+    gop = gop_tp_op_new(sd->tpc, NULL, seglog_clone_func, (void *)slc, free, 1);
 
     return(gop);
 }
@@ -871,7 +871,7 @@ op_status_t seglog_truncate_func(void *arg, int id)
     opque_t *q;
     op_generic_t *gop = NULL;
 
-    q = new_opque();
+    q = gop_opque_new();
 
     segment_lock(st->seg);
     if (st->new_size < s->file_size) { //** Shrink operation
@@ -883,7 +883,7 @@ op_status_t seglog_truncate_func(void *arg, int id)
         ex_iovec_single(&ex_iov_table, table_offset, sizeof(slog_range_t));
         tbx_tbuf_single(&tbuf_table, sizeof(slog_range_t), (char *)r);
         gop = segment_write(s->table_seg, st->da, NULL, 1, &ex_iov_table, &tbuf_table, 0, st->timeout);
-        opque_add(q, gop);
+        gop_opque_add(q, gop);
 
         s->log_size += sizeof(slog_range_t);
     } else if (st->new_size > s->file_size) {  //** Grow operation
@@ -896,13 +896,13 @@ op_status_t seglog_truncate_func(void *arg, int id)
         ex_iovec_single(&ex_iov_table, table_offset, sizeof(slog_range_t));
         tbx_tbuf_single(&tbuf_table, sizeof(slog_range_t), (char *)r);
         gop = segment_write(s->table_seg, st->da, NULL, 1, &ex_iov_table, &tbuf_table, 0, st->timeout);
-        opque_add(q, gop);
+        gop_opque_add(q, gop);
 
         //** Don't need to write all the blanks.  Just the last byte.
         ex_iovec_single(&ex_iov_data, data_offset + r->hi - 1, 1);
         tbx_tbuf_single(&tbuf_data, 1, &c);
         gop = segment_write(s->data_seg, st->da, NULL, 1, &ex_iov_data, &tbuf_data, 0, st->timeout);
-        opque_add(q, gop);
+        gop_opque_add(q, gop);
 
         s->log_size += sizeof(slog_range_t);
         s->data_size += st->new_size - s->file_size;
@@ -912,19 +912,19 @@ op_status_t seglog_truncate_func(void *arg, int id)
 
     //** If nothing to do exit
     if (gop == NULL) {
-        opque_free(q, OP_DESTROY);
-        return(op_success_status);
+        gop_opque_free(q, OP_DESTROY);
+        return(gop_success_status);
     }
 
     //** Perform the updates
     err = opque_waitall(q);
     if (err != OP_STATE_SUCCESS) {
-        status = op_failure_status;
+        status = gop_failure_status;
         segment_lock(st->seg);
         s->hard_errors++;
         segment_unlock(st->seg);
     } else {
-        status = op_success_status;
+        status = gop_success_status;
 
         //** Update the mappings
         segment_lock(st->seg);
@@ -936,7 +936,7 @@ op_status_t seglog_truncate_func(void *arg, int id)
         segment_unlock(st->seg);
     }
 
-    opque_free(q, OP_DESTROY);
+    gop_opque_free(q, OP_DESTROY);
 
     return(status);
 }
@@ -951,7 +951,7 @@ op_generic_t *seglog_truncate(segment_t *seg, data_attr_t *da, ex_off_t new_size
     seglog_truncate_t *st;
 
     if (new_size < 0) { //** Reserve space call which is ignored at this time
-        return(gop_dummy(op_success_status));
+        return(gop_dummy(gop_success_status));
     }
 
     tbx_type_malloc_clear(st, seglog_truncate_t, 1);
@@ -961,7 +961,7 @@ op_generic_t *seglog_truncate(segment_t *seg, data_attr_t *da, ex_off_t new_size
     st->timeout = timeout;
     st->da = da;
 
-    return(new_thread_pool_op(s->tpc, NULL, seglog_truncate_func, (void *)st, free, 1));
+    return(gop_tp_op_new(s->tpc, NULL, seglog_truncate_func, (void *)st, free, 1));
 }
 
 //***********************************************************************
@@ -971,11 +971,11 @@ op_generic_t *seglog_truncate(segment_t *seg, data_attr_t *da, ex_off_t new_size
 op_generic_t *seglog_remove(segment_t *seg, data_attr_t *da, int timeout)
 {
     seglog_priv_t *s = (seglog_priv_t *)seg->priv;
-    opque_t *q = new_opque();
+    opque_t *q = gop_opque_new();
 
-    opque_add(q, segment_remove(s->table_seg, da, timeout));
-    opque_add(q, segment_remove(s->data_seg, da, timeout));
-    opque_add(q, segment_remove(s->base_seg, da, timeout));
+    gop_opque_add(q, segment_remove(s->table_seg, da, timeout));
+    gop_opque_add(q, segment_remove(s->data_seg, da, timeout));
+    gop_opque_add(q, segment_remove(s->base_seg, da, timeout));
     return(opque_get_gop(q));
 }
 
@@ -987,11 +987,11 @@ op_generic_t *seglog_remove(segment_t *seg, data_attr_t *da, int timeout)
 op_generic_t *seglog_inspect(segment_t *seg, data_attr_t *da, tbx_log_fd_t *fd, int mode, ex_off_t bufsize, inspect_args_t *args, int timeout)
 {
     seglog_priv_t *s = (seglog_priv_t *)seg->priv;
-    opque_t *q = new_opque();
+    opque_t *q = gop_opque_new();
 
-    opque_add(q, segment_inspect(s->table_seg, da, fd, mode, bufsize, args, timeout));
-    opque_add(q, segment_inspect(s->data_seg, da, fd, mode, bufsize, args, timeout));
-    opque_add(q, segment_inspect(s->base_seg, da, fd, mode, bufsize, args, timeout));
+    gop_opque_add(q, segment_inspect(s->table_seg, da, fd, mode, bufsize, args, timeout));
+    gop_opque_add(q, segment_inspect(s->data_seg, da, fd, mode, bufsize, args, timeout));
+    gop_opque_add(q, segment_inspect(s->base_seg, da, fd, mode, bufsize, args, timeout));
     return(opque_get_gop(q));
 }
 
@@ -1003,10 +1003,10 @@ op_generic_t *seglog_inspect(segment_t *seg, data_attr_t *da, tbx_log_fd_t *fd, 
 op_generic_t *seglog_flush(segment_t *seg, data_attr_t *da, ex_off_t lo, ex_off_t hi, int timeout)
 {
     seglog_priv_t *s = (seglog_priv_t *)seg->priv;
-    opque_t *q = new_opque();
+    opque_t *q = gop_opque_new();
 
-    opque_add(q, segment_flush(s->table_seg, da, 0, s->log_size, timeout));
-    opque_add(q, segment_flush(s->data_seg, da, 0, s->data_size, timeout));
+    gop_opque_add(q, segment_flush(s->table_seg, da, 0, s->log_size, timeout));
+    gop_opque_add(q, segment_flush(s->data_seg, da, 0, s->data_size, timeout));
     return(opque_get_gop(q));
 }
 
@@ -1088,7 +1088,7 @@ int seglog_serialize_text(segment_t *seg, exnode_exchange_t *exp)
 
     //** And the children segments
     tbx_append_printf(segbuf, &sused, bufsize, "log=" XIDT "\n", segment_id(s->table_seg));
-    child_exp = exnode_exchange_create(EX_TEXT);
+    child_exp = lio_exnode_exchange_create(EX_TEXT);
     segment_serialize(s->table_seg, child_exp);
     exnode_exchange_append(exp, child_exp);
     exnode_exchange_free(child_exp);
@@ -1105,7 +1105,7 @@ int seglog_serialize_text(segment_t *seg, exnode_exchange_t *exp)
 
     //** And finally the the container
     exnode_exchange_append_text(exp, segbuf);
-    exnode_exchange_destroy(child_exp);
+    lio_exnode_exchange_destroy(child_exp);
 
     return(0);
 }
@@ -1288,8 +1288,8 @@ segment_t *segment_log_create(void *arg)
     apr_thread_cond_create(&(seg->cond), seg->mpool);
 
     seg->ess = es;
-    s->tpc = lookup_service(es, ESS_RUNNING, ESS_TPC_UNLIMITED);
-    s->ds = lookup_service(es, ESS_RUNNING, ESS_DS);
+    s->tpc = lio_lookup_service(es, ESS_RUNNING, ESS_TPC_UNLIMITED);
+    s->ds = lio_lookup_service(es, ESS_RUNNING, ESS_DS);
 
     seg->fn.read = seglog_read;
     seg->fn.write = seglog_write;
@@ -1333,7 +1333,7 @@ segment_t *slog_make(service_manager_t *sm, segment_t *table, segment_t *data, s
     seglog_priv_t *s;
     segment_create_t *screate;
 
-    screate = lookup_service(sm, SEG_SM_CREATE, SEGMENT_TYPE_LOG);
+    screate = lio_lookup_service(sm, SEG_SM_CREATE, SEGMENT_TYPE_LOG);
     if (screate == NULL) return(NULL);
 
     seg = (*screate)(sm);
@@ -1363,8 +1363,8 @@ op_status_t seglog_merge_with_base_func(void *arg, int id)
     int i, n_iov, err;
     tbx_isl_iter_t it;
 
-    qin = new_opque();
-    qout = new_opque();
+    qin = gop_opque_new();
+    qout = gop_opque_new();
 
     n_iov = tbx_isl_count(s->mapping);
     tbx_type_malloc(ex_in, ex_tbx_iovec_t, n_iov);
@@ -1394,16 +1394,16 @@ op_status_t seglog_merge_with_base_func(void *arg, int id)
             if (err != OP_STATE_SUCCESS) {
                 segment_unlock(sm->seg);
                 log_printf(1, "seg=" XIDT " Error reading segment!\n", segment_id(sm->seg));
-                return(op_failure_status);
+                return(gop_failure_status);
             }
             err = opque_waitall(qout);
             if (err != OP_STATE_SUCCESS) {
                 segment_unlock(sm->seg);
                 log_printf(1, "seg=" XIDT " Error writing segment!\n", segment_id(sm->seg));
-                return(op_failure_status);
+                return(gop_failure_status);
             }
-            opque_free(qout, OP_DESTROY);
-            qout = new_opque();
+            gop_opque_free(qout, OP_DESTROY);
+            qout = gop_opque_new();
             pos = 0;
         }
 
@@ -1419,20 +1419,20 @@ op_status_t seglog_merge_with_base_func(void *arg, int id)
                 log_printf(15, "i=%d bpos=" XOT " in.offset=" XOT " out.offset=" XOT " len=" XOT "\n", i, bpos, ex_in[i].len, ex_out[i].len, blen);
 
                 gop = segment_read(s->data_seg, sm->da, NULL, 1, &(ex_in[i]), &tbuf, 0, sm->timeout);
-                opque_add(qin, gop);
+                gop_opque_add(qin, gop);
                 err = opque_waitall(qin);
                 if (err != OP_STATE_SUCCESS) {
                     segment_unlock(sm->seg);
                     log_printf(1, "seg=" XIDT " Error reading segment!\n", segment_id(sm->seg));
-                    return(op_failure_status);
+                    return(gop_failure_status);
                 }
 
                 gop = segment_write(s->base_seg, sm->da, NULL, 1, &(ex_out[i]), &tbuf, 0, sm->timeout);
-                opque_add(qout, gop);
+                gop_opque_add(qout, gop);
                 if (err != OP_STATE_SUCCESS) {
                     segment_unlock(sm->seg);
                     log_printf(1, "seg=" XIDT " Error writing segment!\n", segment_id(sm->seg));
-                    return(op_failure_status);
+                    return(gop_failure_status);
                 }
 
                 ex_in[i].offset += blen;
@@ -1441,9 +1441,9 @@ op_status_t seglog_merge_with_base_func(void *arg, int id)
             pos = 0;
         } else {
             gop = segment_read(s->data_seg, sm->da, NULL, 1, &(ex_in[i]), &tbuf, pos, sm->timeout);
-            opque_add(qin, gop);
+            gop_opque_add(qin, gop);
             gop = segment_write(s->base_seg, sm->da, NULL, 1, &(ex_out[i]), &tbuf, pos, sm->timeout);
-            opque_add(qout, gop);
+            gop_opque_add(qout, gop);
             pos = pos + ex_in[i].len;
         }
     }
@@ -1452,8 +1452,8 @@ op_status_t seglog_merge_with_base_func(void *arg, int id)
     err = OP_STATE_SUCCESS;
     if (sm->truncate_old_log == 1) {
         log_printf(15, "truncating old log\n");
-        opque_add(qin, segment_truncate(s->table_seg, sm->da, 0, sm->timeout));
-        opque_add(qin, segment_truncate(s->data_seg, sm->da, 0, sm->timeout));
+        gop_opque_add(qin, segment_truncate(s->table_seg, sm->da, 0, sm->timeout));
+        gop_opque_add(qin, segment_truncate(s->data_seg, sm->da, 0, sm->timeout));
 
         //** empty the log table
         tbx_type_malloc(r, slog_range_t, 1);
@@ -1471,30 +1471,30 @@ op_status_t seglog_merge_with_base_func(void *arg, int id)
 
     segment_unlock(sm->seg);
 
-    opque_free(qin, OP_DESTROY);
-    opque_free(qout, OP_DESTROY);
+    gop_opque_free(qin, OP_DESTROY);
+    gop_opque_free(qout, OP_DESTROY);
 
     free(ex_in);
     free(ex_out);
 
     if (err != OP_STATE_SUCCESS) {
         log_printf(1, "seg=" XIDT " Error truncating table/data logs!\n", segment_id(sm->seg));
-        return(op_failure_status);
+        return(gop_failure_status);
     }
 
     log_printf(15, "seg=" XIDT " SUCCESS!\n", segment_id(sm->seg));
 
-    return(op_success_status);
+    return(gop_success_status);
 }
 
 
 //***********************************************************************
-// slog_merge_with_base - Merges the log (table/data segments) with the base.
+// lio_slog_merge_with_base - Merges the log (table/data segments) with the base.
 //   If truncate_old_log == 1 then the old log is truncated back to 0.
 //   Otherwise the old log is not touched and left intact (and superfluos).
 //***********************************************************************
 
-op_generic_t *slog_merge_with_base(segment_t *seg, data_attr_t *da, ex_off_t bufsize, char *buffer, int truncate_old_log, int timeout)
+op_generic_t *lio_slog_merge_with_base(segment_t *seg, data_attr_t *da, ex_off_t bufsize, char *buffer, int truncate_old_log, int timeout)
 {
     seglog_merge_t *st;
     seglog_priv_t *s = (seglog_priv_t *)seg->priv;
@@ -1508,6 +1508,6 @@ op_generic_t *slog_merge_with_base(segment_t *seg, data_attr_t *da, ex_off_t buf
     st->timeout = timeout;
     st->da = da;
 
-    return(new_thread_pool_op(s->tpc, NULL, seglog_merge_with_base_func, (void *)st, free, 1));
+    return(gop_tp_op_new(s->tpc, NULL, seglog_merge_with_base_func, (void *)st, free, 1));
 }
 

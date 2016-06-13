@@ -223,10 +223,10 @@ host_portal_t *_lookup_hportal(portal_context_t *hpc, char *hostport)
 }
 
 //************************************************************************
-//  create_hportal_context - Creates a new hportal context structure for use
+//  gop_hp_context_create - Creates a new hportal context structure for use
 //************************************************************************
 
-portal_context_t *create_hportal_context(portal_fn_t *imp)
+portal_context_t *gop_hp_context_create(portal_fn_t *imp)
 {
     portal_context_t *hpc;
 
@@ -251,10 +251,10 @@ portal_context_t *create_hportal_context(portal_fn_t *imp)
 
 
 //************************************************************************
-// destroy_hportal_context - Destroys a hportal context structure
+// gop_hp_context_destroy - Destroys a hportal context structure
 //************************************************************************
 
-void destroy_hportal_context(portal_context_t *hpc)
+void gop_hp_context_destroy(portal_context_t *hpc)
 {
     apr_hash_index_t *hi;
     host_portal_t *hp;
@@ -319,17 +319,17 @@ void shutdown_direct(host_portal_t *hp)
 }
 
 //*************************************************************************
-// shutdown_hportal - Shuts down the IBP sys system
+// gop_hp_shutdown - Shuts down the IBP sys system
 //*************************************************************************
 
-void shutdown_hportal(portal_context_t *hpc)
+void gop_hp_shutdown(portal_context_t *hpc)
 {
     host_portal_t *hp;
     host_connection_t *hc;
     apr_hash_index_t *hi;
     void *val;
 
-    log_printf(15, "shutdown_hportal: Shutting down the whole system\n");
+    log_printf(15, "gop_hp_shutdown: Shutting down the whole system\n");
 
 
     //** First tell everyone to shutdown
@@ -370,7 +370,7 @@ void shutdown_hportal(portal_context_t *hpc)
         hp = (host_portal_t *)val;
         apr_hash_set(hpc->table, hp->skey, APR_HASH_KEY_STRING, NULL);  //** This removes the key
 
-        log_printf(15, "shutdown_hportal: Shutting down host=%s\n", hp->skey);
+        log_printf(15, "gop_hp_shutdown: Shutting down host=%s\n", hp->skey);
 
         hportal_lock(hp);
 
@@ -482,10 +482,10 @@ void compact_hportals(portal_context_t *hpc)
 }
 
 //************************************************************************
-// change_all_hportal_conn - Changes all the hportals min/max connection count
+// gop_change_all_hportal_conn - Changes all the hportals min/max connection count
 //************************************************************************
 
-void change_all_hportal_conn(portal_context_t *hpc, int min_conn, int max_conn, apr_time_t dt_connect)
+void gop_change_all_hportal_conn(portal_context_t *hpc, int min_conn, int max_conn, apr_time_t dt_connect)
 {
     apr_hash_index_t *hi;
     host_portal_t *hp;
@@ -773,11 +773,11 @@ void check_hportal_connections(host_portal_t *hp)
 }
 
 //*************************************************************************
-// submit_hp_direct_op - Creates an empty hportal, if needed, for a dedicated
+// gop_hp_direct_submit - Creates an empty hportal, if needed, for a dedicated
 //    directly executed command *and* submits the command for execution
 //*************************************************************************
 
-int submit_hp_direct_op(portal_context_t *hpc, op_generic_t *op)
+int gop_hp_direct_submit(portal_context_t *hpc, op_generic_t *op)
 {
     int status;
     host_portal_t *hp, *shp;
@@ -798,10 +798,10 @@ int submit_hp_direct_op(portal_context_t *hpc, op_generic_t *op)
     //** Find it in the list or make a new one
     hp = _lookup_hportal(hpc, hop->hostport);
     if (hp == NULL) {
-        log_printf(15, "submit_hp_direct_op: New host: %s\n", hop->hostport);
+        log_printf(15, "gop_hp_direct_submit: New host: %s\n", hop->hostport);
         hp = create_hportal(hpc, hop->connect_context, hop->hostport, 1, 1, apr_time_from_sec(1));
         if (hp == NULL) {
-            log_printf(15, "submit_hp_direct_op: create_hportal failed!\n");
+            log_printf(15, "gop_hp_direct_submit: create_hportal failed!\n");
             apr_thread_mutex_unlock(hpc->lock);
             return(-1);
         }
@@ -810,14 +810,14 @@ int submit_hp_direct_op(portal_context_t *hpc, op_generic_t *op)
 
     apr_thread_mutex_unlock(hpc->lock);
 
-    log_printf(15, "submit_hp_direct_op: start opid=%d\n", op->base.id);
+    log_printf(15, "gop_hp_direct_submit: start opid=%d\n", op->base.id);
 
     //** Scan the direct list for a free connection
     hportal_lock(hp);
     tbx_stack_move_to_top(hp->direct_list);
     while ((shp = (host_portal_t *)tbx_stack_get_current_data(hp->direct_list)) != NULL)  {
         if (hportal_trylock(shp) == 0) {
-            log_printf(15, "submit_hp_direct_op: opid=%d shp->wl=" I64T " stack_size=%d\n", op->base.id, shp->workload, tbx_stack_count(shp->que));
+            log_printf(15, "gop_hp_direct_submit: opid=%d shp->wl=" I64T " stack_size=%d\n", op->base.id, shp->workload, tbx_stack_count(shp->que));
 
             if (tbx_stack_count(shp->que) == 0) {
                 if (tbx_stack_count(shp->conn_list) > 0) {
@@ -825,11 +825,11 @@ int submit_hp_direct_op(portal_context_t *hpc, op_generic_t *op)
                     hc = (host_connection_t *)tbx_stack_get_current_data(shp->conn_list);
                     if (trylock_hc(hc) == 0) {
                         if ((tbx_stack_count(hc->pending_stack) == 0) && (hc->curr_workload == 0)) {
-                            log_printf(15, "submit_hp_direct_op(A): before submit ns=%d opid=%d wl=%d\n",tbx_ns_getid(hc->ns), op->base.id, hc->curr_workload);
+                            log_printf(15, "gop_hp_direct_submit(A): before submit ns=%d opid=%d wl=%d\n",tbx_ns_getid(hc->ns), op->base.id, hc->curr_workload);
                             unlock_hc(hc);
                             hportal_unlock(shp);
-                            status = submit_hportal(shp, op, 1, 0);
-                            log_printf(15, "submit_hp_direct_op(A): after submit ns=%d opid=%d\n",tbx_ns_getid(hc->ns), op->base.id);
+                            status = gop_hp_submit(shp, op, 1, 0);
+                            log_printf(15, "gop_hp_direct_submit(A): after submit ns=%d opid=%d\n",tbx_ns_getid(hc->ns), op->base.id);
                             hportal_unlock(hp);
                             return(status);
                         }
@@ -837,8 +837,8 @@ int submit_hp_direct_op(portal_context_t *hpc, op_generic_t *op)
                     }
                 } else {
                     hportal_unlock(shp);
-                    log_printf(15, "submit_hp_direct_op(B): opid=%d\n", op->base.id);
-                    status = submit_hportal(shp, op, 1, 0);
+                    log_printf(15, "gop_hp_direct_submit(B): opid=%d\n", op->base.id);
+                    status = gop_hp_submit(shp, op, 1, 0);
                     hportal_unlock(hp);
                     return(status);
                 }
@@ -853,12 +853,12 @@ int submit_hp_direct_op(portal_context_t *hpc, op_generic_t *op)
     //** If I made it here I have to add a new hportal
     shp = create_hportal(hpc, hop->connect_context, hop->hostport, 1, 1, apr_time_from_sec(1));
     if (shp == NULL) {
-        log_printf(15, "submit_hp_direct_op: create_hportal failed!\n");
+        log_printf(15, "gop_hp_direct_submit: create_hportal failed!\n");
         hportal_unlock(hp);
         return(-1);
     }
     tbx_stack_push(hp->direct_list, (void *)shp);
-    status = submit_hportal(shp, op, 1, 0);
+    status = gop_hp_submit(shp, op, 1, 0);
 
     hportal_unlock(hp);
 
@@ -866,11 +866,11 @@ int submit_hp_direct_op(portal_context_t *hpc, op_generic_t *op)
 }
 
 //*************************************************************************
-// submit_hportal - places the op in the hportal's que and also
+// gop_hp_submit - places the op in the hportal's que and also
 //     spawns any new connections if needed
 //*************************************************************************
 
-int submit_hportal(host_portal_t *hp, op_generic_t *op, int addtotop, int release_master)
+int gop_hp_submit(host_portal_t *hp, op_generic_t *op, int addtotop, int release_master)
 {
     hportal_lock(hp);
     _add_hportal_op(hp, op, addtotop, release_master);  //** Add the task
@@ -883,10 +883,10 @@ int submit_hportal(host_portal_t *hp, op_generic_t *op, int addtotop, int releas
 }
 
 //*************************************************************************
-// submit_hp_que_op - submit an IBP task for execution via a que
+// gop_hp_que_op_submit - submit an IBP task for execution via a que
 //*************************************************************************
 
-int submit_hp_que_op(portal_context_t *hpc, op_generic_t *op)
+int gop_hp_que_op_submit(portal_context_t *hpc, op_generic_t *op)
 {
     command_op_t *hop = &(op->op->cmd);
 
@@ -904,22 +904,22 @@ int submit_hp_que_op(portal_context_t *hpc, op_generic_t *op)
 
     host_portal_t *hp = _lookup_hportal(hpc, hop->hostport);
     if (hp == NULL) {
-        log_printf(15, "submit_hp_que_op: New host: %s\n", hop->hostport);
+        log_printf(15, "gop_hp_que_op_submit: New host: %s\n", hop->hostport);
         hp = create_hportal(hpc, hop->connect_context, hop->hostport, hpc->min_threads, hpc->max_threads, hpc->dt_connect);
         if (hp == NULL) {
-            log_printf(15, "submit_hp_que_op: create_hportal failed!\n");
+            log_printf(15, "gop_hp_que_op_submit: create_hportal failed!\n");
             return(1);
         }
         log_printf(15, "submit_op: New host.. hp->skey=%s\n", hp->skey);
         apr_hash_set(hpc->table, hp->skey, APR_HASH_KEY_STRING, (const void *)hp);
         host_portal_t *hp2 = _lookup_hportal(hpc, hop->hostport);
-        log_printf(15, "submit_hp_que_op: after lookup hp2=%p\n", hp2);
+        log_printf(15, "gop_hp_que_op_submit: after lookup hp2=%p\n", hp2);
     }
 
-    //** This is done in the submit_hportal() since we have release_master=1
+    //** This is done in the gop_hp_submit() since we have release_master=1
     //** This protects against accidental compaction removal
     //** apr_thread_mutex_unlock(hpc->lock);
 
-    return(submit_hportal(hp, op, 0, 1));
+    return(gop_hp_submit(hp, op, 0, 1));
 }
 

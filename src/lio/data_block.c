@@ -231,7 +231,7 @@ data_block_t *data_block_deserialize_text(service_manager_t *sm, ex_id_t id, exn
 
     //** Determine the type and make a blank block
     text = tbx_inip_get_string(cfd, capgrp, "type", "");
-    ds = lookup_service(sm, DS_SM_RUNNING, text);
+    ds = lio_lookup_service(sm, DS_SM_RUNNING, text);
     if (ds == NULL) {
         log_printf(0, "data_block_deserialize_text: b->id=" XIDT " Unknown data service tpye=%s!\n", id, text);
         return(NULL);;

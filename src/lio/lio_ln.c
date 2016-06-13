@@ -94,7 +94,7 @@ int main(int argc, char **argv)
     if (stuple.path[0] == '/') { //** Absolute path
         ftype = lio_exists(stuple.lc, stuple.creds, stuple.path);
     } else {  //** Relative path
-        os_path_split(dtuple.path, &dir, &file);
+        lio_os_path_split(dtuple.path, &dir, &file);
         snprintf(fullname, OS_PATH_MAX, "%s/%s", dir, stuple.path);
         ftype = lio_exists(stuple.lc, stuple.creds, fullname);
         free(dir);
@@ -125,7 +125,7 @@ int main(int argc, char **argv)
     }
 
     //** Now create the link
-    err = gop_sync_exec(gop_lio_link_object(dtuple.lc, dtuple.creds, symlink, stuple.path, dtuple.path, NULL));
+    err = gop_sync_exec(lio_link_op(dtuple.lc, dtuple.creds, symlink, stuple.path, dtuple.path, NULL));
     if (err != OP_STATE_SUCCESS) {
         info_printf(lio_ifd, 0, "ERROR linking file!\n");
         err = 1;

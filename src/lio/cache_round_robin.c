@@ -122,7 +122,7 @@ cache_t *round_robin_cache_load(void *arg, tbx_inip_file_t *fd, char *grp, data_
 
     tbx_type_malloc(cp->child, cache_t *, cp->n_cache);
     for (i=0; i<cp->n_cache; i++) {
-        cache_create = lookup_service(arg, CACHE_LOAD_AVAILABLE, ctype); assert(cache_create != NULL);
+        cache_create = lio_lookup_service(arg, CACHE_LOAD_AVAILABLE, ctype); assert(cache_create != NULL);
          cp->child[i] = (*cache_create)(arg, fd, child_section, da, timeout); assert(cp->child[i] != NULL);
     }
 

@@ -60,25 +60,25 @@ void rsrs_update_register(resource_service_fn_t *rs, mq_frame_t *fid, mq_msg_t *
     tbx_type_malloc(h, rsrs_update_handle_t, 1);
 
     //** Form the core message
-    h->msg = mq_msg_new();
-    mq_msg_append_mem(h->msg, MQF_VERSION_KEY, MQF_VERSION_SIZE, MQF_MSG_KEEP_DATA);
-    mq_msg_append_mem(h->msg, MQF_RESPONSE_KEY, MQF_RESPONSE_SIZE, MQF_MSG_KEEP_DATA);
-    mq_msg_append_frame(h->msg, fid);
-    mq_get_frame(fid, (void **)&(h->id), &(h->id_size));
+    h->msg = gop_mq_msg_new();
+    gop_mq_msg_append_mem(h->msg, MQF_VERSION_KEY, MQF_VERSION_SIZE, MQF_MSG_KEEP_DATA);
+    gop_mq_msg_append_mem(h->msg, MQF_RESPONSE_KEY, MQF_RESPONSE_SIZE, MQF_MSG_KEEP_DATA);
+    gop_mq_msg_append_frame(h->msg, fid);
+    gop_mq_get_frame(fid, (void **)&(h->id), &(h->id_size));
 
     //** Add the empty version frame and track it for filling in later
-    h->version_frame = mq_frame_new(NULL, 0, MQF_MSG_AUTO_FREE);
-    mq_msg_append_frame(h->msg, h->version_frame);
+    h->version_frame = gop_mq_frame_new(NULL, 0, MQF_MSG_AUTO_FREE);
+    gop_mq_msg_append_frame(h->msg, h->version_frame);
 
     //** Add the empty config frame and track it for filling in later
-    h->config_frame = mq_frame_new(NULL, 0, MQF_MSG_AUTO_FREE);
-    mq_msg_append_frame(h->msg, h->config_frame);
+    h->config_frame = gop_mq_frame_new(NULL, 0, MQF_MSG_AUTO_FREE);
+    gop_mq_msg_append_frame(h->msg, h->config_frame);
 
     //** End with an empty frame
-    mq_msg_append_mem(h->msg, NULL, 0, MQF_MSG_KEEP_DATA);
+    gop_mq_msg_append_mem(h->msg, NULL, 0, MQF_MSG_KEEP_DATA);
 
     //** Now address it
-    mq_apply_return_address_msg(h->msg, address, 0);
+    gop_mq_apply_return_address_msg(h->msg, address, 0);
 
     //** Figure out when we wake up if no change
     if (timeout > 10) {
@@ -115,33 +115,33 @@ void rsrs_config_send(resource_service_fn_t *rs, mq_frame_t *fid, mq_msg_t *addr
     char data[128];
 
     //** Form the core message
-    msg = mq_msg_new();
-    mq_msg_append_mem(msg, MQF_VERSION_KEY, MQF_VERSION_SIZE, MQF_MSG_KEEP_DATA);
-    mq_msg_append_mem(msg, MQF_RESPONSE_KEY, MQF_RESPONSE_SIZE, MQF_MSG_KEEP_DATA);
-    mq_msg_append_frame(msg, fid);
+    msg = gop_mq_msg_new();
+    gop_mq_msg_append_mem(msg, MQF_VERSION_KEY, MQF_VERSION_SIZE, MQF_MSG_KEEP_DATA);
+    gop_mq_msg_append_mem(msg, MQF_RESPONSE_KEY, MQF_RESPONSE_SIZE, MQF_MSG_KEEP_DATA);
+    gop_mq_msg_append_frame(msg, fid);
 
     //** Add the version.. Note the "\n" for the version.  This preserves a NULL term on the receiver
     apr_thread_mutex_lock(rsrs->lock);
     snprintf(data, sizeof(data), "%d %d\n", rsrs->my_map_version.map_version, rsrs->my_map_version.status_version);
     apr_thread_mutex_unlock(rsrs->lock);
-    mq_msg_append_mem(msg, strdup(data), strlen(data), MQF_MSG_AUTO_FREE);
+    gop_mq_msg_append_mem(msg, strdup(data), strlen(data), MQF_MSG_AUTO_FREE);
 
     log_printf(5, "version=%s", data);
 
     //** Add the config
     config = rs_get_rid_config(rsrs->rs_child);
-    mq_msg_append_mem(msg, config, strlen(config), MQF_MSG_AUTO_FREE);
+    gop_mq_msg_append_mem(msg, config, strlen(config), MQF_MSG_AUTO_FREE);
 
     log_printf(5, "rid_config=%s\n", config);
 
     //** End with an empty frame
-    mq_msg_append_mem(msg, NULL, 0, MQF_MSG_KEEP_DATA);
+    gop_mq_msg_append_mem(msg, NULL, 0, MQF_MSG_KEEP_DATA);
 
     //** Now address it
-    mq_apply_return_address_msg(msg, address, 0);
+    gop_mq_apply_return_address_msg(msg, address, 0);
 
     //** Lastly send it
-    mq_submit(rsrs->server_portal, mq_task_new(rsrs->mqc, msg, NULL, NULL, 30));
+    gop_mq_submit(rsrs->server_portal, gop_mq_task_new(rsrs->mqc, msg, NULL, NULL, 30));
 }
 
 //***********************************************************************
@@ -165,41 +165,41 @@ void rsrs_abort_cb(void *arg, mq_task_t *task)
     //** Parse the command
     msg = task->msg;  //** Don't have to worry about msg cleanup.  It's handled at a higher level
 
-    mq_msg_first(msg);
+    gop_mq_msg_first(msg);
     f = mq_msg_pop(msg);
-    mq_get_frame(f, (void **)&data, &n);
+    gop_mq_get_frame(f, (void **)&data, &n);
     if (n != 0) {  //** SHould be an empty frame
         log_printf(0, " ERROR:  Missing initial empty frame!\n");
         goto fail;
     }
-    mq_frame_destroy(f);
+    gop_mq_frame_destroy(f);
 
     f = mq_msg_pop(msg);
-    mq_get_frame(f, (void **)&data, &n);
+    gop_mq_get_frame(f, (void **)&data, &n);
     if (mq_data_compare(data, n, MQF_VERSION_KEY, MQF_VERSION_SIZE) != 0) {
         log_printf(0, "ERROR:  Missing version frame!\n");
         goto fail;
     }
-    mq_frame_destroy(f);
+    gop_mq_frame_destroy(f);
 
     //** This is the low level command
     f = mq_msg_pop(msg);
-    mq_get_frame(f, (void **)&data, &n);
+    gop_mq_get_frame(f, (void **)&data, &n);
     if (mq_data_compare(data, n, MQF_EXEC_KEY, MQF_TRACKEXEC_SIZE) != 0) {
         log_printf(0, "ERROR:  Invalid command type!\n");
         goto fail;
     }
-    mq_frame_destroy(f);
+    gop_mq_frame_destroy(f);
 
     //** Get the ID frame
     fid = mq_msg_pop(msg);
-    mq_get_frame(fid, (void **)&data, &n);
+    gop_mq_get_frame(fid, (void **)&data, &n);
     if (n == 0) {
         log_printf(0, " ERROR: Bad ID size!  Got %d should be greater than 0\n", n);
         goto fail;
     }
 
-    log_printf(5, "Looking for mqid=%s\n", mq_id2str(data, n, buffer, bufsize));
+    log_printf(5, "Looking for mqid=%s\n", gop_mq_id2str(data, n, buffer, bufsize));
     //** Scan through the list looking for the id
     apr_thread_mutex_lock(rsrs->lock);
     tbx_stack_move_to_top(rsrs->pending);
@@ -207,7 +207,7 @@ void rsrs_abort_cb(void *arg, mq_task_t *task)
         if (mq_data_compare(data, n, h->id, h->id_size) == 0) {  //** Found a match
             log_printf(5, "Aborting task\n");
             tbx_stack_delete_current(rsrs->pending, 0, 0);
-            mq_submit(rsrs->server_portal, mq_task_new(rsrs->mqc, h->msg, NULL, NULL, 30));
+            gop_mq_submit(rsrs->server_portal, gop_mq_task_new(rsrs->mqc, h->msg, NULL, NULL, 30));
             free(h);  //** The msg is deleted after sending
             break;
         }
@@ -216,7 +216,7 @@ void rsrs_abort_cb(void *arg, mq_task_t *task)
     }
     apr_thread_mutex_unlock(rsrs->lock);
 
-    mq_frame_destroy(fid);  //** Destroy the id frame
+    gop_mq_frame_destroy(fid);  //** Destroy the id frame
 
 fail:
     log_printf(5, "END incoming request\n");
@@ -246,61 +246,61 @@ void rsrs_rid_config_cb(void *arg, mq_task_t *task)
     //** Parse the command
     msg = task->msg;  //** Don't have to worry about msg cleanup.  It's handled at a higher level
 
-    mq_msg_first(msg);
+    gop_mq_msg_first(msg);
     f = mq_msg_pop(msg);
-    mq_get_frame(f, (void **)&data, &n);
+    gop_mq_get_frame(f, (void **)&data, &n);
     if (n != 0) {  //** SHould be an empty frame
         log_printf(0, " ERROR:  Missing initial empty frame!\n");
         goto fail;
     }
-    mq_frame_destroy(f);
+    gop_mq_frame_destroy(f);
 
     f = mq_msg_pop(msg);
-    mq_get_frame(f, (void **)&data, &n);
+    gop_mq_get_frame(f, (void **)&data, &n);
     if (mq_data_compare(data, n, MQF_VERSION_KEY, MQF_VERSION_SIZE) != 0) {
         log_printf(0, "ERROR:  Missing version frame!\n");
         goto fail;
     }
-    mq_frame_destroy(f);
+    gop_mq_frame_destroy(f);
 
     //** This is the low level command
     f = mq_msg_pop(msg);
-    mq_get_frame(f, (void **)&data, &n);
+    gop_mq_get_frame(f, (void **)&data, &n);
     if (mq_data_compare(data, n, MQF_TRACKEXEC_KEY, MQF_TRACKEXEC_SIZE) != 0) {
         log_printf(0, "ERROR:  Invalid command type!\n");
         goto fail;
     }
-    mq_frame_destroy(f);
+    gop_mq_frame_destroy(f);
 
     //** Get the ID frame
     fid = mq_msg_pop(msg);
-    mq_get_frame(fid, (void **)&data, &n);
+    gop_mq_get_frame(fid, (void **)&data, &n);
     if (n == 0) {
         log_printf(0, " ERROR: Bad ID size!  Got %d should be greater than 0\n", n);
         goto fail;
     }
 
-    log_printf(5, "mqid=%s\n", mq_id2str(data, n, buffer, bufsize));
+    log_printf(5, "mqid=%s\n", gop_mq_id2str(data, n, buffer, bufsize));
 
     //** This is the actiual RS command frame
     f = mq_msg_pop(msg);
-    mq_get_frame(f, (void **)&data, &n);
+    gop_mq_get_frame(f, (void **)&data, &n);
     if (mq_data_compare(data, n, RSR_GET_RID_CONFIG_KEY, RSR_GET_RID_CONFIG_SIZE) == 0) {
         log_printf(5, "commad=RSR_GET_RID_CONFIG_KEY\n");
         do_config = 1;
-        mq_frame_destroy(f);
+        gop_mq_frame_destroy(f);
     } else if (mq_data_compare(data, n, RSR_GET_UPDATE_CONFIG_KEY, RSR_GET_UPDATE_CONFIG_SIZE) == 0) {
         log_printf(5, "commad=RSR_GET_UPDATE_CONFIG_KEY\n");
         do_config = 0;   //** Need to parse the timeout
-        mq_frame_destroy(f);
+        gop_mq_frame_destroy(f);
         f = mq_msg_pop(msg);
-        mq_get_frame(f, (void **)&data, &n);
+        gop_mq_get_frame(f, (void **)&data, &n);
         if (n > 0) {
             data[n-1] = '\0';
             timeout = atoi(data);
-            mq_frame_destroy(f);
+            gop_mq_frame_destroy(f);
         } else {
-            mq_frame_destroy(f);
+            gop_mq_frame_destroy(f);
             log_printf(1, "Invalid timeout!\n");
             goto fail;
         }
@@ -308,15 +308,15 @@ void rsrs_rid_config_cb(void *arg, mq_task_t *task)
         //** Also get the version
         memset(&version, 0, sizeof(version));
         f = mq_msg_pop(msg);
-        mq_get_frame(f, (void **)&data, &n);
+        gop_mq_get_frame(f, (void **)&data, &n);
         if (n > 0) {
             data[n-1] = '\0';
             sscanf(data, "%d %d", &(version.map_version), &(version.status_version));
             log_printf(5, "data=!%s! map=%d status=%d timeout=%d\n", data, version.map_version, version.status_version, timeout);
 
-            mq_frame_destroy(f);
+            gop_mq_frame_destroy(f);
         } else {
-            mq_frame_destroy(f);
+            gop_mq_frame_destroy(f);
             log_printf(1, "Invalid version!\n");
             goto fail;
         }
@@ -332,8 +332,8 @@ void rsrs_rid_config_cb(void *arg, mq_task_t *task)
     }
 
     //** Empty frame
-    f = mq_msg_first(msg);
-    mq_get_frame(f, (void **)&data, &n);
+    f = gop_mq_msg_first(msg);
+    gop_mq_get_frame(f, (void **)&data, &n);
     if (n != 0) {
         log_printf(0, " ERROR:  Missing initial empty frame!\n");
         goto fail;
@@ -384,9 +384,9 @@ void rsrs_client_notify(resource_service_fn_t *rs, int everyone)
     while ((h = tbx_stack_get_current_data(rsrs->pending)) != NULL) {
         if ((h->reply_time < now) || (everyone == 1)) {
             log_printf(5, "sending update to a client everyone=%d\n", everyone);
-            mq_frame_set(h->version_frame, strdup(version), vlen, MQF_MSG_AUTO_FREE);
-            mq_frame_set(h->config_frame, strdup(config), clen, MQF_MSG_AUTO_FREE);
-            mq_submit(rsrs->server_portal, mq_task_new(rsrs->mqc, h->msg, NULL, NULL, 30));
+            gop_mq_frame_set(h->version_frame, strdup(version), vlen, MQF_MSG_AUTO_FREE);
+            gop_mq_frame_set(h->config_frame, strdup(config), clen, MQF_MSG_AUTO_FREE);
+            gop_mq_submit(rsrs->server_portal, gop_mq_task_new(rsrs->mqc, h->msg, NULL, NULL, 30));
             tbx_stack_delete_current(rsrs->pending, 0, 0);
             free(h);  //** The msg is auto destroyed after being sent
         } else if ((new_wakeup_time > h->reply_time) || (new_wakeup_time == 0)) {
@@ -472,8 +472,8 @@ void rs_remote_server_destroy(resource_service_fn_t *rs)
     apr_thread_join(&dummy, rsrs->monitor_thread);
 
     //** Remove and destroy the server portal
-    mq_portal_remove(rsrs->mqc, rsrs->server_portal);
-    mq_portal_destroy(rsrs->server_portal);
+    gop_mq_portal_remove(rsrs->mqc, rsrs->server_portal);
+    gop_mq_portal_destroy(rsrs->server_portal);
 
     //** Shutdown the child RS
     rs_destroy_service(rsrs->rs_child);
@@ -531,7 +531,7 @@ resource_service_fn_t *rs_remote_server_create(void *arg, tbx_inip_file_t *fd, c
 
     //** and load it
     ctype = tbx_inip_get_string(fd, stype, "type", RS_TYPE_SIMPLE);
-    rs_create = lookup_service(ess, RS_SM_AVAILABLE, ctype);
+    rs_create = lio_lookup_service(ess, RS_SM_AVAILABLE, ctype);
     rsrs->rs_child = (*rs_create)(ess, fd, stype);
     if (rsrs->rs_child == NULL) {
         log_printf(1, "ERROR loading child RS!  type=%s section=%s\n", ctype, stype);
@@ -542,15 +542,15 @@ resource_service_fn_t *rs_remote_server_create(void *arg, tbx_inip_file_t *fd, c
     free(stype);
 
     //** Get the MQC
-    rsrs->mqc = lookup_service(ess, ESS_RUNNING, ESS_MQ); assert(rsrs->mqc != NULL);
+    rsrs->mqc = lio_lookup_service(ess, ESS_RUNNING, ESS_MQ); assert(rsrs->mqc != NULL);
 
     //** Make the server portal
-    rsrs->server_portal = mq_portal_create(rsrs->mqc, rsrs->hostname, MQ_CMODE_SERVER);
-    ctable = mq_portal_command_table(rsrs->server_portal);
-    mq_command_set(ctable, RSR_GET_RID_CONFIG_KEY, RSR_GET_RID_CONFIG_SIZE, rs, rsrs_rid_config_cb);
-    mq_command_set(ctable, RSR_GET_UPDATE_CONFIG_KEY, RSR_GET_UPDATE_CONFIG_SIZE, rs, rsrs_rid_config_cb);
-    mq_command_set(ctable, RSR_ABORT_KEY, RSR_ABORT_SIZE, rs, rsrs_abort_cb);
-    mq_portal_install(rsrs->mqc, rsrs->server_portal);
+    rsrs->server_portal = gop_mq_portal_create(rsrs->mqc, rsrs->hostname, MQ_CMODE_SERVER);
+    ctable = gop_mq_portal_command_table(rsrs->server_portal);
+    gop_mq_command_set(ctable, RSR_GET_RID_CONFIG_KEY, RSR_GET_RID_CONFIG_SIZE, rs, rsrs_rid_config_cb);
+    gop_mq_command_set(ctable, RSR_GET_UPDATE_CONFIG_KEY, RSR_GET_UPDATE_CONFIG_SIZE, rs, rsrs_rid_config_cb);
+    gop_mq_command_set(ctable, RSR_ABORT_KEY, RSR_ABORT_SIZE, rs, rsrs_abort_cb);
+    gop_mq_portal_install(rsrs->mqc, rsrs->server_portal);
 
     //** Launch the config changes thread
     tbx_thread_create_assert(&(rsrs->monitor_thread), NULL, rsrs_monitor_thread, (void *)rs, rsrs->mpool);

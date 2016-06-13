@@ -56,29 +56,29 @@ int main(int argc, char **argv)
 
 
     //** Create a blank exnode
-    ex = exnode_create();
+    ex = lio_exnode_create();
 
     //** Load it
-    exp_in = exnode_exchange_load_file(fname);
+    exp_in = lio_exnode_exchange_load_file(fname);
 
     printf("Initial exnode=====================================\n");
     printf("%s", exp_in->text.text);
     printf("===================================================\n");
 
-    exnode_deserialize(ex, exp_in, lio_gc->ess);
+    lio_exnode_deserialize(ex, exp_in, lio_gc->ess);
 
     //** Print it
-    exp = exnode_exchange_create(EX_TEXT);
-    exnode_serialize(ex, exp);
+    exp = lio_exnode_exchange_create(EX_TEXT);
+    lio_exnode_serialize(ex, exp);
 
     printf("Loaded exnode=====================================\n");
     printf("%s", exp->text.text);
     printf("===================================================\n");
 
-    exnode_exchange_destroy(exp_in);
-    exnode_exchange_destroy(exp);
+    lio_exnode_exchange_destroy(exp_in);
+    lio_exnode_exchange_destroy(exp);
 
-    exnode_destroy(ex);
+    lio_exnode_destroy(ex);
 
     lio_shutdown();
 

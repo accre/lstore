@@ -277,33 +277,33 @@ extern op_status_t ibp_error_status;
 #define ibp_reset_iop(a) gop_reset(ibp_get_gop((a)))
 
 //** ibp_op.c **
-IBP_API void ibp_op_set_cc(op_generic_t *gop, ibp_connect_context_t *cc);
+IBP_API void ibp_op_cc_set(op_generic_t *gop, ibp_connect_context_t *cc);
 IBP_API int ibp_cc_type(ibp_connect_context_t *cc);
-IBP_API void ibp_op_set_ncs(op_generic_t *gop, tbx_ns_chksum_t *ncs);
+IBP_API void ibp_op_ncs_set(op_generic_t *gop, tbx_ns_chksum_t *ncs);
 //void ibp_op_callback_append(op_generic_t *gop, callback_t *cb);
 
-IBP_API void init_ibp_op(ibp_context_t *ic, ibp_op_t *op);
+IBP_API void ibp_op_init(ibp_context_t *ic, ibp_op_t *op);
 ibp_op_t *new_ibp_op(ibp_context_t *ic);
 
-IBP_API op_generic_t *new_ibp_alias_alloc_op(ibp_context_t *ic, ibp_capset_t *caps, ibp_cap_t *mcap, ibp_off_t offset, ibp_off_t size, int duration, int timeout);
-IBP_API op_generic_t *new_ibp_alias_remove_op(ibp_context_t *ic, ibp_cap_t *cap, ibp_cap_t *mcap, int timeout);
-IBP_API op_generic_t *new_ibp_alloc_op(ibp_context_t *ic, ibp_capset_t *caps, ibp_off_t size, ibp_depot_t *depot, ibp_attributes_t *attr, int disk_cs_type, ibp_off_t disk_blocksize, int timeout);
-IBP_API op_generic_t *new_ibp_append_op(ibp_context_t *ic, ibp_cap_t *cap, tbx_tbuf_t *buffer, ibp_off_t boff, ibp_off_t len, int timeout);
-IBP_API op_generic_t *new_ibp_copy_op(ibp_context_t *ic, int mode, int ns_type, char *path, ibp_cap_t *srccap, ibp_cap_t *destcap, ibp_off_t src_offset, ibp_off_t dest_offset, ibp_off_t size, int src_timeout, int dest_timeout, int dest_client_timeout);
-IBP_API op_generic_t *new_ibp_copyappend_op(ibp_context_t *ic, int ns_type, char *path, ibp_cap_t *srccap, ibp_cap_t *destcap, ibp_off_t src_offset, ibp_off_t size, int src_timeout, int  dest_timeout, int dest_client_timeout);
-IBP_API op_generic_t *new_ibp_depot_inq_op(ibp_context_t *ic, ibp_depot_t *depot, char *password, ibp_depotinfo_t *di, int timeout);
-IBP_API op_generic_t *new_ibp_modify_alloc_op(ibp_context_t *ic, ibp_cap_t *cap, ibp_off_t size, int duration, int reliability, int timeout);
-IBP_API op_generic_t *new_ibp_modify_count_op(ibp_context_t *ic, ibp_cap_t *cap, int mode, int captype, int timeout);
-IBP_API op_generic_t *new_ibp_probe_op(ibp_context_t *ic, ibp_cap_t *cap, ibp_capstatus_t *probe, int timeout);
-IBP_API op_generic_t *new_ibp_query_resources_op(ibp_context_t *ic, ibp_depot_t *depot, ibp_ridlist_t *rlist, int timeout);
-IBP_API op_generic_t *new_ibp_read_op(ibp_context_t *ic, ibp_cap_t *cap, ibp_off_t offset, tbx_tbuf_t *buffer, ibp_off_t boff, ibp_off_t len, int timeout);
-IBP_API op_generic_t *new_ibp_remove_op(ibp_context_t *ic, ibp_cap_t *cap, int timeout);
-IBP_API op_generic_t *new_ibp_rw_op(ibp_context_t *ic, int rw_type, ibp_cap_t *cap, ibp_off_t offset, tbx_tbuf_t *buffer, ibp_off_t boff, ibp_off_t len, int timeout);
-IBP_API op_generic_t *new_ibp_truncate_op(ibp_context_t *ic, ibp_cap_t *cap, ibp_off_t size, int timeout);
-IBP_API op_generic_t *new_ibp_vec_read_op(ibp_context_t *ic, ibp_cap_t *cap, int n_vec, ibp_tbx_iovec_t *vec, tbx_tbuf_t *buffer, ibp_off_t boff, ibp_off_t len, int timeout);
-IBP_API op_generic_t *new_ibp_vec_write_op(ibp_context_t *ic, ibp_cap_t *cap, int n_iovec, ibp_tbx_iovec_t *iovec, tbx_tbuf_t *buffer, ibp_off_t boff, ibp_off_t len, int timeout);
-IBP_API op_generic_t *new_ibp_version_op(ibp_context_t *ic, ibp_depot_t *depot, char *buffer, int buffer_size, int timeout);
-IBP_API op_generic_t *new_ibp_write_op(ibp_context_t *ic, ibp_cap_t *cap, ibp_off_t offset, tbx_tbuf_t *buffer, ibp_off_t boff, ibp_off_t len, int timeout);
+IBP_API op_generic_t *ibp_alias_alloc_op(ibp_context_t *ic, ibp_capset_t *caps, ibp_cap_t *mcap, ibp_off_t offset, ibp_off_t size, int duration, int timeout);
+IBP_API op_generic_t *ibp_alias_remove_op(ibp_context_t *ic, ibp_cap_t *cap, ibp_cap_t *mcap, int timeout);
+IBP_API op_generic_t *ibp_alloc_op(ibp_context_t *ic, ibp_capset_t *caps, ibp_off_t size, ibp_depot_t *depot, ibp_attributes_t *attr, int disk_cs_type, ibp_off_t disk_blocksize, int timeout);
+IBP_API op_generic_t *ibp_append_op(ibp_context_t *ic, ibp_cap_t *cap, tbx_tbuf_t *buffer, ibp_off_t boff, ibp_off_t len, int timeout);
+IBP_API op_generic_t *ibp_copy_op(ibp_context_t *ic, int mode, int ns_type, char *path, ibp_cap_t *srccap, ibp_cap_t *destcap, ibp_off_t src_offset, ibp_off_t dest_offset, ibp_off_t size, int src_timeout, int dest_timeout, int dest_client_timeout);
+IBP_API op_generic_t *ibp_copyappend_op(ibp_context_t *ic, int ns_type, char *path, ibp_cap_t *srccap, ibp_cap_t *destcap, ibp_off_t src_offset, ibp_off_t size, int src_timeout, int  dest_timeout, int dest_client_timeout);
+IBP_API op_generic_t *ibp_depot_inq_op(ibp_context_t *ic, ibp_depot_t *depot, char *password, ibp_depotinfo_t *di, int timeout);
+IBP_API op_generic_t *ibp_modify_alloc_op(ibp_context_t *ic, ibp_cap_t *cap, ibp_off_t size, int duration, int reliability, int timeout);
+IBP_API op_generic_t *ibp_modify_count_op(ibp_context_t *ic, ibp_cap_t *cap, int mode, int captype, int timeout);
+IBP_API op_generic_t *ibp_probe_op(ibp_context_t *ic, ibp_cap_t *cap, ibp_capstatus_t *probe, int timeout);
+IBP_API op_generic_t *ibp_query_resources_op(ibp_context_t *ic, ibp_depot_t *depot, ibp_ridlist_t *rlist, int timeout);
+IBP_API op_generic_t *ibp_read_op(ibp_context_t *ic, ibp_cap_t *cap, ibp_off_t offset, tbx_tbuf_t *buffer, ibp_off_t boff, ibp_off_t len, int timeout);
+IBP_API op_generic_t *ibp_remove_op(ibp_context_t *ic, ibp_cap_t *cap, int timeout);
+IBP_API op_generic_t *ibp_rw_op(ibp_context_t *ic, int rw_type, ibp_cap_t *cap, ibp_off_t offset, tbx_tbuf_t *buffer, ibp_off_t boff, ibp_off_t len, int timeout);
+IBP_API op_generic_t *ibp_truncate_op(ibp_context_t *ic, ibp_cap_t *cap, ibp_off_t size, int timeout);
+IBP_API op_generic_t *ibp_vec_read_op(ibp_context_t *ic, ibp_cap_t *cap, int n_vec, ibp_tbx_iovec_t *vec, tbx_tbuf_t *buffer, ibp_off_t boff, ibp_off_t len, int timeout);
+IBP_API op_generic_t *ibp_vec_write_op(ibp_context_t *ic, ibp_cap_t *cap, int n_iovec, ibp_tbx_iovec_t *iovec, tbx_tbuf_t *buffer, ibp_off_t boff, ibp_off_t len, int timeout);
+IBP_API op_generic_t *ibp_version_op(ibp_context_t *ic, ibp_depot_t *depot, char *buffer, int buffer_size, int timeout);
+IBP_API op_generic_t *ibp_write_op(ibp_context_t *ic, ibp_cap_t *cap, ibp_off_t offset, tbx_tbuf_t *buffer, ibp_off_t boff, ibp_off_t len, int timeout);
 op_generic_t *new_ibp_alias_modify_alloc_op(ibp_context_t *ic, ibp_cap_t *cap, ibp_cap_t *mcap, ibp_off_t offset, ibp_off_t size, int duration, int timeout);
 op_generic_t *new_ibp_alias_modify_count_op(ibp_context_t *ic, ibp_cap_t *cap, ibp_cap_t *mcap, int mode, int captype, int timeout);
 op_generic_t *new_ibp_alias_probe_op(ibp_context_t *ic, ibp_cap_t *cap, ibp_alias_capstatus_t *probe, int timeout);
@@ -320,7 +320,7 @@ int ibp_op_status(ibp_op_t *op);
 int ibp_op_id(ibp_op_t *op);
 
 //** IBP_VALDIATE_CHKSUM
-IBP_API op_generic_t *new_ibp_validate_chksum_op(ibp_context_t *ic, ibp_cap_t *mcap, int correct_errors, int *n_bad_blocks, int timeout);
+IBP_API op_generic_t *ibp_validate_chksum_op(ibp_context_t *ic, ibp_cap_t *mcap, int correct_errors, int *n_bad_blocks, int timeout);
 
 //** IBP_GET_CHKSUM
 op_generic_t *new_ibp_get_chksum_op(ibp_context_t *ic, ibp_cap_t *mcap, int chksum_info_only,
@@ -330,16 +330,16 @@ op_generic_t *new_ibp_get_chksum_op(ibp_context_t *ic, ibp_cap_t *mcap, int chks
 //** ibp_config.c **
 int ibp_rw_submit_coalesce(tbx_stack_t *stack, tbx_stack_ele_t *ele);
 int ibp_rw_coalesce(op_generic_t *gop);
-IBP_API int ibp_set_chksum(ibp_context_t *ic, tbx_ns_chksum_t *ncs);
+IBP_API int ibp_chksum_set(ibp_context_t *ic, tbx_ns_chksum_t *ncs);
 void ibp_get_chksum(ibp_context_t *ic, tbx_ns_chksum_t *ncs);
 void ibp_set_abort_attempts(ibp_context_t *ic, int n);
 int  ibp_get_abort_attempts(ibp_context_t *ic);
-IBP_API void ibp_set_tcpsize(ibp_context_t *ic, int n);
-IBP_API int  ibp_get_tcpsize(ibp_context_t *ic);
+IBP_API void ibp_tcpsize_set(ibp_context_t *ic, int n);
+IBP_API int  ibp_tcpsize_get(ibp_context_t *ic);
 void ibp_set_min_depot_threads(ibp_context_t *ic, int n);
 int  ibp_get_min_depot_threads(ibp_context_t *ic);
-IBP_API void ibp_set_max_depot_threads(ibp_context_t *ic, int n);
-IBP_API int  ibp_get_max_depot_threads(ibp_context_t *ic);
+IBP_API void ibp_max_depot_threads_set(ibp_context_t *ic, int n);
+IBP_API int  ibp_max_depot_threads_get(ibp_context_t *ic);
 void ibp_set_max_connections(ibp_context_t *ic, int n);
 int  ibp_get_max_connections(ibp_context_t *ic);
 void ibp_set_command_weight(ibp_context_t *ic, int n);
@@ -354,17 +354,17 @@ void ibp_set_check_interval(ibp_context_t *ic, int n);
 int  ibp_get_check_interval(ibp_context_t *ic);
 void ibp_set_max_retry(ibp_context_t *ic, int n);
 int  ibp_get_max_retry(ibp_context_t *ic);
-IBP_API void ibp_set_read_cc(ibp_context_t *ic, ibp_connect_context_t *cc);
-IBP_API void ibp_set_write_cc(ibp_context_t *ic, ibp_connect_context_t *cc);
+IBP_API void ibp_read_cc_set(ibp_context_t *ic, ibp_connect_context_t *cc);
+IBP_API void ibp_write_cc_set(ibp_context_t *ic, ibp_connect_context_t *cc);
 void ibp_set_transfer_rate(ibp_context_t *ic, double rate);
 double ibp_get_transfer_rate(ibp_context_t *ic);
 
-IBP_API int ibp_load_config(ibp_context_t *ic, tbx_inip_file_t *ifd, char *section);
-IBP_API int ibp_load_config_file(ibp_context_t *ic, char *fname, char *section);
+IBP_API int ibp_config_load(ibp_context_t *ic, tbx_inip_file_t *ifd, char *section);
+IBP_API int ibp_config_load_file(ibp_context_t *ic, char *fname, char *section);
 //void set_ibp_config(ibp_config_t *cfg);
 void default_ibp_config(ibp_context_t *ic);
-IBP_API ibp_context_t *ibp_create_context();
-IBP_API void ibp_destroy_context(ibp_context_t *ic);
+IBP_API ibp_context_t *ibp_context_create();
+IBP_API void ibp_context_destroy(ibp_context_t *ic);
 
 //*** ibp_sync.c ***
 IBP_API int ibp_sync_command(ibp_op_t *op);

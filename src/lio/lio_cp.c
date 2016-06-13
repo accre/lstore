@@ -117,7 +117,7 @@ int main(int argc, char **argv)
     if (dtuple.is_lio == 1) {
         dtype = lio_exists(dtuple.lc, dtuple.creds, dtuple.path);
     } else {
-        dtype = os_local_filetype(dtuple.path);
+        dtype = lio_os_local_filetype(dtuple.path);
     }
 
     //** Create the simple path iterator
@@ -139,7 +139,7 @@ int main(int argc, char **argv)
         if (flist[i].src_tuple.is_lio == 0) lio_path_local_make_absolute(&(flist[i].src_tuple));
         flist[i].dest_tuple = dtuple;
         flist[i].dest_type = dtype;
-        flist[i].path_regex = os_path_glob2regex(flist[i].src_tuple.path);
+        flist[i].path_regex = lio_os_path_glob2regex(flist[i].src_tuple.path);
         flist[i].recurse_depth = recurse_depth;
         flist[i].obj_types = obj_types;
         flist[i].max_spawn = max_spawn;
@@ -160,24 +160,24 @@ int main(int argc, char **argv)
         log_printf(15, "11111111\n");
         tbx_log_flush();
         if (((dtype & OS_OBJECT_FILE) > 0) || (dtype == 0)) {  //** Single path and dest is an existing file or doesn't exist
-            if (os_regex_is_fixed(flist[0].path_regex) == 0) {  //** Uh oh we have a wildcard with a single file dest
+            if (lio_os_regex_is_fixed(flist[0].path_regex) == 0) {  //** Uh oh we have a wildcard with a single file dest
                 info_printf(lio_ifd, 0, "ERROR: Single wildcard path(%s) selected but the dest(%s) is a file or doesn't exist!\n", flist[0].src_tuple.path, dtuple.path);
                 goto finished;
             }
         }
 
-        log_printf(15, "2222222222222222 fixed=%d exp=%s dtype=%d\n", os_regex_is_fixed(flist[0].path_regex), flist[0].path_regex->regex_entry[0].expression, dtype);
+        log_printf(15, "2222222222222222 fixed=%d exp=%s dtype=%d\n", lio_os_regex_is_fixed(flist[0].path_regex), flist[0].path_regex->regex_entry[0].expression, dtype);
         tbx_log_flush();
 
         //**if it's a fixed src with a dir dest we skip and use the cp_fn routines
-        if ((os_regex_is_fixed(flist[0].path_regex) == 1) && ((dtype == 0) || ((dtype & OS_OBJECT_FILE) > 0))) {
+        if ((lio_os_regex_is_fixed(flist[0].path_regex) == 1) && ((dtype == 0) || ((dtype & OS_OBJECT_FILE) > 0))) {
             //** IF we made it here we have a simple cp
             cpf.src_tuple = flist[0].src_tuple; //c->src_tuple.path = fname;
             cpf.dest_tuple = flist[0].dest_tuple; //c->dest_tuple.path = strdup(dname);
             cpf.bufsize = flist[0].bufsize;
             cpf.slow = flist[0].slow;
             cpf.rw_hints = NULL;
-            status = lio_cp_file_fn(&cpf, 0);
+            status = lio_file_copy_op(&cpf, 0);
 
             if (status.op_status != OP_STATE_SUCCESS) {
                 info_printf(lio_ifd, 0, "ERROR: with copy src=%s  dest=%s\n", flist[0].src_tuple.path, dtuple.path);
@@ -191,14 +191,14 @@ int main(int argc, char **argv)
         }
     }
 
-    q = new_opque();
+    q = gop_opque_new();
     opque_start_execution(q);
     for (i=0; i<n_paths; i++) {
-        gop = new_thread_pool_op(lio_gc->tpc_unlimited, NULL, lio_cp_path_fn, (void *)&(flist[i]), NULL, 1);
+        gop = gop_tp_op_new(lio_gc->tpc_unlimited, NULL, lio_path_copy_op, (void *)&(flist[i]), NULL, 1);
         gop_set_myid(gop, i);
         log_printf(0, "gid=%d i=%d fname=%s\n", gop_id(gop), i, flist[i].src_tuple.path);
 
-        opque_add(q, gop);
+        gop_opque_add(q, gop);
         log_printf(0, "bufsize=" XOT "\n", flist[i].bufsize);
 
         if (opque_tasks_left(q) > lio_parallel_task_count) {
@@ -218,14 +218,14 @@ int main(int argc, char **argv)
         }
     }
 
-    opque_free(q, OP_DESTROY);
+    gop_opque_free(q, OP_DESTROY);
 
 
 finished:
     lio_path_release(&dtuple);
     for(i=0; i<n_paths; i++) {
         lio_path_release(&(flist[i].src_tuple));
-        os_regex_table_destroy(flist[i].path_regex);
+        lio_os_regex_table_destroy(flist[i].path_regex);
     }
 
     free(flist);

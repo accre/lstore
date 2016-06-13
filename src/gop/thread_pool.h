@@ -76,10 +76,10 @@ struct thread_pool_op_t {
 int thread_pool_direct(thread_pool_context_t *tpc, apr_thread_start_t fn, void *arg);
 
 int set_thread_pool_op(thread_pool_op_t *op, thread_pool_context_t *tpc, char *que, op_status_t (*fn)(void *arg, int id), void *arg, void (*my_op_free)(void *arg), int workload);
-GOP_API op_generic_t *new_thread_pool_op(thread_pool_context_t *tpc, char *que, op_status_t (*fn)(void *arg, int id), void *arg, void (*my_op_free)(void *arg), int workload);
+GOP_API op_generic_t *gop_tp_op_new(thread_pool_context_t *tpc, char *que, op_status_t (*fn)(void *arg, int id), void *arg, void (*my_op_free)(void *arg), int workload);
 
-GOP_API thread_pool_context_t *thread_pool_create_context(char *tp_name, int min_threads, int max_threads, int max_recursion);
-GOP_API void thread_pool_destroy_context(thread_pool_context_t *tpc);
+GOP_API thread_pool_context_t *gop_tp_context_create(char *tp_name, int min_threads, int max_threads, int max_recursion);
+GOP_API void gop_tp_context_destroy(thread_pool_context_t *tpc);
 
 void thread_pool_exec_fn(void *arg, op_generic_t *op);
 

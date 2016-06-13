@@ -264,7 +264,7 @@ void *hc_send_thread(apr_thread_t *th, void *data)
     //** Now we start the main loop
     hsop = NULL;
     hop = NULL;
-    finished = op_success_status;
+    finished = gop_success_status;
     tbx_ns_timeout_set(&dt, 1, 0);
 
     if (hc->net_connect_status != 0) finished = op_dead_status;  //** If connect() failed err out
@@ -296,7 +296,7 @@ void *hc_send_thread(apr_thread_t *th, void *data)
             if (tbx_stack_count(hc->pending_stack) == 0) tbx_atomic_set(hop->on_top, 1);
             unlock_hc(hc);
 
-            finished = (hop->send_command != NULL) ? hop->send_command(hsop, ns) : op_success_status;
+            finished = (hop->send_command != NULL) ? hop->send_command(hsop, ns) : gop_success_status;
             log_printf(5, "hc_send_thread: after send command.. ns=%d gid=%d finisehd=%d\n", tbx_ns_getid(ns), gop_id(hsop), finished.op_status);
             if (finished.op_status == OP_STATE_SUCCESS) {
                 lock_hc(hc);
@@ -312,7 +312,7 @@ void *hc_send_thread(apr_thread_t *th, void *data)
                 unlock_hc(hc);
 
                 log_printf(15, "hc_send_thread: before send phase.. ns=%d gid=%d\n", tbx_ns_getid(ns), gop_id(hsop));
-                finished = (hop->send_phase != NULL) ? hop->send_phase(hsop, ns) : op_success_status;
+                finished = (hop->send_phase != NULL) ? hop->send_phase(hsop, ns) : gop_success_status;
                 log_printf(5, "hc_send_thread: after send phase.. ns=%d gid=%d finisehd=%d\n", tbx_ns_getid(ns), gop_id(hsop), finished.op_status);
 
                 //** Always push the command on the recving que even in a failure to collect the return code
@@ -342,7 +342,7 @@ void *hc_send_thread(apr_thread_t *th, void *data)
         }
 
         if (hc->shutdown_request == 1) {
-            finished = op_error_status;
+            finished = gop_error_status;
             log_printf(5, "hc_send_thread: ns=%d shutdown request!\n", tbx_ns_getid(ns));
         }
 
@@ -432,7 +432,7 @@ void *hc_recv_thread(apr_thread_t *th, void *data)
             }
 
             log_printf(5, "hc_recv_thread: before recv phase.. ns=%d gid=%d\n", tbx_ns_getid(ns), gop_id(hsop));
-            status = (hop->recv_phase != NULL) ? hop->recv_phase(hsop, ns) : op_success_status;
+            status = (hop->recv_phase != NULL) ? hop->recv_phase(hsop, ns) : gop_success_status;
             hop->end_time = apr_time_now();
             log_printf(5, "hc_recv_thread: after recv phase.. ns=%d gid=%d finished=%d\n", tbx_ns_getid(ns), gop_id(hsop), status.op_status);
 
@@ -544,20 +544,20 @@ void *hc_recv_thread(apr_thread_t *th, void *data)
 
         if (hc->curr_op != NULL) {  //** This is from the sending thread
             log_printf(15, "hc_recv_thread: ns=%d Pushing sending thread task on stack gid=%d\n", tbx_ns_getid(ns), gop_id(hc->curr_op));
-            submit_hportal(hp, hc->curr_op, 1, 0);
+            gop_hp_submit(hp, hc->curr_op, 1, 0);
             pending = 1;
         }
         if (hsop != NULL) {  //** This is my command
             log_printf(15, "hc_recv_thread: ns=%d Pushing current recving task on stack gid=%d\n", tbx_ns_getid(ns), gop_id(hsop));
             hop = &(hsop->op->cmd);
             hop->retry_count--;  //** decr in case this command is a problem
-            submit_hportal(hp, hsop, 1, 0);
+            gop_hp_submit(hp, hsop, 1, 0);
             pending = 1;
         }
 
         //** and everything else on the pending_stack
         while ((hsop = (op_generic_t *)tbx_stack_pop(hc->pending_stack)) != NULL) {
-            submit_hportal(hp, hsop, 1, 0);
+            gop_hp_submit(hp, hsop, 1, 0);
             pending = 1;
         }
     }

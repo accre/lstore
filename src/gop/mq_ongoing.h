@@ -92,16 +92,16 @@ struct mq_ongoing_t {
     int send_divisor;
 };
 
-GOP_API void mq_ongoing_host_inc(mq_ongoing_t *on, mq_msg_t *remote_host, char *id, int id_len, int heartbeat);
-GOP_API void mq_ongoing_host_dec(mq_ongoing_t *on, mq_msg_t *remote_host, char *id, int id_len);
+GOP_API void gop_mq_ongoing_host_inc(mq_ongoing_t *on, mq_msg_t *remote_host, char *id, int id_len, int heartbeat);
+GOP_API void gop_mq_ongoing_host_dec(mq_ongoing_t *on, mq_msg_t *remote_host, char *id, int id_len);
 void ongoing_heartbeat_shutdown();
 void mq_ongoing_cb(void *arg, mq_task_t *task);
-GOP_API mq_ongoing_object_t *mq_ongoing_add(mq_ongoing_t *mqon, int auto_clean, char *id, int id_len, void *handle, mq_ongoing_fail_t *on_fail, void *on_fail_arg);
-GOP_API void *mq_ongoing_remove(mq_ongoing_t *mqon, char *id, int id_len, intptr_t key);
-GOP_API void *mq_ongoing_get(mq_ongoing_t *mqon, char *id, int id_len, intptr_t key);
-GOP_API void mq_ongoing_release(mq_ongoing_t *mqon, char *id, int id_len, intptr_t key);
-GOP_API mq_ongoing_t *mq_ongoing_create(mq_context_t *mqc, mq_portal_t *server_portal, int check_interval, int mode);
-GOP_API void mq_ongoing_destroy(mq_ongoing_t *mqon);
+GOP_API mq_ongoing_object_t *gop_mq_ongoing_add(mq_ongoing_t *mqon, int auto_clean, char *id, int id_len, void *handle, mq_ongoing_fail_t *on_fail, void *on_fail_arg);
+GOP_API void *gop_mq_ongoing_remove(mq_ongoing_t *mqon, char *id, int id_len, intptr_t key);
+GOP_API void *gop_mq_ongoing_get(mq_ongoing_t *mqon, char *id, int id_len, intptr_t key);
+GOP_API void gop_mq_ongoing_release(mq_ongoing_t *mqon, char *id, int id_len, intptr_t key);
+GOP_API mq_ongoing_t *gop_mq_ongoing_create(mq_context_t *mqc, mq_portal_t *server_portal, int check_interval, int mode);
+GOP_API void gop_mq_ongoing_destroy(mq_ongoing_t *mqon);
 
 #ifdef __cplusplus
 }

@@ -96,7 +96,7 @@ op_status_t segfile_rw_func(void *arg, int id)
     for (i=0; i<srw->n_iov; i++) {
         fseeko(fd, srw->iov[i].offset, SEEK_SET);
         bleft = srw->iov[i].len;
-        err = op_success_status;
+        err = gop_success_status;
         while ((bleft > 0) && (err.op_status == OP_STATE_SUCCESS)) {
             tbv.nbytes = bleft;
             tbx_tbuf_next(srw->buffer, boff, &tbv);
@@ -116,13 +116,13 @@ op_status_t segfile_rw_func(void *arg, int id)
                 boff = boff + nbytes;
                 bleft = bleft - nbytes;
             } else {
-                err = op_failure_status;
+                err = gop_failure_status;
                 err_cnt++;
             }
         }
     }
 
-    err =  (err_cnt > 0) ? op_failure_status : op_success_status;
+    err =  (err_cnt > 0) ? gop_failure_status : gop_success_status;
 
     if (err_cnt > 0) {  //** Update the error count if needed
         log_printf(15, "segfile_rw_func: ERROR tid=%d fname=%s n_iov=%d off[0]=" XOT " len[0]=" XOT " bleft=" XOT " err_cnt=%d\n", tbx_atomic_thread_id, s->fname, srw->n_iov, srw->iov[0].offset, srw->iov[0].len, bleft, err_cnt);
@@ -155,7 +155,7 @@ op_generic_t *segfile_read(segment_t *seg, data_attr_t *da, segment_rw_hints_t *
     srw->buffer = buffer;
     srw->mode = 0;
 
-    return(new_thread_pool_op(s->tpc, s->qname, segfile_rw_func, (void *)srw, free, 1));
+    return(gop_tp_op_new(s->tpc, s->qname, segfile_rw_func, (void *)srw, free, 1));
 }
 
 //***********************************************************************
@@ -177,7 +177,7 @@ op_generic_t *segfile_write(segment_t *seg, data_attr_t *da, segment_rw_hints_t 
     srw->buffer = buffer;
     srw->mode = 1;
 
-    return(new_thread_pool_op(s->tpc, s->qname, segfile_rw_func, (void *)srw, free, 1));
+    return(gop_tp_op_new(s->tpc, s->qname, segfile_rw_func, (void *)srw, free, 1));
 }
 
 //***********************************************************************
@@ -189,11 +189,11 @@ op_status_t segfile_multi_func(void *arg, int id)
     segfile_multi_op_t *cmd = (segfile_multi_op_t *)arg;
     segfile_priv_t *s = (segfile_priv_t *)cmd->seg->priv;
     int err;
-    op_status_t status = op_success_status;
+    op_status_t status = gop_success_status;
 
     if (cmd->new_size >= 0) {  //** Truncate operation
         err = truncate(s->fname, cmd->new_size);
-        if (err != 0) status = op_failure_status;
+        if (err != 0) status = gop_failure_status;
     } else {  //** REmove op
         if (s->fname != NULL) {
             remove(s->fname);
@@ -218,7 +218,7 @@ op_generic_t *segfile_remove(segment_t *seg, data_attr_t *da, int timeout)
     cmd->seg = seg;
     cmd->new_size = -1;
 
-    return(new_thread_pool_op(s->tpc, s->qname, segfile_multi_func, (void *)cmd, free, 1));
+    return(gop_tp_op_new(s->tpc, s->qname, segfile_multi_func, (void *)cmd, free, 1));
 }
 
 //***********************************************************************
@@ -230,14 +230,14 @@ op_generic_t *segfile_truncate(segment_t *seg, data_attr_t *da, ex_off_t new_siz
     segfile_priv_t *s = (segfile_priv_t *)seg->priv;
     segfile_multi_op_t *cmd;
 
-    if (new_size < 0) return(gop_dummy(op_success_status));  //** Reserve call which we ignore
+    if (new_size < 0) return(gop_dummy(gop_success_status));  //** Reserve call which we ignore
 
     tbx_type_malloc_clear(cmd, segfile_multi_op_t, 1);
 
     cmd->seg = seg;
     cmd->new_size = new_size;
 
-    return(new_thread_pool_op(s->tpc, s->qname, segfile_multi_func, (void *)cmd, free, 1));
+    return(gop_tp_op_new(s->tpc, s->qname, segfile_multi_func, (void *)cmd, free, 1));
 }
 
 
@@ -251,16 +251,16 @@ op_generic_t *segfile_inspect(segment_t *seg, data_attr_t *da, tbx_log_fd_t *ifd
     FILE *fd;
     op_status_t err;
 
-    err= op_failure_status;
+    err= gop_failure_status;
     switch (mode) {
     case (INSPECT_QUICK_CHECK):
     case (INSPECT_SCAN_CHECK):
     case (INSPECT_FULL_CHECK):
         fd = fopen(s->fname, "r");
         if (fd == NULL) {
-            err = op_failure_status;
+            err = gop_failure_status;
         } else {
-            err = op_success_status;
+            err = gop_success_status;
             fclose(fd);
         }
         break;
@@ -269,9 +269,9 @@ op_generic_t *segfile_inspect(segment_t *seg, data_attr_t *da, tbx_log_fd_t *ifd
     case (INSPECT_FULL_REPAIR):
         fd = fopen(s->fname, "w+");
         if (fd == NULL) {
-            err = op_failure_status;
+            err = gop_failure_status;
         } else {
-            err = op_success_status;
+            err = gop_success_status;
             fclose(fd);
         }
         break;
@@ -298,7 +298,7 @@ op_generic_t *segfile_inspect(segment_t *seg, data_attr_t *da, tbx_log_fd_t *ifd
 
 op_generic_t *segfile_flush(segment_t *seg, data_attr_t *da, ex_off_t lo, ex_off_t hi, int timeout)
 {
-    return(gop_dummy(op_success_status));
+    return(gop_dummy(gop_success_status));
 }
 
 //***********************************************************************
@@ -328,19 +328,19 @@ op_status_t segfile_clone_func(void *arg, int id)
     FILE *sfd, *dfd;
 
     dfd = fopen(sd->fname, "w+");
-    if (dfd == NULL) return(op_failure_status);  //** Failed making the dest file
+    if (dfd == NULL) return(gop_failure_status);  //** Failed making the dest file
 
     //** If no data then return
     if (sfc->copy_data == 0) {
         fclose(dfd);
-        return(op_success_status);
+        return(gop_success_status);
     }
 
 
     sfd = fopen(ss->fname, "r");
     if (sfd == NULL) {
         fclose(dfd);    //** Nothing to copy
-        return(op_success_status);
+        return(gop_success_status);
     }
 
     tbx_type_malloc(buffer, char, bufsize);
@@ -350,7 +350,7 @@ op_status_t segfile_clone_func(void *arg, int id)
         if (m != n) {
             fclose(sfd);
             fclose(dfd);
-            return(op_failure_status);
+            return(gop_failure_status);
         }
     }
 
@@ -359,7 +359,7 @@ op_status_t segfile_clone_func(void *arg, int id)
 
     free(buffer);
 
-    return(op_success_status);
+    return(gop_success_status);
 }
 
 //***********************************************************************
@@ -405,7 +405,7 @@ op_generic_t *segfile_clone(segment_t *seg, data_attr_t *da, segment_t **clone_s
 
     if (mode == CLONE_STRUCT_AND_DATA) sfc->copy_data = 1;
 
-    gop = new_thread_pool_op(sd->tpc, sd->qname, segfile_clone_func, (void *)sfc, free, 1);
+    gop = gop_tp_op_new(sd->tpc, sd->qname, segfile_clone_func, (void *)sfc, free, 1);
 
     return(gop);
 }
@@ -599,11 +599,11 @@ op_generic_t *segment_file_make(segment_t *seg, data_attr_t *da, char *fname)
     fd = fopen(fname, "r+");
 
     if (fd ==  NULL) {
-        return(gop_dummy(op_failure_status));  //** Return an error
+        return(gop_dummy(gop_failure_status));  //** Return an error
     }
 
     fclose(fd);
-    return(gop_dummy(op_success_status));
+    return(gop_dummy(gop_success_status));
 }
 
 //***********************************************************************
@@ -627,7 +627,7 @@ segment_t *segment_file_create(void *arg)
     tbx_atomic_set(seg->ref_count, 0);
     seg->header.type = SEGMENT_TYPE_FILE;
 
-    s->tpc = lookup_service(es, ESS_RUNNING, ESS_TPC_UNLIMITED);
+    s->tpc = lio_lookup_service(es, ESS_RUNNING, ESS_TPC_UNLIMITED);
     snprintf(qname, sizeof(qname), XIDT HP_HOSTPORT_SEPARATOR "1" HP_HOSTPORT_SEPARATOR "0" HP_HOSTPORT_SEPARATOR "0", seg->header.id);
     s->qname = strdup(qname);
 

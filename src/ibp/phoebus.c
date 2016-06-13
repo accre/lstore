@@ -40,7 +40,7 @@ int phoebus_print(char *buffer, int *used, int nbytes)
 return(0); 
 }
 void phoebus_load_config(tbx_inip_file_t *kf) { };
-void phoebus_path_set(tbx_phoebus_t *p, const char *path) { };
+void ibp_phoebus_path_set(tbx_phoebus_t *p, const char *path) { };
 void phoebus_path_destroy(tbx_phoebus_t *p) { };
 void phoebus_path_to_string(char *string, int max_size, tbx_phoebus_t *p) 
 { 
@@ -54,10 +54,10 @@ return("");
 #else                         //** Actual Phoebus routines
  
 //***************************************************************
-//  phoebus_path_set - Sets the phoebus data structure
+//  ibp_phoebus_path_set - Sets the phoebus data structure
 //***************************************************************
  
-void phoebus_path_set(tbx_phoebus_t *p, const char *path)
+void ibp_phoebus_path_set(tbx_phoebus_t *p, const char *path)
 {
 char *hop, *bstate;
 char *stage[100];
@@ -148,7 +148,7 @@ log_printf(0, "phoebus_init:  Aborting programm!! Malloc failed!\n");
 abort();
 }
  
-phoebus_path_set(global_phoebus, NULL);
+ibp_phoebus_path_set(global_phoebus, NULL);
  
 if (liblsl_init() < 0) {
 perror("liblsl_init(): failed");
@@ -156,14 +156,14 @@ exit(errno);
 }
  
 if (getenv("PHOEBUS_PATH") != NULL) {
-phoebus_path_set(global_phoebus, getenv("PHOEBUS_PATH"));
+ibp_phoebus_path_set(global_phoebus, getenv("PHOEBUS_PATH"));
 if (!global_phoebus->path) {
 log_printf(0, "phoebus_init: Parsing of variable PHOEBUS_PATH failed.  It needs to be a comma separated list of depot IDs\n");
 global_phoebus->p_count = 0;
 }
 log_printf(10, "phoebus_init: Using the gateway specified in environmental variable PHOEBUS_PATH: \"%s\"\n", getenv("PHOEBUS_PATH"));
 } else if (getenv("PHOEBUS_GW") != NULL) {
-phoebus_path_set(global_phoebus, getenv("PHOEBUS_GW"));
+ibp_phoebus_path_set(global_phoebus, getenv("PHOEBUS_GW"));
 log_printf(10, "phoebus_init: Using the gateway specified in environmental variable PHOEBUS_GW: \"%s\"\n", getenv("PHOEBUS_GW"));
 }
 }
@@ -210,7 +210,7 @@ if (global_phoebus == NULL) phoebus_init();
 char *gateway = tbx_inip_get_string(kf, "phoebus", "gateway", NULL);
  
 if (gateway != NULL) {
-phoebus_path_set(global_phoebus, gateway);
+ibp_phoebus_path_set(global_phoebus, gateway);
 log_printf(10, "phoebus_init: Using the gateway specified in local config: %s\n", gateway);
 free(gateway);
 } else if (!global_phoebus->path) {

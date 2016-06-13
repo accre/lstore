@@ -162,7 +162,7 @@ int main(int argc, char **argv)
             i++;
             dkey[n_skeys] = tbx_stk_string_token(argv[i], delims, &bstate, &fin);
             tmp = tbx_stk_string_token(NULL, delims, &bstate, &fin);
-            os_path_split(tmp, &(sobj[n_skeys]), &(skey[n_skeys]));
+            lio_os_path_split(tmp, &(sobj[n_skeys]), &(skey[n_skeys]));
             n_skeys++;
             i++;
         }
@@ -184,13 +184,13 @@ int main(int argc, char **argv)
         if (rg_mode == 0) {
             //** Create the simple path iterator
             tuple = lio_path_resolve(lio_gc->auto_translate, argv[j]);
-            rp_single = os_path_glob2regex(tuple.path);
+            rp_single = lio_os_path_glob2regex(tuple.path);
         } else {
             rg_mode = 0;  //** Use the initial rp
         }
 
         if (n_keys > 0) {
-            err = gop_sync_exec(gop_lio_regex_object_set_multiple_attrs(tuple.lc, tuple.creds, NULL, rp_single,  ro_single, obj_types, recurse_depth, key, (void **)val, v_size, n_keys));
+            err = gop_sync_exec(lio_regex_object_set_multiple_attrs_op(tuple.lc, tuple.creds, NULL, rp_single,  ro_single, obj_types, recurse_depth, key, (void **)val, v_size, n_keys));
             if (err != OP_STATE_SUCCESS) {
                 return_code = EIO;
                 info_printf(lio_ifd, 0, "ERROR with operation! \n");
@@ -238,11 +238,11 @@ int main(int argc, char **argv)
 
         lio_path_release(&tuple);
         if (rp_single != NULL) {
-            os_regex_table_destroy(rp_single);
+            lio_os_regex_table_destroy(rp_single);
             rp_single = NULL;
         }
         if (ro_single != NULL) {
-            os_regex_table_destroy(ro_single);
+            lio_os_regex_table_destroy(ro_single);
             ro_single = NULL;
         }
 

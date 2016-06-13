@@ -44,7 +44,7 @@ static portal_fn_t _tp_base_portal = {
     .destroy_connect_context = _tp_destroy_connect_context,
     .connect = _tp_connect,
     .close_connection = _tp_close_connection,
-    .sort_tasks = default_sort_ops,
+    .sort_tasks = gop_default_sort_ops,
     .submit = _tp_submit_op,
     .sync_exec = thread_pool_exec_fn
 };
@@ -233,10 +233,10 @@ void default_thread_pool_config(thread_pool_context_t *tpc)
 
 
 //**********************************************************
-//  thread_pool_create_context - Creates a TP context
+//  gop_tp_context_create - Creates a TP context
 //**********************************************************
 
-thread_pool_context_t *thread_pool_create_context(char *tp_name, int min_threads, int max_threads, int max_recursion_depth)
+thread_pool_context_t *gop_tp_context_create(char *tp_name, int min_threads, int max_threads, int max_recursion_depth)
 {
 //  char buffer[1024];
     thread_pool_context_t *tpc;
@@ -254,7 +254,7 @@ thread_pool_context_t *thread_pool_create_context(char *tp_name, int min_threads
     }
 
     if (thread_local_depth_key == NULL) apr_threadkey_private_create(&thread_local_depth_key,_thread_pool_destructor, _tp_pool);
-    tpc->pc = create_hportal_context(&_tp_base_portal);  //** Really just used for the submit
+    tpc->pc = gop_hp_context_create(&_tp_base_portal);  //** Really just used for the submit
 
     default_thread_pool_config(tpc);
     if (min_threads > 0) tpc->min_threads = min_threads;
@@ -291,16 +291,16 @@ thread_pool_context_t *thread_pool_create_context(char *tp_name, int min_threads
 
 
 //**********************************************************
-//  thread_pool_destroy_context - Shuts down the Thread pool system
+//  gop_tp_context_destroy - Shuts down the Thread pool system
 //**********************************************************
 
-void thread_pool_destroy_context(thread_pool_context_t *tpc)
+void gop_tp_context_destroy(thread_pool_context_t *tpc)
 {
     int i;
-    log_printf(15, "thread_pool_destroy_context: Shutting down! count=%d\n", _tp_context_count);
+    log_printf(15, "gop_tp_context_destroy: Shutting down! count=%d\n", _tp_context_count);
 
     log_printf(15, "tpc->name=%s  high=%zu idle=%zu\n", tpc->name, apr_thread_pool_threads_high_count(tpc->tp),  apr_thread_pool_threads_idle_timeout_count(tpc->tp));
-    destroy_hportal_context(tpc->pc);
+    gop_hp_context_destroy(tpc->pc);
 
     apr_thread_pool_destroy(tpc->tp);
 

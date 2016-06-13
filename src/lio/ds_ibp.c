@@ -53,7 +53,7 @@ void ds_ibp_destroy_attr(data_service_fn_t *arg, data_attr_t *attr)
 
 data_cap_set_t *ds_ibp_new_cap_set(data_service_fn_t *arg)
 {
-    return((data_cap_set_t *)new_ibp_capset());
+    return((data_cap_set_t *)ibp_capset_new());
 }
 
 //***********************************************************************
@@ -65,7 +65,7 @@ void ds_ibp_destroy_cap_set(data_service_fn_t *arg, data_cap_set_t *dcs, int fre
     ibp_capset_t *cs = (ibp_capset_t *)dcs;
 
     if (free_caps > 0) {
-        destroy_ibp_capset(cs);
+        ibp_cap_destroyset(cs);
     } else {
         free(cs);
     }
@@ -84,7 +84,7 @@ void *ds_ibp_cap_auto_warm(data_service_fn_t *arg, data_cap_set_t *dcs)
     log_printf(15, "Adding to auto warm cap: %s\n", cs->manageCap);
 
     //** Make the new cap
-    w = new_ibp_capset(); assert(w != NULL);
+    w = ibp_capset_new(); assert(w != NULL);
     if (cs->readCap) w->readCap = strdup(cs->readCap);
     if (cs->writeCap) w->writeCap = strdup(cs->writeCap);
     if (cs->manageCap) w->manageCap = strdup(cs->manageCap);
@@ -557,7 +557,7 @@ void _ds_ibp_op_free(op_generic_t *gop, int mode)
 
 void ds_ibp_setup_finish(ds_ibp_op_t *iop)
 {
-    if (ibp_cc_type(&(iop->attr->cc)) != NS_TYPE_UNKNOWN) ibp_op_set_cc(iop->gop, &(iop->attr->cc));
+    if (ibp_cc_type(&(iop->attr->cc)) != NS_TYPE_UNKNOWN) ibp_op_cc_set(iop->gop, &(iop->attr->cc));
 
     iop->free = iop->gop->base.free;
     iop->free_ptr = iop->gop->free_ptr;
@@ -583,7 +583,7 @@ op_generic_t *ds_ibp_res_inquire(data_service_fn_t *dsf, char *res, data_attr_t 
     res2ibp(res, &(cmd->depot));
 
     //** Create the op
-    iop->gop = new_ibp_depot_inq_op(ds->ic, &(cmd->depot), "ibp", space, timeout);
+    iop->gop = ibp_depot_inq_op(ds->ic, &(cmd->depot), "ibp", space, timeout);
 
     ds_ibp_setup_finish(iop);
 
@@ -607,7 +607,7 @@ op_generic_t *ds_ibp_allocate(data_service_fn_t *dsf, char *res, data_attr_t *da
     res2ibp(res, &(cmd->depot));
 
     //** Create the op
-    iop->gop = new_ibp_alloc_op(ds->ic, caps, size, &(cmd->depot), &(iop->attr->attr), iop->attr->disk_cs_type, iop->attr->disk_cs_blocksize, timeout);
+    iop->gop = ibp_alloc_op(ds->ic, caps, size, &(cmd->depot), &(iop->attr->attr), iop->attr->disk_cs_type, iop->attr->disk_cs_blocksize, timeout);
 
     ds_ibp_setup_finish(iop);
 
@@ -627,7 +627,7 @@ op_generic_t *ds_ibp_remove(data_service_fn_t *dsf, data_attr_t *dattr, data_cap
     ds_ibp_op_t *iop = ds_ibp_op_create(ds, attr);
 
     //** Create the op
-    iop->gop = new_ibp_remove_op(ds->ic, cap, timeout);
+    iop->gop = ibp_remove_op(ds->ic, cap, timeout);
 
     ds_ibp_setup_finish(iop);
 
@@ -646,7 +646,7 @@ op_generic_t *ds_ibp_truncate(data_service_fn_t *dsf, data_attr_t *dattr, data_c
     ds_ibp_op_t *iop = ds_ibp_op_create(ds, attr);
 
     //** Create the op
-    iop->gop = new_ibp_truncate_op(ds->ic, mcap, new_size, timeout);
+    iop->gop = ibp_truncate_op(ds->ic, mcap, new_size, timeout);
 
     ds_ibp_setup_finish(iop);
 
@@ -689,7 +689,7 @@ op_generic_t *ds_ibp_modify_count(data_service_fn_t *dsf, data_attr_t *dattr, da
     }
 
     //** Create the op
-    iop->gop = new_ibp_modify_count_op(ds->ic, mcap, imode, icaptype, timeout);
+    iop->gop = ibp_modify_count_op(ds->ic, mcap, imode, icaptype, timeout);
 
     ds_ibp_setup_finish(iop);
 
@@ -708,7 +708,7 @@ op_generic_t *ds_ibp_probe(data_service_fn_t *dsf, data_attr_t *dattr, data_cap_
     ds_ibp_op_t *iop = ds_ibp_op_create(ds, attr);
 
     //** Create the op
-    iop->gop = new_ibp_probe_op(ds->ic, mcap, (ibp_capstatus_t *)probe, timeout);
+    iop->gop = ibp_probe_op(ds->ic, mcap, (ibp_capstatus_t *)probe, timeout);
 
     ds_ibp_setup_finish(iop);
 
@@ -727,7 +727,7 @@ op_generic_t *ds_ibp_read(data_service_fn_t *dsf, data_attr_t *dattr, data_cap_t
     ds_ibp_op_t *iop = ds_ibp_op_create(ds, attr);
 
     //** Create the op
-    iop->gop = new_ibp_read_op(ds->ic, rcap, off, dread, droff, size, timeout);
+    iop->gop = ibp_read_op(ds->ic, rcap, off, dread, droff, size, timeout);
 
     ds_ibp_setup_finish(iop);
 
@@ -746,7 +746,7 @@ op_generic_t *ds_ibp_write(data_service_fn_t *dsf, data_attr_t *dattr, data_cap_
     ds_ibp_op_t *iop = ds_ibp_op_create(ds, attr);
 
     //** Create the op
-    iop->gop = new_ibp_write_op(ds->ic, wcap, off, dwrite, boff, size, timeout);
+    iop->gop = ibp_write_op(ds->ic, wcap, off, dwrite, boff, size, timeout);
 
     ds_ibp_setup_finish(iop);
 
@@ -765,7 +765,7 @@ op_generic_t *ds_ibp_readv(data_service_fn_t *dsf, data_attr_t *dattr, data_cap_
     ds_ibp_op_t *iop = ds_ibp_op_create(ds, attr);
 
     //** Create the op
-    iop->gop = new_ibp_vec_read_op(ds->ic, rcap, n_iov, iov, dread, droff, size, timeout);
+    iop->gop = ibp_vec_read_op(ds->ic, rcap, n_iov, iov, dread, droff, size, timeout);
 
     ds_ibp_setup_finish(iop);
 
@@ -784,7 +784,7 @@ op_generic_t *ds_ibp_writev(data_service_fn_t *dsf, data_attr_t *dattr, data_cap
     ds_ibp_op_t *iop = ds_ibp_op_create(ds, attr);
 
     //** Create the op
-    iop->gop = new_ibp_vec_write_op(ds->ic, wcap, n_iov, iov, dwrite, boff, size, timeout);
+    iop->gop = ibp_vec_write_op(ds->ic, wcap, n_iov, iov, dwrite, boff, size, timeout);
 
     ds_ibp_setup_finish(iop);
 
@@ -803,7 +803,7 @@ op_generic_t *ds_ibp_append(data_service_fn_t *dsf, data_attr_t *dattr, data_cap
     ds_ibp_op_t *iop = ds_ibp_op_create(ds, attr);
 
     //** Create the op
-    iop->gop = new_ibp_append_op(ds->ic, wcap, dwrite, boff, size, timeout);
+    iop->gop = ibp_append_op(ds->ic, wcap, dwrite, boff, size, timeout);
 
     ds_ibp_setup_finish(iop);
 
@@ -824,7 +824,7 @@ op_generic_t *ds_ibp_copy(data_service_fn_t *dsf, data_attr_t *dattr, int mode, 
 
     //** Create the op
     dir = ((mode & DS_PULL) > 0) ? IBP_PULL : IBP_PUSH;
-    iop->gop = new_ibp_copy_op(ds->ic, dir, ns_type, ppath, src_cap, dest_cap, src_off, dest_off, len, timeout, timeout, timeout);
+    iop->gop = ibp_copy_op(ds->ic, dir, ns_type, ppath, src_cap, dest_cap, src_off, dest_off, len, timeout, timeout, timeout);
 
     ds_ibp_setup_finish(iop);
 
@@ -883,10 +883,10 @@ void *ds_ibp_warm_thread(apr_thread_t *th, void *data)
         //** Generate all the tasks
         log_printf(10, "Starting auto-warming run\n");
 
-        q = new_opque();
+        q = gop_opque_new();
         for (hi=apr_hash_first(NULL, ds->warm_table); hi != NULL; hi = apr_hash_next(hi)) {
             apr_hash_this(hi, (const void **)&mcap, &hlen, (void **)&w);
-            opque_add(q, new_ibp_modify_alloc_op(ds->ic, mcap, -1, ds->warm_duration, -1, dt));
+            gop_opque_add(q, ibp_modify_alloc_op(ds->ic, mcap, -1, ds->warm_duration, -1, dt));
             log_printf(15, " warming: %s\n", mcap);
 
         }
@@ -895,7 +895,7 @@ void *ds_ibp_warm_thread(apr_thread_t *th, void *data)
         err = opque_waitall(q);
         log_printf(10, "opque_waitall=%d\n", err);
 
-        opque_free(q, OP_DESTROY);  //** Clean up.  Don;t care if we are successfull or not:)
+        gop_opque_free(q, OP_DESTROY);  //** Clean up.  Don;t care if we are successfull or not:)
 
         //** Sleep until the next time or we get an exit request
         apr_thread_cond_timedwait(ds->cond, ds->lock, max_wait);
@@ -928,7 +928,7 @@ void ds_ibp_destroy(data_service_fn_t *dsf)
     apr_thread_cond_destroy(ds->cond);
     apr_pool_destroy(ds->pool);
 
-    ibp_destroy_context(ds->ic);
+    ibp_context_destroy(ds->ic);
 
     free(ds);
     free(dsf);
@@ -974,8 +974,8 @@ data_service_fn_t *ds_ibp_create(void *arg, tbx_inip_file_t *ifd, char *section)
     ds->attr_default.attr.type = IBP_BYTEARRAY;
 
 
-    ic = ibp_create_context();
-    ibp_load_config(ic, ifd, section);
+    ic = ibp_context_create();
+    ibp_config_load(ic, ifd, section);
     ds->ic = ic;
     dsf->type = DS_TYPE_IBP;
 

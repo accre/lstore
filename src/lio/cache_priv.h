@@ -62,8 +62,8 @@ struct cache_counters_t {
     ex_off_t write_bytes;
 };
 
-typedef struct cache_stats_t cache_stats_t;
-struct cache_stats_t {
+typedef struct lio_cache_stats_get_t lio_cache_stats_get_t;
+struct lio_cache_stats_get_t {
     cache_counters_t user;
     cache_counters_t system;
     ex_off_t dirty_bytes;
@@ -118,7 +118,7 @@ struct cache_segment_t {
     ex_off_t page_size;
     ex_off_t child_last_page;
     ex_off_t total_size;
-    cache_stats_t stats;
+    lio_cache_stats_get_t stats;
 };
 
 typedef struct data_page_t data_page_t;
@@ -180,7 +180,7 @@ struct cache_t {
     tbx_pc_t *cond_coop;
     data_attr_t *da;
     ex_off_t default_page_size;
-    cache_stats_t stats;
+    lio_cache_stats_get_t stats;
     ex_off_t max_fetch_size;
     ex_off_t write_temp_overflow_size;
     ex_off_t write_temp_overflow_used;
@@ -199,14 +199,14 @@ extern tbx_atomic_unit32_t _cache_count;
 #define cache_get_handle(c) (c)->fn.get_handle(c)
 #define cache_destroy(c) (c)->fn.destroy(c)
 
-LIO_API cache_stats_t get_cache_stats(cache_t *c);
+LIO_API lio_cache_stats_get_t get_lio_cache_stats_get(cache_t *c);
 cache_t *cache_base_handle(cache_t *);
 void cache_base_destroy(cache_t *c);
 void cache_base_create(cache_t *c, data_attr_t *da, int timeout);
 void *cache_cond_new(void *arg, int size);
 void cache_cond_free(void *arg, int size, void *data);
 op_generic_t *cache_flush_range(segment_t *seg, data_attr_t *da, ex_off_t lo, ex_off_t hi, int timeout);
-LIO_API int cache_drop_pages(segment_t *seg, ex_off_t lo, ex_off_t hi);
+LIO_API int lio_cache_pages_drop(segment_t *seg, ex_off_t lo, ex_off_t hi);
 int cache_release_pages(int n_pages, page_handle_t *page, int rw_mode);
 void _cache_drain_writes(segment_t *seg, cache_page_t *p);
 void cache_advise(segment_t *seg, segment_rw_hints_t *rw_hints, int rw_mode, ex_off_t lo, ex_off_t hi, page_handle_t *page, int *n_pages, int force_load);

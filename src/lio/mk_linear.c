@@ -78,7 +78,7 @@ int main(int argc, char **argv)
     }
 
     //** Create an empty linear segment
-    screate = lookup_service(lio_gc->ess, SEG_SM_CREATE, SEGMENT_TYPE_LINEAR);
+    screate = lio_lookup_service(lio_gc->ess, SEG_SM_CREATE, SEGMENT_TYPE_LINEAR);
     seg = (*screate)(lio_gc->ess);
 
     //** Parse the query
@@ -90,7 +90,7 @@ int main(int argc, char **argv)
     }
 
     //** Make the actual segment
-    gop = segment_linear_make(seg, NULL, rq, n_rid, block_size, total_size, lio_gc->timeout);
+    gop = lio_segment_linear_make(seg, NULL, rq, n_rid, block_size, total_size, lio_gc->timeout);
     i = gop_waitall(gop);
     if (i != 0) {
         printf("ERROR making segment! nerr=%d\n", i);
@@ -99,26 +99,26 @@ int main(int argc, char **argv)
     gop_free(gop, OP_DESTROY);
 
     //** Make an empty exnode
-    ex = exnode_create();
+    ex = lio_exnode_create();
 
     //** and insert it
-    view_insert(ex, seg);
+    lio_view_insert(ex, seg);
 
 
     //** Print it
-    exp = exnode_exchange_create(EX_TEXT);
-    exnode_serialize(ex, exp);
+    exp = lio_exnode_exchange_create(EX_TEXT);
+    lio_exnode_serialize(ex, exp);
     printf("%s", exp->text.text);
 
     //** and Save if back to disk
     FILE *fd = fopen(fname_out, "w");
     fprintf(fd, "%s", exp->text.text);
     fclose(fd);
-    exnode_exchange_destroy(exp);
+    lio_exnode_exchange_destroy(exp);
 
 
     //** Clean up
-    exnode_destroy(ex);
+    lio_exnode_destroy(ex);
 
     rs_query_destroy(lio_gc->rs, rq);
 

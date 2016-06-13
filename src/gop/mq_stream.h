@@ -95,21 +95,21 @@ struct mq_stream_t {
     int dead_connection;   //** Connections is hosed so don;t even try sending anything
 };
 
-GOP_API void mqs_server_more_cb(void *arg, mq_task_t *task);
+GOP_API void gop_mqs_server_more_cb(void *arg, mq_task_t *task);
 
-GOP_API int64_t mq_stream_read_varint(mq_stream_t *mqs, int *error);
-int mq_stream_read_string(mq_stream_t *mqs, char *str, int bufsize);
-GOP_API int mq_stream_read(mq_stream_t *mqs, void *buffer, int nbytes);
+GOP_API int64_t gop_gop_mq_stream_read_varint(mq_stream_t *mqs, int *error);
+int gop_mq_stream_read_string(mq_stream_t *mqs, char *str, int bufsize);
+GOP_API int gop_mq_stream_read(mq_stream_t *mqs, void *buffer, int nbytes);
 
-GOP_API int mq_stream_write_varint(mq_stream_t *mqs, int64_t value);
-int mq_stream_write_string(mq_stream_t *mqs, char *str);
-GOP_API int mq_stream_write(mq_stream_t *mqs, void *buffer, int nbytes);
+GOP_API int gop_gop_mq_stream_write_varint(mq_stream_t *mqs, int64_t value);
+int gop_mq_stream_write_string(mq_stream_t *mqs, char *str);
+GOP_API int gop_mq_stream_write(mq_stream_t *mqs, void *buffer, int nbytes);
 
 void mq_stream_release_frame(mq_stream_t *mqs);
-GOP_API mq_stream_t *mq_stream_read_create(mq_context_t *mqc,  mq_ongoing_t *ongoing, char *host_id, int hid_len, mq_frame_t *fdata, mq_msg_t *remote_host, int to);
-GOP_API mq_stream_t *mq_stream_write_create(mq_context_t *mqc, mq_portal_t *server_portal, mq_ongoing_t *ongoing, char tbx_pack_type, int max_size, int timeout, mq_msg_t *address, mq_frame_t *fid, mq_frame_t *hid, int launch_flusher);
+GOP_API mq_stream_t *gop_gop_mq_stream_read_create(mq_context_t *mqc,  mq_ongoing_t *ongoing, char *host_id, int hid_len, mq_frame_t *fdata, mq_msg_t *remote_host, int to);
+GOP_API mq_stream_t *gop_gop_mq_stream_write_create(mq_context_t *mqc, mq_portal_t *server_portal, mq_ongoing_t *ongoing, char tbx_pack_type, int max_size, int timeout, mq_msg_t *address, mq_frame_t *fid, mq_frame_t *hid, int launch_flusher);
 
-GOP_API void mq_stream_destroy(mq_stream_t *mqs);
+GOP_API void gop_mq_stream_destroy(mq_stream_t *mqs);
 
 #ifdef __cplusplus
 }

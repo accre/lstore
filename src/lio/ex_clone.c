@@ -94,12 +94,12 @@ int main(int argc, char **argv)
     }
 
     //** Load the source
-    exp = exnode_exchange_load_file(sfname);
-    ex = exnode_create();
-    exnode_deserialize(ex, exp, lio_gc->ess);
+    exp = lio_exnode_exchange_load_file(sfname);
+    ex = lio_exnode_create();
+    lio_exnode_deserialize(ex, exp, lio_gc->ess);
 
     //** Execute the clone operation
-    gop = exnode_clone(lio_gc->tpc_unlimited, ex, lio_gc->da, &cex, (void *)clone_arg, mode, lio_gc->timeout);
+    gop = lio_exnode_clone(lio_gc->tpc_unlimited, ex, lio_gc->da, &cex, (void *)clone_arg, mode, lio_gc->timeout);
 
     gop_waitany(gop);
     status = gop_get_status(gop);
@@ -111,19 +111,19 @@ int main(int argc, char **argv)
     }
 
     //** Store the updated exnode back to disk
-    exp_out = exnode_exchange_create(EX_TEXT);
-    exnode_serialize(cex, exp_out);
+    exp_out = lio_exnode_exchange_create(EX_TEXT);
+    lio_exnode_serialize(cex, exp_out);
 
     fd = fopen(cfname, "w");
     fprintf(fd, "%s", exp_out->text.text);
     fclose(fd);
-    exnode_exchange_destroy(exp_out);
+    lio_exnode_exchange_destroy(exp_out);
 
     //** Clean up
-    exnode_exchange_destroy(exp);
+    lio_exnode_exchange_destroy(exp);
 
-    exnode_destroy(ex);
-    exnode_destroy(cex);
+    lio_exnode_destroy(ex);
+    lio_exnode_destroy(cex);
 
     lio_shutdown();
 

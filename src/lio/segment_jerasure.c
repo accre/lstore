@@ -333,8 +333,8 @@ op_status_t segjerase_inspect_full_func(void *arg, int id)
     stripe_buffer_size = 2048;
 
     memset(empty_magic, 0, JE_MAGIC_SIZE);
-    q = new_opque();
-    status = op_success_status;
+    q = gop_opque_new();
+    status = gop_success_status;
 
     fail_quick = si->inspect_mode & INSPECT_FAIL_ON_ERROR;
 
@@ -644,7 +644,7 @@ next:  //** Jump to here if an empty stripe
     free(buffer);
     free(ex_iov);
     free(iov);
-    opque_free(q, OP_DESTROY);
+    gop_opque_free(q, OP_DESTROY);
 
     sf->bad_stripes = bad_count;
     status.error_code = INSPECT_RESULT_FULL_CHECK;
@@ -673,7 +673,7 @@ op_generic_t *segjerase_inspect_full(segjerase_inspect_t *si, int do_print, ex_o
     sf->do_print = do_print;
     sf->bad_stripes = 0;
 
-    gop = new_thread_pool_op(s->tpc, NULL, segjerase_inspect_full_func, (void *)sf, free, 1);
+    gop = gop_tp_op_new(s->tpc, NULL, segjerase_inspect_full_func, (void *)sf, free, 1);
     gop_set_private(gop, sf);
 
     return(gop);
@@ -702,9 +702,9 @@ op_status_t segjerase_inspect_scan(segjerase_inspect_t *si)
 
     memset(empty_magic, 0, JE_MAGIC_SIZE);
 
-    q = new_opque();
+    q = gop_opque_new();
 //  opque_start_execution(q);
-    status = op_success_status;
+    status = gop_success_status;
 
     do_fix = 0;
     i = si->inspect_mode & INSPECT_COMMAND_BITS;
@@ -766,7 +766,7 @@ op_status_t segjerase_inspect_scan(segjerase_inspect_t *si)
                         lo = (start_stripe + start_bad) * s->data_size;
                         hi = (start_stripe + i) * s->data_size - 1;
                         gop = segjerase_inspect_full(si, 0, lo, hi);
-                        opque_add(q, gop);
+                        gop_opque_add(q, gop);
                         start_bad = -1;
                     }
                 } else {
@@ -784,7 +784,7 @@ op_status_t segjerase_inspect_scan(segjerase_inspect_t *si)
                 lo = (start_stripe + start_bad) * s->data_size;
                 hi = (start_stripe + curr_stripe) * s->data_size - 1;
                 gop = segjerase_inspect_full(si, 0, lo, hi);
-                opque_add(q, gop);
+                gop_opque_add(q, gop);
             }
 
             //** Wait for any pending tasks to complete
@@ -832,11 +832,11 @@ op_status_t segjerase_inspect_scan(segjerase_inspect_t *si)
     free(iov);
     free(ex_iov);
 
-    opque_free(q, OP_DESTROY);
+    gop_opque_free(q, OP_DESTROY);
 
     si->bad_stripes = bad_count;
     if ((do_fix == 0) && (bad_count > 0)) {
-        status = op_failure_status;
+        status = gop_failure_status;
     }
 
     log_printf(0, "do_fix=%d bad_count=%d\n", do_fix, bad_count);
@@ -1008,7 +1008,7 @@ op_generic_t *segjerase_inspect(segment_t *seg, data_attr_t *da, tbx_log_fd_t *f
         si->bufsize = bufsize;
         si->timeout = timeout;
         si->args = args;
-        gop = new_thread_pool_op(s->tpc, NULL, segjerase_inspect_func, (void *)si, free, 1);
+        gop = gop_tp_op_new(s->tpc, NULL, segjerase_inspect_func, (void *)si, free, 1);
         break;
     case (INSPECT_MIGRATE):
         info_printf(fd, 1, XIDT ": jerase segment maps to child " XIDT "\n", segment_id(seg), segment_id(s->child_seg));
@@ -1043,7 +1043,7 @@ op_status_t segjerase_clone_func(void *arg, int id)
     segjerase_priv_t *ds = (segjerase_priv_t *)cop->dseg->priv;
     op_status_t status;
 
-    status = (gop_waitall(cop->gop) == OP_STATE_SUCCESS) ? op_success_status : op_failure_status;
+    status = (gop_waitall(cop->gop) == OP_STATE_SUCCESS) ? gop_success_status : gop_failure_status;
     gop_free(cop->gop, OP_DESTROY);
 
     tbx_atomic_inc(ds->child_seg->ref_count);
@@ -1095,7 +1095,7 @@ op_generic_t *segjerase_clone(segment_t *seg, data_attr_t *da, segment_t **clone
         sd->plan = et_generate_plan(nbytes, sd->method, sd->n_data_devs, sd->n_parity_devs, sd->w, -1, -1);
         if (sd->plan == NULL) {
             log_printf(0, "seg=" XIDT " No plan generated!\n", segment_id(seg));
-            return(gop_dummy(op_failure_status));
+            return(gop_dummy(gop_failure_status));
         } else {
             sd->plan->form_encoding_matrix(sd->plan);
             sd->plan->form_decoding_matrix(sd->plan);
@@ -1111,7 +1111,7 @@ op_generic_t *segjerase_clone(segment_t *seg, data_attr_t *da, segment_t **clone
     cop->gop = segment_clone(ss->child_seg, da, &(sd->child_seg), mode, attr, timeout);
     log_printf(5, "child_clone gid=%d\n", gop_id(cop->gop));
 
-    return(new_thread_pool_op(ss->tpc, NULL, segjerase_clone_func, (void *)cop, free, 1));
+    return(gop_tp_op_new(ss->tpc, NULL, segjerase_clone_func, (void *)cop, free, 1));
 }
 
 
@@ -1152,10 +1152,10 @@ op_status_t segjerase_read_func(void *arg, int id)
 
 tryagain:  //** We first try allowing blacklisting to proceed as normal and then start over if that fails
 
-    q = new_opque();
+    q = gop_opque_new();
     tbx_tbuf_var_init(&tbv);
     magic_stripe = JE_MAGIC_SIZE*s->n_devs;
-    status = op_success_status;
+    status = gop_success_status;
     soft_error = 0;
     hard_error = 0;
     bm_brute_used = 0;
@@ -1403,7 +1403,7 @@ tryagain:  //** We first try allowing blacklisting to proceed as normal and then
             tbx_tbuf_vec(&(tbuf[i]), ex_iov[i].len, n_iov - iov_start, &(iov[iov_start]));
             gop = segment_read(s->child_seg, sw->da, &(rw_hints[i]), 1, &(ex_iov[i]), &(tbuf[i]), boff, sw->timeout);
             gop_set_myid(gop, i);
-            opque_add(q, gop);
+            gop_opque_add(q, gop);
             curr_bytes += len;
             parity_used += nstripes * s->parity_size;
         }
@@ -1419,7 +1419,7 @@ tryagain:  //** We first try allowing blacklisting to proceed as normal and then
     free(rw_hints);
     free(info);
 
-    opque_free(q, OP_DESTROY);
+    gop_opque_free(q, OP_DESTROY);
 
     //** See if we need to retry without blacklisting enabled
     if ((hard_error > 0) && (s->blacklist) && (loop == 0)) {
@@ -1467,9 +1467,9 @@ op_status_t segjerase_write_func(void *arg, int id)
 
 tryagain: //** In case blacklisting failed we'll retry with it disabled
 
-    q = new_opque();
+    q = gop_opque_new();
     tbx_tbuf_var_init(&tbv);
-    status = op_success_status;
+    status = gop_success_status;
     soft_error = 0;
     hard_error = 0;
 
@@ -1623,7 +1623,7 @@ tryagain: //** In case blacklisting failed we'll retry with it disabled
             tbx_tbuf_vec(&(tbuf[i]), nstripes*s->stripe_size_with_magic, n_iov - iov_start, &(iov[iov_start]));
             gop = segment_write(s->child_seg, sw->da, &(rw_hints[i]), 1, &(ex_iov[i]), &(tbuf[i]), boff, sw->timeout);
             gop_set_myid(gop, i);
-            opque_add(q, gop);
+            gop_opque_add(q, gop);
             curr_bytes += len;
         }
     }
@@ -1638,7 +1638,7 @@ tryagain: //** In case blacklisting failed we'll retry with it disabled
     free(tbuf);
     free(rw_hints);
 
-    opque_free(q, OP_DESTROY);
+    gop_opque_free(q, OP_DESTROY);
 
     //** See if we need to retry without blacklisting enabled
     if ((hard_error > 0) && (s->blacklist) && (loop == 0)) {
@@ -1700,7 +1700,7 @@ op_generic_t *segjerase_write(segment_t *seg, data_attr_t *da, segment_rw_hints_
     sw->buffer = buffer;
     sw->timeout = timeout;
     sw->rw_mode = 1;
-    gop = new_thread_pool_op(s->tpc, NULL, segjerase_write_func, (void *)sw, free, 1);
+    gop = gop_tp_op_new(s->tpc, NULL, segjerase_write_func, (void *)sw, free, 1);
 
     return(gop);
 }
@@ -1748,7 +1748,7 @@ op_generic_t *segjerase_read(segment_t *seg, data_attr_t *da, segment_rw_hints_t
     sw->buffer = buffer;
     sw->timeout = timeout;
     sw->rw_mode = 1;
-    gop = new_thread_pool_op(s->tpc, NULL, segjerase_read_func, (void *)sw, free, 1);
+    gop = gop_tp_op_new(s->tpc, NULL, segjerase_read_func, (void *)sw, free, 1);
 
     return(gop);
 }
@@ -1761,7 +1761,7 @@ op_generic_t *segjerase_read(segment_t *seg, data_attr_t *da, segment_rw_hints_t
 
 op_generic_t *segjerase_flush(segment_t *seg, data_attr_t *da, ex_off_t lo, ex_off_t hi, int timeout)
 {
-    return(gop_dummy(op_success_status));
+    return(gop_dummy(gop_success_status));
 }
 
 //***********************************************************************
@@ -1857,7 +1857,7 @@ int segjerase_serialize_text(segment_t *seg, exnode_exchange_t *exp)
     exnode_exchange_t *child_exp;
 
     segbuf[0] = 0;
-    child_exp = exnode_exchange_create(EX_TEXT);
+    child_exp = lio_exnode_exchange_create(EX_TEXT);
 
     sused = 0;
 
@@ -1893,7 +1893,7 @@ int segjerase_serialize_text(segment_t *seg, exnode_exchange_t *exp)
     exnode_exchange_append(exp, child_exp);
 
     //** Clean up the child
-    exnode_exchange_destroy(child_exp);
+    lio_exnode_exchange_destroy(child_exp);
 
     return(0);
 }
@@ -2098,16 +2098,16 @@ segment_t *segment_jerasure_create(void *arg)
     apr_thread_cond_create(&(seg->cond), seg->mpool);
 
     seg->ess = es;
-    s->tpc = lookup_service(es, ESS_RUNNING, ESS_TPC_UNLIMITED);
+    s->tpc = lio_lookup_service(es, ESS_RUNNING, ESS_TPC_UNLIMITED);
     s->child_seg = NULL;
 
     //** Pluck the paranoid setting for Jerase
-    paranoid = lookup_service(es, ESS_RUNNING, "jerase_paranoid");
+    paranoid = lio_lookup_service(es, ESS_RUNNING, "jerase_paranoid");
     s->paranoid_check = (paranoid == NULL) ? 0 : *paranoid;
     s->magic_cksum = 1;
 
     //** Also snag whether we're blacklisting
-    s->blacklist = lookup_service(es, ESS_RUNNING, "blacklist");
+    s->blacklist = lio_lookup_service(es, ESS_RUNNING, "blacklist");
 
     seg->fn.read = segjerase_read;
     seg->fn.write = segjerase_write;

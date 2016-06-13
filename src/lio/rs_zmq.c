@@ -109,7 +109,7 @@ op_status_t rs_zmq_req_func(void *arg, int id)
     //** Destroy allocatend space
     free(buf);
     free(qstr);
-    return op_success_status;
+    return gop_success_status;
 }
 
 //********************************************************************
@@ -138,7 +138,7 @@ op_generic_t *rs_zmq_request(resource_service_fn_t *arg, data_attr_t *da, rs_que
     rs_zmq_priv_t *rsz = (rs_zmq_priv_t *)arg->priv;
 
     //** Which thread context am I supposed to use?
-    gop = new_thread_pool_op(rsz->tpc, NULL, rs_zmq_req_func, (void *)rsr, free, 1);
+    gop = gop_tp_op_new(rsz->tpc, NULL, rs_zmq_req_func, (void *)rsr, free, 1);
 
     return(gop);
 }
@@ -219,10 +219,10 @@ resource_service_fn_t *rs_zmq_create(void *arg, tbx_inip_file_t *kf, char *secti
     tbx_type_malloc_clear(rsz, rs_zmq_priv_t, 1);
     rsz->zmq_context = context;
     rsz->zmq_socket = socket;
-    rsz->ds = lookup_service(ess, ESS_RUNNING, ESS_DS);
+    rsz->ds = lio_lookup_service(ess, ESS_RUNNING, ESS_DS);
 
     //** Don't know which thread pool context I should use. So create a new one for rs zmq.
-    rsz->tpc = lookup_service(ess, ESS_RUNNING, ESS_TPC_UNLIMITED); //** Refers to lio_gc->tpc_unlimited in lio_login.c
+    rsz->tpc = lio_lookup_service(ess, ESS_RUNNING, ESS_TPC_UNLIMITED); //** Refers to lio_gc->tpc_unlimited in lio_login.c
 
     char *svr_proto, *svr_addr, *svr_port;
 

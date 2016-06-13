@@ -871,7 +871,7 @@ op_status_t ostc_cache_fetch(object_service_fn_t *os, char *fname, char **key, v
     tbx_stack_t tree;
     ostcdb_object_t *obj, *lobj;
     ostcdb_attr_t *attr;
-    op_status_t status = op_failure_status;
+    op_status_t status = gop_failure_status;
     void *va[n];
     int vs[n];
     int i, oops;
@@ -907,7 +907,7 @@ op_status_t ostc_cache_fetch(object_service_fn_t *os, char *fname, char **key, v
     }
 
     oops = 0;
-    status = op_success_status;
+    status = gop_success_status;
 
 finished:
     OSTC_UNLOCK(ostc);
@@ -1114,7 +1114,7 @@ op_generic_t *ostc_remove_regex_object(object_service_fn_t *os, creds_t *creds, 
     op->gop = os_remove_regex_object(ostc->os_child, creds, path, object_regex, obj_types, recurse_depth);
     gop_set_private(op->gop, op);
 
-    return(new_thread_pool_op(ostc->tpc, NULL, ostc_remove_regex_object_fn, (void *)op, free_remove_regex, 1));
+    return(gop_tp_op_new(ostc->tpc, NULL, ostc_remove_regex_object_fn, (void *)op, free_remove_regex, 1));
 }
 
 //***********************************************************************
@@ -1166,7 +1166,7 @@ op_generic_t *ostc_remove_object(object_service_fn_t *os, creds_t *creds, char *
     op->creds = creds;
     op->src_path = path;
 
-    return(new_thread_pool_op(ostc->tpc, NULL, ostc_remove_object_fn, (void *)op, free, 1));
+    return(gop_tp_op_new(ostc->tpc, NULL, ostc_remove_object_fn, (void *)op, free, 1));
 }
 
 //***********************************************************************
@@ -1306,7 +1306,7 @@ op_generic_t *ostc_move_object(object_service_fn_t *os, creds_t *creds, char *sr
     op->src_path = src_path;
     op->dest_path = dest_path;
 
-    return(new_thread_pool_op(ostc->tpc, NULL, ostc_move_object_fn, (void *)op, free, 1));
+    return(gop_tp_op_new(ostc->tpc, NULL, ostc_move_object_fn, (void *)op, free, 1));
 }
 
 //***********************************************************************
@@ -1358,7 +1358,7 @@ op_generic_t *ostc_copy_multiple_attrs(object_service_fn_t *os, creds_t *creds, 
     ma->key_dest = key_dest;
     ma->n = n;
 
-    return(new_thread_pool_op(ostc->tpc, NULL, ostc_copy_attrs_fn, (void *)ma, free, 1));
+    return(gop_tp_op_new(ostc->tpc, NULL, ostc_copy_attrs_fn, (void *)ma, free, 1));
 }
 
 
@@ -1383,7 +1383,7 @@ op_generic_t *ostc_copy_attr(object_service_fn_t *os, creds_t *creds, os_fd_t *f
 
     ma->n = 1;
 
-    return(new_thread_pool_op(ostc->tpc, NULL, ostc_copy_attrs_fn, (void *)ma, free, 1));
+    return(gop_tp_op_new(ostc->tpc, NULL, ostc_copy_attrs_fn, (void *)ma, free, 1));
 }
 
 //***********************************************************************
@@ -1430,7 +1430,7 @@ op_generic_t *ostc_symlink_multiple_attrs(object_service_fn_t *os, creds_t *cred
     ma->key_dest = key_dest;
     ma->n = n;
 
-    return(new_thread_pool_op(ostc->tpc, NULL, ostc_symlink_attrs_fn, (void *)ma, free, 1));
+    return(gop_tp_op_new(ostc->tpc, NULL, ostc_symlink_attrs_fn, (void *)ma, free, 1));
 }
 
 
@@ -1456,7 +1456,7 @@ op_generic_t *ostc_symlink_attr(object_service_fn_t *os, creds_t *creds, char *s
 
     ma->n = 1;
 
-    return(new_thread_pool_op(ostc->tpc, NULL, ostc_symlink_attrs_fn, (void *)ma, free, 1));
+    return(gop_tp_op_new(ostc->tpc, NULL, ostc_symlink_attrs_fn, (void *)ma, free, 1));
 }
 
 
@@ -1503,7 +1503,7 @@ op_generic_t *ostc_move_multiple_attrs(object_service_fn_t *os, creds_t *creds, 
     ma->key_dest = key_new;
     ma->n = n;
 
-    return(new_thread_pool_op(ostc->tpc, NULL, ostc_move_attrs_fn, (void *)ma, free, 1));
+    return(gop_tp_op_new(ostc->tpc, NULL, ostc_move_attrs_fn, (void *)ma, free, 1));
 }
 
 
@@ -1527,7 +1527,7 @@ op_generic_t *ostc_move_attr(object_service_fn_t *os, creds_t *creds, os_fd_t *f
 
     ma->n = 1;
 
-    return(new_thread_pool_op(ostc->tpc, NULL, ostc_move_attrs_fn, (void *)ma, free, 1));
+    return(gop_tp_op_new(ostc->tpc, NULL, ostc_move_attrs_fn, (void *)ma, free, 1));
 }
 
 //***********************************************************************
@@ -1597,7 +1597,7 @@ op_generic_t *ostc_get_multiple_attrs(object_service_fn_t *os, creds_t *creds, o
     ma->v_size = v_size;
     ma->n = n;
 
-    return(new_thread_pool_op(ostc->tpc, NULL, ostc_get_attrs_fn, (void *)ma, free, 1));
+    return(gop_tp_op_new(ostc->tpc, NULL, ostc_get_attrs_fn, (void *)ma, free, 1));
 }
 
 //***********************************************************************
@@ -1621,7 +1621,7 @@ op_generic_t *ostc_get_attr(object_service_fn_t *os, creds_t *creds, os_fd_t *fd
     ma->v_size = v_size;
     ma->n = 1;
 
-    return(new_thread_pool_op(ostc->tpc, NULL, ostc_get_attrs_fn, (void *)ma, free, 1));
+    return(gop_tp_op_new(ostc->tpc, NULL, ostc_get_attrs_fn, (void *)ma, free, 1));
 }
 
 //***********************************************************************
@@ -1669,7 +1669,7 @@ op_generic_t *ostc_set_multiple_attrs(object_service_fn_t *os, creds_t *creds, o
     ma->v_size = v_size;
     ma->n = n;
 
-    return(new_thread_pool_op(ostc->tpc, NULL, ostc_set_attrs_fn, (void *)ma, free, 1));
+    return(gop_tp_op_new(ostc->tpc, NULL, ostc_set_attrs_fn, (void *)ma, free, 1));
 }
 
 
@@ -1695,7 +1695,7 @@ op_generic_t *ostc_set_attr(object_service_fn_t *os, creds_t *creds, os_fd_t *fd
     ma->v_tmp = v_size;
     ma->n = 1;
 
-    return(new_thread_pool_op(ostc->tpc, NULL, ostc_set_attrs_fn, (void *)ma, free, 1));
+    return(gop_tp_op_new(ostc->tpc, NULL, ostc_set_attrs_fn, (void *)ma, free, 1));
 }
 
 //***********************************************************************
@@ -1975,7 +1975,7 @@ finished:
     fd->id = op->id;
     fd->max_wait = op->max_wait;
 
-    return(op_success_status);
+    return(gop_success_status);
 }
 
 
@@ -2013,7 +2013,7 @@ op_generic_t *ostc_open_object(object_service_fn_t *os, creds_t *creds, char *pa
     op->cfd = NULL;
 
     op->gop = os_open_object(ostc->os_child, op->creds, op->path, op->mode, op->id, &(op->cfd), op->max_wait);
-    gop = new_thread_pool_op(ostc->tpc, NULL, ostc_open_object_fn, (void *)op, ostc_open_free, 1);
+    gop = gop_tp_op_new(ostc->tpc, NULL, ostc_open_object_fn, (void *)op, ostc_open_free, 1);
 
     gop_set_private(gop, op);
     return(gop);
@@ -2043,7 +2043,7 @@ op_status_t ostc_close_object_fn(void *arg, int tid)
     op_status_t status;
     ostc_fd_t *fd = (ostc_fd_t *)op->close_fd;
 
-    status = (fd->fd_child != NULL) ? gop_sync_exec_status(os_close_object(ostc->os_child, fd->fd_child)) : op_success_status;
+    status = (fd->fd_child != NULL) ? gop_sync_exec_status(os_close_object(ostc->os_child, fd->fd_child)) : gop_success_status;
 
     if (fd->fname != NULL) free(fd->fname);
     free(fd);
@@ -2063,7 +2063,7 @@ op_generic_t *ostc_close_object(object_service_fn_t *os, os_fd_t *ofd)
     tbx_type_malloc(op, ostc_open_op_t, 1);
     op->os = os;
     op->close_fd = ofd;
-    return(new_thread_pool_op(ostc->tpc, NULL, ostc_close_object_fn, (void *)op, free, 1));
+    return(gop_tp_op_new(ostc->tpc, NULL, ostc_close_object_fn, (void *)op, free, 1));
 }
 
 //***********************************************************************
@@ -2188,7 +2188,7 @@ object_service_fn_t *object_service_timecache_create(service_manager_t *ess, tbx
     str = tbx_inip_get_string(fd, section, "os_child", NULL);
     if (str != NULL) {  //** Running in test/temp
         ctype = tbx_inip_get_string(fd, str, "type", OS_TYPE_REMOTE_CLIENT);
-        os_create = lookup_service(ess, OS_AVAILABLE, ctype);
+        os_create = lio_lookup_service(ess, OS_AVAILABLE, ctype);
         ostc->os_child = (*os_create)(ess, fd, str);
         if (ostc->os_child == NULL) {
             log_printf(1, "Error loading object service!  type=%s section=%s\n", ctype, str);
@@ -2215,7 +2215,7 @@ object_service_fn_t *object_service_timecache_create(service_manager_t *ess, tbx
     ostc->cache_root = new_ostcdb_object(strdup("/"), OS_OBJECT_DIR, 0, ostc->mpool);
 
     //** Get the thread pool to use
-    ostc->tpc = lookup_service(ess, ESS_RUNNING, ESS_TPC_UNLIMITED); assert(ostc->tpc != NULL);
+    ostc->tpc = lio_lookup_service(ess, ESS_RUNNING, ESS_TPC_UNLIMITED); assert(ostc->tpc != NULL);
 
     //** Set up the fn ptrs
     os->type = OS_TYPE_TIMECACHE;
