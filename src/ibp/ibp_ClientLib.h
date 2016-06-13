@@ -45,7 +45,6 @@
 # include "ibp_protocol.h"
 # include "ibp_errno.h"
 # include "ibp_types.h"
-/*# include "ibp_nfu.h"*/
 
 
 

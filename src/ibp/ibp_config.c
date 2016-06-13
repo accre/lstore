@@ -63,7 +63,6 @@ typedef struct {
 } rwc_gop_stack_t;
 
 typedef struct {
-//  tbx_stack_t *hp_stack;
     tbx_stack_t list_stack;
     tbx_pch_t pch;
 } rw_coalesce_t;
@@ -215,7 +214,6 @@ int ibp_rw_coalesce(op_generic_t *gop1)
         apr_thread_mutex_unlock(ic->lock);
         return(0);
     }
-//  if (ic->coalesce_enable == 0) {apr_thread_mutex_unlock(ic->lock); return(0); }
 
     rwc = (rw_coalesce_t *)tbx_list_search(ic->coalesced_ops, cmd1->cap);
 
@@ -272,8 +270,6 @@ int ibp_rw_coalesce(op_generic_t *gop1)
         //** Unlink the element if needed
         if (gop2 != gop1) {
             if (iop2->hp_parent == my_hp) {
-//           tbx_stack_move_to_ptr(rwc->hp_stack, ele);
-//           tbx_stack_unlink_current(rwc->hp_stack, 0);
                 tbx_stack_move_to_ptr(iop2->hp_parent, ele);
                 tbx_stack_unlink_current(iop2->hp_parent, 0);
                 tbx_stack_link_push(cstack, ele);
@@ -391,7 +387,6 @@ void _ibp_op_free(op_generic_t *gop, int mode)
 
 void _ibp_submit_op(void *arg, op_generic_t *gop)
 {
-// portal_context_t *pc = ((ibp_op_t *)gop->op)->ic->pc;
     portal_context_t *pc = gop->base.pc;
 
     log_printf(15, "_ibp_submit_op: hpc=%p hpc->table=%p gop=%p gid=%d\n", pc, pc->table, gop, gop_id(gop));
@@ -449,9 +444,6 @@ int _ibp_connect(tbx_ns_t *ns, void *connect_context, char *host, int port, tbx_
 
     int to = timeout;
     log_printf(0, "HOST host=%s to=%d\n", host, to);
-//log_printf(15, "cc=%p\n", cc); tbx_log_flush();
-//log_printf(15, "cc->type=%d\n", cc->type); tbx_log_flush();
-//log_printf(15, "cc->tcpsize=%d\n", cc->tcpsize); tbx_log_flush();
 
     if (cc != NULL) {
         switch(cc->type) {
@@ -474,7 +466,6 @@ int _ibp_connect(tbx_ns_t *ns, void *connect_context, char *host, int port, tbx_
         host[i] = 0;
         i=-i;
     }
-//log_printf(0, "tbx_ns_connect(%s)\n", host);
     n = tbx_ns_connect(ns, host, port, timeout);
     if (i<0) host[-i] = '#';
 
@@ -797,7 +788,6 @@ void default_ibp_config(ibp_context_t *ic)
     ic->abort_conn_attempts = 4;
     ic->check_connection_interval = 2;
     ic->max_retry = 2;
-//  ic->transfer_rate = 1*1024*1024;  //** 1MB/s
     ic->transfer_rate = 0;
     ic->rr_size = 4;
     ic->connection_mode = IBP_CMODE_HOST;

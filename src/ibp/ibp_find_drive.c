@@ -95,7 +95,6 @@ ibp_capset_t *create_allocs(int nallocs, int asize)
     set_ibp_attributes(&attr, time(NULL) + a_duration, IBP_HARD, IBP_BYTEARRAY);
     q = new_opque();
 
-//log_printf(0, "create_allocs: disk_cs_type=%d disk_blockseize=%d\n", disk_cs_type, disk_blocksize);
     for (i=0; i<nallocs; i++) {
         depot = &(depot_list[i % n_depots]);
         op = new_ibp_alloc_op(ic, &(caps[i]), asize, depot, &attr, disk_cs_type, disk_blocksize, ibp_timeout);
@@ -216,9 +215,7 @@ double write_allocs(ibp_capset_t *caps, int qlen, int n, int asize, int block_si
     stime = apr_time_now();
 
     while (finished == 0) {
-//    nleft = qlen - opque_tasks_left(q);
         nleft = tbx_stack_count(tbuf_free);
-//    printf("\nLOOP: nleft=%d qlen=%d\n", nleft, qlen);
         if (nleft > 0) {
             for (j=block_start; j < nblocks; j++) {
                 for (i=alloc_start; i<n; i++) {
@@ -236,7 +233,6 @@ double write_allocs(ibp_capset_t *caps, int qlen, int n, int asize, int block_si
                     } else {
                         len = block_size;
                     }
-//             printf("%d=(%d,%d) ", count, j, i);
 
                     tbx_tbuf_single(&(buf[*slot]), len, buffer);
                     op = new_ibp_write_op(ic, get_ibp_cap(&(caps[i]), IBP_WRITECAP), j*block_size, &(buf[*slot]), 0, len, ibp_timeout);
@@ -323,11 +319,6 @@ ibp_depot_t *generate_depot_list(int *n_depots, ibp_depot_t *depot_list)
         abort();
     }
 
-//  printf("Number of resources: %d\n", ridlist_get_size(&rlist));
-//  for (i=0; i<ridlist_get_size(&rlist); i++) {
-//      printf("  %d: %s\n", i, ibp_rid2str(ridlist_get_element(&rlist, i), rbuf));
-//  }
-
     //** Now generate the list
     n = ridlist_get_size(&rlist);
     dl = (ibp_depot_t *)malloc(sizeof(ibp_depot_t)*n);
@@ -370,7 +361,6 @@ int main(int argc, char **argv)
     apr_time_t stime, dtime;
     double dt;
     char *net_cs_name, *disk_cs_name;
-    //tbx_phoebus_t pcc;
     char pstr[2048];
     tbx_chksum_t cs;
     tbx_ns_chksum_t ns_cs;
@@ -499,16 +489,12 @@ int main(int argc, char **argv)
 
         //** The depot thread count is fixed when the host portal is created so to change
         //** it I have to restart IBP.
-//    ibp_context_t *ic2 = ic;
-//    ic = ibp_create_context();
-//    ibp_destroy_context(ic2);
     }
 
 
     if (automode == 1) {
         nthreads = 2 * n_depots;
         ibp_set_max_depot_threads(ic, nthreads);
-//     ibp_set_min_depot_threads(ic, nthreads);
 
         q_len = (n_depots == 1) ? 10 : 10*n_depots;
         n_allocs = (n_depots == 1) ? 10 : 10*n_depots;
@@ -636,8 +622,6 @@ int main(int argc, char **argv)
     r1 = 1.0*n_allocs/dt;
     printf(" %lf removes/sec (%.2lf sec total) \n", r1, dt);
     printf("\n");
-
-//  printf("min_threads=%d max_threads=%d\n", ibp_get_min_depot_threads(), ibp_get_max_depot_threads());
 
     printf("Final network connection counter: %d\n", tbx_network_counter(NULL));
 

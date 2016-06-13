@@ -35,8 +35,6 @@ void ibppc_form_host(ibp_context_t *ic, char *hoststr, int n_host, char *host, r
     int i, j, n;
     char rr[16];
 
-//  log_printf(15, "HOST host=%s rid=%s cmode=%d\n", host, rid.name, ic->connection_mode);
-
     //** Everybody gets the host copied
     for (i=0 ; (i<n_host) && (host[i] != '\0') ; i++) hoststr[i] = host[i];
     if (i>=n_host-2) { //** Space isn't big enough so truncate and return
@@ -58,12 +56,9 @@ void ibppc_form_host(ibp_context_t *ic, char *hoststr, int n_host, char *host, r
         n = tbx_atomic_inc(ic->rr_count);
         n = n % ic->rr_size;
         snprintf(rr, sizeof(rr), "%d", n);
-//log_printf(0, "HOST rr=%s i=%d\n", rr, i);
-//        for (j=0; (i<n_host) && (rr[j] != '\0'); i++, j++) { printf("[%c,%d]", rr[j], j); hoststr[i] = rr[j]; }
         for (j=0; (i<n_host) && (rr[j] != '\0'); i++, j++) {
             hoststr[i] = rr[j];
         }
-//printf("\n i=%d\n", i);
         break;
     }
 
@@ -73,7 +68,6 @@ void ibppc_form_host(ibp_context_t *ic, char *hoststr, int n_host, char *host, r
         hoststr[n_host-1] = '\0';
     }
 
-//  log_printf(15, "HOST hoststr=%s host=%s rid=%s cmode=%d\n", hoststr, host, rid.name, ic->connection_mode);
     return;
 }
 
@@ -103,15 +97,10 @@ int parse_cap(ibp_context_t *ic, ibp_cap_t *cap, char *host, int *port, char *ke
     char *temp = strdup(cap);
     char *ptr;
     tbx_stk_string_token(temp, "/", &bstate, &finished); //** gets the ibp:/
-//log_printf(15, "1 ptr=%s\n", ptr);
     ptr = tbx_stk_string_token(NULL, ":", &bstate, &finished); //** This should be the hostname
-//log_printf(15, "2 ptr=%s\n", ptr);
     ptr = &(ptr[1]);  //** Skip the extra "/"
-//log_printf(15, "3 ptr=%s\n", ptr);
     sscanf(tbx_stk_string_token(NULL, "/", &bstate, &finished), "%d", port);
     strncpy(host,  ptr, MAX_HOST_SIZE-1); //** This should be the host name
-
-//log_printf(15, "ptr=%s host=%s ccmode=%d\n", ptr, host, ic->connection_mode);
 
     strncpy(key, tbx_stk_string_token(NULL, "/", &bstate, &finished), 255);
     strncpy(typekey, tbx_stk_string_token(NULL, "/", &bstate, &finished), 255);
@@ -172,15 +161,12 @@ int parse_cmpstr(char *str, char *host, int *port, int *size)
 void ibp_configure_signals()
 {
 #ifdef SIGPIPE
-//  apr_signal_block(SIGPIPE);
-
     //** Ignore SIGPIPE
     struct sigaction action;
     action.sa_handler = SIG_IGN;
     sigemptyset(&(action.sa_mask));
     action.sa_flags = 0;
     sigaction(SIGPIPE, &action, NULL);
-
 #endif
 }
 

@@ -80,7 +80,6 @@ int io_waitall(opque_t *q)
         }
 
         log_printf(15, "io_waitall: err=%d nfailed=%d nleft=%d\n", err, opque_tasks_failed(q), opque_tasks_left(q));
-//tbx_log_flush();
     }
 
     return(err);

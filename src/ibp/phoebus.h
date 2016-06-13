@@ -55,8 +55,6 @@ void phoebus_path_destroy(tbx_phoebus_t *p);
 void phoebus_path_to_string(char *string, int max_size, tbx_phoebus_t *p);
 char *phoebus_get_key(tbx_phoebus_t *p);
 
-//char **split(char*, char*, int *);
-
 #ifdef __cplusplus
 }
 #endif

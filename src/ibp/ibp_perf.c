@@ -306,7 +306,6 @@ void write_allocs(ibp_capset_t *caps, int n, int asize, int block_size)
 
     tbx_type_malloc_clear(buf, tbx_tbuf_t, n*nblocks);
 
-//for (j=0; j<nblocks; j++) {
     for (j=nblocks-1; j>= 0; j--) {
         for (i=0; i<n; i++) {
             if ((j==(nblocks-1)) && (rem > 0)) {
