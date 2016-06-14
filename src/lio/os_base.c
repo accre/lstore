@@ -33,6 +33,7 @@
 #include <tbx/log.h>
 #include <tbx/varint.h>
 #include <tbx/atomic_counter.h>
+#include <tbx/fmttypes.h>
 
 apr_thread_mutex_t *_path_parse_lock = NULL;
 apr_pool_t *_path_parse_pool = NULL;

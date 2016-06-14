@@ -18,7 +18,7 @@
 // Linear exnode3 support
 //***********************************************************************
 
-#include "opque.h"
+#include <gop/opque.h>
 
 #ifndef _EX3_LINEAR_H_
 #define _EX3_LINEAR_H_

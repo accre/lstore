@@ -19,7 +19,7 @@ extern "C" {
 #endif
 
 #include "ibp/ibp_visibility.h"
-#include "opque.h"
+#include <gop/opque.h>
 
 int ibp_sync_execute(opque_t *q, int nthreads);
 

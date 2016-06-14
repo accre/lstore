@@ -23,10 +23,12 @@
 #include <tbx/apr_wrapper.h>
 #include <tbx/iniparse.h>
 #include <tbx/dns_cache.h>
-#include "gop.h"
-#include "portal.h"
+#include <gop/gop.h>
+#include <gop/opque.h>
+#include <gop/portal.h>
 #include "ibp.h"
 #include "ibp_misc.h"
+#include <tbx/fmttypes.h>
 #include <tbx/network.h>
 #include <tbx/net_sock.h>
 #include <tbx/log.h>
@@ -293,7 +295,8 @@ int ibp_rw_coalesce(op_generic_t *gop1)
                 ele = (tbx_stack_ele_t *)tbx_stack_get_current_data(&(rwc->list_stack));
             }
         } else {
-            log_printf(15, "SKIPPING: gop[-]->gid=%d n_iov=%d io_total=%d\n", gop_id(gop2), cmd2->n_tbx_iovec_total, iov_sum);
+            log_printf(15, "SKIPPING: gop[-]->gid=%d n_iov=%d io_total=%d\n",
+                            gop_id(gop2), cmd2->n_tbx_iovec_total, iov_sum);
             tbx_stack_move_down(&(rwc->list_stack));
             ele = (tbx_stack_ele_t *)tbx_stack_get_current_data(&(rwc->list_stack));
         }

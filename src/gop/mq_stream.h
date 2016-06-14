@@ -13,7 +13,7 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 */
-
+#include "gop/mq_stream.h"
 //***********************************************************************
 // MQ streaming task management header
 //***********************************************************************
@@ -31,17 +31,10 @@
 extern "C" {
 #endif
 
-#define MQS_MORE_DATA_KEY  "mqs_more"
-#define MQS_MORE_DATA_SIZE 8
-
 //** States
 #define MQS_MORE  '0'
 #define MQS_ABORT '1'
 #define MQS_FINISHED '2'
-
-//** Pack type
-#define MQS_PACK_RAW 'R'
-#define MQS_PACK_COMPRESS 'Z'
 
 #define MQS_READ  0
 #define MQS_WRITE 1
@@ -55,7 +48,6 @@ extern "C" {
 #define MQS_HANDLE_SIZE_INDEX 2
 #define MQS_HANDLE_INDEX      3
 
-typedef struct mq_stream_t mq_stream_t;
 struct mq_stream_t {
     apr_pool_t *mpool;
     apr_thread_mutex_t *lock;
@@ -95,21 +87,13 @@ struct mq_stream_t {
     int dead_connection;   //** Connections is hosed so don;t even try sending anything
 };
 
-GOP_API void gop_mqs_server_more_cb(void *arg, mq_task_t *task);
 
-GOP_API int64_t gop_gop_mq_stream_read_varint(mq_stream_t *mqs, int *error);
 int gop_mq_stream_read_string(mq_stream_t *mqs, char *str, int bufsize);
-GOP_API int gop_mq_stream_read(mq_stream_t *mqs, void *buffer, int nbytes);
 
-GOP_API int gop_gop_mq_stream_write_varint(mq_stream_t *mqs, int64_t value);
 int gop_mq_stream_write_string(mq_stream_t *mqs, char *str);
-GOP_API int gop_mq_stream_write(mq_stream_t *mqs, void *buffer, int nbytes);
 
 void mq_stream_release_frame(mq_stream_t *mqs);
-GOP_API mq_stream_t *gop_gop_mq_stream_read_create(mq_context_t *mqc,  mq_ongoing_t *ongoing, char *host_id, int hid_len, mq_frame_t *fdata, mq_msg_t *remote_host, int to);
-GOP_API mq_stream_t *gop_gop_mq_stream_write_create(mq_context_t *mqc, mq_portal_t *server_portal, mq_ongoing_t *ongoing, char tbx_pack_type, int max_size, int timeout, mq_msg_t *address, mq_frame_t *fid, mq_frame_t *hid, int launch_flusher);
 
-GOP_API void gop_mq_stream_destroy(mq_stream_t *mqs);
 
 #ifdef __cplusplus
 }

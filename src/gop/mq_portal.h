@@ -13,7 +13,7 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 */
-
+#include "gop/mq_portal.h"
 //*************************************************************
 //  Generic MQ wrapper for GOP support
 //*************************************************************
@@ -49,30 +49,6 @@ extern "C" {
 #define MQS_SIZE               8
 
 // Types
-typedef zmq_pollitem_t mq_pollitem_t;
-typedef tbx_stack_t mq_msg_t;
-typedef struct mq_frame_t mq_frame_t;
-typedef struct mq_msg_hash_t mq_msg_hash_t;
-typedef struct mq_portal_t mq_portal_t;
-typedef struct mq_context_t mq_context_t;
-typedef struct mq_socket_context_t mq_socket_context_t;
-typedef struct mq_socket_t mq_socket_t;
-typedef struct mq_task_t mq_task_t;
-typedef void (mq_fn_exec_t)(void *arg, mq_task_t *task);
-typedef struct mq_command_t mq_command_t;
-typedef struct mq_command_table_t mq_command_table_t;
-typedef struct mq_heartbeat_entry_t mq_heartbeat_entry_t;
-typedef struct mq_task_monitor_t mq_task_monitor_t;
-typedef struct mq_command_stats_t mq_command_stats_t;
-typedef struct mq_conn_t mq_conn_t;
-typedef mq_context_t *(mq_create_t)(tbx_inip_file_t *ifd, char *section);
-
-#ifdef MQ_PIPE_COMM
-typedef int mq_pipe_t;       //** Event notification FD
-#else
-typedef mq_socket_t* mq_pipe_t;    //** ZMQ_PAIR sockets
-#endif
-
 struct mq_frame_t {
     int len;
     int auto_free;
@@ -119,17 +95,6 @@ struct mq_command_table_t {
     apr_thread_mutex_t *lock;
 };
 
-struct mq_task_t {      //** Generic containter for MQ messages for both the server and GOP (or client). If the variable is not used it's value is NULL.
-    mq_msg_t *msg;          //** Actual message to send with address (Server+GOP)
-    mq_msg_t *response;     //** Response message (GOP)
-    op_generic_t *gop;      //** GOP corresponding to the task.  This could be NULL if a direct submission is used (GOP)
-    mq_context_t *ctx;      //** Portal context for sending responses. (Server+GOP)
-    void *arg;              //** Optional argument when calling mq_command_add() or gop_mq_op_new() (server+GOP)
-    apr_time_t timeout;     //** Initially the DT in sec for the command to complete and converted to abs timeout when sent
-    void (*my_arg_free)(void *arg);  //** Function for cleaning up the GOP arg. (GOP)
-    int pass_through;       //** Flag to set when a task is only used to pass a message; no heartbeating necessary
-};
-
 struct mq_heartbeat_entry_t {
     mq_msg_t *address;
     char *key;
@@ -169,6 +134,28 @@ struct mq_conn_t {  //** MQ connection container
     apr_pool_t *mpool;       //** MEmory pool for connection/thread. APR mpools aren't thread safe!!!!!!!
 };
 
+struct mq_context_t {      //** Main MQ context
+    int min_conn;              //** Min connections to MQ host
+    int max_conn;              //** Max number of connections to MQ host
+    int min_threads;           //** Min number of worker threads
+    int max_threads;           //** Max number of worker threads
+    int max_recursion;         //** Max recursion depth expected to eliminate GOP tree deadlocks
+    int backlog_trigger;       //** Number of backlog ops to trigger a new connection
+    int heartbeat_dt;          //** Heartbeat interval
+    int heartbeat_failure;     //** Missing heartbeat DT for failure classification
+    int socket_type;           //** NEW: Type of socket to use (TRACE_ROUTER or ROUND_ROBIN)
+    double min_ops_per_sec;    //** Minimum ops/sec needed to keep a connection open.
+    apr_thread_mutex_t *lock;  //** Context lock
+    apr_pool_t *mpool;         //** Context memory pool
+    tbx_atomic_unit32_t n_ops;        //** Operation count
+    thread_pool_context_t *tp; //** Worker thread pool
+    apr_hash_t  *client_portals;      //** List of all client or outgoing portals
+    apr_hash_t  *server_portals;  //** List of all the server or incoming portals
+    portal_fn_t pcfn;          //** Portal contect used to overide the submit op for the TP
+    mq_command_stats_t stats;//** Command stats
+};
+
+
 struct mq_portal_t {   //** Container for managing connections to a single host
     char *host;       //** Host address
     int connect_mode; //** Connection mode connect vs bind
@@ -199,48 +186,9 @@ struct mq_portal_t {   //** Container for managing connections to a single host
     mq_command_stats_t stats;//** Command stats
 };
 
-struct mq_context_t {      //** Main MQ context
-    int min_conn;              //** Min connections to MQ host
-    int max_conn;              //** Max number of connections to MQ host
-    int min_threads;           //** Min number of worker threads
-    int max_threads;           //** Max number of worker threads
-    int max_recursion;         //** Max recursion depth expected to eliminate GOP tree deadlocks
-    int backlog_trigger;       //** Number of backlog ops to trigger a new connection
-    int heartbeat_dt;          //** Heartbeat interval
-    int heartbeat_failure;     //** Missing heartbeat DT for failure classification
-    int socket_type;           //** NEW: Type of socket to use (TRACE_ROUTER or ROUND_ROBIN)
-    double min_ops_per_sec;    //** Minimum ops/sec needed to keep a connection open.
-    apr_thread_mutex_t *lock;  //** Context lock
-    apr_pool_t *mpool;         //** Context memory pool
-    tbx_atomic_unit32_t n_ops;        //** Operation count
-    thread_pool_context_t *tp; //** Worker thread pool
-    apr_hash_t  *client_portals;      //** List of all client or outgoing portals
-    apr_hash_t  *server_portals;  //** List of all the server or incoming portals
-    portal_fn_t pcfn;          //** Portal contect used to overide the submit op for the TP
-    mq_command_stats_t stats;//** Command stats
-};
-
-//******* MQ Message Auto_Free modes
-#define MQF_MSG_AUTO_FREE     0  //** Auto free data on destroy
-#define MQF_MSG_KEEP_DATA     1  //** Skip free'ing of data on destroy.  App is responsible.
-#define MQF_MSG_INTERNAL_FREE 2  //** The msg routines are responsible for free'ing the data. Used on mq_recv().
+typedef zmq_pollitem_t mq_pollitem_t;
 
 //***** MQ Frame constants
-#define MQF_VERSION_KEY        "LMQv100"
-#define MQF_VERSION_SIZE       7
-#define MQF_PING_KEY           "\001"
-#define MQF_PING_SIZE          1
-#define MQF_PONG_KEY           "\002"
-#define MQF_PONG_SIZE          1
-#define MQF_EXEC_KEY           "\003"
-#define MQF_EXEC_SIZE          1
-#define MQF_TRACKEXEC_KEY      "\004"
-#define MQF_TRACKEXEC_SIZE     1
-#define MQF_TRACKADDRESS_KEY   "\005"
-#define MQF_TRACKADDRESS_SIZE  1
-#define MQF_RESPONSE_KEY       "\006"
-#define MQF_RESPONSE_SIZE      1
-
 
 //****** Error states
 #define MQ_E_ERROR      OP_STATE_FAILURE
@@ -255,9 +203,6 @@ struct mq_context_t {      //** Main MQ context
 #define MQ_POLLERR ZMQ_POLLERR
 
 //********  Connection modes
-#define MQ_CMODE_CLIENT  0     //** Normal outgoing connection
-#define MQ_CMODE_SERVER  1     //** USed by servers for incoming connections
-
 //******** Socket types
 #define MQ_DEALER ZMQ_DEALER
 #define MQ_PAIR   ZMQ_PAIR
@@ -274,10 +219,8 @@ struct mq_context_t {      //** Main MQ context
 #define MQ_DONTWAIT ZMQ_DONTWAIT
 
 
-#define mq_data_compare(A, sA, B, sB) (((sA) == (sB)) ? memcmp(A, B, sA) : 1)
 
 #define mq_poll(items, n, wait_ms) zmq_poll(items, n, wait_ms)
-#define mq_msg_pop(A) (mq_frame_t *)tbx_stack_pop(A)
 #define mq_socket_new(ctx, type) (ctx)->create_socket(ctx, type)
 #define mq_socket_destroy(ctx, socket) (socket)->destroy(ctx, socket)
 #define mq_socket_context_new()  zero_socket_context_new()
@@ -290,86 +233,34 @@ struct mq_context_t {      //** Main MQ context
 #define mq_recv(sock, msg, flags)  (sock)->recv(sock, msg, flags)
 #define mq_poll_handle(sock)  (sock)->poll_handle(sock)
 
-//--------------------------------------------------------------
-//  Code for performing MQ portal <-> client communication.
-//  There are 2 methods for this.  The most efficient is to use
-//  pipe() and do simple write/read/poll communications with both
-//  normal file descriptors and network sockets.  But this only works
-//  on systems that have BSD style sockets.  Which is all the *nix
-//  variants.
-//
-//  On MS windows we instead use a ZMQ PAIR type socket.
-//--------------------------------------------------------------
-
-#ifdef MQ_PIPE_COMM
-//  #define mq_pipe_create(ctx, pfd)  assert_result(pipe(pfd), 0); fcntl(pfd[0], F_SETFL, O_NONBLOCK)
 #define mq_pipe_create(ctx, pfd)  assert_result(pipe(pfd), 0)
 #define mq_pipe_poll_store(pollfd, cfd, mode) (pollfd)->fd = cfd;  (pollfd)->events = mode
 #define mq_pipe_destroy(ctx, pfd) if (pfd[0] != -1) { close(pfd[0]); close(pfd[1]); }
 #define mq_pipe_read(fd, c) read(fd, c, 1)
 #define mq_pipe_write(fd, c) write(fd, c, 1)
 
-#else
-void mq_pipe_create(mq_socket_context_t *ctx, mq_socket_t **pfd);
-void mq_pipe_poll_store(mq_pollitem_t *pfd, mq_socket_t *sock, int mode);
-void mq_pipe_destroy(mq_socket_context_t *ctx, mq_socket_t **pfd);
-int mq_pipe_read(mq_socket_t *sock, char *buf);
-int mq_pipe_write(mq_socket_t *sock, char *buf);
-#endif
-
-GOP_API char *gop_mq_id2str(char *id, int id_len, char *str, int str_len);
-
-GOP_API mq_msg_t *gop_mq_msg_new();
-GOP_API int gop_mq_get_frame(mq_frame_t *f, void **data, int *size);
-GOP_API char *gop_mq_frame_strdup(mq_frame_t *f);
-GOP_API mq_frame_t *gop_mq_msg_first(mq_msg_t *msg);
-GOP_API mq_frame_t *gop_mq_msg_last(mq_msg_t *msg);
-GOP_API mq_frame_t *gop_mq_msg_next(mq_msg_t *msg);
 mq_frame_t *mq_msg_prev(mq_msg_t *msg);
-GOP_API mq_frame_t *gop_mq_msg_current(mq_msg_t *msg);
 mq_frame_t *mq_frame_dup(mq_frame_t *f);
-GOP_API mq_frame_t *gop_mq_msg_pluck(mq_msg_t *msg, int move_up);
 void mq_msg_tbx_stack_insert_above(mq_msg_t *msg, mq_frame_t *f);
 void mq_msg_tbx_stack_insert_below(mq_msg_t *msg, mq_frame_t *f);
 void mq_msg_push_frame(mq_msg_t *msg, mq_frame_t *f);
-GOP_API void gop_mq_msg_append_frame(mq_msg_t *msg, mq_frame_t *f);
-GOP_API void gop_mq_msg_append_msg(mq_msg_t *msg, mq_msg_t *extra, int mode);
 mq_msg_hash_t mq_msg_hash(mq_msg_t *msg);
-GOP_API mq_frame_t *gop_mq_frame_new(void *data, int len, int auto_free);
-GOP_API void gop_mq_frame_set(mq_frame_t *f, void *data, int len, int auto_free);
-GOP_API void gop_mq_frame_destroy(mq_frame_t *f);
-GOP_API void gop_mq_msg_destroy(mq_msg_t *msg);
 void mq_msg_push_mem(mq_msg_t *msg, void *data, int len, int auto_free);
-GOP_API void gop_mq_msg_append_mem(mq_msg_t *msg, void *data, int len, int auto_free);
 int mq_msg_total_size(mq_msg_t *msg);
 
 mq_msg_t *mq_trackaddress_msg(char *host, mq_msg_t *raw_address, mq_frame_t *fid, int dup_frames);
-GOP_API void gop_mq_apply_return_address_msg(mq_msg_t *msg, mq_msg_t *raw_address, int dup_frames);
 
 void mq_stats_add(mq_command_stats_t *a, mq_command_stats_t *b);
 void mq_stats_print(int ll, char *tag, mq_command_stats_t *a);
-GOP_API mq_task_t *gop_mq_task_new(mq_context_t *ctx, mq_msg_t *msg, op_generic_t *gop, void *arg, int dt);
 int mq_task_set(mq_task_t *task, mq_context_t *ctx, mq_msg_t *msg, op_generic_t *gop,  void *arg, int dt);
 void mq_task_destroy(mq_task_t *task);
-GOP_API op_generic_t *gop_mq_op_new(mq_context_t *ctx, mq_msg_t *msg, op_status_t (*fn_response)(void *arg, int id), void *arg, void (*my_arg_free)(void *arg), int dt);
 
 mq_command_t *mq_command_new(void *cmd, int cmd_size, void *arg, mq_fn_exec_t *fn);
-GOP_API void gop_mq_command_set(mq_command_table_t *table, void *cmd, int cmd_size, void *arg, mq_fn_exec_t *fn);
 void mq_command_exec(mq_command_table_t *t, mq_task_t *task, void *key, int klen);
 void mq_command_table_destroy(mq_command_table_t *t);
 mq_command_table_t *mq_command_table_new(void *arg, mq_fn_exec_t *fn_default);
-GOP_API void gop_mq_command_table_set_default(mq_command_table_t *table, void *arg, mq_fn_exec_t *fn);
 
 int mq_task_send(mq_context_t *mqc, mq_task_t *task);
-GOP_API int gop_mq_submit(mq_portal_t *p, mq_task_t *task);
-GOP_API int gop_mq_portal_install(mq_context_t *mqc, mq_portal_t *p);
-GOP_API void gop_mq_portal_remove(mq_context_t *mqc, mq_portal_t *p);
-GOP_API void gop_mq_portal_destroy(mq_portal_t *p);
-GOP_API mq_portal_t *gop_mq_portal_create(mq_context_t *mqc, char *host, int connect_mode);
-GOP_API mq_portal_t *gop_mq_portal_lookup(mq_context_t *mqc, char *host, int connect_mode);
-GOP_API mq_command_table_t *gop_mq_portal_command_table(mq_portal_t *portal);
-GOP_API mq_context_t *gop_mq_create_context(tbx_inip_file_t *ifd, char *section);
-GOP_API void gop_mq_destroy_context(mq_context_t *mqp);
 mq_socket_t *zero_create_socket(mq_socket_context_t *ctx, int stype);
 void zero_socket_context_destroy(mq_socket_context_t *ctx);
 mq_socket_context_t *zero_socket_context_new();

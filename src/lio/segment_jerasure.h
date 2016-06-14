@@ -18,7 +18,7 @@
 // Jerasure segment support
 //***********************************************************************
 
-#include "opque.h"
+#include <gop/opque.h>
 
 #ifndef _SEGMENT_JERASURE_H_
 #define _SEGMENT_JERASURE_H_

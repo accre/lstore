@@ -22,8 +22,8 @@
 #include <sys/types.h>
 #include <regex.h>
 #include "ex3_types.h"
-#include "opque.h"
-#include "thread_pool.h"
+#include <gop/opque.h>
+#include <gop/thread_pool.h>
 #include "authn_abstract.h"
 #include "service_manager.h"
 

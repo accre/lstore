@@ -28,14 +28,14 @@
 #include <tbx/type_malloc.h>
 #include <tbx/log.h>
 #include <tbx/atomic_counter.h>
-#include "thread_pool.h"
+#include <gop/thread_pool.h>
 #include "os_remote.h"
 #include "os_remote_priv.h"
 #include <tbx/append_printf.h>
-#include "mq_helpers.h"
+#include <gop/mq_helpers.h>
 #include <tbx/varint.h>
 #include <tbx/string_token.h>
-#include "mq_stream.h"
+#include <gop/mq_stream.h>
 #include "authn_fake.h"
 
 #define FIXME_SIZE 1024*1024

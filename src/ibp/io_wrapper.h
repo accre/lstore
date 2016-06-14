@@ -21,7 +21,7 @@
 extern "C" {
 #endif
 #include "ibp/ibp_visibility.h"
-#include "opque.h"
+#include <gop/opque.h>
 
 IBP_API void ibp_io_mode_set(int sync_transfer, int print_progress, int nthreads);
 IBP_API void ibp_io_start(opque_t *q);

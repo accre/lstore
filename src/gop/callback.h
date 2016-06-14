@@ -13,7 +13,7 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 */
-
+#include "gop/callback.h"
 //*************************************************************
 //  Generic Callback implementation
 //*************************************************************
@@ -28,16 +28,6 @@ extern "C" {
 #endif
 #include "gop/gop_visibility.h"
 
-typedef struct callback_t callback_t;
-struct callback_t {   //** Used for application level callback
-    void *priv;
-    void (*fn)(void *priv, int value);
-    callback_t *next;
-    callback_t *tail;
-};
-
-
-GOP_API void gop_cb_set(callback_t *cb, void (*fn)(void *priv, int value), void *priv);
 void callback_append(callback_t **root_cb, callback_t *cb);
 void callback_destroy(callback_t *root_cb);
 void callback_execute(callback_t *cb, int value);

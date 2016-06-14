@@ -24,7 +24,7 @@
 #include <tbx/log.h>
 #include <tbx/iniparse.h>
 #include <tbx/type_malloc.h>
-#include "thread_pool.h"
+#include <gop/thread_pool.h>
 #include "lio.h"
 
 //*************************************************************************

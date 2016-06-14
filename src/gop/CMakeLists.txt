@@ -29,24 +29,30 @@ if(NOT USE_SUPERBUILD)
     list(APPEND LIBS ${ZMQ_LIBRARY} ${CZMQ_LIBRARY} ${TOOLBOX_LIBRARY})
 endif()
 
-# Additional Compiler flags.
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DMQ_PIPE_COMM")
-
 # common objects
 set(LSTORE_PROJECT_OBJS
     callback.c constructor.c dummy.c  gop.c hconnection.c hportal.c opque.c
     thread_pool_config.c thread_pool_op.c mq_msg.c mq_zmq.c mq_portal.c
     mq_ongoing.c mq_stream.c mq_helpers.c
 )
-
-set(LSTORE_PROJECT_INCLUDES_OLD
-    callback.h gop_config.h host_portal.h opque.h thread_pool.h mq_portal.h
-    mq_helpers.h mq_stream.h mq_ongoing.h portal.h gop.h types.h
-)
-set(LSTORE_PROJECT_INCLUDES_NAMESPACE gop)
 set(LSTORE_PROJECT_INCLUDES
+        gop/callback.h
+        gop/gop.h
+        gop/gop_config.h
         gop/gop_visibility.h
-    )
+        gop/host_portal.h
+        gop/mq_helpers.h
+        gop/mq_ongoing.h
+        gop/mq_portal.h
+        gop/mq_stream.h
+        gop/mq_zmq.h
+        gop/mqs_roundrobin.h
+        gop/opque.h
+        gop/portal.h
+        gop/template.h
+        gop/thread_pool.h
+        gop/types.h)
+set(LSTORE_PROJECT_INCLUDES_NAMESPACE gop)
 
 set(LSTORE_LIBS ${APR_LIBRARY}
                     ${APRUTIL_LIBRARY}
@@ -59,7 +65,7 @@ set(LSTORE_INCLUDE_SYSTEM ${APR_INCLUDE_DIR}
                     ${ZMQ_INCLUDE_DIR}
                     ${CZMQ_INCLUDE_DIR}
     )
-set(LSTORE_INCLUDE_PUBLIC ${toolbox_INCLUDE_DIR})
+set(LSTORE_INCLUDE_PUBLIC ${PROJECT_SOURCE_DIR} ${toolbox_INCLUDE_DIR})
 
 if(NOT USE_SUPERBUILD)
     include(LStoreCommon)

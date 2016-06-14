@@ -18,6 +18,7 @@
 
 #include "exnode.h"
 #include <tbx/log.h>
+#include <stdlib.h>
 #include "lio.h"
 
 //*************************************************************************

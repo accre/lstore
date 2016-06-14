@@ -22,6 +22,8 @@
 #ifndef _RESOURCE_SERVICE_H_
 #define _RESOURCE_SERVICE_H_
 
+#include <apr_hash.h>
+#include <apr_thread_cond.h>
 #include "ex3_types.h"
 #include "data_service_abstract.h"
 

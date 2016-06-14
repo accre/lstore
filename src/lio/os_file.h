@@ -19,6 +19,7 @@
 //***********************************************************************
 
 #include "object_service_abstract.h"
+#include <tbx/fmttypes.h>
 
 #ifndef _OS_FILE_H_
 #define _OS_FILE_H_

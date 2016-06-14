@@ -20,6 +20,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <assert.h>
+#include <gop/types.h>
 #include <tbx/assert_result.h>
 #include "ibp.h"
 #include <tbx/fmttypes.h>

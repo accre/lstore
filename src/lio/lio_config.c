@@ -16,6 +16,7 @@
 
 #define _log_module_index 193
 
+#include <ctype.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <apr_dso.h>
@@ -25,7 +26,7 @@
 #include <tbx/apr_wrapper.h>
 #include <tbx/log.h>
 #include <tbx/string_token.h>
-#include "mq_ongoing.h"
+#include <gop/mq_ongoing.h>
 
 typedef struct {
     int count;
@@ -1215,6 +1216,7 @@ int lio_init(int *argc, char ***argvp)
     memcpy(var, "LIO_OPTIONS_", 12);
     k = 12;
     while ((name[j+i] != 0) && (i<3900)) {
+        // FIXME: Bad for UTF-8
         var[k+i] = toupper(name[j+i]);
         i++;
     }

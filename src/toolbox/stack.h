@@ -17,19 +17,11 @@
 #ifndef __STACK_H__
 #define __STACK_H__
 
+#include <tbx/stack.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-struct tbx_stack_ele_t {
-    void *data;
-    struct tbx_stack_ele_t *down, *up;
-};
-
-struct tbx_stack_t {
-    tbx_stack_ele_t *top, *bottom, *curr;
-    int n;
-};
 
 void set_stack_ele_data(tbx_stack_ele_t *ele, void *data);
 tbx_stack_ele_t *pop_link(tbx_stack_t *stack);

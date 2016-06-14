@@ -27,7 +27,7 @@
 #include <tbx/type_malloc.h>
 #include <tbx/log.h>
 #include <tbx/atomic_counter.h>
-#include "thread_pool.h"
+#include <gop/thread_pool.h>
 #include "resource_service_abstract.h"
 #include "rs_simple.h"
 #include "rs_remote.h"
@@ -38,6 +38,8 @@
 #include "rs_query_base.h"
 #include "ex3_system.h"
 #include <tbx/apr_wrapper.h>
+#include <tbx/fmttypes.h>
+#include <unistd.h>
 
 typedef struct {
     mq_msg_t *msg;

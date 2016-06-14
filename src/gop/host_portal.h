@@ -13,7 +13,7 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 */
-
+#include "gop/host_portal.h"
 #ifndef __HOST_PORTAL_H_
 #define __HOST_PORTAL_H_
 #include "gop/gop_visibility.h"
@@ -35,9 +35,7 @@ extern "C" {
 #endif
 
 #define HP_COMPACT_TIME 10   //** How often to run the garbage collector
-#define HP_HOSTPORT_SEPARATOR "|"
 
-typedef struct host_portal_t host_portal_t;
 struct host_portal_t {       //** Contains information about the depot including all connections
     char skey[512];         //** Search key used for lookups its "host:port:type:..." Same as for the op
     char host[512];         //** Hostname
@@ -78,7 +76,6 @@ struct host_portal_t {       //** Contains information about the depot including
     portal_context_t *context;  //** Specific portal implementaion
 };
 
-typedef struct host_connection_t host_connection_t;
 struct host_connection_t {            //** Individual depot connection in conn_list
     int recv_up;
     int cmd_count;
@@ -102,7 +99,6 @@ struct host_connection_t {            //** Individual depot connection in conn_l
     apr_pool_t   *mpool;       //** MEmory pool for
 };
 
-extern tbx_ns_timeout_t global_dt;
 
 //** Routines from hportal.c
 #define hportal_trylock(hp)   apr_thread_mutex_trylock(hp->lock)
@@ -116,17 +112,10 @@ void hportal_wait(host_portal_t *hp, int dt);
 int get_hpc_thread_count(portal_context_t *hpc);
 void modify_hpc_thread_count(portal_context_t *hpc, int n);
 host_portal_t *create_hportal(portal_context_t *hpc, void *connect_context, char *hostport, int min_conn, int max_conn, apr_time_t dt_connect);
-GOP_API portal_context_t *gop_hp_context_create(portal_fn_t *hpi);
-GOP_API void gop_hp_context_destroy(portal_context_t *hpc);
 void finalize_hportal_context(portal_context_t *hpc);
-GOP_API void gop_hp_shutdown(portal_context_t *hpc);
 void compact_dportals(portal_context_t *hpc);
-GOP_API void gop_change_all_hportal_conn(portal_context_t *hpc, int min_conn, int max_conn, apr_time_t dt_connect);
 void _hp_fail_tasks(host_portal_t *hp, op_status_t err_code);
 void check_hportal_connections(host_portal_t *hp);
-GOP_API int gop_hp_direct_submit(portal_context_t *hpc, op_generic_t *op);
-GOP_API int gop_hp_submit(host_portal_t *dp, op_generic_t *op, int addtotop, int release_master);
-GOP_API int gop_hp_que_op_submit(portal_context_t *hpc, op_generic_t *op);
 
 //** Routines for hconnection.c
 #define trylock_hc(a) apr_thread_mutex_trylock(a->lock)

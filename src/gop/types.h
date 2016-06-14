@@ -13,7 +13,7 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 */
-
+#include "gop/types.h"
 /*! \file
  *  Forward declaration of GOP typedefs
  */
@@ -26,16 +26,6 @@ extern "C" {
 #endif
 
 // Types
-typedef struct opque_t opque_t;
-typedef struct que_data_t que_data_t;
-typedef struct op_generic_t op_generic_t;
-typedef struct gop_control_t gop_control_t;
-typedef struct op_status_t op_status_t;
-typedef struct command_op_t command_op_t;
-typedef struct op_common_t op_common_t;
-typedef struct op_data_t op_data_t;
-typedef struct portal_fn_t portal_fn_t;
-typedef struct portal_context_t portal_context_t;
 
 #ifdef __cplusplus
 }

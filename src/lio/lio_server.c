@@ -25,8 +25,9 @@
 #include <tbx/log.h>
 #include <tbx/iniparse.h>
 #include <tbx/type_malloc.h>
-#include "thread_pool.h"
+#include <gop/thread_pool.h>
 #include "lio.h"
+#include <unistd.h>
 
 int shutdown_now = 0;
 apr_thread_mutex_t *shutdown_lock;

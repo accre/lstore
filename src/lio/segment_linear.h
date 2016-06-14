@@ -18,7 +18,7 @@
 // Linear segment support
 //***********************************************************************
 
-#include "opque.h"
+#include <gop/opque.h>
 
 #ifndef _SEGMENT_LINEAR_H_
 #define _SEGMENT_LINEAR_H_

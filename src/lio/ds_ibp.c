@@ -25,7 +25,7 @@
 #include "data_service_abstract.h"
 #include "ds_ibp_priv.h"
 #include "ibp.h"
-#include "opque.h"
+#include <gop/opque.h>
 #include <tbx/string_token.h>
 #include <tbx/type_malloc.h>
 #include <tbx/apr_wrapper.h>

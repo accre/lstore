@@ -18,6 +18,9 @@
 // IBP based data service
 //***********************************************************************
 
+#include <apr_hash.h>
+#include <apr_thread_cond.h>
+#include <apr_thread_proc.h>
 #include "ibp.h"
 #include "ds_ibp.h"
 

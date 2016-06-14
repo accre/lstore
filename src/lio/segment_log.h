@@ -18,7 +18,7 @@
 // Log structured segment support
 //***********************************************************************
 #include "lio/lio_visibility.h"
-#include "opque.h"
+#include <gop/opque.h>
 
 #ifndef _SEGMENT_LOG_H_
 #define _SEGMENT_LOG_H_

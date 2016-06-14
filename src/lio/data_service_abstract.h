@@ -23,7 +23,7 @@
 
 #include "ex3_types.h"
 #include <tbx/transfer_buffer.h>
-#include "opque.h"
+#include <gop/opque.h>
 
 #ifdef __cplusplus
 extern "C" {

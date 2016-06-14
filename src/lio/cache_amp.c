@@ -24,7 +24,7 @@
 #include <tbx/type_malloc.h>
 #include <tbx/log.h>
 #include "ex3_compare.h"
-#include "thread_pool.h"
+#include <gop/thread_pool.h>
 #include <tbx/apr_wrapper.h>
 
 //******************

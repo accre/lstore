@@ -39,7 +39,7 @@
 #include "rsz_request.pb-c.h"
 #include "zhelpers.h"
 #include "ds_ibp.h" //** This should be replaced by a generic data service
-#include "thread_pool.h"
+#include <gop/thread_pool.h>
 #include "rs_zmq_base.h"
 
 //********************************************************************

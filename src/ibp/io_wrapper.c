@@ -17,7 +17,7 @@
 #define _log_module_index 136
 
 #include "io_wrapper.h"
-#include "opque.h"
+#include <gop/opque.h>
 #include "ibp.h"
 #include "iovec_sync.h"
 #include <tbx/log.h>

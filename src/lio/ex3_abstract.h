@@ -27,9 +27,9 @@
 #include "resource_service_abstract.h"
 #include "object_service_abstract.h"
 #include <tbx/atomic_counter.h>
-#include "opque.h"
+#include <gop/opque.h>
 //#include "exnode3.pb-c.h"
-#include "thread_pool.h"
+#include <gop/thread_pool.h>
 #include <tbx/transfer_buffer.h>
 #include <tbx/log.h>
 #include <tbx/iniparse.h>

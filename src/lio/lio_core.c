@@ -20,6 +20,7 @@
 #include "lio.h"
 #include <tbx/log.h>
 #include <tbx/string_token.h>
+#include <unistd.h>
 
 //***********************************************************************
 // Core LIO functionality

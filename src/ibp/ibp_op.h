@@ -26,8 +26,8 @@
 #include <apr_pools.h>
 #include <tbx/stack.h>
 #include <tbx/network.h>
-#include "opque.h"
-#include "host_portal.h"
+#include <gop/gop.h>
+#include <gop/host_portal.h>
 #include "ibp_types.h"
 #include <tbx/transfer_buffer.h>
 #include <tbx/pigeon_coop.h>

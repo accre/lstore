@@ -29,7 +29,8 @@
 #include <apr_pools.h>
 #include <apr_network_io.h>
 #include <apr_thread_mutex.h>
-#include "opque.h"
+#include <gop/gop.h>
+#include <gop/opque.h>
 #include "exnode.h"
 #include "ex3_system.h"
 #include "object_service_abstract.h"
@@ -38,7 +39,7 @@
 #include <tbx/type_malloc.h>
 #include <tbx/log.h>
 #include <tbx/atomic_counter.h>
-#include "thread_pool.h"
+#include <gop/thread_pool.h>
 #include "os_file.h"
 #include "os_file_priv.h"
 #include <tbx/append_printf.h>

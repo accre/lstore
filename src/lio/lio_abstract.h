@@ -20,7 +20,8 @@
 #include "lio/lio_visibility.h"
 #include "exnode.h"
 #include "blacklist.h"
-#include "mq_portal.h"
+#include <gop/mq_portal.h>
+#include <sys/stat.h>
 #include <tbx/log.h>
 
 #ifndef _LIO_ABSTRACT_H_

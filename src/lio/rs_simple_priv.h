@@ -20,7 +20,7 @@
 
 #include <tbx/list.h>
 #include "data_service_abstract.h"
-#include "opque.h"
+#include <gop/opque.h>
 #include "service_manager.h"
 
 #ifndef _RS_SIMPLE_PRIV_H_

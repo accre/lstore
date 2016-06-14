@@ -18,7 +18,8 @@
 // Linear segment support
 //***********************************************************************
 
-#include "opque.h"
+#include <gop/opque.h>
+#include <tbx/fmttypes.h>
 
 #ifndef _SEGMENT_LUN_H_
 #define _SEGMENT_LUN_H_

@@ -13,12 +13,12 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 */
-
 //*************************************************************
 // Generic thread pool implementation designed to woth with opque
 //*************************************************************
 
 #include "gop/gop_visibility.h"
+#include "gop/thread_pool.h"
 #include "gop.h"
 #include "host_portal.h"
 #include <tbx/atomic_counter.h>
@@ -31,55 +31,12 @@
 extern "C" {
 #endif
 
-#define TP_E_ERROR              OP_STATE_FAILURE
-#define TP_E_OK                 OP_STATE_SUCCESS
-#define TP_E_NOP               -1
-#define TP_E_IGNORE            -2
-typedef struct thread_pool_context_t thread_pool_context_t;
-struct thread_pool_context_t {
-    char *name;
-    portal_context_t *pc;
-    apr_thread_pool_t *tp;
-    tbx_stack_t **reserve_stack;
-    int *overflow_running_depth;
-    tbx_atomic_unit32_t n_overflow;
-    tbx_atomic_unit32_t n_ops;
-    tbx_atomic_unit32_t n_completed;
-    tbx_atomic_unit32_t n_started;
-    tbx_atomic_unit32_t n_submitted;
-    tbx_atomic_unit32_t n_direct;
-    tbx_atomic_unit32_t n_running;
-    int min_idle;
-    int min_threads;
-    int max_threads;
-    int recursion_depth;
-    int max_concurrency;
-};
-typedef struct thread_pool_op_t thread_pool_op_t;
-struct thread_pool_op_t {
-    thread_pool_context_t *tpc;
-    op_generic_t gop;
-    op_data_t dop;
-    op_status_t (*fn)(void *priv, int id);
-    void (*my_op_free)(void *arg);
-    void *arg;
-    int depth;
-    int parent_tid;
-    int via_submit;
-    int overflow_slot;
-};
-
-#define tp_get_gop(top) &((top)->gop)
-#define gop_get_tp(gop) (gop)->op->priv
 //#define tp_gop_id(top) ((thread_pool_op_t *)((gop)->op->priv))->id
 
 int thread_pool_direct(thread_pool_context_t *tpc, apr_thread_start_t fn, void *arg);
 
 int set_thread_pool_op(thread_pool_op_t *op, thread_pool_context_t *tpc, char *que, op_status_t (*fn)(void *arg, int id), void *arg, void (*my_op_free)(void *arg), int workload);
-GOP_API op_generic_t *gop_tp_op_new(thread_pool_context_t *tpc, char *que, op_status_t (*fn)(void *arg, int id), void *arg, void (*my_op_free)(void *arg), int workload);
 
-GOP_API thread_pool_context_t *gop_tp_context_create(char *tp_name, int min_threads, int max_threads, int max_recursion);
-GOP_API void gop_tp_context_destroy(thread_pool_context_t *tpc);
 
 void thread_pool_exec_fn(void *arg, op_generic_t *op);
 

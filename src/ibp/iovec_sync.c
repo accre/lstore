@@ -22,7 +22,9 @@
 #include <apr_thread_proc.h>
 #include "ibp.h"
 #include "ibp_misc.h"
-#include "host_portal.h"
+#include <gop/gop.h>
+#include <gop/opque.h>
+#include <gop/host_portal.h>
 #include <tbx/log.h>
 
 //=============================================================

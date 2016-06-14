@@ -19,6 +19,7 @@
 #ifndef __CACHE_AMP_PRIV_H_
 #define __CACHE_AMP_PRIV_H_
 
+#include <apr_thread_proc.h>
 
 #ifdef __cplusplus
 extern "C" {

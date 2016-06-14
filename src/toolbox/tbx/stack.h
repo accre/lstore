@@ -18,6 +18,7 @@
 #ifndef ACCRE_STACK_H_INCLUDED
 #define ACCRE_STACK_H_INCLUDED
 
+#include <stddef.h>
 #include "tbx/toolbox_visibility.h"
 #include "tbx/tbx_decl.h"
 
@@ -55,17 +56,15 @@ TBX_API void tbx_stack_push(tbx_stack_t *stack, void *data);
 TBX_API tbx_stack_ele_t *tbx_stack_unlink_current(tbx_stack_t *stack, int mv_up);
 
 // TEMPORARY
-#if !defined toolbox_EXPORTS && defined LSTORE_HACK_EXPORT
-    struct tbx_stack_ele_t {
-        void *data;
-        struct tbx_stack_ele_t *down, *up;
-    };
+struct tbx_stack_ele_t {
+    void *data;
+    struct tbx_stack_ele_t *down, *up;
+};
 
-    struct tbx_stack_t {
-        tbx_stack_ele_t *top, *bottom, *curr;
-        int n;
-    };
-#endif
+struct tbx_stack_t {
+    tbx_stack_ele_t *top, *bottom, *curr;
+    int n;
+};
 
 
 #ifdef __cplusplus

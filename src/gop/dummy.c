@@ -25,6 +25,7 @@
 #include <tbx/log.h>
 #include <tbx/atomic_counter.h>
 #include <tbx/apr_wrapper.h>
+#include "gop.h"
 #include "portal.h"
 
 static void gop_dummy_submit_op(void *arg, op_generic_t *op);

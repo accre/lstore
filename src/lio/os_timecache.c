@@ -25,7 +25,7 @@
 #include "object_service_abstract.h"
 #include <tbx/type_malloc.h>
 #include <tbx/log.h>
-#include "thread_pool.h"
+#include <gop/thread_pool.h>
 #include "os_file.h"
 #include "os_timecache.h"
 #include "os_remote.h"

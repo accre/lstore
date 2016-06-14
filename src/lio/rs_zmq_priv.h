@@ -25,7 +25,7 @@ extern "C" {
 #endif
 
 #include "data_service_abstract.h"
-#include "thread_pool.h"
+#include <gop/thread_pool.h>
 
 typedef struct rs_zmq_priv_t rs_zmq_priv_t;
 struct rs_zmq_priv_t {

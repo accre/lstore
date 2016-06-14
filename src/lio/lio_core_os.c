@@ -20,6 +20,7 @@
 #include "lio.h"
 #include <tbx/log.h>
 #include <tbx/string_token.h>
+#include <unistd.h>
 
 #define _n_fsck_keys 4
 static char *_fsck_keys[] = { "system.owner", "system.inode", "system.exnode", "system.exnode.size" };
