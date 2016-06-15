@@ -33,7 +33,7 @@
 #include "callback.h"
 #include <tbx/pigeon_coop.h>
 #include "gop.h"
-#include "types.h"
+#include <gop/types.h>
 
 #ifdef __cplusplus
 extern "C" {

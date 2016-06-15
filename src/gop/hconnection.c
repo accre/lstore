@@ -26,7 +26,7 @@
 #include <apr_thread_cond.h>
 #include <apr_time.h>
 #include "gop.h"
-#include "portal.h"
+#include <gop/portal.h>
 #include "host_portal.h"
 #include <tbx/log.h>
 #include <tbx/network.h>

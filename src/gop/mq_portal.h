@@ -27,7 +27,7 @@
 #include <czmq.h>
 #include <apr_thread_pool.h>
 #include <apr_thread_proc.h>
-#include "portal.h"
+#include <gop/portal.h>
 
 #ifndef __MQ_PORTAL_H_
 #define __MQ_PORTAL_H_

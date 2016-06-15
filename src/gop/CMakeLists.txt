@@ -38,15 +38,12 @@ set(LSTORE_PROJECT_OBJS
 set(LSTORE_PROJECT_INCLUDES
         gop/callback.h
         gop/gop.h
-        gop/gop_config.h
         gop/gop_visibility.h
         gop/host_portal.h
         gop/mq_helpers.h
         gop/mq_ongoing.h
         gop/mq_portal.h
         gop/mq_stream.h
-        gop/mq_zmq.h
-        gop/mqs_roundrobin.h
         gop/opque.h
         gop/portal.h
         gop/template.h

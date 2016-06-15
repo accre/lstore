@@ -25,7 +25,7 @@
 #include <tbx/type_malloc.h>
 #include <tbx/log.h>
 #include "opque.h"
-#include "portal.h"
+#include <gop/portal.h>
 #include <tbx/atomic_counter.h>
 
 void gop_opque_free(opque_t *q, int mode);
