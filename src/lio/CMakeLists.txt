@@ -61,9 +61,7 @@ set(LSTORE_INCLUDE_SYSTEM ${APR_INCLUDE_DIR}
                     ${ZLIB_INCLUDE_DIR}
                     ${FUSE_INCLUDE_DIR}
                     ${JERASURE_INCLUDE_DIR})
-set(LSTORE_INCLUDE_PUBLIC ${toolbox_INCLUDE_DIR}
-                    ${gop_INCLUDE_DIR}
-                    ${ibp_INCLUDE_DIR})
+set(LSTORE_INCLUDE_PUBLIC ${PROJECT_SOURCE_DIR})
 
 # common objects
 set(LSTORE_PROJECT_OBJS
