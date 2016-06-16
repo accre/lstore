@@ -28,7 +28,7 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-#include "gop/gop_visibility.h"
+#include "gop/visibility.h"
 
 void callback_append(callback_t **root_cb, callback_t *cb);
 void callback_destroy(callback_t *root_cb);

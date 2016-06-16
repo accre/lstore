@@ -23,7 +23,7 @@ limitations under the License.
 
 #include <gop/callback.h>
 #include <gop/gop.h>
-#include <gop/gop_visibility.h>
+#include <gop/visibility.h>
 #include <gop/types.h>
 #include <tbx/stack.h>
 

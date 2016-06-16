@@ -17,7 +17,7 @@
 //***********************************************************************
 // Generic LIO functionality
 //***********************************************************************
-#include <gop/mq_portal.h>
+#include <gop/mq.h>
 #include <sys/stat.h>
 #include <tbx/log.h>
 

@@ -26,7 +26,7 @@
 #include <apr_thread_mutex.h>
 #include <gop/gop.h>
 #include <gop/opque.h>
-#include <gop/thread_pool.h>
+#include <gop/tp.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

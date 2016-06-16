@@ -20,7 +20,7 @@
 #ifndef _MQ_HELPERS_H_
 #define _MQ_HELPERS_H_
 
-#include "gop/gop_visibility.h"
+#include "gop/visibility.h"
 #include "gop/mq_helpers.h"
 #include "mq_portal.h"
 

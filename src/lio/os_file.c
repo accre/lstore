@@ -30,7 +30,7 @@
 #include <apr_time.h>
 #include <dirent.h>
 #include <gop/gop.h>
-#include <gop/thread_pool.h>
+#include <gop/tp.h>
 #include <gop/types.h>
 #include <regex.h>
 #include <stdint.h>

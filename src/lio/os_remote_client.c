@@ -28,9 +28,9 @@
 #include <gop/gop.h>
 #include <gop/mq_helpers.h>
 #include <gop/mq_ongoing.h>
-#include <gop/mq_portal.h>
+#include <gop/mq.h>
 #include <gop/mq_stream.h>
-#include <gop/thread_pool.h>
+#include <gop/tp.h>
 #include <gop/types.h>
 #include <stdint.h>
 #include <stdio.h>

@@ -22,7 +22,7 @@ limitations under the License.
 #define ACCRE_GOP_HOST_PORTAL_H_INCLUDED
 
 #include <apr_time.h>
-#include <gop/gop_visibility.h>
+#include <gop/visibility.h>
 #include <gop/types.h>
 #include <tbx/network.h>
 

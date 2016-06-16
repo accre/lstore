@@ -42,7 +42,7 @@
 #include <unistd.h>
 
 #include "gop.h"
-#include "gop/host_portal.h"
+#include "gop/hp.h"
 #include "gop/types.h"
 #include "host_portal.h"
 

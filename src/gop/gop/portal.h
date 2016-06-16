@@ -27,7 +27,7 @@
 #include <apr_thread_proc.h>
 #include <assert.h>
 #include <gop/gop.h>
-#include <gop/gop_visibility.h>
+#include <gop/visibility.h>
 #include <gop/types.h>
 #include <stdlib.h>
 #include <string.h>

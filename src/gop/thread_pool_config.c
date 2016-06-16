@@ -33,10 +33,10 @@
 #include <tbx/type_malloc.h>
 
 #include "gop/gop.h"
-#include "gop/host_portal.h"
+#include "gop/hp.h"
 #include "gop/opque.h"
 #include "gop/portal.h"
-#include "gop/thread_pool.h"
+#include "gop/tp.h"
 #include "gop/types.h"
 #include "thread_pool.h"
 

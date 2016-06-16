@@ -28,7 +28,7 @@
 #include <apr_time.h>
 
 #include "gop.h"
-#include "gop/gop_visibility.h"
+#include "gop/visibility.h"
 #include "gop/mq_ongoing.h"
 #include "mq_portal.h"
 

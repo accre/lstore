@@ -23,7 +23,7 @@ limitations under the License.
 
 #include <apr_time.h>
 #include <gop/callback.h>
-#include <gop/gop_visibility.h>
+#include <gop/visibility.h>
 #include <gop/types.h>
 #include <tbx/atomic_counter.h>
 #include <tbx/network.h>

@@ -30,8 +30,8 @@
 #include <tbx/network.h>
 
 #include "gop.h"
-#include "gop/host_portal.h"
-#include "gop/gop_visibility.h"
+#include "gop/hp.h"
+#include "gop/visibility.h"
 
 #ifdef __cplusplus
 extern "C" {

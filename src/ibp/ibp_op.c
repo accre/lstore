@@ -30,7 +30,7 @@
 #include <tbx/type_malloc.h>
 #include <time.h>
 #include <gop/gop.h>
-#include <gop/host_portal.h>
+#include <gop/hp.h>
 #include <tbx/atomic_counter.h>
 #include <tbx/chksum.h>
 #include <tbx/transfer_buffer.h>

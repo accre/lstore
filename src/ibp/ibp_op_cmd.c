@@ -18,7 +18,7 @@
 
 #include <apr_time.h>
 #include <gop/gop.h>
-#include <gop/host_portal.h>
+#include <gop/hp.h>
 #include <gop/types.h>
 #include <stdio.h>
 #include <stdio.h>

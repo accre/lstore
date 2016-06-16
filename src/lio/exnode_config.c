@@ -20,7 +20,7 @@
 
 #define _log_module_index 152
 
-#include <gop/thread_pool.h>
+#include <gop/tp.h>
 #include <stddef.h>
 #include <tbx/random.h>
 

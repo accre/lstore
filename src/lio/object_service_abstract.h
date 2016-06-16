@@ -21,7 +21,7 @@
 #define _OBJECT_SERVICE_H_
 
 #include <gop/opque.h>
-#include <gop/thread_pool.h>
+#include <gop/tp.h>
 #include <regex.h>
 #include <sys/types.h>
 

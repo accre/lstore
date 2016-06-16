@@ -19,7 +19,7 @@
 #include <assert.h>
 #include <gop/gop.h>
 #include <gop/opque.h>
-#include <gop/thread_pool.h>
+#include <gop/tp.h>
 #include <gop/types.h>
 #include <stdio.h>
 #include <stdio.h>

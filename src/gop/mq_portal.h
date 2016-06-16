@@ -36,10 +36,10 @@
 #include <zmq.h>
 
 #include "gop/gop.h"
-#include "gop/gop_visibility.h"
-#include "gop/mq_portal.h"
+#include "gop/visibility.h"
+#include "gop/mq.h"
 #include "gop/portal.h"
-#include "gop/thread_pool.h"
+#include "gop/tp.h"
 #include "gop/types.h"
 #include "host_portal.h"
 #include "thread_pool.h"

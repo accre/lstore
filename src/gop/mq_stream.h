@@ -29,7 +29,7 @@
 #include <tbx/packer.h>
 
 #include "gop.h"
-#include "gop/gop_visibility.h"
+#include "gop/visibility.h"
 #include "gop/mq_stream.h"
 #include "gop/types.h"
 #include "mq_ongoing.h"

@@ -21,7 +21,7 @@
 #ifndef _RS_REMOTE_PRIV_H_
 #define _RS_REMOTE_PRIV_H_
 
-#include <gop/mq_portal.h>
+#include <gop/mq.h>
 #include <gop/opque.h>
 #include <tbx/list.h>
 

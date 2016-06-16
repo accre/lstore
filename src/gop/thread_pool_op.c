@@ -28,7 +28,7 @@
 #include <tbx/type_malloc.h>
 
 #include "gop.h"
-#include "gop/thread_pool.h"
+#include "gop/tp.h"
 #include "gop/types.h"
 
 #define TP_MAX_DEPTH 100

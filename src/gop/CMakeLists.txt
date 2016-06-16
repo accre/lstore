@@ -38,16 +38,16 @@ set(LSTORE_PROJECT_OBJS
 set(LSTORE_PROJECT_INCLUDES
         gop/callback.h
         gop/gop.h
-        gop/gop_visibility.h
-        gop/host_portal.h
+        gop/visibility.h
+        gop/hp.h
         gop/mq_helpers.h
         gop/mq_ongoing.h
-        gop/mq_portal.h
+        gop/mq.h
         gop/mq_stream.h
         gop/opque.h
         gop/portal.h
         gop/template.h
-        gop/thread_pool.h
+        gop/tp.h
         gop/types.h)
 set(LSTORE_PROJECT_INCLUDES_NAMESPACE gop)
 

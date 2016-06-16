@@ -25,8 +25,8 @@
 #include <apr_time.h>
 #include <ctype.h>
 #include <gop/mq_ongoing.h>
-#include <gop/mq_portal.h>
-#include <gop/thread_pool.h>
+#include <gop/mq.h>
+#include <gop/tp.h>
 #include <stdio.h>
 #include <stdio.h>
 #include <stdlib.h>

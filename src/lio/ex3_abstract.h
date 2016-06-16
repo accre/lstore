@@ -18,7 +18,7 @@
 // Exnode3 abstract class
 //***********************************************************************
 #include <gop/opque.h>
-#include <gop/thread_pool.h>
+#include <gop/tp.h>
 #include <tbx/atomic_counter.h>
 #include <tbx/iniparse.h>
 #include <tbx/list.h>

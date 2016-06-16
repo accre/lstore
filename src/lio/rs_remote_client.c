@@ -28,7 +28,7 @@
 #include <apr_thread_proc.h>
 #include <assert.h>
 #include <gop/gop.h>
-#include <gop/mq_portal.h>
+#include <gop/mq.h>
 #include <gop/types.h>
 #include <stdint.h>
 #include <stdio.h>

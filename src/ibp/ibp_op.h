@@ -25,7 +25,7 @@
 #include <apr_thread_mutex.h>
 #include <apr_time.h>
 #include <gop/gop.h>
-#include <gop/host_portal.h>
+#include <gop/hp.h>
 #include <gop/types.h>
 #include <stdint.h>
 #include <tbx/atomic_counter.h>

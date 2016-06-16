@@ -30,7 +30,7 @@
 #include <apr_thread_proc.h>
 #include <apr_time.h>
 #include <assert.h>
-#include <gop/mq_portal.h>
+#include <gop/mq.h>
 #include <stdio.h>
 #include <stdio.h>
 #include <stdlib.h>

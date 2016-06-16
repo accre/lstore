@@ -33,7 +33,7 @@
 
 #include "callback.h"
 #include "gop.h"
-#include "gop/gop_visibility.h"
+#include "gop/visibility.h"
 #include "gop/opque.h"
 
 #ifdef __cplusplus

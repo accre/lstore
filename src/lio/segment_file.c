@@ -21,8 +21,8 @@
 #define _log_module_index 162
 
 #include <gop/gop.h>
-#include <gop/host_portal.h>
-#include <gop/thread_pool.h>
+#include <gop/hp.h>
+#include <gop/tp.h>
 #include <libgen.h>
 #include <stdio.h>
 #include <stdio.h>

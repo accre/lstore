@@ -19,7 +19,7 @@
 //***********************************************************************
 
 #include <gop/mq_ongoing.h>
-#include <gop/mq_portal.h>
+#include <gop/mq.h>
 
 #include "authn_abstract.h"
 #include "object_service_abstract.h"
