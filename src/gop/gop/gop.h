@@ -34,6 +34,13 @@ extern "C" {
 #endif
 
 // Typedefs
+typedef void (*gop_op_free_fn_t)(op_generic_t *d, int mode);
+typedef op_status_t (*gop_op_send_command_fn_t)(op_generic_t *gop, tbx_ns_t *ns);
+typedef op_status_t (*gop_op_send_phase_fn_t)(op_generic_t *gop, tbx_ns_t *ns);
+typedef op_status_t (*gop_op_recv_phase_fn_t)(op_generic_t *gop, tbx_ns_t *ns);
+typedef int (*gop_op_on_submit_fn_t)(tbx_stack_t *stack, tbx_stack_ele_t *gop_ele);
+typedef int (*gop_op_before_exec_fn_t)(op_generic_t *gop);
+typedef int (*gop_op_destroy_command_fn_t)(op_generic_t *gop);
 
 // Functions
 GOP_API void gop_callback_append(op_generic_t *q, callback_t *cb);
@@ -128,7 +135,7 @@ struct op_common_t {
     int auto_destroy;      //** If 1 then automatically call the free fn to destroy the object
     gop_control_t *ctl;    //** Lock and condition struct
     void *user_priv;           //** Optional user supplied handle
-    void (*free)(op_generic_t *d, int mode);
+    gop_op_free_fn_t free;
     portal_context_t *pc;
 };
 
@@ -148,12 +155,12 @@ struct command_op_t {   //** Command operation
     apr_time_t retry_wait; //** How long to wait in case of a dead socket, if 0 then retry immediately
     int64_t workload;   //** Workload for measuring channel usage
     int retry_count;//** Number of times retried
-    op_status_t (*send_command)(op_generic_t *gop, tbx_ns_t *ns);  //**Send command routine
-    op_status_t (*send_phase)(op_generic_t *gop, tbx_ns_t *ns);    //**Handle "sending" side of command
-    op_status_t (*recv_phase)(op_generic_t *gop, tbx_ns_t *ns);    //**Handle "receiving" half of command
-    int (*on_submit)(tbx_stack_t *stack, tbx_stack_ele_t *gop_ele);                      //** Executed during initial execution submission
-    int (*before_exec)(op_generic_t *gop);                    //** Executed when popped off the globabl que
-    int (*destroy_command)(op_generic_t *gop);                //**Destroys the data structure
+    gop_op_send_command_fn_t send_command;
+    gop_op_send_phase_fn_t send_phase;
+    gop_op_recv_phase_fn_t recv_phase;
+    gop_op_on_submit_fn_t on_submit;
+    gop_op_before_exec_fn_t before_exec;
+    gop_op_destroy_command_fn_t destroy_command;
     tbx_stack_t  *coalesced_ops;                                  //** Stores any other coalesced ops
     tbx_atomic_unit32_t on_top;
     apr_time_t start_time;

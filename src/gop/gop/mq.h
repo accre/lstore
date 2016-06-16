@@ -47,15 +47,14 @@ typedef struct mq_socket_t mq_socket_t;
 typedef struct mq_task_monitor_t mq_task_monitor_t;
 typedef struct mq_task_t mq_task_t;
 typedef tbx_stack_t mq_msg_t;
-typedef void (mq_fn_exec_t)(void *arg, mq_task_t *task);
-typedef mq_context_t *(mq_create_t)(tbx_inip_file_t *ifd, char *section);
 typedef int mq_pipe_t;       //** Event notification FD
-
+typedef void (gop_mq_exec_fn_t)(void *arg, mq_task_t *task);
+typedef void (*gop_mq_task_arg_free_fn_t)(void *arg);  //** Function for cleaning up the GOP arg. (GOP)
 
 // Functions
 GOP_API void gop_mq_apply_return_address_msg(mq_msg_t *msg, mq_msg_t *raw_address, int dup_frames);
-GOP_API void gop_mq_command_set(mq_command_table_t *table, void *cmd, int cmd_size, void *arg, mq_fn_exec_t *fn);
-GOP_API void gop_mq_command_table_set_default(mq_command_table_t *table, void *arg, mq_fn_exec_t *fn);
+GOP_API void gop_mq_command_set(mq_command_table_t *table, void *cmd, int cmd_size, void *arg, gop_mq_exec_fn_t *fn);
+GOP_API void gop_mq_command_table_set_default(mq_command_table_t *table, void *arg, gop_mq_exec_fn_t *fn);
 GOP_API mq_context_t *gop_mq_create_context(tbx_inip_file_t *ifd, char *section);
 GOP_API void gop_mq_destroy_context(mq_context_t *mqp);
 GOP_API void gop_mq_frame_destroy(mq_frame_t *f);
@@ -74,7 +73,7 @@ GOP_API mq_frame_t *gop_mq_msg_last(mq_msg_t *msg);
 GOP_API mq_msg_t *gop_mq_msg_new();
 GOP_API mq_frame_t *gop_mq_msg_next(mq_msg_t *msg);
 GOP_API mq_frame_t *gop_mq_msg_pluck(mq_msg_t *msg, int move_up);
-GOP_API op_generic_t *gop_mq_op_new(mq_context_t *ctx, mq_msg_t *msg, op_status_t (*fn_response)(void *arg, int id), void *arg, void (*my_arg_free)(void *arg), int dt);
+GOP_API op_generic_t *gop_mq_op_new(mq_context_t *ctx, mq_msg_t *msg, op_status_t (*fn_response)(void *arg, int id), void *arg, gop_mq_task_arg_free_fn_t my_arg_free, int dt);
 GOP_API mq_command_table_t *gop_mq_portal_command_table(mq_portal_t *portal);
 GOP_API mq_portal_t *gop_mq_portal_create(mq_context_t *mqc, char *host, int connect_mode);
 GOP_API void gop_mq_portal_destroy(mq_portal_t *p);
@@ -119,7 +118,7 @@ struct mq_task_t {      //** Generic containter for MQ messages for both the ser
     mq_context_t *ctx;      //** Portal context for sending responses. (Server+GOP)
     void *arg;              //** Optional argument when calling mq_command_add() or gop_mq_op_new() (server+GOP)
     apr_time_t timeout;     //** Initially the DT in sec for the command to complete and converted to abs timeout when sent
-    void (*my_arg_free)(void *arg);  //** Function for cleaning up the GOP arg. (GOP)
+    gop_mq_task_arg_free_fn_t my_arg_free;
     int pass_through;       //** Flag to set when a task is only used to pass a message; no heartbeating necessary
 };
 

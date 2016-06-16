@@ -44,15 +44,24 @@
 extern "C" {
 #endif
 
+// Typedefs
+typedef void *(*gop_portal_dup_fn_t)(void *connect_context);  //** Duplicates a ccon
+typedef void (*gop_portal_destroy_fn_t)(void *connect_context);
+typedef int (*gop_portal_connect_fn_t)(tbx_ns_t *ns, void *connect_context, char *host, int port, tbx_ns_timeout_t timeout);
+typedef void (*gop_portal_close_fn_t)(tbx_ns_t *ns);
+typedef void (*gop_portal_sort_fn_t)(void *arg, opque_t *q);        //** optional
+typedef void (*gop_portal_submit_fn_t)(void *arg, op_generic_t *op);
+typedef void (*gop_portal_exec_fn_t)(void *arg, op_generic_t *op);   //** optional
+
 // Exported types. To be obscured.
-struct portal_fn_t {  //** Hportal specific implementation
-    void *(*dup_connect_context)(void *connect_context);  //** Duplicates a ccon
-    void (*destroy_connect_context)(void *connect_context);
-    int (*connect)(tbx_ns_t *ns, void *connect_context, char *host, int port, tbx_ns_timeout_t timeout);
-    void (*close_connection)(tbx_ns_t *ns);
-    void (*sort_tasks)(void *arg, opque_t *q);        //** optional
-    void (*submit)(void *arg, op_generic_t *op);
-    void (*sync_exec)(void *arg, op_generic_t *op);   //** optional
+struct portal_fn_t {
+    gop_portal_dup_fn_t dup_connect_context;
+    gop_portal_destroy_fn_t destroy_connect_context;
+    gop_portal_connect_fn_t connect;
+    gop_portal_close_fn_t close_connection;
+    gop_portal_sort_fn_t sort_tasks;
+    gop_portal_submit_fn_t submit;
+    gop_portal_exec_fn_t sync_exec;
 };
 
 struct portal_context_t {             //** Handle for maintaining all the ecopy connections

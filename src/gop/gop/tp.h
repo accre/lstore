@@ -34,11 +34,13 @@ extern "C" {
 // Typedefs
 typedef struct thread_pool_context_t thread_pool_context_t;
 typedef struct thread_pool_op_t thread_pool_op_t;
+typedef void (*gop_tp_free_fn_t)(void *arg);
+typedef op_status_t (*gop_tp_cmd_fn_t)(void *arg, int id);
 
 // Functions
 GOP_API thread_pool_context_t *gop_tp_context_create(char *tp_name, int min_threads, int max_threads, int max_recursion);
 GOP_API void gop_tp_context_destroy(thread_pool_context_t *tpc);
-GOP_API op_generic_t *gop_tp_op_new(thread_pool_context_t *tpc, char *que, op_status_t (*fn)(void *arg, int id), void *arg, void (*my_op_free)(void *arg), int workload);
+GOP_API op_generic_t *gop_tp_op_new(thread_pool_context_t *tpc, char *que, gop_tp_cmd_fn_t fn, void *arg, gop_tp_free_fn_t my_op_free, int workload);
 
 // Preprocessor constants
 #define TP_E_ERROR              OP_STATE_FAILURE
@@ -72,8 +74,8 @@ struct thread_pool_op_t {
     thread_pool_context_t *tpc;
     op_generic_t gop;
     op_data_t dop;
-    op_status_t (*fn)(void *priv, int id);
-    void (*my_op_free)(void *arg);
+    gop_tp_cmd_fn_t fn;
+    gop_tp_free_fn_t my_op_free;
     void *arg;
     int depth;
     int parent_tid;
