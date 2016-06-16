@@ -18,11 +18,13 @@
 // Basic Resource Query interface
 //***********************************************************************
 
+#ifndef _RS_QUERY_BASE_H_
+#define _RS_QUERY_BASE_H_
 
 #include "resource_service_abstract.h"
 
-#ifndef _RS_QUERY_BASE_H_
-#define _RS_QUERY_BASE_H_
+struct rsq_base_ele_t;
+struct rsq_base_t;
 
 #ifdef __cplusplus
 extern "C" {

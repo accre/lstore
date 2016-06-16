@@ -14,19 +14,21 @@
    limitations under the License.
 */
 
-#include <assert.h>
-#include <tbx/assert_result.h>
-#include <apr_thread_proc.h>
-#include <apr_thread_mutex.h>
+#include <apr_errno.h>
+#include <apr_pools.h>
 #include <apr_thread_cond.h>
-#include <stdlib.h>
-#include <string.h>
-#include <tbx/type_malloc.h>
-#include <tbx/log.h>
-#include <tbx/atomic_counter.h>
-#include <tbx/apr_wrapper.h>
-#include "gop.h"
+#include <apr_thread_mutex.h>
+#include <apr_thread_proc.h>
 #include <gop/portal.h>
+#include <stdlib.h>
+#include <tbx/apr_wrapper.h>
+#include <tbx/assert_result.h>
+#include <tbx/log.h>
+#include <tbx/stack.h>
+#include <tbx/type_malloc.h>
+
+#include "gop.h"
+#include "gop/types.h"
 
 static void gop_dummy_submit_op(void *arg, op_generic_t *op);
 

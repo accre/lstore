@@ -20,13 +20,18 @@
 
 #define _log_module_index 142
 
+#include <apr_pools.h>
+#include <apr_thread_mutex.h>
+#include <stdlib.h>
 #include <tbx/list.h>
-#include <tbx/type_malloc.h>
 #include <tbx/log.h>
-#include "cache.h"
-#include "ex3_abstract.h"
-#include "ex3_compare.h"
 #include <tbx/pigeon_coop.h>
+#include <tbx/stack.h>
+#include <tbx/type_malloc.h>
+
+#include "cache_priv.h"
+#include "data_service_abstract.h"
+#include "ex3_compare.h"
 
 //*************************************************************************
 //  cache_base_handle  - Simple get_handle method

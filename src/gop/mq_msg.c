@@ -18,10 +18,13 @@
 //  Routines to provide frame support for MQ layer
 //*************************************************************
 
-#include "mq_portal.h"
-#include <tbx/type_malloc.h>
-#include <tbx/log.h>
+#include <string.h>
 #include <stdlib.h>
+#include <tbx/stack.h>
+#include <tbx/type_malloc.h>
+#include <zmq.h>
+
+#include "mq_portal.h"
 
 //**************************************************************
 //  gop_mq_get_frame - Returns the frame data

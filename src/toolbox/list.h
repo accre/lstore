@@ -18,11 +18,10 @@
 // Searchable list routines - Just a wrapper around the skiplist routines
 //***********************************************************************
 
-#include "tbx/toolbox_visibility.h"
-#include "tbx/skiplist.h"
-
 #ifndef _LIST_H_
 #define _LIST_H_
+
+#include "tbx/skiplist.h"
 
 #ifdef __cplusplus
 extern "C" {

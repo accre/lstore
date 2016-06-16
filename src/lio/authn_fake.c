@@ -20,14 +20,18 @@
 
 #define _log_module_index 185
 
+#include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
-#include <sys/types.h>
-#include <unistd.h>
+#include <string.h>
 #include <tbx/fmttypes.h>
-#include <tbx/list.h>
-#include <tbx/type_malloc.h>
+#include <tbx/iniparse.h>
 #include <tbx/log.h>
+#include <tbx/type_malloc.h>
+#include <unistd.h>
+
 #include "authn_abstract.h"
+#include "service_manager.h"
 
 extern char *_lio_exe_name;  //** This is set by lio_init long before we would ever be called.
 

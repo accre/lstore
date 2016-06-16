@@ -16,19 +16,29 @@
 
 #define _log_module_index 122
 
-#include <assert.h>
-#include <tbx/assert_result.h>
-#include <apr_pools.h>
-#include <apr_thread_proc.h>
-#include <apr_thread_pool.h>
 #include <apr_env.h>
-#include <tbx/apr_wrapper.h>
-#include "opque.h"
-#include <gop/portal.h>
-#include "thread_pool.h"
-#include <tbx/network.h>
+#include <apr_errno.h>
+#include <apr_pools.h>
+#include <apr_thread_mutex.h>
+#include <apr_thread_pool.h>
+#include <apr_thread_proc.h>
+#include <apr_time.h>
+#include <stdlib.h>
+#include <string.h>
+#include <tbx/assert_result.h>
+#include <tbx/atomic_counter.h>
 #include <tbx/log.h>
+#include <tbx/network.h>
+#include <tbx/stack.h>
 #include <tbx/type_malloc.h>
+
+#include "gop/gop.h"
+#include "gop/host_portal.h"
+#include "gop/opque.h"
+#include "gop/portal.h"
+#include "gop/thread_pool.h"
+#include "gop/types.h"
+#include "thread_pool.h"
 
 void *_tp_dup_connect_context(void *connect_context);
 void _tp_destroy_connect_context(void *connect_context);

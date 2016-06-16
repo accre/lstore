@@ -18,8 +18,9 @@
 #ifndef ACCRE_ATOMIC_COUNTER_H_INCLUDED
 #define ACCRE_ATOMIC_COUNTER_H_INCLUDED
 
+#include <apr.h>
 #include <apr_atomic.h>
-#include "tbx/toolbox_visibility.h"
+#include <tbx/toolbox_visibility.h>
 
 #ifdef __cplusplus
 extern "C" {

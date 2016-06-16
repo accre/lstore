@@ -19,11 +19,17 @@
 
 #define _log_module_index 220
 
-#include "cache.h"
-#include <tbx/type_malloc.h>
+#include <assert.h>
+#include <stdlib.h>
+#include <tbx/atomic_counter.h>
+#include <tbx/iniparse.h>
 #include <tbx/log.h>
-#include "ex3_compare.h"
-#include <gop/thread_pool.h>
+#include <tbx/type_malloc.h>
+
+#include "cache.h"
+#include "cache_priv.h"
+#include "data_service_abstract.h"
+#include "service_manager.h"
 
 typedef struct {
     int n_cache;

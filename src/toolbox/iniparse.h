@@ -17,17 +17,17 @@
 #ifndef __INIPARSE_H
 #define __INIPARSE_H
 
+#include <stdio.h>
+#include <stdint.h>
+
+#include "tbx/iniparse.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#include "tbx/toolbox_visibility.h"
-#include <stdio.h>
-#include <stdint.h>
-
 tbx_inip_file_t *inip_read_fd(FILE *fd);
 uint64_t inip_get_unsigned_integer(tbx_inip_file_t *inip, const char *group, const char *key, uint64_t def);
-
 
 #ifdef __cplusplus
 }

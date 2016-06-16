@@ -18,10 +18,16 @@
 // Linear segment support
 //***********************************************************************
 
-#include <gop/opque.h>
 
 #ifndef _SEGMENT_FILE_H_
 #define _SEGMENT_FILE_H_
+
+#include <gop/opque.h>
+#include <gop/types.h>
+
+#include "data_service_abstract.h"
+#include "ex3_abstract.h"
+#include "ex3_types.h"
 
 #ifdef __cplusplus
 extern "C" {

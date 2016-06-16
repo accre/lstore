@@ -14,12 +14,13 @@
    limitations under the License.
 */
 
+#include <gop/opque.h>
+
+#include "ibp/ibp_visibility.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include "ibp/ibp_visibility.h"
-#include <gop/opque.h>
 
 int ibp_sync_execute(opque_t *q, int nthreads);
 

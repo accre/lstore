@@ -19,9 +19,11 @@
 
 #define _log_module_index 103
 
+#include <apr_thread_proc.h>
+#include <apr_pools.h>
+#include <stdlib.h>
+
 #include "tbx/atomic_counter.h"
-#include "apr_thread_proc.h"
-#include "stdlib.h"
 
 static tbx_atomic_unit32_t _tbx_atomic_global_counter = 0;
 

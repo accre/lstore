@@ -13,7 +13,6 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 */
-#include "gop/opque.h"
 
 //*************************************************************
 // opque.h - Header defining I/O structs and operations for
@@ -23,17 +22,19 @@
 #ifndef __OPQUE_H_
 #define __OPQUE_H_
 
-#include "gop/gop_visibility.h"
-#include <apr_thread_mutex.h>
-#include <apr_thread_cond.h>
 #include <apr_hash.h>
+#include <apr_thread_cond.h>
+#include <apr_thread_mutex.h>
+#include <gop/types.h>
 #include <tbx/atomic_counter.h>
 #include <tbx/network.h>
-#include <tbx/stack.h>
-#include "callback.h"
 #include <tbx/pigeon_coop.h>
+#include <tbx/stack.h>
+
+#include "callback.h"
 #include "gop.h"
-#include <gop/types.h>
+#include "gop/gop_visibility.h"
+#include "gop/opque.h"
 
 #ifdef __cplusplus
 extern "C" {

@@ -16,25 +16,26 @@
 
 #define _log_module_index 153
 
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
-#include <assert.h>
-#include <tbx/assert_result.h>
-#include <dlfcn.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
 #include <apr_time.h>
+#include <assert.h>
+#include <dlfcn.h>
+#include <fcntl.h>
 #include <stdarg.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <tbx/append_printf.h>
 #include <tbx/apr_wrapper.h>
+#include <tbx/assert_result.h>
+#include <tbx/atomic_counter.h>
 #include <tbx/fmttypes.h>
+#include <tbx/iniparse.h>
 #include <tbx/log.h>
 #include <tbx/type_malloc.h>
+
 #include "liblio_trace.h"
-#include <tbx/iniparse.h>
-#include <tbx/append_printf.h>
-#include <tbx/atomic_counter.h>
 
 lt_config_t ltc;
 lt_fn_t lt_fn;

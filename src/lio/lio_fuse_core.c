@@ -15,7 +15,42 @@
 */
 
 #define _log_module_index 212
+
 #include "config.h"
+
+#include <apr_hash.h>
+#include <apr_network_io.h>
+#include <apr_pools.h>
+#include <apr_thread_mutex.h>
+#include <apr_time.h>
+#include <assert.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <gop/gop.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <string.h>
+#include <sys/stat.h>
+#include <sys/statvfs.h>
+#include <tbx/append_printf.h>
+#include <tbx/iniparse.h>
+#include <tbx/log.h>
+#include <tbx/stack.h>
+#include <tbx/string_token.h>
+#include <tbx/type_malloc.h>
+#include <time.h>
+#include <unistd.h>
+#include <zlib.h>
+
+#include "ex3_abstract.h"
+#include "ex3_types.h"
+#include "lio_abstract.h"
+#include "lio_fuse.h"
+#include "object_service_abstract.h"
+#include "resource_service_abstract.h"
 
 #if defined(HAVE_SYS_XATTR_H)
 #include <sys/xattr.h>
@@ -23,25 +58,6 @@
 #include <attr/xattr.h>
 #endif
 
-#include <assert.h>
-#include <apr_network_io.h>
-#include <tbx/assert_result.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <unistd.h>
-#include <math.h>
-#include "zlib.h"
-#include "lio_fuse.h"
-#include "exnode.h"
-#include "ex3_compare.h"
-#include <tbx/log.h>
-#include <tbx/iniparse.h>
-#include <tbx/type_malloc.h>
-#include <gop/thread_pool.h>
-#include "lio.h"
-#include <tbx/append_printf.h>
-#include <tbx/string_token.h>
-#include <tbx/apr_wrapper.h>
 
 //#define lfs_lock(lfs)  log_printf(0, "lfs_lock\n"); tbx_log_flush(); apr_thread_mutex_lock((lfs)->lock)
 //#define lfs_unlock(lfs) log_printf(0, "lfs_unlock\n");  tbx_log_flush(); apr_thread_mutex_unlock((lfs)->lock)

@@ -20,11 +20,13 @@
 
 #define _log_module_index 186
 
-#include <tbx/list.h>
+#include <stdlib.h>
+#include <tbx/iniparse.h>
 #include <tbx/type_malloc.h>
-#include <tbx/log.h>
+
 #include "authn_abstract.h"
 #include "object_service_abstract.h"
+#include "service_manager.h"
 
 //***********************************************************************
 

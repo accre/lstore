@@ -1,5 +1,7 @@
+#include <apr_errno.h>
 #include <apr_general.h>
 #include <assert.h>
+
 #include "tbx/constructor_wrapper.h"
 
 #ifdef ACCRE_CONSTRUCTOR_PREPRAGMA_ARGS

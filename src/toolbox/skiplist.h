@@ -20,8 +20,10 @@
 #ifndef __SKIPLIST_H_
 #define __SKIPLIST_H_
 
-#include "tbx/toolbox_visibility.h"
+#include <apr_pools.h>
 #include <apr_thread_mutex.h>
+
+#include "tbx/skiplist.h"
 
 #ifdef __cplusplus
 extern "C" {

@@ -13,20 +13,22 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 */
-#include "gop/gop.h"
+
 #ifndef ACCRE_GOP_H_INCLUDED
 #define ACCRE_GOP_H_INCLUDED
 
-#include "gop/gop_visibility.h"
-#include <apr_thread_mutex.h>
-#include <apr_thread_cond.h>
 #include <apr_hash.h>
+#include <apr_thread_cond.h>
+#include <apr_thread_mutex.h>
+#include <apr_time.h>
 #include <tbx/atomic_counter.h>
 #include <tbx/network.h>
-#include <tbx/stack.h>
-#include "callback.h"
 #include <tbx/pigeon_coop.h>
-#include <gop/types.h>
+#include <tbx/stack.h>
+
+#include "callback.h"
+#include "gop/types.h"
+#include "gop/gop.h"
 
 #ifdef __cplusplus
 extern "C" {

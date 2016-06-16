@@ -18,11 +18,13 @@
 // Remote resource managment implementation
 //***********************************************************************
 
-#include <tbx/list.h>
-#include "resource_service_abstract.h"
 
 #ifndef _RS_REMOTE_H_
 #define _RS_REMOTE_H_
+
+#include <tbx/list.h>
+
+#include "resource_service_abstract.h"
 
 #ifdef __cplusplus
 extern "C" {

@@ -16,14 +16,14 @@
 
 #define _log_module_index 165
 
-#include <assert.h>
+#include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "tbx/transfer_buffer.h"
+
 #include "tbx/log.h"
-#include "tbx/type_malloc.h"
 #include "tbx/random.h"
+#include "tbx/type_malloc.h"
 #include "transfer_buffer.h"
 
 void tbx_tbuf_var_nbytes_set(tbx_tbuf_var_t *tbv, size_t nbytes) {

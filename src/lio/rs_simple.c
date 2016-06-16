@@ -20,25 +20,42 @@
 
 #define _log_module_index 159
 
+#include <apr.h>
+#include <apr_errno.h>
+#include <apr_hash.h>
+#include <apr_pools.h>
+#include <apr_thread_cond.h>
+#include <apr_thread_mutex.h>
+#include <apr_thread_proc.h>
+#include <apr_time.h>
 #include <assert.h>
-#include <tbx/assert_result.h>
-#include <sys/types.h>
+#include <string.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <sys/stat.h>
-#include <unistd.h>
+#include <tbx/append_printf.h>
+#include <tbx/apr_wrapper.h>
+#include <tbx/assert_result.h>
+#include <tbx/iniparse.h>
 #include <tbx/list.h>
+#include <tbx/log.h>
+#include <tbx/random.h>
+#include <tbx/stack.h>
+#include <tbx/string_token.h>
+#include <tbx/type_malloc.h>
+#include <gop/gop.h>
+#include <gop/opque.h>
+#include <gop/types.h>
+
+#include "data_service_abstract.h"
 #include "ex3_system.h"
+#include "ex3_types.h"
 #include "resource_service_abstract.h"
 #include "rs_query_base.h"
 #include "rs_simple.h"
 #include "rs_simple_priv.h"
-#include <tbx/iniparse.h>
-#include <tbx/log.h>
-#include <tbx/stack.h>
-#include <tbx/type_malloc.h>
-#include <tbx/random.h>
-#include <tbx/append_printf.h>
-#include <tbx/string_token.h>
-#include <tbx/apr_wrapper.h>
+#include "service_manager.h"
 
 typedef struct {
     char *key;

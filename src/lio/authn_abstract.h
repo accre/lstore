@@ -18,8 +18,9 @@
 // Generic Authentication service
 //***********************************************************************
 
-#include "service_manager.h"
 #include <tbx/iniparse.h>
+
+#include "service_manager.h"
 
 #ifndef _AUTHN_ABSTRACT_H_
 #define _AUTHN_ABSTRACT_H_

@@ -13,19 +13,27 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 */
-#include "gop/mq_stream.h"
 //***********************************************************************
 // MQ streaming task management header
 //***********************************************************************
 
-#include "gop/gop_visibility.h"
-#include "gop.h"
-#include "mq_portal.h"
-#include "mq_ongoing.h"
-#include <tbx/packer.h>
-
 #ifndef _MQ_STREAM_H_
 #define _MQ_STREAM_H_
+
+#include <apr_pools.h>
+#include <apr_thread_cond.h>
+#include <apr_thread_mutex.h>
+#include <apr_thread_proc.h>
+#include <apr_time.h>
+#include <stdint.h>
+#include <tbx/packer.h>
+
+#include "gop.h"
+#include "gop/gop_visibility.h"
+#include "gop/mq_stream.h"
+#include "gop/types.h"
+#include "mq_ongoing.h"
+#include "mq_portal.h"
 
 #ifdef __cplusplus
 extern "C" {

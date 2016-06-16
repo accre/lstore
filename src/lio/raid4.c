@@ -14,15 +14,11 @@
    limitations under the License.
 */
 
-#include <string.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <assert.h>
-#include <tbx/assert_result.h>
-
 //******************************************************************************
 //  xor_block - XOR's a block of data
 //******************************************************************************
+
+#include <string.h>
 
 void xor_block(char *data, char *parity, int nbytes)
 {

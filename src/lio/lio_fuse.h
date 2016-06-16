@@ -21,16 +21,30 @@
 #ifndef _LIO_FUSE_H_
 #define _LIO_FUSE_H_
 
+#define FUSE_USE_VERSION 26
+
+#include <apr_hash.h>
+#include <apr_pools.h>
+#include <apr_thread_mutex.h>
+#include <apr_time.h>
+#include <fuse.h>
+#include <fuse/fuse.h>
+#include <tbx/atomic_counter.h>
+#include <tbx/list.h>
+
+#include "ex3_abstract.h"
+#include "lio.h"
+#include "lio/lio_visibility.h"
+#include "lio_abstract.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#define FUSE_USE_VERSION 26
 
-#include <fuse.h>
-#include <apr_time.h>
-#include <tbx/list.h>
-#include "lio.h"
+struct fuse_conn_info;
+struct lio_fuse_init_args_t;
+struct lio_fuse_t;
 
 #define LFS_READ_MODE  1
 #define LFS_WRITE_MODE 2

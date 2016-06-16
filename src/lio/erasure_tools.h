@@ -17,11 +17,14 @@
 #ifndef __ERASURE_TOOLS_H_
 #define __ERASURE_TOOLS_H_
 
+#include <stdio.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#include <stdio.h>
+
+struct erasure_plan_t;
 
 extern int _debug;
 #define debug_printf(...) \

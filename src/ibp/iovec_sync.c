@@ -16,16 +16,13 @@
 
 #define _log_module_index 135
 
-#include <stdlib.h>
-#include <string.h>
-#include <apr_pools.h>
-#include <apr_thread_proc.h>
-#include "ibp.h"
-#include "ibp_misc.h"
-#include <gop/gop.h>
 #include <gop/opque.h>
-#include <gop/host_portal.h>
+#include <gop/types.h>
+#include <stdlib.h>
 #include <tbx/log.h>
+#include <tbx/stack.h>
+
+#include "ibp_protocol.h"
 
 //=============================================================
 

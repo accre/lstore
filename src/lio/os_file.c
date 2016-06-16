@@ -20,29 +20,48 @@
 
 #define _log_module_index 155
 
-#include <sys/stat.h>
-#include <sys/types.h>
-#include <dirent.h>
-#include <unistd.h>
-#include <assert.h>
-#include <tbx/assert_result.h>
-#include <apr_pools.h>
+#include <apr.h>
+#include <apr_errno.h>
+#include <apr_hash.h>
 #include <apr_network_io.h>
+#include <apr_pools.h>
+#include <apr_thread_cond.h>
 #include <apr_thread_mutex.h>
+#include <apr_time.h>
+#include <dirent.h>
 #include <gop/gop.h>
-#include <gop/opque.h>
-#include "exnode.h"
-#include "ex3_system.h"
-#include "object_service_abstract.h"
-#include <tbx/list.h>
-#include <tbx/random.h>
-#include <tbx/type_malloc.h>
-#include <tbx/log.h>
-#include <tbx/atomic_counter.h>
 #include <gop/thread_pool.h>
+#include <gop/types.h>
+#include <regex.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <string.h>
+#include <sys/stat.h>
+#include <tbx/append_printf.h>
+#include <tbx/assert_result.h>
+#include <tbx/atomic_counter.h>
+#include <tbx/chksum.h>
+#include <tbx/fmttypes.h>
+#include <tbx/list.h>
+#include <tbx/log.h>
+#include <tbx/pigeon_coop.h>
+#include <tbx/random.h>
+#include <tbx/stack.h>
+#include <tbx/transfer_buffer.h>
+#include <tbx/type_malloc.h>
+#include <unistd.h>
+
+#include "authn_abstract.h"
+#include "authn_fake.h"
+#include "ex3_system.h"
+#include "ex3_types.h"
+#include "object_service_abstract.h"
 #include "os_file.h"
 #include "os_file_priv.h"
-#include <tbx/append_printf.h>
+#include "osaz_fake.h"
 
 typedef struct {
     DIR *d;

@@ -33,20 +33,16 @@
   used by application.
 */
 
-# ifndef _IBP_CLIENTLIB_H
-# define _IBP_CLIENTLIB_H
+#ifndef _IBP_CLIENTLIB_H
+#define _IBP_CLIENTLIB_H
+
+#include <time.h>
+
 #include "ibp/ibp_visibility.h"
-
-# ifdef STDC_HEADERS
-# include <sys/types.h>
-# endif
-# include "ibp_os.h"
-# include <time.h>
-# include "ibp_protocol.h"
-# include "ibp_errno.h"
-# include "ibp_types.h"
-
-
+#include "ibp_errno.h"
+#include "ibp_os.h"
+#include "ibp_protocol.h"
+#include "ibp_types.h"
 
 # ifdef __cplusplus
 extern "C" {
@@ -130,4 +126,4 @@ int IBP_setMaxOpenConn(int max);
 }
 # endif
 
-# endif /* _IBP_CLIENTLIB_H */
+#endif /* _IBP_CLIENTLIB_H */

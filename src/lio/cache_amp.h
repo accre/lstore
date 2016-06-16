@@ -17,8 +17,10 @@
 //*************************************************************************
 //*************************************************************************
 
-#include "cache_priv.h"
 #include <tbx/iniparse.h>
+
+#include "cache_priv.h"
+#include "data_service_abstract.h"
 
 #ifndef __CACHE_AMP_H_
 #define __CACHE_AMP_H_

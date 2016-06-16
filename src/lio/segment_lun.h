@@ -18,11 +18,14 @@
 // Linear segment support
 //***********************************************************************
 
+#ifndef _SEGMENT_LUN_H_
+#define _SEGMENT_LUN_H_
+
 #include <gop/opque.h>
 #include <tbx/fmttypes.h>
 
-#ifndef _SEGMENT_LUN_H_
-#define _SEGMENT_LUN_H_
+#include "ex3_abstract.h"
+#include "ex3_types.h"
 
 #ifdef __cplusplus
 extern "C" {

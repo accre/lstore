@@ -21,14 +21,15 @@
 
 #define _log_module_index 224
 
-#include <stdlib.h>
-#include <string.h>
 #include <assert.h>
-#include "tbx/assert_result.h"
-#include "tbx/packer.h"
-#include "tbx/type_malloc.h"
-#include "tbx/log.h"
+#include <string.h>
+#include <stdlib.h>
+#include <zlib.h>
+
 #include "packer.h"
+#include "tbx/assert_result.h"
+#include "tbx/log.h"
+#include "tbx/type_malloc.h"
 
 // Accessors
 int tbx_pack_read_new_data(tbx_pack_t *pack, unsigned char *buffer, unsigned int bufsize) {

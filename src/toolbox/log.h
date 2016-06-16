@@ -20,18 +20,18 @@
 #ifndef __LOG_H_
 #define __LOG_H_
 
-#include "tbx/toolbox_visibility.h"
+#include "tbx/log.h"
+
 #ifndef _DISABLE_LOG
 
-#include <unistd.h>
-#include <sys/types.h>
-#include <stdio.h>
-#include <pthread.h>
-#include <string.h>
-#include <assert.h>
-#include "tbx/assert_result.h"
 #include <apr_pools.h>
 #include <apr_thread_mutex.h>
+#include <assert.h>
+#include <pthread.h>
+#include <stdio.h>
+#include <string.h>
+#include <sys/types.h>
+#include <unistd.h>
 
 #ifdef __cplusplus
 extern "C" {

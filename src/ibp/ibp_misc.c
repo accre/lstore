@@ -16,13 +16,19 @@
 
 #define _log_module_index 131
 
-#include <stdlib.h>
+#include <signal.h>
 #include <stdio.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
-#include <apr_signal.h>
-#include "ibp.h"
+#include <string.h>
+#include <sys/signal.h>
+#include <tbx/atomic_counter.h>
 #include <tbx/log.h>
 #include <tbx/string_token.h>
+
+#include "ibp_op.h"
+#include "ibp_types.h"
 
 
 //*************************************************************

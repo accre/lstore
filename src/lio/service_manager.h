@@ -18,13 +18,16 @@
 // Generic service manager header file
 //***********************************************************************
 
-#include "lio/lio_visibility.h"
-#include <apr_pools.h>
-#include <apr_thread_mutex.h>
-#include <apr_hash.h>
+struct service_manager_t;
 
 #ifndef _SERVICE_MANAGER_H_
 #define _SERVICE_MANAGER_H_
+
+#include <apr_hash.h>
+#include <apr_pools.h>
+#include <apr_thread_mutex.h>
+
+#include "lio/lio_visibility.h"
 
 #ifdef __cplusplus
 extern "C" {

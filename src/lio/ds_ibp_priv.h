@@ -21,8 +21,8 @@
 #include <apr_hash.h>
 #include <apr_thread_cond.h>
 #include <apr_thread_proc.h>
-#include "ibp.h"
-#include "ds_ibp.h"
+#include <ds_ibp.h>
+#include <ibp.h>
 
 #ifndef _DS_IBP_PRIV_H_
 #define _DS_IBP_PRIV_H_

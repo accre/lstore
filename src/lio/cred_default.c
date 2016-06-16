@@ -20,9 +20,10 @@
 
 #define _log_module_index 185
 
-#include <tbx/list.h>
+#include <stdlib.h>
+#include <string.h>
 #include <tbx/type_malloc.h>
-#include <tbx/log.h>
+
 #include "authn_abstract.h"
 
 //***********************************************************************

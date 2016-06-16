@@ -16,12 +16,12 @@
 
 #define _log_module_index 172
 
-#include <assert.h>
-#include <tbx/assert_result.h>
-#include "exnode.h"
-#include <tbx/log.h>
-#include <tbx/type_malloc.h>
-#include "lio.h"
+#include <stdio.h>
+
+#include "ex3_abstract.h"
+#include "ex3_types.h"
+#include "lio_abstract.h"
+
 
 //*************************************************************************
 //*************************************************************************

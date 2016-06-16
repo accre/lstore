@@ -16,18 +16,19 @@
 
 #define _log_module_index 179
 
+#include <assert.h>
+#include <jerasure/cauchy.h>
+#include <jerasure/jerasure.h>
+#include <jerasure/liberation.h>
+#include <jerasure/reed_sol.h>
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <assert.h>
-#include <tbx/assert_result.h>
-#include <jerasure/cauchy.h>
-#include <jerasure/liberation.h>
-#include <jerasure/reed_sol.h>
-#include <jerasure/jerasure.h>
-#include "raid4.h"
-#include "erasure_tools.h"
+#include <strings.h>
 #include <tbx/log.h>
+
+#include "erasure_tools.h"
+#include "raid4.h"
 
 
 const char *JE_method[N_JE_METHODS] = {"reed_sol_van", "reed_sol_r6_op", "cauchy_orig", "cauchy_good", "blaum_roth", "liberation", "liber8tion", "raid4"};

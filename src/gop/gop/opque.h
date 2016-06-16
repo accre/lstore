@@ -22,8 +22,8 @@ limitations under the License.
 #define ACCRE_GOP_OPQUE_H_INCLUDED
 
 #include <gop/callback.h>
-#include <gop/gop_visibility.h>
 #include <gop/gop.h>
+#include <gop/gop_visibility.h>
 #include <gop/types.h>
 #include <tbx/stack.h>
 

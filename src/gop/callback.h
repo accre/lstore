@@ -13,15 +13,17 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 */
-#include "gop/callback.h"
 //*************************************************************
 //  Generic Callback implementation
 //*************************************************************
 
-#include <stdarg.h>
 
 #ifndef __CALLBACK_H_
 #define __CALLBACK_H_
+
+#include <stdarg.h>
+
+#include "gop/callback.h"
 
 #ifdef __cplusplus
 extern "C" {

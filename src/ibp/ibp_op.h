@@ -21,19 +21,24 @@
 #ifndef __IBP_OP_H_
 #define __IBP_OP_H_
 
-#include "ibp/ibp_visibility.h"
-#include <apr_time.h>
 #include <apr_pools.h>
-#include <tbx/stack.h>
-#include <tbx/network.h>
+#include <apr_thread_mutex.h>
+#include <apr_time.h>
 #include <gop/gop.h>
 #include <gop/host_portal.h>
-#include "ibp_types.h"
-#include <tbx/transfer_buffer.h>
-#include <tbx/pigeon_coop.h>
-#include <tbx/list.h>
+#include <gop/types.h>
+#include <stdint.h>
 #include <tbx/atomic_counter.h>
 #include <tbx/iniparse.h>
+#include <tbx/list.h>
+#include <tbx/network.h>
+#include <tbx/pigeon_coop.h>
+#include <tbx/stack.h>
+#include <tbx/transfer_buffer.h>
+
+#include "ibp/ibp_visibility.h"
+#include "ibp_protocol.h"
+#include "ibp_types.h"
 
 #ifdef __cplusplus
 extern "C" {

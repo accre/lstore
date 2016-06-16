@@ -20,17 +20,22 @@
 
 #define _log_module_index 144
 
+#include <stdio.h>
 #include <stdlib.h>
-#include "ex3_abstract.h"
-#include "service_manager.h"
-#include "data_service_abstract.h"
-#include <tbx/interval_skiplist.h>
+#include <string.h>
 #include <tbx/append_printf.h>
-#include <tbx/string_token.h>
-#include <tbx/type_malloc.h>
+#include <tbx/atomic_counter.h>
 #include <tbx/iniparse.h>
 #include <tbx/log.h>
-#include <tbx/random.h>
+#include <tbx/stack.h>
+#include <tbx/string_token.h>
+#include <tbx/type_malloc.h>
+
+#include "data_block.h"
+#include "data_service_abstract.h"
+#include "ex3_abstract.h"
+#include "ex3_types.h"
+#include "service_manager.h"
 
 //***********************************************************************
 // db_find_key - Scans the stack for the key

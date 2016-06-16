@@ -23,8 +23,8 @@ limitations under the License.
 
 #include <apr_hash.h>
 #include <apr_thread_proc.h>
-#include <gop/gop_visibility.h>
 #include <gop/gop.h>
+#include <gop/gop_visibility.h>
 #include <gop/types.h>
 #include <tbx/iniparse.h>
 #include <tbx/stack.h>

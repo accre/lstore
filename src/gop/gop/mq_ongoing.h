@@ -22,8 +22,8 @@ limitations under the License.
 #define ACCRE_GOP_MQ_ONGOING_H_INCLUDED
 
 #include <gop/gop_visibility.h>
-#include <gop/types.h>
 #include <gop/mq_portal.h>
+#include <gop/types.h>
 
 #ifdef __cplusplus
 extern "C" {

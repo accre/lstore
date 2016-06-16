@@ -20,15 +20,23 @@
 
 #define _log_module_index 223
 
-#include "gop.h"
-#include "mq_ongoing.h"
-#include "mq_stream.h"
-#include "mq_helpers.h"
-#include <tbx/type_malloc.h>
-#include <tbx/log.h>
-#include <tbx/varint.h>
-#include <tbx/packer.h>
+#include <apr_errno.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <tbx/apr_wrapper.h>
+#include <tbx/atomic_counter.h>
+#include <tbx/fmttypes.h>
+#include <tbx/log.h>
+#include <tbx/packer.h>
+#include <tbx/stack.h>
+#include <tbx/type_malloc.h>
+#include <tbx/varint.h>
+
+#include "gop.h"
+#include "mq_helpers.h"
+#include "mq_stream.h"
 
 //***********************************************************************
 // mqs_response_client_more - Handles a response for more data from the server

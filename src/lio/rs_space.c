@@ -22,10 +22,13 @@
 #define _log_module_index 217
 
 #include <assert.h>
-#include <tbx/assert_result.h>
-#include "resource_service_abstract.h"
+#include <string.h>
+#include <string.h>
+#include <stdint.h>
 #include <tbx/iniparse.h>
 #include <tbx/string_token.h>
+
+#include "resource_service_abstract.h"
 
 rs_space_t rs_space(char *config)
 {

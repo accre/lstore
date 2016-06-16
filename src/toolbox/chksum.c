@@ -16,15 +16,13 @@
 
 #define _log_module_index 107
 
+#include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
-#include <sys/uio.h>
+#include <strings.h>
 
-#include "tbx/chksum.h"
-#include "tbx/transfer_buffer.h"
-// Private interface
 #include "chksum.h"
+#include "tbx/transfer_buffer.h"
 
 /*! @brief Given a binary string, return the hexidecimal representation
  *
@@ -51,8 +49,8 @@ int blank_tbx_chksum_set(tbx_chksum_t *cs);
 #  define COMMON_DIGEST_FOR_OPENSSL
 #  include <CommonCrypto/CommonDigest.h>
 #else
-#  include <openssl/sha.h>
 #  include <openssl/md5.h>
+#  include <openssl/sha.h>
 #endif
 
 char *_bin2hex =  "00" "01" "02" "03" "04" "05" "06" "07" "08" "09" "0a" "0b" "0c" "0d" "0e" "0f"

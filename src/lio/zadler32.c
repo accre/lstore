@@ -14,13 +14,12 @@
    limitations under the License.
 */
 
-#include <assert.h>
-#include <tbx/assert_result.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
-#include "zlib.h"
-#include <tbx/type_malloc.h>
 #include <tbx/string_token.h>
+#include <tbx/type_malloc.h>
+#include <zlib.h>
 
 //*************************************************************************
 // adler32_fd- Calculates the adler32 for the given FD

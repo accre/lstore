@@ -19,16 +19,21 @@
 
 #define _log_module_index 100
 
+#include <apr_errno.h>
 #include <apr_thread_mutex.h>
+#include <string.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+
+#include "log.h"
 #include "tbx/assert_result.h"
-#include "tbx/log.h"
 #include "tbx/atomic_counter.h"
 #include "tbx/iniparse.h"
+#include "tbx/toolbox_visibility.h"
 #include "tbx/type_malloc.h"
-#include "log.h"
 
 TBX_API int tbx_stack_get_info_level(tbx_log_fd_t *fd) {
     return fd->level;

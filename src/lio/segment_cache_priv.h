@@ -18,10 +18,10 @@
 // Generic internal structures for cache support
 //***********************************************************************
 
-#include "cache.h"
-
 #ifndef _SEGMENT_CACHE_PRIV_H_
 #define _SEGMENT_CACHE_PRIV_H_
+
+#include "cache.h"
 
 #ifdef __cplusplus
 extern "C" {

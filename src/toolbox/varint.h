@@ -17,6 +17,8 @@
 #ifndef _VARINT_H_
 #define _VARINT_H_
 
+#include "tbx/varint.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif

@@ -18,11 +18,15 @@
 #ifndef _IBP_TYPES_H_
 #define _IBP_TYPES_H_
 
+#include <time.h>
+#include <stdint.h>
+
+#include "ibp/ibp_visibility.h"
+
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-#include "ibp/ibp_visibility.h"
-
 /*********************************************************
  * Constant definition
  *********************************************************/

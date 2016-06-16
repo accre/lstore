@@ -17,14 +17,16 @@
 #define _log_module_index 112
 
 #include <assert.h>
+#include <math.h>
+#include <stdio.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include <strings.h>
-#include <stdio.h>
-#include <math.h>
+
 #include "tbx/fmttypes.h"
-#include "tbx/type_malloc.h"
 #include "tbx/string_token.h"
+#include "tbx/type_malloc.h"
 
 // Forward declarations
 unsigned int escape_count(char *special_chars, char escape_char, char *data);

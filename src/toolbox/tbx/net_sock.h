@@ -18,7 +18,7 @@
 #ifndef ACCRE_NET_SOCK_H_INCLUDED
 #define ACCRE_NET_SOCK_H_INCLUDED
 
-#include "tbx/toolbox_visibility.h"
+#include <tbx/toolbox_visibility.h>
 
 #ifdef __cplusplus
 extern "C" {

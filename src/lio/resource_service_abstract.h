@@ -24,8 +24,9 @@
 
 #include <apr_hash.h>
 #include <apr_thread_cond.h>
-#include "ex3_types.h"
+
 #include "data_service_abstract.h"
+#include "ex3_types.h"
 
 #ifdef __cplusplus
 extern "C" {

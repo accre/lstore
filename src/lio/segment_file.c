@@ -20,22 +20,29 @@
 
 #define _log_module_index 162
 
-#include <unistd.h>
-#include <sys/types.h>
+#include <gop/gop.h>
+#include <gop/host_portal.h>
+#include <gop/thread_pool.h>
 #include <libgen.h>
-#include "ex3_abstract.h"
-#include "ex3_system.h"
-#include <tbx/interval_skiplist.h>
-#include "ex3_compare.h"
+#include <stdio.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/uio.h>
+#include <tbx/append_printf.h>
+#include <tbx/atomic_counter.h>
+#include <tbx/iniparse.h>
 #include <tbx/log.h>
 #include <tbx/string_token.h>
-#include "segment_linear.h"
-#include <tbx/iniparse.h>
-#include <tbx/random.h>
-#include <tbx/append_printf.h>
+#include <tbx/transfer_buffer.h>
 #include <tbx/type_malloc.h>
+#include <unistd.h>
+
+#include "ex3_abstract.h"
+#include "ex3_header.h"
+#include "ex3_system.h"
 #include "segment_file.h"
-#include <tbx/atomic_counter.h>
+#include "service_manager.h"
 
 typedef struct {
     char *fname;

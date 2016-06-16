@@ -20,10 +20,11 @@
 #ifndef __CACHE_PRIV_H_
 #define __CACHE_PRIV_H_
 
+#include <tbx/atomic_counter.h>
 #include <tbx/list.h>
 #include <tbx/pigeon_coop.h>
+
 #include "ex3_abstract.h"
-#include <tbx/atomic_counter.h>
 
 #ifdef __cplusplus
 extern "C" {

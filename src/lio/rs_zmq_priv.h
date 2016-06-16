@@ -13,19 +13,20 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 */
-
+#error "Dead code"
 //***********************************************************************
 // ZMQ resource managment implementation
 //***********************************************************************
 #ifndef _RS_ZMQ_PRIV_H_
 #define _RS_ZMQ_PRIV_H_
 
+#include <gop/thread_pool.h>
+
+#include "data_service_abstract.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include "data_service_abstract.h"
-#include <gop/thread_pool.h>
 
 typedef struct rs_zmq_priv_t rs_zmq_priv_t;
 struct rs_zmq_priv_t {

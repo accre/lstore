@@ -20,8 +20,9 @@
 
 
 #include <tbx/list.h>
-#include "ex3_abstract.h"
+
 #include "cache.h"
+#include "ex3_abstract.h"
 #include "service_manager.h"
 
 #ifndef _EX3_SYSTEM_H_

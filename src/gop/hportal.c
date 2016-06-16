@@ -16,24 +16,35 @@
 
 #define _log_module_index 125
 
+#include <apr_errno.h>
+#include <apr_hash.h>
+#include <apr_pools.h>
+#include <apr_thread_cond.h>
+#include <apr_thread_mutex.h>
+#include <apr_thread_proc.h>
+#include <apr_time.h>
+#include <assert.h>
+#include <gop/portal.h>
+#include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <assert.h>
+#include <tbx/assert_result.h>
+#include <tbx/atomic_counter.h>
+#include <tbx/dns_cache.h>
+#include <tbx/fmttypes.h>
+#include <tbx/log.h>
+#include <tbx/network.h>
+#include <tbx/stack.h>
+#include <tbx/string_token.h>
+#include <tbx/type_malloc.h>
 #include <time.h>
 #include <unistd.h>
-#include <tbx/assert_result.h>
-#include <stdio.h>
-#include <apr_thread_proc.h>
-#include <assert.h>
-#include <tbx/assert_result.h>
-#include <tbx/type_malloc.h>
-#include <tbx/dns_cache.h>
+
+#include "gop.h"
+#include "gop/host_portal.h"
+#include "gop/types.h"
 #include "host_portal.h"
-#include <tbx/fmttypes.h>
-#include <tbx/network.h>
-#include <tbx/log.h>
-#include <tbx/string_token.h>
-#include <gop/portal.h>
 
 //***************************************************************************
 //  hportal_wait - Waits up to the specified time for the condition

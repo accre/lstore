@@ -19,12 +19,20 @@
 //***********************************************************************
 
 #define _log_module_index 213
-#include <tbx/string_token.h>
-#include "mq_helpers.h"
+#include <string.h>
+#include <stdint.h>
+#include <stdlib.h>
+#include <string.h>
 #include <tbx/atomic_counter.h>
+#include <tbx/log.h>
+#include <tbx/string_token.h>
 #include <tbx/type_malloc.h>
 #include <tbx/varint.h>
-#include <tbx/log.h>
+
+#include "gop/gop.h"
+#include "gop/types.h"
+#include "mq_helpers.h"
+#include "mq_portal.h"
 
 static tbx_atomic_unit32_t _id_counter = 0;
 

@@ -19,13 +19,32 @@
 
 #define _log_module_index 181
 
+#include <apr_errno.h>
+#include <apr_thread_cond.h>
+#include <apr_thread_proc.h>
+#include <apr_time.h>
+#include <gop/gop.h>
+#include <gop/opque.h>
+#include <gop/thread_pool.h>
+#include <gop/types.h>
+#include <stdlib.h>
+#include <tbx/apr_wrapper.h>
+#include <tbx/atomic_counter.h>
+#include <tbx/iniparse.h>
+#include <tbx/list.h>
+#include <tbx/log.h>
+#include <tbx/pigeon_coop.h>
+#include <tbx/skiplist.h>
+#include <tbx/stack.h>
+#include <tbx/type_malloc.h>
+
 #include "cache.h"
 #include "cache_amp_priv.h"
-#include <tbx/type_malloc.h>
-#include <tbx/log.h>
+#include "cache_priv.h"
+#include "data_service_abstract.h"
+#include "ex3_abstract.h"
 #include "ex3_compare.h"
-#include <gop/thread_pool.h>
-#include <tbx/apr_wrapper.h>
+#include "ex3_types.h"
 
 //******************
 cache_t *global_cache;

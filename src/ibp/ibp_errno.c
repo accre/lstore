@@ -22,10 +22,12 @@
 // *** Modified by Alan Tackett on 7/7/2008 for sync/async compatiblity
 
 #define _log_module_index 130
-#include "ibp_errno.h"
-#include <stdlib.h>
+
 #include <apr_pools.h>
 #include <apr_thread_proc.h>
+#include <stdlib.h>
+
+#include "ibp_errno.h"
 
 static apr_threadkey_t *errno_key;
 

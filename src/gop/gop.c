@@ -16,20 +16,19 @@
 
 #define _log_module_index 124
 
-#include <assert.h>
-#include <tbx/assert_result.h>
-#include <apr_thread_proc.h>
-#include <apr_thread_mutex.h>
 #include <apr_thread_cond.h>
-#include <stdlib.h>
-#include <string.h>
-#include <tbx/type_malloc.h>
-#include <tbx/log.h>
-#include "opque.h"
-#include "gop.h"
 #include <gop/portal.h>
+#include <stdlib.h>
 #include <tbx/atomic_counter.h>
-#include <tbx/apr_wrapper.h>
+#include <tbx/log.h>
+#include <tbx/pigeon_coop.h>
+#include <tbx/stack.h>
+#include <tbx/type_malloc.h>
+
+#include "callback.h"
+#include "gop.h"
+#include "gop/opque.h"
+#include "gop/types.h"
 
 //** Defined in opque.c
 void _opque_start_execution(opque_t *que);

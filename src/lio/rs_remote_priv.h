@@ -18,14 +18,15 @@
 // Remote client resource managment implementation
 //***********************************************************************
 
-#include <tbx/list.h>
-#include "data_service_abstract.h"
-#include <gop/opque.h>
-#include "service_manager.h"
-#include <gop/mq_portal.h>
-
 #ifndef _RS_REMOTE_PRIV_H_
 #define _RS_REMOTE_PRIV_H_
+
+#include <gop/mq_portal.h>
+#include <gop/opque.h>
+#include <tbx/list.h>
+
+#include "data_service_abstract.h"
+#include "service_manager.h"
 
 #ifdef __cplusplus
 extern "C" {

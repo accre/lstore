@@ -20,16 +20,15 @@
 
 #define _log_module_index 158
 
-#include <assert.h>
-#include <tbx/assert_result.h>
 #include <stdlib.h>
+#include <string.h>
+#include <tbx/append_printf.h>
+#include <tbx/log.h>
+#include <tbx/string_token.h>
+#include <tbx/type_malloc.h>
+
 #include "resource_service_abstract.h"
 #include "rs_query_base.h"
-#include <tbx/string_token.h>
-#include <tbx/log.h>
-#include <tbx/type_malloc.h>
-#include <tbx/append_printf.h>
-#include "service_manager.h"
 
 //***********************************************************************
 //  rs_query_count - Returns info about the number of query elements

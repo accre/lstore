@@ -17,12 +17,12 @@
 // Generic thread pool implementation designed to woth with opque
 //*************************************************************
 
-#include "gop/gop_visibility.h"
-#include "gop/thread_pool.h"
-#include "gop.h"
-#include "host_portal.h"
 #include <tbx/atomic_counter.h>
 #include <apr_thread_pool.h>
+
+#include "gop.h"
+#include "gop/visibility.h"
+#include "gop/tp.h"
 
 #ifndef __THREAD_POOL_H_
 #define __THREAD_POOL_H_

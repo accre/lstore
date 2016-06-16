@@ -18,10 +18,14 @@
 // Jerasure segment support
 //***********************************************************************
 
-#include <gop/opque.h>
 
 #ifndef _SEGMENT_JERASURE_H_
 #define _SEGMENT_JERASURE_H_
+
+#include <gop/opque.h>
+
+#include "ex3_abstract.h"
+#include "ex3_types.h"
 
 #ifdef __cplusplus
 extern "C" {

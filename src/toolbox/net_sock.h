@@ -22,13 +22,15 @@
 
 #define N_BUFSIZE  1024
 
-//#include <sys/select.h>
-//#include <sys/time.h>
-#include "tbx/toolbox_visibility.h"
 #include <apr_network_io.h>
 #include <apr_poll.h>
-#include "tbx/network.h"
+#include <apr_pools.h>
+#include <apr_thread_mutex.h>
+#include <stddef.h>
+
 #include "network.h"
+#include "tbx/net_sock.h"
+#include "tbx/transfer_buffer.h"
 
 struct tbx_net_sock_t {  //** Contains the private raw socket network fields
     apr_socket_t  *fd;

@@ -22,8 +22,14 @@
 #ifndef _DS_IBP_H_
 #define _DS_IBP_H_
 
+#include <ibp.h>
+#include <ibp_types.h>
+#include <tbx/iniparse.h>
+#include <tbx/network.h>
+
 #include "data_service_abstract.h"
-#include "ibp.h"
+
+struct ds_ibp_attr_t;
 
 #ifdef __cplusplus
 extern "C" {

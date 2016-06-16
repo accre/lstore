@@ -20,17 +20,24 @@
 // ibp_copyperf - Benchmarks IBP depot-to-depot copies,
 //*****************************************************
 
+#include <apr_time.h>
+#include <gop/gop.h>
+#include <gop/opque.h>
+#include <gop/types.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
-#include <signal.h>
-#include <apr_time.h>
+#include <string.h>
+#include <tbx/chksum.h>
 #include <tbx/fmttypes.h>
-#include <tbx/network.h>
 #include <tbx/log.h>
-#include "ibp.h"
-#include "iovec_sync.h"
+#include <tbx/network.h>
+#include <tbx/transfer_buffer.h>
+#include <time.h>
+
+#include "ibp_op.h"
+#include "ibp_protocol.h"
+#include "ibp_types.h"
 #include "io_wrapper.h"
 
 int a_duration=900;    //** Default allocation duration

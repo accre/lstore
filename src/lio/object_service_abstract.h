@@ -17,18 +17,18 @@
 //***********************************************************************
 // Generic object service
 //***********************************************************************
-
-#include "lio/lio_visibility.h"
-#include <sys/types.h>
-#include <regex.h>
-#include "ex3_types.h"
-#include <gop/opque.h>
-#include <gop/thread_pool.h>
-#include "authn_abstract.h"
-#include "service_manager.h"
-
 #ifndef _OBJECT_SERVICE_H_
 #define _OBJECT_SERVICE_H_
+
+#include <gop/opque.h>
+#include <gop/thread_pool.h>
+#include <regex.h>
+#include <sys/types.h>
+
+#include "authn_abstract.h"
+#include "ex3_types.h"
+#include "lio/lio_visibility.h"
+#include "service_manager.h"
 
 #ifdef __cplusplus
 extern "C" {

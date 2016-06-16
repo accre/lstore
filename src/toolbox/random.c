@@ -19,12 +19,15 @@
 
 #define _log_module_index 110
 
-#include "tbx/random.h"
-#include <apr_thread_mutex.h>
+
 #include <apr_pools.h>
+#include <apr_thread_mutex.h>
 #include <openssl/rand.h>
-#include <assert.h>
+#include <stddef.h>
+#include <stdint.h>
+
 #include "tbx/assert_result.h"
+#include "tbx/random.h"
 
 // Forward declarations
 void random_seed(const void *buf, int nbytes);

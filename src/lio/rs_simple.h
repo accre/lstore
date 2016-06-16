@@ -18,11 +18,13 @@
 // Simple resource managment implementation
 //***********************************************************************
 
-#include <tbx/list.h>
-#include "resource_service_abstract.h"
-
 #ifndef _RS_SIMPLE_H_
 #define _RS_SIMPLE_H_
+
+#include <tbx/iniparse.h>
+#include <tbx/list.h>
+
+#include "resource_service_abstract.h"
 
 #ifdef __cplusplus
 extern "C" {

@@ -2,7 +2,7 @@
  * zhelpers.h
  * Helper header files for example applications.
  */
-
+#error "dead code"
 // include a bunch of headers that we will need in the examples
 #include "zhelpers.h"
 

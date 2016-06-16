@@ -21,6 +21,8 @@
 #ifndef _SEGMENT_LUN_PRIV_H_
 #define _SEGMENT_LUN_PRIV_H_
 
+#include <tbx/interval_skiplist.h>
+
 #include "blacklist.h"
 
 #ifdef __cplusplus

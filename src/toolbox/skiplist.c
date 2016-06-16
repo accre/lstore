@@ -16,13 +16,16 @@
 
 #define _log_module_index 104
 
-#include <stdlib.h>
+#include <apr_errno.h>
 #include <assert.h>
-#include "tbx/assert_result.h"
-#include "tbx/log.h"
-#include "tbx/skiplist.h"
-#include "tbx/type_malloc.h"
+#include <string.h>
+#include <stdlib.h>
+#include <string.h>
+
 #include "skiplist.h"
+#include "tbx/log.h"
+#include "tbx/tbx_decl.h"
+#include "tbx/type_malloc.h"
 
 // Forward declarations
 void destroy_skiplist_node(tbx_sl_t *sl, tbx_sl_node_t *sn);

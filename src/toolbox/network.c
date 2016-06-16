@@ -19,25 +19,23 @@
 
 #define _log_module_index 121
 
-#include <string.h>
-#include <stdlib.h>
-#include <time.h>
-#include <assert.h>
-#include "tbx/assert_result.h"
-#include <signal.h>
-#include <errno.h>
-#include <fcntl.h>
+#include <apr_errno.h>
 #include <apr_time.h>
-#include "tbx/atomic_counter.h"
-#include "tbx/network.h"
-#include "tbx/log.h"
-#include "tbx/dns_cache.h"
-#include "tbx/fmttypes.h"
-#include "tbx/net_sock.h"
-#include "tbx/transfer_buffer.h"
+#include <assert.h>
+#include <errno.h>
+#include <string.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
 // Private implementation
 #include "debug.h"
 #include "network.h"
+#include "tbx/assert_result.h"
+#include "tbx/atomic_counter.h"
+#include "tbx/fmttypes.h"
+#include "tbx/log.h"
+#include "tbx/network.h"
 #include "transfer_buffer.h"
 
 // Accessors

@@ -21,9 +21,10 @@
 #ifndef _DATA_SERVICE_H_
 #define _DATA_SERVICE_H_
 
-#include "ex3_types.h"
-#include <tbx/transfer_buffer.h>
 #include <gop/opque.h>
+#include <tbx/transfer_buffer.h>
+
+#include "ex3_types.h"
 
 #ifdef __cplusplus
 extern "C" {

@@ -14,10 +14,12 @@
    limitations under the License.
 */
 
-#include <stdio.h>
-#include <stdlib.h>
 #include <inttypes.h>
 #include <string.h>
+#include <stdio.h>
+#include <stdint.h>
+#include <stdlib.h>
+
 #include "tbx/varint.h"
 
 #define I64T "%" PRId64    //int64_t

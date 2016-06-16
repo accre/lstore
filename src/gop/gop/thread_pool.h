@@ -21,11 +21,11 @@ limitations under the License.
 #ifndef ACCRE_GOP_THREAD_POOL_H_INCLUDED
 #define ACCRE_GOP_THREAD_POOL_H_INCLUDED
 
-#include "gop/gop_visibility.h"
+#include <apr_thread_pool.h>
 #include <gop/gop.h>
+#include <gop/gop_visibility.h>
 #include <gop/types.h>
 #include <tbx/atomic_counter.h>
-#include <apr_thread_pool.h>
 
 #ifdef __cplusplus
 extern "C" {

@@ -20,11 +20,10 @@
 
 #define _log_module_index 166
 
-#include "ex3_abstract.h"
+#include <tbx/atomic_counter.h>
 #include <tbx/list.h>
-#include <tbx/random.h>
-#include <tbx/type_malloc.h>
-#include <tbx/log.h>
+
+#include "ex3_abstract.h"
 
 
 //***********************************************************************

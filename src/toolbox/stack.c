@@ -19,8 +19,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "tbx/stack.h"
+
 #include "stack.h"
+#include "tbx/tbx_decl.h"
 
 #define MOVE_NOTHING 0
 #define MOVE_TOP     1

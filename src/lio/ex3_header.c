@@ -16,12 +16,13 @@
 
 #define _log_module_index 149
 
+#include <assert.h>
 #include <string.h>
 #include <stdlib.h>
-#include "ex3_header.h"
-#include <assert.h>
-#include <tbx/assert_result.h>
+#include <string.h>
 #include <tbx/list.h>
+
+#include "ex3_header.h"
 
 //*************************************************************************
 // ex_header_init - Initializes an existing exnode header

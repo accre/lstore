@@ -16,15 +16,33 @@
 
 #define _log_module_index 151
 
+#include <assert.h>
+#include <gop/gop.h>
+#include <gop/opque.h>
+#include <gop/thread_pool.h>
+#include <gop/types.h>
+#include <stdio.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
-#include <tbx/list.h>
-#include "exnode.h"
-#include <tbx/type_malloc.h>
-#include <tbx/log.h>
+#include <string.h>
 #include <tbx/append_printf.h>
+#include <tbx/atomic_counter.h>
+#include <tbx/iniparse.h>
+#include <tbx/list.h>
+#include <tbx/log.h>
+#include <tbx/skiplist.h>
 #include <tbx/string_token.h>
+#include <tbx/type_malloc.h>
+
+#include "data_block.h"
+#include "data_service_abstract.h"
+#include "ex3_abstract.h"
 #include "ex3_compare.h"
-#include "ex3_system.h"
+#include "ex3_header.h"
+#include "ex3_types.h"
+#include "exnode.h"
+#include "service_manager.h"
 
 typedef struct {
     exnode_t *src_ex;

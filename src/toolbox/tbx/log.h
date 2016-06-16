@@ -19,7 +19,7 @@
 #define ACCRE_LOG_H_INCLUDED
 
 #include <stdio.h>
-#include "tbx/toolbox_visibility.h"
+#include <tbx/toolbox_visibility.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -49,6 +49,7 @@ TBX_API int tbx_stack_get_info_level(tbx_log_fd_t *fd);
 #define log_printf(n, ...) tbx_mlog_printf(0, _log_module_index, n, __func__, _mlog_file_table[_log_module_index], __LINE__, __VA_ARGS__)
 #define info_printf(ifd, n, ...) tbx_minfo_printf(ifd, _log_module_index, n, __func__, _mlog_file_table[_log_module_index], __LINE__, __VA_ARGS__)
 #define slog_printf(n, ...) tbx_mlog_printf(1, _log_module_index, n, __func__, _mlog_file_table[_log_module_index], __LINE__, __VA_ARGS__)
+
 #ifndef _log_module_index
 #define _log_module_index 0
 #endif

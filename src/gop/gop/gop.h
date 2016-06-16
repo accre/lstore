@@ -22,9 +22,9 @@ limitations under the License.
 #define ACCRE_GOP_GOP_H_INCLUDED
 
 #include <apr_time.h>
+#include <gop/callback.h>
 #include <gop/gop_visibility.h>
 #include <gop/types.h>
-#include <gop/callback.h>
 #include <tbx/atomic_counter.h>
 #include <tbx/network.h>
 #include <tbx/stack.h>

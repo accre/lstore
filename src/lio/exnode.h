@@ -18,27 +18,21 @@
 // Base exnode include file
 //***********************************************************************
 
+#include "authn_fake.h"
+#include "ds_ibp.h"
 #include "ex3_abstract.h"
 #include "ex3_header.h"
 #include "ex3_system.h"
-
-#include "segment_log.h"
-#include "segment_jerasure.h"
-#include "segment_lun.h"
-#include "segment_linear.h"
-#include "segment_file.h"
-#include "segment_cache.h"
-
-#include "ds_ibp.h"
-
-#include "rs_simple.h"
-#include "rs_remote.h"
-#include "rs_zmq.h"
-
 #include "os_file.h"
 #include "os_remote.h"
 #include "os_timecache.h"
-
 #include "osaz_fake.h"
-#include "authn_fake.h"
+#include "rs_remote.h"
+#include "rs_simple.h"
+#include "segment_cache.h"
+#include "segment_file.h"
+#include "segment_jerasure.h"
+#include "segment_linear.h"
+#include "segment_log.h"
+#include "segment_lun.h"
 

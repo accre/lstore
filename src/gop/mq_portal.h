@@ -13,24 +13,37 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 */
-#include "gop/mq_portal.h"
 //*************************************************************
 //  Generic MQ wrapper for GOP support
 //*************************************************************
 
-#include "gop/gop_visibility.h"
-#include "host_portal.h"
-#include <tbx/atomic_counter.h>
-#include "thread_pool.h"
-#include <tbx/iniparse.h>
-#include <zmq.h>
-#include <czmq.h>
-#include <apr_thread_pool.h>
-#include <apr_thread_proc.h>
-#include <gop/portal.h>
-
 #ifndef __MQ_PORTAL_H_
 #define __MQ_PORTAL_H_
+
+#include <apr_hash.h>
+#include <apr_pools.h>
+#include <apr_thread_cond.h>
+#include <apr_thread_mutex.h>
+#include <apr_thread_pool.h>
+#include <apr_thread_proc.h>
+#include <apr_time.h>
+#include <czmq.h>
+#include <tbx/assert_result.h>
+#include <tbx/atomic_counter.h>
+#include <tbx/iniparse.h>
+#include <tbx/stack.h>
+#include <unistd.h>
+#include <zmq.h>
+
+#include "gop/gop.h"
+#include "gop/gop_visibility.h"
+#include "gop/mq_portal.h"
+#include "gop/portal.h"
+#include "gop/thread_pool.h"
+#include "gop/types.h"
+#include "host_portal.h"
+#include "thread_pool.h"
+
 
 #ifdef __cplusplus
 extern "C" {

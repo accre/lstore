@@ -21,14 +21,15 @@
 #define _log_module_index 162
 
 #include <libgen.h>
-#include "ex3_abstract.h"
-#include "ex3_system.h"
-#include <tbx/interval_skiplist.h>
-#include "ex3_compare.h"
-#include <tbx/log.h>
-#include <tbx/iniparse.h>
-#include "segment_file.h"
 #include <tbx/atomic_counter.h>
+#include <tbx/iniparse.h>
+#include <tbx/interval_skiplist.h>
+#include <tbx/log.h>
+
+#include "ex3_abstract.h"
+#include "ex3_compare.h"
+#include "ex3_system.h"
+#include "segment_file.h"
 
 #define SEGMENT_TYPE_DYNFILE "dynfile"
 

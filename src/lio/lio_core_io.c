@@ -16,13 +16,31 @@
 
 #define _log_module_index 189
 
+#include <apr_time.h>
+#include <errno.h>
+#include <gop/gop.h>
+#include <gop/opque.h>
+#include <gop/thread_pool.h>
+#include <gop/types.h>
 #include <stdio.h>
-#include <tbx/type_malloc.h>
-#include "lio.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/stat.h>
+#include <tbx/atomic_counter.h>
+#include <tbx/list.h>
 #include <tbx/log.h>
-#include <tbx/string_token.h>
-#include "zlib.h"
+#include <tbx/stack.h>
+#include <tbx/transfer_buffer.h>
+#include <tbx/type_malloc.h>
+#include <zlib.h>
+
+#include "authn_abstract.h"
+#include "ex3_abstract.h"
 #include "ex3_compare.h"
+#include "ex3_types.h"
+#include "lio_abstract.h"
+#include "object_service_abstract.h"
 
 //***********************************************************************
 // Core LIO I/O functionality

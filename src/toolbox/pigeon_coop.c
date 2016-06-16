@@ -19,18 +19,15 @@
 
 #define _log_module_index 113
 
-#include <stdio.h>
-#include <stdint.h>
-#include <stdlib.h>
 #include <assert.h>
-#include "tbx/assert_result.h"
-#include "tbx/log.h"
-#include "tbx/pigeon_hole.h"
-#include "tbx/pigeon_coop.h"
-#include "tbx/type_malloc.h"
-#include "pigeon_hole.h"
-#include "pigeon_coop.h"
+#include <stdio.h>
+#include <stdlib.h>
 
+#include "pigeon_coop.h"
+#include "pigeon_hole.h"
+#include "tbx/log.h"
+#include "tbx/toolbox_visibility.h"
+#include "tbx/type_malloc.h"
 
 //***************************************************************************
 // pigeon_coop_hole_data - Returns a pointer to the data

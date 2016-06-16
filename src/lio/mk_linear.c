@@ -16,10 +16,18 @@
 
 #define _log_module_index 173
 
-#include "exnode.h"
-#include <tbx/log.h>
+#include <gop/gop.h>
+#include <gop/types.h>
+#include <stdio.h>
 #include <stdlib.h>
-#include "lio.h"
+#include <string.h>
+
+#include "ex3_abstract.h"
+#include "ex3_types.h"
+#include "lio_abstract.h"
+#include "resource_service_abstract.h"
+#include "segment_linear.h"
+#include "service_manager.h"
 
 //*************************************************************************
 //*************************************************************************

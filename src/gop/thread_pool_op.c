@@ -16,18 +16,20 @@
 
 #define _log_module_index 123
 
-#include <stdlib.h>
+#include <apr_pools.h>
+#include <apr_thread_mutex.h>
+#include <apr_thread_proc.h>
 #include <stdio.h>
 #include <string.h>
-#include <assert.h>
-#include <tbx/assert_result.h>
-#include "thread_pool.h"
-#include <tbx/fmttypes.h>
-#include <tbx/network.h>
-#include <tbx/log.h>
-#include <tbx/type_malloc.h>
-#include <tbx/append_printf.h>
 #include <tbx/atomic_counter.h>
+#include <tbx/log.h>
+#include <tbx/network.h>
+#include <tbx/stack.h>
+#include <tbx/type_malloc.h>
+
+#include "gop.h"
+#include "gop/thread_pool.h"
+#include "gop/types.h"
 
 #define TP_MAX_DEPTH 100
 

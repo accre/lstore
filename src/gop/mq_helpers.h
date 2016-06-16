@@ -13,16 +13,16 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 */
-#include "gop/mq_helpers.h"
 //***********************************************************************
 // Provides MQ helper routines
 //***********************************************************************
 
-#include "gop/gop_visibility.h"
-#include "mq_portal.h"
-
 #ifndef _MQ_HELPERS_H_
 #define _MQ_HELPERS_H_
+
+#include "gop/gop_visibility.h"
+#include "gop/mq_helpers.h"
+#include "mq_portal.h"
 
 #ifdef __cplusplus
 extern "C" {

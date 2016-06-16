@@ -17,16 +17,14 @@
 #define _log_module_index 105
 
 #include <assert.h>
+#include <string.h>
 #include <stdbool.h>
 #include <stdlib.h>
-#include <string.h>
-#include "tbx/assert_result.h"
-#include "tbx/log.h"
-#include "tbx/skiplist.h"
-#include "tbx/interval_skiplist.h"
-#include "tbx/type_malloc.h"
-#include "skiplist.h"
+
 #include "interval_skiplist.h"
+#include "skiplist.h"
+#include "tbx/log.h"
+#include "tbx/type_malloc.h"
 
 
 //*********************************************************************************

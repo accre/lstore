@@ -19,8 +19,8 @@
 #define ACCRE_STACK_H_INCLUDED
 
 #include <stddef.h>
-#include "tbx/toolbox_visibility.h"
-#include "tbx/tbx_decl.h"
+#include <tbx/toolbox_visibility.h>
+#include <tbx/tbx_decl.h>
 
 #ifdef __cplusplus
 extern "C" {

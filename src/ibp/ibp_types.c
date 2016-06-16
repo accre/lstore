@@ -16,13 +16,16 @@
 
 #define _log_module_index 134
 
-#include <stdlib.h>
+#include <assert.h>
 #include <stdio.h>
 #include <string.h>
-#include <assert.h>
-#include <tbx/assert_result.h>
-#include "ibp.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <tbx/log.h>
+#include <time.h>
+
+#include "ibp_types.h"
 
 //*****************************************************************
 //  new_ibp_depot -Creates a new ibp_depot_t structure

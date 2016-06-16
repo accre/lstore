@@ -14,9 +14,13 @@
    limitations under the License.
 */
 
-#define _log_module_index 148
+#include <stddef.h>
 
-#include "ex3_abstract.h"
+#include "data_service_abstract.h"
+#include "object_service_abstract.h"
+#include "resource_service_abstract.h"
+
+#define _log_module_index 148
 
 data_service_fn_t *_ds_default = NULL;
 resource_service_fn_t *_rs_default = NULL;

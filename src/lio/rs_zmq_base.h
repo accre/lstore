@@ -17,6 +17,7 @@
 //***********************************************************************
 // ZMQ resource managment implementation
 //***********************************************************************
+#error "Dead code"
 
 #ifndef _RS_ZMQ_BASE_H_
 #define _RS_ZMQ_BASE_H_

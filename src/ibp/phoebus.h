@@ -18,10 +18,11 @@
 #ifndef __PHOEBUS_H
 #define __PHOEBUS_H
 
-#include "ibp/ibp_visibility.h"
 #include <stdio.h>
-#include "config.h"
 #include <tbx/iniparse.h>
+
+#include "config.h"
+#include "ibp/ibp_visibility.h"
 
 #ifdef _ENABLE_PHOEBUS
 #include "liblsl_client.h"

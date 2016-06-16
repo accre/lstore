@@ -2,7 +2,7 @@
  * zhelpers.h
  * Helper header files for example applications.
  */
-
+#error "dead code"
 #ifndef _ZHELPERS_H_INCLUDED
 #define _ZHELPERS_H_INCLUDED
 

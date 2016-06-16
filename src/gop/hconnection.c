@@ -16,23 +16,28 @@
 
 #define _log_module_index 126
 
+#include <apr_errno.h>
+#include <apr_pools.h>
+#include <apr_thread_cond.h>
+#include <apr_thread_mutex.h>
+#include <apr_thread_proc.h>
+#include <apr_time.h>
+#include <gop/portal.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <assert.h>
-#include <tbx/assert_result.h>
-#include <apr_pools.h>
-#include <apr_thread_proc.h>
-#include <apr_thread_mutex.h>
-#include <apr_thread_cond.h>
-#include <apr_time.h>
-#include "gop.h"
-#include <gop/portal.h>
-#include "host_portal.h"
+#include <tbx/apr_wrapper.h>
+#include <tbx/atomic_counter.h>
+#include <tbx/fmttypes.h>
 #include <tbx/log.h>
 #include <tbx/network.h>
-#include <tbx/atomic_counter.h>
+#include <tbx/stack.h>
 #include <tbx/type_malloc.h>
-#include <tbx/apr_wrapper.h>
+
+#include "gop.h"
+#include "gop/host_portal.h"
+#include "gop/types.h"
+#include "host_portal.h"
 
 //*************************************************************************
 // new_host_connection - Allocates space for a new connection

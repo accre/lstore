@@ -17,14 +17,14 @@
 //***********************************************************************
 // OS file header file
 //***********************************************************************
+#ifndef _OS_FILE_PRIV_H_
+#define _OS_FILE_PRIV_H_
 
-#include "object_service_abstract.h"
-#include "authn_abstract.h"
 #include <tbx/chksum.h>
 #include <openssl/md5.h>
 
-#ifndef _OS_FILE_PRIV_H_
-#define _OS_FILE_PRIV_H_
+#include "authn_abstract.h"
+#include "object_service_abstract.h"
 
 #ifdef __cplusplus
 extern "C" {

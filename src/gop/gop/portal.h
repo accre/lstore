@@ -21,12 +21,14 @@
 #ifndef ACCRE_GOP_PORTAL_H_INCLUDED
 #define ACCRE_GOP_PORTAL_H_INCLUDED
 
-#include "gop/gop_visibility.h"
 #include <apr_hash.h>
 #include <apr_thread_cond.h>
 #include <apr_thread_mutex.h>
 #include <apr_thread_proc.h>
 #include <assert.h>
+#include <gop/gop.h>
+#include <gop/gop_visibility.h>
+#include <gop/types.h>
 #include <stdlib.h>
 #include <string.h>
 #include <tbx/apr_wrapper.h>
@@ -37,8 +39,6 @@
 #include <tbx/pigeon_coop.h>
 #include <tbx/stack.h>
 #include <tbx/type_malloc.h>
-#include <gop/types.h>
-#include <gop/gop.h>
 
 #ifdef __cplusplus
 extern "C" {

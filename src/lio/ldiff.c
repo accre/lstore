@@ -16,11 +16,14 @@
 
 
 #include <assert.h>
-#include <tbx/assert_result.h>
 #include <stdio.h>
-#include <tbx/type_malloc.h>
+#include <stdlib.h>
+#include <string.h>
+#include <stdint.h>
+#include <tbx/assert_result.h>
 #include <tbx/fmttypes.h>
 #include <tbx/string_token.h>
+#include <tbx/type_malloc.h>
 
 //*************************************************************************
 // compare_buffers - Compares the byte ranges.  Single byte matches are suppressed

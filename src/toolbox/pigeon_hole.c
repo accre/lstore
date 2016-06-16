@@ -19,15 +19,13 @@
 
 #define _log_module_index 114
 
-#include <stdio.h>
-#include <stdint.h>
-#include <stdlib.h>
 #include <assert.h>
-#include "tbx/assert_result.h"
-#include "tbx/log.h"
-#include "tbx/pigeon_hole.h"
+#include <string.h>
+#include <stdio.h>
+#include <stdlib.h>
+
 #include "pigeon_hole.h"
-#include "pigeon_coop.h"
+#include "tbx/log.h"
 
 //***************************************************************************
 // pigeon_hole_iterator_init - Initializes an iterator

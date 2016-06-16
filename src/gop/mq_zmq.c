@@ -20,12 +20,23 @@
 //  extension of the 0MQ socket types
 //*************************************************************
 
-#include "mq_portal.h"
-#include <tbx/type_malloc.h>
-#include <tbx/log.h>
-#include "apr_signal.h"
-#include <tbx/random.h>
+#include <apr_signal.h>
+#include <assert.h>
+#include <czmq.h>
+#include <stdarg.h>
+#include <stdio.h>
 #include <stdlib.h>
+#include <sys/errno.h>
+#include <sys/signal.h>
+#include <tbx/fmttypes.h>
+#include <tbx/log.h>
+#include <tbx/random.h>
+#include <tbx/stack.h>
+#include <tbx/type_malloc.h>
+#include <unistd.h>
+#include <zmq.h>
+
+#include "mq_portal.h"
 
 //*************************************************************
 //   Native routines

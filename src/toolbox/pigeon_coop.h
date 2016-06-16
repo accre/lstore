@@ -19,10 +19,10 @@
 #ifndef __PIGEON_COOP_H_
 #define __PIGEON_COOP_H_
 
-#include "tbx/toolbox_visibility.h"
-#include <apr_thread_mutex.h>
 #include <apr_pools.h>
-#include "tbx/pigeon_hole.h"
+#include <apr_thread_mutex.h>
+
+#include "pigeon_hole.h"
 #include "tbx/pigeon_coop.h"
 
 #ifdef __cplusplus

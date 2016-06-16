@@ -16,12 +16,18 @@
 
 #define _log_module_index 164
 
+#include <assert.h>
+#include <gop/opque.h>
+#include <gop/types.h>
 #include <math.h>
-#include "trace.h"
+#include <stdlib.h>
+#include <string.h>
 #include <tbx/iniparse.h>
-#include <tbx/type_malloc.h>
 #include <tbx/log.h>
 #include <tbx/string_token.h>
+#include <tbx/type_malloc.h>
+
+#include "trace.h"
 
 //**********************************************************************
 // trace_rw_dist_print - Prints the R/W distribution table

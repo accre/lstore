@@ -20,9 +20,10 @@
 #ifndef __PIGEON_HOLE_H_
 #define __PIGEON_HOLE_H_
 
-#include "tbx/toolbox_visibility.h"
-#include <apr_thread_mutex.h>
 #include <apr_pools.h>
+#include <apr_thread_mutex.h>
+
+#include "tbx/pigeon_hole.h"
 
 #ifdef __cplusplus
 extern "C" {

@@ -13,6 +13,7 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 */
+#error "Dead code"
 
 #include <string.h>
 #include "exnode.h"

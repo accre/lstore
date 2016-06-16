@@ -21,8 +21,9 @@
 #ifndef _PACKER_H_
 #define _PACKER_H_
 
-#include "tbx/toolbox_visibility.h"
-#include "zlib.h"
+#include <zlib.h>
+
+#include "tbx/packer.h"
 
 #ifdef __cplusplus
 id (*write_resized)(tbx_pack_t *pack, unsigned char *buffer, unsigned int bufsize);

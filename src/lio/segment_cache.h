@@ -18,10 +18,14 @@
 // Generic cache segment support
 //***********************************************************************
 
-#include "cache.h"
-
 #ifndef _SEGMENT_CACHE_H_
 #define _SEGMENT_CACHE_H_
+
+#include "cache.h"
+#include "cache_priv.h"
+#include "ex3_abstract.h"
+#include "ex3_types.h"
+#include "lio/lio_visibility.h"
 
 #ifdef __cplusplus
 extern "C" {

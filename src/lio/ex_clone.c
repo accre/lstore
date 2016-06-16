@@ -14,16 +14,17 @@
    limitations under the License.
 */
 
-#define _log_module_index 169
+#include <gop/gop.h>
+#include <gop/types.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
-#include <assert.h>
-#include <tbx/assert_result.h>
-#include "exnode.h"
-#include <tbx/log.h>
-#include <tbx/iniparse.h>
-#include <tbx/type_malloc.h>
-#include <gop/thread_pool.h>
-#include "lio.h"
+#include "ex3_abstract.h"
+#include "ex3_types.h"
+#include "lio_abstract.h"
+
+#define _log_module_index 169
 
 
 //*************************************************************************

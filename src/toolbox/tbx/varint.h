@@ -19,7 +19,7 @@
 #define ACCRE_VARINT_H_INCLUDED
 
 #include <inttypes.h>
-#include "tbx/toolbox_visibility.h"
+#include <tbx/toolbox_visibility.h>
 
 #ifdef __cplusplus
 extern "C" {

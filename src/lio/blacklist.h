@@ -21,11 +21,12 @@
 #ifndef _BLACKLIST_H_
 #define _BLACKLIST_H_
 
+#include "ex3_types.h"
+
+#include <apr_hash.h>
 #include <apr_pools.h>
 #include <apr_thread_mutex.h>
-#include <apr_hash.h>
 #include <apr_time.h>
-#include "ex3_types.h"
 
 #ifdef __cplusplus
 extern "C" {

@@ -20,24 +20,39 @@
 
 #define _log_module_index 215
 
-#include "ex3_system.h"
-#include "object_service_abstract.h"
-#include <tbx/type_malloc.h>
+#include <apr_errno.h>
+#include <apr_file_io.h>
+#include <apr_pools.h>
+#include <apr_thread_cond.h>
+#include <apr_thread_mutex.h>
+#include <apr_thread_proc.h>
+#include <assert.h>
+#include <gop/gop.h>
+#include <gop/mq_portal.h>
+#include <gop/types.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/unistd.h>
+#include <tbx/apr_wrapper.h>
+#include <tbx/assert_result.h>
+#include <tbx/fmttypes.h>
+#include <tbx/iniparse.h>
 #include <tbx/log.h>
-#include <tbx/atomic_counter.h>
-#include <gop/thread_pool.h>
+#include <tbx/random.h>
+#include <tbx/type_malloc.h>
+#include <unistd.h>
+
+#include "data_service_abstract.h"
+#include "ex3_system.h"
 #include "resource_service_abstract.h"
-#include "rs_simple.h"
+#include "rs_query_base.h"
 #include "rs_remote.h"
 #include "rs_remote_priv.h"
-#include <tbx/append_printf.h>
-#include <tbx/fmttypes.h>
-#include <tbx/type_malloc.h>
-#include <tbx/random.h>
-#include "rs_query_base.h"
-#include <gop/mq_portal.h>
-#include <tbx/apr_wrapper.h>
-#include <unistd.h>
+#include "rs_simple.h"
+#include "service_manager.h"
 
 typedef struct {
     uint64_t id;

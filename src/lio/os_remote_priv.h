@@ -18,10 +18,11 @@
 // OS Remote Server private header file
 //***********************************************************************
 
-#include "object_service_abstract.h"
-#include "authn_abstract.h"
-#include <gop/mq_portal.h>
 #include <gop/mq_ongoing.h>
+#include <gop/mq_portal.h>
+
+#include "authn_abstract.h"
+#include "object_service_abstract.h"
 
 #ifndef _OS_REMOTE_PRIV_H_
 #define _OS_REMOTE_PRIV_H_

@@ -20,10 +20,13 @@
 
 #define _log_module_index 191
 
+#include <apr.h>
 #include <apr_strings.h>
-#include "service_manager.h"
-#include <tbx/type_malloc.h>
+#include <stdlib.h>
 #include <tbx/log.h>
+#include <tbx/type_malloc.h>
+
+#include "service_manager.h"
 
 //***********************************************************************
 //  remove_service - Removes a service

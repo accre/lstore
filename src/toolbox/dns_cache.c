@@ -22,20 +22,21 @@
 
 #define _log_module_index 115
 
+#include <apr_errno.h>
+#include <apr_hash.h>
+#include <apr_network_io.h>
+#include <apr_pools.h>
+#include <apr_thread_mutex.h>
+#include <apr_time.h>
 #include <assert.h>
-#include "tbx/assert_result.h"
-#include <limits.h>
-#include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
-#include <unistd.h>
-#include <apr_hash.h>
-#include <apr_time.h>
-#include <apr_network_io.h>
+#include <stdlib.h>
 
-#include "tbx/log.h"
-#include "tbx/fmttypes.h"
+#include "tbx/assert_result.h"
 #include "tbx/dns_cache.h"
+#include "tbx/fmttypes.h"
+#include "tbx/log.h"
 #include "tbx/string_token.h"
 
 #define BUF_SIZE 128

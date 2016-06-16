@@ -17,6 +17,10 @@
 #ifndef _TRANSFER_BUFFER_H_
 #define _TRANSFER_BUFFER_H_
 
+#include <stddef.h>
+
+#include "tbx/transfer_buffer.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif

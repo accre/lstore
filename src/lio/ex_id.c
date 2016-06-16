@@ -20,9 +20,9 @@
 
 #define _log_module_index 150
 
-#include "ex3_types.h"
 #include <tbx/random.h>
-#include <tbx/log.h>
+
+#include "ex3_types.h"
 
 void generate_ex_id(ex_id_t *id)
 {

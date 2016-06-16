@@ -14,14 +14,27 @@
    limitations under the License.
 */
 
-#include <tbx/log.h>
-#include <tbx/assert_result.h>
-#include "mq_portal.h"
-#include <tbx/type_malloc.h>
-#include "apr_base64.h"
+#include <apr.h>
+#include <apr_base64.h>
+#include <apr_errno.h>
+#include <assert.h>
+#include <czmq.h>
+#include <stdint.h>
+#include <stdlib.h>
+#include <string.h>
+#include <errno.h>
 #include <tbx/apr_wrapper.h>
-#include <tbx/random.h>
+#include <tbx/assert_result.h>
+#include <tbx/atomic_counter.h>
 #include <tbx/fmttypes.h>
+#include <tbx/iniparse.h>
+#include <tbx/log.h>
+#include <tbx/type_malloc.h>
+
+#include "gop.h"
+#include "gop/portal.h"
+#include "mq_portal.h"
+#include "thread_pool.h"
 
 //** Poll index for connection monitoring
 #define PI_CONN 0   //** Actual connection

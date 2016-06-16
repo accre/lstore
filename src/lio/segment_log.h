@@ -14,14 +14,18 @@
    limitations under the License.
 */
 
-//***********************************************************************
-// Log structured segment support
-//***********************************************************************
-#include "lio/lio_visibility.h"
-#include <gop/opque.h>
 
 #ifndef _SEGMENT_LOG_H_
 #define _SEGMENT_LOG_H_
+
+#include <gop/opque.h>
+#include <gop/types.h>
+
+#include "data_service_abstract.h"
+#include "ex3_abstract.h"
+#include "ex3_types.h"
+#include "lio/lio_visibility.h"
+#include "service_manager.h"
 
 #ifdef __cplusplus
 extern "C" {

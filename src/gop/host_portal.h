@@ -13,22 +13,25 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 */
-#include "gop/host_portal.h"
+
 #ifndef __HOST_PORTAL_H_
 #define __HOST_PORTAL_H_
-#include "gop/gop_visibility.h"
-#include <stdlib.h>
-#include <stdint.h>
-#include <string.h>
+
 #include <apr_hash.h>
 #include <apr_pools.h>
-#include <apr_time.h>
-#include <apr_thread_proc.h>
-#include <apr_thread_mutex.h>
 #include <apr_thread_cond.h>
+#include <apr_thread_mutex.h>
+#include <apr_thread_proc.h>
+#include <apr_time.h>
+#include <stdint.h>
+#include <stdlib.h>
+#include <string.h>
 #include <tbx/fmttypes.h>
 #include <tbx/network.h>
+
 #include "gop.h"
+#include "gop/host_portal.h"
+#include "gop/gop_visibility.h"
 
 #ifdef __cplusplus
 extern "C" {

@@ -14,11 +14,23 @@
    limitations under the License.
 */
 
-#include "exnode.h"
-#include "object_service_abstract.h"
-
 #ifndef _TRACE_H_
 #define _TRACE_H_
+
+#include <stdio.h>
+
+#include "data_service_abstract.h"
+#include "ex3_abstract.h"
+#include "ex3_types.h"
+#include "exnode.h"
+#include "object_service_abstract.h"
+#include "service_manager.h"
+
+struct trace_file_t;
+struct trace_op_t;
+struct trace_stats_t;
+struct trace_t;
+
 
 #define CMD_READ  0
 #define CMD_WRITE 1

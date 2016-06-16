@@ -17,22 +17,21 @@
 //***********************************************************************
 // Exnode3 abstract class
 //***********************************************************************
-
+#include <gop/opque.h>
+#include <gop/thread_pool.h>
+#include <tbx/atomic_counter.h>
+#include <tbx/iniparse.h>
 #include <tbx/list.h>
+#include <tbx/log.h>
+#include <tbx/transfer_buffer.h>
+
+#include "data_block.h"
+#include "data_service_abstract.h"
 #include "ex3_header.h"
 #include "ex3_types.h"
-#include "data_service_abstract.h"
-#include "service_manager.h"
-#include "data_block.h"
-#include "resource_service_abstract.h"
 #include "object_service_abstract.h"
-#include <tbx/atomic_counter.h>
-#include <gop/opque.h>
-//#include "exnode3.pb-c.h"
-#include <gop/thread_pool.h>
-#include <tbx/transfer_buffer.h>
-#include <tbx/log.h>
-#include <tbx/iniparse.h>
+#include "resource_service_abstract.h"
+#include "service_manager.h"
 
 #ifndef _EX3_ABSTRACT_H_
 #define _EX3_ABSTRACT_H_

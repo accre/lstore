@@ -20,23 +20,46 @@
 
 #define _log_module_index 214
 
-#include <tbx/assert_result.h>
+#include <apr.h>
+#include <apr_errno.h>
+#include <apr_hash.h>
+#include <apr_pools.h>
 #include <apr_signal.h>
+#include <apr_thread_mutex.h>
+#include <apr_time.h>
+#include <assert.h>
+#include <gop/gop.h>
+#include <gop/mq_helpers.h>
+#include <gop/mq_ongoing.h>
+#include <gop/mq_portal.h>
+#include <gop/mq_stream.h>
+#include <gop/types.h>
+#include <inttypes.h>
+#include <signal.h>
+#include <stdarg.h>
+#include <stdint.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <string.h>
+#include <tbx/assert_result.h>
+#include <tbx/fmttypes.h>
+#include <tbx/iniparse.h>
+#include <tbx/log.h>
+#include <tbx/stack.h>
+#include <tbx/type_malloc.h>
+#include <tbx/varint.h>
+
+#include "authn_abstract.h"
+#include "authn_fake.h"
 #include "ex3_system.h"
+#include "ex3_types.h"
 #include "object_service_abstract.h"
 #include "os_file.h"
-#include <tbx/type_malloc.h>
-#include <tbx/log.h>
-#include <tbx/atomic_counter.h>
-#include <gop/thread_pool.h>
 #include "os_remote.h"
 #include "os_remote_priv.h"
-#include <tbx/append_printf.h>
-#include <gop/mq_helpers.h>
-#include <tbx/varint.h>
-#include <tbx/string_token.h>
-#include <gop/mq_stream.h>
-#include "authn_fake.h"
+#include "service_manager.h"
 
 #define FIXME_SIZE 1024*1024
 

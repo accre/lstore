@@ -20,7 +20,10 @@
 
 
 #include <tbx/list.h>
+
 #include "ex3_types.h"
+
+struct ex_header_t;
 
 #ifndef _EX3_HEADER_H_
 #define _EX3_HEADER_H_

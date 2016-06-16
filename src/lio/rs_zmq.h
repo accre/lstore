@@ -13,16 +13,18 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 */
-
+#error "Dead Code"
 //***********************************************************************
 // ZMQ resource managment implementation
 //***********************************************************************
 
-#include <tbx/list.h>
-#include "resource_service_abstract.h"
 
 #ifndef _RS_ZMQ_H_
 #define _RS_ZMQ_H_
+
+#include <tbx/list.h>
+
+#include "resource_service_abstract.h"
 
 #ifdef __cplusplus
 extern "C" {

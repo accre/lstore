@@ -17,11 +17,14 @@
 #ifndef __IO_WRAPPER_H_
 #define __IO_WRAPPER_H_
 
+#include <gop/opque.h>
+#include <gop/types.h>
+
+#include "ibp/ibp_visibility.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-#include "ibp/ibp_visibility.h"
-#include <gop/opque.h>
 
 IBP_API void ibp_io_mode_set(int sync_transfer, int print_progress, int nthreads);
 IBP_API void ibp_io_start(opque_t *q);

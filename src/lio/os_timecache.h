@@ -18,10 +18,13 @@
 // OS Remote Server/Client header file
 //***********************************************************************
 
-#include "object_service_abstract.h"
-
 #ifndef _OS_TIMECACHE_H_
 #define _OS_TIMECACHE_H_
+
+#include <tbx/iniparse.h>
+
+#include "object_service_abstract.h"
+#include "service_manager.h"
 
 #ifdef __cplusplus
 extern "C" {

@@ -20,11 +20,35 @@
 
 #define _log_module_index 152
 
-#include "service_manager.h"
-#include "exnode.h"
-#include <tbx/list.h>
-#include <tbx/type_malloc.h>
+#include <gop/thread_pool.h>
+#include <stddef.h>
 #include <tbx/random.h>
+
+#include "authn_abstract.h"
+#include "authn_fake.h"
+#include "cache.h"
+#include "cache_amp.h"
+#include "cache_priv.h"
+#include "cache_round_robin.h"
+#include "data_service_abstract.h"
+#include "ds_ibp.h"
+#include "ex3_abstract.h"
+#include "ex3_system.h"
+#include "object_service_abstract.h"
+#include "os_file.h"
+#include "os_remote.h"
+#include "os_timecache.h"
+#include "osaz_fake.h"
+#include "resource_service_abstract.h"
+#include "rs_remote.h"
+#include "rs_simple.h"
+#include "segment_cache.h"
+#include "segment_file.h"
+#include "segment_jerasure.h"
+#include "segment_linear.h"
+#include "segment_log.h"
+#include "segment_lun.h"
+#include "service_manager.h"
 
 service_manager_t *lio_exnode_service_set = NULL;
 

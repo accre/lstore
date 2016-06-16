@@ -13,17 +13,24 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 */
-#include "gop/mq_ongoing.h"
 //***********************************************************************
 // MQ ongoing task management header
 //***********************************************************************
 
-#include "gop/gop_visibility.h"
-#include "gop.h"
-#include "mq_portal.h"
-
 #ifndef _MQ_ONGOING_H_
 #define _MQ_ONGOING_H_
+
+#include <apr_hash.h>
+#include <apr_pools.h>
+#include <apr_thread_cond.h>
+#include <apr_thread_mutex.h>
+#include <apr_thread_proc.h>
+#include <apr_time.h>
+
+#include "gop.h"
+#include "gop/gop_visibility.h"
+#include "gop/mq_ongoing.h"
+#include "mq_portal.h"
 
 #ifdef __cplusplus
 extern "C" {

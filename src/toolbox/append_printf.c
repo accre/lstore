@@ -16,8 +16,9 @@
 
 #define _log_module_index 102
 
+#include <stdio.h>
 #include <stdarg.h>
-#include "tbx/log.h"
+
 #include "tbx/append_printf.h"
 
 //***************************************************************************

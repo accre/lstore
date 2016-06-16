@@ -20,12 +20,13 @@
 #ifndef __INTERVAL_SKIPLIST_H_
 #define __INTERVAL_SKIPLIST_H_
 
+#include "tbx/interval_skiplist.h"
+#include "tbx/skiplist.h"
+#include "tbx/toolbox_visibility.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include "tbx/toolbox_visibility.h"
-#include "tbx/skiplist.h"
 
 struct tbx_isl_data_t {
     tbx_isl_data_t *data;

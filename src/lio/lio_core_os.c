@@ -16,11 +16,28 @@
 
 #define _log_module_index 189
 
-#include <tbx/type_malloc.h>
-#include "lio.h"
+#include <errno.h>
+#include <gop/gop.h>
+#include <gop/opque.h>
+#include <gop/thread_pool.h>
+#include <gop/types.h>
+#include <stdio.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <string.h>
+#include <sys/stat.h>
+#include <tbx/fmttypes.h>
 #include <tbx/log.h>
-#include <tbx/string_token.h>
+#include <tbx/skiplist.h>
+#include <tbx/type_malloc.h>
 #include <unistd.h>
+
+#include "authn_abstract.h"
+#include "ex3_abstract.h"
+#include "ex3_types.h"
+#include "lio_abstract.h"
+#include "object_service_abstract.h"
 
 #define _n_fsck_keys 4
 static char *_fsck_keys[] = { "system.owner", "system.inode", "system.exnode", "system.exnode.size" };

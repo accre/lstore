@@ -1,7 +1,9 @@
+#include <apr_errno.h>
 #include <apr_general.h>
 #include <assert.h>
 #include <tbx/constructor_wrapper.h>
-#include "opque.h"
+
+#include "gop/opque.h"
 
 #ifdef ACCRE_CONSTRUCTOR_PREPRAGMA_ARGS
 #pragma ACCRE_CONSTRUCTOR_PREPRAGMA_ARGS(gop_construct_fn)

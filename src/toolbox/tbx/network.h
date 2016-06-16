@@ -20,9 +20,9 @@
 
 #include <apr_time.h>
 #include <stddef.h>
-#include "tbx/chksum.h"
-#include "tbx/toolbox_visibility.h"
-#include "tbx/transfer_buffer.h"
+#include <tbx/chksum.h>
+#include <tbx/toolbox_visibility.h>
+#include <tbx/transfer_buffer.h>
 
 #ifdef __cplusplus
 extern "C" {

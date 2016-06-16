@@ -18,10 +18,16 @@
 // Data block definition
 //***********************************************************************
 
-#include "ex3_types.h"
-#include "data_service_abstract.h"
 #include <tbx/atomic_counter.h>
 #include <tbx/stack.h>
+
+#include "data_service_abstract.h"
+#include "ex3_types.h"
+#include "service_manager.h"
+
+struct data_block_attr_t;
+struct data_block_t;
+struct data_block_warm_t;
 
 #ifndef _DATA_BLOCK_H_
 #define _DATA_BLOCK_H_
