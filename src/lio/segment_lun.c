@@ -31,6 +31,7 @@
 #include <gop/opque.h>
 #include <gop/tp.h>
 #include <gop/types.h>
+#include <ibp/ibp_op.h>
 #include <stdio.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -58,7 +59,6 @@
 #include "ex3_compare.h"
 #include "ex3_header.h"
 #include "ex3_system.h"
-#include "ibp_op.h"
 #include "resource_service_abstract.h"
 #include "rs_query_base.h"
 #include "segment_lun.h"

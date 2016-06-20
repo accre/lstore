@@ -45,7 +45,7 @@
 
 #include "ibp_misc.h"
 #include "ibp_op.h"
-#include "ibp_protocol.h"
+#include "ibp/ibp_protocol.h"
 #include "ibp_types.h"
 
 extern apr_thread_once_t *_err_once;

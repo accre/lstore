@@ -47,12 +47,13 @@ set(LSTORE_PROJECT_OBJS
     iovec_sync.c
 )
 
-set(LSTORE_PROJECT_INCLUDES_OLD
-    ibp_errno.h ibp.h ibp_misc.h ibp_op.h
-    ibp_protocol.h ibp_types.h iovec_sync.h io_wrapper.h
-)
+set(LSTORE_PROJECT_INCLUDES_OLD)
 set(LSTORE_PROJECT_INCLUDES_NAMESPACE ibp)
 set(LSTORE_PROJECT_INCLUDES
+        ibp/ibp.h
+        ibp/ibp_op.h
+        ibp/ibp_protocol.h
+        ibp/ibp_types.h
         ibp/ibp_visibility.h
     )
 

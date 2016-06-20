@@ -36,15 +36,15 @@
 #include <time.h>
 
 #include "ibp_op.h"
-#include "ibp_protocol.h"
+#include "ibp/ibp_protocol.h"
 #include "ibp_types.h"
 #include "io_wrapper.h"
 
 int a_duration=900;    //** Default allocation duration
 
-IBP_DptInfo depotinfo;
-struct ibp_depot *src_depot_list;
-struct ibp_depot *dest_depot_list;
+ibp_depotinfo_t depotinfo;
+ibp_depot_t *src_depot_list;
+ibp_depot_t *dest_depot_list;
 int src_n_depots;
 int dest_n_depots;
 int ibp_timeout;

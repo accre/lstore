@@ -32,6 +32,9 @@
 #include <gop/gop.h>
 #include <gop/opque.h>
 #include <gop/types.h>
+#include <ibp/ibp_op.h>
+#include <ibp/ibp_protocol.h>
+#include <ibp/ibp_types.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -50,9 +53,6 @@
 #include "ds_ibp.h"
 #include "ds_ibp_priv.h"
 #include "ex3_types.h"
-#include "ibp_op.h"
-#include "ibp_protocol.h"
-#include "ibp_types.h"
 
 int _ds_ibp_do_init = 1;
 

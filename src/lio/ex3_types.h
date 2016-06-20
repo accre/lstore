@@ -21,9 +21,8 @@
 #ifndef _EX3_TYPES_H_
 #define _EX3_TYPES_H_
 
+#include <ibp/ibp.h>
 #include <inttypes.h>
-
-#include "ibp.h"
 
 #ifdef __cplusplus
 extern "C" {

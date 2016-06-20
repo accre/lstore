@@ -22,8 +22,7 @@
 #ifndef _DS_IBP_H_
 #define _DS_IBP_H_
 
-#include <ibp.h>
-#include <ibp_types.h>
+#include <ibp/ibp.h>
 #include <tbx/iniparse.h>
 #include <tbx/network.h>
 

@@ -26,8 +26,8 @@
  *
  */
 
-#ifndef _IBPPROTOCOL_H
-#define _IBPPROTOCOL_H
+#ifndef ACCRE_IBP_IBP_PROTOCOL_H_INCLUDED
+#define ACCRE_IBP_IBP_PROTOCOL_H_INCLUDED
 
 #define   IBPv031               0
 #define   IBPv040               1
@@ -233,13 +233,6 @@
 #define ST_ALLOC_HARD_SZ     "AH"
 #define ST_DURATION          "DR"
 #define ST_RS_END            "RE"
-
-#if  0
-#define ST_HARDSIZE          "HS"
-#define ST_FREE_HARDSIZE     "FHS"
-#define ST_SOFTSIZE          "SS"
-#define ST_FREE_SOFTSIZE     "FSS"
-#endif
 
 /* ----  for Data Movers ---- */
 #define DM_CLIENT  34

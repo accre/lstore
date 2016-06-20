@@ -22,7 +22,7 @@
 #include <tbx/log.h>
 #include <tbx/stack.h>
 
-#include "ibp_protocol.h"
+#include "ibp/ibp_protocol.h"
 
 //=============================================================
 

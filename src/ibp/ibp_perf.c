@@ -41,14 +41,14 @@
 #include <time.h>
 
 #include "ibp_op.h"
-#include "ibp_protocol.h"
+#include "ibp/ibp_protocol.h"
 #include "ibp_types.h"
 #include "io_wrapper.h"
 
 int a_duration=900;   //** Default duration
 
-IBP_DptInfo depotinfo;
-struct ibp_depot *depot_list;
+ibp_depotinfo_t depotinfo;
+ibp_depot_t *depot_list;
 int n_depots;
 int ibp_timeout;
 int sync_transfer;

@@ -24,6 +24,7 @@
 #include <gop/opque.h>
 #include <gop/tp.h>
 #include <gop/types.h>
+#include <ibp_op.h>
 #include <stdio.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -39,7 +40,6 @@
 #include "data_service_abstract.h"
 #include "ds_ibp_priv.h"
 #include "ex3_types.h"
-#include "ibp_op.h"
 #include "lio_abstract.h"
 #include "object_service_abstract.h"
 #include "resource_service_abstract.h"
