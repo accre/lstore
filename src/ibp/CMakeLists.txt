@@ -6,7 +6,7 @@ endif()
 
 # Name this project
 set(LSTORE_PROJECT_NAME "ibp")
-project(${LSTORE_PROJECT_NAME} C CXX)
+project(${LSTORE_PROJECT_NAME} C)
 
 # Include modules
 if(NOT USE_SUPERBUILD)
@@ -24,9 +24,9 @@ if(NOT USE_SUPERBUILD)
     include_directories(${TOOLBOX_INCLUDE_DIR} ${GOP_INCLUDE_DIR})
     list(APPEND LIBS ${TOOLBOX_LIBRARY} ${GOP_LIBRARY})
 endif()
-set(LSTORE_LIBS ${APR_LIBRARY}
-                    toolbox
-                    gop
+set(LSTORE_LIBS toolbox
+                gop
+                ${APR_LIBRARY}
     )
 set(LSTORE_INCLUDE_SYSTEM ${APR_INCLUDE_DIR})
 set(LSTORE_INCLUDE_PUBLIC ${PROJECT_SOURCE_DIR})
@@ -37,12 +37,18 @@ set(LSTORE_INCLUDE_PUBLIC ${PROJECT_SOURCE_DIR})
 # common objects
 set(LSTORE_PROJECT_OBJS
     constructor.c
-    ibp_config.c ibp_errno.c ibp_misc.c ibp_op.c ibp_op_cmd.c ibp_types.c
-    io_wrapper.c iovec_sync.c
+    ibp_config.c
+    ibp_errno.c
+    ibp_misc.c
+    ibp_op.c
+    ibp_op_cmd.c
+    ibp_types.c
+    io_wrapper.c
+    iovec_sync.c
 )
 
 set(LSTORE_PROJECT_INCLUDES_OLD
-    ibp_ClientLib.h ibp_errno.h ibp.h ibp_misc.h ibp_nfu.h ibp_op.h ibp_os.h
+    ibp_errno.h ibp.h ibp_misc.h ibp_op.h
     ibp_protocol.h ibp_types.h iovec_sync.h io_wrapper.h
 )
 set(LSTORE_PROJECT_INCLUDES_NAMESPACE ibp)
@@ -51,7 +57,8 @@ set(LSTORE_PROJECT_INCLUDES
     )
 
 set(LSTORE_PROJECT_EXECUTABLES
-    ibp_perf ibp_copyperf
+    ibp_copyperf
+    ibp_perf
 )
 
 # Common functionality is stored here

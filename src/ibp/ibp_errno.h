@@ -25,12 +25,10 @@
  * Definition of errno handling function and/or variable
  */
 
-
 # ifndef _IBP_ERRNO_H
 # define _IBP_ERRNO_H
 
 #include "ibp/ibp_visibility.h"
-#include "ibp_os.h"
 
 # ifdef __cplusplus
 extern "C" {
