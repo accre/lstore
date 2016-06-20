@@ -43,14 +43,7 @@ extern "C" {
 /*
 * definition of errno code
 */
-# define PTHREAD_SUPPORTED 1
-#if PTHREAD_SUPPORTED
 IBP_API extern int *_IBP_errno();
-#define IBP_errno ( *_IBP_errno())
-#else
-extern int	IBP_errno;
-#endif
-
 
 /***********************************************************
  * Subroutines definition
