@@ -32,39 +32,37 @@ extern "C" {
 // Typedefs
 typedef int64_t ibp_off_t;  //** Base IBP offset/size data type
 typedef char ibp_cap_t;
-typedef struct IBP_set_of_caps ibp_set_of_caps;
-typedef struct IBP_set_of_caps ibp_capset_t;
-typedef char* IBP_cap;
-typedef struct IBP_attributes ibp_attributes;
+typedef char* ibp_cap_ptr_t;
+typedef struct ibp_capset_t ibp_capset_t;
+typedef struct ibp_attributes_t ibp_attributes_t;
 typedef struct ibp_alias_capstatus_t ibp_alias_capstatus_t;
-typedef struct IBP_attributes ibp_attributes_t;
-typedef struct IBP_CapStatus ibp_capstatus_t;
+typedef struct ibp_capstatus_t ibp_capstatus_t;
 typedef struct ibp_connect_context_t ibp_connect_context_t;
-typedef struct IBP_depot ibp_depot_t;
-typedef struct IBP_DptInfo ibp_depotinfo_t;
+typedef struct ibp_depot_t ibp_depot_t;
+typedef struct ibp_depotinfo_t ibp_depotinfo_t;
 typedef struct ibp_ridlist_t ibp_ridlist_t;
 typedef struct ibp_tbx_iovec_t ibp_tbx_iovec_t;
-typedef struct IBP_timer ibp_timer_t;
-typedef struct rid_t rid_t;
+typedef struct ibp_timer_t ibp_timer_t;
+typedef struct ibp_rid_t ibp_rid_t;
 
 // Functions
-IBP_API void ibp_attributes_get(ibp_attributes_t *attr, time_t *duration, int *reliability, int *type);
+IBP_API void ibp_attributes_t_get(ibp_attributes_t *attr, time_t *duration, int *reliability, int *type);
 IBP_API void ibp_cap_destroy(ibp_cap_t *cap);
 IBP_API void ibp_cap_destroyset(ibp_capset_t *caps);
 IBP_API ibp_cap_t *ibp_cap_get(ibp_capset_t *caps, int ctype);
 IBP_API void ibp_cap_getstatus(ibp_capstatus_t *cs, int *readcount, int *writecount,int *current_size, int *max_size, ibp_attributes_t *attrib);
 IBP_API ibp_capset_t *ibp_capset_new();
-IBP_API char *ibp_rid2str(rid_t rid, char *buffer);
-IBP_API int ibp_rid_compare(rid_t rid1, rid_t rid2);
-IBP_API void ibp_rid_empty(rid_t *rid);
-IBP_API int ibp_rid_is_empty(rid_t rid);
+IBP_API char *ibp_rid2str(ibp_rid_t rid, char *buffer);
+IBP_API int ibp_rid_compare(ibp_rid_t rid1, ibp_rid_t rid2);
+IBP_API void ibp_rid_empty(ibp_rid_t *rid);
+IBP_API int ibp_rid_is_empty(ibp_rid_t rid);
 IBP_API void ibp_ridlist_destroy(ibp_ridlist_t *rlist);
-IBP_API rid_t ibp_ridlist_element_get(ibp_ridlist_t *rlist, int index);
+IBP_API ibp_rid_t ibp_ridlist_element_get(ibp_ridlist_t *rlist, int index);
 IBP_API int ibp_ridlist_size_get(ibp_ridlist_t *rlist);
-IBP_API rid_t ibp_str2rid(char *rid_str);
-IBP_API void set_ibp_attributes(ibp_attributes_t *attr, time_t duration, int reliability, int type);
-IBP_API void set_ibp_depot(ibp_depot_t *d, char *host, int port, rid_t rid);
-IBP_API void set_ibp_timer(ibp_timer_t *t, int client_timeout, int server_timeout);
+IBP_API ibp_rid_t ibp_str2rid(char *rid_str);
+IBP_API void ibp_set_attributes(ibp_attributes_t *attr, time_t duration, int reliability, int type);
+IBP_API void ibp_set_depot(ibp_depot_t *d, char *host, int port, ibp_rid_t rid);
+IBP_API void ibp_set_timer(ibp_timer_t *t, int client_timeout, int server_timeout);
 
 // Preprocessor constants
 #define IBP_MAX_HOSTNAME_LEN  256
@@ -76,7 +74,7 @@ IBP_API void set_ibp_timer(ibp_timer_t *t, int client_timeout, int server_timeou
 
 
 // Exported types. To be obscured.
-struct IBP_DptInfo {
+struct ibp_depotinfo_t {
     unsigned long int   StableStor;  /* size of the stable storage (in MByte) */
     unsigned long int   StableStorUsed;  /* size of the used stable storage (in MByte) */
     unsigned long int   VolStor;  /* size of the volatile storage (in MByte) */
@@ -101,39 +99,39 @@ struct IBP_DptInfo {
     int                 *NFU;           /* NFU ops */
 };
 
-struct IBP_attributes {
+struct ibp_attributes_t {
     int     duration;     /* lifetime of the capability */
     int     reliability;  /* reliability type of the capability */
     int     type;         /* capability storage type */
 };
 
 
-struct rid_t {
+struct ibp_rid_t {
     char name[RID_LEN];
 };
 
-struct IBP_depot {
+struct ibp_depot_t {
     char  host[IBP_MAX_HOSTNAME_LEN];  /* host name of the depot */
     int   port;        /* port number */
-    rid_t   rid;         /* resource ID */
+    ibp_rid_t   rid;         /* resource ID */
 };
 
-struct IBP_set_of_caps {
-    IBP_cap  readCap;  /* read capability */
-    IBP_cap writeCap;  /* write capability */
-    IBP_cap manageCap;  /* manage capability */
+struct ibp_capset_t {
+    ibp_cap_ptr_t readCap;  /* read capability */
+    ibp_cap_ptr_t writeCap;  /* write capability */
+    ibp_cap_ptr_t manageCap;  /* manage capability */
 };
 
-struct IBP_CapStatus {
+struct ibp_capstatus_t {
     int  readRefCount;  /* number of the capability's read reference */
     int  writeRefCount;  /* number of the capability's write reference */
     ibp_off_t  currentSize;  /* size of data in the capability */
     ibp_off_t  maxSize;  /* max size of the capability */
-    struct IBP_attributes  attrib;    /* attributes of the capability */
+    struct ibp_attributes_t  attrib;    /* attributes of the capability */
     char  *passwd;  /* passwd of the depot */
 };
 
-struct IBP_timer {
+struct ibp_timer_t {
     int  ClientTimeout;  /* Timeout on client side */
     int  ServerSync;  /* Timeout on server(depot) side */
 };

@@ -669,7 +669,7 @@ void blacktbx_list_destroy(blacklist_t *bl)
 {
     apr_ssize_t hlen;
     apr_hash_index_t *hi;
-    blacklist_rid_t *r;
+    blacklist_ibp_rid_t *r;
 
     //** Destroy all the blacklist RIDs
     for (hi=apr_hash_first(NULL, bl->table); hi != NULL; hi = apr_hash_next(hi)) {

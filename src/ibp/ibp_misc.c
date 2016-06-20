@@ -36,7 +36,7 @@
 //    based on the IC connection mode
 //*************************************************************
 
-void ibppc_form_host(ibp_context_t *ic, char *hoststr, int n_host, char *host, rid_t rid)
+void ibppc_form_host(ibp_context_t *ic, char *hoststr, int n_host, char *host, ibp_rid_t rid)
 {
     int i, j, n;
     char rr[16];

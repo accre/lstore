@@ -48,10 +48,10 @@ void destroy_ibp_depot(ibp_depot_t *d)
 
 
 //*****************************************************************
-//  set_ibp_depot - Initializes an ibp_depot_struct
+//  ibp_set_depot - Initializes an ibp_depot_struct
 //*****************************************************************
 
-void set_ibp_depot(ibp_depot_t *d, char *host, int port, rid_t rid)
+void ibp_set_depot(ibp_depot_t *d, char *host, int port, ibp_rid_t rid)
 {
     strncpy(d->host, host, sizeof(d->host));
     d->host[sizeof(d->host)-1]='\0';
@@ -82,10 +82,10 @@ void destroy_ibp_attributes(ibp_attributes_t *attr)
 }
 
 //*****************************************************************
-// set_ibp_attributes - Initializes the data structure
+// ibp_set_attributes - Initializes the data structure
 //*****************************************************************
 
-void set_ibp_attributes(ibp_attributes_t *attr, time_t duration, int reliability, int type)
+void ibp_set_attributes(ibp_attributes_t *attr, time_t duration, int reliability, int type)
 {
     attr->duration = duration;
     attr->reliability = reliability;
@@ -132,17 +132,17 @@ void destroy_ibp_timer(ibp_timer_t *t)
 }
 
 //*****************************************************************
-// set_ibp_timer - Initializes the data structure
+// ibp_set_timer - Initializes the data structure
 //*****************************************************************
 
-void set_ibp_timer(ibp_timer_t *t, int client_timeout, int server_timeout)
+void ibp_set_timer(ibp_timer_t *t, int client_timeout, int server_timeout)
 {
     t->ClientTimeout = client_timeout;
     t->ServerSync = server_timeout;
 }
 
 //*****************************************************************
-// set_ibp_timer - Retreives the timer information
+// ibp_set_timer - Retreives the timer information
 //*****************************************************************
 
 void get_ibp_timer(ibp_timer_t *t, int *client_timeout, int *server_timeout)
@@ -307,7 +307,7 @@ ibp_capstatus_t *new_ibp_capstatus()
     cs->writeRefCount = -1;
     cs->currentSize = -1;
     cs->maxSize = 0;
-    set_ibp_attributes(&(cs->attrib), 0, -1, -1);
+    ibp_set_attributes(&(cs->attrib), 0, -1, -1);
 
     return(cs);
 }
@@ -356,7 +356,7 @@ void ibp_cap_getstatus(ibp_capstatus_t *cs, int *readcount, int *writecount,
 
 void ridlist_init(ibp_ridlist_t *rlist, int size)
 {
-    rlist->rl = (rid_t *)malloc(sizeof(rid_t)*size);
+    rlist->rl = (ibp_rid_t *)malloc(sizeof(ibp_rid_t)*size);
     assert(rlist->rl != NULL);
 
     rlist->n = size;
@@ -378,11 +378,11 @@ int ibp_ridlist_size_get(ibp_ridlist_t *rlist)
 
 //*****************************************************************
 
-rid_t ibp_ridlist_element_get(ibp_ridlist_t *rlist, int index)
+ibp_rid_t ibp_ridlist_element_get(ibp_ridlist_t *rlist, int index)
 {
     if (index >= rlist->n) {
         log_printf(0, "ibp_ridlist_element_get:  Invalid index!  size=%d index=%d\n", rlist->n, index);
-        rid_t rid;
+        ibp_rid_t rid;
         ibp_rid_empty(&rid);
         return(rid);
     }
@@ -392,7 +392,7 @@ rid_t ibp_ridlist_element_get(ibp_ridlist_t *rlist, int index)
 
 //*****************************************************************
 
-char *ibp_rid2str(rid_t rid, char *buffer)
+char *ibp_rid2str(ibp_rid_t rid, char *buffer)
 {
     strncpy(buffer, rid.name, RID_LEN);
 
@@ -401,9 +401,9 @@ char *ibp_rid2str(rid_t rid, char *buffer)
 
 //*****************************************************************
 
-rid_t ibp_str2rid(char *rid_str)
+ibp_rid_t ibp_str2rid(char *rid_str)
 {
-    rid_t rid;
+    ibp_rid_t rid;
     strncpy(rid.name, rid_str, RID_LEN);
 
     return(rid);
@@ -411,14 +411,14 @@ rid_t ibp_str2rid(char *rid_str)
 
 //*****************************************************************
 
-void ibp_rid_empty(rid_t *rid)
+void ibp_rid_empty(ibp_rid_t *rid)
 {
     sprintf(rid->name, "0");
 }
 
 //*****************************************************************
 
-int ibp_rid_is_empty(rid_t rid)
+int ibp_rid_is_empty(ibp_rid_t rid)
 {
     if (strcmp(rid.name, "0") == 0) {
         return(1);
@@ -429,7 +429,7 @@ int ibp_rid_is_empty(rid_t rid)
 
 //*****************************************************************
 
-int ibp_rid_compare(rid_t rid1, rid_t rid2)
+int ibp_rid_compare(ibp_rid_t rid1, ibp_rid_t rid2)
 {
     return(strncmp(rid1.name, rid2.name, RID_LEN));
 }

@@ -49,7 +49,7 @@ extern "C" {
 
 struct ibp_ridlist_t {  //** RID list structure
     int n;
-    rid_t *rl;
+    ibp_rid_t *rl;
 };
 
 struct ibp_alias_capstatus_t {  //** Alias cap status

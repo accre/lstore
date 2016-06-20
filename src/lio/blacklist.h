@@ -32,8 +32,8 @@
 extern "C" {
 #endif
 
-typedef struct blacklist_rid_t blacklist_rid_t;
-struct blacklist_rid_t {
+typedef struct blacklist_ibp_rid_t blacklist_ibp_rid_t;
+struct blacklist_ibp_rid_t {
     char *rid;
     apr_time_t recheck_time;
 };

@@ -1429,7 +1429,7 @@ op_status_t seglun_rw_op(segment_t *seg, data_attr_t *da, segment_rw_hints_t *rw
 {
     seglun_priv_t *s = (seglun_priv_t *)seg->priv;
     blacklist_t *bl = s->bl;
-    blacklist_rid_t *bl_rid;
+    blacklist_ibp_rid_t *bl_rid;
     op_status_t status;
     op_status_t blacklist_status = {OP_STATE_FAILURE, -1234};
     opque_t *q;
@@ -1630,7 +1630,7 @@ op_status_t seglun_rw_op(segment_t *seg, data_attr_t *da, segment_rw_hints_t *rw
                     dt /= exec_time;
                     log_printf(5, "dt=%lf min_bw=" XOT "\n", dt, bl->min_bandwidth);
                     if (dt < bl->min_bandwidth) { // ** Blacklist it
-                        tbx_type_malloc(bl_rid, blacklist_rid_t, 1);
+                        tbx_type_malloc(bl_rid, blacklist_ibp_rid_t, 1);
                         bl_rid->rid = strdup(rwb_table[gop_get_myid(gop)].block->data->rid_key);
                         bl_rid->recheck_time = apr_time_now() + bl->timeout;
                         log_printf(2, "Blacklisting RID=%s dt=%lf\n", bl_rid->rid, dt);

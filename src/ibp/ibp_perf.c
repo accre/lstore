@@ -166,7 +166,7 @@ ibp_capset_t *create_allocs(int nallocs, int asize)
 
     ibp_capset_t *caps = (ibp_capset_t *)malloc(sizeof(ibp_capset_t)*nallocs);
 
-    set_ibp_attributes(&attr, time(NULL) + a_duration, IBP_HARD, IBP_BYTEARRAY);
+    ibp_set_attributes(&attr, time(NULL) + a_duration, IBP_HARD, IBP_BYTEARRAY);
     q = gop_opque_new();
 
     for (i=0; i<nallocs; i++) {
@@ -648,7 +648,7 @@ int main(int argc, char **argv)
     double r1, r2, r3;
     int i, start_option, tcpsize, cs_type;
     ibp_capset_t *caps_list, *base_caps;
-    rid_t rid;
+    ibp_rid_t rid;
     int port, fd_special;
     char buffer[1024];
     apr_time_t stime, dtime;
@@ -841,7 +841,7 @@ int main(int argc, char **argv)
     for (j=0; j<n_depots; j++) {
         port = atoi(argv[i+1]);
         rid = ibp_str2rid(argv[i+2]);
-        set_ibp_depot(&(depot_list[j]), argv[i], port, rid);
+        ibp_set_depot(&(depot_list[j]), argv[i], port, rid);
         i = i + 3;
     }
 

@@ -83,7 +83,7 @@ IBP_API char *ibp_version();
 IBP_API op_generic_t *ibp_version_op(ibp_context_t *ic, ibp_depot_t *depot, char *buffer, int buffer_size, int timeout);
 IBP_API void ibp_write_cc_set(ibp_context_t *ic, ibp_connect_context_t *cc);
 IBP_API op_generic_t *ibp_write_op(ibp_context_t *ic, ibp_cap_t *cap, ibp_off_t offset, tbx_tbuf_t *buffer, ibp_off_t boff, ibp_off_t len, int timeout);
-IBP_API void set_ibp_sync_context(ibp_context_t *ic);
+IBP_API void ibp_set_sync_context(ibp_context_t *ic);
 
 // Preprocessor constants
 #define MAX_KEY_SIZE 256

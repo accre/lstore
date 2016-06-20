@@ -31,18 +31,18 @@ Listed below are all the available accessor functions from ibp/ibp_types.h:
 ---------------- ibp_depot_t -----------------------
 ibp_depot_t *new_ibp_depot();
 void destroy_ibp_depot(ibp_depot_t *d);
-void set_ibp_depot(ibp_depot_t *d, char *host, int port, rid_t rid);
+void ibp_set_depot(ibp_depot_t *d, char *host, int port, ibp_rid_t rid);
 
 -----------------ibp_attributes_t--------------------
 ibp_attributes_t *new_ibp_attributes();
 void destroy_ibp_attributes(ibp_attributes_t *attr);
-void set_ibp_attributes(ibp_attributes_t *attr, time_t duration, int reliability, int type);
+void ibp_set_attributes(ibp_attributes_t *attr, time_t duration, int reliability, int type);
 void ibp_attributes_get(ibp_attributes_t *attr, time_t *duration, int *reliability, int *type);
 
 ----------------ibp_timer_t-------------------------
 ibp_timer_t *new_ibp_timer();
 void destroy_ibp_timer(ibp_timer_t *t);
-void set_ibp_timer(ibp_timer_t *t, int client_timeout, int server_timeout);
+void ibp_set_timer(ibp_timer_t *t, int client_timeout, int server_timeout);
 void get_ibp_timer(ibp_timer_t *t, int *client_timeout, int *server_timeout);
 
 -----------------ibp_cap_t and ibp_capset_t----------
@@ -64,10 +64,10 @@ void ibp_cap_getstatus(ibp_capstatus_t *cs, int *readcount, int *writecount,
 void ridlist_init(ibp_ridlist_t *rlist, int size);
 void ibp_ridlist_destroy(ibp_ridlist_t *rlist);
 int ibp_ridlist_size_get(ibp_ridlist_t *rlist);
-rid_t ibp_ridlist_element_get(ibp_ridlist_t *rlist, int index);
-char *ibp_rid2str(rid_t rid, char *buffer);
-rid_t ibp_str2rid(char *rid_str);
-void ibp_rid_empty(rid_t *rid);
+ibp_rid_t ibp_ridlist_element_get(ibp_ridlist_t *rlist, int index);
+char *ibp_rid2str(ibp_rid_t rid, char *buffer);
+ibp_rid_t ibp_str2rid(char *rid_str);
+void ibp_rid_empty(ibp_rid_t *rid);
 
 
 Most of the stuff above is self-explanatory if you are familiar with IBP.  I do want to highlight the
@@ -101,7 +101,7 @@ ibp_capset_t *create_allocs(int nallocs, int asize, ibp_depot_t *depot)
   ibp_capset_t *caps = (ibp_capset_t *)malloc(sizeof(ibp_capset_t)*nallocs);
 
   //** Specify the allocations attributes **
-  set_ibp_attributes(&attr, time(NULL) + A_DURATION, IBP_HARD, IBP_BYTEARRAY);
+  ibp_set_attributes(&attr, time(NULL) + A_DURATION, IBP_HARD, IBP_BYTEARRAY);
 
   oplist = new_ibp_oplist(NULL);  //**Create a new list of ops
   oplist_start_execution(oplist);  //** Go on and start executing tasks.  This could be done any time
@@ -124,10 +124,10 @@ ibp_capset_t *create_allocs(int nallocs, int asize, ibp_depot_t *depot)
 int main(int arcg, char *argv[])
 {
   ibp_depot_t depot;
-  ibp_rid_t rid;
+  ibp_ibp_rid_t rid;
 
   rid = ibp_str2rid("0");  //** Specify the Resource to use
-  set_ibp_depot(&depot, "vudepot1.reddnet.org", 6714, &rid);  //** fill in the depot struct
+  ibp_set_depot(&depot, "vudepot1.reddnet.org", 6714, &rid);  //** fill in the depot struct
 
   ibp_init();   //** Initialize the IBP subsystem **REQUIRED**
   create_allocs(10, 1024, &depot);  //** Perform the allocations
@@ -296,13 +296,13 @@ void set_ibp_copyappend_op(ibp_op_t *op, ibp_cap_t *srccap, ibp_cap_t *destcap, 
         int src_timeout, int  dest_timeout, int dest_client_timeout, oplist_app_notify_t *an);
 
 --------------Modify a depot's global resources-----------------
-void set_ibp_depot_modify_op(ibp_op_t *op, ibp_depot_t *depot, char *password, size_t hard, size_t soft,
+void ibp_set_depot_modify_op(ibp_op_t *op, ibp_depot_t *depot, char *password, size_t hard, size_t soft,
       time_t duration, int timeout, oplist_app_notify_t *an);
 ibp_op_t *new_ibp_depot_modify_op(ibp_depot_t *depot, char *password, size_t hard, size_t soft,
       time_t duration, int timeout, oplist_app_notify_t *an);
 
 ---------------Depot Inquiry calls aka ibp_status()----------------------
-void set_ibp_depot_inq_op(ibp_op_t *op, ibp_depot_t *depot, char *password, ibp_depotinfo_t *di, int timeout, oplist_app_notify_t *an);
+void ibp_set_depot_inq_op(ibp_op_t *op, ibp_depot_t *depot, char *password, ibp_depotinfo_t *di, int timeout, oplist_app_notify_t *an);
 ibp_op_t *ibp_depot_inq_op(ibp_depot_t *depot, char *password, ibp_depotinfo_t *di, int timeout, oplist_app_notify_t *an);
 
 ---------------Depot version call-----------------------------------------
