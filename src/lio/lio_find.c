@@ -35,7 +35,7 @@ int main(int argc, char **argv)
     char *fname;
     lio_path_tuple_t tuple;
     os_regex_table_t *rp_single, *ro_single;
-    os_object_iter_t *it;
+    os_object_iter_t *it = NULL;
 
     int recurse_depth = 10000;
     int obj_types = OS_OBJECT_FILE;

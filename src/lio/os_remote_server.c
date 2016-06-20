@@ -2666,7 +2666,7 @@ void osrs_attr_iter_cb(void *arg, mq_task_t *task)
     int fsize, bpos, n, err, id_size, hsize;
     int64_t timeout, len, v_size_init;
     mq_msg_t *msg;
-    intptr_t fhkey;
+    intptr_t fhkey = 0;
     void *handle;
     os_attr_iter_t *it;
     mq_stream_t *mqs;

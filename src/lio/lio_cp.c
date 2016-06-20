@@ -37,7 +37,7 @@
 int main(int argc, char **argv)
 {
     int i, start_index, start_option, n_paths, n_errors;
-    int max_spawn, keepln;
+    int max_spawn;
     int obj_types = OS_OBJECT_ANY;
     ex_off_t bufsize;
     char ppbuf[64];
@@ -54,10 +54,9 @@ int main(int argc, char **argv)
 
     if (argc < 2) {
         printf("\n");
-        printf("lio_cp LIO_COMMON_OPTIONS [-rd recurse_depth] [-ln] [-b bufsize_mb] [-f] src_path1 .. src_pathN dest_path\n");
+        printf("lio_cp LIO_COMMON_OPTIONS [-rd recurse_depth] [-b bufsize_mb] [-f] src_path1 .. src_pathN dest_path\n");
         lio_print_options(stdout);
         printf("\n");
-        printf("    -ln                - Follow links.  Otherwise they are ignored\n");
         printf("    -rd recurse_depth  - Max recursion depth on directories. Defaults to %d\n", recurse_depth);
         printf("    -b bufsize         - Buffer size to use for *each* transfer. Units supported (Default=%s)\n", tbx_stk_pretty_print_int_with_scale(bufsize, ppbuf));
         printf("    -f                 - Force a slow or traditional copy by reading from the source and copying to the destination\n");
@@ -80,16 +79,11 @@ int main(int argc, char **argv)
 
     //*** Parse the args
     n_errors = 0;
-    keepln = 0;
     slow = LIO_COPY_DIRECT;
     i=1;
     do {
         start_option = i;
-
-        if (strcmp(argv[i], "-ln") == 0) {  //** Follow links
-            i++;
-            keepln = 1;
-        } else if (strcmp(argv[i], "-f") == 0) {  //** Force a slow copy
+        if (strcmp(argv[i], "-f") == 0) {  //** Force a slow copy
             i++;
             slow = LIO_COPY_INDIRECT;
         } else if (strcmp(argv[i], "-rd") == 0) { //** Recurse depth

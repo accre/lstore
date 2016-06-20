@@ -181,7 +181,6 @@ if (gop) {
 //*************************************************************
 void thread_pool_exec_fn(void *arg, op_generic_t *gop)
 {
-    apr_thread_t *th = (apr_thread_t *) arg;
     thread_pool_op_t *op = gop_get_tp(gop);
     thread_pool_context_t *tpc = op->tpc;
     op_status_t status;

@@ -14,6 +14,9 @@
    limitations under the License.
 */
 
+#define _log_module_index 169
+
+#include <tbx/log.h>
 #include <gop/gop.h>
 #include <gop/types.h>
 #include <stdio.h>
@@ -24,7 +27,6 @@
 #include "ex3_types.h"
 #include "lio_abstract.h"
 
-#define _log_module_index 169
 
 
 //*************************************************************************

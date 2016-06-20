@@ -36,7 +36,7 @@ int main(int argc, char **argv)
 {
     int i, start_option;
     int n_rid;
-    char *query_text;
+    char *query_text = NULL;
     rs_query_t *rq;
     ex_off_t block_size, total_size;
     exnode_t *ex;
@@ -67,7 +67,7 @@ int main(int argc, char **argv)
             i++;
         }
 
-    } while (start_option < i);
+    } while (start_option - i < 0);
 
     //** Load the fixed options
     n_rid = atoi(argv[i]);
@@ -85,7 +85,6 @@ int main(int argc, char **argv)
         printf("Missing output filename!\n");
         return(2);
     }
-
     //** Create an empty linear segment
     screate = lio_lookup_service(lio_gc->ess, SEG_SM_CREATE, SEGMENT_TYPE_LINEAR);
     seg = (*screate)(lio_gc->ess);

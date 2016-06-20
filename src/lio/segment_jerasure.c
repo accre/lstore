@@ -34,6 +34,7 @@
 #include <gop/tp.h>
 #include <gop/types.h>
 #include <inttypes.h>
+#include <limits.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdio.h>
@@ -347,6 +348,10 @@ op_status_t segjerase_inspect_full_func(void *arg, int id)
     ex_tbx_iovec_t *ex_iov;
     apr_time_t now, clr_dt;
     double dtt, dtr, dtw, dtp, rater, ratew, ratep;
+    
+    // Give vals a garbage value since Alan gave it nothing
+    tmp = INT_MIN;
+    status = gop_success_status;
 
     stripe_diag_size = 4;
     stripe_buffer_size = 2048;
@@ -874,7 +879,7 @@ op_status_t segjerase_inspect_func(void *arg, int id)
     segjerase_priv_t *s = (segjerase_priv_t *)si->seg->priv;
     segjerase_full_t *sf;
     op_status_t status;
-    int option, total_stripes, child_replaced, repair, loop, i, migrate_errors;
+    int option, total_stripes, child_replaced, loop, i, migrate_errors;
     op_generic_t *gop;
     int max_loops = 10;
 
@@ -907,8 +912,8 @@ op_status_t segjerase_inspect_func(void *arg, int id)
     //** The INSPECT_QUICK_* options are handled by the LUN driver. If force_reconstruct is set then we probably need to do a scan
     option = si->inspect_mode & INSPECT_COMMAND_BITS;
 //  force_reconstruct = si->inspect_mode & INSPECT_FORCE_REPAIR;
-    log_printf(5, "repair=%d child_replaced=%d option=%d inspect_mode=%d INSPECT_QUICK_REPAIR=%d\n", repair, child_replaced, option, si->inspect_mode, INSPECT_QUICK_REPAIR);
-    if ((repair > 0) && ((child_replaced > 0) || (s->magic_cksum == 0) || (s->write_errors > 0)) && (option == INSPECT_QUICK_REPAIR)) {
+    log_printf(5, "child_replaced=%d option=%d inspect_mode=%d INSPECT_QUICK_REPAIR=%d\n", child_replaced, option, si->inspect_mode, INSPECT_QUICK_REPAIR);
+    if (((child_replaced > 0) || (s->magic_cksum == 0) || (s->write_errors > 0)) && (option == INSPECT_QUICK_REPAIR)) {
         info_printf(si->fd, 1, XIDT ": Child segment repaired or existing write errors.  Forcing a full file check.\n", segment_id(si->seg));
         si->inspect_mode -= option;
         option = INSPECT_FULL_REPAIR;
@@ -1076,8 +1081,9 @@ op_status_t segjerase_clone_func(void *arg, int id)
 
 op_generic_t *segjerase_clone(segment_t *seg, data_attr_t *da, segment_t **clone_seg, int mode, void *attr, int timeout)
 {
-    segment_t *clone, *child;
-    erasure_plan_t *cplan;
+    segment_t *clone;
+    segment_t *child = NULL;
+    erasure_plan_t *cplan = NULL;
     segjerase_priv_t *ss = (segjerase_priv_t *)seg->priv;
     segjerase_priv_t *sd;
     segjerase_clone_t *cop;
@@ -1168,6 +1174,13 @@ op_status_t segjerase_read_func(void *arg, int id)
 
     loop = 0;
     memset(empty_magic, 0, JE_MAGIC_SIZE);
+
+    // Init vals with garbage since Alan didn't
+    status = gop_success_status;
+    op_status = gop_success_status;
+    nstripes = INT_MIN;
+    len = INT_MIN;
+    lo = INT_MIN;
 
 tryagain:  //** We first try allowing blacklisting to proceed as normal and then start over if that fails
 
@@ -1266,8 +1279,6 @@ tryagain:  //** We first try allowing blacklisting to proceed as normal and then
                             magic_devs[magic_used*s->n_devs] = k;
                             magic_count[magic_used] = 1;
                             memcpy(&(magic_key[magic_used*JE_MAGIC_SIZE]), iov[iov_start + 2*k].iov_base, JE_MAGIC_SIZE);
-                            int d = *(uint32_t *)&(magic_key[magic_used*JE_MAGIC_SIZE]);
-                            log_printf(15, "(n) mindex=%d count=%d dev=%d (slot=%d) magic=%d\n", magic_used, 1, k, magic_used*s->n_devs, d);
                             magic_used++;
                         }
                     }
@@ -1293,10 +1304,6 @@ tryagain:  //** We first try allowing blacklisting to proceed as normal and then
                     } else if (memcmp(empty_magic, &(magic_key[index*JE_MAGIC_SIZE]), JE_MAGIC_SIZE) == 0) {
                         data_ok = ((magic_count[index] == s->n_devs) && (check_status.error_code < s->n_parity_devs)) ? 2 : -1;
                     }
-
-
-                    int d = *(uint32_t *)&(magic_key[index*JE_MAGIC_SIZE]);
-                    log_printf(15, "index=%d good=%d data_ok=%d magic=%d data_devs=%d check_status.error_code=%d\n", index, magic_count[index], data_ok, d, s->n_data_devs, check_status.error_code);
 
                     do_recover = 0;
                     if (data_ok == 1) {   //** All magics are the same
@@ -1481,8 +1488,12 @@ op_status_t segjerase_write_func(void *arg, int id)
     segment_rw_hints_t *rw_hints;
     tbx_tbuf_var_t tbv;
     int loop;
-
     loop = 0;
+
+    // Give some garbage initial values since Alan didn't give any
+    nstripes = INT_MIN;
+    len = INT_MIN;
+    lo = INT_MIN;
 
 tryagain: //** In case blacklisting failed we'll retry with it disabled
 
@@ -1587,7 +1598,6 @@ tryagain: //** In case blacklisting failed we'll retry with it disabled
             boff = sw->boff + curr_bytes;
             for (j=0; j<nstripes; j++) {
                 tbv.nbytes = s->data_size;
-//           boff += s->chunk_size;
                 tbx_tbuf_next(sw->buffer, boff, &tbv);
                 assert((tbv.n_iov == 1) && (tbv.nbytes == s->data_size));
 

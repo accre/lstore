@@ -1512,15 +1512,14 @@ int osf_next_object(osf_object_iter_t *it, char **myfname, int *prefix_len)
             itl->firstpass = 1;
             tbx_stack_push(it->recurse_stack, itl);
         }
-    } else {
-        it_top = &(it->level_info[it->table->n-1]);
-        if ((it->table->n == 1) && (it_top->fragment != NULL)) {
-            tweak = it_top->fixed_prefix;
-            if (tweak > 0) tweak += 2;
-        }
-
-        log_printf(15, "top_level=%d it_top->fragment=%s it_top->path=%s tweak=%d\n", it->table->n-1, it_top->fragment, it_top->path, tweak);
     }
+    it_top = &(it->level_info[it->table->n-1]);
+    if ((it->table->n == 1) && (it_top->fragment != NULL)) {
+        tweak = it_top->fixed_prefix;
+        if (tweak > 0) tweak += 2;
+    }
+
+    log_printf(15, "top_level=%d it_top->fragment=%s it_top->path=%s tweak=%d\n", it->table->n-1, it_top->fragment, it_top->path, tweak);
 
     do {
         if (it->curr_level >= it->table->n) {

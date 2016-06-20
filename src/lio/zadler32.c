@@ -71,7 +71,7 @@ int main(int argc, char **argv)
             i++;
         }
 
-    } while (start_option < i);
+    } while (start_option - i < 0);
     start_index = i;
 
     //** Make the buffer

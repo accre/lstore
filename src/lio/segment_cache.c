@@ -2555,6 +2555,7 @@ op_status_t cache_rw_func(void *arg, int id)
     top_cnt = cop->n_iov;
     bottom_cnt = 0;
     progress = 0;
+    status = -1;
     hit_time = apr_time_now();
     while ((curr=(cache_range_t *)tbx_stack_pop(&stack)) != NULL) {
         n_pages = CACHE_MAX_PAGES_RETURNED;

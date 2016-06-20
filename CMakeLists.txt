@@ -113,8 +113,14 @@ project(LStore C)
 # Defines
 set(USE_SUPERBUILD ON)
 set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -fPIC -D_REENTRANT -D_GNU_SOURCE -D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64 -fvisibility=hidden -Werror=implicit-function-declaration")
-set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -Wall -Wextra -Wno-unused-parameter -Wno-deprecated-declarations -Werror=format -Werror=implicit-function-declaration")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -fPIC -D_REENTRANT -D_GNU_SOURCE -D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64 -fvisibility=hidden -fno-strict-aliasing -Wall -Wextra -Werror -Wno-unused-parameter -Wno-deprecated-declarations -Wno-error=sign-compare")
+
+# When compiling release modes, asserts disappear which cause some variables
+# to be unused. Suppress errors in this case
+set(LSTORE_CHEAT_FLAGS "-Wno-error=unused-variable -Wno-error=array-bounds")
+set(CMAKE_C_FLAGS_RELWITHDEBINFO "${CMAKE_C_FLAGS_RELWITHDEBINFO} ${LSTORE_CHEAT_FLAGS}")
+set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} ${LSTORE_CHEAT_FLAGS}")
+
 set(CMAKE_MACOSX_RPATH ON)
 if(INSTALL_EXTERNALS)
     set(EXTERNAL_INSTALL_DIR ${CMAKE_INSTALL_PREFIX})
@@ -154,12 +160,15 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${LSTORE_SANITIZE_FLAGS}")
 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${LSTORE_SANITIZE_LINK_FLAGS}")
 set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} ${LSTORE_SANITIZE_LINK_FLAGS}")
 
-
 # Detect compiler flags
 include(CheckCCompilerFlag)
-check_c_compiler_flag(-Werror=incompatible-pointer-types HAS_INCOMPATIBLE_POINTER_WERROR)
-if(HAS_INCOMPATIBLE_POINTER_WERROR)
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Werror=incompatible-pointer-types")
+# For some reason, the test for Wno-unused-result will silently fail, but
+# the same test for Wunused-result won't. If one is defined, both will be
+# defined, so test for one but use the other
+set(LSTORE_FLAG_UNUSED_RESULT "")
+check_c_compiler_flag("-Wunused-result" HAS_UNUSED_RESULT)
+if(HAS_UNUSED_RESULT)
+    set(LSTORE_FLAG_UNUSED_RESULT "-Wno-unused-result")
 endif()
 
 # Use gnu-style paths

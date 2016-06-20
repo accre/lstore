@@ -835,7 +835,7 @@ int _amp_free_mem(cache_t *c, segment_t *pseg, ex_off_t bytes_to_free)
 ex_off_t _amp_attempt_free_mem(cache_t *c, segment_t *page_seg, ex_off_t bytes_to_free)
 {
     cache_amp_t *cp = (cache_amp_t *)c->fn.priv;
-    cache_segment_t *s;
+    cache_segment_t *s = NULL;
     cache_page_t *p;
     page_amp_t *lp;
     tbx_stack_ele_t *ele, *curr_ele;
@@ -1019,7 +1019,7 @@ ex_off_t _amp_force_free_mem(cache_t *c, segment_t *page_seg, ex_off_t bytes_to_
     ex_off_t freed_bytes, bytes_left;
     int top;
     tbx_pch_t pch;
-    cache_cond_t *cache_cond;
+    cache_cond_t *cache_cond = NULL;
 
     top = 0;
     freed_bytes = _amp_attempt_free_mem(c, page_seg, bytes_to_free);

@@ -169,7 +169,7 @@ int main(int argc, char **argv)
             n_skeys++;
             i++;
         }
-    } while ((start_option < i) && (i<argc));
+    } while ((start_option - i < 0) && (i<argc));
     start_index = i;
 
     if (rg_mode == 0) {

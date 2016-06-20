@@ -76,7 +76,7 @@ int main(int argc, char **argv)
             i++;
         }
 
-    } while ((start_option < i) && (i<argc));
+    } while ((start_option - i < 0) && (i<argc));
     start_index = i;
 
 

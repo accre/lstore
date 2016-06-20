@@ -44,8 +44,7 @@ int main(int argc, char **argv)
     char buffer[bufsize+1];
     tbx_tbuf_t tbuf;
     int i, start_option, np, update_interval;
-    char *trace_header;
-    char *base_path;
+    char *trace_header = NULL;
     char *template_name = NULL;
     exnode_t *tex;
     exnode_exchange_t *template_exchange;
@@ -60,13 +59,12 @@ int main(int argc, char **argv)
 
     if (argc < 2) {
         printf("\n");
-        printf("trace_replay LIO_COMMON_OPTIONS [-np n_at_once] [-i update_interval] [-path base_path] -template template.ex3 -t header.trh \n");
+        printf("trace_replay LIO_COMMON_OPTIONS [-np n_at_once] [-i update_interval] -template template.ex3 -t header.trh \n");
         lio_print_options(stdout);
-        printf("    -path base_path - Base LIO directory path\n");
         printf("    -np n_at_once   - Number of commands to execute in parallel (default is 1)\n");
         printf("    -t header.trh   - Trace header file\n");
         printf("\n");
-        return(1);
+        return 1;
     }
 
     lio_init(&argc, &argv);
@@ -83,10 +81,6 @@ int main(int argc, char **argv)
             i++;
             template_name = argv[i];
             i++;
-        } else if (strcmp(argv[i], "-path") == 0) { //** Base LIO path
-            i++;
-            base_path = argv[i];
-            i++;
         } else if (strcmp(argv[i], "-t") == 0) { //** TRace config file
             i++;
             trace_header = argv[i];
@@ -100,9 +94,14 @@ int main(int argc, char **argv)
             update_interval = atoi(argv[i]);
             i++;
         }
-    } while (start_option < i);
+    } while (start_option - i < 0);
 
-    assert(template_name == NULL);
+    // Not sure why there was an assert here... If someone didn't want to set
+    // a template, they could've just removed the option. - AMM
+    if (template_name == NULL) {
+        fprintf(stderr, "Template_name wasn't null!\n");
+        return 1;
+    }
 
     //** Load the template
     template_exchange = lio_exnode_exchange_load_file(template_name);
@@ -156,7 +155,5 @@ int main(int argc, char **argv)
 
     lio_shutdown();
 
-    return(0);
+    return 0;
 }
-
-

@@ -123,7 +123,7 @@ int main(int argc, char **argv)
                 buf_size = tbx_stk_string_get_integer(argv[i]);
                 i++;
             }
-        } while ((start_option < i) && (i<argc));
+        } while ((start_option - i < 0) && (i<argc));
     }
 
 

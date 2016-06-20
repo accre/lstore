@@ -134,15 +134,14 @@ int main(int argc, char **argv)
     op_generic_t *gop;
     opque_t *q;
     lio_path_tuple_t dtuple;
-    int keepln, err, dtype;
+    int err, dtype;
     op_status_t status;
 
     if (argc < 2) {
         printf("\n");
-        printf("lio_mv LIO_COMMON_OPTIONS [-ln] src_path1 .. src_pathN dest_path\n");
+        printf("lio_mv LIO_COMMON_OPTIONS src_path1 .. src_pathN dest_path\n");
         lio_print_options(stdout);
         printf("\n");
-        printf("    -ln                    - Follow links.  Otherwise they are ignored\n");
         printf("    src_path1 .. src_pathN - Source path glob to move\n");
         printf("    dest_path              - Destination directory or file name\n");
         return(1);
@@ -151,15 +150,9 @@ int main(int argc, char **argv)
     lio_init(&argc, &argv);
 
     //*** Parse the args
-    keepln = 0;
     i=1;
     do {
         start_option = i;
-
-        if (strcmp(argv[i], "-ln") == 0) {  //** Follow links
-            i++;
-            keepln = 1;
-        }
 
     } while ((start_option < i) && (i<argc));
     start_index = i;

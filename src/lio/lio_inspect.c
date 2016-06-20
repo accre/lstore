@@ -28,6 +28,7 @@
 #include <gop/opque.h>
 #include <gop/tp.h>
 #include <gop/types.h>
+#include <limits.h>
 #include <math.h>
 #include <signal.h>
 #include <stdio.h>
@@ -1079,6 +1080,7 @@ int main(int argc, char **argv)
     check_iter = 100;
     todo_mode = 0;
     from_stdin = 0;
+    select_mode = INT_MIN;
 
     if (argc < 2) {
         printf("\n");

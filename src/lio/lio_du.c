@@ -97,6 +97,10 @@ int main(int argc, char **argv)
     int return_code = 0;
     du_entry_t du_total;
 
+    // Set sum_table to NULL since Alan left it undefined. See if it goes
+    // boom.
+    sum_table = NULL;
+
     if (argc < 2) {
         printf("\n");
         printf("lio_du LIO_COMMON_OPTIONS [-rd recurse_depth] [-ns] [-h|-hi] [-s] [-ln] LIO_PATH_OPTIONS\n");

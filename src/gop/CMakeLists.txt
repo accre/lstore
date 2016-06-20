@@ -71,6 +71,13 @@ else()
     lstore_project_common(gop)
 endif()
 
+# Temporarily disable errors around unused results
+get_source_file_property(OLD_COMPILE_FLAGS mq_portal.c COMPILE_FLAGS)
+if(NOT OLD_COMPILE_FLAGS)
+    set(OLD_COMPILE_FLAGS)
+endif()
+set_source_files_properties(mq_portal.c PROPERTIES COMPILE_FLAGS "${OLD_COMPILE_FLAGS} ${LSTORE_FLAG_UNUSED_RESULT}")
+
 foreach(f ${LSTORE_PROJECT_EXECUTABLES})
     set_target_properties(${f} PROPERTIES COMPILE_FLAGS "-DLSTORE_HACK_EXPORT")
 endforeach()

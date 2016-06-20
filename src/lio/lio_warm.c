@@ -127,7 +127,7 @@ op_status_t gen_warm_task(void *arg, int id)
     op_generic_t *gop;
     tbx_inip_file_t *fd;
     int i, j, nfailed;
-    warm_hash_entry_t *wrid;
+    warm_hash_entry_t *wrid = NULL;
     char *etext;
     opque_t *q;
 

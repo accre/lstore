@@ -30,6 +30,7 @@
 #include <apr_thread_proc.h>
 #include <apr_time.h>
 #include <assert.h>
+#include <limits.h>
 #include <gop/mq.h>
 #include <stdio.h>
 #include <stdio.h>
@@ -251,7 +252,8 @@ void rsrs_rid_config_cb(void *arg, mq_task_t *task)
     int bufsize = 128;
     char buffer[bufsize];
     char *data;
-    int n, do_config, timeout;
+    int n, do_config;
+    int timeout = INT_MIN;
 
     do_config = -1;
     log_printf(5, "Processing incoming request\n");

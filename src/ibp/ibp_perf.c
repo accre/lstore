@@ -27,6 +27,7 @@
 #include <gop/gop.h>
 #include <gop/opque.h>
 #include <gop/types.h>
+#include <limits.h>
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -653,13 +654,12 @@ int main(int argc, char **argv)
     char buffer[1024];
     apr_time_t stime, dtime;
     double dt;
-    char *ppath, *net_cs_name, *disk_cs_name, *out_fname;
+    char *net_cs_name, *disk_cs_name, *out_fname;
     FILE *fd_out;
     //tbx_phoebus_t pcc;
-    char pstr[2048];
     tbx_chksum_t cs;
     tbx_ns_chksum_t ns_cs;
-    int blocksize;
+    int blocksize = INT_MIN;
 
     base_caps = NULL;
 

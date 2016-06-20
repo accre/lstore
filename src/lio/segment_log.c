@@ -674,7 +674,8 @@ op_status_t seglog_clone_func(void *arg, int id)
     int err, do_lio_segment_copy;
     char *buffer = NULL;
     slog_changes_t *clog;
-    opque_t *q1, *q2, *q;
+    opque_t *q1 = NULL;
+    opque_t *q2, *q;
     tbx_stack_t *stack;
     op_status_t status;
 
