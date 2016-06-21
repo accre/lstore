@@ -27,6 +27,7 @@ option(ENABLE_TSAN "Enable thread sanitizer" OFF)
 option(ENABLE_UBSAN "Enable undefined behaviour sanitizer" OFF)
 option(ENABLE_FUZZ "Build with AFL fuzz support" OFF)
 option(ENABLE_CCACHE "Build with ccache" ${ENABLE_CCACHE_DEFAULT})
+option(ENABLE_LTO "Enable Link-Time Optimization (LTO)" OFF)
 
 option(INSTALL_EXTERNALS "Install externals to \$CMAKE_INSTALL_PATH" OFF)
 option(INSTALL_YUM_RELEASE "Install yum lstore-release (may require root)" OFF)
@@ -111,6 +112,25 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -fPIC -D_REENTRANT -D_GNU_SOURCE -D
 set(LSTORE_CHEAT_FLAGS "-Wno-error=unused-variable -Wno-error=array-bounds")
 set(CMAKE_C_FLAGS_RELWITHDEBINFO "${CMAKE_C_FLAGS_RELWITHDEBINFO} ${LSTORE_CHEAT_FLAGS}")
 set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} ${LSTORE_CHEAT_FLAGS}")
+
+# Handle enabling LTO
+if(ENABLE_LTO)
+    set(LTO_FLAGS "-flto")
+    if(CMAKE_COMPILER_IS_GNUC OR CMAKE_COMPILER_IS_GNUCC)
+        message(STATUS "Overriding nm/ar/ranlib to be gcc-prefixed versions")
+        set(LTO_FLAGS "${LTO_FLAGS} -ffunction-sections -fdata-sections -Wl,--gc-sections")
+        if(NOT CMAKE_C_COMPILER_VERSION VERSION_LESS 4.7)
+            set(LTO_FLAGS "${LTO_FLAGS} -fno-fat-lto-objects")
+        endif()
+        set(CMAKE_NM "gcc-nm")
+        set(CMAKE_AR "gcc-ar")
+        set(CMAKE_RANLIB "gcc-ranlib")
+    endif()
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${LTO_FLAGS}")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${LTO_FLAGS} -fwhole-program")
+    set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} ${LTO_FLAGS} -fwhole-program")
+endif()
+
 
 set(CMAKE_MACOSX_RPATH ON)
 if(INSTALL_EXTERNALS)
