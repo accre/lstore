@@ -46,7 +46,6 @@ if(NOT BUILD_SHARED_EXES)
     ELSE(WIN32)
         SET(CMAKE_FIND_LIBRARY_SUFFIXES .a ${CMAKE_FIND_LIBRARY_SUFFIXES})
     ENDIF(WIN32)
-    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static-libgcc -static-libstdc++")
 endif()
 
 set(LSTORE_REPO_URL "http://repo.accre.vanderbilt.edu"
