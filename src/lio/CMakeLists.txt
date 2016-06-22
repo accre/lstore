@@ -41,18 +41,18 @@ if(NOT USE_SUPERBUILD)
 else()
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -D_FILE_OFFSET_BITS=64")
 endif()
-message(STATUS "APU ${APRUTIL_INCLUDE_DIR}")
-set(LSTORE_LIBS  ${APR_LIBRARY}
-                    ${APRUTIL_LIBRARY}
-                    ${ZLIB_LIBRARY}
-                    ${OPENSSL_LIBRARIES}
-                    ${CZMQ_LIBRARY}
-                    ${ZMQ_LIBRARY}
-                    ${FUSE_LIBRARY}
-                    ${JERASURE_LIBRARY}
-                    toolbox
-                    gop
-                    ibp)
+set(LSTORE_LIBS toolbox
+                gop
+                ibp
+                ${APR_LIBRARY}
+                ${APRUTIL_LIBRARY}
+                ${ZLIB_LIBRARY}
+                ${OPENSSL_LIBRARIES}
+                ${CZMQ_LIBRARY}
+                ${ZMQ_LIBRARY}
+                ${FUSE_LIBRARY}
+                ${JERASURE_LIBRARY}
+                )
 set(LSTORE_INCLUDE_SYSTEM ${APR_INCLUDE_DIR}
                     ${APRUTIL_INCLUDE_DIR}
                     ${OPENSSL_INCLUDE_DIR}
