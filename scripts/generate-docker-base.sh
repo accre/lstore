@@ -64,6 +64,8 @@ for DISTRO in "${DISTROS[@]}"; do
     case $PACKAGER in
         rpm)
             ADDITIONAL_PACKAGES=(
+                                    apr-devel
+                                    apr-util-devel
                                     autoconf
                                     ccache
                                     curl
@@ -71,7 +73,6 @@ for DISTRO in "${DISTROS[@]}"; do
                                     czmq-devel
                                     expat-devel
                                     fuse-devel
-                                    globus-gridftp-server-devel
                                     libtool
                                     openssl-devel
                                     python
@@ -92,9 +93,10 @@ for DISTRO in "${DISTROS[@]}"; do
                                     debhelper
                                     dpkg-dev
                                     git-core
+                                    libapr1-dev
+                                    libaprutil1-dev
                                     libexpat1-dev
                                     libfuse-dev
-                                    libglobus-gridftp-server-dev
                                     libssl-dev
                                     libtool
                                     libz-dev

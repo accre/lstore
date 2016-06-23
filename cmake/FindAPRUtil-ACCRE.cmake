@@ -15,11 +15,24 @@ if(NOT (${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION} LESS 3.1))
 	cmake_policy(SET CMP0054 OLD)
 endif()
 
+if(APR_USE_SYSTEM)
+    message(STATUS "Using non -ACCRE version of APU")
+    set(__APR_SUFFIX_UPPER)
+    set(__APR_SUFFIX_LOWER)
+else()
+    message(STATUS "Using -ACCRE version of APU")
+    set(__APR_SUFFIX_UPPER "-ACCRE")
+    set(__APR_SUFFIX_LOWER "-accre")
+endif()
+
+
 set(APRUTIL-ACCRE_FOUND FALSE)
 
-find_program(APU_CONFIG_EXECUTABLE apu-ACCRE-1-config)
+find_program(APU_CONFIG_EXECUTABLE "apu${__APR_SUFFIX_UPPER}-1-config")
 if(${APU_CONFIG_EXECUTABLE} STREQUAL "APU_CONFIG_EXECUTABLE-NOTFOUND")
     cmake_policy(POP)
+    unset(__APR_SUFFIX_UPPER)
+    unset(__APR_SUFFIX_LOWER)
     return()
 endif()
 
@@ -65,7 +78,8 @@ _apu_invoke(APU_VERSION   ""        --version)
 list(GET APU_LIBTOOL 0 APU_LIBTOOL_ARG0)
 
 get_filename_component(APU_LIBTOOL_BASE ${APU_LIBTOOL_ARG0} PATH ) 
-FIND_LIBRARY(APU_LIBRARY NAMES aprutil-accre-1 aprutil-ACCRE-1 PATHS ${APU_LIBTOOL_BASE})
+FIND_LIBRARY(APU_LIBRARY NAMES "aprutil${__APR_SUFFIX_LOWER}-1"
+                                "aprutil${__APR_SUFFIX_UPPER}-1" PATHS ${APU_LIBTOOL_BASE})
 
 # compatibility, allow this CMake module to work with the various CMakeList.txt files
 set(APRUTIL_INCLUDE_DIR "${APU_INCLUDES}")
@@ -77,3 +91,5 @@ endif()
 INCLUDE(FindPackageHandleStandardArgs)
 FIND_PACKAGE_HANDLE_STANDARD_ARGS(APU DEFAULT_MSG APU_INCLUDES APU_LIBS APU_LIBRARY APU_VERSION)
 cmake_policy(POP)
+unset(__APR_SUFFIX_UPPER)
+unset(__APR_SUFFIX_LOWER)

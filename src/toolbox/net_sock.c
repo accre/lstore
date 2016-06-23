@@ -314,6 +314,49 @@ long int sock_read(net_sock_t *nsock, tbx_tbuf_t *buf, size_t bpos, size_t len, 
 //*********************************************************************
 //  sock_apr_read
 //*********************************************************************
+apr_status_t my_apr_socket_recvv(apr_socket_t * sock, const struct iovec *vec,
+                              apr_int32_t nvec, apr_size_t *len)
+{
+#ifdef HAVE_WRITEV
+    apr_ssize_t rv;
+    apr_size_t requested_len = 0;
+    apr_int32_t i;
+
+    for (i = 0; i < nvec; i++) {
+        requested_len += vec[i].iov_len;
+    }
+
+    do {
+        rv = readv(sock->socketdes, vec, nvec);
+    } while (rv == -1 && errno == EINTR);
+
+    while ((rv == -1) && (errno == EAGAIN || errno == EWOULDBLOCK)
+                      && (sock->timeout > 0)) {
+        apr_status_t arv;
+do_select:
+        arv = apr_wait_for_io_or_timeout(NULL, sock, 1);
+        if (arv != APR_SUCCESS) {
+            *len = 0;
+            return arv;
+        }
+        else {
+            do {
+                rv = readv(sock->socketdes, vec, nvec);
+            } while (rv == -1 && errno == EINTR);
+        }
+    }
+    if (rv == -1) {
+        *len = 0;
+        return errno;
+    }
+    (*len) = rv;
+    return APR_SUCCESS;
+#else
+    *len = vec[0].iov_len;
+    return apr_socket_recv(sock, vec[0].iov_base, len);
+#endif
+}
+
 
 long int sock_apr_read(net_sock_t *nsock, tbx_tbuf_t *buf, size_t bpos, size_t len, tbx_ns_timeout_t tm)
 {
@@ -330,7 +373,7 @@ long int sock_apr_read(net_sock_t *nsock, tbx_tbuf_t *buf, size_t bpos, size_t l
     tbx_tbuf_next(buf, bpos, &tbv);
     if (tbv.n_iov > IOV_MAX) tbv.n_iov = IOV_MAX;  //** Make sure we don't have to many entries
 
-    err = apr_socket_recvv(sock->fd, tbv.buffer, tbv.n_iov, &nbytes);
+    err = my_apr_socket_recvv(sock->fd, tbv.buffer, tbv.n_iov, &nbytes);
     log_printf(5, "apr_socket_recvv=%d nbytes=%lu APR_SUCCESS=%d APR_TIMEUP=%d\n", err, nbytes, APR_SUCCESS, APR_TIMEUP);
 
     if (err == APR_SUCCESS) {

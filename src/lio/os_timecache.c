@@ -229,14 +229,14 @@ void free_ostcdb_object(ostcdb_object_t *obj)
 
     //** Free my attributes
     for (ahi = apr_hash_first(NULL, obj->attrs); ahi != NULL; ahi = apr_hash_next(ahi)) {
-        a = apr_hash_this_val(ahi);
+        apr_hash_this(ahi, NULL, NULL, (void **) &a);
         free_ostcdb_attr(a);
     }
 
     //** Now free all the children objects
     if (obj->objects != NULL) {
         for (ohi = apr_hash_first(NULL, obj->objects); ohi != NULL; ohi = apr_hash_next(ohi)) {
-            o = apr_hash_this_val(ohi);
+            apr_hash_this(ohi, NULL, NULL, (void **) &o);
             free_ostcdb_object(o);
         }
     }
@@ -286,7 +286,7 @@ int _ostc_cleanup(object_service_fn_t *os, ostcdb_object_t *obj, apr_time_t expi
     okept = 0;
     if (obj->objects) {
         for (hi = apr_hash_first(NULL, obj->objects); hi != NULL; hi = apr_hash_next(hi)) {
-            o = apr_hash_this_val(hi);
+            apr_hash_this(hi, NULL, NULL, (void **) &o);
             result = _ostc_cleanup(os, o, expired);
             okept += result;
             if (result == 0) {
@@ -299,7 +299,7 @@ int _ostc_cleanup(object_service_fn_t *os, ostcdb_object_t *obj, apr_time_t expi
     //** Free my expired attributes
     akept = 0;
     for (hi = apr_hash_first(NULL, obj->attrs); hi != NULL; hi = apr_hash_next(hi)) {
-        a = apr_hash_this_val(hi);
+        apr_hash_this(hi, NULL, NULL, (void **) &a);
         log_printf(5, "fname=%s attr=%s a->expire=" TT " expired=" TT "\n", obj->fname, a->key, a->expire, expired);
         if (a->expire < expired) {
             apr_hash_set(obj->attrs, a->key, APR_HASH_KEY_STRING, NULL);

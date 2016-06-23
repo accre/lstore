@@ -74,8 +74,7 @@ compile_map['tidy'] = {
         unstash "source"
         def tidy_checks="-*,misc-*,google-runtime-*,modernize-*,cert-*,performance-*,cppcoreguidelines-*,-misc-unused-parameters,readability-*,-readability-else-after-return,-readability-braces-around-statements" 
         dir('build') {
-            sh "cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DBUILD_TESTS=on -DCMAKE_INSTALL_PREFIX=local/ .."
-            sh "make externals"
+            sh "cmake  -DBUILD_APR=OFF -DENABLE_UPSTREAM_APR=ON -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DBUILD_TESTS=on -DCMAKE_INSTALL_PREFIX=local/ .."
             sh "clang-tidy -p=\$(pwd) '-header-filter=src/\\.*h\$' ../src/*/*.c ../src/*/*.h -checks=${tidy_checks} -list-checks | tee ../clang_tidy_log.txt"
             sh "clang-tidy -p=\$(pwd) '-header-filter=src/\\.*h\$' ../src/*/*.c ../src/*/*.h -checks=${tidy_checks} | tee -a ../clang_tidy_log.txt"
         }
@@ -94,8 +93,7 @@ compile_map['scan-build'] = {
             ls -lah /ccache
             ln -s \$(which ccache) clang
             PATH="\$(pwd):\$PATH"
-            CCC_CC=\$(pwd)/clang scan-build --use-analyzer=\$(pwd)/clang cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DBUILD_TESTS=OFF -DCMAKE_INSTALL_PREFIX=local/ -DENABLE_CCACHE=OFF ..
-            CCC_CC=\$(pwd)/clang make externals -j 16 VERBOSE=1
+            CCC_CC=\$(pwd)/clang scan-build --use-analyzer=\$(pwd)/clang cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DBUILD_TESTS=OFF -DCMAKE_INSTALL_PREFIX=local/ -DBUILD_APR=OFF -DENABLE_UPSTREAM_APR=ON -DENABLE_CCACHE=OFF ..
             CCC_CC=\$(pwd)/clang scan-build --use-analyzer=\$(pwd)/clang -o clang-static-analyzer -v -v ${scan_checks} --keep-empty -maxloop 10 -stats make -j16 VERBOSE=1
             mv clang-static-analyzer/* ../clang-report"""
         }

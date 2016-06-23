@@ -1308,7 +1308,7 @@ int mq_conn_make(mq_conn_t *c)
     }
 
 fail:
-    log_printf(5, "END status=%d dt=%ld frame=%d\n", err, dt, frame);
+    log_printf(5, "END status=%d dt=%" APR_TIME_T_FMT " frame=%d\n", err, dt, frame);
     gop_mq_msg_destroy(msg);
     return(err);
 }
@@ -1390,9 +1390,9 @@ void *mq_conn_thread(apr_thread_t *th, void *data)
             finished += mqc_heartbeat(c, npoll);
             log_printf(5, "after heartbeat finished=%d\n", finished);
 
-            log_printf(5, "hb_old=%ld\n", next_hb_check);
+            log_printf(5, "hb_old=%" APR_TIME_T_FMT "\n", next_hb_check);
             next_hb_check = apr_time_now() + apr_time_from_sec(1);
-            log_printf(5, "hb_new=%ld\n", next_hb_check);
+            log_printf(5, "hb_new=%" APR_TIME_T_FMT "\n", next_hb_check);
 
             //** Check if we've been busy enough to stay open
             dt = apr_time_now() - last_check;

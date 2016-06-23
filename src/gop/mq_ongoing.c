@@ -157,14 +157,14 @@ void *ongoing_heartbeat_thread(apr_thread_t *th, void *data)
         gop_opque_free(q, OP_DESTROY);
 
         now = apr_time_now();
-        log_printf(2, "sleeping %d now=%ld\n", on->check_interval, now);
+        log_printf(2, "sleeping %d now=%" APR_TIME_T_FMT "\n", on->check_interval, now);
 
         //** Sleep until time for the next heartbeat or time to exit
         if (on->shutdown == 0) apr_thread_cond_timedwait(on->cond, on->lock, timeout);
         n = on->shutdown;
 
         now = apr_time_now() - now;
-        log_printf(2, "main loop bottom n=%d dt=%ld sec=" TT "\n", n, now,
+        log_printf(2, "main loop bottom n=%d dt=%" APR_TIME_T_FMT " sec=" TT "\n", n, now,
                         ((apr_time_t) apr_time_sec(now)));
     } while (n == 0);
 

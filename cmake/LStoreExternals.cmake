@@ -1,5 +1,5 @@
 include(ExternalProject)
-if(BUILD_APR OR (NOT APR-ACCRE_FOUND) OR (APR_LIBRARY MATCHES "^${EXTERNAL_INSTALL_DIR}"))
+if(BUILD_APR)
     list(APPEND REBUILD_DEPENDENCIES extern-apr-accre)
     set(APR_LIBRARY "apr-ACCRE-1")
     set(APR_INCLUDE_DIR "${EXTERNAL_INSTALL_DIR}/include/apr-ACCRE-1")
@@ -26,8 +26,6 @@ if(BUILD_APR OR (NOT APR-ACCRE_FOUND) OR (APR_LIBRARY MATCHES "^${EXTERNAL_INSTA
             BYPRODUCTS "${CMAKE_SOURCE_DIR}/vendor/apr-accre/configure"
             WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}/vendor/apr-accre"
         )
-endif()
-if(BUILD_APU OR (NOT APRUTIL-ACCRE_FOUND) OR (APU_LIBRARY MATCHES "^${EXTERNAL_INSTALL_DIR}")) 
     list(APPEND REBUILD_DEPENDENCIES extern-apr-util-accre)
     set(APRUTIL_LIBRARY "aprutil-ACCRE-1")
     set(APRUTIL_INCLUDE_DIR "${EXTERNAL_INSTALL_DIR}/include/apr-util-ACCRE-1")
