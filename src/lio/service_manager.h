@@ -13,7 +13,7 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 */
-
+#include "lio/service_manager.h"
 //***********************************************************************
 // Generic service manager header file
 //***********************************************************************
@@ -33,7 +33,6 @@ struct service_manager_t;
 extern "C" {
 #endif
 
-typedef struct service_manager_t service_manager_t;
 struct service_manager_t {
     apr_pool_t *pool;
     apr_thread_mutex_t *lock;
@@ -43,7 +42,6 @@ struct service_manager_t {
 service_manager_t *clone_service_manager(service_manager_t *sm);
 service_manager_t *create_service_manager();
 void destroy_service_manager(service_manager_t *sm);
-LIO_API void *lio_lookup_service(service_manager_t *sm, char *service_section, char *service_name);
 int add_service(service_manager_t *sm, char *service_section, char *service_name, void *service);
 int remove_service(service_manager_t *sm, char *service_section, char *service_name);
 

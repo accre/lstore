@@ -13,7 +13,7 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 */
-
+#include "lio/liblio_trace.h"
 //*************************************************************
 // liblio_trace.h - Header file for lio_trace library
 //*************************************************************
@@ -25,7 +25,6 @@
 extern "C" {
 #endif
 
-typedef struct lt_fn_t lt_fn_t;
 struct lt_fn_t {
     int (*open)(const char *pathname, int flags, ...);
     int (*close)(int fd);
@@ -34,7 +33,6 @@ struct lt_fn_t {
     off_t (*lseek)(int fd, off_t offset, int whence);
 };
 
-typedef struct lt_config_t lt_config_t;
 struct lt_config_t {
     char *trace_name;
     char *trace_header;
@@ -43,7 +41,6 @@ struct lt_config_t {
     int logfd;
 };
 
-typedef struct fd_trace_t fd_trace_t;
 struct fd_trace_t {
     char *fname;
     int fd;

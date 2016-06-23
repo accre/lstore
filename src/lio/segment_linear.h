@@ -13,7 +13,7 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 */
-
+#include "lio/segment_linear.h"
 //***********************************************************************
 // Linear segment support
 //***********************************************************************
@@ -39,7 +39,6 @@ extern "C" {
 
 segment_t *segment_linear_load(void *arg, ex_id_t id, exnode_exchange_t *ex);
 segment_t *segment_linear_create(void *arg);
-LIO_API op_generic_t *lio_segment_linear_make(segment_t *seg, data_attr_t *da, rs_query_t *rsq, int n_rid, ex_off_t block_size, ex_off_t total_size, int timeout);
 
 #ifdef __cplusplus
 }

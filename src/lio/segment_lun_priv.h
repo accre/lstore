@@ -13,7 +13,7 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 */
-
+#include "lio/segment_lun_priv.h"
 //***********************************************************************
 // LUN segment support
 //***********************************************************************
@@ -29,7 +29,6 @@
 extern "C" {
 #endif
 
-typedef struct seglun_priv_t seglun_priv_t;
 struct seglun_priv_t {
     ex_off_t used_size;
     ex_off_t total_size;

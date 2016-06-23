@@ -76,21 +76,42 @@ set(LSTORE_PROJECT_OBJS
     segment_lun.c service_manager.c view_base.c
 )
 
-set(LSTORE_PROJECT_INCLUDES_OLD
-    cache_amp.h blacklist.h data_block.h ex3_abstract.h ex3_linear_priv.h
-    rs_simple.h	 segment_jerasure.h segment_lun_priv.h cache_amp_priv.h
-    data_service_abstract.h ex3_compare.h ex3_system.h lio.h rs_simple_priv.h
-    segment_linear.h trace.h ds_ibp.h ex3_fmttypes.h ex3_types.h
-    os_file.h segment_cache.h segment_log.h ds_ibp_priv.h
-    ex3_header.h exnode.h raid4.h segment_cache_priv.h segment_log_priv.h
-    view_layout.h cache_priv.h erasure_tools.h ex3_linear.h rs_query_base.h
-    segment_file.h segment_lun.h cache.h authn_abstract.h authn_fake.h
-    osaz_fake.h rs_remote.h lio_abstract.h lio_fuse.h
-    cache_round_robin.h resource_service_abstract.h object_service_abstract.h
-    service_manager.h os_remote.h os_timecache.h
-)
+set(LSTORE_PROJECT_INCLUDES_OLD)
 set(LSTORE_PROJECT_INCLUDES_NAMESPACE lio)
 set(LSTORE_PROJECT_INCLUDES
+		lio/authn_abstract.h
+		lio/authn_fake.h
+		lio/blacklist.h
+		lio/cache_amp_priv.h
+		lio/cache_priv.h
+		lio/data_block.h
+		lio/data_service_abstract.h
+		lio/ds_ibp.h
+		lio/ds_ibp_priv.h
+		lio/erasure_tools.h
+		lio/ex3_abstract.h
+		lio/ex3_header.h
+		lio/ex3_system.h
+		lio/ex3_types.h
+		lio/liblio_trace.h
+		lio/lio_abstract.h
+		lio/lio_fuse.h
+		lio/lio_visibility.h
+		lio/object_service_abstract.h
+		lio/os_file.h
+		lio/os_file_priv.h
+		lio/os_remote_priv.h
+		lio/resource_service_abstract.h
+		lio/rs_query_base.h
+		lio/rs_remote_priv.h
+		lio/rs_simple_priv.h
+		lio/segment_cache.h
+		lio/segment_linear.h
+		lio/segment_log.h
+		lio/segment_log_priv.h
+		lio/segment_lun_priv.h
+		lio/service_manager.h
+		lio/trace.h
         lio/lio_visibility.h
     )
 

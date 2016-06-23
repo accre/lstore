@@ -13,7 +13,7 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 */
-
+#include "lio/authn_fake.h"
 //***********************************************************************
 // Dummy AuthN implementation
 //***********************************************************************
@@ -30,7 +30,6 @@ extern "C" {
 #define AUTHN_TYPE_FAKE "fake"
 
 //*** HAck for getting userid@hosntam passed around to be romved with proper authn/z
-typedef struct authn_fake_priv_t authn_fake_priv_t;
 struct authn_fake_priv_t {
     char *handle;
     int len;

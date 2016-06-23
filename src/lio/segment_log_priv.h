@@ -13,7 +13,7 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 */
-
+#include "lio/segment_log_priv.h"
 //***********************************************************************
 // LUN segment support
 //***********************************************************************
@@ -27,14 +27,12 @@
 extern "C" {
 #endif
 
-typedef struct slog_range_t slog_range_t;
 struct slog_range_t {
     ex_off_t lo;
     ex_off_t hi;  //** On disk this is actually the length.  It's converted to an offset when loaded and a length when stored
     ex_off_t data_offset;
 };
 
-typedef struct seglog_priv_t seglog_priv_t;
 struct seglog_priv_t {
     segment_t *table_seg;
     segment_t *data_seg;

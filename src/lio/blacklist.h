@@ -13,7 +13,7 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 */
-
+#include "lio/blacklist.h"
 //***********************************************************************
 // Blacklist structure definition
 //***********************************************************************
@@ -32,13 +32,11 @@
 extern "C" {
 #endif
 
-typedef struct blacklist_ibp_rid_t blacklist_ibp_rid_t;
 struct blacklist_ibp_rid_t {
     char *rid;
     apr_time_t recheck_time;
 };
 
-typedef struct blacklist_t blacklist_t;
 struct blacklist_t {
     apr_pool_t *mpool;
     apr_thread_mutex_t *lock;

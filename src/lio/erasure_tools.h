@@ -13,7 +13,7 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 */
-
+#include "lio/erasure_tools.h"
 #ifndef __ERASURE_TOOLS_H_
 #define __ERASURE_TOOLS_H_
 
@@ -46,7 +46,6 @@ extern int _debug;
 extern const char *JE_method[N_JE_METHODS];
 
 
-typedef struct erasure_plan_t erasure_plan_t;
 struct erasure_plan_t {    //** Contains the erasure parameters
     long long int strip_size;   //** Size of each data strip
     int method;                 //** Encoding/Decoding method used

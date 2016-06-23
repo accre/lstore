@@ -13,7 +13,7 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 */
-
+#include "lio/resource_service_abstract.h"
 //***********************************************************************
 // Generic resource managment service
 //***********************************************************************
@@ -47,9 +47,7 @@ extern "C" {
 #define RS_STATUS_OUT_OF_SPACE 2  //** The RID is disabled due to space
 #define RS_STATUS_DOWN         3  //** Can't connect to RID
 
-typedef struct resource_service_fn_t resource_service_fn_t;
 
-typedef struct rid_change_entry_t rid_change_entry_t;
 struct rid_change_entry_t {
     char *rid_key;      //** RID key
     char *ds_key;       //** Data service key
@@ -58,7 +56,6 @@ struct rid_change_entry_t {
     ex_off_t tolerance; //** Tolerance in bytes.  When abs(delta)<tolerance we stop tweaking the RID
 };
 
-typedef struct rs_space_t rs_space_t;
 struct rs_space_t {
     int n_rids_total;
     int n_rids_free;
@@ -73,7 +70,6 @@ struct rs_space_t {
 
 typedef void rs_query_t;
 
-typedef struct rs_hints_t rs_hints_t;
 struct  rs_hints_t {  //** Used for passing existing RID's and individual queries to the RS requestor and validation or repair
     char *fixed_rid_key;  //** RID key for existing/fixed index
     int  status;    //** Status of the fixed match or INVALID_LOCAL if a problem occurs with the local_rsq.  Returns one of the error codes above
@@ -81,7 +77,6 @@ struct  rs_hints_t {  //** Used for passing existing RID's and individual querie
     apr_hash_t *pick_from;  //** List of resources to pick from
 };
 
-typedef struct rs_request_t rs_request_t;
 struct rs_request_t {
     op_generic_t *gop;
     int rid_index;
@@ -89,7 +84,6 @@ struct rs_request_t {
     char *rid_key;
 };
 
-typedef struct rs_mapping_notify_t rs_mapping_notify_t;
 struct rs_mapping_notify_t {
     apr_thread_mutex_t *lock;
     apr_thread_cond_t *cond;

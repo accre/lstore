@@ -13,7 +13,7 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 */
-
+#include "lio/os_file.h"
 //***********************************************************************
 // OS file header file
 //***********************************************************************
@@ -35,7 +35,6 @@ extern "C" {
 
 #define OS_TYPE_FILE "file"
 
-typedef struct local_object_iter_t local_object_iter_t;
 struct local_object_iter_t {
     object_service_fn_t *os;
     os_object_iter_t  *oit;

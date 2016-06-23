@@ -13,7 +13,7 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 */
-//*************************************************************************
+#include "lio/cache_amp_priv.h"//*************************************************************************
 //*************************************************************************
 
 #ifndef __CACHE_AMP_PRIV_H_
@@ -31,7 +31,6 @@ extern "C" {
 #define CAMP_TAG      2  //** Tag page for pretech
 #define CAMP_OLD      4  //** Page has been recycled without a hit
 
-typedef struct page_amp_t page_amp_t;
 struct page_amp_t {
     cache_page_t page;  //** Actual page
     tbx_stack_ele_t *ele;   //** LRU position
@@ -39,7 +38,6 @@ struct page_amp_t {
     int bit_fields;
 };
 
-typedef struct amp_page_stream_t amp_page_stream_t;
 struct amp_page_stream_t {
     ex_off_t last_offset;
     ex_off_t nbytes;
@@ -47,7 +45,6 @@ struct amp_page_stream_t {
     int trigger_distance;
 };
 
-typedef struct amp_stream_table_t amp_stream_table_t;
 struct amp_stream_table_t {
     int   max_streams;
     amp_page_stream_t *stream_table;
@@ -56,7 +53,6 @@ struct amp_stream_table_t {
     int start_apt_pages;
 };
 
-typedef struct cache_amp_t cache_amp_t;
 struct cache_amp_t {
     tbx_stack_t *stack;
     tbx_stack_t *waiting_stack;
@@ -78,7 +74,6 @@ struct cache_amp_t {
     int      limbo_pages;
 };
 
-typedef struct amp_page_wait_t amp_page_wait_t;
 struct amp_page_wait_t {
     apr_thread_cond_t *cond;
     ex_off_t  bytes_needed;

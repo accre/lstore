@@ -13,7 +13,7 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 */
-
+#include "lio/os_file_priv.h"
 //***********************************************************************
 // OS file header file
 //***********************************************************************
@@ -39,7 +39,6 @@ extern "C" {
 #define OSF_LOCK_CHKSUM CHKSUM_MD5
 #define OSF_LOCK_CHKSUM_SIZE MD5_DIGEST_LENGTH
 
-typedef struct osfile_priv_t osfile_priv_t;
 struct osfile_priv_t {
     int base_path_len;
     int file_path_len;

@@ -13,7 +13,7 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 */
-
+#include "lio/ds_ibp_priv.h"
 //***********************************************************************
 // IBP based data service
 //***********************************************************************
@@ -32,12 +32,10 @@
 extern "C" {
 #endif
 
-typedef struct ds_ibp_alloc_op_t ds_ibp_alloc_op_t;
 struct ds_ibp_alloc_op_t {
     ibp_depot_t depot;
 };
 
-typedef struct ds_ibp_truncate_op_t ds_ibp_truncate_op_t;
 struct ds_ibp_truncate_op_t {
     int state;
     int timeout;
@@ -50,7 +48,6 @@ struct ds_ibp_truncate_op_t {
     ibp_cap_t *mcap;
 };
 
-typedef struct ds_ibp_op_t ds_ibp_op_t;
 struct ds_ibp_op_t {
     void *sf_ptr;
     ds_ibp_attr_t *attr;
@@ -63,7 +60,6 @@ struct ds_ibp_op_t {
     } ops;
 };
 
-typedef struct ds_ibp_priv_t ds_ibp_priv_t;
 struct ds_ibp_priv_t {
     ds_ibp_attr_t attr_default;
     ibp_context_t *ic;

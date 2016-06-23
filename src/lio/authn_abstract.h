@@ -13,7 +13,7 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 */
-
+#include "lio/authn_abstract.h"
 //***********************************************************************
 // Generic Authentication service
 //***********************************************************************
@@ -33,7 +33,6 @@ extern "C" {
 
 #define AUTHN_INDEX_SHARED_HANDLE 0
 
-typedef struct creds_t creds_t;
 struct creds_t {
     void *priv;
     void *handle;
@@ -59,7 +58,6 @@ creds_t *cred_default_create();
 #define an_cred_destroy(c) (c)->destroy(c)
 
 
-typedef struct authn_t authn_t;
 struct authn_t {
     void *priv;
     creds_t *(*cred_init)(authn_t *an, int type, void **args);

@@ -13,7 +13,7 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 */
-
+#include "lio/lio_fuse.h"
 //***********************************************************************
 // lio_fuse.h - LIO Linux FUSE header file
 //***********************************************************************
@@ -55,9 +55,7 @@ struct lio_fuse_t;
 #define LFS_INODE_DROP   1  //** Drop the inode from the cache
 #define LFS_INODE_DELETE 2  //** Remove it from cache and delete the file contents
 
-typedef struct lio_fuse_file_handle_s lio_fuse_file_handle_t;
 
-typedef struct lio_fuse_t lio_fuse_t;
 struct lio_fuse_t {
 int enable_tape;
 int shutdown;
@@ -74,7 +72,6 @@ char *mount_point;
 segment_rw_hints_t *rw_hints;
 };
 
-typedef struct lio_fuse_init_args_t lio_fuse_init_args_t;
 struct lio_fuse_init_args_t {
 lio_config_t *lc;
 char *mount_point;

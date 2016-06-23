@@ -13,7 +13,7 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 */
-
+#include "lio/rs_query_base.h"
 //***********************************************************************
 // Basic Resource Query interface
 //***********************************************************************
@@ -46,7 +46,6 @@ extern "C" {
 #define RSQ_BASE_KV_UNIQUE   64
 #define RSQ_BASE_KV_PICKONE 128
 
-typedef struct rsq_base_ele_t rsq_base_ele_t;
 struct rsq_base_ele_t {
     int op;          //** Query operation
     char *key;
@@ -56,7 +55,6 @@ struct rsq_base_ele_t {
     struct rsq_base_ele_t *next;
 };
 
-typedef struct rsq_base_t rsq_base_t;
 struct rsq_base_t {
     resource_service_fn_t *rs;
     rsq_base_ele_t *head;

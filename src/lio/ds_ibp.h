@@ -13,7 +13,7 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 */
-
+#include "lio/ds_ibp.h"
 //***********************************************************************
 // IBP based data service
 //***********************************************************************
@@ -45,7 +45,6 @@ extern "C" {
 #define DS_IBP_ATTR_DISK_CHKSUM_TYPE 7
 #define DS_IBP_ATTR_DISK_CHKSUM_BLOCKSIZE 8
 
-typedef struct ds_ibp_attr_t ds_ibp_attr_t;
 struct ds_ibp_attr_t {
     ibp_attributes_t attr;
     ibp_depot_t depot;

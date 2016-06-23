@@ -13,7 +13,7 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 */
-
+#include "lio/rs_simple_priv.h"
 //***********************************************************************
 // Simple resource managment implementation
 //***********************************************************************
@@ -32,7 +32,6 @@
 extern "C" {
 #endif
 
-typedef struct rss_rid_entry_t rss_rid_entry_t;
 struct rss_rid_entry_t {
     char *rid_key;
     char *ds_key;
@@ -44,7 +43,6 @@ struct rss_rid_entry_t {
     ex_off_t space_free;
 };
 
-typedef struct rss_check_entry_t rss_check_entry_t;
 struct rss_check_entry_t {
     char *ds_key;
     char *rid_key;
@@ -52,7 +50,6 @@ struct rss_check_entry_t {
     rss_rid_entry_t *re;
 };
 
-typedef struct rs_simple_priv_t rs_simple_priv_t;
 struct rs_simple_priv_t {
     tbx_list_t *rid_table;
     rss_rid_entry_t **random_array;

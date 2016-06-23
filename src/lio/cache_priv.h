@@ -13,7 +13,7 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 */
-
+#include "lio/cache_priv.h"
 //*************************************************************************
 //*************************************************************************
 
@@ -45,9 +45,7 @@ extern "C" {
 #define C_TORELEASE 4
 
 struct cache_t;
-typedef struct cache_t cache_t;
 
-typedef struct cache_range_t cache_range_t;
 struct cache_range_t {
     ex_off_t lo;
     ex_off_t hi;
@@ -55,7 +53,6 @@ struct cache_range_t {
     int iov_index;
 };
 
-typedef struct cache_counters_t cache_counters_t;
 struct cache_counters_t {
     ex_off_t read_count;
     ex_off_t write_count;
@@ -63,7 +60,6 @@ struct cache_counters_t {
     ex_off_t write_bytes;
 };
 
-typedef struct lio_cache_stats_get_t lio_cache_stats_get_t;
 struct lio_cache_stats_get_t {
     cache_counters_t user;
     cache_counters_t system;
@@ -75,7 +71,6 @@ struct lio_cache_stats_get_t {
     apr_time_t miss_time;
 };
 
-typedef struct cache_cond_t cache_cond_t;
 struct cache_cond_t {
     apr_thread_cond_t *cond;
     int count;
@@ -85,7 +80,6 @@ struct cache_cond_t {
 #define CPP_END   2
 #define CPP_FULL  4
 
-typedef struct cache_partial_page_t cache_partial_page_t;
 struct cache_partial_page_t {
     ex_off_t page_start;
     ex_off_t page_end;
@@ -94,7 +88,6 @@ struct cache_partial_page_t {
     int flags;
 };
 
-typedef struct cache_segment_t cache_segment_t;
 struct cache_segment_t {
     cache_t *c;
     void *cache_priv;
@@ -122,13 +115,11 @@ struct cache_segment_t {
     lio_cache_stats_get_t stats;
 };
 
-typedef struct data_page_t data_page_t;
 struct data_page_t {
     char *ptr;
     int  usage_count;
 };
 
-typedef struct cache_page_t cache_page_t;
 struct cache_page_t {
     segment_t *seg;
     data_page_t *curr_data;
@@ -142,13 +133,11 @@ struct cache_page_t {
     int current_index;
 };
 
-typedef struct page_handle_t page_handle_t;
 struct page_handle_t {
     cache_page_t *p;
     data_page_t *data;
 };
 
-typedef struct page_table_t page_table_t;
 struct page_table_t {
     tbx_stack_t *stack;
     segment_t *seg;
@@ -157,7 +146,6 @@ struct page_table_t {
     ex_off_t lo, hi;
 };
 
-typedef struct cache_fn_t cache_fn_t;
 struct cache_fn_t {
     void *priv;
     void (*adding_segment)(cache_t *c, segment_t *seg);
@@ -200,14 +188,12 @@ extern tbx_atomic_unit32_t _cache_count;
 #define cache_get_handle(c) (c)->fn.get_handle(c)
 #define cache_destroy(c) (c)->fn.destroy(c)
 
-LIO_API lio_cache_stats_get_t get_lio_cache_stats_get(cache_t *c);
 cache_t *cache_base_handle(cache_t *);
 void cache_base_destroy(cache_t *c);
 void cache_base_create(cache_t *c, data_attr_t *da, int timeout);
 void *cache_cond_new(void *arg, int size);
 void cache_cond_free(void *arg, int size, void *data);
 op_generic_t *cache_flush_range(segment_t *seg, data_attr_t *da, ex_off_t lo, ex_off_t hi, int timeout);
-LIO_API int lio_cache_pages_drop(segment_t *seg, ex_off_t lo, ex_off_t hi);
 int cache_release_pages(int n_pages, page_handle_t *page, int rw_mode);
 void _cache_drain_writes(segment_t *seg, cache_page_t *p);
 void cache_advise(segment_t *seg, segment_rw_hints_t *rw_hints, int rw_mode, ex_off_t lo, ex_off_t hi, page_handle_t *page, int *n_pages, int force_load);

@@ -13,7 +13,7 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 */
-
+#include "lio/segment_cache.h"
 //***********************************************************************
 // Generic cache segment support
 //***********************************************************************
@@ -34,9 +34,6 @@ extern "C" {
 #define SEGMENT_TYPE_CACHE "cache"
 
 int cache_page_drop(segment_t *seg, ex_off_t lo, ex_off_t hi);
-LIO_API int lio_cache_stats_get_print(lio_cache_stats_get_t *cs, char *buffer, int *used, int nmax);
-LIO_API int lio_cache_stats_get(cache_t *c, lio_cache_stats_get_t *cs);
-LIO_API lio_cache_stats_get_t segment_lio_cache_stats_get(segment_t *seg);
 segment_t *segment_cache_load(void *arg, ex_id_t id, exnode_exchange_t *ex);
 segment_t *segment_cache_create(void *arg);
 

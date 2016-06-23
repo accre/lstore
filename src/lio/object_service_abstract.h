@@ -13,7 +13,7 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 */
-
+#include "lio/object_service_abstract.h"
 //***********************************************************************
 // Generic object service
 //***********************************************************************
@@ -68,20 +68,12 @@ extern "C" {
 
 #define OS_CREDS_INI_TYPE 0  //** Load creds from file
 
-typedef struct os_authz_t os_authz_t;
 
-typedef struct os_attr_tbx_list_t os_attr_tbx_list_t;
 struct os_attr_tbx_list_t {
     int q_mode;
     char *attr;
 };
 
-typedef void os_fd_t;
-typedef void os_attr_iter_t;
-typedef void os_object_iter_t;
-typedef void os_fsck_iter_t;
-
-typedef struct os_regex_entry_t os_regex_entry_t;
 struct os_regex_entry_t {
     char *expression;
     int fixed;
@@ -89,14 +81,11 @@ struct os_regex_entry_t {
     regex_t compiled;
 };
 
-typedef struct os_regex_table_t os_regex_table_t;
 struct os_regex_table_t {
     int n;
     os_regex_entry_t *regex_entry;
 };
 
-typedef struct object_service_fn_t object_service_fn_t;
-typedef struct os_virtual_attr_t os_virtual_attr_t;
 
 struct object_service_fn_t {
     void *priv;
@@ -199,14 +188,7 @@ typedef object_service_fn_t *(os_create_t)(service_manager_t *ess, tbx_inip_file
 #define os_destroy(os) (os)->destroy_service(os)
 
 
-LIO_API int lio_os_local_filetype(char *path);
-LIO_API int lio_os_regex_is_fixed(os_regex_table_t *regex);
-LIO_API void lio_os_path_split(const char *path, char **dir, char **file);
 os_regex_table_t *os_regex_table_create(int n);
-LIO_API void lio_os_regex_table_destroy(os_regex_table_t *table);
-LIO_API os_regex_table_t *lio_os_path_glob2regex(char *path);
-LIO_API char *lio_os_glob2regex(char *glob);
-LIO_API os_regex_table_t *lio_os_regex2table(char *regex);
 int os_regex_table_pack(os_regex_table_t *regex, unsigned char *buffer, int bufsize);
 os_regex_table_t *os_regex_table_unpack(unsigned char *buffer, int bufsize, int *used);
 

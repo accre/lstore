@@ -13,7 +13,7 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 */
-
+#include "lio/data_block.h"
 //***********************************************************************
 // Data block definition
 //***********************************************************************
@@ -38,19 +38,16 @@ extern "C" {
 
 typedef void data_block_cap_t;
 
-typedef struct data_block_warm_t data_block_warm_t;
 struct data_block_warm_t {
     data_block_cap_t *cap;
     data_service_fn_t *ds;
 };
 
-typedef struct data_block_attr_t data_block_attr_t;
 struct data_block_attr_t {
     char *key;
     char *value;
 };
 
-typedef struct data_block_t data_block_t;
 struct data_block_t {
     ex_id_t  id;
     ex_off_t size;

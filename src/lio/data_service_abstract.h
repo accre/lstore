@@ -13,7 +13,7 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 */
-
+#include "lio/data_service_abstract.h"
 //***********************************************************************
 // Generic data service
 //***********************************************************************
@@ -55,13 +55,6 @@ extern "C" {
 #define DS_INQUIRE_FREE  2
 #define DS_INQUIRE_TOTAL 3
 
-typedef int64_t ds_int_t;
-typedef void data_attr_t;
-typedef void data_cap_set_t;
-typedef void data_cap_t;
-typedef void data_probe_t;
-typedef void data_inquire_t;
-
 #define ds_type(ds) (ds)->type
 #define ds_destroy_service(ds) (ds)->destroy_service(ds)
 #define ds_cap_auto_warm(ds, cs) (ds)->cap_auto_warm(ds, cs)
@@ -99,7 +92,6 @@ typedef void data_inquire_t;
 #define ds_copy(ds, attr, mode, ns_type, ppath, src_cap, src_off, dest_cap, dest_off, len, to) \
               (ds)->copy(ds, attr, mode, ns_type, ppath, src_cap, src_off, dest_cap, dest_off, len, to)
 
-typedef struct data_service_fn_t data_service_fn_t;
 struct data_service_fn_t {
     void *priv;
     char *type;

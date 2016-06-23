@@ -13,7 +13,7 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 */
-
+#include "lio/rs_remote_priv.h"
 //***********************************************************************
 // Remote client resource managment implementation
 //***********************************************************************
@@ -40,7 +40,6 @@ extern "C" {
 #define RSR_ABORT_SIZE              5
 
 
-typedef struct rs_remote_client_priv_t rs_remote_client_priv_t;
 struct rs_remote_client_priv_t {
     data_service_fn_t *ds;
     data_attr_t *da;
@@ -65,7 +64,6 @@ struct rs_remote_client_priv_t {
 };
 
 
-typedef struct rs_remote_server_priv_t rs_remote_server_priv_t;
 struct rs_remote_server_priv_t {
     int shutdown;
     apr_thread_mutex_t *lock;

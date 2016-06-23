@@ -13,7 +13,7 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 */
-
+#include "lio/ex3_header.h"
 //***********************************************************************
 // Linear exnode3 support
 //***********************************************************************
@@ -33,7 +33,6 @@ extern "C" {
 #endif
 
 
-typedef struct ex_header_t ex_header_t;
 struct ex_header_t {
     char *name;
     ex_id_t id;

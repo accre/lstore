@@ -13,7 +13,7 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 */
-
+#include "lio/os_remote_priv.h"
 //***********************************************************************
 // OS Remote Server private header file
 //***********************************************************************
@@ -87,7 +87,6 @@ extern "C" {
 #define OSR_ONGOING_ATTR_ITER   2
 #define OSR_ONGOING_FSCK_ITER   3
 
-typedef struct osrs_priv_t osrs_priv_t;
 struct osrs_priv_t {
     object_service_fn_t *os_child;  //** Actual OS used
     apr_thread_mutex_t *lock;
@@ -113,7 +112,6 @@ struct osrs_priv_t {
     char *fname_activity;       //** Filename for logging create/remove/move operations.
 };
 
-typedef struct osrc_priv_t osrc_priv_t;
 struct osrc_priv_t {
     object_service_fn_t *os_temp;  //** Used only for initial debugging of the client/server
     object_service_fn_t *os_remote;//** Used only for initial debugging of the client/server

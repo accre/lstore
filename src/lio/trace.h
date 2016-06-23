@@ -13,7 +13,7 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 */
-
+#include "lio/trace.h"
 #ifndef _TRACE_H_
 #define _TRACE_H_
 
@@ -37,7 +37,6 @@ struct trace_t;
 
 #define MAX_BIN 32
 
-typedef struct trace_op_t trace_op_t;
 struct trace_op_t {
     ex_off_t offset;
     ex_off_t len;
@@ -45,14 +44,12 @@ struct trace_op_t {
     int cmd;
 };
 
-typedef struct trace_stats_t trace_stats_t;
 struct trace_stats_t {
     ex_off_t total_bytes[2];
     ex_off_t total_ops[2];
     ex_off_t rw_dist[2][MAX_BIN];
 };
 
-typedef struct trace_file_t trace_file_t;
 struct trace_file_t {
     exnode_t *ex;
     segment_t *seg;
@@ -63,7 +60,6 @@ struct trace_file_t {
     trace_stats_t stats;
 };
 
-typedef struct trace_t trace_t;
 struct trace_t {
     char *header;
     char *data;
