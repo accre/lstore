@@ -34,8 +34,8 @@
 #include <tbx/type_malloc.h>
 
 #include "ex3_types.h"
-#include "lio_abstract.h"
-#include "resource_service_abstract.h"
+#include "lio.h"
+#include "rs.h"
 
 apr_thread_mutex_t *lock;
 apr_thread_cond_t *cond;

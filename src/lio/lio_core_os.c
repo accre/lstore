@@ -33,11 +33,11 @@
 #include <tbx/type_malloc.h>
 #include <unistd.h>
 
-#include "authn_abstract.h"
-#include "ex3_abstract.h"
+#include "authn.h"
+#include "ex3.h"
 #include "ex3_types.h"
-#include "lio_abstract.h"
-#include "object_service_abstract.h"
+#include "lio.h"
+#include "os.h"
 
 #define _n_fsck_keys 4
 static char *_fsck_keys[] = { "system.owner", "system.inode", "system.exnode", "system.exnode.size" };

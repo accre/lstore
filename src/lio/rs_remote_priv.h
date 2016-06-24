@@ -25,7 +25,7 @@
 #include <gop/opque.h>
 #include <tbx/list.h>
 
-#include "data_service_abstract.h"
+#include "ds.h"
 #include "service_manager.h"
 
 #ifdef __cplusplus

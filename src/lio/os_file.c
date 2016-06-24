@@ -54,11 +54,11 @@
 #include <tbx/type_malloc.h>
 #include <unistd.h>
 
-#include "authn_abstract.h"
+#include "authn.h"
 #include "authn_fake.h"
 #include "ex3_system.h"
 #include "ex3_types.h"
-#include "object_service_abstract.h"
+#include "os.h"
 #include "os_file.h"
 #include "os_file_priv.h"
 #include "osaz_fake.h"

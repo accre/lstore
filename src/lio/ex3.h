@@ -13,7 +13,7 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 */
-#include "lio/ex3_abstract.h"
+#include "lio/ex3.h"
 //***********************************************************************
 // Exnode3 abstract class
 //***********************************************************************
@@ -26,11 +26,11 @@
 #include <tbx/transfer_buffer.h>
 
 #include "data_block.h"
-#include "data_service_abstract.h"
+#include "ds.h"
 #include "ex3_header.h"
 #include "ex3_types.h"
-#include "object_service_abstract.h"
-#include "resource_service_abstract.h"
+#include "os.h"
+#include "rs.h"
 #include "service_manager.h"
 
 #ifndef _EX3_ABSTRACT_H_

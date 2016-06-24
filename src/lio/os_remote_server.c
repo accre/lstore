@@ -51,11 +51,11 @@
 #include <tbx/type_malloc.h>
 #include <tbx/varint.h>
 
-#include "authn_abstract.h"
+#include "authn.h"
 #include "authn_fake.h"
 #include "ex3_system.h"
 #include "ex3_types.h"
-#include "object_service_abstract.h"
+#include "os.h"
 #include "os_file.h"
 #include "os_remote.h"
 #include "os_remote_priv.h"

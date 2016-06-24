@@ -47,7 +47,7 @@
 #include <unistd.h>
 
 #include "ex3_system.h"
-#include "resource_service_abstract.h"
+#include "rs.h"
 #include "rs_remote.h"
 #include "rs_remote_priv.h"
 #include "rs_simple.h"

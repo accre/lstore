@@ -23,7 +23,7 @@
 #include <tbx/atomic_counter.h>
 #include <tbx/list.h>
 
-#include "ex3_abstract.h"
+#include "ex3.h"
 
 
 //***********************************************************************

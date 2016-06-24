@@ -23,8 +23,8 @@
 #include <string.h>
 #include <tbx/log.h>
 
-#include "lio_abstract.h"
-#include "object_service_abstract.h"
+#include "lio.h"
+#include "os.h"
 
 char *exnode_data = NULL;
 

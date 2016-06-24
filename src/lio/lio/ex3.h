@@ -23,7 +23,7 @@ limitations under the License.
 
 #include <gop/tp.h>
 #include <lio/lio_visibility.h>
-#include <lio/data_service_abstract.h>
+#include <lio/ds.h>
 #include <lio/service_manager.h>
 #include <lio/ex3_types.h>
 

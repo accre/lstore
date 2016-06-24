@@ -31,7 +31,7 @@
 #include <tbx/log.h>
 #include <unistd.h>
 
-#include "lio_abstract.h"
+#include "lio.h"
 
 int shutdown_now = 0;
 apr_thread_mutex_t *shutdown_lock;

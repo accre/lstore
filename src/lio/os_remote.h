@@ -18,7 +18,7 @@
 // OS Remote Server/Client header file
 //***********************************************************************
 
-#include "object_service_abstract.h"
+#include "os.h"
 
 #ifndef _OS_REMOTE_H_
 #define _OS_REMOTE_H_

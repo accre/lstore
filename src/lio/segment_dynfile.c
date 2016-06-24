@@ -26,7 +26,7 @@
 #include <tbx/interval_skiplist.h>
 #include <tbx/log.h>
 
-#include "ex3_abstract.h"
+#include "ex3.h"
 #include "ex3_compare.h"
 #include "ex3_system.h"
 #include "segment_file.h"

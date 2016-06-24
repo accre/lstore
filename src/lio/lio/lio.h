@@ -22,9 +22,9 @@ limitations under the License.
 #define ACCRE_LIO_LIO_ABSTRACT_H_INCLUDED
 
 #include "lio/lio_visibility.h"
-#include <lio/authn_abstract.h>
-#include <lio/ex3_abstract.h>
-#include <lio/object_service_abstract.h>
+#include <lio/authn.h>
+#include <lio/ex3.h>
+#include <lio/os.h>
 
 #ifdef __cplusplus
 extern "C" {

@@ -42,9 +42,9 @@
 #include <tbx/stack.h>
 #include <tbx/type_malloc.h>
 
-#include "authn_abstract.h"
+#include "authn.h"
 #include "ex3_system.h"
-#include "object_service_abstract.h"
+#include "os.h"
 #include "os_file.h"
 #include "os_remote.h"
 #include "os_timecache.h"

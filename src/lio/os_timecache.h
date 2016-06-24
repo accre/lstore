@@ -23,7 +23,7 @@
 
 #include <tbx/iniparse.h>
 
-#include "object_service_abstract.h"
+#include "os.h"
 #include "service_manager.h"
 
 #ifdef __cplusplus

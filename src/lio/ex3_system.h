@@ -22,7 +22,7 @@
 #include <tbx/list.h>
 
 #include "cache.h"
-#include "ex3_abstract.h"
+#include "ex3.h"
 #include "service_manager.h"
 
 #ifndef _EX3_SYSTEM_H_

@@ -19,11 +19,11 @@
 
 #include <stdio.h>
 
-#include "data_service_abstract.h"
-#include "ex3_abstract.h"
+#include "ds.h"
+#include "ex3.h"
 #include "ex3_types.h"
 #include "exnode.h"
-#include "object_service_abstract.h"
+#include "os.h"
 #include "service_manager.h"
 
 struct trace_file_t;

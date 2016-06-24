@@ -32,10 +32,10 @@
 #include <tbx/atomic_counter.h>
 #include <tbx/list.h>
 
-#include "ex3_abstract.h"
+#include "ex3.h"
 #include "lio.h"
 #include "lio/lio_visibility.h"
-#include "lio_abstract.h"
+#include "lio.h"
 
 #ifdef __cplusplus
 extern "C" {

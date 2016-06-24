@@ -24,7 +24,7 @@
 #include <gop/opque.h>
 #include <tbx/fmttypes.h>
 
-#include "ex3_abstract.h"
+#include "ex3.h"
 #include "ex3_types.h"
 
 #ifdef __cplusplus

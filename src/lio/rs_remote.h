@@ -24,7 +24,7 @@
 
 #include <tbx/list.h>
 
-#include "resource_service_abstract.h"
+#include "rs.h"
 
 #ifdef __cplusplus
 extern "C" {

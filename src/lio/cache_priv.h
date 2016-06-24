@@ -24,7 +24,7 @@
 #include <tbx/list.h>
 #include <tbx/pigeon_coop.h>
 
-#include "ex3_abstract.h"
+#include "ex3.h"
 
 #ifdef __cplusplus
 extern "C" {

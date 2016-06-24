@@ -32,8 +32,8 @@
 #include <tbx/type_malloc.h>
 
 #include "ex3_types.h"
-#include "lio_abstract.h"
-#include "object_service_abstract.h"
+#include "lio.h"
+#include "os.h"
 
 typedef struct {
     char *fname;

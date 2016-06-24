@@ -13,7 +13,7 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 */
-#include "lio/object_service_abstract.h"
+#include "lio/os.h"
 //***********************************************************************
 // Generic object service
 //***********************************************************************
@@ -25,7 +25,7 @@
 #include <regex.h>
 #include <sys/types.h>
 
-#include "authn_abstract.h"
+#include "authn.h"
 #include "ex3_types.h"
 #include "lio/lio_visibility.h"
 #include "service_manager.h"

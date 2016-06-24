@@ -79,29 +79,29 @@ set(LSTORE_PROJECT_OBJS
 set(LSTORE_PROJECT_INCLUDES_OLD)
 set(LSTORE_PROJECT_INCLUDES_NAMESPACE lio)
 set(LSTORE_PROJECT_INCLUDES
-		lio/authn_abstract.h
+		lio/authn.h
 		lio/authn_fake.h
 		lio/blacklist.h
 		lio/cache_amp_priv.h
 		lio/cache_priv.h
 		lio/data_block.h
-		lio/data_service_abstract.h
+		lio/ds.h
 		lio/ds_ibp.h
 		lio/ds_ibp_priv.h
 		lio/erasure_tools.h
-		lio/ex3_abstract.h
+		lio/ex3.h
 		lio/ex3_header.h
 		lio/ex3_system.h
 		lio/ex3_types.h
 		lio/liblio_trace.h
-		lio/lio_abstract.h
+		lio/lio.h
 		lio/lio_fuse.h
 		lio/lio_visibility.h
-		lio/object_service_abstract.h
+		lio/os.h
 		lio/os_file.h
 		lio/os_file_priv.h
 		lio/os_remote_priv.h
-		lio/resource_service_abstract.h
+		lio/rs.h
 		lio/rs_query_base.h
 		lio/rs_remote_priv.h
 		lio/rs_simple_priv.h

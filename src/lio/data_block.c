@@ -32,8 +32,8 @@
 #include <tbx/type_malloc.h>
 
 #include "data_block.h"
-#include "data_service_abstract.h"
-#include "ex3_abstract.h"
+#include "ds.h"
+#include "ex3.h"
 #include "ex3_types.h"
 #include "service_manager.h"
 

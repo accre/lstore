@@ -21,7 +21,7 @@
 #ifndef _OSAZ_FAKE_H_
 #define _OSAZ_FAKE_H_
 
-#include "object_service_abstract.h"
+#include "os.h"
 
 #ifdef __cplusplus
 extern "C" {

@@ -24,8 +24,8 @@
 #include <tbx/iniparse.h>
 #include <tbx/type_malloc.h>
 
-#include "authn_abstract.h"
-#include "object_service_abstract.h"
+#include "authn.h"
+#include "os.h"
 #include "service_manager.h"
 
 //***********************************************************************

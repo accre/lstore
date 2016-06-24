@@ -41,19 +41,19 @@
 #include <tbx/string_token.h>
 #include <tbx/type_malloc.h>
 
-#include "authn_abstract.h"
+#include "authn.h"
 #include "blacklist.h"
 #include "cache.h"
 #include "cache_amp.h"
 #include "cache_priv.h"
-#include "data_service_abstract.h"
+#include "ds.h"
 #include "ds_ibp.h"
-#include "ex3_abstract.h"
+#include "ex3.h"
 #include "ex3_system.h"
-#include "lio_abstract.h"
-#include "object_service_abstract.h"
+#include "lio.h"
+#include "os.h"
 #include "os_file.h"
-#include "resource_service_abstract.h"
+#include "rs.h"
 #include "rs_simple.h"
 #include "service_manager.h"
 

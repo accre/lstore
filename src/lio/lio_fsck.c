@@ -24,8 +24,8 @@
 #include <tbx/log.h>
 
 #include "ex3_types.h"
-#include "lio_abstract.h"
-#include "object_service_abstract.h"
+#include "lio.h"
+#include "os.h"
 
 int main(int argc, char **argv)
 {

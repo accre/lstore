@@ -30,7 +30,7 @@
 #include <tbx/type_malloc.h>
 
 #include "cache_priv.h"
-#include "data_service_abstract.h"
+#include "ds.h"
 #include "ex3_compare.h"
 
 //*************************************************************************

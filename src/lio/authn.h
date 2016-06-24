@@ -13,7 +13,7 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 */
-#include "lio/authn_abstract.h"
+#include "lio/authn.h"
 //***********************************************************************
 // Generic Authentication service
 //***********************************************************************

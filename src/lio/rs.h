@@ -13,7 +13,7 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 */
-#include "lio/resource_service_abstract.h"
+#include "lio/rs.h"
 //***********************************************************************
 // Generic resource managment service
 //***********************************************************************
@@ -25,7 +25,7 @@
 #include <apr_hash.h>
 #include <apr_thread_cond.h>
 
-#include "data_service_abstract.h"
+#include "ds.h"
 #include "ex3_types.h"
 
 #ifdef __cplusplus

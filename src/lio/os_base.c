@@ -39,7 +39,7 @@
 #include <tbx/varint.h>
 #include <unistd.h>
 
-#include "object_service_abstract.h"
+#include "os.h"
 
 apr_thread_mutex_t *_path_parse_lock = NULL;
 apr_pool_t *_path_parse_pool = NULL;

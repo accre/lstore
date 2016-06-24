@@ -38,7 +38,7 @@
 #include <tbx/type_malloc.h>
 #include <unistd.h>
 
-#include "ex3_abstract.h"
+#include "ex3.h"
 #include "ex3_header.h"
 #include "ex3_system.h"
 #include "segment_file.h"

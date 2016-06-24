@@ -23,7 +23,7 @@
 
 #include "cache.h"
 #include "cache_priv.h"
-#include "ex3_abstract.h"
+#include "ex3.h"
 #include "ex3_types.h"
 #include "lio/lio_visibility.h"
 

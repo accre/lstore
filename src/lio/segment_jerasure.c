@@ -52,9 +52,9 @@
 #include <zlib.h>
 
 #include "blacklist.h"
-#include "data_service_abstract.h"
+#include "ds.h"
 #include "erasure_tools.h"
-#include "ex3_abstract.h"
+#include "ex3.h"
 #include "ex3_header.h"
 #include "ex3_system.h"
 #include "segment_jerasure.h"

@@ -21,7 +21,7 @@
 #include <tbx/atomic_counter.h>
 #include <tbx/stack.h>
 
-#include "data_service_abstract.h"
+#include "ds.h"
 #include "ex3_types.h"
 #include "service_manager.h"
 

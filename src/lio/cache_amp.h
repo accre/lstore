@@ -20,7 +20,7 @@
 #include <tbx/iniparse.h>
 
 #include "cache_priv.h"
-#include "data_service_abstract.h"
+#include "ds.h"
 
 #ifndef __CACHE_AMP_H_
 #define __CACHE_AMP_H_

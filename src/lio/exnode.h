@@ -20,7 +20,7 @@
 
 #include "authn_fake.h"
 #include "ds_ibp.h"
-#include "ex3_abstract.h"
+#include "ex3.h"
 #include "ex3_header.h"
 #include "ex3_system.h"
 #include "os_file.h"

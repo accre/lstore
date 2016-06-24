@@ -18,7 +18,7 @@
 // Dummy AuthN implementation
 //***********************************************************************
 
-#include "authn_abstract.h"
+#include "authn.h"
 
 #ifndef _AUTHN_FAKE_H_
 #define _AUTHN_FAKE_H_

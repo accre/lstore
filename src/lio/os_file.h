@@ -21,7 +21,7 @@
 #include <tbx/fmttypes.h>
 #include <tbx/iniparse.h>
 
-#include "object_service_abstract.h"
+#include "os.h"
 #include "service_manager.h"
 
 struct local_object_iter_t;

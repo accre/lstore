@@ -49,7 +49,7 @@
 #include <tbx/transfer_buffer.h>
 #include <tbx/type_malloc.h>
 
-#include "data_service_abstract.h"
+#include "ds.h"
 #include "ds_ibp.h"
 #include "ds_ibp_priv.h"
 #include "ex3_types.h"

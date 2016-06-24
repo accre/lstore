@@ -16,9 +16,9 @@
 
 #include <stddef.h>
 
-#include "data_service_abstract.h"
-#include "object_service_abstract.h"
-#include "resource_service_abstract.h"
+#include "ds.h"
+#include "os.h"
+#include "rs.h"
 
 #define _log_module_index 148
 

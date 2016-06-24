@@ -28,7 +28,7 @@
 #include <tbx/iniparse.h>
 #include <tbx/string_token.h>
 
-#include "resource_service_abstract.h"
+#include "rs.h"
 
 rs_space_t rs_space(char *config)
 {

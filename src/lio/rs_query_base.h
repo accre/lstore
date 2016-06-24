@@ -21,7 +21,7 @@
 #ifndef _RS_QUERY_BASE_H_
 #define _RS_QUERY_BASE_H_
 
-#include "resource_service_abstract.h"
+#include "rs.h"
 
 struct rsq_base_ele_t;
 struct rsq_base_t;

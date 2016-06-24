@@ -27,7 +27,7 @@
 #include <tbx/string_token.h>
 #include <tbx/type_malloc.h>
 
-#include "resource_service_abstract.h"
+#include "rs.h"
 #include "rs_query_base.h"
 
 //***********************************************************************

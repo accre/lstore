@@ -23,8 +23,8 @@
 #include <tbx/chksum.h>
 #include <openssl/md5.h>
 
-#include "authn_abstract.h"
-#include "object_service_abstract.h"
+#include "authn.h"
+#include "os.h"
 
 #ifdef __cplusplus
 extern "C" {

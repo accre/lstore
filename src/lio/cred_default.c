@@ -24,7 +24,7 @@
 #include <string.h>
 #include <tbx/type_malloc.h>
 
-#include "authn_abstract.h"
+#include "authn.h"
 
 //***********************************************************************
 

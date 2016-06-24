@@ -28,7 +28,7 @@
 
 #include "cache.h"
 #include "cache_priv.h"
-#include "data_service_abstract.h"
+#include "ds.h"
 #include "service_manager.h"
 
 typedef struct {

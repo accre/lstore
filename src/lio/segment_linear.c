@@ -46,7 +46,7 @@
 #include <tbx/type_malloc.h>
 
 #include "data_block.h"
-#include "ex3_abstract.h"
+#include "ex3.h"
 #include "ex3_compare.h"
 #include "ex3_header.h"
 #include "ex3_system.h"

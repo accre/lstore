@@ -45,9 +45,9 @@
 #include <tbx/type_malloc.h>
 #include <unistd.h>
 
-#include "data_service_abstract.h"
+#include "ds.h"
 #include "ex3_system.h"
-#include "resource_service_abstract.h"
+#include "rs.h"
 #include "rs_query_base.h"
 #include "rs_remote.h"
 #include "rs_remote_priv.h"

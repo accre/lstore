@@ -48,10 +48,10 @@
 #include <gop/opque.h>
 #include <gop/types.h>
 
-#include "data_service_abstract.h"
+#include "ds.h"
 #include "ex3_system.h"
 #include "ex3_types.h"
-#include "resource_service_abstract.h"
+#include "rs.h"
 #include "rs_query_base.h"
 #include "rs_simple.h"
 #include "rs_simple_priv.h"

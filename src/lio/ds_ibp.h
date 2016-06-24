@@ -26,7 +26,7 @@
 #include <tbx/iniparse.h>
 #include <tbx/network.h>
 
-#include "data_service_abstract.h"
+#include "ds.h"
 
 struct ds_ibp_attr_t;
 

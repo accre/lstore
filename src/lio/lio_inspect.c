@@ -45,12 +45,12 @@
 #include <tbx/string_token.h>
 #include <tbx/type_malloc.h>
 
-#include "authn_abstract.h"
-#include "ex3_abstract.h"
+#include "authn.h"
+#include "ex3.h"
 #include "ex3_types.h"
-#include "lio_abstract.h"
-#include "object_service_abstract.h"
-#include "resource_service_abstract.h"
+#include "lio.h"
+#include "os.h"
+#include "rs.h"
 #include "rs_query_base.h"
 
 #define n_inspect 10

@@ -45,12 +45,12 @@
 #include <unistd.h>
 #include <zlib.h>
 
-#include "ex3_abstract.h"
+#include "ex3.h"
 #include "ex3_types.h"
-#include "lio_abstract.h"
+#include "lio.h"
 #include "lio_fuse.h"
-#include "object_service_abstract.h"
-#include "resource_service_abstract.h"
+#include "os.h"
+#include "rs.h"
 
 #if defined(HAVE_SYS_XATTR_H)
 #include <sys/xattr.h>

@@ -29,9 +29,9 @@
 #include <tbx/transfer_buffer.h>
 #include <tbx/type_malloc.h>
 
-#include "data_service_abstract.h"
+#include "ds.h"
 #include "ex3_types.h"
-#include "lio_abstract.h"
+#include "lio.h"
 
 
 //*************************************************************************
