@@ -22,8 +22,8 @@
 #include <string.h>
 #include <tbx/log.h>
 
-#include "lio.h"
-#include "os.h"
+#include <lio/lio.h>
+#include <lio/os.h>
 
 
 //*************************************************************************

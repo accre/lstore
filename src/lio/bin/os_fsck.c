@@ -17,14 +17,17 @@
 #define _log_module_index 188
 
 #include <gop/gop.h>
+#include <gop/mq.h>
 #include <gop/types.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <tbx/log.h>
 
-#include "lio.h"
-#include "os.h"
+#include <lio/blacklist.h>
+#include <lio/cache_priv.h>
+#include <lio/lio.h>
+#include <lio/os.h>
 
 int main(int argc, char **argv)
 {

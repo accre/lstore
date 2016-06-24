@@ -21,10 +21,15 @@ limitations under the License.
 #ifndef ACCRE_LIO_LIO_ABSTRACT_H_INCLUDED
 #define ACCRE_LIO_LIO_ABSTRACT_H_INCLUDED
 
+#include <gop/mq.h>
 #include "lio/lio_visibility.h"
 #include <lio/authn.h>
+#include <lio/blacklist.h>
+#include <lio/cache_priv.h>
 #include <lio/ex3.h>
 #include <lio/os.h>
+#include <lio/rs.h>
+#include <tbx/list.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -93,6 +98,98 @@ LIO_API int lioc_getattr(lio_config_t *lc, creds_t *creds, char *path, char *id,
 LIO_API int lioc_setattr(lio_config_t *lc, creds_t *creds, char *path, char *id, char *key, void *val, int v_size);
 LIO_API op_generic_t *lioc_truncate(lio_path_tuple_t *tuple, ex_off_t new_size);
 
+// Preprocessor constants
+#define LIO_FSCK_MANUAL      0
+#define LIO_FSCK_PARENT      1
+#define LIO_FSCK_DELETE      2
+#define LIO_FSCK_USER        4
+#define LIO_FSCK_SIZE_REPAIR 8
+
+#define LIO_FSCK_FINISHED           -1
+#define LIO_FSCK_GOOD                0
+#define LIO_FSCK_MISSING_OWNER       1
+#define LIO_FSCK_MISSING_EXNODE      2
+#define LIO_FSCK_MISSING_EXNODE_SIZE 4
+#define LIO_FSCK_MISSING_INODE       8
+#define LIO_FSCK_MISSING            16
+
+#define LIO_READ_MODE      1
+
+#define LIO_COPY_DIRECT   0
+#define LIO_COPY_INDIRECT 1
+
+// Global variables
+LIO_API extern lio_config_t *lio_gc;
+LIO_API extern tbx_log_fd_t *lio_ifd;
+LIO_API extern int lio_parallel_task_count;
+LIO_API extern FILE *_lio_ifd;  //** Default information log device
+
+// Exported structures. To be obscured
+struct lio_config_t {
+    data_service_fn_t *ds;
+    object_service_fn_t *os;
+    resource_service_fn_t *rs;
+    thread_pool_context_t *tpc_unlimited;
+    thread_pool_context_t *tpc_cache;
+    mq_context_t *mqc;
+    service_manager_t *ess;
+    service_manager_t *ess_nocache;  //** Copy of ess but missing cache.  Kind of a kludge...
+    tbx_stack_t *plugin_stack;
+    cache_t *cache;
+    data_attr_t *da;
+    tbx_inip_file_t *ifd;
+    tbx_list_t *open_index;
+    creds_t *creds;
+    apr_thread_mutex_t *lock;
+    apr_pool_t *mpool;
+    char *cfg_name;
+    char *section_name;
+    char *ds_section;
+    char *mq_section;
+    char *os_section;
+    char *rs_section;
+    char *tpc_unlimited_section;
+    char *tpc_cache_section;
+    char *creds_name;
+    char *exe_name;
+    blacklist_t *blacklist;
+    ex_off_t readahead;
+    ex_off_t readahead_trigger;
+    int calc_adler32;
+    int timeout;
+    int max_attr;
+    int anonymous_creation;
+    int auto_translate;
+    int ref_cnt;
+};
+
+struct lio_path_tuple_t {
+    creds_t *creds;
+    lio_config_t *lc;
+    char *path;
+    int is_lio;
+};
+
+struct lio_cp_file_t {
+    segment_rw_hints_t *rw_hints;
+    lio_path_tuple_t src_tuple;
+    lio_path_tuple_t dest_tuple;
+    ex_off_t bufsize;
+    int slow;
+};
+
+struct lio_cp_path_t {
+    lio_path_tuple_t src_tuple;
+    lio_path_tuple_t dest_tuple;
+    os_regex_table_t *path_regex;
+    os_regex_table_t *obj_regex;
+    int recurse_depth;
+    int dest_type;
+    int obj_types;
+    int max_spawn;
+    int slow;
+    ex_off_t bufsize;
+};
 #ifdef __cplusplus
 }
 #endif

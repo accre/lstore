@@ -33,6 +33,14 @@ typedef struct rsq_base_t rsq_base_t;
 
 // Functions
 
+// Preprocessor constants
+#define RSQ_BASE_OP_KV      1
+#define RSQ_BASE_OP_NOT     2
+#define RSQ_BASE_OP_AND     3
+
+#define RSQ_BASE_KV_EXACT   1
+#define RSQ_BASE_KV_ANY     3
+
 #ifdef __cplusplus
 }
 #endif

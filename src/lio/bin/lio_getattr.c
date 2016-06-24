@@ -25,8 +25,8 @@
 #include <tbx/string_token.h>
 #include <tbx/type_malloc.h>
 
-#include "lio.h"
-#include "os.h"
+#include <lio/lio.h>
+#include <lio/os.h>
 
 #define MAX_SET 1000
 

@@ -33,9 +33,9 @@
 #include <tbx/string_token.h>
 #include <tbx/type_malloc.h>
 
-#include "ex3_types.h"
-#include "lio.h"
-#include "rs.h"
+#include <lio/ex3_types.h>
+#include <lio/lio.h>
+#include <lio/rs.h>
 
 apr_thread_mutex_t *lock;
 apr_thread_cond_t *cond;

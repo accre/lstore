@@ -21,6 +21,9 @@ limitations under the License.
 #ifndef ACCRE_LIO_LIO_FUSE_H_INCLUDED
 #define ACCRE_LIO_LIO_FUSE_H_INCLUDED
 
+#define FUSE_USE_VERSION 26
+
+#include <fuse.h>
 #include "lio/lio_visibility.h"
 
 #ifdef __cplusplus
@@ -33,6 +36,17 @@ typedef struct lio_fuse_init_args_t lio_fuse_init_args_t;
 typedef struct lio_fuse_t lio_fuse_t;
 
 // Functions
+
+// Global constants
+LIO_API extern struct fuse_operations lfs_fops;
+
+// Exported types. To be obscured
+struct lio_fuse_init_args_t {
+    lio_config_t *lc;
+    char *mount_point;
+    int lio_argc;
+    char **lio_argv;
+};
 
 #ifdef __cplusplus
 }

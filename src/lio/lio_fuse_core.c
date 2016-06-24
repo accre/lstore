@@ -27,6 +27,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <gop/gop.h>
+#include <gop/mq.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdio.h>
@@ -45,6 +46,8 @@
 #include <unistd.h>
 #include <zlib.h>
 
+#include "blacklist.h"
+#include "cache_priv.h"
 #include "ex3.h"
 #include "ex3_types.h"
 #include "lio.h"

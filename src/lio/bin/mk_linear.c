@@ -22,12 +22,12 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "ex3.h"
-#include "ex3_types.h"
-#include "lio.h"
-#include "rs.h"
-#include "segment_linear.h"
-#include "service_manager.h"
+#include <lio/ex3.h>
+#include <lio/ex3_types.h>
+#include <lio/lio.h>
+#include <lio/rs.h>
+#include <lio/segment_linear.h>
+#include <lio/service_manager.h>
 
 //*************************************************************************
 //*************************************************************************

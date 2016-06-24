@@ -28,8 +28,8 @@
 #include <tbx/random.h>
 #include <tbx/type_malloc.h>
 
-#include "lio.h"
-#include "os.h"
+#include <lio/lio.h>
+#include <lio/os.h>
 
 int max_spawn;
 

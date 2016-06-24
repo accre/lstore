@@ -45,13 +45,13 @@
 #include <tbx/string_token.h>
 #include <tbx/type_malloc.h>
 
-#include "authn.h"
-#include "ex3.h"
-#include "ex3_types.h"
-#include "lio.h"
-#include "os.h"
-#include "rs.h"
-#include "rs_query_base.h"
+#include <lio/authn.h>
+#include <lio/ex3.h>
+#include <lio/ex3_types.h>
+#include <lio/lio.h>
+#include <lio/os.h>
+#include <lio/rs.h>
+#include <lio/rs_query_base.h>
 
 #define n_inspect 10
 char *inspect_opts[] = { "DUMMY", "inspect_quick_check",  "inspect_scan_check",  "inspect_full_check",

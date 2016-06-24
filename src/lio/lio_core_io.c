@@ -19,6 +19,7 @@
 #include <apr_time.h>
 #include <errno.h>
 #include <gop/gop.h>
+#include <gop/mq.h>
 #include <gop/opque.h>
 #include <gop/tp.h>
 #include <gop/types.h>
@@ -36,6 +37,8 @@
 #include <zlib.h>
 
 #include "authn.h"
+#include "blacklist.h"
+#include "cache_priv.h"
 #include "ex3.h"
 #include "ex3_compare.h"
 #include "ex3_types.h"

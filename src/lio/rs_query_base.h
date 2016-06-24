@@ -31,16 +31,11 @@ extern "C" {
 #endif
 
 #define RSQ_BASE_OP_MAX_VAL 4
-#define RSQ_BASE_OP_KV      1
-#define RSQ_BASE_OP_NOT     2
-#define RSQ_BASE_OP_AND     3
 #define RSQ_BASE_OP_OR      4
 
 #define RSQ_BASE_KV_MAX_VAL 3
 #define RSQ_BASE_KV_OP_BITMASK 7
-#define RSQ_BASE_KV_EXACT   1
 #define RSQ_BASE_KV_PREFIX  2
-#define RSQ_BASE_KV_ANY     3
 
 //** Mutually exclusive options to be &'ed with the KV options above
 #define RSQ_BASE_KV_UNIQUE   64

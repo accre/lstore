@@ -28,27 +28,13 @@
 extern "C" {
 #endif
 
-#define XIDT "%" PRIu64    //uint64_t
-#define XOT  "%" PRId64    //int64_t
-#define PXOT     PRId64    // Drop the % for formatting ..int64_t
-#define XOTC PRId64
 
 
 
-
-#define ex_iovec_single(iov, oset, nbytes) (iov)->offset = oset; (iov)->len = nbytes
 ex_tbx_iovec_t *ex_iovec_create();
 void ex_iovec_destroy(ex_tbx_iovec_t *iov);
 
-struct exnode_text_t {
-    char *text;
-    tbx_inip_file_t *fd;
-};
 
-struct exnode_exchange_t {
-    int type;
-    exnode_text_t text;
-};
 
 #ifdef __cplusplus
 }

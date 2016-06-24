@@ -24,9 +24,9 @@
 #include <strings.h>
 #include <tbx/log.h>
 
-#include "ex3.h"
-#include "ex3_types.h"
-#include "lio.h"
+#include <lio/ex3.h>
+#include <lio/ex3_types.h>
+#include <lio/lio.h>
 
 #define n_inspect 10
 char *inspect_opts[] = { "DUMMY", "inspect_quick_check",  "inspect_scan_check",  "inspect_full_check",

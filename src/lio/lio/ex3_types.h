@@ -37,6 +37,26 @@ typedef ibp_tbx_iovec_t ex_tbx_iovec_t;
 
 // Functions
 
+// Exported types. To be obscured
+struct exnode_text_t {
+    char *text;
+    tbx_inip_file_t *fd;
+};
+
+struct exnode_exchange_t {
+    int type;
+    exnode_text_t text;
+};
+
+// Preprocessor constants
+#define XIDT "%" PRIu64    //uint64_t
+#define XOT  "%" PRId64    //int64_t
+#define PXOT     PRId64    // Drop the % for formatting ..int64_t
+#define XOTC PRId64
+
+// Preproessor constants
+#define ex_iovec_single(iov, oset, nbytes) (iov)->offset = oset; (iov)->len = nbytes
+
 #ifdef __cplusplus
 }
 #endif

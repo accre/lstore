@@ -36,13 +36,14 @@
 #include <tbx/string_token.h>
 #include <tbx/type_malloc.h>
 
-#include "authn.h"
-#include "ds.h"
-#include "ds_ibp_priv.h"
-#include "ex3_types.h"
-#include "lio.h"
-#include "os.h"
-#include "rs.h"
+#include <lio/authn.h>
+#include <lio/ds.h>
+#include <lio/ds_ibp.h>
+#include <lio/ds_ibp_priv.h>
+#include <lio/ex3_types.h>
+#include <lio/lio.h>
+#include <lio/os.h>
+#include <lio/rs.h>
 
 
 typedef struct {

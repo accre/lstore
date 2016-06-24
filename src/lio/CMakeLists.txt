@@ -146,7 +146,7 @@ else()
 endif()
 
 # Temporarily disable errors around unused results
-foreach(f erasure_tools.c exnode.c lio_config.c ds_read.c ldiff.c)
+foreach(f erasure_tools.c exnode.c lio_config.c bin/ds_read.c bin/ldiff.c)
     get_source_file_property(OLD_COMPILE_FLAGS ${f} COMPILE_FLAGS)
     if(NOT OLD_COMPILE_FLAGS)
         set(OLD_COMPILE_FLAGS)

@@ -18,14 +18,15 @@
 
 #include <tbx/log.h>
 #include <gop/gop.h>
+#include <gop/mq.h>
 #include <gop/types.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include "ex3.h"
-#include "ex3_types.h"
-#include "lio.h"
+#include <lio/ex3.h>
+#include <lio/ex3_types.h>
+#include <lio/lio.h>
 
 
 

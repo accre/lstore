@@ -22,6 +22,8 @@ limitations under the License.
 #define ACCRE_LIO_EX3_HEADER_H_INCLUDED
 
 #include "lio/lio_visibility.h"
+#include <lio/ex3_types.h>
+#include <tbx/list.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -31,6 +33,14 @@ extern "C" {
 typedef struct ex_header_t ex_header_t;
 
 // Functions
+
+// Exported types. To be obscured
+struct ex_header_t {
+    char *name;
+    ex_id_t id;
+    char *type;
+    tbx_list_t *attributes;  //should be a key/value pair struct?
+};
 
 #ifdef __cplusplus
 }

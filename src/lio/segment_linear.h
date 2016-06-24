@@ -35,7 +35,6 @@
 extern "C" {
 #endif
 
-#define SEGMENT_TYPE_LINEAR "linear"
 
 segment_t *segment_linear_load(void *arg, ex_id_t id, exnode_exchange_t *ex);
 segment_t *segment_linear_create(void *arg);

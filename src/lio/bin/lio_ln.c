@@ -17,14 +17,19 @@
 #define _log_module_index 192
 
 #include <gop/gop.h>
+#include <gop/mq.h>
 #include <stdio.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <tbx/list.h>
 #include <tbx/log.h>
 
-#include "lio.h"
-#include "os.h"
+#include <lio/blacklist.h>
+#include <lio/cache_priv.h>
+#include <lio/lio.h>
+#include <lio/os.h>
+#include <lio/rs.h>
 
 char *exnode_data = NULL;
 

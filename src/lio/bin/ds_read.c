@@ -29,9 +29,9 @@
 #include <tbx/transfer_buffer.h>
 #include <tbx/type_malloc.h>
 
-#include "ds.h"
-#include "ex3_types.h"
-#include "lio.h"
+#include <lio/ds.h>
+#include <lio/ex3_types.h>
+#include <lio/lio.h>
 
 
 //*************************************************************************

@@ -17,6 +17,7 @@
 #define _log_module_index 189
 
 #include <gop/gop.h>
+#include <gop/mq.h>
 #include <gop/opque.h>
 #include <gop/tp.h>
 #include <gop/types.h>
@@ -31,6 +32,8 @@
 #include <unistd.h>
 
 #include "authn.h"
+#include "blacklist.h"
+#include "cache_priv.h"
 #include "ex3.h"
 #include "ex3_types.h"
 #include "lio.h"

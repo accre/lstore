@@ -33,12 +33,6 @@ extern "C" {
 #endif
 
 
-struct ex_header_t {
-    char *name;
-    ex_id_t id;
-    char *type;
-    tbx_list_t *attributes;  //should be a key/value pair struct?
-};
 
 ex_header_t *ex_header_create();
 void ex_header_release(ex_header_t *h);

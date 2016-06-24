@@ -32,6 +32,9 @@ extern "C" {
 // Functions
 LIO_API op_generic_t *lio_segment_linear_make(segment_t *seg, data_attr_t *da, rs_query_t *rsq, int n_rid, ex_off_t block_size, ex_off_t total_size, int timeout);
 
+// Preprocessor constants
+#define SEGMENT_TYPE_LINEAR "linear"
+
 #ifdef __cplusplus
 }
 #endif

@@ -18,9 +18,9 @@
 
 #include <stdio.h>
 
-#include "ex3.h"
-#include "ex3_types.h"
-#include "lio.h"
+#include <lio/ex3.h>
+#include <lio/ex3_types.h>
+#include <lio/lio.h>
 
 
 //*************************************************************************

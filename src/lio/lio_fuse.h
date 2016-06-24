@@ -21,14 +21,11 @@
 #ifndef _LIO_FUSE_H_
 #define _LIO_FUSE_H_
 
-#define FUSE_USE_VERSION 26
 
 #include <apr_hash.h>
 #include <apr_pools.h>
 #include <apr_thread_mutex.h>
 #include <apr_time.h>
-#include <fuse.h>
-#include <fuse/fuse.h>
 #include <tbx/atomic_counter.h>
 #include <tbx/list.h>
 
@@ -43,7 +40,6 @@ extern "C" {
 
 
 struct fuse_conn_info;
-struct lio_fuse_init_args_t;
 struct lio_fuse_t;
 
 #define LFS_READ_MODE  1
@@ -71,15 +67,6 @@ char *id;
 char *mount_point;
 segment_rw_hints_t *rw_hints;
 };
-
-struct lio_fuse_init_args_t {
-lio_config_t *lc;
-char *mount_point;
-int lio_argc;
-char **lio_argv;
-};
-
-LIO_API extern struct fuse_operations lfs_fops;
 
 void *lfs_init(struct fuse_conn_info *conn);  // returns pointer to lio_fuse_t on success, otherwise NULL
 void lfs_destroy(void *lfs); // expects a lio_fuse_t* as the argument
