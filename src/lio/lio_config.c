@@ -45,7 +45,6 @@
 #include "blacklist.h"
 #include "cache.h"
 #include "cache_amp.h"
-#include "cache_priv.h"
 #include "ds.h"
 #include "ds_ibp.h"
 #include "ex3.h"

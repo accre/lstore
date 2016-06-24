@@ -30,6 +30,7 @@
 #include <gop/gop.h>
 #include <gop/mq.h>
 #include <gop/types.h>
+#include <lio/rs_remote.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdio.h>
@@ -50,7 +51,6 @@
 #include "rs.h"
 #include "rs_query_base.h"
 #include "rs_remote.h"
-#include "rs_remote_priv.h"
 #include "rs_simple.h"
 #include "service_manager.h"
 

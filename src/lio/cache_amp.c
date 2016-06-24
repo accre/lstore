@@ -39,8 +39,7 @@
 #include <tbx/type_malloc.h>
 
 #include "cache.h"
-#include "cache_amp_priv.h"
-#include "cache_priv.h"
+#include "cache_amp.h"
 #include "ds.h"
 #include "ex3.h"
 #include "ex3_compare.h"

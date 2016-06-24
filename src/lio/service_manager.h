@@ -27,7 +27,7 @@ struct service_manager_t;
 #include <apr_pools.h>
 #include <apr_thread_mutex.h>
 
-#include "lio/lio_visibility.h"
+#include <lio/lio_visibility.h>
 
 #ifdef __cplusplus
 extern "C" {

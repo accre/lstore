@@ -32,6 +32,7 @@
 #include <gop/tp.h>
 #include <gop/types.h>
 #include <ibp/ibp_op.h>
+#include <lio/segment_lun.h>
 #include <stdio.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -62,7 +63,6 @@
 #include "rs.h"
 #include "rs_query_base.h"
 #include "segment_lun.h"
-#include "segment_lun_priv.h"
 #include "service_manager.h"
 
 typedef struct {

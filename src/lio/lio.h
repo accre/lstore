@@ -23,7 +23,7 @@
 
 #include "blacklist.h"
 #include "exnode.h"
-#include "lio/lio_visibility.h"
+#include <lio/lio_visibility.h>
 
 #ifndef _LIO_ABSTRACT_H_
 #define _LIO_ABSTRACT_H_

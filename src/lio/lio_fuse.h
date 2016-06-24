@@ -31,7 +31,7 @@
 
 #include "ex3.h"
 #include "lio.h"
-#include "lio/lio_visibility.h"
+#include <lio/lio_visibility.h>
 #include "lio.h"
 
 #ifdef __cplusplus

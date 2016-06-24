@@ -49,7 +49,6 @@
 #include "ex3_system.h"
 #include "rs.h"
 #include "rs_remote.h"
-#include "rs_remote_priv.h"
 #include "rs_simple.h"
 #include "service_manager.h"
 

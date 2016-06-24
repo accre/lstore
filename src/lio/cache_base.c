@@ -29,7 +29,7 @@
 #include <tbx/stack.h>
 #include <tbx/type_malloc.h>
 
-#include "cache_priv.h"
+#include "cache.h"
 #include "ds.h"
 #include "ex3_compare.h"
 

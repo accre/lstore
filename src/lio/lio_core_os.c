@@ -36,7 +36,7 @@
 
 #include "authn.h"
 #include "blacklist.h"
-#include "cache_priv.h"
+#include "cache.h"
 #include "ex3.h"
 #include "ex3_types.h"
 #include "lio.h"

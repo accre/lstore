@@ -20,11 +20,12 @@
 
 #include <gop/opque.h>
 #include <gop/types.h>
+#include <tbx/interval_skiplist.h>
 
 #include "ds.h"
 #include "ex3.h"
 #include "ex3_types.h"
-#include "lio/lio_visibility.h"
+#include <lio/lio_visibility.h>
 #include "service_manager.h"
 
 #ifdef __cplusplus
@@ -37,6 +38,25 @@ segment_t *segment_log_load(void *arg, ex_id_t id, exnode_exchange_t *ex);
 segment_t *segment_log_create(void *arg);
 segment_t *slog_make(service_manager_t *sm, segment_t *table, segment_t *data, segment_t *base);  //** Makes a new log segment using
 
+struct slog_range_t {
+    ex_off_t lo;
+    ex_off_t hi;  //** On disk this is actually the length.  It's converted to an offset when loaded and a length when stored
+    ex_off_t data_offset;
+};
+
+struct seglog_priv_t {
+    segment_t *table_seg;
+    segment_t *data_seg;
+    segment_t *base_seg;
+    data_service_fn_t *ds;
+    tbx_isl_t *mapping;
+    thread_pool_context_t *tpc;
+    ex_off_t file_size;
+    ex_off_t log_size;
+    ex_off_t data_size;
+    int soft_errors;
+    int hard_errors;
+};
 
 #ifdef __cplusplus
 }

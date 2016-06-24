@@ -58,7 +58,6 @@
 #include "os.h"
 #include "os_file.h"
 #include "os_remote.h"
-#include "os_remote_priv.h"
 #include "service_manager.h"
 
 #define FIXME_SIZE 1024*1024

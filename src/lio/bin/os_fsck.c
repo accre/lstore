@@ -25,7 +25,7 @@
 #include <tbx/log.h>
 
 #include <lio/blacklist.h>
-#include <lio/cache_priv.h>
+#include <lio/cache.h>
 #include <lio/lio.h>
 #include <lio/os.h>
 

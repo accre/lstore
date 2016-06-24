@@ -22,10 +22,10 @@ limitations under the License.
 #define ACCRE_LIO_LIO_ABSTRACT_H_INCLUDED
 
 #include <gop/mq.h>
-#include "lio/lio_visibility.h"
+#include <lio/lio_visibility.h>
 #include <lio/authn.h>
 #include <lio/blacklist.h>
-#include <lio/cache_priv.h>
+#include <lio/cache.h>
 #include <lio/ex3.h>
 #include <lio/os.h>
 #include <lio/rs.h>

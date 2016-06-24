@@ -21,13 +21,14 @@ limitations under the License.
 #ifndef ACCRE_LIO_OS_FILE_H_INCLUDED
 #define ACCRE_LIO_OS_FILE_H_INCLUDED
 
-#include "lio/lio_visibility.h"
+#include <lio/lio_visibility.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 // Typedefs
+typedef struct osfile_priv_t osfile_priv_t;
 typedef struct local_object_iter_t local_object_iter_t;
 
 // Functions

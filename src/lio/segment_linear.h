@@ -28,7 +28,7 @@
 #include "ds.h"
 #include "ex3.h"
 #include "ex3_types.h"
-#include "lio/lio_visibility.h"
+#include <lio/lio_visibility.h>
 #include "rs.h"
 
 #ifdef __cplusplus

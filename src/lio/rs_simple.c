@@ -54,7 +54,6 @@
 #include "rs.h"
 #include "rs_query_base.h"
 #include "rs_simple.h"
-#include "rs_simple_priv.h"
 #include "service_manager.h"
 
 typedef struct {

@@ -65,63 +65,120 @@ set(LSTORE_INCLUDE_PUBLIC ${PROJECT_SOURCE_DIR})
 
 # common objects
 set(LSTORE_PROJECT_OBJS
-    authn_fake.c cache_amp.c cache_base.c
-    cache_round_robin.c constructor.c cred_default.c data_block.c ds_ibp.c
-    erasure_tools.c ex3_compare.c ex3_global.c ex3_header.c ex_id.c exnode.c
-    exnode_config.c lio_config.c lio_core.c lio_core_io.c lio_core_os.c
-    lio_fuse_core.c os_base.c os_file.c os_remote_client.c os_remote_server.c
-    os_timecache.c osaz_fake.c raid4.c rs_query_base.c rs_remote_client.c
-    rs_remote_server.c rs_simple.c rs_space.c segment_base.c segment_cache.c
-    segment_file.c segment_jerasure.c segment_linear.c segment_log.c
-    segment_lun.c service_manager.c view_base.c
+		authn_fake.c
+		cache_amp.c
+		cache_base.c
+		cache_round_robin.c
+		constructor.c
+		cred_default.c
+		data_block.c
+		ds_ibp.c
+		erasure_tools.c
+		ex3_compare.c
+		ex3_global.c
+		ex3_header.c
+		ex_id.c
+		exnode.c
+		exnode_config.c
+		lio_config.c
+		lio_core.c
+		lio_core_io.c
+		lio_core_os.c
+		lio_fuse_core.c
+		lio_version.c
+		os_base.c
+		os_file.c
+		os_remote_client.c
+		os_remote_server.c
+		os_timecache.c
+		osaz_fake.c
+		raid4.c
+		rs_query_base.c
+		rs_remote_client.c
+		rs_remote_server.c
+		rs_simple.c
+		rs_space.c
+		segment_base.c
+		segment_cache.c
+		segment_dynfile.c
+		segment_file.c
+		segment_jerasure.c
+		segment_linear.c
+		segment_log.c
+		segment_lun.c
+		service_manager.c
+		trace.c
+		trace_replay.c
+		view_base.c
 )
 
 set(LSTORE_PROJECT_INCLUDES_OLD)
 set(LSTORE_PROJECT_INCLUDES_NAMESPACE lio)
 set(LSTORE_PROJECT_INCLUDES
-		lio/authn.h
-		lio/authn_fake.h
-		lio/blacklist.h
-		lio/cache_amp_priv.h
-		lio/cache_priv.h
-		lio/data_block.h
-		lio/ds.h
-		lio/ds_ibp.h
-		lio/ds_ibp_priv.h
-		lio/erasure_tools.h
-		lio/ex3.h
-		lio/ex3_header.h
-		lio/ex3_system.h
-		lio/ex3_types.h
-		lio/liblio_trace.h
-		lio/lio.h
-		lio/lio_fuse.h
-		lio/lio_visibility.h
-		lio/os.h
-		lio/os_file.h
-		lio/os_file_priv.h
-		lio/os_remote_priv.h
-		lio/rs.h
-		lio/rs_query_base.h
-		lio/rs_remote_priv.h
-		lio/rs_simple_priv.h
-		lio/segment_cache.h
-		lio/segment_linear.h
-		lio/segment_log.h
-		lio/segment_log_priv.h
-		lio/segment_lun_priv.h
-		lio/service_manager.h
-		lio/trace.h
+        lio/authn.h
+        lio/authn_fake.h
+        lio/blacklist.h
+        lio/cache.h
+        lio/cache_amp.h
+        lio/data_block.h
+        lio/ds.h
+        lio/ds_ibp.h
+        lio/erasure_tools.h
+        lio/ex3.h
+        lio/ex3_header.h
+        lio/ex3_system.h
+        lio/ex3_types.h
+        lio/liblio_trace.h
+        lio/lio.h
+        lio/lio_fuse.h
         lio/lio_visibility.h
-    )
+        lio/os.h
+        lio/os_file.h
+        lio/os_remote.h
+        lio/rs.h
+        lio/rs_query_base.h
+        lio/rs_remote.h
+        lio/rs_simple.h
+        lio/segment_cache.h
+        lio/segment_linear.h
+        lio/segment_log.h
+        lio/segment_lun.h
+        lio/service_manager.h
+        lio/trace.h
+)
 
 set(LSTORE_PROJECT_EXECUTABLES
-     ds_read lio_find lio_ls lio_du lio_setattr lio_getattr lio_mv
-     lio_cp lio_put lio_fuse
-     lio_get lio_signature lio_warm lio_inspect lio_fsck lio_rs
-     lio_server mk_linear ex_load ex_get ex_put ex_inspect ex_clone
-     os_fsck lio_touch lio_mkdir lio_rmdir lio_rm
-     lio_ln zadler32 ldiff
+		ds_read
+		ex_clone
+		ex_get
+		ex_inspect
+		ex_load
+		ex_put
+		ldiff
+		lio_cp
+		lio_du
+		lio_find
+		lio_fsck
+		lio_fuse
+		lio_get
+		lio_getattr
+		lio_inspect
+		lio_ln
+		lio_ls
+		lio_mkdir
+		lio_mv
+		lio_put
+		lio_rm
+		lio_rmdir
+		lio_rs
+		lio_server
+		lio_setattr
+		lio_signature
+		lio_touch
+		lio_warm
+		mk_linear
+		os_fsck
+		zadler32
 )
 
 # Common functionality is stored here

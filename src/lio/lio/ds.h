@@ -22,7 +22,7 @@ limitations under the License.
 #define ACCRE_LIO_DATA_SERVICE_ABSTRACT_H_INCLUDED
 
 #include <inttypes.h>
-#include "lio/lio_visibility.h"
+#include <lio/lio_visibility.h>
 #include <lio/ex3_types.h>
 
 #ifdef __cplusplus

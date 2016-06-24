@@ -45,8 +45,36 @@ extern "C" {
 #define DS_IBP_ATTR_DISK_CHKSUM_TYPE 7
 #define DS_IBP_ATTR_DISK_CHKSUM_BLOCKSIZE 8
 
-
 data_service_fn_t *ds_ibp_create(void *arg, tbx_inip_file_t *ifd, char *section);
+
+struct ds_ibp_alloc_op_t {
+    ibp_depot_t depot;
+};
+
+struct ds_ibp_truncate_op_t {
+    int state;
+    int timeout;
+    ibp_off_t new_size;
+    ibp_capstatus_t probe;
+    callback_t *cb;
+    data_service_fn_t *dsf;
+    ds_ibp_attr_t *attr;
+    opque_t *q;
+    ibp_cap_t *mcap;
+};
+
+struct ds_ibp_op_t {
+    void *sf_ptr;
+    ds_ibp_attr_t *attr;
+    op_generic_t *gop;
+    void (*free)(op_generic_t *d, int mode);
+    void *free_ptr;
+    union {
+        ds_ibp_alloc_op_t alloc;
+        ds_ibp_truncate_op_t truncate;
+    } ops;
+};
+
 
 #ifdef __cplusplus
 }

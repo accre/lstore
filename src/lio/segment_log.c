@@ -47,7 +47,6 @@
 #include "ex3_header.h"
 #include "ex3_system.h"
 #include "segment_log.h"
-#include "segment_log_priv.h"
 
 typedef struct {
     segment_t *seg;

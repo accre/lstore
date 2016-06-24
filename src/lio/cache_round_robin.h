@@ -19,7 +19,6 @@
 
 #include <tbx/iniparse.h>
 
-#include "cache_priv.h"
 #include "ds.h"
 
 #ifndef __CACHE_ROUND_ROBIN_H_

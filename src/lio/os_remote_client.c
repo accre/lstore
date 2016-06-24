@@ -49,7 +49,6 @@
 #include "ex3_system.h"
 #include "os.h"
 #include "os_remote.h"
-#include "os_remote_priv.h"
 #include "service_manager.h"
 
 #define OSRS_HANDLE(ofd) (void *)(*(intptr_t *)(ofd)->data)

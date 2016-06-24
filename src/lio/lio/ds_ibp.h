@@ -24,7 +24,7 @@ limitations under the License.
 #include <apr_hash.h>
 #include <apr_thread_cond.h>
 #include <apr_thread_proc.h>
-#include "lio/lio_visibility.h"
+#include <lio/lio_visibility.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -32,6 +32,10 @@ extern "C" {
 
 // Typedefs
 typedef struct ds_ibp_attr_t ds_ibp_attr_t;
+typedef struct ds_ibp_alloc_op_t ds_ibp_alloc_op_t;
+typedef struct ds_ibp_op_t ds_ibp_op_t;
+typedef struct ds_ibp_priv_t ds_ibp_priv_t;
+typedef struct ds_ibp_truncate_op_t ds_ibp_truncate_op_t;
 
 // Functions
 

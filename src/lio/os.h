@@ -27,7 +27,7 @@
 
 #include "authn.h"
 #include "ex3_types.h"
-#include "lio/lio_visibility.h"
+#include <lio/lio_visibility.h>
 #include "service_manager.h"
 
 #ifdef __cplusplus

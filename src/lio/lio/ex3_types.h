@@ -22,7 +22,7 @@ limitations under the License.
 #define ACCRE_LIO_EX3_TYPES_H_INCLUDED
 
 #include <ibp/ibp.h>
-#include "lio/lio_visibility.h"
+#include <lio/lio_visibility.h>
 
 #ifdef __cplusplus
 extern "C" {

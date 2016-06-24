@@ -21,7 +21,7 @@ limitations under the License.
 #ifndef ACCRE_LIO_EX3_HEADER_H_INCLUDED
 #define ACCRE_LIO_EX3_HEADER_H_INCLUDED
 
-#include "lio/lio_visibility.h"
+#include <lio/lio_visibility.h>
 #include <lio/ex3_types.h>
 #include <tbx/list.h>
 

@@ -51,7 +51,6 @@
 
 #include "ds.h"
 #include "ds_ibp.h"
-#include "ds_ibp_priv.h"
 #include "ex3_types.h"
 
 int _ds_ibp_do_init = 1;

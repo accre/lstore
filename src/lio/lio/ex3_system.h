@@ -21,7 +21,7 @@ limitations under the License.
 #ifndef ACCRE_LIO_EX3_SYSTEM_H_INCLUDED
 #define ACCRE_LIO_EX3_SYSTEM_H_INCLUDED
 
-#include "lio/lio_visibility.h"
+#include <lio/lio_visibility.h>
 #include <lio/service_manager.h>
 
 #ifdef __cplusplus

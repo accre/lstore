@@ -34,6 +34,7 @@
 #include <gop/tp.h>
 #include <gop/types.h>
 #include <inttypes.h>
+#include <lio/segment_lun.h>
 #include <limits.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -45,6 +46,7 @@
 #include <tbx/assert_result.h>
 #include <tbx/atomic_counter.h>
 #include <tbx/iniparse.h>
+#include <tbx/interval_skiplist.h>
 #include <tbx/log.h>
 #include <tbx/string_token.h>
 #include <tbx/transfer_buffer.h>
@@ -59,7 +61,6 @@
 #include "ex3_system.h"
 #include "segment_jerasure.h"
 #include "segment_lun.h"
-#include "segment_lun_priv.h"
 #include "service_manager.h"
 
 #define JE_MAGIC_SIZE 4

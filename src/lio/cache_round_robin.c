@@ -27,7 +27,6 @@
 #include <tbx/type_malloc.h>
 
 #include "cache.h"
-#include "cache_priv.h"
 #include "ds.h"
 #include "service_manager.h"
 

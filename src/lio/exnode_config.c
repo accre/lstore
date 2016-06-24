@@ -28,7 +28,6 @@
 #include "authn_fake.h"
 #include "cache.h"
 #include "cache_amp.h"
-#include "cache_priv.h"
 #include "cache_round_robin.h"
 #include "ds.h"
 #include "ds_ibp.h"

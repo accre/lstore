@@ -21,13 +21,15 @@ limitations under the License.
 #ifndef ACCRE_LIO_SEGMENT_LOG_H_INCLUDED
 #define ACCRE_LIO_SEGMENT_LOG_H_INCLUDED
 
-#include "lio/lio_visibility.h"
+#include <lio/lio_visibility.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 // Typedefs
+typedef struct seglog_priv_t seglog_priv_t;
+typedef struct slog_range_t slog_range_t;
 
 // Functions
 LIO_API op_generic_t *lio_slog_merge_with_base(segment_t *seg, data_attr_t *da, ex_off_t bufsize, char *buffer, int truncate_old_log, int timeout);  //** Merges the current log with the base

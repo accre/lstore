@@ -22,10 +22,9 @@
 #define _SEGMENT_CACHE_H_
 
 #include "cache.h"
-#include "cache_priv.h"
 #include "ex3.h"
 #include "ex3_types.h"
-#include "lio/lio_visibility.h"
+#include <lio/lio_visibility.h>
 
 #ifdef __cplusplus
 extern "C" {
