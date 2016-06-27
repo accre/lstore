@@ -608,14 +608,14 @@ void osrs_remove_regex_object_cb(void *arg, mq_task_t *task)
         timeout = 60;
 
         //** Create the stream so we can get the heartbeating while we work
-        mqs = gop_gop_mq_stream_write_create(osrs->mqc, osrs->server_portal, osrs->ongoing, MQS_PACK_COMPRESS, osrs->max_stream, timeout, msg, fid, hid, 0);
+        mqs = gop_mq_stream_write_create(osrs->mqc, osrs->server_portal, osrs->ongoing, MQS_PACK_COMPRESS, osrs->max_stream, timeout, msg, fid, hid, 0);
 
         goto fail;
     }
     bpos += n;
 
     //** Create the stream so we can get the heartbeating while we work
-    mqs = gop_gop_mq_stream_write_create(osrs->mqc, osrs->server_portal, osrs->ongoing, MQS_PACK_COMPRESS, osrs->max_stream, timeout, msg, fid, hid, 0);
+    mqs = gop_mq_stream_write_create(osrs->mqc, osrs->server_portal, osrs->ongoing, MQS_PACK_COMPRESS, osrs->max_stream, timeout, msg, fid, hid, 0);
 
 
     //** Get the spin heartbeat handle ID
@@ -1282,7 +1282,7 @@ void osrs_get_mult_attr_cb(void *arg, mq_task_t *task)
     }
 
     //** Create the stream
-    mqs = gop_gop_mq_stream_write_create(osrs->mqc, osrs->server_portal, osrs->ongoing, MQS_PACK_COMPRESS, max_stream, timeout, msg, fid, hid, 0);
+    mqs = gop_mq_stream_write_create(osrs->mqc, osrs->server_portal, osrs->ongoing, MQS_PACK_COMPRESS, max_stream, timeout, msg, fid, hid, 0);
     osrs_update_active_table(os, hid);  //** Update the active log
 
     //** Return the results
@@ -1293,7 +1293,7 @@ void osrs_get_mult_attr_cb(void *arg, mq_task_t *task)
     log_printf(5, "status.op_status=%d status.error_code=%d len=%d\n", status.op_status, status.error_code, i);
     if (status.op_status == OP_STATE_SUCCESS) {
         for (i=0; i<n; i++) {
-            gop_gop_mq_stream_write_varint(mqs, v_size[i]);
+            gop_mq_stream_write_varint(mqs, v_size[i]);
             if (v_size[i] > 0) {
                 gop_mq_stream_write(mqs, val[i], v_size[i]);
             }
@@ -1320,7 +1320,7 @@ fail:
         gop_mq_stream_destroy(mqs);  //** This also flushes the data to the client
     } else {  //** there was an error processing the record
         log_printf(5, "ERROR status being returned!\n");
-        mqs = gop_gop_mq_stream_write_create(osrs->mqc, osrs->server_portal, osrs->ongoing, MQS_PACK_RAW, 1024, 30, msg, fid, hid, 0);
+        mqs = gop_mq_stream_write_create(osrs->mqc, osrs->server_portal, osrs->ongoing, MQS_PACK_RAW, 1024, 30, msg, fid, hid, 0);
         status = gop_failure_status;
         i = tbx_zigzag_encode(status.op_status, buffer);
         i = i + tbx_zigzag_encode(status.error_code, &(buffer[i]));
@@ -1634,7 +1634,7 @@ void osrs_regex_set_mult_attr_cb(void *arg, mq_task_t *task)
     }
 
     //** Create the stream so we can get the heartbeating while we work
-    mqs = gop_gop_mq_stream_write_create(osrs->mqc, osrs->server_portal, osrs->ongoing, MQS_PACK_COMPRESS, osrs->max_stream, timeout, msg, fid, hid, 0);
+    mqs = gop_mq_stream_write_create(osrs->mqc, osrs->server_portal, osrs->ongoing, MQS_PACK_COMPRESS, osrs->max_stream, timeout, msg, fid, hid, 0);
     if (n < 0) goto fail;
 
     //** Get the spin heartbeat handle ID
@@ -2326,13 +2326,13 @@ void osrs_object_iter_alist_cb(void *arg, mq_task_t *task)
     if (n < 0) {
         timeout = 60;
         //** Create the stream so we can get the heartbeating while we work.  We need the timeout is why we do it here,
-        mqs = gop_gop_mq_stream_write_create(osrs->mqc, osrs->server_portal, osrs->ongoing, MQS_PACK_COMPRESS, osrs->max_stream, timeout, msg, fid, hid, 0);
+        mqs = gop_mq_stream_write_create(osrs->mqc, osrs->server_portal, osrs->ongoing, MQS_PACK_COMPRESS, osrs->max_stream, timeout, msg, fid, hid, 0);
         goto fail;
     }
     bpos += n;
 
     //** Create the stream so we can get the heartbeating while we work.  We need the timeout is why we do it here,
-    mqs = gop_gop_mq_stream_write_create(osrs->mqc, osrs->server_portal, osrs->ongoing, MQS_PACK_COMPRESS, osrs->max_stream, timeout, msg, fid, hid, 0);
+    mqs = gop_mq_stream_write_create(osrs->mqc, osrs->server_portal, osrs->ongoing, MQS_PACK_COMPRESS, osrs->max_stream, timeout, msg, fid, hid, 0);
 
     n = tbx_zigzag_decode(&(buffer[bpos]), fsize-bpos, &recurse_depth);
     if (n < 0) goto fail;
@@ -2520,7 +2520,7 @@ void osrs_object_iter_aregex_cb(void *arg, mq_task_t *task)
         timeout = 60;
 
         //** Create the stream so things don't break
-        mqs = gop_gop_mq_stream_write_create(osrs->mqc, osrs->server_portal, osrs->ongoing, MQS_PACK_COMPRESS, osrs->max_stream, timeout, msg, fid, hid, 0);
+        mqs = gop_mq_stream_write_create(osrs->mqc, osrs->server_portal, osrs->ongoing, MQS_PACK_COMPRESS, osrs->max_stream, timeout, msg, fid, hid, 0);
 
         goto fail;
     }
@@ -2528,7 +2528,7 @@ void osrs_object_iter_aregex_cb(void *arg, mq_task_t *task)
 
 
     //** Create the stream so we can get the heartbeating while we work
-    mqs = gop_gop_mq_stream_write_create(osrs->mqc, osrs->server_portal, osrs->ongoing, MQS_PACK_COMPRESS, osrs->max_stream, timeout, msg, fid, hid, 0);
+    mqs = gop_mq_stream_write_create(osrs->mqc, osrs->server_portal, osrs->ongoing, MQS_PACK_COMPRESS, osrs->max_stream, timeout, msg, fid, hid, 0);
 
 
     n = tbx_zigzag_decode(&(buffer[bpos]), fsize-bpos, &recurse_depth);
@@ -2703,7 +2703,7 @@ void osrs_attr_iter_cb(void *arg, mq_task_t *task)
 
         //** Create the stream so we can get the heartbeating while we work
         timeout = 60;
-        mqs = gop_gop_mq_stream_write_create(osrs->mqc, osrs->server_portal, osrs->ongoing, MQS_PACK_COMPRESS, osrs->max_stream, timeout, msg, fid, fhid, 0);
+        mqs = gop_mq_stream_write_create(osrs->mqc, osrs->server_portal, osrs->ongoing, MQS_PACK_COMPRESS, osrs->max_stream, timeout, msg, fid, fhid, 0);
         osrs_update_active_table(os, fhid);  //** Update the active log
 
         goto fail;
@@ -2727,14 +2727,14 @@ void osrs_attr_iter_cb(void *arg, mq_task_t *task)
         timeout = 60;
 
         //** Create the stream so we can get the heartbeating while we work
-        mqs = gop_gop_mq_stream_write_create(osrs->mqc, osrs->server_portal, osrs->ongoing, MQS_PACK_COMPRESS, osrs->max_stream, timeout, msg, fid, fhid, 0);
+        mqs = gop_mq_stream_write_create(osrs->mqc, osrs->server_portal, osrs->ongoing, MQS_PACK_COMPRESS, osrs->max_stream, timeout, msg, fid, fhid, 0);
         osrs_update_active_table(os, fhid);  //** Update the active log
         goto fail;
     }
     bpos += n;
 
     //** Create the stream so we can get the heartbeating while we work
-    mqs = gop_gop_mq_stream_write_create(osrs->mqc, osrs->server_portal, osrs->ongoing, MQS_PACK_COMPRESS, osrs->max_stream, timeout, msg, fid, fhid, 0);
+    mqs = gop_mq_stream_write_create(osrs->mqc, osrs->server_portal, osrs->ongoing, MQS_PACK_COMPRESS, osrs->max_stream, timeout, msg, fid, fhid, 0);
     osrs_update_active_table(os, fhid);  //** Update the active log
 
 
@@ -2875,7 +2875,7 @@ void osrs_fsck_iter_cb(void *arg, mq_task_t *task)
     gop_mq_frame_destroy(fdata);
 
     //** Create the stream so we can get the heartbeating while we work
-    mqs = gop_gop_mq_stream_write_create(osrs->mqc, osrs->server_portal, osrs->ongoing, MQS_PACK_COMPRESS, osrs->max_stream, timeout, msg, fid, fhid, 0);
+    mqs = gop_mq_stream_write_create(osrs->mqc, osrs->server_portal, osrs->ongoing, MQS_PACK_COMPRESS, osrs->max_stream, timeout, msg, fid, fhid, 0);
 
     log_printf(5, "1.err=%d\n", err);
 

@@ -52,10 +52,10 @@
 service_manager_t *lio_exnode_service_set = NULL;
 
 //***********************************************************************
-//  lio_lio_exnode_service_set_create - Creates a default ESS
+//  lio_exnode_service_set_create - Creates a default ESS
 //***********************************************************************
 
-service_manager_t *lio_lio_exnode_service_set_create()
+service_manager_t *lio_exnode_service_set_create()
 {
     service_manager_t *ess;
 
@@ -99,10 +99,10 @@ service_manager_t *lio_lio_exnode_service_set_create()
 }
 
 //***********************************************************************
-// lio_lio_exnode_service_set_destroy - Destroys an ESS
+// lio_exnode_service_set_destroy - Destroys an ESS
 //***********************************************************************
 
-void lio_lio_exnode_service_set_destroy(service_manager_t *ess)
+void lio_exnode_service_set_destroy(service_manager_t *ess)
 {
     destroy_service_manager(ess);
 }
@@ -115,7 +115,7 @@ int exnode_system_init()
 {
     tbx_random_startup();
 
-    lio_exnode_service_set = lio_lio_exnode_service_set_create();
+    lio_exnode_service_set = lio_exnode_service_set_create();
 
     return(0);
 }
@@ -144,5 +144,5 @@ void exnode_system_destroy()
 {
     tbx_random_shutdown();
 
-    lio_lio_exnode_service_set_destroy(lio_exnode_service_set);
+    lio_exnode_service_set_destroy(lio_exnode_service_set);
 }

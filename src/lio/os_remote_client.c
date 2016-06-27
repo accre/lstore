@@ -202,12 +202,12 @@ op_status_t osrc_response_stream_status(void *task_arg, int tid)
     //** Parse the response
     gop_mq_remove_header(task->response, 1);
 
-    mqs = gop_gop_mq_stream_read_create(osrc->mqc, osrc->ongoing, osrc->host_id, osrc->host_id_len, gop_mq_msg_first(task->response), osrc->remote_host, osrc->stream_timeout);
+    mqs = gop_mq_stream_read_create(osrc->mqc, osrc->ongoing, osrc->host_id, osrc->host_id_len, gop_mq_msg_first(task->response), osrc->remote_host, osrc->stream_timeout);
 
     //** Parse the status
-    status.op_status = gop_gop_mq_stream_read_varint(mqs, &err);
+    status.op_status = gop_mq_stream_read_varint(mqs, &err);
     log_printf(15, "op_status=%d\n", status.op_status);
-    status.error_code = gop_gop_mq_stream_read_varint(mqs, &err);
+    status.error_code = gop_mq_stream_read_varint(mqs, &err);
     log_printf(15, "error_code%d\n", status.error_code);
 
     gop_mq_stream_destroy(mqs);
@@ -1195,12 +1195,12 @@ op_status_t osrc_response_get_multiple_attrs(void *task_arg, int tid)
     //** Parse the response
     gop_mq_remove_header(task->response, 1);
 
-    mqs = gop_gop_mq_stream_read_create(osrc->mqc, osrc->ongoing, osrc->host_id, osrc->host_id_len, gop_mq_msg_first(task->response), osrc->remote_host, osrc->stream_timeout);
+    mqs = gop_mq_stream_read_create(osrc->mqc, osrc->ongoing, osrc->host_id, osrc->host_id_len, gop_mq_msg_first(task->response), osrc->remote_host, osrc->stream_timeout);
 
     //** Parse the status
-    status.op_status = gop_gop_mq_stream_read_varint(mqs, &err);
+    status.op_status = gop_mq_stream_read_varint(mqs, &err);
     log_printf(15, "op_status=%d\n", status.op_status);
-    status.error_code = gop_gop_mq_stream_read_varint(mqs, &err);
+    status.error_code = gop_mq_stream_read_varint(mqs, &err);
     log_printf(15, "error_code%d\n", status.error_code);
 
     if (err != 0) {
@@ -1210,7 +1210,7 @@ op_status_t osrc_response_get_multiple_attrs(void *task_arg, int tid)
 
     //** Not get the attributes
     for (i=0; i < ma->n; i++) {
-        len = gop_gop_mq_stream_read_varint(mqs, &err);
+        len = gop_mq_stream_read_varint(mqs, &err);
         if (err != 0) {
             status = gop_failure_status;
             goto fail;
@@ -1455,7 +1455,7 @@ int osrc_next_attr(os_attr_iter_t *oit, char **key, void **val, int *v_size)
     }
 
     //** Read the key len
-    n = gop_gop_mq_stream_read_varint(it->mqs, &err);
+    n = gop_mq_stream_read_varint(it->mqs, &err);
     if (err != 0) {
         log_printf(5, "ERROR reading key len!\n");
         *v_size = -1;
@@ -1491,7 +1491,7 @@ int osrc_next_attr(os_attr_iter_t *oit, char **key, void **val, int *v_size)
     }
 
     //** Read the value len
-    n = gop_gop_mq_stream_read_varint(it->mqs, &err);
+    n = gop_mq_stream_read_varint(it->mqs, &err);
     if (err != 0) {
         log_printf(5, "ERROR reading prefix_len!");
         it->no_more_attr = 1;
@@ -1530,12 +1530,12 @@ op_status_t osrc_response_attr_iter(void *task_arg, int tid)
     //** Parse the response
     gop_mq_remove_header(task->response, 1);
 
-    it->mqs = gop_gop_mq_stream_read_create(osrc->mqc, osrc->ongoing, osrc->host_id, osrc->host_id_len, gop_mq_msg_first(task->response), osrc->remote_host, osrc->stream_timeout);
+    it->mqs = gop_mq_stream_read_create(osrc->mqc, osrc->ongoing, osrc->host_id, osrc->host_id_len, gop_mq_msg_first(task->response), osrc->remote_host, osrc->stream_timeout);
 
     //** Parse the status
-    status.op_status = gop_gop_mq_stream_read_varint(it->mqs, &err);
+    status.op_status = gop_mq_stream_read_varint(it->mqs, &err);
     log_printf(15, "op_status=%d\n", status.op_status);
-    status.error_code = gop_gop_mq_stream_read_varint(it->mqs, &err);
+    status.error_code = gop_mq_stream_read_varint(it->mqs, &err);
     log_printf(15, "error_code%d\n", status.error_code);
 
     if (err != 0) {
@@ -1673,7 +1673,7 @@ int osrc_next_object(os_object_iter_t *oit, char **fname, int *prefix_len)
     }
 
     //** Read the object type
-    ftype = gop_gop_mq_stream_read_varint(it->mqs, &err);
+    ftype = gop_mq_stream_read_varint(it->mqs, &err);
     if (err != 0) {
         log_printf(5, "ERROR reading object type!\n");
         return(0);
@@ -1688,14 +1688,14 @@ int osrc_next_object(os_object_iter_t *oit, char **fname, int *prefix_len)
     }
 
     //** Read the prefix len
-    *prefix_len = gop_gop_mq_stream_read_varint(it->mqs, &err);
+    *prefix_len = gop_mq_stream_read_varint(it->mqs, &err);
     if (err != 0) {
         log_printf(5, "ERROR reading prefix_len!");
         return(-1);
     }
 
     //** Read the object name
-    n = gop_gop_mq_stream_read_varint(it->mqs, &err);
+    n = gop_mq_stream_read_varint(it->mqs, &err);
     if (err != 0) {
         log_printf(5, "ERROR reading object len!");
         return(-1);
@@ -1718,7 +1718,7 @@ int osrc_next_object(os_object_iter_t *oit, char **fname, int *prefix_len)
         }
 
         for (i=0; i < it->n_keys; i++) {
-            n = gop_gop_mq_stream_read_varint(it->mqs, &err);
+            n = gop_mq_stream_read_varint(it->mqs, &err);
             if (err != 0) {
                 log_printf(5, "ERROR reading attribute #%d!", i);
                 return(-1);
@@ -1757,12 +1757,12 @@ op_status_t osrc_response_object_iter(void *task_arg, int tid)
     //** Parse the response
     gop_mq_remove_header(task->response, 1);
 
-    it->mqs = gop_gop_mq_stream_read_create(osrc->mqc, osrc->ongoing, osrc->host_id, osrc->host_id_len, gop_mq_msg_first(task->response), osrc->remote_host, osrc->stream_timeout);
+    it->mqs = gop_mq_stream_read_create(osrc->mqc, osrc->ongoing, osrc->host_id, osrc->host_id_len, gop_mq_msg_first(task->response), osrc->remote_host, osrc->stream_timeout);
 
     //** Parse the status
-    status.op_status = gop_gop_mq_stream_read_varint(it->mqs, &err);
+    status.op_status = gop_mq_stream_read_varint(it->mqs, &err);
     log_printf(15, "op_status=%d\n", status.op_status);
-    status.error_code = gop_gop_mq_stream_read_varint(it->mqs, &err);
+    status.error_code = gop_mq_stream_read_varint(it->mqs, &err);
     log_printf(15, "error_code%d\n", status.error_code);
 
     if (err != 0) {
@@ -2237,7 +2237,7 @@ int osrc_next_fsck(object_service_fn_t *os, os_fsck_iter_t *oit, char **bad_fnam
     if (it->finished == 1) return(OS_FSCK_FINISHED);
 
     //** Read the bad fname len
-    n = gop_gop_mq_stream_read_varint(it->mqs, &err);
+    n = gop_mq_stream_read_varint(it->mqs, &err);
     if (err != 0) {
         log_printf(5, "ERROR reading key len!\n");
         it->finished = 1;
@@ -2264,7 +2264,7 @@ int osrc_next_fsck(object_service_fn_t *os, os_fsck_iter_t *oit, char **bad_fnam
     }
 
     //** Read the object type
-    *bad_atype = gop_gop_mq_stream_read_varint(it->mqs, &err);
+    *bad_atype = gop_mq_stream_read_varint(it->mqs, &err);
     if (err != 0) {
         log_printf(5, "ERROR reading object type!");
         it->finished = 1;
@@ -2272,7 +2272,7 @@ int osrc_next_fsck(object_service_fn_t *os, os_fsck_iter_t *oit, char **bad_fnam
     }
 
     //** Read the  FSCK error
-    fsck_err = gop_gop_mq_stream_read_varint(it->mqs, &err);
+    fsck_err = gop_mq_stream_read_varint(it->mqs, &err);
     if (err != 0) {
         log_printf(5, "ERROR reading FSCK error!");
         it->finished = 1;
@@ -2302,12 +2302,12 @@ op_status_t osrc_response_fsck_iter(void *task_arg, int tid)
     //** Parse the response
     gop_mq_remove_header(task->response, 1);
 
-    it->mqs = gop_gop_mq_stream_read_create(osrc->mqc, osrc->ongoing, osrc->host_id, osrc->host_id_len, gop_mq_msg_first(task->response), osrc->remote_host, osrc->stream_timeout);
+    it->mqs = gop_mq_stream_read_create(osrc->mqc, osrc->ongoing, osrc->host_id, osrc->host_id_len, gop_mq_msg_first(task->response), osrc->remote_host, osrc->stream_timeout);
 
     //** Parse the status
-    status.op_status = gop_gop_mq_stream_read_varint(it->mqs, &err);
+    status.op_status = gop_mq_stream_read_varint(it->mqs, &err);
     log_printf(15, "op_status=%d\n", status.op_status);
-    status.error_code = gop_gop_mq_stream_read_varint(it->mqs, &err);
+    status.error_code = gop_mq_stream_read_varint(it->mqs, &err);
     log_printf(15, "error_code%d\n", status.error_code);
 
     if (err != 0) {

@@ -50,8 +50,8 @@ LIO_API exnode_exchange_t *lio_exnode_exchange_text_parse(char *text);
 LIO_API int lio_exnode_serialize(exnode_t *ex, exnode_exchange_t *exp);
 LIO_API op_generic_t *lio_segment_copy(thread_pool_context_t *tpc, data_attr_t *da, segment_rw_hints_t *rw_hints, segment_t *src_seg, segment_t *dest_seg, ex_off_t src_offset, ex_off_t dest_offset, ex_off_t len, ex_off_t bufsize, char *buffer, int do_truncate, int timoeut);
 LIO_API int lio_view_insert(exnode_t *ex, segment_t *view);
-LIO_API service_manager_t *lio_lio_exnode_service_set_create();
-LIO_API void lio_lio_exnode_service_set_destroy(service_manager_t *ess);
+LIO_API service_manager_t *lio_exnode_service_set_create();
+LIO_API void lio_exnode_service_set_destroy(service_manager_t *ess);
 
 // Preprocessor constants
 #define EX_TEXT             0

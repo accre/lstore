@@ -260,10 +260,10 @@ int gop_mq_stream_read(mq_stream_t *mqs, void *rdata, int len)
 }
 
 //***********************************************************************
-// gop_gop_mq_stream_read_varint - Reads a zigzag encoded varint from the stream
+// gop_mq_stream_read_varint - Reads a zigzag encoded varint from the stream
 //***********************************************************************
 
-int64_t gop_gop_mq_stream_read_varint(mq_stream_t *mqs, int *error)
+int64_t gop_mq_stream_read_varint(mq_stream_t *mqs, int *error)
 {
     unsigned char buffer[16];
     int64_t value;
@@ -344,10 +344,10 @@ void gop_mq_stream_read_destroy(mq_stream_t *mqs)
 
 
 //***********************************************************************
-// gop_gop_mq_stream_read_create - Creates an MQ stream for reading
+// gop_mq_stream_read_create - Creates an MQ stream for reading
 //***********************************************************************
 
-mq_stream_t *gop_gop_mq_stream_read_create(mq_context_t *mqc, mq_ongoing_t *on, char *host_id, int hid_len, mq_frame_t *fdata, mq_msg_t *remote_host, int to)
+mq_stream_t *gop_mq_stream_read_create(mq_context_t *mqc, mq_ongoing_t *on, char *host_id, int hid_len, mq_frame_t *fdata, mq_msg_t *remote_host, int to)
 {
     mq_stream_t *mqs;
     int ptype;
@@ -811,10 +811,10 @@ fail:
 }
 
 //***********************************************************************
-// gop_gop_mq_stream_write_varint - Writes a zigzag encoded varint to the stream
+// gop_mq_stream_write_varint - Writes a zigzag encoded varint to the stream
 //***********************************************************************
 
-int gop_gop_mq_stream_write_varint(mq_stream_t *mqs, int64_t value)
+int gop_mq_stream_write_varint(mq_stream_t *mqs, int64_t value)
 {
     unsigned char buffer[16];
     int i;
@@ -894,10 +894,10 @@ void gop_mq_stream_write_destroy(mq_stream_t *mqs)
 }
 
 //***********************************************************************
-// gop_gop_mq_stream_write_create - Creates an MQ stream for writing
+// gop_mq_stream_write_create - Creates an MQ stream for writing
 //***********************************************************************
 
-mq_stream_t *gop_gop_mq_stream_write_create(mq_context_t *mqc, mq_portal_t *server_portal, mq_ongoing_t *ongoing, char tbx_pack_type, int max_size, int timeout, mq_msg_t *address, mq_frame_t *fid, mq_frame_t *hid, int launch_flusher)
+mq_stream_t *gop_mq_stream_write_create(mq_context_t *mqc, mq_portal_t *server_portal, mq_ongoing_t *ongoing, char tbx_pack_type, int max_size, int timeout, mq_msg_t *address, mq_frame_t *fid, mq_frame_t *hid, int launch_flusher)
 {
     mq_stream_t *mqs;
     intptr_t key;

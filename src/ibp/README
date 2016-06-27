@@ -124,7 +124,7 @@ ibp_capset_t *create_allocs(int nallocs, int asize, ibp_depot_t *depot)
 int main(int arcg, char *argv[])
 {
   ibp_depot_t depot;
-  ibp_ibp_rid_t rid;
+  ibp_rid_t rid;
 
   rid = ibp_str2rid("0");  //** Specify the Resource to use
   ibp_set_depot(&depot, "vudepot1.reddnet.org", 6714, &rid);  //** fill in the depot struct

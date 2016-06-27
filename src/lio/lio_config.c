@@ -800,8 +800,8 @@ void lio_destroy_nl(lio_config_t *lio)
 
     _lio_destroy_plugins(lio);
 
-    lio_lio_exnode_service_set_destroy(lio->ess);
-    lio_lio_exnode_service_set_destroy(lio->ess_nocache);
+    lio_exnode_service_set_destroy(lio->ess);
+    lio_exnode_service_set_destroy(lio->ess_nocache);
 
     tbx_inip_destroy(lio->ifd);
 
@@ -861,7 +861,7 @@ lio_config_t *lio_create_nl(char *fname, char *section, char *user, char *exe_na
     }
 
     tbx_type_malloc_clear(lio, lio_config_t, 1);
-    lio->ess = lio_lio_exnode_service_set_create();
+    lio->ess = lio_exnode_service_set_create();
     lio->auto_translate = 1;
     if (exe_name) lio->exe_name = strdup(exe_name);
 
