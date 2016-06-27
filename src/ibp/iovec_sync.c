@@ -18,11 +18,11 @@
 
 #include <gop/opque.h>
 #include <gop/types.h>
+#include <ibp/protocol.h>
 #include <stdlib.h>
 #include <tbx/log.h>
 #include <tbx/stack.h>
 
-#include "ibp/ibp_protocol.h"
 
 //=============================================================
 

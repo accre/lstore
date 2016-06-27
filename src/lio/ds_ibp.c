@@ -32,9 +32,9 @@
 #include <gop/gop.h>
 #include <gop/opque.h>
 #include <gop/types.h>
-#include <ibp/ibp_op.h>
-#include <ibp/ibp_protocol.h>
-#include <ibp/ibp_types.h>
+#include <ibp/op.h>
+#include <ibp/protocol.h>
+#include <ibp/types.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

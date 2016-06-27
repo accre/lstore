@@ -27,6 +27,7 @@
 #include <gop/gop.h>
 #include <gop/opque.h>
 #include <gop/types.h>
+#include <ibp/protocol.h>
 #include <limits.h>
 #include <math.h>
 #include <stdio.h>
@@ -41,9 +42,8 @@
 #include <tbx/type_malloc.h>
 #include <time.h>
 
-#include "ibp_op.h"
-#include "ibp/ibp_protocol.h"
-#include "ibp_types.h"
+#include "op.h"
+#include "types.h"
 #include "io_wrapper.h"
 
 int a_duration=900;   //** Default duration

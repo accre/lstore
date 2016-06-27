@@ -20,6 +20,7 @@
 #include <gop/gop.h>
 #include <gop/hp.h>
 #include <gop/types.h>
+#include <ibp/protocol.h>
 #include <stdio.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -35,9 +36,8 @@
 #include <tbx/transfer_buffer.h>
 #include <time.h>
 
-#include "ibp_op.h"
-#include "ibp/ibp_protocol.h"
-#include "ibp_types.h"
+#include "op.h"
+#include "types.h"
 
 #define ibp_set_status(v, opstat, errcode) (v).op_status = status; (v).error_code = errorcode
 

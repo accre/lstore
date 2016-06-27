@@ -18,6 +18,7 @@
 
 #include <apr_time.h>
 #include <gop/types.h>
+#include <ibp/protocol.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdio.h>
@@ -35,10 +36,9 @@
 #include <tbx/chksum.h>
 #include <tbx/transfer_buffer.h>
 
-#include "ibp_misc.h"
-#include "ibp_op.h"
-#include "ibp/ibp_protocol.h"
-#include "ibp_types.h"
+#include "misc.h"
+#include "op.h"
+#include "types.h"
 
 #define ibp_set_status(v, opstat, errcode) (v).op_status = status; (v).error_code = errorcode
 

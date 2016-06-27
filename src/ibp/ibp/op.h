@@ -22,7 +22,7 @@ limitations under the License.
 #define ACCRE_IBP_IBP_OP_H_INCLUDED
 
 #include <ibp/ibp_visibility.h>
-#include <ibp/ibp_types.h>
+#include <ibp/types.h>
 #include <tbx/iniparse.h>
 #include <tbx/pigeon_coop.h>
 

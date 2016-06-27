@@ -25,7 +25,7 @@
 #include <tbx/log.h>
 #include <time.h>
 
-#include "ibp_types.h"
+#include "types.h"
 
 //*****************************************************************
 //  new_ibp_depot -Creates a new ibp_depot_t structure

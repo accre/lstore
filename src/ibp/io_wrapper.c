@@ -19,10 +19,10 @@
 
 #include <gop/gop.h>
 #include <gop/opque.h>
+#include <ibp/protocol.h>
 #include <stdio.h>
 #include <tbx/log.h>
 
-#include "ibp/ibp_protocol.h"
 #include "io_wrapper.h"
 #include "iovec_sync.h"
 

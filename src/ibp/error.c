@@ -27,7 +27,7 @@
 #include <apr_thread_proc.h>
 #include <stdlib.h>
 
-#include "ibp_errno.h"
+#include "errno.h"
 
 static apr_threadkey_t *errno_key;
 

@@ -26,6 +26,9 @@
 #include <gop/gop.h>
 #include <gop/hp.h>
 #include <gop/types.h>
+#include <ibp/op.h>
+#include <ibp/protocol.h>
+#include <ibp/ibp_visibility.h>
 #include <stdint.h>
 #include <tbx/atomic_counter.h>
 #include <tbx/iniparse.h>
@@ -34,10 +37,7 @@
 #include <tbx/stack.h>
 #include <tbx/transfer_buffer.h>
 
-#include "ibp/ibp_op.h"
-#include "ibp/ibp_protocol.h"
-#include "ibp/ibp_visibility.h"
-#include "ibp_types.h"
+#include "types.h"
 
 #ifdef __cplusplus
 extern "C" {

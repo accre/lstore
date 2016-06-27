@@ -17,8 +17,8 @@
 #ifndef _IBP_MISC_H_
 #define _IBP_MISC_H_
 
-#include "ibp/ibp.h"
-#include "ibp/ibp_visibility.h"
+#include <ibp/ibp.h>
+#include <ibp/ibp_visibility.h>
 
 #ifdef __cplusplus
 extern "C" {

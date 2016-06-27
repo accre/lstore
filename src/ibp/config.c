@@ -26,6 +26,7 @@
 #include <gop/opque.h>
 #include <gop/portal.h>
 #include <gop/types.h>
+#include <ibp/protocol.h>
 #include <inttypes.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -43,10 +44,9 @@
 #include <tbx/stack.h>
 #include <tbx/type_malloc.h>
 
-#include "ibp_misc.h"
-#include "ibp_op.h"
-#include "ibp/ibp_protocol.h"
-#include "ibp_types.h"
+#include "misc.h"
+#include "op.h"
+#include "types.h"
 
 extern apr_thread_once_t *_err_once;
 

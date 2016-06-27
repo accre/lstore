@@ -17,11 +17,10 @@
 #ifndef _IBP_TYPES_H_
 #define _IBP_TYPES_H_
 
+#include <ibp/types.h>
+#include <ibp/ibp_visibility.h>
 #include <time.h>
 #include <stdint.h>
-
-#include "ibp/ibp_types.h"
-#include "ibp/ibp_visibility.h"
 
 
 #ifdef __cplusplus

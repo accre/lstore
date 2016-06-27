@@ -14,9 +14,8 @@
    limitations under the License.
 */
 
+#include <ibp/ibp_visibility.h>
 #include <gop/opque.h>
-
-#include "ibp/ibp_visibility.h"
 
 #ifdef __cplusplus
 extern "C" {

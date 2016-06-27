@@ -16,9 +16,9 @@ limitations under the License.
 #ifndef ACCRE_IBP_IBP_H_INCLUDED
 #define ACCRE_IBP_IBP_H_INCLUDED
 
-#include <ibp/ibp_op.h>
-#include <ibp/ibp_protocol.h>
-#include <ibp/ibp_types.h>
+#include <ibp/op.h>
+#include <ibp/protocol.h>
+#include <ibp/types.h>
 #include <ibp/ibp_visibility.h>
 
 #endif

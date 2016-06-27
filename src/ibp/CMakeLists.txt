@@ -37,12 +37,12 @@ set(LSTORE_INCLUDE_PUBLIC ${PROJECT_SOURCE_DIR})
 # common objects
 set(LSTORE_PROJECT_OBJS
     constructor.c
-    ibp_config.c
-    ibp_errno.c
-    ibp_misc.c
-    ibp_op.c
-    ibp_op_cmd.c
-    ibp_types.c
+    config.c
+    error.c
+    misc.c
+    op.c
+    op_cmd.c
+    types.c
     io_wrapper.c
     iovec_sync.c
 )
@@ -51,9 +51,9 @@ set(LSTORE_PROJECT_INCLUDES_OLD)
 set(LSTORE_PROJECT_INCLUDES_NAMESPACE ibp)
 set(LSTORE_PROJECT_INCLUDES
         ibp/ibp.h
-        ibp/ibp_op.h
-        ibp/ibp_protocol.h
-        ibp/ibp_types.h
+        ibp/op.h
+        ibp/protocol.h
+        ibp/types.h
         ibp/ibp_visibility.h
     )
 

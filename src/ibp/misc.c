@@ -27,9 +27,8 @@
 #include <tbx/log.h>
 #include <tbx/string_token.h>
 
-#include "ibp_op.h"
-#include "ibp_types.h"
-
+#include "op.h"
+#include "types.h"
 
 //*************************************************************
 // ibppc_form_host forms the host string for hte portal context
