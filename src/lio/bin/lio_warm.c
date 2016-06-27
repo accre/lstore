@@ -38,7 +38,6 @@
 
 #include <lio/authn.h>
 #include <lio/ds.h>
-#include <lio/ds_ibp.h>
 #include <lio/ex3_types.h>
 #include <lio/lio.h>
 #include <lio/os.h>

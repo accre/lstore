@@ -22,7 +22,7 @@
 #define _SEGMENT_CACHE_H_
 
 #include <lio/lio_visibility.h>
-#include <lio/segment_cache.h>
+#include <lio/segment.h>
 
 #include "cache.h"
 #include "ex3.h"

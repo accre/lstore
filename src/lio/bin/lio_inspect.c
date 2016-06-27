@@ -51,7 +51,6 @@
 #include <lio/lio.h>
 #include <lio/os.h>
 #include <lio/rs.h>
-#include <lio/rs_query_base.h>
 
 #define n_inspect 10
 char *inspect_opts[] = { "DUMMY", "inspect_quick_check",  "inspect_scan_check",  "inspect_full_check",

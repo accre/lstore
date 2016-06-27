@@ -21,6 +21,9 @@ limitations under the License.
 #ifndef ACCRE_LIO_DATA_SERVICE_ABSTRACT_H_INCLUDED
 #define ACCRE_LIO_DATA_SERVICE_ABSTRACT_H_INCLUDED
 
+#include <apr_thread_cond.h>
+#include <apr_thread_proc.h>
+#include <apr_hash.h>
 #include <inttypes.h>
 #include <lio/lio_visibility.h>
 #include <lio/ex3_types.h>
@@ -37,6 +40,12 @@ typedef void data_cap_set_t;
 typedef void data_cap_t;
 typedef void data_probe_t;
 typedef void data_inquire_t;
+//* FIXME: leaky
+typedef struct ds_ibp_attr_t ds_ibp_attr_t;
+typedef struct ds_ibp_alloc_op_t ds_ibp_alloc_op_t;
+typedef struct ds_ibp_op_t ds_ibp_op_t;
+typedef struct ds_ibp_priv_t ds_ibp_priv_t;
+typedef struct ds_ibp_truncate_op_t ds_ibp_truncate_op_t;
 
 // Functions
 
@@ -78,6 +87,30 @@ struct data_service_fn_t {
     op_generic_t *(*append)(data_service_fn_t *, data_attr_t *attr, data_cap_t *wcap, tbx_tbuf_t *write, ex_off_t boff, ex_off_t len, int timeout);
     op_generic_t *(*copy)(data_service_fn_t *, data_attr_t *attr, int mode, int ns_type, char *ppath, data_cap_t *src_cap, ds_int_t src_off,
                           data_cap_t *dest_cap, ds_int_t dest_off, ds_int_t len, int timeout);
+};
+//* FIXME: leaky
+struct ds_ibp_attr_t {
+    ibp_attributes_t attr;
+    ibp_depot_t depot;
+    ibp_connect_context_t cc;
+    tbx_ns_chksum_t ncs;
+    int disk_cs_type;
+    int disk_cs_blocksize;
+};
+
+struct ds_ibp_priv_t {
+    ds_ibp_attr_t attr_default;
+    ibp_context_t *ic;
+
+    //** These are all for the warmer
+    apr_pool_t *pool;
+    apr_hash_t *warm_table;
+    apr_thread_mutex_t *lock;
+    apr_thread_cond_t *cond;
+    apr_thread_t *thread;
+    int warm_interval;
+    int warm_duration;
+    int warm_stop;
 };
 
 // Preprocessor functions

@@ -24,7 +24,7 @@
 #include <gop/opque.h>
 #include <gop/types.h>
 #include <lio/lio_visibility.h>
-#include <lio/segment_linear.h>
+#include <lio/segment.h>
 
 #include "ds.h"
 #include "ex3.h"

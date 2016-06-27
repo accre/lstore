@@ -20,7 +20,7 @@
 #include <gop/opque.h>
 #include <gop/types.h>
 #include <lio/lio_visibility.h>
-#include <lio/segment_log.h>
+#include <lio/segment.h>
 #include <tbx/interval_skiplist.h>
 
 #include "ds.h"

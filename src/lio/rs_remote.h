@@ -23,7 +23,6 @@
 
 #include <gop/mq.h>
 #include <gop/opque.h>
-#include <lio/rs_remote.h>
 #include <tbx/list.h>
 
 #include "ds.h"

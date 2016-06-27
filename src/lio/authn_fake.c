@@ -35,10 +35,10 @@
 
 extern char *_lio_exe_name;  //** This is set by lio_init long before we would ever be called.
 
-typedef struct {
+struct authn_fake_priv_t {
     char *handle;
     int len;
-} authn_fake_priv_t;
+};
 
 //***********************************************************************
 // authn_fake_get_type - Returns the type

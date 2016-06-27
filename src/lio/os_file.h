@@ -21,7 +21,6 @@
 #ifndef _OS_FILE_H_
 #define _OS_FILE_H_
 
-#include <lio/os_file.h>
 #include <openssl/md5.h>
 #include <tbx/chksum.h>
 #include <tbx/fmttypes.h>

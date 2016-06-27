@@ -23,7 +23,6 @@
 
 #include <gop/mq_ongoing.h>
 #include <gop/mq.h>
-#include <lio/os_remote.h>
 
 #include "authn.h"
 #include "os.h"

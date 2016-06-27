@@ -21,8 +21,6 @@
 #ifndef _RS_QUERY_BASE_H_
 #define _RS_QUERY_BASE_H_
 
-#include <lio/rs_query_base.h>
-
 #include "rs.h"
 
 #ifdef __cplusplus

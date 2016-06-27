@@ -22,7 +22,6 @@
 #define _RS_SIMPLE_H_
 
 #include <gop/opque.h>
-#include <lio/rs_simple.h>
 #include <tbx/iniparse.h>
 #include <tbx/list.h>
 

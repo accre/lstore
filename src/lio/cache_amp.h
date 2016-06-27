@@ -18,7 +18,7 @@
 #define __CACHE_AMP_H_
 
 #include <apr_thread_proc.h>
-#include <lio/cache_amp.h>
+#include <lio/cache.h>
 #include <tbx/iniparse.h>
 
 #include "cache.h"

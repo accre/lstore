@@ -116,13 +116,10 @@ set(LSTORE_PROJECT_INCLUDES_OLD)
 set(LSTORE_PROJECT_INCLUDES_NAMESPACE lio)
 set(LSTORE_PROJECT_INCLUDES
         lio/authn.h
-        lio/authn_fake.h
         lio/blacklist.h
         lio/cache.h
-        lio/cache_amp.h
         lio/data_block.h
         lio/ds.h
-        lio/ds_ibp.h
         lio/erasure_tools.h
         lio/ex3.h
         lio/ex3_header.h
@@ -132,16 +129,8 @@ set(LSTORE_PROJECT_INCLUDES
         lio/lio_fuse.h
         lio/lio_visibility.h
         lio/os.h
-        lio/os_file.h
-        lio/os_remote.h
         lio/rs.h
-        lio/rs_query_base.h
-        lio/rs_remote.h
-        lio/rs_simple.h
-        lio/segment_cache.h
-        lio/segment_linear.h
-        lio/segment_log.h
-        lio/segment_lun.h
+        lio/segment.h
         lio/service_manager.h
         lio/trace.h
 )

@@ -43,6 +43,12 @@ typedef void os_fd_t;
 typedef void os_attr_iter_t;
 typedef void os_object_iter_t;
 typedef void os_fsck_iter_t;
+//* FIXME: leaky
+typedef struct osfile_priv_t osfile_priv_t;
+typedef struct local_object_iter_t local_object_iter_t;
+typedef struct osrc_priv_t osrc_priv_t;
+typedef struct osrs_priv_t osrs_priv_t;
+
 
 // Functions
 LIO_API char *lio_os_glob2regex(char *glob);

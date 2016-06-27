@@ -21,7 +21,7 @@
 #ifndef _AUTHN_FAKE_H_
 #define _AUTHN_FAKE_H_
 
-#include <lio/authn_fake.h>
+#include <lio/authn.h>
 
 #include "authn.h"
 

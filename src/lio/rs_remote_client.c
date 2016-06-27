@@ -30,7 +30,6 @@
 #include <gop/gop.h>
 #include <gop/mq.h>
 #include <gop/types.h>
-#include <lio/rs_remote.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdio.h>

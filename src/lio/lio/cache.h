@@ -42,6 +42,12 @@ typedef struct data_page_t data_page_t;
 typedef struct lio_cache_stats_get_t lio_cache_stats_get_t;
 typedef struct page_handle_t page_handle_t;
 typedef struct page_table_t page_table_t;
+//* FIXME: leaky
+typedef struct amp_page_stream_t amp_page_stream_t;
+typedef struct amp_page_wait_t amp_page_wait_t;
+typedef struct amp_stream_table_t amp_stream_table_t;
+typedef struct cache_amp_t cache_amp_t;
+typedef struct page_amp_t page_amp_t;
 
 // Functions
 LIO_API lio_cache_stats_get_t get_lio_cache_stats_get(cache_t *c);

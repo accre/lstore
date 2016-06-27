@@ -34,7 +34,7 @@
 #include <gop/tp.h>
 #include <gop/types.h>
 #include <inttypes.h>
-#include <lio/segment_lun.h>
+#include <lio/segment.h>
 #include <limits.h>
 #include <stdint.h>
 #include <stdio.h>

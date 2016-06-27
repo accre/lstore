@@ -39,8 +39,25 @@ typedef struct rs_hints_t rs_hints_t;
 typedef struct rs_mapping_notify_t rs_mapping_notify_t;
 typedef struct rs_request_t rs_request_t;
 typedef struct rs_space_t rs_space_t;
+// FIXME:leaky
+typedef struct rsq_base_ele_t rsq_base_ele_t;
+typedef struct rsq_base_t rsq_base_t;
+typedef struct rs_remote_client_priv_t rs_remote_client_priv_t;
+typedef struct rs_remote_server_priv_t rs_remote_server_priv_t;
+typedef struct rs_simple_priv_t rs_simple_priv_t;
+typedef struct rss_check_entry_t rss_check_entry_t;
+typedef struct rss_rid_entry_t rss_rid_entry_t;
 
 // Functions
+
+// Preprocessor constants
+// FIXME: leaky
+#define RSQ_BASE_OP_KV      1
+#define RSQ_BASE_OP_NOT     2
+#define RSQ_BASE_OP_AND     3
+
+#define RSQ_BASE_KV_EXACT   1
+#define RSQ_BASE_KV_ANY     3
 
 // Preprocessor macros
 #define rs_get_rid_config(rs) (rs)->get_rid_config(rs)

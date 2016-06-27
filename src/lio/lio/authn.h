@@ -30,6 +30,8 @@ extern "C" {
 // Typedefs
 typedef struct authn_t authn_t;
 typedef struct creds_t creds_t;
+//! FIXME: leaky
+typedef struct authn_fake_priv_t authn_fake_priv_t;
 
 // Functions
 

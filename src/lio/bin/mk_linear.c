@@ -26,7 +26,7 @@
 #include <lio/ex3_types.h>
 #include <lio/lio.h>
 #include <lio/rs.h>
-#include <lio/segment_linear.h>
+#include <lio/segment.h>
 #include <lio/service_manager.h>
 
 //*************************************************************************

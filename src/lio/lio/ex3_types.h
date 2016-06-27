@@ -23,6 +23,7 @@ limitations under the License.
 
 #include <ibp/ibp.h>
 #include <lio/lio_visibility.h>
+#include <tbx/iniparse.h>
 
 #ifdef __cplusplus
 extern "C" {
