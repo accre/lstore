@@ -13,26 +13,26 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 */
-#include "lio/ds_ibp.h"
+
 //***********************************************************************
 // IBP based data service
 //***********************************************************************
 
-
 #ifndef _DS_IBP_H_
 #define _DS_IBP_H_
 
+#include <lio/ds_ibp.h>
 #include <ibp/ibp.h>
 #include <tbx/iniparse.h>
 #include <tbx/network.h>
 
 #include "ds.h"
 
-struct ds_ibp_attr_t;
-
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+struct ds_ibp_attr_t;
 
 #define DS_TYPE_IBP "ibp"
 
@@ -81,4 +81,3 @@ struct ds_ibp_op_t {
 #endif
 
 #endif
-

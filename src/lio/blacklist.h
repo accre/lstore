@@ -13,7 +13,7 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 */
-#include "lio/blacklist.h"
+
 //***********************************************************************
 // Blacklist structure definition
 //***********************************************************************
@@ -21,12 +21,13 @@
 #ifndef _BLACKLIST_H_
 #define _BLACKLIST_H_
 
-#include "ex3_types.h"
-
 #include <apr_hash.h>
 #include <apr_pools.h>
 #include <apr_thread_mutex.h>
 #include <apr_time.h>
+#include <lio/blacklist.h>
+
+#include "ex3_types.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -51,4 +52,3 @@ struct blacklist_t {
 #endif
 
 #endif
-

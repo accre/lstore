@@ -13,12 +13,17 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 */
-#include "lio/ex3.h"
+
 //***********************************************************************
 // Exnode3 abstract class
 //***********************************************************************
+
+#ifndef _EX3_ABSTRACT_H_
+#define _EX3_ABSTRACT_H_
+
 #include <gop/opque.h>
 #include <gop/tp.h>
+#include <lio/ex3.h>
 #include <tbx/atomic_counter.h>
 #include <tbx/iniparse.h>
 #include <tbx/list.h>
@@ -32,9 +37,6 @@
 #include "os.h"
 #include "rs.h"
 #include "service_manager.h"
-
-#ifndef _EX3_ABSTRACT_H_
-#define _EX3_ABSTRACT_H_
 
 #ifdef __cplusplus
 extern "C" {
@@ -115,5 +117,3 @@ void generate_ex_id(ex_id_t *id);
 #endif
 
 #endif
-
-

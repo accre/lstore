@@ -13,7 +13,7 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 */
-#include "lio/ds.h"
+
 //***********************************************************************
 // Generic data service
 //***********************************************************************
@@ -22,6 +22,7 @@
 #define _DATA_SERVICE_H_
 
 #include <gop/opque.h>
+#include <lio/ds.h>
 #include <tbx/transfer_buffer.h>
 
 #include "ex3_types.h"
@@ -97,4 +98,3 @@ extern "C" {
 #endif
 
 #endif
-

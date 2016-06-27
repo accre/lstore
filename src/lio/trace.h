@@ -13,10 +13,11 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 */
-#include "lio/trace.h"
+
 #ifndef _TRACE_H_
 #define _TRACE_H_
 
+#include <lio/trace.h>
 #include <stdio.h>
 
 #include "ds.h"
@@ -25,6 +26,10 @@
 #include "exnode.h"
 #include "os.h"
 #include "service_manager.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 struct trace_file_t;
 struct trace_op_t;
@@ -74,5 +79,9 @@ struct trace_t {
 trace_t *trace_load(service_manager_t *exs, exnode_t *template, data_attr_t *da, int timeout, char *fname);
 void trace_destroy(trace_t *trace);
 void trace_print_summary(trace_t *trace, FILE *fd);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

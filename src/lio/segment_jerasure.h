@@ -18,7 +18,6 @@
 // Jerasure segment support
 //***********************************************************************
 
-
 #ifndef _SEGMENT_JERASURE_H_
 #define _SEGMENT_JERASURE_H_
 
@@ -41,4 +40,3 @@ segment_t *segment_jerasure_create(void *arg);
 #endif
 
 #endif
-

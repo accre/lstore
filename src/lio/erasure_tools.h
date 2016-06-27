@@ -13,10 +13,11 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 */
-#include "lio/erasure_tools.h"
+
 #ifndef __ERASURE_TOOLS_H_
 #define __ERASURE_TOOLS_H_
 
+#include <lio/erasure_tools.h>
 #include <stdio.h>
 
 #ifdef __cplusplus
@@ -80,6 +81,3 @@ int et_decode(erasure_plan_t *plan, long long int fsize, const char *fname, long
 
 
 #endif
-
-
-

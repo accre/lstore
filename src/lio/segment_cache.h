@@ -13,7 +13,7 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 */
-#include "lio/segment_cache.h"
+
 //***********************************************************************
 // Generic cache segment support
 //***********************************************************************
@@ -21,10 +21,12 @@
 #ifndef _SEGMENT_CACHE_H_
 #define _SEGMENT_CACHE_H_
 
+#include <lio/lio_visibility.h>
+#include <lio/segment_cache.h>
+
 #include "cache.h"
 #include "ex3.h"
 #include "ex3_types.h"
-#include <lio/lio_visibility.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -41,4 +43,3 @@ segment_t *segment_cache_create(void *arg);
 #endif
 
 #endif
-

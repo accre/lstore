@@ -13,19 +13,19 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 */
-#include "lio/segment_log.h"
 
 #ifndef _SEGMENT_LOG_H_
 #define _SEGMENT_LOG_H_
 
 #include <gop/opque.h>
 #include <gop/types.h>
+#include <lio/lio_visibility.h>
+#include <lio/segment_log.h>
 #include <tbx/interval_skiplist.h>
 
 #include "ds.h"
 #include "ex3.h"
 #include "ex3_types.h"
-#include <lio/lio_visibility.h>
 #include "service_manager.h"
 
 #ifdef __cplusplus
@@ -63,4 +63,3 @@ struct seglog_priv_t {
 #endif
 
 #endif
-

@@ -18,7 +18,6 @@
 // Remote resource managment implementation
 //***********************************************************************
 
-
 #ifndef _RS_REMOTE_H_
 #define _RS_REMOTE_H_
 
@@ -95,4 +94,3 @@ struct rs_remote_server_priv_t {
 #endif
 
 #endif
-

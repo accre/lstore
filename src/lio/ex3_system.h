@@ -13,20 +13,20 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 */
-#include "lio/ex3_system.h"
+
 //***********************************************************************
 // Linear exnode3 support
 //***********************************************************************
 
+#ifndef _EX3_SYSTEM_H_
+#define _EX3_SYSTEM_H_
 
+#include <lio/ex3_system.h>
 #include <tbx/list.h>
 
 #include "cache.h"
 #include "ex3.h"
 #include "service_manager.h"
-
-#ifndef _EX3_SYSTEM_H_
-#define _EX3_SYSTEM_H_
 
 #ifdef __cplusplus
 extern "C" {
@@ -67,4 +67,3 @@ void exnode_system_destroy();
 #endif
 
 #endif
-

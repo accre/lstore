@@ -14,16 +14,12 @@
    limitations under the License.
 */
 
-//*************************************************************************
-//*************************************************************************
+#ifndef __CACHE_ROUND_ROBIN_H_
+#define __CACHE_ROUND_ROBIN_H_
 
 #include <tbx/iniparse.h>
 
 #include "ds.h"
-
-#ifndef __CACHE_ROUND_ROBIN_H_
-#define __CACHE_ROUND_ROBIN_H_
-
 
 #ifdef __cplusplus
 extern "C" {
@@ -40,5 +36,3 @@ cache_t *round_robin_cache_load(void *arg, tbx_inip_file_t *ifd, char *section, 
 #endif
 
 #endif
-
-

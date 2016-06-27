@@ -87,4 +87,3 @@ struct rs_simple_priv_t {
 #endif
 
 #endif
-

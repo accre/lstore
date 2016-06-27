@@ -13,7 +13,7 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 */
-#include "lio/rs_query_base.h"
+
 //***********************************************************************
 // Basic Resource Query interface
 //***********************************************************************
@@ -21,14 +21,16 @@
 #ifndef _RS_QUERY_BASE_H_
 #define _RS_QUERY_BASE_H_
 
-#include "rs.h"
+#include <lio/rs_query_base.h>
 
-struct rsq_base_ele_t;
-struct rsq_base_t;
+#include "rs.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+    struct rsq_base_ele_t;
+struct rsq_base_t;
 
 #define RSQ_BASE_OP_MAX_VAL 4
 #define RSQ_BASE_OP_OR      4
@@ -71,4 +73,3 @@ void rs_query_count(resource_service_fn_t *rs, rs_query_t *q, int *n_ele, int *n
 #endif
 
 #endif
-

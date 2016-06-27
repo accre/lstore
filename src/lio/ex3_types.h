@@ -13,7 +13,7 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 */
-#include "lio/ex3_types.h"
+
 //***********************************************************************
 // Exnode3 abstract class
 //***********************************************************************
@@ -23,6 +23,7 @@
 
 #include <ibp/ibp.h>
 #include <inttypes.h>
+#include <lio/ex3_types.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -41,4 +42,3 @@ void ex_iovec_destroy(ex_tbx_iovec_t *iov);
 #endif
 
 #endif
-

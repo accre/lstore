@@ -36,4 +36,3 @@ os_authz_t *osaz_fake_create(service_manager_t *ess, tbx_inip_file_t *ifd, char 
 #endif
 
 #endif
-

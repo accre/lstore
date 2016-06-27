@@ -13,7 +13,6 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 */
-#include "lio/rs.h"
 //***********************************************************************
 // Generic resource managment service
 //***********************************************************************
@@ -24,6 +23,7 @@
 
 #include <apr_hash.h>
 #include <apr_thread_cond.h>
+#include <lio/rs.h>
 
 #include "ds.h"
 #include "ex3_types.h"
@@ -98,5 +98,3 @@ void resource_service_destroy(resource_service_fn_t *rsf);
 #endif
 
 #endif
-
-

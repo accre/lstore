@@ -13,26 +13,22 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 */
-#include "lio/ex3_header.h"
+
 //***********************************************************************
 // Linear exnode3 support
 //***********************************************************************
 
+#ifndef _EX3_HEADER_H_
+#define _EX3_HEADER_H_
 
+#include <lio/ex3_header.h>
 #include <tbx/list.h>
 
 #include "ex3_types.h"
 
-struct ex_header_t;
-
-#ifndef _EX3_HEADER_H_
-#define _EX3_HEADER_H_
-
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-
 
 ex_header_t *ex_header_create();
 void ex_header_release(ex_header_t *h);
@@ -52,4 +48,3 @@ void ex_header_set_attributes(ex_header_t *h, tbx_list_t *attr);
 #endif
 
 #endif
-

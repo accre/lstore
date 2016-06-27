@@ -18,7 +18,6 @@
 // Linear segment support
 //***********************************************************************
 
-
 #ifndef _SEGMENT_FILE_H_
 #define _SEGMENT_FILE_H_
 
@@ -44,4 +43,3 @@ op_generic_t *segment_file_make(segment_t *seg, data_attr_t *da, char *fname);
 #endif
 
 #endif
-

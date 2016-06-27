@@ -128,7 +128,6 @@ set(LSTORE_PROJECT_INCLUDES
         lio/ex3_header.h
         lio/ex3_system.h
         lio/ex3_types.h
-        lio/liblio_trace.h
         lio/lio.h
         lio/lio_fuse.h
         lio/lio_visibility.h

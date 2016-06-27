@@ -29,7 +29,3 @@ int raid4_decode(int data_strips, int *erasures, char **data, char **parity, int
 #endif
 
 #endif
-
-
-
-

@@ -18,10 +18,10 @@
 // Linear exnode3 support
 //***********************************************************************
 
-#include <gop/opque.h>
-
 #ifndef _EX3_LINEAR_H_
 #define _EX3_LINEAR_H_
+
+#include <gop/opque.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -35,4 +35,3 @@ opque_t *segment_linear_append(segment_t *seg, ibp_depot_t *depot, int n_depots,
 #endif
 
 #endif
-

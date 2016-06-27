@@ -13,21 +13,23 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 */
-#include "lio/os.h"
+
 //***********************************************************************
 // Generic object service
 //***********************************************************************
+
 #ifndef _OBJECT_SERVICE_H_
 #define _OBJECT_SERVICE_H_
 
 #include <gop/opque.h>
 #include <gop/tp.h>
+#include <lio/os.h>
+#include <lio/lio_visibility.h>
 #include <regex.h>
 #include <sys/types.h>
 
 #include "authn.h"
 #include "ex3_types.h"
-#include <lio/lio_visibility.h>
 #include "service_manager.h"
 
 #ifdef __cplusplus
@@ -140,5 +142,3 @@ struct os_virtual_attr_t {
 #endif
 
 #endif
-
-

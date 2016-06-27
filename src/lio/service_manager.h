@@ -13,12 +13,10 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 */
-#include "lio/service_manager.h"
+
 //***********************************************************************
 // Generic service manager header file
 //***********************************************************************
-
-struct service_manager_t;
 
 #ifndef _SERVICE_MANAGER_H_
 #define _SERVICE_MANAGER_H_
@@ -26,8 +24,8 @@ struct service_manager_t;
 #include <apr_hash.h>
 #include <apr_pools.h>
 #include <apr_thread_mutex.h>
-
 #include <lio/lio_visibility.h>
+#include <lio/service_manager.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -50,4 +48,3 @@ int remove_service(service_manager_t *sm, char *service_section, char *service_n
 #endif
 
 #endif
-

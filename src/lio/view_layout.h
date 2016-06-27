@@ -36,4 +36,3 @@ int view_layout_set(view_t *v, layout_t *lay);
 #endif
 
 #endif
-

@@ -13,22 +13,22 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 */
-#include "lio/segment_linear.h"
+
 //***********************************************************************
 // Linear segment support
 //***********************************************************************
-
 
 #ifndef _SEGMENT_LINEAR_H_
 #define _SEGMENT_LINEAR_H_
 
 #include <gop/opque.h>
 #include <gop/types.h>
+#include <lio/lio_visibility.h>
+#include <lio/segment_linear.h>
 
 #include "ds.h"
 #include "ex3.h"
 #include "ex3_types.h"
-#include <lio/lio_visibility.h>
 #include "rs.h"
 
 #ifdef __cplusplus
@@ -44,4 +44,3 @@ segment_t *segment_linear_create(void *arg);
 #endif
 
 #endif
-

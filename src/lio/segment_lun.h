@@ -70,4 +70,3 @@ struct seglun_priv_t {
 #endif
 
 #endif
-

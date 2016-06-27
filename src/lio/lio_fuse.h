@@ -13,7 +13,6 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 */
-#include "lio/lio_fuse.h"
 //***********************************************************************
 // lio_fuse.h - LIO Linux FUSE header file
 //***********************************************************************
@@ -21,17 +20,16 @@
 #ifndef _LIO_FUSE_H_
 #define _LIO_FUSE_H_
 
-
 #include <apr_hash.h>
 #include <apr_pools.h>
 #include <apr_thread_mutex.h>
 #include <apr_time.h>
+#include <lio/lio_fuse.h>
+#include <lio/lio_visibility.h>
 #include <tbx/atomic_counter.h>
 #include <tbx/list.h>
 
 #include "ex3.h"
-#include "lio.h"
-#include <lio/lio_visibility.h>
 #include "lio.h"
 
 #ifdef __cplusplus
@@ -76,5 +74,3 @@ void lfs_destroy(void *lfs); // expects a lio_fuse_t* as the argument
 #endif
 
 #endif
-
-

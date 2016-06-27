@@ -14,9 +14,6 @@
    limitations under the License.
 */
 
-//*************************************************************************
-//*************************************************************************
-
 #ifndef __CACHE_H_
 #define __CACHE_H_
 
@@ -219,5 +216,3 @@ void free_pending_table_free(void *arg, int size, void *data);
 #endif
 
 #endif
-
-

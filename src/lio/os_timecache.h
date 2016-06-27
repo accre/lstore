@@ -39,4 +39,3 @@ object_service_fn_t *object_service_timecache_create(service_manager_t *ess, tbx
 #endif
 
 #endif
-

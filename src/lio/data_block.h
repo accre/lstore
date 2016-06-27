@@ -13,11 +13,15 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 */
-#include "lio/data_block.h"
+
 //***********************************************************************
 // Data block definition
 //***********************************************************************
 
+#ifndef _DATA_BLOCK_H_
+#define _DATA_BLOCK_H_
+
+#include <lio/data_block.h>
 #include <tbx/atomic_counter.h>
 #include <tbx/stack.h>
 
@@ -25,16 +29,14 @@
 #include "ex3_types.h"
 #include "service_manager.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 struct data_block_attr_t;
 struct data_block_t;
 struct data_block_warm_t;
 
-#ifndef _DATA_BLOCK_H_
-#define _DATA_BLOCK_H_
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 typedef void data_block_cap_t;
 
@@ -78,4 +80,3 @@ void data_block_stop_warm(data_block_t *b);
 #endif
 
 #endif
-

@@ -13,11 +13,15 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 */
-#include "lio/os_file.h"
+
 //***********************************************************************
 // OS file header file
 //***********************************************************************
 
+#ifndef _OS_FILE_H_
+#define _OS_FILE_H_
+
+#include <lio/os_file.h>
 #include <openssl/md5.h>
 #include <tbx/chksum.h>
 #include <tbx/fmttypes.h>
@@ -26,11 +30,6 @@
 #include "authn.h"
 #include "os.h"
 #include "service_manager.h"
-
-struct local_object_iter_t;
-
-#ifndef _OS_FILE_H_
-#define _OS_FILE_H_
 
 #ifdef __cplusplus
 extern "C" {
@@ -99,4 +98,3 @@ struct osfile_priv_t {
 #endif
 
 #endif
-

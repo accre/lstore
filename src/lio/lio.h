@@ -13,20 +13,22 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 */
-#include "lio/lio.h"
+
 //***********************************************************************
 // Generic LIO functionality
 //***********************************************************************
+
+#ifndef _LIO_ABSTRACT_H_
+#define _LIO_ABSTRACT_H_
+
 #include <gop/mq.h>
+#include <lio/lio.h>
+#include <lio/lio_visibility.h>
 #include <sys/stat.h>
 #include <tbx/log.h>
 
 #include "blacklist.h"
 #include "exnode.h"
-#include <lio/lio_visibility.h>
-
-#ifndef _LIO_ABSTRACT_H_
-#define _LIO_ABSTRACT_H_
 
 #ifdef __cplusplus
 extern "C" {
@@ -169,4 +171,3 @@ const char *lio_client_version();
 #endif
 
 #endif
-

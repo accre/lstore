@@ -13,15 +13,17 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 */
-#include "lio/authn_fake.h"
+
 //***********************************************************************
 // Dummy AuthN implementation
 //***********************************************************************
 
-#include "authn.h"
-
 #ifndef _AUTHN_FAKE_H_
 #define _AUTHN_FAKE_H_
+
+#include <lio/authn_fake.h>
+
+#include "authn.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -43,4 +45,3 @@ authn_t *authn_fake_create(service_manager_t *ess, tbx_inip_file_t *ifd, char *s
 #endif
 
 #endif
-

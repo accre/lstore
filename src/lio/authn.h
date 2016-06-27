@@ -13,17 +13,18 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 */
-#include "lio/authn.h"
+
 //***********************************************************************
 // Generic Authentication service
 //***********************************************************************
 
-#include <tbx/iniparse.h>
-
-#include "service_manager.h"
-
 #ifndef _AUTHN_ABSTRACT_H_
 #define _AUTHN_ABSTRACT_H_
+
+#include <tbx/iniparse.h>
+#include <lio/authn.h>
+
+#include "service_manager.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -74,4 +75,3 @@ typedef authn_t *(authn_create_t)(service_manager_t *ess, tbx_inip_file_t *ifd, 
 #endif
 
 #endif
-

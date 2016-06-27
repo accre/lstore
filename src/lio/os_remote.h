@@ -18,15 +18,15 @@
 // OS Remote Server/Client header file
 //***********************************************************************
 
+#ifndef _OS_REMOTE_H_
+#define _OS_REMOTE_H_
+
 #include <gop/mq_ongoing.h>
 #include <gop/mq.h>
 #include <lio/os_remote.h>
 
 #include "authn.h"
 #include "os.h"
-
-#ifndef _OS_REMOTE_H_
-#define _OS_REMOTE_H_
 
 #ifdef __cplusplus
 extern "C" {
@@ -151,4 +151,3 @@ struct osrc_priv_t {
 #endif
 
 #endif
-

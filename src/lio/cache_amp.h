@@ -14,8 +14,8 @@
    limitations under the License.
 */
 
-//*************************************************************************
-//*************************************************************************
+#ifndef __CACHE_AMP_H_
+#define __CACHE_AMP_H_
 
 #include <apr_thread_proc.h>
 #include <lio/cache_amp.h>
@@ -23,10 +23,6 @@
 
 #include "cache.h"
 #include "ds.h"
-
-#ifndef __CACHE_AMP_H_
-#define __CACHE_AMP_H_
-
 
 #ifdef __cplusplus
 extern "C" {
@@ -94,5 +90,3 @@ struct amp_page_wait_t {
 #endif
 
 #endif
-
-
