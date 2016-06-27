@@ -22,7 +22,6 @@ limitations under the License.
 #define ACCRE_LIO_CACHE_PRIV_H_INCLUDED
 
 #include <lio/ex3.h>
-#include <lio/ex3_types.h>
 #include <lio/lio_visibility.h>
 
 #ifdef __cplusplus

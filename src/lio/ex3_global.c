@@ -14,13 +14,14 @@
    limitations under the License.
 */
 
+#define _log_module_index 148
+
 #include <stddef.h>
 
 #include "ds.h"
 #include "os.h"
 #include "rs.h"
 
-#define _log_module_index 148
 
 data_service_fn_t *_ds_default = NULL;
 resource_service_fn_t *_rs_default = NULL;

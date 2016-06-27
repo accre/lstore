@@ -23,7 +23,7 @@
 
 #include <ibp/ibp.h>
 #include <inttypes.h>
-#include <lio/ex3_types.h>
+#include <lio/ex3.h>
 
 #ifdef __cplusplus
 extern "C" {

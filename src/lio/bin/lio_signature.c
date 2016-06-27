@@ -21,7 +21,6 @@
 #include <tbx/log.h>
 
 #include <lio/ex3.h>
-#include <lio/ex3_types.h>
 #include <lio/lio.h>
 #include <lio/os.h>
 

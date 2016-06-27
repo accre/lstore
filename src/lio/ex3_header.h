@@ -21,7 +21,7 @@
 #ifndef _EX3_HEADER_H_
 #define _EX3_HEADER_H_
 
-#include <lio/ex3_header.h>
+#include <lio/ex3.h>
 #include <tbx/list.h>
 
 #include "ex3_types.h"

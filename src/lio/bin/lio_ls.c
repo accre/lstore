@@ -31,7 +31,7 @@
 #include <tbx/log.h>
 #include <tbx/type_malloc.h>
 
-#include <lio/ex3_types.h>
+#include <lio/ex3.h>
 #include <lio/lio.h>
 #include <lio/os.h>
 

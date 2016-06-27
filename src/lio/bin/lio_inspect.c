@@ -47,7 +47,6 @@
 
 #include <lio/authn.h>
 #include <lio/ex3.h>
-#include <lio/ex3_types.h>
 #include <lio/lio.h>
 #include <lio/os.h>
 #include <lio/rs.h>

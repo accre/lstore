@@ -26,7 +26,7 @@ limitations under the License.
 #include <gop/mq.h>
 #include <lio/lio_visibility.h>
 #include <lio/ds.h>
-#include <lio/ex3_types.h>
+#include <lio/ex3_fwd.h>
 
 #ifdef __cplusplus
 extern "C" {

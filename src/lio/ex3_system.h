@@ -21,7 +21,7 @@
 #ifndef _EX3_SYSTEM_H_
 #define _EX3_SYSTEM_H_
 
-#include <lio/ex3_system.h>
+#include <lio/ex3.h>
 #include <tbx/list.h>
 
 #include "cache.h"

@@ -122,9 +122,7 @@ set(LSTORE_PROJECT_INCLUDES
         lio/ds.h
         lio/erasure_tools.h
         lio/ex3.h
-        lio/ex3_header.h
-        lio/ex3_system.h
-        lio/ex3_types.h
+        lio/ex3_fwd.h
         lio/lio.h
         lio/lio_fuse.h
         lio/lio_visibility.h

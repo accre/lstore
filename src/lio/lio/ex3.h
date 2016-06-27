@@ -24,27 +24,18 @@ limitations under the License.
 #include <apr_hash.h>
 #include <apr_thread_cond.h>
 #include <gop/tp.h>
-#include <lio/lio_visibility.h>
+#include <ibp/ibp.h>
+#include <inttypes.h>
 #include <lio/ds.h>
-#include <lio/service_manager.h>
-#include <lio/ex3_types.h>
-#include <lio/ex3_header.h>
+#include <lio/ex3_fwd.h>
+#include <lio/lio_visibility.h>
 #include <lio/rs.h>
+#include <lio/service_manager.h>
+#include <tbx/iniparse.h>
+#include <tbx/list.h>
 #include <tbx/log.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-// Typedefs
-typedef struct exnode_t exnode_t;
-typedef struct inspect_args_t inspect_args_t;
-typedef struct rid_inspect_tweak_t rid_inspect_tweak_t;
-typedef struct segment_errors_t segment_errors_t;
-typedef struct segment_fn_t segment_fn_t;
-typedef struct segment_rw_hints_t segment_rw_hints_t;
-typedef struct segment_t segment_t;
-typedef segment_t *(segment_create_t)(void *arg);
+// Typedefs are in ex3_fwd.h to break a potential dependency cycle
 
 // Functions
 LIO_API op_generic_t *lio_exnode_clone(thread_pool_context_t *tpc, exnode_t *ex, data_attr_t *da, exnode_t **clone_ex, void *arg, int mode, int timeout);
@@ -59,6 +50,8 @@ LIO_API exnode_exchange_t *lio_exnode_exchange_text_parse(char *text);
 LIO_API int lio_exnode_serialize(exnode_t *ex, exnode_exchange_t *exp);
 LIO_API op_generic_t *lio_segment_copy(thread_pool_context_t *tpc, data_attr_t *da, segment_rw_hints_t *rw_hints, segment_t *src_seg, segment_t *dest_seg, ex_off_t src_offset, ex_off_t dest_offset, ex_off_t len, ex_off_t bufsize, char *buffer, int do_truncate, int timoeut);
 LIO_API int lio_view_insert(exnode_t *ex, segment_t *view);
+LIO_API service_manager_t *lio_lio_exnode_service_set_create();
+LIO_API void lio_lio_exnode_service_set_destroy(service_manager_t *ess);
 
 // Preprocessor constants
 #define EX_TEXT             0
@@ -93,6 +86,10 @@ LIO_API int lio_view_insert(exnode_t *ex, segment_t *view);
 #define INSPECT_FIX_READ_ERROR       2048   //** Treat read errors as bad blocks for repair
 #define INSPECT_FIX_WRITE_ERROR      4096   //** Treat write errors as bad blocks for repair
 
+#define XIDT "%" PRIu64    //uint64_t
+#define XOT  "%" PRId64    //int64_t
+#define PXOT     PRId64    // Drop the % for formatting ..int64_t
+#define XOTC PRId64
 
 // Preprocessor macros
 #define segment_flush(s, da, lo, hi, to) (s)->fn.flush(s, da, lo, hi, to)
@@ -103,8 +100,15 @@ LIO_API int lio_view_insert(exnode_t *ex, segment_t *view);
 #define segment_size(s) (s)->fn.size(s)
 #define segment_truncate(s, da, new_size, to) (s)->fn.truncate(s, da, new_size, to)
 #define segment_write(s, da, hints, n_iov, iov, tbuf, boff, to) (s)->fn.write(s, da, hints, n_iov, iov, tbuf, boff, to)
+#define ex_iovec_single(iov, oset, nbytes) (iov)->offset = oset; (iov)->len = nbytes
 
 // Exported types. To be obscured
+struct ex_header_t {
+    char *name;
+    ex_id_t id;
+    char *type;
+    tbx_list_t *attributes;  //should be a key/value pair struct?
+};
 
 struct segment_fn_t {
     op_generic_t *(*read)(segment_t *seg, data_attr_t *da, segment_rw_hints_t *hints, int n_iov, ex_tbx_iovec_t *iov, tbx_tbuf_t *buffer, ex_off_t boff, int timeout);
@@ -122,7 +126,6 @@ struct segment_fn_t {
     void (*destroy)(segment_t *seg);
 };
 
-typedef void segment_priv_t;
 struct segment_t {
     ex_header_t header;
     tbx_atomic_unit32_t ref_count;
@@ -153,6 +156,16 @@ struct inspect_args_t {
     apr_thread_mutex_t *rid_lock;     //** Lock for manipulating the rid_changes table
     int n_dev_rows;
     int dev_row_replaced[128];
+};
+
+struct exnode_text_t {
+    char *text;
+    tbx_inip_file_t *fd;
+};
+
+struct exnode_exchange_t {
+    int type;
+    exnode_text_t text;
 };
 
 #ifdef __cplusplus
