@@ -62,11 +62,11 @@ op_status_t gop_readline_with_timeout(tbx_ns_t *ns, char *buffer, int size, op_g
 op_status_t gop_write_block(tbx_ns_t *ns, op_generic_t *gop, tbx_tbuf_t *buffer, ibp_off_t pos, ibp_off_t size);
 
 // Operation Commands
-op_status_t alias_allocate_command(op_generic_t *gop, tbx_ns_t *ns);
-op_status_t alias_modify_alloc_command(op_generic_t *gop, tbx_ns_t *ns);
-op_status_t alias_modify_count_command(op_generic_t *gop, tbx_ns_t *ns);
-op_status_t alias_probe_command(op_generic_t *gop, tbx_ns_t *ns);
-op_status_t alias_probe_recv(op_generic_t *gop, tbx_ns_t *ns);
+op_status_t proxy_allocate_command(op_generic_t *gop, tbx_ns_t *ns);
+op_status_t proxy_modify_alloc_command(op_generic_t *gop, tbx_ns_t *ns);
+op_status_t proxy_modify_count_command(op_generic_t *gop, tbx_ns_t *ns);
+op_status_t proxy_probe_command(op_generic_t *gop, tbx_ns_t *ns);
+op_status_t proxy_probe_recv(op_generic_t *gop, tbx_ns_t *ns);
 op_status_t allocate_command(op_generic_t *gop, tbx_ns_t *ns);
 op_status_t allocate_recv(op_generic_t *gop, tbx_ns_t *ns);
 op_status_t append_command(op_generic_t *gop, tbx_ns_t *ns);
@@ -659,7 +659,7 @@ op_generic_t *new_ibp_merge_alloc_op(ibp_context_t *ic, ibp_cap_t *mcap, ibp_cap
     return(ibp_get_gop(op));
 }
 
-op_generic_t *ibp_alias_alloc_op(ibp_context_t *ic, ibp_capset_t *caps, ibp_cap_t *mcap, ibp_off_t offset, ibp_off_t size,
+op_generic_t *ibp_proxy_alloc_op(ibp_context_t *ic, ibp_capset_t *caps, ibp_cap_t *mcap, ibp_off_t offset, ibp_off_t size,
                                      int duration, int timeout)
 {
     ibp_op_t *op = new_ibp_op(ic);
@@ -668,14 +668,14 @@ op_generic_t *ibp_alias_alloc_op(ibp_context_t *ic, ibp_capset_t *caps, ibp_cap_
     ibp_op_alloc_t *cmd;
     int port;
 
-    log_printf(15, "set_ibp_alias_alloc_op: start. ic=%p\n", op->ic);
+    log_printf(15, "set_ibp_proxy_alloc_op: start. ic=%p\n", op->ic);
 
-    init_ibp_base_op(op, "rename", timeout, op->ic->other_new_command, NULL, 1, IBP_ALIAS_ALLOCATE, IBP_NOP);
+    init_ibp_base_op(op, "rename", timeout, op->ic->other_new_command, NULL, 1, IBP_PROXY_ALLOCATE, IBP_NOP);
 
     cmd = &(op->ops.alloc_op);
 
     parse_cap(op->ic, mcap, host, &port, cmd->key, cmd->typekey);
-    set_hostport(hoststr, sizeof(hoststr), host, port, &(op->ic->cc[IBP_ALIAS_ALLOCATE]));
+    set_hostport(hoststr, sizeof(hoststr), host, port, &(op->ic->cc[IBP_PROXY_ALLOCATE]));
     op->dop.cmd.hostport = strdup(hoststr);
 
     cmd->offset = offset;
@@ -690,7 +690,7 @@ op_generic_t *ibp_alias_alloc_op(ibp_context_t *ic, ibp_capset_t *caps, ibp_cap_
     cmd->caps = caps;
 
     op_generic_t *gop = ibp_get_gop(op);
-    gop->op->cmd.send_command = alias_allocate_command;
+    gop->op->cmd.send_command = proxy_allocate_command;
     gop->op->cmd.send_phase = NULL;
     gop->op->cmd.recv_phase = allocate_recv;
 
@@ -704,8 +704,8 @@ void set_ibp_generic_modify_count_op(int command, ibp_op_t *op, ibp_cap_t *cap, 
     char host[MAX_HOST_SIZE];
     ibp_op_probe_t *cmd;
 
-    if ((command != IBP_MANAGE) && (command != IBP_ALIAS_MANAGE)) {
-        log_printf(0, "set_ibp_generic_modify_count_op: Invalid command! should be IBP_MANAGE or IBP_ALIAS_MANAGE.  Got %d\n", command);
+    if ((command != IBP_MANAGE) && (command != IBP_PROXY_MANAGE)) {
+        log_printf(0, "set_ibp_generic_modify_count_op: Invalid command! should be IBP_MANAGE or IBP_PROXY_MANAGE.  Got %d\n", command);
         return;
     }
     if ((mode != IBP_INCR) && (mode != IBP_DECR)) {
@@ -725,7 +725,7 @@ void set_ibp_generic_modify_count_op(int command, ibp_op_t *op, ibp_cap_t *cap, 
     set_hostport(hoststr, sizeof(hoststr), host, port, &(op->ic->cc[command]));
     op->dop.cmd.hostport = strdup(hoststr);
 
-    if (command == IBP_ALIAS_MANAGE) parse_cap(op->ic, mcap, host, &port, cmd->mkey, cmd->mtypekey);
+    if (command == IBP_PROXY_MANAGE) parse_cap(op->ic, mcap, host, &port, cmd->mkey, cmd->mtypekey);
 
     cmd->cmd = command;
     cmd->cap = cap;
@@ -734,7 +734,7 @@ void set_ibp_generic_modify_count_op(int command, ibp_op_t *op, ibp_cap_t *cap, 
 
     op_generic_t *gop = ibp_get_gop(op);
     gop->op->cmd.send_command = modify_count_command;
-    if (command == IBP_ALIAS_MANAGE) gop->op->cmd.send_command = alias_modify_count_command;
+    if (command == IBP_PROXY_MANAGE) gop->op->cmd.send_command = proxy_modify_count_command;
     gop->op->cmd.send_phase = NULL;
     gop->op->cmd.recv_phase = status_get_recv;
 }
@@ -748,11 +748,11 @@ op_generic_t *ibp_modify_count_op(ibp_context_t *ic, ibp_cap_t *cap, int mode, i
     return(ibp_get_gop(op));
 }
 
-op_generic_t *new_ibp_alias_modify_count_op(ibp_context_t *ic, ibp_cap_t *cap, ibp_cap_t *mcap, int mode, int captype, int timeout)
+op_generic_t *new_ibp_proxy_modify_count_op(ibp_context_t *ic, ibp_cap_t *cap, ibp_cap_t *mcap, int mode, int captype, int timeout)
 {
     ibp_op_t *op = new_ibp_op(ic);
 
-    set_ibp_generic_modify_count_op(IBP_ALIAS_MANAGE, op, cap, mcap, mode, captype, timeout);
+    set_ibp_generic_modify_count_op(IBP_PROXY_MANAGE, op, cap, mcap, mode, captype, timeout);
 
     return(ibp_get_gop(op));
 }
@@ -786,7 +786,7 @@ op_generic_t *ibp_modify_alloc_op(ibp_context_t *ic, ibp_cap_t *cap, ibp_off_t s
     return(ibp_get_gop(op));
 }
 
-op_generic_t *new_ibp_alias_modify_alloc_op(ibp_context_t *ic, ibp_cap_t *cap, ibp_cap_t *mcap, ibp_off_t offset, ibp_off_t size, int duration, int timeout)
+op_generic_t *new_ibp_proxy_modify_alloc_op(ibp_context_t *ic, ibp_cap_t *cap, ibp_cap_t *mcap, ibp_off_t offset, ibp_off_t size, int duration, int timeout)
 {
     ibp_op_t *op = new_ibp_op(ic);
     char hoststr[MAX_HOST_SIZE];
@@ -794,12 +794,12 @@ op_generic_t *new_ibp_alias_modify_alloc_op(ibp_context_t *ic, ibp_cap_t *cap, i
     char host[MAX_HOST_SIZE];
     ibp_op_modify_alloc_t *cmd;
 
-    init_ibp_base_op(op, "alias_modify_alloc", timeout, op->ic->other_new_command, NULL, 1, IBP_ALIAS_MANAGE, IBP_CHNG);
+    init_ibp_base_op(op, "proxy_modify_alloc", timeout, op->ic->other_new_command, NULL, 1, IBP_PROXY_MANAGE, IBP_CHNG);
 
     cmd = &(op->ops.mod_alloc_op);
 
     parse_cap(op->ic, cap, host, &port, cmd->key, cmd->typekey);
-    set_hostport(hoststr, sizeof(hoststr), host, port, &(op->ic->cc[IBP_ALIAS_MANAGE]));
+    set_hostport(hoststr, sizeof(hoststr), host, port, &(op->ic->cc[IBP_PROXY_MANAGE]));
     op->dop.cmd.hostport = strdup(hoststr);
 
     parse_cap(op->ic, mcap, host, &port, cmd->mkey, cmd->mtypekey);
@@ -810,7 +810,7 @@ op_generic_t *new_ibp_alias_modify_alloc_op(ibp_context_t *ic, ibp_cap_t *cap, i
     cmd->duration = duration;
 
     op_generic_t *gop = ibp_get_gop(op);
-    gop->op->cmd.send_command = alias_modify_alloc_command;
+    gop->op->cmd.send_command = proxy_modify_alloc_command;
     gop->op->cmd.send_phase = NULL;
     gop->op->cmd.recv_phase = status_get_recv;
 
@@ -849,9 +849,9 @@ op_generic_t *ibp_remove_op(ibp_context_t *ic, ibp_cap_t *cap, int timeout)
     return(ibp_modify_count_op(ic, cap, IBP_DECR, IBP_READCAP, timeout));
 }
 
-op_generic_t *ibp_alias_remove_op(ibp_context_t *ic, ibp_cap_t *cap, ibp_cap_t *mcap, int timeout)
+op_generic_t *ibp_proxy_remove_op(ibp_context_t *ic, ibp_cap_t *cap, ibp_cap_t *mcap, int timeout)
 {
-    return(new_ibp_alias_modify_count_op(ic, cap, mcap, IBP_DECR, IBP_READCAP, timeout));
+    return(new_ibp_proxy_modify_count_op(ic, cap, mcap, IBP_DECR, IBP_READCAP, timeout));
 }
 
 op_generic_t *ibp_probe_op(ibp_context_t *ic, ibp_cap_t *cap, ibp_capstatus_t *probe, int timeout)
@@ -887,7 +887,7 @@ op_generic_t *ibp_probe_op(ibp_context_t *ic, ibp_cap_t *cap, ibp_capstatus_t *p
     return(ibp_get_gop(op));
 }
 
-op_generic_t *new_ibp_alias_probe_op(ibp_context_t *ic, ibp_cap_t *cap, ibp_alias_capstatus_t *probe, int timeout)
+op_generic_t *new_ibp_proxy_probe_op(ibp_context_t *ic, ibp_cap_t *cap, ibp_proxy_capstatus_t *probe, int timeout)
 {
     ibp_op_t *op = new_ibp_op(ic);
     char hoststr[MAX_HOST_SIZE];
@@ -895,21 +895,21 @@ op_generic_t *new_ibp_alias_probe_op(ibp_context_t *ic, ibp_cap_t *cap, ibp_alia
     char host[MAX_HOST_SIZE];
     ibp_op_probe_t *cmd;
 
-    init_ibp_base_op(op, "alias_probe", timeout, op->ic->other_new_command, NULL, 1, IBP_ALIAS_MANAGE, IBP_PROBE);
+    init_ibp_base_op(op, "proxy_probe", timeout, op->ic->other_new_command, NULL, 1, IBP_PROXY_MANAGE, IBP_PROBE);
 
     cmd = &(op->ops.probe_op);
 
     parse_cap(op->ic, cap, host, &port, cmd->key, cmd->typekey);
-    set_hostport(hoststr, sizeof(hoststr), host, port, &(op->ic->cc[IBP_ALIAS_MANAGE]));
+    set_hostport(hoststr, sizeof(hoststr), host, port, &(op->ic->cc[IBP_PROXY_MANAGE]));
     op->dop.cmd.hostport = strdup(hoststr);
 
     cmd->cap = cap;
-    cmd->alias_probe = probe;
+    cmd->proxy_probe = probe;
 
     op_generic_t *gop = ibp_get_gop(op);
-    gop->op->cmd.send_command = alias_probe_command;
+    gop->op->cmd.send_command = proxy_probe_command;
     gop->op->cmd.send_phase = NULL;
-    gop->op->cmd.recv_phase = alias_probe_recv;
+    gop->op->cmd.recv_phase = proxy_probe_recv;
 
     return(ibp_get_gop(op));
 }

@@ -705,8 +705,8 @@ void ibp_cc_load(tbx_inip_file_t *kf, ibp_context_t *cfg)
     cc_load(kf, "ibp_load", &(cfg->cc[IBP_LOAD]));
     cc_load(kf, "ibp_manage", &(cfg->cc[IBP_MANAGE]));
     cc_load(kf, "ibp_write", &(cfg->cc[IBP_WRITE]));
-    cc_load(kf, "ibp_alias_allocate", &(cfg->cc[IBP_ALIAS_ALLOCATE]));
-    cc_load(kf, "ibp_alias_manage", &(cfg->cc[IBP_ALIAS_MANAGE]));
+    cc_load(kf, "ibp_proxy_allocate", &(cfg->cc[IBP_PROXY_ALLOCATE]));
+    cc_load(kf, "ibp_proxy_manage", &(cfg->cc[IBP_PROXY_MANAGE]));
     cc_load(kf, "ibp_rename", &(cfg->cc[IBP_RENAME]));
     cc_load(kf, "ibp_phoebus_send", &(cfg->cc[IBP_PHOEBUS_SEND]));
     cc_load(kf, "ibp_push", &(cfg->cc[IBP_PUSH]));

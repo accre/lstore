@@ -48,8 +48,8 @@ typedef struct ibp_op_version_t ibp_op_version_t;
 typedef struct ibp_rw_buf_t ibp_rw_buf_t;
 
 // Functions
-IBP_API op_generic_t *ibp_alias_alloc_op(ibp_context_t *ic, ibp_capset_t *caps, ibp_cap_t *mcap, ibp_off_t offset, ibp_off_t size, int duration, int timeout);
-IBP_API op_generic_t *ibp_alias_remove_op(ibp_context_t *ic, ibp_cap_t *cap, ibp_cap_t *mcap, int timeout);
+IBP_API op_generic_t *ibp_proxy_alloc_op(ibp_context_t *ic, ibp_capset_t *caps, ibp_cap_t *mcap, ibp_off_t offset, ibp_off_t size, int duration, int timeout);
+IBP_API op_generic_t *ibp_proxy_remove_op(ibp_context_t *ic, ibp_cap_t *cap, ibp_cap_t *mcap, int timeout);
 IBP_API op_generic_t *ibp_alloc_op(ibp_context_t *ic, ibp_capset_t *caps, ibp_off_t size, ibp_depot_t *depot, ibp_attributes_t *attr, int disk_cs_type, ibp_off_t disk_blocksize, int timeout);
 IBP_API op_generic_t *ibp_append_op(ibp_context_t *ic, ibp_cap_t *cap, tbx_tbuf_t *buffer, ibp_off_t boff, ibp_off_t len, int timeout);
 IBP_API int ibp_cc_type(ibp_connect_context_t *cc);
@@ -153,12 +153,12 @@ struct ibp_op_merge_alloc_t { //** MERGE allocoation op
 
 struct ibp_op_alloc_t {  //**Allocate operation
     ibp_off_t size;
-    ibp_off_t offset;                //** ibp_alias_allocate
-    int   duration;               //** ibp_alias_allocate
+    ibp_off_t offset;                //** ibp_proxy_allocate
+    int   duration;               //** ibp_proxy_allocate
     int   disk_chksum_type;            //** ibp_*ALLOCATE_CHKSUM
     ibp_off_t  disk_blocksize;          //** IBP_*ALLOCATE_CHKSUM
-    char       key[MAX_KEY_SIZE];      //** ibp_rename/alias_allocate
-    char       typekey[MAX_KEY_SIZE];  //** ibp_rename/alias_allocate
+    char       key[MAX_KEY_SIZE];      //** ibp_rename/proxy_allocate
+    char       typekey[MAX_KEY_SIZE];  //** ibp_rename/proxy_allocate
     ibp_cap_t *mcap;         //** This is just used for ibp_rename/ibp_split_allocate
     ibp_capset_t *caps;
     ibp_depot_t *depot;
@@ -166,25 +166,25 @@ struct ibp_op_alloc_t {  //**Allocate operation
 };
 
 struct ibp_op_probe_t {  //** modify count and PROBE  operation
-    int       cmd;    //** IBP_MANAGE or IBP_ALIAS_MANAGE
+    int       cmd;    //** IBP_MANAGE or IBP_PROXY_MANAGE
     ibp_cap_t *cap;
-    char       mkey[MAX_KEY_SIZE];     //** USed for ALIAS_MANAGE
-    char       mtypekey[MAX_KEY_SIZE]; //** USed for ALIAS_MANAGE
+    char       mkey[MAX_KEY_SIZE];     //** USed for PROXY_MANAGE
+    char       mtypekey[MAX_KEY_SIZE]; //** USed for PROXY_MANAGE
     char       key[MAX_KEY_SIZE];
     char       typekey[MAX_KEY_SIZE];
     int        mode;
     int        captype;
     ibp_capstatus_t *probe;
-    ibp_alias_capstatus_t *alias_probe;
+    ibp_proxy_capstatus_t *proxy_probe;
 };
 
 struct ibp_op_modify_alloc_t {  //** modify Allocation operation
     ibp_cap_t *cap;
-    char       mkey[MAX_KEY_SIZE];     //** USed for ALIAS_MANAGE
-    char       mtypekey[MAX_KEY_SIZE]; //** USed for ALIAS_MANAGE
+    char       mkey[MAX_KEY_SIZE];     //** USed for PROXY_MANAGE
+    char       mtypekey[MAX_KEY_SIZE]; //** USed for PROXY_MANAGE
     char       key[MAX_KEY_SIZE];
     char       typekey[MAX_KEY_SIZE];
-    ibp_off_t     offset;    //** IBP_ALIAS_MANAGE
+    ibp_off_t     offset;    //** IBP_PROXY_MANAGE
     ibp_off_t     size;
     int        duration;
     int        reliability;

@@ -35,7 +35,7 @@ typedef char ibp_cap_t;
 typedef char* ibp_cap_ptr_t;
 typedef struct ibp_capset_t ibp_capset_t;
 typedef struct ibp_attributes_t ibp_attributes_t;
-typedef struct ibp_alias_capstatus_t ibp_alias_capstatus_t;
+typedef struct ibp_proxy_capstatus_t ibp_proxy_capstatus_t;
 typedef struct ibp_capstatus_t ibp_capstatus_t;
 typedef struct ibp_connect_context_t ibp_connect_context_t;
 typedef struct ibp_depot_t ibp_depot_t;

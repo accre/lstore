@@ -900,7 +900,7 @@ op_status_t merge_command(op_generic_t *gop, tbx_ns_t *ns)
     return(err);
 }
 
-op_status_t alias_allocate_command(op_generic_t *gop, tbx_ns_t *ns)
+op_status_t proxy_allocate_command(op_generic_t *gop, tbx_ns_t *ns)
 {
     ibp_op_t *op = ibp_get_iop(gop);
     char buffer[1024];
@@ -908,13 +908,13 @@ op_status_t alias_allocate_command(op_generic_t *gop, tbx_ns_t *ns)
     ibp_op_alloc_t *cmd = &(op->ops.alloc_op);
 
     snprintf(buffer, sizeof(buffer), "%d %d %s %s " I64T " " I64T " %d %d\n",
-             IBPv040, IBP_ALIAS_ALLOCATE, cmd->key, cmd->typekey, cmd->offset, cmd->size, cmd->duration, (int)apr_time_sec(gop->op->cmd.timeout));
+             IBPv040, IBP_PROXY_ALLOCATE, cmd->key, cmd->typekey, cmd->offset, cmd->size, cmd->duration, (int)apr_time_sec(gop->op->cmd.timeout));
 
     tbx_ns_chksum_write_clear(ns);
 
     err = send_command(gop, ns, buffer);
     if (err.op_status != OP_STATE_SUCCESS) {
-        log_printf(10, "alias_allocate_command: Error with send_command()! ns=%d\n", tbx_ns_getid(ns));
+        log_printf(10, "proxy_allocate_command: Error with send_command()! ns=%d\n", tbx_ns_getid(ns));
     }
 
     return(err);
@@ -940,7 +940,7 @@ op_status_t modify_count_command(op_generic_t *gop, tbx_ns_t *ns)
     return(err);
 }
 
-op_status_t alias_modify_count_command(op_generic_t *gop, tbx_ns_t *ns)
+op_status_t proxy_modify_count_command(op_generic_t *gop, tbx_ns_t *ns)
 {
     ibp_op_t *op = ibp_get_iop(gop);
     char buffer[1024];
@@ -1011,7 +1011,7 @@ op_status_t modify_alloc_command(op_generic_t *gop, tbx_ns_t *ns)
     return(err);
 }
 
-op_status_t alias_modify_alloc_command(op_generic_t *gop, tbx_ns_t *ns)
+op_status_t proxy_modify_alloc_command(op_generic_t *gop, tbx_ns_t *ns)
 {
     ibp_op_t *op = ibp_get_iop(gop);
     char buffer[1024];
@@ -1025,14 +1025,14 @@ op_status_t alias_modify_alloc_command(op_generic_t *gop, tbx_ns_t *ns)
     if (atime < 0) atime = cmd->duration;
 
     snprintf(buffer, sizeof(buffer), "%d %d %s %s %d " I64T " " I64T " %d %s %s %d\n",
-             IBPv040, IBP_ALIAS_MANAGE, cmd->key, cmd->typekey, IBP_CHNG, cmd->offset,  cmd->size, atime,
+             IBPv040, IBP_PROXY_MANAGE, cmd->key, cmd->typekey, IBP_CHNG, cmd->offset,  cmd->size, atime,
              cmd->mkey, cmd->mtypekey, (int)apr_time_sec(gop->op->cmd.timeout));
 
     tbx_ns_chksum_write_clear(ns);
 
     err = send_command(gop, ns, buffer);
     if (err.op_status != OP_STATE_SUCCESS) {
-        log_printf(10, "alias_modify_count_command: Error with send_command()! ns=%d\n", tbx_ns_getid(ns));
+        log_printf(10, "proxy_modify_count_command: Error with send_command()! ns=%d\n", tbx_ns_getid(ns));
     }
 
     return(err);
@@ -1120,7 +1120,7 @@ op_status_t probe_recv(op_generic_t *gop, tbx_ns_t *ns)
     return(err);
 }
 
-op_status_t alias_probe_command(op_generic_t *gop, tbx_ns_t *ns)
+op_status_t proxy_probe_command(op_generic_t *gop, tbx_ns_t *ns)
 {
     ibp_op_t *op = ibp_get_iop(gop);
     char buffer[1024];
@@ -1130,40 +1130,40 @@ op_status_t alias_probe_command(op_generic_t *gop, tbx_ns_t *ns)
     cmd = &(op->ops.probe_op);
 
     snprintf(buffer, sizeof(buffer), "%d %d %s %s %d %d %d \n",
-             IBPv040, IBP_ALIAS_MANAGE, cmd->key, cmd->typekey, IBP_PROBE, IBP_MANAGECAP, (int)apr_time_sec(gop->op->cmd.timeout));
+             IBPv040, IBP_PROXY_MANAGE, cmd->key, cmd->typekey, IBP_PROBE, IBP_MANAGECAP, (int)apr_time_sec(gop->op->cmd.timeout));
 
     tbx_ns_chksum_write_clear(ns);
 
     err = send_command(gop, ns, buffer);
     if (err.op_status != OP_STATE_SUCCESS) {
-        log_printf(10, "alias_probe_command: Error with send_command()! ns=%d\n", tbx_ns_getid(ns));
+        log_printf(10, "proxy_probe_command: Error with send_command()! ns=%d\n", tbx_ns_getid(ns));
     }
 
     return(err);
 }
 
-op_status_t alias_probe_recv(op_generic_t *gop, tbx_ns_t *ns)
+op_status_t proxy_probe_recv(op_generic_t *gop, tbx_ns_t *ns)
 {
     ibp_op_t *op = ibp_get_iop(gop);
     int status, fin;
     char buffer[1025];
     op_status_t err;
     char *bstate;
-    ibp_alias_capstatus_t *p;
+    ibp_proxy_capstatus_t *p;
 
     //** Need to read the depot status info
-    log_printf(15, "alias_probe_recv: ns=%d Start", tbx_ns_getid(ns));
+    log_printf(15, "proxy_probe_recv: ns=%d Start", tbx_ns_getid(ns));
 
     tbx_ns_chksum_read_clear(ns);
 
     err = gop_readline_with_timeout(ns, buffer, sizeof(buffer), gop);
     if (err.op_status != OP_STATE_SUCCESS) return(err);
 
-    log_printf(15, "alias_probe_recv: after readline ns=%d buffer=%s\n", tbx_ns_getid(ns), buffer);
+    log_printf(15, "proxy_probe_recv: after readline ns=%d buffer=%s\n", tbx_ns_getid(ns), buffer);
 
     status = atoi(tbx_stk_string_token(buffer, " ", &bstate, &fin));
     if ((status == IBP_OK) && (fin == 0)) {
-        p = op->ops.probe_op.alias_probe;
+        p = op->ops.probe_op.proxy_probe;
         p->read_refcount = atoi(tbx_stk_string_token(NULL, " ", &bstate, &fin));
         p->write_refcount = atoi(tbx_stk_string_token(NULL, " ", &bstate, &fin));
         p->offset = atol(tbx_stk_string_token(NULL, " ", &bstate, &fin));

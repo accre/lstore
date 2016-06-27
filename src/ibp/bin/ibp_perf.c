@@ -54,7 +54,7 @@ int n_depots;
 int ibp_timeout;
 int sync_transfer;
 int nthreads;
-int use_alias;
+int use_proxy;
 int report_interval = 0;
 int do_validate = 0;
 int identical_buffers = 1;
@@ -83,12 +83,12 @@ void init_buffer(char *buffer, char c, int size)
 }
 
 //*************************************************************************
-//  create_alias_allocs - Creates a group of alias allocations in parallel
-//   The alias allocations are based on the input allocations and round-robined
+//  create_proxy_allocs - Creates a group of proxy allocations in parallel
+//   The proxy allocations are based on the input allocations and round-robined
 //   among them
 //*************************************************************************
 
-ibp_capset_t *create_alias_allocs(int nallocs, ibp_capset_t *base_caps, int n_base)
+ibp_capset_t *create_proxy_allocs(int nallocs, ibp_capset_t *base_caps, int n_base)
 {
     int i, err;
     opque_t *q;
@@ -101,14 +101,14 @@ ibp_capset_t *create_alias_allocs(int nallocs, ibp_capset_t *base_caps, int n_ba
 
     for (i=0; i<nallocs; i++) {
         bcap = &(base_caps[i % n_base]);
-        op = ibp_alias_alloc_op(ic, &(caps[i]), ibp_cap_get(bcap, IBP_MANAGECAP), 0, 0, 0, ibp_timeout);
+        op = ibp_proxy_alloc_op(ic, &(caps[i]), ibp_cap_get(bcap, IBP_MANAGECAP), 0, 0, 0, ibp_timeout);
         gop_opque_add(q, op);
     }
 
     ibp_io_start(q);
     err = ibp_io_waitall(q);
     if (err != 0) {
-        printf("create_alias_allocs: At least 1 error occured! * ibp_errno=%d * nfailed=%d\n", err, opque_tasks_failed(q));
+        printf("create_proxy_allocs: At least 1 error occured! * ibp_errno=%d * nfailed=%d\n", err, opque_tasks_failed(q));
     }
     gop_opque_free(q, OP_DESTROY);
 
@@ -116,10 +116,10 @@ ibp_capset_t *create_alias_allocs(int nallocs, ibp_capset_t *base_caps, int n_ba
 }
 
 //*************************************************************************
-// alias_remove_allocs - Remove a list of *ALIAS* allocations
+// proxy_remove_allocs - Remove a list of *PROXY* allocations
 //*************************************************************************
 
-void alias_remove_allocs(ibp_capset_t *caps_list, ibp_capset_t *mcaps_list, int nallocs, int mallocs)
+void proxy_remove_allocs(ibp_capset_t *caps_list, ibp_capset_t *mcaps_list, int nallocs, int mallocs)
 {
     int i, j, err;
     opque_t *q;
@@ -129,7 +129,7 @@ void alias_remove_allocs(ibp_capset_t *caps_list, ibp_capset_t *mcaps_list, int 
 
     for (i=0; i<nallocs; i++) {
         j = i % mallocs;
-        op = ibp_alias_remove_op(ic, ibp_cap_get(&(caps_list[i]), IBP_MANAGECAP),
+        op = ibp_proxy_remove_op(ic, ibp_cap_get(&(caps_list[i]), IBP_MANAGECAP),
                                      ibp_cap_get(&(mcaps_list[j]), IBP_MANAGECAP), ibp_timeout);
         gop_opque_add(q, op);
     }
@@ -137,7 +137,7 @@ void alias_remove_allocs(ibp_capset_t *caps_list, ibp_capset_t *mcaps_list, int 
     ibp_io_start(q);
     err = ibp_io_waitall(q);
     if (err != 0) {
-        printf("alias_remove_allocs: At least 1 error occured! * ibp_errno=%d * nfailed=%d\n", err, opque_tasks_failed(q));
+        printf("proxy_remove_allocs: At least 1 error occured! * ibp_errno=%d * nfailed=%d\n", err, opque_tasks_failed(q));
     }
     gop_opque_free(q, OP_DESTROY);
 
@@ -667,10 +667,10 @@ int main(int argc, char **argv)
         printf("\n");
         printf("ibp_perf [-d|-dd] [-network_chksum type blocksize] [-disk_chksum type blocksize]\n");
         printf("         [-validate] [-config ibp.cfg] [-phoebus gateway_list] [-tcpsize tcpbufsize]\n");
-        printf("         [-duration duration] [-sync] [-alias] [-progress] [-random]\n");
+        printf("         [-duration duration] [-sync] [-proxy] [-progress] [-random]\n");
         printf("         n_depots depot1 port1 resource_id1 ... depotN portN ridN\n");
         printf("         nthreads ibp_timeout\n");
-        printf("         alias_createremove_count createremove_count\n");
+        printf("         proxy_createremove_count createremove_count\n");
         printf("         readwrite_count readwrite_alloc_size rw_block_size read_mix_fraction\n");
         printf("         smallio_count small_min_size small_max_size small_read_fraction\n");
         printf("\n");
@@ -693,7 +693,7 @@ int main(int argc, char **argv)
         printf("-save fname         - Don't delete the R/W allocations on completion.  Instead save them to the given filename.\n");
         printf("                      Can use 'stdout' and 'stderr' as the filename to redirect output\n");
         printf("-sync               - Use synchronous protocol.  Default uses async.\n");
-        printf("-alias              - Use alias allocations for all I/O operations\n");
+        printf("-proxy              - Use proxy allocations for all I/O operations\n");
         printf("-progress           - Print completion progress.\n");
         printf("-random             - Initializes the transfer buffers with quasi-random data.\n");
         printf("                      Disabled if network chksums are enabled.\n");
@@ -703,7 +703,7 @@ int main(int argc, char **argv)
         printf("resource_id         - Resource ID to use on depot\n");
         printf("nthreads            - Max Number of simultaneous threads to use.  Use -1 for defaults or value in ibp.cfg\n");
         printf("ibp_timeout         - Timeout(sec) for each IBP copmmand\n");
-        printf("alias_createremove_count* - Number of 0 byte files to create and remove using alias allocations\n");
+        printf("proxy_createremove_count* - Number of 0 byte files to create and remove using proxy allocations\n");
         printf("createremove_count* - Number of 0 byte files to create and remove to test metadata performance\n");
         printf("readwrite_count*    - Number of files to write sequentially then read sequentially\n");
         printf("readwrite_alloc_size  - Size of each allocation in KB for sequential and random tests\n");
@@ -728,7 +728,7 @@ int main(int argc, char **argv)
     net_cs_name = NULL;
     disk_cs_name = NULL;
     sync_transfer = 0;
-    use_alias = 0;
+    use_proxy = 0;
     print_progress = 0;
     fd_special = 0;
     fd_out = NULL;
@@ -822,8 +822,8 @@ int main(int argc, char **argv)
         } else if (strcmp(argv[i], "-sync") == 0) { //** Check if we want sync tests
             sync_transfer = 1;
             i++;
-        } else if (strcmp(argv[i], "-alias") == 0) { //** Check if we want to use alias allocation
-            use_alias = 1;
+        } else if (strcmp(argv[i], "-proxy") == 0) { //** Check if we want to use proxy allocation
+            use_proxy = 1;
             i++;
         } else if (strcmp(argv[i], "-progress") == 0) { //** Check if we want to print the progress
             print_progress = 1;
@@ -858,7 +858,7 @@ int main(int argc, char **argv)
     i++;
 
     //****** Get the different Stream counts *****
-    int aliascreateremove_count = atol(argv[i]);
+    int proxycreateremove_count = atol(argv[i]);
     i++;
     int createremove_count = atol(argv[i]);
     i++;
@@ -902,7 +902,7 @@ int main(int argc, char **argv)
     } else {
         printf("Transfer_mode: ASYNC\n");
     }
-    printf("Use alias: %d\n", use_alias);
+    printf("Use proxy: %d\n", use_proxy);
 
     if (cc != NULL) {
         switch (cc->type) {
@@ -957,7 +957,7 @@ int main(int argc, char **argv)
     printf("\n");
 
     printf("======= Bulk transfer options =======\n");
-    printf("aliascreateremove_count: %d\n", aliascreateremove_count);
+    printf("proxycreateremove_count: %d\n", proxycreateremove_count);
     printf("createremove_count: %d\n", createremove_count);
     printf("readwrite_count: %d\n", readwrite_count);
     printf("readwrite_alloc_size: %dkb\n", readwrite_size/1024);
@@ -979,23 +979,23 @@ int main(int argc, char **argv)
     ibp_io_mode_set(sync_transfer, print_progress, nthreads);
 
     //**************** Create/Remove tests ***************************
-    if (aliascreateremove_count > 0) {
-        i = aliascreateremove_count/nthreads;
-        printf("Starting Alias create test (total files: %d, approx per thread: %d)\n",aliascreateremove_count, i);
+    if (proxycreateremove_count > 0) {
+        i = proxycreateremove_count/nthreads;
+        printf("Starting Proxy create test (total files: %d, approx per thread: %d)\n",proxycreateremove_count, i);
         base_caps = create_allocs(1, 1);
         stime = apr_time_now();
-        caps_list = create_alias_allocs(aliascreateremove_count, base_caps, 1);
+        caps_list = create_proxy_allocs(proxycreateremove_count, base_caps, 1);
         dtime = apr_time_now() - stime;
         dt = dtime / (1.0 * APR_USEC_PER_SEC);
-        r1 = 1.0*aliascreateremove_count/dt;
-        printf("Alias create : %lf creates/sec (%.2lf sec total) \n", r1, dt);
+        r1 = 1.0*proxycreateremove_count/dt;
+        printf("Proxy create : %lf creates/sec (%.2lf sec total) \n", r1, dt);
 
         stime = apr_time_now();
-        alias_remove_allocs(caps_list, base_caps, aliascreateremove_count, 1);
+        proxy_remove_allocs(caps_list, base_caps, proxycreateremove_count, 1);
         dtime = apr_time_now() - stime;
         dt = dtime / (1.0 * APR_USEC_PER_SEC);
-        r1 = 1.0*aliascreateremove_count/dt;
-        printf("Alias remove : %lf removes/sec (%.2lf sec total) \n", r1, dt);
+        r1 = 1.0*proxycreateremove_count/dt;
+        printf("Proxy remove : %lf removes/sec (%.2lf sec total) \n", r1, dt);
         printf("\n");
 
         printf("-----------------------------\n");
@@ -1043,12 +1043,12 @@ int main(int argc, char **argv)
         r1 = 1.0*readwrite_count/dt;
         printf(" %lf creates/sec (%.2lf sec total) \n", r1, dt);
 
-        if (use_alias) {
+        if (use_proxy) {
             base_caps = caps_list;
-            printf("Creating alias allocations....");
+            printf("Creating proxy allocations....");
             fflush(stdout);
             stime = apr_time_now();
-            caps_list = create_alias_allocs(readwrite_count, base_caps, readwrite_count);
+            caps_list = create_proxy_allocs(readwrite_count, base_caps, readwrite_count);
             dtime = apr_time_now() - stime;
             dt = dtime / (1.0 * APR_USEC_PER_SEC);
             r1 = 1.0*readwrite_count/dt;
@@ -1115,11 +1115,11 @@ int main(int argc, char **argv)
             printf("Small Random R/W: %lf MB/sec (%.2lf sec total using %lfMB or %.2lf ops/sec) \n", r2, dt, r1, r3);
         }
 
-        if (use_alias) {
-            printf("Removing alias allocations....");
+        if (use_proxy) {
+            printf("Removing proxy allocations....");
             fflush(stdout);
             stime = apr_time_now();
-            alias_remove_allocs(caps_list, base_caps, readwrite_count, readwrite_count);
+            proxy_remove_allocs(caps_list, base_caps, readwrite_count, readwrite_count);
             dtime = apr_time_now() - stime;
             dt = dtime / (1.0 * APR_USEC_PER_SEC);
             r1 = 1.0*readwrite_count/dt;

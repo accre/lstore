@@ -60,12 +60,12 @@ ibp_context_t *ic = NULL;
 
 
 //*************************************************************************
-//  create_alias_allocs - Creates a group of alias allocations in parallel
-//   The alias allocations are based on the input allocations and round-robined
+//  create_proxy_allocs - Creates a group of proxy allocations in parallel
+//   The proxy allocations are based on the input allocations and round-robined
 //   among them
 //*************************************************************************
 
-ibp_capset_t *create_alias_allocs(int nallocs, ibp_capset_t *base_caps, int n_base)
+ibp_capset_t *create_proxy_allocs(int nallocs, ibp_capset_t *base_caps, int n_base)
 {
     int i, err;
     opque_t *q;
@@ -78,14 +78,14 @@ ibp_capset_t *create_alias_allocs(int nallocs, ibp_capset_t *base_caps, int n_ba
 
     for (i=0; i<nallocs; i++) {
         bcap = &(base_caps[i % n_base]);
-        op = ibp_alias_alloc_op(ic, &(caps[i]), ibp_cap_get(bcap, IBP_MANAGECAP), 0, 0, 0, ibp_timeout);
+        op = ibp_proxy_alloc_op(ic, &(caps[i]), ibp_cap_get(bcap, IBP_MANAGECAP), 0, 0, 0, ibp_timeout);
         gop_opque_add(q, op);
     }
 
     ibp_io_start(q);
     err = ibp_io_waitall(q);
     if (err != 0) {
-        printf("create_alias_allocs: At least 1 error occured! * ibp_errno=%d * nfailed=%d\n", err, opque_tasks_failed(q));
+        printf("create_proxy_allocs: At least 1 error occured! * ibp_errno=%d * nfailed=%d\n", err, opque_tasks_failed(q));
     }
     gop_opque_free(q, OP_DESTROY);
 
@@ -93,10 +93,10 @@ ibp_capset_t *create_alias_allocs(int nallocs, ibp_capset_t *base_caps, int n_ba
 }
 
 //*************************************************************************
-// alias_remove_allocs - Remove a list of *ALIAS* allocations
+// proxy_remove_allocs - Remove a list of *PROXY* allocations
 //*************************************************************************
 
-void alias_remove_allocs(ibp_capset_t *caps_list, ibp_capset_t *mcaps_list, int nallocs, int mallocs)
+void proxy_remove_allocs(ibp_capset_t *caps_list, ibp_capset_t *mcaps_list, int nallocs, int mallocs)
 {
     int i, j, err;
     opque_t *q;
@@ -106,7 +106,7 @@ void alias_remove_allocs(ibp_capset_t *caps_list, ibp_capset_t *mcaps_list, int 
 
     for (i=0; i<nallocs; i++) {
         j = i % mallocs;
-        op = ibp_alias_remove_op(ic, ibp_cap_get(&(caps_list[i]), IBP_MANAGECAP),
+        op = ibp_proxy_remove_op(ic, ibp_cap_get(&(caps_list[i]), IBP_MANAGECAP),
                                      ibp_cap_get(&(mcaps_list[j]), IBP_MANAGECAP), ibp_timeout);
         gop_opque_add(q, op);
     }
@@ -114,7 +114,7 @@ void alias_remove_allocs(ibp_capset_t *caps_list, ibp_capset_t *mcaps_list, int 
     ibp_io_start(q);
     err = ibp_io_waitall(q);
     if (err != 0) {
-        printf("alias_remove_allocs: At least 1 error occured! * ibp_errno=%d * nfailed=%d\n", err, opque_tasks_failed(q));
+        printf("proxy_remove_allocs: At least 1 error occured! * ibp_errno=%d * nfailed=%d\n", err, opque_tasks_failed(q));
     }
     gop_opque_free(q, OP_DESTROY);
 
@@ -275,7 +275,7 @@ int main(int argc, char **argv)
     ibp_capset_t *base_src_caps_list = NULL;
     ibp_capset_t *dest_caps_list;
     ibp_capset_t *base_dest_caps_list = NULL;
-    int alias_source, alias_dest;
+    int proxy_source, proxy_dest;
     ibp_rid_t rid;
     int port, cs_type;
     char buffer[1024];
@@ -289,7 +289,7 @@ int main(int argc, char **argv)
         printf("\n");
         printf("ibp_copyperf [-d|-dd] [-network_chksum type block_size] [-disk_chksum type block_size]\n");
         printf("          [-config ibp.cfg] [-phoebus phoebus_path] [-duration duration]\n");
-        printf("          [-sync] [-alias-source] [-alias-dest] [-progress]\n");
+        printf("          [-sync] [-proxy-source] [-proxy-dest] [-progress]\n");
         printf("          src_n_depots src_depot1 src_port1 src_resource_id1 ... src_depotN src_portN src_ridN\n");
         printf("          dest_n_depots dest_depot1 dest_port1 dest_resource_id1 ... dest_depotN dest_portN dest_ridN\n");
         printf("          nthreads ibp_timeout count size\n");
@@ -310,8 +310,8 @@ int main(int argc, char **argv)
         printf("-duration duration  - Allocation duration in sec.  Needs to be big enough to last the entire\n");
         printf("                      run.  The default duration is %d sec.\n", a_duration);
         printf("-sync               - Use synchronous protocol.  Default uses async.\n");
-        printf("-alias-source       - Use alias allocations for source allocations\n");
-        printf("-alias-dest         - Use alias allocations for the destination allocations\n");
+        printf("-proxy-source       - Use proxy allocations for source allocations\n");
+        printf("-proxy-dest         - Use proxy allocations for the destination allocations\n");
         printf("-progress           - Print completion progress.\n");
         printf("src_n_depots        - Number of *source* depot tuplets\n");
         printf("src_depot           - Source depot hostname\n");
@@ -337,8 +337,8 @@ int main(int argc, char **argv)
     ns_mode = NS_TYPE_SOCK;
     path = NULL;
     sync_transfer = 0;
-    alias_source = 0;
-    alias_dest = 0;
+    proxy_source = 0;
+    proxy_dest = 0;
     print_progress = 0;
 
     i = 1;
@@ -395,11 +395,11 @@ int main(int argc, char **argv)
         } else if (strcmp(argv[i], "-sync") == 0) { //** Check if we want sync tests
             sync_transfer = 1;
             i++;
-        } else if (strcmp(argv[i], "-alias-source") == 0) { //** Check if we want alias allocs
-            alias_source = 1;
+        } else if (strcmp(argv[i], "-proxy-source") == 0) { //** Check if we want proxy allocs
+            proxy_source = 1;
             i++;
-        } else if (strcmp(argv[i], "-alias-dest") == 0) { //** Check if we want alias allocs
-            alias_dest = 1;
+        } else if (strcmp(argv[i], "-proxy-dest") == 0) { //** Check if we want proxy allocs
+            proxy_dest = 1;
             i++;
         } else if (strcmp(argv[i], "-progress") == 0) { //** Check if we want to print the progress
             print_progress = 1;
@@ -491,8 +491,8 @@ int main(int argc, char **argv)
         printf("Disk Checksum Type: %s   Block size: " I64T "kb\n", disk_cs_name, (disk_blocksize/1024));
     }
 
-    printf("Alias source: %d\n", alias_source);
-    printf("Alias destination: %d\n", alias_dest);
+    printf("Proxy source: %d\n", proxy_source);
+    printf("Proxy destination: %d\n", proxy_dest);
     printf("\n");
     printf("======= Bulk transfer options =======\n");
     printf("Count: %d\n", count);
@@ -517,19 +517,19 @@ int main(int argc, char **argv)
     fflush(stdout);
     stime = apr_time_now();
     src_caps_list = create_allocs(src_n_depots, size, nthreads, src_depot_list, src_n_depots);
-    if (alias_source == 1) {
+    if (proxy_source == 1) {
         base_src_caps_list = src_caps_list;
-        src_caps_list = create_alias_allocs(src_n_depots, base_src_caps_list, src_n_depots);
+        src_caps_list = create_proxy_allocs(src_n_depots, base_src_caps_list, src_n_depots);
     }
 
     dest_caps_list = create_allocs(count, size, nthreads, dest_depot_list, dest_n_depots);
-    if (alias_dest == 1) {
+    if (proxy_dest == 1) {
         base_dest_caps_list = dest_caps_list;
-        dest_caps_list = create_alias_allocs(count, base_dest_caps_list, count);
+        dest_caps_list = create_proxy_allocs(count, base_dest_caps_list, count);
     }
     dtime = apr_time_now() - stime;
     dt = dtime / (1.0 * APR_USEC_PER_SEC);
-    r1 = 1.0*((1+alias_dest)*count + (1+alias_source)*src_n_depots)/dt;
+    r1 = 1.0*((1+proxy_dest)*count + (1+proxy_source)*src_n_depots)/dt;
     printf(" %lf creates/sec (%.2lf sec total) \n", r1, dt);
 
 
@@ -556,20 +556,20 @@ int main(int argc, char **argv)
     printf("Removing allocations....");
     fflush(stdout);
     stime = apr_time_now();
-    if (alias_source == 1) {
-        alias_remove_allocs(src_caps_list, base_src_caps_list, src_n_depots, src_n_depots);
+    if (proxy_source == 1) {
+        proxy_remove_allocs(src_caps_list, base_src_caps_list, src_n_depots, src_n_depots);
         src_caps_list = base_src_caps_list;
     }
     remove_allocs(src_caps_list, src_n_depots, nthreads);
 
-    if (alias_dest == 1) {
-        alias_remove_allocs(dest_caps_list, base_dest_caps_list, count, count);
+    if (proxy_dest == 1) {
+        proxy_remove_allocs(dest_caps_list, base_dest_caps_list, count, count);
         dest_caps_list = base_dest_caps_list;
     }
     remove_allocs(dest_caps_list, count, nthreads);
     dtime = apr_time_now() - stime;
     dt = dtime / (1.0 * APR_USEC_PER_SEC);
-    r1 = 1.0*((1+alias_dest)*count + (1+alias_source)*src_n_depots)/dt;
+    r1 = 1.0*((1+proxy_dest)*count + (1+proxy_source)*src_n_depots)/dt;
     printf(" %lf removes/sec (%.2lf sec total) \n", r1, dt);
     printf("\n");
 

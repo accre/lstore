@@ -48,8 +48,10 @@
 #define   IBP_CT_COPY           11
 #define   IBP_NFU               12
 #define   IBP_WRITE		 13
-#define   IBP_ALIAS_ALLOCATE    14
-#define   IBP_ALIAS_MANAGE      15
+#define   IBP_PROXY_ALLOCATE    14
+#define   IBP_ALIAS_ALLOCATE IBP_PROXY_ALLOCATE
+#define   IBP_PROXY_MANAGE      15
+#define   IBP_ALIAS_MANAGE IBP_PROXY_MANAGE
 #define   IBP_RENAME            16
 #define   IBP_PHOEBUS_SEND      17
 #define   IBP_SPLIT_ALLOCATE    18

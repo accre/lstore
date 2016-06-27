@@ -240,12 +240,12 @@ ibp_cap_t *ibp_cap_get(ibp_capset_t *caps, int ctype)
 //===================================================================
 
 //*****************************************************************
-//  new_ibp_alias_capstatus -Creates a new ibp_alias_capstatus_t structure
+//  new_ibp_proxy_capstatus -Creates a new ibp_proxy_capstatus_t structure
 //*****************************************************************
 
-ibp_alias_capstatus_t *new_ibp_alias_capstatus()
+ibp_proxy_capstatus_t *new_ibp_proxy_capstatus()
 {
-    ibp_alias_capstatus_t *cs = (ibp_alias_capstatus_t *)malloc(sizeof(ibp_alias_capstatus_t));
+    ibp_proxy_capstatus_t *cs = (ibp_proxy_capstatus_t *)malloc(sizeof(ibp_proxy_capstatus_t));
     if (cs == NULL) return(NULL);
 
 
@@ -260,28 +260,28 @@ ibp_alias_capstatus_t *new_ibp_alias_capstatus()
 
 
 //*****************************************************************
-//  destroy_ibp_alias_capstatus - Destroys the ibp_alias_capstatus_t structure
+//  destroy_ibp_proxy_capstatus - Destroys the ibp_proxy_capstatus_t structure
 //*****************************************************************
 
-void destroy_ibp_alias_capstatus(ibp_alias_capstatus_t *cs)
+void destroy_ibp_proxy_capstatus(ibp_proxy_capstatus_t *cs)
 {
     free(cs);
 }
 
 //*****************************************************************
-// copy_ibp_alias_capstatus - Copies a the alias_capstatus info
+// copy_ibp_proxy_capstatus - Copies a the proxy_capstatus info
 //*****************************************************************
 
-void copy_ibp_alias_capstatus(ibp_alias_capstatus_t *src, ibp_alias_capstatus_t *dest)
+void copy_ibp_proxy_capstatus(ibp_proxy_capstatus_t *src, ibp_proxy_capstatus_t *dest)
 {
-    memcpy(dest, src, sizeof(ibp_alias_capstatus_t));
+    memcpy(dest, src, sizeof(ibp_proxy_capstatus_t));
 }
 
 //*****************************************************************
-// get_ibp_alias_capstatus - Returns the requested alias caps status info
+// get_ibp_proxy_capstatus - Returns the requested proxy caps status info
 //*****************************************************************
 
-void get_ibp_alias_capstatus(ibp_alias_capstatus_t *cs, int *readcount, int *writecount,
+void get_ibp_proxy_capstatus(ibp_proxy_capstatus_t *cs, int *readcount, int *writecount,
                              ibp_off_t *offset, ibp_off_t *size, int *duration)
 {
     *readcount = cs->read_refcount;
