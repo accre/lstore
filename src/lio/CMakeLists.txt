@@ -77,7 +77,7 @@ set(LSTORE_PROJECT_OBJS
 		ex3_compare.c
 		ex3_global.c
 		ex3_header.c
-		ex_id.c
+		ex3_id.c
 		exnode.c
 		exnode_config.c
 		lio_config.c
