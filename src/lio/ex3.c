@@ -41,7 +41,6 @@
 #include "ex3_compare.h"
 #include "ex3_header.h"
 #include "ex3_types.h"
-#include "exnode.h"
 #include "service_manager.h"
 
 typedef struct {

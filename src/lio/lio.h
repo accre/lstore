@@ -28,7 +28,6 @@
 #include <tbx/log.h>
 
 #include "blacklist.h"
-#include "exnode.h"
 
 #ifdef __cplusplus
 extern "C" {

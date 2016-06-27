@@ -74,12 +74,12 @@ set(LSTORE_PROJECT_OBJS
 		data_block.c
 		ds_ibp.c
 		erasure_tools.c
+		ex3.c
 		ex3_compare.c
 		ex3_global.c
 		ex3_header.c
 		ex3_id.c
-		exnode.c
-		exnode_config.c
+		ex3_service.c
 		lio_config.c
 		lio_core.c
 		lio_core_io.c
