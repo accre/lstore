@@ -174,9 +174,9 @@ include(CheckCCompilerFlag)
 # the same test for Wunused-result won't. If one is defined, both will be
 # defined, so test for one but use the other
 set(LSTORE_FLAG_UNUSED_RESULT "")
-check_c_compiler_flag("-Wunused-result" HAS_UNUSED_RESULT)
+check_c_compiler_flag("-Werror=unused-result" HAS_UNUSED_RESULT)
 if(HAS_UNUSED_RESULT)
-    set(LSTORE_FLAG_UNUSED_RESULT "-Wno-unused-result")
+    set(LSTORE_FLAG_UNUSED_RESULT "-Wno-error=unused-result")
 endif()
 
 check_c_compiler_flag("-Wno-error=maybe-uninitialized" HAS_MAYBE_UNINITIALIZED)
@@ -186,7 +186,7 @@ endif()
 
 # When compiling release modes, asserts disappear which cause some variables
 # to be unused. Suppress errors in this case
-set(LSTORE_CHEAT_FLAGS "-Wno-error=unused-variable -Wno-error=array-bounds ${LSTORE_FLAG_SUPPRESS_MAYBE_UNINITIALIZED}")
+set(LSTORE_CHEAT_FLAGS "-Wno-error=unused-variable -Wno-error=array-bounds ${LSTORE_FLAG_SUPPRESS_MAYBE_UNINITIALIZED} ${LSTORE_FLAG_UNUSED_RESULT}")
 set(CMAKE_C_FLAGS_RELWITHDEBINFO "${CMAKE_C_FLAGS_RELWITHDEBINFO} ${LSTORE_CHEAT_FLAGS}")
 set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} ${LSTORE_CHEAT_FLAGS}")
 
