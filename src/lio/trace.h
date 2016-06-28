@@ -22,7 +22,7 @@
 
 #include "ds.h"
 #include "ex3.h"
-#include "ex3_types.h"
+#include "ex3/types.h"
 #include "os.h"
 #include "service_manager.h"
 

@@ -21,7 +21,7 @@ limitations under the License.
 #ifndef ACCRE_LIO_BLACKLIST_H_INCLUDED
 #define ACCRE_LIO_BLACKLIST_H_INCLUDED
 
-#include <lio/lio_visibility.h>
+#include <lio/visibility.h>
 
 #ifdef __cplusplus
 extern "C" {

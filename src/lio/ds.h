@@ -25,7 +25,7 @@
 #include <lio/ds.h>
 #include <tbx/transfer_buffer.h>
 
-#include "ex3_types.h"
+#include "ex3/types.h"
 
 #ifdef __cplusplus
 extern "C" {

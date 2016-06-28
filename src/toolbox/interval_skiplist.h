@@ -22,7 +22,7 @@
 
 #include "tbx/interval_skiplist.h"
 #include "tbx/skiplist.h"
-#include "tbx/toolbox_visibility.h"
+#include "tbx/visibility.h"
 
 #ifdef __cplusplus
 extern "C" {

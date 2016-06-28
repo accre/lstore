@@ -19,7 +19,7 @@
 #define ACCRE_INTERVAL_SKIPLIST_H_INCLUDED
 
 #include <tbx/skiplist.h>
-#include <tbx/toolbox_visibility.h>
+#include <tbx/visibility.h>
 
 #ifdef __cplusplus
 extern "C" {

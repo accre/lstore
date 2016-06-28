@@ -49,7 +49,7 @@
 #include "blacklist.h"
 #include "cache.h"
 #include "ex3.h"
-#include "ex3_types.h"
+#include "ex3/types.h"
 #include "lio.h"
 #include "lio_fuse.h"
 #include "os.h"

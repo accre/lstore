@@ -24,7 +24,7 @@ limitations under the License.
 #include <apr_thread_cond.h>
 #include <apr_thread_mutex.h>
 #include <gop/mq.h>
-#include <lio/lio_visibility.h>
+#include <lio/visibility.h>
 #include <lio/ds.h>
 #include <lio/ex3_fwd.h>
 

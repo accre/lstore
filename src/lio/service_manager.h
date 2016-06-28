@@ -24,7 +24,7 @@
 #include <apr_hash.h>
 #include <apr_pools.h>
 #include <apr_thread_mutex.h>
-#include <lio/lio_visibility.h>
+#include <lio/visibility.h>
 #include <lio/service_manager.h>
 
 #ifdef __cplusplus

@@ -25,7 +25,7 @@
 #include <apr_thread_mutex.h>
 #include <apr_time.h>
 #include <lio/lio_fuse.h>
-#include <lio/lio_visibility.h>
+#include <lio/visibility.h>
 #include <tbx/atomic_counter.h>
 #include <tbx/list.h>
 

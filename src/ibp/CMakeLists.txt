@@ -54,7 +54,7 @@ set(LSTORE_PROJECT_INCLUDES
         ibp/op.h
         ibp/protocol.h
         ibp/types.h
-        ibp/ibp_visibility.h
+        ibp/visibility.h
     )
 
 set(LSTORE_PROJECT_EXECUTABLES

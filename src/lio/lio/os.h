@@ -23,7 +23,7 @@ limitations under the License.
 
 #include <gop/gop.h>
 #include <lio/authn.h>
-#include <lio/lio_visibility.h>
+#include <lio/visibility.h>
 #include <lio/service_manager.h>
 #include <regex.h>
 #include <tbx/iniparse.h>

@@ -24,7 +24,7 @@ limitations under the License.
 #include <gop/opque.h>
 #include <lio/cache.h>
 #include <lio/ex3.h>
-#include <lio/lio_visibility.h>
+#include <lio/visibility.h>
 #include <lio/rs.h>
 
 #ifdef __cplusplus

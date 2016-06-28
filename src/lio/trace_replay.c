@@ -29,8 +29,8 @@
 #include <tbx/type_malloc.h>
 
 #include "ex3.h"
-#include "ex3_system.h"
-#include "ex3_types.h"
+#include "ex3/system.h"
+#include "ex3/types.h"
 #include "lio.h"
 #include "trace.h"
 

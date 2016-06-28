@@ -38,9 +38,9 @@
 #include "data_block.h"
 #include "ds.h"
 #include "ex3.h"
-#include "ex3_compare.h"
-#include "ex3_header.h"
-#include "ex3_types.h"
+#include "ex3/compare.h"
+#include "ex3/header.h"
+#include "ex3/types.h"
 #include "service_manager.h"
 
 typedef struct {

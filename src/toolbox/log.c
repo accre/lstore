@@ -32,7 +32,7 @@
 #include "tbx/assert_result.h"
 #include "tbx/atomic_counter.h"
 #include "tbx/iniparse.h"
-#include "tbx/toolbox_visibility.h"
+#include "tbx/visibility.h"
 #include "tbx/type_malloc.h"
 
 TBX_API int tbx_stack_get_info_level(tbx_log_fd_t *fd) {

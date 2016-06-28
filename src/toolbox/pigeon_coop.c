@@ -26,7 +26,7 @@
 #include "pigeon_coop.h"
 #include "pigeon_hole.h"
 #include "tbx/log.h"
-#include "tbx/toolbox_visibility.h"
+#include "tbx/visibility.h"
 #include "tbx/type_malloc.h"
 
 //***************************************************************************

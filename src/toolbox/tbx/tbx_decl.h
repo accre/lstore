@@ -14,7 +14,7 @@
    limitations under the License.
 */
 
-#include <tbx/toolbox_visibility.h>
+#include <tbx/visibility.h>
 
 #pragma once
 #ifndef ACCRE_TBX_DECL_H_INCLUDED

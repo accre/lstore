@@ -19,7 +19,7 @@
 #define ACCRE_APR_WRAPPER_H_INCLUDED
 
 #include <tbx/assert_result.h>
-#include <tbx/toolbox_visibility.h>
+#include <tbx/visibility.h>
 
 #ifdef __cplusplus
 extern "C" {

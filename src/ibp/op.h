@@ -28,7 +28,7 @@
 #include <gop/types.h>
 #include <ibp/op.h>
 #include <ibp/protocol.h>
-#include <ibp/ibp_visibility.h>
+#include <ibp/visibility.h>
 #include <stdint.h>
 #include <tbx/atomic_counter.h>
 #include <tbx/iniparse.h>

@@ -20,7 +20,7 @@
 
 #include <assert.h>
 #include <stdlib.h>
-#include <tbx/toolbox_visibility.h>
+#include <tbx/visibility.h>
 
 // Preprocessor macros
 #define tbx_type_malloc_clear(var, type, count) \

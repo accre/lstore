@@ -41,7 +41,7 @@ set(LSTORE_PROJECT_INCLUDES
                 tbx/pigeon_coop.h tbx/skiplist.h toolbox_config.h tbx/random.h
                 tbx/string_token.h tbx/type_malloc.h tbx/transfer_buffer.h tbx/packer.h
                 tbx/append_printf.h tbx/chksum.h tbx/varint.h tbx/atomic_counter.h tbx/dns_cache.h
-                tbx/iniparse.h tbx/log.h tbx/assert_result.h tbx/toolbox_visibility.h
+                tbx/iniparse.h tbx/log.h tbx/assert_result.h tbx/visibility.h
                 tbx/tbx_decl.h)
 set(LSTORE_PROJECT_INCLUDES_NAMESPACE tbx)
 set(LSTORE_PROJECT_EXECUTABLES)

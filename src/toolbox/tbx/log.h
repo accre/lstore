@@ -19,7 +19,7 @@
 #define ACCRE_LOG_H_INCLUDED
 
 #include <stdio.h>
-#include <tbx/toolbox_visibility.h>
+#include <tbx/visibility.h>
 
 #ifdef __cplusplus
 extern "C" {

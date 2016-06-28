@@ -23,7 +23,7 @@
 
 #include <gop/mq.h>
 #include <lio/lio.h>
-#include <lio/lio_visibility.h>
+#include <lio/visibility.h>
 #include <sys/stat.h>
 #include <tbx/log.h>
 

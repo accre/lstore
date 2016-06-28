@@ -17,7 +17,7 @@
 #ifndef __IO_WRAPPER_H_
 #define __IO_WRAPPER_H_
 
-#include <ibp/ibp_visibility.h>
+#include <ibp/visibility.h>
 #include <gop/opque.h>
 #include <gop/types.h>
 

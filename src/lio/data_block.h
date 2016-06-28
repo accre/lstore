@@ -26,7 +26,7 @@
 #include <tbx/stack.h>
 
 #include "ds.h"
-#include "ex3_types.h"
+#include "ex3/types.h"
 #include "service_manager.h"
 
 #ifdef __cplusplus

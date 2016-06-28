@@ -25,7 +25,7 @@ limitations under the License.
 #include <apr_thread_proc.h>
 #include <apr_hash.h>
 #include <inttypes.h>
-#include <lio/lio_visibility.h>
+#include <lio/visibility.h>
 #include <lio/ex3_fwd.h>
 
 #ifdef __cplusplus

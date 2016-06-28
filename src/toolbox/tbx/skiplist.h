@@ -21,7 +21,7 @@
 #include <apr_pools.h>
 #include <apr_thread_mutex.h>
 #include <tbx/tbx_decl.h>
-#include <tbx/toolbox_visibility.h>
+#include <tbx/visibility.h>
 
 #ifdef __cplusplus
 extern "C" {

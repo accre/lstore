@@ -20,7 +20,7 @@
 
 #include <inttypes.h>
 #include <stdint.h>
-#include <tbx/toolbox_visibility.h>
+#include <tbx/visibility.h>
 
 #ifdef __cplusplus
 extern "C" {

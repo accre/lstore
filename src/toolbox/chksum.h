@@ -30,7 +30,7 @@
 #define __CHKSUM_H_
 
 #include "tbx/chksum.h"
-#include "tbx/toolbox_visibility.h"
+#include "tbx/visibility.h"
 #include "tbx/transfer_buffer.h"
 
 #ifdef __cplusplus

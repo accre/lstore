@@ -18,7 +18,7 @@
 #ifndef ACCRE_PIGEON_COOP_H_INCLUDED
 #define ACCRE_PIGEON_COOP_H_INCLUDED
 
-#include <tbx/toolbox_visibility.h>
+#include <tbx/visibility.h>
 
 #ifdef __cplusplus
 extern "C" {

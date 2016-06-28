@@ -19,7 +19,7 @@
 #define ACCRE_TRANSFER_BUFFER_H_INCLUDED
 
 #include <sys/uio.h>
-#include <tbx/toolbox_visibility.h>
+#include <tbx/visibility.h>
 
 #ifdef __cplusplus
 extern "C" {

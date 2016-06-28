@@ -24,12 +24,12 @@
 #include <gop/opque.h>
 #include <gop/tp.h>
 #include <lio/os.h>
-#include <lio/lio_visibility.h>
+#include <lio/visibility.h>
 #include <regex.h>
 #include <sys/types.h>
 
 #include "authn.h"
-#include "ex3_types.h"
+#include "ex3/types.h"
 #include "service_manager.h"
 
 #ifdef __cplusplus

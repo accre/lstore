@@ -28,14 +28,14 @@ limitations under the License.
 #include <inttypes.h>
 #include <lio/ds.h>
 #include <lio/ex3_fwd.h>
-#include <lio/lio_visibility.h>
+#include <lio/visibility.h>
 #include <lio/rs.h>
 #include <lio/service_manager.h>
 #include <tbx/iniparse.h>
 #include <tbx/list.h>
 #include <tbx/log.h>
 
-// Typedefs are in ex3_fwd.h to break a potential dependency cycle
+// Typedefs are in ex3/fwd.h to break a potential dependency cycle
 
 // Functions
 LIO_API op_generic_t *lio_exnode_clone(thread_pool_context_t *tpc, exnode_t *ex, data_attr_t *da, exnode_t **clone_ex, void *arg, int mode, int timeout);

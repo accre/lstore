@@ -65,47 +65,47 @@ set(LSTORE_INCLUDE_PUBLIC ${PROJECT_SOURCE_DIR})
 
 # common objects
 set(LSTORE_PROJECT_OBJS
-		authn_fake.c
-		cache_amp.c
-		cache_base.c
-		cache_round_robin.c
+		authn/fake.c
+		cache/amp.c
+		cache/base.c
+		cache/round_robin.c
 		constructor.c
 		cred_default.c
 		data_block.c
-		ds_ibp.c
-		erasure_tools.c
+		ds/ibp.c
+        erasure_tools.c
 		ex3.c
-		ex3_compare.c
-		ex3_global.c
-		ex3_header.c
-		ex3_id.c
-		ex3_service.c
+		ex3/compare.c
+		ex3/global.c
+		ex3/header.c
+		ex3/id.c
+		ex3/service.c
 		lio_config.c
 		lio_core.c
 		lio_core_io.c
 		lio_core_os.c
 		lio_fuse_core.c
 		lio_version.c
-		os_base.c
-		os_file.c
-		os_remote_client.c
-		os_remote_server.c
-		os_timecache.c
-		osaz_fake.c
-		raid4.c
-		rs_query_base.c
-		rs_remote_client.c
-		rs_remote_server.c
-		rs_simple.c
-		rs_space.c
-		segment_base.c
-		segment_cache.c
-		segment_dynfile.c
-		segment_file.c
-		segment_jerasure.c
-		segment_linear.c
-		segment_log.c
-		segment_lun.c
+		os/base.c
+		os/file.c
+		os/remote_client.c
+		os/remote_server.c
+		os/timecache.c
+		osaz/fake.c
+        raid4.c
+		rs/query_base.c
+		rs/remote_client.c
+		rs/remote_server.c
+		rs/simple.c
+		rs/space.c
+		segment.c
+		segment/cache.c
+		segment/dynfile.c
+		segment/file.c
+		segment/jerasure.c
+		segment/linear.c
+		segment/log.c
+		segment/lun.c
 		service_manager.c
 		trace.c
 		trace_replay.c
@@ -125,12 +125,12 @@ set(LSTORE_PROJECT_INCLUDES
         lio/ex3_fwd.h
         lio/lio.h
         lio/lio_fuse.h
-        lio/lio_visibility.h
         lio/os.h
         lio/rs.h
         lio/segment.h
         lio/service_manager.h
         lio/trace.h
+        lio/visibility.h
 )
 
 set(LSTORE_PROJECT_EXECUTABLES

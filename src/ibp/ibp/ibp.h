@@ -19,6 +19,6 @@ limitations under the License.
 #include <ibp/op.h>
 #include <ibp/protocol.h>
 #include <ibp/types.h>
-#include <ibp/ibp_visibility.h>
+#include <ibp/visibility.h>
 
 #endif

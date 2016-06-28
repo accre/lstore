@@ -26,7 +26,7 @@
 #include <lio/rs.h>
 
 #include "ds.h"
-#include "ex3_types.h"
+#include "ex3/types.h"
 
 #ifdef __cplusplus
 extern "C" {

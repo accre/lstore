@@ -38,17 +38,18 @@ set(LSTORE_PROJECT_OBJS
 set(LSTORE_PROJECT_INCLUDES
         gop/callback.h
         gop/gop.h
-        gop/visibility.h
         gop/hp.h
+        gop/mq.h
         gop/mq_helpers.h
         gop/mq_ongoing.h
-        gop/mq.h
         gop/mq_stream.h
         gop/opque.h
         gop/portal.h
         gop/template.h
         gop/tp.h
-        gop/types.h)
+        gop/types.h
+        gop/visibility.h
+    )
 set(LSTORE_PROJECT_INCLUDES_NAMESPACE gop)
 
 set(LSTORE_LIBS ${APR_LIBRARY}

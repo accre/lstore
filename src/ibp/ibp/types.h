@@ -22,7 +22,7 @@ limitations under the License.
 #define ACCRE_IBP_IBP_TYPES_H_INCLUDED
 
 #include <gop/gop.h>
-#include <ibp/ibp_visibility.h>
+#include <ibp/visibility.h>
 #include <tbx/chksum.h>
 
 #ifdef __cplusplus

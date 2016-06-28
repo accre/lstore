@@ -18,7 +18,7 @@
 #define _IBP_TYPES_H_
 
 #include <ibp/types.h>
-#include <ibp/ibp_visibility.h>
+#include <ibp/visibility.h>
 #include <time.h>
 #include <stdint.h>
 

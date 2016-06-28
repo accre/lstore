@@ -18,7 +18,7 @@
 #ifndef ACCRE_APPEND_PRINTF_H_INCLUDED
 #define ACCRE_APPEND_PRINTF_H_INCLUDED
 
-#include <tbx/toolbox_visibility.h>
+#include <tbx/visibility.h>
 
 #ifdef __cplusplus
 extern "C" {
