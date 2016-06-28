@@ -26,6 +26,7 @@
 #include <gop/opque.h>
 #include <gop/tp.h>
 #include <gop/types.h>
+#include <lio/segment.h>
 #include <inttypes.h>
 #include <stdio.h>
 #include <stdio.h>

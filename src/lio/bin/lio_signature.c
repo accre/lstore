@@ -23,6 +23,7 @@
 #include <lio/ex3.h>
 #include <lio/lio.h>
 #include <lio/os.h>
+#include <lio/segment.h>
 
 
 //*************************************************************************

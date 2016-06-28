@@ -21,6 +21,7 @@
 #define _log_module_index 162
 
 #include <libgen.h>
+#include <lio/segment.h>
 #include <tbx/atomic_counter.h>
 #include <tbx/iniparse.h>
 #include <tbx/interval_skiplist.h>

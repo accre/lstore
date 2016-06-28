@@ -19,6 +19,7 @@
 
 #include <apr_thread_proc.h>
 #include <lio/cache.h>
+#include <lio/segment.h>
 #include <tbx/iniparse.h>
 
 #include "cache.h"

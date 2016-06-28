@@ -24,6 +24,7 @@
 #include <gop/hp.h>
 #include <gop/tp.h>
 #include <libgen.h>
+#include <lio/segment.h>
 #include <stdio.h>
 #include <stdio.h>
 #include <stdlib.h>

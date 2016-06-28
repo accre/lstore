@@ -28,6 +28,7 @@
 #include <fcntl.h>
 #include <gop/gop.h>
 #include <gop/mq.h>
+#include <lio/segment.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdio.h>

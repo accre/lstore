@@ -19,6 +19,7 @@
 #include <assert.h>
 #include <gop/opque.h>
 #include <gop/types.h>
+#include <lio/segment.h>
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>

@@ -29,6 +29,7 @@
 #include <gop/tp.h>
 #include <gop/types.h>
 #include <limits.h>
+#include <lio/segment.h>
 #include <math.h>
 #include <signal.h>
 #include <stdio.h>

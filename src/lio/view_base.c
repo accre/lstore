@@ -20,6 +20,7 @@
 
 #define _log_module_index 166
 
+#include <lio/segment.h>
 #include <tbx/atomic_counter.h>
 #include <tbx/list.h>
 

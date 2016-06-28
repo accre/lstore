@@ -21,6 +21,7 @@
 #include <gop/gop.h>
 #include <gop/opque.h>
 #include <gop/types.h>
+#include <lio/segment.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
