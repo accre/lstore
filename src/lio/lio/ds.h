@@ -40,6 +40,40 @@ typedef void data_cap_set_t;
 typedef void data_cap_t;
 typedef void data_probe_t;
 typedef void data_inquire_t;
+
+typedef void (*lio_ds_destroy_service_fn_t)(data_service_fn_t *);
+typedef void (*lio_ds_translate_cap_set_fn_t)(data_service_fn_t *ds, char *rid_key, char *ds_key, data_cap_set_t *cs);
+typedef data_cap_set_t *(*lio_ds_new_cap_set_fn_t)(data_service_fn_t *);
+typedef void *(*lio_ds_cap_auto_warm_fn_t)(data_service_fn_t *, data_cap_set_t *dcs);
+typedef void (*lio_ds_cap_stop_warm_fn_t)(data_service_fn_t *, void *warm);
+typedef data_cap_t *(*lio_ds_get_cap_fn_t)(data_service_fn_t *, data_cap_set_t *cs, int key);
+typedef int (*lio_ds_set_cap_fn_t)(data_service_fn_t *, data_cap_set_t *cs, int key, data_cap_t *cap);
+typedef void (*lio_ds_destroy_cap_set_fn_t)(data_service_fn_t *, data_cap_set_t *caps, int free_cap);
+typedef data_attr_t *(*lio_ds_new_attr_fn_t)(data_service_fn_t *);
+typedef int (*lio_ds_get_attr_fn_t)(data_service_fn_t *, data_attr_t *attr, int key, void *val, int size);
+typedef int (*lio_ds_set_attr_fn_t)(data_service_fn_t *, data_attr_t *attr, int key, void *val);
+typedef void (*lio_ds_destroy_attr_fn_t)(data_service_fn_t *, data_attr_t *attr);
+typedef int (*lio_ds_get_default_attr_fn_t)(data_service_fn_t *, data_attr_t *attr);
+typedef int (*lio_ds_set_default_attr_fn_t)(data_service_fn_t *, data_attr_t *attr);
+typedef data_probe_t *(*lio_ds_new_probe_fn_t)(data_service_fn_t *);
+typedef int (*lio_ds_get_probe_fn_t)(data_service_fn_t *, data_probe_t *probe, int key, void *val, int size);
+typedef void (*lio_ds_destroy_probe_fn_t)(data_service_fn_t *, data_probe_t *probe);
+typedef char *(*lio_ds_res2rid_fn_t)(data_service_fn_t *ds, char *ds_key);
+typedef data_inquire_t *(*lio_ds_new_inquire_fn_t)(data_service_fn_t *ds);
+typedef void (*lio_ds_destroy_inquire_fn_t)(data_service_fn_t *ds, data_inquire_t *space);
+typedef ds_int_t (*lio_ds_res_inquire_get_fn_t)(data_service_fn_t *ds, int type, data_inquire_t *space);
+typedef op_generic_t *(*lio_ds_res_inquire_fn_t)(data_service_fn_t *, char *res, data_attr_t *attr, data_inquire_t *space, int timeout);
+typedef op_generic_t *(*lio_ds_allocate_fn_t)(data_service_fn_t *, char *res, data_attr_t *attr, ds_int_t size, data_cap_set_t *caps, int timeout);
+typedef op_generic_t *(*lio_ds_remove_fn_t)(data_service_fn_t *, data_attr_t *dattr, data_cap_t *mcap, int timeout);
+typedef op_generic_t *(*lio_ds_truncate_fn_t)(data_service_fn_t *, data_attr_t *dattr, data_cap_t *mcap, ex_off_t new_size, int timeout);
+typedef op_generic_t *(*lio_ds_probe_fn_t)(data_service_fn_t *, data_attr_t *dattr, data_cap_t *mcap, data_probe_t *probe, int timeout);
+typedef op_generic_t *(*lio_ds_modify_count_fn_t)(data_service_fn_t *, data_attr_t *dattr, data_cap_t *mcap, int mode, int captype, int timeout);
+typedef op_generic_t *(*lio_ds_read_fn_t)(data_service_fn_t *, data_attr_t *attr, data_cap_t *rcap, ds_int_t off, tbx_tbuf_t *read, ex_off_t boff, ex_off_t len, int timeout);
+typedef op_generic_t *(*lio_ds_write_fn_t)(data_service_fn_t *, data_attr_t *attr, data_cap_t *wcap, ds_int_t off, tbx_tbuf_t *write, ex_off_t boff, ex_off_t len, int timeout);
+typedef op_generic_t *(*lio_ds_readv_fn_t)(data_service_fn_t *, data_attr_t *attr, data_cap_t *rcap, int n_iov, ex_tbx_iovec_t *iov, tbx_tbuf_t *read, ex_off_t boff, ex_off_t len, int timeout);
+typedef op_generic_t *(*lio_ds_writev_fn_t)(data_service_fn_t *, data_attr_t *attr, data_cap_t *wcap, int n_iov, ex_tbx_iovec_t *iov, tbx_tbuf_t *write, ex_off_t boff, ex_off_t len, int timeout);
+typedef op_generic_t *(*lio_ds_append_fn_t)(data_service_fn_t *, data_attr_t *attr, data_cap_t *wcap, tbx_tbuf_t *write, ex_off_t boff, ex_off_t len, int timeout);
+typedef op_generic_t *(*lio_ds_copy_fn_t)(data_service_fn_t *, data_attr_t *attr, int mode, int ns_type, char *ppath, data_cap_t *src_cap, ds_int_t src_off, data_cap_t *dest_cap, ds_int_t dest_off, ds_int_t len, int timeout);
 //* FIXME: leaky
 typedef struct ds_ibp_attr_t ds_ibp_attr_t;
 typedef struct ds_ibp_alloc_op_t ds_ibp_alloc_op_t;
@@ -50,44 +84,46 @@ typedef struct ds_ibp_truncate_op_t ds_ibp_truncate_op_t;
 // Functions
 
 // Exported types. To be obscured
+
+
 struct data_service_fn_t {
     void *priv;
     char *type;
-    void (*destroy_service)(data_service_fn_t *);
-    void (*translate_cap_set)(data_service_fn_t *ds, char *rid_key, char *ds_key, data_cap_set_t *cs);
-    data_cap_set_t *(*new_cap_set)(data_service_fn_t *);
-    void *(*cap_auto_warm)(data_service_fn_t *, data_cap_set_t *dcs);
-    void (*cap_stop_warm)(data_service_fn_t *, void *warm);
-    data_cap_t *(*get_cap)(data_service_fn_t *, data_cap_set_t *cs, int key);
-    int (*set_cap)(data_service_fn_t *, data_cap_set_t *cs, int key, data_cap_t *cap);
-    void (*destroy_cap_set)(data_service_fn_t *, data_cap_set_t *caps, int free_cap);
-    data_attr_t *(*new_attr)(data_service_fn_t *);
-    int (*get_attr)(data_service_fn_t *, data_attr_t *attr, int key, void *val, int size);
-    int (*set_attr)(data_service_fn_t *, data_attr_t *attr, int key, void *val);
-    void (*destroy_attr)(data_service_fn_t *, data_attr_t *attr);
-    int (*get_default_attr)(data_service_fn_t *, data_attr_t *attr);
-    int (*set_default_attr)(data_service_fn_t *, data_attr_t *attr);
-    data_probe_t *(*new_probe)(data_service_fn_t *);
-    int (*get_probe)(data_service_fn_t *, data_probe_t *probe, int key, void *val, int size);
-    void (*destroy_probe)(data_service_fn_t *, data_probe_t *probe);
-    char *(*res2rid)(data_service_fn_t *ds, char *ds_key);
-    data_inquire_t *(*new_inquire)(data_service_fn_t *ds);
-    void (*destroy_inquire)(data_service_fn_t *ds, data_inquire_t *space);
-    ds_int_t (*res_inquire_get)(data_service_fn_t *ds, int type, data_inquire_t *space);
-    op_generic_t *(*res_inquire)(data_service_fn_t *, char *res, data_attr_t *attr, data_inquire_t *space, int timeout);
-    op_generic_t *(*allocate)(data_service_fn_t *, char *res, data_attr_t *attr, ds_int_t size, data_cap_set_t *caps, int timeout);
-    op_generic_t *(*remove)(data_service_fn_t *, data_attr_t *dattr, data_cap_t *mcap, int timeout);
-    op_generic_t *(*truncate)(data_service_fn_t *, data_attr_t *dattr, data_cap_t *mcap, ex_off_t new_size, int timeout);
-    op_generic_t *(*probe)(data_service_fn_t *, data_attr_t *dattr, data_cap_t *mcap, data_probe_t *probe, int timeout);
-    op_generic_t *(*modify_count)(data_service_fn_t *, data_attr_t *dattr, data_cap_t *mcap, int mode, int captype, int timeout);
-    op_generic_t *(*read)(data_service_fn_t *, data_attr_t *attr, data_cap_t *rcap, ds_int_t off, tbx_tbuf_t *read, ex_off_t boff, ex_off_t len, int timeout);
-    op_generic_t *(*write)(data_service_fn_t *, data_attr_t *attr, data_cap_t *wcap, ds_int_t off, tbx_tbuf_t *write, ex_off_t boff, ex_off_t len, int timeout);
-    op_generic_t *(*readv)(data_service_fn_t *, data_attr_t *attr, data_cap_t *rcap, int n_iov, ex_tbx_iovec_t *iov, tbx_tbuf_t *read, ex_off_t boff, ex_off_t len, int timeout);
-    op_generic_t *(*writev)(data_service_fn_t *, data_attr_t *attr, data_cap_t *wcap, int n_iov, ex_tbx_iovec_t *iov, tbx_tbuf_t *write, ex_off_t boff, ex_off_t len, int timeout);
-    op_generic_t *(*append)(data_service_fn_t *, data_attr_t *attr, data_cap_t *wcap, tbx_tbuf_t *write, ex_off_t boff, ex_off_t len, int timeout);
-    op_generic_t *(*copy)(data_service_fn_t *, data_attr_t *attr, int mode, int ns_type, char *ppath, data_cap_t *src_cap, ds_int_t src_off,
-                          data_cap_t *dest_cap, ds_int_t dest_off, ds_int_t len, int timeout);
+    lio_ds_destroy_service_fn_t destroy_service;
+    lio_ds_translate_cap_set_fn_t translate_cap_set;
+    lio_ds_new_cap_set_fn_t new_cap_set;
+    lio_ds_cap_auto_warm_fn_t cap_auto_warm;
+    lio_ds_cap_stop_warm_fn_t cap_stop_warm;
+    lio_ds_get_cap_fn_t get_cap;
+    lio_ds_set_cap_fn_t set_cap;
+    lio_ds_destroy_cap_set_fn_t destroy_cap_set;
+    lio_ds_new_attr_fn_t new_attr;
+    lio_ds_get_attr_fn_t get_attr;
+    lio_ds_set_attr_fn_t set_attr;
+    lio_ds_destroy_attr_fn_t destroy_attr;
+    lio_ds_get_default_attr_fn_t get_default_attr;
+    lio_ds_set_default_attr_fn_t set_default_attr;
+    lio_ds_new_probe_fn_t new_probe;
+    lio_ds_get_probe_fn_t get_probe;
+    lio_ds_destroy_probe_fn_t destroy_probe;
+    lio_ds_res2rid_fn_t res2rid;
+    lio_ds_new_inquire_fn_t new_inquire;
+    lio_ds_destroy_inquire_fn_t destroy_inquire;
+    lio_ds_res_inquire_get_fn_t res_inquire_get;
+    lio_ds_res_inquire_fn_t res_inquire;
+    lio_ds_allocate_fn_t allocate;
+    lio_ds_remove_fn_t remove;
+    lio_ds_truncate_fn_t truncate;
+    lio_ds_probe_fn_t probe;
+    lio_ds_modify_count_fn_t modify_count;
+    lio_ds_read_fn_t read;
+    lio_ds_write_fn_t write;
+    lio_ds_readv_fn_t readv;
+    lio_ds_writev_fn_t writev;
+    lio_ds_append_fn_t append;
+    lio_ds_copy_fn_t copy;
 };
+
 //* FIXME: leaky
 struct ds_ibp_attr_t {
     ibp_attributes_t attr;

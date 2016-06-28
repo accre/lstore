@@ -43,12 +43,51 @@ typedef void os_fd_t;
 typedef void os_attr_iter_t;
 typedef void os_object_iter_t;
 typedef void os_fsck_iter_t;
+
+typedef void (*lio_os_destroy_service_fn_t)(object_service_fn_t *os);
+typedef os_fsck_iter_t *(*lio_os_create_fsck_iter_fn_t)(object_service_fn_t *os, creds_t *creds, char *path, int mode);
+typedef void (*lio_os_destroy_fsck_iter_fn_t)(object_service_fn_t *os, os_fsck_iter_t *it);
+typedef int (*lio_os_next_fsck_fn_t)(object_service_fn_t *os, os_fsck_iter_t *it, char **fname, int *ftype);
+typedef op_generic_t *(*lio_os_fsck_object_fn_t)(object_service_fn_t *os, creds_t *creds, char *fname, int ftype, int resolution);
+typedef creds_t *(*lio_os_cred_init_fn_t)(object_service_fn_t *os, int type, void **arg);
+typedef void (*lio_os_cred_destroy_fn_t)(object_service_fn_t *os, creds_t *creds);
+typedef op_generic_t *(*lio_os_exists_fn_t)(object_service_fn_t *os, creds_t *creds, char *path);
+typedef op_generic_t *(*lio_os_create_object_fn_t)(object_service_fn_t *os, creds_t *creds, char *path, int type, char *id);
+typedef op_generic_t *(*lio_os_remove_object_fn_t)(object_service_fn_t *os, creds_t *creds, char *path);
+typedef op_generic_t *(*lio_os_remove_regex_object_fn_t)(object_service_fn_t *os, creds_t *creds, os_regex_table_t *path, os_regex_table_t *object_regex, int obj_types, int recurse_depth);
+typedef op_generic_t *(*lio_os_abort_remove_regex_object_fn_t)(object_service_fn_t *os, op_generic_t *gop);
+typedef op_generic_t *(*lio_os_regex_object_set_multiple_attrs_fn_t)(object_service_fn_t *os, creds_t *creds, char *id, os_regex_table_t *path, os_regex_table_t *object_regex, int object_types, int recurse_depth, char **key, void **val, int *v_size, int n);
+typedef op_generic_t *(*lio_os_abort_regex_object_set_multiple_attrs_fn_t)(object_service_fn_t *os, op_generic_t *gop);
+typedef op_generic_t *(*lio_os_move_object_fn_t)(object_service_fn_t *os, creds_t *creds, char *src_path, char *dest_path);
+typedef op_generic_t *(*lio_os_symlink_object_fn_t)(object_service_fn_t *os, creds_t *creds, char *src_path, char *dest_path, char *id);
+typedef op_generic_t *(*lio_os_hardlink_object_fn_t)(object_service_fn_t *os, creds_t *creds, char *src_path, char *dest_path, char *id);
+typedef os_object_iter_t *(*lio_os_create_object_iter_fn_t)(object_service_fn_t *os, creds_t *creds, os_regex_table_t *path, os_regex_table_t *obj_regex, int object_types, os_regex_table_t *attr, int recurse_dpeth, os_attr_iter_t **it, int v_max);
+typedef os_object_iter_t *(*lio_os_create_object_iter_alist_fn_t)(object_service_fn_t *os, creds_t *creds, os_regex_table_t *path, os_regex_table_t *obj_regex, int object_types, int recurse_depth, char **key, void **val, int *v_size, int n_keys);
+typedef int (*lio_os_next_object_fn_t)(os_object_iter_t *it, char **fname, int *prefix_len);
+typedef void (*lio_os_destroy_object_iter_fn_t)(os_object_iter_t *it);
+typedef op_generic_t *(*lio_os_open_object_fn_t)(object_service_fn_t *os, creds_t *creds, char *path, int mode, char *id, os_fd_t **fd, int max_wait);
+typedef op_generic_t *(*lio_os_close_object_fn_t)(object_service_fn_t *os, os_fd_t *fd);
+typedef op_generic_t *(*lio_os_abort_open_object_fn_t)(object_service_fn_t *os, op_generic_t *gop);
+typedef op_generic_t *(*lio_os_symlink_attr_fn_t)(object_service_fn_t *os, creds_t *creds, char *src_path, char *key_src, os_fd_t *fd_dest, char *key_dest);
+typedef op_generic_t *(*lio_os_symlink_multiple_attrs_fn_t)(object_service_fn_t *os, creds_t *creds, char **src_path, char **key_src, os_fd_t *fd_dest, char **key_dest, int n);
+typedef op_generic_t *(*lio_os_get_attr_fn_t)(object_service_fn_t *os, creds_t *creds, os_fd_t *fd, char *key, void **val, int *v_size);
+typedef op_generic_t *(*lio_os_set_attr_fn_t)(object_service_fn_t *os, creds_t *creds, os_fd_t *fd, char *key, void *val, int v_size);
+typedef op_generic_t *(*lio_os_move_attr_fn_t)(object_service_fn_t *os, creds_t *creds, os_fd_t *fd, char *key_old, char *key_new);
+typedef op_generic_t *(*lio_os_copy_attr_fn_t)(object_service_fn_t *os, creds_t *creds, os_fd_t *fd_src, char *key_src, os_fd_t *fd_dest, char *key_dest);
+typedef op_generic_t *(*lio_os_get_multiple_attrs_fn_t)(object_service_fn_t *os, creds_t *creds, os_fd_t *fd, char **key, void **val, int *v_size, int n);
+typedef op_generic_t *(*lio_os_set_multiple_attrs_fn_t)(object_service_fn_t *os, creds_t *creds, os_fd_t *fd, char **key, void **val, int *v_size, int n);
+typedef op_generic_t *(*lio_os_move_multiple_attrs_fn_t)(object_service_fn_t *os, creds_t *creds, os_fd_t *fd, char **key_old, char **key_new, int n);
+typedef op_generic_t *(*lio_os_copy_multiple_attrs_fn_t)(object_service_fn_t *os, creds_t *creds, os_fd_t *fd_src, char **key_src, os_fd_t *fd_dest, char **key_dest, int n);
+typedef os_attr_iter_t *(*lio_os_create_attr_iter_fn_t)(object_service_fn_t *os, creds_t *creds, os_fd_t *fd, os_regex_table_t *attr, int v_max);
+typedef int (*lio_os_next_attr_fn_t)(os_attr_iter_t *it, char **key, void **val, int *v_size);
+typedef int (*lio_os_add_virtual_attr_fn_t)(os_virtual_attr_t *va, char *key, int type);
+typedef void (*lio_os_destroy_attr_iter_fn_t)(os_attr_iter_t *it);
+
 //* FIXME: leaky
 typedef struct osfile_priv_t osfile_priv_t;
 typedef struct local_object_iter_t local_object_iter_t;
 typedef struct osrc_priv_t osrc_priv_t;
 typedef struct osrs_priv_t osrs_priv_t;
-
 
 // Functions
 LIO_API char *lio_os_glob2regex(char *glob);
@@ -96,52 +135,44 @@ LIO_API void lio_os_regex_table_destroy(os_regex_table_t *table);
 struct object_service_fn_t {
     void *priv;
     char *type;
-    void (*destroy_service)(object_service_fn_t *os);
-
-    os_fsck_iter_t *(*create_fsck_iter)(object_service_fn_t *os, creds_t *creds, char *path, int mode);
-    void (*destroy_fsck_iter)(object_service_fn_t *os, os_fsck_iter_t *it);
-    int (*next_fsck)(object_service_fn_t *os, os_fsck_iter_t *it, char **fname, int *ftype);
-    op_generic_t *(*fsck_object)(object_service_fn_t *os, creds_t *creds, char *fname, int ftype, int resolution);
-
-    creds_t *(*cred_init)(object_service_fn_t *os, int type, void **arg);
-    void (*cred_destroy)(object_service_fn_t *os, creds_t *creds);
-
-    op_generic_t *(*exists)(object_service_fn_t *os, creds_t *creds, char *path);
-    op_generic_t *(*create_object)(object_service_fn_t *os, creds_t *creds, char *path, int type, char *id);
-    op_generic_t *(*remove_object)(object_service_fn_t *os, creds_t *creds, char *path);
-    op_generic_t *(*remove_regex_object)(object_service_fn_t *os, creds_t *creds, os_regex_table_t *path, os_regex_table_t *object_regex, int obj_types, int recurse_depth);
-    op_generic_t *(*abort_remove_regex_object)(object_service_fn_t *os, op_generic_t *gop);
-    op_generic_t *(*regex_object_set_multiple_attrs)(object_service_fn_t *os, creds_t *creds, char *id, os_regex_table_t *path, os_regex_table_t *object_regex, int object_types, int recurse_depth, char **key, void **val, int *v_size, int n);
-    op_generic_t *(*abort_regex_object_set_multiple_attrs)(object_service_fn_t *os, op_generic_t *gop);
-    op_generic_t *(*move_object)(object_service_fn_t *os, creds_t *creds, char *src_path, char *dest_path);
-    op_generic_t *(*symlink_object)(object_service_fn_t *os, creds_t *creds, char *src_path, char *dest_path, char *id);
-    op_generic_t *(*hardlink_object)(object_service_fn_t *os, creds_t *creds, char *src_path, char *dest_path, char *id);
-
-    os_object_iter_t *(*create_object_iter)(object_service_fn_t *os, creds_t *creds, os_regex_table_t *path, os_regex_table_t *obj_regex, int object_types, os_regex_table_t *attr, int recurse_dpeth, os_attr_iter_t **it, int v_max);
-    os_object_iter_t *(*create_object_iter_alist)(object_service_fn_t *os, creds_t *creds, os_regex_table_t *path, os_regex_table_t *obj_regex, int object_types, int recurse_depth, char **key, void **val, int *v_size, int n_keys);
-    int (*next_object)(os_object_iter_t *it, char **fname, int *prefix_len);
-    void (*destroy_object_iter)(os_object_iter_t *it);
-
-    op_generic_t *(*open_object)(object_service_fn_t *os, creds_t *creds, char *path, int mode, char *id, os_fd_t **fd, int max_wait);
-    op_generic_t *(*close_object)(object_service_fn_t *os, os_fd_t *fd);
-    op_generic_t *(*abort_open_object)(object_service_fn_t *os, op_generic_t *gop);
-
-    op_generic_t *(*symlink_attr)(object_service_fn_t *os, creds_t *creds, char *src_path, char *key_src, os_fd_t *fd_dest, char *key_dest);
-    op_generic_t *(*symlink_multiple_attrs)(object_service_fn_t *os, creds_t *creds, char **src_path, char **key_src, os_fd_t *fd_dest, char **key_dest, int n);
-
-    op_generic_t *(*get_attr)(object_service_fn_t *os, creds_t *creds, os_fd_t *fd, char *key, void **val, int *v_size);
-    op_generic_t *(*set_attr)(object_service_fn_t *os, creds_t *creds, os_fd_t *fd, char *key, void *val, int v_size);
-    op_generic_t *(*move_attr)(object_service_fn_t *os, creds_t *creds, os_fd_t *fd, char *key_old, char *key_new);
-    op_generic_t *(*copy_attr)(object_service_fn_t *os, creds_t *creds, os_fd_t *fd_src, char *key_src, os_fd_t *fd_dest, char *key_dest);
-    op_generic_t *(*get_multiple_attrs)(object_service_fn_t *os, creds_t *creds, os_fd_t *fd, char **key, void **val, int *v_size, int n);
-    op_generic_t *(*set_multiple_attrs)(object_service_fn_t *os, creds_t *creds, os_fd_t *fd, char **key, void **val, int *v_size, int n);
-    op_generic_t *(*move_multiple_attrs)(object_service_fn_t *os, creds_t *creds, os_fd_t *fd, char **key_old, char **key_new, int n);
-    op_generic_t *(*copy_multiple_attrs)(object_service_fn_t *os, creds_t *creds, os_fd_t *fd_src, char **key_src, os_fd_t *fd_dest, char **key_dest, int n);
-    os_attr_iter_t *(*create_attr_iter)(object_service_fn_t *os, creds_t *creds, os_fd_t *fd, os_regex_table_t *attr, int v_max);
-    int (*next_attr)(os_attr_iter_t *it, char **key, void **val, int *v_size);
-
-    int (*add_virtual_attr)(os_virtual_attr_t *va, char *key, int type);
-    void (*destroy_attr_iter)(os_attr_iter_t *it);
+    lio_os_destroy_service_fn_t destroy_service;
+    lio_os_create_fsck_iter_fn_t create_fsck_iter;
+    lio_os_destroy_fsck_iter_fn_t destroy_fsck_iter;
+    lio_os_next_fsck_fn_t next_fsck;
+    lio_os_fsck_object_fn_t fsck_object;
+    lio_os_cred_init_fn_t cred_init;
+    lio_os_cred_destroy_fn_t cred_destroy;
+    lio_os_exists_fn_t exists;
+    lio_os_create_object_fn_t create_object;
+    lio_os_remove_object_fn_t remove_object;
+    lio_os_remove_regex_object_fn_t remove_regex_object;
+    lio_os_abort_remove_regex_object_fn_t abort_remove_regex_object;
+    lio_os_regex_object_set_multiple_attrs_fn_t regex_object_set_multiple_attrs;
+    lio_os_abort_regex_object_set_multiple_attrs_fn_t abort_regex_object_set_multiple_attrs;
+    lio_os_move_object_fn_t move_object;
+    lio_os_symlink_object_fn_t symlink_object;
+    lio_os_hardlink_object_fn_t hardlink_object;
+    lio_os_create_object_iter_fn_t create_object_iter;
+    lio_os_create_object_iter_alist_fn_t create_object_iter_alist;
+    lio_os_next_object_fn_t next_object;
+    lio_os_destroy_object_iter_fn_t destroy_object_iter;
+    lio_os_open_object_fn_t open_object;
+    lio_os_close_object_fn_t close_object;
+    lio_os_abort_open_object_fn_t abort_open_object;
+    lio_os_symlink_attr_fn_t symlink_attr;
+    lio_os_symlink_multiple_attrs_fn_t symlink_multiple_attrs;
+    lio_os_get_attr_fn_t get_attr;
+    lio_os_set_attr_fn_t set_attr;
+    lio_os_move_attr_fn_t move_attr;
+    lio_os_copy_attr_fn_t copy_attr;
+    lio_os_get_multiple_attrs_fn_t get_multiple_attrs;
+    lio_os_set_multiple_attrs_fn_t set_multiple_attrs;
+    lio_os_move_multiple_attrs_fn_t move_multiple_attrs;
+    lio_os_copy_multiple_attrs_fn_t copy_multiple_attrs;
+    lio_os_create_attr_iter_fn_t create_attr_iter;
+    lio_os_next_attr_fn_t next_attr;
+    lio_os_add_virtual_attr_fn_t add_virtual_attr;
+    lio_os_destroy_attr_iter_fn_t destroy_attr_iter;
 };
 
 struct os_regex_entry_t {

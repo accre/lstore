@@ -39,6 +39,22 @@ typedef struct rs_hints_t rs_hints_t;
 typedef struct rs_mapping_notify_t rs_mapping_notify_t;
 typedef struct rs_request_t rs_request_t;
 typedef struct rs_space_t rs_space_t;
+typedef void rs_query_t;
+typedef char *(*lio_rs_get_rid_value_fn_t)(resource_service_fn_t *arg, char *rid_key, char *key);
+typedef char *(*lio_rs_get_rid_config_fn_t)(resource_service_fn_t *arg);
+typedef void (*lio_rs_translate_cap_set_fn_t)(resource_service_fn_t *arg, char *rid_key, data_cap_set_t *cap);
+typedef void (*lio_rs_register_mapping_updates_fn_t)(resource_service_fn_t *arg, rs_mapping_notify_t *map_version);
+typedef void (*lio_rs_unregister_mapping_updates_fn_t)(resource_service_fn_t *arg, rs_mapping_notify_t *map_version);
+typedef int  (*lio_rs_query_add_fn_t)(resource_service_fn_t *arg, rs_query_t **q, int op, char *key, int key_op, char *val, int val_op);
+typedef void (*lio_rs_query_append_fn_t)(resource_service_fn_t *arg, rs_query_t *q, rs_query_t *qappend);
+typedef rs_query_t *(*lio_rs_query_dup_fn_t)(resource_service_fn_t *arg, rs_query_t *q);
+typedef rs_query_t *(*lio_rs_query_new_fn_t)(resource_service_fn_t *arg);
+typedef void (*lio_rs_query_destroy_fn_t)(resource_service_fn_t *arg, rs_query_t *q);
+typedef op_generic_t *(*lio_rs_data_request_fn_t)(resource_service_fn_t *arg, data_attr_t *da, rs_query_t *q, data_cap_set_t **caps, rs_request_t *req, int req_size, rs_hints_t *hints_list, int fixed_size, int n_rid, int ignore_fixed_err, int timeout);
+typedef rs_query_t *(*lio_rs_query_parse_fn_t)(resource_service_fn_t *arg, char *value);
+typedef char *(*lio_rs_query_print_fn_t)(resource_service_fn_t *arg, rs_query_t *q);
+typedef void (*lio_rs_destroy_service_fn_t)(resource_service_fn_t *rs);
+ 
 // FIXME:leaky
 typedef struct rsq_base_ele_t rsq_base_ele_t;
 typedef struct rsq_base_t rsq_base_t;
@@ -78,24 +94,23 @@ struct rs_mapping_notify_t {
     int status_version;
 };
 
-typedef void rs_query_t;
 struct resource_service_fn_t {
     void *priv;
     char *type;
-    char *(*get_rid_value)(resource_service_fn_t *arg, char *rid_key, char *key);
-    char *(*get_rid_config)(resource_service_fn_t *arg);
-    void (*translate_cap_set)(resource_service_fn_t *arg, char *rid_key, data_cap_set_t *cap);
-    void (*register_mapping_updates)(resource_service_fn_t *arg, rs_mapping_notify_t *map_version);
-    void (*unregister_mapping_updates)(resource_service_fn_t *arg, rs_mapping_notify_t *map_version);
-    int  (*query_add)(resource_service_fn_t *arg, rs_query_t **q, int op, char *key, int key_op, char *val, int val_op);
-    void (*query_append)(resource_service_fn_t *arg, rs_query_t *q, rs_query_t *qappend);
-    rs_query_t *(*query_dup)(resource_service_fn_t *arg, rs_query_t *q);
-    rs_query_t *(*query_new)(resource_service_fn_t *arg);
-    void (*query_destroy)(resource_service_fn_t *arg, rs_query_t *q);
-    op_generic_t *(*data_request)(resource_service_fn_t *arg, data_attr_t *da, rs_query_t *q, data_cap_set_t **caps, rs_request_t *req, int req_size, rs_hints_t *hints_list, int fixed_size, int n_rid, int ignore_fixed_err, int timeout);
-    rs_query_t *(*query_parse)(resource_service_fn_t *arg, char *value);
-    char *(*query_print)(resource_service_fn_t *arg, rs_query_t *q);
-    void (*destroy_service)(resource_service_fn_t *rs);
+    lio_rs_get_rid_value_fn_t get_rid_value;
+    lio_rs_get_rid_config_fn_t get_rid_config;
+    lio_rs_translate_cap_set_fn_t translate_cap_set;
+    lio_rs_register_mapping_updates_fn_t register_mapping_updates;
+    lio_rs_unregister_mapping_updates_fn_t unregister_mapping_updates;
+    lio_rs_query_add_fn_t query_add;
+    lio_rs_query_append_fn_t query_append;
+    lio_rs_query_dup_fn_t query_dup;
+    lio_rs_query_new_fn_t query_new;
+    lio_rs_query_destroy_fn_t query_destroy;
+    lio_rs_data_request_fn_t data_request;
+    lio_rs_query_parse_fn_t query_parse;
+    lio_rs_query_print_fn_t query_print;
+    lio_rs_destroy_service_fn_t destroy_service;
 };
 
 struct rid_change_entry_t {

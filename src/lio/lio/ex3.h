@@ -35,7 +35,20 @@ limitations under the License.
 #include <tbx/list.h>
 #include <tbx/log.h>
 
-// Typedefs are in ex3/fwd.h to break a potential dependency cycle
+// Additional typedefs are in ex3/fwd.h to break a potential dependency cycle
+typedef op_generic_t *(*lio_segment_read_fn_t)(segment_t *seg, data_attr_t *da, segment_rw_hints_t *hints, int n_iov, ex_tbx_iovec_t *iov, tbx_tbuf_t *buffer, ex_off_t boff, int timeout);
+typedef op_generic_t *(*lio_segment_write_fn_t)(segment_t *seg, data_attr_t *da, segment_rw_hints_t *hints, int n_iov, ex_tbx_iovec_t *iov, tbx_tbuf_t *buffer, ex_off_t boff, int timeout);
+typedef op_generic_t *(*lio_segment_inspect_fn_t)(segment_t *seg, data_attr_t *da, tbx_log_fd_t *fd, int mode, ex_off_t buffer_size, inspect_args_t *args, int timeout);
+typedef op_generic_t *(*lio_segment_truncate_fn_t)(segment_t *seg, data_attr_t *da, ex_off_t new_size, int timeout);
+typedef op_generic_t *(*lio_segment_remove_fn_t)(segment_t *seg, data_attr_t *da, int timeout);
+typedef op_generic_t *(*lio_segment_flush_fn_t)(segment_t *seg, data_attr_t *da, ex_off_t lo, ex_off_t hi, int timeout);
+typedef op_generic_t *(*lio_segment_clone_fn_t)(segment_t *seg, data_attr_t *da, segment_t **clone, int mode, void *attr, int timeout);
+typedef int (*lio_segment_signature_fn_t)(segment_t *seg, char *buffer, int *used, int bufsize);
+typedef ex_off_t (*lio_segment_block_size_fn_t)(segment_t *seg);
+typedef ex_off_t (*lio_segment_size_fn_t)(segment_t *seg);
+typedef int (*lio_segment_serialize_fn_t)(segment_t *seg, exnode_exchange_t *exp);
+typedef int (*lio_segment_deserialize_fn_t)(segment_t *seg, ex_id_t id, exnode_exchange_t *exp);
+typedef void (*lio_segment_destroy_fn_t)(segment_t *seg);
 
 // Functions
 LIO_API op_generic_t *lio_exnode_clone(thread_pool_context_t *tpc, exnode_t *ex, data_attr_t *da, exnode_t **clone_ex, void *arg, int mode, int timeout);
@@ -111,19 +124,19 @@ struct ex_header_t {
 };
 
 struct segment_fn_t {
-    op_generic_t *(*read)(segment_t *seg, data_attr_t *da, segment_rw_hints_t *hints, int n_iov, ex_tbx_iovec_t *iov, tbx_tbuf_t *buffer, ex_off_t boff, int timeout);
-    op_generic_t *(*write)(segment_t *seg, data_attr_t *da, segment_rw_hints_t *hints, int n_iov, ex_tbx_iovec_t *iov, tbx_tbuf_t *buffer, ex_off_t boff, int timeout);
-    op_generic_t *(*inspect)(segment_t *seg, data_attr_t *da, tbx_log_fd_t *fd, int mode, ex_off_t buffer_size, inspect_args_t *args, int timeout);
-    op_generic_t *(*truncate)(segment_t *seg, data_attr_t *da, ex_off_t new_size, int timeout);
-    op_generic_t *(*remove)(segment_t *seg, data_attr_t *da, int timeout);
-    op_generic_t *(*flush)(segment_t *seg, data_attr_t *da, ex_off_t lo, ex_off_t hi, int timeout);
-    op_generic_t *(*clone)(segment_t *seg, data_attr_t *da, segment_t **clone, int mode, void *attr, int timeout);
-    int (*signature)(segment_t *seg, char *buffer, int *used, int bufsize);
-    ex_off_t (*block_size)(segment_t *seg);
-    ex_off_t (*size)(segment_t *seg);
-    int (*serialize)(segment_t *seg, exnode_exchange_t *exp);
-    int (*deserialize)(segment_t *seg, ex_id_t id, exnode_exchange_t *exp);
-    void (*destroy)(segment_t *seg);
+    lio_segment_read_fn_t read;
+    lio_segment_write_fn_t write;
+    lio_segment_inspect_fn_t inspect;
+    lio_segment_truncate_fn_t truncate;
+    lio_segment_remove_fn_t remove;
+    lio_segment_flush_fn_t flush;
+    lio_segment_clone_fn_t clone;
+    lio_segment_signature_fn_t signature;
+    lio_segment_block_size_fn_t block_size;
+    lio_segment_size_fn_t size;
+    lio_segment_serialize_fn_t serialize;
+    lio_segment_deserialize_fn_t deserialize;
+    lio_segment_destroy_fn_t destroy;
 };
 
 struct segment_t {
