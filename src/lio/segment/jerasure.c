@@ -36,6 +36,7 @@
 #include <inttypes.h>
 #include <lio/segment.h>
 #include <limits.h>
+#include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdio.h>
@@ -327,7 +328,8 @@ op_status_t segjerase_inspect_full_func(void *arg, int id)
     segjerase_priv_t *s = (segjerase_priv_t *)si->seg->priv;
     op_status_t status;
     opque_t *q;
-    int err, i, j, k, d, do_fix, nstripes, total_stripes, stripe, bufstripes, n_empty;
+    bool do_fix;
+    int err, i, j, k, d, nstripes, total_stripes, stripe, bufstripes, n_empty;
     int  fail_quick, n_iov, good_magic, unrecoverable_count, bad_count, repair_errors, erasure_errors;
     int magic_count[s->n_devs], match, index, magic_used;
     int magic_devs[s->n_devs*s->n_devs];

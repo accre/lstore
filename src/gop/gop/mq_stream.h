@@ -34,7 +34,7 @@ typedef struct mq_stream_t mq_stream_t;
 // Functions
 GOP_API mq_stream_t *gop_mq_stream_read_create(mq_context_t *mqc,  mq_ongoing_t *ongoing, char *host_id, int hid_len, mq_frame_t *fdata, mq_msg_t *remote_host, int to);
 GOP_API int64_t gop_mq_stream_read_varint(mq_stream_t *mqs, int *error);
-GOP_API mq_stream_t *gop_mq_stream_write_create(mq_context_t *mqc, mq_portal_t *server_portal, mq_ongoing_t *ongoing, char tbx_pack_type, int max_size, int timeout, mq_msg_t *address, mq_frame_t *fid, mq_frame_t *hid, int launch_flusher);
+GOP_API mq_stream_t *gop_mq_stream_write_create(mq_context_t *mqc, mq_portal_t *server_portal, mq_ongoing_t *ongoing, char tbx_pack_type, int max_size, int timeout, mq_msg_t *address, mq_frame_t *fid, mq_frame_t *hid, bool launch_flusher);
 GOP_API int gop_mq_stream_write_varint(mq_stream_t *mqs, int64_t value);
 GOP_API void gop_mq_stream_destroy(mq_stream_t *mqs);
 GOP_API int gop_mq_stream_read(mq_stream_t *mqs, void *buffer, int nbytes);

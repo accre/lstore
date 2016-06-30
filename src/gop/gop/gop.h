@@ -25,6 +25,7 @@ limitations under the License.
 #include <gop/callback.h>
 #include <gop/visibility.h>
 #include <gop/types.h>
+#include <stdbool.h>
 #include <tbx/atomic_counter.h>
 #include <tbx/network.h>
 #include <tbx/stack.h>
@@ -129,10 +130,10 @@ struct op_common_t {
     int retries;           //** Upon failure how many times we've retried
     int id;                //** Op's global id.  Can be changed by use but generally should use my_id
     int my_id;             //** User/Application settable id.  Defaults to id.
-    int state;             //** Command state 0=submitted 1=completed
-    int started_execution; //** If 1 the tasks have already been submitted for execution
+    bool state;             //** Command state 0=submitted 1=completed
+    bool started_execution; //** If 1 the tasks have already been submitted for execution
     int execution_mode;    //** Execution mode OP_EXEC_QUEUE | OP_EXEC_DIRECT
-    int auto_destroy;      //** If 1 then automatically call the free fn to destroy the object
+    bool auto_destroy;      //** If 1 then automatically call the free fn to destroy the object
     gop_control_t *ctl;    //** Lock and condition struct
     void *user_priv;           //** Optional user supplied handle
     gop_op_free_fn_t free;

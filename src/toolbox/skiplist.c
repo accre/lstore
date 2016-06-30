@@ -18,7 +18,7 @@
 
 #include <apr_errno.h>
 #include <assert.h>
-#include <string.h>
+#include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -111,7 +111,7 @@ size_t tbx_sl_size()
     return sizeof(tbx_sl_t);
 }
 
-tbx_sl_t * tbx_sl_new_full(unsigned int maxlevels, double p, int allow_dups,
+tbx_sl_t * tbx_sl_new_full(unsigned int maxlevels, double p, bool allow_dups,
                         tbx_sl_compare_t *compare,
                         tbx_sl_key_t *(*dup)(tbx_sl_key_t *a),
                         void (*key_free)(tbx_sl_key_t *a),
@@ -130,7 +130,7 @@ tbx_sl_t * tbx_sl_new_full(unsigned int maxlevels, double p, int allow_dups,
 }
 
 int tbx_sl_init_full(tbx_sl_t * self,
-                        unsigned int maxlevels, double p, int allow_dups,
+                        unsigned int maxlevels, double p, bool allow_dups,
                         tbx_sl_compare_t *compare,
                         tbx_sl_key_t *(*dup)(tbx_sl_key_t *a),
                         void (*key_free)(tbx_sl_key_t *a),
@@ -157,7 +157,7 @@ error_1:
     return 1;
 }
 
-tbx_sl_t *create_skiplist(int allow_dups,
+tbx_sl_t *create_skiplist(bool allow_dups,
                             tbx_sl_compare_t *compare,
                             tbx_sl_key_t *(*dup)(tbx_sl_key_t *a),
                             void (*key_free)(tbx_sl_key_t *a),

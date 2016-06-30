@@ -19,6 +19,7 @@
 #define ACCRE_NETWORK_H_INCLUDED
 
 #include <apr_time.h>
+#include <stdbool.h>
 #include <stddef.h>
 #include <tbx/chksum.h>
 #include <tbx/visibility.h>
@@ -91,8 +92,8 @@ TBX_API void tbx_ns_config_2_ssl(tbx_ns_t *ns, int tcpsize);
     struct tbx_ns_chksum_t {  //** NetStream checksum container
         int64_t blocksize;   //** Checksum block size or how often to inject/extract the checksum information
         int64_t bytesleft;       //** Current byte count until a full block
-        int    is_running;  //** Current state.  1=running
-        int    is_valid;     //** Has a valid chksum stored
+        bool    is_running;  //** Current state.  1=running
+        bool    is_valid;     //** Has a valid chksum stored
         tbx_chksum_t chksum;    //** Checksum to use
     };
 #endif

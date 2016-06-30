@@ -50,7 +50,7 @@ struct tbx_sl_compare_t {
 struct tbx_sl_t {  //** Generic Skip Lists container
     unsigned int max_levels;         //** Max number of pointers/levels
     unsigned int current_max;        //** Current Max level
-    int allow_dups;         //** Allow duplicate keys if 1
+    bool allow_dups;         //** Allow duplicate keys if 1
     int n_keys;             //** Number of unique keys
     int n_ele;              //** Number of elements
     double p;               //** Negative Binomial distribution fraction
@@ -89,7 +89,7 @@ extern tbx_sl_compare_t tbx_sl_compare_strcmp_descending;
 extern tbx_sl_compare_t skiplist_compare_ptr;
 
 
-tbx_sl_t *create_skiplist(int allow_dups,
+tbx_sl_t *create_skiplist(bool allow_dups,
                             tbx_sl_compare_t *compare,
                             tbx_sl_key_t *(*dup)(tbx_sl_key_t *a),
                             void (*key_free)(tbx_sl_key_t *a),

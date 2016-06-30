@@ -28,6 +28,7 @@
 #include <apr_thread_mutex.h>
 #include <apr_thread_proc.h>
 #include <apr_time.h>
+#include <stdbool.h>
 #include <stdint.h>
 #include <string.h>
 
@@ -64,8 +65,8 @@ struct ns_monitor_s;   //** Forward declaration
 struct tbx_ns_chksum_t {  //** NetStream checksum container
     int64_t blocksize;   //** Checksum block size or how often to inject/extract the checksum information
     int64_t bytesleft;       //** Current byte count until a full block
-    int    is_running;  //** Current state.  1=running
-    int    is_valid;     //** Has a valid chksum stored
+    bool    is_running;  //** Current state.  1=running
+    bool    is_valid;     //** Has a valid chksum stored
     tbx_chksum_t chksum;    //** Checksum to use
 };
 
@@ -103,8 +104,8 @@ struct tbx_ns_monitor_t {   //** Struct used to handle ports being monitored
     tbx_ns_t *ns;       //** Connection actually being monitored
     char *address;         //** Interface to bind to
     int port;              //** Port to use
-    int is_pending;        //** Flags the connections as ready for an accept call
-    int shutdown_request;  //** Flags the connection to shutdown
+    bool is_pending;        //** Flags the connections as ready for an accept call
+    bool shutdown_request;  //** Flags the connection to shutdown
     apr_thread_t *thread;  //** Execution thread handle
     apr_pool_t *mpool;     //** Memory pool for the thread
     apr_thread_mutex_t *lock;  //** Lock used for blocking pending accept

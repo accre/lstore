@@ -25,6 +25,7 @@ limitations under the License.
 #include <gop/gop.h>
 #include <gop/visibility.h>
 #include <gop/types.h>
+#include <stdbool.h>
 #include <tbx/stack.h>
 
 #ifdef __cplusplus
@@ -71,7 +72,7 @@ struct que_data_t {
     tbx_stack_t *failed;       //** All lists that fail are also placed here
     int nleft;             //** Number of lists left to be processed
     int nsubmitted;        //** Nunmber of submitted tasks (doesn't count sub q's)
-    int finished_submission; //** No more tasks will be submitted so it's safe to free the data when finished
+    bool finished_submission; //** No more tasks will be submitted so it's safe to free the data when finished
     callback_t failure_cb;   //** Only used if a task fails
     opque_t *opque;
 };

@@ -897,7 +897,7 @@ void gop_mq_stream_write_destroy(mq_stream_t *mqs)
 // gop_mq_stream_write_create - Creates an MQ stream for writing
 //***********************************************************************
 
-mq_stream_t *gop_mq_stream_write_create(mq_context_t *mqc, mq_portal_t *server_portal, mq_ongoing_t *ongoing, char tbx_pack_type, int max_size, int timeout, mq_msg_t *address, mq_frame_t *fid, mq_frame_t *hid, int launch_flusher)
+mq_stream_t *gop_mq_stream_write_create(mq_context_t *mqc, mq_portal_t *server_portal, mq_ongoing_t *ongoing, char tbx_pack_type, int max_size, int timeout, mq_msg_t *address, mq_frame_t *fid, mq_frame_t *hid, bool launch_flusher)
 {
     mq_stream_t *mqs;
     intptr_t key;

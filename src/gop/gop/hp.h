@@ -24,6 +24,7 @@ limitations under the License.
 #include <apr_time.h>
 #include <gop/visibility.h>
 #include <gop/types.h>
+#include <stdbool.h>
 #include <tbx/network.h>
 
 #ifdef __cplusplus
@@ -41,7 +42,7 @@ GOP_API void gop_hp_context_destroy(portal_context_t *hpc);
 GOP_API int gop_hp_direct_submit(portal_context_t *hpc, op_generic_t *op);
 GOP_API int gop_hp_que_op_submit(portal_context_t *hpc, op_generic_t *op);
 GOP_API void gop_hp_shutdown(portal_context_t *hpc);
-GOP_API int gop_hp_submit(host_portal_t *dp, op_generic_t *op, int addtotop, int release_master);
+GOP_API int gop_hp_submit(host_portal_t *dp, op_generic_t *op, bool addtotop, bool release_master);
 
 // Preprocessor constants
 #define HP_HOSTPORT_SEPARATOR "|"

@@ -25,6 +25,7 @@
 #include <apr_time.h>
 #include <assert.h>
 #include <gop/portal.h>
+#include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -524,7 +525,7 @@ void gop_change_all_hportal_conn(portal_context_t *hpc, int min_conn, int max_co
 //        NOTE:  No locking is performed
 //*************************************************************************
 
-void _add_hportal_op(host_portal_t *hp, op_generic_t *hsop, int addtotop, int release_master)
+void _add_hportal_op(host_portal_t *hp, op_generic_t *hsop, int addtotop, bool release_master)
 {
     command_op_t *hop = &(hsop->op->cmd);
     tbx_stack_ele_t *ele;
@@ -881,7 +882,7 @@ int gop_hp_direct_submit(portal_context_t *hpc, op_generic_t *op)
 //     spawns any new connections if needed
 //*************************************************************************
 
-int gop_hp_submit(host_portal_t *hp, op_generic_t *op, int addtotop, int release_master)
+int gop_hp_submit(host_portal_t *hp, op_generic_t *op, bool addtotop, bool release_master)
 {
     hportal_lock(hp);
     _add_hportal_op(hp, op, addtotop, release_master);  //** Add the task

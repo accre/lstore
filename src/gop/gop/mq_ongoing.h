@@ -60,7 +60,7 @@ GOP_API void *gop_mq_ongoing_remove(mq_ongoing_t *mqon, char *id, int id_len, in
 struct mq_ongoing_object_t {
     int type;
     int count;
-    int auto_clean;
+    bool auto_clean;
     void *handle;
     intptr_t key;
     mq_ongoing_fail_t *on_fail;

@@ -20,6 +20,7 @@
 
 #include <apr_pools.h>
 #include <apr_thread_mutex.h>
+#include <stdbool.h>
 #include <tbx/tbx_decl.h>
 #include <tbx/visibility.h>
 
@@ -48,19 +49,19 @@ typedef void (*tbx_sl_data_free_fn_t)(tbx_sl_data_t *a);
 
 
 TBX_TYPE(tbx_sl_t, tbx_sl);
-TBX_API tbx_sl_t *tbx_sl_create_full(unsigned int maxlevels, double p, int allow_dups,
+TBX_API tbx_sl_t *tbx_sl_create_full(unsigned int maxlevels, double p, bool allow_dups,
                                         tbx_sl_compare_t *compare,
                                         tbx_sl_key_t *(*dup)(tbx_sl_key_t *a),
                                         void (*key_free)(tbx_sl_key_t *a),
                                         void (*data_free)(tbx_sl_data_t *a));
-TBX_TYPE_NEW(tbx_sl_t, tbx_sl_new_full, unsigned int maxlevels, double p, int allow_dups,
+TBX_TYPE_NEW(tbx_sl_t, tbx_sl_new_full, unsigned int maxlevels, double p, bool allow_dups,
                         tbx_sl_compare_t *compare,
                         tbx_sl_dup_fn_t dup,
                         tbx_sl_key_free_fn_t key_free,
                         tbx_sl_data_free_fn_t data_free);
 
 TBX_TYPE_INIT(tbx_sl_t, tbx_sl_init_full, tbx_sl_t * self,
-                        unsigned int maxlevels, double p, int allow_dups,
+                        unsigned int maxlevels, double p, bool allow_dups,
                         tbx_sl_compare_t *compare,
                         tbx_sl_dup_fn_t dup,
                         tbx_sl_key_free_fn_t key_free,
@@ -99,7 +100,7 @@ TBX_API extern tbx_sl_compare_t tbx_sl_compare_strcmp;
     struct tbx_sl_t {  //** Generic Skip Lists container
         unsigned int max_levels;         //** Max number of pointers/levels
         unsigned int current_max;        //** Current Max level
-        int allow_dups;         //** Allow duplicate keys if 1
+        bool allow_dups;         //** Allow duplicate keys if 1
         int n_keys;             //** Number of unique keys
         int n_ele;              //** Number of elements
         double p;               //** Negative Binomial distribution fraction
