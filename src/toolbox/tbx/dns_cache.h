@@ -24,6 +24,13 @@
 extern "C" {
 #endif
 
+// Types
+typedef enum tbx_dns_ip_t tbx_dns_ip_t;
+enum tbx_dns_ip_t {
+    DNS_IPV4,
+    DNS_IPV6
+};
+
 // Functions
 TBX_API int tbx_dnsc_lookup(const char * name, char * byte_addr, char * ip_addr);
 TBX_API int tbx_dnsc_shutdown();
@@ -32,8 +39,6 @@ TBX_API int tbx_dnsc_startup_sized(int size);
 
 // Preprocessor macros
 #define DNS_ADDR_MAX 16
-#define DNS_IPV4  0
-#define DNS_IPV6  1
 
 #ifdef __cplusplus
 }

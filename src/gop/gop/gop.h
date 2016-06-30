@@ -42,6 +42,39 @@ typedef op_status_t (*gop_op_recv_phase_fn_t)(op_generic_t *gop, tbx_ns_t *ns);
 typedef int (*gop_op_on_submit_fn_t)(tbx_stack_t *stack, tbx_stack_ele_t *gop_ele);
 typedef int (*gop_op_before_exec_fn_t)(op_generic_t *gop);
 typedef int (*gop_op_destroy_command_fn_t)(op_generic_t *gop);
+typedef enum gop_op_state_t gop_op_state_t;
+enum gop_op_state_t {
+    OP_STATE_SUCCESS,
+    OP_STATE_FAILURE,
+    OP_STATE_RETRY,
+    OP_STATE_DEAD,
+    OP_STATE_TIMEOUT,
+    OP_STATE_INVALID_HOST,
+    OP_STATE_CANT_CONNECT,
+    OP_STATE_ERROR,
+};
+typedef enum gop_op_type_t gop_op_type_t;
+enum gop_op_type_t {
+    Q_TYPE_OPERATION,
+    Q_TYPE_QUE
+};
+
+typedef enum gop_op_free_mode_t gop_op_free_mode_t;
+enum gop_op_free_mode_t {
+    OP_FINALIZE,
+    OP_DESTROY,
+};
+typedef enum gop_fm_t gop_fm_t;
+enum gop_fm_t {
+    OP_FM_FORCED,
+    OP_FM_GET_END,
+};
+
+typedef enum gop_op_exec_mode_t gop_op_exec_mode_t;
+enum gop_op_exec_mode_t {
+    OP_EXEC_QUEUE,
+    OP_EXEC_DIRECT,
+};
 
 // Functions
 GOP_API void gop_callback_append(op_generic_t *q, callback_t *cb);
@@ -68,27 +101,6 @@ GOP_API op_generic_t *gop_waitany(op_generic_t *gop);
 GOP_API op_generic_t *gop_waitany_timed(op_generic_t *g, int dt);
 
 // Preprocessor constants
-#define OP_STATE_SUCCESS  10
-#define OP_STATE_FAILURE  20
-#define OP_STATE_RETRY    30
-#define OP_STATE_DEAD     40
-#define OP_STATE_TIMEOUT  50
-#define OP_STATE_INVALID_HOST 60
-#define OP_STATE_CANT_CONNECT 70
-#define OP_STATE_ERROR    80
-
-#define Q_TYPE_OPERATION 50
-#define Q_TYPE_QUE       51
-
-#define OP_FINALIZE      -10
-#define OP_DESTROY       -20
-
-#define OP_FM_FORCED     11
-#define OP_FM_GET_END    22
-
-#define OP_EXEC_QUEUE    100
-#define OP_EXEC_DIRECT   101
-
 // Global constants
 GOP_API extern op_status_t gop_success_status;
 GOP_API extern op_status_t gop_failure_status;

@@ -99,24 +99,34 @@ LIO_API int lioc_setattr(lio_config_t *lc, creds_t *creds, char *path, char *id,
 LIO_API op_generic_t *lioc_truncate(lio_path_tuple_t *tuple, ex_off_t new_size);
 
 // Preprocessor constants
-#define LIO_FSCK_MANUAL      0
-#define LIO_FSCK_PARENT      1
-#define LIO_FSCK_DELETE      2
-#define LIO_FSCK_USER        4
-#define LIO_FSCK_SIZE_REPAIR 8
+typedef enum lio_fsck_repair_t lio_fsck_repair_t;
+enum lio_fsck_repair_t {
+    LIO_FSCK_MANUAL =    0,
+    LIO_FSCK_PARENT =    (1 << 0),
+    LIO_FSCK_DELETE =    (1 << 1),
+    LIO_FSCK_USER   =    (1 << 2),
+    LIO_FSCK_SIZE_REPAIR  = (1 << 3),
+};
 
-#define LIO_FSCK_FINISHED           -1
-#define LIO_FSCK_GOOD                0
-#define LIO_FSCK_MISSING_OWNER       1
-#define LIO_FSCK_MISSING_EXNODE      2
-#define LIO_FSCK_MISSING_EXNODE_SIZE 4
-#define LIO_FSCK_MISSING_INODE       8
-#define LIO_FSCK_MISSING            16
+typedef enum lio_fsck_error_flags_t lio_fsck_error_flags_t;
+enum lio_fsck_error_flags_t {
+    LIO_FSCK_FINISHED          =  (-1),
+    LIO_FSCK_GOOD              =  (0),
+    LIO_FSCK_MISSING_OWNER     =  (1 << 0),
+    LIO_FSCK_MISSING_EXNODE    =  (1 << 1),
+    LIO_FSCK_MISSING_EXNODE_SIZE = (1 << 2),
+    LIO_FSCK_MISSING_INODE     =  (1 << 3),
+    LIO_FSCK_MISSING           =  (1 << 4),
+};
 
+//**! FIXME only one of these? Why?
 #define LIO_READ_MODE      1
 
-#define LIO_COPY_DIRECT   0
-#define LIO_COPY_INDIRECT 1
+typedef enum lio_copy_hint_t lio_copy_hint_t;
+enum lio_copy_hint_t {
+    LIO_COPY_DIRECT   = 0,
+    LIO_COPY_INDIRECT = 1,
+};
 
 // Global variables
 LIO_API extern lio_config_t *lio_gc;

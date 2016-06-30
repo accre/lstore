@@ -27,6 +27,8 @@ extern "C" {
 // Types
 /*! Generic checksum container (opaque) */
 typedef struct tbx_chksum_t tbx_chksum_t;
+typedef enum tbx_chksum_type_t tbx_chksum_type_t;
+typedef enum tbx_chksum_digest_output_t tbx_chksum_digest_output_t;
 
 // Functions
 /*! @brief Verifies if a type is valid
@@ -96,57 +98,49 @@ TBX_API int tbx_chksum_type_name(const char *name);
 /** Maximum size of resulting checksum in bytes */
 #define CHKSUM_MAX_SIZE    257
 
-// The @defgroup @{ @} syntax makes a group of related comments
+/*! Checksum return type */
+enum tbx_chksum_digest_output_t {
+    /** Hexidecimal output */
+    CHKSUM_DIGEST_HEX,
+    /** Binary output */
+    CHKSUM_DIGEST_BIN
+};
 
-/** @defgroup CHECKSUM_DIGEST Checksum return type
-    @{
-*/
-/** Hexidecimal output */
-#define CHKSUM_DIGEST_HEX   0
-/** Binary output */
-#define CHKSUM_DIGEST_BIN   1
-/** @} */
-
-/** @defgroup CHECKSUM_ALGORITHM Checksum algorithm
-    @{
-*/
-#define CHKSUM_DEFAULT  -1 /*!< Default checksum(TODO?) */
-#define CHKSUM_NONE      0 /*!< No checksum */
-#define CHKSUM_SHA256    1 /*!< SHA256 */
-#define CHKSUM_SHA512    2 /*!< SHA512 */
-#define CHKSUM_SHA1      3 /*!< SHA1 */
-#define CHKSUM_MD5       4 /*!< MD5 */
-#define CHKSUM_MAX_TYPE  5 /*!< Number of checksums */
-#define CHKSUM_TYPE_SIZE  (CHKSUM_MD5+1) /*!< Number of checksums */
-/** @} */
+/*! @brief Checksum algorithm */
+enum tbx_chksum_type_t {
+    CHKSUM_DEFAULT, /*!< Default checksum(TODO?) */
+    CHKSUM_NONE,    /*!< No checksum */
+    CHKSUM_SHA256,  /*!< SHA256 */
+    CHKSUM_SHA512,  /*!< SHA512 */
+    CHKSUM_SHA1,    /*!< SHA1 */
+    CHKSUM_MD5,     /*!< MD5 */
+    CHKSUM_MAX_TYPE /*!< Number of checksums */
+};
 
 // TEMPORARY
-#if !defined toolbox_EXPORTS && defined LSTORE_HACK_EXPORT
-#   include <tbx/transfer_buffer.h>
-    /*! Checksum reset function pointer */
-    typedef int (*tbx_chksum_reset_fn_t)(void *state);
-    /*! Checksum sizeof function pointer */
-    typedef int (*tbx_chksum_size_fn_t)(void *state, int type);
-    /*! Checksum return function pointer */
-    typedef int (*tbx_chksum_get_fn_t)(void *state, int type, char *value);
-    /*! Checksum add data function pointer */
-    typedef int (*tbx_chksum_add_fn_t)(void *state, int size, tbx_tbuf_t *data, int doff);
+#include <tbx/transfer_buffer.h>
+/*! Checksum reset function pointer */
+typedef int (*tbx_chksum_reset_fn_t)(void *state);
+/*! Checksum sizeof function pointer */
+typedef int (*tbx_chksum_size_fn_t)(void *state, int type);
+/*! Checksum return function pointer */
+typedef int (*tbx_chksum_get_fn_t)(void *state, int type, char *value);
+/*! Checksum add data function pointer */
+typedef int (*tbx_chksum_add_fn_t)(void *state, int size, tbx_tbuf_t *data, int doff);
 
 
-    /*! Generic Checksum container */
-    struct tbx_chksum_t{
-        // The //!< form tells doxygen to document the PREVIOUS statement instead
-        // of the one after. Useful if you want to document values in-line
-        char state[CHKSUM_STATE_SIZE];  //!< Used to store state information as an overlay record
-        int type;                    //!< Checksum type
-        char *name;                  //!< Pointer to the string version of the checksum type
-        tbx_chksum_reset_fn_t reset;   //!< Resets checksum to initial value
-        tbx_chksum_size_fn_t size;   //!< Size of checksum in bytes
-        tbx_chksum_get_fn_t get; //!< Returns the checksum string
-        tbx_chksum_add_fn_t add; //!< Adds the data to the checksum
-    };
-#endif
-
+/*! Generic Checksum container */
+struct tbx_chksum_t{
+    // The //!< form tells doxygen to document the PREVIOUS statement instead
+    // of the one after. Useful if you want to document values in-line
+    char state[CHKSUM_STATE_SIZE];  //!< Used to store state information as an overlay record
+    int type;         //!< Checksum type
+    char *name;                  //!< Pointer to the string version of the checksum type
+    tbx_chksum_reset_fn_t reset;   //!< Resets checksum to initial value
+    tbx_chksum_size_fn_t size;   //!< Size of checksum in bytes
+    tbx_chksum_get_fn_t get; //!< Returns the checksum string
+    tbx_chksum_add_fn_t add; //!< Adds the data to the checksum
+};
 
 #ifdef __cplusplus
 }

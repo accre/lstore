@@ -31,14 +31,20 @@ extern "C" {
 
 // Types
 typedef struct tbx_network_t tbx_network_t;
-
 typedef struct tbx_ns_chksum_t tbx_ns_chksum_t;
-
 typedef struct tbx_ns_monitor_t tbx_ns_monitor_t;
-
 typedef struct tbx_ns_t tbx_ns_t;
-
 typedef apr_time_t tbx_ns_timeout_t;
+typedef enum tbx_net_type_t tbx_net_type_t;
+enum tbx_net_type_t {
+    NS_TYPE_UNKNOWN,  //** Unspecified type
+    NS_TYPE_SOCK,     //** Base socket implementation
+    NS_TYPE_PHOEBUS,  //** Phoebus socket implementation
+    NS_TYPE_1_SSL,    //** Single SSL connection -- openssl/gnutls/NSS are not thread safe so this is **slow**
+    NS_TYPE_2_SSL,    //** Dual SSL connection -- Allows use of separate R/W locks over SSL much faster than prev
+    NS_TYPE_ZSOCK,	 //** ZMQ implementation
+    NS_TYPE_MAX,      //** Not an actual type just the number of different types
+};
 
 // Functions
 TBX_API void  tbx_ns_setid(tbx_ns_t *ns, int id);
@@ -78,14 +84,6 @@ TBX_API void tbx_ns_config_2_ssl(tbx_ns_t *ns, int tcpsize);
 #define tbx_ns_chksum_clear(ncs) (ncs)->is_valid = 0
 #define tbx_ns_chksum_init(ncs)    memset((ncs), 0, sizeof(tbx_ns_chksum_t))
 #define tbx_ns_chksum_enable(ncs)  (ncs)->is_running = 1
-// NS types
-#define NS_TYPE_UNKNOWN  0      //** Unspecified type
-#define NS_TYPE_SOCK     1      //** Base socket implementation
-#define NS_TYPE_PHOEBUS  2      //** Phoebus socket implementation
-#define NS_TYPE_1_SSL    3      //** Single SSL connection -- openssl/gnutls/NSS are not thread safe so this is **slow**
-#define NS_TYPE_2_SSL    4      //** Dual SSL connection -- Allows use of separate R/W locks over SSL much faster than prev
-#define NS_TYPE_ZSOCK	 5	//** ZMQ implementation
-#define NS_TYPE_MAX      6      //** Not an actual type just the number of different types
 
 // TEMPORARY
 #if !defined toolbox_EXPORTS && defined LSTORE_HACK_EXPORT

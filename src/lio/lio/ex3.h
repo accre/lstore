@@ -54,37 +54,54 @@ LIO_API service_manager_t *lio_exnode_service_set_create();
 LIO_API void lio_exnode_service_set_destroy(service_manager_t *ess);
 
 // Preprocessor constants
-#define EX_TEXT             0
-#define EX_PROTOCOL_BUFFERS 1
+typedef enum lio_ex3_format_t lio_ex3_format_t;
+enum lio_ex3_format_t {
+    EX_TEXT,
+    EX_PROTOCOL_BUFFERS,
+};
 
-#define CLONE_STRUCTURE       0
-#define CLONE_STRUCT_AND_DATA 1
+typedef enum lio_ex3_clone_t lio_ex3_clone_t;
+enum lio_ex3_clone_t {
+    CLONE_STRUCTURE,
+    CLONE_STRUCT_AND_DATA,
+};
 
-#define INSPECT_QUICK_CHECK   1
-#define INSPECT_SCAN_CHECK    2
-#define INSPECT_FULL_CHECK    3
-#define INSPECT_QUICK_REPAIR  4
-#define INSPECT_SCAN_REPAIR   5
-#define INSPECT_FULL_REPAIR   6
-#define INSPECT_SOFT_ERRORS   7
-#define INSPECT_HARD_ERRORS   8
-#define INSPECT_MIGRATE       9
-#define INSPECT_WRITE_ERRORS 10
+typedef enum lio_ex3_inspect_command_t lio_ex3_inspect_command_t;
+enum lio_ex3_inspect_command_t {
+    INSPECT_NO_CHECK,
+    INSPECT_QUICK_CHECK,
+    INSPECT_SCAN_CHECK,
+    INSPECT_FULL_CHECK,
+    INSPECT_QUICK_REPAIR,
+    INSPECT_SCAN_REPAIR,
+    INSPECT_FULL_REPAIR,
+    INSPECT_SOFT_ERRORS,
+    INSPECT_HARD_ERRORS,
+    INSPECT_MIGRATE,
+    INSPECT_WRITE_ERRORS,
+    /* NOTE: If you add another enumeration, you must change the
+     *       following line as well.
+     */
+};
+/* WRITE_ERRORS is 10 (0b1010 AKA 0xA), so we need to mask 4 bits: 0b1111 AKA
+ * 0xA
+ */
+#define INSPECT_COMMAND_BITS (0xA)
 
-#define INSPECT_FORCE_REPAIR          128   //** Make the repair even if it leads to data loss
-#define INSPECT_COMMAND_BITS 15
+/* FIXME: this seems awfully scattered around. Try and solve this too */
+#define INSPECT_FORCE_REPAIR          (1 << 7)   //** Make the repair even if it leads to data loss
 
 #define SEG_SM_CREATE "segment_create"
 
-#define INSPECT_RESULT_FULL_CHECK      512    //** Full byte-level check performed
-#define INSPECT_RESULT_SOFT_ERROR     1024   //** Soft errors found
-#define INSPECT_RESULT_HARD_ERROR     2048   //** Hard errors found
+#define INSPECT_RESULT_FULL_CHECK   (1 << 9)    //** Full byte-level check performed
+#define INSPECT_RESULT_SOFT_ERROR   (1 << 10)  //** Soft errors found
+#define INSPECT_RESULT_HARD_ERROR   (1 << 11)   //** Hard errors found
 
-#define INSPECT_SOFT_ERROR_FAIL       256   //** Treat soft errors as hard
-#define INSPECT_FORCE_RECONSTRUCTION  512   //** Don't use depot-depot copies for data movement.  Instead use reconstruction
-#define INSPECT_FAIL_ON_ERROR        1024   //** Kick out if an unrecoverable error is hit
-#define INSPECT_FIX_READ_ERROR       2048   //** Treat read errors as bad blocks for repair
-#define INSPECT_FIX_WRITE_ERROR      4096   //** Treat write errors as bad blocks for repair
+#define INSPECT_SOFT_ERROR_FAIL       (1 << 8)   //** Treat soft errors as hard
+#define INSPECT_FORCE_RECONSTRUCTION  (1 << 9)   //** Don't use depot-depot copies for data movement.  Instead use reconstruction
+#define INSPECT_FAIL_ON_ERROR        (1 << 10)   //** Kick out if an unrecoverable error is hit
+#define INSPECT_FIX_READ_ERROR       (1 << 11)   //** Treat read errors as bad blocks for repair
+#define INSPECT_FIX_WRITE_ERROR      (1 << 12)   //** Treat write errors as bad blocks for repair
 
 #define XIDT "%" PRIu64    //uint64_t
 #define XOT  "%" PRId64    //int64_t

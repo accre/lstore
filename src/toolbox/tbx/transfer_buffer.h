@@ -35,7 +35,11 @@ typedef struct tbx_tbuf_state_t tbx_tbuf_state_t;
 typedef struct tbx_tbuf_t tbx_tbuf_t;
 
 typedef struct tbx_tbuf_var_t tbx_tbuf_var_t;
-
+typedef enum tbx_tbuf_ret_t tbx_tbuf_ret_t;
+enum tbx_tbuf_ret_t {
+    TBUFFER_OK,
+    TBUFFER_OUTOFSPACE,
+};
 // Functions
 TBX_API tbx_iovec_t * tbx_tbuf_var_buffer_get(tbx_tbuf_var_t *tbv);
 TBX_API int tbx_tbuf_copy(tbx_tbuf_t *tb_s, size_t off_s, tbx_tbuf_t *tb_d,
@@ -61,8 +65,6 @@ TBX_API void tbx_tbuf_vec(tbx_tbuf_t *tb,
                             tbx_iovec_t *iov);
 
 // Preprocessor macros
-#define TBUFFER_OK 1
-#define TBUFFER_OUTOFSPACE 2
 #define tbx_tbuf_var_init(tbv) memset((tbv), 0, tbx_tbuf_var_size())
 #if !defined toolbox_EXPORTS && defined LSTORE_HACK_EXPORT
     struct tbx_tbuf_info_t {

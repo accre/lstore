@@ -29,35 +29,13 @@
 #ifndef __CHKSUM_H_
 #define __CHKSUM_H_
 
-#include "tbx/chksum.h"
-#include "tbx/visibility.h"
-#include "tbx/transfer_buffer.h"
+#include <tbx/chksum.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-/*! Checksum reset function pointer */
-typedef int (*tbx_chksum_reset_fn_t)(void *state);
-/*! Checksum sizeof function pointer */
-typedef int (*tbx_chksum_size_fn_t)(void *state, int type);
-/*! Checksum return function pointer */
-typedef int (*tbx_chksum_get_fn_t)(void *state, int type, char *value);
-/*! Checksum add data function pointer */
-typedef int (*tbx_chksum_add_fn_t)(void *state, int size, tbx_tbuf_t *data, int doff);
-
-/*! Generic Checksum container */
-struct tbx_chksum_t{
-    // The //!< form tells doxygen to document the PREVIOUS statement instead
-    // of the one after. Useful if you want to document values in-line
-    char state[CHKSUM_STATE_SIZE];  //!< Used to store state information as an overlay record
-    int type;                    //!< Checksum type
-    char *name;                  //!< Pointer to the string version of the checksum type
-    tbx_chksum_reset_fn_t reset;   //!< Resets checksum to initial value
-    tbx_chksum_size_fn_t size;   //!< Size of checksum in bytes
-    tbx_chksum_get_fn_t get; //!< Returns the checksum string
-    tbx_chksum_add_fn_t add; //!< Adds the data to the checksum
-};
+// To be refilled once the checksum types can be hidden
 
 #ifdef __cplusplus
 }

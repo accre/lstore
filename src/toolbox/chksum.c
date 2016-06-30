@@ -106,7 +106,7 @@ int tbx_chksum_type_name(const char *name)
 {
     int i;
 
-    for (i=0; i<CHKSUM_TYPE_SIZE; i++) {
+    for (i=0; i<CHKSUM_MAX_TYPE; i++) {
         if (strcasecmp(name, _chksum_name[i]) == 0) return(i);
     }
 

@@ -51,6 +51,19 @@ typedef int mq_pipe_t;       //** Event notification FD
 typedef void (gop_mq_exec_fn_t)(void *arg, mq_task_t *task);
 typedef void (*gop_mq_task_arg_free_fn_t)(void *arg);  //** Function for cleaning up the GOP arg. (GOP)
 
+typedef enum gop_mqf_msg_t gop_mqf_msg_t;
+enum gop_mqf_msg_t {
+    MQF_MSG_AUTO_FREE, //** Auto free data on destroy
+    MQF_MSG_KEEP_DATA, //** Skip free'ing of data on destroy.  App is responsible.
+    MQF_MSG_INTERNAL_FREE, //** The msg routines are responsible for free'ing the data. Used on mq_recv().
+};
+
+typedef enum gop_mq_cmode_t gop_mq_cmode_t;
+enum gop_mq_cmode_t {
+    MQ_CMODE_CLIENT, //** Normal outgoing connection
+    MQ_CMODE_SERVER, //** USed by servers for incoming connections
+};
+
 // Functions
 GOP_API void gop_mq_apply_return_address_msg(mq_msg_t *msg, mq_msg_t *raw_address, int dup_frames);
 GOP_API void gop_mq_command_set(mq_command_table_t *table, void *cmd, int cmd_size, void *arg, gop_mq_exec_fn_t *fn);
@@ -84,13 +97,6 @@ GOP_API int gop_mq_submit(mq_portal_t *p, mq_task_t *task);
 GOP_API mq_task_t *gop_mq_task_new(mq_context_t *ctx, mq_msg_t *msg, op_generic_t *gop, void *arg, int dt);
 
 // Preprocessor constants
-#define MQF_MSG_AUTO_FREE     0  //** Auto free data on destroy
-#define MQF_MSG_KEEP_DATA     1  //** Skip free'ing of data on destroy.  App is responsible.
-#define MQF_MSG_INTERNAL_FREE 2  //** The msg routines are responsible for free'ing the data. Used on mq_recv().
-
-#define MQ_CMODE_CLIENT  0     //** Normal outgoing connection
-#define MQ_CMODE_SERVER  1     //** USed by servers for incoming connections
-
 #define MQF_VERSION_KEY        "LMQv100"
 #define MQF_VERSION_SIZE       7
 #define MQF_PING_KEY           "\001"
