@@ -2223,7 +2223,8 @@ op_generic_t *seglun_inspect(segment_t *seg, data_attr_t *da, tbx_log_fd_t *fd, 
     op_generic_t *gop;
     op_status_t err;
     seglun_inspect_t *si;
-    int option, i;
+    lio_ex3_inspect_command_t option;
+    int i;
 
     gop = NULL;
     option = mode & INSPECT_COMMAND_BITS;
@@ -2279,7 +2280,8 @@ op_generic_t *seglun_inspect(segment_t *seg, data_attr_t *da, tbx_log_fd_t *fd, 
         err.op_status = (err.error_code == 0) ? OP_STATE_SUCCESS : OP_STATE_FAILURE;
         gop = gop_dummy(err);
         break;
-
+    case (INSPECT_NO_CHECK):
+        break;
     }
 
     return(gop);

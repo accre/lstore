@@ -45,11 +45,8 @@ GOP_API void gop_mqs_server_more_cb(void *arg, mq_task_t *task);
 #define MQS_PACK_RAW 'R'
 #define MQS_PACK_COMPRESS 'Z'
 
-// FIXME don't open-code this
 #define MQS_MORE_DATA_KEY  "mqs_more"
-#define MQS_MORE_DATA_SIZE 8
-
-
+#define MQS_MORE_DATA_SIZE sizeof(MQS_MORE_DATA_KEY)
 
 #ifdef __cplusplus
 }

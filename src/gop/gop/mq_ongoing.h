@@ -38,7 +38,7 @@ typedef struct ongoing_table_t ongoing_table_t;
 typedef op_generic_t *(mq_ongoing_fail_t)(void *arg, void *handle);
 
 // Functions
-GOP_API mq_ongoing_object_t *gop_mq_ongoing_add(mq_ongoing_t *mqon, int auto_clean, char *id, int id_len, void *handle, mq_ongoing_fail_t *on_fail, void *on_fail_arg);
+GOP_API mq_ongoing_object_t *gop_mq_ongoing_add(mq_ongoing_t *mqon, bool auto_clean, char *id, int id_len, void *handle, mq_ongoing_fail_t *on_fail, void *on_fail_arg);
 GOP_API mq_ongoing_t *gop_mq_ongoing_create(mq_context_t *mqc, mq_portal_t *server_portal, int check_interval, int mode);
 GOP_API void gop_mq_ongoing_destroy(mq_ongoing_t *mqon);
 GOP_API void *gop_mq_ongoing_get(mq_ongoing_t *mqon, char *id, int id_len, intptr_t key);
@@ -51,7 +51,7 @@ GOP_API void *gop_mq_ongoing_remove(mq_ongoing_t *mqon, char *id, int id_len, in
 
 // FIXME: Don't open-code this, perform the actual strlen
 #define ONGOING_KEY            "ongoing"
-#define ONGOING_SIZE           7
+#define ONGOING_SIZE           sizeof(ONGOING_KEY)
 
 #define ONGOING_SERVER 1
 #define ONGOING_CLIENT 2

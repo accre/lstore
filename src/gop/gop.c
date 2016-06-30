@@ -237,7 +237,7 @@ void gop_start_execution(op_generic_t *g)
 // gop_set_exec_mode - SEts the gop's execution mode
 //*************************************************************
 
-void gop_set_exec_mode(op_generic_t *g, int mode)
+void gop_set_exec_mode(op_generic_t *g, gop_op_exec_mode_t mode)
 {
     if (gop_get_type(g) == Q_TYPE_OPERATION) {
         g->base.execution_mode = mode;
@@ -289,7 +289,7 @@ int gop_wait(op_generic_t *gop)
 // gop_free - Frees an opque or a gop
 //*************************************************************
 
-void gop_free(op_generic_t *gop, int mode)
+void gop_free(op_generic_t *gop, gop_op_free_mode_t mode)
 {
     int type;
 
@@ -697,7 +697,7 @@ void gop_init(op_generic_t *gop)
 // gop_generic_free - Frees the data generic internal op data
 //*************************************************************
 
-void gop_generic_free(op_generic_t *gop, int mode)
+void gop_generic_free(op_generic_t *gop, gop_op_free_mode_t mode)
 {
     log_printf(20, "op_generic_free: before lock gid=%d\n", gop_get_id(gop));
     lock_gop(gop);  //** Make sure I own the lock just to be safe

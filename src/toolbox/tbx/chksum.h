@@ -35,14 +35,14 @@ typedef enum tbx_chksum_digest_output_t tbx_chksum_digest_output_t;
  * @param type The type to test
  * @returns 1 if valid, 0 otherwise
  */
-TBX_API int tbx_chksum_type_valid(int type);
+TBX_API int tbx_chksum_type_valid(tbx_chksum_type_t type);
 
 /*! @brief Initializes checksum
  * @param cs Checksum to initialize
  * @param tbx_chksum_type Type of checksum
  * @returns 0 on success, error from library otherwise
  */
-TBX_API int tbx_chksum_set(tbx_chksum_t *cs, int tbx_chksum_type);
+TBX_API int tbx_chksum_set(tbx_chksum_t *cs, tbx_chksum_type_t tbx_chksum_type);
 
 /*! @brief Return checksum type corresponding to a given string
  * @param name Name of the checksum we desire
@@ -122,9 +122,9 @@ enum tbx_chksum_type_t {
 /*! Checksum reset function pointer */
 typedef int (*tbx_chksum_reset_fn_t)(void *state);
 /*! Checksum sizeof function pointer */
-typedef int (*tbx_chksum_size_fn_t)(void *state, int type);
+typedef int (*tbx_chksum_size_fn_t)(void *state, tbx_chksum_digest_output_t type);
 /*! Checksum return function pointer */
-typedef int (*tbx_chksum_get_fn_t)(void *state, int type, char *value);
+typedef int (*tbx_chksum_get_fn_t)(void *state, tbx_chksum_digest_output_t type, char *value);
 /*! Checksum add data function pointer */
 typedef int (*tbx_chksum_add_fn_t)(void *state, int size, tbx_tbuf_t *data, int doff);
 
@@ -134,7 +134,7 @@ struct tbx_chksum_t{
     // The //!< form tells doxygen to document the PREVIOUS statement instead
     // of the one after. Useful if you want to document values in-line
     char state[CHKSUM_STATE_SIZE];  //!< Used to store state information as an overlay record
-    int type;         //!< Checksum type
+    tbx_chksum_type_t type;         //!< Checksum type
     char *name;                  //!< Pointer to the string version of the checksum type
     tbx_chksum_reset_fn_t reset;   //!< Resets checksum to initial value
     tbx_chksum_size_fn_t size;   //!< Size of checksum in bytes

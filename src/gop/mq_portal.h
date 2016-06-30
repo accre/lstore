@@ -64,7 +64,7 @@ extern "C" {
 // Types
 struct mq_frame_t {
     int len;
-    int auto_free;
+    gop_mqf_msg_t auto_free;
     char *data;
     zmq_msg_t zmsg;
 };
@@ -258,7 +258,7 @@ void mq_msg_tbx_stack_insert_above(mq_msg_t *msg, mq_frame_t *f);
 void mq_msg_tbx_stack_insert_below(mq_msg_t *msg, mq_frame_t *f);
 void mq_msg_push_frame(mq_msg_t *msg, mq_frame_t *f);
 mq_msg_hash_t mq_msg_hash(mq_msg_t *msg);
-void mq_msg_push_mem(mq_msg_t *msg, void *data, int len, int auto_free);
+void mq_msg_push_mem(mq_msg_t *msg, void *data, int len, gop_mqf_msg_t auto_free);
 int mq_msg_total_size(mq_msg_t *msg);
 
 mq_msg_t *mq_trackaddress_msg(char *host, mq_msg_t *raw_address, mq_frame_t *fid, int dup_frames);

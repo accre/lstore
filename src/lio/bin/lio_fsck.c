@@ -29,7 +29,8 @@
 
 int main(int argc, char **argv)
 {
-    int i, owner_mode, exnode_mode, size_mode, start_option, start_index;
+    int i, start_option, start_index;
+    lio_fsck_repair_t owner_mode, exnode_mode, size_mode;
     lio_fsck_iter_t *it;
     char *owner;
     char *fname;

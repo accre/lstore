@@ -1223,9 +1223,9 @@ int lio_stat(lio_config_t *lc, creds_t *creds, char *fname, struct stat *stat, c
 // lio_fsck_check_file - Checks a file for errors and optionally repairs them
 //***********************************************************************
 
-int lio_fsck_check_object(lio_config_t *lc, creds_t *creds, char *path, int ftype, int owner_mode, char *owner, int exnode_mode, char **val, int *v_size)
+int lio_fsck_check_object(lio_config_t *lc, creds_t *creds, char *path, int ftype, lio_fsck_repair_t owner_mode, char *owner, lio_fsck_repair_t exnode_mode, char **val, int *v_size)
 {
-    int state, err, srepair, ex_mode, index, vs, ex_index;
+    int state, err, srepair, index, vs, ex_index;
     char *dir, *file, ssize[128], *v;
     ex_id_t ino;
     ex_off_t nbytes;
@@ -1233,7 +1233,7 @@ int lio_fsck_check_object(lio_config_t *lc, creds_t *creds, char *path, int ftyp
     exnode_t *ex, *cex;
     segment_t *seg;
     int do_clone;
-
+    lio_fsck_repair_t ex_mode;
     ex_index = 2;
     state = 0;
 
@@ -1276,6 +1276,9 @@ int lio_fsck_check_object(lio_config_t *lc, creds_t *creds, char *path, int ftyp
         case LIO_FSCK_USER:
             lio_setattr(lc, creds, path, NULL, "system.owner", (void *)owner, strlen(owner));
             break;
+        case LIO_FSCK_SIZE_REPAIR:
+            log_printf(0, "ERROR: Got size_repair on the owner repair\n");
+            break;
         }
     }
 
@@ -1298,6 +1301,9 @@ int lio_fsck_check_object(lio_config_t *lc, creds_t *creds, char *path, int ftyp
         case LIO_FSCK_DELETE:
             gop_sync_exec(lio_remove_op(lc, creds, path, val[ex_index], ftype));
             return(state);
+            break;
+        case LIO_FSCK_SIZE_REPAIR:
+            log_printf(0, "ERROR: Got size_repair on the owner + inode repair\n");
             break;
         }
     }
@@ -1332,6 +1338,13 @@ int lio_fsck_check_object(lio_config_t *lc, creds_t *creds, char *path, int ftyp
             gop_sync_exec(lio_remove_op(lc, creds, path, val[ex_index], ftype));
             return(state);
             break;
+        case LIO_FSCK_SIZE_REPAIR:
+            log_printf(0, "ERROR: Got size_repair on the exnode repair\n");
+            break;
+        case LIO_FSCK_USER:
+            log_printf(0, "ERROR: Got user_repair on the exnode repair\n");
+            break;
+
         }
     }
 

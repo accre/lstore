@@ -3044,8 +3044,9 @@ int lio_cache_stats_get_print(lio_cache_stats_get_t *cs, char *buffer, int *used
 op_generic_t *segcache_inspect(segment_t *seg, data_attr_t *da, tbx_log_fd_t *fd, int mode, ex_off_t bufsize, inspect_args_t *args, int timeout)
 {
     cache_segment_t *s = (cache_segment_t *)seg->priv;
+    lio_ex3_inspect_command_t cmd = mode & INSPECT_COMMAND_BITS;
 
-    if ((mode != INSPECT_SOFT_ERRORS) && (mode != INSPECT_HARD_ERRORS) && (mode != INSPECT_WRITE_ERRORS)) {
+    if ((cmd != INSPECT_SOFT_ERRORS) && (cmd != INSPECT_HARD_ERRORS) && (cmd != INSPECT_WRITE_ERRORS)) {
         info_printf(fd, 1, XIDT ": Cache segment maps to child " XIDT "\n", segment_id(seg), segment_id(s->child_seg));
         info_printf(fd, 1, XIDT ": segment information: cache used_size=" XIDT "\n", segment_id(seg), segment_size(seg));
 

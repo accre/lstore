@@ -121,7 +121,7 @@ int tbx_chksum_type_name(const char *name)
 //    Returns 1 if the type is valid and 0 otherwise
 //**********************************************************************
 
-int tbx_chksum_type_valid(int type)
+int tbx_chksum_type_valid(tbx_chksum_type_t type)
 {
     if ((type > 0) && (type < CHKSUM_MAX_TYPE)) return(1);
 
@@ -136,7 +136,7 @@ int tbx_chksum_type_valid(int type)
 #define _openssl_chksum(CIPHER, cipher) \
 int cipher ## _reset(void *state) { return(CIPHER ## _Init((CIPHER ## _CTX *)state)); } \
                                             \
-int cipher ## _size(void *state, int type)  \
+int cipher ## _size(void *state, tbx_chksum_digest_output_t type)  \
 {                                           \
   int i = -1;                               \
                                             \
@@ -184,7 +184,7 @@ int cipher ## _add(void *state, int nbytes, tbx_tbuf_t *data, int boff)   \
   return(err);                                     \
 }                                                  \
                                                    \
-int cipher ## _get(void *state, int type, char *data)         \
+int cipher ## _get(void *state, tbx_chksum_digest_output_t type, char *data)         \
 {                                                             \
   unsigned char md[CHKSUM_ ## CIPHER ## _LEN + 1];             \
   CIPHER ## _CTX s2;                        \
@@ -249,11 +249,11 @@ int blank_reset(void *state)
 {
     return(0);
 }
-int blank_size(void *state, int type)
+int blank_size(void *state, tbx_chksum_digest_output_t type)
 {
     return(0);
 }
-int blank_get(void *state, int type, char *value)
+int blank_get(void *state, tbx_chksum_digest_output_t type, char *value)
 {
     value[0] = '\0';
     return(0);
@@ -285,7 +285,7 @@ int blank_tbx_chksum_set(tbx_chksum_t *cs)
 //
 //*************************************************************************
 
-int tbx_chksum_set(tbx_chksum_t *cs, int tbx_chksum_type)
+int tbx_chksum_set(tbx_chksum_t *cs, tbx_chksum_type_t tbx_chksum_type)
 {
     int i = -1;
 
@@ -304,6 +304,8 @@ int tbx_chksum_set(tbx_chksum_t *cs, int tbx_chksum_type)
     case CHKSUM_MD5:
         i = md5_set(cs);
         break;
+    case CHKSUM_MAX_TYPE:
+    case CHKSUM_DEFAULT:
     case CHKSUM_NONE:
         i = blank_tbx_chksum_set(cs);
         break;

@@ -140,7 +140,7 @@ struct exnode_text_t {
 };
 
 struct exnode_exchange_t {
-    int type;
+    lio_ex3_format_t type;
     exnode_text_t text;
 };
 

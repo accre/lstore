@@ -45,7 +45,7 @@ typedef struct {
     char name[BUF_SIZE];
     unsigned char addr[DNS_ADDR_MAX];
     char ip_addr[256];
-    int family;
+    tbx_dns_ip_t family;
 } DNS_entry_t;
 
 typedef struct {

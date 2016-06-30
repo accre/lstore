@@ -328,8 +328,9 @@ op_status_t segjerase_inspect_full_func(void *arg, int id)
     segjerase_priv_t *s = (segjerase_priv_t *)si->seg->priv;
     op_status_t status;
     opque_t *q;
+    lio_ex3_inspect_command_t i;
     bool do_fix;
-    int err, i, j, k, d, nstripes, total_stripes, stripe, bufstripes, n_empty;
+    int err, j, k, d, nstripes, total_stripes, stripe, bufstripes, n_empty;
     int  fail_quick, n_iov, good_magic, unrecoverable_count, bad_count, repair_errors, erasure_errors;
     int magic_count[s->n_devs], match, index, magic_used;
     int magic_devs[s->n_devs*s->n_devs];
@@ -1015,11 +1016,10 @@ op_generic_t *segjerase_inspect(segment_t *seg, data_attr_t *da, tbx_log_fd_t *f
     op_generic_t *gop;
     op_status_t err;
     segjerase_inspect_t *si;
-    int option;
+    lio_ex3_inspect_command_t option;
 
     gop = NULL;
     option = mode & INSPECT_COMMAND_BITS;
-
     switch (option) {
     case (INSPECT_QUICK_CHECK):
     case (INSPECT_SCAN_CHECK):
@@ -1053,6 +1053,8 @@ op_generic_t *segjerase_inspect(segment_t *seg, data_attr_t *da, tbx_log_fd_t *f
         break;
     case (INSPECT_WRITE_ERRORS):
         gop = segment_inspect(s->child_seg, da, fd, mode, bufsize, args, timeout);
+        break;
+    case (INSPECT_NO_CHECK):
         break;
     }
 

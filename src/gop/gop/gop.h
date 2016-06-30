@@ -82,14 +82,14 @@ GOP_API int gop_completed_successfully(op_generic_t *gop);
 GOP_API op_generic_t *gop_dummy(op_status_t state);
 GOP_API apr_time_t gop_exec_time(op_generic_t *gop);
 GOP_API void gop_finished_submission(op_generic_t *gop);
-GOP_API void gop_free(op_generic_t *gop, int mode);
-GOP_API void gop_generic_free(op_generic_t *gop, int mode);
+GOP_API void gop_free(op_generic_t *gop, gop_op_free_mode_t mode);
+GOP_API void gop_generic_free(op_generic_t *gop, gop_op_free_mode_t mode);
 GOP_API op_generic_t *gop_get_next_failed(op_generic_t *gop);
 GOP_API op_generic_t *gop_get_next_finished(op_generic_t *gop);
 GOP_API void gop_init(op_generic_t *gop);
 GOP_API void gop_reset(op_generic_t *gop);
 GOP_API void gop_set_auto_destroy(op_generic_t *gop, int val);
-GOP_API void gop_set_exec_mode(op_generic_t *g, int mode);
+GOP_API void gop_set_exec_mode(op_generic_t *g, gop_op_exec_mode_t mode);
 GOP_API void gop_start_execution(op_generic_t *gop);
 GOP_API int gop_sync_exec(op_generic_t *gop);
 GOP_API op_status_t gop_sync_exec_status(op_generic_t *gop);
@@ -130,7 +130,7 @@ GOP_API extern op_status_t gop_error_status;
 
 // Exported types. To be obscured.
 struct op_status_t {       //** Generic opcode status
-    int op_status;          //** Simplified operation status, OP_SUCCESS or OP_FAILURE
+    gop_op_state_t op_status;          //** Simplified operation status, OP_SUCCESS or OP_FAILURE
     int error_code;         //** Low level op error code
 };
 
@@ -138,7 +138,7 @@ struct op_common_t {
     callback_t *cb;        //** Optional callback
     opque_t *parent_q;     //** Parent que attached to
     op_status_t status;    //** Command result
-    int failure_mode;      //** Used via the callbacks to force a failure, even on success
+    gop_fm_t failure_mode;      //** Used via the callbacks to force a failure, even on success
     int retries;           //** Upon failure how many times we've retried
     int id;                //** Op's global id.  Can be changed by use but generally should use my_id
     int my_id;             //** User/Application settable id.  Defaults to id.
@@ -153,7 +153,7 @@ struct op_common_t {
 };
 
 struct op_generic_t {
-    int type;
+    gop_op_type_t type;
     void *free_ptr;
     op_common_t base;
     que_data_t   *q;

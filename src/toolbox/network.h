@@ -75,7 +75,7 @@ struct tbx_ns_t {
     int cuid;                //Unique ID for the connection.  Changes each time the connection is open/closed
     int start;               //Starting position of buffer data
     int end;                 //End position of buffer data
-    int sock_type;           //Socket type
+    tbx_net_type_t sock_type;//Socket type
     net_sock_t *sock;        //Private socket data.  Depends on socket type
     apr_time_t last_read;        //Last time this connection was used
     apr_time_t last_write;        //Last time this connection was used

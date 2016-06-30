@@ -46,7 +46,8 @@ int main(int argc, char **argv)
     op_generic_t *gop;
     opque_t *q;
     lio_path_tuple_t dtuple;
-    int err, dtype, recurse_depth, slow;
+    int err, dtype, recurse_depth;
+    lio_copy_hint_t slow;
     op_status_t status;
 
     recurse_depth = 10000;

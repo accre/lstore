@@ -3963,7 +3963,8 @@ int osfile_next_fsck(object_service_fn_t *os, os_fsck_iter_t *oit, char **bad_fn
 {
     osfile_fsck_iter_t *it = (osfile_fsck_iter_t *)oit;
     char *fname;
-    int atype, err;
+    int atype;
+    int err;
 
     while ((atype = osf_next_fsck(oit, &fname)) != 0) {
         if (atype & (OS_OBJECT_FILE_FLAG|OS_OBJECT_SYMLINK_FLAG)) {   //** File object
@@ -3975,7 +3976,7 @@ int osfile_next_fsck(object_service_fn_t *os, os_fsck_iter_t *oit, char **bad_fn
         if (err != OS_FSCK_GOOD) {
             *bad_atype = atype;
             *bad_fname = fname;
-            return(err);
+            return(OS_FSCK_ERROR);
         }
 
         free(fname);

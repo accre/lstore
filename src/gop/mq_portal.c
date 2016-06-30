@@ -1614,7 +1614,7 @@ void gop_mq_portal_destroy(mq_portal_t *p)
 // gop_mq_portal_lookup - Looks up a portal context
 //**************************************************************
 
-mq_portal_t *gop_mq_portal_lookup(mq_context_t *mqc, char *hostname, int connect_mode)
+mq_portal_t *gop_mq_portal_lookup(mq_context_t *mqc, char *hostname, gop_mq_cmode_t connect_mode)
 {
     apr_hash_t *ptable;
     mq_portal_t *p;
@@ -1686,7 +1686,7 @@ int gop_mq_portal_install(mq_context_t *mqc, mq_portal_t *p)
 // gop_mq_portal_create - Creates a new MQ portal
 //**************************************************************
 
-mq_portal_t *gop_mq_portal_create(mq_context_t *mqc, char *host, int connect_mode)
+mq_portal_t *gop_mq_portal_create(mq_context_t *mqc, char *host, gop_mq_cmode_t connect_mode)
 {
     mq_portal_t *p;
 

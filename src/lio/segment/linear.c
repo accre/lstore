@@ -809,8 +809,8 @@ op_generic_t *seglin_inspect(segment_t *seg, data_attr_t *da, tbx_log_fd_t *fd, 
     op_status_t err;
 
     gop = NULL;
-
-    switch (mode) {
+    lio_ex3_inspect_command_t cmd = INSPECT_COMMAND_BITS & mode;
+    switch (cmd) {
     case (INSPECT_QUICK_CHECK):
     case (INSPECT_SCAN_CHECK):
     case (INSPECT_FULL_CHECK):
@@ -818,7 +818,7 @@ op_generic_t *seglin_inspect(segment_t *seg, data_attr_t *da, tbx_log_fd_t *fd, 
     case (INSPECT_SCAN_REPAIR):
     case (INSPECT_FULL_REPAIR):
     case (INSPECT_MIGRATE):
-//        gop = seglin_inspect_op(seg, da, fd, mode, bufsize, args, timeout);
+    case (INSPECT_NO_CHECK):
         gop = gop_dummy(gop_failure_status);  //** Not implemented
         break;
     case (INSPECT_SOFT_ERRORS):
@@ -826,6 +826,9 @@ op_generic_t *seglin_inspect(segment_t *seg, data_attr_t *da, tbx_log_fd_t *fd, 
         err.error_code = s->hard_errors;
         err.op_status = (err.error_code == 0) ? OP_STATE_SUCCESS : OP_STATE_FAILURE;
         gop = gop_dummy(err);
+        break;
+    default:
+        log_printf(0, "ERROR: Unknown command: %d", cmd);
         break;
     }
 

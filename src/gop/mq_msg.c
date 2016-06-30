@@ -122,14 +122,14 @@ void gop_mq_msg_append_frame(mq_msg_t *msg, mq_frame_t *f)
     tbx_stack_insert_below(msg, f);
 }
 
-void gop_mq_frame_set(mq_frame_t *f, void *data, int len, int auto_free)
+void gop_mq_frame_set(mq_frame_t *f, void *data, int len, gop_mqf_msg_t auto_free)
 {
     f->data = data;
     f->len = len;
     f->auto_free = auto_free;
 }
 
-mq_frame_t *gop_mq_frame_new(void *data, int len, int auto_free)
+mq_frame_t *gop_mq_frame_new(void *data, int len, gop_mqf_msg_t auto_free)
 {
     mq_frame_t *f;
 
@@ -176,11 +176,11 @@ void gop_mq_msg_destroy(mq_msg_t *msg)
     tbx_stack_free(msg, 0);
 }
 
-void mq_msg_push_mem(mq_msg_t *msg, void *data, int len, int auto_free)
+void mq_msg_push_mem(mq_msg_t *msg, void *data, int len, gop_mqf_msg_t auto_free)
 {
     tbx_stack_push(msg, gop_mq_frame_new(data, len, auto_free));
 }
-void gop_mq_msg_append_mem(mq_msg_t *msg, void *data, int len, int auto_free)
+void gop_mq_msg_append_mem(mq_msg_t *msg, void *data, int len, gop_mqf_msg_t auto_free)
 {
     tbx_stack_move_to_bottom(msg);
     tbx_stack_insert_below(msg, gop_mq_frame_new(data, len, auto_free));

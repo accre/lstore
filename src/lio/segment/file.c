@@ -259,8 +259,9 @@ op_generic_t *segfile_inspect(segment_t *seg, data_attr_t *da, tbx_log_fd_t *ifd
     FILE *fd;
     op_status_t err;
 
-    err= gop_failure_status;
-    switch (mode) {
+    lio_ex3_inspect_command_t cmd = mode & INSPECT_COMMAND_BITS;
+    err = gop_failure_status;
+    switch (cmd) {
     case (INSPECT_QUICK_CHECK):
     case (INSPECT_SCAN_CHECK):
     case (INSPECT_FULL_CHECK):
@@ -294,6 +295,9 @@ op_generic_t *segfile_inspect(segment_t *seg, data_attr_t *da, tbx_log_fd_t *ifd
     case (INSPECT_WRITE_ERRORS):
         err.error_code = tbx_atomic_get(s->write_errors);
         err.op_status = (err.error_code == 0) ? OP_STATE_SUCCESS : OP_STATE_FAILURE;
+        break;
+    case (INSPECT_NO_CHECK):
+    case (INSPECT_MIGRATE):
         break;
     }
 

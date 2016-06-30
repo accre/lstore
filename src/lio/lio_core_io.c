@@ -1202,7 +1202,7 @@ typedef struct {
     lio_fd_t *slfd, *dlfd;
     ex_off_t bufsize;
     char *buffer;
-    int hints;
+    lio_copy_hint_t hints;
     segment_rw_hints_t *rw_hints;
 } lio_cp_fn_t;
 
