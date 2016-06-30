@@ -44,6 +44,27 @@ typedef void os_attr_iter_t;
 typedef void os_object_iter_t;
 typedef void os_fsck_iter_t;
 
+typedef enum lio_object_type_t lio_object_type_t;
+enum lio_object_type_t {
+    OS_OBJECT_FILE        = 0,  //** File object or attribute
+    OS_OBJECT_DIR         = 1,  //** Directory object
+    OS_OBJECT_SYMLINK     = 2,  //** A symlinked object or attribute
+    OS_OBJECT_HARDLINK    = 3,  //** A hard linked object
+    OS_OBJECT_BROKEN_LINK = 4,  //** Signifies a broken link
+    OS_OBJECT_VIRTUAL     = 5,  //** A virtual attribute
+};
+
+typedef enum lio_object_type_flag_t lio_object_type_flag_t;
+enum lio_object_type_flag_t {
+    OS_OBJECT_FILE_FLAG        = (1 << OS_OBJECT_FILE),
+    OS_OBJECT_DIR_FLAG         = (1 << OS_OBJECT_DIR),
+    OS_OBJECT_SYMLINK_FLAG     = (1 << OS_OBJECT_SYMLINK),
+    OS_OBJECT_HARDLINK_FLAG    = (1 << OS_OBJECT_HARDLINK),
+    OS_OBJECT_BROKEN_LINK_FLAG = (1 << OS_OBJECT_BROKEN_LINK),
+    OS_OBJECT_VIRTUAL_FLAG     = (1 << OS_OBJECT_VIRTUAL),
+    OS_OBJECT_ANY_FLAG         = (0x3F) // 6 bits AKA 0x3F,
+};
+
 typedef void (*lio_os_destroy_service_fn_t)(object_service_fn_t *os);
 typedef os_fsck_iter_t *(*lio_os_create_fsck_iter_fn_t)(object_service_fn_t *os, creds_t *creds, char *path, int mode);
 typedef void (*lio_os_destroy_fsck_iter_fn_t)(object_service_fn_t *os, os_fsck_iter_t *it);
@@ -101,13 +122,6 @@ LIO_API void lio_os_regex_table_destroy(os_regex_table_t *table);
 // Preprocessor constants
 #define OS_PATH_MAX  32768    //** Max path length
 
-#define OS_OBJECT_FILE         1  //** File object or attribute
-#define OS_OBJECT_DIR          2  //** Directory object
-#define OS_OBJECT_SYMLINK      4  //** A symlinked object or attribute
-#define OS_OBJECT_HARDLINK     8  //** A hard linked object
-#define OS_OBJECT_BROKEN_LINK 16  //** Signifies a broken link
-#define OS_OBJECT_VIRTUAL     32  //** A virtual attribute
-#define OS_OBJECT_ANY         63
 
 #define OS_FSCK_MANUAL    0   //** Manual resolution via fsck_resolve() or user control
 #define OS_FSCK_REMOVE    1   //** Removes the problem object

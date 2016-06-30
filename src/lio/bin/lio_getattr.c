@@ -89,7 +89,7 @@ int main(int argc, char **argv)
     char *attr_sep = "";
 
     int recurse_depth = 0;
-    int obj_types = OS_OBJECT_FILE;
+    int obj_types = OS_OBJECT_FILE_FLAG;
     return_code = 0;
 
     // Initialize to garbage since Alan didn't at all

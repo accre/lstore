@@ -400,7 +400,7 @@ op_status_t lio_myopen_fn(void *arg, int id)
 
     if ((op->mode & (LIO_WRITE_MODE|LIO_CREATE_MODE)) != 0) {  //** Writing and they want to create it if it doesn't exist
         if (dtype == 0) { //** Need to create it
-            err = gop_sync_exec(lio_create_op(lc, op->creds, op->path, OS_OBJECT_FILE, NULL, NULL));
+            err = gop_sync_exec(lio_create_op(lc, op->creds, op->path, OS_OBJECT_FILE_FLAG, NULL, NULL));
             if (err != OP_STATE_SUCCESS) {
                 info_printf(lio_ifd, 1, "ERROR creating file(%s)!\n", op->path);
                 log_printf(1, "ERROR creating file(%s)!\n", op->path);
@@ -408,7 +408,7 @@ op_status_t lio_myopen_fn(void *arg, int id)
                 *op->fd = NULL;
                 return(gop_failure_status);
             }
-        } else if ((dtype & OS_OBJECT_DIR) > 0) { //** It's a dir so fail
+        } else if ((dtype & OS_OBJECT_DIR_FLAG) > 0) { //** It's a dir so fail
             info_printf(lio_ifd, 1, "Destination(%s) is a dir!\n", op->path);
             log_printf(1, "ERROR: Destination(%s) is a dir!\n", op->path);
             free(op->path);
@@ -1466,10 +1466,10 @@ int lio_cp_create_dir(tbx_list_t *table, lio_path_tuple_t tuple)
                     }
                     err = (err == 0) ? OP_STATE_SUCCESS : OP_STATE_FAILURE;
                 } else {
-                    err = gop_sync_exec(lio_create_op(tuple.lc, tuple.creds, dname, OS_OBJECT_DIR, NULL, NULL));
+                    err = gop_sync_exec(lio_create_op(tuple.lc, tuple.creds, dname, OS_OBJECT_DIR_FLAG, NULL, NULL));
                     if (err != OP_STATE_SUCCESS) {  //** See if it was created by someone else
                         err = lio_exists(tuple.lc, tuple.creds, dname);
-                        err = ((err & OS_OBJECT_DIR) > 0) ? OP_STATE_SUCCESS : OP_STATE_FAILURE;
+                        err = ((err & OS_OBJECT_DIR_FLAG) > 0) ? OP_STATE_SUCCESS : OP_STATE_FAILURE;
                         skip_insert = 1;  //** Either an error or it already exists so don't add it to the list
                     }
                 }
@@ -1525,7 +1525,7 @@ op_status_t lio_path_copy_op(void *arg, int id)
         snprintf(dname, OS_PATH_MAX, "%s/%s", cp->dest_tuple.path, &(fname[prefix_len+1]));
 //info_printf(lio_ifd, 0, "copy dtuple=%s sfname=%s  dfname=%s plen=%d\n", cp->dest_tuple.path, fname, dname, prefix_len);
 
-        if ((ftype & OS_OBJECT_DIR) > 0) { //** Got a directory
+        if ((ftype & OS_OBJECT_DIR_FLAG) > 0) { //** Got a directory
             dstate = tbx_list_search(dir_table, fname);
             if (dstate == NULL) { //** New dir so have to check and possibly create it
                 create_tuple = cp->dest_tuple;

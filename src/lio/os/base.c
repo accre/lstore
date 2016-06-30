@@ -492,18 +492,18 @@ int lio_os_local_filetype(char *path)
     if (err == 0) {
         if (S_ISLNK(s.st_mode)) {
             err = stat(path, &s);
-            ftype |= OS_OBJECT_SYMLINK;
+            ftype |= OS_OBJECT_SYMLINK_FLAG;
         }
 
         if (err == 0) {
             if (S_ISREG(s.st_mode)) {
-                ftype |= OS_OBJECT_FILE;
-                if (s.st_nlink > 1) ftype |= OS_OBJECT_HARDLINK;
+                ftype |= OS_OBJECT_FILE_FLAG;
+                if (s.st_nlink > 1) ftype |= OS_OBJECT_HARDLINK_FLAG;
             } else if (S_ISDIR(s.st_mode)) {
-                ftype |= OS_OBJECT_DIR;
+                ftype |= OS_OBJECT_DIR_FLAG;
             }
         } else {
-            ftype |= OS_OBJECT_FILE|OS_OBJECT_BROKEN_LINK;  //** Broken link so flag it as a file anyhow
+            ftype |= OS_OBJECT_FILE_FLAG|OS_OBJECT_BROKEN_LINK_FLAG;  //** Broken link so flag it as a file anyhow
 
         }
     } else {

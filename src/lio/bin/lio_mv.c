@@ -60,7 +60,7 @@ op_status_t mv_fn(void *arg, int id)
 
     status = gop_success_status;
 
-    it = lio_create_object_iter(mv->src_tuple.lc, mv->src_tuple.creds, mv->regex, NULL, OS_OBJECT_ANY, NULL, 0, NULL, 0);
+    it = lio_create_object_iter(mv->src_tuple.lc, mv->src_tuple.creds, mv->regex, NULL, OS_OBJECT_ANY_FLAG, NULL, 0, NULL, 0);
     if (it == NULL) {
         info_printf(lio_ifd, 0, "ERROR: Failed with object_iter creation src_path=%s\n", mv->src_tuple.path);
         return(gop_failure_status);
@@ -187,7 +187,7 @@ int main(int argc, char **argv)
 
     //** Do some sanity checking and handle the simple case directly
     //** If multiple paths then the dest must be a dir and it has to exist
-    if ((n_paths > 1) && ((dtype & OS_OBJECT_DIR) == 0)) {
+    if ((n_paths > 1) && ((dtype & OS_OBJECT_DIR_FLAG) == 0)) {
         if (dtype == 0) {
             info_printf(lio_ifd, 0, "ERROR: Multiple paths selected but the dest(%s) doesn't exist!\n", dtuple.path);
         } else {
@@ -197,7 +197,7 @@ int main(int argc, char **argv)
     } else if (n_paths == 1) {
         log_printf(15, "11111111\n");
         tbx_log_flush();
-        if (((dtype & OS_OBJECT_FILE) > 0) || (dtype == 0)) {  //** Single path and dest is an existing file or doesn't exist
+        if (((dtype & OS_OBJECT_FILE_FLAG) > 0) || (dtype == 0)) {  //** Single path and dest is an existing file or doesn't exist
             if (lio_os_regex_is_fixed(flist[0].regex) == 0) {  //** Uh oh we have a wildcard with a single file dest
                 info_printf(lio_ifd, 0, "ERROR: Single wildcard path(%s) selected but the dest(%s) is a file or doesn't exist!\n", flist[0].src_tuple.path, dtuple.path);
                 goto finished;
@@ -208,10 +208,10 @@ int main(int argc, char **argv)
         tbx_log_flush();
 
         //**if it's a fixed src with a dir dest we skip and use the mv_fn routines
-        if ((lio_os_regex_is_fixed(flist[0].regex) == 1) && ((dtype == 0) || ((dtype & OS_OBJECT_FILE) > 0))) {
+        if ((lio_os_regex_is_fixed(flist[0].regex) == 1) && ((dtype == 0) || ((dtype & OS_OBJECT_FILE_FLAG) > 0))) {
             //** IF we made it here we have a simple mv but we need to preserve the dest file if things go wrong
             fname = NULL;
-            if ((dtype & OS_OBJECT_FILE) > 0) { //** Existing file so rename it for backup
+            if ((dtype & OS_OBJECT_FILE_FLAG) > 0) { //** Existing file so rename it for backup
                 tbx_type_malloc(fname, char, strlen(dtuple.path) + 40);
                 tbx_random_get_bytes(&ui, sizeof(ui));  //** MAke the random name
                 sprintf(fname, "%s.mv.%ud", dtuple.path, ui);

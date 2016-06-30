@@ -118,9 +118,9 @@ mode_t ftype_lio2fuse(int ftype)
 {
     mode_t mode;
 
-    if (ftype & OS_OBJECT_SYMLINK) {
+    if (ftype & OS_OBJECT_SYMLINK_FLAG) {
         mode = S_IFLNK | 0777;
-    } else if (ftype & OS_OBJECT_DIR) {
+    } else if (ftype & OS_OBJECT_DIR_FLAG) {
         mode = S_IFDIR | 0755;
     } else {
 //     mode = S_IFREG | 0444;
@@ -195,7 +195,7 @@ void _lfs_parse_stat_vals(lio_fuse_t *lfs, char *fname, struct stat *stat, char 
         lio_unlock(lfs->lc);
     }
 
-    stat->st_size = (n & OS_OBJECT_SYMLINK) ? readlink : len;
+    stat->st_size = (n & OS_OBJECT_SYMLINK_FLAG) ? readlink : len;
     stat->st_blksize = 4096;
     stat->st_blocks = stat->st_size / 512;
     if (stat->st_size < 1024) stat->st_blksize = 1024;
@@ -323,7 +323,7 @@ int lfs_opendir(const char *fname, struct fuse_file_info *fi)
     snprintf(path, OS_PATH_MAX, "%s/*", fname);
     dit->path_regex = lio_os_path_glob2regex(path);
 
-    dit->it = lio_create_object_iter_alist(dit->lfs->lc, dit->lfs->lc->creds, dit->path_regex, NULL, OS_OBJECT_ANY, 0, _inode_keys, (void **)dit->val, dit->v_size, _inode_key_size);
+    dit->it = lio_create_object_iter_alist(dit->lfs->lc, dit->lfs->lc->creds, dit->path_regex, NULL, OS_OBJECT_ANY_FLAG, 0, _inode_keys, (void **)dit->val, dit->v_size, _inode_key_size);
 
     dit->stack = tbx_stack_new();
 
@@ -486,7 +486,7 @@ int lfs_object_create(lio_fuse_t *lfs, const char *fname, mode_t mode, int ftype
 int lfs_mknod(const char *fname, mode_t mode, dev_t rdev)
 {
     lio_fuse_t *lfs = lfs_get_context();
-    return(lfs_object_create(lfs, fname, mode, OS_OBJECT_FILE));
+    return(lfs_object_create(lfs, fname, mode, OS_OBJECT_FILE_FLAG));
 }
 
 
@@ -497,7 +497,7 @@ int lfs_mknod(const char *fname, mode_t mode, dev_t rdev)
 int lfs_mkdir(const char *fname, mode_t mode)
 {
     lio_fuse_t *lfs = lfs_get_context();
-    return(lfs_object_create(lfs, fname, mode, OS_OBJECT_DIR));
+    return(lfs_object_create(lfs, fname, mode, OS_OBJECT_DIR_FLAG));
 }
 
 //*****************************************************************
@@ -512,7 +512,7 @@ int lfs_actual_remove(lio_fuse_t *lfs, const char *fname, int ftype)
     log_printf(1, "remove err=%d\n", err);
     if (err == OP_STATE_SUCCESS) {
         return(0);
-    } else if ((ftype & OS_OBJECT_DIR) > 0) { //** Most likey the dirs not empty
+    } else if ((ftype & OS_OBJECT_DIR_FLAG) > 0) { //** Most likey the dirs not empty
         return(-ENOTEMPTY);
     }
 
@@ -1029,7 +1029,7 @@ void lfs_set_tape_attr(lio_fuse_t *lfs, char *fname, char *mytape_val, int tape_
         return;
     }
 
-    nkeys = (ftype & OS_OBJECT_SYMLINK) ? 1 : _tape_key_size;
+    nkeys = (ftype & OS_OBJECT_SYMLINK_FLAG) ? 1 : _tape_key_size;
 
     //** The 1st key should be n_keys
     tmp = tbx_stk_string_token(tape_val, "=\n", &bstate, &fin);
@@ -1169,7 +1169,7 @@ void lfs_get_tape_attr(lio_fuse_t *lfs, char *fname, char **tape_val, int *tape_
     }
 
     log_printf(15, "fname=%s ftype=%d\n", fname, ftype);
-    nkeys = (ftype & OS_OBJECT_SYMLINK) ? 1 : _tape_key_size;
+    nkeys = (ftype & OS_OBJECT_SYMLINK_FLAG) ? 1 : _tape_key_size;
     i = lio_get_multiple_attrs(lfs->lc, lfs->lc->creds, fname, NULL, _tape_keys, (void **)val, v_size, nkeys);
     if (i != OP_STATE_SUCCESS) {
         log_printf(15, "Failed retrieving file info!  path=%s\n", fname);

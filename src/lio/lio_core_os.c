@@ -256,7 +256,7 @@ op_status_t lio_create_object_fn(void *arg, int id)
 
     //** For a directory we can just copy the exnode.  For a file we have to
     //** Clone it to get unique IDs
-    if ((op->type & OS_OBJECT_DIR) == 0) {
+    if ((op->type & OS_OBJECT_DIR_FLAG) == 0) {
         //** If this has a caching segment we need to disable it from being added
         //** to the global cache table cause there could be multiple copies of the
         //** same segment being serialized/deserialized.
@@ -323,7 +323,7 @@ op_status_t lio_create_object_fn(void *arg, int id)
     log_printf(15, "NEW ino=%s exnode=%s\n", val[4], val[ex_key]);
     tbx_log_flush();
 
-    err = gop_sync_exec(os_set_multiple_attrs(op->lc->os, op->creds, fd, _lio_create_keys, (void **)val, v_size, (op->type & OS_OBJECT_FILE) ? _n_lio_file_keys : _n_lio_dir_keys));
+    err = gop_sync_exec(os_set_multiple_attrs(op->lc->os, op->creds, fd, _lio_create_keys, (void **)val, v_size, (op->type & OS_OBJECT_FILE_FLAG) ? _n_lio_file_keys : _n_lio_dir_keys));
     if (err != OP_STATE_SUCCESS) {
         log_printf(15, "ERROR setting default attr fname=%s\n", op->src_path);
         status = gop_failure_status;
@@ -386,7 +386,7 @@ op_status_t lio_remove_object_fn(void *arg, int id)
     if (op->type == 0) op->type = lio_exists(op->lc, op->creds, op->src_path);
 
     ex_remove = 0;
-    if ((op->type & OS_OBJECT_HARDLINK) > 0) { //** Got a hard link so check if we do a data removal
+    if ((op->type & OS_OBJECT_HARDLINK_FLAG) > 0) { //** Got a hard link so check if we do a data removal
         val[0] = val[1] = NULL;
         vs[0] = vs[1] = -op->lc->max_attr;
         lio_get_multiple_attrs(op->lc, op->creds, op->src_path, op->id, hkeys, (void **)val, vs, 2);
@@ -410,7 +410,7 @@ op_status_t lio_remove_object_fn(void *arg, int id)
         } else {
             if (val[1] != NULL) free(val[1]);
         }
-    } else if ((op->type & (OS_OBJECT_SYMLINK|OS_OBJECT_DIR)) == 0) {
+    } else if ((op->type & (OS_OBJECT_SYMLINK_FLAG|OS_OBJECT_DIR_FLAG)) == 0) {
         ex_remove = 1;
     }
 
@@ -505,7 +505,7 @@ op_status_t lio_remove_regex_object_fn(void *arg, int id)
 
         //** If it's a directory so we need to flush all existing rm's first
         //** Otherwire the rmdir will see pending files
-        if ((atype & OS_OBJECT_DIR) > 0) {
+        if ((atype & OS_OBJECT_DIR_FLAG) > 0) {
             opque_waitall(q);
         }
 
@@ -1098,9 +1098,9 @@ mode_t ftype_lio2posix(int ftype)
 {
     mode_t mode;
 
-    if (ftype & OS_OBJECT_SYMLINK) {
+    if (ftype & OS_OBJECT_SYMLINK_FLAG) {
         mode = S_IFLNK | 0777;
-    } else if (ftype & OS_OBJECT_DIR) {
+    } else if (ftype & OS_OBJECT_DIR_FLAG) {
         mode = S_IFDIR | 0755;
     } else {
 //     mode = S_IFREG | 0444;
@@ -1168,7 +1168,7 @@ void _lio_parse_stat_vals(char *fname, struct stat *stat, char **val, int *v_siz
     len = 0;
     if (val[3] != NULL) sscanf(val[3], XOT, &len);
 
-    stat->st_size = (n & OS_OBJECT_SYMLINK) ? readlink : len;
+    stat->st_size = (n & OS_OBJECT_SYMLINK_FLAG) ? readlink : len;
     stat->st_blksize = 4096;
     stat->st_blocks = stat->st_size / 512;
     if (stat->st_size < 1024) stat->st_blksize = 1024;
@@ -1366,7 +1366,7 @@ int lio_fsck_check_object(lio_config_t *lc, creds_t *creds, char *path, int ftyp
         ex = cex;   //** WE use the clone for size checking
     }
 
-    if ((ftype & OS_OBJECT_DIR) > 0) goto finished;  //** Nothing else to do if a directory
+    if ((ftype & OS_OBJECT_DIR_FLAG) > 0) goto finished;  //** Nothing else to do if a directory
 
     //** Get the default view to use
     seg = lio_exnode_default_get(ex);
@@ -1602,7 +1602,7 @@ lio_fsck_iter_t *lio_create_fsck_iter(lio_config_t *lc, creds_t *creds, char *pa
         it->val[i] = NULL;
     }
 
-    it->it = os_create_object_iter_alist(it->lc->os, creds, it->regex, NULL, OS_OBJECT_ANY, 10000, _fsck_keys, (void **)it->val, it->v_size, _n_fsck_keys);
+    it->it = os_create_object_iter_alist(it->lc->os, creds, it->regex, NULL, OS_OBJECT_ANY_FLAG, 10000, _fsck_keys, (void **)it->val, it->v_size, _n_fsck_keys);
     if (it->it == NULL) {
         log_printf(0, "ERROR: Failed with object_iter creation %s\n", path);
         return(NULL);

@@ -339,7 +339,7 @@ int main(int argc, char **argv)
         }
 
         v_size[0] = v_size[1] = - tuple.lc->max_attr;
-        it = lio_create_object_iter_alist(tuple.lc, tuple.creds, rp_single, ro_single, OS_OBJECT_FILE, recurse_depth, keys, (void **)vals, v_size, 2);
+        it = lio_create_object_iter_alist(tuple.lc, tuple.creds, rp_single, ro_single, OS_OBJECT_FILE_FLAG, recurse_depth, keys, (void **)vals, v_size, 2);
         if (it == NULL) {
             info_printf(lio_ifd, 0, "ERROR: Failed with object_iter creation\n");
             goto finished;

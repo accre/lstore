@@ -65,7 +65,7 @@ void du_format_entry(tbx_log_fd_t *ifd, du_entry_t *de, int sumonly)
     dname = de->fname;
 
     if (sumonly == 1) {
-        n = ((de->ftype & OS_OBJECT_DIR) > 0) ? de->count : 1;
+        n = ((de->ftype & OS_OBJECT_DIR_FLAG) > 0) ? de->count : 1;
         info_printf(ifd, 0, "%10s  %10ld  %s\n", ppsize, n, dname);
     } else {
         info_printf(ifd, 0, "%10s  %s\n", ppsize, dname);
@@ -198,7 +198,7 @@ int main(int argc, char **argv)
             log_printf(15, "MAIN SUMONLY=1\n");
             v_size = -1024;
             val = NULL;
-            it = lio_create_object_iter_alist(tuple.lc, tuple.creds, rp_single, ro_single, OS_OBJECT_ANY, 0, &key, (void **)&val, &v_size, 1);
+            it = lio_create_object_iter_alist(tuple.lc, tuple.creds, rp_single, ro_single, OS_OBJECT_ANY_FLAG, 0, &key, (void **)&val, &v_size, 1);
             if (it == NULL) {
                 log_printf(0, "ERROR: Failed with object_iter creation\n");
                 return_code = EIO;
@@ -206,7 +206,7 @@ int main(int argc, char **argv)
             }
 
             while ((ftype = lio_next_object(tuple.lc, it, &fname, &prefix_len)) > 0) {
-                if (((ftype & OS_OBJECT_SYMLINK) > 0) && (ignoreln == 1)) continue;  //** Ignoring links
+                if (((ftype & OS_OBJECT_SYMLINK_FLAG) > 0) && (ignoreln == 1)) continue;  //** Ignoring links
 
                 log_printf(15, "sumonly inserting fname=%s\n", fname);
                 tbx_type_malloc_clear(de, du_entry_t, 1);
@@ -235,7 +235,7 @@ int main(int argc, char **argv)
 
         v_size = -1024;
         val = NULL;
-        it = lio_create_object_iter_alist(tuple.lc, tuple.creds, rp_single, ro_single, OS_OBJECT_ANY, recurse_depth, &key, (void **)&val, &v_size, 1);
+        it = lio_create_object_iter_alist(tuple.lc, tuple.creds, rp_single, ro_single, OS_OBJECT_ANY_FLAG, recurse_depth, &key, (void **)&val, &v_size, 1);
         if (it == NULL) {
             log_printf(0, "ERROR: Failed with object_iter creation\n");
             return_code = EIO;
@@ -243,15 +243,15 @@ int main(int argc, char **argv)
         }
 
         while ((ftype = lio_next_object(tuple.lc, it, &fname, &prefix_len)) > 0) {
-            if (((ftype & OS_OBJECT_SYMLINK) > 0) && (ignoreln == 1)) continue;  //** Ignoring links
+            if (((ftype & OS_OBJECT_SYMLINK_FLAG) > 0) && (ignoreln == 1)) continue;  //** Ignoring links
 
-            if ((sumonly == 1) && ((ftype & OS_OBJECT_FILE) > 0)) {
+            if ((sumonly == 1) && ((ftype & OS_OBJECT_FILE_FLAG) > 0)) {
                 bytes = 0;
                 if (val != NULL) sscanf(val, I64T, &bytes);
 
                 lit = tbx_list_iter_search(sum_table, NULL, 0);
                 while ((tbx_list_next(&lit, (tbx_list_key_t **)&file, (tbx_list_data_t **)&de)) == 0) {
-                    if ((strncmp(de->fname, fname, strlen(de->fname)) == 0) && ((de->ftype & OS_OBJECT_DIR) > 0)) {
+                    if ((strncmp(de->fname, fname, strlen(de->fname)) == 0) && ((de->ftype & OS_OBJECT_DIR_FLAG) > 0)) {
                         log_printf(15, "accum de->fname=%s fname=%s\n", de->fname, fname);
                         de->bytes += bytes;
                         de->count++;
@@ -300,7 +300,7 @@ int main(int argc, char **argv)
     lit = tbx_list_iter_search(lt, "", 0);
     while ((tbx_list_next(&lit, (tbx_list_key_t **)&fname, (tbx_list_data_t **)&de)) == 0) {
         total_bytes += de->bytes;
-        total_files += (de->ftype & OS_OBJECT_FILE) ? 1 : de->count;
+        total_files += (de->ftype & OS_OBJECT_FILE_FLAG) ? 1 : de->count;
         du_format_entry(lio_ifd, de, sumonly);
     }
 
@@ -313,7 +313,7 @@ int main(int argc, char **argv)
     du_total.fname = "TOTAL";
     du_total.bytes = total_bytes;
     du_total.count = total_files;
-    du_total.ftype = OS_OBJECT_DIR;
+    du_total.ftype = OS_OBJECT_DIR_FLAG;
     du_format_entry(lio_ifd, &du_total, sumonly);
 
     if (sumonly == 1) tbx_list_destroy(sum_table);

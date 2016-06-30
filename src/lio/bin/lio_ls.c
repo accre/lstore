@@ -62,19 +62,19 @@ void ls_format_entry(tbx_log_fd_t *ifd, ls_entry_t *lse)
     long int fsize;
     int nlink;
 
-    if ((lse->ftype & OS_OBJECT_SYMLINK) > 0) {
-        if ((lse->ftype & OS_OBJECT_BROKEN_LINK) > 0) {
+    if ((lse->ftype & OS_OBJECT_SYMLINK_FLAG) > 0) {
+        if ((lse->ftype & OS_OBJECT_BROKEN_LINK_FLAG) > 0) {
             perms = "L---------";
         } else {
             perms = "l---------";
         }
-    } else if ((lse->ftype & OS_OBJECT_DIR) > 0) {
+    } else if ((lse->ftype & OS_OBJECT_DIR_FLAG) > 0) {
         perms = "d---------";
     } else {
         perms = "----------";
     }
 
-    dtype = ((lse->ftype & OS_OBJECT_DIR) > 0) ? "/" : "";
+    dtype = ((lse->ftype & OS_OBJECT_DIR_FLAG) > 0) ? "/" : "";
 
     owner = lse->vals[0];
     if (owner == NULL) owner = "root";
@@ -133,7 +133,7 @@ int main(int argc, char **argv)
     int v_size[5];
     int n_keys = 5;
     int recurse_depth = 0;
-    int obj_types = OS_OBJECT_ANY;
+    int obj_types = OS_OBJECT_ANY_FLAG;
     int return_code = 0;
 
     if (argc < 2) {
@@ -223,7 +223,7 @@ int main(int argc, char **argv)
             memset(vals, 0, sizeof(vals));
 
             //** Check if we have a link.  If so we need to resolve the link path
-            if ((ftype & OS_OBJECT_SYMLINK) > 0) {
+            if ((ftype & OS_OBJECT_SYMLINK_FLAG) > 0) {
                 lse->link_size = -64*1024;
                 gop = lio_getattr_op(tuple.lc, tuple.creds, lse->fname, NULL, "os.link", (void **)&(lse->link), &(lse->link_size));
                 gop_set_private(gop, lse);

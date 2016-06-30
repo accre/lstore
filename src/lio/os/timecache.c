@@ -262,7 +262,7 @@ ostcdb_object_t *new_ostcdb_object(char *entry, int ftype, apr_time_t expire, ap
     obj->ftype = ftype;
     obj->link = NULL;
     apr_pool_create(&(obj->mpool), NULL);
-    obj->objects = (ftype & OS_OBJECT_DIR) ? apr_hash_make(mpool) : NULL;
+    obj->objects = (ftype & OS_OBJECT_DIR_FLAG) ? apr_hash_make(mpool) : NULL;
     obj->attrs = apr_hash_make(mpool);
 
     return(obj);
@@ -2231,7 +2231,7 @@ object_service_fn_t *object_service_timecache_create(service_manager_t *ess, tbx
     apr_thread_cond_create(&(ostc->cond), ostc->mpool);
 
     //** Make the root node
-    ostc->cache_root = new_ostcdb_object(strdup("/"), OS_OBJECT_DIR, 0, ostc->mpool);
+    ostc->cache_root = new_ostcdb_object(strdup("/"), OS_OBJECT_DIR_FLAG, 0, ostc->mpool);
 
     //** Get the thread pool to use
     ostc->tpc = lio_lookup_service(ess, ESS_RUNNING, ESS_TPC_UNLIMITED); assert(ostc->tpc != NULL);

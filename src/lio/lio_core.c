@@ -530,7 +530,7 @@ op_status_t lioc_remove_object_fn(void *arg, int id)
     if (op->type == 0) op->type = lioc_exists(op->lc, op->creds, op->src_path);
 
     ex_remove = 0;
-    if ((op->type & OS_OBJECT_HARDLINK) > 0) { //** Got a hard link so check if we do a data removal
+    if ((op->type & OS_OBJECT_HARDLINK_FLAG) > 0) { //** Got a hard link so check if we do a data removal
         val[0] = val[1] = NULL;
         vs[0] = vs[1] = -op->lc->max_attr;
         lioc_get_multiple_attrs(op->lc, op->creds, op->src_path, op->id, hkeys, (void **)val, vs, 2);
@@ -554,7 +554,7 @@ op_status_t lioc_remove_object_fn(void *arg, int id)
         } else {
             if (val[1] != NULL) free(val[1]);
         }
-    } else if ((op->type & (OS_OBJECT_SYMLINK|OS_OBJECT_DIR)) == 0) {
+    } else if ((op->type & (OS_OBJECT_SYMLINK_FLAG|OS_OBJECT_DIR_FLAG)) == 0) {
         ex_remove = 1;
     }
 
@@ -649,7 +649,7 @@ op_status_t lioc_remove_regex_object_fn(void *arg, int id)
 
         //** If it's a directory so we need to flush all existing rm's first
         //** Otherwire the rmdir will see pending files
-        if ((atype & OS_OBJECT_DIR) > 0) {
+        if ((atype & OS_OBJECT_DIR_FLAG) > 0) {
             opque_waitall(q);
         }
 
@@ -776,7 +776,7 @@ op_status_t lioc_create_object_fn(void *arg, int id)
 
     //** For a directory we can just copy the exnode.  For a file we have to
     //** Clone it to get unique IDs
-    if ((op->type & OS_OBJECT_DIR) == 0) {
+    if ((op->type & OS_OBJECT_DIR_FLAG) == 0) {
         //** If this has a caching segment we need to disable it from being adding
         //** to the global cache table cause there could be multiple copies of the
         //** same segment being serialized/deserialized.
@@ -843,7 +843,7 @@ op_status_t lioc_create_object_fn(void *arg, int id)
     log_printf(15, "NEW ino=%s exnode=%s\n", val[4], val[ex_key]);
     tbx_log_flush();
 
-    err = gop_sync_exec(os_set_multiple_attrs(op->lc->os, op->creds, fd, _lioc_create_keys, (void **)val, v_size, (op->type & OS_OBJECT_FILE) ? _n_lioc_file_keys : _n_lioc_dir_keys));
+    err = gop_sync_exec(os_set_multiple_attrs(op->lc->os, op->creds, fd, _lioc_create_keys, (void **)val, v_size, (op->type & OS_OBJECT_FILE_FLAG) ? _n_lioc_file_keys : _n_lioc_dir_keys));
     if (err != OP_STATE_SUCCESS) {
         log_printf(15, "ERROR setting default attr fname=%s\n", op->src_path);
         status = gop_failure_status;
@@ -1108,12 +1108,12 @@ op_status_t cp_lio2lio(lio_cp_file_t *cp)
     log_printf(5, "src=%s dest=%s dtype=%d\n", cp->src_tuple.path, cp->dest_tuple.path, dtype);
 
     if (dtype == 0) { //** Need to create it
-        err = gop_sync_exec(lio_create_op(cp->dest_tuple.lc, cp->dest_tuple.creds, cp->dest_tuple.path, OS_OBJECT_FILE, NULL, NULL));
+        err = gop_sync_exec(lio_create_op(cp->dest_tuple.lc, cp->dest_tuple.creds, cp->dest_tuple.path, OS_OBJECT_FILE_FLAG, NULL, NULL));
         if (err != OP_STATE_SUCCESS) {
             info_printf(lio_ifd, 1, "ERROR creating file(%s)!\n", cp->dest_tuple.path);
             goto finished;
         }
-    } else if ((dtype & OS_OBJECT_DIR) > 0) { //** It's a dir so fail
+    } else if ((dtype & OS_OBJECT_DIR_FLAG) > 0) { //** It's a dir so fail
         info_printf(lio_ifd, 0, "Destination(%s) is a dir!\n", cp->dest_tuple.path);
         goto finished;
     }
@@ -1226,7 +1226,7 @@ finished:
 
     if (status.op_status != OP_STATE_SUCCESS) { //** Destroy the file
         log_printf(5, "ERROR with copy.  Destroying file=%s\n", cp->dest_tuple.path);
-        gop_sync_exec(lioc_remove_object(cp->dest_tuple.lc, cp->dest_tuple.creds, cp->dest_tuple.path, NULL, OS_OBJECT_FILE));
+        gop_sync_exec(lioc_remove_object(cp->dest_tuple.lc, cp->dest_tuple.creds, cp->dest_tuple.path, NULL, OS_OBJECT_FILE_FLAG));
     }
 
     return(status);
@@ -1258,12 +1258,12 @@ op_status_t cp_local2lio(lio_cp_file_t *cp)
     log_printf(5, "src=%s dest=%s dtype=%d bufsize=" XOT "\n", cp->src_tuple.path, cp->dest_tuple.path, dtype, cp->bufsize);
 
     if (dtype == 0) { //** Need to create it
-        err = gop_sync_exec(lio_create_op(cp->dest_tuple.lc, cp->dest_tuple.creds, cp->dest_tuple.path, OS_OBJECT_FILE, NULL, NULL));
+        err = gop_sync_exec(lio_create_op(cp->dest_tuple.lc, cp->dest_tuple.creds, cp->dest_tuple.path, OS_OBJECT_FILE_FLAG, NULL, NULL));
         if (err != OP_STATE_SUCCESS) {
             info_printf(lio_ifd, 1, "ERROR creating file(%s)!\n", cp->dest_tuple.path);
             goto finished;
         }
-    } else if ((dtype & OS_OBJECT_DIR) > 0) { //** It's a dir so fail
+    } else if ((dtype & OS_OBJECT_DIR_FLAG) > 0) { //** It's a dir so fail
         info_printf(lio_ifd, 0, "ERROR: Destination(%s) is a dir!\n", cp->dest_tuple.path);
         goto finished;
     }
@@ -1358,7 +1358,7 @@ op_status_t cp_lio2local(lio_cp_file_t *cp)
 
     log_printf(5, "src=%s dest=%s dtype=%d\n", cp->src_tuple.path, cp->dest_tuple.path, ftype);
 
-    if ((ftype & OS_OBJECT_FILE) == 0) { //** Doesn't exist or is a dir
+    if ((ftype & OS_OBJECT_FILE_FLAG) == 0) { //** Doesn't exist or is a dir
         info_printf(lio_ifd, 1, "ERROR source file(%s) doesn't exist or is a dir ftype=%d!\n", cp->src_tuple.path, ftype);
         goto finished;
     }
@@ -1442,7 +1442,7 @@ op_status_t lioc_truncate_fn(void *arg, int tid)
 
     log_printf(5, "fname=%s\n", op->tuple.path);
 
-    if ((ftype & OS_OBJECT_FILE) == 0) { //** Doesn't exist or is a dir
+    if ((ftype & OS_OBJECT_FILE_FLAG) == 0) { //** Doesn't exist or is a dir
         info_printf(lio_ifd, 1, "ERROR source file(%s) doesn't exist or is a dir ftype=%d!\n", op->tuple.path, ftype);
         goto finished;
     }

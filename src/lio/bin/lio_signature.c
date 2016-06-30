@@ -64,7 +64,7 @@ int main(int argc, char **argv)
     //** Check if it exists
     ftype = lio_exists(tuple.lc, tuple.creds, tuple.path);
 
-    if ((ftype & OS_OBJECT_FILE) == 0) { //** Doesn't exist or is a dir
+    if ((ftype & OS_OBJECT_FILE_FLAG) == 0) { //** Doesn't exist or is a dir
         info_printf(lio_ifd, 1, "ERROR source file(%s) doesn't exist or is a dir ftype=%d!\n", tuple.path, ftype);
         goto finished;
     }

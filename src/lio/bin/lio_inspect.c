@@ -1428,7 +1428,7 @@ int main(int argc, char **argv)
         creds = tuple.lc->creds;
 
         for (i=0; i< acount; i++) v_size[i] = -tuple.lc->max_attr;
-        it = lio_create_object_iter_alist(tuple.lc, tuple.creds, rp_single, ro_single, OS_OBJECT_FILE, recurse_depth, keys, (void **)vals, v_size, acount);
+        it = lio_create_object_iter_alist(tuple.lc, tuple.creds, rp_single, ro_single, OS_OBJECT_FILE_FLAG, recurse_depth, keys, (void **)vals, v_size, acount);
         if (it == NULL) {
             info_printf(lio_ifd, 0, "ERROR: Failed with object_iter creation\n");
             err = 2;

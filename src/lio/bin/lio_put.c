@@ -85,12 +85,12 @@ int main(int argc, char **argv)
     dtype = lio_exists(tuple.lc, tuple.creds, tuple.path);
 
     if (dtype == 0) { //** Need to create it
-        err = gop_sync_exec(lio_create_op(tuple.lc, tuple.creds, tuple.path, OS_OBJECT_FILE, NULL, NULL));
+        err = gop_sync_exec(lio_create_op(tuple.lc, tuple.creds, tuple.path, OS_OBJECT_FILE_FLAG, NULL, NULL));
         if (err != OP_STATE_SUCCESS) {
             info_printf(lio_ifd, 1, "ERROR creating file(%s)!\n", tuple.path);
             goto finished;
         }
-    } else if ((dtype & OS_OBJECT_DIR) > 0) { //** It's a dir so fail
+    } else if ((dtype & OS_OBJECT_DIR_FLAG) > 0) { //** It's a dir so fail
         info_printf(lio_ifd, 0, "Destination(%s) is a dir!\n", tuple.path);
         goto finished;
     }

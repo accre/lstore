@@ -116,7 +116,7 @@ int main(int argc, char **argv)
         }
     }
 
-    if (((ftype & OS_OBJECT_DIR)>0) && (symlink == 0))  { //** Can only symlink a file
+    if (((ftype & OS_OBJECT_DIR_FLAG)>0) && (symlink == 0))  { //** Can only symlink a file
         printf("ERROR Can't hard link directories!  Source: %s\n", stuple.path);
         err = 1;
         goto finished;

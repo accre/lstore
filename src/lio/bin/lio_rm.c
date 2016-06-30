@@ -42,7 +42,7 @@ int main(int argc, char **argv)
     lio_path_tuple_t *flist, tuple;
     os_regex_table_t *rp_single, *ro_single;
     int recurse_depth = 0;
-    int obj_types = OS_OBJECT_ANY;
+    int obj_types = OS_OBJECT_ANY_FLAG;
 
     if (argc < 2) {
         printf("\n");
