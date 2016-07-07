@@ -28,10 +28,10 @@
 // ex_header_init - Initializes an existing exnode header
 //*************************************************************************
 
-void ex_header_init(ex_header_t *eh)
+void ex_header_init(lio_ex_header_t *eh)
 {
     assert(eh != NULL);
-    memset(eh, 0, sizeof(ex_header_t));
+    memset(eh, 0, sizeof(lio_ex_header_t));
 }
 
 //*************************************************************************
@@ -39,7 +39,7 @@ void ex_header_init(ex_header_t *eh)
 //   NOTE:  Just releases fields and NOT the header itself
 //*************************************************************************
 
-void ex_header_release(ex_header_t *h)
+void ex_header_release(lio_ex_header_t *h)
 {
     if (h->name != NULL) free(h->name);
 }
@@ -49,9 +49,9 @@ void ex_header_release(ex_header_t *h)
 // ex_header_create - Creates a new exnode header
 //*************************************************************************
 
-ex_header_t *ex_header_create()
+lio_ex_header_t *ex_header_create()
 {
-    ex_header_t *eh = (ex_header_t *)malloc(sizeof(ex_header_t));
+    lio_ex_header_t *eh = (lio_ex_header_t *)malloc(sizeof(lio_ex_header_t));
 
     return(eh);
 }
@@ -60,7 +60,7 @@ ex_header_t *ex_header_create()
 // ex_header_destroy - Destroys an exnode header
 //*************************************************************************
 
-void ex_header_destroy(ex_header_t *eh)
+void ex_header_destroy(lio_ex_header_t *eh)
 {
     ex_header_release(eh);
     free(eh);
@@ -70,11 +70,11 @@ void ex_header_destroy(ex_header_t *eh)
 // name - Manipulates the header name
 //*************************************************************************
 
-char *ex_header_get_name(ex_header_t *h)
+char *ex_header_get_name(lio_ex_header_t *h)
 {
     return(h->name);
 }
-void ex_header_set_name(ex_header_t *h, char *name)
+void ex_header_set_name(lio_ex_header_t *h, char *name)
 {
     if (h->name != NULL) free(h->name);
     h->name = strdup(name);
@@ -85,11 +85,11 @@ void ex_header_set_name(ex_header_t *h, char *name)
 // id routines
 //*************************************************************************
 
-ex_id_t ex_header_get_id(ex_header_t *h)
+ex_id_t ex_header_get_id(lio_ex_header_t *h)
 {
     return(h->id);
 }
-void ex_header_set_id(ex_header_t *h, ex_id_t id)
+void ex_header_set_id(lio_ex_header_t *h, ex_id_t id)
 {
     h->id = id;
 }
@@ -98,11 +98,11 @@ void ex_header_set_id(ex_header_t *h, ex_id_t id)
 // type routines
 //*************************************************************************
 
-char *ex_header_get_type(ex_header_t *h)
+char *ex_header_get_type(lio_ex_header_t *h)
 {
     return(h->type);
 }
-void ex_header_set_type(ex_header_t *h, char *type)
+void ex_header_set_type(lio_ex_header_t *h, char *type)
 {
     h->type = strdup(type);
 }
@@ -111,11 +111,11 @@ void ex_header_set_type(ex_header_t *h, char *type)
 // Attribute routines
 //*************************************************************************
 
-tbx_list_t *ex_header_get_attributes(ex_header_t *h)
+tbx_list_t *ex_header_get_attributes(lio_ex_header_t *h)
 {
     return(h->attributes);
 }
-void ex_header_set_attributes(ex_header_t *h, tbx_list_t *attr)
+void ex_header_set_attributes(lio_ex_header_t *h, tbx_list_t *attr)
 {
     h->attributes = attr;
 }

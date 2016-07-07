@@ -33,47 +33,47 @@
 extern "C" {
 #endif
 
-struct data_block_attr_t;
-struct data_block_t;
-struct data_block_warm_t;
+struct lio_data_block_attr_t;
+struct lio_data_block_t;
+struct lio_data_block_warm_t;
 
 
 typedef void data_block_cap_t;
 
-struct data_block_warm_t {
+struct lio_data_block_warm_t {
     data_block_cap_t *cap;
-    data_service_fn_t *ds;
+    lio_data_service_fn_t *ds;
 };
 
-struct data_block_attr_t {
+struct lio_data_block_attr_t {
     char *key;
     char *value;
 };
 
-struct data_block_t {
+struct lio_data_block_t {
     ex_id_t  id;
     ex_off_t size;
     ex_off_t max_size;
     tbx_atomic_unit32_t ref_count;
     tbx_atomic_unit32_t initial_ref_count;
     data_block_cap_t *cap;
-    data_service_fn_t *ds;
+    lio_data_service_fn_t *ds;
     char *rid_key;
     tbx_stack_t *attr_stack;
-    data_block_warm_t *warm;
+    lio_data_block_warm_t *warm;
 };
 
 #define data_block_id(db) (db)->id
 
 //** Block related functions
-int data_block_serialize(data_block_t *d, exnode_exchange_t *exp);
-data_block_t *data_block_deserialize(service_manager_t *dsm, ex_id_t id, exnode_exchange_t *exp);
-data_block_t *data_block_create(data_service_fn_t *ds);
-char *data_block_get_attr(data_block_t *d, char *key);
-int data_block_set_attr(data_block_t *d, char *key, char *val);
-void data_block_destroy(data_block_t *b);
-void data_block_auto_warm(data_block_t *b);
-void data_block_stop_warm(data_block_t *b);
+int data_block_serialize(lio_data_block_t *d, lio_exnode_exchange_t *exp);
+lio_data_block_t *data_block_deserialize(lio_service_manager_t *dsm, ex_id_t id, lio_exnode_exchange_t *exp);
+lio_data_block_t *data_block_create(lio_data_service_fn_t *ds);
+char *data_block_get_attr(lio_data_block_t *d, char *key);
+int data_block_set_attr(lio_data_block_t *d, char *key, char *val);
+void data_block_destroy(lio_data_block_t *b);
+void data_block_auto_warm(lio_data_block_t *b);
+void data_block_stop_warm(lio_data_block_t *b);
 
 #ifdef __cplusplus
 }

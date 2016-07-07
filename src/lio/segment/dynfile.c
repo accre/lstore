@@ -38,9 +38,9 @@
 // segment_dynfile_create - Creates a file segment
 //***********************************************************************
 
-segment_t *segment_dynfile_create(void *arg)
+lio_segment_t *segment_dynfile_create(void *arg)
 {
-    segment_t *seg;
+    lio_segment_t *seg;
 
     log_printf(0, "START\n");
 
@@ -56,11 +56,11 @@ segment_t *segment_dynfile_create(void *arg)
 // segment_dynfile_load - Loads a file segment from ini/ex3
 //***********************************************************************
 
-segment_t *segment_dynfile_load(void *arg, ex_id_t id, exnode_exchange_t *ex)
+lio_segment_t *segment_dynfile_load(void *arg, ex_id_t id, lio_exnode_exchange_t *ex)
 {
 
     log_printf(0, "START\n");
-    segment_t *seg = segment_dynfile_create(arg);
+    lio_segment_t *seg = segment_dynfile_create(arg);
     segment_deserialize(seg, id, ex);
     seg->header.type = SEGMENT_TYPE_DYNFILE;
     log_printf(0, "END\n");

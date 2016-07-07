@@ -36,8 +36,8 @@ extern "C" {
 #endif
 
 
-segment_t *segment_linear_load(void *arg, ex_id_t id, exnode_exchange_t *ex);
-segment_t *segment_linear_create(void *arg);
+lio_segment_t *segment_linear_load(void *arg, ex_id_t id, lio_exnode_exchange_t *ex);
+lio_segment_t *segment_linear_create(void *arg);
 
 #ifdef __cplusplus
 }

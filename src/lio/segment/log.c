@@ -49,7 +49,7 @@
 #include "segment/log.h"
 
 typedef struct {
-    segment_t *seg;
+    lio_segment_t *seg;
     ex_tbx_iovec_t rex;
     ex_tbx_iovec_t wex;
     ex_off_t seg_offset;
@@ -59,9 +59,9 @@ typedef struct {
 } slog_changes_t;
 
 typedef struct {
-    segment_t *seg;
+    lio_segment_t *seg;
     data_attr_t *da;
-    segment_rw_hints_t *rw_hints;
+    lio_segment_rw_hints_t *rw_hints;
     ex_tbx_iovec_t  *iov;
     ex_off_t    boff;
     tbx_tbuf_t  *buffer;
@@ -71,8 +71,8 @@ typedef struct {
 } seglog_rw_t;
 
 typedef struct {
-    segment_t *sseg;
-    segment_t *dseg;
+    lio_segment_t *sseg;
+    lio_segment_t *dseg;
     data_attr_t *da;
     void *attr;
     int mode;
@@ -81,14 +81,14 @@ typedef struct {
 } seglog_clone_t;
 
 typedef struct {
-    segment_t *seg;
+    lio_segment_t *seg;
     data_attr_t *da;
     ex_off_t new_size;
     int timeout;
 } seglog_truncate_t;
 
 typedef struct {
-    segment_t *seg;
+    lio_segment_t *seg;
     data_attr_t *da;
     char *buffer;
     ex_off_t bufsize;
@@ -101,14 +101,14 @@ typedef struct {
 //   the root, non-log segment base and returns it.
 //***********************************************************************
 
-segment_t *_slog_find_base(segment_t *sseg)
+lio_segment_t *_slog_find_base(lio_segment_t *sseg)
 {
-    segment_t *seg;
-    seglog_priv_t *s;
+    lio_segment_t *seg;
+    lio_seglog_priv_t *s;
 
     seg = sseg;
-    while (strcmp(segment_type(seg), SEGMENT_TYPE_LOG) == 0) {
-        s = (seglog_priv_t *)seg->priv;
+    while (strcmp(lio_segment_type(seg), SEGMENT_TYPE_LOG) == 0) {
+        s = (lio_seglog_priv_t *)seg->priv;
         seg = s->base_seg;
     }
 
@@ -122,20 +122,20 @@ segment_t *_slog_find_base(segment_t *sseg)
 //             segments.  It strictly updates the ISL mappings.
 //***********************************************************************
 
-int _slog_truncate_range(segment_t *seg, slog_range_t *r)
+int _slog_truncate_range(lio_segment_t *seg, lio_slog_range_t *r)
 {
     int bufmax = 100;
-    seglog_priv_t *s = (seglog_priv_t *)seg->priv;
+    lio_seglog_priv_t *s = (lio_seglog_priv_t *)seg->priv;
     ex_off_t lo, hi;
     tbx_isl_iter_t it;
-    slog_range_t *ir;
-    slog_range_t *r_table[bufmax+1];
+    lio_slog_range_t *ir;
+    lio_slog_range_t *r_table[bufmax+1];
     int n, i;
 
     lo = r->hi+1;  //** This is the new size
     hi = s->file_size;
     it = tbx_isl_iter_search(s->mapping, (tbx_sl_key_t *)&lo, (tbx_sl_key_t *)&hi);
-    ir = (slog_range_t *)tbx_isl_next(&it);
+    ir = (lio_slog_range_t *)tbx_isl_next(&it);
 
     log_printf(15, "seg=" XIDT " truncating new_size=" XOT " initial_intervals=%d\n", segment_id(seg), lo, tbx_isl_count(s->mapping));
     if (ir == NULL) {
@@ -160,7 +160,7 @@ int _slog_truncate_range(segment_t *seg, slog_range_t *r)
     }
 
     //** Cycle through the intervals to remove
-    while ((r_table[n] = (slog_range_t *)tbx_isl_next(&it)) != NULL) {
+    while ((r_table[n] = (lio_slog_range_t *)tbx_isl_next(&it)) != NULL) {
         log_printf(15, "i=%d dropping interval lo=" XOT " hi=" XOT "\n", n, r_table[n]->lo, r_table[n]->hi);
         n++;
         if (n == bufmax) {
@@ -197,22 +197,22 @@ int _slog_truncate_range(segment_t *seg, slog_range_t *r)
 //             segments.  It strictly updates the ISL mappings.
 //***********************************************************************
 
-int _slog_insert_range(segment_t *seg, slog_range_t *r)
+int _slog_insert_range(lio_segment_t *seg, lio_slog_range_t *r)
 {
-    seglog_priv_t *s = (seglog_priv_t *)seg->priv;
+    lio_seglog_priv_t *s = (lio_seglog_priv_t *)seg->priv;
     ex_off_t irlo;
     tbx_isl_iter_t it;
-    slog_range_t *ir, *ir2;
+    lio_slog_range_t *ir, *ir2;
 
     //** If a truncate just do it and return
     if (r->lo == -1) return(_slog_truncate_range(seg, r));
 
     it = tbx_isl_iter_search(s->mapping, (tbx_sl_key_t *)&(r->lo), (tbx_sl_key_t *)&(r->hi));
-    while ((ir = (slog_range_t *)tbx_isl_next(&it)) != NULL) {
+    while ((ir = (lio_slog_range_t *)tbx_isl_next(&it)) != NULL) {
         tbx_isl_remove(s->mapping, (tbx_sl_key_t *)&(ir->lo), (tbx_sl_key_t *)&(ir->hi), (tbx_sl_data_t *)ir);
         if (ir->lo < r->lo) {  //** Need to truncate the 1st portion (and maybe the end)
             if (ir->hi > r->hi) {  //** Straddles r
-                tbx_type_malloc(ir2, slog_range_t, 1);  //** Do the end first
+                tbx_type_malloc(ir2, lio_slog_range_t, 1);  //** Do the end first
                 ir2->lo = r->hi+1;
                 ir2->hi = ir->hi;
                 ir2->data_offset = ir->data_offset + (ir2->lo - ir->lo);
@@ -239,7 +239,7 @@ int _slog_insert_range(segment_t *seg, slog_range_t *r)
     //** Check if this range can be combined with the previous
     irlo = r->lo - 1;
     it = tbx_isl_iter_search(s->mapping, (tbx_sl_key_t *)&irlo, (tbx_sl_key_t *)&(r->hi));
-    ir = (slog_range_t *)tbx_isl_next(&it);
+    ir = (lio_slog_range_t *)tbx_isl_next(&it);
     if (ir != NULL) {
         irlo = ir->data_offset + ir->hi - ir->lo + 1;
         if (irlo == r->data_offset) {  //** Can combine ranges
@@ -264,18 +264,18 @@ int _slog_insert_range(segment_t *seg, slog_range_t *r)
 // seglog_write_func - Does the actual log write operation
 //***********************************************************************
 
-op_status_t seglog_write_func(void *arg, int id)
+gop_op_status_t seglog_write_func(void *arg, int id)
 {
     seglog_rw_t *sw = (seglog_rw_t *)arg;
-    seglog_priv_t *s = (seglog_priv_t *)sw->seg->priv;
+    lio_seglog_priv_t *s = (lio_seglog_priv_t *)sw->seg->priv;
     tbx_tbuf_t tbuf;
-    op_status_t status;
+    gop_op_status_t status;
     int err, i;
     ex_off_t nbytes, table_offset, data_offset;
     ex_tbx_iovec_t ex_iov_data, ex_iov_table;
-    slog_range_t r[sw->n_iov], *range;
-    opque_t *q;
-    op_generic_t *gop;
+    lio_slog_range_t r[sw->n_iov], *range;
+    gop_opque_t *q;
+    gop_op_generic_t *gop;
 
     log_printf(15, "seg=%p n_iov=%d offset[0]=" XOT " len[0]=" XOT "\n", sw->seg, sw->n_iov, sw->iov[0].offset, sw->iov[0].len);
     q = gop_opque_new();
@@ -293,7 +293,7 @@ op_status_t seglog_write_func(void *arg, int id)
 
     //** Reserve the space in the table and data segments
     table_offset = s->log_size;
-    s->log_size += sw->n_iov*sizeof(slog_range_t);
+    s->log_size += sw->n_iov*sizeof(lio_slog_range_t);
     data_offset = s->data_size;
     s->data_size += nbytes;
 
@@ -304,7 +304,7 @@ op_status_t seglog_write_func(void *arg, int id)
     gop = segment_write(s->data_seg, sw->da, sw->rw_hints, 1, &ex_iov_data, sw->buffer, sw->boff, sw->timeout);
     gop_opque_add(q, gop);
 
-    i = sw->n_iov*sizeof(slog_range_t);
+    i = sw->n_iov*sizeof(lio_slog_range_t);
     ex_iovec_single(&ex_iov_table, table_offset, i);
     tbx_tbuf_single(&tbuf, i, (char *)r);
     gop = segment_write(s->table_seg, sw->da, sw->rw_hints, 1, &ex_iov_table, &tbuf, 0, sw->timeout);
@@ -322,7 +322,7 @@ op_status_t seglog_write_func(void *arg, int id)
         //** Update the mappings
         segment_lock(sw->seg);
         for (i=0; i < sw->n_iov; i++) {
-            tbx_type_malloc(range, slog_range_t, 1);
+            tbx_type_malloc(range, lio_slog_range_t, 1);
             range->lo = r[i].lo;
             range->hi = r[i].lo + r[i].hi - 1;
             range->data_offset = r[i].data_offset;
@@ -340,11 +340,11 @@ op_status_t seglog_write_func(void *arg, int id)
 // seglog_write - Performs a segment write operation
 //***********************************************************************
 
-op_generic_t *seglog_write(segment_t *seg, data_attr_t *da, segment_rw_hints_t *rw_hints, int n_iov, ex_tbx_iovec_t *iov, tbx_tbuf_t *buffer, ex_off_t boff, int timeout)
+gop_op_generic_t *seglog_write(lio_segment_t *seg, data_attr_t *da, lio_segment_rw_hints_t *rw_hints, int n_iov, ex_tbx_iovec_t *iov, tbx_tbuf_t *buffer, ex_off_t boff, int timeout)
 {
-    seglog_priv_t *s = (seglog_priv_t *)seg->priv;
+    lio_seglog_priv_t *s = (lio_seglog_priv_t *)seg->priv;
     seglog_rw_t *sw;
-    op_generic_t *gop;
+    gop_op_generic_t *gop;
 
     tbx_type_malloc(sw, seglog_rw_t, 1);
     sw->seg = seg;
@@ -365,16 +365,16 @@ op_generic_t *seglog_write(segment_t *seg, data_attr_t *da, segment_rw_hints_t *
 // seglog_read_func - Does the actual log read operation
 //***********************************************************************
 
-op_status_t seglog_read_func(void *arg, int id)
+gop_op_status_t seglog_read_func(void *arg, int id)
 {
     seglog_rw_t *sw = (seglog_rw_t *)arg;
-    seglog_priv_t *s = (seglog_priv_t *)sw->seg->priv;
+    lio_seglog_priv_t *s = (lio_seglog_priv_t *)sw->seg->priv;
     tbx_isl_iter_t it;
-    slog_range_t *ir;
-    opque_t *q;
-    op_generic_t *gop;
+    lio_slog_range_t *ir;
+    gop_opque_t *q;
+    gop_op_generic_t *gop;
     int i, err, n_iov, slot;
-    op_status_t status;
+    gop_op_status_t status;
     ex_off_t lo, hi, prev_end;
     ex_off_t bpos, pos, range_offset;
     ex_tbx_iovec_t *ex_iov, *iov;
@@ -404,7 +404,7 @@ op_status_t seglog_read_func(void *arg, int id)
         pos = lo;
         prev_end = -1;
         it = tbx_isl_iter_search(s->mapping, (tbx_sl_key_t *)&lo, (tbx_sl_key_t *)&hi);
-        while ((ir = (slog_range_t *)tbx_isl_next(&it)) != NULL) {
+        while ((ir = (lio_slog_range_t *)tbx_isl_next(&it)) != NULL) {
             if (prev_end == -1) {  //** 1st time through
                 if (ir->lo > lo) {  //** Have a hole
                     prev_end = lo;
@@ -488,11 +488,11 @@ op_status_t seglog_read_func(void *arg, int id)
 // seglog_read - Read from a log segment
 //***********************************************************************
 
-op_generic_t *seglog_read(segment_t *seg, data_attr_t *da, segment_rw_hints_t *rw_hints, int n_iov, ex_tbx_iovec_t *iov, tbx_tbuf_t *buffer, ex_off_t boff, int timeout)
+gop_op_generic_t *seglog_read(lio_segment_t *seg, data_attr_t *da, lio_segment_rw_hints_t *rw_hints, int n_iov, ex_tbx_iovec_t *iov, tbx_tbuf_t *buffer, ex_off_t boff, int timeout)
 {
-    seglog_priv_t *s = (seglog_priv_t *)seg->priv;
+    lio_seglog_priv_t *s = (lio_seglog_priv_t *)seg->priv;
     seglog_rw_t *sw;
-    op_generic_t *gop;
+    gop_op_generic_t *gop;
 
     tbx_type_malloc(sw, seglog_rw_t, 1);
     sw->seg = seg;
@@ -514,15 +514,15 @@ op_generic_t *seglog_read(segment_t *seg, data_attr_t *da, segment_rw_hints_t *r
 // slog_load - Loads the intitial mapping table
 //***********************************************************************
 
-int _slog_load(segment_t *seg)
+int _slog_load(lio_segment_t *seg)
 {
-    seglog_priv_t *s = (seglog_priv_t *)seg->priv;
+    lio_seglog_priv_t *s = (lio_seglog_priv_t *)seg->priv;
     int timeout = 20;
     ex_off_t i;
     int last_bad, err_count;
-    op_generic_t *gop;
+    gop_op_generic_t *gop;
     data_attr_t *da;
-    slog_range_t *r;
+    lio_slog_range_t *r;
     ex_tbx_iovec_t ex_iov;
     tbx_tbuf_t tbuf;
 
@@ -536,10 +536,10 @@ int _slog_load(segment_t *seg)
 
     last_bad = 0;
     err_count = 0;
-    for (i=0; i<s->log_size; i += sizeof(slog_range_t)) {
-        tbx_type_malloc_clear(r, slog_range_t, 1);
-        ex_iovec_single(&ex_iov, i, sizeof(slog_range_t));
-        tbx_tbuf_single(&tbuf, sizeof(slog_range_t), (char *)r);
+    for (i=0; i<s->log_size; i += sizeof(lio_slog_range_t)) {
+        tbx_type_malloc_clear(r, lio_slog_range_t, 1);
+        ex_iovec_single(&ex_iov, i, sizeof(lio_slog_range_t));
+        tbx_tbuf_single(&tbuf, sizeof(lio_slog_range_t), (char *)r);
         gop = segment_read(s->table_seg, da, NULL, 1, &ex_iov, &tbuf, 0, timeout);
         if (gop_waitall(gop) == OP_STATE_SUCCESS) {
             if (((r->lo == 0) && (r->hi == 0) && (r->data_offset == 0)) || ((r->hi == 0) && (r->lo != -1))) {  //** This is a failed write so ignore it
@@ -584,22 +584,22 @@ int _slog_load(segment_t *seg)
 //    given range.
 //***********************************************************************
 
-ex_off_t slog_changes(segment_t *seg, ex_off_t lo, ex_off_t hi, tbx_stack_t *stack)
+ex_off_t slog_changes(lio_segment_t *seg, ex_off_t lo, ex_off_t hi, tbx_stack_t *stack)
 {
-    seglog_priv_t *s = (seglog_priv_t *)seg->priv;
+    lio_seglog_priv_t *s = (lio_seglog_priv_t *)seg->priv;
     tbx_isl_iter_t it;
-    slog_range_t *ir;
+    lio_slog_range_t *ir;
     slog_changes_t *clog;
     ex_off_t nbytes, prev_end;
     int log_base;
 
-    log_base = (strcmp(segment_type(s->base_seg), SEGMENT_TYPE_LOG) == 0) ? 1 : 0;
+    log_base = (strcmp(lio_segment_type(s->base_seg), SEGMENT_TYPE_LOG) == 0) ? 1 : 0;
     nbytes = 0;
 
     segment_lock(seg);
     prev_end = -1;
     it = tbx_isl_iter_search(s->mapping, (tbx_sl_key_t *)&lo, (tbx_sl_key_t *)&hi);
-    while ((ir = (slog_range_t *)tbx_isl_next(&it)) != NULL) {
+    while ((ir = (lio_slog_range_t *)tbx_isl_next(&it)) != NULL) {
         if (prev_end == -1) {  //** 1st time through
             if (ir->lo > lo) {  //** Have a hole
                 prev_end = lo;
@@ -658,13 +658,13 @@ ex_off_t slog_changes(segment_t *seg, ex_off_t lo, ex_off_t hi, tbx_stack_t *sta
 // seglog_clone_func - Clone data from the segment
 //***********************************************************************
 
-op_status_t seglog_clone_func(void *arg, int id)
+gop_op_status_t seglog_clone_func(void *arg, int id)
 {
     seglog_clone_t *slc = (seglog_clone_t *)arg;
-    seglog_priv_t *ss = (seglog_priv_t *)slc->sseg->priv;
-    seglog_priv_t *sd = (seglog_priv_t *)slc->dseg->priv;
-    segment_t *base;
-    op_generic_t *gop;
+    lio_seglog_priv_t *ss = (lio_seglog_priv_t *)slc->sseg->priv;
+    lio_seglog_priv_t *sd = (lio_seglog_priv_t *)slc->dseg->priv;
+    lio_segment_t *base;
+    gop_op_generic_t *gop;
     ex_off_t nbytes_base, nbytes_log;
     int bufsize = 50*1024*1024;
     ex_off_t dt, pos, rpos, wpos, rlen, dlen;
@@ -673,10 +673,10 @@ op_status_t seglog_clone_func(void *arg, int id)
     int err, do_lio_segment_copy;
     char *buffer = NULL;
     slog_changes_t *clog;
-    opque_t *q1 = NULL;
-    opque_t *q2, *q;
+    gop_opque_t *q1 = NULL;
+    gop_opque_t *q2, *q;
     tbx_stack_t *stack;
-    op_status_t status;
+    gop_op_status_t status;
 
     do_lio_segment_copy = 0;
     stack = NULL;
@@ -687,9 +687,9 @@ op_status_t seglog_clone_func(void *arg, int id)
 
     //** SEe if we are using an old seg.  If so we need to trunc it first
     if (slc->trunc == 1) {
-        gop_opque_add(q, segment_truncate(sd->table_seg, slc->da, 0, slc->timeout));
-        gop_opque_add(q, segment_truncate(sd->data_seg, slc->da, 0, slc->timeout));
-        gop_opque_add(q, segment_truncate(sd->base_seg, slc->da, 0, slc->timeout));
+        gop_opque_add(q, lio_segment_truncate(sd->table_seg, slc->da, 0, slc->timeout));
+        gop_opque_add(q, lio_segment_truncate(sd->data_seg, slc->da, 0, slc->timeout));
+        gop_opque_add(q, lio_segment_truncate(sd->base_seg, slc->da, 0, slc->timeout));
     }
 
     //** Go ahead and start cloning the log
@@ -804,7 +804,7 @@ op_status_t seglog_clone_func(void *arg, int id)
 
     //** Make sure we don't have an empty log
     if (q2 != NULL) {
-        if (opque_task_count(q2) > 0) {
+        if (gop_opque_task_count(q2) > 0) {
             err = opque_waitall(q2);  //** Wait for the data to be R/W
             if (err != OP_STATE_SUCCESS) {
                 log_printf(1, "Error during log copy phase:  src=" XIDT "\n", segment_id(slc->sseg));
@@ -837,11 +837,11 @@ op_status_t seglog_clone_func(void *arg, int id)
 // seglog_clone - Clones a segment
 //***********************************************************************
 
-op_generic_t *seglog_clone(segment_t *seg, data_attr_t *da, segment_t **clone_seg, int mode, void *attr, int timeout)
+gop_op_generic_t *seglog_clone(lio_segment_t *seg, data_attr_t *da, lio_segment_t **clone_seg, int mode, void *attr, int timeout)
 {
-    segment_t *clone;
-    seglog_priv_t *sd;
-    op_generic_t *gop;
+    lio_segment_t *clone;
+    lio_seglog_priv_t *sd;
+    gop_op_generic_t *gop;
     seglog_clone_t *slc;
     int use_existing = (*clone_seg != NULL) ? 1 : 0;
 
@@ -850,7 +850,7 @@ op_generic_t *seglog_clone(segment_t *seg, data_attr_t *da, segment_t **clone_se
     if (use_existing == 0) *clone_seg = segment_log_create(seg->ess);
 //log_printf(0, " after clone create\n");
     clone = *clone_seg;
-    sd = (seglog_priv_t *)clone->priv;
+    sd = (lio_seglog_priv_t *)clone->priv;
 
     log_printf(15, "use_existing=%d sseg=" XIDT " dseg=" XIDT "\n", use_existing, segment_id(seg), segment_id(clone));
 
@@ -874,44 +874,44 @@ op_generic_t *seglog_clone(segment_t *seg, data_attr_t *da, segment_t **clone_se
 //  seglog_truncate_func - Does the actual segment truncate operation
 //***********************************************************************
 
-op_status_t seglog_truncate_func(void *arg, int id)
+gop_op_status_t seglog_truncate_func(void *arg, int id)
 {
     seglog_truncate_t *st = (seglog_truncate_t *)arg;
-    seglog_priv_t *s = (seglog_priv_t *)st->seg->priv;
-    op_status_t status;
+    lio_seglog_priv_t *s = (lio_seglog_priv_t *)st->seg->priv;
+    gop_op_status_t status;
     tbx_tbuf_t tbuf_table, tbuf_data;
     ex_tbx_iovec_t ex_iov_table, ex_iov_data;
     ex_off_t table_offset, data_offset;
     char c = 0;
     int err;
-    slog_range_t *r;
-    opque_t *q;
-    op_generic_t *gop = NULL;
+    lio_slog_range_t *r;
+    gop_opque_t *q;
+    gop_op_generic_t *gop = NULL;
 
     q = gop_opque_new();
 
     segment_lock(st->seg);
     if (st->new_size < s->file_size) { //** Shrink operation
         table_offset = s->log_size;
-        tbx_type_malloc(r, slog_range_t, 1);
+        tbx_type_malloc(r, lio_slog_range_t, 1);
         r->lo = -1;
         r->hi = st->new_size - 1;
         r->data_offset = -1;
-        ex_iovec_single(&ex_iov_table, table_offset, sizeof(slog_range_t));
-        tbx_tbuf_single(&tbuf_table, sizeof(slog_range_t), (char *)r);
+        ex_iovec_single(&ex_iov_table, table_offset, sizeof(lio_slog_range_t));
+        tbx_tbuf_single(&tbuf_table, sizeof(lio_slog_range_t), (char *)r);
         gop = segment_write(s->table_seg, st->da, NULL, 1, &ex_iov_table, &tbuf_table, 0, st->timeout);
         gop_opque_add(q, gop);
 
-        s->log_size += sizeof(slog_range_t);
+        s->log_size += sizeof(lio_slog_range_t);
     } else if (st->new_size > s->file_size) {  //** Grow operation
         table_offset = s->log_size;
         data_offset = s->data_size;
-        tbx_type_malloc(r, slog_range_t, 1);
+        tbx_type_malloc(r, lio_slog_range_t, 1);
         r->lo = s->file_size - 1;
         r->hi = st->new_size - s->file_size;  //** On disk this is the len
         r->data_offset = data_offset;
-        ex_iovec_single(&ex_iov_table, table_offset, sizeof(slog_range_t));
-        tbx_tbuf_single(&tbuf_table, sizeof(slog_range_t), (char *)r);
+        ex_iovec_single(&ex_iov_table, table_offset, sizeof(lio_slog_range_t));
+        tbx_tbuf_single(&tbuf_table, sizeof(lio_slog_range_t), (char *)r);
         gop = segment_write(s->table_seg, st->da, NULL, 1, &ex_iov_table, &tbuf_table, 0, st->timeout);
         gop_opque_add(q, gop);
 
@@ -921,7 +921,7 @@ op_status_t seglog_truncate_func(void *arg, int id)
         gop = segment_write(s->data_seg, st->da, NULL, 1, &ex_iov_data, &tbuf_data, 0, st->timeout);
         gop_opque_add(q, gop);
 
-        s->log_size += sizeof(slog_range_t);
+        s->log_size += sizeof(lio_slog_range_t);
         s->data_size += st->new_size - s->file_size;
 
     }
@@ -962,9 +962,9 @@ op_status_t seglog_truncate_func(void *arg, int id)
 // seglog_truncate - Expands or contracts a linear segment
 //***********************************************************************
 
-op_generic_t *seglog_truncate(segment_t *seg, data_attr_t *da, ex_off_t new_size, int timeout)
+gop_op_generic_t *seglog_truncate(lio_segment_t *seg, data_attr_t *da, ex_off_t new_size, int timeout)
 {
-    seglog_priv_t *s = (seglog_priv_t *)seg->priv;
+    lio_seglog_priv_t *s = (lio_seglog_priv_t *)seg->priv;
     seglog_truncate_t *st;
 
     if (new_size < 0) { //** Reserve space call which is ignored at this time
@@ -985,10 +985,10 @@ op_generic_t *seglog_truncate(segment_t *seg, data_attr_t *da, ex_off_t new_size
 // seglog_remove - Removes the log segment from disk
 //***********************************************************************
 
-op_generic_t *seglog_remove(segment_t *seg, data_attr_t *da, int timeout)
+gop_op_generic_t *seglog_remove(lio_segment_t *seg, data_attr_t *da, int timeout)
 {
-    seglog_priv_t *s = (seglog_priv_t *)seg->priv;
-    opque_t *q = gop_opque_new();
+    lio_seglog_priv_t *s = (lio_seglog_priv_t *)seg->priv;
+    gop_opque_t *q = gop_opque_new();
 
     gop_opque_add(q, segment_remove(s->table_seg, da, timeout));
     gop_opque_add(q, segment_remove(s->data_seg, da, timeout));
@@ -1001,10 +1001,10 @@ op_generic_t *seglog_remove(segment_t *seg, data_attr_t *da, int timeout)
 // seglog_inspect - Inspects the log segment
 //***********************************************************************
 
-op_generic_t *seglog_inspect(segment_t *seg, data_attr_t *da, tbx_log_fd_t *fd, int mode, ex_off_t bufsize, inspect_args_t *args, int timeout)
+gop_op_generic_t *seglog_inspect(lio_segment_t *seg, data_attr_t *da, tbx_log_fd_t *fd, int mode, ex_off_t bufsize, lio_inspect_args_t *args, int timeout)
 {
-    seglog_priv_t *s = (seglog_priv_t *)seg->priv;
-    opque_t *q = gop_opque_new();
+    lio_seglog_priv_t *s = (lio_seglog_priv_t *)seg->priv;
+    gop_opque_t *q = gop_opque_new();
 
     gop_opque_add(q, segment_inspect(s->table_seg, da, fd, mode, bufsize, args, timeout));
     gop_opque_add(q, segment_inspect(s->data_seg, da, fd, mode, bufsize, args, timeout));
@@ -1017,10 +1017,10 @@ op_generic_t *seglog_inspect(segment_t *seg, data_attr_t *da, tbx_log_fd_t *fd, 
 // seglog_flush - Flushes a segment
 //***********************************************************************
 
-op_generic_t *seglog_flush(segment_t *seg, data_attr_t *da, ex_off_t lo, ex_off_t hi, int timeout)
+gop_op_generic_t *seglog_flush(lio_segment_t *seg, data_attr_t *da, ex_off_t lo, ex_off_t hi, int timeout)
 {
-    seglog_priv_t *s = (seglog_priv_t *)seg->priv;
-    opque_t *q = gop_opque_new();
+    lio_seglog_priv_t *s = (lio_seglog_priv_t *)seg->priv;
+    gop_opque_t *q = gop_opque_new();
 
     gop_opque_add(q, segment_flush(s->table_seg, da, 0, s->log_size, timeout));
     gop_opque_add(q, segment_flush(s->data_seg, da, 0, s->data_size, timeout));
@@ -1031,9 +1031,9 @@ op_generic_t *seglog_flush(segment_t *seg, data_attr_t *da, ex_off_t lo, ex_off_
 // seglog_size - Returns the segment size.
 //***********************************************************************
 
-ex_off_t seglog_size(segment_t *seg)
+ex_off_t seglog_size(lio_segment_t *seg)
 {
-    seglog_priv_t *s = (seglog_priv_t *)seg->priv;
+    lio_seglog_priv_t *s = (lio_seglog_priv_t *)seg->priv;
     ex_off_t size;
 
     segment_lock(seg);
@@ -1047,9 +1047,9 @@ ex_off_t seglog_size(segment_t *seg)
 // seglog_block_size - Returns the blocks size which is always 1
 //***********************************************************************
 
-ex_off_t seglog_block_size(segment_t *seg)
+ex_off_t seglog_block_size(lio_segment_t *seg)
 {
-//  seglog_priv_t *s = (seglog_priv_t *)seg->priv;
+//  lio_seglog_priv_t *s = (lio_seglog_priv_t *)seg->priv;
 
     return(1);
 }
@@ -1058,9 +1058,9 @@ ex_off_t seglog_block_size(segment_t *seg)
 // seglog_signature - Generates the segment signature
 //***********************************************************************
 
-int seglog_signature(segment_t *seg, char *buffer, int *used, int bufsize)
+int seglog_signature(lio_segment_t *seg, char *buffer, int *used, int bufsize)
 {
-    seglog_priv_t *s = (seglog_priv_t *)seg->priv;
+    lio_seglog_priv_t *s = (lio_seglog_priv_t *)seg->priv;
 
     tbx_append_printf(buffer, used, bufsize, "log(log)\n");
     segment_signature(s->table_seg, buffer, used, bufsize);
@@ -1079,14 +1079,14 @@ int seglog_signature(segment_t *seg, char *buffer, int *used, int bufsize)
 // seglog_serialize_text -Convert the segment to a text based format
 //***********************************************************************
 
-int seglog_serialize_text(segment_t *seg, exnode_exchange_t *exp)
+int seglog_serialize_text(lio_segment_t *seg, lio_exnode_exchange_t *exp)
 {
-    seglog_priv_t *s = (seglog_priv_t *)seg->priv;
+    lio_seglog_priv_t *s = (lio_seglog_priv_t *)seg->priv;
     int bufsize=1024*1024;
     char segbuf[bufsize];
     char *etext;
     int sused;
-    exnode_exchange_t *child_exp;
+    lio_exnode_exchange_t *child_exp;
 
     segbuf[0] = 0;
 
@@ -1131,7 +1131,7 @@ int seglog_serialize_text(segment_t *seg, exnode_exchange_t *exp)
 // seglog_serialize_proto -Convert the segment to a protocol buffer
 //***********************************************************************
 
-int seglog_serialize_proto(segment_t *seg, exnode_exchange_t *exp)
+int seglog_serialize_proto(lio_segment_t *seg, lio_exnode_exchange_t *exp)
 {
     return(-1);
 }
@@ -1140,7 +1140,7 @@ int seglog_serialize_proto(segment_t *seg, exnode_exchange_t *exp)
 // seglog_serialize -Convert the segment to a more portable format
 //***********************************************************************
 
-int seglog_serialize(segment_t *seg, exnode_exchange_t *exp)
+int seglog_serialize(lio_segment_t *seg, lio_exnode_exchange_t *exp)
 {
     if (exp->type == EX_TEXT) {
         return(seglog_serialize_text(seg, exp));
@@ -1156,9 +1156,9 @@ int seglog_serialize(segment_t *seg, exnode_exchange_t *exp)
 // seglog_deserialize_text -Read the text based segment
 //***********************************************************************
 
-int seglog_deserialize_text(segment_t *seg, ex_id_t id, exnode_exchange_t *exp)
+int seglog_deserialize_text(lio_segment_t *seg, ex_id_t id, lio_exnode_exchange_t *exp)
 {
-    seglog_priv_t *s = (seglog_priv_t *)seg->priv;
+    lio_seglog_priv_t *s = (lio_seglog_priv_t *)seg->priv;
     int bufsize=1024;
     char seggrp[bufsize];
     tbx_inip_file_t *fd;
@@ -1205,7 +1205,7 @@ int seglog_deserialize_text(segment_t *seg, ex_id_t id, exnode_exchange_t *exp)
 // seglog_deserialize_proto - Read the prot formatted segment
 //***********************************************************************
 
-int seglog_deserialize_proto(segment_t *seg, ex_id_t id, exnode_exchange_t *exp)
+int seglog_deserialize_proto(lio_segment_t *seg, ex_id_t id, lio_exnode_exchange_t *exp)
 {
     return(-1);
 }
@@ -1214,7 +1214,7 @@ int seglog_deserialize_proto(segment_t *seg, ex_id_t id, exnode_exchange_t *exp)
 // seglog_deserialize -Convert from the portable to internal format
 //***********************************************************************
 
-int seglog_deserialize(segment_t *seg, ex_id_t id, exnode_exchange_t *exp)
+int seglog_deserialize(lio_segment_t *seg, ex_id_t id, lio_exnode_exchange_t *exp)
 {
     if (exp->type == EX_TEXT) {
         return(seglog_deserialize_text(seg, id, exp));
@@ -1230,12 +1230,12 @@ int seglog_deserialize(segment_t *seg, ex_id_t id, exnode_exchange_t *exp)
 // seglog_destroy - Destroys a llog segment struct (not the data)
 //***********************************************************************
 
-void seglog_destroy(segment_t *seg)
+void seglog_destroy(lio_segment_t *seg)
 {
     int i, n;
     tbx_isl_iter_t it;
-    slog_range_t **r_list;
-    seglog_priv_t *s = (seglog_priv_t *)seg->priv;
+    lio_slog_range_t **r_list;
+    lio_seglog_priv_t *s = (lio_seglog_priv_t *)seg->priv;
 
     //** Check if it's still in use
     log_printf(15, "seglog_destroy: seg->id=" XIDT " ref_count=%d\n", segment_id(seg), seg->ref_count);
@@ -1258,10 +1258,10 @@ void seglog_destroy(segment_t *seg)
 
     //** Now free the mapping table
     n = tbx_isl_count(s->mapping);
-    tbx_type_malloc_clear(r_list, slog_range_t *, n);
+    tbx_type_malloc_clear(r_list, lio_slog_range_t *, n);
     it = tbx_isl_iter_search(s->mapping, (tbx_sl_key_t *)NULL, (tbx_sl_key_t *)NULL);
     for (i=0; i<n; i++) {
-        r_list[i] = (slog_range_t *)tbx_isl_next(&it);
+        r_list[i] = (lio_slog_range_t *)tbx_isl_next(&it);
     }
     tbx_isl_del(s->mapping);
 
@@ -1283,14 +1283,14 @@ void seglog_destroy(segment_t *seg)
 // segment_log_create - Creates a log segment
 //***********************************************************************
 
-segment_t *segment_log_create(void *arg)
+lio_segment_t *segment_log_create(void *arg)
 {
-    service_manager_t *es = (service_manager_t *)arg;
-    seglog_priv_t *s;
-    segment_t *seg;
+    lio_service_manager_t *es = (lio_service_manager_t *)arg;
+    lio_seglog_priv_t *s;
+    lio_segment_t *seg;
 
-    tbx_type_malloc_clear(seg, segment_t, 1);
-    tbx_type_malloc_clear(s, seglog_priv_t, 1);
+    tbx_type_malloc_clear(seg, lio_segment_t, 1);
+    tbx_type_malloc_clear(s, lio_seglog_priv_t, 1);
 
     s->mapping = tbx_isl_new(&skiplist_compare_ex_off, NULL, NULL, NULL);
     seg->priv = s;
@@ -1329,9 +1329,9 @@ segment_t *segment_log_create(void *arg)
 // segment_log_load - Loads a log segment from ini/ex3
 //***********************************************************************
 
-segment_t *segment_log_load(void *arg, ex_id_t id, exnode_exchange_t *ex)
+lio_segment_t *segment_log_load(void *arg, ex_id_t id, lio_exnode_exchange_t *ex)
 {
-    segment_t *seg = segment_log_create(arg);
+    lio_segment_t *seg = segment_log_create(arg);
     if (segment_deserialize(seg, id, ex) != 0) {
         segment_destroy(seg);
         seg = NULL;
@@ -1344,17 +1344,17 @@ segment_t *segment_log_load(void *arg, ex_id_t id, exnode_exchange_t *ex)
 //    The empty log and data must be provided.
 //***********************************************************************
 
-segment_t *slog_make(service_manager_t *sm, segment_t *table, segment_t *data, segment_t *base)
+lio_segment_t *slog_make(lio_service_manager_t *sm, lio_segment_t *table, lio_segment_t *data, lio_segment_t *base)
 {
-    segment_t *seg;
-    seglog_priv_t *s;
+    lio_segment_t *seg;
+    lio_seglog_priv_t *s;
     segment_create_t *screate;
 
     screate = lio_lookup_service(sm, SEG_SM_CREATE, SEGMENT_TYPE_LOG);
     if (screate == NULL) return(NULL);
 
     seg = (*screate)(sm);
-    s = (seglog_priv_t *)seg->priv;
+    s = (lio_seglog_priv_t *)seg->priv;
     s->table_seg = table;
     s->data_seg = data;
     s->base_seg = base;
@@ -1367,14 +1367,14 @@ segment_t *slog_make(service_manager_t *sm, segment_t *table, segment_t *data, s
 // seglog_merge_with_base_func - Merges the log with the base
 //***********************************************************************
 
-op_status_t seglog_merge_with_base_func(void *arg, int id)
+gop_op_status_t seglog_merge_with_base_func(void *arg, int id)
 {
     seglog_merge_t *sm = (seglog_merge_t *)arg;
-    seglog_priv_t *s = (seglog_priv_t *)sm->seg->priv;
-    opque_t *qin, *qout;
-    op_generic_t *gop;
+    lio_seglog_priv_t *s = (lio_seglog_priv_t *)sm->seg->priv;
+    gop_opque_t *qin, *qout;
+    gop_op_generic_t *gop;
     ex_tbx_iovec_t *ex_in, *ex_out;
-    slog_range_t *r;
+    lio_slog_range_t *r;
     tbx_tbuf_t tbuf;
     ex_off_t pos, len, blen, bpos;
     int i, n_iov, err;
@@ -1394,7 +1394,7 @@ op_status_t seglog_merge_with_base_func(void *arg, int id)
     pos = 0;
     for (i=0; i<=n_iov; i++) {
         if (i < n_iov) {
-            r = (slog_range_t *)tbx_isl_next(&it);
+            r = (lio_slog_range_t *)tbx_isl_next(&it);
             ex_in[i].offset = r->data_offset;
             len = r->hi - r->lo + 1;
             ex_in[i].len = len;
@@ -1469,11 +1469,11 @@ op_status_t seglog_merge_with_base_func(void *arg, int id)
     err = OP_STATE_SUCCESS;
     if (sm->truncate_old_log == 1) {
         log_printf(15, "truncating old log\n");
-        gop_opque_add(qin, segment_truncate(s->table_seg, sm->da, 0, sm->timeout));
-        gop_opque_add(qin, segment_truncate(s->data_seg, sm->da, 0, sm->timeout));
+        gop_opque_add(qin, lio_segment_truncate(s->table_seg, sm->da, 0, sm->timeout));
+        gop_opque_add(qin, lio_segment_truncate(s->data_seg, sm->da, 0, sm->timeout));
 
         //** empty the log table
-        tbx_type_malloc(r, slog_range_t, 1);
+        tbx_type_malloc(r, lio_slog_range_t, 1);
         r->lo = -1;
         r->hi = 0 - 1;
         r->data_offset = -1;
@@ -1511,10 +1511,10 @@ op_status_t seglog_merge_with_base_func(void *arg, int id)
 //   Otherwise the old log is not touched and left intact (and superfluos).
 //***********************************************************************
 
-op_generic_t *lio_slog_merge_with_base(segment_t *seg, data_attr_t *da, ex_off_t bufsize, char *buffer, int truncate_old_log, int timeout)
+gop_op_generic_t *lio_slog_merge_with_base(lio_segment_t *seg, data_attr_t *da, ex_off_t bufsize, char *buffer, int truncate_old_log, int timeout)
 {
     seglog_merge_t *st;
-    seglog_priv_t *s = (seglog_priv_t *)seg->priv;
+    lio_seglog_priv_t *s = (lio_seglog_priv_t *)seg->priv;
 
     tbx_type_malloc_clear(st, seglog_merge_t, 1);
 

@@ -30,35 +30,35 @@
 
 //***********************************************************************
 
-int osaz_fake_object_create_remove(os_authz_t *osa, creds_t *c, char *path)
+int osaz_fake_object_create_remove(lio_os_authz_t *osa, lio_creds_t *c, char *path)
 {
     return(1);
 }
 
 //***********************************************************************
 
-int osaz_fake_object_access(os_authz_t *osa, creds_t *c, char *path, int mode)
+int osaz_fake_object_access(lio_os_authz_t *osa, lio_creds_t *c, char *path, int mode)
 {
     return(1);
 }
 
 //***********************************************************************
 
-int osaz_fake_attr_create_remove(os_authz_t *osa, creds_t *c, char *path, char *key)
+int osaz_fake_attr_create_remove(lio_os_authz_t *osa, lio_creds_t *c, char *path, char *key)
 {
     return(1);
 }
 
 //***********************************************************************
 
-int osaz_fake_attr_access(os_authz_t *osa, creds_t *c, char *path, char *key, int mode)
+int osaz_fake_attr_access(lio_os_authz_t *osa, lio_creds_t *c, char *path, char *key, int mode)
 {
     return(1);
 }
 
 //***********************************************************************
 
-void osaz_fake_destroy(os_authz_t *az)
+void osaz_fake_destroy(lio_os_authz_t *az)
 {
     free(az);
 }
@@ -68,11 +68,11 @@ void osaz_fake_destroy(os_authz_t *az)
 // osaz_fake_create - Create a Fake AuthN service
 //***********************************************************************
 
-os_authz_t *osaz_fake_create(service_manager_t *ess, tbx_inip_file_t *ifd, char *section, object_service_fn_t *os)
+lio_os_authz_t *osaz_fake_create(lio_service_manager_t *ess, tbx_inip_file_t *ifd, char *section, lio_object_service_fn_t *os)
 {
-    os_authz_t *osaz;
+    lio_os_authz_t *osaz;
 
-    tbx_type_malloc(osaz, os_authz_t, 1);
+    tbx_type_malloc(osaz, lio_os_authz_t, 1);
 
     osaz->priv = NULL;
     osaz->object_create = osaz_fake_object_create_remove;

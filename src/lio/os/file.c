@@ -71,7 +71,7 @@ typedef struct {
 } osf_dir_t;
 
 typedef struct {
-    object_service_fn_t *os;
+    lio_object_service_fn_t *os;
     char *object_name;
     char *attr_dir;
     char *id;
@@ -82,11 +82,11 @@ typedef struct {
 
 
 typedef struct {
-    object_service_fn_t *os;
+    lio_object_service_fn_t *os;
     char *path;
     int mode;
     char *id;
-    creds_t *creds;
+    lio_creds_t *creds;
     osfile_fd_t **fd;
     osfile_fd_t *cfd;
     uint64_t uuid;
@@ -94,9 +94,9 @@ typedef struct {
 } osfile_open_op_t;
 
 typedef struct {
-    object_service_fn_t *os;
+    lio_object_service_fn_t *os;
     osfile_fd_t *fd;
-    creds_t *creds;
+    lio_creds_t *creds;
     char **key;
     void **val;
     char *key_tmp;
@@ -108,13 +108,13 @@ typedef struct {
 
 
 typedef struct {
-    object_service_fn_t *os;
+    lio_object_service_fn_t *os;
     osfile_fd_t *fd;
-    creds_t *creds;
+    lio_creds_t *creds;
     DIR *d;
     apr_pool_t       *mpool;  //** Needa separate pool for making the va_index. Only way to do this since no apr_hash_iter_destroy fn exists
     apr_hash_index_t *va_index;
-    os_regex_table_t *regex;
+    lio_os_regex_table_t *regex;
     char *key;
     void *value;
     int v_max;
@@ -133,13 +133,13 @@ typedef struct {
 } osf_obj_level_t;
 
 typedef struct {
-    object_service_fn_t *os;
-    os_regex_table_t *table;
-    os_regex_table_t *attr;
-    os_regex_table_t *object_regex;
+    lio_object_service_fn_t *os;
+    lio_os_regex_table_t *table;
+    lio_os_regex_table_t *attr;
+    lio_os_regex_table_t *object_regex;
     regex_t *object_preg;
     osf_obj_level_t *level_info;
-    creds_t *creds;
+    lio_creds_t *creds;
     os_attr_iter_t **it_attr;
     os_fd_t *fd;
     tbx_stack_t *recurse_stack;
@@ -159,20 +159,20 @@ typedef struct {
 } osf_object_iter_t;
 
 typedef struct {
-    object_service_fn_t *os;
-    creds_t *creds;
-    os_regex_table_t *rpath;
-    os_regex_table_t *object_regex;
+    lio_object_service_fn_t *os;
+    lio_creds_t *creds;
+    lio_os_regex_table_t *rpath;
+    lio_os_regex_table_t *object_regex;
     tbx_atomic_unit32_t abort;
     int obj_types;
     int recurse_depth;
 } osfile_remove_regex_op_t;
 
 typedef struct {
-    object_service_fn_t *os;
-    creds_t *creds;
-    os_regex_table_t *rpath;
-    os_regex_table_t *object_regex;
+    lio_object_service_fn_t *os;
+    lio_creds_t *creds;
+    lio_os_regex_table_t *rpath;
+    lio_os_regex_table_t *object_regex;
     int recurse_depth;
     int object_types;
     char **key;
@@ -184,8 +184,8 @@ typedef struct {
 } osfile_regex_object_attr_op_t;
 
 typedef struct {
-    object_service_fn_t *os;
-    creds_t *creds;
+    lio_object_service_fn_t *os;
+    lio_creds_t *creds;
     char *src_path;
     char *dest_path;
     char *id;
@@ -193,8 +193,8 @@ typedef struct {
 } osfile_mk_mv_rm_t;
 
 typedef struct {
-    object_service_fn_t *os;
-    creds_t *creds;
+    lio_object_service_fn_t *os;
+    lio_creds_t *creds;
     osfile_fd_t *fd;
     char **key_old;
     char **key_new;
@@ -204,8 +204,8 @@ typedef struct {
 } osfile_move_attr_t;
 
 typedef struct {
-    object_service_fn_t *os;
-    creds_t *creds;
+    lio_object_service_fn_t *os;
+    lio_creds_t *creds;
     osfile_fd_t *fd_src;
     osfile_fd_t *fd_dest;
     char **key_src;
@@ -232,10 +232,10 @@ typedef struct {
 } fobj_lock_task_t;
 
 typedef struct {
-    object_service_fn_t *os;
-    creds_t *creds;
+    lio_object_service_fn_t *os;
+    lio_creds_t *creds;
     char *path;
-    os_regex_table_t *regex;
+    lio_os_regex_table_t *regex;
     DIR *ad;
     char *ad_path;
     os_object_iter_t *it;
@@ -245,24 +245,24 @@ typedef struct {
 #define osf_obj_lock(lock)  apr_thread_mutex_lock(lock)
 #define osf_obj_unlock(lock)  apr_thread_mutex_unlock(lock)
 
-char *resolve_hardlink(object_service_fn_t *os, char *src_path, int add_prefix);
-apr_thread_mutex_t *osf_retrieve_lock(object_service_fn_t *os, char *path, int *table_slot);
-int osf_set_attr(object_service_fn_t *os, creds_t *creds, osfile_fd_t *ofd, char *attr, void *val, int v_size, int *atype, int append_val);
-int osf_get_attr(object_service_fn_t *os, creds_t *creds, osfile_fd_t *ofd, char *attr, void **val, int *v_size, int *atype);
-op_generic_t *osfile_set_attr(object_service_fn_t *os, creds_t *creds, os_fd_t *fd, char *key, void *val, int v_size);
-os_attr_iter_t *osfile_create_attr_iter(object_service_fn_t *os, creds_t *creds, os_fd_t *ofd, os_regex_table_t *attr, int v_max);
+char *resolve_hardlink(lio_object_service_fn_t *os, char *src_path, int add_prefix);
+apr_thread_mutex_t *osf_retrieve_lock(lio_object_service_fn_t *os, char *path, int *table_slot);
+int osf_set_attr(lio_object_service_fn_t *os, lio_creds_t *creds, osfile_fd_t *ofd, char *attr, void *val, int v_size, int *atype, int append_val);
+int osf_get_attr(lio_object_service_fn_t *os, lio_creds_t *creds, osfile_fd_t *ofd, char *attr, void **val, int *v_size, int *atype);
+gop_op_generic_t *osfile_set_attr(lio_object_service_fn_t *os, lio_creds_t *creds, os_fd_t *fd, char *key, void *val, int v_size);
+os_attr_iter_t *osfile_create_attr_iter(lio_object_service_fn_t *os, lio_creds_t *creds, os_fd_t *ofd, lio_os_regex_table_t *attr, int v_max);
 void osfile_destroy_attr_iter(os_attr_iter_t *oit);
-op_status_t osfile_open_object_fn(void *arg, int id);
-op_generic_t *osfile_open_object(object_service_fn_t *os, creds_t *creds, char *path, int mode, char *id, os_fd_t **pfd, int max_wait);
-op_status_t osfile_close_object_fn(void *arg, int id);
-op_generic_t *osfile_close_object(object_service_fn_t *os, os_fd_t *fd);
-os_object_iter_t *osfile_create_object_iter(object_service_fn_t *os, creds_t *creds, os_regex_table_t *path, os_regex_table_t *object_regex, int object_types,
-        os_regex_table_t *attr,  int recurse_depth, os_attr_iter_t **it_attr, int v_max);
+gop_op_status_t osfile_open_object_fn(void *arg, int id);
+gop_op_generic_t *osfile_open_object(lio_object_service_fn_t *os, lio_creds_t *creds, char *path, int mode, char *id, os_fd_t **pfd, int max_wait);
+gop_op_status_t osfile_close_object_fn(void *arg, int id);
+gop_op_generic_t *osfile_close_object(lio_object_service_fn_t *os, os_fd_t *fd);
+os_object_iter_t *osfile_create_object_iter(lio_object_service_fn_t *os, lio_creds_t *creds, lio_os_regex_table_t *path, lio_os_regex_table_t *object_regex, int object_types,
+        lio_os_regex_table_t *attr,  int recurse_depth, os_attr_iter_t **it_attr, int v_max);
 int osfile_next_object(os_object_iter_t *oit, char **fname, int *prefix_len);
 void osfile_destroy_object_iter(os_object_iter_t *it);
-op_status_t osf_set_multiple_attr_fn(void *arg, int id);
-int lowlevel_set_attr(object_service_fn_t *os, char *attr_dir, char *attr, void *val, int v_size);
-char *object_attr_dir(object_service_fn_t *os, char *prefix, char *path, int ftype);
+gop_op_status_t osf_set_multiple_attr_fn(void *arg, int id);
+int lowlevel_set_attr(lio_object_service_fn_t *os, char *attr_dir, char *attr, void *val, int v_size);
+char *object_attr_dir(lio_object_service_fn_t *os, char *prefix, char *path, int ftype);
 
 
 //*************************************************************
@@ -300,7 +300,7 @@ int osf_store_val(void *src, int src_size, void **dest, int *v_size)
 //  osf_make_attr_symlink - Makes an attribute symlink
 //*************************************************************
 
-void osf_make_attr_symlink(object_service_fn_t *os, char *link_path, char *dest_path, char *dest_key)
+void osf_make_attr_symlink(lio_object_service_fn_t *os, char *link_path, char *dest_path, char *dest_key)
 {
     snprintf(link_path, OS_PATH_MAX, "%s/%s", dest_path, dest_key);
 }
@@ -309,9 +309,9 @@ void osf_make_attr_symlink(object_service_fn_t *os, char *link_path, char *dest_
 //  osf_resolve_attr_symlink - Resolves an attribute symlink
 //*************************************************************
 
-int osf_resolve_attr_path(object_service_fn_t *os, char *real_path, char *path, char *key, int ftype, int *atype, int max_recurse)
+int osf_resolve_attr_path(lio_object_service_fn_t *os, char *real_path, char *path, char *key, int ftype, int *atype, int max_recurse)
 {
-    osfile_priv_t *osf = (osfile_priv_t *)os->priv;
+    lio_osfile_priv_t *osf = (lio_osfile_priv_t *)os->priv;
     char *attr, *dkey, *dfile;
     char *pdir, *pfile;
     int n, dtype, err;
@@ -507,9 +507,9 @@ void fobj_lock_free(void *arg, int size, void *data)
 //          The lock is cycled in the routine
 //***********************************************************************
 
-int fobj_wait(object_service_fn_t *os, fobj_lock_t *fol, osfile_fd_t *fd, int max_wait)
+int fobj_wait(lio_object_service_fn_t *os, fobj_lock_t *fol, osfile_fd_t *fd, int max_wait)
 {
-    osfile_priv_t *osf = (osfile_priv_t *)os->priv;
+    lio_osfile_priv_t *osf = (lio_osfile_priv_t *)os->priv;
     tbx_pch_t task_pch;
     fobj_lock_task_t *handle;
     int aborted, loop, dummy;
@@ -584,7 +584,7 @@ int fobj_wait(object_service_fn_t *os, fobj_lock_t *fol, osfile_fd_t *fd, int ma
 
 int full_object_lock(osfile_fd_t *fd, int max_wait)
 {
-    osfile_priv_t *osf = (osfile_priv_t *)fd->os->priv;
+    lio_osfile_priv_t *osf = (lio_osfile_priv_t *)fd->os->priv;
     tbx_pch_t obj_pch;
     fobj_lock_t *fol;
     fobj_lock_task_t *handle;
@@ -644,7 +644,7 @@ int full_object_lock(osfile_fd_t *fd, int max_wait)
 
 void full_object_unlock(osfile_fd_t *fd)
 {
-    osfile_priv_t *osf = (osfile_priv_t *)fd->os->priv;
+    lio_osfile_priv_t *osf = (lio_osfile_priv_t *)fd->os->priv;
     fobj_lock_t *fol;
     fobj_lock_task_t *handle;
     int err;
@@ -696,9 +696,9 @@ void full_object_unlock(osfile_fd_t *fd)
 //     links
 //***********************************************************************
 
-void osf_multi_lock(object_service_fn_t *os, creds_t *creds, osfile_fd_t *fd, char **key, int n_keys, int first_link, apr_thread_mutex_t **lock_table, int *n_locks)
+void osf_multi_lock(lio_object_service_fn_t *os, lio_creds_t *creds, osfile_fd_t *fd, char **key, int n_keys, int first_link, apr_thread_mutex_t **lock_table, int *n_locks)
 {
-    osfile_priv_t *osf = (osfile_priv_t *)os->priv;
+    lio_osfile_priv_t *osf = (lio_osfile_priv_t *)os->priv;
     int i, j, n, atype, small_slot, small_index, max_index;
     int v_size, va_prefix_len;
     int lock_slot[n_keys+1];
@@ -793,10 +793,10 @@ void osf_multi_unlock(apr_thread_mutex_t **lock, int n)
 // va_create_get_attr - Returns the object creation tim in secs since epoch
 //***********************************************************************
 
-int va_create_get_attr(os_virtual_attr_t *va, object_service_fn_t *os, creds_t *creds, os_fd_t *ofd, char *key, void **val, int *v_size, int *atype)
+int va_create_get_attr(lio_os_virtual_attr_t *va, lio_object_service_fn_t *os, lio_creds_t *creds, os_fd_t *ofd, char *key, void **val, int *v_size, int *atype)
 {
     osfile_fd_t *fd = (osfile_fd_t *)ofd;
-    osfile_priv_t *osf = (osfile_priv_t *)fd->os->priv;
+    lio_osfile_priv_t *osf = (lio_osfile_priv_t *)fd->os->priv;
     struct stat s;
     int  bufsize, err;
     uint64_t dt;
@@ -825,10 +825,10 @@ int va_create_get_attr(os_virtual_attr_t *va, object_service_fn_t *os, creds_t *
 // va_link_get_attr - Returns the object link information
 //***********************************************************************
 
-int va_link_get_attr(os_virtual_attr_t *va, object_service_fn_t *os, creds_t *creds, os_fd_t *ofd, char *key, void **val, int *v_size, int *atype)
+int va_link_get_attr(lio_os_virtual_attr_t *va, lio_object_service_fn_t *os, lio_creds_t *creds, os_fd_t *ofd, char *key, void **val, int *v_size, int *atype)
 {
     osfile_fd_t *fd = (osfile_fd_t *)ofd;
-    osfile_priv_t *osf = (osfile_priv_t *)fd->os->priv;
+    lio_osfile_priv_t *osf = (lio_osfile_priv_t *)fd->os->priv;
     struct stat s;
     char buffer[32*1024];
     int err, n, offset;
@@ -870,10 +870,10 @@ int va_link_get_attr(os_virtual_attr_t *va, object_service_fn_t *os, creds_t *cr
 // va_link_count_get_attr - Returns the object link count information
 //***********************************************************************
 
-int va_link_count_get_attr(os_virtual_attr_t *va, object_service_fn_t *os, creds_t *creds, os_fd_t *ofd, char *key, void **val, int *v_size, int *atype)
+int va_link_count_get_attr(lio_os_virtual_attr_t *va, lio_object_service_fn_t *os, lio_creds_t *creds, os_fd_t *ofd, char *key, void **val, int *v_size, int *atype)
 {
     osfile_fd_t *fd = (osfile_fd_t *)ofd;
-    osfile_priv_t *osf = (osfile_priv_t *)fd->os->priv;
+    lio_osfile_priv_t *osf = (lio_osfile_priv_t *)fd->os->priv;
     struct stat s;
     char buffer[32];
     int err, n;
@@ -903,10 +903,10 @@ int va_link_count_get_attr(os_virtual_attr_t *va, object_service_fn_t *os, creds
 // va_type_get_attr - Returns the object type information
 //***********************************************************************
 
-int va_type_get_attr(os_virtual_attr_t *va, object_service_fn_t *os, creds_t *creds, os_fd_t *ofd, char *key, void **val, int *v_size, int *atype)
+int va_type_get_attr(lio_os_virtual_attr_t *va, lio_object_service_fn_t *os, lio_creds_t *creds, os_fd_t *ofd, char *key, void **val, int *v_size, int *atype)
 {
     osfile_fd_t *fd = (osfile_fd_t *)ofd;
-    osfile_priv_t *osf = (osfile_priv_t *)fd->os->priv;
+    lio_osfile_priv_t *osf = (lio_osfile_priv_t *)fd->os->priv;
     int ftype, bufsize;
     char buffer[32];
     char fullname[OS_PATH_MAX];
@@ -928,10 +928,10 @@ int va_type_get_attr(os_virtual_attr_t *va, object_service_fn_t *os, creds_t *cr
 // va_lock_get_attr - Returns the file lock information
 //***********************************************************************
 
-int va_lock_get_attr(os_virtual_attr_t *va, object_service_fn_t *os, creds_t *creds, os_fd_t *ofd, char *key, void **val, int *v_size, int *atype)
+int va_lock_get_attr(lio_os_virtual_attr_t *va, lio_object_service_fn_t *os, lio_creds_t *creds, os_fd_t *ofd, char *key, void **val, int *v_size, int *atype)
 {
     osfile_fd_t *fd = (osfile_fd_t *)ofd;
-    osfile_priv_t *osf = (osfile_priv_t *)fd->os->priv;
+    lio_osfile_priv_t *osf = (lio_osfile_priv_t *)fd->os->priv;
     osfile_fd_t *pfd;
     fobj_lock_t *fol;
     fobj_lock_task_t *handle;
@@ -1011,11 +1011,11 @@ int va_lock_get_attr(os_virtual_attr_t *va, object_service_fn_t *os, creds_t *cr
 // va_attr_type_get_attr - Returns the attribute type information
 //***********************************************************************
 
-int va_attr_type_get_attr(os_virtual_attr_t *myva, object_service_fn_t *os, creds_t *creds, os_fd_t *ofd, char *fullkey, void **val, int *v_size, int *atype)
+int va_attr_type_get_attr(lio_os_virtual_attr_t *myva, lio_object_service_fn_t *os, lio_creds_t *creds, os_fd_t *ofd, char *fullkey, void **val, int *v_size, int *atype)
 {
     osfile_fd_t *fd = (osfile_fd_t *)ofd;
-    osfile_priv_t *osf = (osfile_priv_t *)fd->os->priv;
-    os_virtual_attr_t *va;
+    lio_osfile_priv_t *osf = (lio_osfile_priv_t *)fd->os->priv;
+    lio_os_virtual_attr_t *va;
     int ftype, bufsize, n;
     char *key;
     char buffer[32];
@@ -1048,11 +1048,11 @@ int va_attr_type_get_attr(os_virtual_attr_t *myva, object_service_fn_t *os, cred
 // va_attr_link_get_attr - Returns the attribute link information
 //***********************************************************************
 
-int va_attr_link_get_attr(os_virtual_attr_t *myva, object_service_fn_t *os, creds_t *creds, os_fd_t *ofd, char *fullkey, void **val, int *v_size, int *atype)
+int va_attr_link_get_attr(lio_os_virtual_attr_t *myva, lio_object_service_fn_t *os, lio_creds_t *creds, os_fd_t *ofd, char *fullkey, void **val, int *v_size, int *atype)
 {
     osfile_fd_t *fd = (osfile_fd_t *)ofd;
-    osfile_priv_t *osf = (osfile_priv_t *)fd->os->priv;
-    os_virtual_attr_t *va;
+    lio_osfile_priv_t *osf = (lio_osfile_priv_t *)fd->os->priv;
+    lio_os_virtual_attr_t *va;
     tbx_list_iter_t it;
     struct stat s;
     char buffer[OS_PATH_MAX];
@@ -1117,7 +1117,7 @@ int va_attr_link_get_attr(os_virtual_attr_t *myva, object_service_fn_t *os, cred
 // va_timestamp_set_attr - Sets the requested timestamp
 //***********************************************************************
 
-int va_timestamp_set_attr(os_virtual_attr_t *va, object_service_fn_t *os, creds_t *creds, os_fd_t *ofd, char *fullkey, void *val, int v_size, int *atype)
+int va_timestamp_set_attr(lio_os_virtual_attr_t *va, lio_object_service_fn_t *os, lio_creds_t *creds, os_fd_t *ofd, char *fullkey, void *val, int v_size, int *atype)
 {
     osfile_fd_t *fd = (osfile_fd_t *)ofd;
     char buffer[512];
@@ -1152,7 +1152,7 @@ int va_timestamp_set_attr(os_virtual_attr_t *va, object_service_fn_t *os, creds_
 //    if no timestamp is specified
 //***********************************************************************
 
-int va_timestamp_get_attr(os_virtual_attr_t *va, object_service_fn_t *os, creds_t *creds, os_fd_t *ofd, char *fullkey, void **val, int *v_size, int *atype)
+int va_timestamp_get_attr(lio_os_virtual_attr_t *va, lio_object_service_fn_t *os, lio_creds_t *creds, os_fd_t *ofd, char *fullkey, void **val, int *v_size, int *atype)
 {
     osfile_fd_t *fd = (osfile_fd_t *)ofd;
     char buffer[32];
@@ -1183,10 +1183,10 @@ int va_timestamp_get_attr(os_virtual_attr_t *va, object_service_fn_t *os, creds_
 // va_timestamp_get_link - Returns the requested timestamp's link if available
 //***********************************************************************
 
-int va_timestamp_get_link_attr(os_virtual_attr_t *va, object_service_fn_t *os, creds_t *creds, os_fd_t *ofd, char *fullkey, void **val, int *v_size, int *atype)
+int va_timestamp_get_link_attr(lio_os_virtual_attr_t *va, lio_object_service_fn_t *os, lio_creds_t *creds, os_fd_t *ofd, char *fullkey, void **val, int *v_size, int *atype)
 {
     osfile_fd_t *fd = (osfile_fd_t *)ofd;
-    osfile_priv_t *osf = (osfile_priv_t *)fd->os->priv;
+    lio_osfile_priv_t *osf = (lio_osfile_priv_t *)fd->os->priv;
     char buffer[OS_PATH_MAX];
     char *key;
     int n;
@@ -1215,7 +1215,7 @@ int va_timestamp_get_link_attr(os_virtual_attr_t *va, object_service_fn_t *os, c
 // va_append_set_attr - Appends the data to the attribute
 //***********************************************************************
 
-int va_append_set_attr(os_virtual_attr_t *va, object_service_fn_t *os, creds_t *creds, os_fd_t *ofd, char *fullkey, void *val, int v_size, int *atype)
+int va_append_set_attr(lio_os_virtual_attr_t *va, lio_object_service_fn_t *os, lio_creds_t *creds, os_fd_t *ofd, char *fullkey, void *val, int v_size, int *atype)
 {
     osfile_fd_t *fd = (osfile_fd_t *)ofd;
     char buffer[512];
@@ -1240,7 +1240,7 @@ int va_append_set_attr(os_virtual_attr_t *va, object_service_fn_t *os, creds_t *
 // va_append_get_attr - Just returns the attr after peeling off the PVA
 //***********************************************************************
 
-int va_append_get_attr(os_virtual_attr_t *va, object_service_fn_t *os, creds_t *creds, os_fd_t *ofd, char *fullkey, void **val, int *v_size, int *atype)
+int va_append_get_attr(lio_os_virtual_attr_t *va, lio_object_service_fn_t *os, lio_creds_t *creds, os_fd_t *ofd, char *fullkey, void **val, int *v_size, int *atype)
 {
     osfile_fd_t *fd = (osfile_fd_t *)ofd;
     char *key;
@@ -1268,7 +1268,7 @@ int va_append_get_attr(os_virtual_attr_t *va, object_service_fn_t *os, creds_t *
 // va_null_set_attr - Dummy routine since it can't be set
 //***********************************************************************
 
-int va_null_set_attr(os_virtual_attr_t *va, object_service_fn_t *os, creds_t *creds, os_fd_t *fd, char *key, void *val, int v_size, int *atype)
+int va_null_set_attr(lio_os_virtual_attr_t *va, lio_object_service_fn_t *os, lio_creds_t *creds, os_fd_t *fd, char *key, void *val, int v_size, int *atype)
 {
     *atype = OS_OBJECT_VIRTUAL_FLAG;
     return(-1);
@@ -1278,7 +1278,7 @@ int va_null_set_attr(os_virtual_attr_t *va, object_service_fn_t *os, creds_t *cr
 // va_null_get_link_attr - Routine for key's without links
 //***********************************************************************
 
-int va_null_get_link_attr(os_virtual_attr_t *va, object_service_fn_t *os, creds_t *creds, os_fd_t *fd, char *key, void **val, int *v_size, int *atype)
+int va_null_get_link_attr(lio_os_virtual_attr_t *va, lio_object_service_fn_t *os, lio_creds_t *creds, os_fd_t *fd, char *key, void **val, int *v_size, int *atype)
 {
     *atype = OS_OBJECT_VIRTUAL_FLAG;
     *v_size = 0;
@@ -1289,9 +1289,9 @@ int va_null_get_link_attr(os_virtual_attr_t *va, object_service_fn_t *os, creds_
 //  osf_retrieve_lock - Returns the internal lock for the object
 //***********************************************************************
 
-apr_thread_mutex_t *osf_retrieve_lock(object_service_fn_t *os, char *path, int *table_slot)
+apr_thread_mutex_t *osf_retrieve_lock(lio_object_service_fn_t *os, char *path, int *table_slot)
 {
-    osfile_priv_t *osf = (osfile_priv_t *)os->priv;
+    lio_osfile_priv_t *osf = (lio_osfile_priv_t *)os->priv;
     tbx_chksum_t cs;
     char  digest[OSF_LOCK_CHKSUM_SIZE];
     unsigned int *n;
@@ -1319,9 +1319,9 @@ apr_thread_mutex_t *osf_retrieve_lock(object_service_fn_t *os, char *path, int *
 //     is not "/".
 //***********************************************************************
 
-int safe_remove(object_service_fn_t *os, char *path)
+int safe_remove(lio_object_service_fn_t *os, char *path)
 {
-    osfile_priv_t *osf = (osfile_priv_t *)os->priv;
+    lio_osfile_priv_t *osf = (lio_osfile_priv_t *)os->priv;
 
     if ((strlen(path) > SAFE_MIN_LEN) && (strncmp(osf->base_path, path, osf->base_path_len) == 0)) {
         return(remove(path));
@@ -1335,9 +1335,9 @@ int safe_remove(object_service_fn_t *os, char *path)
 // object_attr_dir - Returns the object attribute directory
 //***********************************************************************
 
-char *object_attr_dir(object_service_fn_t *os, char *prefix, char *path, int ftype)
+char *object_attr_dir(lio_object_service_fn_t *os, char *prefix, char *path, int ftype)
 {
-//  osfile_priv_t *osf = (osfile_priv_t *)os->priv;
+//  lio_osfile_priv_t *osf = (lio_osfile_priv_t *)os->priv;
     char fname[OS_PATH_MAX];
     char *dir, *base;
     char *attr_dir = NULL;
@@ -1481,7 +1481,7 @@ void my_seekdir(osf_dir_t *d, long offset)
 
 int osf_next_object(osf_object_iter_t *it, char **myfname, int *prefix_len)
 {
-    osfile_priv_t *osf = (osfile_priv_t *)it->os->priv;
+    lio_osfile_priv_t *osf = (lio_osfile_priv_t *)it->os->priv;
     int i, rmatch, tweak;
     osf_obj_level_t *itl, *it_top;
     char fname[OS_PATH_MAX];
@@ -1641,7 +1641,7 @@ int osf_next_object(osf_object_iter_t *it, char **myfname, int *prefix_len)
 //     purge subdirs based o nteh recursion depth
 //***********************************************************************
 
-int osf_purge_dir(object_service_fn_t *os, char *path, int depth)
+int osf_purge_dir(lio_object_service_fn_t *os, char *path, int depth)
 {
     int ftype;
     char fname[OS_PATH_MAX];
@@ -1688,7 +1688,7 @@ void osfile_free_mk_mv_rm(void *arg)
 // osf_object_remove - Removes the current dir or object (non-recursive)
 //***********************************************************************
 
-int osf_object_remove(object_service_fn_t *os, char *path)
+int osf_object_remove(lio_object_service_fn_t *os, char *path)
 {
     int ftype, err;
     char *dir, *base, *hard_inode;
@@ -1743,13 +1743,13 @@ int osf_object_remove(object_service_fn_t *os, char *path)
 // osfile_remove_object - Removes an object
 //***********************************************************************
 
-op_status_t osfile_remove_object_fn(void *arg, int id)
+gop_op_status_t osfile_remove_object_fn(void *arg, int id)
 {
     osfile_mk_mv_rm_t *op = (osfile_mk_mv_rm_t *)arg;
-    osfile_priv_t *osf = (osfile_priv_t *)op->os->priv;
+    lio_osfile_priv_t *osf = (lio_osfile_priv_t *)op->os->priv;
     int ftype;
     char fname[OS_PATH_MAX];
-    op_status_t status;
+    gop_op_status_t status;
     apr_thread_mutex_t *lock;
 
     if (osaz_object_remove(osf->osaz, op->creds, op->src_path) == 0)  return(gop_failure_status);
@@ -1785,9 +1785,9 @@ op_status_t osfile_remove_object_fn(void *arg, int id)
 // osfile_remove_object - Makes a remove object operation
 //***********************************************************************
 
-op_generic_t *osfile_remove_object(object_service_fn_t *os, creds_t *creds, char *path)
+gop_op_generic_t *osfile_remove_object(lio_object_service_fn_t *os, lio_creds_t *creds, char *path)
 {
-    osfile_priv_t *osf = (osfile_priv_t *)os->priv;
+    lio_osfile_priv_t *osf = (lio_osfile_priv_t *)os->priv;
     osfile_mk_mv_rm_t *op;
 
     tbx_type_malloc_clear(op, osfile_mk_mv_rm_t, 1);
@@ -1803,15 +1803,15 @@ op_generic_t *osfile_remove_object(object_service_fn_t *os, creds_t *creds, char
 // osfile_remove_regex_fn - Does the actual bulk object removal
 //***********************************************************************
 
-op_status_t osfile_remove_regex_fn(void *arg, int id)
+gop_op_status_t osfile_remove_regex_fn(void *arg, int id)
 {
     osfile_remove_regex_op_t *op = (osfile_remove_regex_op_t *)arg;
-    osfile_priv_t *osf = (osfile_priv_t *)op->os->priv;
+    lio_osfile_priv_t *osf = (lio_osfile_priv_t *)op->os->priv;
     osfile_mk_mv_rm_t rm_op;
     os_object_iter_t *it;
     int prefix_len, count;
     char *fname;
-    op_status_t status, op_status;
+    gop_op_status_t status, op_status;
 
     rm_op.os = op->os;
     rm_op.creds = op->creds;
@@ -1861,9 +1861,9 @@ op_status_t osfile_remove_regex_fn(void *arg, int id)
 //***********************************************************************
 
 
-op_generic_t *osfile_remove_regex_object(object_service_fn_t *os, creds_t *creds, os_regex_table_t *path, os_regex_table_t *object_regex, int obj_types, int recurse_depth)
+gop_op_generic_t *osfile_remove_regex_object(lio_object_service_fn_t *os, lio_creds_t *creds, lio_os_regex_table_t *path, lio_os_regex_table_t *object_regex, int obj_types, int recurse_depth)
 {
-    osfile_priv_t *osf = (osfile_priv_t *)os->priv;
+    lio_osfile_priv_t *osf = (lio_osfile_priv_t *)os->priv;
     osfile_remove_regex_op_t *op;
 
     tbx_type_malloc(op, osfile_remove_regex_op_t, 1);
@@ -1881,7 +1881,7 @@ op_generic_t *osfile_remove_regex_object(object_service_fn_t *os, creds_t *creds
 // osfile_abort_remove_regex_object_fn - Performs the actual open abort operation
 //***********************************************************************
 
-op_status_t osfile_abort_remove_regex_object_fn(void *arg, int id)
+gop_op_status_t osfile_abort_remove_regex_object_fn(void *arg, int id)
 {
     osfile_remove_regex_op_t *op = (osfile_remove_regex_op_t *)arg;
 
@@ -1894,10 +1894,10 @@ op_status_t osfile_abort_remove_regex_object_fn(void *arg, int id)
 //  osfile_abort_remove_regex_object - Aborts an ongoing remove operation
 //***********************************************************************
 
-op_generic_t *osfile_abort_remove_regex_object(object_service_fn_t *os, op_generic_t *gop)
+gop_op_generic_t *osfile_abort_remove_regex_object(lio_object_service_fn_t *os, gop_op_generic_t *gop)
 {
-    osfile_priv_t *osf = (osfile_priv_t *)os->priv;
-    thread_pool_op_t *tpop = gop_get_tp(gop);
+    lio_osfile_priv_t *osf = (lio_osfile_priv_t *)os->priv;
+    gop_thread_pool_op_t *tpop = gop_get_tp(gop);
 
     return(gop_tp_op_new(osf->tpc, NULL, osfile_abort_remove_regex_object_fn, tpop->arg, NULL, 1));
 }
@@ -1906,13 +1906,13 @@ op_generic_t *osfile_abort_remove_regex_object(object_service_fn_t *os, op_gener
 // osfile_regex_object_set_multiple_attrs - Recursivley sets the fixed attibutes
 //***********************************************************************
 
-op_status_t osfile_regex_object_set_multiple_attrs_fn(void *arg, int id)
+gop_op_status_t osfile_regex_object_set_multiple_attrs_fn(void *arg, int id)
 {
     osfile_regex_object_attr_op_t *op = (osfile_regex_object_attr_op_t *)arg;
-    osfile_priv_t *osf = (osfile_priv_t *)op->os->priv;
+    lio_osfile_priv_t *osf = (lio_osfile_priv_t *)op->os->priv;
     os_object_iter_t *it;
     char *fname;
-    op_status_t status, op_status;
+    gop_op_status_t status, op_status;
     osfile_attr_op_t op_attr;
     osfile_fd_t *fd;
     osfile_open_op_t op_open;
@@ -1991,9 +1991,9 @@ op_status_t osfile_regex_object_set_multiple_attrs_fn(void *arg, int id)
 //***********************************************************************
 
 
-op_generic_t *osfile_regex_object_set_multiple_attrs(object_service_fn_t *os, creds_t *creds, char *id, os_regex_table_t *path, os_regex_table_t *object_regex, int object_types, int recurse_depth, char **key, void **val, int *v_size, int n_attrs)
+gop_op_generic_t *osfile_regex_object_set_multiple_attrs(lio_object_service_fn_t *os, lio_creds_t *creds, char *id, lio_os_regex_table_t *path, lio_os_regex_table_t *object_regex, int object_types, int recurse_depth, char **key, void **val, int *v_size, int n_attrs)
 {
-    osfile_priv_t *osf = (osfile_priv_t *)os->priv;
+    lio_osfile_priv_t *osf = (lio_osfile_priv_t *)os->priv;
     osfile_regex_object_attr_op_t *op;
 
     tbx_type_malloc(op, osfile_regex_object_attr_op_t, 1);
@@ -2018,7 +2018,7 @@ op_generic_t *osfile_regex_object_set_multiple_attrs(object_service_fn_t *os, cr
 // osfile_abort_regex_object_set_multiple_attrs_fn - Performs the actual open abort operation
 //***********************************************************************
 
-op_status_t osfile_abort_regex_object_set_multiple_attrs_fn(void *arg, int id)
+gop_op_status_t osfile_abort_regex_object_set_multiple_attrs_fn(void *arg, int id)
 {
     osfile_regex_object_attr_op_t *op = (osfile_regex_object_attr_op_t *)arg;
 
@@ -2031,10 +2031,10 @@ op_status_t osfile_abort_regex_object_set_multiple_attrs_fn(void *arg, int id)
 //  osfile_abort_regex_object_set_multiple_attrs - Aborts an ongoing remove operation
 //***********************************************************************
 
-op_generic_t *osfile_abort_regex_object_set_multiple_attrs(object_service_fn_t *os, op_generic_t *gop)
+gop_op_generic_t *osfile_abort_regex_object_set_multiple_attrs(lio_object_service_fn_t *os, gop_op_generic_t *gop)
 {
-    osfile_priv_t *osf = (osfile_priv_t *)os->priv;
-    thread_pool_op_t *tpop = gop_get_tp(gop);
+    lio_osfile_priv_t *osf = (lio_osfile_priv_t *)os->priv;
+    gop_thread_pool_op_t *tpop = gop_get_tp(gop);
 
     return(gop_tp_op_new(osf->tpc, NULL, osfile_abort_regex_object_set_multiple_attrs_fn, tpop->arg, NULL, 1));
 }
@@ -2043,12 +2043,12 @@ op_generic_t *osfile_abort_regex_object_set_multiple_attrs(object_service_fn_t *
 // osfile_exists_fn - Check for file type and if it exists
 //***********************************************************************
 
-op_status_t osfile_exists_fn(void *arg, int id)
+gop_op_status_t osfile_exists_fn(void *arg, int id)
 {
     osfile_mk_mv_rm_t *op = (osfile_mk_mv_rm_t *)arg;
-    osfile_priv_t *osf = (osfile_priv_t *)op->os->priv;
+    lio_osfile_priv_t *osf = (lio_osfile_priv_t *)op->os->priv;
     char fname[OS_PATH_MAX];
-    op_status_t status = gop_success_status;
+    gop_op_status_t status = gop_success_status;
 
     if (osaz_object_access(osf->osaz, op->creds, op->src_path, OS_MODE_READ_IMMEDIATE) == 0)  return(gop_failure_status);
 
@@ -2064,9 +2064,9 @@ op_status_t osfile_exists_fn(void *arg, int id)
 //  osfile_exists - Returns the object type  and 0 if it doesn't exist
 //***********************************************************************
 
-op_generic_t *osfile_exists(object_service_fn_t *os, creds_t *creds, char *path)
+gop_op_generic_t *osfile_exists(lio_object_service_fn_t *os, lio_creds_t *creds, char *path)
 {
-    osfile_priv_t *osf = (osfile_priv_t *)os->priv;
+    lio_osfile_priv_t *osf = (lio_osfile_priv_t *)os->priv;
     osfile_mk_mv_rm_t *op;
 
     if (path == NULL) return(gop_dummy(gop_failure_status));
@@ -2086,10 +2086,10 @@ op_generic_t *osfile_exists(object_service_fn_t *os, creds_t *creds, char *path)
 // osfile_create_object_fn - Does the actual object creation
 //***********************************************************************
 
-op_status_t osfile_create_object_fn(void *arg, int id)
+gop_op_status_t osfile_create_object_fn(void *arg, int id)
 {
     osfile_mk_mv_rm_t *op = (osfile_mk_mv_rm_t *)arg;
-    osfile_priv_t *osf = (osfile_priv_t *)op->os->priv;
+    lio_osfile_priv_t *osf = (lio_osfile_priv_t *)op->os->priv;
     FILE *fd;
     int err;
     char *dir, *base;
@@ -2157,9 +2157,9 @@ op_status_t osfile_create_object_fn(void *arg, int id)
 // osfile_create_object - Creates an object
 //***********************************************************************
 
-op_generic_t *osfile_create_object(object_service_fn_t *os, creds_t *creds, char *path, int type, char *id)
+gop_op_generic_t *osfile_create_object(lio_object_service_fn_t *os, lio_creds_t *creds, char *path, int type, char *id)
 {
-    osfile_priv_t *osf = (osfile_priv_t *)os->priv;
+    lio_osfile_priv_t *osf = (lio_osfile_priv_t *)os->priv;
     osfile_mk_mv_rm_t *op;
 
     tbx_type_malloc_clear(op, osfile_mk_mv_rm_t, 1);
@@ -2177,12 +2177,12 @@ op_generic_t *osfile_create_object(object_service_fn_t *os, creds_t *creds, char
 // osfile_symlink_object_fn - Symlink two objects
 //***********************************************************************
 
-op_status_t osfile_symlink_object_fn(void *arg, int id)
+gop_op_status_t osfile_symlink_object_fn(void *arg, int id)
 {
     osfile_mk_mv_rm_t *op = (osfile_mk_mv_rm_t *)arg;
-    osfile_priv_t *osf = (osfile_priv_t *)op->os->priv;
+    lio_osfile_priv_t *osf = (lio_osfile_priv_t *)op->os->priv;
     osfile_mk_mv_rm_t dop;
-    op_status_t status;
+    gop_op_status_t status;
     char sfname[OS_PATH_MAX];
     char dfname[OS_PATH_MAX];
     int err;
@@ -2233,9 +2233,9 @@ op_status_t osfile_symlink_object_fn(void *arg, int id)
 // osfile_symlink_object - Generates a symbolic link object operation
 //***********************************************************************
 
-op_generic_t *osfile_symlink_object(object_service_fn_t *os, creds_t *creds, char *src_path, char *dest_path, char *id)
+gop_op_generic_t *osfile_symlink_object(lio_object_service_fn_t *os, lio_creds_t *creds, char *src_path, char *dest_path, char *id)
 {
-    osfile_priv_t *osf = (osfile_priv_t *)os->priv;
+    lio_osfile_priv_t *osf = (lio_osfile_priv_t *)os->priv;
     osfile_mk_mv_rm_t *op;
 
     //** Make sure the files are different
@@ -2258,9 +2258,9 @@ op_generic_t *osfile_symlink_object(object_service_fn_t *os, creds_t *creds, cha
 // osf_file2hardlink - Converts a normal file to a hardlink version
 //***********************************************************************
 
-int osf_file2hardlink(object_service_fn_t *os, char *src_path)
+int osf_file2hardlink(lio_object_service_fn_t *os, char *src_path)
 {
-    osfile_priv_t *osf = (osfile_priv_t *)os->priv;
+    lio_osfile_priv_t *osf = (lio_osfile_priv_t *)os->priv;
     int slot, i;
     ex_id_t id;
     char *sattr, *hattr;
@@ -2326,9 +2326,9 @@ int osf_file2hardlink(object_service_fn_t *os, char *src_path)
 //  points to
 //***********************************************************************
 
-char *resolve_hardlink(object_service_fn_t *os, char *src_path, int add_prefix)
+char *resolve_hardlink(lio_object_service_fn_t *os, char *src_path, int add_prefix)
 {
-    osfile_priv_t *osf = (osfile_priv_t *)os->priv;
+    lio_osfile_priv_t *osf = (lio_osfile_priv_t *)os->priv;
     char *hpath, *tmp;
     char buffer[OS_PATH_MAX];
     int n, i;
@@ -2364,11 +2364,11 @@ char *resolve_hardlink(object_service_fn_t *os, char *src_path, int add_prefix)
 // osfile_hardlink_object_fn - hard links two objects
 //***********************************************************************
 
-op_status_t osfile_hardlink_object_fn(void *arg, int id)
+gop_op_status_t osfile_hardlink_object_fn(void *arg, int id)
 {
     osfile_mk_mv_rm_t *op = (osfile_mk_mv_rm_t *)arg;
-    osfile_priv_t *osf = (osfile_priv_t *)op->os->priv;
-    op_status_t status;
+    lio_osfile_priv_t *osf = (lio_osfile_priv_t *)op->os->priv;
+    gop_op_status_t status;
     apr_thread_mutex_t *hlock, *dlock;
     int hslot, dslot;
     char sfname[OS_PATH_MAX];
@@ -2457,9 +2457,9 @@ finished:
 // osfile_hardlink_object - Generates a hard link object operation
 //***********************************************************************
 
-op_generic_t *osfile_hardlink_object(object_service_fn_t *os, creds_t *creds, char *src_path, char *dest_path, char *id)
+gop_op_generic_t *osfile_hardlink_object(lio_object_service_fn_t *os, lio_creds_t *creds, char *src_path, char *dest_path, char *id)
 {
-    osfile_priv_t *osf = (osfile_priv_t *)os->priv;
+    lio_osfile_priv_t *osf = (lio_osfile_priv_t *)os->priv;
     osfile_mk_mv_rm_t *op;
 
     //** Make sure the files are different
@@ -2482,10 +2482,10 @@ op_generic_t *osfile_hardlink_object(object_service_fn_t *os, creds_t *creds, ch
 // osfile_move_object_fn - Actually Moves an object
 //***********************************************************************
 
-op_status_t osfile_move_object_fn(void *arg, int id)
+gop_op_status_t osfile_move_object_fn(void *arg, int id)
 {
     osfile_mk_mv_rm_t *op = (osfile_mk_mv_rm_t *)arg;
-    osfile_priv_t *osf = (osfile_priv_t *)op->os->priv;
+    lio_osfile_priv_t *osf = (lio_osfile_priv_t *)op->os->priv;
     int ftype;
     char sfname[OS_PATH_MAX];
     char dfname[OS_PATH_MAX];
@@ -2526,9 +2526,9 @@ op_status_t osfile_move_object_fn(void *arg, int id)
 // osfile_move_object - Generates a move object operation
 //***********************************************************************
 
-op_generic_t *osfile_move_object(object_service_fn_t *os, creds_t *creds, char *src_path, char *dest_path)
+gop_op_generic_t *osfile_move_object(lio_object_service_fn_t *os, lio_creds_t *creds, char *src_path, char *dest_path)
 {
-    osfile_priv_t *osf = (osfile_priv_t *)os->priv;
+    lio_osfile_priv_t *osf = (lio_osfile_priv_t *)os->priv;
     osfile_mk_mv_rm_t *op;
 
     tbx_type_malloc_clear(op, osfile_mk_mv_rm_t, 1);
@@ -2546,11 +2546,11 @@ op_generic_t *osfile_move_object(object_service_fn_t *os, creds_t *creds, char *
 // osfile_copy_multiple_attrs_fn - Actually copies the object attrs
 //***********************************************************************
 
-op_status_t osfile_copy_multiple_attrs_fn(void *arg, int id)
+gop_op_status_t osfile_copy_multiple_attrs_fn(void *arg, int id)
 {
     osfile_copy_attr_t *op = (osfile_copy_attr_t *)arg;
-    osfile_priv_t *osf = (osfile_priv_t *)op->os->priv;
-    op_status_t status;
+    lio_osfile_priv_t *osf = (lio_osfile_priv_t *)op->os->priv;
+    gop_op_status_t status;
     apr_thread_mutex_t *lock_src, *lock_dest;
     void *val;
     int v_size;
@@ -2610,9 +2610,9 @@ op_status_t osfile_copy_multiple_attrs_fn(void *arg, int id)
 // osfile_copy_multiple_attrs - Generates a copy object multiple attribute operation
 //***********************************************************************
 
-op_generic_t *osfile_copy_multiple_attrs(object_service_fn_t *os, creds_t *creds, os_fd_t *fd_src, char **key_src, os_fd_t *fd_dest, char **key_dest, int n)
+gop_op_generic_t *osfile_copy_multiple_attrs(lio_object_service_fn_t *os, lio_creds_t *creds, os_fd_t *fd_src, char **key_src, os_fd_t *fd_dest, char **key_dest, int n)
 {
-    osfile_priv_t *osf = (osfile_priv_t *)os->priv;
+    lio_osfile_priv_t *osf = (lio_osfile_priv_t *)os->priv;
     osfile_copy_attr_t *op;
 
     tbx_type_malloc_clear(op, osfile_copy_attr_t, 1);
@@ -2632,9 +2632,9 @@ op_generic_t *osfile_copy_multiple_attrs(object_service_fn_t *os, creds_t *creds
 // osfile_copy_attr - Generates a copy object attribute operation
 //***********************************************************************
 
-op_generic_t *osfile_copy_attr(object_service_fn_t *os, creds_t *creds, os_fd_t *fd_src, char *key_src, os_fd_t *fd_dest, char *key_dest)
+gop_op_generic_t *osfile_copy_attr(lio_object_service_fn_t *os, lio_creds_t *creds, os_fd_t *fd_src, char *key_src, os_fd_t *fd_dest, char *key_dest)
 {
-    osfile_priv_t *osf = (osfile_priv_t *)os->priv;
+    lio_osfile_priv_t *osf = (lio_osfile_priv_t *)os->priv;
     osfile_copy_attr_t *op;
 
     tbx_type_malloc_clear(op, osfile_copy_attr_t, 1);
@@ -2656,11 +2656,11 @@ op_generic_t *osfile_copy_attr(object_service_fn_t *os, creds_t *creds, os_fd_t 
 // osfile_symlink_multiple_attrs_fn - Actually links the multiple attrs
 //***********************************************************************
 
-op_status_t osfile_symlink_multiple_attrs_fn(void *arg, int id)
+gop_op_status_t osfile_symlink_multiple_attrs_fn(void *arg, int id)
 {
     osfile_copy_attr_t *op = (osfile_copy_attr_t *)arg;
-    osfile_priv_t *osf = (osfile_priv_t *)op->os->priv;
-    op_status_t status;
+    lio_osfile_priv_t *osf = (lio_osfile_priv_t *)op->os->priv;
+    gop_op_status_t status;
     apr_thread_mutex_t *lock_dest;
     char sfname[OS_PATH_MAX];
     char dfname[OS_PATH_MAX];
@@ -2706,9 +2706,9 @@ op_status_t osfile_symlink_multiple_attrs_fn(void *arg, int id)
 // osfile_symlink_multiple_attrs - Generates a link multiple attribute operation
 //***********************************************************************
 
-op_generic_t *osfile_symlink_multiple_attrs(object_service_fn_t *os, creds_t *creds, char **src_path, char **key_src, os_fd_t *fd_dest, char **key_dest, int n)
+gop_op_generic_t *osfile_symlink_multiple_attrs(lio_object_service_fn_t *os, lio_creds_t *creds, char **src_path, char **key_src, os_fd_t *fd_dest, char **key_dest, int n)
 {
-    osfile_priv_t *osf = (osfile_priv_t *)os->priv;
+    lio_osfile_priv_t *osf = (lio_osfile_priv_t *)os->priv;
     osfile_copy_attr_t *op;
 
     tbx_type_malloc_clear(op, osfile_copy_attr_t, 1);
@@ -2728,9 +2728,9 @@ op_generic_t *osfile_symlink_multiple_attrs(object_service_fn_t *os, creds_t *cr
 // osfile_symlink_attr - Generates a link attribute operation
 //***********************************************************************
 
-op_generic_t *osfile_symlink_attr(object_service_fn_t *os, creds_t *creds, char *src_path, char *key_src, os_fd_t *fd_dest, char *key_dest)
+gop_op_generic_t *osfile_symlink_attr(lio_object_service_fn_t *os, lio_creds_t *creds, char *src_path, char *key_src, os_fd_t *fd_dest, char *key_dest)
 {
-    osfile_priv_t *osf = (osfile_priv_t *)os->priv;
+    lio_osfile_priv_t *osf = (lio_osfile_priv_t *)os->priv;
     osfile_copy_attr_t *op;
 
     tbx_type_malloc_clear(op, osfile_copy_attr_t, 1);
@@ -2754,12 +2754,12 @@ op_generic_t *osfile_symlink_attr(object_service_fn_t *os, creds_t *creds, char 
 // osfile_move_multiple_attrs_fn - Actually Moves the object attrs
 //***********************************************************************
 
-op_status_t osfile_move_multiple_attrs_fn(void *arg, int id)
+gop_op_status_t osfile_move_multiple_attrs_fn(void *arg, int id)
 {
     osfile_move_attr_t *op = (osfile_move_attr_t *)arg;
-    osfile_priv_t *osf = (osfile_priv_t *)op->os->priv;
-    os_virtual_attr_t *va1, *va2;
-    op_status_t status;
+    lio_osfile_priv_t *osf = (lio_osfile_priv_t *)op->os->priv;
+    lio_os_virtual_attr_t *va1, *va2;
+    gop_op_status_t status;
     apr_thread_mutex_t *lock;
     int i, err;
     char sfname[OS_PATH_MAX];
@@ -2803,9 +2803,9 @@ op_status_t osfile_move_multiple_attrs_fn(void *arg, int id)
 // osfile_move_multiple_attrs - Generates a move object attributes operation
 //***********************************************************************
 
-op_generic_t *osfile_move_multiple_attrs(object_service_fn_t *os, creds_t *creds, os_fd_t *fd, char **key_old, char **key_new, int n)
+gop_op_generic_t *osfile_move_multiple_attrs(lio_object_service_fn_t *os, lio_creds_t *creds, os_fd_t *fd, char **key_old, char **key_new, int n)
 {
-    osfile_priv_t *osf = (osfile_priv_t *)os->priv;
+    lio_osfile_priv_t *osf = (lio_osfile_priv_t *)os->priv;
     osfile_move_attr_t *op;
 
     tbx_type_malloc_clear(op, osfile_move_attr_t, 1);
@@ -2824,9 +2824,9 @@ op_generic_t *osfile_move_multiple_attrs(object_service_fn_t *os, creds_t *creds
 // osfile_move_attr - Generates a move object attribute operation
 //***********************************************************************
 
-op_generic_t *osfile_move_attr(object_service_fn_t *os, creds_t *creds, os_fd_t *fd, char *key_old, char *key_new)
+gop_op_generic_t *osfile_move_attr(lio_object_service_fn_t *os, lio_creds_t *creds, os_fd_t *fd, char *key_old, char *key_new)
 {
-    osfile_priv_t *osf = (osfile_priv_t *)os->priv;
+    lio_osfile_priv_t *osf = (lio_osfile_priv_t *)os->priv;
     osfile_move_attr_t *op;
 
     tbx_type_malloc_clear(op, osfile_move_attr_t, 1);
@@ -2847,10 +2847,10 @@ op_generic_t *osfile_move_attr(object_service_fn_t *os, creds_t *creds, os_fd_t 
 // osf_get_attr - Gets the attribute given the name and base directory
 //***********************************************************************
 
-int osf_get_attr(object_service_fn_t *os, creds_t *creds, osfile_fd_t *ofd, char *attr, void **val, int *v_size, int *atype)
+int osf_get_attr(lio_object_service_fn_t *os, lio_creds_t *creds, osfile_fd_t *ofd, char *attr, void **val, int *v_size, int *atype)
 {
-    osfile_priv_t *osf = (osfile_priv_t *)os->priv;
-    os_virtual_attr_t *va;
+    lio_osfile_priv_t *osf = (lio_osfile_priv_t *)os->priv;
+    lio_os_virtual_attr_t *va;
     tbx_list_iter_t it;
     char *ca;
     FILE *fd;
@@ -2929,12 +2929,12 @@ int osf_get_attr(object_service_fn_t *os, creds_t *creds, osfile_fd_t *ofd, char
 //       encountered
 //***********************************************************************
 
-op_status_t osf_get_ma_links(void *arg, int id, int first_link)
+gop_op_status_t osf_get_ma_links(void *arg, int id, int first_link)
 {
     osfile_attr_op_t *op = (osfile_attr_op_t *)arg;
     int err, i, atype, n_locks;
     apr_thread_mutex_t *lock_table[op->n+1];
-    op_status_t status;
+    gop_op_status_t status;
 
     status = gop_success_status;
 
@@ -2962,11 +2962,11 @@ op_status_t osf_get_ma_links(void *arg, int id, int first_link)
 // osf_get_multiple_attr_fn - Does the actual attribute retreival
 //***********************************************************************
 
-op_status_t osf_get_multiple_attr_fn(void *arg, int id)
+gop_op_status_t osf_get_multiple_attr_fn(void *arg, int id)
 {
     osfile_attr_op_t *op = (osfile_attr_op_t *)arg;
     int err, i, j, atype, v_start[op->n], oops;
-    op_status_t status;
+    gop_op_status_t status;
     apr_thread_mutex_t *lock;
 
     status = gop_success_status;
@@ -3016,9 +3016,9 @@ op_status_t osf_get_multiple_attr_fn(void *arg, int id)
 //   and upon return *v_size contains the bytes loaded
 //***********************************************************************
 
-op_generic_t *osfile_get_attr(object_service_fn_t *os, creds_t *creds, os_fd_t *ofd, char *key, void **val, int *v_size)
+gop_op_generic_t *osfile_get_attr(lio_object_service_fn_t *os, lio_creds_t *creds, os_fd_t *ofd, char *key, void **val, int *v_size)
 {
-    osfile_priv_t *osf = (osfile_priv_t *)os->priv;
+    lio_osfile_priv_t *osf = (lio_osfile_priv_t *)os->priv;
     osfile_attr_op_t *op;
 
     tbx_type_malloc(op, osfile_attr_op_t, 1);
@@ -3043,9 +3043,9 @@ op_generic_t *osfile_get_attr(object_service_fn_t *os, creds_t *creds, os_fd_t *
 //   and upon return *v_size contains the bytes loaded
 //***********************************************************************
 
-op_generic_t *osfile_get_multiple_attrs(object_service_fn_t *os, creds_t *creds, os_fd_t *ofd, char **key, void **val, int *v_size, int n)
+gop_op_generic_t *osfile_get_multiple_attrs(lio_object_service_fn_t *os, lio_creds_t *creds, os_fd_t *ofd, char **key, void **val, int *v_size, int n)
 {
-    osfile_priv_t *osf = (osfile_priv_t *)os->priv;
+    lio_osfile_priv_t *osf = (lio_osfile_priv_t *)os->priv;
     osfile_attr_op_t *op;
 
     tbx_type_malloc(op, osfile_attr_op_t, 1);
@@ -3066,7 +3066,7 @@ op_generic_t *osfile_get_multiple_attrs(object_service_fn_t *os, creds_t *creds,
 //     Designed for use with timestamps or other auto touched fields
 //***********************************************************************
 
-int lowlevel_set_attr(object_service_fn_t *os, char *attr_dir, char *attr, void *val, int v_size)
+int lowlevel_set_attr(lio_object_service_fn_t *os, char *attr_dir, char *attr, void *val, int v_size)
 {
     FILE *fd;
     char fname[OS_PATH_MAX];
@@ -3088,12 +3088,12 @@ int lowlevel_set_attr(object_service_fn_t *os, char *attr_dir, char *attr, void 
 // osf_set_attr - Sets the attribute given the name and base directory
 //***********************************************************************
 
-int osf_set_attr(object_service_fn_t *os, creds_t *creds, osfile_fd_t *ofd, char *attr, void *val, int v_size, int *atype, int append_val)
+int osf_set_attr(lio_object_service_fn_t *os, lio_creds_t *creds, osfile_fd_t *ofd, char *attr, void *val, int v_size, int *atype, int append_val)
 {
-    osfile_priv_t *osf = (osfile_priv_t *)os->priv;
+    lio_osfile_priv_t *osf = (lio_osfile_priv_t *)os->priv;
     tbx_list_iter_t it;
     FILE *fd;
-    os_virtual_attr_t *va;
+    lio_os_virtual_attr_t *va;
     int n;
     char *ca;
     char fname[OS_PATH_MAX];
@@ -3153,13 +3153,13 @@ int osf_set_attr(object_service_fn_t *os, creds_t *creds, osfile_fd_t *ofd, char
 //       encountered
 //***********************************************************************
 
-op_status_t osf_set_multiple_attr_fn(void *arg, int id)
-//op_status_t osf_set_ma_links(void *arg, int id, int first_link)
+gop_op_status_t osf_set_multiple_attr_fn(void *arg, int id)
+//gop_op_status_t osf_set_ma_links(void *arg, int id, int first_link)
 {
     osfile_attr_op_t *op = (osfile_attr_op_t *)arg;
     int err, i, atype, n_locks;
     apr_thread_mutex_t *lock_table[op->n+1];
-    op_status_t status;
+    gop_op_status_t status;
 
     status = gop_success_status;
 
@@ -3182,9 +3182,9 @@ op_status_t osf_set_multiple_attr_fn(void *arg, int id)
 //   If val == NULL the attribute is deleted
 //***********************************************************************
 
-op_generic_t *osfile_set_attr(object_service_fn_t *os, creds_t *creds, os_fd_t *ofd, char *key, void *val, int v_size)
+gop_op_generic_t *osfile_set_attr(lio_object_service_fn_t *os, lio_creds_t *creds, os_fd_t *ofd, char *key, void *val, int v_size)
 {
-    osfile_priv_t *osf = (osfile_priv_t *)os->priv;
+    lio_osfile_priv_t *osf = (lio_osfile_priv_t *)os->priv;
     osfile_attr_op_t *op;
 
     tbx_type_malloc(op, osfile_attr_op_t, 1);
@@ -3208,9 +3208,9 @@ op_generic_t *osfile_set_attr(object_service_fn_t *os, creds_t *creds, os_fd_t *
 //   If val[i] == NULL for the attribute is deleted
 //***********************************************************************
 
-op_generic_t *osfile_set_multiple_attrs(object_service_fn_t *os, creds_t *creds, os_fd_t *ofd, char **key, void **val, int *v_size, int n)
+gop_op_generic_t *osfile_set_multiple_attrs(lio_object_service_fn_t *os, lio_creds_t *creds, os_fd_t *ofd, char **key, void **val, int *v_size, int n)
 {
-    osfile_priv_t *osf = (osfile_priv_t *)os->priv;
+    lio_osfile_priv_t *osf = (lio_osfile_priv_t *)os->priv;
     osfile_attr_op_t *op;
 
     tbx_type_malloc(op, osfile_attr_op_t, 1);
@@ -3233,12 +3233,12 @@ op_generic_t *osfile_set_multiple_attrs(object_service_fn_t *os, creds_t *creds,
 int osfile_next_attr(os_attr_iter_t *oit, char **key, void **val, int *v_size)
 {
     osfile_attr_iter_t *it = (osfile_attr_iter_t *)oit;
-    osfile_priv_t *osf = (osfile_priv_t *)it->os->priv;
+    lio_osfile_priv_t *osf = (lio_osfile_priv_t *)it->os->priv;
     int i, n, atype;
     apr_ssize_t klen;
-    os_virtual_attr_t *va;
+    lio_os_virtual_attr_t *va;
     struct dirent *entry;
-    os_regex_table_t *rex = it->regex;
+    lio_os_regex_table_t *rex = it->regex;
 
     //** Check the VA's 1st
     while (it->va_index != NULL) {
@@ -3292,10 +3292,10 @@ int osfile_next_attr(os_attr_iter_t *oit, char **key, void **val, int *v_size)
 //   for selecting attributes
 //***********************************************************************
 
-os_attr_iter_t *osfile_create_attr_iter(object_service_fn_t *os, creds_t *creds, os_fd_t *ofd, os_regex_table_t *attr, int v_max)
+os_attr_iter_t *osfile_create_attr_iter(lio_object_service_fn_t *os, lio_creds_t *creds, os_fd_t *ofd, lio_os_regex_table_t *attr, int v_max)
 {
     osfile_fd_t *fd = (osfile_fd_t *)ofd;
-    osfile_priv_t *osf = (osfile_priv_t *)fd->os->priv;
+    lio_osfile_priv_t *osf = (lio_osfile_priv_t *)fd->os->priv;
     osfile_attr_iter_t *it;
 
     tbx_type_malloc_clear(it, osfile_attr_iter_t, 1);
@@ -3340,7 +3340,7 @@ int osfile_next_object(os_object_iter_t *oit, char **fname, int *prefix_len)
     osf_object_iter_t *it = (osf_object_iter_t *)oit;
     osfile_open_op_t op;
     osfile_attr_op_t aop;
-    op_status_t status;
+    gop_op_status_t status;
     int ftype;
 
     ftype = osf_next_object(it, fname, prefix_len);
@@ -3417,10 +3417,10 @@ int osfile_next_object(os_object_iter_t *oit, char **fname, int *prefix_len)
 //
 //***********************************************************************
 
-os_object_iter_t *osfile_create_object_iter(object_service_fn_t *os, creds_t *creds, os_regex_table_t *path, os_regex_table_t *object_regex, int object_types,
-        os_regex_table_t *attr, int recurse_depth, os_attr_iter_t **it_attr, int v_max)
+os_object_iter_t *osfile_create_object_iter(lio_object_service_fn_t *os, lio_creds_t *creds, lio_os_regex_table_t *path, lio_os_regex_table_t *object_regex, int object_types,
+        lio_os_regex_table_t *attr, int recurse_depth, os_attr_iter_t **it_attr, int v_max)
 {
-    osfile_priv_t *osf = (osfile_priv_t *)os->priv;
+    lio_osfile_priv_t *osf = (lio_osfile_priv_t *)os->priv;
     osf_object_iter_t *it;
     osf_obj_level_t *itl;
     int i;
@@ -3475,7 +3475,7 @@ os_object_iter_t *osfile_create_object_iter(object_service_fn_t *os, creds_t *cr
 //
 //***********************************************************************
 
-os_object_iter_t *osfile_create_object_iter_alist(object_service_fn_t *os, creds_t *creds, os_regex_table_t *path, os_regex_table_t *object_regex, int object_types,
+os_object_iter_t *osfile_create_object_iter_alist(lio_object_service_fn_t *os, lio_creds_t *creds, lio_os_regex_table_t *path, lio_os_regex_table_t *object_regex, int object_types,
         int recurse_depth, char **key, void **val, int *v_size, int n_keys)
 {
     osf_object_iter_t *it;
@@ -3564,14 +3564,14 @@ void osfile_free_open(void *arg)
 //***********************************************************************
 
 
-op_status_t osfile_open_object_fn(void *arg, int id)
+gop_op_status_t osfile_open_object_fn(void *arg, int id)
 {
     osfile_open_op_t *op = (osfile_open_op_t *)arg;
-    osfile_priv_t *osf = (osfile_priv_t *)op->os->priv;
+    lio_osfile_priv_t *osf = (lio_osfile_priv_t *)op->os->priv;
     osfile_fd_t *fd;
     int ftype, err;
     char fname[OS_PATH_MAX];
-    op_status_t status;
+    gop_op_status_t status;
     apr_thread_mutex_t *lock;
 
     log_printf(15, "Attempting to open object=%s\n", op->path);
@@ -3625,9 +3625,9 @@ op_status_t osfile_open_object_fn(void *arg, int id)
 //  osfile_open_object - Makes the open file op
 //***********************************************************************
 
-op_generic_t *osfile_open_object(object_service_fn_t *os, creds_t *creds, char *path, int mode, char *id, os_fd_t **pfd, int max_wait)
+gop_op_generic_t *osfile_open_object(lio_object_service_fn_t *os, lio_creds_t *creds, char *path, int mode, char *id, os_fd_t **pfd, int max_wait)
 {
-    osfile_priv_t *osf = (osfile_priv_t *)os->priv;
+    lio_osfile_priv_t *osf = (lio_osfile_priv_t *)os->priv;
     osfile_open_op_t *op;
 
     tbx_type_malloc(op, osfile_open_op_t, 1);
@@ -3649,11 +3649,11 @@ op_generic_t *osfile_open_object(object_service_fn_t *os, creds_t *creds, char *
 // osfile_abort_open_object_fn - Performs the actual open abort operation
 //***********************************************************************
 
-op_status_t osfile_abort_open_object_fn(void *arg, int id)
+gop_op_status_t osfile_abort_open_object_fn(void *arg, int id)
 {
     osfile_open_op_t *op = (osfile_open_op_t *)arg;
-    osfile_priv_t *osf = (osfile_priv_t *)op->os->priv;
-    op_status_t status;
+    lio_osfile_priv_t *osf = (lio_osfile_priv_t *)op->os->priv;
+    gop_op_status_t status;
     fobj_lock_t *fol;
     fobj_lock_task_t *handle;
 
@@ -3687,10 +3687,10 @@ op_status_t osfile_abort_open_object_fn(void *arg, int id)
 //  osfile_abort_open_object - Aborts an ongoing open file op
 //***********************************************************************
 
-op_generic_t *osfile_abort_open_object(object_service_fn_t *os, op_generic_t *gop)
+gop_op_generic_t *osfile_abort_open_object(lio_object_service_fn_t *os, gop_op_generic_t *gop)
 {
-    osfile_priv_t *osf = (osfile_priv_t *)os->priv;
-    thread_pool_op_t *tpop = gop_get_tp(gop);
+    lio_osfile_priv_t *osf = (lio_osfile_priv_t *)os->priv;
+    gop_thread_pool_op_t *tpop = gop_get_tp(gop);
 
     return(gop_tp_op_new(osf->tpc, NULL, osfile_abort_open_object_fn, tpop->arg, NULL, 1));
 }
@@ -3700,7 +3700,7 @@ op_generic_t *osfile_abort_open_object(object_service_fn_t *os, op_generic_t *go
 // osfile_close_object - Closes an object
 //***********************************************************************
 
-op_status_t osfile_close_object_fn(void *arg, int id)
+gop_op_status_t osfile_close_object_fn(void *arg, int id)
 {
     osfile_open_op_t *op = (osfile_open_op_t *)arg;
 
@@ -3720,9 +3720,9 @@ op_status_t osfile_close_object_fn(void *arg, int id)
 //  osfile_close_object - Makes the open file op
 //***********************************************************************
 
-op_generic_t *osfile_close_object(object_service_fn_t *os, os_fd_t *ofd)
+gop_op_generic_t *osfile_close_object(lio_object_service_fn_t *os, os_fd_t *ofd)
 {
-    osfile_priv_t *osf = (osfile_priv_t *)os->priv;
+    lio_osfile_priv_t *osf = (lio_osfile_priv_t *)os->priv;
     osfile_open_op_t *op;
 
     tbx_type_malloc(op, osfile_open_op_t, 1);
@@ -3737,10 +3737,10 @@ op_generic_t *osfile_close_object(object_service_fn_t *os, os_fd_t *ofd)
 // osfile_cred_init - Intialize a set of credentials
 //***********************************************************************
 
-creds_t *osfile_cred_init(object_service_fn_t *os, int type, void **args)
+lio_creds_t *osfile_cred_init(lio_object_service_fn_t *os, int type, void **args)
 {
-    osfile_priv_t *osf = (osfile_priv_t *)os->priv;
-    creds_t *creds;
+    lio_osfile_priv_t *osf = (lio_osfile_priv_t *)os->priv;
+    lio_creds_t *creds;
 
     creds = authn_cred_init(osf->authn, type, args);
 
@@ -3754,9 +3754,9 @@ creds_t *osfile_cred_init(object_service_fn_t *os, int type, void **args)
 // osf_fsck_check_file - Checks the file integrity
 //***********************************************************************
 
-int osf_fsck_check_file(object_service_fn_t *os, creds_t *creds, char *fname, int dofix)
+int osf_fsck_check_file(lio_object_service_fn_t *os, lio_creds_t *creds, char *fname, int dofix)
 {
-    osfile_priv_t *osf = (osfile_priv_t *)os->priv;
+    lio_osfile_priv_t *osf = (lio_osfile_priv_t *)os->priv;
     char fullname[OS_PATH_MAX];
     char *faname;
     int ftype;
@@ -3818,9 +3818,9 @@ int osf_fsck_check_file(object_service_fn_t *os, creds_t *creds, char *fname, in
 // osf_fsck_check_dir - Checks the dir integrity
 //***********************************************************************
 
-int osf_fsck_check_dir(object_service_fn_t *os, creds_t *creds, char *fname, int dofix)
+int osf_fsck_check_dir(lio_object_service_fn_t *os, lio_creds_t *creds, char *fname, int dofix)
 {
-    osfile_priv_t *osf = (osfile_priv_t *)os->priv;
+    lio_osfile_priv_t *osf = (lio_osfile_priv_t *)os->priv;
     char *faname;
     int ftype;
 
@@ -3862,7 +3862,7 @@ int osf_fsck_check_dir(object_service_fn_t *os, creds_t *creds, char *fname, int
 int osf_next_fsck(os_fsck_iter_t *oit, char **fname)
 {
     osfile_fsck_iter_t *it = (osfile_fsck_iter_t *)oit;
-    osfile_priv_t *osf = (osfile_priv_t *)it->os->priv;
+    lio_osfile_priv_t *osf = (lio_osfile_priv_t *)it->os->priv;
     int prefix_len;
     char fullname[OS_PATH_MAX];
     char *faname;
@@ -3905,7 +3905,7 @@ int osf_next_fsck(os_fsck_iter_t *oit, char **fname)
 // osfile_fsck_object_check - Resolves the error with the problem object
 //***********************************************************************
 
-int osfile_fsck_object_check(object_service_fn_t *os, creds_t *creds, char *fname, int ftype, int resolution)
+int osfile_fsck_object_check(lio_object_service_fn_t *os, lio_creds_t *creds, char *fname, int ftype, int resolution)
 {
     int err;
 
@@ -3923,10 +3923,10 @@ int osfile_fsck_object_check(object_service_fn_t *os, creds_t *creds, char *fnam
 //  osfile_fsck_object_fn - Does the actual object checking
 //***********************************************************************
 
-op_status_t osfile_fsck_object_fn(void *arg, int id)
+gop_op_status_t osfile_fsck_object_fn(void *arg, int id)
 {
     osfile_open_op_t *op = (osfile_open_op_t *)arg;
-    op_status_t status;
+    gop_op_status_t status;
 
     status = gop_success_status;
 
@@ -3939,9 +3939,9 @@ op_status_t osfile_fsck_object_fn(void *arg, int id)
 //  osfile_fsck_object - Allocates space for the object check
 //***********************************************************************
 
-op_generic_t *osfile_fsck_object(object_service_fn_t *os, creds_t *creds, char *fname, int ftype, int resolution)
+gop_op_generic_t *osfile_fsck_object(lio_object_service_fn_t *os, lio_creds_t *creds, char *fname, int ftype, int resolution)
 {
-    osfile_priv_t *osf = (osfile_priv_t *)os->priv;
+    lio_osfile_priv_t *osf = (lio_osfile_priv_t *)os->priv;
     osfile_open_op_t *op;
 
     tbx_type_malloc_clear(op, osfile_open_op_t, 1);
@@ -3959,7 +3959,7 @@ op_generic_t *osfile_fsck_object(object_service_fn_t *os, creds_t *creds, char *
 // osfile_next_fsck - Returns the next problem object
 //***********************************************************************
 
-int osfile_next_fsck(object_service_fn_t *os, os_fsck_iter_t *oit, char **bad_fname, int *bad_atype)
+int osfile_next_fsck(lio_object_service_fn_t *os, os_fsck_iter_t *oit, char **bad_fname, int *bad_atype)
 {
     osfile_fsck_iter_t *it = (osfile_fsck_iter_t *)oit;
     char *fname;
@@ -3991,7 +3991,7 @@ int osfile_next_fsck(object_service_fn_t *os, os_fsck_iter_t *oit, char **bad_fn
 // osfile_create_fsck_iter - Creates an fsck iterator
 //***********************************************************************
 
-os_fsck_iter_t *osfile_create_fsck_iter(object_service_fn_t *os, creds_t *creds, char *path, int mode)
+os_fsck_iter_t *osfile_create_fsck_iter(lio_object_service_fn_t *os, lio_creds_t *creds, char *path, int mode)
 {
     osfile_fsck_iter_t *it;
 
@@ -4016,7 +4016,7 @@ os_fsck_iter_t *osfile_create_fsck_iter(object_service_fn_t *os, creds_t *creds,
 // osfile_destroy_fsck_iter - Destroys an fsck iterator
 //***********************************************************************
 
-void osfile_destroy_fsck_iter(object_service_fn_t *os, os_fsck_iter_t *oit)
+void osfile_destroy_fsck_iter(lio_object_service_fn_t *os, os_fsck_iter_t *oit)
 {
     osfile_fsck_iter_t *it = (osfile_fsck_iter_t *)oit;
 
@@ -4039,7 +4039,7 @@ void osfile_destroy_fsck_iter(object_service_fn_t *os, os_fsck_iter_t *oit)
 // osfile_cred_destroy - Destroys a set ot credentials
 //***********************************************************************
 
-void osfile_cred_destroy(object_service_fn_t *os, creds_t *creds)
+void osfile_cred_destroy(lio_object_service_fn_t *os, lio_creds_t *creds)
 {
     an_cred_destroy(creds);
 }
@@ -4048,9 +4048,9 @@ void osfile_cred_destroy(object_service_fn_t *os, creds_t *creds)
 // osfile_destroy
 //***********************************************************************
 
-void osfile_destroy(object_service_fn_t *os)
+void osfile_destroy(lio_object_service_fn_t *os)
 {
-    osfile_priv_t *osf = (osfile_priv_t *)os->priv;
+    lio_osfile_priv_t *osf = (lio_osfile_priv_t *)os->priv;
     int i;
 
     for (i=0; i<osf->internal_lock_size; i++) {
@@ -4081,10 +4081,10 @@ void osfile_destroy(object_service_fn_t *os)
 //  object_service_file_create - Creates a file backed OS
 //***********************************************************************
 
-object_service_fn_t *object_service_file_create(service_manager_t *ess, tbx_inip_file_t *fd, char *section)
+lio_object_service_fn_t *object_service_file_create(lio_service_manager_t *ess, tbx_inip_file_t *fd, char *section)
 {
-    object_service_fn_t *os;
-    osfile_priv_t *osf;
+    lio_object_service_fn_t *os;
+    lio_osfile_priv_t *osf;
     osaz_create_t *osaz_create;
     authn_create_t *authn_create;
     char pname[OS_PATH_MAX], pattr[OS_PATH_MAX];
@@ -4093,8 +4093,8 @@ object_service_fn_t *object_service_file_create(service_manager_t *ess, tbx_inip
 
     if (section == NULL) section = "osfile";
 
-    tbx_type_malloc_clear(os, object_service_fn_t, 1);
-    tbx_type_malloc_clear(osf, osfile_priv_t, 1);
+    tbx_type_malloc_clear(os, lio_object_service_fn_t, 1);
+    tbx_type_malloc_clear(osf, lio_osfile_priv_t, 1);
     os->priv = (void *)osf;
 
     osf->tpc = lio_lookup_service(ess, ESS_RUNNING, ESS_TPC_UNLIMITED);
@@ -4353,7 +4353,7 @@ int local_next_object(local_object_iter_t *it, char **myfname, int *prefix_len)
 //  Dummy OSAZ routine for the local iter
 //***********************************************************************
 
-int local_osaz_access(os_authz_t *osa, creds_t *c, char *path, int mode)
+int local_osaz_access(lio_os_authz_t *osa, lio_creds_t *c, char *path, int mode)
 {
     return(1);
 }
@@ -4362,17 +4362,17 @@ int local_osaz_access(os_authz_t *osa, creds_t *c, char *path, int mode)
 // create_local_object_iter - Creates a local object iterator
 //***********************************************************************
 
-local_object_iter_t *create_local_object_iter(os_regex_table_t *path, os_regex_table_t *object_regex, int object_types, int recurse_depth)
+local_object_iter_t *create_local_object_iter(lio_os_regex_table_t *path, lio_os_regex_table_t *object_regex, int object_types, int recurse_depth)
 {
     local_object_iter_t *it;
-    osfile_priv_t *osf;
+    lio_osfile_priv_t *osf;
 
     tbx_type_malloc_clear(it, local_object_iter_t, 1);
 
     //** Make a bare bones os_file object
-    tbx_type_malloc_clear(it->os, object_service_fn_t, 1);
-    tbx_type_malloc_clear(osf, osfile_priv_t, 1);
-    tbx_type_malloc_clear(osf->osaz, os_authz_t, 1);
+    tbx_type_malloc_clear(it->os, lio_object_service_fn_t, 1);
+    tbx_type_malloc_clear(osf, lio_osfile_priv_t, 1);
+    tbx_type_malloc_clear(osf->osaz, lio_os_authz_t, 1);
     it->os->priv = (void *)osf;
     osf->file_path = "";
     osf->osaz->object_access = local_osaz_access;
@@ -4388,7 +4388,7 @@ local_object_iter_t *create_local_object_iter(os_regex_table_t *path, os_regex_t
 
 void destroy_local_object_iter(local_object_iter_t *it)
 {
-    osfile_priv_t *osf = (osfile_priv_t *)it->os->priv;
+    lio_osfile_priv_t *osf = (lio_osfile_priv_t *)it->os->priv;
 
     osfile_destroy_object_iter(it->oit);
 

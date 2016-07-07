@@ -96,7 +96,7 @@ typedef struct {
 } inspect_t;
 
 typedef struct {
-    rid_inspect_tweak_t ri;
+    lio_rid_inspect_tweak_t ri;
     tbx_inip_group_t *ig;
     int status;
     ex_off_t total;
@@ -104,7 +104,7 @@ typedef struct {
     ex_off_t used;
 } rid_prep_entry_t;
 
-static creds_t *creds;
+static lio_creds_t *creds;
 static int global_whattodo;
 static ex_off_t bufsize;
 rs_query_t *query;
@@ -271,7 +271,7 @@ apr_hash_t *prep_rid_table(tbx_inip_file_t *fd, apr_pool_t *mpool)
         key = tbx_inip_group_get(ig);
         if (strcmp("rid", key) == 0) {  //** Found a resource
             tbx_type_malloc_clear(re, rid_prep_entry_t, 1);
-            tbx_type_malloc_clear(re->ri.rid, rid_change_entry_t, 1);
+            tbx_type_malloc_clear(re->ri.rid, lio_rid_change_entry_t, 1);
             re->ig = ig;
 
             //** Now cycle through the attributes
@@ -616,8 +616,8 @@ apr_hash_t *rebalance_pool(apr_pool_t *mpool, tbx_stack_t *my_pool_list, char *k
 void dump_pools(tbx_log_fd_t *ifd, tbx_stack_t *pools, int scale)
 {
     pool_entry_t *pe;
-//  rid_inspect_tweak_t *ri;
-    rid_change_entry_t *rid;
+//  lio_rid_inspect_tweak_t *ri;
+    lio_rid_change_entry_t *rid;
     apr_hash_index_t *hi;
     char pp1[128], pp2[128];
     char *key;
@@ -696,7 +696,7 @@ void dump_pools(tbx_log_fd_t *ifd, tbx_stack_t *pools, int scale)
 void check_pools(tbx_stack_t *pools, apr_thread_mutex_t *lock, int todo_mode, int *finished, int *todo)
 {
     pool_entry_t *pe;
-    rid_change_entry_t *rid;
+    lio_rid_change_entry_t *rid;
     apr_hash_index_t *hi;
     int ntodo, ptodo;
 
@@ -735,23 +735,23 @@ void check_pools(tbx_stack_t *pools, apr_thread_mutex_t *lock, int todo_mode, in
 //  inspect_task
 //*************************************************************************
 
-op_status_t inspect_task(void *arg, int id)
+gop_op_status_t inspect_task(void *arg, int id)
 {
     inspect_t *w = (inspect_t *)arg;
-    op_status_t status;
-    op_generic_t *gop;
-    exnode_t *ex;
-    exnode_exchange_t *exp, *exp_out;
-    segment_t *seg;
+    gop_op_status_t status;
+    gop_op_generic_t *gop;
+    lio_exnode_t *ex;
+    lio_exnode_exchange_t *exp, *exp_out;
+    lio_segment_t *seg;
     char *keys[7];
     char *val[7];
     char buf[32], ebuf[128];
     char *dsegid, *ptr, *exnode2;
-    segment_errors_t serr;
+    lio_segment_errors_t serr;
     int v_size[7], n, repair_mode;
     int whattodo, count, err;
     tbx_inip_file_t *ifd;
-    inspect_args_t args;
+    lio_inspect_args_t args;
 
     whattodo = global_whattodo;
     keys[6] = NULL;
@@ -799,7 +799,7 @@ op_status_t inspect_task(void *arg, int id)
 
     //** If we made it here the exnode is unique and loaded.
     //** Load it
-    exp = lio_exnode_exchange_text_parse(w->exnode);
+    exp = lio_lio_exnode_exchange_text_parse(w->exnode);
     ex = lio_exnode_create();
     if (lio_exnode_deserialize(ex, exp, lio_gc->ess) != 0) {
         info_printf(lio_ifd, 0, "ERROR  Failed with file %s (ftype=%d). Problem parsing exnode!\n", w->fname, w->ftype);
@@ -1052,16 +1052,16 @@ int main(int argc, char **argv)
     char *fname, *qstr, *path, *pool_cfg;
     rs_query_t *rsq;
     apr_pool_t *mpool;
-    opque_t *q;
-    op_generic_t *gop;
-    op_status_t status;
+    gop_opque_t *q;
+    gop_op_generic_t *gop;
+    gop_op_status_t status;
     char *vals[100];
     char *keys[100];
     ex_off_t dump_iter, iter;
     int v_size[100], acount;
     int slot, pslot, q_count, gotone;
     os_object_iter_t *it;
-    os_regex_table_t *rp_single, *ro_single;
+    lio_os_regex_table_t *rp_single, *ro_single;
     lio_path_tuple_t static_tuple, tuple;
     double rtol;
     char *key_rebalance, *value;

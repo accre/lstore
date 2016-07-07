@@ -27,8 +27,8 @@
 extern "C" {
 #endif
 
-    struct rsq_base_ele_t;
-struct rsq_base_t;
+    struct lio_rsq_base_ele_t;
+struct lio_rsq_base_t;
 
 #define RSQ_BASE_OP_MAX_VAL 4
 #define RSQ_BASE_OP_OR      4
@@ -41,30 +41,30 @@ struct rsq_base_t;
 #define RSQ_BASE_KV_UNIQUE   64
 #define RSQ_BASE_KV_PICKONE 128
 
-struct rsq_base_ele_t {
+struct lio_rsq_base_ele_t {
     int op;          //** Query operation
     char *key;
     char *val;
     int key_op;
     int val_op;
-    struct rsq_base_ele_t *next;
+    struct lio_rsq_base_ele_t *next;
 };
 
-struct rsq_base_t {
-    resource_service_fn_t *rs;
-    rsq_base_ele_t *head;
-    rsq_base_ele_t *tail;
+struct lio_rsq_base_t {
+    lio_resource_service_fn_t *rs;
+    lio_rsq_base_ele_t *head;
+    lio_rsq_base_ele_t *tail;
 };
 
-int rs_query_base_add(resource_service_fn_t *rs, rs_query_t **q, int op, char *key, int key_op, char *val, int val_op);
-void rs_query_base_append(resource_service_fn_t *rs, rs_query_t *rsq, rs_query_t *rsq_append);
-void rs_query_base_destroy(resource_service_fn_t *rs, rs_query_t *q);
-char *rs_query_base_print(resource_service_fn_t *rs, rs_query_t *q);
-rs_query_t *rs_query_base_new(resource_service_fn_t *rs);
-rs_query_t *rs_query_base_dup(resource_service_fn_t *rs, rs_query_t *query);
-rs_query_t *rs_query_base_parse(resource_service_fn_t *rs, char *value);
-void rs_query_base_destroy(resource_service_fn_t *rs, rs_query_t *q);
-void rs_query_count(resource_service_fn_t *rs, rs_query_t *q, int *n_ele, int *n_unique, int *n_pickone);
+int rs_query_base_add(lio_resource_service_fn_t *rs, rs_query_t **q, int op, char *key, int key_op, char *val, int val_op);
+void rs_query_base_append(lio_resource_service_fn_t *rs, rs_query_t *rsq, rs_query_t *rsq_append);
+void rs_query_base_destroy(lio_resource_service_fn_t *rs, rs_query_t *q);
+char *rs_query_base_print(lio_resource_service_fn_t *rs, rs_query_t *q);
+rs_query_t *rs_query_base_new(lio_resource_service_fn_t *rs);
+rs_query_t *rs_query_base_dup(lio_resource_service_fn_t *rs, rs_query_t *query);
+rs_query_t *rs_query_base_parse(lio_resource_service_fn_t *rs, char *value);
+void rs_query_base_destroy(lio_resource_service_fn_t *rs, rs_query_t *q);
+void rs_query_count(lio_resource_service_fn_t *rs, rs_query_t *q, int *n_ele, int *n_unique, int *n_pickone);
 
 #ifdef __cplusplus
 }

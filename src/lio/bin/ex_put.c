@@ -45,11 +45,11 @@ int main(int argc, char **argv)
     int err, start_option;
     int print_timing;
     char *fname = NULL;
-    exnode_t *ex;
-    exnode_exchange_t *exp, *exp_out;
+    lio_exnode_t *ex;
+    lio_exnode_exchange_t *exp, *exp_out;
     ex_tbx_iovec_t iov;
-    segment_t *seg;
-    op_generic_t *gop;
+    lio_segment_t *seg;
+    gop_op_generic_t *gop;
     FILE *fd, *fd_out;
 
     if (argc < 2) {
@@ -123,7 +123,7 @@ int main(int argc, char **argv)
     }
 
     //** Truncate the file
-    err = gop_sync_exec(segment_truncate(seg, lio_gc->da, 0, 10));
+    err = gop_sync_exec(lio_segment_truncate(seg, lio_gc->da, 0, 10));
     if (err != OP_STATE_SUCCESS) {
         printf("Error truncating the remote file!\n");
     }
@@ -182,7 +182,7 @@ int main(int argc, char **argv)
     cumulative_time = apr_time_now() - start_time;
 
     //** Go ahead and trim the file back to it's actual size
-    gop_sync_exec(segment_truncate(seg, lio_gc->da, segment_size(seg), lio_gc->timeout));
+    gop_sync_exec(lio_segment_truncate(seg, lio_gc->da, segment_size(seg), lio_gc->timeout));
 
     //** Print the informational summary if needed
     if (print_timing == 1) {

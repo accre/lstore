@@ -38,20 +38,20 @@ limitations under the License.
 // Typedefs are in ex3/fwd.h to break a potential dependency cycle
 
 // Functions
-LIO_API op_generic_t *lio_exnode_clone(thread_pool_context_t *tpc, exnode_t *ex, data_attr_t *da, exnode_t **clone_ex, void *arg, int mode, int timeout);
-LIO_API exnode_t *lio_exnode_create();
-LIO_API segment_t *lio_exnode_default_get(exnode_t *ex);
-LIO_API int lio_exnode_deserialize(exnode_t *ex, exnode_exchange_t *exp, service_manager_t *ess);
-LIO_API void lio_exnode_destroy(exnode_t *ex);
-LIO_API exnode_exchange_t *lio_exnode_exchange_create(int type);
-LIO_API void lio_exnode_exchange_destroy(exnode_exchange_t *exp);
-LIO_API exnode_exchange_t *lio_exnode_exchange_load_file(char *fname);
-LIO_API exnode_exchange_t *lio_exnode_exchange_text_parse(char *text);
-LIO_API int lio_exnode_serialize(exnode_t *ex, exnode_exchange_t *exp);
-LIO_API op_generic_t *lio_segment_copy(thread_pool_context_t *tpc, data_attr_t *da, segment_rw_hints_t *rw_hints, segment_t *src_seg, segment_t *dest_seg, ex_off_t src_offset, ex_off_t dest_offset, ex_off_t len, ex_off_t bufsize, char *buffer, int do_truncate, int timoeut);
-LIO_API int lio_view_insert(exnode_t *ex, segment_t *view);
-LIO_API service_manager_t *lio_exnode_service_set_create();
-LIO_API void lio_exnode_service_set_destroy(service_manager_t *ess);
+LIO_API gop_op_generic_t *lio_exnode_clone(gop_thread_pool_context_t *tpc, lio_exnode_t *ex, data_attr_t *da, lio_exnode_t **clone_ex, void *arg, int mode, int timeout);
+LIO_API lio_exnode_t *lio_exnode_create();
+LIO_API lio_segment_t *lio_exnode_default_get(lio_exnode_t *ex);
+LIO_API int lio_exnode_deserialize(lio_exnode_t *ex, lio_exnode_exchange_t *exp, lio_service_manager_t *ess);
+LIO_API void lio_exnode_destroy(lio_exnode_t *ex);
+LIO_API lio_exnode_exchange_t *lio_exnode_exchange_create(int type);
+LIO_API void lio_exnode_exchange_destroy(lio_exnode_exchange_t *exp);
+LIO_API lio_exnode_exchange_t *lio_exnode_exchange_load_file(char *fname);
+LIO_API lio_exnode_exchange_t *lio_lio_exnode_exchange_text_parse(char *text);
+LIO_API int lio_exnode_serialize(lio_exnode_t *ex, lio_exnode_exchange_t *exp);
+LIO_API gop_op_generic_t *lio_segment_copy(gop_thread_pool_context_t *tpc, data_attr_t *da, lio_segment_rw_hints_t *rw_hints, lio_segment_t *src_seg, lio_segment_t *dest_seg, ex_off_t src_offset, ex_off_t dest_offset, ex_off_t len, ex_off_t bufsize, char *buffer, int do_truncate, int timoeut);
+LIO_API int lio_view_insert(lio_exnode_t *ex, lio_segment_t *view);
+LIO_API lio_service_manager_t *lio_exnode_service_set_create();
+LIO_API void lio_exnode_service_set_destroy(lio_service_manager_t *ess);
 
 // Preprocessor constants
 typedef enum lio_ex3_format_t lio_ex3_format_t;
@@ -112,36 +112,36 @@ enum lio_ex3_inspect_command_t {
 #define ex_iovec_single(iov, oset, nbytes) (iov)->offset = oset; (iov)->len = nbytes
 
 // Exported types. To be obscured
-struct ex_header_t {
+struct lio_ex_header_t {
     char *name;
     ex_id_t id;
     char *type;
     tbx_list_t *attributes;  //should be a key/value pair struct?
 };
 
-struct rid_inspect_tweak_t {
-    rid_change_entry_t *rid;
+struct lio_rid_inspect_tweak_t {
+    lio_rid_change_entry_t *rid;
     apr_hash_t *pick_pool;
 };
 
-struct inspect_args_t {
+struct lio_inspect_args_t {
     rs_query_t *query;   //** Generic extra query
-    opque_t *qs;         //** Cleanup Que on success
-    opque_t *qf;         //** Cleanup Que for failure
+    gop_opque_t *qs;         //** Cleanup Que on success
+    gop_opque_t *qf;         //** Cleanup Que for failure
     apr_hash_t *rid_changes;  //** List of RID space changes
     apr_thread_mutex_t *rid_lock;     //** Lock for manipulating the rid_changes table
     int n_dev_rows;
     int dev_row_replaced[128];
 };
 
-struct exnode_text_t {
+struct lio_lio_exnode_text_t {
     char *text;
     tbx_inip_file_t *fd;
 };
 
-struct exnode_exchange_t {
+struct lio_exnode_exchange_t {
     lio_ex3_format_t type;
-    exnode_text_t text;
+    lio_lio_exnode_text_t text;
 };
 
 #ifdef __cplusplus

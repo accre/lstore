@@ -42,11 +42,11 @@
 // mqs_response_client_more - Handles a response for more data from the server
 //***********************************************************************
 
-op_status_t mqs_response_client_more(void *task_arg, int tid)
+gop_op_status_t mqs_response_client_more(void *task_arg, int tid)
 {
-    mq_task_t *task = (mq_task_t *)task_arg;
-    mq_stream_t *mqs = (mq_stream_t *)task->arg;
-    op_status_t status = gop_success_status;
+    gop_mq_task_t *task = (gop_mq_task_t *)task_arg;
+    gop_mq_stream_t *mqs = (gop_mq_stream_t *)task->arg;
+    gop_op_status_t status = gop_success_status;
 
     log_printf(5, "START msid=%d\n", mqs->msid);
 
@@ -93,7 +93,7 @@ op_status_t mqs_response_client_more(void *task_arg, int tid)
 // gop_mq_stream_read_request - Places a request for more data
 //***********************************************************************
 
-void gop_mq_stream_read_request(mq_stream_t *mqs)
+void gop_mq_stream_read_request(gop_mq_stream_t *mqs)
 {
     mq_msg_t *msg;
 
@@ -129,11 +129,11 @@ void gop_mq_stream_read_request(mq_stream_t *mqs)
 // gop_mq_stream_read_wait - Waits for data to become available
 //***********************************************************************
 
-int gop_mq_stream_read_wait(mq_stream_t *mqs)
+int gop_mq_stream_read_wait(gop_mq_stream_t *mqs)
 {
     int err = 0;
     apr_interval_time_t dt;
-    op_status_t status;
+    gop_op_status_t status;
 
     //** If 1st time make all the variables
     if (mqs->mpool == NULL) {
@@ -228,7 +228,7 @@ int gop_mq_stream_read_wait(mq_stream_t *mqs)
 // gop_mq_stream_read - Reads data from the stream
 //***********************************************************************
 
-int gop_mq_stream_read(mq_stream_t *mqs, void *rdata, int len)
+int gop_mq_stream_read(gop_mq_stream_t *mqs, void *rdata, int len)
 {
     int nleft, dpos, nbytes, err;
     unsigned char *data = rdata;
@@ -263,7 +263,7 @@ int gop_mq_stream_read(mq_stream_t *mqs, void *rdata, int len)
 // gop_mq_stream_read_varint - Reads a zigzag encoded varint from the stream
 //***********************************************************************
 
-int64_t gop_mq_stream_read_varint(mq_stream_t *mqs, int *error)
+int64_t gop_mq_stream_read_varint(gop_mq_stream_t *mqs, int *error)
 {
     unsigned char buffer[16];
     int64_t value;
@@ -292,7 +292,7 @@ int64_t gop_mq_stream_read_varint(mq_stream_t *mqs, int *error)
 // gop_mq_stream_read_destroy - Destroys an MQ reading stream
 //***********************************************************************
 
-void gop_mq_stream_read_destroy(mq_stream_t *mqs)
+void gop_mq_stream_read_destroy(gop_mq_stream_t *mqs)
 {
 
     log_printf(1, "START msid=%d\n", mqs->msid);
@@ -347,12 +347,12 @@ void gop_mq_stream_read_destroy(mq_stream_t *mqs)
 // gop_mq_stream_read_create - Creates an MQ stream for reading
 //***********************************************************************
 
-mq_stream_t *gop_mq_stream_read_create(mq_context_t *mqc, mq_ongoing_t *on, char *host_id, int hid_len, mq_frame_t *fdata, mq_msg_t *remote_host, int to)
+gop_mq_stream_t *gop_mq_stream_read_create(gop_mq_context_t *mqc, gop_mq_ongoing_t *on, char *host_id, int hid_len, gop_mq_frame_t *fdata, mq_msg_t *remote_host, int to)
 {
-    mq_stream_t *mqs;
+    gop_mq_stream_t *mqs;
     int ptype;
 
-    tbx_type_malloc_clear(mqs, mq_stream_t, 1);
+    tbx_type_malloc_clear(mqs, gop_mq_stream_t, 1);
 
     mqs->mqc = mqc;
     mqs->ongoing = on;
@@ -417,7 +417,7 @@ mq_stream_t *gop_mq_stream_read_create(mq_context_t *mqc, mq_ongoing_t *on, char
 //  **NOTE: Assumes mqs is locked!!!! ***
 //***********************************************************************
 
-int mqs_write_send(mq_stream_t *mqs, mq_msg_t *address, mq_frame_t *fid)
+int mqs_write_send(gop_mq_stream_t *mqs, mq_msg_t *address, gop_mq_frame_t *fid)
 {
     int err;
     unsigned char *new_data;
@@ -467,7 +467,7 @@ int mqs_write_send(mq_stream_t *mqs, mq_msg_t *address, mq_frame_t *fid)
 
 void *mqs_flusher_thread(apr_thread_t *th, void *arg)
 {
-    mq_stream_t *mqs = (mq_stream_t *)arg;
+    gop_mq_stream_t *mqs = (gop_mq_stream_t *)arg;
     apr_time_t wakeup;
 
     log_printf(1, "START: msid=%d\n", mqs->msid);
@@ -515,12 +515,12 @@ void *mqs_flusher_thread(apr_thread_t *th, void *arg)
 // gop_mqs_server_more_cb - Sends more data to the client
 //***********************************************************************
 
-void gop_mqs_server_more_cb(void *arg, mq_task_t *task)
+void gop_mqs_server_more_cb(void *arg, gop_mq_task_t *task)
 {
-    mq_ongoing_t *ongoing = (mq_ongoing_t *)arg;
-    mq_stream_t *mqs;
+    gop_mq_ongoing_t *ongoing = (gop_mq_ongoing_t *)arg;
+    gop_mq_stream_t *mqs;
     mq_msg_t *msg;
-    mq_frame_t *f, *fid, *fmqs, *fuid;
+    gop_mq_frame_t *f, *fid, *fmqs, *fuid;
     unsigned char *data, *id, mode;
     apr_time_t wakeup;
     intptr_t key;
@@ -643,7 +643,7 @@ fail:
 // gop_mq_stream_write_flush - Flushs pending data
 //***********************************************************************
 
-int gop_mq_stream_write_flush(mq_stream_t *mqs)
+int gop_mq_stream_write_flush(gop_mq_stream_t *mqs)
 {
     int err = 0;
     apr_interval_time_t dt, expire;
@@ -686,9 +686,9 @@ int gop_mq_stream_write_flush(mq_stream_t *mqs)
 // mqs_write_on_fail - Handles a client write failure
 //***********************************************************************
 
-op_generic_t *mqs_write_on_fail(void *arg, void *handle)
+gop_op_generic_t *mqs_write_on_fail(void *arg, void *handle)
 {
-    mq_stream_t *mqs = (mq_stream_t *)handle;
+    gop_mq_stream_t *mqs = (gop_mq_stream_t *)handle;
 
     apr_thread_mutex_lock(mqs->lock);
     mqs->want_more = MQS_ABORT;
@@ -703,7 +703,7 @@ op_generic_t *mqs_write_on_fail(void *arg, void *handle)
 // gop_mq_stream_write - Writes data to the stream
 //***********************************************************************
 
-int gop_mq_stream_write(mq_stream_t *mqs, void *vdata, int len)
+int gop_mq_stream_write(gop_mq_stream_t *mqs, void *vdata, int len)
 {
     int nleft, dpos, nbytes, err, grew_space;
     unsigned char *data = vdata;
@@ -814,7 +814,7 @@ fail:
 // gop_mq_stream_write_varint - Writes a zigzag encoded varint to the stream
 //***********************************************************************
 
-int gop_mq_stream_write_varint(mq_stream_t *mqs, int64_t value)
+int gop_mq_stream_write_varint(gop_mq_stream_t *mqs, int64_t value)
 {
     unsigned char buffer[16];
     int i;
@@ -829,7 +829,7 @@ int gop_mq_stream_write_varint(mq_stream_t *mqs, int64_t value)
 // gop_mq_stream_write_destroy - Destroys a writing MQ stream
 //***********************************************************************
 
-void gop_mq_stream_write_destroy(mq_stream_t *mqs)
+void gop_mq_stream_write_destroy(gop_mq_stream_t *mqs)
 {
     apr_status_t status;
     int abort_error = 0;
@@ -897,13 +897,13 @@ void gop_mq_stream_write_destroy(mq_stream_t *mqs)
 // gop_mq_stream_write_create - Creates an MQ stream for writing
 //***********************************************************************
 
-mq_stream_t *gop_mq_stream_write_create(mq_context_t *mqc, mq_portal_t *server_portal, mq_ongoing_t *ongoing, char tbx_pack_type, int max_size, int timeout, mq_msg_t *address, mq_frame_t *fid, mq_frame_t *hid, bool launch_flusher)
+gop_mq_stream_t *gop_mq_stream_write_create(gop_mq_context_t *mqc, gop_mq_portal_t *server_portal, gop_mq_ongoing_t *ongoing, char tbx_pack_type, int max_size, int timeout, mq_msg_t *address, gop_mq_frame_t *fid, gop_mq_frame_t *hid, bool launch_flusher)
 {
-    mq_stream_t *mqs;
+    gop_mq_stream_t *mqs;
     intptr_t key;
     int ptype;
 
-    tbx_type_malloc_clear(mqs, mq_stream_t, 1);
+    tbx_type_malloc_clear(mqs, gop_mq_stream_t, 1);
 
     mqs->mqc = mqc;
     mqs->type = MQS_WRITE;
@@ -953,7 +953,7 @@ mq_stream_t *gop_mq_stream_write_create(mq_context_t *mqc, mq_portal_t *server_p
 // gop_mq_stream_destroy - Destroys an MQ stream
 //***********************************************************************
 
-void gop_mq_stream_destroy(mq_stream_t *mqs)
+void gop_mq_stream_destroy(gop_mq_stream_t *mqs)
 {
     if (mqs->type == MQS_READ) {
         gop_mq_stream_read_destroy(mqs);

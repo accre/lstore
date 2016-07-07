@@ -21,7 +21,7 @@
 extern "C" {
 #endif
 
-int ibp_sync_execute(opque_t *q, int nthreads);
+int ibp_sync_execute(gop_opque_t *q, int nthreads);
 
 #ifdef __cplusplus
 }

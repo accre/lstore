@@ -47,13 +47,13 @@ int main(int argc, char **argv)
     int i, start_option, np, update_interval;
     char *trace_header = NULL;
     char *template_name = NULL;
-    exnode_t *tex;
-    exnode_exchange_t *template_exchange;
+    lio_exnode_t *tex;
+    lio_exnode_exchange_t *template_exchange;
     ex_tbx_iovec_t *iov;
-    op_generic_t *gop;
-    trace_t *trace;
-    trace_op_t *top;
-    opque_t *q;
+    gop_op_generic_t *gop;
+    lio_trace_t *trace;
+    lio_trace_op_t *top;
+    gop_opque_t *q;
     apr_time_t start_time, end_time;
 
     double dt;
@@ -131,7 +131,7 @@ int main(int argc, char **argv)
 
         gop_set_id(gop, i);
         gop_opque_add(q, gop);
-        if (opque_tasks_left(q) >= np) {
+        if (gop_opque_tasks_left(q) >= np) {
             gop = opque_waitany(q);
             if (gop_completed_successfully(gop) != OP_STATE_SUCCESS) {
                 log_printf(0, "trace_replay: Errow with command index=%d\n", gop_id(gop));

@@ -71,14 +71,14 @@ typedef struct {
 } osrs_active_t;
 
 typedef struct {
-    object_service_fn_t *os;
+    lio_object_service_fn_t *os;
     os_fd_t *fd;
 } osrs_close_fail_t;
 
 typedef struct {
     char *handle;
     apr_ssize_t handle_len;
-    op_generic_t *gop;
+    gop_op_generic_t *gop;
 } osrs_abort_handle_t;
 
 typedef struct {
@@ -86,19 +86,19 @@ typedef struct {
     int key_len;
     int abort;
     apr_time_t last_hb;
-    op_generic_t *gop;
+    gop_op_generic_t *gop;
 } spin_hb_t;
 
 
-object_service_fn_t *_os_global = NULL;  //** This is used for the signal
+lio_object_service_fn_t *_os_global = NULL;  //** This is used for the signal
 
 //***********************************************************************
 // osrs_print_active_table - Print the active table
 //***********************************************************************
 
-void osrs_print_active_table(object_service_fn_t *os, FILE *fd)
+void osrs_print_active_table(lio_object_service_fn_t *os, FILE *fd)
 {
-    osrs_priv_t *osrs = (osrs_priv_t *)os->priv;
+    lio_osrs_priv_t *osrs = (lio_osrs_priv_t *)os->priv;
     char sdate[128], ldate[128];
     osrs_active_t *a;
 
@@ -127,12 +127,12 @@ void osrs_print_active_table(object_service_fn_t *os, FILE *fd)
 
 void signal_print_active_table(int sig)
 {
-    osrs_priv_t *osrs;
+    lio_osrs_priv_t *osrs;
     FILE *fd;
 
     if (_os_global == NULL) return;
 
-    osrs = (osrs_priv_t *)_os_global->priv;
+    osrs = (lio_osrs_priv_t *)_os_global->priv;
 
     if ((fd = fopen(osrs->fname_active, "w")) == NULL) return;
     osrs_print_active_table(_os_global, fd);
@@ -146,9 +146,9 @@ void signal_print_active_table(int sig)
 //    NOTE:  Currently this only tracks callbacks that use streams
 //***********************************************************************
 
-void osrs_update_active_table(object_service_fn_t *os, mq_frame_t *hid)
+void osrs_update_active_table(lio_object_service_fn_t *os, gop_mq_frame_t *hid)
 {
-    osrs_priv_t *osrs = (osrs_priv_t *)os->priv;
+    lio_osrs_priv_t *osrs = (lio_osrs_priv_t *)os->priv;
     char *host_id;
     int id_len;
     tbx_stack_ele_t *ele;
@@ -202,12 +202,12 @@ void osrs_update_active_table(object_service_fn_t *os, mq_frame_t *hid)
 // osrs_log - Logs an operation
 //***********************************************************************
 
-void osrs_log_printf(object_service_fn_t *os, creds_t *creds, const char *fmt, ...)
+void osrs_log_printf(lio_object_service_fn_t *os, lio_creds_t *creds, const char *fmt, ...)
 {
     va_list args;
-    osrs_priv_t *osrs = (osrs_priv_t *)os->priv;
+    lio_osrs_priv_t *osrs = (lio_osrs_priv_t *)os->priv;
     FILE *fd;
-    authn_fake_priv_t *a;
+    lio_authn_fake_priv_t *a;
     char date[APR_CTIME_LEN], *uid;
     apr_time_t now;
 
@@ -240,7 +240,7 @@ void osrs_log_printf(object_service_fn_t *os, creds_t *creds, const char *fmt, .
 // =====NOTE: this routine is a hack to pass around the userid and host ===
 //***********************************************************************
 
-void osrs_release_creds(object_service_fn_t *os, creds_t *creds)
+void osrs_release_creds(lio_object_service_fn_t *os, lio_creds_t *creds)
 {
     //** The handle is stored in the frame and will get released on its destruction
     free(creds->priv);
@@ -254,14 +254,14 @@ void osrs_release_creds(object_service_fn_t *os, creds_t *creds)
 // =====NOTE: this routine is a hack to pass around the userid and host ===
 //***********************************************************************
 
-creds_t *osrs_get_creds(object_service_fn_t *os, mq_frame_t *f)
+lio_creds_t *osrs_get_creds(lio_object_service_fn_t *os, gop_mq_frame_t *f)
 {
-    osrs_priv_t *osrs = (osrs_priv_t *)os->priv;
-    creds_t *creds;
-    authn_fake_priv_t *a;
+    lio_osrs_priv_t *osrs = (lio_osrs_priv_t *)os->priv;
+    lio_creds_t *creds;
+    lio_authn_fake_priv_t *a;
 
-    tbx_type_malloc(creds, creds_t, 1);
-    tbx_type_malloc(a, authn_fake_priv_t, 1);
+    tbx_type_malloc(creds, lio_creds_t, 1);
+    tbx_type_malloc(a, lio_authn_fake_priv_t, 1);
 
     *creds = *osrs->dummy_creds;
     creds->priv = a;
@@ -275,9 +275,9 @@ creds_t *osrs_get_creds(object_service_fn_t *os, mq_frame_t *f)
 //    to allow an abort.
 //***********************************************************************
 
-void osrs_add_abort_handle(object_service_fn_t *os, osrs_abort_handle_t *ah)
+void osrs_add_abort_handle(lio_object_service_fn_t *os, osrs_abort_handle_t *ah)
 {
-    osrs_priv_t *osrs = (osrs_priv_t *)os->priv;
+    lio_osrs_priv_t *osrs = (lio_osrs_priv_t *)os->priv;
 
     apr_thread_mutex_lock(osrs->abort_lock);
     apr_hash_set(osrs->abort, ah->handle, ah->handle_len, ah);
@@ -289,9 +289,9 @@ void osrs_add_abort_handle(object_service_fn_t *os, osrs_abort_handle_t *ah)
 // osrs_remove_abort_handle - Removes the provided handle from the abort table
 //***********************************************************************
 
-void osrs_remove_abort_handle(object_service_fn_t *os, osrs_abort_handle_t *ah)
+void osrs_remove_abort_handle(lio_object_service_fn_t *os, osrs_abort_handle_t *ah)
 {
-    osrs_priv_t *osrs = (osrs_priv_t *)os->priv;
+    lio_osrs_priv_t *osrs = (lio_osrs_priv_t *)os->priv;
 
     apr_thread_mutex_lock(osrs->abort_lock);
     apr_hash_set(osrs->abort, ah->handle, ah->handle_len, NULL);
@@ -302,12 +302,12 @@ void osrs_remove_abort_handle(object_service_fn_t *os, osrs_abort_handle_t *ah)
 // osrs_perform_abort_handle - Performs the actual abort
 //***********************************************************************
 
-op_status_t osrs_perform_abort_handle(object_service_fn_t *os, char *handle, int handle_len)
+gop_op_status_t osrs_perform_abort_handle(lio_object_service_fn_t *os, char *handle, int handle_len)
 {
-    osrs_priv_t *osrs = (osrs_priv_t *)os->priv;
+    lio_osrs_priv_t *osrs = (lio_osrs_priv_t *)os->priv;
     osrs_abort_handle_t *ah;
-    op_generic_t *gop;
-    op_status_t status;
+    gop_op_generic_t *gop;
+    gop_op_status_t status;
 
     status = gop_failure_status;
 
@@ -329,17 +329,17 @@ op_status_t osrs_perform_abort_handle(object_service_fn_t *os, char *handle, int
 // osrs_exists_cb - Processes the object exists command
 //***********************************************************************
 
-void osrs_exists_cb(void *arg, mq_task_t *task)
+void osrs_exists_cb(void *arg, gop_mq_task_t *task)
 {
-    object_service_fn_t *os = (object_service_fn_t *)arg;
-    osrs_priv_t *osrs = (osrs_priv_t *)os->priv;
-    mq_frame_t *fid, *fname, *fcred;
+    lio_object_service_fn_t *os = (lio_object_service_fn_t *)arg;
+    lio_osrs_priv_t *osrs = (lio_osrs_priv_t *)os->priv;
+    gop_mq_frame_t *fid, *fname, *fcred;
     char *name;
-    creds_t *creds;
+    lio_creds_t *creds;
     int fsize;
     mq_msg_t *msg, *response;
-    op_generic_t *gop;
-    op_status_t status;
+    gop_op_generic_t *gop;
+    gop_op_status_t status;
 
     log_printf(5, "Processing incoming request\n");
 
@@ -386,14 +386,14 @@ void osrs_exists_cb(void *arg, mq_task_t *task)
 // osrs_spin_hb_cb - Processes the Spin HB command
 //***********************************************************************
 
-void osrs_spin_hb_cb(void *arg, mq_task_t *task)
+void osrs_spin_hb_cb(void *arg, gop_mq_task_t *task)
 {
-    object_service_fn_t *os = (object_service_fn_t *)arg;
-    osrs_priv_t *osrs = (osrs_priv_t *)os->priv;
-    mq_frame_t *fcred, *fspin;
+    lio_object_service_fn_t *os = (lio_object_service_fn_t *)arg;
+    lio_osrs_priv_t *osrs = (lio_osrs_priv_t *)os->priv;
+    gop_mq_frame_t *fcred, *fspin;
     char *spin_hb;
     spin_hb_t *spin;
-    creds_t *creds;
+    lio_creds_t *creds;
     int fsize;
     mq_msg_t *msg;
 
@@ -435,18 +435,18 @@ void osrs_spin_hb_cb(void *arg, mq_task_t *task)
 // osrs_create_object_cb - Processes the create object command
 //***********************************************************************
 
-void osrs_create_object_cb(void *arg, mq_task_t *task)
+void osrs_create_object_cb(void *arg, gop_mq_task_t *task)
 {
-    object_service_fn_t *os = (object_service_fn_t *)arg;
-    osrs_priv_t *osrs = (osrs_priv_t *)os->priv;
-    mq_frame_t *fid, *fname, *fcred, *f;
+    lio_object_service_fn_t *os = (lio_object_service_fn_t *)arg;
+    lio_osrs_priv_t *osrs = (lio_osrs_priv_t *)os->priv;
+    gop_mq_frame_t *fid, *fname, *fcred, *f;
     char *name;
     char *data;
-    creds_t *creds;
+    lio_creds_t *creds;
     int fsize, nbytes;
     mq_msg_t *msg, *response;
-    op_generic_t *gop;
-    op_status_t status;
+    gop_op_generic_t *gop;
+    gop_op_status_t status;
     int64_t ftype;
 
     log_printf(5, "Processing incoming request\n");
@@ -505,17 +505,17 @@ void osrs_create_object_cb(void *arg, mq_task_t *task)
 // osrs_remove_object_cb - Processes the object remove command
 //***********************************************************************
 
-void osrs_remove_object_cb(void *arg, mq_task_t *task)
+void osrs_remove_object_cb(void *arg, gop_mq_task_t *task)
 {
-    object_service_fn_t *os = (object_service_fn_t *)arg;
-    osrs_priv_t *osrs = (osrs_priv_t *)os->priv;
-    mq_frame_t *fid, *fname, *fcred;
+    lio_object_service_fn_t *os = (lio_object_service_fn_t *)arg;
+    lio_osrs_priv_t *osrs = (lio_osrs_priv_t *)os->priv;
+    gop_mq_frame_t *fid, *fname, *fcred;
     char *name;
-    creds_t *creds;
+    lio_creds_t *creds;
     int fsize;
     mq_msg_t *msg, *response;
-    op_generic_t *gop;
-    op_status_t status;
+    gop_op_generic_t *gop;
+    gop_op_status_t status;
 
     log_printf(5, "Processing incoming request\n");
 
@@ -561,22 +561,22 @@ void osrs_remove_object_cb(void *arg, mq_task_t *task)
 // osrs_remove_regex_object_cb - Processes the regex based object remove command
 //***********************************************************************
 
-void osrs_remove_regex_object_cb(void *arg, mq_task_t *task)
+void osrs_remove_regex_object_cb(void *arg, gop_mq_task_t *task)
 {
-    object_service_fn_t *os = (object_service_fn_t *)arg;
-    osrs_priv_t *osrs = (osrs_priv_t *)os->priv;
-    mq_frame_t *fid, *fcred, *fdata, *hid;
+    lio_object_service_fn_t *os = (lio_object_service_fn_t *)arg;
+    lio_osrs_priv_t *osrs = (lio_osrs_priv_t *)os->priv;
+    gop_mq_frame_t *fid, *fcred, *fdata, *hid;
     unsigned char *buffer;
     unsigned char tbuf[32];
-    os_regex_table_t *path, *object_regex;
-    creds_t *creds;
+    lio_os_regex_table_t *path, *object_regex;
+    lio_creds_t *creds;
     int fsize, bpos, n;
     int64_t recurse_depth, obj_types, timeout, len, hb_timeout, loop;
     mq_msg_t *msg;
     apr_time_t expire;
-    op_generic_t *g, *gop;
-    mq_stream_t *mqs;
-    op_status_t status;
+    gop_op_generic_t *g, *gop;
+    gop_mq_stream_t *mqs;
+    gop_op_status_t status;
     spin_hb_t spin;
 
     log_printf(5, "Processing incoming request\n");
@@ -713,18 +713,18 @@ fail:
 // osrs_abort_remove_regex_object_cb - Aborts a bulk remove command
 //***********************************************************************
 
-void osrs_abort_remove_regex_object_cb(void *arg, mq_task_t *task)
+void osrs_abort_remove_regex_object_cb(void *arg, gop_mq_task_t *task)
 {
-    object_service_fn_t *os = (object_service_fn_t *)arg;
-    osrs_priv_t *osrs = (osrs_priv_t *)os->priv;
-    mq_frame_t *fcred, *fspin, *fid;
+    lio_object_service_fn_t *os = (lio_object_service_fn_t *)arg;
+    lio_osrs_priv_t *osrs = (lio_osrs_priv_t *)os->priv;
+    gop_mq_frame_t *fcred, *fspin, *fid;
     char *spin_hb;
     spin_hb_t *spin;
-    creds_t *creds;
+    lio_creds_t *creds;
     int fsize;
-    op_status_t status;
+    gop_op_status_t status;
     mq_msg_t *msg, *response;
-    op_generic_t *gop;
+    gop_op_generic_t *gop;
 
     log_printf(5, "Processing incoming request\n");
 
@@ -779,17 +779,17 @@ void osrs_abort_remove_regex_object_cb(void *arg, mq_task_t *task)
 // osrs_symlink_object_cb - Processes the symlink object command
 //***********************************************************************
 
-void osrs_symlink_object_cb(void *arg, mq_task_t *task)
+void osrs_symlink_object_cb(void *arg, gop_mq_task_t *task)
 {
-    object_service_fn_t *os = (object_service_fn_t *)arg;
-    osrs_priv_t *osrs = (osrs_priv_t *)os->priv;
-    mq_frame_t *fid, *fsname, *fdname, *fcred, *fuserid;
+    lio_object_service_fn_t *os = (lio_object_service_fn_t *)arg;
+    lio_osrs_priv_t *osrs = (lio_osrs_priv_t *)os->priv;
+    gop_mq_frame_t *fid, *fsname, *fdname, *fcred, *fuserid;
     char *src_name, *dest_name, *userid;
-    creds_t *creds;
+    lio_creds_t *creds;
     int fsize;
     mq_msg_t *msg, *response;
-    op_generic_t *gop;
-    op_status_t status;
+    gop_op_generic_t *gop;
+    gop_op_status_t status;
 
     log_printf(5, "Processing incoming request\n");
 
@@ -843,17 +843,17 @@ void osrs_symlink_object_cb(void *arg, mq_task_t *task)
 // osrs_hardlink_object_cb - Processes the hard link object command
 //***********************************************************************
 
-void osrs_hardlink_object_cb(void *arg, mq_task_t *task)
+void osrs_hardlink_object_cb(void *arg, gop_mq_task_t *task)
 {
-    object_service_fn_t *os = (object_service_fn_t *)arg;
-    osrs_priv_t *osrs = (osrs_priv_t *)os->priv;
-    mq_frame_t *fid, *fsname, *fdname, *fcred, *fuserid;
+    lio_object_service_fn_t *os = (lio_object_service_fn_t *)arg;
+    lio_osrs_priv_t *osrs = (lio_osrs_priv_t *)os->priv;
+    gop_mq_frame_t *fid, *fsname, *fdname, *fcred, *fuserid;
     char *src_name, *dest_name, *userid;
-    creds_t *creds;
+    lio_creds_t *creds;
     int fsize;
     mq_msg_t *msg, *response;
-    op_generic_t *gop;
-    op_status_t status;
+    gop_op_generic_t *gop;
+    gop_op_status_t status;
 
     log_printf(5, "Processing incoming request\n");
 
@@ -907,17 +907,17 @@ void osrs_hardlink_object_cb(void *arg, mq_task_t *task)
 // osrs_move_object_cb - Processes the move object command
 //***********************************************************************
 
-void osrs_move_object_cb(void *arg, mq_task_t *task)
+void osrs_move_object_cb(void *arg, gop_mq_task_t *task)
 {
-    object_service_fn_t *os = (object_service_fn_t *)arg;
-    osrs_priv_t *osrs = (osrs_priv_t *)os->priv;
-    mq_frame_t *fid, *fsname, *fdname, *fcred;
+    lio_object_service_fn_t *os = (lio_object_service_fn_t *)arg;
+    lio_osrs_priv_t *osrs = (lio_osrs_priv_t *)os->priv;
+    gop_mq_frame_t *fid, *fsname, *fdname, *fcred;
     char *src_name, *dest_name;
-    creds_t *creds;
+    lio_creds_t *creds;
     int fsize;
     mq_msg_t *msg, *response;
-    op_generic_t *gop;
-    op_status_t status;
+    gop_op_generic_t *gop;
+    gop_op_status_t status;
 
     log_printf(5, "Processing incoming request\n");
 
@@ -967,20 +967,20 @@ void osrs_move_object_cb(void *arg, mq_task_t *task)
 // osrs_open_object_cb - Processes the object open command
 //***********************************************************************
 
-void osrs_open_object_cb(void *arg, mq_task_t *task)
+void osrs_open_object_cb(void *arg, gop_mq_task_t *task)
 {
-    object_service_fn_t *os = (object_service_fn_t *)arg;
-    osrs_priv_t *osrs = (osrs_priv_t *)os->priv;
-    mq_frame_t *fid, *fsname, *fmode, *fcred, *fhandle, *fhb, *fuid;
+    lio_object_service_fn_t *os = (lio_object_service_fn_t *)arg;
+    lio_osrs_priv_t *osrs = (lio_osrs_priv_t *)os->priv;
+    gop_mq_frame_t *fid, *fsname, *fmode, *fcred, *fhandle, *fhb, *fuid;
     char *src_name, *id, *handle;
     osrs_abort_handle_t ah;
-    mq_ongoing_object_t *oo;
+    gop_mq_ongoing_object_t *oo;
     unsigned char *data;
-    creds_t *creds;
+    lio_creds_t *creds;
     int fsize, handle_len, n;
     int64_t mode, max_wait;
     mq_msg_t *msg, *response;
-    op_status_t status;
+    gop_op_status_t status;
     os_fd_t *fd;
 
     log_printf(5, "Processing incoming request\n");
@@ -1063,18 +1063,18 @@ void osrs_open_object_cb(void *arg, mq_task_t *task)
 // osrs_close_object_cb - Processes an object close
 //***********************************************************************
 
-void osrs_close_object_cb(void *arg, mq_task_t *task)
+void osrs_close_object_cb(void *arg, gop_mq_task_t *task)
 {
-    object_service_fn_t *os = (object_service_fn_t *)arg;
-    osrs_priv_t *osrs = (osrs_priv_t *)os->priv;
-    op_generic_t *gop;
-    mq_frame_t *fid, *fuid, *fhid;
+    lio_object_service_fn_t *os = (lio_object_service_fn_t *)arg;
+    lio_osrs_priv_t *osrs = (lio_osrs_priv_t *)os->priv;
+    gop_op_generic_t *gop;
+    gop_mq_frame_t *fid, *fuid, *fhid;
     char *id, *fhandle;
     void *handle;
     int fsize, hsize;
     intptr_t key;
     mq_msg_t *msg, *response;
-    op_status_t status;
+    gop_op_status_t status;
 
     log_printf(5, "Processing incoming request\n");
 
@@ -1124,15 +1124,15 @@ void osrs_close_object_cb(void *arg, mq_task_t *task)
 // osrs_abort_open_object_cb - Aborts a pending open object call
 //***********************************************************************
 
-void osrs_abort_open_object_cb(void *arg, mq_task_t *task)
+void osrs_abort_open_object_cb(void *arg, gop_mq_task_t *task)
 {
-    object_service_fn_t *os = (object_service_fn_t *)arg;
-    osrs_priv_t *osrs = (osrs_priv_t *)os->priv;
-    mq_frame_t *fid, *fuid;
+    lio_object_service_fn_t *os = (lio_object_service_fn_t *)arg;
+    lio_osrs_priv_t *osrs = (lio_osrs_priv_t *)os->priv;
+    gop_mq_frame_t *fid, *fuid;
     char *id;
     int fsize;
     mq_msg_t *msg, *response;
-    op_status_t status;
+    gop_op_status_t status;
 
     log_printf(5, "Processing incoming request\n");
 
@@ -1164,20 +1164,20 @@ void osrs_abort_open_object_cb(void *arg, mq_task_t *task)
 // osrs_get_mult_attr_cb - Retrieves object attributes
 //***********************************************************************
 
-void osrs_get_mult_attr_cb(void *arg, mq_task_t *task)
+void osrs_get_mult_attr_cb(void *arg, gop_mq_task_t *task)
 {
-    object_service_fn_t *os = (object_service_fn_t *)arg;
-    osrs_priv_t *osrs = (osrs_priv_t *)os->priv;
-    mq_frame_t *fid, *fuid, *fcred, *fdata, *ffd, *hid;
-    creds_t *creds;
+    lio_object_service_fn_t *os = (lio_object_service_fn_t *)arg;
+    lio_osrs_priv_t *osrs = (lio_osrs_priv_t *)os->priv;
+    gop_mq_frame_t *fid, *fuid, *fcred, *fdata, *ffd, *hid;
+    lio_creds_t *creds;
     char *id;
     unsigned char *data;
-    op_generic_t *gop;
+    gop_op_generic_t *gop;
     int fsize, bpos, len, id_size, i;
     int64_t max_stream, timeout, n, v, nbytes;
     mq_msg_t *msg;
-    mq_stream_t *mqs;
-    op_status_t status;
+    gop_mq_stream_t *mqs;
+    gop_op_status_t status;
     unsigned char buffer[32];
     char **key;
     void **val;
@@ -1345,19 +1345,19 @@ fail:
 // osrs_set_mult_attr_cb - Sets the given object attributes
 //***********************************************************************
 
-void osrs_set_mult_attr_cb(void *arg, mq_task_t *task)
+void osrs_set_mult_attr_cb(void *arg, gop_mq_task_t *task)
 {
-    object_service_fn_t *os = (object_service_fn_t *)arg;
-    osrs_priv_t *osrs = (osrs_priv_t *)os->priv;
-    mq_frame_t *fid, *fuid, *fcred, *fdata, *ffd;
-    creds_t *creds;
+    lio_object_service_fn_t *os = (lio_object_service_fn_t *)arg;
+    lio_osrs_priv_t *osrs = (lio_osrs_priv_t *)os->priv;
+    gop_mq_frame_t *fid, *fuid, *fcred, *fdata, *ffd;
+    lio_creds_t *creds;
     char *id;
     unsigned char *data;
-    op_generic_t *gop;
+    gop_op_generic_t *gop;
     int fsize, bpos, len, id_size, i;
     int64_t timeout, n, v, nbytes;
     mq_msg_t *msg, *response;
-    op_status_t status;
+    gop_op_status_t status;
     char **key;
     char **val;
     int *v_size;
@@ -1508,18 +1508,18 @@ fail:
 // osrs_abort_regex_set_muylt_attr_cb - Aborts a bulk set attr command
 //***********************************************************************
 
-void osrs_abort_regex_set_mult_attr_cb(void *arg, mq_task_t *task)
+void osrs_abort_regex_set_mult_attr_cb(void *arg, gop_mq_task_t *task)
 {
-    object_service_fn_t *os = (object_service_fn_t *)arg;
-    osrs_priv_t *osrs = (osrs_priv_t *)os->priv;
-    mq_frame_t *fcred, *fspin, *fid;
+    lio_object_service_fn_t *os = (lio_object_service_fn_t *)arg;
+    lio_osrs_priv_t *osrs = (lio_osrs_priv_t *)os->priv;
+    gop_mq_frame_t *fcred, *fspin, *fid;
     char *spin_hb;
     spin_hb_t *spin;
-    creds_t *creds;
+    lio_creds_t *creds;
     int fsize;
-    op_status_t status;
+    gop_op_status_t status;
     mq_msg_t *msg, *response;
-    op_generic_t *gop;
+    gop_op_generic_t *gop;
 
     log_printf(5, "Processing incoming request\n");
 
@@ -1573,11 +1573,11 @@ void osrs_abort_regex_set_mult_attr_cb(void *arg, mq_task_t *task)
 // osrs_regex_set_set_mult_attr_cb - Processes the regex based object attrribute setting
 //***********************************************************************
 
-void osrs_regex_set_mult_attr_cb(void *arg, mq_task_t *task)
+void osrs_regex_set_mult_attr_cb(void *arg, gop_mq_task_t *task)
 {
-    object_service_fn_t *os = (object_service_fn_t *)arg;
-    osrs_priv_t *osrs = (osrs_priv_t *)os->priv;
-    mq_frame_t *fid, *fcred, *fdata, *fcid, *hid;
+    lio_object_service_fn_t *os = (lio_object_service_fn_t *)arg;
+    lio_osrs_priv_t *osrs = (lio_osrs_priv_t *)os->priv;
+    gop_mq_frame_t *fid, *fcred, *fdata, *fcid, *hid;
     unsigned char *buffer;
     unsigned char tbuf[32];
     int *v_size;
@@ -1586,14 +1586,14 @@ void osrs_regex_set_mult_attr_cb(void *arg, mq_task_t *task)
     char *call_id;
     spin_hb_t spin;
     apr_time_t expire;
-    os_regex_table_t *path, *object_regex;
-    creds_t *creds;
+    lio_os_regex_table_t *path, *object_regex;
+    lio_creds_t *creds;
     int fsize, bpos, n, i;
     int64_t recurse_depth, obj_types, timeout, hb_timeout, n_attrs, len, loop;
     mq_msg_t *msg;
-    op_generic_t *g;
-    mq_stream_t *mqs;
-    op_status_t status;
+    gop_op_generic_t *g;
+    gop_mq_stream_t *mqs;
+    gop_op_status_t status;
 
     log_printf(5, "Processing incoming request\n");
 
@@ -1785,19 +1785,19 @@ fail:
 // osrs_copy_mult_attr_cb - Copies multiple attributes between objects
 //***********************************************************************
 
-void osrs_copy_mult_attr_cb(void *arg, mq_task_t *task)
+void osrs_copy_mult_attr_cb(void *arg, gop_mq_task_t *task)
 {
-    object_service_fn_t *os = (object_service_fn_t *)arg;
-    osrs_priv_t *osrs = (osrs_priv_t *)os->priv;
-    mq_frame_t *fid, *fuid, *fcred, *fdata, *ffd_src, *ffd_dest;
-    creds_t *creds;
+    lio_object_service_fn_t *os = (lio_object_service_fn_t *)arg;
+    lio_osrs_priv_t *osrs = (lio_osrs_priv_t *)os->priv;
+    gop_mq_frame_t *fid, *fuid, *fcred, *fdata, *ffd_src, *ffd_dest;
+    lio_creds_t *creds;
     char *id;
     unsigned char *data;
-    op_generic_t *gop;
+    gop_op_generic_t *gop;
     int fsize, bpos, len, id_size, i;
     int64_t timeout, n, v, nbytes;
     mq_msg_t *msg, *response;
-    op_status_t status;
+    gop_op_status_t status;
     char **key_src;
     char **key_dest;
     os_fd_t *fd_src, *fd_dest;
@@ -1950,19 +1950,19 @@ fail:
 // osrs_move_mult_attr_cb - Moves multiple attributes
 //***********************************************************************
 
-void osrs_move_mult_attr_cb(void *arg, mq_task_t *task)
+void osrs_move_mult_attr_cb(void *arg, gop_mq_task_t *task)
 {
-    object_service_fn_t *os = (object_service_fn_t *)arg;
-    osrs_priv_t *osrs = (osrs_priv_t *)os->priv;
-    mq_frame_t *fid, *fuid, *fcred, *fdata, *ffd_src;
-    creds_t *creds;
+    lio_object_service_fn_t *os = (lio_object_service_fn_t *)arg;
+    lio_osrs_priv_t *osrs = (lio_osrs_priv_t *)os->priv;
+    gop_mq_frame_t *fid, *fuid, *fcred, *fdata, *ffd_src;
+    lio_creds_t *creds;
     char *id;
     unsigned char *data;
-    op_generic_t *gop;
+    gop_op_generic_t *gop;
     int fsize, bpos, len, id_size, i;
     int64_t timeout, n, v, nbytes;
     mq_msg_t *msg, *response;
-    op_status_t status;
+    gop_op_status_t status;
     char **key_src;
     char **key_dest;
     os_fd_t *fd_src;
@@ -2102,19 +2102,19 @@ fail:
 // osrs_symlink_mult_attr_cb - Symlinks multiple attributes between objects
 //***********************************************************************
 
-void osrs_symlink_mult_attr_cb(void *arg, mq_task_t *task)
+void osrs_symlink_mult_attr_cb(void *arg, gop_mq_task_t *task)
 {
-    object_service_fn_t *os = (object_service_fn_t *)arg;
-    osrs_priv_t *osrs = (osrs_priv_t *)os->priv;
-    mq_frame_t *fid, *fuid, *fcred, *fdata, *ffd_dest;
-    creds_t *creds;
+    lio_object_service_fn_t *os = (lio_object_service_fn_t *)arg;
+    lio_osrs_priv_t *osrs = (lio_osrs_priv_t *)os->priv;
+    gop_mq_frame_t *fid, *fuid, *fcred, *fdata, *ffd_dest;
+    lio_creds_t *creds;
     char *id;
     unsigned char *data;
-    op_generic_t *gop;
+    gop_op_generic_t *gop;
     int fsize, bpos, len, id_size, i;
     int64_t timeout, n, v, nbytes;
     mq_msg_t *msg, *response;
-    op_status_t status;
+    gop_op_status_t status;
     char **src_path;
     char **key_src;
     char **key_dest;
@@ -2275,25 +2275,25 @@ fail:
 // osrs_object_iter_alist_cb - Handles the alist object iterator
 //***********************************************************************
 
-void osrs_object_iter_alist_cb(void *arg, mq_task_t *task)
+void osrs_object_iter_alist_cb(void *arg, gop_mq_task_t *task)
 {
-    object_service_fn_t *os = (object_service_fn_t *)arg;
-    osrs_priv_t *osrs = (osrs_priv_t *)os->priv;
-    mq_frame_t *fid, *fcred, *fdata, *hid;
+    lio_object_service_fn_t *os = (lio_object_service_fn_t *)arg;
+    lio_osrs_priv_t *osrs = (lio_osrs_priv_t *)os->priv;
+    gop_mq_frame_t *fid, *fcred, *fdata, *hid;
     unsigned char *buffer;
     unsigned char tbuf[32];
     int *v_size;
     char **key;
     char **val;
     char *fname;
-    os_regex_table_t *path, *object_regex;
-    creds_t *creds;
+    lio_os_regex_table_t *path, *object_regex;
+    lio_creds_t *creds;
     int fsize, bpos, n, i, err, ftype, prefix_len;
     int64_t recurse_depth, obj_types, timeout, n_attrs, len;
     mq_msg_t *msg;
     os_object_iter_t *it;
-    mq_stream_t *mqs;
-    op_status_t status;
+    gop_mq_stream_t *mqs;
+    gop_op_status_t status;
 
     log_printf(5, "Processing incoming request\n");
 
@@ -2470,26 +2470,26 @@ finished:
 // osrs_object_iter_aregex_cb - Handles the attr regex object iterator
 //***********************************************************************
 
-void osrs_object_iter_aregex_cb(void *arg, mq_task_t *task)
+void osrs_object_iter_aregex_cb(void *arg, gop_mq_task_t *task)
 {
-    object_service_fn_t *os = (object_service_fn_t *)arg;
-    osrs_priv_t *osrs = (osrs_priv_t *)os->priv;
-    mq_frame_t *fid, *fcred, *fdata, *hid;
+    lio_object_service_fn_t *os = (lio_object_service_fn_t *)arg;
+    lio_osrs_priv_t *osrs = (lio_osrs_priv_t *)os->priv;
+    gop_mq_frame_t *fid, *fcred, *fdata, *hid;
     unsigned char *buffer;
     unsigned char tbuf[32], null[32];
     int  v_size;
     char *key;
     char *val;
     char *fname;
-    os_regex_table_t *path, *object_regex, *attr_regex;
-    creds_t *creds;
+    lio_os_regex_table_t *path, *object_regex, *attr_regex;
+    lio_creds_t *creds;
     int fsize, bpos, n, err, ftype, prefix_len, null_len;
     int64_t recurse_depth, obj_types, timeout, v_max, len;
     mq_msg_t *msg;
     os_object_iter_t *it;
     os_attr_iter_t *ait;
-    mq_stream_t *mqs;
-    op_status_t status;
+    gop_mq_stream_t *mqs;
+    gop_op_status_t status;
 
     log_printf(5, "Processing incoming request\n");
 
@@ -2650,26 +2650,26 @@ finished:
 // osrs_attr_iter_cb - Handles the attr regex iterator
 //***********************************************************************
 
-void osrs_attr_iter_cb(void *arg, mq_task_t *task)
+void osrs_attr_iter_cb(void *arg, gop_mq_task_t *task)
 {
-    object_service_fn_t *os = (object_service_fn_t *)arg;
-    osrs_priv_t *osrs = (osrs_priv_t *)os->priv;
-    mq_frame_t *fid, *fcred, *fdata, *ffd, *fhid;
+    lio_object_service_fn_t *os = (lio_object_service_fn_t *)arg;
+    lio_osrs_priv_t *osrs = (lio_osrs_priv_t *)os->priv;
+    gop_mq_frame_t *fid, *fcred, *fdata, *ffd, *fhid;
     unsigned char *buffer;
     unsigned char tbuf[32];
     int v_size;
     char *key, *val, *id;
     void *fhandle;
-    os_regex_table_t *attr_regex;
-    creds_t *creds;
+    lio_os_regex_table_t *attr_regex;
+    lio_creds_t *creds;
     int fsize, bpos, n, err, id_size, hsize;
     int64_t timeout, len, v_size_init;
     mq_msg_t *msg;
     intptr_t fhkey = 0;
     void *handle;
     os_attr_iter_t *it;
-    mq_stream_t *mqs;
-    op_status_t status;
+    gop_mq_stream_t *mqs;
+    gop_op_status_t status;
 
     log_printf(5, "Processing incoming request\n");
 
@@ -2815,21 +2815,21 @@ finished:
 // osrs_fsck_iter_cb - Handles the FSCK regex iterator
 //***********************************************************************
 
-void osrs_fsck_iter_cb(void *arg, mq_task_t *task)
+void osrs_fsck_iter_cb(void *arg, gop_mq_task_t *task)
 {
-    object_service_fn_t *os = (object_service_fn_t *)arg;
-    osrs_priv_t *osrs = (osrs_priv_t *)os->priv;
-    mq_frame_t *fid, *fcred, *fdata, *fhid;
+    lio_object_service_fn_t *os = (lio_object_service_fn_t *)arg;
+    lio_osrs_priv_t *osrs = (lio_osrs_priv_t *)os->priv;
+    gop_mq_frame_t *fid, *fcred, *fdata, *fhid;
     unsigned char *buffer;
     unsigned char tbuf[32];
     char *path, *bad_fname, *id;
-    creds_t *creds;
+    lio_creds_t *creds;
     int fsize, n, err, id_size, bad_atype, fsck_err;
     int64_t timeout, len, mode;
     mq_msg_t *msg;
     os_fsck_iter_t *it;
-    mq_stream_t *mqs;
-    op_status_t status;
+    gop_mq_stream_t *mqs;
+    gop_op_status_t status;
 
     log_printf(5, "Processing incoming request\n");
 
@@ -2946,19 +2946,19 @@ finished:
 // osrs_fsck_object_cb - Handles the FSCK object check
 //***********************************************************************
 
-void osrs_fsck_object_cb(void *arg, mq_task_t *task)
+void osrs_fsck_object_cb(void *arg, gop_mq_task_t *task)
 {
-    object_service_fn_t *os = (object_service_fn_t *)arg;
-    osrs_priv_t *osrs = (osrs_priv_t *)os->priv;
-    mq_frame_t *fid, *fcred, *fdata;
+    lio_object_service_fn_t *os = (lio_object_service_fn_t *)arg;
+    lio_osrs_priv_t *osrs = (lio_osrs_priv_t *)os->priv;
+    gop_mq_frame_t *fid, *fcred, *fdata;
     unsigned char *buffer;
     char *path;
-    creds_t *creds;
+    lio_creds_t *creds;
     int fsize, n, err;
     int64_t timeout, ftype, resolution;
     mq_msg_t *msg, *response;
-    op_generic_t *gop;
-    op_status_t status;
+    gop_op_generic_t *gop;
+    gop_op_status_t status;
 
     log_printf(5, "Processing incoming request\n");
 
@@ -3029,9 +3029,9 @@ void osrs_fsck_object_cb(void *arg, mq_task_t *task)
 // os_remote_server_destroy
 //***********************************************************************
 
-void os_remote_server_destroy(object_service_fn_t *os)
+void os_remote_server_destroy(lio_object_service_fn_t *os)
 {
-    osrs_priv_t *osrs = (osrs_priv_t *)os->priv;
+    lio_osrs_priv_t *osrs = (lio_osrs_priv_t *)os->priv;
     osrs_active_t *a;
 
     //** Remove the server portal
@@ -3081,12 +3081,12 @@ void os_remote_server_destroy(object_service_fn_t *os)
 //  object_service_remote_client_create - Creates a remote client OS
 //***********************************************************************
 
-object_service_fn_t *object_service_remote_server_create(service_manager_t *ess, tbx_inip_file_t *fd, char *section)
+lio_object_service_fn_t *object_service_remote_server_create(lio_service_manager_t *ess, tbx_inip_file_t *fd, char *section)
 {
-    object_service_fn_t *os;
-    osrs_priv_t *osrs;
+    lio_object_service_fn_t *os;
+    lio_osrs_priv_t *osrs;
     os_create_t *os_create;
-    mq_command_table_t *ctable;
+    gop_gop_mq_command_table_t *ctable;
     char *stype, *ctype;
     authn_create_t *authn_create;
     char *cred_args[2];
@@ -3094,8 +3094,8 @@ object_service_fn_t *object_service_remote_server_create(service_manager_t *ess,
     log_printf(0, "START\n");
     if (section == NULL) section = "os_remote_server";
 
-    tbx_type_malloc_clear(os, object_service_fn_t, 1);
-    tbx_type_malloc_clear(osrs, osrs_priv_t, 1);
+    tbx_type_malloc_clear(os, lio_object_service_fn_t, 1);
+    tbx_type_malloc_clear(osrs, lio_osrs_priv_t, 1);
     os->priv = (void *)osrs;
 
     osrs->tpc = lio_lookup_service(ess, ESS_RUNNING, ESS_TPC_UNLIMITED); assert(osrs->tpc != NULL);

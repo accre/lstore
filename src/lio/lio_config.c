@@ -71,7 +71,7 @@ int lio_parallel_task_count = 100;
 
 //** Define the global LIO config
 lio_config_t *lio_gc = NULL;
-cache_t *_lio_cache = NULL;
+lio_cache_t *_lio_cache = NULL;
 tbx_log_fd_t *lio_ifd = NULL;
 FILE *_lio_ifd = NULL;
 char *_lio_exe_name = NULL;
@@ -664,11 +664,11 @@ void lc_object_remove_unused(int remove_all_unused)
 // blacklist_destroy - Destroys a blacklist structure
 //***************************************************************
 
-void blacktbx_list_destroy(blacklist_t *bl)
+void blacktbx_list_destroy(lio_blacklist_t *bl)
 {
     apr_ssize_t hlen;
     apr_hash_index_t *hi;
-    blacklist_ibp_rid_t *r;
+    lio_blacklist_ibp_rid_t *r;
 
     //** Destroy all the blacklist RIDs
     for (hi=apr_hash_first(NULL, bl->table); hi != NULL; hi = apr_hash_next(hi)) {
@@ -686,11 +686,11 @@ void blacktbx_list_destroy(blacklist_t *bl)
 // blacklist_load - Loads and creates a blacklist structure
 //***************************************************************
 
-blacklist_t *blacklist_load(tbx_inip_file_t *ifd, char *section)
+lio_blacklist_t *blacklist_load(tbx_inip_file_t *ifd, char *section)
 {
-    blacklist_t *bl;
+    lio_blacklist_t *bl;
 
-    tbx_type_malloc_clear(bl, blacklist_t, 1);
+    tbx_type_malloc_clear(bl, lio_blacklist_t, 1);
 
     assert_result(apr_pool_create(&(bl->mpool), NULL), APR_SUCCESS);
     apr_thread_mutex_create(&(bl->lock), APR_THREAD_MUTEX_DEFAULT, bl->mpool);
@@ -787,7 +787,7 @@ void lio_destroy_nl(lio_config_t *lio)
     free(lio->tpc_cache_section);
 
     if (_lc_object_destroy(lio->mq_section) <= 0) {  //** Destroy the MQ context
-        mq_ongoing_t *on = lio_lookup_service(lio->ess, ESS_RUNNING, ESS_ONGOING_CLIENT);
+        gop_mq_ongoing_t *on = lio_lookup_service(lio->ess, ESS_RUNNING, ESS_ONGOING_CLIENT);
         if (on != NULL) {  //** And also the ongoing client
             gop_mq_ongoing_destroy(on);
         }
@@ -959,7 +959,7 @@ lio_config_t *lio_create_nl(char *fname, char *section, char *user, char *exe_na
     }
 
     //** Add the shared ongoing object
-    mq_ongoing_t *on = gop_mq_ongoing_create(lio->mqc, NULL, 1, ONGOING_CLIENT);
+    gop_mq_ongoing_t *on = gop_mq_ongoing_create(lio->mqc, NULL, 1, ONGOING_CLIENT);
     add_service(lio->ess, ESS_RUNNING, ESS_ONGOING_CLIENT, on);
 
     stype = tbx_inip_get_string(lio->ifd, section, "ds", DS_TYPE_IBP);
@@ -1112,7 +1112,7 @@ void lio_print_path_options(FILE *fd)
 // lio_parse_path_options - Parses the path options
 //***************************************************************
 
-int lio_parse_path_options(int *argc, char **argv, int auto_mode, lio_path_tuple_t *tuple, os_regex_table_t **rp, os_regex_table_t **ro)
+int lio_parse_path_options(int *argc, char **argv, int auto_mode, lio_path_tuple_t *tuple, lio_os_regex_table_t **rp, lio_os_regex_table_t **ro)
 {
     int nargs, i;
 

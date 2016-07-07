@@ -92,7 +92,7 @@ typedef struct {
 typedef struct {
     lio_fuse_t *lfs;
     os_object_iter_t *it;
-    os_regex_table_t *path_regex;
+    lio_os_regex_table_t *path_regex;
     char *val[_inode_key_size];
     int v_size[_inode_key_size];
     char *dot_path;
@@ -936,7 +936,7 @@ int lfs_listxattr(const char *fname, char *list, size_t size)
     lio_fuse_t *lfs = lfs_get_context();
     char *buf, *key, *val;
     int bpos, bufsize, v_size, n, i, err;
-    os_regex_table_t *attr_regex;
+    lio_os_regex_table_t *attr_regex;
     os_attr_iter_t *it;
     os_fd_t *fd;
 
@@ -1013,8 +1013,8 @@ void lfs_set_tape_attr(lio_fuse_t *lfs, char *fname, char *mytape_val, int tape_
     char *val[_tape_key_size], *tape_val, *bstate, *tmp;
     int v_size[_tape_key_size];
     int n, i, fin, ex_key, err, ftype, nkeys;;
-    exnode_exchange_t *exp;
-    exnode_t *ex, *cex;
+    lio_exnode_exchange_t *exp;
+    lio_exnode_t *ex, *cex;
 
     tbx_type_malloc(tape_val, char, tape_size+1);
     memcpy(tape_val, mytape_val, tape_size);
@@ -1096,7 +1096,7 @@ void lfs_set_tape_attr(lio_fuse_t *lfs, char *fname, char *mytape_val, int tape_
         //** to the global cache table cause there could be multiple copies of the
         //** same segment being serialized/deserialized.
         //** Deserialize it
-        exp = lio_exnode_exchange_text_parse(val[ex_key]);
+        exp = lio_lio_exnode_exchange_text_parse(val[ex_key]);
         ex = lio_exnode_create();
         err = lio_exnode_deserialize(ex, exp, lfs->lc->ess_nocache);
         exnode_exchange_free(exp);
@@ -1424,7 +1424,7 @@ int lfs_symlink(const char *link, const char *newname)
 int lfs_statfs(const char *fname, struct statvfs *fs)
 {
     lio_fuse_t *lfs = lfs_get_context();
-    rs_space_t space;
+    lio_rs_space_t space;
     char *config;
 
     memset(fs, 0, sizeof(struct statvfs));

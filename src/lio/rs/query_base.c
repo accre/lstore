@@ -34,10 +34,10 @@
 //  rs_query_count - Returns info about the number of query elements
 //***********************************************************************
 
-void rs_query_count(resource_service_fn_t *rs, rs_query_t *rsq, int *n_ele, int *n_unique, int *n_pickone)
+void rs_query_count(lio_resource_service_fn_t *rs, rs_query_t *rsq, int *n_ele, int *n_unique, int *n_pickone)
 {
-    rsq_base_t *query = (rsq_base_t *)rsq;
-    rsq_base_ele_t *q = query->head;
+    lio_rsq_base_t *query = (lio_rsq_base_t *)rsq;
+    lio_rsq_base_ele_t *q = query->head;
 
     *n_ele = 0;
     *n_unique = 0;
@@ -60,10 +60,10 @@ void rs_query_count(resource_service_fn_t *rs, rs_query_t *rsq, int *n_ele, int 
 //   NOTE:  priv is NOT used!
 //***********************************************************************
 
-void rs_query_base_destroy(resource_service_fn_t *rs, rs_query_t *rsq)
+void rs_query_base_destroy(lio_resource_service_fn_t *rs, rs_query_t *rsq)
 {
-    rsq_base_t *query = (rsq_base_t *)rsq;
-    rsq_base_ele_t *q, *prev;
+    lio_rsq_base_t *query = (lio_rsq_base_t *)rsq;
+    lio_rsq_base_ele_t *q, *prev;
 
     q = query->head;
     while (q != NULL) {
@@ -81,11 +81,11 @@ void rs_query_base_destroy(resource_service_fn_t *rs, rs_query_t *rsq)
 // rq_query_base_new - Makes an emptry RS query
 //***********************************************************************
 
-rs_query_t *rs_query_base_new(resource_service_fn_t *rs)
+rs_query_t *rs_query_base_new(lio_resource_service_fn_t *rs)
 {
-    rsq_base_t *q;
+    lio_rsq_base_t *q;
 
-    tbx_type_malloc_clear(q, rsq_base_t, 1);
+    tbx_type_malloc_clear(q, lio_rsq_base_t, 1);
     q->rs = rs;
 
     return((rs_query_t *)q);
@@ -97,10 +97,10 @@ rs_query_t *rs_query_base_new(resource_service_fn_t *rs)
 //   NOTE:  priv is NOT used!
 //***********************************************************************
 
-int rs_query_base_add(resource_service_fn_t *rs, rs_query_t **rsq, int op, char *key, int key_op, char *val, int val_op)
+int rs_query_base_add(lio_resource_service_fn_t *rs, rs_query_t **rsq, int op, char *key, int key_op, char *val, int val_op)
 {
-    rsq_base_t **query = (rsq_base_t **)rsq;
-    rsq_base_ele_t *q;
+    lio_rsq_base_t **query = (lio_rsq_base_t **)rsq;
+    lio_rsq_base_ele_t *q;
 
     //** Sanity check
     if (op > RSQ_BASE_OP_MAX_VAL) return(1);
@@ -110,7 +110,7 @@ int rs_query_base_add(resource_service_fn_t *rs, rs_query_t **rsq, int op, char 
     if ((val_op & RSQ_BASE_KV_UNIQUE) && (val_op & RSQ_BASE_KV_UNIQUE)) return(5);
 
     //** Ok make the query
-    tbx_type_malloc_clear(q, rsq_base_ele_t, 1);
+    tbx_type_malloc_clear(q, lio_rsq_base_ele_t, 1);
     q->op = op;
     q->key_op = key_op;
     q->key = (key == NULL) ? NULL : strdup(key);
@@ -120,7 +120,7 @@ int rs_query_base_add(resource_service_fn_t *rs, rs_query_t **rsq, int op, char 
 
     //** and append it;
     if (*query == NULL) {
-        tbx_type_malloc_clear(*query, rsq_base_t, 1);
+        tbx_type_malloc_clear(*query, lio_rsq_base_t, 1);
         (*query)->rs = rs;
 
         (*query)->head = q;
@@ -142,13 +142,13 @@ int rs_query_base_add(resource_service_fn_t *rs, rs_query_t **rsq, int op, char 
 //  rs_query_base_dup - Duplicates a query structure
 //***********************************************************************
 
-rs_query_t *rs_query_base_dup(resource_service_fn_t *rs, rs_query_t *rsq)
+rs_query_t *rs_query_base_dup(lio_resource_service_fn_t *rs, rs_query_t *rsq)
 {
-    rsq_base_t *new_query;
-    rsq_base_t *query = (rsq_base_t *)rsq;
-    rsq_base_ele_t *q;
-    rsq_base_ele_t *qn = NULL;
-    rsq_base_ele_t *prev = NULL;
+    lio_rsq_base_t *new_query;
+    lio_rsq_base_t *query = (lio_rsq_base_t *)rsq;
+    lio_rsq_base_ele_t *q;
+    lio_rsq_base_ele_t *qn = NULL;
+    lio_rsq_base_ele_t *prev = NULL;
 
     log_printf(15, "rs_query_phase_dup: START\n");
 
@@ -158,7 +158,7 @@ rs_query_t *rs_query_base_dup(resource_service_fn_t *rs, rs_query_t *rsq)
 
     for (q = query->head; q != NULL; q = q->next) {
         log_printf(15, "rs_query_phase_dup: Adding element\n");
-        tbx_type_malloc_clear(qn, rsq_base_ele_t, 1);
+        tbx_type_malloc_clear(qn, lio_rsq_base_ele_t, 1);
         if (new_query->head == NULL) new_query->head = qn;
         if (prev != NULL) prev->next = qn;
 
@@ -182,13 +182,13 @@ rs_query_t *rs_query_base_dup(resource_service_fn_t *rs, rs_query_t *rsq)
 //  rs_query_append - Appends a query structure
 //***********************************************************************
 
-void rs_query_base_append(resource_service_fn_t *rs, rs_query_t *rsq, rs_query_t *rsq_append)
+void rs_query_base_append(lio_resource_service_fn_t *rs, rs_query_t *rsq, rs_query_t *rsq_append)
 {
-    rsq_base_t *query = (rsq_base_t *)rsq;
-    rsq_base_t *query_append = (rsq_base_t *)rsq_append;
-    rsq_base_ele_t *q;
-    rsq_base_ele_t *qn = NULL;
-    rsq_base_ele_t *prev = query->tail;
+    lio_rsq_base_t *query = (lio_rsq_base_t *)rsq;
+    lio_rsq_base_t *query_append = (lio_rsq_base_t *)rsq_append;
+    lio_rsq_base_ele_t *q;
+    lio_rsq_base_ele_t *qn = NULL;
+    lio_rsq_base_ele_t *prev = query->tail;
 
     log_printf(15, "START\n");
 
@@ -196,7 +196,7 @@ void rs_query_base_append(resource_service_fn_t *rs, rs_query_t *rsq, rs_query_t
 
     for (q = query_append->head; q != NULL; q = q->next) {
         log_printf(15, "Adding element\n");
-        tbx_type_malloc_clear(qn, rsq_base_ele_t, 1);
+        tbx_type_malloc_clear(qn, lio_rsq_base_ele_t, 1);
         if (query->head == NULL) query->head = qn;
         if (prev != NULL) prev->next = qn;
 
@@ -220,13 +220,13 @@ void rs_query_base_append(resource_service_fn_t *rs, rs_query_t *rsq, rs_query_t
 //  rs_query_base_print -Converts the query to a string
 //***********************************************************************
 
-char *rs_query_base_print(resource_service_fn_t *rs, rs_query_t *rsq)
+char *rs_query_base_print(lio_resource_service_fn_t *rs, rs_query_t *rsq)
 {
     int bufsize = 10*1024;
     char buffer[bufsize], *ekey, *eval;
     char *key, *val;
-    rsq_base_t *query = (rsq_base_t *)rsq;
-    rsq_base_ele_t *q;
+    lio_rsq_base_t *query = (lio_rsq_base_t *)rsq;
+    lio_rsq_base_ele_t *q;
     int used;
 
     log_printf(15, "rs_query_base_print: START\n");
@@ -263,12 +263,12 @@ char *rs_query_base_print(resource_service_fn_t *rs, rs_query_t *rsq)
 //  NOTE : rs is ignored
 //***********************************************************************
 
-rs_query_t *rs_query_base_parse(resource_service_fn_t *rs, char *qstring)
+rs_query_t *rs_query_base_parse(lio_resource_service_fn_t *rs, char *qstring)
 {
     char *buffer, *token, *t2, *ekey, *bstate, *tstate;
     int fin, bfin;
-    rsq_base_ele_t *root, *tail, *q;
-    rsq_base_t *query = NULL;
+    lio_rsq_base_ele_t *root, *tail, *q;
+    lio_rsq_base_t *query = NULL;
 
     buffer = strdup(qstring);
 
@@ -282,7 +282,7 @@ rs_query_t *rs_query_base_parse(resource_service_fn_t *rs, char *qstring)
     log_printf(15, "rs_query_base_parse: ekey=%s\n", ekey);
     free(ekey);
 
-    tbx_type_malloc(query, rsq_base_t, 1);
+    tbx_type_malloc(query, lio_rsq_base_t, 1);
     query->rs = rs;
 
     log_printf(15, "rs_query_base_parse: bfin=%d!\n", bfin);
@@ -290,7 +290,7 @@ rs_query_t *rs_query_base_parse(resource_service_fn_t *rs, char *qstring)
     root = NULL;
     tail = NULL;
     do {
-        tbx_type_malloc_clear(q, rsq_base_ele_t, 1);
+        tbx_type_malloc_clear(q, lio_rsq_base_ele_t, 1);
         if (root == NULL) root = q;
 
         t2 = tbx_stk_escape_string_token(NULL, ":", '\\', 0, &tstate, &fin);

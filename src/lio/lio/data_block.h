@@ -28,9 +28,9 @@ extern "C" {
 #endif
 
 // Typedefs
-typedef struct data_block_attr_t data_block_attr_t;
-typedef struct data_block_t data_block_t;
-typedef struct data_block_warm_t data_block_warm_t;
+typedef struct lio_data_block_attr_t lio_data_block_attr_t;
+typedef struct lio_data_block_t lio_data_block_t;
+typedef struct lio_data_block_warm_t lio_data_block_warm_t;
 
 // Functions
 

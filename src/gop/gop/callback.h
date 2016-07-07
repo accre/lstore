@@ -28,17 +28,17 @@ extern "C" {
 #endif
 
 // Typedefs
-typedef struct callback_t callback_t;
+typedef struct gop_callback_t gop_callback_t;
 typedef void (*gop_callback_fn_t)(void *priv, int value);
 // Functions
-GOP_API void gop_cb_set(callback_t *cb, gop_callback_fn_t, void *priv);
+GOP_API void gop_cb_set(gop_callback_t *cb, gop_callback_fn_t, void *priv);
 
 // Exported types. To be obscured.
-struct callback_t {   //** Used for application level callback
+struct gop_callback_t {   //** Used for application level callback
     void *priv;
     gop_callback_fn_t fn;
-    callback_t *next;
-    callback_t *tail;
+    gop_callback_t *next;
+    gop_callback_t *tail;
 };
 
 #ifdef __cplusplus

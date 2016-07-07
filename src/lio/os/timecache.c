@@ -84,7 +84,7 @@ typedef struct {
     char *fname;
     int mode;
     int max_wait;
-    creds_t *creds;
+    lio_creds_t *creds;
     char *id;
     os_fd_t *fd_child;
 } ostc_fd_t;
@@ -100,22 +100,22 @@ typedef struct {
 
 
 typedef struct {
-    object_service_fn_t *os;
+    lio_object_service_fn_t *os;
     os_attr_iter_t *it;
 } ostc_attr_iter_t;
 
 typedef struct {
-    object_service_fn_t *os;
-    op_generic_t *gop;
+    lio_object_service_fn_t *os;
+    gop_op_generic_t *gop;
 } ostc_remove_regex_t;
 
 typedef struct {
-    object_service_fn_t *os;
+    lio_object_service_fn_t *os;
     os_object_iter_t **it_child;
     ostc_attr_iter_t it_attr;
-    os_regex_table_t *attr;
+    lio_os_regex_table_t *attr;
     ostc_fd_t fd;
-    creds_t *creds;
+    lio_creds_t *creds;
     void **val;
     int *v_size;
     int *v_size_initial;
@@ -126,8 +126,8 @@ typedef struct {
 } ostc_object_iter_t;
 
 typedef struct {
-    object_service_fn_t *os;
-    creds_t *creds;
+    lio_object_service_fn_t *os;
+    lio_creds_t *creds;
     ostc_fd_t *fd;
     ostc_fd_t *fd_dest;
     char **src_path;
@@ -143,19 +143,19 @@ typedef struct {
 } ostc_mult_attr_t;
 
 typedef struct {
-    object_service_fn_t *os;
-    creds_t *creds;
+    lio_object_service_fn_t *os;
+    lio_creds_t *creds;
     char *src_path;
     char *dest_path;
 } ostc_move_op_t;
 
 typedef struct {
-    object_service_fn_t *os_child;//** child OS which does the heavy lifting
+    lio_object_service_fn_t *os_child;//** child OS which does the heavy lifting
     apr_thread_mutex_t *lock;
     apr_thread_mutex_t *delayed_lock;
     apr_thread_cond_t *cond;
     apr_pool_t *mpool;
-    thread_pool_context_t *tpc;
+    gop_thread_pool_context_t *tpc;
     ostcdb_object_t *cache_root;
     apr_time_t entry_timeout;
     apr_time_t cleanup_interval;
@@ -164,11 +164,11 @@ typedef struct {
 } ostc_priv_t;
 
 typedef struct {
-    object_service_fn_t *os;
+    lio_object_service_fn_t *os;
     os_fd_t **fd;
     os_fd_t *close_fd;
-    creds_t *creds;
-    op_generic_t *gop;
+    lio_creds_t *creds;
+    gop_op_generic_t *gop;
     os_fd_t *cfd;
     char *path;
     char *id;
@@ -176,8 +176,8 @@ typedef struct {
     int max_wait;
 } ostc_open_op_t;
 
-op_status_t ostc_close_object_fn(void *arg, int tid);
-op_status_t ostc_delayed_open_object(object_service_fn_t *os, ostc_fd_t *fd);
+gop_op_status_t ostc_close_object_fn(void *arg, int tid);
+gop_op_status_t ostc_delayed_open_object(lio_object_service_fn_t *os, ostc_fd_t *fd);
 
 //***********************************************************************
 // free_ostcdb_attr - Destroys a cached attribute
@@ -273,7 +273,7 @@ ostcdb_object_t *new_ostcdb_object(char *entry, int ftype, apr_time_t expire, ap
 //     NOTE: ostc->lock must be held by the calling process
 //***********************************************************************
 
-int _ostc_cleanup(object_service_fn_t *os, ostcdb_object_t *obj, apr_time_t expired)
+int _ostc_cleanup(lio_object_service_fn_t *os, ostcdb_object_t *obj, apr_time_t expired)
 {
     ostcdb_object_t *o;
     ostcdb_attr_t *a;
@@ -319,7 +319,7 @@ int _ostc_cleanup(object_service_fn_t *os, ostcdb_object_t *obj, apr_time_t expi
 
 void *ostc_cache_compact_thread(apr_thread_t *th, void *data)
 {
-    object_service_fn_t *os = (object_service_fn_t *)data;
+    lio_object_service_fn_t *os = (lio_object_service_fn_t *)data;
     ostc_priv_t *ostc = (ostc_priv_t *)os->priv;
 
     OSTC_LOCK(ostc);
@@ -441,7 +441,7 @@ int ostc_attr_cacheprep_ftype(ostc_cacheprep_t *cp)
 }
 
 //***********************************************************************
-// _ostc_cache_tree_walk - Walks the cache tree using the provided path
+// _ostc_lio_cache_tree_walk - Walks the cache tree using the provided path
 //   and optionally creates the target node if needed.
 //
 //   Returns 0 on success or a positive value representing the prefix that could
@@ -450,7 +450,7 @@ int ostc_attr_cacheprep_ftype(ostc_cacheprep_t *cp)
 //   NOTE:  Assumes the cache lock is held
 //***********************************************************************
 
-int _ostc_cache_tree_walk(object_service_fn_t *os, char *fname, tbx_stack_t *tree, ostcdb_object_t *replacement_obj, int add_terminal_ftype, int max_recurse)
+int _ostc_lio_cache_tree_walk(lio_object_service_fn_t *os, char *fname, tbx_stack_t *tree, ostcdb_object_t *replacement_obj, int add_terminal_ftype, int max_recurse)
 {
     ostc_priv_t *ostc = (ostc_priv_t *)os->priv;
     int i, n, start, end, loop, err;
@@ -537,7 +537,7 @@ int _ostc_cache_tree_walk(object_service_fn_t *os, char *fname, tbx_stack_t *tre
                 //*** Need to make a new stack and recurse it only keeping the bottom element
                 tbx_stack_init(&rtree);
                 tbx_stack_dup(tree, &rtree);
-                if (_ostc_cache_tree_walk(os, next->link, &rtree, NULL, add_terminal_ftype, max_recurse-1) != 0) {
+                if (_ostc_lio_cache_tree_walk(os, next->link, &rtree, NULL, add_terminal_ftype, max_recurse-1) != 0) {
                     tbx_stack_empty(&rtree, 0);
                     err = -1;
                     goto finished;
@@ -588,7 +588,7 @@ finished:
 //   final object and attribute
 //***********************************************************************
 
-int _ostcdb_resolve_attr_link(object_service_fn_t *os, tbx_stack_t *tree, char *alink, ostcdb_object_t **lobj, ostcdb_attr_t **lattr, int max_recurse)
+int _ostcdb_resolve_attr_link(lio_object_service_fn_t *os, tbx_stack_t *tree, char *alink, ostcdb_object_t **lobj, ostcdb_attr_t **lattr, int max_recurse)
 {
     tbx_stack_t rtree;
     int i, n;
@@ -628,7 +628,7 @@ int _ostcdb_resolve_attr_link(object_service_fn_t *os, tbx_stack_t *tree, char *
     //** and pop the terminal which is up.  This will pop us up to the directory for the walk
     tbx_stack_move_to_bottom(&rtree);
     tbx_stack_delete_current(&rtree, 1, 0);
-    if (_ostc_cache_tree_walk(os, alink, &rtree, NULL, 0, OSTC_MAX_RECURSE) != 0) {
+    if (_ostc_lio_cache_tree_walk(os, alink, &rtree, NULL, 0, OSTC_MAX_RECURSE) != 0) {
         if (i> -1) alink[i] = '/';
         goto finished;
     }
@@ -662,7 +662,7 @@ finished:
 //  ostc_cache_move_object - Moves an existing cache object within the cache
 //***********************************************************************
 
-void ostc_cache_move_object(object_service_fn_t *os, creds_t *creds, char *src_path, char *dest_path)
+void ostc_cache_move_object(lio_object_service_fn_t *os, lio_creds_t *creds, char *src_path, char *dest_path)
 {
     ostc_priv_t *ostc = (ostc_priv_t *)os->priv;
     tbx_stack_t stree, dtree;
@@ -671,11 +671,11 @@ void ostc_cache_move_object(object_service_fn_t *os, creds_t *creds, char *src_p
     tbx_stack_init(&stree);
 
     OSTC_LOCK(ostc);
-    if (_ostc_cache_tree_walk(os, src_path, &stree, NULL, 0, OSTC_MAX_RECURSE) == 0) {
+    if (_ostc_lio_cache_tree_walk(os, src_path, &stree, NULL, 0, OSTC_MAX_RECURSE) == 0) {
         tbx_stack_move_to_bottom(&stree);
         obj = tbx_stack_get_current_data(&stree);
         tbx_stack_init(&dtree);
-        _ostc_cache_tree_walk(os, src_path, &dtree, obj, obj->ftype, OSTC_MAX_RECURSE);  //** Do the walk and substitute
+        _ostc_lio_cache_tree_walk(os, src_path, &dtree, obj, obj->ftype, OSTC_MAX_RECURSE);  //** Do the walk and substitute
         tbx_stack_empty(&dtree, 0);
     }
     OSTC_UNLOCK(ostc);
@@ -687,7 +687,7 @@ void ostc_cache_move_object(object_service_fn_t *os, creds_t *creds, char *src_p
 //  ostc_cache_remove_object - Removes a cache object
 //***********************************************************************
 
-void ostc_cache_remove_object(object_service_fn_t *os, char *path)
+void ostc_cache_remove_object(lio_object_service_fn_t *os, char *path)
 {
     ostc_priv_t *ostc = (ostc_priv_t *)os->priv;
     tbx_stack_t tree;
@@ -696,7 +696,7 @@ void ostc_cache_remove_object(object_service_fn_t *os, char *path)
     tbx_stack_init(&tree);
 
     OSTC_LOCK(ostc);
-    if (_ostc_cache_tree_walk(os, path, &tree, NULL, 0, OSTC_MAX_RECURSE) == 0) {
+    if (_ostc_lio_cache_tree_walk(os, path, &tree, NULL, 0, OSTC_MAX_RECURSE) == 0) {
         tbx_stack_move_to_bottom(&tree);
         obj = tbx_stack_get_current_data(&tree);
         tbx_stack_move_up(&tree);
@@ -713,7 +713,7 @@ void ostc_cache_remove_object(object_service_fn_t *os, char *path)
 //  ostc_remove_attr - Removes the given attributes from the object
 //***********************************************************************
 
-void ostc_cache_remove_attrs(object_service_fn_t *os, char *fname, char **key, int n)
+void ostc_cache_remove_attrs(lio_object_service_fn_t *os, char *fname, char **key, int n)
 {
     ostc_priv_t *ostc = (ostc_priv_t *)os->priv;
     tbx_stack_t tree;
@@ -725,7 +725,7 @@ void ostc_cache_remove_attrs(object_service_fn_t *os, char *fname, char **key, i
     tbx_stack_init(&tree);
 
     OSTC_LOCK(ostc);
-    if (_ostc_cache_tree_walk(os, fname, &tree, NULL, 0, OSTC_MAX_RECURSE) != 0) goto finished;
+    if (_ostc_lio_cache_tree_walk(os, fname, &tree, NULL, 0, OSTC_MAX_RECURSE) != 0) goto finished;
 
     tbx_stack_move_to_bottom(&tree);
     obj = tbx_stack_get_current_data(&tree);
@@ -747,7 +747,7 @@ finished:
 //  ostc_move_attr - Renames the given attributes from the object
 //***********************************************************************
 
-void ostc_cache_move_attrs(object_service_fn_t *os, char *fname, char **key_old, char **key_new, int n)
+void ostc_cache_move_attrs(lio_object_service_fn_t *os, char *fname, char **key_old, char **key_new, int n)
 {
     ostc_priv_t *ostc = (ostc_priv_t *)os->priv;
     tbx_stack_t tree;
@@ -758,7 +758,7 @@ void ostc_cache_move_attrs(object_service_fn_t *os, char *fname, char **key_old,
     tbx_stack_init(&tree);
 
     OSTC_LOCK(ostc);
-    if (_ostc_cache_tree_walk(os, fname, &tree, NULL, 0, OSTC_MAX_RECURSE) != 0) goto finished;
+    if (_ostc_lio_cache_tree_walk(os, fname, &tree, NULL, 0, OSTC_MAX_RECURSE) != 0) goto finished;
 
     tbx_stack_move_to_bottom(&tree);
     obj = tbx_stack_get_current_data(&tree);
@@ -789,7 +789,7 @@ finished:
 //  ostc_cache_process_attrs - Merges the attrs into the cache
 //***********************************************************************
 
-void ostc_cache_process_attrs(object_service_fn_t *os, char *fname, int ftype, char **key_list, void **val, int *v_size, int n)
+void ostc_cache_process_attrs(lio_object_service_fn_t *os, char *fname, int ftype, char **key_list, void **val, int *v_size, int n)
 {
     ostc_priv_t *ostc = (ostc_priv_t *)os->priv;
     tbx_stack_t tree;
@@ -801,7 +801,7 @@ void ostc_cache_process_attrs(object_service_fn_t *os, char *fname, int ftype, c
     tbx_stack_init(&tree);
 
     OSTC_LOCK(ostc);
-    if (_ostc_cache_tree_walk(os, fname, &tree, NULL, ftype, OSTC_MAX_RECURSE) != 0) goto finished;
+    if (_ostc_lio_cache_tree_walk(os, fname, &tree, NULL, ftype, OSTC_MAX_RECURSE) != 0) goto finished;
 
     log_printf(5, "fname=%s stack_size=%d\n", fname, tbx_stack_count(&tree));
 
@@ -884,13 +884,13 @@ finished:
 // ostc_cache_fetch - Attempts to process the attribute request from cached data
 //***********************************************************************
 
-op_status_t ostc_cache_fetch(object_service_fn_t *os, char *fname, char **key, void **val, int *v_size, int n)
+gop_op_status_t ostc_cache_fetch(lio_object_service_fn_t *os, char *fname, char **key, void **val, int *v_size, int n)
 {
     ostc_priv_t *ostc = (ostc_priv_t *)os->priv;
     tbx_stack_t tree;
     ostcdb_object_t *obj, *lobj;
     ostcdb_attr_t *attr;
-    op_status_t status = gop_failure_status;
+    gop_op_status_t status = gop_failure_status;
     void *va[n];
     int vs[n];
     int i, oops;
@@ -900,7 +900,7 @@ op_status_t ostc_cache_fetch(object_service_fn_t *os, char *fname, char **key, v
 
 //log_printf(5, "fname=%s\n", fname);
     OSTC_LOCK(ostc);
-    if (_ostc_cache_tree_walk(os, fname, &tree, NULL, 0, OSTC_MAX_RECURSE) != 0) goto finished;
+    if (_ostc_lio_cache_tree_walk(os, fname, &tree, NULL, 0, OSTC_MAX_RECURSE) != 0) goto finished;
 
     tbx_stack_move_to_bottom(&tree);
     obj = tbx_stack_get_current_data(&tree);
@@ -955,7 +955,7 @@ finished:
 //***********************************************************************
 
 
-void ostc_cache_update_attrs(object_service_fn_t *os, char *fname, char **key, void **val, int *v_size, int n)
+void ostc_cache_update_attrs(lio_object_service_fn_t *os, char *fname, char **key, void **val, int *v_size, int n)
 {
     ostc_priv_t *ostc = (ostc_priv_t *)os->priv;
     tbx_stack_t tree;
@@ -968,7 +968,7 @@ void ostc_cache_update_attrs(object_service_fn_t *os, char *fname, char **key, v
     log_printf(15, "fname=%s n=%d key[0]=%s\n", fname, n, key[0]);
 
     OSTC_LOCK(ostc);
-    if (_ostc_cache_tree_walk(os, fname, &tree, NULL, 0, OSTC_MAX_RECURSE) != 0) goto finished;
+    if (_ostc_lio_cache_tree_walk(os, fname, &tree, NULL, 0, OSTC_MAX_RECURSE) != 0) goto finished;
 
     tbx_stack_move_to_bottom(&tree);
     obj = tbx_stack_get_current_data(&tree);
@@ -1004,7 +1004,7 @@ finished:
 //    minimal set of cache entries.
 //***********************************************************************
 
-int _ostc_cache_populate_prefix(object_service_fn_t *os, creds_t *creds, char *path, int prefix_len)
+int _ostc_cache_populate_prefix(lio_object_service_fn_t *os, lio_creds_t *creds, char *path, int prefix_len)
 {
     ostc_priv_t *ostc = (ostc_priv_t *)os->priv;
     tbx_stack_t tree;
@@ -1015,13 +1015,13 @@ int _ostc_cache_populate_prefix(object_service_fn_t *os, creds_t *creds, char *p
     int v_size[1];
     int err, start, end, len, ftype;
     int max_wait = 10;
-    op_status_t status;
+    gop_op_status_t status;
 
     len = strlen(path);
     if (len == 1) return(0);  //** Nothing to do.  Just a '/'
 
     tbx_stack_init(&tree);
-    err = _ostc_cache_tree_walk(os, path, &tree, NULL, 0, OSTC_MAX_RECURSE);
+    err = _ostc_lio_cache_tree_walk(os, path, &tree, NULL, 0, OSTC_MAX_RECURSE);
     tbx_stack_empty(&tree, 0);
     if (err <= 0)  return(err);
 
@@ -1087,11 +1087,11 @@ int _ostc_cache_populate_prefix(object_service_fn_t *os, creds_t *creds, char *p
 //      This command is rarely used.  Hence the simple purging.
 //***********************************************************************
 
-op_status_t ostc_remove_regex_object_fn(void *arg, int tid)
+gop_op_status_t ostc_remove_regex_object_fn(void *arg, int tid)
 {
     ostc_remove_regex_t *op = (ostc_remove_regex_t *)arg;
     ostc_priv_t *ostc = (ostc_priv_t *)op->os->priv;
-    op_status_t status;
+    gop_op_status_t status;
 
     status = gop_sync_exec_status(op->gop);
     op->gop = NULL;  //** This way we don't accidentally clean it up again
@@ -1123,7 +1123,7 @@ void free_remove_regex(void *arg)
 //      This command is rarely used.  Hence the simple purging.
 //***********************************************************************
 
-op_generic_t *ostc_remove_regex_object(object_service_fn_t *os, creds_t *creds, os_regex_table_t *path, os_regex_table_t *object_regex, int obj_types, int recurse_depth)
+gop_op_generic_t *ostc_remove_regex_object(lio_object_service_fn_t *os, lio_creds_t *creds, lio_os_regex_table_t *path, lio_os_regex_table_t *object_regex, int obj_types, int recurse_depth)
 {
     ostc_priv_t *ostc = (ostc_priv_t *)os->priv;
     ostc_remove_regex_t *op;
@@ -1140,7 +1140,7 @@ op_generic_t *ostc_remove_regex_object(object_service_fn_t *os, creds_t *creds, 
 // ostc_abort_remove_regex_object - Aborts a bulk remove call
 //***********************************************************************
 
-op_generic_t *ostc_abort_remove_regex_object(object_service_fn_t *os, op_generic_t *gop)
+gop_op_generic_t *ostc_abort_remove_regex_object(lio_object_service_fn_t *os, gop_op_generic_t *gop)
 {
     ostc_priv_t *ostc = (ostc_priv_t *)os->priv;
     ostc_remove_regex_t *op;
@@ -1153,11 +1153,11 @@ op_generic_t *ostc_abort_remove_regex_object(object_service_fn_t *os, op_generic
 // ostc_remove_object_fn - Handles the actual object removal
 //***********************************************************************
 
-op_status_t ostc_remove_object_fn(void *arg, int tid)
+gop_op_status_t ostc_remove_object_fn(void *arg, int tid)
 {
     ostc_move_op_t *op = (ostc_move_op_t *)arg;
     ostc_priv_t *ostc = (ostc_priv_t *)op->os->priv;
-    op_status_t status;
+    gop_op_status_t status;
 
 
     status = gop_sync_exec_status(os_remove_object(ostc->os_child, op->creds, op->src_path));
@@ -1175,7 +1175,7 @@ op_status_t ostc_remove_object_fn(void *arg, int tid)
 // ostc_remove_object - Generates a remove object operation
 //***********************************************************************
 
-op_generic_t *ostc_remove_object(object_service_fn_t *os, creds_t *creds, char *path)
+gop_op_generic_t *ostc_remove_object(lio_object_service_fn_t *os, lio_creds_t *creds, char *path)
 {
     ostc_priv_t *ostc = (ostc_priv_t *)os->priv;
     ostc_move_op_t *op;
@@ -1195,7 +1195,7 @@ op_generic_t *ostc_remove_object(object_service_fn_t *os, creds_t *creds, char *
 //     recursion depth.
 //***********************************************************************
 
-op_generic_t *ostc_regex_object_set_multiple_attrs(object_service_fn_t *os, creds_t *creds, char *id, os_regex_table_t *path, os_regex_table_t *object_regex, int object_types, int recurse_depth, char **key, void **val, int *v_size, int n_attrs)
+gop_op_generic_t *ostc_regex_object_set_multiple_attrs(lio_object_service_fn_t *os, lio_creds_t *creds, char *id, lio_os_regex_table_t *path, lio_os_regex_table_t *object_regex, int object_types, int recurse_depth, char **key, void **val, int *v_size, int n_attrs)
 {
     ostc_priv_t *ostc = (ostc_priv_t *)os->priv;
 
@@ -1206,7 +1206,7 @@ op_generic_t *ostc_regex_object_set_multiple_attrs(object_service_fn_t *os, cred
 // ostc_abort_regex_object_set_multiple_attrs - Aborts a bulk attr call
 //***********************************************************************
 
-op_generic_t *ostc_abort_regex_object_set_multiple_attrs(object_service_fn_t *os, op_generic_t *gop)
+gop_op_generic_t *ostc_abort_regex_object_set_multiple_attrs(lio_object_service_fn_t *os, gop_op_generic_t *gop)
 {
     ostc_priv_t *ostc = (ostc_priv_t *)os->priv;
 
@@ -1218,7 +1218,7 @@ op_generic_t *ostc_abort_regex_object_set_multiple_attrs(object_service_fn_t *os
 //  ostc_exists - Returns the object type  and 0 if it doesn't exist
 //***********************************************************************
 
-op_generic_t *ostc_exists(object_service_fn_t *os, creds_t *creds, char *path)
+gop_op_generic_t *ostc_exists(lio_object_service_fn_t *os, lio_creds_t *creds, char *path)
 {
     ostc_priv_t *ostc = (ostc_priv_t *)os->priv;
 
@@ -1229,7 +1229,7 @@ op_generic_t *ostc_exists(object_service_fn_t *os, creds_t *creds, char *path)
 // ostc_create_object - Creates an object
 //***********************************************************************
 
-op_generic_t *ostc_create_object(object_service_fn_t *os, creds_t *creds, char *path, int type, char *id)
+gop_op_generic_t *ostc_create_object(lio_object_service_fn_t *os, lio_creds_t *creds, char *path, int type, char *id)
 {
     ostc_priv_t *ostc = (ostc_priv_t *)os->priv;
 
@@ -1241,7 +1241,7 @@ op_generic_t *ostc_create_object(object_service_fn_t *os, creds_t *creds, char *
 // ostc_symlink_object - Generates a symbolic link object operation
 //***********************************************************************
 
-op_generic_t *ostc_symlink_object(object_service_fn_t *os, creds_t *creds, char *src_path, char *dest_path, char *id)
+gop_op_generic_t *ostc_symlink_object(lio_object_service_fn_t *os, lio_creds_t *creds, char *src_path, char *dest_path, char *id)
 {
     ostc_priv_t *ostc = (ostc_priv_t *)os->priv;
 
@@ -1253,7 +1253,7 @@ op_generic_t *ostc_symlink_object(object_service_fn_t *os, creds_t *creds, char 
 // ostc_hardlink_object - Generates a hard link object operation
 //***********************************************************************
 
-op_generic_t *ostc_hardlink_object(object_service_fn_t *os, creds_t *creds, char *src_path, char *dest_path, char *id)
+gop_op_generic_t *ostc_hardlink_object(lio_object_service_fn_t *os, lio_creds_t *creds, char *src_path, char *dest_path, char *id)
 {
     ostc_priv_t *ostc = (ostc_priv_t *)os->priv;
 
@@ -1264,11 +1264,11 @@ op_generic_t *ostc_hardlink_object(object_service_fn_t *os, creds_t *creds, char
 // ostc_move_object_fn - Handles the actual object move
 //***********************************************************************
 
-op_status_t ostc_move_object_fn(void *arg, int tid)
+gop_op_status_t ostc_move_object_fn(void *arg, int tid)
 {
     ostc_move_op_t *op = (ostc_move_op_t *)arg;
     ostc_priv_t *ostc = (ostc_priv_t *)op->os->priv;
-    op_status_t status;
+    gop_op_status_t status;
 
 
     status = gop_sync_exec_status(os_move_object(ostc->os_child, op->creds, op->src_path, op->dest_path));
@@ -1285,10 +1285,10 @@ op_status_t ostc_move_object_fn(void *arg, int tid)
 // ostc_delayed_open_object - Actual opens the object for defayed opens
 //***********************************************************************
 
-op_status_t ostc_delayed_open_object(object_service_fn_t *os, ostc_fd_t *fd)
+gop_op_status_t ostc_delayed_open_object(lio_object_service_fn_t *os, ostc_fd_t *fd)
 {
     ostc_priv_t *ostc = (ostc_priv_t *)os->priv;
-    op_status_t status;
+    gop_op_status_t status;
     os_fd_t *cfd;
 
     log_printf(5, "DELAYED_OPEN fd=%s\n", fd->fname);
@@ -1314,7 +1314,7 @@ op_status_t ostc_delayed_open_object(object_service_fn_t *os, ostc_fd_t *fd)
 // ostc_move_object - Generates a move object operation
 //***********************************************************************
 
-op_generic_t *ostc_move_object(object_service_fn_t *os, creds_t *creds, char *src_path, char *dest_path)
+gop_op_generic_t *ostc_move_object(lio_object_service_fn_t *os, lio_creds_t *creds, char *src_path, char *dest_path)
 {
     ostc_priv_t *ostc = (ostc_priv_t *)os->priv;
     ostc_move_op_t *op;
@@ -1332,11 +1332,11 @@ op_generic_t *ostc_move_object(object_service_fn_t *os, creds_t *creds, char *sr
 // ostc_copy_multiple_attrs_fn - Handles the actual attribute copy operation
 //***********************************************************************
 
-op_status_t ostc_copy_attrs_fn(void *arg, int tid)
+gop_op_status_t ostc_copy_attrs_fn(void *arg, int tid)
 {
     ostc_mult_attr_t *ma = (ostc_mult_attr_t *)arg;
     ostc_priv_t *ostc = (ostc_priv_t *)ma->os->priv;
-    op_status_t status;
+    gop_op_status_t status;
 
     if (ma->fd->fd_child == NULL) {
         status = ostc_delayed_open_object(ma->os, ma->fd);
@@ -1363,7 +1363,7 @@ op_status_t ostc_copy_attrs_fn(void *arg, int tid)
 // ostc_copy_multiple_attrs - Generates a copy object multiple attribute operation
 //***********************************************************************
 
-op_generic_t *ostc_copy_multiple_attrs(object_service_fn_t *os, creds_t *creds, os_fd_t *fd_src, char **key_src, os_fd_t *fd_dest, char **key_dest, int n)
+gop_op_generic_t *ostc_copy_multiple_attrs(lio_object_service_fn_t *os, lio_creds_t *creds, os_fd_t *fd_src, char **key_src, os_fd_t *fd_dest, char **key_dest, int n)
 {
     ostc_priv_t *ostc = (ostc_priv_t *)os->priv;
     ostc_mult_attr_t *ma;
@@ -1385,7 +1385,7 @@ op_generic_t *ostc_copy_multiple_attrs(object_service_fn_t *os, creds_t *creds, 
 // ostc_copy_attr - Generates a copy object attribute operation
 //***********************************************************************
 
-op_generic_t *ostc_copy_attr(object_service_fn_t *os, creds_t *creds, os_fd_t *fd_src, char *key_src, os_fd_t *fd_dest, char *key_dest)
+gop_op_generic_t *ostc_copy_attr(lio_object_service_fn_t *os, lio_creds_t *creds, os_fd_t *fd_src, char *key_src, os_fd_t *fd_dest, char *key_dest)
 {
     ostc_priv_t *ostc = (ostc_priv_t *)os->priv;
     ostc_mult_attr_t *ma;
@@ -1409,11 +1409,11 @@ op_generic_t *ostc_copy_attr(object_service_fn_t *os, creds_t *creds, os_fd_t *f
 // ostc_symlink_attrs_fn - Handles the actual attribute symlinking
 //***********************************************************************
 
-op_status_t ostc_symlink_attrs_fn(void *arg, int tid)
+gop_op_status_t ostc_symlink_attrs_fn(void *arg, int tid)
 {
     ostc_mult_attr_t *ma = (ostc_mult_attr_t *)arg;
     ostc_priv_t *ostc = (ostc_priv_t *)ma->os->priv;
-    op_status_t status;
+    gop_op_status_t status;
 
     if (ma->fd_dest->fd_child == NULL) {
         status = ostc_delayed_open_object(ma->os, ma->fd_dest);
@@ -1435,7 +1435,7 @@ op_status_t ostc_symlink_attrs_fn(void *arg, int tid)
 // ostc_symlink_multiple_attrs - Generates a link multiple attribute operation
 //***********************************************************************
 
-op_generic_t *ostc_symlink_multiple_attrs(object_service_fn_t *os, creds_t *creds, char **src_path, char **key_src, os_fd_t *fd_dest, char **key_dest, int n)
+gop_op_generic_t *ostc_symlink_multiple_attrs(lio_object_service_fn_t *os, lio_creds_t *creds, char **src_path, char **key_src, os_fd_t *fd_dest, char **key_dest, int n)
 {
     ostc_priv_t *ostc = (ostc_priv_t *)os->priv;
     ostc_mult_attr_t *ma;
@@ -1457,7 +1457,7 @@ op_generic_t *ostc_symlink_multiple_attrs(object_service_fn_t *os, creds_t *cred
 // ostc_symlink_attr - Generates a link attribute operation
 //***********************************************************************
 
-op_generic_t *ostc_symlink_attr(object_service_fn_t *os, creds_t *creds, char *src_path, char *key_src, os_fd_t *fd_dest, char *key_dest)
+gop_op_generic_t *ostc_symlink_attr(lio_object_service_fn_t *os, lio_creds_t *creds, char *src_path, char *key_src, os_fd_t *fd_dest, char *key_dest)
 {
     ostc_priv_t *ostc = (ostc_priv_t *)os->priv;
     ostc_mult_attr_t *ma;
@@ -1483,11 +1483,11 @@ op_generic_t *ostc_symlink_attr(object_service_fn_t *os, creds_t *creds, char *s
 // ostc_move_attrs_fn - Handles the actual attribute move operation
 //***********************************************************************
 
-op_status_t ostc_move_attrs_fn(void *arg, int tid)
+gop_op_status_t ostc_move_attrs_fn(void *arg, int tid)
 {
     ostc_mult_attr_t *ma = (ostc_mult_attr_t *)arg;
     ostc_priv_t *ostc = (ostc_priv_t *)ma->os->priv;
-    op_status_t status;
+    gop_op_status_t status;
 
     if (ma->fd->fd_child == NULL) {
         status = ostc_delayed_open_object(ma->os, ma->fd);
@@ -1509,7 +1509,7 @@ op_status_t ostc_move_attrs_fn(void *arg, int tid)
 // ostc_move_multiple_attrs - Generates a move object attributes operation
 //***********************************************************************
 
-op_generic_t *ostc_move_multiple_attrs(object_service_fn_t *os, creds_t *creds, os_fd_t *fd, char **key_old, char **key_new, int n)
+gop_op_generic_t *ostc_move_multiple_attrs(lio_object_service_fn_t *os, lio_creds_t *creds, os_fd_t *fd, char **key_old, char **key_new, int n)
 {
     ostc_priv_t *ostc = (ostc_priv_t *)os->priv;
     ostc_mult_attr_t *ma;
@@ -1530,7 +1530,7 @@ op_generic_t *ostc_move_multiple_attrs(object_service_fn_t *os, creds_t *creds, 
 // ostc_move_attr - Generates a move object attribute operation
 //***********************************************************************
 
-op_generic_t *ostc_move_attr(object_service_fn_t *os, creds_t *creds, os_fd_t *fd, char *key_old, char *key_new)
+gop_op_generic_t *ostc_move_attr(lio_object_service_fn_t *os, lio_creds_t *creds, os_fd_t *fd, char *key_old, char *key_new)
 {
     ostc_priv_t *ostc = (ostc_priv_t *)os->priv;
     ostc_mult_attr_t *ma;
@@ -1553,11 +1553,11 @@ op_generic_t *ostc_move_attr(object_service_fn_t *os, creds_t *creds, os_fd_t *f
 // ostc_get_attrs_fn - Handles the actual attribute get operation
 //***********************************************************************
 
-op_status_t ostc_get_attrs_fn(void *arg, int tid)
+gop_op_status_t ostc_get_attrs_fn(void *arg, int tid)
 {
     ostc_mult_attr_t *ma = (ostc_mult_attr_t *)arg;
     ostc_priv_t *ostc = (ostc_priv_t *)ma->os->priv;
-    op_status_t status;
+    gop_op_status_t status;
     int ftype;
     ostc_cacheprep_t cp;
 
@@ -1602,7 +1602,7 @@ failed:
 //   and upon return *v_size contains the bytes loaded
 //***********************************************************************
 
-op_generic_t *ostc_get_multiple_attrs(object_service_fn_t *os, creds_t *creds, os_fd_t *fd, char **key, void **val, int *v_size, int n)
+gop_op_generic_t *ostc_get_multiple_attrs(lio_object_service_fn_t *os, lio_creds_t *creds, os_fd_t *fd, char **key, void **val, int *v_size, int n)
 {
     ostc_priv_t *ostc = (ostc_priv_t *)os->priv;
     ostc_mult_attr_t *ma;
@@ -1625,7 +1625,7 @@ op_generic_t *ostc_get_multiple_attrs(object_service_fn_t *os, creds_t *creds, o
 //   and upon return *v_size contains the bytes loaded
 //***********************************************************************
 
-op_generic_t *ostc_get_attr(object_service_fn_t *os, creds_t *creds, os_fd_t *fd, char *key, void **val, int *v_size)
+gop_op_generic_t *ostc_get_attr(lio_object_service_fn_t *os, lio_creds_t *creds, os_fd_t *fd, char *key, void **val, int *v_size)
 {
     ostc_priv_t *ostc = (ostc_priv_t *)os->priv;
     ostc_mult_attr_t *ma;
@@ -1647,11 +1647,11 @@ op_generic_t *ostc_get_attr(object_service_fn_t *os, creds_t *creds, os_fd_t *fd
 // ostc_set_attrs_fn - Handles the actual attribute set operation
 //***********************************************************************
 
-op_status_t ostc_set_attrs_fn(void *arg, int tid)
+gop_op_status_t ostc_set_attrs_fn(void *arg, int tid)
 {
     ostc_mult_attr_t *ma = (ostc_mult_attr_t *)arg;
     ostc_priv_t *ostc = (ostc_priv_t *)ma->os->priv;
-    op_status_t status;
+    gop_op_status_t status;
 
     if (ma->fd->fd_child == NULL) {
         status = ostc_delayed_open_object(ma->os, ma->fd);
@@ -1674,7 +1674,7 @@ op_status_t ostc_set_attrs_fn(void *arg, int tid)
 //   If val[i] == NULL for the attribute is deleted
 //***********************************************************************
 
-op_generic_t *ostc_set_multiple_attrs(object_service_fn_t *os, creds_t *creds, os_fd_t *fd, char **key, void **val, int *v_size, int n)
+gop_op_generic_t *ostc_set_multiple_attrs(lio_object_service_fn_t *os, lio_creds_t *creds, os_fd_t *fd, char **key, void **val, int *v_size, int n)
 {
     ostc_priv_t *ostc = (ostc_priv_t *)os->priv;
     ostc_mult_attr_t *ma;
@@ -1697,7 +1697,7 @@ op_generic_t *ostc_set_multiple_attrs(object_service_fn_t *os, creds_t *creds, o
 //   If val == NULL the attribute is deleted
 //***********************************************************************
 
-op_generic_t *ostc_set_attr(object_service_fn_t *os, creds_t *creds, os_fd_t *fd, char *key, void *val, int v_size)
+gop_op_generic_t *ostc_set_attr(lio_object_service_fn_t *os, lio_creds_t *creds, os_fd_t *fd, char *key, void *val, int v_size)
 {
     ostc_priv_t *ostc = (ostc_priv_t *)os->priv;
     ostc_mult_attr_t *ma;
@@ -1743,12 +1743,12 @@ int ostc_next_attr(os_attr_iter_t *oit, char **key, void **val, int *v_size)
 //     passthru
 //***********************************************************************
 
-os_attr_iter_t *ostc_create_attr_iter(object_service_fn_t *os, creds_t *creds, os_fd_t *ofd, os_regex_table_t *attr, int v_max)
+os_attr_iter_t *ostc_create_attr_iter(lio_object_service_fn_t *os, lio_creds_t *creds, os_fd_t *ofd, lio_os_regex_table_t *attr, int v_max)
 {
     ostc_priv_t *ostc = (ostc_priv_t *)os->priv;
     ostc_attr_iter_t *it;
     ostc_fd_t *fd = (ostc_fd_t *)ofd;
-    op_status_t status;
+    gop_op_status_t status;
 
     if (fd->fd_child == NULL) {
         status = ostc_delayed_open_object(os, fd);
@@ -1860,8 +1860,8 @@ void ostc_destroy_object_iter(os_object_iter_t *oit)
 //     passthru
 //***********************************************************************
 
-os_object_iter_t *ostc_create_object_iter(object_service_fn_t *os, creds_t *creds, os_regex_table_t *path, os_regex_table_t *object_regex, int object_types,
-        os_regex_table_t *attr, int recurse_depth, os_attr_iter_t **it_attr, int v_max)
+os_object_iter_t *ostc_create_object_iter(lio_object_service_fn_t *os, lio_creds_t *creds, lio_os_regex_table_t *path, lio_os_regex_table_t *object_regex, int object_types,
+        lio_os_regex_table_t *attr, int recurse_depth, os_attr_iter_t **it_attr, int v_max)
 {
     ostc_priv_t *ostc = (ostc_priv_t *)os->priv;
     ostc_object_iter_t *it;
@@ -1912,7 +1912,7 @@ os_object_iter_t *ostc_create_object_iter(object_service_fn_t *os, creds_t *cred
 //
 //***********************************************************************
 
-os_object_iter_t *ostc_create_object_iter_alist(object_service_fn_t *os, creds_t *creds, os_regex_table_t *path, os_regex_table_t *object_regex, int object_types,
+os_object_iter_t *ostc_create_object_iter_alist(lio_object_service_fn_t *os, lio_creds_t *creds, lio_os_regex_table_t *path, lio_os_regex_table_t *object_regex, int object_types,
         int recurse_depth, char **key, void **val, int *v_size, int n_keys)
 {
     ostc_priv_t *ostc = (ostc_priv_t *)os->priv;
@@ -1954,11 +1954,11 @@ os_object_iter_t *ostc_create_object_iter_alist(object_service_fn_t *os, creds_t
 // ostc_open_object_fn - Handles the actual object open
 //***********************************************************************
 
-op_status_t ostc_open_object_fn(void *arg, int tid)
+gop_op_status_t ostc_open_object_fn(void *arg, int tid)
 {
     ostc_open_op_t *op = (ostc_open_op_t *)arg;
     ostc_priv_t *ostc = (ostc_priv_t *)op->os->priv;
-    op_status_t status;
+    gop_op_status_t status;
     ostc_fd_t *fd;
     tbx_stack_t tree;
     int err;
@@ -1968,7 +1968,7 @@ op_status_t ostc_open_object_fn(void *arg, int tid)
     if (op->mode == OS_MODE_READ_IMMEDIATE) { //** Can use a delayed open if the object is in cache
         tbx_stack_init(&tree);
         OSTC_LOCK(ostc);
-        err = _ostc_cache_tree_walk(op->os, op->path, &tree, NULL, 0, OSTC_MAX_RECURSE);
+        err = _ostc_lio_cache_tree_walk(op->os, op->path, &tree, NULL, 0, OSTC_MAX_RECURSE);
         OSTC_UNLOCK(ostc);
         tbx_stack_empty(&tree, 0);
         if (err == 0) goto finished;
@@ -2015,11 +2015,11 @@ void ostc_open_free(void *arg)
 //  ostc_open_object - Makes the open file op
 //***********************************************************************
 
-op_generic_t *ostc_open_object(object_service_fn_t *os, creds_t *creds, char *path, int mode, char *id, os_fd_t **pfd, int max_wait)
+gop_op_generic_t *ostc_open_object(lio_object_service_fn_t *os, lio_creds_t *creds, char *path, int mode, char *id, os_fd_t **pfd, int max_wait)
 {
     ostc_priv_t *ostc = (ostc_priv_t *)os->priv;
     ostc_open_op_t *op;
-    op_generic_t *gop;
+    gop_op_generic_t *gop;
 
     tbx_type_malloc(op, ostc_open_op_t, 1);
     op->os = os;
@@ -2042,7 +2042,7 @@ op_generic_t *ostc_open_object(object_service_fn_t *os, creds_t *creds, char *pa
 //  ostc_abort_open_object - Aborts an ongoing open file op
 //***********************************************************************
 
-op_generic_t *ostc_abort_open_object(object_service_fn_t *os, op_generic_t *gop)
+gop_op_generic_t *ostc_abort_open_object(lio_object_service_fn_t *os, gop_op_generic_t *gop)
 {
     ostc_priv_t *ostc = (ostc_priv_t *)os->priv;
     ostc_open_op_t *op = (ostc_open_op_t *)gop_get_private(gop);
@@ -2055,11 +2055,11 @@ op_generic_t *ostc_abort_open_object(object_service_fn_t *os, op_generic_t *gop)
 // ostc_close_object_fn - Handles the actual object close
 //***********************************************************************
 
-op_status_t ostc_close_object_fn(void *arg, int tid)
+gop_op_status_t ostc_close_object_fn(void *arg, int tid)
 {
     ostc_open_op_t *op = (ostc_open_op_t *)arg;
     ostc_priv_t *ostc = (ostc_priv_t *)op->os->priv;
-    op_status_t status;
+    gop_op_status_t status;
     ostc_fd_t *fd = (ostc_fd_t *)op->close_fd;
 
     status = (fd->fd_child != NULL) ? gop_sync_exec_status(os_close_object(ostc->os_child, fd->fd_child)) : gop_success_status;
@@ -2074,7 +2074,7 @@ op_status_t ostc_close_object_fn(void *arg, int tid)
 //  ostc_close_object - Closes the object
 //***********************************************************************
 
-op_generic_t *ostc_close_object(object_service_fn_t *os, os_fd_t *ofd)
+gop_op_generic_t *ostc_close_object(lio_object_service_fn_t *os, os_fd_t *ofd)
 {
     ostc_priv_t *ostc = (ostc_priv_t *)os->priv;
     ostc_open_op_t *op;
@@ -2089,7 +2089,7 @@ op_generic_t *ostc_close_object(object_service_fn_t *os, os_fd_t *ofd)
 //  ostc_fsck_object - Allocates space for the object check
 //***********************************************************************
 
-op_generic_t *ostc_fsck_object(object_service_fn_t *os, creds_t *creds, char *fname, int ftype, int resolution)
+gop_op_generic_t *ostc_fsck_object(lio_object_service_fn_t *os, lio_creds_t *creds, char *fname, int ftype, int resolution)
 {
     ostc_priv_t *ostc = (ostc_priv_t *)os->priv;
 
@@ -2101,7 +2101,7 @@ op_generic_t *ostc_fsck_object(object_service_fn_t *os, creds_t *creds, char *fn
 // ostc_next_fsck - Returns the next problem object
 //***********************************************************************
 
-int ostc_next_fsck(object_service_fn_t *os, os_fsck_iter_t *oit, char **bad_fname, int *bad_atype)
+int ostc_next_fsck(lio_object_service_fn_t *os, os_fsck_iter_t *oit, char **bad_fname, int *bad_atype)
 {
     ostc_priv_t *ostc = (ostc_priv_t *)os->priv;
 
@@ -2112,7 +2112,7 @@ int ostc_next_fsck(object_service_fn_t *os, os_fsck_iter_t *oit, char **bad_fnam
 // ostc_create_fsck_iter - Creates an fsck iterator
 //***********************************************************************
 
-os_fsck_iter_t *ostc_create_fsck_iter(object_service_fn_t *os, creds_t *creds, char *path, int mode)
+os_fsck_iter_t *ostc_create_fsck_iter(lio_object_service_fn_t *os, lio_creds_t *creds, char *path, int mode)
 {
     ostc_priv_t *ostc = (ostc_priv_t *)os->priv;
 
@@ -2124,7 +2124,7 @@ os_fsck_iter_t *ostc_create_fsck_iter(object_service_fn_t *os, creds_t *creds, c
 // ostc_destroy_fsck_iter - Destroys an fsck iterator
 //***********************************************************************
 
-void ostc_destroy_fsck_iter(object_service_fn_t *os, os_fsck_iter_t *oit)
+void ostc_destroy_fsck_iter(lio_object_service_fn_t *os, os_fsck_iter_t *oit)
 {
     ostc_priv_t *ostc = (ostc_priv_t *)os->priv;
 
@@ -2136,7 +2136,7 @@ void ostc_destroy_fsck_iter(object_service_fn_t *os, os_fsck_iter_t *oit)
 // ostc_cred_init - Intialize a set of credentials
 //***********************************************************************
 
-creds_t *ostc_cred_init(object_service_fn_t *os, int type, void **args)
+lio_creds_t *ostc_cred_init(lio_object_service_fn_t *os, int type, void **args)
 {
     ostc_priv_t *ostc = (ostc_priv_t *)os->priv;
 
@@ -2147,7 +2147,7 @@ creds_t *ostc_cred_init(object_service_fn_t *os, int type, void **args)
 // ostc_cred_destroy - Destroys a set ot credentials
 //***********************************************************************
 
-void ostc_cred_destroy(object_service_fn_t *os, creds_t *creds)
+void ostc_cred_destroy(lio_object_service_fn_t *os, lio_creds_t *creds)
 {
     ostc_priv_t *ostc = (ostc_priv_t *)os->priv;
 
@@ -2159,7 +2159,7 @@ void ostc_cred_destroy(object_service_fn_t *os, creds_t *creds)
 // ostc_destroy
 //***********************************************************************
 
-void ostc_destroy(object_service_fn_t *os)
+void ostc_destroy(lio_object_service_fn_t *os)
 {
     ostc_priv_t *ostc = (ostc_priv_t *)os->priv;
     apr_status_t value;
@@ -2190,9 +2190,9 @@ void ostc_destroy(object_service_fn_t *os)
 //  object_service_timecache_create - Creates a remote client OS
 //***********************************************************************
 
-object_service_fn_t *object_service_timecache_create(service_manager_t *ess, tbx_inip_file_t *fd, char *section)
+lio_object_service_fn_t *object_service_timecache_create(lio_service_manager_t *ess, tbx_inip_file_t *fd, char *section)
 {
-    object_service_fn_t *os;
+    lio_object_service_fn_t *os;
     ostc_priv_t *ostc;
     os_create_t *os_create;
     char *str, *ctype;
@@ -2200,7 +2200,7 @@ object_service_fn_t *object_service_timecache_create(service_manager_t *ess, tbx
     log_printf(10, "START\n");
     if (section == NULL) section = "os_timecache";
 
-    tbx_type_malloc_clear(os, object_service_fn_t, 1);
+    tbx_type_malloc_clear(os, lio_object_service_fn_t, 1);
     tbx_type_malloc_clear(ostc, ostc_priv_t, 1);
     os->priv = (void *)ostc;
 

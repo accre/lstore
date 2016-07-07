@@ -99,12 +99,12 @@ int bread(void *ptr, size_t size, size_t nmemb, FILE *stream)
 //===========================================================================
 //***************************************************************************
 
-int dummy_coding_matrix(erasure_plan_t *plan)
+int dummy_coding_matrix(lio_erasure_plan_t *plan)
 {
     return(0);
 }
 
-int reed_sol_r6_op_form_coding_matrix(erasure_plan_t *plan)
+int reed_sol_r6_op_form_coding_matrix(lio_erasure_plan_t *plan)
 {
     if (plan == NULL) return(-1);
     if (plan->encode_matrix  != NULL) return(0);  //** Already formed so skip step
@@ -116,7 +116,7 @@ int reed_sol_r6_op_form_coding_matrix(erasure_plan_t *plan)
 
 //***************************************************************************
 
-int reed_sol_van_form_coding_matrix(erasure_plan_t *plan)
+int reed_sol_van_form_coding_matrix(lio_erasure_plan_t *plan)
 {
     if (plan == NULL) return(-1);
     if (plan->encode_matrix  != NULL) return(0);  //** Already formed so skip step
@@ -130,7 +130,7 @@ int reed_sol_van_form_coding_matrix(erasure_plan_t *plan)
 
 //***************************************************************************
 
-int cauchy_orig_form_coding_matrix(erasure_plan_t *plan)
+int cauchy_orig_form_coding_matrix(lio_erasure_plan_t *plan)
 {
     if (plan == NULL) return(-1);
     if (plan->encode_matrix  != NULL) return(0);  //** Already formed so skip step
@@ -145,7 +145,7 @@ int cauchy_orig_form_coding_matrix(erasure_plan_t *plan)
 
 //***************************************************************************
 
-int cauchy_good_form_coding_matrix(erasure_plan_t *plan)
+int cauchy_good_form_coding_matrix(lio_erasure_plan_t *plan)
 {
     if (plan == NULL) return(-1);
     if (plan->encode_matrix  != NULL) return(0);  //** Already formed so skip step
@@ -162,7 +162,7 @@ int cauchy_good_form_coding_matrix(erasure_plan_t *plan)
 
 //***************************************************************************
 
-int blaum_roth_form_coding_matrix(erasure_plan_t *plan)
+int blaum_roth_form_coding_matrix(lio_erasure_plan_t *plan)
 {
     if (plan == NULL) return(-1);
     if (plan->encode_bitmatrix  != NULL) return(0);  //** Already formed so skip step
@@ -177,7 +177,7 @@ int blaum_roth_form_coding_matrix(erasure_plan_t *plan)
 
 //***************************************************************************
 
-int liberation_form_coding_matrix(erasure_plan_t *plan)
+int liberation_form_coding_matrix(lio_erasure_plan_t *plan)
 {
     if (plan == NULL) return(-1);
     if (plan->encode_bitmatrix  != NULL) return(0);  //** Already formed so skip step
@@ -191,7 +191,7 @@ int liberation_form_coding_matrix(erasure_plan_t *plan)
 
 //***************************************************************************
 
-int liber8tion_form_coding_matrix(erasure_plan_t *plan)
+int liber8tion_form_coding_matrix(lio_erasure_plan_t *plan)
 {
     if (plan == NULL) return(-1);
     if (plan->encode_bitmatrix  != NULL) return(0);  //** Already formed so skip step
@@ -211,7 +211,7 @@ int liber8tion_form_coding_matrix(erasure_plan_t *plan)
 //===========================================================================
 //***************************************************************************
 
-int cauchy_orig_form_encoding_matrix(erasure_plan_t *plan)
+int cauchy_orig_form_encoding_matrix(lio_erasure_plan_t *plan)
 {
     if (plan == NULL) return(-1);
     if (plan->encode_matrix  != NULL) return(0);  //** Already formed so skip step
@@ -227,7 +227,7 @@ int cauchy_orig_form_encoding_matrix(erasure_plan_t *plan)
 
 //***************************************************************************
 
-int cauchy_good_form_encoding_matrix(erasure_plan_t *plan)
+int cauchy_good_form_encoding_matrix(lio_erasure_plan_t *plan)
 {
     if (plan == NULL) return(-1);
     if (plan->encode_matrix  != NULL) return(0);  //** Already formed so skip step
@@ -244,7 +244,7 @@ int cauchy_good_form_encoding_matrix(erasure_plan_t *plan)
 
 //***************************************************************************
 
-int blaum_roth_form_encoding_matrix(erasure_plan_t *plan)
+int blaum_roth_form_encoding_matrix(lio_erasure_plan_t *plan)
 {
     if (plan == NULL) return(-1);
     if (plan->encode_bitmatrix  != NULL) return(0);  //** Already formed so skip step
@@ -260,7 +260,7 @@ int blaum_roth_form_encoding_matrix(erasure_plan_t *plan)
 
 //***************************************************************************
 
-int liberation_form_encoding_matrix(erasure_plan_t *plan)
+int liberation_form_encoding_matrix(lio_erasure_plan_t *plan)
 {
     if (plan == NULL) return(-1);
     if (plan->encode_bitmatrix  != NULL) return(0);  //** Already formed so skip step
@@ -275,7 +275,7 @@ int liberation_form_encoding_matrix(erasure_plan_t *plan)
 
 //***************************************************************************
 
-int liber8tion_form_encoding_matrix(erasure_plan_t *plan)
+int liber8tion_form_encoding_matrix(lio_erasure_plan_t *plan)
 {
     if (plan == NULL) return(-1);
     if (plan->encode_bitmatrix  != NULL) return(0);  //** Already formed so skip step
@@ -295,7 +295,7 @@ int liber8tion_form_encoding_matrix(erasure_plan_t *plan)
 //***************************************************************************
 
 
-void schedule_encode_block(erasure_plan_t *plan, char **ptr, int block_size)
+void schedule_encode_block(lio_erasure_plan_t *plan, char **ptr, int block_size)
 {
     jerasure_schedule_encode(plan->data_strips, plan->parity_strips, plan->w, plan->encode_schedule,
                              ptr, &(ptr[plan->data_strips]), block_size, plan->packet_size);
@@ -303,7 +303,7 @@ void schedule_encode_block(erasure_plan_t *plan, char **ptr, int block_size)
 
 //***************************************************************************
 
-void matrix_encode_block(erasure_plan_t *plan, char **ptr, int block_size)
+void matrix_encode_block(lio_erasure_plan_t *plan, char **ptr, int block_size)
 {
     jerasure_matrix_encode(plan->data_strips, plan->parity_strips, plan->w, plan->encode_matrix,
                            ptr, &(ptr[plan->data_strips]), block_size);
@@ -311,7 +311,7 @@ void matrix_encode_block(erasure_plan_t *plan, char **ptr, int block_size)
 
 //***************************************************************************
 
-void reed_sol_r6_op_encode_block(erasure_plan_t *plan, char **ptr, int block_size)
+void reed_sol_r6_op_encode_block(lio_erasure_plan_t *plan, char **ptr, int block_size)
 {
     reed_sol_r6_encode(plan->data_strips, plan->w,
                        ptr, &(ptr[plan->data_strips]), block_size);
@@ -319,7 +319,7 @@ void reed_sol_r6_op_encode_block(erasure_plan_t *plan, char **ptr, int block_siz
 
 //***************************************************************************
 
-void raid4_op_encode_block(erasure_plan_t *plan, char **ptr, int block_size)
+void raid4_op_encode_block(lio_erasure_plan_t *plan, char **ptr, int block_size)
 {
     raid4_encode(plan->data_strips, ptr, &(ptr[plan->data_strips]), block_size);
 }
@@ -335,7 +335,7 @@ void raid4_op_encode_block(erasure_plan_t *plan, char **ptr, int block_size)
 //     Upon success returns 0 otherwise an error has occured.
 //***************************************************************************
 
-int et_encode(erasure_plan_t *plan, const char *fname, long long int foffset, const char *pname, long long int poffset, int buffer_size)
+int et_encode(lio_erasure_plan_t *plan, const char *fname, long long int foffset, const char *pname, long long int poffset, int buffer_size)
 {
     FILE *fd_file, *fd_parity;
     char **ptr, **data, **parity, *buffer;
@@ -435,7 +435,7 @@ int et_encode(erasure_plan_t *plan, const char *fname, long long int foffset, co
 //===========================================================================
 //***************************************************************************
 
-int matrix_decode_block(erasure_plan_t *plan, char **ptr, int block_size, int *erasures)
+int matrix_decode_block(lio_erasure_plan_t *plan, char **ptr, int block_size, int *erasures)
 {
     return(jerasure_matrix_decode(plan->data_strips, plan->parity_strips, plan->w, plan->encode_matrix, 1, erasures,
                                   ptr, &(ptr[plan->data_strips]), block_size));
@@ -443,7 +443,7 @@ int matrix_decode_block(erasure_plan_t *plan, char **ptr, int block_size, int *e
 
 //***************************************************************************
 
-int schedule_decode_block(erasure_plan_t *plan, char **ptr, int block_size, int *erasures)
+int schedule_decode_block(lio_erasure_plan_t *plan, char **ptr, int block_size, int *erasures)
 {
     return(jerasure_schedule_decode_lazy(plan->data_strips, plan->parity_strips, plan->w, plan->encode_bitmatrix,
                                          erasures, ptr, &(ptr[plan->data_strips]), block_size, plan->packet_size, 1));
@@ -451,7 +451,7 @@ int schedule_decode_block(erasure_plan_t *plan, char **ptr, int block_size, int 
 
 //***************************************************************************
 
-int raid4_op_decode_block(erasure_plan_t *plan, char **ptr, int block_size, int *erasures)
+int raid4_op_decode_block(lio_erasure_plan_t *plan, char **ptr, int block_size, int *erasures)
 {
     return(raid4_decode(plan->data_strips, erasures, ptr, &(ptr[plan->data_strips]), block_size));
 }
@@ -472,7 +472,7 @@ int raid4_op_decode_block(erasure_plan_t *plan, char **ptr, int block_size, int 
 //     Upon success returns 0 otherwise an error has occured.
 //***************************************************************************
 
-int et_decode(erasure_plan_t *plan, long long int fsize, const char *fname, long long int foffset, const char *pname, long long int poffset, int buffer_size, int *erasures)
+int et_decode(lio_erasure_plan_t *plan, long long int fsize, const char *fname, long long int foffset, const char *pname, long long int poffset, int buffer_size, int *erasures)
 {
     FILE *fd_file, *fd_parity;
     char **ptr, **data, **parity, *buffer;
@@ -602,7 +602,7 @@ int et_decode(erasure_plan_t *plan, long long int fsize, const char *fname, long
 // et_new_plan - Creates a new erasure plan
 //***************************************************************************
 
-erasure_plan_t *et_new_plan(int method, long long int strip_size,
+lio_erasure_plan_t *et_new_plan(int method, long long int strip_size,
                             int data_strips, int parity_strips, int w, int packet_size, int base_unit)
 {
 
@@ -611,7 +611,7 @@ erasure_plan_t *et_new_plan(int method, long long int strip_size,
         return(NULL);
     }
 
-    erasure_plan_t *plan = (erasure_plan_t *)malloc(sizeof(erasure_plan_t));
+    lio_erasure_plan_t *plan = (lio_erasure_plan_t *)malloc(sizeof(lio_erasure_plan_t));
     assert(plan != NULL);
 
     plan->method = method;
@@ -687,7 +687,7 @@ erasure_plan_t *et_new_plan(int method, long long int strip_size,
 // et_destroy_plan - Destroys an erasure plan
 //***************************************************************************
 
-void et_destroy_plan(erasure_plan_t *plan)
+void et_destroy_plan(lio_erasure_plan_t *plan)
 {
     int i;
 
@@ -729,7 +729,7 @@ int et_method_type(char *meth)
 //      are automatically set.
 //***************************************************************************
 
-erasure_plan_t *et_generate_plan(long long int file_size, int method,
+lio_erasure_plan_t *et_generate_plan(long long int file_size, int method,
                                  int data_strips, int parity_strips, int w, int packet_low, int packet_high)
 {
     int i, j, d, base_unit = 8;

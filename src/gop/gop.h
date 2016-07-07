@@ -47,15 +47,15 @@ extern tbx_atomic_unit32_t _opque_counter;
 
 void gop_simple_cb(void *v, int mode);
 
-void gop_set_success_state(op_generic_t *g, op_status_t state);
-int gop_will_block(op_generic_t *g);
-int gop_timed_waitall(op_generic_t *g, int dt);
+void gop_set_success_state(gop_op_generic_t *g, gop_op_status_t state);
+int gop_will_block(gop_op_generic_t *g);
+int gop_timed_waitall(gop_op_generic_t *g, int dt);
 
 
-void gop_mark_completed(op_generic_t *gop, op_status_t status);
-void gop_callback_append(op_generic_t *gop, callback_t *cb);
-apr_time_t gop_start_time(op_generic_t *gop);
-apr_time_t gop_end_time(op_generic_t *gop);
+void gop_mark_completed(gop_op_generic_t *gop, gop_op_status_t status);
+void gop_callback_append(gop_op_generic_t *gop, gop_callback_t *cb);
+apr_time_t gop_start_time(gop_op_generic_t *gop);
+apr_time_t gop_end_time(gop_op_generic_t *gop);
 
 #ifdef __cplusplus
 }

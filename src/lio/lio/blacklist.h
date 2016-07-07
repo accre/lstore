@@ -28,8 +28,8 @@ extern "C" {
 #endif
 
 // Typedefs
-typedef struct blacklist_ibp_rid_t blacklist_ibp_rid_t;
-typedef struct blacklist_t blacklist_t;
+typedef struct lio_blacklist_ibp_rid_t lio_blacklist_ibp_rid_t;
+typedef struct lio_blacklist_t lio_blacklist_t;
 
 // Functions
 

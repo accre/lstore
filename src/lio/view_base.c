@@ -31,7 +31,7 @@
 // lio_view_insert - Inserts a view into an existing exnode
 //***********************************************************************
 
-int lio_view_insert(exnode_t *ex, segment_t *seg)
+int lio_view_insert(lio_exnode_t *ex, lio_segment_t *seg)
 {
     tbx_atomic_inc(seg->ref_count);
 
@@ -42,7 +42,7 @@ int lio_view_insert(exnode_t *ex, segment_t *seg)
 // view_remove - Removes a view into an existing exnode
 //***********************************************************************
 
-int view_remove(exnode_t *ex, segment_t *seg)
+int view_remove(lio_exnode_t *ex, lio_segment_t *seg)
 {
     tbx_atomic_dec(seg->ref_count);
 

@@ -37,7 +37,7 @@
 //  cache_base_handle  - Simple get_handle method
 //*************************************************************************
 
-cache_t *cache_base_handle(cache_t *c)
+lio_cache_t *cache_base_handle(lio_cache_t *c)
 {
     return(c);
 }
@@ -46,7 +46,7 @@ cache_t *cache_base_handle(cache_t *c)
 // cache_base_destroy - Destroys the base cache elements
 //*************************************************************************
 
-void cache_base_destroy(cache_t *c)
+void cache_base_destroy(lio_cache_t *c)
 {
     tbx_list_destroy(c->segments);
     tbx_pc_destroy(c->cond_coop);
@@ -58,12 +58,12 @@ void cache_base_destroy(cache_t *c)
 // cache_base_create - Creates the base cache elements
 //*************************************************************************
 
-void cache_base_create(cache_t *c, data_attr_t *da, int timeout)
+void cache_base_create(lio_cache_t *c, data_attr_t *da, int timeout)
 {
     apr_pool_create(&(c->mpool), NULL);
     apr_thread_mutex_create(&(c->lock), APR_THREAD_MUTEX_DEFAULT, c->mpool);
     c->segments = tbx_list_create(0, &skiplist_compare_ex_id, NULL, NULL, NULL);
-    c->cond_coop = tbx_pc_new("cache_cond_coop", 50, sizeof(cache_cond_t), c->mpool, cache_cond_new, cache_cond_free);
+    c->cond_coop = tbx_pc_new("cache_cond_coop", 50, sizeof(lio_cache_cond_t), c->mpool, cache_cond_new, cache_cond_free);
     c->da = da;
     c->timeout = timeout;
     c->default_page_size = 16*1024;
@@ -76,10 +76,10 @@ void cache_base_create(cache_t *c, data_attr_t *da, int timeout)
 
 void *free_page_tables_new(void *arg, int size)
 {
-    page_table_t *shelf;
+    lio_page_table_t *shelf;
     int i;
 
-    tbx_type_malloc_clear(shelf, page_table_t, size);
+    tbx_type_malloc_clear(shelf, lio_page_table_t, size);
 
     log_printf(15, "making new shelf of size %d\n", size);
     for (i=0; i<size; i++) {
@@ -95,7 +95,7 @@ void *free_page_tables_new(void *arg, int size)
 
 void free_page_tables_free(void *arg, int size, void *data)
 {
-    page_table_t *shelf = (page_table_t *)data;
+    lio_page_table_t *shelf = (lio_page_table_t *)data;
     int i;
 
     log_printf(15, "destroying shelf of size %d\n", size);

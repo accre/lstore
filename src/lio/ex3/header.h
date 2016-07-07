@@ -30,18 +30,18 @@
 extern "C" {
 #endif
 
-ex_header_t *ex_header_create();
-void ex_header_release(ex_header_t *h);
-void ex_header_destroy(ex_header_t *h);
-void ex_header_init(ex_header_t *h);
-char *ex_header_get_name(ex_header_t *h);
-void ex_header_set_name(ex_header_t *h, char *name);
-ex_id_t ex_header_get_id(ex_header_t *h);
-void ex_header_set_id(ex_header_t *h, ex_id_t id);
-char  *ex_header_get_type(ex_header_t *h);
-void ex_header_set_type(ex_header_t *h, char *type);
-tbx_list_t *ex_header_get_attributes(ex_header_t *h);
-void ex_header_set_attributes(ex_header_t *h, tbx_list_t *attr);
+lio_ex_header_t *ex_header_create();
+void ex_header_release(lio_ex_header_t *h);
+void ex_header_destroy(lio_ex_header_t *h);
+void ex_header_init(lio_ex_header_t *h);
+char *ex_header_get_name(lio_ex_header_t *h);
+void ex_header_set_name(lio_ex_header_t *h, char *name);
+ex_id_t ex_header_get_id(lio_ex_header_t *h);
+void ex_header_set_id(lio_ex_header_t *h, ex_id_t id);
+char  *ex_header_get_type(lio_ex_header_t *h);
+void ex_header_set_type(lio_ex_header_t *h, char *type);
+tbx_list_t *ex_header_get_attributes(lio_ex_header_t *h);
+void ex_header_set_attributes(lio_ex_header_t *h, tbx_list_t *attr);
 
 #ifdef __cplusplus
 }

@@ -68,8 +68,8 @@ ibp_context_t *ic = NULL;
 ibp_capset_t *create_proxy_allocs(int nallocs, ibp_capset_t *base_caps, int n_base)
 {
     int i, err;
-    opque_t *q;
-    op_generic_t *op;
+    gop_opque_t *q;
+    gop_op_generic_t *op;
     ibp_capset_t *bcap;
 
     ibp_capset_t *caps = (ibp_capset_t *)malloc(sizeof(ibp_capset_t)*nallocs);
@@ -85,7 +85,7 @@ ibp_capset_t *create_proxy_allocs(int nallocs, ibp_capset_t *base_caps, int n_ba
     ibp_io_start(q);
     err = ibp_io_waitall(q);
     if (err != 0) {
-        printf("create_proxy_allocs: At least 1 error occured! * ibp_errno=%d * nfailed=%d\n", err, opque_tasks_failed(q));
+        printf("create_proxy_allocs: At least 1 error occured! * ibp_errno=%d * nfailed=%d\n", err, gop_opque_tasks_failed(q));
     }
     gop_opque_free(q, OP_DESTROY);
 
@@ -99,8 +99,8 @@ ibp_capset_t *create_proxy_allocs(int nallocs, ibp_capset_t *base_caps, int n_ba
 void proxy_remove_allocs(ibp_capset_t *caps_list, ibp_capset_t *mcaps_list, int nallocs, int mallocs)
 {
     int i, j, err;
-    opque_t *q;
-    op_generic_t *op;
+    gop_opque_t *q;
+    gop_op_generic_t *op;
 
     q = gop_opque_new();
 
@@ -114,7 +114,7 @@ void proxy_remove_allocs(ibp_capset_t *caps_list, ibp_capset_t *mcaps_list, int 
     ibp_io_start(q);
     err = ibp_io_waitall(q);
     if (err != 0) {
-        printf("proxy_remove_allocs: At least 1 error occured! * ibp_errno=%d * nfailed=%d\n", err, opque_tasks_failed(q));
+        printf("proxy_remove_allocs: At least 1 error occured! * ibp_errno=%d * nfailed=%d\n", err, gop_opque_tasks_failed(q));
     }
     gop_opque_free(q, OP_DESTROY);
 
@@ -139,8 +139,8 @@ ibp_capset_t *create_allocs(int nallocs, int asize, int nthreads, ibp_depot_t *d
     int i, err;
     ibp_attributes_t attr;
     ibp_depot_t *depot;
-    opque_t *q;
-    op_generic_t *op;
+    gop_opque_t *q;
+    gop_op_generic_t *op;
 
     ibp_capset_t *caps = (ibp_capset_t *)malloc(sizeof(ibp_capset_t)*nallocs);
 
@@ -156,7 +156,7 @@ ibp_capset_t *create_allocs(int nallocs, int asize, int nthreads, ibp_depot_t *d
     ibp_io_start(q);
     err = ibp_io_waitall(q);
     if (err != 0) {
-        printf("create_allocs: At least 1 error occured! * ibp_errno=%d * nfailed=%d\n", err, opque_tasks_failed(q));
+        printf("create_allocs: At least 1 error occured! * ibp_errno=%d * nfailed=%d\n", err, gop_opque_tasks_failed(q));
     }
     gop_opque_free(q, OP_DESTROY);
 
@@ -170,8 +170,8 @@ ibp_capset_t *create_allocs(int nallocs, int asize, int nthreads, ibp_depot_t *d
 void remove_allocs(ibp_capset_t *caps_list, int nallocs, int nthreads)
 {
     int i, err;
-    opque_t *q;
-    op_generic_t *op;
+    gop_opque_t *q;
+    gop_op_generic_t *op;
 
     q = gop_opque_new();
 
@@ -183,7 +183,7 @@ void remove_allocs(ibp_capset_t *caps_list, int nallocs, int nthreads)
     ibp_io_start(q);
     err = ibp_io_waitall(q);
     if (err != 0) {
-        printf("remove_allocs: At least 1 error occured! * ibp_errno=%d * nfailed=%d\n", err, opque_tasks_failed(q));
+        printf("remove_allocs: At least 1 error occured! * ibp_errno=%d * nfailed=%d\n", err, gop_opque_tasks_failed(q));
     }
     gop_opque_free(q, OP_DESTROY);
 
@@ -206,8 +206,8 @@ void remove_allocs(ibp_capset_t *caps_list, int nallocs, int nthreads)
 void write_allocs(ibp_capset_t *caps, int n, int asize, int nthreads)
 {
     int i, err;
-    opque_t *q;
-    op_generic_t *op;
+    gop_opque_t *q;
+    gop_op_generic_t *op;
     tbx_tbuf_t buf[n];
 
     char *buffer = (char *)malloc(asize);
@@ -224,7 +224,7 @@ void write_allocs(ibp_capset_t *caps, int n, int asize, int nthreads)
     ibp_io_start(q);
     err = ibp_io_waitall(q);
     if (err != 0) {
-        printf("write_allocs: At least 1 error occured! * ibp_errno=%d * nfailed=%d\n", err, opque_tasks_failed(q));
+        printf("write_allocs: At least 1 error occured! * ibp_errno=%d * nfailed=%d\n", err, gop_opque_tasks_failed(q));
     }
     gop_opque_free(q, OP_DESTROY);
 
@@ -238,8 +238,8 @@ void write_allocs(ibp_capset_t *caps, int n, int asize, int nthreads)
 void copy_allocs(char *path, ibp_capset_t *src_caps, ibp_capset_t *dest_caps, int n_src, int n_dest, int asize, int nthreads)
 {
     int i, j, err;
-    opque_t *q;
-    op_generic_t *op;
+    gop_opque_t *q;
+    gop_op_generic_t *op;
 
     char *buffer = (char *)malloc(asize);
     memset(buffer, 'W', asize);
@@ -256,7 +256,7 @@ void copy_allocs(char *path, ibp_capset_t *src_caps, ibp_capset_t *dest_caps, in
     ibp_io_start(q);
     err = ibp_io_waitall(q);
     if (err != 0) {
-        printf("copy_allocs: At least 1 error occured! * ibp_errno=%d * nfailed=%d\n", err, opque_tasks_failed(q));
+        printf("copy_allocs: At least 1 error occured! * ibp_errno=%d * nfailed=%d\n", err, gop_opque_tasks_failed(q));
     }
     gop_opque_free(q, OP_DESTROY);
 

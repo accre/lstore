@@ -39,10 +39,10 @@ int main(int argc, char **argv)
     char *clone_arg = NULL;
     char *sfname = NULL;
     char *cfname = NULL;
-    exnode_t *ex, *cex;
-    exnode_exchange_t *exp, *exp_out;
-    op_generic_t *gop;
-    op_status_t status;
+    lio_exnode_t *ex, *cex;
+    lio_exnode_exchange_t *exp, *exp_out;
+    gop_op_generic_t *gop;
+    gop_op_status_t status;
     FILE *fd;
 
     if (argc < 3) {

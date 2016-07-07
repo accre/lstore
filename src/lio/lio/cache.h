@@ -29,28 +29,28 @@ extern "C" {
 #endif
 
 // Typedefs
-typedef struct cache_cond_t cache_cond_t;
-typedef struct cache_counters_t cache_counters_t;
-typedef struct cache_fn_t cache_fn_t;
-typedef struct cache_page_t cache_page_t;
-typedef struct cache_partial_page_t cache_partial_page_t;
-typedef struct cache_range_t cache_range_t;
-typedef struct cache_segment_t cache_segment_t;
-typedef struct cache_t cache_t;
-typedef struct data_page_t data_page_t;
+typedef struct lio_cache_cond_t lio_cache_cond_t;
+typedef struct lio_cache_counters_t lio_cache_counters_t;
+typedef struct lio_cache_fn_t lio_cache_fn_t;
+typedef struct lio_cache_page_t lio_cache_page_t;
+typedef struct lio_cache_partial_page_t lio_cache_partial_page_t;
+typedef struct lio_cache_range_t lio_cache_range_t;
+typedef struct lio_cache_lio_segment_t lio_cache_lio_segment_t;
+typedef struct lio_cache_t lio_cache_t;
+typedef struct lio_data_page_t lio_data_page_t;
 typedef struct lio_cache_stats_get_t lio_cache_stats_get_t;
-typedef struct page_handle_t page_handle_t;
-typedef struct page_table_t page_table_t;
+typedef struct lio_page_handle_t lio_page_handle_t;
+typedef struct lio_page_table_t lio_page_table_t;
 //* FIXME: leaky
-typedef struct amp_page_stream_t amp_page_stream_t;
-typedef struct amp_page_wait_t amp_page_wait_t;
-typedef struct amp_stream_table_t amp_stream_table_t;
-typedef struct cache_amp_t cache_amp_t;
-typedef struct page_amp_t page_amp_t;
+typedef struct lio_amp_page_stream_t lio_amp_page_stream_t;
+typedef struct lio_amp_page_wait_t lio_amp_page_wait_t;
+typedef struct lio_amp_stream_table_t lio_amp_stream_table_t;
+typedef struct lio_cache_amp_t lio_cache_amp_t;
+typedef struct lio_page_amp_t lio_page_amp_t;
 
 // Functions
-LIO_API lio_cache_stats_get_t get_lio_cache_stats_get(cache_t *c);
-LIO_API int lio_cache_pages_drop(segment_t *seg, ex_off_t lo, ex_off_t hi);
+LIO_API lio_cache_stats_get_t get_lio_cache_stats_get(lio_cache_t *c);
+LIO_API int lio_cache_pages_drop(lio_segment_t *seg, ex_off_t lo, ex_off_t hi);
 
 #ifdef __cplusplus
 }

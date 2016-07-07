@@ -26,8 +26,8 @@ extern "C" {
 #endif
 
 IBP_API void ibp_io_mode_set(int sync_transfer, int print_progress, int nthreads);
-IBP_API void ibp_io_start(opque_t *q);
-IBP_API int ibp_io_waitall(opque_t *q);
+IBP_API void ibp_io_start(gop_opque_t *q);
+IBP_API int ibp_io_waitall(gop_opque_t *q);
 
 #ifdef __cplusplus
 }

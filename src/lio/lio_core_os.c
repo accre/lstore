@@ -58,7 +58,7 @@ char *_lio_stat_keys[] = { "system.inode", "system.modify_data", "system.modify_
 
 typedef struct {
     lio_config_t *lc;
-    creds_t *creds;
+    lio_creds_t *creds;
     char *src_path;
     char *dest_path;
     char *id;
@@ -68,9 +68,9 @@ typedef struct {
 
 typedef struct {
     lio_config_t *lc;
-    creds_t *creds;
-    os_regex_table_t *rpath;
-    os_regex_table_t *robj;
+    lio_creds_t *creds;
+    lio_os_regex_table_t *rpath;
+    lio_os_regex_table_t *robj;
     int recurse_depth;
     int obj_types;
     int np;
@@ -85,9 +85,9 @@ typedef struct {
 
 struct lio_fsck_iter_t {
     lio_config_t *lc;
-    creds_t *creds;
+    lio_creds_t *creds;
     char *path;
-    os_regex_table_t *regex;
+    lio_os_regex_table_t *regex;
     os_object_iter_t *it;
     int owner_mode;
     int exnode_mode;
@@ -95,7 +95,7 @@ struct lio_fsck_iter_t {
     char *val[_n_fsck_keys];
     int v_size[_n_fsck_keys];
     lio_fsck_task_t *task;
-    opque_t *q;
+    gop_opque_t *q;
     int n;
     int firsttime;
     ex_off_t visited_count;
@@ -103,7 +103,7 @@ struct lio_fsck_iter_t {
 
 typedef struct {
     lio_config_t *lc;
-    creds_t *creds;
+    lio_creds_t *creds;
     char *path;
     char **val;
     int *v_size;
@@ -144,7 +144,7 @@ int ex_id_compare_fn(void *arg, tbx_sl_key_t *a, tbx_sl_key_t *b)
 //   doesn't exist
 //***********************************************************************
 
-op_generic_t *lio_exists_op(lio_config_t *lc, creds_t *creds, char *path)
+gop_op_generic_t *lio_exists_op(lio_config_t *lc, lio_creds_t *creds, char *path)
 {
     return(os_exists(lc->os, creds, path));
 }
@@ -154,9 +154,9 @@ op_generic_t *lio_exists_op(lio_config_t *lc, creds_t *creds, char *path)
 //   doesn't exist
 //***********************************************************************
 
-int lio_exists(lio_config_t *lc, creds_t *creds, char *path)
+int lio_exists(lio_config_t *lc, lio_creds_t *creds, char *path)
 {
-    op_status_t status;
+    gop_op_status_t status;
 
     status = gop_sync_exec_status(os_exists(lc->os, creds, path));
     return(status.error_code);
@@ -182,17 +182,17 @@ void lio_free_mk_mv_rm(void *arg)
 // lio_create_object_fn - Does the actual object creation
 //***********************************************************************
 
-op_status_t lio_create_object_fn(void *arg, int id)
+gop_op_status_t lio_create_object_fn(void *arg, int id)
 {
     lio_mk_mv_rm_t *op = (lio_mk_mv_rm_t *)arg;
     os_fd_t *fd;
     char *dir, *fname;
-    exnode_exchange_t *exp;
-    exnode_t *ex, *cex;
+    lio_exnode_exchange_t *exp;
+    lio_exnode_t *ex, *cex;
     ex_id_t ino;
     char inode[32];
     char *val[_n_lio_create_keys];
-    op_status_t status;
+    gop_op_status_t status;
     int v_size[_n_lio_create_keys];
     int err;
     int ex_key = 5;
@@ -262,7 +262,7 @@ op_status_t lio_create_object_fn(void *arg, int id)
         //** same segment being serialized/deserialized.
 
         //** Deserialize it
-        exp = lio_exnode_exchange_text_parse(val[ex_key]);
+        exp = lio_lio_exnode_exchange_text_parse(val[ex_key]);
         ex = lio_exnode_create();
         if (lio_exnode_deserialize(ex, exp, op->lc->ess_nocache) != 0) {
             log_printf(15, "ERROR parsing parent exnode src_path=%s\n", op->src_path);
@@ -350,7 +350,7 @@ fail_bad:
 //  lio_create_op - Generate a create object task
 //*************************************************************************
 
-op_generic_t *lio_create_op(lio_config_t *lc, creds_t *creds, char *path, int type, char *ex, char *id)
+gop_op_generic_t *lio_create_op(lio_config_t *lc, lio_creds_t *creds, char *path, int type, char *ex, char *id)
 {
     lio_mk_mv_rm_t *op;
 
@@ -369,15 +369,15 @@ op_generic_t *lio_create_op(lio_config_t *lc, creds_t *creds, char *path, int ty
 // lio_remove_object - Removes an object
 //***********************************************************************
 
-op_status_t lio_remove_object_fn(void *arg, int id)
+gop_op_status_t lio_remove_object_fn(void *arg, int id)
 {
     lio_mk_mv_rm_t *op = (lio_mk_mv_rm_t *)arg;
     char *ex_data, *val[2];
     char *hkeys[] = { "os.link_count", "system.exnode" };
-    exnode_exchange_t *exp;
-    exnode_t *ex;
+    lio_exnode_exchange_t *exp;
+    lio_exnode_t *ex;
     int err, v_size, ex_remove, vs[2], n;
-    op_status_t status = gop_success_status;
+    gop_op_status_t status = gop_success_status;
 
     //** First remove and data associated with the object
     v_size = -op->lc->max_attr;
@@ -431,7 +431,7 @@ op_status_t lio_remove_object_fn(void *arg, int id)
     //** Only done for normal files.  No links or dirs
     if ((ex_remove == 1) && (ex_data != NULL)) {
         //** Deserialize it
-        exp = lio_exnode_exchange_text_parse(ex_data);
+        exp = lio_lio_exnode_exchange_text_parse(ex_data);
         ex = lio_exnode_create();
         if (lio_exnode_deserialize(ex, exp, op->lc->ess) != 0) {
             log_printf(15, "ERROR removing data for object fname=%s\n", op->src_path);
@@ -457,7 +457,7 @@ op_status_t lio_remove_object_fn(void *arg, int id)
 // lio_remove_op
 //*************************************************************************
 
-op_generic_t *lio_remove_op(lio_config_t *lc, creds_t *creds, char *path, char *ex_optional, int ftype_optional)
+gop_op_generic_t *lio_remove_op(lio_config_t *lc, lio_creds_t *creds, char *path, char *ex_optional, int ftype_optional)
 {
     lio_mk_mv_rm_t *op;
 
@@ -475,18 +475,18 @@ op_generic_t *lio_remove_op(lio_config_t *lc, creds_t *creds, char *path, char *
 // lio_remove_regex_object - Removes objects using regex's
 //***********************************************************************
 
-op_status_t lio_remove_regex_object_fn(void *arg, int id)
+gop_op_status_t lio_remove_regex_object_fn(void *arg, int id)
 {
     lio_remove_regex_t *op = (lio_remove_regex_t *)arg;
     os_object_iter_t *it;
-    opque_t *q;
-    op_generic_t *gop;
+    gop_opque_t *q;
+    gop_op_generic_t *gop;
     int n, nfailed, atype, prefix_len;
     char *ex, *fname;
     char *key[1];
     int v_size[1];
-    op_status_t status2;
-    op_status_t status = gop_success_status;
+    gop_op_status_t status2;
+    gop_op_status_t status = gop_success_status;
 
     key[0] = "system.exnode";
     ex = NULL;
@@ -514,7 +514,7 @@ op_status_t lio_remove_regex_object_fn(void *arg, int id)
         free(fname);
         gop_opque_add(q, gop);
 
-        if (opque_tasks_left(q) > op->np) {
+        if (gop_opque_tasks_left(q) > op->np) {
             gop = opque_waitany(q);
             status2 = gop_get_status(gop);
             if (status2.op_status != OP_STATE_SUCCESS) {
@@ -530,7 +530,7 @@ op_status_t lio_remove_regex_object_fn(void *arg, int id)
     os_destroy_object_iter(op->lc->os, it);
 
     opque_waitall(q);
-    nfailed += opque_tasks_failed(q);
+    nfailed += gop_opque_tasks_failed(q);
     gop_opque_free(q, OP_DESTROY);
 
     status.op_status = (nfailed > 0) ? OP_STATE_FAILURE : OP_STATE_SUCCESS;
@@ -542,7 +542,7 @@ op_status_t lio_remove_regex_object_fn(void *arg, int id)
 // lio_remove_regex_op
 //*************************************************************************
 
-op_generic_t *lio_remove_regex_op(lio_config_t *lc, creds_t *creds, os_regex_table_t *rpath, os_regex_table_t *object_regex, int obj_types, int recurse_depth, int np)
+gop_op_generic_t *lio_remove_regex_op(lio_config_t *lc, lio_creds_t *creds, lio_os_regex_table_t *rpath, lio_os_regex_table_t *object_regex, int obj_types, int recurse_depth, int np)
 {
     lio_remove_regex_t *op;
 
@@ -563,7 +563,7 @@ op_generic_t *lio_remove_regex_op(lio_config_t *lc, creds_t *creds, os_regex_tab
 // lio_regex_object_set_multiple_attrs_op - Sets multiple object attributes
 //*************************************************************************
 
-op_generic_t *lio_regex_object_set_multiple_attrs_op(lio_config_t *lc, creds_t *creds, char *id, os_regex_table_t *path, os_regex_table_t *object_regex, int object_types, int recurse_depth, char **key, void **val, int *v_size, int n)
+gop_op_generic_t *lio_regex_object_set_multiple_attrs_op(lio_config_t *lc, lio_creds_t *creds, char *id, lio_os_regex_table_t *path, lio_os_regex_table_t *object_regex, int object_types, int recurse_depth, char **key, void **val, int *v_size, int n)
 {
     return(os_regex_object_set_multiple_attrs(lc->os, creds, id, path, object_regex, object_types, recurse_depth, key, val, v_size, n));
 }
@@ -572,7 +572,7 @@ op_generic_t *lio_regex_object_set_multiple_attrs_op(lio_config_t *lc, creds_t *
 // gop_lio_abort_regex_object_set_multiple_attrs - Aborts an ongoing set attr call
 //*************************************************************************
 
-op_generic_t *gop_lio_abort_regex_object_set_multiple_attrs(lio_config_t *lc, op_generic_t *gop)
+gop_op_generic_t *gop_lio_abort_regex_object_set_multiple_attrs(lio_config_t *lc, gop_op_generic_t *gop)
 {
     return(os_abort_regex_object_set_multiple_attrs(lc->os, gop));
 }
@@ -581,7 +581,7 @@ op_generic_t *gop_lio_abort_regex_object_set_multiple_attrs(lio_config_t *lc, op
 // lio_move_op - Renames an object
 //*************************************************************************
 
-op_generic_t *lio_move_op(lio_config_t *lc, creds_t *creds, char *src_path, char *dest_path)
+gop_op_generic_t *lio_move_op(lio_config_t *lc, lio_creds_t *creds, char *src_path, char *dest_path)
 {
     return(os_move_object(lc->os, creds, src_path, dest_path));
 }
@@ -591,15 +591,15 @@ op_generic_t *lio_move_op(lio_config_t *lc, creds_t *creds, char *src_path, char
 // lio_link_object_fn - Does the actual object creation
 //***********************************************************************
 
-op_status_t lio_link_object_fn(void *arg, int id)
+gop_op_status_t lio_link_object_fn(void *arg, int id)
 {
     lio_mk_mv_rm_t *op = (lio_mk_mv_rm_t *)arg;
     os_fd_t *dfd;
-    opque_t *q;
+    gop_opque_t *q;
     int err;
     ex_id_t ino;
     char inode[32];
-    op_status_t status;
+    gop_op_status_t status;
     char *lkeys[] = {"system.exnode", "system.exnode.size"};
     char *spath[2];
     char *vkeys[] = {"system.owner", "system.inode", "os.timestamp.system.create", "os.timestamp.system.modify_data", "os.timestamp.system.modify_attr"};
@@ -681,7 +681,7 @@ finished:
 // lio_link_op - Generates a link object task
 //***********************************************************************
 
-op_generic_t *lio_link_op(lio_config_t *lc, creds_t *creds, int symlink, char *src_path, char *dest_path, char *id)
+gop_op_generic_t *lio_link_op(lio_config_t *lc, lio_creds_t *creds, int symlink, char *src_path, char *dest_path, char *id)
 {
     lio_mk_mv_rm_t *op;
 
@@ -701,7 +701,7 @@ op_generic_t *lio_link_op(lio_config_t *lc, creds_t *creds, int symlink, char *s
 //  gop_lio_symlink_object - Create a symbolic link to another object
 //*************************************************************************
 
-op_generic_t *gop_lio_symlink_object(lio_config_t *lc, creds_t *creds, char *src_path, char *dest_path, char *id)
+gop_op_generic_t *gop_lio_symlink_object(lio_config_t *lc, lio_creds_t *creds, char *src_path, char *dest_path, char *id)
 {
     return(lio_link_op(lc, creds, 1, src_path, dest_path, id));
 }
@@ -711,7 +711,7 @@ op_generic_t *gop_lio_symlink_object(lio_config_t *lc, creds_t *creds, char *src
 //  lio_hardlink_op - Create a hard link to another object
 //*************************************************************************
 
-op_generic_t *lio_hardlink_op(lio_config_t *lc, creds_t *creds, char *src_path, char *dest_path, char *id)
+gop_op_generic_t *lio_hardlink_op(lio_config_t *lc, lio_creds_t *creds, char *src_path, char *dest_path, char *id)
 {
     return(lio_link_op(lc, creds, 1, src_path, dest_path, id));
 }
@@ -722,7 +722,7 @@ op_generic_t *lio_hardlink_op(lio_config_t *lc, creds_t *creds, char *src_path, 
 // lio_create_object_iter - Creates an object iterator using a regex for the attribute list
 //*************************************************************************
 
-os_object_iter_t *lio_create_object_iter(lio_config_t *lc, creds_t *creds, os_regex_table_t *path, os_regex_table_t *obj_regex, int object_types, os_regex_table_t *attr, int recurse_dpeth, os_attr_iter_t **it, int v_max)
+os_object_iter_t *lio_create_object_iter(lio_config_t *lc, lio_creds_t *creds, lio_os_regex_table_t *path, lio_os_regex_table_t *obj_regex, int object_types, lio_os_regex_table_t *attr, int recurse_dpeth, os_attr_iter_t **it, int v_max)
 {
     return(os_create_object_iter(lc->os, creds, path, obj_regex, object_types, attr, recurse_dpeth, it, v_max));
 }
@@ -731,7 +731,7 @@ os_object_iter_t *lio_create_object_iter(lio_config_t *lc, creds_t *creds, os_re
 // lio_create_object_iter_alist - Creates an object iterator using a fixed attribute list
 //*************************************************************************
 
-os_object_iter_t *lio_create_object_iter_alist(lio_config_t *lc, creds_t *creds, os_regex_table_t *path, os_regex_table_t *obj_regex, int object_types, int recurse_depth, char **key, void **val, int *v_size, int n_keys)
+os_object_iter_t *lio_create_object_iter_alist(lio_config_t *lc, lio_creds_t *creds, lio_os_regex_table_t *path, lio_os_regex_table_t *obj_regex, int object_types, int recurse_depth, char **key, void **val, int *v_size, int n_keys)
 {
     return(os_create_object_iter_alist(lc->os, creds, path, obj_regex, object_types, recurse_depth, key, val, v_size, n_keys));
 }
@@ -763,7 +763,7 @@ void lio_destroy_object_iter(lio_config_t *lc, os_object_iter_t *it)
 
 typedef struct {
     lio_config_t *lc;
-    creds_t *creds;
+    lio_creds_t *creds;
     const char *path;
     char *id;
     char **mkeys;
@@ -779,7 +779,7 @@ typedef struct {
 // lio_get_multiple_attrs
 //***********************************************************************
 
-int lio_get_multiple_attrs(lio_config_t *lc, creds_t *creds, const char *path, char *id, char **key, void **val, int *v_size, int n_keys)
+int lio_get_multiple_attrs(lio_config_t *lc, lio_creds_t *creds, const char *path, char *id, char **key, void **val, int *v_size, int n_keys)
 {
     int err, serr;
     os_fd_t *fd;
@@ -809,10 +809,10 @@ int lio_get_multiple_attrs(lio_config_t *lc, creds_t *creds, const char *path, c
 
 //***********************************************************************
 
-op_status_t lio_get_multiple_attrs_fn(void *arg, int id)
+gop_op_status_t lio_get_multiple_attrs_fn(void *arg, int id)
 {
     lio_attrs_op_t *op = (lio_attrs_op_t *)arg;
-    op_status_t status;
+    gop_op_status_t status;
     int err;
 
     err = lio_get_multiple_attrs(op->lc, op->creds, (char *)op->path, op->id, op->mkeys, op->mvals, op->mv_size, op->n_keys);
@@ -823,7 +823,7 @@ op_status_t lio_get_multiple_attrs_fn(void *arg, int id)
 
 //***********************************************************************
 
-op_generic_t *gop_lio_get_multiple_attrs(lio_config_t *lc, creds_t *creds, const char *path, char *id, char **key, void **val, int *v_size, int n_keys)
+gop_op_generic_t *gop_lio_get_multiple_attrs(lio_config_t *lc, lio_creds_t *creds, const char *path, char *id, char **key, void **val, int *v_size, int n_keys)
 {
     lio_attrs_op_t *op;
     tbx_type_malloc_clear(op, lio_attrs_op_t, 1);
@@ -844,7 +844,7 @@ op_generic_t *gop_lio_get_multiple_attrs(lio_config_t *lc, creds_t *creds, const
 // lio_getattr - Returns an attribute
 //***********************************************************************
 
-int lio_getattr(lio_config_t *lc, creds_t *creds, const char *path, char *id, char *key, void **val, int *v_size)
+int lio_getattr(lio_config_t *lc, lio_creds_t *creds, const char *path, char *id, char *key, void **val, int *v_size)
 {
     int err, serr;
     os_fd_t *fd;
@@ -874,10 +874,10 @@ int lio_getattr(lio_config_t *lc, creds_t *creds, const char *path, char *id, ch
 
 //***********************************************************************
 
-op_status_t lio_getattr_fn(void *arg, int id)
+gop_op_status_t lio_getattr_fn(void *arg, int id)
 {
     lio_attrs_op_t *op = (lio_attrs_op_t *)arg;
-    op_status_t status;
+    gop_op_status_t status;
     int err;
 
     err = lio_getattr(op->lc, op->creds, op->path, op->id, op->skey, op->sval, op->sv_size);
@@ -888,7 +888,7 @@ op_status_t lio_getattr_fn(void *arg, int id)
 
 //***********************************************************************
 
-op_generic_t *lio_getattr_op(lio_config_t *lc, creds_t *creds, const char *path, char *id, char *key, void **val, int *v_size)
+gop_op_generic_t *lio_getattr_op(lio_config_t *lc, lio_creds_t *creds, const char *path, char *id, char *key, void **val, int *v_size)
 {
     lio_attrs_op_t *op;
     tbx_type_malloc_clear(op, lio_attrs_op_t, 1);
@@ -908,7 +908,7 @@ op_generic_t *lio_getattr_op(lio_config_t *lc, creds_t *creds, const char *path,
 // lio_multiple_setattr_op_real - Returns an attribute
 //***********************************************************************
 
-int lio_multiple_setattr_op_real(lio_config_t *lc, creds_t *creds, const char *path, char *id, char **key, void **val, int *v_size, int n)
+int lio_multiple_setattr_op_real(lio_config_t *lc, lio_creds_t *creds, const char *path, char *id, char **key, void **val, int *v_size, int n)
 {
     int err, serr;
     os_fd_t *fd;
@@ -939,7 +939,7 @@ int lio_multiple_setattr_op_real(lio_config_t *lc, creds_t *creds, const char *p
 // lio_multiple_setattr_op - Returns an attribute
 //***********************************************************************
 
-int lio_multiple_setattr_op(lio_config_t *lc, creds_t *creds, const char *path, char *id, char **key, void **val, int *v_size, int n)
+int lio_multiple_setattr_op(lio_config_t *lc, lio_creds_t *creds, const char *path, char *id, char **key, void **val, int *v_size, int n)
 {
     int err;
 
@@ -954,10 +954,10 @@ int lio_multiple_setattr_op(lio_config_t *lc, creds_t *creds, const char *path, 
 
 //***********************************************************************
 
-op_status_t lio_multiple_setattr_op_fn(void *arg, int id)
+gop_op_status_t lio_multiple_setattr_op_fn(void *arg, int id)
 {
     lio_attrs_op_t *op = (lio_attrs_op_t *)arg;
-    op_status_t status;
+    gop_op_status_t status;
     int err;
 
     err = lio_multiple_setattr_op(op->lc, op->creds, op->path, op->id, op->mkeys, op->mvals, op->mv_size, op->n_keys);
@@ -968,7 +968,7 @@ op_status_t lio_multiple_setattr_op_fn(void *arg, int id)
 
 //***********************************************************************
 
-op_generic_t *gop_lio_multiple_setattr_op(lio_config_t *lc, creds_t *creds, const char *path, char *id, char **key, void **val, int *v_size, int n_keys)
+gop_op_generic_t *gop_lio_multiple_setattr_op(lio_config_t *lc, lio_creds_t *creds, const char *path, char *id, char **key, void **val, int *v_size, int n_keys)
 {
     lio_attrs_op_t *op;
     tbx_type_malloc_clear(op, lio_attrs_op_t, 1);
@@ -989,7 +989,7 @@ op_generic_t *gop_lio_multiple_setattr_op(lio_config_t *lc, creds_t *creds, cons
 // lio_setattr_real - Sets an attribute
 //***********************************************************************
 
-int lio_setattr_real(lio_config_t *lc, creds_t *creds, const char *path, char *id, char *key, void *val, int v_size)
+int lio_setattr_real(lio_config_t *lc, lio_creds_t *creds, const char *path, char *id, char *key, void *val, int v_size)
 {
     int err, serr;
     os_fd_t *fd;
@@ -1020,7 +1020,7 @@ int lio_setattr_real(lio_config_t *lc, creds_t *creds, const char *path, char *i
 // lio_setattr - Sets a single attribute
 //***********************************************************************
 
-int lio_setattr(lio_config_t *lc, creds_t *creds, const char *path, char *id, char *key, void *val, int v_size)
+int lio_setattr(lio_config_t *lc, lio_creds_t *creds, const char *path, char *id, char *key, void *val, int v_size)
 {
     int err;
 
@@ -1035,10 +1035,10 @@ int lio_setattr(lio_config_t *lc, creds_t *creds, const char *path, char *id, ch
 
 //***********************************************************************
 
-op_status_t lio_setattr_fn(void *arg, int id)
+gop_op_status_t lio_setattr_fn(void *arg, int id)
 {
     lio_attrs_op_t *op = (lio_attrs_op_t *)arg;
-    op_status_t status;
+    gop_op_status_t status;
 
     status.op_status = lio_setattr(op->lc, op->creds, op->path, op->id, op->skey, op->sval, op->n_keys); //** NOTE: n_keys = v_size
     status.error_code = 0;
@@ -1047,7 +1047,7 @@ op_status_t lio_setattr_fn(void *arg, int id)
 
 //***********************************************************************
 
-op_generic_t *lio_setattr_op(lio_config_t *lc, creds_t *creds, const char *path, char *id, char *key, void *val, int v_size)
+gop_op_generic_t *lio_setattr_op(lio_config_t *lc, lio_creds_t *creds, const char *path, char *id, char *key, void *val, int v_size)
 {
     lio_attrs_op_t *op;
     tbx_type_malloc_clear(op, lio_attrs_op_t, 1);
@@ -1067,7 +1067,7 @@ op_generic_t *lio_setattr_op(lio_config_t *lc, creds_t *creds, const char *path,
 // lio_create_attr_iter - Creates an attribute iterator
 //***********************************************************************
 
-os_attr_iter_t *lio_create_attr_iter(lio_config_t *lc, creds_t *creds, const char *path, os_regex_table_t *attr, int v_max)
+os_attr_iter_t *lio_create_attr_iter(lio_config_t *lc, lio_creds_t *creds, const char *path, lio_os_regex_table_t *attr, int v_max)
 {
     return(os_create_attr_iter(lc->os, creds, (char *)path, attr, v_max));
 }
@@ -1188,7 +1188,7 @@ void _lio_parse_stat_vals(char *fname, struct stat *stat, char **val, int *v_siz
 // lio_stat - Do a simple file stat
 //***********************************************************************
 
-int lio_stat(lio_config_t *lc, creds_t *creds, char *fname, struct stat *stat, char *mount_prefix, char **readlink)
+int lio_stat(lio_config_t *lc, lio_creds_t *creds, char *fname, struct stat *stat, char *mount_prefix, char **readlink)
 {
     char *val[_lio_stat_key_size];
     int v_size[_lio_stat_key_size], i, err;
@@ -1223,15 +1223,15 @@ int lio_stat(lio_config_t *lc, creds_t *creds, char *fname, struct stat *stat, c
 // lio_fsck_check_file - Checks a file for errors and optionally repairs them
 //***********************************************************************
 
-int lio_fsck_check_object(lio_config_t *lc, creds_t *creds, char *path, int ftype, lio_fsck_repair_t owner_mode, char *owner, lio_fsck_repair_t exnode_mode, char **val, int *v_size)
+int lio_fsck_check_object(lio_config_t *lc, lio_creds_t *creds, char *path, int ftype, lio_fsck_repair_t owner_mode, char *owner, lio_fsck_repair_t exnode_mode, char **val, int *v_size)
 {
     int state, err, srepair, index, vs, ex_index;
     char *dir, *file, ssize[128], *v;
     ex_id_t ino;
     ex_off_t nbytes;
-    exnode_exchange_t *exp;
-    exnode_t *ex, *cex;
-    segment_t *seg;
+    lio_exnode_exchange_t *exp;
+    lio_exnode_t *ex, *cex;
+    lio_segment_t *seg;
     int do_clone;
     lio_fsck_repair_t ex_mode;
     ex_index = 2;
@@ -1353,7 +1353,7 @@ int lio_fsck_check_object(lio_config_t *lc, creds_t *creds, char *path, int ftyp
     //** to the global cache table cause there could be multiple copies of the
     //** same segment being serialized/deserialized.
     //** Deserialize it
-    exp = lio_exnode_exchange_text_parse(val[ex_index]);
+    exp = lio_lio_exnode_exchange_text_parse(val[ex_index]);
     ex = lio_exnode_create();
     if (lio_exnode_deserialize(ex, exp, lc->ess_nocache) != 0) {
         log_printf(15, "ERROR parsing parent exnode path=%s\n", path);
@@ -1427,11 +1427,11 @@ finished:
 // lio_fsck_op - Inspects and optionally repairs the file
 //***********************************************************************
 
-op_status_t lio_fsck_op_fn(void *arg, int id)
+gop_op_status_t lio_fsck_op_fn(void *arg, int id)
 {
     lio_fsck_check_t *op = (lio_fsck_check_t *)arg;
     int err, i;
-    op_status_t status;
+    gop_op_status_t status;
     char *val[_n_fsck_keys];
     int v_size[_n_fsck_keys];
     log_printf(15, "fname=%s START\n", op->path);
@@ -1471,7 +1471,7 @@ op_status_t lio_fsck_op_fn(void *arg, int id)
 // lio_fsck_op - Inspects and optionally repairs the file
 //***********************************************************************
 
-op_generic_t *lio_fsck_op(lio_config_t *lc, creds_t *creds, char *fname, int ftype, int owner_mode, char *owner, int exnode_mode)
+gop_op_generic_t *lio_fsck_op(lio_config_t *lc, lio_creds_t *creds, char *fname, int ftype, int owner_mode, char *owner, int exnode_mode)
 {
     lio_fsck_check_t *op;
 
@@ -1495,7 +1495,7 @@ op_generic_t *lio_fsck_op(lio_config_t *lc, creds_t *creds, char *fname, int fty
 // lio_fsck_op - Inspects and optionally repairs the file
 //***********************************************************************
 
-op_generic_t *lio_fsck_op_full(lio_config_t *lc, creds_t *creds, char *fname, int ftype, int owner_mode, char *owner, int exnode_mode, char **val, int *v_size)
+gop_op_generic_t *lio_fsck_op_full(lio_config_t *lc, lio_creds_t *creds, char *fname, int ftype, int owner_mode, char *owner, int exnode_mode, char **val, int *v_size)
 {
     lio_fsck_check_t *op;
 
@@ -1524,8 +1524,8 @@ int lio_next_fsck(lio_config_t *lc, lio_fsck_iter_t *oit, char **bad_fname, int 
     lio_fsck_iter_t *it = (lio_fsck_iter_t *)oit;
     int i, prefix_len, slot;
     lio_fsck_task_t *task;
-    op_generic_t *gop;
-    op_status_t status;
+    gop_op_generic_t *gop;
+    gop_op_status_t status;
 
     if (it->firsttime == 1) {  //** First time through so fill up the tasks
         it->firsttime = 2;
@@ -1544,7 +1544,7 @@ int lio_next_fsck(lio_config_t *lc, lio_fsck_iter_t *oit, char **bad_fname, int 
         }
     }
 
-    log_printf(15, "main loop start nque=%d\n", opque_tasks_left(it->q));
+    log_printf(15, "main loop start nque=%d\n", gop_opque_tasks_left(it->q));
 
     //** Start processing the results
     while ((gop = opque_waitany(it->q)) != NULL) {
@@ -1594,7 +1594,7 @@ int lio_next_fsck(lio_config_t *lc, lio_fsck_iter_t *oit, char **bad_fname, int 
 // lio_create_fsck_iter - Creates an FSCK iterator
 //***********************************************************************
 
-lio_fsck_iter_t *lio_create_fsck_iter(lio_config_t *lc, creds_t *creds, char *path, int owner_mode, char *owner, int exnode_mode)
+lio_fsck_iter_t *lio_create_fsck_iter(lio_config_t *lc, lio_creds_t *creds, char *path, int owner_mode, char *owner, int exnode_mode)
 {
     lio_fsck_iter_t *it;
     int i;
@@ -1637,7 +1637,7 @@ lio_fsck_iter_t *lio_create_fsck_iter(lio_config_t *lc, creds_t *creds, char *pa
 void lio_destroy_fsck_iter(lio_config_t *lc, lio_fsck_iter_t *oit)
 {
     lio_fsck_iter_t *it = (lio_fsck_iter_t *)oit;
-    op_generic_t *gop;
+    gop_op_generic_t *gop;
     int slot;
 
     while ((gop = opque_waitany(it->q)) != NULL) {

@@ -43,13 +43,13 @@ int main(int argc, char **argv)
     int i, j, start_option, whattodo;
     int force_repair;
     char *fname = NULL;
-    exnode_t *ex;
-    exnode_exchange_t *exp, *exp_out;
-    segment_t *seg;
-    op_generic_t *gop;
+    lio_exnode_t *ex;
+    lio_exnode_exchange_t *exp, *exp_out;
+    lio_segment_t *seg;
+    gop_op_generic_t *gop;
     ex_off_t bufsize = 100*1024*1024;
     ex_off_t n;
-    op_status_t status;
+    gop_op_status_t status;
     FILE *fd;
 
     if (argc < 2) {

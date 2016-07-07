@@ -35,9 +35,9 @@ int main(int argc, char **argv)
     char buffer[bufsize];
     int err, ftype, start_index, used;
     char *ex_data;
-    exnode_t *ex;
-    exnode_exchange_t *exp;
-    segment_t *seg;
+    lio_exnode_t *ex;
+    lio_exnode_exchange_t *exp;
+    lio_segment_t *seg;
     int v_size;
     lio_path_tuple_t tuple;
 
@@ -78,7 +78,7 @@ int main(int argc, char **argv)
     }
 
     //** Load it
-    exp = lio_exnode_exchange_text_parse(ex_data);
+    exp = lio_lio_exnode_exchange_text_parse(ex_data);
     ex = lio_exnode_create();
     if (lio_exnode_deserialize(ex, exp, tuple.lc->ess) != 0) {
         info_printf(lio_ifd, 0, "No default segment!  Aborting!\n");

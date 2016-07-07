@@ -152,7 +152,7 @@ int check_for_glob(char *glob)
 // lio_os_regex_is_fixed - Returns 1 if the regex is a fixed path otherwise 0
 //***********************************************************************
 
-int lio_os_regex_is_fixed(os_regex_table_t *regex)
+int lio_os_regex_is_fixed(lio_os_regex_table_t *regex)
 {
 
     if (regex->n == 0) return(1);
@@ -165,9 +165,9 @@ int lio_os_regex_is_fixed(os_regex_table_t *regex)
 // lio_os_path_glob2regex - Converts a path glob to a regex table
 //***********************************************************************
 
-os_regex_table_t *lio_os_path_glob2regex(char *path)
+lio_os_regex_table_t *lio_os_path_glob2regex(char *path)
 {
-    os_regex_table_t *table;
+    lio_os_regex_table_t *table;
     char *bstate, *p2, *frag, *f2;
     int i, j, n, fin, err;
 
@@ -241,12 +241,12 @@ os_regex_table_t *lio_os_path_glob2regex(char *path)
 // os_regex_table_create - Creates a regex table
 //***********************************************************************
 
-os_regex_table_t *os_regex_table_create(int n)
+lio_os_regex_table_t *os_regex_table_create(int n)
 {
-    os_regex_table_t *table;
+    lio_os_regex_table_t *table;
 
-    tbx_type_malloc_clear(table, os_regex_table_t, 1);
-    if ( n> 0) tbx_type_malloc_clear(table->regex_entry, os_regex_entry_t, n);
+    tbx_type_malloc_clear(table, lio_os_regex_table_t, 1);
+    if ( n> 0) tbx_type_malloc_clear(table->regex_entry, lio_os_regex_entry_t, n);
     table->n = n;
 
     return(table);
@@ -256,10 +256,10 @@ os_regex_table_t *os_regex_table_create(int n)
 // lio_os_regex2table - Creates a regex table from the regular expression
 //***********************************************************************
 
-os_regex_table_t *lio_os_regex2table(char *regex)
+lio_os_regex_table_t *lio_os_regex2table(char *regex)
 {
     int err;
-    os_regex_table_t *table;
+    lio_os_regex_table_t *table;
 
     table = os_regex_table_create(1);
 
@@ -278,10 +278,10 @@ os_regex_table_t *lio_os_regex2table(char *regex)
 // lio_os_regex_table_destroy - Destroys a regex table
 //***********************************************************************
 
-void lio_os_regex_table_destroy(os_regex_table_t *table)
+void lio_os_regex_table_destroy(lio_os_regex_table_t *table)
 {
     int i;
-    os_regex_entry_t *re;
+    lio_os_regex_entry_t *re;
 
     if (table->regex_entry != NULL) {
         for (i=0; i<table->n; i++) {
@@ -342,7 +342,7 @@ void lio_os_path_split(const char *path, char **dir, char **file)
 //   the number of chars used or a negative value representing the needed space
 //***********************************************************************
 
-int os_regex_table_pack(os_regex_table_t *regex, unsigned char *buffer, int bufsize)
+int os_regex_table_pack(lio_os_regex_table_t *regex, unsigned char *buffer, int bufsize)
 {
     int i, err, n, bpos, len;
 
@@ -408,11 +408,11 @@ int os_regex_table_pack(os_regex_table_t *regex, unsigned char *buffer, int bufs
 //   the regex table and also the number of characters used
 //***********************************************************************
 
-os_regex_table_t *os_regex_table_unpack(unsigned char *buffer, int bufsize, int *used)
+lio_os_regex_table_t *os_regex_table_unpack(unsigned char *buffer, int bufsize, int *used)
 {
     int i, err, n, bpos;
     int64_t value;
-    os_regex_table_t *regex;
+    lio_os_regex_table_t *regex;
 
     bpos = 0;
     n = tbx_zigzag_decode(&(buffer[bpos]), bufsize, &value);

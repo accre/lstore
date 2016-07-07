@@ -52,8 +52,8 @@ static tbx_atomic_unit32_t _tp_depth_total[TP_MAX_DEPTH];
 apr_threadkey_t *thread_local_stats_key = NULL;
 apr_threadkey_t *thread_local_depth_key = NULL;
 
-void _tp_submit_op(void *arg, op_generic_t *gop);
-void _tp_op_free(op_generic_t *gop, int mode);
+void _tp_submit_op(void *arg, gop_op_generic_t *gop);
+void _tp_op_free(gop_op_generic_t *gop, int mode);
 
 //*************************************************************************
 // thread_pool_stats_print - Dumps the stats to the local log file
@@ -130,7 +130,7 @@ int *_thread_local_depth_ptr()
 
 //*************************************************************
 
-op_status_t tp_command(op_generic_t *gop, tbx_ns_t *ns)
+gop_op_status_t tp_command(gop_op_generic_t *gop, tbx_ns_t *ns)
 {
     return(gop_success_status);
 }
@@ -142,10 +142,10 @@ op_status_t tp_command(op_generic_t *gop, tbx_ns_t *ns)
 //  NOTE: _tp_lock should be held on entry!!!
 //*************************************************************
 
-op_generic_t *_tpc_overflow_next(thread_pool_context_t *tpc)
+gop_op_generic_t *_tpc_overflow_next(gop_thread_pool_context_t *tpc)
 {
-    op_generic_t *gop = NULL;
-    thread_pool_op_t *op;
+    gop_op_generic_t *gop = NULL;
+    gop_thread_pool_op_t *op;
     int i, dmax, slot;
 
     //** Determine the currently running max depth
@@ -179,11 +179,11 @@ if (gop) {
 }
 
 //*************************************************************
-void thread_pool_exec_fn(void *arg, op_generic_t *gop)
+void thread_pool_exec_fn(void *arg, gop_op_generic_t *gop)
 {
-    thread_pool_op_t *op = gop_get_tp(gop);
-    thread_pool_context_t *tpc = op->tpc;
-    op_status_t status;
+    gop_thread_pool_op_t *op = gop_get_tp(gop);
+    gop_thread_pool_context_t *tpc = op->tpc;
+    gop_op_status_t status;
     thread_local_stats_t *my;
     int *my_depth;
     int tid;
@@ -273,12 +273,12 @@ void thread_pool_exec_fn(void *arg, op_generic_t *gop)
 // init_tp_op - Does the 1-time initialization for the op
 //*************************************************************
 
-void init_tp_op(thread_pool_context_t *tpc, thread_pool_op_t *op)
+void init_tp_op(gop_thread_pool_context_t *tpc, gop_thread_pool_op_t *op)
 {
-    op_generic_t *gop;
+    gop_op_generic_t *gop;
 
     //** Clear it
-    tbx_type_memclear(op, thread_pool_op_t, 1);
+    tbx_type_memclear(op, gop_thread_pool_op_t, 1);
 
     op->depth =  *(_thread_local_depth_ptr()) + 1; //** Store my recursion depth
     op->overflow_slot = -1;
@@ -303,7 +303,7 @@ void init_tp_op(thread_pool_context_t *tpc, thread_pool_op_t *op)
 // set_thread_pool_op - Sets a thread pool op
 //*************************************************************
 
-int set_thread_pool_op(thread_pool_op_t *op, thread_pool_context_t *tpc, char *que, op_status_t (*fn)(void *arg, int id), void *arg, void (*my_op_free)(void *arg), int workload)
+int set_thread_pool_op(gop_thread_pool_op_t *op, gop_thread_pool_context_t *tpc, char *que, gop_op_status_t (*fn)(void *arg, int id), void *arg, void (*my_op_free)(void *arg), int workload)
 {
     op->fn = fn;
     op->arg = arg;
@@ -316,12 +316,12 @@ int set_thread_pool_op(thread_pool_op_t *op, thread_pool_context_t *tpc, char *q
 // gop_tp_op_new - Allocates space for a new op
 //*************************************************************
 
-op_generic_t *gop_tp_op_new(thread_pool_context_t *tpc, char *que, op_status_t (*fn)(void *arg, int id), void *arg, void (*my_op_free)(void *arg), int workload)
+gop_op_generic_t *gop_tp_op_new(gop_thread_pool_context_t *tpc, char *que, gop_op_status_t (*fn)(void *arg, int id), void *arg, void (*my_op_free)(void *arg), int workload)
 {
-    thread_pool_op_t *op;
+    gop_thread_pool_op_t *op;
 
     //** Make the struct and clear it
-    tbx_type_malloc(op, thread_pool_op_t, 1);
+    tbx_type_malloc(op, gop_thread_pool_op_t, 1);
 
     tbx_atomic_inc(tpc->n_ops);
 

@@ -34,9 +34,9 @@ extern "C" {
 
 #define SEGMENT_TYPE_FILE "file"
 
-segment_t *segment_file_load(void *arg, ex_id_t id, exnode_exchange_t *ex);
-segment_t *segment_file_create(void *arg);
-op_generic_t *segment_file_make(segment_t *seg, data_attr_t *da, char *fname);
+lio_segment_t *segment_file_load(void *arg, ex_id_t id, lio_exnode_exchange_t *ex);
+lio_segment_t *segment_file_create(void *arg);
+gop_op_generic_t *segment_file_make(lio_segment_t *seg, data_attr_t *da, char *fname);
 
 #ifdef __cplusplus
 }

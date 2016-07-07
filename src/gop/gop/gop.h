@@ -35,13 +35,13 @@ extern "C" {
 #endif
 
 // Typedefs
-typedef void (*gop_op_free_fn_t)(op_generic_t *d, int mode);
-typedef op_status_t (*gop_op_send_command_fn_t)(op_generic_t *gop, tbx_ns_t *ns);
-typedef op_status_t (*gop_op_send_phase_fn_t)(op_generic_t *gop, tbx_ns_t *ns);
-typedef op_status_t (*gop_op_recv_phase_fn_t)(op_generic_t *gop, tbx_ns_t *ns);
+typedef void (*gop_op_free_fn_t)(gop_op_generic_t *d, int mode);
+typedef gop_op_status_t (*gop_op_send_command_fn_t)(gop_op_generic_t *gop, tbx_ns_t *ns);
+typedef gop_op_status_t (*gop_op_send_phase_fn_t)(gop_op_generic_t *gop, tbx_ns_t *ns);
+typedef gop_op_status_t (*gop_op_recv_phase_fn_t)(gop_op_generic_t *gop, tbx_ns_t *ns);
 typedef int (*gop_op_on_submit_fn_t)(tbx_stack_t *stack, tbx_stack_ele_t *gop_ele);
-typedef int (*gop_op_before_exec_fn_t)(op_generic_t *gop);
-typedef int (*gop_op_destroy_command_fn_t)(op_generic_t *gop);
+typedef int (*gop_op_before_exec_fn_t)(gop_op_generic_t *gop);
+typedef int (*gop_op_destroy_command_fn_t)(gop_op_generic_t *gop);
 typedef enum gop_op_state_t gop_op_state_t;
 enum gop_op_state_t {
     OP_STATE_SUCCESS,
@@ -77,39 +77,39 @@ enum gop_op_exec_mode_t {
 };
 
 // Functions
-GOP_API void gop_callback_append(op_generic_t *q, callback_t *cb);
-GOP_API int gop_completed_successfully(op_generic_t *gop);
-GOP_API op_generic_t *gop_dummy(op_status_t state);
-GOP_API apr_time_t gop_exec_time(op_generic_t *gop);
-GOP_API void gop_finished_submission(op_generic_t *gop);
-GOP_API void gop_free(op_generic_t *gop, gop_op_free_mode_t mode);
-GOP_API void gop_generic_free(op_generic_t *gop, gop_op_free_mode_t mode);
-GOP_API op_generic_t *gop_get_next_failed(op_generic_t *gop);
-GOP_API op_generic_t *gop_get_next_finished(op_generic_t *gop);
-GOP_API void gop_init(op_generic_t *gop);
-GOP_API void gop_reset(op_generic_t *gop);
-GOP_API void gop_set_auto_destroy(op_generic_t *gop, int val);
-GOP_API void gop_set_exec_mode(op_generic_t *g, gop_op_exec_mode_t mode);
-GOP_API void gop_start_execution(op_generic_t *gop);
-GOP_API int gop_sync_exec(op_generic_t *gop);
-GOP_API op_status_t gop_sync_exec_status(op_generic_t *gop);
-GOP_API int gop_tasks_failed(op_generic_t *gop);
-GOP_API int gop_tasks_finished(op_generic_t *gop);
-GOP_API int gop_tasks_left(op_generic_t *gop);
-GOP_API int gop_waitall(op_generic_t *gop);
-GOP_API op_generic_t *gop_waitany(op_generic_t *gop);
-GOP_API op_generic_t *gop_waitany_timed(op_generic_t *g, int dt);
+GOP_API void gop_callback_append(gop_op_generic_t *q, gop_callback_t *cb);
+GOP_API int gop_completed_successfully(gop_op_generic_t *gop);
+GOP_API gop_op_generic_t *gop_dummy(gop_op_status_t state);
+GOP_API apr_time_t gop_exec_time(gop_op_generic_t *gop);
+GOP_API void gop_finished_submission(gop_op_generic_t *gop);
+GOP_API void gop_free(gop_op_generic_t *gop, gop_op_free_mode_t mode);
+GOP_API void gop_generic_free(gop_op_generic_t *gop, gop_op_free_mode_t mode);
+GOP_API gop_op_generic_t *gop_get_next_failed(gop_op_generic_t *gop);
+GOP_API gop_op_generic_t *gop_get_next_finished(gop_op_generic_t *gop);
+GOP_API void gop_init(gop_op_generic_t *gop);
+GOP_API void gop_reset(gop_op_generic_t *gop);
+GOP_API void gop_set_auto_destroy(gop_op_generic_t *gop, int val);
+GOP_API void gop_set_exec_mode(gop_op_generic_t *g, gop_op_exec_mode_t mode);
+GOP_API void gop_start_execution(gop_op_generic_t *gop);
+GOP_API int gop_sync_exec(gop_op_generic_t *gop);
+GOP_API gop_op_status_t gop_sync_exec_status(gop_op_generic_t *gop);
+GOP_API int gop_tasks_failed(gop_op_generic_t *gop);
+GOP_API int gop_tasks_finished(gop_op_generic_t *gop);
+GOP_API int gop_tasks_left(gop_op_generic_t *gop);
+GOP_API int gop_waitall(gop_op_generic_t *gop);
+GOP_API gop_op_generic_t *gop_waitany(gop_op_generic_t *gop);
+GOP_API gop_op_generic_t *gop_waitany_timed(gop_op_generic_t *g, int dt);
 
 // Preprocessor constants
 // Global constants
-GOP_API extern op_status_t gop_success_status;
-GOP_API extern op_status_t gop_failure_status;
-extern op_status_t op_retry_status;
-extern op_status_t op_dead_status;
-extern op_status_t op_timeout_status;
-extern op_status_t op_invalid_host_status;
-extern op_status_t op_cant_connect_status;
-GOP_API extern op_status_t gop_error_status;
+GOP_API extern gop_op_status_t gop_success_status;
+GOP_API extern gop_op_status_t gop_failure_status;
+extern gop_op_status_t op_retry_status;
+extern gop_op_status_t op_dead_status;
+extern gop_op_status_t op_timeout_status;
+extern gop_op_status_t op_invalid_host_status;
+extern gop_op_status_t op_cant_connect_status;
+GOP_API extern gop_op_status_t gop_error_status;
 
 // Preprocessor macros
 // FIXME: Why a leading underscore?
@@ -129,15 +129,15 @@ GOP_API extern op_status_t gop_error_status;
 #define gop_set_status(gop, val) (gop)->base.status = val
 
 // Exported types. To be obscured.
-struct op_status_t {       //** Generic opcode status
+struct gop_op_status_t {       //** Generic opcode status
     gop_op_state_t op_status;          //** Simplified operation status, OP_SUCCESS or OP_FAILURE
     int error_code;         //** Low level op error code
 };
 
-struct op_common_t {
-    callback_t *cb;        //** Optional callback
-    opque_t *parent_q;     //** Parent que attached to
-    op_status_t status;    //** Command result
+struct gop_op_common_t {
+    gop_callback_t *cb;        //** Optional callback
+    gop_opque_t *parent_q;     //** Parent que attached to
+    gop_op_status_t status;    //** Command result
     gop_fm_t failure_mode;      //** Used via the callbacks to force a failure, even on success
     int retries;           //** Upon failure how many times we've retried
     int id;                //** Op's global id.  Can be changed by use but generally should use my_id
@@ -149,18 +149,18 @@ struct op_common_t {
     gop_control_t *ctl;    //** Lock and condition struct
     void *user_priv;           //** Optional user supplied handle
     gop_op_free_fn_t free;
-    portal_context_t *pc;
+    gop_portal_context_t *pc;
 };
 
-struct op_generic_t {
+struct gop_op_generic_t {
     gop_op_type_t type;
     void *free_ptr;
-    op_common_t base;
-    que_data_t   *q;
-    op_data_t   *op;
+    gop_op_common_t base;
+    gop_que_data_t   *q;
+    gop_op_data_t   *op;
 };
 
-struct command_op_t {   //** Command operation
+struct gop_command_op_t {   //** Command operation
     char *hostport; //** Depot hostname:port:type:...  Unique string for host/connect_context
     void *connect_context;   //** Private information needed to make a host connection
     int  cmp_size;  //** Used for ordering commands within the same host
@@ -180,9 +180,9 @@ struct command_op_t {   //** Command operation
     apr_time_t end_time;
 };
 
-struct op_data_t {
-    portal_context_t *pc;
-    command_op_t cmd;
+struct gop_op_data_t {
+    gop_portal_context_t *pc;
+    gop_command_op_t cmd;
     void *priv;
 };
 

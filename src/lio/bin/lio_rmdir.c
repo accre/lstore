@@ -38,12 +38,12 @@
 int main(int argc, char **argv)
 {
     int i, j, n, err, rg_mode;
-    opque_t *q;
-    op_generic_t *gop;
-    op_status_t status;
-    os_regex_table_t **rpath;
+    gop_opque_t *q;
+    gop_op_generic_t *gop;
+    gop_op_status_t status;
+    lio_os_regex_table_t **rpath;
     lio_path_tuple_t *flist;
-    os_regex_table_t *rp_single, *ro_single;
+    lio_os_regex_table_t *rp_single, *ro_single;
     lio_path_tuple_t tuple;
 
     if (argc < 2) {
@@ -70,7 +70,7 @@ int main(int argc, char **argv)
     //** Spawn the tasks
     n = argc - 1;
     tbx_type_malloc(flist, lio_path_tuple_t, n);
-    tbx_type_malloc(rpath, os_regex_table_t *, n);
+    tbx_type_malloc(rpath, lio_os_regex_table_t *, n);
 
     q = gop_opque_new();
     opque_start_execution(q);
@@ -90,7 +90,7 @@ int main(int argc, char **argv)
         log_printf(0, "gid=%d i=%d fname=%s\n", gop_id(gop), i, flist[i].path);
         gop_opque_add(q, gop);
 
-        if (opque_tasks_left(q) > lio_parallel_task_count) {
+        if (gop_opque_tasks_left(q) > lio_parallel_task_count) {
             gop = opque_waitany(q);
             j = gop_get_myid(gop);
             status = gop_get_status(gop);

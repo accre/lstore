@@ -27,8 +27,8 @@
 extern "C" {
 #endif
 
-segment_t *segment_linear_new();
-opque_t *segment_linear_append(segment_t *seg, ibp_depot_t *depot, int n_depots, int n_blocks, ex_off_t block_size);
+lio_segment_t *segment_linear_new();
+gop_opque_t *segment_linear_append(lio_segment_t *seg, ibp_depot_t *depot, int n_depots, int n_blocks, ex_off_t block_size);
 
 #ifdef __cplusplus
 }

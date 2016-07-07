@@ -36,7 +36,7 @@
 extern "C" {
 #endif
 
-struct ongoing_hb_t {
+struct gop_ongoing_hb_t {
     char *id;
     int id_len;
     int heartbeat;
@@ -45,13 +45,13 @@ struct ongoing_hb_t {
     apr_time_t next_check;
 };
 
-struct ongoing_table_t {
+struct gop_ongoing_table_t {
     apr_hash_t *table;
-    mq_msg_hash_t remote_host_hash;
+    gop_mq_msg_hash_t remote_host_hash;
     mq_msg_t *remote_host;
     int count;
 };
-struct mq_ongoing_host_t {
+struct gop_mq_ongoing_host_t {
     int heartbeat;
     apr_time_t next_check;
     char *id;
@@ -60,7 +60,7 @@ struct mq_ongoing_host_t {
     apr_pool_t *mpool;
 };
 
-struct mq_ongoing_t {
+struct gop_mq_ongoing_t {
     apr_pool_t *mpool;
     apr_thread_mutex_t *lock;
     apr_thread_cond_t *cond;
@@ -68,15 +68,15 @@ struct mq_ongoing_t {
     apr_hash_t *table;          //** Client table
     apr_thread_t *ongoing_server_thread;
     apr_thread_t *ongoing_heartbeat_thread;
-    mq_context_t *mqc;
-    mq_portal_t *server_portal;
+    gop_mq_context_t *mqc;
+    gop_mq_portal_t *server_portal;
     int check_interval;
     int shutdown;
     int send_divisor;
 };
 
 void ongoing_heartbeat_shutdown();
-void mq_ongoing_cb(void *arg, mq_task_t *task);
+void mq_ongoing_cb(void *arg, gop_mq_task_t *task);
 
 #ifdef __cplusplus
 }

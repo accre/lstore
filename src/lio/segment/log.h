@@ -34,23 +34,23 @@ extern "C" {
 
 #define SEGMENT_TYPE_LOG "log"
 
-segment_t *segment_log_load(void *arg, ex_id_t id, exnode_exchange_t *ex);
-segment_t *segment_log_create(void *arg);
-segment_t *slog_make(service_manager_t *sm, segment_t *table, segment_t *data, segment_t *base);  //** Makes a new log segment using
+lio_segment_t *segment_log_load(void *arg, ex_id_t id, lio_exnode_exchange_t *ex);
+lio_segment_t *segment_log_create(void *arg);
+lio_segment_t *slog_make(lio_service_manager_t *sm, lio_segment_t *table, lio_segment_t *data, lio_segment_t *base);  //** Makes a new log segment using
 
-struct slog_range_t {
+struct lio_slog_range_t {
     ex_off_t lo;
     ex_off_t hi;  //** On disk this is actually the length.  It's converted to an offset when loaded and a length when stored
     ex_off_t data_offset;
 };
 
-struct seglog_priv_t {
-    segment_t *table_seg;
-    segment_t *data_seg;
-    segment_t *base_seg;
-    data_service_fn_t *ds;
+struct lio_seglog_priv_t {
+    lio_segment_t *table_seg;
+    lio_segment_t *data_seg;
+    lio_segment_t *base_seg;
+    lio_data_service_fn_t *ds;
     tbx_isl_t *mapping;
-    thread_pool_context_t *tpc;
+    gop_thread_pool_context_t *tpc;
     ex_off_t file_size;
     ex_off_t log_size;
     ex_off_t data_size;

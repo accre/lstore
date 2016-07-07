@@ -32,7 +32,7 @@ extern "C" {
 
 #define OS_TYPE_TIMECACHE "os_timecache"
 
-object_service_fn_t *object_service_timecache_create(service_manager_t *ess, tbx_inip_file_t *ifd, char *section);
+lio_object_service_fn_t *object_service_timecache_create(lio_service_manager_t *ess, tbx_inip_file_t *ifd, char *section);
 
 #ifdef __cplusplus
 }

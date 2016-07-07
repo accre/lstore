@@ -62,45 +62,45 @@ extern "C" {
 #define MQS_SIZE               8
 
 // Types
-struct mq_frame_t {
+struct gop_mq_frame_t {
     int len;
     gop_mqf_msg_t auto_free;
     char *data;
     zmq_msg_t zmsg;
 };
 
-struct mq_msg_hash_t {
+struct gop_mq_msg_hash_t {
     unsigned int full_hash;
     unsigned int even_hash;
 };
 
-struct mq_socket_t {
+struct gop_mq_socket_t {
     int type;
     void *arg;
-    void (*destroy)(mq_socket_context_t *ctx, mq_socket_t  *socket);
-    int (*bind)(mq_socket_t *socket, const char *format, ...);
-    int (*connect)(mq_socket_t *socket, const char *format, ...);
-    int (*disconnect)(mq_socket_t *socket, const char *format, ...);  //** Need host since multiple simul endpoints are supported.
-    void *(*poll_handle)(mq_socket_t *socket);
-    int (*monitor)(mq_socket_t *socket, char *address, int events);
-    int (*send)(mq_socket_t *socket, mq_msg_t *msg, int flags);
-    int (*recv)(mq_socket_t *socket, mq_msg_t *msg, int flags);
+    void (*destroy)(gop_mq_socket_context_t *ctx, gop_mq_socket_t  *socket);
+    int (*bind)(gop_mq_socket_t *socket, const char *format, ...);
+    int (*connect)(gop_mq_socket_t *socket, const char *format, ...);
+    int (*disconnect)(gop_mq_socket_t *socket, const char *format, ...);  //** Need host since multiple simul endpoints are supported.
+    void *(*poll_handle)(gop_mq_socket_t *socket);
+    int (*monitor)(gop_mq_socket_t *socket, char *address, int events);
+    int (*send)(gop_mq_socket_t *socket, mq_msg_t *msg, int flags);
+    int (*recv)(gop_mq_socket_t *socket, mq_msg_t *msg, int flags);
 };
 
-struct mq_socket_context_t {
+struct gop_mq_socket_context_t {
     void *arg;
-    mq_socket_t *(*create_socket)(mq_socket_context_t *ctx, int stype);
-    void (*destroy)(mq_socket_context_t *ctx);
+    gop_mq_socket_t *(*create_socket)(gop_mq_socket_context_t *ctx, int stype);
+    void (*destroy)(gop_mq_socket_context_t *ctx);
 };
 
-struct mq_command_t {
+struct gop_mq_command_t {
     gop_mq_exec_fn_t *fn;
     void *cmd;
     int cmd_size;
     void *arg;
 };
 
-struct mq_command_table_t {
+struct gop_gop_mq_command_table_t {
     gop_mq_exec_fn_t *fn_default;
     void *arg_default;
     apr_hash_t *table;
@@ -108,7 +108,7 @@ struct mq_command_table_t {
     apr_thread_mutex_t *lock;
 };
 
-struct mq_heartbeat_entry_t {
+struct gop_mq_heartbeat_entry_t {
     mq_msg_t *address;
     char *key;
     uint64_t lut_id;
@@ -117,37 +117,37 @@ struct mq_heartbeat_entry_t {
     apr_time_t last_check;
 };
 
-struct mq_task_monitor_t {
-    mq_task_t *task;
-    mq_heartbeat_entry_t *tracking;
+struct gop_mq_task_monitor_t {
+    gop_mq_task_t *task;
+    gop_mq_heartbeat_entry_t *tracking;
     char *id;
     int id_size;
     apr_time_t last_check;
     apr_time_t timeout;
 };
 
-struct mq_command_stats_t {
+struct gop_mq_command_stats_t {
     int incoming[MQS_SIZE];
     int outgoing[MQS_SIZE];
 };
 
-struct mq_conn_t {  //** MQ connection container
-    mq_portal_t *pc;   //** Parent MQ portal
+struct gop_mq_conn_t {  //** MQ connection container
+    gop_mq_portal_t *pc;   //** Parent MQ portal
     char *mq_uuid;     //** MQ UUID
-    mq_socket_t *sock; //** MQ connection socket
+    gop_mq_socket_t *sock; //** MQ connection socket
     apr_hash_t *waiting;  //** Tasks waiting for a response (key = task ID)
     apr_hash_t *heartbeat_dest;  //** List of unique destinations for heartbeats (key = tracking address)
     apr_hash_t *heartbeat_lut;  //** This is a table of valid heartbeat pointers
     apr_time_t check_start;  //** Last check time
     apr_thread_t *thread;     //** thread handle
-    mq_heartbeat_entry_t *hb_conn;  //** Immediate connection uplink
+    gop_mq_heartbeat_entry_t *hb_conn;  //** Immediate connection uplink
     uint64_t  n_ops;         //** Numbr of ops the connection has processed
     int cefd[2];             //** Private event FD for initial connection handshake
-    mq_command_stats_t stats;//** Command stats
+    gop_mq_command_stats_t stats;//** Command stats
     apr_pool_t *mpool;       //** MEmory pool for connection/thread. APR mpools aren't thread safe!!!!!!!
 };
 
-struct mq_context_t {      //** Main MQ context
+struct gop_mq_context_t {      //** Main MQ context
     int min_conn;              //** Min connections to MQ host
     int max_conn;              //** Max number of connections to MQ host
     int min_threads;           //** Min number of worker threads
@@ -161,15 +161,15 @@ struct mq_context_t {      //** Main MQ context
     apr_thread_mutex_t *lock;  //** Context lock
     apr_pool_t *mpool;         //** Context memory pool
     tbx_atomic_unit32_t n_ops;        //** Operation count
-    thread_pool_context_t *tp; //** Worker thread pool
+    gop_thread_pool_context_t *tp; //** Worker thread pool
     apr_hash_t  *client_portals;      //** List of all client or outgoing portals
     apr_hash_t  *server_portals;  //** List of all the server or incoming portals
-    portal_fn_t pcfn;          //** Portal contect used to overide the submit op for the TP
-    mq_command_stats_t stats;//** Command stats
+    gop_portal_fn_t pcfn;          //** Portal contect used to overide the submit op for the TP
+    gop_mq_command_stats_t stats;//** Command stats
 };
 
 
-struct mq_portal_t {   //** Container for managing connections to a single host
+struct gop_mq_portal_t {   //** Container for managing connections to a single host
     char *host;       //** Host address
     int connect_mode; //** Connection mode connect vs bind
     int min_conn;     //** Min connections to MQ host
@@ -189,14 +189,14 @@ struct mq_portal_t {   //** Container for managing connections to a single host
     mq_pipe_t efd[2];
     apr_thread_mutex_t *lock;  //** Context lock
     apr_thread_cond_t *cond;   //** Shutdown complete cond
-    mq_command_table_t *command_table; //** Server command ops for execution
+    gop_gop_mq_command_table_t *command_table; //** Server command ops for execution
     void *implementation_arg; //** Implementation-specific pointer for general use. Round robin uses this as worker table
     apr_pool_t *mpool;         //** Context memory pool
-    thread_pool_context_t *tp; //** Worker thread pool to use
-    portal_fn_t pcfn;
-    mq_socket_context_t *ctx;  //** Socket context
-    mq_context_t *mqc;
-    mq_command_stats_t stats;//** Command stats
+    gop_thread_pool_context_t *tp; //** Worker thread pool to use
+    gop_portal_fn_t pcfn;
+    gop_mq_socket_context_t *ctx;  //** Socket context
+    gop_mq_context_t *mqc;
+    gop_mq_command_stats_t stats;//** Command stats
 };
 
 typedef zmq_pollitem_t mq_pollitem_t;
@@ -252,31 +252,31 @@ typedef zmq_pollitem_t mq_pollitem_t;
 #define mq_pipe_read(fd, c) read(fd, c, 1)
 #define mq_pipe_write(fd, c) write(fd, c, 1)
 
-mq_frame_t *mq_msg_prev(mq_msg_t *msg);
-mq_frame_t *mq_frame_dup(mq_frame_t *f);
-void mq_msg_tbx_stack_insert_above(mq_msg_t *msg, mq_frame_t *f);
-void mq_msg_tbx_stack_insert_below(mq_msg_t *msg, mq_frame_t *f);
-void mq_msg_push_frame(mq_msg_t *msg, mq_frame_t *f);
-mq_msg_hash_t mq_msg_hash(mq_msg_t *msg);
+gop_mq_frame_t *mq_msg_prev(mq_msg_t *msg);
+gop_mq_frame_t *mq_frame_dup(gop_mq_frame_t *f);
+void mq_msg_tbx_stack_insert_above(mq_msg_t *msg, gop_mq_frame_t *f);
+void mq_msg_tbx_stack_insert_below(mq_msg_t *msg, gop_mq_frame_t *f);
+void mq_msg_push_frame(mq_msg_t *msg, gop_mq_frame_t *f);
+gop_mq_msg_hash_t mq_msg_hash(mq_msg_t *msg);
 void mq_msg_push_mem(mq_msg_t *msg, void *data, int len, gop_mqf_msg_t auto_free);
 int mq_msg_total_size(mq_msg_t *msg);
 
-mq_msg_t *mq_trackaddress_msg(char *host, mq_msg_t *raw_address, mq_frame_t *fid, int dup_frames);
+mq_msg_t *mq_trackaddress_msg(char *host, mq_msg_t *raw_address, gop_mq_frame_t *fid, int dup_frames);
 
-void mq_stats_add(mq_command_stats_t *a, mq_command_stats_t *b);
-void mq_stats_print(int ll, char *tag, mq_command_stats_t *a);
-int mq_task_set(mq_task_t *task, mq_context_t *ctx, mq_msg_t *msg, op_generic_t *gop,  void *arg, int dt);
-void mq_task_destroy(mq_task_t *task);
+void mq_stats_add(gop_mq_command_stats_t *a, gop_mq_command_stats_t *b);
+void mq_stats_print(int ll, char *tag, gop_mq_command_stats_t *a);
+int mq_task_set(gop_mq_task_t *task, gop_mq_context_t *ctx, mq_msg_t *msg, gop_op_generic_t *gop,  void *arg, int dt);
+void mq_task_destroy(gop_mq_task_t *task);
 
-mq_command_t *mq_command_new(void *cmd, int cmd_size, void *arg, gop_mq_exec_fn_t *fn);
-void mq_command_exec(mq_command_table_t *t, mq_task_t *task, void *key, int klen);
-void mq_command_table_destroy(mq_command_table_t *t);
-mq_command_table_t *mq_command_table_new(void *arg, gop_mq_exec_fn_t *fn_default);
+gop_mq_command_t *mq_command_new(void *cmd, int cmd_size, void *arg, gop_mq_exec_fn_t *fn);
+void mq_command_exec(gop_gop_mq_command_table_t *t, gop_mq_task_t *task, void *key, int klen);
+void gop_mq_command_table_destroy(gop_gop_mq_command_table_t *t);
+gop_gop_mq_command_table_t *gop_mq_command_table_new(void *arg, gop_mq_exec_fn_t *fn_default);
 
-int mq_task_send(mq_context_t *mqc, mq_task_t *task);
-mq_socket_t *zero_create_socket(mq_socket_context_t *ctx, int stype);
-void zero_socket_context_destroy(mq_socket_context_t *ctx);
-mq_socket_context_t *zero_socket_context_new();
+int mq_task_send(gop_mq_context_t *mqc, gop_mq_task_t *task);
+gop_mq_socket_t *zero_create_socket(gop_mq_socket_context_t *ctx, int stype);
+void zero_socket_context_destroy(gop_mq_socket_context_t *ctx);
+gop_mq_socket_context_t *zero_socket_context_new();
 
 #ifdef __cplusplus
 }

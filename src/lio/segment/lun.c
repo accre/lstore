@@ -65,7 +65,7 @@
 #include "service_manager.h"
 
 typedef struct {
-    data_block_t *data;    //** Data block
+    lio_data_block_t *data;    //** Data block
     ex_off_t cap_offset;   //** Starting location to use data in the cap
     int read_err_count;    //** Read errors
     int write_err_count;   //** Write errors
@@ -81,33 +81,33 @@ typedef struct {
 } seglun_row_t;
 
 typedef struct {
-    opque_t *q;
-    segment_t *seg;
+    gop_opque_t *q;
+    lio_segment_t *seg;
     data_probe_t **probe;
     seglun_row_t **block;
 } seglun_check_t;
 
 typedef struct {
-    segment_t *seg;
+    lio_segment_t *seg;
     data_attr_t *da;
     ex_off_t new_size;
     int timeout;
 } seglun_truncate_t;
 
 typedef struct {
-    segment_t *seg;
+    lio_segment_t *seg;
     data_attr_t *da;
     tbx_log_fd_t *fd;
-    inspect_args_t *args;
+    lio_inspect_args_t *args;
     ex_off_t bufsize;
     int inspect_mode;
     int timeout;
 } seglun_inspect_t;
 
 typedef struct {
-    segment_t *seg;
+    lio_segment_t *seg;
     data_attr_t *da;
-    segment_rw_hints_t *rw_hints;
+    lio_segment_rw_hints_t *rw_hints;
     ex_tbx_iovec_t  *iov;
     ex_off_t    boff;
     tbx_tbuf_t  *buffer;
@@ -117,8 +117,8 @@ typedef struct {
 } seglun_rw_t;
 
 typedef struct {
-    segment_t *sseg;
-    segment_t *dseg;
+    lio_segment_t *sseg;
+    lio_segment_t *dseg;
     data_attr_t *da;
     ex_off_t max_transfer;
     int mode;
@@ -127,7 +127,7 @@ typedef struct {
 } seglun_clone_t;
 
 typedef struct {
-    op_generic_t *gop;
+    gop_op_generic_t *gop;
     ex_tbx_iovec_t *ex_iov;
     tbx_iovec_t *iov;
     seglun_block_t *block;
@@ -144,9 +144,9 @@ typedef struct {
 //   **NOTE: Assumes the segment is locked
 //***********************************************************************
 
-void _slun_perform_remap(segment_t *seg)
+void _slun_perform_remap(lio_segment_t *seg)
 {
-    seglun_priv_t *s = (seglun_priv_t *)seg->priv;
+    lio_seglun_priv_t *s = (lio_seglun_priv_t *)seg->priv;
     tbx_isl_iter_t it;
     seglun_row_t *b;
     int i;
@@ -169,15 +169,15 @@ void _slun_perform_remap(segment_t *seg)
 // slun_row_placement_check - Checks the placement of each allocation
 //***********************************************************************
 
-int slun_row_placement_check(segment_t *seg, data_attr_t *da, seglun_row_t *b, int *block_status, int n_devices, int soft_error_fail, rs_query_t *query, inspect_args_t *args, int timeout)
+int slun_row_placement_check(lio_segment_t *seg, data_attr_t *da, seglun_row_t *b, int *block_status, int n_devices, int soft_error_fail, rs_query_t *query, lio_inspect_args_t *args, int timeout)
 {
-    seglun_priv_t *s = (seglun_priv_t *)seg->priv;
+    lio_seglun_priv_t *s = (lio_seglun_priv_t *)seg->priv;
     int i, nbad;
-    rs_hints_t hints_list[n_devices];
+    lio_rs_hints_t hints_list[n_devices];
     char *migrate;
-    op_generic_t *gop;
+    gop_op_generic_t *gop;
     apr_hash_t *rid_changes;
-    rid_inspect_tweak_t *rid;
+    lio_rid_inspect_tweak_t *rid;
     apr_thread_mutex_t *rid_lock;
 
     rid_changes = args->rid_changes;
@@ -238,26 +238,26 @@ int slun_row_placement_check(segment_t *seg, data_attr_t *da, seglun_row_t *b, i
 //     constraints
 //***********************************************************************
 
-int slun_row_placement_fix(segment_t *seg, data_attr_t *da, seglun_row_t *b, int *block_status, int n_devices, inspect_args_t *args, int timeout)
+int slun_row_placement_fix(lio_segment_t *seg, data_attr_t *da, seglun_row_t *b, int *block_status, int n_devices, lio_inspect_args_t *args, int timeout)
 {
-    seglun_priv_t *s = (seglun_priv_t *)seg->priv;
+    lio_seglun_priv_t *s = (lio_seglun_priv_t *)seg->priv;
     int i, j, k, nbad, ngood, loop, cleanup_index;
     int missing[n_devices], m, todo;
     char *cleanup_key[5*n_devices];
-    rs_request_t req[n_devices];
-    rid_inspect_tweak_t *rid_pending[n_devices];
+    lio_rs_request_t req[n_devices];
+    lio_rid_inspect_tweak_t *rid_pending[n_devices];
     rs_query_t *rsq;
     apr_hash_t *rid_changes;
-    rid_inspect_tweak_t *rid;
+    lio_rid_inspect_tweak_t *rid;
     apr_thread_mutex_t *rid_lock;
 
-    rs_hints_t hints_list[n_devices];
-    data_block_t *db[n_devices], *dbs, *dbd, *dbold[n_devices];
+    lio_rs_hints_t hints_list[n_devices];
+    lio_data_block_t *db[n_devices], *dbs, *dbd, *dbold[n_devices];
     data_cap_set_t *cap[n_devices];
 
     char *migrate;
-    op_generic_t *gop;
-    opque_t *q;
+    gop_op_generic_t *gop;
+    gop_opque_t *q;
 
     rid_changes = args->rid_changes;
     rid_lock = args->rid_lock;
@@ -371,7 +371,7 @@ int slun_row_placement_fix(segment_t *seg, data_attr_t *da, seglun_row_t *b, int
             log_printf(15, "after rs query block_status[%d]=%d block_len=" XOT "\n", i, block_status[i], b->block_len);
         }
 
-        log_printf(15, "q size=%d\n",opque_task_count(q));
+        log_printf(15, "q size=%d\n",gop_opque_task_count(q));
 
         //** Wait for the copies to complete
         opque_waitall(q);
@@ -471,12 +471,12 @@ int slun_row_placement_fix(segment_t *seg, data_attr_t *da, seglun_row_t *b, int
 // slun_row_size_check - Checks the size of eack block in the row.
 //***********************************************************************
 
-int slun_row_size_check(segment_t *seg, data_attr_t *da, seglun_row_t *b, int *block_status, apr_time_t *dt, int n_devices, int force_repair, int timeout)
+int slun_row_size_check(lio_segment_t *seg, data_attr_t *da, seglun_row_t *b, int *block_status, apr_time_t *dt, int n_devices, int force_repair, int timeout)
 {
     int i, n_size, n_missing;
     data_probe_t *probe[n_devices];
-    opque_t *q;
-    op_generic_t *gop;
+    gop_opque_t *q;
+    gop_op_generic_t *gop;
     ex_off_t psize, seg_size;
     apr_time_t start_time;
     q = gop_opque_new();
@@ -552,12 +552,12 @@ int slun_row_size_check(segment_t *seg, data_attr_t *da, seglun_row_t *b, int *b
 // slun_row_pad_fix - Pads the blocks=2 (size tweaked) to the full size
 //***********************************************************************
 
-int slun_row_pad_fix(segment_t *seg, data_attr_t *da, seglun_row_t *b, int *block_status, int n_devices, int timeout)
+int slun_row_pad_fix(lio_segment_t *seg, data_attr_t *da, seglun_row_t *b, int *block_status, int n_devices, int timeout)
 {
     int i, err;
     ex_off_t bstart;
-    op_generic_t *gop;
-    opque_t *q;
+    gop_op_generic_t *gop;
+    gop_opque_t *q;
     tbx_tbuf_t tbuf;
     char c;
 
@@ -606,22 +606,22 @@ int slun_row_pad_fix(segment_t *seg, data_attr_t *da, seglun_row_t *b, int *bloc
 // slun_row_replace_fix - Replaces the missing or bad allocation in the row
 //***********************************************************************
 
-int slun_row_replace_fix(segment_t *seg, data_attr_t *da, seglun_row_t *b, int *block_status, int n_devices, inspect_args_t *args, int timeout)
+int slun_row_replace_fix(lio_segment_t *seg, data_attr_t *da, seglun_row_t *b, int *block_status, int n_devices, lio_inspect_args_t *args, int timeout)
 {
-    seglun_priv_t *s = (seglun_priv_t *)seg->priv;
-    rs_request_t req_list[n_devices];
+    lio_seglun_priv_t *s = (lio_seglun_priv_t *)seg->priv;
+    lio_rs_request_t req_list[n_devices];
     data_cap_set_t *cap_list[n_devices];
     char *key;
     tbx_stack_t *cleanup_stack;
-    op_status_t status;
+    gop_op_status_t status;
     rs_query_t *rsq;
-    op_generic_t *gop;
+    gop_op_generic_t *gop;
     tbx_stack_t *attr_stack;
     int i, j, loop, err, m, ngood, nbad, kick_out;
     int missing[n_devices];
-    rs_hints_t hints_list[n_devices];
+    lio_rs_hints_t hints_list[n_devices];
     char *migrate;
-    data_block_t *db;
+    lio_data_block_t *db;
 
     //** Dup the base query
     rsq = rs_query_dup(s->rs, args->query);
@@ -769,20 +769,20 @@ oops:
 // seglun_grow - Expands a linear segment
 //***********************************************************************
 
-op_status_t _seglun_grow(segment_t *seg, data_attr_t *da, ex_off_t new_size_arg, int timeout)
+gop_op_status_t _seglun_grow(lio_segment_t *seg, data_attr_t *da, ex_off_t new_size_arg, int timeout)
 {
     int i, err, cnt;
     ex_off_t off, dsize, old_len;
-    seglun_priv_t *s = (seglun_priv_t *)seg->priv;
+    lio_seglun_priv_t *s = (lio_seglun_priv_t *)seg->priv;
     seglun_row_t *b;
     seglun_block_t *block;
     tbx_isl_iter_t it;
     ex_off_t lo, hi, berr, new_size;
-    op_status_t status;
+    gop_op_status_t status;
     int block_status[s->n_devices];
     apr_time_t now;
     double gsecs, tsecs;
-    inspect_args_t args;
+    lio_inspect_args_t args;
 
     new_size = new_size_arg;
     if (new_size < 0) { //** Reserve space call
@@ -932,17 +932,17 @@ oops:
 // seglun_shrink - Shrinks a linear segment
 //***********************************************************************
 
-op_status_t _seglun_shrink(segment_t *seg, data_attr_t *da, ex_off_t new_size, int timeout)
+gop_op_status_t _seglun_shrink(lio_segment_t *seg, data_attr_t *da, ex_off_t new_size, int timeout)
 {
-    seglun_priv_t *s = (seglun_priv_t *)seg->priv;
-    op_generic_t *gop;
+    lio_seglun_priv_t *s = (lio_seglun_priv_t *)seg->priv;
+    gop_op_generic_t *gop;
     tbx_isl_iter_t it;
     seglun_row_t *b;
-    opque_t *q = NULL;
+    gop_opque_t *q = NULL;
     ex_off_t lo, hi, dsize, bstart_size, bstart_block_size, new_used;
     tbx_stack_t *stack;
     seglun_row_t *start_b;
-    op_status_t status;
+    gop_op_status_t status;
     int i, err;
 
     //** Round the size to the nearest stripe size
@@ -1049,10 +1049,10 @@ finished:
 // _slun_truncate - Performs the truncate
 //***********************************************************************
 
-op_status_t _slun_truncate(segment_t *seg, data_attr_t *da, ex_off_t new_size, int timeout)
+gop_op_status_t _slun_truncate(lio_segment_t *seg, data_attr_t *da, ex_off_t new_size, int timeout)
 {
-    seglun_priv_t *s = (seglun_priv_t *)seg->priv;
-    op_status_t err = gop_success_status;
+    lio_seglun_priv_t *s = (lio_seglun_priv_t *)seg->priv;
+    gop_op_status_t err = gop_success_status;
 
     if (new_size < 0) { //Reserve space call
         err = _seglun_grow(seg, da, new_size, timeout);
@@ -1069,10 +1069,10 @@ op_status_t _slun_truncate(segment_t *seg, data_attr_t *da, ex_off_t new_size, i
 //  seglun_truncate_func - Does the actual segment truncate operations
 //***********************************************************************
 
-op_status_t seglun_truncate_func(void *arg, int id)
+gop_op_status_t seglun_truncate_func(void *arg, int id)
 {
     seglun_truncate_t *st = (seglun_truncate_t *)arg;
-    op_status_t err;
+    gop_op_status_t err;
 
     segment_lock(st->seg);
     err = _slun_truncate(st->seg, st->da, st->new_size, st->timeout);
@@ -1085,9 +1085,9 @@ op_status_t seglun_truncate_func(void *arg, int id)
 // seglun_truncate - Expands or contracts a linear segment
 //***********************************************************************
 
-op_generic_t *seglun_truncate(segment_t *seg, data_attr_t *da, ex_off_t new_size, int timeout)
+gop_op_generic_t *seglun_truncate(lio_segment_t *seg, data_attr_t *da, ex_off_t new_size, int timeout)
 {
-    seglun_priv_t *s = (seglun_priv_t *)seg->priv;
+    lio_seglun_priv_t *s = (lio_seglun_priv_t *)seg->priv;
 
     seglun_truncate_t *st;
 
@@ -1107,9 +1107,9 @@ op_generic_t *seglun_truncate(segment_t *seg, data_attr_t *da, ex_off_t new_size
 //    NOTE: start is relative to start of the row and not the file!
 //***********************************************************************
 
-void lun_row_decompose(segment_t *seg, lun_rw_row_t *rw_buf, seglun_row_t *b, ex_off_t start, tbx_tbuf_t *buffer, ex_off_t bpos, ex_off_t rwlen)
+void lun_row_decompose(lio_segment_t *seg, lun_rw_row_t *rw_buf, seglun_row_t *b, ex_off_t start, tbx_tbuf_t *buffer, ex_off_t bpos, ex_off_t rwlen)
 {
-    seglun_priv_t *s = (seglun_priv_t *)seg->priv;
+    lio_seglun_priv_t *s = (lio_seglun_priv_t *)seg->priv;
     lun_rw_row_t *rwb;
     int i, j, k, n_stripes, start_stripe, end_stripe;
     ex_off_t lo, hi, nleft, pos, chunk_off, chunk_end, stripe_off, begin, end, nbytes;
@@ -1281,8 +1281,8 @@ int seglun_row_decompose_test()
 {
     int max_dev = 100;  //** Can test with up to 100 devices
     int bufsize = 1024*1024;
-    segment_t *seg;
-    seglun_priv_t *s;
+    lio_segment_t *seg;
+    lio_seglun_priv_t *s;
     lun_rw_row_t rw_buf[max_dev];
     tbx_iovec_t *iov_ref[max_dev], *iovbuf;
     tbx_tbuf_t tbuf, tbuf_ref[max_dev];
@@ -1308,7 +1308,7 @@ int seglun_row_decompose_test()
     //** Make an empty segment for testing.
     //** The only variables used by lun_row_decompose are s->{n_devices,stripe_size,chunk_size}.
     seg = segment_lun_create((void *)lio_exnode_service_set);
-    s = (seglun_priv_t *)seg->priv;
+    s = (lio_seglun_priv_t *)seg->priv;
 
     //** Make the fake row
     tbx_type_malloc_clear(b, seglun_row_t, 1);
@@ -1424,14 +1424,14 @@ int seglun_row_decompose_test()
 // seglun_rw_op - Reads/Writes to a LUN segment
 //***********************************************************************
 
-op_status_t seglun_rw_op(segment_t *seg, data_attr_t *da, segment_rw_hints_t *rw_hints, int n_iov, ex_tbx_iovec_t *iov, tbx_tbuf_t *buffer, ex_off_t boff, int rw_mode, int timeout)
+gop_op_status_t seglun_rw_op(lio_segment_t *seg, data_attr_t *da, lio_segment_rw_hints_t *rw_hints, int n_iov, ex_tbx_iovec_t *iov, tbx_tbuf_t *buffer, ex_off_t boff, int rw_mode, int timeout)
 {
-    seglun_priv_t *s = (seglun_priv_t *)seg->priv;
-    blacklist_t *bl = s->bl;
-    blacklist_ibp_rid_t *bl_rid;
-    op_status_t status;
-    op_status_t blacklist_status = {OP_STATE_FAILURE, -1234};
-    opque_t *q;
+    lio_seglun_priv_t *s = (lio_seglun_priv_t *)seg->priv;
+    lio_blacklist_t *bl = s->bl;
+    lio_blacklist_ibp_rid_t *bl_rid;
+    gop_op_status_t status;
+    gop_op_status_t blacklist_status = {OP_STATE_FAILURE, -1234};
+    gop_opque_t *q;
     seglun_row_t *b, **bused;
     tbx_isl_iter_t it;
     ex_off_t lo, hi, start, end, blen, bpos;
@@ -1442,7 +1442,7 @@ op_status_t seglun_rw_op(segment_t *seg, data_attr_t *da, segment_rw_hints_t *rw
     double dt;
     apr_time_t now, exec_time;
     apr_time_t tstart, tstart2;
-    op_generic_t *gop;
+    gop_op_generic_t *gop;
 
     tstart = apr_time_now();
 
@@ -1605,12 +1605,12 @@ op_status_t seglun_rw_op(segment_t *seg, data_attr_t *da, segment_rw_hints_t *rw
 
     segment_unlock(seg);
 
-    if (opque_task_count(q) == 0) {
+    if (gop_opque_task_count(q) == 0) {
         log_printf(0, "ERROR Nothing to do\n");
         status = gop_failure_status;
     } else {
         tstart2 = apr_time_now();
-        op_status_t dt_status;
+        gop_op_status_t dt_status;
         int bad_count = 0;
         while ((gop = opque_waitany(q)) != NULL) {
             dt = apr_time_now() - tstart2;
@@ -1629,7 +1629,7 @@ op_status_t seglun_rw_op(segment_t *seg, data_attr_t *da, segment_rw_hints_t *rw
                     dt /= exec_time;
                     log_printf(5, "dt=%lf min_bw=" XOT "\n", dt, bl->min_bandwidth);
                     if (dt < bl->min_bandwidth) { // ** Blacklist it
-                        tbx_type_malloc(bl_rid, blacklist_ibp_rid_t, 1);
+                        tbx_type_malloc(bl_rid, lio_blacklist_ibp_rid_t, 1);
                         bl_rid->rid = strdup(rwb_table[gop_get_myid(gop)].block->data->rid_key);
                         bl_rid->recheck_time = apr_time_now() + bl->timeout;
                         log_printf(2, "Blacklisting RID=%s dt=%lf\n", bl_rid->rid, dt);
@@ -1713,12 +1713,12 @@ op_status_t seglun_rw_op(segment_t *seg, data_attr_t *da, segment_rw_hints_t *rw
 //     and then calls the actual R/W operation.
 //***********************************************************************
 
-op_status_t seglun_rw_func(void *arg, int id)
+gop_op_status_t seglun_rw_func(void *arg, int id)
 {
     seglun_rw_t *sw = (seglun_rw_t *)arg;
-    seglun_priv_t *s = (seglun_priv_t *)sw->seg->priv;
+    lio_seglun_priv_t *s = (lio_seglun_priv_t *)sw->seg->priv;
     int i;
-    op_status_t status;
+    gop_op_status_t status;
     char *label;
     ex_off_t new_size;
     ex_off_t pos, maxpos, t1, t2, t3;
@@ -1809,11 +1809,11 @@ op_status_t seglun_rw_func(void *arg, int id)
 // seglun_write - Performs a segment write operation
 //***********************************************************************
 
-op_generic_t *seglun_write(segment_t *seg, data_attr_t *da, segment_rw_hints_t *rw_hints, int n_iov, ex_tbx_iovec_t *iov, tbx_tbuf_t *buffer, ex_off_t boff, int timeout)
+gop_op_generic_t *seglun_write(lio_segment_t *seg, data_attr_t *da, lio_segment_rw_hints_t *rw_hints, int n_iov, ex_tbx_iovec_t *iov, tbx_tbuf_t *buffer, ex_off_t boff, int timeout)
 {
-    seglun_priv_t *s = (seglun_priv_t *)seg->priv;
+    lio_seglun_priv_t *s = (lio_seglun_priv_t *)seg->priv;
     seglun_rw_t *sw;
-    op_generic_t *gop;
+    gop_op_generic_t *gop;
 
     tbx_type_malloc(sw, seglun_rw_t, 1);
     sw->seg = seg;
@@ -1834,11 +1834,11 @@ op_generic_t *seglun_write(segment_t *seg, data_attr_t *da, segment_rw_hints_t *
 // seglun_read - Read from a linear segment
 //***********************************************************************
 
-op_generic_t *seglun_read(segment_t *seg, data_attr_t *da, segment_rw_hints_t *rw_hints, int n_iov, ex_tbx_iovec_t *iov, tbx_tbuf_t *buffer, ex_off_t boff, int timeout)
+gop_op_generic_t *seglun_read(lio_segment_t *seg, data_attr_t *da, lio_segment_rw_hints_t *rw_hints, int n_iov, ex_tbx_iovec_t *iov, tbx_tbuf_t *buffer, ex_off_t boff, int timeout)
 {
-    seglun_priv_t *s = (seglun_priv_t *)seg->priv;
+    lio_seglun_priv_t *s = (lio_seglun_priv_t *)seg->priv;
     seglun_rw_t *sw;
-    op_generic_t *gop;
+    gop_op_generic_t *gop;
 
     tbx_type_malloc(sw, seglun_rw_t, 1);
     sw->seg = seg;
@@ -1861,11 +1861,11 @@ op_generic_t *seglun_read(segment_t *seg, data_attr_t *da, segment_rw_hints_t *r
 //     result in the data being removed.
 //***********************************************************************
 
-op_generic_t *seglun_remove(segment_t *seg, data_attr_t *da, int timeout)
+gop_op_generic_t *seglun_remove(lio_segment_t *seg, data_attr_t *da, int timeout)
 {
-    seglun_priv_t *s = (seglun_priv_t *)seg->priv;
-    op_generic_t *gop;
-    opque_t *q;
+    lio_seglun_priv_t *s = (lio_seglun_priv_t *)seg->priv;
+    gop_op_generic_t *gop;
+    gop_opque_t *q;
     seglun_row_t *b;
     tbx_isl_iter_t it;
     int i, j, n;
@@ -1884,7 +1884,7 @@ op_generic_t *seglun_remove(segment_t *seg, data_attr_t *da, int timeout)
     }
     segment_unlock(seg);
 
-    log_printf(15, "seg=" XIDT " qid=%d ntasks=%d\n", segment_id(seg), gop_id(opque_get_gop(q)), opque_task_count(q));
+    log_printf(15, "seg=" XIDT " qid=%d ntasks=%d\n", segment_id(seg), gop_id(opque_get_gop(q)), gop_opque_task_count(q));
     if (n == 0) {
         gop_opque_free(q, OP_DESTROY);
         return(gop_dummy(gop_success_status));
@@ -1896,10 +1896,10 @@ op_generic_t *seglun_remove(segment_t *seg, data_attr_t *da, int timeout)
 // seglun_migrate_func - Attempts to migrate any flagged allocations
 //***********************************************************************
 
-op_status_t seglun_migrate_func(void *arg, int id)
+gop_op_status_t seglun_migrate_func(void *arg, int id)
 {
     seglun_inspect_t *si = (seglun_inspect_t *)arg;
-    seglun_priv_t *s = (seglun_priv_t *)si->seg->priv;
+    lio_seglun_priv_t *s = (lio_seglun_priv_t *)si->seg->priv;
     seglun_row_t *b;
     int bufsize = 10*1024;
     char info[bufsize];
@@ -1909,7 +1909,7 @@ op_status_t seglun_migrate_func(void *arg, int id)
     int nattempted, nmigrated, err, i;
     int soft_error_fail;
 
-    op_status_t status = gop_success_status;
+    gop_op_status_t status = gop_success_status;
     tbx_isl_iter_t it;
 
     soft_error_fail = (si->inspect_mode & INSPECT_SOFT_ERROR_FAIL);
@@ -1985,13 +1985,13 @@ op_status_t seglun_migrate_func(void *arg, int id)
 //     and corrects them if requested
 //***********************************************************************
 
-op_status_t seglun_inspect_func(void *arg, int id)
+gop_op_status_t seglun_inspect_func(void *arg, int id)
 {
     seglun_inspect_t *si = (seglun_inspect_t *)arg;
-    seglun_priv_t *s = (seglun_priv_t *)si->seg->priv;
+    lio_seglun_priv_t *s = (lio_seglun_priv_t *)si->seg->priv;
     seglun_row_t *b;
     rs_query_t *query;
-    op_status_t status;
+    gop_op_status_t status;
     tbx_isl_iter_t it;
     int bufsize = 10*1024;
     char info[bufsize];
@@ -1999,8 +1999,8 @@ op_status_t seglun_inspect_func(void *arg, int id)
     int used, soft_error_fail, force_reconstruct, nforce;
     int block_status[s->n_devices], block_copy[s->n_devices], block_tmp[s->n_devices];
     int i, j, err, option, force_repair, max_lost, total_lost, total_repaired, total_migrate, nmigrated, nlost, nrepaired, drow;
-    inspect_args_t args;
-    inspect_args_t args_blank;
+    lio_inspect_args_t args;
+    lio_inspect_args_t args_blank;
     apr_time_t dt[s->n_devices];
     char pp[128];
 
@@ -2215,13 +2215,13 @@ fail:
 //  seglun_inspect_func - Does the actual segment inspection operations
 //***********************************************************************
 
-op_generic_t *seglun_inspect(segment_t *seg, data_attr_t *da, tbx_log_fd_t *fd, int mode, ex_off_t bufsize, inspect_args_t *args, int timeout)
+gop_op_generic_t *seglun_inspect(lio_segment_t *seg, data_attr_t *da, tbx_log_fd_t *fd, int mode, ex_off_t bufsize, lio_inspect_args_t *args, int timeout)
 {
-    seglun_priv_t *s = (seglun_priv_t *)seg->priv;
+    lio_seglun_priv_t *s = (lio_seglun_priv_t *)seg->priv;
     tbx_isl_iter_t it;
     seglun_row_t *b;
-    op_generic_t *gop;
-    op_status_t err;
+    gop_op_generic_t *gop;
+    gop_op_status_t err;
     seglun_inspect_t *si;
     lio_ex3_inspect_command_t option;
     int i;
@@ -2291,7 +2291,7 @@ op_generic_t *seglun_inspect(segment_t *seg, data_attr_t *da, tbx_log_fd_t *fd, 
 // seglun_flush - Flushes a segment
 //***********************************************************************
 
-op_generic_t *seglun_flush(segment_t *seg, data_attr_t *da, ex_off_t lo, ex_off_t hi, int timeout)
+gop_op_generic_t *seglun_flush(lio_segment_t *seg, data_attr_t *da, ex_off_t lo, ex_off_t hi, int timeout)
 {
     return(gop_dummy(gop_success_status));
 }
@@ -2300,26 +2300,26 @@ op_generic_t *seglun_flush(segment_t *seg, data_attr_t *da, ex_off_t lo, ex_off_
 // seglun_clone_func - Clone data from the segment
 //***********************************************************************
 
-op_status_t seglun_clone_func(void *arg, int id)
+gop_op_status_t seglun_clone_func(void *arg, int id)
 {
     seglun_clone_t *slc = (seglun_clone_t *)arg;
-    seglun_priv_t *ss = (seglun_priv_t *)slc->sseg->priv;
-    seglun_priv_t *sd = (seglun_priv_t *)slc->dseg->priv;
+    lio_seglun_priv_t *ss = (lio_seglun_priv_t *)slc->sseg->priv;
+    lio_seglun_priv_t *sd = (lio_seglun_priv_t *)slc->dseg->priv;
     tbx_isl_iter_t its, itd;
     seglun_row_t *bd, *bs;
     ex_off_t row_size, max_gops, n_gops, offset, d_offset, len, end;
     int err, dir, i, j, k, *max_index, n_rows, n;
     tbx_stack_t **gop_stack;
-    opque_t *q;
+    gop_opque_t *q;
     apr_time_t dtus;
     double dts;
-    op_generic_t *gop = NULL;
-    op_generic_t *gop_next;
-    op_status_t status;
+    gop_op_generic_t *gop = NULL;
+    gop_op_generic_t *gop_next;
+    gop_op_status_t status;
 
     //** See if we are using an old seg.  If so we need to trunc it first
     if (slc->trunc == 1) {
-        gop_sync_exec(segment_truncate(slc->dseg, slc->da, 0, slc->timeout));
+        gop_sync_exec(lio_segment_truncate(slc->dseg, slc->da, 0, slc->timeout));
     }
 
     if (ss->total_size == 0) return(gop_success_status);  //** No data to clone
@@ -2342,7 +2342,7 @@ op_status_t seglun_clone_func(void *arg, int id)
         if (bs->row_len != ss->max_row_size) {
             //** grow the destination to the same size as the source
             log_printf(15, "dseg=" XIDT " Growing dest to " XOT "\n", segment_id(slc->dseg), bs->seg_end+1);
-            err = gop_sync_exec(segment_truncate(slc->dseg, slc->da, bs->seg_end+1, slc->timeout));
+            err = gop_sync_exec(lio_segment_truncate(slc->dseg, slc->da, bs->seg_end+1, slc->timeout));
             if (err != OP_STATE_SUCCESS) {
                 log_printf(15, "Error growing destination! dseg=" XIDT "\n", segment_id(slc->dseg));
                 sd->grow_break = 0; //** Undo the break flag
@@ -2365,7 +2365,7 @@ op_status_t seglun_clone_func(void *arg, int id)
     //** Do the final grow if needed
     if (row_size != -1) {
         log_printf(15, "dseg=" XIDT " Growing dest to " XOT "\n", segment_id(slc->dseg), bs->seg_end+1);
-        err = gop_sync_exec(segment_truncate(slc->dseg, slc->da, bs->seg_end+1, slc->timeout));
+        err = gop_sync_exec(lio_segment_truncate(slc->dseg, slc->da, bs->seg_end+1, slc->timeout));
         if (err != OP_STATE_SUCCESS) {
             log_printf(15, "Error growing destination! dseg=" XIDT "\n", segment_id(slc->dseg));
             sd->grow_break = 0; //** Undo the break flag
@@ -2451,7 +2451,7 @@ op_status_t seglun_clone_func(void *arg, int id)
 
     //** Wait for the copying to finish
     opque_waitall(q);
-    status = (opque_tasks_failed(q) == 0) ? gop_success_status : gop_failure_status;
+    status = (gop_opque_tasks_failed(q) == 0) ? gop_success_status : gop_failure_status;
 
     gop_opque_free(q, OP_DESTROY);
     free(max_index);
@@ -2465,19 +2465,19 @@ op_status_t seglun_clone_func(void *arg, int id)
 // seglun_clone - Clones a segment
 //***********************************************************************
 
-op_generic_t *seglun_clone(segment_t *seg, data_attr_t *da, segment_t **clone_seg, int mode, void *attr, int timeout)
+gop_op_generic_t *seglun_clone(lio_segment_t *seg, data_attr_t *da, lio_segment_t **clone_seg, int mode, void *attr, int timeout)
 {
-    segment_t *clone;
-    seglun_priv_t *ss = (seglun_priv_t *)seg->priv;
-    seglun_priv_t *sd;
-    op_generic_t *gop;
+    lio_segment_t *clone;
+    lio_seglun_priv_t *ss = (lio_seglun_priv_t *)seg->priv;
+    lio_seglun_priv_t *sd;
+    gop_op_generic_t *gop;
     seglun_clone_t *slc;
     int use_existing = (*clone_seg != NULL) ? 1 : 0;
 
     //** Make the base segment
     if (use_existing == 0) *clone_seg = segment_lun_create(seg->ess);
     clone = *clone_seg;
-    sd = (seglun_priv_t *)clone->priv;
+    sd = (lio_seglun_priv_t *)clone->priv;
 
     log_printf(15, "use_existing=%d sseg=" XIDT " dseg=" XIDT "\n", use_existing, segment_id(seg), segment_id(clone));
 
@@ -2505,7 +2505,7 @@ op_generic_t *seglun_clone(segment_t *seg, data_attr_t *da, segment_t **clone_se
     //** Now copy the data if needed
     if (mode == CLONE_STRUCTURE) {
         if (use_existing == 1) {
-            gop = segment_truncate(clone, da, 0, timeout);
+            gop = lio_segment_truncate(clone, da, 0, timeout);
         } else {
             gop = gop_dummy(gop_success_status);
         }
@@ -2528,9 +2528,9 @@ op_generic_t *seglun_clone(segment_t *seg, data_attr_t *da, segment_t **clone_se
 // seglun_size - Returns the segment size.
 //***********************************************************************
 
-ex_off_t seglun_size(segment_t *seg)
+ex_off_t seglun_size(lio_segment_t *seg)
 {
-    seglun_priv_t *s = (seglun_priv_t *)seg->priv;
+    lio_seglun_priv_t *s = (lio_seglun_priv_t *)seg->priv;
     ex_off_t size;
 
     segment_lock(seg);
@@ -2544,9 +2544,9 @@ ex_off_t seglun_size(segment_t *seg)
 // seglun_block_size - Returns the segment block size.
 //***********************************************************************
 
-ex_off_t seglun_block_size(segment_t *seg)
+ex_off_t seglun_block_size(lio_segment_t *seg)
 {
-    seglun_priv_t *s = (seglun_priv_t *)seg->priv;
+    lio_seglun_priv_t *s = (lio_seglun_priv_t *)seg->priv;
 
     return(s->stripe_size);
 }
@@ -2555,9 +2555,9 @@ ex_off_t seglun_block_size(segment_t *seg)
 // seglun_signature - Generates the segment signature
 //***********************************************************************
 
-int seglun_signature(segment_t *seg, char *buffer, int *used, int bufsize)
+int seglun_signature(lio_segment_t *seg, char *buffer, int *used, int bufsize)
 {
-    seglun_priv_t *s = (seglun_priv_t *)seg->priv;
+    lio_seglun_priv_t *s = (lio_seglun_priv_t *)seg->priv;
 
     tbx_append_printf(buffer, used, bufsize, "lun(\n");
     tbx_append_printf(buffer, used, bufsize, "    n_devices=%d\n", s->n_devices);
@@ -2572,9 +2572,9 @@ int seglun_signature(segment_t *seg, char *buffer, int *used, int bufsize)
 // seglun_serialize_text_try - Convert the segment to a text based format
 //***********************************************************************
 
-int seglun_serialize_text_try(segment_t *seg, char *segbuf, int bufsize, exnode_exchange_t *cap_exp)
+int seglun_serialize_text_try(lio_segment_t *seg, char *segbuf, int bufsize, lio_exnode_exchange_t *cap_exp)
 {
-    seglun_priv_t *s = (seglun_priv_t *)seg->priv;
+    lio_seglun_priv_t *s = (lio_seglun_priv_t *)seg->priv;
     char *ext, *etext;
     int sused, i, err;
     seglun_row_t *b;
@@ -2633,12 +2633,12 @@ int seglun_serialize_text_try(segment_t *seg, char *segbuf, int bufsize, exnode_
 // seglun_serialize_text -Convert the segment to a text based format
 //***********************************************************************
 
-int seglun_serialize_text(segment_t *seg, exnode_exchange_t *exp)
+int seglun_serialize_text(lio_segment_t *seg, lio_exnode_exchange_t *exp)
 {
     int bufsize=100*1024;
     char staticbuf[bufsize];
     char *segbuf = staticbuf;
-    exnode_exchange_t *cap_exp;
+    lio_exnode_exchange_t *cap_exp;
     int err;
 
     do {
@@ -2669,7 +2669,7 @@ int seglun_serialize_text(segment_t *seg, exnode_exchange_t *exp)
 // seglun_serialize_proto -Convert the segment to a protocol buffer
 //***********************************************************************
 
-int seglun_serialize_proto(segment_t *seg, exnode_exchange_t *exp)
+int seglun_serialize_proto(lio_segment_t *seg, lio_exnode_exchange_t *exp)
 {
     return(-1);
 }
@@ -2678,7 +2678,7 @@ int seglun_serialize_proto(segment_t *seg, exnode_exchange_t *exp)
 // seglun_serialize -Convert the segment to a more portable format
 //***********************************************************************
 
-int seglun_serialize(segment_t *seg, exnode_exchange_t *exp)
+int seglun_serialize(lio_segment_t *seg, lio_exnode_exchange_t *exp)
 {
     if (exp->type == EX_TEXT) {
         return(seglun_serialize_text(seg, exp));
@@ -2693,9 +2693,9 @@ int seglun_serialize(segment_t *seg, exnode_exchange_t *exp)
 // seglun_deserialize_text -Read the text based segment
 //***********************************************************************
 
-int seglun_deserialize_text(segment_t *seg, ex_id_t id, exnode_exchange_t *exp)
+int seglun_deserialize_text(lio_segment_t *seg, ex_id_t id, lio_exnode_exchange_t *exp)
 {
-    seglun_priv_t *s = (seglun_priv_t *)seg->priv;
+    lio_seglun_priv_t *s = (lio_seglun_priv_t *)seg->priv;
     int bufsize=1024;
     char seggrp[bufsize];
     char *text, *etext, *token, *bstate, *key, *value;
@@ -2792,7 +2792,7 @@ int seglun_deserialize_text(segment_t *seg, ex_id_t id, exnode_exchange_t *exp)
 // seglun_deserialize_proto - Read the prot formatted segment
 //***********************************************************************
 
-int seglun_deserialize_proto(segment_t *seg, ex_id_t id, exnode_exchange_t *exp)
+int seglun_deserialize_proto(lio_segment_t *seg, ex_id_t id, lio_exnode_exchange_t *exp)
 {
     return(-1);
 }
@@ -2801,7 +2801,7 @@ int seglun_deserialize_proto(segment_t *seg, ex_id_t id, exnode_exchange_t *exp)
 // seglun_deserialize -Convert from the portable to internal format
 //***********************************************************************
 
-int seglun_deserialize(segment_t *seg, ex_id_t id, exnode_exchange_t *exp)
+int seglun_deserialize(lio_segment_t *seg, ex_id_t id, lio_exnode_exchange_t *exp)
 {
     if (exp->type == EX_TEXT) {
         return(seglun_deserialize_text(seg, id, exp));
@@ -2817,13 +2817,13 @@ int seglun_deserialize(segment_t *seg, ex_id_t id, exnode_exchange_t *exp)
 // seglun_destroy - Destroys a linear segment struct (not the data)
 //***********************************************************************
 
-void seglun_destroy(segment_t *seg)
+void seglun_destroy(lio_segment_t *seg)
 {
     int i, j, n;
     tbx_isl_iter_t it;
     seglun_row_t **b_list;
-    data_block_t *db;
-    seglun_priv_t *s = (seglun_priv_t *)seg->priv;
+    lio_data_block_t *db;
+    lio_seglun_priv_t *s = (lio_seglun_priv_t *)seg->priv;
 
     //** Check if it's still in use
     log_printf(15, "seglun_destroy: seg->id=" XIDT " ref_count=%d\n", segment_id(seg), seg->ref_count);
@@ -2880,15 +2880,15 @@ void seglun_destroy(segment_t *seg)
 // segment_linear_create - Creates a linear segment
 //***********************************************************************
 
-segment_t *segment_lun_create(void *arg)
+lio_segment_t *segment_lun_create(void *arg)
 {
-    service_manager_t *es = (service_manager_t *)arg;
-    seglun_priv_t *s;
-    segment_t *seg;
+    lio_service_manager_t *es = (lio_service_manager_t *)arg;
+    lio_seglun_priv_t *s;
+    lio_segment_t *seg;
 
     //** Make the space
-    tbx_type_malloc_clear(seg, segment_t, 1);
-    tbx_type_malloc_clear(s, seglun_priv_t, 1);
+    tbx_type_malloc_clear(seg, lio_segment_t, 1);
+    tbx_type_malloc_clear(s, lio_seglun_priv_t, 1);
 
     s->isl = tbx_isl_new(&skiplist_compare_ex_off, NULL, NULL, NULL);
     seg->priv = s;
@@ -2947,9 +2947,9 @@ segment_t *segment_lun_create(void *arg)
 // segment_linear_load - Loads a linear segment from ini/ex3
 //***********************************************************************
 
-segment_t *segment_lun_load(void *arg, ex_id_t id, exnode_exchange_t *ex)
+lio_segment_t *segment_lun_load(void *arg, ex_id_t id, lio_exnode_exchange_t *ex)
 {
-    segment_t *seg = segment_lun_create(arg);
+    lio_segment_t *seg = segment_lun_create(arg);
     if (segment_deserialize(seg, id, ex) != 0) {
         segment_destroy(seg);
         seg = NULL;

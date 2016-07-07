@@ -37,15 +37,15 @@ extern "C" {
 #define OS_TYPE_FILE "file"
 
 struct local_object_iter_t {
-    object_service_fn_t *os;
+    lio_object_service_fn_t *os;
     os_object_iter_t  *oit;
 };
 
 int local_next_object(local_object_iter_t *it, char **myfname, int *prefix_len);
-local_object_iter_t *create_local_object_iter(os_regex_table_t *path, os_regex_table_t *object_regex, int object_types, int recurse_depth);
+local_object_iter_t *create_local_object_iter(lio_os_regex_table_t *path, lio_os_regex_table_t *object_regex, int object_types, int recurse_depth);
 void destroy_local_object_iter(local_object_iter_t *it);
 
-object_service_fn_t *object_service_file_create(service_manager_t *ess, tbx_inip_file_t *ifd, char *section);
+lio_object_service_fn_t *object_service_file_create(lio_service_manager_t *ess, tbx_inip_file_t *ifd, char *section);
 int osf_store_val(void *src, int src_size, void **dest, int *v_size);
 
 #define SAFE_MIN_LEN 2
@@ -57,7 +57,7 @@ int osf_store_val(void *src, int src_size, void **dest, int *v_size);
 #define OSF_LOCK_CHKSUM CHKSUM_MD5
 #define OSF_LOCK_CHKSUM_SIZE MD5_DIGEST_LENGTH
 
-struct osfile_priv_t {
+struct lio_osfile_priv_t {
     int base_path_len;
     int file_path_len;
     int hardlink_path_len;
@@ -68,10 +68,10 @@ struct osfile_priv_t {
     char *file_path;
     char *hardlink_path;
     char *host_id;
-    thread_pool_context_t *tpc;
+    gop_thread_pool_context_t *tpc;
     apr_thread_mutex_t **internal_lock;
-    os_authz_t *osaz;
-    authn_t *authn;
+    lio_os_authz_t *osaz;
+    lio_authn_t *authn;
     apr_pool_t *mpool;
     tbx_list_t *fobj_table;
     apr_hash_t *vattr_hash;
@@ -79,15 +79,15 @@ struct osfile_priv_t {
     apr_thread_mutex_t *fobj_lock;
     tbx_pc_t *fobj_pc;
     tbx_pc_t *task_pc;
-    os_virtual_attr_t lock_va;
-    os_virtual_attr_t link_va;
-    os_virtual_attr_t link_count_va;
-    os_virtual_attr_t type_va;
-    os_virtual_attr_t create_va;
-    os_virtual_attr_t attr_link_pva;
-    os_virtual_attr_t attr_type_pva;
-    os_virtual_attr_t timestamp_pva;
-    os_virtual_attr_t append_pva;
+    lio_os_virtual_attr_t lock_va;
+    lio_os_virtual_attr_t link_va;
+    lio_os_virtual_attr_t link_count_va;
+    lio_os_virtual_attr_t type_va;
+    lio_os_virtual_attr_t create_va;
+    lio_os_virtual_attr_t attr_link_pva;
+    lio_os_virtual_attr_t attr_type_pva;
+    lio_os_virtual_attr_t timestamp_pva;
+    lio_os_virtual_attr_t append_pva;
     int max_copy;
 };
 

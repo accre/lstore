@@ -103,7 +103,7 @@ int lio_fopen_flags(char *sflags)
 //  On return the number of attributes stored is returned.
 //***********************************************************************
 
-int lio_encode_error_counts(segment_errors_t *serr, char **key, char **val, char *buf, int *v_size, int mode)
+int lio_encode_error_counts(lio_segment_errors_t *serr, char **key, char **val, char *buf, int *v_size, int mode)
 {
     char *ekeys[] = { "system.hard_errors", "system.soft_errors",  "system.write_errors" };
     int err[3];
@@ -138,10 +138,10 @@ int lio_encode_error_counts(segment_errors_t *serr, char **key, char **val, char
 // lio_get_error_counts - Gets the error counts
 //***********************************************************************
 
-void lio_get_error_counts(lio_config_t *lc, segment_t *seg, segment_errors_t *serr)
+void lio_get_error_counts(lio_config_t *lc, lio_segment_t *seg, lio_segment_errors_t *serr)
 {
-    op_generic_t *gop;
-    op_status_t status;
+    gop_op_generic_t *gop;
+    gop_op_status_t status;
 
     gop = segment_inspect(seg, lc->da, lio_ifd, INSPECT_HARD_ERRORS, 0, NULL, 1);
     gop_waitall(gop);
@@ -168,14 +168,14 @@ void lio_get_error_counts(lio_config_t *lc, segment_t *seg, segment_errors_t *se
 // lio_update_error_count - Updates the error count attributes if needed
 //***********************************************************************
 
-int lio_update_error_counts(lio_config_t *lc, creds_t *creds, char *path, segment_t *seg, int mode)
+int lio_update_error_counts(lio_config_t *lc, lio_creds_t *creds, char *path, lio_segment_t *seg, int mode)
 {
     char *keys[3];
     char *val[3];
     char buf[128];
     int v_size[3];
     int n;
-    segment_errors_t serr;
+    lio_segment_errors_t serr;
 
     lio_get_error_counts(lc, seg, &serr);
     n = lio_encode_error_counts(&serr, keys, val, buf, v_size, mode);
@@ -190,15 +190,15 @@ int lio_update_error_counts(lio_config_t *lc, creds_t *creds, char *path, segmen
 // lio_update_exnode_attrs - Updates the exnode and system.error_* attributes
 //***********************************************************************
 
-int lio_update_exnode_attrs(lio_config_t *lc, creds_t *creds, exnode_t *ex, segment_t *seg, char *fname, segment_errors_t *serr)
+int lio_update_exnode_attrs(lio_config_t *lc, lio_creds_t *creds, lio_exnode_t *ex, lio_segment_t *seg, char *fname, lio_segment_errors_t *serr)
 {
     ex_off_t ssize;
     char buffer[32];
     char *key[6] = {"system.exnode", "system.exnode.size", "os.timestamp.system.modify_data", NULL, NULL, NULL };
     char *val[6];
-    exnode_exchange_t *exp;
+    lio_exnode_exchange_t *exp;
     int n, err, ret, v_size[6];
-    segment_errors_t my_serr;
+    lio_segment_errors_t my_serr;
     char ebuf[128];
 
     ret = 0;
@@ -247,7 +247,7 @@ int lio_update_exnode_attrs(lio_config_t *lc, creds_t *creds, exnode_t *ex, segm
 //    It also detroys the write_table
 //*****************************************************************
 
-void lio_store_and_release_adler32(lio_config_t *lc, creds_t *creds, tbx_list_t *write_table, char *fname)
+void lio_store_and_release_adler32(lio_config_t *lc, lio_creds_t *creds, tbx_list_t *write_table, char *fname)
 {
     tbx_list_iter_t it;
     ex_off_t next, missing, overlap, dn, nbytes, pend;
@@ -297,7 +297,7 @@ void lio_store_and_release_adler32(lio_config_t *lc, creds_t *creds, tbx_list_t 
 //  lio_load_file_handle_attrs - Loads the attributes for a file handle
 //***********************************************************************
 
-int lio_load_file_handle_attrs(lio_config_t *lc, creds_t *creds, char *fname, ex_id_t *inode, char **exnode)
+int lio_load_file_handle_attrs(lio_config_t *lc, lio_creds_t *creds, char *fname, ex_id_t *inode, char **exnode)
 {
     char *myfname;
     char vino[256];
@@ -372,7 +372,7 @@ void _lio_remove_file_handle(lio_config_t *lc, lio_file_handle_t *fh)
 typedef struct {
     char *id;
     lio_config_t *lc;
-    creds_t *creds;
+    lio_creds_t *creds;
     char *path;
     lio_fd_t **fd;
     int max_wait;
@@ -381,7 +381,7 @@ typedef struct {
 
 //*************************************************************************
 
-op_status_t lio_myopen_fn(void *arg, int id)
+gop_op_status_t lio_myopen_fn(void *arg, int id)
 {
     lio_fd_op_t *op = (lio_fd_op_t *)arg;
     lio_config_t *lc = op->lc;
@@ -389,8 +389,8 @@ op_status_t lio_myopen_fn(void *arg, int id)
     lio_fd_t *fd;
     char *exnode;
     ex_id_t ino, vid;
-    exnode_exchange_t *exp;
-    op_status_t status;
+    lio_exnode_exchange_t *exp;
+    gop_op_status_t status;
     int dtype, err;
 
     status = gop_success_status;
@@ -440,7 +440,7 @@ op_status_t lio_myopen_fn(void *arg, int id)
     }
 
     //** Load the exnode and get the default view ID
-    exp = lio_exnode_exchange_text_parse(exnode);
+    exp = lio_lio_exnode_exchange_text_parse(exnode);
     vid = exnode_exchange_get_default_view_id(exp);
     if (vid == 0) {  //** Make sure the vid is valid.
         log_printf(1, "ERROR loading exnode! fname=%s\n", op->path);
@@ -529,7 +529,7 @@ cleanup:  //** We only make it here on a failure
 
 //*************************************************************************
 
-op_generic_t *lio_open_op(lio_config_t *lc, creds_t *creds, char *path, int mode, char *id, lio_fd_t **fd, int max_wait)
+gop_op_generic_t *lio_open_op(lio_config_t *lc, lio_creds_t *creds, char *path, int mode, char *id, lio_fd_t **fd, int max_wait)
 {
     lio_fd_op_t *op;
 
@@ -553,17 +553,17 @@ op_generic_t *lio_open_op(lio_config_t *lc, creds_t *creds, char *path, int mode
 
 //*************************************************************************
 
-op_status_t lio_myclose_fn(void *arg, int id)
+gop_op_status_t lio_myclose_fn(void *arg, int id)
 {
     lio_fd_t *fd = (lio_fd_t *)arg;
     lio_config_t *lc = fd->lc;
     lio_file_handle_t *fh;
-    op_status_t status;
+    gop_op_status_t status;
     char *key[6] = {"system.exnode", "system.exnode.size", "os.timestamp.system.modify_data", NULL, NULL, NULL };
     char *val[6];
     int err, v_size[6];
     char ebuf[128];
-    segment_errors_t serr;
+    lio_segment_errors_t serr;
     ex_off_t final_size;
     apr_time_t now;
     int n;
@@ -590,7 +590,7 @@ op_status_t lio_myclose_fn(void *arg, int id)
     log_printf(1, "FLUSH/TRUNCATE fname=%s final_size=" XOT "\n", fd->path, final_size);
     //** Flush and truncate everything which could take some time
     now = apr_time_now();
-    gop_sync_exec(segment_truncate(fh->seg, lc->da, final_size, lc->timeout));
+    gop_sync_exec(lio_segment_truncate(fh->seg, lc->da, final_size, lc->timeout));
     dt = apr_time_now() - now;
     dt /= APR_USEC_PER_SEC;
     log_printf(1, "TRUNCATE fname=%s dt=%lf\n", fd->path, dt);
@@ -697,7 +697,7 @@ op_status_t lio_myclose_fn(void *arg, int id)
 
 //*************************************************************************
 
-op_generic_t *lio_close_op(lio_fd_t *fd)
+gop_op_generic_t *lio_close_op(lio_fd_t *fd)
 {
     return(gop_tp_op_new(fd->lc->tpc_unlimited, NULL, lio_myclose_fn, (void *)fd, NULL, 1));
 }
@@ -712,7 +712,7 @@ typedef struct {
     int n_iov;
     ex_tbx_iovec_t *iov;
     tbx_tbuf_t *buffer;
-    segment_rw_hints_t *rw_hints;
+    lio_segment_rw_hints_t *rw_hints;
     ex_tbx_iovec_t iov_dummy;
     tbx_tbuf_t buffer_dummy;
     ex_off_t boff;
@@ -720,14 +720,14 @@ typedef struct {
 
 //*************************************************************************
 
-op_status_t lio_read_ex_fn(void *arg, int id)
+gop_op_status_t lio_read_ex_fn(void *arg, int id)
 {
     lio_rw_op_t *op = (lio_rw_op_t *)arg;
     lio_fd_t *fd = op->fd;
     lio_config_t *lc = fd->lc;
     ex_tbx_iovec_t *iov = op->iov;
     tbx_tbuf_t *buffer = op->buffer;
-    op_status_t status;
+    gop_op_status_t status;
     int i, err, size;
     apr_time_t now;
     double dt;
@@ -785,7 +785,7 @@ op_status_t lio_read_ex_fn(void *arg, int id)
 
 //*************************************************************************
 
-op_generic_t *gop_lio_read_ex(lio_fd_t *fd, int n_iov, ex_tbx_iovec_t *ex_iov, tbx_tbuf_t *buffer, ex_off_t boff, segment_rw_hints_t *rw_hints)
+gop_op_generic_t *gop_lio_read_ex(lio_fd_t *fd, int n_iov, ex_tbx_iovec_t *ex_iov, tbx_tbuf_t *buffer, ex_off_t boff, lio_segment_rw_hints_t *rw_hints)
 {
     lio_rw_op_t *op;
 
@@ -803,10 +803,10 @@ op_generic_t *gop_lio_read_ex(lio_fd_t *fd, int n_iov, ex_tbx_iovec_t *ex_iov, t
 
 //*************************************************************************
 
-int lio_read_ex(lio_fd_t *fd, int n_iov, ex_tbx_iovec_t *ex_iov, tbx_tbuf_t *buffer, ex_off_t boff, segment_rw_hints_t *rw_hints)
+int lio_read_ex(lio_fd_t *fd, int n_iov, ex_tbx_iovec_t *ex_iov, tbx_tbuf_t *buffer, ex_off_t boff, lio_segment_rw_hints_t *rw_hints)
 {
     lio_rw_op_t op;
-    op_status_t status;
+    gop_op_status_t status;
 
     op.fd = fd;
     op.n_iov = n_iov;
@@ -821,7 +821,7 @@ int lio_read_ex(lio_fd_t *fd, int n_iov, ex_tbx_iovec_t *ex_iov, tbx_tbuf_t *buf
 
 //*************************************************************************
 
-op_generic_t *gop_lio_readv(lio_fd_t *fd, tbx_iovec_t *iov, int n_iov, ex_off_t size, ex_off_t off, segment_rw_hints_t *rw_hints)
+gop_op_generic_t *gop_lio_readv(lio_fd_t *fd, tbx_iovec_t *iov, int n_iov, ex_off_t size, ex_off_t off, lio_segment_rw_hints_t *rw_hints)
 {
     lio_rw_op_t *op;
     ex_off_t offset;
@@ -842,11 +842,11 @@ op_generic_t *gop_lio_readv(lio_fd_t *fd, tbx_iovec_t *iov, int n_iov, ex_off_t 
 
 //*************************************************************************
 
-int lio_readv(lio_fd_t *fd, tbx_iovec_t *iov, int n_iov, ex_off_t size, ex_off_t off, segment_rw_hints_t *rw_hints)
+int lio_readv(lio_fd_t *fd, tbx_iovec_t *iov, int n_iov, ex_off_t size, ex_off_t off, lio_segment_rw_hints_t *rw_hints)
 {
     lio_rw_op_t op;
     ex_off_t offset;
-    op_status_t status;
+    gop_op_status_t status;
 
     op.fd = fd;
     op.n_iov = 1;
@@ -870,7 +870,7 @@ int lio_readv(lio_fd_t *fd, tbx_iovec_t *iov, int n_iov, ex_off_t size, ex_off_t
 //               < 0 Bad command and the value is the error status to return
 //*****************************************************************
 
-int _gop_lio_read(lio_rw_op_t *op, lio_fd_t *fd, char *buf, ex_off_t size, off_t user_off, segment_rw_hints_t *rw_hints)
+int _gop_lio_read(lio_rw_op_t *op, lio_fd_t *fd, char *buf, ex_off_t size, off_t user_off, lio_segment_rw_hints_t *rw_hints)
 {
     ex_off_t ssize, pend, rsize, rend, dr, off;
 
@@ -925,10 +925,10 @@ int _gop_lio_read(lio_rw_op_t *op, lio_fd_t *fd, char *buf, ex_off_t size, off_t
 
 //*****************************************************************
 
-op_generic_t *gop_lio_read(lio_fd_t *fd, char *buf, ex_off_t size, off_t off, segment_rw_hints_t *rw_hints)
+gop_op_generic_t *gop_lio_read(lio_fd_t *fd, char *buf, ex_off_t size, off_t off, lio_segment_rw_hints_t *rw_hints)
 {
     lio_rw_op_t *op;
-    op_status_t status;
+    gop_op_status_t status;
     int err;
 
     tbx_type_malloc_clear(op, lio_rw_op_t, 1);
@@ -950,10 +950,10 @@ op_generic_t *gop_lio_read(lio_fd_t *fd, char *buf, ex_off_t size, off_t off, se
 
 //*****************************************************************
 
-int lio_read(lio_fd_t *fd, char *buf, ex_off_t size, off_t off, segment_rw_hints_t *rw_hints)
+int lio_read(lio_fd_t *fd, char *buf, ex_off_t size, off_t off, lio_segment_rw_hints_t *rw_hints)
 {
     lio_rw_op_t op;
-    op_status_t status;
+    gop_op_status_t status;
     int err;
 
     err = _gop_lio_read(&op, fd, buf, size, off, rw_hints);
@@ -978,14 +978,14 @@ int lio_read(lio_fd_t *fd, char *buf, ex_off_t size, off_t off, segment_rw_hints
 // lio_write_ex_fn - Does the actual writing of data to the file using a more native interface
 //*****************************************************************
 
-op_status_t lio_write_ex_fn(void *arg, int id)
+gop_op_status_t lio_write_ex_fn(void *arg, int id)
 {
     lio_rw_op_t *op = (lio_rw_op_t *)arg;
     lio_fd_t *fd = op->fd;
     lio_config_t *lc = op->fd->fh->lc;
     ex_tbx_iovec_t *iov = op->iov;
     tbx_tbuf_t *buffer = op->buffer;
-    op_status_t status;
+    gop_op_status_t status;
     int i, err, size;
     apr_time_t now;
     double dt;
@@ -1070,7 +1070,7 @@ op_status_t lio_write_ex_fn(void *arg, int id)
 
 //*************************************************************************
 
-op_generic_t *gop_lio_write_ex_fn(lio_fd_t *fd, int n_iov, ex_tbx_iovec_t *iov, tbx_tbuf_t *buffer, ex_off_t boff, segment_rw_hints_t *rw_hints)
+gop_op_generic_t *gop_lio_write_ex_fn(lio_fd_t *fd, int n_iov, ex_tbx_iovec_t *iov, tbx_tbuf_t *buffer, ex_off_t boff, lio_segment_rw_hints_t *rw_hints)
 {
     lio_rw_op_t *op;
 
@@ -1088,10 +1088,10 @@ op_generic_t *gop_lio_write_ex_fn(lio_fd_t *fd, int n_iov, ex_tbx_iovec_t *iov, 
 
 //*************************************************************************
 
-int lio_write_ex(lio_fd_t *fd, int n_iov, ex_tbx_iovec_t *ex_iov, tbx_tbuf_t *buffer, ex_off_t boff, segment_rw_hints_t *rw_hints)
+int lio_write_ex(lio_fd_t *fd, int n_iov, ex_tbx_iovec_t *ex_iov, tbx_tbuf_t *buffer, ex_off_t boff, lio_segment_rw_hints_t *rw_hints)
 {
     lio_rw_op_t op;
-    op_status_t status;
+    gop_op_status_t status;
 
     op.fd = fd;
     op.n_iov = n_iov;
@@ -1106,7 +1106,7 @@ int lio_write_ex(lio_fd_t *fd, int n_iov, ex_tbx_iovec_t *ex_iov, tbx_tbuf_t *bu
 
 //*************************************************************************
 
-op_generic_t *gop_lio_writev(lio_fd_t *fd, tbx_iovec_t *iov, int n_iov, ex_off_t size, ex_off_t off, segment_rw_hints_t *rw_hints)
+gop_op_generic_t *gop_lio_writev(lio_fd_t *fd, tbx_iovec_t *iov, int n_iov, ex_off_t size, ex_off_t off, lio_segment_rw_hints_t *rw_hints)
 {
     lio_rw_op_t *op;
     tbx_type_malloc_clear(op, lio_rw_op_t, 1);
@@ -1127,11 +1127,11 @@ op_generic_t *gop_lio_writev(lio_fd_t *fd, tbx_iovec_t *iov, int n_iov, ex_off_t
 
 //*************************************************************************
 
-int lio_writev(lio_fd_t *fd, tbx_iovec_t *iov, int n_iov, ex_off_t size, ex_off_t off, segment_rw_hints_t *rw_hints)
+int lio_writev(lio_fd_t *fd, tbx_iovec_t *iov, int n_iov, ex_off_t size, ex_off_t off, lio_segment_rw_hints_t *rw_hints)
 {
     lio_rw_op_t op;
     ex_off_t offset;
-    op_status_t status;
+    gop_op_status_t status;
 
     op.fd = fd;
     op.n_iov = 1;
@@ -1149,7 +1149,7 @@ int lio_writev(lio_fd_t *fd, tbx_iovec_t *iov, int n_iov, ex_off_t size, ex_off_
 
 //*************************************************************************
 
-op_generic_t *gop_lio_write(lio_fd_t *fd, char *buf, ex_off_t size, off_t off, segment_rw_hints_t *rw_hints)
+gop_op_generic_t *gop_lio_write(lio_fd_t *fd, char *buf, ex_off_t size, off_t off, lio_segment_rw_hints_t *rw_hints)
 {
     lio_rw_op_t *op;
     ex_off_t offset;
@@ -1171,11 +1171,11 @@ op_generic_t *gop_lio_write(lio_fd_t *fd, char *buf, ex_off_t size, off_t off, s
 
 //*************************************************************************
 
-int lio_write(lio_fd_t *fd, char *buf, ex_off_t size, off_t off, segment_rw_hints_t *rw_hints)
+int lio_write(lio_fd_t *fd, char *buf, ex_off_t size, off_t off, lio_segment_rw_hints_t *rw_hints)
 {
     ex_off_t offset;
     lio_rw_op_t op;
-    op_status_t status;
+    gop_op_status_t status;
 
     op.fd = fd;
     op.n_iov = 1;
@@ -1203,17 +1203,17 @@ typedef struct {
     ex_off_t bufsize;
     char *buffer;
     lio_copy_hint_t hints;
-    segment_rw_hints_t *rw_hints;
+    lio_segment_rw_hints_t *rw_hints;
 } lio_cp_fn_t;
 
 //***********************************************************************
 // lio_cp_local2lio - Copies a local file to LIO
 //***********************************************************************
 
-op_status_t lio_cp_local2lio_fn(void *arg, int id)
+gop_op_status_t lio_cp_local2lio_fn(void *arg, int id)
 {
     lio_cp_fn_t *op = (lio_cp_fn_t *)arg;
-    op_status_t status;
+    gop_op_status_t status;
     char *buffer;
     ex_off_t bufsize;
     lio_file_handle_t *lfh = op->dlfd->fh;
@@ -1237,7 +1237,7 @@ op_status_t lio_cp_local2lio_fn(void *arg, int id)
 
 //***********************************************************************
 
-op_generic_t *lio_cp_local2lio_op(FILE *sfd, lio_fd_t *dfd, ex_off_t bufsize, char *buffer, segment_rw_hints_t *rw_hints)
+gop_op_generic_t *lio_cp_local2lio_op(FILE *sfd, lio_fd_t *dfd, ex_off_t bufsize, char *buffer, lio_segment_rw_hints_t *rw_hints)
 {
     lio_cp_fn_t *op;
 
@@ -1257,10 +1257,10 @@ op_generic_t *lio_cp_local2lio_op(FILE *sfd, lio_fd_t *dfd, ex_off_t bufsize, ch
 // lio_cp_lio2local - Copies a LIO file to a local file
 //***********************************************************************
 
-op_status_t lio_cp_lio2local_fn(void *arg, int id)
+gop_op_status_t lio_cp_lio2local_fn(void *arg, int id)
 {
     lio_cp_fn_t *op = (lio_cp_fn_t *)arg;
-    op_status_t status;
+    gop_op_status_t status;
     char *buffer;
     ex_off_t bufsize;
     lio_file_handle_t *lfh = op->slfd->fh;
@@ -1283,7 +1283,7 @@ op_status_t lio_cp_lio2local_fn(void *arg, int id)
 
 //***********************************************************************
 
-op_generic_t *lio_cp_lio2local_op(lio_fd_t *sfd, FILE *dfd, ex_off_t bufsize, char *buffer, segment_rw_hints_t *rw_hints)
+gop_op_generic_t *lio_cp_lio2local_op(lio_fd_t *sfd, FILE *dfd, ex_off_t bufsize, char *buffer, lio_segment_rw_hints_t *rw_hints)
 {
     lio_cp_fn_t *op;
 
@@ -1303,10 +1303,10 @@ op_generic_t *lio_cp_lio2local_op(lio_fd_t *sfd, FILE *dfd, ex_off_t bufsize, ch
 // lio_cp_lio2lio - Copies a LIO file to another LIO file
 //***********************************************************************
 
-op_status_t lio_cp_lio2lio_fn(void *arg, int id)
+gop_op_status_t lio_cp_lio2lio_fn(void *arg, int id)
 {
     lio_cp_fn_t *op = (lio_cp_fn_t *)arg;
-    op_status_t status;
+    gop_op_status_t status;
     lio_file_handle_t *sfh = op->slfd->fh;
     lio_file_handle_t *dfh = op->dlfd->fh;
     char *buffer;
@@ -1344,7 +1344,7 @@ op_status_t lio_cp_lio2lio_fn(void *arg, int id)
 
 //***********************************************************************
 
-op_generic_t *gop_lio_cp_lio2lio(lio_fd_t *sfd, lio_fd_t *dfd, ex_off_t bufsize, char *buffer, int hints, segment_rw_hints_t *rw_hints)
+gop_op_generic_t *gop_lio_cp_lio2lio(lio_fd_t *sfd, lio_fd_t *dfd, ex_off_t bufsize, char *buffer, int hints, lio_segment_rw_hints_t *rw_hints)
 {
     lio_cp_fn_t *op;
 
@@ -1364,10 +1364,10 @@ op_generic_t *gop_lio_cp_lio2lio(lio_fd_t *sfd, lio_fd_t *dfd, ex_off_t bufsize,
 // lio_file_copy_op - Actual cp function.  Copies a regex to a dest *dir*
 //*************************************************************************
 
-op_status_t lio_file_copy_op(void *arg, int id)
+gop_op_status_t lio_file_copy_op(void *arg, int id)
 {
     lio_cp_file_t *cp = (lio_cp_file_t *)arg;
-    op_status_t status, close_status;
+    gop_op_status_t status, close_status;
     FILE *sffd, *dffd;
     lio_fd_t *slfd, *dlfd;
     char *buffer;
@@ -1490,10 +1490,10 @@ int lio_cp_create_dir(tbx_list_t *table, lio_path_tuple_t tuple)
 // lio_path_copy_op - Copies a regex to a dest *dir*
 //*************************************************************************
 
-op_status_t lio_path_copy_op(void *arg, int id)
+gop_op_status_t lio_path_copy_op(void *arg, int id)
 {
     lio_cp_path_t *cp = (lio_cp_path_t *)arg;
-    unified_object_iter_t *it;
+    lio_unified_object_iter_t *it;
     lio_path_tuple_t create_tuple;
     int ftype, prefix_len, slot, count, nerr;
     char *dstate;
@@ -1501,9 +1501,9 @@ op_status_t lio_path_copy_op(void *arg, int id)
     char *fname, *dir, *file;
     tbx_list_t *dir_table;
     lio_cp_file_t *cplist, *c;
-    op_generic_t *gop;
-    opque_t *q;
-    op_status_t status;
+    gop_op_generic_t *gop;
+    gop_opque_t *q;
+    gop_op_status_t status;
 
     log_printf(15, "START src=%s dest=%s max_spawn=%d bufsize=" XOT "\n", cp->src_tuple.path, cp->dest_tuple.path, cp->max_spawn, cp->bufsize);
     tbx_log_flush();
@@ -1683,14 +1683,14 @@ ex_off_t lio_size(lio_fd_t *fd)
 // lio_truncate - Truncates an open LIO file
 //***********************************************************************
 
-op_status_t lio_truncate_fn(void *arg, int id)
+gop_op_status_t lio_truncate_fn(void *arg, int id)
 {
     lio_cp_fn_t *op = (lio_cp_fn_t *)arg;
-    op_status_t status;
+    gop_op_status_t status;
     lio_file_handle_t *fh = op->slfd->fh;
 
     if (op->bufsize != segment_size(fh->seg)) {
-        status = gop_sync_exec_status(segment_truncate(fh->seg, fh->lc->da, op->bufsize, fh->lc->timeout));
+        status = gop_sync_exec_status(lio_segment_truncate(fh->seg, fh->lc->da, op->bufsize, fh->lc->timeout));
         segment_lock(fh->seg);
         fh->modified = 1;
         op->slfd->curr_offset = op->bufsize;
@@ -1708,7 +1708,7 @@ op_status_t lio_truncate_fn(void *arg, int id)
 
 //***********************************************************************
 
-op_generic_t *gop_lio_truncate(lio_fd_t *fd, ex_off_t newsize)
+gop_op_generic_t *gop_lio_truncate(lio_fd_t *fd, ex_off_t newsize)
 {
     lio_cp_fn_t *op;
 

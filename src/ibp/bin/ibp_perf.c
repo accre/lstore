@@ -91,8 +91,8 @@ void init_buffer(char *buffer, char c, int size)
 ibp_capset_t *create_proxy_allocs(int nallocs, ibp_capset_t *base_caps, int n_base)
 {
     int i, err;
-    opque_t *q;
-    op_generic_t *op;
+    gop_opque_t *q;
+    gop_op_generic_t *op;
     ibp_capset_t *bcap;
 
     ibp_capset_t *caps = (ibp_capset_t *)malloc(sizeof(ibp_capset_t)*nallocs);
@@ -108,7 +108,7 @@ ibp_capset_t *create_proxy_allocs(int nallocs, ibp_capset_t *base_caps, int n_ba
     ibp_io_start(q);
     err = ibp_io_waitall(q);
     if (err != 0) {
-        printf("create_proxy_allocs: At least 1 error occured! * ibp_errno=%d * nfailed=%d\n", err, opque_tasks_failed(q));
+        printf("create_proxy_allocs: At least 1 error occured! * ibp_errno=%d * nfailed=%d\n", err, gop_opque_tasks_failed(q));
     }
     gop_opque_free(q, OP_DESTROY);
 
@@ -122,8 +122,8 @@ ibp_capset_t *create_proxy_allocs(int nallocs, ibp_capset_t *base_caps, int n_ba
 void proxy_remove_allocs(ibp_capset_t *caps_list, ibp_capset_t *mcaps_list, int nallocs, int mallocs)
 {
     int i, j, err;
-    opque_t *q;
-    op_generic_t *op;
+    gop_opque_t *q;
+    gop_op_generic_t *op;
 
     q = gop_opque_new();
 
@@ -137,7 +137,7 @@ void proxy_remove_allocs(ibp_capset_t *caps_list, ibp_capset_t *mcaps_list, int 
     ibp_io_start(q);
     err = ibp_io_waitall(q);
     if (err != 0) {
-        printf("proxy_remove_allocs: At least 1 error occured! * ibp_errno=%d * nfailed=%d\n", err, opque_tasks_failed(q));
+        printf("proxy_remove_allocs: At least 1 error occured! * ibp_errno=%d * nfailed=%d\n", err, gop_opque_tasks_failed(q));
     }
     gop_opque_free(q, OP_DESTROY);
 
@@ -162,8 +162,8 @@ ibp_capset_t *create_allocs(int nallocs, int asize)
     int i, err;
     ibp_attributes_t attr;
     ibp_depot_t *depot;
-    opque_t *q;
-    op_generic_t *op;
+    gop_opque_t *q;
+    gop_op_generic_t *op;
 
     ibp_capset_t *caps = (ibp_capset_t *)malloc(sizeof(ibp_capset_t)*nallocs);
 
@@ -179,7 +179,7 @@ ibp_capset_t *create_allocs(int nallocs, int asize)
     ibp_io_start(q);
     err = ibp_io_waitall(q);
     if (err != 0) {
-        printf("create_allocs: At least 1 error occured! * ibp_errno=%d * nfailed=%d\n", err, opque_tasks_failed(q));
+        printf("create_allocs: At least 1 error occured! * ibp_errno=%d * nfailed=%d\n", err, gop_opque_tasks_failed(q));
         abort();
     }
     gop_opque_free(q, OP_DESTROY);
@@ -194,8 +194,8 @@ ibp_capset_t *create_allocs(int nallocs, int asize)
 void remove_allocs(ibp_capset_t *caps_list, int nallocs)
 {
     int i, err;
-    opque_t *q;
-    op_generic_t *op;
+    gop_opque_t *q;
+    gop_op_generic_t *op;
 
     q = gop_opque_new();
 
@@ -207,7 +207,7 @@ void remove_allocs(ibp_capset_t *caps_list, int nallocs)
     ibp_io_start(q);
     err = ibp_io_waitall(q);
     if (err != 0) {
-        printf("remove_allocs: At least 1 error occured! * ibp_errno=%d * nfailed=%d\n", err, opque_tasks_failed(q));
+        printf("remove_allocs: At least 1 error occured! * ibp_errno=%d * nfailed=%d\n", err, gop_opque_tasks_failed(q));
     }
     gop_opque_free(q, OP_DESTROY);
 
@@ -256,8 +256,8 @@ void validate_allocs(ibp_capset_t *caps_list, int nallocs)
 {
     int i, err;
     int nalloc_bad, nblocks_bad;
-    opque_t *q;
-    op_generic_t *op;
+    gop_opque_t *q;
+    gop_op_generic_t *op;
     int *bad_blocks = (int *) malloc(sizeof(int)*nallocs);
     int correct_errors = 0;
 
@@ -273,7 +273,7 @@ void validate_allocs(ibp_capset_t *caps_list, int nallocs)
     ibp_io_start(q);
     err = ibp_io_waitall(q);
     if (err != 0) {
-        printf("validate_allocs: At least 1 error occured! * ibp_errno=%d * nfailed=%d\n", err, opque_tasks_failed(q));
+        printf("validate_allocs: At least 1 error occured! * ibp_errno=%d * nfailed=%d\n", err, gop_opque_tasks_failed(q));
         nalloc_bad = 0;
         nblocks_bad = 0;
         for (i=0; i<nallocs; i++) {
@@ -300,8 +300,8 @@ void validate_allocs(ibp_capset_t *caps_list, int nallocs)
 void write_allocs(ibp_capset_t *caps, int n, int asize, int block_size)
 {
     int i, j, nblocks, rem, len, err, slot;
-    opque_t *q;
-    op_generic_t *op;
+    gop_opque_t *q;
+    gop_op_generic_t *op;
     tbx_tbuf_t *buf;
 
     char *buffer = (char *)malloc(block_size);
@@ -332,7 +332,7 @@ void write_allocs(ibp_capset_t *caps, int n, int asize, int block_size)
     ibp_io_start(q);
     err = ibp_io_waitall(q);
     if (err != 0) {
-        printf("write_allocs: At least 1 error occured! * ibp_errno=%d * nfailed=%d\n", err, opque_tasks_failed(q));
+        printf("write_allocs: At least 1 error occured! * ibp_errno=%d * nfailed=%d\n", err, gop_opque_tasks_failed(q));
     }
     gop_opque_free(q, OP_DESTROY);
 
@@ -347,8 +347,8 @@ void write_allocs(ibp_capset_t *caps, int n, int asize, int block_size)
 void read_allocs(ibp_capset_t *caps, int n, int asize, int block_size)
 {
     int i, j, nblocks, rem, len, err, slot;
-    opque_t *q;
-    op_generic_t *op;
+    gop_opque_t *q;
+    gop_op_generic_t *op;
     tbx_tbuf_t *buf;
 
     char *buffer = (char *)malloc(block_size);
@@ -379,7 +379,7 @@ void read_allocs(ibp_capset_t *caps, int n, int asize, int block_size)
     ibp_io_start(q);
     err = ibp_io_waitall(q);
     if (err != 0) {
-        printf("read_allocs: At least 1 error occured! * ibp_errno=%d * nfailed=%d\n", err, opque_tasks_failed(q));
+        printf("read_allocs: At least 1 error occured! * ibp_errno=%d * nfailed=%d\n", err, gop_opque_tasks_failed(q));
     }
     gop_opque_free(q, OP_DESTROY);
 
@@ -395,8 +395,8 @@ void random_allocs(ibp_capset_t *caps, int n, int asize, int block_size, double 
 {
     int i, err, bslot;
     int j, nblocks, rem, len;
-    opque_t *q;
-    op_generic_t *op;
+    gop_opque_t *q;
+    gop_op_generic_t *op;
     double rnd;
     tbx_tbuf_t *buf;
 
@@ -439,7 +439,7 @@ void random_allocs(ibp_capset_t *caps, int n, int asize, int block_size, double 
     ibp_io_start(q);
     err = ibp_io_waitall(q);
     if (err != 0) {
-        printf("random_allocs: At least 1 error occured! * ibp_errno=%d * nfailed=%d\n", err, opque_tasks_failed(q));
+        printf("random_allocs: At least 1 error occured! * ibp_errno=%d * nfailed=%d\n", err, gop_opque_tasks_failed(q));
     }
     gop_opque_free(q, OP_DESTROY);
 
@@ -455,8 +455,8 @@ void random_allocs(ibp_capset_t *caps, int n, int asize, int block_size, double 
 double small_write_allocs(ibp_capset_t *caps, int n, int asize, int small_count, int min_size, int max_size)
 {
     int i, io_size, offset, slot, err;
-    opque_t *q;
-    op_generic_t *op;
+    gop_opque_t *q;
+    gop_op_generic_t *op;
     double rnd, lmin, lmax;
     double nbytes;
     tbx_tbuf_t *buf;
@@ -498,7 +498,7 @@ double small_write_allocs(ibp_capset_t *caps, int n, int asize, int small_count,
     ibp_io_start(q);
     err = ibp_io_waitall(q);
     if (err != 0) {
-        printf("small_write_allocs: At least 1 error occured! * ibp_errno=%d * nfailed=%d\n", err, opque_tasks_failed(q));
+        printf("small_write_allocs: At least 1 error occured! * ibp_errno=%d * nfailed=%d\n", err, gop_opque_tasks_failed(q));
     }
     gop_opque_free(q, OP_DESTROY);
 
@@ -515,8 +515,8 @@ double small_write_allocs(ibp_capset_t *caps, int n, int asize, int small_count,
 double small_read_allocs(ibp_capset_t *caps, int n, int asize, int small_count, int min_size, int max_size)
 {
     int i, io_size, offset, slot, err;
-    opque_t *q;
-    op_generic_t *op;
+    gop_opque_t *q;
+    gop_op_generic_t *op;
     double rnd, lmin, lmax;
     double nbytes;
     tbx_tbuf_t *buf;
@@ -559,7 +559,7 @@ double small_read_allocs(ibp_capset_t *caps, int n, int asize, int small_count, 
     ibp_io_start(q);
     err = ibp_io_waitall(q);
     if (err != 0) {
-        printf("small_read_allocs: At least 1 error occured! * ibp_errno=%d * nfailed=%d\n", err, opque_tasks_failed(q));
+        printf("small_read_allocs: At least 1 error occured! * ibp_errno=%d * nfailed=%d\n", err, gop_opque_tasks_failed(q));
     }
     gop_opque_free(q, OP_DESTROY);
 
@@ -576,8 +576,8 @@ double small_read_allocs(ibp_capset_t *caps, int n, int asize, int small_count, 
 double small_random_allocs(ibp_capset_t *caps, int n, int asize, double readfrac, int small_count, int min_size, int max_size)
 {
     int i, io_size, offset, slot, err;
-    opque_t *q;
-    op_generic_t *op;
+    gop_opque_t *q;
+    gop_op_generic_t *op;
     double rnd, lmin, lmax;
     double nbytes;
     tbx_tbuf_t *buf;
@@ -630,7 +630,7 @@ double small_random_allocs(ibp_capset_t *caps, int n, int asize, double readfrac
     ibp_io_start(q);
     err = ibp_io_waitall(q);
     if (err != 0) {
-        printf("small_random_allocs: At least 1 error occured! * ibp_errno=%d * nfailed=%d\n", err, opque_tasks_failed(q));
+        printf("small_random_allocs: At least 1 error occured! * ibp_errno=%d * nfailed=%d\n", err, gop_opque_tasks_failed(q));
     }
     gop_opque_free(q, OP_DESTROY);
 

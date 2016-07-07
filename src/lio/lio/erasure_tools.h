@@ -28,7 +28,7 @@ extern "C" {
 #endif
 
 // Typedefs
-typedef struct erasure_plan_t erasure_plan_t;
+typedef struct lio_erasure_plan_t lio_erasure_plan_t;
 
 // Functions
 

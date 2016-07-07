@@ -56,10 +56,10 @@
 typedef struct {
     uint64_t id;
     int mode;
-    resource_service_fn_t *rs;
+    lio_resource_service_fn_t *rs;
 }  rsrc_gop_rid_config_t;
 
-op_generic_t *rsrc_update_config_op(resource_service_fn_t *rs, int mode, int timeout);
+gop_op_generic_t *rsrc_update_config_op(lio_resource_service_fn_t *rs, int mode, int timeout);
 
 
 //***********************************************************************
@@ -68,9 +68,9 @@ op_generic_t *rsrc_update_config_op(resource_service_fn_t *rs, int mode, int tim
 //    has the latest usage numbers.
 //***********************************************************************
 
-char *rsrc_get_rid_config(resource_service_fn_t *rs)
+char *rsrc_get_rid_config(lio_resource_service_fn_t *rs)
 {
-    rs_remote_client_priv_t *rsrc = (rs_remote_client_priv_t *)rs->priv;
+    lio_rs_remote_client_priv_t *rsrc = (lio_rs_remote_client_priv_t *)rs->priv;
 
     return(rs_get_rid_config(rsrc->rs_child));
 }
@@ -79,9 +79,9 @@ char *rsrc_get_rid_config(resource_service_fn_t *rs)
 // rsrc_get_rid_value - Gets the RID value from
 //***********************************************************************
 
-char *rsrc_get_rid_value(resource_service_fn_t *rs, char *rid_key, char *key)
+char *rsrc_get_rid_value(lio_resource_service_fn_t *rs, char *rid_key, char *key)
 {
-    rs_remote_client_priv_t *rsrc = (rs_remote_client_priv_t *)rs->priv;
+    lio_rs_remote_client_priv_t *rsrc = (lio_rs_remote_client_priv_t *)rs->priv;
 
     return(rs_get_rid_value(rsrc->rs_child, rid_key, key));
 }
@@ -90,9 +90,9 @@ char *rsrc_get_rid_value(resource_service_fn_t *rs, char *rid_key, char *key)
 // rsrc_mapping_register - Registration for mapping updates
 //***********************************************************************
 
-void rsrc_mapping_register(resource_service_fn_t *rs, rs_mapping_notify_t *map_version)
+void rsrc_mapping_register(lio_resource_service_fn_t *rs, lio_rs_mapping_notify_t *map_version)
 {
-    rs_remote_client_priv_t *rsrc = (rs_remote_client_priv_t *)rs->priv;
+    lio_rs_remote_client_priv_t *rsrc = (lio_rs_remote_client_priv_t *)rs->priv;
 
     rs_register_mapping_updates(rsrc->rs_child, map_version);
 
@@ -103,9 +103,9 @@ void rsrc_mapping_register(resource_service_fn_t *rs, rs_mapping_notify_t *map_v
 // rsrc_mapping_unregister - UnRegisters for mapping updates
 //***********************************************************************
 
-void rsrc_mapping_unregister(resource_service_fn_t *rs, rs_mapping_notify_t *map_version)
+void rsrc_mapping_unregister(lio_resource_service_fn_t *rs, lio_rs_mapping_notify_t *map_version)
 {
-    rs_remote_client_priv_t *rsrc = (rs_remote_client_priv_t *)rs->priv;
+    lio_rs_remote_client_priv_t *rsrc = (lio_rs_remote_client_priv_t *)rs->priv;
 
     rs_unregister_mapping_updates(rsrc->rs_child, map_version);
 
@@ -116,9 +116,9 @@ void rsrc_mapping_unregister(resource_service_fn_t *rs, rs_mapping_notify_t *map
 // rsrc_translate_cap_set - Translates the cap set
 //***********************************************************************
 
-void rsrc_translate_cap_set(resource_service_fn_t *rs, char *rid_key, data_cap_set_t *cs)
+void rsrc_translate_cap_set(lio_resource_service_fn_t *rs, char *rid_key, data_cap_set_t *cs)
 {
-    rs_remote_client_priv_t *rsrc = (rs_remote_client_priv_t *)rs->priv;
+    lio_rs_remote_client_priv_t *rsrc = (lio_rs_remote_client_priv_t *)rs->priv;
 
     rs_translate_cap_set(rsrc->rs_child, rid_key, cs);
 
@@ -130,9 +130,9 @@ void rsrc_translate_cap_set(resource_service_fn_t *rs, char *rid_key, data_cap_s
 //    provided
 //***********************************************************************
 
-char *rsrc_simple_get_rid_value(resource_service_fn_t *rs, char *rid_key, char *key)
+char *rsrc_simple_get_rid_value(lio_resource_service_fn_t *rs, char *rid_key, char *key)
 {
-    rs_remote_client_priv_t *rsrc = (rs_remote_client_priv_t *)rs->priv;
+    lio_rs_remote_client_priv_t *rsrc = (lio_rs_remote_client_priv_t *)rs->priv;
 
     return(rs_get_rid_value(rsrc->rs_child, rid_key, key));
 }
@@ -141,9 +141,9 @@ char *rsrc_simple_get_rid_value(resource_service_fn_t *rs, char *rid_key, char *
 // rsrc_data_request - Processes a RS data request
 //***********************************************************************
 
-op_generic_t *rsrc_data_request(resource_service_fn_t *rs, data_attr_t *da, rs_query_t *rsq, data_cap_set_t **caps, rs_request_t *req, int req_size, rs_hints_t *hints_list, int fixed_size, int n_rid, int ignore_fixed_err, int timeout)
+gop_op_generic_t *rsrc_data_request(lio_resource_service_fn_t *rs, data_attr_t *da, rs_query_t *rsq, data_cap_set_t **caps, lio_rs_request_t *req, int req_size, lio_rs_hints_t *hints_list, int fixed_size, int n_rid, int ignore_fixed_err, int timeout)
 {
-    rs_remote_client_priv_t *rsrc = (rs_remote_client_priv_t *)rs->priv;
+    lio_rs_remote_client_priv_t *rsrc = (lio_rs_remote_client_priv_t *)rs->priv;
 
     return(rs_data_request(rsrc->rs_child, da, rsq, caps, req, req_size, hints_list, fixed_size, n_rid, ignore_fixed_err, timeout));
 }
@@ -154,18 +154,18 @@ op_generic_t *rsrc_data_request(resource_service_fn_t *rs, data_attr_t *da, rs_q
 //   mode = 1  -- Wait for changes and update  config != NULL
 //***********************************************************************
 
-op_status_t rsrc_response_get_config(void *task_arg, int tid)
+gop_op_status_t rsrc_response_get_config(void *task_arg, int tid)
 {
-    mq_task_t *task = (mq_task_t *)task_arg;
+    gop_mq_task_t *task = (gop_mq_task_t *)task_arg;
     rsrc_gop_rid_config_t *arg;
-    rs_remote_client_priv_t *rsrc;
-    mq_frame_t *f;
+    lio_rs_remote_client_priv_t *rsrc;
+    gop_mq_frame_t *f;
     mq_msg_t *msg;
     char dt[128];
     char *data, *config;
     uint64_t *id;
     int n, n_config, err;
-    op_status_t status;
+    gop_op_status_t status;
     FILE *fd;
     char *fname_tmp;
 
@@ -173,7 +173,7 @@ op_status_t rsrc_response_get_config(void *task_arg, int tid)
 
     status = gop_success_status;
     arg = gop_get_private(task->gop);
-    rsrc = (rs_remote_client_priv_t *)arg->rs->priv;
+    rsrc = (lio_rs_remote_client_priv_t *)arg->rs->priv;
 
     //** Parse the response
     msg = task->response;
@@ -279,13 +279,13 @@ fail:
 // rsrc_update_config_op - Generates an update/get RID config
 //***********************************************************************
 
-op_generic_t *rsrc_update_config_op(resource_service_fn_t *rs, int mode, int timeout)
+gop_op_generic_t *rsrc_update_config_op(lio_resource_service_fn_t *rs, int mode, int timeout)
 {
-    rs_remote_client_priv_t *rsrc = (rs_remote_client_priv_t *)rs->priv;
+    lio_rs_remote_client_priv_t *rsrc = (lio_rs_remote_client_priv_t *)rs->priv;
     mq_msg_t *msg;
     char dt[128];
     rsrc_gop_rid_config_t *arg;
-    op_generic_t *gop;
+    gop_op_generic_t *gop;
 
     tbx_type_malloc_clear(arg, rsrc_gop_rid_config_t, 1);
 
@@ -329,10 +329,10 @@ op_generic_t *rsrc_update_config_op(resource_service_fn_t *rs, int mode, int tim
 //     NOTE:  This does not do any locking on the current RS
 //***********************************************************************
 
-int _rsrc_update_config(resource_service_fn_t *rs)
+int _rsrc_update_config(lio_resource_service_fn_t *rs)
 {
     int err;
-    op_generic_t *gop;
+    gop_op_generic_t *gop;
 
     //** Generate the command
     gop = rsrc_update_config_op(rs, 0, 60);
@@ -351,11 +351,11 @@ int _rsrc_update_config(resource_service_fn_t *rs)
 // _rsrc_update_abort - Aborts an update command
 //***********************************************************************
 
-void _rsrc_update_abort(resource_service_fn_t *rs)
+void _rsrc_update_abort(lio_resource_service_fn_t *rs)
 {
-    rs_remote_client_priv_t *rsrc = (rs_remote_client_priv_t *)rs->priv;
+    lio_rs_remote_client_priv_t *rsrc = (lio_rs_remote_client_priv_t *)rs->priv;
     mq_msg_t *msg;
-    op_generic_t *gop;
+    gop_op_generic_t *gop;
     uint64_t update_id;
     char dt[128];
 
@@ -389,10 +389,10 @@ void _rsrc_update_abort(resource_service_fn_t *rs)
 
 void *rsrc_check_thread(apr_thread_t *th, void *data)
 {
-    resource_service_fn_t *rs = (resource_service_fn_t *)data;
-    rs_remote_client_priv_t *rsrc = (rs_remote_client_priv_t *)rs->priv;
-    op_generic_t *gop, *g;
-    op_status_t status;
+    lio_resource_service_fn_t *rs = (lio_resource_service_fn_t *)data;
+    lio_rs_remote_client_priv_t *rsrc = (lio_rs_remote_client_priv_t *)rs->priv;
+    gop_op_generic_t *gop, *g;
+    gop_op_status_t status;
     int n;
 
     gop = NULL;
@@ -422,7 +422,7 @@ void *rsrc_check_thread(apr_thread_t *th, void *data)
     //** Still have a pending GOP so abort it
     if (gop != NULL) {
         _rsrc_update_abort(rs);
-        op_generic_t *g = gop_waitany_timed(gop, 10);
+        gop_op_generic_t *g = gop_waitany_timed(gop, 10);
         if (g) {
             gop_free(gop, OP_DESTROY);
         } else {
@@ -439,9 +439,9 @@ void *rsrc_check_thread(apr_thread_t *th, void *data)
 // rs_remote_client_destroy
 //***********************************************************************
 
-void rs_remote_client_destroy(resource_service_fn_t *rs)
+void rs_remote_client_destroy(lio_resource_service_fn_t *rs)
 {
-    rs_remote_client_priv_t *rsrc = (rs_remote_client_priv_t *)rs->priv;
+    lio_rs_remote_client_priv_t *rsrc = (lio_rs_remote_client_priv_t *)rs->priv;
     apr_status_t dummy;
 
     //** Shutdown the check thread
@@ -473,18 +473,18 @@ void rs_remote_client_destroy(resource_service_fn_t *rs)
 //  rs_remote_client_create - Creates a remote client RS
 //***********************************************************************
 
-resource_service_fn_t *rs_remote_client_create(void *arg, tbx_inip_file_t *fd, char *section)
+lio_resource_service_fn_t *rs_remote_client_create(void *arg, tbx_inip_file_t *fd, char *section)
 {
-    service_manager_t *ess = (service_manager_t *)arg;
-    resource_service_fn_t *rs;
-    rs_remote_client_priv_t *rsrc;
+    lio_service_manager_t *ess = (lio_service_manager_t *)arg;
+    lio_resource_service_fn_t *rs;
+    lio_rs_remote_client_priv_t *rsrc;
     rs_create_t *rs_create;
     char *stype, *ctype;
 
     if (section == NULL) section = "rs_remote_client";
 
-    tbx_type_malloc_clear(rs, resource_service_fn_t, 1);
-    tbx_type_malloc_clear(rsrc, rs_remote_client_priv_t, 1);
+    tbx_type_malloc_clear(rs, lio_resource_service_fn_t, 1);
+    tbx_type_malloc_clear(rsrc, lio_rs_remote_client_priv_t, 1);
     rs->priv = (void *)rsrc;
 
     //** Make the locks and cond variables

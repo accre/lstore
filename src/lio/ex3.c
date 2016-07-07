@@ -45,8 +45,8 @@
 #include "service_manager.h"
 
 typedef struct {
-    exnode_t *src_ex;
-    exnode_t *dest_ex;
+    lio_exnode_t *src_ex;
+    lio_exnode_t *dest_ex;
     data_attr_t *da;
     void *arg;
     int mode;
@@ -79,11 +79,11 @@ void ex_iovec_destroy(ex_tbx_iovec_t *iov)
 //  NOTE: The default segment should also be placed in the view list!
 //*************************************************************************
 
-segment_t *lio_exnode_default_get(exnode_t *ex)
+lio_segment_t *lio_exnode_default_get(lio_exnode_t *ex)
 {
     return(ex->default_seg);
 }
-void exnode_set_default(exnode_t *ex, segment_t *seg)
+void exnode_set_default(lio_exnode_t *ex, lio_segment_t *seg)
 {
     ex->default_seg = seg;
 }
@@ -92,7 +92,7 @@ void exnode_set_default(exnode_t *ex, segment_t *seg)
 //  exnode_get_header - Returns a pointer to the exnode header
 //*************************************************************************
 
-ex_header_t *exnode_get_header(exnode_t *ex)
+lio_ex_header_t *exnode_get_header(lio_exnode_t *ex)
 {
     return(&(ex->header));
 }
@@ -101,11 +101,11 @@ ex_header_t *exnode_get_header(exnode_t *ex)
 // lio_exnode_create - Returns an empty exnode
 //*************************************************************************
 
-exnode_t *lio_exnode_create()
+lio_exnode_t *lio_exnode_create()
 {
-    exnode_t *ex;
+    lio_exnode_t *ex;
 
-    tbx_type_malloc_clear(ex, exnode_t, 1);
+    tbx_type_malloc_clear(ex, lio_exnode_t, 1);
 
     ex_header_init(&(ex->header));
 
@@ -119,17 +119,17 @@ exnode_t *lio_exnode_create()
 // exnode_remove_func - Resmoves the exnode data
 //*************************************************************************
 
-op_status_t exnode_remove_func(void *arg, int gid)
+gop_op_status_t exnode_remove_func(void *arg, int gid)
 {
     lio_exnode_clone_t *op = (lio_exnode_clone_t *)arg;
-    exnode_t *ex = op->src_ex;
+    lio_exnode_t *ex = op->src_ex;
     tbx_list_iter_t it;
-    segment_t *seg;
+    lio_segment_t *seg;
     ex_id_t *id;
     int i, n;
-    op_generic_t *gop;
-    opque_t *q;
-    op_status_t status;
+    gop_op_generic_t *gop;
+    gop_opque_t *q;
+    gop_op_status_t status;
 
     n = tbx_list_key_count(ex->view);
     if (n == 0) return(gop_success_status);
@@ -159,10 +159,10 @@ op_status_t exnode_remove_func(void *arg, int gid)
 // exnode_remove - Removes the exnode data
 //*************************************************************************
 
-op_generic_t *exnode_remove(thread_pool_context_t *tpc, exnode_t *ex, data_attr_t *da, int timeout)
+gop_op_generic_t *exnode_remove(gop_thread_pool_context_t *tpc, lio_exnode_t *ex, data_attr_t *da, int timeout)
 {
     lio_exnode_clone_t *exc;
-    op_generic_t *gop;
+    gop_op_generic_t *gop;
 
     tbx_type_malloc_clear(exc, lio_exnode_clone_t, 1);
     exc->src_ex = ex;
@@ -178,24 +178,24 @@ op_generic_t *exnode_remove(thread_pool_context_t *tpc, exnode_t *ex, data_attr_
 // lio_exnode_clone_func - Clones the exnode structure and optionally data
 //*************************************************************************
 
-op_status_t lio_exnode_clone_func(void *arg, int gid)
+gop_op_status_t lio_exnode_clone_func(void *arg, int gid)
 {
     lio_exnode_clone_t *exc = (lio_exnode_clone_t *)arg;
-    exnode_t *sex = exc->src_ex;
-    exnode_t *ex = exc->dest_ex;
+    lio_exnode_t *sex = exc->src_ex;
+    lio_exnode_t *ex = exc->dest_ex;
     tbx_list_iter_t it;
-    segment_t *src_seg, **new_seg, **segptr;
+    lio_segment_t *src_seg, **new_seg, **segptr;
     ex_id_t *id, did;
     int i, n, nfailed;
-    op_generic_t *gop;
-    opque_t *q;
-    op_status_t status;
+    gop_op_generic_t *gop;
+    gop_opque_t *q;
+    gop_op_status_t status;
 
     n = tbx_list_key_count(sex->view);
     if (n == 0) return(gop_success_status);
 
     //** make space to store the segments as they are creted
-    tbx_type_malloc(new_seg, segment_t *, 2*n);
+    tbx_type_malloc(new_seg, lio_segment_t *, 2*n);
     q = gop_opque_new();
     opque_start_execution(q);
 
@@ -217,7 +217,7 @@ op_status_t lio_exnode_clone_func(void *arg, int gid)
 
     //** Wait for everything to complete
     nfailed = 0;
-    n = opque_task_count(q);
+    n = gop_opque_task_count(q);
     for (i=0; i<n; i++) {
         gop = opque_waitany(q);
         segptr = gop_get_private(gop);
@@ -246,10 +246,10 @@ op_status_t lio_exnode_clone_func(void *arg, int gid)
 // lio_exnode_clone - Clones the exnode structure and optionally data
 //*************************************************************************
 
-op_generic_t *lio_exnode_clone(thread_pool_context_t *tpc, exnode_t *src_ex, data_attr_t *da, exnode_t **ex, void *arg, int mode, int timeout)
+gop_op_generic_t *lio_exnode_clone(gop_thread_pool_context_t *tpc, lio_exnode_t *src_ex, data_attr_t *da, lio_exnode_t **ex, void *arg, int mode, int timeout)
 {
     lio_exnode_clone_t *exc;
-    op_generic_t *gop;
+    gop_op_generic_t *gop;
 
     *ex = lio_exnode_create();
 
@@ -275,7 +275,7 @@ op_generic_t *lio_exnode_clone(thread_pool_context_t *tpc, exnode_t *src_ex, dat
 //     but not the exp itself
 //*************************************************************************
 
-void exnode_exchange_free(exnode_exchange_t *exp)
+void exnode_exchange_free(lio_exnode_exchange_t *exp)
 {
     if (exp->text.text != NULL) {
         free(exp->text.text);
@@ -292,7 +292,7 @@ void exnode_exchange_free(exnode_exchange_t *exp)
 //     as well
 //*************************************************************************
 
-void lio_exnode_exchange_destroy(exnode_exchange_t *exp)
+void lio_exnode_exchange_destroy(lio_exnode_exchange_t *exp)
 {
     exnode_exchange_free(exp);
     free(exp);
@@ -302,9 +302,9 @@ void lio_exnode_exchange_destroy(exnode_exchange_t *exp)
 // exnode_exchange_init - Initializes an empty exportable exnode
 //*************************************************************************
 
-void exnode_exchange_init(exnode_exchange_t *exp, int type)
+void exnode_exchange_init(lio_exnode_exchange_t *exp, int type)
 {
-    memset(exp, 0, sizeof(exnode_exchange_t));
+    memset(exp, 0, sizeof(lio_exnode_exchange_t));
     exp->type = type;
 }
 
@@ -312,11 +312,11 @@ void exnode_exchange_init(exnode_exchange_t *exp, int type)
 // lio_exnode_exchange_create - Returns an empty exportable exnode
 //*************************************************************************
 
-exnode_exchange_t *lio_exnode_exchange_create(int type)
+lio_exnode_exchange_t *lio_exnode_exchange_create(int type)
 {
-    exnode_exchange_t *exp;
+    lio_exnode_exchange_t *exp;
 
-    tbx_type_malloc(exp, exnode_exchange_t, 1);
+    tbx_type_malloc(exp, lio_exnode_exchange_t, 1);
     exnode_exchange_init(exp, type);
 
     return(exp);
@@ -326,18 +326,18 @@ exnode_exchange_t *lio_exnode_exchange_create(int type)
 // exnode_exchange_get_default_view_id - Returns the default View/Segment ID
 //*************************************************************************
 
-ex_id_t exnode_exchange_get_default_view_id(exnode_exchange_t *exp)
+ex_id_t exnode_exchange_get_default_view_id(lio_exnode_exchange_t *exp)
 {
     return(tbx_inip_get_integer(exp->text.fd, "view", "default", 0));
 }
 
 //*************************************************************************
-// lio_exnode_exchange_text_parse - Parses a text based exnode and returns it
+// lio_lio_exnode_exchange_text_parse - Parses a text based exnode and returns it
 //*************************************************************************
 
-exnode_exchange_t *lio_exnode_exchange_text_parse(char *text)
+lio_exnode_exchange_t *lio_lio_exnode_exchange_text_parse(char *text)
 {
-    exnode_exchange_t *exp;
+    lio_exnode_exchange_t *exp;
 
     exp = lio_exnode_exchange_create(EX_TEXT);
 
@@ -352,7 +352,7 @@ exnode_exchange_t *lio_exnode_exchange_text_parse(char *text)
 // lio_exnode_exchange_create - Returns an empty exportable exnode
 //*************************************************************************
 
-exnode_exchange_t *lio_exnode_exchange_load_file(char *fname)
+lio_exnode_exchange_t *lio_exnode_exchange_load_file(char *fname)
 {
     FILE *fd;
     char *text;
@@ -369,7 +369,7 @@ exnode_exchange_t *lio_exnode_exchange_load_file(char *fname)
     text[i+1] = '\0';
     fclose(fd);
 
-    return(lio_exnode_exchange_text_parse(text));
+    return(lio_lio_exnode_exchange_text_parse(text));
 }
 
 //*************************************************************************
@@ -377,7 +377,7 @@ exnode_exchange_t *lio_exnode_exchange_load_file(char *fname)
 //     proto object.  NOT used for the goole protobuf version
 //*************************************************************************
 
-void exnode_exchange_append_text(exnode_exchange_t *exp, char *buffer)
+void exnode_exchange_append_text(lio_exnode_exchange_t *exp, char *buffer)
 {
     char *text;
     int n;
@@ -403,7 +403,7 @@ void exnode_exchange_append_text(exnode_exchange_t *exp, char *buffer)
 //     proto object.  NOT used for the goole protobuf version
 //*************************************************************************
 
-void exnode_exchange_append(exnode_exchange_t *exp, exnode_exchange_t *exp_append)
+void exnode_exchange_append(lio_exnode_exchange_t *exp, lio_exnode_exchange_t *exp_append)
 {
     if (exp_append->text.text == NULL) return;
     exnode_exchange_append_text(exp, exp_append->text.text);
@@ -413,12 +413,12 @@ void exnode_exchange_append(exnode_exchange_t *exp, exnode_exchange_t *exp_appen
 //  lio_exnode_deserialize_text - Storea a text based exnode
 //*************************************************************************
 
-int lio_exnode_deserialize_text(exnode_t *ex, exnode_exchange_t *exp, service_manager_t *ess)
+int lio_exnode_deserialize_text(lio_exnode_t *ex, lio_exnode_exchange_t *exp, lio_service_manager_t *ess)
 {
     tbx_inip_group_t *g;
     tbx_inip_element_t *ele;
     tbx_inip_file_t *fd;
-    segment_t *seg = NULL;
+    lio_segment_t *seg = NULL;
     ex_id_t id;
     int fin;
     char *key, *value, *token, *bstate;
@@ -482,7 +482,7 @@ int lio_exnode_deserialize_text(exnode_t *ex, exnode_exchange_t *exp, service_ma
 // lio_exnode_deserialize_proto - Deserializes the exnode from a google protobuf
 //*************************************************************************
 
-int lio_exnode_deserialize_proto(exnode_t *ex, exnode_exchange_t *exp, service_manager_t *ess)
+int lio_exnode_deserialize_proto(lio_exnode_t *ex, lio_exnode_exchange_t *exp, lio_service_manager_t *ess)
 {
     return(-1);
 }
@@ -491,7 +491,7 @@ int lio_exnode_deserialize_proto(exnode_t *ex, exnode_exchange_t *exp, service_m
 // lio_exnode_deserialize - Deserializes the exnode
 //*************************************************************************
 
-int lio_exnode_deserialize(exnode_t *ex, exnode_exchange_t *exp, service_manager_t *ess)
+int lio_exnode_deserialize(lio_exnode_t *ex, lio_exnode_exchange_t *exp, lio_service_manager_t *ess)
 {
     if (exp->type == EX_TEXT) {
         return(lio_exnode_deserialize_text(ex, exp, ess));
@@ -507,13 +507,13 @@ int lio_exnode_deserialize(exnode_t *ex, exnode_exchange_t *exp, service_manager
 //  lio_exnode_serialize_text - Exports a text based exnode
 //*************************************************************************
 
-int lio_exnode_serialize_text(exnode_t *ex, exnode_exchange_t *exp)
+int lio_exnode_serialize_text(lio_exnode_t *ex, lio_exnode_exchange_t *exp)
 {
     int bufsize = 1024;
     char buffer[bufsize];
     char *etext;
     int used = 0;
-    segment_t *seg;
+    lio_segment_t *seg;
     ex_id_t *id;
     tbx_sl_iter_t it;
 
@@ -553,7 +553,7 @@ int lio_exnode_serialize_text(exnode_t *ex, exnode_exchange_t *exp)
 // lio_exnode_serialize_proto - Serializes the exnode to a google protobuf
 //*************************************************************************
 
-int lio_exnode_serialize_proto(exnode_t *ex, exnode_exchange_t *exp)
+int lio_exnode_serialize_proto(lio_exnode_t *ex, lio_exnode_exchange_t *exp)
 {
     return(-1);
 }
@@ -562,7 +562,7 @@ int lio_exnode_serialize_proto(exnode_t *ex, exnode_exchange_t *exp)
 // lio_exnode_serialize - Serializes the exnode
 //*************************************************************************
 
-int lio_exnode_serialize(exnode_t *ex, exnode_exchange_t *exp)
+int lio_exnode_serialize(lio_exnode_t *ex, lio_exnode_exchange_t *exp)
 {
     if (exp->type == EX_TEXT) {
         return(lio_exnode_serialize_text(ex, exp));
@@ -578,11 +578,11 @@ int lio_exnode_serialize(exnode_t *ex, exnode_exchange_t *exp)
 // lio_exnode_destroy - Frees the memory associated with an exnode
 //*************************************************************************
 
-void lio_exnode_destroy(exnode_t *ex)
+void lio_exnode_destroy(lio_exnode_t *ex)
 {
     tbx_list_iter_t it;
-    segment_t *seg;
-    data_block_t *b;
+    lio_segment_t *seg;
+    lio_data_block_t *b;
     ex_id_t id;
 
     //** Remove the views

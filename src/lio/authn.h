@@ -34,21 +34,21 @@ extern "C" {
 
 #define AUTHN_INDEX_SHARED_HANDLE 0
 
-struct creds_t {
+struct lio_creds_t {
     void *priv;
     void *handle;
     char *id;
     void (*handle_destroy)(void *);
-    char *(*get_type)(creds_t *creds);
-    void *(*get_type_field)(creds_t *creds, int index, int *len);
-    char *(*get_id)(creds_t *creds);
-    void (*set_id)(creds_t *creds, char *id);
-    void *(*get_private_handle)(creds_t *creds);
-    void (*set_private_handle)(creds_t *creds, void *handle, void (*destroy)(void *));
-    void (*destroy)(creds_t *creds);
+    char *(*get_type)(lio_creds_t *creds);
+    void *(*get_type_field)(lio_creds_t *creds, int index, int *len);
+    char *(*get_id)(lio_creds_t *creds);
+    void (*set_id)(lio_creds_t *creds, char *id);
+    void *(*get_private_handle)(lio_creds_t *creds);
+    void (*set_private_handle)(lio_creds_t *creds, void *handle, void (*destroy)(void *));
+    void (*destroy)(lio_creds_t *creds);
 };
 
-creds_t *cred_default_create();
+lio_creds_t *cred_default_create();
 
 #define an_cred_get_type(c) (c)->get_type(c)
 #define an_cred_get_type_field(c, index, len) (c)->get_type_field(c, index, len)
@@ -59,13 +59,13 @@ creds_t *cred_default_create();
 #define an_cred_destroy(c) (c)->destroy(c)
 
 
-struct authn_t {
+struct lio_authn_t {
     void *priv;
-    creds_t *(*cred_init)(authn_t *an, int type, void **args);
-    void (*destroy)(authn_t *an);
+    lio_creds_t *(*cred_init)(lio_authn_t *an, int type, void **args);
+    void (*destroy)(lio_authn_t *an);
 };
 
-typedef authn_t *(authn_create_t)(service_manager_t *ess, tbx_inip_file_t *ifd, char *section);
+typedef lio_authn_t *(authn_create_t)(lio_service_manager_t *ess, tbx_inip_file_t *ifd, char *section);
 
 #define authn_cred_init(an, type, args) (an)->cred_init(an, type, args)
 #define authn_destroy(an) (an)->destroy(an)

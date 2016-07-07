@@ -51,17 +51,17 @@
 extern apr_thread_once_t *_err_once;
 
 //** These are in bip_op.c
-op_status_t vec_read_command(op_generic_t *gop, tbx_ns_t *ns);
-op_status_t vec_write_command(op_generic_t *gop, tbx_ns_t *ns);
+gop_op_status_t vec_read_command(gop_op_generic_t *gop, tbx_ns_t *ns);
+gop_op_status_t vec_write_command(gop_op_generic_t *gop, tbx_ns_t *ns);
 
 void *_ibp_dup_connect_context(void *connect_context);
 void _ibp_destroy_connect_context(void *connect_context);
 int _ibp_connect(tbx_ns_t *ns, void *connect_context, char *host, int port, tbx_ns_timeout_t timeout);
 
-void _ibp_op_free(op_generic_t *op, int mode);
-void _ibp_submit_op(void *arg, op_generic_t *op);
+void _ibp_op_free(gop_op_generic_t *op, int mode);
+void _ibp_submit_op(void *arg, gop_op_generic_t *op);
 
-static portal_fn_t _ibp_base_portal = {
+static gop_portal_fn_t _ibp_base_portal = {
     .dup_connect_context = _ibp_dup_connect_context,
     .destroy_connect_context = _ibp_destroy_connect_context,
     .connect = _ibp_connect,
@@ -159,7 +159,7 @@ void rwc_stacks_free(void *arg, int size, void *data)
 
 int ibp_rw_submit_coalesce(tbx_stack_t *stack, tbx_stack_ele_t *ele)
 {
-    op_generic_t *gop = (op_generic_t *)tbx_stack_ele_get_data(ele);
+    gop_op_generic_t *gop = (gop_op_generic_t *)tbx_stack_ele_get_data(ele);
     ibp_op_t *iop = ibp_get_iop(gop);
     ibp_context_t *ic = iop->ic;
     ibp_op_rw_t *cmd = &(iop->ops.rw_op);
@@ -205,14 +205,14 @@ int ibp_rw_submit_coalesce(tbx_stack_t *stack, tbx_stack_ele_t *ele)
 // ibp_rw_coalesce - Coalesces read or write op with other pending ops
 //*************************************************************
 
-int ibp_rw_coalesce(op_generic_t *gop1)
+int ibp_rw_coalesce(gop_op_generic_t *gop1)
 {
     ibp_op_t *iop1 = ibp_get_iop(gop1);
     ibp_op_t *iop2;
     ibp_context_t *ic = iop1->ic;
     ibp_op_rw_t *cmd1 = &(iop1->ops.rw_op);
     ibp_op_rw_t *cmd2;
-    op_generic_t *gop2;
+    gop_op_generic_t *gop2;
     ibp_rw_buf_t **rwbuf;
     rw_coalesce_t *rwc;
     tbx_stack_ele_t *ele;
@@ -239,7 +239,7 @@ int ibp_rw_coalesce(op_generic_t *gop1)
 
     if (tbx_stack_count(&(rwc->list_stack)) == 1) { //** Nothing to do so exit
         ele = (tbx_stack_ele_t *)tbx_stack_pop(&(rwc->list_stack));  //** The top most task should be me
-        gop2 = (op_generic_t *)tbx_stack_ele_get_data(ele);
+        gop2 = (gop_op_generic_t *)tbx_stack_ele_get_data(ele);
         if (gop2 != gop1) {
             log_printf(0, "ERROR! top stack element is not me! gid1=%d gid2=%d\n", gop_id(gop1), gop_id(gop2));
             tbx_log_flush();
@@ -278,7 +278,7 @@ int ibp_rw_coalesce(op_generic_t *gop1)
     tbx_stack_move_to_top(&(rwc->list_stack));
     ele = (tbx_stack_ele_t *)tbx_stack_get_current_data(&(rwc->list_stack));
     do {
-        gop2 = (op_generic_t *)tbx_stack_ele_get_data(ele);
+        gop2 = (gop_op_generic_t *)tbx_stack_ele_get_data(ele);
         iop2 = ibp_get_iop(gop2);
         cmd2 = &(iop2->ops.rw_op);
 
@@ -318,7 +318,7 @@ int ibp_rw_coalesce(op_generic_t *gop1)
     if (found_myself == 0) {  //** Oops! Hit the max_coalesce workdload or size so Got to scan the list for myself
         tbx_stack_move_to_top(&(rwc->list_stack));
         while ((ele = (tbx_stack_ele_t *)tbx_stack_get_current_data(&(rwc->list_stack))) != NULL) {
-            gop2 = (op_generic_t *)tbx_stack_ele_get_data(ele);
+            gop2 = (gop_op_generic_t *)tbx_stack_ele_get_data(ele);
             if (gop2 == gop1) {
                 iop2 = ibp_get_iop(gop2);
                 cmd2 = &(iop2->ops.rw_op);
@@ -364,7 +364,7 @@ int ibp_rw_coalesce(op_generic_t *gop1)
 //*************************************************************
 
 
-portal_fn_t default_ibp_oplist_imp()
+gop_portal_fn_t default_ibp_oplist_imp()
 {
     return(_ibp_base_portal);
 }
@@ -372,7 +372,7 @@ portal_fn_t default_ibp_oplist_imp()
 
 //*************************************************************
 
-void _ibp_op_free(op_generic_t *gop, int mode)
+void _ibp_op_free(gop_op_generic_t *gop, int mode)
 {
     ibp_op_t *iop;
 
@@ -401,9 +401,9 @@ void _ibp_op_free(op_generic_t *gop, int mode)
 
 //*************************************************************
 
-void _ibp_submit_op(void *arg, op_generic_t *gop)
+void _ibp_submit_op(void *arg, gop_op_generic_t *gop)
 {
-    portal_context_t *pc = gop->base.pc;
+    gop_portal_context_t *pc = gop->base.pc;
 
     log_printf(15, "_ibp_submit_op: hpc=%p hpc->table=%p gop=%p gid=%d\n", pc, pc->table, gop, gop_id(gop));
 

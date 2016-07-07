@@ -34,7 +34,7 @@
 // trace_rw_dist_print - Prints the R/W distribution table
 //**********************************************************************
 
-void trace_rw_dist_print(trace_stats_t *s, FILE *fd)
+void trace_rw_dist_print(lio_trace_stats_t *s, FILE *fd)
 {
     int i;
     ex_off_t ntotal;
@@ -69,7 +69,7 @@ void trace_rw_dist_print(trace_stats_t *s, FILE *fd)
 // trace_print_summary - Prints a summary of the trace
 //**********************************************************************
 
-void trace_print_summary(trace_t *trace, FILE *fd)
+void trace_print_summary(lio_trace_t *trace, FILE *fd)
 {
     int i;
 
@@ -99,20 +99,20 @@ void trace_print_summary(trace_t *trace, FILE *fd)
 // trace_load - Loads a trace
 //**********************************************************************
 
-trace_t *trace_load(service_manager_t *exs, exnode_t *tex, data_attr_t *da, int timeout, char *fname)
+lio_trace_t *trace_load(lio_service_manager_t *exs, lio_exnode_t *tex, data_attr_t *da, int timeout, char *fname)
 {
     tbx_inip_file_t *tfd;
     int n_files, n_ops, i, j, k, fin;
     char *trace_fname;
     FILE *fd;
-    trace_t *trace;
-    trace_op_t *op;
-    trace_file_t *file;
+    lio_trace_t *trace;
+    lio_trace_op_t *op;
+    lio_trace_file_t *file;
     char buffer[1024];
     char *bstate, *str;
     double log2, d;
 //  char *template;
-    segment_t *tseg;
+    lio_segment_t *tseg;
 
     tfd = tbx_inip_file_read(fname);
 
@@ -130,9 +130,9 @@ trace_t *trace_load(service_manager_t *exs, exnode_t *tex, data_attr_t *da, int 
         assert(fd != NULL);
     }
 
-    tbx_type_malloc_clear(trace, trace_t, 1);
-    tbx_type_malloc_clear(trace->ops, trace_op_t, n_ops);
-    tbx_type_malloc_clear(trace->files, trace_file_t, n_files);
+    tbx_type_malloc_clear(trace, lio_trace_t, 1);
+    tbx_type_malloc_clear(trace->ops, lio_trace_op_t, n_ops);
+    tbx_type_malloc_clear(trace->files, lio_trace_file_t, n_files);
 
     trace->da = da;
     trace->header = fname;
@@ -203,15 +203,15 @@ trace_t *trace_load(service_manager_t *exs, exnode_t *tex, data_attr_t *da, int 
 // trace_destroy - Destroy a trace
 //**********************************************************************
 
-void trace_destroy(trace_t *trace)
+void trace_destroy(lio_trace_t *trace)
 {
     int i;
-    op_generic_t *gop;
-    opque_t *q;
+    gop_op_generic_t *gop;
+    gop_opque_t *q;
 
     q = gop_opque_new();
     for (i=0; i<trace->n_files; i++) {
-        gop = segment_truncate(trace->files[i].seg, trace->da, 0, 60);
+        gop = lio_segment_truncate(trace->files[i].seg, trace->da, 0, 60);
         gop_opque_add(q, gop);
     }
 

@@ -55,7 +55,7 @@ typedef struct {
     char **cap;
     char *fname;
     char *exnode;
-    creds_t *creds;
+    lio_creds_t *creds;
     ibp_context_t *ic;
     apr_hash_t *hash;
     apr_pool_t *mpool;
@@ -118,16 +118,16 @@ void parse_tag_file(char *fname)
 //  gen_warm_task
 //*************************************************************************
 
-op_status_t gen_warm_task(void *arg, int id)
+gop_op_status_t gen_warm_task(void *arg, int id)
 {
     warm_t *w = (warm_t *)arg;
-    op_status_t status;
-    op_generic_t *gop;
+    gop_op_status_t status;
+    gop_op_generic_t *gop;
     tbx_inip_file_t *fd;
     int i, j, nfailed;
     warm_hash_entry_t *wrid = NULL;
     char *etext;
-    opque_t *q;
+    gop_opque_t *q;
 
     log_printf(15, "warming fname=%s, dt=%d\n", w->fname, dt);
     fd = tbx_inip_string_read(w->exnode);
@@ -232,14 +232,14 @@ int main(int argc, char **argv)
 {
     int i, j, start_option, start_index, rg_mode, ftype, prefix_len;
     char *fname;
-    opque_t *q;
-    op_generic_t *gop;
-    op_status_t status;
+    gop_opque_t *q;
+    gop_op_generic_t *gop;
+    gop_op_status_t status;
     char *keys[] = { "system.exnode", "system.write_errors" };
     char *vals[2];
     int slot, v_size[2];
     os_object_iter_t *it;
-    os_regex_table_t *rp_single, *ro_single;
+    lio_os_regex_table_t *rp_single, *ro_single;
     tbx_list_t *master;
     apr_hash_index_t *hi;
     apr_ssize_t klen;
@@ -351,7 +351,7 @@ int main(int argc, char **argv)
             w[slot].fname = fname;
             w[slot].exnode = vals[0];
             w[slot].creds = tuple.lc->creds;
-            w[slot].ic = ((ds_ibp_priv_t *)(tuple.lc->ds->priv))->ic;
+            w[slot].ic = ((lio_ds_ibp_priv_t *)(tuple.lc->ds->priv))->ic;
 
             if (v_size[1] != -1) {
                 werr++;

@@ -42,12 +42,12 @@
 #include "service_manager.h"
 
 typedef struct {
-    segment_t *src;
-    segment_t *dest;
+    lio_segment_t *src;
+    lio_segment_t *dest;
     data_attr_t *da;
     char *buffer;
     FILE *fd;
-    segment_rw_hints_t *rw_hints;
+    lio_segment_rw_hints_t *rw_hints;
     ex_off_t src_offset;
     ex_off_t dest_offset;
     ex_off_t len;
@@ -60,7 +60,7 @@ typedef struct {
 // load_segment - Loads the given segment from the file/struct
 //***********************************************************************
 
-segment_t *load_segment(service_manager_t *ess, ex_id_t id, exnode_exchange_t *ex)
+lio_segment_t *load_segment(lio_service_manager_t *ess, ex_id_t id, lio_exnode_exchange_t *ex)
 {
     char *type = NULL;
     char name[1024];
@@ -91,7 +91,7 @@ segment_t *load_segment(service_manager_t *ess, ex_id_t id, exnode_exchange_t *e
 // lio_segment_copy_func - Does the actual segment copy operation
 //***********************************************************************
 
-op_status_t lio_segment_copy_func(void *arg, int id)
+gop_op_status_t lio_segment_copy_func(void *arg, int id)
 {
     lio_segment_copy_t *sc = (lio_segment_copy_t *)arg;
     tbx_tbuf_t *wbuf, *rbuf, *tmpbuf;
@@ -100,9 +100,9 @@ op_status_t lio_segment_copy_func(void *arg, int id)
     ex_off_t bufsize;
     ex_off_t rpos, wpos, rlen, wlen, tlen, nbytes, dend;
     ex_tbx_iovec_t rex, wex;
-    opque_t *q;
-    op_generic_t *rgop, *wgop;
-    op_status_t status;
+    gop_opque_t *q;
+    gop_op_generic_t *rgop, *wgop;
+    gop_op_status_t status;
 
     //** Set up the buffers
     bufsize = sc->bufsize / 2;  //** The buffer is split for R/W
@@ -123,7 +123,7 @@ op_status_t lio_segment_copy_func(void *arg, int id)
     //** Go ahead and reserve the space in the destintaion
     dend = sc->dest_offset + nbytes;
     log_printf(1, "reserving space=" XOT "\n", dend);
-    gop_sync_exec(segment_truncate(sc->dest, sc->da, -dend, sc->timeout));
+    gop_sync_exec(lio_segment_truncate(sc->dest, sc->da, -dend, sc->timeout));
 
     //** Read the initial block
     rpos = sc->src_offset;
@@ -185,7 +185,7 @@ op_status_t lio_segment_copy_func(void *arg, int id)
     gop_opque_free(q, OP_DESTROY);
 
     if (sc->truncate == 1) {  //** Truncate if wanted
-        gop_sync_exec(segment_truncate(sc->dest, sc->da, wpos, sc->timeout));
+        gop_sync_exec(lio_segment_truncate(sc->dest, sc->da, wpos, sc->timeout));
     }
 
     status = gop_success_status;
@@ -202,7 +202,7 @@ op_status_t lio_segment_copy_func(void *arg, int id)
 //      If len == -1 then all available data from src is copied
 //***********************************************************************
 
-op_generic_t *lio_segment_copy(thread_pool_context_t *tpc, data_attr_t *da, segment_rw_hints_t *rw_hints, segment_t *src_seg, segment_t *dest_seg, ex_off_t src_offset, ex_off_t dest_offset, ex_off_t len, ex_off_t bufsize, char *buffer, int do_truncate, int timeout)
+gop_op_generic_t *lio_segment_copy(gop_thread_pool_context_t *tpc, data_attr_t *da, lio_segment_rw_hints_t *rw_hints, lio_segment_t *src_seg, lio_segment_t *dest_seg, ex_off_t src_offset, ex_off_t dest_offset, ex_off_t len, ex_off_t bufsize, char *buffer, int do_truncate, int timeout)
 {
     lio_segment_copy_t *sc;
 
@@ -228,7 +228,7 @@ op_generic_t *lio_segment_copy(thread_pool_context_t *tpc, data_attr_t *da, segm
 // segment_get_func - Does the actual segment get operation
 //***********************************************************************
 
-op_status_t segment_get_func(void *arg, int id)
+gop_op_status_t segment_get_func(void *arg, int id)
 {
     lio_segment_copy_t *sc = (lio_segment_copy_t *)arg;
     tbx_tbuf_t *wbuf, *rbuf, *tmpbuf;
@@ -240,8 +240,8 @@ op_status_t segment_get_func(void *arg, int id)
     ex_tbx_iovec_t rex;
     apr_time_t loop_start, file_start;
     double dt_loop, dt_file;
-    op_generic_t *gop;
-    op_status_t status;
+    gop_op_generic_t *gop;
+    gop_op_status_t status;
 
     //** Set up the buffers
     bufsize = sc->bufsize / 2;  //** The buffer is split for R/W
@@ -357,7 +357,7 @@ fail:
 //      If len == -1 then all available data from src is copied
 //***********************************************************************
 
-op_generic_t *segment_get(thread_pool_context_t *tpc, data_attr_t *da, segment_rw_hints_t *rw_hints, segment_t *src_seg, FILE *fd, ex_off_t src_offset, ex_off_t len, ex_off_t bufsize, char *buffer, int timeout)
+gop_op_generic_t *segment_get(gop_thread_pool_context_t *tpc, data_attr_t *da, lio_segment_rw_hints_t *rw_hints, lio_segment_t *src_seg, FILE *fd, ex_off_t src_offset, ex_off_t len, ex_off_t bufsize, char *buffer, int timeout)
 {
     lio_segment_copy_t *sc;
 
@@ -380,7 +380,7 @@ op_generic_t *segment_get(thread_pool_context_t *tpc, data_attr_t *da, segment_r
 // segment_put_func - Does the actual segment put operation
 //***********************************************************************
 
-op_status_t segment_put_func(void *arg, int id)
+gop_op_status_t segment_put_func(void *arg, int id)
 {
     lio_segment_copy_t *sc = (lio_segment_copy_t *)arg;
     tbx_tbuf_t *wbuf, *rbuf, *tmpbuf;
@@ -390,8 +390,8 @@ op_status_t segment_put_func(void *arg, int id)
     int err;
     ex_off_t rpos, wpos, rlen, wlen, tlen, nbytes, got, dend;
     ex_tbx_iovec_t wex;
-    op_generic_t *gop;
-    op_status_t status;
+    gop_op_generic_t *gop;
+    gop_op_status_t status;
     apr_time_t loop_start, file_start;
     double dt_loop, dt_file;
 
@@ -409,7 +409,7 @@ op_status_t segment_put_func(void *arg, int id)
 
     //** Go ahead and reserve the space in the destintaion
     dend = sc->dest_offset + nbytes;
-    gop_sync_exec(segment_truncate(sc->dest, sc->da, -dend, sc->timeout));
+    gop_sync_exec(lio_segment_truncate(sc->dest, sc->da, -dend, sc->timeout));
 
     //** Read the initial block
     rpos = 0;
@@ -502,7 +502,7 @@ op_status_t segment_put_func(void *arg, int id)
     } while (rlen > 0);
 
     if (sc->truncate == 1) {  //** Truncate if wanted
-        gop_sync_exec(segment_truncate(sc->dest, sc->da, wpos, sc->timeout));
+        gop_sync_exec(lio_segment_truncate(sc->dest, sc->da, wpos, sc->timeout));
     }
 
 finished:
@@ -518,7 +518,7 @@ finished:
 //      If len == -1 then all available data from src is copied
 //***********************************************************************
 
-op_generic_t *segment_put(thread_pool_context_t *tpc, data_attr_t *da, segment_rw_hints_t *rw_hints, FILE *fd, segment_t *dest_seg, ex_off_t dest_offset, ex_off_t len, ex_off_t bufsize, char *buffer, int do_truncate, int timeout)
+gop_op_generic_t *segment_put(gop_thread_pool_context_t *tpc, data_attr_t *da, lio_segment_rw_hints_t *rw_hints, FILE *fd, lio_segment_t *dest_seg, ex_off_t dest_offset, ex_off_t len, ex_off_t bufsize, char *buffer, int do_truncate, int timeout)
 {
     lio_segment_copy_t *sc;
 

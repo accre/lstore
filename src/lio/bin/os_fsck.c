@@ -35,8 +35,8 @@ int main(int argc, char **argv)
     int i, mode, n, nfailed;
     os_fsck_iter_t *it;
     char *fname;
-    op_generic_t *gop;
-    op_status_t status;
+    gop_op_generic_t *gop;
+    gop_op_status_t status;
     int ftype, err;
 
     if (argc < 2) {

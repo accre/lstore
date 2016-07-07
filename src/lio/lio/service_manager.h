@@ -28,10 +28,10 @@ extern "C" {
 #endif
 
 // Typedefs
-typedef struct service_manager_t service_manager_t;
+typedef struct lio_service_manager_t lio_service_manager_t;
 
 // Functions
-LIO_API void *lio_lookup_service(service_manager_t *sm, char *service_section, char *service_name);
+LIO_API void *lio_lookup_service(lio_service_manager_t *sm, char *service_section, char *service_name);
 
 #ifdef __cplusplus
 }

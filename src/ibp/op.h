@@ -81,7 +81,7 @@ struct ibp_context_t {
     tbx_atomic_unit32_t rr_count; //** RR counter
     ibp_connect_context_t cc[IBP_MAX_NUM_CMDS+1];  //** Default connection contexts for EACH command
     tbx_ns_chksum_t ncs;
-    portal_context_t *pc;
+    gop_portal_context_t *pc;
     tbx_pc_t *coalesced_stacks;
     tbx_pc_t *coalesced_gop_stacks;
     tbx_list_t   *coalesced_ops;  //** Ops available for coalescing go here
@@ -95,19 +95,19 @@ struct ibp_context_t {
 //
 // Status/error codes
 //
-extern op_status_t ibp_success_status;
-extern op_status_t ibp_failure_status;
-extern op_status_t ibp_retry_status;
-extern op_status_t ibp_dead_status;
-extern op_status_t ibp_timeout_status;
-extern op_status_t ibp_invalid_host_status;
-extern op_status_t ibp_cant_connect_status;
-extern op_status_t ibp_error_status;
+extern gop_op_status_t ibp_success_status;
+extern gop_op_status_t ibp_failure_status;
+extern gop_op_status_t ibp_retry_status;
+extern gop_op_status_t ibp_dead_status;
+extern gop_op_status_t ibp_timeout_status;
+extern gop_op_status_t ibp_invalid_host_status;
+extern gop_op_status_t ibp_cant_connect_status;
+extern gop_op_status_t ibp_error_status;
 
 //
 // Helper macros
 //
-#define IBP_OP(NAME, ...) IBP_API op_generic_t * NAME(ibp_context_t *ic, \
+#define IBP_OP(NAME, ...) IBP_API gop_op_generic_t * NAME(ibp_context_t *ic, \
                                                       ibp_cap_t *cap, \
                                                       int timeout, \
                                                       __VA_ARGS__);
@@ -116,17 +116,17 @@ extern op_status_t ibp_error_status;
 #define ibp_reset_iop(a) gop_reset(ibp_get_gop((a)))
 
 //** ibp_op.c **
-//void ibp_op_callback_append(op_generic_t *gop, callback_t *cb);
+//void ibp_op_callback_append(gop_op_generic_t *gop, gop_callback_t *cb);
 
 ibp_op_t *new_ibp_op(ibp_context_t *ic);
 
-op_generic_t *new_ibp_proxy_modify_alloc_op(ibp_context_t *ic, ibp_cap_t *cap, ibp_cap_t *mcap, ibp_off_t offset, ibp_off_t size, int duration, int timeout);
-op_generic_t *new_ibp_proxy_modify_count_op(ibp_context_t *ic, ibp_cap_t *cap, ibp_cap_t *mcap, int mode, int captype, int timeout);
-op_generic_t *new_ibp_proxy_probe_op(ibp_context_t *ic, ibp_cap_t *cap, ibp_proxy_capstatus_t *probe, int timeout);
-op_generic_t *new_ibp_depot_modify_op(ibp_context_t *ic, ibp_depot_t *depot, char *password, ibp_off_t hard, ibp_off_t soft, int duration, int timeout);
-op_generic_t *new_ibp_merge_alloc_op(ibp_context_t *ic, ibp_cap_t *mcap, ibp_cap_t *ccap, int timeout);
-op_generic_t *new_ibp_rename_op(ibp_context_t *ic, ibp_capset_t *caps, ibp_cap_t *mcap, int timeout);
-op_generic_t *new_ibp_split_alloc_op(ibp_context_t *ic, ibp_cap_t *mcap, ibp_capset_t *caps, ibp_off_t size, ibp_attributes_t *attr, int disk_cs_type, ibp_off_t disk_blocksize, int timeout);
+gop_op_generic_t *new_ibp_proxy_modify_alloc_op(ibp_context_t *ic, ibp_cap_t *cap, ibp_cap_t *mcap, ibp_off_t offset, ibp_off_t size, int duration, int timeout);
+gop_op_generic_t *new_ibp_proxy_modify_count_op(ibp_context_t *ic, ibp_cap_t *cap, ibp_cap_t *mcap, int mode, int captype, int timeout);
+gop_op_generic_t *new_ibp_proxy_probe_op(ibp_context_t *ic, ibp_cap_t *cap, ibp_proxy_capstatus_t *probe, int timeout);
+gop_op_generic_t *new_ibp_depot_modify_op(ibp_context_t *ic, ibp_depot_t *depot, char *password, ibp_off_t hard, ibp_off_t soft, int duration, int timeout);
+gop_op_generic_t *new_ibp_merge_alloc_op(ibp_context_t *ic, ibp_cap_t *mcap, ibp_cap_t *ccap, int timeout);
+gop_op_generic_t *new_ibp_rename_op(ibp_context_t *ic, ibp_capset_t *caps, ibp_cap_t *mcap, int timeout);
+gop_op_generic_t *new_ibp_split_alloc_op(ibp_context_t *ic, ibp_cap_t *mcap, ibp_capset_t *caps, ibp_off_t size, ibp_attributes_t *attr, int disk_cs_type, ibp_off_t disk_blocksize, int timeout);
 void init_ibp_base_op(ibp_op_t *op, char *logstr, int timeout, int workload, char *hostport, int cmp_size, int primary_cmd, int sub_cmd);
 void set_ibp_rw_op(ibp_op_t *op, int rw_type, ibp_cap_t *cap, ibp_off_t offset, tbx_tbuf_t *buffer, ibp_off_t boff, ibp_off_t len, int timeout);
 void set_ibp_truncate_op(ibp_op_t *op, ibp_cap_t *cap, ibp_off_t size, int timeout);
@@ -138,13 +138,13 @@ int ibp_op_id(ibp_op_t *op);
 //** IBP_VALDIATE_CHKSUM
 
 //** IBP_GET_CHKSUM
-op_generic_t *new_ibp_get_chksum_op(ibp_context_t *ic, ibp_cap_t *mcap, int chksum_info_only,
+gop_op_generic_t *new_ibp_get_chksum_op(ibp_context_t *ic, ibp_cap_t *mcap, int chksum_info_only,
         int *cs_type, int *cs_size, ibp_off_t *blocksize, ibp_off_t *nblocks, ibp_off_t *n_chksumbytes, char *buffer, ibp_off_t bufsize,
         int timeout);
 
 //** ibp_config.c **
 int ibp_rw_submit_coalesce(tbx_stack_t *stack, tbx_stack_ele_t *ele);
-int ibp_rw_coalesce(op_generic_t *gop);
+int ibp_rw_coalesce(gop_op_generic_t *gop);
 void ibp_get_chksum(ibp_context_t *ic, tbx_ns_chksum_t *ncs);
 void ibp_set_abort_attempts(ibp_context_t *ic, int n);
 int  ibp_get_abort_attempts(ibp_context_t *ic);

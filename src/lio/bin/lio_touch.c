@@ -40,11 +40,11 @@ char *exnode_data = NULL;
 // touch_fn - Actual touch function
 //*************************************************************************
 
-op_status_t touch_fn(void *arg, int id)
+gop_op_status_t touch_fn(void *arg, int id)
 {
     lio_path_tuple_t *tuple = (lio_path_tuple_t *)arg;
     int ftype, err;
-    op_status_t status;
+    gop_op_status_t status;
 
     status = gop_success_status;
 
@@ -76,9 +76,9 @@ int main(int argc, char **argv)
 {
     int i, j, n, start_index, err, start_option;
     char *ex_fname;
-    opque_t *q;
-    op_generic_t *gop;
-    op_status_t status;
+    gop_opque_t *q;
+    gop_op_generic_t *gop;
+    gop_op_status_t status;
     lio_path_tuple_t *flist;
     char *error_table[] = { "", "ERROR Failed to update modify timestamp", "ERROR creating file" };
     FILE *fd;
@@ -153,7 +153,7 @@ int main(int argc, char **argv)
         log_printf(0, "gid=%d i=%d fname=%s\n", gop_id(gop), i, flist[i].path);
         gop_opque_add(q, gop);
 
-        if (opque_tasks_left(q) > lio_parallel_task_count) {
+        if (gop_opque_tasks_left(q) > lio_parallel_task_count) {
             gop = opque_waitany(q);
             j = gop_get_myid(gop);
             status = gop_get_status(gop);

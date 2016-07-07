@@ -28,10 +28,10 @@ extern "C" {
 #endif
 
 // Typedefs
-typedef struct trace_file_t trace_file_t;
-typedef struct trace_op_t trace_op_t;
-typedef struct trace_stats_t trace_stats_t;
-typedef struct trace_t trace_t;
+typedef struct lio_trace_file_t lio_trace_file_t;
+typedef struct lio_trace_op_t lio_trace_op_t;
+typedef struct lio_trace_stats_t lio_trace_stats_t;
+typedef struct lio_trace_t lio_trace_t;
 
 // Functions
 

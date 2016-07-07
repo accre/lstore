@@ -34,7 +34,7 @@ int main(int argc, char **argv)
     int i, j, ftype, rg_mode, start_option, start_index, prefix_len, nopre;
     char *fname;
     lio_path_tuple_t tuple;
-    os_regex_table_t *rp_single, *ro_single;
+    lio_os_regex_table_t *rp_single, *ro_single;
     os_object_iter_t *it = NULL;
 
     int recurse_depth = 10000;

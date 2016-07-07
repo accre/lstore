@@ -44,39 +44,39 @@ typedef struct lio_file_handle_t lio_file_handle_t;
 typedef struct lio_fn_t lio_fn_t;
 typedef struct lio_fsck_iter_t lio_fsck_iter_t;
 typedef struct lio_path_tuple_t lio_path_tuple_t;
-typedef struct unified_object_iter_t unified_object_iter_t;
+typedef struct lio_unified_object_iter_t lio_unified_object_iter_t;
 
 // Functions
-LIO_API op_generic_t *lio_close_op(lio_fd_t *fd);
-LIO_API op_generic_t *lio_cp_lio2local_op(lio_fd_t *sfd, FILE *dfd, ex_off_t bufsize, char *buffer, segment_rw_hints_t *rw_hints);
-LIO_API op_generic_t *lio_cp_local2lio_op(FILE *sfd, lio_fd_t *dfd, ex_off_t bufsize, char *buffer, segment_rw_hints_t *rw_hints);
-LIO_API lio_fsck_iter_t *lio_create_fsck_iter(lio_config_t *lc, creds_t *creds, char *path, int owner_mode, char *owner, int exnode_mode);
-LIO_API os_object_iter_t *lio_create_object_iter(lio_config_t *lc, creds_t *creds, os_regex_table_t *path, os_regex_table_t *obj_regex, int object_types, os_regex_table_t *attr, int recurse_dpeth, os_attr_iter_t **it, int v_max);
-LIO_API os_object_iter_t *lio_create_object_iter_alist(lio_config_t *lc, creds_t *creds, os_regex_table_t *path, os_regex_table_t *obj_regex, int object_types, int recurse_depth, char **key, void **val, int *v_size, int n_keys);
-LIO_API op_generic_t *lio_create_op(lio_config_t *lc, creds_t *creds, char *path, int type, char *ex, char *id);
+LIO_API gop_op_generic_t *lio_close_op(lio_fd_t *fd);
+LIO_API gop_op_generic_t *lio_cp_lio2local_op(lio_fd_t *sfd, FILE *dfd, ex_off_t bufsize, char *buffer, lio_segment_rw_hints_t *rw_hints);
+LIO_API gop_op_generic_t *lio_cp_local2lio_op(FILE *sfd, lio_fd_t *dfd, ex_off_t bufsize, char *buffer, lio_segment_rw_hints_t *rw_hints);
+LIO_API lio_fsck_iter_t *lio_create_fsck_iter(lio_config_t *lc, lio_creds_t *creds, char *path, int owner_mode, char *owner, int exnode_mode);
+LIO_API os_object_iter_t *lio_create_object_iter(lio_config_t *lc, lio_creds_t *creds, lio_os_regex_table_t *path, lio_os_regex_table_t *obj_regex, int object_types, lio_os_regex_table_t *attr, int recurse_dpeth, os_attr_iter_t **it, int v_max);
+LIO_API os_object_iter_t *lio_create_object_iter_alist(lio_config_t *lc, lio_creds_t *creds, lio_os_regex_table_t *path, lio_os_regex_table_t *obj_regex, int object_types, int recurse_depth, char **key, void **val, int *v_size, int n_keys);
+LIO_API gop_op_generic_t *lio_create_op(lio_config_t *lc, lio_creds_t *creds, char *path, int type, char *ex, char *id);
 LIO_API void lio_destroy_fsck_iter(lio_config_t *lc, lio_fsck_iter_t *oit);
 LIO_API void lio_destroy_object_iter(lio_config_t *lc, os_object_iter_t *it);
-LIO_API int lio_encode_error_counts(segment_errors_t *serr, char **key, char **val, char *buf, int *v_size, int mode);
-LIO_API int lio_exists(lio_config_t *lc, creds_t *creds, char *path);
-LIO_API op_generic_t *lio_exists_op(lio_config_t *lc, creds_t *creds, char *path);
-LIO_API op_status_t lio_file_copy_op(void *arg, int id);
+LIO_API int lio_encode_error_counts(lio_segment_errors_t *serr, char **key, char **val, char *buf, int *v_size, int mode);
+LIO_API int lio_exists(lio_config_t *lc, lio_creds_t *creds, char *path);
+LIO_API gop_op_generic_t *lio_exists_op(lio_config_t *lc, lio_creds_t *creds, char *path);
+LIO_API gop_op_status_t lio_file_copy_op(void *arg, int id);
 LIO_API int lio_fopen_flags(char *sflags);
-LIO_API op_generic_t *lio_fsck_op(lio_config_t *lc, creds_t *creds, char *fname, int ftype, int owner_mode, char *owner, int exnode_mode);
+LIO_API gop_op_generic_t *lio_fsck_op(lio_config_t *lc, lio_creds_t *creds, char *fname, int ftype, int owner_mode, char *owner, int exnode_mode);
 LIO_API ex_off_t lio_fsck_visited_count(lio_config_t *lc, lio_fsck_iter_t *oit);
-LIO_API void lio_get_error_counts(lio_config_t *lc, segment_t *seg, segment_errors_t *serr);
-LIO_API int lio_getattr(lio_config_t *lc, creds_t *creds, const char *path, char *id, char *key, void **val, int *v_size);
-LIO_API op_generic_t *lio_getattr_op(lio_config_t *lc, creds_t *creds, const char *path, char *id, char *key, void **val, int *v_size);
-LIO_API op_generic_t *lio_hardlink_op(lio_config_t *lc, creds_t *creds, char *src_path, char *dest_path, char *id);
+LIO_API void lio_get_error_counts(lio_config_t *lc, lio_segment_t *seg, lio_segment_errors_t *serr);
+LIO_API int lio_getattr(lio_config_t *lc, lio_creds_t *creds, const char *path, char *id, char *key, void **val, int *v_size);
+LIO_API gop_op_generic_t *lio_getattr_op(lio_config_t *lc, lio_creds_t *creds, const char *path, char *id, char *key, void **val, int *v_size);
+LIO_API gop_op_generic_t *lio_hardlink_op(lio_config_t *lc, lio_creds_t *creds, char *src_path, char *dest_path, char *id);
 LIO_API int lio_init(int *argc, char ***argv);
-LIO_API op_generic_t *lio_link_op(lio_config_t *lc, creds_t *creds, int symlink, char *src_path, char *dest_path, char *id);
-LIO_API op_generic_t *lio_move_op(lio_config_t *lc, creds_t *creds, char *src_path, char *dest_path);
-LIO_API int lio_multiple_setattr_op(lio_config_t *lc, creds_t *creds, const char *path, char *id, char **key, void **val, int *v_size, int n);
+LIO_API gop_op_generic_t *lio_link_op(lio_config_t *lc, lio_creds_t *creds, int symlink, char *src_path, char *dest_path, char *id);
+LIO_API gop_op_generic_t *lio_move_op(lio_config_t *lc, lio_creds_t *creds, char *src_path, char *dest_path);
+LIO_API int lio_multiple_setattr_op(lio_config_t *lc, lio_creds_t *creds, const char *path, char *id, char **key, void **val, int *v_size, int n);
 LIO_API int lio_next_attr(lio_config_t *lc, os_attr_iter_t *it, char **key, void **val, int *v_size);
 LIO_API int lio_next_fsck(lio_config_t *lc, lio_fsck_iter_t *oit, char **bad_fname, int *bad_atype);
 LIO_API int lio_next_object(lio_config_t *lc, os_object_iter_t *it, char **fname, int *prefix_len);
-LIO_API op_generic_t *lio_open_op(lio_config_t *lc, creds_t *creds, char *path, int mode, char *id, lio_fd_t **fd, int max_wait);
-LIO_API int lio_parse_path_options(int *argc, char **argv, int auto_mode, lio_path_tuple_t *tuple, os_regex_table_t **rp, os_regex_table_t **ro);
-LIO_API op_status_t lio_path_copy_op(void *arg, int id);
+LIO_API gop_op_generic_t *lio_open_op(lio_config_t *lc, lio_creds_t *creds, char *path, int mode, char *id, lio_fd_t **fd, int max_wait);
+LIO_API int lio_parse_path_options(int *argc, char **argv, int auto_mode, lio_path_tuple_t *tuple, lio_os_regex_table_t **rp, lio_os_regex_table_t **ro);
+LIO_API gop_op_status_t lio_path_copy_op(void *arg, int id);
 LIO_API void lio_path_local_make_absolute(lio_path_tuple_t *tuple);
 LIO_API void lio_path_release(lio_path_tuple_t *tuple);
 LIO_API lio_path_tuple_t lio_path_resolve(int auto_fuse_convert, char *startpath);
@@ -84,19 +84,19 @@ LIO_API lio_path_tuple_t lio_path_resolve_base(char *startpath);
 LIO_API int lio_path_wildcard_auto_append(lio_path_tuple_t *tuple);
 LIO_API void lio_print_options(FILE *fd);
 LIO_API void lio_print_path_options(FILE *fd);
-LIO_API op_generic_t *lio_regex_object_set_multiple_attrs_op(lio_config_t *lc, creds_t *creds, char *id, os_regex_table_t *path, os_regex_table_t *object_regex, int object_types, int recurse_depth, char **key, void **val, int *v_size, int n);
-LIO_API op_generic_t *lio_remove_op(lio_config_t *lc, creds_t *creds, char *path, char *ex_optional, int ftype_optional);
-LIO_API op_generic_t *lio_remove_regex_op(lio_config_t *lc, creds_t *creds, os_regex_table_t *path, os_regex_table_t *object_regex, int obj_types, int recurse_depth, int np);
-LIO_API int lio_setattr(lio_config_t *lc, creds_t *creds, const char *path, char *id, char *key, void *val, int v_size);
-LIO_API op_generic_t *lio_setattr_op(lio_config_t *lc, creds_t *creds, const char *path, char *id, char *key, void *val, int v_size);
+LIO_API gop_op_generic_t *lio_regex_object_set_multiple_attrs_op(lio_config_t *lc, lio_creds_t *creds, char *id, lio_os_regex_table_t *path, lio_os_regex_table_t *object_regex, int object_types, int recurse_depth, char **key, void **val, int *v_size, int n);
+LIO_API gop_op_generic_t *lio_remove_op(lio_config_t *lc, lio_creds_t *creds, char *path, char *ex_optional, int ftype_optional);
+LIO_API gop_op_generic_t *lio_remove_regex_op(lio_config_t *lc, lio_creds_t *creds, lio_os_regex_table_t *path, lio_os_regex_table_t *object_regex, int obj_types, int recurse_depth, int np);
+LIO_API int lio_setattr(lio_config_t *lc, lio_creds_t *creds, const char *path, char *id, char *key, void *val, int v_size);
+LIO_API gop_op_generic_t *lio_setattr_op(lio_config_t *lc, lio_creds_t *creds, const char *path, char *id, char *key, void *val, int v_size);
 LIO_API int lio_shutdown();
-LIO_API int lio_unified_next_object(unified_object_iter_t *it, char **fname, int *prefix_len);
-LIO_API unified_object_iter_t *lio_unified_object_iter_create(lio_path_tuple_t tuple, os_regex_table_t *path_regex, os_regex_table_t *obj_regex, int obj_types, int rd);
-LIO_API void lio_unified_object_iter_destroy(unified_object_iter_t *it);
-LIO_API int lioc_exists(lio_config_t *lc, creds_t *creds, char *path);
-LIO_API int lioc_getattr(lio_config_t *lc, creds_t *creds, char *path, char *id, char *key, void **val, int *v_size);
-LIO_API int lioc_setattr(lio_config_t *lc, creds_t *creds, char *path, char *id, char *key, void *val, int v_size);
-LIO_API op_generic_t *lioc_truncate(lio_path_tuple_t *tuple, ex_off_t new_size);
+LIO_API int lio_unified_next_object(lio_unified_object_iter_t *it, char **fname, int *prefix_len);
+LIO_API lio_unified_object_iter_t *lio_unified_object_iter_create(lio_path_tuple_t tuple, lio_os_regex_table_t *path_regex, lio_os_regex_table_t *obj_regex, int obj_types, int rd);
+LIO_API void lio_unified_object_iter_destroy(lio_unified_object_iter_t *it);
+LIO_API int lioc_exists(lio_config_t *lc, lio_creds_t *creds, char *path);
+LIO_API int lioc_getattr(lio_config_t *lc, lio_creds_t *creds, char *path, char *id, char *key, void **val, int *v_size);
+LIO_API int lioc_setattr(lio_config_t *lc, lio_creds_t *creds, char *path, char *id, char *key, void *val, int v_size);
+LIO_API gop_op_generic_t *lioc_truncate(lio_path_tuple_t *tuple, ex_off_t new_size);
 
 // Preprocessor constants
 typedef enum lio_fsck_repair_t lio_fsck_repair_t;
@@ -136,20 +136,20 @@ LIO_API extern FILE *_lio_ifd;  //** Default information log device
 
 // Exported structures. To be obscured
 struct lio_config_t {
-    data_service_fn_t *ds;
-    object_service_fn_t *os;
-    resource_service_fn_t *rs;
-    thread_pool_context_t *tpc_unlimited;
-    thread_pool_context_t *tpc_cache;
-    mq_context_t *mqc;
-    service_manager_t *ess;
-    service_manager_t *ess_nocache;  //** Copy of ess but missing cache.  Kind of a kludge...
+    lio_data_service_fn_t *ds;
+    lio_object_service_fn_t *os;
+    lio_resource_service_fn_t *rs;
+    gop_thread_pool_context_t *tpc_unlimited;
+    gop_thread_pool_context_t *tpc_cache;
+    gop_mq_context_t *mqc;
+    lio_service_manager_t *ess;
+    lio_service_manager_t *ess_nocache;  //** Copy of ess but missing cache.  Kind of a kludge...
     tbx_stack_t *plugin_stack;
-    cache_t *cache;
+    lio_cache_t *cache;
     data_attr_t *da;
     tbx_inip_file_t *ifd;
     tbx_list_t *open_index;
-    creds_t *creds;
+    lio_creds_t *creds;
     apr_thread_mutex_t *lock;
     apr_pool_t *mpool;
     char *cfg_name;
@@ -162,7 +162,7 @@ struct lio_config_t {
     char *tpc_cache_section;
     char *creds_name;
     char *exe_name;
-    blacklist_t *blacklist;
+    lio_blacklist_t *blacklist;
     ex_off_t readahead;
     ex_off_t readahead_trigger;
     int calc_adler32;
@@ -174,14 +174,14 @@ struct lio_config_t {
 };
 
 struct lio_path_tuple_t {
-    creds_t *creds;
+    lio_creds_t *creds;
     lio_config_t *lc;
     char *path;
     int is_lio;
 };
 
 struct lio_cp_file_t {
-    segment_rw_hints_t *rw_hints;
+    lio_segment_rw_hints_t *rw_hints;
     lio_path_tuple_t src_tuple;
     lio_path_tuple_t dest_tuple;
     ex_off_t bufsize;
@@ -191,8 +191,8 @@ struct lio_cp_file_t {
 struct lio_cp_path_t {
     lio_path_tuple_t src_tuple;
     lio_path_tuple_t dest_tuple;
-    os_regex_table_t *path_regex;
-    os_regex_table_t *obj_regex;
+    lio_os_regex_table_t *path_regex;
+    lio_os_regex_table_t *obj_regex;
     int recurse_depth;
     int dest_type;
     int obj_types;

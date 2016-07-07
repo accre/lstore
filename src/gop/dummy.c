@@ -30,9 +30,9 @@
 #include "gop.h"
 #include "gop/types.h"
 
-static void gop_dummy_submit_op(void *arg, op_generic_t *op);
+static void gop_dummy_submit_op(void *arg, gop_op_generic_t *op);
 
-static portal_fn_t gop_dummy_portal = {
+static gop_portal_fn_t gop_dummy_portal = {
     .dup_connect_context = NULL,
     .destroy_connect_context = NULL,
     .connect = NULL,
@@ -41,7 +41,7 @@ static portal_fn_t gop_dummy_portal = {
     .submit = gop_dummy_submit_op
 };
 
-static portal_context_t gop_dummy_pc = {
+static gop_portal_context_t gop_dummy_pc = {
     .lock = NULL,
     .table = NULL,
     .pool = NULL,
@@ -79,12 +79,12 @@ tbx_stack_t *gd_stack = NULL;
 
 static void *gd_thread_func(apr_thread_t *th, void *data)
 {
-    op_generic_t *gop;
+    gop_op_generic_t *gop;
 
     apr_thread_mutex_lock(gd_lock);
     while (gd_shutdown == 0) {
         //** Execute everything on the stack
-        while ((gop = (op_generic_t *)tbx_stack_pop(gd_stack)) != NULL) {
+        while ((gop = (gop_op_generic_t *)tbx_stack_pop(gd_stack)) != NULL) {
             log_printf(15, "DUMMY gid=%d status=%d\n", gop_id(gop), gop->base.status.op_status);
             apr_thread_mutex_unlock(gd_lock);
             gop_mark_completed(gop, gop->base.status);
@@ -144,7 +144,7 @@ void gop_dummy_destroy()
 // _gop_dummy_submit - Dummy submit routine
 //***********************************************************************
 
-static void gop_dummy_submit_op(void *arg, op_generic_t *op)
+static void gop_dummy_submit_op(void *arg, gop_op_generic_t *op)
 {
     log_printf(15, "gid=%d\n", gop_id(op));
     apr_thread_mutex_lock(gd_lock);
@@ -159,7 +159,7 @@ static void gop_dummy_submit_op(void *arg, op_generic_t *op)
 // dummy free operation
 //***********************************************************************
 
-static void gop_dummy_free(op_generic_t *gop, int mode)
+static void gop_dummy_free(gop_op_generic_t *gop, int mode)
 {
     gop_generic_free(gop, mode);  //** I free the actual op
 
@@ -172,11 +172,11 @@ static void gop_dummy_free(op_generic_t *gop, int mode)
 //   OP_STATE_FAILIURE = Failure
 //***********************************************************************
 
-op_generic_t *gop_dummy(op_status_t state)
+gop_op_generic_t *gop_dummy(gop_op_status_t state)
 {
-    op_generic_t *gop;
+    gop_op_generic_t *gop;
 
-    tbx_type_malloc_clear(gop, op_generic_t, 1);
+    tbx_type_malloc_clear(gop, gop_op_generic_t, 1);
 
     log_printf(15, " state=%d\n", state.op_status);
     tbx_log_flush();

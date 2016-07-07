@@ -30,10 +30,10 @@ extern "C" {
 #endif
 #include "gop/visibility.h"
 
-void callback_append(callback_t **root_cb, callback_t *cb);
-void callback_destroy(callback_t *root_cb);
-void callback_execute(callback_t *cb, int value);
-void callback_single_execute(callback_t *cb, int value);
+void callback_append(gop_callback_t **root_cb, gop_callback_t *cb);
+void callback_destroy(gop_callback_t *root_cb);
+void callback_execute(gop_callback_t *cb, int value);
+void callback_single_execute(gop_callback_t *cb, int value);
 
 #ifdef __cplusplus
 }

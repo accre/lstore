@@ -43,12 +43,12 @@ int main(int argc, char **argv)
     char ppbuf[64];
     lio_cp_path_t *flist;
     lio_cp_file_t cpf;
-    op_generic_t *gop;
-    opque_t *q;
+    gop_op_generic_t *gop;
+    gop_opque_t *q;
     lio_path_tuple_t dtuple;
     int err, dtype, recurse_depth;
     lio_copy_hint_t slow;
-    op_status_t status;
+    gop_op_status_t status;
 
     recurse_depth = 10000;
     bufsize = 20*1024*1024;
@@ -197,7 +197,7 @@ int main(int argc, char **argv)
         gop_opque_add(q, gop);
         log_printf(0, "bufsize=" XOT "\n", flist[i].bufsize);
 
-        if (opque_tasks_left(q) > lio_parallel_task_count) {
+        if (gop_opque_tasks_left(q) > lio_parallel_task_count) {
             gop = opque_waitany(q);
             status = gop_get_status(gop);
             if (status.op_status != OP_STATE_SUCCESS) n_errors++;

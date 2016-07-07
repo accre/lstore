@@ -59,20 +59,20 @@
 extern char *_lio_exe_name;  // ** This is defined in lio_config.c and is set before we would ever be called.
 
 typedef struct {
-    object_service_fn_t *os;
+    lio_object_service_fn_t *os;
     void *data;
     int size;
 } osrc_object_fd_t;
 
 typedef struct {
     uint64_t id;
-    object_service_fn_t *os;
+    lio_object_service_fn_t *os;
 } osrc_arg_t;
 
 typedef struct {
-    object_service_fn_t *os;
+    lio_object_service_fn_t *os;
 //  void *it;
-    mq_stream_t *mqs;
+    gop_mq_stream_t *mqs;
     mq_msg_t *response;
     int v_max;
     int is_sub_iter;
@@ -80,15 +80,15 @@ typedef struct {
 } osrc_attr_iter_t;
 
 typedef struct {
-    object_service_fn_t *os;
-    mq_stream_t *mqs;
+    lio_object_service_fn_t *os;
+    gop_mq_stream_t *mqs;
     mq_msg_t *response;
     int mode;
     int finished;
 } osrc_fsck_iter_t;
 
 typedef struct {
-    object_service_fn_t *os;
+    lio_object_service_fn_t *os;
     os_attr_iter_t **ait;
     void **val;
     int *v_size;
@@ -96,18 +96,18 @@ typedef struct {
     int n_keys;
     int v_max;
     int iter_type;
-    mq_stream_t *mqs;
+    gop_mq_stream_t *mqs;
     mq_msg_t *response;
 } osrc_object_iter_t;
 
 typedef struct {
     char handle[1024];
     osrc_object_fd_t **pfd;
-    object_service_fn_t *os;
+    lio_object_service_fn_t *os;
 } osrc_open_t;
 
 typedef struct {
-    object_service_fn_t *os;
+    lio_object_service_fn_t *os;
     os_fd_t *fd;
     os_fd_t *fd_dest;
     char **src_path;
@@ -123,21 +123,21 @@ typedef struct {
 } osrc_mult_attr_t;
 
 typedef struct {
-    object_service_fn_t *os;
-    creds_t *creds;
-    os_regex_table_t *path;
-    os_regex_table_t *object_regex;
+    lio_object_service_fn_t *os;
+    lio_creds_t *creds;
+    lio_os_regex_table_t *path;
+    lio_os_regex_table_t *object_regex;
     int obj_types;
     int recurse_depth;
     uint64_t my_id;
 } osrc_remove_regex_t;
 
 typedef struct {
-    object_service_fn_t *os;
-    creds_t *creds;
+    lio_object_service_fn_t *os;
+    lio_creds_t *creds;
     char *id;
-    os_regex_table_t *path;
-    os_regex_table_t *object_regex;
+    lio_os_regex_table_t *path;
+    lio_os_regex_table_t *object_regex;
     int obj_types;
     int recurse_depth;
     char **key;
@@ -151,7 +151,7 @@ typedef struct {
 // osrc_add_creds - Adds the creds to the message
 //***********************************************************************
 
-int osrc_add_creds(object_service_fn_t *os, creds_t *creds, mq_msg_t *msg)
+int osrc_add_creds(lio_object_service_fn_t *os, lio_creds_t *creds, mq_msg_t *msg)
 {
     void *chandle;
     int len;
@@ -166,10 +166,10 @@ int osrc_add_creds(object_service_fn_t *os, creds_t *creds, mq_msg_t *msg)
 // osrc_response_status - Handles a response that just returns the status
 //***********************************************************************
 
-op_status_t osrc_response_status(void *task_arg, int tid)
+gop_op_status_t osrc_response_status(void *task_arg, int tid)
 {
-    mq_task_t *task = (mq_task_t *)task_arg;
-    op_status_t status;
+    gop_mq_task_t *task = (gop_mq_task_t *)task_arg;
+    gop_op_status_t status;
 
     log_printf(5, "START\n");
 
@@ -186,13 +186,13 @@ op_status_t osrc_response_status(void *task_arg, int tid)
 // osrc_response_stream_status - Handles getting a stream status response
 //***********************************************************************
 
-op_status_t osrc_response_stream_status(void *task_arg, int tid)
+gop_op_status_t osrc_response_stream_status(void *task_arg, int tid)
 {
-    mq_task_t *task = (mq_task_t *)task_arg;
-    object_service_fn_t *os = (object_service_fn_t *)task->arg;
-    osrc_priv_t *osrc = (osrc_priv_t *)os->priv;
-    mq_stream_t *mqs;
-    op_status_t status;
+    gop_mq_task_t *task = (gop_mq_task_t *)task_arg;
+    lio_object_service_fn_t *os = (lio_object_service_fn_t *)task->arg;
+    lio_osrc_priv_t *osrc = (lio_osrc_priv_t *)os->priv;
+    gop_mq_stream_t *mqs;
+    gop_op_status_t status;
     int err;
 
     log_printf(5, "START\n");
@@ -226,15 +226,15 @@ op_status_t osrc_response_stream_status(void *task_arg, int tid)
 //     if it is empty.
 //***********************************************************************
 
-op_status_t osrc_remove_regex_object_func(void *arg, int id)
+gop_op_status_t osrc_remove_regex_object_func(void *arg, int id)
 {
     osrc_remove_regex_t *op = (osrc_remove_regex_t *)arg;
-    osrc_priv_t *osrc = (osrc_priv_t *)op->os->priv;
+    lio_osrc_priv_t *osrc = (lio_osrc_priv_t *)op->os->priv;
     int bpos, bufsize, again, n;
     unsigned char *buffer;
     mq_msg_t *msg, *spin;
-    op_generic_t *gop, *g;
-    op_status_t status;
+    gop_op_generic_t *gop, *g;
+    gop_op_status_t status;
 
     log_printf(5, "START\n");
 
@@ -352,11 +352,11 @@ op_status_t osrc_remove_regex_object_func(void *arg, int id)
 //     if it is empty.
 //***********************************************************************
 
-op_generic_t *osrc_remove_regex_object(object_service_fn_t *os, creds_t *creds, os_regex_table_t *path, os_regex_table_t *object_regex, int obj_types, int recurse_depth)
+gop_op_generic_t *osrc_remove_regex_object(lio_object_service_fn_t *os, lio_creds_t *creds, lio_os_regex_table_t *path, lio_os_regex_table_t *object_regex, int obj_types, int recurse_depth)
 {
-    osrc_priv_t *osrc = (osrc_priv_t *)os->priv;
+    lio_osrc_priv_t *osrc = (lio_osrc_priv_t *)os->priv;
     osrc_remove_regex_t *op;
-    op_generic_t *gop;
+    gop_op_generic_t *gop;
 
     tbx_type_malloc(op, osrc_remove_regex_t, 1);
     op->os = os;
@@ -376,13 +376,13 @@ op_generic_t *osrc_remove_regex_object(object_service_fn_t *os, creds_t *creds, 
 // osrc_abort_remove_regex_object - Aborts a bulk remove call
 //***********************************************************************
 
-op_generic_t *osrc_abort_remove_regex_object(object_service_fn_t *os, op_generic_t *gop)
+gop_op_generic_t *osrc_abort_remove_regex_object(lio_object_service_fn_t *os, gop_op_generic_t *gop)
 {
-    osrc_priv_t *osrc = (osrc_priv_t *)os->priv;
+    lio_osrc_priv_t *osrc = (lio_osrc_priv_t *)os->priv;
     mq_msg_t *msg;
     unsigned char buf[512];
     int bpos;
-    op_generic_t *g;
+    gop_op_generic_t *g;
     osrc_set_regex_t *op;
 
     log_printf(5, "START\n");
@@ -413,11 +413,11 @@ op_generic_t *osrc_abort_remove_regex_object(object_service_fn_t *os, op_generic
 // osrc_remove_object - Makes a remove object operation
 //***********************************************************************
 
-op_generic_t *osrc_remove_object(object_service_fn_t *os, creds_t *creds, char *path)
+gop_op_generic_t *osrc_remove_object(lio_object_service_fn_t *os, lio_creds_t *creds, char *path)
 {
-    osrc_priv_t *osrc = (osrc_priv_t *)os->priv;
+    lio_osrc_priv_t *osrc = (lio_osrc_priv_t *)os->priv;
     mq_msg_t *msg;
-    op_generic_t *gop;
+    gop_op_generic_t *gop;
 
     log_printf(5, "START fname=%s\n", path);
 
@@ -444,15 +444,15 @@ op_generic_t *osrc_remove_object(object_service_fn_t *os, creds_t *creds, char *
 //     recursion depth.
 //***********************************************************************
 
-op_status_t osrc_regex_object_set_multiple_attrs_func(void *arg, int id)
+gop_op_status_t osrc_regex_object_set_multiple_attrs_func(void *arg, int id)
 {
     osrc_set_regex_t *op = (osrc_set_regex_t *)arg;
-    osrc_priv_t *osrc = (osrc_priv_t *)op->os->priv;
+    lio_osrc_priv_t *osrc = (lio_osrc_priv_t *)op->os->priv;
     int bpos, bufsize, again, n, i, len;
     unsigned char *buffer;
     mq_msg_t *msg, *spin;
-    op_generic_t *gop, *g;
-    op_status_t status;
+    gop_op_generic_t *gop, *g;
+    gop_op_status_t status;
 
     log_printf(5, "START\n");
 
@@ -600,11 +600,11 @@ op_status_t osrc_regex_object_set_multiple_attrs_func(void *arg, int id)
 //     recursion depth.
 //***********************************************************************
 
-op_generic_t *osrc_regex_object_set_multiple_attrs(object_service_fn_t *os, creds_t *creds, char *id, os_regex_table_t *path, os_regex_table_t *object_regex, int object_types, int recurse_depth, char **key, void **val, int *v_size, int n_attrs)
+gop_op_generic_t *osrc_regex_object_set_multiple_attrs(lio_object_service_fn_t *os, lio_creds_t *creds, char *id, lio_os_regex_table_t *path, lio_os_regex_table_t *object_regex, int object_types, int recurse_depth, char **key, void **val, int *v_size, int n_attrs)
 {
-    osrc_priv_t *osrc = (osrc_priv_t *)os->priv;
+    lio_osrc_priv_t *osrc = (lio_osrc_priv_t *)os->priv;
     osrc_set_regex_t *op;
-    op_generic_t *gop;
+    gop_op_generic_t *gop;
 
     tbx_type_malloc(op, osrc_set_regex_t, 1);
     op->os = os;
@@ -631,13 +631,13 @@ op_generic_t *osrc_regex_object_set_multiple_attrs(object_service_fn_t *os, cred
 // osrc_abort_regex_object_set_multiple_attrs - Aborts a bulk attr call
 //***********************************************************************
 
-op_generic_t *osrc_abort_regex_object_set_multiple_attrs(object_service_fn_t *os, op_generic_t *gop)
+gop_op_generic_t *osrc_abort_regex_object_set_multiple_attrs(lio_object_service_fn_t *os, gop_op_generic_t *gop)
 {
-    osrc_priv_t *osrc = (osrc_priv_t *)os->priv;
+    lio_osrc_priv_t *osrc = (lio_osrc_priv_t *)os->priv;
     mq_msg_t *msg;
     unsigned char buf[512];
     int bpos;
-    op_generic_t *g;
+    gop_op_generic_t *g;
     osrc_set_regex_t *op;
 
     log_printf(5, "START\n");
@@ -669,11 +669,11 @@ op_generic_t *osrc_abort_regex_object_set_multiple_attrs(object_service_fn_t *os
 //  osrc_exists - Returns the object type  and 0 if it doesn't exist
 //***********************************************************************
 
-op_generic_t *osrc_exists(object_service_fn_t *os, creds_t *creds, char *path)
+gop_op_generic_t *osrc_exists(lio_object_service_fn_t *os, lio_creds_t *creds, char *path)
 {
-    osrc_priv_t *osrc = (osrc_priv_t *)os->priv;
+    lio_osrc_priv_t *osrc = (lio_osrc_priv_t *)os->priv;
     mq_msg_t *msg;
-    op_generic_t *gop;
+    gop_op_generic_t *gop;
 
     log_printf(5, "START fname=%s\n", path);
 
@@ -696,11 +696,11 @@ op_generic_t *osrc_exists(object_service_fn_t *os, creds_t *creds, char *path)
 // osrc_create_object - Creates an object
 //***********************************************************************
 
-op_generic_t *osrc_create_object(object_service_fn_t *os, creds_t *creds, char *path, int type, char *id)
+gop_op_generic_t *osrc_create_object(lio_object_service_fn_t *os, lio_creds_t *creds, char *path, int type, char *id)
 {
-    osrc_priv_t *osrc = (osrc_priv_t *)os->priv;
+    lio_osrc_priv_t *osrc = (lio_osrc_priv_t *)os->priv;
     mq_msg_t *msg;
-    op_generic_t *gop;
+    gop_op_generic_t *gop;
     unsigned char buffer[10], *sent;
     int n;
 
@@ -737,11 +737,11 @@ op_generic_t *osrc_create_object(object_service_fn_t *os, creds_t *creds, char *
 // osrc_symlink_object - Generates a symbolic link object operation
 //***********************************************************************
 
-op_generic_t *osrc_symlink_object(object_service_fn_t *os, creds_t *creds, char *src_path, char *dest_path, char *id)
+gop_op_generic_t *osrc_symlink_object(lio_object_service_fn_t *os, lio_creds_t *creds, char *src_path, char *dest_path, char *id)
 {
-    osrc_priv_t *osrc = (osrc_priv_t *)os->priv;
+    lio_osrc_priv_t *osrc = (lio_osrc_priv_t *)os->priv;
     mq_msg_t *msg;
-    op_generic_t *gop;
+    gop_op_generic_t *gop;
 
     log_printf(5, "START src_fname=%s\n", src_path);
 
@@ -771,11 +771,11 @@ op_generic_t *osrc_symlink_object(object_service_fn_t *os, creds_t *creds, char 
 // osrc_hardlink_object - Generates a hard link object operation
 //***********************************************************************
 
-op_generic_t *osrc_hardlink_object(object_service_fn_t *os, creds_t *creds, char *src_path, char *dest_path, char *id)
+gop_op_generic_t *osrc_hardlink_object(lio_object_service_fn_t *os, lio_creds_t *creds, char *src_path, char *dest_path, char *id)
 {
-    osrc_priv_t *osrc = (osrc_priv_t *)os->priv;
+    lio_osrc_priv_t *osrc = (lio_osrc_priv_t *)os->priv;
     mq_msg_t *msg;
-    op_generic_t *gop;
+    gop_op_generic_t *gop;
 
     log_printf(5, "START src_fname=%s\n", src_path);
 
@@ -805,11 +805,11 @@ op_generic_t *osrc_hardlink_object(object_service_fn_t *os, creds_t *creds, char
 // osrc_move_object - Generates a move object operation
 //***********************************************************************
 
-op_generic_t *osrc_move_object(object_service_fn_t *os, creds_t *creds, char *src_path, char *dest_path)
+gop_op_generic_t *osrc_move_object(lio_object_service_fn_t *os, lio_creds_t *creds, char *src_path, char *dest_path)
 {
-    osrc_priv_t *osrc = (osrc_priv_t *)os->priv;
+    lio_osrc_priv_t *osrc = (lio_osrc_priv_t *)os->priv;
     mq_msg_t *msg;
-    op_generic_t *gop;
+    gop_op_generic_t *gop;
 
     log_printf(5, "START src_fname=%s\n", src_path);
 
@@ -834,13 +834,13 @@ op_generic_t *osrc_move_object(object_service_fn_t *os, creds_t *creds, char *sr
 //    objects
 //***********************************************************************
 
-op_generic_t *osrc_copy_mult_attrs_internal(object_service_fn_t *os, osrc_mult_attr_t *ma, creds_t *creds)
+gop_op_generic_t *osrc_copy_mult_attrs_internal(lio_object_service_fn_t *os, osrc_mult_attr_t *ma, lio_creds_t *creds)
 {
-    osrc_priv_t *osrc = (osrc_priv_t *)os->priv;
+    lio_osrc_priv_t *osrc = (lio_osrc_priv_t *)os->priv;
     osrc_object_fd_t *sfd = (osrc_object_fd_t *)ma->fd;
     osrc_object_fd_t *dfd = (osrc_object_fd_t *)ma->fd_dest;
     mq_msg_t *msg;
-    op_generic_t *gop;
+    gop_op_generic_t *gop;
     int i, bpos, len, nmax;
     char *data;
 
@@ -893,7 +893,7 @@ op_generic_t *osrc_copy_mult_attrs_internal(object_service_fn_t *os, osrc_mult_a
 // osrc_copy_multiple_attrs - Generates a copy object multiple attribute operation
 //***********************************************************************
 
-op_generic_t *osrc_copy_multiple_attrs(object_service_fn_t *os, creds_t *creds, os_fd_t *fd_src, char **key_src, os_fd_t *fd_dest, char **key_dest, int n)
+gop_op_generic_t *osrc_copy_multiple_attrs(lio_object_service_fn_t *os, lio_creds_t *creds, os_fd_t *fd_src, char **key_src, os_fd_t *fd_dest, char **key_dest, int n)
 {
     osrc_mult_attr_t *ma;
 
@@ -913,7 +913,7 @@ op_generic_t *osrc_copy_multiple_attrs(object_service_fn_t *os, creds_t *creds, 
 // osrc_copy_attr - Generates a copy object attribute operation
 //***********************************************************************
 
-op_generic_t *osrc_copy_attr(object_service_fn_t *os, creds_t *creds, os_fd_t *fd_src, char *key_src, os_fd_t *fd_dest, char *key_dest)
+gop_op_generic_t *osrc_copy_attr(lio_object_service_fn_t *os, lio_creds_t *creds, os_fd_t *fd_src, char *key_src, os_fd_t *fd_dest, char *key_dest)
 {
     osrc_mult_attr_t *ma;
 
@@ -937,12 +937,12 @@ op_generic_t *osrc_copy_attr(object_service_fn_t *os, creds_t *creds, os_fd_t *f
 //    objects
 //***********************************************************************
 
-op_generic_t *osrc_symlink_mult_attrs_internal(object_service_fn_t *os, osrc_mult_attr_t *ma, creds_t *creds)
+gop_op_generic_t *osrc_symlink_mult_attrs_internal(lio_object_service_fn_t *os, osrc_mult_attr_t *ma, lio_creds_t *creds)
 {
-    osrc_priv_t *osrc = (osrc_priv_t *)os->priv;
+    lio_osrc_priv_t *osrc = (lio_osrc_priv_t *)os->priv;
     osrc_object_fd_t *dfd = (osrc_object_fd_t *)ma->fd_dest;
     mq_msg_t *msg;
-    op_generic_t *gop;
+    gop_op_generic_t *gop;
     int i, bpos, len, nmax;
     char *data;
 
@@ -999,7 +999,7 @@ op_generic_t *osrc_symlink_mult_attrs_internal(object_service_fn_t *os, osrc_mul
 // osrc_symlink_multiple_attrs - Generates a link multiple attribute operation
 //***********************************************************************
 
-op_generic_t *osrc_symlink_multiple_attrs(object_service_fn_t *os, creds_t *creds, char **src_path, char **key_src, os_fd_t *fd_dest, char **key_dest, int n)
+gop_op_generic_t *osrc_symlink_multiple_attrs(lio_object_service_fn_t *os, lio_creds_t *creds, char **src_path, char **key_src, os_fd_t *fd_dest, char **key_dest, int n)
 {
     osrc_mult_attr_t *ma;
 
@@ -1019,7 +1019,7 @@ op_generic_t *osrc_symlink_multiple_attrs(object_service_fn_t *os, creds_t *cred
 // osrc_symlink_attr - Generates a link attribute operation
 //***********************************************************************
 
-op_generic_t *osrc_symlink_attr(object_service_fn_t *os, creds_t *creds, char *src_path, char *key_src, os_fd_t *fd_dest, char *key_dest)
+gop_op_generic_t *osrc_symlink_attr(lio_object_service_fn_t *os, lio_creds_t *creds, char *src_path, char *key_src, os_fd_t *fd_dest, char *key_dest)
 {
     osrc_mult_attr_t *ma;
 
@@ -1042,12 +1042,12 @@ op_generic_t *osrc_symlink_attr(object_service_fn_t *os, creds_t *creds, char *s
 // osrc_move_mult_attrs_internal - Renames multiple object attributes
 //***********************************************************************
 
-op_generic_t *osrc_move_mult_attrs_internal(object_service_fn_t *os, osrc_mult_attr_t *ma, creds_t *creds)
+gop_op_generic_t *osrc_move_mult_attrs_internal(lio_object_service_fn_t *os, osrc_mult_attr_t *ma, lio_creds_t *creds)
 {
-    osrc_priv_t *osrc = (osrc_priv_t *)os->priv;
+    lio_osrc_priv_t *osrc = (lio_osrc_priv_t *)os->priv;
     osrc_object_fd_t *sfd = (osrc_object_fd_t *)ma->fd;
     mq_msg_t *msg;
-    op_generic_t *gop;
+    gop_op_generic_t *gop;
     int i, bpos, len, nmax;
     char *data;
 
@@ -1099,7 +1099,7 @@ op_generic_t *osrc_move_mult_attrs_internal(object_service_fn_t *os, osrc_mult_a
 // osrc_move_multiple_attrs - Generates a move object attributes operation
 //***********************************************************************
 
-op_generic_t *osrc_move_multiple_attrs(object_service_fn_t *os, creds_t *creds, os_fd_t *fd, char **key_old, char **key_new, int n)
+gop_op_generic_t *osrc_move_multiple_attrs(lio_object_service_fn_t *os, lio_creds_t *creds, os_fd_t *fd, char **key_old, char **key_new, int n)
 {
     osrc_mult_attr_t *ma;
 
@@ -1118,7 +1118,7 @@ op_generic_t *osrc_move_multiple_attrs(object_service_fn_t *os, creds_t *creds, 
 // osrc_move_attr - Generates a move object attribute operation
 //***********************************************************************
 
-op_generic_t *osrc_move_attr(object_service_fn_t *os, creds_t *creds, os_fd_t *fd, char *key_old, char *key_new)
+gop_op_generic_t *osrc_move_attr(lio_object_service_fn_t *os, lio_creds_t *creds, os_fd_t *fd, char *key_old, char *key_new)
 {
     osrc_mult_attr_t *ma;
 
@@ -1140,7 +1140,7 @@ op_generic_t *osrc_move_attr(object_service_fn_t *os, creds_t *creds, os_fd_t *f
 //  osf_store_val - Stores the return attribute value
 //*************************************************************
 
-int osrc_store_val(mq_stream_t *mqs, int src_size, void **dest, int *v_size)
+int osrc_store_val(gop_mq_stream_t *mqs, int src_size, void **dest, int *v_size)
 {
     char *buf;
 
@@ -1179,13 +1179,13 @@ int osrc_store_val(mq_stream_t *mqs, int src_size, void **dest, int *v_size)
 // osrc_response_get_multiple_attrs - Handles a get multiple attr response
 //***********************************************************************
 
-op_status_t osrc_response_get_multiple_attrs(void *task_arg, int tid)
+gop_op_status_t osrc_response_get_multiple_attrs(void *task_arg, int tid)
 {
-    mq_task_t *task = (mq_task_t *)task_arg;
+    gop_mq_task_t *task = (gop_mq_task_t *)task_arg;
     osrc_mult_attr_t *ma = task->arg;
-    osrc_priv_t *osrc = (osrc_priv_t *)ma->os->priv;
-    mq_stream_t *mqs;
-    op_status_t status;
+    lio_osrc_priv_t *osrc = (lio_osrc_priv_t *)ma->os->priv;
+    gop_mq_stream_t *mqs;
+    gop_op_status_t status;
     int len, err, i;
 
     log_printf(5, "START\n");
@@ -1235,12 +1235,12 @@ fail:
 //   and upon return *v_size contains the bytes loaded
 //***********************************************************************
 
-op_generic_t *osrc_get_mult_attrs_internal(object_service_fn_t *os, osrc_mult_attr_t *ma, creds_t *creds)
+gop_op_generic_t *osrc_get_mult_attrs_internal(lio_object_service_fn_t *os, osrc_mult_attr_t *ma, lio_creds_t *creds)
 {
-    osrc_priv_t *osrc = (osrc_priv_t *)os->priv;
+    lio_osrc_priv_t *osrc = (lio_osrc_priv_t *)os->priv;
     osrc_object_fd_t *ofd = (osrc_object_fd_t *)ma->fd;
     mq_msg_t *msg;
-    op_generic_t *gop;
+    gop_op_generic_t *gop;
     int i, bpos, len, nmax;
     char *data;
 
@@ -1290,7 +1290,7 @@ op_generic_t *osrc_get_mult_attrs_internal(object_service_fn_t *os, osrc_mult_at
 //   and upon return *v_size contains the bytes loaded
 //***********************************************************************
 
-op_generic_t *osrc_get_multiple_attrs(object_service_fn_t *os, creds_t *creds, os_fd_t *fd, char **key, void **val, int *v_size, int n)
+gop_op_generic_t *osrc_get_multiple_attrs(lio_object_service_fn_t *os, lio_creds_t *creds, os_fd_t *fd, char **key, void **val, int *v_size, int n)
 {
     osrc_mult_attr_t *ma;
 
@@ -1311,7 +1311,7 @@ op_generic_t *osrc_get_multiple_attrs(object_service_fn_t *os, creds_t *creds, o
 //   and upon return *v_size contains the bytes loaded
 //***********************************************************************
 
-op_generic_t *osrc_get_attr(object_service_fn_t *os, creds_t *creds, os_fd_t *fd, char *key, void **val, int *v_size)
+gop_op_generic_t *osrc_get_attr(lio_object_service_fn_t *os, lio_creds_t *creds, os_fd_t *fd, char *key, void **val, int *v_size)
 {
     osrc_mult_attr_t *ma;
 
@@ -1332,12 +1332,12 @@ op_generic_t *osrc_get_attr(object_service_fn_t *os, creds_t *creds, os_fd_t *fd
 // osrc_set_mult_attrs_internal - Sets multiple object attributes
 //***********************************************************************
 
-op_generic_t *osrc_set_mult_attrs_internal(object_service_fn_t *os, osrc_mult_attr_t *ma, creds_t *creds)
+gop_op_generic_t *osrc_set_mult_attrs_internal(lio_object_service_fn_t *os, osrc_mult_attr_t *ma, lio_creds_t *creds)
 {
-    osrc_priv_t *osrc = (osrc_priv_t *)os->priv;
+    lio_osrc_priv_t *osrc = (lio_osrc_priv_t *)os->priv;
     osrc_object_fd_t *ofd = (osrc_object_fd_t *)ma->fd;
     mq_msg_t *msg;
-    op_generic_t *gop;
+    gop_op_generic_t *gop;
     int i, bpos, len, nmax;
     char *data;
 
@@ -1391,7 +1391,7 @@ op_generic_t *osrc_set_mult_attrs_internal(object_service_fn_t *os, osrc_mult_at
 //   If val[i] == NULL for the attribute is deleted
 //***********************************************************************
 
-op_generic_t *osrc_set_multiple_attrs(object_service_fn_t *os, creds_t *creds, os_fd_t *fd, char **key, void **val, int *v_size, int n)
+gop_op_generic_t *osrc_set_multiple_attrs(lio_object_service_fn_t *os, lio_creds_t *creds, os_fd_t *fd, char **key, void **val, int *v_size, int n)
 {
     osrc_mult_attr_t *ma;
 
@@ -1412,7 +1412,7 @@ op_generic_t *osrc_set_multiple_attrs(object_service_fn_t *os, creds_t *creds, o
 //   If val == NULL the attribute is deleted
 //***********************************************************************
 
-op_generic_t *osrc_set_attr(object_service_fn_t *os, creds_t *creds, os_fd_t *fd, char *key, void *val, int v_size)
+gop_op_generic_t *osrc_set_attr(lio_object_service_fn_t *os, lio_creds_t *creds, os_fd_t *fd, char *key, void *val, int v_size)
 {
     osrc_mult_attr_t *ma;
 
@@ -1515,12 +1515,12 @@ int osrc_next_attr(os_attr_iter_t *oit, char **key, void **val, int *v_size)
 // osrc_response_attr_iter - Handles the create_attr_iter() response
 //***********************************************************************
 
-op_status_t osrc_response_attr_iter(void *task_arg, int tid)
+gop_op_status_t osrc_response_attr_iter(void *task_arg, int tid)
 {
-    mq_task_t *task = (mq_task_t *)task_arg;
+    gop_mq_task_t *task = (gop_mq_task_t *)task_arg;
     osrc_attr_iter_t *it = (osrc_attr_iter_t *)task->arg;
-    osrc_priv_t *osrc = (osrc_priv_t *)it->os->priv;
-    op_status_t status;
+    lio_osrc_priv_t *osrc = (lio_osrc_priv_t *)it->os->priv;
+    gop_op_status_t status;
     int err;
 
     log_printf(5, "START\n");
@@ -1561,15 +1561,15 @@ op_status_t osrc_response_attr_iter(void *task_arg, int tid)
 //   for selecting attributes
 //***********************************************************************
 
-os_attr_iter_t *osrc_create_attr_iter(object_service_fn_t *os, creds_t *creds, os_fd_t *fd, os_regex_table_t *attr, int v_max)
+os_attr_iter_t *osrc_create_attr_iter(lio_object_service_fn_t *os, lio_creds_t *creds, os_fd_t *fd, lio_os_regex_table_t *attr, int v_max)
 {
-    osrc_priv_t *osrc = (osrc_priv_t *)os->priv;
+    lio_osrc_priv_t *osrc = (lio_osrc_priv_t *)os->priv;
     osrc_object_fd_t *ofd = (osrc_object_fd_t *)fd;
     osrc_attr_iter_t *it;
     int bpos, bufsize, again, n, err;
     unsigned char *buffer;
     mq_msg_t *msg;
-    op_generic_t *gop;
+    gop_op_generic_t *gop;
 
     log_printf(5, "START\n");
 
@@ -1742,12 +1742,12 @@ int osrc_next_object(os_object_iter_t *oit, char **fname, int *prefix_len)
 // osrc_response_object_iter - Handles a alist/regex iter response
 //***********************************************************************
 
-op_status_t osrc_response_object_iter(void *task_arg, int tid)
+gop_op_status_t osrc_response_object_iter(void *task_arg, int tid)
 {
-    mq_task_t *task = (mq_task_t *)task_arg;
+    gop_mq_task_t *task = (gop_mq_task_t *)task_arg;
     osrc_object_iter_t *it = (osrc_object_iter_t *)task->arg;
-    osrc_priv_t *osrc = (osrc_priv_t *)it->os->priv;
-    op_status_t status;
+    lio_osrc_priv_t *osrc = (lio_osrc_priv_t *)it->os->priv;
+    gop_op_status_t status;
     int err;
 
     log_printf(5, "START\n");
@@ -1789,16 +1789,16 @@ op_status_t osrc_response_object_iter(void *task_arg, int tid)
 //
 //***********************************************************************
 
-os_object_iter_t *osrc_create_object_iter(object_service_fn_t *os, creds_t *creds, os_regex_table_t *path, os_regex_table_t *object_regex, int object_types,
-        os_regex_table_t *attr, int recurse_depth, os_attr_iter_t **it_attr, int v_max)
+os_object_iter_t *osrc_create_object_iter(lio_object_service_fn_t *os, lio_creds_t *creds, lio_os_regex_table_t *path, lio_os_regex_table_t *object_regex, int object_types,
+        lio_os_regex_table_t *attr, int recurse_depth, os_attr_iter_t **it_attr, int v_max)
 {
-    osrc_priv_t *osrc = (osrc_priv_t *)os->priv;
+    lio_osrc_priv_t *osrc = (lio_osrc_priv_t *)os->priv;
     osrc_object_iter_t *it;
     osrc_attr_iter_t *ait;
     int bpos, bufsize, again, n, err;
     unsigned char *buffer;
     mq_msg_t *msg;
-    op_generic_t *gop;
+    gop_op_generic_t *gop;
 
     log_printf(5, "START\n");
 
@@ -1892,16 +1892,16 @@ os_object_iter_t *osrc_create_object_iter(object_service_fn_t *os, creds_t *cred
 //
 //***********************************************************************
 
-os_object_iter_t *osrc_create_object_iter_alist(object_service_fn_t *os, creds_t *creds, os_regex_table_t *path, os_regex_table_t *object_regex, int object_types,
+os_object_iter_t *osrc_create_object_iter_alist(lio_object_service_fn_t *os, lio_creds_t *creds, lio_os_regex_table_t *path, lio_os_regex_table_t *object_regex, int object_types,
         int recurse_depth, char **key, void **val, int *v_size, int n_keys)
 {
-    osrc_priv_t *osrc = (osrc_priv_t *)os->priv;
+    lio_osrc_priv_t *osrc = (lio_osrc_priv_t *)os->priv;
     osrc_object_iter_t *it;
 
     int bpos, bufsize, again, n, i, err;
     unsigned char *buffer;
     mq_msg_t *msg;
-    op_generic_t *gop;
+    gop_op_generic_t *gop;
 
     log_printf(5, "START\n");
 
@@ -2012,12 +2012,12 @@ void osrc_destroy_object_iter(os_object_iter_t *oit)
 // osrc_response_open - Handles an open request response
 //***********************************************************************
 
-op_status_t osrc_response_open(void *task_arg, int tid)
+gop_op_status_t osrc_response_open(void *task_arg, int tid)
 {
-    mq_task_t *task = (mq_task_t *)task_arg;
+    gop_mq_task_t *task = (gop_mq_task_t *)task_arg;
     osrc_open_t *arg = (osrc_open_t *)task->arg;
-    osrc_priv_t *osrc = (osrc_priv_t *)arg->os->priv;
-    op_status_t status;
+    lio_osrc_priv_t *osrc = (lio_osrc_priv_t *)arg->os->priv;
+    gop_op_status_t status;
     void *data;
     osrc_object_fd_t *fd;
 
@@ -2049,11 +2049,11 @@ op_status_t osrc_response_open(void *task_arg, int tid)
 //  osrc_open_object - Makes the open file op
 //***********************************************************************
 
-op_generic_t *osrc_open_object(object_service_fn_t *os, creds_t *creds, char *path, int mode, char *id, os_fd_t **pfd, int max_wait)
+gop_op_generic_t *osrc_open_object(lio_object_service_fn_t *os, lio_creds_t *creds, char *path, int mode, char *id, os_fd_t **pfd, int max_wait)
 {
-    osrc_priv_t *osrc = (osrc_priv_t *)os->priv;
+    lio_osrc_priv_t *osrc = (lio_osrc_priv_t *)os->priv;
     osrc_open_t *arg;
-    op_generic_t *gop;
+    gop_op_generic_t *gop;
     mq_msg_t *msg;
     unsigned char buffer[1024];
     unsigned char *sent;
@@ -2108,9 +2108,9 @@ op_generic_t *osrc_open_object(object_service_fn_t *os, creds_t *creds, char *pa
 //  osrc_abort_open_object - Aborts an ongoing open file op
 //***********************************************************************
 
-op_generic_t *osrc_abort_open_object(object_service_fn_t *os, op_generic_t *gop)
+gop_op_generic_t *osrc_abort_open_object(lio_object_service_fn_t *os, gop_op_generic_t *gop)
 {
-    osrc_priv_t *osrc = (osrc_priv_t *)os->priv;
+    lio_osrc_priv_t *osrc = (lio_osrc_priv_t *)os->priv;
     osrc_open_t *arg = (osrc_open_t *)gop_get_private(gop);
     mq_msg_t *msg;
 
@@ -2136,13 +2136,13 @@ op_generic_t *osrc_abort_open_object(object_service_fn_t *os, op_generic_t *gop)
 // osrc_response_close_object - Handles the response to a clos_object call
 //***********************************************************************
 
-op_status_t osrc_response_close_object(void *task_arg, int tid)
+gop_op_status_t osrc_response_close_object(void *task_arg, int tid)
 {
-    mq_task_t *task = (mq_task_t *)task_arg;
+    gop_mq_task_t *task = (gop_mq_task_t *)task_arg;
     osrc_object_fd_t *fd = (osrc_object_fd_t *)task->arg;
-    osrc_priv_t *osrc = (osrc_priv_t *)fd->os->priv;
+    lio_osrc_priv_t *osrc = (lio_osrc_priv_t *)fd->os->priv;
 
-    op_status_t status;
+    gop_op_status_t status;
 
     log_printf(5, "START\n");
 
@@ -2166,11 +2166,11 @@ op_status_t osrc_response_close_object(void *task_arg, int tid)
 //  osrc_close_object - Closes the object
 //***********************************************************************
 
-op_generic_t *osrc_close_object(object_service_fn_t *os, os_fd_t *ofd)
+gop_op_generic_t *osrc_close_object(lio_object_service_fn_t *os, os_fd_t *ofd)
 {
-    osrc_priv_t *osrc = (osrc_priv_t *)os->priv;
+    lio_osrc_priv_t *osrc = (lio_osrc_priv_t *)os->priv;
     osrc_object_fd_t *fd = (osrc_object_fd_t *)ofd;
-    op_generic_t *gop;
+    gop_op_generic_t *gop;
     mq_msg_t *msg;
 
     log_printf(5, "START fd->size=%d\n", fd->size);
@@ -2194,13 +2194,13 @@ op_generic_t *osrc_close_object(object_service_fn_t *os, os_fd_t *ofd)
 //  osrc_fsck_object - Allocates space for the object check
 //***********************************************************************
 
-op_generic_t *osrc_fsck_object(object_service_fn_t *os, creds_t *creds, char *fname, int ftype, int resolution)
+gop_op_generic_t *osrc_fsck_object(lio_object_service_fn_t *os, lio_creds_t *creds, char *fname, int ftype, int resolution)
 {
-    osrc_priv_t *osrc = (osrc_priv_t *)os->priv;
+    lio_osrc_priv_t *osrc = (lio_osrc_priv_t *)os->priv;
     int n;
     unsigned char buf[32];
     mq_msg_t *msg;
-    op_generic_t *gop;
+    gop_op_generic_t *gop;
 
     log_printf(5, "START\n");
 
@@ -2227,7 +2227,7 @@ op_generic_t *osrc_fsck_object(object_service_fn_t *os, creds_t *creds, char *fn
 // osrc_next_fsck - Returns the next problem object
 //***********************************************************************
 
-int osrc_next_fsck(object_service_fn_t *os, os_fsck_iter_t *oit, char **bad_fname, int *bad_atype)
+int osrc_next_fsck(lio_object_service_fn_t *os, os_fsck_iter_t *oit, char **bad_fname, int *bad_atype)
 {
     osrc_fsck_iter_t *it = (osrc_fsck_iter_t *)oit;
     int n, err, fsck_err;
@@ -2287,12 +2287,12 @@ int osrc_next_fsck(object_service_fn_t *os, os_fsck_iter_t *oit, char **bad_fnam
 // osrc_response_fsck_iter - Handles the create_fsck_iter() response
 //***********************************************************************
 
-op_status_t osrc_response_fsck_iter(void *task_arg, int tid)
+gop_op_status_t osrc_response_fsck_iter(void *task_arg, int tid)
 {
-    mq_task_t *task = (mq_task_t *)task_arg;
+    gop_mq_task_t *task = (gop_mq_task_t *)task_arg;
     osrc_fsck_iter_t *it = (osrc_fsck_iter_t *)task->arg;
-    osrc_priv_t *osrc = (osrc_priv_t *)it->os->priv;
-    op_status_t status;
+    lio_osrc_priv_t *osrc = (lio_osrc_priv_t *)it->os->priv;
+    gop_op_status_t status;
     int err;
 
     log_printf(5, "START\n");
@@ -2332,14 +2332,14 @@ op_status_t osrc_response_fsck_iter(void *task_arg, int tid)
 // osrc_create_fsck_iter - Creates an fsck iterator
 //***********************************************************************
 
-os_fsck_iter_t *osrc_create_fsck_iter(object_service_fn_t *os, creds_t *creds, char *path, int mode)
+os_fsck_iter_t *osrc_create_fsck_iter(lio_object_service_fn_t *os, lio_creds_t *creds, char *path, int mode)
 {
-    osrc_priv_t *osrc = (osrc_priv_t *)os->priv;
+    lio_osrc_priv_t *osrc = (lio_osrc_priv_t *)os->priv;
     osrc_fsck_iter_t *it;
     int err, n;
     unsigned char buf[16];
     mq_msg_t *msg;
-    op_generic_t *gop;
+    gop_op_generic_t *gop;
 
     log_printf(5, "START\n");
 
@@ -2378,7 +2378,7 @@ os_fsck_iter_t *osrc_create_fsck_iter(object_service_fn_t *os, creds_t *creds, c
 // osrc_destroy_fsck_iter - Destroys an fsck iterator
 //***********************************************************************
 
-void osrc_destroy_fsck_iter(object_service_fn_t *os, os_fsck_iter_t *oit)
+void osrc_destroy_fsck_iter(lio_object_service_fn_t *os, os_fsck_iter_t *oit)
 {
     osrc_fsck_iter_t *it = (osrc_fsck_iter_t *)oit;
 
@@ -2393,10 +2393,10 @@ void osrc_destroy_fsck_iter(object_service_fn_t *os, os_fsck_iter_t *oit)
 // osrc_cred_init - Intialize a set of credentials
 //***********************************************************************
 
-creds_t *osrc_cred_init(object_service_fn_t *os, int type, void **args)
+lio_creds_t *osrc_cred_init(lio_object_service_fn_t *os, int type, void **args)
 {
-    osrc_priv_t *osrc = (osrc_priv_t *)os->priv;
-    creds_t *creds;
+    lio_osrc_priv_t *osrc = (lio_osrc_priv_t *)os->priv;
+    lio_creds_t *creds;
 
     if (osrc->os_temp == NULL) {
         creds = authn_cred_init(osrc->authn, type, args);
@@ -2414,9 +2414,9 @@ creds_t *osrc_cred_init(object_service_fn_t *os, int type, void **args)
 // osrc_cred_destroy - Destroys a set ot credentials
 //***********************************************************************
 
-void osrc_cred_destroy(object_service_fn_t *os, creds_t *creds)
+void osrc_cred_destroy(lio_object_service_fn_t *os, lio_creds_t *creds)
 {
-    osrc_priv_t *osrc = (osrc_priv_t *)os->priv;
+    lio_osrc_priv_t *osrc = (lio_osrc_priv_t *)os->priv;
 
     if (osrc->os_temp == NULL) {
         an_cred_destroy(creds);
@@ -2431,9 +2431,9 @@ void osrc_cred_destroy(object_service_fn_t *os, creds_t *creds)
 // os_remote_client_destroy
 //***********************************************************************
 
-void osrc_destroy(object_service_fn_t *os)
+void osrc_destroy(lio_object_service_fn_t *os)
 {
-    osrc_priv_t *osrc = (osrc_priv_t *)os->priv;
+    lio_osrc_priv_t *osrc = (lio_osrc_priv_t *)os->priv;
 
     if (osrc->os_remote != NULL) {
         os_destroy(osrc->os_remote);
@@ -2453,10 +2453,10 @@ void osrc_destroy(object_service_fn_t *os)
 //  object_service_remote_client_create - Creates a remote client OS
 //***********************************************************************
 
-object_service_fn_t *object_service_remote_client_create(service_manager_t *ess, tbx_inip_file_t *fd, char *section)
+lio_object_service_fn_t *object_service_remote_client_create(lio_service_manager_t *ess, tbx_inip_file_t *fd, char *section)
 {
-    object_service_fn_t *os;
-    osrc_priv_t *osrc;
+    lio_object_service_fn_t *os;
+    lio_osrc_priv_t *osrc;
     unsigned int n;
     char *str, *asection, *atype;
     char hostname[1024], buffer[1024];
@@ -2465,8 +2465,8 @@ object_service_fn_t *object_service_remote_client_create(service_manager_t *ess,
     log_printf(10, "START\n");
     if (section == NULL) section = "os_remote_client";
 
-    tbx_type_malloc_clear(os, object_service_fn_t, 1);
-    tbx_type_malloc_clear(osrc, osrc_priv_t, 1);
+    tbx_type_malloc_clear(os, lio_object_service_fn_t, 1);
+    tbx_type_malloc_clear(osrc, lio_osrc_priv_t, 1);
     os->priv = (void *)osrc;
 
     str = tbx_inip_get_string(fd, section, "os_temp", NULL);
@@ -2474,7 +2474,7 @@ object_service_fn_t *object_service_remote_client_create(service_manager_t *ess,
         log_printf(0, "NOTE: Running in debug mode by loading Remote server locally!\n");
         osrc->os_remote = object_service_remote_server_create(ess, fd, str);
         assert(osrc->os_remote != NULL);
-        osrc->os_temp = ((osrs_priv_t *)(osrc->os_remote->priv))->os_child;
+        osrc->os_temp = ((lio_osrs_priv_t *)(osrc->os_remote->priv))->os_child;
         free(str);
     } else {
         asection = tbx_inip_get_string(fd, section, "authn", NULL);

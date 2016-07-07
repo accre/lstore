@@ -31,10 +31,10 @@
 // ibp_sync_execute - Handles the sync iovec operations
 //*************************************************************
 
-int ibp_sync_execute(opque_t *q, int nthreads)
+int ibp_sync_execute(gop_opque_t *q, int nthreads)
 {
     tbx_stack_t *tasks;
-    op_generic_t *gop;
+    gop_op_generic_t *gop;
 
     log_printf(15, "ibp_sync_execute: Start! ncommands=%d\n", tbx_stack_count(q->qd.list));
     gop_default_sort_ops(NULL, q);
@@ -45,9 +45,9 @@ int ibp_sync_execute(opque_t *q, int nthreads)
     tasks = q->qd.list;
     q->qd.list = tbx_stack_new();
 
-    while ((  gop = (op_generic_t *)tbx_stack_pop(tasks)) != NULL) {
+    while ((  gop = (gop_op_generic_t *)tbx_stack_pop(tasks)) != NULL) {
         gop_opque_add(q, gop);
-        if (opque_tasks_left(q) >= nthreads) {
+        if (gop_opque_tasks_left(q) >= nthreads) {
             opque_waitany(q);
         }
 
@@ -55,7 +55,7 @@ int ibp_sync_execute(opque_t *q, int nthreads)
     }
 
 
-    if (opque_tasks_failed(q) == 0) {
+    if (gop_opque_tasks_failed(q) == 0) {
         return(IBP_OK);
     } else {
         return(IBP_E_GENERIC);

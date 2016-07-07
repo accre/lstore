@@ -29,9 +29,9 @@ int main(int argc, char **argv)
 {
     int i;
     char *fname = NULL;
-    exnode_t *ex;
-    exnode_exchange_t *exp;
-    exnode_exchange_t *exp_in;
+    lio_exnode_t *ex;
+    lio_exnode_exchange_t *exp;
+    lio_exnode_exchange_t *exp_in;
 
     if (argc < 4) {
         printf("\n");

@@ -47,9 +47,9 @@ int main(int argc, char **argv)
     char ppbuf[32];
     FILE *fd;
     tbx_iovec_t **iov;
-    opque_t *q;
-    op_generic_t *gop, **gop_list;
-    op_status_t status;
+    gop_opque_t *q;
+    gop_op_generic_t *gop, **gop_list;
+    gop_op_status_t status;
     tbx_tbuf_t *tbuf;
 
     timeout = 60;
@@ -106,7 +106,7 @@ int main(int argc, char **argv)
     tbx_type_malloc(rcap, char *, n_rcap);
     tbx_type_malloc(buffer, char *, n_rcap);
     tbx_type_malloc(iov, tbx_iovec_t *, n_rcap);
-    tbx_type_malloc(gop_list, op_generic_t *, n_rcap);
+    tbx_type_malloc(gop_list, gop_op_generic_t *, n_rcap);
 
     offset = 0;
     q = gop_opque_new();

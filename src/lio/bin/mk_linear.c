@@ -38,12 +38,12 @@ int main(int argc, char **argv)
     char *query_text = NULL;
     rs_query_t *rq;
     ex_off_t block_size, total_size;
-    exnode_t *ex;
+    lio_exnode_t *ex;
     segment_create_t *screate;
     char *fname_out = NULL;
-    exnode_exchange_t *exp;
-    segment_t *seg = NULL;
-    op_generic_t *gop;
+    lio_exnode_exchange_t *exp;
+    lio_segment_t *seg = NULL;
+    gop_op_generic_t *gop;
 
     if (argc < 5) {
         printf("\n");

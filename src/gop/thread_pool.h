@@ -31,14 +31,14 @@
 extern "C" {
 #endif
 
-//#define tp_gop_id(top) ((thread_pool_op_t *)((gop)->op->priv))->id
+//#define tp_gop_id(top) ((gop_thread_pool_op_t *)((gop)->op->priv))->id
 
-int thread_pool_direct(thread_pool_context_t *tpc, apr_thread_start_t fn, void *arg);
+int thread_pool_direct(gop_thread_pool_context_t *tpc, apr_thread_start_t fn, void *arg);
 
-int set_thread_pool_op(thread_pool_op_t *op, thread_pool_context_t *tpc, char *que, op_status_t (*fn)(void *arg, int id), void *arg, void (*my_op_free)(void *arg), int workload);
+int set_thread_pool_op(gop_thread_pool_op_t *op, gop_thread_pool_context_t *tpc, char *que, gop_op_status_t (*fn)(void *arg, int id), void *arg, void (*my_op_free)(void *arg), int workload);
 
 
-void thread_pool_exec_fn(void *arg, op_generic_t *op);
+void thread_pool_exec_fn(void *arg, gop_op_generic_t *op);
 
 #ifdef __cplusplus
 }

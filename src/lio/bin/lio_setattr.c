@@ -72,7 +72,7 @@ int main(int argc, char **argv)
 {
     int i, j, rg_mode, start_option, start_index, err, fin, nfailed;
     lio_path_tuple_t tuple;
-    os_regex_table_t *rp_single, *ro_single;
+    lio_os_regex_table_t *rp_single, *ro_single;
     os_object_iter_t *it;
     os_fd_t *fd;  //** This is just used for manipulating symlink attributes
     char *bstate;

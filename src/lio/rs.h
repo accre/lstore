@@ -49,7 +49,7 @@ extern "C" {
 
 
 
-struct rs_space_t {
+struct lio_rs_space_t {
     int n_rids_total;
     int n_rids_free;
     int n_rids_status[3];
@@ -62,15 +62,15 @@ struct rs_space_t {
 };
 
 
-struct  rs_hints_t {  //** Used for passing existing RID's and individual queries to the RS requestor and validation or repair
+struct  lio_rs_hints_t {  //** Used for passing existing RID's and individual queries to the RS requestor and validation or repair
     char *fixed_rid_key;  //** RID key for existing/fixed index
     int  status;    //** Status of the fixed match or INVALID_LOCAL if a problem occurs with the local_rsq.  Returns one of the error codes above
     rs_query_t *local_rsq;  //** Local query appended to the global queury just for this allocation  used for both fixed and new
     apr_hash_t *pick_from;  //** List of resources to pick from
 };
 
-struct rs_request_t {
-    op_generic_t *gop;
+struct lio_rs_request_t {
+    gop_op_generic_t *gop;
     int rid_index;
     ex_off_t size;
     char *rid_key;
@@ -79,7 +79,7 @@ struct rs_request_t {
 
 
 
-typedef resource_service_fn_t *(rs_create_t)(void *arg, tbx_inip_file_t *ifd, char *section);
+typedef lio_resource_service_fn_t *(rs_create_t)(void *arg, tbx_inip_file_t *ifd, char *section);
 
 
 #define rs_type(rs)  (rs)->type
@@ -89,9 +89,9 @@ typedef resource_service_fn_t *(rs_create_t)(void *arg, tbx_inip_file_t *ifd, ch
 #define rs_data_request(rs, da, q, caps, req, n_req, hints_list, fixed_size, n_rid, ignore_fixed_err, to) (rs)->data_request(rs, da, q, caps, req, n_req, hints_list, fixed_size, n_rid, ignore_fixed_err, to)
 #define rs_destroy_service(rs) (rs)->destroy_service(rs)
 
-rs_space_t rs_space(char *config);
+lio_rs_space_t rs_space(char *config);
 
-void resource_service_destroy(resource_service_fn_t *rsf);
+void resource_service_destroy(lio_resource_service_fn_t *rsf);
 
 #ifdef __cplusplus
 }

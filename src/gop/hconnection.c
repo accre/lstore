@@ -43,11 +43,11 @@
 // new_host_connection - Allocates space for a new connection
 //*************************************************************************
 
-host_connection_t *new_host_connection(apr_pool_t *mpool)
+gop_host_connection_t *new_host_connection(apr_pool_t *mpool)
 {
-    host_connection_t *hc;
+    gop_host_connection_t *hc;
 
-    tbx_type_malloc_clear(hc, host_connection_t, 1);
+    tbx_type_malloc_clear(hc, gop_host_connection_t, 1);
 
     hc->mpool = mpool;
     apr_thread_mutex_create(&(hc->lock), APR_THREAD_MUTEX_DEFAULT, mpool);
@@ -70,7 +70,7 @@ host_connection_t *new_host_connection(apr_pool_t *mpool)
 // destroy_host_connection - Frees space allocated to a depot connection
 //*************************************************************************
 
-void destroy_host_connection(host_connection_t *hc)
+void destroy_host_connection(gop_host_connection_t *hc)
 {
     log_printf(15, "host=%s ns=%d\n", hc->hp->host, tbx_ns_getid(hc->ns));
     tbx_ns_destroy(hc->ns);
@@ -86,10 +86,10 @@ void destroy_host_connection(host_connection_t *hc)
 // close_hc - Closes a depot connection
 //*************************************************************************
 
-void close_hc(host_connection_t *hc, int quick)
+void close_hc(gop_host_connection_t *hc, int quick)
 {
     apr_status_t value;
-    host_portal_t *hp;
+    gop_host_portal_t *hp;
 
     //** Trigger the send thread to shutdown which also closes the recv thread
     log_printf(15, "close_hc: Closing ns=%d\n", tbx_ns_getid(hc->ns));
@@ -134,7 +134,7 @@ void close_hc(host_connection_t *hc, int quick)
 //   before continuing.  It returns the size of the pending stack
 //*************************************************************
 
-int check_workload(host_connection_t *hc)
+int check_workload(gop_host_connection_t *hc)
 {
     int psize;
     apr_time_t dt;
@@ -162,7 +162,7 @@ int check_workload(host_connection_t *hc)
 //   completed processing.
 //*************************************************************
 
-void empty_work_que(host_connection_t *hc)
+void empty_work_que(gop_host_connection_t *hc)
 {
     lock_hc(hc);
     while (tbx_stack_count(hc->pending_stack) != 0) {
@@ -177,7 +177,7 @@ void empty_work_que(host_connection_t *hc)
 // empty_hp_que - Empties the work que.  Failing all tasks
 //*************************************************************
 
-void empty_hp_que(host_portal_t *hp, op_status_t err_code)
+void empty_hp_que(gop_host_portal_t *hp, gop_op_status_t err_code)
 {
     hportal_lock(hp);
     _hp_fail_tasks(hp, err_code);
@@ -189,7 +189,7 @@ void empty_hp_que(host_portal_t *hp, op_status_t err_code)
 //   available or finished.
 //*************************************************************
 
-void recv_wait_for_work(host_connection_t *hc)
+void recv_wait_for_work(gop_host_connection_t *hc)
 {
     lock_hc(hc);
     while ((hc->shutdown_request == 0) && (tbx_stack_count(hc->pending_stack) == 0)) {
@@ -206,13 +206,13 @@ void recv_wait_for_work(host_connection_t *hc)
 
 void *hc_send_thread(apr_thread_t *th, void *data)
 {
-    host_connection_t *hc = (host_connection_t *)data;
-    host_portal_t *hp = hc->hp;
+    gop_host_connection_t *hc = (gop_host_connection_t *)data;
+    gop_host_portal_t *hp = hc->hp;
     tbx_ns_t *ns = hc->ns;
-    portal_context_t *hpc = hp->context;
-    command_op_t *hop;
-    op_generic_t *hsop;
-    op_status_t finished;
+    gop_portal_context_t *hpc = hp->context;
+    gop_command_op_t *hop;
+    gop_op_generic_t *hsop;
+    gop_op_status_t finished;
     tbx_ns_timeout_t dt;
     apr_time_t dtime;
     int tid, err;
@@ -387,20 +387,20 @@ void *hc_send_thread(apr_thread_t *th, void *data)
 
 void *hc_recv_thread(apr_thread_t *th, void *data)
 {
-    host_connection_t *hc = (host_connection_t *)data;
+    gop_host_connection_t *hc = (gop_host_connection_t *)data;
     tbx_ns_t *ns = hc->ns;
-    host_portal_t *hp = hc->hp;
-    portal_context_t *hpc = hp->context;
+    gop_host_portal_t *hp = hc->hp;
+    gop_portal_context_t *hpc = hp->context;
     apr_status_t value;
     apr_time_t cmd_pause_time = 0;
     apr_time_t pause_until;
     int64_t start_cmds_processed, cmds_processed;
     apr_time_t check_time;
     int finished, pending, n, tid;
-    op_status_t status;
+    gop_op_status_t status;
     tbx_ns_timeout_t dt;
-    op_generic_t *hsop;
-    command_op_t *hop;
+    gop_op_generic_t *hsop;
+    gop_command_op_t *hop;
 
     tid = tbx_atomic_thread_id;
     log_printf(15, "hc_recv_thread: New thread started! ns=%d tid=%d\n", tbx_ns_getid(ns), tid);
@@ -425,7 +425,7 @@ void *hc_recv_thread(apr_thread_t *th, void *data)
     while (finished != 1) {
         lock_hc(hc);
         tbx_stack_move_to_bottom(hc->pending_stack);//** Get the next recv command
-        hsop = (op_generic_t *)tbx_stack_get_current_data(hc->pending_stack);
+        hsop = (gop_op_generic_t *)tbx_stack_get_current_data(hc->pending_stack);
         unlock_hc(hc);
 
         if (hsop != NULL) {
@@ -561,7 +561,7 @@ void *hc_recv_thread(apr_thread_t *th, void *data)
         }
 
         //** and everything else on the pending_stack
-        while ((hsop = (op_generic_t *)tbx_stack_pop(hc->pending_stack)) != NULL) {
+        while ((hsop = (gop_op_generic_t *)tbx_stack_pop(hc->pending_stack)) != NULL) {
             gop_hp_submit(hp, hsop, 1, 0);
             pending = 1;
         }
@@ -637,9 +637,9 @@ void *hc_recv_thread(apr_thread_t *th, void *data)
 // create_host_connection - Creeats a new depot connection/thread
 //*************************************************************
 
-int create_host_connection(host_portal_t *hp)
+int create_host_connection(gop_host_portal_t *hp)
 {
-    host_connection_t *hc;
+    gop_host_connection_t *hc;
     apr_pool_t *pool;
     apr_status_t value;
     int send_err, recv_err, err = 0;

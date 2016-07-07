@@ -36,7 +36,7 @@ int max_spawn;
 typedef struct {
     lio_path_tuple_t src_tuple;
     lio_path_tuple_t dest_tuple;
-    os_regex_table_t *regex;
+    lio_os_regex_table_t *regex;
     int dest_type;
 } mv_t;
 
@@ -44,16 +44,16 @@ typedef struct {
 // mv_fn - Actual mv function.  Moves a regex to a dest *dir*
 //*************************************************************************
 
-op_status_t mv_fn(void *arg, int id)
+gop_op_status_t mv_fn(void *arg, int id)
 {
     mv_t *mv = (mv_t *)arg;
     os_object_iter_t *it;
     int ftype, prefix_len, slot, count, nerr;
     char dname[OS_PATH_MAX];
     char **src_fname;
-    op_generic_t *gop;
-    opque_t *q;
-    op_status_t status;
+    gop_op_generic_t *gop;
+    gop_opque_t *q;
+    gop_op_status_t status;
 
     log_printf(15, "START src=%s dest=%s\n", mv->src_tuple.path, mv->dest_tuple.path);
     tbx_log_flush();
@@ -131,11 +131,11 @@ int main(int argc, char **argv)
     unsigned int ui;
     char *fname;
     mv_t *flist;
-    op_generic_t *gop;
-    opque_t *q;
+    gop_op_generic_t *gop;
+    gop_opque_t *q;
     lio_path_tuple_t dtuple;
     int err, dtype;
-    op_status_t status;
+    gop_op_status_t status;
 
     if (argc < 2) {
         printf("\n");
@@ -271,7 +271,7 @@ int main(int argc, char **argv)
         log_printf(0, "gid=%d i=%d fname=%s\n", gop_id(gop), i, flist[i].src_tuple.path);
         gop_opque_add(q, gop);
 
-        if (opque_tasks_left(q) > lio_parallel_task_count) {
+        if (gop_opque_tasks_left(q) > lio_parallel_task_count) {
             gop = opque_waitany(q);
             j = gop_get_myid(gop);
             status = gop_get_status(gop);

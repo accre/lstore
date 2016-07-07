@@ -49,12 +49,12 @@ typedef void *(*gop_portal_dup_fn_t)(void *connect_context);  //** Duplicates a 
 typedef void (*gop_portal_destroy_fn_t)(void *connect_context);
 typedef int (*gop_portal_connect_fn_t)(tbx_ns_t *ns, void *connect_context, char *host, int port, tbx_ns_timeout_t timeout);
 typedef void (*gop_portal_close_fn_t)(tbx_ns_t *ns);
-typedef void (*gop_portal_sort_fn_t)(void *arg, opque_t *q);        //** optional
-typedef void (*gop_portal_submit_fn_t)(void *arg, op_generic_t *op);
-typedef void (*gop_portal_exec_fn_t)(void *arg, op_generic_t *op);   //** optional
+typedef void (*gop_portal_sort_fn_t)(void *arg, gop_opque_t *q);        //** optional
+typedef void (*gop_portal_submit_fn_t)(void *arg, gop_op_generic_t *op);
+typedef void (*gop_portal_exec_fn_t)(void *arg, gop_op_generic_t *op);   //** optional
 
 // Exported types. To be obscured.
-struct portal_fn_t {
+struct gop_portal_fn_t {
     gop_portal_dup_fn_t dup_connect_context;
     gop_portal_destroy_fn_t destroy_connect_context;
     gop_portal_connect_fn_t connect;
@@ -64,7 +64,7 @@ struct portal_fn_t {
     gop_portal_exec_fn_t sync_exec;
 };
 
-struct portal_context_t {             //** Handle for maintaining all the ecopy connections
+struct gop_portal_context_t {             //** Handle for maintaining all the ecopy connections
     apr_thread_mutex_t *lock;
     apr_hash_t *table;         //** Table containing the depot_portal structs
     apr_pool_t *pool;          //** Memory pool for hash table
@@ -85,7 +85,7 @@ struct portal_context_t {             //** Handle for maintaining all the ecopy 
     apr_time_t   next_check;       //** Time for next compact_dportal call
     tbx_ns_timeout_t dt;          //** Default wait time
     void *arg;
-    portal_fn_t *fn;       //** Actual implementaion for application
+    gop_portal_fn_t *fn;       //** Actual implementaion for application
 };
 
 

@@ -63,7 +63,7 @@ apr_hash_t *open_files;
 struct fuse_operations fops;
 char *id;
 char *mount_point;
-segment_rw_hints_t *rw_hints;
+lio_segment_rw_hints_t *rw_hints;
 };
 
 void *lfs_init(struct fuse_conn_info *conn);  // returns pointer to lio_fuse_t on success, otherwise NULL

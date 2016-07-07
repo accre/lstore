@@ -32,31 +32,31 @@ extern "C" {
 #endif
 
 // Typedefs
-typedef op_generic_t *(*lio_segment_read_fn_t)(segment_t *seg, data_attr_t *da, segment_rw_hints_t *hints, int n_iov, ex_tbx_iovec_t *iov, tbx_tbuf_t *buffer, ex_off_t boff, int timeout);
-typedef op_generic_t *(*lio_segment_write_fn_t)(segment_t *seg, data_attr_t *da, segment_rw_hints_t *hints, int n_iov, ex_tbx_iovec_t *iov, tbx_tbuf_t *buffer, ex_off_t boff, int timeout);
-typedef op_generic_t *(*lio_segment_inspect_fn_t)(segment_t *seg, data_attr_t *da, tbx_log_fd_t *fd, int mode, ex_off_t buffer_size, inspect_args_t *args, int timeout);
-typedef op_generic_t *(*lio_segment_truncate_fn_t)(segment_t *seg, data_attr_t *da, ex_off_t new_size, int timeout);
-typedef op_generic_t *(*lio_segment_remove_fn_t)(segment_t *seg, data_attr_t *da, int timeout);
-typedef op_generic_t *(*lio_segment_flush_fn_t)(segment_t *seg, data_attr_t *da, ex_off_t lo, ex_off_t hi, int timeout);
-typedef op_generic_t *(*lio_segment_clone_fn_t)(segment_t *seg, data_attr_t *da, segment_t **clone, int mode, void *attr, int timeout);
-typedef int (*lio_segment_signature_fn_t)(segment_t *seg, char *buffer, int *used, int bufsize);
-typedef ex_off_t (*lio_segment_block_size_fn_t)(segment_t *seg);
-typedef ex_off_t (*lio_segment_size_fn_t)(segment_t *seg);
-typedef int (*lio_segment_serialize_fn_t)(segment_t *seg, exnode_exchange_t *exp);
-typedef int (*lio_segment_deserialize_fn_t)(segment_t *seg, ex_id_t id, exnode_exchange_t *exp);
-typedef void (*lio_segment_destroy_fn_t)(segment_t *seg);
+typedef gop_op_generic_t *(*lio_segment_read_fn_t)(lio_segment_t *seg, data_attr_t *da, lio_segment_rw_hints_t *hints, int n_iov, ex_tbx_iovec_t *iov, tbx_tbuf_t *buffer, ex_off_t boff, int timeout);
+typedef gop_op_generic_t *(*lio_segment_write_fn_t)(lio_segment_t *seg, data_attr_t *da, lio_segment_rw_hints_t *hints, int n_iov, ex_tbx_iovec_t *iov, tbx_tbuf_t *buffer, ex_off_t boff, int timeout);
+typedef gop_op_generic_t *(*lio_segment_inspect_fn_t)(lio_segment_t *seg, data_attr_t *da, tbx_log_fd_t *fd, int mode, ex_off_t buffer_size, lio_inspect_args_t *args, int timeout);
+typedef gop_op_generic_t *(*lio_lio_segment_truncate_fn_t)(lio_segment_t *seg, data_attr_t *da, ex_off_t new_size, int timeout);
+typedef gop_op_generic_t *(*lio_segment_remove_fn_t)(lio_segment_t *seg, data_attr_t *da, int timeout);
+typedef gop_op_generic_t *(*lio_segment_flush_fn_t)(lio_segment_t *seg, data_attr_t *da, ex_off_t lo, ex_off_t hi, int timeout);
+typedef gop_op_generic_t *(*lio_segment_clone_fn_t)(lio_segment_t *seg, data_attr_t *da, lio_segment_t **clone, int mode, void *attr, int timeout);
+typedef int (*lio_segment_signature_fn_t)(lio_segment_t *seg, char *buffer, int *used, int bufsize);
+typedef ex_off_t (*lio_segment_block_size_fn_t)(lio_segment_t *seg);
+typedef ex_off_t (*lio_segment_size_fn_t)(lio_segment_t *seg);
+typedef int (*lio_segment_serialize_fn_t)(lio_segment_t *seg, lio_exnode_exchange_t *exp);
+typedef int (*lio_segment_deserialize_fn_t)(lio_segment_t *seg, ex_id_t id, lio_exnode_exchange_t *exp);
+typedef void (*lio_segment_destroy_fn_t)(lio_segment_t *seg);
 // FIXME: leaky
-typedef struct seglog_priv_t seglog_priv_t;
-typedef struct slog_range_t slog_range_t;
-typedef struct seglun_priv_t seglun_priv_t;
+typedef struct lio_seglog_priv_t lio_seglog_priv_t;
+typedef struct lio_slog_range_t lio_slog_range_t;
+typedef struct lio_seglun_priv_t lio_seglun_priv_t;
 
 // Functions
 // FIXME: leaky
-LIO_API int lio_cache_stats_get(cache_t *c, lio_cache_stats_get_t *cs);
+LIO_API int lio_cache_stats_get(lio_cache_t *c, lio_cache_stats_get_t *cs);
 LIO_API int lio_cache_stats_get_print(lio_cache_stats_get_t *cs, char *buffer, int *used, int nmax);
-LIO_API lio_cache_stats_get_t segment_lio_cache_stats_get(segment_t *seg);
-LIO_API op_generic_t *lio_segment_linear_make(segment_t *seg, data_attr_t *da, rs_query_t *rsq, int n_rid, ex_off_t block_size, ex_off_t total_size, int timeout);
-LIO_API op_generic_t *lio_slog_merge_with_base(segment_t *seg, data_attr_t *da, ex_off_t bufsize, char *buffer, int truncate_old_log, int timeout);  //** Merges the current log with the base
+LIO_API lio_cache_stats_get_t segment_lio_cache_stats_get(lio_segment_t *seg);
+LIO_API gop_op_generic_t *lio_segment_linear_make(lio_segment_t *seg, data_attr_t *da, rs_query_t *rsq, int n_rid, ex_off_t block_size, ex_off_t total_size, int timeout);
+LIO_API gop_op_generic_t *lio_slog_merge_with_base(lio_segment_t *seg, data_attr_t *da, ex_off_t bufsize, char *buffer, int truncate_old_log, int timeout);  //** Merges the current log with the base
 
 // Preprocessor constants
 // FIXME: leaky
@@ -69,15 +69,15 @@ LIO_API op_generic_t *lio_slog_merge_with_base(segment_t *seg, data_attr_t *da, 
 #define segment_read(s, da, hints, n_iov, iov, tbuf, boff, to) (s)->fn.read(s, da, hints, n_iov, iov, tbuf, boff, to)
 #define segment_signature(s, buffer, used, bufsize) (s)->fn.signature(s, buffer, used, bufsize)
 #define segment_size(s) (s)->fn.size(s)
-#define segment_truncate(s, da, new_size, to) (s)->fn.truncate(s, da, new_size, to)
+#define lio_segment_truncate(s, da, new_size, to) (s)->fn.truncate(s, da, new_size, to)
 #define segment_write(s, da, hints, n_iov, iov, tbuf, boff, to) (s)->fn.write(s, da, hints, n_iov, iov, tbuf, boff, to)
 
 // Exported types. To be obscured
-struct segment_fn_t {
+struct lio_segment_fn_t {
     lio_segment_read_fn_t read;
     lio_segment_write_fn_t write;
     lio_segment_inspect_fn_t inspect;
-    lio_segment_truncate_fn_t truncate;
+    lio_lio_segment_truncate_fn_t truncate;
     lio_segment_remove_fn_t remove;
     lio_segment_flush_fn_t flush;
     lio_segment_clone_fn_t clone;
@@ -89,18 +89,18 @@ struct segment_fn_t {
     lio_segment_destroy_fn_t destroy;
 };
 
-struct segment_t {
-    ex_header_t header;
+struct lio_segment_t {
+    lio_ex_header_t header;
     tbx_atomic_unit32_t ref_count;
     segment_priv_t *priv;
-    service_manager_t *ess;
-    segment_fn_t fn;
+    lio_service_manager_t *ess;
+    lio_segment_fn_t fn;
     apr_thread_mutex_t *lock;
     apr_thread_cond_t *cond;
     apr_pool_t *mpool;
 };
 
-struct segment_errors_t {
+struct lio_segment_errors_t {
     int soft;
     int hard;
     int write;

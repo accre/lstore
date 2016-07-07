@@ -29,7 +29,7 @@ extern "C" {
 
 #define OSAZ_TYPE_FAKE "fake"
 
-os_authz_t *osaz_fake_create(service_manager_t *ess, tbx_inip_file_t *ifd, char *section, object_service_fn_t *os);
+lio_os_authz_t *osaz_fake_create(lio_service_manager_t *ess, tbx_inip_file_t *ifd, char *section, lio_object_service_fn_t *os);
 
 #ifdef __cplusplus
 }

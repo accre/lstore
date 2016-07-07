@@ -31,24 +31,24 @@
 #include "gop/types.h"
 
 //** Defined in opque.c
-void _opque_start_execution(opque_t *que);
+void _opque_start_execution(gop_opque_t *que);
 void _opque_print_stack(tbx_stack_t *stack);
 extern tbx_pc_t *_gop_control;
 
-op_status_t gop_success_status = {OP_STATE_SUCCESS, 0};
-op_status_t gop_failure_status = {OP_STATE_FAILURE, 0};
-op_status_t op_retry_status = {OP_STATE_RETRY, 0};
-op_status_t op_dead_status = {OP_STATE_DEAD, 0};
-op_status_t op_timeout_status = {OP_STATE_TIMEOUT, 0};
-op_status_t op_invalid_host_status = {OP_STATE_INVALID_HOST, 0};
-op_status_t op_cant_connect_status = {OP_STATE_FAILURE, OP_STATE_CANT_CONNECT};
-op_status_t gop_error_status = {OP_STATE_ERROR, 0};
+gop_op_status_t gop_success_status = {OP_STATE_SUCCESS, 0};
+gop_op_status_t gop_failure_status = {OP_STATE_FAILURE, 0};
+gop_op_status_t op_retry_status = {OP_STATE_RETRY, 0};
+gop_op_status_t op_dead_status = {OP_STATE_DEAD, 0};
+gop_op_status_t op_timeout_status = {OP_STATE_TIMEOUT, 0};
+gop_op_status_t op_invalid_host_status = {OP_STATE_INVALID_HOST, 0};
+gop_op_status_t op_cant_connect_status = {OP_STATE_FAILURE, OP_STATE_CANT_CONNECT};
+gop_op_status_t gop_error_status = {OP_STATE_ERROR, 0};
 
 //*************************************************************
 //  gop_callback_append
 //*************************************************************
 
-void gop_callback_append(op_generic_t *gop, callback_t *cb)
+void gop_callback_append(gop_op_generic_t *gop, gop_callback_t *cb)
 {
     lock_gop(gop);
     callback_append(&(gop->base.cb), cb);
@@ -60,7 +60,7 @@ void gop_callback_append(op_generic_t *gop, callback_t *cb)
 //   callback use only.  Locking isn't used.
 //*************************************************************
 
-void gop_set_success_state(op_generic_t *g, op_status_t state)
+void gop_set_success_state(gop_op_generic_t *g, gop_op_status_t state)
 {
     g->base.status = state;
 }
@@ -71,7 +71,7 @@ void gop_set_success_state(op_generic_t *g, op_status_t state)
 //    INTERNAL command does no locking!!!!
 //*************************************************************
 
-int _gop_completed_successfully(op_generic_t *g)
+int _gop_completed_successfully(gop_op_generic_t *g)
 {
     int status;
 
@@ -90,7 +90,7 @@ int _gop_completed_successfully(op_generic_t *g)
 //    successfully
 //*************************************************************
 
-int gop_completed_successfully(op_generic_t *g)
+int gop_completed_successfully(gop_op_generic_t *g)
 {
     int status;
 
@@ -105,13 +105,13 @@ int gop_completed_successfully(op_generic_t *g)
 // gop_get_next_finished - Returns the next completed tasks
 //*************************************************************
 
-op_generic_t *gop_get_next_finished(op_generic_t *g)
+gop_op_generic_t *gop_get_next_finished(gop_op_generic_t *g)
 {
-    op_generic_t *gop;
+    gop_op_generic_t *gop;
 
     lock_gop(g);
     if (gop_get_type(g) == Q_TYPE_QUE) {
-        gop = (op_generic_t *)tbx_stack_pop(g->q->finished);
+        gop = (gop_op_generic_t *)tbx_stack_pop(g->q->finished);
     } else {
         gop = NULL;
         if (g->base.failure_mode != OP_FM_GET_END) {
@@ -129,13 +129,13 @@ op_generic_t *gop_get_next_finished(op_generic_t *g)
 //      or NULL if none exist.
 //*************************************************************
 
-op_generic_t *gop_get_next_failed(op_generic_t *g)
+gop_op_generic_t *gop_get_next_failed(gop_op_generic_t *g)
 {
-    op_generic_t *gop = NULL;
+    gop_op_generic_t *gop = NULL;
 
     lock_gop(g);
     if (gop_get_type(g) == Q_TYPE_QUE) {
-        gop = (op_generic_t *)tbx_stack_pop(g->q->failed);
+        gop = (gop_op_generic_t *)tbx_stack_pop(g->q->failed);
     } else {
         gop = NULL;
         if (g->base.failure_mode != OP_FM_GET_END) {
@@ -153,7 +153,7 @@ op_generic_t *gop_get_next_failed(op_generic_t *g)
 //    failed task/que
 //*************************************************************
 
-int gop_tasks_failed(op_generic_t *g)
+int gop_tasks_failed(gop_op_generic_t *g)
 {
     int nf;
 
@@ -172,7 +172,7 @@ int gop_tasks_failed(op_generic_t *g)
 // gop_tasks_finished- Returns the # of tasks finished
 //*************************************************************
 
-int gop_tasks_finished(op_generic_t *g)
+int gop_tasks_finished(gop_op_generic_t *g)
 {
     int nf;
 
@@ -192,7 +192,7 @@ int gop_tasks_finished(op_generic_t *g)
 // gop_tasks_left - Returns the number of tasks remaining
 //*************************************************************
 
-int gop_tasks_left(op_generic_t *g)
+int gop_tasks_left(gop_op_generic_t *g)
 {
     int n;
 
@@ -211,7 +211,7 @@ int gop_tasks_left(op_generic_t *g)
 // _gop_start_execution - Submit tasks for execution (No locking)
 //*************************************************************
 
-void _gop_start_execution(op_generic_t *g)
+void _gop_start_execution(gop_op_generic_t *g)
 {
     if (gop_get_type(g) == Q_TYPE_QUE) {
         _opque_start_execution(g->q->opque);
@@ -226,7 +226,7 @@ void _gop_start_execution(op_generic_t *g)
 // gop_start_execution - Submit tasks for execution
 //*************************************************************
 
-void gop_start_execution(op_generic_t *g)
+void gop_start_execution(gop_op_generic_t *g)
 {
     lock_gop(g);
     _gop_start_execution(g);
@@ -237,7 +237,7 @@ void gop_start_execution(op_generic_t *g)
 // gop_set_exec_mode - SEts the gop's execution mode
 //*************************************************************
 
-void gop_set_exec_mode(op_generic_t *g, gop_op_exec_mode_t mode)
+void gop_set_exec_mode(gop_op_generic_t *g, gop_op_exec_mode_t mode)
 {
     if (gop_get_type(g) == Q_TYPE_OPERATION) {
         g->base.execution_mode = mode;
@@ -250,7 +250,7 @@ void gop_set_exec_mode(op_generic_t *g, gop_op_exec_mode_t mode)
 //     tasks.
 //*************************************************************
 
-void gop_finished_submission(op_generic_t *g)
+void gop_finished_submission(gop_op_generic_t *g)
 {
     lock_gop(g);
     if (gop_get_type(g) == Q_TYPE_QUE) {
@@ -268,9 +268,9 @@ void gop_finished_submission(op_generic_t *g)
 // gop_wait - waits until the gop completes
 //*************************************************************
 
-int gop_wait(op_generic_t *gop)
+int gop_wait(gop_op_generic_t *gop)
 {
-    op_status_t status;
+    gop_op_status_t status;
     lock_gop(gop);
     while (gop->base.state == 0) {
         log_printf(15, "gop_wait: WHILE gid=%d state=%d\n", gop_id(gop), gop->base.state);
@@ -289,7 +289,7 @@ int gop_wait(op_generic_t *gop)
 // gop_free - Frees an opque or a gop
 //*************************************************************
 
-void gop_free(op_generic_t *gop, gop_op_free_mode_t mode)
+void gop_free(gop_op_generic_t *gop, gop_op_free_mode_t mode)
 {
     int type;
 
@@ -309,7 +309,7 @@ void gop_free(op_generic_t *gop, gop_op_free_mode_t mode)
 //  NOTE:  If the gop has completed already the gop is destroyed
 //*************************************************************
 
-void gop_set_auto_destroy(op_generic_t *gop, int val)
+void gop_set_auto_destroy(gop_op_generic_t *gop, int val)
 {
     int state;
 
@@ -326,7 +326,7 @@ void gop_set_auto_destroy(op_generic_t *gop, int val)
 // gop_will_block - Returns 1 if a gop_waitany will block
 //*************************************************************
 
-int gop_will_block(op_generic_t *g)
+int gop_will_block(gop_op_generic_t *g)
 {
     int status = 0;
 
@@ -346,10 +346,10 @@ int gop_will_block(op_generic_t *g)
 //   returns the operation.
 //*************************************************************
 
-op_generic_t *gop_waitany(op_generic_t *g)
+gop_op_generic_t *gop_waitany(gop_op_generic_t *g)
 {
-    op_generic_t *gop = g;
-    callback_t *cb;
+    gop_op_generic_t *gop = g;
+    gop_callback_t *cb;
 
     lock_gop(g);
 
@@ -357,8 +357,8 @@ op_generic_t *gop_waitany(op_generic_t *g)
         log_printf(15, "sync_exec_que_check gid=%d stack_size=%d started_exec=%d\n", gop_id(g), tbx_stack_count(g->q->opque->qd.list), g->base.started_execution);
         if ((tbx_stack_count(g->q->opque->qd.list) == 1) && (g->base.started_execution == 0)) {  //** See if we can directly exec
             g->base.started_execution = 1;
-            cb = (callback_t *)tbx_stack_pop(g->q->opque->qd.list);
-            gop = (op_generic_t *)cb->priv;
+            cb = (gop_callback_t *)tbx_stack_pop(g->q->opque->qd.list);
+            gop = (gop_op_generic_t *)cb->priv;
             log_printf(15, "sync_exec_que -- waiting for pgid=%d cgid=%d to complete\n", gop_id(g), gop_id(gop));
             unlock_gop(g);
             gop_waitany(gop);
@@ -366,7 +366,7 @@ op_generic_t *gop_waitany(op_generic_t *g)
             return(gop);
         } else {
             _gop_start_execution(g);  //** Make sure things have been submitted
-            while (((gop = (op_generic_t *)tbx_stack_pop(g->q->finished)) == NULL) && (g->q->nleft > 0)) {
+            while (((gop = (gop_op_generic_t *)tbx_stack_pop(g->q->finished)) == NULL) && (g->q->nleft > 0)) {
                 apr_thread_cond_wait(g->base.ctl->cond, g->base.ctl->lock); //** Sleep until something completes
             }
         }
@@ -403,11 +403,11 @@ op_generic_t *gop_waitany(op_generic_t *g)
 //    with the last error otherwise.
 //*************************************************************
 
-int gop_waitall(op_generic_t *g)
+int gop_waitall(gop_op_generic_t *g)
 {
     int status;
-    op_generic_t *g2;
-    callback_t *cb;
+    gop_op_generic_t *g2;
+    gop_callback_t *cb;
 
     log_printf(5, "START gid=%d type=%d\n", gop_id(g), gop_get_type(g));
     lock_gop(g);
@@ -417,8 +417,8 @@ int gop_waitall(op_generic_t *g)
 
         if ((tbx_stack_count(g->q->opque->qd.list) == 1) && (g->base.started_execution == 0)) {  //** See if we can directly exec
             log_printf(15, "sync_exec_que -- waiting for gid=%d to complete\n", gop_id(g));
-            cb = (callback_t *)tbx_stack_pop(g->q->opque->qd.list);
-            g2 = (op_generic_t *)cb->priv;
+            cb = (gop_callback_t *)tbx_stack_pop(g->q->opque->qd.list);
+            g2 = (gop_op_generic_t *)cb->priv;
             unlock_gop(g);  //** Don't need this for a direct exec
             status = gop_waitall(g2);
             log_printf(15, "sync_exec -- gid=%d completed with err=%d\n", gop_id(g), status);
@@ -460,9 +460,9 @@ int gop_waitall(op_generic_t *g)
 //   returns the operation.
 //*************************************************************
 
-op_generic_t *gop_waitany_timed(op_generic_t *g, int dt)
+gop_op_generic_t *gop_waitany_timed(gop_op_generic_t *g, int dt)
 {
-    op_generic_t *gop = NULL;
+    gop_op_generic_t *gop = NULL;
     apr_interval_time_t adt = apr_time_from_sec(dt);
     int loop;
 
@@ -471,7 +471,7 @@ op_generic_t *gop_waitany_timed(op_generic_t *g, int dt)
 
     loop = 0;
     if (gop_get_type(g) == Q_TYPE_QUE) {
-        while (((gop = (op_generic_t *)tbx_stack_pop(g->q->finished)) == NULL) && (g->q->nleft > 0) && (loop == 0)) {
+        while (((gop = (gop_op_generic_t *)tbx_stack_pop(g->q->finished)) == NULL) && (g->q->nleft > 0) && (loop == 0)) {
             apr_thread_cond_timedwait(g->base.ctl->cond, g->base.ctl->lock, adt); //** Sleep until something completes
             loop++;
         }
@@ -494,7 +494,7 @@ op_generic_t *gop_waitany_timed(op_generic_t *g, int dt)
 //    with the last error otherwise.
 //*************************************************************
 
-int gop_timed_waitall(op_generic_t *g, int dt)
+int gop_timed_waitall(gop_op_generic_t *g, int dt)
 {
     int status;
     int loop;
@@ -531,9 +531,9 @@ int gop_timed_waitall(op_generic_t *g, int dt)
 //   triggers any callbacks if needed
 //*************************************************************
 
-void single_gop_mark_completed(op_generic_t *gop, op_status_t status)
+void single_gop_mark_completed(gop_op_generic_t *gop, gop_op_status_t status)
 {
-    op_common_t *base = &(gop->base);
+    gop_op_common_t *base = &(gop->base);
     int mode;
 
     log_printf(15, "gop_mark_completed: START gid=%d status=%d\n", gop_id(gop), status.op_status);
@@ -572,16 +572,16 @@ void single_gop_mark_completed(op_generic_t *gop, op_status_t status)
 //   triggers any callbacks if needed
 //*************************************************************
 
-void gop_mark_completed(op_generic_t *gop, op_status_t status)
+void gop_mark_completed(gop_op_generic_t *gop, gop_op_status_t status)
 {
-    command_op_t *cop;
-    op_generic_t *sgop;
+    gop_command_op_t *cop;
+    gop_op_generic_t *sgop;
 
     //** Process any slaved ops first
     if (gop->op != NULL) {
         cop = &(gop->op->cmd);
         if (cop->coalesced_ops != NULL) {
-            while ((sgop = (op_generic_t *)tbx_stack_pop(cop->coalesced_ops)) != NULL) {
+            while ((sgop = (gop_op_generic_t *)tbx_stack_pop(cop->coalesced_ops)) != NULL) {
                 single_gop_mark_completed(sgop, status);
             }
         }
@@ -597,7 +597,7 @@ void gop_mark_completed(op_generic_t *gop, op_status_t status)
 //    are only concerned with success/failure
 //*************************************************************
 
-int gop_sync_exec(op_generic_t *gop)
+int gop_sync_exec(gop_op_generic_t *gop)
 {
     int err;
 
@@ -627,10 +627,10 @@ int gop_sync_exec(op_generic_t *gop)
 //   the gop status
 //*************************************************************
 
-op_status_t gop_sync_exec_status(op_generic_t *gop)
+gop_op_status_t gop_sync_exec_status(gop_op_generic_t *gop)
 {
     int err;
-    op_status_t status;
+    gop_op_status_t status;
 
     if (gop->type == Q_TYPE_OPERATION) { //** Got an operation so see if we can directly exec it
         if (gop->base.pc->fn->sync_exec != NULL) {  //** Yup we can!
@@ -657,7 +657,7 @@ op_status_t gop_sync_exec_status(op_generic_t *gop)
 // gop_reset - Resets an already inited gop
 //*************************************************************
 
-void gop_reset(op_generic_t *gop)
+void gop_reset(gop_op_generic_t *gop)
 {
     gop->base.id = tbx_atomic_global_counter();
 
@@ -674,13 +674,13 @@ void gop_reset(op_generic_t *gop)
 // gop_init - Initializes a generic op
 //*************************************************************
 
-void gop_init(op_generic_t *gop)
+void gop_init(gop_op_generic_t *gop)
 {
     tbx_pch_t pch;
 
-    op_common_t *base = &(gop->base);
+    gop_op_common_t *base = &(gop->base);
 
-    tbx_type_memclear(gop, op_generic_t, 1);
+    tbx_type_memclear(gop, gop_op_generic_t, 1);
 
     base->id = tbx_atomic_global_counter();
 
@@ -697,7 +697,7 @@ void gop_init(op_generic_t *gop)
 // gop_generic_free - Frees the data generic internal op data
 //*************************************************************
 
-void gop_generic_free(op_generic_t *gop, gop_op_free_mode_t mode)
+void gop_generic_free(gop_op_generic_t *gop, gop_op_free_mode_t mode)
 {
     log_printf(20, "op_generic_free: before lock gid=%d\n", gop_get_id(gop));
     lock_gop(gop);  //** Make sure I own the lock just to be safe
@@ -713,7 +713,7 @@ void gop_generic_free(op_generic_t *gop, gop_op_free_mode_t mode)
 // gop_exec_time - returns the execution time
 //*************************************************************
 
-apr_time_t gop_exec_time(op_generic_t *gop)
+apr_time_t gop_exec_time(gop_op_generic_t *gop)
 {
     return(gop->op->cmd.end_time - gop->op->cmd.start_time);
 }
@@ -722,7 +722,7 @@ apr_time_t gop_exec_time(op_generic_t *gop)
 // gop_start_time - returns the start time
 //*************************************************************
 
-apr_time_t gop_start_time(op_generic_t *gop)
+apr_time_t gop_start_time(gop_op_generic_t *gop)
 {
     return(gop->op->cmd.start_time);
 }
@@ -731,7 +731,7 @@ apr_time_t gop_start_time(op_generic_t *gop)
 // gop_end_time - returns the end time
 //*************************************************************
 
-apr_time_t gop_end_time(op_generic_t *gop)
+apr_time_t gop_end_time(gop_op_generic_t *gop)
 {
     return(gop->op->cmd.end_time);
 }

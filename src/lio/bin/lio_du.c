@@ -85,7 +85,7 @@ int main(int argc, char **argv)
     char *fname;
     du_entry_t *de;
     tbx_list_t *table, *sum_table, *lt;
-    os_regex_table_t *rp_single, *ro_single;
+    lio_os_regex_table_t *rp_single, *ro_single;
     os_object_iter_t *it;
     tbx_list_iter_t lit;
     char *key = "system.exnode.size";

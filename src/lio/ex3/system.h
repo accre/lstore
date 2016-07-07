@@ -46,19 +46,19 @@ extern "C" {
 #define MQ_TYPE_ZMQ "mq_zmq"
 #define MQ_AVAILABLE "mq_available"
 
-LIO_API extern service_manager_t *lio_exnode_service_set;
+LIO_API extern lio_service_manager_t *lio_exnode_service_set;
 
 
 //** ex3_global functions
-int ex3_set_default_ds(data_service_fn_t *ds);
-data_service_fn_t *ex3_get_default_ds();
-int ex3_set_default_rs(resource_service_fn_t *rs);
-resource_service_fn_t *ex3_get_default_rs();
-int ex3_set_default_os(object_service_fn_t *os);
-object_service_fn_t *ex3_get_default_os();
+int ex3_set_default_ds(lio_data_service_fn_t *ds);
+lio_data_service_fn_t *ex3_get_default_ds();
+int ex3_set_default_rs(lio_resource_service_fn_t *rs);
+lio_resource_service_fn_t *ex3_get_default_rs();
+int ex3_set_default_os(lio_object_service_fn_t *os);
+lio_object_service_fn_t *ex3_get_default_os();
 
 int exnode_system_init();
-int exnode_system_config(service_manager_t *ess, data_service_fn_t *ds, resource_service_fn_t *rs, object_service_fn_t *os, thread_pool_context_t *tpc_unlimited, cache_t *cache);
+int exnode_system_config(lio_service_manager_t *ess, lio_data_service_fn_t *ds, lio_resource_service_fn_t *rs, lio_object_service_fn_t *os, gop_thread_pool_context_t *tpc_unlimited, lio_cache_t *cache);
 
 void exnode_system_destroy();
 

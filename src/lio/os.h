@@ -52,7 +52,7 @@ extern "C" {
 #define OS_CREDS_INI_TYPE 0  //** Load creds from file
 
 
-struct os_attr_tbx_list_t {
+struct lio_os_attr_list_t {
     int q_mode;
     char *attr;
 };
@@ -102,24 +102,24 @@ struct os_attr_tbx_list_t {
 #define os_destroy(os) (os)->destroy_service(os)
 
 
-os_regex_table_t *os_regex_table_create(int n);
-int os_regex_table_pack(os_regex_table_t *regex, unsigned char *buffer, int bufsize);
-os_regex_table_t *os_regex_table_unpack(unsigned char *buffer, int bufsize, int *used);
+lio_os_regex_table_t *os_regex_table_create(int n);
+int os_regex_table_pack(lio_os_regex_table_t *regex, unsigned char *buffer, int bufsize);
+lio_os_regex_table_t *os_regex_table_unpack(unsigned char *buffer, int bufsize, int *used);
 
 
-struct os_authz_t {
+struct lio_os_authz_t {
     void *priv;
-    int (*object_create)(os_authz_t *osa, creds_t *c, char *path);
-    int (*object_remove)(os_authz_t *osa, creds_t *c, char *path);
-    int (*object_access)(os_authz_t *osa, creds_t *c, char *path, int mode);
-    int (*attr_create)(os_authz_t *osa, creds_t *c, char *path, char *key);
-    int (*attr_remove)(os_authz_t *osa, creds_t *c, char *path, char *key);
-    int (*attr_access)(os_authz_t *osa, creds_t *c, char *path, char *key, int mode);
-    void (*destroy)(os_authz_t *osa);
+    int (*object_create)(lio_os_authz_t *osa, lio_creds_t *c, char *path);
+    int (*object_remove)(lio_os_authz_t *osa, lio_creds_t *c, char *path);
+    int (*object_access)(lio_os_authz_t *osa, lio_creds_t *c, char *path, int mode);
+    int (*attr_create)(lio_os_authz_t *osa, lio_creds_t *c, char *path, char *key);
+    int (*attr_remove)(lio_os_authz_t *osa, lio_creds_t *c, char *path, char *key);
+    int (*attr_access)(lio_os_authz_t *osa, lio_creds_t *c, char *path, char *key, int mode);
+    void (*destroy)(lio_os_authz_t *osa);
 };
 
-typedef object_service_fn_t *(os_create_t)(service_manager_t *ess, tbx_inip_file_t *ifd, char *section);
-typedef os_authz_t *(osaz_create_t)(service_manager_t *ess, tbx_inip_file_t *ifd, char *section, object_service_fn_t *os);
+typedef lio_object_service_fn_t *(os_create_t)(lio_service_manager_t *ess, tbx_inip_file_t *ifd, char *section);
+typedef lio_os_authz_t *(osaz_create_t)(lio_service_manager_t *ess, tbx_inip_file_t *ifd, char *section, lio_object_service_fn_t *os);
 
 #define osaz_object_create(osa, c, path) (osa)->object_create(osa, c, path)
 #define osaz_object_remove(osa, c, path) (osa)->object_remove(osa, c, path)
@@ -129,12 +129,12 @@ typedef os_authz_t *(osaz_create_t)(service_manager_t *ess, tbx_inip_file_t *ifd
 #define osaz_attr_access(osa, c, path, key, mode) (osa)->attr_access(osa, c, path, key, mode)
 #define osaz_destroy(osa) (osa)->destroy(osa)
 
-struct os_virtual_attr_t {
+struct lio_os_virtual_attr_t {
     char *attribute;
     void *priv;
-    int (*get)(os_virtual_attr_t *va, object_service_fn_t *os, creds_t *creds, os_fd_t *fd, char *key, void **val, int *v_size, int *atype);
-    int (*set)(os_virtual_attr_t *va, object_service_fn_t *os, creds_t *creds, os_fd_t *fd, char *key, void *val, int v_size, int *atype);
-    int (*get_link)(os_virtual_attr_t *va, object_service_fn_t *os, creds_t *creds, os_fd_t *fd, char *key, void **val, int *v_size, int *atype);
+    int (*get)(lio_os_virtual_attr_t *va, lio_object_service_fn_t *os, lio_creds_t *creds, os_fd_t *fd, char *key, void **val, int *v_size, int *atype);
+    int (*set)(lio_os_virtual_attr_t *va, lio_object_service_fn_t *os, lio_creds_t *creds, os_fd_t *fd, char *key, void *val, int v_size, int *atype);
+    int (*get_link)(lio_os_virtual_attr_t *va, lio_object_service_fn_t *os, lio_creds_t *creds, os_fd_t *fd, char *key, void **val, int *v_size, int *atype);
 };
 
 #ifdef __cplusplus

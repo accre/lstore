@@ -56,8 +56,8 @@ typedef struct {
     mq_msg_t *msg;
     char *id;
     int id_size;
-    mq_frame_t *version_frame;
-    mq_frame_t *config_frame;
+    gop_mq_frame_t *version_frame;
+    gop_mq_frame_t *config_frame;
     apr_time_t reply_time;
 } rsrs_update_handle_t;
 
@@ -65,9 +65,9 @@ typedef struct {
 // rsrs_update_register - Registers the connection for RID updates
 //***********************************************************************
 
-void rsrs_update_register(resource_service_fn_t *rs, mq_frame_t *fid, mq_msg_t *address, int timeout)
+void rsrs_update_register(lio_resource_service_fn_t *rs, gop_mq_frame_t *fid, mq_msg_t *address, int timeout)
 {
-    rs_remote_server_priv_t *rsrs = (rs_remote_server_priv_t *)rs->priv;
+    lio_rs_remote_server_priv_t *rsrs = (lio_rs_remote_server_priv_t *)rs->priv;
     rsrs_update_handle_t *h;
 
     tbx_type_malloc(h, rsrs_update_handle_t, 1);
@@ -120,9 +120,9 @@ void rsrs_update_register(resource_service_fn_t *rs, mq_frame_t *fid, mq_msg_t *
 // rsrs_config_send - Sends the configuration back
 //***********************************************************************
 
-void rsrs_config_send(resource_service_fn_t *rs, mq_frame_t *fid, mq_msg_t *address)
+void rsrs_config_send(lio_resource_service_fn_t *rs, gop_mq_frame_t *fid, mq_msg_t *address)
 {
-    rs_remote_server_priv_t *rsrs = (rs_remote_server_priv_t *)rs->priv;
+    lio_rs_remote_server_priv_t *rsrs = (lio_rs_remote_server_priv_t *)rs->priv;
     mq_msg_t *msg;
     char *config;
     char data[128];
@@ -161,11 +161,11 @@ void rsrs_config_send(resource_service_fn_t *rs, mq_frame_t *fid, mq_msg_t *addr
 // rsrc_abort_cb - Aborts a pending  new config request
 //***********************************************************************
 
-void rsrs_abort_cb(void *arg, mq_task_t *task)
+void rsrs_abort_cb(void *arg, gop_mq_task_t *task)
 {
-    resource_service_fn_t *rs = (resource_service_fn_t *)arg;
-    rs_remote_server_priv_t *rsrs = (rs_remote_server_priv_t *)rs->priv;
-    mq_frame_t *f, *fid;
+    lio_resource_service_fn_t *rs = (lio_resource_service_fn_t *)arg;
+    lio_rs_remote_server_priv_t *rsrs = (lio_rs_remote_server_priv_t *)rs->priv;
+    gop_mq_frame_t *f, *fid;
     rsrs_update_handle_t *h;
     mq_msg_t *msg;
     char *data;
@@ -241,13 +241,13 @@ fail:
 // rsrs_rid_get_config_cb - Processes the new config request
 //***********************************************************************
 
-void rsrs_rid_config_cb(void *arg, mq_task_t *task)
+void rsrs_rid_config_cb(void *arg, gop_mq_task_t *task)
 {
-    resource_service_fn_t *rs = (resource_service_fn_t *)arg;
-    rs_remote_server_priv_t *rsrs = (rs_remote_server_priv_t *)rs->priv;
-    mq_frame_t *f, *fid;
+    lio_resource_service_fn_t *rs = (lio_resource_service_fn_t *)arg;
+    lio_rs_remote_server_priv_t *rsrs = (lio_rs_remote_server_priv_t *)rs->priv;
+    gop_mq_frame_t *f, *fid;
     mq_msg_t *msg;
-    rs_mapping_notify_t version;
+    lio_rs_mapping_notify_t version;
     int bufsize = 128;
     char buffer[bufsize];
     char *data;
@@ -371,9 +371,9 @@ fail:
 //  rsrs_client_notify - Sends responses to listeners about to expire
 //***********************************************************************
 
-void rsrs_client_notify(resource_service_fn_t *rs, int everyone)
+void rsrs_client_notify(lio_resource_service_fn_t *rs, int everyone)
 {
-    rs_remote_server_priv_t *rsrs = (rs_remote_server_priv_t *)rs->priv;
+    lio_rs_remote_server_priv_t *rsrs = (lio_rs_remote_server_priv_t *)rs->priv;
     rsrs_update_handle_t *h;
     apr_time_t now, new_wakeup_time;
     char *config;
@@ -424,9 +424,9 @@ void rsrs_client_notify(resource_service_fn_t *rs, int everyone)
 
 void *rsrs_monitor_thread(apr_thread_t *th, void *data)
 {
-    resource_service_fn_t *rs = (resource_service_fn_t *)data;
-    rs_remote_server_priv_t *rsrs = (rs_remote_server_priv_t *)rs->priv;
-    rs_mapping_notify_t *my_map, *notify_map;
+    lio_resource_service_fn_t *rs = (lio_resource_service_fn_t *)data;
+    lio_rs_remote_server_priv_t *rsrs = (lio_rs_remote_server_priv_t *)rs->priv;
+    lio_rs_mapping_notify_t *my_map, *notify_map;
     int changed, shutdown;
     apr_time_t wakeup_time;
 
@@ -474,9 +474,9 @@ void *rsrs_monitor_thread(apr_thread_t *th, void *data)
 // rs_remote_server_destroy
 //***********************************************************************
 
-void rs_remote_server_destroy(resource_service_fn_t *rs)
+void rs_remote_server_destroy(lio_resource_service_fn_t *rs)
 {
-    rs_remote_server_priv_t *rsrs = (rs_remote_server_priv_t *)rs->priv;
+    lio_rs_remote_server_priv_t *rsrs = (lio_rs_remote_server_priv_t *)rs->priv;
     apr_status_t dummy;
 
     //** Shutdown the check thread
@@ -505,19 +505,19 @@ void rs_remote_server_destroy(resource_service_fn_t *rs)
 //  rs_remote_server_create - Creates a remote server RS
 //***********************************************************************
 
-resource_service_fn_t *rs_remote_server_create(void *arg, tbx_inip_file_t *fd, char *section)
+lio_resource_service_fn_t *rs_remote_server_create(void *arg, tbx_inip_file_t *fd, char *section)
 {
-    service_manager_t *ess = (service_manager_t *)arg;
-    resource_service_fn_t *rs;
-    rs_remote_server_priv_t *rsrs;
+    lio_service_manager_t *ess = (lio_service_manager_t *)arg;
+    lio_resource_service_fn_t *rs;
+    lio_rs_remote_server_priv_t *rsrs;
     rs_create_t *rs_create;
-    mq_command_table_t *ctable;
+    gop_gop_mq_command_table_t *ctable;
     char *stype, *ctype;
 
     if (section == NULL) section = "rs_remote_server";
 
-    tbx_type_malloc_clear(rs, resource_service_fn_t, 1);
-    tbx_type_malloc_clear(rsrs, rs_remote_server_priv_t, 1);
+    tbx_type_malloc_clear(rs, lio_resource_service_fn_t, 1);
+    tbx_type_malloc_clear(rsrs, lio_rs_remote_server_priv_t, 1);
     rs->priv = (void *)rsrs;
 
     //** Make the locks and cond variables

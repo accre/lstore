@@ -67,10 +67,10 @@
 #define JE_MAGIC_SIZE 4
 
 typedef struct {
-    segment_t *child_seg;
-    erasure_plan_t *plan;
-    thread_pool_context_t *tpc;
-    blacklist_t *blacklist;
+    lio_segment_t *child_seg;
+    lio_erasure_plan_t *plan;
+    gop_thread_pool_context_t *tpc;
+    lio_blacklist_t *blacklist;
     ex_off_t max_parity;
     int write_errors;
     int soft_errors;
@@ -91,9 +91,9 @@ typedef struct {
 } segjerase_priv_t;
 
 typedef struct {
-    segment_t *seg;
+    lio_segment_t *seg;
     data_attr_t *da;
-    segment_rw_hints_t *rw_hints;
+    lio_segment_rw_hints_t *rw_hints;
     ex_tbx_iovec_t  *iov;
     ex_off_t    boff;
     ex_off_t    nbytes;
@@ -111,10 +111,10 @@ typedef struct {
 } segjerase_io_t;
 
 typedef struct {
-    segment_t *seg;
+    lio_segment_t *seg;
     data_attr_t *da;
     tbx_log_fd_t *fd;
-    inspect_args_t *args;
+    lio_inspect_args_t *args;
     ex_off_t bufsize;
     int max_replaced;
     int inspect_mode;
@@ -133,9 +133,9 @@ typedef struct {
 } segjerase_full_t;
 
 typedef struct {
-    segment_t *sseg;
-    segment_t *dseg;
-    op_generic_t *gop;
+    lio_segment_t *sseg;
+    lio_segment_t *dseg;
+    gop_op_generic_t *gop;
 } segjerase_clone_t;
 
 
@@ -176,7 +176,7 @@ int je_cksum_compare(char *magic, char **ptr, int n_devs, int chunk_size)
 //   the new data matches the "good" chunks.
 //***********************************************************************
 
-int jerase_control_check(erasure_plan_t *plan, int chunk_size, int n_devs, int n_parity, int *badmap, char **ptr, char **eptr, char **pwork, char *magic)
+int jerase_control_check(lio_erasure_plan_t *plan, int chunk_size, int n_devs, int n_parity, int *badmap, char **ptr, char **eptr, char **pwork, char *magic)
 {
     int erasures[n_devs+1];  //** Leave space for a control failure
     int i, n, n_control, n_ctl_max, control_index, errors;
@@ -249,7 +249,7 @@ int jerase_control_check(erasure_plan_t *plan, int chunk_size, int n_devs, int n
 //  jerase_brute_recurse - Recursively tries to find a match
 //***********************************************************************
 
-int jerase_brute_recurse(int level, int *index, erasure_plan_t *plan, int chunk_size, int n_devs, int n_parity, int n_bad_devs, int *badmap, char **ptr, char **eptr, char **pwork, char *magic)
+int jerase_brute_recurse(int level, int *index, lio_erasure_plan_t *plan, int chunk_size, int n_devs, int n_parity, int n_bad_devs, int *badmap, char **ptr, char **eptr, char **pwork, char *magic)
 {
     int i, start, n, nbytes;
     char *tptr[n_parity];
@@ -295,7 +295,7 @@ int jerase_brute_recurse(int level, int *index, erasure_plan_t *plan, int chunk_
 //     to detect correctness.  This means we can only correct n_parity_devs-1 failures.
 //**************************************************************************
 
-int jerase_brute_recovery(erasure_plan_t *plan, int chunk_size, int n_devs, int n_parity_devs, int *badmap, char **ptr, char **eptr, char **pwork, char *magic)
+int jerase_brute_recovery(lio_erasure_plan_t *plan, int chunk_size, int n_devs, int n_parity_devs, int *badmap, char **ptr, char **eptr, char **pwork, char *magic)
 {
     int i, ncheck;
     int index[n_parity_devs];
@@ -321,13 +321,13 @@ int jerase_brute_recovery(erasure_plan_t *plan, int chunk_size, int n_devs, int 
 //     provided byte range and optionally corrects things.
 //***********************************************************************
 
-op_status_t segjerase_inspect_full_func(void *arg, int id)
+gop_op_status_t segjerase_inspect_full_func(void *arg, int id)
 {
     segjerase_full_t *sf = (segjerase_full_t *)arg;
     segjerase_inspect_t *si = sf->si;
     segjerase_priv_t *s = (segjerase_priv_t *)si->seg->priv;
-    op_status_t status;
-    opque_t *q;
+    gop_op_status_t status;
+    gop_opque_t *q;
     lio_ex3_inspect_command_t i;
     bool do_fix;
     int err, j, k, d, nstripes, total_stripes, stripe, bufstripes, n_empty;
@@ -688,11 +688,11 @@ next:  //** Jump to here if an empty stripe
 // segjerase_inspect_full - Generates the command for doing a full scan and repair
 //***********************************************************************
 
-op_generic_t *segjerase_inspect_full(segjerase_inspect_t *si, int do_print, ex_off_t lo, ex_off_t hi)
+gop_op_generic_t *segjerase_inspect_full(segjerase_inspect_t *si, int do_print, ex_off_t lo, ex_off_t hi)
 {
     segjerase_priv_t *s = (segjerase_priv_t *)si->seg->priv;
     segjerase_full_t *sf;
-    op_generic_t *gop;
+    gop_op_generic_t *gop;
 
     tbx_type_malloc(sf, segjerase_full_t, 1);
     sf->si = si;
@@ -712,12 +712,12 @@ op_generic_t *segjerase_inspect_full(segjerase_inspect_t *si, int do_print, ex_o
 //    magic tags are consistent and optionally corrects them
 //***********************************************************************
 
-op_status_t segjerase_inspect_scan(segjerase_inspect_t *si)
+gop_op_status_t segjerase_inspect_scan(segjerase_inspect_t *si)
 {
     segjerase_priv_t *s = (segjerase_priv_t *)si->seg->priv;
-    op_status_t status;
-    opque_t *q;
-    op_generic_t *gop;
+    gop_op_status_t status;
+    gop_opque_t *q;
+    gop_op_generic_t *gop;
     ex_off_t fsize, off, lo, hi;
     int maxstripes, curr_stripe, i, j, moff, magic_stripe, n_iov, start_stripe, stripe, total_stripes, n_empty;
     char *magic, empty_magic[JE_MAGIC_SIZE];
@@ -817,7 +817,7 @@ op_status_t segjerase_inspect_scan(segjerase_inspect_t *si)
 
             //** Wait for any pending tasks to complete
 
-            if (opque_task_count(q) > 0) {
+            if (gop_opque_task_count(q) > 0) {
                 err = opque_waitall(q);
                 if (err != OP_STATE_SUCCESS) {
                     status.op_status = OP_STATE_FAILURE;
@@ -877,14 +877,14 @@ op_status_t segjerase_inspect_scan(segjerase_inspect_t *si)
 //     and corrects them if requested
 //***********************************************************************
 
-op_status_t segjerase_inspect_func(void *arg, int id)
+gop_op_status_t segjerase_inspect_func(void *arg, int id)
 {
     segjerase_inspect_t *si = (segjerase_inspect_t *)arg;
     segjerase_priv_t *s = (segjerase_priv_t *)si->seg->priv;
     segjerase_full_t *sf;
-    op_status_t status;
+    gop_op_status_t status;
     int option, total_stripes, child_replaced, loop, i, migrate_errors;
-    op_generic_t *gop;
+    gop_op_generic_t *gop;
     int max_loops = 10;
 
     info_printf(si->fd, 1, XIDT ": jerase segment maps to child " XIDT "\n", segment_id(si->seg), segment_id(s->child_seg));
@@ -1010,11 +1010,11 @@ fail:
 //  segjerase_inspect_func - Does the actual segment inspection operations
 //***********************************************************************
 
-op_generic_t *segjerase_inspect(segment_t *seg, data_attr_t *da, tbx_log_fd_t *fd, int mode, ex_off_t bufsize, inspect_args_t *args, int timeout)
+gop_op_generic_t *segjerase_inspect(lio_segment_t *seg, data_attr_t *da, tbx_log_fd_t *fd, int mode, ex_off_t bufsize, lio_inspect_args_t *args, int timeout)
 {
     segjerase_priv_t *s = (segjerase_priv_t *)seg->priv;
-    op_generic_t *gop;
-    op_status_t err;
+    gop_op_generic_t *gop;
+    gop_op_status_t err;
     segjerase_inspect_t *si;
     lio_ex3_inspect_command_t option;
 
@@ -1065,12 +1065,12 @@ op_generic_t *segjerase_inspect(segment_t *seg, data_attr_t *da, tbx_log_fd_t *f
 // segjerase_clone_func - Does the clone function
 //*******************************************************************************
 
-op_status_t segjerase_clone_func(void *arg, int id)
+gop_op_status_t segjerase_clone_func(void *arg, int id)
 {
     segjerase_clone_t *cop = (segjerase_clone_t *)arg;
-//  cache_segment_t *ss = (cache_segment_t *)cop->sseg->priv;
+//  lio_cache_lio_segment_t *ss = (lio_cache_lio_segment_t *)cop->sseg->priv;
     segjerase_priv_t *ds = (segjerase_priv_t *)cop->dseg->priv;
-    op_status_t status;
+    gop_op_status_t status;
 
     status = (gop_waitall(cop->gop) == OP_STATE_SUCCESS) ? gop_success_status : gop_failure_status;
     gop_free(cop->gop, OP_DESTROY);
@@ -1084,11 +1084,11 @@ op_status_t segjerase_clone_func(void *arg, int id)
 // segjerase_clone - Clones a segment
 //***********************************************************************
 
-op_generic_t *segjerase_clone(segment_t *seg, data_attr_t *da, segment_t **clone_seg, int mode, void *attr, int timeout)
+gop_op_generic_t *segjerase_clone(lio_segment_t *seg, data_attr_t *da, lio_segment_t **clone_seg, int mode, void *attr, int timeout)
 {
-    segment_t *clone;
-    segment_t *child = NULL;
-    erasure_plan_t *cplan = NULL;
+    lio_segment_t *clone;
+    lio_segment_t *child = NULL;
+    lio_erasure_plan_t *cplan = NULL;
     segjerase_priv_t *ss = (segjerase_priv_t *)seg->priv;
     segjerase_priv_t *sd;
     segjerase_clone_t *cop;
@@ -1152,11 +1152,11 @@ op_generic_t *segjerase_clone(segment_t *seg, data_attr_t *da, segment_t **clone
 //          These should be enfoced automatically if called from the segment_cache driver
 //***********************************************************************
 
-op_status_t segjerase_read_func(void *arg, int id)
+gop_op_status_t segjerase_read_func(void *arg, int id)
 {
     segjerase_rw_t *sw = (segjerase_rw_t *)arg;
     segjerase_priv_t *s = (segjerase_priv_t *)sw->seg->priv;
-    op_status_t status, op_status, check_status;
+    gop_op_status_t status, op_status, check_status;
     ex_off_t lo, boff, poff, len, parity_len, parity_used, curr_bytes;
     int i, j, k, stripe, magic_used, slot, n_iov, nstripes, curr_stripe, iov_start, magic_stripe, magic_off;
     char *parity, *magic, *ptr[s->n_devs], *eptr[s->n_devs];
@@ -1167,11 +1167,11 @@ op_status_t segjerase_read_func(void *arg, int id)
     int magic_devs[s->n_devs*s->n_devs];
     int badmap[s->n_devs], badmap_brute[s->n_devs], bm_brute_used;
     int soft_error, hard_error, do_recover, paranoid_mode;
-    opque_t *q;
-    op_generic_t *gop;
+    gop_opque_t *q;
+    gop_op_generic_t *gop;
     ex_tbx_iovec_t *ex_iov;
     tbx_tbuf_t *tbuf;
-    segment_rw_hints_t *rw_hints;
+    lio_segment_rw_hints_t *rw_hints;
     tbx_iovec_t *iov;
     segjerase_io_t *info;
     tbx_tbuf_var_t tbv;
@@ -1220,7 +1220,7 @@ tryagain:  //** We first try allowing blacklisting to proceed as normal and then
     tbx_type_malloc(ex_iov, ex_tbx_iovec_t, sw->n_iov);
     tbx_type_malloc(iov, tbx_iovec_t, 2*sw->nstripes*s->n_devs);
     tbx_type_malloc(tbuf, tbx_tbuf_t, sw->n_iov);
-    tbx_type_malloc_clear(rw_hints, segment_rw_hints_t, sw->n_iov);
+    tbx_type_malloc_clear(rw_hints, lio_segment_rw_hints_t, sw->n_iov);
     tbx_type_malloc(info, segjerase_io_t, sw->n_iov);
 
     //** Set up the blacklist structure
@@ -1476,21 +1476,21 @@ tryagain:  //** We first try allowing blacklisting to proceed as normal and then
 //          These should be enfoced automatically if called from the segment_cache driver
 //***********************************************************************
 
-op_status_t segjerase_write_func(void *arg, int id)
+gop_op_status_t segjerase_write_func(void *arg, int id)
 {
     segjerase_rw_t *sw = (segjerase_rw_t *)arg;
     segjerase_priv_t *s = (segjerase_priv_t *)sw->seg->priv;
-    op_status_t status, op_status;
+    gop_op_status_t status, op_status;
     ex_off_t lo, boff, poff, len, parity_len, parity_used, curr_bytes;
     int i, j, k, n_iov, nstripes, curr_stripe, pstripe, iov_start;
     int soft_error, hard_error;
     char *parity, *magic, **ptr, *stripe_magic, *empty;
-    opque_t *q;
-    op_generic_t *gop;
+    gop_opque_t *q;
+    gop_op_generic_t *gop;
     ex_tbx_iovec_t *ex_iov;
     tbx_tbuf_t *tbuf;
     tbx_iovec_t *iov;
-    segment_rw_hints_t *rw_hints;
+    lio_segment_rw_hints_t *rw_hints;
     tbx_tbuf_var_t tbv;
     int loop;
     loop = 0;
@@ -1531,7 +1531,7 @@ tryagain: //** In case blacklisting failed we'll retry with it disabled
     tbx_type_malloc(ex_iov, ex_tbx_iovec_t, sw->n_iov);
     tbx_type_malloc(iov, tbx_iovec_t, 2*sw->nstripes*s->n_devs);
     tbx_type_malloc(tbuf, tbx_tbuf_t, sw->n_iov);
-    tbx_type_malloc_clear(rw_hints, segment_rw_hints_t, sw->n_iov);
+    tbx_type_malloc_clear(rw_hints, lio_segment_rw_hints_t, sw->n_iov);
 
 
     //** Set up the blacklist structure
@@ -1698,11 +1698,11 @@ tryagain: //** In case blacklisting failed we'll retry with it disabled
 // segjerase_write - Performs a segment write operation
 //***********************************************************************
 
-op_generic_t *segjerase_write(segment_t *seg, data_attr_t *da, segment_rw_hints_t *rw_hints, int n_iov, ex_tbx_iovec_t *iov, tbx_tbuf_t *buffer, ex_off_t boff, int timeout)
+gop_op_generic_t *segjerase_write(lio_segment_t *seg, data_attr_t *da, lio_segment_rw_hints_t *rw_hints, int n_iov, ex_tbx_iovec_t *iov, tbx_tbuf_t *buffer, ex_off_t boff, int timeout)
 {
     segjerase_priv_t *s = (segjerase_priv_t *)seg->priv;
     segjerase_rw_t *sw;
-    op_generic_t *gop;
+    gop_op_generic_t *gop;
     ex_off_t rem_pos, rem_len, nbytes;
     int i, nstripes;
 
@@ -1744,11 +1744,11 @@ op_generic_t *segjerase_write(segment_t *seg, data_attr_t *da, segment_rw_hints_
 // segjerase_read - Performs a segment read operation
 //***********************************************************************
 
-op_generic_t *segjerase_read(segment_t *seg, data_attr_t *da, segment_rw_hints_t *rw_hints, int n_iov, ex_tbx_iovec_t *iov, tbx_tbuf_t *buffer, ex_off_t boff, int timeout)
+gop_op_generic_t *segjerase_read(lio_segment_t *seg, data_attr_t *da, lio_segment_rw_hints_t *rw_hints, int n_iov, ex_tbx_iovec_t *iov, tbx_tbuf_t *buffer, ex_off_t boff, int timeout)
 {
     segjerase_priv_t *s = (segjerase_priv_t *)seg->priv;
     segjerase_rw_t *sw;
-    op_generic_t *gop;
+    gop_op_generic_t *gop;
     ex_off_t rem_pos, rem_len, nbytes;
     int i, nstripes;
 
@@ -1793,7 +1793,7 @@ op_generic_t *segjerase_read(segment_t *seg, data_attr_t *da, segment_rw_hints_t
 // segjerase_flush - Flushes a segment
 //***********************************************************************
 
-op_generic_t *segjerase_flush(segment_t *seg, data_attr_t *da, ex_off_t lo, ex_off_t hi, int timeout)
+gop_op_generic_t *segjerase_flush(lio_segment_t *seg, data_attr_t *da, ex_off_t lo, ex_off_t hi, int timeout)
 {
     return(gop_dummy(gop_success_status));
 }
@@ -1802,7 +1802,7 @@ op_generic_t *segjerase_flush(segment_t *seg, data_attr_t *da, ex_off_t lo, ex_o
 // segjerase_remove - Removes the segment.
 //***********************************************************************
 
-op_generic_t *segjerase_remove(segment_t *seg, data_attr_t *da, int timeout)
+gop_op_generic_t *segjerase_remove(lio_segment_t *seg, data_attr_t *da, int timeout)
 {
     segjerase_priv_t *s = (segjerase_priv_t *)seg->priv;
 
@@ -1813,7 +1813,7 @@ op_generic_t *segjerase_remove(segment_t *seg, data_attr_t *da, int timeout)
 // segjerase_truncate - Truncates (or grows) the segment
 //***********************************************************************
 
-op_generic_t *segjerase_truncate(segment_t *seg, data_attr_t *da, ex_off_t new_size, int timeout)
+gop_op_generic_t *segjerase_truncate(lio_segment_t *seg, data_attr_t *da, ex_off_t new_size, int timeout)
 {
     segjerase_priv_t *s = (segjerase_priv_t *)seg->priv;
     ex_off_t tweaked_size, abs_size;
@@ -1828,14 +1828,14 @@ op_generic_t *segjerase_truncate(segment_t *seg, data_attr_t *da, ex_off_t new_s
     if (new_size == 0) s->magic_cksum = 1;  //** Enable magic_cksums if not already set
 
     if (new_size < 0) tweaked_size = - tweaked_size;  //** Reserve call
-    return(segment_truncate(s->child_seg, da, tweaked_size, timeout));
+    return(lio_segment_truncate(s->child_seg, da, tweaked_size, timeout));
 }
 
 //***********************************************************************
 // segjerase_block_size - Returns the segment block size.
 //***********************************************************************
 
-ex_off_t segjerase_block_size(segment_t *seg)
+ex_off_t segjerase_block_size(lio_segment_t *seg)
 {
     segjerase_priv_t *s = (segjerase_priv_t *)seg->priv;
     return(s->data_size);
@@ -1845,7 +1845,7 @@ ex_off_t segjerase_block_size(segment_t *seg)
 // segjerase_size - Returns the segment size.
 //***********************************************************************
 
-ex_off_t segjerase_size(segment_t *seg)
+ex_off_t segjerase_size(lio_segment_t *seg)
 {
     segjerase_priv_t *s = (segjerase_priv_t *)seg->priv;
     ex_off_t nbytes;
@@ -1860,7 +1860,7 @@ ex_off_t segjerase_size(segment_t *seg)
 // segjerase_signature - Generates the segment signature
 //***********************************************************************
 
-int segjerase_signature(segment_t *seg, char *buffer, int *used, int bufsize)
+int segjerase_signature(lio_segment_t *seg, char *buffer, int *used, int bufsize)
 {
     segjerase_priv_t *s = (segjerase_priv_t *)seg->priv;
 
@@ -1881,14 +1881,14 @@ int segjerase_signature(segment_t *seg, char *buffer, int *used, int bufsize)
 // segjerase_serialize_text -Convert the segment to a text based format
 //***********************************************************************
 
-int segjerase_serialize_text(segment_t *seg, exnode_exchange_t *exp)
+int segjerase_serialize_text(lio_segment_t *seg, lio_exnode_exchange_t *exp)
 {
     segjerase_priv_t *s = (segjerase_priv_t *)seg->priv;
     int bufsize=10*1024;
     char segbuf[bufsize];
     char *etext;
     int sused;
-    exnode_exchange_t *child_exp;
+    lio_exnode_exchange_t *child_exp;
 
     segbuf[0] = 0;
     child_exp = lio_exnode_exchange_create(EX_TEXT);
@@ -1936,7 +1936,7 @@ int segjerase_serialize_text(segment_t *seg, exnode_exchange_t *exp)
 // segjerase_serialize_proto -Convert the segment to a protocol buffer
 //***********************************************************************
 
-int segjerase_serialize_proto(segment_t *seg, exnode_exchange_t *exp)
+int segjerase_serialize_proto(lio_segment_t *seg, lio_exnode_exchange_t *exp)
 {
     return(-1);
 }
@@ -1945,7 +1945,7 @@ int segjerase_serialize_proto(segment_t *seg, exnode_exchange_t *exp)
 // segjerase_serialize -Convert the segment to a more portable format
 //***********************************************************************
 
-int segjerase_serialize(segment_t *seg, exnode_exchange_t *exp)
+int segjerase_serialize(lio_segment_t *seg, lio_exnode_exchange_t *exp)
 {
     if (exp->type == EX_TEXT) {
         return(segjerase_serialize_text(seg, exp));
@@ -1960,10 +1960,10 @@ int segjerase_serialize(segment_t *seg, exnode_exchange_t *exp)
 // segjerase_deserialize_text -Read the text based segment
 //***********************************************************************
 
-int segjerase_deserialize_text(segment_t *seg, ex_id_t id, exnode_exchange_t *exp)
+int segjerase_deserialize_text(lio_segment_t *seg, ex_id_t id, lio_exnode_exchange_t *exp)
 {
     segjerase_priv_t *s = (segjerase_priv_t *)seg->priv;
-    seglun_priv_t *slun;
+    lio_seglun_priv_t *slun;
     int bufsize=1024;
     int nbytes;
     char seggrp[bufsize];
@@ -2023,7 +2023,7 @@ int segjerase_deserialize_text(segment_t *seg, ex_id_t id, exnode_exchange_t *ex
         log_printf(0, "Child segment not type LUN!  got=%s\n", s->child_seg->header.type);
         return(-4);
     }
-    slun = (seglun_priv_t *)s->child_seg->priv;
+    slun = (lio_seglun_priv_t *)s->child_seg->priv;
 
     if (slun->n_devices != (s->n_data_devs + s->n_parity_devs)) {
         log_printf(0, "Child n_devices(%d) != n_data_devs(%d) + n_parity_devs(%d)!\n", slun->n_devices, s->n_data_devs, s->n_parity_devs);
@@ -2052,7 +2052,7 @@ int segjerase_deserialize_text(segment_t *seg, ex_id_t id, exnode_exchange_t *ex
 // segjerase_deserialize_proto - Read the prot formatted segment
 //***********************************************************************
 
-int segjerase_deserialize_proto(segment_t *seg, ex_id_t id, exnode_exchange_t *exp)
+int segjerase_deserialize_proto(lio_segment_t *seg, ex_id_t id, lio_exnode_exchange_t *exp)
 {
     return(-1);
 }
@@ -2061,7 +2061,7 @@ int segjerase_deserialize_proto(segment_t *seg, ex_id_t id, exnode_exchange_t *e
 // segjerase_deserialize -Convert from the portable to internal format
 //***********************************************************************
 
-int segjerase_deserialize(segment_t *seg, ex_id_t id, exnode_exchange_t *exp)
+int segjerase_deserialize(lio_segment_t *seg, ex_id_t id, lio_exnode_exchange_t *exp)
 {
     if (exp->type == EX_TEXT) {
         return(segjerase_deserialize_text(seg, id, exp));
@@ -2077,7 +2077,7 @@ int segjerase_deserialize(segment_t *seg, ex_id_t id, exnode_exchange_t *exp)
 // segjerasue_destroy - Destroys a Jerasure segment struct (not the data)
 //***********************************************************************
 
-void segjerase_destroy(segment_t *seg)
+void segjerase_destroy(lio_segment_t *seg)
 {
     segjerase_priv_t *s = (segjerase_priv_t *)seg->priv;
 
@@ -2111,15 +2111,15 @@ void segjerase_destroy(segment_t *seg)
 // segment_jerasure_create - Creates a Jerasure segment
 //***********************************************************************
 
-segment_t *segment_jerasure_create(void *arg)
+lio_segment_t *segment_jerasure_create(void *arg)
 {
-    service_manager_t *es = (service_manager_t *)arg;
+    lio_service_manager_t *es = (lio_service_manager_t *)arg;
     segjerase_priv_t *s;
-    segment_t *seg;
+    lio_segment_t *seg;
     int *paranoid;
 
     //** Make the space
-    tbx_type_malloc_clear(seg, segment_t, 1);
+    tbx_type_malloc_clear(seg, lio_segment_t, 1);
     tbx_type_malloc_clear(s, segjerase_priv_t, 1);
 
     seg->priv = s;
@@ -2166,9 +2166,9 @@ segment_t *segment_jerasure_create(void *arg)
 // segment_jerasure_load - Loads a Jerasure segment from ini/ex3
 //***********************************************************************
 
-segment_t *segment_jerasure_load(void *arg, ex_id_t id, exnode_exchange_t *ex)
+lio_segment_t *segment_jerasure_load(void *arg, ex_id_t id, lio_exnode_exchange_t *ex)
 {
-    segment_t *seg = segment_jerasure_create(arg);
+    lio_segment_t *seg = segment_jerasure_create(arg);
     if (segment_deserialize(seg, id, ex) != 0) {
         segment_destroy(seg);
         seg = NULL;

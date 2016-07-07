@@ -49,15 +49,15 @@
 #include "segment/lun.h"
 #include "service_manager.h"
 
-service_manager_t *lio_exnode_service_set = NULL;
+lio_service_manager_t *lio_exnode_service_set = NULL;
 
 //***********************************************************************
 //  lio_exnode_service_set_create - Creates a default ESS
 //***********************************************************************
 
-service_manager_t *lio_exnode_service_set_create()
+lio_service_manager_t *lio_exnode_service_set_create()
 {
-    service_manager_t *ess;
+    lio_service_manager_t *ess;
 
     ess = create_service_manager();
 
@@ -102,7 +102,7 @@ service_manager_t *lio_exnode_service_set_create()
 // lio_exnode_service_set_destroy - Destroys an ESS
 //***********************************************************************
 
-void lio_exnode_service_set_destroy(service_manager_t *ess)
+void lio_exnode_service_set_destroy(lio_service_manager_t *ess)
 {
     destroy_service_manager(ess);
 }
@@ -125,7 +125,7 @@ int exnode_system_init()
 // exnode_system_config - Configures  the exnode system for use
 //***********************************************************************
 
-int exnode_system_config(service_manager_t *ess, data_service_fn_t *ds, resource_service_fn_t *rs, object_service_fn_t *os, thread_pool_context_t *tpc_unlimited, cache_t *cache)
+int exnode_system_config(lio_service_manager_t *ess, lio_data_service_fn_t *ds, lio_resource_service_fn_t *rs, lio_object_service_fn_t *os, gop_thread_pool_context_t *tpc_unlimited, lio_cache_t *cache)
 {
 
     add_service(ess, ESS_RUNNING, ESS_DS, ds);

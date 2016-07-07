@@ -34,9 +34,9 @@ extern "C" {
 
 #define SEGMENT_TYPE_CACHE "cache"
 
-int cache_page_drop(segment_t *seg, ex_off_t lo, ex_off_t hi);
-segment_t *segment_cache_load(void *arg, ex_id_t id, exnode_exchange_t *ex);
-segment_t *segment_cache_create(void *arg);
+int cache_page_drop(lio_segment_t *seg, ex_off_t lo, ex_off_t hi);
+lio_segment_t *segment_cache_load(void *arg, ex_id_t id, lio_exnode_exchange_t *ex);
+lio_segment_t *segment_cache_create(void *arg);
 
 #ifdef __cplusplus
 }

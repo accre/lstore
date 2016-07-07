@@ -34,8 +34,8 @@ int main(int argc, char **argv)
     lio_fsck_iter_t *it;
     char *owner;
     char *fname;
-    op_generic_t *gop;
-    op_status_t status;
+    gop_op_generic_t *gop;
+    gop_op_status_t status;
     lio_path_tuple_t tuple;
     int ftype, err;
     ex_off_t n, nfailed, checked;

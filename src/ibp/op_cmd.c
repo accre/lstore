@@ -41,22 +41,22 @@
 
 #define ibp_set_status(v, opstat, errcode) (v).op_status = status; (v).error_code = errorcode
 
-apr_time_t gop_get_end_time(op_generic_t *gop, int *state);
-op_status_t gop_readline_with_timeout(tbx_ns_t *ns, char *buffer, int size, op_generic_t *gop);
-op_status_t gop_write_block(tbx_ns_t *ns, op_generic_t *gop, tbx_tbuf_t *buffer, ibp_off_t pos, ibp_off_t size);
-op_status_t gop_read_block(tbx_ns_t *ns, op_generic_t *gop, tbx_tbuf_t *buffer, ibp_off_t pos, ibp_off_t size);
+apr_time_t gop_get_end_time(gop_op_generic_t *gop, int *state);
+gop_op_status_t gop_readline_with_timeout(tbx_ns_t *ns, char *buffer, int size, gop_op_generic_t *gop);
+gop_op_status_t gop_write_block(tbx_ns_t *ns, gop_op_generic_t *gop, tbx_tbuf_t *buffer, ibp_off_t pos, ibp_off_t size);
+gop_op_status_t gop_read_block(tbx_ns_t *ns, gop_op_generic_t *gop, tbx_tbuf_t *buffer, ibp_off_t pos, ibp_off_t size);
 
-op_status_t status_get_recv(op_generic_t *gop, tbx_ns_t *ns);
-void _ibp_op_free(op_generic_t *op, int mode);
+gop_op_status_t status_get_recv(gop_op_generic_t *gop, tbx_ns_t *ns);
+void _ibp_op_free(gop_op_generic_t *op, int mode);
 
-op_status_t vec_read_command(op_generic_t *gop, tbx_ns_t *ns);
-op_status_t vec_write_command(op_generic_t *gop, tbx_ns_t *ns);
+gop_op_status_t vec_read_command(gop_op_generic_t *gop, tbx_ns_t *ns);
+gop_op_status_t vec_write_command(gop_op_generic_t *gop, tbx_ns_t *ns);
 
 // In ibp_op.c
 void set_hostport(char *hostport, int max_size, char *host, int port, ibp_connect_context_t *cc);
 int process_inq(char *buffer, ibp_depotinfo_t *di);
 
-op_status_t process_error(op_generic_t *gop, op_status_t *err, int status, double wait_time, char **bstate)
+gop_op_status_t process_error(gop_op_generic_t *gop, gop_op_status_t *err, int status, double wait_time, char **bstate)
 {
     int fin;
     apr_time_t sec, usec;
@@ -85,12 +85,12 @@ op_status_t process_error(op_generic_t *gop, op_status_t *err, int status, doubl
     return(*err);
 }
 
-op_status_t send_command(op_generic_t *gop, tbx_ns_t *ns, char *command)
+gop_op_status_t send_command(gop_op_generic_t *gop, tbx_ns_t *ns, char *command)
 {
     tbx_ns_timeout_t dt;
     tbx_ns_timeout_set(&dt, 5, 0);
     tbx_tbuf_t buf;
-    op_status_t status;
+    gop_op_status_t status;
 
     log_printf(5, "send_command: ns=%d gid=%d command=%s\n", tbx_ns_getid(ns), gop_id(gop), command);
 
@@ -105,12 +105,12 @@ op_status_t send_command(op_generic_t *gop, tbx_ns_t *ns, char *command)
     return(status);
 }
 
-op_status_t gop_readline_with_timeout(tbx_ns_t *ns, char *buffer, int size, op_generic_t *gop)
+gop_op_status_t gop_readline_with_timeout(tbx_ns_t *ns, char *buffer, int size, gop_op_generic_t *gop)
 {
     int nbytes, n, nleft, pos;
     int err, state;
     apr_time_t end_time;
-    op_status_t status;
+    gop_op_status_t status;
     tbx_tbuf_t tbuf;
 
     log_printf(15, "readline_with_timeout: START ns=%d size=%d\n", tbx_ns_getid(ns), size);
@@ -156,7 +156,7 @@ op_status_t gop_readline_with_timeout(tbx_ns_t *ns, char *buffer, int size, op_g
     return(status);
 }
 
-op_status_t vec_read_command(op_generic_t *gop, tbx_ns_t *ns)
+gop_op_status_t vec_read_command(gop_op_generic_t *gop, tbx_ns_t *ns)
 {
     ibp_op_t *op = ibp_get_iop(gop);
     int bufsize = 204800;
@@ -165,7 +165,7 @@ op_status_t vec_read_command(op_generic_t *gop, tbx_ns_t *ns)
     int i, j, used;
     ibp_op_rw_t *cmd;
     ibp_rw_buf_t *rwbuf;
-    op_status_t err;
+    gop_op_status_t err;
 
     cmd = &(op->ops.rw_op);
 
@@ -213,11 +213,11 @@ op_status_t vec_read_command(op_generic_t *gop, tbx_ns_t *ns)
     return(err);
 }
 
-op_status_t read_command(op_generic_t *gop, tbx_ns_t *ns)
+gop_op_status_t read_command(gop_op_generic_t *gop, tbx_ns_t *ns)
 {
     ibp_op_t *op = ibp_get_iop(gop);
     char buffer[1024];
-    op_status_t err;
+    gop_op_status_t err;
     ibp_op_rw_t *cmd;
 
     cmd = &(op->ops.rw_op);
@@ -242,10 +242,10 @@ op_status_t read_command(op_generic_t *gop, tbx_ns_t *ns)
     return(err);
 }
 
-op_status_t gop_read_block(tbx_ns_t *ns, op_generic_t *gop, tbx_tbuf_t *buffer, ibp_off_t pos, ibp_off_t size)
+gop_op_status_t gop_read_block(tbx_ns_t *ns, gop_op_generic_t *gop, tbx_tbuf_t *buffer, ibp_off_t pos, ibp_off_t size)
 {
     int nbytes, state, bpos, nleft;
-    op_status_t status;
+    gop_op_status_t status;
     tbx_ns_timeout_t dt;
     apr_time_t end_time;
 
@@ -280,12 +280,12 @@ op_status_t gop_read_block(tbx_ns_t *ns, op_generic_t *gop, tbx_tbuf_t *buffer, 
     return(status);
 }
 
-op_status_t read_recv(op_generic_t *gop, tbx_ns_t *ns)
+gop_op_status_t read_recv(gop_op_generic_t *gop, tbx_ns_t *ns)
 {
     ibp_op_t *op = ibp_get_iop(gop);
     ibp_off_t nbytes;
     int i, status, fin;
-    op_status_t err;
+    gop_op_status_t err;
     char buffer[1024];
     char *bstate;
     ibp_op_rw_t *cmd;
@@ -353,13 +353,13 @@ op_status_t read_recv(op_generic_t *gop, tbx_ns_t *ns)
     return(err);
 }
 
-op_status_t vec_write_command(op_generic_t *gop, tbx_ns_t *ns)
+gop_op_status_t vec_write_command(gop_op_generic_t *gop, tbx_ns_t *ns)
 {
     ibp_op_t *op = ibp_get_iop(gop);
     int bufsize = 204800;
     char stackbuffer[bufsize];
     char *buffer = stackbuffer;
-    op_status_t err;
+    gop_op_status_t err;
     int i,j,used;
     ibp_op_rw_t *cmd;
     ibp_rw_buf_t *rwbuf;
@@ -414,11 +414,11 @@ op_status_t vec_write_command(op_generic_t *gop, tbx_ns_t *ns)
     return(err);
 }
 
-op_status_t write_command(op_generic_t *gop, tbx_ns_t *ns)
+gop_op_status_t write_command(gop_op_generic_t *gop, tbx_ns_t *ns)
 {
     ibp_op_t *op = ibp_get_iop(gop);
     char buffer[1024];
-    op_status_t err;
+    gop_op_status_t err;
     ibp_op_rw_t *cmd;
 
     cmd = &(op->ops.rw_op);
@@ -445,10 +445,10 @@ op_status_t write_command(op_generic_t *gop, tbx_ns_t *ns)
     return(err);
 }
 
-op_status_t gop_write_block(tbx_ns_t *ns, op_generic_t *gop, tbx_tbuf_t *buffer, ibp_off_t pos, ibp_off_t size)
+gop_op_status_t gop_write_block(tbx_ns_t *ns, gop_op_generic_t *gop, tbx_tbuf_t *buffer, ibp_off_t pos, ibp_off_t size)
 {
     int nbytes, state, bpos, nleft;
-    op_status_t status;
+    gop_op_status_t status;
     tbx_ns_timeout_t dt;
     apr_time_t end_time;
 
@@ -484,11 +484,11 @@ op_status_t gop_write_block(tbx_ns_t *ns, op_generic_t *gop, tbx_tbuf_t *buffer,
     return(status);
 }
 
-op_status_t write_send(op_generic_t *gop, tbx_ns_t *ns)
+gop_op_status_t write_send(gop_op_generic_t *gop, tbx_ns_t *ns)
 {
     ibp_op_t *iop = ibp_get_iop(gop);
     int i;
-    op_status_t err;
+    gop_op_status_t err;
     ibp_op_rw_t *cmd = &(iop->ops.rw_op);
     ibp_rw_buf_t *rwbuf;
 
@@ -528,11 +528,11 @@ op_status_t write_send(op_generic_t *gop, tbx_ns_t *ns)
     return(err);
 }
 
-op_status_t write_recv(op_generic_t *gop, tbx_ns_t *ns)
+gop_op_status_t write_recv(gop_op_generic_t *gop, tbx_ns_t *ns)
 {
     ibp_op_t *op = ibp_get_iop(gop);
     char buffer[1024];
-    op_status_t err;
+    gop_op_status_t err;
     int status, fin;
     ibp_off_t nbytes;
     ibp_op_rw_t *cmd;
@@ -578,11 +578,11 @@ op_status_t write_recv(op_generic_t *gop, tbx_ns_t *ns)
     return(err);
 }
 
-op_status_t append_command(op_generic_t *gop, tbx_ns_t *ns)
+gop_op_status_t append_command(gop_op_generic_t *gop, tbx_ns_t *ns)
 {
     ibp_op_t *op = ibp_get_iop(gop);
     char buffer[1024];
-    op_status_t err;
+    gop_op_status_t err;
     ibp_op_rw_t *cmd;
 
     cmd = &(op->ops.rw_op);
@@ -607,11 +607,11 @@ op_status_t append_command(op_generic_t *gop, tbx_ns_t *ns)
     return(err);
 }
 
-op_status_t validate_chksum_command(op_generic_t *gop, tbx_ns_t *ns)
+gop_op_status_t validate_chksum_command(gop_op_generic_t *gop, tbx_ns_t *ns)
 {
     ibp_op_t *op = ibp_get_iop(gop);
     char buffer[1024];
-    op_status_t err;
+    gop_op_status_t err;
     ibp_op_validate_chksum_t *cmd = &(op->ops.validate_op);
 
     snprintf(buffer, sizeof(buffer), "%d %d %s %s %d %d\n",
@@ -628,11 +628,11 @@ op_status_t validate_chksum_command(op_generic_t *gop, tbx_ns_t *ns)
     return(err);
 }
 
-op_status_t validate_chksum_recv(op_generic_t *gop, tbx_ns_t *ns)
+gop_op_status_t validate_chksum_recv(gop_op_generic_t *gop, tbx_ns_t *ns)
 {
     ibp_op_t *op = ibp_get_iop(gop);
     char buffer[1024];
-    op_status_t err;
+    gop_op_status_t err;
     int status, fin;
     ibp_off_t nerrors;
     ibp_op_validate_chksum_t *cmd = &(op->ops.validate_op);
@@ -658,11 +658,11 @@ op_status_t validate_chksum_recv(op_generic_t *gop, tbx_ns_t *ns)
     return(process_error(gop, &err, status, swait, NULL));
 }
 
-op_status_t get_chksum_command(op_generic_t *gop, tbx_ns_t *ns)
+gop_op_status_t get_chksum_command(gop_op_generic_t *gop, tbx_ns_t *ns)
 {
     ibp_op_t *op = ibp_get_iop(gop);
     char buffer[1024];
-    op_status_t err;
+    gop_op_status_t err;
     ibp_op_get_chksum_t *cmd = &(op->ops.get_chksum_op);
 
     snprintf(buffer, sizeof(buffer), "%d %d %s %s %d %d\n",
@@ -679,11 +679,11 @@ op_status_t get_chksum_command(op_generic_t *gop, tbx_ns_t *ns)
     return(err);
 }
 
-op_status_t get_chksum_recv(op_generic_t *gop, tbx_ns_t *ns)
+gop_op_status_t get_chksum_recv(gop_op_generic_t *gop, tbx_ns_t *ns)
 {
     ibp_op_t *op = ibp_get_iop(gop);
     char buffer[1024];
-    op_status_t err;
+    gop_op_status_t err;
     int status, fin;
     ibp_op_get_chksum_t *cmd = &(op->ops.get_chksum_op);
     char *bstate;
@@ -738,11 +738,11 @@ op_status_t get_chksum_recv(op_generic_t *gop, tbx_ns_t *ns)
     return(err);
 }
 
-op_status_t allocate_command(op_generic_t *gop, tbx_ns_t *ns)
+gop_op_status_t allocate_command(gop_op_generic_t *gop, tbx_ns_t *ns)
 {
     ibp_op_t *op = ibp_get_iop(gop);
     char buffer[1024];
-    op_status_t err;
+    gop_op_status_t err;
     ibp_op_alloc_t *cmd = &(op->ops.alloc_op);
 
     log_printf(10, "allocate_command: cs_type=%d\n", cmd->disk_chksum_type);
@@ -771,11 +771,11 @@ op_status_t allocate_command(op_generic_t *gop, tbx_ns_t *ns)
     return(err);
 }
 
-op_status_t split_allocate_command(op_generic_t *gop, tbx_ns_t *ns)
+gop_op_status_t split_allocate_command(gop_op_generic_t *gop, tbx_ns_t *ns)
 {
     ibp_op_t *op = ibp_get_iop(gop);
     char buffer[1024];
-    op_status_t err;
+    gop_op_status_t err;
     ibp_op_alloc_t *cmd = &(op->ops.alloc_op);
 
     if (cmd->disk_chksum_type == CHKSUM_DEFAULT) {  //** Normal split allocation
@@ -802,14 +802,14 @@ op_status_t split_allocate_command(op_generic_t *gop, tbx_ns_t *ns)
     return(err);
 }
 
-op_status_t allocate_recv(op_generic_t *gop, tbx_ns_t *ns)
+gop_op_status_t allocate_recv(gop_op_generic_t *gop, tbx_ns_t *ns)
 {
     ibp_op_t *op = ibp_get_iop(gop);
     int status, fin;
     char buffer[1025];
     char rcap[1025], wcap[1025], mcap[1025];
     char *bstate;
-    op_status_t err;
+    gop_op_status_t err;
     ibp_op_alloc_t *cmd = &(op->ops.alloc_op);
 
     //** Need to read the depot status info
@@ -860,11 +860,11 @@ op_status_t allocate_recv(op_generic_t *gop, tbx_ns_t *ns)
     return(ibp_success_status);
 }
 
-op_status_t rename_command(op_generic_t *gop, tbx_ns_t *ns)
+gop_op_status_t rename_command(gop_op_generic_t *gop, tbx_ns_t *ns)
 {
     ibp_op_t *op = ibp_get_iop(gop);
     char buffer[1024];
-    op_status_t err;
+    gop_op_status_t err;
     ibp_op_alloc_t *cmd = &(op->ops.alloc_op);
 
     snprintf(buffer, sizeof(buffer), "%d %d %s %s %d\n",
@@ -880,11 +880,11 @@ op_status_t rename_command(op_generic_t *gop, tbx_ns_t *ns)
     return(err);
 }
 
-op_status_t merge_command(op_generic_t *gop, tbx_ns_t *ns)
+gop_op_status_t merge_command(gop_op_generic_t *gop, tbx_ns_t *ns)
 {
     ibp_op_t *op = ibp_get_iop(gop);
     char buffer[1024];
-    op_status_t err;
+    gop_op_status_t err;
     ibp_op_merge_alloc_t *cmd = &(op->ops.merge_op);
 
     snprintf(buffer, sizeof(buffer), "%d %d %s %s %s %s %d\n",
@@ -900,11 +900,11 @@ op_status_t merge_command(op_generic_t *gop, tbx_ns_t *ns)
     return(err);
 }
 
-op_status_t proxy_allocate_command(op_generic_t *gop, tbx_ns_t *ns)
+gop_op_status_t proxy_allocate_command(gop_op_generic_t *gop, tbx_ns_t *ns)
 {
     ibp_op_t *op = ibp_get_iop(gop);
     char buffer[1024];
-    op_status_t err;
+    gop_op_status_t err;
     ibp_op_alloc_t *cmd = &(op->ops.alloc_op);
 
     snprintf(buffer, sizeof(buffer), "%d %d %s %s " I64T " " I64T " %d %d\n",
@@ -920,11 +920,11 @@ op_status_t proxy_allocate_command(op_generic_t *gop, tbx_ns_t *ns)
     return(err);
 }
 
-op_status_t modify_count_command(op_generic_t *gop, tbx_ns_t *ns)
+gop_op_status_t modify_count_command(gop_op_generic_t *gop, tbx_ns_t *ns)
 {
     ibp_op_t *op = ibp_get_iop(gop);
     char buffer[1024];
-    op_status_t err;
+    gop_op_status_t err;
     ibp_op_probe_t *cmd;
 
     cmd = &(op->ops.probe_op);
@@ -940,11 +940,11 @@ op_status_t modify_count_command(op_generic_t *gop, tbx_ns_t *ns)
     return(err);
 }
 
-op_status_t proxy_modify_count_command(op_generic_t *gop, tbx_ns_t *ns)
+gop_op_status_t proxy_modify_count_command(gop_op_generic_t *gop, tbx_ns_t *ns)
 {
     ibp_op_t *op = ibp_get_iop(gop);
     char buffer[1024];
-    op_status_t err;
+    gop_op_status_t err;
     ibp_op_probe_t *cmd;
 
     cmd = &(op->ops.probe_op);
@@ -962,12 +962,12 @@ op_status_t proxy_modify_count_command(op_generic_t *gop, tbx_ns_t *ns)
     return(err);
 }
 
-op_status_t status_get_recv(op_generic_t *gop, tbx_ns_t *ns)
+gop_op_status_t status_get_recv(gop_op_generic_t *gop, tbx_ns_t *ns)
 {
     int status, fin;
     char buffer[1025];
     char *bstate;
-    op_status_t err;
+    gop_op_status_t err;
 
     //** Need to read the depot status info
     log_printf(15, "status_get_recv: ns=%d Start", tbx_ns_getid(ns));
@@ -984,11 +984,11 @@ op_status_t status_get_recv(op_generic_t *gop, tbx_ns_t *ns)
     return(process_error(gop, &err, status, -1, &bstate));
 }
 
-op_status_t modify_alloc_command(op_generic_t *gop, tbx_ns_t *ns)
+gop_op_status_t modify_alloc_command(gop_op_generic_t *gop, tbx_ns_t *ns)
 {
     ibp_op_t *op = ibp_get_iop(gop);
     char buffer[1024];
-    op_status_t err;
+    gop_op_status_t err;
     int atime;
     ibp_op_modify_alloc_t *cmd;
 
@@ -1011,11 +1011,11 @@ op_status_t modify_alloc_command(op_generic_t *gop, tbx_ns_t *ns)
     return(err);
 }
 
-op_status_t proxy_modify_alloc_command(op_generic_t *gop, tbx_ns_t *ns)
+gop_op_status_t proxy_modify_alloc_command(gop_op_generic_t *gop, tbx_ns_t *ns)
 {
     ibp_op_t *op = ibp_get_iop(gop);
     char buffer[1024];
-    op_status_t err;
+    gop_op_status_t err;
     int atime;
     ibp_op_modify_alloc_t *cmd;
 
@@ -1038,11 +1038,11 @@ op_status_t proxy_modify_alloc_command(op_generic_t *gop, tbx_ns_t *ns)
     return(err);
 }
 
-op_status_t truncate_command(op_generic_t *gop, tbx_ns_t *ns)
+gop_op_status_t truncate_command(gop_op_generic_t *gop, tbx_ns_t *ns)
 {
     ibp_op_t *op = ibp_get_iop(gop);
     char buffer[1024];
-    op_status_t err;
+    gop_op_status_t err;
     ibp_op_modify_alloc_t *cmd;
 
     cmd = &(op->ops.mod_alloc_op);
@@ -1060,11 +1060,11 @@ op_status_t truncate_command(op_generic_t *gop, tbx_ns_t *ns)
     return(err);
 }
 
-op_status_t probe_command(op_generic_t *gop, tbx_ns_t *ns)
+gop_op_status_t probe_command(gop_op_generic_t *gop, tbx_ns_t *ns)
 {
     ibp_op_t *op = ibp_get_iop(gop);
     char buffer[1024];
-    op_status_t err;
+    gop_op_status_t err;
     ibp_op_probe_t *cmd;
 
     cmd = &(op->ops.probe_op);
@@ -1082,12 +1082,12 @@ op_status_t probe_command(op_generic_t *gop, tbx_ns_t *ns)
     return(err);
 }
 
-op_status_t probe_recv(op_generic_t *gop, tbx_ns_t *ns)
+gop_op_status_t probe_recv(gop_op_generic_t *gop, tbx_ns_t *ns)
 {
     ibp_op_t *op = ibp_get_iop(gop);
     int status, fin;
     char buffer[1025];
-    op_status_t err;
+    gop_op_status_t err;
     char *bstate;
     ibp_capstatus_t *p;
 
@@ -1120,11 +1120,11 @@ op_status_t probe_recv(op_generic_t *gop, tbx_ns_t *ns)
     return(err);
 }
 
-op_status_t proxy_probe_command(op_generic_t *gop, tbx_ns_t *ns)
+gop_op_status_t proxy_probe_command(gop_op_generic_t *gop, tbx_ns_t *ns)
 {
     ibp_op_t *op = ibp_get_iop(gop);
     char buffer[1024];
-    op_status_t err;
+    gop_op_status_t err;
     ibp_op_probe_t *cmd;
 
     cmd = &(op->ops.probe_op);
@@ -1142,12 +1142,12 @@ op_status_t proxy_probe_command(op_generic_t *gop, tbx_ns_t *ns)
     return(err);
 }
 
-op_status_t proxy_probe_recv(op_generic_t *gop, tbx_ns_t *ns)
+gop_op_status_t proxy_probe_recv(gop_op_generic_t *gop, tbx_ns_t *ns)
 {
     ibp_op_t *op = ibp_get_iop(gop);
     int status, fin;
     char buffer[1025];
-    op_status_t err;
+    gop_op_status_t err;
     char *bstate;
     ibp_proxy_capstatus_t *p;
 
@@ -1176,11 +1176,11 @@ op_status_t proxy_probe_recv(op_generic_t *gop, tbx_ns_t *ns)
     return(err);
 }
 
-op_status_t copyappend_command(op_generic_t *gop, tbx_ns_t *ns)
+gop_op_status_t copyappend_command(gop_op_generic_t *gop, tbx_ns_t *ns)
 {
     ibp_op_t *op = ibp_get_iop(gop);
     char buffer[1024];
-    op_status_t err;
+    gop_op_status_t err;
     ibp_op_copy_t *cmd;
 
     cmd = &(op->ops.copy_op);
@@ -1206,12 +1206,12 @@ op_status_t copyappend_command(op_generic_t *gop, tbx_ns_t *ns)
     return(err);
 }
 
-op_status_t copy_recv(op_generic_t *gop, tbx_ns_t *ns)
+gop_op_status_t copy_recv(gop_op_generic_t *gop, tbx_ns_t *ns)
 {
     ibp_op_t *op = ibp_get_iop(gop);
     int status, fin;
     char buffer[1025];
-    op_status_t err;
+    gop_op_status_t err;
     ibp_off_t nbytes;
     char *bstate;
     ibp_op_copy_t *cmd;
@@ -1241,11 +1241,11 @@ op_status_t copy_recv(op_generic_t *gop, tbx_ns_t *ns)
     return(err);
 }
 
-op_status_t pushpull_command(op_generic_t *gop, tbx_ns_t *ns)
+gop_op_status_t pushpull_command(gop_op_generic_t *gop, tbx_ns_t *ns)
 {
     ibp_op_t *op = ibp_get_iop(gop);
     char buffer[1024];
-    op_status_t err;
+    gop_op_status_t err;
     ibp_op_copy_t *cmd;
 
     cmd = &(op->ops.copy_op);
@@ -1273,11 +1273,11 @@ op_status_t pushpull_command(op_generic_t *gop, tbx_ns_t *ns)
     return(err);
 }
 
-op_status_t depot_modify_command(op_generic_t *gop, tbx_ns_t *ns)
+gop_op_status_t depot_modify_command(gop_op_generic_t *gop, tbx_ns_t *ns)
 {
     ibp_op_t *op = ibp_get_iop(gop);
     char buffer[1024];
-    op_status_t err;
+    gop_op_status_t err;
     ibp_op_depot_modify_t *cmd;
 
     cmd = &(op->ops.depot_modify_op);
@@ -1296,11 +1296,11 @@ op_status_t depot_modify_command(op_generic_t *gop, tbx_ns_t *ns)
     return(err);
 }
 
-op_status_t depot_inq_command(op_generic_t *gop, tbx_ns_t *ns)
+gop_op_status_t depot_inq_command(gop_op_generic_t *gop, tbx_ns_t *ns)
 {
     ibp_op_t *op = ibp_get_iop(gop);
     char buffer[1024];
-    op_status_t err;
+    gop_op_status_t err;
     ibp_op_depot_inq_t *cmd;
 
     cmd = &(op->ops.depot_inq_op);
@@ -1318,11 +1318,11 @@ op_status_t depot_inq_command(op_generic_t *gop, tbx_ns_t *ns)
     return(err);
 }
 
-op_status_t depot_inq_recv(op_generic_t *gop, tbx_ns_t *ns)
+gop_op_status_t depot_inq_recv(gop_op_generic_t *gop, tbx_ns_t *ns)
 {
     ibp_op_t *op = ibp_get_iop(gop);
     char buffer[1024];
-    op_status_t err;
+    gop_op_status_t err;
     int nbytes, status, fin;
     char *bstate;
     ibp_op_depot_inq_t *cmd;
@@ -1364,10 +1364,10 @@ op_status_t depot_inq_recv(op_generic_t *gop, tbx_ns_t *ns)
     return(err);
 }
 
-op_status_t depot_version_command(op_generic_t *gop, tbx_ns_t *ns)
+gop_op_status_t depot_version_command(gop_op_generic_t *gop, tbx_ns_t *ns)
 {
     char buffer[1024];
-    op_status_t err;
+    gop_op_status_t err;
 
     snprintf(buffer, sizeof(buffer), "%d %d %d %d\n",IBPv040, IBP_STATUS, IBP_ST_VERSION, (int)apr_time_sec(gop->op->cmd.timeout));
 
@@ -1381,11 +1381,11 @@ op_status_t depot_version_command(op_generic_t *gop, tbx_ns_t *ns)
     return(err);
 }
 
-op_status_t depot_version_recv(op_generic_t *gop, tbx_ns_t *ns)
+gop_op_status_t depot_version_recv(gop_op_generic_t *gop, tbx_ns_t *ns)
 {
     ibp_op_t *op = ibp_get_iop(gop);
     char buffer[1024], *bstate;
-    op_status_t err;
+    gop_op_status_t err;
     int pos, nmax, status, fin;
     ibp_op_version_t *cmd;
 
@@ -1428,10 +1428,10 @@ op_status_t depot_version_recv(op_generic_t *gop, tbx_ns_t *ns)
     return(err);
 }
 
-op_status_t query_res_command(op_generic_t *gop, tbx_ns_t *ns)
+gop_op_status_t query_res_command(gop_op_generic_t *gop, tbx_ns_t *ns)
 {
     char buffer[1024];
-    op_status_t err;
+    gop_op_status_t err;
 
     snprintf(buffer, sizeof(buffer), "%d %d %d %d\n",IBPv040, IBP_STATUS, IBP_ST_RES, (int)apr_time_sec(gop->op->cmd.timeout));
 
@@ -1445,11 +1445,11 @@ op_status_t query_res_command(op_generic_t *gop, tbx_ns_t *ns)
     return(err);
 }
 
-op_status_t query_res_recv(op_generic_t *gop, tbx_ns_t *ns)
+gop_op_status_t query_res_recv(gop_op_generic_t *gop, tbx_ns_t *ns)
 {
     ibp_op_t *op = ibp_get_iop(gop);
     char buffer[1024];
-    op_status_t err;
+    gop_op_status_t err;
     int fin, n, i, status;
     char *p, *bstate;
     ibp_op_rid_inq_t *cmd = &(op->ops.rid_op);

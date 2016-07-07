@@ -40,7 +40,7 @@ static tbx_atomic_unit32_t _id_counter = 0;
 // mq_make_id_frame - Makes and generates and ID frame
 //***********************************************************************
 
-mq_frame_t *mq_make_id_frame()
+gop_mq_frame_t *mq_make_id_frame()
 {
     tbx_atomic_unit32_t *id;
 
@@ -60,12 +60,12 @@ mq_frame_t *mq_make_id_frame()
 // gop_mq_read_status_frame - Processes a status frame
 //***********************************************************************
 
-op_status_t gop_mq_read_status_frame(mq_frame_t *f, int destroy)
+gop_op_status_t gop_mq_read_status_frame(gop_mq_frame_t *f, int destroy)
 {
     char *data;
     int nbytes, n;
     int64_t value;
-    op_status_t status;
+    gop_op_status_t status;
 
     gop_mq_get_frame(f, (void **)&data, &nbytes);
 
@@ -83,7 +83,7 @@ op_status_t gop_mq_read_status_frame(mq_frame_t *f, int destroy)
 // gop_mq_make_status_frame -Creates a status frame
 //***********************************************************************
 
-mq_frame_t *gop_mq_make_status_frame(op_status_t status)
+gop_mq_frame_t *gop_mq_make_status_frame(gop_op_status_t status)
 {
     unsigned char buffer[128];
     unsigned char *bytes;
@@ -142,7 +142,7 @@ mq_msg_t *gop_mq_make_exec_core_msg(mq_msg_t *address, int do_track)
 // gop_mq_make_response_core_msg - Makes the RESPONSE message core
 //***********************************************************************
 
-mq_msg_t *gop_mq_make_response_core_msg(mq_msg_t *address, mq_frame_t *fid)
+mq_msg_t *gop_mq_make_response_core_msg(mq_msg_t *address, gop_mq_frame_t *fid)
 {
     mq_msg_t *response;
 
@@ -163,7 +163,7 @@ mq_msg_t *gop_mq_make_response_core_msg(mq_msg_t *address, mq_frame_t *fid)
 
 int mq_num_frames(mq_msg_t *msg)
 {
-    mq_frame_t *f;
+    gop_mq_frame_t *f;
     int n;
 
     for(f = gop_mq_msg_first(msg), n = 0; f != NULL; f = gop_mq_msg_next(msg), n++);
@@ -177,7 +177,7 @@ int mq_num_frames(mq_msg_t *msg)
 
 char *mq_address_to_string(mq_msg_t *address)
 {
-    mq_frame_t *f;
+    gop_mq_frame_t *f;
     int msg_size, frames, n, size;
     char *string, *data;
 

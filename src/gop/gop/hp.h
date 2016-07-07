@@ -32,17 +32,17 @@ extern "C" {
 #endif
 
 // Typedefs
-typedef struct host_connection_t host_connection_t;
-typedef struct host_portal_t host_portal_t;
+typedef struct gop_host_connection_t gop_host_connection_t;
+typedef struct gop_host_portal_t gop_host_portal_t;
 
 // Functions
-GOP_API void gop_change_all_hportal_conn(portal_context_t *hpc, int min_conn, int max_conn, apr_time_t dt_connect);
-GOP_API portal_context_t *gop_hp_context_create(portal_fn_t *hpi);
-GOP_API void gop_hp_context_destroy(portal_context_t *hpc);
-GOP_API int gop_hp_direct_submit(portal_context_t *hpc, op_generic_t *op);
-GOP_API int gop_hp_que_op_submit(portal_context_t *hpc, op_generic_t *op);
-GOP_API void gop_hp_shutdown(portal_context_t *hpc);
-GOP_API int gop_hp_submit(host_portal_t *dp, op_generic_t *op, bool addtotop, bool release_master);
+GOP_API void gop_change_all_hportal_conn(gop_portal_context_t *hpc, int min_conn, int max_conn, apr_time_t dt_connect);
+GOP_API gop_portal_context_t *gop_hp_context_create(gop_portal_fn_t *hpi);
+GOP_API void gop_hp_context_destroy(gop_portal_context_t *hpc);
+GOP_API int gop_hp_direct_submit(gop_portal_context_t *hpc, gop_op_generic_t *op);
+GOP_API int gop_hp_que_op_submit(gop_portal_context_t *hpc, gop_op_generic_t *op);
+GOP_API void gop_hp_shutdown(gop_portal_context_t *hpc);
+GOP_API int gop_hp_submit(gop_host_portal_t *dp, gop_op_generic_t *op, bool addtotop, bool release_master);
 
 // Preprocessor constants
 #define HP_HOSTPORT_SEPARATOR "|"

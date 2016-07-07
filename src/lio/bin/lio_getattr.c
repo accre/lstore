@@ -73,7 +73,7 @@ int main(int argc, char **argv)
 {
     int i, j, rg_mode, start_option, start_index, fin, ftype, prefix_len;
     lio_path_tuple_t tuple;
-    os_regex_table_t *rp_single, *ro_single, *attr_regex;
+    lio_os_regex_table_t *rp_single, *ro_single, *attr_regex;
     os_object_iter_t *it;
     os_attr_iter_t *ait;
     char *bstate, *fname;

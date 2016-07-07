@@ -44,7 +44,7 @@
 
 //*************************************************************
 
-void zero_native_destroy(mq_socket_context_t *ctx, mq_socket_t *socket)
+void zero_native_destroy(gop_mq_socket_context_t *ctx, gop_mq_socket_t *socket)
 {
     zsocket_destroy((zctx_t *)ctx->arg, socket->arg);
     free(socket);
@@ -52,7 +52,7 @@ void zero_native_destroy(mq_socket_context_t *ctx, mq_socket_t *socket)
 
 //*************************************************************
 
-int zero_native_bind(mq_socket_t *socket, const char *format, ...)
+int zero_native_bind(gop_mq_socket_t *socket, const char *format, ...)
 {
     va_list args;
     int err, n;
@@ -76,7 +76,7 @@ int zero_native_bind(mq_socket_t *socket, const char *format, ...)
 
 //*************************************************************
 
-int zero_native_connect(mq_socket_t *socket, const char *format, ...)
+int zero_native_connect(gop_mq_socket_t *socket, const char *format, ...)
 {
     va_list args;
     int err;
@@ -101,7 +101,7 @@ int zero_native_connect(mq_socket_t *socket, const char *format, ...)
 
 //*************************************************************
 
-int zero_native_disconnect(mq_socket_t *socket, const char *format, ...)
+int zero_native_disconnect(gop_mq_socket_t *socket, const char *format, ...)
 {
     va_list args;
     int err;
@@ -115,23 +115,23 @@ int zero_native_disconnect(mq_socket_t *socket, const char *format, ...)
 
 //*************************************************************
 
-void *zero_native_poll_handle(mq_socket_t *socket)
+void *zero_native_poll_handle(gop_mq_socket_t *socket)
 {
     return(socket->arg);
 }
 
 //*************************************************************
 
-int zero_native_monitor(mq_socket_t *socket, char *address, int events)
+int zero_native_monitor(gop_mq_socket_t *socket, char *address, int events)
 {
     return(zmq_socket_monitor(socket->arg, address, events));
 }
 
 //*************************************************************
 
-int zero_native_send(mq_socket_t *socket, mq_msg_t *msg, int flags)
+int zero_native_send(gop_mq_socket_t *socket, mq_msg_t *msg, int flags)
 {
-    mq_frame_t *f, *fn;
+    gop_mq_frame_t *f, *fn;
     int n, loop, bytes;
 
     int count = 0;
@@ -179,9 +179,9 @@ int zero_native_send(mq_socket_t *socket, mq_msg_t *msg, int flags)
 
 //*************************************************************
 
-int zero_native_recv(mq_socket_t *socket, mq_msg_t *msg, int flags)
+int zero_native_recv(gop_mq_socket_t *socket, mq_msg_t *msg, int flags)
 {
-    mq_frame_t *f;
+    gop_mq_frame_t *f;
     int n, nframes, rc;
     int64_t more = 0;
     size_t msize = sizeof(more);
@@ -197,7 +197,7 @@ int zero_native_recv(mq_socket_t *socket, mq_msg_t *msg, int flags)
     n = 0;
     nframes = 0;
     do {
-        tbx_type_malloc(f, mq_frame_t, 1);
+        tbx_type_malloc(f, gop_mq_frame_t, 1);
 
         rc = zmq_msg_init(&(f->zmsg));
         assert (rc == 0);
@@ -225,11 +225,11 @@ int zero_native_recv(mq_socket_t *socket, mq_msg_t *msg, int flags)
 
 //*************************************************************
 
-mq_socket_t *zero_create_native_socket(mq_socket_context_t *ctx, int stype)
+gop_mq_socket_t *zero_create_native_socket(gop_mq_socket_context_t *ctx, int stype)
 {
-    mq_socket_t *s;
+    gop_mq_socket_t *s;
 
-    tbx_type_malloc_clear(s, mq_socket_t, 1);
+    tbx_type_malloc_clear(s, gop_mq_socket_t, 1);
 
     s->type = stype;
     s->arg = zsocket_new((zctx_t *)ctx->arg, stype);
@@ -257,9 +257,9 @@ mq_socket_t *zero_create_native_socket(mq_socket_context_t *ctx, int stype)
 
 //*************************************************************
 
-int zero_trace_router_recv(mq_socket_t *socket, mq_msg_t *msg, int flags)
+int zero_trace_router_recv(gop_mq_socket_t *socket, mq_msg_t *msg, int flags)
 {
-    mq_frame_t *f;
+    gop_mq_frame_t *f;
 
     int n = zero_native_recv(socket, msg, flags);
 
@@ -272,11 +272,11 @@ int zero_trace_router_recv(mq_socket_t *socket, mq_msg_t *msg, int flags)
 
 //*************************************************************
 
-mq_socket_t *zero_create_trace_router_socket(mq_socket_context_t *ctx)
+gop_mq_socket_t *zero_create_trace_router_socket(gop_mq_socket_context_t *ctx)
 {
-    mq_socket_t *s;
+    gop_mq_socket_t *s;
 
-    tbx_type_malloc_clear(s, mq_socket_t, 1);
+    tbx_type_malloc_clear(s, gop_mq_socket_t, 1);
 
     s->type = MQ_TRACE_ROUTER;
     s->arg = zsocket_new((zctx_t *)ctx->arg, ZMQ_ROUTER);
@@ -304,9 +304,9 @@ mq_socket_t *zero_create_trace_router_socket(mq_socket_context_t *ctx)
 
 //*************************************************************
 
-int zero_simple_router_recv(mq_socket_t *socket, mq_msg_t *msg, int flags)
+int zero_simple_router_recv(gop_mq_socket_t *socket, mq_msg_t *msg, int flags)
 {
-    mq_frame_t *f;
+    gop_mq_frame_t *f;
 
     int n = zero_native_recv(socket, msg, flags);
 
@@ -319,11 +319,11 @@ int zero_simple_router_recv(mq_socket_t *socket, mq_msg_t *msg, int flags)
 
 //*************************************************************
 
-mq_socket_t *zero_create_simple_router_socket(mq_socket_context_t *ctx)
+gop_mq_socket_t *zero_create_simple_router_socket(gop_mq_socket_context_t *ctx)
 {
-    mq_socket_t *s;
+    gop_mq_socket_t *s;
 
-    tbx_type_malloc_clear(s, mq_socket_t, 1);
+    tbx_type_malloc_clear(s, gop_mq_socket_t, 1);
 
     s->type = MQ_SIMPLE_ROUTER;
     s->arg = zsocket_new((zctx_t *)ctx->arg, ZMQ_ROUTER);
@@ -347,9 +347,9 @@ mq_socket_t *zero_create_simple_router_socket(mq_socket_context_t *ctx)
 // zero_create_socket  - Creates an MQ socket based o nthe given type
 //*************************************************************
 
-mq_socket_t *zero_create_socket(mq_socket_context_t *ctx, int stype)
+gop_mq_socket_t *zero_create_socket(gop_mq_socket_context_t *ctx, int stype)
 {
-    mq_socket_t *s = NULL;
+    gop_mq_socket_t *s = NULL;
     log_printf(15, "\t\tstype=%d\n", stype);
     switch (stype) {
     case MQ_DEALER:
@@ -375,7 +375,7 @@ mq_socket_t *zero_create_socket(mq_socket_context_t *ctx, int stype)
 //  zero_socket_context_destroy - Destroys the 0MQ based context
 //*************************************************************
 
-void zero_socket_context_destroy(mq_socket_context_t *ctx)
+void zero_socket_context_destroy(gop_mq_socket_context_t *ctx)
 {
     //** Kludge to get around race issues in 0mq when closing sockets manually vs letting
     //** zctx_destroy() close them
@@ -389,11 +389,11 @@ void zero_socket_context_destroy(mq_socket_context_t *ctx)
 //  zero_socket_context_new - Creates a new MQ context based on 0MQ
 //*************************************************************
 
-mq_socket_context_t *zero_socket_context_new()
+gop_mq_socket_context_t *zero_socket_context_new()
 {
-    mq_socket_context_t *ctx;
+    gop_mq_socket_context_t *ctx;
 
-    tbx_type_malloc_clear(ctx, mq_socket_context_t, 1);
+    tbx_type_malloc_clear(ctx, gop_mq_socket_context_t, 1);
 
     ctx->arg = zctx_new();
     assert(ctx->arg != NULL);

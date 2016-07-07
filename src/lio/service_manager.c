@@ -32,7 +32,7 @@
 //  remove_service - Removes a service
 //***********************************************************************
 
-int remove_service(service_manager_t *sm, char *service_section, char *service_name)
+int remove_service(lio_service_manager_t *sm, char *service_section, char *service_name)
 {
     apr_hash_t *section;
 
@@ -54,7 +54,7 @@ finished:
 //  add_service - Adds a service to the appropriate list
 //***********************************************************************
 
-int add_service(service_manager_t *sm, char *service_section, char *service_name, void *service)
+int add_service(lio_service_manager_t *sm, char *service_section, char *service_name, void *service)
 {
     char *key;
     apr_hash_t *section;
@@ -83,7 +83,7 @@ int add_service(service_manager_t *sm, char *service_section, char *service_name
 // lio_lookup_service - Returns the currrent object associated with the service
 //***********************************************************************
 
-void *lio_lookup_service(service_manager_t *sm, char *service_section, char *service_name)
+void *lio_lookup_service(lio_service_manager_t *sm, char *service_section, char *service_name)
 {
     void *s;
     apr_hash_t *section;
@@ -110,10 +110,10 @@ void *lio_lookup_service(service_manager_t *sm, char *service_section, char *ser
 // clone_service_manager - Clones an existing SM
 //***********************************************************************
 
-service_manager_t *clone_service_manager(service_manager_t *sm)
+lio_service_manager_t *clone_service_manager(lio_service_manager_t *sm)
 {
     apr_ssize_t klen;
-    service_manager_t *clone;
+    lio_service_manager_t *clone;
     apr_hash_index_t *his;
     apr_hash_t *section, *clone_section;
     char *key;
@@ -137,7 +137,7 @@ service_manager_t *clone_service_manager(service_manager_t *sm)
 //  destroy_service_manager - Destroys an existing SM.
 //***********************************************************************
 
-void destroy_service_manager(service_manager_t *sm)
+void destroy_service_manager(lio_service_manager_t *sm)
 {
     apr_pool_destroy(sm->pool);
     free(sm);
@@ -148,11 +148,11 @@ void destroy_service_manager(service_manager_t *sm)
 // create_service_manager - Creates a new SM for use
 //***********************************************************************
 
-service_manager_t *create_service_manager()
+lio_service_manager_t *create_service_manager()
 {
-    service_manager_t *sm;
+    lio_service_manager_t *sm;
 
-    tbx_type_malloc_clear(sm, service_manager_t, 1);
+    tbx_type_malloc_clear(sm, lio_service_manager_t, 1);
 
     apr_pool_create(&sm->pool, NULL);
     apr_thread_mutex_create(&sm->lock, APR_THREAD_MUTEX_DEFAULT, sm->pool);

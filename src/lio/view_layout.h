@@ -28,7 +28,7 @@ extern "C" {
 #define VIEW_TYPE_LAYOUT "layout"
 
 view_t *view_layout_create(void *arg);
-view_t *view_layout_load(void *arg, ex_id_t id, exnode_exchange_t *ex);
+view_t *view_layout_load(void *arg, ex_id_t id, lio_exnode_exchange_t *ex);
 int view_layout_set(view_t *v, layout_t *lay);
 
 #ifdef __cplusplus

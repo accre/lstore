@@ -40,11 +40,11 @@
 #define PI_CONN 0   //** Actual connection
 #define PI_EFD  1   //** Portal event FD for incoming tasks
 
-void _tp_submit_op(void *arg, op_generic_t *gop);
-int mq_conn_create(mq_portal_t *p, int dowait);
-void mq_conn_teardown(mq_conn_t *c);
-void mqc_heartbeat_dec(mq_conn_t *c, mq_heartbeat_entry_t *hb);
-void _mq_reap_closed(mq_portal_t *p);
+void _tp_submit_op(void *arg, gop_op_generic_t *gop);
+int mq_conn_create(gop_mq_portal_t *p, int dowait);
+void gop_mq_conn_teardown(gop_mq_conn_t *c);
+void mqc_heartbeat_dec(gop_mq_conn_t *c, gop_mq_heartbeat_entry_t *hb);
+void _mq_reap_closed(gop_mq_portal_t *p);
 void *mqtp_failure(apr_thread_t *th, void *arg);
 
 //**************************************************************
@@ -63,7 +63,7 @@ char *gop_mq_id2str(char *id, int id_len, char *str, int str_len)
 // mq_stats_add - Add command stats together (a = a+b)
 //**************************************************************
 
-void mq_stats_add(mq_command_stats_t *a, mq_command_stats_t *b)
+void mq_stats_add(gop_mq_command_stats_t *a, gop_mq_command_stats_t *b)
 {
     int i;
 
@@ -77,7 +77,7 @@ void mq_stats_add(mq_command_stats_t *a, mq_command_stats_t *b)
 //  mq_stats_print - Prints the stats
 //**************************************************************
 
-void mq_stats_print(int ll, char *tag, mq_command_stats_t *a)
+void mq_stats_print(int ll, char *tag, gop_mq_command_stats_t *a)
 {
     int i;
     char *fmt = "  %12s: %8d    %8d\n";
@@ -95,11 +95,11 @@ void mq_stats_print(int ll, char *tag, mq_command_stats_t *a)
 
 //**************************************************************
 
-mq_command_t *mq_command_new(void *cmd, int cmd_size, void *arg, gop_mq_exec_fn_t *fn)
+gop_mq_command_t *mq_command_new(void *cmd, int cmd_size, void *arg, gop_mq_exec_fn_t *fn)
 {
-    mq_command_t *mqc;
+    gop_mq_command_t *mqc;
 
-    tbx_type_malloc(mqc, mq_command_t, 1);
+    tbx_type_malloc(mqc, gop_mq_command_t, 1);
 
     tbx_type_malloc(mqc->cmd, void, cmd_size);
     memcpy(mqc->cmd, cmd, cmd_size);
@@ -115,9 +115,9 @@ mq_command_t *mq_command_new(void *cmd, int cmd_size, void *arg, gop_mq_exec_fn_
 //  gop_mq_command_set - Adds/removes and RPC call to the local host
 //**************************************************************
 
-void gop_mq_command_set(mq_command_table_t *table, void *cmd, int cmd_size, void *arg, gop_mq_exec_fn_t *fn)
+void gop_mq_command_set(gop_gop_mq_command_table_t *table, void *cmd, int cmd_size, void *arg, gop_mq_exec_fn_t *fn)
 {
-    mq_command_t *mqc;
+    gop_mq_command_t *mqc;
 
     log_printf(15, "command key = %d\n", ((char *)cmd)[0]);
     apr_thread_mutex_lock(table->lock);
@@ -143,10 +143,10 @@ void gop_mq_command_set(mq_command_table_t *table, void *cmd, int cmd_size, void
 }
 
 //**************************************************************
-//  mq_command_table_new - Creates a new RPC table
+//  gop_mq_command_table_new - Creates a new RPC table
 //**************************************************************
 
-void gop_mq_command_table_set_default(mq_command_table_t *table, void *arg, gop_mq_exec_fn_t *fn_default)
+void gop_gop_mq_command_table_set_default(gop_gop_mq_command_table_t *table, void *arg, gop_mq_exec_fn_t *fn_default)
 {
     apr_thread_mutex_lock(table->lock);
     table->fn_default = fn_default;
@@ -157,14 +157,14 @@ void gop_mq_command_table_set_default(mq_command_table_t *table, void *arg, gop_
 
 
 //**************************************************************
-//  mq_command_table_new - Creates a new RPC table
+//  gop_mq_command_table_new - Creates a new RPC table
 //**************************************************************
 
-mq_command_table_t *mq_command_table_new(void *arg, gop_mq_exec_fn_t *fn_default)
+gop_gop_mq_command_table_t *gop_mq_command_table_new(void *arg, gop_mq_exec_fn_t *fn_default)
 {
-    mq_command_table_t *t;
+    gop_gop_mq_command_table_t *t;
 
-    tbx_type_malloc(t, mq_command_table_t, 1);
+    tbx_type_malloc(t, gop_gop_mq_command_table_t, 1);
 
     t->fn_default = fn_default;
     t->arg_default = arg;
@@ -177,18 +177,18 @@ mq_command_table_t *mq_command_table_new(void *arg, gop_mq_exec_fn_t *fn_default
 }
 
 //**************************************************************
-//  mq_command_table_destroy- Destroys an RPC table
+//  gop_mq_command_table_destroy- Destroys an RPC table
 //**************************************************************
 
-void mq_command_table_destroy(mq_command_table_t *t)
+void gop_mq_command_table_destroy(gop_gop_mq_command_table_t *t)
 {
     apr_hash_index_t *hi;
-    mq_command_t *cmd;
+    gop_mq_command_t *cmd;
     void *val;
 
     for (hi=apr_hash_first(t->mpool, t->table); hi != NULL; hi = apr_hash_next(hi)) {
         apr_hash_this(hi, NULL, NULL, &val);
-        cmd = (mq_command_t *)val;
+        cmd = (gop_mq_command_t *)val;
         apr_hash_set(t->table, cmd->cmd, cmd->cmd_size, NULL);
         free(cmd->cmd);
         free(cmd);
@@ -204,9 +204,9 @@ void mq_command_table_destroy(mq_command_table_t *t)
 //  mq_command_exec - Executes an RPC call
 //**************************************************************
 
-void mq_command_exec(mq_command_table_t *t, mq_task_t *task, void *key, int klen)
+void mq_command_exec(gop_gop_mq_command_table_t *t, gop_mq_task_t *task, void *key, int klen)
 {
-    mq_command_t *cmd;
+    gop_mq_command_t *cmd;
 
     cmd = apr_hash_get(t->table, key, klen);
 
@@ -224,11 +224,11 @@ void mq_command_exec(mq_command_table_t *t, mq_task_t *task, void *key, int klen
 // gop_mq_submit - Submits a task for processing
 //**************************************************************
 
-int gop_mq_submit(mq_portal_t *p, mq_task_t *task)
+int gop_mq_submit(gop_mq_portal_t *p, gop_mq_task_t *task)
 {
     char c;
     int backlog, err;
-    mq_task_t *t;
+    gop_mq_task_t *t;
     apr_thread_mutex_lock(p->lock);
 
     //** Do a quick check for connections that need to be reaped
@@ -282,10 +282,10 @@ int gop_mq_submit(mq_portal_t *p, mq_task_t *task)
 // mq_task_send - Sends a task for processing
 //**************************************************************
 
-int mq_task_send(mq_context_t *mqc, mq_task_t *task)
+int mq_task_send(gop_mq_context_t *mqc, gop_mq_task_t *task)
 {
-    mq_portal_t *p;
-    mq_frame_t *f;
+    gop_mq_portal_t *p;
+    gop_mq_frame_t *f;
     char *host;
     int size;
 
@@ -297,7 +297,7 @@ int mq_task_send(mq_context_t *mqc, mq_task_t *task)
 
     //** Look up the portal
     apr_thread_mutex_lock(mqc->lock);
-    p = (mq_portal_t *)(apr_hash_get(mqc->client_portals, host, size));
+    p = (gop_mq_portal_t *)(apr_hash_get(mqc->client_portals, host, size));
     if (p == NULL) {  //** New host so create the portal
         log_printf(10, "Creating MQ_CMODE_CLIENT portal for outgoing connections host = %s size = %d\n", host, size);
         p = gop_mq_portal_create(mqc, host, MQ_CMODE_CLIENT);
@@ -312,7 +312,7 @@ int mq_task_send(mq_context_t *mqc, mq_task_t *task)
 //  mq_task_destroy - Destroys an MQ task
 //**************************************************************
 
-void mq_task_destroy(mq_task_t *task)
+void mq_task_destroy(gop_mq_task_t *task)
 {
     if (task->msg != NULL) gop_mq_msg_destroy(task->msg);
     if (task->response != NULL) gop_mq_msg_destroy(task->response);
@@ -326,7 +326,7 @@ void mq_task_destroy(mq_task_t *task)
 
 void mq_arg_free(void *arg)
 {
-    mq_task_t *task = (mq_task_t *)arg;
+    gop_mq_task_t *task = (gop_mq_task_t *)arg;
 
     mq_task_destroy(task);
 }
@@ -336,7 +336,7 @@ void mq_arg_free(void *arg)
 // mq_task_set - Initializes a task for use
 //**************************************************************
 
-int mq_task_set(mq_task_t *task, mq_context_t *ctx, mq_msg_t *msg, op_generic_t *gop,  void *arg, int dt)
+int mq_task_set(gop_mq_task_t *task, gop_mq_context_t *ctx, mq_msg_t *msg, gop_op_generic_t *gop,  void *arg, int dt)
 {
     task->ctx = ctx;
     task->msg = msg;
@@ -351,11 +351,11 @@ int mq_task_set(mq_task_t *task, mq_context_t *ctx, mq_msg_t *msg, op_generic_t 
 // gop_mq_task_new - Creates and initializes a task for use
 //**************************************************************
 
-mq_task_t *gop_mq_task_new(mq_context_t *ctx, mq_msg_t *msg, op_generic_t *gop, void *arg, int dt)
+gop_mq_task_t *gop_mq_task_new(gop_mq_context_t *ctx, mq_msg_t *msg, gop_op_generic_t *gop, void *arg, int dt)
 {
-    mq_task_t *task;
+    gop_mq_task_t *task;
 
-    tbx_type_malloc_clear(task, mq_task_t, 1);
+    tbx_type_malloc_clear(task, gop_mq_task_t, 1);
 
     mq_task_set(task, ctx, msg, gop, arg, dt);
 
@@ -366,9 +366,9 @@ mq_task_t *gop_mq_task_new(mq_context_t *ctx, mq_msg_t *msg, op_generic_t *gop, 
 // gop_tp_op_new - Allocates space for a new op
 //*************************************************************
 
-op_generic_t *gop_mq_op_new(mq_context_t *ctx, mq_msg_t *msg, op_status_t (*fn_response)(void *arg, int id), void *arg, void (*my_arg_free)(void *arg), int dt)
+gop_op_generic_t *gop_mq_op_new(gop_mq_context_t *ctx, mq_msg_t *msg, gop_op_status_t (*fn_response)(void *arg, int id), void *arg, void (*my_arg_free)(void *arg), int dt)
 {
-    mq_task_t *task;
+    gop_mq_task_t *task;
 
     task = gop_mq_task_new(ctx, msg, NULL, arg, dt);
     task->gop = gop_tp_op_new(ctx->tp, "mq", fn_response, task, mq_arg_free, 1);
@@ -383,9 +383,9 @@ op_generic_t *gop_mq_op_new(mq_context_t *ctx, mq_msg_t *msg, op_status_t (*fn_r
 
 void *mqt_exec(apr_thread_t *th, void *arg)
 {
-    mq_task_t *task = (mq_task_t *)arg;
-    mq_portal_t *p = (mq_portal_t *)task->arg;
-    mq_frame_t *f;
+    gop_mq_task_t *task = (gop_mq_task_t *)arg;
+    gop_mq_portal_t *p = (gop_mq_portal_t *)task->arg;
+    gop_mq_frame_t *f;
     char b64[1024];
     void *key;
     int n;
@@ -413,7 +413,7 @@ void *mqt_exec(apr_thread_t *th, void *arg)
 
 void *mqtp_success(apr_thread_t *th, void *arg)
 {
-    mq_task_t *task = (mq_task_t *)arg;
+    gop_mq_task_t *task = (gop_mq_task_t *)arg;
 
     gop_mark_completed(task->gop, gop_success_status);
 
@@ -426,7 +426,7 @@ void *mqtp_success(apr_thread_t *th, void *arg)
 
 void *mqtp_failure(apr_thread_t *th, void *arg)
 {
-    mq_task_t *task = (mq_task_t *)arg;
+    gop_mq_task_t *task = (gop_mq_task_t *)arg;
 
     gop_mark_completed(task->gop, gop_failure_status);
 
@@ -437,7 +437,7 @@ void *mqtp_failure(apr_thread_t *th, void *arg)
 //  mq_task_complete - Marks a task as complete and destroys it
 //**************************************************************
 
-void mq_task_complete(mq_conn_t *c, mq_task_t *task, int status)
+void mq_task_complete(gop_mq_conn_t *c, gop_mq_task_t *task, int status)
 {
     if (task->gop == NULL) {
         mq_task_destroy(task);
@@ -452,12 +452,12 @@ void mq_task_complete(mq_conn_t *c, mq_task_t *task, int status)
 // mqc_response - Processes a command response
 //**************************************************************
 
-void mqc_response(mq_conn_t *c, mq_msg_t *msg, int do_exec)
+void mqc_response(gop_mq_conn_t *c, mq_msg_t *msg, int do_exec)
 {
-    mq_frame_t *f;
+    gop_mq_frame_t *f;
     int size;
     char *id;
-    mq_task_monitor_t *tn;
+    gop_mq_task_monitor_t *tn;
     char b64[1024];
 
     log_printf(5, "start\n");
@@ -507,7 +507,7 @@ void mqc_response(mq_conn_t *c, mq_msg_t *msg, int do_exec)
 
 void gop_mq_apply_return_address_msg(mq_msg_t *msg, mq_msg_t *raw_address, int dup_frames)
 {
-    mq_frame_t *f;
+    gop_mq_frame_t *f;
 
     f = gop_mq_msg_first(raw_address);
     if (dup_frames == 0) f = mq_msg_pop(raw_address);
@@ -532,10 +532,10 @@ void gop_mq_apply_return_address_msg(mq_msg_t *msg, mq_msg_t *raw_address, int d
 //        if dup_frames == 0 then raw_address frames are consumed!
 //**************************************************************
 
-mq_msg_t *mq_trackaddress_msg(char *host, mq_msg_t *raw_address, mq_frame_t *fid, int dup_frames)
+mq_msg_t *mq_trackaddress_msg(char *host, mq_msg_t *raw_address, gop_mq_frame_t *fid, int dup_frames)
 {
     mq_msg_t *track_response;
-    mq_frame_t *f;
+    gop_mq_frame_t *f;
 
     track_response = gop_mq_msg_new();
     gop_mq_msg_append_mem(track_response, MQF_VERSION_KEY, MQF_VERSION_SIZE, MQF_MSG_KEEP_DATA);
@@ -569,13 +569,13 @@ mq_msg_t *mq_trackaddress_msg(char *host, mq_msg_t *raw_address, mq_frame_t *fid
 // mqc_trackaddress - Processes a track address command
 //**************************************************************
 
-void mqc_trackaddress(mq_conn_t *c, mq_msg_t *msg)
+void mqc_trackaddress(gop_mq_conn_t *c, mq_msg_t *msg)
 {
-    mq_frame_t *f;
+    gop_mq_frame_t *f;
     int size, n;
     char *id, *address;
-    mq_task_monitor_t *tn;
-    mq_heartbeat_entry_t *hb;
+    gop_mq_task_monitor_t *tn;
+    gop_mq_heartbeat_entry_t *hb;
 
     f = gop_mq_msg_next(msg);  //** This should be the task ID
     gop_mq_get_frame(f, (void **)&id, &size);
@@ -627,7 +627,7 @@ void mqc_trackaddress(mq_conn_t *c, mq_msg_t *msg)
         //** Make sure its not already stored
         hb = apr_hash_get(c->heartbeat_dest, address, n);
         if (hb == NULL) {  //** Make the new entry
-            tbx_type_malloc_clear(hb, mq_heartbeat_entry_t, 1);
+            tbx_type_malloc_clear(hb, gop_mq_heartbeat_entry_t, 1);
             hb->key = address;
             hb->key_size = n;
             hb->lut_id = tbx_atomic_global_counter();
@@ -666,10 +666,10 @@ cleanup:
 // mqc_ping - Processes a ping request
 //***************************************************************************
 
-int mqc_ping(mq_conn_t *c, mq_msg_t *msg)
+int mqc_ping(gop_mq_conn_t *c, mq_msg_t *msg)
 {
     mq_msg_t *pong;
-    mq_frame_t *f, *pid;
+    gop_mq_frame_t *f, *pid;
     int err;
 
     //** Peel off the top frames and just leave the return address
@@ -710,11 +710,11 @@ int mqc_ping(mq_conn_t *c, mq_msg_t *msg)
 // mqc_pong - Processed a pong command
 //**************************************************************
 
-void mqc_pong(mq_conn_t *c, mq_msg_t *msg)
+void mqc_pong(gop_mq_conn_t *c, mq_msg_t *msg)
 {
-    mq_frame_t *f;
+    gop_mq_frame_t *f;
     int size;
-    mq_heartbeat_entry_t *entry;
+    gop_mq_heartbeat_entry_t *entry;
     void *ptr;
 
     f = gop_mq_msg_next(msg);  //** This should be the ID which is actually the entry
@@ -737,13 +737,13 @@ void mqc_pong(mq_conn_t *c, mq_msg_t *msg)
 //     tasks on a close.
 //**************************************************************
 
-int mqc_heartbeat_cleanup(mq_conn_t *c)
+int mqc_heartbeat_cleanup(gop_mq_conn_t *c)
 {
     char *key;
     apr_ssize_t klen;
     apr_hash_index_t *hi, *hit;
-    mq_heartbeat_entry_t *entry;
-    mq_task_monitor_t *tn;
+    gop_mq_heartbeat_entry_t *entry;
+    gop_mq_task_monitor_t *tn;
 
     //** Clean out the heartbeat info
     //** NOTE: using internal non-threadsafe iterator.  Should be ok in this case
@@ -774,7 +774,7 @@ int mqc_heartbeat_cleanup(mq_conn_t *c)
         assert(tn->task->gop);
         thread_pool_direct(c->pc->tp, mqtp_failure, tn->task);
 
-        //** Free the container. The mq_task_t is handled by the response
+        //** Free the container. The gop_mq_task_t is handled by the response
         free(tn);
     }
 
@@ -786,7 +786,7 @@ int mqc_heartbeat_cleanup(mq_conn_t *c)
 //    in it's removal.
 //**************************************************************
 
-void mqc_heartbeat_dec(mq_conn_t *c, mq_heartbeat_entry_t *hb)
+void mqc_heartbeat_dec(gop_mq_conn_t *c, gop_mq_heartbeat_entry_t *hb)
 {
     hb->count--;
 
@@ -813,13 +813,13 @@ void mqc_heartbeat_dec(mq_conn_t *c, mq_heartbeat_entry_t *hb)
 //     timed out.
 //**************************************************************
 
-int mqc_heartbeat(mq_conn_t *c, int npoll)
+int mqc_heartbeat(gop_mq_conn_t *c, int npoll)
 {
     char *key;
     apr_ssize_t klen;
     apr_hash_index_t *hi, *hit;
-    mq_heartbeat_entry_t *entry;
-    mq_task_monitor_t *tn;
+    gop_mq_heartbeat_entry_t *entry;
+    gop_mq_task_monitor_t *tn;
     apr_time_t dt, dt_fail, dt_check;
     apr_time_t now;
     int n, pending_count, conn_dead, do_conn_hb;
@@ -866,7 +866,7 @@ int mqc_heartbeat(mq_conn_t *c, int npoll)
                     assert(tn->task->gop);
                     thread_pool_direct(c->pc->tp, mqtp_failure, tn->task);
 
-                    //** Free the container. The mq_task_t is handled by the response
+                    //** Free the container. The gop_mq_task_t is handled by the response
                     free(tn);
                 }
             }
@@ -922,7 +922,7 @@ next:
             assert(tn->task->gop);
             thread_pool_direct(c->pc->tp, mqtp_failure, tn->task);
 
-            //** Free the container. The mq_task_t is handled by the response
+            //** Free the container. The gop_mq_task_t is handled by the response
             free(tn);
         } else {
             pending_count++;  //** Keep track of pending responses
@@ -960,12 +960,12 @@ next:
 // mqc_process_incoming - Processes an incoming task
 //**************************************************************
 
-int mqc_process_incoming(mq_conn_t *c, int *nproc)
+int mqc_process_incoming(gop_mq_conn_t *c, int *nproc)
 {
     int n, count;
     mq_msg_t *msg;
-    mq_frame_t *f;
-    mq_task_t *task;
+    gop_mq_frame_t *f;
+    gop_mq_task_t *task;
     char *data;
     int size;
 
@@ -1063,11 +1063,11 @@ skip:
 //   and npoll set to 1 to stop monitoring the incoming task port
 //**************************************************************
 
-int mqc_process_task(mq_conn_t *c, int *npoll, int *nproc)
+int mqc_process_task(gop_mq_conn_t *c, int *npoll, int *nproc)
 {
-    mq_task_t *task = NULL;
-    mq_frame_t *f;
-    mq_task_monitor_t *tn;
+    gop_mq_task_t *task = NULL;
+    gop_mq_frame_t *f;
+    gop_mq_task_monitor_t *tn;
     char b64[1024];
     char *data, v;
     int i, size, tracking;
@@ -1173,7 +1173,7 @@ int mqc_process_task(mq_conn_t *c, int *npoll, int *nproc)
         log_printf(1, "TRACKING id_size=%d sid=%s\n", size, gop_mq_id2str(data, size, b64, sizeof(b64)));
         if (task->gop != NULL) log_printf(1, "TRACKING gid=%d\n", gop_id(task->gop));
         //** Insert it in the monitoring table
-        tbx_type_malloc_clear(tn, mq_task_monitor_t, 1);
+        tbx_type_malloc_clear(tn, gop_mq_task_monitor_t, 1);
         tn->task = task;
         tn->id = data;
         tn->id_size = size;
@@ -1189,20 +1189,20 @@ int mqc_process_task(mq_conn_t *c, int *npoll, int *nproc)
 //    success and 1 for failure.
 //**************************************************************
 
-int mq_conn_make(mq_conn_t *c)
+int mq_conn_make(gop_mq_conn_t *c)
 {
     mq_pollitem_t pfd;
     int err, n, frame;
     mq_msg_t *msg;
-    mq_frame_t *f;
+    gop_mq_frame_t *f;
     char *data;
     apr_time_t start, dt;
-    mq_heartbeat_entry_t *hb;
+    gop_mq_heartbeat_entry_t *hb;
 
     log_printf(5, "START host=%s\n", c->pc->host);
 
     //** Determing the type of socket to make based on
-    //** the mq_conn_t* passed in
+    //** the gop_mq_conn_t* passed in
     //** Old version:
     //** c->sock = mq_socket_new(c->pc->ctx, MQ_TRACE_ROUTER);
     //** Hardcoded MQ_TRACE_ROUTER socket type
@@ -1223,7 +1223,7 @@ int mq_conn_make(mq_conn_t *c)
     frame = -1;
 
     //** Form the ping message and make the base hearbeat message
-    tbx_type_malloc_clear(hb, mq_heartbeat_entry_t, 1);
+    tbx_type_malloc_clear(hb, gop_mq_heartbeat_entry_t, 1);
     hb->key = strdup(c->pc->host);
     hb->key_size = strlen(c->pc->host);
     hb->lut_id = tbx_atomic_global_counter();
@@ -1314,12 +1314,12 @@ fail:
 }
 
 //**************************************************************
-// mq_conn_thread - Connection thread
+// gop_mq_conn_thread - Connection thread
 //**************************************************************
 
-void *mq_conn_thread(apr_thread_t *th, void *data)
+void *gop_mq_conn_thread(apr_thread_t *th, void *data)
 {
-    mq_conn_t *c = (mq_conn_t *)data;
+    gop_mq_conn_t *c = (gop_mq_conn_t *)data;
     int k, npoll, err, finished, nprocessed, nproc, nincoming, slow_exit, oops;
     long int heartbeat_ms;
     int64_t total_proc, total_incoming;
@@ -1425,7 +1425,7 @@ cleanup:
     log_printf(2, "END: uuid=%s total_incoming=" I64T " total_processed=" I64T " oops=%d\n", c->mq_uuid, total_incoming, total_proc, oops);
     tbx_log_flush();
 
-    mq_conn_teardown(c);
+    gop_mq_conn_teardown(c);
 
     //** Update the conn_count, stats and place mysealf on the reaper stack
     apr_thread_mutex_lock(c->pc->lock);
@@ -1455,13 +1455,13 @@ cleanup:
 //   NOTE:  Assumes p->lock is set on entry.
 //**************************************************************
 
-int mq_conn_create_actual(mq_portal_t *p, int dowait)
+int mq_conn_create_actual(gop_mq_portal_t *p, int dowait)
 {
-    mq_conn_t *c;
+    gop_mq_conn_t *c;
     int err;
     char v;
 
-    tbx_type_malloc_clear(c, mq_conn_t, 1);
+    tbx_type_malloc_clear(c, gop_mq_conn_t, 1);
 
     c->pc = p;
     assert_result(apr_pool_create(&(c->mpool), NULL), APR_SUCCESS);
@@ -1474,7 +1474,7 @@ int mq_conn_create_actual(mq_portal_t *p, int dowait)
 
     //** Spawn the thread
     //** USe the parent mpool so I can do the teardown
-    tbx_thread_create_assert(&(c->thread), NULL, mq_conn_thread, (void *)c, p->mpool);
+    tbx_thread_create_assert(&(c->thread), NULL, gop_mq_conn_thread, (void *)c, p->mpool);
     err = 0;
     if (dowait == 1) {  //** If needed wait until connected
         read(c->cefd[0], &v, 1);
@@ -1498,7 +1498,7 @@ int mq_conn_create_actual(mq_portal_t *p, int dowait)
 //   NOTE:  Assumes p->lock is set on entry.
 //**************************************************************
 
-int mq_conn_create(mq_portal_t *p, int dowait)
+int mq_conn_create(gop_mq_portal_t *p, int dowait)
 {
     int err, retry;
 
@@ -1514,12 +1514,12 @@ int mq_conn_create(mq_portal_t *p, int dowait)
 }
 
 //**************************************************************
-// mq_conn_teardown - Tearsdown the MQ connection structures
-//    Does not destroy the mq_conn_t structure itself.  This is
+// gop_mq_conn_teardown - Tearsdown the MQ connection structures
+//    Does not destroy the gop_mq_conn_t structure itself.  This is
 //    handled when the connection is reaped.
 //**************************************************************
 
-void mq_conn_teardown(mq_conn_t *c)
+void gop_mq_conn_teardown(gop_mq_conn_t *c)
 {
     mqc_heartbeat_cleanup(c);
 
@@ -1539,9 +1539,9 @@ void mq_conn_teardown(mq_conn_t *c)
 //    NOTE:  Assumes the portal is already locked!
 //**************************************************************
 
-void _mq_reap_closed(mq_portal_t *p)
+void _mq_reap_closed(gop_mq_portal_t *p)
 {
-    mq_conn_t *c;
+    gop_mq_conn_t *c;
     apr_status_t dummy;
 
     while ((c = tbx_stack_pop(p->closed_conn)) != NULL) {
@@ -1554,7 +1554,7 @@ void _mq_reap_closed(mq_portal_t *p)
 // gop_mq_portal_destroy - Destroys the MQ portal
 //**************************************************************
 
-void gop_mq_portal_destroy(mq_portal_t *p)
+void gop_mq_portal_destroy(gop_mq_portal_t *p)
 {
     int i, n;
     char c;
@@ -1587,7 +1587,7 @@ void gop_mq_portal_destroy(mq_portal_t *p)
 
     _mq_reap_closed(p);
     //** Destroy the command table
-    mq_command_table_destroy(p->command_table);
+    gop_mq_command_table_destroy(p->command_table);
 
     //** Update the stats
     apr_thread_mutex_lock(p->mqc->lock);
@@ -1614,14 +1614,14 @@ void gop_mq_portal_destroy(mq_portal_t *p)
 // gop_mq_portal_lookup - Looks up a portal context
 //**************************************************************
 
-mq_portal_t *gop_mq_portal_lookup(mq_context_t *mqc, char *hostname, gop_mq_cmode_t connect_mode)
+gop_mq_portal_t *gop_mq_portal_lookup(gop_mq_context_t *mqc, char *hostname, gop_mq_cmode_t connect_mode)
 {
     apr_hash_t *ptable;
-    mq_portal_t *p;
+    gop_mq_portal_t *p;
 
     apr_thread_mutex_lock(mqc->lock);
     ptable = (connect_mode == MQ_CMODE_CLIENT) ? mqc->client_portals : mqc->server_portals;
-    p = (mq_portal_t *)(apr_hash_get(ptable, hostname, APR_HASH_KEY_STRING));
+    p = (gop_mq_portal_t *)(apr_hash_get(ptable, hostname, APR_HASH_KEY_STRING));
     apr_thread_mutex_unlock(mqc->lock);
 
     return(p);
@@ -1631,7 +1631,7 @@ mq_portal_t *gop_mq_portal_lookup(mq_context_t *mqc, char *hostname, gop_mq_cmod
 // gop_mq_portal_command_table - Retrieves the portal command table
 //**************************************************************
 
-mq_command_table_t *gop_mq_portal_command_table(mq_portal_t *portal)
+gop_gop_mq_command_table_t *gop_mq_portal_command_table(gop_mq_portal_t *portal)
 {
     return(portal->command_table);
 }
@@ -1640,7 +1640,7 @@ mq_command_table_t *gop_mq_portal_command_table(mq_portal_t *portal)
 // gop_mq_portal_remove - Removes a server portal in the context
 //**************************************************************
 
-void gop_mq_portal_remove(mq_context_t *mqc, mq_portal_t *p)
+void gop_mq_portal_remove(gop_mq_context_t *mqc, gop_mq_portal_t *p)
 {
     apr_thread_mutex_lock(mqc->lock);
     apr_hash_set(mqc->server_portals, p->host, APR_HASH_KEY_STRING, NULL);
@@ -1651,10 +1651,10 @@ void gop_mq_portal_remove(mq_context_t *mqc, mq_portal_t *p)
 // gop_mq_portal_install - Installs a server portal into the context
 //**************************************************************
 
-int gop_mq_portal_install(mq_context_t *mqc, mq_portal_t *p)
+int gop_mq_portal_install(gop_mq_context_t *mqc, gop_mq_portal_t *p)
 {
 
-    mq_portal_t *p2;
+    gop_mq_portal_t *p2;
     int err;
     apr_hash_t *ptable;
 
@@ -1662,7 +1662,7 @@ int gop_mq_portal_install(mq_context_t *mqc, mq_portal_t *p)
 
     apr_thread_mutex_lock(mqc->lock);
     ptable = (p->connect_mode == MQ_CMODE_CLIENT) ? mqc->client_portals : mqc->server_portals;
-    p2 = (mq_portal_t *)(apr_hash_get(ptable, p->host, APR_HASH_KEY_STRING));
+    p2 = (gop_mq_portal_t *)(apr_hash_get(ptable, p->host, APR_HASH_KEY_STRING));
     if (p2 != NULL) {
         apr_thread_mutex_unlock(mqc->lock);
         return(1);
@@ -1686,17 +1686,17 @@ int gop_mq_portal_install(mq_context_t *mqc, mq_portal_t *p)
 // gop_mq_portal_create - Creates a new MQ portal
 //**************************************************************
 
-mq_portal_t *gop_mq_portal_create(mq_context_t *mqc, char *host, gop_mq_cmode_t connect_mode)
+gop_mq_portal_t *gop_mq_portal_create(gop_mq_context_t *mqc, char *host, gop_mq_cmode_t connect_mode)
 {
-    mq_portal_t *p;
+    gop_mq_portal_t *p;
 
     log_printf(15, "New portal host=%s\n", host);
 
-    tbx_type_malloc_clear(p, mq_portal_t, 1);
+    tbx_type_malloc_clear(p, gop_mq_portal_t, 1);
 
     p->mqc = mqc;
     p->host = strdup(host);
-    p->command_table = mq_command_table_new(NULL, NULL);
+    p->command_table = gop_mq_command_table_new(NULL, NULL);
 
     if (connect_mode == MQ_CMODE_CLIENT) {
         p->min_conn = mqc->min_conn;
@@ -1732,17 +1732,17 @@ mq_portal_t *gop_mq_portal_create(mq_context_t *mqc, char *host, gop_mq_cmode_t 
 // gop_mq_destroy_context - Destroys the MQ context
 //**************************************************************
 
-void gop_mq_destroy_context(mq_context_t *mqc)
+void gop_mq_destroy_context(gop_mq_context_t *mqc)
 {
     apr_hash_index_t *hi;
-    mq_portal_t *p;
+    gop_mq_portal_t *p;
     void *val;
 
     log_printf(5, "Shutting down client_portals\n");
     tbx_log_flush();
     for (hi=apr_hash_first(mqc->mpool, mqc->client_portals); hi != NULL; hi = apr_hash_next(hi)) {
         apr_hash_this(hi, NULL, NULL, &val);
-        p = (mq_portal_t *)val;
+        p = (gop_mq_portal_t *)val;
         apr_hash_set(mqc->client_portals, p->host, APR_HASH_KEY_STRING, NULL);
         log_printf(5, "destroying p->host=%s\n", p->host);
         tbx_log_flush();
@@ -1752,7 +1752,7 @@ void gop_mq_destroy_context(mq_context_t *mqc)
     tbx_log_flush();
     for (hi=apr_hash_first(mqc->mpool, mqc->server_portals); hi != NULL; hi = apr_hash_next(hi)) {
         apr_hash_this(hi, NULL, NULL, &val);
-        p = (mq_portal_t *)val;
+        p = (gop_mq_portal_t *)val;
         apr_hash_set(mqc->server_portals, p->host, APR_HASH_KEY_STRING, NULL);
         log_printf(5, "destroying p->host=%s\n", p->host);
         tbx_log_flush();
@@ -1780,10 +1780,10 @@ void gop_mq_destroy_context(mq_context_t *mqc)
 // _gop_mq_submit - GOP submit routine for MQ objects
 //**************************************************************
 
-void _gop_mq_submit_op(void *arg, op_generic_t *gop)
+void _gop_mq_submit_op(void *arg, gop_op_generic_t *gop)
 {
-    thread_pool_op_t *op = gop_get_tp(gop);
-    mq_task_t *task = (mq_task_t *)op->arg;
+    gop_thread_pool_op_t *op = gop_get_tp(gop);
+    gop_mq_task_t *task = (gop_mq_task_t *)op->arg;
 
     log_printf(15, "gid=%d\n", gop_id(gop));
 
@@ -1794,11 +1794,11 @@ void _gop_mq_submit_op(void *arg, op_generic_t *gop)
 //  gop_mq_create_context - Creates a new MQ pool
 //**************************************************************
 
-mq_context_t *gop_mq_create_context(tbx_inip_file_t *ifd, char *section)
+gop_mq_context_t *gop_mq_create_context(tbx_inip_file_t *ifd, char *section)
 {
-    mq_context_t *mqc;
+    gop_mq_context_t *mqc;
 
-    tbx_type_malloc_clear(mqc, mq_context_t, 1);
+    tbx_type_malloc_clear(mqc, gop_mq_context_t, 1);
 
     mqc->min_conn = tbx_inip_get_integer(ifd, section, "min_conn", 1);
     mqc->max_conn = tbx_inip_get_integer(ifd, section, "max_conn", 3);

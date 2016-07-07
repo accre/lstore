@@ -48,14 +48,14 @@
 typedef struct {
     char *fname;
     char *qname;
-    thread_pool_context_t *tpc;
+    gop_thread_pool_context_t *tpc;
     tbx_atomic_unit32_t hard_errors;
     tbx_atomic_unit32_t soft_errors;
     tbx_atomic_unit32_t write_errors;
 } segfile_priv_t;
 
 typedef struct {
-    segment_t *seg;
+    lio_segment_t *seg;
     tbx_tbuf_t *buffer;
     ex_tbx_iovec_t *iov;
     ex_off_t  boff;
@@ -66,13 +66,13 @@ typedef struct {
 } segfile_rw_op_t;
 
 typedef struct {
-    segment_t *seg;
+    lio_segment_t *seg;
     int new_size;
 } segfile_multi_op_t;
 
 typedef struct {
-    segment_t *sseg;
-    segment_t *dseg;
+    lio_segment_t *sseg;
+    lio_segment_t *dseg;
     int copy_data;
 } segfile_clone_t;
 
@@ -80,7 +80,7 @@ typedef struct {
 // segfile_rw_func - Read/Write from a file segment
 //***********************************************************************
 
-op_status_t segfile_rw_func(void *arg, int id)
+gop_op_status_t segfile_rw_func(void *arg, int id)
 {
     segfile_rw_op_t *srw = (segfile_rw_op_t *)arg;
     segfile_priv_t *s = (segfile_priv_t *)srw->seg->priv;
@@ -88,7 +88,7 @@ op_status_t segfile_rw_func(void *arg, int id)
     size_t nbytes, blen;
     tbx_tbuf_var_t tbv;
     int i, err_cnt;
-    op_status_t err;
+    gop_op_status_t err;
 
     FILE *fd = fopen(s->fname, "r+");
     if (fd == NULL) fd = fopen(s->fname, "w+");
@@ -148,7 +148,7 @@ op_status_t segfile_rw_func(void *arg, int id)
 // segfile_read - Read from a file segment
 //***********************************************************************
 
-op_generic_t *segfile_read(segment_t *seg, data_attr_t *da, segment_rw_hints_t *rw_hints, int n_iov, ex_tbx_iovec_t *iov, tbx_tbuf_t *buffer, ex_off_t boff, int timeout)
+gop_op_generic_t *segfile_read(lio_segment_t *seg, data_attr_t *da, lio_segment_rw_hints_t *rw_hints, int n_iov, ex_tbx_iovec_t *iov, tbx_tbuf_t *buffer, ex_off_t boff, int timeout)
 {
     segfile_priv_t *s = (segfile_priv_t *)seg->priv;
     segfile_rw_op_t *srw;
@@ -170,7 +170,7 @@ op_generic_t *segfile_read(segment_t *seg, data_attr_t *da, segment_rw_hints_t *
 // segfile_write - Writes to a linear segment
 //***********************************************************************
 
-op_generic_t *segfile_write(segment_t *seg, data_attr_t *da, segment_rw_hints_t *rw_hints, int n_iov, ex_tbx_iovec_t *iov, tbx_tbuf_t *buffer, ex_off_t boff, int timeout)
+gop_op_generic_t *segfile_write(lio_segment_t *seg, data_attr_t *da, lio_segment_rw_hints_t *rw_hints, int n_iov, ex_tbx_iovec_t *iov, tbx_tbuf_t *buffer, ex_off_t boff, int timeout)
 {
     segfile_priv_t *s = (segfile_priv_t *)seg->priv;
     segfile_rw_op_t *srw;
@@ -192,12 +192,12 @@ op_generic_t *segfile_write(segment_t *seg, data_attr_t *da, segment_rw_hints_t 
 // segfile_multi_func - PErforms the truncate and remove ops for a file segment
 //***********************************************************************
 
-op_status_t segfile_multi_func(void *arg, int id)
+gop_op_status_t segfile_multi_func(void *arg, int id)
 {
     segfile_multi_op_t *cmd = (segfile_multi_op_t *)arg;
     segfile_priv_t *s = (segfile_priv_t *)cmd->seg->priv;
     int err;
-    op_status_t status = gop_success_status;
+    gop_op_status_t status = gop_success_status;
 
     if (cmd->new_size >= 0) {  //** Truncate operation
         err = truncate(s->fname, cmd->new_size);
@@ -216,7 +216,7 @@ op_status_t segfile_multi_func(void *arg, int id)
 //     result in the data being removed.
 //***********************************************************************
 
-op_generic_t *segfile_remove(segment_t *seg, data_attr_t *da, int timeout)
+gop_op_generic_t *segfile_remove(lio_segment_t *seg, data_attr_t *da, int timeout)
 {
     segfile_priv_t *s = (segfile_priv_t *)seg->priv;
     segfile_multi_op_t *cmd;
@@ -233,7 +233,7 @@ op_generic_t *segfile_remove(segment_t *seg, data_attr_t *da, int timeout)
 // segfile_truncate - Expands or contracts a segment
 //***********************************************************************
 
-op_generic_t *segfile_truncate(segment_t *seg, data_attr_t *da, ex_off_t new_size, int timeout)
+gop_op_generic_t *segfile_truncate(lio_segment_t *seg, data_attr_t *da, ex_off_t new_size, int timeout)
 {
     segfile_priv_t *s = (segfile_priv_t *)seg->priv;
     segfile_multi_op_t *cmd;
@@ -253,11 +253,11 @@ op_generic_t *segfile_truncate(segment_t *seg, data_attr_t *da, ex_off_t new_siz
 // segfile_inspect - Checks if the file exists
 //***********************************************************************
 
-op_generic_t *segfile_inspect(segment_t *seg, data_attr_t *da, tbx_log_fd_t *ifd, int mode, ex_off_t bufsize, inspect_args_t *args, int timeout)
+gop_op_generic_t *segfile_inspect(lio_segment_t *seg, data_attr_t *da, tbx_log_fd_t *ifd, int mode, ex_off_t bufsize, lio_inspect_args_t *args, int timeout)
 {
     segfile_priv_t *s = (segfile_priv_t *)seg->priv;
     FILE *fd;
-    op_status_t err;
+    gop_op_status_t err;
 
     lio_ex3_inspect_command_t cmd = mode & INSPECT_COMMAND_BITS;
     err = gop_failure_status;
@@ -308,7 +308,7 @@ op_generic_t *segfile_inspect(segment_t *seg, data_attr_t *da, tbx_log_fd_t *ifd
 // segfile_flush - Flushes a segment
 //***********************************************************************
 
-op_generic_t *segfile_flush(segment_t *seg, data_attr_t *da, ex_off_t lo, ex_off_t hi, int timeout)
+gop_op_generic_t *segfile_flush(lio_segment_t *seg, data_attr_t *da, ex_off_t lo, ex_off_t hi, int timeout)
 {
     return(gop_dummy(gop_success_status));
 }
@@ -317,7 +317,7 @@ op_generic_t *segfile_flush(segment_t *seg, data_attr_t *da, ex_off_t lo, ex_off
 // segfile_signature - Generates the segment signature
 //***********************************************************************
 
-int segfile_signature(segment_t *seg, char *buffer, int *used, int bufsize)
+int segfile_signature(lio_segment_t *seg, char *buffer, int *used, int bufsize)
 {
     tbx_append_printf(buffer, used, bufsize, "file()\n");
 
@@ -329,7 +329,7 @@ int segfile_signature(segment_t *seg, char *buffer, int *used, int bufsize)
 // segfile_clone_func - Clone data from a file segment
 //***********************************************************************
 
-op_status_t segfile_clone_func(void *arg, int id)
+gop_op_status_t segfile_clone_func(void *arg, int id)
 {
     segfile_clone_t *sfc = (segfile_clone_t *)arg;
     segfile_priv_t *ss = (segfile_priv_t *)sfc->sseg->priv;
@@ -378,13 +378,13 @@ op_status_t segfile_clone_func(void *arg, int id)
 // segfile_clone - Clones a segment
 //***********************************************************************
 
-op_generic_t *segfile_clone(segment_t *seg, data_attr_t *da, segment_t **clone_seg, int mode, void *attr, int timeout)
+gop_op_generic_t *segfile_clone(lio_segment_t *seg, data_attr_t *da, lio_segment_t **clone_seg, int mode, void *attr, int timeout)
 {
-    segment_t *clone;
+    lio_segment_t *clone;
     segfile_priv_t *ss, *sd;
     char *root, *fname;
     char fid[4096];
-    op_generic_t *gop;
+    gop_op_generic_t *gop;
     segfile_clone_t *sfc;
     int use_existing = (*clone_seg != NULL) ? 1 : 0;
 
@@ -427,7 +427,7 @@ op_generic_t *segfile_clone(segment_t *seg, data_attr_t *da, segment_t **clone_s
 // segfile_size - Returns the segment size.
 //***********************************************************************
 
-ex_off_t segfile_size(segment_t *seg)
+ex_off_t segfile_size(lio_segment_t *seg)
 {
     segfile_priv_t *s = (segfile_priv_t *)seg->priv;
     ex_off_t nbytes;
@@ -445,7 +445,7 @@ ex_off_t segfile_size(segment_t *seg)
 // segfile_block_size - Returns the segment block size.
 //***********************************************************************
 
-ex_off_t segfile_block_size(segment_t *seg)
+ex_off_t segfile_block_size(lio_segment_t *seg)
 {
     return(1);
 }
@@ -455,7 +455,7 @@ ex_off_t segfile_block_size(segment_t *seg)
 // segfile_serialize_text -Convert the segment to a text based format
 //***********************************************************************
 
-int segfile_serialize_text(segment_t *seg, exnode_exchange_t *exp)
+int segfile_serialize_text(lio_segment_t *seg, lio_exnode_exchange_t *exp)
 {
     segfile_priv_t *s = (segfile_priv_t *)seg->priv;
     int bufsize=10*1024;
@@ -487,7 +487,7 @@ int segfile_serialize_text(segment_t *seg, exnode_exchange_t *exp)
 // segfile_serialize_proto -Convert the segment to a protocol buffer
 //***********************************************************************
 
-int segfile_serialize_proto(segment_t *seg, exnode_exchange_t *exp)
+int segfile_serialize_proto(lio_segment_t *seg, lio_exnode_exchange_t *exp)
 {
     return(-1);
 }
@@ -496,7 +496,7 @@ int segfile_serialize_proto(segment_t *seg, exnode_exchange_t *exp)
 // segfile_serialize -Convert the segment to a more portable format
 //***********************************************************************
 
-int segfile_serialize(segment_t *seg, exnode_exchange_t *exp)
+int segfile_serialize(lio_segment_t *seg, lio_exnode_exchange_t *exp)
 {
     if (exp->type == EX_TEXT) {
         return(segfile_serialize_text(seg, exp));
@@ -511,7 +511,7 @@ int segfile_serialize(segment_t *seg, exnode_exchange_t *exp)
 // segfile_deserialize_text -Read the text based segment
 //***********************************************************************
 
-int segfile_deserialize_text(segment_t *seg, ex_id_t id, exnode_exchange_t *exp)
+int segfile_deserialize_text(lio_segment_t *seg, ex_id_t id, lio_exnode_exchange_t *exp)
 {
     segfile_priv_t *s = (segfile_priv_t *)seg->priv;
     int bufsize=1024;
@@ -553,7 +553,7 @@ int segfile_deserialize_text(segment_t *seg, ex_id_t id, exnode_exchange_t *exp)
 // segfile_deserialize_proto - Read the prot formatted segment
 //***********************************************************************
 
-int segfile_deserialize_proto(segment_t *seg, ex_id_t id, exnode_exchange_t *exp)
+int segfile_deserialize_proto(lio_segment_t *seg, ex_id_t id, lio_exnode_exchange_t *exp)
 {
     return(-1);
 }
@@ -562,7 +562,7 @@ int segfile_deserialize_proto(segment_t *seg, ex_id_t id, exnode_exchange_t *exp
 // segfile_deserialize -Convert from the portable to internal format
 //***********************************************************************
 
-int segfile_deserialize(segment_t *seg, ex_id_t id, exnode_exchange_t *exp)
+int segfile_deserialize(lio_segment_t *seg, ex_id_t id, lio_exnode_exchange_t *exp)
 {
     if (exp->type == EX_TEXT) {
         return(segfile_deserialize_text(seg, id, exp));
@@ -578,7 +578,7 @@ int segfile_deserialize(segment_t *seg, ex_id_t id, exnode_exchange_t *exp)
 // segfile_destroy - Destroys a linear segment struct (not the data)
 //***********************************************************************
 
-void segfile_destroy(segment_t *seg)
+void segfile_destroy(lio_segment_t *seg)
 {
     segfile_priv_t *s = (segfile_priv_t *)seg->priv;
 
@@ -602,7 +602,7 @@ void segfile_destroy(segment_t *seg)
 // segment_file_make - Creates a File segment
 //***********************************************************************
 
-op_generic_t *segment_file_make(segment_t *seg, data_attr_t *da, char *fname)
+gop_op_generic_t *segment_file_make(lio_segment_t *seg, data_attr_t *da, char *fname)
 {
     segfile_priv_t *s = (segfile_priv_t *)seg->priv;
     FILE *fd;
@@ -622,15 +622,15 @@ op_generic_t *segment_file_make(segment_t *seg, data_attr_t *da, char *fname)
 // segment_file_create - Creates a file segment
 //***********************************************************************
 
-segment_t *segment_file_create(void *arg)
+lio_segment_t *segment_file_create(void *arg)
 {
-    service_manager_t *es = (service_manager_t *)arg;
+    lio_service_manager_t *es = (lio_service_manager_t *)arg;
     segfile_priv_t *s;
-    segment_t *seg;
+    lio_segment_t *seg;
     char qname[512];
 
     //** Make the space
-    tbx_type_malloc_clear(seg, segment_t, 1);
+    tbx_type_malloc_clear(seg, lio_segment_t, 1);
     tbx_type_malloc_clear(s, segfile_priv_t, 1);
 
     s->fname = NULL;
@@ -666,9 +666,9 @@ segment_t *segment_file_create(void *arg)
 // segment_file_load - Loads a file segment from ini/ex3
 //***********************************************************************
 
-segment_t *segment_file_load(void *arg, ex_id_t id, exnode_exchange_t *ex)
+lio_segment_t *segment_file_load(void *arg, ex_id_t id, lio_exnode_exchange_t *ex)
 {
-    segment_t *seg = segment_file_create(arg);
+    lio_segment_t *seg = segment_file_create(arg);
     if (segment_deserialize(seg, id, ex) != 0) {
         segment_destroy(seg);
         seg = NULL;

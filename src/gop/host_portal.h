@@ -39,7 +39,7 @@ extern "C" {
 
 #define HP_COMPACT_TIME 10   //** How often to run the garbage collector
 
-struct host_portal_t {       //** Contains information about the depot including all connections
+struct gop_host_portal_t {       //** Contains information about the depot including all connections
     char skey[512];         //** Search key used for lookups its "host:port:type:..." Same as for the op
     char host[512];         //** Hostname
     int oops_neg;           //** All the oops are just for tracking down a bug and should be removed once it's found and fixed.
@@ -76,10 +76,10 @@ struct host_portal_t {       //** Contains information about the depot including
     apr_thread_cond_t *cond;
     apr_pool_t *mpool;
     void *connect_context;   //** Private information needed to make a host connection
-    portal_context_t *context;  //** Specific portal implementaion
+    gop_portal_context_t *context;  //** Specific portal implementaion
 };
 
-struct host_connection_t {            //** Individual depot connection in conn_list
+struct gop_host_connection_t {            //** Individual depot connection in conn_list
     int recv_up;
     int cmd_count;
     int curr_workload;
@@ -92,8 +92,8 @@ struct host_connection_t {            //** Individual depot connection in conn_l
     tbx_ns_t *ns;           //** Socket
     tbx_stack_t *pending_stack;    //** Local task que. An op  is mpoved from the parent que to here
     tbx_stack_ele_t *my_pos;       //** My position int the dp conn list
-    op_generic_t *curr_op;   //** Sending phase op that could have failed
-    host_portal_t *hp;         //** Pointerto parent depot portal with the todo list
+    gop_op_generic_t *curr_op;   //** Sending phase op that could have failed
+    gop_host_portal_t *hp;         //** Pointerto parent depot portal with the todo list
     apr_thread_mutex_t *lock;      //** shared lock
     apr_thread_cond_t *send_cond;
     apr_thread_cond_t *recv_cond;
@@ -109,16 +109,16 @@ struct host_connection_t {            //** Individual depot connection in conn_l
 #define hportal_unlock(hp) apr_thread_mutex_unlock(hp->lock)
 #define hportal_signal(hp) apr_thread_cond_broadcast(hp->cond)
 
-void _reap_hportal(host_portal_t *hp, int quick);
-op_generic_t *_get_hportal_op(host_portal_t *hp);
-void hportal_wait(host_portal_t *hp, int dt);
-int get_hpc_thread_count(portal_context_t *hpc);
-void modify_hpc_thread_count(portal_context_t *hpc, int n);
-host_portal_t *create_hportal(portal_context_t *hpc, void *connect_context, char *hostport, int min_conn, int max_conn, apr_time_t dt_connect);
-void finalize_hportal_context(portal_context_t *hpc);
-void compact_dportals(portal_context_t *hpc);
-void _hp_fail_tasks(host_portal_t *hp, op_status_t err_code);
-void check_hportal_connections(host_portal_t *hp);
+void _reap_hportal(gop_host_portal_t *hp, int quick);
+gop_op_generic_t *_get_hportal_op(gop_host_portal_t *hp);
+void hportal_wait(gop_host_portal_t *hp, int dt);
+int get_hpc_thread_count(gop_portal_context_t *hpc);
+void modify_hpc_thread_count(gop_portal_context_t *hpc, int n);
+gop_host_portal_t *create_hportal(gop_portal_context_t *hpc, void *connect_context, char *hostport, int min_conn, int max_conn, apr_time_t dt_connect);
+void finalize_hportal_context(gop_portal_context_t *hpc);
+void compact_dportals(gop_portal_context_t *hpc);
+void _hp_fail_tasks(gop_host_portal_t *hp, gop_op_status_t err_code);
+void check_hportal_connections(gop_host_portal_t *hp);
 
 //** Routines for hconnection.c
 #define trylock_hc(a) apr_thread_mutex_trylock(a->lock)
@@ -127,10 +127,10 @@ void check_hportal_connections(host_portal_t *hp);
 #define hc_send_signal(hc) apr_thread_cond_signal(hc->send_cond)
 #define hc_recv_signal(hc) apr_thread_cond_signal(hc->recv_cond)
 
-host_connection_t *new_host_connection();
-void destroy_host_connection(host_connection_t *hc);
-void close_hc(host_connection_t *dc, int quick);
-int create_host_connection(host_portal_t *hp);
+gop_host_connection_t *new_host_connection();
+void destroy_host_connection(gop_host_connection_t *hc);
+void close_hc(gop_host_connection_t *dc, int quick);
+int create_host_connection(gop_host_portal_t *hp);
 
 #ifdef __cplusplus
 }

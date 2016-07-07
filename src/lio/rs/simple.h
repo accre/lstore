@@ -35,9 +35,9 @@ extern "C" {
 
 #define RS_TYPE_SIMPLE "simple"
 
-resource_service_fn_t *rs_simple_create(void *arg, tbx_inip_file_t *fd, char *section);
+lio_resource_service_fn_t *rs_simple_create(void *arg, tbx_inip_file_t *fd, char *section);
 
-struct rss_rid_entry_t {
+struct lio_rss_rid_entry_t {
     char *rid_key;
     char *ds_key;
     tbx_list_t *attr;
@@ -48,17 +48,17 @@ struct rss_rid_entry_t {
     ex_off_t space_free;
 };
 
-struct rss_check_entry_t {
+struct lio_rss_check_entry_t {
     char *ds_key;
     char *rid_key;
     data_inquire_t *space;
-    rss_rid_entry_t *re;
+    lio_rss_rid_entry_t *re;
 };
 
-struct rs_simple_priv_t {
+struct lio_rs_simple_priv_t {
     tbx_list_t *rid_table;
-    rss_rid_entry_t **random_array;
-    data_service_fn_t *ds;
+    lio_rss_rid_entry_t **random_array;
+    lio_data_service_fn_t *ds;
     data_attr_t *da;
     apr_thread_mutex_t *lock;
     apr_thread_mutex_t *update_lock;

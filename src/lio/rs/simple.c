@@ -75,13 +75,13 @@ typedef struct {
     kvq_ele_t *pickone;
 } kvq_table_t;
 
-int _rs_simple_refresh(resource_service_fn_t *rs);
+int _rs_simple_refresh(lio_resource_service_fn_t *rs);
 
 //***********************************************************************
 // rss_test - Tests the current RID entry for query compatibility
 //***********************************************************************
 
-int rss_test(rsq_base_ele_t *q, rss_rid_entry_t *rse, int n_match, kvq_ele_t *uniq, kvq_ele_t *pickone)
+int rss_test(lio_rsq_base_ele_t *q, lio_rss_rid_entry_t *rse, int n_match, kvq_ele_t *uniq, kvq_ele_t *pickone)
 {
     int found;
     int k_unique, k_pickone, k_op;
@@ -195,19 +195,19 @@ int rss_test(rsq_base_ele_t *q, rss_rid_entry_t *rse, int n_match, kvq_ele_t *un
 // rs_simple_request - Processes a simple RS request
 //***********************************************************************
 
-op_generic_t *rs_simple_request(resource_service_fn_t *arg, data_attr_t *da, rs_query_t *rsq, data_cap_set_t **caps, rs_request_t *req, int req_size, rs_hints_t *hints_list, int fixed_size, int n_rid, int ignore_fixed_err, int timeout)
+gop_op_generic_t *rs_simple_request(lio_resource_service_fn_t *arg, data_attr_t *da, rs_query_t *rsq, data_cap_set_t **caps, lio_rs_request_t *req, int req_size, lio_rs_hints_t *hints_list, int fixed_size, int n_rid, int ignore_fixed_err, int timeout)
 {
-    rs_simple_priv_t *rss = (rs_simple_priv_t *)arg->priv;
-    rsq_base_t *query_global = (rsq_base_t *)rsq;
-    rsq_base_t *query_local;
+    lio_rs_simple_priv_t *rss = (lio_rs_simple_priv_t *)arg->priv;
+    lio_rsq_base_t *query_global = (lio_rsq_base_t *)rsq;
+    lio_rsq_base_t *query_local;
     kvq_table_t kvq_global, kvq_local, *kvq;
     apr_hash_t *pick_from;
-    rid_change_entry_t *rid_change;
+    lio_rid_change_entry_t *rid_change;
     ex_off_t change;
-    op_status_t status;
-    opque_t *que;
-    rss_rid_entry_t *rse;
-    rsq_base_ele_t *q;
+    gop_op_status_t status;
+    gop_opque_t *que;
+    lio_rss_rid_entry_t *rse;
+    lio_rsq_base_ele_t *q;
     int slot, rnd_off, i, j, k, i_unique, i_pickone, found, err_cnt, loop, loop_end;
     int state, *a, *b, *op_state, unique_size;
     tbx_stack_t *stack;
@@ -266,7 +266,7 @@ op_generic_t *rs_simple_request(resource_service_fn_t *arg, data_attr_t *da, rs_
 //rnd_off = 0;  //FIXME
 
         if (hints_list != NULL) {
-            query_local = (rsq_base_t *)hints_list[i].local_rsq;
+            query_local = (lio_rsq_base_t *)hints_list[i].local_rsq;
             if (query_local != NULL) {
                 loop_end = 2;
                 rs_query_count(arg, query_local, &j, &(kvq_local.n_unique), &(kvq_local.n_pickone));
@@ -464,10 +464,10 @@ op_generic_t *rs_simple_request(resource_service_fn_t *arg, data_attr_t *da, rs_
 //    provided
 //***********************************************************************
 
-char *rs_simple_get_rid_value(resource_service_fn_t *arg, char *rid_key, char *key)
+char *rs_simple_get_rid_value(lio_resource_service_fn_t *arg, char *rid_key, char *key)
 {
-    rs_simple_priv_t *rss = (rs_simple_priv_t *)arg->priv;
-    rss_rid_entry_t *rse;
+    lio_rs_simple_priv_t *rss = (lio_rs_simple_priv_t *)arg->priv;
+    lio_rss_rid_entry_t *rse;
     char *value = NULL;
 
 
@@ -489,7 +489,7 @@ char *rs_simple_get_rid_value(resource_service_fn_t *arg, char *rid_key, char *k
 
 void rs_simple_rid_free(tbx_list_data_t *arg)
 {
-    rss_rid_entry_t *rse = (rss_rid_entry_t *)arg;
+    lio_rss_rid_entry_t *rse = (lio_rss_rid_entry_t *)arg;
 
     log_printf(15, "START\n");
     tbx_log_flush();
@@ -509,13 +509,13 @@ void rs_simple_rid_free(tbx_list_data_t *arg)
 //  rs_load_entry - Loads an RID entry fro mthe file
 //***********************************************************************
 
-rss_rid_entry_t *rss_load_entry(tbx_inip_group_t *grp)
+lio_rss_rid_entry_t *rss_load_entry(tbx_inip_group_t *grp)
 {
-    rss_rid_entry_t *rse;
+    lio_rss_rid_entry_t *rse;
     tbx_inip_element_t *ele;
     char *key, *value;
     //** Create the new RS list
-    tbx_type_malloc_clear(rse, rss_rid_entry_t, 1);
+    tbx_type_malloc_clear(rse, lio_rss_rid_entry_t, 1);
     rse->status = RS_STATUS_UP;
     rse->attr = tbx_list_create(1, &tbx_list_string_compare, tbx_list_string_dup, tbx_list_simple_free, tbx_list_simple_free);
 
@@ -562,13 +562,13 @@ rss_rid_entry_t *rss_load_entry(tbx_inip_group_t *grp)
 // rss_get_rid_config - Gets the rid configuration
 //***********************************************************************
 
-char *rss_get_rid_config(resource_service_fn_t *rs)
+char *rss_get_rid_config(lio_resource_service_fn_t *rs)
 {
-    rs_simple_priv_t *rss = (rs_simple_priv_t *)rs->priv;
+    lio_rs_simple_priv_t *rss = (lio_rs_simple_priv_t *)rs->priv;
     char *buffer, *key, *val;
     int bufsize;
     apr_hash_index_t *hi;
-    rss_check_entry_t *ce;
+    lio_rss_check_entry_t *ce;
     int used;
     apr_ssize_t klen;
     tbx_list_iter_t ait;
@@ -622,10 +622,10 @@ char *rss_get_rid_config(resource_service_fn_t *rs)
 //   NOTE:  Assumes rs is already loacked!
 //***********************************************************************
 
-void _rss_clear_check_table(data_service_fn_t *ds, apr_hash_t *table, apr_pool_t *mpool)
+void _rss_clear_check_table(lio_data_service_fn_t *ds, apr_hash_t *table, apr_pool_t *mpool)
 {
     apr_hash_index_t *hi;
-    rss_check_entry_t *entry;
+    lio_rss_check_entry_t *entry;
     const void *rid;
     apr_ssize_t klen;
 
@@ -646,12 +646,12 @@ void _rss_clear_check_table(data_service_fn_t *ds, apr_hash_t *table, apr_pool_t
 // rss_mapping_register - Registration for mapping updates
 //***********************************************************************
 
-void rss_mapping_register(resource_service_fn_t *rs, rs_mapping_notify_t *map_version)
+void rss_mapping_register(lio_resource_service_fn_t *rs, lio_rs_mapping_notify_t *map_version)
 {
-    rs_simple_priv_t *rss = (rs_simple_priv_t *)rs->priv;
+    lio_rs_simple_priv_t *rss = (lio_rs_simple_priv_t *)rs->priv;
 
     apr_thread_mutex_lock(rss->update_lock);
-    apr_hash_set(rss->mapping_updates, map_version, sizeof(rs_mapping_notify_t *), map_version);
+    apr_hash_set(rss->mapping_updates, map_version, sizeof(lio_rs_mapping_notify_t *), map_version);
     apr_thread_mutex_unlock(rss->update_lock);
 }
 
@@ -659,12 +659,12 @@ void rss_mapping_register(resource_service_fn_t *rs, rs_mapping_notify_t *map_ve
 // rss_mapping_unregister - DE-Register for mapping updates
 //***********************************************************************
 
-void rss_mapping_unregister(resource_service_fn_t *rs, rs_mapping_notify_t *map_version)
+void rss_mapping_unregister(lio_resource_service_fn_t *rs, lio_rs_mapping_notify_t *map_version)
 {
-    rs_simple_priv_t *rss = (rs_simple_priv_t *)rs->priv;
+    lio_rs_simple_priv_t *rss = (lio_rs_simple_priv_t *)rs->priv;
 
     apr_thread_mutex_lock(rss->update_lock);
-    apr_hash_set(rss->mapping_updates, map_version, sizeof(rs_mapping_notify_t *), NULL);
+    apr_hash_set(rss->mapping_updates, map_version, sizeof(lio_rs_mapping_notify_t *), NULL);
     apr_thread_mutex_unlock(rss->update_lock);
 }
 
@@ -672,11 +672,11 @@ void rss_mapping_unregister(resource_service_fn_t *rs, rs_mapping_notify_t *map_
 // rss_mapping_noitfy - Notifies all registered entities
 //***********************************************************************
 
-void rss_mapping_notify(resource_service_fn_t *rs, int new_version, int status_change)
+void rss_mapping_notify(lio_resource_service_fn_t *rs, int new_version, int status_change)
 {
-    rs_simple_priv_t *rss = (rs_simple_priv_t *)rs->priv;
+    lio_rs_simple_priv_t *rss = (lio_rs_simple_priv_t *)rs->priv;
     apr_hash_index_t *hi;
-    rs_mapping_notify_t *rsn;
+    lio_rs_mapping_notify_t *rsn;
     apr_ssize_t klen;
     void *rid;
 
@@ -698,10 +698,10 @@ void rss_mapping_notify(resource_service_fn_t *rs, int new_version, int status_c
 // rss_translate_cap_set - Translates the cap set based o nthe latest RID mappings
 //***********************************************************************
 
-void rss_translate_cap_set(resource_service_fn_t *rs, char *rid_key, data_cap_set_t *cs)
+void rss_translate_cap_set(lio_resource_service_fn_t *rs, char *rid_key, data_cap_set_t *cs)
 {
-    rs_simple_priv_t *rss = (rs_simple_priv_t *)rs->priv;
-    rss_check_entry_t *rce;
+    lio_rs_simple_priv_t *rss = (lio_rs_simple_priv_t *)rs->priv;
+    lio_rss_check_entry_t *rce;
 
     apr_thread_mutex_lock(rss->lock);
     rce = apr_hash_get(rss->rid_mapping, rid_key, APR_HASH_KEY_STRING);
@@ -713,17 +713,17 @@ void rss_translate_cap_set(resource_service_fn_t *rs, char *rid_key, data_cap_se
 // rss_perform_check - Checks the RIDs and updates their status
 //***********************************************************************
 
-int rss_perform_check(resource_service_fn_t *rs)
+int rss_perform_check(lio_resource_service_fn_t *rs)
 {
-    rs_simple_priv_t *rss = (rs_simple_priv_t *)rs->priv;
+    lio_rs_simple_priv_t *rss = (lio_rs_simple_priv_t *)rs->priv;
     apr_hash_index_t *hi;
-    rss_check_entry_t *ce;
+    lio_rss_check_entry_t *ce;
     int prev_status, status_change;
     char *rid;
     apr_ssize_t klen;
-    op_status_t status;
-    opque_t *q;
-    op_generic_t *gop;
+    gop_op_status_t status;
+    gop_opque_t *q;
+    gop_op_generic_t *gop;
 
     log_printf(5, "START\n");
 
@@ -785,11 +785,11 @@ int rss_perform_check(resource_service_fn_t *rs)
 //   NOTE:  Assumes rs is already loacked!
 //***********************************************************************
 
-void _rss_make_check_table(resource_service_fn_t *rs)
+void _rss_make_check_table(lio_resource_service_fn_t *rs)
 {
-    rs_simple_priv_t *rss = (rs_simple_priv_t *)rs->priv;
-    rss_check_entry_t *ce, *ce2;
-    rss_rid_entry_t *re;
+    lio_rs_simple_priv_t *rss = (lio_rs_simple_priv_t *)rs->priv;
+    lio_rss_check_entry_t *ce, *ce2;
+    lio_rss_rid_entry_t *re;
     int i;
 
     //** Clear out the old one
@@ -799,7 +799,7 @@ void _rss_make_check_table(resource_service_fn_t *rs)
     rss->unique_rids = 1;
     for (i=0; i<rss->n_rids; i++) {
         re = rss->random_array[i];
-        tbx_type_malloc(ce, rss_check_entry_t, 1);
+        tbx_type_malloc(ce, lio_rss_check_entry_t, 1);
         ce->ds_key = strdup(re->ds_key);
         ce->rid_key = strdup(re->rid_key);
         ce->space = ds_inquire_create(rss->ds);
@@ -828,8 +828,8 @@ void _rss_make_check_table(resource_service_fn_t *rs)
 
 void *rss_check_thread(apr_thread_t *th, void *data)
 {
-    resource_service_fn_t *rs = (resource_service_fn_t *)data;
-    rs_simple_priv_t *rss = (rs_simple_priv_t *)rs->priv;
+    lio_resource_service_fn_t *rs = (lio_resource_service_fn_t *)data;
+    lio_rs_simple_priv_t *rss = (lio_rs_simple_priv_t *)rs->priv;
     int do_notify, map_version, status_change;
     apr_interval_time_t dt;
 
@@ -873,12 +873,12 @@ void *rss_check_thread(apr_thread_t *th, void *data)
 //   NOTE:  No locking is performed!
 //***********************************************************************
 
-int _rs_simple_load(resource_service_fn_t *res, char *fname)
+int _rs_simple_load(lio_resource_service_fn_t *res, char *fname)
 {
     tbx_inip_group_t *ig;
     char *key;
-    rss_rid_entry_t *rse;
-    rs_simple_priv_t *rss = (rs_simple_priv_t *)res->priv;
+    lio_rss_rid_entry_t *rse;
+    lio_rs_simple_priv_t *rss = (lio_rs_simple_priv_t *)res->priv;
     tbx_list_iter_t it;
     int i, n;
     tbx_inip_file_t *kf;
@@ -912,7 +912,7 @@ int _rs_simple_load(resource_service_fn_t *res, char *fname)
         fprintf(stderr, "ERROR: n_rids=%d\n", rss->n_rids);
         rss->rid_table = NULL;
     } else {
-        tbx_type_malloc_clear(rss->random_array, rss_rid_entry_t *, rss->n_rids);
+        tbx_type_malloc_clear(rss->random_array, lio_rss_rid_entry_t *, rss->n_rids);
         it = tbx_list_iter_search(rss->rid_table, (tbx_list_key_t *)NULL, 0);
         for (i=0; i < rss->n_rids; i++) {
             tbx_list_next(&it, (tbx_list_key_t **)&key, (tbx_list_data_t **)&rse);
@@ -938,9 +938,9 @@ int _rs_simple_load(resource_service_fn_t *res, char *fname)
 //   NOTE: No Locking is performed
 //***********************************************************************
 
-int _rs_simple_refresh(resource_service_fn_t *rs)
+int _rs_simple_refresh(lio_resource_service_fn_t *rs)
 {
-    rs_simple_priv_t *rss = (rs_simple_priv_t *)rs->priv;
+    lio_rs_simple_priv_t *rss = (lio_rs_simple_priv_t *)rs->priv;
     struct stat sbuf;
     int err;
 
@@ -967,9 +967,9 @@ int _rs_simple_refresh(resource_service_fn_t *rs)
 // rs_simple_destroy - Destroys the simple RS service
 //***********************************************************************
 
-void rs_simple_destroy(resource_service_fn_t *rs)
+void rs_simple_destroy(lio_resource_service_fn_t *rs)
 {
-    rs_simple_priv_t *rss = (rs_simple_priv_t *)rs->priv;
+    lio_rs_simple_priv_t *rss = (lio_rs_simple_priv_t *)rs->priv;
     apr_status_t value;
 
     log_printf(15, "rs_simple_destroy: sl=%p\n", rss->rid_table);
@@ -1002,14 +1002,14 @@ void rs_simple_destroy(resource_service_fn_t *rs)
 //    the given file.
 //***********************************************************************
 
-resource_service_fn_t *rs_simple_create(void *arg, tbx_inip_file_t *kf, char *section)
+lio_resource_service_fn_t *rs_simple_create(void *arg, tbx_inip_file_t *kf, char *section)
 {
-    service_manager_t *ess = (service_manager_t *)arg;
-    rs_simple_priv_t *rss;
-    resource_service_fn_t *rs;
+    lio_service_manager_t *ess = (lio_service_manager_t *)arg;
+    lio_rs_simple_priv_t *rss;
+    lio_resource_service_fn_t *rs;
 
     //** Create the new RS list
-    tbx_type_malloc_clear(rss, rs_simple_priv_t, 1);
+    tbx_type_malloc_clear(rss, lio_rs_simple_priv_t, 1);
 
     assert_result(apr_pool_create(&(rss->mpool), NULL), APR_SUCCESS);
     apr_thread_mutex_create(&(rss->lock), APR_THREAD_MUTEX_DEFAULT, rss->mpool);
@@ -1022,7 +1022,7 @@ resource_service_fn_t *rs_simple_create(void *arg, tbx_inip_file_t *kf, char *se
     rss->da = lio_lookup_service(ess, ESS_RUNNING, ESS_DA);
 
     //** Set the resource service fn ptrs
-    tbx_type_malloc_clear(rs, resource_service_fn_t, 1);
+    tbx_type_malloc_clear(rs, lio_resource_service_fn_t, 1);
     rs->priv = rss;
     rs->get_rid_config = rss_get_rid_config;
     rs->register_mapping_updates = rss_mapping_register;

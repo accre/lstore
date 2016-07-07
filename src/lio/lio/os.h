@@ -33,12 +33,12 @@ extern "C" {
 #endif
 
 // Typedefs
-typedef struct object_service_fn_t object_service_fn_t;
-typedef struct os_attr_tbx_list_t os_attr_tbx_list_t;
-typedef struct os_authz_t os_authz_t;
-typedef struct os_regex_entry_t os_regex_entry_t;
-typedef struct os_regex_table_t os_regex_table_t;
-typedef struct os_virtual_attr_t os_virtual_attr_t;
+typedef struct lio_object_service_fn_t lio_object_service_fn_t;
+typedef struct lio_os_attr_list_t lio_os_attr_list_t;
+typedef struct lio_os_authz_t lio_os_authz_t;
+typedef struct lio_os_regex_entry_t lio_os_regex_entry_t;
+typedef struct lio_os_regex_table_t lio_os_regex_table_t;
+typedef struct lio_os_virtual_attr_t lio_os_virtual_attr_t;
 typedef void os_fd_t;
 typedef void os_attr_iter_t;
 typedef void os_object_iter_t;
@@ -65,59 +65,59 @@ enum lio_object_type_flag_t {
     OS_OBJECT_ANY_FLAG         = (0x3F) // 6 bits AKA 0x3F,
 };
 
-typedef void (*lio_os_destroy_service_fn_t)(object_service_fn_t *os);
-typedef os_fsck_iter_t *(*lio_os_create_fsck_iter_fn_t)(object_service_fn_t *os, creds_t *creds, char *path, int mode);
-typedef void (*lio_os_destroy_fsck_iter_fn_t)(object_service_fn_t *os, os_fsck_iter_t *it);
-typedef int (*lio_os_next_fsck_fn_t)(object_service_fn_t *os, os_fsck_iter_t *it, char **fname, int *ftype);
-typedef op_generic_t *(*lio_os_fsck_object_fn_t)(object_service_fn_t *os, creds_t *creds, char *fname, int ftype, int resolution);
-typedef creds_t *(*lio_os_cred_init_fn_t)(object_service_fn_t *os, int type, void **arg);
-typedef void (*lio_os_cred_destroy_fn_t)(object_service_fn_t *os, creds_t *creds);
-typedef op_generic_t *(*lio_os_exists_fn_t)(object_service_fn_t *os, creds_t *creds, char *path);
-typedef op_generic_t *(*lio_os_create_object_fn_t)(object_service_fn_t *os, creds_t *creds, char *path, int type, char *id);
-typedef op_generic_t *(*lio_os_remove_object_fn_t)(object_service_fn_t *os, creds_t *creds, char *path);
-typedef op_generic_t *(*lio_os_remove_regex_object_fn_t)(object_service_fn_t *os, creds_t *creds, os_regex_table_t *path, os_regex_table_t *object_regex, int obj_types, int recurse_depth);
-typedef op_generic_t *(*lio_os_abort_remove_regex_object_fn_t)(object_service_fn_t *os, op_generic_t *gop);
-typedef op_generic_t *(*lio_os_regex_object_set_multiple_attrs_fn_t)(object_service_fn_t *os, creds_t *creds, char *id, os_regex_table_t *path, os_regex_table_t *object_regex, int object_types, int recurse_depth, char **key, void **val, int *v_size, int n);
-typedef op_generic_t *(*lio_os_abort_regex_object_set_multiple_attrs_fn_t)(object_service_fn_t *os, op_generic_t *gop);
-typedef op_generic_t *(*lio_os_move_object_fn_t)(object_service_fn_t *os, creds_t *creds, char *src_path, char *dest_path);
-typedef op_generic_t *(*lio_os_symlink_object_fn_t)(object_service_fn_t *os, creds_t *creds, char *src_path, char *dest_path, char *id);
-typedef op_generic_t *(*lio_os_hardlink_object_fn_t)(object_service_fn_t *os, creds_t *creds, char *src_path, char *dest_path, char *id);
-typedef os_object_iter_t *(*lio_os_create_object_iter_fn_t)(object_service_fn_t *os, creds_t *creds, os_regex_table_t *path, os_regex_table_t *obj_regex, int object_types, os_regex_table_t *attr, int recurse_dpeth, os_attr_iter_t **it, int v_max);
-typedef os_object_iter_t *(*lio_os_create_object_iter_alist_fn_t)(object_service_fn_t *os, creds_t *creds, os_regex_table_t *path, os_regex_table_t *obj_regex, int object_types, int recurse_depth, char **key, void **val, int *v_size, int n_keys);
+typedef void (*lio_os_destroy_service_fn_t)(lio_object_service_fn_t *os);
+typedef os_fsck_iter_t *(*lio_os_create_fsck_iter_fn_t)(lio_object_service_fn_t *os, lio_creds_t *creds, char *path, int mode);
+typedef void (*lio_os_destroy_fsck_iter_fn_t)(lio_object_service_fn_t *os, os_fsck_iter_t *it);
+typedef int (*lio_os_next_fsck_fn_t)(lio_object_service_fn_t *os, os_fsck_iter_t *it, char **fname, int *ftype);
+typedef gop_op_generic_t *(*lio_os_fsck_object_fn_t)(lio_object_service_fn_t *os, lio_creds_t *creds, char *fname, int ftype, int resolution);
+typedef lio_creds_t *(*lio_os_cred_init_fn_t)(lio_object_service_fn_t *os, int type, void **arg);
+typedef void (*lio_os_cred_destroy_fn_t)(lio_object_service_fn_t *os, lio_creds_t *creds);
+typedef gop_op_generic_t *(*lio_os_exists_fn_t)(lio_object_service_fn_t *os, lio_creds_t *creds, char *path);
+typedef gop_op_generic_t *(*lio_os_create_object_fn_t)(lio_object_service_fn_t *os, lio_creds_t *creds, char *path, int type, char *id);
+typedef gop_op_generic_t *(*lio_os_remove_object_fn_t)(lio_object_service_fn_t *os, lio_creds_t *creds, char *path);
+typedef gop_op_generic_t *(*lio_os_remove_regex_object_fn_t)(lio_object_service_fn_t *os, lio_creds_t *creds, lio_os_regex_table_t *path, lio_os_regex_table_t *object_regex, int obj_types, int recurse_depth);
+typedef gop_op_generic_t *(*lio_os_abort_remove_regex_object_fn_t)(lio_object_service_fn_t *os, gop_op_generic_t *gop);
+typedef gop_op_generic_t *(*lio_os_regex_object_set_multiple_attrs_fn_t)(lio_object_service_fn_t *os, lio_creds_t *creds, char *id, lio_os_regex_table_t *path, lio_os_regex_table_t *object_regex, int object_types, int recurse_depth, char **key, void **val, int *v_size, int n);
+typedef gop_op_generic_t *(*lio_os_abort_regex_object_set_multiple_attrs_fn_t)(lio_object_service_fn_t *os, gop_op_generic_t *gop);
+typedef gop_op_generic_t *(*lio_os_move_object_fn_t)(lio_object_service_fn_t *os, lio_creds_t *creds, char *src_path, char *dest_path);
+typedef gop_op_generic_t *(*lio_os_symlink_object_fn_t)(lio_object_service_fn_t *os, lio_creds_t *creds, char *src_path, char *dest_path, char *id);
+typedef gop_op_generic_t *(*lio_os_hardlink_object_fn_t)(lio_object_service_fn_t *os, lio_creds_t *creds, char *src_path, char *dest_path, char *id);
+typedef os_object_iter_t *(*lio_os_create_object_iter_fn_t)(lio_object_service_fn_t *os, lio_creds_t *creds, lio_os_regex_table_t *path, lio_os_regex_table_t *obj_regex, int object_types, lio_os_regex_table_t *attr, int recurse_dpeth, os_attr_iter_t **it, int v_max);
+typedef os_object_iter_t *(*lio_os_create_object_iter_alist_fn_t)(lio_object_service_fn_t *os, lio_creds_t *creds, lio_os_regex_table_t *path, lio_os_regex_table_t *obj_regex, int object_types, int recurse_depth, char **key, void **val, int *v_size, int n_keys);
 typedef int (*lio_os_next_object_fn_t)(os_object_iter_t *it, char **fname, int *prefix_len);
 typedef void (*lio_os_destroy_object_iter_fn_t)(os_object_iter_t *it);
-typedef op_generic_t *(*lio_os_open_object_fn_t)(object_service_fn_t *os, creds_t *creds, char *path, int mode, char *id, os_fd_t **fd, int max_wait);
-typedef op_generic_t *(*lio_os_close_object_fn_t)(object_service_fn_t *os, os_fd_t *fd);
-typedef op_generic_t *(*lio_os_abort_open_object_fn_t)(object_service_fn_t *os, op_generic_t *gop);
-typedef op_generic_t *(*lio_os_symlink_attr_fn_t)(object_service_fn_t *os, creds_t *creds, char *src_path, char *key_src, os_fd_t *fd_dest, char *key_dest);
-typedef op_generic_t *(*lio_os_symlink_multiple_attrs_fn_t)(object_service_fn_t *os, creds_t *creds, char **src_path, char **key_src, os_fd_t *fd_dest, char **key_dest, int n);
-typedef op_generic_t *(*lio_os_get_attr_fn_t)(object_service_fn_t *os, creds_t *creds, os_fd_t *fd, char *key, void **val, int *v_size);
-typedef op_generic_t *(*lio_os_set_attr_fn_t)(object_service_fn_t *os, creds_t *creds, os_fd_t *fd, char *key, void *val, int v_size);
-typedef op_generic_t *(*lio_os_move_attr_fn_t)(object_service_fn_t *os, creds_t *creds, os_fd_t *fd, char *key_old, char *key_new);
-typedef op_generic_t *(*lio_os_copy_attr_fn_t)(object_service_fn_t *os, creds_t *creds, os_fd_t *fd_src, char *key_src, os_fd_t *fd_dest, char *key_dest);
-typedef op_generic_t *(*lio_os_get_multiple_attrs_fn_t)(object_service_fn_t *os, creds_t *creds, os_fd_t *fd, char **key, void **val, int *v_size, int n);
-typedef op_generic_t *(*lio_os_set_multiple_attrs_fn_t)(object_service_fn_t *os, creds_t *creds, os_fd_t *fd, char **key, void **val, int *v_size, int n);
-typedef op_generic_t *(*lio_os_move_multiple_attrs_fn_t)(object_service_fn_t *os, creds_t *creds, os_fd_t *fd, char **key_old, char **key_new, int n);
-typedef op_generic_t *(*lio_os_copy_multiple_attrs_fn_t)(object_service_fn_t *os, creds_t *creds, os_fd_t *fd_src, char **key_src, os_fd_t *fd_dest, char **key_dest, int n);
-typedef os_attr_iter_t *(*lio_os_create_attr_iter_fn_t)(object_service_fn_t *os, creds_t *creds, os_fd_t *fd, os_regex_table_t *attr, int v_max);
+typedef gop_op_generic_t *(*lio_os_open_object_fn_t)(lio_object_service_fn_t *os, lio_creds_t *creds, char *path, int mode, char *id, os_fd_t **fd, int max_wait);
+typedef gop_op_generic_t *(*lio_os_close_object_fn_t)(lio_object_service_fn_t *os, os_fd_t *fd);
+typedef gop_op_generic_t *(*lio_os_abort_open_object_fn_t)(lio_object_service_fn_t *os, gop_op_generic_t *gop);
+typedef gop_op_generic_t *(*lio_os_symlink_attr_fn_t)(lio_object_service_fn_t *os, lio_creds_t *creds, char *src_path, char *key_src, os_fd_t *fd_dest, char *key_dest);
+typedef gop_op_generic_t *(*lio_os_symlink_multiple_attrs_fn_t)(lio_object_service_fn_t *os, lio_creds_t *creds, char **src_path, char **key_src, os_fd_t *fd_dest, char **key_dest, int n);
+typedef gop_op_generic_t *(*lio_os_get_attr_fn_t)(lio_object_service_fn_t *os, lio_creds_t *creds, os_fd_t *fd, char *key, void **val, int *v_size);
+typedef gop_op_generic_t *(*lio_os_set_attr_fn_t)(lio_object_service_fn_t *os, lio_creds_t *creds, os_fd_t *fd, char *key, void *val, int v_size);
+typedef gop_op_generic_t *(*lio_os_move_attr_fn_t)(lio_object_service_fn_t *os, lio_creds_t *creds, os_fd_t *fd, char *key_old, char *key_new);
+typedef gop_op_generic_t *(*lio_os_copy_attr_fn_t)(lio_object_service_fn_t *os, lio_creds_t *creds, os_fd_t *fd_src, char *key_src, os_fd_t *fd_dest, char *key_dest);
+typedef gop_op_generic_t *(*lio_os_get_multiple_attrs_fn_t)(lio_object_service_fn_t *os, lio_creds_t *creds, os_fd_t *fd, char **key, void **val, int *v_size, int n);
+typedef gop_op_generic_t *(*lio_os_set_multiple_attrs_fn_t)(lio_object_service_fn_t *os, lio_creds_t *creds, os_fd_t *fd, char **key, void **val, int *v_size, int n);
+typedef gop_op_generic_t *(*lio_os_move_multiple_attrs_fn_t)(lio_object_service_fn_t *os, lio_creds_t *creds, os_fd_t *fd, char **key_old, char **key_new, int n);
+typedef gop_op_generic_t *(*lio_os_copy_multiple_attrs_fn_t)(lio_object_service_fn_t *os, lio_creds_t *creds, os_fd_t *fd_src, char **key_src, os_fd_t *fd_dest, char **key_dest, int n);
+typedef os_attr_iter_t *(*lio_os_create_attr_iter_fn_t)(lio_object_service_fn_t *os, lio_creds_t *creds, os_fd_t *fd, lio_os_regex_table_t *attr, int v_max);
 typedef int (*lio_os_next_attr_fn_t)(os_attr_iter_t *it, char **key, void **val, int *v_size);
-typedef int (*lio_os_add_virtual_attr_fn_t)(os_virtual_attr_t *va, char *key, int type);
+typedef int (*lio_os_add_virtual_attr_fn_t)(lio_os_virtual_attr_t *va, char *key, int type);
 typedef void (*lio_os_destroy_attr_iter_fn_t)(os_attr_iter_t *it);
 
 //* FIXME: leaky
-typedef struct osfile_priv_t osfile_priv_t;
+typedef struct lio_osfile_priv_t lio_osfile_priv_t;
 typedef struct local_object_iter_t local_object_iter_t;
-typedef struct osrc_priv_t osrc_priv_t;
-typedef struct osrs_priv_t osrs_priv_t;
+typedef struct lio_osrc_priv_t lio_osrc_priv_t;
+typedef struct lio_osrs_priv_t lio_osrs_priv_t;
 
 // Functions
 LIO_API char *lio_os_glob2regex(char *glob);
 LIO_API int lio_os_local_filetype(char *path);
-LIO_API os_regex_table_t *lio_os_path_glob2regex(char *path);
+LIO_API lio_os_regex_table_t *lio_os_path_glob2regex(char *path);
 LIO_API void lio_os_path_split(const char *path, char **dir, char **file);
-LIO_API os_regex_table_t *lio_os_regex2table(char *regex);
-LIO_API int lio_os_regex_is_fixed(os_regex_table_t *regex);
-LIO_API void lio_os_regex_table_destroy(os_regex_table_t *table);
+LIO_API lio_os_regex_table_t *lio_os_regex2table(char *regex);
+LIO_API int lio_os_regex_is_fixed(lio_os_regex_table_t *regex);
+LIO_API void lio_os_regex_table_destroy(lio_os_regex_table_t *table);
 
 // Preprocessor constants
 #define OS_PATH_MAX  32768    //** Max path length
@@ -146,7 +146,7 @@ LIO_API void lio_os_regex_table_destroy(os_regex_table_t *table);
 #define os_symlink_multiple_attrs(os, c, src_path, key_src, fd_dest, key_dest, n) (os)->symlink_multiple_attrs(os, c, src_path, key_src, fd_dest, key_dest, n)
 
 // Exported types. To be obscured
-struct object_service_fn_t {
+struct lio_object_service_fn_t {
     void *priv;
     char *type;
     lio_os_destroy_service_fn_t destroy_service;
@@ -189,16 +189,16 @@ struct object_service_fn_t {
     lio_os_destroy_attr_iter_fn_t destroy_attr_iter;
 };
 
-struct os_regex_entry_t {
+struct lio_os_regex_entry_t {
     char *expression;
     int fixed;
     int fixed_prefix;
     regex_t compiled;
 };
 
-struct os_regex_table_t {
+struct lio_os_regex_table_t {
     int n;
-    os_regex_entry_t *regex_entry;
+    lio_os_regex_entry_t *regex_entry;
 };
 #ifdef __cplusplus
 }

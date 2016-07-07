@@ -123,11 +123,11 @@ int main(int argc, char **argv)
     char *fname;
     ls_entry_t *lse;
     tbx_list_t *table;
-    os_regex_table_t *rp_single, *ro_single;
+    lio_os_regex_table_t *rp_single, *ro_single;
     os_object_iter_t *it;
     tbx_list_iter_t lit;
-    opque_t *q;
-    op_generic_t *gop;
+    gop_opque_t *q;
+    gop_op_generic_t *gop;
     char *keys[] = { "system.owner", "system.exnode.size", "system.modify_data", "os.create",  "os.link_count" };
     char *vals[5];
     int v_size[5];
@@ -258,7 +258,7 @@ int main(int argc, char **argv)
     }
 
     //** Wait for any readlinks to complete
-    err = (opque_task_count(q) > 0) ? opque_waitall(q) : OP_STATE_SUCCESS;
+    err = (gop_opque_task_count(q) > 0) ? opque_waitall(q) : OP_STATE_SUCCESS;
     if (err != OP_STATE_SUCCESS) {
         info_printf(lio_ifd, 0, "ERROR: Failed with readlink operation!\n");
         return_code = EIO;

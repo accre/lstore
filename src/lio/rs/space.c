@@ -30,7 +30,7 @@
 
 #include "rs.h"
 
-rs_space_t rs_space(char *config)
+lio_rs_space_t rs_space(char *config)
 {
     tbx_inip_file_t *fd;
     tbx_inip_group_t *grp;
@@ -38,7 +38,7 @@ rs_space_t rs_space(char *config)
     char *key, *value;
     int64_t nfree, nused, ntotal;
     int status;
-    rs_space_t space;
+    lio_rs_space_t space;
 
     memset(&space, 0, sizeof(space));
 

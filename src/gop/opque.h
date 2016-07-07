@@ -43,13 +43,13 @@ extern "C" {
 // Types
 
 // Functions
-void opque_set_failure_mode(opque_t *q, int value);
-int opque_get_failure_mode(opque_t *q);
-op_status_t opque_completion_status(opque_t *q);
-void opque_set_arg(opque_t *q, void *arg);
-void *opque_get_arg(opque_t *q);
-void init_opque(opque_t *que);
-int internal_gop_opque_add(opque_t *que, op_generic_t *gop, int dolock);
+void opque_set_failure_mode(gop_opque_t *q, int value);
+int opque_get_failure_mode(gop_opque_t *q);
+gop_op_status_t opque_completion_status(gop_opque_t *q);
+void opque_set_arg(gop_opque_t *q, void *arg);
+void *opque_get_arg(gop_opque_t *q);
+void init_opque(gop_opque_t *que);
+int internal_gop_opque_add(gop_opque_t *que, gop_op_generic_t *gop, int dolock);
 
 
 #ifdef __cplusplus

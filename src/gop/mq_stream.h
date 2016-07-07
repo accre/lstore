@@ -56,18 +56,18 @@ extern "C" {
 #define MQS_HANDLE_SIZE_INDEX 2
 #define MQS_HANDLE_INDEX      3
 
-struct mq_stream_t {
+struct gop_mq_stream_t {
     apr_pool_t *mpool;
     apr_thread_mutex_t *lock;
     apr_thread_cond_t *cond;
-    mq_context_t *mqc;
-    mq_portal_t *server_portal;
-    mq_frame_t *fid;
-    mq_frame_t *hid;
-    op_generic_t *gop_waiting;
-    op_generic_t *gop_processed;
-    mq_ongoing_t *ongoing;
-    mq_ongoing_object_t *oo;
+    gop_mq_context_t *mqc;
+    gop_mq_portal_t *server_portal;
+    gop_mq_frame_t *fid;
+    gop_mq_frame_t *hid;
+    gop_op_generic_t *gop_waiting;
+    gop_op_generic_t *gop_processed;
+    gop_mq_ongoing_t *ongoing;
+    gop_mq_ongoing_object_t *oo;
     char want_more;
     mq_msg_t *remote_host;
     char *host_id;
@@ -96,11 +96,11 @@ struct mq_stream_t {
 };
 
 
-int gop_mq_stream_read_string(mq_stream_t *mqs, char *str, int bufsize);
+int gop_mq_stream_read_string(gop_mq_stream_t *mqs, char *str, int bufsize);
 
-int gop_mq_stream_write_string(mq_stream_t *mqs, char *str);
+int gop_mq_stream_write_string(gop_mq_stream_t *mqs, char *str);
 
-void mq_stream_release_frame(mq_stream_t *mqs);
+void mq_stream_release_frame(gop_mq_stream_t *mqs);
 
 
 #ifdef __cplusplus

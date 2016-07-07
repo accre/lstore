@@ -34,11 +34,11 @@ extern "C" {
 
 #define SEGMENT_TYPE_LUN "lun"
 
-segment_t *segment_lun_load(void *arg, ex_id_t id, exnode_exchange_t *ex);
-segment_t *segment_lun_create(void *arg);
+lio_segment_t *segment_lun_load(void *arg, ex_id_t id, lio_exnode_exchange_t *ex);
+lio_segment_t *segment_lun_create(void *arg);
 int seglun_row_decompose_test();
 
-struct seglun_priv_t {
+struct lio_seglun_priv_t {
     ex_off_t used_size;
     ex_off_t total_size;
     ex_off_t max_block_size;
@@ -48,7 +48,7 @@ struct seglun_priv_t {
     ex_off_t stripe_size;
     apr_time_t grow_time;
     rs_query_t *rsq;
-    thread_pool_context_t *tpc;
+    gop_thread_pool_context_t *tpc;
     int grow_count;
     int n_devices;
     int n_shift;
@@ -56,12 +56,12 @@ struct seglun_priv_t {
     int grow_break;
     int map_version;
     int inprogress_count;
-    rs_mapping_notify_t notify;
+    lio_rs_mapping_notify_t notify;
     tbx_isl_t *isl;
-    resource_service_fn_t *rs;
-    data_service_fn_t *ds;
+    lio_resource_service_fn_t *rs;
+    lio_data_service_fn_t *ds;
     tbx_stack_t *db_cleanup;
-    blacklist_t *bl;
+    lio_blacklist_t *bl;
 };
 
 

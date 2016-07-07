@@ -23,7 +23,7 @@
 
 //*************************************************************
 
-void gop_cb_set(callback_t *cb, void (*fn)(void *, int), void *priv)
+void gop_cb_set(gop_callback_t *cb, void (*fn)(void *, int), void *priv)
 {
     cb->priv = priv;
     cb->fn = fn;
@@ -35,9 +35,9 @@ void gop_cb_set(callback_t *cb, void (*fn)(void *, int), void *priv)
 // callback_append - Append the callback to the tail
 //*************************************************************
 
-void callback_append(callback_t **root_cb, callback_t *cb)
+void callback_append(gop_callback_t **root_cb, gop_callback_t *cb)
 {
-    callback_t *last;
+    gop_callback_t *last;
     if (cb == NULL) return;  //** Nothing to add so exit
 
     if (*root_cb == NULL) {
@@ -55,9 +55,9 @@ void callback_append(callback_t **root_cb, callback_t *cb)
 
 //*************************************************************
 
-void callback_destroy(callback_t *root_cb)
+void callback_destroy(gop_callback_t *root_cb)
 {
-    callback_t *cb;
+    gop_callback_t *cb;
 
 //log_printf(15, "callback_destroy:  START root_cb=%d\n", root_cb);
     while (root_cb != NULL) {
@@ -71,7 +71,7 @@ void callback_destroy(callback_t *root_cb)
 
 //*************************************************************
 
-void callback_single_execute(callback_t *cb, int value)
+void callback_single_execute(gop_callback_t *cb, int value)
 {
     if (cb != NULL) {
         if (cb->fn != NULL) {
@@ -84,10 +84,10 @@ void callback_single_execute(callback_t *cb, int value)
 //  callback_execute - Exectutes all cb's in the order they were added
 //*************************************************************
 
-void callback_execute(callback_t *root_cb, int value)
+void callback_execute(gop_callback_t *root_cb, int value)
 {
-    callback_t *cb_next;
-    callback_t *cb = root_cb;
+    gop_callback_t *cb_next;
+    gop_callback_t *cb = root_cb;
 
     while (cb != NULL) {
         cb_next = cb->next;  //** Need this to handle the gop_opque_free() race condition of the current cb

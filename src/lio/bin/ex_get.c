@@ -44,10 +44,10 @@ int main(int argc, char **argv)
     ex_off_t i, err, size, rlen, wlen;
     int firsttime, start_option, print_timing;
     char *fname = NULL;
-    exnode_t *ex;
-    exnode_exchange_t *exp;
-    segment_t *seg;
-    op_generic_t *gop;
+    lio_exnode_t *ex;
+    lio_exnode_exchange_t *exp;
+    lio_segment_t *seg;
+    gop_op_generic_t *gop;
     ex_tbx_iovec_t iov;
     FILE *fd;
 

@@ -28,7 +28,7 @@
 extern "C" {
 #endif
 
-mq_frame_t *mq_make_id_frame();
+gop_mq_frame_t *mq_make_id_frame();
 int mq_num_frames(mq_msg_t *msg);
 char *mq_address_to_string(mq_msg_t *address);
 

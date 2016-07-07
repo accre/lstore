@@ -161,7 +161,7 @@ void print_rid_summary(char *config, int base)
 int main(int argc, char **argv)
 {
     int start_option, i, watch, summary, base;
-    rs_mapping_notify_t notify, me;
+    lio_rs_mapping_notify_t notify, me;
     apr_time_t dt;
     char *config;
 

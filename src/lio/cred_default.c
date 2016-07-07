@@ -28,14 +28,14 @@
 
 //***********************************************************************
 
-char *cdef_get_type(creds_t *c)
+char *cdef_get_type(lio_creds_t *c)
 {
     return("DEFAULT");
 }
 
 //***********************************************************************
 
-void *cdef_get_type_field(creds_t *c, int index, int *len)
+void *cdef_get_type_field(lio_creds_t *c, int index, int *len)
 {
     *len = 0;
     return(NULL);
@@ -43,14 +43,14 @@ void *cdef_get_type_field(creds_t *c, int index, int *len)
 
 //***********************************************************************
 
-char *cdef_get_id(creds_t *c)
+char *cdef_get_id(lio_creds_t *c)
 {
     return(c->id);
 }
 
 //***********************************************************************
 
-void cdef_set_id(creds_t *c, char *id)
+void cdef_set_id(lio_creds_t *c, char *id)
 {
     c->id = strdup(id);
     return;
@@ -58,7 +58,7 @@ void cdef_set_id(creds_t *c, char *id)
 
 //***********************************************************************
 
-void cdef_set_private_handle(creds_t *c, void *handle, void (*destroy)(void *))
+void cdef_set_private_handle(lio_creds_t *c, void *handle, void (*destroy)(void *))
 {
     c->handle = handle;
     c->handle_destroy = destroy;
@@ -67,7 +67,7 @@ void cdef_set_private_handle(creds_t *c, void *handle, void (*destroy)(void *))
 
 //***********************************************************************
 
-void *cdef_get_private_handle(creds_t *c)
+void *cdef_get_private_handle(lio_creds_t *c)
 {
     return(c->handle);
 }
@@ -75,7 +75,7 @@ void *cdef_get_private_handle(creds_t *c)
 
 //***********************************************************************
 
-void cdef_destroy(creds_t *c)
+void cdef_destroy(lio_creds_t *c)
 {
     if (c->handle_destroy != NULL) c->handle_destroy(c);
     if (c->id != NULL) free(c->id);
@@ -84,10 +84,10 @@ void cdef_destroy(creds_t *c)
 
 //***********************************************************************
 
-creds_t *cred_default_create()
+lio_creds_t *cred_default_create()
 {
-    creds_t *c;
-    tbx_type_malloc_clear(c, creds_t, 1);
+    lio_creds_t *c;
+    tbx_type_malloc_clear(c, lio_creds_t, 1);
 
     c->get_type = cdef_get_type;
     c->get_type_field = cdef_get_type_field;

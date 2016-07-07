@@ -59,12 +59,12 @@ int _ds_ibp_do_init = 1;
 // ds_ibp_destroy_* - Simple destroy routines
 //***********************************************************************
 
-void ds_ibp_destroy_probe(data_service_fn_t *arg, data_probe_t *probe)
+void ds_ibp_destroy_probe(lio_data_service_fn_t *arg, data_probe_t *probe)
 {
     free(probe);
 }
 
-void ds_ibp_destroy_attr(data_service_fn_t *arg, data_attr_t *attr)
+void ds_ibp_destroy_attr(lio_data_service_fn_t *arg, data_attr_t *attr)
 {
     free(attr);
 }
@@ -74,7 +74,7 @@ void ds_ibp_destroy_attr(data_service_fn_t *arg, data_attr_t *attr)
 // ds_ibp_new_cap_set - Creates a new capability set
 //***********************************************************************
 
-data_cap_set_t *ds_ibp_new_cap_set(data_service_fn_t *arg)
+data_cap_set_t *ds_ibp_new_cap_set(lio_data_service_fn_t *arg)
 {
     return((data_cap_set_t *)ibp_capset_new());
 }
@@ -83,7 +83,7 @@ data_cap_set_t *ds_ibp_new_cap_set(data_service_fn_t *arg)
 // ds_ibp_destroy_cap_set - Destroys a cap set
 //***********************************************************************
 
-void ds_ibp_destroy_cap_set(data_service_fn_t *arg, data_cap_set_t *dcs, int free_caps)
+void ds_ibp_destroy_cap_set(lio_data_service_fn_t *arg, data_cap_set_t *dcs, int free_caps)
 {
     ibp_capset_t *cs = (ibp_capset_t *)dcs;
 
@@ -98,9 +98,9 @@ void ds_ibp_destroy_cap_set(data_service_fn_t *arg, data_cap_set_t *dcs, int fre
 // ds_ibp_cap_auto_warm - Adds the cap to the auto warming list
 //***********************************************************************
 
-void *ds_ibp_cap_auto_warm(data_service_fn_t *arg, data_cap_set_t *dcs)
+void *ds_ibp_cap_auto_warm(lio_data_service_fn_t *arg, data_cap_set_t *dcs)
 {
-    ds_ibp_priv_t *ds = (ds_ibp_priv_t *)arg->priv;
+    lio_ds_ibp_priv_t *ds = (lio_ds_ibp_priv_t *)arg->priv;
     ibp_capset_t *cs = (ibp_capset_t *)dcs;
     ibp_capset_t *w;
 
@@ -124,9 +124,9 @@ void *ds_ibp_cap_auto_warm(data_service_fn_t *arg, data_cap_set_t *dcs)
 // ds_cap_stop_warm - Disables the cap from being warmed
 //***********************************************************************
 
-void ds_ibp_cap_stop_warm(data_service_fn_t *arg, void *dcs)
+void ds_ibp_cap_stop_warm(lio_data_service_fn_t *arg, void *dcs)
 {
-    ds_ibp_priv_t *ds = (ds_ibp_priv_t *)arg->priv;
+    lio_ds_ibp_priv_t *ds = (lio_ds_ibp_priv_t *)arg->priv;
     ibp_capset_t *cs = (ibp_capset_t *)dcs;
 
     if (cs == NULL) return;
@@ -147,7 +147,7 @@ void ds_ibp_cap_stop_warm(data_service_fn_t *arg, void *dcs)
 // ds_ibp_get_cap - Returns a specific cap from the set
 //***********************************************************************
 
-data_cap_t *ds_ibp_get_cap(data_service_fn_t *arg, data_cap_set_t *dcs, int key)
+data_cap_t *ds_ibp_get_cap(lio_data_service_fn_t *arg, data_cap_set_t *dcs, int key)
 {
     ibp_capset_t *cs = (ibp_capset_t *)dcs;
     ibp_cap_t *cap = NULL;
@@ -171,7 +171,7 @@ data_cap_t *ds_ibp_get_cap(data_service_fn_t *arg, data_cap_set_t *dcs, int key)
 // ds_ibp_set_cap - Sets a particular cap
 //***********************************************************************
 
-int ds_ibp_set_cap(data_service_fn_t *arg, data_cap_set_t *dcs, int key, data_cap_t *cap)
+int ds_ibp_set_cap(lio_data_service_fn_t *arg, data_cap_set_t *dcs, int key, data_cap_t *cap)
 {
     ibp_capset_t *cs = (ibp_capset_t *)dcs;
     int err = 0;
@@ -197,7 +197,7 @@ int ds_ibp_set_cap(data_service_fn_t *arg, data_cap_set_t *dcs, int key, data_ca
 //  ds_ibp_translate_cap_set - Translates the capability if needed
 //***********************************************************************
 
-void ds_ibp_translate_cap_set(data_service_fn_t *ds, char *rid_key, char *ds_key, data_cap_set_t *dcs)
+void ds_ibp_translate_cap_set(lio_data_service_fn_t *ds, char *rid_key, char *ds_key, data_cap_set_t *dcs)
 {
     ibp_capset_t *cs = (ibp_capset_t *)dcs;
     char ds_new[1024], new_cap[2048];
@@ -275,13 +275,13 @@ void ds_ibp_translate_cap_set(data_service_fn_t *ds, char *rid_key, char *ds_key
 // ds_ibp_new_attr - Creates a new attributes structure
 //***********************************************************************
 
-data_attr_t *ds_ibp_new_attr(data_service_fn_t *arg)
+data_attr_t *ds_ibp_new_attr(lio_data_service_fn_t *arg)
 {
-    ds_ibp_priv_t *ds = (ds_ibp_priv_t *)arg->priv;
+    lio_ds_ibp_priv_t *ds = (lio_ds_ibp_priv_t *)arg->priv;
 
-    ds_ibp_attr_t *a;
+    lio_ds_ibp_attr_t *a;
 
-    tbx_type_malloc(a, ds_ibp_attr_t, 1);
+    tbx_type_malloc(a, lio_ds_ibp_attr_t, 1);
 
     *a = ds->attr_default;
 
@@ -292,9 +292,9 @@ data_attr_t *ds_ibp_new_attr(data_service_fn_t *arg)
 // ds_ibp_get_attr - Returns a specific attribute
 //***********************************************************************
 
-int ds_ibp_get_attr(data_service_fn_t *arg, data_attr_t *dsa, int key, void *val, int size)
+int ds_ibp_get_attr(lio_data_service_fn_t *arg, data_attr_t *dsa, int key, void *val, int size)
 {
-    ds_ibp_attr_t *a = (ds_ibp_attr_t *)dsa;
+    lio_ds_ibp_attr_t *a = (lio_ds_ibp_attr_t *)dsa;
     ds_int_t *n = (ds_int_t *)val;
     ibp_depot_t *depot = (ibp_depot_t *)val;
     ibp_connect_context_t *cc = (ibp_connect_context_t *)val;
@@ -369,9 +369,9 @@ int ds_ibp_get_attr(data_service_fn_t *arg, data_attr_t *dsa, int key, void *val
 // ds_ibp_set_attr - Sets a specific attribute
 //***********************************************************************
 
-int ds_ibp_set_attr(data_service_fn_t *arg, data_attr_t *dsa, int key, void *val)
+int ds_ibp_set_attr(lio_data_service_fn_t *arg, data_attr_t *dsa, int key, void *val)
 {
-    ds_ibp_attr_t *a = (ds_ibp_attr_t *)dsa;
+    lio_ds_ibp_attr_t *a = (lio_ds_ibp_attr_t *)dsa;
     ds_int_t *n = (ds_int_t *)val;
     int err = 0;
 
@@ -412,7 +412,7 @@ int ds_ibp_set_attr(data_service_fn_t *arg, data_attr_t *dsa, int key, void *val
 // ds_ibp_new_probe - Creates a new probe structure
 //***********************************************************************
 
-data_cap_set_t *ds_ibp_new_probe(data_service_fn_t *arg)
+data_cap_set_t *ds_ibp_new_probe(lio_data_service_fn_t *arg)
 {
     void *p = malloc(sizeof(ibp_capstatus_t));
 
@@ -425,7 +425,7 @@ data_cap_set_t *ds_ibp_new_probe(data_service_fn_t *arg)
 // ds_ibp_get_probe - Returns a specific probably value
 //***********************************************************************
 
-int ds_ibp_get_probe(data_service_fn_t *arg, data_attr_t *dsa, int key, void *val, int size)
+int ds_ibp_get_probe(lio_data_service_fn_t *arg, data_attr_t *dsa, int key, void *val, int size)
 {
     ibp_capstatus_t *p = (ibp_capstatus_t *)dsa;
     ds_int_t *n = (ds_int_t *)val;
@@ -484,7 +484,7 @@ int res2ibp(char *res, ibp_depot_t *depot)
 //  ds_ibp_res2rid - Extracts the RID info from the resource
 //***********************************************************************
 
-char *ds_ibp_res2rid(data_service_fn_t *dsf, char *res)
+char *ds_ibp_res2rid(lio_data_service_fn_t *dsf, char *res)
 {
     ibp_depot_t depot;
 
@@ -497,7 +497,7 @@ char *ds_ibp_res2rid(data_service_fn_t *dsf, char *res)
 // ds_ibp_new_inquire - Creates a new inquire structure
 //***********************************************************************
 
-data_inquire_t *ds_ibp_new_inquire(data_service_fn_t *arg)
+data_inquire_t *ds_ibp_new_inquire(lio_data_service_fn_t *arg)
 {
     ibp_depotinfo_t *d;
 
@@ -510,7 +510,7 @@ data_inquire_t *ds_ibp_new_inquire(data_service_fn_t *arg)
 // ds_ibp_destroy_inquire - Destroys an inquire structure
 //***********************************************************************
 
-void ds_ibp_destroy_inquire(data_service_fn_t *arg, data_inquire_t *di)
+void ds_ibp_destroy_inquire(lio_data_service_fn_t *arg, data_inquire_t *di)
 {
     free(di);
 }
@@ -520,7 +520,7 @@ void ds_ibp_destroy_inquire(data_service_fn_t *arg, data_inquire_t *di)
 //  ds_ibp_res2rid - Extracts the RID info from the resource
 //***********************************************************************
 
-ds_int_t ds_ibp_res_inquire_get(data_service_fn_t *dsf, int type, data_inquire_t *space)
+ds_int_t ds_ibp_res_inquire_get(lio_data_service_fn_t *dsf, int type, data_inquire_t *space)
 {
     ds_int_t value;
     ibp_depotinfo_t *d = (data_inquire_t *)space;
@@ -545,12 +545,12 @@ ds_int_t ds_ibp_res_inquire_get(data_service_fn_t *dsf, int type, data_inquire_t
 //  ds_ibp_op_create - Creates a new CB for the opque list
 //***********************************************************************
 
-ds_ibp_op_t *ds_ibp_op_create(ds_ibp_priv_t *ds, ds_ibp_attr_t *attr)
+lio_ds_ibp_op_t *ds_ibp_op_create(lio_ds_ibp_priv_t *ds, lio_ds_ibp_attr_t *attr)
 {
-//  ds_ibp_priv_t *ds = (ds_ibp_priv_t *)dsf->priv;
-    ds_ibp_op_t *iop;
+//  lio_ds_ibp_priv_t *ds = (lio_ds_ibp_priv_t *)dsf->priv;
+    lio_ds_ibp_op_t *iop;
 
-    tbx_type_malloc_clear(iop, ds_ibp_op_t, 1);
+    tbx_type_malloc_clear(iop, lio_ds_ibp_op_t, 1);
 
     iop->attr = (attr == NULL) ? &(ds->attr_default) : attr;
     return(iop);
@@ -560,9 +560,9 @@ ds_ibp_op_t *ds_ibp_op_create(ds_ibp_priv_t *ds, ds_ibp_attr_t *attr)
 // _ds_ibp_op_free - Frees the calling structure
 //***********************************************************************
 
-void _ds_ibp_op_free(op_generic_t *gop, int mode)
+void _ds_ibp_op_free(gop_op_generic_t *gop, int mode)
 {
-    ds_ibp_op_t *iop = gop->free_ptr;
+    lio_ds_ibp_op_t *iop = gop->free_ptr;
 
 //log_printf(0, "Freeing gid=%d\n", gop_id(gop));
 //tbx_log_flush();
@@ -578,7 +578,7 @@ void _ds_ibp_op_free(op_generic_t *gop, int mode)
 //  ds_ibp_setup_finish - Finishes iop setup
 //***********************************************************************
 
-void ds_ibp_setup_finish(ds_ibp_op_t *iop)
+void ds_ibp_setup_finish(lio_ds_ibp_op_t *iop)
 {
     if (ibp_cc_type(&(iop->attr->cc)) != NS_TYPE_UNKNOWN) ibp_op_cc_set(iop->gop, &(iop->attr->cc));
 
@@ -593,13 +593,13 @@ void ds_ibp_setup_finish(ds_ibp_op_t *iop)
 // ds_ibp_res_inqure - Generates a resource inquiry operation
 //***********************************************************************
 
-op_generic_t *ds_ibp_res_inquire(data_service_fn_t *dsf, char *res, data_attr_t *dattr, data_inquire_t *space, int timeout)
+gop_op_generic_t *ds_ibp_res_inquire(lio_data_service_fn_t *dsf, char *res, data_attr_t *dattr, data_inquire_t *space, int timeout)
 {
-    ds_ibp_priv_t *ds = (ds_ibp_priv_t *)dsf->priv;
-    ds_ibp_attr_t *attr = (ds_ibp_attr_t *)dattr;
-    ds_ibp_alloc_op_t *cmd;
+    lio_ds_ibp_priv_t *ds = (lio_ds_ibp_priv_t *)dsf->priv;
+    lio_ds_ibp_attr_t *attr = (lio_ds_ibp_attr_t *)dattr;
+    lio_ds_ibp_alloc_op_t *cmd;
 
-    ds_ibp_op_t *iop = ds_ibp_op_create(ds, attr);
+    lio_ds_ibp_op_t *iop = ds_ibp_op_create(ds, attr);
     cmd = &(iop->ops.alloc);
 
     //** Fill in the depot structure
@@ -617,13 +617,13 @@ op_generic_t *ds_ibp_res_inquire(data_service_fn_t *dsf, char *res, data_attr_t 
 // ds_ibp_allocate - Makes an IBP allocation operation
 //***********************************************************************
 
-op_generic_t *ds_ibp_allocate(data_service_fn_t *dsf, char *res, data_attr_t *dattr, ds_int_t size, data_cap_set_t *caps, int timeout)
+gop_op_generic_t *ds_ibp_allocate(lio_data_service_fn_t *dsf, char *res, data_attr_t *dattr, ds_int_t size, data_cap_set_t *caps, int timeout)
 {
-    ds_ibp_priv_t *ds = (ds_ibp_priv_t *)dsf->priv;
-    ds_ibp_attr_t *attr = (ds_ibp_attr_t *)dattr;
-    ds_ibp_alloc_op_t *cmd;
+    lio_ds_ibp_priv_t *ds = (lio_ds_ibp_priv_t *)dsf->priv;
+    lio_ds_ibp_attr_t *attr = (lio_ds_ibp_attr_t *)dattr;
+    lio_ds_ibp_alloc_op_t *cmd;
 
-    ds_ibp_op_t *iop = ds_ibp_op_create(ds, attr);
+    lio_ds_ibp_op_t *iop = ds_ibp_op_create(ds, attr);
     cmd = &(iop->ops.alloc);
 
     //** Fill in the depot structure
@@ -642,12 +642,12 @@ op_generic_t *ds_ibp_allocate(data_service_fn_t *dsf, char *res, data_attr_t *da
 // ds_ibp_remove - Decrements the allocations ref count
 //***********************************************************************
 
-op_generic_t *ds_ibp_remove(data_service_fn_t *dsf, data_attr_t *dattr, data_cap_t *cap, int timeout)
+gop_op_generic_t *ds_ibp_remove(lio_data_service_fn_t *dsf, data_attr_t *dattr, data_cap_t *cap, int timeout)
 {
-    ds_ibp_priv_t *ds = (ds_ibp_priv_t *)(dsf->priv);
-    ds_ibp_attr_t *attr = (ds_ibp_attr_t *)dattr;
+    lio_ds_ibp_priv_t *ds = (lio_ds_ibp_priv_t *)(dsf->priv);
+    lio_ds_ibp_attr_t *attr = (lio_ds_ibp_attr_t *)dattr;
 
-    ds_ibp_op_t *iop = ds_ibp_op_create(ds, attr);
+    lio_ds_ibp_op_t *iop = ds_ibp_op_create(ds, attr);
 
     //** Create the op
     iop->gop = ibp_remove_op(ds->ic, cap, timeout);
@@ -661,12 +661,12 @@ op_generic_t *ds_ibp_remove(data_service_fn_t *dsf, data_attr_t *dattr, data_cap
 // ds_ibp_truncate - Adjusts the allocations size.
 //***********************************************************************
 
-op_generic_t *ds_ibp_truncate(data_service_fn_t *dsf, data_attr_t *dattr, data_cap_t *mcap, ex_off_t new_size, int timeout)
+gop_op_generic_t *ds_ibp_truncate(lio_data_service_fn_t *dsf, data_attr_t *dattr, data_cap_t *mcap, ex_off_t new_size, int timeout)
 {
-    ds_ibp_priv_t *ds = (ds_ibp_priv_t *)(dsf->priv);
-    ds_ibp_attr_t *attr = (ds_ibp_attr_t *)dattr;
+    lio_ds_ibp_priv_t *ds = (lio_ds_ibp_priv_t *)(dsf->priv);
+    lio_ds_ibp_attr_t *attr = (lio_ds_ibp_attr_t *)dattr;
 
-    ds_ibp_op_t *iop = ds_ibp_op_create(ds, attr);
+    lio_ds_ibp_op_t *iop = ds_ibp_op_create(ds, attr);
 
     //** Create the op
     iop->gop = ibp_truncate_op(ds->ic, mcap, new_size, timeout);
@@ -680,11 +680,11 @@ op_generic_t *ds_ibp_truncate(data_service_fn_t *dsf, data_attr_t *dattr, data_c
 // ds_ibp_modify_count - Decrements the allocations ref count
 //***********************************************************************
 
-op_generic_t *ds_ibp_modify_count(data_service_fn_t *dsf, data_attr_t *dattr, data_cap_t *mcap, int mode, int captype, int timeout)
+gop_op_generic_t *ds_ibp_modify_count(lio_data_service_fn_t *dsf, data_attr_t *dattr, data_cap_t *mcap, int mode, int captype, int timeout)
 {
-    ds_ibp_priv_t *ds = (ds_ibp_priv_t *)(dsf->priv);
-    ds_ibp_attr_t *attr = (ds_ibp_attr_t *)dattr;
-    ds_ibp_op_t *iop = ds_ibp_op_create(ds, attr);
+    lio_ds_ibp_priv_t *ds = (lio_ds_ibp_priv_t *)(dsf->priv);
+    lio_ds_ibp_attr_t *attr = (lio_ds_ibp_attr_t *)dattr;
+    lio_ds_ibp_op_t *iop = ds_ibp_op_create(ds, attr);
     int imode, icaptype;
 
     switch (mode) {
@@ -723,12 +723,12 @@ op_generic_t *ds_ibp_modify_count(data_service_fn_t *dsf, data_attr_t *dattr, da
 // ds_ibp_probe - Generates an allocation probe operation
 //***********************************************************************
 
-op_generic_t *ds_ibp_probe(data_service_fn_t *dsf, data_attr_t *dattr, data_cap_t *mcap, data_probe_t *probe, int timeout)
+gop_op_generic_t *ds_ibp_probe(lio_data_service_fn_t *dsf, data_attr_t *dattr, data_cap_t *mcap, data_probe_t *probe, int timeout)
 {
-    ds_ibp_priv_t *ds = (ds_ibp_priv_t *)(dsf->priv);
-    ds_ibp_attr_t *attr = (ds_ibp_attr_t *)dattr;
+    lio_ds_ibp_priv_t *ds = (lio_ds_ibp_priv_t *)(dsf->priv);
+    lio_ds_ibp_attr_t *attr = (lio_ds_ibp_attr_t *)dattr;
 
-    ds_ibp_op_t *iop = ds_ibp_op_create(ds, attr);
+    lio_ds_ibp_op_t *iop = ds_ibp_op_create(ds, attr);
 
     //** Create the op
     iop->gop = ibp_probe_op(ds->ic, mcap, (ibp_capstatus_t *)probe, timeout);
@@ -742,12 +742,12 @@ op_generic_t *ds_ibp_probe(data_service_fn_t *dsf, data_attr_t *dattr, data_cap_
 // ds_ibp_read - Generates a read operation
 //***********************************************************************
 
-op_generic_t *ds_ibp_read(data_service_fn_t *dsf, data_attr_t *dattr, data_cap_t *rcap, ds_int_t off, tbx_tbuf_t *dread, ds_int_t droff, ds_int_t size, int timeout)
+gop_op_generic_t *ds_ibp_read(lio_data_service_fn_t *dsf, data_attr_t *dattr, data_cap_t *rcap, ds_int_t off, tbx_tbuf_t *dread, ds_int_t droff, ds_int_t size, int timeout)
 {
-    ds_ibp_priv_t *ds = (ds_ibp_priv_t *)(dsf->priv);
-    ds_ibp_attr_t *attr = (ds_ibp_attr_t *)dattr;
+    lio_ds_ibp_priv_t *ds = (lio_ds_ibp_priv_t *)(dsf->priv);
+    lio_ds_ibp_attr_t *attr = (lio_ds_ibp_attr_t *)dattr;
 
-    ds_ibp_op_t *iop = ds_ibp_op_create(ds, attr);
+    lio_ds_ibp_op_t *iop = ds_ibp_op_create(ds, attr);
 
     //** Create the op
     iop->gop = ibp_read_op(ds->ic, rcap, off, dread, droff, size, timeout);
@@ -761,12 +761,12 @@ op_generic_t *ds_ibp_read(data_service_fn_t *dsf, data_attr_t *dattr, data_cap_t
 // ds_ibp_write - Generates a write operation
 //***********************************************************************
 
-op_generic_t *ds_ibp_write(data_service_fn_t *dsf, data_attr_t *dattr, data_cap_t *wcap, ds_int_t off, tbx_tbuf_t *dwrite, ds_int_t boff, ds_int_t size, int timeout)
+gop_op_generic_t *ds_ibp_write(lio_data_service_fn_t *dsf, data_attr_t *dattr, data_cap_t *wcap, ds_int_t off, tbx_tbuf_t *dwrite, ds_int_t boff, ds_int_t size, int timeout)
 {
-    ds_ibp_priv_t *ds = (ds_ibp_priv_t *)(dsf->priv);
-    ds_ibp_attr_t *attr = (ds_ibp_attr_t *)dattr;
+    lio_ds_ibp_priv_t *ds = (lio_ds_ibp_priv_t *)(dsf->priv);
+    lio_ds_ibp_attr_t *attr = (lio_ds_ibp_attr_t *)dattr;
 
-    ds_ibp_op_t *iop = ds_ibp_op_create(ds, attr);
+    lio_ds_ibp_op_t *iop = ds_ibp_op_create(ds, attr);
 
     //** Create the op
     iop->gop = ibp_write_op(ds->ic, wcap, off, dwrite, boff, size, timeout);
@@ -780,12 +780,12 @@ op_generic_t *ds_ibp_write(data_service_fn_t *dsf, data_attr_t *dattr, data_cap_
 // ds_ibp_readv - Generates a vec read operation
 //***********************************************************************
 
-op_generic_t *ds_ibp_readv(data_service_fn_t *dsf, data_attr_t *dattr, data_cap_t *rcap, int n_iov, ex_tbx_iovec_t *iov, tbx_tbuf_t *dread, ds_int_t droff, ds_int_t size, int timeout)
+gop_op_generic_t *ds_ibp_readv(lio_data_service_fn_t *dsf, data_attr_t *dattr, data_cap_t *rcap, int n_iov, ex_tbx_iovec_t *iov, tbx_tbuf_t *dread, ds_int_t droff, ds_int_t size, int timeout)
 {
-    ds_ibp_priv_t *ds = (ds_ibp_priv_t *)(dsf->priv);
-    ds_ibp_attr_t *attr = (ds_ibp_attr_t *)dattr;
+    lio_ds_ibp_priv_t *ds = (lio_ds_ibp_priv_t *)(dsf->priv);
+    lio_ds_ibp_attr_t *attr = (lio_ds_ibp_attr_t *)dattr;
 
-    ds_ibp_op_t *iop = ds_ibp_op_create(ds, attr);
+    lio_ds_ibp_op_t *iop = ds_ibp_op_create(ds, attr);
 
     //** Create the op
     iop->gop = ibp_vec_read_op(ds->ic, rcap, n_iov, iov, dread, droff, size, timeout);
@@ -799,12 +799,12 @@ op_generic_t *ds_ibp_readv(data_service_fn_t *dsf, data_attr_t *dattr, data_cap_
 // ds_ibp_writev - Generates a Vec write operation
 //***********************************************************************
 
-op_generic_t *ds_ibp_writev(data_service_fn_t *dsf, data_attr_t *dattr, data_cap_t *wcap, int n_iov, ex_tbx_iovec_t *iov, tbx_tbuf_t *dwrite, ds_int_t boff, ds_int_t size, int timeout)
+gop_op_generic_t *ds_ibp_writev(lio_data_service_fn_t *dsf, data_attr_t *dattr, data_cap_t *wcap, int n_iov, ex_tbx_iovec_t *iov, tbx_tbuf_t *dwrite, ds_int_t boff, ds_int_t size, int timeout)
 {
-    ds_ibp_priv_t *ds = (ds_ibp_priv_t *)(dsf->priv);
-    ds_ibp_attr_t *attr = (ds_ibp_attr_t *)dattr;
+    lio_ds_ibp_priv_t *ds = (lio_ds_ibp_priv_t *)(dsf->priv);
+    lio_ds_ibp_attr_t *attr = (lio_ds_ibp_attr_t *)dattr;
 
-    ds_ibp_op_t *iop = ds_ibp_op_create(ds, attr);
+    lio_ds_ibp_op_t *iop = ds_ibp_op_create(ds, attr);
 
     //** Create the op
     iop->gop = ibp_vec_write_op(ds->ic, wcap, n_iov, iov, dwrite, boff, size, timeout);
@@ -818,12 +818,12 @@ op_generic_t *ds_ibp_writev(data_service_fn_t *dsf, data_attr_t *dattr, data_cap
 // ds_ibp_append - Generates a write append operation
 //***********************************************************************
 
-op_generic_t *ds_ibp_append(data_service_fn_t *dsf, data_attr_t *dattr, data_cap_t *wcap, tbx_tbuf_t *dwrite, ds_int_t boff, ds_int_t size, int timeout)
+gop_op_generic_t *ds_ibp_append(lio_data_service_fn_t *dsf, data_attr_t *dattr, data_cap_t *wcap, tbx_tbuf_t *dwrite, ds_int_t boff, ds_int_t size, int timeout)
 {
-    ds_ibp_priv_t *ds = (ds_ibp_priv_t *)(dsf->priv);
-    ds_ibp_attr_t *attr = (ds_ibp_attr_t *)dattr;
+    lio_ds_ibp_priv_t *ds = (lio_ds_ibp_priv_t *)(dsf->priv);
+    lio_ds_ibp_attr_t *attr = (lio_ds_ibp_attr_t *)dattr;
 
-    ds_ibp_op_t *iop = ds_ibp_op_create(ds, attr);
+    lio_ds_ibp_op_t *iop = ds_ibp_op_create(ds, attr);
 
     //** Create the op
     iop->gop = ibp_append_op(ds->ic, wcap, dwrite, boff, size, timeout);
@@ -837,12 +837,12 @@ op_generic_t *ds_ibp_append(data_service_fn_t *dsf, data_attr_t *dattr, data_cap
 // ds_ibp_copy - Generates a depot-depot copy operation
 //***********************************************************************
 
-op_generic_t *ds_ibp_copy(data_service_fn_t *dsf, data_attr_t *dattr, int mode, int ns_type, char *ppath, data_cap_t *src_cap, ds_int_t src_off,
+gop_op_generic_t *ds_ibp_copy(lio_data_service_fn_t *dsf, data_attr_t *dattr, int mode, int ns_type, char *ppath, data_cap_t *src_cap, ds_int_t src_off,
                           data_cap_t *dest_cap, ds_int_t dest_off, ds_int_t len, int timeout)
 {
-    ds_ibp_priv_t *ds = (ds_ibp_priv_t *)(dsf->priv);
-    ds_ibp_attr_t *attr = (ds_ibp_attr_t *)dattr;
-    ds_ibp_op_t *iop = ds_ibp_op_create(ds, attr);
+    lio_ds_ibp_priv_t *ds = (lio_ds_ibp_priv_t *)(dsf->priv);
+    lio_ds_ibp_attr_t *attr = (lio_ds_ibp_attr_t *)dattr;
+    lio_ds_ibp_op_t *iop = ds_ibp_op_create(ds, attr);
     int dir;
 
     //** Create the op
@@ -859,10 +859,10 @@ op_generic_t *ds_ibp_copy(data_service_fn_t *dsf, data_attr_t *dattr, int mode, 
 // ds_ibp_set_default_attr - Configures the default attributes for the ds
 //***********************************************************************
 
-int ds_ibp_set_default_attr(data_service_fn_t *dsf, data_attr_t *da)
+int ds_ibp_set_default_attr(lio_data_service_fn_t *dsf, data_attr_t *da)
 {
-    ds_ibp_priv_t *ds = (ds_ibp_priv_t *)dsf->priv;
-    ds_ibp_attr_t *ida = (ds_ibp_attr_t *)da;
+    lio_ds_ibp_priv_t *ds = (lio_ds_ibp_priv_t *)dsf->priv;
+    lio_ds_ibp_attr_t *ida = (lio_ds_ibp_attr_t *)da;
 
     ds->attr_default = *ida;
 
@@ -873,10 +873,10 @@ int ds_ibp_set_default_attr(data_service_fn_t *dsf, data_attr_t *da)
 //  ds_ibp_get_default - Retreive the pointer to the global default attributes
 //***********************************************************************
 
-int ds_ibp_get_default_attr(data_service_fn_t *dsf, data_attr_t *da)
+int ds_ibp_get_default_attr(lio_data_service_fn_t *dsf, data_attr_t *da)
 {
-    ds_ibp_priv_t *ds = (ds_ibp_priv_t *)dsf->priv;
-    ds_ibp_attr_t *ida = (ds_ibp_attr_t *)da;
+    lio_ds_ibp_priv_t *ds = (lio_ds_ibp_priv_t *)dsf->priv;
+    lio_ds_ibp_attr_t *ida = (lio_ds_ibp_attr_t *)da;
 
     *ida = ds->attr_default;
 
@@ -889,14 +889,14 @@ int ds_ibp_get_default_attr(data_service_fn_t *dsf, data_attr_t *da)
 
 void *ds_ibp_warm_thread(apr_thread_t *th, void *data)
 {
-    data_service_fn_t *dsf = (data_service_fn_t *)data;
-    ds_ibp_priv_t *ds = (ds_ibp_priv_t *)dsf->priv;
+    lio_data_service_fn_t *dsf = (lio_data_service_fn_t *)data;
+    lio_ds_ibp_priv_t *ds = (lio_ds_ibp_priv_t *)dsf->priv;
     apr_time_t max_wait;
     char *mcap;
     apr_ssize_t hlen;
     apr_hash_index_t *hi;
     ibp_capset_t *w;
-    opque_t *q;
+    gop_opque_t *q;
     int dt, err;
 
     dt = 60;
@@ -934,9 +934,9 @@ void *ds_ibp_warm_thread(apr_thread_t *th, void *data)
 //  ds_ibp_destroy - Creates the IBP data service
 //***********************************************************************
 
-void ds_ibp_destroy(data_service_fn_t *dsf)
+void ds_ibp_destroy(lio_data_service_fn_t *dsf)
 {
-    ds_ibp_priv_t *ds = (ds_ibp_priv_t *)dsf->priv;
+    lio_ds_ibp_priv_t *ds = (lio_ds_ibp_priv_t *)dsf->priv;
     apr_status_t value;
 
     //** Wait for the warmer thread to complete
@@ -962,18 +962,18 @@ void ds_ibp_destroy(data_service_fn_t *dsf)
 //  ds_ibp_create - Creates the IBP data service
 //***********************************************************************
 
-data_service_fn_t *ds_ibp_create(void *arg, tbx_inip_file_t *ifd, char *section)
+lio_data_service_fn_t *ds_ibp_create(void *arg, tbx_inip_file_t *ifd, char *section)
 {
     int cs_type;
-    data_service_fn_t *dsf;
-    ds_ibp_priv_t *ds;
+    lio_data_service_fn_t *dsf;
+    lio_ds_ibp_priv_t *ds;
     ibp_context_t *ic;
 
-    tbx_type_malloc_clear(dsf, data_service_fn_t, 1);
-    tbx_type_malloc_clear(ds, ds_ibp_priv_t , 1);
+    tbx_type_malloc_clear(dsf, lio_data_service_fn_t, 1);
+    tbx_type_malloc_clear(ds, lio_ds_ibp_priv_t , 1);
 
     //** Set the default attributes
-    memset(&(ds->attr_default), 0, sizeof(ds_ibp_attr_t));
+    memset(&(ds->attr_default), 0, sizeof(lio_ds_ibp_attr_t));
     ds->attr_default.attr.duration = tbx_inip_get_integer(ifd, section, "duration", 3600);
 
     ds->warm_duration = ds->attr_default.attr.duration;

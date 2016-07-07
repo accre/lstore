@@ -30,22 +30,22 @@ extern "C" {
 #endif
 
 // Typedefs
-typedef struct mq_ongoing_host_t mq_ongoing_host_t;
-typedef struct mq_ongoing_object_t mq_ongoing_object_t;
-typedef struct mq_ongoing_t mq_ongoing_t;
-typedef struct ongoing_hb_t ongoing_hb_t;
-typedef struct ongoing_table_t ongoing_table_t;
-typedef op_generic_t *(mq_ongoing_fail_t)(void *arg, void *handle);
+typedef struct gop_mq_ongoing_host_t gop_mq_ongoing_host_t;
+typedef struct gop_mq_ongoing_object_t gop_mq_ongoing_object_t;
+typedef struct gop_mq_ongoing_t gop_mq_ongoing_t;
+typedef struct gop_ongoing_hb_t gop_ongoing_hb_t;
+typedef struct gop_ongoing_table_t gop_ongoing_table_t;
+typedef gop_op_generic_t *(mq_ongoing_fail_t)(void *arg, void *handle);
 
 // Functions
-GOP_API mq_ongoing_object_t *gop_mq_ongoing_add(mq_ongoing_t *mqon, bool auto_clean, char *id, int id_len, void *handle, mq_ongoing_fail_t *on_fail, void *on_fail_arg);
-GOP_API mq_ongoing_t *gop_mq_ongoing_create(mq_context_t *mqc, mq_portal_t *server_portal, int check_interval, int mode);
-GOP_API void gop_mq_ongoing_destroy(mq_ongoing_t *mqon);
-GOP_API void *gop_mq_ongoing_get(mq_ongoing_t *mqon, char *id, int id_len, intptr_t key);
-GOP_API void gop_mq_ongoing_host_dec(mq_ongoing_t *on, mq_msg_t *remote_host, char *id, int id_len);
-GOP_API void gop_mq_ongoing_host_inc(mq_ongoing_t *on, mq_msg_t *remote_host, char *id, int id_len, int heartbeat);
-GOP_API void gop_mq_ongoing_release(mq_ongoing_t *mqon, char *id, int id_len, intptr_t key);
-GOP_API void *gop_mq_ongoing_remove(mq_ongoing_t *mqon, char *id, int id_len, intptr_t key);
+GOP_API gop_mq_ongoing_object_t *gop_mq_ongoing_add(gop_mq_ongoing_t *mqon, bool auto_clean, char *id, int id_len, void *handle, mq_ongoing_fail_t *on_fail, void *on_fail_arg);
+GOP_API gop_mq_ongoing_t *gop_mq_ongoing_create(gop_mq_context_t *mqc, gop_mq_portal_t *server_portal, int check_interval, int mode);
+GOP_API void gop_mq_ongoing_destroy(gop_mq_ongoing_t *mqon);
+GOP_API void *gop_mq_ongoing_get(gop_mq_ongoing_t *mqon, char *id, int id_len, intptr_t key);
+GOP_API void gop_mq_ongoing_host_dec(gop_mq_ongoing_t *on, mq_msg_t *remote_host, char *id, int id_len);
+GOP_API void gop_mq_ongoing_host_inc(gop_mq_ongoing_t *on, mq_msg_t *remote_host, char *id, int id_len, int heartbeat);
+GOP_API void gop_mq_ongoing_release(gop_mq_ongoing_t *mqon, char *id, int id_len, intptr_t key);
+GOP_API void *gop_mq_ongoing_remove(gop_mq_ongoing_t *mqon, char *id, int id_len, intptr_t key);
 
 // Preprocessor constants
 
@@ -57,7 +57,7 @@ GOP_API void *gop_mq_ongoing_remove(mq_ongoing_t *mqon, char *id, int id_len, in
 #define ONGOING_CLIENT 2
 
 // Exported types. To be obscured
-struct mq_ongoing_object_t {
+struct gop_mq_ongoing_object_t {
     int type;
     int count;
     bool auto_clean;

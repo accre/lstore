@@ -54,7 +54,7 @@
 #include "service_manager.h"
 
 typedef struct {
-    data_block_t *data;    //** Data block
+    lio_data_block_t *data;    //** Data block
     ex_off_t cap_offset;  //** Starting location to use data in the cap
     ex_off_t seg_offset;  //** Offset withing the segment
     ex_off_t seg_end;     //** Ending location to use
@@ -62,23 +62,23 @@ typedef struct {
 } seglin_slot_t;
 
 typedef struct {
-    opque_t *q;
-    segment_t *seg;
+    gop_opque_t *q;
+    lio_segment_t *seg;
     data_probe_t **probe;
     seglin_slot_t **block;
 } seglin_check_t;
 
 typedef struct {
-    segment_t *seg;
+    lio_segment_t *seg;
     data_attr_t *da;
     ex_off_t new_size;
     int timeout;
 } seglin_truncate_t;
 
 typedef struct {
-    segment_t *seg;
+    lio_segment_t *seg;
     data_attr_t *da;
-    segment_rw_hints_t *rw_hints;
+    lio_segment_rw_hints_t *rw_hints;
     ex_tbx_iovec_t  *iov;
     ex_off_t    boff;
     tbx_tbuf_t  *buffer;
@@ -87,8 +87,8 @@ typedef struct {
 } seglin_rw_t;
 
 typedef struct {
-    segment_t *sseg;
-    segment_t *dseg;
+    lio_segment_t *sseg;
+    lio_segment_t *dseg;
     data_attr_t *da;
     int mode;
     int timeout;
@@ -101,12 +101,12 @@ typedef struct {
     ex_off_t max_block_size;
     ex_off_t excess_block_size;
     rs_query_t *rsq;
-    thread_pool_context_t *tpc;
+    gop_thread_pool_context_t *tpc;
     int n_rid_default;
     int hard_errors;
     tbx_isl_t *isl;
-    resource_service_fn_t *rs;
-    data_service_fn_t *ds;
+    lio_resource_service_fn_t *rs;
+    lio_data_service_fn_t *ds;
 } seglin_priv_t;
 
 
@@ -114,22 +114,22 @@ typedef struct {
 // seglin_grow - Expands a linear segment
 //***********************************************************************
 
-op_status_t _sl_grow(segment_t *seg, data_attr_t *da, ex_off_t new_size_arg, int timeout)
+gop_op_status_t _sl_grow(lio_segment_t *seg, data_attr_t *da, ex_off_t new_size_arg, int timeout)
 {
     int i, err;
     ex_off_t off, dsize;
     seglin_priv_t *s = (seglin_priv_t *)seg->priv;
     seglin_slot_t *b, *bexpand;
     tbx_isl_iter_t it;
-    op_generic_t *gop1, *gop2;
-    opque_t *q;
+    gop_op_generic_t *gop1, *gop2;
+    gop_opque_t *q;
     int n_blocks;
     ex_off_t lo, hi, bex_end, bex_len, bstart, new_size;
-    rs_request_t *req_list;
+    lio_rs_request_t *req_list;
     data_cap_set_t **cap_list;
     seglin_slot_t **block;
     tbx_tbuf_t tbuf;
-    op_status_t status;
+    gop_op_status_t status;
     char c[1];
 
     new_size = new_size_arg;
@@ -141,7 +141,7 @@ op_status_t _sl_grow(segment_t *seg, data_attr_t *da, ex_off_t new_size_arg, int
     //** Make the space
     lo = s->total_size;
     n_blocks = (new_size - s->total_size) / s->max_block_size + 1;
-    tbx_type_malloc_clear(req_list, rs_request_t, n_blocks);
+    tbx_type_malloc_clear(req_list, lio_rs_request_t, n_blocks);
     tbx_type_malloc_clear(cap_list, data_cap_set_t *, n_blocks);
     tbx_type_malloc_clear(block, seglin_slot_t *, n_blocks);
 
@@ -256,7 +256,7 @@ op_status_t _sl_grow(segment_t *seg, data_attr_t *da, ex_off_t new_size_arg, int
 
         err = opque_waitall(q);
 
-        if (opque_tasks_failed(q) != 0) {
+        if (gop_opque_tasks_failed(q) != 0) {
             log_printf(15, "ERROR with end of buffer write\n");
         }
 
@@ -288,17 +288,17 @@ op_status_t _sl_grow(segment_t *seg, data_attr_t *da, ex_off_t new_size_arg, int
 // seglin_shrink - Shrinks a linear segment
 //***********************************************************************
 
-op_status_t _sl_shrink(segment_t *seg, data_attr_t *da, ex_off_t new_size, int timeout)
+gop_op_status_t _sl_shrink(lio_segment_t *seg, data_attr_t *da, ex_off_t new_size, int timeout)
 {
     seglin_priv_t *s = (seglin_priv_t *)seg->priv;
-    op_generic_t *gop;
+    gop_op_generic_t *gop;
     tbx_isl_iter_t it;
     seglin_slot_t *b;
-    opque_t *q = NULL;
+    gop_opque_t *q = NULL;
     ex_off_t lo, hi, dsize;
     tbx_stack_t *stack;
     seglin_slot_t *start_b;
-    op_status_t status;
+    gop_op_status_t status;
     int i, err1;
 
     stack = tbx_stack_new();
@@ -376,10 +376,10 @@ op_status_t _sl_shrink(segment_t *seg, data_attr_t *da, ex_off_t new_size, int t
 // _sl_truncate - Performs the truncate
 //***********************************************************************
 
-op_status_t _sl_truncate(segment_t *seg, data_attr_t *da, ex_off_t new_size, int timeout)
+gop_op_status_t _sl_truncate(lio_segment_t *seg, data_attr_t *da, ex_off_t new_size, int timeout)
 {
     seglin_priv_t *s = (seglin_priv_t *)seg->priv;
-    op_status_t err = gop_success_status;
+    gop_op_status_t err = gop_success_status;
 
     if (new_size < 0) {  //** Reserve space
         err = _sl_grow(seg, da, new_size, timeout);
@@ -396,10 +396,10 @@ op_status_t _sl_truncate(segment_t *seg, data_attr_t *da, ex_off_t new_size, int
 //  seglin_truncate_func - Does the actual segment truncat operations
 //***********************************************************************
 
-op_status_t seglin_truncate_func(void *arg, int id)
+gop_op_status_t seglin_truncate_func(void *arg, int id)
 {
     seglin_truncate_t *st = (seglin_truncate_t *)arg;
-    op_status_t err;
+    gop_op_status_t err;
 
     segment_lock(st->seg);
     err = _sl_truncate(st->seg, st->da, st->new_size, st->timeout);
@@ -412,7 +412,7 @@ op_status_t seglin_truncate_func(void *arg, int id)
 // segment_linear_truncate - Expands or contracts a linear segment
 //***********************************************************************
 
-op_generic_t *seglin_truncate(segment_t *seg, data_attr_t *da, ex_off_t new_size, int timeout)
+gop_op_generic_t *seglin_truncate(lio_segment_t *seg, data_attr_t *da, ex_off_t new_size, int timeout)
 {
     seglin_priv_t *s = (seglin_priv_t *)seg->priv;
 
@@ -432,16 +432,16 @@ op_generic_t *seglin_truncate(segment_t *seg, data_attr_t *da, ex_off_t new_size
 // seglin_read - Read from a linear segment
 //***********************************************************************
 
-op_status_t seglin_read_func(void *arg, int id)
+gop_op_status_t seglin_read_func(void *arg, int id)
 {
     seglin_rw_t *sr = (seglin_rw_t *)arg;
     seglin_priv_t *s = (seglin_priv_t *)sr->seg->priv;
-    op_generic_t *gop;
-    opque_t *q;
+    gop_op_generic_t *gop;
+    gop_opque_t *q;
     seglin_slot_t *b;
     tbx_isl_iter_t it;
     ex_off_t lo, hi, start, end, blen, bpos;
-    op_status_t err;
+    gop_op_status_t err;
     int i;
 
     segment_lock(sr->seg);
@@ -513,11 +513,11 @@ op_status_t seglin_read_func(void *arg, int id)
 // seglin_read - Read from a linear segment
 //***********************************************************************
 
-op_generic_t *seglin_read(segment_t *seg, data_attr_t *da, segment_rw_hints_t *rw_hints, int n_iov, ex_tbx_iovec_t *iov, tbx_tbuf_t *buffer, ex_off_t boff, int timeout)
+gop_op_generic_t *seglin_read(lio_segment_t *seg, data_attr_t *da, lio_segment_rw_hints_t *rw_hints, int n_iov, ex_tbx_iovec_t *iov, tbx_tbuf_t *buffer, ex_off_t boff, int timeout)
 {
     seglin_priv_t *s = (seglin_priv_t *)seg->priv;
     seglin_rw_t *sw;
-    op_generic_t *gop;
+    gop_op_generic_t *gop;
 
 
     tbx_type_malloc(sw, seglin_rw_t, 1);
@@ -538,11 +538,11 @@ op_generic_t *seglin_read(segment_t *seg, data_attr_t *da, segment_rw_hints_t *r
 // seglin_write_op - Writes to a linear segment
 //***********************************************************************
 
-op_generic_t *seglin_write_op(segment_t *seg, data_attr_t *da, segment_rw_hints_t *rw_hints, int n_iov, ex_tbx_iovec_t *iov, tbx_tbuf_t *buffer, ex_off_t boff, int timeout)
+gop_op_generic_t *seglin_write_op(lio_segment_t *seg, data_attr_t *da, lio_segment_rw_hints_t *rw_hints, int n_iov, ex_tbx_iovec_t *iov, tbx_tbuf_t *buffer, ex_off_t boff, int timeout)
 {
     seglin_priv_t *s = (seglin_priv_t *)seg->priv;
-    op_generic_t *gop;
-    opque_t *q;
+    gop_op_generic_t *gop;
+    gop_opque_t *q;
     seglin_slot_t *b;
     tbx_isl_iter_t it;
     ex_off_t lo, hi, start, end, blen, bpos;
@@ -600,12 +600,12 @@ op_generic_t *seglin_write_op(segment_t *seg, data_attr_t *da, segment_rw_hints_
 //  seglin_write_func - Expands and writes to the segment
 //***********************************************************************
 
-op_status_t seglin_write_func(void *arg, int id)
+gop_op_status_t seglin_write_func(void *arg, int id)
 {
     seglin_rw_t *sw = (seglin_rw_t *)arg;
     seglin_priv_t *s = (seglin_priv_t *)sw->seg->priv;
     int i, err;
-    op_status_t status;
+    gop_op_status_t status;
     ex_off_t new_size;
     ex_off_t pos, maxpos;
 
@@ -659,11 +659,11 @@ op_status_t seglin_write_func(void *arg, int id)
 // seglin_write - Performs a segment write operation
 //***********************************************************************
 
-op_generic_t *seglin_write(segment_t *seg, data_attr_t *da, segment_rw_hints_t *rw_hints, int n_iov, ex_tbx_iovec_t *iov, tbx_tbuf_t *buffer, ex_off_t boff, int timeout)
+gop_op_generic_t *seglin_write(lio_segment_t *seg, data_attr_t *da, lio_segment_rw_hints_t *rw_hints, int n_iov, ex_tbx_iovec_t *iov, tbx_tbuf_t *buffer, ex_off_t boff, int timeout)
 {
     seglin_priv_t *s = (seglin_priv_t *)seg->priv;
     seglin_rw_t *sw;
-    op_generic_t *gop;
+    gop_op_generic_t *gop;
 
 
     tbx_type_malloc(sw, seglin_rw_t, 1);
@@ -687,7 +687,7 @@ op_generic_t *seglin_write(segment_t *seg, data_attr_t *da, segment_rw_hints_t *
 void _seglin_probe_cb(void *arg, int state)
 {
     seglin_check_t *sp = (seglin_check_t *)arg;
-    segment_t *seg = sp->seg;
+    lio_segment_t *seg = sp->seg;
     seglin_priv_t *s = (seglin_priv_t *)seg->priv;
     seglin_slot_t *b = NULL;
     data_probe_t *p;
@@ -730,11 +730,11 @@ void _seglin_probe_cb(void *arg, int state)
 //     result in the data being removed.
 //***********************************************************************
 
-op_generic_t *seglin_remove(segment_t *seg, data_attr_t *da, int timeout)
+gop_op_generic_t *seglin_remove(lio_segment_t *seg, data_attr_t *da, int timeout)
 {
     seglin_priv_t *s = (seglin_priv_t *)seg->priv;
-    op_generic_t *gop;
-    opque_t *q;
+    gop_op_generic_t *gop;
+    gop_opque_t *q;
     seglin_slot_t *b;
     tbx_isl_iter_t it;
     int i, n;
@@ -758,19 +758,19 @@ op_generic_t *seglin_remove(segment_t *seg, data_attr_t *da, int timeout)
 // seglin_inspect_func - Checks that all the segments are available and they are the right size
 //***********************************************************************
 
-op_generic_t *seglin_inspect_op(segment_t *seg, data_attr_t *da, tbx_log_fd_t *fd, int mode, ex_off_t buffer_size, inspect_args_t *args, int timeout)
+gop_op_generic_t *seglin_inspect_op(lio_segment_t *seg, data_attr_t *da, tbx_log_fd_t *fd, int mode, ex_off_t buffer_size, lio_inspect_args_t *args, int timeout)
 {
     seglin_priv_t *s = (seglin_priv_t *)seg->priv;
-    op_generic_t *gop;
-    opque_t *q;
+    gop_op_generic_t *gop;
+    gop_opque_t *q;
     seglin_slot_t *b;
     tbx_isl_iter_t it;
-    callback_t *cb;
+    gop_callback_t *cb;
     seglin_check_t *sp;
     int i;
 
     //** Make and assemble the cb
-    tbx_type_malloc_clear(cb, callback_t, 1);
+    tbx_type_malloc_clear(cb, gop_callback_t, 1);
     tbx_type_malloc_clear(sp, seglin_check_t, 1);
     tbx_type_malloc_clear(sp->block, seglin_slot_t *, tbx_isl_count(s->isl));
     tbx_type_malloc_clear(sp->probe, data_probe_t *, tbx_isl_count(s->isl));
@@ -802,11 +802,11 @@ op_generic_t *seglin_inspect_op(segment_t *seg, data_attr_t *da, tbx_log_fd_t *f
 //  seglin_truncate_func - Does the actual segment truncat operations
 //***********************************************************************
 
-op_generic_t *seglin_inspect(segment_t *seg, data_attr_t *da, tbx_log_fd_t *fd, int mode, ex_off_t bufsize, inspect_args_t *args, int timeout)
+gop_op_generic_t *seglin_inspect(lio_segment_t *seg, data_attr_t *da, tbx_log_fd_t *fd, int mode, ex_off_t bufsize, lio_inspect_args_t *args, int timeout)
 {
     seglin_priv_t *s = (seglin_priv_t *)seg->priv;
-    op_generic_t *gop;
-    op_status_t err;
+    gop_op_generic_t *gop;
+    gop_op_status_t err;
 
     gop = NULL;
     lio_ex3_inspect_command_t cmd = INSPECT_COMMAND_BITS & mode;
@@ -839,7 +839,7 @@ op_generic_t *seglin_inspect(segment_t *seg, data_attr_t *da, tbx_log_fd_t *fd, 
 // seglin_flush - Flushes a segment
 //***********************************************************************
 
-op_generic_t *seglin_flush(segment_t *seg, data_attr_t *da, ex_off_t lo, ex_off_t hi, int timeout)
+gop_op_generic_t *seglin_flush(lio_segment_t *seg, data_attr_t *da, ex_off_t lo, ex_off_t hi, int timeout)
 {
     return(gop_dummy(gop_success_status));
 }
@@ -848,7 +848,7 @@ op_generic_t *seglin_flush(segment_t *seg, data_attr_t *da, ex_off_t lo, ex_off_
 // segline_clone_func - Clone data from the segment
 //***********************************************************************
 
-op_status_t seglin_clone_func(void *arg, int id)
+gop_op_status_t seglin_clone_func(void *arg, int id)
 {
     seglin_clone_t *slc = (seglin_clone_t *)arg;
     seglin_priv_t *ss = (seglin_priv_t *)slc->sseg->priv;
@@ -856,23 +856,23 @@ op_status_t seglin_clone_func(void *arg, int id)
     tbx_isl_iter_t it;
     seglin_slot_t *bd, *bs;
     int n_blocks, dir, i;
-    rs_request_t *req_list;
+    lio_rs_request_t *req_list;
     data_cap_set_t **cap_list;
     seglin_slot_t **block;
-    opque_t *q;
-    op_generic_t *gop = NULL;
-    op_status_t status;
+    gop_opque_t *q;
+    gop_op_generic_t *gop = NULL;
+    gop_op_status_t status;
 
     //** SEe if we are using an old seg.  If so we need to trunc it first
     if (slc->trunc == 1) {
-        gop_sync_exec(segment_truncate(slc->dseg, slc->da, 0, slc->timeout));
+        gop_sync_exec(lio_segment_truncate(slc->dseg, slc->da, 0, slc->timeout));
     }
 
     //** Determine the number of intervals
     n_blocks = tbx_isl_count(ss->isl);
 
     //** and make the space to store things
-    tbx_type_malloc_clear(req_list, rs_request_t, n_blocks);
+    tbx_type_malloc_clear(req_list, lio_rs_request_t, n_blocks);
     tbx_type_malloc_clear(cap_list, data_cap_set_t *, n_blocks);
     tbx_type_malloc_clear(block, seglin_slot_t *, 2*n_blocks);
 
@@ -935,7 +935,7 @@ op_status_t seglin_clone_func(void *arg, int id)
 
     //** Wait for the copying to finish
     opque_waitall(q);
-    status = (opque_tasks_failed(q) == 0) ? gop_success_status : gop_failure_status;
+    status = (gop_opque_tasks_failed(q) == 0) ? gop_success_status : gop_failure_status;
 
     free(block);
     free(req_list);
@@ -954,12 +954,12 @@ op_status_t seglin_clone_func(void *arg, int id)
 // segline_clone - Clones a segment
 //***********************************************************************
 
-op_generic_t *seglin_clone(segment_t *seg, data_attr_t *da, segment_t **clone_seg, int mode, void *attr, int timeout)
+gop_op_generic_t *seglin_clone(lio_segment_t *seg, data_attr_t *da, lio_segment_t **clone_seg, int mode, void *attr, int timeout)
 {
-    segment_t *clone;
+    lio_segment_t *clone;
     seglin_priv_t *ss = (seglin_priv_t *)seg->priv;
     seglin_priv_t *sd;
-    op_generic_t *gop;
+    gop_op_generic_t *gop;
     seglin_clone_t *slc;
     int use_existing = (*clone_seg != NULL) ? 1 : 0;
 
@@ -988,7 +988,7 @@ op_generic_t *seglin_clone(segment_t *seg, data_attr_t *da, segment_t **clone_se
     //** Now copy the data if needed
     if (mode == CLONE_STRUCTURE) {
         if (use_existing == 1) {
-            gop = segment_truncate(clone, da, 0, timeout);
+            gop = lio_segment_truncate(clone, da, 0, timeout);
         } else {
             gop = gop_dummy(gop_success_status);
         }
@@ -1010,7 +1010,7 @@ op_generic_t *seglin_clone(segment_t *seg, data_attr_t *da, segment_t **clone_se
 // seglin_size - Returns the segment size.
 //***********************************************************************
 
-ex_off_t seglin_size(segment_t *seg)
+ex_off_t seglin_size(lio_segment_t *seg)
 {
     seglin_priv_t *s = (seglin_priv_t *)seg->priv;
     ex_off_t size;
@@ -1026,7 +1026,7 @@ ex_off_t seglin_size(segment_t *seg)
 // seglin_block_size - Returns the segment block size.
 //***********************************************************************
 
-ex_off_t seglin_block_size(segment_t *seg)
+ex_off_t seglin_block_size(lio_segment_t *seg)
 {
     return(1);
 }
@@ -1035,7 +1035,7 @@ ex_off_t seglin_block_size(segment_t *seg)
 // seglin_serialize_text -Convert the segment to a text based format
 //***********************************************************************
 
-int seglin_serialize_text(segment_t *seg, exnode_exchange_t *exp)
+int seglin_serialize_text(lio_segment_t *seg, lio_exnode_exchange_t *exp)
 {
     seglin_priv_t *s = (seglin_priv_t *)seg->priv;
     int bufsize=10*1024;
@@ -1043,7 +1043,7 @@ int seglin_serialize_text(segment_t *seg, exnode_exchange_t *exp)
     char *ext, *etext;
     int sused;
     seglin_slot_t *b;
-    exnode_exchange_t *cap_exp;
+    lio_exnode_exchange_t *cap_exp;
     tbx_isl_iter_t it;
 
     segbuf[0] = 0;
@@ -1101,7 +1101,7 @@ int seglin_serialize_text(segment_t *seg, exnode_exchange_t *exp)
 // seglin_serialize_proto -Convert the segment to a protocol buffer
 //***********************************************************************
 
-int seglin_serialize_proto(segment_t *seg, exnode_exchange_t *exp)
+int seglin_serialize_proto(lio_segment_t *seg, lio_exnode_exchange_t *exp)
 {
     return(-1);
 }
@@ -1110,7 +1110,7 @@ int seglin_serialize_proto(segment_t *seg, exnode_exchange_t *exp)
 // seglin_serialize -Convert the segment to a more portable format
 //***********************************************************************
 
-int seglin_serialize(segment_t *seg, exnode_exchange_t *exp)
+int seglin_serialize(lio_segment_t *seg, lio_exnode_exchange_t *exp)
 {
     if (exp->type == EX_TEXT) {
         return(seglin_serialize_text(seg, exp));
@@ -1125,7 +1125,7 @@ int seglin_serialize(segment_t *seg, exnode_exchange_t *exp)
 // seglin_signature - Generates the segment signature
 //***********************************************************************
 
-int seglin_signature(segment_t *seg, char *buffer, int *used, int bufsize)
+int seglin_signature(lio_segment_t *seg, char *buffer, int *used, int bufsize)
 {
     seglin_priv_t *s = (seglin_priv_t *)seg->priv;
 
@@ -1138,7 +1138,7 @@ int seglin_signature(segment_t *seg, char *buffer, int *used, int bufsize)
 // seglin_deserialize_text -Read the text based segment
 //***********************************************************************
 
-int seglin_deserialize_text(segment_t *seg, ex_id_t id, exnode_exchange_t *exp)
+int seglin_deserialize_text(lio_segment_t *seg, ex_id_t id, lio_exnode_exchange_t *exp)
 {
     seglin_priv_t *s = (seglin_priv_t *)seg->priv;
     int bufsize=1024;
@@ -1220,7 +1220,7 @@ int seglin_deserialize_text(segment_t *seg, ex_id_t id, exnode_exchange_t *exp)
 // seglin_deserialize_proto - Read the prot formatted segment
 //***********************************************************************
 
-int seglin_deserialize_proto(segment_t *seg, ex_id_t id, exnode_exchange_t *exp)
+int seglin_deserialize_proto(lio_segment_t *seg, ex_id_t id, lio_exnode_exchange_t *exp)
 {
     return(-1);
 }
@@ -1229,7 +1229,7 @@ int seglin_deserialize_proto(segment_t *seg, ex_id_t id, exnode_exchange_t *exp)
 // seglin_deserialize -Convert from the portable to internal format
 //***********************************************************************
 
-int seglin_deserialize(segment_t *seg, ex_id_t id, exnode_exchange_t *exp)
+int seglin_deserialize(lio_segment_t *seg, ex_id_t id, lio_exnode_exchange_t *exp)
 {
     if (exp->type == EX_TEXT) {
         return(seglin_deserialize_text(seg, id, exp));
@@ -1245,7 +1245,7 @@ int seglin_deserialize(segment_t *seg, ex_id_t id, exnode_exchange_t *exp)
 // seglin_destroy - Destroys a linear segment struct (not the data)
 //***********************************************************************
 
-void seglin_destroy(segment_t *seg)
+void seglin_destroy(lio_segment_t *seg)
 {
     int i, n;
     tbx_isl_iter_t it;
@@ -1289,7 +1289,7 @@ void seglin_destroy(segment_t *seg)
 // lio_segment_linear_make - Creates a linear segment
 //***********************************************************************
 
-op_generic_t *lio_segment_linear_make(segment_t *seg, data_attr_t *da, rs_query_t *rsq, int n_rid, ex_off_t block_size, ex_off_t total_size, int timeout)
+gop_op_generic_t *lio_segment_linear_make(lio_segment_t *seg, data_attr_t *da, rs_query_t *rsq, int n_rid, ex_off_t block_size, ex_off_t total_size, int timeout)
 {
     seglin_priv_t *s = (seglin_priv_t *)seg->priv;
 
@@ -1306,14 +1306,14 @@ op_generic_t *lio_segment_linear_make(segment_t *seg, data_attr_t *da, rs_query_
 // segment_linear_create - Creates a linear segment
 //***********************************************************************
 
-segment_t *segment_linear_create(void *arg)
+lio_segment_t *segment_linear_create(void *arg)
 {
-    service_manager_t *ess = (service_manager_t *)arg;
+    lio_service_manager_t *ess = (lio_service_manager_t *)arg;
     seglin_priv_t *s;
-    segment_t *seg;
+    lio_segment_t *seg;
 
     //** Make the space
-    tbx_type_malloc_clear(seg, segment_t, 1);
+    tbx_type_malloc_clear(seg, lio_segment_t, 1);
     tbx_type_malloc_clear(s, seglin_priv_t, 1);
 
     s->isl = tbx_isl_new(&skiplist_compare_ex_off, NULL, NULL, NULL);
@@ -1359,9 +1359,9 @@ segment_t *segment_linear_create(void *arg)
 // segment_linear_load - Loads a linear segment from ini/ex3
 //***********************************************************************
 
-segment_t *segment_linear_load(void *arg, ex_id_t id, exnode_exchange_t *ex)
+lio_segment_t *segment_linear_load(void *arg, ex_id_t id, lio_exnode_exchange_t *ex)
 {
-    segment_t *seg = segment_linear_create(arg);
+    lio_segment_t *seg = segment_linear_create(arg);
     if (segment_deserialize(seg, id, ex) != 0) {
         segment_destroy(seg);
         seg = NULL;

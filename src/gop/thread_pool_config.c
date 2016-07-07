@@ -44,12 +44,12 @@ void *_tp_dup_connect_context(void *connect_context);
 void _tp_destroy_connect_context(void *connect_context);
 int _tp_connect(tbx_ns_t *ns, void *connect_context, char *host, int port, tbx_ns_timeout_t timeout);
 void _tp_close_connection(tbx_ns_t *ns);
-op_generic_t *_tpc_overflow_next(thread_pool_context_t *tpc);
+gop_op_generic_t *_tpc_overflow_next(gop_thread_pool_context_t *tpc);
 
-void _tp_op_free(op_generic_t *op, int mode);
-void _tp_submit_op(void *arg, op_generic_t *op);
+void _tp_op_free(gop_op_generic_t *op, int mode);
+void _tp_submit_op(void *arg, gop_op_generic_t *op);
 
-static portal_fn_t _tp_base_portal = {
+static gop_portal_fn_t _tp_base_portal = {
     .dup_connect_context = _tp_dup_connect_context,
     .destroy_connect_context = _tp_destroy_connect_context,
     .connect = _tp_connect,
@@ -105,7 +105,7 @@ void thread_pool_stats_init()
 
 //*************************************************************
 
-portal_fn_t default_tp_imp()
+gop_portal_fn_t default_tp_imp()
 {
     return(_tp_base_portal);
 }
@@ -113,9 +113,9 @@ portal_fn_t default_tp_imp()
 
 //*************************************************************
 
-void _tp_op_free(op_generic_t *gop, int mode)
+void _tp_op_free(gop_op_generic_t *gop, int mode)
 {
-    thread_pool_op_t *top = gop_get_tp(gop);
+    gop_thread_pool_op_t *top = gop_get_tp(gop);
     int id = gop_id(gop);
 
     log_printf(15, "_tp_op_free: mode=%d gid=%d gop=%p\n", mode, gop_id(gop), gop);
@@ -135,9 +135,9 @@ void _tp_op_free(op_generic_t *gop, int mode)
 
 //*************************************************************
 
-void _tp_submit_op(void *arg, op_generic_t *gop)
+void _tp_submit_op(void *arg, gop_op_generic_t *gop)
 {
-    thread_pool_op_t *op = gop_get_tp(gop);
+    gop_thread_pool_op_t *op = gop_get_tp(gop);
     apr_status_t aerr;
     int running;
 
@@ -214,7 +214,7 @@ void _tp_close_connection(tbx_ns_t *ns)
 //     and directly submits the task to the APR thread pool
 //*************************************************************
 
-int thread_pool_direct(thread_pool_context_t *tpc, apr_thread_start_t fn, void *arg)
+int thread_pool_direct(gop_thread_pool_context_t *tpc, apr_thread_start_t fn, void *arg)
 {
     int err = apr_thread_pool_push(tpc->tp, fn, arg, APR_THREAD_TASK_PRIORITY_NORMAL, NULL);
 
@@ -232,7 +232,7 @@ int thread_pool_direct(thread_pool_context_t *tpc, apr_thread_start_t fn, void *
 // default_thread_pool_config - Sets the default thread pool config options
 //**********************************************************
 
-void default_thread_pool_config(thread_pool_context_t *tpc)
+void default_thread_pool_config(gop_thread_pool_context_t *tpc)
 {
     tpc->min_idle = 1; //** default to close after 1 sec
     tpc->min_threads = 1;
@@ -246,16 +246,16 @@ void default_thread_pool_config(thread_pool_context_t *tpc)
 //  gop_tp_context_create - Creates a TP context
 //**********************************************************
 
-thread_pool_context_t *gop_tp_context_create(char *tp_name, int min_threads, int max_threads, int max_recursion_depth)
+gop_thread_pool_context_t *gop_tp_context_create(char *tp_name, int min_threads, int max_threads, int max_recursion_depth)
 {
 //  char buffer[1024];
-    thread_pool_context_t *tpc;
+    gop_thread_pool_context_t *tpc;
     apr_interval_time_t dt;
     int i;
 
     log_printf(15, "count=%d\n", _tp_context_count);
 
-    tbx_type_malloc_clear(tpc, thread_pool_context_t, 1);
+    tbx_type_malloc_clear(tpc, gop_thread_pool_context_t, 1);
 
     if (tbx_atomic_inc(_tp_context_count) == 0) {
         apr_pool_create(&_tp_pool, NULL);
@@ -304,7 +304,7 @@ thread_pool_context_t *gop_tp_context_create(char *tp_name, int min_threads, int
 //  gop_tp_context_destroy - Shuts down the Thread pool system
 //**********************************************************
 
-void gop_tp_context_destroy(thread_pool_context_t *tpc)
+void gop_tp_context_destroy(gop_thread_pool_context_t *tpc)
 {
     int i;
     log_printf(15, "gop_tp_context_destroy: Shutting down! count=%d\n", _tp_context_count);

@@ -25,7 +25,7 @@ extern "C" {
 #endif
 
 
-struct erasure_plan_t;
+struct lio_erasure_plan_t;
 
 extern int _debug;
 #define debug_printf(...) \
@@ -47,7 +47,7 @@ extern int _debug;
 extern const char *JE_method[N_JE_METHODS];
 
 
-struct erasure_plan_t {    //** Contains the erasure parameters
+struct lio_erasure_plan_t {    //** Contains the erasure parameters
     long long int strip_size;   //** Size of each data strip
     int method;                 //** Encoding/Decoding method used
     int data_strips;            //** Number of data devices
@@ -58,21 +58,21 @@ struct erasure_plan_t {    //** Contains the erasure parameters
     int *encode_matrix;         //** Encoding Matrix
     int *encode_bitmatrix;      //** Encoding bit Matrix
     int **encode_schedule;      //** Encoding Schedule
-    int (*form_encoding_matrix)(erasure_plan_t *plan);  //**Routine to form encoding matrix
-    int (*form_decoding_matrix)(erasure_plan_t *plan);  //**Routine to form encoding matrix
-    void (*encode_block)(erasure_plan_t *plan, char **ptr, int block_size);  //**Routine for encoding the block
-    int (*decode_block)(erasure_plan_t *plan, char **ptr, int block_size, int *erasures);  //**Routine for decoding the block
+    int (*form_encoding_matrix)(lio_erasure_plan_t *plan);  //**Routine to form encoding matrix
+    int (*form_decoding_matrix)(lio_erasure_plan_t *plan);  //**Routine to form encoding matrix
+    void (*encode_block)(lio_erasure_plan_t *plan, char **ptr, int block_size);  //**Routine for encoding the block
+    int (*decode_block)(lio_erasure_plan_t *plan, char **ptr, int block_size, int *erasures);  //**Routine for decoding the block
 };
 
 int nearest_prime(int w, int force_larger);
 int et_method_type(char *meth);
-erasure_plan_t *et_new_plan(int method, long long int strip_size,
+lio_erasure_plan_t *et_new_plan(int method, long long int strip_size,
                             int data_strips, int parity_strips, int w, int packet_size, int base_unit);
-erasure_plan_t *et_generate_plan(long long int file_size, int method,
+lio_erasure_plan_t *et_generate_plan(long long int file_size, int method,
                                  int data_strips, int parity_strips, int w, int packet_low, int packet_high);
-void et_destroy_plan(erasure_plan_t *plan);
-int et_encode(erasure_plan_t *plan, const char *fname, long long int foffset, const char *pname, long long int poffset, int buffersize);
-int et_decode(erasure_plan_t *plan, long long int fsize, const char *fname, long long int foffset, const char *pname, long long int poffset, int buffersize, int *erasures);
+void et_destroy_plan(lio_erasure_plan_t *plan);
+int et_encode(lio_erasure_plan_t *plan, const char *fname, long long int foffset, const char *pname, long long int poffset, int buffersize);
+int et_decode(lio_erasure_plan_t *plan, long long int fsize, const char *fname, long long int foffset, const char *pname, long long int poffset, int buffersize, int *erasures);
 
 
 #ifdef __cplusplus

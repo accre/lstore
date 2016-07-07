@@ -42,7 +42,7 @@ extern char *_lio_exe_name;  //** Executable name
 
 
 
-struct unified_object_iter_t {
+struct lio_unified_object_iter_t {
     lio_path_tuple_t tuple;
     os_object_iter_t *oit;
     local_object_iter_t *lit;
@@ -60,8 +60,8 @@ struct unified_object_iter_t {
 #define lio_unlock(s) apr_thread_mutex_unlock((s)->lock)
 
 struct lio_file_handle_t {  //** Shared file handle
-    exnode_t *ex;
-    segment_t *seg;
+    lio_exnode_t *ex;
+    lio_segment_t *seg;
     lio_config_t *lc;
     ex_id_t vid;
     int ref_count;
@@ -75,7 +75,7 @@ struct lio_file_handle_t {  //** Shared file handle
 struct lio_fd_t {  //** Individual file descriptor
     lio_config_t *lc;
     lio_file_handle_t *fh;  //** Shared handle
-    creds_t *creds;
+    lio_creds_t *creds;
     char *path;
     int mode;         //** R/W mode
     ex_off_t curr_offset;
@@ -84,75 +84,75 @@ struct lio_fd_t {  //** Individual file descriptor
 extern tbx_sl_compare_t ex_id_compare;
 
 
-op_generic_t *gop_lio_abort_regex_object_set_multiple_attrs(lio_config_t *lc, op_generic_t *gop);
-op_generic_t *gop_lio_symlink_object(lio_config_t *lc, creds_t *creds, char *src_path, char *dest_path, char *id);
+gop_op_generic_t *gop_lio_abort_regex_object_set_multiple_attrs(lio_config_t *lc, gop_op_generic_t *gop);
+gop_op_generic_t *gop_lio_symlink_object(lio_config_t *lc, lio_creds_t *creds, char *src_path, char *dest_path, char *id);
 
 
-//NOT NEEDED NOW???? op_generic_t *gop_lio_abort_open_object(lio_config_t *lc, op_generic_t *gop);
+//NOT NEEDED NOW???? gop_op_generic_t *gop_lio_abort_open_object(lio_config_t *lc, gop_op_generic_t *gop);
 
-op_generic_t *gop_lio_read(lio_fd_t *fd, char *buf, ex_off_t size, ex_off_t off, segment_rw_hints_t *rw_hints);
-op_generic_t *gop_lio_readv(lio_fd_t *fd, tbx_iovec_t *iov, int n_iov, ex_off_t size, ex_off_t off, segment_rw_hints_t *rw_hints);
-op_generic_t *gop_lio_read_ex(lio_fd_t *fd, int n_iov, ex_tbx_iovec_t *iov, tbx_tbuf_t *buffer, ex_off_t boff, segment_rw_hints_t *rw_hints);
-op_generic_t *gop_lio_write(lio_fd_t *fd, char *buf, ex_off_t size, off_t off, segment_rw_hints_t *rw_hints);
-op_generic_t *gop_lio_writev(lio_fd_t *fd, tbx_iovec_t *iov, int n_iov, ex_off_t size, off_t off, segment_rw_hints_t *rw_hints);
-op_generic_t *gop_lio_write_ex(lio_fd_t *fd, int n_iov, ex_tbx_iovec_t *iov, tbx_tbuf_t *buffer, ex_off_t boff, segment_rw_hints_t *rw_hints);
+gop_op_generic_t *gop_lio_read(lio_fd_t *fd, char *buf, ex_off_t size, ex_off_t off, lio_segment_rw_hints_t *rw_hints);
+gop_op_generic_t *gop_lio_readv(lio_fd_t *fd, tbx_iovec_t *iov, int n_iov, ex_off_t size, ex_off_t off, lio_segment_rw_hints_t *rw_hints);
+gop_op_generic_t *gop_lio_read_ex(lio_fd_t *fd, int n_iov, ex_tbx_iovec_t *iov, tbx_tbuf_t *buffer, ex_off_t boff, lio_segment_rw_hints_t *rw_hints);
+gop_op_generic_t *gop_lio_write(lio_fd_t *fd, char *buf, ex_off_t size, off_t off, lio_segment_rw_hints_t *rw_hints);
+gop_op_generic_t *gop_lio_writev(lio_fd_t *fd, tbx_iovec_t *iov, int n_iov, ex_off_t size, off_t off, lio_segment_rw_hints_t *rw_hints);
+gop_op_generic_t *gop_lio_write_ex(lio_fd_t *fd, int n_iov, ex_tbx_iovec_t *iov, tbx_tbuf_t *buffer, ex_off_t boff, lio_segment_rw_hints_t *rw_hints);
 
-int lio_read(lio_fd_t *fd, char *buf, ex_off_t size, off_t off, segment_rw_hints_t *rw_hints);
-int lio_readv(lio_fd_t *fd, tbx_iovec_t *iov, int n_iov, ex_off_t size, off_t off, segment_rw_hints_t *rw_hints);
-int lio_read_ex(lio_fd_t *fd, int n_iov, ex_tbx_iovec_t *iov, tbx_tbuf_t *buffer, ex_off_t boff, segment_rw_hints_t *rw_hints);
-int lio_write(lio_fd_t *fd, char *buf, ex_off_t size, off_t off, segment_rw_hints_t *rw_hints);
-int lio_writev(lio_fd_t *fd, tbx_iovec_t *iov, int n_iov, ex_off_t size, off_t off, segment_rw_hints_t *rw_hints);
-int lio_write_ex(lio_fd_t *fd, int n_iov, ex_tbx_iovec_t *iov, tbx_tbuf_t *buffer, ex_off_t boff, segment_rw_hints_t *rw_hints);
+int lio_read(lio_fd_t *fd, char *buf, ex_off_t size, off_t off, lio_segment_rw_hints_t *rw_hints);
+int lio_readv(lio_fd_t *fd, tbx_iovec_t *iov, int n_iov, ex_off_t size, off_t off, lio_segment_rw_hints_t *rw_hints);
+int lio_read_ex(lio_fd_t *fd, int n_iov, ex_tbx_iovec_t *iov, tbx_tbuf_t *buffer, ex_off_t boff, lio_segment_rw_hints_t *rw_hints);
+int lio_write(lio_fd_t *fd, char *buf, ex_off_t size, off_t off, lio_segment_rw_hints_t *rw_hints);
+int lio_writev(lio_fd_t *fd, tbx_iovec_t *iov, int n_iov, ex_off_t size, off_t off, lio_segment_rw_hints_t *rw_hints);
+int lio_write_ex(lio_fd_t *fd, int n_iov, ex_tbx_iovec_t *iov, tbx_tbuf_t *buffer, ex_off_t boff, lio_segment_rw_hints_t *rw_hints);
 
 mode_t ftype_lio2posix(int ftype);
 void _lio_parse_stat_vals(char *fname, struct stat *stat, char **val, int *v_size, char *mount_prefix, char **flink);
-int lio_stat(lio_config_t *lc, creds_t *creds, char *fname, struct stat *stat, char *mount_prefix, char **readlink);
+int lio_stat(lio_config_t *lc, lio_creds_t *creds, char *fname, struct stat *stat, char *mount_prefix, char **readlink);
 
 ex_off_t lio_seek(lio_fd_t *fd, ex_off_t offset, int whence);
 ex_off_t lio_tell(lio_fd_t *fd);
 ex_off_t lio_size(lio_fd_t *fd);
-op_generic_t *gop_lio_truncate(lio_fd_t *fd, ex_off_t new_size);
-// NOT IMPLEMENTED op_generic_t *gop_lio_stat(lio_t *lc, const char *fname, struct stat *stat);
+gop_op_generic_t *gop_lio_truncate(lio_fd_t *fd, ex_off_t new_size);
+// NOT IMPLEMENTED gop_op_generic_t *gop_lio_stat(lio_t *lc, const char *fname, struct stat *stat);
 
-op_generic_t *gop_lio_cp_lio2lio(lio_fd_t *sfd, lio_fd_t *dfd, ex_off_t bufsize, char *buffer, int hints, segment_rw_hints_t *rw_hints);
+gop_op_generic_t *gop_lio_cp_lio2lio(lio_fd_t *sfd, lio_fd_t *dfd, ex_off_t bufsize, char *buffer, int hints, lio_segment_rw_hints_t *rw_hints);
 
-//op_generic_t *gop_lio_symlink_attr(lio_config_t *lc, creds_t *creds, char *src_path, char *key_src, const char *path_dest, char *key_dest);
-//op_generic_t *gop_lio_symlink_multiple_attrs(lio_config_t *lc, creds_t *creds, char **src_path, char **key_src, const char *path_dest, char **key_dest, int n);
+//gop_op_generic_t *gop_lio_symlink_attr(lio_config_t *lc, lio_creds_t *creds, char *src_path, char *key_src, const char *path_dest, char *key_dest);
+//gop_op_generic_t *gop_lio_symlink_multiple_attrs(lio_config_t *lc, lio_creds_t *creds, char **src_path, char **key_src, const char *path_dest, char **key_dest, int n);
 
-//op_generic_t *gop_lio_move_attr(lio_config_t *lc, creds_t *creds, const char *path, char *id, char *key_old, char *key_new);
-//op_generic_t *gop_lio_copy_attr(lio_config_t *lc, creds_t *creds, const char *path_src, char *id, char *key_src, const char *path_dest, char *key_dest);
-op_generic_t *gop_lio_get_multiple_attrs(lio_config_t *lc, creds_t *creds, const char *path, char *id, char **key, void **val, int *v_size, int n);
-op_generic_t *gop_lio_multiple_setattr_op(lio_config_t *lc, creds_t *creds, const char *path, char *id, char **key, void **val, int *v_size, int n);
-//op_generic_t *gop_lio_move_multiple_attrs(lio_config_t *lc, creds_t *creds, const char *char *id, path, char **key_old, char **key_new, int n);
-//op_generic_t *gop_lio_copy_multiple_attrs(lio_config_t *lc, creds_t *creds, const char *path_src, char *id, char **key_src, const char *path_dest, char **key_dest, int n);
-int lio_get_multiple_attrs(lio_config_t *lc, creds_t *creds, const char *path, char *id, char **key, void **val, int *v_size, int n);
+//gop_op_generic_t *gop_lio_move_attr(lio_config_t *lc, lio_creds_t *creds, const char *path, char *id, char *key_old, char *key_new);
+//gop_op_generic_t *gop_lio_copy_attr(lio_config_t *lc, lio_creds_t *creds, const char *path_src, char *id, char *key_src, const char *path_dest, char *key_dest);
+gop_op_generic_t *gop_lio_get_multiple_attrs(lio_config_t *lc, lio_creds_t *creds, const char *path, char *id, char **key, void **val, int *v_size, int n);
+gop_op_generic_t *gop_lio_multiple_setattr_op(lio_config_t *lc, lio_creds_t *creds, const char *path, char *id, char **key, void **val, int *v_size, int n);
+//gop_op_generic_t *gop_lio_move_multiple_attrs(lio_config_t *lc, lio_creds_t *creds, const char *char *id, path, char **key_old, char **key_new, int n);
+//gop_op_generic_t *gop_lio_copy_multiple_attrs(lio_config_t *lc, lio_creds_t *creds, const char *path_src, char *id, char **key_src, const char *path_dest, char **key_dest, int n);
+int lio_get_multiple_attrs(lio_config_t *lc, lio_creds_t *creds, const char *path, char *id, char **key, void **val, int *v_size, int n);
 
-os_attr_iter_t *lio_create_attr_iter(lio_config_t *lc, creds_t *creds, const char *path, os_regex_table_t *attr, int v_max);
+os_attr_iter_t *lio_create_attr_iter(lio_config_t *lc, lio_creds_t *creds, const char *path, lio_os_regex_table_t *attr, int v_max);
 void lio_destroy_attr_iter(lio_config_t *lc, os_attr_iter_t *it);
 
-int lio_update_error_counts(lio_config_t *lc, creds_t *creds, char *path, segment_t *seg, int mode);
-int lio_update_exnode_attrs(lio_config_t *lc, creds_t *creds, exnode_t *ex, segment_t *seg, char *fname, segment_errors_t *serr);
+int lio_update_error_counts(lio_config_t *lc, lio_creds_t *creds, char *path, lio_segment_t *seg, int mode);
+int lio_update_exnode_attrs(lio_config_t *lc, lio_creds_t *creds, lio_exnode_t *ex, lio_segment_t *seg, char *fname, lio_segment_errors_t *serr);
 
 
 
 //-----
-op_generic_t *lioc_create_object(lio_config_t *lc, creds_t *creds, char *path, int type, char *ex, char *id);
-op_generic_t *lioc_remove_object(lio_config_t *lc, creds_t *creds, char *path, char *ex_optional, int ftype_optional);
-op_generic_t *lioc_remove_regex_object(lio_config_t *lc, creds_t *creds, os_regex_table_t *rpath, os_regex_table_t *robj, int obj_types, int recurse_depth, int np);
+gop_op_generic_t *lioc_create_object(lio_config_t *lc, lio_creds_t *creds, char *path, int type, char *ex, char *id);
+gop_op_generic_t *lioc_remove_object(lio_config_t *lc, lio_creds_t *creds, char *path, char *ex_optional, int ftype_optional);
+gop_op_generic_t *lioc_remove_regex_object(lio_config_t *lc, lio_creds_t *creds, lio_os_regex_table_t *rpath, lio_os_regex_table_t *robj, int obj_types, int recurse_depth, int np);
 
 
 void lio_set_timestamp(char *id, char **val, int *v_size);
 void lio_get_timestamp(char *val, int *timestamp, char **id);
-int lioc_set_multiple_attrs(lio_config_t *lc, creds_t *creds, char *path, char *id, char **key, void **val, int *v_size, int n);
-int lioc_get_multiple_attrs(lio_config_t *lc, creds_t *creds, char *path, char *id, char **key, void **val, int *v_size, int n_keys);
-int lioc_encode_error_counts(segment_errors_t *serr, char **key, char **val, char *buf, int *v_size, int mode);
-void lioc_get_error_counts(lio_config_t *lc, segment_t *seg, segment_errors_t *serr);
-int lioc_update_error_counts(lio_config_t *lc, creds_t *creds, char *path, segment_t *seg, int mode);
-int lioc_update_exnode_attrs(lio_config_t *lc, creds_t *creds, exnode_t *ex, segment_t *seg, char *fname, segment_errors_t *serr);
-op_generic_t *lioc_remove_object(lio_config_t *lc, creds_t *creds, char *path, char *ex_optional, int ftype_optional);
-op_status_t cp_lio2lio(lio_cp_file_t *cp);
-op_status_t cp_local2lio(lio_cp_file_t *cp);
-op_status_t cp_lio2local(lio_cp_file_t *cp);
+int lioc_set_multiple_attrs(lio_config_t *lc, lio_creds_t *creds, char *path, char *id, char **key, void **val, int *v_size, int n);
+int lioc_get_multiple_attrs(lio_config_t *lc, lio_creds_t *creds, char *path, char *id, char **key, void **val, int *v_size, int n_keys);
+int lioc_encode_error_counts(lio_segment_errors_t *serr, char **key, char **val, char *buf, int *v_size, int mode);
+void lioc_get_error_counts(lio_config_t *lc, lio_segment_t *seg, lio_segment_errors_t *serr);
+int lioc_update_error_counts(lio_config_t *lc, lio_creds_t *creds, char *path, lio_segment_t *seg, int mode);
+int lioc_update_exnode_attrs(lio_config_t *lc, lio_creds_t *creds, lio_exnode_t *ex, lio_segment_t *seg, char *fname, lio_segment_errors_t *serr);
+gop_op_generic_t *lioc_remove_object(lio_config_t *lc, lio_creds_t *creds, char *path, char *ex_optional, int ftype_optional);
+gop_op_status_t cp_lio2lio(lio_cp_file_t *cp);
+gop_op_status_t cp_local2lio(lio_cp_file_t *cp);
+gop_op_status_t cp_lio2local(lio_cp_file_t *cp);
 int lio_cp_create_dir(tbx_list_t *table, lio_path_tuple_t tuple);
 
 void lc_object_remove_unused(int remove_all_unused);

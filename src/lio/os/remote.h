@@ -34,8 +34,8 @@ extern "C" {
 #define OS_TYPE_REMOTE_SERVER "os_remote_server"
 #define OS_TYPE_REMOTE_CLIENT "os_remote_client"
 
-object_service_fn_t *object_service_remote_server_create(service_manager_t *ess, tbx_inip_file_t *fd, char *section);
-object_service_fn_t *object_service_remote_client_create(service_manager_t *ess, tbx_inip_file_t *ifd, char *section);
+lio_object_service_fn_t *object_service_remote_server_create(lio_service_manager_t *ess, tbx_inip_file_t *fd, char *section);
+lio_object_service_fn_t *object_service_remote_client_create(lio_service_manager_t *ess, tbx_inip_file_t *ifd, char *section);
 
 //*** List the various OS commands
 #define OSR_EXISTS_KEY             "os_exists"
@@ -93,49 +93,49 @@ object_service_fn_t *object_service_remote_client_create(service_manager_t *ess,
 #define OSR_ONGOING_ATTR_ITER   2
 #define OSR_ONGOING_FSCK_ITER   3
 
-struct osrs_priv_t {
-    object_service_fn_t *os_child;  //** Actual OS used
+struct lio_osrs_priv_t {
+    lio_object_service_fn_t *os_child;  //** Actual OS used
     apr_thread_mutex_t *lock;
     apr_thread_mutex_t *abort_lock;
     apr_thread_cond_t *cond;
     apr_pool_t *mpool;
     apr_hash_t *active_table;   //** Queryable active table
     tbx_stack_t *active_lru;        //** LRU sorted active table
-    mq_context_t *mqc;          //** Portal for connecting to he remote OS server
-    mq_ongoing_t *ongoing;      //** Ongoing open files or iterators
+    gop_mq_context_t *mqc;          //** Portal for connecting to he remote OS server
+    gop_mq_ongoing_t *ongoing;      //** Ongoing open files or iterators
     apr_hash_t *abort;          //** Abort open handles
     apr_hash_t *spin;           //** Abort spin handles
     char *hostname;             //** Addres to bind to
-    mq_portal_t *server_portal;
-    thread_pool_context_t *tpc;
+    gop_mq_portal_t *server_portal;
+    gop_thread_pool_context_t *tpc;
     int ongoing_interval;       //** Ongoing command check interval
     int shutdown;
     int max_stream;
     int max_active;             //** Max size of the active table.
-    authn_t *authn;
-    creds_t *dummy_creds;       //** Dummy creds. Should be replaced when proper AuthN/AuthZ is added
+    lio_authn_t *authn;
+    lio_creds_t *dummy_creds;       //** Dummy creds. Should be replaced when proper AuthN/AuthZ is added
     char *fname_active;         //** Filename for logging ACTIVE operations.
     char *fname_activity;       //** Filename for logging create/remove/move operations.
 };
 
-struct osrc_priv_t {
-    object_service_fn_t *os_temp;  //** Used only for initial debugging of the client/server
-    object_service_fn_t *os_remote;//** Used only for initial debugging of the client/server
+struct lio_osrc_priv_t {
+    lio_object_service_fn_t *os_temp;  //** Used only for initial debugging of the client/server
+    lio_object_service_fn_t *os_remote;//** Used only for initial debugging of the client/server
     apr_thread_mutex_t *lock;
     apr_thread_cond_t *cond;
-    mq_context_t *mqc;             //** Portal for connecting to he remote OS server
-    mq_ongoing_t *ongoing;         //** Ongoing handle
+    gop_mq_context_t *mqc;             //** Portal for connecting to he remote OS server
+    gop_mq_ongoing_t *ongoing;         //** Ongoing handle
     mq_msg_t *remote_host;         //** Address of the Remote OS server
     char *remote_host_string;      //** Stringified version of Remote OS server
     char *host_id;                 //** Used for forming the open handle id;
     int host_id_len;               //** Length of host id
     int spin_interval;             //** Spin heartbeat interval
     int spin_fail;                 //** Spin fail interval
-    os_authz_t *osaz;
-    authn_t *authn;
+    lio_os_authz_t *osaz;
+    lio_authn_t *authn;
     apr_pool_t *mpool;
     apr_thread_t *heartbeat_thread;
-    thread_pool_context_t *tpc;
+    gop_thread_pool_context_t *tpc;
     int stream_timeout;
     int timeout;
     int heartbeat;

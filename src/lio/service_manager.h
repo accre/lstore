@@ -31,17 +31,17 @@
 extern "C" {
 #endif
 
-struct service_manager_t {
+struct lio_service_manager_t {
     apr_pool_t *pool;
     apr_thread_mutex_t *lock;
     apr_hash_t *table;
 };
 
-service_manager_t *clone_service_manager(service_manager_t *sm);
-service_manager_t *create_service_manager();
-void destroy_service_manager(service_manager_t *sm);
-int add_service(service_manager_t *sm, char *service_section, char *service_name, void *service);
-int remove_service(service_manager_t *sm, char *service_section, char *service_name);
+lio_service_manager_t *clone_service_manager(lio_service_manager_t *sm);
+lio_service_manager_t *create_service_manager();
+void destroy_service_manager(lio_service_manager_t *sm);
+int add_service(lio_service_manager_t *sm, char *service_section, char *service_name, void *service);
+int remove_service(lio_service_manager_t *sm, char *service_section, char *service_name);
 
 #ifdef __cplusplus
 }

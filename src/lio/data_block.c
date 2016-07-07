@@ -41,14 +41,14 @@
 // db_find_key - Scans the stack for the key
 //***********************************************************************
 
-data_block_attr_t *db_find_key(tbx_stack_t *stack, char *key)
+lio_data_block_attr_t *db_find_key(tbx_stack_t *stack, char *key)
 {
-    data_block_attr_t *attr;
+    lio_data_block_attr_t *attr;
 
     if (stack == NULL) return(NULL);
 
     tbx_stack_move_to_top(stack);
-    while ((attr = (data_block_attr_t *)tbx_stack_get_current_data(stack)) != NULL) {
+    while ((attr = (lio_data_block_attr_t *)tbx_stack_get_current_data(stack)) != NULL) {
         if (strcmp(attr->key, key) == 0) {
             return(attr);
         }
@@ -62,7 +62,7 @@ data_block_attr_t *db_find_key(tbx_stack_t *stack, char *key)
 // data_block_auto_warm - Adds the data block to the auto warm list
 //***********************************************************************
 
-void data_block_auto_warm(data_block_t *b)
+void data_block_auto_warm(lio_data_block_t *b)
 {
     b->warm = ds_cap_auto_warm(b->ds, b->cap);
 }
@@ -71,7 +71,7 @@ void data_block_auto_warm(data_block_t *b)
 // data_block_stop_warm - Disables the data block from being warmed
 //***********************************************************************
 
-void data_block_stop_warm(data_block_t *b)
+void data_block_stop_warm(lio_data_block_t *b)
 {
     if (b->warm == NULL) return;
 
@@ -83,15 +83,15 @@ void data_block_stop_warm(data_block_t *b)
 // data_block_set_attr - Sets a data block attribute
 //***********************************************************************
 
-int data_block_set_attr(data_block_t *b, char *key, char *val)
+int data_block_set_attr(lio_data_block_t *b, char *key, char *val)
 {
-    data_block_attr_t *attr;
+    lio_data_block_attr_t *attr;
 
     //** See if the key exists
     attr = db_find_key(b->attr_stack, key);
 
     if (attr == NULL) {  //** See if we need to add the attribute
-        tbx_type_malloc_clear(attr, data_block_attr_t, 1);
+        tbx_type_malloc_clear(attr, lio_data_block_attr_t, 1);
         attr->key = strdup(key);
     }
 
@@ -108,9 +108,9 @@ int data_block_set_attr(data_block_t *b, char *key, char *val)
 // data_block_get_attr - Gets a data block attribute or returns NULL if not found
 //***********************************************************************
 
-char *data_block_get_attr(data_block_t *b, char *key)
+char *data_block_get_attr(lio_data_block_t *b, char *key)
 {
-    data_block_attr_t *attr;
+    lio_data_block_attr_t *attr;
 
     //** See if the key exists
     attr = db_find_key(b->attr_stack, key);
@@ -127,13 +127,13 @@ char *data_block_get_attr(data_block_t *b, char *key)
 //***********************************************************************
 
 
-int data_block_serialize_text(data_block_t *b, exnode_exchange_t *exp)
+int data_block_serialize_text(lio_data_block_t *b, lio_exnode_exchange_t *exp)
 {
     static int bufsize=2048;
     char capsbuf[bufsize];
     char *etext, *ekey;
     int cused, refcount;
-    data_block_attr_t *attr;
+    lio_data_block_attr_t *attr;
 
     cused = 0;
 
@@ -156,7 +156,7 @@ int data_block_serialize_text(data_block_t *b, exnode_exchange_t *exp)
     free(etext);
 
     if (b->attr_stack != NULL) {  //** Deserialze the other attributes
-        while ((attr = (data_block_attr_t *)tbx_stack_pop(b->attr_stack)) != NULL) {
+        while ((attr = (lio_data_block_attr_t *)tbx_stack_pop(b->attr_stack)) != NULL) {
             if (attr->value != NULL) {
                 ekey = tbx_stk_escape_text("=#[]", '\\', attr->key);
                 etext = tbx_stk_escape_text("=#[]", '\\', attr->value);
@@ -174,7 +174,7 @@ int data_block_serialize_text(data_block_t *b, exnode_exchange_t *exp)
     tbx_append_printf(capsbuf, &cused, bufsize, "\n");
 
     //** Merge everything together and return it
-    exnode_exchange_t cexp;
+    lio_exnode_exchange_t cexp;
     cexp.text.text = capsbuf;
     exnode_exchange_append(exp, &cexp);
 
@@ -185,7 +185,7 @@ int data_block_serialize_text(data_block_t *b, exnode_exchange_t *exp)
 // data_block_serialize_proto -Convert the data block to a protocol buffer
 //***********************************************************************
 
-int data_block_serialize_proto(data_block_t *b, exnode_exchange_t *exp)
+int data_block_serialize_proto(lio_data_block_t *b, lio_exnode_exchange_t *exp)
 {
     return(-1);
 }
@@ -194,7 +194,7 @@ int data_block_serialize_proto(data_block_t *b, exnode_exchange_t *exp)
 // data_block_serialize -Convert the data block to a more portable format
 //***********************************************************************
 
-int data_block_serialize(data_block_t *d, exnode_exchange_t *exp)
+int data_block_serialize(lio_data_block_t *d, lio_exnode_exchange_t *exp)
 {
     if (exp->type == EX_TEXT) {
         return(data_block_serialize_text(d, exp));
@@ -209,19 +209,19 @@ int data_block_serialize(data_block_t *d, exnode_exchange_t *exp)
 // data_block_deserialize_text -Read the text based data block
 //***********************************************************************
 
-data_block_t *data_block_deserialize_text(service_manager_t *sm, ex_id_t id, exnode_exchange_t *exp)
+lio_data_block_t *data_block_deserialize_text(lio_service_manager_t *sm, ex_id_t id, lio_exnode_exchange_t *exp)
 {
     int bufsize=1024;
     char capgrp[bufsize];
     char *text, *etext;
     int i;
-    data_block_t *b;
-    data_service_fn_t *ds;
+    lio_data_block_t *b;
+    lio_data_service_fn_t *ds;
     tbx_inip_file_t *cfd;
     tbx_inip_group_t *cg;
     tbx_inip_element_t *ele;
     char *key;
-    data_block_attr_t *attr;
+    lio_data_block_attr_t *attr;
 
     //** Parse the ini text
     cfd = exp->text.fd;
@@ -244,7 +244,7 @@ data_block_t *data_block_deserialize_text(service_manager_t *sm, ex_id_t id, exn
     free(text);
 
     //** Make the space
-    tbx_type_malloc_clear(b, data_block_t, 1);
+    tbx_type_malloc_clear(b, lio_data_block_t, 1);
     b->id = id;
     b->ds = ds;
     b->cap = ds_cap_set_create(b->ds);
@@ -274,7 +274,7 @@ data_block_t *data_block_deserialize_text(service_manager_t *sm, ex_id_t id, exn
         //** Ignore the builtin commands
         if ((strcmp("rid_key", key) != 0) && (strcmp("size", key) != 0) && (strcmp("max_size", key) != 0) && (strcmp("type", key) != 0) &&
                 (strcmp("ref_count", key) != 0) && (strcmp("read_cap", key) != 0) && (strcmp("write_cap", key) != 0) && (strcmp("manage_cap", key) != 0)) {
-            tbx_type_malloc(attr, data_block_attr_t, 1);
+            tbx_type_malloc(attr, lio_data_block_attr_t, 1);
             attr->key = tbx_stk_unescape_text('\\', tbx_inip_ele_get_key(ele));
             attr->value = tbx_stk_unescape_text('\\', tbx_inip_ele_get_value(ele));
             if (b->attr_stack == NULL) b->attr_stack = tbx_stack_new();
@@ -291,7 +291,7 @@ data_block_t *data_block_deserialize_text(service_manager_t *sm, ex_id_t id, exn
 // data_block_deserialize_proto - Read the prot formatted data block
 //***********************************************************************
 
-data_block_t *data_block_deserialize_proto(service_manager_t *sm, ex_id_t id, exnode_exchange_t *exp)
+lio_data_block_t *data_block_deserialize_proto(lio_service_manager_t *sm, ex_id_t id, lio_exnode_exchange_t *exp)
 {
     return(NULL);
 }
@@ -300,7 +300,7 @@ data_block_t *data_block_deserialize_proto(service_manager_t *sm, ex_id_t id, ex
 // data_block_deserialize -Convert from the portable to internal format
 //***********************************************************************
 
-data_block_t *data_block_deserialize(service_manager_t *sm, ex_id_t id, exnode_exchange_t *exp)
+lio_data_block_t *data_block_deserialize(lio_service_manager_t *sm, ex_id_t id, lio_exnode_exchange_t *exp)
 {
     if (exp->type == EX_TEXT) {
         return(data_block_deserialize_text(sm, id, exp));
@@ -315,11 +315,11 @@ data_block_t *data_block_deserialize(service_manager_t *sm, ex_id_t id, exnode_e
 // data_block_create - Creates an empty data block
 //***********************************************************************
 
-data_block_t *data_block_create(data_service_fn_t *ds)
+lio_data_block_t *data_block_create(lio_data_service_fn_t *ds)
 {
-    data_block_t *b;
+    lio_data_block_t *b;
 
-    tbx_type_malloc_clear(b, data_block_t, 1);
+    tbx_type_malloc_clear(b, lio_data_block_t, 1);
 
     b->ds = ds;
     b->cap = ds_cap_set_create(b->ds);
@@ -334,7 +334,7 @@ data_block_t *data_block_create(data_service_fn_t *ds)
 // data_block_destroy - Destroys the data block struct (not the data)
 //***********************************************************************
 
-void data_block_destroy(data_block_t *b)
+void data_block_destroy(lio_data_block_t *b)
 {
     if (b == NULL) return;
 

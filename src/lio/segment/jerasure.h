@@ -32,8 +32,8 @@ extern "C" {
 
 #define SEGMENT_TYPE_JERASURE "jerasure"
 
-segment_t *segment_jerasure_load(void *arg, ex_id_t id, exnode_exchange_t *ex);
-segment_t *segment_jerasure_create(void *arg);
+lio_segment_t *segment_jerasure_load(void *arg, ex_id_t id, lio_exnode_exchange_t *ex);
+lio_segment_t *segment_jerasure_create(void *arg);
 
 #ifdef __cplusplus
 }

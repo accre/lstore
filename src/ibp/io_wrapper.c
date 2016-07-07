@@ -45,7 +45,7 @@ void ibp_io_mode_set(int sync_transfer, int print_progress, int nthreads)
 //  ibp_io_start - Simple wrapper for sync/async to start execution
 //*************************************************************************
 
-void ibp_io_start(opque_t *q)
+void ibp_io_start(gop_opque_t *q)
 {
     if (_sync_transfer == 0) opque_start_execution(q);
 }
@@ -54,10 +54,10 @@ void ibp_io_start(opque_t *q)
 //  ibp_io_waitall - Simple wrapper for sync/async waitall
 //*************************************************************************
 
-int ibp_io_waitall(opque_t *q)
+int ibp_io_waitall(gop_opque_t *q)
 {
     int ibp_err, err, nleft;
-    op_generic_t *op;
+    gop_op_generic_t *op;
 
     log_printf(15, "ibp_io_waitall: sync_transfer=%d\n", _sync_transfer);
     if (_sync_transfer == 1) {
@@ -68,7 +68,7 @@ int ibp_io_waitall(opque_t *q)
             err = (opque_waitall(q) == OP_STATE_SUCCESS) ? 0 : 1;
         } else {
             do {
-                nleft = opque_tasks_left(q);
+                nleft = gop_opque_tasks_left(q);
                 printf("%d ", nleft);
                 do {
                     op = opque_get_next_finished(q);
@@ -80,10 +80,10 @@ int ibp_io_waitall(opque_t *q)
             } while (nleft > 0);
 
             printf(" --\n");
-            err = opque_tasks_failed(q);
+            err = gop_opque_tasks_failed(q);
         }
 
-        log_printf(15, "ibp_io_waitall: err=%d nfailed=%d nleft=%d\n", err, opque_tasks_failed(q), opque_tasks_left(q));
+        log_printf(15, "ibp_io_waitall: err=%d nfailed=%d nleft=%d\n", err, gop_opque_tasks_failed(q), gop_opque_tasks_left(q));
     }
 
     return(err);

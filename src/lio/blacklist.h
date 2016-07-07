@@ -33,12 +33,12 @@
 extern "C" {
 #endif
 
-struct blacklist_ibp_rid_t {
+struct lio_blacklist_ibp_rid_t {
     char *rid;
     apr_time_t recheck_time;
 };
 
-struct blacklist_t {
+struct lio_blacklist_t {
     apr_pool_t *mpool;
     apr_thread_mutex_t *lock;
     apr_hash_t *table;
