@@ -36,7 +36,7 @@ typedef struct lio_segment_errors_t lio_segment_errors_t;
 typedef struct lio_segment_fn_t lio_segment_fn_t;
 typedef struct lio_segment_rw_hints_t lio_segment_rw_hints_t;
 typedef struct lio_segment_t lio_segment_t;
-typedef lio_segment_t *(segment_create_t)(void *arg);
+typedef lio_segment_t *(*lio_segment_create_fn_t)(void *arg);
 typedef struct lio_ex_header_t lio_ex_header_t;
 typedef struct lio_exnode_exchange_t lio_exnode_exchange_t;
 typedef struct lio_lio_exnode_text_t lio_lio_exnode_text_t;

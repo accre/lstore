@@ -1348,7 +1348,7 @@ lio_segment_t *slog_make(lio_service_manager_t *sm, lio_segment_t *table, lio_se
 {
     lio_segment_t *seg;
     lio_seglog_priv_t *s;
-    segment_create_t *screate;
+    lio_segment_create_fn_t *screate;
 
     screate = lio_lookup_service(sm, SEG_SM_CREATE, SEGMENT_TYPE_LOG);
     if (screate == NULL) return(NULL);

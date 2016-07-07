@@ -39,7 +39,7 @@ int main(int argc, char **argv)
     rs_query_t *rq;
     ex_off_t block_size, total_size;
     lio_exnode_t *ex;
-    segment_create_t *screate;
+    lio_segment_create_fn_t *screate;
     char *fname_out = NULL;
     lio_exnode_exchange_t *exp;
     lio_segment_t *seg = NULL;
