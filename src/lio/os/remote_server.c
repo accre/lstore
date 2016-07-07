@@ -1036,7 +1036,7 @@ void osrs_open_object_cb(void *arg, gop_mq_task_t *task)
         gop_mq_get_frame(fhb, (void **)&handle, &handle_len);
         log_printf(5, "handle=%s\n", handle);
         log_printf(5, "handle_len=%d\n", handle_len);
-        oo = gop_mq_ongoing_add(osrs->ongoing, 1, handle, handle_len, (void *)fd, (mq_ongoing_fail_t *)osrs->os_child->close_object, osrs->os_child);
+        oo = gop_mq_ongoing_add(osrs->ongoing, 1, handle, handle_len, (void *)fd, (gop_mq_ongoing_fail_fn_t)osrs->os_child->close_object, osrs->os_child);
 
         n=sizeof(intptr_t);
         log_printf(5, "PTR key=%" PRIdPTR " len=%d\n", oo->key, n);

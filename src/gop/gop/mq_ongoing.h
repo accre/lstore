@@ -35,10 +35,10 @@ typedef struct gop_mq_ongoing_object_t gop_mq_ongoing_object_t;
 typedef struct gop_mq_ongoing_t gop_mq_ongoing_t;
 typedef struct gop_ongoing_hb_t gop_ongoing_hb_t;
 typedef struct gop_ongoing_table_t gop_ongoing_table_t;
-typedef gop_op_generic_t *(mq_ongoing_fail_t)(void *arg, void *handle);
+typedef gop_op_generic_t *(*gop_mq_ongoing_fail_fn_t)(void *arg, void *handle);
 
 // Functions
-GOP_API gop_mq_ongoing_object_t *gop_mq_ongoing_add(gop_mq_ongoing_t *mqon, bool auto_clean, char *id, int id_len, void *handle, mq_ongoing_fail_t *on_fail, void *on_fail_arg);
+GOP_API gop_mq_ongoing_object_t *gop_mq_ongoing_add(gop_mq_ongoing_t *mqon, bool auto_clean, char *id, int id_len, void *handle, gop_mq_ongoing_fail_fn_t on_fail, void *on_fail_arg);
 GOP_API gop_mq_ongoing_t *gop_mq_ongoing_create(gop_mq_context_t *mqc, gop_mq_portal_t *server_portal, int check_interval, int mode);
 GOP_API void gop_mq_ongoing_destroy(gop_mq_ongoing_t *mqon);
 GOP_API void *gop_mq_ongoing_get(gop_mq_ongoing_t *mqon, char *id, int id_len, intptr_t key);
@@ -63,7 +63,7 @@ struct gop_mq_ongoing_object_t {
     bool auto_clean;
     void *handle;
     intptr_t key;
-    mq_ongoing_fail_t *on_fail;
+    gop_mq_ongoing_fail_fn_t on_fail;
     void *on_fail_arg;
 };
 

@@ -286,7 +286,7 @@ fail:
 // gop_mq_ongoing_add - Adds an onging object to the tracking tables
 //***********************************************************************
 
-gop_mq_ongoing_object_t *gop_mq_ongoing_add(gop_mq_ongoing_t *mqon, bool auto_clean, char *id, int id_len, void *handle, mq_ongoing_fail_t *on_fail, void *on_fail_arg)
+gop_mq_ongoing_object_t *gop_mq_ongoing_add(gop_mq_ongoing_t *mqon, bool auto_clean, char *id, int id_len, void *handle, gop_mq_ongoing_fail_fn_t on_fail, void *on_fail_arg)
 {
     gop_mq_ongoing_object_t *ongoing;
     gop_mq_ongoing_host_t *oh;
