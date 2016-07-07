@@ -2,6 +2,7 @@
 tarballs/
 .DS_Store
 doc/_build
+doc/api-autogen.rst
 doc/html
 doc/latex
 doc/xml

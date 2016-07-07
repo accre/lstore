@@ -17,10 +17,10 @@ LStore is a high-performance, fault-tolerant distributed data storage system.
     ibp
     lio
 
+
 Indices and tables
 ==================
 
 * :ref:`genindex`
-* :ref:`modindex`
 * :ref:`search`
-
+* :doc:`LStore API <api-autogen>`
