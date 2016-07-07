@@ -94,14 +94,14 @@ struct gop_mq_socket_context_t {
 };
 
 struct gop_mq_command_t {
-    gop_mq_exec_fn_t *fn;
+    gop_mq_exec_fn_t fn;
     void *cmd;
     int cmd_size;
     void *arg;
 };
 
 struct gop_gop_mq_command_table_t {
-    gop_mq_exec_fn_t *fn_default;
+    gop_mq_exec_fn_t fn_default;
     void *arg_default;
     apr_hash_t *table;
     apr_pool_t *mpool;
@@ -268,10 +268,10 @@ void mq_stats_print(int ll, char *tag, gop_mq_command_stats_t *a);
 int mq_task_set(gop_mq_task_t *task, gop_mq_context_t *ctx, mq_msg_t *msg, gop_op_generic_t *gop,  void *arg, int dt);
 void mq_task_destroy(gop_mq_task_t *task);
 
-gop_mq_command_t *mq_command_new(void *cmd, int cmd_size, void *arg, gop_mq_exec_fn_t *fn);
+gop_mq_command_t *mq_command_new(void *cmd, int cmd_size, void *arg, gop_mq_exec_fn_t fn);
 void mq_command_exec(gop_gop_mq_command_table_t *t, gop_mq_task_t *task, void *key, int klen);
 void gop_mq_command_table_destroy(gop_gop_mq_command_table_t *t);
-gop_gop_mq_command_table_t *gop_mq_command_table_new(void *arg, gop_mq_exec_fn_t *fn_default);
+gop_gop_mq_command_table_t *gop_mq_command_table_new(void *arg, gop_mq_exec_fn_t fn_default);
 
 int mq_task_send(gop_mq_context_t *mqc, gop_mq_task_t *task);
 gop_mq_socket_t *zero_create_socket(gop_mq_socket_context_t *ctx, int stype);
