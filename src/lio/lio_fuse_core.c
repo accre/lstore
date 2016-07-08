@@ -38,6 +38,7 @@
 #include <sys/stat.h>
 #include <sys/statvfs.h>
 #include <tbx/append_printf.h>
+#include <tbx/assert_result.h>
 #include <tbx/iniparse.h>
 #include <tbx/log.h>
 #include <tbx/stack.h>
@@ -225,10 +226,10 @@ lio_fuse_t *lfs_get_context()
     struct fuse_context *ctx;
     ctx = fuse_get_context();
 
-    assert(NULL != ctx);
+   FATAL_UNLESS(NULL != ctx);
 
     lfs = (lio_fuse_t*)ctx->private_data;
-    assert(NULL != lfs);
+   FATAL_UNLESS(NULL != lfs);
 
     return(lfs);
 }

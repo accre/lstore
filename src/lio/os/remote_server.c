@@ -1090,7 +1090,7 @@ void osrs_close_object_cb(void *arg, gop_mq_task_t *task)
 
     fhid = mq_msg_pop(msg);  //** Host handle
     gop_mq_get_frame(fhid, (void **)&fhandle, &hsize);
-    assert(hsize == sizeof(intptr_t));
+   FATAL_UNLESS(hsize == sizeof(intptr_t));
 
     key = *(intptr_t *)fhandle;
     log_printf(5, "PTR key=%" PRIdPTR "\n", key);
@@ -3098,7 +3098,7 @@ lio_object_service_fn_t *object_service_remote_server_create(lio_service_manager
     tbx_type_malloc_clear(osrs, lio_osrs_priv_t, 1);
     os->priv = (void *)osrs;
 
-    osrs->tpc = lio_lookup_service(ess, ESS_RUNNING, ESS_TPC_UNLIMITED); assert(osrs->tpc != NULL);
+    osrs->tpc = lio_lookup_service(ess, ESS_RUNNING, ESS_TPC_UNLIMITED);FATAL_UNLESS(osrs->tpc != NULL);
 
     //** Make the locks and cond variables
     assert_result(apr_pool_create(&(osrs->mpool), NULL), APR_SUCCESS);
@@ -3106,10 +3106,10 @@ lio_object_service_fn_t *object_service_remote_server_create(lio_service_manager
     apr_thread_mutex_create(&(osrs->abort_lock), APR_THREAD_MUTEX_DEFAULT, osrs->mpool);
 
     osrs->abort = apr_hash_make(osrs->mpool);
-    assert(osrs->abort != NULL);
+   FATAL_UNLESS(osrs->abort != NULL);
 
     osrs->spin = apr_hash_make(osrs->mpool);
-    assert(osrs->spin != NULL);
+   FATAL_UNLESS(osrs->spin != NULL);
 
     //** Get the host name we bind to
     osrs->hostname= tbx_inip_get_string(fd, section, "address", NULL);
@@ -3155,7 +3155,7 @@ lio_object_service_fn_t *object_service_remote_server_create(lio_service_manager
 
 
     //** Get the MQC
-    osrs->mqc = lio_lookup_service(ess, ESS_RUNNING, ESS_MQ); assert(osrs->mqc != NULL);
+    osrs->mqc = lio_lookup_service(ess, ESS_RUNNING, ESS_MQ);FATAL_UNLESS(osrs->mqc != NULL);
 
     //** Make the server portal
     osrs->server_portal = gop_mq_portal_create(osrs->mqc, osrs->hostname, MQ_CMODE_SERVER);
@@ -3187,7 +3187,7 @@ lio_object_service_fn_t *object_service_remote_server_create(lio_service_manager
 
     //** Make the ongoing checker
     osrs->ongoing = gop_mq_ongoing_create(osrs->mqc, osrs->server_portal, osrs->ongoing_interval, ONGOING_SERVER);
-    assert(osrs->ongoing != NULL);
+   FATAL_UNLESS(osrs->ongoing != NULL);
 
     //** This is to handle client stream responses
     gop_mq_command_set(ctable, MQS_MORE_DATA_KEY, MQS_MORE_DATA_SIZE, osrs->ongoing, gop_mqs_server_more_cb);

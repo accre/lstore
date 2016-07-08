@@ -17,12 +17,12 @@
 #define _log_module_index 104
 
 #include <apr_errno.h>
-#include <assert.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include "skiplist.h"
+#include "tbx/assert_result.h"
 #include "tbx/log.h"
 #include "tbx/tbx_decl.h"
 #include "tbx/type_malloc.h"
@@ -136,7 +136,7 @@ int tbx_sl_init_full(tbx_sl_t * self,
                         void (*key_free)(tbx_sl_key_t *a),
                         void (*data_free)(tbx_sl_data_t *a))
 {
-    assert(maxlevels > 0);
+   FATAL_UNLESS(maxlevels > 0);
     self->n_keys = 0;
     self->n_ele = 0;
     self->current_max = 0;

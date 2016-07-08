@@ -20,6 +20,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <string.h>
+#include <tbx/assert_result.h>
 #include <tbx/list.h>
 
 #include "ex3/header.h"
@@ -30,7 +31,7 @@
 
 void ex_header_init(lio_ex_header_t *eh)
 {
-    assert(eh != NULL);
+   FATAL_UNLESS(eh != NULL);
     memset(eh, 0, sizeof(lio_ex_header_t));
 }
 

@@ -23,6 +23,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <string.h>
+#include <tbx/assert_result.h>
 #include <tbx/fmttypes.h>
 #include <tbx/list.h>
 #include <tbx/log.h>

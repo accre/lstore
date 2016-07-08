@@ -1,6 +1,7 @@
 #include <apr_errno.h>
 #include <apr_general.h>
 #include <assert.h>
+#include <tbx/assert_result.h>
 #include <tbx/constructor_wrapper.h>
 
 #ifdef ACCRE_CONSTRUCTOR_PREPRAGMA_ARGS
@@ -21,7 +22,7 @@ ACCRE_DEFINE_DESTRUCTOR(ibp_destruct_fn)
 
 static void ibp_construct_fn() {
     apr_status_t ret = apr_initialize();
-    assert(ret == APR_SUCCESS);
+   FATAL_UNLESS(ret == APR_SUCCESS);
 }
 
 static void ibp_destruct_fn() {

@@ -23,6 +23,7 @@
 #include <apr_pools.h>
 #include <apr_thread_mutex.h>
 #include <stdlib.h>
+#include <tbx/assert_result.h>
 #include <tbx/list.h>
 #include <tbx/log.h>
 #include <tbx/pigeon_coop.h>

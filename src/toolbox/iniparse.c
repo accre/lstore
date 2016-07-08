@@ -10,6 +10,7 @@
 #include <string.h>
 #include <unistd.h>
 
+#include "tbx/assert_result.h"
 #include "tbx/fmttypes.h"
 #include "tbx/iniparse.h"
 #include "tbx/log.h"

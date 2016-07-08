@@ -18,25 +18,33 @@
 #ifndef ACCRE_ASSERT_RESULT_H_INCLUDED
 #define ACCRE_ASSERT_RESULT_H_INCLUDED
 
-#include <assert.h>
-
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include <stdlib.h>
+#include <tbx/log.h>
 
 // Preprocessor macros
-#ifndef NDEBUG
-#define assert_result(eval_this, expected_result) assert((eval_this) == expected_result)
-#define assert_result_not(eval_this, result) assert((eval_this) != result)
-#define assert_result_not_null(eval_this) assert((eval_this) != NULL)
-#define ASSERT_ALWAYS(expr) assert(expr)
-#else
-#define assert_result(eval_this, expected_result) (eval_this)
-#define assert_result_not(eval_this, result) (eval_this)
-#define assert_result_not_null(eval_this) (eval_this)
-#define ASSERT_ALWAYS(expr) do { expr } while (0)
-#endif
+#define FATAL_UNLESS(expr)                                      \
+    do {                                                        \
+        if (!(expr)) {                                          \
+            log_printf(-1, "Fatal Error in %s at %s:%d\n",       \
+                            __FUNCTION__, __FILE__, __LINE__);  \
+            exit(EXIT_FAILURE);                                 \
+        }                                                       \
+    } while(0)
 
+#define WARN_UNLESS(expr)                                       \
+    do {                                                        \
+        if ((expr) != 0) {                                      \
+            log_printf(0, "Warning in %s at %s:%d\n",           \
+                            __FUNCTION__, __FILE__, __LINE__);  \
+        }                                                       \
+    } while(0)
+
+#define assert_result(eval_this, expected_result) \
+            FATAL_UNLESS((eval_this) == (expected_result))
+#define assert_result_not(eval_this, result) \
+            FATAL_UNLESS((eval_this) != (result))
+#define assert_result_not_null(eval_this) \
+            FATAL_UNLESS((eval_this) != NULL)
 
 #ifdef __cplusplus
 }

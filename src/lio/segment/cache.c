@@ -3596,7 +3596,7 @@ lio_segment_t *segment_cache_create(void *arg)
 
     s->flush_stack = tbx_stack_new();
     s->tpc_unlimited = lio_lookup_service(es, ESS_RUNNING, ESS_TPC_CACHE);
-    assert(s->tpc_unlimited != NULL);
+   FATAL_UNLESS(s->tpc_unlimited != NULL);
 
     s->pages = tbx_list_create(0, &skiplist_compare_ex_off, NULL, NULL, NULL);
 

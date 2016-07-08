@@ -135,8 +135,8 @@ int main(int argc, char **argv)
     //** Open the files and get their sizes
     fname1 = argv[i];
     fname2 = argv[i+1];
-    fd1 = fopen(fname1, "r"); assert(fd1 != NULL);
-    fd2 = fopen(fname2, "r"); assert(fd2 != NULL);
+    fd1 = fopen(fname1, "r");FATAL_UNLESS(fd1 != NULL);
+    fd2 = fopen(fname2, "r");FATAL_UNLESS(fd2 != NULL);
 
     fseek(fd1, 0, SEEK_END);
     fseek(fd2, 0, SEEK_END);

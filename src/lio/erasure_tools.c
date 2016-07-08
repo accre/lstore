@@ -25,6 +25,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <strings.h>
+#include <tbx/assert_result.h>
 #include <tbx/log.h>
 
 #include "erasure_tools.h"
@@ -373,10 +374,10 @@ int et_encode(lio_erasure_plan_t *plan, const char *fname, long long int foffset
 
     //** allocate the buffer space
     ptr = (char **)malloc(sizeof(char *)*(plan->data_strips + plan->parity_strips));
-    assert(ptr != NULL);
+   FATAL_UNLESS(ptr != NULL);
 
     buffer = (char *)malloc(sizeof(char)*buffer_size);
-    assert(buffer != NULL);
+   FATAL_UNLESS(buffer != NULL);
 
     for (i=0; i < (plan->data_strips+plan->parity_strips); i++) {
         ptr[i] = &(buffer[i*block_size]);
@@ -520,10 +521,10 @@ int et_decode(lio_erasure_plan_t *plan, long long int fsize, const char *fname, 
 
     //** allocate the buffer space
     ptr = (char **)malloc(sizeof(char *)*(plan->data_strips + plan->parity_strips));
-    assert(ptr != NULL);
+   FATAL_UNLESS(ptr != NULL);
 
     buffer = (char *)malloc(sizeof(char)*buffer_size);
-    assert(buffer != NULL);
+   FATAL_UNLESS(buffer != NULL);
 
     for (i=0; i < (plan->data_strips+plan->parity_strips); i++) {
         ptr[i] = &(buffer[i*block_size]);
@@ -612,7 +613,7 @@ lio_erasure_plan_t *et_new_plan(int method, long long int strip_size,
     }
 
     lio_erasure_plan_t *plan = (lio_erasure_plan_t *)malloc(sizeof(lio_erasure_plan_t));
-    assert(plan != NULL);
+   FATAL_UNLESS(plan != NULL);
 
     plan->method = method;
     plan->strip_size = strip_size;

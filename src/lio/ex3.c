@@ -16,7 +16,6 @@
 
 #define _log_module_index 151
 
-#include <assert.h>
 #include <gop/gop.h>
 #include <gop/opque.h>
 #include <gop/tp.h>
@@ -27,6 +26,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <string.h>
+#include <tbx/assert_result.h>
 #include <tbx/append_printf.h>
 #include <tbx/atomic_counter.h>
 #include <tbx/iniparse.h>
@@ -359,7 +359,7 @@ lio_exnode_exchange_t *lio_exnode_exchange_load_file(char *fname)
     int i;
 
     fd = fopen(fname, "r");
-    assert(fd != NULL);
+   FATAL_UNLESS(fd != NULL);
     fseek(fd, 0, SEEK_END);
     i = ftell(fd);
     tbx_type_malloc(text, char, i + 2);

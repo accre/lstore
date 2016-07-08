@@ -1399,7 +1399,7 @@ tryagain:  //** We first try allowing blacklisting to proceed as normal and then
             for (j=0; j<nstripes; j++) {
                 tbv.nbytes = s->data_size;
                 tbx_tbuf_next(sw->buffer, boff, &tbv);
-                assert((tbv.n_iov == 1) && (tbv.nbytes == s->data_size));
+               FATAL_UNLESS((tbv.n_iov == 1) && (tbv.nbytes == s->data_size));
 
                 //** Make the encoding and transfer data structs
                 poff = 0;
@@ -1604,7 +1604,7 @@ tryagain: //** In case blacklisting failed we'll retry with it disabled
             for (j=0; j<nstripes; j++) {
                 tbv.nbytes = s->data_size;
                 tbx_tbuf_next(sw->buffer, boff, &tbv);
-                assert((tbv.n_iov == 1) && (tbv.nbytes == s->data_size));
+               FATAL_UNLESS((tbv.n_iov == 1) && (tbv.nbytes == s->data_size));
 
                 //** Make the encoding and transfer data structs
                 stripe_magic = &(magic[curr_stripe*JE_MAGIC_SIZE]);

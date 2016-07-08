@@ -143,7 +143,7 @@ void pack_write_resized_zlib(tbx_pack_t *pack, unsigned char *buffer, unsigned i
     tbx_pack_zlib_t *p = &(pack->data.zlib);
     int offset;
 
-    assert(bufsize >= (p->bufsize - p->z.avail_out));
+   FATAL_UNLESS(bufsize >= (p->bufsize - p->z.avail_out));
 
     offset = p->bufsize - p->z.avail_out;
     p->z.next_out = &(buffer[offset]);
@@ -350,7 +350,7 @@ void pack_write_resized_raw(tbx_pack_t *pack, unsigned char *buffer, unsigned in
 {
     tbx_pack_raw_t *p = &(pack->data.raw);
 
-    assert(bufsize >= p->bpos);
+   FATAL_UNLESS(bufsize >= p->bpos);
 
     p->buffer = buffer;
     p->bufsize = bufsize;

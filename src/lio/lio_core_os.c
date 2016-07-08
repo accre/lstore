@@ -29,6 +29,7 @@
 #include <string.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <tbx/assert_result.h>
 #include <tbx/fmttypes.h>
 #include <tbx/log.h>
 #include <tbx/skiplist.h>

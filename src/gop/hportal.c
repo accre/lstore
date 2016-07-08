@@ -87,7 +87,7 @@ void modify_hpc_thread_count(gop_portal_context_t *hpc, int n)
     } else if (n == 1) {
         tbx_atomic_inc(hpc->running_threads);
     } else {
-        assert((n == 1) || (n== -1));
+       FATAL_UNLESS((n == 1) || (n== -1));
     }
 
 }
@@ -243,12 +243,12 @@ gop_portal_context_t *gop_hp_context_create(gop_portal_fn_t *imp)
     gop_portal_context_t *hpc;
 
 
-    hpc = (gop_portal_context_t *)malloc(sizeof(gop_portal_context_t)); assert(hpc != NULL);
+    hpc = (gop_portal_context_t *)malloc(sizeof(gop_portal_context_t));FATAL_UNLESS(hpc != NULL);
     memset(hpc, 0, sizeof(gop_portal_context_t));
 
 
     assert_result(apr_pool_create(&(hpc->pool), NULL), APR_SUCCESS);
-    hpc->table = apr_hash_make(hpc->pool); assert(hpc->table != NULL);
+    hpc->table = apr_hash_make(hpc->pool);FATAL_UNLESS(hpc->table != NULL);
 
 
     apr_thread_mutex_create(&(hpc->lock), APR_THREAD_MUTEX_DEFAULT, hpc->pool);
@@ -479,7 +479,7 @@ void compact_hportals(gop_portal_context_t *hpc)
             if (tbx_stack_count(hp->conn_list) != 0) {
                 log_printf(0, "ERROR! DANGER WILL ROBINSON! tbx_stack_count(hp->conn_list)=%d hp=%s\n", tbx_stack_count(hp->conn_list), hp->skey);
                 tbx_log_flush();
-                assert(tbx_stack_count(hp->conn_list) == 0);
+               FATAL_UNLESS(tbx_stack_count(hp->conn_list) == 0);
             } else {
                 hportal_unlock(hp);
                 apr_hash_set(hpc->table, hp->skey, APR_HASH_KEY_STRING, NULL);  //** This removes the key

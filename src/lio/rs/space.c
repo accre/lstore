@@ -25,6 +25,7 @@
 #include <string.h>
 #include <string.h>
 #include <stdint.h>
+#include <tbx/assert_result.h>
 #include <tbx/iniparse.h>
 #include <tbx/string_token.h>
 
@@ -44,7 +45,7 @@ lio_rs_space_t rs_space(char *config)
 
     if (config == NULL) return(space);
 
-    fd = tbx_inip_string_read(config); assert(fd);
+    fd = tbx_inip_string_read(config);FATAL_UNLESS(fd);
 
     grp = tbx_inip_group_first(fd);
     while (grp != NULL) {

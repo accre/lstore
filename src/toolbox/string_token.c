@@ -16,7 +16,6 @@
 
 #define _log_module_index 112
 
-#include <assert.h>
 #include <math.h>
 #include <stdio.h>
 #include <stdint.h>
@@ -24,6 +23,7 @@
 #include <string.h>
 #include <strings.h>
 
+#include "tbx/assert_result.h"
 #include "tbx/fmttypes.h"
 #include "tbx/string_token.h"
 #include "tbx/type_malloc.h"
@@ -205,17 +205,17 @@ char *tbx_stk_escape_text(char *special_chars, char escape_char, char *data)
     j = 0;
     for (i=0; i<nchar; i++) {
         if ((data[i] == escape_char) || (index(special_chars, data[i]) != NULL)) {
-            assert(j < output_len);
+           FATAL_UNLESS(j < output_len);
             str[j] = escape_char;
             j++;
         }
 
-        assert(j < output_len);
+       FATAL_UNLESS(j < output_len);
         str[j] = data[i];
         j++;
     }
 
-    assert(j < output_len);
+   FATAL_UNLESS(j < output_len);
     str[j] = '\0';
 
     return(str);

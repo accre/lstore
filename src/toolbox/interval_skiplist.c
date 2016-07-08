@@ -16,13 +16,13 @@
 
 #define _log_module_index 105
 
-#include <assert.h>
 #include <string.h>
 #include <stdbool.h>
 #include <stdlib.h>
 
 #include "interval_skiplist.h"
 #include "skiplist.h"
+#include "tbx/assert_result.h"
 #include "tbx/log.h"
 #include "tbx/type_malloc.h"
 
@@ -34,7 +34,7 @@
 void append_isl_data(tbx_isl_data_t **list, tbx_sl_data_t *data)
 {
     tbx_isl_data_t *d = (tbx_isl_data_t *)malloc(sizeof(tbx_isl_data_t));
-    assert(d != NULL);
+   FATAL_UNLESS(d != NULL);
 
 //log_printf(15, "append_isl_data: list=%p data=%p\n", *list, data);
     d->data = data;
@@ -160,7 +160,7 @@ int isl_node_is_empty(tbx_isl_node_t *isln, int level)
 int add_isl_node_level(tbx_isl_node_t *isln, int level)
 {
     tbx_type_malloc(isln->edge, tbx_isl_data_t *, level + 1);
-    assert(isln->edge != NULL);
+   FATAL_UNLESS(isln->edge != NULL);
     memset(isln->edge, 0, sizeof(tbx_isl_data_t *)*(level+1));
 
     return(0);
@@ -173,7 +173,7 @@ int add_isl_node_level(tbx_isl_node_t *isln, int level)
 tbx_isl_node_t *create_isl_node()
 {
     tbx_isl_node_t *isln = (tbx_isl_node_t *)malloc(sizeof(tbx_isl_node_t));
-    assert(isln != NULL);
+   FATAL_UNLESS(isln != NULL);
 
     memset(isln, 0, sizeof(tbx_isl_node_t));
 
@@ -221,7 +221,7 @@ tbx_isl_t *tbx_isl_new_full(int maxlevels, double p,
         void (*data_free)(tbx_sl_data_t *a))
 {
     tbx_isl_t *isl = (tbx_isl_t *)malloc(sizeof(tbx_isl_t));
-    assert(isl != NULL);
+   FATAL_UNLESS(isl != NULL);
 
     isl->n_intervals = 0;
     isl->data_free = (data_free == NULL) ? tbx_sl_free_no_data : data_free;

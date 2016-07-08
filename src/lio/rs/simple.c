@@ -886,7 +886,7 @@ int _rs_simple_load(lio_resource_service_fn_t *res, char *fname)
     log_printf(5, "START fname=%s n_rids=%d\n", fname, rss->n_rids);
 
     //** Open the file
-    kf = tbx_inip_file_read(fname); assert(kf);
+    kf = tbx_inip_file_read(fname);FATAL_UNLESS(kf);
 
     //** Create the new RS list
     rss->rid_table = tbx_list_create(0, &tbx_list_string_compare, NULL, NULL, rs_simple_rid_free);

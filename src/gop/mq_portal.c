@@ -53,7 +53,7 @@ void *mqtp_failure(apr_thread_t *th, void *arg);
 
 char *gop_mq_id2str(char *id, int id_len, char *str, int str_len)
 {
-    assert(str_len > 2*id_len+1);
+   FATAL_UNLESS(str_len > 2*id_len+1);
     apr_base64_encode(str, id, id_len);
 
     return(str);
@@ -171,7 +171,7 @@ gop_gop_mq_command_table_t *gop_mq_command_table_new(void *arg, gop_mq_exec_fn_t
     apr_pool_create(&(t->mpool), NULL);
     assert_result(apr_thread_mutex_create(&(t->lock), APR_THREAD_MUTEX_DEFAULT,t->mpool),
                   APR_SUCCESS);
-    t->table = apr_hash_make(t->mpool); assert(t->table != NULL);
+    t->table = apr_hash_make(t->mpool);FATAL_UNLESS(t->table != NULL);
 
     return(t);
 }
@@ -770,8 +770,8 @@ int mqc_heartbeat_cleanup(gop_mq_conn_t *c)
         tbx_log_flush();
         log_printf(1, "Failed task tn->task=%p tn->task->gop=%p\n", tn->task, tn->task->gop);
         tbx_log_flush();
-        assert(tn->task);
-        assert(tn->task->gop);
+       FATAL_UNLESS(tn->task);
+       FATAL_UNLESS(tn->task->gop);
         thread_pool_direct(c->pc->tp, mqtp_failure, tn->task);
 
         //** Free the container. The gop_mq_task_t is handled by the response
@@ -862,8 +862,8 @@ int mqc_heartbeat(gop_mq_conn_t *c, int npoll)
                     tbx_log_flush();
                     log_printf(6, "Failed task tn->task=%p tn->task->gop=%p\n", tn->task, tn->task->gop);
                     tbx_log_flush();
-                    assert(tn->task);
-                    assert(tn->task->gop);
+                   FATAL_UNLESS(tn->task);
+                   FATAL_UNLESS(tn->task->gop);
                     thread_pool_direct(c->pc->tp, mqtp_failure, tn->task);
 
                     //** Free the container. The gop_mq_task_t is handled by the response
@@ -918,8 +918,8 @@ next:
             tbx_log_flush();
             log_printf(6, "Failed task tn->task=%p tn->task->gop=%p gid=%d\n", tn->task, tn->task->gop, gop_id(tn->task->gop));
             tbx_log_flush();
-            assert(tn->task);
-            assert(tn->task->gop);
+           FATAL_UNLESS(tn->task);
+           FATAL_UNLESS(tn->task->gop);
             thread_pool_direct(c->pc->tp, mqtp_failure, tn->task);
 
             //** Free the container. The gop_mq_task_t is handled by the response

@@ -556,7 +556,7 @@ lio_resource_service_fn_t *rs_remote_server_create(void *arg, tbx_inip_file_t *f
     free(stype);
 
     //** Get the MQC
-    rsrs->mqc = lio_lookup_service(ess, ESS_RUNNING, ESS_MQ); assert(rsrs->mqc != NULL);
+    rsrs->mqc = lio_lookup_service(ess, ESS_RUNNING, ESS_MQ);FATAL_UNLESS(rsrs->mqc != NULL);
 
     //** Make the server portal
     rsrs->server_portal = gop_mq_portal_create(rsrs->mqc, rsrs->hostname, MQ_CMODE_SERVER);

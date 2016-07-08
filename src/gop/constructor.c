@@ -1,6 +1,6 @@
 #include <apr_errno.h>
 #include <apr_general.h>
-#include <assert.h>
+#include <tbx/assert_result.h>
 #include <tbx/constructor_wrapper.h>
 
 #include "gop/opque.h"
@@ -23,7 +23,7 @@ ACCRE_DEFINE_DESTRUCTOR(gop_destruct_fn)
 
 static void gop_construct_fn() {
     apr_status_t ret = apr_initialize();
-    assert(ret == APR_SUCCESS);
+   FATAL_UNLESS(ret == APR_SUCCESS);
     gop_init_opque_system();
 }
 

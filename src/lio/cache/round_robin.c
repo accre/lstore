@@ -21,6 +21,7 @@
 
 #include <assert.h>
 #include <stdlib.h>
+#include <tbx/assert_result.h>
 #include <tbx/atomic_counter.h>
 #include <tbx/iniparse.h>
 #include <tbx/log.h>
@@ -127,8 +128,8 @@ lio_cache_t *round_robin_cache_load(void *arg, tbx_inip_file_t *fd, char *grp, d
 
     tbx_type_malloc(cp->child, lio_cache_t *, cp->n_cache);
     for (i=0; i<cp->n_cache; i++) {
-        cache_create = lio_lookup_service(arg, CACHE_LOAD_AVAILABLE, ctype); assert(cache_create != NULL);
-         cp->child[i] = (*cache_create)(arg, fd, child_section, da, timeout); assert(cp->child[i] != NULL);
+        cache_create = lio_lookup_service(arg, CACHE_LOAD_AVAILABLE, ctype);FATAL_UNLESS(cache_create != NULL);
+         cp->child[i] = (*cache_create)(arg, fd, child_section, da, timeout);FATAL_UNLESS(cp->child[i] != NULL);
     }
 
     if (child_section) free(child_section);

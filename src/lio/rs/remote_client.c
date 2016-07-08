@@ -499,7 +499,7 @@ lio_resource_service_fn_t *rs_remote_client_create(void *arg, tbx_inip_file_t *f
     rsrc->check_interval = tbx_inip_get_integer(fd, section, "check_interval", 3600);
 
     //** Get the MQC
-    rsrc->mqc = lio_lookup_service(ess, ESS_RUNNING, ESS_MQ); assert(rsrc->mqc != NULL);
+    rsrc->mqc = lio_lookup_service(ess, ESS_RUNNING, ESS_MQ);FATAL_UNLESS(rsrc->mqc != NULL);
 
     //** Check if we are running the remote RS locally.  This means we are doing testing
     stype = tbx_inip_get_string(fd, section, "rrs_test", NULL);

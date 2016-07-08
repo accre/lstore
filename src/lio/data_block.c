@@ -24,6 +24,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <tbx/append_printf.h>
+#include <tbx/assert_result.h>
 #include <tbx/atomic_counter.h>
 #include <tbx/iniparse.h>
 #include <tbx/log.h>

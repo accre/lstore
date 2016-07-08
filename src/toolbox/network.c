@@ -665,7 +665,7 @@ tbx_network_t *network_init()
     tbx_network_t *net;
 
     //**** Allocate space for the data structures ***
-    net = (tbx_network_t *)malloc(sizeof(tbx_network_t)); assert(net != NULL);
+    net = (tbx_network_t *)malloc(sizeof(tbx_network_t));FATAL_UNLESS(net != NULL);
 
 
     net->used_ports = 0;

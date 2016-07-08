@@ -22,6 +22,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <tbx/assert_result.h>
 #include <tbx/log.h>
 #include <time.h>
 
@@ -357,7 +358,7 @@ void ibp_cap_getstatus(ibp_capstatus_t *cs, int *readcount, int *writecount,
 void ridlist_init(ibp_ridlist_t *rlist, int size)
 {
     rlist->rl = (ibp_rid_t *)malloc(sizeof(ibp_rid_t)*size);
-    assert(rlist->rl != NULL);
+   FATAL_UNLESS(rlist->rl != NULL);
 
     rlist->n = size;
 }

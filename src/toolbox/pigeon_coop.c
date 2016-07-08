@@ -19,12 +19,12 @@
 
 #define _log_module_index 113
 
-#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 
 #include "pigeon_coop.h"
 #include "pigeon_hole.h"
+#include "tbx/assert_result.h"
 #include "tbx/log.h"
 #include "tbx/visibility.h"
 #include "tbx/type_malloc.h"
@@ -197,9 +197,9 @@ int tbx_pch_release(tbx_pc_t *pc, tbx_pch_t *pch)
             //** Adjust the array sizes
             pc->nshelves = n;
             pc->ph_shelf = (tbx_ph_t **)realloc(pc->ph_shelf, pc->nshelves*sizeof(tbx_ph_t *));
-            assert(pc->ph_shelf != NULL);
+           FATAL_UNLESS(pc->ph_shelf != NULL);
             pc->data_shelf = realloc(pc->data_shelf, pc->nshelves*sizeof(char *));
-            assert(pc->data_shelf != NULL);
+           FATAL_UNLESS(pc->data_shelf != NULL);
 
             log_printf(10, "release_pigeon_coop_hole: pc=%s after free shelves.  nshelves=%d nused=%d\n", pc->name, pc->nshelves, pc->nused);
             tbx_log_flush();
@@ -245,9 +245,9 @@ tbx_pch_t tbx_pch_reserve(tbx_pc_t *pc)
     //** No free slots so have to grow the coop by adding a shelf **
     pc->nshelves++;
     pc->ph_shelf = (tbx_ph_t **)realloc(pc->ph_shelf, pc->nshelves*sizeof(tbx_ph_t *));
-    assert(pc->ph_shelf != NULL);
+   FATAL_UNLESS(pc->ph_shelf != NULL);
     pc->data_shelf = realloc(pc->data_shelf, pc->nshelves*sizeof(char *));
-    assert(pc->data_shelf != NULL);
+   FATAL_UNLESS(pc->data_shelf != NULL);
 
     i = pc->nshelves-1;
     pc->ph_shelf[i] = new_pigeon_hole(pc->name, pc->shelf_size);
@@ -305,7 +305,7 @@ TBX_API tbx_pc_t *tbx_pc_new(const char *name, int size, int item_size,
     int i;
     int default_shelves = 1;
     tbx_pc_t *pc = (tbx_pc_t *)malloc(sizeof(tbx_pc_t));
-    assert(pc != NULL);
+   FATAL_UNLESS(pc != NULL);
 
     pc->name = name;
     pc->new = new_fn;
@@ -317,9 +317,9 @@ TBX_API tbx_pc_t *tbx_pc_new(const char *name, int size, int item_size,
     pc->nused = 0;
     pc->nshelves = default_shelves;
     tbx_type_malloc(pc->ph_shelf, tbx_ph_t *, default_shelves);
-    assert(pc->ph_shelf != NULL);
+   FATAL_UNLESS(pc->ph_shelf != NULL);
     tbx_type_malloc(pc->data_shelf, char *, default_shelves);
-    assert(pc->data_shelf != NULL);
+   FATAL_UNLESS(pc->data_shelf != NULL);
 
     for (i=0; i<default_shelves; i++) {
         pc->ph_shelf[i] = new_pigeon_hole(pc->name, size);

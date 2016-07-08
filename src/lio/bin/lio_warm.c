@@ -19,7 +19,6 @@
 #include <apr.h>
 #include <apr_hash.h>
 #include <apr_pools.h>
-#include <assert.h>
 #include <gop/gop.h>
 #include <gop/opque.h>
 #include <gop/tp.h>
@@ -28,6 +27,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <tbx/assert_result.h>
 #include <tbx/iniparse.h>
 #include <tbx/list.h>
 #include <tbx/log.h>
@@ -448,7 +448,7 @@ int main(int argc, char **argv)
 
     //** Get the RID config which is used in the summary
     config = rs_get_rid_config(lio_gc->rs);
-    ifd = tbx_inip_string_read(config); assert(ifd);
+    ifd = tbx_inip_string_read(config);FATAL_UNLESS(ifd);
 
     //** Convert it for easier lookup
     ig = tbx_inip_group_first(ifd);

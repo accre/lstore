@@ -22,6 +22,7 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <tbx/assert_result.h>
 #include <tbx/type_malloc.h>
 
 #include "authn.h"

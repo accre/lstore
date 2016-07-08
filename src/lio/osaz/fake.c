@@ -21,6 +21,7 @@
 #define _log_module_index 186
 
 #include <stdlib.h>
+#include <tbx/assert_result.h>
 #include <tbx/iniparse.h>
 #include <tbx/type_malloc.h>
 

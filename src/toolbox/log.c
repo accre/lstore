@@ -59,10 +59,17 @@ void _log_init()
 {
     int n;
 
-//   _log_level = 0;
     tbx_atomic_startup();
-    assert_result(apr_pool_create(&_log_mpool, NULL), APR_SUCCESS);
-    assert_result(apr_thread_mutex_create(&_log_lock, APR_THREAD_MUTEX_DEFAULT, _log_mpool), APR_SUCCESS);
+    if (apr_pool_create(&_log_mpool, NULL) != APR_SUCCESS) {
+        fprintf(stderr, "Could not make log memory pool\n");
+        exit(1);
+    }
+    if (apr_thread_mutex_create(&_log_lock,
+                                APR_THREAD_MUTEX_DEFAULT,
+                                _log_mpool) != APR_SUCCESS) {
+        fprintf(stderr, "Could not make log mutex\n");
+        exit(1);
+    }
     for (n=0; n<_mlog_size; n++) {
         _mlog_table[n]=20;
         _mlog_file_table[n] = "";

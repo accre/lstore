@@ -280,7 +280,7 @@ gop_mq_socket_t *zero_create_trace_router_socket(gop_mq_socket_context_t *ctx)
 
     s->type = MQ_TRACE_ROUTER;
     s->arg = zsocket_new((zctx_t *)ctx->arg, ZMQ_ROUTER);
-    assert(s->arg);
+   FATAL_UNLESS(s->arg);
     zsocket_set_linger(s->arg, 0);
     zsocket_set_sndhwm(s->arg, 100000);
     zsocket_set_rcvhwm(s->arg, 100000);
@@ -396,7 +396,7 @@ gop_mq_socket_context_t *zero_socket_context_new()
     tbx_type_malloc_clear(ctx, gop_mq_socket_context_t, 1);
 
     ctx->arg = zctx_new();
-    assert(ctx->arg != NULL);
+   FATAL_UNLESS(ctx->arg != NULL);
     zctx_set_linger(ctx->arg, 0);
     ctx->create_socket = zero_create_socket;
     ctx->destroy = zero_socket_context_destroy;

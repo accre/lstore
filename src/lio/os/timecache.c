@@ -2234,7 +2234,7 @@ lio_object_service_fn_t *object_service_timecache_create(lio_service_manager_t *
     ostc->cache_root = new_ostcdb_object(strdup("/"), OS_OBJECT_DIR_FLAG, 0, ostc->mpool);
 
     //** Get the thread pool to use
-    ostc->tpc = lio_lookup_service(ess, ESS_RUNNING, ESS_TPC_UNLIMITED); assert(ostc->tpc != NULL);
+    ostc->tpc = lio_lookup_service(ess, ESS_RUNNING, ESS_TPC_UNLIMITED);FATAL_UNLESS(ostc->tpc != NULL);
 
     //** Set up the fn ptrs
     os->type = OS_TYPE_TIMECACHE;

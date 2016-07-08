@@ -24,6 +24,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <strings.h>
+#include <tbx/assert_result.h>
 #include <tbx/log.h>
 #include <tbx/string_token.h>
 #include <tbx/transfer_buffer.h>
@@ -94,7 +95,7 @@ int main(int argc, char **argv)
     start_index++;
 
     fd = fopen(fname, "r");
-    assert(fd != NULL);
+   FATAL_UNLESS(fd != NULL);
     fgets(ppbuf, sizeof(ppbuf), fd);
     if ((p = index(ppbuf, '\n')) != NULL) *p = 0;  //** Remove the \n if needed
     n_rcap = tbx_stk_string_get_integer(ppbuf);

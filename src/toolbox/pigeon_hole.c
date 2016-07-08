@@ -19,12 +19,12 @@
 
 #define _log_module_index 114
 
-#include <assert.h>
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
 
 #include "pigeon_hole.h"
+#include "tbx/assert_result.h"
 #include "tbx/log.h"
 
 //***************************************************************************
@@ -192,10 +192,10 @@ tbx_ph_t *new_pigeon_hole(const char *name, int size)
 {
     tbx_ph_t *ph = (tbx_ph_t *)malloc(sizeof(tbx_ph_t));
     memset((void *)ph, 0, sizeof(tbx_ph_t));
-    assert(ph != NULL);
+   FATAL_UNLESS(ph != NULL);
 
     ph->hole = (char *)malloc(size);
-    assert(ph->hole != NULL);
+   FATAL_UNLESS(ph->hole != NULL);
 
     memset(ph->hole, 0, size);
     ph->name = name;

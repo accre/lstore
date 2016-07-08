@@ -220,7 +220,7 @@ void gop_mq_ongoing_host_inc(gop_mq_ongoing_t *on, mq_msg_t *remote_host, char *
     }
     if (table == NULL) { //** New host so add it
         tbx_type_malloc_clear(table, gop_ongoing_table_t, 1);
-        table->table = apr_hash_make(on->mpool); assert(table->table != NULL);
+        table->table = apr_hash_make(on->mpool);FATAL_UNLESS(table->table != NULL);
         table->remote_host = gop_mq_msg_new();
         gop_mq_msg_append_msg(table->remote_host, remote_host, MQF_MSG_AUTO_FREE);
         table->remote_host_hash = hash;
@@ -676,7 +676,7 @@ gop_mq_ongoing_t *gop_mq_ongoing_create(gop_mq_context_t *mqc, gop_mq_portal_t *
 
     if (mode & ONGOING_SERVER) {
         mqon->id_table = apr_hash_make(mqon->mpool);
-        assert(mqon->id_table != NULL);
+       FATAL_UNLESS(mqon->id_table != NULL);
 
         ctable = gop_mq_portal_command_table(server_portal);
         gop_mq_command_set(ctable, ONGOING_KEY, ONGOING_SIZE, mqon, mq_ongoing_cb);
@@ -685,7 +685,7 @@ gop_mq_ongoing_t *gop_mq_ongoing_create(gop_mq_context_t *mqc, gop_mq_portal_t *
 
     if (mode & ONGOING_CLIENT) {
         mqon->table = apr_hash_make(mqon->mpool);
-        assert(mqon->table != NULL);
+       FATAL_UNLESS(mqon->table != NULL);
 
         tbx_thread_create_assert(&(mqon->ongoing_heartbeat_thread), NULL, ongoing_heartbeat_thread, (void *)mqon, mqon->mpool);
     }

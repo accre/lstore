@@ -17,7 +17,6 @@
 #define _log_module_index 168
 
 #include <apr_time.h>
-#include <assert.h>
 #include <gop/gop.h>
 #include <gop/opque.h>
 #include <gop/types.h>
@@ -25,6 +24,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <tbx/assert_result.h>
 #include <tbx/log.h>
 #include <tbx/transfer_buffer.h>
 #include <tbx/type_malloc.h>

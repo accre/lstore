@@ -23,6 +23,7 @@
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
+#include <tbx/assert_result.h>
 #include <tbx/iniparse.h>
 #include <tbx/log.h>
 #include <tbx/string_token.h>
@@ -120,14 +121,14 @@ lio_trace_t *trace_load(lio_service_manager_t *exs, lio_exnode_t *tex, data_attr
     n_ops = tbx_inip_get_integer(tfd, "trace", "n_ops", -1);
     trace_fname = tbx_inip_get_string(tfd, "trace", "trace", "");
 
-    assert(n_files > 0);
-    assert(n_ops > 0);
-    assert(strlen(trace_fname) > 0);
+   FATAL_UNLESS(n_files > 0);
+   FATAL_UNLESS(n_ops > 0);
+   FATAL_UNLESS(strlen(trace_fname) > 0);
 
     fd = fopen(trace_fname, "r");
     if (fd == NULL) {
         log_printf(0, "trace_load:  Cannot load data file: %s\n", trace_fname);
-        assert(fd != NULL);
+       FATAL_UNLESS(fd != NULL);
     }
 
     tbx_type_malloc_clear(trace, lio_trace_t, 1);

@@ -107,7 +107,7 @@ void *ds_ibp_cap_auto_warm(lio_data_service_fn_t *arg, data_cap_set_t *dcs)
     log_printf(15, "Adding to auto warm cap: %s\n", cs->manageCap);
 
     //** Make the new cap
-    w = ibp_capset_new(); assert(w != NULL);
+    w = ibp_capset_new();FATAL_UNLESS(w != NULL);
     if (cs->readCap) w->readCap = strdup(cs->readCap);
     if (cs->writeCap) w->writeCap = strdup(cs->writeCap);
     if (cs->manageCap) w->manageCap = strdup(cs->manageCap);

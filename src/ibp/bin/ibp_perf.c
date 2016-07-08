@@ -23,7 +23,6 @@
 #define _log_module_index 139
 
 #include <apr_time.h>
-#include <assert.h>
 #include <gop/gop.h>
 #include <gop/opque.h>
 #include <gop/types.h>
@@ -34,6 +33,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <string.h>
+#include <tbx/assert_result.h>
 #include <tbx/chksum.h>
 #include <tbx/fmttypes.h>
 #include <tbx/log.h>
@@ -791,7 +791,7 @@ int main(int argc, char **argv)
                 fd_out = stdout;
                 fd_special = 1;
             } else {
-                fd_out = fopen(out_fname, "w"); assert(fd_out != NULL);
+                fd_out = fopen(out_fname, "w");FATAL_UNLESS(fd_out != NULL);
             }
 // FIXME trim
 #if 0

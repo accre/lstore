@@ -24,6 +24,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <tbx/assert_result.h>
 #include <tbx/dns_cache.h>
 #include <tbx/log.h>
 #include <tbx/network.h>

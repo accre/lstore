@@ -24,7 +24,6 @@
 #include <apr_pools.h>
 #include <apr_thread_cond.h>
 #include <apr_thread_mutex.h>
-#include <assert.h>
 #include <gop/gop.h>
 #include <gop/mq_helpers.h>
 #include <gop/mq_ongoing.h>
@@ -37,6 +36,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <string.h>
+#include <tbx/assert_result.h>
 #include <tbx/atomic_counter.h>
 #include <tbx/iniparse.h>
 #include <tbx/log.h>
@@ -2473,7 +2473,7 @@ lio_object_service_fn_t *object_service_remote_client_create(lio_service_manager
     if (str != NULL) {  //** Running in test/temp
         log_printf(0, "NOTE: Running in debug mode by loading Remote server locally!\n");
         osrc->os_remote = object_service_remote_server_create(ess, fd, str);
-        assert(osrc->os_remote != NULL);
+       FATAL_UNLESS(osrc->os_remote != NULL);
         osrc->os_temp = ((lio_osrs_priv_t *)(osrc->os_remote->priv))->os_child;
         free(str);
     } else {
@@ -2508,13 +2508,13 @@ lio_object_service_fn_t *object_service_remote_client_create(lio_service_manager
     log_printf(1, "My host_id=%s\n", osrc->host_id);
 
     //** Get the MQC
-    osrc->mqc = lio_lookup_service(ess, ESS_RUNNING, ESS_MQ); assert(osrc->mqc != NULL);
+    osrc->mqc = lio_lookup_service(ess, ESS_RUNNING, ESS_MQ);FATAL_UNLESS(osrc->mqc != NULL);
 
     //** Get the Global ongoing handle
-    osrc->ongoing = lio_lookup_service(ess, ESS_RUNNING, ESS_ONGOING_CLIENT); assert(osrc->ongoing != NULL);
+    osrc->ongoing = lio_lookup_service(ess, ESS_RUNNING, ESS_ONGOING_CLIENT);FATAL_UNLESS(osrc->ongoing != NULL);
 
     //** Get the thread pool to use
-    osrc->tpc = lio_lookup_service(ess, ESS_RUNNING, ESS_TPC_UNLIMITED); assert(osrc->tpc != NULL);
+    osrc->tpc = lio_lookup_service(ess, ESS_RUNNING, ESS_TPC_UNLIMITED);FATAL_UNLESS(osrc->tpc != NULL);
 
     //** Set up the fn ptrs
     os->type = OS_TYPE_REMOTE_CLIENT;

@@ -21,6 +21,7 @@
 #include <apr_thread_proc.h>
 #include <stdio.h>
 #include <string.h>
+#include <tbx/assert_result.h>
 #include <tbx/atomic_counter.h>
 #include <tbx/log.h>
 #include <tbx/network.h>

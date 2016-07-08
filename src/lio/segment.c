@@ -31,6 +31,7 @@
 #include <stdio.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <tbx/assert_result.h>
 #include <tbx/iniparse.h>
 #include <tbx/log.h>
 #include <tbx/transfer_buffer.h>

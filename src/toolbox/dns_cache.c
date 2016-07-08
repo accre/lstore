@@ -69,7 +69,7 @@ void wipe_entries(DNS_cache_t *cache)
     if (cache->mpool != NULL) apr_pool_destroy(cache->mpool);
 
     assert_result(apr_pool_create(&(cache->mpool), NULL), APR_SUCCESS);
-    cache->table = apr_hash_make(cache->mpool); assert(cache->table != NULL);
+    cache->table = apr_hash_make(cache->mpool);FATAL_UNLESS(cache->table != NULL);
 
     cache->restart_time = apr_time_now() + apr_time_make(600, 0);
 }
@@ -171,7 +171,7 @@ int tbx_dnsc_startup_sized(int size)
     if (_cache != NULL) return 0;
 
     _cache = (DNS_cache_t *)malloc(sizeof(DNS_cache_t));
-    assert(_cache != NULL);
+   FATAL_UNLESS(_cache != NULL);
 
     _cache->size = size;
     _cache->mpool = NULL;

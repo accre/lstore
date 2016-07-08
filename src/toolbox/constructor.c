@@ -1,6 +1,6 @@
 #include <apr_errno.h>
 #include <apr_general.h>
-#include <assert.h>
+#include <tbx/assert_result.h>
 
 #include "tbx/constructor_wrapper.h"
 
@@ -22,7 +22,7 @@ ACCRE_DEFINE_DESTRUCTOR(tbx_destruct_fn)
 
 static void tbx_construct_fn() {
     apr_status_t ret = apr_initialize();
-    assert(ret == APR_SUCCESS);
+   FATAL_UNLESS(ret == APR_SUCCESS);
 }
 
 static void tbx_destruct_fn() {

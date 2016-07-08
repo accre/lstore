@@ -29,6 +29,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <tbx/assert_result.h>
 #include <tbx/atomic_counter.h>
 #include <tbx/list.h>
 #include <tbx/log.h>

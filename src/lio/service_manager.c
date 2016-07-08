@@ -23,6 +23,7 @@
 #include <apr.h>
 #include <apr_strings.h>
 #include <stdlib.h>
+#include <tbx/assert_result.h>
 #include <tbx/log.h>
 #include <tbx/type_malloc.h>
 

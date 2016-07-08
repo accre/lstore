@@ -22,6 +22,7 @@
 #include <gop/types.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <tbx/assert_result.h>
 #include <tbx/list.h>
 #include <tbx/log.h>
 #include <tbx/type_malloc.h>

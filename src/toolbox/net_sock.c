@@ -25,7 +25,6 @@
 #include <apr_poll.h>
 #include <apr_portable.h>
 #include <apr_time.h>
-#include <assert.h>
 #include <limits.h>
 #include <poll.h>
 #include <string.h>
@@ -37,6 +36,7 @@
 
 #include "net_sock.h"
 #include "network.h"
+#include "tbx/assert_result.h"
 #include "tbx/fmttypes.h"
 #include "tbx/log.h"
 #include "transfer_buffer.h"
@@ -506,7 +506,7 @@ net_sock_t *sock_accept(net_sock_t *nsock)
     tbx_net_sock_t *psock = (tbx_net_sock_t *)nsock;
 
     tbx_net_sock_t *sock = (tbx_net_sock_t *)malloc(sizeof(tbx_net_sock_t));
-    assert(sock != NULL);
+   FATAL_UNLESS(sock != NULL);
     memset(sock, 0, sizeof(tbx_net_sock_t));
 
     if (apr_pool_create(&(sock->mpool), NULL) != APR_SUCCESS) {
@@ -626,7 +626,7 @@ void tbx_ns_sock_config(tbx_ns_t *ns, int tcpsize)
 
     ns->sock_type = NS_TYPE_SOCK;
     tbx_net_sock_t *sock = (tbx_net_sock_t *)malloc(sizeof(tbx_net_sock_t));
-    assert(sock != NULL);
+   FATAL_UNLESS(sock != NULL);
     memset(sock, 0, sizeof(tbx_net_sock_t));
     ns->sock = (tbx_net_sock_t *)sock;
 //  assert_result_not(apr_pool_create(&(sock->mpool), NULL), APR_SUCCESS);
@@ -634,7 +634,7 @@ void tbx_ns_sock_config(tbx_ns_t *ns, int tcpsize)
     if (err != APR_SUCCESS) {
         log_printf(0, "ns_config_sock:  apr_pool_crete error = %d\n", err);
         tbx_log_flush();
-        assert(err == APR_SUCCESS);
+       FATAL_UNLESS(err == APR_SUCCESS);
     }
 
 //**QWERT
