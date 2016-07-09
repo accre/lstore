@@ -76,4 +76,8 @@ static inline bool tbx_ref_put(tbx_ref_t *ref, tbx_ref_release_fn_t cleanup) {
     }
 }
 
+// Precompiler Macros
+#define container_of(ptr, type, member) \
+  ((type *) ((char *) (ptr) - offsetof(type, member)))
+
 #endif

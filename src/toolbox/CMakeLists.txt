@@ -35,14 +35,36 @@ set(TOOL_OBJS
 
 set(LSTORE_PROJECT_OBJS ${TOOL_OBJS} ${NETWORK_OBJS})
 set(LSTORE_PROJECT_INCLUDES
-                tbx/apr_wrapper.h tbx/constructor_wrapper.h
-                tbx/fmttypes.h tbx/interval_skiplist.h tbx/list.h
-                tbx/network.h tbx/pigeon_hole.h tbx/stack.h tbx/net_sock.h
-                tbx/pigeon_coop.h tbx/skiplist.h toolbox_config.h tbx/random.h
-                tbx/string_token.h tbx/type_malloc.h tbx/transfer_buffer.h tbx/packer.h
-                tbx/append_printf.h tbx/chksum.h tbx/varint.h tbx/atomic_counter.h tbx/dns_cache.h
-                tbx/iniparse.h tbx/log.h tbx/assert_result.h tbx/visibility.h
-                tbx/tbx_decl.h)
+    tbx/append_printf.h
+    tbx/apr_wrapper.h
+    tbx/assert_result.h
+    tbx/atomic_counter.h
+    tbx/chksum.h
+    tbx/constructor_wrapper.h
+    tbx/dns_cache.h
+    tbx/fmttypes.h
+    tbx/iniparse.h
+    tbx/interval_skiplist.h
+    tbx/list.h
+    tbx/log.h
+    tbx/net_sock.h
+    tbx/network.h
+    tbx/object.h
+    tbx/packer.h
+    tbx/pigeon_coop.h
+    tbx/pigeon_hole.h
+    tbx/random.h
+    tbx/skiplist.h
+    tbx/stack.h
+    tbx/string_token.h
+    tbx/tbx_decl.h
+    tbx/transfer_buffer.h
+    tbx/type_malloc.h
+    tbx/varint.h
+    tbx/visibility.h
+    toolbox_config.h
+)
+
 set(LSTORE_PROJECT_INCLUDES_NAMESPACE tbx)
 set(LSTORE_PROJECT_EXECUTABLES)
 set(LSTORE_LIBS ${APR_LIBRARY}
