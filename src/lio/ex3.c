@@ -224,11 +224,11 @@ gop_op_status_t lio_exnode_clone_func(void *arg, int gid)
 
         if (gop_completed_successfully(gop) != OP_STATE_SUCCESS) {
             nfailed++;
-            segment_destroy(segptr[1]);
+            tbx_obj_put(&segptr[1]->obj);
         } else {
             if (did == segment_id(segptr[0])) ex->default_seg = segptr[1];
             tbx_list_insert(ex->view, &segment_id(segptr[1]), segptr[1]);
-            tbx_atomic_inc(segptr[1]->ref_count);
+            tbx_obj_get(&segptr[1]->obj);
         }
 
         gop_free(gop, OP_DESTROY);
@@ -456,7 +456,7 @@ int lio_exnode_deserialize_text(lio_exnode_t *ex, lio_exnode_exchange_t *exp, li
             log_printf(15, "exnode_load_text: Loading view segment " XIDT "\n", id);
             seg = load_segment(ess, id, exp);
             if (seg != NULL) {
-                tbx_atomic_inc(seg->ref_count);
+                tbx_obj_get(&seg->obj);
                 tbx_list_insert(ex->view, &segment_id(seg), seg);
             } else {
                 log_printf(0, "Bad segment!  sid=" XIDT "\n", id);
@@ -588,9 +588,9 @@ void lio_exnode_destroy(lio_exnode_t *ex)
     //** Remove the views
     it = tbx_list_iter_search(ex->view, (tbx_sl_key_t *)NULL, 0);
     while (tbx_list_next(&it, (tbx_sl_key_t *)&id, (tbx_sl_data_t *)&seg) == 0) {
-        tbx_atomic_dec(seg->ref_count);
-        log_printf(15, "lio_exnode_destroy: seg->id=" XIDT " ref_count=%d\n", segment_id(seg), seg->ref_count);
-        segment_destroy(seg);
+        if (tbx_obj_put(&seg->obj)) {
+            log_printf(15, "lio_exnode_destroy: seg->id=" XIDT "\n", segment_id(seg));
+        }
         tbx_list_next(&it, (tbx_sl_key_t *)&id, (tbx_sl_data_t *)&seg);
     }
 

@@ -59,6 +59,7 @@
 
 #define XOT_MAX (LONG_MAX-2)
 
+const lio_segment_vtable_t lio_cacheseg_vtable;
 typedef struct {
     lio_segment_t *seg;
     data_attr_t *da;
@@ -3168,7 +3169,7 @@ gop_op_status_t segcache_clone_func(void *arg, int id)
     status = (gop_waitall(cop->gop) == OP_STATE_SUCCESS) ? gop_success_status : gop_failure_status;
     gop_free(cop->gop, OP_DESTROY);
 
-    tbx_atomic_inc(ds->child_seg->ref_count);
+    tbx_obj_get(&ds->child_seg->obj);
     return(status);
 }
 
@@ -3212,7 +3213,7 @@ gop_op_generic_t *segcache_clone(lio_segment_t *seg, data_attr_t *da, lio_segmen
     tbx_type_malloc(cop, cache_clone_t, 1);
     cop->sseg = seg;
     cop->dseg = clone;
-    if (use_existing == 1) tbx_atomic_dec(sd->child_seg->ref_count);
+    if (use_existing == 1) tbx_obj_put(&sd->child_seg->obj);
     cop->gop = segment_clone(ss->child_seg, da, &(sd->child_seg), mode, arg, timeout);
 
     log_printf(5, "child_clone gid=%d\n", gop_id(cop->gop));
@@ -3285,7 +3286,8 @@ int segcache_serialize_text(lio_segment_t *seg, lio_exnode_exchange_t *exp)
         free(etext);
     }
     tbx_append_printf(segbuf, &sused, bufsize, "type=%s\n", SEGMENT_TYPE_CACHE);
-    tbx_append_printf(segbuf, &sused, bufsize, "ref_count=%d\n", seg->ref_count);
+    // FIXME
+    //tbx_append_printf(segbuf, &sused, bufsize, "ref_count=%d\n", seg->ref_count);
 
     //** Basic size info
     tbx_append_printf(segbuf, &sused, bufsize, "used_size=" XOT "\n", s->total_size);
@@ -3388,7 +3390,7 @@ int segcache_deserialize_text(lio_segment_t *seg, ex_id_t myid, lio_exnode_excha
     seg->header.type = SEGMENT_TYPE_CACHE;
     seg->header.name = tbx_inip_get_string(fd, seggrp, "name", "");
 
-    tbx_atomic_inc(s->child_seg->ref_count);
+    tbx_obj_get(&s->child_seg->obj);
 
     //** Tweak the page size
     s->page_size = segment_block_size(s->child_seg);
@@ -3469,16 +3471,16 @@ int segcache_deserialize(lio_segment_t *seg, ex_id_t id, lio_exnode_exchange_t *
 // segcache_destroy - Destroys the cache segment
 //***********************************************************************
 
-void segcache_destroy(lio_segment_t *seg)
+void segcache_destroy(tbx_ref_t *ref)
 {
+    tbx_obj_t *obj = container_of(ref, tbx_obj_t, refcount);
+    lio_segment_t *seg = container_of(obj, lio_segment_t, obj);
     lio_cache_lio_segment_t *s = (lio_cache_lio_segment_t *)seg->priv;
     gop_op_generic_t *gop;
     int i;
 
     //** Check if it's still in use
-    log_printf(2, "segcache_destroy: seg->id=" XIDT " ref_count=%d sptr=%p\n", segment_id(seg), seg->ref_count, seg);
-
-    if (seg->ref_count > 0) return;
+    log_printf(2, "segcache_destroy: seg->id=" XIDT " sptr=%p\n", segment_id(seg), seg);
 
     CACHE_PRINT;
 
@@ -3545,8 +3547,7 @@ void segcache_destroy(lio_segment_t *seg)
 
     //** Destroy the child segment as well
     if (s->child_seg != NULL) {
-        tbx_atomic_dec(s->child_seg->ref_count);
-        segment_destroy(s->child_seg);
+        tbx_obj_put(&s->child_seg->obj);
     }
 
     //** and finally the misc stuff
@@ -3587,7 +3588,7 @@ lio_segment_t *segment_cache_create(void *arg)
     //** Make the space
     tbx_type_malloc_clear(seg, lio_segment_t, 1);
     tbx_type_malloc_clear(s, lio_cache_lio_segment_t, 1);
-
+    tbx_obj_init(&seg->obj, (tbx_vtable_t *) &lio_cacheseg_vtable);
     assert_result(apr_pool_create(&(seg->mpool), NULL), APR_SUCCESS);
     apr_thread_mutex_create(&(seg->lock), APR_THREAD_MUTEX_DEFAULT, seg->mpool);
     apr_thread_cond_create(&(seg->cond), seg->mpool);
@@ -3596,7 +3597,7 @@ lio_segment_t *segment_cache_create(void *arg)
 
     s->flush_stack = tbx_stack_new();
     s->tpc_unlimited = lio_lookup_service(es, ESS_RUNNING, ESS_TPC_CACHE);
-   FATAL_UNLESS(s->tpc_unlimited != NULL);
+    FATAL_UNLESS(s->tpc_unlimited != NULL);
 
     s->pages = tbx_list_create(0, &skiplist_compare_ex_off, NULL, NULL, NULL);
 
@@ -3611,7 +3612,6 @@ lio_segment_t *segment_cache_create(void *arg)
     log_printf(2, "CACHE-PTR seg=" XIDT " s->c=%p\n", segment_id(seg), s->c);
 
     generate_ex_id(&(seg->header.id));
-    tbx_atomic_set(seg->ref_count, 0);
     seg->header.type = SEGMENT_TYPE_CACHE;
 
     snprintf(qname, sizeof(qname), XIDT HP_HOSTPORT_SEPARATOR "1" HP_HOSTPORT_SEPARATOR "0" HP_HOSTPORT_SEPARATOR "0", seg->header.id);
@@ -3619,20 +3619,6 @@ lio_segment_t *segment_cache_create(void *arg)
 
     seg->ess = es;
     seg->priv = s;
-    seg->fn.read = cache_read;
-    seg->fn.write = cache_write;
-    seg->fn.inspect = segcache_inspect;
-    seg->fn.truncate = seglio_cache_truncate;
-    seg->fn.remove = segcache_remove;
-    seg->fn.flush = cache_flush_range;
-    seg->fn.clone = segcache_clone;
-    seg->fn.signature = segcache_signature;
-    seg->fn.size = segcache_size;
-    seg->fn.block_size = segcache_block_size;
-    seg->fn.serialize = segcache_serialize;
-    seg->fn.deserialize = segcache_deserialize;
-    seg->fn.destroy = segcache_destroy;
-
     if (s->c != NULL) { //** If no cache backend skip this  only used for temporary deseril/serial
         cache_lock(s->c);
         CACHE_PRINT;
@@ -3655,9 +3641,26 @@ lio_segment_t *segment_cache_load(void *arg, ex_id_t id, lio_exnode_exchange_t *
 {
     lio_segment_t *seg = segment_cache_create(arg);
     if (segment_deserialize(seg, id, ex) != 0) {
-        segment_destroy(seg);
+        tbx_obj_put(&seg->obj);
         seg = NULL;
     }
     return(seg);
 }
+
+const lio_segment_vtable_t lio_cacheseg_vtable = {
+        .base.name = "segment_cache",
+        .base.free_fn = segcache_destroy, 
+        .read = cache_read,
+        .write = cache_write,
+        .inspect = segcache_inspect,
+        .truncate = seglio_cache_truncate,
+        .remove = segcache_remove,
+        .flush = cache_flush_range,
+        .clone = segcache_clone,
+        .signature = segcache_signature,
+        .size = segcache_size,
+        .block_size = segcache_block_size,
+        .serialize = segcache_serialize,
+        .deserialize = segcache_deserialize,
+};
 

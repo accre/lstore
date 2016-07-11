@@ -66,6 +66,9 @@
 
 #define JE_MAGIC_SIZE 4
 
+// Forward declaration
+const lio_segment_vtable_t lio_jeraseseg_vtable;
+
 typedef struct {
     lio_segment_t *child_seg;
     lio_erasure_plan_t *plan;
@@ -1068,14 +1071,13 @@ gop_op_generic_t *segjerase_inspect(lio_segment_t *seg, data_attr_t *da, tbx_log
 gop_op_status_t segjerase_clone_func(void *arg, int id)
 {
     segjerase_clone_t *cop = (segjerase_clone_t *)arg;
-//  lio_cache_lio_segment_t *ss = (lio_cache_lio_segment_t *)cop->sseg->priv;
     segjerase_priv_t *ds = (segjerase_priv_t *)cop->dseg->priv;
     gop_op_status_t status;
 
     status = (gop_waitall(cop->gop) == OP_STATE_SUCCESS) ? gop_success_status : gop_failure_status;
     gop_free(cop->gop, OP_DESTROY);
 
-    tbx_atomic_inc(ds->child_seg->ref_count);
+    tbx_obj_get(&ds->child_seg->obj);
     return(status);
 }
 
@@ -1111,12 +1113,11 @@ gop_op_generic_t *segjerase_clone(lio_segment_t *seg, data_attr_t *da, lio_segme
 
     if (mode == CLONE_STRUCTURE) sd->magic_cksum = 1;  //** If only cloning the structure we always enble storing a cksum for the magic
 
-    int cref = tbx_atomic_get(sd->child_seg->ref_count);
-    log_printf(15, "use_existing=%d sseg=" XIDT " dseg=" XIDT " cref=%d\n", use_existing, segment_id(seg), segment_id(clone), cref);
+    log_printf(15, "use_existing=%d sseg=" XIDT " dseg=" XIDT "\n", use_existing, segment_id(seg), segment_id(clone));
     if (use_existing == 1) {
         sd->child_seg = child;
         sd->plan = cplan;
-        tbx_atomic_dec(child->ref_count);
+        tbx_obj_put(&child->obj);
     } else {   //** Need to contstruct a plan
         sd->child_seg = NULL;
 
@@ -1906,7 +1907,6 @@ int segjerase_serialize_text(lio_segment_t *seg, lio_exnode_exchange_t *exp)
         free(etext);
     }
     tbx_append_printf(segbuf, &sused, bufsize, "type=%s\n", SEGMENT_TYPE_JERASURE);
-    tbx_append_printf(segbuf, &sused, bufsize, "ref_count=%d\n", seg->ref_count);
 
     //** And the params
     tbx_append_printf(segbuf, &sused, bufsize, "segment=" XIDT "\n", segment_id(s->child_seg));
@@ -1992,7 +1992,7 @@ int segjerase_deserialize_text(lio_segment_t *seg, ex_id_t id, lio_exnode_exchan
         return(-2);
     }
 
-    tbx_atomic_inc(s->child_seg->ref_count);
+    tbx_obj_put(&s->child_seg->obj);
 
     //** Load the params
     s->write_errors = tbx_inip_get_integer(fd, seggrp, "write_errors", 0);
@@ -2077,19 +2077,19 @@ int segjerase_deserialize(lio_segment_t *seg, ex_id_t id, lio_exnode_exchange_t 
 // segjerasue_destroy - Destroys a Jerasure segment struct (not the data)
 //***********************************************************************
 
-void segjerase_destroy(lio_segment_t *seg)
+void segjerase_destroy(tbx_ref_t *ref)
 {
+    tbx_obj_t *obj = container_of(ref, tbx_obj_t, refcount);
+    lio_segment_t *seg = container_of(obj, lio_segment_t, obj);
+
     segjerase_priv_t *s = (segjerase_priv_t *)seg->priv;
 
     //** Check if it's still in use
-    log_printf(15, "seg->id=" XIDT " ref_count=%d\n", segment_id(seg), seg->ref_count);
-
-    if (seg->ref_count > 0) return;
+    log_printf(15, "seg->id=" XIDT "\n", segment_id(seg));
 
     //** Destroy the child segment as well
     if (s->child_seg != NULL) {
-        tbx_atomic_dec(s->child_seg->ref_count);
-        segment_destroy(s->child_seg);
+        tbx_obj_put(&s->child_seg->obj);
     }
 
     if (s->plan != NULL) et_destroy_plan(s->plan);
@@ -2125,7 +2125,7 @@ lio_segment_t *segment_jerasure_create(void *arg)
     seg->priv = s;
 
     generate_ex_id(&(seg->header.id));
-    tbx_atomic_set(seg->ref_count, 0);
+    tbx_obj_init(&seg->obj, (tbx_vtable_t *) &lio_jeraseseg_vtable);
     seg->header.type = SEGMENT_TYPE_JERASURE;
     assert_result(apr_pool_create(&(seg->mpool), NULL), APR_SUCCESS);
     apr_thread_mutex_create(&(seg->lock), APR_THREAD_MUTEX_DEFAULT, seg->mpool);
@@ -2143,20 +2143,6 @@ lio_segment_t *segment_jerasure_create(void *arg)
     //** Also snag whether we're blacklisting
     s->blacklist = lio_lookup_service(es, ESS_RUNNING, "blacklist");
 
-    seg->fn.read = segjerase_read;
-    seg->fn.write = segjerase_write;
-    seg->fn.inspect = segjerase_inspect;
-    seg->fn.truncate = segjerase_truncate;
-    seg->fn.remove = segjerase_remove;
-    seg->fn.flush = segjerase_flush;
-    seg->fn.clone = segjerase_clone;
-    seg->fn.signature = segjerase_signature;
-    seg->fn.size = segjerase_size;
-    seg->fn.block_size = segjerase_block_size;
-    seg->fn.serialize = segjerase_serialize;
-    seg->fn.deserialize = segjerase_deserialize;
-    seg->fn.destroy = segjerase_destroy;
-
     return(seg);
 }
 
@@ -2170,9 +2156,26 @@ lio_segment_t *segment_jerasure_load(void *arg, ex_id_t id, lio_exnode_exchange_
 {
     lio_segment_t *seg = segment_jerasure_create(arg);
     if (segment_deserialize(seg, id, ex) != 0) {
-        segment_destroy(seg);
+        tbx_obj_put(&seg->obj);
         seg = NULL;
     }
     return(seg);
 }
+
+const lio_segment_vtable_t lio_jeraseseg_vtable = {
+    .base.name = "segment_jerasure",
+    .base.free_fn = segjerase_destroy,
+    .read = segjerase_read,
+    .write = segjerase_write,
+    .inspect = segjerase_inspect,
+    .truncate = segjerase_truncate,
+    .remove = segjerase_remove,
+    .flush = segjerase_flush,
+    .clone = segjerase_clone,
+    .signature = segjerase_signature,
+    .size = segjerase_size,
+    .block_size = segjerase_block_size,
+    .serialize = segjerase_serialize,
+    .deserialize = segjerase_deserialize,
+};
 

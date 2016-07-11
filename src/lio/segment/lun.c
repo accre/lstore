@@ -64,6 +64,9 @@
 #include "segment/lun.h"
 #include "service_manager.h"
 
+// Forward declaration
+const lio_segment_vtable_t lio_seglun_vtable;
+
 typedef struct {
     lio_data_block_t *data;    //** Data block
     ex_off_t cap_offset;   //** Starting location to use data in the cap
@@ -1412,7 +1415,7 @@ int seglun_row_decompose_test()
     }
     free(block);
     free(b);
-    segment_destroy(seg);
+    tbx_obj_put(&seg->obj);
 
     log_printf(0, " Total error count=%d\n", cerr);
     if (cerr == 0) log_printf(0, "PASSED!\n");
@@ -2592,7 +2595,6 @@ int seglun_serialize_text_try(lio_segment_t *seg, char *segbuf, int bufsize, lio
         free(etext);
     }
     tbx_append_printf(segbuf, &sused, bufsize, "type=%s\n", SEGMENT_TYPE_LUN);
-    tbx_append_printf(segbuf, &sused, bufsize, "ref_count=%d\n", seg->ref_count);
 
     //** default resource query
     if (s->rsq != NULL) {
@@ -2817,8 +2819,10 @@ int seglun_deserialize(lio_segment_t *seg, ex_id_t id, lio_exnode_exchange_t *ex
 // seglun_destroy - Destroys a linear segment struct (not the data)
 //***********************************************************************
 
-void seglun_destroy(lio_segment_t *seg)
+void seglun_destroy(tbx_ref_t *ref)
 {
+    tbx_obj_t *obj = container_of(ref, tbx_obj_t, refcount);
+    lio_segment_t *seg = container_of(obj, lio_segment_t, obj);
     int i, j, n;
     tbx_isl_iter_t it;
     seglun_row_t **b_list;
@@ -2826,9 +2830,7 @@ void seglun_destroy(lio_segment_t *seg)
     lio_seglun_priv_t *s = (lio_seglun_priv_t *)seg->priv;
 
     //** Check if it's still in use
-    log_printf(15, "seglun_destroy: seg->id=" XIDT " ref_count=%d\n", segment_id(seg), seg->ref_count);
-
-    if (seg->ref_count > 0) return;
+    log_printf(15, "seglun_destroy: seg->id=" XIDT "\n", segment_id(seg));
 
     //** Disable notification about mapping changes
     rs_unregister_mapping_updates(s->rs, &(s->notify));
@@ -2907,7 +2909,7 @@ lio_segment_t *segment_lun_create(void *arg)
     s->grow_count = 0;
 
     generate_ex_id(&(seg->header.id));
-    tbx_atomic_set(seg->ref_count, 0);
+    tbx_obj_init(&seg->obj, (tbx_vtable_t *) &lio_seglun_vtable);
     seg->header.type = SEGMENT_TYPE_LUN;
 
     assert_result(apr_pool_create(&(seg->mpool), NULL), APR_SUCCESS);
@@ -2926,20 +2928,6 @@ lio_segment_t *segment_lun_create(void *arg)
     s->notify.map_version = -1;  //** This should trigger a remap on the first R/W op.
     rs_register_mapping_updates(s->rs, &(s->notify));
 
-    seg->fn.read = seglun_read;
-    seg->fn.write = seglun_write;
-    seg->fn.inspect = seglun_inspect;
-    seg->fn.truncate = seglun_truncate;
-    seg->fn.remove = seglun_remove;
-    seg->fn.flush = seglun_flush;
-    seg->fn.clone = seglun_clone;
-    seg->fn.signature = seglun_signature;
-    seg->fn.size = seglun_size;
-    seg->fn.block_size = seglun_block_size;
-    seg->fn.serialize = seglun_serialize;
-    seg->fn.deserialize = seglun_deserialize;
-    seg->fn.destroy = seglun_destroy;
-
     return(seg);
 }
 
@@ -2951,8 +2939,26 @@ lio_segment_t *segment_lun_load(void *arg, ex_id_t id, lio_exnode_exchange_t *ex
 {
     lio_segment_t *seg = segment_lun_create(arg);
     if (segment_deserialize(seg, id, ex) != 0) {
-        segment_destroy(seg);
+        tbx_obj_put(&seg->obj);
         seg = NULL;
     }
     return(seg);
 }
+
+const lio_segment_vtable_t lio_seglun_vtable = {
+    .base.name = "seglun_vtable",
+    .base.free_fn = seglun_destroy,
+    .read = seglun_read,
+    .write = seglun_write,
+    .inspect = seglun_inspect,
+    .truncate = seglun_truncate,
+    .remove = seglun_remove,
+    .flush = seglun_flush,
+    .clone = seglun_clone,
+    .signature = seglun_signature,
+    .size = seglun_size,
+    .block_size = seglun_block_size,
+    .serialize = seglun_serialize,
+    .deserialize = seglun_deserialize,
+};
+

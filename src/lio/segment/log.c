@@ -48,6 +48,9 @@
 #include "ex3/system.h"
 #include "segment/log.h"
 
+// Forward declaration
+const lio_segment_vtable_t lio_seglog_vtable;
+
 typedef struct {
     lio_segment_t *seg;
     ex_tbx_iovec_t rex;
@@ -815,9 +818,9 @@ gop_op_status_t seglog_clone_func(void *arg, int id)
 
     //** Flag them as being used
     if (slc->trunc == 0) {
-        tbx_atomic_inc(sd->table_seg->ref_count);
-        tbx_atomic_inc(sd->data_seg->ref_count);
-        tbx_atomic_inc(sd->base_seg->ref_count);
+        tbx_obj_get(&sd->table_seg->obj);
+        tbx_obj_get(&sd->data_seg->obj);
+        tbx_obj_get(&sd->base_seg->obj);
     }
 
     //** Clean up
@@ -1100,8 +1103,6 @@ int seglog_serialize_text(lio_segment_t *seg, lio_exnode_exchange_t *exp)
         free(etext);
     }
     tbx_append_printf(segbuf, &sused, bufsize, "type=%s\n", SEGMENT_TYPE_LOG);
-    tbx_append_printf(segbuf, &sused, bufsize, "ref_count=%d\n", seg->ref_count);
-
 
     //** And the children segments
     tbx_append_printf(segbuf, &sused, bufsize, "log=" XIDT "\n", segment_id(s->table_seg));
@@ -1179,19 +1180,19 @@ int seglog_deserialize_text(lio_segment_t *seg, ex_id_t id, lio_exnode_exchange_
     if (id == 0) return (-1);
     s->table_seg = load_segment(seg->ess, id, exp);
     if (s->table_seg == NULL) return(-2);
-    tbx_atomic_inc(s->table_seg->ref_count);
+    tbx_obj_get(&s->table_seg->obj);
 
     id = tbx_inip_get_integer(fd, seggrp, "data", 0);
     if (id == 0) return (-1);
     s->data_seg = load_segment(seg->ess, id, exp);
     if (s->data_seg == NULL) return(-2);
-    tbx_atomic_inc(s->data_seg->ref_count);
+    tbx_obj_get(&s->data_seg->obj);
 
     id = tbx_inip_get_integer(fd, seggrp, "base", 0);
     if (id == 0) return (-1);
     s->base_seg = load_segment(seg->ess, id, exp);
     if (s->base_seg == NULL) return(-2);
-    tbx_atomic_inc(s->base_seg->ref_count);
+    tbx_obj_get(&s->base_seg->obj);
 
     //** Load the log table which will also set the size
     _slog_load(seg);
@@ -1230,30 +1231,27 @@ int seglog_deserialize(lio_segment_t *seg, ex_id_t id, lio_exnode_exchange_t *ex
 // seglog_destroy - Destroys a llog segment struct (not the data)
 //***********************************************************************
 
-void seglog_destroy(lio_segment_t *seg)
+void seglog_destroy(tbx_ref_t *ref)
 {
+    tbx_obj_t *obj = container_of(ref, tbx_obj_t, refcount);
+    lio_segment_t *seg = container_of(obj, lio_segment_t, obj);
     int i, n;
     tbx_isl_iter_t it;
     lio_slog_range_t **r_list;
     lio_seglog_priv_t *s = (lio_seglog_priv_t *)seg->priv;
 
     //** Check if it's still in use
-    log_printf(15, "seglog_destroy: seg->id=" XIDT " ref_count=%d\n", segment_id(seg), seg->ref_count);
-
-    if (seg->ref_count > 0) return;
+    log_printf(15, "seglog_destroy: seg->id=" XIDT "\n", segment_id(seg));
 
     //** Destroy the child segments
     if (s->table_seg != NULL) {
-        tbx_atomic_dec(s->table_seg->ref_count);
-        segment_destroy(s->table_seg);
+        tbx_obj_put(&s->table_seg->obj);
     }
     if (s->data_seg != NULL) {
-        tbx_atomic_dec(s->data_seg->ref_count);
-        segment_destroy(s->data_seg);
+        tbx_obj_put(&s->data_seg->obj);
     }
     if (s->base_seg != NULL) {
-        tbx_atomic_dec(s->base_seg->ref_count);
-        segment_destroy(s->base_seg);
+        tbx_obj_put(&s->base_seg->obj);
     }
 
     //** Now free the mapping table
@@ -1297,7 +1295,7 @@ lio_segment_t *segment_log_create(void *arg)
     s->file_size = 0;
 
     generate_ex_id(&(seg->header.id));
-    tbx_atomic_set(seg->ref_count, 0);
+    tbx_obj_init(&seg->obj, (tbx_vtable_t *) &lio_seglog_vtable);
     seg->header.type = SEGMENT_TYPE_LOG;
 
     assert_result(apr_pool_create(&(seg->mpool), NULL), APR_SUCCESS);
@@ -1307,20 +1305,6 @@ lio_segment_t *segment_log_create(void *arg)
     seg->ess = es;
     s->tpc = lio_lookup_service(es, ESS_RUNNING, ESS_TPC_UNLIMITED);
     s->ds = lio_lookup_service(es, ESS_RUNNING, ESS_DS);
-
-    seg->fn.read = seglog_read;
-    seg->fn.write = seglog_write;
-    seg->fn.inspect = seglog_inspect;
-    seg->fn.truncate = seglog_truncate;
-    seg->fn.remove = seglog_remove;
-    seg->fn.flush = seglog_flush;
-    seg->fn.clone = seglog_clone;
-    seg->fn.signature = seglog_signature;
-    seg->fn.size = seglog_size;
-    seg->fn.block_size = seglog_block_size;
-    seg->fn.serialize = seglog_serialize;
-    seg->fn.deserialize = seglog_deserialize;
-    seg->fn.destroy = seglog_destroy;
 
     return(seg);
 }
@@ -1333,7 +1317,7 @@ lio_segment_t *segment_log_load(void *arg, ex_id_t id, lio_exnode_exchange_t *ex
 {
     lio_segment_t *seg = segment_log_create(arg);
     if (segment_deserialize(seg, id, ex) != 0) {
-        segment_destroy(seg);
+        tbx_obj_put(&seg->obj);
         seg = NULL;
     }
     return(seg);
@@ -1528,3 +1512,19 @@ gop_op_generic_t *lio_slog_merge_with_base(lio_segment_t *seg, data_attr_t *da, 
     return(gop_tp_op_new(s->tpc, NULL, seglog_merge_with_base_func, (void *)st, free, 1));
 }
 
+const lio_segment_vtable_t lio_seglog_vtable = {
+    .base.name = "segment_log",
+    .base.free_fn = seglog_destroy,
+    .read = seglog_read,
+    .write = seglog_write,
+    .inspect = seglog_inspect,
+    .truncate = seglog_truncate,
+    .remove = seglog_remove,
+    .flush = seglog_flush,
+    .clone = seglog_clone,
+    .signature = seglog_signature,
+    .size = seglog_size,
+    .block_size = seglog_block_size,
+    .serialize = seglog_serialize,
+    .deserialize = seglog_deserialize,
+};

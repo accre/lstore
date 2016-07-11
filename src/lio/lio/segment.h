@@ -26,12 +26,14 @@ limitations under the License.
 #include <lio/ex3.h>
 #include <lio/visibility.h>
 #include <lio/rs.h>
+#include <tbx/object.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 // Typedefs
+typedef struct lio_segment_vtable_t lio_segment_vtable_t;
 typedef gop_op_generic_t *(*lio_segment_read_fn_t)(lio_segment_t *seg, data_attr_t *da, lio_segment_rw_hints_t *hints, int n_iov, ex_tbx_iovec_t *iov, tbx_tbuf_t *buffer, ex_off_t boff, int timeout);
 typedef gop_op_generic_t *(*lio_segment_write_fn_t)(lio_segment_t *seg, data_attr_t *da, lio_segment_rw_hints_t *hints, int n_iov, ex_tbx_iovec_t *iov, tbx_tbuf_t *buffer, ex_off_t boff, int timeout);
 typedef gop_op_generic_t *(*lio_segment_inspect_fn_t)(lio_segment_t *seg, data_attr_t *da, tbx_log_fd_t *fd, int mode, ex_off_t buffer_size, lio_inspect_args_t *args, int timeout);
@@ -63,17 +65,18 @@ LIO_API gop_op_generic_t *lio_slog_merge_with_base(lio_segment_t *seg, data_attr
 #define SEGMENT_TYPE_LINEAR "linear"
 
 // Preprocessor macros
-#define segment_flush(s, da, lo, hi, to) (s)->fn.flush(s, da, lo, hi, to)
+#define segment_flush(s, da, lo, hi, to) ((lio_segment_vtable_t *)(s)->obj.vtable)->flush(s, da, lo, hi, to)
 #define segment_id(s) (s)->header.id
-#define segment_inspect(s, da, fd, mode, bsize, query, to) (s)->fn.inspect(s, da, fd, mode, bsize, query, to)
-#define segment_read(s, da, hints, n_iov, iov, tbuf, boff, to) (s)->fn.read(s, da, hints, n_iov, iov, tbuf, boff, to)
-#define segment_signature(s, buffer, used, bufsize) (s)->fn.signature(s, buffer, used, bufsize)
-#define segment_size(s) (s)->fn.size(s)
-#define lio_segment_truncate(s, da, new_size, to) (s)->fn.truncate(s, da, new_size, to)
-#define segment_write(s, da, hints, n_iov, iov, tbuf, boff, to) (s)->fn.write(s, da, hints, n_iov, iov, tbuf, boff, to)
+#define segment_inspect(s, da, fd, mode, bsize, query, to) ((lio_segment_vtable_t *)(s)->obj.vtable)->inspect(s, da, fd, mode, bsize, query, to)
+#define segment_read(s, da, hints, n_iov, iov, tbuf, boff, to) ((lio_segment_vtable_t *)(s)->obj.vtable)->read(s, da, hints, n_iov, iov, tbuf, boff, to)
+#define segment_signature(s, buffer, used, bufsize) ((lio_segment_vtable_t *)(s)->obj.vtable)->signature(s, buffer, used, bufsize)
+#define segment_size(s) ((lio_segment_vtable_t *)(s)->obj.vtable)->size(s)
+#define lio_segment_truncate(s, da, new_size, to) ((lio_segment_vtable_t *)(s)->obj.vtable)->truncate(s, da, new_size, to)
+#define segment_write(s, da, hints, n_iov, iov, tbuf, boff, to) ((lio_segment_vtable_t *)(s)->obj.vtable)->write(s, da, hints, n_iov, iov, tbuf, boff, to)
 
 // Exported types. To be obscured
-struct lio_segment_fn_t {
+struct lio_segment_vtable_t {
+    tbx_vtable_t base;
     lio_segment_read_fn_t read;
     lio_segment_write_fn_t write;
     lio_segment_inspect_fn_t inspect;
@@ -86,15 +89,13 @@ struct lio_segment_fn_t {
     lio_segment_size_fn_t size;
     lio_segment_serialize_fn_t serialize;
     lio_segment_deserialize_fn_t deserialize;
-    lio_segment_destroy_fn_t destroy;
 };
 
 struct lio_segment_t {
+    tbx_obj_t obj;
     lio_ex_header_t header;
-    tbx_atomic_unit32_t ref_count;
     segment_priv_t *priv;
     lio_service_manager_t *ess;
-    lio_segment_fn_t fn;
     apr_thread_mutex_t *lock;
     apr_thread_cond_t *cond;
     apr_pool_t *mpool;
@@ -105,7 +106,6 @@ struct lio_segment_errors_t {
     int hard;
     int write;
 };
-
 
 #ifdef __cplusplus
 }

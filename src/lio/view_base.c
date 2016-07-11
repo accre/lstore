@@ -33,7 +33,7 @@
 
 int lio_view_insert(lio_exnode_t *ex, lio_segment_t *seg)
 {
-    tbx_atomic_inc(seg->ref_count);
+    tbx_obj_get(&seg->obj);
 
     return(tbx_list_insert(ex->view, &segment_id(seg), seg));
 }
@@ -44,7 +44,7 @@ int lio_view_insert(lio_exnode_t *ex, lio_segment_t *seg)
 
 int view_remove(lio_exnode_t *ex, lio_segment_t *seg)
 {
-    tbx_atomic_dec(seg->ref_count);
+    tbx_obj_put(&seg->obj);
 
     tbx_list_remove(ex->view, &segment_id(seg), seg);
 

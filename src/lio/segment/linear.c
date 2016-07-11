@@ -39,6 +39,7 @@
 #include <tbx/interval_skiplist.h>
 #include <tbx/log.h>
 #include <tbx/network.h>
+#include <tbx/object.h>
 #include <tbx/skiplist.h>
 #include <tbx/stack.h>
 #include <tbx/string_token.h>
@@ -52,6 +53,9 @@
 #include "ex3/system.h"
 #include "segment/linear.h"
 #include "service_manager.h"
+
+// Forward declaration
+const lio_segment_vtable_t lio_seglin_vtable;
 
 typedef struct {
     lio_data_block_t *data;    //** Data block
@@ -1059,7 +1063,6 @@ int seglin_serialize_text(lio_segment_t *seg, lio_exnode_exchange_t *exp)
         free(etext);
     }
     tbx_append_printf(segbuf, &sused, bufsize, "type=%s\n", SEGMENT_TYPE_LINEAR);
-    tbx_append_printf(segbuf, &sused, bufsize, "ref_count=%d\n", seg->ref_count);
 
     //** default resource query
     if (s->rsq != NULL) {
@@ -1245,17 +1248,18 @@ int seglin_deserialize(lio_segment_t *seg, ex_id_t id, lio_exnode_exchange_t *ex
 // seglin_destroy - Destroys a linear segment struct (not the data)
 //***********************************************************************
 
-void seglin_destroy(lio_segment_t *seg)
+void seglin_destroy(tbx_ref_t *ref)
 {
+    tbx_obj_t *obj = container_of(ref, tbx_obj_t, refcount);
+    lio_segment_t *seg = container_of(obj, lio_segment_t, obj);
+
     int i, n;
     tbx_isl_iter_t it;
     seglin_slot_t **b_list;
     seglin_priv_t *s = (seglin_priv_t *)seg->priv;
 
     //** Check if it's still in use
-    log_printf(15, "seglin_destroy: seg->id=" XIDT " ref_count=%d\n", segment_id(seg), seg->ref_count);
-
-    if (seg->ref_count > 0) return;
+    log_printf(15, "seglin_destroy: seg->id=" XIDT "\n", segment_id(seg));
 
     n = tbx_isl_count(s->isl);
     tbx_type_malloc_clear(b_list, seglin_slot_t *, n);
@@ -1326,7 +1330,7 @@ lio_segment_t *segment_linear_create(void *arg)
     s->rsq = NULL;
 
     generate_ex_id(&(seg->header.id));
-    tbx_atomic_set(seg->ref_count, 0);
+    tbx_obj_init(&seg->obj, (tbx_vtable_t *) &lio_seglin_vtable);
     seg->header.type = SEGMENT_TYPE_LINEAR;
 
     assert_result(apr_pool_create(&(seg->mpool), NULL), APR_SUCCESS);
@@ -1337,20 +1341,6 @@ lio_segment_t *segment_linear_create(void *arg)
     s->rs = lio_lookup_service(ess, ESS_RUNNING, ESS_RS);
     s->ds = lio_lookup_service(ess, ESS_RUNNING, ESS_DS);
     s->tpc = lio_lookup_service(ess, ESS_RUNNING, ESS_TPC_UNLIMITED);
-
-    seg->fn.read = seglin_read;
-    seg->fn.write = seglin_write;
-    seg->fn.inspect = seglin_inspect;
-    seg->fn.truncate = seglin_truncate;
-    seg->fn.remove = seglin_remove;
-    seg->fn.flush = seglin_flush;
-    seg->fn.clone = seglin_clone;
-    seg->fn.signature = seglin_signature;
-    seg->fn.size = seglin_size;
-    seg->fn.block_size = seglin_block_size;
-    seg->fn.serialize = seglin_serialize;
-    seg->fn.deserialize = seglin_deserialize;
-    seg->fn.destroy = seglin_destroy;
 
     return(seg);
 }
@@ -1363,8 +1353,26 @@ lio_segment_t *segment_linear_load(void *arg, ex_id_t id, lio_exnode_exchange_t 
 {
     lio_segment_t *seg = segment_linear_create(arg);
     if (segment_deserialize(seg, id, ex) != 0) {
-        segment_destroy(seg);
+        tbx_obj_put(&seg->obj);
         seg = NULL;
     }
     return(seg);
 }
+
+const lio_segment_vtable_t lio_seglin_vtable = {
+    .base.name = "segment_linear",
+    .base.free_fn = seglin_destroy,
+    .read = seglin_read,
+    .write = seglin_write,
+    .inspect = seglin_inspect,
+    .truncate = seglin_truncate,
+    .remove = seglin_remove,
+    .flush = seglin_flush,
+    .clone = seglin_clone,
+    .signature = seglin_signature,
+    .size = seglin_size,
+    .block_size = seglin_block_size,
+    .serialize = seglin_serialize,
+    .deserialize = seglin_deserialize,
+};
+

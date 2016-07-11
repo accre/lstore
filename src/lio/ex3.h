@@ -36,6 +36,7 @@
 #include "ex3/types.h"
 #include "os.h"
 #include "rs.h"
+#include "segment.h"
 #include "service_manager.h"
 
 #ifdef __cplusplus
@@ -58,17 +59,6 @@ struct lio_segment_rw_hints_t {     //** Structure for contaiing hints to the va
 };
 
 //#define inspect_printf(fd, ...) if ((fd) != NULL) fprintf(fd, __VA_ARGS__)
-
-#define lio_segment_type(s) (s)->header.type
-#define segment_destroy(s) (s)->fn.destroy(s)
-#define segment_remove(s, da, to) (s)->fn.remove(s, da, to)
-#define segment_clone(s, da, clone_ex, mode, attr, to) (s)->fn.clone(s, da, clone_ex, mode, attr, to)
-#define segment_block_size(s) (s)->fn.block_size(s)
-#define segment_serialize(s, exp) (s)->fn.serialize(s, exp)
-#define segment_deserialize(s, id, exp) (s)->fn.deserialize(s, id, exp)
-#define segment_lock(s) apr_thread_mutex_lock((s)->lock)
-#define segment_unlock(s) apr_thread_mutex_unlock((s)->lock)
-
 struct lio_exnode_t {
     lio_ex_header_t header;
     lio_segment_t *default_seg;
@@ -104,12 +94,6 @@ lio_segment_t *view_search_by_name(lio_exnode_t *ex, char *name);
 lio_segment_t *view_search_by_id(lio_exnode_t *ex, ex_id_t id);
 
 //** Segment related functions
-#define segment_get_header(seg) &((seg)->header)
-#define segment_set_header(seg, new_head) (seg)->header = *(new_head)
-gop_op_generic_t *segment_put(gop_thread_pool_context_t *tpc, data_attr_t *da, lio_segment_rw_hints_t *rw_hints, FILE *fd, lio_segment_t *dest_seg, ex_off_t dest_offset, ex_off_t len, ex_off_t bufsize, char *buffer, int do_truncate, int timeout);
-gop_op_generic_t *segment_get(gop_thread_pool_context_t *tpc, data_attr_t *da, lio_segment_rw_hints_t *rw_hints, lio_segment_t *src_seg, FILE *fd, ex_off_t src_offset, ex_off_t len, ex_off_t bufsize, char *buffer, int timeout);
-lio_segment_t *load_segment(lio_service_manager_t *ess, ex_id_t id, lio_exnode_exchange_t *ex);
-
 void generate_ex_id(ex_id_t *id);
 
 #ifdef __cplusplus

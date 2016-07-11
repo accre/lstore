@@ -35,6 +35,7 @@
 #include <tbx/atomic_counter.h>
 #include <tbx/iniparse.h>
 #include <tbx/log.h>
+#include <tbx/object.h>
 #include <tbx/string_token.h>
 #include <tbx/transfer_buffer.h>
 #include <tbx/type_malloc.h>
@@ -45,6 +46,10 @@
 #include "ex3/system.h"
 #include "segment/file.h"
 #include "service_manager.h"
+
+
+// Forward declaration
+const lio_segment_vtable_t lio_fileseg_vtable;
 
 typedef struct {
     char *fname;
@@ -476,7 +481,6 @@ int segfile_serialize_text(lio_segment_t *seg, lio_exnode_exchange_t *exp)
         free(etext);
     }
     tbx_append_printf(segbuf, &sused, bufsize, "type=%s\n", seg->header.type);
-    tbx_append_printf(segbuf, &sused, bufsize, "ref_count=%d\n", seg->ref_count);
     tbx_append_printf(segbuf, &sused, bufsize, "file=%s\n\n", s->fname);
 
     exnode_exchange_append_text(exp, segbuf);
@@ -579,14 +583,12 @@ int segfile_deserialize(lio_segment_t *seg, ex_id_t id, lio_exnode_exchange_t *e
 // segfile_destroy - Destroys a linear segment struct (not the data)
 //***********************************************************************
 
-void segfile_destroy(lio_segment_t *seg)
+void segfile_destroy(tbx_ref_t *ref)
 {
+    tbx_obj_t *obj = container_of(ref, tbx_obj_t, refcount);
+    lio_segment_t *seg = container_of(obj, lio_segment_t, obj);
+
     segfile_priv_t *s = (segfile_priv_t *)seg->priv;
-
-    //** Check if it's still in use
-    log_printf(15, "segfile_destroy: seg->id=" XIDT " ref_count=%d\n", segment_id(seg), seg->ref_count);
-
-    if (seg->ref_count > 0) return;
 
     if (s->fname != NULL) free(s->fname);
     if (s->qname != NULL) free(s->qname);
@@ -633,11 +635,10 @@ lio_segment_t *segment_file_create(void *arg)
     //** Make the space
     tbx_type_malloc_clear(seg, lio_segment_t, 1);
     tbx_type_malloc_clear(s, segfile_priv_t, 1);
-
+    tbx_obj_init(&seg->obj, (tbx_vtable_t *) &lio_fileseg_vtable);
     s->fname = NULL;
 
     generate_ex_id(&(seg->header.id));
-    tbx_atomic_set(seg->ref_count, 0);
     seg->header.type = SEGMENT_TYPE_FILE;
 
     s->tpc = lio_lookup_service(es, ESS_RUNNING, ESS_TPC_UNLIMITED);
@@ -646,20 +647,6 @@ lio_segment_t *segment_file_create(void *arg)
 
     seg->priv = s;
     seg->ess = es;
-    seg->fn.read = segfile_read;
-    seg->fn.write = segfile_write;
-    seg->fn.inspect = segfile_inspect;
-    seg->fn.truncate = segfile_truncate;
-    seg->fn.remove = segfile_remove;
-    seg->fn.flush = segfile_flush;
-    seg->fn.clone = segfile_clone;
-    seg->fn.signature = segfile_signature;
-    seg->fn.size = segfile_size;
-    seg->fn.block_size = segfile_block_size;
-    seg->fn.serialize = segfile_serialize;
-    seg->fn.deserialize = segfile_deserialize;
-    seg->fn.destroy = segfile_destroy;
-
     return(seg);
 }
 
@@ -671,8 +658,25 @@ lio_segment_t *segment_file_load(void *arg, ex_id_t id, lio_exnode_exchange_t *e
 {
     lio_segment_t *seg = segment_file_create(arg);
     if (segment_deserialize(seg, id, ex) != 0) {
-        segment_destroy(seg);
+        tbx_obj_put(&seg->obj);
         seg = NULL;
     }
     return(seg);
 }
+
+const lio_segment_vtable_t lio_fileseg_vtable = {
+        .base.name = "segment_file",
+        .base.free_fn = segfile_destroy,
+        .read = segfile_read,
+        .write = segfile_write,
+        .inspect = segfile_inspect,
+        .truncate = segfile_truncate,
+        .remove = segfile_remove,
+        .flush = segfile_flush,
+        .clone = segfile_clone,
+        .signature = segfile_signature,
+        .size = segfile_size,
+        .block_size = segfile_block_size,
+        .serialize = segfile_serialize,
+        .deserialize = segfile_deserialize,
+};
