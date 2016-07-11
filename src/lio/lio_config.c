@@ -1377,16 +1377,17 @@ no_args:
         }
     }
 
-
-    if (cfg_name != NULL) {
-        tbx_mlog_load(cfg_name, out_override, ll_override);
-
-        lio_gc = lio_create(cfg_name, section_name, userid, name);
-        lio_gc->ref_cnt = 1;
-        if (auto_mode != -1) lio_gc->auto_translate = auto_mode;
-    } else {
-        log_printf(0, "Error missing config file!\n");
-    }
+    /*
+     * FIXME: This should return 1 to indicate a failure. Problem is, none of
+     * the callers of this code are ready to detect that failure. For now, we
+     * terminate hard, then later when the binaries are fixed, we can change
+     * the interface.
+     */
+    FATAL_UNLESS(cfg_name != NULL);
+    tbx_mlog_load(cfg_name, out_override, ll_override);
+    lio_gc = lio_create(cfg_name, section_name, userid, name);
+    lio_gc->ref_cnt = 1;
+    if (auto_mode != -1) lio_gc->auto_translate = auto_mode;
 
     if (userid != NULL) free(userid);
 
