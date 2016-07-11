@@ -267,28 +267,28 @@ void lio_find_lfs_mounts()
     stack = tbx_stack_new();
 
     fd = fopen("/proc/mounts", "r");
-    text = NULL;
-    while (getline(&text, &ns, fd) != -1) {
-        log_printf(5, "getline=%s", text);
-        if (strncmp(text, "lfs:", 4) == 0) { //** Found a match
-            tbx_stk_string_token(text, " ", &bstate, &fin);
-            prefix = tbx_stk_string_token(NULL, " ", &bstate, &fin);
-            if (prefix != NULL) { //** Add it
-                tbx_type_malloc_clear(entry, lfs_mount_t, 1);
-                entry->prefix = strdup(prefix);
-                entry->len = strlen(entry->prefix);
-                tbx_stack_push(stack, entry);
-                log_printf(5, "mount prefix=%s len=%d\n", entry->prefix, entry->len);
-            }
-        }
-
-        free(text);
+    if (fd) {
         text = NULL;
+        while (getline(&text, &ns, fd) != -1) {
+            log_printf(5, "getline=%s", text);
+            if (strncmp(text, "lfs:", 4) == 0) { //** Found a match
+                tbx_stk_string_token(text, " ", &bstate, &fin);
+                prefix = tbx_stk_string_token(NULL, " ", &bstate, &fin);
+                if (prefix != NULL) { //** Add it
+                    tbx_type_malloc_clear(entry, lfs_mount_t, 1);
+                    entry->prefix = strdup(prefix);
+                    entry->len = strlen(entry->prefix);
+                    tbx_stack_push(stack, entry);
+                    log_printf(5, "mount prefix=%s len=%d\n", entry->prefix, entry->len);
+                }
+            }
+
+            free(text);
+            text = NULL;
+        }
+        if (text != NULL)
+            free(text);  //** Getline() always returns something
     }
-    if (fd != NULL) fclose(fd);
-
-    if (text != NULL) free(text);  //** Getline() always returns something
-
     //** Convert it to a simple array
     _lfs_mount_count = tbx_stack_count(stack);
     tbx_type_malloc(lfs_mount, lfs_mount_t, _lfs_mount_count);
