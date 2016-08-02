@@ -8,7 +8,7 @@
 # Preliminary bootstrapping
 #
 
-set -eu
+set -eux
 ABSOLUTE_PATH=$(cd `dirname "${BASH_SOURCE[0]}"` && pwd)
 source $ABSOLUTE_PATH/functions.sh
 umask 0000
@@ -85,8 +85,9 @@ PACKAGE_REPO=$REPO_BASE/$TAG_NAME
 
 set -x
 mkdir -p $PACKAGE_BASE/build
-cp -r ${LSTORE_RELEASE_BASE}/{scripts,src,vendor,doc,debian,test,cmake,CMakeLists.txt,lstore.spec} \
+cp -r ${LSTORE_RELEASE_BASE}/{scripts,src,vendor,doc,debian,test,cmake,CMakeLists.txt,lstore.spec,VERSION} \
         $PACKAGE_BASE
+ln -s ${LSTORE_RELEASE_BASE}/.git $PACKAGE_BASE/.git
 
 if [[ "${TARBALL:-}" -eq 1 ]]; then
     cd $PACKAGE_BASE/build

@@ -130,6 +130,7 @@ set(LSTORE_PROJECT_INCLUDES
         lio/segment.h
         lio/service_manager.h
         lio/trace.h
+        lio/version.h
         lio/visibility.h
 )
 

@@ -1,8 +1,6 @@
 # Root CMake file for LStore
 cmake_minimum_required(VERSION 2.8)
 
-set(LSTORE_PROJECT_VERSION "0.5.1-unknown_commit" CACHE STRING "Project version <major>.<minor>.<patch>[-<git-hash>[-<other-tags>]]")
-
 # Preliminary configuration. Need to find ccache to set the defaults for the
 # corresponding option
 find_program(FOUND_CCACHE ccache)
@@ -34,6 +32,8 @@ option(INSTALL_YUM_RELEASE "Install yum lstore-release (may require root)" OFF)
 option(INSTALL_DEB_RELEASE "Install deb lstore-release (may require root)" OFF)
 option(INSTALL_META "Install meta-package (may require root)" OFF)
 option(INSTALL_TESTS "Install test binaries" OFF)
+
+set(LSTORE_VERSION "" CACHE STRING "Override LStore version")
 
 if(NOT CMAKE_BUILD_TYPE)
     # Has to be handled differently :(
@@ -100,10 +100,11 @@ endif()
 # you do it in the other order, cmake complains and reruns the CMakeLists.txt
 # compilation.
 project(LStore C)
+set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
+include(LStoreVersion)
 
 # Defines
 set(USE_SUPERBUILD ON)
-set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -D_REENTRANT -D_GNU_SOURCE -D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64 -fvisibility=hidden -fno-strict-aliasing -Wall -Wextra -Werror -Wno-unused-parameter -Wno-deprecated-declarations -Wno-error=sign-compare")
 if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wl,--exclude-libs,ALL")

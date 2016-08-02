@@ -8,10 +8,6 @@ endif()
 
 # Global configuration
 set(CPACK_PACKAGE_NAME "LStore")
-set(CPACK_PACKAGE_VERSION "0.5.1")
-set(CPACK_PACKAGE_VERSION_MAJOR "0")
-set(CPACK_PACKAGE_VERSION_MINOR "5")
-set(CPACK_PACKAGE_VERSION_PATCH "1")
 set(CPACK_PACKAGE_RELEASE ${LSTORE_PROJECT_REVISION})
 set(CPACK_PACKAGE_CONTACT "Andrew Melo or Alan Tackett")
 set(CPACK_PACKAGE_VENDOR "Advanced Computing Center for Research and Education, Vanderbilt University")
@@ -20,6 +16,11 @@ set(CPACK_SOURCE_PACKAGE_FILE_NAME "${CMAKE_PROJECT_NAME}-${CPACK_PACKAGE_VERSIO
 set(CPACK_SOURCE_IGNORE_FILES "^${CMAKE_SOURCE_DIR}/build" 
                                 "^${PROJECT_SOURCE_DIR}/scripts"
                                 "^${PROJECT_SOURCE_DIR}/\\\\.git/"
+                                "^${PROJECT_SOURCE_DIR}/venv/"
+                                "^${PROJECT_SOURCE_DIR}/doc/latex/"
+                                "^${PROJECT_SOURCE_DIR}/doc/html/"
+                                "^${PROJECT_SOURCE_DIR}/doc/xml/"
+                                "^${PROJECT_SOURCE_DIR}/doc/_build/"
                                 "apr-util.spec"
                                 "apr.spec"
                                 ${CPACK_SOURCE_IGNORE_FILES})
@@ -51,6 +52,7 @@ if(UNIX)
     ADD_CUSTOM_TARGET(rpm rpmbuild --verbose
         -D "_rpmdir ${CMAKE_BINARY_DIR}/rpm_output"
         -D "_srcrpmdir ${CMAKE_BINARY_DIR}/srpm_output"
+        -D "my_version ${CPACK_PACKAGE_VERSION}"
         -ta ${CPACK_SOURCE_PACKAGE_FILE_NAME}.tar.gz)
     ADD_DEPENDENCIES(rpm dist)
     ADD_CUSTOM_TARGET(deb dpkg-buildpackage -uc -us)

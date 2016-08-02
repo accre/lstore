@@ -1,7 +1,10 @@
 # -*- rpm-spec -*-
 %define _basename lstore
-%define _version 0.5.1
-%define _release 1
+# Allow the version to be overridden from the command line
+%define _dist_version 0.5.1
+%define _dist_release 1
+%define _version %{?my_version}%{?!my_version:%{_dist_version}}
+%define _release %{?my_release}%{?!my_release:%{_dist_release}}
 %define _prefix /usr
 
 URL: http://www.lstore.org
@@ -21,7 +24,8 @@ LStore - Logistical Storage.
 
 %build
 CFLAGS="-I%{_prefix}/include $RPM_OPT_FLAGS"
-CMAKE_FLAGS="-DCMAKE_INSTALL_PREFIX=%{_prefix}"
+CMAKE_FLAGS="-DLSTORE_VERSION=%{_version}"
+CMAKE_FLAGS="$CMAKE_FLAGS -DCMAKE_INSTALL_PREFIX=%{_prefix}"
 CMAKE_FLAGS="$CMAKE_FLAGS -DINSTALL_YUM_RELEASE:BOOL=ON"
 CMAKE_FLAGS="$CMAKE_FLAGS -DINSTALL_META:BOOL=ON"
 CMAKE_FLAGS="$CMAKE_FLAGS -DCMAKE_BUILD_TYPE:BOOL=RelWithDebInfo"
