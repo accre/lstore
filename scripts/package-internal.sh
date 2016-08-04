@@ -67,15 +67,24 @@ PACKAGE_BASE=/tmp/lstore-package
 
 note "Beginning packaging at $(date) for $PACKAGE_SUBDIR"
 
-TAG_NAME=$(cd $LSTORE_RELEASE_BASE &&
-            ( git update-index -q --refresh &>/dev/null || true ) && \
-            git describe --abbrev=32 --dirty="-dev" --candidates=100 \
-                --match 'v*' | sed 's,^v,,')
+TAG_NAME="$(cd $LSTORE_RELEASE_BASE && git describe --match 'v*' --exact-match 2>/dev/null || true)"
+
+if [ ! -z "$TAG_NAME" ]; then
+    IS_RELEASE=1
+else
+    IS_RELEASE=0
+fi
+if [ -z "$TAG_NAME" ]; then
+    TAG_NAME="$(cd $LSTORE_RELEASE_BASE &&
+                ( git update-index -q --refresh &>/dev/null || true ) && \
+                git describe --abbrev=32 --dirty="-dev" --candidates=100 \
+                    --match 'v*' | sed 's,^v,,' || true)"
+fi
 if [ -z "$TAG_NAME" ]; then
     TAG_NAME="0.0.0-$(cd $LSTORE_RELEASE_BASE &&
             ( git update-index -q --refresh &>/dev/null || true ) && \
             git describe --abbrev=32 --dirty="-dev" --candidates=100 \
-                --match ROOT --always)"
+                --match ROOT --always || true)"
 fi
 
 TAG_NAME=${TAG_NAME:-"0.0.0-undefined-tag"}
@@ -101,6 +110,12 @@ if [[ "${TARBALL:-}" -eq 1 ]]; then
 )
 elif [[ $PACKAGE_SUFFIX == deb ]]; then
     cd $PACKAGE_BASE
+    # Attempt to automatically bump the debian version
+    if [ $IS_RELEASE -eq 1 ]; then
+        gbp dch --auto --ignore-branch
+    else
+        gbp dch --auto --snapshot --ignore-branch
+    fi
     dpkg-buildpackage -uc -us
 (
     umask 000

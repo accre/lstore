@@ -92,6 +92,7 @@ for DISTRO in "${DISTROS[@]}"; do
                                     curl
                                     debhelper
                                     dpkg-dev
+                                    git-buildpackage
                                     git-core
                                     libapr1-dev
                                     libaprutil1-dev
