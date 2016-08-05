@@ -112,9 +112,9 @@ elif [[ $PACKAGE_SUFFIX == deb ]]; then
     cd $PACKAGE_BASE
     # Attempt to automatically bump the debian version
     if [ $IS_RELEASE -eq 1 ]; then
-        gbp dch --auto --ignore-branch
+        gbp dch --auto --ignore-branch --id-length=8
     else
-        gbp dch --auto --snapshot --ignore-branch
+        gbp dch --auto --snapshot --ignore-branch --id-length=8
     fi
     dpkg-buildpackage -uc -us
 (
