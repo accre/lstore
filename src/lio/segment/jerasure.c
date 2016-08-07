@@ -1992,7 +1992,7 @@ int segjerase_deserialize_text(lio_segment_t *seg, ex_id_t id, lio_exnode_exchan
         return(-2);
     }
 
-    tbx_obj_put(&s->child_seg->obj);
+    tbx_obj_get(&s->child_seg->obj);
 
     //** Load the params
     s->write_errors = tbx_inip_get_integer(fd, seggrp, "write_errors", 0);
