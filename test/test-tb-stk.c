@@ -20,15 +20,15 @@
 TEST_IMPL(tb_stk_escape_text) {
     char *ret;
     ASSERT(strlen(ret = tbx_stk_escape_text("a", '$', "1")) == 1);
-    NOTE(ret);
+    free(ret);
     ASSERT(strlen(ret = tbx_stk_escape_text("a", '$', "a")) == 2);
-    NOTE(ret);
+    free(ret);
     ASSERT(strlen(ret = tbx_stk_escape_text("a", '$', "$")) == 2);
-    NOTE(ret);
+    free(ret);
     ASSERT(strlen(ret = tbx_stk_escape_text("a", '$', "$a")) == 4);
-    NOTE(ret);
+    free(ret);
     ASSERT(strlen(ret = tbx_stk_escape_text("a", '$', "a$")) == 4);
-    NOTE(ret);
+    free(ret);
 
     return 0;
 }
