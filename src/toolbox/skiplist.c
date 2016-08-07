@@ -655,27 +655,17 @@ tbx_sl_iter_t tbx_sl_iter_search_compare(tbx_sl_t *sl, tbx_sl_key_t *key, tbx_sl
 
     if ((round_mode < -1) || ((round_mode < 0) && (cmp != 0))) {
         if (it.ptr[0] != NULL) {
-//log_printf(15, "returning prev\n");
             it.sn = it.ptr[0];
             it.ele = &(it.sn->ele);
         } else if (it.ptr[0]->next[0] != NULL) {
-//log_printf(15, "returning next\n");
             it.sn = it.ptr[0]->next[0];
             it.ele = &(it.sn->ele);
         }
-//  } else if (round_mode == 0) {
     } else {
         if (it.ptr[0]->next[0] != NULL) {
             it.sn = it.ptr[0]->next[0];
             it.ele = &(it.sn->ele);
         }
-//  } else {
-//     if (it.ptr[0]->next[0] != NULL) {
-//        if (it.ptr[0]->next[0]->next[0] != NULL) {
-//           it.sn = it.ptr[0]->next[0]->next[0];
-//           it.ele = &(it.sn->ele);
-//        }
-//     }
     }
 
     log_printf(15, "it.sn=%p\n", it.sn);

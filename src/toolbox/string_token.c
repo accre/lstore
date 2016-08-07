@@ -420,7 +420,9 @@ char *tbx_stk_pretty_print_double_with_scale(int base, double value, char *buffe
     int i;
     char *unit=" KMGTPE";
 
-    if (buffer == NULL) tbx_type_malloc(buffer, char, 30);
+    if (buffer == NULL) {
+        tbx_type_malloc(buffer, char, 30);
+    }
 
     if (base == 1) {
         sprintf(buffer, "%lf", value);

@@ -44,12 +44,6 @@ TBX_TYPE_FINI_DEFAULT(tbx_stack_t, tbx_stack);
 TBX_TYPE_NEW_DEFAULT(tbx_stack_t, tbx_stack);
 TBX_TYPE_DEL_DEFAULT(tbx_stack_t, tbx_stack);
 
-
-
-//void *tbx_stack_ele_get_data(tbx_stack_ele_t *ele) {
-//    return ele->data;
-//}
-
 //**************************************
 // check_ends - Checks to see if an
 //     insert effects top/bottom
