@@ -1,5 +1,5 @@
 include(ExternalProject)
-if(BUILD_APR)
+if(BUILD_APR AND (NOT APR_FOUND OR NOT APU_FOUND))
     list(APPEND REBUILD_DEPENDENCIES extern-apr-accre)
     set(APR_LIBRARY "apr-ACCRE-1")
     set(APR_INCLUDE_DIR "${EXTERNAL_INSTALL_DIR}/include/apr-ACCRE-1")
