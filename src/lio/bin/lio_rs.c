@@ -163,7 +163,6 @@ int main(int argc, char **argv)
     int start_option, i, watch, summary, base;
     lio_rs_mapping_notify_t notify, me;
     apr_time_t dt;
-    char *config;
 
     if (argc < 2) {
         printf("\n");
@@ -185,6 +184,9 @@ int main(int argc, char **argv)
 
     i=1;
     do {
+        if (argc == 1) {
+            break;
+        }
         start_option = i;
 
         if (strcmp(argv[i], "-w") == 0) { //** Watch for any RID changes
@@ -223,7 +225,7 @@ int main(int argc, char **argv)
         apr_thread_mutex_unlock(lock);
 
         if (i != 0) {
-            config = rs_get_rid_config(lio_gc->rs);
+            char *config = rs_get_rid_config(lio_gc->rs);
 
             printf("Map Version: %d  Status Version: %d\n", me.map_version, me.status_version);
             printf("--------------------------------------------------------------------------------------------------\n");
@@ -232,13 +234,13 @@ int main(int argc, char **argv)
                 printf("ERROR NULL config!\n");
             } else if (summary == 1) {
                 print_rid_summary(config, base);
+                free(config);
             } else {
                 printf("%s", config);
+                free(config);
             }
 
             printf("--------------------------------------------------------------------------------------------------\n");
-
-            if (config != NULL) free(config);
         }
     } while (watch == 1);
 
