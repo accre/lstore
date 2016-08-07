@@ -120,7 +120,7 @@ tbx_sl_t * tbx_sl_new_full(unsigned int maxlevels, double p, bool allow_dups,
     tbx_sl_t * sl = tbx_sl_malloc();
     if (!sl)
         return NULL;
-    if (!tbx_sl_init_full(sl, maxlevels, p, allow_dups,
+    if (tbx_sl_init_full(sl, maxlevels, p, allow_dups,
                             compare, dup, key_free, data_free)) {
         tbx_sl_del(sl);
         return NULL;
@@ -184,7 +184,7 @@ tbx_sl_node_t *create_skiplist_node(unsigned int level)
     if (!sn)
         goto error_1;
 
-    tbx_type_malloc(sn->next, tbx_sl_node_t *, level + 1);
+    tbx_type_malloc(sn->next, tbx_sl_node_t *, (level + 2));
     if (!sn->next)
         goto error_2;
 
