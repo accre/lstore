@@ -185,7 +185,15 @@ else()
     endif()
     set_source_files_properties(trace_replay.c PROPERTIES COMPILE_FLAGS "-Wno-strict-overflow")
     set_source_files_properties(trace.c PROPERTIES COMPILE_FLAGS "${LSTORE_FLAG_UNUSED_RESULT}")
-    target_include_directories(trace_replay SYSTEM PRIVATE ${LSTORE_INCLUDE_SYSTEM})
+    if("${CMAKE_VERSION}" VERSION_GREATER 3.0.0)
+        target_include_directories(trace_replay
+                                    SYSTEM PRIVATE
+                                    ${LSTORE_INCLUDE_SYSTEM})
+    else()
+        target_include_directories(trace_replay
+                                    PRIVATE
+                                    ${LSTORE_INCLUDE_SYSTEM})
+    endif()
     target_include_directories(trace_replay PUBLIC ${LSTORE_INCLUDE_PUBLIC})
 endif()
 

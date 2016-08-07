@@ -39,7 +39,15 @@ macro(lstore_project_common LSTORE_PROJECT_NAME)
         set_target_properties(${LSTORE_PROJECT_NAME} PROPERTIES
                             COMPILE_FLAGS "-DLSTORE_HACK_EXPORT")
     endif()
-    target_include_directories(${LSTORE_PROJECT_NAME} SYSTEM PRIVATE ${LSTORE_INCLUDE_SYSTEM})
+    if("${CMAKE_VERSION}" VERSION_GREATER 3.0.0)
+        target_include_directories(${LSTORE_PROJECT_NAME}
+                                    SYSTEM PRIVATE
+                                    ${LSTORE_INCLUDE_SYSTEM})
+    else()
+        target_include_directories(${LSTORE_PROJECT_NAME}
+                                    PRIVATE
+                                    ${LSTORE_INCLUDE_SYSTEM})
+    endif()
     target_include_directories(${LSTORE_PROJECT_NAME} PUBLIC ${LSTORE_INCLUDE_PUBLIC})
     add_dependencies(${LSTORE_PROJECT_NAME} externals)
 
@@ -52,7 +60,15 @@ macro(lstore_project_common LSTORE_PROJECT_NAME)
     endforeach()
     foreach(f ${LSTORE_PROJECT_EXECUTABLES_OLD} ${LSTORE_PROJECT_EXECUTABLES})
         target_link_libraries(${f} ${LSTORE_PROJECT_NAME})
-        target_include_directories(${f} SYSTEM PRIVATE ${LSTORE_INCLUDE_SYSTEM})
+        if("${CMAKE_VERSION}" VERSION_GREATER 3.0.0)
+            target_include_directories(${f}
+                                        SYSTEM PRIVATE
+                                        ${LSTORE_INCLUDE_SYSTEM})
+        else()
+            target_include_directories(${f}
+                                        PRIVATE
+                                        ${LSTORE_INCLUDE_SYSTEM})
+        endif()
         target_include_directories(${f} PUBLIC ${LSTORE_INCLUDE_PUBLIC})
         if(NOT BUILD_SHARED_EXES)
             set_target_properties(${f} PROPERTIES LINK_SEARCH_START_STATIC 1)

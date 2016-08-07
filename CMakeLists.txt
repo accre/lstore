@@ -253,13 +253,13 @@ if(BUILD_TESTS)
                              test/test-tb-stk.c
                              test/test-tb-stack.c)
     target_link_libraries(run-tests pthread lio)
-    target_include_directories(run-tests SYSTEM PRIVATE ${APR_INCLUDE_DIR})
+    target_include_directories(run-tests PRIVATE ${APR_INCLUDE_DIR})
     add_executable(run-benchmarks test/run-benchmarks.c
                              test/runner.c
                              test/runner-unix.c
                              test/benchmark-sizes.c)
     target_link_libraries(run-benchmarks pthread lio)
-    target_include_directories(run-benchmarks SYSTEM PRIVATE ${APR_INCLUDE_DIR})
+    target_include_directories(run-benchmarks PRIVATE ${APR_INCLUDE_DIR})
     SET_TARGET_PROPERTIES(run-benchmarks PROPERTIES
                             COMPILE_FLAGS "-DLSTORE_HACK_EXPORT")
     add_executable(fuzz-config test/fuzz-config.c)
