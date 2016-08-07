@@ -22,7 +22,6 @@
 #include <stdlib.h>
 #include <tbx/stack.h>
 #include <tbx/type_malloc.h>
-#include <zmq.h>
 
 #include "mq_portal.h"
 

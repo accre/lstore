@@ -33,7 +33,6 @@
 #include <tbx/iniparse.h>
 #include <tbx/stack.h>
 #include <unistd.h>
-#include <zmq.h>
 
 #include "gop/gop.h"
 #include "gop/visibility.h"
