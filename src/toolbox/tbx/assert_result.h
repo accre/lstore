@@ -25,8 +25,9 @@
 #define FATAL_UNLESS(expr)                                      \
     do {                                                        \
         if (!(expr)) {                                          \
-            log_printf(-1, "Fatal Error in %s at %s:%d\n",       \
+            log_printf(-1, "Fatal Error in %s at %s:%d\n",      \
                             __FUNCTION__, __FILE__, __LINE__);  \
+            abort();                                            \
             exit(EXIT_FAILURE);                                 \
         }                                                       \
     } while(0)
