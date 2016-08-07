@@ -44,30 +44,30 @@ typedef int (*gop_op_before_exec_fn_t)(gop_op_generic_t *gop);
 typedef int (*gop_op_destroy_command_fn_t)(gop_op_generic_t *gop);
 typedef enum gop_op_state_t gop_op_state_t;
 enum gop_op_state_t {
-    OP_STATE_SUCCESS,
-    OP_STATE_FAILURE,
-    OP_STATE_RETRY,
-    OP_STATE_DEAD,
-    OP_STATE_TIMEOUT,
-    OP_STATE_INVALID_HOST,
-    OP_STATE_CANT_CONNECT,
-    OP_STATE_ERROR,
+    OP_STATE_SUCCESS = 10,
+    OP_STATE_FAILURE = 20,
+    OP_STATE_RETRY = 30,
+    OP_STATE_DEAD = 40,
+    OP_STATE_TIMEOUT = 50,
+    OP_STATE_INVALID_HOST = 60,
+    OP_STATE_CANT_CONNECT = 70,
+    OP_STATE_ERROR = 80,
 };
 typedef enum gop_op_type_t gop_op_type_t;
 enum gop_op_type_t {
-    Q_TYPE_OPERATION,
-    Q_TYPE_QUE
+    Q_TYPE_OPERATION = 50,
+    Q_TYPE_QUE = 51,
 };
 
 typedef enum gop_op_free_mode_t gop_op_free_mode_t;
 enum gop_op_free_mode_t {
-    OP_FINALIZE,
-    OP_DESTROY,
+    OP_FINALIZE = -10,
+    OP_DESTROY = -20,
 };
 typedef enum gop_fm_t gop_fm_t;
 enum gop_fm_t {
-    OP_FM_FORCED,
-    OP_FM_GET_END,
+    OP_FM_FORCED = 11,
+    OP_FM_GET_END = 22,
 };
 
 typedef enum gop_op_exec_mode_t gop_op_exec_mode_t;
