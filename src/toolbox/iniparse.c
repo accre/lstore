@@ -130,7 +130,7 @@ char * _get_line(bfile_t *bfd)
     if (bfd->curr->used == 1) return(bfd->curr->buffer);
 
     comment = fgets(bfd->curr->buffer, BUFMAX, bfd->curr->fd);
-    log_printf(15, "_get_line: fgets=%s", comment);
+    log_printf(15, "_get_line: fgets=%s\n", comment);
 
     if (comment == NULL) {  //** EOF or error
         fclose(bfd->curr->fd);
@@ -155,9 +155,8 @@ char * _get_line(bfile_t *bfd)
         tbx_type_malloc(entry, bfile_entry_t, 1);
         entry->fd = bfile_fopen(bfd->include_paths, fname);
         if (entry->fd == NULL) {  //** Can't open the file
-            log_printf(1, "_get_line: Problem opening include file !%s!\n", fname);
-            free(entry);
-            abort();
+            log_printf(-1, "_get_line: Problem opening include file !%s!\n", fname);
+            FATAL_UNLESS(entry->fd != NULL);
         }
         entry->used = 0;
         tbx_stack_push(bfd->stack, (void *)bfd->curr);
@@ -538,7 +537,7 @@ tbx_inip_file_t *tbx_inip_file_read(const char *fname)
     }
     tbx_inip_file_t *ret = inip_read_fd(fd);
     if (!is_stdin) {
-        fclose(fd);
+        //fclose(fd);
     }
     return ret;
 }
@@ -557,23 +556,32 @@ tbx_inip_file_t *tbx_inip_string_read(const char *text)
      * versions of libc that have the other behavior, just tell coverity to
      * ignore it
      */
+    const char template[] = "tbx_inip_XXXXXX";
+    char *template_copy = strdup(template);
+    if (!template_copy) {
+        goto error0;
+    }
     // coverity[secure_temp]
-    int file_temp = mkstemp("tbx_inip_XXXXXX");
+    int file_temp = mkstemp(template_copy);
     if (file_temp == -1) {
         goto error1;
     }
-    FILE *fd = fdopen(file_temp, "r");
+    FILE *fd = fdopen(file_temp, "w+");
     if (!fd) {
         goto error2;
     }
     fprintf(fd, "%s\n", text);
 
     tbx_inip_file_t *ret = inip_read_fd(fd);
-    fclose(fd);
+    // apparently inip_read_fd does frees on its own?
+    //fclose(fd);
+    free(template_copy);
     return ret;
 
 error2:
     close(file_temp);
 error1:
+    free(template_copy);
+error0:
     return NULL;
 }
