@@ -84,9 +84,9 @@ enum lio_ex3_inspect_command_t {
      */
 };
 /* WRITE_ERRORS is 10 (0b1010 AKA 0xA), so we need to mask 4 bits: 0b1111 AKA
- * 0xA
+ * 0xF
  */
-#define INSPECT_COMMAND_BITS (0xA)
+#define INSPECT_COMMAND_BITS (0xF)
 
 /* FIXME: this seems awfully scattered around. Try and solve this too */
 #define INSPECT_FORCE_REPAIR          (1 << 7)   //** Make the repair even if it leads to data loss
