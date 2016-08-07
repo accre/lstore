@@ -1086,7 +1086,7 @@ lio_config_t *lio_create(char *fname, char *section, char *user, char *exe_name)
 {
     lio_config_t *lc;
 
-    apr_thread_mutex_unlock(_lc_lock);
+    apr_thread_mutex_lock(_lc_lock);
     lc = lio_create_nl(fname, section, user, exe_name);
     apr_thread_mutex_unlock(_lc_lock);
 
