@@ -193,7 +193,7 @@ void gop_mq_msg_append_msg(mq_msg_t *msg, mq_msg_t *extra, int mode)
     char *data;
 
     tbx_stack_move_to_top(msg);
-    for (curr = tbx_stack_get_top(msg);
+    for (curr = tbx_stack_get_top(extra);
             curr != NULL;
             curr = tbx_stack_ele_get_down(curr)) {
         f = (gop_mq_frame_t *)tbx_stack_ele_get_data(curr);
