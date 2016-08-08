@@ -110,11 +110,13 @@ if [[ "${TARBALL:-}" -eq 1 ]]; then
 )
 elif [[ $PACKAGE_SUFFIX == deb ]]; then
     cd $PACKAGE_BASE
+    DISTANCE=$(git describe --match 'v*' --long | awk -F '-' '{ print $2 }')
     # Attempt to automatically bump the debian version
     if [ $IS_RELEASE -eq 1 ]; then
         gbp dch --auto --ignore-branch --id-length=8
     else
-        gbp dch --auto --snapshot --ignore-branch --id-length=8
+        gbp dch --auto --snapshot --snapshot-number "$DISTANCE" \
+                    --ignore-branch --id-length=8
     fi
     dpkg-buildpackage -uc -us
 (
