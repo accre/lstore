@@ -159,6 +159,9 @@ int main(int argc, char **argv)
 
     i=1;
     do {
+        if (argc == 1) {
+            break;
+        }
         start_option = i;
 
         if (strcmp(argv[i], "-rd") == 0) { //** Recurse depth
@@ -208,6 +211,7 @@ int main(int argc, char **argv)
         it = lio_create_object_iter_alist(tuple.lc, tuple.creds, rp_single, ro_single, obj_types, recurse_depth, keys, (void **)vals, v_size, n_keys);
         if (it == NULL) {
             info_printf(lio_ifd, 0, "ERROR: Failed with object_iter creation\n");
+            log_printf(0, "ERROR: Failed with object_iter creation\n");
             return_code = EIO;
             goto finished;
         }

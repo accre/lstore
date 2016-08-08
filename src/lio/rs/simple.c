@@ -580,7 +580,10 @@ char *rss_get_rid_config(lio_resource_service_fn_t *rs)
     bufsize = (rss->last_config_size > 0) ? rss->last_config_size/2 + 4096 : 100*1024;
 
     do {
-        if (buffer != NULL) free(buffer);
+        if (buffer != NULL) {
+            free(buffer);
+            buffer = NULL;
+        }
         bufsize = 2 * bufsize;
         tbx_type_malloc_clear(buffer, char, bufsize);
 

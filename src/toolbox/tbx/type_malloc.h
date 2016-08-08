@@ -26,7 +26,12 @@
 #define tbx_type_malloc_clear(var, type, count) \
             tbx_type_malloc(var, type, count)
 #define tbx_type_malloc(var, type, count) \
-            var = (type *)calloc(count, sizeof(type));FATAL_UNLESS(var != NULL)
+            do { \
+                var = (type *)malloc((count) * sizeof(type)); \
+                memset(var, 0, (count)*sizeof(type)); \
+                FATAL_UNLESS(var != NULL); \
+            } while(0) \
+
 #define tbx_type_realloc(var, type, count) \
             var = (type *)realloc(var, sizeof(type)*(count));FATAL_UNLESS(var != NULL)
 #define tbx_type_memclear(var, type, count) \

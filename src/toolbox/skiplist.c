@@ -120,7 +120,7 @@ tbx_sl_t * tbx_sl_new_full(unsigned int maxlevels, double p, bool allow_dups,
     tbx_sl_t * sl = tbx_sl_malloc();
     if (!sl)
         return NULL;
-    if (!tbx_sl_init_full(sl, maxlevels, p, allow_dups,
+    if (tbx_sl_init_full(sl, maxlevels, p, allow_dups,
                             compare, dup, key_free, data_free)) {
         tbx_sl_del(sl);
         return NULL;
@@ -184,7 +184,7 @@ tbx_sl_node_t *create_skiplist_node(unsigned int level)
     if (!sn)
         goto error_1;
 
-    tbx_type_malloc(sn->next, tbx_sl_node_t *, level + 1);
+    tbx_type_malloc(sn->next, tbx_sl_node_t *, (level + 2));
     if (!sn->next)
         goto error_2;
 
@@ -655,27 +655,17 @@ tbx_sl_iter_t tbx_sl_iter_search_compare(tbx_sl_t *sl, tbx_sl_key_t *key, tbx_sl
 
     if ((round_mode < -1) || ((round_mode < 0) && (cmp != 0))) {
         if (it.ptr[0] != NULL) {
-//log_printf(15, "returning prev\n");
             it.sn = it.ptr[0];
             it.ele = &(it.sn->ele);
         } else if (it.ptr[0]->next[0] != NULL) {
-//log_printf(15, "returning next\n");
             it.sn = it.ptr[0]->next[0];
             it.ele = &(it.sn->ele);
         }
-//  } else if (round_mode == 0) {
     } else {
         if (it.ptr[0]->next[0] != NULL) {
             it.sn = it.ptr[0]->next[0];
             it.ele = &(it.sn->ele);
         }
-//  } else {
-//     if (it.ptr[0]->next[0] != NULL) {
-//        if (it.ptr[0]->next[0]->next[0] != NULL) {
-//           it.sn = it.ptr[0]->next[0]->next[0];
-//           it.ele = &(it.sn->ele);
-//        }
-//     }
     }
 
     log_printf(15, "it.sn=%p\n", it.sn);

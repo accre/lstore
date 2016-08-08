@@ -874,6 +874,7 @@ lio_config_t *lio_create_nl(char *fname, char *section, char *user, char *exe_na
     lio->section_name = strdup(section);
 
     lio->ifd = tbx_inip_file_read(lio->cfg_name);
+    FATAL_UNLESS(lio->ifd != NULL);
 
     _lio_load_plugins(lio, lio->ifd);  //** Load the plugins
 
@@ -1086,7 +1087,7 @@ lio_config_t *lio_create(char *fname, char *section, char *user, char *exe_name)
 {
     lio_config_t *lc;
 
-    apr_thread_mutex_unlock(_lc_lock);
+    apr_thread_mutex_lock(_lc_lock);
     lc = lio_create_nl(fname, section, user, exe_name);
     apr_thread_mutex_unlock(_lc_lock);
 
@@ -1417,7 +1418,7 @@ int lio_shutdown()
     lio_destroy(lio_gc);
     lio_gc = NULL;  //** Reset the global to NULL so it's not accidentally reused.
 
-    lc_object_remove_unused(0);
+    //lc_object_remove_unused(0);
 
     apr_thread_mutex_destroy(_lc_lock);
     apr_pool_destroy(_lc_mpool);

@@ -107,9 +107,10 @@ int tbx_dnsc_lookup(const char *name, char *byte_addr, char *ip_addr)
     h = (DNS_entry_t *)apr_hash_get(_cache->table, name, APR_HASH_KEY_STRING);
 
     if (h != NULL) {  //** Got a hit!!
-        if (ip_addr != NULL) strcpy(ip_addr, h->ip_addr);
-        if (byte_addr != NULL) memcpy(byte_addr, h->addr, DNS_ADDR_MAX);
-//     family = h->family;
+        if (ip_addr != NULL)
+            strcpy(ip_addr, h->ip_addr);
+        if (byte_addr != NULL)
+            memcpy(byte_addr, h->addr, DNS_ADDR_MAX);
         apr_thread_mutex_unlock(_cache->lock);
         return(0);
     }

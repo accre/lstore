@@ -34,7 +34,6 @@
 #include <tbx/stack.h>
 #include <tbx/type_malloc.h>
 #include <unistd.h>
-#include <zmq.h>
 
 #include "mq_portal.h"
 
@@ -140,10 +139,8 @@ int zero_native_send(gop_mq_socket_t *socket, mq_msg_t *msg, int flags)
     f = gop_mq_msg_first(msg);
     if (f->len > 1) {
         log_printf(5, "dest=!%.*s! nframes=%d\n", f->len, (char *)(f->data), tbx_stack_count(msg));
-        tbx_log_flush();
     } else {
         log_printf(5, "dest=(single byte) nframes=%d\n", tbx_stack_count(msg));
-        tbx_log_flush();
     }
 
     while ((fn = gop_mq_msg_next(msg)) != NULL) {
@@ -151,14 +148,16 @@ int zero_native_send(gop_mq_socket_t *socket, mq_msg_t *msg, int flags)
         do {
             bytes = zmq_send(socket->arg, f->data, f->len, ZMQ_SNDMORE);
             if (bytes == -1) {
-                if (errno == EHOSTUNREACH) usleep(100);
+                if (errno == EHOSTUNREACH) {
+                    usleep(100);
+                } else {
+                    FATAL_UNLESS(errno == EHOSTUNREACH);
+                }
             }
             loop++;
-            log_printf(5, "sending frame=%d len=%d bytes=%d errno=%d loop=%d\n", count, f->len, bytes, errno, loop);
-            tbx_log_flush();
+            log_printf(15, "sending frame=%d len=%d bytes=%d errno=%d loop=%d\n", count, f->len, bytes, errno, loop);
             if (f->len>0) {
-                log_printf(5, "byte=%uc\n", (unsigned char)f->data[0]);
-                tbx_log_flush();
+                log_printf(15, "byte=%uc\n", (unsigned char)f->data[0]);
             }
         } while ((bytes == -1) && (loop < 10));
         n += bytes;
@@ -190,7 +189,7 @@ int zero_native_recv(gop_mq_socket_t *socket, mq_msg_t *msg, int flags)
         more = 0;
         rc = zmq_getsockopt (socket->arg, ZMQ_EVENTS, &more, &msize);
         log_printf(5, "more=" I64T "\n", more);
-        assert (rc == 0);
+        FATAL_UNLESS(rc == 0);
         if ((more & ZMQ_POLLIN) == 0) return(-1);
     }
 
@@ -198,15 +197,16 @@ int zero_native_recv(gop_mq_socket_t *socket, mq_msg_t *msg, int flags)
     nframes = 0;
     do {
         tbx_type_malloc(f, gop_mq_frame_t, 1);
+        gop_mq_frame_t *prevent_overwrite = f;
+        FATAL_UNLESS(prevent_overwrite == f);
 
         rc = zmq_msg_init(&(f->zmsg));
-        assert (rc == 0);
+        FATAL_UNLESS(rc == 0);
         rc = zmq_msg_recv(&(f->zmsg), socket->arg, flags);
-        log_printf(15, "rc=%d errno=%d\n", rc, errno);
-        assert (rc != -1);
+        FATAL_UNLESS(rc != -1);
 
         rc = zmq_getsockopt (socket->arg, ZMQ_RCVMORE, &more, &msize);
-        assert (rc == 0);
+        FATAL_UNLESS(rc == 0);
 
         f->len = zmq_msg_size(&(f->zmsg));
         f->data = zmq_msg_data(&(f->zmsg));
@@ -216,6 +216,7 @@ int zero_native_recv(gop_mq_socket_t *socket, mq_msg_t *msg, int flags)
         n += f->len;
         nframes++;
         log_printf(5, "more=" I64T "\n", more);
+        FATAL_UNLESS(prevent_overwrite == f);
     } while (more > 0);
 
     log_printf(5, "total bytes=%d nframes=%d\n", n, nframes);
@@ -379,9 +380,7 @@ void zero_socket_context_destroy(gop_mq_socket_context_t *ctx)
 {
     //** Kludge to get around race issues in 0mq when closing sockets manually vs letting
     //** zctx_destroy() close them
-    tbx_log_flush();
     zctx_destroy((zctx_t **)&(ctx->arg));
-    tbx_log_flush();
     free(ctx);
 }
 

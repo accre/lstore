@@ -252,6 +252,7 @@ int gop_mq_stream_read(gop_mq_stream_t *mqs, void *rdata, int len)
             }
 
         } else {
+            log_printf(0, "ERROR got %i from tbx_pack_read\n", nbytes);
             err = nbytes;
         }
     } while ((nleft > 0) && (err == 0));
@@ -283,7 +284,7 @@ int64_t gop_mq_stream_read_varint(gop_mq_stream_t *mqs, int *error)
         *error = err;
     }
 
-    log_printf(15, "value=" I64T "\n", value);
+    log_printf(10, "value=" I64T "\n", value);
 
     return(value);
 }

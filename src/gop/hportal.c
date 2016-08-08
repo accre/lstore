@@ -122,7 +122,7 @@ gop_host_portal_t *create_hportal(gop_portal_context_t *hpc, void *connect_conte
     hp->host[sizeof(hp->host)-1] = '\0';
 
     //** Check if we can resolve the host's IP address
-    char in_addr[6];
+    char in_addr[DNS_ADDR_MAX];
     if (tbx_dnsc_lookup(host, in_addr, NULL) != 0) {
         log_printf(1, "create_hportal: Can\'t resolve host address: %s:%d\n", host, port);
         hp->invalid_host = 0;

@@ -22,7 +22,6 @@
 #include <stdlib.h>
 #include <tbx/stack.h>
 #include <tbx/type_malloc.h>
-#include <zmq.h>
 
 #include "mq_portal.h"
 
@@ -32,6 +31,7 @@
 
 int gop_mq_get_frame(gop_mq_frame_t *f, void **data, int *size)
 {
+    FATAL_UNLESS(f != NULL);
     if (f == NULL) {
         *data = NULL;
         *size = 0;
@@ -159,8 +159,10 @@ void gop_mq_frame_destroy(gop_mq_frame_t *f)
 {
     if ((f->auto_free == MQF_MSG_AUTO_FREE) && (f->data)) {
         free(f->data);
+        f->data = NULL;
     } else if (f->auto_free == MQF_MSG_INTERNAL_FREE) {
         zmq_msg_close(&(f->zmsg));
+        zmq_msg_init(&(f->zmsg));
     }
     free(f);
 }
@@ -168,22 +170,22 @@ void gop_mq_frame_destroy(gop_mq_frame_t *f)
 void gop_mq_msg_destroy(mq_msg_t *msg)
 {
     gop_mq_frame_t *f;
-
     while ((f = tbx_stack_pop(msg)) != NULL) {
         gop_mq_frame_destroy(f);
     }
-
     tbx_stack_free(msg, 0);
 }
 
 void mq_msg_push_mem(mq_msg_t *msg, void *data, int len, gop_mqf_msg_t auto_free)
 {
-    tbx_stack_push(msg, gop_mq_frame_new(data, len, auto_free));
+    void *f = gop_mq_frame_new(data, len, auto_free);
+    tbx_stack_push(msg, f);
 }
 void gop_mq_msg_append_mem(mq_msg_t *msg, void *data, int len, gop_mqf_msg_t auto_free)
 {
     tbx_stack_move_to_bottom(msg);
-    tbx_stack_insert_below(msg, gop_mq_frame_new(data, len, auto_free));
+    void *f = gop_mq_frame_new(data, len, auto_free);
+    tbx_stack_insert_below(msg, f);
 }
 
 void gop_mq_msg_append_msg(mq_msg_t *msg, mq_msg_t *extra, int mode)
@@ -193,7 +195,7 @@ void gop_mq_msg_append_msg(mq_msg_t *msg, mq_msg_t *extra, int mode)
     char *data;
 
     tbx_stack_move_to_top(msg);
-    for (curr = tbx_stack_get_top(msg);
+    for (curr = tbx_stack_get_top(extra);
             curr != NULL;
             curr = tbx_stack_ele_get_down(curr)) {
         f = (gop_mq_frame_t *)tbx_stack_ele_get_data(curr);
