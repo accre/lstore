@@ -8,7 +8,7 @@
 # Preliminary bootstrapping
 #
 
-set -eu
+set -eux
 ABSOLUTE_PATH=$(cd `dirname "${BASH_SOURCE[0]}"` && pwd)
 source $ABSOLUTE_PATH/functions.sh
 umask 0000
@@ -67,15 +67,24 @@ PACKAGE_BASE=/tmp/lstore-package
 
 note "Beginning packaging at $(date) for $PACKAGE_SUBDIR"
 
-TAG_NAME=$(cd $LSTORE_RELEASE_BASE &&
-            ( git update-index -q --refresh &>/dev/null || true ) && \
-            git describe --abbrev=32 --dirty="-dev" --candidates=100 \
-                --match 'v*' | sed 's,^v,,')
+TAG_NAME="$(cd $LSTORE_RELEASE_BASE && git describe --match 'v*' --exact-match 2>/dev/null || true)"
+
+if [ ! -z "$TAG_NAME" ]; then
+    IS_RELEASE=1
+else
+    IS_RELEASE=0
+fi
+if [ -z "$TAG_NAME" ]; then
+    TAG_NAME="$(cd $LSTORE_RELEASE_BASE &&
+                ( git update-index -q --refresh &>/dev/null || true ) && \
+                git describe --abbrev=32 --dirty="-dev" --candidates=100 \
+                    --match 'v*' | sed 's,^v,,' || true)"
+fi
 if [ -z "$TAG_NAME" ]; then
     TAG_NAME="0.0.0-$(cd $LSTORE_RELEASE_BASE &&
             ( git update-index -q --refresh &>/dev/null || true ) && \
             git describe --abbrev=32 --dirty="-dev" --candidates=100 \
-                --match ROOT --always)"
+                --match ROOT --always || true)"
 fi
 
 TAG_NAME=${TAG_NAME:-"0.0.0-undefined-tag"}
@@ -85,8 +94,9 @@ PACKAGE_REPO=$REPO_BASE/$TAG_NAME
 
 set -x
 mkdir -p $PACKAGE_BASE/build
-cp -r ${LSTORE_RELEASE_BASE}/{scripts,src,vendor,doc,debian,test,cmake,CMakeLists.txt,lstore.spec} \
+cp -r ${LSTORE_RELEASE_BASE}/{scripts,src,vendor,doc,debian,test,cmake,CMakeLists.txt,lstore.spec,VERSION} \
         $PACKAGE_BASE
+ln -s ${LSTORE_RELEASE_BASE}/.git $PACKAGE_BASE/.git
 
 if [[ "${TARBALL:-}" -eq 1 ]]; then
     cd $PACKAGE_BASE/build
@@ -100,6 +110,14 @@ if [[ "${TARBALL:-}" -eq 1 ]]; then
 )
 elif [[ $PACKAGE_SUFFIX == deb ]]; then
     cd $PACKAGE_BASE
+    DISTANCE=$(git describe --match 'v*' --long | awk -F '-' '{ print $2 }')
+    # Attempt to automatically bump the debian version
+    if [ $IS_RELEASE -eq 1 ]; then
+        gbp dch --auto --ignore-branch --id-length=8
+    else
+        gbp dch --auto --snapshot --snapshot-number "$DISTANCE" \
+                    --ignore-branch --id-length=8
+    fi
     dpkg-buildpackage -uc -us
 (
     umask 000
