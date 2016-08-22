@@ -17,6 +17,8 @@ source $ABSOLUTE_PATH/functions.sh
 
 cd $LSTORE_RELEASE_BASE/scripts/docker/builder
 
+AFL_VERSION="2.32b"
+
 # Parse comand line
 DISTROS=( "$@" )
 if [ ${#DISTROS[@]} -eq 0 ]; then
@@ -55,7 +57,7 @@ for DISTRO in "${DISTROS[@]}"; do
             PACKAGE_PREFIX="RUN apt-get update && apt-get install -y"
             PACKAGE_POSTFIX=" --no-install-recommends --no-upgrade && apt-get clean"
             GLOBAL_INSTALL="RUN apt-get update && apt-get install -y build-essential fakeroot devscripts git ca-certificates --no-install-recommends --no-upgrade && apt-get clean"
-            JAVA_INSTALL="RUN apt-get update && apt-get install -y clang-tidy cppcheck openjdk-8-jdk-headless lcov gcovr python-sphinx doxygen --no-install-recommends --no-upgrade && apt-get clean && mkdir /tmp/afl && cd /tmp/afl && wget http://lcamtuf.coredump.cx/afl/releases/afl-2.15b.tgz && tar -xzf afl-2.15b.tgz && cd afl-2.15b && make install && cd / && rm -rf /tmp/afl"
+            JAVA_INSTALL="RUN apt-get update && apt-get install -y clang-tidy cppcheck openjdk-8-jdk-headless lcov gcovr python-sphinx doxygen --no-install-recommends --no-upgrade && apt-get clean && mkdir /tmp/afl && cd /tmp/afl && wget http://lcamtuf.coredump.cx/afl/releases/afl-${AFL_VERSION}.tgz && tar -xzf afl-${AFL_VERSION}.tgz && cd afl-${AFL_VERSION} && make install && cd / && rm -rf /tmp/afl"
             ;;
         *)
             fatal "Unrecognized base image type: ${PARENT}"
