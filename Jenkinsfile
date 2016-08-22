@@ -30,7 +30,7 @@ compile_map['unified-gcc'] = {
                 sh '''cmake -DBUILD_TESTS=on -DENABLE_COVERAGE=on -DCMAKE_INSTALL_PREFIX=local/ ..
                     make -j8 externals
                     bash -c 'set -o pipefail ; make -j1 install VERBOSE=1 2>&1 | tee compile_log_gcc.txt'
-                    bash -c 'set -o pipefail ; UV_TAP_OUTPUT=1 make coverage | tee unittest-output.txt' '''
+                    bash -c 'set -o pipefail ; UV_TAP_OUTPUT=1 make coverage 2>&1 | tee unittest-output.txt' '''
             } catch (e) {
                 def cores = findFiles(glob: 'core*')
                 if (cores) {
