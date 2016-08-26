@@ -18,6 +18,7 @@ node('docker') {
     zip archive: true, dir: '', glob: 'scripts/**', zipFile: 'scripts.zip'
     archive 'scripts/**'
     stash includes: '**, .git/', name: 'source', useDefaultExcludes: false
+    slackSend channel: 'jenkins', message: 'Build Started - ${env.JOB_NAME} ${env.BUILD_NUMBER} (<${env.BUILD_URL}|Open>)'
     sh "env"
 }
 
@@ -30,7 +31,7 @@ compile_map['unified-gcc'] = {
                 sh '''cmake -DBUILD_TESTS=on -DENABLE_COVERAGE=on -DCMAKE_INSTALL_PREFIX=local/ ..
                     make -j8 externals
                     bash -c 'set -o pipefail ; make -j1 install VERBOSE=1 2>&1 | tee compile_log_gcc.txt'
-                    make coverage'''
+                    bash -c 'set -o pipefail ; UV_TAP_OUTPUT=1 make coverage 2>&1 | tee unittest-output.txt' '''
             } catch (e) {
                 def cores = findFiles(glob: 'core*')
                 if (cores) {
@@ -42,6 +43,7 @@ compile_map['unified-gcc'] = {
             stash includes: "compile_log_gcc.txt", name: "gcc-log"
             archive "coverage-html/**"
             publishHTML(target: [reportDir: 'coverage-html/', reportFiles: 'index.html', reportName: 'Test Coverage',keepAll: true])
+            step([$class: "TapPublisher", testResults: "unittest-output.txt"])
         }
     }
 }
