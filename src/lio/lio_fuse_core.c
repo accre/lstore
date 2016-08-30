@@ -460,7 +460,7 @@ int lfs_object_create(lio_fuse_t *lfs, const char *fname, mode_t mode, int ftype
     tbx_log_flush();
 
     //** Make sure it doesn't exists
-    n = lioc_exists(lfs->lc, lfs->lc->creds, (char *)fname);
+    n = lio_exists(lfs->lc, lfs->lc->creds, (char *)fname);
     if (n != 0) {  //** File already exists
         log_printf(15, "File already exist! fname=%s\n", fullname);
         return(-EEXIST);
@@ -918,7 +918,7 @@ int lfs_utimens(const char *fname, const struct timespec tv[2])
 //  val = lfs->id;
 //  v_size = strlen(val);
 
-    err = lioc_setattr(lfs->lc, lfs->lc->creds, (char *)fname, NULL, key, (void *)val, v_size);
+    err = lio_setattr(lfs->lc, lfs->lc->creds, (char *)fname, NULL, key, (void *)val, v_size);
     if (err != OP_STATE_SUCCESS) {
         log_printf(0, "ERROR updating stat! fname=%s\n", fname);
         return(-EBADE);
