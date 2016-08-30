@@ -53,7 +53,8 @@ struct lio_unified_object_iter_t {
 #define LIO_TRUNCATE_MODE  4
 #define LIO_CREATE_MODE    8
 #define LIO_APPEND_MODE   16
-#define LIO_RW_MODE        (LIO_READ_MODE|LIO_WRITE_MODE)
+#define LIO_EXCL_MODE     32
+#define LIO_RW_MODE       (LIO_READ_MODE|LIO_WRITE_MODE)
 
 
 #define lio_lock(s) apr_thread_mutex_lock((s)->lock)
