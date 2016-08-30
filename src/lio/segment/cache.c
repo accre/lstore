@@ -2014,6 +2014,7 @@ int _cache_ppages_flush_list(lio_segment_t *seg, data_attr_t *da, tbx_stack_t *p
     cop.boff = 0;
     cop.buf = &tbuf;
     cop.skip_ppages = 1;
+    cop.rw_hints = NULL;
 
     nbytes = 0;
     slot = 0;
