@@ -1025,6 +1025,14 @@ char *next_path()
 {
     char *p, *p2;
 
+    //** Check if we should kick out
+    apr_thread_mutex_lock(shutdown_lock);
+    if (shutdown_now == 1) {
+        apr_thread_mutex_unlock(shutdown_lock);
+        return(NULL);
+    }
+    apr_thread_mutex_unlock(shutdown_lock);
+
     if (from_stdin == 0) {
         if (current_index == -1) current_index = start_index;
         if (current_index > final_index) return(NULL);
@@ -1527,16 +1535,6 @@ int main(int argc, char **argv)
                 free(fname);
                 if (vals[0] != NULL) free(vals[0]);
             }
-
-            //** Check if we hsould kick out
-            apr_thread_mutex_lock(shutdown_lock);
-            if (shutdown_now == 1) {
-                apr_thread_mutex_lock(rid_lock);
-                pool_todo = 0;  //** Force an orderly exit
-                apr_thread_mutex_unlock(rid_lock);
-            }
-            apr_thread_mutex_unlock(shutdown_lock);
-
         }
 
         lio_destroy_object_iter(tuple.lc, it);
