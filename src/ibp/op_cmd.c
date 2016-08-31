@@ -1343,7 +1343,7 @@ gop_op_status_t depot_inq_recv(gop_op_generic_t *gop, tbx_ns_t *ns)
         if (nbytes <= 0) {
             return(ibp_error_status);
         }
-        if (sizeof(buffer) < nbytes) {
+        if ((int)sizeof(buffer) < nbytes) {
             return(ibp_error_status);
         }
 
@@ -1414,7 +1414,7 @@ gop_op_status_t depot_version_recv(gop_op_generic_t *gop, tbx_ns_t *ns)
             nmax = cmd->buffer_size - pos - 2;
             strncat(cmd->buffer, buffer, nmax);
             strcat(cmd->buffer, "\n");
-            if (strlen(buffer) + pos > cmd->buffer_size) {  //** Exit if we are out of space
+            if ((int)strlen(buffer) + pos > cmd->buffer_size) {  //** Exit if we are out of space
                 _op_set_status(err, OP_STATE_FAILURE, IBP_E_WOULD_EXCEED_LIMIT);
                 return(err);
             }

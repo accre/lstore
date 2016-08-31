@@ -543,7 +543,7 @@ lio_path_tuple_t lio_path_auto_fuse_convert(lio_path_tuple_t *ltuple)
         if (strncmp(ltuple->path, lfs_mount[i].prefix, lfs_mount[i].len) == 0) {
             do_convert = 0;
             prefix_len = lfs_mount[i].len;
-            if (strlen(ltuple->path) > prefix_len) {
+            if ((int)strlen(ltuple->path) > prefix_len) {
                 if (ltuple->path[prefix_len] == '/') {
                     do_convert = 1;
                     snprintf(path, sizeof(path), "@:%s", &(ltuple->path[prefix_len]));

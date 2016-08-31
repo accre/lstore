@@ -994,7 +994,7 @@ int lfs_listxattr(const char *fname, char *list, size_t size)
 
     if (size == 0) {
         log_printf(15, "SIZE bpos=%d buf=%s\n", bpos, buf);
-    } else if (size > bpos) {
+    } else if ((int)size > bpos) {
         log_printf(15, "FULL bpos=%d buf=%s\n", bpos, buf);
         memcpy(list, buf, bpos);
     } else {
@@ -1226,7 +1226,7 @@ int lfs_getxattr(const char *fname, const char *name, char *buf, size_t size, ui
     log_printf(1, "fname=%s size=%zu attr_name=%s\n", fname, size, name);
     tbx_log_flush();
 
-    v_size = (size == 0) ? -lfs->lc->max_attr : -size;
+    v_size = (size == 0) ? -lfs->lc->max_attr : -(int)size;
     val = NULL;
     if ((lfs->enable_tape == 1) && (strcmp(name, LFS_TAPE_ATTR) == 0)) {  //** Want the tape backup attr
         lfs_get_tape_attr(lfs, (char *)fname, &val, &v_size);
@@ -1241,7 +1241,7 @@ int lfs_getxattr(const char *fname, const char *name, char *buf, size_t size, ui
 
     if (size == 0) {
         log_printf(1, "SIZE bpos=%d buf=%s\n", v_size, val);
-    } else if (size >= v_size) {
+    } else if ((int)size >= v_size) {
         log_printf(1, "FULL bpos=%d buf=%s\n",v_size, val);
         memcpy(buf, val, v_size);
     } else {

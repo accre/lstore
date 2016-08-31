@@ -167,8 +167,8 @@ int main(int argc, char **argv)
     bad_bytes = bad_groups = 0;
     for (cpos=0; cpos < max_size; cpos += buf_size) {
         len = ((cpos+buf_size) < max_size) ? buf_size : max_size - cpos;
-        assert_result(fread(buf1, 1, len, fd1), len);
-        assert_result(fread(buf2, 1, len, fd2), len);
+        assert_result((int)fread(buf1, 1, len, fd1), len);
+        assert_result((int)fread(buf2, 1, len, fd2), len);
 
         compare_buffers(buf1, buf2, len, cpos, &bad_bytes, &bad_groups, block_size, &state, &state_offset, max_size);
     }
