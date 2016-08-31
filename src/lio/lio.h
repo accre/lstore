@@ -127,6 +127,7 @@ gop_op_generic_t *gop_lio_multiple_setattr_op(lio_config_t *lc, lio_creds_t *cre
 //gop_op_generic_t *gop_lio_move_multiple_attrs(lio_config_t *lc, lio_creds_t *creds, const char *char *id, path, char **key_old, char **key_new, int n);
 //gop_op_generic_t *gop_lio_copy_multiple_attrs(lio_config_t *lc, lio_creds_t *creds, const char *path_src, char *id, char **key_src, const char *path_dest, char **key_dest, int n);
 int lio_get_multiple_attrs(lio_config_t *lc, lio_creds_t *creds, const char *path, char *id, char **key, void **val, int *v_size, int n);
+gop_op_generic_t *gop_lio_move_object(lio_config_t *lc, lio_creds_t *creds, char *src_path, char *dest_path);
 
 os_attr_iter_t *lio_create_attr_iter(lio_config_t *lc, lio_creds_t *creds, const char *path, lio_os_regex_table_t *attr, int v_max);
 void lio_destroy_attr_iter(lio_config_t *lc, os_attr_iter_t *it);
@@ -137,20 +138,9 @@ int lio_update_exnode_attrs(lio_config_t *lc, lio_creds_t *creds, lio_exnode_t *
 
 
 //-----
-gop_op_generic_t *lioc_create_object(lio_config_t *lc, lio_creds_t *creds, char *path, int type, char *ex, char *id);
-gop_op_generic_t *lioc_remove_object(lio_config_t *lc, lio_creds_t *creds, char *path, char *ex_optional, int ftype_optional);
-gop_op_generic_t *lioc_remove_regex_object(lio_config_t *lc, lio_creds_t *creds, lio_os_regex_table_t *rpath, lio_os_regex_table_t *robj, int obj_types, int recurse_depth, int np);
-
 
 void lio_set_timestamp(char *id, char **val, int *v_size);
 void lio_get_timestamp(char *val, int *timestamp, char **id);
-int lioc_set_multiple_attrs(lio_config_t *lc, lio_creds_t *creds, char *path, char *id, char **key, void **val, int *v_size, int n);
-int lioc_get_multiple_attrs(lio_config_t *lc, lio_creds_t *creds, char *path, char *id, char **key, void **val, int *v_size, int n_keys);
-int lioc_encode_error_counts(lio_segment_errors_t *serr, char **key, char **val, char *buf, int *v_size, int mode);
-void lioc_get_error_counts(lio_config_t *lc, lio_segment_t *seg, lio_segment_errors_t *serr);
-int lioc_update_error_counts(lio_config_t *lc, lio_creds_t *creds, char *path, lio_segment_t *seg, int mode);
-int lioc_update_exnode_attrs(lio_config_t *lc, lio_creds_t *creds, lio_exnode_t *ex, lio_segment_t *seg, char *fname, lio_segment_errors_t *serr);
-gop_op_generic_t *lioc_remove_object(lio_config_t *lc, lio_creds_t *creds, char *path, char *ex_optional, int ftype_optional);
 gop_op_status_t cp_lio2lio(lio_cp_file_t *cp);
 gop_op_status_t cp_local2lio(lio_cp_file_t *cp);
 gop_op_status_t cp_lio2local(lio_cp_file_t *cp);
