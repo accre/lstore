@@ -1483,7 +1483,7 @@ int osf_next_object(osf_object_iter_t *it, char **myfname, int *prefix_len)
 {
     lio_osfile_priv_t *osf = (lio_osfile_priv_t *)it->os->priv;
     int i, rmatch, tweak;
-    osf_obj_level_t *itl, *it_top;
+    osf_obj_level_t *itl, *it_top = NULL;
     char fname[OS_PATH_MAX];
     char fullname[OS_PATH_MAX];
     char *obj_fixed = NULL;
@@ -1567,7 +1567,7 @@ int osf_next_object(osf_object_iter_t *it, char **myfname, int *prefix_len)
                                     if (rmatch == 0) { //** IF a match return
                                         *myfname=strdup(fname);
                                         if (*prefix_len == 0) {
-                                            *prefix_len = strlen(it_top->path);
+                                            *prefix_len = (it_top != NULL) ? strlen(it_top->path) : 0;
                                             if (*prefix_len == 0) *prefix_len = tweak;
                                         }
                                         log_printf(15, "MATCH=%s prefix=%d\n", fname, *prefix_len);
@@ -1602,6 +1602,7 @@ int osf_next_object(osf_object_iter_t *it, char **myfname, int *prefix_len)
                                         if (rmatch == 0) { //** IF a match return
                                             if (*prefix_len == 0) {
                                                 *prefix_len = strlen(it_top->path);
+                                                *prefix_len = (it_top != NULL) ? strlen(it_top->path) : 0;
                                                 if (*prefix_len == 0) *prefix_len = tweak;
                                             }
                                             *myfname=strdup(fname);
