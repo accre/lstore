@@ -2480,13 +2480,13 @@ gop_op_generic_t *osfile_hardlink_object(lio_object_service_fn_t *os, lio_creds_
 }
 
 //***********************************************************************
-// osfile_move_object_fn - Actually Moves an object
+// osf_move_object - Actually Moves an object
 //***********************************************************************
 
-gop_op_status_t osfile_move_object_fn(void *arg, int id)
+gop_op_status_t osf_move_object(lio_object_service_fn_t *os, lio_creds_t *creds, char *src_path, char *dest_path, int id, int dolock)
 {
-    osfile_mk_mv_rm_t *op = (osfile_mk_mv_rm_t *)arg;
-    lio_osfile_priv_t *osf = (lio_osfile_priv_t *)op->os->priv;
+    lio_osfile_priv_t *osf = (lio_osfile_priv_t *)os->priv;
+    osfile_mk_mv_rm_t rm;    
     int slot_src, slot_dest;
     apr_thread_mutex_t *lock_src, *lock_dest;
     int ftype, dtype;
@@ -2496,42 +2496,47 @@ gop_op_status_t osfile_move_object_fn(void *arg, int id)
     char dfname2[OS_PATH_MAX];
     char *dir, *base;
     int err;
+    gop_op_status_t status;
 
-    if ((osaz_object_remove(osf->osaz, op->creds, op->src_path) == 0) ||
-            (osaz_object_create(osf->osaz, op->creds, op->dest_path) == 0)) return(gop_failure_status);
+    if ((osaz_object_remove(osf->osaz, creds, src_path) == 0) ||
+            (osaz_object_create(osf->osaz, creds, dest_path) == 0)) return(gop_failure_status);
 
     //** Lock the individual objects based on their slot positions to avoid a deadlock
-    lock_src = osf_retrieve_lock(op->os, op->src_path, &slot_src);
-    lock_dest = osf_retrieve_lock(op->os, op->dest_path, &slot_dest);
-    if (slot_src < slot_dest) {
-        osf_obj_lock(lock_src);
-        osf_obj_lock(lock_dest);
-    } else if (slot_src > slot_dest) {
-        osf_obj_lock(lock_dest);
-        osf_obj_lock(lock_src);
-    } else {  //** Same slot so only need to lock one
-        lock_dest = NULL;
-        osf_obj_lock(lock_src);
+    if (dolock == 1) {
+        lock_src = osf_retrieve_lock(os, src_path, &slot_src);
+        lock_dest = osf_retrieve_lock(os, dest_path, &slot_dest);
+        if (slot_src < slot_dest) {
+           osf_obj_lock(lock_src);
+            osf_obj_lock(lock_dest);
+        } else if (slot_src > slot_dest) {
+            osf_obj_lock(lock_dest);
+            osf_obj_lock(lock_src);
+        } else {  //** Same slot so only need to lock one
+            lock_dest = NULL;
+            osf_obj_lock(lock_src);
+        }
     }
 
-    snprintf(sfname, OS_PATH_MAX, "%s%s", osf->file_path, op->src_path);
-    snprintf(dfname, OS_PATH_MAX, "%s%s", osf->file_path, op->dest_path);
+    snprintf(sfname, OS_PATH_MAX, "%s%s", osf->file_path, src_path);
+    snprintf(dfname, OS_PATH_MAX, "%s%s", osf->file_path, dest_path);
 
     // ** check if the dest already exists. IF so we ned to preserve it in case of an error
     dtype = lio_os_local_filetype(dfname);
-    if (dtype != 0) {
+    if (dtype != 0) {  //** Recursively call our selves and move the dest out of the way
        tbx_random_get_bytes(&ui, sizeof(ui));  //** Make the random name
-       snprintf(dfname2, OS_PATH_MAX, "%s%s_dmv_%ud", osf->file_path, op->dest_path, ui);
-       err = rename(dfname, dfname2);  //** Move the dest file/dir for unwinding
-       if (err != 0) goto fail;
+       snprintf(dfname2, OS_PATH_MAX, "%s_dmv_%u", dest_path, ui);
+       status = osf_move_object(os, creds, dest_path, dfname2, id, 0);
+       err = status.op_status;
+       if (status.op_status != OP_STATE_SUCCESS) goto fail;
     }
- 
+
+    //** If we made it here we know the DEST does NOT exist
+    //** Figure out what we are trying to move.
+    ftype = lio_os_local_filetype(sfname);
+
     //** Attempt to move the main file entry
     err = rename(sfname, dfname);  //** Move the file/dir
     log_printf(15, "sfname=%s dfname=%s err=%d\n", sfname, dfname, err);
-
-    //** Figure out what we are trying to move
-    ftype = lio_os_local_filetype(sfname);
 
     if ((ftype & (OS_OBJECT_FILE_FLAG|OS_OBJECT_SYMLINK_FLAG)) && (err==0)) { //** File move
         //** Also need to move the attributes entry
@@ -2546,21 +2551,43 @@ gop_op_status_t osfile_move_object_fn(void *arg, int id)
 
         log_printf(15, "ATTR sfname=%s dfname=%s\n", sfname, dfname);
 
-        if (lio_os_local_filetype(sfname) == 0)
-
         err = rename(sfname, dfname);  //** Move the attribute directoy
-        if (err != 0) { //** Failed attr dir move so need to undo file entry
-           rename(dfname2, dfname);  //** restore the original dest file entry
-        } else {  //** Attr dir move was a success so go ahead and delete the original dest file entry
-           remove(dfname2);
+        if (err != 0) { //** Got to undo the main file/dir entry if the attr rename fails
+            snprintf(sfname, OS_PATH_MAX, "%s%s", osf->file_path, src_path);
+            snprintf(dfname, OS_PATH_MAX, "%s%s", osf->file_path, dest_path);
+            rename(dfname, sfname);
+        }
+    }
+
+   if (dtype != 0) {  //** There was already something in the dest so need to clean up
+        if (err == 0) {  //** No errors so just remove the old entry
+            rm.os = os;
+            rm.creds = creds;
+            rm.src_path = dfname2;
+            osfile_remove_object_fn(&rm, id);
+        } else {  //** Move failed so undo things
+            osf_move_object(os, creds, dfname2, dest_path, id, 0);
         }
     }
 
 fail:
-    osf_obj_unlock(lock_src);
-    if (lock_dest != NULL) osf_obj_unlock(lock_dest);
+    if (dolock == 1) {
+        osf_obj_unlock(lock_src);
+        if (lock_dest != NULL) osf_obj_unlock(lock_dest);
+    }
 
     return((err == 0) ? gop_success_status : gop_failure_status);
+}
+
+//***********************************************************************
+// osfile_move_object_fn - Actually Moves an object
+//***********************************************************************
+
+gop_op_status_t osfile_move_object_fn(void *arg, int id)
+{
+    osfile_mk_mv_rm_t *op = (osfile_mk_mv_rm_t *)arg;
+
+    return(osf_move_object(op->os, op->creds, op->src_path, op->dest_path, id, 1));
 }
 
 //***********************************************************************
