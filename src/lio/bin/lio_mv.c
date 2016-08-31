@@ -222,8 +222,8 @@ int main(int argc, char **argv)
             if ((dtype & OS_OBJECT_FILE_FLAG) > 0) { //** Existing file so rename it for backup
                 tbx_type_malloc(fname, char, strlen(dtuple.path) + 40);
                 tbx_random_get_bytes(&ui, sizeof(ui));  //** MAke the random name
-                sprintf(fname, "%s.mv.%ud", dtuple.path, ui);
-                err = gop_sync_exec(gop_lio_move_object(dtuple.lc, dtuple.creds, flist[0].src_tuple.path, fname));
+                sprintf(fname, "%s.mv.%u", dtuple.path, ui);
+                err = gop_sync_exec(gop_lio_move_object(dtuple.lc, dtuple.creds, dtuple.path, fname));
                 if (err != OP_STATE_SUCCESS) {
                     info_printf(lio_ifd, 0, "ERROR renaming dest(%s) to %s!\n", dtuple.path, fname);
                     free(fname);
@@ -297,6 +297,7 @@ int main(int argc, char **argv)
         while ((gop = opque_get_next_failed(q)) != NULL) {
             j = gop_get_myid(gop);
             info_printf(lio_ifd, 0, "Failed with path %s\n", flist[j].src_tuple.path);
+            status = gop_get_status(gop);
             n_errors += status.error_code;
         }
     }
