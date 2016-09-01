@@ -203,6 +203,7 @@ find_package(OpenSSL REQUIRED)
 find_package(FUSE REQUIRED)
 find_package(ZLIB REQUIRED)
 find_package(ZMQ REQUIRED)
+find_package(LevelDB REQUIRED)
 
 # Find external deps we might build
 set(APR_USE_SYSTEM ${ENABLE_UPSTREAM_APR})
