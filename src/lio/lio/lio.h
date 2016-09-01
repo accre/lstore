@@ -94,6 +94,9 @@ LIO_API int lio_shutdown();
 LIO_API int lio_unified_next_object(lio_unified_object_iter_t *it, char **fname, int *prefix_len);
 LIO_API lio_unified_object_iter_t *lio_unified_object_iter_create(lio_path_tuple_t tuple, lio_os_regex_table_t *path_regex, lio_os_regex_table_t *obj_regex, int obj_types, int rd);
 LIO_API void lio_unified_object_iter_destroy(lio_unified_object_iter_t *it);
+LIO_API void *lio_stdinlist_iter_create(int argc, const char **argv);
+LIO_API void lio_stdinlist_iter_destroy(void *ptr);
+LIO_API char *lio_stdinlist_iter_next(void *ptr);
 LIO_API gop_op_generic_t *lioc_truncate(lio_path_tuple_t *tuple, ex_off_t new_size);
 
 // Preprocessor constants

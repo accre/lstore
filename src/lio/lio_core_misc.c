@@ -191,3 +191,91 @@ int lio_unified_next_object(lio_unified_object_iter_t *it, char **fname, int *pr
     return(err);
 }
 
+
+//-------------------------------------------------------------------------
+//------------------- Stdin/list Iterators --------------------------------
+//   These routines are designed to simplify processing arrays of globs
+//   or other paths gotten from the command line and/or from stdin
+//   To specify stdin use the "-" as a list element.  At that pint
+//   lines come from stdin until EOF is reached at which point it switches
+//   to getting elements from the list.
+//
+//   The caller is repsonsible for destroying the return elements
+//-------------------------------------------------------------------------
+//-------------------------------------------------------------------------
+
+#define SLIST_STDIN "-"  //** Stdin list name
+
+typedef struct {  //** Stdin/list iterator
+    int argc;           //** Size of argv
+    int current;        //** Current argv index
+    int from_stdin;     //** Processing args from stdin.
+    const char **argv;  //** Array of paths
+} slist_iter_t;
+
+//*************************************************************************
+//  lio_stdinlist_iter_create - Create stdin/list iterator
+//*************************************************************************
+
+void *lio_stdinlist_iter_create(int argc, const char **argv)
+{
+    slist_iter_t *it;
+
+    tbx_type_malloc(it, slist_iter_t, 1);
+    it->argc = argc;
+    it->argv = argv;
+    it->current = 0;
+    it->from_stdin = 0;
+
+    return(it);
+}
+
+//*************************************************************************
+// lio_stdinlist_iter_create - Destroys the stdin/list iterator
+//*************************************************************************
+
+void lio_stdinlist_iter_destroy(void *ptr)
+{
+   free(ptr);
+}
+
+//*************************************************************************
+//  lio_stdinlist_iter_next - Returns the next path from either argv or stdin
+//    IF no arguments are left then NULL is returned.
+//
+//    NOTE:  The caller is responsible for destroying the return argument
+//*************************************************************************
+
+char *lio_stdinlist_iter_next(void *ptr)
+{
+    slist_iter_t *it = ptr;
+    char stmp[8192];
+    char *p;
+
+next_from_list:
+    if (it->from_stdin == 0) {
+        if (it->current >= it->argc) return(NULL);  //** Nothing left to do
+
+        if (strcmp(it->argv[it->current], SLIST_STDIN) != 0) { //** Normal line
+            p = strdup(it->argv[it->current]);
+            it->current++;
+            return(p);
+        }
+
+        it->from_stdin = 1;  //** Got a request for stdin
+        it->current++;
+    }
+
+    //** IF we made it here then we are processing text from stdin
+    p = fgets(stmp, sizeof(stmp), stdin);
+    if (p) {
+        p[strlen(p)-1] = 0;  //** Truncate the \n
+        return(strdup(p));  //** Return
+    } else {
+      it->from_stdin = 0;
+      goto next_from_list;
+    }
+
+    return(NULL);  //** Nothing left to do
+}
+

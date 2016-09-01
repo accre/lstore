@@ -33,36 +33,6 @@ char **argv_list = NULL;
 int start_index = -1;
 int final_index = -1;
 int current_index = -1;
-int from_stdin = 0;
-
-//*************************************************************************
-//  next_path - Returns the next path from either argv or stdin
-//*************************************************************************
-
-char *next_path()
-{
-    char *p, *p2;
-
-    if (from_stdin == 0) {
-        if (current_index == -1) current_index = start_index;
-        if (current_index > final_index) return(NULL);
-
-        p = strdup(argv_list[current_index]);
-        current_index++;
-    } else {
-        tbx_type_malloc(p2, char, 8192);
-        p = fgets(p2, 8192, stdin);
-        if (p) {
-            p2[strlen(p)-1] = 0;  //** Truncate the \n
-        } else {
-            free(p2);   
-        }
-    }
-
-    log_printf(5, "from_stdin=%d path=%s\n", from_stdin, p);
-    return(p);
-}
-
 
 //*************************************************************************
 //*************************************************************************
@@ -73,6 +43,7 @@ int main(int argc, char **argv)
     gop_opque_t *q;
     gop_op_generic_t *gop;
     char *path;
+    void *piter;
     gop_op_status_t status;
     lio_os_regex_table_t **rpath;
     lio_path_tuple_t *flist, tuple;
@@ -112,14 +83,12 @@ int main(int argc, char **argv)
             i++;
             obj_types = atoi(argv[i]);
             i++;
-        } else if (strcmp(argv[i], "-") == 0) { //** Take files from stdin
-            i++;
-            from_stdin = 1;
         }
 
     } while ((start_option - i < 0) && (i<argc));
-    start_index = i;
-    final_index = argc - 1;
+    start_option = i;
+
+    piter = lio_stdinlist_iter_create(argc-start_option, (const char **)&(argv[start_option]));
 
     if (rg_mode == 1) {  //** Got an explicit R/G path set
         err = gop_sync_exec(lio_remove_regex_op(tuple.lc, tuple.creds, rp_single, ro_single, obj_types, recurse_depth, lio_parallel_task_count));
@@ -131,7 +100,7 @@ int main(int argc, char **argv)
     }
 
     //** Check if we have more things to remove
-    if ((i>=argc) && (from_stdin == 0)) {
+    if (i>=argc) {
         if (rp_single == NULL) {
             info_printf(lio_ifd, 0, "Missing directory!\n");
             return(2);
@@ -149,7 +118,7 @@ int main(int argc, char **argv)
     opque_start_execution(q);
     i = 0;
     loop = 0;
-    while ((path = next_path()) != NULL) {
+    while ((path = lio_stdinlist_iter_next(piter)) != NULL) {
         loop++;
         path_list[i] = path;
         flist[i] = lio_path_resolve(lio_gc->auto_translate, path_list[i]);
@@ -184,6 +153,8 @@ int main(int argc, char **argv)
     }
 
     gop_opque_free(q, OP_DESTROY);
+
+    lio_stdinlist_iter_destroy(piter);
 
     free(flist);
     free(rpath);
