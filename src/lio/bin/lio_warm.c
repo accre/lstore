@@ -572,6 +572,8 @@ finished:
 
     close_warm_db(db_inode, db_rid);  //** Close the DBs
 
+    lio_stdinlist_iter_destroy(piter);
+
     lio_shutdown();
 
     return(0);
