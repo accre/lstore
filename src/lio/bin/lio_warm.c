@@ -243,8 +243,8 @@ gop_op_status_t gen_warm_task(void *arg, int id)
 
 int main(int argc, char **argv)
 {
-    int i, j, start_option, start_index, rg_mode, ftype, prefix_len;
-    char *fname;
+    int i, j, start_option, rg_mode, ftype, prefix_len;
+    char *fname, *path;
     gop_opque_t *q;
     gop_op_generic_t *gop;
     gop_op_status_t status;
@@ -263,6 +263,7 @@ int main(int argc, char **argv)
     tbx_inip_file_t *ifd;
     tbx_inip_group_t *ig;
     tbx_inip_element_t *ele;
+    void *piter;
     char ppbuf[128], ppbuf2[128], ppbuf3[128];
     lio_path_tuple_t tuple;
     ex_off_t total, good, bad, nbytes, submitted, werr;
@@ -285,6 +286,7 @@ int main(int argc, char **argv)
         printf("    -sb                - Print the summary but only list the bad RIDs\n");
         printf("    -sf                - Print the the full summary\n");
         printf("    -v                 - Print all Success/Fail messages instead of just errors\n");
+        printf("    -                  - If no file is given but a single dash is used the files are taken from stdin\n");
         return(1);
     }
 
@@ -328,7 +330,7 @@ int main(int argc, char **argv)
         }
 
     } while ((start_option < i) && (i<argc));
-    start_index = i;
+    start_option = i;
 
 
     if (rg_mode == 0) {
@@ -337,10 +339,12 @@ int main(int argc, char **argv)
             return(2);
         }
     } else {
-        start_index--;  //** Ther 1st entry will be the rp created in lio_parse_path_options
+        start_option--;  //** Ther 1st entry will be the rp created in lio_parse_path_options
     }
 
-    create_warm_db(db_base, &db_inode, &db_rid);  //** Create the DB 
+    piter = lio_stdinlist_iter_create(argc-start_option, (const char **)&(argv[start_option]));
+
+    create_warm_db(db_base, &db_inode, &db_rid);  //** Create the DB
 
     q = gop_opque_new();
     opque_start_execution(q);
@@ -353,11 +357,10 @@ int main(int argc, char **argv)
 
     submitted = good = bad = werr = 0;
 
-    for (j=start_index; j<argc; j++) {
-        log_printf(5, "path_index=%d argc=%d rg_mode=%d\n", j, argc, rg_mode);
+    while ((path = lio_stdinlist_iter_next(piter)) != NULL) {
         if (rg_mode == 0) {
             //** Create the simple path iterator
-            tuple = lio_path_resolve(lio_gc->auto_translate, argv[j]);
+            tuple = lio_path_resolve(lio_gc->auto_translate, path);
             lio_path_wildcard_auto_append(&tuple);
             rp_single = lio_os_path_glob2regex(tuple.path);
         } else {
