@@ -500,7 +500,7 @@ int main(int argc, char **argv)
                 value = tbx_inip_ele_get_value(ele);
                 if (strcmp(rkey, "rid_key") == 0) {
                     tbx_inip_group_free(ig);
-                    tbx_inip_group_set(ig, value);
+                    tbx_inip_group_set(ig, strdup(value));
                 }
 
                 ele = tbx_inip_ele_next(ele);
