@@ -591,7 +591,7 @@ int lio_is_dir_empty(lio_config_t *lc, lio_creds_t *creds, char *path)
     int err, prefix_len;
     char *fname;
     int n = strlen(path);
-    int obj_types = OS_OBJECT_FILE|OS_OBJECT_DIR|OS_OBJECT_SYMLINK;
+    int obj_types = OS_OBJECT_FILE_FLAG|OS_OBJECT_DIR_FLAG|OS_OBJECT_SYMLINK_FLAG;
 
     tbx_type_malloc(p2, char, n+3);
     snprintf(p2, n+3, "%s/*", path);
@@ -636,8 +636,8 @@ gop_op_status_t lio_move_object_fn(void *arg, int id)
 
     log_printf(15, "src=%s dest=%s stype=%d dtype=%d\n", op->src_path, op->dest_path, stype, dtype);
     if (dtype != 0) {  //** The destination exists to lets make sure its compatible with a move
-        if (dtype & OS_OBJECT_DIR) { //** It's a directory
-            if ((stype & OS_OBJECT_DIR) == 0) {  //** Source is a file so mv will fail
+        if (dtype & OS_OBJECT_DIR_FLAG) { //** It's a directory
+            if ((stype & OS_OBJECT_DIR_FLAG) == 0) {  //** Source is a file so mv will fail
                status.op_status = OP_STATE_FAILURE; status.error_code = EISDIR;
                return(status);
             } else { // ** Make sure the dest directory is empty

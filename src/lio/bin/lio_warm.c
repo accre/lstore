@@ -16,6 +16,7 @@
 
 #define _log_module_index 207
 
+#include <leveldb/c.h>
 #include <apr.h>
 #include <apr_hash.h>
 #include <apr_pools.h>
@@ -42,6 +43,9 @@
 #include <lio/os.h>
 #include <lio/rs.h>
 
+__attribute__((unused)) static int open_warm_db(char *db_base, leveldb_t **inode_db, leveldb_t **rid_db);
+#include "warmer_helpers.h"
+
 
 typedef struct {
     char *rid_key;
@@ -60,11 +64,16 @@ typedef struct {
     apr_hash_t *hash;
     apr_pool_t *mpool;
     int n;
+    ex_id_t inode;
+    int write_err;
 } warm_t;
 
 apr_hash_t *tagged_rids = NULL;
 apr_pool_t *tagged_pool = NULL;
 tbx_stack_t *tagged_keys = NULL;
+leveldb_t *db_rid = NULL;
+leveldb_t *db_inode = NULL;
+int verbose = 0;
 
 static int dt = 86400;
 
@@ -124,7 +133,7 @@ gop_op_status_t gen_warm_task(void *arg, int id)
     gop_op_status_t status;
     gop_op_generic_t *gop;
     tbx_inip_file_t *fd;
-    int i, j, nfailed;
+    int i, j, nfailed, state;
     warm_hash_entry_t *wrid = NULL;
     char *etext;
     gop_opque_t *q;
@@ -154,7 +163,7 @@ gop_op_status_t gen_warm_task(void *arg, int id)
                 }
             }
 
-            //** Get the data size and update thr counts
+            //** Get the data size and update the counts
             wrid->nbytes += tbx_inip_get_integer(fd, tbx_inip_group_get(g), "max_size", 0);
 
             //** Get the manage cap
@@ -172,8 +181,6 @@ gop_op_status_t gen_warm_task(void *arg, int id)
 
             //** Check if it was tagged
             if (tagged_rids != NULL) {
-//         info_printf(lio_ifd, 0, "checking: %s  rid_key=%s\n", w->fname, wrid->rid_key);
-
                 if (apr_hash_get(tagged_rids, wrid->rid_key, APR_HASH_KEY_STRING) != NULL) {
                     info_printf(lio_ifd, 0, "RID_TAG: %s  rid_key=%s\n", w->fname, wrid->rid_key);
                 }
@@ -192,9 +199,11 @@ gop_op_status_t gen_warm_task(void *arg, int id)
         wrid->dtime += gop_exec_time(gop);
         if (status.op_status == OP_STATE_SUCCESS) {
             wrid->good++;
-        } else {
+            warm_put_rid(db_rid, wrid->rid_key, w->inode, 0);
+         } else {
             nfailed++;
             wrid->bad++;
+            warm_put_rid(db_rid, wrid->rid_key, w->inode, 0);
             j = gop_get_myid(gop);
             info_printf(lio_ifd, 1, "ERROR: %s  cap=%s\n", w->fname, w->cap[j]);
         }
@@ -202,13 +211,17 @@ gop_op_status_t gen_warm_task(void *arg, int id)
         gop_free(gop, OP_DESTROY);
     }
 
+    state = (w->write_err == 0) ? 0 : WFE_WRITE_ERR;
     if (nfailed == 0) {
         status = gop_success_status;
-        info_printf(lio_ifd, 0, "Succeeded with file %s with %d allocations\n", w->fname, w->n);
+        state |= WFE_SUCCESS;
+        if (verbose == 1) info_printf(lio_ifd, 0, "Succeeded with file %s with %d allocations\n", w->fname, w->n);
     } else {
         status = gop_failure_status;
+        state |= WFE_FAIL;
         info_printf(lio_ifd, 0, "Failed with file %s on %d out of %d allocations\n", w->fname, nfailed, w->n);
     }
+    warm_put_inode(db_inode, w->inode, state, nfailed, w->fname);
 
     etext = NULL;
     i = 0;
@@ -235,9 +248,10 @@ int main(int argc, char **argv)
     gop_opque_t *q;
     gop_op_generic_t *gop;
     gop_op_status_t status;
-    char *keys[] = { "system.exnode", "system.write_errors" };
-    char *vals[2];
-    int slot, v_size[2];
+    char *keys[] = { "system.exnode", "system.write_errors", "system.inode" };
+    char *vals[3];
+    char *db_base = "/lio/log/warm";
+    int slot, v_size[3];
     os_object_iter_t *it;
     lio_os_regex_table_t *rp_single, *ro_single;
     tbx_list_t *master;
@@ -261,14 +275,16 @@ int main(int argc, char **argv)
 
     if (argc < 2) {
         printf("\n");
-        printf("lio_warm LIO_COMMON_OPTIONS [-t tag.cfg] [-rd recurse_depth] [-dt time] [-sb] [-sf] LIO_PATH_OPTIONS\n");
+        printf("lio_warm LIO_COMMON_OPTIONS [-db DB_output_dir] [-t tag.cfg] [-rd recurse_depth] [-dt time] [-sb] [-sf] [ -v] LIO_PATH_OPTIONS\n");
         lio_print_options(stdout);
         lio_print_path_options(stdout);
+        printf("    -db DB_output_dir   - Output Directory for the DBes. DEfault is %s\n", db_base);
         printf("    -t tag.cfg         - INI file with RID to tag by printing any files usign the RIDs\n");
         printf("    -rd recurse_depth  - Max recursion depth on directories. Defaults to %d\n", recurse_depth);
         printf("    -dt time           - Duration time in sec.  Default is %d sec\n", dt);
         printf("    -sb                - Print the summary but only list the bad RIDs\n");
         printf("    -sf                - Print the the full summary\n");
+        printf("    -v                 - Print all Success/Fail messages instead of just errors\n");
         return(1);
     }
 
@@ -280,10 +296,15 @@ int main(int argc, char **argv)
 
     i=1;
     summary_mode = 0;
+    verbose = 0;
     do {
         start_option = i;
 
-        if (strcmp(argv[i], "-dt") == 0) { //** Time
+        if (strcmp(argv[i], "-db") == 0) { //** DB output base directory
+            i++;
+            db_base = argv[i];
+            i++;
+        } else if (strcmp(argv[i], "-dt") == 0) { //** Time
             i++;
             dt = atoi(argv[i]);
             i++;
@@ -297,6 +318,9 @@ int main(int argc, char **argv)
         } else if (strcmp(argv[i], "-sf") == 0) { //** Print the full summary
             i++;
             summary_mode = 2;
+        } else if (strcmp(argv[i], "-v") == 0) { //** Verbose printing
+            i++;
+            verbose = 1;
         } else if (strcmp(argv[i], "-t") == 0) { //** Got a list of RIDs to tag
             i++;
             parse_tag_file(argv[i]);
@@ -315,6 +339,8 @@ int main(int argc, char **argv)
     } else {
         start_index--;  //** Ther 1st entry will be the rp created in lio_parse_path_options
     }
+
+    create_warm_db(db_base, &db_inode, &db_rid);  //** Create the DB 
 
     q = gop_opque_new();
     opque_start_execution(q);
@@ -338,8 +364,8 @@ int main(int argc, char **argv)
             rg_mode = 0;  //** Use the initial rp
         }
 
-        v_size[0] = v_size[1] = - tuple.lc->max_attr;
-        it = lio_create_object_iter_alist(tuple.lc, tuple.creds, rp_single, ro_single, OS_OBJECT_FILE_FLAG, recurse_depth, keys, (void **)vals, v_size, 2);
+        v_size[0] = v_size[1] = -tuple.lc->max_attr; v_size[2] = -tuple.lc->max_attr;
+        it = lio_create_object_iter_alist(tuple.lc, tuple.creds, rp_single, ro_single, OS_OBJECT_FILE_FLAG, recurse_depth, keys, (void **)vals, v_size, 3);
         if (it == NULL) {
             info_printf(lio_ifd, 0, "ERROR: Failed with object_iter creation\n");
             goto finished;
@@ -352,14 +378,23 @@ int main(int argc, char **argv)
             w[slot].exnode = vals[0];
             w[slot].creds = tuple.lc->creds;
             w[slot].ic = ((lio_ds_ibp_priv_t *)(tuple.lc->ds->priv))->ic;
+            w[slot].write_err = 0;
 
             if (v_size[1] != -1) {
                 werr++;
+                w[slot].write_err = 1;
                 info_printf(lio_ifd, 0, "WRITE_ERROR for file %s\n", fname);
                 if (vals[1] != NULL) {
                     free(vals[1]);
                     vals[1] = NULL;
                 }
+            }
+
+            w[slot].inode = 0;
+            if (v_size[2] > 0) {
+               sscanf(vals[2], XIDT, &(w[slot].inode));
+               free(vals[2]);
+               vals[2] = NULL;
             }
 
             vals[0] = NULL;
@@ -531,6 +566,8 @@ finished:
         tbx_stack_free(tagged_keys, 1);
         apr_pool_destroy(tagged_pool);
     }
+
+    close_warm_db(db_inode, db_rid);  //** Close the DBs
 
     lio_shutdown();
 
