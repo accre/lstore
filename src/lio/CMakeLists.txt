@@ -168,8 +168,8 @@ set(LSTORE_PROJECT_EXECUTABLES
 		lio_warm
 		mk_linear
 		os_fsck
-		zadler32
 		warmer_query
+		zadler32
 )
 
 # Common functionality is stored here
