@@ -1483,7 +1483,8 @@ int osf_next_object(osf_object_iter_t *it, char **myfname, int *prefix_len)
 {
     lio_osfile_priv_t *osf = (lio_osfile_priv_t *)it->os->priv;
     int i, rmatch, tweak;
-    osf_obj_level_t *itl, *it_top = NULL;
+    osf_obj_level_t *itl;
+    osf_obj_level_t *it_top = NULL;
     char fname[OS_PATH_MAX];
     char fullname[OS_PATH_MAX];
     char *obj_fixed = NULL;
