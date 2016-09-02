@@ -24,6 +24,12 @@
 #include <gop/opque.h>
 #include <gop/tp.h>
 #include <gop/types.h>
+#include <lio/authn.h>
+#include <lio/ds.h>
+#include <lio/ex3.h>
+#include <lio/lio.h>
+#include <lio/os.h>
+#include <lio/rs.h>
 #include <stdio.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -33,15 +39,10 @@
 #include <tbx/list.h>
 #include <tbx/log.h>
 #include <tbx/stack.h>
+#include <tbx/stdinarray_iter.h>
 #include <tbx/string_token.h>
 #include <tbx/type_malloc.h>
 
-#include <lio/authn.h>
-#include <lio/ds.h>
-#include <lio/ex3.h>
-#include <lio/lio.h>
-#include <lio/os.h>
-#include <lio/rs.h>
 
 __attribute__((unused)) static int open_warm_db(char *db_base, leveldb_t **inode_db, leveldb_t **rid_db);
 #include "warmer_helpers.h"
@@ -342,7 +343,7 @@ int main(int argc, char **argv)
         start_option--;  //** Ther 1st entry will be the rp created in lio_parse_path_options
     }
 
-    piter = lio_stdinlist_iter_create(argc-start_option, (const char **)&(argv[start_option]));
+    piter = tbx_stdinarray_iter_create(argc-start_option, (const char **)&(argv[start_option]));
 
     create_warm_db(db_base, &db_inode, &db_rid);  //** Create the DB
 
@@ -357,7 +358,7 @@ int main(int argc, char **argv)
 
     submitted = good = bad = werr = 0;
 
-    while ((path = lio_stdinlist_iter_next(piter)) != NULL) {
+    while ((path = tbx_stdinarray_iter_next(piter)) != NULL) {
         if (rg_mode == 0) {
             //** Create the simple path iterator
             tuple = lio_path_resolve(lio_gc->auto_translate, path);
@@ -572,7 +573,7 @@ finished:
 
     close_warm_db(db_inode, db_rid);  //** Close the DBs
 
-    lio_stdinlist_iter_destroy(piter);
+    tbx_stdinarray_iter_destroy(piter);
 
     lio_shutdown();
 

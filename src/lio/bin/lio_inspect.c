@@ -43,6 +43,7 @@
 #include <tbx/list.h>
 #include <tbx/log.h>
 #include <tbx/stack.h>
+#include <tbx/stdinarray_iter.h>
 #include <tbx/string_token.h>
 #include <tbx/type_malloc.h>
 
@@ -1360,7 +1361,7 @@ int main(int argc, char **argv)
     }
 
     //** Make the path iterator
-    piter = lio_stdinlist_iter_create(argc-start_option, (const char **)&(argv[start_option]));
+    piter = tbx_stdinarray_iter_create(argc-start_option, (const char **)&(argv[start_option]));
 
     tbx_type_malloc_clear(w, inspect_t, lio_parallel_task_count);
     seg_index = tbx_list_create(0, &tbx_list_string_compare, NULL, tbx_list_simple_free, NULL);
@@ -1385,7 +1386,7 @@ int main(int argc, char **argv)
     install_signal_handler();
 
     apr_thread_mutex_lock(shutdown_lock);
-    while (((path = lio_stdinlist_iter_next(piter)) != NULL) && (pool_todo > 0) && (shutdown_now == 0)) {
+    while (((path = tbx_stdinarray_iter_next(piter)) != NULL) && (pool_todo > 0) && (shutdown_now == 0)) {
         apr_thread_mutex_unlock(shutdown_lock);
         log_printf(5, "path=%s argc=%d rg_mode=%d pslot=%d\n", path, argc, rg_mode, pslot);
 
@@ -1559,7 +1560,7 @@ int main(int argc, char **argv)
 
     free(w);
 
-    lio_stdinlist_iter_destroy(piter);
+    tbx_stdinarray_iter_destroy(piter);
     if (rid_lock != NULL) apr_thread_mutex_destroy(rid_lock);
     if (rid_mpool != NULL) apr_pool_destroy(rid_mpool);
 finished:

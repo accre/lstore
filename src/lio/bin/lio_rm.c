@@ -19,15 +19,16 @@
 #include <gop/gop.h>
 #include <gop/opque.h>
 #include <gop/types.h>
+#include <lio/lio.h>
+#include <lio/os.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <tbx/assert_result.h>
 #include <tbx/log.h>
+#include <tbx/stdinarray_iter.h>
 #include <tbx/type_malloc.h>
 
-#include <lio/lio.h>
-#include <lio/os.h>
 
 char **argv_list = NULL;
 int start_index = -1;
@@ -88,7 +89,7 @@ int main(int argc, char **argv)
     } while ((start_option - i < 0) && (i<argc));
     start_option = i;
 
-    piter = lio_stdinlist_iter_create(argc-start_option, (const char **)&(argv[start_option]));
+    piter = tbx_stdinarray_iter_create(argc-start_option, (const char **)&(argv[start_option]));
 
     if (rg_mode == 1) {  //** Got an explicit R/G path set
         err = gop_sync_exec(lio_remove_regex_op(tuple.lc, tuple.creds, rp_single, ro_single, obj_types, recurse_depth, lio_parallel_task_count));
@@ -118,7 +119,7 @@ int main(int argc, char **argv)
     opque_start_execution(q);
     i = 0;
     loop = 0;
-    while ((path = lio_stdinlist_iter_next(piter)) != NULL) {
+    while ((path = tbx_stdinarray_iter_next(piter)) != NULL) {
         loop++;
         path_list[i] = path;
         flist[i] = lio_path_resolve(lio_gc->auto_translate, path_list[i]);
@@ -154,7 +155,7 @@ int main(int argc, char **argv)
 
     gop_opque_free(q, OP_DESTROY);
 
-    lio_stdinlist_iter_destroy(piter);
+    tbx_stdinarray_iter_destroy(piter);
 
     free(flist);
     free(rpath);
