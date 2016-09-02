@@ -32,9 +32,6 @@
 #include <lio/os.h>
 #include <lio/rs.h>
 
-__attribute__((unused)) static int warm_put_inode(leveldb_t *db, ex_id_t inode, int state, int nfailed, char *name);
-__attribute__((unused)) static int warm_put_rid(leveldb_t *db, char *rid, ex_id_t inode, int state);
-__attribute__((unused)) static void create_warm_db(char *db_base, leveldb_t **inode_db, leveldb_t **rid_db);
 #include "warmer_helpers.h"
 
 //*************************************************************************

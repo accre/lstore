@@ -43,8 +43,6 @@
 #include <tbx/string_token.h>
 #include <tbx/type_malloc.h>
 
-
-__attribute__((unused)) static int open_warm_db(char *db_base, leveldb_t **inode_db, leveldb_t **rid_db);
 #include "warmer_helpers.h"
 
 

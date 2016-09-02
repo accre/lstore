@@ -40,6 +40,12 @@ typedef struct {
     int  state;
 } __attribute__((packed)) db_rid_entry_t;
 
+//****** Don't complain if not used.  These are helpers for lio_wamer and warmer_query *******
+__attribute__((unused)) static int open_warm_db(char *db_base, leveldb_t **inode_db, leveldb_t **rid_db);
+__attribute__((unused)) static int warm_put_inode(leveldb_t *db, ex_id_t inode, int state, int nfailed, char *name);
+__attribute__((unused)) static int warm_put_rid(leveldb_t *db, char *rid, ex_id_t inode, int state);
+__attribute__((unused)) static void create_warm_db(char *db_base, leveldb_t **inode_db, leveldb_t **rid_db);
+
 //*************************************************************************
 // warm_put_inode - Puts an entry in the inode DB
 //*************************************************************************
