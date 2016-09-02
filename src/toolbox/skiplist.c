@@ -673,6 +673,48 @@ tbx_sl_iter_t tbx_sl_iter_search_compare(tbx_sl_t *sl, tbx_sl_key_t *key, tbx_sl
     return(it);
 }
 
+
+//*********************************************************************************
+// tbx_sl_iter_create - Creates an iterator
+//*********************************************************************************
+
+tbx_sl_iter_t *tbx_sl_iter_create()
+{
+    tbx_sl_iter_t *it;
+
+    tbx_type_malloc_clear(it, tbx_sl_iter_t, 1);
+    return(it);
+}
+
+//*********************************************************************************
+//  tbx_sl_iter_search_compare_init - Initializes an iterator
+//*********************************************************************************
+
+void tbx_sl_iter_search_compare_init(tbx_sl_iter_t *it, tbx_sl_t *sl, tbx_sl_key_t *key, tbx_sl_compare_t *compare, int round_mode)
+{
+    *it = tbx_sl_iter_search_compare(sl, key, compare, round_mode);
+}
+
+//*********************************************************************************
+//  tbx_sl_iter_search_init - Initializes an iterator using the SkipList compare function
+//*********************************************************************************
+
+void tbx_sl_iter_search_init(tbx_sl_iter_t *it, tbx_sl_t *sl, tbx_sl_key_t *key, int round_mode)
+{
+    *it = tbx_sl_iter_search_compare(sl, key, sl->compare, round_mode);
+}
+
+//*********************************************************************************
+// tbx_sl_iter_destroy - Destroys the iterator
+//*********************************************************************************
+
+void tbx_sl_iter_destroy(tbx_sl_iter_t *it)
+{
+    if (it) {
+        free(it);
+    }
+}
+
 //*********************************************************************************
 // search_skiplist_compare - Just returns the 1st matching data element
 //*********************************************************************************

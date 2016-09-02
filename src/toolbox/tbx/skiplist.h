@@ -49,7 +49,7 @@ typedef void (*tbx_sl_data_free_fn_t)(tbx_sl_data_t *a);
 
 
 TBX_TYPE(tbx_sl_t, tbx_sl);
-TBX_API tbx_sl_t *tbx_sl_create_full(unsigned int maxlevels, double p, bool allow_dups,
+TBX_API tbx_sl_t *tbx_sl_new_full(unsigned int maxlevels, double p, bool allow_dups,
                                         tbx_sl_compare_t *compare,
                                         tbx_sl_key_t *(*dup)(tbx_sl_key_t *a),
                                         void (*key_free)(tbx_sl_key_t *a),
@@ -79,6 +79,17 @@ TBX_API tbx_sl_iter_t tbx_sl_iter_search_compare(tbx_sl_t *sl,
                                                  tbx_sl_key_t *key,
                                                  tbx_sl_compare_t *compare,
                                                  int round_mode);
+TBX_API void tbx_sl_iter_search_compare_init(tbx_sl_iter_t *it,
+                                                 tbx_sl_t *sl,
+                                                 tbx_sl_key_t *key,
+                                                 tbx_sl_compare_t *compare,
+                                                 int round_mode);
+TBX_API void tbx_sl_iter_search_init(tbx_sl_iter_t *it,
+                                                 tbx_sl_t *sl,
+                                                 tbx_sl_key_t *key,
+                                                 int round_mode);
+TBX_API tbx_sl_iter_t *tbx_sl_iter_create();
+TBX_API void tbx_sl_iter_destroy(tbx_sl_iter_t *it);
 TBX_API int tbx_sl_key_count(tbx_sl_t *sl);
 TBX_API tbx_sl_key_t *tbx_sl_key_last(tbx_sl_t *sl);
 TBX_API int tbx_sl_next(tbx_sl_iter_t *it, tbx_sl_key_t **nkey,
@@ -95,6 +106,7 @@ TBX_API extern tbx_sl_compare_t tbx_sl_compare_strcmp;
 // Preprocessor macros
 #define SKIPLIST_MAX_LEVEL 32
 #define tbx_sl_iter_search(sl, nkey, round_mode) tbx_sl_iter_search_compare(sl, nkey, (sl)->compare, round_mode)
+
 // TEMPORARY
 #if !defined toolbox_EXPORTS && defined LSTORE_HACK_EXPORT
     struct tbx_sl_t {  //** Generic Skip Lists container
