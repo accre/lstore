@@ -245,6 +245,8 @@ endif()
 # Enable testing
 if(BUILD_TESTS)
     # TODO: add test files with file(GLOB xx test/test-*.c)
+    add_executable(varint_test test/varint_test.c)
+    target_link_libraries(varint_test pthread toolbox)
     add_executable(run-tests test/run-tests.c
                              test/runner.c
                              test/runner-unix.c
