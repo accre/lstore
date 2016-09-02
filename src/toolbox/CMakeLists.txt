@@ -42,6 +42,7 @@ set(TOOL_OBJS
     random.c
     skiplist.c
     stack.c
+    stdinarray_iter.c
     string_token.c
     transfer_buffer.c
     varint.c
@@ -70,6 +71,7 @@ set(LSTORE_PROJECT_INCLUDES
     tbx/random.h
     tbx/skiplist.h
     tbx/stack.h
+    tbx/stdinarray_iter.h
     tbx/string_token.h
     tbx/tbx_decl.h
     tbx/transfer_buffer.h
