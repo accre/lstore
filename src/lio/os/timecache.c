@@ -687,7 +687,7 @@ void ostc_cache_move_object(lio_object_service_fn_t *os, lio_creds_t *creds, cha
         if (dest_path[i] == '/') i++;
         free(obj->fname);
         obj->fname = strdup(&(dest_path[i]));
-log_printf(0, "src=%s dest=%s dname=%s\n", src_path, dest_path, obj->fname);
+        log_printf(0, "src=%s dest=%s dname=%s\n", src_path, dest_path, obj->fname);
 
         //** Do the walk and add it back
         tbx_stack_empty(&tree, 0);
