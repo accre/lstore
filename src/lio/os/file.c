@@ -2520,7 +2520,7 @@ gop_op_status_t osf_move_object(lio_object_service_fn_t *os, lio_creds_t *creds,
     snprintf(sfname, OS_PATH_MAX, "%s%s", osf->file_path, src_path);
     snprintf(dfname, OS_PATH_MAX, "%s%s", osf->file_path, dest_path);
 
-    // ** check if the dest already exists. IF so we ned to preserve it in case of an error
+    // ** check if the dest already exists. If so we need to preserve it in case of an error
     dtype = lio_os_local_filetype(dfname);
     if (dtype != 0) {  //** Recursively call our selves and move the dest out of the way
        tbx_random_get_bytes(&ui, sizeof(ui));  //** Make the random name
@@ -2551,7 +2551,7 @@ gop_op_status_t osf_move_object(lio_object_service_fn_t *os, lio_creds_t *creds,
 
         log_printf(15, "ATTR sfname=%s dfname=%s\n", sfname, dfname);
 
-        err = rename(sfname, dfname);  //** Move the attribute directoy
+        err = rename(sfname, dfname);  //** Move the attribute directory
         if (err != 0) { //** Got to undo the main file/dir entry if the attr rename fails
             snprintf(sfname, OS_PATH_MAX, "%s%s", osf->file_path, src_path);
             snprintf(dfname, OS_PATH_MAX, "%s%s", osf->file_path, dest_path);
