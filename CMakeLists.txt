@@ -247,6 +247,10 @@ if(BUILD_TESTS)
     # TODO: add test files with file(GLOB xx test/test-*.c)
     add_executable(varint_test test/varint_test.c)
     target_link_libraries(varint_test pthread toolbox)
+    add_executable(skiplist_test test/skiplist_test.c)
+    target_link_libraries(skiplist_test pthread toolbox)
+    target_include_directories(skiplist_test PRIVATE ${APR_INCLUDE_DIR})
+
     add_executable(run-tests test/run-tests.c
                              test/runner.c
                              test/runner-unix.c
