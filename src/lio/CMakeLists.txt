@@ -84,8 +84,8 @@ set(LSTORE_PROJECT_OBJS
 		ex3/id.c
 		ex3/service.c
 		lio_config.c
-		lio_core_misc.c
 		lio_core_io.c
+		lio_core_misc.c
 		lio_core_os.c
 		lio_fuse_core.c
 		lio_version.c
