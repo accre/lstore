@@ -44,6 +44,7 @@ set(TOOL_OBJS
     stack.c
     stdinarray_iter.c
     string_token.c
+    thread_pool.c
     transfer_buffer.c
     varint.c
 )
@@ -74,6 +75,7 @@ set(LSTORE_PROJECT_INCLUDES
     tbx/stdinarray_iter.h
     tbx/string_token.h
     tbx/tbx_decl.h
+    tbx/thread_pool.h
     tbx/transfer_buffer.h
     tbx/type_malloc.h
     tbx/varint.h
