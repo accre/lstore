@@ -209,6 +209,7 @@ find_package(FUSE REQUIRED)
 find_package(ZLIB REQUIRED)
 find_package(ZMQ REQUIRED)
 find_package(LevelDB REQUIRED)
+find_package(APRUtil REQUIRED)
 
 # Find external deps we might build
 set(APR_USE_SYSTEM ${ENABLE_UPSTREAM_APR})
@@ -216,7 +217,6 @@ if(NOT BUILD_APR)
     set(FIND_APR_REQUIRED REQUIRED)
 endif()
 find_package(APR-ACCRE ${FIND_APR_REQUIRED})
-find_package(APRUtil-ACCRE ${FIND_APR_REQUIRED})
 find_package(CZMQ)
 find_package(Jerasure)
 
