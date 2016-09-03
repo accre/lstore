@@ -20,7 +20,6 @@
 #include <apr_errno.h>
 #include <apr_pools.h>
 #include <apr_thread_mutex.h>
-#include <apr_thread_pool.h>
 #include <apr_thread_proc.h>
 #include <apr_time.h>
 #include <stdlib.h>
@@ -30,6 +29,7 @@
 #include <tbx/log.h>
 #include <tbx/network.h>
 #include <tbx/stack.h>
+#include <tbx/thread_pool.h>
 #include <tbx/type_malloc.h>
 
 #include "gop/gop.h"
@@ -160,7 +160,7 @@ void _tp_submit_op(void *arg, gop_op_generic_t *gop)
 
         if (gop) {
             op = gop_get_tp(gop);
-            aerr = apr_thread_pool_push(op->tpc->tp,(void *(*)(apr_thread_t *, void *))thread_pool_exec_fn, gop, APR_THREAD_TASK_PRIORITY_NORMAL, NULL);
+            aerr = tbx_thread_pool_push(op->tpc->tp,(void *(*)(apr_thread_t *, void *))thread_pool_exec_fn, gop, TBX_THREAD_TASK_PRIORITY_NORMAL, NULL);
         } else {
             tbx_atomic_dec(op->tpc->n_running);  //** We didn't actually submit anything
             if (op->overflow_slot != -1) {   //** Check if we need to undo our overflow slot
@@ -171,7 +171,7 @@ void _tp_submit_op(void *arg, gop_op_generic_t *gop)
         }
         apr_thread_mutex_unlock(_tp_lock);
     } else {
-        aerr = apr_thread_pool_push(op->tpc->tp, (void *(*)(apr_thread_t *, void *))thread_pool_exec_fn, gop, APR_THREAD_TASK_PRIORITY_NORMAL, NULL);
+        aerr = tbx_thread_pool_push(op->tpc->tp, (void *(*)(apr_thread_t *, void *))thread_pool_exec_fn, gop, TBX_THREAD_TASK_PRIORITY_NORMAL, NULL);
     }
 
     if (aerr != APR_SUCCESS) {
@@ -216,7 +216,7 @@ void _tp_close_connection(tbx_ns_t *ns)
 
 int thread_pool_direct(gop_thread_pool_context_t *tpc, apr_thread_start_t fn, void *arg)
 {
-    int err = apr_thread_pool_push(tpc->tp, fn, arg, APR_THREAD_TASK_PRIORITY_NORMAL, NULL);
+    int err = tbx_thread_pool_push(tpc->tp, fn, arg, TBX_THREAD_TASK_PRIORITY_NORMAL, NULL);
 
     tbx_atomic_inc(tpc->n_direct);
 
@@ -278,9 +278,9 @@ gop_thread_pool_context_t *gop_tp_context_create(char *tp_name, int min_threads,
     }
 
     dt = tpc->min_idle * 1000000;
-    assert_result(apr_thread_pool_create(&(tpc->tp), tpc->min_threads, tpc->max_threads, _tp_pool), APR_SUCCESS);
-    apr_thread_pool_idle_wait_set(tpc->tp, dt);
-    apr_thread_pool_threshold_set(tpc->tp, 0);
+    assert_result(tbx_thread_pool_create(&(tpc->tp), tpc->min_threads, tpc->max_threads, _tp_pool), APR_SUCCESS);
+    tbx_thread_pool_idle_wait_set(tpc->tp, dt);
+    tbx_thread_pool_threshold_set(tpc->tp, 0);
 
     tpc->name = (tp_name == NULL) ? NULL : strdup(tp_name);
     tbx_atomic_set(tpc->n_ops, 0);
@@ -309,10 +309,10 @@ void gop_tp_context_destroy(gop_thread_pool_context_t *tpc)
     int i;
     log_printf(15, "gop_tp_context_destroy: Shutting down! count=%d\n", _tp_context_count);
 
-    log_printf(15, "tpc->name=%s  high=%zu idle=%zu\n", tpc->name, apr_thread_pool_threads_high_count(tpc->tp),  apr_thread_pool_threads_idle_timeout_count(tpc->tp));
+    log_printf(15, "tpc->name=%s  high=%zu idle=%zu\n", tpc->name, tbx_thread_pool_threads_high_count(tpc->tp),  tbx_thread_pool_threads_idle_timeout_count(tpc->tp));
     gop_hp_context_destroy(tpc->pc);
 
-    apr_thread_pool_destroy(tpc->tp);
+    tbx_thread_pool_destroy(tpc->tp);
 
     if (tbx_atomic_dec(_tp_context_count) == 0) {
         if (_tp_stats > 0) thread_pool_stats_print();

@@ -24,7 +24,6 @@
 #include <apr_pools.h>
 #include <apr_thread_cond.h>
 #include <apr_thread_mutex.h>
-#include <apr_thread_pool.h>
 #include <apr_thread_proc.h>
 #include <apr_time.h>
 #include <czmq.h>
@@ -32,6 +31,7 @@
 #include <tbx/atomic_counter.h>
 #include <tbx/iniparse.h>
 #include <tbx/stack.h>
+#include <tbx/thread_pool.h>
 #include <unistd.h>
 
 #include "gop/gop.h"
