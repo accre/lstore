@@ -42,10 +42,12 @@ void warmer_query_inode(leveldb_t *inode_db, int mode, int fonly)
 {
     leveldb_readoptions_t *opt;
     leveldb_iterator_t *it;
-    db_inode_entry_t *r;
+    char *buf;
     size_t nbytes;
     int we;
+    int state, nfailed;
     char *errstr;
+    char *name;
 
     //** Create the iterator
     opt = leveldb_readoptions_create();
@@ -53,18 +55,21 @@ void warmer_query_inode(leveldb_t *inode_db, int mode, int fonly)
     leveldb_iter_seek_to_first(it);
 
     while (leveldb_iter_valid(it) > 0) {
-        r = (db_inode_entry_t *)leveldb_iter_value(it, &nbytes);
+        buf = (char *)leveldb_iter_value(it, &nbytes);
         if (nbytes == 0) { goto next; }
 
-        if ((r->state & mode) > 0) {
+        if (warm_parse_inode(buf, nbytes, &state, &nfailed, &name) != 0) { goto next; }
+
+        if ((state & mode) > 0) {
             if (fonly == 1) {
-                printf("%s\n", r->name);
+                printf("%s\n", name);
             } else {
-                we = ((r->state & WFE_WRITE_ERR) > 0) ? 1 : 0;
-                printf("%s|%d|%d\n", r->name, r->nfailed, we);
+                we = ((state & WFE_WRITE_ERR) > 0) ? 1 : 0;
+                printf("%s|%d|%d\n", name, nfailed, we);
             }
         }
 
+        free(name);
 next:
         leveldb_iter_next(it);
 
@@ -88,10 +93,11 @@ void warmer_query_rid(char *rid_key, leveldb_t *inode_db, leveldb_t *rid_db, int
     leveldb_readoptions_t *opt;
     leveldb_iterator_t *it;
     size_t nbytes;
-    db_inode_entry_t *ir;
+    char *buf;
     int we, n;
+    int state, nfailed;
     ex_id_t inode;
-    char *errstr, *match, *rec_rid, *drid, *last;
+    char *errstr, *match, *rec_rid, *drid, *last, *name;
     const char *rid;
 
     //** Create the iterator
@@ -113,18 +119,21 @@ void warmer_query_rid(char *rid_key, leveldb_t *inode_db, leveldb_t *rid_db, int
             break;
         }
 
-        ir = (db_inode_entry_t *)leveldb_get(inode_db, opt, (const char *)&inode, sizeof(inode), &nbytes, &errstr);
+        buf = (char *)leveldb_get(inode_db, opt, (const char *)&inode, sizeof(inode), &nbytes, &errstr);
         if (nbytes == 0) { goto next; }
 
-        if ((ir->state & mode) > 0) {
+        if (warm_parse_inode(buf, nbytes, &state, &nfailed, &name) != 0) { goto next; }
+
+        if ((state & mode) > 0) {
             if (fonly == 1) {
-                printf("%s\n", ir->name);
+                printf("%s\n", name);
             } else {
-                we = ((ir->state & WFE_WRITE_ERR) > 0) ? 1 : 0;
-                printf("%s|%d|%d\n", ir->name, ir->nfailed, we);
+                we = ((state & WFE_WRITE_ERR) > 0) ? 1 : 0;
+                printf("%s|%d|%d\n", name, nfailed, we);
             }
         }
 
+        free(name);
 next:
         free(drid);
         leveldb_iter_next(it);

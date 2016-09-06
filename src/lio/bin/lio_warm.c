@@ -402,9 +402,9 @@ int main(int argc, char **argv)
             vals[0] = NULL;
             fname = NULL;
             submitted++;
+
             gop = gop_tp_op_new(lio_gc->tpc_unlimited, NULL, gen_warm_task, (void *)&(w[slot]), NULL, 1);
             gop_set_myid(gop, slot);
-            log_printf(0, "gid=%d i=%d fname=%s\n", gop_id(gop), slot, fname);
             gop_opque_add(q, gop);
 
             if (submitted >= lio_parallel_task_count) {
