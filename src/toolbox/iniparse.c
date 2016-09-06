@@ -545,43 +545,23 @@ tbx_inip_file_t *tbx_inip_file_read(const char *fname)
 //***********************************************************************
 //  inip_read_text - Converts a character array into a .ini file
 //***********************************************************************
-
 tbx_inip_file_t *tbx_inip_string_read(const char *text)
 {
-    /* POSIX requires mkstemp sets the permissions of the resulting file to
-     * 0600. Coverity assumes the much broader stance that mkstemp is influenced
-     * by the current umask, so it complains that you need to set umask to 0000
-     * before calling mkstemp. It doesn't really make sense anyway, you can't
-     * safely set umask in a multithreaded application. Sinec it's only obscure
-     * versions of libc that have the other behavior, just tell coverity to
-     * ignore it
+    /*
+     * Coverity doesn't like tmpfile(), but the alternative (mkstemp) is worse
+     * because you then are responsible for cleaning up the file on your own.
+     * You can do a mkstemp and then immediately unlink, but that leaves a
+     * window where the config exists on the filesystem for just a little time
+     * allowing an attacker to grab a handle
      */
-    const char template[] = "tbx_inip_XXXXXX";
-    char *template_copy = strdup(template);
-    if (!template_copy) {
+    // coverity[secure_temp]
+    FILE *fd = tmpfile();
+    if (!fd) {
         goto error0;
     }
-    // coverity[secure_temp]
-    int file_temp = mkstemp(template_copy);
-    if (file_temp == -1) {
-        goto error1;
-    }
-    FILE *fd = fdopen(file_temp, "w+");
-    if (!fd) {
-        goto error2;
-    }
-    fprintf(fd, "%s\n", text);
-
     tbx_inip_file_t *ret = inip_read_fd(fd);
-    // apparently inip_read_fd does frees on its own?
-    //fclose(fd);
-    free(template_copy);
     return ret;
 
-error2:
-    close(file_temp);
-error1:
-    free(template_copy);
 error0:
     return NULL;
 }
