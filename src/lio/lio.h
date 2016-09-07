@@ -87,10 +87,6 @@ extern tbx_sl_compare_t ex_id_compare;
 
 gop_op_generic_t *gop_lio_abort_regex_object_set_multiple_attrs(lio_config_t *lc, gop_op_generic_t *gop);
 gop_op_generic_t *gop_lio_symlink_object(lio_config_t *lc, lio_creds_t *creds, char *src_path, char *dest_path, char *id);
-
-
-//NOT NEEDED NOW???? gop_op_generic_t *gop_lio_abort_open_object(lio_config_t *lc, gop_op_generic_t *gop);
-
 gop_op_generic_t *gop_lio_read(lio_fd_t *fd, char *buf, ex_off_t size, ex_off_t off, lio_segment_rw_hints_t *rw_hints);
 gop_op_generic_t *gop_lio_readv(lio_fd_t *fd, tbx_iovec_t *iov, int n_iov, ex_off_t size, ex_off_t off, lio_segment_rw_hints_t *rw_hints);
 gop_op_generic_t *gop_lio_read_ex(lio_fd_t *fd, int n_iov, ex_tbx_iovec_t *iov, tbx_tbuf_t *buffer, ex_off_t boff, lio_segment_rw_hints_t *rw_hints);
@@ -113,19 +109,11 @@ ex_off_t lio_seek(lio_fd_t *fd, ex_off_t offset, int whence);
 ex_off_t lio_tell(lio_fd_t *fd);
 ex_off_t lio_size(lio_fd_t *fd);
 gop_op_generic_t *gop_lio_truncate(lio_fd_t *fd, ex_off_t new_size);
-// NOT IMPLEMENTED gop_op_generic_t *gop_lio_stat(lio_t *lc, const char *fname, struct stat *stat);
 
 gop_op_generic_t *gop_lio_cp_lio2lio(lio_fd_t *sfd, lio_fd_t *dfd, ex_off_t bufsize, char *buffer, int hints, lio_segment_rw_hints_t *rw_hints);
 
-//gop_op_generic_t *gop_lio_symlink_attr(lio_config_t *lc, lio_creds_t *creds, char *src_path, char *key_src, const char *path_dest, char *key_dest);
-//gop_op_generic_t *gop_lio_symlink_multiple_attrs(lio_config_t *lc, lio_creds_t *creds, char **src_path, char **key_src, const char *path_dest, char **key_dest, int n);
-
-//gop_op_generic_t *gop_lio_move_attr(lio_config_t *lc, lio_creds_t *creds, const char *path, char *id, char *key_old, char *key_new);
-//gop_op_generic_t *gop_lio_copy_attr(lio_config_t *lc, lio_creds_t *creds, const char *path_src, char *id, char *key_src, const char *path_dest, char *key_dest);
 gop_op_generic_t *gop_lio_get_multiple_attrs(lio_config_t *lc, lio_creds_t *creds, const char *path, char *id, char **key, void **val, int *v_size, int n);
 gop_op_generic_t *gop_lio_multiple_setattr_op(lio_config_t *lc, lio_creds_t *creds, const char *path, char *id, char **key, void **val, int *v_size, int n);
-//gop_op_generic_t *gop_lio_move_multiple_attrs(lio_config_t *lc, lio_creds_t *creds, const char *char *id, path, char **key_old, char **key_new, int n);
-//gop_op_generic_t *gop_lio_copy_multiple_attrs(lio_config_t *lc, lio_creds_t *creds, const char *path_src, char *id, char **key_src, const char *path_dest, char **key_dest, int n);
 int lio_get_multiple_attrs(lio_config_t *lc, lio_creds_t *creds, const char *path, char *id, char **key, void **val, int *v_size, int n);
 gop_op_generic_t *gop_lio_move_object(lio_config_t *lc, lio_creds_t *creds, char *src_path, char *dest_path);
 
