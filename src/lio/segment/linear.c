@@ -1290,10 +1290,10 @@ void seglin_destroy(tbx_ref_t *ref)
 
 
 //***********************************************************************
-// lio_segment_linear_make - Creates a linear segment
+// lio_segment_linear_make_gop - Creates a linear segment
 //***********************************************************************
 
-gop_op_generic_t *lio_segment_linear_make(lio_segment_t *seg, data_attr_t *da, rs_query_t *rsq, int n_rid, ex_off_t block_size, ex_off_t total_size, int timeout)
+gop_op_generic_t *lio_segment_linear_make_gop(lio_segment_t *seg, data_attr_t *da, rs_query_t *rsq, int n_rid, ex_off_t block_size, ex_off_t total_size, int timeout)
 {
     seglin_priv_t *s = (seglin_priv_t *)seg->priv;
 

@@ -57,8 +57,8 @@ typedef struct lio_seglun_priv_t lio_seglun_priv_t;
 LIO_API int lio_cache_stats_get(lio_cache_t *c, lio_cache_stats_get_t *cs);
 LIO_API int lio_cache_stats_get_print(lio_cache_stats_get_t *cs, char *buffer, int *used, int nmax);
 LIO_API lio_cache_stats_get_t segment_lio_cache_stats_get(lio_segment_t *seg);
-LIO_API gop_op_generic_t *lio_segment_linear_make(lio_segment_t *seg, data_attr_t *da, rs_query_t *rsq, int n_rid, ex_off_t block_size, ex_off_t total_size, int timeout);
-LIO_API gop_op_generic_t *lio_slog_merge_with_base(lio_segment_t *seg, data_attr_t *da, ex_off_t bufsize, char *buffer, int truncate_old_log, int timeout);  //** Merges the current log with the base
+LIO_API gop_op_generic_t *lio_segment_linear_make_gop(lio_segment_t *seg, data_attr_t *da, rs_query_t *rsq, int n_rid, ex_off_t block_size, ex_off_t total_size, int timeout);
+LIO_API gop_op_generic_t *lio_slog_merge_with_base_gop(lio_segment_t *seg, data_attr_t *da, ex_off_t bufsize, char *buffer, int truncate_old_log, int timeout);  //** Merges the current log with the base
 
 // Preprocessor constants
 // FIXME: leaky

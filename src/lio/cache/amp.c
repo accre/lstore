@@ -260,7 +260,7 @@ void *amp_dirty_thread(apr_thread_t *th, void *data)
             flush_list[i] = seg;
             s = (lio_cache_lio_segment_t *)seg->priv;
             s->cache_check_in_progress++;  //** Flag it as being checked
-            gop = cache_flush_range(seg, s->c->da, 0, -1, s->c->timeout);
+            gop = cache_flush_range_gop(seg, s->c->da, 0, -1, s->c->timeout);
             gop_set_myid(gop, i);
             gop_opque_add(q, gop);
             i++;
@@ -966,9 +966,9 @@ ex_off_t _amp_attempt_free_mem(lio_cache_t *c, lio_segment_t *page_seg, ex_off_t
         while (ptable != NULL) {
             if ((ptable->hi - ptable->lo) < 10*s->page_size) ptable->hi = ptable->lo + 10*s->page_size;
             if (c->stats.dirty_bytes > cp->dirty_bytes_trigger) {
-                gop = cache_flush_range(ptable->seg, s->c->da, 0, -1, s->c->timeout); //** to much is dirty so flush the whole file
+                gop = cache_flush_range_gop(ptable->seg, s->c->da, 0, -1, s->c->timeout); //** to much is dirty so flush the whole file
             } else {
-                gop = cache_flush_range(ptable->seg, s->c->da, ptable->lo, ptable->hi + s->page_size - 1, s->c->timeout);
+                gop = cache_flush_range_gop(ptable->seg, s->c->da, ptable->lo, ptable->hi + s->page_size - 1, s->c->timeout);
             }
             gop_opque_add(q, gop);
             tbx_pch_release(cp->free_page_tables, &(ptable->pch));

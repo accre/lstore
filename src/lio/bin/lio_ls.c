@@ -230,7 +230,7 @@ int main(int argc, char **argv)
             //** Check if we have a link.  If so we need to resolve the link path
             if ((ftype & OS_OBJECT_SYMLINK_FLAG) > 0) {
                 lse->link_size = -64*1024;
-                gop = lio_getattr_op(tuple.lc, tuple.creds, lse->fname, NULL, "os.link", (void **)&(lse->link), &(lse->link_size));
+                gop = lio_getattr_gop(tuple.lc, tuple.creds, lse->fname, NULL, "os.link", (void **)&(lse->link), &(lse->link_size));
                 gop_set_private(gop, lse);
                 gop_opque_add(q, gop);
                 if (nosort == 1) opque_waitall(q);

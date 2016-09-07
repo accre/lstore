@@ -97,7 +97,7 @@ int main(int argc, char **argv)
     }
 
     //** Make the actual segment
-    gop = lio_segment_linear_make(seg, NULL, rq, n_rid, block_size, total_size, lio_gc->timeout);
+    gop = lio_segment_linear_make_gop(seg, NULL, rq, n_rid, block_size, total_size, lio_gc->timeout);
     i = gop_waitall(gop);
     if (i != 0) {
         printf("ERROR making segment! nerr=%d\n", i);

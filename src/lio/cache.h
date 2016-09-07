@@ -199,7 +199,7 @@ void cache_base_destroy(lio_cache_t *c);
 void cache_base_create(lio_cache_t *c, data_attr_t *da, int timeout);
 void *cache_cond_new(void *arg, int size);
 void cache_cond_free(void *arg, int size, void *data);
-gop_op_generic_t *cache_flush_range(lio_segment_t *seg, data_attr_t *da, ex_off_t lo, ex_off_t hi, int timeout);
+gop_op_generic_t *cache_flush_range_gop(lio_segment_t *seg, data_attr_t *da, ex_off_t lo, ex_off_t hi, int timeout);
 int cache_release_pages(int n_pages, lio_page_handle_t *page, int rw_mode);
 void _cache_drain_writes(lio_segment_t *seg, lio_cache_page_t *p);
 void cache_advise(lio_segment_t *seg, lio_segment_rw_hints_t *rw_hints, int rw_mode, ex_off_t lo, ex_off_t hi, lio_page_handle_t *page, int *n_pages, int force_load);

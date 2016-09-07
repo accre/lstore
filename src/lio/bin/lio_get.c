@@ -95,20 +95,20 @@ int main(int argc, char **argv)
             goto finished_early;
         }
 
-        gop_sync_exec(lio_open_op(tuple.lc, tuple.creds, tuple.path, LIO_READ_MODE, NULL, &fd, 60));
+        gop_sync_exec(lio_open_gop(tuple.lc, tuple.creds, tuple.path, LIO_READ_MODE, NULL, &fd, 60));
         if (fd == NULL) {
             info_printf(lio_ifd, 0, "Failed opening file!  path=%s\n", tuple.path);
             goto finished_early;
         }
 
         //** Do the get
-        err = gop_sync_exec(lio_cp_lio2local_op(fd, stdout, bufsize, buffer, NULL));
+        err = gop_sync_exec(lio_cp_lio2local_gop(fd, stdout, bufsize, buffer, NULL));
         if (err != OP_STATE_SUCCESS) {
             info_printf(lio_ifd, 0, "Failed reading data!  path=%s\n", tuple.path);
         }
 
         //** Close the file
-        err_close = gop_sync_exec(lio_close_op(fd));
+        err_close = gop_sync_exec(lio_close_gop(fd));
         if (err_close != OP_STATE_SUCCESS) {
             err = err_close;
             info_printf(lio_ifd, 0, "Failed closing LIO file!  path=%s\n", tuple.path);

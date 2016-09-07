@@ -673,7 +673,7 @@ gop_op_status_t seglog_clone_func(void *arg, int id)
     ex_off_t dt, pos, rpos, wpos, rlen, dlen;
     tbx_tbuf_t *wbuf, *rbuf, *tmpbuf;
     tbx_tbuf_t tbuf1, tbuf2;
-    int err, do_lio_segment_copy;
+    int err, do_lio_segment_copy_gop;
     char *buffer = NULL;
     slog_changes_t *clog;
     gop_opque_t *q1 = NULL;
@@ -681,7 +681,7 @@ gop_op_status_t seglog_clone_func(void *arg, int id)
     tbx_stack_t *stack;
     gop_op_status_t status;
 
-    do_lio_segment_copy = 0;
+    do_lio_segment_copy_gop = 0;
     stack = NULL;
     q2 = NULL;
 
@@ -718,7 +718,7 @@ gop_op_status_t seglog_clone_func(void *arg, int id)
         dt = 2*nbytes_log + nbytes_base / 5;
         log_printf(15, "dt=" XOT " nbytes_log=" XOT " nbytes_base=" XOT " ss->file_size=" XOT "\n", dt, nbytes_log, nbytes_base, ss->file_size);
         if (dt > ss->file_size) {
-            do_lio_segment_copy = 1;
+            do_lio_segment_copy_gop = 1;
             gop_opque_add(q, segment_clone(base, slc->da, &(sd->base_seg), CLONE_STRUCTURE, slc->attr, slc->timeout));
         }
     }
@@ -734,9 +734,9 @@ gop_op_status_t seglog_clone_func(void *arg, int id)
     }
 
     //** Now copy the data if needed
-    if (do_lio_segment_copy == 1) {  //** lio_segment_copy() method
+    if (do_lio_segment_copy_gop == 1) {  //** lio_segment_copy_gop() method
         tbx_type_malloc(buffer, char, bufsize);
-        gop_opque_add(q, lio_segment_copy(ss->tpc, slc->da, NULL, slc->sseg, slc->dseg, 0, 0, ss->file_size, bufsize, buffer, 0, slc->timeout));
+        gop_opque_add(q, lio_segment_copy_gop(ss->tpc, slc->da, NULL, slc->sseg, slc->dseg, 0, 0, ss->file_size, bufsize, buffer, 0, slc->timeout));
     } else if (slc->mode == CLONE_STRUCT_AND_DATA) {  //** Use the incremental log+base method
         //** First clone the base struct and data
         gop_opque_add(q, segment_clone(base, slc->da, &(sd->base_seg), CLONE_STRUCT_AND_DATA, slc->attr, slc->timeout));
@@ -1490,12 +1490,12 @@ gop_op_status_t seglog_merge_with_base_func(void *arg, int id)
 
 
 //***********************************************************************
-// lio_slog_merge_with_base - Merges the log (table/data segments) with the base.
+// lio_slog_merge_with_base_gop - Merges the log (table/data segments) with the base.
 //   If truncate_old_log == 1 then the old log is truncated back to 0.
 //   Otherwise the old log is not touched and left intact (and superfluos).
 //***********************************************************************
 
-gop_op_generic_t *lio_slog_merge_with_base(lio_segment_t *seg, data_attr_t *da, ex_off_t bufsize, char *buffer, int truncate_old_log, int timeout)
+gop_op_generic_t *lio_slog_merge_with_base_gop(lio_segment_t *seg, data_attr_t *da, ex_off_t bufsize, char *buffer, int truncate_old_log, int timeout)
 {
     seglog_merge_t *st;
     lio_seglog_priv_t *s = (lio_seglog_priv_t *)seg->priv;

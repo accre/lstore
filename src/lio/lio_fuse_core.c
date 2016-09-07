@@ -468,7 +468,7 @@ int lfs_object_create(lio_fuse_t *lfs, const char *fname, mode_t mode, int ftype
 
     //** If we made it here it's a new file or dir
     //** Create the new object
-    err = gop_sync_exec(lio_create_op(lfs->lc, lfs->lc->creds, (char *)fname, ftype, NULL, lfs->id));
+    err = gop_sync_exec(lio_create_gop(lfs->lc, lfs->lc->creds, (char *)fname, ftype, NULL, lfs->id));
     if (err != OP_STATE_SUCCESS) {
         log_printf(1, "Error creating object! fname=%s\n", fullname);
         if (strlen(fullname) > 3900) {  //** Probably a path length issue
@@ -508,7 +508,7 @@ int lfs_mkdir(const char *fname, mode_t mode)
 int lfs_actual_remove(lio_fuse_t *lfs, const char *fname, int ftype)
 {
     int err;
-    err = gop_sync_exec(lio_remove_op(lfs->lc, lfs->lc->creds, (char *)fname, NULL, 0));
+    err = gop_sync_exec(lio_remove_gop(lfs->lc, lfs->lc->creds, (char *)fname, NULL, 0));
 
     log_printf(1, "remove err=%d\n", err);
     if (err == OP_STATE_SUCCESS) {
@@ -589,7 +589,7 @@ int lfs_open(const char *fname, struct fuse_file_info *fi)
     if (fi->flags & O_TRUNC) mode |= LIO_TRUNCATE_MODE;
 
     fi->fh = 0;
-    gop_sync_exec(lio_open_op(lfs->lc, lfs->lc->creds, (char *)fname, mode, NULL, &fd, 60));
+    gop_sync_exec(lio_open_gop(lfs->lc, lfs->lc->creds, (char *)fname, mode, NULL, &fd, 60));
     log_printf(2, "fname=%s fd=%p\n", fname, fd);
     if (fd == NULL) {
         log_printf(0, "Failed opening file!  path=%s\n", fname);
@@ -652,7 +652,7 @@ int lfs_release(const char *fname, struct fuse_file_info *fi)
         fd->path = strdup(fname);
     }
 
-    err = gop_sync_exec(lio_close_op(fd)); // ** Close it but keep track of the error
+    err = gop_sync_exec(lio_close_gop(fd)); // ** Close it but keep track of the error
     lfs_unlock(lfs);
 
     if (err != OP_STATE_SUCCESS) {
@@ -821,7 +821,7 @@ int lfs_rename(const char *oldname, const char *newname)
     lfs_unlock(lfs);
 
     //** Do the move
-    status = gop_sync_exec_status(gop_lio_move_object(lfs->lc, lfs->lc->creds, (char *)oldname, (char *)newname));
+    status = gop_sync_exec_status(lio_move_object_gop(lfs->lc, lfs->lc->creds, (char *)oldname, (char *)newname));
     if (status.op_status != OP_STATE_SUCCESS) {
         return((status.error_code != 0) ? -status.error_code : -EREMOTEIO);
     }
@@ -847,7 +847,7 @@ int lfs_ftruncate(const char *fname, off_t new_size, struct fuse_file_info *fi)
         return(-EBADF);
     }
 
-    err = gop_sync_exec(gop_lio_truncate(fd, new_size));
+    err = gop_sync_exec(lio_truncate_gop(fd, new_size));
 
     return((err == OP_STATE_SUCCESS) ? 0 : -EIO);
 }
@@ -870,19 +870,19 @@ int lfs_truncate(const char *fname, off_t new_size)
     ts = new_size;
     log_printf(15, "adjusting size=" XOT "\n", ts);
 
-    gop_sync_exec(lio_open_op(lfs->lc, lfs->lc->creds, (char *)fname, LIO_RW_MODE, NULL, &fd, 60));
+    gop_sync_exec(lio_open_gop(lfs->lc, lfs->lc->creds, (char *)fname, LIO_RW_MODE, NULL, &fd, 60));
     if (fd == NULL) {
         log_printf(0, "Failed opening file!  path=%s\n", fname);
         return(-EIO);
     }
 
     result = 0;
-    if (gop_sync_exec(gop_lio_truncate(fd, new_size)) != OP_STATE_SUCCESS) {
+    if (gop_sync_exec(lio_truncate_gop(fd, new_size)) != OP_STATE_SUCCESS) {
         log_printf(0, "Failed truncating file!  path=%s\n", fname);
         result = -EIO;
     }
 
-    if (gop_sync_exec(lio_close_op(fd)) != OP_STATE_SUCCESS) {
+    if (gop_sync_exec(lio_close_gop(fd)) != OP_STATE_SUCCESS) {
         log_printf(0, "Failed closing file!  path=%s\n", fname);
         result = -EIO;
     }
@@ -1110,7 +1110,7 @@ void lfs_set_tape_attr(lio_fuse_t *lfs, char *fname, char *mytape_val, int tape_
         }
 
         //** Execute the clone operation
-        err = gop_sync_exec(lio_exnode_clone(lfs->lc->tpc_unlimited, ex, lfs->lc->da, &cex, NULL, CLONE_STRUCTURE, lfs->lc->timeout));
+        err = gop_sync_exec(lio_exnode_clone_gop(lfs->lc->tpc_unlimited, ex, lfs->lc->da, &cex, NULL, CLONE_STRUCTURE, lfs->lc->timeout));
         if (err != OP_STATE_SUCCESS) {
             log_printf(15, "ERROR cloning parent fname=%s\n", fname);
         }
@@ -1337,7 +1337,7 @@ int lfs_hardlink(const char *oldname, const char *newname)
     tbx_log_flush();
 
     //** Now do the hard link
-    err = gop_sync_exec(lio_link_op(lfs->lc, lfs->lc->creds, 0, (char *)oldname, (char *)newname, lfs->id));
+    err = gop_sync_exec(lio_link_gop(lfs->lc, lfs->lc->creds, 0, (char *)oldname, (char *)newname, lfs->id));
     if (err != OP_STATE_SUCCESS) {
         return(-EIO);
     }
@@ -1410,7 +1410,7 @@ int lfs_symlink(const char *link, const char *newname)
     }
 
     //** Now do the sym link
-    err = gop_sync_exec(lio_link_op(lfs->lc, lfs->lc->creds, 1, (char *)link2, (char *)newname, lfs->id));
+    err = gop_sync_exec(lio_link_gop(lfs->lc, lfs->lc->creds, 1, (char *)link2, (char *)newname, lfs->id));
     if (err != OP_STATE_SUCCESS) {
         return(-EIO);
     }

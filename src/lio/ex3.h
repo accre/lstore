@@ -73,7 +73,7 @@ typedef lio_segment_t *(segment_load_t)(void *arg, ex_id_t id, lio_exnode_exchan
 
 
 //** Exnode related functions
-gop_op_generic_t *exnode_remove(gop_thread_pool_context_t *tpc, lio_exnode_t *ex, data_attr_t *da, int timeout);
+gop_op_generic_t *exnode_remove_gop(gop_thread_pool_context_t *tpc, lio_exnode_t *ex, data_attr_t *da, int timeout);
 void exnode_exchange_append_text(lio_exnode_exchange_t *exp, char *buffer);
 void exnode_exchange_append(lio_exnode_exchange_t *exp, lio_exnode_exchange_t *exp_append);
 lio_ex_header_t *exnode_get_header(lio_exnode_t *ex);

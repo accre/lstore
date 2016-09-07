@@ -36,7 +36,7 @@ extern "C" {
 
 lio_segment_t *segment_file_load(void *arg, ex_id_t id, lio_exnode_exchange_t *ex);
 lio_segment_t *segment_file_create(void *arg);
-gop_op_generic_t *segment_file_make(lio_segment_t *seg, data_attr_t *da, char *fname);
+gop_op_generic_t *segment_file_make_gop(lio_segment_t *seg, data_attr_t *da, char *fname);
 
 #ifdef __cplusplus
 }

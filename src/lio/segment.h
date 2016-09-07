@@ -19,8 +19,8 @@
 
 #include <lio/segment.h>
 
-gop_op_generic_t *segment_put(gop_thread_pool_context_t *tpc, data_attr_t *da, lio_segment_rw_hints_t *rw_hints, FILE *fd, lio_segment_t *dest_seg, ex_off_t dest_offset, ex_off_t len, ex_off_t bufsize, char *buffer, int do_truncate, int timeout);
-gop_op_generic_t *segment_get(gop_thread_pool_context_t *tpc, data_attr_t *da, lio_segment_rw_hints_t *rw_hints, lio_segment_t *src_seg, FILE *fd, ex_off_t src_offset, ex_off_t len, ex_off_t bufsize, char *buffer, int timeout);
+gop_op_generic_t *segment_put_gop(gop_thread_pool_context_t *tpc, data_attr_t *da, lio_segment_rw_hints_t *rw_hints, FILE *fd, lio_segment_t *dest_seg, ex_off_t dest_offset, ex_off_t len, ex_off_t bufsize, char *buffer, int do_truncate, int timeout);
+gop_op_generic_t *segment_get_gop(gop_thread_pool_context_t *tpc, data_attr_t *da, lio_segment_rw_hints_t *rw_hints, lio_segment_t *src_seg, FILE *fd, ex_off_t src_offset, ex_off_t len, ex_off_t bufsize, char *buffer, int timeout);
 lio_segment_t *load_segment(lio_service_manager_t *ess, ex_id_t id, lio_exnode_exchange_t *ex);
 
 
@@ -30,7 +30,7 @@ lio_segment_t *load_segment(lio_service_manager_t *ess, ex_id_t id, lio_exnode_e
 #define segment_clone(s, da, clone_ex, mode, attr, to) \
     ((lio_segment_vtable_t *)(s)->obj.vtable)->clone(s, da, clone_ex, mode, attr, to)
 #define segment_deserialize(s, id, exp) ((lio_segment_vtable_t *)(s)->obj.vtable)->deserialize(s, id, exp)
-#define segment_get_header(seg) &((seg)->header)
+#define segment_get_gop_header(seg) &((seg)->header)
 #define segment_lock(s) apr_thread_mutex_lock((s)->lock)
 #define segment_remove(s, da, to) ((lio_segment_vtable_t *)(s)->obj.vtable)->remove(s, da, to)
 #define segment_serialize(s, exp) ((lio_segment_vtable_t *)(s)->obj.vtable)->serialize(s, exp)

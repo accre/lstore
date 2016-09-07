@@ -55,7 +55,7 @@ typedef struct {
     ex_off_t bufsize;
     int timeout;
     int truncate;
-} lio_segment_copy_t;
+} lio_segment_copy_gop_t;
 
 //***********************************************************************
 // load_segment - Loads the given segment from the file/struct
@@ -89,12 +89,12 @@ lio_segment_t *load_segment(lio_service_manager_t *ess, ex_id_t id, lio_exnode_e
 }
 
 //***********************************************************************
-// lio_segment_copy_func - Does the actual segment copy operation
+// lio_segment_copy_gop_func - Does the actual segment copy operation
 //***********************************************************************
 
-gop_op_status_t lio_segment_copy_func(void *arg, int id)
+gop_op_status_t lio_segment_copy_gop_func(void *arg, int id)
 {
-    lio_segment_copy_t *sc = (lio_segment_copy_t *)arg;
+    lio_segment_copy_gop_t *sc = (lio_segment_copy_gop_t *)arg;
     tbx_tbuf_t *wbuf, *rbuf, *tmpbuf;
     tbx_tbuf_t tbuf1, tbuf2;
     int err;
@@ -196,18 +196,18 @@ gop_op_status_t lio_segment_copy_func(void *arg, int id)
 }
 
 //***********************************************************************
-// lio_segment_copy - Copies data between segments.  This copy is performed
+// lio_segment_copy_gop - Copies data between segments.  This copy is performed
 //      by reading from the source and writing to the destination.
 //      This is not a depot-depot copy.  The data goes through the client.
 //
 //      If len == -1 then all available data from src is copied
 //***********************************************************************
 
-gop_op_generic_t *lio_segment_copy(gop_thread_pool_context_t *tpc, data_attr_t *da, lio_segment_rw_hints_t *rw_hints, lio_segment_t *src_seg, lio_segment_t *dest_seg, ex_off_t src_offset, ex_off_t dest_offset, ex_off_t len, ex_off_t bufsize, char *buffer, int do_truncate, int timeout)
+gop_op_generic_t *lio_segment_copy_gop(gop_thread_pool_context_t *tpc, data_attr_t *da, lio_segment_rw_hints_t *rw_hints, lio_segment_t *src_seg, lio_segment_t *dest_seg, ex_off_t src_offset, ex_off_t dest_offset, ex_off_t len, ex_off_t bufsize, char *buffer, int do_truncate, int timeout)
 {
-    lio_segment_copy_t *sc;
+    lio_segment_copy_gop_t *sc;
 
-    tbx_type_malloc(sc, lio_segment_copy_t, 1);
+    tbx_type_malloc(sc, lio_segment_copy_gop_t, 1);
 
     sc->da = da;
     sc->timeout = timeout;
@@ -221,17 +221,17 @@ gop_op_generic_t *lio_segment_copy(gop_thread_pool_context_t *tpc, data_attr_t *
     sc->buffer = buffer;
     sc->truncate = do_truncate;
 
-    return(gop_tp_op_new(tpc, NULL, lio_segment_copy_func, (void *)sc, free, 1));
+    return(gop_tp_op_new(tpc, NULL, lio_segment_copy_gop_func, (void *)sc, free, 1));
 }
 
 
 //***********************************************************************
-// segment_get_func - Does the actual segment get operation
+// segment_get_gop_func - Does the actual segment get operation
 //***********************************************************************
 
-gop_op_status_t segment_get_func(void *arg, int id)
+gop_op_status_t segment_get_gop_func(void *arg, int id)
 {
-    lio_segment_copy_t *sc = (lio_segment_copy_t *)arg;
+    lio_segment_copy_gop_t *sc = (lio_segment_copy_gop_t *)arg;
     tbx_tbuf_t *wbuf, *rbuf, *tmpbuf;
     tbx_tbuf_t tbuf1, tbuf2;
     char *rb, *wb, *tb;
@@ -354,15 +354,15 @@ fail:
 
 
 //***********************************************************************
-// segment_get - Reads data from the given segment and copies it to the given FD
+// segment_get_gop - Reads data from the given segment and copies it to the given FD
 //      If len == -1 then all available data from src is copied
 //***********************************************************************
 
-gop_op_generic_t *segment_get(gop_thread_pool_context_t *tpc, data_attr_t *da, lio_segment_rw_hints_t *rw_hints, lio_segment_t *src_seg, FILE *fd, ex_off_t src_offset, ex_off_t len, ex_off_t bufsize, char *buffer, int timeout)
+gop_op_generic_t *segment_get_gop(gop_thread_pool_context_t *tpc, data_attr_t *da, lio_segment_rw_hints_t *rw_hints, lio_segment_t *src_seg, FILE *fd, ex_off_t src_offset, ex_off_t len, ex_off_t bufsize, char *buffer, int timeout)
 {
-    lio_segment_copy_t *sc;
+    lio_segment_copy_gop_t *sc;
 
-    tbx_type_malloc(sc, lio_segment_copy_t, 1);
+    tbx_type_malloc(sc, lio_segment_copy_gop_t, 1);
 
     sc->da = da;
     sc->rw_hints = rw_hints;
@@ -374,16 +374,16 @@ gop_op_generic_t *segment_get(gop_thread_pool_context_t *tpc, data_attr_t *da, l
     sc->bufsize = bufsize;
     sc->buffer = buffer;
 
-    return(gop_tp_op_new(tpc, NULL, segment_get_func, (void *)sc, free, 1));
+    return(gop_tp_op_new(tpc, NULL, segment_get_gop_func, (void *)sc, free, 1));
 }
 
 //***********************************************************************
-// segment_put_func - Does the actual segment put operation
+// segment_put_gop_func - Does the actual segment put operation
 //***********************************************************************
 
-gop_op_status_t segment_put_func(void *arg, int id)
+gop_op_status_t segment_put_gop_func(void *arg, int id)
 {
-    lio_segment_copy_t *sc = (lio_segment_copy_t *)arg;
+    lio_segment_copy_gop_t *sc = (lio_segment_copy_gop_t *)arg;
     tbx_tbuf_t *wbuf, *rbuf, *tmpbuf;
     tbx_tbuf_t tbuf1, tbuf2;
     char *rb, *wb, *tb;
@@ -515,15 +515,15 @@ finished:
 
 
 //***********************************************************************
-// segment_put - Stores data from the given FD into the segment.
+// segment_put_gop - Stores data from the given FD into the segment.
 //      If len == -1 then all available data from src is copied
 //***********************************************************************
 
-gop_op_generic_t *segment_put(gop_thread_pool_context_t *tpc, data_attr_t *da, lio_segment_rw_hints_t *rw_hints, FILE *fd, lio_segment_t *dest_seg, ex_off_t dest_offset, ex_off_t len, ex_off_t bufsize, char *buffer, int do_truncate, int timeout)
+gop_op_generic_t *segment_put_gop(gop_thread_pool_context_t *tpc, data_attr_t *da, lio_segment_rw_hints_t *rw_hints, FILE *fd, lio_segment_t *dest_seg, ex_off_t dest_offset, ex_off_t len, ex_off_t bufsize, char *buffer, int do_truncate, int timeout)
 {
-    lio_segment_copy_t *sc;
+    lio_segment_copy_gop_t *sc;
 
-    tbx_type_malloc(sc, lio_segment_copy_t, 1);
+    tbx_type_malloc(sc, lio_segment_copy_gop_t, 1);
 
     sc->da = da;
     sc->rw_hints = rw_hints;
@@ -536,6 +536,6 @@ gop_op_generic_t *segment_put(gop_thread_pool_context_t *tpc, data_attr_t *da, l
     sc->buffer = buffer;
     sc->truncate = do_truncate;
 
-    return(gop_tp_op_new(tpc, NULL, segment_put_func, (void *)sc, free, 1));
+    return(gop_tp_op_new(tpc, NULL, segment_put_gop_func, (void *)sc, free, 1));
 }
 

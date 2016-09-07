@@ -92,7 +92,7 @@ int main(int argc, char **argv)
     piter = tbx_stdinarray_iter_create(argc-start_option, (const char **)&(argv[start_option]));
 
     if (rg_mode == 1) {  //** Got an explicit R/G path set
-        err = gop_sync_exec(lio_remove_regex_op(tuple.lc, tuple.creds, rp_single, ro_single, obj_types, recurse_depth, lio_parallel_task_count));
+        err = gop_sync_exec(lio_remove_regex_gop(tuple.lc, tuple.creds, rp_single, ro_single, obj_types, recurse_depth, lio_parallel_task_count));
         if (err != OP_STATE_SUCCESS) info_printf(lio_ifd, 0, "Error occured with remove\n");
 
         if (rp_single != NULL) lio_os_regex_table_destroy(rp_single);
@@ -124,7 +124,7 @@ int main(int argc, char **argv)
         path_list[i] = path;
         flist[i] = lio_path_resolve(lio_gc->auto_translate, path_list[i]);
         rpath[i] = lio_os_path_glob2regex(flist[i].path);
-        gop = lio_remove_regex_op(flist[i].lc, flist[i].creds, rpath[i], NULL, obj_types, recurse_depth, lio_parallel_task_count);
+        gop = lio_remove_regex_gop(flist[i].lc, flist[i].creds, rpath[i], NULL, obj_types, recurse_depth, lio_parallel_task_count);
         gop_set_myid(gop, i);
         log_printf(0, "gid=%d i=%d fname=%s\n", gop_id(gop), i, flist[i].path);
         gop_opque_add(q, gop);

@@ -741,7 +741,7 @@ gop_op_status_t cache_advise_fn(void *arg, int id)
     if (*ca->n_pages > 0) {
         //** Got some pages to fetch. Make sure the child segment is big enough.  If not flush
         if (segment_size(s->child_seg) < segment_size(seg)) {
-            gop_sync_exec(cache_flush_range(seg, s->c->da, 0, -1, s->c->timeout));
+            gop_sync_exec(cache_flush_range_gop(seg, s->c->da, 0, -1, s->c->timeout));
         }
         cache_rw_pages(seg, ca->rw_hints, ca->page, *(ca->n_pages), ca->rw_mode, 0);
     }
@@ -1762,7 +1762,7 @@ int cache_release_pages(int n_pages, lio_page_handle_t *page_list, int rw_mode)
 
     if (max_off > -1) {  //** Got to flush some pages
         log_printf(5, "Looks like we need to do a manual flush.  min_off=" XOT " max_off=" XOT "\n", min_off, max_off);
-        gop = cache_flush_range(seg, s->c->da, min_off, max_off+s->page_size-1, s->c->timeout);
+        gop = cache_flush_range_gop(seg, s->c->da, min_off, max_off+s->page_size-1, s->c->timeout);
         gop_set_auto_destroy(gop, 1);
         gop_start_execution(gop);
     }
@@ -2759,10 +2759,10 @@ gop_op_generic_t *cache_write(lio_segment_t *seg, data_attr_t *da, lio_segment_r
 
 
 //*******************************************************************************
-// cache_flush_range - Flushes the given segment's byte range to disk
+// cache_flush_range_gop - Flushes the given segment's byte range to disk
 //*******************************************************************************
 
-gop_op_status_t cache_flush_range_func(void *arg, int id)
+gop_op_status_t cache_flush_range_gop_func(void *arg, int id)
 {
     cache_rw_op_t *cop = (cache_rw_op_t *)arg;
     lio_cache_lio_segment_t *s = (lio_cache_lio_segment_t *)cop->seg->priv;
@@ -2813,7 +2813,7 @@ gop_op_status_t cache_flush_range_func(void *arg, int id)
     mode = CACHE_NONBLOCK;
     progress = 0;
     while ((curr=(lio_cache_range_t *)tbx_stack_pop(&stack)) != NULL) {
-        log_printf(5, "cache_flush_range_func: processing range: lo=" XOT " hi=" XOT " mode=%d\n", curr->lo, curr->hi, mode);
+        log_printf(5, "cache_flush_range_gop_func: processing range: lo=" XOT " hi=" XOT " mode=%d\n", curr->lo, curr->hi, mode);
         n_pages = max_pages;
 //mode = CACHE_DOBLOCK;  //**QWERTY
         status = cache_dirty_pages_get(cop->seg, mode, curr->lo, curr->hi, &hi_got, page, &n_pages);
@@ -2891,10 +2891,10 @@ finished:
 }
 
 //***********************************************************************
-// cache_flush_range - Flush dirty pages to disk
+// cache_flush_range_gop - Flush dirty pages to disk
 //***********************************************************************
 
-gop_op_generic_t *cache_flush_range(lio_segment_t *seg, data_attr_t *da, ex_off_t lo, ex_off_t hi, int timeout)
+gop_op_generic_t *cache_flush_range_gop(lio_segment_t *seg, data_attr_t *da, ex_off_t lo, ex_off_t hi, int timeout)
 {
     cache_rw_op_t *cop;
     lio_cache_lio_segment_t *s = (lio_cache_lio_segment_t *)seg->priv;
@@ -2916,7 +2916,7 @@ gop_op_generic_t *cache_flush_range(lio_segment_t *seg, data_attr_t *da, ex_off_
     s->flushing_count++;
     segment_unlock(seg);
 
-    return(gop_tp_op_new(s->tpc_unlimited, s->qname, cache_flush_range_func, (void *)cop, free, 1));
+    return(gop_tp_op_new(s->tpc_unlimited, s->qname, cache_flush_range_gop_func, (void *)cop, free, 1));
 }
 
 
@@ -3658,7 +3658,7 @@ const lio_segment_vtable_t lio_cacheseg_vtable = {
         .inspect = segcache_inspect,
         .truncate = seglio_cache_truncate,
         .remove = segcache_remove,
-        .flush = cache_flush_range,
+        .flush = cache_flush_range_gop,
         .clone = segcache_clone,
         .signature = segcache_signature,
         .size = segcache_size,
