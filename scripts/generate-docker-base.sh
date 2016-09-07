@@ -6,7 +6,7 @@
 #        updates all Dockerfiles
 #    or: ./generate-docker-base.sh centos-7
 #        updates the centos-7 dockerfile
-#    or: ./engerate-docekr-base.sh centos-newversion
+#    or: ./gengerate-docker-base.sh centos-newversion
 #        makes a new folder and puts a fresh dockerfile inside
 
 # Inspired by https://github.com/docker/docker/blob/master/contrib/builder/rpm/generate.sh
@@ -75,6 +75,7 @@ for DISTRO in "${DISTROS[@]}"; do
                                     czmq-devel
                                     expat-devel
                                     fuse-devel
+                                    leveldb-devel
                                     libtool
                                     openssl-devel
                                     python
@@ -101,6 +102,7 @@ for DISTRO in "${DISTROS[@]}"; do
                                     libdistro-info-perl
                                     libexpat1-dev
                                     libfuse-dev
+                                    libleveldb-dev
                                     libssl-dev
                                     libtool
                                     libz-dev
