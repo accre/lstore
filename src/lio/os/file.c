@@ -2487,9 +2487,9 @@ gop_op_generic_t *osfile_hardlink_object(lio_object_service_fn_t *os, lio_creds_
 gop_op_status_t osf_move_object(lio_object_service_fn_t *os, lio_creds_t *creds, char *src_path, char *dest_path, int id, int dolock)
 {
     lio_osfile_priv_t *osf = (lio_osfile_priv_t *)os->priv;
-    osfile_mk_mv_rm_t rm;    
+    osfile_mk_mv_rm_t rm;
     int slot_src, slot_dest;
-    apr_thread_mutex_t *lock_src, *lock_dest;
+    apr_thread_mutex_t *lock_src = NULL, *lock_dest = NULL;
     int ftype, dtype;
     unsigned int ui;
     char sfname[OS_PATH_MAX];
