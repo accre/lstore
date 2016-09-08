@@ -559,9 +559,11 @@ tbx_inip_file_t *tbx_inip_string_read(const char *text)
     if (!fd) {
         goto error0;
     }
+    fprintf(fd, "%s", text);
     tbx_inip_file_t *ret = inip_read_fd(fd);
     return ret;
 
 error0:
+    log_printf(0, "Failed to make temporary file\n");
     return NULL;
 }
