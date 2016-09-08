@@ -172,7 +172,7 @@ gop_op_status_t gen_warm_task(void *arg, int id)
             free(etext);
 
             //** Add the task
-            gop = ibp_modify_alloc_op(w->ic, w->cap[w->n], -1, dt, -1, lio_gc->timeout);
+            gop = ibp_modify_alloc_gop(w->ic, w->cap[w->n], -1, dt, -1, lio_gc->timeout);
             gop_set_myid(gop, w->n);
             gop_set_private(gop, wrid);
             gop_opque_add(q, gop);

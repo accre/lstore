@@ -606,7 +606,7 @@ gop_op_generic_t *ds_ibp_res_inquire(lio_data_service_fn_t *dsf, char *res, data
     res2ibp(res, &(cmd->depot));
 
     //** Create the op
-    iop->gop = ibp_depot_inq_op(ds->ic, &(cmd->depot), "ibp", space, timeout);
+    iop->gop = ibp_depot_inq_gop(ds->ic, &(cmd->depot), "ibp", space, timeout);
 
     ds_ibp_setup_finish(iop);
 
@@ -630,7 +630,7 @@ gop_op_generic_t *ds_ibp_allocate(lio_data_service_fn_t *dsf, char *res, data_at
     res2ibp(res, &(cmd->depot));
 
     //** Create the op
-    iop->gop = ibp_alloc_op(ds->ic, caps, size, &(cmd->depot), &(iop->attr->attr), iop->attr->disk_cs_type, iop->attr->disk_cs_blocksize, timeout);
+    iop->gop = ibp_alloc_gop(ds->ic, caps, size, &(cmd->depot), &(iop->attr->attr), iop->attr->disk_cs_type, iop->attr->disk_cs_blocksize, timeout);
 
     ds_ibp_setup_finish(iop);
 
@@ -650,7 +650,7 @@ gop_op_generic_t *ds_ibp_remove(lio_data_service_fn_t *dsf, data_attr_t *dattr, 
     lio_ds_ibp_op_t *iop = ds_ibp_op_create(ds, attr);
 
     //** Create the op
-    iop->gop = ibp_remove_op(ds->ic, cap, timeout);
+    iop->gop = ibp_remove_gop(ds->ic, cap, timeout);
 
     ds_ibp_setup_finish(iop);
 
@@ -669,7 +669,7 @@ gop_op_generic_t *ds_ibp_truncate(lio_data_service_fn_t *dsf, data_attr_t *dattr
     lio_ds_ibp_op_t *iop = ds_ibp_op_create(ds, attr);
 
     //** Create the op
-    iop->gop = ibp_truncate_op(ds->ic, mcap, new_size, timeout);
+    iop->gop = ibp_truncate_gop(ds->ic, mcap, new_size, timeout);
 
     ds_ibp_setup_finish(iop);
 
@@ -712,7 +712,7 @@ gop_op_generic_t *ds_ibp_modify_count(lio_data_service_fn_t *dsf, data_attr_t *d
     }
 
     //** Create the op
-    iop->gop = ibp_modify_count_op(ds->ic, mcap, imode, icaptype, timeout);
+    iop->gop = ibp_modify_count_gop(ds->ic, mcap, imode, icaptype, timeout);
 
     ds_ibp_setup_finish(iop);
 
@@ -731,7 +731,7 @@ gop_op_generic_t *ds_ibp_probe(lio_data_service_fn_t *dsf, data_attr_t *dattr, d
     lio_ds_ibp_op_t *iop = ds_ibp_op_create(ds, attr);
 
     //** Create the op
-    iop->gop = ibp_probe_op(ds->ic, mcap, (ibp_capstatus_t *)probe, timeout);
+    iop->gop = ibp_probe_gop(ds->ic, mcap, (ibp_capstatus_t *)probe, timeout);
 
     ds_ibp_setup_finish(iop);
 
@@ -750,7 +750,7 @@ gop_op_generic_t *ds_ibp_read(lio_data_service_fn_t *dsf, data_attr_t *dattr, da
     lio_ds_ibp_op_t *iop = ds_ibp_op_create(ds, attr);
 
     //** Create the op
-    iop->gop = ibp_read_op(ds->ic, rcap, off, dread, droff, size, timeout);
+    iop->gop = ibp_read_gop(ds->ic, rcap, off, dread, droff, size, timeout);
 
     ds_ibp_setup_finish(iop);
 
@@ -769,7 +769,7 @@ gop_op_generic_t *ds_ibp_write(lio_data_service_fn_t *dsf, data_attr_t *dattr, d
     lio_ds_ibp_op_t *iop = ds_ibp_op_create(ds, attr);
 
     //** Create the op
-    iop->gop = ibp_write_op(ds->ic, wcap, off, dwrite, boff, size, timeout);
+    iop->gop = ibp_write_gop(ds->ic, wcap, off, dwrite, boff, size, timeout);
 
     ds_ibp_setup_finish(iop);
 
@@ -788,7 +788,7 @@ gop_op_generic_t *ds_ibp_readv(lio_data_service_fn_t *dsf, data_attr_t *dattr, d
     lio_ds_ibp_op_t *iop = ds_ibp_op_create(ds, attr);
 
     //** Create the op
-    iop->gop = ibp_vec_read_op(ds->ic, rcap, n_iov, iov, dread, droff, size, timeout);
+    iop->gop = ibp_vec_read_gop(ds->ic, rcap, n_iov, iov, dread, droff, size, timeout);
 
     ds_ibp_setup_finish(iop);
 
@@ -807,7 +807,7 @@ gop_op_generic_t *ds_ibp_writev(lio_data_service_fn_t *dsf, data_attr_t *dattr, 
     lio_ds_ibp_op_t *iop = ds_ibp_op_create(ds, attr);
 
     //** Create the op
-    iop->gop = ibp_vec_write_op(ds->ic, wcap, n_iov, iov, dwrite, boff, size, timeout);
+    iop->gop = ibp_vec_write_gop(ds->ic, wcap, n_iov, iov, dwrite, boff, size, timeout);
 
     ds_ibp_setup_finish(iop);
 
@@ -826,7 +826,7 @@ gop_op_generic_t *ds_ibp_append(lio_data_service_fn_t *dsf, data_attr_t *dattr, 
     lio_ds_ibp_op_t *iop = ds_ibp_op_create(ds, attr);
 
     //** Create the op
-    iop->gop = ibp_append_op(ds->ic, wcap, dwrite, boff, size, timeout);
+    iop->gop = ibp_append_gop(ds->ic, wcap, dwrite, boff, size, timeout);
 
     ds_ibp_setup_finish(iop);
 
@@ -847,7 +847,7 @@ gop_op_generic_t *ds_ibp_copy(lio_data_service_fn_t *dsf, data_attr_t *dattr, in
 
     //** Create the op
     dir = ((mode & DS_PULL) > 0) ? IBP_PULL : IBP_PUSH;
-    iop->gop = ibp_copy_op(ds->ic, dir, ns_type, ppath, src_cap, dest_cap, src_off, dest_off, len, timeout, timeout, timeout);
+    iop->gop = ibp_copy_gop(ds->ic, dir, ns_type, ppath, src_cap, dest_cap, src_off, dest_off, len, timeout, timeout, timeout);
 
     ds_ibp_setup_finish(iop);
 
@@ -909,7 +909,7 @@ void *ds_ibp_warm_thread(apr_thread_t *th, void *data)
         q = gop_opque_new();
         for (hi=apr_hash_first(NULL, ds->warm_table); hi != NULL; hi = apr_hash_next(hi)) {
             apr_hash_this(hi, (const void **)&mcap, &hlen, (void **)&w);
-            gop_opque_add(q, ibp_modify_alloc_op(ds->ic, mcap, -1, ds->warm_duration, -1, dt));
+            gop_opque_add(q, ibp_modify_alloc_gop(ds->ic, mcap, -1, ds->warm_duration, -1, dt));
             log_printf(15, " warming: %s\n", mcap);
 
         }

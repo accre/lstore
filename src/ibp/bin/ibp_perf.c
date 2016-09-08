@@ -101,7 +101,7 @@ ibp_capset_t *create_proxy_allocs(int nallocs, ibp_capset_t *base_caps, int n_ba
 
     for (i=0; i<nallocs; i++) {
         bcap = &(base_caps[i % n_base]);
-        op = ibp_proxy_alloc_op(ic, &(caps[i]), ibp_cap_get(bcap, IBP_MANAGECAP), 0, 0, 0, ibp_timeout);
+        op = ibp_proxy_alloc_gop(ic, &(caps[i]), ibp_cap_get(bcap, IBP_MANAGECAP), 0, 0, 0, ibp_timeout);
         gop_opque_add(q, op);
     }
 
@@ -129,7 +129,7 @@ void proxy_remove_allocs(ibp_capset_t *caps_list, ibp_capset_t *mcaps_list, int 
 
     for (i=0; i<nallocs; i++) {
         j = i % mallocs;
-        op = ibp_proxy_remove_op(ic, ibp_cap_get(&(caps_list[i]), IBP_MANAGECAP),
+        op = ibp_proxy_remove_gop(ic, ibp_cap_get(&(caps_list[i]), IBP_MANAGECAP),
                                      ibp_cap_get(&(mcaps_list[j]), IBP_MANAGECAP), ibp_timeout);
         gop_opque_add(q, op);
     }
@@ -172,7 +172,7 @@ ibp_capset_t *create_allocs(int nallocs, int asize)
 
     for (i=0; i<nallocs; i++) {
         depot = &(depot_list[i % n_depots]);
-        op = ibp_alloc_op(ic, &(caps[i]), asize, depot, &attr, disk_cs_type, disk_blocksize, ibp_timeout);
+        op = ibp_alloc_gop(ic, &(caps[i]), asize, depot, &attr, disk_cs_type, disk_blocksize, ibp_timeout);
         gop_opque_add(q, op);
     }
 
@@ -200,7 +200,7 @@ void remove_allocs(ibp_capset_t *caps_list, int nallocs)
     q = gop_opque_new();
 
     for (i=0; i<nallocs; i++) {
-        op = ibp_remove_op(ic, ibp_cap_get(&(caps_list[i]), IBP_MANAGECAP), ibp_timeout);
+        op = ibp_remove_gop(ic, ibp_cap_get(&(caps_list[i]), IBP_MANAGECAP), ibp_timeout);
         gop_opque_add(q, op);
     }
 
@@ -265,7 +265,7 @@ void validate_allocs(ibp_capset_t *caps_list, int nallocs)
 
     for (i=0; i<nallocs; i++) {
         bad_blocks[i] = 0;
-        op = ibp_validate_chksum_op(ic, ibp_cap_get(&(caps_list[i]), IBP_MANAGECAP), correct_errors, &(bad_blocks[i]),
+        op = ibp_validate_chksum_gop(ic, ibp_cap_get(&(caps_list[i]), IBP_MANAGECAP), correct_errors, &(bad_blocks[i]),
                                         ibp_timeout);
         gop_opque_add(q, op);
     }
@@ -324,7 +324,7 @@ void write_allocs(ibp_capset_t *caps, int n, int asize, int block_size)
             }
             slot = j*n + i;
             tbx_tbuf_single(&(buf[slot]), len, buffer);
-            op = ibp_write_op(ic, ibp_cap_get(&(caps[i]), IBP_WRITECAP), j*block_size, &(buf[slot]), 0, len, ibp_timeout);
+            op = ibp_write_gop(ic, ibp_cap_get(&(caps[i]), IBP_WRITECAP), j*block_size, &(buf[slot]), 0, len, ibp_timeout);
             gop_opque_add(q, op);
         }
     }
@@ -371,7 +371,7 @@ void read_allocs(ibp_capset_t *caps, int n, int asize, int block_size)
             }
             slot = j*n + i;
             tbx_tbuf_single(&(buf[slot]), len, buffer);
-            op = ibp_read_op(ic, ibp_cap_get(&(caps[i]), IBP_READCAP), j*block_size, &(buf[slot]), 0, len, ibp_timeout);
+            op = ibp_read_gop(ic, ibp_cap_get(&(caps[i]), IBP_READCAP), j*block_size, &(buf[slot]), 0, len, ibp_timeout);
             gop_opque_add(q, op);
         }
     }
@@ -427,10 +427,10 @@ void random_allocs(ibp_capset_t *caps, int n, int asize, int block_size, double 
 
             if (rnd < rfrac) {
                 tbx_tbuf_single(&(buf[bslot]), len, rbuffer);
-                op = ibp_read_op(ic, ibp_cap_get(&(caps[i]), IBP_READCAP), j*block_size, &(buf[bslot]), 0, len, ibp_timeout);
+                op = ibp_read_gop(ic, ibp_cap_get(&(caps[i]), IBP_READCAP), j*block_size, &(buf[bslot]), 0, len, ibp_timeout);
             } else {
                 tbx_tbuf_single(&(buf[bslot]), len, wbuffer);
-                op = ibp_write_op(ic, ibp_cap_get(&(caps[i]), IBP_WRITECAP), j*block_size, &(buf[bslot]), 0, len, ibp_timeout);
+                op = ibp_write_gop(ic, ibp_cap_get(&(caps[i]), IBP_WRITECAP), j*block_size, &(buf[bslot]), 0, len, ibp_timeout);
             }
             gop_opque_add(q, op);
         }
@@ -491,7 +491,7 @@ double small_write_allocs(ibp_capset_t *caps, int n, int asize, int small_count,
         offset = (asize - io_size) * rnd;
 
         tbx_tbuf_single(&(buf[i]), io_size, buffer);
-        op = ibp_write_op(ic, ibp_cap_get(&(caps[slot]), IBP_WRITECAP), offset, &(buf[i]), 0, io_size, ibp_timeout);
+        op = ibp_write_gop(ic, ibp_cap_get(&(caps[slot]), IBP_WRITECAP), offset, &(buf[i]), 0, io_size, ibp_timeout);
         gop_opque_add(q, op);
     }
 
@@ -552,7 +552,7 @@ double small_read_allocs(ibp_capset_t *caps, int n, int asize, int small_count, 
 
         tbx_tbuf_single(&(buf[i]), io_size, buffer);
 
-        op = ibp_read_op(ic, ibp_cap_get(&(caps[slot]), IBP_READCAP), offset, &(buf[i]), 0, io_size, ibp_timeout);
+        op = ibp_read_gop(ic, ibp_cap_get(&(caps[slot]), IBP_READCAP), offset, &(buf[i]), 0, io_size, ibp_timeout);
         gop_opque_add(q, op);
     }
 
@@ -618,10 +618,10 @@ double small_random_allocs(ibp_capset_t *caps, int n, int asize, double readfrac
         rnd = rand()/(RAND_MAX+1.0);
         if (rnd < readfrac) {
             tbx_tbuf_single(&(buf[i]), io_size, rbuffer);
-            op = ibp_read_op(ic, ibp_cap_get(&(caps[slot]), IBP_READCAP), offset, &(buf[i]), 0, io_size, ibp_timeout);
+            op = ibp_read_gop(ic, ibp_cap_get(&(caps[slot]), IBP_READCAP), offset, &(buf[i]), 0, io_size, ibp_timeout);
         } else {
             tbx_tbuf_single(&(buf[i]), io_size, wbuffer);
-            op = ibp_write_op(ic, ibp_cap_get(&(caps[slot]), IBP_WRITECAP), offset, &(buf[i]), 0, io_size, ibp_timeout);
+            op = ibp_write_gop(ic, ibp_cap_get(&(caps[slot]), IBP_WRITECAP), offset, &(buf[i]), 0, io_size, ibp_timeout);
         }
 
         gop_opque_add(q, op);
