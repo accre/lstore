@@ -97,7 +97,6 @@ LIO_API void lio_unified_object_iter_destroy(lio_unified_object_iter_t *it);
 LIO_API void *lio_stdinlist_iter_create(int argc, const char **argv);
 LIO_API void lio_stdinlist_iter_destroy(void *ptr);
 LIO_API char *lio_stdinlist_iter_next(void *ptr);
-LIO_API gop_op_generic_t *lioc_truncate(lio_path_tuple_t *tuple, ex_off_t new_size);
 
 // Preprocessor constants
 typedef enum lio_fsck_repair_t lio_fsck_repair_t;
