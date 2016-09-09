@@ -665,22 +665,40 @@ finished:
 void ostc_cache_move_object(lio_object_service_fn_t *os, lio_creds_t *creds, char *src_path, char *dest_path)
 {
     ostc_priv_t *ostc = (ostc_priv_t *)os->priv;
-    tbx_stack_t stree, dtree;
-    ostcdb_object_t *obj;
+    tbx_stack_t tree;
+    ostcdb_object_t *obj, *parent;
+    int i;
 
-    tbx_stack_init(&stree);
+    tbx_stack_init(&tree);
 
     OSTC_LOCK(ostc);
-    if (_ostc_lio_cache_tree_walk(os, src_path, &stree, NULL, 0, OSTC_MAX_RECURSE) == 0) {
-        tbx_stack_move_to_bottom(&stree);
-        obj = tbx_stack_get_current_data(&stree);
-        tbx_stack_init(&dtree);
-        _ostc_lio_cache_tree_walk(os, src_path, &dtree, obj, obj->ftype, OSTC_MAX_RECURSE);  //** Do the walk and substitute
-        tbx_stack_empty(&dtree, 0);
+    if (_ostc_lio_cache_tree_walk(os, src_path, &tree, NULL, 0, OSTC_MAX_RECURSE) == 0) {
+        tbx_stack_move_to_bottom(&tree);
+        obj = tbx_stack_get_current_data(&tree);  //** Snag what we want to move
+
+        tbx_stack_move_up(&tree);
+        parent = tbx_stack_get_current_data(&tree);
+        apr_hash_set(parent->objects, obj->fname, APR_HASH_KEY_STRING, NULL);  //** Delete it from it's old location
+
+        //** Peel off the new fname
+        for (i = strlen(dest_path); i>0; i--) {
+            if (dest_path[i] == '/') break;
+        }
+        if (dest_path[i] == '/') i++;
+        free(obj->fname);
+        obj->fname = strdup(&(dest_path[i]));
+log_printf(0, "src=%s dest=%s dname=%s\n", src_path, dest_path, obj->fname);
+
+        //** Do the walk and add it back
+        tbx_stack_empty(&tree, 0);
+        if (_ostc_lio_cache_tree_walk(os, dest_path, &tree, obj, obj->ftype, OSTC_MAX_RECURSE) != 0) {
+            free_ostcdb_object(obj);  //**Failed to walk the destination path
+        }
     }
+
     OSTC_UNLOCK(ostc);
 
-    tbx_stack_empty(&stree, 0);
+    tbx_stack_empty(&tree, 0);
 }
 
 //***********************************************************************

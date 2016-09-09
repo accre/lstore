@@ -331,9 +331,9 @@ gop_op_status_t segjerase_inspect_full_func(void *arg, int id)
     segjerase_priv_t *s = (segjerase_priv_t *)si->seg->priv;
     gop_op_status_t status;
     gop_opque_t *q;
-    lio_ex3_inspect_command_t i;
+    lio_ex3_inspect_command_t ic;
     bool do_fix;
-    int err, j, k, d, nstripes, total_stripes, stripe, bufstripes, n_empty;
+    int i, err, j, k, d, nstripes, total_stripes, stripe, bufstripes, n_empty;
     int  fail_quick, n_iov, good_magic, unrecoverable_count, bad_count, repair_errors, erasure_errors;
     int magic_count[s->n_devs], match, index, magic_used;
     int magic_devs[s->n_devs*s->n_devs];
@@ -355,7 +355,7 @@ gop_op_status_t segjerase_inspect_full_func(void *arg, int id)
     ex_tbx_iovec_t *ex_iov;
     apr_time_t now, clr_dt;
     double dtt, dtr, dtw, dtp, rater, ratew, ratep;
-    
+
     // Give vals a garbage value since Alan gave it nothing
     tmp = INT_MIN;
     status = gop_success_status;
@@ -370,8 +370,8 @@ gop_op_status_t segjerase_inspect_full_func(void *arg, int id)
     fail_quick = si->inspect_mode & INSPECT_FAIL_ON_ERROR;
 
     do_fix = 0;
-    i = si->inspect_mode & INSPECT_COMMAND_BITS;
-    if ((i == INSPECT_QUICK_REPAIR) || (i == INSPECT_SCAN_REPAIR) || (i == INSPECT_FULL_REPAIR)) do_fix = 1;
+    ic = si->inspect_mode & INSPECT_COMMAND_BITS;
+    if ((ic == INSPECT_QUICK_REPAIR) || (ic == INSPECT_SCAN_REPAIR) || (ic == INSPECT_FULL_REPAIR)) do_fix = 1;
 
     base_offset = sf->lo / s->data_size;
     base_offset = base_offset * s->stripe_size_with_magic;
@@ -1400,7 +1400,7 @@ tryagain:  //** We first try allowing blacklisting to proceed as normal and then
             for (j=0; j<nstripes; j++) {
                 tbv.nbytes = s->data_size;
                 tbx_tbuf_next(sw->buffer, boff, &tbv);
-               FATAL_UNLESS((tbv.n_iov == 1) && (tbv.nbytes == s->data_size));
+                FATAL_UNLESS((tbv.n_iov == 1) && ((int)tbv.nbytes == s->data_size));
 
                 //** Make the encoding and transfer data structs
                 poff = 0;
@@ -1605,7 +1605,7 @@ tryagain: //** In case blacklisting failed we'll retry with it disabled
             for (j=0; j<nstripes; j++) {
                 tbv.nbytes = s->data_size;
                 tbx_tbuf_next(sw->buffer, boff, &tbv);
-               FATAL_UNLESS((tbv.n_iov == 1) && (tbv.nbytes == s->data_size));
+               FATAL_UNLESS((tbv.n_iov == 1) && ((int)tbv.nbytes == s->data_size));
 
                 //** Make the encoding and transfer data structs
                 stripe_magic = &(magic[curr_stripe*JE_MAGIC_SIZE]);

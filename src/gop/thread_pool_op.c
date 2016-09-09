@@ -152,7 +152,7 @@ gop_op_generic_t *_tpc_overflow_next(gop_thread_pool_context_t *tpc)
     //** Determine the currently running max depth
     dmax = -1;
     slot = -1;
-    if (tbx_atomic_get(tpc->n_running) >= tpc->max_concurrency) { //** Don't care about a slot if less than the max concurrency
+    if ((int)tbx_atomic_get(tpc->n_running) >= tpc->max_concurrency) { //** Don't care about a slot if less than the max concurrency
         for (i=0; i<tpc->recursion_depth; i++) {
             if (tpc->overflow_running_depth[i] > dmax) dmax = tpc->overflow_running_depth[i];
             if (tpc->overflow_running_depth[i] == -1) slot = i;

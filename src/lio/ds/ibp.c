@@ -240,7 +240,7 @@ void ds_ibp_translate_cap_set(lio_data_service_fn_t *ds, char *rid_key, char *ds
 
     len = end - start;
     log_printf(20, "cap=%s ds_key=%s strncmp=%d len=%d strlen(ds_key)=%lu\n", str, ds_key, strncmp(ds_key, &(str[start]), len), len, strlen(ds_key));
-    if ((strncmp(ds_key, &(str[start]), len) == 0) && (strlen(ds_key) == len)) return;
+    if ((strncmp(ds_key, &(str[start]), len) == 0) && ((int)strlen(ds_key) == len)) return;
 
     //** If we made it hear we need to do a translation
     //** Make the new prefix
@@ -303,56 +303,56 @@ int ds_ibp_get_attr(lio_data_service_fn_t *arg, data_attr_t *dsa, int key, void 
 
     switch (key) {
     case DS_ATTR_DURATION:
-        if (size < sizeof(ds_int_t)) {
+        if (size < (int)sizeof(ds_int_t)) {
             err = sizeof(ds_int_t);
         } else {
             *n = a->attr.duration;
         }
         break;
     case DS_IBP_ATTR_RELIABILITY:
-        if (size < sizeof(ds_int_t)) {
+        if (size < (int)sizeof(ds_int_t)) {
             err = sizeof(ds_int_t);
         } else {
             *n = a->attr.reliability;
         }
         break;
     case DS_IBP_ATTR_TYPE:
-        if (size < sizeof(ds_int_t)) {
+        if (size < (int)sizeof(ds_int_t)) {
             err = sizeof(ds_int_t);
         } else {
             *n = a->attr.type;
         }
         break;
     case DS_IBP_ATTR_DEPOT:
-        if (size < sizeof(ibp_depot_t)) {
+        if (size < (int)sizeof(ibp_depot_t)) {
             err = sizeof(ibp_depot_t);
         } else {
             *depot = a->depot;
         }
         break;
     case DS_IBP_ATTR_CC :
-        if (size < sizeof(ibp_connect_context_t)) {
+        if (size < (int)sizeof(ibp_connect_context_t)) {
             err = sizeof(ibp_connect_context_t);
         } else {
             *cc = a->cc;
         }
         break;
     case DS_IBP_ATTR_NET_CKSUM:
-        if (size < sizeof(tbx_ns_chksum_t)) {
+        if (size < (int)sizeof(tbx_ns_chksum_t)) {
             err = sizeof(tbx_ns_chksum_t);
         } else {
             *ncs = a->ncs;
         }
         break;
     case DS_IBP_ATTR_DISK_CHKSUM_TYPE:
-        if (size < sizeof(ds_int_t)) {
+        if (size < (int)sizeof(ds_int_t)) {
             err = sizeof(ds_int_t);
         } else {
             *n = a->disk_cs_type;
         }
         break;
     case DS_IBP_ATTR_DISK_CHKSUM_BLOCKSIZE:
-        if (size < sizeof(ds_int_t)) {
+        if (size < (int)sizeof(ds_int_t)) {
             err = sizeof(ds_int_t);
         } else {
             *n = a->disk_cs_blocksize;
@@ -431,7 +431,7 @@ int ds_ibp_get_probe(lio_data_service_fn_t *arg, data_attr_t *dsa, int key, void
     ds_int_t *n = (ds_int_t *)val;
     int err = 0;
 
-    if (size < sizeof(ds_int_t))  return(sizeof(ds_int_t));
+    if (size < (int)sizeof(ds_int_t))  return(sizeof(ds_int_t));
 
     switch (key) {
     case DS_PROBE_DURATION:

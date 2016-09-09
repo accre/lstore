@@ -111,10 +111,6 @@ rs_query_t *query;
 lio_path_tuple_t *tuple_list;
 char **argv_list = NULL;
 int error_only_check = 0;
-int start_index = -1;
-int final_index = -1;
-int current_index = -1;
-int from_stdin = 0;
 
 apr_thread_mutex_t *rid_lock = NULL;
 apr_hash_t *rid_changes = NULL;
@@ -1018,30 +1014,6 @@ finished:
 }
 
 //*************************************************************************
-//  next_path - Returns the next path from either argv or stdin
-//*************************************************************************
-
-char *next_path()
-{
-    char *p, *p2;
-
-    if (from_stdin == 0) {
-        if (current_index == -1) current_index = start_index;
-        if (current_index > final_index) return(NULL);
-
-        p = argv_list[current_index];
-        current_index++;
-    } else {
-        tbx_type_malloc(p2, char, 8192);
-        p = fgets(p2, 8192, stdin);
-        if (p) p2[strlen(p)-1] = 0;  //** Truncate the \n
-    }
-
-    log_printf(5, "from_stdin=%d path=%s\n", from_stdin, p);
-    return(p);
-}
-
-//*************************************************************************
 //*************************************************************************
 
 int main(int argc, char **argv)
@@ -1072,13 +1044,13 @@ int main(int argc, char **argv)
     char *set_key, *set_success, *set_fail, *select_key, *select_value;
     int set_success_size, set_fail_size, select_mode, select_index;
     tbx_stack_t *pools;
+    void *piter;
 
     bufsize = 20*1024*1024;
     base = 1;
     dump_iter = 100;
     check_iter = 100;
     todo_mode = 0;
-    from_stdin = 0;
     select_mode = INT_MIN;
 
     if (argc < 2) {
@@ -1141,7 +1113,6 @@ int main(int argc, char **argv)
     option = INSPECT_QUICK_CHECK;
     global_whattodo = 0;
     query = rs_query_new(lio_gc->rs);
-    final_index = argc - 1;
     do_print = 0;
     print_pools = 0;
     pools = NULL;
@@ -1169,9 +1140,6 @@ int main(int argc, char **argv)
             i++;
             bufsize = tbx_stk_string_get_integer(argv[i]);
             i++;
-        } else if (strcmp(argv[i], "-") == 0) {  //** Take files from stdin
-            i++;
-            from_stdin = 1;
         } else if (strcmp(argv[i], "-f") == 0) { //** Force repair
             i++;
             force_repair = INSPECT_FORCE_REPAIR;
@@ -1348,7 +1316,7 @@ int main(int argc, char **argv)
         }
 
     } while ((start_option < i) && (i<argc));
-    start_index = i;
+    start_option = i;
 
     //** Finish forming the query.  We need to add all the AND operations
     if (q_count == 0) {
@@ -1382,14 +1350,17 @@ int main(int argc, char **argv)
     global_whattodo |= option;
     if ((option == INSPECT_QUICK_REPAIR) || (option == INSPECT_SCAN_REPAIR) || (option == INSPECT_FULL_REPAIR)) global_whattodo |= force_repair;
 
-    if ((rg_mode == 0) && (from_stdin == 0)) {
-        if (argc <= start_index) {
+    if (rg_mode == 0) {
+        if (argc <= start_option) {
             info_printf(lio_ifd, 0, "Missing directory!\n");
             return(2);
         }
     } else {
-        start_index--;  //** Ther 1st entry will be the rp created in lio_parse_path_options
+        start_option--;  //** Ther 1st entry will be the rp created in lio_parse_path_options
     }
+
+    //** Make the path iterator
+    piter = lio_stdinlist_iter_create(argc-start_option, (const char **)&(argv[start_option]));
 
     tbx_type_malloc_clear(w, inspect_t, lio_parallel_task_count);
     seg_index = tbx_list_create(0, &tbx_list_string_compare, NULL, tbx_list_simple_free, NULL);
@@ -1413,7 +1384,9 @@ int main(int argc, char **argv)
 
     install_signal_handler();
 
-    while (((path = next_path()) != NULL) && (pool_todo > 0)) {
+    apr_thread_mutex_lock(shutdown_lock);
+    while (((path = lio_stdinlist_iter_next(piter)) != NULL) && (pool_todo > 0) && (shutdown_now == 0)) {
+        apr_thread_mutex_unlock(shutdown_lock);
         log_printf(5, "path=%s argc=%d rg_mode=%d pslot=%d\n", path, argc, rg_mode, pslot);
 
         if (rg_mode == 0) {
@@ -1435,7 +1408,9 @@ int main(int argc, char **argv)
             goto finished;
         }
 
-        while (((ftype = lio_next_object(tuple.lc, it, &fname, &prefix_len)) > 0) && (pool_todo > 0)) {
+        apr_thread_mutex_lock(shutdown_lock);
+        while (((ftype = lio_next_object(tuple.lc, it, &fname, &prefix_len)) > 0) && (pool_todo > 0) && (shutdown_now == 0)) {
+            apr_thread_mutex_unlock(shutdown_lock);
             gotone = ((acount == 1) && (assume_skip == 0)) ? 1 : 0;
             for (i=1; i<acount; i++) {
                 if ((vals[i] != NULL) && (i != select_index)) {
@@ -1527,17 +1502,8 @@ int main(int argc, char **argv)
                 free(fname);
                 if (vals[0] != NULL) free(vals[0]);
             }
-
-            //** Check if we hsould kick out
-            apr_thread_mutex_lock(shutdown_lock);
-            if (shutdown_now == 1) {
-                apr_thread_mutex_lock(rid_lock);
-                pool_todo = 0;  //** Force an orderly exit
-                apr_thread_mutex_unlock(rid_lock);
-            }
-            apr_thread_mutex_unlock(shutdown_lock);
-
         }
+        apr_thread_mutex_unlock(shutdown_lock);
 
         lio_destroy_object_iter(tuple.lc, it);
 
@@ -1551,6 +1517,7 @@ int main(int argc, char **argv)
         }
         lio_path_release(&tuple);
     }
+    apr_thread_mutex_unlock(shutdown_lock);
 
     //** Wait for everything to complete
     while ((gop = opque_waitany(q)) != NULL) {
@@ -1592,6 +1559,7 @@ int main(int argc, char **argv)
 
     free(w);
 
+    lio_stdinlist_iter_destroy(piter);
     if (rid_lock != NULL) apr_thread_mutex_destroy(rid_lock);
     if (rid_mpool != NULL) apr_pool_destroy(rid_mpool);
 finished:

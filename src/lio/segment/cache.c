@@ -2014,6 +2014,7 @@ int _cache_ppages_flush_list(lio_segment_t *seg, data_attr_t *da, tbx_stack_t *p
     cop.boff = 0;
     cop.buf = &tbuf;
     cop.skip_ppages = 1;
+    cop.rw_hints = NULL;
 
     nbytes = 0;
     slot = 0;
@@ -2766,6 +2767,7 @@ gop_op_status_t cache_flush_range_func(void *arg, int id)
     cache_rw_op_t *cop = (cache_rw_op_t *)arg;
     lio_cache_lio_segment_t *s = (lio_cache_lio_segment_t *)cop->seg->priv;
     lio_page_handle_t page[CACHE_MAX_PAGES_RETURNED];
+    ex_id_t sid;
     int status, n_pages, max_pages, total_pages;
     ex_off_t flush_id[3];
     tbx_stack_t stack;
@@ -2877,13 +2879,14 @@ gop_op_status_t cache_flush_range_func(void *arg, int id)
 
     //** Update that I'm finished
 finished:
+    sid = segment_id(cop->seg);
     segment_lock(cop->seg);
     s->flushing_count--;
     segment_unlock(cop->seg);
 
     dt = apr_time_now() - now;
     dt /= APR_USEC_PER_SEC;
-    log_printf(1, "END seg=" XIDT " lo=" XOT " hi=" XOT " flush_id=" XOT " total_pages=%d status=%d dt=%lf\n", segment_id(cop->seg), lo, hi, flush_id[2], total_pages, err, dt);
+    log_printf(1, "END seg=" XIDT " lo=" XOT " hi=" XOT " flush_id=" XOT " total_pages=%d status=%d dt=%lf\n", sid, lo, hi, flush_id[2], total_pages, err, dt);
     return((err == OP_STATE_SUCCESS) ? gop_success_status : gop_failure_status);
 }
 

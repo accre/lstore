@@ -460,7 +460,7 @@ int lfs_object_create(lio_fuse_t *lfs, const char *fname, mode_t mode, int ftype
     tbx_log_flush();
 
     //** Make sure it doesn't exists
-    n = lioc_exists(lfs->lc, lfs->lc->creds, (char *)fname);
+    n = lio_exists(lfs->lc, lfs->lc->creds, (char *)fname);
     if (n != 0) {  //** File already exists
         log_printf(15, "File already exist! fname=%s\n", fullname);
         return(-EEXIST);
@@ -805,7 +805,7 @@ int lfs_rename(const char *oldname, const char *newname)
 {
     lio_fuse_t *lfs = lfs_get_context();
     lio_fuse_open_file_t *fop;
-    int err;
+    gop_op_status_t status;
 
     log_printf(1, "oldname=%s newname=%s\n", oldname, newname);
     tbx_log_flush();
@@ -821,9 +821,9 @@ int lfs_rename(const char *oldname, const char *newname)
     lfs_unlock(lfs);
 
     //** Do the move
-    err = gop_sync_exec(lio_move_op(lfs->lc, lfs->lc->creds, (char *)oldname, (char *)newname));
-    if (err != OP_STATE_SUCCESS) {
-        return(-EIO);
+    status = gop_sync_exec_status(gop_lio_move_object(lfs->lc, lfs->lc->creds, (char *)oldname, (char *)newname));
+    if (status.op_status != OP_STATE_SUCCESS) {
+        return((status.error_code != 0) ? -status.error_code : -EREMOTEIO);
     }
 
     return(0);
@@ -918,7 +918,7 @@ int lfs_utimens(const char *fname, const struct timespec tv[2])
 //  val = lfs->id;
 //  v_size = strlen(val);
 
-    err = lioc_setattr(lfs->lc, lfs->lc->creds, (char *)fname, NULL, key, (void *)val, v_size);
+    err = lio_setattr(lfs->lc, lfs->lc->creds, (char *)fname, NULL, key, (void *)val, v_size);
     if (err != OP_STATE_SUCCESS) {
         log_printf(0, "ERROR updating stat! fname=%s\n", fname);
         return(-EBADE);
@@ -994,7 +994,7 @@ int lfs_listxattr(const char *fname, char *list, size_t size)
 
     if (size == 0) {
         log_printf(15, "SIZE bpos=%d buf=%s\n", bpos, buf);
-    } else if (size > bpos) {
+    } else if ((int)size > bpos) {
         log_printf(15, "FULL bpos=%d buf=%s\n", bpos, buf);
         memcpy(list, buf, bpos);
     } else {
@@ -1226,7 +1226,7 @@ int lfs_getxattr(const char *fname, const char *name, char *buf, size_t size, ui
     log_printf(1, "fname=%s size=%zu attr_name=%s\n", fname, size, name);
     tbx_log_flush();
 
-    v_size = (size == 0) ? -lfs->lc->max_attr : -size;
+    v_size = (size == 0) ? -lfs->lc->max_attr : -(int)size;
     val = NULL;
     if ((lfs->enable_tape == 1) && (strcmp(name, LFS_TAPE_ATTR) == 0)) {  //** Want the tape backup attr
         lfs_get_tape_attr(lfs, (char *)fname, &val, &v_size);
@@ -1241,7 +1241,7 @@ int lfs_getxattr(const char *fname, const char *name, char *buf, size_t size, ui
 
     if (size == 0) {
         log_printf(1, "SIZE bpos=%d buf=%s\n", v_size, val);
-    } else if (size >= v_size) {
+    } else if ((int)size >= v_size) {
         log_printf(1, "FULL bpos=%d buf=%s\n",v_size, val);
         memcpy(buf, val, v_size);
     } else {

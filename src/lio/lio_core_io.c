@@ -415,6 +415,12 @@ gop_op_status_t lio_myopen_fn(void *arg, int id)
             free(op->path);
             *op->fd = NULL;
             return(gop_failure_status);
+        } else if (op->mode & LIO_EXCL_MODE) { //** This file shouldn't exist with this flag so kick out
+            info_printf(lio_ifd, 1, "ERROR file(%s) already exists and EXCL is set!\n", op->path);
+            log_printf(1, "ERROR file(%s) already exists and EXCL is set!\n", op->path);
+            free(op->path);
+            *op->fd = NULL;
+            return(gop_failure_status);
         }
     } else if (dtype == 0) { //** No file so return an error
         info_printf(lio_ifd, 20, "Destination(%s) doesn't exist!\n", op->path);

@@ -1128,7 +1128,7 @@ int va_timestamp_set_attr(lio_os_virtual_attr_t *va, lio_object_service_fn_t *os
     n = (int)(long)va->priv;  //** HACKERY ** to get the attribute prefix length
     key = &(fullkey[n+1]);
 
-    if (strlen(fullkey) < n) {  //** Nothing to do so return;
+    if ((int)strlen(fullkey) < n) {  //** Nothing to do so return;
         *atype = OS_OBJECT_VIRTUAL_FLAG;
         return(1);
     }
@@ -1164,7 +1164,7 @@ int va_timestamp_get_attr(lio_os_virtual_attr_t *va, lio_object_service_fn_t *os
 
     log_printf(15, "fullkey=%s va=%s\n", fullkey, va->attribute);
 
-    if (strlen(fullkey) > n) {  //** Normal attribute timestamp
+    if ((int)strlen(fullkey) > n) {  //** Normal attribute timestamp
         key = &(fullkey[n+1]);
         n = osf_get_attr(os, creds, fd, key, val, v_size, atype);
         *atype |= OS_OBJECT_VIRTUAL_FLAG;
@@ -1194,7 +1194,7 @@ int va_timestamp_get_link_attr(lio_os_virtual_attr_t *va, lio_object_service_fn_
     n = (int)(long)va->priv;  //** HACKERY ** to get the attribute prefix length
     key = &(fullkey[n+1]);
 
-    if (strlen(fullkey) > n) {  //** Normal attribute timestamp
+    if ((int)strlen(fullkey) > n) {  //** Normal attribute timestamp
         n = (long)osf->attr_link_pva.priv;
         strcpy(buffer, osf->attr_link_pva.attribute);
         buffer[n] = '.';
@@ -1225,7 +1225,7 @@ int va_append_set_attr(lio_os_virtual_attr_t *va, lio_object_service_fn_t *os, l
     n = (int)(long)va->priv;  //** HACKERY ** to get the attribute prefix length
     key = &(fullkey[n+1]);
 
-    if (strlen(fullkey) < n) {  //** Nothing to do so return;
+    if ((int)strlen(fullkey) < n) {  //** Nothing to do so return;
         *atype = OS_OBJECT_VIRTUAL_FLAG;
         return(1);
     }
@@ -1250,7 +1250,7 @@ int va_append_get_attr(lio_os_virtual_attr_t *va, lio_object_service_fn_t *os, l
 
     log_printf(15, "fullkey=%s va=%s\n", fullkey, va->attribute);
 
-    if (strlen(fullkey) > n) {  //** Normal attribute
+    if ((int)strlen(fullkey) > n) {  //** Normal attribute
         key = &(fullkey[n+1]);
         n = osf_get_attr(os, creds, fd, key, val, v_size, atype);
         *atype |= OS_OBJECT_VIRTUAL_FLAG;
@@ -1483,7 +1483,7 @@ int osf_next_object(osf_object_iter_t *it, char **myfname, int *prefix_len)
 {
     lio_osfile_priv_t *osf = (lio_osfile_priv_t *)it->os->priv;
     int i, rmatch, tweak;
-    osf_obj_level_t *itl, *it_top;
+    osf_obj_level_t *itl, *it_top = NULL;
     char fname[OS_PATH_MAX];
     char fullname[OS_PATH_MAX];
     char *obj_fixed = NULL;
@@ -1567,7 +1567,7 @@ int osf_next_object(osf_object_iter_t *it, char **myfname, int *prefix_len)
                                     if (rmatch == 0) { //** IF a match return
                                         *myfname=strdup(fname);
                                         if (*prefix_len == 0) {
-                                            *prefix_len = strlen(it_top->path);
+                                            *prefix_len = (it_top != NULL) ? strlen(it_top->path) : 0;
                                             if (*prefix_len == 0) *prefix_len = tweak;
                                         }
                                         log_printf(15, "MATCH=%s prefix=%d\n", fname, *prefix_len);
@@ -1602,6 +1602,7 @@ int osf_next_object(osf_object_iter_t *it, char **myfname, int *prefix_len)
                                         if (rmatch == 0) { //** IF a match return
                                             if (*prefix_len == 0) {
                                                 *prefix_len = strlen(it_top->path);
+                                                *prefix_len = (it_top != NULL) ? strlen(it_top->path) : 0;
                                                 if (*prefix_len == 0) *prefix_len = tweak;
                                             }
                                             *myfname=strdup(fname);
@@ -2479,27 +2480,61 @@ gop_op_generic_t *osfile_hardlink_object(lio_object_service_fn_t *os, lio_creds_
 }
 
 //***********************************************************************
-// osfile_move_object_fn - Actually Moves an object
+// osf_move_object - Actually Moves an object
 //***********************************************************************
 
-gop_op_status_t osfile_move_object_fn(void *arg, int id)
+gop_op_status_t osf_move_object(lio_object_service_fn_t *os, lio_creds_t *creds, char *src_path, char *dest_path, int id, int dolock)
 {
-    osfile_mk_mv_rm_t *op = (osfile_mk_mv_rm_t *)arg;
-    lio_osfile_priv_t *osf = (lio_osfile_priv_t *)op->os->priv;
-    int ftype;
+    lio_osfile_priv_t *osf = (lio_osfile_priv_t *)os->priv;
+    osfile_mk_mv_rm_t rm;    
+    int slot_src, slot_dest;
+    apr_thread_mutex_t *lock_src, *lock_dest;
+    int ftype, dtype;
+    unsigned int ui;
     char sfname[OS_PATH_MAX];
     char dfname[OS_PATH_MAX];
+    char dfname2[OS_PATH_MAX];
     char *dir, *base;
     int err;
+    gop_op_status_t status;
 
-    if ((osaz_object_remove(osf->osaz, op->creds, op->src_path) == 0) ||
-            (osaz_object_create(osf->osaz, op->creds, op->dest_path) == 0)) return(gop_failure_status);
+    if ((osaz_object_remove(osf->osaz, creds, src_path) == 0) ||
+            (osaz_object_create(osf->osaz, creds, dest_path) == 0)) return(gop_failure_status);
 
-    snprintf(sfname, OS_PATH_MAX, "%s%s", osf->file_path, op->src_path);
-    snprintf(dfname, OS_PATH_MAX, "%s%s", osf->file_path, op->dest_path);
+    //** Lock the individual objects based on their slot positions to avoid a deadlock
+    if (dolock == 1) {
+        lock_src = osf_retrieve_lock(os, src_path, &slot_src);
+        lock_dest = osf_retrieve_lock(os, dest_path, &slot_dest);
+        if (slot_src < slot_dest) {
+           osf_obj_lock(lock_src);
+            osf_obj_lock(lock_dest);
+        } else if (slot_src > slot_dest) {
+            osf_obj_lock(lock_dest);
+            osf_obj_lock(lock_src);
+        } else {  //** Same slot so only need to lock one
+            lock_dest = NULL;
+            osf_obj_lock(lock_src);
+        }
+    }
 
+    snprintf(sfname, OS_PATH_MAX, "%s%s", osf->file_path, src_path);
+    snprintf(dfname, OS_PATH_MAX, "%s%s", osf->file_path, dest_path);
+
+    // ** check if the dest already exists. IF so we ned to preserve it in case of an error
+    dtype = lio_os_local_filetype(dfname);
+    if (dtype != 0) {  //** Recursively call our selves and move the dest out of the way
+       tbx_random_get_bytes(&ui, sizeof(ui));  //** Make the random name
+       snprintf(dfname2, OS_PATH_MAX, "%s_dmv_%u", dest_path, ui);
+       status = osf_move_object(os, creds, dest_path, dfname2, id, 0);
+       err = status.op_status;
+       if (status.op_status != OP_STATE_SUCCESS) goto fail;
+    }
+
+    //** If we made it here we know the DEST does NOT exist
+    //** Figure out what we are trying to move.
     ftype = lio_os_local_filetype(sfname);
 
+    //** Attempt to move the main file entry
     err = rename(sfname, dfname);  //** Move the file/dir
     log_printf(15, "sfname=%s dfname=%s err=%d\n", sfname, dfname, err);
 
@@ -2516,10 +2551,43 @@ gop_op_status_t osfile_move_object_fn(void *arg, int id)
 
         log_printf(15, "ATTR sfname=%s dfname=%s\n", sfname, dfname);
 
-        err = rename(sfname, dfname);
+        err = rename(sfname, dfname);  //** Move the attribute directoy
+        if (err != 0) { //** Got to undo the main file/dir entry if the attr rename fails
+            snprintf(sfname, OS_PATH_MAX, "%s%s", osf->file_path, src_path);
+            snprintf(dfname, OS_PATH_MAX, "%s%s", osf->file_path, dest_path);
+            rename(dfname, sfname);
+        }
+    }
+
+   if (dtype != 0) {  //** There was already something in the dest so need to clean up
+        if (err == 0) {  //** No errors so just remove the old entry
+            rm.os = os;
+            rm.creds = creds;
+            rm.src_path = dfname2;
+            osfile_remove_object_fn(&rm, id);
+        } else {  //** Move failed so undo things
+            osf_move_object(os, creds, dfname2, dest_path, id, 0);
+        }
+    }
+
+fail:
+    if (dolock == 1) {
+        osf_obj_unlock(lock_src);
+        if (lock_dest != NULL) osf_obj_unlock(lock_dest);
     }
 
     return((err == 0) ? gop_success_status : gop_failure_status);
+}
+
+//***********************************************************************
+// osfile_move_object_fn - Actually Moves an object
+//***********************************************************************
+
+gop_op_status_t osfile_move_object_fn(void *arg, int id)
+{
+    osfile_mk_mv_rm_t *op = (osfile_mk_mv_rm_t *)arg;
+
+    return(osf_move_object(op->os, op->creds, op->src_path, op->dest_path, id, 1));
 }
 
 //***********************************************************************
