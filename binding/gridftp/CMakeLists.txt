@@ -11,29 +11,38 @@ TIMESTAMP(LSTORE_DSI_TIMESTAMP)
 find_package(GlobusCommon REQUIRED)
 find_package(GlobusGridftpServer REQUIRED)
 
-include_directories(${PROJECT_SOURCE_DIR}/src)
-include_directories(${GLOBUS_COMMON_INCLUDE_DIRS})
-include_directories(${GLOBUS_GRIDFTP_SERVER_INCLUDE_DIRS})
-
-add_library(globus_gridftp_server_lstore MODULE src/lstore_dsi.c)
-target_link_libraries(globus_gridftp_server_lstore
+add_library(gridftp MODULE src/lstore_dsi.c)
+target_link_libraries(gridftp
+                        toolbox
+                        gop
+                        ibp
                         lio
+                        ${APR_LIBRARY}
+                        ${APRUTIL_LIBRARY}
                         ${GLOBUS_COMMON_LIBRARY}
                         ${GLOBUS_GRIDFTP_SERVER_LIBRARY})
+
+target_include_directories(gridftp PUBLIC ${PROJECT_SOURCE_DIR}/src
+                                            ${APR_INCLUDE_DIR}
+                                            ${APRUTIL_INCLUDE_DIR}
+                                            ${GLOBUS_COMMON_INCLUDE_DIRS}
+                                            ${GLOBUS_GRIDFTP_SERVER_INCLUDE_DIRS})
+
 
 if (NOT DEFINED CMAKE_INSTALL_LIBDIR)
   set(CMAKE_INSTALL_LIBDIR "lib64")
 endif()
 
 install(
-  TARGETS globus_gridftp_server_lstore
+  TARGETS gridftp
   LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
 
 set_target_properties(
-  globus_gridftp_server_lstore
+  gridftp
   PROPERTIES
   VERSION   "${LSTORE_DSI_VERSION_MAJOR}.${LSTORE_DSI_VERSION_MINOR}.1"
   SOVERSION "0"
+  OUTPUT_NAME "globus_gridftp_server_lstore"
   LINK_INTERFACE_LIBRARIES "")
 
 CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/src/version.h.in

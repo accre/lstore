@@ -12,8 +12,19 @@
  * limitations under the License.
  */
 
-#include <globus_gridftp_server.h>
+/**
+ * @file lstore_dsi.c
+ * Basic GridFTP boilerplate generated from dsi_bones
+ *
+ * As much as possible, this handles all the conversion to/from GridFTP's API
+ * and the rest of the plugin. Hopefully this separation of interests will
+ * let the plugin keep clean in spite of the API quirks.
+ */
 
+
+#include <globus_gridftp_server.h>
+#include <lio/lio.h>
+#include "lstore_dsi.h"
 #include "version.h"
 
 static
@@ -24,11 +35,6 @@ globus_version_t local_version =
     LSTORE_DSI_TIMESTAMP,
     0 /* branch ID */
 };
-
-typedef struct globus_l_gfs_lstore_handle_s
-{
-    int                                 some_needed_data;
-} globus_l_gfs_lstore_handle_t;
 
 /*
  * start
@@ -60,7 +66,7 @@ globus_l_gfs_lstore_start(
     lstore_handle = (globus_l_gfs_lstore_handle_t *)
         globus_malloc(sizeof(globus_l_gfs_lstore_handle_t));
 
-    lstore_handle->some_needed_data = 0;
+    // Set any needed options in handle here
 
     memset(&finished_info, '\0', sizeof(globus_gfs_finished_info_t));
     finished_info.type = GLOBUS_GFS_OP_SESSION_START;
