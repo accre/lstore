@@ -675,10 +675,10 @@ tbx_sl_iter_t tbx_sl_iter_search_compare(tbx_sl_t *sl, tbx_sl_key_t *key, tbx_sl
 
 
 //*********************************************************************************
-// tbx_sl_iter_create - Creates an iterator
+// tbx_sl_iter_new - Creates an iterator
 //*********************************************************************************
 
-tbx_sl_iter_t *tbx_sl_iter_create()
+tbx_sl_iter_t *tbx_sl_iter_new()
 {
     tbx_sl_iter_t *it;
 
@@ -705,10 +705,10 @@ void tbx_sl_iter_search_init(tbx_sl_iter_t *it, tbx_sl_t *sl, tbx_sl_key_t *key,
 }
 
 //*********************************************************************************
-// tbx_sl_iter_destroy - Destroys the iterator
+// tbx_sl_iter_del - Destroys the iterator
 //*********************************************************************************
 
-void tbx_sl_iter_destroy(tbx_sl_iter_t *it)
+void tbx_sl_iter_del(tbx_sl_iter_t *it)
 {
     if (it) {
         free(it);

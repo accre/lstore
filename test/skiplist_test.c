@@ -76,7 +76,7 @@ int main(int argc, char **argv)
 
     //** Make sure everything works fine with an empty list
     i = 12345;
-    it = tbx_sl_iter_create();
+    it = tbx_sl_iter_new();
     tbx_sl_iter_search_init(it, sl, (tbx_sl_key_t *)&i, 0);
     tbx_sl_next(it, (tbx_sl_key_t **)&key, (tbx_sl_data_t **)&data);
     if (data != NULL) {
@@ -349,7 +349,7 @@ int main(int argc, char **argv)
         printf("ERROR! key!=j (%d!=%d)!!!!!\n", *key, j);
     }
 
-    tbx_sl_iter_destroy(it);
+    tbx_sl_iter_del(it);
     tbx_sl_del(sl);
 
     fflush(stdout);
