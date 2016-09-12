@@ -250,6 +250,9 @@ if(BUILD_TESTS)
     add_executable(skiplist_test test/skiplist_test.c)
     target_link_libraries(skiplist_test pthread toolbox)
     target_include_directories(skiplist_test PRIVATE ${APR_INCLUDE_DIR})
+    add_executable(interval_skiplist_test test/interval_skiplist_test.c)
+    target_link_libraries(interval_skiplist_test pthread toolbox)
+    target_include_directories(interval_skiplist_test PRIVATE ${APR_INCLUDE_DIR})
 
     add_executable(run-tests test/run-tests.c
                              test/runner.c
