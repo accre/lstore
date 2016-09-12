@@ -99,7 +99,7 @@ struct gop_mq_command_t {
     void *arg;
 };
 
-struct gop_gop_mq_command_table_t {
+struct gop_mq_command_table_t {
     gop_mq_exec_fn_t fn_default;
     void *arg_default;
     apr_hash_t *table;
@@ -188,7 +188,7 @@ struct gop_mq_portal_t {   //** Container for managing connections to a single h
     mq_pipe_t efd[2];
     apr_thread_mutex_t *lock;  //** Context lock
     apr_thread_cond_t *cond;   //** Shutdown complete cond
-    gop_gop_mq_command_table_t *command_table; //** Server command ops for execution
+    gop_mq_command_table_t *command_table; //** Server command ops for execution
     void *implementation_arg; //** Implementation-specific pointer for general use. Round robin uses this as worker table
     apr_pool_t *mpool;         //** Context memory pool
     gop_thread_pool_context_t *tp; //** Worker thread pool to use
@@ -268,9 +268,9 @@ int mq_task_set(gop_mq_task_t *task, gop_mq_context_t *ctx, mq_msg_t *msg, gop_o
 void mq_task_destroy(gop_mq_task_t *task);
 
 gop_mq_command_t *mq_command_new(void *cmd, int cmd_size, void *arg, gop_mq_exec_fn_t fn);
-void mq_command_exec(gop_gop_mq_command_table_t *t, gop_mq_task_t *task, void *key, int klen);
-void gop_mq_command_table_destroy(gop_gop_mq_command_table_t *t);
-gop_gop_mq_command_table_t *gop_mq_command_table_new(void *arg, gop_mq_exec_fn_t fn_default);
+void mq_command_exec(gop_mq_command_table_t *t, gop_mq_task_t *task, void *key, int klen);
+void gop_mq_command_table_destroy(gop_mq_command_table_t *t);
+gop_mq_command_table_t *gop_mq_command_table_new(void *arg, gop_mq_exec_fn_t fn_default);
 
 int mq_task_send(gop_mq_context_t *mqc, gop_mq_task_t *task);
 gop_mq_socket_t *zero_create_socket(gop_mq_socket_context_t *ctx, int stype);

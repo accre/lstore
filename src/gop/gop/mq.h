@@ -35,7 +35,7 @@ extern "C" {
 // Typedefs
 typedef struct gop_mq_command_stats_t gop_mq_command_stats_t;
 typedef struct gop_mq_command_t gop_mq_command_t;
-typedef struct gop_gop_mq_command_table_t gop_gop_mq_command_table_t;
+typedef struct gop_mq_command_table_t gop_mq_command_table_t;
 typedef struct gop_mq_conn_t gop_mq_conn_t;
 typedef struct gop_mq_context_t gop_mq_context_t;
 typedef struct gop_mq_frame_t gop_mq_frame_t;
@@ -66,8 +66,8 @@ enum gop_mq_cmode_t {
 
 // Functions
 GOP_API void gop_mq_apply_return_address_msg(mq_msg_t *msg, mq_msg_t *raw_address, int dup_frames);
-GOP_API void gop_mq_command_set(gop_gop_mq_command_table_t *table, void *cmd, int cmd_size, void *arg, gop_mq_exec_fn_t fn);
-GOP_API void gop_gop_mq_command_table_set_default(gop_gop_mq_command_table_t *table, void *arg, gop_mq_exec_fn_t fn);
+GOP_API void gop_mq_command_set(gop_mq_command_table_t *table, void *cmd, int cmd_size, void *arg, gop_mq_exec_fn_t fn);
+GOP_API void gop_mq_command_table_set_default(gop_mq_command_table_t *table, void *arg, gop_mq_exec_fn_t fn);
 GOP_API gop_mq_context_t *gop_mq_create_context(tbx_inip_file_t *ifd, char *section);
 GOP_API void gop_mq_destroy_context(gop_mq_context_t *mqp);
 GOP_API void gop_mq_frame_destroy(gop_mq_frame_t *f);
@@ -87,7 +87,7 @@ GOP_API mq_msg_t *gop_mq_msg_new();
 GOP_API gop_mq_frame_t *gop_mq_msg_next(mq_msg_t *msg);
 GOP_API gop_mq_frame_t *gop_mq_msg_pluck(mq_msg_t *msg, int move_up);
 GOP_API gop_op_generic_t *gop_mq_op_new(gop_mq_context_t *ctx, mq_msg_t *msg, gop_op_status_t (*fn_response)(void *arg, int id), void *arg, gop_mq_task_arg_free_fn_t my_arg_free, int dt);
-GOP_API gop_gop_mq_command_table_t *gop_mq_portal_command_table(gop_mq_portal_t *portal);
+GOP_API gop_mq_command_table_t *gop_mq_portal_command_table(gop_mq_portal_t *portal);
 GOP_API gop_mq_portal_t *gop_mq_portal_create(gop_mq_context_t *mqc, char *host, gop_mq_cmode_t connect_mode);
 GOP_API void gop_mq_portal_destroy(gop_mq_portal_t *p);
 GOP_API int gop_mq_portal_install(gop_mq_context_t *mqc, gop_mq_portal_t *p);

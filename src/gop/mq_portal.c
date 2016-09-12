@@ -115,7 +115,7 @@ gop_mq_command_t *mq_command_new(void *cmd, int cmd_size, void *arg, gop_mq_exec
 //  gop_mq_command_set - Adds/removes and RPC call to the local host
 //**************************************************************
 
-void gop_mq_command_set(gop_gop_mq_command_table_t *table, void *cmd, int cmd_size, void *arg, gop_mq_exec_fn_t fn)
+void gop_mq_command_set(gop_mq_command_table_t *table, void *cmd, int cmd_size, void *arg, gop_mq_exec_fn_t fn)
 {
     gop_mq_command_t *mqc;
 
@@ -146,7 +146,7 @@ void gop_mq_command_set(gop_gop_mq_command_table_t *table, void *cmd, int cmd_si
 //  gop_mq_command_table_new - Creates a new RPC table
 //**************************************************************
 
-void gop_gop_mq_command_table_set_default(gop_gop_mq_command_table_t *table, void *arg, gop_mq_exec_fn_t fn_default)
+void gop_mq_command_table_set_default(gop_mq_command_table_t *table, void *arg, gop_mq_exec_fn_t fn_default)
 {
     apr_thread_mutex_lock(table->lock);
     table->fn_default = fn_default;
@@ -160,11 +160,11 @@ void gop_gop_mq_command_table_set_default(gop_gop_mq_command_table_t *table, voi
 //  gop_mq_command_table_new - Creates a new RPC table
 //**************************************************************
 
-gop_gop_mq_command_table_t *gop_mq_command_table_new(void *arg, gop_mq_exec_fn_t fn_default)
+gop_mq_command_table_t *gop_mq_command_table_new(void *arg, gop_mq_exec_fn_t fn_default)
 {
-    gop_gop_mq_command_table_t *t;
+    gop_mq_command_table_t *t;
 
-    tbx_type_malloc(t, gop_gop_mq_command_table_t, 1);
+    tbx_type_malloc(t, gop_mq_command_table_t, 1);
 
     t->fn_default = fn_default;
     t->arg_default = arg;
@@ -180,7 +180,7 @@ gop_gop_mq_command_table_t *gop_mq_command_table_new(void *arg, gop_mq_exec_fn_t
 //  gop_mq_command_table_destroy- Destroys an RPC table
 //**************************************************************
 
-void gop_mq_command_table_destroy(gop_gop_mq_command_table_t *t)
+void gop_mq_command_table_destroy(gop_mq_command_table_t *t)
 {
     apr_hash_index_t *hi;
     gop_mq_command_t *cmd;
@@ -204,7 +204,7 @@ void gop_mq_command_table_destroy(gop_gop_mq_command_table_t *t)
 //  mq_command_exec - Executes an RPC call
 //**************************************************************
 
-void mq_command_exec(gop_gop_mq_command_table_t *t, gop_mq_task_t *task, void *key, int klen)
+void mq_command_exec(gop_mq_command_table_t *t, gop_mq_task_t *task, void *key, int klen)
 {
     gop_mq_command_t *cmd;
 
@@ -1632,7 +1632,7 @@ gop_mq_portal_t *gop_mq_portal_lookup(gop_mq_context_t *mqc, char *hostname, gop
 // gop_mq_portal_command_table - Retrieves the portal command table
 //**************************************************************
 
-gop_gop_mq_command_table_t *gop_mq_portal_command_table(gop_mq_portal_t *portal)
+gop_mq_command_table_t *gop_mq_portal_command_table(gop_mq_portal_t *portal)
 {
     return(portal->command_table);
 }

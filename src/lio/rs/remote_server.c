@@ -511,7 +511,7 @@ lio_resource_service_fn_t *rs_remote_server_create(void *arg, tbx_inip_file_t *f
     lio_resource_service_fn_t *rs;
     lio_rs_remote_server_priv_t *rsrs;
     rs_create_t *rs_create;
-    gop_gop_mq_command_table_t *ctable;
+    gop_mq_command_table_t *ctable;
     char *stype, *ctype;
 
     if (section == NULL) section = "rs_remote_server";

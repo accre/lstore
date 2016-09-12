@@ -632,7 +632,7 @@ void *mq_ongoing_server_thread(apr_thread_t *th, void *data)
 void gop_mq_ongoing_destroy(gop_mq_ongoing_t *mqon)
 {
     apr_status_t value;
-    gop_gop_mq_command_table_t *ctable;
+    gop_mq_command_table_t *ctable;
 
     //** Wake up the ongoing thread
     apr_thread_mutex_lock(mqon->lock);
@@ -661,7 +661,7 @@ void gop_mq_ongoing_destroy(gop_mq_ongoing_t *mqon)
 gop_mq_ongoing_t *gop_mq_ongoing_create(gop_mq_context_t *mqc, gop_mq_portal_t *server_portal, int check_interval, int mode)
 {
     gop_mq_ongoing_t *mqon;
-    gop_gop_mq_command_table_t *ctable;
+    gop_mq_command_table_t *ctable;
 
     tbx_type_malloc_clear(mqon, gop_mq_ongoing_t, 1);
 
