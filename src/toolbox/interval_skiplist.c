@@ -490,6 +490,37 @@ tbx_isl_iter_t tbx_isl_iter_search(tbx_isl_t *isl, tbx_sl_key_t *lo, tbx_sl_key_
 }
 
 //*********************************************************************************
+// tbx_isl_iter_init - Initializes an iterator for use
+//*********************************************************************************
+
+void tbx_isl_iter_init(tbx_isl_iter_t *it, tbx_isl_t *isl, tbx_sl_key_t *lo, tbx_sl_key_t *hi)
+{
+    *it = tbx_isl_iter_search(isl, lo, hi);
+}
+
+//*********************************************************************************
+//  tbx_isl_iter_new - Creates a new iterator
+//*********************************************************************************
+
+tbx_isl_iter_t *tbx_isl_iter_new()
+{
+    tbx_isl_iter_t *it;
+
+    tbx_type_malloc_clear(it, tbx_isl_iter_t, 1);
+
+    return(it);
+}
+
+//*********************************************************************************
+//  tbx_isl_iter_del - Frees the iterator
+//*********************************************************************************
+
+void tbx_isl_iter_del(tbx_isl_iter_t *it)
+{
+    free(it);
+}
+
+//*********************************************************************************
 // next_interval_skiplist - Returns the next overlapping interval
 //
 //  Here's the scanning sequence:
@@ -611,7 +642,7 @@ tbx_sl_data_t *tbx_isl_next(tbx_isl_iter_t *it)
 
 
 //*********************************************************************************
-// count_interval_skiplist - Returns the number of intervals overlapping the range
+// tbx_is_range_count - Returns the number of intervals overlapping the range
 //*********************************************************************************
 
 int tbx_isl_count2(tbx_isl_t *isl, tbx_sl_key_t *lo, tbx_sl_key_t *hi)
