@@ -2039,7 +2039,7 @@ gop_op_status_t seglun_inspect_func(void *arg, int id)
 
     info_printf(si->fd, 1, XIDT ": segment information: n_devices=%d n_shift=%d chunk_size=" XOT "  used_size=" XOT " total_size=" XOT " mode=%d\n", segment_id(si->seg), s->n_devices, s->n_shift, s->chunk_size, s->used_size, s->total_size, si->inspect_mode);
 
-    si->args->n_dev_rows = tbx_isl_count2(s->isl, (tbx_sl_key_t *)NULL, (tbx_sl_key_t *)NULL);
+    si->args->n_dev_rows = tbx_isl_range_count(s->isl, (tbx_sl_key_t *)NULL, (tbx_sl_key_t *)NULL);
     drow = -1;
     it = tbx_isl_iter_search(s->isl, (tbx_sl_key_t *)NULL, (tbx_sl_key_t *)NULL);
     for (b = (seglun_row_t *)tbx_isl_next(&it); b != NULL; b = (seglun_row_t *)tbx_isl_next(&it)) {

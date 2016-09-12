@@ -393,7 +393,7 @@ gop_op_status_t seglog_read_func(void *arg, int id)
     for (i=0; i< sw->n_iov; i++) {
         lo = iov[i].offset;
         hi = lo + iov[i].len - 1;
-        n_iov += 2*tbx_isl_count2(s->mapping, (tbx_sl_key_t *)&lo, (tbx_sl_key_t *)&hi) + 1;
+        n_iov += 2*tbx_isl_range_count(s->mapping, (tbx_sl_key_t *)&lo, (tbx_sl_key_t *)&hi) + 1;
     }
     n_iov += 10;  //** Just to be safe
     tbx_type_malloc(ex_iov, ex_tbx_iovec_t, n_iov);

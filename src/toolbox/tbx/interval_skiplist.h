@@ -41,7 +41,7 @@ typedef void (*tbx_isl_key_free_fn_t)(tbx_sl_key_t *a);
 typedef void (*tbx_isl_data_free_fn_t)(tbx_sl_data_t *a);
 
 // Functions
-TBX_API int tbx_isl_count2(tbx_isl_t *isl, tbx_sl_key_t *lo, tbx_sl_key_t *hi);
+TBX_API int tbx_isl_range_count(tbx_isl_t *isl, tbx_sl_key_t *lo, tbx_sl_key_t *hi);
 TBX_API void tbx_isl_del(tbx_isl_t *isl);
 TBX_API int tbx_isl_insert(tbx_isl_t *isl, tbx_sl_key_t *lo, tbx_sl_key_t *hi, tbx_sl_data_t *data);
 TBX_API tbx_isl_iter_t tbx_isl_iter_search(tbx_isl_t *isl, tbx_sl_key_t *lo, tbx_sl_key_t *hi);

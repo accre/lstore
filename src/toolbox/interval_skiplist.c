@@ -645,7 +645,7 @@ tbx_sl_data_t *tbx_isl_next(tbx_isl_iter_t *it)
 // tbx_is_range_count - Returns the number of intervals overlapping the range
 //*********************************************************************************
 
-int tbx_isl_count2(tbx_isl_t *isl, tbx_sl_key_t *lo, tbx_sl_key_t *hi)
+int tbx_isl_range_count(tbx_isl_t *isl, tbx_sl_key_t *lo, tbx_sl_key_t *hi)
 {
     tbx_isl_iter_t it;
     int count = 0;
