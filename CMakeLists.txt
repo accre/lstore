@@ -258,6 +258,7 @@ if(BUILD_TESTS)
                              test/runner.c
                              test/runner-unix.c
                              test/test-harness.c
+                             test/test-tb-iniparse.c
                              test/test-tb-object.c
                              test/test-tb-ref.c
                              test/test-tb-stk.c
