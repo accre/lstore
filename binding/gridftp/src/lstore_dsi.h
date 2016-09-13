@@ -16,7 +16,7 @@
 #define LSTORE_DSI_H_INCLUDED
 
 /**
- * @file lstore_dsi.c
+ * @file lstore_dsi.h
  * Typedefs and function declarations needed for the LStore GridFTP DSI
  */
 
