@@ -10,24 +10,36 @@ TIMESTAMP(LSTORE_DSI_TIMESTAMP)
 
 find_package(GlobusCommon REQUIRED)
 find_package(GlobusGridftpServer REQUIRED)
+set(GRIDFTP_OBJS
+        src/lstore_dsi.c
+        src/thunk.c
+    )
+set(GRIDFTP_LIBS
+        toolbox
+        gop
+        ibp
+        lio
+        ${APR_LIBRARY}
+        ${APRUTIL_LIBRARY}
+        ${GLOBUS_COMMON_LIBRARY}
+        ${GLOBUS_GRIDFTP_SERVER_LIBRARY}
+    )
+set(GRIDFTP_INC
+        ${PROJECT_SOURCE_DIR}/src
+        ${APR_INCLUDE_DIR}
+        ${APRUTIL_INCLUDE_DIR}
+        ${GLOBUS_COMMON_INCLUDE_DIRS}
+        ${GLOBUS_GRIDFTP_SERVER_INCLUDE_DIRS}
+    )
 
-add_library(gridftp MODULE src/lstore_dsi.c)
-target_link_libraries(gridftp
-                        toolbox
-                        gop
-                        ibp
-                        lio
-                        ${APR_LIBRARY}
-                        ${APRUTIL_LIBRARY}
-                        ${GLOBUS_COMMON_LIBRARY}
-                        ${GLOBUS_GRIDFTP_SERVER_LIBRARY})
+# Share object files
+add_library(gridftp-objs OBJECT ${GRIDFTP_OBJS})
+set_target_properties(gridftp-objs PROPERTIES POSITION_INDEPENDENT_CODE ON)
+target_include_directories(gridftp-objs PUBLIC ${GRIDFTP_INC})
 
-target_include_directories(gridftp PUBLIC ${PROJECT_SOURCE_DIR}/src
-                                            ${APR_INCLUDE_DIR}
-                                            ${APRUTIL_INCLUDE_DIR}
-                                            ${GLOBUS_COMMON_INCLUDE_DIRS}
-                                            ${GLOBUS_GRIDFTP_SERVER_INCLUDE_DIRS})
-
+add_library(gridftp MODULE $<TARGET_OBJECTS:gridftp-objs>)
+target_link_libraries(gridftp ${GRIDFTP_LIBS})
+#target_include_directories(gridftp PUBLIC ${GRIDFTP_INC})
 
 if (NOT DEFINED CMAKE_INSTALL_LIBDIR)
   set(CMAKE_INSTALL_LIBDIR "lib64")

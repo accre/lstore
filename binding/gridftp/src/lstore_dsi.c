@@ -21,7 +21,6 @@
  * let the plugin keep clean in spite of the API quirks.
  */
 
-
 #include <globus_gridftp_server.h>
 #include <lio/lio.h>
 #include "lstore_dsi.h"
@@ -35,6 +34,26 @@ globus_version_t local_version =
     LSTORE_DSI_TIMESTAMP,
     0 /* branch ID */
 };
+
+// From globus_i_gridftp_server.h
+#define GlobusGFSErrorGenericStr(_res, _fmt)                           \
+do                                                                     \
+{                                                                      \
+        char *                          _tmp_str;                      \
+        _tmp_str = globus_common_create_string _fmt;                   \
+        _res = globus_error_put(                                       \
+            globus_error_construct_error(                              \
+                GLOBUS_NULL,                                           \
+                GLOBUS_NULL,                                           \
+                GLOBUS_GFS_ERROR_GENERIC,                              \
+                __FILE__,                                              \
+                _gfs_name,                                             \
+                __LINE__,                                              \
+                "%s",                                                  \
+                _tmp_str));                                            \
+        globus_free(_tmp_str);                                         \
+                                                                       \
+} while(0)
 
 /*
  * start
@@ -237,7 +256,7 @@ globus_l_gfs_lstore_send(
 /**
  * Enumerates this plugin's function pointers to gridftp
  */
-static globus_gfs_storage_iface_t globus_l_gfs_lstore_dsi_iface =
+globus_gfs_storage_iface_t globus_l_gfs_lstore_dsi_iface =
 {
     .descriptor = GLOBUS_GFS_DSI_DESCRIPTOR_BLOCKING | \
                     GLOBUS_GFS_DSI_DESCRIPTOR_SENDER,
@@ -277,6 +296,13 @@ globus_l_gfs_lstore_activate(void)
 {
     GlobusGFSName(globus_l_gfs_lstore_activate);
     globus_gfs_log_message(GLOBUS_GFS_LOG_INFO, "[lstore] activate\n");
+    globus_result_t result = GLOBUS_SUCCESS;
+
+    int retval = activate();
+    if (!retval) {
+        GlobusGFSErrorGenericStr(result, ("[lstore] Failed to deactivate."));
+        return result;
+    }
 
     globus_extension_registry_add(
         GLOBUS_GFS_DSI_REGISTRY,
@@ -284,7 +310,7 @@ globus_l_gfs_lstore_activate(void)
         GlobusExtensionMyModule(globus_gridftp_server_lstore),
         &globus_l_gfs_lstore_dsi_iface);
 
-    return 0;
+    return result;
 }
 
 /*
@@ -299,9 +325,15 @@ globus_l_gfs_lstore_deactivate(void)
 {
     GlobusGFSName(globus_l_gfs_lstore_deactivate);
     globus_gfs_log_message(GLOBUS_GFS_LOG_INFO, "[lstore] deactivate\n");
+    globus_result_t result = GLOBUS_SUCCESS;
 
     globus_extension_registry_remove(
         GLOBUS_GFS_DSI_REGISTRY, "lstore");
 
-    return 0;
+    int retval = deactivate();
+    if (!retval) {
+        GlobusGFSErrorGenericStr(result, ("[lstore] Failed to deactivate."));
+    }
+
+    return result;
 }
