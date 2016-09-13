@@ -24,10 +24,26 @@
 
 int activate() {
     printf("Loaded\n");
+
+    int argc = 2;
+    char **argv = malloc(sizeof(char *)*argc);
+    argv[0] = "lio_gridftp";
+    argv[1] = "-c";
+    argv[2] = "/etc/lio/lio-gridftp.cfg";
+
+    char **argvp = argv;
+    lio_init(&argc, &argvp);
+    if (!lio_gc) {
+        printf("Failed to load LStore\n");
+        return 1;
+    }
+    free(argv);
+
     return 0;
 }
 
 int deactivate() {
     printf("Unloaded\n");
+    lio_shutdown();
     return 0;
 }
