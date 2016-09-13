@@ -44,8 +44,9 @@ TBX_API int tbx_stack_get_info_level(tbx_log_fd_t *fd);
 #define INFO_HEADER_THREAD 1
 #define INFO_HEADER_FULL   2
 
-#define tbx_set_log_level(n) _log_level = n
 #define tbx_log_level() _log_level
+#define tbx_set_log_level(n) _log_level = n
+#define tbx_set_log_maxsize(n) _log_maxsize = n
 #define log_printf(n, ...) tbx_mlog_printf(0, _log_module_index, n, __func__, _mlog_file_table[_log_module_index], __LINE__, __VA_ARGS__)
 #define info_printf(ifd, n, ...) tbx_minfo_printf(ifd, _log_module_index, n, __func__, _mlog_file_table[_log_module_index], __LINE__, __VA_ARGS__)
 #define slog_printf(n, ...) tbx_mlog_printf(1, _log_module_index, n, __func__, _mlog_file_table[_log_module_index], __LINE__, __VA_ARGS__)
@@ -57,6 +58,7 @@ TBX_API int tbx_stack_get_info_level(tbx_log_fd_t *fd);
 // Globals
 extern TBX_API char *_mlog_file_table[_mlog_size];
 extern TBX_API int _log_level;
+extern TBX_API long int _log_maxsize;
 
 #ifdef __cplusplus
 }
