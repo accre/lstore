@@ -32,6 +32,7 @@ extern "C" {
 typedef struct gop_mq_stream_t gop_mq_stream_t;
 
 // Functions
+GOP_API int gop_mqs_id(gop_mq_stream_t *mqs);
 GOP_API gop_mq_stream_t *gop_mq_stream_read_create(gop_mq_context_t *mqc,  gop_mq_ongoing_t *ongoing, char *host_id, int hid_len, gop_mq_frame_t *fdata, mq_msg_t *remote_host, int to);
 GOP_API int64_t gop_mq_stream_read_varint(gop_mq_stream_t *mqs, int *error);
 GOP_API gop_mq_stream_t *gop_mq_stream_write_create(gop_mq_context_t *mqc, gop_mq_portal_t *server_portal, gop_mq_ongoing_t *ongoing, char tbx_pack_type, int max_size, int timeout, mq_msg_t *address, gop_mq_frame_t *fid, gop_mq_frame_t *hid, bool launch_flusher);
