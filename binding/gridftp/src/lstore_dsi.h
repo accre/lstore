@@ -24,7 +24,7 @@
 #include <lio/lio.h>
 
 // Typedefs
-typedef struct globus_l_gfs_lstore_handle_t globus_l_gfs_lstore_handle_t;
+typedef struct lstore_handle_t lstore_handle_t;
 
 // Functions
 /**
@@ -43,7 +43,7 @@ int deactivate();
 
 
 // Structures
-struct globus_l_gfs_lstore_handle_t {
+struct lstore_handle_t {
     lio_config_t * fs;
 };
 

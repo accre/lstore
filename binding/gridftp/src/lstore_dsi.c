@@ -78,13 +78,13 @@ globus_l_gfs_lstore_start(
     globus_gfs_operation_t              op,
     globus_gfs_session_info_t *         session_info)
 {
-    globus_l_gfs_lstore_handle_t *       lstore_handle;
+    lstore_handle_t *       lstore_handle;
     globus_gfs_finished_info_t          finished_info;
     GlobusGFSName(globus_l_gfs_lstore_start);
 
     globus_gfs_log_message(GLOBUS_GFS_LOG_INFO, "[lstore] start\n");
-    lstore_handle = (globus_l_gfs_lstore_handle_t *)
-        globus_malloc(sizeof(globus_l_gfs_lstore_handle_t));
+    lstore_handle = (lstore_handle_t *)
+        globus_malloc(sizeof(lstore_handle_t));
 
     // Set any needed options in handle here
 
@@ -111,10 +111,10 @@ void
 globus_l_gfs_lstore_destroy(
     void *                              user_arg)
 {
-    globus_l_gfs_lstore_handle_t *       lstore_handle;
+    lstore_handle_t *       lstore_handle;
 
     globus_gfs_log_message(GLOBUS_GFS_LOG_INFO, "[lstore] destroy\n");
-    lstore_handle = (globus_l_gfs_lstore_handle_t *) user_arg;
+    lstore_handle = (lstore_handle_t *) user_arg;
 
     globus_free(lstore_handle);
 }
@@ -136,11 +136,11 @@ globus_l_gfs_lstore_stat(
 {
     globus_gfs_stat_t                   stat_array[1];
     int                                 stat_count = 1;
-    globus_l_gfs_lstore_handle_t *       lstore_handle;
+    lstore_handle_t *       lstore_handle;
     GlobusGFSName(globus_l_gfs_lstore_stat);
 
     globus_gfs_log_message(GLOBUS_GFS_LOG_INFO, "[lstore] stat\n");
-    lstore_handle = (globus_l_gfs_lstore_handle_t *) user_arg;
+    lstore_handle = (lstore_handle_t *) user_arg;
 
     stat_array[0].mode = 0;
     stat_array[0].nlink = 0;
@@ -183,11 +183,11 @@ globus_l_gfs_lstore_command(
     globus_gfs_command_info_t *         cmd_info,
     void *                              user_arg)
 {
-    globus_l_gfs_lstore_handle_t *       lstore_handle;
+    lstore_handle_t *       lstore_handle;
     GlobusGFSName(globus_l_gfs_lstore_command);
 
     globus_gfs_log_message(GLOBUS_GFS_LOG_INFO, "[lstore] command\n");
-    lstore_handle = (globus_l_gfs_lstore_handle_t *) user_arg;
+    lstore_handle = (lstore_handle_t *) user_arg;
 
     globus_gridftp_server_finished_command(op, GLOBUS_SUCCESS, GLOBUS_NULL);
 }
@@ -214,11 +214,11 @@ globus_l_gfs_lstore_recv(
     globus_gfs_transfer_info_t *        transfer_info,
     void *                              user_arg)
 {
-    globus_l_gfs_lstore_handle_t *       lstore_handle;
+    lstore_handle_t *       lstore_handle;
     GlobusGFSName(globus_l_gfs_lstore_recv);
 
     globus_gfs_log_message(GLOBUS_GFS_LOG_INFO, "[lstore] recv\n");
-    lstore_handle = (globus_l_gfs_lstore_handle_t *) user_arg;
+    lstore_handle = (lstore_handle_t *) user_arg;
 
     globus_gridftp_server_finished_transfer(op, GLOBUS_SUCCESS);
 }
@@ -245,11 +245,11 @@ globus_l_gfs_lstore_send(
     globus_gfs_transfer_info_t *        transfer_info,
     void *                              user_arg)
 {
-    globus_l_gfs_lstore_handle_t *       lstore_handle;
+    lstore_handle_t *       lstore_handle;
     GlobusGFSName(globus_l_gfs_lstore_send);
 
     globus_gfs_log_message(GLOBUS_GFS_LOG_INFO, "[lstore] send\n");
-    lstore_handle = (globus_l_gfs_lstore_handle_t *) user_arg;
+    lstore_handle = (lstore_handle_t *) user_arg;
 
     globus_gridftp_server_finished_transfer(op, GLOBUS_SUCCESS);
 }
