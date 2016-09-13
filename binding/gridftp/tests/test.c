@@ -29,7 +29,11 @@ int main() {
     printf("Hello, World!\n");
 
     CHECK_EQUAL(globus_gridftp_server_lstore_module.activation_func(), 0);
-
+    lstore_handle_t handle;
+    globus_gfs_operation_t op;
+    memset(&op, 42, sizeof(op));
+    CHECK_EQUAL(user_connect(&handle, op), 0);
+    CHECK_EQUAL(user_close(&handle), 0);
     CHECK_EQUAL(globus_gridftp_server_lstore_module.deactivation_func(), 0);
     return 0;
 }

@@ -87,16 +87,21 @@ globus_l_gfs_lstore_start(
         globus_malloc(sizeof(lstore_handle_t));
 
     // Set any needed options in handle here
+    globus_result_t result = GLOBUS_SUCCESS;
+    int retval = user_connect(lstore_handle, op);
+    if (!retval) {
+        GlobusGFSErrorGenericStr(result, ("[lstore] Failed to start session."));
+    }
 
     memset(&finished_info, '\0', sizeof(globus_gfs_finished_info_t));
     finished_info.type = GLOBUS_GFS_OP_SESSION_START;
-    finished_info.result = GLOBUS_SUCCESS;
+    finished_info.result = result;
     finished_info.info.session.session_arg = lstore_handle;
     finished_info.info.session.username = session_info->username;
     finished_info.info.session.home_dir = "/";
 
     globus_gridftp_server_operation_finished(
-        op, GLOBUS_SUCCESS, &finished_info);
+        op, result, &finished_info);
 }
 
 /*
@@ -113,8 +118,16 @@ globus_l_gfs_lstore_destroy(
 {
     lstore_handle_t *       lstore_handle;
 
+    GlobusGFSName(globus_l_gfs_lstore_destroy);
     globus_gfs_log_message(GLOBUS_GFS_LOG_INFO, "[lstore] destroy\n");
     lstore_handle = (lstore_handle_t *) user_arg;
+
+    // Set any needed options in handle here
+    globus_result_t result = GLOBUS_SUCCESS;
+    int retval = user_close(lstore_handle);
+    if (!retval) {
+        GlobusGFSErrorGenericStr(result, ("[lstore] Failed to start session."));
+    }
 
     globus_free(lstore_handle);
 }

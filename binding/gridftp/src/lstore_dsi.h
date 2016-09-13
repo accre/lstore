@@ -41,10 +41,25 @@ int activate();
  */
 int deactivate();
 
+/**
+ * Begins a user session
+ * @param h Session handle
+ * @returns 0 on success, errno otherwise
+ */
+int user_connect(lstore_handle_t *h, globus_gfs_operation_t op);
+
+/**
+ * Closes a user session
+ * @param h Session handle
+ * @returns 0 on success, errno otherwise
+ */
+int user_close(lstore_handle_t *h);
+
 
 // Structures
 struct lstore_handle_t {
-    lio_config_t * fs;
+    globus_gfs_operation_t op;
+    lio_fd_t *fd;
 };
 
 // Globals

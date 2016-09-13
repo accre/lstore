@@ -22,6 +22,8 @@
 #include <lio/lio.h>
 #include <stdio.h>
 
+#include "lstore_dsi.h"
+
 int activate() {
     printf("Loaded\n");
 
@@ -45,5 +47,16 @@ int activate() {
 int deactivate() {
     printf("Unloaded\n");
     lio_shutdown();
+    return 0;
+}
+
+int user_connect(lstore_handle_t *h, globus_gfs_operation_t op) {
+    printf("Connect\n");
+    memcpy(h->op, &op, sizeof(op));
+    return 0;
+}
+
+int user_close(lstore_handle_t *h) {
+    printf("Close\n");
     return 0;
 }
