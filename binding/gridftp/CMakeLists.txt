@@ -41,6 +41,10 @@ add_library(gridftp MODULE $<TARGET_OBJECTS:gridftp-objs>)
 target_link_libraries(gridftp ${GRIDFTP_LIBS})
 #target_include_directories(gridftp PUBLIC ${GRIDFTP_INC})
 
+add_executable(gridftp-test tests/test.c $<TARGET_OBJECTS:gridftp-objs>)
+target_link_libraries(gridftp-test ${GRIDFTP_LIBS})
+target_include_directories(gridftp-test PUBLIC ${GRIDFTP_INC})
+
 if (NOT DEFINED CMAKE_INSTALL_LIBDIR)
   set(CMAKE_INSTALL_LIBDIR "lib64")
 endif()

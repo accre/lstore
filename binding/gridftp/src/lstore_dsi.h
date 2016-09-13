@@ -20,7 +20,7 @@
  * Typedefs and function declarations needed for the LStore GridFTP DSI
  */
 
-
+#include <globus_gridftp_server.h>
 #include <lio/lio.h>
 
 // Typedefs
@@ -47,6 +47,10 @@ struct globus_l_gfs_lstore_handle_t {
     lio_config_t * fs;
 };
 
-typedef struct globus_l_gfs_lstore_handle_t globus_l_gfs_lstore_handle_t;
+// Globals
+
+//* Needed for testing to locate the function pointers
+extern globus_module_descriptor_t globus_gridftp_server_lstore_module;
+extern globus_gfs_storage_iface_t globus_l_gfs_lstore_dsi_iface;
 
 #endif
