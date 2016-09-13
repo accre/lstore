@@ -63,6 +63,7 @@ globus_l_gfs_lstore_start(
     globus_gfs_finished_info_t          finished_info;
     GlobusGFSName(globus_l_gfs_lstore_start);
 
+    globus_gfs_log_message(GLOBUS_GFS_LOG_INFO, "[lstore] start\n");
     lstore_handle = (globus_l_gfs_lstore_handle_t *)
         globus_malloc(sizeof(globus_l_gfs_lstore_handle_t));
 
@@ -93,6 +94,7 @@ globus_l_gfs_lstore_destroy(
 {
     globus_l_gfs_lstore_handle_t *       lstore_handle;
 
+    globus_gfs_log_message(GLOBUS_GFS_LOG_INFO, "[lstore] destroy\n");
     lstore_handle = (globus_l_gfs_lstore_handle_t *) user_arg;
 
     globus_free(lstore_handle);
@@ -118,6 +120,7 @@ globus_l_gfs_lstore_stat(
     globus_l_gfs_lstore_handle_t *       lstore_handle;
     GlobusGFSName(globus_l_gfs_lstore_stat);
 
+    globus_gfs_log_message(GLOBUS_GFS_LOG_INFO, "[lstore] stat\n");
     lstore_handle = (globus_l_gfs_lstore_handle_t *) user_arg;
 
     stat_array[0].mode = 0;
@@ -164,6 +167,7 @@ globus_l_gfs_lstore_command(
     globus_l_gfs_lstore_handle_t *       lstore_handle;
     GlobusGFSName(globus_l_gfs_lstore_command);
 
+    globus_gfs_log_message(GLOBUS_GFS_LOG_INFO, "[lstore] command\n");
     lstore_handle = (globus_l_gfs_lstore_handle_t *) user_arg;
 
     globus_gridftp_server_finished_command(op, GLOBUS_SUCCESS, GLOBUS_NULL);
@@ -194,6 +198,7 @@ globus_l_gfs_lstore_recv(
     globus_l_gfs_lstore_handle_t *       lstore_handle;
     GlobusGFSName(globus_l_gfs_lstore_recv);
 
+    globus_gfs_log_message(GLOBUS_GFS_LOG_INFO, "[lstore] recv\n");
     lstore_handle = (globus_l_gfs_lstore_handle_t *) user_arg;
 
     globus_gridftp_server_finished_transfer(op, GLOBUS_SUCCESS);
@@ -224,6 +229,7 @@ globus_l_gfs_lstore_send(
     globus_l_gfs_lstore_handle_t *       lstore_handle;
     GlobusGFSName(globus_l_gfs_lstore_send);
 
+    globus_gfs_log_message(GLOBUS_GFS_LOG_INFO, "[lstore] send\n");
     lstore_handle = (globus_l_gfs_lstore_handle_t *) user_arg;
 
     globus_gridftp_server_finished_transfer(op, GLOBUS_SUCCESS);
@@ -269,6 +275,9 @@ static
 int
 globus_l_gfs_lstore_activate(void)
 {
+    GlobusGFSName(globus_l_gfs_lstore_activate);
+    globus_gfs_log_message(GLOBUS_GFS_LOG_INFO, "[lstore] activate\n");
+
     globus_extension_registry_add(
         GLOBUS_GFS_DSI_REGISTRY,
         "lstore",
@@ -288,6 +297,9 @@ static
 int
 globus_l_gfs_lstore_deactivate(void)
 {
+    GlobusGFSName(globus_l_gfs_lstore_deactivate);
+    globus_gfs_log_message(GLOBUS_GFS_LOG_INFO, "[lstore] deactivate\n");
+
     globus_extension_registry_remove(
         GLOBUS_GFS_DSI_REGISTRY, "lstore");
 
