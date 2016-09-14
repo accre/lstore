@@ -133,23 +133,39 @@ error_initstack:
     return retval;
 }
 
-int user_command(lstore_handle_t *h, globus_gfs_command_info_t * info) {
+int user_command(lstore_handle_t *h, globus_gfs_command_info_t * info,
+                    char **response) {
     int retval = -1;
+    // Extract the LStore-specific path
+    const char *lstore_path = path_to_lstore(h->prefix, info->pathname);
+    if (!lstore_path) {
+        return -1;
+    }
+    char *path_copy = strdup(lstore_path);
+    if (!path_copy) {
+        return -1;
+    }
     switch (info->command) {
         case GLOBUS_GFS_CMD_CKSM:
-            retval = -2;
+            if (!strcmp(info->cksm_alg, "adler32") ||
+                !strcmp(info->cksm_alg, "ADLER32")) {
+                retval = plugin_checksum(h, path_copy, response);
+            } else {
+                retval = -1;
+            }
             break;
         case GLOBUS_GFS_CMD_DELE:
-            retval = -2;
+            retval = plugin_rm(h, path_copy);
             break;
         case GLOBUS_GFS_CMD_MKD:
-            retval = -2;
+            retval = plugin_mkdir(h, path_copy);
             break;
         case GLOBUS_GFS_CMD_RMD:
-            retval = -2;
+            retval = plugin_rmdir(h, path_copy);
             break;
         default:
             retval = -2;
     }
+    free(path_copy);
     return retval;
 }

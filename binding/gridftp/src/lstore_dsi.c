@@ -204,6 +204,7 @@ globus_l_gfs_lstore_command(
     lstore_handle = (lstore_handle_t *) user_arg;
     globus_result_t result = GLOBUS_SUCCESS;
 
+    char *response = GLOBUS_NULL;
     int retval = 0; // user_cmd(lstore_handle, stat_info, &stat_array, &stat_count);
     if (retval == GLOBUS_FAILURE) {
         // Catchall for generic globus oopsies
@@ -214,7 +215,7 @@ globus_l_gfs_lstore_command(
         result = retval;
     }
 
-    globus_gridftp_server_finished_command(op, result, GLOBUS_NULL);
+    globus_gridftp_server_finished_command(op, result, response);
 }
 
 

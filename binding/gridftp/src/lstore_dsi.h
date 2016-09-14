@@ -57,6 +57,39 @@ void destroy_stat(globus_gfs_stat_t * stat_array, int stat_count);
 const char *path_to_lstore(const char *prefix, const char *path);
 
 /**
+ * Reads the adler32 checksum attribute for a specified file
+ * @param h Handle to LStore
+ * @param path File to examine
+ * @param response Sets *response to a malloc'd string with the checksum
+ * @returns zero on success, error otherwise
+ */
+int plugin_checksum(lstore_handle_t *h, char *path, char **response);
+
+/**
+ * Creates a directory
+ * @param h Handle to LStore
+ * @param path Path to create
+ * @returns zero on success, error otherwise
+ */
+int plugin_mkdir(lstore_handle_t *h, char *path);
+
+/**
+ * Removes a file
+ * @param h Handle to LStore
+ * @param path Path to remove
+ * @returns zero on success, error otherwise
+ */
+int plugin_rm(lstore_handle_t *h, char *path);
+
+/**
+ * Removes a directory
+ * @param h Handle to LStore
+ * @param path Path to remove
+ * @returns zero on success, error otherwise
+ */
+int plugin_rmdir(lstore_handle_t *h, char *path);
+
+/**
  * Handles the LStore half of stat'ing a file/directory
  * @param stack Stack to fill with stat structs
  * @param path Filename to stat
@@ -76,6 +109,16 @@ void transfer_stat(globus_gfs_stat_t * stat_object,
                                         struct stat * fileInfo,
                                         const char * filename,
                                         const char * symlink_target);
+/**
+ * Executes one of many commands selected by a field in info
+ * @param h Handle to LStore
+ * @param information on what Globus wants
+ * @param response Where to store any return data
+ * @returns zero on success, error otherwise
+ */
+int user_command(lstore_handle_t *h,
+                    globus_gfs_command_info_t * info,
+                    char **response);
 /**
  * Begins a user session
  * @param h Session handle
