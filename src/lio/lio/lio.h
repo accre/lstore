@@ -45,6 +45,7 @@ typedef struct lio_fn_t lio_fn_t;
 typedef struct lio_fsck_iter_t lio_fsck_iter_t;
 typedef struct lio_path_tuple_t lio_path_tuple_t;
 typedef struct lio_unified_object_iter_t lio_unified_object_iter_t;
+struct stat;
 
 // Functions
 LIO_API gop_op_generic_t *lio_close_op(lio_fd_t *fd);
@@ -90,6 +91,7 @@ LIO_API gop_op_generic_t *lio_remove_regex_op(lio_config_t *lc, lio_creds_t *cre
 LIO_API int lio_setattr(lio_config_t *lc, lio_creds_t *creds, const char *path, char *id, char *key, void *val, int v_size);
 LIO_API gop_op_generic_t *lio_setattr_op(lio_config_t *lc, lio_creds_t *creds, const char *path, char *id, char *key, void *val, int v_size);
 LIO_API int lio_shutdown();
+LIO_API int lio_stat(lio_config_t *lc, lio_creds_t *creds, char *fname, struct stat *stat, char *mount_prefix, char **readlink);
 LIO_API int lio_unified_next_object(lio_unified_object_iter_t *it, char **fname, int *prefix_len);
 LIO_API lio_unified_object_iter_t *lio_unified_object_iter_create(lio_path_tuple_t tuple, lio_os_regex_table_t *path_regex, lio_os_regex_table_t *obj_regex, int obj_types, int rd);
 LIO_API void lio_unified_object_iter_destroy(lio_unified_object_iter_t *it);

@@ -106,7 +106,6 @@ int lio_write_ex(lio_fd_t *fd, int n_iov, ex_tbx_iovec_t *iov, tbx_tbuf_t *buffe
 
 mode_t ftype_lio2posix(int ftype);
 void _lio_parse_stat_vals(char *fname, struct stat *stat, char **val, int *v_size, char *mount_prefix, char **flink);
-int lio_stat(lio_config_t *lc, lio_creds_t *creds, char *fname, struct stat *stat, char *mount_prefix, char **readlink);
 
 ex_off_t lio_seek(lio_fd_t *fd, ex_off_t offset, int whence);
 ex_off_t lio_tell(lio_fd_t *fd);
