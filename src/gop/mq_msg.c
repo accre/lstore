@@ -89,7 +89,7 @@ gop_mq_frame_t *gop_mq_msg_next(mq_msg_t *msg)
     tbx_stack_move_down(msg);
     return((gop_mq_frame_t *)tbx_stack_get_current_data(msg));
 }
-gop_mq_frame_t *mq_msg_prev(mq_msg_t *msg)
+gop_mq_frame_t *gop_mq_msg_frame_prev(mq_msg_t *msg)
 {
     tbx_stack_move_up(msg);
     return((gop_mq_frame_t *)tbx_stack_get_current_data(msg));
@@ -104,15 +104,15 @@ gop_mq_frame_t *gop_mq_msg_pluck(mq_msg_t *msg, int move_up)
     tbx_stack_delete_current(msg, move_up, 0);
     return(f);
 }
-void mq_msg_tbx_stack_insert_above(mq_msg_t *msg, gop_mq_frame_t *f)
+void gop_mq_msg_frame_insert_above(mq_msg_t *msg, gop_mq_frame_t *f)
 {
     tbx_stack_insert_above(msg, f);
 }
-void mq_msg_tbx_stack_insert_below(mq_msg_t *msg, gop_mq_frame_t *f)
+void gop_mq_msg_frame_insert_below(mq_msg_t *msg, gop_mq_frame_t *f)
 {
     tbx_stack_insert_below(msg, f);
 }
-void mq_msg_push_frame(mq_msg_t *msg, gop_mq_frame_t *f)
+void gop_mq_msg_frame_push(mq_msg_t *msg, gop_mq_frame_t *f)
 {
     tbx_stack_push(msg, f);
 }
@@ -139,7 +139,7 @@ gop_mq_frame_t *gop_mq_frame_new(void *data, int len, gop_mqf_msg_t auto_free)
     return(f);
 }
 
-gop_mq_frame_t *mq_frame_dup(gop_mq_frame_t *f)
+gop_mq_frame_t *gop_mq_frame_dup(gop_mq_frame_t *f)
 {
     void *data, *copy;
     int size;
@@ -176,7 +176,7 @@ void gop_mq_msg_destroy(mq_msg_t *msg)
     tbx_stack_free(msg, 0);
 }
 
-void mq_msg_push_mem(mq_msg_t *msg, void *data, int len, gop_mqf_msg_t auto_free)
+void gop_mq_msg_mem_push(mq_msg_t *msg, void *data, int len, gop_mqf_msg_t auto_free)
 {
     void *f = gop_mq_frame_new(data, len, auto_free);
     tbx_stack_push(msg, f);
@@ -209,7 +209,7 @@ void gop_mq_msg_append_msg(mq_msg_t *msg, mq_msg_t *extra, int mode)
     }
 }
 
-gop_mq_msg_hash_t mq_msg_hash(mq_msg_t *msg)
+gop_mq_msg_hash_t gop_mq_msg_hash(mq_msg_t *msg)
 {
     tbx_stack_ele_t *curr;
     gop_mq_frame_t *f;
@@ -237,10 +237,10 @@ gop_mq_msg_hash_t mq_msg_hash(mq_msg_t *msg)
 }
 
 //*************************************************************
-// mq_msg_total_size - Total size of mesg
+// gop_mq_msg_total_size - Total size of mesg
 //*************************************************************
 
-int mq_msg_total_size(mq_msg_t *msg)
+int gop_mq_msg_total_size(mq_msg_t *msg)
 {
     gop_mq_frame_t *f;
     int n;

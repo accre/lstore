@@ -91,7 +91,7 @@ void rsrs_update_register(lio_resource_service_fn_t *rs, gop_mq_frame_t *fid, mq
     gop_mq_msg_append_mem(h->msg, NULL, 0, MQF_MSG_KEEP_DATA);
 
     //** Now address it
-    gop_mq_apply_return_address_msg(h->msg, address, 0);
+    gop_mq_msg_apply_return_address(h->msg, address, 0);
 
     //** Figure out when we wake up if no change
     if (timeout > 10) {
@@ -151,7 +151,7 @@ void rsrs_config_send(lio_resource_service_fn_t *rs, gop_mq_frame_t *fid, mq_msg
     gop_mq_msg_append_mem(msg, NULL, 0, MQF_MSG_KEEP_DATA);
 
     //** Now address it
-    gop_mq_apply_return_address_msg(msg, address, 0);
+    gop_mq_msg_apply_return_address(msg, address, 0);
 
     //** Lastly send it
     gop_mq_submit(rsrs->server_portal, gop_mq_task_new(rsrs->mqc, msg, NULL, NULL, 30));

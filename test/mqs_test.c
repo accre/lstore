@@ -570,7 +570,7 @@ void *server_test_thread(apr_thread_t *th, void *arg)
     gop_mq_portal_install(mqc, server_portal);
 
     //** Wait for a shutdown
-    mq_pipe_read(control_efd[0], &c);
+    gop_mq_pipe_read(control_efd[0], &c);
 
     apr_thread_mutex_lock(lock);
     while (in_process != 0) {
@@ -698,8 +698,8 @@ int main(int argc, char **argv)
     host = gop_mq_string_to_address(host_string_converted);
 
     //** Make the pipe for controlling the server
-    ctx = mq_socket_context_new();
-    mq_pipe_create(ctx, control_efd);
+    ctx = gop_mq_socket_context_new();
+    gop_mq_pipe_create(ctx, control_efd);
 
     tbx_thread_create_assert(&server_thread, NULL, server_test_thread, NULL, mpool);
     sleep(5); //** Make surethe server gets fired up
@@ -709,11 +709,11 @@ int main(int argc, char **argv)
 
     //** Trigger the server to shutdown
     c = 1;
-    mq_pipe_write(control_efd[1], &c);
+    gop_mq_pipe_write(control_efd[1], &c);
     apr_thread_join(&dummy, server_thread);
 
-    mq_pipe_destroy(ctx, control_efd);
-    mq_socket_context_destroy(ctx);
+    gop_mq_pipe_destroy(ctx, control_efd);
+    gop_mq_socket_context_destroy(ctx);
 
     apr_thread_mutex_destroy(lock);
     apr_thread_cond_destroy(cond);

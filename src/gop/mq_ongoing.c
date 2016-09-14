@@ -210,7 +210,7 @@ void gop_mq_ongoing_host_inc(gop_mq_ongoing_t *on, mq_msg_t *remote_host, char *
     log_printf(5, "remote_host=%s\n", str);
     free(str);
 
-    hash = mq_msg_hash(remote_host);
+    hash = gop_mq_msg_hash(remote_host);
     table = apr_hash_get(on->table, &hash, sizeof(gop_mq_msg_hash_t));  //** Look up the remote host
 
     if (tbx_log_level() > 5) {
@@ -261,7 +261,7 @@ void gop_mq_ongoing_host_dec(gop_mq_ongoing_t *on, mq_msg_t *remote_host, char *
     gop_ongoing_table_t *table;
     gop_mq_msg_hash_t hash;
 
-    hash = mq_msg_hash(remote_host);
+    hash = gop_mq_msg_hash(remote_host);
     apr_thread_mutex_lock(on->lock);
     table = apr_hash_get(on->table, &hash, sizeof(gop_mq_msg_hash_t));  //** Look up the host
     if (table == NULL) goto fail;

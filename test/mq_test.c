@@ -190,9 +190,9 @@ int client_direct()
     status = 0;
 
     sleep(1);  //** Wait for the server to start up and bind to the port
-    ctx = mq_socket_context_new();
-    sock = mq_socket_new(ctx, MQ_TRACE_ROUTER);
-    err = mq_connect(sock, host);
+    ctx = gop_mq_socket_context_new();
+    sock = gop_mq_socket_new(ctx, MQ_TRACE_ROUTER);
+    err = gop_mq_connect(sock, host);
     if (err != 0) {
         log_printf(0, "ERROR:  Failed connecting to host=%s error=%d\n", host, err);
         status = 1;
@@ -211,7 +211,7 @@ int client_direct()
     gop_mq_msg_append_mem(msg, NULL, 0, MQF_MSG_KEEP_DATA);
 
     //** Send the message
-    err = mq_send(sock, msg, 0);
+    err = gop_mq_send(sock, msg, 0);
     if (err != 0) {
         log_printf(0, "ERROR:  Failed sending PING message to host=%s error=%d\n", host, err);
         status = 1;
@@ -223,16 +223,16 @@ int client_direct()
     //** Wait for the response
     msg = gop_mq_msg_new();
 
-    pfd.socket = mq_poll_handle(sock);
+    pfd.socket = gop_mq_poll_handle(sock);
     pfd.events = MQ_POLLIN;
-    err = mq_poll(&pfd, 1, 5000);  //** Wait for 5 secs
+    err = gop_mq_poll(&pfd, 1, 5000);  //** Wait for 5 secs
     if (err != 1) {
         log_printf(0, "ERROR:  Failed polling for PING message response to host=%s\n", host);
         status = 1;
         goto fail;
     }
-    err = mq_recv(sock, msg, MQ_DONTWAIT);
-//  err = mq_recv(sock, msg, 0);
+    err = gop_mq_recv(sock, msg, MQ_DONTWAIT);
+//  err = gop_mq_recv(sock, msg, 0);
     if (err != 0) {
         log_printf(0, "ERROR:  Failed recving PONG response message from host=%s error=%d\n", host, err);
         status = 1;
@@ -271,8 +271,8 @@ int client_direct()
 
 fail:
     gop_mq_msg_destroy(msg);
-    mq_socket_destroy(ctx, sock);
-    mq_socket_context_destroy(ctx);
+    gop_mq_socket_destroy(ctx, sock);
+    gop_mq_socket_context_destroy(ctx);
 
     if (status == 0) {
         log_printf(0, "TEST: (END) client_direct() = SUCCESS\n");
@@ -630,7 +630,7 @@ void *client_test_thread(apr_thread_t *th, void *arg)
     if (min == 1) {
         v = 1;
         log_printf(0, "Skipping raw tests.\n");
-        mq_pipe_write(control_efd[1], &v);
+        gop_mq_pipe_write(control_efd[1], &v);
         sleep(1);
         log_printf(0, "Continuing....\n");
     }
@@ -655,7 +655,7 @@ void *client_test_thread(apr_thread_t *th, void *arg)
         if (i==0) { //** Switch the server to using the MQ loop
             v = 1;
             log_printf(0, "Telling server to switch and use the MQ event loop\n");
-            mq_pipe_write(control_efd[1], &v);
+            gop_mq_pipe_write(control_efd[1], &v);
             sleep(10);
             log_printf(0, "Continuing....\n");
         }
@@ -709,7 +709,7 @@ int proc_ping(gop_mq_socket_t *sock, mq_msg_t *msg)
 //i=gop_mq_get_frame(f, &data, &err);
 //log_printf(5, "data=%s len=%d i=%d\n", (char *)data, err, i); tbx_log_flush();
 //log_printf(5, "add=%d\n", err);
-        mq_msg_push_frame(pong, f);
+        gop_mq_msg_frame_push(pong, f);
     }
 
     gop_mq_msg_destroy(msg);
@@ -728,7 +728,7 @@ int proc_ping(gop_mq_socket_t *sock, mq_msg_t *msg)
     server_stats.outgoing[MQS_PONG_INDEX]++;
     apr_thread_mutex_unlock(lock);
 
-    err = mq_send(sock, pong, MQ_DONTWAIT);
+    err = gop_mq_send(sock, pong, MQ_DONTWAIT);
 
     gop_mq_msg_destroy(pong);
 
@@ -792,7 +792,7 @@ int server_handle_deferred(gop_mq_socket_t *sock)
 
     err = 0;
     while ((defer = tbx_stack_pop(deferred_ready)) != NULL) {
-        if (server_portal == NULL) mq_pipe_read(server_efd[0], &v);
+        if (server_portal == NULL) gop_mq_pipe_read(server_efd[0], &v);
         log_printf(5, "Processing deferred response\n");
 
         defer->td->ping_count = tbx_atomic_get(ping_count) - defer->td->ping_count;  //** Send back the ping count since it was sent
@@ -803,7 +803,7 @@ int server_handle_deferred(gop_mq_socket_t *sock)
         if (server_portal == NULL) apr_thread_mutex_unlock(lock);
 
         if (server_portal == NULL) {
-            err += mq_send(sock, defer->msg, 0);
+            err += gop_mq_send(sock, defer->msg, 0);
             gop_mq_msg_destroy(defer->msg);
         } else {
             err = gop_mq_submit(server_portal, gop_mq_task_new(gop_mq_portal_mq_context(server_portal), defer->msg, NULL, NULL, 5));
@@ -867,11 +867,11 @@ int proc_trackexec_ping(gop_mq_portal_t *p, gop_mq_socket_t *sock, mq_msg_t *msg
     gop_mq_msg_append_mem(response, NULL, 0, MQF_MSG_KEEP_DATA);
 
     //** Add the address
-    gop_mq_apply_return_address_msg(response, msg, 1);
+    gop_mq_msg_apply_return_address(response, msg, 1);
 
     //** Make the trackaddress response if needed
     log_printf(5, "address_reply=%d\n", td->address_reply);
-    track_response = (td->address_reply == 1) ? mq_trackaddress_msg(host, msg, pid, 1) : NULL;
+    track_response = (td->address_reply == 1) ? gop_mq_msg_trackaddress(host, msg, pid, 1) : NULL;
 
     if (td->delay == 0) {
         gop_mq_get_frame(pid, (void **)&data, &size);;
@@ -882,7 +882,7 @@ int proc_trackexec_ping(gop_mq_portal_t *p, gop_mq_socket_t *sock, mq_msg_t *msg
         apr_thread_mutex_unlock(lock);
 
         if (p == NULL) {
-            err = mq_send(sock, response, 0);
+            err = gop_mq_send(sock, response, 0);
             gop_mq_msg_destroy(response);
         } else {
             err = gop_mq_submit(server_portal, gop_mq_task_new(gop_mq_portal_mq_context(server_portal), response, NULL, NULL, 5));
@@ -914,7 +914,7 @@ int proc_trackexec_ping(gop_mq_portal_t *p, gop_mq_socket_t *sock, mq_msg_t *msg
         apr_thread_mutex_unlock(lock);
 
         if (p == NULL) {
-            err = mq_send(sock, track_response, 0);
+            err = gop_mq_send(sock, track_response, 0);
             gop_mq_msg_destroy(track_response);
         } else {
             err = gop_mq_submit(server_portal, gop_mq_task_new(gop_mq_portal_mq_context(server_portal), track_response, NULL, NULL, 5));
@@ -946,7 +946,7 @@ int server_handle_request(gop_mq_socket_t *sock)
 
     status = 0;
     msg = gop_mq_msg_new();
-    if (mq_recv(sock, msg, MQ_DONTWAIT) != 0) {
+    if (gop_mq_recv(sock, msg, MQ_DONTWAIT) != 0) {
         log_printf(0, "ERROR recving message!\n");
         return(1);
     }
@@ -1003,9 +1003,9 @@ void *server_test_raw_socket()
 
     log_printf(0, "START\n");
 
-    ctx = mq_socket_context_new();
-    sock = mq_socket_new(ctx, MQ_TRACE_ROUTER);
-    err = mq_bind(sock, host);
+    ctx = gop_mq_socket_context_new();
+    sock = gop_mq_socket_new(ctx, MQ_TRACE_ROUTER);
+    err = gop_mq_bind(sock, host);
     if (err != 0) {
         log_printf(0, "ERROR:  Failed connecting to host=%s error=%d errno=%d\n", host, err, errno);
         goto fail;
@@ -1013,21 +1013,21 @@ void *server_test_raw_socket()
 
     //**Make the poll structure
     memset(pfd, 0, sizeof(gop_mq_pollitem_t)*3);
-    mq_pipe_poll_store(&(pfd[0]), control_efd[0], MQ_POLLIN);
-    pfd[1].socket = mq_poll_handle(sock);
+    gop_mq_pipe_poll_store(&(pfd[0]), control_efd[0], MQ_POLLIN);
+    pfd[1].socket = gop_mq_poll_handle(sock);
     pfd[1].events = MQ_POLLIN;
-    mq_pipe_poll_store(&(pfd[2]), server_efd[0], MQ_POLLIN);
+    gop_mq_pipe_poll_store(&(pfd[2]), server_efd[0], MQ_POLLIN);
 
     //** Main processing loop
     finished = 0;
     do {
         log_printf(5, "Before poll dt=%d\n", dt);
-        n = mq_poll(pfd, 3, dt);
+        n = gop_mq_poll(pfd, 3, dt);
         log_printf(5, "pfd[control]=%d pfd[socket]=%d pdf[deferred]=%d\n", pfd[0].revents, pfd[1].revents, pfd[2].revents);
         if (n > 0) {  //** Got an event so process it
             if (pfd[0].revents != 0) {
                 finished = 1;
-                mq_pipe_read(control_efd[0], &v);
+                gop_mq_pipe_read(control_efd[0], &v);
             }
             if (pfd[1].revents != 0) finished = server_handle_request(sock);
             if (pfd[2].revents != 0) finished = server_handle_deferred(sock);
@@ -1042,15 +1042,15 @@ fail:
 //  apr_thread_cond_broadcast(cond);
 //  apr_thread_mutex_unlock(lock);
 
-    mq_stats_print(0, "Server RAW", &server_stats);
+    gop_mq_stats_print(0, "Server RAW", &server_stats);
     log_printf(0, "END\n");
     tbx_log_flush();
-    mq_socket_destroy(ctx, sock);
+    gop_mq_socket_destroy(ctx, sock);
 
 
     log_printf(0, "before ctx destroy\n");
     tbx_log_flush();
-    mq_socket_context_destroy(ctx);
+    gop_mq_socket_context_destroy(ctx);
 
     log_printf(0, "after ctx destroy\n");
     tbx_log_flush();
@@ -1120,7 +1120,7 @@ void server_test_mq_loop()
     gop_mq_portal_install(mqc, server_portal);
 
     //** Wait for a shutdown
-    mq_pipe_read(control_efd[0], &v);
+    gop_mq_pipe_read(control_efd[0], &v);
 
     //** Destroy the portal
     gop_mq_destroy_context(mqc);
@@ -1203,7 +1203,7 @@ void *server_deferred_thread(apr_thread_t *th, void *arg)
         if (n > 0) { //** Got tasks to send
             if (server_portal == NULL) {
                 v = 1;
-                for (i=0; i<(int)n; i++) mq_pipe_write(server_efd[1], &v);
+                for (i=0; i<(int)n; i++) gop_mq_pipe_write(server_efd[1], &v);
             } else {
                 server_handle_deferred(NULL);
             }
@@ -1255,11 +1255,11 @@ int main(int argc, char **argv)
     assert_result(apr_thread_cond_create(&cond, mpool), APR_SUCCESS);
 
     //** Make the pipe for controlling the server
-    ctx = mq_socket_context_new();
-    mq_pipe_create(ctx, control_efd);
+    ctx = gop_mq_socket_context_new();
+    gop_mq_pipe_create(ctx, control_efd);
 
     //** Make the server pipe for delayed responses
-    mq_pipe_create(ctx, server_efd);
+    gop_mq_pipe_create(ctx, server_efd);
 
     //** Make the stacks for controlling deferred replies
     deferred_ready = tbx_stack_new();
@@ -1273,17 +1273,17 @@ int main(int argc, char **argv)
 
     //** Trigger the server to shutdown
     v = 1;
-    mq_pipe_write(control_efd[1], &v);
+    gop_mq_pipe_write(control_efd[1], &v);
     apr_thread_join(&dummy, server_thread);
     apr_thread_join(&dummy, deferred_thread);
 
     tbx_stack_del(deferred_ready, 0);
     tbx_stack_del(deferred_pending, 0);
 
-    mq_pipe_destroy(ctx, control_efd);
-    mq_pipe_destroy(ctx, server_efd);
+    gop_mq_pipe_destroy(ctx, control_efd);
+    gop_mq_pipe_destroy(ctx, server_efd);
 
-    mq_socket_context_destroy(ctx);
+    gop_mq_socket_context_destroy(ctx);
 
     apr_thread_mutex_destroy(lock);
     apr_thread_cond_destroy(cond);
