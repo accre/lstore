@@ -12,7 +12,9 @@ find_package(GlobusCommon REQUIRED)
 find_package(GlobusGridftpServer REQUIRED)
 set(GRIDFTP_OBJS
         src/lstore_dsi.c
+        src/stat.c
         src/thunk.c
+        src/util.c
     )
 set(GRIDFTP_LIBS
         toolbox
@@ -26,6 +28,10 @@ set(GRIDFTP_LIBS
     )
 set(GRIDFTP_INC
         ${PROJECT_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/src/toolbox
+        ${CMAKE_SOURCE_DIR}/src/gop
+        ${CMAKE_SOURCE_DIR}/src/ibp
+        ${CMAKE_SOURCE_DIR}/src/lio
         ${APR_INCLUDE_DIR}
         ${APRUTIL_INCLUDE_DIR}
         ${GLOBUS_COMMON_INCLUDE_DIRS}

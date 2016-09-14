@@ -27,19 +27,19 @@
 int activate() {
     printf("Loaded\n");
 
-    int argc = 2;
+    int argc = 3;
     char **argv = malloc(sizeof(char *)*argc);
     argv[0] = "lio_gridftp";
     argv[1] = "-c";
     argv[2] = "/etc/lio/lio-gridftp.cfg";
 
-    char **argvp = argv;
-    lio_init(&argc, &argvp);
+    // char **argvp = argv;
+    lio_init(&argc, &argv);
+    free(argv);
     if (!lio_gc) {
         printf("Failed to load LStore\n");
         return 1;
     }
-    free(argv);
 
     return 0;
 }
@@ -52,11 +52,83 @@ int deactivate() {
 
 int user_connect(lstore_handle_t *h, globus_gfs_operation_t op) {
     printf("Connect\n");
-    memcpy(h->op, &op, sizeof(op));
+    memcpy(&h->op, &op, sizeof(op));
+    h->prefix = strdup("/lio/lfs");
+    if (!h->prefix) {
+        goto error1;
+    }
+
     return 0;
+
+error1:
+    return 1;
 }
 
 int user_close(lstore_handle_t *h) {
     printf("Close\n");
+    if (h->prefix) {
+        free((void *)h->prefix);
+    }
     return 0;
+}
+
+/**
+ * Given a stack with our stat info, fill a globus stat structure
+ * @param dest Structure to fill
+ * @param stack Stack to fill from
+ */
+static void globus_stat_fill(globus_gfs_stat_t *dest, tbx_stack_t *stack) {
+    char *fname;
+    char *readlink = NULL;
+    struct stat *stat;
+    readlink = tbx_stack_pop(stack);
+    fname = tbx_stack_pop(stack);
+    stat = tbx_stack_pop(stack);
+    transfer_stat(dest, stat, fname, readlink);
+    free(stat);
+    free(fname);
+    free(readlink);
+}
+
+
+int user_stat(lstore_handle_t *h, globus_gfs_stat_info_t *info,
+                globus_gfs_stat_t ** ret, int *ret_count) {
+    int retval = GLOBUS_FAILURE;
+    (*ret) = NULL;
+    (*ret_count) = 0;
+
+    tbx_stack_t *stack = tbx_stack_new();
+    if (!stack) {
+        goto error_initstack;
+    }
+
+    int retcode = plugin_stat(h, stack, info->pathname, info->file_only);
+    if (retcode) {
+        goto error_stat;
+    }
+
+    // Once plugin_stat fills the struct with however many struct stat's we
+    // need, we have to then convert it to an array of globus' special stat
+    // structs
+    int stat_count = tbx_stack_count(stack) / 3;
+    globus_gfs_stat_t *stats =
+        globus_malloc(sizeof(globus_gfs_stat_t) * stat_count);
+    if (!stats) {
+        goto error_allocarray;
+    }
+    for (int idx=0; idx < stat_count; ++idx) {
+        globus_stat_fill(&stats[idx], stack);
+    }
+
+    (*ret) = stats;
+    (*ret_count) = stat_count;
+    retval = GLOBUS_SUCCESS;
+
+error_allocarray:
+error_stat:
+    tbx_stack_del(stack);
+
+error_initstack:
+
+    return retval;
 }

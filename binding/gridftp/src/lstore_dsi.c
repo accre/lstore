@@ -147,27 +147,28 @@ globus_l_gfs_lstore_stat(
     globus_gfs_stat_info_t *            stat_info,
     void *                              user_arg)
 {
-    globus_gfs_stat_t                   stat_array[1];
-    int                                 stat_count = 1;
-    lstore_handle_t *       lstore_handle;
     GlobusGFSName(globus_l_gfs_lstore_stat);
-
     globus_gfs_log_message(GLOBUS_GFS_LOG_INFO, "[lstore] stat\n");
+
+    lstore_handle_t * lstore_handle;
     lstore_handle = (lstore_handle_t *) user_arg;
 
-    stat_array[0].mode = 0;
-    stat_array[0].nlink = 0;
-    stat_array[0].uid = 0;
-    stat_array[0].gid = 0;
-    stat_array[0].size = 0;
-    stat_array[0].mtime = 0;
-    stat_array[0].atime = 0;
-    stat_array[0].ctime = 0;
-    stat_array[0].dev = 0;
-    stat_array[0].ino = 0;
+    globus_result_t result = GLOBUS_SUCCESS;
+    globus_gfs_stat_t *stat_array = NULL;
+    int stat_count = 0;
+
+    int retval = user_stat(lstore_handle, stat_info, &stat_array, &stat_count);
+    if (retval == GLOBUS_FAILURE) {
+        // Catchall for generic globus oopsies
+        GlobusGFSErrorGenericStr(result, ("[lstore] Failed to start session."));
+    } else if (retval != GLOBUS_SUCCESS) {
+        // If we get something that's not GLOBUS_FAILURE or SUCCESS, treat it
+        // like a real globus error string
+        result = retval;
+    }
 
     globus_gridftp_server_finished_stat(
-        op, GLOBUS_SUCCESS, stat_array, stat_count);
+        op, result, stat_array, stat_count);
 }
 
 /*

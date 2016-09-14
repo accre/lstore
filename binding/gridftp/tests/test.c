@@ -33,6 +33,24 @@ int main() {
     globus_gfs_operation_t op;
     memset(&op, 42, sizeof(op));
     CHECK_EQUAL(user_connect(&handle, op), 0);
+
+
+    // Verify stat works
+    globus_gfs_stat_info_t stat_info;
+    memset(&stat_info, 42, sizeof(stat_info));
+    stat_info.pathname = "/lio/lfs/ONLYATVANDY-LFS.txt";
+    stat_info.file_only = 1;
+    globus_gfs_stat_t *ret = NULL;
+    int ret_count = 0;
+    tbx_stack_t *stack = tbx_stack_new();
+
+    CHECK_EQUAL(plugin_stat(&handle, stack, "/lio/lfs/ONLYATVANDY-LFS.txt", 0), 0);
+    CHECK_EQUAL(user_stat(&handle, &stat_info, &ret, &ret_count), 0);
+    free(ret);
+    free(stack);
+
+    printf("Found %d matching files\n", ret_count);
+
     CHECK_EQUAL(user_close(&handle), 0);
     CHECK_EQUAL(globus_gridftp_server_lstore_module.deactivation_func(), 0);
     return 0;

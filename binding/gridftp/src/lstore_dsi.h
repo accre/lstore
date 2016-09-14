@@ -42,11 +42,59 @@ int activate();
 int deactivate();
 
 /**
+ * Destroys a globus stat array
+ * @param stat_array Array to be destroyed
+ * @param stat_count Number of elements in array
+ */
+void destroy_stat(globus_gfs_stat_t * stat_array, int stat_count);
+
+/**
+ * Converts a GridFTP to a path within LStore
+ * @param path Input path
+ * @param prefix LStore mount prefix
+ * @returns LStore path if it exists, NULL otherwise
+ */
+const char *path_to_lstore(const char *prefix, const char *path);
+
+/**
+ * Handles the LStore half of stat'ing a file/directory
+ * @param stack Stack to fill with stat structs
+ * @param path Filename to stat
+ * @param file_only If true, only return files, not entire directories
+ * @returns zero on success, error otherwise
+ */
+int plugin_stat(lstore_handle_t *h, tbx_stack_t *stack, const char *path, int file_only);
+
+/**
+ * Tranfers a POSIX stat struct into a globus stat struct
+ * @param stat_object Globus target object
+ * @param fileInfo POSIX source object
+ * @param filename Path to described stat info
+ * @param symlink_target Symlinked target
+ */
+void transfer_stat(globus_gfs_stat_t * stat_object,
+                                        struct stat * fileInfo,
+                                        const char * filename,
+                                        const char * symlink_target);
+/**
  * Begins a user session
  * @param h Session handle
  * @returns 0 on success, errno otherwise
  */
 int user_connect(lstore_handle_t *h, globus_gfs_operation_t op);
+
+/**
+ * Stat a file/directory
+ * @param h Session handle
+ * @param info Information on what Globus wants
+ * @param ret Globus-specific struct to fill
+ * @param ret_count Number of elements in ret
+ * @returns 0 on success, errno otherwise
+ */
+int user_stat(lstore_handle_t *h,
+                globus_gfs_stat_info_t *info,
+                globus_gfs_stat_t ** ret,
+                int *ret_count);
 
 /**
  * Closes a user session
@@ -55,11 +103,11 @@ int user_connect(lstore_handle_t *h, globus_gfs_operation_t op);
  */
 int user_close(lstore_handle_t *h);
 
-
 // Structures
 struct lstore_handle_t {
     globus_gfs_operation_t op;
     lio_fd_t *fd;
+    char *prefix;
 };
 
 // Globals
