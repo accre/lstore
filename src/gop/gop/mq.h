@@ -23,6 +23,7 @@ limitations under the License.
 
 #include <apr_hash.h>
 #include <apr_thread_proc.h>
+#include <czmq.h>
 #include <gop/gop.h>
 #include <gop/visibility.h>
 #include <gop/types.h>
@@ -46,23 +47,130 @@ typedef struct gop_mq_socket_context_t gop_mq_socket_context_t;
 typedef struct gop_mq_socket_t gop_mq_socket_t;
 typedef struct gop_mq_task_monitor_t gop_mq_task_monitor_t;
 typedef struct gop_mq_task_t gop_mq_task_t;
+typedef zmq_pollitem_t gop_mq_pollitem_t;
 typedef tbx_stack_t mq_msg_t;
-typedef int mq_pipe_t;       //** Event notification FD
+typedef int mq_pipe_t;       // ** Event notification FD
 typedef void (*gop_mq_exec_fn_t)(void *arg, gop_mq_task_t *task);
-typedef void (*gop_mq_task_arg_free_fn_t)(void *arg);  //** Function for cleaning up the GOP arg. (GOP)
+typedef void (*gop_mq_task_arg_free_fn_t)(void *arg);  // ** Function for cleaning up the GOP arg. (GOP)
 
 typedef enum gop_mqf_msg_t gop_mqf_msg_t;
 enum gop_mqf_msg_t {
-    MQF_MSG_AUTO_FREE, //** Auto free data on destroy
-    MQF_MSG_KEEP_DATA, //** Skip free'ing of data on destroy.  App is responsible.
-    MQF_MSG_INTERNAL_FREE, //** The msg routines are responsible for free'ing the data. Used on mq_recv().
+    MQF_MSG_AUTO_FREE, // ** Auto free data on destroy
+    MQF_MSG_KEEP_DATA, // ** Skip free'ing of data on destroy.  App is responsible.
+    MQF_MSG_INTERNAL_FREE, // ** The msg routines are responsible for free'ing the data. Used on mq_recv().
 };
 
 typedef enum gop_mq_cmode_t gop_mq_cmode_t;
 enum gop_mq_cmode_t {
-    MQ_CMODE_CLIENT, //** Normal outgoing connection
-    MQ_CMODE_SERVER, //** USed by servers for incoming connections
+    MQ_CMODE_CLIENT, // ** Normal outgoing connection
+    MQ_CMODE_SERVER, // ** USed by servers for incoming connections
 };
+
+
+//------------------------Added for mq_test------------------
+typedef struct gop_mq_socket_context_t gop_mq_socket_context_t;
+typedef struct gop_mq_socket_t gop_mq_socket_t;
+
+// Preprocessor defines required for command stats
+#define MQS_PING_INDEX         0
+#define MQS_PONG_INDEX         1
+#define MQS_EXEC_INDEX         2
+#define MQS_TRACKEXEC_INDEX    3
+#define MQS_TRACKADDRESS_INDEX 4
+#define MQS_RESPONSE_INDEX     5
+#define MQS_HEARTBEAT_INDEX    6
+#define MQS_UNKNOWN_INDEX      7
+#define MQS_SIZE               8
+
+struct gop_mq_command_stats_t {
+    int incoming[MQS_SIZE];
+    int outgoing[MQS_SIZE];
+};
+
+struct gop_mq_socket_context_t {
+    void *arg;
+    gop_mq_socket_t *(*create_socket)(gop_mq_socket_context_t *ctx, int stype);
+    void (*destroy)(gop_mq_socket_context_t *ctx);
+};
+struct gop_mq_socket_t {
+    int type;
+    void *arg;
+    void (*destroy)(gop_mq_socket_context_t *ctx, gop_mq_socket_t  *socket);
+    int (*bind)(gop_mq_socket_t *socket, const char *format, ...);
+    int (*connect)(gop_mq_socket_t *socket, const char *format, ...);
+    int (*disconnect)(gop_mq_socket_t *socket, const char *format, ...);  //** Need host since multiple simul endpoints are supported.
+    void *(*poll_handle)(gop_mq_socket_t *socket);
+    int (*monitor)(gop_mq_socket_t *socket, char *address, int events);
+    int (*send)(gop_mq_socket_t *socket, mq_msg_t *msg, int flags);
+    int (*recv)(gop_mq_socket_t *socket, mq_msg_t *msg, int flags);
+};
+
+#define mq_poll(items, n, wait_ms) zmq_poll(items, n, wait_ms)
+#define mq_socket_new(ctx, type) (ctx)->create_socket(ctx, type)
+#define mq_socket_destroy(ctx, socket) (socket)->destroy(ctx, socket)
+#define mq_socket_context_new()  zero_socket_context_new()
+#define mq_socket_context_destroy(ctx)  (ctx)->destroy(ctx)
+#define mq_socket_monitor(sock, port, event) (sock)->monitor(sock, port, event)
+#define mq_connect(sock, ...) (sock)->connect(sock, __VA_ARGS__)
+#define mq_bind(sock, ...) (sock)->bind(sock, __VA_ARGS__)
+#define mq_disconnect(sock, ...) (sock)->disconnect(sock, __VA_ARGS__)
+#define mq_send(sock, msg, flags)  (sock)->send(sock, msg, flags)
+#define mq_recv(sock, msg, flags)  (sock)->recv(sock, msg, flags)
+#define mq_poll_handle(sock)  (sock)->poll_handle(sock)
+
+#define mq_pipe_create(ctx, pfd)  assert_result(pipe(pfd), 0)
+#define mq_pipe_poll_store(pollfd, cfd, mode) (pollfd)->fd = cfd;  (pollfd)->events = mode
+#define mq_pipe_destroy(ctx, pfd) if (pfd[0] != -1) { close(pfd[0]); close(pfd[1]); }
+#define mq_pipe_read(fd, c) read(fd, c, 1)
+#define mq_pipe_write(fd, c) write(fd, c, 1)
+
+//****** Error states
+#define MQ_E_ERROR      OP_STATE_FAILURE
+#define MQ_E_OK         OP_STATE_SUCCESS
+#define MQ_E_DESTROY    -1
+#define MQ_E_NOP        -2
+#define MQ_E_IGNORE     -3
+
+//******** Polling states
+#define MQ_POLLIN  ZMQ_POLLIN
+#define MQ_POLLOUT ZMQ_POLLOUT
+#define MQ_POLLERR ZMQ_POLLERR
+
+//********  Connection modes
+//******** Socket types
+#define MQ_DEALER ZMQ_DEALER
+#define MQ_PAIR   ZMQ_PAIR
+#define MQ_ROUTER ZMQ_ROUTER
+#define MQ_TRACE_ROUTER   1000
+#define MQ_SIMPLE_ROUTER  1001
+
+#define MQ_DONTWAIT ZMQ_DONTWAIT
+
+GOP_API gop_mq_socket_t *zero_create_socket(gop_mq_socket_context_t *ctx, int stype);
+GOP_API void zero_socket_context_destroy(gop_mq_socket_context_t *ctx);
+GOP_API gop_mq_socket_context_t *zero_socket_context_new(); 
+
+GOP_API gop_mq_frame_t *mq_msg_prev(mq_msg_t *msg);
+GOP_API gop_mq_frame_t *mq_frame_dup(gop_mq_frame_t *f);
+GOP_API void mq_msg_tbx_stack_insert_above(mq_msg_t *msg, gop_mq_frame_t *f);
+GOP_API void mq_msg_tbx_stack_insert_below(mq_msg_t *msg, gop_mq_frame_t *f);
+GOP_API void mq_msg_push_frame(mq_msg_t *msg, gop_mq_frame_t *f);
+GOP_API gop_mq_msg_hash_t mq_msg_hash(mq_msg_t *msg);
+GOP_API void mq_msg_push_mem(mq_msg_t *msg, void *data, int len, gop_mqf_msg_t auto_free);
+GOP_API int mq_msg_total_size(mq_msg_t *msg);
+GOP_API mq_msg_t *mq_trackaddress_msg(char *host, mq_msg_t *raw_address, gop_mq_frame_t *fid, int dup_frames);
+
+GOP_API void mq_stats_add(gop_mq_command_stats_t *a, gop_mq_command_stats_t *b);
+GOP_API void mq_stats_print(int ll, char *tag, gop_mq_command_stats_t *a);
+
+GOP_API gop_mq_command_t *mq_command_new(void *cmd, int cmd_size, void *arg, gop_mq_exec_fn_t fn);
+GOP_API void mq_command_exec(gop_mq_command_table_t *t, gop_mq_task_t *task, void *key, int klen);
+GOP_API void gop_mq_command_table_destroy(gop_mq_command_table_t *t);
+GOP_API gop_mq_command_table_t *gop_mq_command_table_new(void *arg, gop_mq_exec_fn_t fn_default);
+
+GOP_API gop_mq_context_t *gop_mq_portal_mq_context(gop_mq_portal_t *p);
+//---------------------------------------------------------------
+
 
 // Functions
 GOP_API void gop_mq_apply_return_address_msg(mq_msg_t *msg, mq_msg_t *raw_address, int dup_frames);
@@ -117,15 +225,15 @@ GOP_API gop_mq_task_t *gop_mq_task_new(gop_mq_context_t *ctx, mq_msg_t *msg, gop
 #define mq_msg_pop(A) (gop_mq_frame_t *)tbx_stack_pop(A)
 
 // Exported types. To be obscured.
-struct gop_mq_task_t {      //** Generic containter for MQ messages for both the server and GOP (or client). If the variable is not used it's value is NULL.
-    mq_msg_t *msg;          //** Actual message to send with address (Server+GOP)
-    mq_msg_t *response;     //** Response message (GOP)
-    gop_op_generic_t *gop;      //** GOP corresponding to the task.  This could be NULL if a direct submission is used (GOP)
-    gop_mq_context_t *ctx;      //** Portal context for sending responses. (Server+GOP)
-    void *arg;              //** Optional argument when calling mq_command_add() or gop_mq_op_new() (server+GOP)
-    apr_time_t timeout;     //** Initially the DT in sec for the command to complete and converted to abs timeout when sent
+struct gop_mq_task_t {      // ** Generic containter for MQ messages for both the server and GOP (or client). If the variable is not used it's value is NULL.
+    mq_msg_t *msg;          // ** Actual message to send with address (Server+GOP)
+    mq_msg_t *response;     // ** Response message (GOP)
+    gop_op_generic_t *gop;      // ** GOP corresponding to the task.  This could be NULL if a direct submission is used (GOP)
+    gop_mq_context_t *ctx;      // ** Portal context for sending responses. (Server+GOP)
+    void *arg;              // ** Optional argument when calling mq_command_add() or gop_mq_op_new() (server+GOP)
+    apr_time_t timeout;     // ** Initially the DT in sec for the command to complete and converted to abs timeout when sent
     gop_mq_task_arg_free_fn_t my_arg_free;
-    int pass_through;       //** Flag to set when a task is only used to pass a message; no heartbeating necessary
+    int pass_through;       // ** Flag to set when a task is only used to pass a message; no heartbeating necessary
 };
 
 #ifdef __cplusplus

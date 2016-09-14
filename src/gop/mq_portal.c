@@ -19,6 +19,7 @@
 #include <apr_errno.h>
 #include <assert.h>
 #include <czmq.h>
+#include <gop/mq.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -46,6 +47,15 @@ void gop_mq_conn_teardown(gop_mq_conn_t *c);
 void mqc_heartbeat_dec(gop_mq_conn_t *c, gop_mq_heartbeat_entry_t *hb);
 void _mq_reap_closed(gop_mq_portal_t *p);
 void *mqtp_failure(apr_thread_t *th, void *arg);
+
+//**************************************************************
+//  gop_mq_portal_mq_context - Return the MQ context from the portal
+//**************************************************************
+
+gop_mq_context_t *gop_mq_portal_mq_context(gop_mq_portal_t *p)
+{
+  return(p->mqc);
+}
 
 //**************************************************************
 // gop_mq_id2str - Convert the command id to a printable string
