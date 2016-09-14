@@ -132,3 +132,24 @@ error_initstack:
 
     return retval;
 }
+
+int user_command(lstore_handle_t *h, globus_gfs_command_info_t * info) {
+    int retval = -1;
+    switch (info->command) {
+        case GLOBUS_GFS_CMD_CKSM:
+            retval = -2;
+            break;
+        case GLOBUS_GFS_CMD_DELE:
+            retval = -2;
+            break;
+        case GLOBUS_GFS_CMD_MKD:
+            retval = -2;
+            break;
+        case GLOBUS_GFS_CMD_RMD:
+            retval = -2;
+            break;
+        default:
+            retval = -2;
+    }
+    return retval;
+}

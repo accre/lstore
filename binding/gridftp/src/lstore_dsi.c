@@ -197,13 +197,24 @@ globus_l_gfs_lstore_command(
     globus_gfs_command_info_t *         cmd_info,
     void *                              user_arg)
 {
-    lstore_handle_t *       lstore_handle;
     GlobusGFSName(globus_l_gfs_lstore_command);
-
     globus_gfs_log_message(GLOBUS_GFS_LOG_INFO, "[lstore] command\n");
-    lstore_handle = (lstore_handle_t *) user_arg;
 
-    globus_gridftp_server_finished_command(op, GLOBUS_SUCCESS, GLOBUS_NULL);
+    lstore_handle_t * lstore_handle;
+    lstore_handle = (lstore_handle_t *) user_arg;
+    globus_result_t result = GLOBUS_SUCCESS;
+
+    int retval = 0; // user_cmd(lstore_handle, stat_info, &stat_array, &stat_count);
+    if (retval == GLOBUS_FAILURE) {
+        // Catchall for generic globus oopsies
+        GlobusGFSErrorGenericStr(result, ("[lstore] Failed to start session."));
+    } else if (retval != GLOBUS_SUCCESS) {
+        // If we get something that's not GLOBUS_FAILURE or SUCCESS, treat it
+        // like a real globus error string
+        result = retval;
+    }
+
+    globus_gridftp_server_finished_command(op, result, GLOBUS_NULL);
 }
 
 
