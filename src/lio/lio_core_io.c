@@ -498,7 +498,7 @@ gop_op_status_t lio_myopen_fn(void *arg, int id)
 
     if ((op->mode & LIO_WRITE_MODE) > 0) {  //** For write mode we check for a few more flags
         if ((op->mode & LIO_TRUNCATE_MODE) > 0) { //** See if they want the file truncated also
-            status = gop_sync_exec_status(gop_lio_truncate(fd, 0));
+            status = gop_sync_exec_status(lio_truncate_op(fd, 0));
             if (status.op_status != OP_STATE_SUCCESS) goto cleanup;
         }
 
@@ -1709,7 +1709,7 @@ gop_op_status_t lio_truncate_fn(void *arg, int id)
 
 //***********************************************************************
 
-gop_op_generic_t *gop_lio_truncate(lio_fd_t *fd, ex_off_t newsize)
+gop_op_generic_t *lio_truncate_op(lio_fd_t *fd, ex_off_t newsize)
 {
     lio_cp_fn_t *op;
 

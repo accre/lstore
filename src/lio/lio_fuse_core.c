@@ -847,7 +847,7 @@ int lfs_ftruncate(const char *fname, off_t new_size, struct fuse_file_info *fi)
         return(-EBADF);
     }
 
-    err = gop_sync_exec(gop_lio_truncate(fd, new_size));
+    err = gop_sync_exec(lio_truncate_op(fd, new_size));
 
     return((err == OP_STATE_SUCCESS) ? 0 : -EIO);
 }
@@ -877,7 +877,7 @@ int lfs_truncate(const char *fname, off_t new_size)
     }
 
     result = 0;
-    if (gop_sync_exec(gop_lio_truncate(fd, new_size)) != OP_STATE_SUCCESS) {
+    if (gop_sync_exec(lio_truncate_op(fd, new_size)) != OP_STATE_SUCCESS) {
         log_printf(0, "Failed truncating file!  path=%s\n", fname);
         result = -EIO;
     }
