@@ -46,9 +46,9 @@ typedef struct ibp_timer_t ibp_timer_t;
 typedef struct ibp_rid_t ibp_rid_t;
 
 // Functions
-IBP_API void ibp_attributes_t_get(ibp_attributes_t *attr, time_t *duration, int *reliability, int *type);
+IBP_API void ibp_attributes_get(ibp_attributes_t *attr, time_t *duration, int *reliability, int *type);
 IBP_API void ibp_cap_destroy(ibp_cap_t *cap);
-IBP_API void ibp_cap_destroyset(ibp_capset_t *caps);
+IBP_API void ibp_capset_destroy(ibp_capset_t *caps);
 IBP_API ibp_cap_t *ibp_cap_get(ibp_capset_t *caps, int ctype);
 IBP_API void ibp_cap_getstatus(ibp_capstatus_t *cs, int *readcount, int *writecount,int *current_size, int *max_size, ibp_attributes_t *attrib);
 IBP_API ibp_capset_t *ibp_capset_new();
@@ -60,9 +60,9 @@ IBP_API void ibp_ridlist_destroy(ibp_ridlist_t *rlist);
 IBP_API ibp_rid_t ibp_ridlist_element_get(ibp_ridlist_t *rlist, int index);
 IBP_API int ibp_ridlist_size_get(ibp_ridlist_t *rlist);
 IBP_API ibp_rid_t ibp_str2rid(char *rid_str);
-IBP_API void ibp_set_attributes(ibp_attributes_t *attr, time_t duration, int reliability, int type);
-IBP_API void ibp_set_depot(ibp_depot_t *d, char *host, int port, ibp_rid_t rid);
-IBP_API void ibp_set_timer(ibp_timer_t *t, int client_timeout, int server_timeout);
+IBP_API void ibp_attributes_set(ibp_attributes_t *attr, time_t duration, int reliability, int type);
+IBP_API void ibp_depot_set(ibp_depot_t *d, char *host, int port, ibp_rid_t rid);
+IBP_API void ibp_timer_set(ibp_timer_t *t, int client_timeout, int server_timeout);
 
 // Preprocessor constants
 #define IBP_MAX_HOSTNAME_LEN  256

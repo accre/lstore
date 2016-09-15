@@ -88,7 +88,7 @@ void ds_ibp_destroy_cap_set(lio_data_service_fn_t *arg, data_cap_set_t *dcs, int
     ibp_capset_t *cs = (ibp_capset_t *)dcs;
 
     if (free_caps > 0) {
-        ibp_cap_destroyset(cs);
+        ibp_capset_destroy(cs);
     } else {
         free(cs);
     }

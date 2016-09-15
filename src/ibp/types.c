@@ -49,10 +49,10 @@ void destroy_ibp_depot(ibp_depot_t *d)
 
 
 //*****************************************************************
-//  ibp_set_depot - Initializes an ibp_depot_struct
+//  ibp_depot_set - Initializes an ibp_depot_struct
 //*****************************************************************
 
-void ibp_set_depot(ibp_depot_t *d, char *host, int port, ibp_rid_t rid)
+void ibp_depot_set(ibp_depot_t *d, char *host, int port, ibp_rid_t rid)
 {
     strncpy(d->host, host, sizeof(d->host));
     d->host[sizeof(d->host)-1]='\0';
@@ -83,10 +83,10 @@ void destroy_ibp_attributes(ibp_attributes_t *attr)
 }
 
 //*****************************************************************
-// ibp_set_attributes - Initializes the data structure
+// ibp_attributes_set - Initializes the data structure
 //*****************************************************************
 
-void ibp_set_attributes(ibp_attributes_t *attr, time_t duration, int reliability, int type)
+void ibp_attributes_set(ibp_attributes_t *attr, time_t duration, int reliability, int type)
 {
     attr->duration = duration;
     attr->reliability = reliability;
@@ -133,17 +133,17 @@ void destroy_ibp_timer(ibp_timer_t *t)
 }
 
 //*****************************************************************
-// ibp_set_timer - Initializes the data structure
+// ibp_timer_set - Initializes the data structure
 //*****************************************************************
 
-void ibp_set_timer(ibp_timer_t *t, int client_timeout, int server_timeout)
+void ibp_timer_set(ibp_timer_t *t, int client_timeout, int server_timeout)
 {
     t->ClientTimeout = client_timeout;
     t->ServerSync = server_timeout;
 }
 
 //*****************************************************************
-// ibp_set_timer - Retreives the timer information
+// ibp_timer_set - Retreives the timer information
 //*****************************************************************
 
 void get_ibp_timer(ibp_timer_t *t, int *client_timeout, int *server_timeout)
@@ -193,10 +193,10 @@ ibp_capset_t *ibp_capset_new()
 
 
 //*****************************************************************
-//  ibp_cap_destroyset - Destroys the ibp_capset_t structure
+//  ibp_capset_destroy - Destroys the ibp_capset_t structure
 //*****************************************************************
 
-void ibp_cap_destroyset(ibp_capset_t *caps)
+void ibp_capset_destroy(ibp_capset_t *caps)
 {
     ibp_cap_destroy(caps->readCap);
     ibp_cap_destroy(caps->writeCap);
@@ -308,7 +308,7 @@ ibp_capstatus_t *new_ibp_capstatus()
     cs->writeRefCount = -1;
     cs->currentSize = -1;
     cs->maxSize = 0;
-    ibp_set_attributes(&(cs->attrib), 0, -1, -1);
+    ibp_attributes_set(&(cs->attrib), 0, -1, -1);
 
     return(cs);
 }
