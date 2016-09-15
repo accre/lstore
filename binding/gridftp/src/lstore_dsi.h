@@ -24,6 +24,7 @@
 #include <lio/lio.h>
 
 // Typedefs
+typedef enum xfer_direction_t xfer_direction_t;
 typedef struct lstore_handle_t lstore_handle_t;
 
 // Functions
@@ -132,7 +133,20 @@ int user_command(lstore_handle_t *h,
  * @param h Session handle
  * @returns 0 on success, errno otherwise
  */
-int user_connect(lstore_handle_t *h, globus_gfs_operation_t op);
+lstore_handle_t *user_connect(globus_gfs_operation_t op, int *retval);
+
+/**
+ * Handles destructing and deallocating a handle
+ * @param handle Session handle
+ */
+void user_handle_del(lstore_handle_t *handle);
+
+/**
+ * Allocates and initializes a new lstore_handle
+ * @param retval_ext Returns error code if initialization fails
+ * @returns New handle on success, NULL otherwise
+ */
+lstore_handle_t *user_handle_new(int *retval_ext);
 
 /**
  * Stat a file/directory
@@ -154,11 +168,29 @@ int user_stat(lstore_handle_t *h,
  */
 int user_close(lstore_handle_t *h);
 
+// Enumerations
+enum xfer_direction_t {
+    XFER_NEITHER = 0,
+    XFER_SEND,
+    XFER_RECV,
+};
+
 // Structures
 struct lstore_handle_t {
     globus_gfs_operation_t op;
     lio_fd_t *fd;
     char *prefix;
+
+    // Bits needed for send/recv
+    globus_size_t block_size;
+    globus_off_t offset;
+    globus_off_t write_length;
+    int optimal_count;
+    int outstanding_count;
+    gridftp_register_fn_t register_fn;
+    char *expected_checksum;
+    globus_mutex_t *mutex;
+    xfer_direction_t xfer_direction;
 };
 
 // Globals

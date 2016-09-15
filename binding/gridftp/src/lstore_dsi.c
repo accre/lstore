@@ -78,21 +78,19 @@ globus_l_gfs_lstore_start(
     globus_gfs_operation_t              op,
     globus_gfs_session_info_t *         session_info)
 {
-    lstore_handle_t *       lstore_handle;
-    globus_gfs_finished_info_t          finished_info;
     GlobusGFSName(globus_l_gfs_lstore_start);
-
     globus_gfs_log_message(GLOBUS_GFS_LOG_INFO, "[lstore] start\n");
-    lstore_handle = (lstore_handle_t *)
-        globus_malloc(sizeof(lstore_handle_t));
 
-    // Set any needed options in handle here
     globus_result_t result = GLOBUS_SUCCESS;
-    int retval = user_connect(lstore_handle, op);
+    lstore_handle_t *lstore_handle;
+
+    int retval = 0;
+    lstore_handle = user_connect(op, &retval);
     if (!retval) {
         GlobusGFSErrorGenericStr(result, ("[lstore] Failed to start session."));
     }
 
+    globus_gfs_finished_info_t finished_info;
     memset(&finished_info, '\0', sizeof(globus_gfs_finished_info_t));
     finished_info.type = GLOBUS_GFS_OP_SESSION_START;
     finished_info.result = result;

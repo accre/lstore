@@ -50,25 +50,22 @@ int deactivate() {
     return 0;
 }
 
-int user_connect(lstore_handle_t *h, globus_gfs_operation_t op) {
+lstore_handle_t *user_connect(globus_gfs_operation_t op, int *retval) {
     printf("Connect\n");
-    memcpy(&h->op, &op, sizeof(op));
-    h->prefix = strdup("/lio/lfs");
-    if (!h->prefix) {
-        goto error1;
+    lstore_handle_t *h;
+    h = user_handle_new(retval);
+    if (!h) {
+        // retval is set in user_handle_new
+        return NULL;
     }
+    memcpy(&h->op, &op, sizeof(op));
 
-    return 0;
-
-error1:
-    return 1;
+    return h;
 }
 
 int user_close(lstore_handle_t *h) {
     printf("Close\n");
-    if (h->prefix) {
-        free((void *)h->prefix);
-    }
+    user_handle_del(h);
     return 0;
 }
 
@@ -164,4 +161,56 @@ int user_command(lstore_handle_t *h, globus_gfs_command_info_t * info,
     }
     free(path_copy);
     return retval;
+}
+
+lstore_handle_t *user_handle_new(int *retval_ext) {
+    printf("New handle\n");
+    (*retval_ext) = 0;
+    lstore_handle_t *h = (lstore_handle_t *)
+            globus_malloc(sizeof(lstore_handle_t));
+    if (!h) {
+        (*retval_ext) = -1;
+        return NULL;
+    }
+    memset(h, '\0', sizeof(lstore_handle_t));
+
+    h->mutex = (globus_mutex_t *)malloc(sizeof(globus_mutex_t));
+    if (!h->mutex) {
+        (*retval_ext) = -2;
+        return NULL;
+    }
+    if (globus_mutex_init(h->mutex, GLOBUS_NULL)) {
+        (*retval_ext) = -3;
+        return NULL;
+    }
+    h->optimal_count = 2;
+    h->block_size = 262144;
+    h->prefix = strdup("/lio/lfs");
+    if (!h->prefix) {
+        (*retval_ext) = -4;
+        return NULL;
+    }
+
+    return h;
+}
+
+
+void user_handle_del(lstore_handle_t *h) {
+    printf("Del handle\n");
+    if (!h) {
+        return;
+    }
+    if (h->prefix) {
+        free(h->prefix);
+    }
+    if (h->mutex) {
+        globus_free(h->mutex);
+    }
+    if (h->expected_checksum) {
+        free(h->expected_checksum);
+    }
+    if (h->fd) {
+        gop_sync_exec(lio_close_op(h->fd));
+    }
+    globus_free(h);
 }
