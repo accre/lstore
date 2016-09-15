@@ -203,7 +203,7 @@ globus_l_gfs_lstore_command(
     globus_result_t result = GLOBUS_SUCCESS;
 
     char *response = GLOBUS_NULL;
-    int retval = 0; // user_cmd(lstore_handle, stat_info, &stat_array, &stat_count);
+    int retval = user_command(lstore_handle, cmd_info, &response);
     if (retval == GLOBUS_FAILURE) {
         // Catchall for generic globus oopsies
         GlobusGFSErrorGenericStr(result, ("[lstore] Failed to start session."));
