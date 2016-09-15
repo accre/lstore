@@ -71,12 +71,6 @@ char *copy_path_to_lstore(const char *prefix, const char *path);
 void destroy_stat(globus_gfs_stat_t * stat_array, int stat_count);
 
 /**
- * GFS wrapper around user_xfer_pump
- * @param h Handle to LStore
- */
-void gfs_xfer_pump(lstore_handle_t *h);
-
-/**
  * Converts a GridFTP to a path within LStore
  * @param path Input path
  * @param prefix LStore mount prefix

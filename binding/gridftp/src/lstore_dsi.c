@@ -27,14 +27,14 @@
 #include "version.h"
 
 // Forward declaration
-void gfs_xfer_pump(lstore_handle_t *h);
-void gfs_recv_callback(globus_gfs_operation_t op,
-                        globus_result_t result,
-                        globus_byte_t * buffer,
-                        globus_size_t nbytes,
-                        globus_off_t offset,
-                        globus_bool_t eof,
-                        void * user_arg);
+static void gfs_xfer_pump(lstore_handle_t *h);
+static void gfs_recv_callback(globus_gfs_operation_t op,
+                                globus_result_t result,
+                                globus_byte_t * buffer,
+                                globus_size_t nbytes,
+                                globus_off_t offset,
+                                globus_bool_t eof,
+                                void * user_arg);
 
 static
 globus_version_t local_version =
@@ -415,7 +415,7 @@ globus_l_gfs_lstore_deactivate(void)
  * callbacks triggerd by Globus.
  */
 #define MAX_CONCURRENCY_PER_LOOP ((int) 32)
-void gfs_xfer_pump(lstore_handle_t *h) {
+static void gfs_xfer_pump(lstore_handle_t *h) {
     GlobusGFSName(gfs_xfer_pump);
     globus_gridftp_server_get_optimal_concurrency(h->op, &h->optimal_count);
     globus_byte_t *buf_list[MAX_CONCURRENCY_PER_LOOP];
@@ -460,13 +460,13 @@ void gfs_xfer_pump(lstore_handle_t *h) {
  * Wraps the user_ version of the same. This function handles all the gridftp-
  * specific setup/teardown
  */
-void gfs_recv_callback(globus_gfs_operation_t op,
-                        globus_result_t result,
-                        globus_byte_t * buffer,
-                        globus_size_t nbytes,
-                        globus_off_t offset,
-                        globus_bool_t eof,
-                        void * user_arg) {
+static void gfs_recv_callback(globus_gfs_operation_t op,
+                                globus_result_t result,
+                                globus_byte_t * buffer,
+                                globus_size_t nbytes,
+                                globus_off_t offset,
+                                globus_bool_t eof,
+                                void * user_arg) {
     GlobusGFSName(gfs_recv_callback);
     lstore_handle_t *h = (lstore_handle_t *) user_arg;
 
