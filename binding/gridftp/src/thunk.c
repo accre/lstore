@@ -163,6 +163,54 @@ int user_command(lstore_handle_t *h, globus_gfs_command_info_t * info,
     return retval;
 }
 
+int user_recv_callback(lstore_handle_t *h,
+                        char *buffer,
+                        globus_size_t nbytes,
+                        globus_off_t offset) {
+    int retval = lio_write(h->fd, (char *)buffer, nbytes, offset, NULL);
+    return (retval == nbytes) ? 0 : 1;
+}
+
+int user_recv_init(lstore_handle_t *h,
+                    globus_gfs_transfer_info_t * transfer_info) {
+    h->xfer_direction = XFER_RECV;
+    int retval = plugin_xfer_init(h, transfer_info, XFER_RECV);
+    if (!retval) {
+        return retval;
+    }
+
+    return 0;
+}
+
+// AKA globus_l_gfs_posix_write_to_storage
+int user_xfer_pump(lstore_handle_t *h, char **buf_idx, int *buf_len) {
+    int count = 0;
+
+    while ((h->outstanding_count < h->optimal_count) && (count < *(buf_len))) {
+
+        // This implementation is obviously junk. Make it better.
+        buf_idx[count] = globus_malloc(h->block_size);
+        if (buf_idx[count] == NULL) {
+            goto error_allocblock;
+        }
+        ++count;
+        ++(h->outstanding_count);
+    }
+
+    (*buf_len) = count;
+    return 0;
+
+error_allocblock:
+    while (count > 0) {
+        if (buf_idx[count]) {
+            globus_free(buf_idx[count]);
+        }
+        --count;
+    }
+    (*buf_len) = 0;
+    return -1;
+}
+
 lstore_handle_t *user_handle_new(int *retval_ext) {
     printf("New handle\n");
     (*retval_ext) = 0;

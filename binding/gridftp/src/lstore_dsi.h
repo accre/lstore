@@ -26,6 +26,19 @@
 // Typedefs
 typedef enum xfer_direction_t xfer_direction_t;
 typedef struct lstore_handle_t lstore_handle_t;
+typedef globus_result_t (*gridftp_register_fn_t)(
+                                    globus_gfs_operation_t op,
+                                    globus_byte_t * buffer,
+                                    globus_size_t length,
+                                    globus_gridftp_server_read_cb_t callback,
+                                    void * user_arg);
+typedef void (*gridftp_xfer_cb_fn_t)(globus_gfs_operation_t op,
+                                    globus_result_t result,
+                                    globus_byte_t * buffer,
+                                    globus_size_t nbytes,
+                                    globus_off_t offset,
+                                    globus_bool_t eof,
+                                    void * user_arg);
 
 // Functions
 /**
@@ -56,6 +69,12 @@ char *copy_path_to_lstore(const char *prefix, const char *path);
  * @param stat_count Number of elements in array
  */
 void destroy_stat(globus_gfs_stat_t * stat_array, int stat_count);
+
+/**
+ * GFS wrapper around user_xfer_pump
+ * @param h Handle to LStore
+ */
+void gfs_xfer_pump(lstore_handle_t *h);
 
 /**
  * Converts a GridFTP to a path within LStore
@@ -108,6 +127,18 @@ int plugin_rmdir(lstore_handle_t *h, char *path);
 int plugin_stat(lstore_handle_t *h, tbx_stack_t *stack, const char *path, int file_only);
 
 /**
+ * Begins the process to start receiving a file from a client
+ * @param h Handle to LStore
+ * @param transfer_info Globus structure with all the info we need
+ * @param direction Whether the transfer should send/recv
+ * @returns zero on success, error otherwise
+ */
+int plugin_xfer_init(lstore_handle_t *h,
+                        globus_gfs_transfer_info_t * transfer_info,
+                        xfer_direction_t direction);
+
+
+/**
  * Tranfers a POSIX stat struct into a globus stat struct
  * @param stat_object Globus target object
  * @param fileInfo POSIX source object
@@ -148,6 +179,15 @@ void user_handle_del(lstore_handle_t *handle);
  */
 lstore_handle_t *user_handle_new(int *retval_ext);
 
+int user_recv_callback(lstore_handle_t *h,
+                        char *buffer,
+                        globus_size_t nbytes,
+                        globus_off_t offset);
+
+int user_recv_init(lstore_handle_t *h,
+                    globus_gfs_transfer_info_t * transfer_info);
+
+
 /**
  * Stat a file/directory
  * @param h Session handle
@@ -160,6 +200,15 @@ int user_stat(lstore_handle_t *h,
                 globus_gfs_stat_info_t *info,
                 globus_gfs_stat_t ** ret,
                 int *ret_count);
+
+/**
+ * Pumps the GridFTP transfers by filling buf_idx with pointers to buffers
+ * @param h Handle to LStore
+ * @param buf_idx Array of pointers to buffers to be filled
+ * @param buf_len Initially size of buf_idx. Afterwards the number filled
+ * @returns 0 on success, -1 if a block couldn't be allocated
+ */
+int user_xfer_pump(lstore_handle_t *h, char **buf_idx, int *buf_len);
 
 /**
  * Closes a user session

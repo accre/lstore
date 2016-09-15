@@ -16,6 +16,7 @@ set(GRIDFTP_OBJS
         src/stat.c
         src/thunk.c
         src/util.c
+        src/xfer.c
     )
 set(GRIDFTP_LIBS
         toolbox
