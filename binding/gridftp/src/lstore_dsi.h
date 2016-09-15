@@ -42,6 +42,14 @@ int activate();
 int deactivate();
 
 /**
+ * Converts a GridFTP to a path within LStore and copies it
+ * @param path Input path
+ * @param prefix LStore mount prefix
+ * @returns LStore path if it exists, NULL otherwise
+ */
+char *copy_path_to_lstore(const char *prefix, const char *path);
+
+/**
  * Destroys a globus stat array
  * @param stat_array Array to be destroyed
  * @param stat_count Number of elements in array

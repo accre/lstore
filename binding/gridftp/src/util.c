@@ -26,6 +26,9 @@
 #define ADVANCE_SLASHES(X) while ((X)[0] == '/' && (X)[1] == '/') { (X)++; }
 
 const char *path_to_lstore(const char *prefix, const char *path) {
+    if (!path) {
+        return NULL;
+    }
     ADVANCE_SLASHES(path);
     if (strncmp(path, prefix, strlen(prefix)) == 0) {
         path += strlen(prefix);
@@ -33,6 +36,19 @@ const char *path_to_lstore(const char *prefix, const char *path) {
         return path;
     }
     return NULL;
+}
+
+char *copy_path_to_lstore(const char *prefix, const char *path) {
+    // Extract the LStore-specific path
+    const char *lstore_path = path_to_lstore(prefix, path);
+    if (!lstore_path) {
+        return NULL;
+    }
+    char *path_copy = strdup(lstore_path);
+    if (!path_copy) {
+        return NULL;
+    }
+    return path_copy;
 }
  
 /*

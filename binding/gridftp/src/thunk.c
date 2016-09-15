@@ -133,15 +133,11 @@ error_initstack:
     return retval;
 }
 
+
 int user_command(lstore_handle_t *h, globus_gfs_command_info_t * info,
                     char **response) {
     int retval = -1;
-    // Extract the LStore-specific path
-    const char *lstore_path = path_to_lstore(h->prefix, info->pathname);
-    if (!lstore_path) {
-        return -1;
-    }
-    char *path_copy = strdup(lstore_path);
+    char *path_copy = copy_path_to_lstore(h->prefix, info->pathname);
     if (!path_copy) {
         return -1;
     }
