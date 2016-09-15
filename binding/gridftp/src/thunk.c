@@ -168,6 +168,7 @@ int user_recv_callback(lstore_handle_t *h,
                         globus_size_t nbytes,
                         globus_off_t offset) {
     int retval = lio_write(h->fd, (char *)buffer, nbytes, offset, NULL);
+    free(buffer);
     return (retval == nbytes) ? 0 : 1;
 }
 
