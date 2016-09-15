@@ -230,6 +230,8 @@ globus_l_gfs_lstore_command(
  *     globus_gridftp_server_begin_transfer();
  *     globus_gridftp_server_register_read();
  *     globus_gridftp_server_finished_transfer();
+ *
+ * Function heavily stolen from xrootd-dsi plugin
  */
 static
 void
