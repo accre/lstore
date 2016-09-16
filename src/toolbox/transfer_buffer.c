@@ -52,11 +52,11 @@ int tbx_tbuf_next(tbx_tbuf_t *tb, size_t off, tbx_tbuf_var_t *tbv) {
 }
 
 //*************************************************************
-// tbuffer_var_create - Creates a transfer buffer VARIABLE containing
+// tbx_tbuf_var_create - Creates a transfer buffer VARIABLE containing
 //     tbuffer state information
 //*************************************************************
 
-tbx_tbuf_var_t *tbuffer_var_create()
+tbx_tbuf_var_t *tbx_tbuf_var_create()
 {
     tbx_tbuf_var_t *tbv;
 
@@ -67,20 +67,20 @@ tbx_tbuf_var_t *tbuffer_var_create()
 }
 
 //*************************************************************
-// tbuffer_var_destroy - Destroys a previously created transfer buffer
+// tbx_tbuf_var_destroy - Destroys a previously created transfer buffer
 //    VARIABLE
 //*************************************************************
 
-void tbuffer_var_destroy(tbx_tbuf_var_t *tbv)
+void tbx_tbuf_var_destroy(tbx_tbuf_var_t *tbv)
 {
     free(tbv);
 }
 
 //*************************************************************
-// tbuffer_create - Creates a transfer buffer
+// tbx_tbuf_create - Creates a transfer buffer
 //*************************************************************
 
-tbx_tbuf_t *tbuffer_create()
+tbx_tbuf_t *tbx_tbuf_create()
 {
     tbx_tbuf_t *tb;
 
@@ -90,10 +90,10 @@ tbx_tbuf_t *tbuffer_create()
 }
 
 //*************************************************************
-// tbuffer_destroy - Destroys a previously created transfer buffer
+// tbx_tbuf_destroy - Destroys a previously created transfer buffer
 //*************************************************************
 
-void tbuffer_destroy(tbx_tbuf_t *tb)
+void tbx_tbuf_destroy(tbx_tbuf_t *tb)
 {
     free(tb);
 }

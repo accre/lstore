@@ -63,6 +63,11 @@ TBX_API void tbx_tbuf_vec(tbx_tbuf_t *tb,
                             size_t total_bytes,
                             size_t n_vec,
                             tbx_iovec_t *iov);
+TBX_API tbx_tbuf_var_t *tbx_tbuf_var_create();
+TBX_API void tbx_tbuf_var_destroy(tbx_tbuf_var_t *tbv);
+TBX_API tbx_tbuf_t *tbx_tbuf_create();
+TBX_API void tbx_tbuf_destroy(tbx_tbuf_t *tb);
+
 
 // Preprocessor macros
 #define tbx_tbuf_var_init(tbv) memset((tbv), 0, tbx_tbuf_var_size())

@@ -50,10 +50,6 @@ struct tbx_tbuf_t {
     int (*next_block)(tbx_tbuf_t *tb, size_t off, tbx_tbuf_var_t *tbv);
     tbx_tbuf_info_t buf;
 };
-tbx_tbuf_var_t *tbuffer_var_create();
-void tbuffer_var_destroy(tbx_tbuf_var_t *tbv);
-tbx_tbuf_t *tbuffer_create();
-void tbuffer_destroy(tbx_tbuf_t *tb);
 
 #ifdef __cplusplus
 }
