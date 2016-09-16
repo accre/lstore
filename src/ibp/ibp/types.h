@@ -32,7 +32,6 @@ extern "C" {
 // Typedefs
 typedef int64_t ibp_off_t;  //** Base IBP offset/size data type
 typedef char ibp_cap_t;
-typedef char* ibp_cap_ptr_t;
 typedef struct ibp_capset_t ibp_capset_t;
 typedef struct ibp_attributes_t ibp_attributes_t;
 typedef struct ibp_proxy_capstatus_t ibp_proxy_capstatus_t;
@@ -117,9 +116,9 @@ struct ibp_depot_t {
 };
 
 struct ibp_capset_t {
-    ibp_cap_ptr_t readCap;  /* read capability */
-    ibp_cap_ptr_t writeCap;  /* write capability */
-    ibp_cap_ptr_t manageCap;  /* manage capability */
+    ibp_cap_t *readCap;  /* read capability */
+    ibp_cap_t *writeCap;  /* write capability */
+    ibp_cap_t *manageCap;  /* manage capability */
 };
 
 struct ibp_capstatus_t {
