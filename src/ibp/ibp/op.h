@@ -48,8 +48,15 @@ typedef struct ibp_op_version_t ibp_op_version_t;
 typedef struct ibp_rw_buf_t ibp_rw_buf_t;
 
 // Functions
+IBP_API gop_op_generic_t *ibp_proxy_modify_count_gop(ibp_context_t *ic, ibp_cap_t *cap, ibp_cap_t *mcap, int mode, int captype, int timeout);
+IBP_API gop_op_generic_t *ibp_depot_modify_gop(ibp_context_t *ic, ibp_depot_t *depot, char *password, ibp_off_t hard, ibp_off_t soft, int duration, int timeout);
+IBP_API gop_op_generic_t *ibp_rename_gop(ibp_context_t *ic, ibp_capset_t *caps, ibp_cap_t *mcap, int timeout);
+IBP_API gop_op_generic_t *ibp_merge_alloc_gop(ibp_context_t *ic, ibp_cap_t *mcap, ibp_cap_t *ccap, int timeout);
+IBP_API gop_op_generic_t *ibp_split_alloc_gop(ibp_context_t *ic, ibp_cap_t *mcap, ibp_capset_t *caps, ibp_off_t size, ibp_attributes_t *attr, int disk_cs_type, ibp_off_t disk_blocksize, int timeout);
 IBP_API gop_op_generic_t *ibp_proxy_alloc_gop(ibp_context_t *ic, ibp_capset_t *caps, ibp_cap_t *mcap, ibp_off_t offset, ibp_off_t size, int duration, int timeout);
+IBP_API gop_op_generic_t *ibp_proxy_modify_alloc_gop(ibp_context_t *ic, ibp_cap_t *cap, ibp_cap_t *mcap, ibp_off_t offset, ibp_off_t size, int duration, int timeout);
 IBP_API gop_op_generic_t *ibp_proxy_remove_gop(ibp_context_t *ic, ibp_cap_t *cap, ibp_cap_t *mcap, int timeout);
+IBP_API gop_op_generic_t *ibp_proxy_probe_gop(ibp_context_t *ic, ibp_cap_t *cap, ibp_proxy_capstatus_t *probe, int timeout);
 IBP_API gop_op_generic_t *ibp_alloc_gop(ibp_context_t *ic, ibp_capset_t *caps, ibp_off_t size, ibp_depot_t *depot, ibp_attributes_t *attr, int disk_cs_type, ibp_off_t disk_blocksize, int timeout);
 IBP_API gop_op_generic_t *ibp_append_gop(ibp_context_t *ic, ibp_cap_t *cap, tbx_tbuf_t *buffer, ibp_off_t boff, ibp_off_t len, int timeout);
 IBP_API int ibp_cc_type(ibp_connect_context_t *cc);

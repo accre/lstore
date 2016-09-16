@@ -120,13 +120,6 @@ extern gop_op_status_t ibp_error_status;
 
 ibp_op_t *new_ibp_op(ibp_context_t *ic);
 
-gop_op_generic_t *ibp_proxy_modify_alloc_gop(ibp_context_t *ic, ibp_cap_t *cap, ibp_cap_t *mcap, ibp_off_t offset, ibp_off_t size, int duration, int timeout);
-gop_op_generic_t *ibp_proxy_modify_count_gop(ibp_context_t *ic, ibp_cap_t *cap, ibp_cap_t *mcap, int mode, int captype, int timeout);
-gop_op_generic_t *ibp_proxy_probe_gop(ibp_context_t *ic, ibp_cap_t *cap, ibp_proxy_capstatus_t *probe, int timeout);
-gop_op_generic_t *ibp_depot_modify_gop(ibp_context_t *ic, ibp_depot_t *depot, char *password, ibp_off_t hard, ibp_off_t soft, int duration, int timeout);
-gop_op_generic_t *ibp_merge_alloc_gop(ibp_context_t *ic, ibp_cap_t *mcap, ibp_cap_t *ccap, int timeout);
-gop_op_generic_t *ibp_rename_gop(ibp_context_t *ic, ibp_capset_t *caps, ibp_cap_t *mcap, int timeout);
-gop_op_generic_t *ibp_split_alloc_gop(ibp_context_t *ic, ibp_cap_t *mcap, ibp_capset_t *caps, ibp_off_t size, ibp_attributes_t *attr, int disk_cs_type, ibp_off_t disk_blocksize, int timeout);
 void init_ibp_base_op(ibp_op_t *op, char *logstr, int timeout, int workload, char *hostport, int cmp_size, int primary_cmd, int sub_cmd);
 void set_ibp_rw_gop(ibp_op_t *op, int rw_type, ibp_cap_t *cap, ibp_off_t offset, tbx_tbuf_t *buffer, ibp_off_t boff, ibp_off_t len, int timeout);
 void set_ibp_truncate_gop(ibp_op_t *op, ibp_cap_t *cap, ibp_off_t size, int timeout);
@@ -172,9 +165,6 @@ double ibp_get_transfer_rate(ibp_context_t *ic);
 //void set_ibp_config(ibp_config_t *cfg);
 void default_ibp_config(ibp_context_t *ic);
 
-//*** ibp_sync.c ***
-IBP_API unsigned long int IBP_phoebus_copy(char *path, ibp_cap_t *srccap, ibp_cap_t *destcap, ibp_timer_t  *src_timer, ibp_timer_t *dest_timer,
-        ibp_off_t size, ibp_off_t offset);
 void destroy_ibp_sync_context();
 
 //**** ibp_version.c *******
