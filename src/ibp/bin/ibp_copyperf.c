@@ -366,7 +366,7 @@ int main(int argc, char **argv)
             i++;
             tbx_ns_chksum_set(&ns_cs, &cs, blocksize);
             ncs = &ns_cs;
-            ibp_chksum_set(ic, ncs);
+            ibp_context_chksum_set(ic, ncs);
         } else if (strcmp(argv[i], "-disk_chksum") == 0) { //** Add checksum capability
             i++;
             disk_cs_name = argv[i];
