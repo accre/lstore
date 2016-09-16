@@ -73,7 +73,6 @@ IBP_API void ibp_read_cc_set(ibp_context_t *ic, ibp_connect_context_t *cc);
 IBP_API gop_op_generic_t *ibp_read_gop(ibp_context_t *ic, ibp_cap_t *cap, ibp_off_t offset, tbx_tbuf_t *buffer, ibp_off_t boff, ibp_off_t len, int timeout);
 IBP_API gop_op_generic_t *ibp_remove_gop(ibp_context_t *ic, ibp_cap_t *cap, int timeout);
 IBP_API gop_op_generic_t *ibp_rw_gop(ibp_context_t *ic, int rw_type, ibp_cap_t *cap, ibp_off_t offset, tbx_tbuf_t *buffer, ibp_off_t boff, ibp_off_t len, int timeout);
-IBP_API int ibp_sync_command(ibp_op_t *op);
 IBP_API void ibp_tcpsize_set(ibp_context_t *ic, int n);
 IBP_API gop_op_generic_t *ibp_truncate_gop(ibp_context_t *ic, ibp_cap_t *cap, ibp_off_t size, int timeout);
 IBP_API gop_op_generic_t *ibp_validate_chksum_gop(ibp_context_t *ic, ibp_cap_t *mcap, int correct_errors, int *n_bad_blocks, int timeout);
