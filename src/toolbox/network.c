@@ -36,6 +36,7 @@
 #include "tbx/fmttypes.h"
 #include "tbx/log.h"
 #include "tbx/network.h"
+#include "tbx/type_malloc.h"
 #include "transfer_buffer.h"
 
 // Accessors
@@ -60,6 +61,17 @@ void tbx_ns_chksum_read_disable(tbx_ns_t *ns) {  (ns)->read_chksum.is_running = 
 void tbx_ns_chksum_read_enable(tbx_ns_t *ns) { (ns)->read_chksum.is_running = 1; }
 void tbx_ns_chksum_write_clear(tbx_ns_t *ns) { (ns)->write_chksum.is_valid = 0; }
 void tbx_ns_chksum_write_enable(tbx_ns_t *ns) { (ns)->write_chksum.is_running = 1; }
+
+void tbx_ns_chksum_del(tbx_ns_chksum_t *nsc)  { free(nsc); }
+
+tbx_ns_chksum_t *tbx_ns_chksum_new()
+{
+  tbx_ns_chksum_t *nsc;
+
+  tbx_type_malloc_clear(nsc, tbx_ns_chksum_t, 1);
+
+  return(nsc);
+}
 
 // Forward declarations
 int _tbx_ns_read(tbx_ns_t *ns, tbx_tbuf_t *buffer, unsigned int boff, int size, tbx_ns_timeout_t timeout, int dolock);

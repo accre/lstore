@@ -50,6 +50,8 @@ enum tbx_net_type_t {
 TBX_API void  tbx_ns_setid(tbx_ns_t *ns, int id);
 TBX_API int tbx_network_counter(tbx_network_t *net);
 TBX_API int tbx_ns_chksum_is_valid(tbx_ns_chksum_t *ncs);
+TBX_API void tbx_ns_chksum_del(tbx_ns_chksum_t *nsc);
+TBX_API tbx_ns_chksum_t *tbx_ns_chksum_new();
 TBX_API void tbx_ns_chksum_read_clear(tbx_ns_t *ns);
 TBX_API void tbx_ns_chksum_read_disable(tbx_ns_t *ns);
 TBX_API void tbx_ns_chksum_read_enable(tbx_ns_t *ns);
