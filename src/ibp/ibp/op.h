@@ -68,7 +68,7 @@ IBP_API void ibp_context_destroy(ibp_context_t *ic);
 IBP_API gop_op_generic_t *ibp_copy_gop(ibp_context_t *ic, int mode, int ns_type, char *path, ibp_cap_t *srccap, ibp_cap_t *destcap, ibp_off_t src_offset, ibp_off_t dest_offset, ibp_off_t size, int src_timeout, int dest_timeout, int dest_client_timeout);
 IBP_API gop_op_generic_t *ibp_copyappend_gop(ibp_context_t *ic, int ns_type, char *path, ibp_cap_t *srccap, ibp_cap_t *destcap, ibp_off_t src_offset, ibp_off_t size, int src_timeout, int  dest_timeout, int dest_client_timeout);
 IBP_API gop_op_generic_t *ibp_depot_inq_gop(ibp_context_t *ic, ibp_depot_t *depot, char *password, ibp_depotinfo_t *di, int timeout);
-IBP_API void ibp_max_depot_threads_set(ibp_context_t *ic, int n);
+IBP_API void ibp_context_max_depot_threads_set(ibp_context_t *ic, int n);
 IBP_API gop_op_generic_t *ibp_modify_alloc_gop(ibp_context_t *ic, ibp_cap_t *cap, ibp_off_t size, int duration, int reliability, int timeout);
 IBP_API gop_op_generic_t *ibp_modify_count_gop(ibp_context_t *ic, ibp_cap_t *cap, int mode, int captype, int timeout);
 IBP_API void ibp_op_cc_set(gop_op_generic_t *gop, ibp_connect_context_t *cc);
@@ -90,6 +90,32 @@ IBP_API gop_op_generic_t *ibp_version_gop(ibp_context_t *ic, ibp_depot_t *depot,
 IBP_API void ibp_write_cc_set(ibp_context_t *ic, ibp_connect_context_t *cc);
 IBP_API gop_op_generic_t *ibp_write_gop(ibp_context_t *ic, ibp_cap_t *cap, ibp_off_t offset, tbx_tbuf_t *buffer, ibp_off_t boff, ibp_off_t len, int timeout);
 IBP_API void ibp_set_sync_context(ibp_context_t *ic);
+
+// Config accessor functions
+IBP_API int ibp_context_chksum_set(ibp_context_t *ic, tbx_ns_chksum_t *ncs);
+IBP_API void ibp_context_chksum_get(ibp_context_t *ic, tbx_ns_chksum_t *ncs);
+IBP_API void ibp_context_abort_attempts_set(ibp_context_t *ic, int n);
+IBP_API int  ibp_context_abort_attempts_get(ibp_context_t *ic);
+IBP_API int  ibp_context_tcpsize_get(ibp_context_t *ic);
+IBP_API void ibp_context_min_depot_threads_set(ibp_context_t *ic, int n);
+IBP_API int  ibp_context_min_depot_threads_get(ibp_context_t *ic);
+IBP_API int  ibp_context_max_depot_threads_get(ibp_context_t *ic);
+IBP_API void ibp_context_max_connections_set(ibp_context_t *ic, int n);
+IBP_API int  ibp_context_max_connections_get(ibp_context_t *ic);
+IBP_API void ibp_context_command_weight_set(ibp_context_t *ic, int n);
+IBP_API int  ibp_context_command_weight_get(ibp_context_t *ic);
+IBP_API void ibp_context_max_thread_workload_set(ibp_context_t *ic, int64_t n);
+IBP_API int64_t  ibp_context_max_thread_workload_get(ibp_context_t *ic);
+IBP_API void ibp_context_max_coalesce_workload_set(ibp_context_t *ic, int64_t n);
+IBP_API int64_t  ibp_context_max_coalesce_workload_get(ibp_context_t *ic);
+IBP_API void ibp_context_wait_stable_time_set(ibp_context_t *ic, int n);
+IBP_API int  ibp_context_wait_stable_time_get(ibp_context_t *ic);
+IBP_API void ibp_context_check_interval_set(ibp_context_t *ic, int n);
+IBP_API int  ibp_context_check_interval_get(ibp_context_t *ic);
+IBP_API void ibp_context_max_retry_set(ibp_context_t *ic, int n);
+IBP_API int  ibp_context_max_retry_get(ibp_context_t *ic);
+IBP_API void ibp_context_transfer_rate_set(ibp_context_t *ic, double rate);
+IBP_API double ibp_context_transfer_rate_get(ibp_context_t *ic);
 
 // Preprocessor constants
 #define MAX_KEY_SIZE 256

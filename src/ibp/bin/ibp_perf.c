@@ -848,9 +848,9 @@ int main(int argc, char **argv)
     //*** Get thread count ***
     nthreads = atoi(argv[i]);
     if (nthreads <= 0) {
-        nthreads = ibp_max_depot_threads_get(ic);
+        nthreads = ibp_context_max_depot_threads_get(ic);
     } else {
-        ibp_max_depot_threads_set(ic, nthreads);
+        ibp_context_max_depot_threads_set(ic, nthreads);
     }
     i++;
 
@@ -953,7 +953,7 @@ int main(int argc, char **argv)
         printf("Saving allocations to %s\n", out_fname);
     }
 
-    printf("TCP buffer size: %dkb (0 defaults to OS)\n", ibp_tcpsize_get(ic)/1024);
+    printf("TCP buffer size: %dkb (0 defaults to OS)\n", ibp_context_tcpsize_get(ic)/1024);
     printf("\n");
 
     printf("======= Bulk transfer options =======\n");

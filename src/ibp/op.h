@@ -131,36 +131,13 @@ int ibp_op_id(ibp_op_t *op);
 //** IBP_VALDIATE_CHKSUM
 
 //** IBP_GET_CHKSUM
-gop_op_generic_t *ibp_get_chksum_gop(ibp_context_t *ic, ibp_cap_t *mcap, int chksum_info_only,
+gop_op_generic_t *ibp_context_chksum_get_gop(ibp_context_t *ic, ibp_cap_t *mcap, int chksum_info_only,
         int *cs_type, int *cs_size, ibp_off_t *blocksize, ibp_off_t *nblocks, ibp_off_t *n_chksumbytes, char *buffer, ibp_off_t bufsize,
         int timeout);
 
 //** ibp_config.c **
 int ibp_rw_submit_coalesce(tbx_stack_t *stack, tbx_stack_ele_t *ele);
 int ibp_rw_coalesce(gop_op_generic_t *gop);
-void ibp_get_chksum(ibp_context_t *ic, tbx_ns_chksum_t *ncs);
-void ibp_set_abort_attempts(ibp_context_t *ic, int n);
-int  ibp_get_abort_attempts(ibp_context_t *ic);
-IBP_API int  ibp_tcpsize_get(ibp_context_t *ic);
-void ibp_set_min_depot_threads(ibp_context_t *ic, int n);
-int  ibp_get_min_depot_threads(ibp_context_t *ic);
-IBP_API int  ibp_max_depot_threads_get(ibp_context_t *ic);
-void ibp_set_max_connections(ibp_context_t *ic, int n);
-int  ibp_get_max_connections(ibp_context_t *ic);
-void ibp_set_command_weight(ibp_context_t *ic, int n);
-int  ibp_get_command_weight(ibp_context_t *ic);
-void ibp_set_max_thread_workload(ibp_context_t *ic, int64_t n);
-int64_t  ibp_get_max_thread_workload(ibp_context_t *ic);
-void ibp_set_max_coalesce_workload(ibp_context_t *ic, int64_t n);
-int64_t  ibp_get_max_coalesce_workload(ibp_context_t *ic);
-void ibp_set_wait_stable_time(ibp_context_t *ic, int n);
-int  ibp_get_wait_stable_time(ibp_context_t *ic);
-void ibp_set_check_interval(ibp_context_t *ic, int n);
-int  ibp_get_check_interval(ibp_context_t *ic);
-void ibp_set_max_retry(ibp_context_t *ic, int n);
-int  ibp_get_max_retry(ibp_context_t *ic);
-void ibp_set_transfer_rate(ibp_context_t *ic, double rate);
-double ibp_get_transfer_rate(ibp_context_t *ic);
 
 //void set_ibp_config(ibp_config_t *cfg);
 void default_ibp_config(ibp_context_t *ic);
