@@ -69,35 +69,33 @@ TBX_API tbx_tbuf_t *tbx_tbuf_create();
 TBX_API void tbx_tbuf_destroy(tbx_tbuf_t *tb);
 
 
-// Preprocessor macros
 #define tbx_tbuf_var_init(tbv) memset((tbv), 0, tbx_tbuf_var_size())
-#if !defined toolbox_EXPORTS && defined LSTORE_HACK_EXPORT
-    struct tbx_tbuf_info_t {
-        size_t total_bytes;
-        int n;
-        tbx_iovec_t  *iov;
-        tbx_iovec_t  io_single;
-    };
+struct tbx_tbuf_info_t {
+    size_t total_bytes;
+    int n;
+    tbx_iovec_t  *iov;
+    tbx_iovec_t  io_single;
+};
 
-    struct tbx_tbuf_state_t {
-        int    curr_slot;
-        int    slot_total_pos;
-        tbx_iovec_t single;
-    };
+struct tbx_tbuf_state_t {
+    int    curr_slot;
+    int    slot_total_pos;
+    tbx_iovec_t single;
+};
 
-    struct tbx_tbuf_var_t {
-        size_t nbytes;
-        tbx_iovec_t *buffer;
-        int    n_iov;
-        tbx_tbuf_state_t priv;
-    };
+struct tbx_tbuf_var_t {
+    size_t nbytes;
+    tbx_iovec_t *buffer;
+    int    n_iov;
+    tbx_tbuf_state_t priv;
+};
 
-    struct tbx_tbuf_t {
-        void *arg;
-        int (*next_block)(tbx_tbuf_t *tb, size_t off, tbx_tbuf_var_t *tbv);
-        tbx_tbuf_info_t buf;
-    };
-#endif
+struct tbx_tbuf_t {
+    void *arg;
+    int (*next_block)(tbx_tbuf_t *tb, size_t off, tbx_tbuf_var_t *tbv);
+    tbx_tbuf_info_t buf;
+};
+
 #ifdef __cplusplus
 }
 #endif
