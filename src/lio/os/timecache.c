@@ -847,9 +847,11 @@ void ostc_cache_process_attrs(lio_object_service_fn_t *os, char *fname, int ftyp
 
             //** Make the attr on the target link
             if (attr->val) free(attr->val);
-            tbx_type_malloc(attr->val, void, v_size[i]+1);
-            memcpy(attr->val, val[i], v_size[i]);
-            ((char *)(attr->val))[v_size[i]] = 0;  //** NULL terminate
+                if (v_size[i] > 0) {
+                    tbx_type_malloc(attr->val, void, v_size[i]+1);
+                    memcpy(attr->val, val[i], v_size[i]);
+                    ((char *)(attr->val))[v_size[i]] = 0;  //** NULL terminate
+                }
             attr->v_size = v_size[i];
 
             //** Now make the pointer on the source
