@@ -376,7 +376,14 @@ int main(int argc, char **argv)
 
         slot = 0;
         while ((ftype = lio_next_object(tuple.lc, it, &fname, &prefix_len)) > 0) {
-            w[slot].fname = fname;
+            if (ftype & OS_OBJECT_SYMLINK) { //** We skip symlinked files
+                free(fname);
+                for (i=-0; i<3; i++) {
+                    if (v_size[i] > 0) free(vals[i]);
+                }
+                continue;
+            }            w[slot].fname = fname;
+
             w[slot].exnode = vals[0];
             w[slot].creds = tuple.lc->creds;
             w[slot].ic = ((lio_ds_ibp_priv_t *)(tuple.lc->ds->priv))->ic;
