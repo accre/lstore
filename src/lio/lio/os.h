@@ -46,23 +46,25 @@ typedef void os_fsck_iter_t;
 
 typedef enum lio_object_type_t lio_object_type_t;
 enum lio_object_type_t {
-    OS_OBJECT_FILE        = 0,  //** File object or attribute
-    OS_OBJECT_DIR         = 1,  //** Directory object
-    OS_OBJECT_SYMLINK     = 2,  //** A symlinked object or attribute
-    OS_OBJECT_HARDLINK    = 3,  //** A hard linked object
-    OS_OBJECT_BROKEN_LINK = 4,  //** Signifies a broken link
-    OS_OBJECT_VIRTUAL     = 5,  //** A virtual attribute
+    OS_OBJECT_FILE           = 0,  //** File object or attribute
+    OS_OBJECT_DIR            = 1,  //** Directory object
+    OS_OBJECT_SYMLINK        = 2,  //** A symlinked object or attribute
+    OS_OBJECT_HARDLINK       = 3,  //** A hard linked object
+    OS_OBJECT_BROKEN_LINK    = 4,  //** Signifies a broken link
+    OS_OBJECT_VIRTUAL        = 5,  //** A virtual attribute
+    OS_OBJECT_FOLLOW_SYMLINK = 6,  //** Follow symbolic links. Default is to skip them
 };
 
 typedef enum lio_object_type_flag_t lio_object_type_flag_t;
 enum lio_object_type_flag_t {
-    OS_OBJECT_FILE_FLAG        = (1 << OS_OBJECT_FILE),
-    OS_OBJECT_DIR_FLAG         = (1 << OS_OBJECT_DIR),
-    OS_OBJECT_SYMLINK_FLAG     = (1 << OS_OBJECT_SYMLINK),
-    OS_OBJECT_HARDLINK_FLAG    = (1 << OS_OBJECT_HARDLINK),
-    OS_OBJECT_BROKEN_LINK_FLAG = (1 << OS_OBJECT_BROKEN_LINK),
-    OS_OBJECT_VIRTUAL_FLAG     = (1 << OS_OBJECT_VIRTUAL),
-    OS_OBJECT_ANY_FLAG         = (0x3F) // 6 bits AKA 0x3F,
+    OS_OBJECT_FILE_FLAG           = (1 << OS_OBJECT_FILE),
+    OS_OBJECT_DIR_FLAG            = (1 << OS_OBJECT_DIR),
+    OS_OBJECT_SYMLINK_FLAG        = (1 << OS_OBJECT_SYMLINK),
+    OS_OBJECT_HARDLINK_FLAG       = (1 << OS_OBJECT_HARDLINK),
+    OS_OBJECT_BROKEN_LINK_FLAG    = (1 << OS_OBJECT_BROKEN_LINK),
+    OS_OBJECT_VIRTUAL_FLAG        = (1 << OS_OBJECT_VIRTUAL),
+    OS_OBJECT_FOLLOW_SYMLINK_FLAG = (1 << OS_OBJECT_FOLLOW_SYMLINK),
+    OS_OBJECT_ANY_FLAG         = (0x3F) // 6 bits AKA 0x3F. Doesn't include FOLLOW_SYMLINK
 };
 
 typedef void (*lio_os_destroy_service_fn_t)(lio_object_service_fn_t *os);
