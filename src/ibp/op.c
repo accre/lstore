@@ -395,7 +395,7 @@ gop_op_generic_t *ibp_vec_write_gop(ibp_context_t *ic, ibp_cap_t *cap, int n_iov
 
 gop_op_generic_t *ibp_append_gop(ibp_context_t *ic, ibp_cap_t *cap, tbx_tbuf_t *buffer, ibp_off_t bpos, ibp_off_t len, int timeout)
 {
-    gop_op_generic_t *gop = ibp_rw_gop(ic, IBP_STORE, cap, 0, buffer, bpos, len, timeout);
+    gop_op_generic_t *gop = ibp_rw_gop(ic, IBP_WRITE, cap, 0, buffer, bpos, len, timeout);
     if (gop == NULL) return(NULL);
 
     gop->op->cmd.send_command = append_command;
