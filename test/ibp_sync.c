@@ -105,7 +105,7 @@ int ibp_sync_command(gop_op_generic_t *gop)
     gop_op_status_t status;
     int err;
 
-//QWERT    gop_set_exec_mode(gop, OP_EXEC_DIRECT);
+    gop_set_exec_mode(gop, OP_EXEC_DIRECT);
     gop_start_execution(gop);
 
     //** and Wait for completion
@@ -141,8 +141,8 @@ void make_ibp_sync_context()
 {
     if (_ibp_sync != NULL) return;
 
-_ibp_sync = ic;
-//QWERT    _ibp_sync = ibp_context_create();
+//QWERT _ibp_sync = ic;
+    _ibp_sync = ibp_context_create();
 }
 
 //**************************************************************************
@@ -153,7 +153,7 @@ void destroy_ibp_sync_context()
 {
     if (_ibp_sync == NULL) return;
 
-//QWERT    ibp_context_destroy(_ibp_sync);
+    ibp_context_destroy(_ibp_sync);
 }
 
 //**************************************************************************
