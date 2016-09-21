@@ -845,7 +845,11 @@ gop_op_status_t allocate_recv(gop_op_generic_t *gop, tbx_ns_t *ns)
             _op_set_status(err, OP_STATE_FAILURE, IBP_E_GENERIC);
             return(err);
         } else {
-            _op_set_status(err, OP_STATE_FAILURE, status);
+            if (status == IBP_OK) {
+                _op_set_status(err, OP_STATE_FAILURE, IBP_E_GENERIC);
+            } else {
+                _op_set_status(err, OP_STATE_FAILURE, status);
+            }
             return(err);
         }
     }
