@@ -491,8 +491,7 @@ void perform_big_alloc_tests(ibp_depot_t *depot)
         failed_tests++;
         status = gop_get_status(op);
         printf("perform_big_alloc_test: FAILED ibp_allocate error! * nfailed=%d ibp_errno=%d\n", err, status.error_code);
-        gop_opque_free(q, OP_DESTROY);
-        return;
+        goto finished;
     }
 
     printf("perform_big_alloc_test: rcap=%s\n", ibp_cap_get(&caps, IBP_READCAP));
@@ -530,8 +529,7 @@ void perform_big_alloc_tests(ibp_depot_t *depot)
         failed_tests++;
         status = gop_get_status(op);
         printf("perform_big_alloc_test: FAILED Initial ibp_write error! * ibp_errno=%d\n", status.error_code);
-        gop_opque_free(q, OP_DESTROY);
-        return;
+        goto finished;
     }
 
     //** Verify the size/data pos
@@ -561,8 +559,7 @@ void perform_big_alloc_tests(ibp_depot_t *depot)
         failed_tests++;
         status = gop_get_status(op);
         printf("perform_big_alloc_test: FAILED Error in read! * ibp_errno=%d\n", status.error_code);
-        gop_opque_free(q, OP_DESTROY);
-        return;
+        goto finished;
     }
 
     //-------------------------------
@@ -574,8 +571,7 @@ void perform_big_alloc_tests(ibp_depot_t *depot)
     } else {
         failed_tests++;
         printf("perform_big_alloc_test: FAILED! strcmp = %d\n", err);
-        gop_opque_free(q, OP_DESTROY);
-        return;
+        goto finished;
     }
 
 
@@ -586,10 +582,9 @@ void perform_big_alloc_tests(ibp_depot_t *depot)
     err = opque_waitall(q);
     if (err != OP_STATE_SUCCESS) {
         printf("perform_big_alloc_test: Error removing the allocation!  ibp_errno=%d\n", err);
-        gop_opque_free(q, OP_DESTROY);
-        return;
     }
 
+finished:
     opque_finished_submission(q);
 
     gop_opque_free(q, OP_DESTROY);
