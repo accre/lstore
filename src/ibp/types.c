@@ -23,6 +23,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <tbx/assert_result.h>
+#include <tbx/type_malloc.h>
 #include <tbx/log.h>
 #include <time.h>
 
@@ -358,9 +359,19 @@ void ibp_cap_getstatus(ibp_capstatus_t *cs, int *readcount, int *writecount,
 void ridlist_init(ibp_ridlist_t *rlist, int size)
 {
     rlist->rl = (ibp_rid_t *)malloc(sizeof(ibp_rid_t)*size);
-   FATAL_UNLESS(rlist->rl != NULL);
+    FATAL_UNLESS(rlist->rl != NULL);
 
     rlist->n = size;
+}
+
+//*****************************************************************
+
+ibp_ridlist_t *ibp_ridlist_create()
+{
+  ibp_ridlist_t *rlist;
+
+  tbx_type_malloc_clear(rlist, ibp_ridlist_t, 1);
+  return(rlist);
 }
 
 //*****************************************************************
@@ -368,6 +379,7 @@ void ridlist_init(ibp_ridlist_t *rlist, int size)
 void ibp_ridlist_destroy(ibp_ridlist_t *rlist)
 {
     free(rlist->rl);
+    free(rlist);
 }
 
 //*****************************************************************

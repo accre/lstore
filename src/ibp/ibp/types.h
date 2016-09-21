@@ -55,6 +55,7 @@ IBP_API char *ibp_rid2str(ibp_rid_t rid, char *buffer);
 IBP_API int ibp_rid_compare(ibp_rid_t rid1, ibp_rid_t rid2);
 IBP_API void ibp_rid_empty(ibp_rid_t *rid);
 IBP_API int ibp_rid_is_empty(ibp_rid_t rid);
+IBP_API ibp_ridlist_t *ibp_ridlist_create();
 IBP_API void ibp_ridlist_destroy(ibp_ridlist_t *rlist);
 IBP_API ibp_rid_t ibp_ridlist_element_get(ibp_ridlist_t *rlist, int index);
 IBP_API int ibp_ridlist_size_get(ibp_ridlist_t *rlist);
