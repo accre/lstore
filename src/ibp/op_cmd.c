@@ -314,6 +314,7 @@ gop_op_status_t read_recv(gop_op_generic_t *gop, tbx_ns_t *ns)
         log_printf(15, "read_recv: (read) ns=%d cap=%s offset[0]=" I64T " len[0]=" I64T " err=%d Error!  status=%d bytes=!%s!\n",
                    tbx_ns_getid(ns), cmd->cap, rwbuf->iovec[0].offset, rwbuf->size, err.op_status, status, buffer);
 
+        if (status == IBP_OK) status = IBP_E_GENERIC;
         process_error(gop, &err, status, swait, NULL);
         return(err);
     }
