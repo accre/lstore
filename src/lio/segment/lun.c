@@ -2314,8 +2314,6 @@ gop_op_status_t seglun_clone_func(void *arg, int id)
     int err, dir, i, j, k, *max_index, n_rows, n;
     tbx_stack_t **gop_stack;
     gop_opque_t *q;
-    apr_time_t dtus;
-    double dts;
     gop_op_generic_t *gop = NULL;
     gop_op_generic_t *gop_next;
     gop_op_status_t status;
@@ -2440,15 +2438,6 @@ gop_op_status_t seglun_clone_func(void *arg, int id)
         gop = opque_waitany(q);
         gop_next = tbx_stack_pop((tbx_stack_t *)gop_get_private(gop));
         if (gop_next != NULL) gop_opque_add(q, gop_next);
-
-        //** This is for diagnostics
-        dtus = gop->op->cmd.end_time - gop->op->cmd.start_time;
-        dts = (1.0*dtus) / (1.0*APR_USEC_PER_SEC);
-        ibp_op_t *iop = ibp_get_iop(gop);
-        ibp_op_copy_t *cmd = &(iop->ops.copy_op);
-        status = gop_get_status(gop);
-        log_printf(5, "clone_dt src=%s dest=%s  gid=%d status=(%d %d) dt=%lf\n", cmd->srccap, cmd->destcap, gop_id(gop), status.op_status, status.error_code, dts);
-
         gop_free(gop, OP_DESTROY);
     }
 
