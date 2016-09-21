@@ -72,11 +72,6 @@ void copy_ibp_capset(ibp_capset_t *src, ibp_capset_t *dest);
 ibp_capstatus_t *new_ibp_capstatus();
 void ibp_cap_destroystatus(ibp_capstatus_t *cs);
 void copy_ibp_capstatus(ibp_capstatus_t *src, ibp_capstatus_t *dest);
-ibp_proxy_capstatus_t *new_ibp_proxy_capstatus();
-void destroy_ibp_proxy_capstatus(ibp_proxy_capstatus_t *cs);
-void copy_ibp_proxy_capstatus(ibp_proxy_capstatus_t *src, ibp_proxy_capstatus_t *dest);
-void get_ibp_proxy_capstatus(ibp_proxy_capstatus_t *cs, int *readcount, int *writecount,
-                             ibp_off_t *offset, ibp_off_t *size, int *duration);
 void ridlist_init(ibp_ridlist_t *rlist, int size);
 
 #ifdef __cplusplus

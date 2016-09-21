@@ -63,6 +63,13 @@ IBP_API void ibp_attributes_set(ibp_attributes_t *attr, time_t duration, int rel
 IBP_API void ibp_depot_set(ibp_depot_t *d, char *host, int port, ibp_rid_t rid);
 IBP_API void ibp_timer_set(ibp_timer_t *t, int client_timeout, int server_timeout);
 
+//** The proxy framework is being replaced so these will go away soon
+IBP_API ibp_proxy_capstatus_t *new_ibp_proxy_capstatus();
+IBP_API void destroy_ibp_proxy_capstatus(ibp_proxy_capstatus_t *cs);
+IBP_API void copy_ibp_proxy_capstatus(ibp_proxy_capstatus_t *src, ibp_proxy_capstatus_t *dest);
+IBP_API void get_ibp_proxy_capstatus(ibp_proxy_capstatus_t *cs, int *readcount, int *writecount,
+                             ibp_off_t *offset, ibp_off_t *size, int *duration);
+
 // Preprocessor constants
 #define IBP_MAX_HOSTNAME_LEN  256
 #define RID_LEN          128
