@@ -117,7 +117,7 @@ IBP_API int  ibp_context_max_retry_get(ibp_context_t *ic);
 IBP_API void ibp_context_transfer_rate_set(ibp_context_t *ic, double rate);
 IBP_API double ibp_context_transfer_rate_get(ibp_context_t *ic);
 IBP_API void ibp_context_connection_mode_set(ibp_context_t *ic, int mode);
-IBP_API double  ibp_context_connection_mode_get(ibp_context_t *ic);
+IBP_API int  ibp_context_connection_mode_get(ibp_context_t *ic);
 
 // Preprocessor constants
 #define MAX_KEY_SIZE 256

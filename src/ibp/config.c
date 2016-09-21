@@ -622,7 +622,7 @@ void ibp_context_connection_mode_set(ibp_context_t *ic, int mode)
 {
     ic->connection_mode = mode;
 }
-double  ibp_context_connection_mode_get(ibp_context_t *ic)
+int  ibp_context_connection_mode_get(ibp_context_t *ic)
 {
     return(ic->connection_mode);
 }
