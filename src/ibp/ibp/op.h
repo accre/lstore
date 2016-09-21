@@ -125,8 +125,6 @@ IBP_API int  ibp_context_connection_mode_get(ibp_context_t *ic);
 // Preprocessor macros
 #define ibp_get_iop(a) (a)->op->priv
 
-// Exported types. To be obscured
-
 #ifdef __cplusplus
 }
 #endif
