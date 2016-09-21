@@ -618,6 +618,14 @@ double  ibp_context_transfer_rate_get(ibp_context_t *ic)
 {
     return(ic->transfer_rate);
 }
+void ibp_context_connection_mode_set(ibp_context_t *ic, int mode)
+{
+    ic->connection_mode = mode;
+}
+double  ibp_context_connection_mode_get(ibp_context_t *ic)
+{
+    return(ic->connection_mode);
+}
 
 //**********************************************************
 // set_ibp_config - Sets the ibp config options
