@@ -121,6 +121,8 @@ int ibp_sync_command(gop_op_generic_t *gop)
 
     log_printf(10, "ibp_sync_command: IBP_errno=%d\n", err);
 
+    gop_free(gop, OP_DESTROY);
+
     return(err);
 }
 
