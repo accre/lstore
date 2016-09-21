@@ -259,6 +259,9 @@ if(BUILD_TESTS)
     add_executable(mqs_test test/mqs_test.c)
     target_link_libraries(mqs_test pthread toolbox gop)
     target_include_directories(mqs_test PRIVATE ${APR_INCLUDE_DIR})
+    add_executable(ibp_test test/ibp_test.c test/ibp_sync.c test/ibp_errno.c)
+    target_link_libraries(ibp_test pthread toolbox gop ibp)
+    target_include_directories(ibp_test PRIVATE ${APR_INCLUDE_DIR})
 
     add_executable(run-tests test/run-tests.c
                              test/runner.c
