@@ -69,7 +69,7 @@ typedef struct {
 
 int lio_parallel_task_count = 100;
 
-//** Define the global LIO config
+// ** Define the global LIO config
 lio_config_t *lio_gc = NULL;
 lio_cache_t *_lio_cache = NULL;
 tbx_log_fd_t *lio_ifd = NULL;
@@ -797,6 +797,10 @@ void lio_destroy_nl(lio_config_t *lio)
 
     if (lio->cfg_name != NULL) free(lio->cfg_name);
     if (lio->section_name != NULL) free(lio->section_name);
+
+    void *val = lio_lookup_service(lio->ess, ESS_RUNNING, "jerase_paranoid");
+    remove_service(lio->ess, ESS_RUNNING, "jerase_paranoid");
+    if (val) free(val);
 
     _lio_destroy_plugins(lio);
 
