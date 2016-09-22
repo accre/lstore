@@ -58,14 +58,8 @@ TBX_MALLOC tbx_sl_t *tbx_sl_malloc()
     if (ret != APR_SUCCESS)
         goto error_3;
 
-    if (tbx_sl_init(sl)) {
-        goto error_4;
-    }
-
     return sl;
 
-error_4:
-    apr_thread_mutex_destroy(sl->lock);
 error_3:
     apr_pool_destroy(sl->pool);
 error_2:
