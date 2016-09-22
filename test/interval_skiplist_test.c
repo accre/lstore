@@ -172,6 +172,7 @@ int main(int argc, char **argv)
         }
     }
 
+    tbx_isl_iter_del(it);
     tbx_isl_del(isl);
     fflush(stdout);
     tbx_log_flush();
