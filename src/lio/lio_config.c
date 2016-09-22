@@ -86,6 +86,8 @@ tbx_list_t *_lc_object_list = NULL;
 lio_config_t *lio_create_nl(char *fname, char *section, char *user, char *exe_name);
 void lio_destroy_nl(lio_config_t *lio);
 
+char **myargv = NULL;  //** This is used to hold the new argv we return from lio_init so we can properly clean it up
+
 //***************************************************************
 //  _lc_object_destroy - Decrements the LC object and removes it
 //       if no other references exist.  It returns the number of
@@ -1211,7 +1213,6 @@ int lio_init(int *argc, char ***argvp)
     char var[4096];
     char *env;
     char **eargv;
-    char **myargv;
     char **argv;
     char *dummy;
     char *out_override = NULL;
@@ -1432,6 +1433,7 @@ int lio_shutdown()
     tbx_info_destroy(lio_ifd);
     lio_ifd = NULL;
     if (_lio_exe_name) free(_lio_exe_name);
+    if (myargv != NULL) free(myargv);
 
     return(0);
 }
