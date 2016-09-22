@@ -61,7 +61,7 @@ void ls_format_entry(tbx_log_fd_t *ifd, ls_entry_t *lse)
     apr_time_t dt;
     int64_t n;
     long int fsize;
-    int nlink;
+    int nlink, i;
 
     if ((lse->ftype & OS_OBJECT_SYMLINK_FLAG) > 0) {
         if ((lse->ftype & OS_OBJECT_BROKEN_LINK_FLAG) > 0) {
@@ -110,6 +110,10 @@ void ls_format_entry(tbx_log_fd_t *ifd, ls_entry_t *lse)
         info_printf(ifd, 0, "%s  %3d  %10s  %10ld  %s  %s  %s%s -> %s\n", perms, nlink, owner, fsize, dt_create, dt_modify, lse->fname, dtype, lse->link);
     }
 
+    //** Cleanup the attributes
+    for (i=0; i<5; i++) {
+        if (lse->vals[i]) free(lse->vals[i]);
+    }
     return;
 }
 
