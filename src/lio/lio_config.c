@@ -1362,7 +1362,6 @@ no_args:
 
     lio_ifd = tbx_info_create(_lio_ifd, if_mode, ifll);
 
-
     //** Adjust argv to reflect the parsed arguments
     *argvp = myargv;
     *argc = nargs;
@@ -1430,6 +1429,7 @@ int lio_shutdown()
     _lc_lock  = NULL;
     exnode_system_destroy();
 
+    tbx_info_destroy(lio_ifd);
     lio_ifd = NULL;
     if (_lio_exe_name) free(_lio_exe_name);
 
