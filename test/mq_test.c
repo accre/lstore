@@ -166,7 +166,7 @@ int client_direct()
 {
     gop_mq_socket_context_t *ctx;
     gop_mq_socket_t *sock;
-    mq_msg_t *msg;
+    mq_msg_t *msg = NULL;
     gop_mq_frame_t *f;
     gop_mq_pollitem_t pfd;
     char *data;
@@ -257,7 +257,7 @@ int client_direct()
     }
 
 fail:
-    gop_mq_msg_destroy(msg);
+    if (msg) gop_mq_msg_destroy(msg);
     gop_mq_socket_destroy(ctx, sock);
     gop_mq_socket_context_destroy(ctx);
 
@@ -617,7 +617,7 @@ void *client_test_thread(apr_thread_t *th, void *arg)
     if (min == 1) {
         v = 1;
         log_printf(0, "Skipping raw tests.\n");
-        gop_mq_pipe_write(control_efd[1], &v);
+        WARN_UNLESS(1 == gop_mq_pipe_write(control_efd[1], &v));
         sleep(1);
         log_printf(0, "Continuing....\n");
     }
@@ -642,7 +642,7 @@ void *client_test_thread(apr_thread_t *th, void *arg)
         if (i==0) { //** Switch the server to using the MQ loop
             v = 1;
             log_printf(0, "Telling server to switch and use the MQ event loop\n");
-            gop_mq_pipe_write(control_efd[1], &v);
+            WARN_UNLESS( 1 == gop_mq_pipe_write(control_efd[1], &v));
             sleep(10);
             log_printf(0, "Continuing....\n");
         }
@@ -779,7 +779,7 @@ int server_handle_deferred(gop_mq_socket_t *sock)
 
     err = 0;
     while ((defer = tbx_stack_pop(deferred_ready)) != NULL) {
-        if (server_portal == NULL) gop_mq_pipe_read(server_efd[0], &v);
+        if (server_portal == NULL) WARN_UNLESS(1 == gop_mq_pipe_read(server_efd[0], &v));
         log_printf(5, "Processing deferred response\n");
 
         defer->td->ping_count = tbx_atomic_get(ping_count) - defer->td->ping_count;  //** Send back the ping count since it was sent
@@ -1014,7 +1014,7 @@ void *server_test_raw_socket()
         if (n > 0) {  //** Got an event so process it
             if (pfd[0].revents != 0) {
                 finished = 1;
-                gop_mq_pipe_read(control_efd[0], &v);
+                WARN_UNLESS(1 == gop_mq_pipe_read(control_efd[0], &v));
             }
             if (pfd[1].revents != 0) finished = server_handle_request(sock);
             if (pfd[2].revents != 0) finished = server_handle_deferred(sock);
@@ -1107,7 +1107,7 @@ void server_test_mq_loop()
     gop_mq_portal_install(mqc, server_portal);
 
     //** Wait for a shutdown
-    gop_mq_pipe_read(control_efd[0], &v);
+    WARN_UNLESS(1 == gop_mq_pipe_read(control_efd[0], &v));
 
     //** Destroy the portal
     gop_mq_destroy_context(mqc);
@@ -1190,7 +1190,7 @@ void *server_deferred_thread(apr_thread_t *th, void *arg)
         if (n > 0) { //** Got tasks to send
             if (server_portal == NULL) {
                 v = 1;
-                for (i=0; i<(int)n; i++) gop_mq_pipe_write(server_efd[1], &v);
+                for (i=0; i<(int)n; i++) WARN_UNLESS(1 == gop_mq_pipe_write(server_efd[1], &v));
             } else {
                 server_handle_deferred(NULL);
             }
@@ -1260,7 +1260,7 @@ int main(int argc, char **argv)
 
     //** Trigger the server to shutdown
     v = 1;
-    gop_mq_pipe_write(control_efd[1], &v);
+    WARN_UNLESS(1 == gop_mq_pipe_write(control_efd[1], &v));
     apr_thread_join(&dummy, server_thread);
     apr_thread_join(&dummy, deferred_thread);
 
