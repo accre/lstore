@@ -244,6 +244,8 @@ void base_async_test(ibp_depot_t *depot)
     gop_opque_free(q, OP_DESTROY);
 //set_log_level(err);
 
+    ibp_capset_clear(&caps);
+
     free(buffer);
     free(buffer_cmp);
 
@@ -433,14 +435,13 @@ void base_tbx_iovec_test(ibp_depot_t *depot)
         printf("base_tbx_iovec_test: Error removing the allocation!  ibp_errno=%d\n", err);
         abort();
     }
+    ibp_capset_clear(&caps);
 
     opque_finished_submission(q);
 
-//err=log_level();
-//set_log_level(20);
     gop_opque_free(q, OP_DESTROY);
-//set_log_level(err);
 
+    free(vec);
     free(buffer);
     free(buffer_cmp);
     tbx_tbuf_destroy(buf);
@@ -571,6 +572,7 @@ void perform_big_alloc_tests(ibp_depot_t *depot)
     } else {
         failed_tests++;
         printf("perform_big_alloc_test: FAILED! strcmp = %d\n", err);
+        ibp_capset_clear(&caps);
         goto finished;
     }
 
@@ -583,6 +585,7 @@ void perform_big_alloc_tests(ibp_depot_t *depot)
     if (err != OP_STATE_SUCCESS) {
         printf("perform_big_alloc_test: Error removing the allocation!  ibp_errno=%d\n", err);
     }
+    ibp_capset_clear(&caps);
 
 finished:
     opque_finished_submission(q);
@@ -838,6 +841,7 @@ void perform_manage_truncate_tests(ibp_depot_t *depot)
         abort();
         return;
     }
+    ibp_capset_clear(&caps);
 
     opque_finished_submission(q);
 
@@ -967,6 +971,7 @@ void perform_user_rw_tests(ibp_depot_t *depot)
         printf("perform_user_rw_tests: Error removing the allocation!  ibp_errno=%d\n", err);
         abort();
     }
+    ibp_capset_clear(&caps);
 
     tbx_tbuf_destroy(buf);
 }
@@ -1093,7 +1098,7 @@ void perform_splitmerge_tests(ibp_depot_t *depot)
         printf("Oops! FAILED reading child cap! err=%d\n", err);
     }
 
-    //** Split the master again but htis time make it to big so it should fail
+    //** Split the master again but this time make it to big so it should fail
     err = ibp_sync_command(ibp_split_alloc_gop(ic, ibp_cap_get(&mcaps, IBP_MANAGECAP), &caps2, 2048, &attr, disk_cs_type, disk_blocksize, ibp_timeout));
     if (err == IBP_OK) {
         failed_tests++;
@@ -1133,7 +1138,7 @@ void perform_splitmerge_tests(ibp_depot_t *depot)
         printf("perform_splitmerge_tests: Oops! FIALED Child allocation is available after merge! ccap=%s\n", ibp_cap_get(&caps, IBP_MANAGECAP));
         return;
     }
-
+    ibp_capset_clear(&caps);
 
     //** Verify the max/curr size of the master
     err = ibp_sync_command(ibp_probe_gop(ic, ibp_cap_get(&mcaps, IBP_MANAGECAP), &probe, ibp_timeout));
@@ -1157,6 +1162,7 @@ void perform_splitmerge_tests(ibp_depot_t *depot)
     if (err != IBP_OK) {
         printf("perform_splitmerge_tests: FAILED Error removing master allocation!  ibp_errno=%d\n", err);
     }
+    ibp_capset_clear(&mcaps);
 
     if (fstart == failed_tests) {
         printf("perform_splitmerge_tests:  Passed!\n");
@@ -1293,11 +1299,13 @@ void perform_pushpull_tests(ibp_depot_t *depot1, ibp_depot_t *depot2)
     if (err != IBP_OK) {
         printf("perform_pushpull_tests: Oops! FAILED Error removing allocation 1!  ibp_errno=%d\n", err);
     }
+    ibp_capset_clear(&caps1);
 
     err = ibp_sync_command(ibp_remove_gop(ic, ibp_cap_get(&caps2, IBP_MANAGECAP), ibp_timeout));
     if (err != IBP_OK) {
         printf("perform_pushpull_tests: Oops! FAILED Error removing allocation 2!  ibp_errno=%d\n", err);
     }
+    ibp_capset_clear(&caps2);
 
     if (start_nfailed == failed_tests) {
         printf("perform_pushpull_tests: Passed!\n");
@@ -1638,11 +1646,13 @@ log_printf(0, "CHECK WRITE1 END len=%d\n", len);
         failed_tests++;
         printf("ibp_manage(decr) FAILED for caps1 error = %d * ibp_errno=%d\n", err, IBP_errno);
     }
+    ibp_capset_destroy(caps);
     err = IBP_manage(ibp_cap_get(caps2, IBP_MANAGECAP), &timer, IBP_DECR, IBP_READCAP, &astat);
     if (err != 0) {
         failed_tests++;
         printf("ibp_manage(decr) FAILED for caps2 error = %d * ibp_errno=%d\n", err, IBP_errno);
     }
+    ibp_capset_clear(caps2);
 
     printf("ibp_status: IBP_ST_INQ--------------------------------------------------------\n");
     depotinfo = IBP_status(&depot1, IBP_ST_INQ, &timer, "ibp", 10,11,12);
@@ -1741,7 +1751,7 @@ log_printf(0, "AFTER ibp_rename_gop\n"); tbx_log_flush();
         failed_tests++;
         printf("Oops! FAILED The read of the original cap succeeded! rbuf=%s\n", rbuf);
     }
-
+    ibp_capset_destroy(caps);
 
     //** Try reading with the new cap
     rbuf[0] = '\0';
@@ -1767,6 +1777,8 @@ log_printf(0, "AFTER ibp_rename_gop\n"); tbx_log_flush();
         printf("FAILED deleting new cap after rename caps2 error = %d * ibp_errno=%d\n", err, IBP_errno);
     }
     printf("Completed ibp_rename test...........................\n");
+
+    ibp_capset_clear(caps2);
 
 //WORKS to here
 
@@ -1991,6 +2003,7 @@ log_printf(0, "AFTER ibp_rename_gop\n"); tbx_log_flush();
         failed_tests++;
         printf("FAILED Error dest deleting alias cap error = %d\n", err);
     }
+    ibp_capset_clear(&caps5);
 
     //** Remove the dest cap
     err = IBP_manage(ibp_cap_get(caps4, IBP_MANAGECAP), &timer, IBP_DECR, IBP_READCAP, &astat);
@@ -1998,6 +2011,7 @@ log_printf(0, "AFTER ibp_rename_gop\n"); tbx_log_flush();
         failed_tests++;
         printf("FAILED Error deleting dest caps error = %d * ibp_errno=%d\n", err, IBP_errno);
     }
+    ibp_capset_destroy(caps4);
 
     printf("completed alias depot->depot copy test\n");
 
@@ -2032,6 +2046,7 @@ log_printf(0, "AFTER ibp_rename_gop\n"); tbx_log_flush();
         failed_tests++;
         printf("FAILED Error deleting the limited alias cap  error = %d\n", err);
     }
+    ibp_capset_clear(&caps3);
 
     //** Remove the original cap
     err = IBP_manage(ibp_cap_get(caps, IBP_MANAGECAP), &timer, IBP_DECR, IBP_READCAP, &astat);
@@ -2039,6 +2054,7 @@ log_printf(0, "AFTER ibp_rename_gop\n"); tbx_log_flush();
         failed_tests++;
         printf("FAILED Error deleting original caps error = %d * ibp_errno=%d\n", err, IBP_errno);
     }
+    ibp_capset_destroy(caps);
 
 //GOOD!!!!!!!!!!!!!!!!!!!!
 
@@ -2054,6 +2070,8 @@ log_printf(0, "AFTER ibp_rename_gop\n"); tbx_log_flush();
     printf("\n\n");
     printf("Final network connection counter: %d\n", tbx_network_counter(NULL));
     printf("Tests that failed: %d\n", failed_tests);
+
+    ibp_capset_destroy(caps2);
 
     ibp_context_destroy(ic);
 
