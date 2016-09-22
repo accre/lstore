@@ -192,6 +192,16 @@ ibp_capset_t *ibp_capset_new()
     return(c);
 }
 
+//*****************************************************************
+// ibp_capset_clear - Frees the existing caps in the set
+//*****************************************************************
+
+void ibp_capset_clear(ibp_capset_t *caps)
+{
+    ibp_cap_destroy(caps->readCap);   caps->readCap = NULL;
+    ibp_cap_destroy(caps->writeCap);  caps->writeCap = NULL;
+    ibp_cap_destroy(caps->manageCap); caps->manageCap = NULL;
+}
 
 //*****************************************************************
 //  ibp_capset_destroy - Destroys the ibp_capset_t structure
@@ -199,10 +209,7 @@ ibp_capset_t *ibp_capset_new()
 
 void ibp_capset_destroy(ibp_capset_t *caps)
 {
-    ibp_cap_destroy(caps->readCap);
-    ibp_cap_destroy(caps->writeCap);
-    ibp_cap_destroy(caps->manageCap);
-
+    ibp_capset_clear(caps);
     free(caps);
 }
 
@@ -238,6 +245,29 @@ ibp_cap_t *ibp_cap_get(ibp_capset_t *caps, int ctype)
     return(c);
 }
 
+//*****************************************************************
+// ibp_cap_set - Sets the requested capability and optionally frees the old one
+//*****************************************************************
+
+int ibp_cap_set(ibp_capset_t *caps, int ctype, ibp_cap_t *c, int dofree)
+{
+    int err = 0;
+
+    if (ctype == IBP_READCAP) {
+        if (dofree && caps->readCap) free(caps->readCap);
+        caps->readCap = c;
+    } else if (ctype == IBP_WRITECAP) {
+        if (dofree && caps->writeCap) free(caps->writeCap);
+        caps->writeCap = c;
+    } else if (ctype == IBP_MANAGECAP) {
+        if (dofree && caps->manageCap) free(caps->manageCap);
+        caps->manageCap = c;
+    } else {
+        err = 1;
+    }
+
+    return(err);
+}
 
 //===================================================================
 

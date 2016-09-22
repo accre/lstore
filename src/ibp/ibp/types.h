@@ -47,8 +47,10 @@ typedef struct ibp_rid_t ibp_rid_t;
 // Functions
 IBP_API void ibp_attributes_get(ibp_attributes_t *attr, time_t *duration, int *reliability, int *type);
 IBP_API void ibp_cap_destroy(ibp_cap_t *cap);
+IBP_API void ibp_capset_clear(ibp_capset_t *caps);
 IBP_API void ibp_capset_destroy(ibp_capset_t *caps);
 IBP_API ibp_cap_t *ibp_cap_get(ibp_capset_t *caps, int ctype);
+IBP_API int ibp_cap_set(ibp_capset_t *caps, int ctype, ibp_cap_t *c, int dofree);
 IBP_API void ibp_cap_getstatus(ibp_capstatus_t *cs, int *readcount, int *writecount,int *current_size, int *max_size, ibp_attributes_t *attrib);
 IBP_API ibp_capset_t *ibp_capset_new();
 IBP_API char *ibp_rid2str(ibp_rid_t rid, char *buffer);
