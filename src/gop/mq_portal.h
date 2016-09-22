@@ -163,8 +163,6 @@ struct gop_mq_portal_t {   //** Container for managing connections to a single h
     gop_mq_command_stats_t stats;//** Command stats
 };
 
-typedef gop_mq_pollitem_t gop_mq_pollitem_t;
-
 int mq_task_set(gop_mq_task_t *task, gop_mq_context_t *ctx, mq_msg_t *msg, gop_op_generic_t *gop,  void *arg, int dt);
 void mq_task_destroy(gop_mq_task_t *task);
 

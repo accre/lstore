@@ -66,9 +66,6 @@ enum gop_mq_cmode_t {
     MQ_CMODE_SERVER, // ** USed by servers for incoming connections
 };
 
-typedef struct gop_mq_socket_context_t gop_mq_socket_context_t;
-typedef struct gop_mq_socket_t gop_mq_socket_t;
-
 // Preprocessor defines required for command stats
 #define MQS_PING_INDEX         0
 #define MQS_PONG_INDEX         1
