@@ -30,6 +30,7 @@ typedef struct tbx_log_fd_t tbx_log_fd_t;
 
 // Functions
 TBX_API tbx_log_fd_t *tbx_info_create(FILE *fd, int header_type, int level);
+TBX_API void tbx_info_destroy(tbx_log_fd_t *ifd);
 TBX_API void tbx_info_flush(tbx_log_fd_t *ifd);
 TBX_API void tbx_log_flush();
 TBX_API void tbx_log_open(char *fname, int dolock);

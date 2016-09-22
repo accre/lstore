@@ -308,7 +308,7 @@ tbx_log_fd_t *tbx_info_create(FILE *fd, int header_type, int level)
 // info_destroy - Destroys a previously created info device
 //***************************************************************
 
-void info_destroy(tbx_log_fd_t *ifd)
+void tbx_info_destroy(tbx_log_fd_t *ifd)
 {
     apr_thread_mutex_destroy(ifd->lock);
     free(ifd);
