@@ -114,6 +114,7 @@ void ls_format_entry(tbx_log_fd_t *ifd, ls_entry_t *lse)
     for (i=0; i<5; i++) {
         if (lse->vals[i]) free(lse->vals[i]);
     }
+    free(lse);  //** And the struct itself
     return;
 }
 
