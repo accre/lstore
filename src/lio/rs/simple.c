@@ -892,6 +892,7 @@ int _rs_simple_load(lio_resource_service_fn_t *res, char *fname)
     kf = tbx_inip_file_read(fname);FATAL_UNLESS(kf);
 
     //** Create the new RS list
+    if (rss->rid_table) tbx_list_destroy(rss->rid_table);
     rss->rid_table = tbx_list_create(0, &tbx_list_string_compare, NULL, NULL, rs_simple_rid_free);
     log_printf(15, "rs_simple_load: sl=%p\n", rss->rid_table);
 
@@ -913,6 +914,7 @@ int _rs_simple_load(lio_resource_service_fn_t *res, char *fname)
     if (rss->n_rids == 0) {
         log_printf(0, "ERROR: n_rids=%d\n", rss->n_rids);
         fprintf(stderr, "ERROR: n_rids=%d\n", rss->n_rids);
+        if (rss->rid_table) tbx_list_destroy(rss->rid_table);
         rss->rid_table = NULL;
     } else {
         tbx_type_malloc_clear(rss->random_array, lio_rss_rid_entry_t *, rss->n_rids);
