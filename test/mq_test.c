@@ -1211,7 +1211,8 @@ int main(int argc, char **argv)
     apr_thread_t *server_thread, *client_thread, *deferred_thread;
     apr_status_t dummy;
     gop_mq_socket_context_t *ctx;
-    int i, start_option;
+    int i;
+    int volatile start_option;  //** This disables optimizing the arg loop and getting a warning. 
     char v;
 
     if (argc < 2) {
