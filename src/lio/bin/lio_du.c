@@ -51,7 +51,7 @@ int base = 1;
 
 void du_format_entry(tbx_log_fd_t *ifd, du_entry_t *de, int sumonly)
 {
-    char *dname;
+    char *is_dir;
     char ppsize[128];
     double fsize;
     long int n;
@@ -63,16 +63,13 @@ void du_format_entry(tbx_log_fd_t *ifd, du_entry_t *de, int sumonly)
         tbx_stk_pretty_print_double_with_scale(base, fsize, ppsize);
     }
 
-    dname = de->fname;
-
+    is_dir = (de->ftype & OS_OBJECT_DIR_FLAG) ? "/" : "";
     if (sumonly == 1) {
         n = ((de->ftype & OS_OBJECT_DIR_FLAG) > 0) ? de->count : 1;
-        info_printf(ifd, 0, "%10s  %10ld  %s\n", ppsize, n, dname);
+        info_printf(ifd, 0, "%10s  %10ld  %s%s\n", ppsize, n, de->fname, is_dir);
     } else {
-        info_printf(ifd, 0, "%10s  %s\n", ppsize, dname);
+        info_printf(ifd, 0, "%10s  %s%s\n", ppsize, de->fname, is_dir);
     }
-
-    if (dname != de->fname) free(dname);
 
     return;
 }
@@ -82,7 +79,7 @@ void du_format_entry(tbx_log_fd_t *ifd, du_entry_t *de, int sumonly)
 
 int main(int argc, char **argv)
 {
-    int i, j, ftype, rg_mode, start_index, start_option, nosort, prefix_len, plen;
+    int i, j, ftype, rg_mode, start_index, start_option, nosort, prefix_len;
     char *fname;
     du_entry_t *de;
     tbx_list_t *table, *sum_table, *lt;
@@ -214,12 +211,7 @@ int main(int argc, char **argv)
 
                 log_printf(15, "sumonly inserting fname=%s\n", fname);
                 tbx_type_malloc_clear(de, du_entry_t, 1);
-                plen = strlen(fname);
-                tbx_type_malloc(de->fname, char, plen + 2);
-                memcpy(de->fname, fname, plen);
-                de->fname[plen] = '/';
-                de->fname[plen+1] = 0;
-                free(fname);
+                de->fname = fname;
                 de->ftype = ftype;
 
                 if (val != NULL) sscanf(val, I64T, &(de->bytes));
