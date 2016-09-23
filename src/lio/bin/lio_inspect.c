@@ -1395,6 +1395,7 @@ int main(int argc, char **argv)
             tuple = lio_path_resolve(lio_gc->auto_translate, path);
             lio_path_wildcard_auto_append(&tuple);
             rp_single = lio_os_path_glob2regex(tuple.path);
+            free(path);
         } else {
             rg_mode = 0;  //** Use the initial rp
         }
