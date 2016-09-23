@@ -89,6 +89,7 @@ int main(int argc, char **argv)
     char *key = "system.exnode.size";
     char *val, *file;
     int64_t bytes;
+    int obj_types;
     ex_off_t total_files, total_bytes;
     int v_size, sumonly, ignoreln;
     int recurse_depth = 10000;
@@ -125,7 +126,7 @@ int main(int argc, char **argv)
     base = 1;
     ignoreln = 1;
     sumonly = 0;
-
+    obj_types = OS_OBJECT_ANY_FLAG;
     i=1;
     do {
         start_option = i;
@@ -149,6 +150,7 @@ int main(int argc, char **argv)
         } else if (strcmp(argv[i], "-ln") == 0) {  //** Follow links
             i++;
             ignoreln = 0;
+            obj_types |= OS_OBJECT_FOLLOW_SYMLINK_FLAG;
         }
 
     } while ((start_option < i) && (i<argc));
@@ -196,7 +198,7 @@ int main(int argc, char **argv)
             log_printf(15, "MAIN SUMONLY=1\n");
             v_size = -1024;
             val = NULL;
-            it = lio_create_object_iter_alist(tuple.lc, tuple.creds, rp_single, ro_single, OS_OBJECT_ANY_FLAG, 0, &key, (void **)&val, &v_size, 1);
+            it = lio_create_object_iter_alist(tuple.lc, tuple.creds, rp_single, ro_single, obj_types, 0, &key, (void **)&val, &v_size, 1);
             if (it == NULL) {
                 log_printf(0, "ERROR: Failed with object_iter creation\n");
                 return_code = EIO;
@@ -232,7 +234,7 @@ next_top:
 
         v_size = -1024;
         val = NULL;
-        it = lio_create_object_iter_alist(tuple.lc, tuple.creds, rp_single, ro_single, OS_OBJECT_ANY_FLAG, recurse_depth, &key, (void **)&val, &v_size, 1);
+        it = lio_create_object_iter_alist(tuple.lc, tuple.creds, rp_single, ro_single, obj_types, recurse_depth, &key, (void **)&val, &v_size, 1);
         if (it == NULL) {
             log_printf(0, "ERROR: Failed with object_iter creation\n");
             return_code = EIO;
