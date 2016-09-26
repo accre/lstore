@@ -3166,13 +3166,11 @@ gop_op_generic_t *seglio_cache_truncate(lio_segment_t *seg, data_attr_t *da, ex_
 gop_op_status_t segcache_clone_func(void *arg, int id)
 {
     cache_clone_t *cop = (cache_clone_t *)arg;
-    lio_cache_lio_segment_t *ds = (lio_cache_lio_segment_t *)cop->dseg->priv;
     gop_op_status_t status;
 
     status = (gop_waitall(cop->gop) == OP_STATE_SUCCESS) ? gop_success_status : gop_failure_status;
     gop_free(cop->gop, OP_DESTROY);
 
-    tbx_obj_get(&ds->child_seg->obj);
     return(status);
 }
 
@@ -3216,7 +3214,6 @@ gop_op_generic_t *segcache_clone(lio_segment_t *seg, data_attr_t *da, lio_segmen
     tbx_type_malloc(cop, cache_clone_t, 1);
     cop->sseg = seg;
     cop->dseg = clone;
-    if (use_existing == 1) tbx_obj_put(&sd->child_seg->obj);
     cop->gop = segment_clone(ss->child_seg, da, &(sd->child_seg), mode, arg, timeout);
 
     log_printf(5, "child_clone gid=%d\n", gop_id(cop->gop));
@@ -3392,8 +3389,6 @@ int segcache_deserialize_text(lio_segment_t *seg, ex_id_t myid, lio_exnode_excha
 
     seg->header.type = SEGMENT_TYPE_CACHE;
     seg->header.name = tbx_inip_get_string(fd, seggrp, "name", "");
-
-    tbx_obj_get(&s->child_seg->obj);
 
     //** Tweak the page size
     s->page_size = segment_block_size(s->child_seg);
@@ -3644,7 +3639,6 @@ lio_segment_t *segment_cache_load(void *arg, ex_id_t id, lio_exnode_exchange_t *
 {
     lio_segment_t *seg = segment_cache_create(arg);
     if (segment_deserialize(seg, id, ex) != 0) {
-        tbx_obj_put(&seg->obj);
         seg = NULL;
     }
     return(seg);
@@ -3652,7 +3646,7 @@ lio_segment_t *segment_cache_load(void *arg, ex_id_t id, lio_exnode_exchange_t *
 
 const lio_segment_vtable_t lio_cacheseg_vtable = {
         .base.name = "segment_cache",
-        .base.free_fn = segcache_destroy, 
+        .base.free_fn = segcache_destroy,
         .read = cache_read,
         .write = cache_write,
         .inspect = segcache_inspect,

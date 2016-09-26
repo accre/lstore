@@ -1071,13 +1071,11 @@ gop_op_generic_t *segjerase_inspect(lio_segment_t *seg, data_attr_t *da, tbx_log
 gop_op_status_t segjerase_clone_func(void *arg, int id)
 {
     segjerase_clone_t *cop = (segjerase_clone_t *)arg;
-    segjerase_priv_t *ds = (segjerase_priv_t *)cop->dseg->priv;
     gop_op_status_t status;
 
     status = (gop_waitall(cop->gop) == OP_STATE_SUCCESS) ? gop_success_status : gop_failure_status;
     gop_free(cop->gop, OP_DESTROY);
 
-    tbx_obj_get(&ds->child_seg->obj);
     return(status);
 }
 
@@ -1117,7 +1115,6 @@ gop_op_generic_t *segjerase_clone(lio_segment_t *seg, data_attr_t *da, lio_segme
     if (use_existing == 1) {
         sd->child_seg = child;
         sd->plan = cplan;
-        tbx_obj_put(&child->obj);
     } else {   //** Need to contstruct a plan
         sd->child_seg = NULL;
 
@@ -1992,8 +1989,6 @@ int segjerase_deserialize_text(lio_segment_t *seg, ex_id_t id, lio_exnode_exchan
         return(-2);
     }
 
-    tbx_obj_get(&s->child_seg->obj);
-
     //** Load the params
     s->write_errors = tbx_inip_get_integer(fd, seggrp, "write_errors", 0);
     if ((s->paranoid_check == 0) && (s->write_errors > 0)) s->paranoid_check = 1;
@@ -2156,7 +2151,6 @@ lio_segment_t *segment_jerasure_load(void *arg, ex_id_t id, lio_exnode_exchange_
 {
     lio_segment_t *seg = segment_jerasure_create(arg);
     if (segment_deserialize(seg, id, ex) != 0) {
-        tbx_obj_put(&seg->obj);
         seg = NULL;
     }
     return(seg);

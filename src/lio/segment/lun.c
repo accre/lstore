@@ -2928,7 +2928,6 @@ lio_segment_t *segment_lun_load(void *arg, ex_id_t id, lio_exnode_exchange_t *ex
 {
     lio_segment_t *seg = segment_lun_create(arg);
     if (segment_deserialize(seg, id, ex) != 0) {
-        tbx_obj_put(&seg->obj);
         seg = NULL;
     }
     return(seg);

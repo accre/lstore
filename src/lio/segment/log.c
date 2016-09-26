@@ -816,13 +816,6 @@ gop_op_status_t seglog_clone_func(void *arg, int id)
         }
     }
 
-    //** Flag them as being used
-    if (slc->trunc == 0) {
-        tbx_obj_get(&sd->table_seg->obj);
-        tbx_obj_get(&sd->data_seg->obj);
-        tbx_obj_get(&sd->base_seg->obj);
-    }
-
     //** Clean up
     if (stack != NULL) tbx_stack_free(stack, 1);
     if (buffer != NULL) free(buffer);
@@ -1180,19 +1173,16 @@ int seglog_deserialize_text(lio_segment_t *seg, ex_id_t id, lio_exnode_exchange_
     if (id == 0) return (-1);
     s->table_seg = load_segment(seg->ess, id, exp);
     if (s->table_seg == NULL) return(-2);
-    tbx_obj_get(&s->table_seg->obj);
 
     id = tbx_inip_get_integer(fd, seggrp, "data", 0);
     if (id == 0) return (-1);
     s->data_seg = load_segment(seg->ess, id, exp);
     if (s->data_seg == NULL) return(-2);
-    tbx_obj_get(&s->data_seg->obj);
 
     id = tbx_inip_get_integer(fd, seggrp, "base", 0);
     if (id == 0) return (-1);
     s->base_seg = load_segment(seg->ess, id, exp);
     if (s->base_seg == NULL) return(-2);
-    tbx_obj_get(&s->base_seg->obj);
 
     //** Load the log table which will also set the size
     _slog_load(seg);
@@ -1317,7 +1307,6 @@ lio_segment_t *segment_log_load(void *arg, ex_id_t id, lio_exnode_exchange_t *ex
 {
     lio_segment_t *seg = segment_log_create(arg);
     if (segment_deserialize(seg, id, ex) != 0) {
-        tbx_obj_put(&seg->obj);
         seg = NULL;
     }
     return(seg);
