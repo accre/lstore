@@ -39,9 +39,6 @@ extern "C" {
 #define OS_AVAILABLE "os_available"
 #define OSAZ_AVAILABLE "osaz_available"
 
-
-
-
 #define OS_MODE_WRITE_IMMEDIATE 1
 #define OS_MODE_READ_BLOCKING   2
 #define OS_MODE_WRITE_BLOCKING  3
@@ -51,22 +48,15 @@ extern "C" {
 
 #define OS_CREDS_INI_TYPE 0  //** Load creds from file
 
-
 struct lio_os_attr_list_t {
     int q_mode;
     char *attr;
 };
 
-
-
-
-
-
 #define os_type(os) (os)->type
 #define os_destroy_service(os) (os)->destroy_service(os)
 #define os_cred_init(os, type, args) (os)->cred_init(os, type, args)
 #define os_cred_destroy(os, c) (os)->cred_destroy(os, c)
-
 
 #define os_exists(os, c, path) (os)->exists(os, c, path)
 #define os_create_object(os, c, path, type, id) (os)->create_object(os, c, path, type, id)
@@ -101,11 +91,9 @@ struct lio_os_attr_list_t {
 #define os_destroy_attr_iter(os, it) (os)->destroy_attr_iter(it)
 #define os_destroy(os) (os)->destroy_service(os)
 
-
 lio_os_regex_table_t *os_regex_table_create(int n);
 int os_regex_table_pack(lio_os_regex_table_t *regex, unsigned char *buffer, int bufsize);
 lio_os_regex_table_t *os_regex_table_unpack(unsigned char *buffer, int bufsize, int *used);
-
 
 struct lio_os_authz_t {
     void *priv;
