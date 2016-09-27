@@ -121,6 +121,11 @@ LIO_API lio_os_regex_table_t *lio_os_regex2table(char *regex);
 LIO_API int lio_os_regex_is_fixed(lio_os_regex_table_t *regex);
 LIO_API void lio_os_regex_table_destroy(lio_os_regex_table_t *table);
 
+// ** These are generic testing routines for the OS
+LIO_API int os_create_remove_tests(char *prefix);
+LIO_API int os_attribute_tests(char *prefix);
+LIO_API int os_locking_tests(char *prefix);
+
 // Preprocessor constants
 #define OS_PATH_MAX  32768    //** Max path length
 
