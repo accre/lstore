@@ -365,6 +365,7 @@ int main(int argc, char **argv)
         } else {
             rg_mode = 0;  //** Use the initial rp
         }
+        free(path);  //** No longer needed.  lio_path_resolve will strdup
 
         v_size[0] = v_size[1] = -tuple.lc->max_attr; v_size[2] = -tuple.lc->max_attr;
         it = lio_create_object_iter_alist(tuple.lc, tuple.creds, rp_single, ro_single, OS_OBJECT_FILE_FLAG, recurse_depth, keys, (void **)vals, v_size, 3);
@@ -382,8 +383,8 @@ int main(int argc, char **argv)
                     if (v_size[i] > 0) free(vals[i]);
                 }
                 continue;
-            }            w[slot].fname = fname;
-
+            }
+            w[slot].fname = fname;
             w[slot].exnode = vals[0];
             w[slot].creds = tuple.lc->creds;
             w[slot].ic = hack_ds_ibp_context_get(tuple.lc->ds);
