@@ -21,16 +21,12 @@
 #ifndef _LIST_H_
 #define _LIST_H_
 
-#include "tbx/skiplist.h"
+#include <tbx/skiplist.h>
+#include <tbx/list.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-typedef tbx_sl_data_t tbx_list_data_t;
-typedef tbx_sl_compare_t tbx_list_compare_t;
-typedef tbx_sl_t tbx_list_t;
-typedef tbx_sl_iter_t tbx_list_iter_t;
 
 #define list_string_descending_compare tbx_sl_compare_strcmp_descending
 #define list_compare_ptr skiplist_compare_ptr

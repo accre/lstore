@@ -22,6 +22,14 @@
 extern "C" {
 #endif
 
+#include <tbx/skiplist.h>
+
+typedef tbx_sl_key_t tbx_list_key_t;
+typedef tbx_sl_t tbx_list_t;
+typedef tbx_sl_iter_t tbx_list_iter_t;
+typedef tbx_sl_data_t tbx_list_data_t;
+typedef tbx_sl_compare_t tbx_list_compare_t;
+
 // Precompiler macros
 #define tbx_list_create(allow_dups, cmp, dup_fn, key_free_fn, data_free_fn) \
     tbx_sl_new_full(20, 0.5, allow_dups, cmp, dup_fn, key_free_fn, data_free_fn)
@@ -55,16 +63,6 @@ extern "C" {
 #define tbx_list_string_dup tbx_sl_dup_string
 
 #define tbx_list_strncmp_set(cmp, n) tbx_sl_set_strncmp(cmp, n)
-// TEMPORARY
-#if !defined toolbox_EXPORTS && defined LSTORE_HACK_EXPORT
-#   include <tbx/skiplist.h>
-    typedef tbx_sl_key_t tbx_list_key_t;
-    typedef tbx_sl_t tbx_list_t;
-    typedef tbx_sl_iter_t tbx_list_iter_t;
-    typedef tbx_sl_data_t tbx_list_data_t;
-    typedef tbx_sl_compare_t tbx_list_compare_t;
-#endif
-
 
 #ifdef __cplusplus
 }
