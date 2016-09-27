@@ -56,6 +56,17 @@
 int _ds_ibp_do_init = 1;
 
 //***********************************************************************
+// ds_ibp_context_get - Returns the IBP context
+//    NOTE:  This is more of a hack and is only intended for use by the warmer.
+//***********************************************************************
+
+ibp_context_t *hack_ds_ibp_context_get(lio_data_service_fn_t *arg)
+{
+    lio_ds_ibp_priv_t *ds = (lio_ds_ibp_priv_t *)arg->priv;
+    return(ds->ic);
+}
+
+//***********************************************************************
 // ds_ibp_destroy_* - Simple destroy routines
 //***********************************************************************
 

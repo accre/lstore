@@ -386,7 +386,7 @@ int main(int argc, char **argv)
 
             w[slot].exnode = vals[0];
             w[slot].creds = tuple.lc->creds;
-            w[slot].ic = ((lio_ds_ibp_priv_t *)(tuple.lc->ds->priv))->ic;
+            w[slot].ic = hack_ds_ibp_context_get(tuple.lc->ds);
             w[slot].write_err = 0;
 
             if (v_size[1] != -1) {
