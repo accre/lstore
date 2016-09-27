@@ -262,6 +262,9 @@ if(BUILD_TESTS)
     add_executable(ibp_test test/ibp_test.c test/ibp_sync.c test/ibp_errno.c)
     target_link_libraries(ibp_test pthread toolbox gop ibp)
     target_include_directories(ibp_test PRIVATE ${APR_INCLUDE_DIR})
+    add_executable(os_test test/os_test.c)
+    target_link_libraries(os_test pthread toolbox gop lio)
+    target_include_directories(os_test PRIVATE ${APR_INCLUDE_DIR} ${APRUTIL_INCLUDE_DIR})
 
     add_executable(run-tests test/run-tests.c
                              test/runner.c

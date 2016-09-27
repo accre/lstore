@@ -93,6 +93,7 @@ set(LSTORE_PROJECT_OBJS
 		os/file.c
 		os/remote_client.c
 		os/remote_server.c
+		os/test.c
 		os/timecache.c
 		osaz/fake.c
         raid4.c

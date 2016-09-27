@@ -569,7 +569,7 @@ int os_create_remove_tests(char *prefix)
     snprintf(match_path[2], PATH_LEN, "%s/foodir/bardir/bar", prefix);
     snprintf(match_path[3], PATH_LEN, "%s/foodir/bardir/subdir/last", prefix);
     snprintf(match_path[4], PATH_LEN, "%s/foodir/linkdir/last", prefix);
-    err = path_scan_and_check(foo_path, match_path, 5, 1000, OS_OBJECT_FILE_FLAG);
+    err = path_scan_and_check(foo_path, match_path, 5, 1000, OS_OBJECT_FILE_FLAG|OS_OBJECT_FOLLOW_SYMLINK_FLAG);
     if (err != 0) {
         nfailed++;
         log_printf(0, "ERROR: Regex scan: foo* err=%d\n", err);
@@ -578,7 +578,7 @@ int os_create_remove_tests(char *prefix)
 
     // ** Do a regex scan for foodir/linkdir with recursion
     snprintf(foo_path, PATH_LEN, "%s/foodir/linkdir", prefix);
-    err = path_scan_and_check(foo_path, &(match_path[4]), 1, 1000, OS_OBJECT_FILE_FLAG);
+    err = path_scan_and_check(foo_path, &(match_path[4]), 1, 1000, OS_OBJECT_FILE_FLAG|OS_OBJECT_FOLLOW_SYMLINK_FLAG);
     if (err != 0) {
         nfailed++;
         log_printf(0, "ERROR: Regex scan: foo* err=%d\n", err);
