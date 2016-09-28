@@ -197,7 +197,7 @@ globus_l_gfs_lstore_command(
     int retval = user_command(lstore_handle, cmd_info, &response);
     if (retval == GLOBUS_FAILURE) {
         // Catchall for generic globus oopsies
-        GlobusGFSErrorGenericStr(result, ("[lstore] Failed to start session."));
+        GlobusGFSErrorGenericStr(result, ("[lstore] Failed to execute generic command"));
     } else if (retval != GLOBUS_SUCCESS) {
         // If we get something that's not GLOBUS_FAILURE or SUCCESS, treat it
         // like a real globus error string
