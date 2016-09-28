@@ -227,12 +227,12 @@ struct lstore_handle_t {
     // Bits needed for send/recv
     globus_size_t block_size;
     globus_off_t offset;
-    globus_off_t write_length;
+    globus_off_t xfer_length;
     int optimal_count;
     int outstanding_count;
-    gridftp_register_fn_t register_fn;
+    int done;
     char *expected_checksum;
-    globus_mutex_t *mutex;
+    globus_mutex_t mutex;
     xfer_direction_t xfer_direction;
 };
 

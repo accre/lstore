@@ -79,7 +79,7 @@ globus_l_gfs_lstore_start(
 
     int retval = 0;
     lstore_handle = user_connect(op, &retval);
-    if (!retval) {
+    if (retval) {
         GlobusGFSErrorGenericStr(result, ("[lstore] Failed to start session."));
     }
 
@@ -89,7 +89,7 @@ globus_l_gfs_lstore_start(
     finished_info.result = result;
     finished_info.info.session.session_arg = lstore_handle;
     finished_info.info.session.username = session_info->username;
-    finished_info.info.session.home_dir = "/";
+    finished_info.info.session.home_dir = "/lio/lfs/";
 
     globus_gridftp_server_operation_finished(
         op, result, &finished_info);
@@ -114,13 +114,10 @@ globus_l_gfs_lstore_destroy(
     lstore_handle = (lstore_handle_t *) user_arg;
 
     // Set any needed options in handle here
-    globus_result_t result = GLOBUS_SUCCESS;
     int retval = user_close(lstore_handle);
-    if (!retval) {
-        GlobusGFSErrorGenericStr(result, ("[lstore] Failed to start session."));
+    if (retval) {
+        globus_gfs_log_message(GLOBUS_GFS_LOG_INFO, "[lstore] Failed to destroy session.");
     }
-
-    globus_free(lstore_handle);
 }
 
 /*
@@ -355,8 +352,12 @@ globus_l_gfs_lstore_activate(void)
     globus_result_t result = GLOBUS_SUCCESS;
 
     int retval = activate();
-    if (!retval) {
-        GlobusGFSErrorGenericStr(result, ("[lstore] Failed to deactivate."));
+    if (retval) {
+        globus_gfs_log_message(GLOBUS_GFS_LOG_INFO, "[lstore] Failed to activate.\n");
+        GlobusGFSErrorGenericStr(result, ("[lstore] Failed to activate."));
+        if (!result) {
+            result = GLOBUS_FAILURE;
+        }
         return result;
     }
 
@@ -387,7 +388,7 @@ globus_l_gfs_lstore_deactivate(void)
         GLOBUS_GFS_DSI_REGISTRY, "lstore");
 
     int retval = deactivate();
-    if (!retval) {
+    if (retval) {
         GlobusGFSErrorGenericStr(result, ("[lstore] Failed to deactivate."));
     }
 

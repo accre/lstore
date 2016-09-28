@@ -25,7 +25,7 @@
 #include "lstore_dsi.h"
 
 int activate() {
-    printf("Loaded\n");
+    log_printf(0,"Loaded\n");
 
     int argc = 3;
     char **argv = malloc(sizeof(char *)*argc);
@@ -37,7 +37,7 @@ int activate() {
     lio_init(&argc, &argv);
     free(argv);
     if (!lio_gc) {
-        printf("Failed to load LStore\n");
+        log_printf(-1,"Failed to load LStore\n");
         return 1;
     }
 
@@ -45,13 +45,13 @@ int activate() {
 }
 
 int deactivate() {
-    printf("Unloaded\n");
+    log_printf(0,"Unloaded\n");
     lio_shutdown();
     return 0;
 }
 
 lstore_handle_t *user_connect(globus_gfs_operation_t op, int *retval) {
-    printf("Connect\n");
+    log_printf(0,"Connect\n");
     lstore_handle_t *h;
     h = user_handle_new(retval);
     if (!h) {
@@ -64,7 +64,7 @@ lstore_handle_t *user_connect(globus_gfs_operation_t op, int *retval) {
 }
 
 int user_close(lstore_handle_t *h) {
-    printf("Close\n");
+    log_printf(0,"Close\n");
     user_handle_del(h);
     return 0;
 }
@@ -216,7 +216,7 @@ error_allocblock:
 }
 
 lstore_handle_t *user_handle_new(int *retval_ext) {
-    printf("New handle\n");
+    log_printf(0,"New handle\n");
     (*retval_ext) = 0;
     lstore_handle_t *h = (lstore_handle_t *)
             globus_malloc(sizeof(lstore_handle_t));
@@ -226,18 +226,14 @@ lstore_handle_t *user_handle_new(int *retval_ext) {
     }
     memset(h, '\0', sizeof(lstore_handle_t));
 
-    h->mutex = (globus_mutex_t *)malloc(sizeof(globus_mutex_t));
-    if (!h->mutex) {
-        (*retval_ext) = -2;
-        return NULL;
-    }
-    if (globus_mutex_init(h->mutex, GLOBUS_NULL)) {
+    if (globus_mutex_init(&h->mutex, GLOBUS_NULL)) {
         (*retval_ext) = -3;
         return NULL;
     }
     h->optimal_count = 2;
     h->block_size = 262144;
     h->prefix = strdup("/lio/lfs");
+    h->done = GLOBUS_FALSE;
     if (!h->prefix) {
         (*retval_ext) = -4;
         return NULL;
@@ -248,15 +244,12 @@ lstore_handle_t *user_handle_new(int *retval_ext) {
 
 
 void user_handle_del(lstore_handle_t *h) {
-    printf("Del handle\n");
+    log_printf(0,"Del handle\n");
     if (!h) {
         return;
     }
     if (h->prefix) {
         free(h->prefix);
-    }
-    if (h->mutex) {
-        globus_free(h->mutex);
     }
     if (h->expected_checksum) {
         free(h->expected_checksum);
