@@ -166,16 +166,6 @@ int user_command(lstore_handle_t *h, globus_gfs_command_info_t * info,
     return retval;
 }
 
-int user_recv_callback(lstore_handle_t *h,
-                        char *buffer,
-                        globus_size_t nbytes,
-                        globus_off_t offset) {
-    int retval = lio_write(h->fd, (char *)buffer, nbytes, offset, NULL);
-    globus_gfs_log_message(GLOBUS_GFS_LOG_INFO, "[lstore] Complete user_recv_callback: %d.\n", retval);
-    free(buffer);
-    return retval;
-}
-
 int user_recv_init(lstore_handle_t *h,
                     globus_gfs_transfer_info_t * transfer_info) {
     h->xfer_direction = XFER_RECV;
@@ -185,15 +175,6 @@ int user_recv_init(lstore_handle_t *h,
     }
 
     return 0;
-}
-
-int user_send_callback(lstore_handle_t *h,
-                        char *buffer,
-                        globus_size_t nbytes,
-                        globus_off_t offset) {
-    int retval = lio_read(h->fd, (char *)buffer, nbytes, offset, NULL);
-    free(buffer);
-    return (retval == nbytes) ? 0 : 1;
 }
 
 int user_send_init(lstore_handle_t *h,
@@ -206,33 +187,55 @@ int user_send_init(lstore_handle_t *h,
 
     return 0;
 }
+
 void user_xfer_callback(lstore_handle_t *h,
                                 globus_gfs_operation_t op,
                                 globus_result_t result,
-                                globus_byte_t * buffer,
+                                globus_byte_t *buffer,
                                 globus_size_t nbytes,
                                 globus_off_t offset,
                                 globus_bool_t eof) {
-    /* 
-     * SEND/read ->
-     * dec outstanding
-     * top level calls pump
-     */
-    if (h->xfer_direction == XFER_SEND) {
-        globus_mutex_lock(&h->mutex);
-        --(h->outstanding_count);
-        globus_free(buffer);
-        globus_mutex_unlock(&h->mutex);
+    globus_gfs_log_message(GLOBUS_GFS_LOG_INFO, "[lstore] CB\n");
+    if (result != GLOBUS_SUCCESS) {
+        user_handle_done(h, XFER_ERROR_DEFAULT);
+        h->done = GLOBUS_TRUE;
+    } else if (eof) {
+        user_handle_done(h, XFER_ERROR_NONE);
     }
+    if ((h->xfer_direction == XFER_RECV) && (nbytes > 0)) {
+        globus_size_t written = lio_write(h->fd,
+                                            (char *)buffer,
+                                            nbytes,
+                                            offset,
+                                            NULL);
+        if (written != nbytes) {
+            user_handle_done(h, XFER_ERROR_DEFAULT);
+        }
+
+        // Test for 1 instead of 0 since we decrement later
+        if (h->outstanding_count == 1) {
+            globus_gfs_log_message(GLOBUS_GFS_LOG_INFO, "[lstore] close internal\n");
+            int retval = gop_sync_exec(lio_close_op(h->fd));
+            h->fd = NULL;
+            if (retval != OP_STATE_SUCCESS) {
+                user_handle_done(h, XFER_ERROR_DEFAULT);
+            }
+        }
+    }
+
+    --(h->outstanding_count);
+    globus_free(buffer);
 }
 
 int user_xfer_pump(lstore_handle_t *h,
                     char **buf_idx,
                     lstore_reg_info_t *reg_idx,
                     int *buf_len) {
+    globus_gfs_log_message(GLOBUS_GFS_LOG_INFO, "[lstore] PUMP\n");
+    //globus_result_t rc = GLOBUS_SUCCESS;
     int count = 0;
-    globus_mutex_lock(&h->mutex);
     while ((h->outstanding_count < h->optimal_count) && (count < *(buf_len)) && (!h->done)) {
+        globus_gfs_log_message(GLOBUS_GFS_LOG_INFO, "[lstore] PUMP2\n");
         // This implementation is obviously junk. Make it better.
         buf_idx[count] = globus_malloc(h->block_size);
         if (buf_idx[count] == NULL) {
@@ -265,7 +268,7 @@ int user_xfer_pump(lstore_handle_t *h,
             reg_idx[count].offset = offset;
             if ((nbytes == 0)) {
                 // got EOF
-                h->done = GLOBUS_TRUE;
+                user_handle_done(h, XFER_ERROR_NONE);
             }
             if (!h->done) {
                 // Advance offset
@@ -279,7 +282,6 @@ int user_xfer_pump(lstore_handle_t *h,
     }
 
     (*buf_len) = count;
-    globus_mutex_unlock(&h->mutex);
     return 0;
 
 error_allocblock:
@@ -291,8 +293,16 @@ error_allocblock:
     }
     (*buf_len) = 0;
     globus_gfs_log_message(GLOBUS_GFS_LOG_INFO, "[lstore] Failed to user_pump.\n");
-    globus_mutex_unlock(&h->mutex);
     return -1;
+}
+
+void user_handle_done(lstore_handle_t *h, xfer_error_t error) {
+    globus_gfs_log_message(GLOBUS_GFS_LOG_INFO,
+                            "[lstore] Handle done. Error: %d Outstanding: %d\n",
+                            error,
+                            h->outstanding_count);
+    h->done = GLOBUS_TRUE;
+    h->error = error;
 }
 
 lstore_handle_t *user_handle_new(int *retval_ext) {
@@ -314,6 +324,7 @@ lstore_handle_t *user_handle_new(int *retval_ext) {
     h->block_size = 262144;
     h->prefix = strdup("/lio/lfs");
     h->done = GLOBUS_FALSE;
+    h->error = XFER_ERROR_NONE;
     if (!h->prefix) {
         (*retval_ext) = -4;
         return NULL;

@@ -32,18 +32,14 @@ static void gfs_send_callback(globus_gfs_operation_t op,
                                 globus_byte_t *buffer,
                                 globus_size_t nbytes,
                                 void *user_arg);
-static void globus_l_gfs_file_destroy_stat(
-                                globus_gfs_stat_t *stat_array,
-                                int stat_count);
-/*
-static void gfs_recv_callback(globus_gfs_operation_t op,
+/* Marked unread since only gridftp calls it */
+void gfs_recv_callback(globus_gfs_operation_t op,
                                 globus_result_t result,
                                 globus_byte_t * buffer,
                                 globus_size_t nbytes,
                                 globus_off_t offset,
                                 globus_bool_t eof,
                                 void * user_arg);
-*/
 static void gfs_xfer_pump(lstore_handle_t *h);
 static void gfs_xfer_callback(globus_gfs_operation_t op,
                                 globus_result_t result,
@@ -52,7 +48,9 @@ static void gfs_xfer_callback(globus_gfs_operation_t op,
                                 globus_off_t offset,
                                 globus_bool_t eof,
                                 void * user_arg);
-
+static void globus_l_gfs_file_destroy_stat(
+                                globus_gfs_stat_t *stat_array,
+                                int stat_count);
 static
 globus_version_t local_version =
 {
@@ -258,6 +256,8 @@ globus_l_gfs_lstore_recv(
     globus_gridftp_server_get_read_range(lstore_handle->op,
                                             &lstore_handle->offset,
                                             &lstore_handle->xfer_length);
+    globus_gridftp_server_get_optimal_concurrency(lstore_handle->op,
+                                            &lstore_handle->optimal_count);
     /*
      * Once GridFTP is notified by begin_transfer, you can at any point kill
      * the xfer by issuing a globus_gridftp_server_finished_transfer(). Since
@@ -268,25 +268,19 @@ globus_l_gfs_lstore_recv(
     globus_gridftp_server_begin_transfer(lstore_handle->op, 0, lstore_handle);
     int retval = user_recv_init(lstore_handle, transfer_info);
 
-    if (retval == GLOBUS_FAILURE) {
+    if (retval != 0) {
         // Catchall for generic globus oopsies
+        globus_gfs_log_message(GLOBUS_GFS_LOG_INFO, "[lstore] recv fail\n");
         GlobusGFSErrorGenericStr(result, ("[lstore] Failed to recv file."));
         globus_gridftp_server_finished_transfer(op, result);
-        return;
-    } else if (retval != GLOBUS_SUCCESS) {
-        // If we get something that's not GLOBUS_FAILURE or SUCCESS, treat it
-        // like a real globus error string
-        result = retval;
-        globus_gridftp_server_finished_transfer(op, result);
-        return;
+    } else {
+       /*
+        * Now that we've begun the transfer, we trigger the initial
+        * asynchronous I/O requests. After this point, the control flow is
+        * enirely through callbacks being submitted and handled
+        */
+        gfs_xfer_pump(lstore_handle);
     }
-
-    /*
-     * Now that we've begun the transfer, we trigger the initial asynchronous
-     * I/O requests. After this point, the control flow is enirely through
-     * callbacks being submitted and handled
-     */
-    gfs_xfer_pump(lstore_handle);
 
 }
 
@@ -325,6 +319,8 @@ globus_l_gfs_lstore_send(
     globus_gridftp_server_get_write_range(lstore_handle->op,
                                             &lstore_handle->offset,
                                             &lstore_handle->xfer_length);
+    globus_gridftp_server_get_optimal_concurrency(lstore_handle->op,
+                                                    &lstore_handle->optimal_count);
     /*
      * Once GridFTP is notified by begin_transfer, you can at any point kill
      * the xfer by issuing a globus_gridftp_server_finished_transfer(). Since
@@ -335,26 +331,18 @@ globus_l_gfs_lstore_send(
     globus_gridftp_server_begin_transfer(lstore_handle->op, 0, lstore_handle);
     int retval = user_send_init(lstore_handle, transfer_info);
 
-    if (retval == GLOBUS_FAILURE) {
+    if (retval != 0) {
         // Catchall for generic globus oopsies
         GlobusGFSErrorGenericStr(result, ("[lstore] Failed to send file."));
         globus_gridftp_server_finished_transfer(op, result);
-        return;
-    } else if (retval != GLOBUS_SUCCESS) {
-        // If we get something that's not GLOBUS_FAILURE or SUCCESS, treat it
-        // like a real globus error string
-        result = retval;
-        globus_gridftp_server_finished_transfer(op, result);
-        return;
+    } else {
+        /*
+         * Now that we've begun the transfer, we trigger the initial
+         * asynchronous I/O requests. After this point, the control flow is
+         * enirely through callbacks being submitted and handled
+         */
+         gfs_xfer_pump(lstore_handle);
     }
-    globus_gfs_log_message(GLOBUS_GFS_LOG_INFO, "[lstore] send_init retval: %d\n", retval);
-
-    /*
-     * Now that we've begun the transfer, we trigger the initial asynchronous
-     * I/O requests. After this point, the control flow is enirely through
-     * callbacks being submitted and handled
-     */
-    gfs_xfer_pump(lstore_handle);
 
 }
 /**
@@ -478,7 +466,7 @@ globus_l_gfs_file_destroy_stat(
 #define MAX_CONCURRENCY_PER_LOOP ((int) 32)
 static void gfs_xfer_pump(lstore_handle_t *h) {
     GlobusGFSName(gfs_xfer_pump);
-    globus_gridftp_server_get_optimal_concurrency(h->op, &h->optimal_count);
+    globus_mutex_lock(&h->mutex);
     globus_byte_t *buf_list[MAX_CONCURRENCY_PER_LOOP];
     lstore_reg_info_t reg_list[MAX_CONCURRENCY_PER_LOOP];
     int buf_len = MAX_CONCURRENCY_PER_LOOP;
@@ -496,23 +484,20 @@ static void gfs_xfer_pump(lstore_handle_t *h) {
         }
     } else {
         for (int i = 0; i < buf_len; ++i) {
-            if (h->xfer_direction == XFER_RECV) {
-                /*
-                 *rc = globus_gridftp_server_register_write(h->op,
-                 *                      buf_list[i],
-                 *                      h->block_size,
-                 *                      h->offset,
-                 *                      -1,
-                 *                      gfs_recv_callback,
-                 *                      h);
-                 */
-            } else if (h->xfer_direction == XFER_SEND) {
+            if (h->xfer_direction == XFER_SEND) {
                 rc = globus_gridftp_server_register_write(h->op,
                                        reg_list[i].buffer,
                                        reg_list[i].nbytes,
                                        reg_list[i].offset,
                                        -1,
                                        gfs_send_callback,
+                                       h);
+            } else if (h->xfer_direction == XFER_RECV) {
+                // globus_gridftp_server_update_bytes_written(op, offset, nbytes);
+                rc = globus_gridftp_server_register_read(h->op,
+                                       buf_list[i],
+                                       h->block_size,
+                                       gfs_recv_callback,
                                        h);
             } else {
                 rc = GLOBUS_FAILURE;
@@ -525,16 +510,9 @@ static void gfs_xfer_pump(lstore_handle_t *h) {
     }
 
     if (rc != GLOBUS_SUCCESS) {
-        globus_gfs_log_message(GLOBUS_GFS_LOG_INFO, "[lstore] Failed to pump.\n");
-        globus_gridftp_server_finished_transfer(h->op, rc);
-        return;
-    }
-    globus_mutex_lock(&h->mutex);
-    if (h->done && (h->outstanding_count == 0)) {
-        globus_gridftp_server_finished_transfer(h->op, GLOBUS_SUCCESS);
+        h->error = XFER_ERROR_DEFAULT;
     }
     globus_mutex_unlock(&h->mutex);
-
 }
 
 static void gfs_send_callback(globus_gfs_operation_t op,
@@ -543,20 +521,18 @@ static void gfs_send_callback(globus_gfs_operation_t op,
                                 globus_size_t nbytes,
                                 void *user_arg) {
     gfs_xfer_callback(op, result, buffer, nbytes, 0, 0, user_arg);
-    /* register for read */
 }
-#if 0
-static void gfs_recv_callback(globus_gfs_operation_t op,
+
+void gfs_recv_callback(globus_gfs_operation_t op,
                                 globus_result_t result,
                                 globus_byte_t * buffer,
                                 globus_size_t nbytes,
                                 globus_off_t offset,
                                 globus_bool_t eof,
                                 void * user_arg) {
-    /* the user CB needs to do the write */
     gfs_xfer_callback(op, result, buffer, nbytes, offset, eof, user_arg);
 }
-#endif
+
 static void gfs_xfer_callback(globus_gfs_operation_t op,
                                 globus_result_t result,
                                 globus_byte_t * buffer,
@@ -565,7 +541,30 @@ static void gfs_xfer_callback(globus_gfs_operation_t op,
                                 globus_bool_t eof,
                                 void * user_arg) {
     GlobusGFSName(gfs_recv_callback);
+    globus_gfs_log_message(GLOBUS_GFS_LOG_INFO, "[lstore] gfs_CB\n");
     lstore_handle_t *h = (lstore_handle_t *) user_arg;
+    globus_mutex_lock(&h->mutex);
+    
     user_xfer_callback(h, op, result, buffer, nbytes, offset, eof);
-    gfs_xfer_pump((lstore_handle_t *) user_arg);
+
+    /*
+     * The transfer is done when h->done is set and h->outstanding_count reaches
+     * zero
+     *
+     * Unlock within the if statements since the conditions are protected by
+     * mutex
+     */
+    if (h->done && (h->outstanding_count == 0)) {
+        globus_mutex_unlock(&h->mutex);
+        if (h->error == XFER_ERROR_NONE) {
+            globus_gridftp_server_finished_transfer(h->op, GLOBUS_SUCCESS);
+        } else {
+            globus_gridftp_server_finished_transfer(h->op, GLOBUS_FAILURE);
+        }
+    } else if (!h->done) {
+        globus_mutex_unlock(&h->mutex);
+        gfs_xfer_pump(h);
+    } else {
+        globus_mutex_unlock(&h->mutex);
+    }
 }

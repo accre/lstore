@@ -24,22 +24,10 @@
 #include <lio/lio.h>
 
 // Typedefs
-typedef enum xfer_direction_t xfer_direction_t;
 typedef struct lstore_handle_t lstore_handle_t;
 typedef struct lstore_reg_info_t lstore_reg_info_t;
-/*typedef globus_result_t (*gridftp_register_fn_t)(
-                                    globus_gfs_operation_t op,
-                                    globus_byte_t * buffer,
-                                    globus_size_t length,
-                                    globus_gridftp_server_read_cb_t callback,
-                                    void * user_arg);*/
-typedef void (*gridftp_xfer_cb_fn_t)(globus_gfs_operation_t op,
-                                    globus_result_t result,
-                                    globus_byte_t * buffer,
-                                    globus_size_t nbytes,
-                                    globus_off_t offset,
-                                    globus_bool_t eof,
-                                    void * user_arg);
+typedef enum xfer_direction_t xfer_direction_t;
+typedef enum xfer_error_t xfer_error_t;
 
 // Functions
 /**
@@ -70,6 +58,13 @@ char *copy_path_to_lstore(const char *prefix, const char *path);
  * @param stat_count Number of elements in array
  */
 void destroy_stat(globus_gfs_stat_t * stat_array, int stat_count);
+void gfs_recv_callback(globus_gfs_operation_t op,
+                                globus_result_t result,
+                                globus_byte_t * buffer,
+                                globus_size_t nbytes,
+                                globus_off_t offset,
+                                globus_bool_t eof,
+                                void * user_arg);
 
 /**
  * Converts a GridFTP to a path within LStore
@@ -168,24 +163,22 @@ lstore_handle_t *user_connect(globus_gfs_operation_t op, int *retval);
 void user_handle_del(lstore_handle_t *handle);
 
 /**
+ * Used to mark when a transfer has completed. The rest of the code should just
+ * process in-flight (h->outstanding_count) requests until drained
+ * @param h Session handle
+ * @param errno Error code to return to client
+ */
+void user_handle_done(lstore_handle_t *h, xfer_error_t error);
+
+/**
  * Allocates and initializes a new lstore_handle
  * @param retval_ext Returns error code if initialization fails
  * @returns New handle on success, NULL otherwise
  */
 lstore_handle_t *user_handle_new(int *retval_ext);
 
-int user_recv_callback(lstore_handle_t *h,
-                        char *buffer,
-                        globus_size_t nbytes,
-                        globus_off_t offset);
-
 int user_recv_init(lstore_handle_t *h,
                     globus_gfs_transfer_info_t * transfer_info);
-
-int user_send_callback(lstore_handle_t *h,
-                        char *buffer,
-                        globus_size_t nbytes,
-                        globus_off_t offset);
 
 int user_send_init(lstore_handle_t *h,
                     globus_gfs_transfer_info_t * transfer_info);
@@ -240,6 +233,11 @@ enum xfer_direction_t {
     XFER_RECV,
 };
 
+enum xfer_error_t {
+    XFER_ERROR_NONE = 0,
+    XFER_ERROR_DEFAULT = 1,
+};
+
 // Structures
 struct lstore_handle_t {
     globus_gfs_operation_t op;
@@ -253,6 +251,7 @@ struct lstore_handle_t {
     int optimal_count;
     int outstanding_count;
     int done;
+    xfer_error_t error;
     char *expected_checksum;
     globus_mutex_t mutex;
     xfer_direction_t xfer_direction;
