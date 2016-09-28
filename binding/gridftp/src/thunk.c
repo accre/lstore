@@ -171,8 +171,9 @@ int user_recv_callback(lstore_handle_t *h,
                         globus_size_t nbytes,
                         globus_off_t offset) {
     int retval = lio_write(h->fd, (char *)buffer, nbytes, offset, NULL);
+    globus_gfs_log_message(GLOBUS_GFS_LOG_INFO, "[lstore] Complete user_recv_callback: %d.\n", retval);
     free(buffer);
-    return (retval == nbytes) ? 0 : 1;
+    return retval;
 }
 
 int user_recv_init(lstore_handle_t *h,
@@ -186,22 +187,99 @@ int user_recv_init(lstore_handle_t *h,
     return 0;
 }
 
-// AKA globus_l_gfs_posix_write_to_storage
-int user_xfer_pump(lstore_handle_t *h, char **buf_idx, int *buf_len) {
+int user_send_callback(lstore_handle_t *h,
+                        char *buffer,
+                        globus_size_t nbytes,
+                        globus_off_t offset) {
+    int retval = lio_read(h->fd, (char *)buffer, nbytes, offset, NULL);
+    free(buffer);
+    return (retval == nbytes) ? 0 : 1;
+}
+
+int user_send_init(lstore_handle_t *h,
+                    globus_gfs_transfer_info_t * transfer_info) {
+    h->xfer_direction = XFER_SEND;
+    int retval = plugin_xfer_init(h, transfer_info, XFER_SEND);
+    if (!retval) {
+        return retval;
+    }
+
+    return 0;
+}
+void user_xfer_callback(lstore_handle_t *h,
+                                globus_gfs_operation_t op,
+                                globus_result_t result,
+                                globus_byte_t * buffer,
+                                globus_size_t nbytes,
+                                globus_off_t offset,
+                                globus_bool_t eof) {
+    /* 
+     * SEND/read ->
+     * dec outstanding
+     * top level calls pump
+     */
+    if (h->xfer_direction == XFER_SEND) {
+        globus_mutex_lock(&h->mutex);
+        --(h->outstanding_count);
+        globus_free(buffer);
+        globus_mutex_unlock(&h->mutex);
+    }
+}
+
+int user_xfer_pump(lstore_handle_t *h,
+                    char **buf_idx,
+                    lstore_reg_info_t *reg_idx,
+                    int *buf_len) {
     int count = 0;
-
-    while ((h->outstanding_count < h->optimal_count) && (count < *(buf_len))) {
-
+    globus_mutex_lock(&h->mutex);
+    while ((h->outstanding_count < h->optimal_count) && (count < *(buf_len)) && (!h->done)) {
         // This implementation is obviously junk. Make it better.
         buf_idx[count] = globus_malloc(h->block_size);
         if (buf_idx[count] == NULL) {
             goto error_allocblock;
         }
+        // If we're pumping read operations, fill the buffer to hand to gridftp
+        if (h->xfer_direction == XFER_SEND) {
+
+            globus_size_t read_length;
+            if (h->xfer_length < 0 || h->xfer_length > h->block_size) {
+                read_length = h->block_size;
+            } else {
+                read_length = h->xfer_length;
+            }
+
+            /*
+             * call down to plugin_read
+             * lio_read(h->fd, (char *)buffer, nbytes, offset, NULL);
+             */ 
+            globus_off_t offset  = h->offset;
+            globus_size_t nbytes = lio_read(h->fd,
+                                            buf_idx[count],
+                                            read_length,
+                                            offset,
+                                            NULL);
+
+            // Then tell gridftp what we just read
+            reg_idx[count].buffer = (globus_byte_t *)buf_idx[count];
+            reg_idx[count].nbytes = nbytes;
+            reg_idx[count].offset = offset;
+            if ((nbytes == 0)) {
+                // got EOF
+                h->done = GLOBUS_TRUE;
+            }
+            if (!h->done) {
+                // Advance offset
+                h->offset += nbytes;
+                h->xfer_length -= nbytes;
+            }
+        }
+        // TODO for RECV/write, need to register the callback
         ++count;
         ++(h->outstanding_count);
     }
 
     (*buf_len) = count;
+    globus_mutex_unlock(&h->mutex);
     return 0;
 
 error_allocblock:
@@ -212,6 +290,8 @@ error_allocblock:
         --count;
     }
     (*buf_len) = 0;
+    globus_gfs_log_message(GLOBUS_GFS_LOG_INFO, "[lstore] Failed to user_pump.\n");
+    globus_mutex_unlock(&h->mutex);
     return -1;
 }
 

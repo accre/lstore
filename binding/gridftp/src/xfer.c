@@ -26,7 +26,15 @@
 int plugin_xfer_init(lstore_handle_t *h,
                         globus_gfs_transfer_info_t * transfer_info,
                         xfer_direction_t direction) {
-    h->register_fn = globus_gridftp_server_register_read;
+    int open_flags;
+    if (direction == XFER_RECV) {
+        open_flags = lio_fopen_flags("w");
+    } else if (direction == XFER_SEND) {
+        open_flags = lio_fopen_flags("r");
+    } else {
+        // Shouldn't happen.
+        return -1;
+    }
     
     if (transfer_info->expected_checksum) {
         char *tmp = strdup(transfer_info->expected_checksum);
@@ -42,11 +50,11 @@ int plugin_xfer_init(lstore_handle_t *h,
     if (!path_copy) {
         goto error_alloc;
     }
-
     int retval = gop_sync_exec(lio_open_op(lio_gc,
                                 lio_gc->creds,
                                 path_copy,
-                                lio_fopen_flags("w"), NULL,
+                                open_flags,
+                                NULL,
                                 &(h->fd), 60));
     if (retval != OP_STATE_SUCCESS) {
         goto error_open;

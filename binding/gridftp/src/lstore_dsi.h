@@ -26,12 +26,13 @@
 // Typedefs
 typedef enum xfer_direction_t xfer_direction_t;
 typedef struct lstore_handle_t lstore_handle_t;
-typedef globus_result_t (*gridftp_register_fn_t)(
+typedef struct lstore_reg_info_t lstore_reg_info_t;
+/*typedef globus_result_t (*gridftp_register_fn_t)(
                                     globus_gfs_operation_t op,
                                     globus_byte_t * buffer,
                                     globus_size_t length,
                                     globus_gridftp_server_read_cb_t callback,
-                                    void * user_arg);
+                                    void * user_arg);*/
 typedef void (*gridftp_xfer_cb_fn_t)(globus_gfs_operation_t op,
                                     globus_result_t result,
                                     globus_byte_t * buffer,
@@ -181,6 +182,14 @@ int user_recv_callback(lstore_handle_t *h,
 int user_recv_init(lstore_handle_t *h,
                     globus_gfs_transfer_info_t * transfer_info);
 
+int user_send_callback(lstore_handle_t *h,
+                        char *buffer,
+                        globus_size_t nbytes,
+                        globus_off_t offset);
+
+int user_send_init(lstore_handle_t *h,
+                    globus_gfs_transfer_info_t * transfer_info);
+
 
 /**
  * Stat a file/directory
@@ -194,7 +203,17 @@ int user_stat(lstore_handle_t *h,
                 globus_gfs_stat_info_t *info,
                 globus_gfs_stat_t ** ret,
                 int *ret_count);
+/**
+ * Called by gridftp when a new block is expected to be read/written
+ */
 
+void user_xfer_callback(lstore_handle_t *h,
+                                globus_gfs_operation_t op,
+                                globus_result_t result,
+                                globus_byte_t * buffer,
+                                globus_size_t nbytes,
+                                globus_off_t offset,
+                                globus_bool_t eof); 
 /**
  * Pumps the GridFTP transfers by filling buf_idx with pointers to buffers
  * @param h Handle to LStore
@@ -202,7 +221,10 @@ int user_stat(lstore_handle_t *h,
  * @param buf_len Initially size of buf_idx. Afterwards the number filled
  * @returns 0 on success, -1 if a block couldn't be allocated
  */
-int user_xfer_pump(lstore_handle_t *h, char **buf_idx, int *buf_len);
+int user_xfer_pump(lstore_handle_t *h,
+                    char **buf_idx,
+                    lstore_reg_info_t *reg_idx,
+                    int *buf_len);
 
 /**
  * Closes a user session
@@ -236,6 +258,11 @@ struct lstore_handle_t {
     xfer_direction_t xfer_direction;
 };
 
+struct lstore_reg_info_t {
+    globus_byte_t *buffer;
+    globus_size_t nbytes;
+    globus_off_t offset;
+};
 
 // Preprocessor macros
 // From globus_i_gridftp_server.h
