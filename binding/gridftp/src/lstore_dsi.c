@@ -28,6 +28,9 @@
 
 // Forward declaration
 static void gfs_xfer_pump(lstore_handle_t *h);
+static void globus_l_gfs_file_destroy_stat(
+                                globus_gfs_stat_t *stat_array,
+                                int stat_count);
 static void gfs_recv_callback(globus_gfs_operation_t op,
                                 globus_result_t result,
                                 globus_byte_t * buffer,
@@ -148,7 +151,7 @@ globus_l_gfs_lstore_stat(
     int retval = user_stat(lstore_handle, stat_info, &stat_array, &stat_count);
     if (retval == GLOBUS_FAILURE) {
         // Catchall for generic globus oopsies
-        GlobusGFSErrorGenericStr(result, ("[lstore] Failed to start session."));
+        GlobusGFSErrorGenericStr(result, ("[lstore] Failed to perform stat."));
     } else if (retval != GLOBUS_SUCCESS) {
         // If we get something that's not GLOBUS_FAILURE or SUCCESS, treat it
         // like a real globus error string
@@ -157,6 +160,7 @@ globus_l_gfs_lstore_stat(
 
     globus_gridftp_server_finished_stat(
         op, result, stat_array, stat_count);
+    globus_l_gfs_file_destroy_stat(stat_array, stat_count);
 }
 
 /*
@@ -388,6 +392,31 @@ globus_l_gfs_lstore_deactivate(void)
     }
 
     return result;
+}
+
+/*
+ * Stat-handling functions stolen from "file" DSI
+ */
+static void
+globus_l_gfs_file_destroy_stat(
+    globus_gfs_stat_t *                 stat_array,
+    int                                 stat_count)
+{
+    int                                 i;
+    GlobusGFSName(globus_l_gfs_file_destroy_stat);
+
+    for(i = 0; i < stat_count; i++)
+    {
+        if(stat_array[i].name != NULL)
+        {
+            globus_free(stat_array[i].name);
+        }
+        if(stat_array[i].symlink_target != NULL)
+        {
+            globus_free(stat_array[i].symlink_target);
+        }
+    }
+    globus_free(stat_array);
 }
 
 /*

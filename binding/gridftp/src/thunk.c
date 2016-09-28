@@ -96,11 +96,13 @@ int user_stat(lstore_handle_t *h, globus_gfs_stat_info_t *info,
 
     tbx_stack_t *stack = tbx_stack_new();
     if (!stack) {
+        globus_gfs_log_message(GLOBUS_GFS_LOG_INFO, "[lstore] Couldnt init stack\n");
         goto error_initstack;
     }
 
     int retcode = plugin_stat(h, stack, info->pathname, info->file_only);
     if (retcode) {
+        globus_gfs_log_message(GLOBUS_GFS_LOG_INFO, "[lstore] Couldnt plugin_stat\n");
         goto error_stat;
     }
 
@@ -113,6 +115,7 @@ int user_stat(lstore_handle_t *h, globus_gfs_stat_info_t *info,
     if (!stats) {
         goto error_allocarray;
     }
+    
     for (int idx=0; idx < stat_count; ++idx) {
         globus_stat_fill(&stats[idx], stack);
     }

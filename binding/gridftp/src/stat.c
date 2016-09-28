@@ -25,16 +25,18 @@
 
 #include "lstore_dsi.h"
 
+#define gridftp_printf(...) globus_gfs_log_message(GLOBUS_GFS_LOG_INFO, "[lstore] " __VA_ARGS__);
+
 int plugin_stat(lstore_handle_t *h, tbx_stack_t *stack, const char *path,
                     int file_only) {
-    printf("Plugin Stat\n");
+    gridftp_printf("Plugin Stat\n");
     int retval = 1;
 
     // Extract the LStore-specific path
     const char *lstore_path = path_to_lstore(h->prefix, path);
-    printf("%s %s %s\n", lstore_path, h->prefix, path);
+    gridftp_printf("%s %s %s\n", lstore_path, h->prefix, path);
     if (!lstore_path) {
-        printf("Path not in lstore\n");
+        gridftp_printf("Path not in lstore\n");
         return 1;
     }
     char *path_copy = strdup(lstore_path);
@@ -48,9 +50,11 @@ int plugin_stat(lstore_handle_t *h, tbx_stack_t *stack, const char *path,
     }
 
     char *readlink = NULL;
+    gridftp_printf("Beginning stat\n");
     retval = lio_stat(lio_gc, lio_gc->creds, path_copy, file_info, h->prefix, &readlink);
+    gridftp_printf("Got stat: %d\n", retval);
     if (retval) {
-        printf("Bad stat: %d\n", retval);
+        gridftp_printf("Bad stat: %d\n", retval);
     }
     
     int old_count = tbx_stack_count(stack);
