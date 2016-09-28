@@ -490,6 +490,8 @@ gop_op_status_t lio_myopen_fn(void *arg, int id)
     fh->seg = lio_exnode_default_get(fh->ex);
     if (fh->seg == NULL) {
         log_printf(0, "ERROR: No default segment!  Aborting! fname=%s\n", fd->path);
+        status.op_status = OP_STATE_FAILURE;
+        status.error_code = -EFAULT;
         goto cleanup;
     }
 
@@ -966,7 +968,6 @@ int lio_read(lio_fd_t *fd, char *buf, ex_off_t size, off_t off, lio_segment_rw_h
     err = _lio_read_gop(&op, fd, buf, size, off, rw_hints);
     if (err == 0) {
         status = lio_read_ex_fn((void *)&op, -1);
-        if (status.op_status == OP_STATE_SUCCESS) status.error_code = size; // ** Adjust the size to hide any readahead that may have occurred
     } else if (err == 1) {
         status = gop_success_status;
     } else {
