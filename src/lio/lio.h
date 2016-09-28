@@ -85,40 +85,8 @@ struct lio_fd_t {  //** Individual file descriptor
 extern tbx_sl_compare_t ex_id_compare;
 
 
-gop_op_generic_t *lio_abort_regex_object_set_multiple_attrs_gop(lio_config_t *lc, gop_op_generic_t *gop);
-gop_op_generic_t *lio_symlink_object_gop(lio_config_t *lc, lio_creds_t *creds, char *src_path, char *dest_path, char *id);
-gop_op_generic_t *lio_read_gop(lio_fd_t *fd, char *buf, ex_off_t size, ex_off_t off, lio_segment_rw_hints_t *rw_hints);
-gop_op_generic_t *lio_readv_gop(lio_fd_t *fd, tbx_iovec_t *iov, int n_iov, ex_off_t size, ex_off_t off, lio_segment_rw_hints_t *rw_hints);
-gop_op_generic_t *lio_read_ex_gop(lio_fd_t *fd, int n_iov, ex_tbx_iovec_t *iov, tbx_tbuf_t *buffer, ex_off_t boff, lio_segment_rw_hints_t *rw_hints);
-gop_op_generic_t *lio_write_gop(lio_fd_t *fd, char *buf, ex_off_t size, off_t off, lio_segment_rw_hints_t *rw_hints);
-gop_op_generic_t *lio_write_gopv(lio_fd_t *fd, tbx_iovec_t *iov, int n_iov, ex_off_t size, off_t off, lio_segment_rw_hints_t *rw_hints);
-gop_op_generic_t *lio_write_ex_gop(lio_fd_t *fd, int n_iov, ex_tbx_iovec_t *iov, tbx_tbuf_t *buffer, ex_off_t boff, lio_segment_rw_hints_t *rw_hints);
-
-int lio_read(lio_fd_t *fd, char *buf, ex_off_t size, off_t off, lio_segment_rw_hints_t *rw_hints);
-int lio_readv(lio_fd_t *fd, tbx_iovec_t *iov, int n_iov, ex_off_t size, off_t off, lio_segment_rw_hints_t *rw_hints);
-int lio_read_ex(lio_fd_t *fd, int n_iov, ex_tbx_iovec_t *iov, tbx_tbuf_t *buffer, ex_off_t boff, lio_segment_rw_hints_t *rw_hints);
-int lio_write(lio_fd_t *fd, char *buf, ex_off_t size, off_t off, lio_segment_rw_hints_t *rw_hints);
-int lio_writev(lio_fd_t *fd, tbx_iovec_t *iov, int n_iov, ex_off_t size, off_t off, lio_segment_rw_hints_t *rw_hints);
-int lio_write_ex(lio_fd_t *fd, int n_iov, ex_tbx_iovec_t *iov, tbx_tbuf_t *buffer, ex_off_t boff, lio_segment_rw_hints_t *rw_hints);
-
 mode_t ftype_lio2posix(int ftype);
 void _lio_parse_stat_vals(char *fname, struct stat *stat, char **val, int *v_size, char *mount_prefix, char **flink);
-int lio_stat(lio_config_t *lc, lio_creds_t *creds, char *fname, struct stat *stat, char *mount_prefix, char **readlink);
-
-ex_off_t lio_seek(lio_fd_t *fd, ex_off_t offset, int whence);
-ex_off_t lio_tell(lio_fd_t *fd);
-ex_off_t lio_size(lio_fd_t *fd);
-gop_op_generic_t *lio_truncate_gop(lio_fd_t *fd, ex_off_t new_size);
-
-gop_op_generic_t *lio_cp_lio2lio_gop(lio_fd_t *sfd, lio_fd_t *dfd, ex_off_t bufsize, char *buffer, int hints, lio_segment_rw_hints_t *rw_hints);
-
-gop_op_generic_t *lio_get_multiple_attrs_gop(lio_config_t *lc, lio_creds_t *creds, const char *path, char *id, char **key, void **val, int *v_size, int n);
-gop_op_generic_t *lio_multiple_setattr_gop(lio_config_t *lc, lio_creds_t *creds, const char *path, char *id, char **key, void **val, int *v_size, int n);
-int lio_get_multiple_attrs(lio_config_t *lc, lio_creds_t *creds, const char *path, char *id, char **key, void **val, int *v_size, int n);
-gop_op_generic_t *lio_move_object_gop(lio_config_t *lc, lio_creds_t *creds, char *src_path, char *dest_path);
-
-os_attr_iter_t *lio_create_attr_iter(lio_config_t *lc, lio_creds_t *creds, const char *path, lio_os_regex_table_t *attr, int v_max);
-void lio_destroy_attr_iter(lio_config_t *lc, os_attr_iter_t *it);
 
 int lio_update_error_counts(lio_config_t *lc, lio_creds_t *creds, char *path, lio_segment_t *seg, int mode);
 int lio_update_exnode_attrs(lio_config_t *lc, lio_creds_t *creds, lio_exnode_t *ex, lio_segment_t *seg, char *fname, lio_segment_errors_t *serr);
