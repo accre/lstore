@@ -263,7 +263,7 @@ do                                                                     \
 // Globals
 
 //* Needed for testing to locate the function pointers
-extern globus_module_descriptor_t globus_gridftp_server_lstore_module;
-extern globus_gfs_storage_iface_t globus_l_gfs_lstore_dsi_iface;
+__attribute__ ((visibility ("default"))) extern globus_module_descriptor_t globus_gridftp_server_lstore_module;
+__attribute__ ((visibility ("default"))) extern globus_gfs_storage_iface_t globus_l_gfs_lstore_dsi_iface;
 
 #endif

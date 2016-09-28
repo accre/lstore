@@ -329,7 +329,7 @@ globus_gfs_storage_iface_t globus_l_gfs_lstore_dsi_iface =
 static int globus_l_gfs_lstore_activate(void);
 static int globus_l_gfs_lstore_deactivate(void);
 
-GlobusExtensionDefineModule(globus_gridftp_server_lstore) =
+__attribute__((visibility ("default"))) GlobusExtensionDefineModule(globus_gridftp_server_lstore) =
 {
     .module_name = "globus_gridftp_server_lstore",
     .activation_func = globus_l_gfs_lstore_activate,
