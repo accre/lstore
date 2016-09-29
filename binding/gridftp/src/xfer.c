@@ -46,17 +46,17 @@ int plugin_xfer_init(lstore_handle_t *h,
         h->expected_checksum = NULL;
     }
 
-    char *path_copy = copy_path_to_lstore(h->prefix, transfer_info->pathname);
-    if (!path_copy) {
+    h->path = copy_path_to_lstore(h->prefix, transfer_info->pathname);
+    if (!h->path) {
         goto error_alloc;
     }
     int retval = gop_sync_exec(lio_open_op(lio_gc,
                                 lio_gc->creds,
-                                path_copy,
+                                h->path,
                                 open_flags,
                                 NULL,
                                 &(h->fd), 60));
-    if (retval != OP_STATE_SUCCESS) {
+    if (retval != OP_STATE_SUCCESS || (!h->fd)) {
         goto error_open;
     }
 
@@ -66,7 +66,8 @@ int plugin_xfer_init(lstore_handle_t *h,
     return retval;
 
 error_open:
-    free(path_copy);
+    free(h->path);
+    h->path = NULL;
 error_alloc:
     return -1;
 }
