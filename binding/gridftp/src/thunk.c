@@ -21,6 +21,7 @@
 
 #include <lio/lio.h>
 #include <stdio.h>
+#include <zlib.h>
 
 #include "lstore_dsi.h"
 
@@ -168,11 +169,26 @@ int user_command(lstore_handle_t *h, globus_gfs_command_info_t * info,
 
 int user_recv_init(lstore_handle_t *h,
                     globus_gfs_transfer_info_t * transfer_info) {
+    /*
+     * Configure buffers for checksumming
+     * Guess 10GB file length if we don't get an actual guess
+     */
+    long length_guess = (h->xfer_length > 0) ? h->xfer_length : (10*1024L*1024L*1024L);
+    size_t num_adler = (length_guess / h->block_size) + 10;
+    h->cksum_adler = globus_calloc(num_adler, sizeof(globus_size_t));
+    h->cksum_offset = globus_calloc(num_adler, sizeof(globus_size_t));
+    h->cksum_nbytes = globus_calloc(num_adler, sizeof(globus_size_t));
+    h->cksum_blocks = num_adler;
+    if (!h->cksum_adler || !h->cksum_offset || !h->cksum_nbytes) {
+        return -1;
+    }
+
     h->xfer_direction = XFER_RECV;
     int retval = plugin_xfer_init(h, transfer_info, XFER_RECV);
     if (!retval) {
         return retval;
     }
+    
 
     return 0;
 }
@@ -188,6 +204,58 @@ int user_send_init(lstore_handle_t *h,
     return 0;
 }
 
+static void human_readable_adler32(char *adler32_human, uLong adler32) {
+    unsigned int i;
+    unsigned char * adler32_char = (unsigned char*)&adler32;
+    char * adler32_ptr = (char *)adler32_human;
+    for (i = 0; i < 4; i++) {
+        sprintf(adler32_ptr, "%02x", adler32_char[sizeof(ulong)-4-1-i]);
+        adler32_ptr++;
+        adler32_ptr++;
+    }
+    adler32_ptr = '\0';
+}
+
+void user_xfer_close(lstore_handle_t *h) {
+    if (h->fd) {
+        if (gop_sync_exec(lio_close_op(h->fd)) != OP_STATE_SUCCESS) {
+            h->error = XFER_ERROR_DEFAULT;
+        } else if (h->xfer_direction == XFER_RECV) {
+            int bottom = 0;
+            size_t i = 0;
+            int keep_going = 1;
+            globus_off_t offset = 0;
+            uint32_t adler = adler32(0L, Z_NULL, 0);
+            while (keep_going) {
+                keep_going = 0;
+                for (i = bottom;i < h->cksum_end_blocks ; ++i) {
+                    if (h->cksum_offset[i] == offset) {
+                        adler = adler32_combine(adler,
+                                                h->cksum_adler[i],
+                                                h->cksum_nbytes[i]);
+                        offset += h->cksum_nbytes[i];
+                        keep_going = 1;
+                    }
+                }
+            }
+            // Update checksum
+            char adler32_human[2*sizeof(uLong)+1];
+            human_readable_adler32(adler32_human, adler);
+            lio_setattr(lio_gc, lio_gc->creds, h->path, NULL,
+                            "user.gridftp.adler32",
+                            adler32_human, strlen(adler32_human));
+
+            // Final flag to say everything is okay
+            lio_setattr(lio_gc, lio_gc->creds, h->path, NULL,
+                            "user.gridftp.success", "okay", 4);
+
+        }
+    } else {
+        globus_gfs_log_message(GLOBUS_GFS_LOG_INFO, "[lstore] Missing FD in CB??\n");
+        h->error = XFER_ERROR_DEFAULT;
+    }  
+}
+
 void user_xfer_callback(lstore_handle_t *h,
                                 globus_gfs_operation_t op,
                                 globus_result_t result,
@@ -195,14 +263,29 @@ void user_xfer_callback(lstore_handle_t *h,
                                 globus_size_t nbytes,
                                 globus_off_t offset,
                                 globus_bool_t eof) {
-    globus_gfs_log_message(GLOBUS_GFS_LOG_INFO, "[lstore] CB\n");
     if (result != GLOBUS_SUCCESS) {
         user_handle_done(h, XFER_ERROR_DEFAULT);
         h->done = GLOBUS_TRUE;
     } else if (eof) {
         user_handle_done(h, XFER_ERROR_NONE);
     }
-    if ((h->xfer_direction == XFER_RECV) && (nbytes > 0)) {
+    if ((h->xfer_direction == XFER_RECV) && (nbytes > 0) && (h->fd)) {
+        // Store the adler32 for this block
+        uint32_t adler32_accum = adler32(0L, Z_NULL, 0);
+        adler32_accum = adler32(adler32_accum, (const Bytef *)buffer, nbytes);
+        size_t adler32_idx = offset / h->block_size;
+        while (h->cksum_nbytes[adler32_idx] != 0) {
+            ++adler32_idx;
+        }
+        h->cksum_nbytes[adler32_idx] = nbytes;
+        h->cksum_offset[adler32_idx] = offset;
+        h->cksum_adler[adler32_idx] = adler32_accum;
+        if (adler32_idx + 1 > h->cksum_end_blocks) {
+            h->cksum_end_blocks = adler32_idx + 1;
+        }
+        if (offset + nbytes > h->cksum_total_len) {
+            h->cksum_total_len = offset + nbytes;
+        }
         globus_size_t written = lio_write(h->fd,
                                             (char *)buffer,
                                             nbytes,
@@ -211,19 +294,12 @@ void user_xfer_callback(lstore_handle_t *h,
         if (written != nbytes) {
             user_handle_done(h, XFER_ERROR_DEFAULT);
         }
-
-        // Test for 1 instead of 0 since we decrement later
-        if (h->outstanding_count == 1) {
-            globus_gfs_log_message(GLOBUS_GFS_LOG_INFO, "[lstore] close internal\n");
-            int retval = gop_sync_exec(lio_close_op(h->fd));
-            h->fd = NULL;
-            if (retval != OP_STATE_SUCCESS) {
-                user_handle_done(h, XFER_ERROR_DEFAULT);
-            }
-        }
+    }
+    if (!h->fd) {
+        globus_gfs_log_message(GLOBUS_GFS_LOG_INFO, "[lstore] Missing FD??\n");
+        user_handle_done(h, XFER_ERROR_DEFAULT);
     }
 
-    --(h->outstanding_count);
     globus_free(buffer);
 }
 
@@ -231,11 +307,12 @@ int user_xfer_pump(lstore_handle_t *h,
                     char **buf_idx,
                     lstore_reg_info_t *reg_idx,
                     int *buf_len) {
-    globus_gfs_log_message(GLOBUS_GFS_LOG_INFO, "[lstore] PUMP\n");
     //globus_result_t rc = GLOBUS_SUCCESS;
     int count = 0;
-    while ((h->outstanding_count < h->optimal_count) && (count < *(buf_len)) && (!h->done)) {
-        globus_gfs_log_message(GLOBUS_GFS_LOG_INFO, "[lstore] PUMP2\n");
+    // We increment outstanding count on the outside, but we want to use it as
+    // a counter here
+    int outstanding_sum = h->outstanding_count;
+    while ((outstanding_sum < h->optimal_count) && (count < *(buf_len)) && (!h->done)) {
         // This implementation is obviously junk. Make it better.
         buf_idx[count] = globus_malloc(h->block_size);
         if (buf_idx[count] == NULL) {
@@ -278,7 +355,7 @@ int user_xfer_pump(lstore_handle_t *h,
         }
         // TODO for RECV/write, need to register the callback
         ++count;
-        ++(h->outstanding_count);
+        ++outstanding_sum;
     }
 
     (*buf_len) = count;
@@ -289,6 +366,7 @@ error_allocblock:
         if (buf_idx[count]) {
             globus_free(buf_idx[count]);
         }
+        --(h->outstanding_count);
         --count;
     }
     (*buf_len) = 0;
@@ -349,8 +427,17 @@ void user_handle_del(lstore_handle_t *h) {
     if (h->expected_checksum) {
         free(h->expected_checksum);
     }
-    if (h->fd) {
-        gop_sync_exec(lio_close_op(h->fd));
+    //if (h->fd) {
+    //    gop_sync_exec(lio_close_op(h->fd));
+    //}
+    if (h->cksum_adler) {
+        globus_free(h->cksum_adler);
+    } 
+    if (h->cksum_offset) {
+        globus_free(h->cksum_offset);
+    }
+    if (h->cksum_nbytes) {
+        globus_free(h->cksum_nbytes);
     }
     globus_free(h);
 }

@@ -207,6 +207,12 @@ void user_xfer_callback(lstore_handle_t *h,
                                 globus_size_t nbytes,
                                 globus_off_t offset,
                                 globus_bool_t eof); 
+
+/**
+ * Does the necessary parts to close a transfer connection
+ */
+void user_xfer_close(lstore_handle_t *h);
+
 /**
  * Pumps the GridFTP transfers by filling buf_idx with pointers to buffers
  * @param h Handle to LStore
@@ -256,6 +262,14 @@ struct lstore_handle_t {
     char *expected_checksum;
     globus_mutex_t mutex;
     xfer_direction_t xfer_direction;
+
+    // Checksumming
+    globus_size_t cksum_total_len;
+    globus_size_t cksum_blocks;
+    globus_size_t cksum_end_blocks;
+    uint32_t *cksum_adler;
+    globus_off_t *cksum_offset;
+    globus_size_t *cksum_nbytes;
 };
 
 struct lstore_reg_info_t {
