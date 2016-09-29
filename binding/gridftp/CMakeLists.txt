@@ -14,6 +14,7 @@ set(GRIDFTP_OBJS
         src/command.c
         src/lstore_dsi.c
         src/stat.c
+        src/statsd-client.c
         src/thunk.c
         src/util.c
         src/xfer.c
