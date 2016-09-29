@@ -168,8 +168,8 @@ void user_handle_del(lstore_handle_t *handle);
  * @param h Session handle
  * @param errno Error code to return to client
  */
-void user_handle_done(lstore_handle_t *h, xfer_error_t error);
-
+void user_handle_done2(lstore_handle_t *h, xfer_error_t error, char *file, int line);
+#define user_handle_done(h, error) user_handle_done2(h, error, __FILE__, __LINE__)
 /**
  * Allocates and initializes a new lstore_handle
  * @param retval_ext Returns error code if initialization fails

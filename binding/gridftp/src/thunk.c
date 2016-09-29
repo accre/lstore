@@ -296,13 +296,17 @@ error_allocblock:
     return -1;
 }
 
-void user_handle_done(lstore_handle_t *h, xfer_error_t error) {
+void user_handle_done2(lstore_handle_t *h, xfer_error_t error, char *file, int line) {
     globus_gfs_log_message(GLOBUS_GFS_LOG_INFO,
-                            "[lstore] Handle done. Error: %d Outstanding: %d\n",
+                            "[lstore] Handle done. Error: %d Outstanding: %d Loc: %s:%d\n",
                             error,
-                            h->outstanding_count);
+                            h->outstanding_count,
+                            file,
+                            line);
     h->done = GLOBUS_TRUE;
-    h->error = error;
+    if (h->error == XFER_ERROR_NONE) {
+        h->error = error;
+    }
 }
 
 lstore_handle_t *user_handle_new(int *retval_ext) {
