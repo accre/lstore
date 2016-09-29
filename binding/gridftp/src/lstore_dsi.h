@@ -243,6 +243,7 @@ struct lstore_handle_t {
     globus_gfs_operation_t op;
     lio_fd_t *fd;
     char *prefix;
+    char *path;
 
     // Bits needed for send/recv
     globus_size_t block_size;
