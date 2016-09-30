@@ -10,6 +10,8 @@
 
 #define MAX_MSG_LEN 100
 
+statsd_link *lfs_statsd_link;
+
 statsd_link *statsd_init_with_namespace(const char *host, int port,
                                         const char *ns_)
 {

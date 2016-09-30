@@ -23,6 +23,8 @@
 #include <globus_gridftp_server.h>
 #include <lio/lio.h>
 
+#include "statsd-client.h"
+
 // Typedefs
 typedef struct lstore_handle_t lstore_handle_t;
 typedef struct lstore_reg_info_t lstore_reg_info_t;

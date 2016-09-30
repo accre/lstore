@@ -9,8 +9,15 @@ struct _statsd_link  {
     int sock;
     char *ns;
 };
-
 typedef struct _statsd_link statsd_link;
+
+// Global statsd socket
+extern statsd_link * lfs_statsd_link;
+#define STATSD_COUNT(name, count) if (lfs_statsd_link) { statsd_count(lfs_statsd_link, name, count, 1.0); globus_gfs_log_message(GLOBUS_GFS_LOG_INFO, "[lstore] statsd c:" name " %d\n", count); }
+#define STATSD_TIMER_END(name, variable) time_t variable ## _end; if (lfs_statsd_link) { time(& variable ## _end); statsd_timing(lfs_statsd_link, name, (int) (difftime(variable ## _end, variable) * 1000.0));  globus_gfs_log_message(GLOBUS_GFS_LOG_INFO, "[lstore] statsd t:" name " %d\n", (int) (difftime(variable ## _end, variable) * 1000.0)); }
+#define STATSD_TIMER_RESET(variable) variable = apr_time_now()
+#define STATSD_TIMER_POST(name, variable) if (lfs_statsd_link) { statsd_timing(lfs_statsd_link, name, (int) apr_time_msec(apr_time_now()-variable));  globus_gfs_log_message(GLOBUS_GFS_LOG_INFO, "[lstore] statsd t:" name " %d\n",(int) apr_time_msec(apr_time_now()-variable) ); }
+
 
 
 statsd_link *statsd_init(const char *host, int port);

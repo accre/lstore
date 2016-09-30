@@ -41,6 +41,32 @@ int activate() {
         log_printf(-1,"Failed to load LStore\n");
         return 1;
     }
+    // See if we're configured to write to statsd
+    char * local_host = globus_malloc(256);
+    if (local_host) {
+        memset(local_host, 0, 256);
+        if (gethostname(local_host, 255)) {
+            strcpy(local_host, "UNKNOWN");
+        }
+    }
+
+    char statsd_namespace_prefix [] = "lfs.gridftp.";
+    char * statsd_namespace = globus_malloc(strlen(statsd_namespace_prefix)+
+                                            strlen(local_host)+1);
+    strcpy(statsd_namespace, statsd_namespace_prefix);
+    char * source = local_host;
+    char * dest;
+    for (dest = statsd_namespace + strlen(statsd_namespace_prefix);
+            *source != '\0';
+            ++source, ++dest) {
+        if (*source == '.') {
+            *dest = '_';
+        } else {
+            *dest = *source;
+        }
+    }
+    *dest = '\0';
+    lfs_statsd_link = statsd_init_with_namespace("10.0.32.126", 8125, statsd_namespace);
 
     return 0;
 }
@@ -218,9 +244,13 @@ static void human_readable_adler32(char *adler32_human, uLong adler32) {
 
 void user_xfer_close(lstore_handle_t *h) {
     if (h->fd) {
+        time_t close_timer;
+        STATSD_TIMER_RESET(close_timer);
         if (gop_sync_exec(lio_close_op(h->fd)) != OP_STATE_SUCCESS) {
+            STATSD_TIMER_POST("lfs_close_time", close_timer);
             h->error = XFER_ERROR_DEFAULT;
         } else if (h->xfer_direction == XFER_RECV) {
+            STATSD_TIMER_POST("lfs_close_time", close_timer);
             int bottom = 0;
             size_t i = 0;
             int keep_going = 1;
@@ -249,6 +279,8 @@ void user_xfer_close(lstore_handle_t *h) {
             lio_setattr(lio_gc, lio_gc->creds, h->path, NULL,
                             "user.gridftp.success", "okay", 4);
 
+        } else {
+            STATSD_TIMER_POST("lfs_close_time", close_timer);
         }
     } else {
         globus_gfs_log_message(GLOBUS_GFS_LOG_INFO, "[lstore] Missing FD in CB??\n");

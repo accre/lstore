@@ -23,6 +23,7 @@
 
 #include <globus_gridftp_server.h>
 #include <lio/lio.h>
+#include <time.h>
 #include <zlib.h>
 
 #include "lstore_dsi.h"
@@ -513,12 +514,16 @@ static void gfs_xfer_pump(lstore_handle_t *h) {
             } else {
                 read_length = h->xfer_length;
             }
-            globus_off_t offset  = h->offset;
+            globus_off_t offset = h->offset;
+            time_t read_timer;
+            STATSD_TIMER_RESET(read_timer);
             int nbytes = lio_read(h->fd,
                                             (char *)buf,
                                             read_length,
                                             offset,
                                             NULL);
+            STATSD_TIMER_POST("lfs_read_time", read_timer);
+            STATSD_COUNT("lfs_bytes_read", nbytes);
             //   if bytes = 0
             if (nbytes == 0) {
                 // done eof
@@ -613,11 +618,15 @@ static void gfs_xfer_callback(globus_gfs_operation_t op,
         if (offset + nbytes > h->cksum_total_len) {
             h->cksum_total_len = offset + nbytes;
         }
+        time_t write_timer;
+        STATSD_TIMER_RESET(write_timer);
         globus_size_t written = lio_write(h->fd,
                                             (char *)buffer,
                                             nbytes,
                                             offset,
                                             NULL);
+        STATSD_TIMER_POST("lfs_write_time", write_timer);
+        STATSD_COUNT("lfs_bytes_written", written);
         if (written != nbytes) {
             user_handle_done(h, XFER_ERROR_DEFAULT);
         } else {
