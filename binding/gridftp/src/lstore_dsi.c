@@ -504,6 +504,9 @@ static void gfs_xfer_pump(lstore_handle_t *h) {
             if (rc == GLOBUS_SUCCESS) {
                 // inc outstanding
                 ++(h->outstanding_count);
+            } else {
+                // failed to register
+                user_handle_done(h, XFER_ERROR_DEFAULT);
             }
         } else {
             // if send
