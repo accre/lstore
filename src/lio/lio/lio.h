@@ -132,6 +132,8 @@ LIO_API void *lio_stdinlist_iter_create(int argc, const char **argv);
 LIO_API void lio_stdinlist_iter_destroy(void *ptr);
 LIO_API char *lio_stdinlist_iter_next(void *ptr);
 
+LIO_API int segment_rw_test_exec(int print_exnode, char *section);
+
 // Preprocessor constants
 typedef enum lio_fsck_repair_t lio_fsck_repair_t;
 enum lio_fsck_repair_t {
