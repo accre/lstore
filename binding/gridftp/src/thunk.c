@@ -259,7 +259,7 @@ void user_xfer_close(lstore_handle_t *h) {
             while (keep_going) {
                 keep_going = 0;
                 for (i = bottom;i < h->cksum_end_blocks ; ++i) {
-                    if (h->cksum_offset[i] == offset) {
+                    if ((h->cksum_offset[i] == offset) && (h->cksum_nbytes[i] > 0)) {
                         adler = adler32_combine(adler,
                                                 h->cksum_adler[i],
                                                 h->cksum_nbytes[i]);
