@@ -484,6 +484,8 @@ gop_op_status_t lio_myopen_fn(void *arg, int id)
     fh->seg = lio_exnode_default_get(fh->ex);
     if (fh->seg == NULL) {
         log_printf(0, "ERROR: No default segment!  Aborting! fname=%s\n", fd->path);
+        status.op_status = OP_STATE_FAILURE;
+        status.error_code = -EFAULT;
         goto cleanup;
     }
 
@@ -498,7 +500,7 @@ gop_op_status_t lio_myopen_fn(void *arg, int id)
 
     if ((op->mode & LIO_WRITE_MODE) > 0) {  //** For write mode we check for a few more flags
         if ((op->mode & LIO_TRUNCATE_MODE) > 0) { //** See if they want the file truncated also
-            status = gop_sync_exec_status(gop_lio_truncate(fd, 0));
+            status = gop_sync_exec_status(lio_truncate_op(fd, 0));
             if (status.op_status != OP_STATE_SUCCESS) goto cleanup;
         }
 
@@ -960,7 +962,6 @@ int lio_read(lio_fd_t *fd, char *buf, ex_off_t size, off_t off, lio_segment_rw_h
     err = _gop_lio_read(&op, fd, buf, size, off, rw_hints);
     if (err == 0) {
         status = lio_read_ex_fn((void *)&op, -1);
-        if (status.op_status == OP_STATE_SUCCESS) status.error_code = size; // ** Adjust the size to hide any readahead that may have occurred
     } else if (err == 1) {
         status = gop_success_status;
     } else {
@@ -1709,7 +1710,7 @@ gop_op_status_t lio_truncate_fn(void *arg, int id)
 
 //***********************************************************************
 
-gop_op_generic_t *gop_lio_truncate(lio_fd_t *fd, ex_off_t newsize)
+gop_op_generic_t *lio_truncate_op(lio_fd_t *fd, ex_off_t newsize)
 {
     lio_cp_fn_t *op;
 

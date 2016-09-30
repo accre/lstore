@@ -532,7 +532,7 @@ tbx_inip_file_t *tbx_inip_file_read(const char *fname)
         is_stdin = false;
     }
     if (fd == NULL) {  //** Can't open the file
-        log_printf(1, "Problem opening file %s\n", fname);
+        log_printf(-1, "Problem opening file %s, errorno: %d\n", fname, errno);
         return(NULL);
     }
     tbx_inip_file_t *ret = inip_read_fd(fd);

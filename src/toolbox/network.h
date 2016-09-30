@@ -62,14 +62,6 @@ typedef void net_sock_t;
 
 struct ns_monitor_s;   //** Forward declaration
 
-struct tbx_ns_chksum_t {  //** NetStream checksum container
-    int64_t blocksize;   //** Checksum block size or how often to inject/extract the checksum information
-    int64_t bytesleft;       //** Current byte count until a full block
-    bool    is_running;  //** Current state.  1=running
-    bool    is_valid;     //** Has a valid chksum stored
-    tbx_chksum_t chksum;    //** Checksum to use
-};
-
 struct tbx_ns_t {
     int id;                  //ID for tracking purposes
     int cuid;                //Unique ID for the connection.  Changes each time the connection is open/closed
