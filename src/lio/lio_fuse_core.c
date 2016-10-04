@@ -160,7 +160,7 @@ void _lfs_parse_stat_vals(lio_fuse_t *lfs, char *fname, struct stat *stat, char 
     if (val[1] != NULL) lio_get_timestamp(val[1], &ts, NULL);
     stat->st_mtime = ts;
     ts = 0;
-    if (val[1] != NULL) lio_get_timestamp(val[2], &ts, NULL);
+    if (val[2] != NULL) lio_get_timestamp(val[2], &ts, NULL);
     stat->st_ctime = ts;
     stat->st_atime = stat->st_ctime;
 
