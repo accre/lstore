@@ -45,12 +45,6 @@ struct tbx_pc_t {
     void (*free)(void *arg, int size, void *dshelf);
 };
 
-struct tbx_pch_t {
-    int shelf;
-    int hole;
-    void *data;
-};
-
 struct tbx_pc_iter_t {
     struct tbx_pc_t *pc;
     int shelf;

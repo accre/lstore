@@ -3,6 +3,7 @@ LStore Release Tools
  
 Structure
 -----------------------------------------------
+* binding        - Bindings to third-party applications
 * build          - Location where all sources are built
   * logs         - Build logs
   * package      - Storage with built RPMs
