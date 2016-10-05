@@ -23,8 +23,8 @@ set(GLOBUS_COMMON_INCLUDE_DIRS ${GLOBUS_COMMON_INCLUDE_DIR})
 include(FindPackageHandleStandardArgs)
 # handle the QUIETLY and REQUIRED arguments and set GLOBUS_COMMON_FOUND to TRUE
 # if all listed variables are TRUE
-find_package_handle_standard_args(GLOBUS_COMMON DEFAULT_MSG
+find_package_handle_standard_args(GLOBUSCOMMON DEFAULT_MSG
                                   GLOBUS_COMMON_LIBRARY GLOBUS_COMMON_INCLUDE_DIR)
 
-mark_as_advanced( GLOBUS_COMMON_FOUND GLOBUS_COMMON_INCLUDE_DIR GLOBUS_COMMON_LIBRARY )
+mark_as_advanced( GLOBUSCOMMON_FOUND GLOBUS_COMMON_INCLUDE_DIR GLOBUS_COMMON_LIBRARY )
 

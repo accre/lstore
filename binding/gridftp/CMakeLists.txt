@@ -10,6 +10,7 @@ TIMESTAMP(LSTORE_DSI_TIMESTAMP)
 
 find_package(GlobusCommon REQUIRED)
 find_package(GlobusGridftpServer REQUIRED)
+
 set(GRIDFTP_OBJS
         src/command.c
         src/lstore_dsi.c
