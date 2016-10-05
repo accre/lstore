@@ -880,7 +880,11 @@ lio_config_t *lio_create_nl(char *fname, char *section, char *user, char *exe_na
     lio->section_name = strdup(section);
 
     lio->ifd = tbx_inip_file_read(lio->cfg_name);
-    FATAL_UNLESS(lio->ifd != NULL);
+    if (lio->ifd == NULL) {
+        // TODO: The error handling here needs to be more measured
+        log_printf(-1, "ERROR: Failed to parse INI %s\n", lio->cfg_name);
+        return NULL;
+    }
 
     _lio_load_plugins(lio, lio->ifd);  //** Load the plugins
 
@@ -1391,6 +1395,11 @@ no_args:
     FATAL_UNLESS(cfg_name != NULL);
     tbx_mlog_load(cfg_name, out_override, ll_override);
     lio_gc = lio_create(cfg_name, section_name, userid, name);
+    if (!lio_gc) {
+        log_printf(-1, "Failed to create lio context.\n");
+        return 1;
+    }
+
     lio_gc->ref_cnt = 1;
     if (auto_mode != -1) lio_gc->auto_translate = auto_mode;
 

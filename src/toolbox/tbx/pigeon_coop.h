@@ -44,13 +44,11 @@ TBX_API int tbx_pch_release(tbx_pc_t *pc, tbx_pch_t *pch);
 TBX_API tbx_pch_t tbx_pch_reserve(tbx_pc_t *pc);
 
 // TEMPORARY
-#if !defined toolbox_EXPORTS && defined LSTORE_HACK_EXPORT
 struct tbx_pch_t {
     int shelf;
     int hole;
     void *data;
 };
-#endif
 
 #ifdef __cplusplus
 }

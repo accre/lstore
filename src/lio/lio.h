@@ -84,16 +84,11 @@ struct lio_fd_t {  //** Individual file descriptor
 
 extern tbx_sl_compare_t ex_id_compare;
 
-
 mode_t ftype_lio2posix(int ftype);
 void _lio_parse_stat_vals(char *fname, struct stat *stat, char **val, int *v_size, char *mount_prefix, char **flink);
 
 int lio_update_error_counts(lio_config_t *lc, lio_creds_t *creds, char *path, lio_segment_t *seg, int mode);
 int lio_update_exnode_attrs(lio_config_t *lc, lio_creds_t *creds, lio_exnode_t *ex, lio_segment_t *seg, char *fname, lio_segment_errors_t *serr);
-
-
-
-//-----
 
 void lio_set_timestamp(char *id, char **val, int *v_size);
 void lio_get_timestamp(char *val, int *timestamp, char **id);
@@ -110,7 +105,6 @@ void lio_core_destroy(lio_config_t *lio);
 lio_config_t *lio_create(char *fname, char *section, char *user, char *exe_name);
 void lio_destroy(lio_config_t *lio);
 const char *lio_client_version();
-
 
 #ifdef __cplusplus
 }

@@ -88,15 +88,13 @@ TBX_API void tbx_ns_config_2_ssl(tbx_ns_t *ns, int tcpsize);
 #define tbx_ns_chksum_enable(ncs)  (ncs)->is_running = 1
 
 // TEMPORARY
-#if !defined toolbox_EXPORTS && defined LSTORE_HACK_EXPORT
-    struct tbx_ns_chksum_t {  //** NetStream checksum container
-        int64_t blocksize;   //** Checksum block size or how often to inject/extract the checksum information
-        int64_t bytesleft;       //** Current byte count until a full block
-        bool    is_running;  //** Current state.  1=running
-        bool    is_valid;     //** Has a valid chksum stored
-        tbx_chksum_t chksum;    //** Checksum to use
-    };
-#endif
+struct tbx_ns_chksum_t {  //** NetStream checksum container
+    int64_t blocksize;   //** Checksum block size or how often to inject/extract the checksum information
+    int64_t bytesleft;       //** Current byte count until a full block
+    bool    is_running;  //** Current state.  1=running
+    bool    is_valid;     //** Has a valid chksum stored
+    tbx_chksum_t chksum;    //** Checksum to use
+};
 
 #ifdef __cplusplus
 }

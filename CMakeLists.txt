@@ -16,6 +16,7 @@ option(BUILD_SHARED_EXES "Build shared LStore executables" ON)
 option(BUILD_TESTS "Build tests" ON)
 option(BUILD_APR "Build APR from source" ON)
 option(BUILD_JERASURE "Build Jerasure from source" ON)
+option(BUILD_GRIDFTP "Build GridFTP bindings" OFF)
 
 option(ENABLE_COVERAGE "Enable code coverage" OFF)
 option(ENABLE_ASAN "Enable address sanitizer" OFF)
@@ -317,6 +318,11 @@ add_custom_target(sphinx-man COMMAND $(MAKE) "man"
 add_dependencies(sphinx-html doxygen docs-genapi)
 add_dependencies(sphinx-man doxygen docs-genapi)
 add_dependencies(docs sphinx-html sphinx-man)
+
+# Optional packages
+if(BUILD_GRIDFTP)
+    add_subdirectory(binding/gridftp)
+endif()
 
 # Import packaging
 include(LStorePackaging)
