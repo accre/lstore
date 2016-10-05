@@ -892,7 +892,6 @@ int _rs_simple_load(lio_resource_service_fn_t *res, char *fname)
     kf = tbx_inip_file_read(fname);FATAL_UNLESS(kf);
 
     //** Create the new RS list
-    if (rss->rid_table) tbx_list_destroy(rss->rid_table);
     rss->rid_table = tbx_list_create(0, &tbx_list_string_compare, NULL, NULL, rs_simple_rid_free);
     log_printf(15, "rs_simple_load: sl=%p\n", rss->rid_table);
 
