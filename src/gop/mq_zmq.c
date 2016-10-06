@@ -385,10 +385,10 @@ void zero_socket_context_destroy(gop_mq_socket_context_t *ctx)
 }
 
 //*************************************************************
-//  zero_socket_context_new - Creates a new MQ context based on 0MQ
+//  gop_zero_socket_context_new - Creates a new MQ context based on 0MQ
 //*************************************************************
 
-gop_mq_socket_context_t *zero_socket_context_new()
+gop_mq_socket_context_t *gop_zero_socket_context_new()
 {
     gop_mq_socket_context_t *ctx;
 

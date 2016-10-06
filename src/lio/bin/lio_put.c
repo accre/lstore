@@ -86,7 +86,7 @@ int main(int argc, char **argv)
     dtype = lio_exists(tuple.lc, tuple.creds, tuple.path);
 
     if (dtype == 0) { //** Need to create it
-        err = gop_sync_exec(lio_create_op(tuple.lc, tuple.creds, tuple.path, OS_OBJECT_FILE_FLAG, NULL, NULL));
+        err = gop_sync_exec(lio_create_gop(tuple.lc, tuple.creds, tuple.path, OS_OBJECT_FILE_FLAG, NULL, NULL));
         if (err != OP_STATE_SUCCESS) {
             info_printf(lio_ifd, 1, "ERROR creating file(%s)!\n", tuple.path);
             goto finished;
@@ -96,20 +96,20 @@ int main(int argc, char **argv)
         goto finished;
     }
 
-    gop_sync_exec(lio_open_op(tuple.lc, tuple.creds, tuple.path, lio_fopen_flags("w"), NULL, &fd, 60));
+    gop_sync_exec(lio_open_gop(tuple.lc, tuple.creds, tuple.path, lio_fopen_flags("w"), NULL, &fd, 60));
     if (fd == NULL) {
         info_printf(lio_ifd, 0, "Failed opening file!  path=%s\n", tuple.path);
         goto finished;
     }
 
     //** Do the put
-    err = gop_sync_exec(lio_cp_local2lio_op(stdin, fd, bufsize, buffer, NULL));
+    err = gop_sync_exec(lio_cp_local2lio_gop(stdin, fd, bufsize, buffer, NULL));
     if (err != OP_STATE_SUCCESS) {
         info_printf(lio_ifd, 0, "Failed writing data!  path=%s\n", tuple.path);
     }
 
     //** Close the file
-    err_close = gop_sync_exec(lio_close_op(fd));
+    err_close = gop_sync_exec(lio_close_gop(fd));
     if (err_close != OP_STATE_SUCCESS) {
         err = err_close;
         info_printf(lio_ifd, 0, "Failed closing LIO file!  path=%s\n", tuple.path);

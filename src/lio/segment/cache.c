@@ -741,7 +741,7 @@ gop_op_status_t cache_advise_fn(void *arg, int id)
     if (*ca->n_pages > 0) {
         //** Got some pages to fetch. Make sure the child segment is big enough.  If not flush
         if (segment_size(s->child_seg) < segment_size(seg)) {
-            gop_sync_exec(cache_flush_range(seg, s->c->da, 0, -1, s->c->timeout));
+            gop_sync_exec(cache_flush_range_gop(seg, s->c->da, 0, -1, s->c->timeout));
         }
         cache_rw_pages(seg, ca->rw_hints, ca->page, *(ca->n_pages), ca->rw_mode, 0);
     }
@@ -1762,7 +1762,7 @@ int cache_release_pages(int n_pages, lio_page_handle_t *page_list, int rw_mode)
 
     if (max_off > -1) {  //** Got to flush some pages
         log_printf(5, "Looks like we need to do a manual flush.  min_off=" XOT " max_off=" XOT "\n", min_off, max_off);
-        gop = cache_flush_range(seg, s->c->da, min_off, max_off+s->page_size-1, s->c->timeout);
+        gop = cache_flush_range_gop(seg, s->c->da, min_off, max_off+s->page_size-1, s->c->timeout);
         gop_set_auto_destroy(gop, 1);
         gop_start_execution(gop);
     }
@@ -2014,6 +2014,7 @@ int _cache_ppages_flush_list(lio_segment_t *seg, data_attr_t *da, tbx_stack_t *p
     cop.boff = 0;
     cop.buf = &tbuf;
     cop.skip_ppages = 1;
+    cop.rw_hints = NULL;
 
     nbytes = 0;
     slot = 0;
@@ -2758,14 +2759,15 @@ gop_op_generic_t *cache_write(lio_segment_t *seg, data_attr_t *da, lio_segment_r
 
 
 //*******************************************************************************
-// cache_flush_range - Flushes the given segment's byte range to disk
+// cache_flush_range_gop - Flushes the given segment's byte range to disk
 //*******************************************************************************
 
-gop_op_status_t cache_flush_range_func(void *arg, int id)
+gop_op_status_t cache_flush_range_gop_func(void *arg, int id)
 {
     cache_rw_op_t *cop = (cache_rw_op_t *)arg;
     lio_cache_lio_segment_t *s = (lio_cache_lio_segment_t *)cop->seg->priv;
     lio_page_handle_t page[CACHE_MAX_PAGES_RETURNED];
+    ex_id_t sid;
     int status, n_pages, max_pages, total_pages;
     ex_off_t flush_id[3];
     tbx_stack_t stack;
@@ -2811,7 +2813,7 @@ gop_op_status_t cache_flush_range_func(void *arg, int id)
     mode = CACHE_NONBLOCK;
     progress = 0;
     while ((curr=(lio_cache_range_t *)tbx_stack_pop(&stack)) != NULL) {
-        log_printf(5, "cache_flush_range_func: processing range: lo=" XOT " hi=" XOT " mode=%d\n", curr->lo, curr->hi, mode);
+        log_printf(5, "cache_flush_range_gop_func: processing range: lo=" XOT " hi=" XOT " mode=%d\n", curr->lo, curr->hi, mode);
         n_pages = max_pages;
 //mode = CACHE_DOBLOCK;  //**QWERTY
         status = cache_dirty_pages_get(cop->seg, mode, curr->lo, curr->hi, &hi_got, page, &n_pages);
@@ -2877,21 +2879,22 @@ gop_op_status_t cache_flush_range_func(void *arg, int id)
 
     //** Update that I'm finished
 finished:
+    sid = segment_id(cop->seg);
     segment_lock(cop->seg);
     s->flushing_count--;
     segment_unlock(cop->seg);
 
     dt = apr_time_now() - now;
     dt /= APR_USEC_PER_SEC;
-    log_printf(1, "END seg=" XIDT " lo=" XOT " hi=" XOT " flush_id=" XOT " total_pages=%d status=%d dt=%lf\n", segment_id(cop->seg), lo, hi, flush_id[2], total_pages, err, dt);
+    log_printf(1, "END seg=" XIDT " lo=" XOT " hi=" XOT " flush_id=" XOT " total_pages=%d status=%d dt=%lf\n", sid, lo, hi, flush_id[2], total_pages, err, dt);
     return((err == OP_STATE_SUCCESS) ? gop_success_status : gop_failure_status);
 }
 
 //***********************************************************************
-// cache_flush_range - Flush dirty pages to disk
+// cache_flush_range_gop - Flush dirty pages to disk
 //***********************************************************************
 
-gop_op_generic_t *cache_flush_range(lio_segment_t *seg, data_attr_t *da, ex_off_t lo, ex_off_t hi, int timeout)
+gop_op_generic_t *cache_flush_range_gop(lio_segment_t *seg, data_attr_t *da, ex_off_t lo, ex_off_t hi, int timeout)
 {
     cache_rw_op_t *cop;
     lio_cache_lio_segment_t *s = (lio_cache_lio_segment_t *)seg->priv;
@@ -2913,7 +2916,7 @@ gop_op_generic_t *cache_flush_range(lio_segment_t *seg, data_attr_t *da, ex_off_
     s->flushing_count++;
     segment_unlock(seg);
 
-    return(gop_tp_op_new(s->tpc_unlimited, s->qname, cache_flush_range_func, (void *)cop, free, 1));
+    return(gop_tp_op_new(s->tpc_unlimited, s->qname, cache_flush_range_gop_func, (void *)cop, free, 1));
 }
 
 
@@ -3163,13 +3166,11 @@ gop_op_generic_t *seglio_cache_truncate(lio_segment_t *seg, data_attr_t *da, ex_
 gop_op_status_t segcache_clone_func(void *arg, int id)
 {
     cache_clone_t *cop = (cache_clone_t *)arg;
-    lio_cache_lio_segment_t *ds = (lio_cache_lio_segment_t *)cop->dseg->priv;
     gop_op_status_t status;
 
     status = (gop_waitall(cop->gop) == OP_STATE_SUCCESS) ? gop_success_status : gop_failure_status;
     gop_free(cop->gop, OP_DESTROY);
 
-    tbx_obj_get(&ds->child_seg->obj);
     return(status);
 }
 
@@ -3213,7 +3214,6 @@ gop_op_generic_t *segcache_clone(lio_segment_t *seg, data_attr_t *da, lio_segmen
     tbx_type_malloc(cop, cache_clone_t, 1);
     cop->sseg = seg;
     cop->dseg = clone;
-    if (use_existing == 1) tbx_obj_put(&sd->child_seg->obj);
     cop->gop = segment_clone(ss->child_seg, da, &(sd->child_seg), mode, arg, timeout);
 
     log_printf(5, "child_clone gid=%d\n", gop_id(cop->gop));
@@ -3389,8 +3389,6 @@ int segcache_deserialize_text(lio_segment_t *seg, ex_id_t myid, lio_exnode_excha
 
     seg->header.type = SEGMENT_TYPE_CACHE;
     seg->header.name = tbx_inip_get_string(fd, seggrp, "name", "");
-
-    tbx_obj_get(&s->child_seg->obj);
 
     //** Tweak the page size
     s->page_size = segment_block_size(s->child_seg);
@@ -3641,7 +3639,6 @@ lio_segment_t *segment_cache_load(void *arg, ex_id_t id, lio_exnode_exchange_t *
 {
     lio_segment_t *seg = segment_cache_create(arg);
     if (segment_deserialize(seg, id, ex) != 0) {
-        tbx_obj_put(&seg->obj);
         seg = NULL;
     }
     return(seg);
@@ -3649,13 +3646,13 @@ lio_segment_t *segment_cache_load(void *arg, ex_id_t id, lio_exnode_exchange_t *
 
 const lio_segment_vtable_t lio_cacheseg_vtable = {
         .base.name = "segment_cache",
-        .base.free_fn = segcache_destroy, 
+        .base.free_fn = segcache_destroy,
         .read = cache_read,
         .write = cache_write,
         .inspect = segcache_inspect,
         .truncate = seglio_cache_truncate,
         .remove = segcache_remove,
-        .flush = cache_flush_range,
+        .flush = cache_flush_range_gop,
         .clone = segcache_clone,
         .signature = segcache_signature,
         .size = segcache_size,

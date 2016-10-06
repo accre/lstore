@@ -58,14 +58,8 @@ TBX_MALLOC tbx_sl_t *tbx_sl_malloc()
     if (ret != APR_SUCCESS)
         goto error_3;
 
-    if (tbx_sl_init(sl)) {
-        goto error_4;
-    }
-
     return sl;
 
-error_4:
-    apr_thread_mutex_destroy(sl->lock);
 error_3:
     apr_pool_destroy(sl->pool);
 error_2:
@@ -671,6 +665,48 @@ tbx_sl_iter_t tbx_sl_iter_search_compare(tbx_sl_t *sl, tbx_sl_key_t *key, tbx_sl
     log_printf(15, "it.sn=%p\n", it.sn);
 
     return(it);
+}
+
+
+//*********************************************************************************
+// tbx_sl_iter_new - Creates an iterator
+//*********************************************************************************
+
+tbx_sl_iter_t *tbx_sl_iter_new()
+{
+    tbx_sl_iter_t *it;
+
+    tbx_type_malloc_clear(it, tbx_sl_iter_t, 1);
+    return(it);
+}
+
+//*********************************************************************************
+//  tbx_sl_iter_search_compare_init - Initializes an iterator
+//*********************************************************************************
+
+void tbx_sl_iter_search_compare_init(tbx_sl_iter_t *it, tbx_sl_t *sl, tbx_sl_key_t *key, tbx_sl_compare_t *compare, int round_mode)
+{
+    *it = tbx_sl_iter_search_compare(sl, key, compare, round_mode);
+}
+
+//*********************************************************************************
+//  tbx_sl_iter_search_init - Initializes an iterator using the SkipList compare function
+//*********************************************************************************
+
+void tbx_sl_iter_search_init(tbx_sl_iter_t *it, tbx_sl_t *sl, tbx_sl_key_t *key, int round_mode)
+{
+    *it = tbx_sl_iter_search_compare(sl, key, sl->compare, round_mode);
+}
+
+//*********************************************************************************
+// tbx_sl_iter_del - Destroys the iterator
+//*********************************************************************************
+
+void tbx_sl_iter_del(tbx_sl_iter_t *it)
+{
+    if (it) {
+        free(it);
+    }
 }
 
 //*********************************************************************************

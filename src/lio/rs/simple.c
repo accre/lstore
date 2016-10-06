@@ -44,6 +44,7 @@
 #include <tbx/stack.h>
 #include <tbx/string_token.h>
 #include <tbx/type_malloc.h>
+#include <tbx/fmttypes.h>
 #include <gop/gop.h>
 #include <gop/opque.h>
 #include <gop/types.h>
@@ -748,31 +749,30 @@ int rss_perform_check(lio_resource_service_fn_t *rs)
 
     //** Process the results
     apr_thread_mutex_lock(rss->lock);
-    if (rss->modify_time == rss->current_check) {  //** Only process the results if not updated
-        for (gop = opque_get_next_finished(q); gop != NULL; gop = opque_get_next_finished(q)) {
-            status = gop_get_status(gop);
-            ce = gop_get_private(gop);
-            prev_status = ce->re->status;
-            if (status.op_status == OP_STATE_SUCCESS) {  //** Got a valid response
-                ce->re->space_free = ds_res_inquire_get(rss->ds, DS_INQUIRE_FREE, ce->space);
-                ce->re->space_used = ds_res_inquire_get(rss->ds, DS_INQUIRE_USED, ce->space);
-                ce->re->space_total = ds_res_inquire_get(rss->ds, DS_INQUIRE_TOTAL, ce->space);
-                if (ce->re->status != RS_STATUS_IGNORE) {
-                    if (ce->re->space_free <= rss->min_free) {
-                        ce->re->status = RS_STATUS_OUT_OF_SPACE;
-                    } else {
-                        ce->re->status = RS_STATUS_UP;
-                    }
+log_printf(5, "modify_time=" TT " current_check=" TT "\n", rss->modify_time, rss->current_check);
+
+    for (gop = opque_get_next_finished(q); gop != NULL; gop = opque_get_next_finished(q)) {
+        status = gop_get_status(gop);
+        ce = gop_get_private(gop);
+        prev_status = ce->re->status;
+        if (status.op_status == OP_STATE_SUCCESS) {  //** Got a valid response
+            ce->re->space_free = ds_res_inquire_get(rss->ds, DS_INQUIRE_FREE, ce->space);
+            ce->re->space_used = ds_res_inquire_get(rss->ds, DS_INQUIRE_USED, ce->space);
+            ce->re->space_total = ds_res_inquire_get(rss->ds, DS_INQUIRE_TOTAL, ce->space);
+            if (ce->re->status != RS_STATUS_IGNORE) {
+                if (ce->re->space_free <= (int)rss->min_free) {
+                    ce->re->status = RS_STATUS_OUT_OF_SPACE;
+                } else {
+                    ce->re->status = RS_STATUS_UP;
                 }
-            } else {  //** No response so mark it as down
-                if (ce->re->status != RS_STATUS_IGNORE) ce->re->status = RS_STATUS_DOWN;
             }
-            if (prev_status != ce->re->status) status_change = 1;
-
-            log_printf(15, "ds_key=%s prev_status=%d new_status=%d\n", ce->ds_key, prev_status, ce->re->status);
-            gop_free(gop, OP_DESTROY);
+        } else {  //** No response so mark it as down
+            if (ce->re->status != RS_STATUS_IGNORE) ce->re->status = RS_STATUS_DOWN;
         }
+        if (prev_status != ce->re->status) status_change = 1;
 
+        log_printf(15, "ds_key=%s prev_status=%d new_status=%d\n", ce->ds_key, prev_status, ce->re->status);
+        gop_free(gop, OP_DESTROY);
     }
 
     gop_opque_free(q, OP_DESTROY);
@@ -913,6 +913,7 @@ int _rs_simple_load(lio_resource_service_fn_t *res, char *fname)
     if (rss->n_rids == 0) {
         log_printf(0, "ERROR: n_rids=%d\n", rss->n_rids);
         fprintf(stderr, "ERROR: n_rids=%d\n", rss->n_rids);
+        if (rss->rid_table) tbx_list_destroy(rss->rid_table);
         rss->rid_table = NULL;
     } else {
         tbx_type_malloc_clear(rss->random_array, lio_rss_rid_entry_t *, rss->n_rids);
@@ -1055,8 +1056,10 @@ lio_resource_service_fn_t *rs_simple_create(void *arg, tbx_inip_file_t *kf, char
 
     //** Load the RID table
     assert_result(_rs_simple_refresh(rs), 0);
+    if (rss->check_timeout > 0) rss_perform_check(rs);  //** And do an initial update if needed
 
     //** Launch the check thread
+    //** NOTE: This will also do an initial check like before which isn't ideal.
     tbx_thread_create_assert(&(rss->check_thread), NULL, rss_check_thread, (void *)rs, rss->mpool);
 
     return(rs);

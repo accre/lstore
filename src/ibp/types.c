@@ -23,6 +23,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <tbx/assert_result.h>
+#include <tbx/type_malloc.h>
 #include <tbx/log.h>
 #include <time.h>
 
@@ -49,10 +50,10 @@ void destroy_ibp_depot(ibp_depot_t *d)
 
 
 //*****************************************************************
-//  ibp_set_depot - Initializes an ibp_depot_struct
+//  ibp_depot_set - Initializes an ibp_depot_struct
 //*****************************************************************
 
-void ibp_set_depot(ibp_depot_t *d, char *host, int port, ibp_rid_t rid)
+void ibp_depot_set(ibp_depot_t *d, char *host, int port, ibp_rid_t rid)
 {
     strncpy(d->host, host, sizeof(d->host));
     d->host[sizeof(d->host)-1]='\0';
@@ -83,10 +84,10 @@ void destroy_ibp_attributes(ibp_attributes_t *attr)
 }
 
 //*****************************************************************
-// ibp_set_attributes - Initializes the data structure
+// ibp_attributes_set - Initializes the data structure
 //*****************************************************************
 
-void ibp_set_attributes(ibp_attributes_t *attr, time_t duration, int reliability, int type)
+void ibp_attributes_set(ibp_attributes_t *attr, time_t duration, int reliability, int type)
 {
     attr->duration = duration;
     attr->reliability = reliability;
@@ -133,17 +134,17 @@ void destroy_ibp_timer(ibp_timer_t *t)
 }
 
 //*****************************************************************
-// ibp_set_timer - Initializes the data structure
+// ibp_timer_set - Initializes the data structure
 //*****************************************************************
 
-void ibp_set_timer(ibp_timer_t *t, int client_timeout, int server_timeout)
+void ibp_timer_set(ibp_timer_t *t, int client_timeout, int server_timeout)
 {
     t->ClientTimeout = client_timeout;
     t->ServerSync = server_timeout;
 }
 
 //*****************************************************************
-// ibp_set_timer - Retreives the timer information
+// ibp_timer_set - Retreives the timer information
 //*****************************************************************
 
 void get_ibp_timer(ibp_timer_t *t, int *client_timeout, int *server_timeout)
@@ -191,17 +192,24 @@ ibp_capset_t *ibp_capset_new()
     return(c);
 }
 
-
 //*****************************************************************
-//  ibp_cap_destroyset - Destroys the ibp_capset_t structure
+// ibp_capset_clear - Frees the existing caps in the set
 //*****************************************************************
 
-void ibp_cap_destroyset(ibp_capset_t *caps)
+void ibp_capset_clear(ibp_capset_t *caps)
 {
-    ibp_cap_destroy(caps->readCap);
-    ibp_cap_destroy(caps->writeCap);
-    ibp_cap_destroy(caps->manageCap);
+    ibp_cap_destroy(caps->readCap);   caps->readCap = NULL;
+    ibp_cap_destroy(caps->writeCap);  caps->writeCap = NULL;
+    ibp_cap_destroy(caps->manageCap); caps->manageCap = NULL;
+}
 
+//*****************************************************************
+//  ibp_capset_destroy - Destroys the ibp_capset_t structure
+//*****************************************************************
+
+void ibp_capset_destroy(ibp_capset_t *caps)
+{
+    ibp_capset_clear(caps);
     free(caps);
 }
 
@@ -237,6 +245,29 @@ ibp_cap_t *ibp_cap_get(ibp_capset_t *caps, int ctype)
     return(c);
 }
 
+//*****************************************************************
+// ibp_cap_set - Sets the requested capability and optionally frees the old one
+//*****************************************************************
+
+int ibp_cap_set(ibp_capset_t *caps, int ctype, ibp_cap_t *c, int dofree)
+{
+    int err = 0;
+
+    if (ctype == IBP_READCAP) {
+        if (dofree && caps->readCap) free(caps->readCap);
+        caps->readCap = c;
+    } else if (ctype == IBP_WRITECAP) {
+        if (dofree && caps->writeCap) free(caps->writeCap);
+        caps->writeCap = c;
+    } else if (ctype == IBP_MANAGECAP) {
+        if (dofree && caps->manageCap) free(caps->manageCap);
+        caps->manageCap = c;
+    } else {
+        err = 1;
+    }
+
+    return(err);
+}
 
 //===================================================================
 
@@ -308,7 +339,7 @@ ibp_capstatus_t *new_ibp_capstatus()
     cs->writeRefCount = -1;
     cs->currentSize = -1;
     cs->maxSize = 0;
-    ibp_set_attributes(&(cs->attrib), 0, -1, -1);
+    ibp_attributes_set(&(cs->attrib), 0, -1, -1);
 
     return(cs);
 }
@@ -358,9 +389,19 @@ void ibp_cap_getstatus(ibp_capstatus_t *cs, int *readcount, int *writecount,
 void ridlist_init(ibp_ridlist_t *rlist, int size)
 {
     rlist->rl = (ibp_rid_t *)malloc(sizeof(ibp_rid_t)*size);
-   FATAL_UNLESS(rlist->rl != NULL);
+    FATAL_UNLESS(rlist->rl != NULL);
 
     rlist->n = size;
+}
+
+//*****************************************************************
+
+ibp_ridlist_t *ibp_ridlist_create()
+{
+  ibp_ridlist_t *rlist;
+
+  tbx_type_malloc_clear(rlist, ibp_ridlist_t, 1);
+  return(rlist);
 }
 
 //*****************************************************************
@@ -368,6 +409,7 @@ void ridlist_init(ibp_ridlist_t *rlist, int size)
 void ibp_ridlist_destroy(ibp_ridlist_t *rlist)
 {
     free(rlist->rl);
+    free(rlist);
 }
 
 //*****************************************************************

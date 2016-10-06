@@ -59,7 +59,7 @@ gop_op_status_t mkdir_fn(void *arg, int id)
     }
 
     //** Now create the object
-    err = gop_sync_exec(lio_create_op(tuple->lc, tuple->creds, tuple->path, OS_OBJECT_DIR_FLAG, exnode_data, NULL));
+    err = gop_sync_exec(lio_create_gop(tuple->lc, tuple->creds, tuple->path, OS_OBJECT_DIR_FLAG, exnode_data, NULL));
     if (err != OP_STATE_SUCCESS) {
         log_printf(1, "ERROR creating dir!\n");
         status.op_status = OP_STATE_FAILURE;

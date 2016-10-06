@@ -331,9 +331,9 @@ gop_op_status_t segjerase_inspect_full_func(void *arg, int id)
     segjerase_priv_t *s = (segjerase_priv_t *)si->seg->priv;
     gop_op_status_t status;
     gop_opque_t *q;
-    lio_ex3_inspect_command_t i;
+    lio_ex3_inspect_command_t ic;
     bool do_fix;
-    int err, j, k, d, nstripes, total_stripes, stripe, bufstripes, n_empty;
+    int i, err, j, k, d, nstripes, total_stripes, stripe, bufstripes, n_empty;
     int  fail_quick, n_iov, good_magic, unrecoverable_count, bad_count, repair_errors, erasure_errors;
     int magic_count[s->n_devs], match, index, magic_used;
     int magic_devs[s->n_devs*s->n_devs];
@@ -355,7 +355,7 @@ gop_op_status_t segjerase_inspect_full_func(void *arg, int id)
     ex_tbx_iovec_t *ex_iov;
     apr_time_t now, clr_dt;
     double dtt, dtr, dtw, dtp, rater, ratew, ratep;
-    
+
     // Give vals a garbage value since Alan gave it nothing
     tmp = INT_MIN;
     status = gop_success_status;
@@ -370,8 +370,8 @@ gop_op_status_t segjerase_inspect_full_func(void *arg, int id)
     fail_quick = si->inspect_mode & INSPECT_FAIL_ON_ERROR;
 
     do_fix = 0;
-    i = si->inspect_mode & INSPECT_COMMAND_BITS;
-    if ((i == INSPECT_QUICK_REPAIR) || (i == INSPECT_SCAN_REPAIR) || (i == INSPECT_FULL_REPAIR)) do_fix = 1;
+    ic = si->inspect_mode & INSPECT_COMMAND_BITS;
+    if ((ic == INSPECT_QUICK_REPAIR) || (ic == INSPECT_SCAN_REPAIR) || (ic == INSPECT_FULL_REPAIR)) do_fix = 1;
 
     base_offset = sf->lo / s->data_size;
     base_offset = base_offset * s->stripe_size_with_magic;
@@ -1071,13 +1071,11 @@ gop_op_generic_t *segjerase_inspect(lio_segment_t *seg, data_attr_t *da, tbx_log
 gop_op_status_t segjerase_clone_func(void *arg, int id)
 {
     segjerase_clone_t *cop = (segjerase_clone_t *)arg;
-    segjerase_priv_t *ds = (segjerase_priv_t *)cop->dseg->priv;
     gop_op_status_t status;
 
     status = (gop_waitall(cop->gop) == OP_STATE_SUCCESS) ? gop_success_status : gop_failure_status;
     gop_free(cop->gop, OP_DESTROY);
 
-    tbx_obj_get(&ds->child_seg->obj);
     return(status);
 }
 
@@ -1117,7 +1115,6 @@ gop_op_generic_t *segjerase_clone(lio_segment_t *seg, data_attr_t *da, lio_segme
     if (use_existing == 1) {
         sd->child_seg = child;
         sd->plan = cplan;
-        tbx_obj_put(&child->obj);
     } else {   //** Need to contstruct a plan
         sd->child_seg = NULL;
 
@@ -1400,7 +1397,7 @@ tryagain:  //** We first try allowing blacklisting to proceed as normal and then
             for (j=0; j<nstripes; j++) {
                 tbv.nbytes = s->data_size;
                 tbx_tbuf_next(sw->buffer, boff, &tbv);
-               FATAL_UNLESS((tbv.n_iov == 1) && (tbv.nbytes == s->data_size));
+                FATAL_UNLESS((tbv.n_iov == 1) && ((int)tbv.nbytes == s->data_size));
 
                 //** Make the encoding and transfer data structs
                 poff = 0;
@@ -1605,7 +1602,7 @@ tryagain: //** In case blacklisting failed we'll retry with it disabled
             for (j=0; j<nstripes; j++) {
                 tbv.nbytes = s->data_size;
                 tbx_tbuf_next(sw->buffer, boff, &tbv);
-               FATAL_UNLESS((tbv.n_iov == 1) && (tbv.nbytes == s->data_size));
+               FATAL_UNLESS((tbv.n_iov == 1) && ((int)tbv.nbytes == s->data_size));
 
                 //** Make the encoding and transfer data structs
                 stripe_magic = &(magic[curr_stripe*JE_MAGIC_SIZE]);
@@ -1992,8 +1989,6 @@ int segjerase_deserialize_text(lio_segment_t *seg, ex_id_t id, lio_exnode_exchan
         return(-2);
     }
 
-    tbx_obj_get(&s->child_seg->obj);
-
     //** Load the params
     s->write_errors = tbx_inip_get_integer(fd, seggrp, "write_errors", 0);
     if ((s->paranoid_check == 0) && (s->write_errors > 0)) s->paranoid_check = 1;
@@ -2156,7 +2151,6 @@ lio_segment_t *segment_jerasure_load(void *arg, ex_id_t id, lio_exnode_exchange_
 {
     lio_segment_t *seg = segment_jerasure_create(arg);
     if (segment_deserialize(seg, id, ex) != 0) {
-        tbx_obj_put(&seg->obj);
         seg = NULL;
     }
     return(seg);

@@ -51,7 +51,7 @@ int plugin_checksum(lstore_handle_t *h, char *path, char **response) {
 }
 
 int plugin_mkdir(lstore_handle_t *h, char *path) {
-    int retval = gop_sync_exec(lio_create_op(lio_gc, lio_gc->creds, path,
+    int retval = gop_sync_exec(lio_create_gop(lio_gc, lio_gc->creds, path,
                                                 OS_OBJECT_DIR, NULL, NULL));
     return retval;
 }
@@ -62,7 +62,7 @@ int plugin_rmdir(lstore_handle_t *h, char *path) {
 }
 
 int plugin_rm(lstore_handle_t *h, char *path) {
-    int retval = gop_sync_exec(lio_remove_op(lio_gc, lio_gc->creds, path,
+    int retval = gop_sync_exec(lio_remove_gop(lio_gc, lio_gc->creds, path,
                                                 NULL, 0));
     return retval;
 }

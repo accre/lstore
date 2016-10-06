@@ -61,7 +61,7 @@ void ls_format_entry(tbx_log_fd_t *ifd, ls_entry_t *lse)
     apr_time_t dt;
     int64_t n;
     long int fsize;
-    int nlink;
+    int nlink, i;
 
     if ((lse->ftype & OS_OBJECT_SYMLINK_FLAG) > 0) {
         if ((lse->ftype & OS_OBJECT_BROKEN_LINK_FLAG) > 0) {
@@ -110,6 +110,12 @@ void ls_format_entry(tbx_log_fd_t *ifd, ls_entry_t *lse)
         info_printf(ifd, 0, "%s  %3d  %10s  %10ld  %s  %s  %s%s -> %s\n", perms, nlink, owner, fsize, dt_create, dt_modify, lse->fname, dtype, lse->link);
     }
 
+    //** Cleanup the attributes
+    for (i=0; i<5; i++) {
+        if (lse->vals[i]) free(lse->vals[i]);
+    }
+    free(lse->fname);  //** and the name
+    free(lse);  //** And the struct itself
     return;
 }
 
@@ -230,7 +236,7 @@ int main(int argc, char **argv)
             //** Check if we have a link.  If so we need to resolve the link path
             if ((ftype & OS_OBJECT_SYMLINK_FLAG) > 0) {
                 lse->link_size = -64*1024;
-                gop = lio_getattr_op(tuple.lc, tuple.creds, lse->fname, NULL, "os.link", (void **)&(lse->link), &(lse->link_size));
+                gop = lio_getattr_gop(tuple.lc, tuple.creds, lse->fname, NULL, "os.link", (void **)&(lse->link), &(lse->link_size));
                 gop_set_private(gop, lse);
                 gop_opque_add(q, gop);
                 if (nosort == 1) opque_waitall(q);

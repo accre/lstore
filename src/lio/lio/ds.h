@@ -74,6 +74,7 @@ typedef gop_op_generic_t *(*lio_ds_readv_fn_t)(lio_data_service_fn_t *, data_att
 typedef gop_op_generic_t *(*lio_ds_writev_fn_t)(lio_data_service_fn_t *, data_attr_t *attr, data_cap_t *wcap, int n_iov, ex_tbx_iovec_t *iov, tbx_tbuf_t *write, ex_off_t boff, ex_off_t len, int timeout);
 typedef gop_op_generic_t *(*lio_ds_append_fn_t)(lio_data_service_fn_t *, data_attr_t *attr, data_cap_t *wcap, tbx_tbuf_t *write, ex_off_t boff, ex_off_t len, int timeout);
 typedef gop_op_generic_t *(*lio_ds_copy_fn_t)(lio_data_service_fn_t *, data_attr_t *attr, int mode, int ns_type, char *ppath, data_cap_t *src_cap, ds_int_t src_off, data_cap_t *dest_cap, ds_int_t dest_off, ds_int_t len, int timeout);
+
 //* FIXME: leaky
 typedef struct lio_ds_ibp_attr_t lio_ds_ibp_attr_t;
 typedef struct lio_ds_ibp_alloc_op_t lio_ds_ibp_alloc_op_t;
@@ -124,34 +125,10 @@ struct lio_data_service_fn_t {
     lio_ds_copy_fn_t copy;
 };
 
-//* FIXME: leaky
-struct lio_ds_ibp_attr_t {
-    ibp_attributes_t attr;
-    ibp_depot_t depot;
-    ibp_connect_context_t cc;
-    tbx_ns_chksum_t ncs;
-    int disk_cs_type;
-    int disk_cs_blocksize;
-};
-
-struct lio_ds_ibp_priv_t {
-    lio_ds_ibp_attr_t attr_default;
-    ibp_context_t *ic;
-
-    //** These are all for the warmer
-    apr_pool_t *pool;
-    apr_hash_t *warm_table;
-    apr_thread_mutex_t *lock;
-    apr_thread_cond_t *cond;
-    apr_thread_t *thread;
-    int warm_interval;
-    int warm_duration;
-    int warm_stop;
-};
-
 // Preprocessor functions
 #define ds_read(ds, attr, rcap, off, readfn, boff, len, to) (ds)->read(ds, attr, rcap, off, readfn, boff, len, to)
 
+LIO_API ibp_context_t *hack_ds_ibp_context_get(lio_data_service_fn_t *arg);
 
 #ifdef __cplusplus
 }

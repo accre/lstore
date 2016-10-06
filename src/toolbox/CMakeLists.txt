@@ -28,9 +28,24 @@ set(NETWORK_OBJS
 )
 
 set(TOOL_OBJS
-    append_printf.c atomic_counter.c chksum.c constructor.c dns_cache.c
-    iniparse.c interval_skiplist.c log.c packer.c pigeon_coop.c pigeon_hole.c
-    random.c skiplist.c stack.c string_token.c transfer_buffer.c varint.c
+    append_printf.c
+    atomic_counter.c
+    chksum.c
+    constructor.c
+    dns_cache.c
+    iniparse.c
+    interval_skiplist.c
+    log.c
+    packer.c
+    pigeon_coop.c
+    pigeon_hole.c
+    random.c
+    skiplist.c
+    stack.c
+    stdinarray_iter.c
+    string_token.c
+    transfer_buffer.c
+    varint.c
 )
 
 set(LSTORE_PROJECT_OBJS ${TOOL_OBJS} ${NETWORK_OBJS})
@@ -56,6 +71,7 @@ set(LSTORE_PROJECT_INCLUDES
     tbx/random.h
     tbx/skiplist.h
     tbx/stack.h
+    tbx/stdinarray_iter.h
     tbx/string_token.h
     tbx/tbx_decl.h
     tbx/transfer_buffer.h

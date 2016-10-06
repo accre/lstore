@@ -102,7 +102,7 @@ int main(int argc, char **argv)
     lio_exnode_deserialize(ex, exp, lio_gc->ess);
 
     //** Execute the clone operation
-    gop = lio_exnode_clone(lio_gc->tpc_unlimited, ex, lio_gc->da, &cex, (void *)clone_arg, mode, lio_gc->timeout);
+    gop = lio_exnode_clone_gop(lio_gc->tpc_unlimited, ex, lio_gc->da, &cex, (void *)clone_arg, mode, lio_gc->timeout);
 
     gop_waitany(gop);
     status = gop_get_status(gop);

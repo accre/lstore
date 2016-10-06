@@ -3086,7 +3086,7 @@ lio_object_service_fn_t *object_service_remote_server_create(lio_service_manager
     lio_object_service_fn_t *os;
     lio_osrs_priv_t *osrs;
     os_create_t *os_create;
-    gop_gop_mq_command_table_t *ctable;
+    gop_mq_command_table_t *ctable;
     char *stype, *ctype;
     authn_create_t *authn_create;
     char *cred_args[2];

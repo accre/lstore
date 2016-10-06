@@ -34,6 +34,7 @@
 #include <tbx/log.h>
 #include <tbx/skiplist.h>
 #include <tbx/type_malloc.h>
+#include <tbx/random.h>
 #include <unistd.h>
 
 #include "authn.h"
@@ -141,11 +142,11 @@ int ex_id_compare_fn(void *arg, tbx_sl_key_t *a, tbx_sl_key_t *b)
 }
 
 //***********************************************************************
-// lio_exists_op - Returns the filetype of the object or 0 if it
+// lio_exists_gop - Returns the filetype of the object or 0 if it
 //   doesn't exist
 //***********************************************************************
 
-gop_op_generic_t *lio_exists_op(lio_config_t *lc, lio_creds_t *creds, char *path)
+gop_op_generic_t *lio_exists_gop(lio_config_t *lc, lio_creds_t *creds, char *path)
 {
     return(os_exists(lc->os, creds, path));
 }
@@ -274,7 +275,7 @@ gop_op_status_t lio_create_object_fn(void *arg, int id)
         }
 
         //** Execute the clone operation
-        err = gop_sync_exec(lio_exnode_clone(op->lc->tpc_unlimited, ex, op->lc->da, &cex, NULL, CLONE_STRUCTURE, op->lc->timeout));
+        err = gop_sync_exec(lio_exnode_clone_gop(op->lc->tpc_unlimited, ex, op->lc->da, &cex, NULL, CLONE_STRUCTURE, op->lc->timeout));
         if (err != OP_STATE_SUCCESS) {
             log_printf(15, "ERROR cloning parent src_path=%s\n", op->src_path);
             status = gop_failure_status;
@@ -348,10 +349,10 @@ fail_bad:
 }
 
 //*************************************************************************
-//  lio_create_op - Generate a create object task
+//  lio_create_gop - Generate a create object task
 //*************************************************************************
 
-gop_op_generic_t *lio_create_op(lio_config_t *lc, lio_creds_t *creds, char *path, int type, char *ex, char *id)
+gop_op_generic_t *lio_create_gop(lio_config_t *lc, lio_creds_t *creds, char *path, int type, char *ex, char *id)
 {
     lio_mk_mv_rm_t *op;
 
@@ -438,7 +439,7 @@ gop_op_status_t lio_remove_object_fn(void *arg, int id)
             log_printf(15, "ERROR removing data for object fname=%s\n", op->src_path);
             status = gop_failure_status;
         } else {  //** Execute the remove operation since we have a good exnode
-            err = gop_sync_exec(exnode_remove(op->lc->tpc_unlimited, ex, op->lc->da, op->lc->timeout));
+            err = gop_sync_exec(exnode_remove_gop(op->lc->tpc_unlimited, ex, op->lc->da, op->lc->timeout));
             if (err != OP_STATE_SUCCESS) {
                 log_printf(15, "ERROR removing data for object fname=%s\n", op->src_path);
                 status = gop_failure_status;
@@ -455,10 +456,10 @@ gop_op_status_t lio_remove_object_fn(void *arg, int id)
 }
 
 //*************************************************************************
-// lio_remove_op
+// lio_remove_gop
 //*************************************************************************
 
-gop_op_generic_t *lio_remove_op(lio_config_t *lc, lio_creds_t *creds, char *path, char *ex_optional, int ftype_optional)
+gop_op_generic_t *lio_remove_gop(lio_config_t *lc, lio_creds_t *creds, char *path, char *ex_optional, int ftype_optional)
 {
     lio_mk_mv_rm_t *op;
 
@@ -510,7 +511,7 @@ gop_op_status_t lio_remove_regex_object_fn(void *arg, int id)
             opque_waitall(q);
         }
 
-        gop = lio_remove_op(op->lc, op->creds, fname, ex, atype);
+        gop = lio_remove_gop(op->lc, op->creds, fname, ex, atype);
         ex = NULL;  //** Freed in lio_remove_object
         free(fname);
         gop_opque_add(q, gop);
@@ -540,10 +541,10 @@ gop_op_status_t lio_remove_regex_object_fn(void *arg, int id)
 }
 
 //*************************************************************************
-// lio_remove_regex_op
+// lio_remove_regex_gop
 //*************************************************************************
 
-gop_op_generic_t *lio_remove_regex_op(lio_config_t *lc, lio_creds_t *creds, lio_os_regex_table_t *rpath, lio_os_regex_table_t *object_regex, int obj_types, int recurse_depth, int np)
+gop_op_generic_t *lio_remove_regex_gop(lio_config_t *lc, lio_creds_t *creds, lio_os_regex_table_t *rpath, lio_os_regex_table_t *object_regex, int obj_types, int recurse_depth, int np)
 {
     lio_remove_regex_t *op;
 
@@ -561,30 +562,136 @@ gop_op_generic_t *lio_remove_regex_op(lio_config_t *lc, lio_creds_t *creds, lio_
 }
 
 //*************************************************************************
-// lio_regex_object_set_multiple_attrs_op - Sets multiple object attributes
+// lio_regex_object_set_multiple_attrs_gop - Sets multiple object attributes
 //*************************************************************************
 
-gop_op_generic_t *lio_regex_object_set_multiple_attrs_op(lio_config_t *lc, lio_creds_t *creds, char *id, lio_os_regex_table_t *path, lio_os_regex_table_t *object_regex, int object_types, int recurse_depth, char **key, void **val, int *v_size, int n)
+gop_op_generic_t *lio_regex_object_set_multiple_attrs_gop(lio_config_t *lc, lio_creds_t *creds, char *id, lio_os_regex_table_t *path, lio_os_regex_table_t *object_regex, int object_types, int recurse_depth, char **key, void **val, int *v_size, int n)
 {
     return(os_regex_object_set_multiple_attrs(lc->os, creds, id, path, object_regex, object_types, recurse_depth, key, val, v_size, n));
 }
 
 //*************************************************************************
-// gop_lio_abort_regex_object_set_multiple_attrs - Aborts an ongoing set attr call
+// lio_abort_regex_object_set_multiple_attrs_gop - Aborts an ongoing set attr call
 //*************************************************************************
 
-gop_op_generic_t *gop_lio_abort_regex_object_set_multiple_attrs(lio_config_t *lc, gop_op_generic_t *gop)
+gop_op_generic_t *lio_abort_regex_object_set_multiple_attrs_gop(lio_config_t *lc, gop_op_generic_t *gop)
 {
     return(os_abort_regex_object_set_multiple_attrs(lc->os, gop));
 }
 
 //*************************************************************************
-// lio_move_op - Renames an object
+//  lio_dir_empty - Returns 0 if the directory is empty and a non-0 otherwise
 //*************************************************************************
 
-gop_op_generic_t *lio_move_op(lio_config_t *lc, lio_creds_t *creds, char *src_path, char *dest_path)
+int lio_dir_empty(lio_config_t *lc, lio_creds_t *creds, char *path)
 {
-    return(os_move_object(lc->os, creds, src_path, dest_path));
+    lio_os_regex_table_t *rp;
+    os_object_iter_t *it;
+    char *p2;
+    int err, prefix_len;
+    char *fname;
+    int n = strlen(path);
+    int obj_types = OS_OBJECT_FILE_FLAG|OS_OBJECT_DIR_FLAG|OS_OBJECT_SYMLINK_FLAG;
+
+    tbx_type_malloc(p2, char, n+3);
+    snprintf(p2, n+3, "%s/*", path);
+    rp = lio_os_path_glob2regex(p2);
+
+    it = lio_create_object_iter(lc, creds, rp, NULL, obj_types, NULL, 0, NULL, 0);
+    if (it == NULL) {
+        log_printf(0, "ERROR: Failed with object_iter creation\n");
+        err = -1;
+        goto fail;
+    }
+
+    err = lio_next_object(lc, it, &fname, &prefix_len);
+    if (err != 0) free(fname);
+    lio_destroy_object_iter(lc, it);
+
+fail:
+    free(p2);
+
+    log_printf(5, "err=%d\n", err);
+    return(err);
+}
+
+//*************************************************************************
+// lio_move_object_fn - Renames an object.  Does the actual move operation
+//*************************************************************************
+
+gop_op_status_t lio_move_object_fn(void *arg, int id)
+{
+    lio_mk_mv_rm_t *op = (lio_mk_mv_rm_t *)arg;
+    lio_mk_mv_rm_t rm;
+    char *dtmp = NULL;
+    gop_op_status_t status;
+    int stype, dtype, n;
+    unsigned int ui;
+
+    stype = lio_exists(op->lc, op->creds, op->src_path);
+
+    //** Check if the dest exists. If it does we need to move it out of the
+    //** way for inode and data removal later
+    dtype = lio_exists(op->lc, op->creds, op->dest_path);
+
+    log_printf(15, "src=%s dest=%s stype=%d dtype=%d\n", op->src_path, op->dest_path, stype, dtype);
+    if (dtype != 0) {  //** The destination exists to lets make sure its compatible with a move
+        if (dtype & OS_OBJECT_DIR_FLAG) { //** It's a directory
+            if ((stype & OS_OBJECT_DIR_FLAG) == 0) {  //** Source is a file so mv will fail
+               status.op_status = OP_STATE_FAILURE; status.error_code = EISDIR;
+               return(status);
+            } else { // ** Make sure the dest directory is empty
+                if (lio_dir_empty(op->lc, op->creds, op->dest_path) != 0) {
+                   status.op_status = OP_STATE_FAILURE; status.error_code = ENOTEMPTY;
+                   return(status);
+                }
+            }
+        }
+
+        //** Now move it out of the way in case we fail
+        n = strlen(op->dest_path);
+        tbx_type_malloc(dtmp, char, n + 100);
+        dtmp[n+99] = '\0';
+        tbx_random_get_bytes(&ui, sizeof(ui));  //** MAke the random name
+        snprintf(dtmp, n+100, "%s.mv-%ud", op->dest_path, ui);
+        status = gop_sync_exec_status(os_move_object(op->lc->os, op->creds, op->dest_path, dtmp));
+        if (status.op_status != OP_STATE_SUCCESS) {  //** Temp move failed so kick out
+            free(dtmp);
+            return(status);
+        }
+    }
+
+    //** If we made it here the dest file or directory is safely stashed so we can do the rename
+    status = gop_sync_exec_status(os_move_object(op->lc->os, op->creds, op->src_path, op->dest_path));
+
+    //** Now clean up
+    if (status.op_status == OP_STATE_SUCCESS) { //** All is good so just remove the original dest if needed
+        if (dtmp != NULL) {
+            rm = *op; rm.src_path = dtmp;
+            status = lio_remove_object_fn(&rm, id);
+            free(dtmp);
+        }
+    }
+
+    return(status);
+}
+
+
+//*************************************************************************
+// lio_move_object_gop - Renames an object
+//*************************************************************************
+
+gop_op_generic_t *lio_move_object_gop(lio_config_t *lc, lio_creds_t *creds, char *src_path, char *dest_path)
+{
+    lio_mk_mv_rm_t *op = op;
+
+    tbx_type_malloc_clear(op, lio_mk_mv_rm_t, 1);
+
+    op->lc = lc;
+    op->creds = creds;
+    op->src_path = strdup(src_path);
+    op->dest_path = strdup(dest_path);
+    return(gop_tp_op_new(lc->tpc_unlimited, NULL, lio_move_object_fn, (void *)op, lio_free_mk_mv_rm, 1));
 }
 
 
@@ -679,10 +786,10 @@ finished:
 }
 
 //***********************************************************************
-// lio_link_op - Generates a link object task
+// lio_link_gop - Generates a link object task
 //***********************************************************************
 
-gop_op_generic_t *lio_link_op(lio_config_t *lc, lio_creds_t *creds, int symlink, char *src_path, char *dest_path, char *id)
+gop_op_generic_t *lio_link_gop(lio_config_t *lc, lio_creds_t *creds, int symlink, char *src_path, char *dest_path, char *id)
 {
     lio_mk_mv_rm_t *op;
 
@@ -699,22 +806,22 @@ gop_op_generic_t *lio_link_op(lio_config_t *lc, lio_creds_t *creds, int symlink,
 
 
 //*************************************************************************
-//  gop_lio_symlink_object - Create a symbolic link to another object
+//  lio_symlink_object_gop - Create a symbolic link to another object
 //*************************************************************************
 
-gop_op_generic_t *gop_lio_symlink_object(lio_config_t *lc, lio_creds_t *creds, char *src_path, char *dest_path, char *id)
+gop_op_generic_t *lio_symlink_object_gop(lio_config_t *lc, lio_creds_t *creds, char *src_path, char *dest_path, char *id)
 {
-    return(lio_link_op(lc, creds, 1, src_path, dest_path, id));
+    return(lio_link_gop(lc, creds, 1, src_path, dest_path, id));
 }
 
 
 //*************************************************************************
-//  lio_hardlink_op - Create a hard link to another object
+//  lio_hardlink_gop - Create a hard link to another object
 //*************************************************************************
 
-gop_op_generic_t *lio_hardlink_op(lio_config_t *lc, lio_creds_t *creds, char *src_path, char *dest_path, char *id)
+gop_op_generic_t *lio_hardlink_gop(lio_config_t *lc, lio_creds_t *creds, char *src_path, char *dest_path, char *id)
 {
-    return(lio_link_op(lc, creds, 1, src_path, dest_path, id));
+    return(lio_link_gop(lc, creds, 1, src_path, dest_path, id));
 }
 
 
@@ -824,7 +931,7 @@ gop_op_status_t lio_get_multiple_attrs_fn(void *arg, int id)
 
 //***********************************************************************
 
-gop_op_generic_t *gop_lio_get_multiple_attrs(lio_config_t *lc, lio_creds_t *creds, const char *path, char *id, char **key, void **val, int *v_size, int n_keys)
+gop_op_generic_t *lio_get_multiple_attrs_gop(lio_config_t *lc, lio_creds_t *creds, const char *path, char *id, char **key, void **val, int *v_size, int n_keys)
 {
     lio_attrs_op_t *op;
     tbx_type_malloc_clear(op, lio_attrs_op_t, 1);
@@ -889,7 +996,7 @@ gop_op_status_t lio_getattr_fn(void *arg, int id)
 
 //***********************************************************************
 
-gop_op_generic_t *lio_getattr_op(lio_config_t *lc, lio_creds_t *creds, const char *path, char *id, char *key, void **val, int *v_size)
+gop_op_generic_t *lio_getattr_gop(lio_config_t *lc, lio_creds_t *creds, const char *path, char *id, char *key, void **val, int *v_size)
 {
     lio_attrs_op_t *op;
     tbx_type_malloc_clear(op, lio_attrs_op_t, 1);
@@ -969,7 +1076,7 @@ gop_op_status_t lio_multiple_setattr_op_fn(void *arg, int id)
 
 //***********************************************************************
 
-gop_op_generic_t *gop_lio_multiple_setattr_op(lio_config_t *lc, lio_creds_t *creds, const char *path, char *id, char **key, void **val, int *v_size, int n_keys)
+gop_op_generic_t *lio_multiple_setattr_gop(lio_config_t *lc, lio_creds_t *creds, const char *path, char *id, char **key, void **val, int *v_size, int n_keys)
 {
     lio_attrs_op_t *op;
     tbx_type_malloc_clear(op, lio_attrs_op_t, 1);
@@ -1048,7 +1155,7 @@ gop_op_status_t lio_setattr_fn(void *arg, int id)
 
 //***********************************************************************
 
-gop_op_generic_t *lio_setattr_op(lio_config_t *lc, lio_creds_t *creds, const char *path, char *id, char *key, void *val, int v_size)
+gop_op_generic_t *lio_setattr_gop(lio_config_t *lc, lio_creds_t *creds, const char *path, char *id, char *key, void *val, int v_size)
 {
     lio_attrs_op_t *op;
     tbx_type_malloc_clear(op, lio_attrs_op_t, 1);
@@ -1271,7 +1378,7 @@ int lio_fsck_check_object(lio_config_t *lc, lio_creds_t *creds, char *path, int 
             free(dir);
             break;
         case LIO_FSCK_DELETE:
-            gop_sync_exec(lio_remove_op(lc, creds, path, val[ex_index], ftype));
+            gop_sync_exec(lio_remove_gop(lc, creds, path, val[ex_index], ftype));
             return(state);
             break;
         case LIO_FSCK_USER:
@@ -1300,7 +1407,7 @@ int lio_fsck_check_object(lio_config_t *lc, lio_creds_t *creds, char *path, int 
             lio_setattr(lc, creds, path, NULL, "system.inode", (void *)ssize, strlen(ssize));
             break;
         case LIO_FSCK_DELETE:
-            gop_sync_exec(lio_remove_op(lc, creds, path, val[ex_index], ftype));
+            gop_sync_exec(lio_remove_gop(lc, creds, path, val[ex_index], ftype));
             return(state);
             break;
         case LIO_FSCK_SIZE_REPAIR:
@@ -1336,7 +1443,7 @@ int lio_fsck_check_object(lio_config_t *lc, lio_creds_t *creds, char *path, int 
             free(dir);
             break;
         case LIO_FSCK_DELETE:
-            gop_sync_exec(lio_remove_op(lc, creds, path, val[ex_index], ftype));
+            gop_sync_exec(lio_remove_gop(lc, creds, path, val[ex_index], ftype));
             return(state);
             break;
         case LIO_FSCK_SIZE_REPAIR:
@@ -1366,7 +1473,7 @@ int lio_fsck_check_object(lio_config_t *lc, lio_creds_t *creds, char *path, int 
 
     //** Execute the clone operation if needed
     if (do_clone == 1) {
-        err = gop_sync_exec(lio_exnode_clone(lc->tpc_unlimited, ex, lc->da, &cex, NULL, CLONE_STRUCTURE, lc->timeout));
+        err = gop_sync_exec(lio_exnode_clone_gop(lc->tpc_unlimited, ex, lc->da, &cex, NULL, CLONE_STRUCTURE, lc->timeout));
         if (err != OP_STATE_SUCCESS) {
             log_printf(15, "ERROR cloning parent path=%s\n", path);
             state |= LIO_FSCK_MISSING_EXNODE;
@@ -1425,10 +1532,10 @@ finished:
 
 
 //***********************************************************************
-// lio_fsck_op - Inspects and optionally repairs the file
+// lio_fsck_gop - Inspects and optionally repairs the file
 //***********************************************************************
 
-gop_op_status_t lio_fsck_op_fn(void *arg, int id)
+gop_op_status_t lio_fsck_gop_fn(void *arg, int id)
 {
     lio_fsck_check_t *op = (lio_fsck_check_t *)arg;
     int err, i;
@@ -1469,10 +1576,10 @@ gop_op_status_t lio_fsck_op_fn(void *arg, int id)
 }
 
 //***********************************************************************
-// lio_fsck_op - Inspects and optionally repairs the file
+// lio_fsck_gop - Inspects and optionally repairs the file
 //***********************************************************************
 
-gop_op_generic_t *lio_fsck_op(lio_config_t *lc, lio_creds_t *creds, char *fname, int ftype, int owner_mode, char *owner, int exnode_mode)
+gop_op_generic_t *lio_fsck_gop(lio_config_t *lc, lio_creds_t *creds, char *fname, int ftype, int owner_mode, char *owner, int exnode_mode)
 {
     lio_fsck_check_t *op;
 
@@ -1489,14 +1596,14 @@ gop_op_generic_t *lio_fsck_op(lio_config_t *lc, lio_creds_t *creds, char *fname,
     op->owner = owner;
     op->exnode_mode = exnode_mode;
 
-    return(gop_tp_op_new(lc->tpc_unlimited, NULL, lio_fsck_op_fn, (void *)op, free, 1));
+    return(gop_tp_op_new(lc->tpc_unlimited, NULL, lio_fsck_gop_fn, (void *)op, free, 1));
 }
 
 //***********************************************************************
-// lio_fsck_op - Inspects and optionally repairs the file
+// lio_fsck_gop - Inspects and optionally repairs the file
 //***********************************************************************
 
-gop_op_generic_t *lio_fsck_op_full(lio_config_t *lc, lio_creds_t *creds, char *fname, int ftype, int owner_mode, char *owner, int exnode_mode, char **val, int *v_size)
+gop_op_generic_t *lio_fsck_gop_full(lio_config_t *lc, lio_creds_t *creds, char *fname, int ftype, int owner_mode, char *owner, int exnode_mode, char **val, int *v_size)
 {
     lio_fsck_check_t *op;
 
@@ -1513,7 +1620,7 @@ gop_op_generic_t *lio_fsck_op_full(lio_config_t *lc, lio_creds_t *creds, char *f
     op->v_size = v_size;
     op->full = 1;
 
-    return(gop_tp_op_new(lc->tpc_unlimited, NULL, lio_fsck_op_fn, (void *)op, free, 1));
+    return(gop_tp_op_new(lc->tpc_unlimited, NULL, lio_fsck_gop_fn, (void *)op, free, 1));
 }
 
 //***********************************************************************
@@ -1539,7 +1646,7 @@ int lio_next_fsck(lio_config_t *lc, lio_fsck_iter_t *oit, char **bad_fname, int 
             memcpy(task->val, it->val, _n_fsck_keys*sizeof(char *));
             memcpy(task->v_size, it->v_size, _n_fsck_keys*sizeof(int));
 
-            gop = lio_fsck_op_full(it->lc, it->creds, task->fname, task->ftype, it->owner_mode, it->owner, it->exnode_mode, task->val, task->v_size);
+            gop = lio_fsck_gop_full(it->lc, it->creds, task->fname, task->ftype, it->owner_mode, it->owner, it->exnode_mode, task->val, task->v_size);
             gop_set_myid(gop, slot);
             gop_opque_add(it->q, gop);
         }
@@ -1569,7 +1676,7 @@ int lio_next_fsck(lio_config_t *lc, lio_fsck_iter_t *oit, char **bad_fname, int 
                 memcpy(task->val, it->val, _n_fsck_keys*sizeof(char *));
                 memcpy(task->v_size, it->v_size, _n_fsck_keys*sizeof(int));
 
-                gop = lio_fsck_op_full(it->lc, it->creds, task->fname, task->ftype, it->owner_mode, it->owner, it->exnode_mode, task->val, task->v_size);
+                gop = lio_fsck_gop_full(it->lc, it->creds, task->fname, task->ftype, it->owner_mode, it->owner, it->exnode_mode, task->val, task->v_size);
                 gop_set_myid(gop, slot);
                 gop_opque_add(it->q, gop);
             }

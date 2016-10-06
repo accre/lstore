@@ -194,7 +194,7 @@ int main(int argc, char **argv)
         }
 
         if (n_keys > 0) {
-            err = gop_sync_exec(lio_regex_object_set_multiple_attrs_op(tuple.lc, tuple.creds, NULL, rp_single,  ro_single, obj_types, recurse_depth, key, (void **)val, v_size, n_keys));
+            err = gop_sync_exec(lio_regex_object_set_multiple_attrs_gop(tuple.lc, tuple.creds, NULL, rp_single,  ro_single, obj_types, recurse_depth, key, (void **)val, v_size, n_keys));
             if (err != OP_STATE_SUCCESS) {
                 return_code = EIO;
                 info_printf(lio_ifd, 0, "ERROR with operation! \n");

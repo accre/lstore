@@ -101,7 +101,7 @@ ibp_capset_t *create_proxy_allocs(int nallocs, ibp_capset_t *base_caps, int n_ba
 
     for (i=0; i<nallocs; i++) {
         bcap = &(base_caps[i % n_base]);
-        op = ibp_proxy_alloc_op(ic, &(caps[i]), ibp_cap_get(bcap, IBP_MANAGECAP), 0, 0, 0, ibp_timeout);
+        op = ibp_proxy_alloc_gop(ic, &(caps[i]), ibp_cap_get(bcap, IBP_MANAGECAP), 0, 0, 0, ibp_timeout);
         gop_opque_add(q, op);
     }
 
@@ -129,7 +129,7 @@ void proxy_remove_allocs(ibp_capset_t *caps_list, ibp_capset_t *mcaps_list, int 
 
     for (i=0; i<nallocs; i++) {
         j = i % mallocs;
-        op = ibp_proxy_remove_op(ic, ibp_cap_get(&(caps_list[i]), IBP_MANAGECAP),
+        op = ibp_proxy_remove_gop(ic, ibp_cap_get(&(caps_list[i]), IBP_MANAGECAP),
                                      ibp_cap_get(&(mcaps_list[j]), IBP_MANAGECAP), ibp_timeout);
         gop_opque_add(q, op);
     }
@@ -167,12 +167,12 @@ ibp_capset_t *create_allocs(int nallocs, int asize)
 
     ibp_capset_t *caps = (ibp_capset_t *)malloc(sizeof(ibp_capset_t)*nallocs);
 
-    ibp_set_attributes(&attr, time(NULL) + a_duration, IBP_HARD, IBP_BYTEARRAY);
+    ibp_attributes_set(&attr, time(NULL) + a_duration, IBP_HARD, IBP_BYTEARRAY);
     q = gop_opque_new();
 
     for (i=0; i<nallocs; i++) {
         depot = &(depot_list[i % n_depots]);
-        op = ibp_alloc_op(ic, &(caps[i]), asize, depot, &attr, disk_cs_type, disk_blocksize, ibp_timeout);
+        op = ibp_alloc_gop(ic, &(caps[i]), asize, depot, &attr, disk_cs_type, disk_blocksize, ibp_timeout);
         gop_opque_add(q, op);
     }
 
@@ -200,7 +200,7 @@ void remove_allocs(ibp_capset_t *caps_list, int nallocs)
     q = gop_opque_new();
 
     for (i=0; i<nallocs; i++) {
-        op = ibp_remove_op(ic, ibp_cap_get(&(caps_list[i]), IBP_MANAGECAP), ibp_timeout);
+        op = ibp_remove_gop(ic, ibp_cap_get(&(caps_list[i]), IBP_MANAGECAP), ibp_timeout);
         gop_opque_add(q, op);
     }
 
@@ -265,7 +265,7 @@ void validate_allocs(ibp_capset_t *caps_list, int nallocs)
 
     for (i=0; i<nallocs; i++) {
         bad_blocks[i] = 0;
-        op = ibp_validate_chksum_op(ic, ibp_cap_get(&(caps_list[i]), IBP_MANAGECAP), correct_errors, &(bad_blocks[i]),
+        op = ibp_validate_chksum_gop(ic, ibp_cap_get(&(caps_list[i]), IBP_MANAGECAP), correct_errors, &(bad_blocks[i]),
                                         ibp_timeout);
         gop_opque_add(q, op);
     }
@@ -324,7 +324,7 @@ void write_allocs(ibp_capset_t *caps, int n, int asize, int block_size)
             }
             slot = j*n + i;
             tbx_tbuf_single(&(buf[slot]), len, buffer);
-            op = ibp_write_op(ic, ibp_cap_get(&(caps[i]), IBP_WRITECAP), j*block_size, &(buf[slot]), 0, len, ibp_timeout);
+            op = ibp_write_gop(ic, ibp_cap_get(&(caps[i]), IBP_WRITECAP), j*block_size, &(buf[slot]), 0, len, ibp_timeout);
             gop_opque_add(q, op);
         }
     }
@@ -371,7 +371,7 @@ void read_allocs(ibp_capset_t *caps, int n, int asize, int block_size)
             }
             slot = j*n + i;
             tbx_tbuf_single(&(buf[slot]), len, buffer);
-            op = ibp_read_op(ic, ibp_cap_get(&(caps[i]), IBP_READCAP), j*block_size, &(buf[slot]), 0, len, ibp_timeout);
+            op = ibp_read_gop(ic, ibp_cap_get(&(caps[i]), IBP_READCAP), j*block_size, &(buf[slot]), 0, len, ibp_timeout);
             gop_opque_add(q, op);
         }
     }
@@ -427,10 +427,10 @@ void random_allocs(ibp_capset_t *caps, int n, int asize, int block_size, double 
 
             if (rnd < rfrac) {
                 tbx_tbuf_single(&(buf[bslot]), len, rbuffer);
-                op = ibp_read_op(ic, ibp_cap_get(&(caps[i]), IBP_READCAP), j*block_size, &(buf[bslot]), 0, len, ibp_timeout);
+                op = ibp_read_gop(ic, ibp_cap_get(&(caps[i]), IBP_READCAP), j*block_size, &(buf[bslot]), 0, len, ibp_timeout);
             } else {
                 tbx_tbuf_single(&(buf[bslot]), len, wbuffer);
-                op = ibp_write_op(ic, ibp_cap_get(&(caps[i]), IBP_WRITECAP), j*block_size, &(buf[bslot]), 0, len, ibp_timeout);
+                op = ibp_write_gop(ic, ibp_cap_get(&(caps[i]), IBP_WRITECAP), j*block_size, &(buf[bslot]), 0, len, ibp_timeout);
             }
             gop_opque_add(q, op);
         }
@@ -491,7 +491,7 @@ double small_write_allocs(ibp_capset_t *caps, int n, int asize, int small_count,
         offset = (asize - io_size) * rnd;
 
         tbx_tbuf_single(&(buf[i]), io_size, buffer);
-        op = ibp_write_op(ic, ibp_cap_get(&(caps[slot]), IBP_WRITECAP), offset, &(buf[i]), 0, io_size, ibp_timeout);
+        op = ibp_write_gop(ic, ibp_cap_get(&(caps[slot]), IBP_WRITECAP), offset, &(buf[i]), 0, io_size, ibp_timeout);
         gop_opque_add(q, op);
     }
 
@@ -552,7 +552,7 @@ double small_read_allocs(ibp_capset_t *caps, int n, int asize, int small_count, 
 
         tbx_tbuf_single(&(buf[i]), io_size, buffer);
 
-        op = ibp_read_op(ic, ibp_cap_get(&(caps[slot]), IBP_READCAP), offset, &(buf[i]), 0, io_size, ibp_timeout);
+        op = ibp_read_gop(ic, ibp_cap_get(&(caps[slot]), IBP_READCAP), offset, &(buf[i]), 0, io_size, ibp_timeout);
         gop_opque_add(q, op);
     }
 
@@ -618,10 +618,10 @@ double small_random_allocs(ibp_capset_t *caps, int n, int asize, double readfrac
         rnd = rand()/(RAND_MAX+1.0);
         if (rnd < readfrac) {
             tbx_tbuf_single(&(buf[i]), io_size, rbuffer);
-            op = ibp_read_op(ic, ibp_cap_get(&(caps[slot]), IBP_READCAP), offset, &(buf[i]), 0, io_size, ibp_timeout);
+            op = ibp_read_gop(ic, ibp_cap_get(&(caps[slot]), IBP_READCAP), offset, &(buf[i]), 0, io_size, ibp_timeout);
         } else {
             tbx_tbuf_single(&(buf[i]), io_size, wbuffer);
-            op = ibp_write_op(ic, ibp_cap_get(&(caps[slot]), IBP_WRITECAP), offset, &(buf[i]), 0, io_size, ibp_timeout);
+            op = ibp_write_gop(ic, ibp_cap_get(&(caps[slot]), IBP_WRITECAP), offset, &(buf[i]), 0, io_size, ibp_timeout);
         }
 
         gop_opque_add(q, op);
@@ -760,7 +760,7 @@ int main(int argc, char **argv)
             i++;
             tbx_ns_chksum_set(&ns_cs, &cs, blocksize);
             ncs = &ns_cs;
-            ibp_chksum_set(ic, ncs);
+            ibp_context_chksum_set(ic, ncs);
         } else if (strcmp(argv[i], "-disk_chksum") == 0) { //** Add checksum capability
             i++;
             disk_cs_name = argv[i];
@@ -841,16 +841,16 @@ int main(int argc, char **argv)
     for (j=0; j<n_depots; j++) {
         port = atoi(argv[i+1]);
         rid = ibp_str2rid(argv[i+2]);
-        ibp_set_depot(&(depot_list[j]), argv[i], port, rid);
+        ibp_depot_set(&(depot_list[j]), argv[i], port, rid);
         i = i + 3;
     }
 
     //*** Get thread count ***
     nthreads = atoi(argv[i]);
     if (nthreads <= 0) {
-        nthreads = ibp_max_depot_threads_get(ic);
+        nthreads = ibp_context_max_depot_threads_get(ic);
     } else {
-        ibp_max_depot_threads_set(ic, nthreads);
+        ibp_context_max_depot_threads_set(ic, nthreads);
     }
     i++;
 
@@ -953,7 +953,7 @@ int main(int argc, char **argv)
         printf("Saving allocations to %s\n", out_fname);
     }
 
-    printf("TCP buffer size: %dkb (0 defaults to OS)\n", ibp_tcpsize_get(ic)/1024);
+    printf("TCP buffer size: %dkb (0 defaults to OS)\n", ibp_context_tcpsize_get(ic)/1024);
     printf("\n");
 
     printf("======= Bulk transfer options =======\n");

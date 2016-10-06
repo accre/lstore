@@ -69,7 +69,7 @@ typedef struct {
 
 int lio_parallel_task_count = 100;
 
-//** Define the global LIO config
+// ** Define the global LIO config
 lio_config_t *lio_gc = NULL;
 lio_cache_t *_lio_cache = NULL;
 tbx_log_fd_t *lio_ifd = NULL;
@@ -85,6 +85,8 @@ tbx_list_t *_lc_object_list = NULL;
 
 lio_config_t *lio_create_nl(char *fname, char *section, char *user, char *exe_name);
 void lio_destroy_nl(lio_config_t *lio);
+
+char **myargv = NULL;  //** This is used to hold the new argv we return from lio_init so we can properly clean it up
 
 //***************************************************************
 //  _lc_object_destroy - Decrements the LC object and removes it
@@ -543,7 +545,7 @@ lio_path_tuple_t lio_path_auto_fuse_convert(lio_path_tuple_t *ltuple)
         if (strncmp(ltuple->path, lfs_mount[i].prefix, lfs_mount[i].len) == 0) {
             do_convert = 0;
             prefix_len = lfs_mount[i].len;
-            if (strlen(ltuple->path) > prefix_len) {
+            if ((int)strlen(ltuple->path) > prefix_len) {
                 if (ltuple->path[prefix_len] == '/') {
                     do_convert = 1;
                     snprintf(path, sizeof(path), "@:%s", &(ltuple->path[prefix_len]));
@@ -797,6 +799,10 @@ void lio_destroy_nl(lio_config_t *lio)
 
     if (lio->cfg_name != NULL) free(lio->cfg_name);
     if (lio->section_name != NULL) free(lio->section_name);
+
+    void *val = lio_lookup_service(lio->ess, ESS_RUNNING, "jerase_paranoid");
+    remove_service(lio->ess, ESS_RUNNING, "jerase_paranoid");
+    if (val) free(val);
 
     _lio_destroy_plugins(lio);
 
@@ -1211,7 +1217,6 @@ int lio_init(int *argc, char ***argvp)
     char var[4096];
     char *env;
     char **eargv;
-    char **myargv;
     char **argv;
     char *dummy;
     char *out_override = NULL;
@@ -1362,7 +1367,6 @@ no_args:
 
     lio_ifd = tbx_info_create(_lio_ifd, if_mode, ifll);
 
-
     //** Adjust argv to reflect the parsed arguments
     *argvp = myargv;
     *argc = nargs;
@@ -1435,8 +1439,10 @@ int lio_shutdown()
     _lc_lock  = NULL;
     exnode_system_destroy();
 
+    tbx_info_destroy(lio_ifd);
     lio_ifd = NULL;
     if (_lio_exe_name) free(_lio_exe_name);
+    if (myargv != NULL) free(myargv);
 
     return(0);
 }

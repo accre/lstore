@@ -602,10 +602,10 @@ void segfile_destroy(tbx_ref_t *ref)
 
 
 //***********************************************************************
-// segment_file_make - Creates a File segment
+// segment_file_make_gop - Creates a File segment
 //***********************************************************************
 
-gop_op_generic_t *segment_file_make(lio_segment_t *seg, data_attr_t *da, char *fname)
+gop_op_generic_t *segment_file_make_gop(lio_segment_t *seg, data_attr_t *da, char *fname)
 {
     segfile_priv_t *s = (segfile_priv_t *)seg->priv;
     FILE *fd;

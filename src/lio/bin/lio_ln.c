@@ -131,7 +131,7 @@ int main(int argc, char **argv)
     }
 
     //** Now create the link
-    err = gop_sync_exec(lio_link_op(dtuple.lc, dtuple.creds, symlink, stuple.path, dtuple.path, NULL));
+    err = gop_sync_exec(lio_link_gop(dtuple.lc, dtuple.creds, symlink, stuple.path, dtuple.path, NULL));
     if (err != OP_STATE_SUCCESS) {
         info_printf(lio_ifd, 0, "ERROR linking file!\n");
         err = 1;

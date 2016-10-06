@@ -210,7 +210,7 @@ void gop_mq_ongoing_host_inc(gop_mq_ongoing_t *on, mq_msg_t *remote_host, char *
     log_printf(5, "remote_host=%s\n", str);
     free(str);
 
-    hash = mq_msg_hash(remote_host);
+    hash = gop_mq_msg_hash(remote_host);
     table = apr_hash_get(on->table, &hash, sizeof(gop_mq_msg_hash_t));  //** Look up the remote host
 
     if (tbx_log_level() > 5) {
@@ -261,7 +261,7 @@ void gop_mq_ongoing_host_dec(gop_mq_ongoing_t *on, mq_msg_t *remote_host, char *
     gop_ongoing_table_t *table;
     gop_mq_msg_hash_t hash;
 
-    hash = mq_msg_hash(remote_host);
+    hash = gop_mq_msg_hash(remote_host);
     apr_thread_mutex_lock(on->lock);
     table = apr_hash_get(on->table, &hash, sizeof(gop_mq_msg_hash_t));  //** Look up the host
     if (table == NULL) goto fail;
@@ -632,7 +632,7 @@ void *mq_ongoing_server_thread(apr_thread_t *th, void *data)
 void gop_mq_ongoing_destroy(gop_mq_ongoing_t *mqon)
 {
     apr_status_t value;
-    gop_gop_mq_command_table_t *ctable;
+    gop_mq_command_table_t *ctable;
 
     //** Wake up the ongoing thread
     apr_thread_mutex_lock(mqon->lock);
@@ -661,7 +661,7 @@ void gop_mq_ongoing_destroy(gop_mq_ongoing_t *mqon)
 gop_mq_ongoing_t *gop_mq_ongoing_create(gop_mq_context_t *mqc, gop_mq_portal_t *server_portal, int check_interval, int mode)
 {
     gop_mq_ongoing_t *mqon;
-    gop_gop_mq_command_table_t *ctable;
+    gop_mq_command_table_t *ctable;
 
     tbx_type_malloc_clear(mqon, gop_mq_ongoing_t, 1);
 

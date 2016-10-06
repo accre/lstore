@@ -32,7 +32,6 @@ extern "C" {
 // Typedefs
 typedef int64_t ibp_off_t;  //** Base IBP offset/size data type
 typedef char ibp_cap_t;
-typedef char* ibp_cap_ptr_t;
 typedef struct ibp_capset_t ibp_capset_t;
 typedef struct ibp_attributes_t ibp_attributes_t;
 typedef struct ibp_proxy_capstatus_t ibp_proxy_capstatus_t;
@@ -46,23 +45,33 @@ typedef struct ibp_timer_t ibp_timer_t;
 typedef struct ibp_rid_t ibp_rid_t;
 
 // Functions
-IBP_API void ibp_attributes_t_get(ibp_attributes_t *attr, time_t *duration, int *reliability, int *type);
+IBP_API void ibp_attributes_get(ibp_attributes_t *attr, time_t *duration, int *reliability, int *type);
 IBP_API void ibp_cap_destroy(ibp_cap_t *cap);
-IBP_API void ibp_cap_destroyset(ibp_capset_t *caps);
+IBP_API void ibp_capset_clear(ibp_capset_t *caps);
+IBP_API void ibp_capset_destroy(ibp_capset_t *caps);
 IBP_API ibp_cap_t *ibp_cap_get(ibp_capset_t *caps, int ctype);
+IBP_API int ibp_cap_set(ibp_capset_t *caps, int ctype, ibp_cap_t *c, int dofree);
 IBP_API void ibp_cap_getstatus(ibp_capstatus_t *cs, int *readcount, int *writecount,int *current_size, int *max_size, ibp_attributes_t *attrib);
 IBP_API ibp_capset_t *ibp_capset_new();
 IBP_API char *ibp_rid2str(ibp_rid_t rid, char *buffer);
 IBP_API int ibp_rid_compare(ibp_rid_t rid1, ibp_rid_t rid2);
 IBP_API void ibp_rid_empty(ibp_rid_t *rid);
 IBP_API int ibp_rid_is_empty(ibp_rid_t rid);
+IBP_API ibp_ridlist_t *ibp_ridlist_create();
 IBP_API void ibp_ridlist_destroy(ibp_ridlist_t *rlist);
 IBP_API ibp_rid_t ibp_ridlist_element_get(ibp_ridlist_t *rlist, int index);
 IBP_API int ibp_ridlist_size_get(ibp_ridlist_t *rlist);
 IBP_API ibp_rid_t ibp_str2rid(char *rid_str);
-IBP_API void ibp_set_attributes(ibp_attributes_t *attr, time_t duration, int reliability, int type);
-IBP_API void ibp_set_depot(ibp_depot_t *d, char *host, int port, ibp_rid_t rid);
-IBP_API void ibp_set_timer(ibp_timer_t *t, int client_timeout, int server_timeout);
+IBP_API void ibp_attributes_set(ibp_attributes_t *attr, time_t duration, int reliability, int type);
+IBP_API void ibp_depot_set(ibp_depot_t *d, char *host, int port, ibp_rid_t rid);
+IBP_API void ibp_timer_set(ibp_timer_t *t, int client_timeout, int server_timeout);
+
+//** The proxy framework is being replaced so these will go away soon
+IBP_API ibp_proxy_capstatus_t *new_ibp_proxy_capstatus();
+IBP_API void destroy_ibp_proxy_capstatus(ibp_proxy_capstatus_t *cs);
+IBP_API void copy_ibp_proxy_capstatus(ibp_proxy_capstatus_t *src, ibp_proxy_capstatus_t *dest);
+IBP_API void get_ibp_proxy_capstatus(ibp_proxy_capstatus_t *cs, int *readcount, int *writecount,
+                             ibp_off_t *offset, ibp_off_t *size, int *duration);
 
 // Preprocessor constants
 #define IBP_MAX_HOSTNAME_LEN  256
@@ -117,9 +126,9 @@ struct ibp_depot_t {
 };
 
 struct ibp_capset_t {
-    ibp_cap_ptr_t readCap;  /* read capability */
-    ibp_cap_ptr_t writeCap;  /* write capability */
-    ibp_cap_ptr_t manageCap;  /* manage capability */
+    ibp_cap_t *readCap;  /* read capability */
+    ibp_cap_t *writeCap;  /* write capability */
+    ibp_cap_t *manageCap;  /* manage capability */
 };
 
 struct ibp_capstatus_t {

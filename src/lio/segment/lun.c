@@ -2039,7 +2039,7 @@ gop_op_status_t seglun_inspect_func(void *arg, int id)
 
     info_printf(si->fd, 1, XIDT ": segment information: n_devices=%d n_shift=%d chunk_size=" XOT "  used_size=" XOT " total_size=" XOT " mode=%d\n", segment_id(si->seg), s->n_devices, s->n_shift, s->chunk_size, s->used_size, s->total_size, si->inspect_mode);
 
-    si->args->n_dev_rows = tbx_isl_count2(s->isl, (tbx_sl_key_t *)NULL, (tbx_sl_key_t *)NULL);
+    si->args->n_dev_rows = tbx_isl_range_count(s->isl, (tbx_sl_key_t *)NULL, (tbx_sl_key_t *)NULL);
     drow = -1;
     it = tbx_isl_iter_search(s->isl, (tbx_sl_key_t *)NULL, (tbx_sl_key_t *)NULL);
     for (b = (seglun_row_t *)tbx_isl_next(&it); b != NULL; b = (seglun_row_t *)tbx_isl_next(&it)) {
@@ -2051,7 +2051,7 @@ gop_op_status_t seglun_inspect_func(void *arg, int id)
         info_printf(si->fd, 1, XIDT ": Checking row: (" XOT ", " XOT ", " XOT ")   Stripe: (" XOT ", " XOT ")\n", segment_id(si->seg), b->seg_offset, b->seg_end, b->row_len, sstripe, estripe);
 
         for (i=0; i < s->n_devices; i++) {
-            info_printf(si->fd, 3, XIDT ":     dev=%i rcap=%p\n", segment_id(si->seg), i, ds_get_cap(s->ds, b->block[i].data->cap, DS_CAP_READ));
+            info_printf(si->fd, 3, XIDT ":     dev=%i rcap=%s\n", segment_id(si->seg), i, (char *)ds_get_cap(s->ds, b->block[i].data->cap, DS_CAP_READ));
         }
 
         nlost = slun_row_size_check(si->seg, si->da, b, block_status, dt, s->n_devices, force_repair, si->timeout);
@@ -2314,8 +2314,6 @@ gop_op_status_t seglun_clone_func(void *arg, int id)
     int err, dir, i, j, k, *max_index, n_rows, n;
     tbx_stack_t **gop_stack;
     gop_opque_t *q;
-    apr_time_t dtus;
-    double dts;
     gop_op_generic_t *gop = NULL;
     gop_op_generic_t *gop_next;
     gop_op_status_t status;
@@ -2440,15 +2438,6 @@ gop_op_status_t seglun_clone_func(void *arg, int id)
         gop = opque_waitany(q);
         gop_next = tbx_stack_pop((tbx_stack_t *)gop_get_private(gop));
         if (gop_next != NULL) gop_opque_add(q, gop_next);
-
-        //** This is for diagnostics
-        dtus = gop->op->cmd.end_time - gop->op->cmd.start_time;
-        dts = (1.0*dtus) / (1.0*APR_USEC_PER_SEC);
-        ibp_op_t *iop = ibp_get_iop(gop);
-        ibp_op_copy_t *cmd = &(iop->ops.copy_op);
-        status = gop_get_status(gop);
-        log_printf(5, "clone_dt src=%s dest=%s  gid=%d status=(%d %d) dt=%lf\n", cmd->srccap, cmd->destcap, gop_id(gop), status.op_status, status.error_code, dts);
-
         gop_free(gop, OP_DESTROY);
     }
 
@@ -2939,7 +2928,6 @@ lio_segment_t *segment_lun_load(void *arg, ex_id_t id, lio_exnode_exchange_t *ex
 {
     lio_segment_t *seg = segment_lun_create(arg);
     if (segment_deserialize(seg, id, ex) != 0) {
-        tbx_obj_put(&seg->obj);
         seg = NULL;
     }
     return(seg);

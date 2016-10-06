@@ -50,7 +50,7 @@ int plugin_xfer_init(lstore_handle_t *h,
     if (!h->path) {
         goto error_alloc;
     }
-    int retval = gop_sync_exec(lio_open_op(lio_gc,
+    int retval = gop_sync_exec(lio_open_gop(lio_gc,
                                 lio_gc->creds,
                                 h->path,
                                 open_flags,

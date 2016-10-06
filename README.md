@@ -26,11 +26,12 @@ Dependencies
 ----------------------------------------------
 You will need to bring your own copies of:
 
-* openssl-devel
 * czmq-devel
-* zmq-devel
-* zlib-devel
 * fuse-devel
+* leveldb-devel
+* openssl-devel
+* zlib-devel
+* zmq-devel
 
 In addition, LStore has build-time dependencies on
 
@@ -41,7 +42,7 @@ For centos, at least, these dependencies can be installed with:
 
 ```
 yum groupinstall "Development Tools"
-yum install cmake openssl-devel czmq-devel zmq-devel zlib-devel fuse-devel
+yum install cmake openssl-devel czmq-devel zmq-devel zlib-devel fuse-devel leveldb-devel
 ```
 
 If the local CMake installation is too old, we install a local copy into build/

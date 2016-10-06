@@ -142,7 +142,7 @@ int main(int argc, char **argv)
         while ((err = lio_next_fsck(tuple.lc, it, &fname, &ftype)) != LIO_FSCK_FINISHED) {
             info_printf(lio_ifd, 0, "err:%d  type:%d  object:%s\n", err, ftype, fname);
             if ((owner_mode != LIO_FSCK_MANUAL) || (exnode_mode != LIO_FSCK_MANUAL)) {
-                gop = lio_fsck_op(tuple.lc, tuple.creds, fname, ftype, owner_mode, owner, exnode_mode);
+                gop = lio_fsck_gop(tuple.lc, tuple.creds, fname, ftype, owner_mode, owner, exnode_mode);
                 gop_waitany(gop);
                 status = gop_get_status(gop);
                 gop_free(gop, OP_DESTROY);

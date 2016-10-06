@@ -29,14 +29,15 @@ if(NOT USE_SUPERBUILD)
     find_package(ZMQ REQUIRED)
     find_package(CZMQ REQUIRED)
     find_package(FUSE REQUIRED)
+    find_package(LevelDB REQUIRED)
     include_directories(
         ${JERASURE_INCLUDE_DIR} ${TOOLBOX_INCLUDE_DIR} ${GOP_INCLUDE_DIR}
-        ${IBP_INCLUDE_DIR} ${FUSE_INCLUDE_DIR} ${CZMQ_INCLUDE_DIR}
+        ${IBP_INCLUDE_DIR} ${FUSE_INCLUDE_DIR} ${CZMQ_INCLUDE_DIR} ${LEVELDB_INCLUDE_DIR}
     )
 
     list(APPEND LIBS
         ${IBP_LIBRARY} ${GOP_LIBRARY} ${CZMQ_LIBRARY} ${TOOLBOX_LIBRARY}
-        ${JERASURE_LIBRARY} ${ZMQ_LIBRARY} ${FUSE_LIBRARIES}
+        ${JERASURE_LIBRARY} ${ZMQ_LIBRARY} ${FUSE_LIBRARIES} ${LEVELDB_LIBRARY}
     )
 else()
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -D_FILE_OFFSET_BITS=64")
@@ -52,6 +53,7 @@ set(LSTORE_LIBS toolbox
                 ${ZMQ_LIBRARY}
                 ${FUSE_LIBRARY}
                 ${JERASURE_LIBRARY}
+                ${LEVELDB_LIBRARY}
                 )
 set(LSTORE_INCLUDE_SYSTEM ${APR_INCLUDE_DIR}
                     ${APRUTIL_INCLUDE_DIR}
@@ -60,7 +62,8 @@ set(LSTORE_INCLUDE_SYSTEM ${APR_INCLUDE_DIR}
                     ${CZMQ_INCLUDE_DIR}
                     ${ZLIB_INCLUDE_DIR}
                     ${FUSE_INCLUDE_DIR}
-                    ${JERASURE_INCLUDE_DIR})
+                    ${JERASURE_INCLUDE_DIR}
+                    ${LEVELDB_INCLUDE_DIR})
 set(LSTORE_INCLUDE_PUBLIC ${PROJECT_SOURCE_DIR})
 
 # common objects
@@ -81,8 +84,8 @@ set(LSTORE_PROJECT_OBJS
 		ex3/id.c
 		ex3/service.c
 		lio_config.c
-		lio_core.c
 		lio_core_io.c
+		lio_core_misc.c
 		lio_core_os.c
 		lio_fuse_core.c
 		lio_version.c
@@ -90,6 +93,7 @@ set(LSTORE_PROJECT_OBJS
 		os/file.c
 		os/remote_client.c
 		os/remote_server.c
+		os/test.c
 		os/timecache.c
 		osaz/fake.c
         raid4.c
@@ -106,6 +110,7 @@ set(LSTORE_PROJECT_OBJS
 		segment/linear.c
 		segment/log.c
 		segment/lun.c
+		segment/rw_test.c
 		service_manager.c
 		trace.c
 		trace_replay.c
@@ -165,6 +170,7 @@ set(LSTORE_PROJECT_EXECUTABLES
 		lio_warm
 		mk_linear
 		os_fsck
+		warmer_query
 		zadler32
 )
 

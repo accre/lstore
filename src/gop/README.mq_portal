@@ -215,7 +215,7 @@ typedef struct {
 Likewise for the server side its:
 --------------------------------------
 gop_mq_context_t *mqc;
-gop_gop_mq_command_table_t *table;
+gop_mq_command_table_t *table;
 uint64_t n;
 
 log_printf(0, "START\n");

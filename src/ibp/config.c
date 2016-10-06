@@ -493,22 +493,22 @@ int _ibp_connect(tbx_ns_t *ns, void *connect_context, char *host, int port, tbx_
 // set/unset routines for options
 //**********************************************************
 
-int ibp_chksum_set(ibp_context_t *ic, tbx_ns_chksum_t *ncs)
+int ibp_context_chksum_set(ibp_context_t *ic, tbx_ns_chksum_t *ncs)
 {
     tbx_ns_chksum_clear(&(ic->ncs));
     if (ncs != NULL) ic->ncs = *ncs;
     return(0);
 }
-void ibp_get_chksum(ibp_context_t *ic, tbx_ns_chksum_t *ncs)
+void ibp_context_chksum_get(ibp_context_t *ic, tbx_ns_chksum_t *ncs)
 {
     *ncs = ic->ncs;
 };
 
-void ibp_set_abort_attempts(ibp_context_t *ic, int n)
+void ibp_context_abort_attempts_set(ibp_context_t *ic, int n)
 {
     ic->abort_conn_attempts = n;
 }
-int  ibp_get_abort_attempts(ibp_context_t *ic)
+int  ibp_context_abort_attempts_get(ibp_context_t *ic)
 {
     return(ic->abort_conn_attempts);
 }
@@ -516,107 +516,115 @@ void ibp_tcpsize_set(ibp_context_t *ic, int n)
 {
     ic->tcpsize = n;
 }
-int  ibp_tcpsize_get(ibp_context_t *ic)
+int  ibp_context_tcpsize_get(ibp_context_t *ic)
 {
     return(ic->tcpsize);
 }
-void ibp_set_min_depot_threads(ibp_context_t *ic, int n)
+void ibp_context_min_depot_threads_set(ibp_context_t *ic, int n)
 {
     ic->min_threads = n;
     ic->pc->min_threads = n;
     gop_change_all_hportal_conn(ic->pc, ic->min_threads, ic->max_threads, ic->dt_connect);
 }
-int  ibp_get_min_depot_threads(ibp_context_t *ic)
+int  ibp_context_min_depot_threads_get(ibp_context_t *ic)
 {
     return(ic->min_threads);
 }
-void ibp_max_depot_threads_set(ibp_context_t *ic, int n)
+void ibp_context_max_depot_threads_set(ibp_context_t *ic, int n)
 {
     ic->max_threads = n;
     ic->pc->max_threads = n;
     gop_change_all_hportal_conn(ic->pc, ic->min_threads, ic->max_threads, ic->dt_connect);
 }
-int  ibp_max_depot_threads_get(ibp_context_t *ic)
+int  ibp_context_max_depot_threads_get(ibp_context_t *ic)
 {
     return(ic->max_threads);
 }
-void ibp_set_max_connections(ibp_context_t *ic, int n)
+void ibp_context_max_connections_set(ibp_context_t *ic, int n)
 {
     ic->max_connections = n;
     ic->pc->max_connections = n;
 }
-int  ibp_get_max_connections(ibp_context_t *ic)
+int  ibp_context_max_connections_get(ibp_context_t *ic)
 {
     return(ic->max_connections);
 }
-void ibp_set_command_weight(ibp_context_t *ic, int n)
+void ibp_context_command_weight_set(ibp_context_t *ic, int n)
 {
     ic->other_new_command = n;
 }
-int  ibp_get_command_weight(ibp_context_t *ic)
+int  ibp_context_command_weight_get(ibp_context_t *ic)
 {
     return(ic->other_new_command);
 }
-void ibp_set_max_retry_wait(ibp_context_t *ic, int n)
+void ibp_context_max_retry_set_wait(ibp_context_t *ic, int n)
 {
     ic->max_wait = n;
     ic->pc->max_wait = n;
 }
-int  ibp_get_max_retry_wait(ibp_context_t *ic)
+int  ibp_context_max_retry_get_wait(ibp_context_t *ic)
 {
     return(ic->max_wait);
 }
-void ibp_set_max_thread_workload(ibp_context_t *ic, int64_t n)
+void ibp_context_max_thread_workload_set(ibp_context_t *ic, int64_t n)
 {
     ic->max_workload = n;
     ic->pc->max_workload = n;
 }
-int64_t  ibp_get_max_thread_workload(ibp_context_t *ic)
+int64_t  ibp_context_max_thread_workload_get(ibp_context_t *ic)
 {
     return(ic->max_workload);
 }
-void ibp_set_max_coalesce_workload(ibp_context_t *ic, int64_t n)
+void ibp_context_max_coalesce_workload_set(ibp_context_t *ic, int64_t n)
 {
     ic->max_coalesce = n;
 }
-int64_t  ibp_get_max_coalesce_workload(ibp_context_t *ic)
+int64_t  ibp_context_max_coalesce_workload_get(ibp_context_t *ic)
 {
     return(ic->max_coalesce);
 }
-void ibp_set_wait_stable_time(ibp_context_t *ic, int n)
+void ibp_context_wait_stable_time_set(ibp_context_t *ic, int n)
 {
     ic->wait_stable_time = n;
     ic->pc->wait_stable_time = n;
 }
-int  ibp_get_wait_stable_time(ibp_context_t *ic)
+int  ibp_context_wait_stable_time_get(ibp_context_t *ic)
 {
     return(ic->wait_stable_time);
 }
-void ibp_set_check_interval(ibp_context_t *ic, int n)
+void ibp_context_check_interval_set(ibp_context_t *ic, int n)
 {
     ic->check_connection_interval = n;
     ic->pc->check_connection_interval = n;
 }
-int  ibp_get_check_interval(ibp_context_t *ic)
+int  ibp_context_check_interval_get(ibp_context_t *ic)
 {
     return(ic->check_connection_interval);
 }
-void ibp_set_max_retry(ibp_context_t *ic, int n)
+void ibp_context_max_retry_set(ibp_context_t *ic, int n)
 {
     ic->max_retry = n;
     ic->pc->max_retry = n;
 }
-int  ibp_get_max_retry(ibp_context_t *ic)
+int  ibp_context_max_retry_get(ibp_context_t *ic)
 {
     return(ic->max_retry);
 }
-void ibp_set_transfer_rate(ibp_context_t *ic, double rate)
+void ibp_context_transfer_rate_set(ibp_context_t *ic, double rate)
 {
     ic->transfer_rate = rate;
 }
-double  ibp_get_transfer_rate(ibp_context_t *ic)
+double  ibp_context_transfer_rate_get(ibp_context_t *ic)
 {
     return(ic->transfer_rate);
+}
+void ibp_context_connection_mode_set(ibp_context_t *ic, int mode)
+{
+    ic->connection_mode = mode;
+}
+int  ibp_context_connection_mode_get(ibp_context_t *ic)
+{
+    return(ic->connection_mode);
 }
 
 //**********************************************************

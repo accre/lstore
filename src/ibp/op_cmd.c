@@ -314,6 +314,7 @@ gop_op_status_t read_recv(gop_op_generic_t *gop, tbx_ns_t *ns)
         log_printf(15, "read_recv: (read) ns=%d cap=%s offset[0]=" I64T " len[0]=" I64T " err=%d Error!  status=%d bytes=!%s!\n",
                    tbx_ns_getid(ns), cmd->cap, rwbuf->iovec[0].offset, rwbuf->size, err.op_status, status, buffer);
 
+        if (status == IBP_OK) status = IBP_E_GENERIC;
         process_error(gop, &err, status, swait, NULL);
         return(err);
     }
@@ -845,7 +846,11 @@ gop_op_status_t allocate_recv(gop_op_generic_t *gop, tbx_ns_t *ns)
             _op_set_status(err, OP_STATE_FAILURE, IBP_E_GENERIC);
             return(err);
         } else {
-            _op_set_status(err, OP_STATE_FAILURE, status);
+            if (status == IBP_OK) {
+                _op_set_status(err, OP_STATE_FAILURE, IBP_E_GENERIC);
+            } else {
+                _op_set_status(err, OP_STATE_FAILURE, status);
+            }
             return(err);
         }
     }
@@ -1343,7 +1348,7 @@ gop_op_status_t depot_inq_recv(gop_op_generic_t *gop, tbx_ns_t *ns)
         if (nbytes <= 0) {
             return(ibp_error_status);
         }
-        if (sizeof(buffer) < nbytes) {
+        if ((int)sizeof(buffer) < nbytes) {
             return(ibp_error_status);
         }
 
@@ -1414,7 +1419,7 @@ gop_op_status_t depot_version_recv(gop_op_generic_t *gop, tbx_ns_t *ns)
             nmax = cmd->buffer_size - pos - 2;
             strncat(cmd->buffer, buffer, nmax);
             strcat(cmd->buffer, "\n");
-            if (strlen(buffer) + pos > cmd->buffer_size) {  //** Exit if we are out of space
+            if ((int)strlen(buffer) + pos > cmd->buffer_size) {  //** Exit if we are out of space
                 _op_set_status(err, OP_STATE_FAILURE, IBP_E_WOULD_EXCEED_LIMIT);
                 return(err);
             }

@@ -51,7 +51,7 @@ typedef struct {
     void *arg;
     int mode;
     int timeout;
-} lio_exnode_clone_t;
+} lio_exnode_clone_gop_t;
 
 //*************************************************************************
 // ex_iovec_create
@@ -116,12 +116,12 @@ lio_exnode_t *lio_exnode_create()
 }
 
 //*************************************************************************
-// exnode_remove_func - Resmoves the exnode data
+// exnode_remove_gop_func - Resmoves the exnode data
 //*************************************************************************
 
-gop_op_status_t exnode_remove_func(void *arg, int gid)
+gop_op_status_t exnode_remove_gop_func(void *arg, int gid)
 {
-    lio_exnode_clone_t *op = (lio_exnode_clone_t *)arg;
+    lio_exnode_clone_gop_t *op = (lio_exnode_clone_gop_t *)arg;
     lio_exnode_t *ex = op->src_ex;
     tbx_list_iter_t it;
     lio_segment_t *seg;
@@ -156,31 +156,31 @@ gop_op_status_t exnode_remove_func(void *arg, int gid)
 }
 
 //*************************************************************************
-// exnode_remove - Removes the exnode data
+// exnode_remove_gop - Removes the exnode data
 //*************************************************************************
 
-gop_op_generic_t *exnode_remove(gop_thread_pool_context_t *tpc, lio_exnode_t *ex, data_attr_t *da, int timeout)
+gop_op_generic_t *exnode_remove_gop(gop_thread_pool_context_t *tpc, lio_exnode_t *ex, data_attr_t *da, int timeout)
 {
-    lio_exnode_clone_t *exc;
+    lio_exnode_clone_gop_t *exc;
     gop_op_generic_t *gop;
 
-    tbx_type_malloc_clear(exc, lio_exnode_clone_t, 1);
+    tbx_type_malloc_clear(exc, lio_exnode_clone_gop_t, 1);
     exc->src_ex = ex;
     exc->da = da;
     exc->timeout = timeout;
 
-    gop = gop_tp_op_new(tpc, NULL, exnode_remove_func, (void *)exc, free, 1);
+    gop = gop_tp_op_new(tpc, NULL, exnode_remove_gop_func, (void *)exc, free, 1);
     return(gop);
 }
 
 
 //*************************************************************************
-// lio_exnode_clone_func - Clones the exnode structure and optionally data
+// lio_exnode_clone_gop_func - Clones the exnode structure and optionally data
 //*************************************************************************
 
-gop_op_status_t lio_exnode_clone_func(void *arg, int gid)
+gop_op_status_t lio_exnode_clone_gop_func(void *arg, int gid)
 {
-    lio_exnode_clone_t *exc = (lio_exnode_clone_t *)arg;
+    lio_exnode_clone_gop_t *exc = (lio_exnode_clone_gop_t *)arg;
     lio_exnode_t *sex = exc->src_ex;
     lio_exnode_t *ex = exc->dest_ex;
     tbx_list_iter_t it;
@@ -228,7 +228,6 @@ gop_op_status_t lio_exnode_clone_func(void *arg, int gid)
         } else {
             if (did == segment_id(segptr[0])) ex->default_seg = segptr[1];
             tbx_list_insert(ex->view, &segment_id(segptr[1]), segptr[1]);
-            tbx_obj_get(&segptr[1]->obj);
         }
 
         gop_free(gop, OP_DESTROY);
@@ -243,12 +242,12 @@ gop_op_status_t lio_exnode_clone_func(void *arg, int gid)
 }
 
 //*************************************************************************
-// lio_exnode_clone - Clones the exnode structure and optionally data
+// lio_exnode_clone_gop - Clones the exnode structure and optionally data
 //*************************************************************************
 
-gop_op_generic_t *lio_exnode_clone(gop_thread_pool_context_t *tpc, lio_exnode_t *src_ex, data_attr_t *da, lio_exnode_t **ex, void *arg, int mode, int timeout)
+gop_op_generic_t *lio_exnode_clone_gop(gop_thread_pool_context_t *tpc, lio_exnode_t *src_ex, data_attr_t *da, lio_exnode_t **ex, void *arg, int mode, int timeout)
 {
-    lio_exnode_clone_t *exc;
+    lio_exnode_clone_gop_t *exc;
     gop_op_generic_t *gop;
 
     *ex = lio_exnode_create();
@@ -258,7 +257,7 @@ gop_op_generic_t *lio_exnode_clone(gop_thread_pool_context_t *tpc, lio_exnode_t 
     if (src_ex->header.type != NULL) (*ex)->header.type = strdup(src_ex->header.type);
     generate_ex_id(&((*ex)->header.id));
 
-    tbx_type_malloc(exc, lio_exnode_clone_t, 1);
+    tbx_type_malloc(exc, lio_exnode_clone_gop_t, 1);
     exc->src_ex = src_ex;
     exc->dest_ex = *ex;
     exc->da = da;
@@ -266,7 +265,7 @@ gop_op_generic_t *lio_exnode_clone(gop_thread_pool_context_t *tpc, lio_exnode_t 
     exc->timeout = timeout;
     exc->arg = arg;
 
-    gop = gop_tp_op_new(tpc, NULL, lio_exnode_clone_func, (void *)exc, free, 1);
+    gop = gop_tp_op_new(tpc, NULL, lio_exnode_clone_gop_func, (void *)exc, free, 1);
     return(gop);
 }
 
@@ -456,7 +455,6 @@ int lio_exnode_deserialize_text(lio_exnode_t *ex, lio_exnode_exchange_t *exp, li
             log_printf(15, "exnode_load_text: Loading view segment " XIDT "\n", id);
             seg = load_segment(ess, id, exp);
             if (seg != NULL) {
-                tbx_obj_get(&seg->obj);
                 tbx_list_insert(ex->view, &segment_id(seg), seg);
             } else {
                 log_printf(0, "Bad segment!  sid=" XIDT "\n", id);
@@ -588,17 +586,13 @@ void lio_exnode_destroy(lio_exnode_t *ex)
     //** Remove the views
     it = tbx_list_iter_search(ex->view, (tbx_sl_key_t *)NULL, 0);
     while (tbx_list_next(&it, (tbx_sl_key_t *)&id, (tbx_sl_data_t *)&seg) == 0) {
-        if (tbx_obj_put(&seg->obj)) {
-            log_printf(15, "lio_exnode_destroy: seg->id=" XIDT "\n", segment_id(seg));
-        }
-        tbx_list_next(&it, (tbx_sl_key_t *)&id, (tbx_sl_data_t *)&seg);
+        tbx_obj_put(&seg->obj);
     }
 
     //** And any blocks
     it = tbx_list_iter_search(ex->block, (tbx_sl_key_t *)NULL, 0);
     while (tbx_list_next(&it, (tbx_sl_key_t *)&id, (tbx_sl_data_t *)&b) == 0) {
         data_block_destroy(b);
-        tbx_list_next(&it, (tbx_sl_key_t *)&id, (tbx_sl_data_t *)&b);
     }
 
     tbx_list_destroy(ex->view);

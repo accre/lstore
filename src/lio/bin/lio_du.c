@@ -51,7 +51,7 @@ int base = 1;
 
 void du_format_entry(tbx_log_fd_t *ifd, du_entry_t *de, int sumonly)
 {
-    char *dname;
+    char *is_dir;
     char ppsize[128];
     double fsize;
     long int n;
@@ -63,16 +63,13 @@ void du_format_entry(tbx_log_fd_t *ifd, du_entry_t *de, int sumonly)
         tbx_stk_pretty_print_double_with_scale(base, fsize, ppsize);
     }
 
-    dname = de->fname;
-
+    is_dir = (de->ftype & OS_OBJECT_DIR_FLAG) ? "/" : "";
     if (sumonly == 1) {
         n = ((de->ftype & OS_OBJECT_DIR_FLAG) > 0) ? de->count : 1;
-        info_printf(ifd, 0, "%10s  %10ld  %s\n", ppsize, n, dname);
+        info_printf(ifd, 0, "%10s  %10ld  %s%s\n", ppsize, n, de->fname, is_dir);
     } else {
-        info_printf(ifd, 0, "%10s  %s\n", ppsize, dname);
+        info_printf(ifd, 0, "%10s  %s%s\n", ppsize, de->fname, is_dir);
     }
-
-    if (dname != de->fname) free(dname);
 
     return;
 }
@@ -82,7 +79,7 @@ void du_format_entry(tbx_log_fd_t *ifd, du_entry_t *de, int sumonly)
 
 int main(int argc, char **argv)
 {
-    int i, j, ftype, rg_mode, start_index, start_option, nosort, prefix_len, plen;
+    int i, j, ftype, rg_mode, start_index, start_option, nosort, prefix_len;
     char *fname;
     du_entry_t *de;
     tbx_list_t *table, *sum_table, *lt;
@@ -92,6 +89,7 @@ int main(int argc, char **argv)
     char *key = "system.exnode.size";
     char *val, *file;
     int64_t bytes;
+    int obj_types;
     ex_off_t total_files, total_bytes;
     int v_size, sumonly, ignoreln;
     int recurse_depth = 10000;
@@ -128,7 +126,7 @@ int main(int argc, char **argv)
     base = 1;
     ignoreln = 1;
     sumonly = 0;
-
+    obj_types = OS_OBJECT_ANY_FLAG;
     i=1;
     do {
         start_option = i;
@@ -152,6 +150,7 @@ int main(int argc, char **argv)
         } else if (strcmp(argv[i], "-ln") == 0) {  //** Follow links
             i++;
             ignoreln = 0;
+            obj_types |= OS_OBJECT_FOLLOW_SYMLINK_FLAG;
         }
 
     } while ((start_option < i) && (i<argc));
@@ -199,7 +198,7 @@ int main(int argc, char **argv)
             log_printf(15, "MAIN SUMONLY=1\n");
             v_size = -1024;
             val = NULL;
-            it = lio_create_object_iter_alist(tuple.lc, tuple.creds, rp_single, ro_single, OS_OBJECT_ANY_FLAG, 0, &key, (void **)&val, &v_size, 1);
+            it = lio_create_object_iter_alist(tuple.lc, tuple.creds, rp_single, ro_single, obj_types, 0, &key, (void **)&val, &v_size, 1);
             if (it == NULL) {
                 log_printf(0, "ERROR: Failed with object_iter creation\n");
                 return_code = EIO;
@@ -207,21 +206,20 @@ int main(int argc, char **argv)
             }
 
             while ((ftype = lio_next_object(tuple.lc, it, &fname, &prefix_len)) > 0) {
-                if (((ftype & OS_OBJECT_SYMLINK_FLAG) > 0) && (ignoreln == 1)) continue;  //** Ignoring links
+                if (((ftype & OS_OBJECT_SYMLINK_FLAG) > 0) && (ignoreln == 1)) {
+                    free(fname);
+                    goto next_top;  //** Ignoring links
+                }
 
                 log_printf(15, "sumonly inserting fname=%s\n", fname);
                 tbx_type_malloc_clear(de, du_entry_t, 1);
-                plen = strlen(fname);
-                tbx_type_malloc(de->fname, char, plen + 2);
-                memcpy(de->fname, fname, plen);
-                de->fname[plen] = '/';
-                de->fname[plen+1] = 0;
-                free(fname);
+                de->fname = fname;
                 de->ftype = ftype;
 
                 if (val != NULL) sscanf(val, I64T, &(de->bytes));
                 tbx_list_insert(sum_table, de->fname, de);
 
+next_top:
                 v_size = -1024;
                 free(val);
                 val = NULL;
@@ -236,7 +234,7 @@ int main(int argc, char **argv)
 
         v_size = -1024;
         val = NULL;
-        it = lio_create_object_iter_alist(tuple.lc, tuple.creds, rp_single, ro_single, OS_OBJECT_ANY_FLAG, recurse_depth, &key, (void **)&val, &v_size, 1);
+        it = lio_create_object_iter_alist(tuple.lc, tuple.creds, rp_single, ro_single, obj_types, recurse_depth, &key, (void **)&val, &v_size, 1);
         if (it == NULL) {
             log_printf(0, "ERROR: Failed with object_iter creation\n");
             return_code = EIO;
@@ -244,7 +242,10 @@ int main(int argc, char **argv)
         }
 
         while ((ftype = lio_next_object(tuple.lc, it, &fname, &prefix_len)) > 0) {
-            if (((ftype & OS_OBJECT_SYMLINK_FLAG) > 0) && (ignoreln == 1)) continue;  //** Ignoring links
+            if (((ftype & OS_OBJECT_SYMLINK_FLAG) > 0) && (ignoreln == 1)) {
+                free(fname);
+                goto next;  //** Ignoring links
+            }
 
             if ((sumonly == 1) && ((ftype & OS_OBJECT_FILE_FLAG) > 0)) {
                 bytes = 0;
@@ -259,22 +260,21 @@ int main(int argc, char **argv)
                     }
                 }
                 free(fname);
-            } else {
+            } else if (nosort == 1) {
                 tbx_type_malloc_clear(de, du_entry_t, 1);
                 de->fname = fname;
                 de->ftype = ftype;
 
                 if (val != NULL) sscanf(val, I64T, &(de->bytes));
 
-                if (nosort == 1) {
-                    du_format_entry(lio_ifd, de, sumonly);
-                    free(de->fname);
-                    free(de);
-                } else {
-                    tbx_list_insert(table, de->fname, de);
-                }
+                du_format_entry(lio_ifd, de, sumonly);
+                free(de->fname);
+                free(de);
+            } else {
+                free(fname);
             }
 
+next:
             v_size = -1024;
             free(val);
             val = NULL;
@@ -303,6 +303,8 @@ int main(int argc, char **argv)
         total_bytes += de->bytes;
         total_files += (de->ftype & OS_OBJECT_FILE_FLAG) ? 1 : de->count;
         du_format_entry(lio_ifd, de, sumonly);
+        free(de->fname);
+        free(de);
     }
 
     if (sumonly == 1) {
@@ -318,9 +320,9 @@ int main(int argc, char **argv)
     du_format_entry(lio_ifd, &du_total, sumonly);
 
     if (sumonly == 1) tbx_list_destroy(sum_table);
-    tbx_list_destroy(table);
 
 finished:
+    tbx_list_destroy(table);
     lio_shutdown();
 
     return(return_code);

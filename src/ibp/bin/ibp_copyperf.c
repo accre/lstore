@@ -78,7 +78,7 @@ ibp_capset_t *create_proxy_allocs(int nallocs, ibp_capset_t *base_caps, int n_ba
 
     for (i=0; i<nallocs; i++) {
         bcap = &(base_caps[i % n_base]);
-        op = ibp_proxy_alloc_op(ic, &(caps[i]), ibp_cap_get(bcap, IBP_MANAGECAP), 0, 0, 0, ibp_timeout);
+        op = ibp_proxy_alloc_gop(ic, &(caps[i]), ibp_cap_get(bcap, IBP_MANAGECAP), 0, 0, 0, ibp_timeout);
         gop_opque_add(q, op);
     }
 
@@ -106,7 +106,7 @@ void proxy_remove_allocs(ibp_capset_t *caps_list, ibp_capset_t *mcaps_list, int 
 
     for (i=0; i<nallocs; i++) {
         j = i % mallocs;
-        op = ibp_proxy_remove_op(ic, ibp_cap_get(&(caps_list[i]), IBP_MANAGECAP),
+        op = ibp_proxy_remove_gop(ic, ibp_cap_get(&(caps_list[i]), IBP_MANAGECAP),
                                      ibp_cap_get(&(mcaps_list[j]), IBP_MANAGECAP), ibp_timeout);
         gop_opque_add(q, op);
     }
@@ -144,12 +144,12 @@ ibp_capset_t *create_allocs(int nallocs, int asize, int nthreads, ibp_depot_t *d
 
     ibp_capset_t *caps = (ibp_capset_t *)malloc(sizeof(ibp_capset_t)*nallocs);
 
-    ibp_set_attributes(&attr, time(NULL) + a_duration, IBP_HARD, IBP_BYTEARRAY);
+    ibp_attributes_set(&attr, time(NULL) + a_duration, IBP_HARD, IBP_BYTEARRAY);
     q = gop_opque_new();
 
     for (i=0; i<nallocs; i++) {
         depot = &(depot_list[i % n_depots]);
-        op = ibp_alloc_op(ic, &(caps[i]), asize, depot, &attr, disk_cs_type, disk_blocksize, ibp_timeout);
+        op = ibp_alloc_gop(ic, &(caps[i]), asize, depot, &attr, disk_cs_type, disk_blocksize, ibp_timeout);
         gop_opque_add(q, op);
     }
 
@@ -176,7 +176,7 @@ void remove_allocs(ibp_capset_t *caps_list, int nallocs, int nthreads)
     q = gop_opque_new();
 
     for (i=0; i<nallocs; i++) {
-        op = ibp_remove_op(ic, ibp_cap_get(&(caps_list[i]), IBP_MANAGECAP), ibp_timeout);
+        op = ibp_remove_gop(ic, ibp_cap_get(&(caps_list[i]), IBP_MANAGECAP), ibp_timeout);
         gop_opque_add(q, op);
     }
 
@@ -217,7 +217,7 @@ void write_allocs(ibp_capset_t *caps, int n, int asize, int nthreads)
 
     for (i=0; i<n; i++) {
         tbx_tbuf_single(&(buf[i]), asize, buffer);
-        op = ibp_write_op(ic, ibp_cap_get(&(caps[i]), IBP_WRITECAP), 0, &(buf[i]), 0, asize, ibp_timeout);
+        op = ibp_write_gop(ic, ibp_cap_get(&(caps[i]), IBP_WRITECAP), 0, &(buf[i]), 0, asize, ibp_timeout);
         gop_opque_add(q, op);
     }
 
@@ -248,7 +248,7 @@ void copy_allocs(char *path, ibp_capset_t *src_caps, ibp_capset_t *dest_caps, in
 
     for (i=0; i<n_dest; i++) {
         j = i % n_src;
-        op = ibp_copyappend_op(ic, ns_mode, path, ibp_cap_get(&(src_caps[j]), IBP_READCAP), ibp_cap_get(&(dest_caps[i]), IBP_WRITECAP),
+        op = ibp_copyappend_gop(ic, ns_mode, path, ibp_cap_get(&(src_caps[j]), IBP_READCAP), ibp_cap_get(&(dest_caps[i]), IBP_WRITECAP),
                                    0, asize, ibp_timeout, ibp_timeout, ibp_timeout);
         gop_opque_add(q, op);
     }
@@ -366,7 +366,7 @@ int main(int argc, char **argv)
             i++;
             tbx_ns_chksum_set(&ns_cs, &cs, blocksize);
             ncs = &ns_cs;
-            ibp_chksum_set(ic, ncs);
+            ibp_context_chksum_set(ic, ncs);
         } else if (strcmp(argv[i], "-disk_chksum") == 0) { //** Add checksum capability
             i++;
             disk_cs_name = argv[i];
@@ -415,7 +415,7 @@ int main(int argc, char **argv)
     for (j=0; j<src_n_depots; j++) {
         port = atoi(argv[i+1]);
         rid = ibp_str2rid(argv[i+2]);
-        ibp_set_depot(&(src_depot_list[j]), argv[i], port, rid);
+        ibp_depot_set(&(src_depot_list[j]), argv[i], port, rid);
         i = i + 3;
     }
 
@@ -426,16 +426,16 @@ int main(int argc, char **argv)
     for (j=0; j<dest_n_depots; j++) {
         port = atoi(argv[i+1]);
         rid = ibp_str2rid(argv[i+2]);
-        ibp_set_depot(&(dest_depot_list[j]), argv[i], port, rid);
+        ibp_depot_set(&(dest_depot_list[j]), argv[i], port, rid);
         i = i + 3;
     }
 
     //*** Get thread count ***
     nthreads = atoi(argv[i]);
     if (nthreads <= 0) {
-        nthreads = ibp_max_depot_threads_get(ic);
+        nthreads = ibp_context_max_depot_threads_get(ic);
     } else {
-        ibp_max_depot_threads_set(ic, nthreads);
+        ibp_context_max_depot_threads_set(ic, nthreads);
     }
     i++;
 

@@ -19,44 +19,53 @@
 #include <gop/gop.h>
 #include <gop/opque.h>
 #include <gop/types.h>
+#include <lio/lio.h>
+#include <lio/os.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <tbx/assert_result.h>
 #include <tbx/log.h>
+#include <tbx/stdinarray_iter.h>
 #include <tbx/type_malloc.h>
 
-#include <lio/lio.h>
-#include <lio/os.h>
 
+char **argv_list = NULL;
+int start_index = -1;
+int final_index = -1;
+int current_index = -1;
 
 //*************************************************************************
 //*************************************************************************
 
 int main(int argc, char **argv)
 {
-    int i, j, n, err, rg_mode, start_index, start_option;
+    int i, err, rg_mode, start_option, loop;
     gop_opque_t *q;
     gop_op_generic_t *gop;
+    char *path;
+    void *piter;
     gop_op_status_t status;
     lio_os_regex_table_t **rpath;
     lio_path_tuple_t *flist, tuple;
+    char **path_list;
     lio_os_regex_table_t *rp_single, *ro_single;
     int recurse_depth = 0;
     int obj_types = OS_OBJECT_ANY_FLAG;
 
     if (argc < 2) {
         printf("\n");
-        printf("lio_rm LIO_COMMON_OPTIONS [-rd recurse_depth] [-t object_types] LIO_PATH_OPTIONS\n");
+        printf("lio_rm LIO_COMMON_OPTIONS [-rd recurse_depth] [-t object_types] [LIO_PATH_OPTIONS | -]\n");
         lio_print_options(stdout);
         lio_print_path_options(stdout);
         printf("    -rd recurse_depth  - Max recursion depth on directories. Defaults to %d.\n", recurse_depth);
         printf("    -t  object_types   - Types of objects to list bitwise OR of 1=Files, 2=Directories, 4=symlink, 8=hardlink.  Default is %d.\n", obj_types);
+        printf("    -                  - If no file is given but a single dash is used the files are taken from stdin\n");
         return(1);
     }
 
     lio_init(&argc, &argv);
-
+    argv_list = argv;
 
     //*** Parse the args
     rp_single = ro_single = NULL;
@@ -78,11 +87,12 @@ int main(int argc, char **argv)
         }
 
     } while ((start_option - i < 0) && (i<argc));
-    start_index = i;
+    start_option = i;
 
+    piter = tbx_stdinarray_iter_create(argc-start_option, (const char **)&(argv[start_option]));
 
     if (rg_mode == 1) {  //** Got an explicit R/G path set
-        err = gop_sync_exec(lio_remove_regex_op(tuple.lc, tuple.creds, rp_single, ro_single, obj_types, recurse_depth, lio_parallel_task_count));
+        err = gop_sync_exec(lio_remove_regex_gop(tuple.lc, tuple.creds, rp_single, ro_single, obj_types, recurse_depth, lio_parallel_task_count));
         if (err != OP_STATE_SUCCESS) info_printf(lio_ifd, 0, "Error occured with remove\n");
 
         if (rp_single != NULL) lio_os_regex_table_destroy(rp_single);
@@ -100,50 +110,56 @@ int main(int argc, char **argv)
         goto finished;
     }
 
-
     //** Spawn the tasks
-    n = argc - start_index;
-    tbx_type_malloc(flist, lio_path_tuple_t, n);
-    tbx_type_malloc(rpath, lio_os_regex_table_t *, n);
+    tbx_type_malloc(flist, lio_path_tuple_t, lio_parallel_task_count);
+    tbx_type_malloc(rpath, lio_os_regex_table_t *, lio_parallel_task_count);
+    tbx_type_malloc(path_list, char *, lio_parallel_task_count);
 
     q = gop_opque_new();
     opque_start_execution(q);
-    for (i=0; i<n; i++) {
-        flist[i] = lio_path_resolve(lio_gc->auto_translate, argv[i+start_index]);
+    i = 0;
+    loop = 0;
+    while ((path = tbx_stdinarray_iter_next(piter)) != NULL) {
+        loop++;
+        path_list[i] = path;
+        flist[i] = lio_path_resolve(lio_gc->auto_translate, path_list[i]);
         rpath[i] = lio_os_path_glob2regex(flist[i].path);
-        gop = lio_remove_regex_op(flist[i].lc, flist[i].creds, rpath[i], NULL, obj_types, recurse_depth, lio_parallel_task_count);
+        gop = lio_remove_regex_gop(flist[i].lc, flist[i].creds, rpath[i], NULL, obj_types, recurse_depth, lio_parallel_task_count);
         gop_set_myid(gop, i);
         log_printf(0, "gid=%d i=%d fname=%s\n", gop_id(gop), i, flist[i].path);
         gop_opque_add(q, gop);
+        i++;
 
-        if (gop_opque_tasks_left(q) > lio_parallel_task_count) {
+        if (loop >= lio_parallel_task_count) {
             gop = opque_waitany(q);
-            j = gop_get_myid(gop);
+            i = gop_get_myid(gop);
             status = gop_get_status(gop);
-            if (status.op_status != OP_STATE_SUCCESS) info_printf(lio_ifd, 0, "ERROR with %s\n", argv[j+start_index]);
+            if (status.op_status != OP_STATE_SUCCESS) info_printf(lio_ifd, 0, "ERROR with %s\n", path_list[i]);
+            lio_path_release(&(flist[i]));
+            lio_os_regex_table_destroy(rpath[i]);
+            free(path_list[i]);
             gop_free(gop, OP_DESTROY);
         }
     }
 
     err = opque_waitall(q);
-    if (err != OP_STATE_SUCCESS) {
-        while ((gop = opque_waitany(q)) != NULL) {
-            j = gop_get_myid(gop);
-            status = gop_get_status(gop);
-            if (status.op_status != OP_STATE_SUCCESS) info_printf(lio_ifd, 0, "ERROR with %s\n", argv[j+start_index]);
-            gop_free(gop, OP_DESTROY);
-        }
+    while ((gop = opque_waitany(q)) != NULL) {
+        i = gop_get_myid(gop);
+        status = gop_get_status(gop);
+        if (status.op_status != OP_STATE_SUCCESS) info_printf(lio_ifd, 0, "ERROR with %s\n", path_list[i]);
+        lio_path_release(&(flist[i]));
+        lio_os_regex_table_destroy(rpath[i]);
+        free(path_list[i]);
+        gop_free(gop, OP_DESTROY);
     }
 
     gop_opque_free(q, OP_DESTROY);
 
-    for(i=0; i<n; i++) {
-        lio_path_release(&(flist[i]));
-        lio_os_regex_table_destroy(rpath[i]);
-    }
+    tbx_stdinarray_iter_destroy(piter);
 
     free(flist);
     free(rpath);
+    free(path_list);
 
 finished:
     lio_shutdown();

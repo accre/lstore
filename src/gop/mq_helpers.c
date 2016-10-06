@@ -152,7 +152,7 @@ mq_msg_t *gop_mq_make_response_core_msg(mq_msg_t *address, gop_mq_frame_t *fid)
     gop_mq_msg_append_frame(response, fid);
 
     //** Now address it
-    gop_mq_apply_return_address_msg(response, address, 0);
+    gop_mq_msg_apply_return_address(response, address, 0);
 
     return(response);
 }
@@ -182,7 +182,7 @@ char *mq_address_to_string(mq_msg_t *address)
     char *string, *data;
 
     if (address == NULL) return(NULL);
-    msg_size = mq_msg_total_size(address); // sum of frame data lengths
+    msg_size = gop_mq_msg_total_size(address); // sum of frame data lengths
     frames = mq_num_frames(address);
     n = 0;
     size = 0;

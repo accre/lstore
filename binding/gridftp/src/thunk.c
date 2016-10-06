@@ -246,7 +246,7 @@ void user_xfer_close(lstore_handle_t *h) {
     if (h->fd) {
         time_t close_timer;
         STATSD_TIMER_RESET(close_timer);
-        if (gop_sync_exec(lio_close_op(h->fd)) != OP_STATE_SUCCESS) {
+        if (gop_sync_exec(lio_close_gop(h->fd)) != OP_STATE_SUCCESS) {
             STATSD_TIMER_POST("lfs_close_time", close_timer);
             h->error = XFER_ERROR_DEFAULT;
         } else if (h->xfer_direction == XFER_RECV) {
@@ -460,7 +460,7 @@ void user_handle_del(lstore_handle_t *h) {
         free(h->expected_checksum);
     }
     //if (h->fd) {
-    //    gop_sync_exec(lio_close_op(h->fd));
+    //    gop_sync_exec(lio_close_gop(h->fd));
     //}
     if (h->cksum_adler) {
         globus_free(h->cksum_adler);
