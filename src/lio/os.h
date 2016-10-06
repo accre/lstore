@@ -125,6 +125,8 @@ struct lio_os_virtual_attr_t {
     int (*get_link)(lio_os_virtual_attr_t *va, lio_object_service_fn_t *os, lio_creds_t *creds, os_fd_t *fd, char *key, void **val, int *v_size, int *atype);
 };
 
+int os_local_filetype_stat(char *path, struct stat *stat_link, struct stat *stat_object);
+
 #ifdef __cplusplus
 }
 #endif

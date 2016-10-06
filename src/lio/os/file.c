@@ -143,6 +143,8 @@ typedef struct {
     os_attr_iter_t **it_attr;
     os_fd_t *fd;
     tbx_stack_t *recurse_stack;
+    apr_pool_t *mpool;
+    apr_hash_t *symlink_loop;
     char **key;
     void **val;
     int *v_size;
@@ -1483,6 +1485,8 @@ int osf_next_object(osf_object_iter_t *it, char **myfname, int *prefix_len)
 {
     lio_osfile_priv_t *osf = (lio_osfile_priv_t *)it->os->priv;
     int i, rmatch, tweak;
+    struct stat link_stat, object_stat;
+    ino_t *ino_sys;
     osf_obj_level_t *itl;
     osf_obj_level_t *it_top = NULL;
     char fname[OS_PATH_MAX];
@@ -1559,12 +1563,20 @@ int osf_next_object(osf_object_iter_t *it, char **myfname, int *prefix_len)
                                 }
                             }
                         } else { //** Off the static table or on the last level.  From here on all hits are matches. Just have to check ftype
-                            i = lio_os_local_filetype(fullname);
+                            i = os_local_filetype_stat(fullname, &link_stat, &object_stat);
                             log_printf(15, " ftype=%d object_types=%d firstpass=%d\n", i, it->object_types, itl->firstpass);
 
                             if (i & OS_OBJECT_SYMLINK_FLAG) {  //** Check if we follow symlinks
                                 if ((it->object_types & OS_OBJECT_FOLLOW_SYMLINK_FLAG) == 0) {
                                     itl->firstpass = 0;  //** Force a match check since we won't follow the link
+                                } else {  //** Check if we have a symlink loop
+                                    if (apr_hash_get(it->symlink_loop, &link_stat.st_ino, sizeof(ino_t)) != NULL) {
+                                        i = 0;   //** Already been here so don't print and prune the branch
+                                    } else {  //** First time so add it for tracking
+                                        tbx_type_malloc(ino_sys, ino_t, 1);
+                                        *ino_sys = link_stat.st_ino;
+                                        apr_hash_set(it->symlink_loop, ino_sys, sizeof(ino_t), "dummy");
+                                    }
                                 }
                             }
 
@@ -3516,7 +3528,10 @@ os_object_iter_t *osfile_create_object_iter(lio_object_service_fn_t *os, lio_cre
     it->n_list = (it_attr == NULL) ? 0 : -1;  //**  Using the attr iter if -1
     it->recurse_stack = tbx_stack_new();
     it->object_types = object_types;
-
+    if (object_types & OS_OBJECT_FOLLOW_SYMLINK_FLAG) { //** Following symlinks so setup the hash
+        apr_pool_create(&it->mpool, NULL);
+        it->symlink_loop = apr_hash_make(it->mpool);
+    }
     tbx_type_malloc_clear(it->level_info, osf_obj_level_t, it->table->n);
     for (i=0; i<it->table->n; i++) {
         itl = &(it->level_info[i]);
@@ -3591,7 +3606,9 @@ void osfile_destroy_object_iter(os_object_iter_t *oit)
     osf_object_iter_t *it = (osf_object_iter_t *)oit;
     osf_obj_level_t *itl;
     osfile_open_op_t open_op;
-
+    apr_hash_index_t *hi;
+    void *key, *val;
+    apr_ssize_t klen;
     int i;
 
     //** Close any open directories
@@ -3616,6 +3633,13 @@ void osfile_destroy_object_iter(os_object_iter_t *oit)
 
     if (it->v_size_user != NULL) free(it->v_size_user);
 
+    if (it->object_types & OS_OBJECT_FOLLOW_SYMLINK_FLAG) { //** Following symlinks so cleanup
+        for (hi = apr_hash_first(NULL, it->symlink_loop); hi != NULL; hi = apr_hash_next(hi)) {
+            apr_hash_this(hi, (const void **)&key, &klen, &val);
+            free(key);
+        }
+        apr_pool_destroy(it->mpool);  //** This should also destroy the hash
+    }
     tbx_stack_free(it->recurse_stack, 1);
     free(it->level_info);
     free(it);

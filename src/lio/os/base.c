@@ -480,27 +480,31 @@ fail:
 }
 
 //***********************************************************************
-// lio_os_local_filetype - Determines the file type
+// os_local_filetype_stat - Determines the file type and also returns
+//     the stat of the object and also what it's linked to if requested.
+//
+//     NOTE: It's safe to have both stat objects be the same struct
+//           stat_link is ONLY used if the path is a symlink!
 //***********************************************************************
 
-int lio_os_local_filetype(char *path)
+int os_local_filetype_stat(char *path, struct stat *stat_link, struct stat *stat_object)
 {
-    struct stat s;
     int err, ftype;
 
     ftype = 0;
-    err = lstat(path, &s);
+    err = lstat(path, stat_object);  //** Assume it's not a symlink
     if (err == 0) {
-        if (S_ISLNK(s.st_mode)) {
-            err = stat(path, &s);
+        if (S_ISLNK(stat_object->st_mode)) {
+            *stat_link = *stat_object;  //** Got a symlink so track it
+            err = stat(path, stat_object);
             ftype |= OS_OBJECT_SYMLINK_FLAG;
         }
 
         if (err == 0) {
-            if (S_ISREG(s.st_mode)) {
+            if (S_ISREG(stat_object->st_mode)) {
                 ftype |= OS_OBJECT_FILE_FLAG;
-                if (s.st_nlink > 1) ftype |= OS_OBJECT_HARDLINK_FLAG;
-            } else if (S_ISDIR(s.st_mode)) {
+                if (stat_object->st_nlink > 1) ftype |= OS_OBJECT_HARDLINK_FLAG;
+            } else if (S_ISDIR(stat_object->st_mode)) {
                 ftype |= OS_OBJECT_DIR_FLAG;
             }
         } else {
@@ -514,3 +518,13 @@ int lio_os_local_filetype(char *path)
     return(ftype);
 }
 
+//***********************************************************************
+// lio_os_local_filetype - Determines the file type
+//***********************************************************************
+
+int lio_os_local_filetype(char *path)
+{
+    struct stat s;
+
+    return(os_local_filetype_stat(path, &s, &s));
+}
