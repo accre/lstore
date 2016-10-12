@@ -530,7 +530,6 @@ cleanup:  //** We only make it here on a failure
     free(fh);
     free(fd);
     *op->fd = NULL;
-    lio_unlock(lc);
 
     return(status);
 }
