@@ -444,7 +444,6 @@ int slun_row_placement_fix(lio_segment_t *seg, data_attr_t *da, seglun_row_t *b,
 
         //** Clean up
         for (i=0; i<k; i++) {
-            tbx_atomic_dec(dbold[i]->ref_count);
             data_block_destroy(dbold[i]);
         }
 
@@ -946,7 +945,7 @@ gop_op_status_t _seglun_shrink(lio_segment_t *seg, data_attr_t *da, ex_off_t new
     tbx_stack_t *stack;
     seglun_row_t *start_b;
     gop_op_status_t status;
-    int i, err;
+    int i, err, cnt;
 
     //** Round the size to the nearest stripe size
     new_used = new_size;
@@ -1014,7 +1013,8 @@ gop_op_status_t _seglun_shrink(lio_segment_t *seg, data_attr_t *da, ex_off_t new
         i = tbx_isl_remove(s->isl, &(b->seg_offset), &(b->seg_end), b);
         log_printf(15, "_sl_shrink: sid=" XIDT " removing from interval seg_off=" XOT " remove_isl=%d\n", segment_id(seg), b->seg_offset, i);
         for (i=0; i < s->n_devices; i++) {
-            tbx_atomic_dec(b->block[i].data->ref_count);
+            cnt = tbx_atomic_get(b->block[i].data->ref_count);
+            if (cnt > 0) tbx_atomic_dec(b->block[i].data->ref_count);
             data_block_destroy(b->block[i].data);
         }
         free(b->block);
@@ -2812,7 +2812,7 @@ void seglun_destroy(tbx_ref_t *ref)
 {
     tbx_obj_t *obj = container_of(ref, tbx_obj_t, refcount);
     lio_segment_t *seg = container_of(obj, lio_segment_t, obj);
-    int i, j, n;
+    int i, j, n, cnt;
     tbx_isl_iter_t it;
     seglun_row_t **b_list;
     lio_data_block_t *db;
@@ -2837,7 +2837,8 @@ void seglun_destroy(tbx_ref_t *ref)
     for (i=0; i<n; i++) {
         for (j=0; j<s->n_devices; j++) {
             if (b_list[i]->block[j].data != NULL) {
-                tbx_atomic_dec(b_list[i]->block[j].data->ref_count);
+                cnt = tbx_atomic_get(b_list[i]->block[j].data->ref_count);
+                if (cnt > 0) tbx_atomic_dec(b_list[i]->block[j].data->ref_count);
                 data_block_destroy(b_list[i]->block[j].data);
             }
         }
@@ -2848,7 +2849,8 @@ void seglun_destroy(tbx_ref_t *ref)
 
     if (s->db_cleanup != NULL) {
         while ((db = tbx_stack_pop(s->db_cleanup)) != NULL) {
-            tbx_atomic_dec(db->ref_count);
+            cnt = tbx_atomic_get(db->ref_count);
+            if (cnt > 0) tbx_atomic_dec(db->ref_count);
             data_block_destroy(db);
         }
 
