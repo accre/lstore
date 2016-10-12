@@ -1329,9 +1329,13 @@ gop_op_status_t lio_cp_lio2lio_fn(void *arg, int id)
     used = 0;
     segment_signature(dfh->seg, sig2, &used, sigsize);
 
+    status = gop_failure_status;
     if ((strcmp(sig1, sig2) == 0) && ((op->hints & LIO_COPY_INDIRECT) == 0)) {
         status = gop_sync_exec_status(segment_clone(sfh->seg, dfh->lc->da, &(dfh->seg), CLONE_STRUCT_AND_DATA, NULL, dfh->lc->timeout));
-    } else {
+    }
+
+    //** If the signatures don't match or the clone failed do a slow indirect copy passing through the client
+    if (status.op_status == OP_STATE_FAILURE) {
         buffer = op->buffer;
         bufsize = (op->bufsize <= 0) ? LIO_COPY_BUFSIZE-1 : op->bufsize-1;
 
