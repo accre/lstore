@@ -38,6 +38,9 @@
 #include "ex3/types.h"
 #include "service_manager.h"
 
+lio_data_block_t *data_block_create_with_id(lio_data_service_fn_t *ds, ex_id_t id);
+
+
 //***********************************************************************
 // db_find_key - Scans the stack for the key
 //***********************************************************************
@@ -245,10 +248,7 @@ lio_data_block_t *data_block_deserialize_text(lio_service_manager_t *sm, ex_id_t
     free(text);
 
     //** Make the space
-    tbx_type_malloc_clear(b, lio_data_block_t, 1);
-    b->id = id;
-    b->ds = ds;
-    b->cap = ds_cap_set_create(b->ds);
+    b = data_block_create_with_id(ds, id);
 
     //** and parse the fields
     b->rid_key = tbx_inip_get_string(cfd, capgrp, "rid_key", "");
@@ -313,22 +313,34 @@ lio_data_block_t *data_block_deserialize(lio_service_manager_t *sm, ex_id_t id, 
 }
 
 //***********************************************************************
-// data_block_create - Creates an empty data block
+// data_block_create_with_id - Creates an empty data block using the given ID
 //***********************************************************************
 
-lio_data_block_t *data_block_create(lio_data_service_fn_t *ds)
+lio_data_block_t *data_block_create_with_id(lio_data_service_fn_t *ds, ex_id_t id)
 {
     lio_data_block_t *b;
 
     tbx_type_malloc_clear(b, lio_data_block_t, 1);
 
     b->ds = ds;
+    b->id = id;
     b->cap = ds_cap_set_create(b->ds);
-    generate_ex_id(&(b->id));
 
     log_printf(15, "b->id=" XIDT " ref_count=%d b=%p\n", b->id, b->ref_count, b);
 
     return(b);
+}
+
+//***********************************************************************
+// data_block_create - Creates an empty data block
+//***********************************************************************
+
+lio_data_block_t *data_block_create(lio_data_service_fn_t *ds)
+{
+    ex_id_t id;
+
+    generate_ex_id(&id);
+    return(data_block_create_with_id(ds, id));
 }
 
 //***********************************************************************
