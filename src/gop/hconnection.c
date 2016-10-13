@@ -396,7 +396,7 @@ void *hc_recv_thread(apr_thread_t *th, void *data)
     apr_time_t pause_until;
     int64_t start_cmds_processed, cmds_processed;
     apr_time_t check_time;
-    int finished, pending, n, tid;
+    int finished, pending, n, tid, firsttime;
     gop_op_status_t status;
     tbx_ns_timeout_t dt;
     gop_op_generic_t *hsop;
@@ -405,11 +405,8 @@ void *hc_recv_thread(apr_thread_t *th, void *data)
     tid = tbx_atomic_thread_id;
     log_printf(15, "hc_recv_thread: New thread started! ns=%d tid=%d\n", tbx_ns_getid(ns), tid);
 
-    //** Let the send thread know I'm up
-    lock_hc(hc);
-    hc->recv_up = 1;
-    apr_thread_cond_broadcast(hc->send_cond);
-    unlock_hc(hc);
+
+    firsttime = 1;  //** Flag that this is the frist time through the loop.
 
     //** Get the initial cmd count -- Used at the end to decide if retry
     hportal_lock(hp);
@@ -492,6 +489,14 @@ void *hc_recv_thread(apr_thread_t *th, void *data)
             if (finished == 2) hc->shutdown_request  = 1;  //** This is used to trigger the read of the last command from the send thread
             unlock_hc(hc);
             if (finished == 0) {
+                if (firsttime == 1) { //** Let the send thread know I'm up
+                    lock_hc(hc);
+                    hc->recv_up = 1;
+                    apr_thread_cond_broadcast(hc->send_cond);
+                    unlock_hc(hc);
+                    firsttime = 0;
+                }
+
                 log_printf(15, "hc_recv_thread: Nothing to do so sleeping! ns=%d\n", tbx_ns_getid(ns));
                 recv_wait_for_work(hc);  //** wait until we get something to do
             }
