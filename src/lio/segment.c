@@ -320,7 +320,7 @@ gop_op_status_t segment_get_gop_func(void *arg, int id)
         total += got;
         log_printf(5, "sid=" XIDT " fwrite(wb,1," XOT ", sc->fd)=" XOT " total=" XOT "\n", segment_id(sc->src), wlen, got, total);
         if (wlen != got) {
-            log_printf(1, "ERROR from fread=%d  dest sid=" XIDT "\n", errno, segment_id(sc->dest));
+            log_printf(1, "ERROR from fwrite=%d  dest sid=" XIDT "\n", errno, segment_id(sc->src));
             status = gop_failure_status;
             gop_waitall(gop);
             gop_free(gop, OP_DESTROY);
