@@ -710,28 +710,46 @@ void gop_generic_free(gop_op_generic_t *gop, gop_op_free_mode_t mode)
 }
 
 //*************************************************************
-// gop_exec_time - returns the execution time
+// gop_time_exec - returns the execution time
 //*************************************************************
 
-apr_time_t gop_exec_time(gop_op_generic_t *gop)
+apr_time_t gop_time_exec(gop_op_generic_t *gop)
 {
-    return(gop->op->cmd.end_time - gop->op->cmd.start_time);
+    apr_time_t dt;
+
+    lock_gop(gop);
+    dt = gop->op->cmd.end_time - gop->op->cmd.start_time;
+    unlock_gop(gop);
+
+    return(dt);
 }
 
 //*************************************************************
-// gop_start_time - returns the start time
+// gop_time_start - returns the start time
 //*************************************************************
 
-apr_time_t gop_start_time(gop_op_generic_t *gop)
+apr_time_t gop_time_start(gop_op_generic_t *gop)
 {
-    return(gop->op->cmd.start_time);
+    apr_time_t start_time;
+
+    lock_gop(gop);
+    start_time = gop->op->cmd.start_time;
+    unlock_gop(gop);
+
+    return(start_time);
 }
 
 //*************************************************************
-// gop_end_time - returns the end time
+// gop_time_end - returns the end time
 //*************************************************************
 
-apr_time_t gop_end_time(gop_op_generic_t *gop)
+apr_time_t gop_time_end(gop_op_generic_t *gop)
 {
-    return(gop->op->cmd.end_time);
+    apr_time_t end_time;
+
+    lock_gop(gop);
+    end_time = gop->op->cmd.end_time;
+    unlock_gop(gop);
+
+    return(end_time);
 }
