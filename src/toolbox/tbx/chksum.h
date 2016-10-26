@@ -31,6 +31,15 @@ typedef enum tbx_chksum_type_t tbx_chksum_type_t;
 typedef enum tbx_chksum_digest_output_t tbx_chksum_digest_output_t;
 
 // Functions
+
+/*! @brief Converts binary number to hex
+ * @param in_size size of input binary number
+ * @param in binary value in
+ * @param out Hex value output
+ * @returns 0 on success, error from library otherwise
+ */
+TBX_API int tbx_chksum_bin2hex(int in_size, const unsigned char *in, char *out);
+
 /*! @brief Verifies if a type is valid
  * @param type The type to test
  * @returns 1 if valid, 0 otherwise
@@ -91,7 +100,8 @@ TBX_API int tbx_chksum_type_name(const char *name);
 
 /*! @brief Clear checksum
  * @param cs Checksum to clear */
-#define tbx_chksum_clear(cs)  blank_tbx_chksum_set(cs)
+#define tbx_chksum_clear(cs)  tbx_blank_chksum_set(cs)
+TBX_API int tbx_blank_chksum_set(tbx_chksum_t *cs);
 
 /** Size of checksum state */
 #define CHKSUM_STATE_SIZE  1024
