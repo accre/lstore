@@ -195,7 +195,7 @@ gop_op_status_t gen_warm_task(void *arg, int id)
         status = gop_get_status(gop);
         wrid = gop_get_private(gop);
 
-        wrid->dtime += gop_exec_time(gop);
+        wrid->dtime += gop_time_exec(gop);
         if (status.op_status == OP_STATE_SUCCESS) {
             wrid->good++;
             warm_put_rid(db_rid, wrid->rid_key, w->inode, 0);
