@@ -1728,9 +1728,6 @@ gop_op_status_t seglun_rw_func(void *arg, int id)
     apr_time_t now;
     double dt;
 
-    log_printf(2, "sid=" XIDT " n_iov=%d off[0]=" XOT " len[0]=" XOT " max_size=" XOT " used_size=" XOT "\n",
-               segment_id(sw->seg), sw->n_iov, sw->iov[0].offset, sw->iov[0].len, s->total_size, s->used_size);
-
     //** Find the max extent;
     maxpos = 0;
     for (i=0; i<sw->n_iov; i++) {
@@ -1740,6 +1737,9 @@ gop_op_status_t seglun_rw_func(void *arg, int id)
 
 
     segment_lock(sw->seg);
+    log_printf(2, "sid=" XIDT " n_iov=%d off[0]=" XOT " len[0]=" XOT " max_size=" XOT " used_size=" XOT "\n",
+               segment_id(sw->seg), sw->n_iov, sw->iov[0].offset, sw->iov[0].len, s->total_size, s->used_size);
+
     if (maxpos >= s->total_size) { //** Need to grow it first
         if (sw->rw_mode == 1) { //** Write op so grow the file
             new_size = maxpos + s->n_devices * s->excess_block_size;
