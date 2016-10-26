@@ -42,6 +42,8 @@ TBX_API tbx_pc_t *tbx_pc_new(const char *name, int size, int item_size,
 TBX_API void *tbx_pch_data(tbx_pch_t *pch);
 TBX_API int tbx_pch_release(tbx_pc_t *pc, tbx_pch_t *pch);
 TBX_API tbx_pch_t tbx_pch_reserve(tbx_pc_t *pc);
+TBX_API tbx_pc_iter_t tbx_pc_iter_init(struct tbx_pc_t *pc);
+TBX_API tbx_pch_t tbx_pc_next(struct tbx_pc_iter_t *pci);
 
 // TEMPORARY
 struct tbx_pch_t {
