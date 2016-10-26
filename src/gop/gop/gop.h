@@ -80,7 +80,7 @@ enum gop_op_exec_mode_t {
 GOP_API void gop_callback_append(gop_op_generic_t *q, gop_callback_t *cb);
 GOP_API int gop_completed_successfully(gop_op_generic_t *gop);
 GOP_API gop_op_generic_t *gop_dummy(gop_op_status_t state);
-GOP_API apr_time_t gop_exec_time(gop_op_generic_t *gop);
+GOP_API apr_time_t gop_time_exec(gop_op_generic_t *gop);
 GOP_API void gop_finished_submission(gop_op_generic_t *gop);
 GOP_API void gop_free(gop_op_generic_t *gop, gop_op_free_mode_t mode);
 GOP_API void gop_generic_free(gop_op_generic_t *gop, gop_op_free_mode_t mode);
@@ -99,6 +99,9 @@ GOP_API int gop_tasks_left(gop_op_generic_t *gop);
 GOP_API int gop_waitall(gop_op_generic_t *gop);
 GOP_API gop_op_generic_t *gop_waitany(gop_op_generic_t *gop);
 GOP_API gop_op_generic_t *gop_waitany_timed(gop_op_generic_t *g, int dt);
+GOP_API apr_time_t gop_time_start(gop_op_generic_t *gop);
+GOP_API apr_time_t gop_time_end(gop_op_generic_t *gop);
+GOP_API apr_time_t gop_time_exec(gop_op_generic_t *gop);
 
 // Preprocessor constants
 // Global constants
