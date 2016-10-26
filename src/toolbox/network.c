@@ -47,6 +47,15 @@ void tbx_ns_setid(tbx_ns_t *ns, int id) {
     ns->id = id;
 }
 
+char *tbx_nm_host_get(tbx_ns_monitor_t *nm) {return(nm->address); }
+int tbx_nm_port_get(tbx_ns_monitor_t *nm) {return(nm->port); }
+tbx_ns_monitor_t *tbx_ns_monitor_get(tbx_ns_t *ns) { return (ns->nm); }
+
+char *tbx_ns_peer_address_get(tbx_ns_t *ns)
+{
+    return(ns->peer_address);
+}
+
 void tbx_ns_chksum_write_set(tbx_ns_t *ns, tbx_ns_chksum_t ncs) {
     ns->write_chksum = ncs;
 }
@@ -337,14 +346,13 @@ int tbx_network_counter(tbx_network_t *net)
 }
 
 //*********************************************************************
-// get_net_timeout - Initializes the timout data structure
+// tbx_ns_timeout_get - Get the timeout
 //*********************************************************************
 
-void get_net_timeout(tbx_ns_timeout_t tm, int *sec, int *us)
+void tbx_ns_timeout_get(tbx_ns_timeout_t tm, int *sec, int *us)
 {
     *sec = tm / 1000000;
     *us = tm % 1000000;
-//log_printf(0, "get_net_timoeut: tm=" TT " sec=%d us=%d\n", tm, *sec, *us);
 
     return;;
 }
@@ -538,10 +546,10 @@ void *monitor_thread(apr_thread_t *th, void *data)
 }
 
 //*********************************************************************
-// bind_server_port - Creates the main port for listening
+// tbx_network_bind - Creates the main port for listening
 //*********************************************************************
 
-int bind_server_port(tbx_network_t *net, tbx_ns_t *ns, char *address, int port, int max_pending)
+int tbx_network_bind(tbx_network_t *net, tbx_ns_t *ns, char *address, int port, int max_pending)
 {
     int err, slot;
     tbx_ns_monitor_t *nm;
@@ -668,10 +676,10 @@ void close_server_port(tbx_ns_monitor_t *nm)
 
 
 //*********************************************************************
-// network_init - Initialize the network for use
+// tbx_network_new - Creates a new network for use
 //*********************************************************************
 
-tbx_network_t *network_init()
+tbx_network_t *tbx_network_new()
 {
     int i;
     tbx_network_t *net;
@@ -775,10 +783,10 @@ tbx_ns_t *tbx_ns_new()
 
 
 //*********************************************************************
-// network_close - Closes down all the network connections
+// tbx_network_close - Closes down all the network connections
 //*********************************************************************
 
-void network_close(tbx_network_t *net)
+void tbx_network_close(tbx_network_t *net)
 {
     int i;
 
@@ -791,12 +799,12 @@ void network_close(tbx_network_t *net)
 }
 
 //*********************************************************************
-// network_destroy - Closes and destroys the network struct
+// tbx_network_destroy - Closes and destroys the network struct
 //*********************************************************************
 
-void network_destroy(tbx_network_t *net)
+void tbx_network_destroy(tbx_network_t *net)
 {
-    network_close(net);
+    tbx_network_close(net);
 
     //** Free the main net variables
     apr_thread_mutex_destroy(net->ns_lock);
@@ -910,17 +918,17 @@ int _write_netstream_block(tbx_ns_t *ns, apr_time_t end_time, tbx_tbuf_t *buffer
 }
 
 //*********************************************************************
-//  write_netstream_block - Same as write_netstream but blocks until the
+//  tbx_ns_write_block - Same as write_netstream but blocks until the
 //     data is sent or end_time is reached
 //*********************************************************************
 
-int write_netstream_block(tbx_ns_t *ns, apr_time_t end_time, tbx_tbuf_t *buffer, unsigned int boff, int bsize)
+int tbx_ns_write_block(tbx_ns_t *ns, apr_time_t end_time, tbx_tbuf_t *buffer, unsigned int boff, int bsize)
 {
     return(_write_netstream_block(ns, end_time, buffer, boff, bsize, 1));
 }
 
 //*********************************************************************
-//  read_netstream_block - Same as read_netstream but blocks until the
+//  _read_netstream_block - Same as read_netstream but blocks until the
 //     data is sent or end_time is reached
 //*********************************************************************
 
@@ -959,11 +967,11 @@ int _read_netstream_block(tbx_ns_t *ns, apr_time_t end_time, tbx_tbuf_t *buffer,
 }
 
 //*********************************************************************
-//  read_netstream_block - Same as read_netstream but blocks until the
+//  tbx_ns_read_block - Same as read_netstream but blocks until the
 //     data is sent or end_time is reached
 //*********************************************************************
 
-int read_netstream_block(tbx_ns_t *ns, apr_time_t end_time, tbx_tbuf_t *buffer, unsigned int boff, int bsize)
+int tbx_ns_read_block(tbx_ns_t *ns, apr_time_t end_time, tbx_tbuf_t *buffer, unsigned int boff, int bsize)
 {
     return(_read_netstream_block(ns, end_time, buffer, boff, bsize, 1));
 }
@@ -1098,7 +1106,7 @@ int tbx_ns_read(tbx_ns_t *ns, tbx_tbuf_t *buffer, unsigned int boff, int size, t
 }
 
 //*********************************************************************
-// readline_netstream_raw - Performs an attempt to read a complete line
+// tbx_ns_readline_raw - Performs an attempt to read a complete line
 //    if it fails it returns the partial read
 //*********************************************************************
 
@@ -1124,7 +1132,7 @@ int tbx_ns_readline_raw(tbx_ns_t *ns, tbx_tbuf_t *buffer, unsigned int boff, int
     total_bytes = 0;
     lock_read_ns(ns);
     i = ns->end - ns->start + 1;
-    debug_printf(15, "readline_netstream_raw: ns=%d buffer pos start=%d end=%d\n", ns->id, ns->start, ns->end);
+    debug_printf(15, "ns=%d buffer pos start=%d end=%d\n", ns->id, ns->start, ns->end);
     if (i > 0) {
         //** Assumes buffer has a single iovec element
         total_bytes = scan_and_copy_stream(&(ns->buffer[ns->start]), i, buf, size, &finished);
@@ -1138,7 +1146,7 @@ int tbx_ns_readline_raw(tbx_ns_t *ns, tbx_tbuf_t *buffer, unsigned int boff, int
             *status = 1;
             total_bytes--;
             buf[total_bytes] = '\0';   //** Make sure and NULL terminate the string remove the \n
-            debug_printf(15, "readline_stream_raw: BUFFER ns=%d Command : %s * nbytes=%d\n", ns->id, buffer,total_bytes);
+            debug_printf(15, "BUFFER ns=%d Command : %s * nbytes=%d\n", ns->id, buffer,total_bytes);
             flush_debug();
             unlock_read_ns(ns);
             return(total_bytes);
@@ -1151,7 +1159,7 @@ int tbx_ns_readline_raw(tbx_ns_t *ns, tbx_tbuf_t *buffer, unsigned int boff, int
     if (finished == 0) {
         tbx_tbuf_single(&ns_tb, N_BUFSIZE, ns->buffer);
         nbytes = tbx_ns_read(ns, &ns_tb, 0, N_BUFSIZE, timeout);  //**there should be 0 bytes in buffer now
-        debug_printf(15, "readline_netstream_raw: ns=%d Command : !", ns->id);
+        debug_printf(15, "ns=%d Command : !", ns->id);
         for (i=0; i< nbytes; i++) debug_printf(15, "%c", ns->buffer[i]);
         debug_printf(15, "! * nbytes =%d\n", nbytes);
         flush_debug();
@@ -1197,7 +1205,7 @@ int tbx_ns_readline_raw(tbx_ns_t *ns, tbx_tbuf_t *buffer, unsigned int boff, int
             ns->end = -1;
         }
         unlock_read_ns(ns);
-        debug_printf(15, "readline_stream_raw: Out of buffer space or nothing read! ns=%d nbytes=%d  buffer=%s\n", ns->id, total_bytes, buffer);
+        debug_printf(15, "Out of buffer space or nothing read! ns=%d nbytes=%d  buffer=%s\n", ns->id, total_bytes, buffer);
         flush_debug();
     }
 
@@ -1205,10 +1213,10 @@ int tbx_ns_readline_raw(tbx_ns_t *ns, tbx_tbuf_t *buffer, unsigned int boff, int
 }
 
 //*********************************************************************
-// readline_netstream - Reads a line of text from the stream
+// tbx_ns_readline - Reads a line of text from the stream
 //*********************************************************************
 
-int readline_netstream(tbx_ns_t *ns, tbx_tbuf_t *buffer, unsigned int boff, int bsize, tbx_ns_timeout_t timeout)
+int tbx_ns_readline(tbx_ns_t *ns, tbx_tbuf_t *buffer, unsigned int boff, int bsize, tbx_ns_timeout_t timeout)
 {
     int status;
     int n = tbx_ns_readline_raw(ns, buffer, boff, bsize, timeout, &status);
@@ -1226,13 +1234,13 @@ int readline_netstream(tbx_ns_t *ns, tbx_tbuf_t *buffer, unsigned int boff, int 
 }
 
 //*********************************************************************
-//  accept_pending_connection - Accepts a pending connection and stores
+//  tbx_network_accept_pending_connection - Accepts a pending connection and stores
 //    it in the provided ns.  The ns should be uninitialize, ie closed
 //    since the sock structure is inherited from the server ports
 //    ns type
 //*********************************************************************
 
-int accept_pending_connection(tbx_network_t *net, tbx_ns_t *ns)
+int tbx_network_accept_pending_connection(tbx_network_t *net, tbx_ns_t *ns)
 {
     int i, j, k, err;
     tbx_ns_monitor_t *nm = NULL;
@@ -1264,7 +1272,7 @@ int accept_pending_connection(tbx_network_t *net, tbx_ns_t *ns)
     }
 
     ns_clone(ns, nm->ns);  //** Clone the settings
-    ns->nm = (struct ns_monitor_s *) nm;           //** Specify the bind accepted
+    ns->nm = nm;           //** Specify the bind accepted
 
     ns->sock = nm->ns->accept(nm->ns->sock);   //** Accept the connection
     if (ns->sock == NULL) err = 1;
@@ -1294,7 +1302,7 @@ int accept_pending_connection(tbx_network_t *net, tbx_ns_t *ns)
 // wait_for_connection - Waits for a new connection
 //*********************************************************************
 
-int wait_for_connection(tbx_network_t *net, int max_wait)
+int tbx_network_wait_for_connection(tbx_network_t *net, int max_wait)
 {
     apr_time_t t;
     apr_time_t end_time = apr_time_now() + apr_time_make(max_wait, 0);
@@ -1322,10 +1330,10 @@ int wait_for_connection(tbx_network_t *net, int max_wait)
 }
 
 //*********************************************************************
-// wakeup_network - Wakes up the network monitor thread
+// tbx_network_wakeup - Wakes up the network monitor thread
 //*********************************************************************
 
-void wakeup_network(tbx_network_t *net)
+void tbx_network_wakeup(tbx_network_t *net)
 {
     apr_thread_mutex_lock(net->ns_lock);
     net->accept_pending++;
