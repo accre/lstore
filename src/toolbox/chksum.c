@@ -31,13 +31,13 @@
  * @param out String to write to
  * @returns Always returns zero
  **/
-int convert_bin2hex(int in_size, const unsigned char *in, char *out);
+int tbx_chksum_bin2hex(int in_size, const unsigned char *in, char *out);
 
 /*! @brief Initializes cs to a completely blank checksum
  * @param cs Checksum struct to initialize
  * @returns Always returns zero
  */
-int blank_tbx_chksum_set(tbx_chksum_t *cs);
+int tbx_blank_chksum_set(tbx_chksum_t *cs);
 
 
 #define CHKSUM_SHA1_LEN   (2*SHA1_DIGEST_LENGTH)
@@ -75,12 +75,12 @@ char *_chksum_name_default = "DEFAULT";
 
 //**********************************************************************
 //
-//  convert_bin2hex - Converts a binary string to Hex. "out" should be at
+//  tbx_chksum_bin2hex - Converts a binary string to Hex. "out" should be at
 //      least 2*in_size+1.
 //
 //**********************************************************************
 
-int convert_bin2hex(int in_size, const unsigned char *in, char *out)
+int tbx_chksum_bin2hex(int in_size, const unsigned char *in, char *out)
 {
     int i, j;
 
@@ -201,7 +201,7 @@ int cipher ## _get(void *state, tbx_chksum_digest_output_t type, char *data)    
         if (i) {                            \
             break;                          \
         }                                   \
-        i = convert_bin2hex(CIPHER ## _DIGEST_LENGTH, md, data);            \
+        i = tbx_chksum_bin2hex(CIPHER ## _DIGEST_LENGTH, md, data);            \
         break;       \
   }                                         \
                                             \
@@ -267,7 +267,7 @@ int blank_add(void *state, int type, tbx_tbuf_t *data, int boff)
 //  blank_chksum_set - makes a blank chksum
 //*************************************************************************
 
-int blank_tbx_chksum_set(tbx_chksum_t *cs)
+int tbx_blank_chksum_set(tbx_chksum_t *cs)
 {
     cs->reset = blank_reset;
     cs->size = blank_size;
@@ -307,7 +307,7 @@ int tbx_chksum_set(tbx_chksum_t *cs, tbx_chksum_type_t tbx_chksum_type)
     case CHKSUM_MAX_TYPE:
     case CHKSUM_DEFAULT:
     case CHKSUM_NONE:
-        i = blank_tbx_chksum_set(cs);
+        i = tbx_blank_chksum_set(cs);
         break;
     }
 
