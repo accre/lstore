@@ -115,6 +115,7 @@ void ls_format_entry(tbx_log_fd_t *ifd, ls_entry_t *lse)
         if (lse->vals[i]) free(lse->vals[i]);
     }
     free(lse->fname);  //** and the name
+    if (lse->link) free(lse->link);  //** and the link if needed
     free(lse);  //** And the struct itself
     return;
 }
