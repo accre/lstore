@@ -976,11 +976,11 @@ void rs_simple_destroy(lio_resource_service_fn_t *rs)
     lio_rs_simple_priv_t *rss = (lio_rs_simple_priv_t *)rs->priv;
     apr_status_t value;
 
+    //** Notify the depot check thread
+    apr_thread_mutex_lock(rss->lock);
     log_printf(15, "rs_simple_destroy: sl=%p\n", rss->rid_table);
     tbx_log_flush();
 
-    //** Notify the depot check thread
-    apr_thread_mutex_lock(rss->lock);
     rss->shutdown = 1;
     apr_thread_cond_broadcast(rss->cond);
     apr_thread_mutex_unlock(rss->lock);
