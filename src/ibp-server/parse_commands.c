@@ -138,13 +138,13 @@ int parse_chksum(ibp_task_t *task, char **bstate)
 //    version IBP_ALLOCATE RID IBP_SOFT|IBP_HARD TYPE DURATION SIZE TIMEOUT \n
 //      %d         %d      %llu         %d         %d     %ll   %llu  %d
 //
-//    version IBP_ALLOCATE_CHKSUM tbx_chksum_type blocksize RID IBP_SOFT|IBP_HARD TYPE DURATION SIZE TIMEOUT \n
+//    version IBP_ALLOCATE_CHKSUM chksum_type blocksize RID IBP_SOFT|IBP_HARD TYPE DURATION SIZE TIMEOUT \n
 //      %d             %d               %d      int32   %d      %d         %d     %ll   %llu   %d
 //
 //    version IBP_SPLIT_ALLOCATE mkey mtypekey IBP_SOFT|IBP_HARD TYPE DURATION SIZE TIMEOUT\n
 //      %d           %d           %s     %s            %d         %d     %ll   %llu   %d
 //
-//    version IBP_SPLIT_ALLOCATE_CHKSUM tbx_chksum_type blocksize mkey mtypekey IBP_SOFT|IBP_HARD TYPE DURATION SIZE TIMEOUT \n
+//    version IBP_SPLIT_ALLOCATE_CHKSUM chksum_type blocksize mkey mtypekey IBP_SOFT|IBP_HARD TYPE DURATION SIZE TIMEOUT \n
 //      %d             %d               %d      int32          %s     %s            %d         %d     %ll   %llu   %d
 //
 //  TYPE: IBP_BYTEARRAY | IBP_BUFFER | IBP_FIFO | IBP_CIRQ
@@ -176,7 +176,7 @@ int read_allocate(ibp_task_t *task, char **bstate)
          d = -1; sscanf(tbx_stk_string_token(NULL, " ", bstate, &fin), "%d", &d);
          ca->cs_type = d;
          if ((tbx_chksum_type_valid(d) == 0) && (d!=CHKSUM_NONE)) {
-            log_printf(10, "read_allocate: bad tbx_chksum_type=%d\n", d);
+            log_printf(10, "read_allocate: bad chksum_type=%d\n", d);
             send_cmd_result(task, IBP_E_CHKSUM_TYPE);
             return(-1);
          }
