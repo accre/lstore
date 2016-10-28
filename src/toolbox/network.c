@@ -664,6 +664,8 @@ void close_server_port(tbx_ns_monitor_t *nm)
     log_printf(15, "close_server_port: port=%d After join\n", nm->port);
     tbx_log_flush();
 
+    //** Destroy the actual connection
+    tbx_ns_destroy(nm->ns);
     //** Free the actual struct
     free(nm->address);
     apr_thread_mutex_destroy(nm->lock);
