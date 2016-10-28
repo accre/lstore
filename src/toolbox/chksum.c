@@ -198,7 +198,7 @@ int cipher ## _get(void *state, tbx_chksum_digest_output_t type, char *data)    
         break;       \
     case CHKSUM_DIGEST_HEX:                 \
         i = CIPHER ## _Final((unsigned char *)md, &s2); \
-        if (i) {                            \
+        if (i == 0) {                       \
             break;                          \
         }                                   \
         i = tbx_chksum_bin2hex(CIPHER ## _DIGEST_LENGTH, md, data);            \

@@ -111,20 +111,20 @@ TBX_API int tbx_blank_chksum_set(tbx_chksum_t *cs);
 /*! Checksum return type */
 enum tbx_chksum_digest_output_t {
     /** Hexidecimal output */
-    CHKSUM_DIGEST_HEX,
+    CHKSUM_DIGEST_HEX = 0,
     /** Binary output */
-    CHKSUM_DIGEST_BIN
+    CHKSUM_DIGEST_BIN = 1
 };
 
 /*! @brief Checksum algorithm */
 enum tbx_chksum_type_t {
-    CHKSUM_DEFAULT, /*!< Default checksum(TODO?) */
-    CHKSUM_NONE,    /*!< No checksum */
-    CHKSUM_SHA256,  /*!< SHA256 */
-    CHKSUM_SHA512,  /*!< SHA512 */
-    CHKSUM_SHA1,    /*!< SHA1 */
-    CHKSUM_MD5,     /*!< MD5 */
-    CHKSUM_MAX_TYPE /*!< Number of checksums */
+    CHKSUM_DEFAULT = -1, /*!< Default checksum(TODO?) */
+    CHKSUM_NONE    = 0,    /*!< No checksum */
+    CHKSUM_SHA256  = 1,  /*!< SHA256 */
+    CHKSUM_SHA512  = 2,  /*!< SHA512 */
+    CHKSUM_SHA1    = 3,    /*!< SHA1 */
+    CHKSUM_MD5     = 4,     /*!< MD5 */
+    CHKSUM_MAX_TYPE= 5/*!< Number of checksums */
 };
 
 // TEMPORARY
