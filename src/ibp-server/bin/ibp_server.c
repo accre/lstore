@@ -240,7 +240,7 @@ int parse_config(tbx_inip_file_t *keyfile, Config_t *cfg, int force_rebuild)
   server->timeout_secs = timeout_ms / 1000;
   server->logfile = "ibp.log";
   server->log_overwrite = 0;
-  server->tbx_log_level = 0;
+  server->log_level = 0;
   server->log_maxsize = 100;
   server->debug_level = 0;
   server->timestamp_interval = 60;
@@ -317,7 +317,7 @@ int parse_config(tbx_inip_file_t *keyfile, Config_t *cfg, int force_rebuild)
   server->stats_size =  tbx_inip_get_integer(keyfile, "server", "stats_size", server->stats_size);
   server->password = tbx_inip_get_string(keyfile, "server", "password", server->password);
   server->logfile = tbx_inip_get_string(keyfile, "server", "log_file", server->logfile);
-  server->tbx_log_level = tbx_inip_get_integer(keyfile, "server", "tbx_log_level", server->tbx_log_level);
+  server->log_level = tbx_inip_get_integer(keyfile, "server", "log_level", server->log_level);
   server->log_maxsize = tbx_inip_get_integer(keyfile, "server", "log_maxsize", server->log_maxsize) * 1024 * 1024;
   server->debug_level = tbx_inip_get_integer(keyfile, "server", "debug_level", server->debug_level);
   server->lazy_allocate = tbx_inip_get_integer(keyfile, "server", "lazy_allocate", server->lazy_allocate);
@@ -353,7 +353,7 @@ int parse_config(tbx_inip_file_t *keyfile, Config_t *cfg, int force_rebuild)
 
   //*** Do some initial config of the log and debugging info ***
   tbx_log_open(cfg->server.logfile, 0);
-  tbx_set_log_level(cfg->server.tbx_log_level);
+  tbx_set_log_level(cfg->server.log_level);
   set_debug_level(cfg->server.debug_level);
   tbx_set_log_maxsize(cfg->server.log_maxsize);
 

@@ -881,7 +881,7 @@ int parse_resource(Resource_t *res, tbx_inip_file_t *keyfile, char *group)
    }
    res->chksum_blocksize *= 1024; //** Convert it to bytes
 
-   str = tbx_inip_get_string(keyfile, group, "tbx_chksum_type", "SHA256");
+   str = tbx_inip_get_string(keyfile, group, "chksum_type", "SHA256");
    i = tbx_chksum_type_name(str);
    if (i != -1) {
       tbx_chksum_set(&(res->chksum), i);
@@ -1109,7 +1109,7 @@ int print_resource(char *buffer, int *used, int nbytes, Resource_t *res)
    tbx_append_printf(buffer, used, nbytes, "preallocate = %d\n", res->preallocate);
 
    tbx_append_printf(buffer, used, nbytes, "enable_chksum = %d\n", res->enable_chksum);
-   tbx_append_printf(buffer, used, nbytes, "tbx_chksum_type = %s\n", tbx_chksum_name(&(res->chksum)));
+   tbx_append_printf(buffer, used, nbytes, "chksum_type = %s\n", tbx_chksum_name(&(res->chksum)));
    n = res->chksum_blocksize / 1024; tbx_append_printf(buffer, used, nbytes, "chksum_blocksize_kb = " I64T "\n", n);
 
    n = apr_time_sec(res->cache_expire);

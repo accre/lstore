@@ -96,7 +96,7 @@ typedef struct {       // Structure containg the overall server config
    int lazy_allocate;    //If 1 don't create the physical file just make the DB entry
    char *logfile;        //Log file
    int log_maxsize;      //Max size of logs to keep before rolling over
-   int  tbx_log_level;       //Log level to control output
+   int  log_level;       //Log level to control output
    int  log_overwrite;   //overwrite log file instead of append(default)
    int  debug_level;     //Debug level if compiled with debugging turned on
    char *debugfile;      //Debug output file (default stdout)

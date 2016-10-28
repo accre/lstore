@@ -286,7 +286,7 @@ int print_config(char *buffer, int *used, int nbytes, Config_t *cfg)
   tbx_append_printf(buffer, used, nbytes, "db_env_loc = %s\n", cfg->dbenv_loc);
   tbx_append_printf(buffer, used, nbytes, "db_mem = %d\n", cfg->db_mem);
   tbx_append_printf(buffer, used, nbytes, "log_file = %s\n", server->logfile);
-  tbx_append_printf(buffer, used, nbytes, "tbx_log_level = %d\n", server->tbx_log_level);
+  tbx_append_printf(buffer, used, nbytes, "log_level = %d\n", server->log_level);
   tbx_append_printf(buffer, used, nbytes, "return_cap_id = %d\n", server->return_cap_id);
   tbx_append_printf(buffer, used, nbytes, "backoff_scale = %lf\n", server->backoff_scale);
   tbx_append_printf(buffer, used, nbytes, "backoff_max = %d\n", server->backoff_max);

@@ -869,7 +869,7 @@ int _fs_write_block_header(osd_fs_fd_t *fsfd, uint32_t block_bytes_used, char *c
 
   n = fwrite(&block_bytes_used, 1, sizeof(uint32_t), fsfd->fd);
   n = n + fwrite(cs_value, 1, cs_len, fsfd->fd);
-  
+
   m = cs_len + sizeof(uint32_t);
   if (m != n) return(-1);
 
@@ -880,7 +880,7 @@ int _fs_write_block_header(osd_fs_fd_t *fsfd, uint32_t block_bytes_used, char *c
 // create_id - Creates a new object id for use.
 //**************************************************
 
-osd_id_t fs_create_id(osd_t *d, int tbx_chksum_type, int header_size, int block_size, osd_id_t id) {
+osd_id_t fs_create_id(osd_t *d, int chksum_type, int header_size, int block_size, osd_id_t id) {
    osd_fs_t *fs = (osd_fs_t *)(d->private);
    char  fname[fs->pathlen];
    char  cs_value[CHKSUM_MAX_SIZE];
@@ -894,7 +894,7 @@ osd_id_t fs_create_id(osd_t *d, int tbx_chksum_type, int header_size, int block_
    if (id == 0) {
       do {      //Generate a unique key
          id = _generate_key();
-log_printf(15,"fs_create_id: id=" LU " tbx_chksum_type=%d\n", id, tbx_chksum_type);
+log_printf(15,"fs_create_id: id=" LU " chksum_type=%d\n", id, chksum_type);
       } while (fs_id_exists(d, id));
    }
 
@@ -905,13 +905,13 @@ log_printf(15,"fs_create_id: id=" LU " tbx_chksum_type=%d\n", id, tbx_chksum_typ
       return(0);
    }
 
-   if (tbx_chksum_type_valid(tbx_chksum_type) == 1) {
+   if (tbx_chksum_type_valid(chksum_type) == 1) {
       memcpy(header.magic, CHKSUM_MAGIC, sizeof(header.magic));
       header.state = 0;
-      header.tbx_chksum_type = tbx_chksum_type;
+      header.chksum_type = chksum_type;
       header.header_size = header_size;
       header.block_size = block_size;
-      tbx_chksum_set(&chksum, tbx_chksum_type);
+      tbx_chksum_set(&chksum, chksum_type);
       tbx_chksum_get(&chksum, CHKSUM_DIGEST_BIN, cs_value);
       dbytes = 0;
       cs_size = tbx_chksum_size(&chksum, CHKSUM_DIGEST_BIN);
@@ -919,7 +919,7 @@ log_printf(15,"fs_create_id: id=" LU " tbx_chksum_type=%d\n", id, tbx_chksum_typ
       n = fwrite(&header, 1, sizeof(header), fd); //** Store the header and also the initial chksum
       n = n + fwrite(&dbytes, 1, sizeof(int32_t), fd);
       n = n + fwrite(cs_value, 1, cs_size, fd);
-      if (n != (sizeof(header) + sizeof(int32_t) + cs_size)) {
+      if (n != (int)(sizeof(header) + sizeof(int32_t) + cs_size)) {
          log_printf(0, "fs_create_id:  Error storing magic header+chksum! id=" LU " \n", id);
       }
    }
@@ -1302,9 +1302,9 @@ int object_open(osd_fs_t *fs, osd_fs_object_t *obj)
       memset(&(obj->header), 0, sizeof(fs_header_t));
       obj->state = OSD_STATE_GOOD;
    } else {  //** Got a chksum type allocation
-      tbx_chksum_set(&(fcs->chksum), obj->header.tbx_chksum_type);
-      if (tbx_chksum_type_valid(obj->header.tbx_chksum_type) == 0) {
-         n = obj->header.tbx_chksum_type;
+      tbx_chksum_set(&(fcs->chksum), obj->header.chksum_type);
+      if (tbx_chksum_type_valid(obj->header.chksum_type) == 0) {
+         n = obj->header.chksum_type;
          log_printf(0, "object_open:  Invalid chksum type! id=" LU " type=%d \n", obj->id, n);
          fclose(fd);
          return(-2);
@@ -2057,13 +2057,13 @@ osd_off_t chksum_merged_read(osd_fs_t *fs, osd_fs_fd_t *fsfd, osd_off_t block, o
      }
      fs_chksum_add(cs, len2, data);  //** Only chksum the available data
 //log_printf(10, "chksum_merged_read(%p, " I64T ", " I64T ") after siphon n=" I64T "\n", fsfd, obj_offset, ocs->blocksize, n);
-        
+
      //** Read in the rest of block if available
      off = offset + len;
-     bs = (off > block_bytes_used) ? off : block_bytes_used; 
+     bs = (off > block_bytes_used) ? off : block_bytes_used;
      nleft = bs - offset - len;
      n = n + _chksum_buffered_read(fs, fsfd, nleft, buffer, FS_BUF_SIZE, cs, NULL);
-   
+
 //log_printf(10, "chksum_merged_read(%p, " I64T ", " I64T ") after post-read n=" I64T "\n", fsfd, obj_offset, ocs->blocksize, n);
 
   } else { //** Nothing to read so fill with blanks
@@ -2074,16 +2074,16 @@ osd_off_t chksum_merged_read(osd_fs_t *fs, osd_fs_fd_t *fsfd, osd_off_t block, o
   if (block_bytes_used > 0) { //** Valid chksum stored
      if ((n != bs) && (herr != 0)) {
         log_printf(0, "chksum_merged_read(%p, " I64T ", " I64T ") read error = %d n=" I64T " should be=" I64T " herr=%d\n", fsfd, obj_offset, ocs->blocksize, errno, n, bs, herr);
-        n = (block == 0) ? OSD_STATE_BAD_HEADER : OSD_STATE_BAD_BLOCK; 
+        n = (block == 0) ? OSD_STATE_BAD_HEADER : OSD_STATE_BAD_BLOCK;
         return(n);
      }
 
      tbx_chksum_get(cs, CHKSUM_DIGEST_BIN, cs_value);
- 
+
      n = memcmp(disk_value, cs_value, tbx_chksum_size(&(ocs->chksum), CHKSUM_DIGEST_BIN));
      if (n != 0) {
         log_printf(0, "chksum_merged_read(%p, " I64T ", " I64T ") chksum mismatch! memcmp = " I64T "\n", fsfd, obj_offset, ocs->blocksize, n);
-        n = (block == 0) ? OSD_STATE_BAD_HEADER : OSD_STATE_BAD_BLOCK; 
+        n = (block == 0) ? OSD_STATE_BAD_HEADER : OSD_STATE_BAD_BLOCK;
         return(n);
      }
   }
@@ -2122,18 +2122,18 @@ log_printf(0, "chksum_full_read: block=" I64T " fpos=" I64T "\n", block, obj_off
   block_bytes_used = 0;
   nbytes = tbx_chksum_size(cs, CHKSUM_DIGEST_BIN);
   herr = _fs_read_block_header(fsfd, &block_bytes_used, disk_value, ocs->blocksize, nbytes);
-  
+
   n = 0;
   if (block_bytes_used > 0) n = fread(buffer, 1, block_bytes_used, fsfd->fd);
   nleft = ocs->blocksize - block_bytes_used;
   if (nleft > 0) memset(&(buffer[block_bytes_used]), 0, nleft);
-  
+
   fs_chksum_add(cs, block_bytes_used, buffer);
 
   if ((n != block_bytes_used) || (herr != 0)) {
      nbytes = block_bytes_used;
      log_printf(10, "chksum_full_read(%p, " I64T ", " I64T ") read error = %d n=" I64T " should be=" I64T " herr=%d\n", fsfd, obj_offset, ocs->blocksize, errno, n, nbytes, herr);
-     n = (block == 0) ? OSD_STATE_BAD_HEADER : OSD_STATE_BAD_BLOCK; 
+     n = (block == 0) ? OSD_STATE_BAD_HEADER : OSD_STATE_BAD_BLOCK;
      return(n);
   }
 

@@ -75,7 +75,7 @@ typedef struct {
 } fs_cache_table_t;
 
 typedef struct {      //** This is used to determine if the allocation uses chksums
-  uint32_t tbx_chksum_type;
+  uint32_t chksum_type;
   uint32_t header_size;
   uint32_t block_size;
   uint16_t state;
