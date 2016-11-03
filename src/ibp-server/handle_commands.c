@@ -34,7 +34,9 @@
 #include "db_resource.h"
 #include <tbx/network.h>
 #include <tbx/net_sock.h>
-//FIXME #include "net_phoebus.h"
+#ifdef _ENABLE_PHOEBUS
+  #include "net_phoebus.h"
+#endif
 #include "ibp_task.h"
 #include "ibp_protocol.h"
 #include "ibp-server_version.h"
@@ -507,7 +509,7 @@ int handle_internal_get_alloc(ibp_task_t *task)
    if (arg->offset > -1) {
       if (arg->len == 0) {
          nbytes = a.size - arg->offset;
-      } else if (arg->offset > a.size) {
+      } else if (arg->offset > (int64_t)a.size) {
          nbytes = 0;
       } else if ((arg->len + arg->offset) > a.size) {
          nbytes = a.size - arg->offset;
@@ -653,7 +655,7 @@ int handle_alias_allocate(ibp_task_t *task)
       return(global_config->soft_fail);
    }
 
-   if ((pa->len + pa->offset) > a.max_size) {  
+   if ((pa->len + pa->offset) > (int64_t)a.max_size) {
       uint64_t epos = pa->len + pa->offset;
       log_printf(1, "handle_alias_alloc: ALIAS range > actual allocation! alias= " LU " alloc = " LU "\n", epos, a.max_size);
       send_cmd_result(task, IBP_E_WOULD_EXCEED_LIMIT);
@@ -1221,7 +1223,7 @@ int handle_manage(ibp_task_t *task)
           }
           alog_append_alias_manage_change(task->myid, r->rl_index, a->id, a->alias_offset, a->alias_size, a->expiration);
         } else {
-          if (a->size > manage->new_size) {
+          if ((int64_t)a->size > manage->new_size) {
              a->size = manage->new_size;
           }
           a->max_size = manage->new_size;
@@ -1248,7 +1250,7 @@ int handle_manage(ibp_task_t *task)
         status = IBP_OK;
         if (is_alias == 1) {  //** If this is an IBP_ALIAS_MANAGE call we have different fields
           if (manage->new_size > 0) {
-             if (ma.max_size < (manage->offset + manage->new_size-1)) {
+             if ((int64_t)ma.max_size < (manage->offset + manage->new_size-1)) {
                 log_printf(10, "handle_manage: curr_size>new_size! id: " LU " rid=%s\n", id, r->name);
                 status = IBP_E_WOULD_EXCEED_POLICY;
              } else {
@@ -1273,7 +1275,7 @@ int handle_manage(ibp_task_t *task)
           alog_append_alias_manage_change(task->myid, r->rl_index, a->id, a->alias_offset, a->alias_size, a->expiration);
         } else {
           if (manage->new_size > 0) {
-             if (a->size > manage->new_size) {
+             if ((int64_t)a->size > manage->new_size) {
                 log_printf(10, "handle_manage: curr_size>new_size! id: " LU " rid=%s\n", id, r->name);
                 status = IBP_E_WOULD_DAMAGE_DATA;
              } else {
@@ -1683,7 +1685,7 @@ int handle_write(ibp_task_t *task)
      off = w->iovec.vec[i].off;
      len = w->iovec.vec[i].len;
 
-     if (((off+len) > a->max_size) && (a->type == IBP_BYTEARRAY)) {
+     if (((off+len) > (int64_t)a->max_size) && (a->type == IBP_BYTEARRAY)) {
         log_printf(10, "handle_write: Attempt to write beyond end of allocation! cap: %s r = %s i=%d off=" LU " len=" LU "  tid=" LU "\n", w->cap.v, w->r->name, i, off, len, task->tid);
         send_cmd_result(task, IBP_E_WOULD_EXCEED_LIMIT);
         return(global_config->soft_fail);
@@ -1883,7 +1885,7 @@ log_printf(10, "handle_read: mid: " LU " offset=" I64T " len=" I64T " ns=%d\n", 
      off = r->iovec.vec[i].off;
      len = r->iovec.vec[i].len;
 
-     if (((off+len) > a->max_size) && (a->type == IBP_BYTEARRAY)) {
+     if (((off+len) > (int64_t)a->max_size) && (a->type == IBP_BYTEARRAY)) {
         log_printf(10, "handle_read: Attempt to read beyond end of allocation! cap: %s r = %s i=%d off=" LU " len=" LU "\n", r->cap.v, r->r->name, i, off, len);
         send_cmd_result(task, IBP_E_WOULD_EXCEED_LIMIT);
         return(0);
@@ -1899,7 +1901,7 @@ log_printf(10, "handle_read: mid: " LU " offset=" I64T " len=" I64T " ns=%d\n", 
      }
 
      //*** and make sure there is data ***
-     if (((off+len) > a->size) && (a->type == IBP_BYTEARRAY)) {
+     if (((off+len) > (int64_t)a->size) && (a->type == IBP_BYTEARRAY)) {
         log_printf(10, "handle_read: Not enough data! cap: %s r = %s i=%d off=" LU " alen=" LU " curr_size=" LU "\n", 
               r->cap.v, r->r->name, i, off, len, a->size);
         send_cmd_result(task, IBP_E_WOULD_EXCEED_LIMIT);
@@ -2085,7 +2087,7 @@ int same_depot_copy(ibp_task_t *task, char *rem_cap, int rem_offset, osd_id_t rp
    }
 
    //** Validate the writing/reading range **
-   if (((rem_offset + r->iovec.vec[0].len) > rem_a.max_size) && (rem_a.type ==IBP_BYTEARRAY)) {
+   if (((rem_offset + r->iovec.vec[0].len) > (int64_t)rem_a.max_size) && (rem_a.type ==IBP_BYTEARRAY)) {
       log_printf(10, "same_depot_copy: Attempt to write beyond end of allocation! cap: %s r = %s off=%d len=" LU "\n", 
           dcap.v, rem_r->name, rem_offset, r->iovec.vec[0].len);
       send_cmd_result(task, IBP_E_WOULD_EXCEED_LIMIT);
@@ -2159,7 +2161,7 @@ log_printf(15, "same_depot_copy: rem_offset=%d r->offset=" OT " ns=%d\n", rem_of
    err = get_allocation_resource(dest_r, dest_a->id, &temp_a);
    log_printf(15, "same_depot_copy: ns=%d dest->size=" LU " doff=%d\n", tbx_ns_getid(task->ns), rem_a.size, doff);
    if (err == 0) {
-      if (doff > temp_a.size) {
+      if (doff > (int64_t)temp_a.size) {
          temp_a.size = doff;
          temp_a.w_pos = doff;
          err = modify_allocation_resource(dest_r, dest_a->id, &temp_a);
@@ -2276,7 +2278,7 @@ log_printf(15, "iovec->n=%d off=" OT " len=" OT " cumulative_len=" OT "\n", iov-
   } else {
      r->iovec.vec[0].off += alias_offset;
   }
-  if (((r->iovec.vec[0].off + r->iovec.vec[0].len) > a->max_size) && (a->type ==IBP_BYTEARRAY)) {
+  if (((r->iovec.vec[0].off + r->iovec.vec[0].len) > (int64_t)a->max_size) && (a->type ==IBP_BYTEARRAY)) {
      log_printf(10, "handle_copy: Attempt to read beyond end of allocation! cap: %s r = %s off=" LU " len=" LU "\n", r->cap.v, r->r->name, r->iovec.vec[0].off, r->iovec.vec[0].len);
      alog_append_dd_copy(cmd->command, task->myid, r->r->rl_index, apid, aid, r->iovec.vec[0].len, r->iovec.vec[0].off,
            r->remote_offset, r->write_mode, r->ctype, r->path, 0, AF_INET, addr, r->remote_cap, "");
@@ -2298,7 +2300,7 @@ log_printf(15, "iovec->n=%d off=" OT " len=" OT " cumulative_len=" OT "\n", iov-
 
   //*** and make sure there is data for PUSH commands***
   if (r->transfer_dir == IBP_PUSH) {
-     if (((r->iovec.vec[0].off + r->iovec.vec[0].len) > a->size) && (a->type ==IBP_BYTEARRAY)) {
+     if (((r->iovec.vec[0].off + r->iovec.vec[0].len) > (int64_t)a->size) && (a->type ==IBP_BYTEARRAY)) {
         log_printf(10, "handle_copy: Not enough data! cap: %s r = %s off=" LU " alen=" LU " curr_size=" LU "\n",
               r->cap.v, r->r->name, r->iovec.vec[0].off, r->iovec.vec[0].len, a->size);
         alog_append_dd_copy(cmd->command, task->myid, r->r->rl_index, apid, aid, r->iovec.vec[0].len,
@@ -2347,16 +2349,28 @@ log_printf(15, "iovec->n=%d off=" OT " len=" OT " cumulative_len=" OT "\n", iov-
   ppath.p_count = 0;
 
   if (r->ctype  == IBP_PHOEBUS) {
-abort();  //******FIXME
-//FIXME
-//     if (r->path[0] == '\0') {
-//        log_printf(5, "handle_copy: using default phoebus path to %s:%d\n", rhost, rport);
-//        ns_config_phoebus(ns, NULL, 0);
-//     } else {
-//        log_printf(5, "handle_copy: using phoebus path r->path= %s to %s:%d\n", r->path, rhost, rport);
-//        phoebus_path_set(&ppath, r->path);
-//        ns_config_phoebus(ns, &ppath, 0);
-//     }
+     if (PHOEBUS_SUPPORTED == 0) {
+        log_printf(10, "handle_copy: PHOEBUS support not compiled!\n");
+        alog_append_dd_copy(cmd->command, task->myid, r->r->rl_index, apid, aid, r->iovec.vec[0].len,
+              r->iovec.vec[0].off, r->remote_offset, r->write_mode, r->ctype, r->path, 0, AF_INET, addr, r->remote_cap, "");
+        send_cmd_result(task, IBP_E_TYPE_NOT_SUPPORTED);
+        tbx_ns_destroy(ns);
+        free(temp);
+        return(0);
+     }
+
+     if (r->path[0] == '\0') {
+        log_printf(5, "handle_copy: using default phoebus path to %s:%d\n", rhost, rport);
+#ifdef _ENABLE_PHOEBUS
+        ns_config_phoebus(ns, NULL, 0);
+#endif
+     } else {
+        log_printf(5, "handle_copy: using phoebus path r->path= %s to %s:%d\n", r->path, rhost, rport);
+        phoebus_path_set(&ppath, r->path);
+#ifdef _ENABLE_PHOEBUS
+        ns_config_phoebus(ns, &ppath, 0);
+#endif
+     }
   } else {
      tbx_ns_sock_config(ns, 0);
   }

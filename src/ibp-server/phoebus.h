@@ -23,9 +23,12 @@
 #include <tbx/iniparse.h>
 
 #ifdef _ENABLE_PHOEBUS
-#include "liblsl_client.h"
-#else 
+  #include "liblsl_client.h"
+  #define PHOEBUS_SUPPORTED 1
+#else
   typedef void liblslSess;
+  #define PHOEBUS_SUPPORTED 0
+
 #endif
 
 
@@ -34,15 +37,15 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-   
+
 typedef struct {
-   char *key;  
+   char *key;
    char *path_string;
    char **path;
    int p_count;
    int free_path;
 } phoebus_t;
-   
+
 extern phoebus_t *global_phoebus;
 
 void phoebus_init(void);
