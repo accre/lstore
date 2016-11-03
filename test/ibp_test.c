@@ -889,7 +889,7 @@ int my_next_block(tbx_tbuf_t *tb, size_t pos, tbx_tbuf_var_t *tbv)
         tbv->nbytes = 0;
     }
 
-    return(IBP_OK);
+    return(TBUFFER_OK);
 }
 
 //*********************************************************************************
