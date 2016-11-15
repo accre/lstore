@@ -141,25 +141,15 @@ int lio_encode_error_counts(lio_segment_errors_t *serr, char **key, char **val, 
 
 void lio_get_error_counts(lio_config_t *lc, lio_segment_t *seg, lio_segment_errors_t *serr)
 {
-    gop_op_generic_t *gop;
     gop_op_status_t status;
 
-    gop = segment_inspect(seg, lc->da, lio_ifd, INSPECT_HARD_ERRORS, 0, NULL, 1);
-    gop_waitall(gop);
-    status = gop_get_status(gop);
-    gop_free(gop, OP_DESTROY);
+    status = gop_sync_exec_status(segment_inspect(seg, lc->da, lio_ifd, INSPECT_HARD_ERRORS, 0, NULL, 1));
     serr->hard = status.error_code;
 
-    gop = segment_inspect(seg, lc->da, lio_ifd, INSPECT_SOFT_ERRORS, 0, NULL, 1);
-    gop_waitall(gop);
-    status = gop_get_status(gop);
-    gop_free(gop, OP_DESTROY);
+    status = gop_sync_exec_status(segment_inspect(seg, lc->da, lio_ifd, INSPECT_SOFT_ERRORS, 0, NULL, 1));
     serr->soft = status.error_code;
 
-    gop = segment_inspect(seg, lc->da, lio_ifd, INSPECT_WRITE_ERRORS, 0, NULL, 1);
-    gop_waitall(gop);
-    status = gop_get_status(gop);
-    gop_free(gop, OP_DESTROY);
+    status =gop_sync_exec_status(segment_inspect(seg, lc->da, lio_ifd, INSPECT_WRITE_ERRORS, 0, NULL, 1));
     serr->write = status.error_code;
 
     return;
