@@ -104,9 +104,14 @@ compile_map['scan-build'] = {
     }
 }
 
-for (int i = 0 ; i < distros.size(); ++i) {
-    def x = distros.get(i)
+@NonCPS def loopArray(a) {
+    a.collect{ v -> v }
+}
+for (def y in loopArray(distros)) {
+    def x = y
+    println "Processing outer ${x}"
     compile_map["${x}"] = { node('docker') {
+        println "Processing inner ${x}"
         deleteDir()
         unstash 'source'
         sh """bash scripts/generate-docker-base.sh ${x}
