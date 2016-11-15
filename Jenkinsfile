@@ -18,7 +18,7 @@ node('docker') {
     zip archive: true, dir: '', glob: 'scripts/**', zipFile: 'scripts.zip'
     archive 'scripts/**'
     stash includes: '**, .git/', name: 'source', useDefaultExcludes: false
-    slackSend channel: 'jenkins', message: 'Build Started - ${env.JOB_NAME} ${env.BUILD_NUMBER} (<${env.BUILD_URL}|Open>)'
+    slackSend channel: 'jenkins', message: "Build Started - ${env.JOB_NAME} ${env.BUILD_NUMBER} (<${env.BUILD_URL}|Open>)"
     sh "env"
 }
 
