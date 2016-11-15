@@ -104,6 +104,12 @@ project(LStore C)
 set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
 include(LStoreVersion)
 
+# Use gnu-style paths
+include(GNUInstallDirs)
+
+# Setting RPATH lets us have relocatable tarballs
+set(CMAKE_INSTALL_RPATH "\$ORIGIN/../${CMAKE_INSTALL_LIBDIR}")
+
 # Defines
 set(USE_SUPERBUILD ON)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -D_REENTRANT -D_GNU_SOURCE -D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64 -fvisibility=hidden -fno-strict-aliasing -Wall -Wextra -Werror -Wno-unused-parameter -Wno-deprecated-declarations -Wno-error=sign-compare")
@@ -196,8 +202,6 @@ set(LSTORE_CHEAT_FLAGS "-Wno-error=unused-variable -Wno-error=array-bounds ${LST
 set(CMAKE_C_FLAGS_RELWITHDEBINFO "${CMAKE_C_FLAGS_RELWITHDEBINFO} ${LSTORE_CHEAT_FLAGS}")
 set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} ${LSTORE_CHEAT_FLAGS}")
 
-# Use gnu-style paths
-include(GNUInstallDirs)
 
 # Find external deps we don't build
 find_package(OpenSSL REQUIRED)
