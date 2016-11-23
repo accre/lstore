@@ -84,31 +84,31 @@ void envelope_get(envelope_t *env, env_command_t *cmd, uint32_t *size)
  
 void set_env_command(env_command_t *cmd, int b0, int b1, int b2, int b3)
 {
-  cmd->byte[0] = b0;
-  cmd->byte[1] = b1;
-  cmd->byte[2] = b2;
-  cmd->byte[3] = b3;
+  cmd->u32.byte[0] = b0;
+  cmd->u32.byte[1] = b1;
+  cmd->u32.byte[2] = b2;
+  cmd->u32.byte[3] = b3;
 }
 
 void set_env_command_uint32(env_command_t *cmd, uint32_t val) 
 { 
-  cmd->byte[0] = val % 256; val = val >> 8;
-  cmd->byte[1] = val % 256; val = val >> 8;
-  cmd->byte[2] = val % 256; val = val >> 8;
-  cmd->byte[3] = val;
+  cmd->u32.byte[0] = val % 256; val = val >> 8;
+  cmd->u32.byte[1] = val % 256; val = val >> 8;
+  cmd->u32.byte[2] = val % 256; val = val >> 8;
+  cmd->u32.byte[3] = val;
 }
 
 void get_env_command(env_command_t *cmd, int *b0, int *b1, int *b2, int *b3)
 {
-  *b0 = cmd->byte[0];
-  *b1 = cmd->byte[1];
-  *b2 = cmd->byte[2];
-  *b3 = cmd->byte[3];
+  *b0 = cmd->u32.byte[0];
+  *b1 = cmd->u32.byte[1];
+  *b2 = cmd->u32.byte[2];
+  *b3 = cmd->u32.byte[3];
 }
 
 uint32_t get_env_command_uint32(env_command_t *cmd) 
 { 
- return(cmd->byte[0] + 256*cmd->byte[1] + 65536*cmd->byte[2] + 16777216*cmd->byte[3]);
+ return(cmd->u32.byte[0] + 256*cmd->u32.byte[1] + 65536*cmd->u32.byte[2] + 16777216*cmd->u32.byte[3]);
 }
 
 
@@ -125,13 +125,13 @@ int env_cmd_within_subnet(env_command_t *cmd, env_command_t *cmd_net, int bits)
   //** Verify the full bytes
   n = bits / 8;
   for (i=0; i<(n-1); i++) {
-    if (cmd->byte[i] != cmd_net->byte[i]) return(1);
+    if (cmd->u32.byte[i] != cmd_net->u32.byte[i]) return(1);
   }
 
   //** Now check the partial byte
   i = bits % 8;
-  c = cmd->byte[n] & _env_bitmask[i];
-  d = cmd_net->byte[n] & _env_bitmask[i];
+  c = cmd->u32.byte[n] & _env_bitmask[i];
+  d = cmd_net->u32.byte[n] & _env_bitmask[i];
   if (c != d) return(1);
 
   return(0);
@@ -145,6 +145,6 @@ int env_cmd_within_subnet(env_command_t *cmd, env_command_t *cmd_net, int bits)
 
 int env_cmd_compare(env_command_t *cmd1, env_command_t *cmd2)
 {
-  return(memcmp(cmd1->byte, cmd2->byte, 4));
+  return(memcmp(cmd1->u32.byte, cmd2->u32.byte, 4));
 }
 
