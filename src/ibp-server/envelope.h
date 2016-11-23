@@ -43,7 +43,7 @@ typedef struct {
   union {
     unsigned char byte[4];
     uint32_t n;
-  };
+  } u32;
 } env_command_t;
 
 typedef struct {
