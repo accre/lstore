@@ -154,9 +154,9 @@ void print_allocation(char *buffer, int *used, int nbytes, Allocation_t *a, Allo
 
   address2ipdecstr(hostip, a->creation_cert.ca_host.ip, a->creation_cert.ca_host.atype);
   tbx_append_printf(buffer, used, nbytes, "Certifed by %s with CA id: " LU ":" LU ":" LU ":" LU " (", hostip, 
-       a->creation_cert.id[0], a->creation_cert.id[1], a->creation_cert.id[2], a->creation_cert.id[3]);
-  for (i=0; i<32-1; i++) { n = (unsigned char)(a->creation_cert.cid[i]); tbx_append_printf(buffer, used, nbytes, "%d.", n); };
-  n = (unsigned char)(a->creation_cert.cid[15]); tbx_append_printf(buffer, used, nbytes, "%d)\n", n); 
+       a->creation_cert.u.id[0], a->creation_cert.u.id[1], a->creation_cert.u.id[2], a->creation_cert.u.id[3]);
+  for (i=0; i<32-1; i++) { n = (unsigned char)(a->creation_cert.u.cid[i]); tbx_append_printf(buffer, used, nbytes, "%d.", n); };
+  n = (unsigned char)(a->creation_cert.u.cid[15]); tbx_append_printf(buffer, used, nbytes, "%d)\n", n); 
   
   t = ibp2apr_time(a->expiration);
   apr_ctime(print_time, t); 

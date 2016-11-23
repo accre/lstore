@@ -69,7 +69,7 @@ typedef struct {
    union {
      uint64_t id[4];
      char     cid[32];
-   };
+   } u;
    Allocation_address_t ca_host;
 } Allocation_cert_t;
 
