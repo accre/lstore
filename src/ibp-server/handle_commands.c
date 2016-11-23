@@ -2965,9 +2965,8 @@ int handle_internal_mount(ibp_task_t *task)
   char *bstate;
   char *str, *sgrp, *srid, *smode;
   apr_time_t start;
-
   tbx_inip_group_t *igrp;
-  Resource_t *r;
+  Resource_t *r = NULL;
   tbx_inip_file_t *keyfile;
 
   log_printf(5, "handle_internal_mount: Start of routine.  ns=%d RID=%s\n",tbx_ns_getid(task->ns), arg->crid);
