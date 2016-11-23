@@ -12,15 +12,15 @@
 #include <time.h>
 #include <assert.h>
 #include "ibp_ClientLib.h"
-#include <ibp-server/ibp_server.h>
+#include "ibp_server.h"
 #include <tbx/network.h>
 #include <tbx/net_sock.h>
 #include <tbx/log.h>
 #include <tbx/dns_cache.h>
 #include <tbx/fmttypes.h>
 #include "subnet.h"
-#include <ibp-server/print_alloc.h>
-#include <ibp-server/cmd_send.h>
+#include "print_alloc.h"
+#include "cmd_send.h"
 
 
 int parse_cap(char *cap, char **host, int *port, char **rid, char **key, int *ktype)

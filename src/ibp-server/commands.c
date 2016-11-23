@@ -27,7 +27,8 @@ Nashville, TN 37203
 http://www.accre.vanderbilt.edu
 */ 
 
-#include <ibp-server/ibp_server.h>
+#include <stdlib.h>
+#include "ibp_server.h"
 #include <tbx/log.h>
 #include <tbx/append_printf.h>
 

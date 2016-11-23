@@ -13,14 +13,14 @@
 #include <assert.h>
 #include "allocation.h"
 #include "ibp_ClientLib.h"
-#include <ibp-server/ibp_server.h>
+#include "ibp_server.h"
 #include <tbx/network.h>
 #include <tbx/net_sock.h>
 #include <tbx/log.h>
 #include <tbx/dns_cache.h>
 #include <tbx/fmttypes.h>
 #include "ibp_time.h"
-#include <ibp-server/cmd_send.h>
+#include "cmd_send.h"
 
 void parse_line(char *buffer, apr_time_t *t, uint64_t *a_count, uint64_t *p_count, uint64_t *bytes_used, uint64_t *bytes)
 {

@@ -36,7 +36,7 @@ http://www.accre.vanderbilt.edu
 #include <tbx/log.h>
 #include <tbx/append_printf.h>
 #include "subnet.h"
-#include <ibp-server/print_alloc.h>
+#include "print_alloc.h"
 
 //****************************************************************************
 // print_manage_history - Prints the manage history to the buffer

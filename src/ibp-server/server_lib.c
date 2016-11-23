@@ -35,7 +35,7 @@ http://www.accre.vanderbilt.edu
 #include <sys/socket.h>
 #include <apr_time.h>
 #include "stack.h"
-#include <ibp-server/ibp_server.h>
+#include "ibp_server.h"
 #include <tbx/log.h>
 #include "debug.h"
 #include "allocation.h"

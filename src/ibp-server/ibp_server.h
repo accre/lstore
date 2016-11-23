@@ -30,7 +30,7 @@ http://www.accre.vanderbilt.edu
 #ifndef _IBP_SERVER_H_
 #define _IBP_SERVER_H_
 
-#include <ibp-server/visibility.h>
+#include "visibility.h"
 #include <sys/types.h>
 #include <apr_thread_proc.h>
 #include <apr_thread_mutex.h>

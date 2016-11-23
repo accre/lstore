@@ -34,7 +34,7 @@ http://www.accre.vanderbilt.edu
 #include <limits.h>
 #include <apr_time.h>
 #include "ibp_ClientLib.h"
-#include <ibp-server/ibp_server.h>
+#include "ibp_server.h"
 #include <tbx/log.h>
 #include "debug.h"
 #include "allocation.h"

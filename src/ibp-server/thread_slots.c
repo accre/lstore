@@ -30,7 +30,7 @@ http://www.accre.vanderbilt.edu
 //******************************************************************
 //******************************************************************
 
-#include <ibp-server/ibp_server.h>
+#include "ibp_server.h"
 #include "pigeon_hole.h"
 
 tbx_ph_t *_ph;

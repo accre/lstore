@@ -31,7 +31,7 @@ http://www.accre.vanderbilt.edu
 #ifndef _LOCK_ALLOC_H
 #define _LOCK_ALLOC_H
 
-#include <ibp-server/visibility.h>
+#include "visibility.h"
 
 IBPS_API void lock_osd_id(osd_id_t id);
 IBPS_API void unlock_osd_id(osd_id_t id);

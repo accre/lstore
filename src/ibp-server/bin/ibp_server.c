@@ -36,7 +36,7 @@ http://www.accre.vanderbilt.edu
 #include <apr_signal.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include <ibp-server/ibp_server.h>
+#include "ibp_server.h"
 #include "debug.h"
 #include <tbx/log.h>
 #include <tbx/dns_cache.h>

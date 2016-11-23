@@ -27,7 +27,7 @@ Nashville, TN 37203
 http://www.accre.vanderbilt.edu
 */ 
 
-#include <ibp-server/visibility.h>
+#include "visibility.h"
 #include <stdint.h>
 #include <stdio.h>
 #include <apr_time.h>

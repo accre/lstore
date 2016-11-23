@@ -39,7 +39,7 @@ http://www.accre.vanderbilt.edu
 #include <string.h>
 #include <limits.h>
 #include <time.h>
-#include <ibp-server/ibp_server.h>
+#include "ibp_server.h"
 #include <tbx/log.h>
 #include "debug.h"
 #include "allocation.h"

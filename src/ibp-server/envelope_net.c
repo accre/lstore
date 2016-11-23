@@ -30,7 +30,7 @@ http://www.accre.vanderbilt.edu
 #include "envelope.h"
 #include <tbx/network.h>
 #include <tbx/log.h>
-#include <ibp-server/ibp_server.h>
+#include "ibp_server.h"
 
 //*********************************************************************
 // envelope_send - Sends an envelope

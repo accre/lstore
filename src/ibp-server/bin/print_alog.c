@@ -1,6 +1,6 @@
 #include <assert.h>
 #include <time.h>
-#include <ibp-server/ibp_server.h>
+#include "ibp_server.h"
 #include "activity_log.h"
 #include <tbx/log.h>
 

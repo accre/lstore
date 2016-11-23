@@ -16,8 +16,8 @@
 #include <tbx/dns_cache.h>
 #include <tbx/string_token.h>
 #include <tbx/fmttypes.h>
-#include <ibp-server/ibp_server.h>
-#include <ibp-server/cmd_send.h>
+#include "ibp_server.h"
+#include "cmd_send.h"
 
 //** This is a hack to not have to have the ibp source
 #define IBP_OK 1

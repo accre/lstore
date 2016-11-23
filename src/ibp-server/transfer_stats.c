@@ -33,7 +33,7 @@ http://www.accre.vanderbilt.edu
 #include <time.h>
 #include <apr_thread_mutex.h>
 #include <apr_pools.h>
-#include <ibp-server/ibp_server.h>
+#include "ibp_server.h"
 #include "ibp_time.h"
 #include <tbx/network.h>
 #include <tbx/log.h>

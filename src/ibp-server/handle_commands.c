@@ -31,6 +31,7 @@ http://www.accre.vanderbilt.edu
 //*****************************************************************
 
 #include <assert.h>
+#include <stdlib.h>
 #include <string.h>
 #include <limits.h>
 #include <time.h>
@@ -38,7 +39,7 @@ http://www.accre.vanderbilt.edu
 #include <apr_thread_mutex.h>
 #include <tbx/dns_cache.h>
 #include "ibp_ClientLib.h"
-#include <ibp-server/ibp_server.h>
+#include "ibp_server.h"
 #include <tbx/log.h>
 #include "debug.h"
 #include "allocation.h"

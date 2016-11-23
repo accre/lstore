@@ -33,7 +33,7 @@ http://www.accre.vanderbilt.edu
 #ifndef _DB_RESOURCE_H_
 #define _DB_RESOURCE_H_
 
-#include <ibp-server/visibility.h>
+#include "visibility.h"
 #include <db.h>
 #include <apr_thread_mutex.h>
 #include <apr_pools.h>

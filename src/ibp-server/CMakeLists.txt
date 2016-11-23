@@ -73,10 +73,6 @@ set(LSTORE_PROJECT_OBJS
 set(LSTORE_PROJECT_INCLUDES_OLD)
 set(LSTORE_PROJECT_INCLUDES_NAMESPACE ibpserver)
 set(LSTORE_PROJECT_INCLUDES
-    ibp-server/cmd_send.h
-    ibp-server/ibp_server.h
-    ibp-server/print_alloc.h
-    ibp-server/visibility.h
     )
 
 set(LSTORE_PROJECT_EXECUTABLES

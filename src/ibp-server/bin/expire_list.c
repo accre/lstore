@@ -13,13 +13,13 @@
 #include <assert.h>
 #include "allocation.h"
 #include "ibp_ClientLib.h"
-#include <ibp-server/ibp_server.h>
+#include "ibp_server.h"
 #include <tbx/network.h>
 #include <tbx/net_sock.h>
 #include <tbx/log.h>
 #include <tbx/dns_cache.h>
 #include <tbx/fmttypes.h>
-#include <ibp-server/cmd_send.h>
+#include "cmd_send.h"
 
 apr_time_t parse_time(char *buffer)
 {

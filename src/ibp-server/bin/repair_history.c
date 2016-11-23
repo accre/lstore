@@ -13,12 +13,12 @@
 #include <assert.h>
 #include "allocation.h"
 #include "ibp_ClientLib.h"
-#include <ibp-server/ibp_server.h>
+#include "ibp_server.h"
 #include <tbx/log.h>
 #include <tbx/fmttypes.h>
 #include "subnet.h"
 #include "ibp_time.h"
-#include <ibp-server/print_alloc.h>
+#include "print_alloc.h"
 #include "osd_abstract.h"
 
 #define HEADER_SIZE 4096

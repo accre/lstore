@@ -34,6 +34,7 @@ http://www.accre.vanderbilt.edu
 #include <assert.h>
 #include <string.h>
 #include <stdint.h>
+#include <stdlib.h>
 #include <sys/socket.h>
 #include <apr_thread_proc.h>
 #include <apr_thread_mutex.h>
@@ -46,7 +47,7 @@ http://www.accre.vanderbilt.edu
 #include <tbx/pigeon_coop.h>
 #include <tbx/stack.h>
 #include "activity_log.h"
-#include <ibp-server/ibp_server.h>
+#include "ibp_server.h"
 #include "subnet.h"
 #include "envelope.h"
 #include "envelope_net.h"

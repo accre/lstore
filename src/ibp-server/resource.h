@@ -33,7 +33,7 @@ http://www.accre.vanderbilt.edu
 #ifndef _RESOURCE_H_
 #define _RESOURCE_H_
 
-#include <ibp-server/visibility.h>
+#include "visibility.h"
 #include "rid.h"
 #include "db_resource.h"
 #include "osd.h"

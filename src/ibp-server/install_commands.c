@@ -27,7 +27,7 @@ Nashville, TN 37203
 http://www.accre.vanderbilt.edu
 */ 
 
-#include <ibp-server/ibp_server.h>
+#include "ibp_server.h"
 
 //*************************************************************************
 //  install_commands - Install all the depot commans in the global function table

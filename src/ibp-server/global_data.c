@@ -27,7 +27,7 @@ Nashville, TN 37203
 http://www.accre.vanderbilt.edu
 */ 
 
-#include <ibp-server/ibp_server.h>
+#include "ibp_server.h"
 
 //**************Global control Variables*****************
 apr_thread_mutex_t *shutdown_lock = NULL;

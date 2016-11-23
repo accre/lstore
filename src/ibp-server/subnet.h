@@ -30,7 +30,7 @@ http://www.accre.vanderbilt.edu
 #ifndef _SUBNET_H_
 #define _SUBNET_H_
 
-#include <ibp-server/visibility.h>
+#include "visibility.h"
 
 #define SUBNET_OPEN  0   //** Anybody can connect and execute the command
 #define SUBNET_LOCAL 1   //** Command can only be issued from localhost
