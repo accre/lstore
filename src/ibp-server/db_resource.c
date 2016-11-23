@@ -586,7 +586,7 @@ void wipe_db_env(const char *loc)
 DB_env_t *create_db_env(const char *loc, int db_mem, int wipe_clean)
 {
    u_int32_t flags;
-   DB_ENV *dbenv;
+   DB_ENV *dbenv = NULL;
    int err;
    DB_env_t *env;
 
@@ -617,7 +617,7 @@ DB_env_t *create_db_env(const char *loc, int db_mem, int wipe_clean)
       printf("create_db_env: Attempting to create a new environment.\n");
       printf("create_Db_env: DB error: %s\n", db_strerror(err));
 
-      DIR *dir;
+      DIR *dir = NULL;
       mkdir(loc, S_IRWXU);
       assert((dir = opendir(loc)) != NULL);  //Make sure I can open it
       closedir(dir);

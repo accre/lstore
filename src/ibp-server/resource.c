@@ -254,7 +254,7 @@ int mkfs_resource(rid_t rid, char *dev_type, char *device_name, char *db_locatio
    int used;
    int n_cache = 100000;
    apr_time_t expire_time = apr_time_from_sec(30);
-   DIR *dir;
+   DIR *dir = NULL;
    Resource_t res;
    char kgroup[1000], name[1000];
    struct statfs stat;
@@ -948,7 +948,7 @@ int mount_resource(Resource_t *res, tbx_inip_file_t *keyfile, char *group, DB_en
 
    //*** Now mount the device ***
    if (strcmp(DEVICE_DIR, res->device_type)==0) {
-      DIR *dir;
+      DIR *dir = NULL;
       assert((dir = opendir(res->device)) != NULL);
       closedir(dir);
 
