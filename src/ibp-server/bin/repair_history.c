@@ -31,7 +31,7 @@ int main(int argc, char **argv)
 {
   Allocation_t a;
   Allocation_history_t h;
-  int changed, i, k;
+  int changed, i, k, n;
   int volatile start_option;  //** This makes the compiler not generate an error due to optimizations
   char *afile;
   osd_fd_t *afd;
@@ -79,9 +79,9 @@ int main(int argc, char **argv)
 
   //** Print the current slots
   printf("Current slot values\n");
-  printf("   manage_slot: %hd\n", h.manage_slot);
-  printf("   read_slot: %hd\n", h.read_slot);
-  printf("   write_slot: %hd\n", h.write_slot);
+  n = h.manage_slot; printf("   manage_slot: %hd\n", n);
+  n = h.read_slot;   printf("   read_slot: %hd\n", n);
+  n = h.write_slot;  printf("   write_slot: %hd\n", n);
 
   changed = 0;
   if ((h.manage_slot < 0) || (h.manage_slot >= ALLOC_HISTORY)) { changed=1; h.manage_slot = 0; }
