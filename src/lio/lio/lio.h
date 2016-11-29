@@ -102,7 +102,7 @@ LIO_API void lio_get_error_counts(lio_config_t *lc, lio_segment_t *seg, lio_segm
 LIO_API int lio_getattr(lio_config_t *lc, lio_creds_t *creds, const char *path, char *id, char *key, void **val, int *v_size);
 LIO_API gop_op_generic_t *lio_getattr_gop(lio_config_t *lc, lio_creds_t *creds, const char *path, char *id, char *key, void **val, int *v_size);
 LIO_API gop_op_generic_t *lio_hardlink_gop(lio_config_t *lc, lio_creds_t *creds, char *src_path, char *dest_path, char *id);
-LIO_API int lio_init(int *argc, char ***argv);
+LIO_API int lio_init(int *argc, char ***argvp);
 LIO_API gop_op_generic_t *lio_link_gop(lio_config_t *lc, lio_creds_t *creds, int symlink, char *src_path, char *dest_path, char *id);
 LIO_API gop_op_generic_t *lio_move_gop(lio_config_t *lc, lio_creds_t *creds, char *src_path, char *dest_path);
 LIO_API int lio_multiple_setattr_op(lio_config_t *lc, lio_creds_t *creds, const char *path, char *id, char **key, void **val, int *v_size, int n);
@@ -114,8 +114,8 @@ LIO_API int lio_parse_path_options(int *argc, char **argv, int auto_mode, lio_pa
 LIO_API gop_op_status_t lio_path_copy_op(void *arg, int id);
 LIO_API void lio_path_local_make_absolute(lio_path_tuple_t *tuple);
 LIO_API void lio_path_release(lio_path_tuple_t *tuple);
-LIO_API lio_path_tuple_t lio_path_resolve(int auto_fuse_convert, char *startpath);
-LIO_API lio_path_tuple_t lio_path_resolve_base(char *startpath);
+LIO_API lio_path_tuple_t lio_path_resolve(int auto_fuse_convert, char *lpath);
+LIO_API lio_path_tuple_t lio_path_resolve_base(char *lpath);
 LIO_API int lio_path_wildcard_auto_append(lio_path_tuple_t *tuple);
 LIO_API void lio_print_options(FILE *fd);
 LIO_API void lio_print_path_options(FILE *fd);
