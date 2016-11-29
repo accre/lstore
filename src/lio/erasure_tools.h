@@ -71,9 +71,8 @@ lio_erasure_plan_t *et_new_plan(int method, long long int strip_size,
 lio_erasure_plan_t *et_generate_plan(long long int file_size, int method,
                                  int data_strips, int parity_strips, int w, int packet_low, int packet_high);
 void et_destroy_plan(lio_erasure_plan_t *plan);
-int et_encode(lio_erasure_plan_t *plan, const char *fname, long long int foffset, const char *pname, long long int poffset, int buffersize);
-int et_decode(lio_erasure_plan_t *plan, long long int fsize, const char *fname, long long int foffset, const char *pname, long long int poffset, int buffersize, int *erasures);
-
+int et_encode(lio_erasure_plan_t *plan, const char *fname, long long int foffset, const char *pname, long long int poffset, int buffer_size);
+int et_decode(lio_erasure_plan_t *plan, long long int fsize, const char *fname, long long int foffset, const char *pname, long long int poffset, int buffer_size, int *erasures);
 
 #ifdef __cplusplus
 }
