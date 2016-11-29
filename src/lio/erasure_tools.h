@@ -64,7 +64,7 @@ struct lio_erasure_plan_t {    //** Contains the erasure parameters
     int (*decode_block)(lio_erasure_plan_t *plan, char **ptr, int block_size, int *erasures);  //**Routine for decoding the block
 };
 
-int nearest_prime(int w, int force_larger);
+int nearest_prime(int w, int which);
 int et_method_type(char *meth);
 lio_erasure_plan_t *et_new_plan(int method, long long int strip_size,
                             int data_strips, int parity_strips, int w, int packet_size, int base_unit);
