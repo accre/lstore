@@ -1443,6 +1443,8 @@ int lio_shutdown()
     _lc_lock  = NULL;
     exnode_system_destroy();
 
+    gop_shutdown();
+
     tbx_info_destroy(lio_ifd);
     lio_ifd = NULL;
     if (_lio_exe_name) free(_lio_exe_name);
