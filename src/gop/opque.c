@@ -115,7 +115,6 @@ void gop_init_opque_system()
         gop_dummy_init();
         tbx_atomic_startup();
     }
-
 }
 
 //*************************************************************

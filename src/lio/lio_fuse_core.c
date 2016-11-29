@@ -1469,9 +1469,6 @@ void *lfs_init_real(struct fuse_conn_info *conn,
     lio_fuse_t *lfs;
     char *section =  "lfs";
 
-//#ifdef HAVE_XATTR
-//  printf("XATTR found!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
-//#endif
     lio_fuse_init_args_t *init_args;
     lio_fuse_init_args_t real_args;
 
@@ -1533,7 +1530,6 @@ void *lfs_init_real(struct fuse_conn_info *conn,
     lfs->fops = lfs_fops;
 
     log_printf(15, "END\n");
-
     return(lfs); //
 }
 
