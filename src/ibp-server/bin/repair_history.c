@@ -95,9 +95,9 @@ int main(int argc, char **argv)
 
   //** Print the current slots
   printf("Current slot values\n");
-  n = h.manage_slot; printf("   manage_slot: %hd\n", n);
-  n = h.read_slot;   printf("   read_slot: %hd\n", n);
-  n = h.write_slot;  printf("   write_slot: %hd\n", n);
+  n = h.manage_slot; printf("   manage_slot: %d\n", n);
+  n = h.read_slot;   printf("   read_slot: %d\n", n);
+  n = h.write_slot;  printf("   write_slot: %d\n", n);
 
   changed = 0;
   if ((h.manage_slot < 0) || (h.manage_slot >= ALLOC_HISTORY)) { changed=1; h.manage_slot = 0; }
