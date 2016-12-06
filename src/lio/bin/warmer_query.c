@@ -88,10 +88,11 @@ next:
 // warmer_query_rid - Generate list based on the RID
 //*************************************************************************
 
-void warmer_query_rid(char *rid_key, leveldb_t *inode_db, leveldb_t *rid_db, int mode, int fonly)
+void warmer_query_rid(char *rid_key, leveldb_t *inode_db, leveldb_t *rid_db, int mode, int fonly, ex_off_t total_bytes)
 {
     leveldb_readoptions_t *opt;
     leveldb_iterator_t *it;
+    ex_off_t bytes_found;
     size_t nbytes;
     ex_off_t bsize;
     char *buf;
@@ -110,6 +111,7 @@ void warmer_query_rid(char *rid_key, leveldb_t *inode_db, leveldb_t *rid_db, int
     it = leveldb_create_iterator(rid_db, opt);
     leveldb_iter_seek(it, match, n);
 
+    bytes_found = 0;
     while (leveldb_iter_valid(it) > 0) {
         rid = leveldb_iter_key(it, &nbytes);
         drid = strdup(rid);
@@ -144,6 +146,13 @@ next:
         errstr = NULL;
         leveldb_iter_get_error(it, &errstr);
         if (errstr != NULL) { printf("ERROR: %s\n", errstr); fflush(stdout); }
+
+        //** Accumulate the space and see if we kick out
+        bytes_found += bsize;
+        if (total_bytes > 0) {
+            if (bytes_found > total_bytes) break;
+        }
+
     }
 
     //** Cleanup
@@ -161,13 +170,18 @@ int main(int argc, char **argv)
     char *db_base = "/lio/log/warm";
     char *rid_key;
     leveldb_t *inode_db, *rid_db;
+    ex_off_t total_bytes;
+
+    total_bytes = -1;  //** Default to print all files
 
     if (argc < 2) {
         printf("\n");
-        printf("warmer_query -db DB_input_dir [-fonly] [-r rid_key] [-w] [-s] [-f]\n");
+        printf("warmer_query -db DB_input_dir [-fonly] [-r rid_key [-b size]] [-w] [-s] [-f]\n");
         printf("    -db DB_input_dir   - Input directory for the DBes. DEfault is %s\n", db_base);
         printf("    -fonly             - Only print the filename\n");
         printf("    -r  rid_key        - Use RID for filtering matches instead of all files\n");
+        printf("    -b  size           - Print enough files using this amount of space on the RID.\n");
+        printf("                         Units are supported. The default is to print all files.\n");
         printf("    -w                 - Print files containing write errors\n");
         printf("    -s                 - Print files that were sucessfully warmed\n");
         printf("    -f                 - Print files that failed warming\n");
@@ -190,6 +204,10 @@ int main(int argc, char **argv)
         } else if (strcmp(argv[i], "-r") == 0) { //** Use the RID name for selection
             i++;
             rid_key = argv[i];
+            i++;
+        } else if (strcmp(argv[i], "-b") == 0) { //** Use the RID name for selection
+            i++;
+            total_bytes = tbx_stk_string_get_integer(argv[i]);
             i++;
         } else if (strcmp(argv[i], "-w") == 0) { //** Filter further by printing only files with write errors
             i++;
@@ -219,7 +237,7 @@ int main(int argc, char **argv)
     if (rid_key == NULL) {
         warmer_query_inode(inode_db, mode, fonly);
     } else {
-        warmer_query_rid(rid_key, inode_db, rid_db, mode, fonly);
+        warmer_query_rid(rid_key, inode_db, rid_db, mode, fonly, total_bytes);
     }
 
     //** Close the DBs
