@@ -173,7 +173,6 @@ gop_op_status_t gen_warm_task(void *arg, int id)
 
             //** Get the manage cap
             etext = tbx_inip_get_string(fd, tbx_inip_group_get(g), "manage_cap", "");
-            log_printf(1, "fname=%s cap[%d]=%s alloc_max_size=" XOT "\n", w->fname, w->n, etext, w->cap[w->n].nbytes);
             w->cap[w->n].cap = tbx_stk_unescape_text('\\', etext);
             free(etext);
 
