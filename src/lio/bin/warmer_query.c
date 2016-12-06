@@ -93,6 +93,7 @@ void warmer_query_rid(char *rid_key, leveldb_t *inode_db, leveldb_t *rid_db, int
     leveldb_readoptions_t *opt;
     leveldb_iterator_t *it;
     size_t nbytes;
+    ex_off_t bsize;
     char *buf;
     int we, n;
     int state, nfailed;
@@ -119,7 +120,9 @@ void warmer_query_rid(char *rid_key, leveldb_t *inode_db, leveldb_t *rid_db, int
             break;
         }
 
-        buf = (char *)leveldb_get(inode_db, opt, (const char *)&inode, sizeof(inode), &nbytes, &errstr);
+        buf = (char *)leveldb_iter_value(it, &nbytes);
+        if (warm_parse_rid(buf, nbytes, &inode, &bsize, &state) != 0) { goto next; }
+        buf = (char *)leveldb_get(inode_db, opt, (const char *)&inode, sizeof(ex_id_t), &nbytes, &errstr);
         if (nbytes == 0) { goto next; }
 
         if (warm_parse_inode(buf, nbytes, &state, &nfailed, &name) != 0) { goto next; }
@@ -129,7 +132,7 @@ void warmer_query_rid(char *rid_key, leveldb_t *inode_db, leveldb_t *rid_db, int
                 printf("%s\n", name);
             } else {
                 we = ((state & WFE_WRITE_ERR) > 0) ? 1 : 0;
-                printf("%s|%d|%d\n", name, nfailed, we);
+                printf("%s|" XOT "|%d|%d\n", name, bsize, nfailed, we);
             }
         }
 
