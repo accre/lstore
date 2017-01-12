@@ -112,6 +112,7 @@ void warmer_query_rid(char *rid_key, leveldb_t *inode_db, leveldb_t *rid_db, int
     leveldb_iter_seek(it, match, n);
 
     bytes_found = 0;
+    bsize = 0;
     while (leveldb_iter_valid(it) > 0) {
         rid = leveldb_iter_key(it, &nbytes);
         drid = strdup(rid);
