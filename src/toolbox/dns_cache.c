@@ -28,6 +28,8 @@
 #include <apr_pools.h>
 #include <apr_thread_mutex.h>
 #include <apr_time.h>
+#include <arpa/inet.h>
+#include <netdb.h>
 #include <assert.h>
 #include <string.h>
 #include <stdio.h>
@@ -75,6 +77,25 @@ void wipe_entries(DNS_cache_t *cache)
 }
 
 //**************************************************************************
+// hostname2ip - Return the host's IP address
+//**************************************************************************
+
+int hostname2ip(const char *name, char *ip_bytes, char *ip_text, int ip_text_size)
+{
+    struct hostent *he;
+    struct in_addr **al;
+
+    if ((he = gethostbyname(name)) == NULL) return(-1);
+
+    al = (struct in_addr **)he->h_addr_list;
+    if (ip_bytes) memcpy(ip_bytes, al[0], 4);
+    if (ip_text) inet_ntop(AF_INET, al[0], ip_text, ip_text_size);
+
+    return(0);
+}
+
+
+//**************************************************************************
 //  lookup_host - Looks up the host.  Make sure that the lock/unlock routines
 //      are used to make it threadsafe!
 //
@@ -83,24 +104,16 @@ void wipe_entries(DNS_cache_t *cache)
 int tbx_dnsc_lookup(const char *name, char *byte_addr, char *ip_addr)
 {
     char ip_buffer[256];
-//  char byte_buffer[256];
-    char *s, *bstate;
-    int err, i;
+    int err;
     DNS_entry_t *h;
-    apr_sockaddr_t *sa;
-//  int family;
+    struct in_addr sa;
 
     log_printf(20, "lookup_host: start time=" TT " name=%s\n", apr_time_now(), name);
     if (_cache == NULL) log_printf(20, "lookup_host: _cache == NULL\n");
 
     if (name[0] == '\0') return(1);  //** Return early if name is NULL
 
-//  ipaddr = (ip_addr == NULL) ? ip_buffer : ip_addr;
-//  addr = (byte_addr == NULL) ? byte_buffer : byte_addr;
-
-//log_printf(20, "lookup_host: before lock\n");
     apr_thread_mutex_lock(_cache->lock);
-//log_printf(20, "lookup_host: after lock\n");
 
     if ((apr_time_now() > _cache->restart_time) || (apr_hash_count(_cache->table) > _cache->size)) wipe_entries(_cache);
 
@@ -116,10 +129,8 @@ int tbx_dnsc_lookup(const char *name, char *byte_addr, char *ip_addr)
     }
 
     //** If we made it here that means we have to look it up
-    err = apr_sockaddr_info_get(&sa, name, APR_INET, 80, 0, _cache->mpool);
-//log_printf(20, "lookup_host: apr_sockaddr_info_get=%d\n", err);
-
-    if (err != APR_SUCCESS) {
+    err = hostname2ip(name, (char *)&sa, ip_buffer, sizeof(ip_buffer));
+    if (err != 0) {
         apr_thread_mutex_unlock(_cache->lock);
         return(-1);
     }
@@ -128,30 +139,18 @@ int tbx_dnsc_lookup(const char *name, char *byte_addr, char *ip_addr)
 
     strncpy(h->name, name, sizeof(h->name));
     h->name[sizeof(h->name)-1] = '\0';
-
-    apr_sockaddr_ip_getbuf(ip_buffer, sizeof(ip_buffer), sa);
+    h->family = DNS_IPV4;
+    memcpy(h->addr, &sa, sizeof(sa));
     strcpy(h->ip_addr, ip_buffer);
 
-    log_printf(20, "lookup_host: start host=%s address=%s\n", name, ip_buffer);
-
-    h->family = DNS_IPV4;
-    i = 0;
-    for (s = tbx_stk_string_token(ip_buffer, ".", &bstate, &err); err == 0; s = tbx_stk_string_token(NULL, ".", &bstate, &err)) {
-        h->addr[i] = atoi(s);
-//n = h->addr[i];
-//log_printf(20, "lookup_host: err=%d i=%d n=%d s=%s\n", err, i, n, s);
-
-        i++;
-    }
-    if (i>4) h->family = DNS_IPV6;
+    log_printf(20, "lookup_host: end host=%s address=%s\n", name, ip_buffer);
 
     //** Add the enry to the table
     apr_hash_set(_cache->table, h->name, APR_HASH_KEY_STRING, h);
 
     //** Return the address
     if (ip_addr != NULL) strcpy(ip_addr, h->ip_addr);
-    if (byte_addr != NULL) memcpy(byte_addr, h->addr, DNS_ADDR_MAX);
-//  family = h->family;
+    if (byte_addr != NULL) memcpy(byte_addr, h->addr, sizeof(sa));
 
     apr_thread_mutex_unlock(_cache->lock);
 
@@ -172,7 +171,7 @@ int tbx_dnsc_startup_sized(int size)
     if (_cache != NULL) return 0;
 
     _cache = (DNS_cache_t *)malloc(sizeof(DNS_cache_t));
-   FATAL_UNLESS(_cache != NULL);
+    FATAL_UNLESS(_cache != NULL);
 
     _cache->size = size;
     _cache->mpool = NULL;
