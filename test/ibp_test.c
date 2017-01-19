@@ -1385,6 +1385,7 @@ int main(int argc, char **argv)
         return(-1);
     }
 
+    gop_init_opque_system();  //** Initialize GOP.  This needs to be done after any fork() call
     ibp_errno_init();
 
     tbx_random_startup();
