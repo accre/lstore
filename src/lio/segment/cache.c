@@ -122,15 +122,21 @@ int _cache_ppages_flush(lio_segment_t *seg, data_attr_t *da);
 
 void *cache_cond_new(void *arg, int size)
 {
-    apr_pool_t *mpool = (apr_pool_t *)arg;
     lio_cache_cond_t *shelf;
+    apr_pool_t **pool_ptr;
     int i;
 
-    tbx_type_malloc_clear(shelf, lio_cache_cond_t, size);
+    i = sizeof(lio_cache_cond_t)*size + sizeof(apr_pool_t *);
+    shelf = malloc(i);
+    FATAL_UNLESS(shelf != NULL);
+    memset(shelf, 0, i);
+
+    pool_ptr = (apr_pool_t **)&(shelf[size]);
+    assert_result(apr_pool_create(pool_ptr, NULL), APR_SUCCESS);
 
     log_printf(15, "cache_cond_new: making new shelf of size %d\n", size);
     for (i=0; i<size; i++) {
-        apr_thread_cond_create(&(shelf[i].cond), mpool);
+        apr_thread_cond_create(&(shelf[i].cond), *pool_ptr);
     }
 
     return((void *)shelf);
@@ -142,15 +148,15 @@ void *cache_cond_new(void *arg, int size)
 
 void cache_cond_free(void *arg, int size, void *data)
 {
-//  apr_pool_t *mpool = (apr_pool_t *)arg;
+    apr_pool_t **pool_ptr;
     lio_cache_cond_t *shelf = (lio_cache_cond_t *)data;
-    int i;
 
     log_printf(15, "cache_cond_free: destroying shelf of size %d\n", size);
 
-    for (i=0; i<size; i++) {
-        apr_thread_cond_destroy(shelf[i].cond);
-    }
+    pool_ptr = (apr_pool_t **)&(shelf[size]);
+
+    //** All the data is in the memory pool
+    apr_pool_destroy(*pool_ptr);
 
     free(shelf);
     return;

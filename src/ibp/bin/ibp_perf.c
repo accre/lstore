@@ -335,6 +335,7 @@ void write_allocs(ibp_capset_t *caps, int n, int asize, int block_size)
     if (err != 0) {
         printf("write_allocs: At least 1 error occured! * ibp_errno=%d * nfailed=%d\n", err, gop_opque_tasks_failed(q));
     }
+
     gop_opque_free(q, OP_DESTROY);
 
     free(buf);
