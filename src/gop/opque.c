@@ -40,7 +40,6 @@ void gop_dummy_init();
 void gop_dummy_destroy();
 
 tbx_atomic_unit32_t _opque_counter = 0;
-apr_pool_t *_opque_pool = NULL;
 tbx_pc_t *_gop_control = NULL;
 
 //*************************************************************
@@ -72,13 +71,20 @@ void _opque_print_stack(tbx_stack_t *stack)
 void *gop_control_new(void *arg, int size)
 {
     gop_control_t *shelf;
+    apr_pool_t **pool_ptr;
     int i;
 
-    tbx_type_malloc_clear(shelf, gop_control_t, size);
+    i = sizeof(gop_control_t)*size + sizeof(apr_pool_t *);
+    shelf = malloc(i);
+    FATAL_UNLESS(shelf != NULL);
+    memset(shelf, 0, i);
+
+    pool_ptr = (apr_pool_t **)&(shelf[size]);
+    assert_result(apr_pool_create(pool_ptr, NULL), APR_SUCCESS);
 
     for (i=0; i<size; i++) {
-        assert_result(apr_thread_mutex_create(&(shelf[i].lock), APR_THREAD_MUTEX_DEFAULT,_opque_pool), APR_SUCCESS);
-        assert_result(apr_thread_cond_create(&(shelf[i].cond), _opque_pool), APR_SUCCESS);
+        assert_result(apr_thread_mutex_create(&(shelf[i].lock), APR_THREAD_MUTEX_DEFAULT,*pool_ptr), APR_SUCCESS);
+        assert_result(apr_thread_cond_create(&(shelf[i].cond), *pool_ptr), APR_SUCCESS);
     }
 
     return((void *)shelf);
@@ -90,13 +96,13 @@ void *gop_control_new(void *arg, int size)
 
 void gop_control_free(void *arg, int size, void *data)
 {
+    apr_pool_t **pool_ptr;
     gop_control_t *shelf = (gop_control_t *)data;
-    int i;
 
-    for (i=0; i<size; i++) {
-        apr_thread_mutex_destroy(shelf[i].lock);
-        apr_thread_cond_destroy(shelf[i].cond);
-    }
+    pool_ptr = (apr_pool_t **)&(shelf[size]);
+
+    //** All the data is in the memory pool
+    apr_pool_destroy(*pool_ptr);
 
     free(shelf);
     return;
@@ -110,7 +116,6 @@ void gop_init_opque_system()
 {
     log_printf(15, "gop_init_opque_system: counter=%d\n", _opque_counter);
     if (tbx_atomic_inc(_opque_counter) == 0) {   //** Only init if needed
-        assert_result(apr_pool_create(&_opque_pool, NULL), APR_SUCCESS);
         _gop_control = tbx_pc_new("gop_control", 50, sizeof(gop_control_t), NULL, gop_control_new, gop_control_free);
         gop_dummy_init();
         tbx_atomic_startup();
@@ -126,7 +131,6 @@ void gop_shutdown()
     log_printf(15, "gop_shutdown: counter=%d\n", _opque_counter);
     if (tbx_atomic_dec(_opque_counter) == 0) {   //** Only wipe if not used
         tbx_pc_destroy(_gop_control);
-        apr_pool_destroy(_opque_pool);
         gop_dummy_destroy();
         tbx_atomic_shutdown();
 
