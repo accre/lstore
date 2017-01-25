@@ -301,6 +301,8 @@ int sock_connect(net_sock_t *nsock, const char *hostname, int port, tbx_ns_timeo
 
     if ((sock->fd = socket(AF_INET, SOCK_STREAM, 0)) < 0) return(-1);
 
+log_printf(20, "hostname=%s:%d sock->fd=%d\n", hostname, port, sock->fd);
+
     memset(&sa, 0, sizeof(sa));
     sa.sin_family = AF_INET;
     sa.sin_port = htons(port);
@@ -471,6 +473,7 @@ void tbx_ns_sock_config(tbx_ns_t *ns, int tcpsize)
     tbx_type_malloc_clear(sock, tbx_net_sock_t, 1);
     ns->sock = (tbx_net_sock_t *)sock;
 
+    sock->fd = -1;
     sock->tcpsize = tcpsize;
     ns->native_fd = sock_native_fd;
     ns->connect = sock_connect;
