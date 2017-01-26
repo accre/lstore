@@ -24,6 +24,7 @@
 #include "ibp_time.h"
 #include <tbx/network.h>
 #include <tbx/log.h>
+#include <tbx/type_malloc.h>
 
 typedef struct {
    Transfer_stat_t *table;  //** This is where we store everything
@@ -45,8 +46,8 @@ void init_stats(int n)
 {
   int i;
 
-  assert((stats.table = (Transfer_stat_t *)malloc(sizeof(Transfer_stat_t)*n)) != NULL);
-  
+  tbx_type_malloc_clear(stats.table, Transfer_stat_t, n);
+
   apr_pool_create(&(stats.pool), NULL);
   apr_thread_mutex_create(&(stats.lock), APR_THREAD_MUTEX_DEFAULT,stats.pool);
 
@@ -60,7 +61,7 @@ void init_stats(int n)
   for (i=0; i<stats.size; i++) {
      stats.table[i].start = 0;
      stats.table[i].end = 0;
-  }  
+  }
 }
 
 //****************************************************************
