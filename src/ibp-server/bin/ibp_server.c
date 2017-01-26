@@ -39,6 +39,7 @@ http://www.accre.vanderbilt.edu
 #include "ibp_server.h"
 #include "debug.h"
 #include <tbx/log.h>
+#include <tbx/assert_result.h>
 #include <tbx/dns_cache.h>
 #include <tbx/type_malloc.h>
 #include "lock_alloc.h"
@@ -514,8 +515,8 @@ int main(int argc, const char **argv)
   apr_thread_t *rid_check_thread;
   apr_status_t dummy;
 
-  assert(apr_initialize() == APR_SUCCESS);
-  assert(apr_pool_create(&global_pool, NULL) == APR_SUCCESS);
+//  assert_result(apr_initialize(), APR_SUCCESS);
+  assert_result(apr_pool_create(&global_pool, NULL), APR_SUCCESS);
   tbx_random_startup();
 
   shutdown_now = 0;
@@ -615,9 +616,9 @@ int main(int argc, const char **argv)
         char fname[1024];
         fname[1023] = '\0';
         snprintf(fname, 1023, "%s.stdout", config.server.logfile);
-        assert((stdout = fopen(fname, "w")) != NULL);
+        assert_result_not_null(stdout = fopen(fname, "w"));
         snprintf(fname, 1023, "%s.stderr", config.server.logfile);
-        assert((stderr = fopen(fname, "w")) != NULL);
+        assert_result_not_null(stderr = fopen(fname, "w"));
 //        stdout = stderr = log_fd();  //** and reassign them to the log device
 printf("ibp_server.c: STDOUT=STDERR=LOG_FD() dnoes not work!!!!!!!!!!!!!!!!!!!!!!!!\n");
      } else {           //** Parent exits

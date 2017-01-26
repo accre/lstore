@@ -91,7 +91,7 @@ char *fname2dev(char *fname)
   dev = NULL;
 
   fd = setmntent("/etc/mtab", "r");
-  assert(fd != NULL);
+  assert_result_not_null(fd);
 
   while (getmntent_r(fd, &minfo, buffer, sizeof(buffer)) != NULL) {
      len = strlen(minfo.mnt_dir);
@@ -292,7 +292,7 @@ int mkfs_resource(rid_t rid, char *dev_type, char *device_name, char *db_locatio
 //BROKEN
    memcpy(&(res.rid), &rid, sizeof(rid_t));
    res.max_duration = 2592000;   //default to 30 days
-   assert(strcmp(dev_type, DEVICE_DIR) == 0);
+   assert_result(strcmp(dev_type, DEVICE_DIR), 0);
    res.device_type = dev_type;
    res.res_type = RES_TYPE_DIR;
 
@@ -319,17 +319,17 @@ int mkfs_resource(rid_t rid, char *dev_type, char *device_name, char *db_locatio
    //**Make the directory for the DB if needed
    snprintf(dname, sizeof(dname), "%s", db_location);
    mkdir(dname, S_IRWXU);
-   assert((dir = opendir(dname)) != NULL);  //Make sure I can open it
+   assert_result_not_null(dir = opendir(dname));  //Make sure I can open it
    closedir(dir);
 
    //**Create the DB
    snprintf(fname, sizeof(fname), "db %s", ibp_rid2str(rid, rname));
-   assert(mkfs_db(&(res.db), dname, fname, NULL) == 0);
+   assert_result(mkfs_db(&(res.db), dname, fname, NULL), 0);
 
    //**Create the device
    if (strcmp("dir", dev_type)==0) {
       res.res_type = RES_TYPE_DIR;
-      assert((res.dev = osd_mount_fs(res.device, n_cache, expire_time)) != NULL);
+      assert_result_not_null(res.dev = osd_mount_fs(res.device, n_cache, expire_time));
 
       if (max_bytes == 0) {
         statfs(device_name, &stat);
@@ -432,8 +432,8 @@ log_printf(10, "rebuild_put_iter: id=" LU " size=" LU "\n", a->id, a->size);
 
 res_iterator_t *rebuild_begin(Resource_t *r, int wipe_clean)
 {
-   res_iterator_t *ri = (res_iterator_t *)malloc(sizeof(res_iterator_t));
-   assert(ri != NULL);
+   res_iterator_t *ri;
+   tbx_type_malloc_clear(ri, res_iterator_t, 1);
 
    dbr_lock(&(r->db));
 
@@ -444,10 +444,10 @@ res_iterator_t *rebuild_begin(Resource_t *r, int wipe_clean)
 
    if (wipe_clean == 1) {
       ri->dbi = id_iterator(&(r->db));
-      assert(ri->dbi != NULL);
+      assert_result_not_null(ri->dbi);
    } else {
       ri->fsi = osd_new_iterator(r->dev);
-      assert(ri->fsi != NULL);
+      assert_result_not_null(ri->fsi);
    }
 
    return(ri);
@@ -948,7 +948,7 @@ int mount_resource(Resource_t *res, tbx_inip_file_t *keyfile, char *group, DB_en
    res->start_time = ibp_time_now();  //** Track when we were added.
 
    //*** Load the resource data ***
-   assert(parse_resource(res, keyfile, group) == 0);
+   assert_result(parse_resource(res, keyfile, group), 0);
 
    wipe_expired = (res->preexpire_grace_period == 0) ? 1 : 0;  //** Only wipe the expired allocs on rebuild if no grace period
 
@@ -962,11 +962,11 @@ int mount_resource(Resource_t *res, tbx_inip_file_t *keyfile, char *group, DB_en
    //*** Now mount the device ***
    if (strcmp(DEVICE_DIR, res->device_type)==0) {
       DIR *dir = NULL;
-      assert((dir = opendir(res->device)) != NULL);
+      assert_result_not_null(dir = opendir(res->device));
       closedir(dir);
 
       res->res_type = RES_TYPE_DIR;
-      assert((res->dev = osd_mount_fs(res->device, res->n_cache, res->cache_expire)) != NULL);
+      assert_result_not_null(res->dev = osd_mount_fs(res->device, res->n_cache, res->cache_expire));
    }
 
    //** Init the lock **
