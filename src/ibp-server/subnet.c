@@ -38,6 +38,7 @@ http://www.accre.vanderbilt.edu
 #include <tbx/dns_cache.h>
 #include <tbx/string_token.h>
 #include <tbx/log.h>
+#include <tbx/type_malloc.h>
 
 unsigned char bitmask[8] = {128, 192, 224, 240, 248, 252, 254, 255};
 
@@ -124,12 +125,12 @@ subnet_list_t *new_subnet_list(char *list_string)
 {
    int n, i, fin;
    subnet_t *s;
+   subnet_list_t *sn;
    char acl_text[128];
    char *mask, *mstate;
    char *list_str = strdup(list_string);
 
-   subnet_list_t *sn = (subnet_list_t *)malloc(sizeof(subnet_list_t));
-   assert(sn != NULL);
+   tbx_type_malloc_clear(sn, subnet_list_t, 1);
 
    //** Determin the list size
    char *list[100];
@@ -151,8 +152,7 @@ subnet_list_t *new_subnet_list(char *list_string)
    } else {       //** Process the mask
       sn->mode = SUBNET_LIST;
       sn->n = n;
-      sn->range = (subnet_t *)malloc(sizeof(subnet_t)*n);
-      assert(sn->range != NULL);
+      tbx_type_malloc_clear(sn->range, subnet_t, n);
 
       for (i=0; i<sn->n; i++) {  //** Process each element
          s = &(sn->range[i]);
