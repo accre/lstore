@@ -264,8 +264,8 @@ int mkfs_db(DB_resource_t *dbres, char *loc, const char *kgroup, FILE *fd) {
    bflags = flags;
 
    //*** Create/Open the primary DB containing the ID's ***
-   assert(db_create(&(dbres->pdb), NULL, 0) == 0);
-   assert(dbres->pdb->set_pagesize(dbres->pdb, 32*1024) == 0);
+   assert_result(db_create(&(dbres->pdb), NULL, 0), 0);
+   assert_result(dbres->pdb->set_pagesize(dbres->pdb, 32*1024), 0);
    snprintf(fname, sizeof(fname), "%s/id.db", loc);
    remove(fname);
    if ((err=dbres->pdb->open(dbres->pdb, NULL, fname, NULL, DB_HASH, flags, 0)) != 0) {
@@ -275,7 +275,7 @@ int mkfs_db(DB_resource_t *dbres, char *loc, const char *kgroup, FILE *fd) {
    }
 
    //*** Create/Open DB containing the READ_CAPs ***
-   assert(db_create(&(dbres->cap[READ_CAP]), NULL, 0) == 0);
+   assert_result(db_create(&(dbres->cap[READ_CAP]), NULL, 0), 0);
    snprintf(fname, sizeof(fname), "%s/read.db", loc);
    remove(fname);
    if (dbres->cap[READ_CAP]->open(dbres->cap[READ_CAP], NULL, fname, NULL, DB_HASH, flags, 0) != 0) {
@@ -284,7 +284,7 @@ int mkfs_db(DB_resource_t *dbres, char *loc, const char *kgroup, FILE *fd) {
    }
 
    //*** Create/Open DB containing the WRITE_CAPs ***
-   assert(db_create(&(dbres->cap[WRITE_CAP]), NULL, 0) == 0);
+   assert_result(db_create(&(dbres->cap[WRITE_CAP]), NULL, 0), 0);
    snprintf(fname, sizeof(fname), "%s/write.db", loc);
    remove(fname);
    if (dbres->cap[WRITE_CAP]->open(dbres->cap[WRITE_CAP], NULL, fname, NULL, DB_HASH, flags, 0) != 0) {
@@ -293,7 +293,7 @@ int mkfs_db(DB_resource_t *dbres, char *loc, const char *kgroup, FILE *fd) {
    }
 
    //*** Create/Open DB containing the MANAGE_CAPs ***
-   assert(db_create(&(dbres->cap[MANAGE_CAP]), NULL, 0) == 0);
+   assert_result(db_create(&(dbres->cap[MANAGE_CAP]), NULL, 0), 0);
    snprintf(fname, sizeof(fname), "%s/manage.db", loc);
    remove(fname);
    if (dbres->cap[MANAGE_CAP]->open(dbres->cap[MANAGE_CAP], NULL, fname, NULL, DB_HASH, flags, 0) != 0) {
@@ -302,8 +302,8 @@ int mkfs_db(DB_resource_t *dbres, char *loc, const char *kgroup, FILE *fd) {
    }
 
    //*** Create/Open DB containing the expirationss ***
-   assert(db_create(&(dbres->expire), NULL, 0) == 0);
-   assert(dbres->expire->set_bt_compare(dbres->expire, compare_expiration) == 0);
+   assert_result(db_create(&(dbres->expire), NULL, 0), 0);
+   assert_result(dbres->expire->set_bt_compare(dbres->expire, compare_expiration), 0);
    snprintf(fname, sizeof(fname), "%s/expire.db", loc);
    remove(fname);
    if ((err = dbres->expire->open(dbres->expire, NULL, fname, NULL, DB_BTREE, bflags, 0)) != 0) {
@@ -313,8 +313,8 @@ int mkfs_db(DB_resource_t *dbres, char *loc, const char *kgroup, FILE *fd) {
    }
 
    //*** Create/Open DB containing the soft allocations ***
-   assert(db_create(&(dbres->soft), NULL, 0) == 0);
-   assert(dbres->soft->set_bt_compare(dbres->soft, compare_expiration) == 0);
+   assert_result(db_create(&(dbres->soft), NULL, 0), 0);
+   assert_result(dbres->soft->set_bt_compare(dbres->soft, compare_expiration), 0);
    snprintf(fname, sizeof(fname), "%s/soft.db", loc);
    remove(fname);
    if ((err = dbres->soft->open(dbres->soft, NULL, fname, NULL, DB_BTREE, bflags, 0)) != 0) {
@@ -360,7 +360,7 @@ int mount_db_generic(tbx_inip_file_t *kf, const char *kgroup, DB_env_t *env, DB_
    //** Get the directory containing everything **
    dbres->kgroup = strdup(kgroup);
    log_printf(10, "mount_db_generic: kgroup=%s\n", kgroup); tbx_log_flush();
-   assert((dbres->loc = tbx_inip_get_string(kf, kgroup, "loc", NULL)) != NULL);
+   assert_result_not_null(dbres->loc = tbx_inip_get_string(kf, kgroup, "loc", NULL));
 
    log_printf(15, "mound_db_generic: wipe_clean=%d\n",wipe_clean);
 
@@ -385,8 +385,8 @@ int mount_db_generic(tbx_inip_file_t *kf, const char *kgroup, DB_env_t *env, DB_
 //   if (wipe_clean == 2)  flags = flags | DB_CREATE; //**Only wipe the id DB if wipe_clean=2
 
    //*** Create/Open the primary DB containing the ID's ***
-   assert(db_create(&(dbres->pdb), dbres->dbenv, 0) == 0);
-   assert(dbres->pdb->set_pagesize(dbres->pdb, 32*1024) == 0);
+   assert_result(db_create(&(dbres->pdb), dbres->dbenv, 0), 0);
+   assert_result(dbres->pdb->set_pagesize(dbres->pdb, 32*1024), 0);
    snprintf(fname, sizeof(fname), "%s/id.db", dbres->loc);
    if (wipe_clean == 2) remove(fname);
    if (dbres->pdb->open(dbres->pdb, NULL, fname, NULL, DB_HASH, flags, 0) != 0) {
@@ -399,7 +399,7 @@ int mount_db_generic(tbx_inip_file_t *kf, const char *kgroup, DB_env_t *env, DB_
    bflags = flags;
 
    //*** Create/Open DB containing the READ_CAPs ***
-   assert(db_create(&db, dbres->dbenv, 0) == 0);
+   assert_result(db_create(&db, dbres->dbenv, 0), 0);
    if (db == NULL) {
       printf("mount_db: Can't create read DB: %s\n", fname);
       abort();
@@ -418,7 +418,7 @@ int mount_db_generic(tbx_inip_file_t *kf, const char *kgroup, DB_env_t *env, DB_
 
    //*** Create/Open DB containing the WRITE_CAPs ***
 
-   assert(db_create(&db, dbres->dbenv, 0) == 0);
+   assert_result(db_create(&db, dbres->dbenv, 0), 0);
    dbres->cap[WRITE_CAP] = db;
    snprintf(fname, sizeof(fname), "%s/write.db", dbres->loc);
    if (wipe_clean == 2) remove(fname);
@@ -432,7 +432,7 @@ int mount_db_generic(tbx_inip_file_t *kf, const char *kgroup, DB_env_t *env, DB_
    }
 
    //*** Create/Open DB containing the MANAGE_CAPs ***
-   assert(db_create(&db, dbres->dbenv, 0) == 0);
+   assert_result(db_create(&db, dbres->dbenv, 0), 0);
    dbres->cap[MANAGE_CAP] = db;
    snprintf(fname, sizeof(fname), "%s/manage.db", dbres->loc);
    if (wipe_clean == 2) remove(fname);
@@ -442,13 +442,13 @@ int mount_db_generic(tbx_inip_file_t *kf, const char *kgroup, DB_env_t *env, DB_
    }
    if (dbres->pdb->associate(dbres->pdb, NULL, db, get_mcap_key, 0) != 0) {
       printf("mount_db: Can't associate manage DB: %s\n", fname);
-      abort();     
+      abort();
    }
 
    //*** Create/Open DB containing the expirationss ***
-   assert(db_create(&db, dbres->dbenv, 0) == 0);
+   assert_result(db_create(&db, dbres->dbenv, 0), 0);
    dbres->expire = db;
-   assert(db->set_bt_compare(db, compare_expiration) == 0);
+   assert_result(db->set_bt_compare(db, compare_expiration), 0);
    snprintf(fname, sizeof(fname), "%s/expire.db", dbres->loc);
    if (wipe_clean == 2) remove(fname);
    if ((err = db->open(db, NULL, fname, NULL, DB_BTREE, bflags, 0)) != 0) {
@@ -462,9 +462,9 @@ int mount_db_generic(tbx_inip_file_t *kf, const char *kgroup, DB_env_t *env, DB_
    }
 
    //*** Create/Open DB containing the soft allocations ***
-   assert(db_create(&db, dbres->dbenv, 0) == 0);
+   assert_result(db_create(&db, dbres->dbenv, 0), 0);
    dbres->soft = db;
-   assert(db->set_bt_compare(db, compare_expiration) == 0);
+   assert_result(db->set_bt_compare(db, compare_expiration), 0);
    snprintf(fname, sizeof(fname), "%s/soft.db", dbres->loc);
    if (wipe_clean == 2) remove(fname);
    if ((err = db->open(db, NULL, fname, NULL, DB_BTREE, bflags, 0)) != 0) {
@@ -616,15 +616,15 @@ DB_env_t *create_db_env(const char *loc, int db_mem, int wipe_clean)
    flags = DB_CREATE   | DB_INIT_LOCK | DB_INIT_LOG    | DB_INIT_MPOOL |
            DB_INIT_TXN | DB_THREAD    | DB_AUTO_COMMIT | DB_RECOVER;
 
-   assert(db_env_create(&dbenv, 0) == 0);
+   assert_result(db_env_create(&dbenv, 0), 0);
    env->dbenv = dbenv;
 
    u_int32_t gbytes = db_mem / 1024;
    u_int32_t bytes = (db_mem % 1024) * 1024*1024;
    log_printf(10, "create_db_env: gbytes=%u bytes=%u\n", gbytes, bytes);
-   assert(dbenv->set_cachesize(dbenv, gbytes, bytes, 1) == 0);
-//   assert(dbenv->set_flags(dbenv, DB_TXN_NOSYNC | DB_TXN_NOWAIT, 1) == 0);
-   assert(dbenv->log_set_config(dbenv, DB_LOG_AUTO_REMOVE, 1) == 0);
+   assert_result(dbenv->set_cachesize(dbenv, gbytes, bytes, 1), 0);
+//   assert_result(dbenv->set_flags(dbenv, DB_TXN_NOSYNC | DB_TXN_NOWAIT, 1), 0);
+   assert_result(dbenv->log_set_config(dbenv, DB_LOG_AUTO_REMOVE, 1), 0);
    if ((err=dbenv->open(dbenv, loc, flags, 0)) != 0) {
       printf("create_db_env: Warning!  No environment located in %s\n", loc);
       printf("create_db_env: Attempting to create a new environment.\n");
@@ -632,7 +632,7 @@ DB_env_t *create_db_env(const char *loc, int db_mem, int wipe_clean)
 
       DIR *dir = NULL;
       mkdir(loc, S_IRWXU);
-      assert((dir = opendir(loc)) != NULL);  //Make sure I can open it
+      assert_result_not_null(dir = opendir(loc));  //Make sure I can open it
       closedir(dir);
 
       if ((err=dbenv->open(dbenv, loc, flags, 0)) != 0) {

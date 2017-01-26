@@ -47,6 +47,7 @@ http://www.accre.vanderbilt.edu
 #include "db_resource.h"
 #include <tbx/network.h>
 #include <tbx/net_sock.h>
+#include <tbx/type_malloc.h>
 #ifdef _ENABLE_PHOEBUS
   #include "net_phoebus.h"
 #endif
@@ -3037,7 +3038,7 @@ int handle_internal_mount(ibp_task_t *task)
 //log_printf(0, "Waking up\n"); tbx_log_flush();
 
   //** NOTE: read_internal_mount verified the RID isn't mounted.
-  assert((r = (Resource_t *)malloc(sizeof(Resource_t))) != NULL);
+  tbx_type_malloc(r, Resource_t, 1);
 
   err = mount_resource(r, keyfile, sgrp, global_config->dbenv,
         arg->force_rebuild, global_config->server.lazy_allocate,

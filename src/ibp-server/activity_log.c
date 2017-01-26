@@ -40,6 +40,7 @@ http://www.accre.vanderbilt.edu
 #include <apr_thread_mutex.h>
 #include <apr_time.h>
 #include <apr_pools.h>
+#include <tbx/assert_result.h>
 #include <tbx/fmttypes.h>
 #include <tbx/log.h>
 #include <tbx/network.h>
@@ -2669,7 +2670,7 @@ int alog_read_resource_list(activity_log_t *alog, int cmd, FILE *outfd)
    }
 
    alog->rl_map = (rl_map_t *)malloc(sizeof(rl_map_t)*(nres+1));
-   assert(alog->rl_map != NULL);
+   assert_result_not_null(alog->rl_map);
    alog->nres = nres;
    strcpy(alog->rl_map[nres].name, "BAD");
 
@@ -2823,7 +2824,7 @@ void alog_open()
 
    _alog = activity_log_open(_alog_name, 2*global_config->server.max_threads, ALOG_APPEND);
 
-   assert(_alog != NULL);
+   assert_result_not_null(_alog);
 
    _alog_config();
    _alog_resources();
@@ -3115,7 +3116,7 @@ void _alog_send_data()
         if (_alog_send_thread != NULL) {
           apr_pool_destroy(_alog_send_mpool);  //** Only way to free the _alog_send_thread memory:(
         } 
-        assert(apr_pool_create(&_alog_send_mpool, NULL) == APR_SUCCESS);
+        assert_result(apr_pool_create(&_alog_send_mpool, NULL), APR_SUCCESS);
         apr_thread_create(&_alog_send_thread, NULL, _send_alog_thread, NULL, _alog_send_mpool);
      }
   }
@@ -3124,7 +3125,7 @@ void _alog_send_data()
   //** Now open the fresh log file
   _alog = activity_log_open(_alog_name, 2*global_config->server.max_threads, ALOG_APPEND);
 
-  assert(_alog != NULL);
+  assert_result_not_null(_alog);
 
   _alog_config();
   _alog_resources();
@@ -3187,7 +3188,7 @@ int activity_log_open_rec(activity_log_t *alog)
    //** Create the space for the network maps
    if (alog->ns_map != NULL) free(alog->ns_map);
    alog->ns_map = (ns_map_t *)malloc(sizeof(ns_map_t)*alog->max_id);
-   assert(alog->ns_map != NULL);
+   assert_result_not_null(alog->ns_map);
    memset(alog->ns_map, 0, sizeof(ns_map_t)*alog->max_id);
 
    return(0);
@@ -3223,7 +3224,7 @@ int activity_log_read_open_rec(activity_log_t *alog, int cmd, FILE *outfd)
 
    if (alog->ns_map != NULL) free(alog->ns_map);
    alog->ns_map = (ns_map_t *)malloc(sizeof(ns_map_t)*alog->max_id);
-   assert(alog->ns_map != NULL);
+   assert_result_not_null(alog->ns_map);
    memset(alog->ns_map, 0, sizeof(ns_map_t)*alog->max_id);
 
    if (outfd != NULL) {
@@ -3380,7 +3381,7 @@ void activity_log_move_to_eof(activity_log_t *alog)
 
    //** Truncate the file here
    pos++;   //** This is the number of good "bytes"
-   assert(ftruncate(fileno(alog->fd), pos) == 0);
+   assert_result(ftruncate(fileno(alog->fd), pos), 0);
 
    //** Now move to where the next byte should go
    fseek(alog->fd, pos, SEEK_SET);
@@ -3531,10 +3532,10 @@ void activity_log_add_commands(activity_log_t *alog)
 activity_log_t * activity_log_open(const char *logname, int max_id, int mode)
 {
   activity_log_t *alog = (activity_log_t *)malloc(sizeof(activity_log_t));
-  assert(alog != NULL);
+  assert_result_not_null(alog);
 
   alog->table = (alog_entry_t *)malloc(sizeof(alog_entry_t)*256);
-  assert(alog->table != NULL);
+  assert_result_not_null(alog->table);
 
   alog_init();
 

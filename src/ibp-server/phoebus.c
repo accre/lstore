@@ -86,7 +86,7 @@ void phoebus_path_set(phoebus_t *p, const char *path)
    
    //** Copy the path to the final location
    p->path = (char **)malloc(sizeof(char *) * p->p_count);
-   assert(p->path != NULL);
+   assert_result(p->path != NULL);
    memcpy(p->path, stage, sizeof(char *) * p->p_count);
    
    return;

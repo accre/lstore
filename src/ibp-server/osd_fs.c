@@ -2971,14 +2971,10 @@ void *fs_shelf_object_new(void *arg, int size)
 {
   osd_fs_object_t *shelf, *obj;
   int i;
-//  apr_pool_t *pool = (apr_pool_t *)arg;
 
-  shelf = (osd_fs_object_t *)malloc(sizeof(osd_fs_object_t)*size);
-  assert(shelf != NULL);
+  tbx_type_malloc_clear(shelf, osd_fs_object_t, size);
 
 log_printf(15, "fs_shelf_object_new: shelf=%p size=%d\n", shelf, size); 
-
-  memset(shelf, 0, sizeof(osd_fs_object_t)*size);
 
   for (i=0; i<size; i++) {
      obj = &(shelf[i]);
@@ -2986,12 +2982,12 @@ log_printf(15, "fs_shelf_object_new: shelf=%p size=%d\n", shelf, size);
      //** Make the read/write ranges for each object
      obj->read_range_list = tbx_pc_new("read_range", FS_RANGE_COUNT, sizeof(osd_fs_range_t), NULL, fs_shelf_range_new, fs_shelf_range_free);
      obj->write_range_list = tbx_pc_new("write_range", FS_RANGE_COUNT, sizeof(osd_fs_range_t), NULL, fs_shelf_range_new, fs_shelf_range_free);
-     assert(obj->read_range_list != NULL);
-     assert(obj->write_range_list != NULL);
+     assert_result_not_null(obj->read_range_list);
+     assert_result_not_null(obj->write_range_list);
 
      //** Make the locks
      apr_pool_create(&(obj->pool), NULL);
-    apr_thread_cond_create(&(obj->cond), obj->pool);
+     apr_thread_cond_create(&(obj->cond), obj->pool);
      apr_thread_mutex_create(&(obj->lock), APR_THREAD_MUTEX_DEFAULT, obj->pool);
   }
 
@@ -3037,11 +3033,11 @@ log_printf(15, "fs_shelf_object_free: shelf=%p size=%d\n", shelf, size);
 osd_t *osd_mount_fs(const char *device, int n_cache, apr_time_t expire_time) 
 {
    int i;
-   osd_t *d = (osd_t *)malloc(sizeof(osd_t));
-   assert(d != NULL);
+   osd_t *d;
+   osd_fs_t *fs;
 
-   osd_fs_t *fs = (osd_fs_t *)malloc(sizeof(osd_fs_t));
-   assert(fs != NULL);
+   tbx_type_malloc_clear(d, osd_t, 1);
+   tbx_type_malloc_clear(fs, osd_fs_t, 1);
 
    memset(fs, 0, sizeof(osd_fs_t));
 
@@ -3149,10 +3145,10 @@ osd_t *osd_mount_fs(const char *device, int n_cache, apr_time_t expire_time)
    }
 
    //** Now make the object and Object FD buffers
-   fs->obj_list = tbx_pc_new("obj_list", FS_OBJ_COUNT, sizeof(osd_fs_object_t), (void *)fs, fs_shelf_object_new, fs_shelf_object_free); assert(fs->obj_list != NULL);
-   fs->fd_list = tbx_pc_new("fd_list", FS_OBJ_COUNT, sizeof(osd_fs_fd_t), (void *)fs, fs_shelf_fd_new, fs_shelf_fd_free); assert(fs->fd_list != NULL);
-   fs->obj_hash = apr_hash_make(fs->pool); assert(fs->obj_hash != NULL);
-   fs->corrupt_hash = apr_hash_make(fs->pool); assert(fs->corrupt_hash != NULL);
+   fs->obj_list = tbx_pc_new("obj_list", FS_OBJ_COUNT, sizeof(osd_fs_object_t), (void *)fs, fs_shelf_object_new, fs_shelf_object_free); assert_result_not_null(fs->obj_list);
+   fs->fd_list = tbx_pc_new("fd_list", FS_OBJ_COUNT, sizeof(osd_fs_fd_t), (void *)fs, fs_shelf_fd_new, fs_shelf_fd_free); assert_result_not_null(fs->fd_list);
+   fs->obj_hash = apr_hash_make(fs->pool); assert_result_not_null(fs->obj_hash);
+   fs->corrupt_hash = apr_hash_make(fs->pool); assert_result_not_null(fs->corrupt_hash);
 
    //** Lastly make the cache buffers
    i = (n_cache > 0) ? sqrt(1.0*n_cache) : 0;
