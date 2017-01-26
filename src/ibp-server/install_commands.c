@@ -39,7 +39,7 @@ void install_commands(tbx_inip_file_t *kf) {
   add_command(IBP_RENAME, "ibp_rename", kf, NULL, NULL, NULL, NULL, read_rename, handle_rename);
   add_command(IBP_ALIAS_ALLOCATE, "ibp_alias_allocate", kf, NULL, NULL, NULL, NULL, read_alias_allocate, handle_alias_allocate);
   add_command(IBP_ALIAS_MANAGE, "ibp_alias_manage", kf, NULL, NULL, NULL, NULL, read_manage, handle_manage);
-  add_command(IBP_PUSH, "ibp_tbx_stack_push", kf, NULL, NULL, NULL, NULL, read_read, handle_copy);
+  add_command(IBP_PUSH, "ibp_stack_push", kf, NULL, NULL, NULL, NULL, read_read, handle_copy);
   add_command(IBP_PULL, "ibp_pull", kf, NULL, NULL, NULL, NULL, read_read, handle_copy);
   add_command(IBP_VEC_WRITE, "ibp_write", kf, NULL, NULL, NULL, NULL, read_write, handle_write);
   add_command(IBP_VEC_READ, "ibp_load", kf, NULL, NULL, NULL, NULL, read_read, handle_read);
@@ -52,7 +52,7 @@ void install_commands(tbx_inip_file_t *kf) {
   add_command(IBP_LOAD_CHKSUM, "ibp_load", kf, NULL, NULL, NULL, NULL, read_read, handle_read);
   add_command(IBP_SEND_CHKSUM, "ibp_send", kf, NULL, NULL, NULL, NULL, read_read, handle_copy);
   add_command(IBP_PHOEBUS_SEND_CHKSUM, "ibp_phoebus_send", kf, phoebus_load_config, phoebus_init, phoebus_destroy, phoebus_print, read_read, handle_copy);
-  add_command(IBP_PUSH_CHKSUM, "ibp_tbx_stack_push", kf, NULL, NULL, NULL, NULL, read_read, handle_copy);
+  add_command(IBP_PUSH_CHKSUM, "ibp_stack_push", kf, NULL, NULL, NULL, NULL, read_read, handle_copy);
   add_command(IBP_PULL_CHKSUM, "ibp_pull", kf, NULL, NULL, NULL, NULL, read_read, handle_copy);
   add_command(IBP_VALIDATE_CHKSUM, "ibp_validate_chksum", kf, NULL, NULL, NULL, NULL, read_validate_get_chksum, handle_validate_chksum);
   add_command(IBP_GET_CHKSUM, "ibp_get_chksum", kf, NULL, NULL, NULL, NULL, read_validate_get_chksum, handle_get_chksum);

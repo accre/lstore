@@ -100,7 +100,7 @@ int _resource_list_insert(Resource_list_t *rl, Resource_t *r)
   n = 0;
   if (rl->n == rl->max_res) {  //** See if we need to grow the array
      n = rl->max_res + 1;
-     assert((rl->res = (rl_ele_t *)realloc(rl->res, sizeof(rl_ele_t)*n)) != NULL);
+     assert_result_not_null(rl->res = (rl_ele_t *)realloc(rl->res, sizeof(rl_ele_t)*n));
      for (i=rl->max_res; i<n; i++) { rl->res[i].used = 0; }
      rl->max_res = n;
   }
@@ -113,7 +113,7 @@ int _resource_list_insert(Resource_list_t *rl, Resource_t *r)
 
   //** Finally add it
   ibp_rid2str(r->rid, str);
-  assert((crid = strdup(str)) != NULL);
+  assert_result_not_null(crid = strdup(str));
   rl->res[n].crid = crid;
   rl->res[n].r = r;
   rl->res[n].used = 1;
@@ -185,8 +185,8 @@ Resource_list_t *create_resource_list(int n)
 
   tbx_type_malloc_clear(rl, Resource_list_t, 1);
   tbx_type_malloc_clear(rl->res, rl_ele_t, n);
-  assert(apr_pool_create(&(rl->mpool), NULL) == APR_SUCCESS);
-  assert((rl->table = apr_hash_make(rl->mpool)) != NULL);
+  assert_result(apr_pool_create(&(rl->mpool), NULL), APR_SUCCESS);
+  assert_result_not_null(rl->table = apr_hash_make(rl->mpool));
   apr_thread_mutex_create(&(rl->lock), APR_THREAD_MUTEX_DEFAULT, rl->mpool);
   rl->pending = tbx_stack_new();
 
