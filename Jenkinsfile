@@ -96,7 +96,7 @@ compile_map['scan-build'] = {
             ln -s \$(which ccache) clang
             PATH="\$(pwd):\$PATH"
             CCC_CC=\$(pwd)/clang scan-build --use-analyzer=\$(pwd)/clang cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DBUILD_TESTS=OFF -DCMAKE_INSTALL_PREFIX=local/ -DBUILD_APR=OFF -DENABLE_UPSTREAM_APR=ON -DENABLE_CCACHE=OFF ..
-            CCC_CC=\$(pwd)/clang scan-build --use-analyzer=\$(pwd)/clang -o clang-static-analyzer -v -v ${scan_checks} --keep-empty -maxloop 10 -stats make -j16 VERBOSE=1
+            CCC_CC=\$(pwd)/clang scan-build --use-analyzer=\$(pwd)/clang -o clang-static-analyzer -v -v ${scan_checks} --keep-empty -maxloop 10 -stats make -j16 VERBOSE=1 || true
             mv clang-static-analyzer/* ../clang-report"""
         }
         archive "clang-report/**"
