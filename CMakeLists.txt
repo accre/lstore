@@ -192,6 +192,9 @@ if(HAS_UNUSED_RESULT)
 endif()
 
 check_c_compiler_flag("-Wno-error=maybe-uninitialized" HAS_MAYBE_UNINITIALIZED)
+
+check_c_compiler_flag("-Wparentheses-equality" HAS_PARENTHESES_EQUALITY)
+
 if(HAS_MAYBE_UNINITIALIZED)
     set(LSTORE_FLAG_SUPPRESS_MAYBE_UNINITIALIZED "-Wno-error=maybe-uninitialized")
 endif()

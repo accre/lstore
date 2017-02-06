@@ -21,14 +21,17 @@
  * was modified for LStore and included here.
  */
 
-// Suppress these errors, just because we're inheriting them from APR
-#pragma GCC diagnostic ignored "-Wparentheses-equality"
-
 #include <apr_portable.h>
 #include <apr_ring.h>
 #include <apr_thread_cond.h>
 #include <assert.h>
 #include "tbx/thread_pool.h"
+#include "toolbox_config.h"
+
+#if HAS_PARENTHESES_EQUALITY
+    // Suppress these errors, just because we're inheriting them from APR
+#   pragma GCC diagnostic ignored "-Wparentheses-equality"
+#endif
 
 #if APR_HAS_THREADS
 
