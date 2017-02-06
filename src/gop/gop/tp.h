@@ -21,11 +21,11 @@ limitations under the License.
 #ifndef ACCRE_GOP_THREAD_POOL_H_INCLUDED
 #define ACCRE_GOP_THREAD_POOL_H_INCLUDED
 
-#include <apr_thread_pool.h>
 #include <gop/gop.h>
 #include <gop/visibility.h>
 #include <gop/types.h>
 #include <tbx/atomic_counter.h>
+#include <tbx/thread_pool.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -54,7 +54,7 @@ GOP_API gop_op_generic_t *gop_tp_op_new(gop_thread_pool_context_t *tpc, char *qu
 struct gop_thread_pool_context_t {
     char *name;
     gop_portal_context_t *pc;
-    apr_thread_pool_t *tp;
+    tbx_thread_pool_t *tp;
     tbx_stack_t **reserve_stack;
     int *overflow_running_depth;
     tbx_atomic_unit32_t n_overflow;

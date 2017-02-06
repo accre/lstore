@@ -16,14 +16,20 @@
  * permissions and limitations under the License.
  */
 
-#ifndef APU_THREAD_POOL_H
-#define APU_THREAD_POOL_H
+/*
+ * This thread pool implementation originated within the apr-util project. It
+ * was modified for LStore and included here.
+ */
 
-#include "apu.h"
-#include "apr_thread_proc.h"
+#ifndef TBX_THREAD_POOL_H
+#define TBX_THREAD_POOL_H
+
+#include <apu.h>
+#include <apr_thread_proc.h>
+#include <tbx/visibility.h>
 
 /**
- * @file apr_thread_pool.h
+ * @file tbx_thread_pool.h
  * @brief APR Thread Pool Library
 
  * @remarks This library implements a thread pool using apr_thread_t. A thread
@@ -55,17 +61,17 @@ extern "C" {
  */
 
 /** Opaque Thread Pool structure. */
-typedef struct apr_thread_pool apr_thread_pool_t;
+typedef struct tbx_thread_pool tbx_thread_pool_t;
 
-#define APR_THREAD_TASK_PRIORITY_LOWEST 0
-#define APR_THREAD_TASK_PRIORITY_LOW 63
-#define APR_THREAD_TASK_PRIORITY_NORMAL 127
-#define APR_THREAD_TASK_PRIORITY_HIGH 191
-#define APR_THREAD_TASK_PRIORITY_HIGHEST 255
+#define TBX_THREAD_TASK_PRIORITY_LOWEST 0
+#define TBX_THREAD_TASK_PRIORITY_LOW 63
+#define TBX_THREAD_TASK_PRIORITY_NORMAL 127
+#define TBX_THREAD_TASK_PRIORITY_HIGH 191
+#define TBX_THREAD_TASK_PRIORITY_HIGHEST 255
 
 /**
  * Create a thread pool
- * @param me The pointer in which to return the newly created apr_thread_pool
+ * @param me The pointer in which to return the newly created tbx_thread_pool
  * object, or NULL if thread pool creation fails.
  * @param init_threads The number of threads to be created initially, this number
  * will also be used as the initial value for the maximum number of idle threads.
@@ -74,7 +80,7 @@ typedef struct apr_thread_pool apr_thread_pool_t;
  * @return APR_SUCCESS if the thread pool was created successfully. Otherwise,
  * the error code.
  */
-APU_DECLARE(apr_status_t) apr_thread_pool_create(apr_thread_pool_t **me,
+TBX_API APU_DECLARE(apr_status_t) tbx_thread_pool_create(tbx_thread_pool_t **me,
                                                  apr_size_t init_threads,
                                                  apr_size_t max_threads,
                                                  apr_pool_t *pool);
@@ -83,7 +89,7 @@ APU_DECLARE(apr_status_t) apr_thread_pool_create(apr_thread_pool_t **me,
  * Destroy the thread pool and stop all the threads
  * @return APR_SUCCESS if all threads are stopped.
  */
-APU_DECLARE(apr_status_t) apr_thread_pool_destroy(apr_thread_pool_t *me);
+TBX_API APU_DECLARE(apr_status_t) tbx_thread_pool_destroy(tbx_thread_pool_t *me);
 
 /**
  * Schedule a task to the bottom of the tasks of same priority.
@@ -94,7 +100,7 @@ APU_DECLARE(apr_status_t) apr_thread_pool_destroy(apr_thread_pool_t *me);
  * @param owner Owner of this task.
  * @return APR_SUCCESS if the task had been scheduled successfully
  */
-APU_DECLARE(apr_status_t) apr_thread_pool_push(apr_thread_pool_t *me,
+TBX_API APU_DECLARE(apr_status_t) tbx_thread_pool_push(tbx_thread_pool_t *me,
                                                apr_thread_start_t func,
                                                void *param,
                                                apr_byte_t priority,
@@ -108,7 +114,7 @@ APU_DECLARE(apr_status_t) apr_thread_pool_push(apr_thread_pool_t *me,
  * @param owner Owner of this task.
  * @return APR_SUCCESS if the task had been scheduled successfully
  */
-APU_DECLARE(apr_status_t) apr_thread_pool_schedule(apr_thread_pool_t *me,
+TBX_API APU_DECLARE(apr_status_t) tbx_thread_pool_schedule(tbx_thread_pool_t *me,
                                                    apr_thread_start_t func,
                                                    void *param,
                                                    apr_interval_time_t time,
@@ -123,7 +129,7 @@ APU_DECLARE(apr_status_t) apr_thread_pool_schedule(apr_thread_pool_t *me,
  * @param owner Owner of this task.
  * @return APR_SUCCESS if the task had been scheduled successfully
  */
-APU_DECLARE(apr_status_t) apr_thread_pool_top(apr_thread_pool_t *me,
+TBX_API APU_DECLARE(apr_status_t) tbx_thread_pool_top(tbx_thread_pool_t *me,
                                               apr_thread_start_t func,
                                               void *param,
                                               apr_byte_t priority,
@@ -138,7 +144,7 @@ APU_DECLARE(apr_status_t) apr_thread_pool_top(apr_thread_pool_t *me,
  * @note The task function should not be calling cancel, otherwise the function
  * may get stuck forever. The function assert if it detect such a case.
  */
-APU_DECLARE(apr_status_t) apr_thread_pool_tasks_cancel(apr_thread_pool_t *me,
+TBX_API APU_DECLARE(apr_status_t) tbx_thread_pool_tasks_cancel(tbx_thread_pool_t *me,
                                                        void *owner);
 
 /**
@@ -146,35 +152,35 @@ APU_DECLARE(apr_status_t) apr_thread_pool_tasks_cancel(apr_thread_pool_t *me,
  * @param me The thread pool
  * @return Number of tasks in the queue
  */
-APU_DECLARE(apr_size_t) apr_thread_pool_tasks_count(apr_thread_pool_t *me);
+TBX_API APU_DECLARE(apr_size_t) tbx_thread_pool_tasks_count(tbx_thread_pool_t *me);
 
 /**
  * Get the current number of scheduled tasks waiting in the queue
  * @param me The thread pool
  * @return Number of scheduled tasks in the queue
  */
-APU_DECLARE(apr_size_t) apr_thread_pool_scheduled_tasks_count(apr_thread_pool_t *me);
+TBX_API APU_DECLARE(apr_size_t) tbx_thread_pool_scheduled_tasks_count(tbx_thread_pool_t *me);
 
 /**
  * Get the current number of threads
  * @param me The thread pool
  * @return Total number of threads
  */
-APU_DECLARE(apr_size_t) apr_thread_pool_threads_count(apr_thread_pool_t *me);
+TBX_API APU_DECLARE(apr_size_t) tbx_thread_pool_threads_count(tbx_thread_pool_t *me);
 
 /**
  * Get the current number of busy threads
  * @param me The thread pool
  * @return Number of busy threads
  */
-APU_DECLARE(apr_size_t) apr_thread_pool_busy_count(apr_thread_pool_t *me);
+TBX_API APU_DECLARE(apr_size_t) tbx_thread_pool_busy_count(tbx_thread_pool_t *me);
 
 /**
  * Get the current number of idle threads
  * @param me The thread pool
  * @return Number of idle threads
  */
-APU_DECLARE(apr_size_t) apr_thread_pool_idle_count(apr_thread_pool_t *me);
+TBX_API APU_DECLARE(apr_size_t) tbx_thread_pool_idle_count(tbx_thread_pool_t *me);
 
 /**
  * Access function for the maximum number of idle threads. Number of current
@@ -183,7 +189,7 @@ APU_DECLARE(apr_size_t) apr_thread_pool_idle_count(apr_thread_pool_t *me);
  * @param cnt The number
  * @return The number of threads that were stopped.
  */
-APU_DECLARE(apr_size_t) apr_thread_pool_idle_max_set(apr_thread_pool_t *me,
+TBX_API APU_DECLARE(apr_size_t) tbx_thread_pool_idle_max_set(tbx_thread_pool_t *me,
                                                      apr_size_t cnt);
 
 /**
@@ -191,39 +197,39 @@ APU_DECLARE(apr_size_t) apr_thread_pool_idle_max_set(apr_thread_pool_t *me,
  * @param me The thread pool
  * @return Number of tasks that have run
  */
-APU_DECLARE(apr_size_t)
-    apr_thread_pool_tasks_run_count(apr_thread_pool_t * me);
+TBX_API APU_DECLARE(apr_size_t)
+    tbx_thread_pool_tasks_run_count(tbx_thread_pool_t * me);
 
 /**
  * Get high water mark of the number of tasks waiting to run
  * @param me The thread pool
  * @return High water mark of tasks waiting to run
  */
-APU_DECLARE(apr_size_t)
-    apr_thread_pool_tasks_high_count(apr_thread_pool_t * me);
+TBX_API APU_DECLARE(apr_size_t)
+    tbx_thread_pool_tasks_high_count(tbx_thread_pool_t * me);
 
 /**
  * Get high water mark of the number of threads
  * @param me The thread pool
  * @return High water mark of threads in thread pool
  */
-APU_DECLARE(apr_size_t)
-    apr_thread_pool_threads_high_count(apr_thread_pool_t * me);
+TBX_API APU_DECLARE(apr_size_t)
+    tbx_thread_pool_threads_high_count(tbx_thread_pool_t * me);
 
 /**
  * Get the number of idle threads that were destroyed after timing out
  * @param me The thread pool
  * @return Number of idle threads that timed out
  */
-APU_DECLARE(apr_size_t)
-    apr_thread_pool_threads_idle_timeout_count(apr_thread_pool_t * me);
+TBX_API APU_DECLARE(apr_size_t)
+    tbx_thread_pool_threads_idle_timeout_count(tbx_thread_pool_t * me);
 
 /**
  * Access function for the maximum number of idle threads
  * @param me The thread pool
  * @return The current maximum number
  */
-APU_DECLARE(apr_size_t) apr_thread_pool_idle_max_get(apr_thread_pool_t *me);
+TBX_API APU_DECLARE(apr_size_t) tbx_thread_pool_idle_max_get(tbx_thread_pool_t *me);
 
 /**
  * Access function for the maximum number of threads.
@@ -231,7 +237,7 @@ APU_DECLARE(apr_size_t) apr_thread_pool_idle_max_get(apr_thread_pool_t *me);
  * @param cnt Number of threads
  * @return The original maximum number of threads
  */
-APU_DECLARE(apr_size_t) apr_thread_pool_thread_max_set(apr_thread_pool_t *me,
+TBX_API APU_DECLARE(apr_size_t) tbx_thread_pool_thread_max_set(tbx_thread_pool_t *me,
                                                        apr_size_t cnt);
 
 /**
@@ -244,8 +250,8 @@ APU_DECLARE(apr_size_t) apr_thread_pool_thread_max_set(apr_thread_pool_t *me,
  * till it reaps itself
  * @return The original maximum wait time
  */
-APU_DECLARE(apr_interval_time_t)
-    apr_thread_pool_idle_wait_set(apr_thread_pool_t * me,
+TBX_API APU_DECLARE(apr_interval_time_t)
+    tbx_thread_pool_idle_wait_set(tbx_thread_pool_t * me,
                                   apr_interval_time_t timeout);
 
 /**
@@ -254,15 +260,15 @@ APU_DECLARE(apr_interval_time_t)
  * @param me The thread pool
  * @return The current maximum wait time
  */
-APU_DECLARE(apr_interval_time_t)
-    apr_thread_pool_idle_wait_get(apr_thread_pool_t * me);
+TBX_API APU_DECLARE(apr_interval_time_t)
+    tbx_thread_pool_idle_wait_get(tbx_thread_pool_t * me);
 
 /**
  * Access function for the maximum number of threads
  * @param me The thread pool
  * @return The current maximum number
  */
-APU_DECLARE(apr_size_t) apr_thread_pool_thread_max_get(apr_thread_pool_t *me);
+TBX_API APU_DECLARE(apr_size_t) tbx_thread_pool_thread_max_get(tbx_thread_pool_t *me);
 
 /**
  * Access function for the threshold of tasks in queue to trigger a new thread.
@@ -270,7 +276,7 @@ APU_DECLARE(apr_size_t) apr_thread_pool_thread_max_get(apr_thread_pool_t *me);
  * @param cnt The new threshold
  * @return The original threshold
  */
-APU_DECLARE(apr_size_t) apr_thread_pool_threshold_set(apr_thread_pool_t *me,
+TBX_API APU_DECLARE(apr_size_t) tbx_thread_pool_threshold_set(tbx_thread_pool_t *me,
                                                       apr_size_t val);
 
 /**
@@ -278,7 +284,7 @@ APU_DECLARE(apr_size_t) apr_thread_pool_threshold_set(apr_thread_pool_t *me,
  * @param me The thread pool
  * @return The current threshold
  */
-APU_DECLARE(apr_size_t) apr_thread_pool_threshold_get(apr_thread_pool_t * me);
+TBX_API APU_DECLARE(apr_size_t) tbx_thread_pool_threshold_get(tbx_thread_pool_t * me);
 
 /**
  * Get owner of the task currently been executed by the thread.
@@ -286,7 +292,7 @@ APU_DECLARE(apr_size_t) apr_thread_pool_threshold_get(apr_thread_pool_t * me);
  * @param owner Pointer to receive owner of the task.
  * @return APR_SUCCESS if the owner is retrieved successfully
  */
-APU_DECLARE(apr_status_t) apr_thread_pool_task_owner_get(apr_thread_t *thd,
+TBX_API APU_DECLARE(apr_status_t) tbx_thread_pool_task_owner_get(apr_thread_t *thd,
                                                          void **owner);
 
 /** @} */
@@ -296,4 +302,4 @@ APU_DECLARE(apr_status_t) apr_thread_pool_task_owner_get(apr_thread_t *thd,
 #endif
 
 #endif /* APR_HAS_THREADS */
-#endif /* !APR_THREAD_POOL_H */
+#endif /* !tbx_thread_pool_H */

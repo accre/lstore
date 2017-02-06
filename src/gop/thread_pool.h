@@ -18,7 +18,7 @@
 //*************************************************************
 
 #include <tbx/atomic_counter.h>
-#include <apr_thread_pool.h>
+#include <tbx/thread_pool.h>
 
 #include "gop.h"
 #include "gop/visibility.h"
