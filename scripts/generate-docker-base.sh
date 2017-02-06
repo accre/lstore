@@ -76,6 +76,7 @@ for DISTRO in "${DISTROS[@]}"; do
                                     expat-devel
                                     fuse-devel
                                     leveldb-devel
+                                    libdb-dev
                                     libtool
                                     openssl-devel
                                     python
@@ -99,6 +100,7 @@ for DISTRO in "${DISTROS[@]}"; do
                                     git-core
                                     libapr1-dev
                                     libaprutil1-dev
+                                    libdb-dev
                                     libdistro-info-perl
                                     libexpat1-dev
                                     libfuse-dev

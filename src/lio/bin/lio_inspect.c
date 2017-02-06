@@ -42,6 +42,7 @@
 #include <tbx/iniparse.h>
 #include <tbx/list.h>
 #include <tbx/log.h>
+#include <tbx/type_malloc.h>
 #include <tbx/stack.h>
 #include <tbx/stdinarray_iter.h>
 #include <tbx/string_token.h>
@@ -73,6 +74,7 @@ char *select_mode_string[] = { "eq", "neq", "exists", "missing" };
 
 typedef struct {
     char *name;
+    char *log;
     double delta;
     double tolerance;
     int delta_mode;
@@ -89,6 +91,8 @@ typedef struct {
     char *set_key;
     char *set_success;
     char *set_fail;
+    char *log_name;
+    int  id;
     int  get_exnode;
     int  set_success_size;
     int  set_fail_size;
@@ -735,6 +739,8 @@ void check_pools(tbx_stack_t *pools, apr_thread_mutex_t *lock, int todo_mode, in
 gop_op_status_t inspect_task(void *arg, int id)
 {
     inspect_t *w = (inspect_t *)arg;
+    tbx_log_fd_t  *lfd;
+    FILE *fd;
     gop_op_status_t status;
     gop_op_generic_t *gop;
     lio_exnode_t *ex;
@@ -743,17 +749,32 @@ gop_op_status_t inspect_task(void *arg, int id)
     char *keys[7];
     char *val[7];
     char buf[32], ebuf[128];
-    char *dsegid, *ptr, *exnode2;
+    char *dsegid, *ptr, *exnode2, *msg;
     lio_segment_errors_t serr;
     int v_size[7], n, repair_mode;
     int whattodo, count, err;
     tbx_inip_file_t *ifd;
     lio_inspect_args_t args;
 
+    msg ="";
     whattodo = global_whattodo;
     keys[6] = NULL;
 
     log_printf(15, "inspecting fname=%s global_whattodo=%d\n", w->fname, global_whattodo);
+
+    if (w->log_name) {  //** Using individual log files
+        fd = fopen(w->log_name, "w+");
+        if (fd == NULL) {
+            info_printf(lio_ifd, 0, "ERROR: Unable to open log file: %s\n", w->log_name);
+            log_printf(0, "ERROR: Unable to open log file: %s\n", w->log_name);
+            return(gop_failure_status);
+        }
+
+        lfd = tbx_info_create(fd, INFO_HEADER_NONE, 20);
+    } else {
+        lfd = lio_ifd;
+        fd = NULL;
+    }
 
     if (w->get_exnode == 1) {
         count = - lio_gc->max_attr;
@@ -761,9 +782,9 @@ gop_op_status_t inspect_task(void *arg, int id)
     }
 
     if (w->exnode == NULL) {
-        info_printf(lio_ifd, 0, "ERROR  Failed with file %s (ftype=%d). No exnode!\n", w->fname, w->ftype);
-        free(w->fname);
-        return(gop_failure_status);
+        msg = " No exnode!";
+        status = gop_failure_status;
+        goto fini_1;
     }
 
     //** Kind of kludgy to load the ex twice but this is more of a prototype fn
@@ -771,10 +792,10 @@ gop_op_status_t inspect_task(void *arg, int id)
     dsegid = tbx_inip_get_string(ifd, "view", "default", NULL);
     tbx_inip_destroy(ifd);
     if (dsegid == NULL) {
-        info_printf(lio_ifd, 0, "ERROR  Failed with file %s (ftype=%d). No default segment!\n", w->fname, w->ftype);
+        msg = "No default segment!";
         free(w->exnode);
-        free(w->fname);
-        return(gop_failure_status);
+        status = gop_failure_status;
+        goto fini_1;
     }
 
     apr_thread_mutex_lock(lock);
@@ -785,11 +806,11 @@ gop_op_status_t inspect_task(void *arg, int id)
     tbx_log_flush();
     if (ptr != NULL) {
         apr_thread_mutex_unlock(lock);
-        info_printf(lio_ifd, 0, "Skipping file %s (ftype=%d). Already loaded/processed.\n", w->fname, w->ftype);
+        info_printf(lfd, 0, "Skipping file %s (ftype=%d). Already loaded/processed.\n", w->fname, w->ftype);
         free(dsegid);
         free(w->exnode);
-        free(w->fname);
-        return(gop_success_status);
+        status = gop_failure_status;
+        goto fini_1;
     }
     tbx_list_insert(seg_index, dsegid, dsegid);
     apr_thread_mutex_unlock(lock);
@@ -799,7 +820,7 @@ gop_op_status_t inspect_task(void *arg, int id)
     exp = lio_lio_exnode_exchange_text_parse(w->exnode);
     ex = lio_exnode_create();
     if (lio_exnode_deserialize(ex, exp, lio_gc->ess) != 0) {
-        info_printf(lio_ifd, 0, "ERROR  Failed with file %s (ftype=%d). Problem parsing exnode!\n", w->fname, w->ftype);
+        info_printf(lfd, 0, "ERROR  Failed with file %s (ftype=%d). Problem parsing exnode!\n", w->fname, w->ftype);
         status = gop_failure_status;
         goto finished;
     }
@@ -812,12 +833,12 @@ gop_op_status_t inspect_task(void *arg, int id)
     //** Get the default view to use
     seg = lio_exnode_default_get(ex);
     if (seg == NULL) {
-        info_printf(lio_ifd, 0, "ERROR  Failed with file %s (ftype=%d). No default segment!\n", w->fname, w->ftype);
+        info_printf(lfd, 0, "ERROR  Failed with file %s (ftype=%d). No default segment!\n", w->fname, w->ftype);
         status = gop_failure_status;
         goto finished;
     }
 
-    info_printf(lio_ifd, 1, XIDT ": Inspecting file %s\n", segment_id(seg), w->fname);
+    info_printf(lfd, 1, XIDT ": Inspecting file %s\n", segment_id(seg), w->fname);
 
     log_printf(15, "whattodo=%d\n", whattodo);
     //** Execute the inspection operation
@@ -827,10 +848,11 @@ gop_op_status_t inspect_task(void *arg, int id)
     args.query = query;
     args.qs = gop_opque_new();
     args.qf = gop_opque_new();
-    gop = segment_inspect(seg, lio_gc->da, lio_ifd, whattodo, bufsize, &args, lio_gc->timeout);
+    gop = segment_inspect(seg, lio_gc->da, lfd, whattodo, bufsize, &args, lio_gc->timeout);
     if (gop == NULL) {
         printf("File not found.\n");
-        return(gop_failure_status);
+        status = gop_failure_status;
+        goto finished;
     }
 
     log_printf(15, "fname=%s inspect_gid=%d whattodo=%d bufsize=" XOT "\n", w->fname, gop_id(gop), whattodo, bufsize);
@@ -852,24 +874,6 @@ gop_op_status_t inspect_task(void *arg, int id)
     case (INSPECT_SCAN_REPAIR):
     case (INSPECT_FULL_REPAIR):
         repair_mode= 1;
-    case (INSPECT_QUICK_CHECK):
-    case (INSPECT_SCAN_CHECK):
-    case (INSPECT_FULL_CHECK):
-    case (INSPECT_MIGRATE):
-        if (status.op_status == OP_STATE_SUCCESS) {
-            info_printf(lio_ifd, 0, "Success with file %s\n", w->fname);
-        } else {
-            info_printf(lio_ifd, 0, "ERROR: Failed with file %s  status=%d error_code=%d\n", w->fname, status.op_status, status.error_code);
-        }
-        break;
-    case (INSPECT_SOFT_ERRORS):
-    case (INSPECT_HARD_ERRORS):
-        if (status.op_status == OP_STATE_SUCCESS) {
-            info_printf(lio_ifd, 0, "Success with file %s\n", w->fname);
-        } else {
-            info_printf(lio_ifd, 0, "ERROR  Failed with file %s  status=%d error_code=%d\n", w->fname, status.op_status, status.error_code);
-        }
-        break;
     }
 
     //** NOTE:  if status.error_code & INSPECT_RESULT_FULL_CHECK that means the underlying segment inspect did a full byte level check.
@@ -904,7 +908,7 @@ gop_op_status_t inspect_task(void *arg, int id)
                 count = strcmp(exnode2, exp->text.text);
                 free(exnode2);
                 if (count != 0) {
-                    info_printf(lio_ifd, 0, "WARN Exnode changed during inspection for file %s (ftype=%d). Aborting exnode update\n", w->fname, w->ftype);
+                    info_printf(lfd, 0, "WARN Exnode changed during inspection for file %s (ftype=%d). Aborting exnode update\n", w->fname, w->ftype);
                 } else {
                     val[n] = exp_out->text.text;
                     v_size[n]= strlen(val[n]);
@@ -964,7 +968,7 @@ gop_op_status_t inspect_task(void *arg, int id)
                     count = strcmp(exnode2, exp->text.text);
                     free(exnode2);
                     if (count != 0) {
-                        info_printf(lio_ifd, 0, "WARN Exnode changed during inspection for file %s (ftype=%d). Aborting exnode update\n", w->fname, w->ftype);
+                        info_printf(lfd, 0, "WARN Exnode changed during inspection for file %s (ftype=%d). Aborting exnode update\n", w->fname, w->ftype);
                     } else {
                         val[n] = exp_out->text.text;
                         v_size[n]= strlen(val[n]);
@@ -1009,7 +1013,29 @@ finished:
 
     lio_exnode_destroy(ex);
 
+fini_1:
+
+    if (fd) {
+        snprintf(ebuf, sizeof(ebuf), "[%d] ", w->id);
+    } else {
+        ebuf[0] = 0;
+    }
+
+    if (status.op_status == OP_STATE_SUCCESS) {
+        info_printf(lfd, 0, "%sSuccess with file %s\n", ebuf, w->fname);
+        if (fd) info_printf(lio_ifd, 0, "%sSuccess with file %s\n", ebuf, w->fname);
+    } else {
+        info_printf(lfd, 0, "%sERROR: Failed with file %s status=%d error_code=%d%s\n", ebuf, w->fname, status.op_status, status.error_code, msg);
+        if (fd) info_printf(lio_ifd, 0, "%sERROR: Failed with file %s status=%d error_code=%d%s\n", ebuf, w->fname, status.op_status, status.error_code, msg);
+    }
+
     free(w->fname);
+
+    if (fd) {
+        tbx_info_destroy(lfd);
+        fclose(fd);
+        free(w->log_name);
+    }
 
     return(status);
 }
@@ -1019,10 +1045,10 @@ finished:
 
 int main(int argc, char **argv)
 {
-    int i, j,  start_option, rg_mode, ftype, prefix_len, err;
+    int i, j,  start_option, rg_mode, ftype, prefix_len, err, log_prefix_len;
     int force_repair, option;
     char ppbuf[32];
-    char *fname, *qstr, *path, *pool_cfg;
+    char *fname, *qstr, *path, *pool_cfg, *logname, *log_prefix;
     rs_query_t *rsq;
     apr_pool_t *mpool;
     gop_opque_t *q;
@@ -1053,6 +1079,8 @@ int main(int argc, char **argv)
     check_iter = 100;
     todo_mode = 0;
     select_mode = INT_MIN;
+    log_prefix = NULL;  //** Disable individual logs by default
+    log_prefix_len = 0;
 
     if (argc < 2) {
         printf("\n");
@@ -1061,6 +1089,9 @@ int main(int argc, char **argv)
         lio_print_options(stdout);
         lio_print_path_options(stdout);
         printf("    -rd recurse_depth  - Max recursion depth on directories. Defaults to %d\n", recurse_depth);
+        printf("    -1 log_prefix      - Have information logs for each file.\n");
+        printf("                         The log naming convention used will be ${log_prefix}.N where N corresponds\n");
+        printf("                         to the index provided in the Success/Failure line printed to the global information log.\n");
         printf("    -b bufsize         - Buffer size to use for *each* inspect. Units supported (Default=%s)\n", tbx_stk_pretty_print_int_with_scale(bufsize, ppbuf));
         printf("    -s                 - Report soft errors, like a missing RID in the config file but the allocation is good.\n");
         printf("                         The default is to ignore these type of errors.\n");
@@ -1136,6 +1167,11 @@ int main(int argc, char **argv)
         if (strcmp(argv[i], "-rd") == 0) { //** Recurse depth
             i++;
             recurse_depth = atoi(argv[i]);
+            i++;
+        } else if (strcmp(argv[i], "-1") == 0) {  //** Enable individual log files 
+            i++;
+            log_prefix = argv[i];
+            log_prefix_len = strlen(log_prefix);
             i++;
         } else if (strcmp(argv[i], "-b") == 0) {  //** Get the buffer size
             i++;
@@ -1476,6 +1512,15 @@ int main(int argc, char **argv)
                 w[slot].set_success_size = set_success_size;
                 w[slot].set_fail = set_fail;
                 w[slot].set_fail_size = set_fail_size;
+
+                if (log_prefix != NULL) {
+                    tbx_type_malloc(logname, char, log_prefix_len + 20);
+                    snprintf(logname, log_prefix_len + 20, "%s." XOT, log_prefix, iter);
+                    w[slot].id = iter;
+                    w[slot].log_name = logname;
+                } else {
+                    w[slot].log_name = NULL;
+                }
 
                 vals[0] = NULL;
                 fname = NULL;

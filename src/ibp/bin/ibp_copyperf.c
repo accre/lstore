@@ -33,6 +33,7 @@
 #include <tbx/fmttypes.h>
 #include <tbx/log.h>
 #include <tbx/network.h>
+#include <tbx/random.h>
 #include <tbx/transfer_buffer.h>
 #include <time.h>
 
@@ -329,6 +330,9 @@ int main(int argc, char **argv)
 
         return(-1);
     }
+
+    gop_init_opque_system();  //** Initialize GOP.  This needs to be done after any fork() call
+    tbx_random_startup();
 
     ic = ibp_context_create();  //** Initialize IBP
 

@@ -1,0 +1,200 @@
+# Function to try and find static versions of shared libraries
+macro(static_name full_name static)
+    get_filename_component(lname ${full_name} NAME_WE)
+    get_filename_component(path_name ${full_name} PATH)
+    if(WIN32)
+        string(SUBSTRING ${lname} 3 -1 bname)
+        set(file_name "${bname}.a")
+    elseif(APPLE)
+        set(file_name "${lname}.a")
+    elseif(UNIX)
+        set(file_name "${lname}.a")
+    else()
+        message(SEND_ERROR "Don't know how to mangle the static library name for platform")
+        set(file_name "ERROR")
+    endif()
+    if(EXISTS "${path_name}/${file_name}")
+        set(${static} "${path_name}/${file_name}")
+    else()
+        set(${static} ${full_name})
+    endif()
+endmacro(static_name)
+
+include(FeatureSummary)
+include(CheckIncludeFile)
+include(CMakeDependentOption)
+include(GNUInstallDirs)
+include(${CMAKE_SOURCE_DIR}/cmake/Date.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/CompilerVersion.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/CompilerFlags.cmake)
+
+# Accept config options
+set(LSTORE_PROJECT_VERSION "local" CACHE STRING "Version string for build")
+set(LSTORE_PROJECT_REVISION "1" CACHE STRING "Revision number for packaging")
+option(WANT_PACKAGE "Set options for package building, overriding all others"
+                    OFF)
+cmake_dependent_option(WANT_STATIC "Attempt to build and link statically" TRUE
+                                   "NOT WANT_PACKAGE" FALSE)
+cmake_dependent_option(WANT_DEBUG "Build with debug flags" TRUE
+                                   "NOT WANT_PACKAGE" FALSE)
+if(WANT_DEBUG)
+    set(CMAKE_BUILD_TYPE "Debug")
+else()
+    set(CMAKE_BUILD_TYPE "Release")
+endif(WANT_DEBUG)
+
+# Set preprocessor flags. TODO: This should be moved to config.h
+# TODO: This should be probably modified if we build on something different
+# http://www.gnu.org/software/libc/manual/html_node/Feature-Test-Macros.html
+# _REENTRANT - tells the std library to enable reentrant functions
+# _GNU_SOURCE - uses GNU (not POSIX) functions
+# _LARGEFILE64_SOURCE - Along with...
+# _FILE_OFFSET_BITS - Tell gcc that we want 64 bit offsets
+# TODO: Is this truely needed?
+# LINUX=2 - APR seems to want it
+
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -DLINUX=2 -D_REENTRANT -D_GNU_SOURCE -D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64")
+set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -O0")
+
+# Find and link universal deps
+find_package(OpenSSL REQUIRED)
+find_package(APR-ACCRE REQUIRED)
+find_package(APRUtil-ACCRE REQUIRED)
+find_package(ZLIB REQUIRED)
+
+include_directories(${OPENSSL_INCLUDE_DIR} ${APR_INCLUDE_DIR}
+                    ${APRUTIL_INCLUDE_DIR})
+list(APPEND LIBS ${OPENSSL_LIBRARIES} ${CRYPTO_LIBRARIES} ${APR_LIBRARY}
+                 ${APRUTIL_LIBRARY} ${ZLIB_LIBRARY} pthread m dl)
+if(NOT APPLE)
+    # OSX doesn't have/need librt
+    list(APPEND LIBS rt)
+endif(NOT APPLE)
+
+# gather the info needed to make ELF shared libraries provide version info when executed
+# based on https://polentino911.wordpress.com/2013/08/08/make-your-own-executable-shared-library-on-linux
+# Note: this logic probably has problems with some cross-compiling scenarios
+set(ELF_EXEC_LIB 0)
+if(UNIX AND NOT APPLE)
+    find_program(READELF_EXEC readelf)
+    if(DEFINED READELF_EXEC)
+        set(INTERPRETER_DESCRIPTION "Requesting program interpreter:")
+        execute_process(COMMAND ${READELF_EXEC} -l /bin/ls RESULT_VARIABLE return_value OUTPUT_VARIABLE result)
+	if(return_value)
+            message(STATUS "Unable to identify ELF interpreter")
+        else(return_value)
+            string(REGEX REPLACE ".*[[]${INTERPRETER_DESCRIPTION} ([/][^ ].+)[]].*" "\\1"
+                ELF_INTERPRETER_PATH "${result}")
+            message(STATUS "ELF interpreter is ${ELF_INTERPRETER_PATH}")
+            set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -e print_${LSTORE_PROJECT_NAME}_version_and_exit")
+            set(CMAKE_INSTALL_SO_NO_EXE FALSE)  # Default exec bit policy for sharedlibs varies by OS and distro, force bits to be set
+            set(ELF_EXEC_LIB 1)
+        endif(return_value)
+    endif(DEFINED READELF_EXEC)
+endif(UNIX AND NOT APPLE)
+
+# Make the version file.
+set(LSTORE_INC_VERSION_STRING "${LSTORE_PROJECT_NAME}: ${LSTORE_PROJECT_VERSION}")
+site_name(BUILD_HOST)
+Date(BUILD_DATE)
+CompilerVersion(COMPILER_VERSION)
+CompilerFlags(COMPILER_FLAGS)
+configure_file(${CMAKE_SOURCE_DIR}/${LSTORE_PROJECT_NAME}_version.c.in
+               ${CMAKE_SOURCE_DIR}/${LSTORE_PROJECT_NAME}_version.c)
+set(LSTORE_PROJECT_OBJS ${LSTORE_PROJECT_OBJS} ${LSTORE_PROJECT_NAME}_version.c)
+
+add_library(library SHARED ${LSTORE_PROJECT_OBJS})
+target_include_directories(library PUBLIC ${LSTORE_INCLUDE_PUBLIC})
+set_target_properties(library PROPERTIES
+        COMPILE_FLAGS "-DLSTORE_HACK_EXPORT")
+
+
+# Possibly override the library filename
+if(DEFINED LSTORE_LIBRARY_NAME)
+    set_target_properties(library PROPERTIES OUTPUT_NAME "${LSTORE_LIBRARY_NAME}")
+else()
+    set_target_properties(library PROPERTIES OUTPUT_NAME "${LSTORE_PROJECT_NAME}")
+endif(DEFINED LSTORE_LIBRARY_NAME)
+
+set_target_properties(library PROPERTIES CLEAN_DIRECT_OUTPUT 1)
+if(WANT_STATIC)
+    message(STATUS "Building a static library")
+    add_library(library-static STATIC ${LSTORE_PROJECT_OBJS})
+    set_target_properties(library-static PROPERTIES OUTPUT_NAME "${LSTORE_PROJECT_NAME}")
+    set_target_properties(library-static PROPERTIES CLEAN_DIRECT_OUTPUT 1)
+    SET(library_lib library-static)
+    if(DEFINED LSTORE_LIBRARY_NAME)
+        set_target_properties(library-static PROPERTIES OUTPUT_NAME "${LSTORE_LIBRARY_NAME}")
+    else()
+        set_target_properties(library-static PROPERTIES OUTPUT_NAME "${LSTORE_PROJECT_NAME}")
+    endif(DEFINED LSTORE_LIBRARY_NAME)
+    target_include_directories(library-static PUBLIC ${LSTORE_INCLUDE_PUBLIC})
+    set_target_properties(library-static PROPERTIES
+                    COMPILE_FLAGS "-DLSTORE_HACK_EXPORT")
+else()
+    message(STATUS "NOT building a static library")
+    SET(library_lib library)
+endif(WANT_STATIC)
+
+set(STATIC_LIBS)
+foreach(lib ${LIBS})
+    static_name(${lib} soname)
+    list(APPEND STATIC_LIBS "${soname}")
+endforeach()
+
+target_link_libraries(library LINK_PUBLIC ${LIBS})
+install(TARGETS library DESTINATION ${CMAKE_INSTALL_LIBDIR})
+install(FILES ${LSTORE_PROJECT_INCLUDES_OLD} DESTINATION include/${LSTORE_PROJECT_NAME}
+        COMPONENT devel)
+install(FILES ${LSTORE_PROJECT_INCLUDES}
+        DESTINATION include/${LSTORE_PROJECT_NAME}/${LSTORE_PROJECT_INCLUDES_NAMESPACE}
+        COMPONENT devel)
+
+if(WANT_STATIC)
+    install(TARGETS library-static DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT devel)
+endif(WANT_STATIC)
+
+#Add the exe build rules
+foreach(f ${LSTORE_PROJECT_EXECUTABLES})
+    add_executable(${f} ${f}.c)
+    set_target_properties(${f} PROPERTIES LINKER_LANGUAGE CXX)
+    if(WANT_STATIC)
+        target_link_libraries(${f} ${library_lib} ${STATIC_LIBS})
+    else()
+        target_link_libraries(${f} ${library_lib})
+    endif(WANT_STATIC)
+    target_include_directories(${f} PUBLIC ${LSTORE_INCLUDE_PUBLIC})
+    install(TARGETS ${f} DESTINATION ${CMAKE_INSTALL_BINDIR})
+endforeach(f)
+
+# Below is used for building packages
+set(CPACK_PACKAGE_NAME "accre-${LSTORE_PROJECT_NAME}")
+set(CPACK_PACKAGE_VERSION "${LSTORE_PROJECT_VERSION}")
+if(NOT DEFINED CPACK_GENERATOR)
+    set(CPACK_GENERATOR "RPM;DEB")
+endif(NOT DEFINED CPACK_GENERATOR)
+if(NOT DEFINED CPACK_SOURCE_GENERATOR)
+    set(CPACK_SOURCE_GENERATOR "RPM;DEB")
+endif(NOT DEFINED CPACK_SOURCE_GENERATOR)
+set(CPACK_PACKAGE_RELEASE ${LSTORE_PROJECT_REVISION})
+set(CPACK_PACKAGE_CONTACT "Andrew Melo or Alan Tackett")
+set(CPACK_PACKAGE_VENDOR "Advanced Computing Center for Research and Education, Vanderbilt University")
+set(CPACK_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}-${CPACK_PACKAGE_RELEASE}.${CMAKE_SYSTEM_PROCESSOR}")
+set(CPACK_SOURCE_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}-${CPACK_PACKAGE_RELEASE}.${CMAKE_SYSTEM_PROCESSOR}.source")
+set(CPACK_RPM_POST_INSTALL_SCRIPT_FILE "${CMAKE_SOURCE_DIR}/cmake/rpm-ldconfig.sh")
+set(CPACK_RPM_POST_UNINSTALL_SCRIPT_FILE "${CMAKE_SOURCE_DIR}/cmake/rpm-ldconfig.sh")
+
+# Component configuration - currently broken. :(
+set(CPACK_RPM_COMPONENT_INSTALL OFF)
+set(CPACK_DEB_COMPONENT_INSTALL OFF)
+set(CPACK_ARCHIVE_COMPONENT_INSTALL OFF)
+
+# Generator specific config
+set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)
+
+if(WANT_PACKAGE)
+    include(CPack)
+endif(WANT_PACKAGE)
+
+# Give the summary
+feature_summary(WHAT ALL)

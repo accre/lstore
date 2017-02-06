@@ -98,7 +98,7 @@ gop_op_status_t cp_lio2local(lio_cp_file_t *cp);
 int lio_cp_create_dir(tbx_list_t *table, lio_path_tuple_t tuple);
 
 void lc_object_remove_unused(int remove_all_unused);
-lio_path_tuple_t lio_path_auto_fuse_convert(lio_path_tuple_t *tuple);
+lio_path_tuple_t lio_path_auto_fuse_convert(lio_path_tuple_t *ltuple);
 int lio_parse_path(char *startpath, char **user, char **service, char **path);
 lio_fn_t *lio_core_create();
 void lio_core_destroy(lio_config_t *lio);

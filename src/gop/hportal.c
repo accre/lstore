@@ -185,7 +185,7 @@ void _reap_hportal(gop_host_portal_t *hp, int quick)
                 break;
             } else {  //** Got somone trying ot close it so wait a little bit
                 unlock_hc(hc);
-                apr_sleep(apr_time_from_msec(10));
+                apr_sleep(10*1000*APR_USEC_PER_SEC);
             }
         }
 

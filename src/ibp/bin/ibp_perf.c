@@ -38,6 +38,7 @@
 #include <tbx/fmttypes.h>
 #include <tbx/log.h>
 #include <tbx/network.h>
+#include <tbx/random.h>
 #include <tbx/transfer_buffer.h>
 #include <tbx/type_malloc.h>
 #include <time.h>
@@ -334,6 +335,7 @@ void write_allocs(ibp_capset_t *caps, int n, int asize, int block_size)
     if (err != 0) {
         printf("write_allocs: At least 1 error occured! * ibp_errno=%d * nfailed=%d\n", err, gop_opque_tasks_failed(q));
     }
+
     gop_opque_free(q, OP_DESTROY);
 
     free(buf);
@@ -720,6 +722,8 @@ int main(int argc, char **argv)
         return(-1);
     }
 
+    gop_init_opque_system();  //** Initialize GOP.  This needs to be done after any fork() call
+    tbx_random_startup();
     tbx_set_log_level(-1);
 
     ic = ibp_context_create();  //** Initialize IBP

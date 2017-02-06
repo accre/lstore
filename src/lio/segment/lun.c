@@ -159,7 +159,7 @@ void _slun_perform_remap(lio_segment_t *seg)
     while ((b = (seglun_row_t *)tbx_isl_next(&it)) != NULL) {
         for (i=0; i<s->n_devices; i++) {
             rs_translate_cap_set(s->rs, b->block[i].data->rid_key, b->block[i].data->cap);
-            log_printf(15, "i=%d rcap=%p\n", i, ds_get_cap(s->ds, b->block[i].data->cap, DS_CAP_READ));
+            log_printf(15, "i=%d rcap=%s\n", i, (char *)ds_get_cap(s->ds, b->block[i].data->cap, DS_CAP_READ));
         }
     }
     log_printf(5, "END\n");
@@ -512,8 +512,8 @@ int slun_row_size_check(lio_segment_t *seg, data_attr_t *da, seglun_row_t *b, in
         //** Verify the max_size >= cap_offset+len
         ds_get_probe(b->block[i].data->ds, probe[i], DS_PROBE_MAX_SIZE, &psize, sizeof(psize));
         seg_size = b->block[i].cap_offset + b->block_len;
-        log_printf(10, "seg=" XIDT " seg_offset=" XOT " i=%d rcap=%p  size=" XOT " should be block_len=" XOT "\n", segment_id(seg),
-                   b->seg_offset, i, ds_get_cap(b->block[i].data->ds, b->block[i].data->cap, DS_CAP_READ), psize, b->block_len);
+        log_printf(10, "seg=" XIDT " seg_offset=" XOT " i=%d rcap=%s  size=" XOT " should be block_len=" XOT "\n", segment_id(seg),
+                   b->seg_offset, i, (char *)ds_get_cap(b->block[i].data->ds, b->block[i].data->cap, DS_CAP_READ), psize, b->block_len);
         if (psize < seg_size) {
             if (psize == 0) {  //** Can't access the allocation
                 block_status[i] = 1;
@@ -572,8 +572,8 @@ int slun_row_pad_fix(lio_segment_t *seg, data_attr_t *da, seglun_row_t *b, int *
         log_printf(10, "seg=" XIDT " seg_offset=" XOT " i=%d block_status=%d\n", segment_id(seg), b->seg_offset, i, block_status[i]);
         if (block_status[i] == 2) {
             bstart = b->block[i].cap_offset + b->block[i].data->max_size - 1;
-            log_printf(10, "seg=" XIDT " seg_offset=" XOT " i=%d rcap=%p  padding byte=" XOT "\n", segment_id(seg),
-                       b->seg_offset, i, ds_get_cap(b->block[i].data->ds, b->block[i].data->cap, DS_CAP_READ), bstart);
+            log_printf(10, "seg=" XIDT " seg_offset=" XOT " i=%d rcap=%s  padding byte=" XOT "\n", segment_id(seg),
+                       b->seg_offset, i, (char *)ds_get_cap(b->block[i].data->ds, b->block[i].data->cap, DS_CAP_READ), bstart);
 
             gop = ds_write(b->block[i].data->ds, da, ds_get_cap(b->block[i].data->ds, b->block[i].data->cap, DS_CAP_WRITE), bstart, &tbuf, 0, 1, timeout);
             gop_set_myid(gop, i);
@@ -1625,7 +1625,7 @@ gop_op_status_t seglun_rw_op(lio_segment_t *seg, data_attr_t *da, lio_segment_rw
             log_printf(5, "bl=%p\n", bl);
             //** Check if we need to do any blacklisting
             if ((dt_status.error_code != -1234) && (bl != NULL)) { //** Skip the blacklisted ops
-                exec_time = gop_exec_time(gop);
+                exec_time = gop_time_exec(gop);
                 log_printf(5, "exec_time=" TT " min_time=" TT "\n", exec_time, bl->min_io_time);
                 if (exec_time > bl->min_io_time) { //** Make sure the exec time was long enough
                     dt = rwb_table[gop_get_myid(gop)].len;
@@ -1728,9 +1728,6 @@ gop_op_status_t seglun_rw_func(void *arg, int id)
     apr_time_t now;
     double dt;
 
-    log_printf(2, "sid=" XIDT " n_iov=%d off[0]=" XOT " len[0]=" XOT " max_size=" XOT " used_size=" XOT "\n",
-               segment_id(sw->seg), sw->n_iov, sw->iov[0].offset, sw->iov[0].len, s->total_size, s->used_size);
-
     //** Find the max extent;
     maxpos = 0;
     for (i=0; i<sw->n_iov; i++) {
@@ -1740,6 +1737,9 @@ gop_op_status_t seglun_rw_func(void *arg, int id)
 
 
     segment_lock(sw->seg);
+    log_printf(2, "sid=" XIDT " n_iov=%d off[0]=" XOT " len[0]=" XOT " max_size=" XOT " used_size=" XOT "\n",
+               segment_id(sw->seg), sw->n_iov, sw->iov[0].offset, sw->iov[0].len, s->total_size, s->used_size);
+
     if (maxpos >= s->total_size) { //** Need to grow it first
         if (sw->rw_mode == 1) { //** Write op so grow the file
             new_size = maxpos + s->n_devices * s->excess_block_size;
@@ -1932,7 +1932,7 @@ gop_op_status_t seglun_migrate_func(void *arg, int id)
         info_printf(si->fd, 1, XIDT ": Checking row: (" XOT ", " XOT ", " XOT ")   Stripe: (" XOT ", " XOT ")\n", segment_id(si->seg), b->seg_offset, b->seg_end, b->row_len, sstripe, estripe);
 
         for (i=0; i < s->n_devices; i++) {
-            info_printf(si->fd, 3, XIDT ":     dev=%i rcap=%p\n", segment_id(si->seg), i, ds_get_cap(s->ds, b->block[i].data->cap, DS_CAP_READ));
+            info_printf(si->fd, 3, XIDT ":     dev=%i rcap=%s\n", segment_id(si->seg), i, (char *)ds_get_cap(s->ds, b->block[i].data->cap, DS_CAP_READ));
         }
 
         for (i=0; i < s->n_devices; i++) block_status[i] = 0;
@@ -1951,7 +1951,7 @@ gop_op_status_t seglun_migrate_func(void *arg, int id)
             for (i=0; i < s->n_devices; i++) {
                 if (block_copy[i] != 0) {
                     if (block_status[i] == 0) {
-                        info_printf(si->fd, 2, XIDT ":     dev=%i moved to rcap=%p\n", segment_id(si->seg), i, ds_get_cap(s->ds, b->block[i].data->cap, DS_CAP_READ));
+                        info_printf(si->fd, 2, XIDT ":     dev=%i moved to rcap=%s\n", segment_id(si->seg), i, (char *)ds_get_cap(s->ds, b->block[i].data->cap, DS_CAP_READ));
                     } else if (block_status[i] == -103) { //** Can't opportunistically move the allocation so unflagg it
                         log_printf(0, "OPPORTUNISTIC mv failed i=%d\n", i);
                         block_status[i] = 0;
@@ -2091,7 +2091,7 @@ gop_op_status_t seglun_inspect_func(void *arg, int id)
             info_printf(si->fd, 1, "%s\n", info);
 
             for (i=0; i < s->n_devices; i++) {
-                if (block_status[i] != 0) info_printf(si->fd, 5, XIDT ":     dev=%i replacing rcap=%p\n", segment_id(si->seg), i, ds_get_cap(s->ds, b->block[i].data->cap, DS_CAP_READ));
+                if (block_status[i] != 0) info_printf(si->fd, 5, XIDT ":     dev=%i replacing rcap=%s\n", segment_id(si->seg), i, (char *)ds_get_cap(s->ds, b->block[i].data->cap, DS_CAP_READ));
             }
 
             if (max_lost < err) max_lost = err;
@@ -2104,7 +2104,7 @@ gop_op_status_t seglun_inspect_func(void *arg, int id)
                 err = slun_row_replace_fix(si->seg, si->da, b, block_status, s->n_devices, &args, si->timeout);
 
                 for (i=0; i < s->n_devices; i++) {
-                    if ((block_copy[i] != 0) && (block_status[i] == 0)) info_printf(si->fd, 2, XIDT ":     dev=%i replaced with rcap=%p\n", segment_id(si->seg), i, ds_get_cap(s->ds, b->block[i].data->cap, DS_CAP_READ));
+                    if ((block_copy[i] != 0) && (block_status[i] == 0)) info_printf(si->fd, 2, XIDT ":     dev=%i replaced with rcap=%s\n", segment_id(si->seg), i, (char *)ds_get_cap(s->ds, b->block[i].data->cap, DS_CAP_READ));
                 }
 
                 used = 0;
@@ -2143,7 +2143,7 @@ gop_op_status_t seglun_inspect_func(void *arg, int id)
                 for (i=0; i < s->n_devices; i++) {
                     if (block_copy[i] != 0) {
                         if (block_status[i] == 0) {
-                            info_printf(si->fd, 2, XIDT ":     dev=%i moved to rcap=%p\n", segment_id(si->seg), i, ds_get_cap(s->ds, b->block[i].data->cap, DS_CAP_READ));
+                            info_printf(si->fd, 2, XIDT ":     dev=%i moved to rcap=%s\n", segment_id(si->seg), i, (char *)ds_get_cap(s->ds, b->block[i].data->cap, DS_CAP_READ));
                         } else if (block_status[i] == -103) { //** Can't opportunistically move the allocation so unflagg it but I need to check for collisions later
                             log_printf(0, "OPPORTUNISTIC mv failed i=%d\n", i);
                             block_status[i] = 0;
@@ -2177,7 +2177,7 @@ gop_op_status_t seglun_inspect_func(void *arg, int id)
                     err = slun_row_replace_fix(si->seg, si->da, b, block_status, s->n_devices, &args, si->timeout);
 
                     for (i=0; i < s->n_devices; i++) {
-                        if ((block_copy[i] != 0) && (block_status[i] == 0)) info_printf(si->fd, 2, XIDT ":     dev=%i replaced rcap=%p\n", segment_id(si->seg), i, ds_get_cap(s->ds, b->block[i].data->cap, DS_CAP_READ));
+                        if ((block_copy[i] != 0) && (block_status[i] == 0)) info_printf(si->fd, 2, XIDT ":     dev=%i replaced rcap=%s\n", segment_id(si->seg), i, (char *)ds_get_cap(s->ds, b->block[i].data->cap, DS_CAP_READ));
                     }
                     used = 0;
                     tbx_append_printf(info, &used, bufsize, XIDT ":     slun_row_replace_fix:", segment_id(si->seg));

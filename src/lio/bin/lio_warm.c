@@ -55,7 +55,12 @@ typedef struct {
 } warm_hash_entry_t;
 
 typedef struct {
-    char **cap;
+   char *cap;
+   ex_off_t nbytes;
+} warm_cap_info_t;
+
+typedef struct {
+    warm_cap_info_t *cap;
     char *fname;
     char *exnode;
     lio_creds_t *creds;
@@ -132,7 +137,7 @@ gop_op_status_t gen_warm_task(void *arg, int id)
     gop_op_status_t status;
     gop_op_generic_t *gop;
     tbx_inip_file_t *fd;
-    int i, j, nfailed, state;
+    int i, nfailed, state;
     warm_hash_entry_t *wrid = NULL;
     char *etext;
     gop_opque_t *q;
@@ -144,7 +149,7 @@ gop_op_status_t gen_warm_task(void *arg, int id)
     q = gop_opque_new();
     opque_start_execution(q);
 
-    tbx_type_malloc(w->cap, char *, tbx_inip_group_count(fd));
+    tbx_type_malloc(w->cap, warm_cap_info_t, tbx_inip_group_count(fd));
     g = tbx_inip_group_first(fd);
     w->n = 0;
     while (g) {
@@ -163,16 +168,16 @@ gop_op_status_t gen_warm_task(void *arg, int id)
             }
 
             //** Get the data size and update the counts
-            wrid->nbytes += tbx_inip_get_integer(fd, tbx_inip_group_get(g), "max_size", 0);
+            w->cap[w->n].nbytes += tbx_inip_get_integer(fd, tbx_inip_group_get(g), "max_size", 0);
+            wrid->nbytes += w->cap[w->n].nbytes;
 
             //** Get the manage cap
             etext = tbx_inip_get_string(fd, tbx_inip_group_get(g), "manage_cap", "");
-            log_printf(1, "fname=%s cap[%d]=%s\n", w->fname, w->n, etext);
-            w->cap[w->n] = tbx_stk_unescape_text('\\', etext);
+            w->cap[w->n].cap = tbx_stk_unescape_text('\\', etext);
             free(etext);
 
             //** Add the task
-            gop = ibp_modify_alloc_gop(w->ic, w->cap[w->n], -1, dt, -1, lio_gc->timeout);
+            gop = ibp_modify_alloc_gop(w->ic, w->cap[w->n].cap, -1, dt, -1, lio_gc->timeout);
             gop_set_myid(gop, w->n);
             gop_set_private(gop, wrid);
             gop_opque_add(q, gop);
@@ -194,18 +199,17 @@ gop_op_status_t gen_warm_task(void *arg, int id)
     while ((gop = opque_waitany(q)) != NULL) {
         status = gop_get_status(gop);
         wrid = gop_get_private(gop);
+        i = gop_get_myid(gop);
 
-        wrid->dtime += gop_exec_time(gop);
+        wrid->dtime += gop_time_exec(gop);
         if (status.op_status == OP_STATE_SUCCESS) {
             wrid->good++;
-            warm_put_rid(db_rid, wrid->rid_key, w->inode, 0);
          } else {
             nfailed++;
             wrid->bad++;
-            warm_put_rid(db_rid, wrid->rid_key, w->inode, 0);
-            j = gop_get_myid(gop);
-            info_printf(lio_ifd, 1, "ERROR: %s  cap=%s\n", w->fname, w->cap[j]);
+            info_printf(lio_ifd, 1, "ERROR: %s  cap=%s\n", w->fname, w->cap[i].cap);
         }
+        warm_put_rid(db_rid, wrid->rid_key, w->inode, w->cap[i].nbytes, 0);
 
         gop_free(gop, OP_DESTROY);
     }
@@ -230,7 +234,7 @@ gop_op_status_t gen_warm_task(void *arg, int id)
 
     free(w->exnode);
     free(w->fname);
-    for (i=0; i<w->n; i++) free(w->cap[i]);
+    for (i=0; i<w->n; i++) free(w->cap[i].cap);
     free(w->cap);
 
     return(status);
@@ -265,7 +269,7 @@ int main(int argc, char **argv)
     void *piter;
     char ppbuf[128], ppbuf2[128], ppbuf3[128];
     lio_path_tuple_t tuple;
-    ex_off_t total, good, bad, nbytes, submitted, werr;
+    ex_off_t total, good, bad, nbytes, submitted, werr, missing_err;
     tbx_list_iter_t lit;
     tbx_stack_t *stack;
     int recurse_depth = 10000;
@@ -278,7 +282,7 @@ int main(int argc, char **argv)
         printf("lio_warm LIO_COMMON_OPTIONS [-db DB_output_dir] [-t tag.cfg] [-rd recurse_depth] [-dt time] [-sb] [-sf] [ -v] LIO_PATH_OPTIONS\n");
         lio_print_options(stdout);
         lio_print_path_options(stdout);
-        printf("    -db DB_output_dir   - Output Directory for the DBes. DEfault is %s\n", db_base);
+        printf("    -db DB_output_dir   - Output Directory for the DBes. Default is %s\n", db_base);
         printf("    -t tag.cfg         - INI file with RID to tag by printing any files usign the RIDs\n");
         printf("    -rd recurse_depth  - Max recursion depth on directories. Defaults to %d\n", recurse_depth);
         printf("    -dt time           - Duration time in sec.  Default is %d sec\n", dt);
@@ -354,7 +358,7 @@ int main(int argc, char **argv)
         w[j].hash = apr_hash_make(w[j].mpool);
     }
 
-    submitted = good = bad = werr = 0;
+    submitted = good = bad = werr = missing_err = 0;
 
     while ((path = tbx_stdinarray_iter_next(piter)) != NULL) {
         if (rg_mode == 0) {
@@ -377,7 +381,9 @@ int main(int argc, char **argv)
 
         slot = 0;
         while ((ftype = lio_next_object(tuple.lc, it, &fname, &prefix_len)) > 0) {
-            if (ftype & OS_OBJECT_SYMLINK) { //** We skip symlinked files
+            if ((ftype & OS_OBJECT_SYMLINK) || (v_size[0] == -1)) { //** We skip symlinked files and files missing exnodes
+                info_printf(lio_ifd, 0, "MISSING_EXNODE_ERROR for file %s\n", fname);
+                missing_err++;
                 free(fname);
                 for (i=-0; i<3; i++) {
                     if (v_size[i] > 0) free(vals[i]);
@@ -456,7 +462,7 @@ int main(int argc, char **argv)
     gop_opque_free(q, OP_DESTROY);
 
     info_printf(lio_ifd, 0, "--------------------------------------------------------------------\n");
-    info_printf(lio_ifd, 0, "Submitted: " XOT "   Success: " XOT "   Fail: " XOT "    Write Errors: " XOT "\n", submitted, good, bad, werr);
+    info_printf(lio_ifd, 0, "Submitted: " XOT "   Success: " XOT "   Fail: " XOT "    Write Errors: " XOT "   Missing Exnodes: " XOT "\n", submitted, good, bad, werr, missing_err);
     if (submitted != (good+bad)) {
         info_printf(lio_ifd, 0, "ERROR FAILED self-consistency check! Submitted != Success+Fail\n");
     }

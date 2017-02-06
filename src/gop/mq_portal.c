@@ -20,6 +20,7 @@
 #include <assert.h>
 #include <czmq.h>
 #include <gop/mq.h>
+#include <poll.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -1268,7 +1269,6 @@ int mq_conn_make(gop_mq_conn_t *c)
     while (gop_mq_send(c->sock, hb->address, MQ_DONTWAIT) != 0) {
         dt = apr_time_now() - start;
         dt = apr_time_sec(dt);
-
         if (dt > 5) {
             log_printf(0, "ERROR: Failed sending task to host=%s\n", c->pc->host);
             goto fail;
@@ -1352,7 +1352,7 @@ void *gop_mq_conn_thread(apr_thread_t *th, void *data)
 
     log_printf(5, "after conn_make err=%d\n", err);
 
-    write(c->cefd[1], &v, 1);
+    if (c->cefd[0] != -1) write(c->cefd[1], &v, 1);
 
     total_proc = total_incoming = 0;
     slow_exit = 0;
@@ -1436,6 +1436,15 @@ cleanup:
     log_printf(2, "END: uuid=%s total_incoming=" I64T " total_processed=" I64T " oops=%d\n", c->mq_uuid, total_incoming, total_proc, oops);
     tbx_log_flush();
 
+    //** Make sure the creating parent thread has read the pipe before tearing down
+    if (c->cefd[0] != -1) {
+        struct pollfd pfd2;
+        pfd2.fd = c->cefd[0]; pfd2.events = POLLIN;
+        while (poll(&pfd2, 1, 0) == 1) {
+            usleep(1000);
+        }
+    }
+
     gop_mq_conn_teardown(c);
 
     //** Update the conn_count, stats and place mysealf on the reaper stack
@@ -1481,7 +1490,11 @@ int mq_conn_create_actual(gop_mq_portal_t *p, int dowait)
     assert_result_not_null(c->heartbeat_lut = apr_hash_make(c->mpool));
 
     //** This is just used in the initial handshake
-    assert_result(pipe(c->cefd), 0);
+    if (dowait == 1) {
+        assert_result(pipe(c->cefd), 0);
+    } else {
+        c->cefd[0] = -1; c->cefd[1] = -1;
+    }
 
     //** Spawn the thread
     //** USe the parent mpool so I can do the teardown

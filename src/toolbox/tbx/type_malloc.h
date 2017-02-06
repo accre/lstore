@@ -20,6 +20,7 @@
 
 #include <assert.h>
 #include <stdlib.h>
+#include <tbx/assert_result.h>
 #include <tbx/visibility.h>
 
 // Preprocessor macros

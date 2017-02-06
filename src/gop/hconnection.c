@@ -477,10 +477,14 @@ void *hc_recv_thread(apr_thread_t *th, void *data)
             if (hc->curr_op != NULL) {  //** Start the timer if needed
                 hop = &(hc->curr_op->op->cmd);
                 if (tbx_atomic_get(hop->on_top) == 0) {
-                    lock_gop(hc->curr_op);  //** Have to lock the GOP here to prevent accidental reading
+                    //** Need to flip the order of these locks to avoid a deadlock
+                    gop_op_generic_t *curr_op = hc->curr_op;  //** Snag the top just to be safe
+                    unlock_hc(hc);      //** Release it and start re-acquiring them in the proper order
+                    lock_gop(curr_op);  //** Have to lock the GOP here to prevent accidental reading
+                    lock_hc(hc);
                     hop->start_time = apr_time_now();  //**Start the timer
                     hop->end_time = hop->start_time + hop->timeout;
-                    unlock_gop(hc->curr_op);
+                    unlock_gop(curr_op);
                     tbx_atomic_set(hop->on_top, 1);
                 }
             }
