@@ -36,8 +36,8 @@ extern "C" {
 __attribute__((unused)) static int open_warm_db(char *db_base, leveldb_t **inode_db, leveldb_t **rid_db);
 __attribute__((unused)) static int warm_put_inode(leveldb_t *db, ex_id_t inode, int state, int nfailed, char *name);
 __attribute__((unused)) static int warm_parse_inode(char *buf, int bufsize, int *state, int *nfailed, char **name);
-__attribute__((unused)) static int warm_put_rid(leveldb_t *db, char *rid, ex_id_t inode, int state);
-__attribute__((unused)) static int warm_parse_rid(char *buf, int bufsize, ex_id_t *inode, int *state);
+__attribute__((unused)) static int warm_put_rid(leveldb_t *db, char *rid, ex_id_t inode, ex_off_t nbytes, int state);
+__attribute__((unused)) static int warm_parse_rid(char *buf, int bufsize, ex_id_t *inode, ex_off_t *nbytes,int *state);
 __attribute__((unused)) static void create_warm_db(char *db_base, leveldb_t **inode_db, leveldb_t **rid_db);
 
 //*************************************************************************
@@ -102,12 +102,12 @@ static int warm_parse_inode(char *sbuf, int bufsize, int *state, int *nfailed, c
 // warm_put_rid - Puts an entry in the RID DB
 //*************************************************************************
 
-static int warm_put_rid(leveldb_t *db, char *rid, ex_id_t inode, int state)
+static int warm_put_rid(leveldb_t *db, char *rid, ex_id_t inode, ex_off_t nbytes, int state)
 {
     leveldb_writeoptions_t *wopt;
     char *errstr = NULL;
     char *key;
-    unsigned char buf[3*10];
+    unsigned char buf[4*16];
     int n, klen;
 
     klen = strlen(rid) + 1 + 20 + 1;
@@ -116,7 +116,8 @@ static int warm_put_rid(leveldb_t *db, char *rid, ex_id_t inode, int state)
 
     n = 0;
     n += tbx_zigzag_encode(0, buf + n);        //** Version
-    n += tbx_zigzag_encode(inode, buf + n);     //** Inode
+    n += tbx_zigzag_encode(inode, buf + n);    //** Inode
+    n += tbx_zigzag_encode(nbytes, buf + n);   //** size
     n += tbx_zigzag_encode(state, buf + n);    //** state
 
     wopt = leveldb_writeoptions_create();
@@ -138,7 +139,7 @@ static int warm_put_rid(leveldb_t *db, char *rid, ex_id_t inode, int state)
 //      On error 1 is returned and 0 is represents success
 //*************************************************************************
 
-static int warm_parse_rid(char *sbuf, int bufsize, ex_id_t *inode, int *state)
+static int warm_parse_rid(char *sbuf, int bufsize, ex_id_t *inode, ex_off_t *nbytes, int *state)
 {
     unsigned char *ubuf = (unsigned char *)sbuf;
     int64_t n64;
@@ -146,8 +147,9 @@ static int warm_parse_rid(char *sbuf, int bufsize, ex_id_t *inode, int *state)
 
     n = 0;
     n += tbx_zigzag_decode(ubuf + n, bufsize - n, &n64); version = n64;  //** Version
-    if (version  != 0) return(1);
+    if (version != 0) return(1);
     n += tbx_zigzag_decode(ubuf + n, bufsize - n, &n64); *inode = n64;   //** Inode
+    n += tbx_zigzag_decode(ubuf + n, bufsize - n, &n64); *nbytes = n64;  //** size
     n += tbx_zigzag_decode(ubuf + n, bufsize - n, &n64); *state = n64;   //** State
 
     return(0);

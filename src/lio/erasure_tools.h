@@ -64,16 +64,15 @@ struct lio_erasure_plan_t {    //** Contains the erasure parameters
     int (*decode_block)(lio_erasure_plan_t *plan, char **ptr, int block_size, int *erasures);  //**Routine for decoding the block
 };
 
-int nearest_prime(int w, int force_larger);
+int nearest_prime(int w, int which);
 int et_method_type(char *meth);
 lio_erasure_plan_t *et_new_plan(int method, long long int strip_size,
                             int data_strips, int parity_strips, int w, int packet_size, int base_unit);
 lio_erasure_plan_t *et_generate_plan(long long int file_size, int method,
                                  int data_strips, int parity_strips, int w, int packet_low, int packet_high);
 void et_destroy_plan(lio_erasure_plan_t *plan);
-int et_encode(lio_erasure_plan_t *plan, const char *fname, long long int foffset, const char *pname, long long int poffset, int buffersize);
-int et_decode(lio_erasure_plan_t *plan, long long int fsize, const char *fname, long long int foffset, const char *pname, long long int poffset, int buffersize, int *erasures);
-
+int et_encode(lio_erasure_plan_t *plan, const char *fname, long long int foffset, const char *pname, long long int poffset, int buffer_size);
+int et_decode(lio_erasure_plan_t *plan, long long int fsize, const char *fname, long long int foffset, const char *pname, long long int poffset, int buffer_size, int *erasures);
 
 #ifdef __cplusplus
 }

@@ -1206,6 +1206,9 @@ int env2args(char *env, int *argc, char ***eargv)
 //***************************************************************
 // lio_init - Initializes LIO for use.  argc and argv are
 //    modified by removing LIO common options.
+//
+//   NOTE: This should be called AFTER any fork() calls because
+//         it spawns new threads!
 //***************************************************************
 
 //char **t2 = NULL;
@@ -1236,6 +1239,7 @@ int lio_init(int *argc, char ***argvp)
 
     argv = *argvp;
 
+    gop_init_opque_system();  //** Initialize GOP.  This needs to be done after any fork() calls
     exnode_system_init();
 
     //** Create the lio object container
@@ -1438,6 +1442,8 @@ int lio_shutdown()
     _lc_mpool = NULL;
     _lc_lock  = NULL;
     exnode_system_destroy();
+
+    gop_shutdown();
 
     tbx_info_destroy(lio_ifd);
     lio_ifd = NULL;
