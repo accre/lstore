@@ -214,10 +214,10 @@ apr_time_t gop_get_end_time(gop_op_generic_t *gop, int *state)
         if (*state == 0) {
             end_time = apr_time_now() + apr_time_make(10,0);  //** Default to 10 secs while percolating to the top
         } else {  //** We're on top so use the official end time
-            end_time = cmd->end_time;
+            end_time = gop_time_end(gop);
         }
     } else {
-        end_time = cmd->end_time;  //** This won't change after we're on top so no need to lock
+        end_time = gop_time_end(gop);  //** This won't change after we're on top so no need to lock
     }
     return(end_time);
 }

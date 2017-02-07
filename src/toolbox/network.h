@@ -43,19 +43,6 @@ extern "C" {
 
 #define NETWORK_MON_MAX 10   //** Max number of ports allowed to monitor
 
-//** Return values for write_netstream_block **
-#define NS_OK       0   //** Command completed without errors
-#define NS_TIMEOUT -1   //** Didn't complete in given time
-#define NS_SOCKET  -2   //** Socket error
-#define NS_CHKSUM  -3   //** Chksum error
-
-#define NS_STATE_DISCONNECTED  0   //NetStream is disconnected
-#define NS_STATE_CONNECTED     1   //NS is connected with no ongoing transaction
-#define NS_STATE_ONGOING_READ  2   //NS is connected and has partially processed a command (in read state)
-#define NS_STATE_ONGOING_WRITE 3   //NS is connected and has partially processed a command (in write state)
-#define NS_STATE_READ_WRITE    4   //NS is connected and doing both Rread and write operations
-#define NS_STATE_IGNORE        5   //NS is connected but is in a holding pattern so don't monitor it for traffic
-
 typedef int ns_native_fd_t;
 
 typedef void net_sock_t;
@@ -76,7 +63,7 @@ struct tbx_ns_t {
     apr_thread_mutex_t *read_lock;    //Read lock
     apr_thread_mutex_t *write_lock;   //Write lock
     char peer_address[128];
-    struct ns_monitor_s *nm;      //This is only used for an accept call to tell which bind was accepted
+    tbx_ns_monitor_t *nm;      //This is only used for an accept call to tell which bind was accepted
     tbx_ns_chksum_t read_chksum;      //Read chksum
     tbx_ns_chksum_t write_chksum;     //Write chksum
     ns_native_fd_t (*native_fd)(net_sock_t *sock);  //** Native socket if supported
@@ -120,7 +107,6 @@ struct tbx_network_t {
 #define ns_native_fd(ns) (ns)->native_fd((ns)->sock)
 #define ns_native_enabled(ns) (ns)->native_fd
 #define ns_get_type(ns) (ns)->sock_type
-#define ns_get_monitor(ns) ns->nm
 #define nm_get_port(nm) nm->port
 #define nm_get_host(nm) nm->address
 
@@ -149,14 +135,10 @@ tbx_network_t *network_init();
 void network_close(tbx_network_t *net);
 void network_destroy(tbx_network_t *net);
 int sniff_connection(tbx_ns_t *ns);
-int write_netstream_block(tbx_ns_t *ns, apr_time_t end_time, tbx_tbuf_t *buffer, unsigned int boff, int bsize);
-int read_netstream_block(tbx_ns_t *ns, apr_time_t end_time, tbx_tbuf_t *buffer, unsigned int boff, int bsize);
-int readline_netstream(tbx_ns_t *ns, tbx_tbuf_t *buffer, unsigned int boff, int bsize, tbx_ns_timeout_t timeout);
 int accept_pending_connection(tbx_network_t *net, tbx_ns_t *ns);
 void get_net_timeout(tbx_ns_timeout_t tm, int *sec, int *us);
 void ns_init(tbx_ns_t *ns);
 void _ns_init(tbx_ns_t *ns, int incid);
-void wakeup_network(tbx_network_t *net);
 
 #ifdef __cplusplus
 }

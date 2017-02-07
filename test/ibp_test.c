@@ -710,16 +710,16 @@ void perform_manage_truncate_tests(ibp_depot_t *depot)
     if (err == 0) {
         if ((astat2.currentSize != bufsize) || (astat2.maxSize != asize)) {
             failed_tests++;
-            printf("perform_manage_truncate_test: ibp_manage FAILED with initial IBP_CHNG check of size/pos!\n");
-            printf("perform_manage_truncate_test: current size = " I64T " should be " I64T "\n", astat2.currentSize, bufsize);
-            printf("perform_manage_truncate_test:     max size = " I64T " should be " I64T "\n", astat2.maxSize, asize);
+            printf("perform_manage_truncate_test(1): ibp_manage FAILED with initial IBP_CHNG check of size/pos!\n");
+            printf("perform_manage_truncate_test(1): current size = " I64T " should be " I64T "\n", astat2.currentSize, bufsize);
+            printf("perform_manage_truncate_test(1):     max size = " I64T " should be " I64T "\n", astat2.maxSize, asize);
             abort();
         } else if ((dt > 10) || (dt < 0) || (astat2.attrib.reliability != IBP_HARD) || (astat2.attrib.type != IBP_BYTEARRAY)) {
             failed_tests++;
-            printf("perform_manage_truncate_test: ibp_manage FAILED with initial IBP_CHNG check!\n");
-            printf("perform_manage_truncate_test:     duration = %d should be ~%d\n", astat2.attrib.duration, astat.attrib.duration);
-            printf("perform_manage_truncate_test:     reliability = %d should be IBP_HARD (%d)\n", astat2.attrib.reliability, IBP_HARD);
-            printf("perform_manage_truncate_test:     type = %d should be IBP_BYTE_ARRAY (%d)\n", astat2.attrib.type, IBP_BYTEARRAY);
+            printf("perform_manage_truncate_test(1): ibp_manage FAILED with initial IBP_CHNG check! (dt=%d)\n", dt);
+            printf("perform_manage_truncate_test(1):     duration = %d should be ~%d\n", astat2.attrib.duration, astat.attrib.duration);
+            printf("perform_manage_truncate_test(1):     reliability = %d should be IBP_HARD (%d)\n", astat2.attrib.reliability, IBP_HARD);
+            printf("perform_manage_truncate_test(1):     type = %d should be IBP_BYTE_ARRAY (%d)\n", astat2.attrib.type, IBP_BYTEARRAY);
             abort();
         }
     } else {
@@ -750,16 +750,16 @@ void perform_manage_truncate_tests(ibp_depot_t *depot)
     if (err == 0) {
         if ((astat2.currentSize != bufsize) || (astat2.maxSize != (bufsize+1))) {
             failed_tests++;
-            printf("perform_manage_truncate_test: ibp_manage FAILED with 2nd IBP_CHNG check of size/pos!\n");
-            printf("perform_manage_truncate_test: current size = " I64T " should be " I64T "\n", astat2.currentSize, bufsize);
-            printf("perform_manage_truncate_test:     max size = " I64T " should be " I64T "\n", astat2.maxSize, asize);
+            printf("perform_manage_truncate_test(2): ibp_manage FAILED with 2nd IBP_CHNG check of size/pos!\n");
+            printf("perform_manage_truncate_test(2): current size = " I64T " should be " I64T "\n", astat2.currentSize, bufsize);
+            printf("perform_manage_truncate_test(2):     max size = " I64T " should be " I64T "\n", astat2.maxSize, asize);
             abort();
         } else if ((dt > 10) || (dt < 0) || (astat2.attrib.reliability != IBP_HARD) || (astat2.attrib.type != IBP_BYTEARRAY)) {
             failed_tests++;
-            printf("perform_manage_truncate_test: ibp_manage FAILED with initial IBP_CHNG check!\n");
-            printf("perform_manage_truncate_test:     duration = %d should be ~%d\n", astat2.attrib.duration, astat.attrib.duration);
-            printf("perform_manage_truncate_test:     reliability = %d should be IBP_HARD (%d)\n", astat2.attrib.reliability, IBP_HARD);
-            printf("perform_manage_truncate_test:     type = %d should be IBP_BYTE_ARRAY (%d)\n", astat2.attrib.type, IBP_BYTEARRAY);
+            printf("perform_manage_truncate_test(2): ibp_manage FAILED with initial IBP_CHNG check! (dt=%d)\n", dt);
+            printf("perform_manage_truncate_test(2):     duration = %d should be ~%d\n", astat2.attrib.duration, astat.attrib.duration);
+            printf("perform_manage_truncate_test(2):     reliability = %d should be IBP_HARD (%d)\n", astat2.attrib.reliability, IBP_HARD);
+            printf("perform_manage_truncate_test(2):     type = %d should be IBP_BYTE_ARRAY (%d)\n", astat2.attrib.type, IBP_BYTEARRAY);
             abort();
         }
     } else {
@@ -889,7 +889,7 @@ int my_next_block(tbx_tbuf_t *tb, size_t pos, tbx_tbuf_var_t *tbv)
         tbv->nbytes = 0;
     }
 
-    return(IBP_OK);
+    return(TBUFFER_OK);
 }
 
 //*********************************************************************************

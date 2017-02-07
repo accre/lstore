@@ -28,10 +28,10 @@
 #include "tbx/log.h"
 
 //***************************************************************************
-// pigeon_hole_iterator_init - Initializes an iterator
+// tbx_ph_iter_init - Initializes an iterator
 //***************************************************************************
 
-tbx_ph_iter_t pigeon_hole_iterator_init(tbx_ph_t *ph)
+tbx_ph_iter_t tbx_ph_iter_init(tbx_ph_t *ph)
 {
     tbx_ph_iter_t pi;
 
@@ -49,10 +49,10 @@ tbx_ph_iter_t pigeon_hole_iterator_init(tbx_ph_t *ph)
 }
 
 //***************************************************************************
-// pigeon_hole_iterator_next - Returns the next used hole
+// tbx_ph_next - Returns the next used hole
 //***************************************************************************
 
-int pigeon_hole_iterator_next(tbx_ph_iter_t *pi)
+int tbx_ph_next(tbx_ph_iter_t *pi)
 {
     int i, slot;
     tbx_ph_t *ph = pi->ph;
@@ -79,10 +79,10 @@ int pigeon_hole_iterator_next(tbx_ph_iter_t *pi)
 
 
 //***************************************************************************
-// pigeon_holes_used - Returns the number of holes used
+// tbx_ph_used - Returns the number of holes used
 //***************************************************************************
 
-int pigeon_holes_used(tbx_ph_t *ph)
+int tbx_ph_used(tbx_ph_t *ph)
 {
     int n;
 
@@ -94,10 +94,10 @@ int pigeon_holes_used(tbx_ph_t *ph)
 }
 
 //***************************************************************************
-// pigeon_holes_free - Returns the number of holes free
+// tbx_ph_free - Returns the number of holes free
 //***************************************************************************
 
-int pigeon_holes_free(tbx_ph_t *ph)
+int tbx_ph_free(tbx_ph_t *ph)
 {
     int n;
 
@@ -109,17 +109,17 @@ int pigeon_holes_free(tbx_ph_t *ph)
 }
 
 //***************************************************************************
-//  release_pigeon_hole - releases a pigeon hole for use
+//  tbx_ph_release - releases a pigeon hole for use
 //***************************************************************************
 
-void release_pigeon_hole(tbx_ph_t *ph, int slot)
+void tbx_ph_release(tbx_ph_t *ph, int slot)
 {
     apr_thread_mutex_lock(ph->lock);
-    log_printf(15, "release_pigeon_hole: ph=%s nholes=%d start nused=%d slot=%d\n", ph->name, ph->nholes, ph->nused, slot);
+    log_printf(15, "tbx_ph_release: ph=%s nholes=%d start nused=%d slot=%d\n", ph->name, ph->nholes, ph->nused, slot);
 
     //** Check for valid range
     if ((slot<0) || (slot>=ph->nholes)) {
-        log_printf(15, "release_pigeon_hole: ERROR ph=%p slot=%d is invalid\n", ph, slot);
+        log_printf(15, "tbx_ph_release: ERROR ph=%p slot=%d is invalid\n", ph, slot);
         apr_thread_mutex_unlock(ph->lock);
         return;
     }
@@ -128,23 +128,23 @@ void release_pigeon_hole(tbx_ph_t *ph, int slot)
         ph->hole[slot] = 0;
         ph->nused--;
     } else {
-        log_printf(15, "release_pigeon_hole: ERROR ph=%s nholes=%d nused=%d slot=%d is NOT USED!!!\n", ph->name, ph->nholes, ph->nused, slot);
+        log_printf(15, "tbx_ph_release: ERROR ph=%s nholes=%d nused=%d slot=%d is NOT USED!!!\n", ph->name, ph->nholes, ph->nused, slot);
 //abort();
     }
     apr_thread_mutex_unlock(ph->lock);
 }
 
 //***************************************************************************
-//  reserve_pigeon_hole - Allocates a pigeon hole
+//  tbx_ph_reserve - Allocates a pigeon hole
 //***************************************************************************
 
-int reserve_pigeon_hole(tbx_ph_t *ph)
+int tbx_ph_reserve(tbx_ph_t *ph)
 {
     int i, slot;
 
     apr_thread_mutex_lock(ph->lock);
 
-//log_printf(15, "reserve_pigeon_hole: ph=%s nholes=%d nused=%d\n", ph->name, ph->nholes, ph->nused);
+//log_printf(15, "tbx_ph_reserve: ph=%s nholes=%d nused=%d\n", ph->name, ph->nholes, ph->nused);
 
     if (ph->nused == ph->nholes) { //** All holes used so return
         apr_thread_mutex_unlock(ph->lock);
@@ -157,7 +157,7 @@ int reserve_pigeon_hole(tbx_ph_t *ph)
             ph->hole[slot] = 1;
             ph->nused++;
             ph->next_slot = (slot+1) % ph->nholes;
-            log_printf(10, "reserve_pigeon_hole: ph=%s slot=%d\n", ph->name, slot);
+            log_printf(10, "tbx_ph_reserve: ph=%s slot=%d\n", ph->name, slot);
             apr_thread_mutex_unlock(ph->lock);
             return(slot);
         }
@@ -172,10 +172,10 @@ int reserve_pigeon_hole(tbx_ph_t *ph)
 
 
 //***************************************************************************
-// destroy_pigeon_hole - Destroys a pigeon hole structure
+// tbx_ph_destroy - Destroys a pigeon hole structure
 //***************************************************************************
 
-void destroy_pigeon_hole(tbx_ph_t *ph)
+void tbx_ph_destroy(tbx_ph_t *ph)
 {
     apr_thread_mutex_destroy(ph->lock);
     apr_pool_destroy(ph->pool);
@@ -185,10 +185,10 @@ void destroy_pigeon_hole(tbx_ph_t *ph)
 }
 
 //***************************************************************************
-// new_pigeon_hole - Creates a new pigeon hole structure
+// tbx_ph_new - Creates a new pigeon hole structure
 //***************************************************************************
 
-tbx_ph_t *new_pigeon_hole(const char *name, int size)
+tbx_ph_t *tbx_ph_new(const char *name, int size)
 {
     tbx_ph_t *ph = (tbx_ph_t *)malloc(sizeof(tbx_ph_t));
     memset((void *)ph, 0, sizeof(tbx_ph_t));

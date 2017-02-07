@@ -1625,7 +1625,7 @@ gop_op_status_t seglun_rw_op(lio_segment_t *seg, data_attr_t *da, lio_segment_rw
             log_printf(5, "bl=%p\n", bl);
             //** Check if we need to do any blacklisting
             if ((dt_status.error_code != -1234) && (bl != NULL)) { //** Skip the blacklisted ops
-                exec_time = gop_exec_time(gop);
+                exec_time = gop_time_exec(gop);
                 log_printf(5, "exec_time=" TT " min_time=" TT "\n", exec_time, bl->min_io_time);
                 if (exec_time > bl->min_io_time) { //** Make sure the exec time was long enough
                     dt = rwb_table[gop_get_myid(gop)].len;
@@ -1728,9 +1728,6 @@ gop_op_status_t seglun_rw_func(void *arg, int id)
     apr_time_t now;
     double dt;
 
-    log_printf(2, "sid=" XIDT " n_iov=%d off[0]=" XOT " len[0]=" XOT " max_size=" XOT " used_size=" XOT "\n",
-               segment_id(sw->seg), sw->n_iov, sw->iov[0].offset, sw->iov[0].len, s->total_size, s->used_size);
-
     //** Find the max extent;
     maxpos = 0;
     for (i=0; i<sw->n_iov; i++) {
@@ -1740,6 +1737,9 @@ gop_op_status_t seglun_rw_func(void *arg, int id)
 
 
     segment_lock(sw->seg);
+    log_printf(2, "sid=" XIDT " n_iov=%d off[0]=" XOT " len[0]=" XOT " max_size=" XOT " used_size=" XOT "\n",
+               segment_id(sw->seg), sw->n_iov, sw->iov[0].offset, sw->iov[0].len, s->total_size, s->used_size);
+
     if (maxpos >= s->total_size) { //** Need to grow it first
         if (sw->rw_mode == 1) { //** Write op so grow the file
             new_size = maxpos + s->n_devices * s->excess_block_size;
