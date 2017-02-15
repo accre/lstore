@@ -201,7 +201,7 @@ gop_op_status_t gen_warm_task(void *arg, int id)
         wrid = gop_get_private(gop);
         i = gop_get_myid(gop);
 
-        wrid->dtime += gop_exec_time(gop);
+        wrid->dtime += gop_time_exec(gop);
         if (status.op_status == OP_STATE_SUCCESS) {
             wrid->good++;
          } else {

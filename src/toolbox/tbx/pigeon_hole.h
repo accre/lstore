@@ -29,6 +29,15 @@ typedef struct tbx_ph_iter_t tbx_ph_iter_t;
 
 typedef struct tbx_ph_t tbx_ph_t;
 
+TBX_API tbx_ph_t *tbx_ph_new(const char *name, int size);
+TBX_API void tbx_ph_destroy(tbx_ph_t *ph);
+TBX_API int tbx_ph_reserve(tbx_ph_t *ph);
+TBX_API tbx_ph_iter_t tbx_ph_iter_init(tbx_ph_t *ph);
+TBX_API int tbx_ph_next(tbx_ph_iter_t *pi);
+TBX_API int tbx_ph_used(tbx_ph_t *ph);
+TBX_API int tbx_ph_free(tbx_ph_t *ph);
+TBX_API void tbx_ph_release(tbx_ph_t *ph, int slot);
+
 #ifdef __cplusplus
 }
 #endif
