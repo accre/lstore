@@ -46,15 +46,6 @@ struct tbx_ph_iter_t {
     int found;
 };
 
-tbx_ph_iter_t pigeon_hole_iterator_init(tbx_ph_t *ph);
-int pigeon_hole_iterator_next(tbx_ph_iter_t *pi);
-int pigeon_holes_used(tbx_ph_t *ph);
-int pigeon_holes_free(tbx_ph_t *ph);
-void release_pigeon_hole(tbx_ph_t *ph, int slot);
-int reserve_pigeon_hole(tbx_ph_t *ph);
-void destroy_pigeon_hole(tbx_ph_t *ph);
-tbx_ph_t *new_pigeon_hole(const char *name, int size);
-
 #ifdef __cplusplus
 }
 #endif

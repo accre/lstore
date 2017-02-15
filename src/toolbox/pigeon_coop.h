@@ -51,9 +51,6 @@ struct tbx_pc_iter_t {
     tbx_ph_iter_t pi;
 };
 
-tbx_pc_iter_t pigeon_coop_iterator_init(struct tbx_pc_t *pc);
-tbx_pch_t pigeon_coop_iterator_next(struct tbx_pc_iter_t *pci);
-
 #ifdef __cplusplus
 }
 #endif

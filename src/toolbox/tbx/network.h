@@ -46,8 +46,25 @@ enum tbx_net_type_t {
     NS_TYPE_MAX,      //** Not an actual type just the number of different types
 };
 
+//** Return values for write_netstream_block **
+#define NS_OK       0   //** Command completed without errors
+#define NS_TIMEOUT -1   //** Didn't complete in given time
+#define NS_SOCKET  -2   //** Socket error
+#define NS_CHKSUM  -3   //** Chksum error
+
+#define NS_STATE_DISCONNECTED  0   //NetStream is disconnected
+#define NS_STATE_CONNECTED     1   //NS is connected with no ongoing transaction
+#define NS_STATE_ONGOING_READ  2   //NS is connected and has partially processed a command (in read state)
+#define NS_STATE_ONGOING_WRITE 3   //NS is connected and has partially processed a command (in write state)
+#define NS_STATE_READ_WRITE    4   //NS is connected and doing both Rread and write operations
+#define NS_STATE_IGNORE        5   //NS is connected but is in a holding pattern so don't monitor it for traffic
+
 // Functions
 TBX_API void  tbx_ns_setid(tbx_ns_t *ns, int id);
+TBX_API char *tbx_ns_peer_address_get(tbx_ns_t *ns);
+TBX_API char *tbx_nm_host_get(tbx_ns_monitor_t *nm);
+TBX_API int tbx_nm_port_get(tbx_ns_monitor_t *nm);
+TBX_API tbx_ns_monitor_t *tbx_ns_monitor_get(tbx_ns_t *ns);
 TBX_API int tbx_network_counter(tbx_network_t *net);
 TBX_API int tbx_ns_chksum_is_valid(tbx_ns_chksum_t *ncs);
 TBX_API void tbx_ns_chksum_del(tbx_ns_chksum_t *nsc);
@@ -74,6 +91,17 @@ TBX_API int tbx_ns_read(tbx_ns_t *ns, tbx_tbuf_t *buffer, unsigned int boff, int
 TBX_API int tbx_ns_readline_raw(tbx_ns_t *ns, tbx_tbuf_t *buffer, unsigned int boff, int size, tbx_ns_timeout_t timeout, int *status);
 TBX_API tbx_ns_timeout_t *tbx_ns_timeout_set(tbx_ns_timeout_t *tm, int sec, int us);
 TBX_API int tbx_ns_write(tbx_ns_t *ns, tbx_tbuf_t *buffer, unsigned int boff, int bsize, tbx_ns_timeout_t timeout);
+TBX_API int tbx_ns_write_block(tbx_ns_t *ns, apr_time_t end_time, tbx_tbuf_t *buffer, unsigned int boff, int bsize);
+TBX_API int tbx_ns_read_block(tbx_ns_t *ns, apr_time_t end_time, tbx_tbuf_t *buffer, unsigned int boff, int bsize);
+TBX_API int tbx_ns_readline(tbx_ns_t *ns, tbx_tbuf_t *buffer, unsigned int boff, int bsize, tbx_ns_timeout_t timeout);
+TBX_API void tbx_ns_timeout_get(tbx_ns_timeout_t tm, int *sec, int *us);
+TBX_API tbx_network_t *tbx_network_new();
+TBX_API void tbx_network_destroy(tbx_network_t *net);
+TBX_API void tbx_network_close(tbx_network_t *net);
+TBX_API int tbx_network_bind(tbx_network_t *net, tbx_ns_t *ns, char *address, int port, int max_pending);
+TBX_API int tbx_network_wait_for_connection(tbx_network_t *net, int max_wait);
+TBX_API int tbx_network_accept_pending_connection(tbx_network_t *net, tbx_ns_t *ns);
+TBX_API void tbx_network_wakeup(tbx_network_t *net);
 
 // Stubs for unused code
 // FIXME: Delete these
