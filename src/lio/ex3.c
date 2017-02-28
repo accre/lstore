@@ -337,11 +337,17 @@ ex_id_t exnode_exchange_get_default_view_id(lio_exnode_exchange_t *exp)
 lio_exnode_exchange_t *lio_lio_exnode_exchange_text_parse(char *text)
 {
     lio_exnode_exchange_t *exp;
+    tbx_inip_file_t *ifd;
+
+    ifd = tbx_inip_string_read(text);
+    if (ifd == NULL) {
+        log_printf(0, "ERROR: tbx_inip_string_read() returned NULL!\n"); tbx_log_flush();
+	return(NULL);
+    }
 
     exp = lio_exnode_exchange_create(EX_TEXT);
-
     exp->text.text = text;
-    exp->text.fd = tbx_inip_string_read(text);
+    exp->text.fd = ifd;
 
     return(exp);
 }
