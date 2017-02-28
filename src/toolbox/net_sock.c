@@ -290,6 +290,7 @@ int sock_connect(net_sock_t *nsock, const char *hostname, int port, tbx_ns_timeo
     tbx_net_sock_t *sock = (tbx_net_sock_t *)nsock;
     tbx_ns_timeout_t tm;
     struct sockaddr_in sa;
+    int flags;
 
     if (sock == NULL) return(-1);   //** If NULL exit
 
@@ -318,8 +319,13 @@ log_printf(20, "hostname=%s:%d sock->fd=%d\n", hostname, port, sock->fd);
 
     if (connect(sock->fd, &sa, sizeof(sa)) == -1) goto fail;
 
+    flags = fcntl(sock->fd, F_GETFL, 0);
+    if (flags < 0) goto fail;
+    flags = flags|O_NONBLOCK;
+    if (fcntl(sock->fd, F_SETFL, flags) == -1) goto fail;
+
     tbx_ns_timeout_set(&tm, 0, SOCK_DEFAULT_TIMEOUT);
-    sock_timeout_set(sock, tm);
+    sock_timeout_set(sock, tm);  //** Technically this is overkill since we have non-blocking I/O with timed waits before ops.
 
     log_printf(20, "SUCCESS host=%s\n", hostname);
     return(0);
