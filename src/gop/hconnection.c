@@ -112,10 +112,7 @@ void close_hc(gop_host_connection_t *hc, int quick)
 
     if (quick == 1) {  //** Quick shutdown.  Don't wait and clean up.
         lock_hc(hc);
-        while (hc->send_down == 0) {
-            apr_thread_cond_wait(hc->send_cond, hc->lock);
-        }
-        hc->closing = 2;  //** Flag a repaer that I'm done with it
+        hc->closing = 2;  //** Flag a reaper that I'm done with it
         unlock_hc(hc);
         return;
     }
