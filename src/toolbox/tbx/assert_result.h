@@ -27,6 +27,7 @@
         if (!(expr)) {                                          \
             log_printf(-1, "Fatal Error in %s at %s:%d\n",      \
                             __FUNCTION__, __FILE__, __LINE__);  \
+            tbx_log_flush();                                    \
             abort();                                            \
             exit(EXIT_FAILURE);                                 \
         }                                                       \
@@ -37,6 +38,7 @@
         if ((expr) != 0) {                                      \
             log_printf(0, "Warning in %s at %s:%d\n",           \
                             __FUNCTION__, __FILE__, __LINE__);  \
+            tbx_log_flush();                                    \
         }                                                       \
     } while(0)
 
