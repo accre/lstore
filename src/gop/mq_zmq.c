@@ -22,7 +22,6 @@
 
 #include <apr_signal.h>
 #include <assert.h>
-#include <czmq.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -45,7 +44,7 @@
 
 void zero_native_destroy(gop_mq_socket_context_t *ctx, gop_mq_socket_t *socket)
 {
-    zsocket_destroy((zctx_t *)ctx->arg, socket->arg);
+    zmq_close(socket->arg);
     free(socket);
 }
 
@@ -55,16 +54,18 @@ int zero_native_bind(gop_mq_socket_t *socket, const char *format, ...)
 {
     va_list args;
     int err, n;
-    char id[255];
+    char id[256];
 
     if (socket->type != MQ_PAIR) {
         va_start(args, format);
         snprintf(id, 255, format, args);
-        zsocket_set_identity(socket->arg, id);
+        zmq_setsockopt(socket->arg, ZMQ_IDENTITY, id, strlen(id)+1);
     } else {
         id[0] = 0;
     }
-    err = zsocket_bind(socket->arg, format, args);
+
+    snprintf(id, 255, format, args);
+    err = zmq_bind(socket->arg, id);
     n = errno;
     va_end(args);
 
@@ -79,20 +80,24 @@ int zero_native_connect(gop_mq_socket_t *socket, const char *format, ...)
 {
     va_list args;
     int err;
-    char buf[255], id[255];
+    char buf[255], id[256];
 
-    if (socket->type != MQ_PAIR) zsocket_set_router_mandatory(socket->arg, 1);
+    if (socket->type != MQ_PAIR) {
+        int i = 1;
+        zmq_setsockopt(socket->arg, ZMQ_ROUTER_MANDATORY, &i, sizeof(i));
+    }
 
     va_start(args, format);
     //** Set the ID
     if (socket->type != MQ_PAIR) {
         snprintf(buf, 255, format, args);
         snprintf(id, 255, "%s:" I64T , buf, tbx_random_get_int64(1, 1000000));
-        zsocket_set_identity(socket->arg, id);
+        zmq_setsockopt(socket->arg, ZMQ_IDENTITY, id, strlen(id)+1);
         log_printf(4, "Unique hostname created = %s\n", id);
     }
 
-    err = zsocket_connect(socket->arg, format, args);
+    snprintf(id, 255, format, args);
+    err = zmq_connect(socket->arg, id);
     va_end(args);
 
     return(err);
@@ -104,9 +109,12 @@ int zero_native_disconnect(gop_mq_socket_t *socket, const char *format, ...)
 {
     va_list args;
     int err;
+    char id[256];
 
     va_start(args, format);
-    err = zsocket_disconnect(socket->arg, format, args);
+    
+    snprintf(id, 255, format, args);
+    err = zmq_disconnect(socket->arg, id);
     va_end(args);
 
     return(err);
@@ -229,14 +237,15 @@ int zero_native_recv(gop_mq_socket_t *socket, mq_msg_t *msg, int flags)
 gop_mq_socket_t *zero_create_native_socket(gop_mq_socket_context_t *ctx, int stype)
 {
     gop_mq_socket_t *s;
+    int i;
 
     tbx_type_malloc_clear(s, gop_mq_socket_t, 1);
 
     s->type = stype;
-    s->arg = zsocket_new((zctx_t *)ctx->arg, stype);
-    zsocket_set_linger(s->arg, 0);
-    zsocket_set_sndhwm(s->arg, 100000);
-    zsocket_set_rcvhwm(s->arg, 100000);
+    s->arg = zmq_socket(ctx->arg, stype);
+    i = 0; zmq_setsockopt(s->arg, ZMQ_LINGER, &i, sizeof(i));
+    i = 100000; zmq_setsockopt(s->arg, ZMQ_SNDHWM, &i, sizeof(i));
+    i = 100000; zmq_setsockopt(s->arg, ZMQ_RCVHWM, &i, sizeof(i));
     s->destroy = zero_native_destroy;
     s->bind = zero_native_bind;
     s->connect = zero_native_connect;
@@ -276,15 +285,16 @@ int zero_trace_router_recv(gop_mq_socket_t *socket, mq_msg_t *msg, int flags)
 gop_mq_socket_t *zero_create_trace_router_socket(gop_mq_socket_context_t *ctx)
 {
     gop_mq_socket_t *s;
+    int i;
 
     tbx_type_malloc_clear(s, gop_mq_socket_t, 1);
 
     s->type = MQ_TRACE_ROUTER;
-    s->arg = zsocket_new((zctx_t *)ctx->arg, ZMQ_ROUTER);
-   FATAL_UNLESS(s->arg);
-    zsocket_set_linger(s->arg, 0);
-    zsocket_set_sndhwm(s->arg, 100000);
-    zsocket_set_rcvhwm(s->arg, 100000);
+    s->arg = zmq_socket(ctx->arg, ZMQ_ROUTER);
+    FATAL_UNLESS(s->arg);
+    i = 0; zmq_setsockopt(s->arg, ZMQ_LINGER, &i, sizeof(i));
+    i = 100000; zmq_setsockopt(s->arg, ZMQ_SNDHWM, &i, sizeof(i));
+    i = 100000; zmq_setsockopt(s->arg, ZMQ_RCVHWM, &i, sizeof(i));
     s->destroy = zero_native_destroy;
     s->bind = zero_native_bind;
     s->connect = zero_native_connect;
@@ -323,14 +333,15 @@ int zero_simple_router_recv(gop_mq_socket_t *socket, mq_msg_t *msg, int flags)
 gop_mq_socket_t *zero_create_simple_router_socket(gop_mq_socket_context_t *ctx)
 {
     gop_mq_socket_t *s;
+    int i;
 
     tbx_type_malloc_clear(s, gop_mq_socket_t, 1);
 
     s->type = MQ_SIMPLE_ROUTER;
-    s->arg = zsocket_new((zctx_t *)ctx->arg, ZMQ_ROUTER);
-    zsocket_set_linger(s->arg, 0);
-    zsocket_set_sndhwm(s->arg, 100000);
-    zsocket_set_rcvhwm(s->arg, 100000);
+    s->arg = zmq_socket(ctx->arg, ZMQ_ROUTER);
+    i = 0; zmq_setsockopt(s->arg, ZMQ_LINGER, &i, sizeof(i));
+    i = 100000; zmq_setsockopt(s->arg, ZMQ_SNDHWM, &i, sizeof(i));
+    i = 100000; zmq_setsockopt(s->arg, ZMQ_RCVHWM, &i, sizeof(i));
     s->destroy = zero_native_destroy;
     s->bind = zero_native_bind;
     s->connect = zero_native_connect;
@@ -380,7 +391,7 @@ void zero_socket_context_destroy(gop_mq_socket_context_t *ctx)
 {
     //** Kludge to get around race issues in 0mq when closing sockets manually vs letting
     //** zctx_destroy() close them
-    zctx_destroy((zctx_t **)&(ctx->arg));
+    zmq_ctx_destroy(ctx->arg);
     free(ctx);
 }
 
@@ -394,13 +405,13 @@ gop_mq_socket_context_t *gop_zero_socket_context_new()
 
     tbx_type_malloc_clear(ctx, gop_mq_socket_context_t, 1);
 
-    ctx->arg = zctx_new();
-   FATAL_UNLESS(ctx->arg != NULL);
-    zctx_set_linger(ctx->arg, 0);
+    ctx->arg = zmq_ctx_new();
+    FATAL_UNLESS(ctx->arg != NULL);
+    zmq_ctx_set(ctx->arg, ZMQ_BLOCKY, 0);
     ctx->create_socket = zero_create_socket;
     ctx->destroy = zero_socket_context_destroy;
 
-    //** Disable the CZMQ SIGINT/SIGTERM signale handler
+    //** Disable the 0mq SIGINT/SIGTERM signale handler
     apr_signal(SIGINT, NULL);
     apr_signal(SIGTERM, NULL);
 
