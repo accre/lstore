@@ -1,9 +1,6 @@
 # Source: http://svn.trolocsis.com/repos/projects/templates/apr/build/FindAPR.cmake
 # Locate APR include paths and libraries
 
-# Options
-# APR_USE_SYSTEM - if true, use system and not the "-ACCRE" version of APR
-
 # This module defines
 # APR_INCLUDES, where to find apr.h, etc.
 # APR_LIBS, linker switches to use with ld to link against APR
@@ -18,22 +15,11 @@ if(NOT (${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION} LESS 3.1))
 	cmake_policy(SET CMP0054 OLD)
 endif()
 
-if(APR_USE_SYSTEM)
-    message(STATUS "Using non -ACCRE version of APR")
-    set(__APR_SUFFIX_UPPER)
-    set(__APR_SUFFIX_LOWER)
-else()
-    message(STATUS "Using -ACCRE version of APR")
-    set(__APR_SUFFIX_UPPER "-ACCRE")
-    set(__APR_SUFFIX_LOWER "-accre")
-endif()
+set(APR_FOUND FALSE)
 
-set(APR-ACCRE_FOUND FALSE)
-find_program(APR_CONFIG_EXECUTABLE "apr${__APR_SUFFIX_UPPER}-1-config")
+find_program(APR_CONFIG_EXECUTABLE "apr-1-config")
 if(${APR_CONFIG_EXECUTABLE} STREQUAL "APR_CONFIG_EXECUTABLE-NOTFOUND")
     cmake_policy(POP)
-    unset(__APR_SUFFIX_UPPER)
-    unset(__APR_SUFFIX_LOWER)
     return()
 endif()
 mark_as_advanced(APR_CONFIG_EXECUTABLE)
@@ -78,15 +64,13 @@ _apr_invoke(APR_VERSION   ""        --version)
 list(GET APR_LIBTOOL 0 APR_LIBTOOL_ARG0)
 
 get_filename_component(APR_LIBTOOL_BASE ${APR_LIBTOOL_ARG0} PATH ) 
-FIND_LIBRARY(APR_LIBRARY NAMES "apr${__APR_SUFFIX_LOWER}-1" "apr${__APR_SUFFIX_UPPER}-1" PATHS ${APR_LIBTOOL_BASE})
+FIND_LIBRARY(APR_LIBRARY NAMES "apr-1" "apr-1" PATHS ${APR_LIBTOOL_BASE})
 
 # compatibility, allow this CMake module to work with the various CMakeList.txt files
 set(APR_INCLUDE_DIR "${APR_INCLUDES}")
 if(APR_LIBRARY AND APR_INCLUDES)
-    set(APR-ACCRE_FOUND 1)
+    set(APR_FOUND 1)
 endif()
 INCLUDE(FindPackageHandleStandardArgs)
 FIND_PACKAGE_HANDLE_STANDARD_ARGS(APR DEFAULT_MSG APR_INCLUDES APR_LIBRARY APR_LIBS APR_VERSION)
 cmake_policy(POP)
-unset(__APR_SUFFIX_UPPER)
-unset(__APR_SUFFIX_LOWER)
