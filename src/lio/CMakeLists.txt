@@ -27,16 +27,15 @@ if(NOT USE_SUPERBUILD)
     find_package(GOP REQUIRED)
     find_package(IBP REQUIRED)
     find_package(ZMQ REQUIRED)
-    find_package(CZMQ REQUIRED)
     find_package(FUSE REQUIRED)
     find_package(LevelDB REQUIRED)
     include_directories(
         ${JERASURE_INCLUDE_DIR} ${TOOLBOX_INCLUDE_DIR} ${GOP_INCLUDE_DIR}
-        ${IBP_INCLUDE_DIR} ${FUSE_INCLUDE_DIR} ${CZMQ_INCLUDE_DIR} ${LEVELDB_INCLUDE_DIR}
+        ${IBP_INCLUDE_DIR} ${FUSE_INCLUDE_DIR} ${LEVELDB_INCLUDE_DIR}
     )
 
     list(APPEND LIBS
-        ${IBP_LIBRARY} ${GOP_LIBRARY} ${CZMQ_LIBRARY} ${TOOLBOX_LIBRARY}
+        ${IBP_LIBRARY} ${GOP_LIBRARY} ${TOOLBOX_LIBRARY}
         ${JERASURE_LIBRARY} ${ZMQ_LIBRARY} ${FUSE_LIBRARIES} ${LEVELDB_LIBRARY}
     )
 else()
@@ -49,7 +48,6 @@ set(LSTORE_LIBS toolbox
                 ${APRUTIL_LIBRARY}
                 ${ZLIB_LIBRARY}
                 ${OPENSSL_LIBRARIES}
-                ${CZMQ_LIBRARY}
                 ${ZMQ_LIBRARY}
                 ${FUSE_LIBRARY}
                 ${JERASURE_LIBRARY}
@@ -59,7 +57,6 @@ set(LSTORE_INCLUDE_SYSTEM ${APR_INCLUDE_DIR}
                     ${APRUTIL_INCLUDE_DIR}
                     ${OPENSSL_INCLUDE_DIR}
                     ${ZMQ_INCLUDE_DIR}
-                    ${CZMQ_INCLUDE_DIR}
                     ${ZLIB_INCLUDE_DIR}
                     ${FUSE_INCLUDE_DIR}
                     ${JERASURE_INCLUDE_DIR}

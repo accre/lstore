@@ -18,7 +18,6 @@
 #include <apr_base64.h>
 #include <apr_errno.h>
 #include <assert.h>
-#include <czmq.h>
 #include <gop/mq.h>
 #include <poll.h>
 #include <stdint.h>
@@ -1226,7 +1225,9 @@ int mq_conn_make(gop_mq_conn_t *c)
         err = gop_mq_bind(c->sock, c->pc->host);
     }
 
-    c->mq_uuid = zsocket_identity(c->sock->arg);  //** Kludge
+    size_t s;
+    zmq_getsockopt(c->sock->arg, ZMQ_IDENTITY, &c->mq_uuid, &s);
+    if (s <= 0) c->mq_uuid = "ERROR_GETTING_IDENTITY";
 
     if (err != 0) return(1);
     if (c->pc->connect_mode == MQ_CMODE_SERVER) return(0);  //** Nothing else to do
@@ -1555,7 +1556,6 @@ void gop_mq_conn_teardown(gop_mq_conn_t *c)
         close(c->cefd[0]), close(c->cefd[0]);
     }
     if (c->sock != NULL) gop_mq_socket_destroy(c->pc->ctx, c->sock);
-    if (c->mq_uuid != NULL) free(c->mq_uuid);
 }
 
 //**************************************************************
