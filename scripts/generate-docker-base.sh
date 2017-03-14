@@ -72,7 +72,6 @@ for DISTRO in "${DISTROS[@]}"; do
                                     ccache
                                     curl
                                     createrepo
-                                    czmq-devel
                                     expat-devel
                                     fuse-devel
                                     leveldb-devel
@@ -84,6 +83,7 @@ for DISTRO in "${DISTROS[@]}"; do
                                     tar
                                     wget
                                     which
+                                    zeromq3-devel
                                     zlib-devel
                                 )
             ;;
@@ -120,7 +120,6 @@ for DISTRO in "${DISTROS[@]}"; do
     esac
     if [ "$DISTRO" == "ubuntu-xenial" ]; then
         ADDITIONAL_PACKAGES+=( clang
-                               libczmq-dev
                              )
     fi
     case $RELEASE in

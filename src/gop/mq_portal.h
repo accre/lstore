@@ -26,7 +26,6 @@
 #include <apr_thread_mutex.h>
 #include <apr_thread_proc.h>
 #include <apr_time.h>
-#include <czmq.h>
 #include <tbx/assert_result.h>
 #include <tbx/atomic_counter.h>
 #include <tbx/iniparse.h>
