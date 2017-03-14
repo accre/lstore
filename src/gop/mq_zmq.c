@@ -407,7 +407,6 @@ gop_mq_socket_context_t *gop_zero_socket_context_new()
 
     ctx->arg = zmq_ctx_new();
     FATAL_UNLESS(ctx->arg != NULL);
-    zmq_ctx_set(ctx->arg, ZMQ_BLOCKY, 0);
     ctx->create_socket = zero_create_socket;
     ctx->destroy = zero_socket_context_destroy;
 
