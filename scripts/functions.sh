@@ -57,32 +57,6 @@ function build_lstore_binary_outof_tree() {
     INSTALL_PREFIX=${3:-${LSTORE_RELEASE_BASE}/build/local}
     BUILD_STATIC=${4:-0}
     case $TO_BUILD in
-        apr-accre)
-            # Keep this in sync with CPackConfig.cmake in our fork
-            ( set -eu
-                cd ${SOURCE_PATH}
-                ./buildconf
-            )
-            ${SOURCE_PATH}/configure \
-                        --prefix=${INSTALL_PREFIX} \
-                        --includedir=${INSTALL_PREFIX}/include/apr-ACCRE-1 \
-                        --with-installbuilddir=${INSTALL_PREFIX}/lib/apr-ACCRE-1/build
-            make
-            make test
-            make install
-            ;;
-        apr-util-accre)
-            if [ -e ${INSTALL_PREFIX}/bin/apr-ACCRE-1-config ]; then
-                OTHER_ARGS="--with-apr=${INSTALL_PREFIX}/bin/apr-ACCRE-1-config"
-            fi
-            # Keep this in sync with CPackConfig.cmake in our fork
-            ${SOURCE_PATH}/configure --prefix=${INSTALL_PREFIX} $OTHER_ARGS \
-                        --includedir=${INSTALL_PREFIX}/include/apr-util-ACCRE-1 \
-                        --with-installbuilddir=${INSTALL_PREFIX}/lib/apr-util-ACCRE-1/build
-            make
-            make test
-            make install
-            ;;
         jerasure|toolbox|gop|ibp|lio|gridftp)
             EXTRA_ARGS=""
             MAKE_COMMAND="make install"
@@ -135,19 +109,8 @@ function build_lstore_package() {
             fatal "Unexpected distro name $DISTRO_NAME"
             ;;
     esac
-    if [ "$TO_BUILD" == "apr-accre" ]; then
-        ( set -eu
-            cd ${SOURCE_PATH}
-            ./buildconf
-        )
-    fi
+
     case $TO_BUILD in
-        apr-accre|apr-util-accre)
-            ls -l $SOURCE_PATH/CPackConfig.cmake
-            cpack $CPACK_ARG --config $SOURCE_PATH/CPackConfig.cmake \
-                   --debug --verbose "-DCPACK_VERSION=$TAG_NAME" || \
-                fatal "$(cat _CPack_Packages/*/InstallOutput.log)"
-            ;;
         jerasure|lio|ibp|gop|toolbox|gridftp|meta)
             # This is gross, but works for now..
             set -x
