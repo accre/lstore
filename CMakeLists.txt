@@ -14,7 +14,6 @@ endif()
 option(BUILD_SHARED_LIBS "Build shared LStore libraries" ON)
 option(BUILD_SHARED_EXES "Build shared LStore executables" ON)
 option(BUILD_TESTS "Build tests" ON)
-option(BUILD_APR "Build APR from source" ON)
 option(BUILD_JERASURE "Build Jerasure from source" ON)
 option(BUILD_GRIDFTP "Build GridFTP bindings" OFF)
 
@@ -26,7 +25,6 @@ option(ENABLE_UBSAN "Enable undefined behaviour sanitizer" OFF)
 option(ENABLE_FUZZ "Build with AFL fuzz support" OFF)
 option(ENABLE_CCACHE "Build with ccache" ${ENABLE_CCACHE_DEFAULT})
 option(ENABLE_LTO "Enable Link-Time Optimization (LTO)" OFF)
-option(ENABLE_UPSTREAM_APR "Enable using non -ACCRE APR" OFF)
 
 option(INSTALL_EXTERNALS "Install externals to \$CMAKE_INSTALL_PATH" OFF)
 option(INSTALL_YUM_RELEASE "Install yum lstore-release (may require root)" OFF)
@@ -212,15 +210,11 @@ find_package(FUSE REQUIRED)
 find_package(ZLIB REQUIRED)
 find_package(ZMQ REQUIRED)
 find_package(LevelDB REQUIRED)
+find_package(APR REQUIRED)
 find_package(APRUtil REQUIRED)
 find_package(BerkeleyDB REQUIRED)
 
 # Find external deps we might build
-set(APR_USE_SYSTEM ${ENABLE_UPSTREAM_APR})
-if(NOT BUILD_APR)
-    set(FIND_APR_REQUIRED REQUIRED)
-endif()
-find_package(APR-ACCRE ${FIND_APR_REQUIRED})
 find_package(Jerasure)
 
 # Build external dependencies

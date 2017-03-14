@@ -5,9 +5,9 @@
 # This module defines
 #  JERASURE_INCLUDE_DIR and JERASURE_INCLUDE_DIR, where to find apr.h, etc.
 #  JERASURE_LIBRARIES and JERASURE_LIBRARIES, the libraries needed to use APR.
-#  JERASURE_FOUND and JERASURE_FOUND, If false, do not try to use APR.
+#  JERASURE_FOUND and JERASURE_FOUND, If false, do not try to use Jerasure.
 # also defined, but not for general use are
-#  JERASURE_LIBRARY and JERASURE_LIBRARY, where to find the APR library.
+#  JERASURE_LIBRARY and JERASURE_LIBRARY, where to find the Jerasure library.
 
 FIND_PATH(JERASURE_INCLUDE_DIR NAMES jerasure/jerasure.h
                     jerasure/galois.h 
