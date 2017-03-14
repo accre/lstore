@@ -1,2 +1,0 @@
-shlibs:Depends=libc6 (>= 2.17), libzmq3 (>= 4.0.1+dfsg)
-misc:Depends=
