@@ -24,6 +24,7 @@
 #include <tbx/random.h>
 #include <tbx/string_token.h>
 #include <tbx/type_malloc.h>
+#include <unistd.h>
 
 #define MQS_TEST_KEY  "mqs_test"
 #define MQS_TEST_SIZE 8
