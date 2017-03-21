@@ -22,11 +22,9 @@ if(NOT USE_SUPERBUILD)
     set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
     find_package(ToolBox REQUIRED)
     find_package(ZMQ REQUIRED)
-    find_package(CZMQ REQUIRED)
-    include_directories(${TOOLBOX_INCLUDE_DIR} ${CZMQ_INCLUDE_DIR}
-                        ${ZMQ_INCLUDE_DIR}
+    include_directories(${TOOLBOX_INCLUDE_DIR} ${ZMQ_INCLUDE_DIR}
     )
-    list(APPEND LIBS ${ZMQ_LIBRARY} ${CZMQ_LIBRARY} ${TOOLBOX_LIBRARY})
+    list(APPEND LIBS ${ZMQ_LIBRARY} ${TOOLBOX_LIBRARY})
 endif()
 
 # common objects
@@ -54,14 +52,12 @@ set(LSTORE_PROJECT_INCLUDES_NAMESPACE gop)
 
 set(LSTORE_LIBS ${APR_LIBRARY}
                     ${APRUTIL_LIBRARY}
-                    ${CZMQ_LIBRARY}
                     ${ZMQ_LIBRARY}
                     toolbox
     )
 set(LSTORE_INCLUDE_SYSTEM ${APR_INCLUDE_DIR}
                     ${APRUTIL_INCLUDE_DIR}
                     ${ZMQ_INCLUDE_DIR}
-                    ${CZMQ_INCLUDE_DIR}
     )
 set(LSTORE_INCLUDE_PUBLIC ${PROJECT_SOURCE_DIR})
 

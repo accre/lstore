@@ -43,20 +43,3 @@ if(BUILD_JERASURE OR (NOT JERASURE_FOUND) OR (JERASURE_LIBRARY MATCHES "^${EXTER
             INSTALL_COMMAND $(MAKE) "install"
 		)
 endif()
-if((NOT CZMQ_FOUND) OR (CZMQ_LIBRARY MATCHES "^${EXTERNAL_INSTALL_DIR}"))
-    list(APPEND REBUILD_DEPENDENCIES extern-czmq)
-    set(CZMQ_LIBRARY "czmq")
-	ExternalProject_add(extern-czmq
-			PREFIX "${CMAKE_BINARY_DIR}/state/czmq/"
-			SOURCE_DIR "${CMAKE_SOURCE_DIR}/vendor/czmq/"
-			BINARY_DIR "${CMAKE_BINARY_DIR}/czmq/"
-            INSTALL_DIR "${EXTERNAL_INSTALL_DIR}"
-            CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${EXTERNAL_INSTALL_DIR}
-                        -DBUILD_SHARED_LIBS:BOOL=OFF
-                        -DCMAKE_C_FLAGS="-fPIC"
-                        ${LSTORE_C_COMPILER_WRAPPER_CMAKE}
-            TEST_COMMAND $(MAKE) "test"
-            INSTALL_COMMAND $(MAKE) "install"
-			TEST_EXCLUDE_FROM_MAIN 1
-		)
-endif()

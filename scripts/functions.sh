@@ -83,7 +83,7 @@ function build_lstore_binary_outof_tree() {
             make test
             make install
             ;;
-        jerasure|toolbox|gop|ibp|lio|czmq|gridftp)
+        jerasure|toolbox|gop|ibp|lio|gridftp)
             EXTRA_ARGS=""
             MAKE_COMMAND="make install"
             if [ $BUILD_STATIC -ne 0 ]; then
@@ -147,9 +147,6 @@ function build_lstore_package() {
             cpack $CPACK_ARG --config $SOURCE_PATH/CPackConfig.cmake \
                    --debug --verbose "-DCPACK_VERSION=$TAG_NAME" || \
                 fatal "$(cat _CPack_Packages/*/InstallOutput.log)"
-            ;;
-        czmq)
-            eval $NATIVE_PKG
             ;;
         jerasure|lio|ibp|gop|toolbox|gridftp|meta)
             # This is gross, but works for now..

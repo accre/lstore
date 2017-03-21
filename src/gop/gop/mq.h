@@ -23,7 +23,7 @@ limitations under the License.
 
 #include <apr_hash.h>
 #include <apr_thread_proc.h>
-#include <czmq.h>
+#include <zmq.h>
 #include <gop/gop.h>
 #include <gop/visibility.h>
 #include <gop/types.h>

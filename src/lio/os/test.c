@@ -29,6 +29,7 @@
 #include <tbx/iniparse.h>
 #include <tbx/string_token.h>
 #include <tbx/type_malloc.h>
+#include <time.h>
 #include "os.h"
 
 int wait_time = 20;

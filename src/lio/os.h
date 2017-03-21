@@ -26,7 +26,9 @@
 #include <lio/os.h>
 #include <lio/visibility.h>
 #include <regex.h>
+#include <sys/stat.h>
 #include <sys/types.h>
+#include <unistd.h>
 
 #include "authn.h"
 #include "ex3/types.h"

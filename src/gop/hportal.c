@@ -183,9 +183,8 @@ void _reap_hportal(gop_host_portal_t *hp, int quick)
                 destroy_host_connection(hc);
 
                 break;
-            } else {  //** Got somone trying ot close it so wait a little bit
+            } else {  //** Got somone trying to close it so just return
                 unlock_hc(hc);
-                apr_sleep(10*1000*APR_USEC_PER_SEC);
             }
         }
 
