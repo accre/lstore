@@ -7,9 +7,6 @@ def compile_map = [:]
 
 node('docker') {
     stage "Checkout"
-    step([$class: 'GitHubCommitNotifier',
-                resultOnFailure: 'FAILURE',
-                statusMessage: [content: 'LStoreRoboto']])
     deleteDir()
     checkout scm
     sh '''bash scripts/generate-docker-base.sh
