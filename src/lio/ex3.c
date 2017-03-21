@@ -342,7 +342,7 @@ lio_exnode_exchange_t *lio_lio_exnode_exchange_text_parse(char *text)
     ifd = tbx_inip_string_read(text);
     if (ifd == NULL) {
         log_printf(0, "ERROR: tbx_inip_string_read() returned NULL!\n"); tbx_log_flush();
-	return(NULL);
+        return(NULL);
     }
 
     exp = lio_exnode_exchange_create(EX_TEXT);
