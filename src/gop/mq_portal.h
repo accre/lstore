@@ -96,7 +96,7 @@ struct gop_mq_task_monitor_t {
 
 struct gop_mq_conn_t {  //** MQ connection container
     gop_mq_portal_t *pc;   //** Parent MQ portal
-    char *mq_uuid;     //** MQ UUID
+    char mq_uuid[255];     //** MQ UUID
     gop_mq_socket_t *sock; //** MQ connection socket
     apr_hash_t *waiting;  //** Tasks waiting for a response (key = task ID)
     apr_hash_t *heartbeat_dest;  //** List of unique destinations for heartbeats (key = tracking address)
