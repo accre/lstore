@@ -1326,7 +1326,7 @@ tryagain:  //** We first try allowing blacklisting to proceed as normal and then
                         } else {  //** Recoverable
                             log_printf(5, "seg=" XIDT " recoverable write error off=" XOT " len= "XOT " n_parity=%d good=%d error_code=%d magic_used=%d index=%d magic_count[index]=%d\n",
                                        segment_id(sw->seg), sw->iov[slot].offset, sw->iov[slot].len, s->n_parity_devs, magic_count[index], op_status.error_code, magic_used, index, magic_count[index]);
-                            status.error_code = op_status.error_code;
+                            if (hard_error == 0) status.error_code = op_status.error_code;
                             soft_error = 1;
                             do_recover = 1;
                         }
