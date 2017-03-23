@@ -37,7 +37,7 @@ typedef struct lio_segment_vtable_t lio_segment_vtable_t;
 typedef gop_op_generic_t *(*lio_segment_read_fn_t)(lio_segment_t *seg, data_attr_t *da, lio_segment_rw_hints_t *hints, int n_iov, ex_tbx_iovec_t *iov, tbx_tbuf_t *buffer, ex_off_t boff, int timeout);
 typedef gop_op_generic_t *(*lio_segment_write_fn_t)(lio_segment_t *seg, data_attr_t *da, lio_segment_rw_hints_t *hints, int n_iov, ex_tbx_iovec_t *iov, tbx_tbuf_t *buffer, ex_off_t boff, int timeout);
 typedef gop_op_generic_t *(*lio_segment_inspect_fn_t)(lio_segment_t *seg, data_attr_t *da, tbx_log_fd_t *fd, int mode, ex_off_t buffer_size, lio_inspect_args_t *args, int timeout);
-typedef gop_op_generic_t *(*lio_lio_segment_truncate_fn_t)(lio_segment_t *seg, data_attr_t *da, ex_off_t new_size, int timeout);
+typedef gop_op_generic_t *(*lio_segment_truncate_fn_t)(lio_segment_t *seg, data_attr_t *da, ex_off_t new_size, int timeout);
 typedef gop_op_generic_t *(*lio_segment_remove_fn_t)(lio_segment_t *seg, data_attr_t *da, int timeout);
 typedef gop_op_generic_t *(*lio_segment_flush_fn_t)(lio_segment_t *seg, data_attr_t *da, ex_off_t lo, ex_off_t hi, int timeout);
 typedef gop_op_generic_t *(*lio_segment_clone_fn_t)(lio_segment_t *seg, data_attr_t *da, lio_segment_t **clone, int mode, void *attr, int timeout);
@@ -80,7 +80,7 @@ struct lio_segment_vtable_t {
     lio_segment_read_fn_t read;
     lio_segment_write_fn_t write;
     lio_segment_inspect_fn_t inspect;
-    lio_lio_segment_truncate_fn_t truncate;
+    lio_segment_truncate_fn_t truncate;
     lio_segment_remove_fn_t remove;
     lio_segment_flush_fn_t flush;
     lio_segment_clone_fn_t clone;
