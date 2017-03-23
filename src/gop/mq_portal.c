@@ -1226,7 +1226,7 @@ int mq_conn_make(gop_mq_conn_t *c)
     }
 
     size_t s = sizeof(c->mq_uuid);
-    zmq_getsockopt(c->sock->arg, ZMQ_IDENTITY, &c->mq_uuid, &s);
+    zmq_getsockopt(c->sock->arg, ZMQ_IDENTITY, c->mq_uuid, &s);
     if (s <= 0) strncpy(c->mq_uuid, "ERROR_GETTING_IDENTITY", sizeof(c->mq_uuid));
 
     if (err != 0) return(1);
