@@ -1214,19 +1214,27 @@ int main(int argc, char **argv)
     int i;
     int volatile start_option;  //** This disables optimizing the arg loop and getting a warning. 
     char v;
+    char *logfile;
+    int dlevel;
 
     if (argc < 2) {
-        printf("mq_test [-d log_level]\n");
+        printf("mq_test [-d log_level] [-log logfile]\n");
         return(0);
     }
 
+    dlevel = 0;
+    logfile = NULL;
     i = 1;
     do {
         start_option = i;
 
         if (strcmp(argv[i], "-d") == 0) { //** Enable debugging
             i++;
-            tbx_set_log_level(atol(argv[i]));
+            dlevel = atol(argv[i]);
+            i++;
+        } else if (strcmp(argv[i], "-log") == 0) { //** Log output file
+            i++;
+            logfile = argv[i];
             i++;
         } else if (strcmp(argv[i], "-h") == 0) { //** Print help
             printf("mq_test [-d log_level]\n");
@@ -1234,6 +1242,9 @@ int main(int argc, char **argv)
         }
     } while ((start_option < i) && (i<argc));
 
+    if (logfile != NULL) tbx_log_open(logfile, 0);
+    tbx_set_log_level(dlevel);
+        
     printf("log_level=%d\n", _log_level);
 
     gop_init_opque_system();

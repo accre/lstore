@@ -817,7 +817,7 @@ gop_op_status_t inspect_task(void *arg, int id)
 
     //** If we made it here the exnode is unique and loaded.
     //** Load it
-    exp = lio_lio_exnode_exchange_text_parse(w->exnode);
+    exp = lio_exnode_exchange_text_parse(w->exnode);
     if (exp == NULL) {
         info_printf(lfd, 0, "ERROR  Failed with file %s (ftype=%d). Problem parsing exnode!\n", w->fname, w->ftype);
         status = gop_failure_status;

@@ -264,7 +264,7 @@ gop_op_status_t lio_create_object_fn(void *arg, int id)
         //** same segment being serialized/deserialized.
 
         //** Deserialize it
-        exp = lio_lio_exnode_exchange_text_parse(val[ex_key]);
+        exp = lio_exnode_exchange_text_parse(val[ex_key]);
         ex = lio_exnode_create();
         if (lio_exnode_deserialize(ex, exp, op->lc->ess_nocache) != 0) {
             log_printf(15, "ERROR parsing parent exnode src_path=%s\n", op->src_path);
@@ -433,7 +433,7 @@ gop_op_status_t lio_remove_object_fn(void *arg, int id)
     //** Only done for normal files.  No links or dirs
     if ((ex_remove == 1) && (ex_data != NULL)) {
         //** Deserialize it
-        exp = lio_lio_exnode_exchange_text_parse(ex_data);
+        exp = lio_exnode_exchange_text_parse(ex_data);
         ex = lio_exnode_create();
         if (lio_exnode_deserialize(ex, exp, op->lc->ess) != 0) {
             log_printf(15, "ERROR removing data for object fname=%s\n", op->src_path);
@@ -1461,7 +1461,7 @@ int lio_fsck_check_object(lio_config_t *lc, lio_creds_t *creds, char *path, int 
     //** to the global cache table cause there could be multiple copies of the
     //** same segment being serialized/deserialized.
     //** Deserialize it
-    exp = lio_lio_exnode_exchange_text_parse(val[ex_index]);
+    exp = lio_exnode_exchange_text_parse(val[ex_index]);
     ex = lio_exnode_create();
     if (lio_exnode_deserialize(ex, exp, lc->ess_nocache) != 0) {
         log_printf(15, "ERROR parsing parent exnode path=%s\n", path);

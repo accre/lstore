@@ -437,7 +437,7 @@ gop_op_status_t lio_myopen_fn(void *arg, int id)
     }
 
     //** Load the exnode and get the default view ID
-    exp = lio_lio_exnode_exchange_text_parse(exnode);
+    exp = lio_exnode_exchange_text_parse(exnode);
     vid = exnode_exchange_get_default_view_id(exp);
     if (vid == 0) {  //** Make sure the vid is valid.
         log_printf(1, "ERROR loading exnode! fname=%s\n", op->path);

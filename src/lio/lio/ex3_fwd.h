@@ -39,7 +39,7 @@ typedef struct lio_segment_t lio_segment_t;
 typedef lio_segment_t *(*lio_segment_create_fn_t)(void *arg);
 typedef struct lio_ex_header_t lio_ex_header_t;
 typedef struct lio_exnode_exchange_t lio_exnode_exchange_t;
-typedef struct lio_lio_exnode_text_t lio_lio_exnode_text_t;
+typedef struct lio_exnode_text_t lio_exnode_text_t;
 typedef int64_t ex_off_t;
 typedef uint64_t ex_id_t;
 typedef ibp_tbx_iovec_t ex_tbx_iovec_t;
