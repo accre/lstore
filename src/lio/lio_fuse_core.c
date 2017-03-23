@@ -701,7 +701,7 @@ int lfs_read(const char *fname, char *buf, size_t size, off_t off, struct fuse_f
 
     dt = apr_time_now() - now;
     dt /= APR_USEC_PER_SEC;
-    log_printf(1, "END fname=%s seg=" XIDT " size=" XOT " off=%zu nbytes=" XOT " dt=%lf\n", fname, segment_id(fd->fh->seg), t1, size, nbytes, dt);
+    log_printf(1, "END fname=%s seg=" XIDT " size=" XOT " off=%zu nbytes=" XOT " dt=%lf\n", fname, segment_id(fd->fh->seg), t1, t2, nbytes, dt);
     tbx_log_flush();
 
     return(nbytes);
