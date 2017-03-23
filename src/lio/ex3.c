@@ -331,10 +331,10 @@ ex_id_t exnode_exchange_get_default_view_id(lio_exnode_exchange_t *exp)
 }
 
 //*************************************************************************
-// lio_lio_exnode_exchange_text_parse - Parses a text based exnode and returns it
+// lio_exnode_exchange_text_parse - Parses a text based exnode and returns it
 //*************************************************************************
 
-lio_exnode_exchange_t *lio_lio_exnode_exchange_text_parse(char *text)
+lio_exnode_exchange_t *lio_exnode_exchange_text_parse(char *text)
 {
     lio_exnode_exchange_t *exp;
     tbx_inip_file_t *ifd;
@@ -374,7 +374,7 @@ lio_exnode_exchange_t *lio_exnode_exchange_load_file(char *fname)
     text[i+1] = '\0';
     fclose(fd);
 
-    return(lio_lio_exnode_exchange_text_parse(text));
+    return(lio_exnode_exchange_text_parse(text));
 }
 
 //*************************************************************************

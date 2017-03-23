@@ -1097,7 +1097,7 @@ void lfs_set_tape_attr(lio_fuse_t *lfs, char *fname, char *mytape_val, int tape_
         //** to the global cache table cause there could be multiple copies of the
         //** same segment being serialized/deserialized.
         //** Deserialize it
-        exp = lio_lio_exnode_exchange_text_parse(val[ex_key]);
+        exp = lio_exnode_exchange_text_parse(val[ex_key]);
         ex = lio_exnode_create();
         err = lio_exnode_deserialize(ex, exp, lfs->lc->ess_nocache);
         exnode_exchange_free(exp);

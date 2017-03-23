@@ -46,7 +46,7 @@ LIO_API void lio_exnode_destroy(lio_exnode_t *ex);
 LIO_API lio_exnode_exchange_t *lio_exnode_exchange_create(int type);
 LIO_API void lio_exnode_exchange_destroy(lio_exnode_exchange_t *exp);
 LIO_API lio_exnode_exchange_t *lio_exnode_exchange_load_file(char *fname);
-LIO_API lio_exnode_exchange_t *lio_lio_exnode_exchange_text_parse(char *text);
+LIO_API lio_exnode_exchange_t *lio_exnode_exchange_text_parse(char *text);
 LIO_API int lio_exnode_serialize(lio_exnode_t *ex, lio_exnode_exchange_t *exp);
 LIO_API gop_op_generic_t *lio_segment_copy_gop(gop_thread_pool_context_t *tpc, data_attr_t *da, lio_segment_rw_hints_t *rw_hints, lio_segment_t *src_seg, lio_segment_t *dest_seg, ex_off_t src_offset, ex_off_t dest_offset, ex_off_t len, ex_off_t bufsize, char *buffer, int do_truncate, int timoeut);
 LIO_API int lio_view_insert(lio_exnode_t *ex, lio_segment_t *view);
@@ -134,14 +134,14 @@ struct lio_inspect_args_t {
     int dev_row_replaced[128];
 };
 
-struct lio_lio_exnode_text_t {
+struct lio_exnode_text_t {
     char *text;
     tbx_inip_file_t *fd;
 };
 
 struct lio_exnode_exchange_t {
     lio_ex3_format_t type;
-    lio_lio_exnode_text_t text;
+    lio_exnode_text_t text;
 };
 
 #ifdef __cplusplus
