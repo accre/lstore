@@ -320,7 +320,7 @@ gop_op_status_t segment_get_gop_func(void *arg, int id)
         total += got;
         log_printf(5, "sid=" XIDT " fwrite(wb,1," XOT ", sc->fd)=" XOT " total=" XOT "\n", segment_id(sc->src), wlen, got, total);
         if (wlen != got) {
-            log_printf(1, "ERROR from fwrite=%d  dest sid=" XIDT "\n", errno, segment_id(sc->src));
+            log_printf(1, "ERROR from fwrite=%d  dest sid=" XIDT "\n", errno, segment_id(sc->dest));
             status = gop_failure_status;
             gop_waitall(gop);
             gop_free(gop, OP_DESTROY);
@@ -334,7 +334,7 @@ gop_op_status_t segment_get_gop_func(void *arg, int id)
             err = gop_waitall(gop);
             gop_free(gop, OP_DESTROY);
             if (err != OP_STATE_SUCCESS) {
-                log_printf(1, "ERROR write(dseg=" XIDT ") failed! wpos=" XOT " len=" XOT "\n", segment_id(sc->dest), wpos, wlen);
+                log_printf(1, "ERROR read(seg=" XIDT ") failed! wpos=" XOT " len=" XOT "\n", segment_id(sc->src), wpos, wlen);
                 status = gop_failure_status;
                 goto fail;
             }

@@ -1621,7 +1621,7 @@ gop_op_status_t seglun_rw_op(lio_segment_t *seg, data_attr_t *da, lio_segment_rw
             dt_status = gop_get_status(gop);
             if (dt_status.op_status != OP_STATE_SUCCESS) bad_count++;
             dev = gop_get_myid(gop) % s->n_devices;
-            log_printf(1, "device=%d slot=%d time: %lf op_status=%d error_code=%d\n", dev, gop_get_myid(gop), dt, dt_status.op_status, dt_status.error_code);
+            log_printf(1, "device=%d slot=%d time: %lf op_status=%d error_code=%d gid=%d\n", dev, gop_get_myid(gop), dt, dt_status.op_status, dt_status.error_code, gop_id(gop));
             log_printf(5, "bl=%p\n", bl);
             //** Check if we need to do any blacklisting
             if ((dt_status.error_code != -1234) && (bl != NULL)) { //** Skip the blacklisted ops

@@ -44,7 +44,7 @@ int main(int argc, char **argv)
         printf("ex_rw_test LIO_COMMON_OPTIONS [-ex] [-s section]\n");
         lio_print_options(stdout);
         printf("     -ex        Print the final exnode to the screen before truncation\n");
-        printf("     -s section SEction in the config file to usse.  Defaults to %s.\n", section);
+        printf("     -section section SEction in the config file to usse.  Defaults to %s.\n", section);
         printf("\n");
         return(1);
     }
@@ -57,7 +57,6 @@ int main(int argc, char **argv)
     if (argc > 1) {
         do {
             start_option = i;
-
             if (strcmp(argv[i], "-ex") == 0) { //** Show the final exnode
                 i++;
                 print_exnode = 1;
