@@ -59,7 +59,12 @@ int zero_native_bind(gop_mq_socket_t *socket, const char *format, ...)
     if (socket->type != MQ_PAIR) {
         va_start(args, format);
         snprintf(id, 255, format, args);
-        zmq_setsockopt(socket->arg, ZMQ_IDENTITY, id, strlen(id)+1);
+        err = zmq_setsockopt(socket->arg, ZMQ_IDENTITY, id, strlen(id));
+        if (err != 0) {
+            log_printf(0, "ERROR setting socket identity! id=%s err=%d errno=%d\n", id, err, errno);
+            return(-1);
+        }
+log_printf(0, "id=%s err=%d\n", id, err);
     } else {
         id[0] = 0;
     }
@@ -92,7 +97,11 @@ int zero_native_connect(gop_mq_socket_t *socket, const char *format, ...)
     if (socket->type != MQ_PAIR) {
         snprintf(buf, 255, format, args);
         snprintf(id, 255, "%s:" I64T , buf, tbx_random_get_int64(1, 1000000));
-        zmq_setsockopt(socket->arg, ZMQ_IDENTITY, id, strlen(id)+1);
+        err = zmq_setsockopt(socket->arg, ZMQ_IDENTITY, id, strlen(id));
+        if (err != 0) {
+            log_printf(0, "ERROR setting socket identity! id=%s err=%d errno=%d\n", id, err, errno);
+            return(-1);
+        }
         log_printf(4, "Unique hostname created = %s\n", id);
     }
 
@@ -243,6 +252,11 @@ gop_mq_socket_t *zero_create_native_socket(gop_mq_socket_context_t *ctx, int sty
 
     s->type = stype;
     s->arg = zmq_socket(ctx->arg, stype);
+    if (s->arg == NULL) {
+        free(s);
+        log_printf(0, "ERROR creating the socket!\n");
+        return(NULL);
+    }
     i = 0; zmq_setsockopt(s->arg, ZMQ_LINGER, &i, sizeof(i));
     i = 100000; zmq_setsockopt(s->arg, ZMQ_SNDHWM, &i, sizeof(i));
     i = 100000; zmq_setsockopt(s->arg, ZMQ_RCVHWM, &i, sizeof(i));
