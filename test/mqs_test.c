@@ -188,7 +188,7 @@ gop_mq_context_t *client_make_context()
 {
     char *text_params = "[mq_context]\n"
                         "  min_conn=1\n"
-                        "  max_conn=4\n"
+                        "  max_conn=1\n"
                         "  min_threads=2\n"
                         "  max_threads=%d\n"
                         "  backlog_trigger=1000\n"
@@ -507,7 +507,7 @@ gop_mq_context_t *server_make_context()
 {
     char *text_params = "[mq_context]\n"
                         "  min_conn=1\n"
-                        "  max_conn=2\n"
+                        "  max_conn=1\n"
                         "  min_threads=2\n"
                         "  max_threads=%d\n"
                         "  backlog_trigger=10000\n"
