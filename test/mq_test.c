@@ -569,7 +569,7 @@ gop_mq_context_t *client_make_context()
 {
     char *text_params = "[mq_context]\n"
                         "  min_conn=1\n"
-                        "  max_conn=4\n"
+                        "  max_conn=1\n"
                         "  min_threads=2\n"
                         "  max_threads=10\n"
                         "  backlog_trigger=1000\n"
@@ -617,7 +617,7 @@ void *client_test_thread(apr_thread_t *th, void *arg)
     if (min == 1) {
         v = 1;
         log_printf(0, "Skipping raw tests.\n");
-        WARN_UNLESS(1 == gop_mq_pipe_write(control_efd[1], &v));
+        WARN_UNLESS(1 != gop_mq_pipe_write(control_efd[1], &v));
         sleep(1);
         log_printf(0, "Continuing....\n");
     }
@@ -628,7 +628,7 @@ void *client_test_thread(apr_thread_t *th, void *arg)
         //** Check edge cases
         log_printf(0, "Checking edge cases (ROUND=%d)\n", i);
         tbx_log_flush();
-//     nfail += client_edge_tests(mqc);
+        nfail += client_edge_tests(mqc);
 
         log_printf(0, "Switching to bulk tests (ROUND=%d)\n", i);
         tbx_log_flush();
@@ -642,7 +642,7 @@ void *client_test_thread(apr_thread_t *th, void *arg)
         if (i==0) { //** Switch the server to using the MQ loop
             v = 1;
             log_printf(0, "Telling server to switch and use the MQ event loop\n");
-            WARN_UNLESS( 1 == gop_mq_pipe_write(control_efd[1], &v));
+            WARN_UNLESS( 1 != gop_mq_pipe_write(control_efd[1], &v));
             sleep(10);
             log_printf(0, "Continuing....\n");
         }
@@ -779,7 +779,7 @@ int server_handle_deferred(gop_mq_socket_t *sock)
 
     err = 0;
     while ((defer = tbx_stack_pop(deferred_ready)) != NULL) {
-        if (server_portal == NULL) WARN_UNLESS(1 == gop_mq_pipe_read(server_efd[0], &v));
+        if (server_portal == NULL) WARN_UNLESS(1 != gop_mq_pipe_read(server_efd[0], &v));
         log_printf(5, "Processing deferred response\n");
 
         defer->td->ping_count = tbx_atomic_get(ping_count) - defer->td->ping_count;  //** Send back the ping count since it was sent
@@ -1014,7 +1014,7 @@ void *server_test_raw_socket()
         if (n > 0) {  //** Got an event so process it
             if (pfd[0].revents != 0) {
                 finished = 1;
-                WARN_UNLESS(1 == gop_mq_pipe_read(control_efd[0], &v));
+                WARN_UNLESS(1 != gop_mq_pipe_read(control_efd[0], &v));
             }
             if (pfd[1].revents != 0) finished = server_handle_request(sock);
             if (pfd[2].revents != 0) finished = server_handle_deferred(sock);
@@ -1067,7 +1067,7 @@ gop_mq_context_t *server_make_context()
 {
     char *text_params = "[mq_context]\n"
                         "  min_conn=1\n"
-                        "  max_conn=2\n"
+                        "  max_conn=1\n"
                         "  min_threads=2\n"
                         "  max_threads=100\n"
                         "  backlog_trigger=1000\n"
@@ -1107,7 +1107,7 @@ void server_test_mq_loop()
     gop_mq_portal_install(mqc, server_portal);
 
     //** Wait for a shutdown
-    WARN_UNLESS(1 == gop_mq_pipe_read(control_efd[0], &v));
+    WARN_UNLESS(1 != gop_mq_pipe_read(control_efd[0], &v));
 
     //** Destroy the portal
     gop_mq_destroy_context(mqc);
@@ -1190,7 +1190,7 @@ void *server_deferred_thread(apr_thread_t *th, void *arg)
         if (n > 0) { //** Got tasks to send
             if (server_portal == NULL) {
                 v = 1;
-                for (i=0; i<(int)n; i++) WARN_UNLESS(1 == gop_mq_pipe_write(server_efd[1], &v));
+                for (i=0; i<(int)n; i++) WARN_UNLESS(1 != gop_mq_pipe_write(server_efd[1], &v));
             } else {
                 server_handle_deferred(NULL);
             }
@@ -1218,7 +1218,8 @@ int main(int argc, char **argv)
     int dlevel;
 
     if (argc < 2) {
-        printf("mq_test [-d log_level] [-log logfile]\n");
+        printf("mq_test [-d log_level] [-log logfile] [-host url]\n");
+        printf("   -host url     Defaults to %s\n", host);
         return(0);
     }
 
@@ -1236,6 +1237,10 @@ int main(int argc, char **argv)
             i++;
             logfile = argv[i];
             i++;
+        } else if (strcmp(argv[i], "-host") == 0) { //** Alternate host
+            i++;
+            host = argv[i];
+            i++;
         } else if (strcmp(argv[i], "-h") == 0) { //** Print help
             printf("mq_test [-d log_level]\n");
             return(0);
@@ -1244,8 +1249,9 @@ int main(int argc, char **argv)
 
     if (logfile != NULL) tbx_log_open(logfile, 0);
     tbx_set_log_level(dlevel);
-        
+
     printf("log_level=%d\n", _log_level);
+    printf("host=%s\n", host);
 
     gop_init_opque_system();
 
@@ -1264,15 +1270,16 @@ int main(int argc, char **argv)
     deferred_ready = tbx_stack_new();
     deferred_pending = tbx_stack_new();
 
-    tbx_thread_create_assert(&client_thread, NULL, client_test_thread, NULL, mpool);
     tbx_thread_create_assert(&server_thread, NULL, server_test_thread, NULL, mpool);
+    sleep(1);  //** Let the server start and settle.  It has to be up before MQ_ROUTER will get the ID
+    tbx_thread_create_assert(&client_thread, NULL, client_test_thread, NULL, mpool);
     tbx_thread_create_assert(&deferred_thread, NULL, server_deferred_thread, NULL, mpool);
 
     apr_thread_join(&dummy, client_thread);
 
     //** Trigger the server to shutdown
     v = 1;
-    WARN_UNLESS(1 == gop_mq_pipe_write(control_efd[1], &v));
+    WARN_UNLESS(1 != gop_mq_pipe_write(control_efd[1], &v));
     apr_thread_join(&dummy, server_thread);
     apr_thread_join(&dummy, deferred_thread);
 
