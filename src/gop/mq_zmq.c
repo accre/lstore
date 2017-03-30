@@ -35,6 +35,7 @@
 #include <unistd.h>
 
 #include "mq_portal.h"
+#include "mq_helpers.h"
 
 //*************************************************************
 //   Native routines
@@ -56,21 +57,26 @@ int zero_native_bind(gop_mq_socket_t *socket, const char *format, ...)
     int err, n;
     char id[256];
 
+    va_start(args, format);
+    snprintf(id, 255, format, args);
+    n = mq_id_bytes(id, strlen(id));
     if (socket->type != MQ_PAIR) {
-        va_start(args, format);
-        snprintf(id, 255, format, args);
-        err = zmq_setsockopt(socket->arg, ZMQ_IDENTITY, id, strlen(id));
+        err = zmq_setsockopt(socket->arg, ZMQ_IDENTITY, id, n);
         if (err != 0) {
             log_printf(0, "ERROR setting socket identity! id=%s err=%d errno=%d\n", id, err, errno);
             return(-1);
         }
-log_printf(0, "id=%s err=%d\n", id, err);
     } else {
         id[0] = 0;
     }
 
-    snprintf(id, 255, format, args);
-    err = zmq_bind(socket->arg, id);
+    if (id[n] == '|') {
+        n++;
+    } else {
+        n = 0;
+    }
+
+    err = zmq_bind(socket->arg, &(id[n]));
     n = errno;
     va_end(args);
 
@@ -84,7 +90,7 @@ log_printf(0, "id=%s err=%d\n", id, err);
 int zero_native_connect(gop_mq_socket_t *socket, const char *format, ...)
 {
     va_list args;
-    int err;
+    int err, n;
     char buf[255], id[256];
 
     if (socket->type != MQ_PAIR) {
@@ -95,7 +101,7 @@ int zero_native_connect(gop_mq_socket_t *socket, const char *format, ...)
     va_start(args, format);
     //** Set the ID
     if (socket->type != MQ_PAIR) {
-        snprintf(buf, 255, format, args);
+        gethostname(buf, sizeof(buf));
         snprintf(id, 255, "%s:" I64T , buf, tbx_random_get_int64(1, 1000000));
         err = zmq_setsockopt(socket->arg, ZMQ_IDENTITY, id, strlen(id));
         if (err != 0) {
@@ -106,7 +112,13 @@ int zero_native_connect(gop_mq_socket_t *socket, const char *format, ...)
     }
 
     snprintf(id, 255, format, args);
-    err = zmq_connect(socket->arg, id);
+    n = mq_id_bytes(id, strlen(id));
+    if (id[n] == '|') {
+        n++;
+    } else {
+        n = 0;
+    }
+    err = zmq_connect(socket->arg, &(id[n]));
     va_end(args);
 
     return(err);
@@ -121,7 +133,7 @@ int zero_native_disconnect(gop_mq_socket_t *socket, const char *format, ...)
     char id[256];
 
     va_start(args, format);
-    
+
     snprintf(id, 255, format, args);
     err = zmq_disconnect(socket->arg, id);
     va_end(args);
@@ -148,7 +160,7 @@ int zero_native_monitor(gop_mq_socket_t *socket, char *address, int events)
 int zero_native_send(gop_mq_socket_t *socket, mq_msg_t *msg, int flags)
 {
     gop_mq_frame_t *f, *fn;
-    int n, loop, bytes;
+    int n, loop, bytes, len;
 
     int count = 0;
 
@@ -161,9 +173,10 @@ int zero_native_send(gop_mq_socket_t *socket, mq_msg_t *msg, int flags)
     }
 
     while ((fn = gop_mq_msg_next(msg)) != NULL) {
+        len = (count > 0) ? f->len : mq_id_bytes(f->data, f->len); //** 1st frame we need to tweak the address
         loop = 0;
         do {
-            bytes = zmq_send(socket->arg, f->data, f->len, ZMQ_SNDMORE);
+            bytes = zmq_send(socket->arg, f->data, len, ZMQ_SNDMORE);
             if (bytes == -1) {
                 if (errno == EHOSTUNREACH) {
                     usleep(100);
