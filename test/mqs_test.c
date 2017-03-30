@@ -67,7 +67,8 @@ int in_process = 0;
 int ongoing_server_interval = 5;
 int ongoing_client_interval = 1;
 
-char *host_string = "tcp://127.0.0.1:6714";
+char *server_host_string = "SERVER|tcp://127.0.0.1:6714";
+char *client_host_string = "SERVER|tcp://localhost:6714";
 char *host_id = "30:Random_Id";
 int host_id_len = 13;
 
@@ -259,8 +260,9 @@ gop_op_generic_t *test_gop(gop_mq_context_t *mqc, int flusher, int client_delay,
 gop_op_generic_t *new_bulk_task(gop_mq_context_t *mqc, int myid)
 {
     int transfer_bytes, packet_bytes, delay, client_delay, flusher, to;
-    int to_min, to_max;
+    int to_min, to_max, dt, min_dt;
 
+    min_dt = 3;
     to_min = 10;
     to_max = 20;
 
@@ -271,11 +273,17 @@ gop_op_generic_t *new_bulk_task(gop_mq_context_t *mqc, int myid)
     if (delay == 1) {
         delay = tbx_random_get_int64(to_min, to_max);
         if (delay == to) delay += 2;
+        dt = delay-to;
+        if (dt < 0) {
+            if (dt > -min_dt) delay = to - min_dt;
+        } else {
+            if (dt < min_dt) delay = to + min_dt;
+        }
     } else {
         delay = 0;
     }
+
     flusher = tbx_random_get_int64(1, 3);
-//flusher = 1;
     if (flusher != 1) {
         flusher = 0;
     }
@@ -283,12 +291,15 @@ gop_op_generic_t *new_bulk_task(gop_mq_context_t *mqc, int myid)
     client_delay = tbx_random_get_int64(1, 10);
     if (client_delay == 1) {
         client_delay = tbx_random_get_int64(to_min, to_max);
-        if (client_delay == to) client_delay -= 2;
+        dt = client_delay - to;
+        if (dt < 0) {
+            if (dt > -min_dt) client_delay = to - min_dt;
+        } else {
+            if (dt < min_dt) client_delay = to + min_dt;
+        }
     } else {
         client_delay = 0;
     }
-
-//delay = to + 5;
 
     return(test_gop(mqc, flusher, client_delay, delay, packet_bytes, transfer_bytes, to, myid));
 }
@@ -543,7 +554,7 @@ void *server_test_thread(apr_thread_t *th, void *arg)
     mqc = server_make_context();
 
     //** Make the server portal
-    server_portal = gop_mq_portal_create(mqc, host_string, MQ_CMODE_SERVER);
+    server_portal = gop_mq_portal_create(mqc, server_host_string, MQ_CMODE_SERVER);
 
     //** Make the ongoing checker
     server_ongoing = gop_mq_ongoing_create(mqc, server_portal, ongoing_server_interval, ONGOING_SERVER);
@@ -682,7 +693,7 @@ int main(int argc, char **argv)
     assert_result(apr_thread_mutex_create(&lock, APR_THREAD_MUTEX_DEFAULT, mpool), APR_SUCCESS);
     assert_result(apr_thread_cond_create(&cond, mpool), APR_SUCCESS);
 
-    host_string_converted = strdup(host_string);
+    host_string_converted = strdup(client_host_string);
     host = gop_mq_string_to_address(host_string_converted);
 
     //** Make the pipe for controlling the server
