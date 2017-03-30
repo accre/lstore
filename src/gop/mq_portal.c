@@ -35,6 +35,7 @@
 #include "gop.h"
 #include "gop/portal.h"
 #include "mq_portal.h"
+#include "mq_helpers.h"
 #include "thread_pool.h"
 
 //** Poll index for connection monitoring
@@ -297,7 +298,7 @@ int mq_task_send(gop_mq_context_t *mqc, gop_mq_task_t *task)
     gop_mq_portal_t *p;
     gop_mq_frame_t *f;
     char *host;
-    int size;
+    int size, n;
 
     f = gop_mq_msg_first(task->msg);
 
@@ -306,13 +307,14 @@ int mq_task_send(gop_mq_context_t *mqc, gop_mq_task_t *task)
     gop_mq_get_frame(f, (void **)&host, &size);
 
     //** Look up the portal
+    n = mq_id_bytes(host, size);
     apr_thread_mutex_lock(mqc->lock);
-    p = (gop_mq_portal_t *)(apr_hash_get(mqc->client_portals, host, size));
+    p = (gop_mq_portal_t *)(apr_hash_get(mqc->client_portals, host, n));
     if (p == NULL) {  //** New host so create the portal
         FATAL_UNLESS(host != NULL);
-        log_printf(10, "Creating MQ_CMODE_CLIENT portal for outgoing connections host = %s size = %d\n", host, size);
+        log_printf(10, "Creating MQ_CMODE_CLIENT portal for outgoing connections host = %s size = %d id_bytes=%d\n", host, size, n);
         p = gop_mq_portal_create(mqc, host, MQ_CMODE_CLIENT);
-        apr_hash_set(mqc->client_portals, p->host, APR_HASH_KEY_STRING, p);
+        apr_hash_set(mqc->client_portals, p->host, n, p);
     }
     apr_thread_mutex_unlock(mqc->lock);
 

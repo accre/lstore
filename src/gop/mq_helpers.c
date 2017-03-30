@@ -37,6 +37,27 @@
 static tbx_atomic_unit32_t _id_counter = 0;
 
 //***********************************************************************
+// mq_id_bytes - Returns hte number of bytes for the remote id.
+//     Assumes the host string is of the form: id|tcp://address:port
+//   Returns the number of bytes for the ID
+//***********************************************************************
+
+int mq_id_bytes(char *host, int len)
+{
+    int i;
+
+    if (host == NULL) return(0);
+
+    i = 0;
+    do {
+        if (host[i] == '|') break;
+        i++;
+    } while (i<len);
+
+   return(i);
+}
+
+//***********************************************************************
 // mq_make_id_frame - Makes and generates and ID frame
 //***********************************************************************
 

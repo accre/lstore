@@ -56,7 +56,9 @@ tbx_stack_t *deferred_pending = NULL;
 gop_mq_command_stats_t server_stats;
 gop_mq_portal_t *server_portal = NULL;
 
-char *host = "tcp://127.0.0.1:6714";
+char *server_host = "SERVER|tcp://127.0.0.1:6714";
+char *client_host = "SERVER|tcp://localhost:6714";
+
 mq_pipe_t control_efd[2];
 mq_pipe_t server_efd[2];
 int shutdown_everything = 0;
@@ -66,7 +68,7 @@ tbx_atomic_unit32_t ping_count = 0;
 // pack_msg - Packs a message for sending
 //***************************************************************************
 
-mq_msg_t *pack_msg(int dotrack, test_data_t *td)
+mq_msg_t *pack_msg(int dotrack, test_data_t *td, char *host)
 {
     mq_msg_t *msg;
 
@@ -179,9 +181,9 @@ int client_direct()
     sleep(1);  //** Wait for the server to start up and bind to the port
     ctx = gop_mq_socket_context_new();
     sock = gop_mq_socket_new(ctx, MQ_TRACE_ROUTER);
-    err = gop_mq_connect(sock, host);
+    err = gop_mq_connect(sock, client_host);
     if (err != 0) {
-        log_printf(0, "ERROR:  Failed connecting to host=%s error=%d\n", host, err);
+        log_printf(0, "ERROR:  Failed connecting to host=%s error=%d\n", client_host, err);
         status = 1;
         goto fail;
     }
@@ -190,7 +192,7 @@ int client_direct()
 
     //** Compose the PING message
     msg = gop_mq_msg_new();
-    gop_mq_msg_append_mem(msg, host, strlen(host), MQF_MSG_KEEP_DATA);
+    gop_mq_msg_append_mem(msg, client_host, strlen(client_host), MQF_MSG_KEEP_DATA);
     gop_mq_msg_append_mem(msg, NULL, 0, MQF_MSG_KEEP_DATA);
     gop_mq_msg_append_mem(msg, MQF_VERSION_KEY, MQF_VERSION_SIZE, MQF_MSG_KEEP_DATA);
     gop_mq_msg_append_mem(msg, MQF_PING_KEY, MQF_PING_SIZE, MQF_MSG_KEEP_DATA);
@@ -200,7 +202,7 @@ int client_direct()
     //** Send the message
     err = gop_mq_send(sock, msg, 0);
     if (err != 0) {
-        log_printf(0, "ERROR:  Failed sending PING message to host=%s error=%d\n", host, err);
+        log_printf(0, "ERROR:  Failed sending PING message to host=%s error=%d\n", client_host, err);
         status = 1;
         goto fail;
     }
@@ -214,14 +216,14 @@ int client_direct()
     pfd.events = MQ_POLLIN;
     err = gop_mq_poll(&pfd, 1, 5000);  //** Wait for 5 secs
     if (err != 1) {
-        log_printf(0, "ERROR:  Failed polling for PING message response to host=%s\n", host);
+        log_printf(0, "ERROR:  Failed polling for PING message response to host=%s\n", client_host);
         status = 1;
         goto fail;
     }
     err = gop_mq_recv(sock, msg, MQ_DONTWAIT);
 //  err = gop_mq_recv(sock, msg, 0);
     if (err != 0) {
-        log_printf(0, "ERROR:  Failed recving PONG response message from host=%s error=%d\n", host, err);
+        log_printf(0, "ERROR:  Failed recving PONG response message from host=%s error=%d\n", client_host, err);
         status = 1;
         goto fail;
     }
@@ -283,7 +285,7 @@ int client_exec_ping_test(gop_mq_context_t *mqc)
 
     //** Compose the PING message
     msg = gop_mq_msg_new();
-    gop_mq_msg_append_mem(msg, host, strlen(host), MQF_MSG_KEEP_DATA);
+    gop_mq_msg_append_mem(msg, client_host, strlen(client_host), MQF_MSG_KEEP_DATA);
     gop_mq_msg_append_mem(msg, NULL, 0, MQF_MSG_KEEP_DATA);
     gop_mq_msg_append_mem(msg, MQF_VERSION_KEY, MQF_VERSION_SIZE, MQF_MSG_KEEP_DATA);
     gop_mq_msg_append_mem(msg, MQF_EXEC_KEY, MQF_EXEC_SIZE, MQF_MSG_KEEP_DATA);
@@ -298,7 +300,7 @@ int client_exec_ping_test(gop_mq_context_t *mqc)
     err = gop_waitall(gop);
     gop_free(gop, OP_DESTROY);
     if (err != OP_STATE_SUCCESS) {
-        log_printf(0, "ERROR:  Failed sending PING message to host=%s error=%d\n", host, err);
+        log_printf(0, "ERROR:  Failed sending PING message to host=%s error=%d\n", client_host, err);
         status = 1;
         goto fail;
     }
@@ -382,7 +384,7 @@ int client_trackexec_ping_test(gop_mq_context_t *mqc, int delay, int address_rep
     td.command = CMD_PING;
     td.delay = delay;
     td.address_reply = address_reply;
-    msg = pack_msg(1, &td);
+    msg = pack_msg(1, &td, client_host);
 
     gop = gop_mq_op_new(mqc, msg, client_response_pong, NULL, NULL, dt);
     gop_set_private(gop, &td);
@@ -391,7 +393,7 @@ int client_trackexec_ping_test(gop_mq_context_t *mqc, int delay, int address_rep
     err = gop_waitall(gop);
     gop_free(gop, OP_DESTROY);
     if (err != success_value) {
-        log_printf(0, "ERROR: Recving PONG message to host=%s error=%d\n", host, err);
+        log_printf(0, "ERROR: Recving PONG message to host=%s error=%d\n", client_host, err);
         status = 1;
         goto fail;
     }
@@ -443,7 +445,7 @@ void generate_tasks(gop_mq_context_t *mqc, gop_opque_t *q, int count, test_data_
         tbx_type_malloc(td, test_data_t, 1);
         *td = *td_base;
 
-        msg = pack_msg(1, td);
+        msg = pack_msg(1, td, client_host);
         gop = gop_mq_op_new(mqc, msg, client_response_pong, td, free, td->dt);
         td->id = gop_id(gop);
         gop_set_private(gop, td);
@@ -797,7 +799,7 @@ int server_handle_deferred(gop_mq_socket_t *sock)
         }
 
         if (err != 0) {
-            log_printf(0, "ERROR:  Failed sending deferred message to host=%s error=%d\n", host, err);
+            log_printf(0, "ERROR:  Failed sending deferred message to host=%s error=%d\n", client_host, err);
         }
 
         free(defer);
@@ -858,7 +860,7 @@ int proc_trackexec_ping(gop_mq_portal_t *p, gop_mq_socket_t *sock, mq_msg_t *msg
 
     //** Make the trackaddress response if needed
     log_printf(5, "address_reply=%d\n", td->address_reply);
-    track_response = (td->address_reply == 1) ? gop_mq_msg_trackaddress(host, msg, pid, 1) : NULL;
+    track_response = (td->address_reply == 1) ? gop_mq_msg_trackaddress(server_host, msg, pid, 1) : NULL;
 
     if (td->delay == 0) {
         gop_mq_get_frame(pid, (void **)&data, &size);;
@@ -876,7 +878,7 @@ int proc_trackexec_ping(gop_mq_portal_t *p, gop_mq_socket_t *sock, mq_msg_t *msg
         }
 
         if (err != 0) {
-            log_printf(0, "ERROR:  Failed sending PONG message to host=%s error=%d\n", host, err);
+            log_printf(0, "ERROR:  Failed sending PONG message to host=%s error=%d\n", client_host, err);
         }
 
     } else if (td->delay > 0) {
@@ -909,7 +911,7 @@ int proc_trackexec_ping(gop_mq_portal_t *p, gop_mq_socket_t *sock, mq_msg_t *msg
 
 
         if (err != 0) {
-            log_printf(0, "ERROR:  Failed sending TRACKADDRESS message to host=%s error=%d\n", host, err);
+            log_printf(0, "ERROR:  Failed sending TRACKADDRESS message to host=%s error=%d\n", client_host, err);
         }
     }
 
@@ -992,9 +994,9 @@ void *server_test_raw_socket()
 
     ctx = gop_mq_socket_context_new();
     sock = gop_mq_socket_new(ctx, MQ_TRACE_ROUTER);
-    err = gop_mq_bind(sock, host);
+    err = gop_mq_bind(sock, server_host);
     if (err != 0) {
-        log_printf(0, "ERROR:  Failed connecting to host=%s error=%d errno=%d\n", host, err, errno);
+        log_printf(0, "ERROR:  Failed connecting to host=%s error=%d errno=%d\n", server_host, err, errno);
         goto fail;
     }
 
@@ -1100,7 +1102,7 @@ void server_test_mq_loop()
     mqc = server_make_context();
 
     //** Make the server portal
-    server_portal = gop_mq_portal_create(mqc, host, MQ_CMODE_SERVER);
+    server_portal = gop_mq_portal_create(mqc, server_host, MQ_CMODE_SERVER);
     table = gop_mq_portal_command_table(server_portal);
     gop_mq_command_set(table, MQF_PING_KEY, MQF_PING_SIZE, NULL, cb_ping);
 
@@ -1219,7 +1221,8 @@ int main(int argc, char **argv)
 
     if (argc < 2) {
         printf("mq_test [-d log_level] [-log logfile] [-host url]\n");
-        printf("   -host url     Defaults to %s\n", host);
+        printf("   -server_host url     Defaults to %s\n", server_host);
+        printf("   -client_host url     Defaults to %s\n", client_host);
         return(0);
     }
 
@@ -1237,9 +1240,13 @@ int main(int argc, char **argv)
             i++;
             logfile = argv[i];
             i++;
-        } else if (strcmp(argv[i], "-host") == 0) { //** Alternate host
+        } else if (strcmp(argv[i], "-server_host") == 0) { //** Alternate host
             i++;
-            host = argv[i];
+            server_host = argv[i];
+            i++;
+        } else if (strcmp(argv[i], "-client_host") == 0) { //** Alternate host
+            i++;
+            client_host = argv[i];
             i++;
         } else if (strcmp(argv[i], "-h") == 0) { //** Print help
             printf("mq_test [-d log_level]\n");
@@ -1251,7 +1258,7 @@ int main(int argc, char **argv)
     tbx_set_log_level(dlevel);
 
     printf("log_level=%d\n", _log_level);
-    printf("host=%s\n", host);
+    printf("server_host=%s client_host=%s\n", server_host, client_host);
 
     gop_init_opque_system();
 
