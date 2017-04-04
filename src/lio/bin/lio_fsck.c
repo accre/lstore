@@ -29,7 +29,7 @@
 
 int main(int argc, char **argv)
 {
-    int i, start_option, start_index;
+    int i, start_option, start_index, return_code;
     lio_fsck_repair_t owner_mode, exnode_mode, size_mode;
     lio_fsck_iter_t *it;
     char *owner;
@@ -69,6 +69,7 @@ int main(int argc, char **argv)
         return(1);
     }
 
+    return_code = 0;
     owner_mode = LIO_FSCK_MANUAL;
     owner = NULL;
     exnode_mode = 0;
@@ -114,8 +115,8 @@ int main(int argc, char **argv)
     start_index = i;
 
     if (i>=argc) {
-        info_printf(lio_ifd, 0, "Missing directory!\n");
-        return(2);
+        fprintf(stderr, "Missing directory!\n");
+        return(EINVAL);
     }
 
     info_printf(lio_ifd, 0, "--------------------------------------------------------------------\n");
@@ -138,6 +139,11 @@ int main(int argc, char **argv)
     for (i=start_index; i<argc; i++) {
         //** Create the simple path iterator
         tuple = lio_path_resolve(lio_gc->auto_translate, argv[i]);
+        if (tuple.is_lio < 0) {  //** Mangled path
+            fprintf(stderr, "Unable to resolve path: %s\n", argv[i]);
+            return_code = EINVAL;
+            continue;
+        }
         it = lio_create_fsck_iter(tuple.lc, tuple.creds, tuple.path, LIO_FSCK_MANUAL, NULL, LIO_FSCK_MANUAL);  //** WE use resolve to clean up so we can see the problem objects
         while ((err = lio_next_fsck(tuple.lc, it, &fname, &ftype)) != LIO_FSCK_FINISHED) {
             info_printf(lio_ifd, 0, "err:%d  type:%d  object:%s\n", err, ftype, fname);
@@ -167,6 +173,6 @@ int main(int argc, char **argv)
 
     lio_shutdown();
 
-    return(0);
+    return(return_code);
 }
 

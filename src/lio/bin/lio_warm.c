@@ -246,7 +246,7 @@ gop_op_status_t gen_warm_task(void *arg, int id)
 
 int main(int argc, char **argv)
 {
-    int i, j, start_option, rg_mode, ftype, prefix_len;
+    int i, j, start_option, rg_mode, ftype, prefix_len, return_code;
     char *fname, *path;
     gop_opque_t *q;
     gop_op_generic_t *gop;
@@ -359,11 +359,17 @@ int main(int argc, char **argv)
     }
 
     submitted = good = bad = werr = missing_err = 0;
-
+    return_code = 0;
     while ((path = tbx_stdinarray_iter_next(piter)) != NULL) {
         if (rg_mode == 0) {
             //** Create the simple path iterator
             tuple = lio_path_resolve(lio_gc->auto_translate, path);
+            if (tuple.is_lio < 0) {
+                fprintf(stderr, "Unable to parse path: %s\n", path);
+                free(path);
+                return_code = EINVAL;
+                continue;
+            }
             lio_path_wildcard_auto_append(&tuple);
             rp_single = lio_os_path_glob2regex(tuple.path);
         } else {
@@ -465,9 +471,11 @@ int main(int argc, char **argv)
     info_printf(lio_ifd, 0, "Submitted: " XOT "   Success: " XOT "   Fail: " XOT "    Write Errors: " XOT "   Missing Exnodes: " XOT "\n", submitted, good, bad, werr, missing_err);
     if (submitted != (good+bad)) {
         info_printf(lio_ifd, 0, "ERROR FAILED self-consistency check! Submitted != Success+Fail\n");
+        return_code = EFAULT;
     }
     if (bad > 0) {
         info_printf(lio_ifd, 0, "ERROR Some files failed to warm!\n");
+        return_code = EIO;
     }
 
 
@@ -589,7 +597,7 @@ finished:
 
     lio_shutdown();
 
-    return(0);
+    return(return_code);
 }
 
 

@@ -75,7 +75,7 @@ gop_op_status_t mkdir_fn(void *arg, int id)
 
 int main(int argc, char **argv)
 {
-    int i, j, n, start_index, err, start_option;
+    int i, j, k, n, start_index, err, start_option;
     char *ex_fname;
     gop_opque_t *q;
     gop_op_generic_t *gop;
@@ -147,8 +147,14 @@ int main(int argc, char **argv)
 
     q = gop_opque_new();
     opque_start_execution(q);
-    for (i=0; i<n; i++) {
-        flist[i] = lio_path_resolve(lio_gc->auto_translate, argv[i+start_index]);
+    i = 0;
+    for (k=0; k<n; k++) {
+        flist[i] = lio_path_resolve(lio_gc->auto_translate, argv[k+start_index]);
+        if (flist[i].is_lio < 0) {
+            fprintf(stderr, "Unable to parse path: %s\n", argv[k+start_index]);
+            return_code = EINVAL;
+            continue;
+        }
         gop = gop_tp_op_new(lio_gc->tpc_unlimited, NULL, mkdir_fn, (void *)&(flist[i]), NULL, 1);
         gop_set_myid(gop, i);
         log_printf(0, "gid=%d i=%d fname=%s\n", gop_id(gop), i, flist[i].path);
@@ -159,11 +165,13 @@ int main(int argc, char **argv)
             j = gop_get_myid(gop);
             status = gop_get_status(gop);
             if (status.op_status != OP_STATE_SUCCESS) {
-                info_printf(lio_ifd, 0, "Failed with directory %s with error %s\n", argv[j+start_index], error_table[status.error_code]);
+                info_printf(lio_ifd, 0, "Failed with directory %s with error %s\n", flist[j].path, error_table[status.error_code]);
                 return_code = EIO;
             }
             gop_free(gop, OP_DESTROY);
         }
+
+   	    i++;
     }
 
     err = opque_waitall(q);

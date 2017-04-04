@@ -1435,6 +1435,12 @@ int main(int argc, char **argv)
         if (rg_mode == 0) {
             //** Create the simple path iterator
             tuple = lio_path_resolve(lio_gc->auto_translate, path);
+            if (tuple.is_lio < 0) {
+                fprintf(stderr, "Unable to parse path: %s\n", path);
+                err = EINVAL;
+                free(path);
+                continue;
+            }
             lio_path_wildcard_auto_append(&tuple);
             rp_single = lio_os_path_glob2regex(tuple.path);
             free(path);
@@ -1448,7 +1454,7 @@ int main(int argc, char **argv)
         it = lio_create_object_iter_alist(tuple.lc, tuple.creds, rp_single, ro_single, OS_OBJECT_FILE_FLAG, recurse_depth, keys, (void **)vals, v_size, acount);
         if (it == NULL) {
             info_printf(lio_ifd, 0, "ERROR: Failed with object_iter creation\n");
-            err = 2;
+            err = EIO;
             goto finished;
         }
 
@@ -1595,11 +1601,11 @@ int main(int argc, char **argv)
 
     if (submitted != (good+bad)) {
         info_printf(lio_ifd, 0, "ERROR FAILED self-consistency check! Submitted != Success+Fail\n");
-        err = 2;
+        err = EFAULT;
     }
     if (bad > 0) {
         info_printf(lio_ifd, 0, "ERROR Some files failed inspection!\n");
-        err = 1;
+        err = EIO;
     }
 
 

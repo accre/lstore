@@ -75,7 +75,7 @@ gop_op_status_t touch_fn(void *arg, int id)
 
 int main(int argc, char **argv)
 {
-    int i, j, n, start_index, err, start_option;
+    int i, j, k, n, start_index, err, start_option, return_code;
     char *ex_fname;
     gop_opque_t *q;
     gop_op_generic_t *gop;
@@ -123,7 +123,7 @@ int main(int argc, char **argv)
         fd = fopen(ex_fname, "r");
         if (fd == NULL) {
             printf("ERROR reading exnode!\n");
-            return(2);
+            return(EIO);
         }
         fseek(fd, 0, SEEK_END);
 
@@ -134,7 +134,7 @@ int main(int argc, char **argv)
         fseek(fd, 0, SEEK_SET);
         if (fread(exnode_data, i, 1, fd) != 1) { //**
             printf("ERROR reading exnode from disk!\n");
-            return(2);
+            return(EIO);
         }
         fclose(fd);
     }
@@ -147,8 +147,16 @@ int main(int argc, char **argv)
 
     q = gop_opque_new();
     opque_start_execution(q);
-    for (i=0; i<n; i++) {
-        flist[i] = lio_path_resolve(lio_gc->auto_translate, argv[i+start_index]);
+    i = 0;
+    return_code = 0;
+    for (k=0; k<n; k++) {
+        flist[i] = lio_path_resolve(lio_gc->auto_translate, argv[k+start_index]);
+        if (flist[i].is_lio < 0) {
+            fprintf(stderr, "Unable to parse path: %s\n", argv[k+start_index]);
+            return_code = EINVAL;
+            continue;
+        }
+
         gop = gop_tp_op_new(lio_gc->tpc_unlimited, NULL, touch_fn, (void *)&(flist[i]), NULL, 1);
         gop_set_myid(gop, i);
         log_printf(0, "gid=%d i=%d fname=%s\n", gop_id(gop), i, flist[i].path);
@@ -158,17 +166,25 @@ int main(int argc, char **argv)
             gop = opque_waitany(q);
             j = gop_get_myid(gop);
             status = gop_get_status(gop);
-            if (status.op_status != OP_STATE_SUCCESS) info_printf(lio_ifd, 0, "Failed with file %s with: %s\n", argv[j+start_index], error_table[status.error_code]);
+            if (status.op_status != OP_STATE_SUCCESS) {
+                info_printf(lio_ifd, 0, "Failed with file %s with: %s\n", flist[j].path, error_table[status.error_code]);
+                return_code = EIO;
+            }
+            lio_path_release(&flist[j]);
             gop_free(gop, OP_DESTROY);
         }
+
+        i++;
     }
+    n = i;
 
     err = opque_waitall(q);
     if (err != OP_STATE_SUCCESS) {
         while ((gop = opque_get_next_failed(q)) != NULL) {
             j = gop_get_myid(gop);
             status = gop_get_status(gop);
-            info_printf(lio_ifd, 0, "Failed with file %s with: %s\n", argv[j+start_index], error_table[status.error_code]);
+            info_printf(lio_ifd, 0, "Failed with file %s with: %s\n", flist[j].path, error_table[status.error_code]);
+            return_code = EIO;
         }
     }
 
@@ -182,7 +198,7 @@ int main(int argc, char **argv)
 
     lio_shutdown();
 
-    return((err == OP_STATE_SUCCESS) ? 0: EIO);
+    return(return_code);
 }
 
 

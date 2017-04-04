@@ -40,7 +40,7 @@ int current_index = -1;
 
 int main(int argc, char **argv)
 {
-    int i, err, rg_mode, start_option, loop;
+    int i, err, rg_mode, start_option, loop, return_code;
     gop_opque_t *q;
     gop_op_generic_t *gop;
     char *path;
@@ -119,10 +119,17 @@ int main(int argc, char **argv)
     opque_start_execution(q);
     i = 0;
     loop = 0;
+    return_code = 0;
     while ((path = tbx_stdinarray_iter_next(piter)) != NULL) {
         loop++;
         path_list[i] = path;
         flist[i] = lio_path_resolve(lio_gc->auto_translate, path_list[i]);
+        if (flist[i].is_lio < 0) {                                                                                                                                                   
+            fprintf(stderr, "Unable to parse path: %s\n", path_list[i]);
+            free(path);
+            return_code = EINVAL;
+            continue;
+        }
         rpath[i] = lio_os_path_glob2regex(flist[i].path);
         gop = lio_remove_regex_gop(flist[i].lc, flist[i].creds, rpath[i], NULL, obj_types, recurse_depth, lio_parallel_task_count);
         gop_set_myid(gop, i);
@@ -134,7 +141,10 @@ int main(int argc, char **argv)
             gop = opque_waitany(q);
             i = gop_get_myid(gop);
             status = gop_get_status(gop);
-            if (status.op_status != OP_STATE_SUCCESS) info_printf(lio_ifd, 0, "ERROR with %s\n", path_list[i]);
+            if (status.op_status != OP_STATE_SUCCESS) {
+                info_printf(lio_ifd, 0, "ERROR with %s\n", path_list[i]);
+                return_code = EIO;
+            }
             lio_path_release(&(flist[i]));
             lio_os_regex_table_destroy(rpath[i]);
             free(path_list[i]);
@@ -164,7 +174,7 @@ int main(int argc, char **argv)
 finished:
     lio_shutdown();
 
-    return(0);
+    return(return_code);
 }
 
 
