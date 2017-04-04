@@ -60,6 +60,10 @@ int main(int argc, char **argv)
 
     //** Get the source
     tuple = lio_path_resolve(lio_gc->auto_translate, argv[start_index]);
+    if (tuple.is_lio < 0) {
+        fprintf(stderr, "Unable to parse path: %s\n", argv[start_index]);
+        return(EINVAL);
+    }
 
     //** Check if it exists
     ftype = lio_exists(tuple.lc, tuple.creds, tuple.path);

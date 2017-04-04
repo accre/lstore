@@ -38,7 +38,7 @@
 
 int main(int argc, char **argv)
 {
-    int i, j, n, err, rg_mode;
+    int i, j, k, n, err, rg_mode, return_code;
     gop_opque_t *q;
     gop_op_generic_t *gop;
     gop_op_status_t status;
@@ -83,8 +83,15 @@ int main(int argc, char **argv)
     }
 
 
-    for (i=0; i<n; i++) {
-        flist[i] = lio_path_resolve(lio_gc->auto_translate, argv[i+1]);
+    return_code = 0;
+    i = 0;
+    for (k=0; k<n; k++) {
+        flist[i] = lio_path_resolve(lio_gc->auto_translate, argv[k+1]);
+        if (flist[i].is_lio < 0) {
+            fprintf(stderr, "Unable to parse path: %s\n", argv[k+1]);
+            return_code = EINVAL;
+            continue;
+        }
         rpath[i] = lio_os_path_glob2regex(flist[i].path);
         gop = lio_remove_regex_gop(flist[i].lc, flist[i].creds, rpath[i], NULL, OS_OBJECT_DIR_FLAG, 0, lio_parallel_task_count);
         gop_set_myid(gop, i);
@@ -92,6 +99,7 @@ int main(int argc, char **argv)
         gop_opque_add(q, gop);
 
         if (gop_opque_tasks_left(q) > lio_parallel_task_count) {
+            return_code = EIO;
             gop = opque_waitany(q);
             j = gop_get_myid(gop);
             status = gop_get_status(gop);
@@ -103,12 +111,17 @@ int main(int argc, char **argv)
                 }
             }
             gop_free(gop, OP_DESTROY);
+            lio_path_release(&(flist[j]));
+            lio_os_regex_table_destroy(rpath[j]); rpath[j] = NULL;
         }
+        i++;
     }
+    n = i;
 
     err = opque_waitall(q);
     if (err != OP_STATE_SUCCESS) {
         while ((gop = opque_get_next_failed(q)) != NULL) {
+            return_code = EIO;
             j = gop_get_myid(gop);
             if (j >= 0) {
                 info_printf(lio_ifd, 0, "Failed with directory %s\n", argv[j+1]);
@@ -124,7 +137,7 @@ int main(int argc, char **argv)
 
     for(i=0; i<n; i++) {
         lio_path_release(&(flist[i]));
-        lio_os_regex_table_destroy(rpath[i]);
+        if (rpath[i] != NULL) lio_os_regex_table_destroy(rpath[i]);
     }
 
     free(flist);
@@ -132,7 +145,7 @@ int main(int argc, char **argv)
 
     lio_shutdown();
 
-    return(0);
+    return(return_code);
 }
 
 

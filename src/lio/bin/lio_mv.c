@@ -128,7 +128,7 @@ gop_op_status_t mv_fn(void *arg, int id)
 
 int main(int argc, char **argv)
 {
-    int i, j, start_index, start_option, n_paths;
+    int i, j, start_index, start_option, n_paths, return_code;
     unsigned int ui;
     char *fname;
     mv_t *flist;
@@ -161,6 +161,10 @@ int main(int argc, char **argv)
 
     //** Make the dest tuple
     dtuple = lio_path_resolve(lio_gc->auto_translate, argv[argc-1]);
+    if (dtuple.is_lio < 0) {                                                                                                                                                   
+        fprintf(stderr, "Unable to parse path: %s\n", argv[argc-1]);
+        return(EINVAL);
+    }
 
     if (i>=argc) {
         info_printf(lio_ifd, 0, "Missing directory!\n");
@@ -177,17 +181,25 @@ int main(int argc, char **argv)
 
     tbx_type_malloc_clear(flist, mv_t, n_paths);
 
-    for (i=0; i<n_paths; i++) {
-        flist[i].src_tuple = lio_path_resolve(lio_gc->auto_translate, argv[i+start_index]);
-        flist[i].regex = lio_os_path_glob2regex(flist[i].src_tuple.path);
-        flist[i].dest_tuple = dtuple;
-        flist[i].dest_type = dtype;
-        if (flist[i].src_tuple.lc != dtuple.lc) {
-            info_printf(lio_ifd, 0, "Source(%s) and dest(%s) configs must match!\n", flist[i].src_tuple.lc->section_name, dtuple.lc->section_name);
-        }
-    }
-
     n_errors = 0; //** Initialize the error count
+    return_code = 0;
+
+    j = 0;
+    for (i=0; i<n_paths; i++) {
+        flist[j].src_tuple = lio_path_resolve(lio_gc->auto_translate, argv[i+start_index]);
+        if (flist[j].src_tuple.is_lio < 0) {
+            fprintf(stderr, "Unable to parse path: %s\n", argv[i+start_index]);
+            return_code = EINVAL;
+            continue;
+        }
+        flist[j].regex = lio_os_path_glob2regex(flist[j].src_tuple.path);
+        flist[j].dest_tuple = dtuple;
+        flist[j].dest_type = dtype;
+        if (flist[j].src_tuple.lc != dtuple.lc) {
+            info_printf(lio_ifd, 0, "Source(%s) and dest(%s) configs must match!\n", flist[j].src_tuple.lc->section_name, dtuple.lc->section_name);
+        }
+        j++;
+    }
 
     //** Do some sanity checking and handle the simple case directly
     //** If multiple paths then the dest must be a dir and it has to exist
@@ -315,6 +327,7 @@ finished:
     free(flist);
     lio_shutdown();
 
-    return(n_errors);
+    if (n_errors > 0) return_code = EIO;
+    return(return_code);
 }
 

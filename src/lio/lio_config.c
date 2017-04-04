@@ -441,6 +441,12 @@ lio_path_tuple_t lio_path_resolve_base(char *lpath)
     int n, is_lio;
 
     is_lio = lio_parse_path(lpath, &pp_userid, &pp_section_name, &fname);
+    if (is_lio == -1) { //** Can't parse the path
+        memset(&tuple, 0, sizeof(tuple));
+        tuple.is_lio = is_lio;
+        return(tuple);
+    }
+
     userid = pp_userid;
     section_name = pp_section_name;
 

@@ -201,12 +201,16 @@ int main(int argc, char **argv)
     q = gop_opque_new();
     table = tbx_list_create(0, &tbx_list_string_compare, NULL, tbx_list_no_key_free, tbx_list_no_data_free);
 
-
     for (j=start_index; j<argc; j++) {
         log_printf(5, "path_index=%d argc=%d rg_mode=%d\n", j, argc, rg_mode);
         if (rg_mode == 0) {
             //** Create the simple path iterator
             tuple = lio_path_resolve(lio_gc->auto_translate, argv[j]);
+            if (tuple.is_lio < 0) {
+                fprintf(stderr, "Unable to parse path: %s\n", argv[j]);
+                return_code = EINVAL;
+                continue;
+            }
             lio_path_wildcard_auto_append(&tuple);
             rp_single = lio_os_path_glob2regex(tuple.path);
         } else {

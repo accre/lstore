@@ -81,6 +81,10 @@ int main(int argc, char **argv)
 
     //** Get the destination
     tuple = lio_path_resolve(lio_gc->auto_translate, argv[start_index]);
+    if (tuple.is_lio < 0) {
+        fprintf(stderr, "Unable to parse path: %s\n", argv[start_index]);
+        return(EINVAL);
+    }
 
     //** Check if it exists and if not create it
     dtype = lio_exists(tuple.lc, tuple.creds, tuple.path);

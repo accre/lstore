@@ -37,7 +37,7 @@
 
 int main(int argc, char **argv)
 {
-    int i, start_index, start_option, n_paths, n_errors;
+    int i, j, start_index, start_option, n_paths, n_errors;
     int max_spawn;
     int obj_types = OS_OBJECT_ANY_FLAG;
     ex_off_t bufsize;
@@ -104,10 +104,14 @@ int main(int argc, char **argv)
 
     //** Make the dest tuple
     dtuple = lio_path_resolve(lio_gc->auto_translate, argv[argc-1]);
+    if (dtuple.is_lio < 0) {
+        fprintf(stderr, "Unable to parse destination path: %s\n", argv[argc-1]);
+        return(EINVAL);
+    }
 
     if (i>=argc) {
         info_printf(lio_ifd, 0, "Missing directory!\n");
-        return(2);
+        return(EINVAL);
     }
 
     //** Get the dest filetype/exists
@@ -123,7 +127,7 @@ int main(int argc, char **argv)
 
     if (n_paths <= 0) {
         info_printf(lio_ifd, 0, "Missing destination!\n");
-        return(1);
+        return(EINVAL);
     }
 
     tbx_type_malloc_clear(flist, lio_cp_path_t, n_paths);
@@ -131,18 +135,27 @@ int main(int argc, char **argv)
     max_spawn = lio_parallel_task_count / n_paths;
     if (max_spawn <= 0) max_spawn = 1;
 
+    j = 0;
     for (i=0; i<n_paths; i++) {
-        flist[i].src_tuple = lio_path_resolve(lio_gc->auto_translate, argv[i+start_index]);
-        if (flist[i].src_tuple.is_lio == 0) lio_path_local_make_absolute(&(flist[i].src_tuple));
-        flist[i].dest_tuple = dtuple;
-        flist[i].dest_type = dtype;
-        flist[i].path_regex = lio_os_path_glob2regex(flist[i].src_tuple.path);
-        flist[i].recurse_depth = recurse_depth;
-        flist[i].obj_types = obj_types;
-        flist[i].max_spawn = max_spawn;
-        flist[i].bufsize = bufsize;
-        flist[i].slow = slow;
+        flist[j].src_tuple = lio_path_resolve(lio_gc->auto_translate, argv[i+start_index]);
+        if (flist[j].src_tuple.is_lio == 0) {
+            lio_path_local_make_absolute(&(flist[j].src_tuple));
+        } else if (flist[j].src_tuple.is_lio < 0) {   //** CAn't parse path so skip
+            fprintf(stderr, "Unable to parse source path: %s\n", argv[i+start_index]);
+            continue;
+        }
+        flist[j].dest_tuple = dtuple;
+        flist[j].dest_type = dtype;
+        flist[j].path_regex = lio_os_path_glob2regex(flist[j].src_tuple.path);
+        flist[j].recurse_depth = recurse_depth;
+        flist[j].obj_types = obj_types;
+        flist[j].max_spawn = max_spawn;
+        flist[j].bufsize = bufsize;
+        flist[j].slow = slow;
+        j++;
     }
+
+    n_paths = j;
 
     //** Do some sanity checking and handle the simple case directly
     //** If multiple paths then the dest must be a dir and it has to exist
@@ -231,6 +244,6 @@ finished:
 
     lio_shutdown();
 
-    return((n_errors == 0) ? 0 : 1);
+    return((n_errors == 0) ? 0 : EIO);
 }
 
