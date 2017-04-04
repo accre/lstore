@@ -188,6 +188,11 @@ int main(int argc, char **argv)
         if (rg_mode == 0) {
             //** Create the simple path iterator
             tuple = lio_path_resolve(lio_gc->auto_translate, argv[j]);
+            if (tuple.is_lio < 0) {
+                fprintf(stderr, "Unable to parse path: %s\n", argv[j]);
+                return_code = EINVAL;
+                continue;
+            }
             rp_single = lio_os_path_glob2regex(tuple.path);
         } else {
             rg_mode = 0;  //** Use the initial rp

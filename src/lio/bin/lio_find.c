@@ -31,7 +31,7 @@
 
 int main(int argc, char **argv)
 {
-    int i, j, ftype, rg_mode, start_option, start_index, prefix_len, nopre;
+    int i, j, ftype, rg_mode, start_option, start_index, prefix_len, nopre, return_code;
     char *fname;
     lio_path_tuple_t tuple;
     lio_os_regex_table_t *rp_single, *ro_single;
@@ -39,6 +39,7 @@ int main(int argc, char **argv)
 
     int recurse_depth = 10000;
     int obj_types = OS_OBJECT_FILE_FLAG;
+    return_code = 0;
 
     if (argc < 2) {
         printf("\n");
@@ -85,7 +86,7 @@ int main(int argc, char **argv)
     if (rg_mode == 0) {
         if (i>=argc) {
             info_printf(lio_ifd, 0, "Missing directory!\n");
-            return(2);
+            return(EINVAL);
         }
     } else {
         start_index--;  //** Ther 1st entry will be the rp created in lio_parse_path_options
@@ -96,6 +97,11 @@ int main(int argc, char **argv)
         if (rg_mode == 0) {
             //** Create the simple path iterator
             tuple = lio_path_resolve(lio_gc->auto_translate, argv[j]);
+            if (tuple.is_lio < 0) {  //** Can't resolve path
+                fprintf(stderr, "Unable to resolve path: %s\n", argv[j]);
+                return_code = EINVAL;
+                continue;
+            }
             lio_path_wildcard_auto_append(&tuple);
             rp_single = lio_os_path_glob2regex(tuple.path);
         } else {
@@ -135,7 +141,8 @@ int main(int argc, char **argv)
 
 finished:
     lio_shutdown();
-    return((it == NULL) ? EIO : 0);
+    if (it == NULL) return_code = EIO;
+    return(return_code);
 }
 
 

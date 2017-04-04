@@ -51,7 +51,10 @@
 //  lio_parse_path - Parses a path ofthe form: user@service:/my/path
 //        The user and service are optional
 //
-//  Returns 1 if @: are encountered and 0 otherwise
+//  Returns:
+//     1 if @: are encountered
+//     0 if @: are missing
+//    -1 if the path can't be parsed.  Usually :@ or some perm
 //***********************************************************************
 
 int lio_parse_path(char *startpath, char **user, char **service, char **path)
@@ -67,6 +70,8 @@ int lio_parse_path(char *startpath, char **user, char **service, char **path)
             found = i;
             ptype = 1;
             break;
+        } else if (startpath[i] == ':') {  //** Should have an '@' first
+            return(-1);
         }
     }
 

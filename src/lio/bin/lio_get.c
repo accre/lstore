@@ -37,14 +37,14 @@
 int main(int argc, char **argv)
 {
     ex_off_t bufsize;
-    int err, err_close, ftype, i, start_index, start_option;
+    int err, err_close, ftype, i, start_index, start_option, return_code;
     char *buffer;
     lio_fd_t *fd;
     lio_path_tuple_t tuple;
     char ppbuf[32];
 
     err = 0;
-
+    return_code = 0;
     _lio_ifd = stderr;  //** Default to all information going to stderr since the output is file data.
 
     bufsize = 20*1024*1024;
@@ -77,7 +77,7 @@ int main(int argc, char **argv)
     //** This is the 1st dir to remove
     if (argv[start_index] == NULL) {
         info_printf(lio_ifd, 0, "Missing Source!\n");
-        return(2);
+        return(EINVAL);
     }
 
     //** Make the buffer
@@ -86,6 +86,11 @@ int main(int argc, char **argv)
     for (i=start_index; i<argc; i++) {
         //** Get the source
         tuple = lio_path_resolve(lio_gc->auto_translate, argv[i]);
+        if (tuple.is_lio < 0) {
+            fprintf(stderr, "Unable to parse path: %s\n", argv[i]);
+            return_code = EINVAL;
+            continue;
+        }
 
         //** Check if it exists
         ftype = lio_exists(tuple.lc, tuple.creds, tuple.path);
@@ -122,7 +127,8 @@ finished_early:
 
     lio_shutdown();
 
-    return((err == OP_STATE_SUCCESS) ? 0 : EIO);
+    if (err != OP_STATE_SUCCESS) return_code = EIO;
+    return(return_code);
 }
 
 
