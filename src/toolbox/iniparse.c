@@ -262,7 +262,6 @@ tbx_inip_group_t *_next_group(bfile_t *bfd)
             start++;  //** Move the starting point to the next character
 
             text = tbx_stk_string_trim(start); //** Trim the whitespace
-//        text = tbx_stk_string_token(start, " ", &last, &i);
             tbx_type_malloc(g, tbx_inip_group_t, 1);
             g->group = strdup(text);
             g->list = NULL;
@@ -339,20 +338,22 @@ void tbx_inip_destroy(tbx_inip_file_t *inip)
 }
 
 //***********************************************************************
-//  _find_key - Scans the group for the given key and returns the element
+//  _find_key - Scans the group for the given key and returns the last
+//       matching element
 //***********************************************************************
 
 tbx_inip_element_t *_find_key(tbx_inip_group_t *group, const char *name)
 {
-    tbx_inip_element_t *ele;
+    tbx_inip_element_t *ele, *found;
 
     if (group == NULL) return(NULL);
 
+    found = NULL;
     for (ele = group->list; ele != NULL; ele = ele->next) {
-        if (strcmp(ele->key, name) == 0) return(ele);
+        if (strcmp(ele->key, name) == 0) found = ele;
     }
 
-    return(NULL);
+    return(found);
 }
 
 //***********************************************************************
@@ -371,18 +372,20 @@ char *tbx_inip_find_key(tbx_inip_group_t *group, const char *name)
 
 
 //***********************************************************************
-//  inip_find_group - Scans the tree for the given group
+//  inip_find_group - Scans the tree for the given group and returns
+//      the last one encountered
 //***********************************************************************
 
 tbx_inip_group_t *tbx_inip_group_find(tbx_inip_file_t *inip, const char *name)
 {
-    tbx_inip_group_t *group;
+    tbx_inip_group_t *group, *found;
 
+    found = NULL;
     for (group = inip->tree; group != NULL; group = group->next) {
-        if (strcmp(group->group, name) == 0) return(group);
+        if (strcmp(group->group, name) == 0) found = group;
     }
 
-    return(NULL);
+    return(found);
 }
 
 //***********************************************************************
@@ -495,8 +498,6 @@ tbx_inip_file_t *inip_read_fd(FILE *fd)
 
         group = _next_group(&bfd);
     }
-
-
 
     if (bfd.curr != NULL) {
         fclose(bfd.curr->fd);
