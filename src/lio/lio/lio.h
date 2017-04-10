@@ -237,6 +237,7 @@ struct lio_cp_path_t {
     int obj_types;
     int max_spawn;
     int slow;
+    int force_dest_create;
     ex_off_t bufsize;
 };
 #ifdef __cplusplus
