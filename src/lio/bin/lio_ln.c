@@ -84,7 +84,7 @@ int main(int argc, char **argv)
     src_fname = argv[i];
     i++;
     stuple = lio_path_resolve(lio_gc->auto_translate, src_fname);
-    if (stuple.is_lio < 0) {                                                                                                                                                   
+    if (stuple.is_lio < 0) {
         fprintf(stderr, "Unable to parse path: %s\n", src_fname);
         return(EINVAL);
     }
@@ -92,7 +92,7 @@ int main(int argc, char **argv)
     dest_fname = argv[i];
     i++;
     dtuple = lio_path_resolve(lio_gc->auto_translate, dest_fname);
-    if (dtuple.is_lio < 0) {                                                                                                                                                   
+    if (dtuple.is_lio < 0) {
         fprintf(stderr, "Unable to parse path: %s\n", dest_fname);
         return(EINVAL);
     }

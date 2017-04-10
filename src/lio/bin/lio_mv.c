@@ -27,6 +27,7 @@
 #include <tbx/assert_result.h>
 #include <tbx/log.h>
 #include <tbx/random.h>
+#include <tbx/stdinarray_iter.h>
 #include <tbx/type_malloc.h>
 
 #include <lio/lio.h>
@@ -63,7 +64,7 @@ gop_op_status_t mv_fn(void *arg, int id)
 
     it = lio_create_object_iter(mv->src_tuple.lc, mv->src_tuple.creds, mv->regex, NULL, OS_OBJECT_ANY_FLAG, NULL, 0, NULL, 0);
     if (it == NULL) {
-        info_printf(lio_ifd, 0, "ERROR: Failed with object_iter creation src_path=%s\n", mv->src_tuple.path);
+        fprintf(stderr, "ERROR: Failed with object_iter creation src_path=%s\n", mv->src_tuple.path);
         return(gop_failure_status);
     }
 
@@ -128,16 +129,15 @@ gop_op_status_t mv_fn(void *arg, int id)
 
 int main(int argc, char **argv)
 {
-    int i, j, start_index, start_option, n_paths, return_code;
-    unsigned int ui;
-    char *fname;
-    mv_t *flist;
+    int i, start_index, start_option, n_paths, return_code;
+    char *path;
+    mv_t *mv;
     gop_op_generic_t *gop;
     gop_opque_t *q;
     lio_path_tuple_t dtuple;
+    tbx_stdinarray_iter_t *it;
     int err, dtype;
     gop_op_status_t status;
-    int n_errors;
 
     if (argc < 2) {
         printf("\n");
@@ -159,12 +159,24 @@ int main(int argc, char **argv)
     } while ((start_option < i) && (i<argc));
     start_index = i;
 
+    //** Make the path iterator
+    n_paths = argc-start_index;
+    max_spawn = lio_parallel_task_count / n_paths;
+    if (max_spawn <= 0) max_spawn = 1;
+    it = tbx_stdinarray_iter_create(argc-start_option, (const char **)(argv+start_index));
+
     //** Make the dest tuple
-    dtuple = lio_path_resolve(lio_gc->auto_translate, argv[argc-1]);
-    if (dtuple.is_lio < 0) {                                                                                                                                                   
-        fprintf(stderr, "Unable to parse path: %s\n", argv[argc-1]);
+    path = tbx_stdinarray_iter_last(it);
+    if (!path) {
+        fprintf(stderr, "Unable to parse destination path\n");
         return(EINVAL);
     }
+    dtuple = lio_path_resolve(lio_gc->auto_translate, path);
+    if (dtuple.is_lio < 0) {
+        fprintf(stderr, "Unable to parse path: %s\n", path);
+        return(EINVAL);
+    }
+    free(path);
 
     if (i>=argc) {
         info_printf(lio_ifd, 0, "Missing directory!\n");
@@ -174,160 +186,106 @@ int main(int argc, char **argv)
     //** Get the dest filetype/exists
     dtype = lio_exists(dtuple.lc, dtuple.creds, dtuple.path);
 
-
-    //** Create the simple path iterator
-    n_paths = argc - start_index - 1;
-    log_printf(15, "n_paths=%d argc=%d si=%d dtype=%d\n", n_paths, argc, start_index, dtype);
-
-    tbx_type_malloc_clear(flist, mv_t, n_paths);
-
-    n_errors = 0; //** Initialize the error count
     return_code = 0;
-
-    j = 0;
-    for (i=0; i<n_paths; i++) {
-        flist[j].src_tuple = lio_path_resolve(lio_gc->auto_translate, argv[i+start_index]);
-        if (flist[j].src_tuple.is_lio < 0) {
-            fprintf(stderr, "Unable to parse path: %s\n", argv[i+start_index]);
-            return_code = EINVAL;
-            continue;
-        }
-        flist[j].regex = lio_os_path_glob2regex(flist[j].src_tuple.path);
-        flist[j].dest_tuple = dtuple;
-        flist[j].dest_type = dtype;
-        if (flist[j].src_tuple.lc != dtuple.lc) {
-            info_printf(lio_ifd, 0, "Source(%s) and dest(%s) configs must match!\n", flist[j].src_tuple.lc->section_name, dtuple.lc->section_name);
-        }
-        j++;
-    }
+    q = gop_opque_new();
+    opque_start_execution(q);
 
     //** Do some sanity checking and handle the simple case directly
     //** If multiple paths then the dest must be a dir and it has to exist
-    if ((n_paths > 1) && ((dtype & OS_OBJECT_DIR_FLAG) == 0)) {
+    path = tbx_stdinarray_iter_peek(it, 2);
+    if (path && ((dtype & OS_OBJECT_DIR_FLAG) == 0)) {
         if (dtype == 0) {
-            info_printf(lio_ifd, 0, "ERROR: Multiple paths selected but the dest(%s) doesn't exist!\n", dtuple.path);
+            fprintf(stderr, "ERROR: Multiple paths selected but the dest(%s) doesn't exist!\n", dtuple.path);
         } else {
-            info_printf(lio_ifd, 0, "ERROR: Multiple paths selected but the dest(%s) isn't a directory!\n", dtuple.path);
+            fprintf(stderr, "ERROR: Multiple paths selected but the dest(%s) isn't a directory!\n", dtuple.path);
         }
-        n_errors = 1;
+        return_code = EINVAL;
         goto finished;
-    } else if (n_paths == 1) {
-        log_printf(15, "11111111\n");
-        tbx_log_flush();
+    } else if (!path) {
+        path = tbx_stdinarray_iter_next(it);
+        tbx_type_malloc_clear(mv, mv_t, 1);
+        mv->src_tuple = lio_path_resolve(lio_gc->auto_translate, path);
+        if (mv->src_tuple.is_lio < 0) {
+            fprintf(stderr, "Unable to parse path: %s\n", path);
+            return_code = EINVAL;
+            free(path);
+            free(mv);
+            goto finished;
+        }
+        free(path);
+        mv->regex = lio_os_path_glob2regex(mv->src_tuple.path);
+        mv->dest_tuple = dtuple;
+        mv->dest_type = dtype;
         if (((dtype & OS_OBJECT_FILE_FLAG) > 0) || (dtype == 0)) {  //** Single path and dest is an existing file or doesn't exist
-            if (lio_os_regex_is_fixed(flist[0].regex) == 0) {  //** Uh oh we have a wildcard with a single file dest
-                info_printf(lio_ifd, 0, "ERROR: Single wildcard path(%s) selected but the dest(%s) is a file or doesn't exist!\n", flist[0].src_tuple.path, dtuple.path);
-                n_errors = 1;
+            if (lio_os_regex_is_fixed(mv->regex) == 0) {  //** Uh oh we have a wildcard with a single file dest
+                fprintf(stderr, "ERROR: Single wildcard path(%s) selected but the dest(%s) is a file or doesn't exist!\n", mv->src_tuple.path, dtuple.path);
+                return_code = EINVAL;
                 goto finished;
             }
         }
-
-        log_printf(15, "2222222222222222 fixed=%d exp=%s\n", lio_os_regex_is_fixed(flist[0].regex), flist[0].regex->regex_entry[0].expression);
-        tbx_log_flush();
 
         //**if it's a fixed src with a dir dest we skip and use the mv_fn routines
-        if ((lio_os_regex_is_fixed(flist[0].regex) == 1) && ((dtype == 0) || ((dtype & OS_OBJECT_FILE_FLAG) > 0))) {
-            n_errors = 1; //** Default is an error
-
-            //** If we made it here we have a simple mv but we need to preserve the dest file if things go wrong
-            fname = NULL;
-            if ((dtype & OS_OBJECT_FILE_FLAG) > 0) { //** Existing file so rename it for backup
-                tbx_type_malloc(fname, char, strlen(dtuple.path) + 40);
-                tbx_random_get_bytes(&ui, sizeof(ui));  //** MAke the random name
-                sprintf(fname, "%s.mv.%u", dtuple.path, ui);
-                err = gop_sync_exec(lio_move_object_gop(dtuple.lc, dtuple.creds, dtuple.path, fname));
-                if (err != OP_STATE_SUCCESS) {
-                    info_printf(lio_ifd, 0, "ERROR renaming dest(%s) to %s!\n", dtuple.path, fname);
-                    free(fname);
-                    goto finished;
-                }
-            }
-
-            log_printf(15, "333333333333333333\n");
-            tbx_log_flush();
-
-            //** Now do the simple mv
-            err = gop_sync_exec(lio_move_object_gop(dtuple.lc, dtuple.creds, flist[0].src_tuple.path, dtuple.path));
+        if ((lio_os_regex_is_fixed(mv->regex) == 1) && ((dtype == 0) || ((dtype & OS_OBJECT_FILE_FLAG) > 0))) {
+            err = gop_sync_exec(lio_move_object_gop(dtuple.lc, dtuple.creds, mv->src_tuple.path, dtuple.path));
             if (err != OP_STATE_SUCCESS) {
-                info_printf(lio_ifd, 0, "ERROR renaming dest(%s) to %s!\n", dtuple.path, fname);
-
-                //** Mv the original back due to the error
-                if (fname != NULL) err = gop_sync_exec(lio_move_object_gop(dtuple.lc, dtuple.creds, fname, dtuple.path));
+                fprintf(stderr, "ERROR renaming %s to %s!\n", mv->src_tuple.path, dtuple.path);
+                return_code = EINVAL;
+                lio_path_release(&mv->src_tuple);
+                free(mv);
                 goto finished;
             }
-
-            log_printf(15, "4444444444444444444\n");
-            tbx_log_flush();
-
-            //** Clean up by removing the original dest if needed
-            if (fname != NULL) {
-                err = gop_sync_exec(lio_remove_gop(dtuple.lc, dtuple.creds, fname, NULL, dtype));
-                if (err != OP_STATE_SUCCESS) {
-                    info_printf(lio_ifd, 0, "ERROR removing temp dest(%s)!\n", fname);
-                    free(fname);
-                    goto finished;
-                }
-                free(fname);
-            }
-
-            log_printf(15, "55555555555555555\n");
-            tbx_log_flush();
-
-            n_errors = 0;  //** If we made it here the simple mv was successfull
-            goto finished;
+        } else {
+            gop = gop_tp_op_new(lio_gc->tpc_unlimited, NULL, mv_fn, mv, NULL, 1);
+            gop_opque_add(q, gop);
         }
     }
 
+    while (1) {
+        path = tbx_stdinarray_iter_next(it);
+        if (path) {
+            tbx_type_malloc_clear(mv, mv_t, 1);
+            mv->src_tuple = lio_path_resolve(lio_gc->auto_translate, path);
+            if (mv->src_tuple.is_lio < 0) {
+                fprintf(stderr, "Unable to parse path: %s\n", path);
+                return_code = EINVAL;
+                free(path);
+                free(mv);
+                continue;
+            }
+            free(path);
+            mv->regex = lio_os_path_glob2regex(mv->src_tuple.path);
+            mv->dest_tuple = dtuple;
+            mv->dest_type = dtype;
 
+            gop = gop_tp_op_new(lio_gc->tpc_unlimited, NULL, mv_fn, mv, NULL, 1);
+            gop_set_private(gop, mv);
+            gop_opque_add(q, gop);
+        }
 
-    //** IF we made it here we have mv's to a directory
-    max_spawn = lio_parallel_task_count / n_paths;
-    if (max_spawn <= 0) max_spawn = 1;
-
-    q = gop_opque_new();
-    opque_start_execution(q);
-    for (i=0; i<n_paths; i++) {
-        gop = gop_tp_op_new(lio_gc->tpc_unlimited, NULL, mv_fn, (void *)&(flist[i]), NULL, 1);
-        gop_set_myid(gop, i);
-        log_printf(0, "gid=%d i=%d fname=%s\n", gop_id(gop), i, flist[i].src_tuple.path);
-        gop_opque_add(q, gop);
-
-        if (gop_opque_tasks_left(q) > lio_parallel_task_count) {
+        if ((gop_opque_tasks_left(q) > lio_parallel_task_count) || (!path)) {
             gop = opque_waitany(q);
-            j = gop_get_myid(gop);
+            if (!gop) break;
+            mv = gop_get_private(gop);
             status = gop_get_status(gop);
             if (status.op_status != OP_STATE_SUCCESS) {
-                info_printf(lio_ifd, 0, "Failed with path %s\n", flist[j].src_tuple.path);
-                n_errors += status.error_code;
+                fprintf(stderr, "Failed with path %s\n", mv->src_tuple.path);
+                return_code = EINVAL;
             }
+            lio_path_release(&mv->src_tuple);
+            lio_os_regex_table_destroy(mv->regex);
+            free(mv);
             gop_free(gop, OP_DESTROY);
         }
     }
 
-    err = opque_waitall(q);
-    if (err != OP_STATE_SUCCESS) {
-        while ((gop = opque_get_next_failed(q)) != NULL) {
-            j = gop_get_myid(gop);
-            info_printf(lio_ifd, 0, "Failed with path %s\n", flist[j].src_tuple.path);
-            status = gop_get_status(gop);
-            n_errors += status.error_code;
-        }
-    }
-
-    gop_opque_free(q, OP_DESTROY);
-
 
 finished:
     lio_path_release(&dtuple);
-    for(i=0; i<n_paths; i++) {
-        lio_path_release(&(flist[i].src_tuple));
-        lio_os_regex_table_destroy(flist[i].regex);
-    }
+    tbx_stdinarray_iter_destroy(it);
+    gop_opque_free(q, OP_DESTROY);
 
-    free(flist);
     lio_shutdown();
 
-    if (n_errors > 0) return_code = EIO;
     return(return_code);
 }
 

@@ -24,6 +24,7 @@
 #include <string.h>
 #include <tbx/assert_result.h>
 #include <tbx/log.h>
+#include <tbx/stdinarray_iter.h>
 #include <tbx/string_token.h>
 #include <tbx/type_malloc.h>
 
@@ -71,12 +72,13 @@ void load_file(char *fname, char **val, int *v_size)
 
 int main(int argc, char **argv)
 {
-    int i, j, rg_mode, start_option, start_index, err, fin, nfailed;
+    int i, rg_mode, start_option, start_index, err, fin, nfailed;
     lio_path_tuple_t tuple;
     lio_os_regex_table_t *rp_single, *ro_single;
     os_object_iter_t *it;
+    tbx_stdinarray_iter_t *it_args;
     os_fd_t *fd;  //** This is just used for manipulating symlink attributes
-    char *bstate;
+    char *bstate, *path;
     char *key[MAX_SET];
     char *val[MAX_SET];
     int v_size[MAX_SET];
@@ -183,16 +185,21 @@ int main(int argc, char **argv)
     }
 
     nfailed = 0;
-    for (j=start_index; j<argc; j++) {
-        log_printf(5, "path_index=%d argc=%d rg_mode=%d\n", j, argc, rg_mode);
+    it_args = tbx_stdinarray_iter_create(argc-start_index, (const char **)(argv+start_index));
+    while (1) {
         if (rg_mode == 0) {
+            path = tbx_stdinarray_iter_next(it_args);
+            if (!path) break;
+
             //** Create the simple path iterator
-            tuple = lio_path_resolve(lio_gc->auto_translate, argv[j]);
+            tuple = lio_path_resolve(lio_gc->auto_translate, path);
             if (tuple.is_lio < 0) {
-                fprintf(stderr, "Unable to parse path: %s\n", argv[j]);
+                fprintf(stderr, "Unable to parse path: %s\n", path);
                 return_code = EINVAL;
-                continue;
+                free(path);
+                    continue;
             }
+            free(path);
             rp_single = lio_os_path_glob2regex(tuple.path);
         } else {
             rg_mode = 0;  //** Use the initial rp
@@ -263,6 +270,7 @@ finished:
         if (skey[i] != NULL) free(skey[i]);
     }
 
+    tbx_stdinarray_iter_destroy(it_args);
     lio_shutdown();
 
     return(return_code);
