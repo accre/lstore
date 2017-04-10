@@ -25,6 +25,7 @@
 #include <tbx/assert_result.h>
 #include <tbx/list.h>
 #include <tbx/log.h>
+#include <tbx/stdinarray_iter.h>
 #include <tbx/type_malloc.h>
 
 #include <lio/blacklist.h>
@@ -38,14 +39,14 @@
 
 int main(int argc, char **argv)
 {
-    int i, j, k, n, err, rg_mode, return_code;
-    gop_opque_t *q;
-    gop_op_generic_t *gop;
+    int rg_mode, return_code;
     gop_op_status_t status;
-    lio_os_regex_table_t **rpath;
-    lio_path_tuple_t *flist;
+    lio_os_regex_table_t *rpath;
+    lio_path_tuple_t *tuple;
     lio_os_regex_table_t *rp_single, *ro_single;
-    lio_path_tuple_t tuple;
+    tbx_stdinarray_iter_t *it;
+    char *path;
+    lio_path_tuple_t rg_tuple;
 
     if (argc < 2) {
         printf("\n");
@@ -60,89 +61,48 @@ int main(int argc, char **argv)
     //*** Parse the directory args
     rp_single = ro_single = NULL;
 
-    rg_mode = lio_parse_path_options(&argc, argv, lio_gc->auto_translate, &tuple, &rp_single, &ro_single);
+    rg_mode = lio_parse_path_options(&argc, argv, lio_gc->auto_translate, &rg_tuple, &rp_single, &ro_single);
 
     //** This is the 1st dir to remove
     if (argv[1] == NULL) {
         info_printf(lio_ifd, 0, "Missing directory!\n");
-        return(2);
+        return(EINVAL);
     }
-
-    //** Spawn the tasks
-    n = argc - 1;
-    tbx_type_malloc(flist, lio_path_tuple_t, n);
-    tbx_type_malloc(rpath, lio_os_regex_table_t *, n);
-
-    q = gop_opque_new();
-    opque_start_execution(q);
-
-    if (rg_mode == 1) {
-        gop = lio_remove_regex_gop(tuple.lc, tuple.creds, rp_single, ro_single, OS_OBJECT_DIR_FLAG, 0, lio_parallel_task_count);
-        gop_set_myid(gop, -1);
-        gop_opque_add(q, gop);
-    }
-
 
     return_code = 0;
-    i = 0;
-    for (k=0; k<n; k++) {
-        flist[i] = lio_path_resolve(lio_gc->auto_translate, argv[k+1]);
-        if (flist[i].is_lio < 0) {
-            fprintf(stderr, "Unable to parse path: %s\n", argv[k+1]);
+
+    //** Launch the REGEX op if needed
+    if (rg_mode == 1) {
+        status = gop_sync_exec_status(lio_remove_regex_gop(rg_tuple.lc, rg_tuple.creds, rp_single, ro_single, OS_OBJECT_DIR_FLAG, 0, lio_parallel_task_count));
+        return_code = EIO;
+        info_printf(lio_ifd, 0, "Failed with regex path\n");
+        lio_path_release(&rg_tuple);
+    }
+
+    it = tbx_stdinarray_iter_create(argc-1, (const char **)(argv+1));
+    while ((path = tbx_stdinarray_iter_next(it)) != NULL) {
+        tbx_type_malloc_clear(tuple, lio_path_tuple_t, 1);
+        *tuple = lio_path_resolve(lio_gc->auto_translate, path);
+        if (tuple->is_lio < 0) {
+            fprintf(stderr, "Unable to parse path: %s\n", path);
+            free(path);
+            free(tuple);
             return_code = EINVAL;
             continue;
         }
-        rpath[i] = lio_os_path_glob2regex(flist[i].path);
-        gop = lio_remove_regex_gop(flist[i].lc, flist[i].creds, rpath[i], NULL, OS_OBJECT_DIR_FLAG, 0, lio_parallel_task_count);
-        gop_set_myid(gop, i);
-        log_printf(0, "gid=%d i=%d fname=%s\n", gop_id(gop), i, flist[i].path);
-        gop_opque_add(q, gop);
-
-        if (gop_opque_tasks_left(q) > lio_parallel_task_count) {
+        free(path);
+        rpath = lio_os_path_glob2regex(tuple->path);
+        status = gop_sync_exec_status(lio_remove_regex_gop(tuple->lc, tuple->creds, rpath, NULL, OS_OBJECT_DIR_FLAG, 0, lio_parallel_task_count));
+        if (status.op_status != OP_STATE_SUCCESS) {
             return_code = EIO;
-            gop = opque_waitany(q);
-            j = gop_get_myid(gop);
-            status = gop_get_status(gop);
-            if (status.op_status != OP_STATE_SUCCESS) {
-                if (j >= 0) {
-                    info_printf(lio_ifd, 0, "Failed with directory %s\n", argv[j+1]);
-                } else {
-                    info_printf(lio_ifd, 0, "Failed with regex path\n");
-                }
-            }
-            gop_free(gop, OP_DESTROY);
-            lio_path_release(&(flist[j]));
-            lio_os_regex_table_destroy(rpath[j]); rpath[j] = NULL;
+            info_printf(lio_ifd, 0, "Failed with directory %s\n", tuple->path);
         }
-        i++;
-    }
-    n = i;
 
-    err = opque_waitall(q);
-    if (err != OP_STATE_SUCCESS) {
-        while ((gop = opque_get_next_failed(q)) != NULL) {
-            return_code = EIO;
-            j = gop_get_myid(gop);
-            if (j >= 0) {
-                info_printf(lio_ifd, 0, "Failed with directory %s\n", argv[j+1]);
-            } else {
-                info_printf(lio_ifd, 0, "Failed with regex path\n");
-            }
-        }
+        lio_path_release(tuple); free(tuple);
+        lio_os_regex_table_destroy(rpath);
     }
 
-    gop_opque_free(q, OP_DESTROY);
-
-    if (rg_mode == 1) lio_path_release(&tuple);
-
-    for(i=0; i<n; i++) {
-        lio_path_release(&(flist[i]));
-        if (rpath[i] != NULL) lio_os_regex_table_destroy(rpath[i]);
-    }
-
-    free(flist);
-    free(rpath);
-
+    tbx_stdinarray_iter_destroy(it);
     lio_shutdown();
 
     return(return_code);

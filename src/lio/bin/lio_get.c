@@ -24,6 +24,7 @@
 #include <tbx/assert_result.h>
 #include <tbx/log.h>
 #include <tbx/string_token.h>
+#include <tbx/stdinarray_iter.h>
 #include <tbx/type_malloc.h>
 
 #include <lio/ex3.h>
@@ -39,6 +40,8 @@ int main(int argc, char **argv)
     ex_off_t bufsize;
     int err, err_close, ftype, i, start_index, start_option, return_code;
     char *buffer;
+    char *path;
+    tbx_stdinarray_iter_t *it;
     lio_fd_t *fd;
     lio_path_tuple_t tuple;
     char ppbuf[32];
@@ -76,47 +79,53 @@ int main(int argc, char **argv)
 
     //** This is the 1st dir to remove
     if (argv[start_index] == NULL) {
-        info_printf(lio_ifd, 0, "Missing Source!\n");
+        fprintf(stderr, "Missing Source!\n");
         return(EINVAL);
     }
 
     //** Make the buffer
     tbx_type_malloc(buffer, char, bufsize+1);
-
-    for (i=start_index; i<argc; i++) {
+    it = tbx_stdinarray_iter_create(argc-start_index, (const char **)(argv+start_index));
+    while ((path = tbx_stdinarray_iter_next(it)) != NULL) {
         //** Get the source
-        tuple = lio_path_resolve(lio_gc->auto_translate, argv[i]);
+        tuple = lio_path_resolve(lio_gc->auto_translate, path);
         if (tuple.is_lio < 0) {
-            fprintf(stderr, "Unable to parse path: %s\n", argv[i]);
+            fprintf(stderr, "Unable to parse path: %s\n", path);
+            free(path);
             return_code = EINVAL;
             continue;
         }
+        free(path);
 
         //** Check if it exists
         ftype = lio_exists(tuple.lc, tuple.creds, tuple.path);
 
         if ((ftype & OS_OBJECT_FILE_FLAG) == 0) { //** Doesn't exist or is a dir
-            info_printf(lio_ifd, 1, "ERROR source file(%s) doesn't exist or is a dir ftype=%d!\n", tuple.path, ftype);
+            fprintf(stderr, "ERROR source file(%s) doesn't exist or is a dir ftype=%d!\n", tuple.path, ftype);
+            return_code = EIO;
             goto finished_early;
         }
 
         gop_sync_exec(lio_open_gop(tuple.lc, tuple.creds, tuple.path, LIO_READ_MODE, NULL, &fd, 60));
         if (fd == NULL) {
-            info_printf(lio_ifd, 0, "Failed opening file!  path=%s\n", tuple.path);
+            fprintf(stderr, "Failed opening file!  path=%s\n", tuple.path);
+            return_code = EIO;
             goto finished_early;
         }
 
         //** Do the get
         err = gop_sync_exec(lio_cp_lio2local_gop(fd, stdout, bufsize, buffer, NULL));
         if (err != OP_STATE_SUCCESS) {
-            info_printf(lio_ifd, 0, "Failed reading data!  path=%s\n", tuple.path);
+            return_code = EIO;
+            fprintf(stderr, "Failed reading data!  path=%s\n", tuple.path);
         }
 
         //** Close the file
         err_close = gop_sync_exec(lio_close_gop(fd));
         if (err_close != OP_STATE_SUCCESS) {
             err = err_close;
-            info_printf(lio_ifd, 0, "Failed closing LIO file!  path=%s\n", tuple.path);
+            return_code = EIO;
+            fprintf(stderr, "Failed closing LIO file!  path=%s\n", tuple.path);
         }
 
 finished_early:
@@ -124,7 +133,7 @@ finished_early:
     }
 
     free(buffer);
-
+    tbx_stdinarray_iter_destroy(it);
     lio_shutdown();
 
     if (err != OP_STATE_SUCCESS) return_code = EIO;

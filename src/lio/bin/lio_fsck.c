@@ -22,7 +22,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <tbx/log.h>
-
+#include <tbx/stdinarray_iter.h>
 #include <lio/ex3.h>
 #include <lio/lio.h>
 #include <lio/os.h>
@@ -32,8 +32,10 @@ int main(int argc, char **argv)
     int i, start_option, start_index, return_code;
     lio_fsck_repair_t owner_mode, exnode_mode, size_mode;
     lio_fsck_iter_t *it;
+    tbx_stdinarray_iter_t *it_args;
     char *owner;
     char *fname;
+    char *path;
     gop_op_generic_t *gop;
     gop_op_status_t status;
     lio_path_tuple_t tuple;
@@ -135,15 +137,18 @@ int main(int argc, char **argv)
     nfailed = 0;
     checked = 0;
     exnode_mode = exnode_mode | size_mode;
-
-    for (i=start_index; i<argc; i++) {
+    it_args = tbx_stdinarray_iter_create(argc-start_index, (const char **)(argv+start_index));
+    while ((path = tbx_stdinarray_iter_next(it_args)) != NULL) {
         //** Create the simple path iterator
-        tuple = lio_path_resolve(lio_gc->auto_translate, argv[i]);
+        tuple = lio_path_resolve(lio_gc->auto_translate, path);
         if (tuple.is_lio < 0) {  //** Mangled path
-            fprintf(stderr, "Unable to resolve path: %s\n", argv[i]);
+            fprintf(stderr, "Unable to resolve path: %s\n", path);
+            free(path);
             return_code = EINVAL;
             continue;
         }
+        free(path);
+
         it = lio_create_fsck_iter(tuple.lc, tuple.creds, tuple.path, LIO_FSCK_MANUAL, NULL, LIO_FSCK_MANUAL);  //** WE use resolve to clean up so we can see the problem objects
         while ((err = lio_next_fsck(tuple.lc, it, &fname, &ftype)) != LIO_FSCK_FINISHED) {
             info_printf(lio_ifd, 0, "err:%d  type:%d  object:%s\n", err, ftype, fname);
@@ -170,7 +175,7 @@ int main(int argc, char **argv)
     info_printf(lio_ifd, 0, "Problem objects: " XOT "  Repair Failed count: " XOT " Processed: " XOT "\n", n, nfailed, checked);
     info_printf(lio_ifd, 0, "--------------------------------------------------------------------\n");
 
-
+    tbx_stdinarray_iter_destroy(it_args);
     lio_shutdown();
 
     return(return_code);

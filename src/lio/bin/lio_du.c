@@ -28,6 +28,7 @@
 #include <tbx/list.h>
 #include <tbx/log.h>
 #include <tbx/string_token.h>
+#include <tbx/stdinarray_iter.h>
 #include <tbx/type_malloc.h>
 
 #include <lio/ex3.h>
@@ -79,7 +80,7 @@ void du_format_entry(tbx_log_fd_t *ifd, du_entry_t *de, int sumonly)
 
 int main(int argc, char **argv)
 {
-    int i, j, ftype, rg_mode, start_index, start_option, nosort, prefix_len;
+    int i, ftype, rg_mode, start_index, start_option, nosort, prefix_len;
     char *fname;
     du_entry_t *de;
     tbx_list_t *table, *sum_table, *lt;
@@ -87,11 +88,12 @@ int main(int argc, char **argv)
     os_object_iter_t *it;
     tbx_list_iter_t lit;
     char *key = "system.exnode.size";
-    char *val, *file;
+    char *val, *file, *path;
     int64_t bytes;
     int obj_types;
     ex_off_t total_files, total_bytes;
     int v_size, sumonly, ignoreln;
+    tbx_stdinarray_iter_t *it_args;
     int recurse_depth = 10000;
     int return_code = 0;
     du_entry_t du_total;
@@ -181,17 +183,20 @@ int main(int argc, char **argv)
     table = tbx_list_create(0, &tbx_list_string_compare, NULL, tbx_list_no_key_free, tbx_list_no_data_free);
 
     total_files = total_bytes = 0;
-
-    for (j=start_index; j<argc; j++) {
-        log_printf(5, "path_index=%d argc=%d rg_mode=%d\n", j, argc, rg_mode);
+    it_args = tbx_stdinarray_iter_create(argc-start_index, (const char **)(argv+start_index));
+    while (1) {
         if (rg_mode == 0) {
             //** Create the simple path iterator
-            tuple = lio_path_resolve(lio_gc->auto_translate, argv[j]);
+            path = tbx_stdinarray_iter_next(it_args);
+            if (!path) break;
+            tuple = lio_path_resolve(lio_gc->auto_translate, path);
             if (tuple.is_lio < 0) { //** Malformed path
-                fprintf(stderr, "Unable to parse path: %s\n", argv[j]);
+                fprintf(stderr, "Unable to parse path: %s\n", path);
+                free(path);
                 return_code = EINVAL;
                 continue;
             }
+            free(path);
             lio_path_wildcard_auto_append(&tuple);
             rp_single = lio_os_path_glob2regex(tuple.path);
         } else {
@@ -328,6 +333,7 @@ next:
 
 finished:
     tbx_list_destroy(table);
+    tbx_stdinarray_iter_destroy(it_args);
     lio_shutdown();
 
     return(return_code);

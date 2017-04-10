@@ -23,6 +23,7 @@
 #include <string.h>
 #include <tbx/assert_result.h>
 #include <tbx/log.h>
+#include <tbx/stdinarray_iter.h>
 #include <tbx/string_token.h>
 #include <tbx/type_malloc.h>
 
@@ -72,12 +73,13 @@ void load_file(char *fname, char **val, int *v_size)
 
 int main(int argc, char **argv)
 {
-    int i, j, rg_mode, start_option, start_index, fin, ftype, prefix_len;
+    int i, rg_mode, start_option, start_index, fin, ftype, prefix_len;
     lio_path_tuple_t tuple;
     lio_os_regex_table_t *rp_single, *ro_single, *attr_regex;
     os_object_iter_t *it;
     os_attr_iter_t *ait;
-    char *bstate, *fname;
+    tbx_stdinarray_iter_t *it_args;
+    char *bstate, *fname, *path;
     char *key[MAX_SET];
     char *val[MAX_SET];
     int v_size[MAX_SET];
@@ -228,17 +230,21 @@ int main(int argc, char **argv)
         attr_regex = lio_os_path_glob2regex("*");
     }
 
-
-    for (j=start_index; j<argc; j++) {
-        log_printf(5, "path_index=%d argc=%d rg_mode=%d\n", j, argc, rg_mode);
+    it_args = tbx_stdinarray_iter_create(argc-start_index, (const char **)(argv+start_index));
+    while (1) {
         if (rg_mode == 0) {
+            path = tbx_stdinarray_iter_next(it_args);
+            if (!path) break;
+
             //** Create the simple path iterator
-            tuple = lio_path_resolve(lio_gc->auto_translate, argv[j]);
+            tuple = lio_path_resolve(lio_gc->auto_translate, path);
             if (tuple.is_lio < 0) {
-                fprintf(stderr, "Unable to parse path: %s\n", argv[j]);
+                fprintf(stderr, "Unable to parse path: %s\n", path);
+                free(path);
                 return_code = EINVAL;
                 continue;
             }
+            free(path);
             lio_path_wildcard_auto_append(&tuple);
             rp_single = lio_os_path_glob2regex(tuple.path);
         } else {
@@ -320,6 +326,7 @@ int main(int argc, char **argv)
     free(end_obj_fmt);
     free(attr_fmt);
     free(attr_sep);
+    tbx_stdinarray_iter_destroy(it_args);
 
     lio_shutdown();
 

@@ -28,6 +28,7 @@
 #include <tbx/assert_result.h>
 #include <tbx/list.h>
 #include <tbx/log.h>
+#include <tbx/stdinarray_iter.h>
 #include <tbx/type_malloc.h>
 
 #include <lio/blacklist.h>
@@ -75,12 +76,13 @@ gop_op_status_t mkdir_fn(void *arg, int id)
 
 int main(int argc, char **argv)
 {
-    int i, j, k, n, start_index, err, start_option;
-    char *ex_fname;
+    int i, start_index, start_option;
+    char *ex_fname, *path;
     gop_opque_t *q;
     gop_op_generic_t *gop;
     gop_op_status_t status;
-    lio_path_tuple_t *flist;
+    lio_path_tuple_t *tuple;
+    tbx_stdinarray_iter_t *it;
     char *error_table[] = { "", "ERROR checking dir existence", "ERROR dir already exists", "ERROR creating dir" };
     FILE *fd;
     int return_code = 0;
@@ -114,16 +116,16 @@ int main(int argc, char **argv)
 
     //** This is the file to create
     if (argv[i] == NULL) {
-        info_printf(lio_ifd, 0, "Missing source file!\n");
-        return(2);
+        fprintf(stderr, "Missing source directory!\n");
+        return(EINVAL);
     }
 
     //** Load an alternative exnode if specified
     if (ex_fname != NULL) {
         fd = fopen(ex_fname, "r");
         if (fd == NULL) {
-            info_printf(lio_ifd, 0, "ERROR reading exnode!\n");
-            return(2);
+            fprintf(stderr, "ERROR reading exnode!\n");
+            return(ENODEV);
         }
         fseek(fd, 0, SEEK_END);
 
@@ -133,8 +135,8 @@ int main(int argc, char **argv)
 
         fseek(fd, 0, SEEK_SET);
         if (fread(exnode_data, i, 1, fd) != 1) { //**
-            info_printf(lio_ifd, 0, "ERROR reading exnode from disk!\n");
-            return(2);
+            fprintf(stderr, "ERROR reading exnode from disk!\n");
+            return(ENODEV);
         }
         fclose(fd);
     }
@@ -142,55 +144,45 @@ int main(int argc, char **argv)
     if (exnode_data != NULL) free(exnode_data);
 
     //** Spawn the tasks
-    n = argc - start_index;
-    tbx_type_malloc(flist, lio_path_tuple_t, n);
-
+    it = tbx_stdinarray_iter_create(argc-start_index, (const char **)(argv+start_index));
     q = gop_opque_new();
     opque_start_execution(q);
-    i = 0;
-    for (k=0; k<n; k++) {
-        flist[i] = lio_path_resolve(lio_gc->auto_translate, argv[k+start_index]);
-        if (flist[i].is_lio < 0) {
-            fprintf(stderr, "Unable to parse path: %s\n", argv[k+start_index]);
-            return_code = EINVAL;
-            continue;
+    while (1) {
+        path = tbx_stdinarray_iter_next(it);
+        if (path) {
+            tbx_type_malloc_clear(tuple, lio_path_tuple_t, 1);
+            *tuple = lio_path_resolve(lio_gc->auto_translate, path);
+            if (tuple->is_lio < 0) {
+                fprintf(stderr, "Unable to parse path: %s\n", path);
+                free(path);
+                free(tuple);
+                return_code = EINVAL;
+                continue;
+            }
+            free(path);
+            gop = gop_tp_op_new(lio_gc->tpc_unlimited, NULL, mkdir_fn, tuple, NULL, 1);
+            gop_set_private(gop, tuple);
+            log_printf(0, "gid=%d fname=%s\n", gop_id(gop), tuple->path);
+            gop_opque_add(q, gop);
         }
-        gop = gop_tp_op_new(lio_gc->tpc_unlimited, NULL, mkdir_fn, (void *)&(flist[i]), NULL, 1);
-        gop_set_myid(gop, i);
-        log_printf(0, "gid=%d i=%d fname=%s\n", gop_id(gop), i, flist[i].path);
-        gop_opque_add(q, gop);
 
-        if (gop_opque_tasks_left(q) > lio_parallel_task_count) {
+        if ((gop_opque_tasks_left(q) > lio_parallel_task_count) || (path == NULL)) {
             gop = opque_waitany(q);
-            j = gop_get_myid(gop);
+            if (!gop) break;
+            tuple = gop_get_private(gop);
             status = gop_get_status(gop);
             if (status.op_status != OP_STATE_SUCCESS) {
-                info_printf(lio_ifd, 0, "Failed with directory %s with error %s\n", flist[j].path, error_table[status.error_code]);
+                info_printf(lio_ifd, 0, "Failed with directory %s with error %s\n", tuple->path, error_table[status.error_code]);
                 return_code = EIO;
             }
             gop_free(gop, OP_DESTROY);
-        }
-
-   	    i++;
-    }
-
-    err = opque_waitall(q);
-    if (err != OP_STATE_SUCCESS) {
-        return_code = EIO;
-        while ((gop = opque_get_next_failed(q)) != NULL) {
-            j = gop_get_myid(gop);
-            status = gop_get_status(gop);
-            info_printf(lio_ifd, 0, "Failed with directory %s with error %s\n", argv[j+start_index], error_table[status.error_code]);
+            lio_path_release(tuple);
+            free(tuple);
         }
     }
 
     gop_opque_free(q, OP_DESTROY);
-
-    for(i=0; i<n; i++) {
-        lio_path_release(&(flist[i]));
-    }
-
-    free(flist);
+    tbx_stdinarray_iter_destroy(it);
 
     lio_shutdown();
 

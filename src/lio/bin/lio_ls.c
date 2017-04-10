@@ -30,6 +30,7 @@
 #include <tbx/fmttypes.h>
 #include <tbx/list.h>
 #include <tbx/log.h>
+#include <tbx/stdinarray_iter.h>
 #include <tbx/type_malloc.h>
 
 #include <lio/ex3.h>
@@ -126,9 +127,9 @@ void ls_format_entry(tbx_log_fd_t *ifd, ls_entry_t *lse)
 
 int main(int argc, char **argv)
 {
-    int i, j, ftype, rg_mode, start_option, start_index, prefix_len, nosort, err;
+    int i, ftype, rg_mode, start_option, start_index, prefix_len, nosort, err;
     ex_off_t fcount;
-    char *fname;
+    char *fname, *path;
     ls_entry_t *lse;
     tbx_list_t *table;
     lio_os_regex_table_t *rp_single, *ro_single;
@@ -136,6 +137,7 @@ int main(int argc, char **argv)
     tbx_list_iter_t lit;
     gop_opque_t *q;
     gop_op_generic_t *gop;
+    tbx_stdinarray_iter_t *it_path;
     char *keys[] = { "system.owner", "system.exnode.size", "system.modify_data", "os.create",  "os.link_count" };
     char *vals[5];
     int v_size[5];
@@ -200,14 +202,16 @@ int main(int argc, char **argv)
 
     q = gop_opque_new();
     table = tbx_list_create(0, &tbx_list_string_compare, NULL, tbx_list_no_key_free, tbx_list_no_data_free);
+    it_path = tbx_stdinarray_iter_create(argc-start_index, (const char **)(argv+start_index));
 
-    for (j=start_index; j<argc; j++) {
-        log_printf(5, "path_index=%d argc=%d rg_mode=%d\n", j, argc, rg_mode);
+    while ((path = tbx_stdinarray_iter_next(it_path))) {
+        log_printf(5, "path=%s rg_mode=%d\n", path, rg_mode);
         if (rg_mode == 0) {
             //** Create the simple path iterator
-            tuple = lio_path_resolve(lio_gc->auto_translate, argv[j]);
+            tuple = lio_path_resolve(lio_gc->auto_translate, path);
             if (tuple.is_lio < 0) {
-                fprintf(stderr, "Unable to parse path: %s\n", argv[j]);
+                fprintf(stderr, "Unable to parse path: %s\n", path);
+                free(path);
                 return_code = EINVAL;
                 continue;
             }
@@ -216,6 +220,8 @@ int main(int argc, char **argv)
         } else {
             rg_mode = 0;  //** Use the initial rp
         }
+
+        free(path);
 
         for (i=0; i<n_keys; i++) v_size[i] = -tuple.lc->max_attr;
         memset(vals, 0, sizeof(vals));
@@ -289,6 +295,7 @@ int main(int argc, char **argv)
     }
 
     tbx_list_destroy(table);
+    tbx_stdinarray_iter_destroy(it_path);
 
     if (fcount == 0) return_code = 2;
 
