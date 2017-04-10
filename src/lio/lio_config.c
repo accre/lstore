@@ -89,6 +89,22 @@ void lio_destroy_nl(lio_config_t *lio);
 char **myargv = NULL;  //** This is used to hold the new argv we return from lio_init so we can properly clean it up
 
 //***************************************************************
+// check_for_section - Checks to make sure the section
+//    exists in the config file and if it doesn't it complains
+//    and exists
+//***************************************************************
+
+void check_for_section(tbx_inip_file_t *fd, char *section, char *err_string)
+{
+    if (tbx_inip_group_find(fd, section) == NULL) {
+        fprintf(stderr, "Missing section! section=%s\n", section);
+        fprintf(stderr, "%s", err_string);
+        fflush(stderr);
+        exit(EINVAL);
+    }
+}
+
+//***************************************************************
 //  _lc_object_destroy - Decrements the LC object and removes it
 //       if no other references exist.  It returns the number of
 //       remaining references.  So it can be safely destroyed
@@ -894,6 +910,7 @@ lio_config_t *lio_create_nl(char *fname, char *section, char *user, char *exe_na
 
     _lio_load_plugins(lio, lio->ifd);  //** Load the plugins
 
+    check_for_section(lio->ifd, section, "No primary LIO config section!\n");
     lio->timeout = tbx_inip_get_integer(lio->ifd, section, "timeout", 120);
     lio->max_attr = tbx_inip_get_integer(lio->ifd, section, "max_attr_size", 10*1024*1024);
     lio->calc_adler32 = tbx_inip_get_integer(lio->ifd, section, "calc_adler32", 0);
@@ -903,6 +920,7 @@ lio_config_t *lio_create_nl(char *fname, char *section, char *user, char *exe_na
     //** Check and see if we need to enable the blacklist
     stype = tbx_inip_get_string(lio->ifd, section, "blacklist", NULL);
     if (stype != NULL) { //** Yup we need to parse and load those params
+        check_for_section(lio->ifd, section, "No blacklist section found!\n");
         lio->blacklist = blacklist_load(lio->ifd, stype);
         add_service(lio->ess, ESS_RUNNING, "blacklist", lio->blacklist);
         free(stype);
@@ -959,6 +977,7 @@ lio_config_t *lio_create_nl(char *fname, char *section, char *user, char *exe_na
 
 
     stype = tbx_inip_get_string(lio->ifd, section, "mq", "mq_context");
+    check_for_section(lio->ifd, stype, "No MQ context in LIO config!\n");
     lio->mq_section = stype;
     lio->mqc = _lc_object_get(stype);
     if (lio->mqc == NULL) {  //** Need to load it
@@ -980,6 +999,7 @@ lio_config_t *lio_create_nl(char *fname, char *section, char *user, char *exe_na
     add_service(lio->ess, ESS_RUNNING, ESS_ONGOING_CLIENT, on);
 
     stype = tbx_inip_get_string(lio->ifd, section, "ds", DS_TYPE_IBP);
+    check_for_section(lio->ifd, stype, "No primary Data Service (ds) found in LIO config!\n");
     lio->ds_section = stype;
     lio->ds = _lc_object_get(stype);
     if (lio->ds == NULL) {  //** Need to load it
@@ -1004,6 +1024,7 @@ lio_config_t *lio_create_nl(char *fname, char *section, char *user, char *exe_na
     add_service(lio->ess, ESS_RUNNING, ESS_DA, lio->da);  //** This is needed by the RS service
 
     stype = tbx_inip_get_string(lio->ifd, section, "rs", RS_TYPE_SIMPLE);
+    check_for_section(lio->ifd, stype, "No Resource Service (rs) found in LIO config!\n");
     lio->rs_section = stype;
     lio->rs = _lc_object_get(stype);
     if (lio->rs == NULL) {  //** Need to load it
@@ -1023,6 +1044,7 @@ lio_config_t *lio_create_nl(char *fname, char *section, char *user, char *exe_na
     add_service(lio->ess, ESS_RUNNING, ESS_RS, lio->rs);
 
     stype = tbx_inip_get_string(lio->ifd, section, "os", "osfile");
+    check_for_section(lio->ifd, stype, "No Object Service (os) found in LIO config!\n");
     lio->os_section = stype;
     lio->os = _lc_object_get(stype);
     if (lio->os == NULL) {  //** Need to load it
@@ -1064,6 +1086,7 @@ lio_config_t *lio_create_nl(char *fname, char *section, char *user, char *exe_na
 
     if (_lio_cache == NULL) {
         stype = tbx_inip_get_string(lio->ifd, section, "cache", CACHE_TYPE_AMP);
+        check_for_section(lio->ifd, stype, "No Cache section found in LIO config!\n");
         ctype = tbx_inip_get_string(lio->ifd, stype, "type", CACHE_TYPE_AMP);
         cache_create = lio_lookup_service(lio->ess, CACHE_LOAD_AVAILABLE, ctype);
         _lio_cache = (*cache_create)(lio->ess, lio->ifd, stype, lio->da, lio->timeout);
