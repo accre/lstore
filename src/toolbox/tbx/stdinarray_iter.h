@@ -31,7 +31,8 @@ typedef struct tbx_stdinarray_iter_s tbx_stdinarray_iter_t;
 TBX_API tbx_stdinarray_iter_t *tbx_stdinarray_iter_create(int argc, const char **argv);
 TBX_API void tbx_stdinarray_iter_destroy(tbx_stdinarray_iter_t *it);
 TBX_API char *tbx_stdinarray_iter_next(tbx_stdinarray_iter_t *it);
-
+TBX_API char *tbx_stdinarray_iter_last(tbx_stdinarray_iter_t *it);
+TBX_API char *tbx_stdinarray_iter_peek(tbx_stdinarray_iter_t *it, int ahead);
 #ifdef __cplusplus
 }
 #endif
