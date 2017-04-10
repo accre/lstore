@@ -579,7 +579,7 @@ gop_op_status_t lio_myclose_fn(void *arg, int id)
     fh->ref_count--;
     if (fh->ref_count > 0) {  //** Somebody else has it open as well
         lio_unlock(lc);
-        return(status);
+        goto finished;
     }
     lio_unlock(lc);
 
@@ -621,9 +621,8 @@ gop_op_status_t lio_myclose_fn(void *arg, int id)
         lio_lock(lc);
         if (fh->ref_count > 0) {  //** Somebody else opened it while we were flushing buffers
             if (fd->path != NULL) free(fd->path);
-            free(fd);
             lio_unlock(lc);
-            return(status);
+            goto finished;
         }
 
         //** Tear everything down
@@ -635,9 +634,7 @@ gop_op_status_t lio_myclose_fn(void *arg, int id)
         if (fh->remove_on_close == 1) status = gop_sync_exec_status(lio_remove_gop(lc, fd->creds, fd->path, NULL, lio_exists(lc, fd->creds, fd->path)));
 
         free(fh);
-        if (fd->path != NULL) free(fd->path);
-        free(fd);
-        return(status);
+        goto finished;
     }
 
     //** Get any errors that may have occured
@@ -664,9 +661,8 @@ gop_op_status_t lio_myclose_fn(void *arg, int id)
 
     if (fh->ref_count > 0) {  //** Somebody else opened it while we were flushing buffers
         if (fd->path != NULL) free(fd->path);
-        free(fd);
         lio_unlock(lc);
-        return(status);
+        goto finished;
     }
 
     //** Clean up
@@ -685,11 +681,12 @@ gop_op_status_t lio_myclose_fn(void *arg, int id)
     if (fh->remove_on_close) status = gop_sync_exec_status(lio_remove_gop(lc, fd->creds, fd->path, NULL, lio_exists(lc, fd->creds, fd->path)));
 
     free(fh);
+    if (serr.hard != 0) status = gop_failure_status;
+    log_printf(1, "hard=%d soft=%d status=%d\n", serr.hard, serr.soft, status.op_status);
+finished:
     if (fd->path != NULL) free(fd->path);
     free(fd);
 
-    if (serr.hard != 0) status = gop_failure_status;
-    log_printf(1, "hard=%d soft=%d status=%d\n", serr.hard, serr.soft, status.op_status);
     return(status);
 }
 
@@ -1518,13 +1515,17 @@ gop_op_status_t lio_path_copy_op(void *arg, int id)
     tbx_type_malloc_clear(cplist, lio_cp_file_t, cp->max_spawn);
     dir_table = tbx_list_create(0, &tbx_list_string_compare, tbx_list_string_dup, tbx_list_simple_free, NULL);
 
+    if (cp->force_dest_create) {
+        create_tuple = cp->dest_tuple;
+        lio_cp_create_dir(dir_table, create_tuple);
+    }
+
     q = gop_opque_new();
     nerr = 0;
     slot = 0;
     count = 0;
     while ((ftype = lio_unified_next_object(it, &fname, &prefix_len)) > 0) {
         snprintf(dname, OS_PATH_MAX, "%s/%s", cp->dest_tuple.path, &(fname[prefix_len+1]));
-//info_printf(lio_ifd, 0, "copy dtuple=%s sfname=%s  dfname=%s plen=%d\n", cp->dest_tuple.path, fname, dname, prefix_len);
 
         if ((ftype & OS_OBJECT_DIR_FLAG) > 0) { //** Got a directory
             dstate = tbx_list_search(dir_table, fname);

@@ -25,6 +25,7 @@
 #include <string.h>
 #include <tbx/assert_result.h>
 #include <tbx/log.h>
+#include <tbx/stdinarray_iter.h>
 #include <tbx/string_token.h>
 #include <tbx/type_malloc.h>
 
@@ -37,17 +38,19 @@
 
 int main(int argc, char **argv)
 {
-    int i, j, start_index, start_option, n_paths, n_errors;
-    int max_spawn;
+    int i, start_index, start_option, n_paths, n_errors, return_code;
+    int max_spawn, stype, sflag, dflag;
     int obj_types = OS_OBJECT_ANY_FLAG;
     ex_off_t bufsize;
     char ppbuf[64];
-    lio_cp_path_t *flist;
+    char *path;
+    tbx_stdinarray_iter_t *it;
+    lio_cp_path_t *cp;
     lio_cp_file_t cpf;
     gop_op_generic_t *gop;
-    gop_opque_t *q;
+    gop_opque_t *q = NULL;
     lio_path_tuple_t dtuple;
-    int err, dtype, recurse_depth;
+    int dtype, recurse_depth;
     lio_copy_hint_t slow;
     gop_op_status_t status;
 
@@ -75,7 +78,7 @@ int main(int argc, char **argv)
 
     if (argc <= 1) {
         info_printf(lio_ifd, 0, "Missing Source and destination!\n");
-        return(1);
+        return(EINVAL);
     }
 
 
@@ -101,13 +104,26 @@ int main(int argc, char **argv)
     } while ((start_option < i) && (i<argc));
     start_index = i;
 
+    //** Make the iterator
+    n_paths = argc-start_index;
+    if (n_paths <= 0) n_paths = 1;
+    max_spawn = lio_parallel_task_count / n_paths;
+    if (max_spawn <= 0) max_spawn = 1;
+
+    it = tbx_stdinarray_iter_create(argc-start_index, (const char **)(argv+start_index));
+    path = tbx_stdinarray_iter_last(it);
+    if (!path) {
+        fprintf(stderr, "Unable to determine destination path!\n");
+        return(EINVAL);
+    }
 
     //** Make the dest tuple
-    dtuple = lio_path_resolve(lio_gc->auto_translate, argv[argc-1]);
+    dtuple = lio_path_resolve(lio_gc->auto_translate, path);
     if (dtuple.is_lio < 0) {
         fprintf(stderr, "Unable to parse destination path: %s\n", argv[argc-1]);
         return(EINVAL);
     }
+    free(path);
 
     if (i>=argc) {
         info_printf(lio_ifd, 0, "Missing directory!\n");
@@ -121,129 +137,169 @@ int main(int argc, char **argv)
         dtype = lio_os_local_filetype(dtuple.path);
     }
 
-    //** Create the simple path iterator
-    n_paths = argc - start_index - 1;
-    log_printf(15, "n_paths=%d argc=%d si=%d dtype=%d\n", n_paths, argc, start_index, dtype);
-
-    if (n_paths <= 0) {
-        info_printf(lio_ifd, 0, "Missing destination!\n");
-        return(EINVAL);
-    }
-
-    tbx_type_malloc_clear(flist, lio_cp_path_t, n_paths);
-
-    max_spawn = lio_parallel_task_count / n_paths;
-    if (max_spawn <= 0) max_spawn = 1;
-
-    j = 0;
-    for (i=0; i<n_paths; i++) {
-        flist[j].src_tuple = lio_path_resolve(lio_gc->auto_translate, argv[i+start_index]);
-        if (flist[j].src_tuple.is_lio == 0) {
-            lio_path_local_make_absolute(&(flist[j].src_tuple));
-        } else if (flist[j].src_tuple.is_lio < 0) {   //** CAn't parse path so skip
-            fprintf(stderr, "Unable to parse source path: %s\n", argv[i+start_index]);
-            continue;
-        }
-        flist[j].dest_tuple = dtuple;
-        flist[j].dest_type = dtype;
-        flist[j].path_regex = lio_os_path_glob2regex(flist[j].src_tuple.path);
-        flist[j].recurse_depth = recurse_depth;
-        flist[j].obj_types = obj_types;
-        flist[j].max_spawn = max_spawn;
-        flist[j].bufsize = bufsize;
-        flist[j].slow = slow;
-        j++;
-    }
-
-    n_paths = j;
+    return_code = 0;
+    q = gop_opque_new();
+    opque_start_execution(q);
 
     //** Do some sanity checking and handle the simple case directly
     //** If multiple paths then the dest must be a dir and it has to exist
-    if ((n_paths > 1) && ((dtype & OS_OBJECT_DIR_FLAG) == 0)) {
+    path = tbx_stdinarray_iter_peek(it, 2);
+    if (path && ((dtype & OS_OBJECT_DIR_FLAG) == 0)) {
         if (dtype == 0) {
-            info_printf(lio_ifd, 0, "ERROR: Multiple paths selected but the dest(%s) doesn't exist!\n", dtuple.path);
+            fprintf(stderr, "ERROR: Multiple paths selected but the dest(%s) doesn't exist!\n", dtuple.path);
         } else {
-            info_printf(lio_ifd, 0, "ERROR: Multiple paths selected but the dest(%s) isn't a directory!\n", dtuple.path);
+            fprintf(stderr, "ERROR: Multiple paths selected but the dest(%s) isn't a directory!\n", dtuple.path);
         }
+        return_code = EINVAL;
         goto finished;
-    } else if (n_paths == 1) {
-        log_printf(15, "11111111\n");
-        tbx_log_flush();
-        if (((dtype & OS_OBJECT_FILE_FLAG) > 0) || (dtype == 0)) {  //** Single path and dest is an existing file or doesn't exist
-            if (lio_os_regex_is_fixed(flist[0].path_regex) == 0) {  //** Uh oh we have a wildcard with a single file dest
-                info_printf(lio_ifd, 0, "ERROR: Single wildcard path(%s) selected but the dest(%s) is a file or doesn't exist!\n", flist[0].src_tuple.path, dtuple.path);
+    } else if (!path) {
+        path = tbx_stdinarray_iter_next(it);
+        tbx_type_malloc_clear(cp, lio_cp_path_t, 1);
+        cp->src_tuple = lio_path_resolve(lio_gc->auto_translate, path);
+        if (cp->src_tuple.is_lio == 0) {
+            lio_path_local_make_absolute(&cp->src_tuple);
+        } else if (cp->src_tuple.is_lio < 0) {   //** Can't parse path so skip
+            fprintf(stderr, "Unable to parse source path: %s\n", path);
+            free(path);
+            free(cp);
+            goto finished;
+        }
+        free(path);
+
+        //**We'll be using one of these structuures depending on the type of copy
+        cp->dest_tuple = dtuple;
+        cp->dest_type = dtype;
+        cp->path_regex = lio_os_path_glob2regex(cp->src_tuple.path);
+        cp->recurse_depth = recurse_depth;
+        cp->obj_types = obj_types;
+        cp->max_spawn = max_spawn;
+        cp->bufsize = bufsize;
+        cp->slow = slow;
+
+        memset(&cpf, 0, sizeof(cpf));
+        cpf.src_tuple = cp->src_tuple;
+        cpf.dest_tuple = cp->dest_tuple;
+        cpf.bufsize = cp->bufsize;
+        cpf.slow = cp->slow;
+        cpf.rw_hints = NULL;
+
+        if (lio_os_regex_is_fixed(cp->path_regex) == 1) {  //** Fixed source
+            if (cp->src_tuple.is_lio == 1) {
+                stype = lio_exists(cp->src_tuple.lc, cp->src_tuple.creds, cp->src_tuple.path);
+            } else {
+                stype = lio_os_local_filetype(cp->src_tuple.path);
+            }
+
+            if (dtype == 0) {                              //** Destination doesn't exist
+                if (stype & OS_OBJECT_FILE_FLAG) {
+                    status = lio_file_copy_op(&cpf, 0);
+                } else if (stype & OS_OBJECT_DIR_FLAG) {
+                    i = strlen(cp->src_tuple.path);
+                    tbx_type_malloc(path, char, i+2+1);
+                    if (cp->src_tuple.path[i] == '/') {
+                        snprintf(path, i+2+1, "%s*", cp->src_tuple.path);
+                    } else {
+                        snprintf(path, i+2+1, "%s/*", cp->src_tuple.path);
+                    }
+                    free(cp->src_tuple.path);
+                    cp->src_tuple.path = path;
+                    lio_os_regex_table_destroy(cp->path_regex);
+                    cp->path_regex = lio_os_path_glob2regex(cp->src_tuple.path);
+                    cp->force_dest_create = 1;
+                    status = lio_path_copy_op(cp, 0);
+                }
+            } else {                                        //** Destination already exists
+                sflag = stype & (OS_OBJECT_FILE_FLAG|OS_OBJECT_DIR_FLAG);
+                dflag = dtype & (OS_OBJECT_FILE_FLAG|OS_OBJECT_DIR_FLAG);
+                if (dflag == sflag) {
+                    if (dtype & OS_OBJECT_FILE_FLAG) {
+                        status = lio_file_copy_op(&cpf, 0);
+                    } else if (dtype & OS_OBJECT_DIR_FLAG) {
+                        status = lio_path_copy_op(cp, 0);
+                    }
+                } else if (dtype & OS_OBJECT_DIR_FLAG) {
+                    status = lio_path_copy_op(cp, 0);
+                } else {
+                    fprintf(stderr, "Source and destination files have incompatible types.\n");
+                    return_code = EINVAL;
+                    goto finished;
+                }
+            }
+        } else {                //** Got a regex
+            if (dtype & OS_OBJECT_DIR_FLAG) { //** Must exist and be a directory
+                status = lio_path_copy_op(cp, 0);
+            } else {  //** Wrong destination type
+                fprintf(stderr, "ERROR: Single wildcard path(%s) selected but the dest(%s) is a file or doesn't exist!\n", cp->src_tuple.path, dtuple.path);
+                return_code = EINVAL;
                 goto finished;
             }
         }
 
-        log_printf(15, "2222222222222222 fixed=%d exp=%s dtype=%d\n", lio_os_regex_is_fixed(flist[0].path_regex), flist[0].path_regex->regex_entry[0].expression, dtype);
-        tbx_log_flush();
-
-        //**if it's a fixed src with a dir dest we skip and use the cp_fn routines
-        if ((lio_os_regex_is_fixed(flist[0].path_regex) == 1) && ((dtype == 0) || ((dtype & OS_OBJECT_FILE_FLAG) > 0))) {
-            //** IF we made it here we have a simple cp
-            cpf.src_tuple = flist[0].src_tuple; //c->src_tuple.path = fname;
-            cpf.dest_tuple = flist[0].dest_tuple; //c->dest_tuple.path = strdup(dname);
-            cpf.bufsize = flist[0].bufsize;
-            cpf.slow = flist[0].slow;
-            cpf.rw_hints = NULL;
-            status = lio_file_copy_op(&cpf, 0);
-
-            if (status.op_status != OP_STATE_SUCCESS) {
-                info_printf(lio_ifd, 0, "ERROR: with copy src=%s  dest=%s\n", flist[0].src_tuple.path, dtuple.path);
-                if (status.op_status != OP_STATE_SUCCESS) n_errors++;
-                goto finished;
-            }
-            log_printf(15, "333333333333333333\n");
-            tbx_log_flush();
-
+        lio_path_release(&cp->src_tuple);
+        lio_os_regex_table_destroy(cp->path_regex);
+        free(cp);
+        if (status.op_status != OP_STATE_SUCCESS) {
+            fprintf(stderr, "ERROR with copy src=%s dest=%s\n", cp->src_tuple.path, dtuple.path);
+            return_code = EIO;
             goto finished;
         }
     }
 
-    q = gop_opque_new();
-    opque_start_execution(q);
-    for (i=0; i<n_paths; i++) {
-        gop = gop_tp_op_new(lio_gc->tpc_unlimited, NULL, lio_path_copy_op, (void *)&(flist[i]), NULL, 1);
-        gop_set_myid(gop, i);
-        log_printf(0, "gid=%d i=%d fname=%s\n", gop_id(gop), i, flist[i].src_tuple.path);
+    while (1) {
+        path = tbx_stdinarray_iter_next(it);
+        if (path) {
+            tbx_type_malloc_clear(cp, lio_cp_path_t, 1);
+            cp->src_tuple = lio_path_resolve(lio_gc->auto_translate, path);
+            if (cp->src_tuple.is_lio == 0) {
+                lio_path_local_make_absolute(&cp->src_tuple);
+            } else if (cp->src_tuple.is_lio < 0) {   //** CAn't parse path so skip
+                fprintf(stderr, "Unable to parse source path: %s\n", path);
+                free(path);
+                free(cp);
+                goto finished;
+            }
+            free(path);
+            cp->dest_tuple = dtuple;
+            cp->dest_type = dtype;
+            cp->path_regex = lio_os_path_glob2regex(cp->src_tuple.path);
+            cp->recurse_depth = recurse_depth;
+            cp->obj_types = obj_types;
+            cp->max_spawn = max_spawn;
+            cp->bufsize = bufsize;
+            cp->slow = slow;
 
-        gop_opque_add(q, gop);
-        log_printf(0, "bufsize=" XOT "\n", flist[i].bufsize);
+            gop = gop_tp_op_new(lio_gc->tpc_unlimited, NULL, lio_path_copy_op, cp, NULL, 1);
+            gop_set_private(gop, cp);
+            gop_opque_add(q, gop);
+        }
 
-        if (gop_opque_tasks_left(q) > lio_parallel_task_count) {
+        if ((gop_opque_tasks_left(q) > lio_parallel_task_count) || (!path)) {
             gop = opque_waitany(q);
+            if (!gop) break;
+            cp = gop_get_private(gop);
             status = gop_get_status(gop);
-            if (status.op_status != OP_STATE_SUCCESS) n_errors++;
-
+            if (status.op_status != OP_STATE_SUCCESS) {
+                fprintf(stderr, "Failed with path %s\n", cp->src_tuple.path);
+                return_code = EIO;
+                n_errors++;
+            }
+            lio_path_release(&cp->src_tuple);
+            lio_os_regex_table_destroy(cp->path_regex);
+            free(cp);
             gop_free(gop, OP_DESTROY);
         }
     }
 
-    err = opque_waitall(q);
-    if (err != OP_STATE_SUCCESS) {
-        while ((gop = opque_get_next_failed(q)) != NULL) {
-            status = gop_get_status(gop);
-            if (status.op_status != OP_STATE_SUCCESS) n_errors++;
-        }
-    }
-
-    gop_opque_free(q, OP_DESTROY);
-
 
 finished:
+    if (q) gop_opque_free(q, OP_DESTROY);
     lio_path_release(&dtuple);
-    for(i=0; i<n_paths; i++) {
-        lio_path_release(&(flist[i].src_tuple));
-        lio_os_regex_table_destroy(flist[i].path_regex);
-    }
+    tbx_stdinarray_iter_destroy(it);
 
-    free(flist);
-
-    if (n_errors > 0) info_printf(lio_ifd, 0, "Failed copying %d file(s)!\n", n_errors);
+    if (n_errors > 0) fprintf(stderr, "Failed copying %d file(s)!\n", n_errors);
 
     lio_shutdown();
 
-    return((n_errors == 0) ? 0 : EIO);
+    return(return_code);
 }
 
