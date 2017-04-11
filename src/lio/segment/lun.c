@@ -1431,19 +1431,18 @@ gop_op_status_t seglun_rw_op(lio_segment_t *seg, data_attr_t *da, lio_segment_rw
 {
     lio_seglun_priv_t *s = (lio_seglun_priv_t *)seg->priv;
     lio_blacklist_t *bl = s->bl;
-    lio_blacklist_ibp_rid_t *bl_rid;
     gop_op_status_t status;
     gop_op_status_t blacklist_status = {OP_STATE_FAILURE, -1234};
     gop_opque_t *q;
     seglun_row_t *b, **bused;
     tbx_isl_iter_t it;
     ex_off_t lo, hi, start, end, blen, bpos;
-    int i, j, maxerr, nerr, slot, n_bslots, bl_count, dev;
+    int i, j, maxerr, nerr, slot, n_bslots, bl_count, dev, bl_rid;
     int *bcount;
     tbx_stack_t *stack;
     lun_rw_row_t *rw_buf, *rwb_table;
     double dt;
-    apr_time_t now, exec_time;
+    apr_time_t exec_time;
     apr_time_t tstart, tstart2;
     gop_op_generic_t *gop;
 
@@ -1457,8 +1456,6 @@ gop_op_status_t seglun_rw_op(lio_segment_t *seg, data_attr_t *da, lio_segment_rw
         log_printf(5, "max_blacklist=%d\n", rw_hints->lun_max_blacklist);
         if (rw_hints->lun_max_blacklist <= 0) bl = NULL;
     }
-
-    now = apr_time_now();
 
     segment_lock(seg);
 
@@ -1545,28 +1542,17 @@ gop_op_status_t seglun_rw_op(lio_segment_t *seg, data_attr_t *da, lio_segment_rw
         j = slot * s->n_devices;
 
         for (i=0; i < s->n_devices; i++) {
-            bl_rid = NULL;
+            bl_rid = 0;
 
             if (rwb_table[j + i].n_ex > 0) {
                 //** Check on blacklisting the RID
                 if (bl != NULL) {
-                    bl_rid = apr_hash_get(bl->table, b->block[i].data->rid_key, APR_HASH_KEY_STRING);
-                    if (bl_rid != NULL) {
-                        log_printf(5, "MAYBE rid=%s dev=%i bl_count=%d\n", bl_rid->rid, i, bl_count);
-                        if (bl_rid->recheck_time < now) { //** Expired blacklist so undo it
-                            log_printf(5, "EXPIRED rid=%s dev=%i bl_count=%d\n", bl_rid->rid, i, bl_count);
-                            apr_hash_set(bl->table, bl_rid->rid, APR_HASH_KEY_STRING, NULL);
-                            free(bl_rid->rid);
-                            free(bl_rid);
-
-                            bl_rid = NULL;  //** No blacklisting
-                        } else if (bl_count >= rw_hints->lun_max_blacklist) {  //** Already blacklisted enough RIDS
-                            bl_rid = NULL;
+                    bl_rid = blacklist_check(bl, b->block[i].data->rid_key, 0);
+                    if (bl_rid == 1) {
+                        if (bl_count >= rw_hints->lun_max_blacklist) {  //** Already blacklisted enough RIDS
+                            bl_rid = 0;
                         } else {
                             bl_count++;  //** Blacklisting it
-                        }
-                        if (bl_rid != NULL) {
-                            log_printf(5, "SKIP rid=%s dev=%i bl_count=%d\n", bl_rid->rid, i, bl_count);
                         }
                     }
                 }
@@ -1575,21 +1561,21 @@ gop_op_status_t seglun_rw_op(lio_segment_t *seg, data_attr_t *da, lio_segment_rw
                 tbx_tbuf_vec(&(rwb_table[j + i].buffer), rwb_table[j + i].len, rwb_table[j+i].n_iov, rwb_table[j+i].iov);
                 if (rw_mode== 0) {
                     if (rwb_table[j+i].n_iov == 1) {
-                        gop = (bl_rid == NULL) ? ds_read(b->block[i].data->ds, da, ds_get_cap(b->block[i].data->ds, b->block[i].data->cap, DS_CAP_READ),
+                        gop = (bl_rid == 0) ? ds_read(b->block[i].data->ds, da, ds_get_cap(b->block[i].data->ds, b->block[i].data->cap, DS_CAP_READ),
                                                          rwb_table[j+i].ex_iov[0].offset, &(rwb_table[j+i].buffer), 0, rwb_table[j+i].len, timeout) :
                               gop_dummy(blacklist_status);
                     } else {
-                        gop = (bl_rid == NULL) ? ds_readv(b->block[i].data->ds, da, ds_get_cap(b->block[i].data->ds, b->block[i].data->cap, DS_CAP_READ),
+                        gop = (bl_rid == 0) ? ds_readv(b->block[i].data->ds, da, ds_get_cap(b->block[i].data->ds, b->block[i].data->cap, DS_CAP_READ),
                                                           rwb_table[j + i].n_ex, rwb_table[j+i].ex_iov, &(rwb_table[j+i].buffer), 0, rwb_table[j+i].len, timeout) :
                               gop_dummy(blacklist_status);
                     }
                 } else {
                     if (rwb_table[j+i].n_iov == 1) {
-                        gop = (bl_rid == NULL) ? ds_write(b->block[i].data->ds, da, ds_get_cap(b->block[i].data->ds, b->block[i].data->cap, DS_CAP_WRITE),
+                        gop = (bl_rid == 0) ? ds_write(b->block[i].data->ds, da, ds_get_cap(b->block[i].data->ds, b->block[i].data->cap, DS_CAP_WRITE),
                                                           rwb_table[j+i].ex_iov[0].offset, &(rwb_table[j+i].buffer), 0, rwb_table[j+i].len, timeout) :
                               gop_dummy(blacklist_status);
                     } else {
-                        gop = (bl_rid == NULL) ? ds_writev(b->block[i].data->ds, da, ds_get_cap(b->block[i].data->ds, b->block[i].data->cap, DS_CAP_WRITE),
+                        gop = (bl_rid == 0) ? ds_writev(b->block[i].data->ds, da, ds_get_cap(b->block[i].data->ds, b->block[i].data->cap, DS_CAP_WRITE),
                                                            rwb_table[j + i].n_ex, rwb_table[j+i].ex_iov, &(rwb_table[j+i].buffer), 0, rwb_table[j+i].len, timeout) :
                               gop_dummy(blacklist_status);
                     }
@@ -1632,18 +1618,7 @@ gop_op_status_t seglun_rw_op(lio_segment_t *seg, data_attr_t *da, lio_segment_rw
                     dt /= exec_time;
                     log_printf(5, "dt=%lf min_bw=" XOT "\n", dt, bl->min_bandwidth);
                     if (dt < bl->min_bandwidth) { // ** Blacklist it
-                        tbx_type_malloc(bl_rid, lio_blacklist_ibp_rid_t, 1);
-                        bl_rid->rid = strdup(rwb_table[gop_get_myid(gop)].block->data->rid_key);
-                        bl_rid->recheck_time = apr_time_now() + bl->timeout;
-                        log_printf(2, "Blacklisting RID=%s dt=%lf\n", bl_rid->rid, dt);
-                        apr_thread_mutex_lock(bl->lock);
-                        if (apr_hash_get(bl->table, bl_rid->rid, APR_HASH_KEY_STRING) == NULL) {
-                            apr_hash_set(bl->table, bl_rid->rid, APR_HASH_KEY_STRING, bl_rid);
-                        } else {  //** Somebody else beat us to it
-                            free(bl_rid->rid);
-                            free(bl_rid);
-                        }
-                        apr_thread_mutex_unlock(bl->lock);
+                        blacklist_add(bl, rwb_table[gop_get_myid(gop)].block->data->rid_key, 0, 1);
                     }
                 }
             }

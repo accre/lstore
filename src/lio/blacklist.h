@@ -26,6 +26,7 @@
 #include <apr_thread_mutex.h>
 #include <apr_time.h>
 #include <lio/blacklist.h>
+#include <tbx/iniparse.h>
 
 #include "ex3/types.h"
 
@@ -34,8 +35,9 @@ extern "C" {
 #endif
 
 struct lio_blacklist_ibp_rid_t {
-    char *rid;
-    apr_time_t recheck_time;
+    char *rid;                   //** RID blacklisted
+    int  rs_added;               //** RID was blacklisted by the Resource Service
+    apr_time_t recheck_time;     //** Recheck time
 };
 
 struct lio_blacklist_t {
@@ -46,6 +48,12 @@ struct lio_blacklist_t {
     apr_time_t min_io_time;
     apr_time_t timeout;
 };
+
+void blacklist_remove_rs_added(lio_blacklist_t *bl);
+void blacklist_add(lio_blacklist_t *bl, char *rid_key, int rs_added, int do_lock);
+int blacklist_check(lio_blacklist_t *bl, char *rid_key, int do_lock);
+void blacktbx_list_destroy(lio_blacklist_t *bl);
+lio_blacklist_t *blacklist_load(tbx_inip_file_t *ifd, char *section);
 
 #ifdef __cplusplus
 }

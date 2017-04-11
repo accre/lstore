@@ -66,6 +66,7 @@ set(LSTORE_INCLUDE_PUBLIC ${PROJECT_SOURCE_DIR})
 # common objects
 set(LSTORE_PROJECT_OBJS
 		authn/fake.c
+		blacklist.c
 		cache/amp.c
 		cache/base.c
 		cache/round_robin.c
