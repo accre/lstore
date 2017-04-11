@@ -59,13 +59,17 @@ void blacklist_add(lio_blacklist_t *bl, char *rid_key, int rs_added, int do_lock
     lio_blacklist_ibp_rid_t *bl_rid;
 
     if (do_lock) apr_thread_mutex_lock(bl->lock);
-    if (apr_hash_get(bl->table, rid_key, APR_HASH_KEY_STRING) == NULL) {
+    bl_rid = apr_hash_get(bl->table, rid_key, APR_HASH_KEY_STRING);
+    if (bl_rid == NULL) {
         log_printf(2, "Blacklisting RID=%s\n", rid_key);
         tbx_type_malloc(bl_rid, lio_blacklist_ibp_rid_t, 1);
         bl_rid->rid = strdup(rid_key);
         bl_rid->recheck_time = apr_time_now() + ((rs_added == 0) ? bl->timeout : apr_time_from_sec(7200));
         bl_rid->rs_added = rs_added;
         apr_hash_set(bl->table, bl_rid->rid, APR_HASH_KEY_STRING, bl_rid);
+    } else if (rs_added == 1) {  //** If needed flag it as being added by the RS
+        bl_rid->recheck_time = apr_time_now() + apr_time_from_sec(7200);
+        bl_rid->rs_added = rs_added;
     }
     if (do_lock) apr_thread_mutex_unlock(bl->lock);
 }
