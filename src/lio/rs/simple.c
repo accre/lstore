@@ -258,14 +258,12 @@ gop_op_generic_t *rs_simple_request(lio_resource_service_fn_t *arg, data_attr_t 
 
     err_cnt = 0;
     found = 0;
-//  max_size = (req_size > fixed_size) ? req_size : fixed_size;
 
     for (i=0; i < n_rid; i++) {
         found = 0;
         loop_end = 1;
         query_local = NULL;
         rnd_off = tbx_random_get_int64(0, rss->n_rids-1);
-//rnd_off = 0;  //FIXME
 
         if (hints_list != NULL) {
             query_local = (lio_rsq_base_t *)hints_list[i].local_rsq;
@@ -555,8 +553,6 @@ lio_rss_rid_entry_t *rss_load_entry(tbx_inip_group_t *grp, lio_blacklist_t *bl)
         ele = tbx_inip_ele_next(ele);
     }
 
-//log_printf(0, "rse->ds_key=%s rse->attr=%p\n", rse->ds_key, rse->attr);
-
     //** Make sure we have an RID and DS link
     if ((rse->rid_key == NULL) || (rse->ds_key == NULL)) {
         log_printf(1, "rss_load_entry: missing RID or ds_key! rid=%s ds_key=%s\n", rse->rid_key, rse->ds_key);
@@ -736,6 +732,7 @@ int rss_perform_check(lio_resource_service_fn_t *rs)
     gop_op_status_t status;
     gop_opque_t *q;
     gop_op_generic_t *gop;
+    lio_blacklist_t *bl;
 
     log_printf(5, "START\n");
 
@@ -757,7 +754,13 @@ int rss_perform_check(lio_resource_service_fn_t *rs)
 
     //** Process the results
     apr_thread_mutex_lock(rss->lock);
-log_printf(5, "modify_time=" TT " current_check=" TT "\n", rss->modify_time, rss->current_check);
+    log_printf(5, "modify_time=" TT " current_check=" TT "\n", rss->modify_time, rss->current_check);
+
+    //** Load the blacklist if available
+    bl = lio_lookup_service(rss->ess, ESS_RUNNING, "blacklist");
+
+    //** Clean out any old blacklisted RIDs from a previous RS run
+   if (bl) blacklist_remove_rs_added(bl);
 
     for (gop = opque_get_next_finished(q); gop != NULL; gop = opque_get_next_finished(q)) {
         status = gop_get_status(gop);
@@ -779,6 +782,10 @@ log_printf(5, "modify_time=" TT " current_check=" TT "\n", rss->modify_time, rss
         }
         if (prev_status != ce->re->status) status_change = 1;
 
+        //** Blacklist it if needed
+        if ((bl) && ((ce->re->status == RS_STATUS_IGNORE) || (ce->re->status == RS_STATUS_DOWN))) {
+            blacklist_add(bl, ce->re->rid_key, 1, 1);
+        }
         log_printf(15, "ds_key=%s prev_status=%d new_status=%d\n", ce->ds_key, prev_status, ce->re->status);
         gop_free(gop, OP_DESTROY);
     }
@@ -856,7 +863,6 @@ void *rss_check_thread(apr_thread_t *th, void *data)
         if (rss->current_check != rss->modify_time) { //** Need to reload
             rss->current_check = rss->modify_time;
             do_notify = 1;
-            // _rss_make_check_table(rs);
         }
         map_version = rss->modify_time;
         apr_thread_mutex_unlock(rss->lock);
