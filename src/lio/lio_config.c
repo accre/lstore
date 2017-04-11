@@ -685,50 +685,6 @@ void lc_object_remove_unused(int remove_all_unused)
 }
 
 //***************************************************************
-// blacklist_destroy - Destroys a blacklist structure
-//***************************************************************
-
-void blacktbx_list_destroy(lio_blacklist_t *bl)
-{
-    apr_ssize_t hlen;
-    apr_hash_index_t *hi;
-    lio_blacklist_ibp_rid_t *r;
-
-    //** Destroy all the blacklist RIDs
-    for (hi=apr_hash_first(NULL, bl->table); hi != NULL; hi = apr_hash_next(hi)) {
-        apr_hash_this(hi, NULL, &hlen, (void **)&r);
-        free(r->rid);
-        free(r);
-    }
-
-    apr_pool_destroy(bl->mpool);
-    apr_thread_mutex_destroy(bl->lock);
-    free(bl);
-}
-
-//***************************************************************
-// blacklist_load - Loads and creates a blacklist structure
-//***************************************************************
-
-lio_blacklist_t *blacklist_load(tbx_inip_file_t *ifd, char *section)
-{
-    lio_blacklist_t *bl;
-
-    tbx_type_malloc_clear(bl, lio_blacklist_t, 1);
-
-    assert_result(apr_pool_create(&(bl->mpool), NULL), APR_SUCCESS);
-    apr_thread_mutex_create(&(bl->lock), APR_THREAD_MUTEX_DEFAULT, bl->mpool);
-    bl->table = apr_hash_make(bl->mpool);
-
-    bl->timeout = tbx_inip_get_integer(ifd, section, "timeout", apr_time_from_sec(120));
-    bl->min_bandwidth = tbx_inip_get_integer(ifd, section, "min_bandwidth", 5*1024*1024);  //** default ro 5MB
-    bl->min_io_time = tbx_inip_get_integer(ifd, section, "min_io_time", apr_time_from_sec(1));  //** default ro 5MB
-
-    return(bl);
-}
-
-
-//***************************************************************
 // lio_print_options - Prints the standard supported lio options
 //   Use "LIO_COMMON_OPTIONS" in the arg list
 //***************************************************************

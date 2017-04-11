@@ -49,6 +49,7 @@
 #include <gop/opque.h>
 #include <gop/types.h>
 
+#include "blacklist.h"
 #include "ds.h"
 #include "ex3/system.h"
 #include "ex3/types.h"
@@ -508,13 +509,15 @@ void rs_simple_rid_free(tbx_list_data_t *arg)
 
 //***********************************************************************
 //  rs_load_entry - Loads an RID entry fro mthe file
+//     NOTE:  Assumes the RS snd hte BL structure is locked!
 //***********************************************************************
 
-lio_rss_rid_entry_t *rss_load_entry(tbx_inip_group_t *grp)
+lio_rss_rid_entry_t *rss_load_entry(tbx_inip_group_t *grp, lio_blacklist_t *bl)
 {
     lio_rss_rid_entry_t *rse;
     tbx_inip_element_t *ele;
     char *key, *value;
+
     //** Create the new RS list
     tbx_type_malloc_clear(rse, lio_rss_rid_entry_t, 1);
     rse->status = RS_STATUS_UP;
@@ -532,6 +535,11 @@ lio_rss_rid_entry_t *rss_load_entry(tbx_inip_group_t *grp)
             rse->ds_key = strdup(value);
         } else if (strcmp(key, "status") == 0) {  //** Current status
             rse->status = atoi(value);
+            if (bl) {
+                if ((rse->status == RS_STATUS_IGNORE) || (rse->status == RS_STATUS_DOWN)) {
+                    blacklist_add(bl, rse->rid_key, 1, 1);
+                }
+            }
         } else if (strcmp(key, "space_free") == 0) {  //** Free space
             rse->space_free = tbx_stk_string_get_integer(value);
         } else if (strcmp(key, "space_used") == 0) {  //** Used bytes
@@ -870,7 +878,6 @@ void *rss_check_thread(apr_thread_t *th, void *data)
     return(NULL);
 }
 
-
 //***********************************************************************
 // _rs_simple_load - Loads the config file
 //   NOTE:  No locking is performed!
@@ -885,8 +892,15 @@ int _rs_simple_load(lio_resource_service_fn_t *res, char *fname)
     tbx_list_iter_t it;
     int i, n;
     tbx_inip_file_t *kf;
+    lio_blacklist_t *bl;
 
     log_printf(5, "START fname=%s n_rids=%d\n", fname, rss->n_rids);
+
+    //** Load the blacklist if available
+    bl = lio_lookup_service(rss->ess, ESS_RUNNING, "blacklist");
+
+    //** Clean out any old blacklisted RIDs from a previous RS run
+    if (bl) blacklist_remove_rs_added(bl);
 
     //** Open the file
     kf = tbx_inip_file_read(fname);FATAL_UNLESS(kf);
@@ -900,7 +914,7 @@ int _rs_simple_load(lio_resource_service_fn_t *res, char *fname)
     while (ig != NULL) {
         key = tbx_inip_group_get(ig);
         if (strcmp("rid", key) == 0) {  //** Found a resource
-            rse = rss_load_entry(ig);
+            rse = rss_load_entry(ig, bl);
             if (rse != NULL) {
                 tbx_list_insert(rss->rid_table, rse->rid_key, rse);
             }
@@ -936,6 +950,7 @@ int _rs_simple_load(lio_resource_service_fn_t *res, char *fname)
 
     return(0);
 }
+
 
 //***********************************************************************
 // _rs_simple_refresh - Refreshes the RID table if needed
@@ -1022,6 +1037,7 @@ lio_resource_service_fn_t *rs_simple_create(void *arg, tbx_inip_file_t *kf, char
     rss->rid_mapping = apr_hash_make(rss->mpool);
     rss->mapping_updates = apr_hash_make(rss->mpool);
 
+    rss->ess = ess;
     rss->ds = lio_lookup_service(ess, ESS_RUNNING, ESS_DS);
     rss->da = lio_lookup_service(ess, ESS_RUNNING, ESS_DA);
 
