@@ -59,6 +59,7 @@ struct lio_rs_simple_priv_t {
     tbx_list_t *rid_table;
     lio_rss_rid_entry_t **random_array;
     lio_data_service_fn_t *ds;
+    lio_service_manager_t *ess;
     data_attr_t *da;
     apr_thread_mutex_t *lock;
     apr_thread_mutex_t *update_lock;
