@@ -68,6 +68,7 @@ int main(int argc, char **argv)
     argv_list = argv;
 
     //*** Parse the args
+    return_code = 0;
     rp_single = ro_single = NULL;
 
     rg_mode = lio_parse_path_options(&argc, argv, lio_gc->auto_translate, &tuple, &rp_single, &ro_single);
@@ -119,7 +120,6 @@ int main(int argc, char **argv)
     opque_start_execution(q);
     i = 0;
     loop = 0;
-    return_code = 0;
     while ((path = tbx_stdinarray_iter_next(piter)) != NULL) {
         loop++;
         path_list[i] = path;
