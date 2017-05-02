@@ -24,6 +24,8 @@ typedef struct {
     FILE *fd;
     char buffer[BUFMAX];
     int used;
+    char *text;
+    char *text_pos;
 } bfile_entry_t;
 
 typedef struct {  //** Used for Reading the ini file
@@ -115,6 +117,35 @@ FILE *bfile_fopen(tbx_stack_t *include_paths, char *fname)
 }
 
 //***********************************************************************
+//  _fetch_text - Fetches the next line of text.
+//***********************************************************************
+
+char *_fetch_text(char *buf, int bsize, bfile_entry_t *entry)
+{
+    char *c = entry->text_pos;
+    int i;
+
+    if (entry->text_pos == NULL) return(NULL);
+
+    for (i=0; i<bsize-1; i++) {
+        buf[i] = *c;
+        if (*c == 0) {
+           entry->text_pos = NULL;
+           return(buf);
+        } else if  (*c == '\n') {
+           buf[i+1] = 0;  //** Make sure to NULL terminate
+           c++;  //** Skip over the '\n'
+           entry->text_pos = c;  //** Update the position
+           return(buf);
+        }
+
+        c++;
+    }
+
+    return(NULL);
+}
+
+//***********************************************************************
 // _get_line - Reads a line of text from the file
 //***********************************************************************
 
@@ -129,11 +160,11 @@ char * _get_line(bfile_t *bfd)
 
     if (bfd->curr->used == 1) return(bfd->curr->buffer);
 
-    comment = fgets(bfd->curr->buffer, BUFMAX, bfd->curr->fd);
+    comment = (bfd->curr->text) ? _fetch_text(bfd->curr->buffer, BUFMAX, bfd->curr) : fgets(bfd->curr->buffer, BUFMAX, bfd->curr->fd);
     log_printf(15, "_get_line: fgets=%s\n", comment);
 
     if (comment == NULL) {  //** EOF or error
-        fclose(bfd->curr->fd);
+        if (bfd->curr->fd) fclose(bfd->curr->fd);
         free(bfd->curr);
 
         bfd->curr = (bfile_entry_t *) tbx_stack_pop(bfd->stack);
@@ -461,10 +492,14 @@ char *tbx_inip_get_string(tbx_inip_file_t *inip, const char *group, const char *
 
 
 //***********************************************************************
-//  inip_read_fd - Loads the .ini file pointed to by the file descriptor
+//  inip_load - Loads the .ini file pointed to by the file descriptor
+//    fd - File descriptor containing data to parse
+//    text - Parse the data contained in the character array
+//
+//    NOTE:  Either fd or text showld be non-NULL but not both.
 //***********************************************************************
 
-tbx_inip_file_t *inip_read_fd(FILE *fd)
+tbx_inip_file_t *inip_load(FILE *fd, const char *text)
 {
     tbx_inip_file_t *inip;
     tbx_inip_group_t *group, *prev;
@@ -473,8 +508,10 @@ tbx_inip_file_t *inip_read_fd(FILE *fd)
 
     tbx_type_malloc_clear(entry, bfile_entry_t, 1);
     entry->fd = fd;
+    entry->text = (char *)text;
+    entry->text_pos = (char *)text;
 
-    rewind(fd);
+    if (fd) rewind(fd);
 
     entry->used = 0;
     bfd.curr = entry;
@@ -499,16 +536,6 @@ tbx_inip_file_t *inip_read_fd(FILE *fd)
         group = _next_group(&bfd);
     }
 
-    if (bfd.curr != NULL) {
-        fclose(bfd.curr->fd);
-        free(bfd.curr);
-    }
-
-    while ((entry = (bfile_entry_t *) tbx_stack_pop(bfd.stack)) != NULL) {
-        fclose(entry->fd);
-        free(entry);
-    }
-
     tbx_stack_free(bfd.stack, 1);
     tbx_stack_free(bfd.include_paths, 1);
 
@@ -522,24 +549,18 @@ tbx_inip_file_t *inip_read_fd(FILE *fd)
 tbx_inip_file_t *tbx_inip_file_read(const char *fname)
 {
     FILE *fd;
-    bool is_stdin;
 
     log_printf(15, "Parsing file %s\n", fname);
     if(!strcmp(fname, "-")) {
         fd = stdin;
-        is_stdin = true;
     } else {
         fd = fopen(fname, "r");
-        is_stdin = false;
     }
     if (fd == NULL) {  //** Can't open the file
         log_printf(-1, "Problem opening file %s, errorno: %d\n", fname, errno);
         return(NULL);
     }
-    tbx_inip_file_t *ret = inip_read_fd(fd);
-    if (!is_stdin) {
-        //fclose(fd);
-    }
+    tbx_inip_file_t *ret = inip_load(fd, NULL);
     return ret;
 }
 
@@ -548,23 +569,5 @@ tbx_inip_file_t *tbx_inip_file_read(const char *fname)
 //***********************************************************************
 tbx_inip_file_t *tbx_inip_string_read(const char *text)
 {
-    /*
-     * Coverity doesn't like tmpfile(), but the alternative (mkstemp) is worse
-     * because you then are responsible for cleaning up the file on your own.
-     * You can do a mkstemp and then immediately unlink, but that leaves a
-     * window where the config exists on the filesystem for just a little time
-     * allowing an attacker to grab a handle
-     */
-    // coverity[secure_temp]
-    FILE *fd = tmpfile();
-    if (!fd) {
-        goto error0;
-    }
-    fprintf(fd, "%s", text);
-    tbx_inip_file_t *ret = inip_read_fd(fd);
-    return ret;
-
-error0:
-    log_printf(0, "Failed to make temporary file\n");
-    return NULL;
+    return(inip_load(NULL, text));
 }
