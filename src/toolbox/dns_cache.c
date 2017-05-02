@@ -82,15 +82,23 @@ void wipe_entries(DNS_cache_t *cache)
 
 int hostname2ip(const char *name, char *ip_bytes, char *ip_text, int ip_text_size)
 {
-    struct hostent *he;
-    struct in_addr **al;
+    struct addrinfo hints;
+    struct addrinfo *result;
+    int err;
 
-    if ((he = gethostbyname(name)) == NULL) return(-1);
+    memset(&hints, 0, sizeof(struct addrinfo));
+    hints.ai_family = AF_INET;
+    hints.ai_socktype = SOCK_STREAM;
+    hints.ai_flags = AI_CANONNAME;
 
-    al = (struct in_addr **)he->h_addr_list;
-    if (ip_bytes) memcpy(ip_bytes, al[0], 4);
-    if (ip_text) inet_ntop(AF_INET, al[0], ip_text, ip_text_size);
+    if ((err = getaddrinfo(name, NULL, &hints, &result)) != 0) {
+        fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(err));
+        return(-1);
+    }
+    if (ip_bytes) memcpy(ip_bytes, &((struct sockaddr_in *)result->ai_addr)->sin_addr, 4);
+    if (ip_text) inet_ntop(AF_INET, &((struct sockaddr_in *)result->ai_addr)->sin_addr, ip_text, ip_text_size);
 
+    freeaddrinfo(result);
     return(0);
 }
 
