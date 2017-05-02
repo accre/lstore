@@ -1789,7 +1789,7 @@ void gop_mq_destroy_context(gop_mq_context_t *mqc)
 
     gop_mq_stats_print(2, "Portal total", &(mqc->stats));
 
-    apr_hash_clear(mqc->client_portals);
+    //** No need to destroy the portal hashes.  It's automatically handled when the pool is destroyed
 
     gop_tp_context_destroy(mqc->tp);
 
