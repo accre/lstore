@@ -61,7 +61,7 @@ int path_scan_and_check(char *path, char **match, int n_match, int recurse_depth
     char **name;
 
     regex = lio_os_path_glob2regex(path);
-    it = os_create_object_iter(lio_gc->os, lio_gc->creds, regex, NULL, object_types, NULL, 1000, NULL, 0);
+    it = os_create_object_iter(lio_gc->os, lio_gc->creds, regex, NULL, object_types, NULL, recurse_depth, NULL, 0);
     if (it == NULL) {
         log_printf(0, "ERROR: Failed with object_iter creation %s\n", path);
         return(1);
@@ -455,17 +455,7 @@ int os_create_remove_tests(char *prefix)
     err = path_scan_and_check(foo_path, match_path, 1, 1000, OS_OBJECT_FILE_FLAG);
     if (err != 0) {
         nfailed++;
-        log_printf(0, "ERROR: Regex scan: foo* err=%d\n", err);
-        return(nfailed);
-    }
-
-    // ** Do a regex scan for foo*/bardir/foobar with recursion
-    snprintf(foo_path, PATH_LEN, "%s/foo*/bardir/foo*", prefix);
-    snprintf(match_path[0], PATH_LEN, "%s/foodir/bardir/foobar", prefix);
-    err = path_scan_and_check(foo_path, match_path, 1, 1000, OS_OBJECT_FILE_FLAG);
-    if (err != 0) {
-        nfailed++;
-        log_printf(0, "ERROR: Regex scan: foo* err=%d\n", err);
+        log_printf(0, "ERROR: Regex scan: foodir/bardir/foo* err=%d\n", err);
         return(nfailed);
     }
 
@@ -475,17 +465,27 @@ int os_create_remove_tests(char *prefix)
     err = path_scan_and_check(foo_path, match_path, 1, 1000, OS_OBJECT_FILE_FLAG);
     if (err != 0) {
         nfailed++;
-        log_printf(0, "ERROR: Regex scan: foo* err=%d\n", err);
+        log_printf(0, "ERROR: Regex scan: foo*/bardir/foo* err=%d\n", err);
         return(nfailed);
     }
 
-    // ** Do a regex scan for foodir/bar*/foobar with recursion
+    // ** Do a regex scan for foo*/bardir/foo* with recursion
     snprintf(foo_path, PATH_LEN, "%s/foo*/bardir/foo*", prefix);
     snprintf(match_path[0], PATH_LEN, "%s/foodir/bardir/foobar", prefix);
     err = path_scan_and_check(foo_path, match_path, 1, 1000, OS_OBJECT_FILE_FLAG);
     if (err != 0) {
         nfailed++;
-        log_printf(0, "ERROR: Regex scan: foo* err=%d\n", err);
+        log_printf(0, "ERROR: Regex scan: foo*/bardir/foo* err=%d\n", err);
+        return(nfailed);
+    }
+
+    // ** Do a regex scan for foo*/bar*/foobar with recursion
+    snprintf(foo_path, PATH_LEN, "%s/foo*/bar*/foo*", prefix);
+    snprintf(match_path[0], PATH_LEN, "%s/foodir/bardir/foobar", prefix);
+    err = path_scan_and_check(foo_path, match_path, 1, 1000, OS_OBJECT_FILE_FLAG);
+    if (err != 0) {
+        nfailed++;
+        log_printf(0, "ERROR: Regex scan: foo*/bar*/foo* err=%d\n", err);
         return(nfailed);
     }
 
@@ -563,7 +563,7 @@ int os_create_remove_tests(char *prefix)
         return(nfailed);
     }
 
-    // ** Do a regex scan for foo* with recursion
+    // ** Do a regex scan for foo* with recursion and following symlinks
     snprintf(foo_path, PATH_LEN, "%s/foo*", prefix);
     snprintf(match_path[0], PATH_LEN, "%s/foodir/foo", prefix);
     snprintf(match_path[1], PATH_LEN, "%s/foodir/bardir/foobar", prefix);
@@ -573,20 +573,105 @@ int os_create_remove_tests(char *prefix)
     err = path_scan_and_check(foo_path, match_path, 5, 1000, OS_OBJECT_FILE_FLAG|OS_OBJECT_FOLLOW_SYMLINK_FLAG);
     if (err != 0) {
         nfailed++;
-        log_printf(0, "ERROR: Regex scan: foo* err=%d\n", err);
+        log_printf(0, "ERROR: Regex scan: foo* following symlinks err=%d\n", err);
+        return(nfailed);
+    }
+
+    // ** Do a regex scan for foo* with recursion and skipping symlinks
+    snprintf(foo_path, PATH_LEN, "%s/foo*", prefix);
+    snprintf(match_path[0], PATH_LEN, "%s/foodir/foo", prefix);
+    snprintf(match_path[1], PATH_LEN, "%s/foodir/bardir/foobar", prefix);
+    snprintf(match_path[2], PATH_LEN, "%s/foodir/bardir/bar", prefix);
+    snprintf(match_path[3], PATH_LEN, "%s/foodir/bardir/subdir/last", prefix);
+    err = path_scan_and_check(foo_path, match_path, 4, 1000, OS_OBJECT_FILE_FLAG);
+    if (err != 0) {
+        nfailed++;
+        log_printf(0, "ERROR: Regex scan: foo* skipping symlinks err=%d\n", err);
         return(nfailed);
     }
 
     // ** Do a regex scan for foodir/linkdir with recursion
     snprintf(foo_path, PATH_LEN, "%s/foodir/linkdir", prefix);
-    err = path_scan_and_check(foo_path, &(match_path[4]), 1, 1000, OS_OBJECT_FILE_FLAG|OS_OBJECT_FOLLOW_SYMLINK_FLAG);
+    err = path_scan_and_check(foo_path, &(match_path[4]), 1, 1000, OS_OBJECT_FILE_FLAG);
     if (err != 0) {
         nfailed++;
-        log_printf(0, "ERROR: Regex scan: foo* err=%d\n", err);
+        log_printf(0, "ERROR: Regex scan: foodir/linkdir err=%d\n", err);
         return(nfailed);
     }
 
-//abort();
+    // ** Make a symlink loop  foodir/loop -> fooddir
+    snprintf(foo_path, PATH_LEN, "%s/foodir/loop", prefix);
+    snprintf(bar_path, PATH_LEN, "..");
+    err = gop_sync_exec(os_symlink_object(os, creds, bar_path, foo_path, "me"));
+    if (err != OP_STATE_SUCCESS) {
+        nfailed++;
+        log_printf(0, "ERROR: creating loop dir: %s err=%d\n", foo_path, err);
+        return(nfailed);
+    }
+
+    // ** Verify foodir/loop exists
+    err = gop_sync_exec(os_open_object(os, creds, foo_path, OS_MODE_READ_IMMEDIATE, "me", &foo_fd, wait_time));
+    if (err != OP_STATE_SUCCESS) {
+        nfailed++;
+        log_printf(0, "ERROR: opening dir: %s err=%d\n", foo_path, err);
+        return(nfailed);
+    }
+    err = gop_sync_exec(os_close_object(os, foo_fd));
+    if (err != OP_STATE_SUCCESS) {
+        nfailed++;
+        log_printf(0, "ERROR: Closing dir: %s err=%d\n", foo_path, err);
+        return(nfailed);
+    }
+
+
+    // ** Do a regex scan for foo* with recursion and skipping symlinks
+    snprintf(foo_path, PATH_LEN, "%s/foo*", prefix);
+    snprintf(match_path[0], PATH_LEN, "%s/foodir/foo", prefix);
+    snprintf(match_path[1], PATH_LEN, "%s/foodir/bardir/foobar", prefix);
+    snprintf(match_path[2], PATH_LEN, "%s/foodir/bardir/bar", prefix);
+    snprintf(match_path[3], PATH_LEN, "%s/foodir/bardir/subdir/last", prefix);
+    err = path_scan_and_check(foo_path, match_path, 4, 1000, OS_OBJECT_FILE_FLAG);
+    if (err != 0) {
+        nfailed++;
+        log_printf(0, "ERROR: Regex scan: foo* skipping symlinks with a loop err=%d\n", err);
+        return(nfailed);
+    }
+
+    // ** Do a regex scan for foo* with recursion and FOLLOWING symlinks
+    // ** The OS looping logic should kick us out of the infinite loop
+    snprintf(foo_path, PATH_LEN, "%s/foo*", prefix);
+    snprintf(match_path[0], PATH_LEN, "%s/foodir/bardir/bar", prefix);
+    snprintf(match_path[1], PATH_LEN, "%s/foodir/bardir/foobar", prefix);
+    snprintf(match_path[2], PATH_LEN, "%s/foodir/bardir/subdir/last", prefix);
+    snprintf(match_path[3], PATH_LEN, "%s/foodir/foo", prefix);
+    snprintf(match_path[4], PATH_LEN, "%s/foodir/linkdir/last", prefix);
+    snprintf(match_path[5], PATH_LEN, "%s/foodir/loop/foodir/bardir/bar", prefix);
+    snprintf(match_path[6], PATH_LEN, "%s/foodir/loop/foodir/bardir/foobar", prefix);
+    snprintf(match_path[7], PATH_LEN, "%s/foodir/loop/foodir/bardir/subdir/last", prefix);
+    snprintf(match_path[8], PATH_LEN, "%s/foodir/loop/foodir/foo", prefix);
+    err = path_scan_and_check(foo_path, match_path, 9, 1000, OS_OBJECT_FILE_FLAG|OS_OBJECT_FOLLOW_SYMLINK_FLAG);
+    if (err != 0) {
+        nfailed++;
+        log_printf(0, "ERROR: Regex scan: foo* FOLLOWING symlinks with a loop err=%d\n", err);
+        return(nfailed);
+    }
+
+    // ** Remove foodir/loop
+    snprintf(foo_path, PATH_LEN, "%s/foodir/loop", prefix);
+    err = gop_sync_exec(os_remove_object(os, creds, foo_path));
+    if (err != OP_STATE_SUCCESS) {
+        nfailed++;
+        log_printf(0, "ERROR: filed removing loop link directory: %s err=%d\n", foo_path, err);
+        return(nfailed);
+    }
+
+    // ** Verify foodir/loop was removed
+    err = gop_sync_exec(os_open_object(os, creds, foo_path, OS_MODE_READ_IMMEDIATE, "me", &foo_fd, wait_time));
+    if (err == OP_STATE_SUCCESS) {
+        nfailed++;
+        log_printf(0, "ERROR: Oops! opened a removed dir dir: %s err=%d\n", foo_path, err);
+        return(nfailed);
+    }
 
     // ** Remove foodir/linkdir
     snprintf(foo_path, PATH_LEN, "%s/foodir/linkdir", prefix);
