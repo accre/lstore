@@ -755,10 +755,7 @@ int gop_mq_stream_write(gop_mq_stream_t *mqs, void *vdata, int len)
             tbx_pack_consumed(mqs->pack);    //** Rest so garbage data isn't sent
         }
 
-apr_time_t dt = apr_time_now() - mqs->last_write;
-log_printf(1, "msid=%d QOS now=" TT " last=" TT " dt=" TT "\n", mqs->msid, apr_time_now(), mqs->last_write, dt);
         if (((nleft > 0) && (grew_space == 0)) || ((apr_time_now() - mqs->last_write) > QOS_WAIT)) {  //** Need to flush the data
-log_printf(1, "msid=%d mpool=%p DUMPING data\n", mqs->msid, mqs->mpool);
             if (mqs->mpool == NULL) {  //** Got to configure everything
                 apr_pool_create(&mqs->mpool, NULL);
                 apr_thread_mutex_create(&(mqs->lock), APR_THREAD_MUTEX_DEFAULT, mqs->mpool);
