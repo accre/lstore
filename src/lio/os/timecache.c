@@ -476,7 +476,7 @@ int _ostc_lio_cache_tree_walk(lio_object_service_fn_t *os, char *fname, tbx_stac
         //** Pick off any multiple /'s
         for (start=i; fname[start] == '/' ; start++) {}
         err = start;
-        log_printf(5, "loop=%d start=%d i=%d fname[start]=%hhu\n", loop, start, i, fname[start]);
+        log_printf(5, "loop=%d start=%d i=%d\n", loop, start, i);
         if (fname[start] == 0) {
             if (loop == 0) {  //** This is the first (and last) token so push the root on the stack
                 tbx_stack_move_to_bottom(tree);
@@ -499,7 +499,7 @@ int _ostc_lio_cache_tree_walk(lio_object_service_fn_t *os, char *fname, tbx_stac
         } else {
             next = NULL;
         }
-        log_printf(5, "loop=%d start=%d end=%d i=%d next=%p end_char=%hhu prefix=%s\n", loop, start, end, i, next, fname[end], fname+start);
+        log_printf(5, "loop=%d start=%d end=%d i=%d next=%p end_char=%c prefix=%s\n", loop, start, end, i, next, fname[end], fname+start);
 
         if (next == NULL) {  //** Check if at the end
             if (fname[i] == 0) { //** Yup at the end
@@ -1007,9 +1007,11 @@ void ostc_cache_update_attrs(lio_object_service_fn_t *os, char *fname, char **ke
             attr->val = NULL;
         }
         if (val) {
-            tbx_type_malloc(attr->val, void, attr->v_size+1);
-            memcpy(attr->val, val[i], attr->v_size);
-            ((char *)(attr->val))[v_size[i]] = 0;  //** NULL terminate
+            if (val[i]) {
+                tbx_type_malloc(attr->val, void, attr->v_size+1);
+                memcpy(attr->val, val[i], attr->v_size);
+                ((char *)(attr->val))[v_size[i]] = 0;  //** NULL terminate
+            }
         }
     }
 
