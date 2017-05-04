@@ -1484,7 +1484,7 @@ void my_seekdir(osf_dir_t *d, long offset)
 int osf_next_object(osf_object_iter_t *it, char **myfname, int *prefix_len)
 {
     lio_osfile_priv_t *osf = (lio_osfile_priv_t *)it->os->priv;
-    int i, rmatch, tweak;
+    int i, rmatch, tweak, do_recurse;
     struct stat link_stat, object_stat;
     ino_t *ino_sys;
     osf_obj_level_t *itl;
@@ -1543,6 +1543,7 @@ int osf_next_object(osf_object_iter_t *it, char **myfname, int *prefix_len)
                 if ((strncmp(itl->entry, FILE_ATTR_PREFIX, FILE_ATTR_PREFIX_LEN) == 0) ||
                         (strcmp(itl->entry, ".") == 0) || (strcmp(itl->entry, "..") == 0)) i = 1;
             }
+log_printf(0, "regexec=%d entry=%s\n", i, itl->entry);
             if (i == 0) { //** Regex match
                 snprintf(fname, OS_PATH_MAX, "%s/%s", itl->path, itl->entry);
                 snprintf(fullname, OS_PATH_MAX, "%s%s", osf->file_path, fname);
@@ -1566,12 +1567,14 @@ int osf_next_object(osf_object_iter_t *it, char **myfname, int *prefix_len)
                             i = os_local_filetype_stat(fullname, &link_stat, &object_stat);
                             log_printf(15, " ftype=%d object_types=%d firstpass=%d\n", i, it->object_types, itl->firstpass);
 
+                            do_recurse = 1;
                             if (i & OS_OBJECT_SYMLINK_FLAG) {  //** Check if we follow symlinks
                                 if ((it->object_types & OS_OBJECT_FOLLOW_SYMLINK_FLAG) == 0) {
-                                    itl->firstpass = 0;  //** Force a match check since we won't follow the link
+                                    if ((it->table->n-1) < it->curr_level) do_recurse = 0;  //** Off the static level and hit a symlink so ignore it.
                                 } else {  //** Check if we have a symlink loop
                                     if (apr_hash_get(it->symlink_loop, &link_stat.st_ino, sizeof(ino_t)) != NULL) {
-                                        i = 0;   //** Already been here so don't print and prune the branch
+                                        log_printf(15, "Already been here via symlink so pruning\n");
+                                        if (itl->firstpass == 1) i = 0;   //** Already been here so don't print and prune the branch
                                     } else {  //** First time so add it for tracking
                                         tbx_type_malloc(ino_sys, ino_t, 1);
                                         *ino_sys = link_stat.st_ino;
@@ -1595,7 +1598,7 @@ int osf_next_object(osf_object_iter_t *it, char **myfname, int *prefix_len)
                                         return(i);
                                     }
                                 }
-                            } else if (i & OS_OBJECT_DIR_FLAG) {  //** It's a dir or a symlink that should be checked
+                            } else if ((i & OS_OBJECT_DIR_FLAG) && (do_recurse == 1)) {  //** It's a dir or a symlink that should be checked
                                 if (itl->firstpass == 1) { //** 1st pass so store the pos and recurse
                                     itl->firstpass = 0;              //** Flag it as already processed
                                     my_seekdir(itl->d, itl->prev_pos);  //** Move the dirp back one slot
