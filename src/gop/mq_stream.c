@@ -38,6 +38,8 @@
 #include "mq_helpers.h"
 #include "mq_stream.h"
 
+#define QOS_WAIT apr_time_from_sec(1)   //** How long to let data sit in the buffer before sending
+
 //***********************************************************************
 // gop_mqs_id - Returns the Stream ID
 //***********************************************************************
@@ -753,7 +755,10 @@ int gop_mq_stream_write(gop_mq_stream_t *mqs, void *vdata, int len)
             tbx_pack_consumed(mqs->pack);    //** Rest so garbage data isn't sent
         }
 
-        if ((nleft > 0) && (grew_space == 0)) {  //** Need to flush the data
+apr_time_t dt = apr_time_now() - mqs->last_write;
+log_printf(1, "msid=%d QOS now=" TT " last=" TT " dt=" TT "\n", mqs->msid, apr_time_now(), mqs->last_write, dt);
+        if (((nleft > 0) && (grew_space == 0)) || ((apr_time_now() - mqs->last_write) > QOS_WAIT)) {  //** Need to flush the data
+log_printf(1, "msid=%d mpool=%p DUMPING data\n", mqs->msid, mqs->mpool);
             if (mqs->mpool == NULL) {  //** Got to configure everything
                 apr_pool_create(&mqs->mpool, NULL);
                 apr_thread_mutex_create(&(mqs->lock), APR_THREAD_MUTEX_DEFAULT, mqs->mpool);
@@ -771,6 +776,8 @@ int gop_mq_stream_write(gop_mq_stream_t *mqs, void *vdata, int len)
                 err = gop_mq_stream_write_flush(mqs);
                 apr_thread_mutex_lock(mqs->lock);
             }
+
+            mqs->last_write = apr_time_now();
         } else if (mqs->shutdown == 1) {  //** Last write so signal it
             log_printf(5, "Doing final flush sent_data=%d msid=%d\n", mqs->msid, mqs->sent_data);
             err = 0;
@@ -927,6 +934,7 @@ gop_mq_stream_t *gop_mq_stream_write_create(gop_mq_context_t *mqc, gop_mq_portal
     mqs->want_more = MQS_MORE;
     mqs->expire = apr_time_from_sec(timeout) + apr_time_now();
     mqs->msid = tbx_atomic_global_counter();
+    mqs->last_write = apr_time_now();
 
     gop_mq_get_frame(hid, (void **)&(mqs->host_id), &(mqs->hid_len));
 

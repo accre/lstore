@@ -68,6 +68,7 @@ struct gop_mq_stream_t {
     gop_op_generic_t *gop_processed;
     gop_mq_ongoing_t *ongoing;
     gop_mq_ongoing_object_t *oo;
+    apr_time_t last_write;
     char want_more;
     mq_msg_t *remote_host;
     char *host_id;
