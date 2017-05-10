@@ -380,6 +380,7 @@ int lfs_readdir(const char *dname, void *buf, fuse_fill_dir_t filler, off_t off,
     apr_time_t now;
     double dt;
     int off2 = off;
+
     log_printf(1, "dname=%s off=%d stack_size=%d\n", dname, off2, tbx_stack_count(dit->stack));
     tbx_log_flush();
     now = apr_time_now();
@@ -436,7 +437,7 @@ int lfs_readdir(const char *dname, void *buf, fuse_fill_dir_t filler, off_t off,
         if (filler(buf, de->dentry, &(de->stat), off) == 1) {
             dt = apr_time_now() - now;
             dt /= APR_USEC_PER_SEC;
-            log_printf(1, "dt=%lf\n", dt);
+            log_printf(15, "BUFFER FULL dt=%lf\n", dt);
             return(0);
         }
 
