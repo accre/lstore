@@ -35,6 +35,7 @@ typedef struct {
     int client_delay;
     int max_packet;
     int send_bytes;
+    int stop_reading_bytes;
     int timeout;
     int shouldbe;
     int gid;
@@ -56,7 +57,7 @@ int packet_max = 1024*1024;
 int send_min = 1024;
 int send_max = 10*1024*1024;
 int nparallel = 100;
-int ntotal = 100;
+int ntotal = 2000;
 int do_compress = MQS_PACK_RAW;
 int timeout = 10;
 int stream_max_size = 4096;
@@ -135,6 +136,12 @@ gop_op_status_t client_read_stream(void *task_arg, int tid)
             goto fail;
         }
 
+        if ((nread+nbytes) > op->stop_reading_bytes) {
+            log_printf(1, "Kicking out! gid=%d nread=%d stop_reading=%d n_buf=%d\n", op->gid, nread, op->stop_reading_bytes, nbytes);
+            nbytes = op->stop_reading_bytes - nread;
+            nleft = -1;
+        }
+
         memset(buffer, 0, nbytes);
         err = gop_mq_stream_read(mqs, buffer, nbytes);
         if (err != 0) {
@@ -148,6 +155,8 @@ gop_op_status_t client_read_stream(void *task_arg, int tid)
             status = gop_failure_status;
             goto fail;
         }
+
+        if (nleft < 0) goto fail;  //** Kick out
         nread += nbytes;
         nleft -= nbytes;
 
@@ -161,13 +170,15 @@ gop_op_status_t client_read_stream(void *task_arg, int tid)
         log_printf(2, "nread=%d nleft=%d\n", nread, nleft);
     }
 
-    nbytes = 1;
-    log_printf(1, "gid=%d msid=%d Before read after EOS\n", op->gid, gop_mqs_id(mqs));
-    err = gop_mq_stream_read(mqs, buffer, nbytes);
-    log_printf(1, "gid=%d msid=%d Attempt to read beyond EOS err=%d\n", op->gid, gop_mqs_id(mqs), err);
-    if (err != -1) { // We want gop_mq_stream_read to return -1 here. It's an error otherwise
-        log_printf(0, "ERROR Attempt to read after EOS succeeded! err=%d gid=%d msid=%d\n", err, op->gid, gop_mqs_id(mqs));
-        status = gop_failure_status;
+    if (nleft != -1) {  //** Attempt to do a read beyond the EOS is we didn't kickout early
+        nbytes = 1;
+        log_printf(1, "gid=%d msid=%d Before read after EOS\n", op->gid, gop_mqs_id(mqs));
+        err = gop_mq_stream_read(mqs, buffer, nbytes);
+        log_printf(1, "gid=%d msid=%d Attempt to read beyond EOS err=%d\n", op->gid, gop_mqs_id(mqs), err);
+        if (err != -1) { // We want gop_mq_stream_read to return -1 here. It's an error otherwise
+            log_printf(0, "ERROR Attempt to read after EOS succeeded! err=%d gid=%d msid=%d\n", err, op->gid, gop_mqs_id(mqs));
+            status = gop_failure_status;
+        }
     }
 
 fail:
@@ -214,7 +225,7 @@ gop_mq_context_t *client_make_context()
 // test_gop - Generates a MQS test GOP for execution
 //***************************************************************************
 
-gop_op_generic_t *test_gop(gop_mq_context_t *mqc, int flusher, int client_delay, int delay, int max_packet, int send_bytes, int to, int myid)
+gop_op_generic_t *test_gop(gop_mq_context_t *mqc, int flusher, int client_delay, int delay, int max_packet, int send_bytes, int stop_reading_bytes, int to, int myid)
 {
     mq_msg_t *msg;
     gop_op_generic_t *gop;
@@ -229,6 +240,7 @@ gop_op_generic_t *test_gop(gop_mq_context_t *mqc, int flusher, int client_delay,
     op->client_delay = client_delay;
     op->max_packet = max_packet;
     op->send_bytes = send_bytes;
+    op->stop_reading_bytes = stop_reading_bytes;
     op->timeout = to;
 
     op->shouldbe = OP_STATE_SUCCESS;
@@ -260,7 +272,7 @@ gop_op_generic_t *test_gop(gop_mq_context_t *mqc, int flusher, int client_delay,
 gop_op_generic_t *new_bulk_task(gop_mq_context_t *mqc, int myid)
 {
     int transfer_bytes, packet_bytes, delay, client_delay, flusher, to;
-    int to_min, to_max, dt, min_dt;
+    int to_min, to_max, dt, min_dt, stop_reading_bytes;
 
     min_dt = 3;
     to_min = 10;
@@ -301,7 +313,16 @@ gop_op_generic_t *new_bulk_task(gop_mq_context_t *mqc, int myid)
         client_delay = 0;
     }
 
-    return(test_gop(mqc, flusher, client_delay, delay, packet_bytes, transfer_bytes, to, myid));
+    stop_reading_bytes = tbx_random_get_int64(1, 10);
+    if (stop_reading_bytes <= 1) {
+        stop_reading_bytes = tbx_random_get_int64(0, transfer_bytes);
+        client_delay = 0;
+        delay = 0;
+    } else {
+        stop_reading_bytes = transfer_bytes+1;
+    }
+
+    return(test_gop(mqc, flusher, client_delay, delay, packet_bytes, transfer_bytes, stop_reading_bytes, to, myid));
 }
 
 //***************************************************************************
@@ -320,10 +341,10 @@ int client_consume_result(gop_op_generic_t *gop)
 
     if ((int)status.op_status != op->shouldbe) {
         n = 1;
-        log_printf(0, "ERROR with stream test! gid=%d myid=%d test_gop(f=%d, cd=%d sd=%d, mp=%d, sb=%d, to=%d) = %d got=%d\n", gop_id(gop), gop_get_myid(gop), op->launch_flusher, op->client_delay, op->delay, op->max_packet, op->send_bytes, op->timeout, op->shouldbe, status.op_status);
+        log_printf(0, "ERROR with stream test! gid=%d myid=%d test_gop(f=%d, cd=%d sd=%d, mp=%d, sb=%d, sr=%d, to=%d) = %d got=%d\n", gop_id(gop), gop_get_myid(gop), op->launch_flusher, op->client_delay, op->delay, op->max_packet, op->send_bytes, op->stop_reading_bytes, op->timeout, op->shouldbe, status.op_status);
     } else {
         n = 0;
-        log_printf(0, "SUCCESS with stream test! gid=%d myid=%d test_gop(f=%d, cd=%d sd=%d, mp=%d, sb=%d, to=%d) = %d got=%d\n", gop_id(gop), gop_get_myid(gop), op->launch_flusher, op->client_delay, op->delay, op->max_packet, op->send_bytes, op->timeout, op->shouldbe, status.op_status);
+        log_printf(0, "SUCCESS with stream test! gid=%d myid=%d test_gop(f=%d, cd=%d sd=%d, mp=%d, sb=%d, sr=%d, to=%d) = %d got=%d\n", gop_id(gop), gop_get_myid(gop), op->launch_flusher, op->client_delay, op->delay, op->max_packet, op->send_bytes, op->stop_reading_bytes, op->timeout, op->shouldbe, status.op_status);
     }
     tbx_log_flush();
 
@@ -360,21 +381,39 @@ void *client_test_thread(apr_thread_t *th, void *arg)
     single_max = 8192;
     single_send = 1024 * 1024;
 
-    gop = test_gop(mqc, 0, 0, 0, single_max, single_send, 10, 100);
+    //** Kickout during a normal read
+    gop = test_gop(mqc, 0, 0, 0, single_max, 10*single_send, 8*single_max, 10, 101);
     gop_waitall(gop);
-    n += client_consume_result(gop);  //** Normal valid usage pattern
-    gop = test_gop(mqc, 1, 0, 0, single_max, single_send, 10, 101);
+    n += client_consume_result(gop);
+
+//goto skip;
+
+    //** Normal valid usage pattern
+    gop = test_gop(mqc, 0, 0, 0, single_max, single_send, single_send+1, 10, 100);
     gop_waitall(gop);
-    n += client_consume_result(gop);  //** Launch the flusher but no delay sending data
-    gop = test_gop(mqc, 0, 0, 10, single_max, single_send, 5, 102);
+    n += client_consume_result(gop);
+
+//goto skip;
+
+    //** Launch the flusher but no delay sending data
+    gop = test_gop(mqc, 1, 0, 0, single_max, single_send, single_send+1, 10, 101);
     gop_waitall(gop);
-    n += client_consume_result(gop);  //** Response will come after the timeout
-    gop = test_gop(mqc, 1, 0, 15, single_max, single_send, 8, 103);
+    n += client_consume_result(gop);
+
+    //** Response will come after the timeout
+    gop = test_gop(mqc, 0, 0, 10, single_max, single_send, single_send+1, 5, 102);
     gop_waitall(gop);
-    n += client_consume_result(gop);  //** Launch the flusher but delay sending data forcing the heartbeat to handle it
-    gop = test_gop(mqc, 0, 30, 0, single_max, single_send, 5, 104);
+    n += client_consume_result(gop);
+
+    //** Launch the flusher but delay sending data forcing the heartbeat to handle it
+    gop = test_gop(mqc, 1, 0, 15, single_max, single_send, single_send+1, 8, 103);
     gop_waitall(gop);
-    n += client_consume_result(gop);  //** Vvalid use pattern but the client pauses after reading
+    n += client_consume_result(gop);
+
+    //** Valid use pattern but the client pauses after reading
+    gop = test_gop(mqc, 0, 30, 0, single_max, single_send, single_send+1, 5, 104);
+    gop_waitall(gop);
+    n += client_consume_result(gop);
 
     if (n != 0) {
         log_printf(0, "END:  ERROR with %d basic tests\n", n);
@@ -430,7 +469,7 @@ void *client_test_thread(apr_thread_t *th, void *arg)
 
 void cb_write_stream(void *arg, gop_mq_task_t *task)
 {
-    int nbytes, offset, nsent, nleft, err;
+    int nbytes, offset, nsent, nleft, err, kickout;
     gop_mq_frame_t *fid, *hid, *fop;
     mq_msg_t *msg;
     gop_mq_stream_t *mqs;
@@ -452,7 +491,7 @@ void cb_write_stream(void *arg, gop_mq_task_t *task)
     gop_mq_get_frame(fop, (void **)&op, &nbytes);
     assert(nbytes == sizeof(test_gop_t));
 
-    log_printf(0, "START: gid=%d test_gop(f=%d, cd=%d, sd=%d, mp=%d, sb=%d, to=%d) = %d\n", op->gid, op->launch_flusher, op->client_delay, op->delay, op->max_packet, op->send_bytes, op->timeout, op->shouldbe);
+    log_printf(0, "START: gid=%d test_gop(f=%d, cd=%d, sd=%d, mp=%d, sb=%d, sr=%d, to=%d) = %d\n", op->gid, op->launch_flusher, op->client_delay, op->delay, op->max_packet, op->send_bytes, op->stop_reading_bytes, op->timeout, op->shouldbe);
 
     //** Create the stream so we can get the heartbeating while we work
     mqs = gop_mq_stream_write_create(task->ctx, server_portal, server_ongoing, do_compress, op->max_packet, op->timeout, msg, fid, hid, op->launch_flusher);
@@ -467,6 +506,7 @@ void cb_write_stream(void *arg, gop_mq_task_t *task)
 
     nleft = op->send_bytes;
     nsent = 0;
+    kickout = 0;
     do {
         nbytes = tbx_random_get_int64(1, test_size);
         if (nbytes > nleft) nbytes = nleft;
@@ -475,19 +515,19 @@ void cb_write_stream(void *arg, gop_mq_task_t *task)
         log_printf(0, "nsent=%d  offset=%d nbytes=%d\n", nsent, offset, nbytes);
         err = gop_mq_stream_write(mqs, &offset, sizeof(int));
         if (err != 0) {
-            log_printf(0, "ERROR writing offset!  nsent=%d gid=%d\n", nsent, op->gid);
+            kickout = 1;
             goto fail;
         }
 
         err = gop_mq_stream_write(mqs, &nbytes, sizeof(int));
         if (err != 0) {
-            log_printf(0, "ERROR writing nbytes!  nsent=%d gid=%d\n", nsent, op->gid);
+            kickout = 2;
             goto fail;
         }
 
         err = gop_mq_stream_write(mqs, &(test_data[offset]), nbytes);
         if (err != 0) {
-            log_printf(0, "ERROR writing test_data!  nsent=%d gid=%d\n", nsent, op->gid);
+            kickout = 3;
             goto fail;
         }
 
@@ -496,6 +536,14 @@ void cb_write_stream(void *arg, gop_mq_task_t *task)
     } while (nleft > 0);
 
 fail:
+    if (kickout) {
+        if (op->stop_reading_bytes >= op->send_bytes) {
+            log_printf(0, "ERROR writing! nsent=%d gid=%d kickout=%d\n", nsent, op->gid, kickout);
+        } else {
+            log_printf(0, "ABORTED write nsent=%d stop_reading=%d gid=%d kickout=%d\n", nsent, op->stop_reading_bytes, op->gid, kickout);
+        }
+    }
+
     err = op->gid;
     gop_mq_frame_destroy(fop);
     gop_mq_stream_destroy(mqs);
