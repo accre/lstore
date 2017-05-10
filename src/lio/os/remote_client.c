@@ -96,6 +96,7 @@ typedef struct {
     int n_keys;
     int v_max;
     int iter_type;
+    int finished;
     gop_mq_stream_t *mqs;
     mq_msg_t *response;
 } osrc_object_iter_t;
@@ -1658,7 +1659,13 @@ int osrc_next_object(os_object_iter_t *oit, char **fname, int *prefix_len)
     if (it == NULL) {
         log_printf(0, "ERROR: it=NULL\n");
         return(-2);
+    } else if (it->finished == 1) {
+        *fname = NULL;
+        *prefix_len = -1;
+        log_printf(5, "No more objects\n");
+        return(-1);
     }
+
     ait = NULL;
 
     //** If a regex attr iter make sure and flush any remaining attrs
@@ -1683,6 +1690,7 @@ int osrc_next_object(os_object_iter_t *oit, char **fname, int *prefix_len)
     if (ftype <= 0) {
         *fname = NULL;
         *prefix_len = -1;
+        it->finished = 1;
         log_printf(5, "No more objects\n");
         return(ftype);
     }
