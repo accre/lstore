@@ -41,6 +41,7 @@ GOP_API void gop_mq_stream_destroy(gop_mq_stream_t *mqs);
 GOP_API int gop_mq_stream_read(gop_mq_stream_t *mqs, void *buffer, int nbytes);
 GOP_API int gop_mq_stream_write(gop_mq_stream_t *mqs, void *buffer, int nbytes);
 GOP_API void gop_mqs_server_more_cb(void *arg, gop_mq_task_t *task);
+GOP_API int gop_mq_stream_write_flush(gop_mq_stream_t *mqs);
 
 // Preprocessor constants
 #define MQS_PACK_RAW 'R'
