@@ -1541,7 +1541,6 @@ int main(int argc, char **argv)
                 gop = gop_tp_op_new(lio_gc->tpc_unlimited, NULL, inspect_task, (void *)&(w[slot]), NULL, 1);
                 gop_set_myid(gop, slot);
                 log_printf(0, "gid=%d i=%d fname=%s\n", gop_id(gop), slot, fname);
-//info_printf(lio_ifd, 0, "n=%d gid=%d slot=%d fname=%s\n", submitted, gop_id(gop), slot, fname);
                 gop_opque_add(q, gop);
 
                 if (submitted >= lio_parallel_task_count) {
@@ -1565,7 +1564,10 @@ int main(int argc, char **argv)
         apr_thread_mutex_unlock(shutdown_lock);
 
         lio_destroy_object_iter(tuple.lc, it);
-
+        if (ftype < 0) {
+            fprintf(stderr, "ERROR getting the next object!\n");
+            err = EIO;
+        }
         if (rp_single != NULL) {
             lio_os_regex_table_destroy(rp_single);
             rp_single = NULL;

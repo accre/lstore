@@ -265,7 +265,7 @@ int main(int argc, char **argv)
         }
 
         if (it == NULL) {
-            info_printf(lio_ifd, 0, "ERROR creating iterator!\n");
+            fprintf(stderr, "ERROR creating iterator!\n");
             return_code = EIO;
         }
 
@@ -314,6 +314,11 @@ int main(int argc, char **argv)
             lio_os_regex_table_destroy(ro_single);
             ro_single = NULL;
         }
+    }
+
+    if (ftype < 0) {
+        fprintf(stderr, "ERROR getting the next object!\n");
+        return_code = EIO;
     }
 
     log_printf(15, "after main loop\n");

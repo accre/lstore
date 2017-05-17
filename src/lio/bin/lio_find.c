@@ -120,8 +120,6 @@ int main(int argc, char **argv)
         }
 
         while ((ftype = lio_next_object(tuple.lc, it, &fname, &prefix_len)) > 0) {
-//     printf("len=%d full=%s nopref=%s\n", prefix_len, fname, &(fname[prefix_len+1]));
-
             if (nopre == 1) {
                 info_printf(lio_ifd, 0, "%s\n", &(fname[prefix_len+1]));
             } else {
@@ -132,6 +130,11 @@ int main(int argc, char **argv)
         }
 
         lio_destroy_object_iter(tuple.lc, it);
+
+        if (ftype < 0) {
+            fprintf(stderr, "ERROR getting the next object!\n");
+            return_code = EIO;
+        }
 
         lio_path_release(&tuple);
         if (rp_single != NULL) {
@@ -147,7 +150,7 @@ int main(int argc, char **argv)
 finished:
     tbx_stdinarray_iter_destroy(it_args);
     lio_shutdown();
-    if (it == NULL) return_code = EIO;
+    if ((it == NULL) || (ftype != 0)) return_code = EIO;
     return(return_code);
 }
 

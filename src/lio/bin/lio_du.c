@@ -165,7 +165,7 @@ int main(int argc, char **argv)
 
     if (rg_mode == 0) {
         if (i>=argc) {
-            printf("Missing directory!\n");
+            fprintf(stderr, "Missing directory!\n");
             return(2);
         }
     } else {
@@ -237,6 +237,12 @@ next_top:
 
             lio_destroy_object_iter(tuple.lc, it);
 
+            if (ftype < 0) {
+                fprintf(stderr, "ERROR getting the next object!\n");
+                return_code = EIO;
+                goto finished;
+            }
+
             log_printf(15, "sum_table=%d\n", tbx_list_key_count(sum_table));
         }
 
@@ -291,6 +297,11 @@ next:
         }
 
         lio_destroy_object_iter(tuple.lc, it);
+
+        if (ftype < 0) {
+            fprintf(stderr, "ERROR getting the next object!\n");
+            return_code = EIO;
+        }
 
         lio_path_release(&tuple);
         if (rp_single != NULL) {

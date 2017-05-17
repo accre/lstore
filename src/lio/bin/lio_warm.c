@@ -443,6 +443,10 @@ int main(int argc, char **argv)
         }
 
         lio_destroy_object_iter(lio_gc, it);
+        if (ftype < 0) {
+            fprintf(stderr, "ERROR getting the next object!\n");
+            return_code = EIO;
+        }
 
         while ((gop = opque_waitany(q)) != NULL) {
             status = gop_get_status(gop);
@@ -470,11 +474,11 @@ int main(int argc, char **argv)
     info_printf(lio_ifd, 0, "--------------------------------------------------------------------\n");
     info_printf(lio_ifd, 0, "Submitted: " XOT "   Success: " XOT "   Fail: " XOT "    Write Errors: " XOT "   Missing Exnodes: " XOT "\n", submitted, good, bad, werr, missing_err);
     if (submitted != (good+bad)) {
-        info_printf(lio_ifd, 0, "ERROR FAILED self-consistency check! Submitted != Success+Fail\n");
+        fprintf(stderr, "ERROR FAILED self-consistency check! Submitted != Success+Fail\n");
         return_code = EFAULT;
     }
     if (bad > 0) {
-        info_printf(lio_ifd, 0, "ERROR Some files failed to warm!\n");
+        fprintf(stderr, "ERROR Some files failed to warm!\n");
         return_code = EIO;
     }
 
