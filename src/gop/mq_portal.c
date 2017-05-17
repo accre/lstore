@@ -417,6 +417,7 @@ void *mqt_exec(apr_thread_t *th, void *arg)
 
     mq_task_destroy(task);
 
+    tbx_atomic_dec(p->running);
     return(NULL);
 }
 
@@ -995,6 +996,7 @@ int mqc_process_incoming(gop_mq_conn_t *c, int *nproc)
         if (size != 0) {
             log_printf(0, "ERROR: Missing empty frame!\n");
             task = gop_mq_task_new(c->pc->mqc, msg, NULL, c->pc, -1);
+            tbx_atomic_inc(c->pc->running);
             mqt_exec(NULL, task);
             goto skip;
         }
@@ -1048,6 +1050,7 @@ int mqc_process_incoming(gop_mq_conn_t *c, int *nproc)
             //** It's up to the task to send any tracking information back.
             log_printf(5, "Submiting task for execution\n");
             task = gop_mq_task_new(c->pc->mqc, msg, NULL, c->pc, -1);
+            tbx_atomic_inc(c->pc->running);
             thread_pool_direct(c->pc->tp, mqt_exec, task);
         } else {   //** Unknwon command so drop it
             log_printf(5, "ERROR: Unknown command.  Dropping\n");
@@ -1448,6 +1451,10 @@ cleanup:
         }
     }
 
+    //** Wait for pending tasks to complete
+    while (tbx_atomic_get(c->pc->running) > 0) {
+        usleep(10000);
+    }
     gop_mq_conn_teardown(c);
 
     //** Update the conn_count, stats and place mysealf on the reaper stack

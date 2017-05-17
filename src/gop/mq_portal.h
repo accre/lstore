@@ -145,6 +145,7 @@ struct gop_mq_portal_t {   //** Container for managing connections to a single h
     int counter;               //** Connections counter
     int n_close;               //** Number of connections being requested to close
     int socket_type;           //** Socket type
+    tbx_atomic_unit32_t running; //** Running tasks
     uint64_t n_ops;            //** Operation count
     double min_ops_per_sec;    //** Minimum ops/sec needed to keep a connection open.
     tbx_stack_t *tasks;            //** List of tasks
