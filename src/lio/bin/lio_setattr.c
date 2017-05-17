@@ -250,6 +250,12 @@ int main(int argc, char **argv)
             }
 
             lio_destroy_object_iter(tuple.lc, it);
+
+            if (ftype < 0) {
+                fprintf(stderr, "ERROR getting the next object!\n");
+                return_code = EIO;
+                goto finished;
+            } 
         }
 
         lio_path_release(&tuple);

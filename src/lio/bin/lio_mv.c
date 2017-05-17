@@ -74,7 +74,6 @@ gop_op_status_t mv_fn(void *arg, int id)
     nerr = 0;
     slot = 0;
     count = 0;
-//  tweak = (strcmp(mv->dest_tuple.path, "/") == 0) ? 1 : 0;  //** Tweak things for the root path
     while ((ftype = lio_next_object(mv->src_tuple.lc, it, &src_fname[slot], &prefix_len)) > 0) {
         snprintf(dname, OS_PATH_MAX, "%s/%s", mv->dest_tuple.path, &(src_fname[slot][prefix_len+1]));
         gop = lio_move_object_gop(mv->src_tuple.lc, mv->src_tuple.creds, src_fname[slot], dname);
@@ -100,6 +99,10 @@ gop_op_status_t mv_fn(void *arg, int id)
     }
 
     lio_destroy_object_iter(mv->src_tuple.lc, it);
+    if (ftype < 0) {
+        info_printf(lio_ifd, 0, "ERROR getting the next object!\n");
+        nerr++;
+    }
 
     while ((gop = opque_waitany(q)) != NULL) {
         slot = gop_get_myid(gop);
