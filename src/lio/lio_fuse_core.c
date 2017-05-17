@@ -274,17 +274,19 @@ int lfs_closedir_real(lfs_dir_iter_t *dit)
     if (dit->dot_path) free(dit->dot_path);
     if (dit->dotdot_path) free(dit->dotdot_path);
 
-    //** Cyle through releasing all the entries
-    while ((de = (lfs_dir_entry_t *)tbx_stack_pop(dit->stack)) != NULL) {
-        log_printf(0, "fname=%s\n", de->dentry);
-        tbx_log_flush();
-        free(de->dentry);
-        free(de);
+    if (dit->stack) {
+        //** Cyle through releasing all the entries
+        while ((de = (lfs_dir_entry_t *)tbx_stack_pop(dit->stack)) != NULL) {
+            log_printf(0, "fname=%s\n", de->dentry);
+            tbx_log_flush();
+            free(de->dentry);
+            free(de);
+        }
+
+        tbx_stack_free(dit->stack, 0);
     }
 
-    tbx_stack_free(dit->stack, 0);
-
-    lio_destroy_object_iter(dit->lfs->lc, dit->it);
+    if (dit->it) lio_destroy_object_iter(dit->lfs->lc, dit->it);
     lio_os_regex_table_destroy(dit->path_regex);
     free(dit);
 
@@ -325,6 +327,10 @@ int lfs_opendir(const char *fname, struct fuse_file_info *fi)
     dit->path_regex = lio_os_path_glob2regex(path);
 
     dit->it = lio_create_object_iter_alist(dit->lfs->lc, dit->lfs->lc->creds, dit->path_regex, NULL, OS_OBJECT_ANY_FLAG, 0, _inode_keys, (void **)dit->val, dit->v_size, _inode_key_size);
+    if (dit->it == NULL) {
+        lfs_closedir_real(dit);
+        return(-ENOENT);
+    }
 
     dit->stack = tbx_stack_new();
 
@@ -421,8 +427,12 @@ int lfs_readdir(const char *dname, void *buf, fuse_fill_dir_t filler, off_t off,
             dt = apr_time_now() - now;
             dt /= APR_USEC_PER_SEC;
             off2=off;
-            log_printf(15, "dname=%s NOTHING LEFT off=%d dt=%lf\n", dname,off2, dt);
-            return(0);
+            if (ftype == 0) {
+                log_printf(15, "dname=%s NOTHING LEFT off=%d dt=%lf\n", dname,off2, dt);
+            } else {
+                log_printf(15, "dname=%s ERROR getting next object off=%d dt=%lf\n", dname,off2, dt);
+            }
+            return((ftype == 0) ? 0 : -EIO);
         }
 
         tbx_type_malloc(de, lfs_dir_entry_t, 1);
