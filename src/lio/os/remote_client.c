@@ -1663,7 +1663,7 @@ int osrc_next_object(os_object_iter_t *oit, char **fname, int *prefix_len)
         *fname = NULL;
         *prefix_len = -1;
         log_printf(5, "No more objects\n");
-        return(-1);
+        return(0);
     }
 
     ait = NULL;
