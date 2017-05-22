@@ -276,18 +276,20 @@ next_top:
                     }
                 }
                 free(fname);
-            } else if (nosort == 1) {
+            } else {
                 tbx_type_malloc_clear(de, du_entry_t, 1);
                 de->fname = fname;
                 de->ftype = ftype;
 
                 if (val != NULL) sscanf(val, I64T, &(de->bytes));
 
-                du_format_entry(lio_ifd, de, sumonly);
-                free(de->fname);
-                free(de);
-            } else {
-                free(fname);
+                if (nosort == 1) {
+                    du_format_entry(lio_ifd, de, sumonly);
+                    free(de->fname);
+                    free(de);
+                } else {
+                    tbx_list_insert(table, de->fname, de);
+                }
             }
 
 next:
@@ -337,7 +339,7 @@ next:
     du_total.fname = "TOTAL";
     du_total.bytes = total_bytes;
     du_total.count = total_files;
-    du_total.ftype = OS_OBJECT_DIR_FLAG;
+    du_total.ftype = OS_OBJECT_FILE_FLAG;
     du_format_entry(lio_ifd, &du_total, sumonly);
 
     if (sumonly == 1) tbx_list_destroy(sum_table);
