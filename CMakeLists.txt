@@ -16,6 +16,7 @@ option(BUILD_SHARED_EXES "Build shared LStore executables" ON)
 option(BUILD_TESTS "Build tests" ON)
 option(BUILD_JERASURE "Build Jerasure from source" ON)
 option(BUILD_GRIDFTP "Build GridFTP bindings" OFF)
+option(BUILD_TCMU "Build TCMU-Runner bindings" OFF)
 
 option(ENABLE_COVERAGE "Enable code coverage" OFF)
 option(ENABLE_ASAN "Enable address sanitizer" OFF)
@@ -324,6 +325,9 @@ add_dependencies(docs sphinx-html sphinx-man)
 # Optional packages
 if(BUILD_GRIDFTP)
     add_subdirectory(binding/gridftp)
+endif()
+if(BUILD_TCMU)
+    add_subdirectory(binding/tcmu)
 endif()
 
 # Import packaging

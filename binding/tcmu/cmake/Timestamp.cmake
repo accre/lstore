@@ -1,0 +1,10 @@
+
+MACRO(TIMESTAMP RESULT)
+    IF(UNIX)
+        EXECUTE_PROCESS(COMMAND "date" "+%s" OUTPUT_VARIABLE ${RESULT})
+    ELSE()
+        MESSAGE(SEND_ERROR "No timestamp available")
+        SET(${RESULT} 0000000000)
+    ENDIF()
+ENDMACRO()
+
