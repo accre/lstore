@@ -620,7 +620,6 @@ gop_op_status_t lio_myclose_fn(void *arg, int id)
         //** Check again that no one else has opened the file
         lio_lock(lc);
         if (fh->ref_count > 0) {  //** Somebody else opened it while we were flushing buffers
-            if (fd->path != NULL) free(fd->path);
             lio_unlock(lc);
             goto finished;
         }
@@ -660,7 +659,6 @@ gop_op_status_t lio_myclose_fn(void *arg, int id)
     log_printf(1, "fname=%s ref_count=%d\n", fd->path, fh->ref_count);
 
     if (fh->ref_count > 0) {  //** Somebody else opened it while we were flushing buffers
-        if (fd->path != NULL) free(fd->path);
         lio_unlock(lc);
         goto finished;
     }
