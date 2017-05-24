@@ -1682,6 +1682,24 @@ ex_off_t lio_size(lio_fd_t *fd)
 }
 
 //***********************************************************************
+// lio_block_size - Return the block size for R/W
+//***********************************************************************
+
+ex_off_t lio_block_size(lio_fd_t *fd)
+{
+    return(segment_block_size(fd->fh->seg));
+}
+
+//***********************************************************************
+// lio_flush_gop - Returns a flush GOP operation
+//***********************************************************************
+
+gop_op_generic_t *lio_flush_gop(lio_fd_t *fd, ex_off_t lo, ex_off_t hi)
+{
+    return(segment_flush(fd->fh->seg, fd->fh->lc->da, lo, (hi == -1) ? segment_size(fd->fh->seg)+1 : hi, fd->fh->lc->timeout));
+}
+
+//***********************************************************************
 // lio_truncate - Truncates an open LIO file
 //***********************************************************************
 
