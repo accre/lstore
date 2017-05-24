@@ -70,7 +70,9 @@ LIO_API int lio_stat(lio_config_t *lc, lio_creds_t *creds, char *fname, struct s
 LIO_API ex_off_t lio_seek(lio_fd_t *fd, ex_off_t offset, int whence);
 LIO_API ex_off_t lio_tell(lio_fd_t *fd);
 LIO_API ex_off_t lio_size(lio_fd_t *fd);
+LIO_API ex_off_t lio_block_size(lio_fd_t *fd);
 LIO_API gop_op_generic_t *lio_truncate_gop(lio_fd_t *fd, ex_off_t new_size);
+LIO_API gop_op_generic_t *lio_flush_gop(lio_fd_t *fd, ex_off_t lo, ex_off_t hi);
 
 LIO_API gop_op_generic_t *lio_cp_lio2lio_gop(lio_fd_t *sfd, lio_fd_t *dfd, ex_off_t bufsize, char *buffer, int hints, lio_segment_rw_hints_t *rw_hints);
 
