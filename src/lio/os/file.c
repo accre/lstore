@@ -1411,6 +1411,7 @@ char *my_readdir(osf_dir_t *d)
     char *fname;
 
     if (d->type == 0) {
+        if (d->d == NULL) return(NULL);
         d->entry = readdir(d->d);
         if (d->entry == NULL) return(NULL);
         fname = &(d->entry->d_name[0]);
@@ -1449,7 +1450,7 @@ osf_dir_t *my_opendir(char *fullname, char *frag)
 void my_closedir(osf_dir_t *d)
 {
     if (d->type == 0) {
-        closedir(d->d);
+        if (d->d) closedir(d->d);
     }
 
     free(d);
@@ -1460,7 +1461,7 @@ void my_closedir(osf_dir_t *d)
 long my_telldir(osf_dir_t *d)
 {
     if (d->type == 0) {
-        return(telldir(d->d));
+        return((d->d) ? telldir(d->d) : 0);
     }
 
     return(d->slot);
@@ -1471,7 +1472,7 @@ long my_telldir(osf_dir_t *d)
 void my_seekdir(osf_dir_t *d, long offset)
 {
     if (d->type == 0) {
-        seekdir(d->d, offset);
+        if (d->d) seekdir(d->d, offset);
     } else {
         d->slot = offset;
     }
