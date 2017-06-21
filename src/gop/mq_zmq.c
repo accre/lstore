@@ -54,7 +54,7 @@ void zero_native_destroy(gop_mq_socket_context_t *ctx, gop_mq_socket_t *socket)
 int zero_native_bind(gop_mq_socket_t *socket, const char *format, ...)
 {
     va_list args;
-    int err, n;
+    int err, n, v;
     char id[256];
 
     va_start(args, format);
@@ -66,6 +66,9 @@ int zero_native_bind(gop_mq_socket_t *socket, const char *format, ...)
             log_printf(0, "ERROR setting socket identity! id=%s err=%d errno=%d\n", id, err, errno);
             return(-1);
         }
+
+        v = 100*1000;
+        zmq_setsockopt(socket->arg, ZMQ_RCVHWM, &v, sizeof(v));
     } else {
         id[0] = 0;
     }
@@ -96,6 +99,8 @@ int zero_native_connect(gop_mq_socket_t *socket, const char *format, ...)
     if (socket->type != MQ_PAIR) {
         int i = 1;
         zmq_setsockopt(socket->arg, ZMQ_ROUTER_MANDATORY, &i, sizeof(i));
+        i = 100*1000;
+        zmq_setsockopt(socket->arg, ZMQ_RCVHWM, &i, sizeof(i));
     }
 
     va_start(args, format);
