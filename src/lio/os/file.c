@@ -2995,10 +2995,17 @@ int osf_get_attr(lio_object_service_fn_t *os, lio_creds_t *creds, osfile_fd_t *o
         fseek(fd, 0L, SEEK_END);
         n = ftell(fd);
         fseek(fd, 0L, SEEK_SET);
-        *v_size = (n > (-*v_size)) ? -*v_size : n;
-        bsize = *v_size + 1;
-        log_printf(15, " adjusting v_size=%d n=%d\n", *v_size, n);
-        *val = malloc(bsize);
+        if (n < 1) {    //** Either have an error (-1) or an empty file (0)
+           *v_size = 0;
+            *val = NULL;
+            fclose(fd);
+            return((n<0) ? 1 : 0);
+        } else {
+            *v_size = (n > (-*v_size)) ? -*v_size : n;
+            bsize = *v_size + 1;
+            log_printf(15, " adjusting v_size=%d n=%d\n", *v_size, n);
+            *val = malloc(bsize);
+         }
     } else {
         bsize = *v_size;
     }
