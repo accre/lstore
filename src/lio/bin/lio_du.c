@@ -65,8 +65,9 @@ void du_format_entry(tbx_log_fd_t *ifd, du_entry_t *de, int sumonly)
     }
 
     is_dir = (de->ftype & OS_OBJECT_DIR_FLAG) ? "/" : "";
-    if (sumonly == 1) {
+    if (sumonly > 0) {
         n = ((de->ftype & OS_OBJECT_DIR_FLAG) > 0) ? de->count : 1;
+        if (sumonly == 2) n = de->count;
         info_printf(ifd, 0, "%10s  %10ld  %s%s\n", ppsize, n, de->fname, is_dir);
     } else {
         info_printf(ifd, 0, "%10s  %s%s\n", ppsize, de->fname, is_dir);
@@ -326,8 +327,8 @@ next:
     du_total.fname = "TOTAL";
     du_total.bytes = total_bytes;
     du_total.count = total_files;
-    du_total.ftype = OS_OBJECT_DIR_FLAG;
-    du_format_entry(lio_ifd, &du_total, sumonly);
+    du_total.ftype = OS_OBJECT_FILE_FLAG;
+    du_format_entry(lio_ifd, &du_total, 2);
 
     if (sumonly == 1) tbx_list_destroy(sum_table);
 
