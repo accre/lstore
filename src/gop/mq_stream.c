@@ -25,6 +25,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <mq_portal.h>
 #include <tbx/apr_wrapper.h>
 #include <tbx/atomic_counter.h>
 #include <tbx/fmttypes.h>
@@ -47,6 +48,23 @@
 int gop_mqs_id(gop_mq_stream_t *mqs)
 {
   return(mqs->msid);
+}
+
+//***********************************************************************
+// mqs_multipacket_create - Creates the structures needed for multi packet
+//   streams.  If using a multi-packet strema then we also flag this as
+//   a long running process so the thread doesn't get counted in the
+//   thread pool throttling.
+//***********************************************************************
+
+void mqs_multipacket_create(gop_mq_stream_t *mqs)
+{
+    apr_pool_create(&mqs->mpool, NULL);
+    apr_thread_mutex_create(&(mqs->lock), APR_THREAD_MUTEX_DEFAULT, mqs->mpool);
+    apr_thread_cond_create(&(mqs->cond), mqs->mpool);
+
+    if (mqs->server_portal) tbx_atomic_dec(mqs->server_portal->running);
+    mq_long_running_set(1);
 }
 
 //***********************************************************************
@@ -109,11 +127,7 @@ void gop_mq_stream_read_request(gop_mq_stream_t *mqs)
     mq_msg_t *msg;
 
     //** If 1st time make all the variables
-    if (mqs->mpool == NULL) {
-        apr_pool_create(&mqs->mpool, NULL);
-        apr_thread_mutex_create(&(mqs->lock), APR_THREAD_MUTEX_DEFAULT, mqs->mpool);
-        apr_thread_cond_create(&(mqs->cond), mqs->mpool);
-    }
+    if (mqs->mpool == NULL) mqs_multipacket_create(mqs);
 
     log_printf(5, "msid=%d want_more=%c\n", mqs->msid, mqs->want_more);
 
@@ -147,11 +161,7 @@ int gop_mq_stream_read_wait(gop_mq_stream_t *mqs)
     gop_op_status_t status;
 
     //** If 1st time make all the variables
-    if (mqs->mpool == NULL) {
-        apr_pool_create(&mqs->mpool, NULL);
-        apr_thread_mutex_create(&(mqs->lock), APR_THREAD_MUTEX_DEFAULT, mqs->mpool);
-        apr_thread_cond_create(&(mqs->cond), mqs->mpool);
-    }
+    if (mqs->mpool == NULL) mqs_multipacket_create(mqs);;
 
     dt = apr_time_from_sec(1);
 
@@ -769,9 +779,7 @@ int gop_mq_stream_write(gop_mq_stream_t *mqs, void *vdata, int len)
 
         if (((nleft > 0) && (grew_space == 0)) || (((apr_time_now() - mqs->last_write) > QOS_WAIT) && (mqs->shutdown == 0))) {  //** Need to flush the data
             if (mqs->mpool == NULL) {  //** Got to configure everything
-                apr_pool_create(&mqs->mpool, NULL);
-                apr_thread_mutex_create(&(mqs->lock), APR_THREAD_MUTEX_DEFAULT, mqs->mpool);
-                apr_thread_cond_create(&(mqs->cond), mqs->mpool);
+                mqs_multipacket_create(mqs);
                 apr_thread_mutex_lock(mqs->lock);
                 mqs->oo = gop_mq_ongoing_add(mqs->ongoing, 0, mqs->host_id, mqs->hid_len, mqs, mqs_write_on_fail, NULL);
 
@@ -800,9 +808,7 @@ int gop_mq_stream_write(gop_mq_stream_t *mqs, void *vdata, int len)
                     if (mqs->data) mqs->data[MQS_STATE_INDEX] = MQS_FINISHED;
                 } else {
                     if (mqs->mpool == NULL) {  //** Got to configure everything
-                        apr_pool_create(&mqs->mpool, NULL);
-                        apr_thread_mutex_create(&(mqs->lock), APR_THREAD_MUTEX_DEFAULT, mqs->mpool);
-                        apr_thread_cond_create(&(mqs->cond), mqs->mpool);
+                        mqs_multipacket_create(mqs);
                         apr_thread_mutex_lock(mqs->lock);
                         mqs->oo = gop_mq_ongoing_add(mqs->ongoing, 0, mqs->host_id, mqs->hid_len, mqs, mqs_write_on_fail, NULL);
                     }
@@ -963,9 +969,7 @@ gop_mq_stream_t *gop_mq_stream_write_create(gop_mq_context_t *mqc, gop_mq_portal
 
     //** Launch the flusher now if requested
     if (launch_flusher == 1) {
-        apr_pool_create(&mqs->mpool, NULL);
-        apr_thread_mutex_create(&(mqs->lock), APR_THREAD_MUTEX_DEFAULT, mqs->mpool);
-        apr_thread_cond_create(&(mqs->cond), mqs->mpool);
+        mqs_multipacket_create(mqs);
         mqs->oo = gop_mq_ongoing_add(mqs->ongoing, 0, mqs->host_id, mqs->hid_len, mqs, mqs_write_on_fail, NULL);
         mqs->sent_data = 1;
         tbx_thread_create_assert(&(mqs->flusher_thread), NULL, mqs_flusher_thread,  (void *)mqs, mqs->mpool);
