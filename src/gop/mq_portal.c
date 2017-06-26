@@ -42,12 +42,65 @@
 #define PI_CONN 0   //** Actual connection
 #define PI_EFD  1   //** Portal event FD for incoming tasks
 
+static apr_threadkey_t *_mq_long_running_key = NULL;
+apr_pool_t *_mq_long_running_pool = NULL;
+
 void _tp_submit_op(void *arg, gop_op_generic_t *gop);
 int mq_conn_create(gop_mq_portal_t *p, int dowait);
 void gop_mq_conn_teardown(gop_mq_conn_t *c);
 void mqc_heartbeat_dec(gop_mq_conn_t *c, gop_mq_heartbeat_entry_t *hb);
 void _mq_reap_closed(gop_mq_portal_t *p);
 void *mqtp_failure(apr_thread_t *th, void *arg);
+
+
+//**************************************************************
+// mq_long_running_check - Checks to make sure the thread keys is
+//  set up.  Possible race condition in a generic program if it
+//  calls mq_create_context() in parallel on start.  For LIO
+//  use this is not an issue.
+//**************************************************************
+
+void mq_long_running_check()
+{
+    if (_mq_long_running_pool == NULL) {
+        apr_pool_create(&_mq_long_running_pool, NULL);
+        apr_threadkey_private_create(&_mq_long_running_key, free, _mq_long_running_pool);
+    }
+}
+
+//**************************************************************
+// mq_long_running_get - Returns the long running state value
+//**************************************************************
+
+int mq_long_running_get()
+{
+    int *ptr = NULL;
+
+    apr_threadkey_private_get((void *)&ptr, _mq_long_running_key);
+    if (ptr == NULL ) {
+        return(0);
+    }
+
+    return(*ptr);
+}
+
+
+//**************************************************************
+// mq_long_running_set - Sets the long running state
+//**************************************************************
+
+void mq_long_running_set(int n)
+{
+    int *ptr = NULL;
+
+    apr_threadkey_private_get((void *)&ptr, _mq_long_running_key);
+    if (ptr == NULL ) {
+        ptr = (int *)malloc(sizeof(int));
+        apr_threadkey_private_set(ptr, _mq_long_running_key);
+    }
+
+    *ptr = n;
+}
 
 //**************************************************************
 //  gop_mq_portal_mq_context - Return the MQ context from the portal
@@ -253,10 +306,6 @@ int gop_mq_submit(gop_mq_portal_t *p, gop_mq_task_t *task)
     log_printf(2, "portal=%s backlog=%d active_conn=%d max_conn=%d total_conn=%d\n", p->host, backlog, p->active_conn, p->max_conn, p->total_conn);
     tbx_log_flush();
 
-    //** Noitify the connections
-    c = 1;
-    gop_mq_pipe_write(p->efd[1], &c);
-
     //** Check if we need more connections
     err = 0;
     if (backlog > p->backlog_trigger) {
@@ -285,6 +334,10 @@ int gop_mq_submit(gop_mq_portal_t *p, gop_mq_task_t *task)
     tbx_log_flush();
 
     apr_thread_mutex_unlock(p->lock);
+
+    //** Noitify the connections
+    c = 1;
+    gop_mq_pipe_write(p->efd[1], &c);
 
     return(0);
 }
@@ -417,7 +470,12 @@ void *mqt_exec(apr_thread_t *th, void *arg)
 
     mq_task_destroy(task);
 
-    tbx_atomic_dec(p->running);
+    if (mq_long_running_get() == 0) {
+        tbx_atomic_dec(p->running);
+    } else {
+        mq_long_running_set(0);  //** Reset it for the next task
+log_printf(1, "LONG RUNNING set!\n");
+    }
     return(NULL);
 }
 
@@ -976,7 +1034,7 @@ next:
 
 int mqc_process_incoming(gop_mq_conn_t *c, int *nproc)
 {
-    int n, count;
+    int n, count, max_count;
     mq_msg_t *msg;
     gop_mq_frame_t *f;
     gop_mq_task_t *task;
@@ -984,6 +1042,11 @@ int mqc_process_incoming(gop_mq_conn_t *c, int *nproc)
     int size;
 
     log_printf(5, "processing incoming start\n");
+    //** If nproc is negative we always grab some tasks if available
+    max_count = (*nproc < 0) ? -(*nproc) : (*nproc - (int)tbx_atomic_get(c->pc->running));
+    *nproc = 0;
+    if (max_count <= 0) return(0);
+
     //** Process all that are on the wire
     msg = gop_mq_msg_new();
     count = 0;
@@ -1060,7 +1123,7 @@ int mqc_process_incoming(gop_mq_conn_t *c, int *nproc)
         }
 skip:
         msg = gop_mq_msg_new(); //**  The old one is destroyed after it's consumed
-        if (count > 10) break;  //** Kick out for other processing
+        if (count > max_count) break;  //** Kick out for other processing
     }
 
     gop_mq_msg_destroy(msg);  //** Clean up
@@ -1081,25 +1144,39 @@ skip:
 
 int mqc_process_task(gop_mq_conn_t *c, int *npoll, int *nproc)
 {
+    int max_task = *nproc;
+    gop_mq_task_t *task_list[max_task];
     gop_mq_task_t *task = NULL;
     gop_mq_frame_t *f;
     gop_mq_task_monitor_t *tn;
     char b64[1024];
     char *data, v;
-    int i, size, tracking;
+    int i, j, size, tracking, ntask, return_code;
 
-    //** Read an event
-    i = gop_mq_pipe_read(c->pc->efd[0], &v);
+    return_code = 0;
+    *nproc = 0;
 
     //** Get the new task or start a wind down if requested
     apr_thread_mutex_lock(c->pc->lock);
     if (c->pc->n_close > 0) { //** Wind down request
         c->pc->n_close--;
         *npoll = 1;
+        size = 1;
     } else {  //** Got a new task
-        task = tbx_stack_pop(c->pc->tasks);
+        for (ntask=0; ntask<max_task; ntask++) {
+            task = tbx_stack_pop(c->pc->tasks);
+            if (!task) break;
+            task_list[ntask] = task;
+        }
+        size = ntask;
     }
     apr_thread_mutex_unlock(c->pc->lock);
+
+    //** Slurp in the events we're going to process
+    i = 0;
+    for (j=0; j<size; j++) {
+        i = gop_mq_pipe_read(c->pc->efd[0], &v);
+    }
 
     if (i == -1) {
         log_printf(1, "OOPS! read=-1 task=%p!\n", task);
@@ -1108,96 +1185,102 @@ int mqc_process_task(gop_mq_conn_t *c, int *npoll, int *nproc)
     //** Wind down triggered so return
     if (*npoll == 1) return(0);
 
-    if (task == NULL) {
+    if (ntask == 0) {
         log_printf(0, "Nothing to do\n");
         return(0);
     }
 
-    (*nproc)++;  //** Inc processed commands
+    for (j=0; j<ntask; j++) {
+        task = task_list[j];
+        (*nproc)++;  //** Inc processed commands
 
-    //** Convert the MAx exec time in sec to an abs timeout in usec
-    task->timeout = apr_time_now() + apr_time_from_sec(task->timeout);
+        //** Convert the MAx exec time in sec to an abs timeout in usec
+        task->timeout = apr_time_now() + apr_time_from_sec(task->timeout);
 
 
-    //** Check if we expect a response
-    //** Skip over the address
-    f = gop_mq_msg_first(task->msg);
-    gop_mq_get_frame(f, (void **)&data, &size);
-    log_printf(10, "address length = %d\n", size);
-    while ((f != NULL) && (size != 0)) {
+        //** Check if we expect a response
+        //** Skip over the address
+        f = gop_mq_msg_first(task->msg);
+        gop_mq_get_frame(f, (void **)&data, &size);
+        log_printf(10, "address length = %d\n", size);
+        while ((f != NULL) && (size != 0)) {
+            f = gop_mq_msg_next(task->msg);
+            gop_mq_get_frame(f, (void **)&data, &size);
+            log_printf(10, "length = %d\n", size);
+        }
+        if (f == NULL) { //** Bad command
+            log_printf(0, "Invalid command!\n");
+            return_code = 1;
+            continue;
+        }
+
+        //** Verify the version
         f = gop_mq_msg_next(task->msg);
         gop_mq_get_frame(f, (void **)&data, &size);
-        log_printf(10, "length = %d\n", size);
-    }
-    if (f == NULL) { //** Bad command
-        log_printf(0, "Invalid command!\n");
-        return(1);
-    }
+        if (mq_data_compare(data, size, MQF_VERSION_KEY, MQF_VERSION_SIZE) != 0) {  //** Bad version number
+            log_printf(0, "Invalid version!\n");
+            log_printf(0, "length = %d\n", size);
+            return_code = 1;
+            continue;
+        }
 
-    //** Verify the version
-    f = gop_mq_msg_next(task->msg);
-    gop_mq_get_frame(f, (void **)&data, &size);
-    if (mq_data_compare(data, size, MQF_VERSION_KEY, MQF_VERSION_SIZE) != 0) {  //** Bad version number
-        log_printf(0, "Invalid version!\n");
-        log_printf(0, "length = %d\n", size);
-        return(1);
-    }
-
-    log_printf(10, "MQF_VERSION_KEY found\n");
-    log_printf(5, "task pass_through = %d\n", task->pass_through);
-    //** This is the command
-    f = gop_mq_msg_next(task->msg);
-    gop_mq_get_frame(f, (void **)&data, &size);
-    tracking = 0;
-    if ( (mq_data_compare(data, size, MQF_TRACKEXEC_KEY, MQF_TRACKEXEC_SIZE) == 0) && (task->pass_through == 0) ) { //** We track it - But only if it is not a pass-through task
-        //** Get the ID here.  The send will munge my frame position
+        log_printf(10, "MQF_VERSION_KEY found\n");
+        log_printf(5, "task pass_through = %d\n", task->pass_through);
+        //** This is the command
         f = gop_mq_msg_next(task->msg);
         gop_mq_get_frame(f, (void **)&data, &size);
-        tracking = 1;
+        tracking = 0;
+        if ( (mq_data_compare(data, size, MQF_TRACKEXEC_KEY, MQF_TRACKEXEC_SIZE) == 0) && (task->pass_through == 0) ) { //** We track it - But only if it is not a pass-through task
+            //** Get the ID here.  The send will munge my frame position
+            f = gop_mq_msg_next(task->msg);
+            gop_mq_get_frame(f, (void **)&data, &size);
+            tracking = 1;
 
-        log_printf(5, "tracking enabled id_size=%d\n", size);
+            log_printf(5, "tracking enabled id_size=%d\n", size);
 
-        c->stats.outgoing[MQS_TRACKEXEC_INDEX]++;
-    } else if (mq_data_compare(data, size, MQF_EXEC_KEY, MQF_EXEC_SIZE) == 0) { //** We track it
-        c->stats.outgoing[MQS_EXEC_INDEX]++;
-        log_printf(10, "MQF_EXEC_KEY found, num outgoing EXEC = %d\n", c->stats.outgoing[MQS_EXEC_INDEX]);
-    } else if (mq_data_compare(data, size, MQF_RESPONSE_KEY, MQF_RESPONSE_SIZE) == 0) { //** Response
-        c->stats.outgoing[MQS_RESPONSE_INDEX]++;
-        log_printf(10, "MQF_RESPONSE_KEY found, num outgoing RESPONSE = %d\n", c->stats.outgoing[MQS_RESPONSE_INDEX]);
-    } else if (mq_data_compare(data, size, MQF_PING_KEY, MQF_PING_SIZE) == 0) {
-        c->stats.outgoing[MQS_PING_INDEX]++;
-        log_printf(10, "MQF_PING_KEY found, num outgoing PING = %d\n", c->stats.outgoing[MQS_PING_INDEX]);
-    } else if (mq_data_compare(data, size, MQF_PONG_KEY, MQF_PONG_SIZE) == 0) {
-        c->stats.outgoing[MQS_PONG_INDEX]++;
-        log_printf(10, "MQF_PONG_KEY found, num outgoing PONG = %d\n", c->stats.outgoing[MQS_PONG_INDEX]);
-    } else {
-        c->stats.outgoing[MQS_UNKNOWN_INDEX]++;
-        log_printf(10, "Unknown key found! key = %s\n", data);
+            c->stats.outgoing[MQS_TRACKEXEC_INDEX]++;
+        } else if (mq_data_compare(data, size, MQF_EXEC_KEY, MQF_EXEC_SIZE) == 0) { //** We track it
+            c->stats.outgoing[MQS_EXEC_INDEX]++;
+            log_printf(10, "MQF_EXEC_KEY found, num outgoing EXEC = %d\n", c->stats.outgoing[MQS_EXEC_INDEX]);
+        } else if (mq_data_compare(data, size, MQF_RESPONSE_KEY, MQF_RESPONSE_SIZE) == 0) { //** Response
+            c->stats.outgoing[MQS_RESPONSE_INDEX]++;
+            log_printf(10, "MQF_RESPONSE_KEY found, num outgoing RESPONSE = %d\n", c->stats.outgoing[MQS_RESPONSE_INDEX]);
+        } else if (mq_data_compare(data, size, MQF_PING_KEY, MQF_PING_SIZE) == 0) {
+            c->stats.outgoing[MQS_PING_INDEX]++;
+            log_printf(10, "MQF_PING_KEY found, num outgoing PING = %d\n", c->stats.outgoing[MQS_PING_INDEX]);
+        } else if (mq_data_compare(data, size, MQF_PONG_KEY, MQF_PONG_SIZE) == 0) {
+            c->stats.outgoing[MQS_PONG_INDEX]++;
+            log_printf(10, "MQF_PONG_KEY found, num outgoing PONG = %d\n", c->stats.outgoing[MQS_PONG_INDEX]);
+        } else {
+            c->stats.outgoing[MQS_UNKNOWN_INDEX]++;
+            log_printf(10, "Unknown key found! key = %s\n", data);
+        }
+
+        //** Send it on
+        i = gop_mq_send(c->sock, task->msg, 0);
+        if (i == -1) {
+            log_printf(0, "Error sending msg! errno=%d\n", errno);
+            mq_task_complete(c, task, OP_STATE_FAILURE);
+            return_code = 1;
+            continue;
+        }
+
+        if (tracking == 0) {     //** Exec the callback if not tracked
+            mq_task_complete(c, task, OP_STATE_SUCCESS);
+        } else {                 //** Track the task
+            log_printf(1, "TRACKING id_size=%d sid=%s\n", size, gop_mq_id2str(data, size, b64, sizeof(b64)));
+            if (task->gop != NULL) log_printf(1, "TRACKING gid=%d\n", gop_id(task->gop));
+            //** Insert it in the monitoring table
+            tbx_type_malloc_clear(tn, gop_mq_task_monitor_t, 1);
+            tn->task = task;
+            tn->id = data;
+            tn->id_size = size;
+            tn->last_check = apr_time_now();
+            apr_hash_set(c->waiting,  tn->id, tn->id_size, tn);
+        }
     }
 
-    //** Send it on
-    i = gop_mq_send(c->sock, task->msg, 0);
-    if (i == -1) {
-        log_printf(0, "Error sending msg! errno=%d\n", errno);
-        mq_task_complete(c, task, OP_STATE_FAILURE);
-        return(1);
-    }
-
-    if (tracking == 0) {     //** Exec the callback if not tracked
-        mq_task_complete(c, task, OP_STATE_SUCCESS);
-    } else {                 //** Track the task
-        log_printf(1, "TRACKING id_size=%d sid=%s\n", size, gop_mq_id2str(data, size, b64, sizeof(b64)));
-        if (task->gop != NULL) log_printf(1, "TRACKING gid=%d\n", gop_id(task->gop));
-        //** Insert it in the monitoring table
-        tbx_type_malloc_clear(tn, gop_mq_task_monitor_t, 1);
-        tn->task = task;
-        tn->id = data;
-        tn->id_size = size;
-        tn->last_check = apr_time_now();
-        apr_hash_set(c->waiting,  tn->id, tn->id_size, tn);
-    }
-
-    return(0);
+    return(return_code);
 }
 
 //**************************************************************
@@ -1338,6 +1421,7 @@ void *gop_mq_conn_thread(apr_thread_t *th, void *data)
 {
     gop_mq_conn_t *c = (gop_mq_conn_t *)data;
     int k, npoll, err, finished, nprocessed, nproc, nincoming, slow_exit, oops;
+    int short_running_max, submit_max;
     long int heartbeat_ms;
     int64_t total_proc, total_incoming;
     gop_mq_pollitem_t pfd[3];
@@ -1349,7 +1433,12 @@ void *gop_mq_conn_thread(apr_thread_t *th, void *data)
     //** Try and make the connection
     //** Right now the portal is locked so this routine can assume that.
     oops = err = mq_conn_make(c);
-    log_printf(2, "START(2): uuid=%s oops=%d\n", c->mq_uuid, oops);
+
+    //** There is no limit on short tasks in CLIENT mode
+    short_running_max = (c->pc->connect_mode == MQ_CMODE_CLIENT) ? -20 : c->pc->bind_short_running_max;
+    submit_max = 100;
+
+    log_printf(1, "START(2): uuid=%s oops=%d submit_max=%d short_running_max=%d\n", c->mq_uuid, oops, submit_max, short_running_max);
 
 
     //** Notify the parent about the connections status via c->cefd
@@ -1385,15 +1474,14 @@ void *gop_mq_conn_thread(apr_thread_t *th, void *data)
 
         //k=1; //FIXME
         if (k > 0) {  //** Got an event so process it
-            nproc = 0;
+            nproc = submit_max;
             if ((npoll == 2) && (pfd[PI_EFD].revents != 0)) finished += mqc_process_task(c, &npoll, &nproc);
             nprocessed += nproc;
             total_proc += nproc;
             //finished += mqc_process_task(c, &npoll, &nprocessed);
             log_printf(5, "after process_task finished=%d\n", finished);
-            nincoming = 0;
+            nincoming = short_running_max;
             if (pfd[PI_CONN].revents != 0) finished += mqc_process_incoming(c, &nincoming);
-            //finished += mqc_process_incoming(c, &nincoming);
             nprocessed += nincoming;
             total_incoming += nincoming;
             log_printf(5, "after process_incoming finished=%d\n", finished);
@@ -1739,6 +1827,8 @@ gop_mq_portal_t *gop_mq_portal_create(gop_mq_context_t *mqc, char *host, gop_mq_
         p->max_conn = 1;
     }
 
+    p->bind_short_running_max = mqc->bind_short_running_max;
+
     p->heartbeat_dt = mqc->heartbeat_dt;
     p->heartbeat_failure = mqc->heartbeat_failure;
     p->backlog_trigger = mqc->backlog_trigger;
@@ -1831,6 +1921,8 @@ gop_mq_context_t *gop_mq_create_context(tbx_inip_file_t *ifd, char *section)
 {
     gop_mq_context_t *mqc;
 
+    mq_long_running_check();
+
     tbx_type_malloc_clear(mqc, gop_mq_context_t, 1);
 
     mqc->min_conn = tbx_inip_get_integer(ifd, section, "min_conn", 1);
@@ -1842,6 +1934,7 @@ gop_mq_context_t *gop_mq_create_context(tbx_inip_file_t *ifd, char *section)
     mqc->heartbeat_dt = tbx_inip_get_integer(ifd, section, "heartbeat_dt", 5);
     mqc->heartbeat_failure = tbx_inip_get_integer(ifd, section, "heartbeat_failure", 60);
     mqc->min_ops_per_sec = tbx_inip_get_integer(ifd, section, "min_ops_per_sec", 100);
+    mqc->bind_short_running_max = tbx_inip_get_integer(ifd, section, "bind_short_running_max", 40);
 
     // New socket_type parameter
     mqc->socket_type = tbx_inip_get_integer(ifd, section, "socket_type", MQ_TRACE_ROUTER);
