@@ -275,8 +275,8 @@ int sock_timeout_set(tbx_net_sock_t *sock, tbx_ns_timeout_t timeout)
     tm.tv_sec = apr_time_sec(timeout);
     tm.tv_usec = apr_time_usec(timeout);
 
-    if (setsockopt(sock->fd, SOL_SOCKET, SO_RCVTIMEO, (char *)&tm, sizeof(timeout)) < 0) return(-1);
-    if (setsockopt(sock->fd, SOL_SOCKET, SO_SNDTIMEO, (char *)&tm, sizeof(timeout)) < 0) return(-1);
+    if (setsockopt(sock->fd, SOL_SOCKET, SO_RCVTIMEO, (char *)&tm, sizeof(tm)) < 0) return(-1);
+    if (setsockopt(sock->fd, SOL_SOCKET, SO_SNDTIMEO, (char *)&tm, sizeof(tm)) < 0) return(-1);
 
     return(0);
 }
@@ -333,6 +333,7 @@ log_printf(20, "hostname=%s:%d sock->fd=%d\n", hostname, port, sock->fd);
 fail:
     log_printf(20, "FAIL host=%s errno=%d\n", hostname, errno);
     close(sock->fd);
+    sock->fd = -1;
     return(-1);
 }
 
@@ -372,7 +373,6 @@ net_sock_t *sock_accept(net_sock_t *nsock)
     sock->tcpsize = psock->tcpsize;
 
     sock->fd = accept(psock->fd, NULL, NULL);
-
     if (sock->fd == -1) {
         free(sock);
         sock = NULL;
@@ -433,6 +433,7 @@ int sock_bind(net_sock_t *nsock, char *address, int port)
 
 fail:
     close(sock->fd);
+    sock->fd = -1;
     return(-1);
 }
 
