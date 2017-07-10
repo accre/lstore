@@ -896,11 +896,13 @@ int _rs_simple_load(lio_resource_service_fn_t *res, char *fname)
     lio_rss_rid_entry_t *rse;
     lio_rs_simple_priv_t *rss = (lio_rs_simple_priv_t *)res->priv;
     tbx_list_iter_t it;
-    int i, n;
+    int i, n, err;
     tbx_inip_file_t *kf;
     lio_blacklist_t *bl;
 
     log_printf(5, "START fname=%s n_rids=%d\n", fname, rss->n_rids);
+
+    err = 0;
 
     //** Load the blacklist if available
     bl = lio_lookup_service(rss->ess, ESS_RUNNING, "blacklist");
@@ -935,6 +937,7 @@ int _rs_simple_load(lio_resource_service_fn_t *res, char *fname)
         fprintf(stderr, "ERROR: n_rids=%d\n", rss->n_rids);
         if (rss->rid_table) tbx_list_destroy(rss->rid_table);
         rss->rid_table = NULL;
+        err = 1;
     } else {
         tbx_type_malloc_clear(rss->random_array, lio_rss_rid_entry_t *, rss->n_rids);
         it = tbx_list_iter_search(rss->rid_table, (tbx_list_key_t *)NULL, 0);
@@ -954,7 +957,7 @@ int _rs_simple_load(lio_resource_service_fn_t *res, char *fname)
 
     log_printf(5, "END n_rids=%d\n", rss->n_rids);
 
-    return(0);
+    return(err);
 }
 
 
@@ -967,7 +970,9 @@ int _rs_simple_refresh(lio_resource_service_fn_t *rs)
 {
     lio_rs_simple_priv_t *rss = (lio_rs_simple_priv_t *)rs->priv;
     struct stat sbuf;
-    int err;
+    tbx_list_t *old_table;
+    lio_rss_rid_entry_t **old_random;
+    int err, old_n_rids;
 
     if (stat(rss->fname, &sbuf) != 0) {
         log_printf(1, "RS file missing!!! Using old definition. fname=%s\n", rss->fname);
@@ -976,12 +981,22 @@ int _rs_simple_refresh(lio_resource_service_fn_t *rs)
 
     if (rss->modify_time != sbuf.st_mtime) {  //** File changed so reload it
         log_printf(5, "RELOADING data\n");
-        rss->modify_time = sbuf.st_mtime;
-        if (rss->rid_table != NULL) tbx_list_destroy(rss->rid_table);
-        if (rss->random_array != NULL) free(rss->random_array);
+        old_n_rids = rss->n_rids;    //** Preserve the old info in case of an error
+        old_table = rss->rid_table;
+        old_random = rss->random_array;
+
         err = _rs_simple_load(rs, rss->fname);  //** Load the new file
-        _rss_make_check_table(rs);  //** and make the new inquiry table
-        apr_thread_cond_signal(rss->cond);  //** Notify the check thread that we made a change
+        if (err == 0) {
+            rss->modify_time = sbuf.st_mtime;
+            if (old_table != NULL) tbx_list_destroy(old_table);
+            if (old_random != NULL) free(old_random);
+            _rss_make_check_table(rs);  //** and make the new inquiry table
+            apr_thread_cond_signal(rss->cond);  //** Notify the check thread that we made a change
+        } else {
+            rss->n_rids = old_n_rids;
+            rss->rid_table = old_table;
+            rss->random_array = old_random;
+        }
         return(err);
     }
 
