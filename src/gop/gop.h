@@ -52,7 +52,6 @@ int gop_will_block(gop_op_generic_t *g);
 int gop_timed_waitall(gop_op_generic_t *g, int dt);
 
 
-void gop_mark_completed(gop_op_generic_t *gop, gop_op_status_t status);
 void gop_callback_append(gop_op_generic_t *gop, gop_callback_t *cb);
 
 #ifdef __cplusplus
