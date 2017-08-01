@@ -1396,6 +1396,9 @@ no_args:
 
     lio_find_lfs_mounts();  //** Make the global mount prefix table
 
+    i = tbx_inip_get_integer(lio_gc->ifd, section_name, "wq_n", 5);
+    lio_wq_startup(i);
+
     log_printf(1, "INIT completed\n");
 
     return(0);
@@ -1416,6 +1419,8 @@ int lio_shutdown()
 
     cache_destroy(_lio_cache);
     _lio_cache = NULL;
+
+    lio_wq_shutdown();
 
     lio_destroy(lio_gc);
     lio_gc = NULL;  //** Reset the global to NULL so it's not accidentally reused.

@@ -64,12 +64,13 @@ LIO_API int lio_write(lio_fd_t *fd, char *buf, ex_off_t size, off_t off, lio_seg
 LIO_API int lio_writev(lio_fd_t *fd, tbx_iovec_t *iov, int n_iov, ex_off_t size, off_t off, lio_segment_rw_hints_t *rw_hints);
 LIO_API int lio_write_ex(lio_fd_t *fd, int n_iov, ex_tbx_iovec_t *iov, tbx_tbuf_t *buffer, ex_off_t boff, lio_segment_rw_hints_t *rw_hints);
 LIO_API int lio_stat(lio_config_t *lc, lio_creds_t *creds, char *fname, struct stat *stat, char *mount_prefix, char **readlink);
-
-LIO_API int lio_stat(lio_config_t *lc, lio_creds_t *creds, char *fname, struct stat *stat, char *mount_prefix, char **readlink);
+LIO_API int lio_wq_enable(lio_fd_t *fd, int max_in_flight);
 
 LIO_API ex_off_t lio_seek(lio_fd_t *fd, ex_off_t offset, int whence);
 LIO_API ex_off_t lio_tell(lio_fd_t *fd);
 LIO_API ex_off_t lio_size(lio_fd_t *fd);
+LIO_API ex_off_t lio_block_size(lio_fd_t *fd);
+LIO_API int lio_cache_pages_drop(lio_fd_t *fd, ex_off_t lo, ex_off_t hi);
 LIO_API gop_op_generic_t *lio_truncate_gop(lio_fd_t *fd, ex_off_t new_size);
 
 LIO_API gop_op_generic_t *lio_cp_lio2lio_gop(lio_fd_t *sfd, lio_fd_t *dfd, ex_off_t bufsize, char *buffer, int hints, lio_segment_rw_hints_t *rw_hints);
@@ -135,7 +136,7 @@ LIO_API void *lio_stdinlist_iter_create(int argc, const char **argv);
 LIO_API void lio_stdinlist_iter_destroy(void *ptr);
 LIO_API char *lio_stdinlist_iter_next(void *ptr);
 
-LIO_API int segment_rw_test_exec(int print_exnode, char *section);
+LIO_API int lio_rw_test_exec(int rw_mode, char *section);
 
 // Preprocessor constants
 typedef enum lio_fsck_repair_t lio_fsck_repair_t;
