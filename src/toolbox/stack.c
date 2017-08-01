@@ -179,7 +179,7 @@ tbx_stack_ele_t *pop_link(tbx_stack_t *stack)
 }
 
 //***************************************************
-// pop - push an element on top of the stack
+// tbx_stack_pop - Pop an element off the TOP of the stack
 //***************************************************
 
 void *tbx_stack_pop(tbx_stack_t *stack)
@@ -192,6 +192,22 @@ void *tbx_stack_pop(tbx_stack_t *stack)
 
     data = ele->data;
     free(ele);
+
+    return(data);
+
+}
+
+//***************************************************
+// tbx_stack_pop_bottom - Pop an element of the BOTTOM of the stack
+//***************************************************
+
+void *tbx_stack_pop_bottom(tbx_stack_t *stack)
+{
+    void *data;
+
+    tbx_stack_move_to_bottom(stack);
+    data = tbx_stack_get_current_data(stack);
+    tbx_stack_delete_current(stack, 1, 0);
 
     return(data);
 

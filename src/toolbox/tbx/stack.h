@@ -51,6 +51,7 @@ TBX_API int tbx_stack_move_to_bottom(tbx_stack_t *stack);
 TBX_API int tbx_stack_move_to_ptr(tbx_stack_t *stack, tbx_stack_ele_t *ptr);
 TBX_API int tbx_stack_move_to_top(tbx_stack_t *stack);
 TBX_API int tbx_stack_move_up(tbx_stack_t *stack);
+TBX_API void *tbx_stack_pop_bottom(tbx_stack_t *stack);
 TBX_API void *tbx_stack_pop(tbx_stack_t *stack);
 TBX_API void tbx_stack_push(tbx_stack_t *stack, void *data);
 TBX_API tbx_stack_ele_t *tbx_stack_unlink_current(tbx_stack_t *stack, int mv_up);

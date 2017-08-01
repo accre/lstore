@@ -77,6 +77,7 @@ enum gop_op_exec_mode_t {
 };
 
 // Functions
+GOP_API void gop_mark_completed(gop_op_generic_t *gop, gop_op_status_t status);
 GOP_API void gop_callback_append(gop_op_generic_t *q, gop_callback_t *cb);
 GOP_API int gop_completed_successfully(gop_op_generic_t *gop);
 GOP_API gop_op_generic_t *gop_dummy(gop_op_status_t state);
@@ -115,7 +116,6 @@ extern gop_op_status_t op_cant_connect_status;
 GOP_API extern gop_op_status_t gop_error_status;
 
 // Preprocessor macros
-// FIXME: Why a leading underscore?
 #define _op_set_status(v, opstat, errcode) (v).op_status = opstat; (v).error_code = errcode
 #define lock_gop(gop)   log_printf(15, "lock_gop: gid=%d\n", (gop)->base.id); apr_thread_mutex_lock((gop)->base.ctl->lock)
 #define unlock_gop(gop) log_printf(15, "unlock_gop: gid=%d\n", (gop)->base.id); apr_thread_mutex_unlock((gop)->base.ctl->lock)
