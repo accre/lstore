@@ -101,6 +101,7 @@ set(LSTORE_PROJECT_OBJS
 		rs/remote_server.c
 		rs/simple.c
 		rs/space.c
+		rw_test.c
 		segment.c
 		segment/cache.c
 		segment/dynfile.c
@@ -109,7 +110,6 @@ set(LSTORE_PROJECT_OBJS
 		segment/linear.c
 		segment/log.c
 		segment/lun.c
-		segment/rw_test.c
 		service_manager.c
 		trace.c
 		trace_replay.c

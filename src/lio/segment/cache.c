@@ -902,7 +902,7 @@ int cache_page_drop(lio_segment_t *seg, ex_off_t lo, ex_off_t hi)
 
 
 //*******************************************************************************
-//  lio_cache_pages_drop - Permanately removes pages from cache within the given range
+//  lio_segment_cache_pages_drop - Permanately removes pages from cache within the given range
 //     Pages are not flushed before removal!  This is mainly used for a truncate
 //     or semenget close operation
 //
@@ -910,7 +910,7 @@ int cache_page_drop(lio_segment_t *seg, ex_off_t lo, ex_off_t hi)
 //     rotuine is deisgned to be used by segment_cache routines only
 //*******************************************************************************
 
-int lio_cache_pages_drop(lio_segment_t *seg, ex_off_t lo, ex_off_t hi)
+int lio_segment_cache_pages_drop(lio_segment_t *seg, ex_off_t lo, ex_off_t hi)
 {
     if (strcmp(seg->header.type, SEGMENT_TYPE_CACHE) != 0) return(0);
 

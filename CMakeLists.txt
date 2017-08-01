@@ -268,9 +268,9 @@ if(BUILD_TESTS)
     add_executable(os_test test/os_test.c)
     target_link_libraries(os_test pthread toolbox gop lio)
     target_include_directories(os_test PRIVATE ${APR_INCLUDE_DIR} ${APRUTIL_INCLUDE_DIR} ${ZMQ_INCLUDE_DIR})
-    add_executable(ex_rw_test test/ex_rw_test.c)
-    target_link_libraries(ex_rw_test pthread toolbox gop lio)
-    target_include_directories(ex_rw_test PRIVATE ${APR_INCLUDE_DIR} ${APRUTIL_INCLUDE_DIR} ${ZMQ_INCLUDE_DIR})
+    add_executable(rw_test test/rw_test.c)
+    target_link_libraries(rw_test pthread toolbox gop lio)
+    target_include_directories(rw_test PRIVATE ${APR_INCLUDE_DIR} ${APRUTIL_INCLUDE_DIR} ${ZMQ_INCLUDE_DIR})
 
 
     add_executable(run-tests test/run-tests.c
