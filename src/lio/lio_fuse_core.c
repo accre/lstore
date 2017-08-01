@@ -102,12 +102,6 @@ typedef struct {
     int state;
 } lfs_dir_iter_t;
 
-typedef struct {
-    ex_off_t offset;
-    ex_off_t len;
-    uLong adler32;
-} lfs_adler32_t;
-
 lio_file_handle_t *_lio_get_file_handle(lio_config_t *lc, ex_id_t vid);
 
 
@@ -619,6 +613,9 @@ int lfs_open(const char *fname, struct fuse_file_info *fi)
     }
     fop->ref_count++;
     lfs_unlock(lfs);
+
+    //** See if we have WQ enabled
+    if (lfs->n_merge > 0) lio_wq_enable(fd, lfs->n_merge);
 
     return(0);
 }
@@ -1526,6 +1523,7 @@ void *lfs_init_real(struct fuse_conn_info *conn,
     lfs->mount_point_len = strlen(init_args->mount_point);
 
     lfs->enable_tape = tbx_inip_get_integer(lfs->lc->ifd, section, "enable_tape", 0);
+    lfs->n_merge = tbx_inip_get_integer(lfs->lc->ifd, section, "n_merge", 128);
 
     apr_pool_create(&(lfs->mpool), NULL);
     apr_thread_mutex_create(&(lfs->lock), APR_THREAD_MUTEX_DEFAULT, lfs->mpool);

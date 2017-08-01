@@ -51,19 +51,19 @@ struct lio_fuse_t;
 
 
 struct lio_fuse_t {
-int enable_tape;
-int shutdown;
-int mount_point_len;
-tbx_atomic_unit32_t counter;
-tbx_list_t *ino_index;
-lio_config_t *lc;
-apr_pool_t *mpool;
-apr_thread_mutex_t *lock;
-apr_hash_t *open_files;
-struct fuse_operations fops;
-char *id;
-char *mount_point;
-lio_segment_rw_hints_t *rw_hints;
+    int enable_tape;
+    int shutdown;
+    int mount_point_len;
+    int n_merge;
+    tbx_atomic_unit32_t counter;
+    lio_config_t *lc;
+    apr_pool_t *mpool;
+    apr_thread_mutex_t *lock;
+    apr_hash_t *open_files;
+    struct fuse_operations fops;
+    char *id;
+    char *mount_point;
+    lio_segment_rw_hints_t *rw_hints;
 };
 
 void *lfs_init(struct fuse_conn_info *conn);  // returns pointer to lio_fuse_t on success, otherwise NULL
