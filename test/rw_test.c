@@ -35,16 +35,20 @@
 
 int main(int argc, char **argv)
 {
-    int i, start_option, print_exnode, errors;
+    int i, start_option, rw_mode, errors;
     char *section = "rw_params";
 
 //printf("argc=%d\n", argc);
     if (argc < 2) {
         printf("\n");
-        printf("ex_rw_test LIO_COMMON_OPTIONS [-ex] [-s section]\n");
+        printf("ex_rw_test LIO_COMMON_OPTIONS [-ex|-aio|-tq|-local] [-s section]\n");
         lio_print_options(stdout);
-        printf("     -ex        Print the final exnode to the screen before truncation\n");
-        printf("     -section section SEction in the config file to usse.  Defaults to %s.\n", section);
+        printf("     -ex        Use the exnode driver\n");
+        printf("     -aio       Use LIO Asynchrounous I/O\n");
+        printf("     -wq        Use the LIO Work Queue\n");
+        printf("     -local     Use a local file\n");
+
+        printf("     -section section Section in the config file to usse.  Defaults to %s.\n", section);
         printf("\n");
         return(1);
     }
@@ -52,14 +56,23 @@ int main(int argc, char **argv)
     lio_init(&argc, &argv);
 
     //*** Parse the args
-    print_exnode = 0;
+    rw_mode = -1;
     i=1;
     if (argc > 1) {
         do {
             start_option = i;
-            if (strcmp(argv[i], "-ex") == 0) { //** Show the final exnode
+            if (strcmp(argv[i], "-ex") == 0) { //** Use the segment driver
                 i++;
-                print_exnode = 1;
+                rw_mode = 0;
+            } else if (strcmp(argv[i], "-aio") == 0) { //** Normal LIO Async I/O
+                i++;
+                rw_mode = 1;
+            } else if (strcmp(argv[i], "-wq") == 0) { //** LIO Task Queue
+                i++;
+                rw_mode = 2;
+            } else if (strcmp(argv[i], "-local") == 0) { //** Local File
+                i++;
+                rw_mode = 3;
             } else if (strcmp(argv[i], "-s") == 0) { //** Change the default section to use
                 i++;
                 section = argv[i];
@@ -68,7 +81,7 @@ int main(int argc, char **argv)
         } while ((start_option < i) && (i<argc));
     }
 
-    errors = segment_rw_test_exec(print_exnode, section);
+    errors = lio_rw_test_exec(rw_mode, section);
 
     lio_shutdown();
 

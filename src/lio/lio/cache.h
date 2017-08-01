@@ -50,7 +50,7 @@ typedef struct lio_page_amp_t lio_page_amp_t;
 
 // Functions
 LIO_API lio_cache_stats_get_t get_lio_cache_stats_get(lio_cache_t *c);
-LIO_API int lio_cache_pages_drop(lio_segment_t *seg, ex_off_t lo, ex_off_t hi);
+LIO_API int lio_segment_cache_pages_drop(lio_segment_t *seg, ex_off_t lo, ex_off_t hi);
 
 #ifdef __cplusplus
 }
