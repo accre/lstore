@@ -26,6 +26,7 @@
 #include <lio/visibility.h>
 #include <sys/stat.h>
 #include <tbx/log.h>
+#include <zlib.h>
 
 #include "blacklist.h"
 
@@ -37,17 +38,13 @@ extern "C" {
 extern char *_lio_stat_keys[];
 #define  _lio_stat_key_size 7
 
-
 extern char *_lio_exe_name;  //** Executable name
-
-
 
 struct lio_unified_object_iter_t {
     lio_path_tuple_t tuple;
     os_object_iter_t *oit;
     local_object_iter_t *lit;
 };
-
 
 #define LIO_WRITE_MODE     2
 #define LIO_TRUNCATE_MODE  4
@@ -56,14 +53,17 @@ struct lio_unified_object_iter_t {
 #define LIO_EXCL_MODE     32
 #define LIO_RW_MODE       (LIO_READ_MODE|LIO_WRITE_MODE)
 
-
 #define lio_lock(s) apr_thread_mutex_lock((s)->lock)
 #define lio_unlock(s) apr_thread_mutex_unlock((s)->lock)
+
+struct wq_context_s;
+typedef struct wq_context_s wq_context_t;
 
 struct lio_file_handle_t {  //** Shared file handle
     lio_exnode_t *ex;
     lio_segment_t *seg;
     lio_config_t *lc;
+    wq_context_t *wq_ctx;
     ex_id_t vid;
     int ref_count;
     int remove_on_close;
@@ -72,15 +72,42 @@ struct lio_file_handle_t {  //** Shared file handle
     tbx_list_t *write_table;
 };
 
+typedef struct {
+    ex_off_t offset;
+    ex_off_t len;
+    uLong adler32;
+} lfs_adler32_t;
+
+typedef struct {
+    lio_fd_t *fd;
+    int n_iov;
+    ex_tbx_iovec_t *iov;
+    tbx_tbuf_t *buffer;
+    lio_segment_rw_hints_t *rw_hints;
+    ex_tbx_iovec_t iov_dummy;
+    tbx_tbuf_t buffer_dummy;
+    ex_off_t boff;
+} lio_rw_op_t;
+
+typedef gop_op_generic_t *(lio_rw_ex_gop_t)(lio_rw_op_t *op);
 
 struct lio_fd_t {  //** Individual file descriptor
     lio_config_t *lc;
     lio_file_handle_t *fh;  //** Shared handle
+    wq_context_t *wq_ctx;
+    tbx_stack_t *wq;
     lio_creds_t *creds;
     char *path;
+    lio_rw_ex_gop_t *read_gop;
+    lio_rw_ex_gop_t *write_gop;
     int mode;         //** R/W mode
     ex_off_t curr_offset;
 };
+
+wq_context_t *wq_context_create(lio_fd_t *fd, int max_tasks);
+void wq_context_destroy(wq_context_t *ctx);
+void wq_backend_shutdown(wq_context_t *ctx);
+gop_op_generic_t *wq_op_new(wq_context_t *ctx, lio_rw_op_t *rw_op, int rw_mode);
 
 extern tbx_sl_compare_t ex_id_compare;
 
@@ -105,6 +132,9 @@ void lio_core_destroy(lio_config_t *lio);
 lio_config_t *lio_create(char *fname, char *section, char *user, char *exe_name);
 void lio_destroy(lio_config_t *lio);
 const char *lio_client_version();
+
+void lio_wq_shutdown();
+void lio_wq_startup(int n_parallel);
 
 #ifdef __cplusplus
 }

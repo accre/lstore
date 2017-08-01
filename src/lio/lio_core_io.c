@@ -55,13 +55,17 @@
 #define LFH_KEY_EXNODE 1
 #define LFH_NKEYS      2
 
-static char *_lio_fh_keys[] = { "system.inode", "system.exnode" };
+gop_op_status_t lio_read_ex_fn_aio(void *op, int id);
+gop_op_status_t lio_write_ex_fn_aio(void *op, int id);
+gop_op_generic_t *lio_read_ex_gop_aio(lio_rw_op_t *op);
+gop_op_generic_t *lio_write_ex_gop_aio(lio_rw_op_t *op);
 
-typedef struct {
-    ex_off_t offset;
-    ex_off_t len;
-    uLong adler32;
-} lfs_adler32_t;
+gop_op_status_t lio_read_ex_fn_wq(void *op, int id);
+gop_op_status_t lio_write_ex_fn_wq(void *op, int id);
+gop_op_generic_t *lio_read_ex_gop_wq(lio_rw_op_t *op);
+gop_op_generic_t *lio_write_ex_gop_wq(lio_rw_op_t *op);
+
+static char *_lio_fh_keys[] = { "system.inode", "system.exnode" };
 
 //***********************************************************************
 // Core LIO R/W functionality
@@ -372,6 +376,21 @@ typedef struct {
 
 //*************************************************************************
 
+int lio_wq_enable(lio_fd_t *fd, int max_in_flight)
+{
+    fd->wq_ctx = wq_context_create(fd, max_in_flight);
+log_printf(15, "wq_ctx=%p\n", fd->wq_ctx);
+    if (fd->wq_ctx == NULL) return(1);
+
+    fd->read_gop = lio_read_ex_gop_wq;
+    fd->write_gop = lio_write_ex_gop_wq;
+log_printf(15, "wq enabeled\n");
+
+    return(0);
+}
+
+//*************************************************************************
+
 gop_op_status_t lio_myopen_fn(void *arg, int id)
 {
     lio_fd_op_t *op = (lio_fd_op_t *)arg;
@@ -426,6 +445,8 @@ gop_op_status_t lio_myopen_fn(void *arg, int id)
     fd->mode = op->mode;
     fd->creds = op->creds;
     fd->lc = lc;
+    fd->read_gop = lio_read_ex_gop_aio;
+    fd->write_gop = lio_write_ex_gop_aio;
 
     exnode = NULL;
     if (lio_load_file_handle_attrs(lc, op->creds, op->path, &ino, &exnode) != 0) {
@@ -570,6 +591,12 @@ gop_op_status_t lio_myclose_fn(void *arg, int id)
     log_printf(1, "fname=%s modified=%d count=%d\n", fd->path, fd->fh->modified, fd->fh->ref_count);
     tbx_log_flush();
 
+    //** Shutdown the Work Queue context if needed
+    if (fd->wq_ctx != NULL) {
+        wq_context_destroy(fd->wq_ctx);
+        fd->wq_ctx = NULL;
+    }
+
     status = gop_success_status;
 
     //** Get the handles
@@ -700,80 +727,32 @@ gop_op_generic_t *lio_close_gop(lio_fd_t *fd)
 // lio_read_gop_XXXX - The various read routines
 //*************************************************************************
 
-typedef struct {
-    lio_fd_t *fd;
-    int n_iov;
-    ex_tbx_iovec_t *iov;
-    tbx_tbuf_t *buffer;
-    lio_segment_rw_hints_t *rw_hints;
-    ex_tbx_iovec_t iov_dummy;
-    tbx_tbuf_t buffer_dummy;
-    ex_off_t boff;
-} lio_rw_op_t;
+//*************************************************************************
+
+gop_op_generic_t *lio_read_ex_gop_aio(lio_rw_op_t *op)
+{
+    return(gop_tp_op_new(op->fd->lc->tpc_unlimited, NULL, lio_read_ex_fn_aio, (void *)op, free, 1));
+}
 
 //*************************************************************************
 
-gop_op_status_t lio_read_ex_fn(void *arg, int id)
+gop_op_generic_t *lio_read_ex_gop_wq(lio_rw_op_t *op)
 {
-    lio_rw_op_t *op = (lio_rw_op_t *)arg;
-    lio_fd_t *fd = op->fd;
-    lio_config_t *lc = fd->lc;
-    ex_tbx_iovec_t *iov = op->iov;
-    tbx_tbuf_t *buffer = op->buffer;
-    gop_op_status_t status;
-    int i, err, size;
-    apr_time_t now;
-    double dt;
-    ex_off_t t1, t2;
+    tbx_tbuf_var_t tv;
+    ex_off_t total;
 
-    status = gop_success_status;
-    if (op->n_iov <=0) return(status);
+    //** Handle some edge cases using the old method
+log_printf(15, "op->n_iov=%d\n", op->n_iov);
+    if (op->n_iov > 1) return(lio_read_ex_gop_aio(op));
 
-    t1 = iov[0].len;
-    t2 = iov[0].offset;
-    log_printf(1, "fname=%s n_iov=%d iov[0].len=" XOT " iov[0].offset=" XOT "\n", fd->path, op->n_iov, t1, t2);
-    tbx_log_flush();
-
-    if (fd == NULL) {
-        log_printf(0, "ERROR: Got a null file desriptor\n");
-        _op_set_status(status, OP_STATE_FAILURE, -EBADF);
-        return(status);
-    }
-
-    if (tbx_log_level() > 0) {
-        for (i=0; i < op->n_iov; i++) {
-            t2 = iov[i].offset+iov[i].len-1;
-            log_printf(1, "LFS_READ:START " XOT " " XOT "\n", iov[i].offset, t2);
-            log_printf(1, "LFS_READ:END " XOT "\n", t2);
-        }
-    }
-
-    now = apr_time_now();
-
-    //** Do the read op
-    err = gop_sync_exec(segment_read(fd->fh->seg, lc->da, op->rw_hints, op->n_iov, iov, buffer, op->boff, lc->timeout));
-
-    dt = apr_time_now() - now;
-    dt /= APR_USEC_PER_SEC;
-    log_printf(1, "END fname=%s seg=" XIDT " dt=%lf\n", fd->path, segment_id(fd->fh->seg), dt);
-    tbx_log_flush();
-
-    if (err != OP_STATE_SUCCESS) {
-        log_printf(1, "ERROR with read! fname=%s\n", fd->path);
-        printf("got value %d\n", err);
-        _op_set_status(status, OP_STATE_FAILURE, -EIO);
-        return(status);
-    }
-
-    //** Update the file position to thelast write
-    segment_lock(fd->fh->seg);
-    fd->curr_offset = iov[op->n_iov-1].offset+iov[op->n_iov-1].len;
-    segment_unlock(fd->fh->seg);
-
-    size = iov[0].len;
-    for (i=1; i < op->n_iov; i++) size += iov[i].len;
-    status.error_code = size;
-    return(status);
+    tbx_tbuf_var_init(&tv);
+    total = tbx_tbuf_size(op->buffer);
+    tv.nbytes = total;
+    if (tbx_tbuf_next(op->buffer, op->boff, &tv) != TBUFFER_OK) return(lio_read_ex_gop_aio(op));
+log_printf(15, "tv.nbytes=" XOT " bsize=" XOT " boff=" XOT "\n", tv.nbytes, total, op->boff);
+    if ((ex_off_t)tv.nbytes != (total-op->boff)) return(lio_read_ex_gop_aio(op));
+log_printf(15, "wq_op_new called\n");
+    return(wq_op_new(op->fd->wq_ctx, op, 0));
 }
 
 //*************************************************************************
@@ -791,24 +770,16 @@ gop_op_generic_t *lio_read_ex_gop(lio_fd_t *fd, int n_iov, ex_tbx_iovec_t *ex_io
     op->boff = boff;
     op->rw_hints = rw_hints;
 
-    return(gop_tp_op_new(fd->lc->tpc_unlimited, NULL, lio_read_ex_fn, (void *)op, free, 1));
+    return(fd->read_gop(op));
 }
 
 //*************************************************************************
 
 int lio_read_ex(lio_fd_t *fd, int n_iov, ex_tbx_iovec_t *ex_iov, tbx_tbuf_t *buffer, ex_off_t boff, lio_segment_rw_hints_t *rw_hints)
 {
-    lio_rw_op_t op;
     gop_op_status_t status;
 
-    op.fd = fd;
-    op.n_iov = n_iov;
-    op.iov = ex_iov;
-    op.buffer = buffer;
-    op.boff = boff;
-    op.rw_hints = rw_hints;
-
-    status = lio_read_ex_fn((void *)&op, -1);
+    status = gop_sync_exec_status(lio_read_ex_gop(fd, n_iov, ex_iov, buffer, boff, rw_hints));
     return(status.error_code);
 }
 
@@ -830,28 +801,16 @@ gop_op_generic_t *lio_readv_gop(lio_fd_t *fd, tbx_iovec_t *iov, int n_iov, ex_of
     tbx_tbuf_vec(&(op->buffer_dummy), size, n_iov, iov);
     offset = (off < 0) ? fd->curr_offset : off;
     ex_iovec_single(op->iov, offset, size);
-    return(gop_tp_op_new(fd->lc->tpc_unlimited, NULL, lio_read_ex_fn, (void *)op, free, 1));
+    return(fd->read_gop(op));
 }
 
 //*************************************************************************
 
 int lio_readv(lio_fd_t *fd, tbx_iovec_t *iov, int n_iov, ex_off_t size, ex_off_t off, lio_segment_rw_hints_t *rw_hints)
 {
-    lio_rw_op_t op;
-    ex_off_t offset;
     gop_op_status_t status;
 
-    op.fd = fd;
-    op.n_iov = 1;
-    op.iov = &(op.iov_dummy);
-    op.buffer = &(op.buffer_dummy);
-    op.boff = 0;
-    op.rw_hints = rw_hints;
-
-    tbx_tbuf_vec(&(op.buffer_dummy), size, n_iov, iov);
-    offset = (off < 0) ? fd->curr_offset : off;
-    ex_iovec_single(op.iov, offset, size);
-    status = lio_read_ex_fn((void *)&op, -1);
+    status = gop_sync_exec_status(lio_readv_gop(fd, iov, n_iov, size, off, rw_hints));
     return(status.error_code);
 }
 
@@ -865,7 +824,10 @@ int lio_readv(lio_fd_t *fd, tbx_iovec_t *iov, int n_iov, ex_off_t size, ex_off_t
 
 int _lio_read_gop(lio_rw_op_t *op, lio_fd_t *fd, char *buf, ex_off_t size, off_t user_off, lio_segment_rw_hints_t *rw_hints)
 {
-    ex_off_t ssize, pend, rsize, rend, dr, off;
+    ex_off_t ssize, pend, rsize, rend, dr, off, readahead;
+
+    //** If using WQ routines then disable readahead
+    readahead = (fd->wq_ctx) ? 0 : fd->fh->lc->readahead;
 
     //** Determine the offset
     off = (user_off < 0) ? fd->curr_offset : user_off;
@@ -888,8 +850,11 @@ int _lio_read_gop(lio_rw_op_t *op, lio_fd_t *fd, char *buf, ex_off_t size, off_t
         return(1);
     }
 
-    rend = pend + fd->fh->lc->readahead;  //** Tweak based on readahead
     rsize = size;
+    if (readahead <= 0) goto finished;
+
+    rend = pend + readahead;  //** Tweak based on readahead
+
     segment_lock(fd->fh->seg);
     dr = pend - fd->fh->readahead_end;
     if ((dr > 0) || ((-dr) > fd->fh->lc->readahead_trigger)) {
@@ -904,6 +869,7 @@ int _lio_read_gop(lio_rw_op_t *op, lio_fd_t *fd, char *buf, ex_off_t size, off_t
     }
     segment_unlock(fd->fh->seg);
 
+finished:
     op->fd = fd;
     op->n_iov = 1;
     op->iov = &(op->iov_dummy);
@@ -928,7 +894,7 @@ gop_op_generic_t *lio_read_gop(lio_fd_t *fd, char *buf, ex_off_t size, off_t off
 
     err = _lio_read_gop(op, fd, buf, size, off, rw_hints);
     if (err == 0) {
-        return(gop_tp_op_new(fd->lc->tpc_unlimited, NULL, lio_read_ex_fn, (void *)op, free, 1));
+        return(fd->read_gop(op));
     } else if (err == 1) {
         free(op);
         return(gop_dummy(gop_success_status));
@@ -945,19 +911,9 @@ gop_op_generic_t *lio_read_gop(lio_fd_t *fd, char *buf, ex_off_t size, off_t off
 
 int lio_read(lio_fd_t *fd, char *buf, ex_off_t size, off_t off, lio_segment_rw_hints_t *rw_hints)
 {
-    lio_rw_op_t op;
     gop_op_status_t status;
-    int err;
 
-    err = _lio_read_gop(&op, fd, buf, size, off, rw_hints);
-    if (err == 0) {
-        status = lio_read_ex_fn((void *)&op, -1);
-    } else if (err == 1) {
-        status = gop_success_status;
-    } else {
-        _op_set_status(status, OP_STATE_FAILURE, err);
-    }
-
+    status = gop_sync_exec_status(lio_read_gop(fd, buf, size, off, rw_hints));
     return(status.error_code);
 }
 
@@ -966,103 +922,37 @@ int lio_read(lio_fd_t *fd, char *buf, ex_off_t size, off_t off, lio_segment_rw_h
 // lio_write_gop_XXXX - The various write routines
 //*****************************************************************
 
-//*****************************************************************
-// lio_write_ex_fn - Does the actual writing of data to the file using a more native interface
-//*****************************************************************
+//*************************************************************************
 
-gop_op_status_t lio_write_ex_fn(void *arg, int id)
+gop_op_generic_t *lio_write_ex_gop_aio(lio_rw_op_t *op)
 {
-    lio_rw_op_t *op = (lio_rw_op_t *)arg;
-    lio_fd_t *fd = op->fd;
-    lio_config_t *lc = op->fd->fh->lc;
-    ex_tbx_iovec_t *iov = op->iov;
-    tbx_tbuf_t *buffer = op->buffer;
-    gop_op_status_t status;
-    int i, err, size;
-    apr_time_t now;
-    double dt;
-    ex_off_t t1, t2;
-
-    if ((fd->mode & LIO_WRITE_MODE) == 0) return(gop_failure_status);
-    if (op->n_iov <=0) return(gop_success_status);
-
-    t1 = iov[0].len;
-    t2 = iov[0].offset;
-    log_printf(1, "START fname=%s n_iov=%d iov[0].len=" XOT " iov[0].offset=" XOT "\n", fd->path, op->n_iov, t1, t2);
-    tbx_log_flush();
-    if (tbx_log_level() > 0) {
-        for (i=0; i < op->n_iov; i++) {
-            t2 = iov[i].offset+iov[i].len-1;
-            log_printf(1, "LFS_WRITE:START " XOT " " XOT "\n", iov[i].offset, t2);
-            log_printf(1, "LFS_WRITE:END " XOT "\n", t2);
-        }
-    }
-
-    now = apr_time_now();
-
-    tbx_atomic_set(fd->fh->modified, 1);  //** Flag it as modified
-
-    //** Do the write op
-    err = gop_sync_exec(segment_write(fd->fh->seg, lc->da, op->rw_hints, op->n_iov, iov, op->buffer, op->boff, lc->timeout));
-
-    //** Update the file position to thelast write
-    segment_lock(fd->fh->seg);
-    fd->curr_offset = iov[op->n_iov-1].offset+iov[op->n_iov-1].len;
-    segment_unlock(fd->fh->seg);
-
-    dt = apr_time_now() - now;
-    dt /= APR_USEC_PER_SEC;
-    log_printf(1, "END fname=%s seg=" XIDT " dt=%lf\n", fd->path, segment_id(fd->fh->seg), dt);
-    tbx_log_flush();
-
-    if (fd->fh->write_table != NULL) {
-        tbx_tbuf_t tb;
-        lfs_adler32_t *a32;
-        unsigned char *buf = NULL;
-        ex_off_t blen = 0;
-        ex_off_t bpos = op->boff;
-        for (i=0; i < op->n_iov; i++) {
-            tbx_type_malloc(a32, lfs_adler32_t, 1);
-            a32->offset = iov[i].offset;
-            a32->len = iov[i].len;
-            a32->adler32 = adler32(0L, Z_NULL, 0);
-
-            //** This is sloppy should use tbuffer_next to do this but this is all going ot be thrown away once we track
-            //** down the gridftp plugin issue
-            if (blen < a32->len) {
-                if (buf != NULL) free(buf);
-                blen = a32->len;
-                tbx_type_malloc(buf, unsigned char, blen);
-            }
-            tbx_tbuf_single(&tb, a32->len, (char *)buf);
-            tbx_tbuf_copy(buffer, bpos, &tb, 0, a32->len, 1);
-            a32->adler32 = adler32(a32->adler32, buf, a32->len);
-            segment_lock(fd->fh->seg);
-            tbx_list_insert(fd->fh->write_table, &(a32->offset), a32);
-            segment_unlock(fd->fh->seg);
-
-            bpos += a32->len;
-        }
-
-        if (buf != NULL) free(buf);
-    }
-
-    if (err != OP_STATE_SUCCESS) {
-        log_printf(1, "ERROR with write! fname=%s\n", fd->path);
-        printf("got value %d\n", err);
-        _op_set_status(status, OP_STATE_FAILURE, -EIO);
-        return(status);
-    }
-
-    size = iov[0].len;
-    for (i=1; i< op->n_iov; i++) size += iov[i].len;
-    _op_set_status(status, OP_STATE_SUCCESS, size);
-    return(status);
+    return(gop_tp_op_new(op->fd->lc->tpc_unlimited, NULL, lio_write_ex_fn_aio, (void *)op, free, 1));
 }
 
 //*************************************************************************
 
-gop_op_generic_t *lio_write_ex_gop_fn(lio_fd_t *fd, int n_iov, ex_tbx_iovec_t *iov, tbx_tbuf_t *buffer, ex_off_t boff, lio_segment_rw_hints_t *rw_hints)
+gop_op_generic_t *lio_write_ex_gop_wq(lio_rw_op_t *op)
+{
+    tbx_tbuf_var_t tv;
+    ex_off_t total;
+
+    //** Handle some edge cases using the old method
+    if (op->n_iov > 1) return(lio_write_ex_gop_aio(op));
+
+    tbx_tbuf_var_init(&tv);
+    total = tbx_tbuf_size(op->buffer);
+    tv.nbytes = total;
+    if (tbx_tbuf_next(op->buffer, op->boff, &tv) != TBUFFER_OK) return(lio_write_ex_gop_aio(op));
+log_printf(15, "tv.nbytes=" XOT " bsize=" XOT " boff=" XOT "\n", tv.nbytes, total, op->boff);
+    if ((ex_off_t)tv.nbytes != (total-op->boff)) return(lio_write_ex_gop_aio(op));
+log_printf(15, "wq_op_new called\n");
+
+    return(wq_op_new(op->fd->wq_ctx, op, 1));
+}
+
+//*************************************************************************
+
+gop_op_generic_t *lio_write_ex_gop(lio_fd_t *fd, int n_iov, ex_tbx_iovec_t *iov, tbx_tbuf_t *buffer, ex_off_t boff, lio_segment_rw_hints_t *rw_hints)
 {
     lio_rw_op_t *op;
 
@@ -1075,24 +965,16 @@ gop_op_generic_t *lio_write_ex_gop_fn(lio_fd_t *fd, int n_iov, ex_tbx_iovec_t *i
     op->boff = boff;
     op->rw_hints = rw_hints;
 
-    return(gop_tp_op_new(fd->lc->tpc_unlimited, NULL, lio_write_ex_fn, (void *)op, free, 1));
+    return(fd->write_gop(op));
 }
 
 //*************************************************************************
 
 int lio_write_ex(lio_fd_t *fd, int n_iov, ex_tbx_iovec_t *ex_iov, tbx_tbuf_t *buffer, ex_off_t boff, lio_segment_rw_hints_t *rw_hints)
 {
-    lio_rw_op_t op;
     gop_op_status_t status;
 
-    op.fd = fd;
-    op.n_iov = n_iov;
-    op.iov = ex_iov;
-    op.buffer = buffer;
-    op.boff = boff;
-    op.rw_hints = rw_hints;
-
-    status = lio_write_ex_fn((void *)&op, -1);
+    status = gop_sync_exec_status(lio_write_ex_gop(fd, n_iov, ex_iov, buffer, boff, rw_hints));
     return(status.error_code);
 }
 
@@ -1114,28 +996,16 @@ gop_op_generic_t *lio_writev_gop(lio_fd_t *fd, tbx_iovec_t *iov, int n_iov, ex_o
     tbx_tbuf_vec(&(op->buffer_dummy), size, n_iov, iov);
     offset = (off < 0) ? fd->curr_offset : off;
     ex_iovec_single(op->iov, offset, size);
-    return(gop_tp_op_new(fd->lc->tpc_unlimited, NULL, lio_write_ex_fn, (void *)op, free, 1));
+    return(fd->write_gop(op));
 }
 
 //*************************************************************************
 
 int lio_writev(lio_fd_t *fd, tbx_iovec_t *iov, int n_iov, ex_off_t size, ex_off_t off, lio_segment_rw_hints_t *rw_hints)
 {
-    lio_rw_op_t op;
-    ex_off_t offset;
     gop_op_status_t status;
 
-    op.fd = fd;
-    op.n_iov = 1;
-    op.iov = &(op.iov_dummy);
-    op.buffer = &(op.buffer_dummy);
-    op.boff = 0;
-    op.rw_hints = rw_hints;
-
-    tbx_tbuf_vec(&(op.buffer_dummy), size, n_iov, iov);
-    offset = (off < 0) ? fd->curr_offset : off;
-    ex_iovec_single(op.iov, offset, size);
-    status = lio_write_ex_fn((void *)&op, -1);
+    status = gop_sync_exec_status(lio_writev_gop(fd, iov, n_iov, size, off, rw_hints));
     return(status.error_code);
 }
 
@@ -1158,28 +1028,16 @@ gop_op_generic_t *lio_write_gop(lio_fd_t *fd, char *buf, ex_off_t size, off_t of
     tbx_tbuf_single(op->buffer, size, buf);
     offset = (off < 0) ? fd->curr_offset : off;
     ex_iovec_single(op->iov, offset, size);
-    return(gop_tp_op_new(fd->lc->tpc_unlimited, NULL, lio_write_ex_fn, (void *)op, free, 1));
+    return(fd->write_gop(op));
 }
 
 //*************************************************************************
 
 int lio_write(lio_fd_t *fd, char *buf, ex_off_t size, off_t off, lio_segment_rw_hints_t *rw_hints)
 {
-    ex_off_t offset;
-    lio_rw_op_t op;
     gop_op_status_t status;
 
-    op.fd = fd;
-    op.n_iov = 1;
-    op.iov = &(op.iov_dummy);
-    op.buffer = &(op.buffer_dummy);
-    op.boff = 0;
-    op.rw_hints = rw_hints;
-
-    tbx_tbuf_single(op.buffer, size, buf);
-    offset = (off < 0) ? fd->curr_offset : off;
-    ex_iovec_single(op.iov, offset, size);
-    status = lio_write_ex_fn((void *)&op, -1);
+    status = gop_sync_exec_status(lio_write_gop(fd, buf, size, off, rw_hints));
     return(status.error_code);
 }
 
@@ -1616,7 +1474,7 @@ gop_op_status_t lio_path_copy_op(void *arg, int id)
 
 
 //***********************************************************************
-// The misc I/O routines: lio_seek, lio_tell, lio_size
+// The misc I/O routines: lio_seek, lio_tell, lio_size, etc
 //***********************************************************************
 
 
@@ -1695,6 +1553,15 @@ ex_off_t lio_block_size(lio_fd_t *fd)
 gop_op_generic_t *lio_flush_gop(lio_fd_t *fd, ex_off_t lo, ex_off_t hi)
 {
     return(segment_flush(fd->fh->seg, fd->fh->lc->da, lo, (hi == -1) ? segment_size(fd->fh->seg)+1 : hi, fd->fh->lc->timeout));
+}
+
+//***********************************************************************
+// lio_cache_pages_drop - Drops pages in the given range from the cache
+//***********************************************************************
+
+int lio_cache_pages_drop(lio_fd_t *fd, ex_off_t lo, ex_off_t hi)
+{
+    return(lio_segment_cache_pages_drop(fd->fh->seg, lo, hi));
 }
 
 //***********************************************************************
