@@ -75,7 +75,7 @@ gop_op_status_t lio_read_ex_fn_aio(void *arg, int id)
 
     t1 = iov[0].len;
     t2 = iov[0].offset;
-    log_printf(1, "fname=%s n_iov=%d iov[0].len=" XOT " iov[0].offset=" XOT "\n", fd->path, op->n_iov, t1, t2);
+    log_printf(2, "fname=%s n_iov=%d iov[0].len=" XOT " iov[0].offset=" XOT "\n", fd->path, op->n_iov, t1, t2);
     tbx_log_flush();
 
     if (fd == NULL) {
@@ -87,8 +87,8 @@ gop_op_status_t lio_read_ex_fn_aio(void *arg, int id)
     if (tbx_log_level() > 0) {
         for (i=0; i < op->n_iov; i++) {
             t2 = iov[i].offset+iov[i].len-1;
-            log_printf(1, "LFS_READ:START " XOT " " XOT "\n", iov[i].offset, t2);
-            log_printf(1, "LFS_READ:END " XOT "\n", t2);
+            log_printf(2, "LFS_READ:START " XOT " " XOT "\n", iov[i].offset, t2);
+            log_printf(2, "LFS_READ:END " XOT "\n", t2);
         }
     }
 
@@ -99,12 +99,11 @@ gop_op_status_t lio_read_ex_fn_aio(void *arg, int id)
 
     dt = apr_time_now() - now;
     dt /= APR_USEC_PER_SEC;
-    log_printf(1, "END fname=%s seg=" XIDT " dt=%lf\n", fd->path, segment_id(fd->fh->seg), dt);
+    log_printf(2, "END fname=%s seg=" XIDT " dt=%lf\n", fd->path, segment_id(fd->fh->seg), dt);
     tbx_log_flush();
 
     if (err != OP_STATE_SUCCESS) {
-        log_printf(1, "ERROR with read! fname=%s\n", fd->path);
-        printf("got value %d\n", err);
+        log_printf(2, "ERROR with read! fname=%s\n", fd->path);
         _op_set_status(status, OP_STATE_FAILURE, -EIO);
         return(status);
     }
@@ -140,13 +139,13 @@ gop_op_status_t lio_write_ex_fn_aio(void *arg, int id)
 
     t1 = iov[0].len;
     t2 = iov[0].offset;
-    log_printf(1, "START fname=%s n_iov=%d iov[0].len=" XOT " iov[0].offset=" XOT "\n", fd->path, op->n_iov, t1, t2);
+    log_printf(2, "START fname=%s n_iov=%d iov[0].len=" XOT " iov[0].offset=" XOT "\n", fd->path, op->n_iov, t1, t2);
     tbx_log_flush();
     if (tbx_log_level() > 0) {
         for (i=0; i < op->n_iov; i++) {
             t2 = iov[i].offset+iov[i].len-1;
-            log_printf(1, "LFS_WRITE:START " XOT " " XOT "\n", iov[i].offset, t2);
-            log_printf(1, "LFS_WRITE:END " XOT "\n", t2);
+            log_printf(2, "LFS_WRITE:START " XOT " " XOT "\n", iov[i].offset, t2);
+            log_printf(2, "LFS_WRITE:END " XOT "\n", t2);
         }
     }
 
@@ -164,7 +163,7 @@ gop_op_status_t lio_write_ex_fn_aio(void *arg, int id)
 
     dt = apr_time_now() - now;
     dt /= APR_USEC_PER_SEC;
-    log_printf(1, "END fname=%s seg=" XIDT " dt=%lf\n", fd->path, segment_id(fd->fh->seg), dt);
+    log_printf(2, "END fname=%s seg=" XIDT " dt=%lf\n", fd->path, segment_id(fd->fh->seg), dt);
     tbx_log_flush();
 
     if (fd->fh->write_table != NULL) {
@@ -201,7 +200,6 @@ gop_op_status_t lio_write_ex_fn_aio(void *arg, int id)
 
     if (err != OP_STATE_SUCCESS) {
         log_printf(1, "ERROR with write! fname=%s\n", fd->path);
-        printf("got value %d\n", err);
         _op_set_status(status, OP_STATE_FAILURE, -EIO);
         return(status);
     }
@@ -372,8 +370,6 @@ gop_op_generic_t *wq_op_new(wq_context_t *ctx, lio_rw_op_t *rw_op, int rw_mode)
     gop->free_ptr = op;
     gop->base.pc = ctx->pc;
     gop->base.status = gop_error_status;
-
-log_printf(15, "gid=%d\n", gop_get_id(gop));
     return(gop);
 }
 
@@ -453,15 +449,11 @@ wq_op_t *wq_get_task(int fd, int wait)
     wq_op_t *op;
     int n, i, nleft;
 
-log_printf(0, "wait=%d\n", wait);
     if (wait != 0) {
         pfd.fd = fd;
         pfd.events = POLLIN;
         pfd.revents = 0;
-//        if (poll(&pfd, 1, 0) == 0) return(0);
-n = poll(&pfd, 1, 0);
-log_printf(1, "poll=%d event=%d POLLIN=%d\n", n, pfd.events, POLLIN);
-if (n==0) return(0);
+        if (poll(&pfd, 1, 0) == 0) return(0);
     }
 
     op = NULL;
@@ -490,8 +482,6 @@ void wq_add_task(wq_op_t *op)
     char *buf;
     int n, i, nleft;
 
-//log_printf(1, "adding task. rw=%d off=" OT " len=" OT " n_iov=%d\n", rw_type, offset, len, iov_cnt);
-
     nleft = sizeof(op); i = 0;
     buf = (char *)&op;  //**Push the OP pointer to the pipe
     do {
@@ -519,7 +509,6 @@ int wq_fetch_tasks(apr_hash_t *table, int pfd)
     n = 0;
     for (;;) {
         t = wq_get_task(pfd, n);
-log_printf(1, "fetch n=%d got=%p\n", n, t);
         if (t == NULL) return(0);
         if (t == (void *)1) return(1);  //** Kick out
 
@@ -550,10 +539,7 @@ int wq_ctx_fetch_tasks(wq_context_t *ctx)
     for (n=0; n < ctx->max_tasks; n++) {
         t = tbx_stack_pop_bottom(ctx->wq);
 
-log_printf(1, "fetch n=%d got=%p\n", n, t);
         if (t == NULL) break;
-
-log_printf(1, "fetch n=%d gid=%d\n", n, gop_get_id(&t->gop));
 
         i = t->rw_mode;
         ctx->work[i].tasks[ctx->work[i].n_tasks] = t;
@@ -620,7 +606,7 @@ void wq_sort_and_merge_tasks(wq_context_t *ctx)
             m = &w->merged[w->n_merged];
             *m = wq_new_merged(ctx, t, 0, rw);
             end = t->rw->iov->offset + t->rw->iov->len;
-log_printf(1, "rw=%d i=%d n_merged=%d off=" XOT " end=" XOT " len=" XOT " gid=%d\n", rw, 0, w->n_merged, t->rw->iov->offset, end, t->rw->iov->len, gop_get_id(&t->gop));
+            log_printf(10, "rw=%d i=%d n_merged=%d off=" XOT " end=" XOT " len=" XOT " gid=%d\n", rw, 0, w->n_merged, t->rw->iov->offset, end, t->rw->iov->len, gop_get_id(&t->gop));
             w->n_merged++;
 
             for (i=1; i < w->n_tasks; i++) {
@@ -637,7 +623,7 @@ log_printf(1, "rw=%d i=%d n_merged=%d off=" XOT " end=" XOT " len=" XOT " gid=%d
                     m->len += t->rw->iov->len;
                 }
                 end = t->rw->iov->offset + t->rw->iov->len;
-log_printf(1, "rw=%d i=%d n_merged=%d off=" XOT " end=" XOT " len=" XOT "\n", rw, i, w->n_merged, t->rw->iov->offset, end, t->rw->iov->len);
+                log_printf(10, "rw=%d i=%d n_merged=%d off=" XOT " end=" XOT " len=" XOT "\n", rw, i, w->n_merged, t->rw->iov->offset, end, t->rw->iov->len);
             }
         }
     }
@@ -664,7 +650,7 @@ void wq_execute_tasks(wq_context_t *ctx)
 
         for (i=0; i<w->n_merged; i++) {
             m = &w->merged[i];
-log_printf(1, "rw=%d m=%d off=" XOT " len=" XOT "\n", rw, i, m->offset, m->len);
+            log_printf(10, "rw=%d m=%d off=" XOT " len=" XOT "\n", rw, i, m->offset, m->len);
             tbx_type_malloc_clear(op, lio_rw_op_t, 1);
             op->fd = ctx->fd;
             op->n_iov = 1;
@@ -690,7 +676,7 @@ log_printf(1, "rw=%d m=%d off=" XOT " len=" XOT "\n", rw, i, m->offset, m->len);
         status = gop_get_status(gop);
         m = gop_get_private(gop);
         rw = gop_get_myid(gop);
-log_printf(1, "rw=%d off=" XOT " len=" XOT " status=%d SUCCESS=%d\n", rw, m->offset, m->len, status.op_status, OP_STATE_SUCCESS);
+        log_printf(10, "rw=%d off=" XOT " len=" XOT " status=%d SUCCESS=%d\n", rw, m->offset, m->len, status.op_status, OP_STATE_SUCCESS);
 
         for (i=m->task_start_index; i<=m->task_end_index; i++) {
             t = ctx->work[rw].tasks[i];
@@ -711,12 +697,12 @@ gop_op_status_t wq_ctx_process_fn(void *arg, int id)
 {
     wq_context_t *ctx = (wq_context_t *)arg;
 
-log_printf(1, "START fname=%s\n", ctx->fd->path);
+    log_printf(10, "START fname=%s\n", ctx->fd->path);
     while (wq_ctx_fetch_tasks(ctx) > 0) {
         wq_sort_and_merge_tasks(ctx);
         wq_execute_tasks(ctx);
     }
-log_printf(1, "END fname=%s\n", ctx->fd->path);
+    log_printf(10, "END fname=%s\n", ctx->fd->path);
     return(gop_success_status);
 }
 
@@ -737,7 +723,7 @@ void wq_process(wq_global_t *wq, apr_hash_t *table, apr_pool_t *mpool)
     for (hi=apr_hash_first(mpool, table); hi; hi = apr_hash_next(hi)) {
         apr_hash_this(hi, NULL, NULL, (void **)&ctx);
         apr_hash_set(table, &ctx, sizeof(ctx), NULL);
-log_printf(1, "n=%d adding ctx=%s\n", n, ctx->fd->path);
+        log_printf(10, "n=%d adding ctx=%s\n", n, ctx->fd->path);
 
         if (n > wq->n_parallel) {
             gop = opque_waitany(q);
@@ -764,21 +750,17 @@ void *wq_backend_thread(apr_thread_t *th, void *data)
     apr_hash_t *table;;
     int finished;
 
-log_printf(1, "START\n");
-
     apr_pool_create(&mpool, NULL);
     table = apr_hash_make(mpool);
 
     finished = 0;
     while (finished == 0) {
         finished = wq_fetch_tasks(table, wq->pipe[OP_READ]);
-log_printf(1, "loop finished=%d\n", finished);
         wq_process(wq, table, mpool);
     }
 
     apr_pool_destroy(mpool);
 
-log_printf(1, "END\n");
     return(NULL);
 }
 
