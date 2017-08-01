@@ -33,11 +33,11 @@
 #include <errno.h>
 #include <scsi/scsi.h>
 
-//#include "scsi_defs.h"
 #include "tcmu-runner.h"
 
 #include <gop/gop.h>
 #include <lio/lio.h>
+#include <tbx/atomic_counter.h>
 #include <tbx/constructor_wrapper.h>
 #include <tbx/fmttypes.h>
 #include <tbx/type_malloc.h>
@@ -69,6 +69,7 @@ typedef struct {
    lio_fd_t *fd;
    lio_config_t *lc;
    lio_path_tuple_t tuple;
+   tbx_atomic_unit32_t in_flight;
 } tcmu_lstore_t;
 
 //***********************************************************************
@@ -181,6 +182,8 @@ static int lstore_open(struct tcmu_device *dev)
         goto err1;
     }
 
+    lio_wq_enable(ctx->fd, 128);
+
     block_size = 512;
     tcmu_set_dev_block_size(dev, block_size);
 
@@ -230,9 +233,12 @@ static int lstore_readv(struct tcmu_device *dev, struct tcmulib_cmd *cmd,
     tcmu_lstore_t *ctx = tcmu_get_dev_private(dev);
     int ret, nbytes;
 
+tbx_atomic_inc(ctx->in_flight);
     nbytes = lio_readv(ctx->fd, iov, iov_cnt, length, offset, NULL);
-    log_printf(1, "READ n_iov=" ST " offset=" OT " len=" ST " nbytes=%d\n", iov_cnt, offset, length, nbytes);
+    log_printf(1, "READ n_iov=" ST " offset=" OT " len=" ST " nbytes=%d in_flight=%u\n", iov_cnt, offset, length, nbytes, tbx_atomic_get(ctx->in_flight));
+tbx_atomic_dec(ctx->in_flight);
     if ((unsigned int)nbytes != length) {
+    log_printf(1, "ERROR READ n_iov=" ST " offset=" OT " len=" ST " nbytes=%d in_flight=%u\n", iov_cnt, offset, length, nbytes, tbx_atomic_get(ctx->in_flight));
         tcmu_err("read failed: %m\n");
         ret = tcmu_set_sense_data(cmd->sense_buf, MEDIUM_ERROR, ASC_READ_ERROR, NULL);
     } else {
@@ -254,10 +260,13 @@ static int lstore_writev(struct tcmu_device *dev, struct tcmulib_cmd *cmd,
     tcmu_lstore_t *ctx = tcmu_get_dev_private(dev);
     int nbytes, ret;
 
+tbx_atomic_inc(ctx->in_flight);
     nbytes = lio_writev(ctx->fd, iov, iov_cnt, length, offset, NULL);
-    log_printf(1, "WRITE n_iov=" ST " offset=" OT " len=" ST " nbytes=%d\n", iov_cnt, offset, length, nbytes);
+    log_printf(1, "WRITE n_iov=" ST " offset=" OT " len=" ST " nbytes=%d in_flight=%u\n", iov_cnt, offset, length, nbytes, tbx_atomic_get(ctx->in_flight));
+tbx_atomic_dec(ctx->in_flight);
 
     if ((unsigned int)nbytes != length) {
+    log_printf(1, "ERROR WRITE n_iov=" ST " offset=" OT " len=" ST " nbytes=%d in_flight=%u\n", iov_cnt, offset, length, nbytes, tbx_atomic_get(ctx->in_flight));
         tcmu_err("read failed: %m\n");
         ret = tcmu_set_sense_data(cmd->sense_buf, MEDIUM_ERROR, ASC_READ_ERROR, NULL);
     } else {
@@ -306,7 +315,7 @@ static struct tcmur_handler lstore_handler = {
     .flush = lstore_flush,
     .name = "LStore Handler",
     .subtype = "lstore",
-    .nr_threads = 2,
+    .nr_threads = 128,
 };
 
 //***********************************************************************
