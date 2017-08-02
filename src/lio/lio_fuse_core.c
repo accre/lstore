@@ -638,6 +638,7 @@ int lfs_release(const char *fname, struct fuse_file_info *fi)
             free(fop);
         }
     }
+    lfs_unlock(lfs);
 
     //** See if we need to remove it
     if (remove_on_close == 1) {
@@ -653,7 +654,6 @@ int lfs_release(const char *fname, struct fuse_file_info *fi)
     }
 
     err = gop_sync_exec(lio_close_gop(fd)); // ** Close it but keep track of the error
-    lfs_unlock(lfs);
 
     if (err != OP_STATE_SUCCESS) {
         log_printf(0, "Failed closing file!  path=%s\n", fname);
