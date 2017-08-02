@@ -1044,7 +1044,13 @@ finished:
     s->total_size = new_size;
     s->used_size = new_used;
 
-    status = (err == OP_STATE_SUCCESS) ? gop_success_status : gop_failure_status;
+    if (err == OP_STATE_SUCCESS) {
+        status = gop_success_status;
+    } else if (new_size == 0) {   //** If new size is 0 then we can ignore any failed removals
+        status = gop_success_status;
+    } else {
+        status = gop_failure_status;
+    }
     return(status);
 }
 
