@@ -474,7 +474,7 @@ void *mqt_exec(apr_thread_t *th, void *arg)
         tbx_atomic_dec(p->running);
     } else {
         mq_long_running_set(0);  //** Reset it for the next task
-log_printf(1, "LONG RUNNING set!\n");
+        log_printf(1, "LONG RUNNING set!\n");
     }
     return(NULL);
 }
