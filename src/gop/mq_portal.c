@@ -1155,6 +1155,7 @@ int mqc_process_task(gop_mq_conn_t *c, int *npoll, int *nproc)
 
     return_code = 0;
     *nproc = 0;
+    ntask = 0;
 
     //** Get the new task or start a wind down if requested
     apr_thread_mutex_lock(c->pc->lock);
