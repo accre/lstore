@@ -1598,6 +1598,7 @@ void osrs_regex_set_mult_attr_cb(void *arg, gop_mq_task_t *task)
     memset(&spin, 0, sizeof(spin));
     key = NULL;
     val = NULL, v_size = NULL;
+    mqs = NULL;
     n_attrs = 0;
 
     //** Parse the command.
@@ -2298,6 +2299,7 @@ void osrs_object_iter_alist_cb(void *arg, gop_mq_task_t *task)
     val = NULL, v_size = NULL;
     n_attrs = 0;
     it = NULL;
+    mqs = NULL;
 
     //** Parse the command.
     msg = task->msg;
@@ -2489,6 +2491,7 @@ void osrs_object_iter_aregex_cb(void *arg, gop_mq_task_t *task)
 
     log_printf(5, "Processing incoming request\n");
 
+    mqs = NULL;
     it = NULL;
     path = object_regex = attr_regex = NULL;
 
@@ -2669,6 +2672,7 @@ void osrs_attr_iter_cb(void *arg, gop_mq_task_t *task)
     it = NULL;
     handle = NULL;
     attr_regex = NULL;
+    mqs = NULL;
 
     //** Parse the command.
     msg = task->msg;
