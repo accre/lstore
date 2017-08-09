@@ -38,6 +38,8 @@
 #include "mq_helpers.h"
 #include "mq_stream.h"
 
+#define QOS_WAIT apr_time_from_sec(1)   //** How long to let data sit in the buffer before sending
+
 //***********************************************************************
 // gop_mqs_id - Returns the Stream ID
 //***********************************************************************
@@ -156,7 +158,7 @@ int gop_mq_stream_read_wait(gop_mq_stream_t *mqs)
 
     //** Flag the just processed gop to clean up
     apr_thread_mutex_lock(mqs->lock);
-    log_printf(5, "START msid=%d waiting=%d processed=%d gop_processed=%p\n", mqs->msid, mqs->waiting, mqs->processed, mqs->gop_processed);
+    log_printf(5, "START msid=%d waiting=%d processed=%d gop_processed=%p want_more=%c\n", mqs->msid, mqs->waiting, mqs->processed, mqs->gop_processed, mqs->want_more);
     if (mqs->gop_processed != NULL) mqs->processed = 1;
     apr_thread_cond_broadcast(mqs->cond);
 
@@ -178,10 +180,10 @@ int gop_mq_stream_read_wait(gop_mq_stream_t *mqs)
 
     //** Now handle the waiting gop
     apr_thread_mutex_lock(mqs->lock);
-    log_printf(5, "before loop msid=%d waiting=%d processed=%d\n", mqs->msid, mqs->waiting, mqs->processed);
+    log_printf(5, "before loop msid=%d waiting=%d processed=%d want_more=%c\n", mqs->msid, mqs->waiting, mqs->processed, mqs->want_more);
 
     while (mqs->waiting == 1) {
-        log_printf(5, "LOOP msid=%d waiting=%d processed=%d\n", mqs->msid, mqs->waiting, mqs->processed);
+        log_printf(5, "LOOP msid=%d waiting=%d processed=%d want_more=%c\n", mqs->msid, mqs->waiting, mqs->processed, mqs->want_more);
         if (gop_will_block(mqs->gop_waiting) == 0)  { //** Oops!  failed request
             status = gop_get_status(mqs->gop_waiting);
             log_printf(2, "msid=%d gid=%d status=%d\n", mqs->msid, gop_id(mqs->gop_waiting), status.op_status);
@@ -224,12 +226,24 @@ int gop_mq_stream_read_wait(gop_mq_stream_t *mqs)
 
     //** Check if we need to fire off the next request
     if (mqs->data != NULL) {
-        if ((mqs->data[MQS_STATE_INDEX] == MQS_MORE) && (mqs->want_more == MQS_MORE)) {
-            gop_mq_stream_read_request(mqs);
+        apr_thread_mutex_lock(mqs->lock);
+        if (mqs->data[MQS_STATE_INDEX] == MQS_MORE) {
+            if (mqs->want_more == MQS_MORE) {
+                apr_thread_mutex_unlock(mqs->lock);
+                gop_mq_stream_read_request(mqs);
+            } else if ((mqs->want_more == MQS_ABORT) &&  (mqs->dead_connection == 0)) {
+                mqs->dead_connection = 1;
+                apr_thread_mutex_unlock(mqs->lock);
+                gop_mq_stream_read_request(mqs);
+            } else {
+                apr_thread_mutex_unlock(mqs->lock);
+            }
+        } else {
+            apr_thread_mutex_unlock(mqs->lock);
         }
     }
 
-    log_printf(5, "err=%d\n", err);
+    log_printf(5, "err=%d want_more=%c\n", err, mqs->want_more);
     return(err);
 }
 
@@ -320,7 +334,7 @@ void gop_mq_stream_read_destroy(gop_mq_stream_t *mqs)
 
     //** Consume all the current data and request the pending
     while ((mqs->gop_processed != NULL) || (mqs->gop_waiting != NULL)) {
-        log_printf(1, "Clearing pending processed=%p waiting=%p msid=%d\n", mqs->gop_processed, mqs->gop_waiting, mqs->msid);
+        log_printf(1, "Clearing pending msid=%d processed=%p waiting=%p msid=%d want_more=%c\n", mqs->msid, mqs->gop_processed, mqs->gop_waiting, mqs->msid, mqs->want_more);
         if (mqs->gop_processed != NULL) log_printf(1, "processed gid=%d\n", gop_id(mqs->gop_processed));
         if (mqs->gop_waiting != NULL) log_printf(1, "waiting gid=%d\n", gop_id(mqs->gop_waiting));
         mqs->want_more = MQS_ABORT;
@@ -753,7 +767,7 @@ int gop_mq_stream_write(gop_mq_stream_t *mqs, void *vdata, int len)
             tbx_pack_consumed(mqs->pack);    //** Rest so garbage data isn't sent
         }
 
-        if ((nleft > 0) && (grew_space == 0)) {  //** Need to flush the data
+        if (((nleft > 0) && (grew_space == 0)) || (((apr_time_now() - mqs->last_write) > QOS_WAIT) && (mqs->shutdown == 0))) {  //** Need to flush the data
             if (mqs->mpool == NULL) {  //** Got to configure everything
                 apr_pool_create(&mqs->mpool, NULL);
                 apr_thread_mutex_create(&(mqs->lock), APR_THREAD_MUTEX_DEFAULT, mqs->mpool);
@@ -771,6 +785,8 @@ int gop_mq_stream_write(gop_mq_stream_t *mqs, void *vdata, int len)
                 err = gop_mq_stream_write_flush(mqs);
                 apr_thread_mutex_lock(mqs->lock);
             }
+
+            mqs->last_write = apr_time_now();
         } else if (mqs->shutdown == 1) {  //** Last write so signal it
             log_printf(5, "Doing final flush sent_data=%d msid=%d\n", mqs->msid, mqs->sent_data);
             err = 0;
@@ -927,6 +943,7 @@ gop_mq_stream_t *gop_mq_stream_write_create(gop_mq_context_t *mqc, gop_mq_portal
     mqs->want_more = MQS_MORE;
     mqs->expire = apr_time_from_sec(timeout) + apr_time_now();
     mqs->msid = tbx_atomic_global_counter();
+    mqs->last_write = apr_time_now();
 
     gop_mq_get_frame(hid, (void **)&(mqs->host_id), &(mqs->hid_len));
 

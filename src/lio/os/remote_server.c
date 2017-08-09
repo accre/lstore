@@ -583,6 +583,7 @@ void osrs_remove_regex_object_cb(void *arg, gop_mq_task_t *task)
 
     status = gop_failure_status;
     memset(&spin, 0, sizeof(spin));
+    mqs = NULL;
 
     //** Parse the command.
     msg = task->msg;
@@ -606,17 +607,9 @@ void osrs_remove_regex_object_cb(void *arg, gop_mq_task_t *task)
     n = tbx_zigzag_decode(&(buffer[bpos]), fsize-bpos, &timeout);
     if (n < 0) {
         timeout = 60;
-
-        //** Create the stream so we can get the heartbeating while we work
-        mqs = gop_mq_stream_write_create(osrs->mqc, osrs->server_portal, osrs->ongoing, MQS_PACK_COMPRESS, osrs->max_stream, timeout, msg, fid, hid, 0);
-
         goto fail;
     }
     bpos += n;
-
-    //** Create the stream so we can get the heartbeating while we work
-    mqs = gop_mq_stream_write_create(osrs->mqc, osrs->server_portal, osrs->ongoing, MQS_PACK_COMPRESS, osrs->max_stream, timeout, msg, fid, hid, 0);
-
 
     //** Get the spin heartbeat handle ID
     n = tbx_zigzag_decode(&(buffer[bpos]), fsize-bpos, &len);
@@ -642,6 +635,9 @@ void osrs_remove_regex_object_cb(void *arg, gop_mq_task_t *task)
     n = tbx_zigzag_decode(&(buffer[bpos]), fsize-bpos, &recurse_depth);
     if (n < 0) goto fail;
     bpos += n;
+
+    //** Create the stream so we can get the heartbeating while we work
+    mqs = gop_mq_stream_write_create(osrs->mqc, osrs->server_portal, osrs->ongoing, MQS_PACK_COMPRESS, osrs->max_stream, timeout, msg, fid, hid, (recurse_depth>0) ? 1 : 0);
 
     n = tbx_zigzag_decode(&(buffer[bpos]), fsize-bpos, &obj_types);
     if (n < 0) goto fail;
@@ -703,6 +699,7 @@ fail:
     if (object_regex != NULL) lio_os_regex_table_destroy(object_regex);
 
     //** Send the response
+    if (mqs == NULL) mqs = gop_mq_stream_write_create(osrs->mqc, osrs->server_portal, osrs->ongoing, MQS_PACK_COMPRESS, osrs->max_stream, timeout, msg, fid, hid, 0);
     n = tbx_zigzag_encode(status.op_status, tbuf);
     n = n + tbx_zigzag_encode(status.error_code, &(tbuf[n]));
     gop_mq_stream_write(mqs, tbuf, n);
@@ -1601,6 +1598,7 @@ void osrs_regex_set_mult_attr_cb(void *arg, gop_mq_task_t *task)
     memset(&spin, 0, sizeof(spin));
     key = NULL;
     val = NULL, v_size = NULL;
+    mqs = NULL;
     n_attrs = 0;
 
     //** Parse the command.
@@ -1629,13 +1627,9 @@ void osrs_regex_set_mult_attr_cb(void *arg, gop_mq_task_t *task)
     n = tbx_zigzag_decode(&(buffer[bpos]), fsize-bpos, &timeout);
     if (n < 0) {
         timeout = 60;
-    } else {
-        bpos += n;
+        goto fail;
     }
-
-    //** Create the stream so we can get the heartbeating while we work
-    mqs = gop_mq_stream_write_create(osrs->mqc, osrs->server_portal, osrs->ongoing, MQS_PACK_COMPRESS, osrs->max_stream, timeout, msg, fid, hid, 0);
-    if (n < 0) goto fail;
+    bpos += n;
 
     //** Get the spin heartbeat handle ID
     n = tbx_zigzag_decode(&(buffer[bpos]), fsize-bpos, &len);
@@ -1662,6 +1656,9 @@ void osrs_regex_set_mult_attr_cb(void *arg, gop_mq_task_t *task)
     n = tbx_zigzag_decode(&(buffer[bpos]), fsize-bpos, &recurse_depth);
     if (n < 0) goto fail;
     bpos += n;
+
+    //** Create the stream so we can get the heartbeating while we work
+    mqs = gop_mq_stream_write_create(osrs->mqc, osrs->server_portal, osrs->ongoing, MQS_PACK_COMPRESS, osrs->max_stream, timeout, msg, fid, hid, (recurse_depth > 0) ? 1 : 0);
 
     n = tbx_zigzag_decode(&(buffer[bpos]), fsize-bpos, &obj_types);
     if (n < 0) goto fail;
@@ -1775,6 +1772,7 @@ fail:
 
     log_printf(5, "END status=%d n_errs=%d\n", status.op_status, status.error_code);
     //** Send the response
+    if (mqs == NULL) mqs = gop_mq_stream_write_create(osrs->mqc, osrs->server_portal, osrs->ongoing, MQS_PACK_COMPRESS, osrs->max_stream, timeout, msg, fid, hid, 0);
     n = tbx_zigzag_encode(status.op_status, tbuf);
     n = n + tbx_zigzag_encode(status.error_code, &(tbuf[n]));
     gop_mq_stream_write(mqs, tbuf, n);
@@ -2301,6 +2299,7 @@ void osrs_object_iter_alist_cb(void *arg, gop_mq_task_t *task)
     val = NULL, v_size = NULL;
     n_attrs = 0;
     it = NULL;
+    mqs = NULL;
 
     //** Parse the command.
     msg = task->msg;
@@ -2325,18 +2324,16 @@ void osrs_object_iter_alist_cb(void *arg, gop_mq_task_t *task)
     n = tbx_zigzag_decode(&(buffer[bpos]), fsize-bpos, &timeout);
     if (n < 0) {
         timeout = 60;
-        //** Create the stream so we can get the heartbeating while we work.  We need the timeout is why we do it here,
-        mqs = gop_mq_stream_write_create(osrs->mqc, osrs->server_portal, osrs->ongoing, MQS_PACK_COMPRESS, osrs->max_stream, timeout, msg, fid, hid, 0);
         goto fail;
     }
     bpos += n;
 
-    //** Create the stream so we can get the heartbeating while we work.  We need the timeout is why we do it here,
-    mqs = gop_mq_stream_write_create(osrs->mqc, osrs->server_portal, osrs->ongoing, MQS_PACK_COMPRESS, osrs->max_stream, timeout, msg, fid, hid, 0);
-
     n = tbx_zigzag_decode(&(buffer[bpos]), fsize-bpos, &recurse_depth);
     if (n < 0) goto fail;
     bpos += n;
+
+    //** Create the stream so we can get the heartbeating while we work.
+    mqs = gop_mq_stream_write_create(osrs->mqc, osrs->server_portal, osrs->ongoing, MQS_PACK_COMPRESS, osrs->max_stream, timeout, msg, fid, hid, (recurse_depth>0) ? 1 : 0);
 
     n = tbx_zigzag_decode(&(buffer[bpos]), fsize-bpos, &obj_types);
     if (n < 0) goto fail;
@@ -2395,6 +2392,7 @@ void osrs_object_iter_alist_cb(void *arg, gop_mq_task_t *task)
 
 fail:
     //** Encode the status
+    if (mqs == NULL) mqs = gop_mq_stream_write_create(osrs->mqc, osrs->server_portal, osrs->ongoing, MQS_PACK_COMPRESS, osrs->max_stream, timeout, msg, fid, hid, 0);
     status = (it != NULL) ? gop_success_status : gop_failure_status;
     n = tbx_zigzag_encode(status.op_status, tbuf);
     n = n + tbx_zigzag_encode(status.error_code, &(tbuf[n]));
@@ -2493,6 +2491,7 @@ void osrs_object_iter_aregex_cb(void *arg, gop_mq_task_t *task)
 
     log_printf(5, "Processing incoming request\n");
 
+    mqs = NULL;
     it = NULL;
     path = object_regex = attr_regex = NULL;
 
@@ -2518,22 +2517,16 @@ void osrs_object_iter_aregex_cb(void *arg, gop_mq_task_t *task)
     n = tbx_zigzag_decode(&(buffer[bpos]), fsize-bpos, &timeout);
     if (n < 0) {
         timeout = 60;
-
-        //** Create the stream so things don't break
-        mqs = gop_mq_stream_write_create(osrs->mqc, osrs->server_portal, osrs->ongoing, MQS_PACK_COMPRESS, osrs->max_stream, timeout, msg, fid, hid, 0);
-
         goto fail;
     }
     bpos += n;
 
-
-    //** Create the stream so we can get the heartbeating while we work
-    mqs = gop_mq_stream_write_create(osrs->mqc, osrs->server_portal, osrs->ongoing, MQS_PACK_COMPRESS, osrs->max_stream, timeout, msg, fid, hid, 0);
-
-
     n = tbx_zigzag_decode(&(buffer[bpos]), fsize-bpos, &recurse_depth);
     if (n < 0) goto fail;
     bpos += n;
+
+    //** Create the stream so we can get the heartbeating while we work
+    mqs = gop_mq_stream_write_create(osrs->mqc, osrs->server_portal, osrs->ongoing, MQS_PACK_COMPRESS, osrs->max_stream, timeout, msg, fid, hid, (recurse_depth>0) ? 1 : 0);
 
     n = tbx_zigzag_decode(&(buffer[bpos]), fsize-bpos, &obj_types);
     if (n < 0) goto fail;
@@ -2572,6 +2565,7 @@ void osrs_object_iter_aregex_cb(void *arg, gop_mq_task_t *task)
 
 fail:
     //** Encode the status
+    if (mqs == NULL) mqs = gop_mq_stream_write_create(osrs->mqc, osrs->server_portal, osrs->ongoing, MQS_PACK_COMPRESS, osrs->max_stream, timeout, msg, fid, hid, 0);
     status = (it != NULL) ? gop_success_status : gop_failure_status;
     n = tbx_zigzag_encode(status.op_status, tbuf);
     n = n + tbx_zigzag_encode(status.error_code, &(tbuf[n]));
@@ -2678,6 +2672,7 @@ void osrs_attr_iter_cb(void *arg, gop_mq_task_t *task)
     it = NULL;
     handle = NULL;
     attr_regex = NULL;
+    mqs = NULL;
 
     //** Parse the command.
     msg = task->msg;
@@ -2703,7 +2698,6 @@ void osrs_attr_iter_cb(void *arg, gop_mq_task_t *task)
 
         //** Create the stream so we can get the heartbeating while we work
         timeout = 60;
-        mqs = gop_mq_stream_write_create(osrs->mqc, osrs->server_portal, osrs->ongoing, MQS_PACK_COMPRESS, osrs->max_stream, timeout, msg, fid, fhid, 0);
         osrs_update_active_table(os, fhid);  //** Update the active log
 
         goto fail;
@@ -2725,10 +2719,6 @@ void osrs_attr_iter_cb(void *arg, gop_mq_task_t *task)
     n = tbx_zigzag_decode(&(buffer[bpos]), fsize-bpos, &timeout);
     if (n < 0) {
         timeout = 60;
-
-        //** Create the stream so we can get the heartbeating while we work
-        mqs = gop_mq_stream_write_create(osrs->mqc, osrs->server_portal, osrs->ongoing, MQS_PACK_COMPRESS, osrs->max_stream, timeout, msg, fid, fhid, 0);
-        osrs_update_active_table(os, fhid);  //** Update the active log
         goto fail;
     }
     bpos += n;
@@ -2736,7 +2726,6 @@ void osrs_attr_iter_cb(void *arg, gop_mq_task_t *task)
     //** Create the stream so we can get the heartbeating while we work
     mqs = gop_mq_stream_write_create(osrs->mqc, osrs->server_portal, osrs->ongoing, MQS_PACK_COMPRESS, osrs->max_stream, timeout, msg, fid, fhid, 0);
     osrs_update_active_table(os, fhid);  //** Update the active log
-
 
     n = tbx_zigzag_decode(&(buffer[bpos]), fsize-bpos, &v_size_init);
     if (n < 0) goto fail;
@@ -2758,6 +2747,7 @@ void osrs_attr_iter_cb(void *arg, gop_mq_task_t *task)
 fail:
 
     //** Encode the status
+    if (mqs == NULL) mqs = gop_mq_stream_write_create(osrs->mqc, osrs->server_portal, osrs->ongoing, MQS_PACK_COMPRESS, osrs->max_stream, timeout, msg, fid, fhid, 0);
     status = (it != NULL) ? gop_success_status : gop_failure_status;
     n = tbx_zigzag_encode(status.op_status, tbuf);
     n = n + tbx_zigzag_encode(status.error_code, &(tbuf[n]));
@@ -2875,7 +2865,7 @@ void osrs_fsck_iter_cb(void *arg, gop_mq_task_t *task)
     gop_mq_frame_destroy(fdata);
 
     //** Create the stream so we can get the heartbeating while we work
-    mqs = gop_mq_stream_write_create(osrs->mqc, osrs->server_portal, osrs->ongoing, MQS_PACK_COMPRESS, osrs->max_stream, timeout, msg, fid, fhid, 0);
+    mqs = gop_mq_stream_write_create(osrs->mqc, osrs->server_portal, osrs->ongoing, MQS_PACK_COMPRESS, osrs->max_stream, timeout, msg, fid, fhid, 1);
 
     log_printf(5, "1.err=%d\n", err);
 
