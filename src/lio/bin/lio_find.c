@@ -94,6 +94,7 @@ int main(int argc, char **argv)
     }
 
     it_args = tbx_stdinarray_iter_create(argc-start_index, (const char **)(argv+start_index));
+    ftype = 0;
     while (1) {
         if (rg_mode == 0) {
             //** Create the simple path iterator

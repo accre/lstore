@@ -199,6 +199,7 @@ int main(int argc, char **argv)
     }
 
     fcount = 0;
+    ftype = 0;  //** Make old GCC version happy
 
     q = gop_opque_new();
     table = tbx_list_create(0, &tbx_list_string_compare, NULL, tbx_list_no_key_free, tbx_list_no_data_free);
