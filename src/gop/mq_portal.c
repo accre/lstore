@@ -291,7 +291,7 @@ void gop_mq_command_exec(gop_mq_command_table_t *t, gop_mq_task_t *task, void *k
 int gop_mq_submit(gop_mq_portal_t *p, gop_mq_task_t *task)
 {
     char c;
-    int backlog, err;
+    int backlog, err, n_failed, i;
     gop_mq_task_t *t;
     apr_thread_mutex_lock(p->lock);
 
@@ -308,6 +308,7 @@ int gop_mq_submit(gop_mq_portal_t *p, gop_mq_task_t *task)
 
     //** Check if we need more connections
     err = 0;
+    n_failed = 0;
     if (backlog > p->backlog_trigger) {
         if (p->total_conn == 0) { //** No current connections so try and make one
             err = mq_conn_create(p, 1);
@@ -315,6 +316,7 @@ int gop_mq_submit(gop_mq_portal_t *p, gop_mq_task_t *task)
                 log_printf(1, "Host is dead so failing tasks host=%s\n", p->host);
                 while ((t = tbx_stack_pop(p->tasks)) != NULL) {
                     thread_pool_direct(p->tp, mqtp_failure, t);
+                    n_failed++;
                 }
             }
         } else if (p->total_conn < p->max_conn) {
@@ -326,6 +328,7 @@ int gop_mq_submit(gop_mq_portal_t *p, gop_mq_task_t *task)
             log_printf(1, "Host is dead so failing tasks host=%s\n", p->host);
             while ((t = tbx_stack_pop(p->tasks)) != NULL) {
                 thread_pool_direct(p->tp, mqtp_failure, t);
+                n_failed++;
             }
         }
     }
@@ -339,6 +342,10 @@ int gop_mq_submit(gop_mq_portal_t *p, gop_mq_task_t *task)
     c = 1;
     gop_mq_pipe_write(p->efd[1], &c);
 
+    //** Clean up the pipe if needed
+    if (n_failed > 0) {
+        for (i=0; i<n_failed; i++) gop_mq_pipe_read(p->efd[0], &c);
+    }
     return(0);
 }
 
