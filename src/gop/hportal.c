@@ -172,7 +172,6 @@ void _reap_hportal(gop_host_portal_t *hp, int quick)
 
     tbx_stack_move_to_top(hp->closed_que);
     while ((hc = (gop_host_connection_t *)tbx_stack_get_current_data(hp->closed_que)) != NULL) {
-        apr_thread_join(&value, hc->recv_thread);
         log_printf(5, "hp=%s ns=%d\n", hp->skey, tbx_ns_getid(hc->ns));
         for (count=0; ((quick == 0) || (count < 2)); count++) {
             lock_hc(hc);  //** Make sure that no one is running close_hc() while we're trying to close it
@@ -180,6 +179,7 @@ void _reap_hportal(gop_host_portal_t *hp, int quick)
                 unlock_hc(hc);
 
                 tbx_stack_delete_current(hp->closed_que, 0, 0);
+                apr_thread_join(&value, hc->recv_thread);
                 destroy_host_connection(hc);
 
                 break;
