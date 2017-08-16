@@ -72,7 +72,7 @@ gop_host_connection_t *new_host_connection(apr_pool_t *mpool)
 
 void destroy_host_connection(gop_host_connection_t *hc)
 {
-    log_printf(15, "host=%s ns=%d\n", hc->hp->host, tbx_ns_getid(hc->ns));
+    log_printf(15, "host=%s ns=%d closing=%d\n", hc->hp->host, tbx_ns_getid(hc->ns), hc->closing);
     tbx_ns_destroy(hc->ns);
     tbx_stack_free(hc->pending_stack, 0);
     apr_thread_mutex_destroy(hc->lock);
@@ -92,7 +92,7 @@ void close_hc(gop_host_connection_t *hc, int quick)
     gop_host_portal_t *hp;
 
     //** Trigger the send thread to shutdown which also closes the recv thread
-    log_printf(15, "close_hc: Closing ns=%d\n", tbx_ns_getid(hc->ns));
+    log_printf(15, "close_hc: Closing ns=%d closing=%d quick=%d\n", tbx_ns_getid(hc->ns), hc->closing, quick);
     lock_hc(hc);
     hc->shutdown_request = 1;
     unlock_hc(hc);

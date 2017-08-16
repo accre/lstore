@@ -651,6 +651,7 @@ gop_host_connection_t *find_hc_to_close(gop_portal_context_t *hpc)
 
     if (best_hc != NULL) {  //** Flag it as being closed so we ignore it next round and release the lock
         best_hc->closing = 1;
+        log_printf(5, "best_hc to close ns=%d\n", tbx_ns_getid(best_hc->ns));
         unlock_hc(best_hc);
     }
     apr_thread_mutex_unlock(hpc->lock);
