@@ -120,6 +120,11 @@ void close_hc(gop_host_connection_t *hc, int quick)
     //** Wait until the recv thread completes
     apr_thread_join(&value, hc->recv_thread);
 
+    //** Let the reaper take it
+    lock_hc(hc);
+    hc->closing = 2;
+    unlock_hc(hc);
+
     hp = hc->hp;
     hportal_lock(hp);
     _reap_hportal(hp, quick);  //** Clean up the closed connections.  Including hc passed in
