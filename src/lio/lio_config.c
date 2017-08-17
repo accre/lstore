@@ -21,6 +21,7 @@
 #include <apr_errno.h>
 #include <apr_hash.h>
 #include <apr_pools.h>
+#include <apr_signal.h>
 #include <apr_thread_mutex.h>
 #include <apr_time.h>
 #include <ctype.h>
@@ -86,7 +87,87 @@ tbx_list_t *_lc_object_list = NULL;
 lio_config_t *lio_create_nl(char *fname, char *section, char *user, char *exe_name);
 void lio_destroy_nl(lio_config_t *lio);
 
-char **myargv = NULL;  //** This is used to hold the new argv we return from lio_init so we can properly clean it up
+char **myargv = NULL;  // ** This is used to hold the new argv we return from lio_init so we can properly clean it up
+
+char *_lio_info_name = NULL;
+tbx_stack_t *_ih_list = NULL;
+
+typedef struct {  // ** info handler task
+    lio_info_fn_t fn;
+    void *arg;
+} ih_task_t;
+
+// ***************************************************************
+// lio_info_handler_add - Adds a routine to run when info is requested
+// ***************************************************************
+
+void lio_info_handler_add(lio_info_fn_t fn, void *arg)
+{
+    ih_task_t *t;
+
+    if (_ih_list == NULL) _ih_list = tbx_stack_new();
+
+    tbx_type_malloc_clear(t, ih_task_t, 1);
+    t->fn = fn;
+    t->arg = arg;
+    tbx_stack_push(_ih_list, t);
+}
+
+// ***************************************************************
+// lio_info_handler_remove - Removes a routine to run when info is requested
+// ***************************************************************
+
+void lio_info_handler_remove(lio_info_fn_t fn, void *arg)
+{
+    ih_task_t *t;
+
+    if (_ih_list == NULL) return;
+
+    tbx_stack_move_to_top(_ih_list);
+    while ((t = tbx_stack_get_current_data(_ih_list)) != NULL) {
+        if ((t->fn == fn) && (t->arg == arg)) {
+            tbx_stack_delete_current(_ih_list, 0, 1);
+            return;
+        }
+
+        tbx_stack_move_down(_ih_list);
+    }
+
+    return;
+}
+
+// ***************************************************************
+// lio_info_handler - Prints the LIO info
+// ***************************************************************
+
+void lio_info_handler(int sig)
+{
+    FILE *fd;
+    ih_task_t *t;
+
+    fd = fopen(_lio_info_name, "w");
+    if (fd == NULL) {
+        log_printf(0, "Unable to dump info to %s\n", _lio_info_name);
+        return;
+    }
+
+    tbx_stack_move_to_top(_ih_list);
+    while ((t = tbx_stack_get_current_data(_ih_list)) != NULL) {
+        t->fn(t->arg, fd);
+        tbx_stack_move_down(_ih_list);
+    }
+
+    fclose(fd);
+}
+
+// ***************************************************************
+// ih_sample_fn - Sample info handler
+// ***************************************************************
+
+void ih_sample_fn(void *arg, FILE *fd)
+{
+    fprintf(fd, "This is a test\n");
+}
 
 //***************************************************************
 // check_for_section - Checks to make sure the section
@@ -1399,6 +1480,12 @@ no_args:
     i = tbx_inip_get_integer(lio_gc->ifd, section_name, "wq_n", 5);
     lio_wq_startup(i);
 
+    //** Install the signal handler hook to get info
+    _lio_info_name = tbx_inip_get_string(lio_gc->ifd, section_name, "info_fname", "/tmp/lio_info.txt");
+    apr_signal_unblock(SIGUSR2);
+    apr_signal(SIGUSR2, lio_info_handler);
+    lio_info_handler_add(ih_sample_fn, NULL);
+
     log_printf(1, "INIT completed\n");
 
     return(0);
@@ -1439,6 +1526,7 @@ int lio_shutdown()
     lio_ifd = NULL;
     if (_lio_exe_name) free(_lio_exe_name);
     if (myargv != NULL) free(myargv);
+    if (_lio_info_name) free(_lio_info_name);
 
     return(0);
 }

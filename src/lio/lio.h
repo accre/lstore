@@ -34,6 +34,10 @@
 extern "C" {
 #endif
 
+typedef void (*lio_info_fn_t)(void *arg, FILE *fd);
+
+void lio_info_handler_add(lio_info_fn_t fn, void *arg);
+void lio_info_handler_remove(lio_info_fn_t fn, void *arg);
 
 extern char *_lio_stat_keys[];
 #define  _lio_stat_key_size 7
