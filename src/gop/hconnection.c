@@ -112,7 +112,7 @@ void close_hc(gop_host_connection_t *hc, int quick)
 
     if (quick == 1) {  //** Quick shutdown.  Don't wait and clean up.
         lock_hc(hc);
-        hc->closing = 2;  //** Flag a reaper that I'm done with it
+        hc->closing = 2;  //** Flag a reaper that I'm done with it and not to join
         unlock_hc(hc);
         return;
     }
@@ -120,9 +120,9 @@ void close_hc(gop_host_connection_t *hc, int quick)
     //** Wait until the recv thread completes
     apr_thread_join(&value, hc->recv_thread);
 
-    //** Let the reaper take it
+    //** Let the reaper take it but don't join since I've already done it.
     lock_hc(hc);
-    hc->closing = 2;
+    hc->closing = 3;
     unlock_hc(hc);
 
     hp = hc->hp;

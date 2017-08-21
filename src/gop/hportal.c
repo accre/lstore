@@ -170,6 +170,7 @@ void _reap_hportal(gop_host_portal_t *hp, int quick)
     apr_status_t value;
     int count;
 
+again:
     tbx_stack_move_to_top(hp->closed_que);
     while ((hc = (gop_host_connection_t *)tbx_stack_get_current_data(hp->closed_que)) != NULL) {
         log_printf(5, "hp=%s ns=%d\n", hp->skey, tbx_ns_getid(hc->ns));
@@ -179,7 +180,7 @@ void _reap_hportal(gop_host_portal_t *hp, int quick)
                 unlock_hc(hc);
 
                 tbx_stack_delete_current(hp->closed_que, 0, 0);
-                apr_thread_join(&value, hc->recv_thread);
+                if (hc->closing != 3) apr_thread_join(&value, hc->recv_thread);
                 destroy_host_connection(hc);
 
                 break;
@@ -189,7 +190,14 @@ void _reap_hportal(gop_host_portal_t *hp, int quick)
         }
 
         tbx_stack_move_down(hp->closed_que);
-        if (tbx_stack_get_current_data(hp->closed_que) == NULL) tbx_stack_move_to_top(hp->closed_que);  //** Restart it needed
+        if ((quick == 0) && (tbx_stack_get_current_data(hp->closed_que) == NULL)) {
+            if (tbx_stack_count(hp->closed_que) > 0) { //**  Got to release/reaquire the lock in case of a deadlock with close_hc
+                hportal_unlock(hp);
+                usleep(1000);
+                hportal_lock(hp);
+                goto again;
+            }
+        }
     }
 }
 
