@@ -35,7 +35,9 @@
 #include <tbx/log.h>
 #include <tbx/pigeon_coop.h>
 #include <tbx/skiplist.h>
+#include <tbx/siginfo.h>
 #include <tbx/stack.h>
+#include <tbx/string_token.h>
 #include <tbx/type_malloc.h>
 
 #include "cache.h"
@@ -44,6 +46,7 @@
 #include "ex3.h"
 #include "ex3/compare.h"
 #include "ex3/types.h"
+#include "lio.h"
 
 //******************
 lio_cache_t *global_cache;
@@ -63,6 +66,30 @@ typedef struct {
 
 int _amp_logging = 15;  //** Kludge to flip the low level loggin statements on/off
 int _amp_slog = 15;
+
+//***********************************************************************
+// amp_cache_info_fn - Dumps the Cache info
+//***********************************************************************
+
+void amp_cache_info_fn(void *arg, FILE *fd)
+{
+    lio_cache_t *c = (lio_cache_t *)arg;
+    lio_cache_amp_t *cp = (lio_cache_amp_t *)c->fn.priv;
+    char ppbuf[100];
+    double d;
+    int n;
+
+    fprintf(fd, "Cache Usage------------------------\n");
+    cache_lock(c);
+    n = tbx_stack_count(cp->stack);
+    d = cp->bytes_used;
+    if (n>0) d /= n;
+    fprintf(fd, "n_pages: %d\n", n);
+    fprintf(fd, "Used bytes: %s (" XOT ")\n", tbx_stk_pretty_print_double_with_scale(1024, cp->bytes_used, ppbuf), cp->bytes_used);
+    fprintf(fd, "Average page size: %s (%lf)\n", tbx_stk_pretty_print_double_with_scale(1024, d, ppbuf), d);
+    fprintf(fd, "\n");
+    cache_unlock(c);
+}
 
 //*************************************************************************
 // print_lio_cache_table
@@ -1302,6 +1329,9 @@ int amp_cache_destroy(lio_cache_t *c)
     log_printf(15, "Shutting down\n");
     tbx_log_flush();
 
+    //** Remove ourselves from the info handler
+    tbx_siginfo_handler_remove(amp_cache_info_fn, c);
+
     //** Shutdown the dirty thread
     cache_lock(c);
     c->shutdown_request = 1;
@@ -1396,6 +1426,9 @@ lio_cache_t *amp_cache_create(void *arg, data_attr_t *da, int timeout)
     cache->fn.adding_segment = amp_adding_segment;
     cache->fn.removing_segment = amp_removing_segment;
     cache->fn.get_handle = cache_base_handle;
+
+    //** Add ourselves to the info handler
+    tbx_siginfo_handler_add(amp_cache_info_fn, cache);
 
     apr_thread_cond_create(&(c->dirty_trigger), cache->mpool);
     tbx_thread_create_assert(&(c->dirty_thread), NULL, amp_dirty_thread, (void *)cache, cache->mpool);

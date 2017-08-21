@@ -72,6 +72,31 @@ static char *_lio_fh_keys[] = { "system.inode", "system.exnode" };
 //***********************************************************************
 
 //***********************************************************************
+// lio_open_files_info_fn - Prints info on open files
+//***********************************************************************
+
+void lio_open_files_info_fn(void *arg, FILE *fd)
+{
+    lio_config_t *lc = (lio_config_t *)arg;
+    lio_file_handle_t *fh;
+    tbx_list_iter_t it;
+    ex_id_t *fid;
+
+    fprintf(fd, "LIO Open File list ----------------------\n");
+
+    lio_lock(lc);
+    it = tbx_list_iter_search(lc->open_index, NULL, 0);
+    tbx_list_next(&it, (tbx_list_key_t *)&fid, (tbx_list_data_t **)&fh);
+    while (fh != NULL) {
+        fprintf(fd, " seg=" XIDT " fname=%s\n", fh->vid, fh->fname);
+        tbx_list_next(&it, (tbx_list_key_t *)&fid, (tbx_list_data_t **)&fh);
+    }
+    lio_unlock(lc);
+
+    fprintf(fd, "\n");
+}
+
+//***********************************************************************
 // lio_fopen_flags - Handles fopen type string flags and converts them
 //   to an integer which can be passed to lio_open calls.
 //   On error -1 is returned
@@ -475,6 +500,7 @@ gop_op_status_t lio_myopen_fn(void *arg, int id)
 
     if (fh != NULL) { //** Already open so just increment the ref count and return a new fd
         fh->ref_count++;
+        fh->fname = strdup(fd->path);
         fd->fh = fh;
         lio_unlock(lc);
         *op->fd = fd;
@@ -704,6 +730,7 @@ gop_op_status_t lio_myclose_fn(void *arg, int id)
 
 
     if (fh->remove_on_close) status = gop_sync_exec_status(lio_remove_gop(lc, fd->creds, fd->path, NULL, lio_exists(lc, fd->creds, fd->path)));
+    if (fh->fname) free(fh->fname);
 
     free(fh);
     if (serr.hard != 0) status = gop_failure_status;

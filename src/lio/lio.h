@@ -34,10 +34,7 @@
 extern "C" {
 #endif
 
-typedef void (*lio_info_fn_t)(void *arg, FILE *fd);
-
-void lio_info_handler_add(lio_info_fn_t fn, void *arg);
-void lio_info_handler_remove(lio_info_fn_t fn, void *arg);
+void lio_open_files_info_fn(void *arg, FILE *fd);
 
 extern char *_lio_stat_keys[];
 #define  _lio_stat_key_size 7
@@ -68,6 +65,7 @@ struct lio_file_handle_t {  //** Shared file handle
     lio_segment_t *seg;
     lio_config_t *lc;
     wq_context_t *wq_ctx;
+    char *fname;  //** This is just used for dumping info and represents the name used for adding the FH
     ex_id_t vid;
     int ref_count;
     int remove_on_close;

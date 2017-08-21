@@ -47,6 +47,7 @@
 #include <tbx/fmttypes.h>
 #include <tbx/iniparse.h>
 #include <tbx/log.h>
+#include <tbx/siginfo.h>
 #include <tbx/stack.h>
 #include <tbx/type_malloc.h>
 #include <tbx/varint.h>
@@ -102,7 +103,7 @@ void osrs_print_active_table(lio_object_service_fn_t *os, FILE *fd)
     char sdate[128], ldate[128];
     osrs_active_t *a;
 
-    log_printf(5, "Dumping active table\n");
+    fprintf(fd, "OSRS Dumping active table --------------------------------\n");
 
     apr_thread_mutex_lock(osrs->lock);
     apr_ctime(sdate, apr_time_now());
@@ -118,6 +119,7 @@ void osrs_print_active_table(lio_object_service_fn_t *os, FILE *fd)
         a = tbx_stack_get_current_data(osrs->active_lru);
     }
     apr_thread_mutex_unlock(osrs->lock);
+    fprintf(fd, "\n");
 }
 
 
@@ -125,18 +127,13 @@ void osrs_print_active_table(lio_object_service_fn_t *os, FILE *fd)
 //  signal_print_active_table - Dumps the active table
 //***********************************************************************
 
-void signal_print_active_table(int sig)
+void osrs_siginfo_fn(void *arg, FILE *fd)
 {
-    lio_osrs_priv_t *osrs;
-    FILE *fd;
+    lio_object_service_fn_t *os = (lio_object_service_fn_t *)arg;
 
     if (_os_global == NULL) return;
 
-    osrs = (lio_osrs_priv_t *)_os_global->priv;
-
-    if ((fd = fopen(osrs->fname_active, "w")) == NULL) return;
-    osrs_print_active_table(_os_global, fd);
-    fclose(fd);
+    osrs_print_active_table(os, fd);
 
     return;
 }
@@ -3195,8 +3192,7 @@ lio_object_service_fn_t *object_service_remote_server_create(lio_service_manager
     osrs->active_lru = tbx_stack_new();
 
     _os_global = os;
-    apr_signal_unblock(SIGUSR1);
-    apr_signal(SIGUSR1, signal_print_active_table);
+    tbx_siginfo_handler_add(osrs_siginfo_fn, os);
 
     //** Activate it
     gop_mq_portal_install(osrs->mqc, osrs->server_portal);

@@ -39,6 +39,7 @@
 #include <tbx/apr_wrapper.h>
 #include <tbx/fmttypes.h>
 #include <tbx/log.h>
+#include <tbx/siginfo.h>
 #include <tbx/stack.h>
 #include <tbx/type_malloc.h>
 
@@ -160,6 +161,12 @@ typedef struct {
     apr_time_t entry_timeout;
     apr_time_t cleanup_interval;
     apr_thread_t *cleanup_thread;
+    ex_off_t n_objects_created;
+    ex_off_t n_objects_removed;
+    ex_off_t n_attrs_created;
+    ex_off_t n_attrs_removed;
+    ex_off_t n_attrs_hit;
+    ex_off_t n_attrs_miss;
     int shutdown;
 } ostc_priv_t;
 
@@ -178,6 +185,69 @@ typedef struct {
 
 gop_op_status_t ostc_close_object_fn(void *arg, int tid);
 gop_op_status_t ostc_delayed_open_object(lio_object_service_fn_t *os, ostc_fd_t *fd);
+
+//***********************************************************************
+// _ostc_count - Counts the objects and attributes
+//     NOTE: ostc->lock must be held by the calling process
+//***********************************************************************
+
+void _ostc_count(ostcdb_object_t *obj, ex_off_t *n_objs, ex_off_t *n_attrs)
+{
+    ostcdb_object_t *o;
+    apr_hash_index_t *hi;
+
+    if (obj == NULL) return;  //** Nothing to do so return
+
+    //** Recursively count the objects
+    if (obj->objects) {
+        for (hi = apr_hash_first(NULL, obj->objects); hi != NULL; hi = apr_hash_next(hi)) {
+            apr_hash_this(hi, NULL, NULL, (void **) &o);
+            _ostc_count(o, n_objs, n_attrs);
+        }
+    }
+
+    //** Count my attributes and myself
+    (*n_objs)++;
+    (*n_attrs) += apr_hash_count(obj->attrs);
+}
+
+
+//***********************************************************************
+// ostc_info_fn - Dumps the time cache info
+//***********************************************************************
+
+void ostc_info_fn(void *arg, FILE *fd)
+{
+    lio_object_service_fn_t *os = (lio_object_service_fn_t *)arg;
+    ostc_priv_t *ostc = (ostc_priv_t *)os->priv;
+    ex_off_t no, na, co, ca, wo, wa;
+    double d;
+
+    fprintf(fd, "OS Timecache Usage------------------------\n");
+    OSTC_LOCK(ostc);
+    fprintf(fd, "Created    -- n_objects: " XOT " n_attrs: " XOT "\n", ostc->n_objects_created, ostc->n_attrs_created);
+    fprintf(fd, "Removed    -- n_objects: " XOT " n_attrs: " XOT "\n", ostc->n_objects_removed, ostc->n_attrs_removed);
+
+    co = ostc->n_objects_created - ostc->n_objects_removed;
+    ca = ostc->n_attrs_created - ostc->n_attrs_removed;
+    fprintf(fd, "Calculated -- n_objects: " XOT " n_attrs: " XOT "\n", co, ca);
+
+    wo = wa = 0;
+    _ostc_count(ostc->cache_root, &wo, &wa);
+    fprintf(fd, "Walked     -- n_objects: " XOT " n_attrs: " XOT "\n", wo, wa);
+
+    no = wo-co; na = wa-ca;
+    if ((no != 0) || (na != 0)) {
+        fprintf(fd, "ERROR(c-w) -- n_objects: " XOT " n_attrs: " XOT "\n", no, na);
+    }
+
+    d = ostc->n_attrs_hit;
+    no = ostc->n_attrs_hit + ostc->n_attrs_miss;
+    if (no > 0) d /= no;
+    fprintf(fd, "Attr Cache -- hits: " XOT " miss: " XOT " hit/miss ratio: %lf\n", ostc->n_attrs_hit, ostc->n_attrs_miss, d);
+    fprintf(fd, "\n");
+    OSTC_UNLOCK(ostc);
+}
 
 //***********************************************************************
 // free_ostcdb_attr - Destroys a cached attribute
@@ -218,9 +288,11 @@ ostcdb_attr_t *new_ostcdb_attr(char *key, void *val, int v_size, apr_time_t expi
 
 //***********************************************************************
 // free_ostcdb_object - Destroys a cache object
+//    Accumulates the number of objects and attrs removed in the
+//    provided counters.
 //***********************************************************************
 
-void free_ostcdb_object(ostcdb_object_t *obj)
+void free_ostcdb_object(ostcdb_object_t *obj, ex_off_t *n_objs, ex_off_t *n_attrs)
 {
     ostcdb_object_t *o;
     ostcdb_attr_t *a;
@@ -231,13 +303,14 @@ void free_ostcdb_object(ostcdb_object_t *obj)
     for (ahi = apr_hash_first(NULL, obj->attrs); ahi != NULL; ahi = apr_hash_next(ahi)) {
         apr_hash_this(ahi, NULL, NULL, (void **) &a);
         free_ostcdb_attr(a);
+        (*n_attrs)++;
     }
 
     //** Now free all the children objects
     if (obj->objects != NULL) {
         for (ohi = apr_hash_first(NULL, obj->objects); ohi != NULL; ohi = apr_hash_next(ohi)) {
             apr_hash_this(ohi, NULL, NULL, (void **) &o);
-            free_ostcdb_object(o);
+            free_ostcdb_object(o, n_objs, n_attrs);
         }
     }
 
@@ -245,6 +318,7 @@ void free_ostcdb_object(ostcdb_object_t *obj)
     if (obj->link != NULL) free(obj->link);
     apr_pool_destroy(obj->mpool);
     free(obj);
+    (*n_objs)++;
 }
 
 //***********************************************************************
@@ -275,6 +349,7 @@ ostcdb_object_t *new_ostcdb_object(char *entry, int ftype, apr_time_t expire, ap
 
 int _ostc_cleanup(lio_object_service_fn_t *os, ostcdb_object_t *obj, apr_time_t expired)
 {
+    ostc_priv_t *ostc = (ostc_priv_t *)os->priv;
     ostcdb_object_t *o;
     ostcdb_attr_t *a;
     apr_hash_index_t *hi;
@@ -291,7 +366,7 @@ int _ostc_cleanup(lio_object_service_fn_t *os, ostcdb_object_t *obj, apr_time_t 
             okept += result;
             if (result == 0) {
                 apr_hash_set(obj->objects, o->fname, APR_HASH_KEY_STRING, NULL);
-                free_ostcdb_object(o);
+                free_ostcdb_object(o, &ostc->n_objects_removed, &ostc->n_attrs_removed);
             }
         }
     }
@@ -304,6 +379,7 @@ int _ostc_cleanup(lio_object_service_fn_t *os, ostcdb_object_t *obj, apr_time_t 
         if (a->expire < expired) {
             apr_hash_set(obj->attrs, a->key, APR_HASH_KEY_STRING, NULL);
             free_ostcdb_attr(a);
+            ostc->n_attrs_removed++;
         } else {
             akept++;
         }
@@ -392,7 +468,7 @@ void ostc_attr_cacheprep_setup(ostc_cacheprep_t *cp, int n_keys, char **key_src,
 }
 
 //***********************************************************************
-// ostc_attr_cacheprep_destroy - Destroy shte structures created in the setup routine
+// ostc_attr_cacheprep_destroy - Destroys the structures created in the setup routine
 //***********************************************************************
 
 void ostc_attr_cacheprep_destroy(ostc_cacheprep_t *cp)
@@ -507,6 +583,7 @@ int _ostc_lio_cache_tree_walk(lio_object_service_fn_t *os, char *fname, tbx_stac
                     if (curr) { //** Make sure we have something to add it to
                         if (replacement_obj == NULL) {
                             next = new_ostcdb_object(strndup(&(fname[start]), n), add_terminal_ftype, apr_time_now() + ostc->entry_timeout, ostc->mpool);
+                            ostc->n_objects_created++;
                         } else {
                             next = replacement_obj;
                         }
@@ -562,7 +639,7 @@ int _ostc_lio_cache_tree_walk(lio_object_service_fn_t *os, char *fname, tbx_stac
         apr_hash_set(prev->objects, curr->fname, APR_HASH_KEY_STRING, NULL);
         apr_hash_set(prev->objects, replacement_obj->fname, strlen(replacement_obj->fname), replacement_obj);
 
-        free_ostcdb_object(curr);
+        free_ostcdb_object(curr, &ostc->n_objects_removed, &ostc->n_attrs_removed);
 
         tbx_stack_move_to_bottom(tree);
         tbx_stack_delete_current(tree, 1, 0);
@@ -692,7 +769,7 @@ void ostc_cache_move_object(lio_object_service_fn_t *os, lio_creds_t *creds, cha
         //** Do the walk and add it back
         tbx_stack_empty(&tree, 0);
         if (_ostc_lio_cache_tree_walk(os, dest_path, &tree, obj, obj->ftype, OSTC_MAX_RECURSE) != 0) {
-            free_ostcdb_object(obj);  //**Failed to walk the destination path
+            free_ostcdb_object(obj, &ostc->n_objects_removed, &ostc->n_attrs_removed);  //**Failed to walk the destination path
         }
     }
 
@@ -720,7 +797,7 @@ void ostc_cache_remove_object(lio_object_service_fn_t *os, char *path)
         tbx_stack_move_up(&tree);
         parent = tbx_stack_get_current_data(&tree);
         apr_hash_set(parent->objects, obj->fname, APR_HASH_KEY_STRING, NULL);
-        free_ostcdb_object(obj);
+        free_ostcdb_object(obj, &ostc->n_objects_removed, &ostc->n_attrs_removed);
     }
     OSTC_UNLOCK(ostc);
 
@@ -752,6 +829,7 @@ void ostc_cache_remove_attrs(lio_object_service_fn_t *os, char *fname, char **ke
         if (attr != NULL) {
             apr_hash_set(obj->attrs, key[i], APR_HASH_KEY_STRING, NULL);
             free_ostcdb_attr(attr);
+            ostc->n_attrs_removed++;
         }
     }
 finished:
@@ -788,6 +866,7 @@ void ostc_cache_move_attrs(lio_object_service_fn_t *os, char *fname, char **key_
             if (attr2 != NULL) {  //** Already have something by that name so delete it
                 apr_hash_set(obj->attrs, key_new[i], APR_HASH_KEY_STRING, NULL);
                 free_ostcdb_attr(attr2);
+                ostc->n_attrs_removed++;
             }
 
             if (attr->key) free(attr->key);
@@ -860,6 +939,7 @@ void ostc_cache_process_attrs(lio_object_service_fn_t *os, char *fname, int ftyp
                 log_printf(5, "NEW obj=%s key=%s link=%s\n", obj->fname, key, lkey);
                 attr = new_ostcdb_attr(key, NULL, -1234, apr_time_now() + ostc->entry_timeout);
                 apr_hash_set(obj->attrs, attr->key, APR_HASH_KEY_STRING, attr);
+                ostc->n_attrs_created++;
             } else {
                 log_printf(5, "OLD obj=%s key=%s link=%s\n", obj->fname, key, lkey);
                 if (attr->link) free(attr->link);
@@ -875,6 +955,7 @@ void ostc_cache_process_attrs(lio_object_service_fn_t *os, char *fname, int ftyp
             if (attr == NULL) {
                 attr = new_ostcdb_attr(key, val[i], v_size[i], apr_time_now() + ostc->entry_timeout);
                 apr_hash_set(obj->attrs, attr->key, APR_HASH_KEY_STRING, attr);
+                ostc->n_attrs_created++;
             } else {
                 if (attr->link) {
                     free(attr->link);
@@ -949,6 +1030,12 @@ gop_op_status_t ostc_cache_fetch(lio_object_service_fn_t *os, char *fname, char 
     status = gop_success_status;
 
 finished:
+    if (oops == 0) {
+        ostc->n_attrs_hit += n;
+    } else {
+        ostc->n_attrs_miss += n;
+    }
+
     OSTC_UNLOCK(ostc);
 
     if (oops == 1) { //** Got to unroll the values stored
@@ -2186,6 +2273,8 @@ void ostc_destroy(lio_object_service_fn_t *os)
     ostc_priv_t *ostc = (ostc_priv_t *)os->priv;
     apr_status_t value;
 
+    tbx_siginfo_handler_remove(ostc_info_fn, os);
+
     //** Shut the child down
     if (ostc->os_child != NULL) {
         os_destroy(ostc->os_child);
@@ -2202,7 +2291,7 @@ void ostc_destroy(lio_object_service_fn_t *os)
 
     //** Dump the cache 1 last time just to be safe
     _ostc_cleanup(os, ostc->cache_root, apr_time_now() + 4*ostc->entry_timeout);
-    free_ostcdb_object(ostc->cache_root);
+    free_ostcdb_object(ostc->cache_root, &ostc->n_objects_removed, &ostc->n_attrs_removed);
 
     free(ostc);
     free(os);
@@ -2254,6 +2343,7 @@ lio_object_service_fn_t *object_service_timecache_create(lio_service_manager_t *
 
     //** Make the root node
     ostc->cache_root = new_ostcdb_object(strdup("/"), OS_OBJECT_DIR_FLAG, 0, ostc->mpool);
+    ostc->n_objects_created++;
 
     //** Get the thread pool to use
     ostc->tpc = lio_lookup_service(ess, ESS_RUNNING, ESS_TPC_UNLIMITED);FATAL_UNLESS(ostc->tpc != NULL);
@@ -2300,6 +2390,7 @@ lio_object_service_fn_t *object_service_timecache_create(lio_service_manager_t *
     os->next_fsck = ostc_next_fsck;
     os->fsck_object = ostc_fsck_object;
 
+    tbx_siginfo_handler_add(ostc_info_fn, os);
     tbx_thread_create_assert(&(ostc->cleanup_thread), NULL, ostc_cache_compact_thread, (void *)os, ostc->mpool);
 
     log_printf(10, "END\n");

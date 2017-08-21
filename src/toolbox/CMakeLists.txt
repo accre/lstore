@@ -40,6 +40,7 @@ set(TOOL_OBJS
     pigeon_coop.c
     pigeon_hole.c
     random.c
+    siginfo.c
     skiplist.c
     stack.c
     stdinarray_iter.c
@@ -71,6 +72,7 @@ set(LSTORE_PROJECT_INCLUDES
     tbx/pigeon_hole.h
     tbx/random.h
     tbx/skiplist.h
+    tbx/siginfo.h
     tbx/stack.h
     tbx/stdinarray_iter.h
     tbx/string_token.h
