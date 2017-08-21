@@ -54,7 +54,6 @@ void tbx_siginfo_handler_add(tbx_siginfo_fn_t fn, void *arg)
 {
     si_task_t *t;
 
-printf("add handler -----------------------------\n");
     apr_thread_mutex_lock(_si_lock);
 
     tbx_type_malloc_clear(t, si_task_t, 1);
@@ -71,8 +70,6 @@ printf("add handler -----------------------------\n");
 void tbx_siginfo_handler_remove(tbx_siginfo_fn_t fn, void *arg)
 {
     si_task_t *t;
-
-printf("remove handler -----------------------------\n");
 
     if (_si_list == NULL) return;
 
@@ -102,8 +99,6 @@ void *siginfo_thread(apr_thread_t *th, void *data)
     FILE *fd;
     si_task_t *t;
     apr_status_t ret = 0;
-
-printf("running handler fname=%s-----------------------------\n", _siginfo_name);
 
     apr_thread_mutex_lock(_si_lock);
     if (_si_thread_join) apr_thread_join(&ret, _si_thread_join);  //** Cleanup old invocation if needed
@@ -136,7 +131,6 @@ printf("running handler fname=%s-----------------------------\n", _siginfo_name)
 
 void tbx_siginfo_handler(int sig)
 {
-printf("launching handler fname=%s-----------------------------\n", _siginfo_name);
     apr_status_t status;
 
     if (_si_thread) apr_thread_join(&status, _si_thread);
@@ -150,8 +144,6 @@ printf("launching handler fname=%s-----------------------------\n", _siginfo_nam
 
 void tbx_siginfo_install(char *fname, int signal)
 {
-printf("install handler -----------------------------\n");
-
     if (!_si_pool) {
         apr_pool_create(&_si_pool, NULL);
         apr_thread_mutex_create(&_si_lock, APR_THREAD_MUTEX_DEFAULT, _si_pool);
