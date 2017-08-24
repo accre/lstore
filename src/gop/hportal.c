@@ -36,6 +36,7 @@
 #include <tbx/fmttypes.h>
 #include <tbx/log.h>
 #include <tbx/network.h>
+#include <tbx/siginfo.h>
 #include <tbx/stack.h>
 #include <tbx/string_token.h>
 #include <tbx/type_malloc.h>
@@ -46,6 +47,59 @@
 #include "gop/hp.h"
 #include "gop/types.h"
 #include "host_portal.h"
+
+//************************************************************************
+//  hportal_siginfo_handler - Prints the status of all the connections
+//************************************************************************
+
+void hportal_siginfo_handler(void *arg, FILE *fd)
+{
+    gop_portal_context_t *hpc = (gop_portal_context_t *)arg;
+    gop_host_portal_t *hp;
+    gop_host_connection_t *hc;
+    apr_hash_index_t *hi;
+    char ppbuf1[100], ppbuf2[100];
+    int i;
+    void *val;
+
+    fprintf(fd, "Host Portal info -------------------------------------------\n");
+    apr_thread_mutex_lock(hpc->lock);
+    for (hi=apr_hash_first(hpc->pool, hpc->table); hi != NULL; hi = apr_hash_next(hi)) {
+        apr_hash_this(hi, NULL, NULL, &val);
+        hp = (gop_host_portal_t *)val;
+        hportal_lock(hp);
+
+        fprintf(fd, "    Host: %s\n", hp->skey);
+        fprintf(fd, "        Workload: %s  Executing workload: %s  Commands processed: " I64T "  Tasks Queued: %d  Merged Commands: " I64T "\n",
+            tbx_stk_pretty_print_double_with_scale(1024, hp->workload, ppbuf1), tbx_stk_pretty_print_double_with_scale(1024, hp->executing_workload, ppbuf2),
+            hp->cmds_processed, tbx_stack_count(hp->que), hp->n_coalesced);
+        fprintf(fd, "        Connections -- Active: %d  Stable: %d  Min: %d  Max: %d  Sleeping: %d  Closing: %d  Failed: %d  Success: %d  Closed: %d\n",
+            hp->n_conn, hp->stable_conn, hp->min_conn, hp->max_conn, hp->sleeping_conn, hp->closing_conn, hp->failed_conn_attempts,
+            hp->successful_conn_attempts, tbx_stack_count(hp->closed_que));
+
+        tbx_stack_move_to_top(hp->conn_list);
+        i = 0;
+        while ((hc = (gop_host_connection_t *)tbx_stack_get_current_data(hp->conn_list)) != NULL) {
+            lock_hc(hc);
+            fprintf(fd, "        %d --  Commands processed: %d  Workload: %s  Pending: %d  Closing: %d  Shutdown request: %d\n",
+                i, hc->cmd_count, tbx_stk_pretty_print_double_with_scale(1024, hc->curr_workload, ppbuf1),
+                tbx_stack_count(hc->pending_stack), hc->closing, hc->shutdown_request);
+            unlock_hc(hc);
+            tbx_stack_move_down(hp->conn_list);
+            i++;
+        }
+
+        hportal_unlock(hp);
+        fprintf(fd, "\n");
+    }
+    fprintf(fd, "\n");
+
+///        shutdown_direct(hp);  //** Shutdown any direct connections
+
+    apr_thread_mutex_unlock(hpc->lock);
+
+    return;
+}
 
 //***************************************************************************
 //  hportal_wait - Waits up to the specified time for the condition
@@ -265,6 +319,7 @@ gop_portal_context_t *gop_hp_context_create(gop_portal_fn_t *imp)
     hpc->count = 0;
     tbx_ns_timeout_set(&(hpc->dt), 1, 0);
 
+    tbx_siginfo_handler_add(hportal_siginfo_handler, hpc);
     return(hpc);
 }
 
@@ -278,6 +333,8 @@ void gop_hp_context_destroy(gop_portal_context_t *hpc)
     apr_hash_index_t *hi;
     gop_host_portal_t *hp;
     void *val;
+
+    tbx_siginfo_handler_remove(hportal_siginfo_handler, hpc);
 
     for (hi=apr_hash_first(hpc->pool, hpc->table); hi != NULL; hi = apr_hash_next(hi)) {
         apr_hash_this(hi, NULL, NULL, &val);
@@ -566,7 +623,7 @@ void _add_hportal_op(gop_host_portal_t *hp, gop_op_generic_t *hsop, int addtotop
 
 gop_op_generic_t *_get_hportal_op(gop_host_portal_t *hp)
 {
-    log_printf(16, "_get_hportal_op: stack_size=%d\n", tbx_stack_count(hp->que));
+    log_printf(16, "stack_size=%d\n", tbx_stack_count(hp->que));
 
     gop_op_generic_t *hsop;
 
@@ -578,7 +635,7 @@ gop_op_generic_t *_get_hportal_op(gop_host_portal_t *hp)
 
         //** Check if we need to to some command coalescing
         if (hop->before_exec != NULL) {
-            hop->before_exec(hsop);
+            hp->n_coalesced += hop->before_exec(hsop);
         }
 
         tbx_stack_pop(hp->que);  //** Actually pop it after the before_exec

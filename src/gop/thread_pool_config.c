@@ -28,6 +28,7 @@
 #include <tbx/atomic_counter.h>
 #include <tbx/log.h>
 #include <tbx/network.h>
+#include <tbx/siginfo.h>
 #include <tbx/stack.h>
 #include <tbx/thread_pool.h>
 #include <tbx/type_malloc.h>
@@ -69,6 +70,34 @@ int _tp_stats = 0;
 
 extern apr_threadkey_t *thread_local_stats_key;
 extern apr_threadkey_t *thread_local_depth_key;
+
+
+//************************************************************************
+//  tp_siginfo_handler - Prints info about the threadpool
+//************************************************************************
+
+void tp_siginfo_handler(void *arg, FILE *fd)
+{
+    gop_thread_pool_context_t *tpc = (gop_thread_pool_context_t *)arg;
+//    char ppbuf1[100], ppbuf2[100];
+
+    apr_thread_mutex_lock(_tp_lock);
+    fprintf(fd, "Thread pool info (%s)-------------------------------------------\n", tpc->name);
+    fprintf(fd, "    Ops -- Submitted: %d  Completed: %d  Running: %d\n", tbx_atomic_get(tpc->n_submitted), tbx_atomic_get(tpc->n_completed), tbx_atomic_get(tpc->n_running));
+    fprintf(fd, "    Threads -- Current: %lu  Busy: %lu  Idle: %lu  Max Concurrent: %lu   Pool Min: %d  Pool Max: %d  Max Recursion: %d\n",
+        tbx_thread_pool_threads_count(tpc->tp), tbx_thread_pool_busy_count(tpc->tp), tbx_thread_pool_idle_count(tpc->tp),
+        tbx_thread_pool_threads_high_count(tpc->tp), tpc->min_threads, tpc->max_threads, tpc->recursion_depth);
+
+    if (_tp_stats > 0) {
+        fprintf(fd, "\n");
+        thread_pool_stats_print(fd);
+    }
+    fprintf(fd, "\n");
+    apr_thread_mutex_unlock(_tp_lock);
+
+    return;
+}
+
 
 //***************************************************************************
 
@@ -296,6 +325,8 @@ gop_thread_pool_context_t *gop_tp_context_create(char *tp_name, int min_threads,
         tpc->reserve_stack[i] = tbx_stack_new();
     }
 
+    tbx_siginfo_handler_add(tp_siginfo_handler, tpc);
+
     return(tpc);
 }
 
@@ -310,12 +341,14 @@ void gop_tp_context_destroy(gop_thread_pool_context_t *tpc)
     log_printf(15, "gop_tp_context_destroy: Shutting down! count=%d\n", _tp_context_count);
 
     log_printf(15, "tpc->name=%s  high=%zu idle=%zu\n", tpc->name, tbx_thread_pool_threads_high_count(tpc->tp),  tbx_thread_pool_threads_idle_timeout_count(tpc->tp));
+
+    tbx_siginfo_handler_remove(tp_siginfo_handler, tpc);
     gop_hp_context_destroy(tpc->pc);
 
     tbx_thread_pool_destroy(tpc->tp);
 
     if (tbx_atomic_dec(_tp_context_count) == 0) {
-        if (_tp_stats > 0) thread_pool_stats_print();
+        if (_tp_stats > 0) thread_pool_stats_print(stderr);
         apr_thread_mutex_destroy(_tp_lock);
         apr_pool_destroy(_tp_pool);
     }

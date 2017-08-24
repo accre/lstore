@@ -60,16 +60,17 @@ void _tp_op_free(gop_op_generic_t *gop, int mode);
 // thread_pool_stats_print - Dumps the stats to the local log file
 //*************************************************************************
 
-void thread_pool_stats_print()
+void thread_pool_stats_print(FILE *fd)
 {
     int i, total;
 
-    log_printf(0, "--------Thread Pool Stats----------\n");
-    log_printf(0, "Max Concurrency: %d\n", _tp_concurrent_max);
-    log_printf(0, "Level  Concurrent     Total\n");
+    fprintf(fd, "Thread Pool Concurrency Stats-------------------\n");
+    fprintf(fd, "Max Concurrency: %d\n", _tp_concurrent_max);
+    fprintf(fd, "Level  Concurrent     Total\n");
+
     for (i=0; i<TP_MAX_DEPTH; i++) {
         total = tbx_atomic_get(_tp_depth_total[i]);
-        log_printf(0, " %2d    %10d  %10d\n", i, _tp_depth_concurrent_max[i], total);
+        if (total > 0) fprintf(fd, " %2d    %10d  %10d\n", i, _tp_depth_concurrent_max[i], total);
     }
 }
 
