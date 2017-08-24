@@ -217,7 +217,7 @@ int ibp_rw_coalesce(gop_op_generic_t *gop1)
     rw_coalesce_t *rwc;
     tbx_stack_ele_t *ele;
     tbx_stack_t *cstack;
-    int64_t workload;
+    int64_t workload, cmd_workload;
     int n, iov_sum, found_myself;
     rwc_gop_stack_t *rwcg;
     tbx_pch_t pch;
@@ -255,7 +255,7 @@ int ibp_rw_coalesce(gop_op_generic_t *gop1)
 
     log_printf(15, "ibp_rw_coalesce: gid=%d cap=%s count=%d\n", gop_id(gop1), cmd1->cap, tbx_stack_count(&(rwc->list_stack)));
 
-    workload = 0;
+    workload = cmd_workload = 0;
     n = tbx_stack_count(&(rwc->list_stack))+1;
     tbx_type_malloc(rwbuf, ibp_rw_buf_t *, n);
     pch = tbx_pch_reserve(ic->coalesced_gop_stacks);
@@ -300,6 +300,7 @@ int ibp_rw_coalesce(gop_op_generic_t *gop1)
             rwbuf[n] = &(cmd2->buf_single);
             iov_sum += cmd2->n_tbx_iovec_total;
             workload += cmd2->size;
+            cmd_workload += gop2->op->cmd.workload;
             n++;
 
             tbx_stack_delete_current(&(rwc->list_stack), 0, 0);  //** Remove it from the stack and move down to the next
@@ -315,7 +316,7 @@ int ibp_rw_coalesce(gop_op_generic_t *gop1)
         }
     } while ((ele != NULL) && (workload < ic->max_coalesce) && (iov_sum < 2000));
 
-    if (found_myself == 0) {  //** Oops! Hit the max_coalesce workdload or size so Got to scan the list for myself
+    if (found_myself == 0) {  //** Oops! Hit the max_coalesce workload or size so Got to scan the list for myself
         tbx_stack_move_to_top(&(rwc->list_stack));
         while ((ele = (tbx_stack_ele_t *)tbx_stack_get_current_data(&(rwc->list_stack))) != NULL) {
             gop2 = (gop_op_generic_t *)tbx_stack_ele_get_data(ele);
@@ -325,6 +326,8 @@ int ibp_rw_coalesce(gop_op_generic_t *gop1)
                 rwbuf[n] = &(cmd2->buf_single);
                 iov_sum += cmd2->n_tbx_iovec_total;
                 workload += cmd2->size;
+                cmd_workload += gop2->op->cmd.workload;
+
                 n++;
 
                 tbx_stack_delete_current(&(rwc->list_stack), 0, 0);
@@ -348,7 +351,7 @@ int ibp_rw_coalesce(gop_op_generic_t *gop1)
     cmd1->n_ops = n;
     cmd1->n_tbx_iovec_total = iov_sum;
     cmd1->size = workload;
-    gop1->op->cmd.workload = workload + ic->rw_new_command;
+    gop1->op->cmd.workload = cmd_workload;
 
     if (tbx_stack_count(&(rwc->list_stack)) == 0) {  //** Nothing left so free it
         tbx_list_remove(ic->coalesced_ops, cmd1->cap, NULL);
@@ -357,7 +360,7 @@ int ibp_rw_coalesce(gop_op_generic_t *gop1)
 
     apr_thread_mutex_unlock(ic->lock);
 
-    return(0);
+    return(n);
 }
 
 
