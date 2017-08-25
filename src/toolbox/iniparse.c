@@ -149,13 +149,14 @@ char *_fetch_text(char *buf, int bsize, bfile_entry_t *entry)
 // _get_line - Reads a line of text from the file
 //***********************************************************************
 
-char * _get_line(bfile_t *bfd)
+char * _get_line(bfile_t *bfd, int *err)
 {
     bfile_entry_t *entry;
     char *comment;
     char *fname, *last;
     int fin;
 
+    *err = 0;
     if (bfd->curr == NULL) return(NULL);
 
     if (bfd->curr->used == 1) return(bfd->curr->buffer);
@@ -171,7 +172,7 @@ char * _get_line(bfile_t *bfd)
         if (bfd->curr == NULL) {
             return(NULL);   //** EOF or Error
         } else {
-            return(_get_line(bfd));
+            return(_get_line(bfd, err));
         }
     }
 
@@ -179,7 +180,7 @@ char * _get_line(bfile_t *bfd)
     comment = tbx_stk_escape_strchr('\\', bfd->curr->buffer, '#');
     if (comment != NULL) comment[0] = '\0';
 
-    if (strncmp(bfd->curr->buffer, "%include ", 9) == 0) { //** In include them open and recurse
+    if (strncmp(bfd->curr->buffer, "%include ", 9) == 0) { //** In include so open and recurse
         fname = tbx_stk_string_token(&(bfd->curr->buffer[8]), " \n", &last, &fin);
         log_printf(10, "_get_line: Opening include file %s\n", fname);
 
@@ -187,18 +188,21 @@ char * _get_line(bfile_t *bfd)
         entry->fd = bfile_fopen(bfd->include_paths, fname);
         if (entry->fd == NULL) {  //** Can't open the file
             log_printf(-1, "_get_line: Problem opening include file !%s!\n", fname);
+            fprintf(stderr, "_get_line: Problem opening include file !%s!\n", fname);
+            *err = -1;
             FATAL_UNLESS(entry->fd != NULL);
         }
         entry->used = 0;
         tbx_stack_push(bfd->stack, (void *)bfd->curr);
         bfd->curr = entry;
 
-        return(_get_line(bfd));
+        return(_get_line(bfd, err));
     } else if (strncmp(bfd->curr->buffer, "%include_path ", 14) == 0) { //** Add an include path to the search list
         fname = tbx_stk_string_token(&(bfd->curr->buffer[13]), " \n", &last, &fin);
         log_printf(10, "_get_line: Adding include path %s\n", fname);
         tbx_stack_move_to_bottom(bfd->include_paths);
         tbx_stack_insert_below(bfd->include_paths, strdup(fname));
+        last[-1] = '\n'; //** Add back in the linefeed
     }
 
     log_printf(15, "_get_line: buffer=%s\n", bfd->curr->buffer);
@@ -213,10 +217,10 @@ char * _get_line(bfile_t *bfd)
 tbx_inip_element_t *_parse_ele(bfile_t *bfd)
 {
     char *text, *key, *val, *last, *isgroup;
-    int fin;
+    int fin, err;
     tbx_inip_element_t *ele;
 
-    while ((text = _get_line(bfd)) != NULL) {
+    while ((text = _get_line(bfd, &err)) != NULL) {
         isgroup = strchr(text, '[');  //** Start of a new group
         if (isgroup != NULL) {
             log_printf(15, "_parse_ele: New group! text=%s\n", text);
@@ -274,8 +278,9 @@ tbx_inip_group_t *_next_group(bfile_t *bfd)
 {
     char *text, *start, *end;
     tbx_inip_group_t *g;
+    int err;
 
-    while ((text = _get_line(bfd)) != NULL) {
+    while ((text = _get_line(bfd, &err)) != NULL) {
         bfd->curr->used = 0;
 
         start = strchr(text, '[');
@@ -570,4 +575,95 @@ tbx_inip_file_t *tbx_inip_file_read(const char *fname)
 tbx_inip_file_t *tbx_inip_string_read(const char *text)
 {
     return(inip_load(NULL, text));
+}
+
+//***********************************************************************
+// inip_convert2string - Loads the file and resolves all dependencies
+//     and converts it to a string.
+//***********************************************************************
+
+int inip_convert2string(FILE *fd_in, const char *text_in, char **text_out, int *nbytes)
+{
+    bfile_t bfd;
+    bfile_entry_t *entry;
+    char *text, *line;
+    int n_total, n_max, n, err;
+
+    tbx_type_malloc_clear(entry, bfile_entry_t, 1);
+    entry->fd = fd_in;
+    entry->text = (char *)text_in;
+    entry->text_pos = (char *)text_in;
+
+    if (fd_in) rewind(fd_in);
+
+    entry->used = 0;
+    bfd.curr = entry;
+    bfd.stack = tbx_stack_new();
+    bfd.include_paths = tbx_stack_new();
+    tbx_stack_push(bfd.include_paths, strdup("."));  //** By default always look in the CWD 1st
+
+
+    n_max = 10*1024;
+    tbx_type_malloc(text, char, n_max);
+    n_total = 0;
+    while ((line = _get_line(&bfd, &err)) != NULL) {
+        bfd.curr->used = 0;
+        n = strlen(line);
+        if ((n_total+n) > n_max) {
+            n_max = 1.5*n_max;
+            tbx_type_realloc(text, char, n_max);
+        }
+
+        memcpy(text + n_total, line, n);
+        n_total += n;
+//        if (line) free(line);
+    }
+
+    tbx_stack_free(bfd.stack, 1);
+    tbx_stack_free(bfd.include_paths, 1);
+
+    tbx_type_realloc(text, char, n_total+1);
+    text[n_total] = '\0';
+    if (err != 0) {
+        free(text);
+        text = NULL;
+    }
+
+    *nbytes = n_total;
+    *text_out = text;
+    return(err);
+}
+
+//***********************************************************************
+//  inip_file2string - Loads a INI file resolving dependencies and
+//     converts it ot a string.
+//***********************************************************************
+
+int tbx_inip_file2string(const char *fname, char **text_out, int *nbytes)
+{
+    FILE *fd;
+
+    log_printf(15, "Parsing file %s\n", fname);
+
+    *text_out = NULL; *nbytes = 0;
+    if(!strcmp(fname, "-")) {
+        fd = stdin;
+    } else {
+        fd = fopen(fname, "r");
+    }
+    if (fd == NULL) {  //** Can't open the file
+        log_printf(-1, "Problem opening file %s, errorno: %d\n", fname, errno);
+        return(-1);
+    }
+
+    return(inip_convert2string(fd, NULL, text_out, nbytes));
+}
+
+//***********************************************************************
+//  inip_text2string - Loads a INI file resolving dependencies and
+//     converts it ot a string.
+//***********************************************************************
+int tbx_inip_text2string(const char *text, char **text_out, int *nbytes)
+{
+    return(inip_convert2string(NULL, text, text_out, nbytes));
 }
