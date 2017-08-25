@@ -49,6 +49,7 @@ typedef struct gop_mq_task_monitor_t gop_mq_task_monitor_t;
 typedef struct gop_mq_task_t gop_mq_task_t;
 typedef zmq_pollitem_t gop_mq_pollitem_t;
 typedef tbx_stack_t mq_msg_t;
+typedef tbx_stack_ele_t gop_mq_msg_iter_t;
 typedef int mq_pipe_t;       // ** Event notification FD
 typedef void (*gop_mq_exec_fn_t)(void *arg, gop_mq_task_t *task);
 typedef void (*gop_mq_task_arg_free_fn_t)(void *arg);  // ** Function for cleaning up the GOP arg. (GOP)
@@ -181,6 +182,10 @@ GOP_API gop_mq_frame_t *gop_mq_msg_current(mq_msg_t *msg);
 GOP_API void gop_mq_msg_destroy(mq_msg_t *msg);
 GOP_API gop_mq_frame_t *gop_mq_msg_first(mq_msg_t *msg);
 GOP_API gop_mq_frame_t *gop_mq_msg_last(mq_msg_t *msg);
+GOP_API int gop_mq_msg_count(mq_msg_t *msg);
+GOP_API gop_mq_msg_iter_t *gop_mq_msg_iter_first(mq_msg_t *msg);
+GOP_API void *gop_mq_msg_iter_next(gop_mq_msg_iter_t *curr);
+GOP_API gop_mq_frame_t *gop_mq_msg_iter_frame(gop_mq_msg_iter_t *curr);
 GOP_API mq_msg_t *gop_mq_msg_new();
 GOP_API gop_mq_frame_t *gop_mq_msg_next(mq_msg_t *msg);
 GOP_API gop_mq_frame_t *gop_mq_msg_pluck(mq_msg_t *msg, int move_up);
