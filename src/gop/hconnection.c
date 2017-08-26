@@ -235,6 +235,7 @@ void *hc_send_thread(apr_thread_t *th, void *data)
 
     if (err != 1) return(NULL);  //** If send thread failed to spawn exit;
 
+    tbx_atomic_dec(hp->idle_conn);  //** Flag us as idle
 
     //** check if the host is invalid and if so flush the work que
     if (hp->invalid_host == 1) {
@@ -325,6 +326,7 @@ void *hc_send_thread(apr_thread_t *th, void *data)
                 //** Always push the command on the recving que even in a failure to collect the return code
                 lock_hc(hc);
                 hc->last_used = apr_time_now();  //** Update  the time.  The recv thread does this also
+                if (tbx_stack_count(hc->pending_stack) == 0) tbx_atomic_dec(hp->idle_conn);
                 tbx_stack_push(hc->pending_stack, (void *)hsop);  //** Push onto recving stack
                 hc->curr_op = NULL;
                 hc_recv_signal(hc); //** and notify recv thread
@@ -450,6 +452,7 @@ void *hc_recv_thread(apr_thread_t *th, void *data)
             hc->curr_workload -= hop->workload;
             tbx_stack_move_to_bottom(hc->pending_stack);
             tbx_stack_delete_current(hc->pending_stack, 1, 0);
+            if (tbx_stack_count(hc->pending_stack) == 0) tbx_atomic_inc(hp->idle_conn);
             hc_send_signal(hc);  //** Wake up send_thread if needed
             unlock_hc(hc);
 

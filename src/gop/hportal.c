@@ -775,22 +775,23 @@ void _hp_fail_tasks(gop_host_portal_t *hp, gop_op_status_t err_code)
 
 void check_hportal_connections(gop_host_portal_t *hp)
 {
-    int i, j, total;
+    int i, j, total, pending;
     int n_newconn = 0;
-    int64_t curr_workload;
+//    int64_t curr_workload;
 
     hportal_lock(hp);
 
-    curr_workload = hp->workload + hp->executing_workload;
+//    curr_workload = hp->workload + hp->executing_workload;
+    pending = tbx_stack_count(hp->que);
 
     //** Now figure out how many new connections are needed, if any
-    if (tbx_stack_count(hp->que) == 0) {
+    if ((pending == 0) || (tbx_atomic_get(hp->idle_conn) == 0)) {
         n_newconn = 0;
     } else if (hp->n_conn < hp->min_conn) {
         n_newconn = hp->min_conn - hp->n_conn;
     } else {
-        n_newconn = (curr_workload / hp->context->max_workload) - hp->n_conn;
-        if (n_newconn < 0) n_newconn = 0;
+        n_newconn = (hp->workload / hp->context->max_workload);
+        if (n_newconn > pending) n_newconn = pending;
 
         if ((hp->n_conn+n_newconn) > hp->max_conn) {
             n_newconn = hp->max_conn - hp->n_conn;
@@ -833,8 +834,8 @@ void check_hportal_connections(gop_host_portal_t *hp)
     }
 
     j = (hp->pause_until > apr_time_now()) ? 1 : 0;
-    log_printf(6, "check_hportal_connections: host=%s n_conn=%d sleeping=%d workload=" I64T " curr_wl=" I64T " exec_wl=" I64T " start_new_conn=%d new_conn=%d stable=%d stack_size=%d pause_until=" TT " now=" TT " pause_until_blocked=%d\n",
-               hp->skey, hp->n_conn, hp->sleeping_conn, hp->workload, curr_workload, hp->executing_workload, i, n_newconn, hp->stable_conn, tbx_stack_count(hp->que), hp->pause_until, apr_time_now(), j);
+    log_printf(6, "check_hportal_connections: host=%s n_conn=%d sleeping=%d workload=" I64T " exec_wl=" I64T " start_new_conn=%d new_conn=%d stable=%d stack_size=%d pause_until=" TT " now=" TT " pause_until_blocked=%d\n",
+               hp->skey, hp->n_conn, hp->sleeping_conn, hp->workload, hp->executing_workload, i, n_newconn, hp->stable_conn, tbx_stack_count(hp->que), hp->pause_until, apr_time_now(), j);
 
     //** Update the total # of connections after the operation
     //** n_conn is used instead of conn_list to prevent false positives on a dead depot
