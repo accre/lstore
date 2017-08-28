@@ -783,7 +783,7 @@ void check_hportal_connections(gop_host_portal_t *hp)
     pending = tbx_stack_count(hp->que);
 
     //** Now figure out how many new connections are needed, if any
-    if ((pending == 0) || (tbx_atomic_get(hp->idle_conn) == 0)) {
+    if ((pending == 0) || (tbx_atomic_get(hp->idle_conn) != 0)) {
         n_newconn = 0;
     } else if (hp->n_conn < hp->min_conn) {
         n_newconn = hp->min_conn - hp->n_conn;
@@ -832,8 +832,8 @@ void check_hportal_connections(gop_host_portal_t *hp)
     }
 
     j = (hp->pause_until > apr_time_now()) ? 1 : 0;
-    log_printf(6, "check_hportal_connections: host=%s n_conn=%d sleeping=%d workload=" I64T " exec_wl=" I64T " start_new_conn=%d new_conn=%d stable=%d stack_size=%d pause_until=" TT " now=" TT " pause_until_blocked=%d\n",
-               hp->skey, hp->n_conn, hp->sleeping_conn, hp->workload, hp->executing_workload, i, n_newconn, hp->stable_conn, tbx_stack_count(hp->que), hp->pause_until, apr_time_now(), j);
+    log_printf(6, "check_hportal_connections: host=%s n_conn=%d sleeping=%d idle=%d workload=" I64T " exec_wl=" I64T " start_new_conn=%d new_conn=%d stable=%d stack_size=%d pause_until=" TT " now=" TT " pause_until_blocked=%d\n",
+               hp->skey, hp->n_conn, hp->sleeping_conn, tbx_atomic_get(hp->idle_conn), hp->workload, hp->executing_workload, i, n_newconn, hp->stable_conn, pending, hp->pause_until, apr_time_now(), j);
 
     //** Update the total # of connections after the operation
     //** n_conn is used instead of conn_list to prevent false positives on a dead depot
