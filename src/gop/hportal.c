@@ -777,11 +777,9 @@ void check_hportal_connections(gop_host_portal_t *hp)
 {
     int i, j, total, pending;
     int n_newconn = 0;
-//    int64_t curr_workload;
 
     hportal_lock(hp);
 
-//    curr_workload = hp->workload + hp->executing_workload;
     pending = tbx_stack_count(hp->que);
 
     //** Now figure out how many new connections are needed, if any
