@@ -616,7 +616,6 @@ int inip_convert2string(FILE *fd_in, const char *text_in, char **text_out, int *
 
         memcpy(text + n_total, line, n);
         n_total += n;
-//        if (line) free(line);
     }
 
     tbx_stack_free(bfd.stack, 1);
