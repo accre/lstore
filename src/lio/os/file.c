@@ -4087,7 +4087,7 @@ int osfile_next_fsck(lio_object_service_fn_t *os, os_fsck_iter_t *oit, char **ba
         if (err != OS_FSCK_GOOD) {
             *bad_atype = atype;
             *bad_fname = fname;
-            return(OS_FSCK_ERROR);
+            return(err);
         }
 
         free(fname);
