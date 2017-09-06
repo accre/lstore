@@ -904,14 +904,15 @@ int _rs_simple_load(lio_resource_service_fn_t *res, char *fname)
 
     err = 0;
 
+    //** Open the file
+    kf = tbx_inip_file_read(fname);
+    if (!kf) return(-1);
+
     //** Load the blacklist if available
     bl = lio_lookup_service(rss->ess, ESS_RUNNING, "blacklist");
 
     //** Clean out any old blacklisted RIDs from a previous RS run
     if (bl) blacklist_remove_rs_added(bl);
-
-    //** Open the file
-    kf = tbx_inip_file_read(fname);FATAL_UNLESS(kf);
 
     //** Create the new RS list
     rss->rid_table = tbx_list_create(0, &tbx_list_string_compare, NULL, NULL, rs_simple_rid_free);
