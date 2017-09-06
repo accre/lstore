@@ -79,11 +79,12 @@ extern apr_threadkey_t *thread_local_depth_key;
 void tp_siginfo_handler(void *arg, FILE *fd)
 {
     gop_thread_pool_context_t *tpc = (gop_thread_pool_context_t *)arg;
-//    char ppbuf1[100], ppbuf2[100];
+    int sync_exec;
 
     apr_thread_mutex_lock(_tp_lock);
+    sync_exec = tbx_atomic_get(tpc->n_running) + tbx_atomic_get(tpc->n_completed) - tbx_atomic_get(tpc->n_submitted);
     fprintf(fd, "Thread pool info (%s)-------------------------------------------\n", tpc->name);
-    fprintf(fd, "    Ops -- Submitted: %d  Completed: %d  Running: %d\n", tbx_atomic_get(tpc->n_submitted), tbx_atomic_get(tpc->n_completed), tbx_atomic_get(tpc->n_running));
+    fprintf(fd, "    Ops -- Submitted: %d  Sync Exec: %d  Completed: %d  Running: %d\n", tbx_atomic_get(tpc->n_submitted), sync_exec, tbx_atomic_get(tpc->n_completed), tbx_atomic_get(tpc->n_running));
     fprintf(fd, "    Threads -- Current: %lu  Busy: %lu  Idle: %lu  Max Concurrent: %lu   Pool Min: %d  Pool Max: %d  Max Recursion: %d\n",
         tbx_thread_pool_threads_count(tpc->tp), tbx_thread_pool_busy_count(tpc->tp), tbx_thread_pool_idle_count(tpc->tp),
         tbx_thread_pool_threads_high_count(tpc->tp), tpc->min_threads, tpc->max_threads, tpc->recursion_depth);
