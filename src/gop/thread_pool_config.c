@@ -290,9 +290,9 @@ gop_thread_pool_context_t *gop_tp_context_create(char *tp_name, int min_threads,
         apr_pool_create(&_tp_pool, NULL);
         apr_thread_mutex_create(&_tp_lock, APR_THREAD_MUTEX_DEFAULT, _tp_pool);
         thread_pool_stats_init();
+        apr_threadkey_private_create(&thread_local_depth_key,_thread_pool_destructor, _tp_pool);
     }
 
-    if (thread_local_depth_key == NULL) apr_threadkey_private_create(&thread_local_depth_key,_thread_pool_destructor, _tp_pool);
     tpc->pc = gop_hp_context_create(&_tp_base_portal);  //** Really just used for the submit
 
     default_thread_pool_config(tpc);
