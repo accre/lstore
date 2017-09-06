@@ -247,7 +247,6 @@ gop_op_status_t rsrc_response_get_config(void *task_arg, int tid)
     }
 
     //** Store the config if changed.  This should trigger the child RS to auto load
-//  if ((n_config > 0) && (arg->mode > 0)) {
     if (n_config > 0) {
         //** Dump the data in a temp file
         n = strlen(rsrc->child_target_file)+10;
