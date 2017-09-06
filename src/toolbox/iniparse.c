@@ -2,6 +2,7 @@
 
 //#define _DISABLE_LOG 1
 
+#include <limits.h>
 #include <stdio.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -11,6 +12,7 @@
 #include <unistd.h>
 
 #include "tbx/assert_result.h"
+#include "tbx/atomic_counter.h"
 #include "tbx/fmttypes.h"
 #include "tbx/iniparse.h"
 #include "tbx/log.h"
@@ -32,6 +34,7 @@ typedef struct {  //** Used for Reading the ini file
     bfile_entry_t *curr;
     tbx_stack_t *stack;
     tbx_stack_t *include_paths;
+    int error;
 } bfile_t;
 
 struct tbx_inip_element_t {  //** Key/Value pair
@@ -49,9 +52,14 @@ struct tbx_inip_group_t {  //** Group
 struct tbx_inip_file_t {  //File
     tbx_inip_group_t *tree;
     int  n_groups;
+    tbx_atomic_unit32_t ref_count;
 };
 
 // Accessors
+tbx_inip_file_t *tbx_inip_dup(tbx_inip_file_t *ifd) {
+    tbx_atomic_inc(ifd->ref_count);
+    return(ifd);
+}
 tbx_inip_element_t * tbx_inip_ele_first(tbx_inip_group_t *group) {
     return group->list;
 }
@@ -161,6 +169,7 @@ char * _get_line(bfile_t *bfd, int *err)
 
     if (bfd->curr->used == 1) return(bfd->curr->buffer);
 
+again:
     comment = (bfd->curr->text) ? _fetch_text(bfd->curr->buffer, BUFMAX, bfd->curr) : fgets(bfd->curr->buffer, BUFMAX, bfd->curr->fd);
     log_printf(15, "_get_line: fgets=%s\n", comment);
 
@@ -202,7 +211,7 @@ char * _get_line(bfile_t *bfd, int *err)
         log_printf(10, "_get_line: Adding include path %s\n", fname);
         tbx_stack_move_to_bottom(bfd->include_paths);
         tbx_stack_insert_below(bfd->include_paths, strdup(fname));
-        last[-1] = '\n'; //** Add back in the linefeed
+        goto again;  //** Loop back and get another line
     }
 
     log_printf(15, "_get_line: buffer=%s\n", bfd->curr->buffer);
@@ -290,8 +299,8 @@ tbx_inip_group_t *_next_group(bfile_t *bfd)
                 printf("_next_group: ERROR: missing ] for group heading.  Parsing line: %s\n", text);
                 fprintf(stderr, "_next_group: ERROR: missing ] for group heading.  Parsing line: %s\n", text);
                 log_printf(0, "_next_group: ERROR: missing ] for group heading.  Parsing line: %s\n", text);
-                abort();
-                //return(NULL);
+                bfd->error = 1;
+                return(NULL);
             }
 
             end[0] = '\0';  //** Terminate the ending point
@@ -359,7 +368,14 @@ void _free_group(tbx_inip_group_t *group)
 void tbx_inip_destroy(tbx_inip_file_t *inip)
 {
     tbx_inip_group_t *group, *next;
+
     if (inip == NULL) return;
+
+    //** See if we are the last reference before closing
+    if (tbx_atomic_get(inip->ref_count) > 1) {
+        tbx_atomic_dec(inip->ref_count);
+        return;
+    }
 
     group = inip->tree;
     while (group != NULL) {
@@ -504,7 +520,7 @@ char *tbx_inip_get_string(tbx_inip_file_t *inip, const char *group, const char *
 //    NOTE:  Either fd or text showld be non-NULL but not both.
 //***********************************************************************
 
-tbx_inip_file_t *inip_load(FILE *fd, const char *text)
+tbx_inip_file_t *inip_load(FILE *fd, const char *text, const char *prefix)
 {
     tbx_inip_file_t *inip;
     tbx_inip_group_t *group, *prev;
@@ -519,16 +535,20 @@ tbx_inip_file_t *inip_load(FILE *fd, const char *text)
     if (fd) rewind(fd);
 
     entry->used = 0;
+    bfd.error = 0;
     bfd.curr = entry;
     bfd.stack = tbx_stack_new();
     bfd.include_paths = tbx_stack_new();
     tbx_stack_push(bfd.include_paths, strdup("."));  //** By default always look in the CWD 1st
+    if (prefix) tbx_stack_push(bfd.include_paths, strdup(prefix));  //** By default always look in the CWD 1st
 
     tbx_type_malloc(inip, tbx_inip_file_t, 1);
 
     group = _next_group(&bfd);
     inip->tree = NULL;
     inip->n_groups = 0;
+    tbx_atomic_set(inip->ref_count, 1);
+
     prev = NULL;
     while (group != NULL) {
         if (inip->tree == NULL) inip->tree = group;
@@ -541,6 +561,11 @@ tbx_inip_file_t *inip_load(FILE *fd, const char *text)
         group = _next_group(&bfd);
     }
 
+    if (bfd.error != 0) {  //** Got an internal parsing error
+        tbx_inip_destroy(inip);
+        inip = NULL;
+    }
+
     tbx_stack_free(bfd.stack, 1);
     tbx_stack_free(bfd.include_paths, 1);
 
@@ -548,12 +573,14 @@ tbx_inip_file_t *inip_load(FILE *fd, const char *text)
 }
 
 //***********************************************************************
-//  inip_read - Reads a .ini file
+//  tbx_inip_file_read - Reads a .ini file from disk
 //***********************************************************************
 
 tbx_inip_file_t *tbx_inip_file_read(const char *fname)
 {
     FILE *fd;
+    char *prefix;
+    int i;
 
     log_printf(15, "Parsing file %s\n", fname);
     if(!strcmp(fname, "-")) {
@@ -565,16 +592,29 @@ tbx_inip_file_t *tbx_inip_file_read(const char *fname)
         log_printf(-1, "Problem opening file %s, errorno: %d\n", fname, errno);
         return(NULL);
     }
-    tbx_inip_file_t *ret = inip_load(fd, NULL);
+
+    prefix = realpath(fname, NULL);
+    if (prefix != NULL) {
+        for (i=strlen(prefix); i>0; i--) {
+            if (prefix[i] == '/') {
+                prefix[i] = '\0';
+                break;
+            }
+        }
+    }
+
+    tbx_inip_file_t *ret = inip_load(fd, NULL, prefix);
+
+    if (prefix) free(prefix);
     return ret;
 }
 
 //***********************************************************************
-//  inip_read_text - Converts a character array into a .ini file
+//  tbx_inip_string_read - Loads a string and parses it into a INI structure
 //***********************************************************************
 tbx_inip_file_t *tbx_inip_string_read(const char *text)
 {
-    return(inip_load(NULL, text));
+    return(inip_load(NULL, text, NULL));
 }
 
 //***********************************************************************
@@ -582,7 +622,7 @@ tbx_inip_file_t *tbx_inip_string_read(const char *text)
 //     and converts it to a string.
 //***********************************************************************
 
-int inip_convert2string(FILE *fd_in, const char *text_in, char **text_out, int *nbytes)
+int inip_convert2string(FILE *fd_in, const char *text_in, char **text_out, int *nbytes, char *prefix)
 {
     bfile_t bfd;
     bfile_entry_t *entry;
@@ -601,6 +641,7 @@ int inip_convert2string(FILE *fd_in, const char *text_in, char **text_out, int *
     bfd.stack = tbx_stack_new();
     bfd.include_paths = tbx_stack_new();
     tbx_stack_push(bfd.include_paths, strdup("."));  //** By default always look in the CWD 1st
+    if (prefix) tbx_stack_push(bfd.include_paths, strdup(prefix));  //** By default always look in the CWD 1st
 
 
     n_max = 10*1024;
@@ -641,6 +682,8 @@ int inip_convert2string(FILE *fd_in, const char *text_in, char **text_out, int *
 int tbx_inip_file2string(const char *fname, char **text_out, int *nbytes)
 {
     FILE *fd;
+    char *prefix;
+    int i;
 
     log_printf(15, "Parsing file %s\n", fname);
 
@@ -655,7 +698,20 @@ int tbx_inip_file2string(const char *fname, char **text_out, int *nbytes)
         return(-1);
     }
 
-    return(inip_convert2string(fd, NULL, text_out, nbytes));
+    prefix = realpath(fname, NULL);
+    if (prefix != NULL) {
+        for (i=strlen(prefix); i>0; i--) {
+            if (prefix[i] == '/') {
+                prefix[i] = '\0';
+                break;
+            }
+        }
+    }
+
+    i = inip_convert2string(fd, NULL, text_out, nbytes, prefix);
+    if (prefix) free(prefix);
+
+    return(i);
 }
 
 //***********************************************************************
@@ -664,5 +720,5 @@ int tbx_inip_file2string(const char *fname, char **text_out, int *nbytes)
 //***********************************************************************
 int tbx_inip_text2string(const char *text, char **text_out, int *nbytes)
 {
-    return(inip_convert2string(NULL, text, text_out, nbytes));
+    return(inip_convert2string(NULL, text, text_out, nbytes, NULL));
 }

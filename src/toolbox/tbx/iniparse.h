@@ -33,6 +33,7 @@ typedef struct tbx_inip_file_t tbx_inip_file_t;
 typedef struct tbx_inip_group_t tbx_inip_group_t;
 
 // Functions
+TBX_API tbx_inip_file_t *tbx_inip_dup(tbx_inip_file_t *ifd);
 TBX_API void tbx_inip_destroy(tbx_inip_file_t *inip);
 TBX_API tbx_inip_element_t *tbx_inip_ele_first(tbx_inip_group_t *group);
 TBX_API char *tbx_inip_ele_get_key(tbx_inip_element_t *ele);
