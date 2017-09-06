@@ -685,7 +685,7 @@ gop_mq_ongoing_t *gop_mq_ongoing_create(gop_mq_context_t *mqc, gop_mq_portal_t *
 
     if (mode & ONGOING_CLIENT) {
         mqon->table = apr_hash_make(mqon->mpool);
-       FATAL_UNLESS(mqon->table != NULL);
+        FATAL_UNLESS(mqon->table != NULL);
 
         tbx_thread_create_assert(&(mqon->ongoing_heartbeat_thread), NULL, ongoing_heartbeat_thread, (void *)mqon, mqon->mpool);
     }
