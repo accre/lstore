@@ -217,7 +217,7 @@ void *hc_send_thread(apr_thread_t *th, void *data)
     gop_op_status_t finished;
     tbx_ns_timeout_t dt;
     apr_time_t dtime;
-    int tid, err;
+    int tid, err, idle_state;
 
     hportal_lock(hp);
     hp->oops_send_start++;
@@ -233,9 +233,9 @@ void *hc_send_thread(apr_thread_t *th, void *data)
 
     log_printf(5, "hc->recv_up=%d host=%s\n",err, hp->host);
 
-    if (err != 1) return(NULL);  //** If send thread failed to spawn exit;
+    idle_state = 0;
 
-    tbx_atomic_dec(hp->idle_conn);  //** Flag us as idle
+    if (err != 1) return(NULL);  //** If send thread failed to spawn exit;
 
     //** check if the host is invalid and if so flush the work que
     if (hp->invalid_host == 1) {
@@ -243,7 +243,6 @@ void *hc_send_thread(apr_thread_t *th, void *data)
         empty_hp_que(hp, op_invalid_host_status);
         hc->net_connect_status = 1;
     } else {  //** Make the connection
-//     tbx_ns_timeout_set(&dt, 5, 0);
         hc->net_connect_status = hpc->fn->connect(ns, hp->connect_context, hp->host, hp->port, hp->dt_connect);
         if (hc->net_connect_status != 0) {
             log_printf(5, "hc_send_thread:  Can't connect to %s:%d!, ns=%d\n", hp->host, hp->port, tbx_ns_getid(ns));
@@ -285,10 +284,19 @@ void *hc_send_thread(apr_thread_t *th, void *data)
 
         hsop = _get_hportal_op(hp);
         if (hsop == NULL) {
+            if (idle_state == 0) {  // ** Flag us as idle if needed
+                idle_state = 1;
+                tbx_atomic_inc(hp->idle_conn);
+            }
             log_printf(15, "hc_send_thread: No commands so sleeping.. ns=%d time=" TT "\n", tbx_ns_getid(ns), apr_time_now());
             hportal_wait(hp, 1);    //** Wait for a new task
             hportal_unlock(hp);
         } else { //** Got one so let's process it
+            if (idle_state == 1) {
+                idle_state = 0;
+                tbx_atomic_dec(hp->idle_conn);
+            }
+
             hop = &(hsop->op->cmd);
             hp->executing_workload += hop->workload;  //** Update the executing workload
 
@@ -326,7 +334,6 @@ void *hc_send_thread(apr_thread_t *th, void *data)
                 //** Always push the command on the recving que even in a failure to collect the return code
                 lock_hc(hc);
                 hc->last_used = apr_time_now();  //** Update  the time.  The recv thread does this also
-                if (tbx_stack_count(hc->pending_stack) == 0) tbx_atomic_dec(hp->idle_conn);
                 tbx_stack_push(hc->pending_stack, (void *)hsop);  //** Push onto recving stack
                 hc->curr_op = NULL;
                 hc_recv_signal(hc); //** and notify recv thread
@@ -358,6 +365,13 @@ void *hc_send_thread(apr_thread_t *th, void *data)
         log_printf(15, "hc_send_thread: ns=%d shutdown=%d stack_size=%d curr_workload=%d time=" TT " last_used=" TT "\n", tbx_ns_getid(ns),
                    hc->shutdown_request, tbx_stack_count(hc->pending_stack), hc->curr_workload, apr_time_now(), hc->last_used);
         unlock_hc(hc);
+    }
+
+
+    //** Cleanup the idle satus if needed
+    if (idle_state == 1) {
+        idle_state = 0;
+        tbx_atomic_dec(hp->idle_conn);
     }
 
     //** Make sure and trigger the recv if their was a problem **
@@ -452,7 +466,6 @@ void *hc_recv_thread(apr_thread_t *th, void *data)
             hc->curr_workload -= hop->workload;
             tbx_stack_move_to_bottom(hc->pending_stack);
             tbx_stack_delete_current(hc->pending_stack, 1, 0);
-            if (tbx_stack_count(hc->pending_stack) == 0) tbx_atomic_inc(hp->idle_conn);
             hc_send_signal(hc);  //** Wake up send_thread if needed
             unlock_hc(hc);
 
@@ -620,7 +633,6 @@ void *hc_recv_thread(apr_thread_t *th, void *data)
 
     if (cmd_pause_time > 0) {
         if (n <= 0) {
-//        dt_sleep = apr_time_make(cmd_pause_time, 0);
             log_printf(6, "hc_recv_thread: ns=%d sleeping for " TT " us\n", tbx_ns_getid(ns), cmd_pause_time);
             apr_sleep(cmd_pause_time);
             log_printf(6, "hc_recv_thread: ns=%d Waking up from sleep!\n", tbx_ns_getid(ns));

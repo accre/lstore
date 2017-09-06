@@ -70,10 +70,10 @@ void hportal_siginfo_handler(void *arg, FILE *fd)
         hportal_lock(hp);
 
         fprintf(fd, "    Host: %s\n", hp->skey);
-        fprintf(fd, "        Workload: %s  Executing workload: %s  Commands processed: " I64T "  Tasks Queued: %d  Merged Commands: " I64T "\n",
+        fprintf(fd, "        Workload: %s  Executing workload: %s  Commands processed: " I64T "  Tasks Queued: %d  Merged Commands: " I64T " Idle Conn: %d\n",
             tbx_stk_pretty_print_double_with_scale(1024, hp->workload, ppbuf1), tbx_stk_pretty_print_double_with_scale(1024, hp->executing_workload, ppbuf2),
-            hp->cmds_processed, tbx_stack_count(hp->que), hp->n_coalesced);
-        fprintf(fd, "        Connections -- Active: %d  Stable: %d  Min: %d  Max: %d  Sleeping: %d  Closing: %d  Failed: %d  Success: %d  Closed: %d\n",
+            hp->cmds_processed, tbx_stack_count(hp->que), hp->n_coalesced, tbx_atomic_get(hp->idle_conn));
+        fprintf(fd, "        Connections -- Active: %d  Stable: %d  Min: %d  Max: %d  Sleeping: %d  Closing: %d  Failed: %d  Success: %d  Reaping Que: %d\n",
             hp->n_conn, hp->stable_conn, hp->min_conn, hp->max_conn, hp->sleeping_conn, hp->closing_conn, hp->failed_conn_attempts,
             hp->successful_conn_attempts, tbx_stack_count(hp->closed_que));
 
@@ -757,8 +757,7 @@ void _hp_fail_tasks(gop_host_portal_t *hp, gop_op_status_t err_code)
 {
     gop_op_generic_t *hsop;
 
-    hp->workload = 0;
-
+    hp->oops_check -= 100000; //** Just a check to help diagnose issues
     //** Use the _get_hportal_op() To make sure we handle any coalescing
     while ((hsop = _get_hportal_op(hp)) != NULL) {
         hportal_unlock(hp);
@@ -811,7 +810,6 @@ void check_hportal_connections(gop_host_portal_t *hp)
                 n_newconn = 0;
             } else if (hp->stable_conn == 0) {
                 hp->stable_conn = 1;
-//            n_newconn = 1;
                 n_newconn = (hp->pause_until == 0) ? 1 : 0;
             } else {
                 n_newconn = (hp->n_conn < hp->max_conn) ? 1 : 0;
