@@ -175,12 +175,11 @@ void tbx_log_flush()
 // mlog_load - Loads the module log information
 //***************************************************************
 
-void tbx_mlog_load(char *fname, char *output_override, int log_level_override)
+void tbx_mlog_load(tbx_inip_file_t *fd, char *output_override, int log_level_override)
 {
     char *group_index, *group_level;
     char *name, *value, *logname;
     int n, default_level;
-    tbx_inip_file_t *fd;
     tbx_inip_group_t *g;
     tbx_inip_element_t *ele;
 
@@ -190,10 +189,8 @@ void tbx_mlog_load(char *fname, char *output_override, int log_level_override)
     group_index = "log_index";
     group_level = "log_level";
 
-    //** Open the file
-    fd = tbx_inip_file_read(fname);
     if (fd == NULL) {
-        log_printf(0, "Error loading module definitions!  fname=%s\n", fname);
+        log_printf(0, "Error loading module definitions!\n");
         return;
     }
 
@@ -209,7 +206,6 @@ void tbx_mlog_load(char *fname, char *output_override, int log_level_override)
     g = tbx_inip_group_find(fd, group_index);
     if (g == NULL) {
         log_printf(1, "Missing %s group!\n", group_index);
-        tbx_inip_destroy(fd);
         return;
     }
 
@@ -231,8 +227,6 @@ void tbx_mlog_load(char *fname, char *output_override, int log_level_override)
         //** Move to the next segmnet to load
         ele = tbx_inip_ele_next(ele);
     }
-
-    tbx_inip_destroy(fd);
 }
 
 

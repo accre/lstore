@@ -19,6 +19,7 @@
 #define ACCRE_LOG_H_INCLUDED
 
 #include <stdio.h>
+#include <tbx/iniparse.h>
 #include <tbx/visibility.h>
 
 #ifdef __cplusplus
@@ -35,7 +36,7 @@ TBX_API void tbx_info_flush(tbx_log_fd_t *ifd);
 TBX_API void tbx_log_flush();
 TBX_API void tbx_log_open(char *fname, int dolock);
 TBX_API int tbx_minfo_printf(tbx_log_fd_t *ifd, int module_index, int level, const char *fn, const char *fname, int line, const char *fmt, ...) __attribute__((format (printf, 7, 8)));
-TBX_API void tbx_mlog_load(char *fname, char *output_override, int log_level_override);
+TBX_API void tbx_mlog_load(tbx_inip_file_t *fd, char *output_override, int log_level_override);
 TBX_API int tbx_mlog_printf(int suppress_header, int module_index, int level, const char *fn, const char *fname, int line, const char *fmt, ...) __attribute__((format (printf, 7, 8)));
 TBX_API int tbx_stack_get_info_level(tbx_log_fd_t *fd);
 
