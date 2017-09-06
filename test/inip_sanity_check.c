@@ -73,7 +73,7 @@ tbx_log_open("log.out", 0);
     ifd = tbx_inip_file_read(fname);
     if (ifd == NULL) {
         fprintf(stdout, "ERROR: parsing file!\n");
-        err = 1;
+        return(1);
     }
     tbx_inip_destroy(ifd);
 
