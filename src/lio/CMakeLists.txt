@@ -96,6 +96,7 @@ set(LSTORE_PROJECT_OBJS
 		os/timecache.c
 		osaz/fake.c
         raid4.c
+        remote_config.c
 		rs/query_base.c
 		rs/remote_client.c
 		rs/remote_server.c

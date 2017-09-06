@@ -193,7 +193,7 @@ struct lio_config_t {
     lio_creds_t *creds;
     apr_thread_mutex_t *lock;
     apr_pool_t *mpool;
-    char *cfg_name;
+    char *obj_name;
     char *section_name;
     char *ds_section;
     char *mq_section;

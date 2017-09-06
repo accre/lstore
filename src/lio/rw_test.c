@@ -1152,18 +1152,8 @@ void *rw_test_thread(apr_thread_t *th, void *arg)
 // rw_load_options - Loads the test options form the config file
 //*************************************************************************
 
-void rw_load_options(char *cfgname, char *group)
+void rw_load_options(tbx_inip_file_t *fd, char *group)
 {
-    tbx_inip_file_t *fd;
-
-    fd = tbx_inip_file_read(cfgname);
-    if (fd == NULL) {
-        printf("rw_load_config:  ERROR opening config file: %s\n", cfgname);
-        tbx_log_flush();
-        fflush(stdout);
-        abort();
-    }
-
     //** Parse the global params
     rwc.n_parallel = tbx_inip_get_integer(fd, group, "parallel", 1);
     rwc.n_targets = tbx_inip_get_integer(fd, group, "n_targets", 1);
@@ -1249,7 +1239,7 @@ int lio_rw_test_exec(int rw_mode, char *section)
 
     rwc.timeout = lio_gc->timeout;
 
-    if (lio_gc->cfg_name == NULL) {
+    if (lio_gc->ifd == NULL) {
         printf("ex_rw_test:  Missing config file!\n");
         tbx_log_flush();
         fflush(stdout);
@@ -1259,7 +1249,7 @@ int lio_rw_test_exec(int rw_mode, char *section)
     if (section == NULL) section = "rw_params";
 
     //** Lastly load the R/W test params
-    rw_load_options(lio_gc->cfg_name, section);
+    rw_load_options(lio_gc->ifd, section);
 
     rwc.n_parallel /= rwc.n_targets;
     if (rwc.n_parallel <= 0) rwc.n_parallel = 1;

@@ -128,10 +128,11 @@ int lio_cp_create_dir(tbx_list_t *table, lio_path_tuple_t tuple);
 
 void lc_object_remove_unused(int remove_all_unused);
 lio_path_tuple_t lio_path_auto_fuse_convert(lio_path_tuple_t *ltuple);
-int lio_parse_path(char *startpath, char **user, char **service, char **path);
+int lio_parse_path(char *startpath, char **user, char **mq_name, char **host, int *port, char **cfg, char **section, char **path);
+LIO_API int lio_parse_path_test();
 lio_fn_t *lio_core_create();
 void lio_core_destroy(lio_config_t *lio);
-lio_config_t *lio_create(char *fname, char *section, char *user, char *exe_name);
+lio_config_t *lio_create(tbx_inip_file_t *ifd, char *section, char *user, char *obj_name, char *exe_name);
 void lio_destroy(lio_config_t *lio);
 const char *lio_client_version();
 

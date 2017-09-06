@@ -48,68 +48,299 @@
 //***********************************************************************
 
 //***********************************************************************
-//  lio_parse_path - Parses a path ofthe form: user@service:/my/path
-//        The user and service are optional
+//  lio_parse_path - Parses a path of the form:
+//
+//          [lstore://][user@][MQ_NAME|]HOST:[port:]cfg:section:[/fname]
+//          [lstore://]user@[MQ_NAME|]HOST:[port:]cfg:[/fname]
+//          [lstore://]user@[MQ_NAME|]HOST[:port][:/fname]
+//          [lstore://]@:/fname
+//
+//  startpath is required.  All other parameters are optional.  If NULL the
+//     parameter is not returned.  If the parameter already has a value
+//     stored, ie it's non-NULL, then the current value is freed (except for port)
+//     and overwritten with the new value if it is supplied.  The value should
+//     be freed by the calling program.
 //
 //  Returns:
-//     1 if @: are encountered
-//     0 if @: are missing
+//     1 if lstore:// and/or @: were encountered signifying it's an actual LStore path
+//     0 if lstore:// and @: are missing so it could be a local LFS mount OR an LStore path
 //    -1 if the path can't be parsed.  Usually :@ or some perm
 //***********************************************************************
 
-int lio_parse_path(char *startpath, char **user, char **service, char **path)
+int lio_parse_path(char *startpath, char **user, char **mq_name, char **host, int *port, char **cfg, char **section, char **path)
 {
-    int i, j, found, n, ptype;
+    int i, j, k, found, found2, n, ptype, uri;
+    char *dummy;
 
-    *user = *service = *path = NULL;
     n = strlen(startpath);
-    ptype = 0;
+
+    if (strncasecmp(startpath, "file://", 7) == 0) { //** Straight file
+        k = 7;
+        ptype = 0;
+        goto handle_path;
+    }
+
+    //** Check for the "lstore://" prefix and skipp if there
+    k = (strncasecmp(startpath, "lstore://", 9) == 0) ?  9 : 0;
+    uri = k;   //** Note we have an official URI prefix
+    ptype = (k == 0) ? 0 : 1;
+
+    //printf("URI=%s len=%d uri=%d\n", startpath, n, uri);
+
+    if (k<n) {
+        if (startpath[k] == '/') goto handle_path;  //** Just a path
+    }
+
+    //** check for the '@'
     found = -1;
-    for (i=0; i<n; i++) {
+    for (i=k; i<n; i++) {
         if (startpath[i] == '@') {
-            found = i;
+            found = i+1;
             ptype = 1;
+
+            if ((i>k) && (user)) {  //** Got a valid user
+                if (*user) free(*user);
+                *user = strndup(startpath+k, i-k);
+            }
             break;
-        } else if (startpath[i] == ':') {  //** Should have an '@' first
+        } else if ((startpath[i] == '|') || (startpath[i] == ':')) { //** Got an MQ name
+            if (found == -1) {
+                found = uri;
+                ptype = 1;
+                break;
+            }
+        }
+    }
+
+    //log_printf(0, "   @ check remaining=%s\n", startpath+i);
+
+    //** See if we hit a stray '@' if so flag an error
+    for (j=i+1; j<n; j++) {
+        if (startpath[j] == '@') {
+            //log_printf(0, "    return A\n");
+            return(-1);
+        }
+    }
+    //log_printf(0, "   found=%d\n", found);
+
+    if ((found == -1) && (uri == 0)) {
+        if (startpath[k] == '/') {  //** Didn't find anything else to to parse
+            if (path) {
+                if (*path) free(*path);
+                *path = strdup(startpath + k);
+            }
+            //log_printf(0, "    return B\n");
+            return(ptype);
+        } else { //** Just have a host
+            ptype = 1;
+        }
+    }
+
+    //** Look for an ':' and process an '|' if encountered
+    k = (found == -1) ? uri : found;
+    found = -1;
+    found2 = 0;
+    for (i=k; i<n; i++) {
+        if (startpath[i] == ':') {
+            found = i;
+            break;
+        } else if (startpath[i] == '|') { //** Got an MQ name
+            if ((i>k) && (mq_name)) {
+                if (*mq_name) free(*mq_name);
+                *mq_name = strndup(startpath + k, i-k);
+            }
+            k = i+1;  //** Move the starting forward to skip the MQ name
+            found2 = 1;
+        }
+    }
+
+    //log_printf(0, "   after mq remaining=%s\n", startpath+k);
+    //log_printf(0, "   found=%d found2=%d k=%d\n", found, found2, k);
+    if (found == -1) {  //**No path.  Just a host
+        if (k < n) {
+            if (host) {
+                if (*host) free(*host);
+                *host = strdup(startpath+k);
+            }
+        }
+        return(ptype);
+    } else {
+        if (k<n) {
+            if ((i>k) && (host)) {
+                if (*host) free(*host);
+                *host = strndup(startpath + k, i-k);
+            }
+            k = i+1;  //** Move the starting forward to skip the MQ name
+        } else if (found2) { //** We have an MQ name without a host so flag an error
+            //log_printf(0, "    return C\n");
             return(-1);
         }
     }
 
-    if (found == -1) {
-        *path = strdup(startpath);
-        return(ptype);
-    }
+    //log_printf(0, "   after host remaining=%s\n", startpath+k);
 
-    if (found > 0) { //** Got a valid user
-        *user = strndup(startpath, found);
-    }
+    if (startpath[k] == '/') goto handle_path;
 
-    j = found+1;
-    found = -1;
-    for (i=j; i<n; i++) {
+    //** Now check if we have a port
+    found = 0;
+    for (i=k; i<n; i++) {
         if (startpath[i] == ':') {
-            found = i;
+            if (i>k) {
+                dummy = strndup(startpath + k, i-k);
+                found2 = atoi(dummy);
+                free(dummy);
+                if (found2 > 0) {  //** Got a valid port
+                    k = i+1;
+                    found = 1;
+                    if (port) *port = found2;
+                }
+            }
             break;
         }
     }
 
-    if (found == -1) {  //**No path.  Just a service
-        if (j < n) {
-            *service = strdup(&(startpath[j]));
+    if (!found) { //** See if we have a port or a path for the end
+        if (startpath[k] == '/') goto handle_path;
+        found2 = atoi(startpath+k);
+        if (found2 > 0) {
+           if (port) *port = found2;
+           return(ptype);
+        }
+    }
+
+    //log_printf(0, "   after port remaining=%s\n", startpath+k);
+
+    if (startpath[k] == '/') goto handle_path;
+
+    //** check if we have a config name
+    found = 0;
+    for (i=k; i<n; i++) {
+        if (startpath[i] == ':') {
+            if ((i>k) && (cfg)) {
+                if (*cfg) free(*cfg);
+                *cfg = strndup(startpath + k, i-k);
+            }
+            found = 1;
+            k = i+1;
+            break;
+        }
+    }
+
+    //log_printf(0, "   after cfg remaining=%s\n", startpath+k);
+
+    if (startpath[k] == '/') goto handle_path;
+
+    if (!found) { //** At the end and we don't have a path so it's a cfg
+        if ((i>k) && (cfg)) {
+            if (*cfg) free(*cfg);
+            *cfg = strndup(startpath + k, i-k);
         }
         return(ptype);
     }
 
-    i = found - j;
-    *service = (i == 0) ? NULL : strndup(&(startpath[j]), i);
+    //** check if we have a section
+    for (i=k; i<n; i++) {
+        if (startpath[i] == ':') {
+            if ((i>k) && (section)) {
+                if (*section) free(*section);
+                *section = strndup(startpath + k, i-k);
+            }
+            k = i+1;
+            break;
+        }
+    }
 
-    //** Everything else is the path
-    j = found + 1;
-    if (found < n) {
-        *path = strdup(&(startpath[j]));
+handle_path:
+
+    //** Anythng else is the path
+    if ((k<n) && (path)) {
+        if (*path) free(*path);
+        *path = strdup(startpath + k);
     }
 
     return(ptype);
+}
+
+//***********************************************************************
+
+int strcmp_null(const char *s1, const char *s2)
+{
+    if ((s1 == NULL) && (s2 == NULL)) return(0);
+    if ((s1 == NULL) && (s2 != NULL)) return(-2);
+    if ((s1 != NULL) && (s2 == NULL)) return(-2);
+    return(strcmp(s1,s2));
+}
+
+//***********************************************************************
+//  parse_check - Does the error checking and printing
+//***********************************************************************
+
+int parse_path_check(char *uri, char *user, char *mq_name, char *host, int port, char *cfg, char *section, char *path, int err)
+{
+    int err2, port2, ret;
+    char *user2, *mq_name2, *host2, *cfg2, *section2, *path2;
+
+    port2 = -1;
+    user2 = mq_name2 = host2 = cfg2 = section2 = path2 = NULL;
+    err2 = lio_parse_path(uri, &user2, &mq_name2, &host2, &port2, &cfg2, &section2, &path2);
+
+    printf("uri=%s err=%d\n", uri, err2);
+
+    ret = 0;
+    if (err != err2) {ret=1; printf("    ERROR: err=%d  err2=%d\n", err, err2); }
+    if (strcmp_null(user, user2) != 0) {ret=1; printf("    ERROR: user=%s  user2=%s\n", user, user2); }
+    if (strcmp_null(mq_name, mq_name2) != 0) {ret=1; printf("    ERROR: mq_name=%s  mq_name2=%s\n", mq_name, mq_name2); }
+    if (strcmp_null(host, host2) != 0) {ret=1; printf("    ERROR: host=%s  host2=%s\n", host, host2); }
+    if (port != port2) {ret=1; printf("    ERROR: port=%d  port2=%d\n", port, port2); }
+    if (strcmp_null(cfg, cfg2) != 0) {ret=1; printf("    ERROR: cfg=%s  cfg2=%s\n", cfg, cfg2); }
+    if (strcmp_null(section, section2) != 0) {ret=1; printf("    ERROR: section=%s  section2=%s\n", section, section2); }
+    if (strcmp_null(path, path2) != 0) {ret=1; printf("    ERROR: path=%s  path2=%s\n", path, path2); }
+
+    return(ret);
+}
+
+//***********************************************************************
+// lio_parse_path_test - Sanity checks all the permutations
+//      for the LStore URI
+//***********************************************************************
+
+int lio_parse_path_test()
+{
+    int err;
+
+    err = 0;
+    err += parse_path_check("lstore://user@MQ|host.vampire:1234:cfg:section:/my/path", "user", "MQ", "host.vampire", 1234, "cfg", "section", "/my/path", 1);
+    err += parse_path_check("user@MQ|host.vampire:1234:cfg:section:/my/path", "user", "MQ", "host.vampire", 1234, "cfg", "section", "/my/path", 1);
+    err += parse_path_check("user@host.vampire:1234:cfg:section:/my/path", "user", NULL, "host.vampire", 1234, "cfg", "section", "/my/path", 1);
+    err += parse_path_check("user@host.vampire:cfg:section:/my/path", "user", NULL, "host.vampire", -1, "cfg", "section", "/my/path", 1);
+    err += parse_path_check("user@host.vampire:/my/path", "user", NULL, "host.vampire", -1, NULL, NULL, "/my/path", 1);
+    err += parse_path_check("user@host.vampire:1234", "user", NULL, "host.vampire", 1234, NULL, NULL, NULL, 1);
+    err += parse_path_check("user@host.vampire:cfg:", "user", NULL, "host.vampire", -1, "cfg", NULL, NULL, 1);
+    err += parse_path_check("user@host.vampire:cfg:section:", "user", NULL, "host.vampire", -1, "cfg", "section", NULL, 1);
+    err += parse_path_check("user@host.vampire::section:", "user", NULL, "host.vampire", -1, NULL, "section", NULL, 1);
+    err += parse_path_check("user@host.vampire:::", "user", NULL, "host.vampire", -1, NULL, NULL, NULL, 1);
+    err += parse_path_check("user@host.vampire:::/my/path", "user", NULL, "host.vampire", -1, NULL, NULL, "/my/path", 1);
+    err += parse_path_check("user@host.vampire:1234:/my/path", "user", NULL, "host.vampire", 1234, NULL, NULL, "/my/path", 1);
+    err += parse_path_check("user@host.vampire", "user", NULL, "host.vampire", -1, NULL, NULL, NULL, 1);
+    err += parse_path_check("MQ|host.vampire:cfg", NULL, "MQ", "host.vampire", -1, "cfg", NULL, NULL, 1);
+    err += parse_path_check("MQ|host.vampire", NULL, "MQ", "host.vampire", -1, NULL, NULL, NULL, 1);
+    err += parse_path_check("host.vampire", NULL, NULL, "host.vampire", -1, NULL, NULL, NULL, 1);
+    err += parse_path_check("host.vampire:1234", NULL, NULL, "host.vampire", 1234, NULL, NULL, NULL, 1);
+    err += parse_path_check("host.vampire:cfg", NULL, NULL, "host.vampire", -1, "cfg",  NULL, NULL, 1);
+    err += parse_path_check("host.vampire:cfg:/my/path", NULL, NULL, "host.vampire", -1, "cfg", NULL, "/my/path", 1);
+    err += parse_path_check("host.vampire:/my/path", NULL, NULL, "host.vampire", -1, NULL, NULL, "/my/path", 1);
+    err += parse_path_check("host.vampire:/", NULL, NULL, "host.vampire", -1, NULL, NULL, "/", 1);
+    err += parse_path_check("lstore://host.vampire", NULL, NULL, "host.vampire", -1, NULL, NULL, NULL, 1);
+    err += parse_path_check("lstore://host.vampire:cfg", NULL, NULL, "host.vampire", -1, "cfg", NULL, NULL, 1);
+    err += parse_path_check("lstore://host.vampire:1234", NULL, NULL, "host.vampire", 1234, NULL, NULL, NULL, 1);
+    err += parse_path_check("lstore://host.vampire:1234:cfg", NULL, NULL, "host.vampire", 1234, "cfg", NULL, NULL, 1);
+
+    err += parse_path_check("@:/", NULL, NULL, NULL, -1, NULL, NULL, "/", 1);
+    err += parse_path_check(":@", NULL, NULL, NULL, -1, NULL, NULL, NULL, -1);
+    err += parse_path_check("@:/just/a/path", NULL, NULL, NULL, -1, NULL, NULL, "/just/a/path", 1);
+    err += parse_path_check("/just/a/path", NULL, NULL, NULL, -1, NULL, NULL, "/just/a/path", 0);
+
+    return(err);
 }
 
 //***********************************************************************
