@@ -53,15 +53,13 @@ int main(int argc, char **argv)
     char *text, *fname;
     tbx_inip_file_t *ifd;
 
+    err = 0;
     if (argc < 2) {
         print_help();
         return(1);
     }
 
     tbx_log_open("stderr", 0);
-
-tbx_set_log_level(20);
-tbx_log_open("log.out", 0);
 
     fname = argv[1];
     do_print = 0;
