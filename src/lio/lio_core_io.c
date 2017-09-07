@@ -88,7 +88,7 @@ void lio_open_files_info_fn(void *arg, FILE *fd)
     it = tbx_list_iter_search(lc->open_index, NULL, 0);
     tbx_list_next(&it, (tbx_list_key_t *)&fid, (tbx_list_data_t **)&fh);
     while (fh != NULL) {
-        fprintf(fd, " seg=" XIDT " fname=%s\n", fh->vid, fh->fname);
+        fprintf(fd, " seg=" XIDT " fname=%s cnt=%d\n", fh->vid, fh->fname, fh->ref_count);
         tbx_list_next(&it, (tbx_list_key_t *)&fid, (tbx_list_data_t **)&fh);
     }
     lio_unlock(lc);
@@ -500,7 +500,6 @@ gop_op_status_t lio_myopen_fn(void *arg, int id)
 
     if (fh != NULL) { //** Already open so just increment the ref count and return a new fd
         fh->ref_count++;
-        fh->fname = strdup(fd->path);
         fd->fh = fh;
         lio_unlock(lc);
         *op->fd = fd;
@@ -513,6 +512,7 @@ gop_op_status_t lio_myopen_fn(void *arg, int id)
     fh->vid = vid;
     fh->ref_count++;
     fh->lc = lc;
+    fh->fname = strdup(fd->path);
 
     //** Load it
     fh->ex = lio_exnode_create();
