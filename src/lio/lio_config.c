@@ -1415,7 +1415,7 @@ no_args:
         if (lio_os_local_filetype("default") != 0) {  //** Local remote config
             cfg_name = "file://default";
         } else if (lio_os_local_filetype("lio.cfg") != 0) {  //** Local INI file
-            cfg_name = "init://lio.cfg";
+            cfg_name = "ini://lio.cfg";
         } else {
             home = getenv("HOME");
             snprintf(var, sizeof(var), "%s/.lio/default", home);
