@@ -659,6 +659,7 @@ int inip_convert2string(FILE *fd_in, const char *text_in, char **text_out, int *
     entry->used = 0;
     bfd.curr = entry;
     bfd.stack = tbx_stack_new();
+    bfd.error = 0;
     bfd.include_paths = tbx_stack_new();
     tbx_stack_push(bfd.include_paths, strdup("."));  //** By default always look in the CWD 1st
     if (prefix) tbx_stack_push(bfd.include_paths, strdup(prefix));  //** By default always look in the CWD 1st
