@@ -78,7 +78,7 @@ struct ibp_context_t {
     int connection_mode;  //** Connection mode
     int rr_size;          //** Round robin connection count. Only used ir cmode = RR
     double transfer_rate; //** Transfer rate in bytes/sec used for calculating timeouts.  Set to 0 to disable function
-    tbx_atomic_unit32_t rr_count; //** RR counter
+    tbx_atomic_int_t rr_count; //** RR counter
     ibp_connect_context_t cc[IBP_MAX_NUM_CMDS+1];  //** Default connection contexts for EACH command
     tbx_ns_chksum_t ncs;
     gop_portal_context_t *pc;
@@ -87,7 +87,7 @@ struct ibp_context_t {
     tbx_list_t   *coalesced_ops;  //** Ops available for coalescing go here
     apr_thread_mutex_t *lock;
     apr_pool_t *mpool;
-    tbx_atomic_unit32_t n_ops;
+    tbx_atomic_int_t n_ops;
 };
 
 

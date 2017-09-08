@@ -178,7 +178,7 @@ struct gop_command_op_t {   //** Command operation
     gop_op_before_exec_fn_t before_exec;
     gop_op_destroy_command_fn_t destroy_command;
     tbx_stack_t  *coalesced_ops;                                  //** Stores any other coalesced ops
-    tbx_atomic_unit32_t on_top;
+    tbx_atomic_int_t on_top;
     apr_time_t start_time;
     apr_time_t end_time;
 };

@@ -68,7 +68,7 @@ struct gop_host_portal_t {       //** Contains information about the depot inclu
     int min_conn;           //** Max allowed connections, normally global_config->min_threads
     int sleeping_conn;      //** Connections currently sleeping due to a depot load error
     int closing_conn;       //** Connetions currently being closed
-    tbx_atomic_unit32_t idle_conn; //** Number of idle connections
+    tbx_atomic_int_t idle_conn; //** Number of idle connections
     apr_time_t pause_until;     //** Forces the system to wait, if needed, before making new conn
     apr_time_t dt_connect;  //** Max time to wait when initiating a connection
     tbx_stack_t *conn_list;     //** List of connections

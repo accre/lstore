@@ -34,7 +34,7 @@
 #include "mq_helpers.h"
 #include "mq_portal.h"
 
-static tbx_atomic_unit32_t _id_counter = 0;
+static tbx_atomic_int_t _id_counter = 0;
 
 //***********************************************************************
 // mq_id_bytes - Returns hte number of bytes for the remote id.
@@ -63,9 +63,9 @@ int mq_id_bytes(char *host, int len)
 
 gop_mq_frame_t *mq_make_id_frame()
 {
-    tbx_atomic_unit32_t *id;
+    tbx_atomic_int_t *id;
 
-    tbx_type_malloc(id, tbx_atomic_unit32_t, 1);
+    tbx_type_malloc(id, tbx_atomic_int_t, 1);
 
     *id = tbx_atomic_inc(_id_counter);
 
@@ -73,7 +73,7 @@ gop_mq_frame_t *mq_make_id_frame()
         tbx_atomic_set(_id_counter, 0);
     }
 
-    return(gop_mq_frame_new(id, sizeof(tbx_atomic_unit32_t), MQF_MSG_AUTO_FREE));
+    return(gop_mq_frame_new(id, sizeof(tbx_atomic_int_t), MQF_MSG_AUTO_FREE));
 }
 
 

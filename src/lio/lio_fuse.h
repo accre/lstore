@@ -55,7 +55,7 @@ struct lio_fuse_t {
     int shutdown;
     int mount_point_len;
     int n_merge;
-    tbx_atomic_unit32_t counter;
+    tbx_atomic_int_t counter;
     lio_config_t *lc;
     apr_pool_t *mpool;
     apr_thread_mutex_t *lock;

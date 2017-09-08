@@ -124,7 +124,7 @@ struct gop_mq_context_t {      //** Main MQ context
     double min_ops_per_sec;    //** Minimum ops/sec needed to keep a connection open.
     apr_thread_mutex_t *lock;  //** Context lock
     apr_pool_t *mpool;         //** Context memory pool
-    tbx_atomic_unit32_t n_ops;        //** Operation count
+    tbx_atomic_int_t n_ops;        //** Operation count
     gop_thread_pool_context_t *tp; //** Worker thread pool
     apr_hash_t  *client_portals;      //** List of all client or outgoing portals
     apr_hash_t  *server_portals;  //** List of all the server or incoming portals
@@ -147,7 +147,7 @@ struct gop_mq_portal_t {   //** Container for managing connections to a single h
     int n_close;               //** Number of connections being requested to close
     int bind_short_running_max;  //** Max number of short running tasks allowed to run at a time
     int socket_type;           //** Socket type
-    tbx_atomic_unit32_t running; //** Running tasks
+    tbx_atomic_int_t running; //** Running tasks
     uint64_t n_ops;            //** Operation count
     double min_ops_per_sec;    //** Minimum ops/sec needed to keep a connection open.
     tbx_stack_t *tasks;            //** List of tasks

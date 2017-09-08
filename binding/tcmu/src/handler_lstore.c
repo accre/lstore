@@ -69,7 +69,7 @@ typedef struct {
    lio_fd_t *fd;
    lio_config_t *lc;
    lio_path_tuple_t tuple;
-   tbx_atomic_unit32_t in_flight;
+   tbx_atomic_int_t in_flight;
 } tcmu_lstore_t;
 
 //***********************************************************************

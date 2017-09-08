@@ -55,9 +55,9 @@ typedef struct {
     char *fname;
     char *qname;
     gop_thread_pool_context_t *tpc;
-    tbx_atomic_unit32_t hard_errors;
-    tbx_atomic_unit32_t soft_errors;
-    tbx_atomic_unit32_t write_errors;
+    tbx_atomic_int_t hard_errors;
+    tbx_atomic_int_t soft_errors;
+    tbx_atomic_int_t write_errors;
 } segfile_priv_t;
 
 typedef struct {

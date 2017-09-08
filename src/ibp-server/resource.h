@@ -90,7 +90,7 @@ typedef struct {       //Resource structure
    int  n_cache;               //Number of cache entries
    int  rwm_mode;              //Read/Write/Manage mode
    ibp_time_t start_time;      //Time the resource ws added.  USed to keep expired allocations from bering removed at start.
-   tbx_atomic_unit32_t counter;       //Activity counter
+   tbx_atomic_int_t counter;       //Activity counter
    apr_time_t cache_expire;    //Time before cache expires
    apr_time_t last_good_check; //Last good check
    ibp_time_t next_rescan;     //Time for next scan

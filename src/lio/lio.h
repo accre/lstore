@@ -70,7 +70,7 @@ struct lio_file_handle_t {  //** Shared file handle
     int ref_count;
     int remove_on_close;
     ex_off_t readahead_end;
-    tbx_atomic_unit32_t modified;
+    tbx_atomic_int_t modified;
     tbx_list_t *write_table;
 };
 

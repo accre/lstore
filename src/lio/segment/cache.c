@@ -110,8 +110,8 @@ typedef struct {
     gop_op_generic_t *gop;
 } cache_clone_t;
 
-tbx_atomic_unit32_t _cache_count = 0;
-tbx_atomic_unit32_t _flush_count = 0;
+tbx_atomic_int_t _cache_count = 0;
+tbx_atomic_int_t _flush_count = 0;
 
 gop_op_status_t cache_rw_func(void *arg, int id);
 int _cache_ppages_flush(lio_segment_t *seg, data_attr_t *da);

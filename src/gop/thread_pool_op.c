@@ -46,9 +46,9 @@ extern int _tp_stats;
 
 static int _tp_concurrent_max;
 static int _tp_depth_concurrent_max[TP_MAX_DEPTH];
-static tbx_atomic_unit32_t _tp_depth_concurrent[TP_MAX_DEPTH];
-static tbx_atomic_unit32_t _tp_concurrent;
-static tbx_atomic_unit32_t _tp_depth_total[TP_MAX_DEPTH];
+static tbx_atomic_int_t _tp_depth_concurrent[TP_MAX_DEPTH];
+static tbx_atomic_int_t _tp_concurrent;
+static tbx_atomic_int_t _tp_depth_total[TP_MAX_DEPTH];
 
 apr_threadkey_t *thread_local_stats_key = NULL;
 apr_threadkey_t *thread_local_depth_key = NULL;

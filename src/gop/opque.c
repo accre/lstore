@@ -40,7 +40,7 @@ void gop_opque_free(gop_opque_t *q, int mode);
 void gop_dummy_init();
 void gop_dummy_destroy();
 
-tbx_atomic_unit32_t _opque_counter = 0;
+tbx_atomic_int_t _opque_counter = 0;
 tbx_pc_t *_gop_control = NULL;
 
 //*************************************************************

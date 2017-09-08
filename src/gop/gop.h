@@ -42,7 +42,7 @@ struct gop_control_t {
 };
 
 
-extern tbx_atomic_unit32_t _opque_counter;
+extern tbx_atomic_int_t _opque_counter;
 
 
 void gop_simple_cb(void *v, int mode);

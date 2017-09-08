@@ -52,7 +52,7 @@ struct tbx_inip_group_t {  //** Group
 struct tbx_inip_file_t {  //File
     tbx_inip_group_t *tree;
     int  n_groups;
-    tbx_atomic_unit32_t ref_count;
+    tbx_atomic_int_t ref_count;
 };
 
 // Accessors

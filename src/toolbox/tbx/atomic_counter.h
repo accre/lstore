@@ -21,19 +21,21 @@
 #include <apr.h>
 #include <apr_atomic.h>
 #include <tbx/visibility.h>
+
+#include <inttypes.h>
 #include <tbx/fmttypes.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#define AIT "%u"  //** printf format type
+#define AIT I64T  //** printf format type
 
 // Types
-typedef apr_uint32_t tbx_atomic_unit32_t;
+typedef int64_t tbx_atomic_int_t;
 
 // Functions
-TBX_API int tbx_atomic_counter(tbx_atomic_unit32_t *counter);
+TBX_API int tbx_atomic_counter(tbx_atomic_int_t *counter);
 
 TBX_API void tbx_atomic_shutdown();
 
@@ -44,11 +46,12 @@ TBX_API void tbx_atomic_startup();
 TBX_API int *tbx_a_thread_id_ptr();
 
 // Preprocessor macros
-#define tbx_atomic_inc(v) apr_atomic_inc32(&(v))
-#define tbx_atomic_dec(v) apr_atomic_dec32(&(v))
-#define tbx_atomic_set(v, n) apr_atomic_set32(&(v), n)
-#define tbx_atomic_get(v) apr_atomic_read32(&(v))
-#define tbx_atomic_exchange(a, v) apr_atomic_xchg32(&a, v)
+
+#define tbx_atomic_inc(v) __atomic_fetch_add(&(v), 1, __ATOMIC_SEQ_CST)
+#define tbx_atomic_dec(v) __atomic_fetch_sub(&(v), 1, __ATOMIC_SEQ_CST)
+#define tbx_atomic_set(v, n) __atomic_store_n(&(v), n, __ATOMIC_SEQ_CST)
+#define tbx_atomic_get(v) __atomic_load_n(&(v),  __ATOMIC_SEQ_CST)
+#define tbx_atomic_exchange(v, n) __atomic_exchange_n(&(v), n, __ATOMIC_SEQ_CST)
 #define tbx_atomic_thread_id (*tbx_a_thread_id_ptr())
 
 #ifdef __cplusplus

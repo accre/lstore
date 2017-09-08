@@ -165,7 +165,7 @@ typedef struct {
     lio_creds_t *creds;
     lio_os_regex_table_t *rpath;
     lio_os_regex_table_t *object_regex;
-    tbx_atomic_unit32_t abort;
+    tbx_atomic_int_t abort;
     int obj_types;
     int recurse_depth;
 } osfile_remove_regex_op_t;
@@ -182,7 +182,7 @@ typedef struct {
     char *id;
     int *v_size;
     int n_keys;
-    tbx_atomic_unit32_t abort;
+    tbx_atomic_int_t abort;
 } osfile_regex_object_attr_op_t;
 
 typedef struct {

@@ -265,7 +265,7 @@ struct wq_context_s {    //** Device context
     apr_thread_t *backend_thread;
     lio_path_tuple_t tuple;
     int shutdown;
-    tbx_atomic_unit32_t op_count;
+    tbx_atomic_int_t op_count;
 };
 
 typedef struct {

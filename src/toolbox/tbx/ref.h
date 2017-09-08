@@ -40,7 +40,7 @@ typedef void (*tbx_ref_release_fn_t)(tbx_ref_t *ref);
 struct tbx_ref_t {
     /*! Actual holder of the reference counter */
     /* FIXME: This volatile should be within the atomic typedef */
-    volatile tbx_atomic_unit32_t refcount;
+    volatile tbx_atomic_int_t refcount;
 };
 
 // Inline Functions

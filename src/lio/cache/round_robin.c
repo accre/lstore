@@ -34,7 +34,7 @@
 typedef struct {
     int n_cache;
     lio_cache_t **child;
-    tbx_atomic_unit32_t count;
+    tbx_atomic_int_t count;
 } cache_rr_t;
 
 //*************************************************************************
