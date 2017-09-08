@@ -86,7 +86,8 @@ typedef struct {
 } pool_entry_t;
 
 typedef struct {
-    char *fname;
+    lio_path_tuple_t tuple;
+//    char *fname;
     char *exnode;
     char *set_key;
     char *set_success;
@@ -760,7 +761,7 @@ gop_op_status_t inspect_task(void *arg, int id)
     whattodo = global_whattodo;
     keys[6] = NULL;
 
-    log_printf(15, "inspecting fname=%s global_whattodo=%d\n", w->fname, global_whattodo);
+    log_printf(15, "inspecting fname=%s global_whattodo=%d\n", w->tuple.path, global_whattodo);
 
     if (w->log_name) {  //** Using individual log files
         fd = fopen(w->log_name, "w+");
@@ -778,7 +779,7 @@ gop_op_status_t inspect_task(void *arg, int id)
 
     if (w->get_exnode == 1) {
         count = - lio_gc->max_attr;
-        lio_getattr(lio_gc, lio_gc->creds, w->fname, NULL, "system.exnode", (void **)&w->exnode, &count);
+        lio_getattr(lio_gc, lio_gc->creds, w->tuple.path, NULL, "system.exnode", (void **)&w->exnode, &count);
     }
 
     if (w->exnode == NULL) {
@@ -799,14 +800,14 @@ gop_op_status_t inspect_task(void *arg, int id)
     }
 
     apr_thread_mutex_lock(lock);
-    log_printf(15, "checking fname=%s segid=%s\n", w->fname, dsegid);
+    log_printf(15, "checking fname=%s segid=%s\n", w->tuple.path, dsegid);
     tbx_log_flush();
     ptr = tbx_list_search(seg_index, dsegid);
-    log_printf(15, "checking fname=%s segid=%s got=%s\n", w->fname, dsegid, ptr);
+    log_printf(15, "checking fname=%s segid=%s got=%s\n", w->tuple.path, dsegid, ptr);
     tbx_log_flush();
     if (ptr != NULL) {
         apr_thread_mutex_unlock(lock);
-        info_printf(lfd, 0, "Skipping file %s (ftype=%d). Already loaded/processed.\n", w->fname, w->ftype);
+        info_printf(lfd, 0, "Skipping file %s (ftype=%d). Already loaded/processed.\n", w->tuple.path, w->ftype);
         free(dsegid);
         free(w->exnode);
         status = gop_failure_status;
@@ -819,14 +820,14 @@ gop_op_status_t inspect_task(void *arg, int id)
     //** Load it
     exp = lio_exnode_exchange_text_parse(w->exnode);
     if (exp == NULL) {
-        info_printf(lfd, 0, "ERROR  Failed with file %s (ftype=%d). Problem parsing exnode!\n", w->fname, w->ftype);
+        info_printf(lfd, 0, "ERROR  Failed with file %s (ftype=%d). Problem parsing exnode!\n", w->tuple.path, w->ftype);
         status = gop_failure_status;
         goto fini_1;
     }
 
     ex = lio_exnode_create();
     if (lio_exnode_deserialize(ex, exp, lio_gc->ess) != 0) {
-        info_printf(lfd, 0, "ERROR  Failed with file %s (ftype=%d). Problem parsing exnode!\n", w->fname, w->ftype);
+        info_printf(lfd, 0, "ERROR  Failed with file %s (ftype=%d). Problem parsing exnode!\n", w->tuple.path, w->ftype);
         status = gop_failure_status;
         goto finished;
     }
@@ -839,12 +840,12 @@ gop_op_status_t inspect_task(void *arg, int id)
     //** Get the default view to use
     seg = lio_exnode_default_get(ex);
     if (seg == NULL) {
-        info_printf(lfd, 0, "ERROR  Failed with file %s (ftype=%d). No default segment!\n", w->fname, w->ftype);
+        info_printf(lfd, 0, "ERROR  Failed with file %s (ftype=%d). No default segment!\n", w->tuple.path, w->ftype);
         status = gop_failure_status;
         goto finished;
     }
 
-    info_printf(lfd, 1, XIDT ": Inspecting file %s\n", segment_id(seg), w->fname);
+    info_printf(lfd, 1, XIDT ": Inspecting file %s\n", segment_id(seg), w->tuple.path);
 
     log_printf(15, "whattodo=%d\n", whattodo);
     //** Execute the inspection operation
@@ -861,13 +862,13 @@ gop_op_status_t inspect_task(void *arg, int id)
         goto finished;
     }
 
-    log_printf(15, "fname=%s inspect_gid=%d whattodo=%d bufsize=" XOT "\n", w->fname, gop_id(gop), whattodo, bufsize);
+    log_printf(15, "fname=%s inspect_gid=%d whattodo=%d bufsize=" XOT "\n", w->tuple.path, gop_id(gop), whattodo, bufsize);
 
     tbx_log_flush();
     gop_waitall(gop);
     tbx_log_flush();
     status = gop_get_status(gop);
-    log_printf(15, "fname=%s inspect_gid=%d status=%d %d\n", w->fname, gop_id(gop), status.op_status, status.error_code);
+    log_printf(15, "fname=%s inspect_gid=%d status=%d %d\n", w->tuple.path, gop_id(gop), status.op_status, status.error_code);
 
     gop_free(gop, OP_DESTROY);
 
@@ -909,12 +910,12 @@ gop_op_status_t inspect_task(void *arg, int id)
         if (count != 0) {  //** Do a further check to make sure the exnode hans't changed during the inspection
             count = -lio_gc->max_attr;
             exnode2 = NULL;
-            lio_getattr(lio_gc, creds, w->fname, NULL, "system.exnode", (void **)&exnode2, &count);
+            lio_getattr(lio_gc, creds, w->tuple.path, NULL, "system.exnode", (void **)&exnode2, &count);
             if (exnode2 != NULL) {
                 count = strcmp(exnode2, exp->text.text);
                 free(exnode2);
                 if (count != 0) {
-                    info_printf(lfd, 0, "WARN Exnode changed during inspection for file %s (ftype=%d). Aborting exnode update\n", w->fname, w->ftype);
+                    info_printf(lfd, 0, "WARN Exnode changed during inspection for file %s (ftype=%d). Aborting exnode update\n", w->tuple.path, w->ftype);
                 } else {
                     val[n] = exp_out->text.text;
                     v_size[n]= strlen(val[n]);
@@ -935,7 +936,7 @@ gop_op_status_t inspect_task(void *arg, int id)
             v_size[n] = w->set_success_size;
             n++;
         }
-        err= lio_multiple_setattr_op(lio_gc, creds, w->fname, NULL, keys, (void **)val, v_size, n);
+        err= lio_multiple_setattr_op(lio_gc, creds, w->tuple.path, NULL, keys, (void **)val, v_size, n);
         if (err != OP_STATE_SUCCESS) status.op_status = OP_STATE_FAILURE;
         lio_exnode_exchange_destroy(exp_out);
     } else {
@@ -969,12 +970,12 @@ gop_op_status_t inspect_task(void *arg, int id)
             if (count != 0) {  //** Do a further check to make sure the exnode hans't changed during the inspection
                 count = -lio_gc->max_attr;
                 exnode2 = NULL;
-                lio_getattr(lio_gc, creds, w->fname, NULL, "system.exnode", (void **)&exnode2, &count);
+                lio_getattr(lio_gc, creds, w->tuple.path, NULL, "system.exnode", (void **)&exnode2, &count);
                 if (exnode2 != NULL) {
                     count = strcmp(exnode2, exp->text.text);
                     free(exnode2);
                     if (count != 0) {
-                        info_printf(lfd, 0, "WARN Exnode changed during inspection for file %s (ftype=%d). Aborting exnode update\n", w->fname, w->ftype);
+                        info_printf(lfd, 0, "WARN Exnode changed during inspection for file %s (ftype=%d). Aborting exnode update\n", w->tuple.path, w->ftype);
                     } else {
                         val[n] = exp_out->text.text;
                         v_size[n]= strlen(val[n]);
@@ -997,7 +998,7 @@ gop_op_status_t inspect_task(void *arg, int id)
             n += lio_encode_error_counts(&serr, &(keys[n]), &(val[n]), ebuf, &(v_size[n]), 0);
         }
 
-        err = lio_multiple_setattr_op(lio_gc, creds, w->fname, NULL, keys, (void **)val, v_size, n);
+        err = lio_multiple_setattr_op(lio_gc, creds, w->tuple.path, NULL, keys, (void **)val, v_size, n);
         if (err != OP_STATE_SUCCESS) status.op_status = OP_STATE_FAILURE;
         if (exp_out != NULL) lio_exnode_exchange_destroy(exp_out);  //** Free the output exnode if it exists
     }
@@ -1015,6 +1016,8 @@ gop_op_status_t inspect_task(void *arg, int id)
     gop_opque_free(args.qf, OP_DESTROY);
 
 finished:
+
+log_printf(0, "destroying exnode. fname=%s\n", w->tuple.path);
     lio_exnode_exchange_destroy(exp);
 
     lio_exnode_destroy(ex);
@@ -1028,14 +1031,14 @@ fini_1:
     }
 
     if (status.op_status == OP_STATE_SUCCESS) {
-        info_printf(lfd, 0, "%sSuccess with file %s\n", ebuf, w->fname);
-        if (fd) info_printf(lio_ifd, 0, "%sSuccess with file %s\n", ebuf, w->fname);
+        info_printf(lfd, 0, "%sSuccess with file %s\n", ebuf, w->tuple.path);
+        if (fd) info_printf(lio_ifd, 0, "%sSuccess with file %s\n", ebuf, w->tuple.path);
     } else {
-        info_printf(lfd, 0, "%sERROR: Failed with file %s status=%d error_code=%d%s\n", ebuf, w->fname, status.op_status, status.error_code, msg);
-        if (fd) info_printf(lio_ifd, 0, "%sERROR: Failed with file %s status=%d error_code=%d%s\n", ebuf, w->fname, status.op_status, status.error_code, msg);
+        info_printf(lfd, 0, "%sERROR: Failed with file %s status=%d error_code=%d%s\n", ebuf, w->tuple.path, status.op_status, status.error_code, msg);
+        if (fd) info_printf(lio_ifd, 0, "%sERROR: Failed with file %s status=%d error_code=%d%s\n", ebuf, w->tuple.path, status.op_status, status.error_code, msg);
     }
 
-    free(w->fname);
+    lio_path_release(&w->tuple);
 
     if (fd) {
         tbx_info_destroy(lfd);
@@ -1517,13 +1520,13 @@ int main(int argc, char **argv)
 
                 w[slot].exnode = (assume_skip == 0) ? vals[0] : NULL;
                 w[slot].get_exnode = assume_skip;
-                w[slot].fname = fname;
                 w[slot].ftype = ftype;
                 w[slot].set_key = set_key;
                 w[slot].set_success = set_success;
                 w[slot].set_success_size = set_success_size;
                 w[slot].set_fail = set_fail;
                 w[slot].set_fail_size = set_fail_size;
+                w[slot].tuple = lio_path_tuple_copy(&tuple, fname);
 
                 if (log_prefix != NULL) {
                     tbx_type_malloc(logname, char, log_prefix_len + 20);
