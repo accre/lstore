@@ -98,7 +98,6 @@ gop_op_status_t rcc_response_get_config(void *task_arg, int tid)
     int n_config;
 
     log_printf(5, "START\n");
-printf("rcc_response: START\n");
 
     status = gop_success_status;
 
@@ -117,12 +116,10 @@ printf("rcc_response: START\n");
     }
     *arg->config = strdup(config);
     log_printf(5, "rc_config_len=%d\n", n_config);
-printf("rcc_response: rc_config_len=%d\n", n_config);
 
     //** Clean up
 fail:
     log_printf(5, "END gid=%d status=%d\n", gop_id(task->gop), status.op_status);
-printf("rcc_repsonse: END gid=%d status=%d success=%d\n", gop_id(task->gop), status.op_status, OP_STATE_SUCCESS);
 
     return(status);
 }
@@ -181,8 +178,7 @@ void rcs_config_send(rc_t *rc, gop_mq_frame_t *fid, mq_msg_t *address, char *fna
     nbytes = strlen(rc->prefix) + 1 + strlen(fname) + 4 + 1;
     tbx_type_malloc(path, char, nbytes);
     snprintf(path, nbytes, "%s/%s.cfg", rc->prefix, fname);
-printf("rcs_config_send: full_path=%s\n", path);
-log_printf(5, "rcs_config_send: full_path=%s\n", path);
+    log_printf(5, "rcs_config_send: full_path=%s\n", path);
 
     //** Add the config
     tbx_inip_file2string(path, &config, &nbytes);
@@ -258,7 +254,7 @@ void rcs_get_config_cb(void *arg, gop_mq_task_t *task)
     }
     gop_mq_frame_destroy(f);
 
-log_printf(15, "n=%d fname=%s\n", n, buffer);
+    log_printf(15, "n=%d fname=%s\n", n, buffer);
     //** Empty frame
     f = gop_mq_msg_first(msg);
     gop_mq_get_frame(f, (void **)&data, &n);
