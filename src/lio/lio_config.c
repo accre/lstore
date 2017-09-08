@@ -450,6 +450,29 @@ int lio_path_wildcard_auto_append(lio_path_tuple_t *tuple)
     return(0);
 }
 
+//*************************************************************************
+// lio_path_tuple_copy - Returns a new tuple with just the path different
+//*************************************************************************
+
+lio_path_tuple_t lio_path_tuple_copy(lio_path_tuple_t *curr, char *fname)
+{
+    lio_path_tuple_t tuple;
+    lio_path_tuple_t *t2;
+    char buffer[4096];
+
+    tuple = *curr;
+    tuple.path = fname;
+
+    snprintf(buffer, sizeof(buffer), "tuple:%s@%s", an_cred_get_id(curr->creds), curr->lc->obj_name);
+    t2 = _lc_object_get(buffer);
+    if (t2 == NULL) {
+        log_printf(0, "ERROR: missing tuple! obj=%s\n", buffer);
+        fprintf(stderr, "ERROR: missing tuple! obj=%s\n", buffer);
+        abort();
+    }
+    return(tuple);
+}
+
 //***************************************************************
 //  lio_path_resolve_base - Returns a  path tuple object
 //      containing the cred, lc, and path

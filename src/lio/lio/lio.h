@@ -116,6 +116,7 @@ LIO_API int lio_parse_path_options(int *argc, char **argv, int auto_mode, lio_pa
 LIO_API gop_op_status_t lio_path_copy_op(void *arg, int id);
 LIO_API void lio_path_local_make_absolute(lio_path_tuple_t *tuple);
 LIO_API void lio_path_release(lio_path_tuple_t *tuple);
+LIO_API lio_path_tuple_t lio_path_tuple_copy(lio_path_tuple_t *curr, char *fname);
 LIO_API lio_path_tuple_t lio_path_resolve(int auto_fuse_convert, char *lpath);
 LIO_API lio_path_tuple_t lio_path_resolve_base(char *lpath);
 LIO_API int lio_path_wildcard_auto_append(lio_path_tuple_t *tuple);
