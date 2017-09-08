@@ -62,7 +62,7 @@ char *client_host = "SERVER|tcp://localhost:6714";
 mq_pipe_t control_efd[2];
 mq_pipe_t server_efd[2];
 int shutdown_everything = 0;
-tbx_atomic_unit32_t ping_count = 0;
+tbx_atomic_int_t ping_count = 0;
 
 //***************************************************************************
 // pack_msg - Packs a message for sending
