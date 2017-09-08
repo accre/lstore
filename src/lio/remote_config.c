@@ -212,7 +212,7 @@ void rcs_get_config_cb(void *arg, gop_mq_task_t *task)
     int n, do_config;
 
     do_config = -1;
-    log_printf(5, "Processing incoming request\n");
+    log_printf(5, "Processing incoming remote config request\n");
 
     //** Parse the command
     msg = task->msg;  //** Don't have to worry about msg cleanup.  It's handled at a higher level
@@ -331,6 +331,9 @@ int rc_server_install(lio_config_t *lc, char *section)
     rc_server->mqc = lio_gc->mqc;
     rc_server->host = tbx_inip_get_string(lc->ifd, section, "host", NULL);
     rc_server->prefix = tbx_inip_get_string(lc->ifd, section, "prefix", "/etc/lio");
+
+    log_printf(5, "Starting remote config server on %s\n", rc_server->host);
+    log_printf(5, "Client config path: %s\n", rc_server->prefix);
 
     if (!rc_server->host) {
         fprintf(stderr, "Missing Remote Config host!\n");
