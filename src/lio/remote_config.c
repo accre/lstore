@@ -185,7 +185,7 @@ void rcs_config_send(rc_t *rc, gop_mq_frame_t *fid, mq_msg_t *address, char *fna
     free(path);
     gop_mq_msg_append_mem(msg, config, nbytes, MQF_MSG_AUTO_FREE);
 
-    log_printf(5, "rid_config=%s\n", config);
+    log_printf(5, "nbytes=%d rid_config=%s\n", nbytes, config);
 
     //** End with an empty frame
     gop_mq_msg_append_mem(msg, NULL, 0, MQF_MSG_KEEP_DATA);

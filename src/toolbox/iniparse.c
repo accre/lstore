@@ -579,10 +579,7 @@ tbx_inip_file_t *inip_load(FILE *fd, const char *text, const char *prefix)
         group = _next_group(&bfd);
     }
 
-printf("ERROR=%d curr=%p entry=%p\n", bfd.error, bfd.curr, entry);
-
     if (bfd.error != 0) {  //** Got an internal parsing error
-printf("curr=%p entry=%p\n", bfd.curr, entry);
         if (bfd.curr) tbx_stack_push(bfd.stack, bfd.curr);
         bfile_cleanup(bfd.stack);
         tbx_inip_destroy(inip);
@@ -682,6 +679,11 @@ int inip_convert2string(FILE *fd_in, const char *text_in, char **text_out, int *
         n_total += n;
     }
 
+    if (bfd.error != 0) {  //** Got an internal parsing error
+        if (bfd.curr) tbx_stack_push(bfd.stack, bfd.curr);
+        bfile_cleanup(bfd.stack);
+    }
+
     tbx_stack_free(bfd.stack, 1);
     tbx_stack_free(bfd.include_paths, 1);
 
@@ -690,6 +692,7 @@ int inip_convert2string(FILE *fd_in, const char *text_in, char **text_out, int *
     if (err != 0) {
         free(text);
         text = NULL;
+        n_total = 0;
     }
 
     *nbytes = n_total;
