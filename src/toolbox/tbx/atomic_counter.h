@@ -48,7 +48,7 @@ TBX_API int *tbx_a_thread_id_ptr();
 // Preprocessor macros
 
 #define tbx_atomic_inc(v) __atomic_fetch_add(&(v), 1, __ATOMIC_SEQ_CST)
-#define tbx_atomic_dec(v) __atomic_fetch_sub(&(v), 1, __ATOMIC_SEQ_CST)
+#define tbx_atomic_dec(v) __atomic_sub_fetch(&(v), 1, __ATOMIC_SEQ_CST)
 #define tbx_atomic_set(v, n) __atomic_store_n(&(v), n, __ATOMIC_SEQ_CST)
 #define tbx_atomic_get(v) __atomic_load_n(&(v),  __ATOMIC_SEQ_CST)
 #define tbx_atomic_exchange(v, n) __atomic_exchange_n(&(v), n, __ATOMIC_SEQ_CST)
