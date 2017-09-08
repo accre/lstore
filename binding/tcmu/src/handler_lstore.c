@@ -233,12 +233,12 @@ static int lstore_readv(struct tcmu_device *dev, struct tcmulib_cmd *cmd,
     tcmu_lstore_t *ctx = tcmu_get_dev_private(dev);
     int ret, nbytes;
 
-tbx_atomic_inc(ctx->in_flight);
+    tbx_atomic_inc(ctx->in_flight);
     nbytes = lio_readv(ctx->fd, iov, iov_cnt, length, offset, NULL);
-    log_printf(1, "READ n_iov=" ST " offset=" OT " len=" ST " nbytes=%d in_flight=%u\n", iov_cnt, offset, length, nbytes, tbx_atomic_get(ctx->in_flight));
-tbx_atomic_dec(ctx->in_flight);
+    log_printf(1, "READ n_iov=" ST " offset=" OT " len=" ST " nbytes=%d in_flight=" AIT "\n", iov_cnt, offset, length, nbytes, tbx_atomic_get(ctx->in_flight));
+    tbx_atomic_dec(ctx->in_flight);
     if ((unsigned int)nbytes != length) {
-    log_printf(1, "ERROR READ n_iov=" ST " offset=" OT " len=" ST " nbytes=%d in_flight=%u\n", iov_cnt, offset, length, nbytes, tbx_atomic_get(ctx->in_flight));
+    log_printf(1, "ERROR READ n_iov=" ST " offset=" OT " len=" ST " nbytes=%d in_flight=" AIT "\n", iov_cnt, offset, length, nbytes, tbx_atomic_get(ctx->in_flight));
         tcmu_err("read failed: %m\n");
         ret = tcmu_set_sense_data(cmd->sense_buf, MEDIUM_ERROR, ASC_READ_ERROR, NULL);
     } else {
@@ -262,11 +262,11 @@ static int lstore_writev(struct tcmu_device *dev, struct tcmulib_cmd *cmd,
 
 tbx_atomic_inc(ctx->in_flight);
     nbytes = lio_writev(ctx->fd, iov, iov_cnt, length, offset, NULL);
-    log_printf(1, "WRITE n_iov=" ST " offset=" OT " len=" ST " nbytes=%d in_flight=%u\n", iov_cnt, offset, length, nbytes, tbx_atomic_get(ctx->in_flight));
+    log_printf(1, "WRITE n_iov=" ST " offset=" OT " len=" ST " nbytes=%d in_flight=" AIT "\n", iov_cnt, offset, length, nbytes, tbx_atomic_get(ctx->in_flight));
 tbx_atomic_dec(ctx->in_flight);
 
     if ((unsigned int)nbytes != length) {
-    log_printf(1, "ERROR WRITE n_iov=" ST " offset=" OT " len=" ST " nbytes=%d in_flight=%u\n", iov_cnt, offset, length, nbytes, tbx_atomic_get(ctx->in_flight));
+    log_printf(1, "ERROR WRITE n_iov=" ST " offset=" OT " len=" ST " nbytes=%d in_flight=" AIT "\n", iov_cnt, offset, length, nbytes, tbx_atomic_get(ctx->in_flight));
         tcmu_err("read failed: %m\n");
         ret = tcmu_set_sense_data(cmd->sense_buf, MEDIUM_ERROR, ASC_READ_ERROR, NULL);
     } else {

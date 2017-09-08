@@ -614,7 +614,7 @@ gop_op_status_t lio_myclose_fn(void *arg, int id)
     int n;
     double dt;
 
-    log_printf(1, "fname=%s modified=%d count=%d\n", fd->path, fd->fh->modified, fd->fh->ref_count);
+    log_printf(1, "fname=%s modified=" AIT " count=%d\n", fd->path, tbx_atomic_get(fd->fh->modified), fd->fh->ref_count);
     tbx_log_flush();
 
     //** Shutdown the Work Queue context if needed
@@ -651,12 +651,12 @@ gop_op_status_t lio_myclose_fn(void *arg, int id)
     dt /= APR_USEC_PER_SEC;
     log_printf(1, "FLUSH fname=%s dt=%lf\n", fd->path, dt);
 
-    log_printf(5, "starting update process fname=%s modified=%d\n", fd->path, fh->modified);
+    log_printf(5, "starting update process fname=%s modified=" AIT "\n", fd->path, tbx_atomic_get(fh->modified));
     tbx_log_flush();
 
     //** Ok no one has the file opened so teardown the segment/exnode
     //** IF not modified just tear down and clean up
-    if (fh->modified == 0) {
+    if (tbx_atomic_get(fh->modified) == 0) {
         //*** See if we need to update the error counts
         lio_get_error_counts(lc, fh->seg, &serr);
         n = lio_encode_error_counts(&serr, key, val, ebuf, v_size, 0);
@@ -1104,7 +1104,7 @@ gop_op_status_t lio_cp_local2lio_fn(void *arg, int id)
     }
 
     status = gop_sync_exec_status(segment_put_gop(lfh->lc->tpc_unlimited, lfh->lc->da, op->rw_hints, ffd, lfh->seg, 0, -1, bufsize, buffer, 1, 3600));
-    lfh->modified = 1; //** Flag it as modified so the new exnode gets stored
+    tbx_atomic_set(lfh->modified, 1); //** Flag it as modified so the new exnode gets stored
 
     //** Clean up
     if (op->buffer == NULL) free(buffer);
@@ -1218,7 +1218,7 @@ gop_op_status_t lio_cp_lio2lio_fn(void *arg, int id)
         if (op->buffer == NULL) free(buffer);
     }
 
-    dfh->modified = 1; //** Flag it as modified so the new exnode gets stored
+    tbx_atomic_set(dfh->modified, 1); //** Flag it as modified so the new exnode gets stored
 
     return(status);
 }
@@ -1604,7 +1604,7 @@ gop_op_status_t lio_truncate_fn(void *arg, int id)
     if (op->bufsize != segment_size(fh->seg)) {
         status = gop_sync_exec_status(lio_segment_truncate(fh->seg, fh->lc->da, op->bufsize, fh->lc->timeout));
         segment_lock(fh->seg);
-        fh->modified = 1;
+        tbx_atomic_set(fh->modified, 1);
         op->slfd->curr_offset = op->bufsize;
         segment_unlock(fh->seg);
     } else {

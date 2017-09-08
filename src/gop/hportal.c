@@ -70,7 +70,7 @@ void hportal_siginfo_handler(void *arg, FILE *fd)
         hportal_lock(hp);
 
         fprintf(fd, "    Host: %s\n", hp->skey);
-        fprintf(fd, "        Workload: %s  Executing workload: %s  Commands processed: " I64T "  Tasks Queued: %d  Merged Commands: " I64T " Idle Conn: %d\n",
+        fprintf(fd, "        Workload: %s  Executing workload: %s  Commands processed: " I64T "  Tasks Queued: %d  Merged Commands: " I64T " Idle Conn: " AIT "\n",
             tbx_stk_pretty_print_double_with_scale(1024, hp->workload, ppbuf1), tbx_stk_pretty_print_double_with_scale(1024, hp->executing_workload, ppbuf2),
             hp->cmds_processed, tbx_stack_count(hp->que), hp->n_coalesced, tbx_atomic_get(hp->idle_conn));
         fprintf(fd, "        Connections -- Active: %d  Stable: %d  Min: %d  Max: %d  Sleeping: %d  Closing: %d  Failed: %d  Success: %d  Reaping Que: %d\n",
@@ -830,7 +830,7 @@ void check_hportal_connections(gop_host_portal_t *hp)
     }
 
     j = (hp->pause_until > apr_time_now()) ? 1 : 0;
-    log_printf(6, "check_hportal_connections: host=%s n_conn=%d sleeping=%d idle=%d workload=" I64T " exec_wl=" I64T " start_new_conn=%d new_conn=%d stable=%d stack_size=%d pause_until=" TT " now=" TT " pause_until_blocked=%d\n",
+    log_printf(6, "check_hportal_connections: host=%s n_conn=%d sleeping=%d idle=" AIT " workload=" I64T " exec_wl=" I64T " start_new_conn=%d new_conn=%d stable=%d stack_size=%d pause_until=" TT " now=" TT " pause_until_blocked=%d\n",
                hp->skey, hp->n_conn, hp->sleeping_conn, tbx_atomic_get(hp->idle_conn), hp->workload, hp->executing_workload, i, n_newconn, hp->stable_conn, pending, hp->pause_until, apr_time_now(), j);
 
     //** Update the total # of connections after the operation

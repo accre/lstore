@@ -1317,7 +1317,7 @@ int lio_rw_test_exec(int rw_mode, char *section)
     free(workers);
     free(target);
 
-    printf("tpc_unlimited=%d\n", lio_gc->tpc_unlimited->n_ops);
+    printf("tpc_unlimited=" AIT "\n", tbx_atomic_get(lio_gc->tpc_unlimited->n_ops));
 
     return(test_errors);
 }

@@ -84,7 +84,7 @@ void tp_siginfo_handler(void *arg, FILE *fd)
     apr_thread_mutex_lock(_tp_lock);
     sync_exec = tbx_atomic_get(tpc->n_running) + tbx_atomic_get(tpc->n_completed) - tbx_atomic_get(tpc->n_submitted);
     fprintf(fd, "Thread pool info (%s)-------------------------------------------\n", tpc->name);
-    fprintf(fd, "    Ops -- Submitted: %d  Sync Exec: %d  Completed: %d  Running: %d\n", tbx_atomic_get(tpc->n_submitted), sync_exec, tbx_atomic_get(tpc->n_completed), tbx_atomic_get(tpc->n_running));
+    fprintf(fd, "    Ops -- Submitted: " AIT "  Sync Exec: %d  Completed: " AIT "  Running: " AIT "\n", tbx_atomic_get(tpc->n_submitted), sync_exec, tbx_atomic_get(tpc->n_completed), tbx_atomic_get(tpc->n_running));
     fprintf(fd, "    Threads -- Current: %lu  Busy: %lu  Idle: %lu  Max Concurrent: %lu   Pool Min: %d  Pool Max: %d  Max Recursion: %d\n",
         tbx_thread_pool_threads_count(tpc->tp), tbx_thread_pool_busy_count(tpc->tp), tbx_thread_pool_idle_count(tpc->tp),
         tbx_thread_pool_threads_high_count(tpc->tp), tpc->min_threads, tpc->max_threads, tpc->recursion_depth);
@@ -250,7 +250,7 @@ int thread_pool_direct(gop_thread_pool_context_t *tpc, apr_thread_start_t fn, vo
 
     tbx_atomic_inc(tpc->n_direct);
 
-    log_printf(10, "tpd=%d\n", tbx_atomic_get(tpc->n_direct));
+    log_printf(10, "tpd=" AIT "\n", tbx_atomic_get(tpc->n_direct));
     if (err != APR_SUCCESS) {
         log_printf(0, "ERROR submiting task!  err=%d\n", err);
     }
@@ -283,7 +283,7 @@ gop_thread_pool_context_t *gop_tp_context_create(char *tp_name, int min_threads,
     apr_interval_time_t dt;
     int i;
 
-    log_printf(15, "count=%d\n", _tp_context_count);
+    log_printf(15, "count=" AIT "\n", _tp_context_count);
 
     tbx_type_malloc_clear(tpc, gop_thread_pool_context_t, 1);
 
@@ -339,7 +339,7 @@ gop_thread_pool_context_t *gop_tp_context_create(char *tp_name, int min_threads,
 void gop_tp_context_destroy(gop_thread_pool_context_t *tpc)
 {
     int i;
-    log_printf(15, "gop_tp_context_destroy: Shutting down! count=%d\n", _tp_context_count);
+    log_printf(15, "gop_tp_context_destroy: Shutting down! count=" AIT "\n", _tp_context_count);
 
     log_printf(15, "tpc->name=%s  high=%zu idle=%zu\n", tpc->name, tbx_thread_pool_threads_high_count(tpc->tp),  tbx_thread_pool_threads_idle_timeout_count(tpc->tp));
 

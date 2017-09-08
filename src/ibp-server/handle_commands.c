@@ -873,7 +873,7 @@ int handle_status(ibp_task_t *task)
          r_used_gb = r_used / (1024.0*1024.0*1024.0);
          r_diff_gb = r_diff / (1024.0*1024.0*1024.0);
          r_free_gb = r_free / (1024.0*1024.0*1024.0);
-         snprintf(buffer, sizeof(buffer)-1, "RID: %s Max: " LU " b (%.2lf GB) Used: " LU " b (%.2lf GB) Diff: " LU " b (%.2lf GB) Free: " LU " b (%.2lf GB) Allocations: " LU " (" LU " alias) Corrupt count: " LU " Activity count: %d\n", 
+         snprintf(buffer, sizeof(buffer)-1, "RID: %s Max: " LU " b (%.2lf GB) Used: " LU " b (%.2lf GB) Diff: " LU " b (%.2lf GB) Free: " LU " b (%.2lf GB) Allocations: " LU " (" LU " alias) Corrupt count: " LU " Activity count: " AIT "\n",
              r->name, r_total, r_total_gb, r_used, r_used_gb, r_diff, r_diff_gb, r_free, r_free_gb, r_alloc, r_alias, bad_count, resource_get_counter(r));
          strncat(result, buffer, sizeof(result)-1 - strlen(result));
 

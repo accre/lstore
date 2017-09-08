@@ -254,7 +254,7 @@ lio_data_block_t *data_block_deserialize_text(lio_service_manager_t *sm, ex_id_t
     b->rid_key = tbx_inip_get_string(cfd, capgrp, "rid_key", "");
     b->size = tbx_inip_get_integer(cfd, capgrp, "size", b->size);
     b->max_size = tbx_inip_get_integer(cfd, capgrp, "max_size", b->max_size);
-    i = tbx_inip_get_integer(cfd, capgrp, "ref_count", b->ref_count);
+    i = tbx_inip_get_integer(cfd, capgrp, "ref_count", tbx_atomic_get(b->ref_count));
     tbx_atomic_set(b->ref_count, 0);
     tbx_atomic_set(b->initial_ref_count, i);
     etext = tbx_inip_get_string(cfd, capgrp, "read_cap", "");
@@ -326,7 +326,7 @@ lio_data_block_t *data_block_create_with_id(lio_data_service_fn_t *ds, ex_id_t i
     b->id = id;
     b->cap = ds_cap_set_create(b->ds);
 
-    log_printf(15, "b->id=" XIDT " ref_count=%d b=%p\n", b->id, b->ref_count, b);
+    log_printf(15, "b->id=" XIDT " ref_count=" AIT " b=%p\n", b->id, tbx_atomic_get(b->ref_count), b);
 
     return(b);
 }
@@ -351,7 +351,7 @@ void data_block_destroy(lio_data_block_t *b)
 {
     if (b == NULL) return;
 
-    log_printf(15, "b->id=" XIDT " ref_count=%d\n", b->id, b->ref_count);
+    log_printf(15, "b->id=" XIDT " ref_count=" AIT "\n", b->id, tbx_atomic_get(b->ref_count));
 
     if (b->ref_count > 0) return;
 
@@ -359,7 +359,7 @@ void data_block_destroy(lio_data_block_t *b)
 
     ds_cap_set_destroy(b->ds, b->cap, 1);
     if (b->rid_key != NULL) free(b->rid_key);
-    log_printf(15, "b->id=" XIDT " ref_count=%d p=%p\n", b->id, b->ref_count, b);
+    log_printf(15, "b->id=" XIDT " ref_count=" AIT " p=%p\n", b->id, tbx_atomic_get(b->ref_count), b);
 
     if (b->warm != NULL) data_block_stop_warm(b);
 

@@ -21,10 +21,13 @@
 #include <apr.h>
 #include <apr_atomic.h>
 #include <tbx/visibility.h>
+#include <tbx/fmttypes.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+#define AIT "%u"  //** printf format type
 
 // Types
 typedef apr_uint32_t tbx_atomic_unit32_t;

@@ -24,6 +24,7 @@
 #include <string.h>
 #include <tbx/assert_result.h>
 #include <tbx/atomic_counter.h>
+#include <tbx/fmttypes.h>
 #include <tbx/log.h>
 #include <tbx/pigeon_coop.h>
 #include <tbx/stack.h>
@@ -114,7 +115,7 @@ void gop_control_free(void *arg, int size, void *data)
 
 void gop_init_opque_system()
 {
-    log_printf(15, "gop_init_opque_system: counter=%d\n", _opque_counter);
+    log_printf(15, "gop_init_opque_system: counter=" AIT "\n", _opque_counter);
     if (tbx_atomic_inc(_opque_counter) == 0) {   //** Only init if needed
         _gop_control = tbx_pc_new("gop_control", 50, sizeof(gop_control_t), NULL, gop_control_new, gop_control_free);
         gop_dummy_init();
@@ -128,7 +129,7 @@ void gop_init_opque_system()
 
 void gop_shutdown()
 {
-    log_printf(15, "gop_shutdown: counter=%d\n", _opque_counter);
+    log_printf(15, "gop_shutdown: counter=" AIT "\n", _opque_counter);
     if (tbx_atomic_dec(_opque_counter) == 0) {   //** Only wipe if not used
         tbx_pc_destroy(_gop_control);
         gop_dummy_destroy();
