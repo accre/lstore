@@ -60,6 +60,7 @@ typedef struct {
 } warm_cap_info_t;
 
 typedef struct {
+    lio_path_tuple_t tuple;
     warm_cap_info_t *cap;
     char *fname;
     char *exnode;
@@ -142,7 +143,7 @@ gop_op_status_t gen_warm_task(void *arg, int id)
     char *etext;
     gop_opque_t *q;
 
-    log_printf(15, "warming fname=%s, dt=%d\n", w->fname, dt);
+    log_printf(15, "warming fname=%s, dt=%d\n", w->tuple.path, dt);
     fd = tbx_inip_string_read(w->exnode);
     tbx_inip_group_t *g;
 
@@ -186,7 +187,7 @@ gop_op_status_t gen_warm_task(void *arg, int id)
             //** Check if it was tagged
             if (tagged_rids != NULL) {
                 if (apr_hash_get(tagged_rids, wrid->rid_key, APR_HASH_KEY_STRING) != NULL) {
-                    info_printf(lio_ifd, 0, "RID_TAG: %s  rid_key=%s\n", w->fname, wrid->rid_key);
+                    info_printf(lio_ifd, 0, "RID_TAG: %s  rid_key=%s\n", w->tuple.path, wrid->rid_key);
                 }
             }
         }
@@ -207,7 +208,7 @@ gop_op_status_t gen_warm_task(void *arg, int id)
          } else {
             nfailed++;
             wrid->bad++;
-            info_printf(lio_ifd, 1, "ERROR: %s  cap=%s\n", w->fname, w->cap[i].cap);
+            info_printf(lio_ifd, 1, "ERROR: %s  cap=%s\n", w->tuple.path, w->cap[i].cap);
         }
         warm_put_rid(db_rid, wrid->rid_key, w->inode, w->cap[i].nbytes, 0);
 
@@ -218,22 +219,23 @@ gop_op_status_t gen_warm_task(void *arg, int id)
     if (nfailed == 0) {
         status = gop_success_status;
         state |= WFE_SUCCESS;
-        if (verbose == 1) info_printf(lio_ifd, 0, "Succeeded with file %s with %d allocations\n", w->fname, w->n);
+        if (verbose == 1) info_printf(lio_ifd, 0, "Succeeded with file %s with %d allocations\n", w->tuple.path, w->n);
     } else {
         status = gop_failure_status;
         state |= WFE_FAIL;
-        info_printf(lio_ifd, 0, "Failed with file %s on %d out of %d allocations\n", w->fname, nfailed, w->n);
+        info_printf(lio_ifd, 0, "Failed with file %s on %d out of %d allocations\n", w->tuple.path, nfailed, w->n);
     }
-    warm_put_inode(db_inode, w->inode, state, nfailed, w->fname);
+    warm_put_inode(db_inode, w->inode, state, nfailed, w->tuple.path);
 
     etext = NULL;
     i = 0;
-    lio_setattr(lio_gc, w->creds, w->fname, NULL, "os.timestamp.system.warm", (void *)etext, i);
+    lio_setattr(lio_gc, w->creds, w->tuple.path, NULL, "os.timestamp.system.warm", (void *)etext, i);
 
     gop_opque_free(q, OP_DESTROY);
 
+    lio_path_release(&w->tuple);
+
     free(w->exnode);
-    free(w->fname);
     for (i=0; i<w->n; i++) free(w->cap[i].cap);
     free(w->cap);
 
@@ -396,11 +398,11 @@ int main(int argc, char **argv)
                 }
                 continue;
             }
-            w[slot].fname = fname;
             w[slot].exnode = vals[0];
             w[slot].creds = tuple.lc->creds;
             w[slot].ic = hack_ds_ibp_context_get(tuple.lc->ds);
             w[slot].write_err = 0;
+            w[slot].tuple = lio_path_tuple_copy(&tuple, fname);
 
             if (v_size[1] != -1) {
                 werr++;

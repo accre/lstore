@@ -267,6 +267,13 @@ int main(int argc, char **argv)
             }
         }
 
+        //** Wait for any readlinks to complete before releasing the tuple
+        err = (gop_opque_task_count(q) > 0) ? opque_waitall(q) : OP_STATE_SUCCESS;
+        if (err != OP_STATE_SUCCESS) {
+            fprintf(stderr, "ERROR: Failed with readlink operation!\n");
+            return_code = EIO;
+        }
+
         lio_destroy_object_iter(tuple.lc, it);
 
         lio_path_release(&tuple);
@@ -283,13 +290,6 @@ int main(int argc, char **argv)
     //** Check that we didn't abort
     if (ftype != 0) {
         fprintf(stderr, "ERROR: Retreiving object!\n");
-        return_code = EIO;
-    }
-
-    //** Wait for any readlinks to complete
-    err = (gop_opque_task_count(q) > 0) ? opque_waitall(q) : OP_STATE_SUCCESS;
-    if (err != OP_STATE_SUCCESS) {
-        fprintf(stderr, "ERROR: Failed with readlink operation!\n");
         return_code = EIO;
     }
 

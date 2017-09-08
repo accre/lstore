@@ -87,7 +87,6 @@ typedef struct {
 
 typedef struct {
     lio_path_tuple_t tuple;
-//    char *fname;
     char *exnode;
     char *set_key;
     char *set_success;
