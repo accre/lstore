@@ -125,6 +125,22 @@ FILE *bfile_fopen(tbx_stack_t *include_paths, char *fname)
 }
 
 //***********************************************************************
+// bfile_cleanup - Clean's up and closes all the open files on error
+//***********************************************************************
+
+void bfile_cleanup(tbx_stack_t *stack)
+{
+    bfile_entry_t *entry;
+
+    if (!stack) return;
+
+    while ((entry = (bfile_entry_t *)tbx_stack_pop(stack)) != NULL) {
+        if (entry->fd) fclose(entry->fd);
+        free(entry);
+    }
+}
+
+//***********************************************************************
 //  _fetch_text - Fetches the next line of text.
 //***********************************************************************
 
@@ -198,8 +214,10 @@ again:
         if (entry->fd == NULL) {  //** Can't open the file
             log_printf(-1, "_get_line: Problem opening include file !%s!\n", fname);
             fprintf(stderr, "_get_line: Problem opening include file !%s!\n", fname);
+            free(entry);
             *err = -1;
-            FATAL_UNLESS(entry->fd != NULL);
+            bfd->error = -1;
+            return(NULL);
         }
         entry->used = 0;
         tbx_stack_push(bfd->stack, (void *)bfd->curr);
@@ -561,7 +579,12 @@ tbx_inip_file_t *inip_load(FILE *fd, const char *text, const char *prefix)
         group = _next_group(&bfd);
     }
 
+printf("ERROR=%d curr=%p entry=%p\n", bfd.error, bfd.curr, entry);
+
     if (bfd.error != 0) {  //** Got an internal parsing error
+printf("curr=%p entry=%p\n", bfd.curr, entry);
+        if (bfd.curr) tbx_stack_push(bfd.stack, bfd.curr);
+        bfile_cleanup(bfd.stack);
         tbx_inip_destroy(inip);
         inip = NULL;
     }
