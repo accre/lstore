@@ -1,7 +1,5 @@
 #!/bin/groovy
-String[] distros = ["centos-6", "centos-7",
-                    "debian-jessie", "ubuntu-trusty",
-                    "ubuntu-xenial", "ubuntu-yakkety"]
+String[] distros = ["centos-6", "centos-7"]
 
 def compile_map = [:]
 
