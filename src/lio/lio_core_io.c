@@ -561,6 +561,8 @@ gop_op_status_t lio_myopen_fn(void *arg, int id)
 cleanup:  //** We only make it here on a failure
     log_printf(1, "ERROR in cleanup! fname=%s\n", op->path);
 
+    lio_unlock(lc);
+
     lio_exnode_destroy(fh->ex);
     lio_exnode_exchange_destroy(exp);
     free(fd->path);
