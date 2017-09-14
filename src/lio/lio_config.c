@@ -1041,6 +1041,8 @@ lio_config_t *lio_create_nl(tbx_inip_file_t *ifd, char *section, char *user, cha
         free(ctype);
 
         _lc_object_put(stype, lio->ds);  //** Add it to the table
+    } else {
+        add_service(lio->ess, DS_SM_RUNNING, stype, lio->ds);  //** It's used by the block loader
     }
     lio->da = ds_attr_create(lio->ds);
 
