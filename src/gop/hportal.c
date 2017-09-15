@@ -314,6 +314,7 @@ gop_portal_context_t *gop_hp_context_create(gop_portal_fn_t *imp)
     apr_thread_mutex_create(&(hpc->lock), APR_THREAD_MUTEX_DEFAULT, hpc->pool);
 
     hpc->fn = imp;
+    hpc->compact_interval = 60;  //** Compact once a minute
     hpc->next_check = time(NULL);
     hpc->count = 0;
     tbx_ns_timeout_set(&(hpc->dt), 1, 0);
