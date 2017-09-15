@@ -298,8 +298,6 @@ void *hc_send_thread(apr_thread_t *th, void *data)
             }
 
             hop = &(hsop->op->cmd);
-            hp->executing_workload += hop->workload;  //** Update the executing workload
-
             hportal_unlock(hp);
 
             log_printf(5, "hc_send_thread: Processing new command.. ns=%d gid=%d\n", tbx_ns_getid(ns), gop_id(hsop));
@@ -455,11 +453,6 @@ void *hc_recv_thread(apr_thread_t *th, void *data)
             status = (hop->recv_phase != NULL) ? hop->recv_phase(hsop, ns) : gop_success_status;
             hop->end_time = apr_time_now();
             log_printf(5, "hc_recv_thread: after recv phase.. ns=%d gid=%d finished=%d\n", tbx_ns_getid(ns), gop_id(hsop), status.op_status);
-
-            //** dec the current workload
-            hportal_lock(hp);
-            hp->executing_workload -= hop->workload;  //** Update the executing workload
-            hportal_unlock(hp);
 
             lock_hc(hc);
             hc->last_used = apr_time_now();

@@ -56,7 +56,6 @@ struct gop_host_portal_t {       //** Contains information about the depot inclu
     int port;               //** port
     int invalid_host;       //** Flag that this host is not resolvable
     int64_t workload;       //** Amount of work left in the feeder que
-    int64_t executing_workload;   //** Amount of work in the executing queues
     int64_t cmds_processed; //** Number of commands processed
     int64_t n_coalesced;     //** Number of commands merged together
     int failed_conn_attempts;     //** Failed net_connects()
