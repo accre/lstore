@@ -687,6 +687,7 @@ gop_op_status_t lio_myclose_fn(void *arg, int id)
         if (fh->write_table != NULL) lio_store_and_release_adler32(lc, fd->creds, fh->write_table, fd->path);
         if (fh->remove_on_close == 1) status = gop_sync_exec_status(lio_remove_gop(lc, fd->creds, fd->path, NULL, lio_exists(lc, fd->creds, fd->path)));
 
+        if (fh->fname) free(fh->fname);
         free(fh);
         goto finished;
     }
@@ -1266,7 +1267,7 @@ gop_op_status_t lio_file_copy_op(void *arg, int id)
     if (cp->src_tuple.is_lio == 0) {  //** Source is a local file and dest is lio
 
         sffd = fopen(cp->src_tuple.path, "r");
-        info_printf(lio_ifd, 0, "copy %s %s@%s:%s\n", cp->src_tuple.path, an_cred_get_id(cp->dest_tuple.creds), cp->dest_tuple.lc->section_name, cp->dest_tuple.path);
+        info_printf(lio_ifd, 0, "copy %s %s@%s:%s\n", cp->src_tuple.path, an_cred_get_id(cp->dest_tuple.creds), cp->dest_tuple.lc->obj_name, cp->dest_tuple.path);
 
         gop_sync_exec(lio_open_gop(cp->dest_tuple.lc, cp->dest_tuple.creds, cp->dest_tuple.path, lio_fopen_flags("w"), NULL, &dlfd, 60));
 
@@ -1284,7 +1285,7 @@ gop_op_status_t lio_file_copy_op(void *arg, int id)
         }
         if (sffd != NULL) fclose(sffd);
     } else if (cp->dest_tuple.is_lio == 0) {  //** Source is lio and dest is local
-        info_printf(lio_ifd, 0, "copy %s@%s:%s %s\n", an_cred_get_id(cp->src_tuple.creds), cp->src_tuple.lc->section_name, cp->src_tuple.path, cp->dest_tuple.path);
+        info_printf(lio_ifd, 0, "copy %s@%s:%s %s\n", an_cred_get_id(cp->src_tuple.creds), cp->src_tuple.lc->obj_name, cp->src_tuple.path, cp->dest_tuple.path);
         gop_sync_exec(lio_open_gop(cp->src_tuple.lc, cp->src_tuple.creds, cp->src_tuple.path, lio_fopen_flags("r"), NULL, &slfd, 60));
         dffd = fopen(cp->dest_tuple.path, "w");
 
@@ -1299,7 +1300,7 @@ gop_op_status_t lio_file_copy_op(void *arg, int id)
         if (slfd != NULL) gop_sync_exec(lio_close_gop(slfd));
         if (dffd != NULL) fclose(dffd);
     } else {               //** both source and dest are lio
-        info_printf(lio_ifd, 0, "copy %s@%s:%s %s@%s:%s\n", an_cred_get_id(cp->src_tuple.creds), cp->src_tuple.lc->section_name, cp->src_tuple.path, an_cred_get_id(cp->dest_tuple.creds), cp->dest_tuple.lc->section_name, cp->dest_tuple.path);
+        info_printf(lio_ifd, 0, "copy %s@%s:%s %s@%s:%s\n", an_cred_get_id(cp->src_tuple.creds), cp->src_tuple.lc->obj_name, cp->src_tuple.path, an_cred_get_id(cp->dest_tuple.creds), cp->dest_tuple.lc->obj_name, cp->dest_tuple.path);
         gop_sync_exec(lio_open_gop(cp->src_tuple.lc, cp->src_tuple.creds, cp->src_tuple.path, LIO_READ_MODE, NULL, &slfd, 60));
         gop_sync_exec(lio_open_gop(cp->dest_tuple.lc, cp->dest_tuple.creds, cp->dest_tuple.path, lio_fopen_flags("w"), NULL, &dlfd, 60));
         if ((dlfd == NULL) || (slfd == NULL)) { //** Got an error
