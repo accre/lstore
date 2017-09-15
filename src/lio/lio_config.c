@@ -489,11 +489,11 @@ lio_path_tuple_t lio_path_resolve_base(char *lpath)
     int n, is_lio, pp_port;
 
     userid = NULL;
-    pp_mq = strdup("RC");
+    pp_mq = NULL;
     pp_host = NULL;
-    pp_port = 6711;
+    pp_port = 0;
     pp_cfg = NULL;
-    pp_section = strdup("lio");
+    pp_section = NULL;
     fname = NULL;
     is_lio = lio_parse_path(lpath, &userid, &pp_mq, &pp_host, &pp_port, &pp_cfg, &pp_section, &fname);
     if (is_lio == -1) { //** Can't parse the path
@@ -501,15 +501,27 @@ lio_path_tuple_t lio_path_resolve_base(char *lpath)
         goto finished;
     }
 
-    //** Based on the host we may need to adjust the config file
-    if (pp_host) {
-        if (!pp_cfg) pp_cfg = strdup("lio");
-    } else if (!pp_cfg) {
-        pp_cfg = strdup("LOCAL");
-    }
+    //** See if we have a path.  If we don't then blow away what we got above and assume it's all a path
+    if (!fname) {
+        fname = strdup(lpath);
+        is_lio = 0;
+        strncpy(uri, lio_gc->obj_name, sizeof(uri));        
+    } else if ((lio_gc) && (!pp_mq) && (!pp_host) && (!pp_cfg) && (!pp_section) && (pp_port == 0)) { //** Check if we just have defaults if so use the global context
+        strncpy(uri, lio_gc->obj_name, sizeof(uri));
+    } else {
+        if (!pp_mq) pp_mq = strdup("RC");
+        if (pp_port == 0) pp_port = 6711;
+        if (!pp_section) pp_section = strdup("lio");
 
-    //** Form the lookup string
-    snprintf(uri, sizeof(uri), "lstore://%s|%s:%d:%s:%s", pp_mq, pp_host, pp_port, pp_cfg, pp_section);
+        //** Based on the host we may need to adjust the config file
+        if (pp_host) {
+            if (!pp_cfg) pp_cfg = strdup("lio");
+        } else if (!pp_cfg) {
+            pp_cfg = strdup("LOCAL");
+        }
+
+        snprintf(uri, sizeof(uri), "lstore://%s|%s:%d:%s:%s", pp_mq, pp_host, pp_port, pp_cfg, pp_section);
+    }
 
     log_printf(15, "START: lpath=%s user=%s uri=%s path=%s\n", lpath, userid, uri, fname);
 
