@@ -235,11 +235,13 @@ int main(int argc, char **argv)
             }
         }
 
+        if (status.op_status != OP_STATE_SUCCESS) {
+            fprintf(stderr, "ERROR with copy src=%s dest=%s\n", cp->src_tuple.path, dtuple.path);
+        }
         lio_path_release(&cp->src_tuple);
         lio_os_regex_table_destroy(cp->path_regex);
         free(cp);
         if (status.op_status != OP_STATE_SUCCESS) {
-            fprintf(stderr, "ERROR with copy src=%s dest=%s\n", cp->src_tuple.path, dtuple.path);
             return_code = EIO;
             goto finished;
         }
