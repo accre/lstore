@@ -65,6 +65,7 @@ struct gop_portal_fn_t {
 };
 
 struct gop_portal_context_t {             //** Handle for maintaining all the ecopy connections
+    char *name;                //** Identifier for logging
     apr_thread_mutex_t *lock;
     apr_hash_t *table;         //** Table containing the depot_portal structs
     apr_pool_t *pool;          //** Memory pool for hash table

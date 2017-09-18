@@ -843,7 +843,7 @@ ibp_context_t *ibp_context_create()
         ibp_configure_signals();
     }
 
-    ic->pc = gop_hp_context_create(&_ibp_base_portal);
+    ic->pc = gop_hp_context_create(&_ibp_base_portal, "IBP");
 
     default_ibp_config(ic);
 

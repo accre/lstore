@@ -311,7 +311,7 @@ wq_context_t *wq_context_create(lio_fd_t *fd, int max_tasks)
     ctx->fd = fd;
     ctx->max_tasks = (max_tasks <= 0) ? IN_FLIGHT_MAX : max_tasks;
     wq_ctx_init(ctx);
-    ctx->pc = gop_hp_context_create(&_wqp_base_portal);  //** Really just used for the submit
+    ctx->pc = gop_hp_context_create(&_wqp_base_portal, "WQ");  //** Really just used for the submit
 
     return(ctx);
 }

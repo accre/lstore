@@ -62,7 +62,8 @@ void hportal_siginfo_handler(void *arg, FILE *fd)
     int i;
     void *val;
 
-    fprintf(fd, "Host Portal info -------------------------------------------\n");
+    i = hpc->next_check - time(NULL);
+    fprintf(fd, "Host Portal info (%s) (compaction in %d sec, interval: %d sec) -------------------------------------------\n", hpc->name, i, hpc->compact_interval);
     apr_thread_mutex_lock(hpc->lock);
     for (hi=apr_hash_first(hpc->pool, hpc->table); hi != NULL; hi = apr_hash_next(hi)) {
         apr_hash_this(hi, NULL, NULL, &val);
@@ -298,22 +299,21 @@ gop_host_portal_t *_lookup_hportal(gop_portal_context_t *hpc, char *hostport)
 //  gop_hp_context_create - Creates a new hportal context structure for use
 //************************************************************************
 
-gop_portal_context_t *gop_hp_context_create(gop_portal_fn_t *imp)
+gop_portal_context_t *gop_hp_context_create(gop_portal_fn_t *imp, char *name)
 {
     gop_portal_context_t *hpc;
 
 
     hpc = (gop_portal_context_t *)malloc(sizeof(gop_portal_context_t));FATAL_UNLESS(hpc != NULL);
     memset(hpc, 0, sizeof(gop_portal_context_t));
-
-
+  
     assert_result(apr_pool_create(&(hpc->pool), NULL), APR_SUCCESS);
     hpc->table = apr_hash_make(hpc->pool);FATAL_UNLESS(hpc->table != NULL);
-
 
     apr_thread_mutex_create(&(hpc->lock), APR_THREAD_MUTEX_DEFAULT, hpc->pool);
 
     hpc->fn = imp;
+    hpc->name = (name) ? strdup(name) : strdup("MISSING");
     hpc->compact_interval = 60;  //** Compact once a minute
     hpc->next_check = time(NULL);
     hpc->count = 0;
@@ -345,6 +345,7 @@ void gop_hp_context_destroy(gop_portal_context_t *hpc)
 
     apr_thread_mutex_destroy(hpc->lock);
 
+    if (hpc->name) free(hpc->name);
     apr_hash_clear(hpc->table);
     apr_pool_destroy(hpc->pool);
 

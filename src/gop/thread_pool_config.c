@@ -294,7 +294,7 @@ gop_thread_pool_context_t *gop_tp_context_create(char *tp_name, int min_threads,
         apr_threadkey_private_create(&thread_local_depth_key,_thread_pool_destructor, _tp_pool);
     }
 
-    tpc->pc = gop_hp_context_create(&_tp_base_portal);  //** Really just used for the submit
+    tpc->pc = gop_hp_context_create(&_tp_base_portal, tp_name);  //** Really just used for the submit
 
     default_thread_pool_config(tpc);
     if (min_threads > 0) tpc->min_threads = min_threads;
