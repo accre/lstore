@@ -47,12 +47,21 @@ TBX_API int *tbx_a_thread_id_ptr();
 
 // Preprocessor macros
 
-#define tbx_atomic_inc(v) __atomic_fetch_add(&(v), 1, __ATOMIC_SEQ_CST)
-#define tbx_atomic_dec(v) __atomic_sub_fetch(&(v), 1, __ATOMIC_SEQ_CST)
-#define tbx_atomic_set(v, n) __atomic_store_n(&(v), n, __ATOMIC_SEQ_CST)
-#define tbx_atomic_get(v) __atomic_load_n(&(v),  __ATOMIC_SEQ_CST)
-#define tbx_atomic_exchange(v, n) __atomic_exchange_n(&(v), n, __ATOMIC_SEQ_CST)
-#define tbx_atomic_thread_id (*tbx_a_thread_id_ptr())
+#ifdef __ATOMIC_SEQ_CST
+    #define tbx_atomic_inc(v) __atomic_fetch_add(&(v), 1, __ATOMIC_SEQ_CST)
+    #define tbx_atomic_dec(v) __atomic_sub_fetch(&(v), 1, __ATOMIC_SEQ_CST)
+    #define tbx_atomic_set(v, n) __atomic_store_n(&(v), n, __ATOMIC_SEQ_CST)
+    #define tbx_atomic_get(v) __atomic_load_n(&(v),  __ATOMIC_SEQ_CST)
+    #define tbx_atomic_exchange(v, n) __atomic_exchange_n(&(v), n, __ATOMIC_SEQ_CST)
+    #define tbx_atomic_thread_id (*tbx_a_thread_id_ptr())
+#else
+    #define tbx_atomic_inc(v) __sync_fetch_and_add(&(v), 1)
+    #define tbx_atomic_dec(v) __sync_sub_and_fetch(&(v), 1)
+    #define tbx_atomic_set(v, n) __sync_lock_test_and_set(&(v), n)
+    #define tbx_atomic_get(v) __sync_fetch_and_add(&(v), 0)
+    #define tbx_atomic_exchange(v, n) __sync_val_compare_and_swap(&(v), v, n)
+    #define tbx_atomic_thread_id (*tbx_a_thread_id_ptr())
+#endif
 
 #ifdef __cplusplus
 }
