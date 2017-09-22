@@ -1254,6 +1254,7 @@ gop_op_status_t lio_file_copy_op(void *arg, int id)
     gop_op_status_t status, close_status;
     FILE *sffd, *dffd;
     lio_fd_t *slfd, *dlfd;
+    int already_exists;
     char *buffer;
 
     buffer = NULL;
@@ -1263,12 +1264,13 @@ gop_op_status_t lio_file_copy_op(void *arg, int id)
         return(gop_failure_status);
     }
 
+    already_exists = 0;  //** Let's us know if we remove the destination in case of a failure.
 
     if (cp->src_tuple.is_lio == 0) {  //** Source is a local file and dest is lio
-
         sffd = fopen(cp->src_tuple.path, "r");
         info_printf(lio_ifd, 0, "copy %s %s@%s:%s\n", cp->src_tuple.path, an_cred_get_id(cp->dest_tuple.creds), cp->dest_tuple.lc->obj_name, cp->dest_tuple.path);
 
+        already_exists = lio_exists(cp->dest_tuple.lc, cp->dest_tuple.creds, cp->dest_tuple.path); //** Track if the file was already there for cleanup
         gop_sync_exec(lio_open_gop(cp->dest_tuple.lc, cp->dest_tuple.creds, cp->dest_tuple.path, lio_fopen_flags("w"), NULL, &dlfd, 60));
 
         if ((sffd == NULL) || (dlfd == NULL)) { //** Got an error
@@ -1286,6 +1288,8 @@ gop_op_status_t lio_file_copy_op(void *arg, int id)
         if (sffd != NULL) fclose(sffd);
     } else if (cp->dest_tuple.is_lio == 0) {  //** Source is lio and dest is local
         info_printf(lio_ifd, 0, "copy %s@%s:%s %s\n", an_cred_get_id(cp->src_tuple.creds), cp->src_tuple.lc->obj_name, cp->src_tuple.path, cp->dest_tuple.path);
+        already_exists = lio_os_local_filetype(cp->dest_tuple.path); //** Track if the file was already there for cleanup
+
         gop_sync_exec(lio_open_gop(cp->src_tuple.lc, cp->src_tuple.creds, cp->src_tuple.path, lio_fopen_flags("r"), NULL, &slfd, 60));
         dffd = fopen(cp->dest_tuple.path, "w");
 
@@ -1301,6 +1305,7 @@ gop_op_status_t lio_file_copy_op(void *arg, int id)
         if (dffd != NULL) fclose(dffd);
     } else {               //** both source and dest are lio
         info_printf(lio_ifd, 0, "copy %s@%s:%s %s@%s:%s\n", an_cred_get_id(cp->src_tuple.creds), cp->src_tuple.lc->obj_name, cp->src_tuple.path, an_cred_get_id(cp->dest_tuple.creds), cp->dest_tuple.lc->obj_name, cp->dest_tuple.path);
+        already_exists = lio_exists(cp->dest_tuple.lc, cp->dest_tuple.creds, cp->dest_tuple.path); //** Track if the file was already there for cleanup
         gop_sync_exec(lio_open_gop(cp->src_tuple.lc, cp->src_tuple.creds, cp->src_tuple.path, LIO_READ_MODE, NULL, &slfd, 60));
         gop_sync_exec(lio_open_gop(cp->dest_tuple.lc, cp->dest_tuple.creds, cp->dest_tuple.path, lio_fopen_flags("w"), NULL, &dlfd, 60));
         if ((dlfd == NULL) || (slfd == NULL)) { //** Got an error
@@ -1319,6 +1324,11 @@ gop_op_status_t lio_file_copy_op(void *arg, int id)
     }
 
     if (buffer != NULL) free(buffer);
+
+    if ((status.op_status != OP_STATE_SUCCESS) && (already_exists == 0)) { //** Copy failed so remove the destination if needed
+        log_printf(5, "Failed with copy. Removing destination: %s\n", cp->dest_tuple.path);
+        gop_sync_exec(lio_remove_gop(cp->dest_tuple.lc, cp->dest_tuple.creds, cp->dest_tuple.path, NULL, 0));
+    }
 
     return(status);
 }
