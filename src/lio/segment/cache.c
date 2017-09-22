@@ -3067,11 +3067,18 @@ gop_op_generic_t *segcache_clone(lio_segment_t *seg, data_attr_t *da, lio_segmen
     cache_clone_t *cop;
     int use_existing = (*clone_seg != NULL) ? 1 : 0;
 
+    ss = (lio_cache_lio_segment_t *)seg->priv;
+
+    //** Sanity check the child first
+    if (segment_size(ss->child_seg) < segment_size(seg)) {
+        log_printf(0, XIDT ": ERROR Cache segment size(" XOT ") > child segment size(" XOT ")!\n", segment_id(seg), segment_size(seg), segment_size(ss->child_seg));
+        return(gop_dummy(gop_failure_status));
+    }
+
     //** Make the base segment
     if (use_existing == 0) *clone_seg = segment_cache_create(seg->ess);
     clone = *clone_seg;
     sd = (lio_cache_lio_segment_t *)clone->priv;
-    ss = (lio_cache_lio_segment_t *)seg->priv;
 
     //** Copy the header
     if ((seg->header.name != NULL) && (use_existing == 0)) clone->header.name = strdup(seg->header.name);
