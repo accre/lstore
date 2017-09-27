@@ -239,6 +239,7 @@ int main(int argc, char **argv)
             }
         } else {
             gop = gop_tp_op_new(lio_gc->tpc_unlimited, NULL, mv_fn, mv, NULL, 1);
+            gop_set_private(gop, mv);
             gop_opque_add(q, gop);
         }
     }
