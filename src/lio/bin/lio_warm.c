@@ -64,7 +64,6 @@ typedef struct {
     warm_cap_info_t *cap;
     char *fname;
     char *exnode;
-    lio_creds_t *creds;
     ibp_context_t *ic;
     apr_hash_t *hash;
     apr_pool_t *mpool;
@@ -229,7 +228,7 @@ gop_op_status_t gen_warm_task(void *arg, int id)
 
     etext = NULL;
     i = 0;
-    lio_setattr(lio_gc, w->creds, w->tuple.path, NULL, "os.timestamp.system.warm", (void *)etext, i);
+    lio_setattr(lio_gc, w->tuple.creds, w->tuple.path, NULL, "os.timestamp.system.warm", (void *)etext, i);
 
     gop_opque_free(q, OP_DESTROY);
 
@@ -399,7 +398,6 @@ int main(int argc, char **argv)
                 continue;
             }
             w[slot].exnode = vals[0];
-            w[slot].creds = tuple.lc->creds;
             w[slot].ic = hack_ds_ibp_context_get(tuple.lc->ds);
             w[slot].write_err = 0;
             w[slot].tuple = lio_path_tuple_copy(&tuple, fname);
