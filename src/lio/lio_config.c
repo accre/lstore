@@ -131,7 +131,7 @@ int _lc_object_destroy(char *key)
             free(lcc);
         }
     } else {
-        log_printf(15, "REMOVE-FAIL key=%s count=%d\n", key, lcc->count);
+        log_printf(15, "REMOVE-FAIL key=%s\n", key);
     }
 
     return(count);
@@ -464,7 +464,10 @@ lio_path_tuple_t lio_path_tuple_copy(lio_path_tuple_t *curr, char *fname)
     tuple.path = fname;
 
     snprintf(buffer, sizeof(buffer), "tuple:%s@%s", an_cred_get_id(curr->creds), curr->lc->obj_name);
+    apr_thread_mutex_lock(_lc_lock);    
     t2 = _lc_object_get(buffer);
+    apr_thread_mutex_unlock(_lc_lock);
+
     if (t2 == NULL) {
         log_printf(0, "ERROR: missing tuple! obj=%s\n", buffer);
         fprintf(stderr, "ERROR: missing tuple! obj=%s\n", buffer);
@@ -652,7 +655,6 @@ lio_path_tuple_t lio_path_auto_fuse_convert(lio_path_tuple_t *ltuple)
 
             if (do_convert == 1) {
                 log_printf(5, "auto convert\n");
-//           snprintf(path, sizeof(path), "@:%s", &(ltuple->path[prefix_len-1]));
                 log_printf(5, "auto convert path=%s\n", path);
                 tuple = lio_path_resolve_base(path);
                 lio_path_release(ltuple);
@@ -797,7 +799,6 @@ void lio_destroy_nl(lio_config_t *lio)
     log_printf(1, "Destroying LIO context %s\n", lio->obj_name);
 
     if (_lc_object_destroy(lio->obj_name) > 0) {  //** Still in use so return.
-        apr_thread_mutex_unlock(_lc_lock);
         return;
     }
 
