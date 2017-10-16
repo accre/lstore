@@ -2346,8 +2346,13 @@ gop_op_status_t seglun_clone_func(void *arg, int id)
 
     //** Do the final grow if needed
     if (row_size != -1) {
-        log_printf(15, "dseg=" XIDT " Growing dest to " XOT "\n", segment_id(slc->dseg), bs->seg_end+1);
-        err = gop_sync_exec(lio_segment_truncate(slc->dseg, slc->da, bs->seg_end+1, slc->timeout));
+        if (bs) {
+            log_printf(15, "dseg=" XIDT " Growing dest to " XOT "\n", segment_id(slc->dseg), bs->seg_end+1);
+            err = gop_sync_exec(lio_segment_truncate(slc->dseg, slc->da, bs->seg_end+1, slc->timeout));
+        } else {
+            err = OP_STATE_FAILURE;
+            log_printf(15, "dseg=" XIDT " Growing dest to " XOT "\n", segment_id(slc->dseg), bs->seg_end+1);
+        }
         if (err != OP_STATE_SUCCESS) {
             log_printf(15, "Error growing destination! dseg=" XIDT "\n", segment_id(slc->dseg));
             sd->grow_break = 0; //** Undo the break flag
