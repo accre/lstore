@@ -48,7 +48,7 @@ int main(int argc, char **argv)
         printf("     -wq        Use the LIO Work Queue\n");
         printf("     -local     Use a local file\n");
 
-        printf("     -section section Section in the config file to usse.  Defaults to %s.\n", section);
+        printf("     -s          section Section in the config file to usse.  Defaults to %s.\n", section);
         printf("\n");
         return(1);
     }
