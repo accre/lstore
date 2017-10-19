@@ -353,7 +353,7 @@ int parse_config(tbx_inip_file_t *keyfile, Config_t *cfg, int force_rebuild)
   cfg->soft_fail = (i==0) ? -1 : 0;
 
   //*** Do some initial config of the log and debugging info ***
-  tbx_log_open(cfg->server.logfile, 0);
+  tbx_log_open(cfg->server.logfile, 1);
   tbx_set_log_level(cfg->server.log_level);
   set_debug_level(cfg->server.debug_level);
   tbx_set_log_maxsize(cfg->server.log_maxsize);
@@ -537,6 +537,9 @@ int main(int argc, const char **argv)
   printf("Config file: %s\n\n", config_file);
 
   tbx_inip_file_t *keyfile;
+
+  //** Default log file
+  tbx_log_open("/log/ibp.log", 1);
 
   //* Load the config file
   keyfile = tbx_inip_file_read(config_file);
