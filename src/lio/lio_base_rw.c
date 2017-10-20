@@ -269,9 +269,11 @@ struct wq_context_s {    //** Device context
 };
 
 typedef struct {
+    apr_thread_t *thread;
+    apr_pool_t *mpool;
+    apr_thread_mutex_t *lock;
     int pipe[2];
     int n_parallel;
-    apr_thread_t *thread;
 } wq_global_t;
 
 static wq_global_t *wq_global = NULL;
@@ -484,6 +486,7 @@ void wq_add_task(wq_op_t *op)
 
     nleft = sizeof(op); i = 0;
     buf = (char *)&op;  //**Push the OP pointer to the pipe
+    apr_thread_mutex_lock(wq_global->lock);
     do {
         n = write(wq_global->pipe[OP_WRITE], buf + i, nleft);
         if (n == -1) {
@@ -494,6 +497,7 @@ void wq_add_task(wq_op_t *op)
         nleft -= n;
         i += n;
     } while (nleft > 0);
+    apr_thread_mutex_unlock(wq_global->lock);
 }
 
 //***********************************************************************
@@ -814,6 +818,9 @@ void lio_wq_startup(int n_parallel)
         abort();
     }
 
+    apr_pool_create(&(wq_global->mpool), NULL);
+    apr_thread_mutex_create(&(wq_global->lock), APR_THREAD_MUTEX_DEFAULT, wq_global->mpool);
+
     // ** Launch the backend thread
     tbx_thread_create_assert(&(wq_global->thread), NULL, wq_backend_thread,
                                  (void *)wq_global, lio_gc->mpool);
@@ -838,6 +845,10 @@ void lio_wq_shutdown()
     //** Close the pipe
     if (wq_global->pipe[OP_READ] > 0) close(wq_global->pipe[OP_READ]);
     if (wq_global->pipe[OP_WRITE] > 0) close(wq_global->pipe[OP_WRITE]);
+
+    //** Cleanup the lock
+    apr_thread_mutex_destroy(wq_global->lock);
+    apr_pool_destroy(wq_global->mpool);
 
     //** And free the structure
     free(wq_global);
