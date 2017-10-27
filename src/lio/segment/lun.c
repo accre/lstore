@@ -708,11 +708,17 @@ int slun_row_replace_fix(lio_segment_t *seg, data_attr_t *da, seglun_row_t *b, i
                 log_printf(1, "seg=" XIDT " ERROR not enough RIDS!\n", segment_id(seg));
                 err = m;
                 loop = kick_out + 10;  //** Kick us out of the loop
+                for (j=0; j<m; j++) {
+                    if (req_list[j].rid_key) free(req_list[j].rid_key);
+                }
                 goto oops;
             } else if (status.error_code == RS_ERROR_EMPTY_STACK) { //** No use looping
                 log_printf(1, "seg=" XIDT " ERROR RS query is BAD!\n", segment_id(seg));
                 err = m;
                 loop = kick_out + 10;  //** Kick us out of the loop
+                for (j=0; j<m; j++) {
+                    if (req_list[j].rid_key) free(req_list[j].rid_key);
+                }
                 goto oops;
             }
         }
