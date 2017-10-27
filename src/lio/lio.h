@@ -96,7 +96,6 @@ typedef gop_op_generic_t *(lio_rw_ex_gop_t)(lio_rw_op_t *op);
 struct lio_fd_t {  //** Individual file descriptor
     lio_config_t *lc;
     lio_file_handle_t *fh;  //** Shared handle
-    wq_context_t *wq_ctx;
     tbx_stack_t *wq;
     lio_creds_t *creds;
     char *path;

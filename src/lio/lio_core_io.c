@@ -403,13 +403,18 @@ typedef struct {
 
 int lio_wq_enable(lio_fd_t *fd, int max_in_flight)
 {
-    fd->wq_ctx = wq_context_create(fd, max_in_flight);
-log_printf(15, "wq_ctx=%p\n", fd->wq_ctx);
-    if (fd->wq_ctx == NULL) return(1);
+    segment_lock(fd->fh->seg);
+    if (!fd->fh->wq_ctx) {
+        fd->fh->wq_ctx = wq_context_create(fd, max_in_flight);
+        log_printf(15, "wq_ctx=%p\n", fd->fh->wq_ctx);
+    }
+    segment_unlock(fd->fh->seg);
+
+    if (fd->fh->wq_ctx == NULL) return(1);
 
     fd->read_gop = lio_read_ex_gop_wq;
     fd->write_gop = lio_write_ex_gop_wq;
-log_printf(15, "wq enabeled\n");
+    log_printf(15, "wq enabeled\n");
 
     return(0);
 }
@@ -619,12 +624,6 @@ gop_op_status_t lio_myclose_fn(void *arg, int id)
     log_printf(1, "fname=%s modified=" AIT " count=%d\n", fd->path, tbx_atomic_get(fd->fh->modified), fd->fh->ref_count);
     tbx_log_flush();
 
-    //** Shutdown the Work Queue context if needed
-    if (fd->wq_ctx != NULL) {
-        wq_context_destroy(fd->wq_ctx);
-        fd->wq_ctx = NULL;
-    }
-
     status = gop_success_status;
 
     //** Get the handles
@@ -679,6 +678,12 @@ gop_op_status_t lio_myclose_fn(void *arg, int id)
             goto finished;
         }
 
+        //** Shutdown the Work Queue context if needed
+        if (fh->wq_ctx != NULL) {
+            wq_context_destroy(fh->wq_ctx);
+            fh->wq_ctx = NULL;
+        }
+
         //** Tear everything down
         lio_exnode_destroy(fh->ex);
         _lio_remove_file_handle(lc, fh);
@@ -717,6 +722,12 @@ gop_op_status_t lio_myclose_fn(void *arg, int id)
     if (fh->ref_count > 0) {  //** Somebody else opened it while we were flushing buffers
         lio_unlock(lc);
         goto finished;
+    }
+
+    //** Shutdown the Work Queue context if needed
+    if (fh->wq_ctx != NULL) {
+        wq_context_destroy(fh->wq_ctx);
+        fh->wq_ctx = NULL;
     }
 
     //** Clean up
@@ -772,17 +783,14 @@ gop_op_generic_t *lio_read_ex_gop_wq(lio_rw_op_t *op)
     ex_off_t total;
 
     //** Handle some edge cases using the old method
-log_printf(15, "op->n_iov=%d\n", op->n_iov);
     if (op->n_iov > 1) return(lio_read_ex_gop_aio(op));
 
     tbx_tbuf_var_init(&tv);
     total = tbx_tbuf_size(op->buffer);
     tv.nbytes = total;
     if (tbx_tbuf_next(op->buffer, op->boff, &tv) != TBUFFER_OK) return(lio_read_ex_gop_aio(op));
-log_printf(15, "tv.nbytes=" XOT " bsize=" XOT " boff=" XOT "\n", tv.nbytes, total, op->boff);
     if ((ex_off_t)tv.nbytes != (total-op->boff)) return(lio_read_ex_gop_aio(op));
-log_printf(15, "wq_op_new called\n");
-    return(wq_op_new(op->fd->wq_ctx, op, 0));
+    return(wq_op_new(op->fd->fh->wq_ctx, op, 0));
 }
 
 //*************************************************************************
@@ -857,7 +865,7 @@ int _lio_read_gop(lio_rw_op_t *op, lio_fd_t *fd, char *buf, ex_off_t size, off_t
     ex_off_t ssize, pend, rsize, rend, dr, off, readahead;
 
     //** If using WQ routines then disable readahead
-    readahead = (fd->wq_ctx) ? 0 : fd->fh->lc->readahead;
+    readahead = (fd->fh->wq_ctx) ? 0 : fd->fh->lc->readahead;
 
     //** Determine the offset
     off = (user_off < 0) ? fd->curr_offset : user_off;
@@ -977,7 +985,7 @@ log_printf(15, "tv.nbytes=" XOT " bsize=" XOT " boff=" XOT "\n", tv.nbytes, tota
     if ((ex_off_t)tv.nbytes != (total-op->boff)) return(lio_write_ex_gop_aio(op));
 log_printf(15, "wq_op_new called\n");
 
-    return(wq_op_new(op->fd->wq_ctx, op, 1));
+    return(wq_op_new(op->fd->fh->wq_ctx, op, 1));
 }
 
 //*************************************************************************

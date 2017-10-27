@@ -310,7 +310,14 @@ wq_context_t *wq_context_create(lio_fd_t *fd, int max_tasks)
     wq_context_t *ctx;
 
     tbx_type_malloc_clear(ctx, wq_context_t, 1);
-    ctx->fd = fd;
+
+    //** We need an FD that will persist for as long as the CTX is in use.
+    //** All the FD fields will peresist as long as an FD is using the CTX.
+    //** The only field that's transient is the path so it's duped.
+    tbx_type_malloc(ctx->fd, lio_fd_t, 1);
+    *ctx->fd = *fd;
+    ctx->fd->path = strdup(fd->path);
+
     ctx->max_tasks = (max_tasks <= 0) ? IN_FLIGHT_MAX : max_tasks;
     wq_ctx_init(ctx);
     ctx->pc = gop_hp_context_create(&_wqp_base_portal, "WQ");  //** Really just used for the submit
@@ -324,6 +331,8 @@ void wq_context_destroy(wq_context_t *ctx)
 {
     wq_ctx_shutdown(ctx);
     gop_hp_context_destroy(ctx->pc);
+    free(ctx->fd->path);
+    free(ctx->fd);
     free(ctx);
 }
 
@@ -558,7 +567,7 @@ int wq_ctx_fetch_tasks(wq_context_t *ctx)
         tbx_type_malloc_clear(ctx->iov, struct iovec, ctx->max_iov);
     }
 
-    return(n);
+    return(tbx_stack_count(ctx->wq));
 }
 
 //***********************************************************************
@@ -700,13 +709,20 @@ void wq_execute_tasks(wq_context_t *ctx)
 gop_op_status_t wq_ctx_process_fn(void *arg, int id)
 {
     wq_context_t *ctx = (wq_context_t *)arg;
+    int more;
 
-    log_printf(10, "START fname=%s\n", ctx->fd->path);
-    while (wq_ctx_fetch_tasks(ctx) > 0) {
+    log_printf(10, "START fname=%s CTX=%p\n", ctx->fd->path, ctx);
+    do {
+        //** We get back how many tasks are pending.  This needed because
+        //** after the tasks execute the file could be closed making the
+        //** ctx invalid for checking
+        more = wq_ctx_fetch_tasks(ctx);
+        log_printf(10, "CTX=%p more=%d\n", ctx, more);
         wq_sort_and_merge_tasks(ctx);
         wq_execute_tasks(ctx);
-    }
-    log_printf(10, "END fname=%s\n", ctx->fd->path);
+    } while (more > 0);
+    log_printf(10, "END CTX=%p\n", ctx);
+
     return(gop_success_status);
 }
 
@@ -727,7 +743,6 @@ void wq_process(wq_global_t *wq, apr_hash_t *table, apr_pool_t *mpool)
     for (hi=apr_hash_first(mpool, table); hi; hi = apr_hash_next(hi)) {
         apr_hash_this(hi, NULL, NULL, (void **)&ctx);
         apr_hash_set(table, &ctx, sizeof(ctx), NULL);
-        log_printf(10, "n=%d adding ctx=%s\n", n, ctx->fd->path);
 
         if (n > wq->n_parallel) {
             gop = opque_waitany(q);
