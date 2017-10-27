@@ -182,6 +182,7 @@ void rcs_config_send(rc_t *rc, gop_mq_frame_t *fid, mq_msg_t *address, char *fna
 
     //** Add the config
     tbx_inip_file2string(path, &config, &nbytes);
+    if (nbytes > 0) nbytes++; //** Make sure and send the NULL terminator
     free(path);
     gop_mq_msg_append_mem(msg, config, nbytes, MQF_MSG_AUTO_FREE);
 
