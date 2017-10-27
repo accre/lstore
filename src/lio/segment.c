@@ -259,6 +259,9 @@ gop_op_status_t segment_get_gop_func(void *arg, int id)
     rpos = sc->src_offset;
     wpos = 0;
     nbytes = segment_size(sc->src) - sc->src_offset;
+    if (sc->len > 0) {
+        if (nbytes > sc->len) nbytes = sc->len;
+    }
     if (nbytes < 0) {
         rlen = bufsize;
     } else {

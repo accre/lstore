@@ -1089,6 +1089,9 @@ typedef struct {
     FILE *sffd, *dffd;
     lio_fd_t *slfd, *dlfd;
     ex_off_t bufsize;
+    ex_off_t offset;
+    ex_off_t offset2;
+    ex_off_t len;
     char *buffer;
     lio_copy_hint_t hints;
     lio_segment_rw_hints_t *rw_hints;
@@ -1114,7 +1117,7 @@ gop_op_status_t lio_cp_local2lio_fn(void *arg, int id)
         tbx_type_malloc(buffer, char, bufsize+1);
     }
 
-    status = gop_sync_exec_status(segment_put_gop(lfh->lc->tpc_unlimited, lfh->lc->da, op->rw_hints, ffd, lfh->seg, 0, -1, bufsize, buffer, 1, 3600));
+    status = gop_sync_exec_status(segment_put_gop(lfh->lc->tpc_unlimited, lfh->lc->da, op->rw_hints, ffd, lfh->seg, op->offset, op->len, bufsize, buffer, 1, 3600));
     tbx_atomic_set(lfh->modified, 1); //** Flag it as modified so the new exnode gets stored
 
     //** Clean up
@@ -1125,7 +1128,7 @@ gop_op_status_t lio_cp_local2lio_fn(void *arg, int id)
 
 //***********************************************************************
 
-gop_op_generic_t *lio_cp_local2lio_gop(FILE *sfd, lio_fd_t *dfd, ex_off_t bufsize, char *buffer, lio_segment_rw_hints_t *rw_hints)
+gop_op_generic_t *lio_cp_local2lio_gop(FILE *sfd, lio_fd_t *dfd, ex_off_t bufsize, char *buffer, ex_off_t offset, ex_off_t len, lio_segment_rw_hints_t *rw_hints)
 {
     lio_cp_fn_t *op;
 
@@ -1133,6 +1136,8 @@ gop_op_generic_t *lio_cp_local2lio_gop(FILE *sfd, lio_fd_t *dfd, ex_off_t bufsiz
 
     op->buffer = buffer;
     op->bufsize = bufsize;
+    op->offset = offset;
+    op->len = len;
     op->sffd = sfd;
     op->dlfd = dfd;
     op->rw_hints = rw_hints;
@@ -1161,7 +1166,7 @@ gop_op_status_t lio_cp_lio2local_fn(void *arg, int id)
         tbx_type_malloc(buffer, char, bufsize+1);
     }
 
-    status = gop_sync_exec_status(segment_get_gop(lfh->lc->tpc_unlimited, lfh->lc->da, op->rw_hints, lfh->seg, ffd, 0, -1, bufsize, buffer, 3600));
+    status = gop_sync_exec_status(segment_get_gop(lfh->lc->tpc_unlimited, lfh->lc->da, op->rw_hints, lfh->seg, ffd, op->offset, op->len, bufsize, buffer, 3600));
 
     //** Clean up
     if (op->buffer == NULL) free(buffer);
@@ -1171,7 +1176,7 @@ gop_op_status_t lio_cp_lio2local_fn(void *arg, int id)
 
 //***********************************************************************
 
-gop_op_generic_t *lio_cp_lio2local_gop(lio_fd_t *sfd, FILE *dfd, ex_off_t bufsize, char *buffer, lio_segment_rw_hints_t *rw_hints)
+gop_op_generic_t *lio_cp_lio2local_gop(lio_fd_t *sfd, FILE *dfd, ex_off_t bufsize, char *buffer, ex_off_t offset, ex_off_t len, lio_segment_rw_hints_t *rw_hints)
 {
     lio_cp_fn_t *op;
 
@@ -1179,6 +1184,8 @@ gop_op_generic_t *lio_cp_lio2local_gop(lio_fd_t *sfd, FILE *dfd, ex_off_t bufsiz
 
     op->buffer = buffer;
     op->bufsize = bufsize;
+    op->offset = offset;
+    op->len = len;
     op->slfd = sfd;
     op->dffd = dfd;
     op->rw_hints = rw_hints;
@@ -1223,7 +1230,7 @@ gop_op_status_t lio_cp_lio2lio_fn(void *arg, int id)
         if (buffer == NULL) { //** Need to make it ourself
             tbx_type_malloc(buffer, char, bufsize+1);
         }
-        status = gop_sync_exec_status(lio_segment_copy_gop(dfh->lc->tpc_unlimited, dfh->lc->da, op->rw_hints, sfh->seg, dfh->seg, 0, 0, -1, bufsize, buffer, 1, dfh->lc->timeout));
+        status = gop_sync_exec_status(lio_segment_copy_gop(dfh->lc->tpc_unlimited, dfh->lc->da, op->rw_hints, sfh->seg, dfh->seg, op->offset, op->offset2, op->len, bufsize, buffer, 1, dfh->lc->timeout));
 
         //** Clean up
         if (op->buffer == NULL) free(buffer);
@@ -1236,7 +1243,7 @@ gop_op_status_t lio_cp_lio2lio_fn(void *arg, int id)
 
 //***********************************************************************
 
-gop_op_generic_t *lio_cp_lio2lio_gop(lio_fd_t *sfd, lio_fd_t *dfd, ex_off_t bufsize, char *buffer, int hints, lio_segment_rw_hints_t *rw_hints)
+gop_op_generic_t *lio_cp_lio2lio_gop(lio_fd_t *sfd, lio_fd_t *dfd, ex_off_t bufsize, char *buffer, ex_off_t src_offset, ex_off_t dest_offset, ex_off_t len, int hints, lio_segment_rw_hints_t *rw_hints)
 {
     lio_cp_fn_t *op;
 
@@ -1244,6 +1251,9 @@ gop_op_generic_t *lio_cp_lio2lio_gop(lio_fd_t *sfd, lio_fd_t *dfd, ex_off_t bufs
 
     op->buffer = buffer;
     op->bufsize = bufsize;
+    op->offset = src_offset;
+    op->offset2 = dest_offset;
+    op->len = len;
     op->slfd = sfd;
     op->dlfd = dfd;
     op->hints = hints;
@@ -1287,7 +1297,7 @@ gop_op_status_t lio_file_copy_op(void *arg, int id)
             status = gop_failure_status;
         } else {
             tbx_type_malloc(buffer, char, cp->bufsize+1);
-            status = gop_sync_exec_status(lio_cp_local2lio_gop(sffd, dlfd, cp->bufsize, buffer, cp->rw_hints));
+            status = gop_sync_exec_status(lio_cp_local2lio_gop(sffd, dlfd, cp->bufsize, buffer, 0, -1, cp->rw_hints));
         }
         if (dlfd != NULL) {
             close_status = gop_sync_exec_status(lio_close_gop(dlfd));
@@ -1307,7 +1317,7 @@ gop_op_status_t lio_file_copy_op(void *arg, int id)
             status = gop_failure_status;
         } else {
             tbx_type_malloc(buffer, char, cp->bufsize+1);
-            status = gop_sync_exec_status(lio_cp_lio2local_gop(slfd, dffd, cp->bufsize, buffer, cp->rw_hints));
+            status = gop_sync_exec_status(lio_cp_lio2local_gop(slfd, dffd, cp->bufsize, buffer, 0, -1, cp->rw_hints));
         }
         if (slfd != NULL) gop_sync_exec(lio_close_gop(slfd));
         if (dffd != NULL) fclose(dffd);
@@ -1322,7 +1332,7 @@ gop_op_status_t lio_file_copy_op(void *arg, int id)
             status = gop_failure_status;
         } else {
             tbx_type_malloc(buffer, char, cp->bufsize+1);
-            status = gop_sync_exec_status(lio_cp_lio2lio_gop(slfd, dlfd, cp->bufsize, buffer, cp->slow, cp->rw_hints));
+            status = gop_sync_exec_status(lio_cp_lio2lio_gop(slfd, dlfd, cp->bufsize, buffer, 0, 0, -1, cp->slow, cp->rw_hints));
         }
         if (slfd != NULL) gop_sync_exec(lio_close_gop(slfd));
         if (dlfd != NULL) {

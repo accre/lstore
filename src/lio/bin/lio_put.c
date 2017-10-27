@@ -107,7 +107,7 @@ int main(int argc, char **argv)
     }
 
     //** Do the put
-    err = gop_sync_exec(lio_cp_local2lio_gop(stdin, fd, bufsize, buffer, NULL));
+    err = gop_sync_exec(lio_cp_local2lio_gop(stdin, fd, bufsize, buffer, 0,  -1, NULL));
     if (err != OP_STATE_SUCCESS) {
         info_printf(lio_ifd, 0, "Failed writing data!  path=%s\n", tuple.path);
     }

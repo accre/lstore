@@ -37,7 +37,7 @@
 
 int main(int argc, char **argv)
 {
-    ex_off_t bufsize;
+    ex_off_t bufsize, offset, len;
     int err, err_close, ftype, i, start_index, start_option, return_code;
     char *buffer;
     char *path;
@@ -51,12 +51,17 @@ int main(int argc, char **argv)
     _lio_ifd = stderr;  //** Default to all information going to stderr since the output is file data.
 
     bufsize = 20*1024*1024;
+    offset = 0;
+    len = -1;
 
     if (argc < 2) {
         printf("\n");
-        printf("lio_get LIO_COMMON_OPTIONS [-b bufsize] src_file1 .. src_file_N\n");
+        printf("lio_get LIO_COMMON_OPTIONS [-b bufsize] [-o offset len] src_file1 .. src_file_N\n");
         lio_print_options(stdout);
         printf("    -b bufsize         - Buffer size to use. Units supported (Default=%s)\n", tbx_stk_pretty_print_int_with_scale(bufsize, ppbuf));
+        printf("    -o offset len      - Only return the file starting at the provided offset and length.\n");
+        printf("                         The default is to return the whole file.  Units are supported.\n");
+        printf("                         If the length is -1 then the rest of the file is returned.\n");
         printf("    src_file           - Source file\n");
         return(1);
     }
@@ -70,6 +75,12 @@ int main(int argc, char **argv)
             if (strcmp(argv[i], "-b") == 0) {  //** Get the buffer size
                 i++;
                 bufsize = tbx_stk_string_get_integer(argv[i]);
+                i++;
+            } else if (strcmp(argv[i], "-o") == 0) {
+                i++;
+                offset = tbx_stk_string_get_integer(argv[i]);
+                i++;
+                len = tbx_stk_string_get_integer(argv[i]);
                 i++;
             }
 
@@ -114,7 +125,7 @@ int main(int argc, char **argv)
         }
 
         //** Do the get
-        err = gop_sync_exec(lio_cp_lio2local_gop(fd, stdout, bufsize, buffer, NULL));
+        err = gop_sync_exec(lio_cp_lio2local_gop(fd, stdout, bufsize, buffer, offset, len, NULL));
         if (err != OP_STATE_SUCCESS) {
             return_code = EIO;
             fprintf(stderr, "Failed reading data!  path=%s\n", tuple.path);
