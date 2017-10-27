@@ -111,6 +111,8 @@ typedef struct {
     int start_stripe;
     int iov_start;
     int nstripes;
+    int straddle_start;
+    int straddle_count;
 } segjerase_io_t;
 
 typedef struct {
@@ -1156,7 +1158,7 @@ gop_op_status_t segjerase_read_func(void *arg, int id)
     segjerase_priv_t *s = (segjerase_priv_t *)sw->seg->priv;
     gop_op_status_t status, op_status, check_status;
     ex_off_t lo, boff, poff, len, parity_len, parity_used, curr_bytes;
-    int i, j, k, stripe, magic_used, slot, n_iov, nstripes, curr_stripe, iov_start, magic_stripe, magic_off;
+    int i, j, k, m, stripe, magic_used, slot, n_iov, nstripes, curr_stripe, iov_start, magic_stripe, magic_off, quick;
     char *parity, *magic, *ptr[s->n_devs], *eptr[s->n_devs];
     char pbuff[s->n_parity_devs*s->chunk_size];
     char *pwork[s->n_parity_devs];
@@ -1165,6 +1167,10 @@ gop_op_status_t segjerase_read_func(void *arg, int id)
     int magic_devs[s->n_devs*s->n_devs];
     int badmap[s->n_devs], badmap_brute[s->n_devs], bm_brute_used;
     int soft_error, hard_error, do_recover, paranoid_mode;
+    char **straddle_buffer, *straddle_ptr;
+    ex_off_t *straddle_offset;
+    int straddle_size, straddle_used, straddle_count;
+    tbx_tbuf_t straddle_tbuf;
     gop_opque_t *q;
     gop_op_generic_t *gop;
     ex_tbx_iovec_t *ex_iov;
@@ -1195,6 +1201,10 @@ tryagain:  //** We first try allowing blacklisting to proceed as normal and then
     hard_error = 0;
     bm_brute_used = 0;
 
+    straddle_buffer = NULL;
+    straddle_offset = NULL;
+    straddle_size = -1;
+    straddle_used = -1;
 
     //** Make the space for the parity
     parity_len = sw->nstripes * s->parity_size;
@@ -1212,7 +1222,6 @@ tryagain:  //** We first try allowing blacklisting to proceed as normal and then
         }
     }
     tbx_type_malloc(parity, char, parity_len);
-
 
     tbx_type_malloc_clear(magic, char, magic_stripe*sw->nstripes);
     tbx_type_malloc(ex_iov, ex_tbx_iovec_t, sw->n_iov);
@@ -1372,6 +1381,14 @@ tryagain:  //** We first try allowing blacklisting to proceed as normal and then
                     iov_start += 2*s->n_devs;
                 }
 
+                //**Have to copy data spanning multiple pages back
+                if (info[slot].straddle_count > 0) {
+                    m = info[slot].straddle_start;
+                    for (k=0; k<info[slot].straddle_count; k++) {
+                        tbx_tbuf_single(&straddle_tbuf, s->data_size, straddle_buffer[m+k]);
+                        tbx_tbuf_copy(&straddle_tbuf, 0, sw->buffer, straddle_offset[m+k], s->data_size, 1);
+                    }
+                }
                 gop_free(gop, OP_DESTROY);
             }
 
@@ -1390,6 +1407,8 @@ tryagain:  //** We first try allowing blacklisting to proceed as normal and then
             info[i].iov_start = iov_start;
             info[i].start_stripe = curr_stripe;
             info[i].nstripes = nstripes;
+            info[i].straddle_start = (i>0) ? info[i-1].straddle_start + info[i-1].straddle_count : 0;
+            straddle_count = 0;
 
             //** Cycle through the stripes for encoding
             boff = sw->boff + curr_bytes;
@@ -1397,7 +1416,23 @@ tryagain:  //** We first try allowing blacklisting to proceed as normal and then
             for (j=0; j<nstripes; j++) {
                 tbv.nbytes = s->data_size;
                 tbx_tbuf_next(sw->buffer, boff, &tbv);
-                FATAL_UNLESS((tbv.n_iov == 1) && ((int)tbv.nbytes == s->data_size));
+                quick = 1;
+                if ((tbv.n_iov != 1) || ((int)tbv.nbytes != s->data_size)) {
+                    quick = 0;
+                    log_printf(0, "OOPS n_iov=%d nbytes=%d boff=" XOT " iov=%d\n", tbv.n_iov, (int)tbv.nbytes, boff, i);
+                    if (straddle_used >= straddle_size) {
+                        straddle_size = 2*straddle_size + 10;
+                        straddle_offset = realloc(straddle_offset, sizeof(ex_off_t) * straddle_size);
+                        straddle_buffer = realloc(straddle_buffer, sizeof(char *) * straddle_size);
+                    }
+
+                    straddle_used++;
+                    tbx_type_malloc(straddle_ptr, char, s->data_size);
+                    straddle_buffer[straddle_used] = straddle_ptr;
+                    straddle_offset[straddle_used] = boff;
+                    straddle_count++;
+                    log_printf(0, "OOPS STRADDLE used=%d boff=" XOT " count=%d\n", straddle_used, straddle_offset[straddle_used], straddle_count);
+                }
 
                 //** Make the encoding and transfer data structs
                 poff = 0;
@@ -1406,9 +1441,16 @@ tryagain:  //** We first try allowing blacklisting to proceed as normal and then
                     iov[n_iov].iov_len = JE_MAGIC_SIZE;
                     n_iov++;
                     magic_off += JE_MAGIC_SIZE;
-                    iov[n_iov].iov_base = tbv.buffer[0].iov_base + poff;
-                    iov[n_iov].iov_len = s->chunk_size;
-                    n_iov++;
+
+                    if (quick == 1) {
+                        iov[n_iov].iov_base = tbv.buffer[0].iov_base + poff;
+                        iov[n_iov].iov_len = s->chunk_size;
+                        n_iov++;
+                    } else {
+                        iov[n_iov].iov_base = straddle_ptr + poff;
+                        iov[n_iov].iov_len = s->chunk_size;
+                        n_iov++;
+                    }
                     poff += s->chunk_size;
                 }
 
@@ -1428,9 +1470,10 @@ tryagain:  //** We first try allowing blacklisting to proceed as normal and then
                 boff += s->data_size;
             }
 
+            info[i].straddle_count = straddle_count;
             boff = sw->boff + curr_bytes;
             tbx_tbuf_vec(&(tbuf[i]), ex_iov[i].len, n_iov - iov_start, &(iov[iov_start]));
-            gop = segment_read(s->child_seg, sw->da, &(rw_hints[i]), 1, &(ex_iov[i]), &(tbuf[i]), boff, sw->timeout);
+            gop = segment_read(s->child_seg, sw->da, &(rw_hints[i]), 1, &(ex_iov[i]), &(tbuf[i]), 0, sw->timeout);
             gop_set_myid(gop, i);
             gop_opque_add(q, gop);
             curr_bytes += len;
@@ -1447,6 +1490,12 @@ tryagain:  //** We first try allowing blacklisting to proceed as normal and then
     free(tbuf);
     free(rw_hints);
     free(info);
+
+    if (straddle_size > 0) {
+        for (i=0; i<(straddle_used+1); i++) free(straddle_buffer[i]);
+        free(straddle_buffer);
+        free(straddle_offset);
+    }
 
     gop_opque_free(q, OP_DESTROY);
 
@@ -1480,8 +1529,12 @@ gop_op_status_t segjerase_write_func(void *arg, int id)
     segjerase_priv_t *s = (segjerase_priv_t *)sw->seg->priv;
     gop_op_status_t status, op_status;
     ex_off_t lo, boff, poff, len, parity_len, parity_used, curr_bytes;
-    int i, j, k, n_iov, nstripes, curr_stripe, pstripe, iov_start;
+    int i, j, k, n_iov, nstripes, curr_stripe, pstripe, iov_start, quick;
     int soft_error, hard_error;
+    char **straddle_buffer, *straddle_ptr;
+    ex_off_t *straddle_offset;
+    int straddle_size, straddle_used, straddle_count;
+    tbx_tbuf_t straddle_tbuf;
     char *parity, *magic, **ptr, *stripe_magic, *empty;
     gop_opque_t *q;
     gop_op_generic_t *gop;
@@ -1505,6 +1558,11 @@ tryagain: //** In case blacklisting failed we'll retry with it disabled
     status = gop_success_status;
     soft_error = 0;
     hard_error = 0;
+
+    straddle_buffer = NULL;
+    straddle_offset = NULL;
+    straddle_size = -1;
+    straddle_used = -1;
 
     //** Make the space for the parity
     parity_len = sw->nstripes * s->parity_size;
@@ -1602,14 +1660,35 @@ tryagain: //** In case blacklisting failed we'll retry with it disabled
             for (j=0; j<nstripes; j++) {
                 tbv.nbytes = s->data_size;
                 tbx_tbuf_next(sw->buffer, boff, &tbv);
-               FATAL_UNLESS((tbv.n_iov == 1) && ((int)tbv.nbytes == s->data_size));
+                quick = 1;
+                if ((tbv.n_iov != 1) || ((int)tbv.nbytes != s->data_size)) {
+                    log_printf(0, "OOPS n_iov=%d nbytes=%d boff=" XOT " iov=%d\n", tbv.n_iov, (int)tbv.nbytes, boff, i);
+                    if (straddle_used >= straddle_size) {
+                        straddle_size = 2*straddle_size + 10;
+                        straddle_offset = realloc(straddle_offset, sizeof(ex_off_t) * straddle_size);
+                        straddle_buffer = realloc(straddle_buffer, sizeof(char *) * straddle_size);
+                    }
+
+                    straddle_used++;
+                    tbx_type_malloc(straddle_ptr, char, s->data_size);
+                    straddle_buffer[straddle_used] = straddle_ptr;
+                    straddle_offset[straddle_used] = boff;
+                    tbx_tbuf_single(&straddle_tbuf, s->data_size, straddle_ptr);
+                    tbx_tbuf_copy(sw->buffer, boff, &straddle_tbuf, 0, s->data_size, 1);
+                    straddle_count++;
+                    log_printf(0, "OOPS STRADDLE used=%d boff=" XOT " count=%d\n", straddle_used, straddle_offset[straddle_used], straddle_count);
+                }
 
                 //** Make the encoding and transfer data structs
                 stripe_magic = &(magic[curr_stripe*JE_MAGIC_SIZE]);
                 poff = 0;
                 for (k=0; k<s->n_data_devs; k++) {
                     if (tbv.buffer[0].iov_base != NULL) {
-                        ptr[pstripe + k] = tbv.buffer[0].iov_base + poff;
+			if (quick == 1) {
+	                        ptr[pstripe + k] = tbv.buffer[0].iov_base + poff;
+			} else {
+	                        ptr[pstripe + k] = straddle_ptr + poff;
+			}
                     } else { //** Got an error page
                         if (empty == NULL) {
                             empty = &(parity[parity_len]);
@@ -1653,7 +1732,7 @@ tryagain: //** In case blacklisting failed we'll retry with it disabled
 
             boff = sw->boff + curr_bytes;
             tbx_tbuf_vec(&(tbuf[i]), nstripes*s->stripe_size_with_magic, n_iov - iov_start, &(iov[iov_start]));
-            gop = segment_write(s->child_seg, sw->da, &(rw_hints[i]), 1, &(ex_iov[i]), &(tbuf[i]), boff, sw->timeout);
+            gop = segment_write(s->child_seg, sw->da, &(rw_hints[i]), 1, &(ex_iov[i]), &(tbuf[i]), 0, sw->timeout);
             gop_set_myid(gop, i);
             gop_opque_add(q, gop);
             curr_bytes += len;
@@ -1669,6 +1748,12 @@ tryagain: //** In case blacklisting failed we'll retry with it disabled
     free(iov);
     free(tbuf);
     free(rw_hints);
+
+    if (straddle_size) {
+        for (i=0; i<straddle_used; i++) free(straddle_buffer[i]);
+        free(straddle_buffer);
+        free(straddle_offset);
+    }
 
     gop_opque_free(q, OP_DESTROY);
 
