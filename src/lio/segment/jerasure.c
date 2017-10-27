@@ -1748,8 +1748,8 @@ tryagain: //** In case blacklisting failed we'll retry with it disabled
     free(tbuf);
     free(rw_hints);
 
-    if (straddle_size) {
-        for (i=0; i<straddle_used; i++) free(straddle_buffer[i]);
+    if (straddle_size > 0) {
+        for (i=0; i<(straddle_used+1); i++) free(straddle_buffer[i]);
         free(straddle_buffer);
         free(straddle_offset);
     }
