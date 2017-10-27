@@ -1533,7 +1533,7 @@ gop_op_status_t segjerase_write_func(void *arg, int id)
     int soft_error, hard_error;
     char **straddle_buffer, *straddle_ptr;
     ex_off_t *straddle_offset;
-    int straddle_size, straddle_used, straddle_count;
+    int straddle_size, straddle_used;
     tbx_tbuf_t straddle_tbuf;
     char *parity, *magic, **ptr, *stripe_magic, *empty;
     gop_opque_t *q;
@@ -1675,8 +1675,7 @@ tryagain: //** In case blacklisting failed we'll retry with it disabled
                     straddle_offset[straddle_used] = boff;
                     tbx_tbuf_single(&straddle_tbuf, s->data_size, straddle_ptr);
                     tbx_tbuf_copy(sw->buffer, boff, &straddle_tbuf, 0, s->data_size, 1);
-                    straddle_count++;
-                    log_printf(0, "OOPS STRADDLE used=%d boff=" XOT " count=%d\n", straddle_used, straddle_offset[straddle_used], straddle_count);
+                    log_printf(0, "OOPS STRADDLE used=%d boff=" XOT "\n", straddle_used, straddle_offset[straddle_used]);
                 }
 
                 //** Make the encoding and transfer data structs
