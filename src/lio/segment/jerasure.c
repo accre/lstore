@@ -1203,6 +1203,7 @@ tryagain:  //** We first try allowing blacklisting to proceed as normal and then
 
     straddle_buffer = NULL;
     straddle_offset = NULL;
+    straddle_ptr = NULL;
     straddle_size = -1;
     straddle_used = -1;
 
@@ -1561,6 +1562,7 @@ tryagain: //** In case blacklisting failed we'll retry with it disabled
 
     straddle_buffer = NULL;
     straddle_offset = NULL;
+    straddle_ptr = NULL;
     straddle_size = -1;
     straddle_used = -1;
 
