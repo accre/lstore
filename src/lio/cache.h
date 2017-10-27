@@ -179,6 +179,7 @@ struct lio_cache_t {
     ex_off_t max_fetch_size;
     ex_off_t write_temp_overflow_size;
     ex_off_t write_temp_overflow_used;
+    ex_off_t min_direct;
     double   max_fetch_fraction;
     double   write_temp_overflow_fraction;
     int n_ppages;

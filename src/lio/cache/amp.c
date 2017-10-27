@@ -1470,6 +1470,7 @@ lio_cache_t *amp_cache_load(void *arg, tbx_inip_file_t *fd, char *grp, data_attr
     c->write_temp_overflow_fraction = tbx_inip_get_double(fd, grp, "write_temp_overflow_fraction", c->write_temp_overflow_fraction);
     c->write_temp_overflow_size = c->write_temp_overflow_fraction * cp->max_bytes;
     c->n_ppages = tbx_inip_get_integer(fd, grp, "ppages", c->n_ppages);
+    c->min_direct = tbx_inip_get_integer(fd, grp, "min_direct", -1);
 
     cache_unlock(c);
 

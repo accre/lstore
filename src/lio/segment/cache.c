@@ -332,6 +332,64 @@ void s_cache_page_init(lio_segment_t *seg, lio_cache_page_t *p, ex_off_t poff)
 }
 
 //*******************************************************************************
+// cache_rw_direct - Bypasses the cache and directly reads pages
+//*******************************************************************************
+
+int cache_rw_direct(lio_segment_t *seg, data_attr_t *da, lio_segment_rw_hints_t *rw_hints, int rw_mode, ex_off_t *lo, ex_off_t *hi, ex_off_t *len, ex_off_t *bpos, tbx_tbuf_t *tbuf, int *tb_err, tbx_stack_t *rstack, int iov_slot)
+{
+    lio_cache_lio_segment_t *s = (lio_cache_lio_segment_t *)seg->priv;
+    lio_cache_range_t *r;
+    gop_op_status_t status;
+    ex_tbx_iovec_t ex_iov;
+    ex_off_t lo_page, hi_page, n_pages, ppage, skip_bytes, nbytes;
+
+    if (s->c->min_direct < 0) return(1);
+
+    skip_bytes = *lo % s->page_size;
+    if (skip_bytes > 0) {
+        ppage = 1;
+        skip_bytes = s->page_size - skip_bytes;
+    } else {
+        ppage = 0;
+    }
+    lo_page = (*lo / s->page_size) + ppage;
+    n_pages = lo_page;
+    lo_page = lo_page * s->page_size;
+
+    ppage = ((*hi % s->page_size) > 0) ? 1 : 0;
+    hi_page = (*hi / s->page_size) - ppage;
+    n_pages = hi_page - n_pages + 1;
+    hi_page = hi_page * s->page_size;
+
+    nbytes = n_pages * s->page_size;
+    if (nbytes < s->c->min_direct) return(1);  //** Nothing to do.  I/O to small
+
+    //** If we made it here we are doing direct I/O
+    ex_iovec_single(&ex_iov, lo_page, nbytes);
+    if (rw_mode == CACHE_READ) {
+        status = gop_sync_exec_status(segment_read(s->child_seg, da, rw_hints, 1, &ex_iov, tbuf, *bpos + skip_bytes, s->c->timeout));
+    } else {
+        status = gop_sync_exec_status(segment_write(s->child_seg, da, rw_hints, 1, &ex_iov, tbuf, *bpos + skip_bytes, s->c->timeout));
+    }
+
+    if (status.op_status == OP_STATE_SUCCESS) {
+        if (skip_bytes) {
+            r = cache_new_range(*lo, lo_page-1, *bpos, iov_slot);
+            tbx_stack_push(rstack, r);
+        }
+
+        skip_bytes = *hi % s->page_size;
+        if (skip_bytes) {
+            hi_page += s->page_size;
+            r = cache_new_range(hi_page, *hi, *bpos + (hi_page - *lo), iov_slot);
+            tbx_stack_push(rstack, r);
+        }
+    }
+
+    return((status.op_status == OP_STATE_SUCCESS) ? 0 : 1);
+}
+
+//*******************************************************************************
 //  cache_rw_pages - Reads or Writes pages on the given segment.  Optionally releases the pages
 //*******************************************************************************
 
@@ -2375,10 +2433,13 @@ gop_op_status_t cache_rw_func(void *arg, int id)
         bpos += len;
         j = (cop->skip_ppages == 0) ? cache_ppages_handle(seg, cop->da, cop->rw_mode, &lo, &hi, &len, &bpos2, cop->buf, &tb_err) : 0;
         if (j == 0) { //** Check if the ppages slurped it up
-            if (new_size < hi) new_size = hi;
-            r = cache_new_range(lo, hi, bpos2, i);
-            mylen += len;
-            tbx_stack_push(&stack, r);
+            j = cache_rw_direct(seg, cop->da, cop->rw_hints, cop->rw_mode, &lo, &hi, &len, &bpos2, cop->buf, &tb_err, &stack, i);
+            if (j != 0) {
+                if (new_size < hi) new_size = hi;
+                r = cache_new_range(lo, hi, bpos2, i);
+                mylen += len;
+                tbx_stack_push(&stack, r);
+            }
         } else if (j < 0) {
             rerr = -1;
         }
@@ -2390,8 +2451,6 @@ gop_op_status_t cache_rw_func(void *arg, int id)
         return((rerr == 0) ? gop_success_status : gop_failure_status);
     }
 
-//   hit_bytes = bpos - cop->boff;
-//   hit_bytes = total_bytes - hit_bytes;
     if (new_size > 0) new_size++;
 
     ngot = bpos - cop->boff;
