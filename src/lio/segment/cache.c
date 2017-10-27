@@ -2716,6 +2716,8 @@ gop_op_status_t cache_flush_range_gop_func(void *arg, int id)
     tbx_log_flush();
 
     total_pages = 0;
+    flush_id[2] = 0;
+    dt = 0;
     lo = cop->iov_single.offset;
     if (cop->iov_single.len == -1) cop->iov_single.len = segment_size(cop->seg);  //** if len == -1 flush the whole file
     hi = lo + cop->iov_single.len - 1;
