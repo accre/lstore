@@ -34,6 +34,7 @@
 #include <tbx/log.h>
 #include <tbx/network.h>
 #include <tbx/random.h>
+#include <tbx/siginfo.h>
 #include <tbx/transfer_buffer.h>
 #include <time.h>
 
@@ -333,6 +334,7 @@ int main(int argc, char **argv)
 
     gop_init_opque_system();  //** Initialize GOP.  This needs to be done after any fork() call
     tbx_random_startup();
+    tbx_siginfo_install(strdup("/tmp/lio_info.txt"), SIGUSR1);
 
     ic = ibp_context_create();  //** Initialize IBP
 
@@ -580,6 +582,8 @@ int main(int argc, char **argv)
     printf("Final network connection counter: %d\n", tbx_network_counter(NULL));
 
     ibp_context_destroy(ic);  //** Shutdown IBP
+
+    tbx_siginfo_shutdown();
 
     return(0);
 }
