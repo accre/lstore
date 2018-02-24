@@ -165,6 +165,15 @@ EOF
 FROM lstore/builder:$DISTRO
 MAINTAINER http://lstore.org
 $JAVA_INSTALL
+
+# Get additional Jenkins slave things
+
+ARG VERSION=3.16
+
+RUN curl --create-dirs -sSLo /usr/share/jenkins/slave.jar https://repo.jenkins-ci.org/public/org/jenkins-ci/main/remoting/${VERSION}/remoting-${VERSION}.jar \
+  && chmod 755 /usr/share/jenkins \
+  && chmod 644 /usr/share/jenkins/slave.jar
+
 EOF
     fi
 done
