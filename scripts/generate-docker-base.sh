@@ -174,6 +174,8 @@ RUN curl --create-dirs -sSLo /usr/share/jenkins/slave.jar https://repo.jenkins-c
   && chmod 755 /usr/share/jenkins \
   && chmod 644 /usr/share/jenkins/slave.jar
 
+ENTRYPOINT /usr/bin/java
+
 EOF
     fi
 done
