@@ -118,7 +118,7 @@ for DISTRO in "${DISTROS[@]}"; do
         *)
             fatal "Unrecognized packaging system: ${PACKAGER}"
     esac
-    if [ "$DISTRO" == "ubuntu-xenial" ]; then
+    if [ "$DISTRO" == "ubuntu-bionic" ]; then
         ADDITIONAL_PACKAGES+=( clang
                              )
     fi
@@ -143,6 +143,7 @@ for DISTRO in "${DISTROS[@]}"; do
 #
 FROM $FROM
 MAINTAINER http://lstore.org
+ENV DEBIAN_FRONTEND=noninteractive
 $GLOBAL_INSTALL
 RUN cd /tmp && \
     git clone https://github.com/Kitware/CMake.git && \
