@@ -111,11 +111,10 @@ set(CMAKE_INSTALL_RPATH "\$ORIGIN/../${CMAKE_INSTALL_LIBDIR}")
 
 # Defines
 set(USE_SUPERBUILD ON)
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -D_REENTRANT -D_GNU_SOURCE -D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64 -fvisibility=hidden -fno-strict-aliasing -Wall -Wextra -Werror -Wno-unused-parameter -Wno-deprecated-declarations -Wno-error=sign-compare -Wimplicit-fallthrough=4 -Wno-format-truncation")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -D_REENTRANT -D_GNU_SOURCE -D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64 -fvisibility=hidden -fno-strict-aliasing -Wall -Wextra -Werror -Wno-unused-parameter -Wno-deprecated-declarations -Wno-error=sign-compare")
 if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wl,--exclude-libs,ALL")
 endif()
-
 
 # Handle enabling LTO
 if(ENABLE_LTO)
@@ -196,6 +195,16 @@ check_c_compiler_flag("-Wparentheses-equality" HAS_PARENTHESES_EQUALITY)
 
 if(HAS_MAYBE_UNINITIALIZED)
     set(LSTORE_FLAG_SUPPRESS_MAYBE_UNINITIALIZED "-Wno-error=maybe-uninitialized")
+endif()
+
+# Check for a couple of compiler flags
+check_c_compiler_flag("-Wimplicit-fallthrough=4" HAS_IMPLICIT_FALLTHROUGH)
+if(HAS_IMPLICIT_FALLTHROUGH)
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wimplicit-fallthrough=4")
+endif()
+check_c_compiler_flag("-Wno-format-truncation" HAS_NO_FORMAT_TRUNCATION)
+if(HAS_NO_FORMAT_TRUNCATION)
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-format-truncation")
 endif()
 
 # When compiling release modes, asserts disappear which cause some variables
