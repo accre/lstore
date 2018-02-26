@@ -140,6 +140,7 @@ int main(int argc, char **argv)
     return_code = 0;
     q = gop_opque_new();
     opque_start_execution(q);
+    status = gop_failure_status;
 
     //** Do some sanity checking and handle the simple case directly
     //** If multiple paths then the dest must be a dir and it has to exist
