@@ -1187,6 +1187,8 @@ int handle_manage(ibp_task_t *task)
   switch (manage->subcmd) {
      case IBP_INCR:
         dir = 1;
+        //** Ok to fall through.  The line below tells the compiler to ignore the fallthrough
+        //@fallthrough@
      case IBP_DECR:
         alog_append_manage_incdec(task->myid, cmd->command, manage->subcmd, r->rl_index, pid, id, manage->captype);
         err = IBP_OK;
@@ -2413,9 +2415,8 @@ int handle_transfer(ibp_task_t *task, osd_id_t rpid, tbx_ns_t *ns, const char *k
   int return_err, err, myid, state;
   int fin;
   osd_fd_t *fd;
-  long long unsigned int llu;
   char write_cmd[1024];
-  ibp_off_t rlen, nleft, iov_off;
+  ibp_off_t rlen, nleft, iov_off, ioff;
 
   myid = tbx_ns_getid(task->ns);
 
@@ -2495,9 +2496,9 @@ log_printf(15, "handle_transfer: ns=%d AAAAAAAAAAAAAAAAAAAA\n", tbx_ns_getid(tas
         return(0);
      }
      if (r->transfer_dir == IBP_PULL) { //** Check the nbytes
-        sscanf(tbx_stk_string_token(NULL, " ", &bstate, &fin), "%llu", &llu);
-        if (llu != rlen) {  //** Not enough bytes
-           log_printf(10, "handle_transfer:  Not enough bytes! remote_ns=%d  nbytes=%llu\n", tbx_ns_getid(ns), llu);
+        sscanf(tbx_stk_string_token(NULL, " ", &bstate, &fin), OT, &ioff);
+        if (ioff != rlen) {  //** Not enough bytes
+           log_printf(10, "handle_transfer:  Not enough bytes! remote_ns=%d  nbytes=" OT "\n", tbx_ns_getid(ns), ioff);
            close_allocation(r->r, fd);
            send_cmd_result(task, IBP_E_WOULD_EXCEED_LIMIT);
            tbx_ns_close(ns);
@@ -2722,7 +2723,7 @@ int handle_internal_date_free(ibp_task_t *task)
           sprintf(text, TT " %d %d " LU " " LU "\n", curr_time, a_count, p_count, bytes_used, bytes);
           log_printf(10, "handle_internal_date_free:  ns=%d sending %s", tbx_ns_getid(task->ns), text);
           err = server_ns_write_block(task->ns, task->cmd_timeout, text, strlen(text));
-          if (err != strlen(text)) {
+          if (err != (int)strlen(text)) {
              log_printf(10, "handle_internal_date_free:  ns=%d erro with server_ns_write=%d\n", tbx_ns_getid(task->ns), err);
           } else {
              err = 0;
@@ -2752,7 +2753,7 @@ int handle_internal_date_free(ibp_task_t *task)
      sprintf(text, TT " %d %d " LU " " LU "\n", curr_time, a_count, p_count, bytes_used, bytes);
      log_printf(10, "handle_internal_date_free:  ns=%d sending %s", tbx_ns_getid(task->ns), text);
      err = server_ns_write_block(task->ns, task->cmd_timeout, text, strlen(text));
-     if (err != strlen(text)) {
+     if (err != (int)strlen(text)) {
         log_printf(10, "handle_internal_date_free:  ns=%d erro with server_ns_write=%d\n", tbx_ns_getid(task->ns), err);
      }
   }
@@ -2812,7 +2813,7 @@ int handle_internal_expire_list(ibp_task_t *task)
     sprintf(text, TT " " LU " " LU "\n", expire_time, a.id, a.max_size);
     log_printf(10, "handle_internal_expire_list:  ns=%d sending %s", tbx_ns_getid(task->ns), text);
     err = server_ns_write_block(task->ns, task->cmd_timeout, text, strlen(text));
-    if (err != strlen(text)) {
+    if (err != (int)strlen(text)) {
        log_printf(10, "handle_internal_expire_list:  ns=%d error with server_ns_write=%d\n", tbx_ns_getid(task->ns), err);
     } else {
        err = 0;

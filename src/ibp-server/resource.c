@@ -41,7 +41,7 @@
 
 
 #define _RESOURCE_BUF_SIZE 1048576
-char *_blanks[_RESOURCE_BUF_SIZE];
+char _blanks[_RESOURCE_BUF_SIZE];
 
 #define _RESOURCE_STATE_GOOD 0
 #define _RESOURCE_STATE_BAD  1
@@ -83,7 +83,7 @@ char *fname2dev(char *fname)
   while (getmntent_r(fd, &minfo, buffer, sizeof(buffer)) != NULL) {
      len = strlen(minfo.mnt_dir);
      if (strncmp(apath, minfo.mnt_dir, len) == 0) {
-        if (strlen(apath) > len) {
+        if ((int)strlen(apath) > len) {
            if ((apath[len] == '/') || (minfo.mnt_dir[len-1] == '/')) {
               if (dev) free(dev);
               dev = strdup(minfo.mnt_fsname);
@@ -929,7 +929,7 @@ int mount_resource(Resource_t *res, tbx_inip_file_t *keyfile, char *group, DB_en
    int err, wipe_expired;
    char db_group[1024];
 
-   memset(_blanks, 0, _RESOURCE_BUF_SIZE);  //** Thisi s done multiple times and it doesn't have to be but is trivial
+   memset(_blanks, 0, _RESOURCE_BUF_SIZE*sizeof(char));  //** This is done multiple times and it doesn't have to be but is trivial
    memset(res, 0, sizeof(Resource_t));
 
    res->start_time = ibp_time_now();  //** Track when we were added.
@@ -1398,7 +1398,7 @@ int make_free_space_iterator(Resource_t *r, DB_iterator_t *dbi, ibp_off_t *nbyte
        if (a.is_alias == 0) err = read_allocation_header(r, a.id, &a);
 
        if (a.expiration < timestamp) {
-          if (nleft < a.max_size) {    //** for alias allocations max_size == 0
+          if (nleft < (ibp_off_t)a.max_size) {    //** for alias allocations max_size == 0
              nleft = 0;          //
           } else {
              nleft -= a.max_size;            //** Free to delete it
@@ -1801,7 +1801,7 @@ int split_allocation_resource(Resource_t *r, Allocation_t *ma, Allocation_t *a, 
    int err;
    ibp_off_t total_size;
 
-   if (ma->max_size < size) {
+   if ((ibp_off_t)ma->max_size < size) {
       log_printf(15, "split_allocation_resource: Not enough space left on master id! mid=" LU " msize=" I64T " size=" I64T "\n", ma->id, ma->size, size);
       return(1);
    }
@@ -1817,7 +1817,7 @@ int split_allocation_resource(Resource_t *r, Allocation_t *ma, Allocation_t *a, 
    err = _new_allocation_resource(r, a, size, type, reliability, length, is_alias, cs_type, cs_blocksize);
    if (err == 0) {
 //      r->used_space[ma->reliability] = r->used_space[ma->reliability] + size;
-      if (osd_size(r->dev, ma->id) > ma->max_size)  osd_truncate(r->dev, ma->id, ma->max_size+ALLOC_HEADER);
+      if (osd_size(r->dev, ma->id) > (ibp_off_t)ma->max_size)  osd_truncate(r->dev, ma->id, ma->max_size+ALLOC_HEADER);
       if (ma->size > ma->max_size)  ma->size =  ma->max_size;
       if (r->update_alloc == 1) write_allocation_header(r, ma, 0);
       err = modify_alloc_db(&(r->db), ma);  //** Store the master back with updated size

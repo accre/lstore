@@ -888,7 +888,7 @@ gop_op_status_t rename_command(gop_op_generic_t *gop, tbx_ns_t *ns)
 gop_op_status_t merge_command(gop_op_generic_t *gop, tbx_ns_t *ns)
 {
     ibp_op_t *op = ibp_get_iop(gop);
-    char buffer[1024];
+    char buffer[2048];
     gop_op_status_t err;
     ibp_op_merge_alloc_t *cmd = &(op->ops.merge_op);
 
@@ -948,7 +948,7 @@ gop_op_status_t modify_count_command(gop_op_generic_t *gop, tbx_ns_t *ns)
 gop_op_status_t proxy_modify_count_command(gop_op_generic_t *gop, tbx_ns_t *ns)
 {
     ibp_op_t *op = ibp_get_iop(gop);
-    char buffer[1024];
+    char buffer[2048];
     gop_op_status_t err;
     ibp_op_probe_t *cmd;
 
@@ -1019,7 +1019,7 @@ gop_op_status_t modify_alloc_command(gop_op_generic_t *gop, tbx_ns_t *ns)
 gop_op_status_t proxy_modify_alloc_command(gop_op_generic_t *gop, tbx_ns_t *ns)
 {
     ibp_op_t *op = ibp_get_iop(gop);
-    char buffer[1024];
+    char buffer[2048];
     gop_op_status_t err;
     int atime;
     ibp_op_modify_alloc_t *cmd;

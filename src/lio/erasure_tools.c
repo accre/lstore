@@ -801,6 +801,8 @@ lio_erasure_plan_t *et_generate_plan(long long int file_size, int method,
             printf("et_generate_plan: parity_strips must equal 2 for %s.  Specified parity_strips=%d\n", JE_method[method], parity_strips);
             return(NULL);
         }
+        //The line below flags the compiler to ignore the fall through.  Raid6 is just RS(n,2)
+        //@fallthrough@
     case REED_SOL_VAN:
     case CAUCHY_ORIG:
     case CAUCHY_GOOD:
