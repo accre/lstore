@@ -98,9 +98,9 @@ int main(int argc, char **argv)
     }
 
     //** Make sure we're linking in the same system
-    if (strcmp(stuple.lc->section_name, dtuple.lc->section_name) != 0) {
+    if (strcmp(stuple.lc->obj_name, dtuple.lc->obj_name) != 0) {
         printf("Source and destination objects must exist in the same system!\n");
-        printf("Source: %s   Dest: %s\n", stuple.lc->section_name, dtuple.lc->section_name);
+        printf("Source: %s   Dest: %s\n", stuple.lc->obj_name, dtuple.lc->obj_name);
         return(1);
     }
 
