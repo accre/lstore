@@ -39,6 +39,8 @@ set(TOOL_OBJS
     packer.c
     pigeon_coop.c
     pigeon_hole.c
+    pipe_helper.c
+    que.c
     random.c
     siginfo.c
     skiplist.c
@@ -70,6 +72,8 @@ set(LSTORE_PROJECT_INCLUDES
     tbx/packer.h
     tbx/pigeon_coop.h
     tbx/pigeon_hole.h
+    tbx/pipe_helper.h
+    tbx/que.h
     tbx/random.h
     tbx/skiplist.h
     tbx/siginfo.h
