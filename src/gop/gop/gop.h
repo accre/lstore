@@ -71,10 +71,10 @@ enum gop_fm_t {
 };
 
 typedef enum gop_op_exec_mode_t gop_op_exec_mode_t;
-enum gop_op_exec_mode_t {
-    OP_EXEC_QUEUE,
-    OP_EXEC_DIRECT,
-};
+//enum gop_op_exec_mode_t {
+//    OP_EXEC_QUEUE,
+//    OP_EXEC_DIRECT,
+//};
 
 // Functions
 GOP_API void gop_mark_completed(gop_op_generic_t *gop, gop_op_status_t status);
@@ -90,7 +90,6 @@ GOP_API gop_op_generic_t *gop_get_next_finished(gop_op_generic_t *gop);
 GOP_API void gop_init(gop_op_generic_t *gop);
 GOP_API void gop_reset(gop_op_generic_t *gop);
 GOP_API void gop_set_auto_destroy(gop_op_generic_t *gop, int val);
-GOP_API void gop_set_exec_mode(gop_op_generic_t *g, gop_op_exec_mode_t mode);
 GOP_API void gop_start_execution(gop_op_generic_t *gop);
 GOP_API int gop_sync_exec(gop_op_generic_t *gop);
 GOP_API gop_op_status_t gop_sync_exec_status(gop_op_generic_t *gop);
@@ -147,7 +146,6 @@ struct gop_op_common_t {
     int my_id;             //** User/Application settable id.  Defaults to id.
     bool state;             //** Command state 0=submitted 1=completed
     bool started_execution; //** If 1 the tasks have already been submitted for execution
-    int execution_mode;    //** Execution mode OP_EXEC_QUEUE | OP_EXEC_DIRECT
     bool auto_destroy;      //** If 1 then automatically call the free fn to destroy the object
     gop_control_t *ctl;    //** Lock and condition struct
     void *user_priv;           //** Optional user supplied handle

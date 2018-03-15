@@ -73,7 +73,6 @@ struct gop_host_portal_t {       //** Contains information about the depot inclu
     tbx_stack_t *conn_list;     //** List of connections
     tbx_stack_t *que;           //** Task que
     tbx_stack_t *closed_que;    //** List of closed but not reaped connections
-    tbx_stack_t *direct_list;     //** List of dedicated dportal/dc for the traditional direct execution calls
     apr_thread_mutex_t *lock;  //** shared lock
     apr_thread_cond_t *cond;
     apr_pool_t *mpool;

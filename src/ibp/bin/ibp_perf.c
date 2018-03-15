@@ -1170,6 +1170,7 @@ int main(int argc, char **argv)
     ibp_context_destroy(ic);  //** Shutdown IBP
 
     tbx_siginfo_shutdown();
+    gop_shutdown();
 
     return(0);
 }

@@ -234,18 +234,6 @@ void gop_start_execution(gop_op_generic_t *g)
 }
 
 //*************************************************************
-// gop_set_exec_mode - SEts the gop's execution mode
-//*************************************************************
-
-void gop_set_exec_mode(gop_op_generic_t *g, gop_op_exec_mode_t mode)
-{
-    if (gop_get_type(g) == Q_TYPE_OPERATION) {
-        g->base.execution_mode = mode;
-    }
-}
-
-
-//*************************************************************
 // gop_finished_submission - Mark que to stop accepting
 //     tasks.
 //*************************************************************

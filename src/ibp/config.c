@@ -410,11 +410,7 @@ void _ibp_submit_op(void *arg, gop_op_generic_t *gop)
 
     log_printf(15, "_ibp_submit_op: hpc=%p hpc->table=%p gop=%p gid=%d\n", pc, pc->table, gop, gop_id(gop));
 
-    if (gop->base.execution_mode == OP_EXEC_DIRECT) {
-        gop_hp_direct_submit(pc, gop);
-    } else {
-        gop_hp_que_op_submit(pc, gop);
-    }
+    gop_hp_que_op_submit(pc, gop);
 }
 
 //********************************************************************

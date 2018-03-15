@@ -95,8 +95,6 @@ void hportal_siginfo_handler(void *arg, FILE *fd)
     }
     fprintf(fd, "\n");
 
-///        shutdown_direct(hp);  //** Shutdown any direct connections
-
     apr_thread_mutex_unlock(hpc->lock);
 
     return;
@@ -200,7 +198,6 @@ gop_host_portal_t *create_hportal(gop_portal_context_t *hpc, void *connect_conte
     hp->conn_list = tbx_stack_new();
     hp->closed_que = tbx_stack_new();
     hp->que = tbx_stack_new();
-    hp->direct_list = tbx_stack_new();
     hp->pause_until = 0;
     hp->stable_conn = max_conn;
     hp->closing_conn = 0;
@@ -269,7 +266,6 @@ void destroy_hportal(gop_host_portal_t *hp)
     tbx_stack_free(hp->conn_list, 1);
     tbx_stack_free(hp->que, 1);
     tbx_stack_free(hp->closed_que, 1);
-    tbx_stack_free(hp->direct_list, 1);
 
     hp->context->fn->destroy_connect_context(hp->connect_context);
 
@@ -354,47 +350,6 @@ void gop_hp_context_destroy(gop_portal_context_t *hpc)
     return;
 }
 
-//************************************************************************
-// shutdown_direct - shuts down the direct hportals
-//************************************************************************
-
-void shutdown_direct(gop_host_portal_t *hp)
-{
-    gop_host_portal_t *shp;
-    gop_host_connection_t *hc;
-
-    if (tbx_stack_count(hp->direct_list) == 0) return;
-
-    tbx_stack_move_to_top(hp->direct_list);
-    while ((shp = (gop_host_portal_t *)tbx_stack_pop(hp->direct_list)) != NULL) {
-        hportal_lock(shp);
-        _reap_hportal(shp, 0);  //** Clean up any closed connections
-
-        if ((shp->n_conn == 0) && (tbx_stack_count(shp->que) == 0)) { //** if not used so remove it
-            tbx_stack_delete_current(hp->direct_list, 0, 0);  //**Already closed
-        } else {     //** Force it to close
-            tbx_stack_free(shp->que, 1);  //** Empty the que so we don't respawn connections
-            shp->que = tbx_stack_new();
-
-            tbx_stack_move_to_top(shp->conn_list);
-            hc = (gop_host_connection_t *)tbx_stack_get_current_data(shp->conn_list);
-
-            hportal_unlock(shp);
-            apr_thread_mutex_unlock(hp->context->lock);
-
-            close_hc(hc, 0);
-
-            apr_thread_mutex_lock(hp->context->lock);
-            hportal_lock(shp);
-        }
-
-        hportal_unlock(shp);
-        destroy_hportal(shp);
-
-//     tbx_stack_move_to_top(hp->direct_list);
-    }
-}
-
 //*************************************************************************
 // gop_hp_shutdown - Shuts down the IBP sys system
 //*************************************************************************
@@ -462,8 +417,6 @@ void gop_hp_shutdown(gop_portal_context_t *hpc)
             hportal_lock(hp);
         }
 
-        shutdown_direct(hp);  //** Shutdown any direct connections
-
         tbx_stack_move_to_top(hp->conn_list);
         while ((hc = (gop_host_connection_t *)tbx_stack_get_current_data(hp->conn_list)) != NULL) {
             tbx_stack_free(hp->que, 1);  //** Empty the que so we don't respawn connections
@@ -489,35 +442,6 @@ void gop_hp_shutdown(gop_portal_context_t *hpc)
 }
 
 //************************************************************************
-// compact_hportal_direct - Compacts the direct hportals if needed
-//************************************************************************
-
-void compact_hportal_direct(gop_host_portal_t *hp)
-{
-    gop_host_portal_t *shp;
-
-    if (tbx_stack_count(hp->direct_list) == 0) return;
-
-    tbx_stack_move_to_top(hp->direct_list);
-    while ((shp = (gop_host_portal_t *)tbx_stack_get_current_data(hp->direct_list)) != NULL) {
-
-        hportal_lock(shp);
-        _reap_hportal(shp, 1);  //** Clean up any closed connections
-
-        if ((shp->n_conn == 0) && (shp->closing_conn == 0) && (tbx_stack_count(shp->que) == 0) && (tbx_stack_count(shp->closed_que) == 0)) { //** if not used so remove it
-            tbx_stack_delete_current(hp->direct_list, 0, 0);
-            hportal_unlock(shp);
-            destroy_hportal(shp);
-        } else {
-            hportal_unlock(shp);
-            tbx_stack_move_down(hp->direct_list);
-        }
-    }
-
-
-}
-
-//************************************************************************
 // compact_hportals - Removes any hportals that are no longer used
 //************************************************************************
 
@@ -537,10 +461,8 @@ void compact_hportals(gop_portal_context_t *hpc)
 
         _reap_hportal(hp, 1);  //** Clean up any closed connections
 
-        compact_hportal_direct(hp);
-
         if ((hp->n_conn == 0) && (hp->closing_conn == 0) && (tbx_stack_count(hp->que) == 0) &&
-                (tbx_stack_count(hp->direct_list) == 0) && (tbx_stack_count(hp->closed_que) == 0)) { //** if not used so remove it
+                (tbx_stack_count(hp->closed_que) == 0)) { //** if not used so remove it
             if (tbx_stack_count(hp->conn_list) != 0) {
                 log_printf(0, "ERROR! DANGER WILL ROBINSON! tbx_stack_count(hp->conn_list)=%d hp=%s\n", tbx_stack_count(hp->conn_list), hp->skey);
                 tbx_log_flush();
@@ -653,7 +575,7 @@ gop_op_generic_t *_get_hportal_op(gop_host_portal_t *hp)
 gop_host_connection_t *find_hc_to_close(gop_portal_context_t *hpc)
 {
     apr_hash_index_t *hi;
-    gop_host_portal_t *hp, *shp;
+    gop_host_portal_t *hp;
     gop_host_connection_t *hc, *best_hc;
     void *val;
     int best_workload, hold_lock;
@@ -686,30 +608,6 @@ gop_host_connection_t *find_hc_to_close(gop_portal_context_t *hpc)
             }
             tbx_stack_move_down(hp->conn_list);
             if (hold_lock == 0) unlock_hc(hc);
-        }
-
-        //** Scan the direct connections
-        tbx_stack_move_to_top(hp->direct_list);
-        while ((shp = (gop_host_portal_t *)tbx_stack_get_current_data(hp->direct_list)) != NULL)  {
-            hportal_lock(shp);
-            if (tbx_stack_count(shp->conn_list) > 0) {
-                tbx_stack_move_to_top(shp->conn_list);
-                hc = (gop_host_connection_t *)tbx_stack_get_current_data(shp->conn_list);
-                hold_lock = 0;
-                lock_hc(hc);
-                if (hc->closing == 0) {
-                    if (best_workload<0) best_workload = hc->curr_workload+1;
-                    if (hc->curr_workload < best_workload) {
-                        if (best_hc != NULL) unlock_hc(best_hc);
-                        hold_lock = 1;
-                        best_workload = hc->curr_workload;
-                        best_hc = hc;
-                    }
-                }
-                if (hold_lock == 0) unlock_hc(hc);
-            }
-            hportal_unlock(shp);
-            tbx_stack_move_down(hp->direct_list);
         }
 
         hportal_unlock(hp);
@@ -845,99 +743,6 @@ void check_hportal_connections(gop_host_portal_t *hp)
     for (i=0; i<n_newconn; i++) {
         spawn_new_connection(hp);
     }
-}
-
-//*************************************************************************
-// gop_hp_direct_submit - Creates an empty hportal, if needed, for a dedicated
-//    directly executed command *and* submits the command for execution
-//*************************************************************************
-
-int gop_hp_direct_submit(gop_portal_context_t *hpc, gop_op_generic_t *op)
-{
-    int status;
-    gop_host_portal_t *hp, *shp;
-    gop_host_connection_t *hc;
-    gop_command_op_t *hop = &(op->op->cmd);
-
-    apr_thread_mutex_lock(hpc->lock);
-
-    //** Check if we should do a garbage run **
-    if (hpc->next_check < time(NULL)) {
-        hpc->next_check = time(NULL) + hpc->compact_interval;
-
-        apr_thread_mutex_unlock(hpc->lock);
-        compact_hportals(hpc);
-        apr_thread_mutex_lock(hpc->lock);
-    }
-
-    //** Find it in the list or make a new one
-    hp = _lookup_hportal(hpc, hop->hostport);
-    if (hp == NULL) {
-        log_printf(15, "gop_hp_direct_submit: New host: %s\n", hop->hostport);
-        hp = create_hportal(hpc, hop->connect_context, hop->hostport, 1, 1, apr_time_from_sec(1));
-        if (hp == NULL) {
-            log_printf(15, "gop_hp_direct_submit: create_hportal failed!\n");
-            apr_thread_mutex_unlock(hpc->lock);
-            return(-1);
-        }
-        apr_hash_set(hpc->table, hp->skey, APR_HASH_KEY_STRING, (const void *)hp);
-    }
-
-    apr_thread_mutex_unlock(hpc->lock);
-
-    log_printf(15, "gop_hp_direct_submit: start opid=%d\n", op->base.id);
-
-    //** Scan the direct list for a free connection
-    hportal_lock(hp);
-    tbx_stack_move_to_top(hp->direct_list);
-    while ((shp = (gop_host_portal_t *)tbx_stack_get_current_data(hp->direct_list)) != NULL)  {
-        if (hportal_trylock(shp) == 0) {
-            log_printf(15, "gop_hp_direct_submit: opid=%d shp->wl=" I64T " stack_size=%d\n", op->base.id, shp->workload, tbx_stack_count(shp->que));
-
-            if (tbx_stack_count(shp->que) == 0) {
-                if (tbx_stack_count(shp->conn_list) > 0) {
-                    tbx_stack_move_to_top(shp->conn_list);
-                    hc = (gop_host_connection_t *)tbx_stack_get_current_data(shp->conn_list);
-                    if (trylock_hc(hc) == 0) {
-                        if ((tbx_stack_count(hc->pending_stack) == 0) && (hc->curr_workload == 0)) {
-                            log_printf(15, "gop_hp_direct_submit(A): before submit ns=%d opid=%d wl=%d\n",tbx_ns_getid(hc->ns), op->base.id, hc->curr_workload);
-                            unlock_hc(hc);
-                            hportal_unlock(shp);
-                            status = gop_hp_submit(shp, op, 1, 0);
-                            log_printf(15, "gop_hp_direct_submit(A): after submit ns=%d opid=%d\n",tbx_ns_getid(hc->ns), op->base.id);
-                            hportal_unlock(hp);
-                            return(status);
-                        }
-                        unlock_hc(hc);
-                    }
-                } else {
-                    hportal_unlock(shp);
-                    log_printf(15, "gop_hp_direct_submit(B): opid=%d\n", op->base.id);
-                    status = gop_hp_submit(shp, op, 1, 0);
-                    hportal_unlock(hp);
-                    return(status);
-                }
-            }
-
-            hportal_unlock(shp);
-        }
-
-        tbx_stack_move_down(hp->direct_list);  //** Move to the next hp in the list
-    }
-
-    //** If I made it here I have to add a new hportal
-    shp = create_hportal(hpc, hop->connect_context, hop->hostport, 1, 1, apr_time_from_sec(1));
-    if (shp == NULL) {
-        log_printf(15, "gop_hp_direct_submit: create_hportal failed!\n");
-        hportal_unlock(hp);
-        return(-1);
-    }
-    tbx_stack_push(hp->direct_list, (void *)shp);
-    status = gop_hp_submit(shp, op, 1, 0);
-
-    hportal_unlock(hp);
-
-    return(status);
 }
 
 //*************************************************************************

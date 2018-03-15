@@ -105,7 +105,6 @@ int ibp_sync_command(gop_op_generic_t *gop)
     gop_op_status_t status;
     int err;
 
-    gop_set_exec_mode(gop, OP_EXEC_DIRECT);
     gop_start_execution(gop);
 
     //** and Wait for completion

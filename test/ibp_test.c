@@ -28,6 +28,7 @@
 #include <tbx/fmttypes.h>
 #include <tbx/log.h>
 #include <tbx/random.h>
+#include <tbx/siginfo.h>
 #include <tbx/type_malloc.h>
 #include <ibp/ibp.h>
 #include "iovec_sync.h"
@@ -1386,6 +1387,7 @@ int main(int argc, char **argv)
     }
 
     gop_init_opque_system();  //** Initialize GOP.  This needs to be done after any fork() call
+    tbx_siginfo_install(strdup("/tmp/ibp_info.txt"), SIGUSR1);
     ibp_errno_init();
 
     tbx_random_startup();
@@ -2078,6 +2080,9 @@ log_printf(0, "AFTER ibp_rename_gop\n"); tbx_log_flush();
 
     if (ns_cs != NULL) tbx_ns_chksum_del(ns_cs);
     tbx_random_shutdown();
+
+    tbx_siginfo_shutdown();
+    gop_shutdown();
 
     return(0);
 }

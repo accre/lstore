@@ -39,7 +39,6 @@ typedef struct gop_host_portal_t gop_host_portal_t;
 GOP_API void gop_change_all_hportal_conn(gop_portal_context_t *hpc, int min_conn, int max_conn, apr_time_t dt_connect);
 GOP_API gop_portal_context_t *gop_hp_context_create(gop_portal_fn_t *hpi, char *name);
 GOP_API void gop_hp_context_destroy(gop_portal_context_t *hpc);
-GOP_API int gop_hp_direct_submit(gop_portal_context_t *hpc, gop_op_generic_t *op);
 GOP_API int gop_hp_que_op_submit(gop_portal_context_t *hpc, gop_op_generic_t *op);
 GOP_API void gop_hp_shutdown(gop_portal_context_t *hpc);
 GOP_API int gop_hp_submit(gop_host_portal_t *dp, gop_op_generic_t *op, bool addtotop, bool release_master);
