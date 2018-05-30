@@ -21,6 +21,7 @@
 
 #include <apr_errno.h>
 #include <apr_thread_mutex.h>
+#include <apr_time.h>
 #include <string.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -39,6 +40,7 @@ TBX_API int tbx_stack_get_info_level(tbx_log_fd_t *fd) {
     return fd->level;
 }
 
+static apr_time_t time_start = 0;
 FILE *_log_fd = NULL;
 int _log_level = 0;
 long int _log_currsize = 0;
@@ -60,6 +62,7 @@ void _log_init()
     int n;
 
     tbx_atomic_startup();
+    time_start = apr_time_now();
     if (apr_pool_create(&_log_mpool, NULL) != APR_SUCCESS) {
         fprintf(stderr, "Could not make log memory pool\n");
         exit(1);
@@ -127,7 +130,8 @@ __attribute__((format (printf, 7, 8)))
 int tbx_mlog_printf(int suppress_header, int module_index, int level, const char *fn, const char *fname, int line, const char *fmt, ...)
 {
     va_list args;
-//  int err;
+    int hours, min, sec, usec;
+    apr_time_t dt;
     int n = 0;
 
     if (level > _mlog_table[module_index]) return(0);
@@ -141,7 +145,14 @@ int tbx_mlog_printf(int suppress_header, int module_index, int level, const char
         _log_special=2;
     }
 
-    if (suppress_header == 0) n = fprintf(_log_fd, "[mi=%d tid=%d file=%s:%d fn=%s] ", module_index, tbx_atomic_thread_id, fname, line, fn);
+    //** Calculate the time offsets
+    dt = apr_time_now() - time_start;
+    hours  = apr_time_sec(dt) / 3600;
+    min = (apr_time_sec(dt) / 60) % 60;
+    sec = apr_time_sec(dt) % 60;
+    usec = dt % apr_time_from_sec(1);
+
+    if (suppress_header == 0) n = fprintf(_log_fd, "[dt=%dh%02dm%02ds%06du mi=%d tid=%d file=%s:%d fn=%s] ", hours, min, sec, usec, module_index, tbx_atomic_thread_id, fname, line, fn);
     va_start(args, fmt);
     n += vfprintf(_log_fd, fmt, args);
     va_end(args);
