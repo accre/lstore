@@ -1311,6 +1311,9 @@ int lio_init(int *argc, char ***argvp)
 
     argv = *argvp;
 
+    //** Setup the info signal handler.  We'll reset the name after we've got a lio_gc
+    tbx_siginfo_install(NULL, SIGUSR1);
+
     gop_init_opque_system();  //** Initialize GOP.  This needs to be done after any fork() calls
     exnode_system_init();
 
@@ -1425,9 +1428,6 @@ int lio_init(int *argc, char ***argvp)
     } while (i<*argc);
 
 no_args:
-
-    //** Setup the info signal handler.  We'll reset the name after we've got a lio_gc
-    tbx_siginfo_install(NULL, SIGUSR1);
 
     //** Make the info logging device
     if (info_fname != NULL) { //** User didn't specify anything
