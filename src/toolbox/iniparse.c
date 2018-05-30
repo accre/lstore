@@ -2,6 +2,7 @@
 
 //#define _DISABLE_LOG 1
 
+#include <apr_time.h>
 #include <limits.h>
 #include <stdio.h>
 #include <stdbool.h>
@@ -514,6 +515,17 @@ double tbx_inip_get_double(tbx_inip_file_t *inip, const char *group, const char 
     if (ele == NULL) return(def);
 
     return(tbx_stk_string_get_double(ele->value));
+}
+
+//***********************************************************************
+
+apr_time_t tbx_inip_get_time(tbx_inip_file_t *inip, const char *group, const char *key, char *def)
+{
+    char *value = def;
+    tbx_inip_element_t *ele = _find_group_key(inip, group, key);
+    if (ele != NULL) value = ele->value;
+
+    return(tbx_stk_string_get_time(value));
 }
 
 //***********************************************************************

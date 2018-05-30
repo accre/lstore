@@ -18,6 +18,7 @@
 #ifndef ACCRE_INIPARSE_H_INCLUDED
 #define ACCRE_INIPARSE_H_INCLUDED
 
+#include <apr_time.h>
 #include <inttypes.h>
 #include <tbx/visibility.h>
 
@@ -43,6 +44,7 @@ TBX_API tbx_inip_file_t *tbx_inip_file_read(const char *fname);
 TBX_API char *tbx_inip_find_key(tbx_inip_group_t *group, const char *name);
 TBX_API double tbx_inip_get_double(tbx_inip_file_t *inip, const char *group, const char *key, double def);
 TBX_API int64_t tbx_inip_get_integer(tbx_inip_file_t *inip, const char *group, const char *key, int64_t def);
+TBX_API apr_time_t tbx_inip_get_time(tbx_inip_file_t *inip, const char *group, const char *key, char *def);
 TBX_API char *tbx_inip_get_string(tbx_inip_file_t *inip, const char *group, const char *key, char *def);
 TBX_API int tbx_inip_group_count(tbx_inip_file_t *inip);
 TBX_API tbx_inip_group_t *tbx_inip_group_find(tbx_inip_file_t *inip, const char *name);
