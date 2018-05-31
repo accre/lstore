@@ -309,6 +309,52 @@ int tbx_stack_move_up(tbx_stack_t *stack)
 }
 
 //***************************************************
+// tbx_stack_top_first - Position the stack to the
+//      top element and return it.
+//***************************************************
+
+void *tbx_stack_top_first(tbx_stack_t *stack)
+{
+    tbx_stack_move_to_top(stack);
+    return(tbx_stack_get_current_data(stack));
+}
+
+
+//***************************************************
+// tbx_stack_bottom_first - Position the stack to the
+//      last element and return it.
+//***************************************************
+
+void *tbx_stack_bottom_first(tbx_stack_t *stack)
+{
+    tbx_stack_move_to_bottom(stack);
+    return(tbx_stack_get_current_data(stack));
+}
+
+//***************************************************
+// tbx_stack_next_down - Move the pointer down to the
+//      next element and return it.
+//***************************************************
+
+void *tbx_stack_next_down(tbx_stack_t *stack)
+{
+    tbx_stack_move_down(stack);
+    return(tbx_stack_get_current_data(stack));
+}
+
+//***************************************************
+// tbx_stack_next_up - Move the pointer up to the
+//      next element and return it.
+//***************************************************
+
+void *tbx_stack_next_up(tbx_stack_t *stack)
+{
+    tbx_stack_move_up(stack);
+    return(tbx_stack_get_current_data(stack));
+}
+
+
+//***************************************************
 // insert_link_below - Inserts an existing "unlinked"
 //      element "below" the current element and makes
 //      the new element the current element
