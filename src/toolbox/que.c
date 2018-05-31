@@ -91,9 +91,11 @@ int tbx_que_put(tbx_que_t *q, void *object, apr_time_t dt)
 
     while (1) {
         if (q->n_used < q->n_objects) {  //** Got space
-            slot = (q->n_used + q->slot) % q->n_objects;
-            memcpy(q->array + slot*q->object_size, object, q->object_size);
-            q->n_used++;
+            if (object != NULL) {
+                slot = (q->n_used + q->slot) % q->n_objects;
+                memcpy(q->array + slot*q->object_size, object, q->object_size);
+                q->n_used++;
+            }
 
             //** Check if someone is waiting
             if (q->get_waiting > 0) apr_thread_cond_broadcast(q->get_cond);
@@ -107,6 +109,9 @@ int tbx_que_put(tbx_que_t *q, void *object, apr_time_t dt)
             err = 1;
             break;
         }
+
+        //** See if we always block
+        if (dt == TBX_QUE_BLOCK) stime = apr_time_now();
 
         //** If we made it here we have to wait for a slot to become free
         q->put_waiting++;
@@ -132,10 +137,12 @@ int tbx_que_get(tbx_que_t *q, void *object, apr_time_t dt)
 
     while (1) {
         if (q->n_used > 0) {  //** Got an object
-            q->slot = q->slot % q->n_objects;
-            memcpy(object, q->array + q->slot*q->object_size, q->object_size);
-            q->n_used--;
-            q->slot++;
+            if (object != NULL) {
+                q->slot = q->slot % q->n_objects;
+                memcpy(object, q->array + q->slot*q->object_size, q->object_size);
+                q->n_used--;
+                q->slot++;
+            }
 
             //** Check if someone is waiting
             if (q->get_waiting > 0) apr_thread_cond_broadcast(q->get_cond);
@@ -149,6 +156,9 @@ int tbx_que_get(tbx_que_t *q, void *object, apr_time_t dt)
             err = 1;
             break;
         }
+
+        //** See if we always block
+        if (dt == TBX_QUE_BLOCK) stime = apr_time_now();
 
         //** If we made it here we have to wait for some data
         q->get_waiting++;

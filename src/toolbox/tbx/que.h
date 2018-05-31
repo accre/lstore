@@ -22,6 +22,8 @@
 #include <tbx/visibility.h>
 #include <apr_time.h>
 
+#define TBX_QUE_BLOCK 123456789  //** Only return when the get/put completes
+
 struct tbx_que_s;
 typedef struct tbx_que_s tbx_que_t;
 
