@@ -309,6 +309,7 @@ if(BUILD_TESTS)
     SET_TARGET_PROPERTIES(run-benchmarks PROPERTIES
                             COMPILE_FLAGS "-DLSTORE_HACK_EXPORT")
     add_executable(fuzz-config test/fuzz-config.c)
+    target_include_directories(fuzz-config PRIVATE ${APR_INCLUDE_DIR})
     target_link_libraries(fuzz-config toolbox)
     if(INSTALL_TESTS)
         install(TARGETS run-tests run-benchmarks fuzz-config
