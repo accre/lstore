@@ -408,7 +408,7 @@ void _ibp_submit_op(void *arg, gop_op_generic_t *gop)
 {
     gop_portal_context_t *pc = gop->base.pc;
 
-    log_printf(15, "_ibp_submit_op: hpc=%p hpc->table=%p gop=%p gid=%d\n", pc, pc->table, gop, gop_id(gop));
+    log_printf(15, "_ibp_submit_op: hpc=%p gop=%p gid=%d\n", pc, gop, gop_id(gop));
 
     gop_hp_que_op_submit(pc, gop);
 }
@@ -502,15 +502,6 @@ void ibp_context_chksum_get(ibp_context_t *ic, tbx_ns_chksum_t *ncs)
 {
     *ncs = ic->ncs;
 };
-
-void ibp_context_abort_attempts_set(ibp_context_t *ic, int n)
-{
-    ic->abort_conn_attempts = n;
-}
-int  ibp_context_abort_attempts_get(ibp_context_t *ic)
-{
-    return(ic->abort_conn_attempts);
-}
 void ibp_tcpsize_set(ibp_context_t *ic, int n)
 {
     ic->tcpsize = n;
@@ -519,34 +510,15 @@ int  ibp_context_tcpsize_get(ibp_context_t *ic)
 {
     return(ic->tcpsize);
 }
-void ibp_context_min_depot_threads_set(ibp_context_t *ic, int n)
-{
-    ic->min_threads = n;
-    ic->pc->min_threads = n;
-    gop_change_all_hportal_conn(ic->pc, ic->min_threads, ic->max_threads, ic->dt_connect);
-}
-int  ibp_context_min_depot_threads_get(ibp_context_t *ic)
-{
-    return(ic->min_threads);
-}
 void ibp_context_max_depot_threads_set(ibp_context_t *ic, int n)
 {
-    ic->max_threads = n;
-    ic->pc->max_threads = n;
-    gop_change_all_hportal_conn(ic->pc, ic->min_threads, ic->max_threads, ic->dt_connect);
+    gop_portal_context_options_set(ic->pc, 0,0,0,0,0, n, 0);
 }
 int  ibp_context_max_depot_threads_get(ibp_context_t *ic)
 {
-    return(ic->max_threads);
-}
-void ibp_context_max_connections_set(ibp_context_t *ic, int n)
-{
-    ic->max_connections = n;
-    ic->pc->max_connections = n;
-}
-int  ibp_context_max_connections_get(ibp_context_t *ic)
-{
-    return(ic->max_connections);
+    int n;
+    gop_portal_context_options_get(ic->pc, NULL, NULL, NULL, NULL, NULL, &n, NULL);
+    return(n);
 }
 void ibp_context_command_weight_set(ibp_context_t *ic, int n)
 {
@@ -556,24 +528,6 @@ int  ibp_context_command_weight_get(ibp_context_t *ic)
 {
     return(ic->other_new_command);
 }
-void ibp_context_max_retry_set_wait(ibp_context_t *ic, int n)
-{
-    ic->max_wait = n;
-    ic->pc->max_wait = n;
-}
-int  ibp_context_max_retry_get_wait(ibp_context_t *ic)
-{
-    return(ic->max_wait);
-}
-void ibp_context_max_thread_workload_set(ibp_context_t *ic, int64_t n)
-{
-    ic->max_workload = n;
-    ic->pc->max_workload = n;
-}
-int64_t  ibp_context_max_thread_workload_get(ibp_context_t *ic)
-{
-    return(ic->max_workload);
-}
 void ibp_context_max_coalesce_workload_set(ibp_context_t *ic, int64_t n)
 {
     ic->max_coalesce = n;
@@ -582,28 +536,10 @@ int64_t  ibp_context_max_coalesce_workload_get(ibp_context_t *ic)
 {
     return(ic->max_coalesce);
 }
-void ibp_context_wait_stable_time_set(ibp_context_t *ic, int n)
-{
-    ic->wait_stable_time = n;
-    ic->pc->wait_stable_time = n;
-}
-int  ibp_context_wait_stable_time_get(ibp_context_t *ic)
-{
-    return(ic->wait_stable_time);
-}
-void ibp_context_check_interval_set(ibp_context_t *ic, int n)
-{
-    ic->check_connection_interval = n;
-    ic->pc->check_connection_interval = n;
-}
-int  ibp_context_check_interval_get(ibp_context_t *ic)
-{
-    return(ic->check_connection_interval);
-}
 void ibp_context_max_retry_set(ibp_context_t *ic, int n)
 {
     ic->max_retry = n;
-    ic->pc->max_retry = n;
+//QWERT    ic->pc->max_retry = n;
 }
 int  ibp_context_max_retry_get(ibp_context_t *ic)
 {
@@ -624,26 +560,6 @@ void ibp_context_connection_mode_set(ibp_context_t *ic, int mode)
 int  ibp_context_connection_mode_get(ibp_context_t *ic)
 {
     return(ic->connection_mode);
-}
-
-//**********************************************************
-// set_ibp_config - Sets the ibp config options
-//**********************************************************
-
-void copy_ibp_config(ibp_context_t *cfg)
-{
-
-    cfg->pc->min_idle = cfg->min_idle;
-    cfg->pc->min_threads = cfg->min_threads;
-    cfg->pc->max_threads = cfg->max_threads;
-    cfg->pc->max_connections = cfg->max_connections;
-    cfg->pc->max_workload = cfg->max_workload;
-    cfg->pc->max_wait = cfg->max_wait;
-    cfg->pc->dt_connect = cfg->dt_connect;
-    cfg->pc->wait_stable_time = cfg->wait_stable_time;
-    cfg->pc->abort_conn_attempts = cfg->abort_conn_attempts;
-    cfg->pc->check_connection_interval = cfg->check_connection_interval;
-    cfg->pc->max_retry = cfg->max_retry;
 }
 
 //**********************************************************
@@ -727,26 +643,24 @@ void ibp_cc_load(tbx_inip_file_t *kf, ibp_context_t *cfg)
 
 int ibp_config_load(ibp_context_t *ic, tbx_inip_file_t *keyfile, char *section)
 {
-    apr_time_t t = 0;
+    apr_time_t min_idle, wait_stable_time, dt_connect;
+    int min_threads, max_threads, max_connections;
+    int64_t max_workload;
 
     if (section == NULL) section = "ibp";
 
-    ic->abort_conn_attempts = tbx_inip_get_integer(keyfile, section, "abort_attempts", ic->abort_conn_attempts);
-    t = tbx_inip_get_integer(keyfile, section, "min_idle", 0);
-    if (t != 0) ic->min_idle = t;
     ic->tcpsize = tbx_inip_get_integer(keyfile, section, "tcpsize", ic->tcpsize);
-    ic->min_threads = tbx_inip_get_integer(keyfile, section, "min_depot_threads", ic->min_threads);
-    ic->max_threads = tbx_inip_get_integer(keyfile, section, "max_depot_threads", ic->max_threads);
-    ic->dt_connect = tbx_inip_get_integer(keyfile, section, "dt_connect_us", ic->dt_connect);
-    ic->max_connections = tbx_inip_get_integer(keyfile, section, "max_connections", ic->max_connections);
+    min_threads = tbx_inip_get_integer(keyfile, section, "min_depot_threads", 1);
+    max_threads = tbx_inip_get_integer(keyfile, section, "max_depot_threads", 2);
+    dt_connect = tbx_inip_get_integer(keyfile, section, "dt_connect_us", 5*APR_USEC_PER_SEC);
+    max_connections = tbx_inip_get_integer(keyfile, section, "max_connections", 128);
     ic->rw_new_command = tbx_inip_get_integer(keyfile, section, "rw_command_weight", ic->rw_new_command);
     ic->other_new_command = tbx_inip_get_integer(keyfile, section, "other_command_weight", ic->other_new_command);
-    ic->max_workload = tbx_inip_get_integer(keyfile, section, "max_thread_workload", ic->max_workload);
+    max_workload = tbx_inip_get_integer(keyfile, section, "max_thread_workload", 10*1024*1024);
     ic->max_coalesce = tbx_inip_get_integer(keyfile, section, "max_coalesce_workload", ic->max_coalesce);
     ic->coalesce_enable = tbx_inip_get_integer(keyfile, section, "coalesce_enable", ic->coalesce_enable);
-    ic->max_wait = tbx_inip_get_integer(keyfile, section, "max_wait", ic->max_wait);
-    ic->wait_stable_time = tbx_inip_get_integer(keyfile, section, "wait_stable_time", ic->wait_stable_time);
-    ic->check_connection_interval = tbx_inip_get_integer(keyfile, section, "check_interval", ic->check_connection_interval);
+    min_idle = APR_USEC_PER_SEC*tbx_inip_get_integer(keyfile, section, "min_idle", 30);
+    wait_stable_time = APR_USEC_PER_SEC*tbx_inip_get_integer(keyfile, section, "wait_stable_time", 30);
     ic->max_retry = tbx_inip_get_integer(keyfile, section, "max_retry", ic->max_retry);
     ic->connection_mode = tbx_inip_get_integer(keyfile, section, "connection_mode", ic->connection_mode);
     ic->transfer_rate = tbx_inip_get_double(keyfile, section, "transfer_rate", ic->transfer_rate);
@@ -754,9 +668,9 @@ int ibp_config_load(ibp_context_t *ic, tbx_inip_file_t *keyfile, char *section)
 
     ibp_cc_load(keyfile, ic);
 
-    copy_ibp_config(ic);
+    gop_portal_context_options_set(ic->pc, max_connections, min_idle, wait_stable_time, dt_connect, min_threads, max_threads, max_workload);
 
-    log_printf(1, "section=%s cmode=%d min_depot_threads=%d max_depot_threads=%d max_connections=%d max_thread_workload=%" PRId64 " coalesce_enable=%d dt_connect=" TT "\n", section, ic->connection_mode, ic->min_threads, ic->max_threads, ic->max_connections, ic->max_workload, ic->coalesce_enable, ((apr_time_t) ic->dt_connect));
+    log_printf(1, "section=%s cmode=%d min_depot_threads=%d max_depot_threads=%d max_connections=%d max_thread_workload=%" PRId64 " coalesce_enable=%d dt_connect=" TT "\n", section, ic->connection_mode, min_threads, max_threads, max_connections, max_workload, ic->coalesce_enable, ((apr_time_t) ic->dt_connect));
 
     return(0);
 }
@@ -796,20 +710,10 @@ void default_ibp_config(ibp_context_t *ic)
     tbx_ns_chksum_clear(&(ic->ncs));
 
     ic->tcpsize = 0;
-    ic->min_idle = apr_time_make(30, 0);
-    ic->min_threads = 1;
-    ic->max_threads = 4;
-    ic->max_connections = 128;
     ic->rw_new_command = 10*1024;
     ic->other_new_command = 100*1024;
-    ic->max_workload = 10*1024*1024;
-    ic->max_coalesce = ic->max_workload;
+    ic->max_coalesce = 1000;
     ic->coalesce_enable = 1;
-    ic->max_wait = 30;
-    ic->dt_connect = apr_time_from_sec(5);
-    ic->wait_stable_time = 15;
-    ic->abort_conn_attempts = 4;
-    ic->check_connection_interval = 2;
     ic->max_retry = 2;
     ic->transfer_rate = 0;
     ic->rr_size = 4;
@@ -818,8 +722,6 @@ void default_ibp_config(ibp_context_t *ic)
     for (i=0; i<=IBP_MAX_NUM_CMDS; i++) {
         ic->cc[i].type = NS_TYPE_SOCK;
     }
-
-    copy_ibp_config(ic);
 }
 
 
@@ -870,7 +772,6 @@ void ibp_context_destroy(ibp_context_t *ic)
 {
     log_printf(15, "ibp_context_destroy: Shutting down! count=%d\n", _ibp_context_count);
 
-    gop_hp_shutdown(ic->pc);
     gop_hp_context_destroy(ic->pc);
 
     tbx_pc_destroy(ic->coalesced_stacks);

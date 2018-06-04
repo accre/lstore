@@ -34,6 +34,7 @@
 #include "gop.h"
 #include "gop/portal.h"
 #include "gop/types.h"
+#include "hp.h"
 #include "opque.h"
 
 void gop_opque_free(gop_opque_t *q, int mode);
@@ -384,7 +385,7 @@ int internal_gop_opque_add(gop_opque_t *que, gop_op_generic_t *gop, int dolock)
         if (gop->type == Q_TYPE_OPERATION) {
             log_printf(15, "gid=%d started_execution=%d\n", gop_get_id(gop), gop->base.started_execution);
             gop->base.started_execution = 1;
-            gop->base.pc->fn->submit(gop->base.pc->arg, gop);
+            gop_op_submit(gop);
         } else {  //** It's a queue
             opque_start_execution(gop->q->opque);
         }
@@ -444,7 +445,7 @@ void _opque_start_execution(gop_opque_t *que)
         if (gop->type == Q_TYPE_OPERATION) {
             log_printf(15, "qid=%d gid=%d\n",gop_id(opque_get_gop(que)), gop_get_id(gop));
             gop->base.started_execution = 1;
-            gop->base.pc->fn->submit(gop->base.pc->arg, gop);
+            gop_op_submit(gop);
         } else {  //** It's a queue
             log_printf(15, "qid=%d Q gid=%d\n",gop_id(opque_get_gop(que)), gop_get_id(gop));
             lock_opque(gop->q);

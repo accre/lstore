@@ -29,14 +29,13 @@ endif()
 
 # common objects
 set(LSTORE_PROJECT_OBJS
-    callback.c constructor.c dummy.c  gop.c hconnection.c hportal.c opque.c
+    callback.c constructor.c dummy.c  gop.c hportal.c opque.c
     thread_pool_config.c thread_pool_op.c mq_msg.c mq_zmq.c mq_portal.c
     mq_ongoing.c mq_stream.c mq_helpers.c
 )
 set(LSTORE_PROJECT_INCLUDES
         gop/callback.h
         gop/gop.h
-        gop/hp.h
         gop/mq.h
         gop/mq_helpers.h
         gop/mq_ongoing.h

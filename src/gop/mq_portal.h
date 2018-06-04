@@ -39,7 +39,6 @@
 #include "gop/portal.h"
 #include "gop/tp.h"
 #include "gop/types.h"
-#include "host_portal.h"
 #include "thread_pool.h"
 
 

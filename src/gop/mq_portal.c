@@ -24,6 +24,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
+#include <gop/portal.h>
 #include <tbx/apr_wrapper.h>
 #include <tbx/assert_result.h>
 #include <tbx/atomic_counter.h>
@@ -1953,10 +1954,10 @@ gop_mq_context_t *gop_mq_create_context(tbx_inip_file_t *ifd, char *section)
     //** Make the thread pool.  All GOP commands run through here.  We replace
     //**  the TP submit routine with our own.
     mqc->tp = gop_tp_context_create("mq", mqc->min_threads, mqc->max_threads, mqc->max_recursion);
-    mqc->pcfn = *(mqc->tp->pc->fn);
+    mqc->pcfn = *(gop_hp_fn_get(mqc->tp->pc));
     mqc->pcfn.submit = _gop_mq_submit_op;
     mqc->pcfn.sync_exec = NULL;
-    mqc->tp->pc->fn = &(mqc->pcfn);
+    gop_hp_fn_set(mqc->tp->pc, &mqc->pcfn);
     assert_result_not_null(mqc->client_portals = apr_hash_make(mqc->mpool));
     assert_result_not_null(mqc->server_portals = apr_hash_make(mqc->mpool));
 
