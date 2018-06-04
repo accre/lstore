@@ -1367,12 +1367,15 @@ gop_portal_context_t *gop_hp_context_create(gop_portal_fn_t *imp, char *name)
 
     tbx_type_malloc_clear(hpc, gop_portal_context_t, 1);
 
+    hpc->fn = imp;
+    hpc->name = (name) ? strdup(name) : strdup("MISSING");
+
+    if (!imp->connect) return(hpc);
+
     assert_result(apr_pool_create(&(hpc->pool), NULL), APR_SUCCESS);
     hpc->hp = apr_hash_make(hpc->pool); FATAL_UNLESS(hpc->hp != NULL);
     apr_thread_mutex_create(&(hpc->todo_lock), APR_THREAD_MUTEX_DEFAULT, hpc->pool);
     apr_thread_cond_create(&(hpc->todo_cond), hpc->pool);
-    hpc->fn = imp;
-    hpc->name = (name) ? strdup(name) : strdup("MISSING");
     hpc->results_que = tbx_que_create(10000, sizeof(conn_cmd_t));
     hpc->gop_que = tbx_que_create(10000, sizeof(hpc_cmd_t));
 
@@ -1405,6 +1408,8 @@ void gop_hp_context_destroy(gop_portal_context_t *hpc)
     apr_status_t val;
     hpc_cmd_t cmd;
 
+    if (!hpc->pool) goto submit_only;
+
     tbx_siginfo_handler_remove(hportal_siginfo_handler, hpc);
 
     //** Shutdown all the connections and the main thread
@@ -1416,12 +1421,13 @@ void gop_hp_context_destroy(gop_portal_context_t *hpc)
     //** Cleanup
     tbx_que_destroy(hpc->results_que);
     tbx_que_destroy(hpc->gop_que);
-    if (hpc->name) free(hpc->name);
     apr_hash_clear(hpc->hp);
     apr_thread_mutex_destroy(hpc->todo_lock);
     apr_thread_cond_destroy(hpc->todo_cond);
     apr_pool_destroy(hpc->pool);
 
+submit_only:
+    if (hpc->name) free(hpc->name);
     free(hpc);
 
     return;
