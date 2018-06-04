@@ -50,10 +50,10 @@ void _tp_op_free(gop_op_generic_t *op, int mode);
 void _tp_submit_op(void *arg, gop_op_generic_t *op);
 
 static gop_portal_fn_t _tp_base_portal = {
-    .dup_connect_context = _tp_dup_connect_context,
-    .destroy_connect_context = _tp_destroy_connect_context,
-    .connect = _tp_connect,
-    .close_connection = _tp_close_connection,
+    .dup_connect_context = NULL,
+    .destroy_connect_context = NULL,
+    .connect = NULL,
+    .close_connection = NULL,
     .sort_tasks = gop_default_sort_ops,
     .submit = _tp_submit_op,
     .sync_exec = thread_pool_exec_fn
@@ -206,36 +206,6 @@ void _tp_submit_op(void *arg, gop_op_generic_t *gop)
     if (aerr != APR_SUCCESS) {
         log_printf(0, "ERROR submiting task!  aerr=%d gid=%d\n", aerr, gop_id(gop));
     }
-}
-
-//********************************************************************
-
-void *_tp_dup_connect_context(void *connect_context)
-{
-    return(NULL);
-}
-
-//********************************************************************
-
-void _tp_destroy_connect_context(void *connect_context)
-{
-    return;
-}
-
-//**********************************************************
-
-int _tp_connect(tbx_ns_t *ns, void *connect_context, char *host, int port, tbx_ns_timeout_t timeout)
-{
-    tbx_ns_setid(ns, tbx_ns_generate_id());
-    return(0);
-}
-
-
-//**********************************************************
-
-void _tp_close_connection(tbx_ns_t *ns)
-{
-    return;
 }
 
 //*************************************************************
