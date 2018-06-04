@@ -16,7 +16,6 @@
 #include <apr_time.h>
 #include <errno.h>
 #include <gop/gop.h>
-#include <gop/hp.h>
 #include <gop/mq.h>
 #include <gop/opque.h>
 #include <gop/portal.h>

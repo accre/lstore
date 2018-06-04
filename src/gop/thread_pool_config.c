@@ -34,7 +34,6 @@
 #include <tbx/type_malloc.h>
 
 #include "gop/gop.h"
-#include "gop/hp.h"
 #include "gop/opque.h"
 #include "gop/portal.h"
 #include "gop/tp.h"

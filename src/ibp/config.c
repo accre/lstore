@@ -22,7 +22,6 @@
 #include <apr_time.h>
 #include <assert.h>
 #include <gop/gop.h>
-#include <gop/hp.h>
 #include <gop/opque.h>
 #include <gop/portal.h>
 #include <gop/types.h>

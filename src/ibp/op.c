@@ -32,7 +32,7 @@
 #include <tbx/type_malloc.h>
 #include <time.h>
 #include <gop/gop.h>
-#include <gop/hp.h>
+#include <gop/portal.h>
 #include <tbx/atomic_counter.h>
 #include <tbx/chksum.h>
 #include <tbx/transfer_buffer.h>
@@ -43,7 +43,6 @@
 
 #define ibp_set_status(v, opstat, errcode) (v).op_status = status; (v).error_code = errorcode
 
-tbx_ns_timeout_t global_dt = 1*1000000;
 apr_time_t gop_get_end_time(gop_op_generic_t *gop, int *state);
 void _ibp_op_free(gop_op_generic_t *op, int mode);
 

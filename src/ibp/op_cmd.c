@@ -18,7 +18,6 @@
 
 #include <apr_time.h>
 #include <gop/gop.h>
-#include <gop/hp.h>
 #include <gop/types.h>
 #include <ibp/protocol.h>
 #include <stdio.h>
@@ -109,6 +108,7 @@ gop_op_status_t gop_readline_with_timeout(tbx_ns_t *ns, char *buffer, int size, 
 {
     int nbytes, n, nleft, pos;
     int err, state;
+    apr_time_t dt = apr_time_from_sec(1);
     apr_time_t end_time;
     gop_op_status_t status;
     tbx_tbuf_t tbuf;
@@ -122,7 +122,7 @@ gop_op_status_t gop_readline_with_timeout(tbx_ns_t *ns, char *buffer, int size, 
     pos = 0;
     end_time = gop_get_end_time(gop, &state);
     while ((err == 0) && (apr_time_now() <= end_time) && (nleft > 0)) {
-        n = tbx_ns_readline_raw(ns, &tbuf, pos, nleft, global_dt, &err);
+        n = tbx_ns_readline_raw(ns, &tbuf, pos, nleft, dt, &err);
         nleft = nleft - n;
         nbytes = nbytes + n;
         pos = pos + nbytes;

@@ -21,7 +21,7 @@
 #define _log_module_index 162
 
 #include <gop/gop.h>
-#include <gop/hp.h>
+#include <gop/portal.h>
 #include <gop/tp.h>
 #include <libgen.h>
 #include <lio/segment.h>
