@@ -41,6 +41,7 @@ typedef struct hportal_t hportal_t;
 #define HPC_CMD_GOP       0    //** Normal GOP command to process
 #define HPC_CMD_SHUTDOWN  1    //** Shutdown command
 #define HPC_CMD_STATS     2    //** Dump the stats
+#define HPC_CMD_PING      3    //** Ping to tickle the hportal thread to wake up
 
 typedef struct {
     int cmd;
@@ -113,8 +114,6 @@ struct gop_portal_context_t {             //** Handle for maintaining all the ec
     apr_thread_t *main_thread; //** Main processing thread
     apr_hash_t *hp;            //** Table containing the hportal_t structs
     apr_pool_t *pool;          //** Memory pool for hash table
-    apr_thread_mutex_t *todo_lock;  //** Lock for tracking work
-    apr_thread_cond_t *todo_cond;   //** Corresponding condition
     tbx_que_t *gop_que;        //** Incoming operations que
     tbx_que_t *results_que;    //**  Results que from Hconn
     apr_time_t max_idle;       //** Idle time before closing connection
@@ -122,6 +121,7 @@ struct gop_portal_context_t {             //** Handle for maintaining all the ec
     double mix_latest_fraction;   //** Amount of the running average that comes from the new
     double min_bw_fraction;    //** The minimum bandwidth compared to the median depot to keep a connection alive
     int todo_waiting;          //** Flag that someone is waiting
+    int pending_conn;          //** Total number of pending connections across all HPs
     int running_conn;          //** currently running # of connections
     int max_total_conn;        //** Max aggregate allowed number of connections
     int min_conn;              //** Min allowed number of connections to a host
@@ -143,23 +143,15 @@ void hconn_destroy(hconn_t *hc);
 hportal_t *hp_create(gop_portal_context_t *hpc, char *id);
 void hp_destroy(hportal_t *hp);
 
-//***** NOTE: The hpc_notify/hpc_wait routines are NOT foolproof! Requiring  ******
-//*****       them to be would require nesting locks and hurt performance.   ******
-//*****       Instead the main loop has a short time timeout to compensate.  ******
-
 //************************************************************************
 // hpc_notify - Flags the HPC thead that there is something to do
 //************************************************************************
 
 void hpc_notify(gop_portal_context_t *hpc)
 {
-    apr_thread_mutex_lock(hpc->todo_lock);
-log_printf(15, "hp=%s todo_waiting=%d\n", hpc->name, hpc->todo_waiting);
-    if (hpc->todo_waiting == 0) {
-        hpc->todo_waiting = 1;
-        apr_thread_cond_signal(hpc->todo_cond);
-    }
-    apr_thread_mutex_unlock(hpc->todo_lock);
+    hpc_cmd_t cmd = { HPC_CMD_PING, NULL};
+    tbx_que_put(hpc->gop_que, &cmd, 0);
+    return;
 }
 
 //************************************************************************
@@ -169,21 +161,9 @@ log_printf(15, "hp=%s todo_waiting=%d\n", hpc->name, hpc->todo_waiting);
 
 void hpc_wait(gop_portal_context_t *hpc, apr_time_t dt)
 {
-log_printf(15, "hp=%s START\n", hpc->name);
-    if (tbx_que_get(hpc->gop_que, NULL, 0) == 0) return;
-    if (tbx_que_get(hpc->results_que, NULL, 0) == 0) return;
-
-log_printf(15, "hp=%s WAITING\n", hpc->name);
-
-    //** Nothing to do so wait
-    apr_thread_mutex_lock(hpc->todo_lock);
-    if (hpc->todo_waiting == 0) {
-        apr_thread_cond_timedwait(hpc->todo_cond, hpc->todo_lock, dt);
-    }
-    hpc->todo_waiting = 0;
-    apr_thread_mutex_unlock(hpc->todo_lock);
-log_printf(15, "hp=%s END\n", hpc->name);
-
+    log_printf(15, "hp=%s START\n", hpc->name);
+    if (tbx_que_get(hpc->gop_que, NULL, dt) == 0) return;
+    return;
 }
 
 //************************************************************************
@@ -272,11 +252,12 @@ hconn_t *find_conn_to_close(gop_portal_context_t *hpc)
 
 //************************************************************************
 //  hpc_close_connetions - Closes connection on the request of the given hp.
+//     Returns the actual number of connections closed
 //************************************************************************
 
-void hpc_close_connections(gop_portal_context_t *hpc, hportal_t *hp, int n_close)
+int hpc_close_connections(gop_portal_context_t *hpc, hportal_t *hp, int n_close)
 {
-    int i;
+    int i, n;
     hconn_t * hc;
     apr_time_t dt;
     conn_cmd_t cmd;
@@ -286,12 +267,16 @@ void hpc_close_connections(gop_portal_context_t *hpc, hportal_t *hp, int n_close
     cmd.ptr = hp;
 
     dt = apr_time_from_sec(10);
+    n = 0;
     for (i=0; i<n_close; i++) {
         hc = find_conn_to_close(hpc);
-        hc->state = 1;
-
+        if (!hc) break;
+        hc->state = 2;
+        n++;
         tbx_que_put(hc->incoming, &cmd, dt);
     }
+
+    return(n);
 }
 
 //************************************************************************
@@ -414,6 +399,8 @@ void dump_stats(gop_portal_context_t *hpc, gop_op_generic_t *gop)
     total_avg_wl = 0;
     n_hp = n_hc = 0;
     fprintf(fd, "Host Portal info (%s) -------------------------------------------\n", hpc->name);
+    fprintf(fd, "Connection info -- Running: %d  Pending: %d  Max allowed: %d  Min/host: %d  Max/host: %d  Max workload: %s\n",
+        hpc->running_conn, hpc->pending_conn, hpc->max_total_conn, hpc->min_conn, hpc->max_conn, tbx_stk_pretty_print_double_with_scale(1024, hpc->max_workload, ppbuf1));
     determine_bandwidths(hpc, &hp_range[0], &hp_range[1], &hp_range[2]);
 
     for (hi=apr_hash_first(hpc->pool, hpc->hp); hi != NULL; hi = apr_hash_next(hi)) {
@@ -449,7 +436,7 @@ void dump_stats(gop_portal_context_t *hpc, gop_op_generic_t *gop)
         total_avg_wl = total_avg_wl / n_hp;
         total_avg_dt = total_avg_dt / n_hp;
         total_avg_bw = total_avg_bw / n_hp;
-        fprintf(fd, "-------  HP Average ------- HP: %d  HC: %d DT: %s  Workload: %s  Bandwidth: %s/s  SUM(WL)/SUM(DT)/N_HP: %s/s\n",
+        fprintf(fd, "------- HP Average ------- HP: %d  HC: %d DT: %s  Workload: %s  Bandwidth: %s/s  SUM(WL)/SUM(DT)/N_HP: %s/s\n",
             n_hp, n_hc, tbx_stk_pretty_print_time(total_avg_dt, 0, ppbuf1), tbx_stk_pretty_print_double_with_scale(1024, total_avg_wl, ppbuf2),
             tbx_stk_pretty_print_double_with_scale(1024, total_avg_bw, ppbuf3),
             tbx_stk_pretty_print_double_with_scale(1024, avg_bw, ppbuf4));
@@ -515,6 +502,8 @@ log_printf(15, "hpc=%s HPC_CMD_SHUTDOWN\n", hpc->name);
             case HPC_CMD_STATS:
                 dump_stats(hpc, cmd.gop);
                 break;
+            case HPC_CMD_PING:
+                break;
             default:
                 route_gop(hpc, cmd.gop);
         }
@@ -532,7 +521,7 @@ log_printf(15, "hpc=%s END finished=%d\n", hpc->name, finished);
 
 void check_hportal_connections(gop_portal_context_t *hpc, hportal_t *hp)
 {
-    int total_workload, i, n, nconn, hpconn, nshort;
+    int total_workload, i, n, ideal, extra, nconn, hpconn, nshort;
 
     hpconn = tbx_stack_count(hp->conn_list);
 
@@ -541,46 +530,56 @@ void check_hportal_connections(gop_portal_context_t *hpc, hportal_t *hp)
     //** Check if we need to add connections
     total_workload = hp->workload_pending + hp->workload_executing;
     nconn = hpconn + hp->pending_conn;
-    n = (nconn > 0) ? total_workload / nconn : 1;
-log_printf(20, "n=%d\n", n);
+    ideal = (nconn > 0) ? total_workload / nconn : hpc->min_conn;
+log_printf(20, "ideal=%d\n", ideal);
 log_printf(20, "max_conn=%d\n", hpc->max_conn);
 
-    if (n > hpc->max_conn) n = hpc->max_conn;
-    n = (hpconn > n) ? 0 : n - hpconn;
-    if ((n+hpconn) > hpc->max_total_conn) {
-        nshort = n + hpconn - hpc->max_total_conn - hp->pending_conn;
-        if (nshort > 0) {
-            hpc_close_connections(hpc, hp, nshort);
-            hp->pending_conn += nshort;
-        }
-        n = hpc->max_total_conn - hpc->running_conn;
-    }
+    if (hpconn >= ideal) return;  //** Nothing to do so kick out
 
-    nconn = n + hpconn + hp->pending_conn;
-    if (nconn > hp->stable_conn) {
+    if (ideal > hpc->max_conn) ideal = hpc->max_conn;
+    extra = ideal - hpconn - hp->pending_conn;  //** These are the extra connections we want to make
+
+    //** Check if we are over the stable connection limit
+    if (ideal > hp->stable_conn) {
         if (apr_time_now() > hp->pause_until) {
             hp->stable_conn++;
-            hp->pause_until = apr_time_now();
             if (hp->stable_conn > hpc->max_total_conn) {
                 hp->stable_conn = hpc->max_total_conn;
-                n = 0;
-            } else if (hp->stable_conn == 0) {
-                hp->stable_conn = 1;
-                n = (hp->pause_until == 0) ? 1 : 0;
+                extra = 0;
             } else {
-                n = (hpconn < hpc->max_total_conn) ? 1 : 0;
+                extra = 1;
                 hp->pause_until = apr_time_now() + hpc->wait_stable_time;
             }
         } else {
             if (hpconn > 0) {
-                n = 0;
+                extra = 0;
             } else if (hp->pause_until == 0) {
-                n = 1;
+                extra = 1;
             }
         }
     }
 
-    for (i=0; i<n; i++) {
+    //** See if we need to close something
+    n = extra + hpc->pending_conn;
+    if (n > hpc->max_total_conn) {  //** See if we've got to many pending
+        extra = hpc->max_total_conn - hpc->pending_conn;
+    }
+
+    //** Now check if we need to close something
+    n = extra + hpc->running_conn;
+    if (n > hpc->max_total_conn) {  //** We've got to close something
+        nshort = n - hpc->max_total_conn;  //** This is how many connections we're short
+        n = hpc_close_connections(hpc, hp, nshort);  //** We return the number we actually closed
+        hp->pending_conn += n;  //** Keep track of them
+        hpc->pending_conn += n;
+
+        //** See if we have some connections we can still make
+        extra = extra - nshort;
+        if (extra <= 0) return;  //** Nothing to do so kick out
+    }
+
+    hpc->running_conn += extra;
+    for (i=0; i<extra; i++) {
         hconn_add(hp, hconn_new(hp, hpc->results_que, hpc->pool));
     }
 }
@@ -715,6 +714,7 @@ log_printf(15, "incoming: hp=%s CONN_GOP_SUBMIT gid=%d\n", hp->skey, gop_id(gop)
             //** Managed to push the task so update counters
             c->workload += workload;
             c->ntasks++;
+log_printf(15, "incoming: hp=%s CONN_GOP_SUBMIT gid=%d c->workload=" I64T " c->ntasks=" I64T " c=%p\n", hp->skey, gop_id(gop), c->workload, c->ntasks, c);
             hp->cmds_submitted++;
             hp->workload_pending -= workload;
             hp->workload_executing += workload;
@@ -744,7 +744,10 @@ void handle_closed(gop_portal_context_t *hpc, hconn_t *conn, hportal_t *hp_reque
     hportal_t *hp = conn->hp;
 
 log_printf(15, "CONN_CLOSED hp=%s\n", hp->skey);
-    if (hp_requested_close != NULL) hp_requested_close->pending_conn--;
+    if (hp_requested_close != NULL) {
+        hp_requested_close->pending_conn--;
+        hpc->pending_conn--;
+    }
     hpc->running_conn--;
 
     tbx_stack_move_to_ptr(hp->conn_list, conn->ele);
@@ -1235,6 +1238,7 @@ hportal_t *hp_create(gop_portal_context_t *hpc, char *hostport)
     hp->pending = tbx_stack_new();
     hp->workload_pending = 0;
     hp->hpc = hpc;
+    hp->stable_conn = hpc->max_conn;
 
     return(hp);
 }
@@ -1374,8 +1378,6 @@ gop_portal_context_t *gop_hp_context_create(gop_portal_fn_t *imp, char *name)
 
     assert_result(apr_pool_create(&(hpc->pool), NULL), APR_SUCCESS);
     hpc->hp = apr_hash_make(hpc->pool); FATAL_UNLESS(hpc->hp != NULL);
-    apr_thread_mutex_create(&(hpc->todo_lock), APR_THREAD_MUTEX_DEFAULT, hpc->pool);
-    apr_thread_cond_create(&(hpc->todo_cond), hpc->pool);
     hpc->results_que = tbx_que_create(10000, sizeof(conn_cmd_t));
     hpc->gop_que = tbx_que_create(10000, sizeof(hpc_cmd_t));
 
@@ -1422,8 +1424,6 @@ void gop_hp_context_destroy(gop_portal_context_t *hpc)
     tbx_que_destroy(hpc->results_que);
     tbx_que_destroy(hpc->gop_que);
     apr_hash_clear(hpc->hp);
-    apr_thread_mutex_destroy(hpc->todo_lock);
-    apr_thread_cond_destroy(hpc->todo_cond);
     apr_pool_destroy(hpc->pool);
 
 submit_only:
