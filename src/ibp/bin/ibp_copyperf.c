@@ -439,9 +439,9 @@ int main(int argc, char **argv)
     //*** Get thread count ***
     nthreads = atoi(argv[i]);
     if (nthreads <= 0) {
-        nthreads = ibp_context_max_depot_threads_get(ic);
+        nthreads = ibp_context_max_host_conn_get(ic);
     } else {
-        ibp_context_max_depot_threads_set(ic, nthreads);
+        ibp_context_max_host_conn_set(ic, nthreads);
     }
     i++;
 

@@ -74,17 +74,36 @@ typedef struct gop_host_portal_t gop_host_portal_t;
 GOP_API int gop_hp_que_op_submit(gop_portal_context_t *hpc, gop_op_generic_t *op);
 GOP_API gop_portal_context_t *gop_hp_context_create(gop_portal_fn_t *hpi, char *name);
 GOP_API void gop_hp_context_destroy(gop_portal_context_t *hpc);
+GOP_API void gop_hpc_load(gop_portal_context_t *hpc, tbx_inip_file_t *fd, char *section);
 GOP_API gop_portal_fn_t *gop_hp_fn_get(gop_portal_context_t *hpc);
 GOP_API void gop_hp_fn_set(gop_portal_context_t *hpc, gop_portal_fn_t *fn);
-GOP_API void gop_portal_context_options_set(gop_portal_context_t *hpc, int max_total_conn,
-        apr_time_t max_idle, apr_time_t wait_stable, apr_time_t max_connect,
-        int min_conn, int max_conn, int64_t max_workload);
-GOP_API void gop_portal_context_options_get(gop_portal_context_t *hpc, int *max_total_conn,
-        apr_time_t *max_idle, apr_time_t *wait_stable, apr_time_t *max_connect,
-        int *min_conn, int *max_conn, int64_t *max_workload);
 GOP_API int gop_hp_que_op_submit(gop_portal_context_t *hpc, gop_op_generic_t *op);
 GOP_API void gop_hp_shutdown(gop_portal_context_t *hpc);
 GOP_API int gop_hp_submit(gop_host_portal_t *dp, gop_op_generic_t *op, bool addtotop, bool release_master);
+
+// tunable accessors
+GOP_API void gop_hpc_dead_dt_set(gop_portal_context_t *hpc, apr_time_t dt);
+GOP_API apr_time_t gop_hpct_dead_dt_get(gop_portal_context_t *hpc);
+GOP_API void gop_hpc_dead_check_set(gop_portal_context_t *hpc, apr_time_t dt);
+GOP_API apr_time_t gop_hpc_dead_check_get(gop_portal_context_t *hpc);
+GOP_API void gop_hpc_max_idle_set(gop_portal_context_t *hpc, apr_time_t dt);
+GOP_API apr_time_t gop_hpc_max_idle_get(gop_portal_context_t *hpc);
+GOP_API void gop_hpc_wait_stable_set(gop_portal_context_t *hpc, apr_time_t dt);
+GOP_API apr_time_t gop_hpc_wait_stable_get(gop_portal_context_t *hpc);
+
+GOP_API void gop_hpc_max_total_conn_set(gop_portal_context_t *hpc, int n);
+GOP_API int gop_hpc_max_total_conn_get(gop_portal_context_t *hpc);
+GOP_API void gop_hpc_min_host_conn_set(gop_portal_context_t *hpc, int n);
+GOP_API int gop_hpc_min_host_conn_get(gop_portal_context_t *hpc);
+GOP_API void gop_hpc_max_host_conn_set(gop_portal_context_t *hpc, int n);
+GOP_API int gop_hpc_max_host_conn_get(gop_portal_context_t *hpc);
+GOP_API void gop_hpc_max_workload_set(gop_portal_context_t *hpc, int64_t n);
+GOP_API int64_t gop_hpc_max_workload_get(gop_portal_context_t *hpc);
+
+GOP_API void gop_hpc_min_bw_fraction_set(gop_portal_context_t *hpc, double d);
+GOP_API double gop_hpc_min_bw_fraction_get(gop_portal_context_t *hpc);
+GOP_API void gop_hpc_mex_latest_fraction_set(gop_portal_context_t *hpc, double d);
+GOP_API double gop_hpc_mix_latest_fraction_get(gop_portal_context_t *hpc);
 
 #ifdef __cplusplus
 }

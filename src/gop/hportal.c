@@ -1259,47 +1259,6 @@ void hp_destroy(hportal_t *hp)
 }
 
 //************************************************************************
-// gop_portal_options_set - Sets the hportal options.  If the option
-//   is 0 then it's not changed.
-//
-//   NOTE: This is not thread safe and so should only be called right
-//         after the HPC is created and before any commands have been
-//         submitted.
-//************************************************************************
-
-void gop_portal_context_options_set(gop_portal_context_t *hpc, int max_total_conn,
-        apr_time_t max_idle, apr_time_t wait_stable, apr_time_t max_connect,
-        int min_conn, int max_conn, int64_t max_workload)
-{
-    if (max_total_conn > 0) hpc->max_total_conn = max_total_conn;
-    if (max_idle > 0) hpc->max_idle = max_idle;
-    if (wait_stable > 0) hpc->wait_stable_time =  wait_stable;
-    if (min_conn > 0) hpc->min_conn = min_conn;
-    if (max_conn > 0) hpc->max_conn = max_conn;
-    if (max_connect > 0) hpc->dt_connect = max_connect;
-    if (max_workload > 0) hpc->max_workload = max_workload;
-}
-
-//************************************************************************
-// gop_portal_options_get - Gets the hportal options.  Pass NULL to
-//   variables to ignore returning.
-//************************************************************************
-
-void gop_portal_context_options_get(gop_portal_context_t *hpc, int *max_total_conn,
-        apr_time_t *max_idle, apr_time_t *wait_stable, apr_time_t *max_connect,
-        int *min_conn, int *max_conn, int64_t *max_workload)
-{
-    if (!max_total_conn) *max_total_conn = hpc->max_total_conn;
-    if (!max_idle) *max_idle = hpc->max_idle;
-    if (!wait_stable) *wait_stable = hpc->wait_stable_time;
-    if (!min_conn) *min_conn = hpc->min_conn;
-    if (!max_conn) *max_conn = hpc->max_conn;
-    if (!max_connect) *max_connect = hpc->dt_connect;
-    if (!max_workload) *max_workload = hpc->max_workload;
-}
-
-
-//************************************************************************
 // gop_hp_fn_set - Sets the HPC's fn structure
 //************************************************************************
 
@@ -1361,6 +1320,34 @@ int gop_hp_que_op_submit(gop_portal_context_t *hpc, gop_op_generic_t *op)
 }
 
 //************************************************************************
+// Tunable functions
+//************************************************************************
+
+void gop_hpc_dead_dt_set(gop_portal_context_t *hpc, apr_time_t dt) { hpc->dt_dead_timeout = dt; }
+apr_time_t gop_hpct_dead_dt_get(gop_portal_context_t *hpc) { return(hpc->dt_dead_timeout); }
+void gop_hpc_dead_check_set(gop_portal_context_t *hpc, apr_time_t dt) { hpc->dt_dead_check = dt; }
+apr_time_t gop_hpc_dead_check_get(gop_portal_context_t *hpc) { return(hpc->dt_dead_check); }
+void gop_hpc_max_idle_set(gop_portal_context_t *hpc, apr_time_t dt) { hpc->max_idle = dt; }
+apr_time_t gop_hpc_max_idle_get(gop_portal_context_t *hpc) { return(hpc->max_idle); }
+void gop_hpc_wait_stable_set(gop_portal_context_t *hpc, apr_time_t dt) { hpc->wait_stable_time = dt; }
+apr_time_t gop_hpc_wait_stable_get(gop_portal_context_t *hpc) { return(hpc->wait_stable_time); }
+
+void gop_hpc_max_total_conn_set(gop_portal_context_t *hpc, int n) { hpc->max_total_conn = n; }
+int gop_hpc_max_total_conn_get(gop_portal_context_t *hpc) { return(hpc->max_total_conn); }
+void gop_hpc_min_host_conn_set(gop_portal_context_t *hpc, int n) { hpc->min_conn = n; }
+int gop_hpc_min_host_conn_get(gop_portal_context_t *hpc) { return(hpc->min_conn); }
+void gop_hpc_max_host_conn_set(gop_portal_context_t *hpc, int n) { hpc->max_conn = n; }
+int gop_hpc_max_host_conn_get(gop_portal_context_t *hpc) { return(hpc->max_conn); }
+void gop_hpc_max_workload_set(gop_portal_context_t *hpc, int64_t n) { hpc->max_workload = n; }
+int64_t gop_hpc_max_workload_get(gop_portal_context_t *hpc) { return(hpc->max_workload); }
+
+void gop_hpc_min_bw_fraction_set(gop_portal_context_t *hpc, double d) { hpc->min_bw_fraction = d; }
+double gop_hpc_min_bw_fraction_get(gop_portal_context_t *hpc) { return(hpc->min_bw_fraction); }
+void gop_hpc_mex_latest_fraction_set(gop_portal_context_t *hpc, double d) { hpc->mix_latest_fraction = d; }
+double gop_hpc_mix_latest_fraction_get(gop_portal_context_t *hpc) { return(hpc->mix_latest_fraction); }
+
+
+//************************************************************************
 //  gop_hp_context_create - Creates a new hportal context structure for use
 //************************************************************************
 
@@ -1399,6 +1386,26 @@ gop_portal_context_t *gop_hp_context_create(gop_portal_fn_t *imp, char *name)
     tbx_siginfo_handler_add(hportal_siginfo_handler, hpc);
 
     return(hpc);
+}
+
+//************************************************************************
+//  gop_hpc_load - Updates the HPC using the values from the INI file
+//************************************************************************
+
+void gop_hpc_load(gop_portal_context_t *hpc, tbx_inip_file_t *fd, char *section)
+{
+    hpc->dt_dead_timeout = tbx_inip_get_time(fd, section, "dead_timeout", "5m");
+    hpc->dt_dead_check = tbx_inip_get_time(fd, section, "dead_check", "1m");
+    hpc->min_bw_fraction = tbx_inip_get_double(fd, section, "min_bw_fraction", 0.001);
+    hpc->max_total_conn = tbx_inip_get_integer(fd, section, "max_connections", 64);;
+    hpc->max_idle = tbx_inip_get_time(fd, section, "max_idle", "30s");
+    hpc->wait_stable_time = tbx_inip_get_time(fd, section, "wait_stable", "1m");
+    hpc->min_conn = tbx_inip_get_integer(fd, section, "min_host_conn", 1);;
+    hpc->max_conn = tbx_inip_get_integer(fd, section, "max_host_conn", 4);;
+    hpc->dt_connect = apr_time_from_sec(10);
+    hpc->max_workload = tbx_inip_get_integer(fd, section, "max_workload_conn", 10*1024*1024);
+    hpc->mix_latest_fraction = tbx_inip_get_double(fd, section, "mix_latest_fraction", 0.5);;
+    tbx_ns_timeout_set(&(hpc->dt_connect), 1, 0);
 }
 
 //************************************************************************

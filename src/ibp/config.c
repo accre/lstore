@@ -509,15 +509,13 @@ int  ibp_context_tcpsize_get(ibp_context_t *ic)
 {
     return(ic->tcpsize);
 }
-void ibp_context_max_depot_threads_set(ibp_context_t *ic, int n)
+void ibp_context_max_host_conn_set(ibp_context_t *ic, int n)
 {
-    gop_portal_context_options_set(ic->pc, 0,0,0,0,0, n, 0);
+    gop_hpc_max_host_conn_set(ic->pc, n);
 }
-int  ibp_context_max_depot_threads_get(ibp_context_t *ic)
+int  ibp_context_max_host_conn_get(ibp_context_t *ic)
 {
-    int n;
-    gop_portal_context_options_get(ic->pc, NULL, NULL, NULL, NULL, NULL, &n, NULL);
-    return(n);
+    return(gop_hpc_max_host_conn_get(ic->pc));
 }
 void ibp_context_command_weight_set(ibp_context_t *ic, int n)
 {
@@ -642,24 +640,13 @@ void ibp_cc_load(tbx_inip_file_t *kf, ibp_context_t *cfg)
 
 int ibp_config_load(ibp_context_t *ic, tbx_inip_file_t *keyfile, char *section)
 {
-    apr_time_t min_idle, wait_stable_time, dt_connect;
-    int min_threads, max_threads, max_connections;
-    int64_t max_workload;
-
     if (section == NULL) section = "ibp";
 
     ic->tcpsize = tbx_inip_get_integer(keyfile, section, "tcpsize", ic->tcpsize);
-    min_threads = tbx_inip_get_integer(keyfile, section, "min_depot_threads", 1);
-    max_threads = tbx_inip_get_integer(keyfile, section, "max_depot_threads", 2);
-    dt_connect = tbx_inip_get_integer(keyfile, section, "dt_connect_us", 5*APR_USEC_PER_SEC);
-    max_connections = tbx_inip_get_integer(keyfile, section, "max_connections", 128);
     ic->rw_new_command = tbx_inip_get_integer(keyfile, section, "rw_command_weight", ic->rw_new_command);
     ic->other_new_command = tbx_inip_get_integer(keyfile, section, "other_command_weight", ic->other_new_command);
-    max_workload = tbx_inip_get_integer(keyfile, section, "max_thread_workload", 10*1024*1024);
     ic->max_coalesce = tbx_inip_get_integer(keyfile, section, "max_coalesce_workload", ic->max_coalesce);
     ic->coalesce_enable = tbx_inip_get_integer(keyfile, section, "coalesce_enable", ic->coalesce_enable);
-    min_idle = APR_USEC_PER_SEC*tbx_inip_get_integer(keyfile, section, "min_idle", 30);
-    wait_stable_time = APR_USEC_PER_SEC*tbx_inip_get_integer(keyfile, section, "wait_stable_time", 30);
     ic->max_retry = tbx_inip_get_integer(keyfile, section, "max_retry", ic->max_retry);
     ic->connection_mode = tbx_inip_get_integer(keyfile, section, "connection_mode", ic->connection_mode);
     ic->transfer_rate = tbx_inip_get_double(keyfile, section, "transfer_rate", ic->transfer_rate);
@@ -667,9 +654,7 @@ int ibp_config_load(ibp_context_t *ic, tbx_inip_file_t *keyfile, char *section)
 
     ibp_cc_load(keyfile, ic);
 
-    gop_portal_context_options_set(ic->pc, max_connections, min_idle, wait_stable_time, dt_connect, min_threads, max_threads, max_workload);
-
-    log_printf(1, "section=%s cmode=%d min_depot_threads=%d max_depot_threads=%d max_connections=%d max_thread_workload=%" PRId64 " coalesce_enable=%d dt_connect=" TT "\n", section, ic->connection_mode, min_threads, max_threads, max_connections, max_workload, ic->coalesce_enable, ((apr_time_t) ic->dt_connect));
+    gop_hpc_load(ic->pc, keyfile, section);
 
     return(0);
 }
