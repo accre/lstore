@@ -41,22 +41,22 @@ typedef struct hportal_t hportal_t;
 #define HPC_CMD_GOP       0    //** Normal GOP command to process
 #define HPC_CMD_SHUTDOWN  1    //** Shutdown command
 #define HPC_CMD_STATS     2    //** Dump the stats
-#define HPC_CMD_PING      3    //** Ping to tickle the hportal thread to wake up
-
-typedef struct {
-    int cmd;
-    gop_op_generic_t *gop;
-} hpc_cmd_t;
 
 //** Responses from a connection
-#define CONN_EMPTY         0   //** NULL op
-#define CONN_CLOSE         1   //** Close connection request (sent to conn)
-#define CONN_CLOSE_REQUEST 2   //** Connection is requesting to close (from conn)
-#define CONN_CLOSED        3   //** Connection is closed (from conn)
-#define CONN_READY         4   //** Connection is ready for commands (from conn)
-#define CONN_GOP_SUBMIT    5   //** GOP task (to conn)
-#define CONN_GOP_RETRY     6   //** GOP should be retried (from conn)
-#define CONN_GOP_DONE      7   //** GOP has been processed (from conn)
+#define CONN_EMPTY         3   //** NULL op
+#define CONN_CLOSE         4   //** Close connection request (sent to conn)
+#define CONN_CLOSE_REQUEST 5   //** Connection is requesting to close (from conn)
+#define CONN_CLOSED        6   //** Connection is closed (from conn)
+#define CONN_READY         7   //** Connection is ready for commands (from conn)
+#define CONN_GOP_SUBMIT    8   //** GOP task (to conn)
+#define CONN_GOP_RETRY     9   //** GOP should be retried (from conn)
+#define CONN_GOP_DONE     10   //** GOP has been processed (from conn)
+
+//typedef struct {
+//    int cmd;
+//    gop_op_generic_t *gop;
+//} hpc_cmd_t;
+
 
 typedef struct {
     int cmd;
@@ -65,7 +65,7 @@ typedef struct {
     int64_t gop_workload;
     apr_time_t gop_dt;
     gop_op_status_t status;
-} conn_cmd_t;
+} hpc_cmd_t;
 
 typedef struct gop_portal_context_t gop_portal_context_t;
 
@@ -114,8 +114,7 @@ struct gop_portal_context_t {             //** Handle for maintaining all the ec
     apr_thread_t *main_thread; //** Main processing thread
     apr_hash_t *hp;            //** Table containing the hportal_t structs
     apr_pool_t *pool;          //** Memory pool for hash table
-    tbx_que_t *gop_que;        //** Incoming operations que
-    tbx_que_t *results_que;    //**  Results que from Hconn
+    tbx_que_t *que;    //**  Incomint GOP and results que from Hconn
     apr_time_t max_idle;       //** Idle time before closing connection
     apr_time_t wait_stable_time; //** Time to wait between stable connection checks
     double mix_latest_fraction;   //** Amount of the running average that comes from the new
@@ -126,6 +125,7 @@ struct gop_portal_context_t {             //** Handle for maintaining all the ec
     int max_total_conn;        //** Max aggregate allowed number of connections
     int min_conn;              //** Min allowed number of connections to a host
     int max_conn;              //** Max allowed number of connections to a host
+    int finished;              //** Got a shutdown request
     apr_time_t dt_connect;     //** Max time to wait when making a connection to a host
     apr_time_t dt_dead_timeout; //** How long to keep a connection as dead before trying again
     apr_time_t dt_dead_check;  //** Check interval between host health checks
@@ -136,35 +136,13 @@ struct gop_portal_context_t {             //** Handle for maintaining all the ec
     gop_portal_fn_t *fn;       //** Actual implementaion for application
 };
 
-int process_results(gop_portal_context_t *hpc);
+int process_incoming(gop_portal_context_t *hpc);
 hconn_t *hconn_new(hportal_t *hp, tbx_que_t *outgoing, apr_pool_t *mpool);
 void hconn_add(hportal_t *hp, hconn_t *hc);
 void hconn_destroy(hconn_t *hc);
 hportal_t *hp_create(gop_portal_context_t *hpc, char *id);
 void hp_destroy(hportal_t *hp);
 
-//************************************************************************
-// hpc_notify - Flags the HPC thead that there is something to do
-//************************************************************************
-
-void hpc_notify(gop_portal_context_t *hpc)
-{
-    hpc_cmd_t cmd = { HPC_CMD_PING, NULL};
-    tbx_que_put(hpc->gop_que, &cmd, 0);
-    return;
-}
-
-//************************************************************************
-// hpc_wait - Pauses the main HPC thead until there is something to do
-//    or it times out
-//************************************************************************
-
-void hpc_wait(gop_portal_context_t *hpc, apr_time_t dt)
-{
-    log_printf(15, "hp=%s START\n", hpc->name);
-    if (tbx_que_get(hpc->gop_que, NULL, dt) == 0) return;
-    return;
-}
 
 //************************************************************************
 //  hportal_siginfo_handler - Prints the status of all the connections
@@ -182,9 +160,8 @@ void hportal_siginfo_handler(void *arg, FILE *fd)
 
     //** Send the command to dump
     cmd.cmd = HPC_CMD_STATS;
-    cmd.gop = (gop_op_generic_t *)fd;
-    tbx_que_put(hpc->gop_que, &cmd, TBX_QUE_BLOCK);
-    hpc_notify(hpc);
+    cmd.ptr = (gop_op_generic_t *)fd;
+    tbx_que_put(hpc->que, &cmd, TBX_QUE_BLOCK);
 
     //** Wait for it to finish
     apr_sleep(apr_time_as_msec(10));
@@ -204,7 +181,7 @@ int submit_shutdown(gop_portal_context_t *hpc)
     apr_hash_index_t *hi;
     int n;
     apr_time_t dt;
-    conn_cmd_t cmd;
+    hpc_cmd_t cmd;
 
     memset(&cmd, 0, sizeof(cmd));
     cmd.cmd = CONN_CLOSE;
@@ -260,7 +237,7 @@ int hpc_close_connections(gop_portal_context_t *hpc, hportal_t *hp, int n_close)
     int i, n;
     hconn_t * hc;
     apr_time_t dt;
-    conn_cmd_t cmd;
+    hpc_cmd_t cmd;
 
     memset(&cmd, 0, sizeof(cmd));
     cmd.cmd = CONN_CLOSE;
@@ -287,9 +264,9 @@ void wait_for_shutdown(gop_portal_context_t *hpc, int n)
 {
     int nclosed;
 
-    nclosed = process_results(hpc);
+    nclosed = process_incoming(hpc);
     while (nclosed < n) {
-        nclosed += process_results(hpc);
+        nclosed += process_incoming(hpc);
     }
 }
 
@@ -377,9 +354,8 @@ double determine_bandwidths(gop_portal_context_t *hpc, hportal_t **hp_min, hport
 // dump_stats - Dumps the stats
 //************************************************************************
 
-void dump_stats(gop_portal_context_t *hpc, gop_op_generic_t *gop)
+void dump_stats(gop_portal_context_t *hpc, FILE *fd)
 {
-    FILE *fd = (FILE *)gop;
     apr_hash_index_t *hi;
     hportal_t *hp;
     hportal_t *hp_range[3];
@@ -481,40 +457,6 @@ log_printf(15, "hp=%s gid=%d pending=%d workload=" I64T "\n", hp->skey, gop_id(g
 }
 
 //************************************************************************
-// fetch_tasks - Gets all the new incoming tasks and places them on
-//    appropriate queues
-//************************************************************************
-
-int fetch_tasks(gop_portal_context_t *hpc)
-{
-    int finished;
-    hpc_cmd_t cmd;
-
-    finished = 0;
-    while (tbx_que_get(hpc->gop_que, &cmd, 0) == 0) {
-log_printf(15, "hpc=%s LOOP\n", hpc->name);
-
-        switch (cmd.cmd) {
-            case HPC_CMD_SHUTDOWN:
-                finished = 1;
-log_printf(15, "hpc=%s HPC_CMD_SHUTDOWN\n", hpc->name);
-                break;
-            case HPC_CMD_STATS:
-                dump_stats(hpc, cmd.gop);
-                break;
-            case HPC_CMD_PING:
-                break;
-            default:
-                route_gop(hpc, cmd.gop);
-        }
-    }
-
-log_printf(15, "hpc=%s END finished=%d\n", hpc->name, finished);
-
-    return(finished);
-}
-
-//************************************************************************
 // check_hportal_connections - Adds connections if needed to the HP
 //     based on the workload.
 //************************************************************************
@@ -531,8 +473,6 @@ void check_hportal_connections(gop_portal_context_t *hpc, hportal_t *hp)
     total_workload = hp->workload_pending + hp->workload_executing;
     nconn = hpconn + hp->pending_conn;
     ideal = (nconn > 0) ? total_workload / nconn : hpc->min_conn;
-log_printf(20, "ideal=%d\n", ideal);
-log_printf(20, "max_conn=%d\n", hpc->max_conn);
 
     if (hpconn >= ideal) return;  //** Nothing to do so kick out
 
@@ -580,7 +520,7 @@ log_printf(20, "max_conn=%d\n", hpc->max_conn);
 
     hpc->running_conn += extra;
     for (i=0; i<extra; i++) {
-        hconn_add(hp, hconn_new(hp, hpc->results_que, hpc->pool));
+        hconn_add(hp, hconn_new(hp, hpc->que, hpc->pool));
     }
 }
 
@@ -608,7 +548,7 @@ void hp_fail_all_tasks(hportal_t *hp, gop_op_status_t err_code)
 
 void hp_gop_retry(hconn_t *hc, gop_op_generic_t *gop)
 {
-    conn_cmd_t cmd;
+    hpc_cmd_t cmd;
 
     gop->op->cmd.retry_count--;
     if (gop->op->cmd.retry_count <= 0) {  //** No more retries left so fail the gop
@@ -619,14 +559,12 @@ void hp_gop_retry(hconn_t *hc, gop_op_generic_t *gop)
         cmd.cmd = CONN_GOP_DONE;
         gop_mark_completed(gop, gop_failure_status);
         tbx_que_put(hc->outgoing, &cmd, TBX_QUE_BLOCK);
-        hpc_notify(hc->hp->hpc);
     } else {  //** Got a retry
         cmd.gop_workload = gop->op->cmd.workload;
         cmd.hc = hc;
         cmd.ptr = gop;
         cmd.cmd = CONN_GOP_RETRY;
         tbx_que_put(hc->outgoing, &cmd, TBX_QUE_BLOCK);
-        hpc_notify(hc->hp->hpc);
     }
 }
 
@@ -665,7 +603,7 @@ int hp_submit_tasks(gop_portal_context_t *hpc, hportal_t *hp)
 {
     gop_op_generic_t *gop;
     hconn_t *c;
-    conn_cmd_t cmd;
+    hpc_cmd_t cmd;
     int ideal_conn;
     int workload;
 
@@ -761,19 +699,29 @@ log_printf(15, "CONN_CLOSED hp=%s\n", hp->skey);
 }
 
 //************************************************************************
-// process_results - Processes the results from all he HP connections.
+// process_incoming - Processes the results from all the HP and GOP connections.
 //    Returns the number of close connections processed.
 //************************************************************************
 
-int process_results(gop_portal_context_t *hpc)
+int process_incoming(gop_portal_context_t *hpc)
 {
     int nclosed;
-    conn_cmd_t cmd;
+    hpc_cmd_t cmd;
     hportal_t *hp;
 
     nclosed = 0;
-    while (!tbx_que_get(hpc->results_que, &cmd, 0)) {
+    while (!tbx_que_get(hpc->que, &cmd, 0)) {
         switch (cmd.cmd) {
+            case HPC_CMD_SHUTDOWN:
+                hpc->finished = 1;
+log_printf(15, "hpc=%s HPC_CMD_SHUTDOWN\n", hpc->name);
+                break;
+            case HPC_CMD_STATS:
+                dump_stats(hpc, (FILE *)cmd.ptr);
+                break;
+            case HPC_CMD_GOP:
+                route_gop(hpc, (gop_op_generic_t *)cmd.ptr);
+                break;
             case CONN_READY:
 log_printf(15, "CONN_READY hp=%s\n", cmd.hc->hp->skey);
                 cmd.hc->state = 1;
@@ -894,35 +842,23 @@ void *hportal_thread(apr_thread_t *th, void *arg)
 {
     gop_portal_context_t *hpc = arg;
     apr_hash_index_t *hi;
-    apr_time_t dt;
     void *val;
     hportal_t *hp;
-    int finished, done, ntodo;
+    int done, ntodo;
     apr_time_t dead_next_check;
 
-log_printf(15, "START name=%s\n", hpc->name);
-
     dead_next_check = apr_time_now() + apr_time_from_sec(60);
-    dt = apr_time_from_msec(100);
-    finished = done = 0;
+    done = 0;
     do {
-log_printf(15, "AAAAA hpc=%s dt_dead_check=" TT " next=" TT " now=" TT "\n", hpc->name, hpc->dt_dead_check, dead_next_check, apr_time_now());
-
         if (apr_time_now() > dead_next_check) {
             depot_health_check(hpc);
             dead_next_check = apr_time_now() + hpc->dt_dead_check;
-log_printf(15, "hpc=%s dt_dead_check=" TT " next=" TT " now=" TT "\n", hpc->name, hpc->dt_dead_check, dead_next_check, apr_time_now());
         }
 
-        hpc_wait(hpc, dt);
-        process_results(hpc);  //** Always start up and clear out any backend tasks to make room for new submits
-        if (!finished) finished = fetch_tasks(hpc);
+        process_incoming(hpc);  //** Get tasks
         ntodo = hpc_submit_tasks(hpc);
-        process_results(hpc);
-        if ((finished == 1) && (ntodo == 0)) done = 1;
+        if ((hpc->finished == 1) && (ntodo == 0)) done = 1;
     } while (!done);
-
-log_printf(15, "AFTER LOOP name=%s\n", hpc->name);
 
     ntodo = submit_shutdown(hpc);
     wait_for_shutdown(hpc, ntodo);
@@ -934,8 +870,6 @@ log_printf(15, "AFTER LOOP name=%s\n", hpc->name);
         apr_hash_set(hpc->hp, hp->skey, APR_HASH_KEY_STRING, NULL);
         hp_destroy(hp);
     }
-
-log_printf(15, "END name=%s\n", hpc->name);
 
     return(NULL);
 }
@@ -952,7 +886,7 @@ void *hc_send_thread(apr_thread_t *th, void *data)
     tbx_ns_t *ns = hc->ns;
     gop_op_generic_t *gop;
     gop_command_op_t *hop;
-    conn_cmd_t cmd;
+    hpc_cmd_t cmd;
     apr_time_t dt, start_time, timeout;
     int err, nbytes;
     gop_op_status_t finished;
@@ -1030,7 +964,6 @@ log_printf(15, "hp=%s sending CONN_CLOSE_REQUEST\n", hp->skey);
         cmd.cmd = CONN_CLOSE_REQUEST;
         cmd.hc = hc;
         tbx_que_put(hc->outgoing, &cmd, TBX_QUE_BLOCK);
-        hpc_notify(hpc);
 
         //** Wait until I get an official close request
         //** In the meantime just dump all the requests bak on the que
@@ -1066,7 +999,7 @@ void *hc_recv_thread(apr_thread_t *th, void *data)
     gop_command_op_t *hop;
     apr_time_t dt, start_time, timeout;
     int nbytes;
-    conn_cmd_t cmd;
+    hpc_cmd_t cmd;
     gop_op_status_t status;
 
     //** Wait to make sure the send_thread connected
@@ -1077,7 +1010,6 @@ void *hc_recv_thread(apr_thread_t *th, void *data)
         cmd.hc = hc;
 log_printf(15, "hp=%s CONN_CLOSED\n", hc->hp->skey);
         tbx_que_put(hc->outgoing, &cmd, TBX_QUE_BLOCK);
-        hpc_notify(hpc);
         apr_thread_exit(th, 0);
         return(NULL);
     }
@@ -1087,7 +1019,6 @@ log_printf(15, "hp=%s CONN_READY\n", hc->hp->skey);
     cmd.cmd = CONN_READY;
     cmd.hc = hc;
     tbx_que_put(hc->outgoing, &cmd, TBX_QUE_BLOCK);
-    hpc_notify(hpc);
 
     //** Now enter the main loop
     status = gop_success_status;
@@ -1130,7 +1061,6 @@ log_printf(15, "hp=%s gid=%d status=%d\n", hp->skey, gop_id(gop), status.op_stat
         gop_mark_completed(gop, status);
 
         tbx_que_put(hc->outgoing, &cmd, TBX_QUE_BLOCK);
-        hpc_notify(hpc);
     }
 
 
@@ -1141,7 +1071,6 @@ log_printf(15, "hp=%s sending a CONN_CLOSE_REQUEST\n", hp->skey);
         cmd.cmd = CONN_CLOSE_REQUEST;
         cmd.hc = hc;
         tbx_que_put(hc->outgoing, &cmd, TBX_QUE_BLOCK);
-        hpc_notify(hpc);
 
         //** Wait until I get an official close request
         //** In the meantime just dump all the requests back on the que
@@ -1157,7 +1086,6 @@ log_printf(15, "hp=%s Got a CONN_CLOSE\n", hp->skey);
     cmd.cmd = CONN_CLOSED;
     cmd.hc = hc;
     tbx_que_put(hc->outgoing, &cmd, TBX_QUE_BLOCK);
-    hpc_notify(hpc);
 
     apr_thread_exit(th, 0);
     return(NULL);
@@ -1175,11 +1103,11 @@ hconn_t *hconn_new(hportal_t *hp, tbx_que_t *outgoing, apr_pool_t *mpool)
 
     hc->hp = hp;
     hp->limbo_conn++;
-    hc->incoming = tbx_que_create(1000, sizeof(conn_cmd_t));
-    hc->internal = tbx_que_create(10000, sizeof(conn_cmd_t));
+    hc->incoming = tbx_que_create(1000, sizeof(hpc_cmd_t));
+    hc->internal = tbx_que_create(10000, sizeof(hpc_cmd_t));
     hc->ns = tbx_ns_new();
 
-    hc->outgoing = hp->hpc->results_que;
+    hc->outgoing = hp->hpc->que;
 
     tbx_thread_create_warn(err, &(hc->send_thread), NULL, hc_send_thread, (void *)hc, mpool);
     tbx_thread_create_warn(err, &(hc->recv_thread), NULL, hc_recv_thread, (void *)hc, mpool);
@@ -1314,9 +1242,9 @@ int gop_hp_que_op_submit(gop_portal_context_t *hpc, gop_op_generic_t *op)
     hpc_cmd_t cmd;
 
     cmd.cmd = HPC_CMD_GOP;
-    cmd.gop = op;
+    cmd.ptr = op;
 
-    return(tbx_que_put(hpc->gop_que, &cmd, TBX_QUE_BLOCK));
+    return(tbx_que_put(hpc->que, &cmd, TBX_QUE_BLOCK));
 }
 
 //************************************************************************
@@ -1365,8 +1293,7 @@ gop_portal_context_t *gop_hp_context_create(gop_portal_fn_t *imp, char *name)
 
     assert_result(apr_pool_create(&(hpc->pool), NULL), APR_SUCCESS);
     hpc->hp = apr_hash_make(hpc->pool); FATAL_UNLESS(hpc->hp != NULL);
-    hpc->results_que = tbx_que_create(10000, sizeof(conn_cmd_t));
-    hpc->gop_que = tbx_que_create(10000, sizeof(hpc_cmd_t));
+    hpc->que = tbx_que_create(10000, sizeof(hpc_cmd_t));
 
     hpc->dt_dead_timeout = apr_time_from_sec(5*60);
     hpc->dt_dead_check = apr_time_from_sec(60);
@@ -1423,13 +1350,11 @@ void gop_hp_context_destroy(gop_portal_context_t *hpc)
 
     //** Shutdown all the connections and the main thread
     cmd.cmd = HPC_CMD_SHUTDOWN;
-    tbx_que_put(hpc->gop_que, &cmd, TBX_QUE_BLOCK);
-    hpc_notify(hpc);
+    tbx_que_put(hpc->que, &cmd, TBX_QUE_BLOCK);
     apr_thread_join(&val, hpc->main_thread);
 
     //** Cleanup
-    tbx_que_destroy(hpc->results_que);
-    tbx_que_destroy(hpc->gop_que);
+    tbx_que_destroy(hpc->que);
     apr_hash_clear(hpc->hp);
     apr_pool_destroy(hpc->pool);
 
