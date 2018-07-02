@@ -18,29 +18,74 @@
 
 #include <stdio.h>
 #include <stdarg.h>
+#include <stdlib.h>
 
 #include "tbx/append_printf.h"
 
 //***************************************************************************
-// append_printf - Appends data to the end of a string and also updates the
+// append_printf_valist - Appends data to the end of a string and also updates the
 //     length.
 //***************************************************************************
 
-int tbx_append_printf(char *buffer, int *used, int nbytes, const char *fmt, ...)
+int append_printf_valist(char *buffer, int *used, int nbytes, const char *fmt, va_list args)
 {
-    va_list args;
     int n, nleft;
 
     nleft = nbytes - *used;
     if (nleft <= 0) return(-1);
 
-    va_start(args, fmt);
     n = vsnprintf(&(buffer[*used]), nleft, fmt, args);
-    va_end(args);
 
     *used = *used + n;
 
-    if (*used >= nbytes) n = -1;
+    if (*used >= nbytes) n = -n;
+
+    return(n);
+}
+
+//***************************************************************************
+// tbx_append_printf - Appends data to the end of a string and also updates the
+//     length.
+//***************************************************************************
+
+int tbx_append_printf(char *buffer, int *used, int nbytes, const char *fmt, ...)
+{
+    int n;
+    va_list args;
+
+    va_start(args, fmt);
+    n = append_printf_valist(buffer, used, nbytes, fmt, args);
+    va_end(args);
+
+    return(n);
+}
+
+//***************************************************************************
+// tbx_alloc_append_printf - Appends data to the end of a string and automatically grows
+//     the the buffer and updates the length
+//***************************************************************************
+
+int tbx_alloc_append_printf(char **buffer, int *used, int *nbytes, const char *fmt, ...)
+{
+    va_list args;
+    int n;
+    int len = *used;
+
+    if (*nbytes == 0) {
+        *nbytes = 256;
+        *buffer = malloc(*nbytes);
+    }
+
+    va_start(args, fmt);
+again:
+    n = append_printf_valist(*buffer, used, *nbytes, fmt, args);
+    if (n < 0) {
+        *used = len;
+        *nbytes = 2 * (*nbytes) + n;
+        *buffer = realloc(*buffer, *nbytes);
+        goto again;
+    }
+    va_end(args);
 
     return(n);
 }

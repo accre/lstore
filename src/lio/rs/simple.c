@@ -612,7 +612,7 @@ char *rss_get_rid_config(lio_resource_service_fn_t *rs)
                 if ((strcmp("rid_key", key) != 0) && (strcmp("ds_key", key) != 0)) tbx_append_printf(buffer, &used, bufsize, "%s=%s\n", key, val);
             }
 
-            if (tbx_append_printf(buffer, &used, bufsize, "\n") == -1) break;  //** Kick out have to grow the buffer
+            if (tbx_append_printf(buffer, &used, bufsize, "\n") < 0) break;  //** Kick out have to grow the buffer
         }
     } while (used >= bufsize);
 
