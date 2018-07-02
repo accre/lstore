@@ -13,6 +13,7 @@
 #include <unistd.h>
 
 #include "tbx/assert_result.h"
+#include "tbx/append_printf.h"
 #include "tbx/atomic_counter.h"
 #include "tbx/fmttypes.h"
 #include "tbx/iniparse.h"
@@ -22,6 +23,8 @@
 #include "tbx/type_malloc.h"
 
 #define BUFMAX 8192
+
+char *hint_ops[] = { "--ini-hint-add", "--ini-hint-remove", "--ini-hint-replace", "--ini-hint-default" };
 
 typedef struct {
     FILE *fd;
@@ -54,6 +57,15 @@ struct tbx_inip_file_t {  //File
     tbx_inip_group_t *tree;
     int  n_groups;
     tbx_atomic_int_t ref_count;
+};
+
+struct tbx_inip_hint_t {  //** Overriding hint
+    char *section;
+    char *key;
+    char *value;
+    int op;
+    int section_rank;
+    int key_rank;
 };
 
 // Accessors
@@ -238,6 +250,21 @@ again:
     return(bfd->curr->buffer);
 }
 
+
+//***********************************************************************
+// new_ele -Makes a new Key/value element
+//***********************************************************************
+tbx_inip_element_t *new_ele(char *key, char *val)
+{
+    tbx_inip_element_t *ele;
+
+    tbx_type_malloc(ele,  tbx_inip_element_t, 1);
+    ele->key = key;
+    ele->value = val;;
+    ele->next = NULL;
+    return(ele);
+}
+
 //***********************************************************************
 //  _parse_ele - Parses the element
 //***********************************************************************
@@ -262,12 +289,7 @@ tbx_inip_element_t *_parse_ele(bfile_t *bfd)
         if (fin == 0) {
             val = tbx_stk_string_token(NULL, " =\r\n", &last, &fin);
 
-            tbx_type_malloc(ele,  tbx_inip_element_t, 1);
-
-            ele->key = strdup(key);
-            ele->value = (val == NULL) ? NULL : strdup(val);
-            ele->next = NULL;
-
+            ele = new_ele(strdup(key), (val ? strdup(val) : NULL));
             log_printf(15, "_parse_ele: key=%s value=%s\n", ele->key, ele->value);
             return(ele);
         }
@@ -299,6 +321,21 @@ void _parse_group(bfile_t *bfd, tbx_inip_group_t *group)
 }
 
 //***********************************************************************
+// new_group
+//***********************************************************************
+
+tbx_inip_group_t *new_group(char *name)
+{
+    tbx_inip_group_t *g;
+
+    tbx_type_malloc(g, tbx_inip_group_t, 1);
+    g->group = name;
+    g->list = NULL;
+    g->next = NULL;
+    return(g);
+}
+
+//***********************************************************************
 //  _next_group - Retreives the next group from the input file
 //***********************************************************************
 
@@ -326,10 +363,7 @@ tbx_inip_group_t *_next_group(bfile_t *bfd)
             start++;  //** Move the starting point to the next character
 
             text = tbx_stk_string_trim(start); //** Trim the whitespace
-            tbx_type_malloc(g, tbx_inip_group_t, 1);
-            g->group = strdup(text);
-            g->list = NULL;
-            g->next = NULL;
+            g = new_group(strdup(text));
             log_printf(15, "_next_group: group=%s\n", g->group);
             _parse_group(bfd, g);
             return(g);
@@ -757,7 +791,408 @@ int tbx_inip_file2string(const char *fname, char **text_out, int *nbytes)
 //  inip_text2string - Loads a INI file resolving dependencies and
 //     converts it ot a string.
 //***********************************************************************
+
 int tbx_inip_text2string(const char *text, char **text_out, int *nbytes)
 {
     return(inip_convert2string(NULL, text, text_out, nbytes, NULL));
 }
+
+//***********************************************************************
+//  tbx_inip_serialize - Converts the INI file structure to a string
+//***********************************************************************
+
+char *tbx_inip_serialize(tbx_inip_file_t *fd)
+{
+    tbx_inip_group_t *group;
+    tbx_inip_element_t *ele;
+    char *text;
+    int used, nbytes;
+
+    used = 0;
+    nbytes = 10*1024;
+    tbx_type_malloc(text, char, nbytes);
+
+    group = fd->tree;
+    while (group != NULL) {
+        tbx_alloc_append_printf(&text, &used, &nbytes, "[%s]\n", group->group);
+        ele = group->list;
+        while (ele) {
+            tbx_alloc_append_printf(&text, &used, &nbytes, "%s=%s\n", ele->key, ele->value);
+            ele = ele->next;
+        }
+
+        tbx_alloc_append_printf(&text, &used, &nbytes, "\n");
+        group = group->next;
+    }
+
+    return(text);
+}
+
+//-----------------------------------------------------------------------
+//           ------- Hint routines are below --------
+//-----------------------------------------------------------------------
+
+//***********************************************************************
+// tbx_inip_hint_new - Creates a hint
+//***********************************************************************
+
+tbx_inip_hint_t *tbx_inip_hint_new(int op, char *section, int section_rank, char *key, int key_rank, char *value)
+{
+    tbx_inip_hint_t *h;
+
+    tbx_type_malloc(h, tbx_inip_hint_t, 1);
+    h->op = op;
+    h->section = (section) ? strdup(section) : NULL;
+    h->section_rank = section_rank;
+    h->key = (key) ? strdup(key) : NULL;
+    h->key_rank = key_rank;
+    h->value = (value) ? strdup(value) : NULL;
+
+    return(h);
+}
+
+//***********************************************************************
+// tbx_inip_hint_destroy - Destroys a hint
+//***********************************************************************
+
+void tbx_inip_hint_destroy(tbx_inip_hint_t *h)
+{
+    if (h->section) free(h->section);
+    if (h->key) free(h->key);
+    if (h->value) free(h->value);
+    free(h);
+}
+
+//***********************************************************************
+// tbx_inip_hint_list_destroy - Destroys a hint list
+//***********************************************************************
+
+void tbx_inip_hint_list_destroy(tbx_stack_t *list)
+{
+    tbx_inip_hint_t *h;
+
+    for (h = tbx_stack_top_first(list); h != NULL; h = tbx_stack_next_down(list)) {
+        tbx_inip_hint_destroy(h);
+    }
+
+    tbx_stack_free(list, 0);
+}
+
+//***********************************************************************
+// tbx_inip_hint_parse - Parses a hint string and creates a new hint
+//    Format: section:rank/key:rank=value
+//            section:rank
+//***********************************************************************
+
+tbx_inip_hint_t *tbx_inip_hint_parse(int op, char *text)
+{
+    tbx_inip_hint_t *h;
+    char *base, *section, *key, *value, *bstate, *bs2, *tmp, *s;
+    int srank, krank;
+
+    base = strdup(text);
+
+    h = 0;
+    section = key = value = NULL;
+    srank = krank = 0;
+    if (index(text, '/') == NULL) {  //** section:rank
+        section = strtok_r(base, ":", &bstate);
+        if (!section) {
+            log_printf(-1, "(1)ERROR parsing INI hint: %s\n", text);
+            goto error;
+        }
+        tmp = strtok_r(NULL, ":", &bstate);
+        srank = (tmp) ? atol(tmp) : 0;
+    } else {
+        s = strtok_r(base, "/", &bstate);
+        if (index(s, ':') != NULL) {
+            section = strtok_r(s, ":", &bs2);
+            tmp = strtok_r(NULL, "/", &bs2);
+            srank = (tmp) ? atol(tmp) : 0;
+        } else {
+            section = strdup(s);
+        }
+
+        if (!section) {
+            log_printf(-1, "(2)ERROR parsing INI hint: %s\n", text);
+            goto error;
+        }
+
+        //** Now process the key:rank=value
+        s = strtok_r(NULL, "=", &bstate);
+        if (index(s, ':') != NULL) {
+            key = strtok_r(s, ":", &bs2);
+            tmp = strtok_r(NULL, "=", &bs2);
+            krank = (tmp) ? atol(tmp) : 0;
+            value = strtok_r(NULL, "=", &bstate);
+        } else {
+            key = s;
+            value = strtok_r(NULL, "=", &bstate);
+        }
+    }
+
+    h = tbx_inip_hint_new(op, section, srank, key, krank, value);
+error:
+    free(base);
+    return(h);
+}
+
+//***********************************************************************
+// tbx_inip_hint_options_parse - Sift through the provided argv/argc
+//    and pluck out the hint options compacting the argv array and adjust argc
+//***********************************************************************
+
+void tbx_inip_hint_options_parse(tbx_stack_t *list, char **argv, int *argc)
+{
+    int i, op, n, hit;
+    tbx_inip_hint_t *h;
+
+    n = 0;
+    i = 0;
+    while (i<*argc) {  //** Loop over all the args
+        hit = 0;
+        for (op=0; op<4; op++) {  //** See if we find a match
+            if (strcmp(hint_ops[op], argv[i]) == 0) {  //** If so store it
+                h = tbx_inip_hint_parse(op, argv[i+1]);
+                tbx_stack_move_to_bottom(list);
+                tbx_stack_insert_below(list, h);
+                hit = 1;
+                break;
+            }
+        }
+
+        if (hit == 1) {  //** Got a hit
+            i = i + 2;   //** so only update the arg index
+        } else {  //** No hit
+            if (n != i) argv[n] = argv[i];  //** Slide the args down if needed
+            n++;   //** Update the new running total of args
+            i++;   //** and the global arg position
+        }
+    }
+
+    *argc = n;  //** Record the new arg count
+    return;
+}
+
+
+//***********************************************************************
+// hint_add - Applies the add hint
+//***********************************************************************
+
+int hint_add(tbx_inip_file_t *fd, tbx_inip_hint_t *h)
+{
+    int n, gr_match, kr_match;
+    tbx_inip_group_t *g, *group, *pg, *gprev;
+    tbx_inip_element_t *k, *key, *pk, *kprev;
+
+    gr_match = kr_match = 0;
+
+    //** Find the section
+    group = pg = NULL;
+    n = 0;
+    for (g = fd->tree; g != NULL; g = g->next) {
+        if (strcmp(g->group, h->section) == 0) {
+            n++;
+            group = g;
+            gprev = pg;
+            if ((n == h->section_rank) || (0 == h->section_rank)) {
+                gr_match = 1;
+                break;
+            }
+        }
+        pg = g;
+    }
+
+    if (h->section_rank == -1) {
+        gr_match = 1;
+    }
+    if (h->key == NULL) {
+        if (((h->section_rank-1) == n) || (h->section_rank == -1)) {
+             gr_match = 1;
+             gprev = group;
+             group = group->next;
+        }
+    }
+    if ((gr_match == 0) && (h->section_rank == 0)) {  //** No match is Ok if an ADD operation
+        gr_match = 1;
+        group = NULL;
+        gprev = pg;
+    }
+
+    if (gr_match == 0) return(1);  //** No match so kick out
+
+    //** And the key
+    key = pk = kprev = NULL;
+    if ((h->key) && (group)) {
+        n = 0;
+        for (k = group->list; k != NULL; k = k->next) {
+            if (strcmp(k->key, h->key) == 0) {
+                n++;
+                key = k;
+                kprev = pk;
+                if ((n == h->key_rank) || (0 == h->key_rank)) {
+                    kr_match = 1;
+                    break;
+                }
+            }
+            pk = k;
+        }
+        if (kr_match == 0) {
+            if (h->key_rank == 0) {  //** No match is Ok if an ADD operation
+                kr_match = 1;
+                key = NULL;
+                kprev = pk;
+            } else if (((h->key_rank-1) == n) || (h->key_rank == -1)) {
+                kr_match = 1;
+                kprev = key;
+                key = key->next;
+            }
+        }
+
+        if (kr_match == 0) return(1);  //** No match so kick out
+
+    }
+
+    if (!group) { //** No group so add it
+        group = new_group(strdup(h->section));
+        if (gprev) {
+            gprev->next = group;
+        } else {
+            fd->tree = group;
+        }
+    } else if (!h->key) {
+        g = new_group(strdup(h->section));
+        gprev->next = g;
+        g->next = group;
+    }
+
+    //** Make the new key
+    if (h->key) {
+        k = new_ele(strdup(h->key), (h->value ? strdup(h->value) : NULL));
+        if (kprev) {
+            kprev->next = k;
+        } else {
+            group->list = k;
+        }
+        k->next = key;
+    }
+
+    return(0);
+}
+
+
+//***********************************************************************
+// hint_remove - Applies the remove hint
+//***********************************************************************
+
+int hint_remove(tbx_inip_file_t *fd, tbx_inip_hint_t *h, int check_only)
+{
+    int n, gr_match, kr_match;
+    tbx_inip_group_t *g, *group, *pg, *gprev;
+    tbx_inip_element_t *k, *key, *pk, *kprev;
+
+    gr_match = kr_match = 0;
+
+    //** Find the section
+    group = pg = NULL;
+    n = 0;
+    for (g = fd->tree; g != NULL; g = g->next) {
+        if (strcmp(g->group, h->section) == 0) {
+            n++;
+            group = g;
+            gprev = pg;
+            if ((n == h->section_rank) || (0 == h->section_rank)) {
+                gr_match = 1;
+                break;
+            }
+        }
+        pg = g;
+    }
+
+    //** We found a match but maybe not the one we want
+    if ((group) && (gr_match == 0) && (h->section_rank == -1)) gr_match = 1;
+
+    if (gr_match == 0) return(1);  //** No match so kick out
+
+    //** And the key
+    key = pk = kprev = NULL;
+    if ((h->key) && (group)) {
+        n = 0;
+        for (k = group->list; k != NULL; k = k->next) {
+            if (strcmp(k->key, h->key) == 0) {
+                n++;
+                key = k;
+                kprev = pk;
+                if ((n == h->key_rank) || (0 == h->key_rank)) {
+                    kr_match = 1;
+                    break;
+                }
+            }
+            pk = k;
+        }
+        if ((kr_match == 0) && (h->key_rank == -1) && (key)) kr_match = 1;
+
+        if (kr_match == 0) return(1);  //** No match so kick out
+    }
+
+    if (check_only) return(0);
+
+    if (h->key) {  //** Just delete the key
+        if (kprev) {
+            kprev->next = key->next;
+        } else {
+            group->list = key->next;
+        }
+        _free_element(key);
+    } else {  //** Delete the entire group
+        if (gprev) {
+            gprev->next = group->next;
+        } else {
+            fd->tree = group->next;
+        }
+        _free_group(group);
+    }
+
+    return(0);
+}
+
+//***********************************************************************
+// tbx_inip_hint_apply - Applies the hint to the current INI
+//    file descriptor
+//***********************************************************************
+
+int tbx_inip_hint_apply(tbx_inip_file_t *fd, tbx_inip_hint_t *h)
+{
+    switch(h->op) {
+        case TBX_INIP_HINT_ADD:
+            return(hint_add(fd, h));
+        case TBX_INIP_HINT_REMOVE:
+            return(hint_remove(fd, h, 0));
+        case TBX_INIP_HINT_REPLACE:
+            hint_remove(fd, h, 0);
+            return(hint_add(fd,h));
+        case TBX_INIP_HINT_DEFAULT:
+            if (hint_remove(fd, h, 1) != 0) return(hint_add(fd,h));
+            return(0);
+    }
+
+    return(1);
+}
+
+//***********************************************************************
+// tbx_inip_hint_list_apply - Applies the hint list to the current INI
+//    file descriptor
+//***********************************************************************
+
+int tbx_inip_hint_list_apply(tbx_inip_file_t *fd, tbx_stack_t *list)
+{
+    tbx_inip_hint_t *h;
+    int n;
+
+    n = 0;
+    for (h=tbx_stack_top_first(list); h!=NULL; h=tbx_stack_next_down(list)) {
+        n += tbx_inip_hint_apply(fd, h);
+    }
+    return(n);
+}
+

@@ -20,11 +20,19 @@
 
 #include <apr_time.h>
 #include <inttypes.h>
+#include <tbx/stack.h>
 #include <tbx/visibility.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+//** Various different hint types **
+#define TBX_INIP_HINT_ADD      0
+#define TBX_INIP_HINT_REMOVE   1
+#define TBX_INIP_HINT_REPLACE  2
+#define TBX_INIP_HINT_DEFAULT  3
+
 
 // Types
 typedef struct tbx_inip_element_t tbx_inip_element_t;
@@ -32,6 +40,8 @@ typedef struct tbx_inip_element_t tbx_inip_element_t;
 typedef struct tbx_inip_file_t tbx_inip_file_t;
 
 typedef struct tbx_inip_group_t tbx_inip_group_t;
+
+typedef struct tbx_inip_hint_t tbx_inip_hint_t;
 
 // Functions
 TBX_API tbx_inip_file_t *tbx_inip_dup(tbx_inip_file_t *ifd);
@@ -57,6 +67,15 @@ TBX_API tbx_inip_file_t *tbx_inip_file_read(const char *fname);
 TBX_API tbx_inip_file_t *tbx_inip_string_read(const char *text);
 TBX_API int tbx_inip_file2string(const char *fname, char **text_out, int *nbytes);
 TBX_API int tbx_inip_text2string(const char *text, char **text_out, int *nbytes);
+TBX_API char *tbx_inip_serialize(tbx_inip_file_t *fd);
+
+//*** Hint routines
+TBX_API tbx_inip_hint_t *tbx_inip_hint_new(int op, char *section, int section_rank, char *key, int key_rank, char *value);
+TBX_API void tbx_inip_hint_destroy(tbx_inip_hint_t *h);
+TBX_API void tbx_inip_hint_list_destroy(tbx_stack_t *list);
+TBX_API int tbx_inip_hint_apply(tbx_inip_file_t *fd, tbx_inip_hint_t *h);
+TBX_API int tbx_inip_hint_list_apply(tbx_inip_file_t *fd, tbx_stack_t *list);
+TBX_API void tbx_inip_hint_options_parse(tbx_stack_t *list, char **argv, int *argc);
 
 #ifdef __cplusplus
 }
