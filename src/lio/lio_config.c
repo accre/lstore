@@ -1283,9 +1283,10 @@ int env2args(char *env, int *argc, char ***eargv)
 //char **t2 = NULL;
 int lio_init(int *argc, char ***argvp)
 {
-    int i, j, k, ll, ll_override, neargs, nargs, auto_mode, ifll, if_mode;
+    int i, j, k, ll, ll_override, neargs, nargs, auto_mode, ifll, if_mode, print_config;
     FILE *fd;
     tbx_inip_file_t *ifd;
+    tbx_stack_t *hints;
     char *name, *info_fname;
     char var[4096];
     char *dummy = NULL;
@@ -1368,6 +1369,7 @@ int lio_init(int *argc, char ***argvp)
     nargs = 1;  //** argv[0] is preserved as the calling name
     myargv[0] = argv[0];
     i=1;
+    print_config = 0;
     ll_override = -100;
     ifll = 0;
     if_mode = INFO_HEADER_NONE;
@@ -1375,6 +1377,10 @@ int lio_init(int *argc, char ***argvp)
     auto_mode = -1;
 
     if (*argc < 2) goto no_args;  //** Nothing to parse
+
+    //** Load the hints if we have any
+    hints = tbx_stack_new();
+    tbx_inip_hint_options_parse(hints, argv, argc);
 
     do {
         if (strcmp(argv[i], "-d") == 0) { //** Enable debugging
@@ -1420,6 +1426,9 @@ int lio_init(int *argc, char ***argvp)
             i++;
             section_name = argv[i];
             i++;
+        } else if (strcmp(argv[i], "--print-config") == 0) { //** Default LIO config section
+            i++;
+            print_config = 1;
         } else {
             myargv[nargs] = argv[i];
             nargs++;
@@ -1527,12 +1536,26 @@ no_args:
         exit(1);
     }
 
+    tbx_inip_hint_list_apply(ifd, hints);  //** Apply the hints
+    tbx_inip_hint_list_destroy(hints);     //** and cleanup
+
     tbx_mlog_load(ifd, out_override, ll_override);
     lio_gc = lio_create(ifd, section_name, userid, obj_name, name);
     if (!lio_gc) {
         log_printf(-1, "Failed to create lio context.\n");
         return 1;
     }
+
+    if (print_config) {
+        char *cfg_dump = tbx_inip_serialize(lio_gc->ifd);
+        info_printf(lio_ifd, 0, "-------------------Dumping LStore config-------------------\n");
+        info_printf(lio_ifd, 0, "Config string: %s   Section: %s\n", cfg_name, section_name);
+        info_printf(lio_ifd, 0, "-----------------------------------------------------------\n\n");
+        info_printf(lio_ifd, 0, "%s", cfg_dump);
+        info_printf(lio_ifd, 0, "-----------------------------------------------------------\n\n");
+        if (cfg_dump) free(cfg_dump);
+    }
+
 
     lio_gc->ref_cnt = 1;
 
