@@ -17,6 +17,7 @@ option(BUILD_TESTS "Build tests" ON)
 option(BUILD_JERASURE "Build Jerasure from source" ON)
 option(BUILD_GRIDFTP "Build GridFTP bindings" OFF)
 option(BUILD_TCMU "Build TCMU-Runner bindings" OFF)
+option(BUILD_HDFS "Build HDFS bindings" OFF)
 
 option(ENABLE_COVERAGE "Enable code coverage" OFF)
 option(ENABLE_ASAN "Enable address sanitizer" OFF)
@@ -344,6 +345,9 @@ if(BUILD_GRIDFTP)
 endif()
 if(BUILD_TCMU)
     add_subdirectory(binding/tcmu)
+endif()
+if(BUILD_HDFS)
+    add_subdirectory(binding/hdfs)
 endif()
 
 # Import packaging
