@@ -1565,7 +1565,7 @@ ex_off_t lio_seek(lio_fd_t *fd, ex_off_t offset, int whence)
 
     segment_lock(fd->fh->seg);
     fd->curr_offset = moveto;
-    segment_lock(fd->fh->seg);
+    segment_unlock(fd->fh->seg);
 
     return(moveto);
 }
