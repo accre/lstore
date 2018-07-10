@@ -66,6 +66,7 @@ LIO_API int lio_write_ex(lio_fd_t *fd, int n_iov, ex_tbx_iovec_t *iov, tbx_tbuf_
 LIO_API int lio_stat(lio_config_t *lc, lio_creds_t *creds, char *fname, struct stat *stat, char *mount_prefix, char **readlink);
 LIO_API int lio_wq_enable(lio_fd_t *fd, int max_in_flight);
 
+LIO_API void lio_get_timestamp(char *val, int *timestamp, char **id);
 LIO_API ex_off_t lio_seek(lio_fd_t *fd, ex_off_t offset, int whence);
 LIO_API ex_off_t lio_tell(lio_fd_t *fd);
 LIO_API ex_off_t lio_size(lio_fd_t *fd);
@@ -161,8 +162,13 @@ enum lio_fsck_error_flags_t {
     LIO_FSCK_MISSING           =  (1 << 4),
 };
 
-//**! FIXME only one of these? Why?
 #define LIO_READ_MODE      1
+#define LIO_WRITE_MODE     2
+#define LIO_TRUNCATE_MODE  4
+#define LIO_CREATE_MODE    8
+#define LIO_APPEND_MODE   16
+#define LIO_EXCL_MODE     32
+#define LIO_RW_MODE       (LIO_READ_MODE|LIO_WRITE_MODE)
 
 typedef enum lio_copy_hint_t lio_copy_hint_t;
 enum lio_copy_hint_t {
