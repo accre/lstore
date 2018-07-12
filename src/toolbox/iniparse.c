@@ -1196,3 +1196,24 @@ int tbx_inip_hint_list_apply(tbx_inip_file_t *fd, tbx_stack_t *list)
     return(n);
 }
 
+//***********************************************************************
+// tbx_inip_print_hint_options - Prints the hint options format to the FD
+//***********************************************************************
+
+void tbx_inip_print_hint_options(FILE *fd)
+{
+    fprintf(fd, "    INI_OPTIONS - Override configuration options. Multiple options are allowed and applied in the order given.\n");
+    fprintf(fd, "       --ini-hint-add  INI_ARG    - Add the option\n");
+    fprintf(fd, "       --ini-hint-remove  INI_ARG - Remove the option\n");
+    fprintf(fd, "       --ini-hint-replace INI_ARG - Replace the option if it exists otherwise add it\n");
+    fprintf(fd, "       --ini-hint-default INI_ARG - Only add the option if it doesn't exist\n");
+    fprintf(fd, "\n");
+    fprintf(fd, "       INI_ARG format: section[:index]/key[:index]=value\n");
+    fprintf(fd, "          section - INI Section name\n");
+    fprintf(fd, "          key     - Key within the INI section\n");
+    fprintf(fd, "          value   - Key value\n");
+    fprintf(fd, "          index   - Which section or key to target. Since sections and keys are not unique\n");
+    fprintf(fd, "                    this allows you select a specific one. The special value -1 insures the\n");
+    fprintf(fd, "                    last option is selected with numbering starting at 1.\n");
+    fprintf(fd, "\n");
+}

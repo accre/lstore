@@ -783,7 +783,9 @@ void lio_print_options(FILE *fd)
     fprintf(fd, "       -it N              - Print information messages of level N or greater. Thread ID header is used\n");
     fprintf(fd, "       -if N              - Print information messages of level N or greater. Full header is used\n");
     fprintf(fd, "       -ilog info_log_out - Where to send informational log output.\n");
+    fprintf(fd, "       --print-config     - Print the loaded config.\n");
     fprintf(fd, "\n");
+    tbx_inip_print_hint_options(fd);
 }
 
 //***************************************************************

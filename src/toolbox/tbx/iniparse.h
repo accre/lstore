@@ -19,6 +19,7 @@
 #define ACCRE_INIPARSE_H_INCLUDED
 
 #include <apr_time.h>
+#include <stdio.h>
 #include <inttypes.h>
 #include <tbx/stack.h>
 #include <tbx/visibility.h>
@@ -76,6 +77,7 @@ TBX_API void tbx_inip_hint_list_destroy(tbx_stack_t *list);
 TBX_API int tbx_inip_hint_apply(tbx_inip_file_t *fd, tbx_inip_hint_t *h);
 TBX_API int tbx_inip_hint_list_apply(tbx_inip_file_t *fd, tbx_stack_t *list);
 TBX_API void tbx_inip_hint_options_parse(tbx_stack_t *list, char **argv, int *argc);
+TBX_API void tbx_inip_print_hint_options(FILE *fd);
 
 #ifdef __cplusplus
 }
