@@ -36,9 +36,9 @@
 char *_siginfo_name = NULL;
 tbx_stack_t *_si_list = NULL;
 apr_thread_mutex_t *_si_lock = NULL;
-apr_thread_t *_si_thread = NULL;
-apr_thread_t *_si_thread_join = NULL;
 apr_pool_t *_si_pool = NULL;
+apr_thread_t *_si_thread = NULL;
+
 int _signal = -1234;
 
 typedef struct {  // ** info handler task
@@ -100,13 +100,13 @@ void *siginfo_thread(apr_thread_t *th, void *data)
     si_task_t *t;
     apr_status_t ret = 0;
 
-    apr_thread_mutex_lock(_si_lock);
-    if (_si_thread_join) apr_thread_join(&ret, _si_thread_join);  //** Cleanup old invocation if needed
+    apr_thread_detach(th);  //** Detach us
 
+    apr_thread_mutex_lock(_si_lock);
     fd = fopen((_siginfo_name) ? _siginfo_name : "/tmp/siginfo.log", "w");
     if (fd == NULL) {
         log_printf(0, "Unable to dump info to %s\n", _siginfo_name);
-        return(NULL);
+        goto failed;
     }
 
     tbx_stack_move_to_top(_si_list);
@@ -114,11 +114,10 @@ void *siginfo_thread(apr_thread_t *th, void *data)
         t->fn(t->arg, fd);
         tbx_stack_move_down(_si_list);
     }
-    apr_thread_mutex_unlock(_si_lock);
-
     fclose(fd);
 
-    _si_thread_join = th;  //** Track us for cleanup
+failed:
+    apr_thread_mutex_unlock(_si_lock);
 
     apr_thread_exit(th, ret);
     return(NULL);
@@ -131,10 +130,9 @@ void *siginfo_thread(apr_thread_t *th, void *data)
 
 void tbx_siginfo_handler(int sig)
 {
-    apr_status_t status;
-
-    if (_si_thread) apr_thread_join(&status, _si_thread);
+    apr_thread_mutex_lock(_si_lock);
     tbx_thread_create_assert(&_si_thread, NULL, siginfo_thread, NULL, _si_pool);
+    apr_thread_mutex_unlock(_si_lock);
 }
 
 // ***************************************************************
@@ -170,11 +168,7 @@ void tbx_siginfo_install(char *fname, int signal)
 
 void tbx_siginfo_shutdown()
 {
-    apr_status_t ret;
-
     if (!_si_pool) return;
-
-    if (_si_thread_join) apr_thread_join(&ret, _si_thread_join);  //** Cleanup old invocation if needed
 
     if (_signal != -1234) apr_signal_block(_signal);
     if (_siginfo_name) free(_siginfo_name);
