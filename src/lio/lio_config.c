@@ -1602,8 +1602,6 @@ int lio_shutdown()
         return 0;
     }
 
-    tbx_siginfo_shutdown();
-
     rc_server_destroy();
 
     cache_destroy(_lio_cache);
@@ -1629,6 +1627,8 @@ int lio_shutdown()
     apr_pool_destroy(_lc_mpool);
     _lc_mpool = NULL;
     _lc_lock  = NULL;
+
+    tbx_siginfo_shutdown();
 
     return(0);
 }
