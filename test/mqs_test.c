@@ -594,6 +594,7 @@ void *server_test_thread(apr_thread_t *th, void *arg)
 {
     gop_mq_context_t *mqc;
     gop_mq_command_table_t *table;
+    int i;
     char c;
 
     log_printf(0, "START\n");
@@ -617,7 +618,9 @@ void *server_test_thread(apr_thread_t *th, void *arg)
     gop_mq_portal_install(mqc, server_portal);
 
     //** Wait for a shutdown
-    gop_mq_pipe_read(control_efd[0], &c);
+    do {
+        i = gop_mq_pipe_read(control_efd[0], &c);
+    } while (i != 1);
 
     apr_thread_mutex_lock(lock);
     while (in_process != 0) {
@@ -756,7 +759,9 @@ int main(int argc, char **argv)
 
     //** Trigger the server to shutdown
     c = 1;
-    gop_mq_pipe_write(control_efd[1], &c);
+    do {
+        i = gop_mq_pipe_write(control_efd[1], &c);
+    } while (i != 1);
     apr_thread_join(&dummy, server_thread);
 
     gop_mq_pipe_destroy(ctx, control_efd);

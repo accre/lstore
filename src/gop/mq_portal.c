@@ -341,11 +341,17 @@ int gop_mq_submit(gop_mq_portal_t *p, gop_mq_task_t *task)
 
     //** Noitify the connections
     c = 1;
-    gop_mq_pipe_write(p->efd[1], &c);
+    do {
+        i = gop_mq_pipe_write(p->efd[1], &c);
+    } while (i != 1);
 
     //** Clean up the pipe if needed
     if (n_failed > 0) {
-        for (i=0; i<n_failed; i++) gop_mq_pipe_read(p->efd[0], &c);
+        for (i=0; i<n_failed; i++) {
+            do {
+                err = gop_mq_pipe_read(p->efd[0], &c);
+            } while (err != 1);
+        }
     }
     return(0);
 }
@@ -1184,10 +1190,10 @@ int mqc_process_task(gop_mq_conn_t *c, int *npoll, int *nproc)
     //** Slurp in the events we're going to process
     i = 0;
     for (j=0; j<size; j++) {
-        i = gop_mq_pipe_read(c->pc->efd[0], &v);
+        i =+ gop_mq_pipe_read(c->pc->efd[0], &v);
     }
 
-    if (i == -1) {
+    if (i < 0) {
         log_printf(1, "OOPS! read=-1 task=%p!\n", task);
     }
 
@@ -1430,7 +1436,7 @@ void *gop_mq_conn_thread(apr_thread_t *th, void *data)
 {
     gop_mq_conn_t *c = (gop_mq_conn_t *)data;
     int k, npoll, err, finished, nprocessed, nproc, nincoming, slow_exit, oops;
-    int short_running_max, submit_max;
+    int short_running_max, submit_max, i;
     long int heartbeat_ms;
     int64_t total_proc, total_incoming;
     gop_mq_pollitem_t pfd[3];
@@ -1456,7 +1462,11 @@ void *gop_mq_conn_thread(apr_thread_t *th, void *data)
 
     log_printf(5, "after conn_make err=%d\n", err);
 
-    if (c->cefd[0] != -1) write(c->cefd[1], &v, 1);
+    if (c->cefd[0] != -1) {
+        do {
+            i = write(c->cefd[1], &v, 1);
+        } while (i != 1);
+    }
 
     total_proc = total_incoming = 0;
     slow_exit = 0;
@@ -1608,7 +1618,10 @@ int mq_conn_create_actual(gop_mq_portal_t *p, int dowait)
     tbx_thread_create_assert(&(c->thread), NULL, gop_mq_conn_thread, (void *)c, p->mpool);
     err = 0;
     if (dowait == 1) {  //** If needed wait until connected
-        read(c->cefd[0], &v, 1);
+        do {
+            err = read(c->cefd[0], &v, 1);
+        } while (err != 1);
+
         //** n==1 is a success anything else is an error
         err = (v == 1) ? 0 : 1;
     }
@@ -1686,7 +1699,7 @@ void _mq_reap_closed(gop_mq_portal_t *p)
 
 void gop_mq_portal_destroy(gop_mq_portal_t *p)
 {
-    int i, n;
+    int i, j, n;
     char c;
 
     //** Tell how many connections to close
@@ -1699,7 +1712,11 @@ void gop_mq_portal_destroy(gop_mq_portal_t *p)
 
     //** Signal them
     c = 1;
-    for (i=0; i<n; i++) gop_mq_pipe_write(p->efd[1], &c);
+    for (i=0; i<n; i++) {
+        do {
+            j = gop_mq_pipe_write(p->efd[1], &c);
+        } while (j != 1);
+     }
 
     //** Wait for them all to complete
     apr_thread_mutex_lock(p->lock);

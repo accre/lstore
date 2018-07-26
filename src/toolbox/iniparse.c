@@ -893,6 +893,7 @@ tbx_inip_hint_t *tbx_inip_hint_parse(int op, char *text)
     base = strdup(text);
 
     h = 0;
+    bstate = bs2 = NULL;  //** Compiler thinks this may be used uninitialized
     section = key = value = NULL;
     srank = krank = 0;
     if (index(text, '/') == NULL) {  //** section:rank
@@ -988,7 +989,7 @@ int hint_add(tbx_inip_file_t *fd, tbx_inip_hint_t *h)
     gr_match = kr_match = 0;
 
     //** Find the section
-    group = pg = NULL;
+    group = pg = gprev = NULL;
     n = 0;
     for (g = fd->tree; g != NULL; g = g->next) {
         if (strcmp(g->group, h->section) == 0) {
@@ -1094,7 +1095,7 @@ int hint_remove(tbx_inip_file_t *fd, tbx_inip_hint_t *h, int check_only)
     gr_match = kr_match = 0;
 
     //** Find the section
-    group = pg = NULL;
+    group = pg = gprev = NULL;
     n = 0;
     for (g = fd->tree; g != NULL; g = g->next) {
         if (strcmp(g->group, h->section) == 0) {

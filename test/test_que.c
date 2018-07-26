@@ -274,6 +274,9 @@ int main(int argc, char **argv)
         printf("\n");
      }
 
+    dt = apr_time_from_sec(1);
+    n_slots = 100;
+
     i = 1;
     do {
         start_option = i;

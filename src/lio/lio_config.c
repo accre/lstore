@@ -357,7 +357,7 @@ void lio_path_release(lio_path_tuple_t *tuple)
 
 void lio_path_local_make_absolute(lio_path_tuple_t *tuple)
 {
-    char *p, *rp;
+    char *p, *rp, *pp;
     int i, n, last_slash, glob_index;
     char path[OS_PATH_MAX];
     char c;
@@ -386,17 +386,18 @@ void lio_path_local_make_absolute(lio_path_tuple_t *tuple)
 wildcard:
     if (last_slash == -1) {  //** Just using the CWD as the base for the glob
         if (strcmp(p, ".") == 0) {
-            realpath(".", path);
+            pp = realpath(".", path);
             last_slash = n;
         } else if (strcmp(p, "..") == 0) {
-            realpath("..", path);
+            pp = realpath("..", path);
             last_slash = n;
         } else {
-            realpath(".", path);
+            pp = realpath(".", path);
             last_slash = 0;
         }
 
         if (last_slash != n) {
+            if (pp == NULL) i = 0;  //** This is a NULL statement but it makes the compiler happy about not using the return of realpath
             i = strlen(path);
             path[i] = '/';  //** Need to add the trailing / to the path
             path[i+1] = 0;
@@ -1378,11 +1379,11 @@ int lio_init(int *argc, char ***argvp)
     info_fname = NULL;
     auto_mode = -1;
 
-    if (*argc < 2) goto no_args;  //** Nothing to parse
-
     //** Load the hints if we have any
     hints = tbx_stack_new();
     tbx_inip_hint_options_parse(hints, argv, argc);
+
+    if (*argc < 2) goto no_args;  //** Nothing to parse
 
     do {
         if (strcmp(argv[i], "-d") == 0) { //** Enable debugging
