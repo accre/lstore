@@ -39,19 +39,46 @@ http://www.accre.vanderbilt.edu
 //     is not malformed.
 //*************************************************************************
 
+void print_file(tbx_inip_file_t *ifd, FILE *fd, char *header)
+{
+    char *text;
+    int n;
+
+    text = tbx_inip_serialize(ifd);
+    if (text == NULL) {
+        fprintf(stderr, "ERROR serializing INI object!\n");
+        return;
+    }
+
+    n = strlen(text);
+    fprintf(fd, "#--------------------------------------------------------------------\n");
+    fprintf(fd, "# %s (nbytes=%d)\n", header, n);
+    fprintf(fd, "#--------------------------------------------------------------------\n");
+    fprintf(fd, "%s", text);
+    free(text);
+}
+
 void print_help()
 {
     printf("\n");
-    printf("inip_sanity_check [-p] INI-file\n");
-    printf("     -p   Print the resolved INI\n");
+    printf("inip_sanity_check [-p] [INI_OPTIONS] -f INI-file\n");
+    printf("     -pi   Print the initial INI before any hints or variables substititions are made\n");
+    printf("     -ph   Print the INI after hints are applied but before variables substititions are made\n");
+    printf("     -pf   Print the final INI after all hints and variables substititions are made\n");
     printf("\n");
+    tbx_inip_print_hint_options(stdout);
 }
 
 int main(int argc, char **argv)
 {
-    int err, nbytes, do_print;
-    char *text, *fname;
+    int err, do_print, i, start_option;
+    char *fname;
     tbx_inip_file_t *ifd;
+    tbx_stack_t *hints;
+
+    //** Load any hints we may have
+    hints = tbx_stack_new();
+    tbx_inip_hint_options_parse(hints, argv, &argc);
 
     err = 0;
     if (argc < 2) {
@@ -61,27 +88,56 @@ int main(int argc, char **argv)
 
     tbx_log_open("stderr", 0);
 
-    fname = argv[1];
     do_print = 0;
-    if (strcmp(argv[1], "-p") == 0) {
-        do_print = 1;
-        fname = argv[2];
-    }
+    fname = NULL;
+    i=1;
+    do {
+        start_option = i;
+        if (strcmp(argv[i], "-pi") == 0) {  //** Print initial INI
+            i++;
+            do_print += 1;
+        } else if (strcmp(argv[i], "-ph") == 0) { //** Print after hints applied
+            i++;
+            do_print += 2;
+        } else if (strcmp(argv[i], "-pf") == 0) {  //** Print final verion after hints and variable subs
+            i++;
+            do_print += 4;
+        } else if (strcmp(argv[i], "-f") == 0) {  //** INI file to parse
+            i++;
+            fname = argv[i];
+            i++;
+        }
+    } while ((start_option < i) && (i<argc));
 
-    ifd = tbx_inip_file_read(fname);
-    if (ifd == NULL) {
-        fprintf(stdout, "ERROR: parsing file!\n");
+    if (fname == NULL) {
+        fprintf(stderr, " ERROR: No INI file specified!\n");
         return(1);
     }
-    tbx_inip_destroy(ifd);
 
-    if (do_print) {
-        err = tbx_inip_file2string(fname, &text, &nbytes);
-        if (err == 0) {
-            printf("nbytes=%d\n------\n%s", nbytes, text);
-            free(text);
-        }
+    //** Open the file
+    ifd = tbx_inip_file_read(fname);
+    if (ifd == NULL) {
+        fprintf(stderr, "ERROR: parsing file!\n");
+        return(1);
     }
+
+    if (do_print & 1) print_file(ifd, stdout, "Initial version");
+
+    err = tbx_inip_hint_list_apply(ifd, hints);  //** Apply the hints
+    tbx_inip_hint_list_destroy(hints);           //** and cleanup
+    if (err != 0) {
+        fprintf(stderr, "ERROR applying hints!\n");
+    }
+
+    if (do_print & 2) print_file(ifd, stdout, "Hints applied version");
+
+    if (tbx_inip_group_first(ifd) == NULL) { //** This will trigger the parameter substitution
+        fprintf(stderr, "ERROR getting first group!\n");
+    }
+
+    if (do_print & 4) print_file(ifd, stdout, "Final version");
+
+    tbx_inip_destroy(ifd);
     return(err);
 }
 

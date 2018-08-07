@@ -23,6 +23,8 @@
 #include "tbx/type_malloc.h"
 
 #define BUFMAX 8192
+#define PARAMS "_parameters"
+#define VAR_DECLARE '$'
 
 char *hint_ops[] = { "--ini-hint-add", "--ini-hint-remove", "--ini-hint-replace", "--ini-hint-default" };
 
@@ -42,12 +44,15 @@ typedef struct {  //** Used for Reading the ini file
 } bfile_t;
 
 struct tbx_inip_element_t {  //** Key/Value pair
+    int substitution_check;
     char *key;
     char *value;
     struct tbx_inip_element_t *next;
 };
 
 struct tbx_inip_group_t {  //** Group
+    int substitution_check;
+    int n_kv_substitution_check;
     char *group;
     tbx_inip_element_t *list;
     struct tbx_inip_group_t *next;
@@ -55,7 +60,8 @@ struct tbx_inip_group_t {  //** Group
 
 struct tbx_inip_file_t {  //File
     tbx_inip_group_t *tree;
-    int  n_groups;
+    int n_groups;
+    int n_substitution_checks;
     tbx_atomic_int_t ref_count;
 };
 
@@ -67,6 +73,8 @@ struct tbx_inip_hint_t {  //** Overriding hint
     int section_rank;
     int key_rank;
 };
+
+void apply_params(tbx_inip_file_t  *fd);
 
 // Accessors
 tbx_inip_file_t *tbx_inip_dup(tbx_inip_file_t *ifd) {
@@ -89,6 +97,7 @@ tbx_inip_element_t *tbx_inip_ele_next(tbx_inip_element_t *ele) {
     return ((ele) == NULL) ? NULL : (ele)->next;
 }
 tbx_inip_group_t *tbx_inip_group_first(tbx_inip_file_t *inip) {
+    if (inip->n_substitution_checks > 0) apply_params(inip);  //** Apply the params if needed
     return inip->tree;
 }
 char *tbx_inip_group_get(tbx_inip_group_t *g) {
@@ -105,6 +114,190 @@ void tbx_inip_group_free(tbx_inip_group_t *g) {
 }
 void tbx_inip_group_set(tbx_inip_group_t *ig, char *value) {
     ig->group = value;
+}
+
+//***********************************************************************
+// substitute_params - Performs the parameter substitution. If a
+//     substitution occurred a pointer to a newly malloced string is
+//     returned.  Otherwise NULL is returns.
+//***********************************************************************
+
+char *substitute_params(tbx_inip_file_t *fd, char *text)
+{
+    char *start, *end, *last, *dest, *c, *value, *newtext, *textend;
+    char param[1024], subtext[1024];
+    int n, ndest, nmax, changed;
+
+    nmax = sizeof(subtext);
+    textend = text + strlen(text);
+    dest = subtext;
+    last = text;
+    changed = 0;
+    ndest = 0;
+    do {
+        value = NULL;
+        start = index(last, VAR_DECLARE);
+        if (start == NULL) {
+            if (ndest == 0) return(NULL);  //** Nothing done
+            start = textend;
+            end = textend-1;
+            goto finished;
+        }
+        if (start > text) { //** check if we have an escape char
+            if (start[-1] == '\\') {
+                end = start++;
+                goto finished;
+            }
+        }
+
+        //** Do another substitution
+        //** Next character should be '{'
+        if (start[1] != '{') {
+            fprintf(stderr, "ERROR: Missing { from substitution: %s\n", text);
+            start = textend;
+            end = textend-1;
+            goto finished;
+        }
+
+        //** Now scan for the '}'
+        end = NULL;
+        n = 0;
+        for (c=start+2; c[0] != 0; c++) {
+            if (c[0] == '}') {
+                end = c;
+                break;
+            }
+            n++;
+        }
+        if (end == NULL) {
+            fprintf(stderr, "ERROR: Missing } from substitution: %s\n", text);
+            start = textend;
+            end = textend-1;
+            goto finished;
+        } else if (end[0] != '}') {
+            fprintf(stderr, "ERROR: Missing } from substitution: %s\n", text);
+            start = textend;
+            end = textend-1;
+            goto finished;
+        }
+
+        //** Copy the parameter over
+        strncpy(param, start+2, n);
+        param[n] = 0;
+
+        //** Look up the parameter
+        value = tbx_inip_get_string(fd, PARAMS, param, "oops!arg!is!missing");
+
+finished:
+        n = ndest + start - last + 1;
+        if (value) n += strlen(value);
+        if (n > nmax) {
+            nmax = 2*n;
+            dest = realloc(dest, nmax);
+        }
+        //** Copy the prefix
+        n = start - last;
+        strncpy(dest+ndest, last, n);
+        ndest += n;
+        dest[ndest] = 0;
+
+        //** Do the substitution
+        if (value) {
+            //** And the substitution
+            strncpy(dest+ndest, value, nmax-ndest);
+            ndest += strlen(value);
+            dest[ndest] = 0;
+            free(value);
+            changed = 1;
+        }
+
+        last = end+1;
+    } while (last[0] != 0);
+
+    newtext = (changed) ? strdup(dest) : NULL;
+    if (dest != subtext) free(dest);
+
+    return(newtext);
+}
+
+//***********************************************************************
+// resolve_params - Resolves the parameters
+//***********************************************************************
+
+void resolve_params(tbx_inip_file_t  *fd)
+{
+    int loop, n;
+    char *str;
+    tbx_inip_group_t  *g;
+    tbx_inip_element_t  *ele;
+
+    //** Find the params section
+    for (g = tbx_inip_group_first(fd); g != NULL; g = tbx_inip_group_next(g)) {
+        if (strcmp(g->group, PARAMS) == 0) break;
+    }
+
+    //** We need to loop over the params repeatedly reapplying the substitions until
+    //** nothing is done or we encounter a loop.  Fixed the number of iterations
+    //** is an easy way to detect a loop:)
+    for (loop=0; loop<20; loop++) {
+        n = 0;
+        for (ele = tbx_inip_ele_first(g); ele != NULL; ele = tbx_inip_ele_next(ele)) {
+            if ((str = substitute_params(fd, ele->key)) != NULL) {
+                n++;
+                free(ele->key);
+                ele->key = str;
+            }
+            if ((str = substitute_params(fd, ele->value)) != NULL) {
+                n++;
+               free(ele->value);
+               ele->value = str;
+            }
+        }
+
+        if (n == 0) break;  //** Nothing done so kick out
+    }
+}
+
+
+//***********************************************************************
+// apply_params - Applies the parameters to all the groups and elements
+//***********************************************************************
+
+void apply_params(tbx_inip_file_t  *fd)
+{
+    tbx_inip_group_t  *g;
+    tbx_inip_element_t  *ele;
+    char *str;
+
+    fd->n_substitution_checks = 0;  //** Flag that we've applied the param substitutions
+
+    resolve_params(fd);
+
+    for (g = tbx_inip_group_first(fd); g != NULL; g = tbx_inip_group_next(g)) {
+        if (g->substitution_check) {
+            if ((str = substitute_params(fd, g->group)) != NULL) {
+                free(g->group);
+                g->group = str;
+            }
+        }
+
+        if (g->n_kv_substitution_check) {
+            for (ele = tbx_inip_ele_first(g); ele != NULL; ele = tbx_inip_ele_next(ele)) {
+                if (ele->substitution_check) {
+                    if ((str = substitute_params(fd, ele->key)) != NULL) {
+                        free(ele->key);
+                        ele->key = str;
+                    }
+                    if ((str = substitute_params(fd, ele->value)) != NULL) {
+                        free(ele->value);
+                        ele->value = str;
+                    }
+                }
+            }
+        }
+    }
+
+    fd->n_substitution_checks = 0;  //** No need to run this again
 }
 
 //***********************************************************************
@@ -259,6 +452,8 @@ tbx_inip_element_t *new_ele(char *key, char *val)
     tbx_inip_element_t *ele;
 
     tbx_type_malloc(ele,  tbx_inip_element_t, 1);
+    ele->substitution_check = (index(key, VAR_DECLARE) == NULL) ? 0 : 1;
+    ele->substitution_check += (index(val, VAR_DECLARE) == NULL) ? 0 : 1;
     ele->key = key;
     ele->value = val;;
     ele->next = NULL;
@@ -310,10 +505,12 @@ void _parse_group(bfile_t *bfd, tbx_inip_group_t *group)
     tbx_inip_element_t *ele, *prev;
 
     ele = _parse_ele(bfd);
+    group->n_kv_substitution_check += ele->substitution_check;
     prev = ele;
     group->list = ele;
     ele = _parse_ele(bfd);
     while (ele != NULL) {
+        group->n_kv_substitution_check += ele->substitution_check;
         prev->next = ele;
         prev = ele;
         ele = _parse_ele(bfd);
@@ -329,6 +526,8 @@ tbx_inip_group_t *new_group(char *name)
     tbx_inip_group_t *g;
 
     tbx_type_malloc(g, tbx_inip_group_t, 1);
+    g->substitution_check = (index(name, VAR_DECLARE) == NULL) ? 0 : 1;
+    g->n_kv_substitution_check = g->substitution_check;
     g->group = name;
     g->list = NULL;
     g->next = NULL;
@@ -486,7 +685,7 @@ tbx_inip_group_t *tbx_inip_group_find(tbx_inip_file_t *inip, const char *name)
     tbx_inip_group_t *group, *found;
 
     found = NULL;
-    for (group = inip->tree; group != NULL; group = group->next) {
+    for (group = tbx_inip_group_first(inip); group != NULL; group = tbx_inip_group_next(group)) {
         if (strcmp(group->group, name) == 0) found = group;
     }
 
@@ -566,13 +765,23 @@ apr_time_t tbx_inip_get_time(tbx_inip_file_t *inip, const char *group, const cha
 
 char *tbx_inip_get_string(tbx_inip_file_t *inip, const char *group, const char *key, char *def)
 {
+    char *sub = NULL;
     char *value = def;
+    char *ret;
+
     tbx_inip_element_t *ele = _find_group_key(inip, group, key);
-    if (ele != NULL) value = ele->value;
+    if (ele != NULL) {
+        value = ele->value;
+    } else if (def != NULL) {
+        sub = substitute_params(inip, def);
+        value = (sub) ? sub : def;
+    }
 
     if (value == NULL) return(NULL);
+    ret = strdup(value);
+    if (sub) free(sub);
 
-    return(strdup(value));
+    return(ret);
 }
 
 
@@ -615,6 +824,7 @@ tbx_inip_file_t *inip_load(FILE *fd, const char *text, const char *prefix)
 
     prev = NULL;
     while (group != NULL) {
+        inip->n_substitution_checks += group->n_kv_substitution_check;
         if (inip->tree == NULL) inip->tree = group;
         if (prev != NULL) {
             prev->next = group;
@@ -934,6 +1144,7 @@ tbx_inip_hint_t *tbx_inip_hint_parse(int op, char *text)
 
     h = tbx_inip_hint_new(op, section, srank, key, krank, value);
 error:
+    if (section) free(section);
     free(base);
     return(h);
 }
@@ -1164,20 +1375,34 @@ int hint_remove(tbx_inip_file_t *fd, tbx_inip_hint_t *h, int check_only)
 
 int tbx_inip_hint_apply(tbx_inip_file_t *fd, tbx_inip_hint_t *h)
 {
+    int n, err;
+
+    //** Hints should all be applied before any queries on he INI file are done.
+    //** This means the hints could contain parameters so save the state and
+    //** fake the application
+    n = fd->n_substitution_checks;
+    fd->n_substitution_checks = 0;
+
+    err = 1;
     switch(h->op) {
         case TBX_INIP_HINT_ADD:
-            return(hint_add(fd, h));
+            err = hint_add(fd, h);
+            break;
         case TBX_INIP_HINT_REMOVE:
-            return(hint_remove(fd, h, 0));
+            err = hint_remove(fd, h, 0);
+            break;
         case TBX_INIP_HINT_REPLACE:
             hint_remove(fd, h, 0);
-            return(hint_add(fd,h));
+            err = hint_add(fd,h);
+            break;
         case TBX_INIP_HINT_DEFAULT:
-            if (hint_remove(fd, h, 1) != 0) return(hint_add(fd,h));
-            return(0);
+            err = (hint_remove(fd, h, 1) != 0) ? hint_add(fd, h) : 0;
+            break;
     }
 
-    return(1);
+    fd->n_substitution_checks = n;
+
+    return(err);
 }
 
 //***********************************************************************
