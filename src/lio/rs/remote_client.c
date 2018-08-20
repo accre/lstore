@@ -53,6 +53,16 @@
 #include "rs/simple.h"
 #include "service_manager.h"
 
+static lio_rs_remote_client_priv_t rsrc_default_options = {
+    .section = "rs_remote_client",
+    .child_target_file = "/lio/cfg/rid-client.cfg",
+    .host_remote_rs = "${rsrc_host}",
+    .dynamic_mapping = 0,
+    .check_interval = 3600,
+    .local_child_section = "rs_simple",
+    .delete_target = 1
+};
+
 typedef struct {
     uint64_t id;
     int mode;
@@ -435,6 +445,28 @@ void *rsrc_check_thread(apr_thread_t *th, void *data)
 }
 
 //***********************************************************************
+// rsrc_print_running_config - Prints the running config
+//***********************************************************************
+
+void rsrc_print_running_config(lio_resource_service_fn_t *rs, FILE *fd, int print_section_heading)
+{
+    lio_rs_remote_client_priv_t *rsrc = (lio_rs_remote_client_priv_t *)rs->priv;
+
+    if (print_section_heading) fprintf(fd, "[%s]\n", rsrc->section);
+    fprintf(fd, "type = %s\n", RS_TYPE_REMOTE_CLIENT);
+    fprintf(fd, "child_fname = %s\n", rsrc->child_target_file);
+    fprintf(fd, "remote_address = %s\n", rsrc->host_remote_rs);
+    fprintf(fd, "dynamic_mapping = %d\n", rsrc->dynamic_mapping);
+    fprintf(fd, "delete_child_fname = %d  #Remove the child RID file on completeion\n", rsrc->delete_target);
+    fprintf(fd, "check_interval = %d #seconds\n", rsrc->check_interval);
+    fprintf(fd, "rs_local = %s\n", rsrc->local_child_section);
+    fprintf(fd, "rrs_test = %s # NULL if not used\n", rsrc->rrs_test_section);
+    fprintf(fd, "\n");
+
+    rs_print_running_config(rsrc->rs_child, fd, 1);
+}
+
+//***********************************************************************
 // rs_remote_client_destroy
 //***********************************************************************
 
@@ -459,10 +491,16 @@ void rs_remote_client_destroy(lio_resource_service_fn_t *rs)
     //** Same goes for the child RS
     rs_destroy_service(rsrc->rs_child);
 
+    //** Remove the child target if needed
+    if (rsrc->delete_target == 1) remove(rsrc->child_target_file);
+
     //** Now do the normal cleanup
     apr_pool_destroy(rsrc->mpool);
     free(rsrc->host_remote_rs);
     free(rsrc->child_target_file);
+    free(rsrc->section);
+    free(rsrc->local_child_section);
+    if (rsrc->rrs_test_section) free(rsrc->rrs_test_section);
     free(rsrc);
     free(rs);
 }
@@ -480,11 +518,13 @@ lio_resource_service_fn_t *rs_remote_client_create(void *arg, tbx_inip_file_t *f
     rs_create_t *rs_create;
     char *stype, *ctype;
 
-    if (section == NULL) section = "rs_remote_client";
+    if (section == NULL) section = rsrc_default_options.section;
 
     tbx_type_malloc_clear(rs, lio_resource_service_fn_t, 1);
     tbx_type_malloc_clear(rsrc, lio_rs_remote_client_priv_t, 1);
     rs->priv = (void *)rsrc;
+
+    rsrc->section = strdup(section);
 
     //** Make the locks and cond variables
     assert_result(apr_pool_create(&(rsrc->mpool), NULL), APR_SUCCESS);
@@ -492,16 +532,18 @@ lio_resource_service_fn_t *rs_remote_client_create(void *arg, tbx_inip_file_t *f
     apr_thread_cond_create(&(rsrc->cond), rsrc->mpool);
 
     //** Now get the other params
-    rsrc->child_target_file = tbx_inip_get_string(fd, section, "child_fname", NULL);
-    rsrc->host_remote_rs = tbx_inip_get_string(fd, section, "remote_address", NULL);
-    rsrc->dynamic_mapping = tbx_inip_get_integer(fd, section, "dynamic_mapping", 0);
-    rsrc->check_interval = tbx_inip_get_integer(fd, section, "check_interval", 3600);
+    rsrc->child_target_file = tbx_inip_get_string(fd, section, "child_fname", rsrc_default_options.child_target_file);
+    rsrc->host_remote_rs = tbx_inip_get_string(fd, section, "remote_address", rsrc_default_options.host_remote_rs);
+    rsrc->dynamic_mapping = tbx_inip_get_integer(fd, section, "dynamic_mapping", rsrc_default_options.dynamic_mapping);
+    rsrc->delete_target = tbx_inip_get_integer(fd, section, "delete_child_fname", rsrc_default_options.delete_target);
+    rsrc->check_interval = tbx_inip_get_integer(fd, section, "check_interval", rsrc_default_options.check_interval);
 
     //** Get the MQC
     rsrc->mqc = lio_lookup_service(ess, ESS_RUNNING, ESS_MQ);FATAL_UNLESS(rsrc->mqc != NULL);
 
     //** Check if we are running the remote RS locally.  This means we are doing testing
-    stype = tbx_inip_get_string(fd, section, "rrs_test", NULL);
+    rsrc->rrs_test_section = tbx_inip_get_string(fd, section, "rrs_test", rsrc_default_options.rrs_test_section);
+    stype = rsrc->rrs_test_section;
     if (stype != NULL) {
         ctype = tbx_inip_get_string(fd, stype, "type", RS_TYPE_SIMPLE);
         rs_create = lio_lookup_service(ess, RS_SM_AVAILABLE, ctype);
@@ -512,7 +554,6 @@ lio_resource_service_fn_t *rs_remote_client_create(void *arg, tbx_inip_file_t *f
             abort();
         }
         free(ctype);
-        free(stype);
     }
 
     //** Contact the Remote RS and get the initial config
@@ -538,11 +579,11 @@ lio_resource_service_fn_t *rs_remote_client_create(void *arg, tbx_inip_file_t *f
     }
 
     //** Start the child RS.   The update above should have dumped a RID config for it to load
-    stype = tbx_inip_get_string(fd, section, "rs_local", NULL);
+    rsrc->local_child_section = tbx_inip_get_string(fd, section, "rs_local", rsrc_default_options.local_child_section);
+    stype = rsrc->local_child_section;
     if (stype == NULL) {  //** Oops missing child RS
         log_printf(0, "ERROR: Mising child RS  section=%s key=rs_local!\n", section);
         tbx_log_flush();
-        free(stype);
         abort();
     }
 
@@ -556,9 +597,9 @@ lio_resource_service_fn_t *rs_remote_client_create(void *arg, tbx_inip_file_t *f
         abort();
     }
     free(ctype);
-    free(stype);
 
     //** Set up the fn ptrs
+    rs->print_running_config = rsrc_print_running_config;
     rs->get_rid_config = rsrc_get_rid_config;
     rs->register_mapping_updates = rsrc_mapping_register;
     rs->unregister_mapping_updates = rsrc_mapping_unregister;

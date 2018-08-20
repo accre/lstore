@@ -56,6 +56,7 @@ struct lio_rss_check_entry_t {
 };
 
 struct lio_rs_simple_priv_t {
+    char *section;
     tbx_list_t *rid_table;
     lio_rss_rid_entry_t **random_array;
     lio_data_service_fn_t *ds;

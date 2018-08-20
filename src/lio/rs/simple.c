@@ -58,6 +58,15 @@
 #include "rs/simple.h"
 #include "service_manager.h"
 
+static lio_rs_simple_priv_t rss_default_options = {
+    .section = "rs_simple",
+    .fname = "/etc/lio/rid-client.cfg",
+    .dynamic_mapping = 1,
+    .check_interval = 60,
+    .check_timeout = 0,
+    .min_free = 1*1024*1024*1024
+};
+
 typedef struct {
     char *key;
     char *value;
@@ -1005,6 +1014,36 @@ int _rs_simple_refresh(lio_resource_service_fn_t *rs)
 }
 
 //***********************************************************************
+// rss_print_running_config - Prints the running config
+//***********************************************************************
+
+void rss_print_running_config(lio_resource_service_fn_t *rs, FILE *fd, int print_section_heading)
+{
+    lio_rs_simple_priv_t *rss = (lio_rs_simple_priv_t *)rs->priv;
+    char text[1024];
+    char *rids;
+
+    if (print_section_heading) fprintf(fd, "[%s]\n", rss->section);
+    fprintf(fd, "type = %s\n", RS_TYPE_SIMPLE);
+    fprintf(fd, "fname = %s\n", rss->fname);
+    fprintf(fd, "dynamic_mapping = %d\n", rss->dynamic_mapping);
+    fprintf(fd, "check_interval = %d #seconds\n", rss->check_interval);
+    fprintf(fd, "check_timeout = %d #seconds (if 0 then no resource checks are made)\n", rss->check_timeout);
+    fprintf(fd, "min_free = %s\n", tbx_stk_pretty_print_int_with_scale(rss->min_free, text));
+    fprintf(fd, "\n");
+
+    //** Now print all the rids
+    rids = rs_get_rid_config(rs);
+    fprintf(fd, "#------------------RID information start----------------------\n");
+    if (rids) {
+        fprintf(fd, "%s", rids);
+        free(rids);
+    }
+    fprintf(fd, "#------------------RID information end----------------------\n");
+    fprintf(fd, "\n");
+}
+
+//***********************************************************************
 // rs_simple_destroy - Destroys the simple RS service
 //***********************************************************************
 
@@ -1034,6 +1073,7 @@ void rs_simple_destroy(lio_resource_service_fn_t *rs)
 
     free(rss->random_array);
     free(rss->fname);
+    free(rss->section);
     free(rss);
     free(rs);
 }
@@ -1049,8 +1089,12 @@ lio_resource_service_fn_t *rs_simple_create(void *arg, tbx_inip_file_t *kf, char
     lio_rs_simple_priv_t *rss;
     lio_resource_service_fn_t *rs;
 
+    if (section == NULL) section = rss_default_options.section;
+
     //** Create the new RS list
     tbx_type_malloc_clear(rss, lio_rs_simple_priv_t, 1);
+
+    rss->section = strdup(section);
 
     assert_result(apr_pool_create(&(rss->mpool), NULL), APR_SUCCESS);
     apr_thread_mutex_create(&(rss->lock), APR_THREAD_MUTEX_DEFAULT, rss->mpool);
@@ -1080,14 +1124,15 @@ lio_resource_service_fn_t *rs_simple_create(void *arg, tbx_inip_file_t *kf, char
     rs->get_rid_value = rs_simple_get_rid_value;
     rs->data_request = rs_simple_request;
     rs->destroy_service = rs_simple_destroy;
+    rs->print_running_config = rss_print_running_config;
     rs->type = RS_TYPE_SIMPLE;
 
     //** This is the file to use for loading the RID table
-    rss->fname = tbx_inip_get_string(kf, section, "fname", NULL);
-    rss->dynamic_mapping = tbx_inip_get_integer(kf, section, "dynamic_mapping", 0);
-    rss->check_interval = tbx_inip_get_integer(kf, section, "check_interval", 300);
-    rss->check_timeout = tbx_inip_get_integer(kf, section, "check_timeout", 60);
-    rss->min_free = tbx_inip_get_integer(kf, section, "min_free", 100*1024*1024);
+    rss->fname = tbx_inip_get_string(kf, section, "fname", rss_default_options.fname);
+    rss->dynamic_mapping = tbx_inip_get_integer(kf, section, "dynamic_mapping", rss_default_options.dynamic_mapping);
+    rss->check_interval = tbx_inip_get_integer(kf, section, "check_interval", rss_default_options.check_interval);
+    rss->check_timeout = tbx_inip_get_integer(kf, section, "check_timeout", rss_default_options.check_timeout);
+    rss->min_free = tbx_inip_get_integer(kf, section, "min_free", rss_default_options.min_free);
 
     //** Set the modify time to force a change
     rss->modify_time = 0;
