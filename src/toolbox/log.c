@@ -107,6 +107,8 @@ void tbx_log_open(char *fname, int dolock)
     } else if (strcmp(_log_fname, "stderr") == 0) {
         _log_special = 2;
         _log_fd = stderr;
+    } else if (strcmp(_log_fname, "NULL") == 0) {
+        _log_fd = NULL;
     } else if ((_log_fd = fopen(_log_fname, "w")) == NULL) {
         fprintf(stderr, "OPEN_LOG failed! Attempted to us log file %s\n", _log_fname);
         perror("OPEN_LOG: ");
@@ -134,16 +136,13 @@ int tbx_mlog_printf(int suppress_header, int module_index, int level, const char
     apr_time_t dt;
     int n = 0;
 
+    if (_log_fd == NULL) return(0);
     if (level > _mlog_table[module_index]) return(0);
     if (level > _log_level) return(0);
 
     if (_log_lock == NULL) _log_init();
 
     _lock_log();
-    if (_log_fd == NULL) {
-        _log_fd = stderr;
-        _log_special=2;
-    }
 
     //** Calculate the time offsets
     dt = apr_time_now() - time_start;
@@ -208,7 +207,7 @@ void tbx_mlog_load(tbx_inip_file_t *fd, char *output_override, int log_level_ove
     default_level = tbx_inip_get_integer(fd, group_level, "default", 0);
     _log_level = (log_level_override > -10) ? log_level_override : tbx_inip_get_integer(fd, group_level, "start_level", 0);
     for (n=0; n<_mlog_size; n++) _mlog_table[n] = default_level;
-    logname = (output_override == NULL) ? tbx_inip_get_string(fd, group_level, "output", "stdout") : strdup(output_override);
+    logname = (output_override == NULL) ? tbx_inip_get_string(fd, group_level, "output", "NULL") : strdup(output_override);
     open_log(logname);
     free(logname);
     _log_maxsize = tbx_inip_get_integer(fd, group_level, "size", 100*1024*1024);
