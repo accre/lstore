@@ -55,6 +55,19 @@
 
 int _ds_ibp_do_init = 1;
 
+static lio_ds_ibp_priv_t ibp_default_options = {
+    .section = "ibp",
+    .warm_duration = 604800,
+    .warm_interval = 3600,
+    .attr_default = {
+        .attr = {
+            .duration = 4*3600
+        },
+        .disk_cs_type = CHKSUM_DEFAULT,
+        .disk_cs_blocksize = 64*1024
+    }
+};
+
 //***********************************************************************
 // ds_ibp_context_get - Returns the IBP context
 //    NOTE:  This is more of a hack and is only intended for use by the warmer.
@@ -963,9 +976,30 @@ void ds_ibp_destroy(lio_data_service_fn_t *dsf)
     apr_pool_destroy(ds->pool);
 
     ibp_context_destroy(ds->ic);
+    if (ds->section) free(ds->section);
 
     free(ds);
     free(dsf);
+}
+
+//***********************************************************************
+// ds_ibp_print_running_config - Prints the running config
+//***********************************************************************
+
+void ds_ibp_print_running_config(lio_data_service_fn_t *dsf, FILE *fd, int print_section_heading)
+{
+    lio_ds_ibp_priv_t *ds = (lio_ds_ibp_priv_t *)dsf->priv;
+    char text[1024];
+
+    if (print_section_heading) fprintf(fd, "[%s]\n", ds->section);
+    fprintf(fd, "type = %s\n", DS_TYPE_IBP);
+    fprintf(fd, "duration = %d # seconds\n", ds->attr_default.attr.duration);
+    fprintf(fd, "warm_interval = %d #seconds\n", ds->warm_interval);
+    fprintf(fd, "warm_duration = %d #seconds\n", ds->warm_duration);
+    fprintf(fd, "chksum_type = %d\n", ds->attr_default.disk_cs_type);
+    fprintf(fd, "chksum_blocksize = %s\n", tbx_stk_pretty_print_int_with_scale(ds->attr_default.disk_cs_blocksize, text));
+
+    ibp_print_running_config(ds->ic, fd, 0);
 }
 
 
@@ -983,26 +1017,26 @@ lio_data_service_fn_t *ds_ibp_create(void *arg, tbx_inip_file_t *ifd, char *sect
     tbx_type_malloc_clear(dsf, lio_data_service_fn_t, 1);
     tbx_type_malloc_clear(ds, lio_ds_ibp_priv_t , 1);
 
+    ds->section = strdup(section);
+
     //** Set the default attributes
     memset(&(ds->attr_default), 0, sizeof(lio_ds_ibp_attr_t));
-    ds->attr_default.attr.duration = tbx_inip_get_integer(ifd, section, "duration", 3600);
+    ds->attr_default.attr.duration = tbx_inip_get_integer(ifd, section, "duration", ibp_default_options.attr_default.attr.duration);
 
-    ds->warm_duration = ds->attr_default.attr.duration;
-    ds->warm_interval = 0.33 * ds->warm_duration;
-    ds->warm_interval = tbx_inip_get_integer(ifd, section, "warm_interval", ds->warm_interval);
-    ds->warm_duration = tbx_inip_get_integer(ifd, section, "warm_duration", ds->warm_duration);
+    ds->warm_interval = tbx_inip_get_integer(ifd, section, "warm_interval", ibp_default_options.warm_interval);
+    ds->warm_duration = tbx_inip_get_integer(ifd, section, "warm_duration", ibp_default_options.warm_duration);
 
-    cs_type = tbx_inip_get_integer(ifd, section, "chksum_type", CHKSUM_DEFAULT);
+    cs_type = tbx_inip_get_integer(ifd, section, "chksum_type", ibp_default_options.attr_default.disk_cs_type);
     if ( ! ((tbx_chksum_type_valid(cs_type) == 0) || (cs_type == CHKSUM_DEFAULT) || (cs_type == CHKSUM_NONE)))  {
         log_printf(0, "Invalid chksum type=%d resetting to CHKSUM_DEFAULT(%d)\n", cs_type, CHKSUM_DEFAULT);
         cs_type = CHKSUM_DEFAULT;
     }
     ds->attr_default.disk_cs_type = cs_type;
 
-    ds->attr_default.disk_cs_blocksize = tbx_inip_get_integer(ifd, section, "chksum_blocksize", 64*1024);
+    ds->attr_default.disk_cs_blocksize = tbx_inip_get_integer(ifd, section, "chksum_blocksize", ibp_default_options.attr_default.disk_cs_blocksize);
     if (ds->attr_default.disk_cs_blocksize <= 0) {
-        log_printf(0, "Invalid chksum blocksize=%d resetting to %d\n", ds->attr_default.disk_cs_blocksize, 64*1024);
-        ds->attr_default.disk_cs_blocksize = 64 *1024;
+        log_printf(0, "Invalid chksum blocksize=%d resetting to %d\n", ds->attr_default.disk_cs_blocksize, ibp_default_options.attr_default.disk_cs_blocksize);
+        ds->attr_default.disk_cs_blocksize = ibp_default_options.attr_default.disk_cs_blocksize;
     }
     ds->attr_default.attr.reliability = IBP_HARD;
     ds->attr_default.attr.type = IBP_BYTEARRAY;
@@ -1014,6 +1048,7 @@ lio_data_service_fn_t *ds_ibp_create(void *arg, tbx_inip_file_t *ifd, char *sect
     dsf->type = DS_TYPE_IBP;
 
     dsf->priv = (void *)ds;
+    dsf->print_running_config = ds_ibp_print_running_config;
     dsf->destroy_service = ds_ibp_destroy;
     dsf->new_cap_set = ds_ibp_new_cap_set;
     dsf->cap_auto_warm = ds_ibp_cap_auto_warm;
