@@ -30,12 +30,21 @@
 #include "cache.h"
 #include "ds.h"
 #include "service_manager.h"
+#include "round_robin.h"
 
 typedef struct {
+    char *section;
+    char *child_section;
     int n_cache;
     lio_cache_t **child;
     tbx_atomic_int_t count;
 } cache_rr_t;
+
+static cache_rr_t rr_default_options = {
+    .section = "cache-round-robin",
+    .child_section = "cache-amp",
+    .n_cache = 2
+};
 
 //*************************************************************************
 // rr_get_handle - Does a round robin handleing of the underlying cache structures
@@ -48,6 +57,23 @@ lio_cache_t *rr_get_handle(lio_cache_t *c)
 
     log_printf(1, "n_cache=%d slot=%d\n", cp->n_cache, slot);
     return(cp->child[slot]);
+}
+
+//*************************************************************************
+// rr_print_running_config - Prints the running config
+//*************************************************************************
+
+void rr_print_running_config(lio_cache_t *c, FILE *fd, int print_section_heading)
+{
+    cache_rr_t *cp = (cache_rr_t *)c->fn.priv;
+
+    if (print_section_heading) fprintf(fd, "[%s]\n", cp->section);
+    fprintf(fd, "type = %s\n", CACHE_TYPE_ROUND_ROBIN);
+    fprintf(fd, "n_cache = %d\n", cp->n_cache);
+    fprintf(fd, "child = %s\n", cp->child_section);
+    fprintf(fd, "\n");
+
+    cache_print_running_config(cp->child[0], fd, 1);
 }
 
 //*************************************************************************
@@ -70,6 +96,8 @@ int rr_cache_destroy(lio_cache_t *c)
 
     cache_base_destroy(c);
 
+    if (cp->section) free(cp->section);
+    if (cp->child_section) free(cp->child_section);
     if (cp->child) free(cp->child);
     free(cp);
     free(c);
@@ -98,6 +126,10 @@ lio_cache_t *round_robin_cache_create(void *arg, data_attr_t *da, int timeout)
 
     cache->fn.destroy = rr_cache_destroy;
     cache->fn.get_handle = rr_get_handle;
+    cache->fn.print_running_config = rr_print_running_config;
+    c->section = strdup(rr_default_options.section);
+    c->child_section = strdup(rr_default_options.child_section);
+    c->n_cache = rr_default_options.n_cache;
 
     return(cache);
 }
@@ -112,27 +144,29 @@ lio_cache_t *round_robin_cache_load(void *arg, tbx_inip_file_t *fd, char *grp, d
     lio_cache_t *c;
     cache_rr_t *cp;
     cache_load_t *cache_create;
-    char *child_section, *ctype;
+    char *ctype;
     int i;
-
-    if (grp == NULL) grp = "cache-round-robin";
 
     //** Create the default structure
     c = round_robin_cache_create(arg, da, timeout);
     cp = (cache_rr_t *)c->fn.priv;
 
+    if (grp != NULL) {
+        free(cp->section);
+        cp->section = strdup(grp);
+    }
+
     cache_lock(c);
-    cp->n_cache = tbx_inip_get_integer(fd, grp, "n_cache", 2);
-    child_section = tbx_inip_get_string(fd, grp, "child", "cache-amp");
-    ctype = tbx_inip_get_string(fd, child_section, "type", NULL);
+    cp->n_cache = tbx_inip_get_integer(fd, cp->section, "n_cache", cp->n_cache);
+    cp->child_section = tbx_inip_get_string(fd, cp->section, "child", cp->child_section);
+    ctype = tbx_inip_get_string(fd, cp->child_section, "type", NULL);
 
     tbx_type_malloc(cp->child, lio_cache_t *, cp->n_cache);
     for (i=0; i<cp->n_cache; i++) {
         cache_create = lio_lookup_service(arg, CACHE_LOAD_AVAILABLE, ctype);FATAL_UNLESS(cache_create != NULL);
-         cp->child[i] = (*cache_create)(arg, fd, child_section, da, timeout);FATAL_UNLESS(cp->child[i] != NULL);
+         cp->child[i] = (*cache_create)(arg, fd, cp->child_section, da, timeout);FATAL_UNLESS(cp->child[i] != NULL);
     }
 
-    if (child_section) free(child_section);
     if (ctype) free(ctype);
 
     cache_unlock(c);

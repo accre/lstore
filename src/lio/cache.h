@@ -154,6 +154,7 @@ struct lio_page_table_t {
 
 struct lio_cache_fn_t {
     void *priv;
+    void (*print_running_config)(lio_cache_t *c, FILE *fd, int print_section_heading);
     void (*adding_segment)(lio_cache_t *c, lio_segment_t *seg);
     void (*removing_segment)(lio_cache_t *c, lio_segment_t *seg);
     lio_cache_page_t *(*create_empty_page)(lio_cache_t *c, lio_segment_t *seg, int doblock);
@@ -194,6 +195,7 @@ extern tbx_atomic_int_t _cache_count;
 #define cache_unlock(c) apr_thread_mutex_unlock((c)->lock)
 #define cache_get_handle(c) (c)->fn.get_handle(c)
 #define cache_destroy(c) (c)->fn.destroy(c)
+#define cache_print_running_config(c, fd, psh) (c)->fn.print_running_config(c, fd, psh)
 
 lio_cache_t *cache_base_handle(lio_cache_t *);
 void cache_base_destroy(lio_cache_t *c);

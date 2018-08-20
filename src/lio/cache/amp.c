@@ -52,6 +52,23 @@
 lio_cache_t *global_cache;
 //******************
 
+static lio_cache_t cache_default_options = {
+    .default_page_size = 64*1024,
+    .max_fetch_fraction = 0.2,
+    .write_temp_overflow_fraction = 0.01,
+    .n_ppages = 64,
+    .min_direct = -1
+};
+
+static lio_cache_amp_t amp_default_options = {
+    .section = "cache-amp",
+    .max_bytes = 64*1024*1024,
+    .max_streams = 10,
+    .dirty_fraction = 0.1,
+    .async_prefetch_threshold = 256*1024,
+    .min_prefetch_size = 1024*1024,
+    .dirty_max_wait = apr_time_from_sec(30)
+};
 
 tbx_atomic_int_t amp_dummy = -1000;
 
@@ -1313,6 +1330,30 @@ void amp_removing_segment(lio_cache_t *c, lio_segment_t *seg)
 }
 
 //*************************************************************************
+// amp_print_running_config - Prints the running config
+//*************************************************************************
+
+void amp_print_running_config(lio_cache_t *c, FILE *fd, int print_section_heading)
+{
+    lio_cache_amp_t *cp = (lio_cache_amp_t *)c->fn.priv;
+    char text[1024];
+
+    if (print_section_heading) fprintf(fd, "[%s]\n", cp->section);;
+    fprintf(fd, "type = %s\n", CACHE_TYPE_AMP);
+    fprintf(fd, "max_bytes = %s\n", tbx_stk_pretty_print_int_with_scale(cp->max_bytes, text));
+    fprintf(fd, "max_streams = %d\n", cp->max_streams);
+    fprintf(fd, "dirty_frarction = %lf\n", cp->dirty_fraction);
+    fprintf(fd, "default_page_size = %s\n", tbx_stk_pretty_print_int_with_scale(c->default_page_size, text));
+    fprintf(fd, "async_prefetch_threshold = %s\n", tbx_stk_pretty_print_int_with_scale(cp->async_prefetch_threshold, text));
+    fprintf(fd, "dirty_max_wait = %ld #seconds\n", apr_time_sec(cp->dirty_max_wait));
+    fprintf(fd, "max_fetch_fraction = %lf\n", c->max_fetch_fraction);
+    fprintf(fd, "write_temp_overflow_fraction = %lf\n", c->write_temp_overflow_fraction);
+    fprintf(fd, "ppages = %d\n", c->n_ppages);
+    fprintf(fd, "min_direct = %s\n", tbx_stk_pretty_print_int_with_scale(c->min_direct, text));
+    fprintf(fd, "\n");
+}
+
+//*************************************************************************
 // amp_cache_destroy - Destroys the cache structure.
 //     NOTE: Data is not flushed!
 //*************************************************************************
@@ -1368,6 +1409,7 @@ int amp_cache_destroy(lio_cache_t *c)
     tbx_pc_destroy(cp->free_pending_tables);
     tbx_pc_destroy(cp->free_page_tables);
 
+    free(cp->section);
     free(cp);
     free(c);
 
@@ -1390,26 +1432,29 @@ lio_cache_t *amp_cache_create(void *arg, data_attr_t *da, int timeout)
 
     cache_base_create(cache, da, timeout);
 
+    c->section = strdup(amp_default_options.section);
+
     cache->shutdown_request = 0;
     c->stack = tbx_stack_new();
     c->waiting_stack = tbx_stack_new();
     c->pending_free_tasks = tbx_stack_new();
-    c->max_bytes = 100*1024*1024;
-    c->max_streams = 500;
+    c->max_bytes = amp_default_options.max_bytes;
+    c->max_streams = amp_default_options.max_streams;
     c->bytes_used = 0;
     c->prefetch_in_process = 0;
-    c->dirty_fraction = 0.1;
-    c->async_prefetch_threshold = 256*1024*1024;
-    c->min_prefetch_size = 1024*1024;
-    cache->n_ppages = 0;
-    cache->max_fetch_fraction = 0.1;
+    c->dirty_fraction = amp_default_options.dirty_fraction;
+    c->async_prefetch_threshold = amp_default_options.async_prefetch_threshold;
+    c->min_prefetch_size = amp_default_options.min_prefetch_size;
+    cache->n_ppages = cache_default_options.n_ppages;
+    cache->max_fetch_fraction = cache_default_options.max_fetch_fraction;
     cache->max_fetch_size = cache->max_fetch_fraction * c->max_bytes;
     cache->write_temp_overflow_used = 0;
-    cache->write_temp_overflow_fraction = 0.01;
+    cache->write_temp_overflow_fraction = cache_default_options.write_temp_overflow_fraction;
     cache->write_temp_overflow_size = cache->write_temp_overflow_fraction * c->max_bytes;
+    cache->default_page_size = cache_default_options.default_page_size;
 
     c->dirty_bytes_trigger = c->dirty_fraction * c->max_bytes;
-    c->dirty_max_wait = apr_time_make(1, 0);
+    c->dirty_max_wait = amp_default_options.dirty_max_wait;
     c->flush_in_progress = 0;
     c->limbo_pages = 0;
     c->free_pending_tables = tbx_pc_new("free_pending_tables", 50, sizeof(tbx_list_t *), cache->mpool, free_pending_table_new, free_pending_table_free);
@@ -1426,6 +1471,7 @@ lio_cache_t *amp_cache_create(void *arg, data_attr_t *da, int timeout)
     cache->fn.adding_segment = amp_adding_segment;
     cache->fn.removing_segment = amp_removing_segment;
     cache->fn.get_handle = cache_base_handle;
+    cache->fn.print_running_config = amp_print_running_config;
 
     //** Add ourselves to the info handler
     tbx_siginfo_handler_add(amp_cache_info_fn, cache);
@@ -1447,30 +1493,33 @@ lio_cache_t *amp_cache_load(void *arg, tbx_inip_file_t *fd, char *grp, data_attr
     lio_cache_amp_t *cp;
     int dt;
 
-    if (grp == NULL) grp = "cache-amp";
-
     //** Create the default structure
     c = amp_cache_create(arg, da, timeout);
     cp = (lio_cache_amp_t *)c->fn.priv;
 
+    if (grp != NULL) {
+        free(cp->section);
+        cp->section = strdup(grp);
+    }
+
     global_cache = c;
 
     cache_lock(c);
-    cp->max_bytes = tbx_inip_get_integer(fd, grp, "max_bytes", cp->max_bytes);
-    cp->max_streams = tbx_inip_get_integer(fd, grp, "max_streams", cp->max_streams);
-    cp->dirty_fraction = tbx_inip_get_double(fd, grp, "dirty_fraction", cp->dirty_fraction);
+    cp->max_bytes = tbx_inip_get_integer(fd, cp->section, "max_bytes", cp->max_bytes);
+    cp->max_streams = tbx_inip_get_integer(fd, cp->section, "max_streams", cp->max_streams);
+    cp->dirty_fraction = tbx_inip_get_double(fd, cp->section, "dirty_fraction", cp->dirty_fraction);
     cp->dirty_bytes_trigger = cp->dirty_fraction * cp->max_bytes;
-    c->default_page_size = tbx_inip_get_integer(fd, grp, "default_page_size", c->default_page_size);
-    cp->async_prefetch_threshold = tbx_inip_get_integer(fd, grp, "async_prefetch_threshold", cp->async_prefetch_threshold);
-    cp->min_prefetch_size = tbx_inip_get_integer(fd, grp, "min_prefetch_bytes", cp->min_prefetch_size);
-    dt = tbx_inip_get_integer(fd, grp, "dirty_max_wait", apr_time_sec(cp->dirty_max_wait));
+    c->default_page_size = tbx_inip_get_integer(fd, cp->section, "default_page_size", c->default_page_size);
+    cp->async_prefetch_threshold = tbx_inip_get_integer(fd, cp->section, "async_prefetch_threshold", cp->async_prefetch_threshold);
+    cp->min_prefetch_size = tbx_inip_get_integer(fd, cp->section, "min_prefetch_bytes", cp->min_prefetch_size);
+    dt = tbx_inip_get_integer(fd, cp->section, "dirty_max_wait", apr_time_sec(cp->dirty_max_wait));
     cp->dirty_max_wait = apr_time_make(dt, 0);
-    c->max_fetch_fraction = tbx_inip_get_double(fd, grp, "max_fetch_fraction", c->max_fetch_fraction);
+    c->max_fetch_fraction = tbx_inip_get_double(fd, cp->section, "max_fetch_fraction", c->max_fetch_fraction);
     c->max_fetch_size = c->max_fetch_fraction * cp->max_bytes;
-    c->write_temp_overflow_fraction = tbx_inip_get_double(fd, grp, "write_temp_overflow_fraction", c->write_temp_overflow_fraction);
+    c->write_temp_overflow_fraction = tbx_inip_get_double(fd, cp->section, "write_temp_overflow_fraction", c->write_temp_overflow_fraction);
     c->write_temp_overflow_size = c->write_temp_overflow_fraction * cp->max_bytes;
-    c->n_ppages = tbx_inip_get_integer(fd, grp, "ppages", c->n_ppages);
-    c->min_direct = tbx_inip_get_integer(fd, grp, "min_direct", -1);
+    c->n_ppages = tbx_inip_get_integer(fd, cp->section, "ppages", c->n_ppages);
+    c->min_direct = tbx_inip_get_integer(fd, cp->section, "min_direct", -1);
 
     cache_unlock(c);
 
