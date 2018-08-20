@@ -151,6 +151,8 @@ typedef struct {
 } ostc_move_op_t;
 
 typedef struct {
+    char *section;
+    char *os_child_section;
     lio_object_service_fn_t *os_child;//** child OS which does the heavy lifting
     apr_thread_mutex_t *lock;
     apr_thread_mutex_t *delayed_lock;
@@ -182,6 +184,13 @@ typedef struct {
     int mode;
     int max_wait;
 } ostc_open_op_t;
+
+static ostc_priv_t ostc_default_options = {
+    .section = "os_timecache",
+    .os_child_section = "os_remote_client",
+    .entry_timeout = 60,
+    .cleanup_interval = 120
+};
 
 gop_op_status_t ostc_close_object_fn(void *arg, int tid);
 gop_op_status_t ostc_delayed_open_object(lio_object_service_fn_t *os, ostc_fd_t *fd);
@@ -2263,6 +2272,23 @@ void ostc_cred_destroy(lio_object_service_fn_t *os, lio_creds_t *creds)
     return(os_cred_destroy(ostc->os_child, creds));
 }
 
+//***********************************************************************
+// ostc_print_running_config - Prints the running config
+//***********************************************************************
+
+void ostc_print_running_config(lio_object_service_fn_t *os, FILE *fd, int print_section_heading)
+{
+    ostc_priv_t *ostc = (ostc_priv_t *)os->priv;
+
+    if (print_section_heading) fprintf(fd, "[%s]\n", ostc->section);
+    fprintf(fd, "type = %s\n", OS_TYPE_TIMECACHE);
+    fprintf(fd, "os_child = %s\n", ostc->os_child_section);
+    fprintf(fd, "entry_timeout = %ld #seconds\n", apr_time_sec(ostc->entry_timeout));
+    fprintf(fd, "cleanup_interval = %ld #seconds\n", apr_time_sec(ostc->cleanup_interval));
+    fprintf(fd, "\n");
+
+    os_print_running_config(ostc->os_child, fd, 1);
+}
 
 //***********************************************************************
 // ostc_destroy
@@ -2293,6 +2319,8 @@ void ostc_destroy(lio_object_service_fn_t *os)
     _ostc_cleanup(os, ostc->cache_root, apr_time_now() + 4*ostc->entry_timeout);
     free_ostcdb_object(ostc->cache_root, &ostc->n_objects_removed, &ostc->n_attrs_removed);
 
+    free(ostc->section);
+    free(ostc->os_child_section);
     free(ostc);
     free(os);
 }
@@ -2309,13 +2337,14 @@ lio_object_service_fn_t *object_service_timecache_create(lio_service_manager_t *
     char *str, *ctype;
 
     log_printf(10, "START\n");
-    if (section == NULL) section = "os_timecache";
+    if (section == NULL) section = ostc_default_options.section;
 
     tbx_type_malloc_clear(os, lio_object_service_fn_t, 1);
     tbx_type_malloc_clear(ostc, ostc_priv_t, 1);
     os->priv = (void *)ostc;
 
-    str = tbx_inip_get_string(fd, section, "os_child", NULL);
+    ostc->section = strdup(section);
+    str = tbx_inip_get_string(fd, section, "os_child", ostc_default_options.os_child_section);
     if (str != NULL) {  //** Running in test/temp
         ctype = tbx_inip_get_string(fd, str, "type", OS_TYPE_REMOTE_CLIENT);
         os_create = lio_lookup_service(ess, OS_AVAILABLE, ctype);
@@ -2327,14 +2356,14 @@ lio_object_service_fn_t *object_service_timecache_create(lio_service_manager_t *
             abort();
         }
         free(ctype);
-        free(str);
     } else {
         log_printf(0, "ERROR:  Missing child OS!\n");
         abort();
     }
+    ostc->os_child_section = str;
 
-    ostc->entry_timeout = apr_time_from_sec(tbx_inip_get_integer(fd, section, "entry_timeout", 20));
-    ostc->cleanup_interval = apr_time_from_sec(tbx_inip_get_integer(fd, section, "cleanup_interval", 120));
+    ostc->entry_timeout = apr_time_from_sec(tbx_inip_get_integer(fd, section, "entry_timeout", ostc_default_options.entry_timeout));
+    ostc->cleanup_interval = apr_time_from_sec(tbx_inip_get_integer(fd, section, "cleanup_interval",ostc_default_options.cleanup_interval));
 
     apr_pool_create(&ostc->mpool, NULL);
     apr_thread_mutex_create(&(ostc->lock), APR_THREAD_MUTEX_DEFAULT, ostc->mpool);
@@ -2351,6 +2380,7 @@ lio_object_service_fn_t *object_service_timecache_create(lio_service_manager_t *
     //** Set up the fn ptrs
     os->type = OS_TYPE_TIMECACHE;
 
+    os->print_running_config = ostc_print_running_config;
     os->destroy_service = ostc_destroy;
     os->cred_init = ostc_cred_init;
     os->cred_destroy = ostc_cred_destroy;

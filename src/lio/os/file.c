@@ -62,6 +62,16 @@
 #include "os/file.h"
 #include "osaz/fake.h"
 
+static lio_osfile_priv_t osf_default_options = {
+    .section = "os_file",
+    .base_path = "/lio/osfile",
+    .internal_lock_size = 200,
+    .max_copy = 1024*1024,
+    .hardlink_dir_size = 256,
+    .authz_section = NULL,
+    .authn_section = NULL,
+};
+
 typedef struct {
     DIR *d;
     struct dirent *entry;
@@ -4156,6 +4166,25 @@ void osfile_cred_destroy(lio_object_service_fn_t *os, lio_creds_t *creds)
 }
 
 //***********************************************************************
+// osfile_print_running_config - Prints the running config
+//***********************************************************************
+
+void osfile_print_running_config(lio_object_service_fn_t *os, FILE *fd, int print_section_heading)
+{
+    lio_osfile_priv_t *osf = (lio_osfile_priv_t *)os->priv;
+
+    if (print_section_heading) fprintf(fd, "[%s]\n", osf->section);
+    fprintf(fd, "type = %s\n", OS_TYPE_FILE);
+    fprintf(fd, "base_path = %s\n", osf->base_path);
+    fprintf(fd, "lock_table_size = %d\n", osf->internal_lock_size);
+    fprintf(fd, "max_copy = %d\n", osf->max_copy);
+    fprintf(fd, "hardlink_dir_size = %d\n", osf->hardlink_dir_size);
+    fprintf(fd, "authz = %s\n", osf->authz_section);
+    fprintf(fd, "authn = %s\n", osf->authn_section);
+    fprintf(fd, "\n");
+}
+
+//***********************************************************************
 // osfile_destroy
 //***********************************************************************
 
@@ -4180,6 +4209,9 @@ void osfile_destroy(lio_object_service_fn_t *os)
 
     apr_pool_destroy(osf->mpool);
 
+    if (osf->authn_section) free(osf->authn_section);
+    if (osf->authz_section) free(osf->authz_section);
+    if (osf->section) free(osf->section);
     free(osf->host_id);
     free(osf->base_path);
     free(osf->file_path);
@@ -4202,11 +4234,13 @@ lio_object_service_fn_t *object_service_file_create(lio_service_manager_t *ess, 
     char *atype, *asection;
     int i, err;
 
-    if (section == NULL) section = "osfile";
+    if (section == NULL) section = osf_default_options.section;
 
     tbx_type_malloc_clear(os, lio_object_service_fn_t, 1);
     tbx_type_malloc_clear(osf, lio_osfile_priv_t, 1);
     os->priv = (void *)osf;
+
+    osf->section = strdup(section);
 
     osf->tpc = lio_lookup_service(ess, ESS_RUNNING, ESS_TPC_UNLIMITED);
     osf->base_path = NULL;
@@ -4220,16 +4254,16 @@ lio_object_service_fn_t *object_service_file_create(lio_service_manager_t *ess, 
         osf->max_copy = 1024*1024;
         osf->hardlink_dir_size = 256;
     } else {
-        osf->base_path = tbx_inip_get_string(fd, section, "base_path", "./osfile");
-        osf->internal_lock_size = tbx_inip_get_integer(fd, section, "lock_table_size", 200);
-        osf->max_copy = tbx_inip_get_integer(fd, section, "max_copy", 1024*1024);
-        osf->hardlink_dir_size = tbx_inip_get_integer(fd, section, "hardlink_dir_size", 256);
-        asection = tbx_inip_get_string(fd, section, "authz", NULL);
+        osf->base_path = tbx_inip_get_string(fd, section, "base_path", osf_default_options.base_path);
+        osf->internal_lock_size = tbx_inip_get_integer(fd, section, "lock_table_size", osf_default_options.internal_lock_size);
+        osf->max_copy = tbx_inip_get_integer(fd, section, "max_copy", osf_default_options.max_copy);
+        osf->hardlink_dir_size = tbx_inip_get_integer(fd, section, "hardlink_dir_size", osf_default_options.hardlink_dir_size);
+        asection = tbx_inip_get_string(fd, section, "authz", osf_default_options.authn_section);
+        osf->authn_section = asection;
         atype = (asection == NULL) ? strdup(OSAZ_TYPE_FAKE) : tbx_inip_get_string(fd, asection, "type", OSAZ_TYPE_FAKE);
         osaz_create = lio_lookup_service(ess, OSAZ_AVAILABLE, atype);
         osf->osaz = (*osaz_create)(ess, fd, asection, os);
         free(atype);
-        free(asection);
         if (osf->osaz == NULL) {
             free(osf->base_path);
             free(osf);
@@ -4237,12 +4271,12 @@ lio_object_service_fn_t *object_service_file_create(lio_service_manager_t *ess, 
             return(NULL);
         }
 
-        asection = tbx_inip_get_string(fd, section, "authn", NULL);
+        asection = tbx_inip_get_string(fd, section, "authn", osf_default_options.authn_section);
+        osf->authn_section = asection;
         atype = (asection == NULL) ? strdup(AUTHN_TYPE_FAKE) : tbx_inip_get_string(fd, asection, "type", AUTHN_TYPE_FAKE);
         authn_create = lio_lookup_service(ess, AUTHN_AVAILABLE, atype);
         osf->authn = (*authn_create)(ess, fd, asection);
         free(atype);
-        free(asection);
         if (osf->osaz == NULL) {
             free(osf->base_path);
             osaz_destroy(osf->osaz);
@@ -4348,6 +4382,7 @@ lio_object_service_fn_t *object_service_file_create(lio_service_manager_t *ess, 
 
     os->type = OS_TYPE_FILE;
 
+    os->print_running_config = osfile_print_running_config;
     os->destroy_service = osfile_destroy;
     os->cred_init = osfile_cred_init;
     os->cred_destroy = osfile_cred_destroy;

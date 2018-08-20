@@ -67,6 +67,7 @@ enum lio_object_type_flag_t {
     OS_OBJECT_ANY_FLAG         = (0x3F) // 6 bits AKA 0x3F. Doesn't include FOLLOW_SYMLINK
 };
 
+typedef void (*lio_os_print_running_config_fn_t)(lio_object_service_fn_t *rs, FILE *fd, int print_section_heading);
 typedef void (*lio_os_destroy_service_fn_t)(lio_object_service_fn_t *os);
 typedef os_fsck_iter_t *(*lio_os_create_fsck_iter_fn_t)(lio_object_service_fn_t *os, lio_creds_t *creds, char *path, int mode);
 typedef void (*lio_os_destroy_fsck_iter_fn_t)(lio_object_service_fn_t *os, os_fsck_iter_t *it);
@@ -156,6 +157,7 @@ LIO_API int os_locking_tests(char *prefix);
 struct lio_object_service_fn_t {
     void *priv;
     char *type;
+    lio_os_print_running_config_fn_t print_running_config;
     lio_os_destroy_service_fn_t destroy_service;
     lio_os_create_fsck_iter_fn_t create_fsck_iter;
     lio_os_destroy_fsck_iter_fn_t destroy_fsck_iter;

@@ -41,6 +41,7 @@
 #include <tbx/iniparse.h>
 #include <tbx/log.h>
 #include <tbx/random.h>
+#include <tbx/string_token.h>
 #include <tbx/type_malloc.h>
 #include <tbx/varint.h>
 
@@ -50,6 +51,19 @@
 #include "os.h"
 #include "os/remote.h"
 #include "service_manager.h"
+
+static lio_osrc_priv_t osrc_default_options = {
+    .section = "os_remote_client",
+    .temp_section = NULL,
+    .authn_section = NULL,
+    .timeout = 60,
+    .heartbeat = 600,
+    .remote_host_string = "${osrc_host}",
+    .max_stream = 10*1024*1024,
+    .stream_timeout = 65,
+    .spin_interval = 1,
+    .spin_fail = 4
+};
 
 #define OSRS_HANDLE(ofd) (void *)(*(intptr_t *)(ofd)->data)
 
@@ -2434,6 +2448,30 @@ void osrc_cred_destroy(lio_object_service_fn_t *os, lio_creds_t *creds)
     return(os_cred_destroy(osrc->os_temp, creds));
 }
 
+//***********************************************************************
+// osrc_print_running_config - Prints the running config
+//***********************************************************************
+
+void osrc_print_running_config(lio_object_service_fn_t *os, FILE *fd, int print_section_heading)
+{
+    lio_osrc_priv_t *osrc = (lio_osrc_priv_t *)os->priv;
+    char  text[1024];
+
+    if (print_section_heading) fprintf(fd, "[%s]\n", osrc->section);
+    fprintf(fd, "type = %s\n", OS_TYPE_REMOTE_CLIENT);
+    fprintf(fd, "os_temp = %s\n", osrc->temp_section);
+    fprintf(fd, "authn_section = %s\n", osrc->authn_section);
+    fprintf(fd, "remote_address = %s\n", osrc->remote_host_string);
+    fprintf(fd, "timeout = %d #seconds\n", osrc->timeout);
+    fprintf(fd, "heartbeat = %d #seconds\n", osrc->heartbeat);
+    fprintf(fd, "stream_timeout = %d #seconds\n", osrc->stream_timeout);
+    fprintf(fd, "spin_interval = %d #seconds\n", osrc->spin_interval);
+    fprintf(fd, "spin_fail = %d\n", osrc->spin_fail);
+    fprintf(fd, "max_stream = %s\n", tbx_stk_pretty_print_int_with_scale(osrc->max_stream, text));
+    fprintf(fd, "\n");
+
+     if (osrc->os_remote) os_print_running_config(osrc->os_remote, fd, 1);
+}
 
 //***********************************************************************
 // os_remote_client_destroy
@@ -2451,6 +2489,9 @@ void osrc_destroy(lio_object_service_fn_t *os)
 
     free(osrc->host_id);
     gop_mq_msg_destroy(osrc->remote_host);
+    free(osrc->section);
+    if (osrc->temp_section) free(osrc->temp_section);
+    if (osrc->authn_section) free(osrc->authn_section);
     free(osrc->remote_host_string);
     free(osrc);
     free(os);
@@ -2466,42 +2507,43 @@ lio_object_service_fn_t *object_service_remote_client_create(lio_service_manager
     lio_object_service_fn_t *os;
     lio_osrc_priv_t *osrc;
     unsigned int n;
-    char *str, *asection, *atype;
+    char *str, *atype;
     char hostname[1024], buffer[1024];
     authn_create_t *authn_create;
 
     log_printf(10, "START\n");
-    if (section == NULL) section = "os_remote_client";
+    if (section == NULL) section = osrc_default_options.section;
 
     tbx_type_malloc_clear(os, lio_object_service_fn_t, 1);
     tbx_type_malloc_clear(osrc, lio_osrc_priv_t, 1);
     os->priv = (void *)osrc;
 
-    str = tbx_inip_get_string(fd, section, "os_temp", NULL);
+    osrc->section = strdup(section);
+
+    str = tbx_inip_get_string(fd, section, "os_temp", osrc_default_options.temp_section);
     if (str != NULL) {  //** Running in test/temp
         log_printf(0, "NOTE: Running in debug mode by loading Remote server locally!\n");
         osrc->os_remote = object_service_remote_server_create(ess, fd, str);
-       FATAL_UNLESS(osrc->os_remote != NULL);
+        FATAL_UNLESS(osrc->os_remote != NULL);
         osrc->os_temp = ((lio_osrs_priv_t *)(osrc->os_remote->priv))->os_child;
         free(str);
     } else {
-        asection = tbx_inip_get_string(fd, section, "authn", NULL);
-        atype = (asection == NULL) ? strdup(AUTHN_TYPE_FAKE) : tbx_inip_get_string(fd, asection, "type", AUTHN_TYPE_FAKE);
+        osrc->authn_section = tbx_inip_get_string(fd, section, "authn", NULL);
+        atype = (osrc->authn_section == NULL) ? strdup(AUTHN_TYPE_FAKE) : tbx_inip_get_string(fd, osrc->authn_section, "type", AUTHN_TYPE_FAKE);
         authn_create = lio_lookup_service(ess, AUTHN_AVAILABLE, atype);
-        osrc->authn = (*authn_create)(ess, fd, asection);
+        osrc->authn = (*authn_create)(ess, fd, osrc->authn_section);
         free(atype);
-        free(asection);
     }
 
-    osrc->timeout = tbx_inip_get_integer(fd, section, "timeout", 60);
-    osrc->heartbeat = tbx_inip_get_integer(fd, section, "heartbeat", 600);
-    osrc->remote_host_string = tbx_inip_get_string(fd, section, "remote_address", NULL);
+    osrc->timeout = tbx_inip_get_integer(fd, section, "timeout", osrc_default_options.timeout);
+    osrc->heartbeat = tbx_inip_get_integer(fd, section, "heartbeat", osrc_default_options.heartbeat);
+    osrc->remote_host_string = tbx_inip_get_string(fd, section, "remote_address", osrc_default_options.remote_host_string);
     osrc->remote_host = gop_mq_string_to_address(osrc->remote_host_string);
 
-    osrc->max_stream = tbx_inip_get_integer(fd, section, "max_stream", 1024*1024);
-    osrc->stream_timeout = tbx_inip_get_integer(fd, section, "stream_timeout", 65);
-    osrc->spin_interval = tbx_inip_get_integer(fd, section, "spin_interval", 1);
-    osrc->spin_fail = tbx_inip_get_integer(fd, section, "spin_fail", 4);
+    osrc->max_stream = tbx_inip_get_integer(fd, section, "max_stream", osrc_default_options.max_stream);
+    osrc->stream_timeout = tbx_inip_get_integer(fd, section, "stream_timeout", osrc_default_options.stream_timeout);
+    osrc->spin_interval = tbx_inip_get_integer(fd, section, "spin_interval", osrc_default_options.spin_interval);
+    osrc->spin_fail = tbx_inip_get_integer(fd, section, "spin_fail", osrc_default_options.spin_fail);
 
     apr_pool_create(&osrc->mpool, NULL);
     apr_thread_mutex_create(&(osrc->lock), APR_THREAD_MUTEX_DEFAULT, osrc->mpool);
@@ -2527,6 +2569,7 @@ lio_object_service_fn_t *object_service_remote_client_create(lio_service_manager
     //** Set up the fn ptrs
     os->type = OS_TYPE_REMOTE_CLIENT;
 
+    os->print_running_config = osrc_print_running_config;
     os->destroy_service = osrc_destroy;
     os->cred_init = osrc_cred_init;
     os->cred_destroy = osrc_cred_destroy;

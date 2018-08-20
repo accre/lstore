@@ -63,6 +63,17 @@
 
 #define FIXME_SIZE 1024*1024
 
+static lio_osrs_priv_t osrs_default_options = {
+    .section = "os_remote_server",
+    .hostname = "${osrs_host}",
+    .fname_activity = NULL,
+    .ongoing_interval = 30,
+    .max_stream = 10*1024*1024,
+    .os_local_section = "rs_simple",
+    .fname_active = "/lio/log/os_active.log",
+    .max_active = 1024
+};
+
 typedef struct {
     char *host_id;
     ex_off_t  count;
@@ -3011,6 +3022,27 @@ void osrs_fsck_object_cb(void *arg, gop_mq_task_t *task)
     if (path != NULL) free(path);
 }
 
+//***********************************************************************
+// osrs_print_running_config - Prints the running config
+//***********************************************************************
+
+void osrs_print_running_config(lio_object_service_fn_t *os, FILE *fd, int print_section_heading)
+{
+    lio_osrs_priv_t *osrs = (lio_osrs_priv_t *)os->priv;
+
+    if (print_section_heading) fprintf(fd, "[%s]\n", osrs->section);
+    fprintf(fd, "type = %s\n", OS_TYPE_REMOTE_SERVER);
+    fprintf(fd, "address = %s\n", osrs->hostname);
+    fprintf(fd, "log_activity = %s\n", osrs->fname_activity);
+    fprintf(fd, "ongoing_interval = %d #seconds\n", osrs->ongoing_interval);
+    fprintf(fd, "max_stream = %d\n", osrs->max_stream);
+    fprintf(fd, "os_local = %s\n", osrs->os_local_section);
+    fprintf(fd, "active_output = %s\n", osrs->fname_active);
+    fprintf(fd, "max_active = %d\n", osrs->max_active);
+    fprintf(fd, "\n");
+
+     if (osrs->os_child) os_print_running_config(osrs->os_child, fd, 1);
+}
 
 //***********************************************************************
 // os_remote_server_destroy
@@ -3057,6 +3089,7 @@ void os_remote_server_destroy(lio_object_service_fn_t *os)
     apr_pool_destroy(osrs->mpool);
 
 
+    free(osrs->section);
     free(osrs->hostname);
     if (osrs->fname_active) free(osrs->fname_active);
     free(osrs);
@@ -3079,11 +3112,14 @@ lio_object_service_fn_t *object_service_remote_server_create(lio_service_manager
     char *cred_args[2];
 
     log_printf(0, "START\n");
-    if (section == NULL) section = "os_remote_server";
+    if (section == NULL) section = osrs_default_options.section;
 
     tbx_type_malloc_clear(os, lio_object_service_fn_t, 1);
     tbx_type_malloc_clear(osrs, lio_osrs_priv_t, 1);
     os->priv = (void *)osrs;
+
+    osrs->section = strdup(section);
+    os->print_running_config = osrs_print_running_config;
 
     osrs->tpc = lio_lookup_service(ess, ESS_RUNNING, ESS_TPC_UNLIMITED);FATAL_UNLESS(osrs->tpc != NULL);
 
@@ -3099,26 +3135,27 @@ lio_object_service_fn_t *object_service_remote_server_create(lio_service_manager
    FATAL_UNLESS(osrs->spin != NULL);
 
     //** Get the host name we bind to
-    osrs->hostname= tbx_inip_get_string(fd, section, "address", NULL);
+    osrs->hostname= tbx_inip_get_string(fd, section, "address", osrs_default_options.hostname);
 
     //** Get the activity log file
-    osrs->fname_activity = tbx_inip_get_string(fd, section, "log_activity", NULL);
+    osrs->fname_activity = tbx_inip_get_string(fd, section, "log_activity", osrs_default_options.fname_activity);
     log_printf(5, "section=%s log_activity=%s\n", section, osrs->fname_activity);
 
     //** Ongoing check interval
-    osrs->ongoing_interval = tbx_inip_get_integer(fd, section, "ongoing_interval", 300);
+    osrs->ongoing_interval = tbx_inip_get_integer(fd, section, "ongoing_interval", osrs_default_options.ongoing_interval);
 
     //** Max Stream size
-    osrs->max_stream = tbx_inip_get_integer(fd, section, "max_stream", 1024*1024);
+    osrs->max_stream = tbx_inip_get_integer(fd, section, "max_stream", osrs_default_options.max_stream);
 
     //** Start the child OS.
-    stype = tbx_inip_get_string(fd, section, "os_local", NULL);
+    stype = tbx_inip_get_string(fd, section, "os_local", osrs_default_options.os_local_section);
     if (stype == NULL) {  //** Oops missing child OS
         log_printf(0, "ERROR: Mising child OS  section=%s key=rs_local!\n", section);
         tbx_log_flush();
         free(stype);
         abort();
     }
+    osrs->os_local_section = stype;
 
     //** and load it
     ctype = tbx_inip_get_string(fd, stype, "type", OS_TYPE_FILE);
@@ -3130,7 +3167,6 @@ lio_object_service_fn_t *object_service_remote_server_create(lio_service_manager
         abort();
     }
     free(ctype);
-    free(stype);
 
     //** Make the dummy credentials
     cred_args[0] = NULL;
@@ -3186,8 +3222,8 @@ lio_object_service_fn_t *object_service_remote_server_create(lio_service_manager
     os->type = OS_TYPE_REMOTE_SERVER;
 
     //** This is for the active tables
-    osrs->fname_active = tbx_inip_get_string(fd, section, "active_output", "/lio/log/os_active.log");
-    osrs->max_active = tbx_inip_get_integer(fd, section, "active_size", 1024);
+    osrs->fname_active = tbx_inip_get_string(fd, section, "active_output", osrs_default_options.fname_active);
+    osrs->max_active = tbx_inip_get_integer(fd, section, "active_size", osrs_default_options.max_active);
     osrs->active_table = apr_hash_make(osrs->mpool);
     osrs->active_lru = tbx_stack_new();
 
