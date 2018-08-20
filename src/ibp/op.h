@@ -77,6 +77,7 @@ struct ibp_context_t {
     tbx_list_t   *coalesced_ops;  //** Ops available for coalescing go here
     apr_thread_mutex_t *lock;
     apr_pool_t *mpool;
+    char *section;         //** Section name from INI file
     tbx_atomic_int_t n_ops;
 };
 

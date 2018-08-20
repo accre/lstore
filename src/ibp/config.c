@@ -41,6 +41,7 @@
 #include <tbx/network.h>
 #include <tbx/pigeon_coop.h>
 #include <tbx/stack.h>
+#include <tbx/string_token.h>
 #include <tbx/type_malloc.h>
 
 #include "misc.h"
@@ -68,6 +69,19 @@ static gop_portal_fn_t _ibp_base_portal = {
     .sort_tasks = gop_default_sort_ops,
     .submit = _ibp_submit_op,
     .sync_exec = NULL
+};
+
+static ibp_context_t ibp_default_options = {
+    .section = "ibp",
+    .tcpsize = 0,
+    .rw_new_command = 10*1024,
+    .other_new_command = 100*1024,
+    .max_coalesce = 20*1024*1024,
+    .coalesce_enable = 0,
+    .max_retry = 2,
+    .transfer_rate = 0,
+    .rr_size = 4,
+    .connection_mode = IBP_CMODE_HOST
 };
 
 int _ibp_context_count = 0;
@@ -580,6 +594,60 @@ void ibp_write_cc_set(ibp_context_t *ic, ibp_connect_context_t *cc)
 }
 
 //**********************************************************
+// cc_type2str - Converts the CC type to a string
+//**********************************************************
+
+char *cc_type2str(int cctype)
+{
+    switch (cctype) {
+        case NS_TYPE_SOCK: return("socket");
+        case NS_TYPE_PHOEBUS: return("phoebus");
+        case NS_TYPE_1_SSL: return("ssl1");
+        case NS_TYPE_2_SSL: return("ssl2");
+    }
+
+    return("UNKNOWN");
+}
+
+//**********************************************************
+// ibp_print_running_config - Print the running config info
+//**********************************************************
+
+void ibp_print_running_config( ibp_context_t *ic, FILE *fd, int print_section_heading)
+{
+    char text[1024];
+
+    if (print_section_heading) fprintf(fd, "[%s]\n", ic->section);
+    gop_hpc_print_running_config(ic->pc, fd, 0);
+    fprintf(fd, "tcpsize = %s\n", tbx_stk_pretty_print_int_with_scale(ic->tcpsize, text));
+    fprintf(fd, "rw_command_weight = %s\n", tbx_stk_pretty_print_int_with_scale(ic->rw_new_command, text));
+    fprintf(fd, "other_command_weight = %s\n", tbx_stk_pretty_print_int_with_scale(ic->other_new_command, text));
+    fprintf(fd, "max_coalesce_workload = %s\n", tbx_stk_pretty_print_int_with_scale(ic->max_coalesce, text));
+    fprintf(fd, "coalesce_enable = %d\n", ic->coalesce_enable);
+    fprintf(fd, "max_retry = %d\n", ic->max_retry);
+    fprintf(fd, "rr_size = %d\n", ic->rr_size);
+    fprintf(fd, "connection_mode = %d\n", ic->connection_mode);
+    fprintf(fd, "transfer_rate = %s\n", tbx_stk_pretty_print_int_with_scale(ic->transfer_rate, text));
+    fprintf(fd, "\n");
+
+    fprintf(fd, "ibp_allocate = %s\n", cc_type2str(ic->cc[IBP_ALLOCATE].type));
+    fprintf(fd, "ibp_store = %s\n", cc_type2str(ic->cc[IBP_STORE].type));
+    fprintf(fd, "ibp_status = %s\n", cc_type2str(ic->cc[IBP_STATUS].type));
+    fprintf(fd, "ibp_send = %s\n", cc_type2str(ic->cc[IBP_SEND].type));
+    fprintf(fd, "ibp_load = %s\n", cc_type2str(ic->cc[IBP_LOAD].type));
+    fprintf(fd, "ibp_manage = %s\n", cc_type2str(ic->cc[IBP_MANAGE].type));
+    fprintf(fd, "ibp_write = %s\n", cc_type2str(ic->cc[IBP_WRITE].type));
+    fprintf(fd, "ibp_proxy_allocate = %s\n", cc_type2str(ic->cc[IBP_PROXY_ALLOCATE].type));
+    fprintf(fd, "ibp_proxy_manage = %s\n", cc_type2str(ic->cc[IBP_PROXY_MANAGE].type));
+    fprintf(fd, "ibp_rename = %s\n", cc_type2str(ic->cc[IBP_RENAME].type));
+    fprintf(fd, "ibp_phoebus_send = %s\n", cc_type2str(ic->cc[IBP_PHOEBUS_SEND].type));
+    fprintf(fd, "ibp_push = %s\n", cc_type2str(ic->cc[IBP_PUSH].type));
+    fprintf(fd, "ibp_pull = %s\n", cc_type2str(ic->cc[IBP_PULL].type));
+    fprintf(fd, "\n");
+
+}
+
+//**********************************************************
 // cc_load - Stores a CC from the given keyfile
 //**********************************************************
 
@@ -642,6 +710,7 @@ int ibp_config_load(ibp_context_t *ic, tbx_inip_file_t *keyfile, char *section)
 {
     if (section == NULL) section = "ibp";
 
+    ic->section = strdup(section);
     ic->tcpsize = tbx_inip_get_integer(keyfile, section, "tcpsize", ic->tcpsize);
     ic->rw_new_command = tbx_inip_get_integer(keyfile, section, "rw_command_weight", ic->rw_new_command);
     ic->other_new_command = tbx_inip_get_integer(keyfile, section, "other_command_weight", ic->other_new_command);
@@ -693,15 +762,15 @@ void default_ibp_config(ibp_context_t *ic)
 
     tbx_ns_chksum_clear(&(ic->ncs));
 
-    ic->tcpsize = 0;
-    ic->rw_new_command = 10*1024;
-    ic->other_new_command = 100*1024;
-    ic->max_coalesce = 1000;
-    ic->coalesce_enable = 1;
-    ic->max_retry = 2;
-    ic->transfer_rate = 0;
-    ic->rr_size = 4;
-    ic->connection_mode = IBP_CMODE_HOST;
+    ic->tcpsize = ibp_default_options.tcpsize;
+    ic->rw_new_command = ibp_default_options.rw_new_command;
+    ic->other_new_command = ibp_default_options.other_new_command;
+    ic->max_coalesce = ibp_default_options.max_coalesce;
+    ic->coalesce_enable = ibp_default_options.coalesce_enable;
+    ic->max_retry = ibp_default_options.max_retry;
+    ic->transfer_rate = ibp_default_options.transfer_rate;
+    ic->rr_size = ibp_default_options.rr_size;
+    ic->connection_mode = ibp_default_options.connection_mode;
 
     for (i=0; i<=IBP_MAX_NUM_CMDS; i++) {
         ic->cc[i].type = NS_TYPE_SOCK;
@@ -771,5 +840,6 @@ void ibp_context_destroy(ibp_context_t *ic)
         tbx_dnsc_shutdown();
     }
 
+    if (ic->section) free(ic->section);
     free(ic);
 }

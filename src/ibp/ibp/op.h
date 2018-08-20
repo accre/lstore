@@ -63,6 +63,7 @@ IBP_API int ibp_cc_type(ibp_connect_context_t *cc);
 IBP_API int ibp_chksum_set(ibp_context_t *ic, tbx_ns_chksum_t *ncs);
 IBP_API int ibp_config_load(ibp_context_t *ic, tbx_inip_file_t *ifd, char *section);
 IBP_API int ibp_config_load_file(ibp_context_t *ic, char *fname, char *section);
+IBP_API void ibp_print_running_config( ibp_context_t *ic, FILE *fd, int print_section_heading);
 IBP_API ibp_context_t *ibp_context_create();
 IBP_API void ibp_context_destroy(ibp_context_t *ic);
 IBP_API gop_op_generic_t *ibp_copy_gop(ibp_context_t *ic, int mode, int ns_type, char *path, ibp_cap_t *srccap, ibp_cap_t *destcap, ibp_off_t src_offset, ibp_off_t dest_offset, ibp_off_t size, int src_timeout, int dest_timeout, int dest_client_timeout);
