@@ -25,6 +25,7 @@
 #define BUFMAX 8192
 #define PARAMS "_parameters"
 #define VAR_DECLARE '$'
+#define  VAR_RANDOM "RANDOM"
 
 char *hint_ops[] = { "--ini-hint-add", "--ini-hint-remove", "--ini-hint-replace", "--ini-hint-default" };
 
@@ -73,6 +74,8 @@ struct tbx_inip_hint_t {  //** Overriding hint
     int section_rank;
     int key_rank;
 };
+
+static int used_random = 0;
 
 void apply_params(tbx_inip_file_t  *fd);
 
@@ -126,7 +129,7 @@ char *substitute_params(tbx_inip_file_t *fd, char *text)
 {
     char *start, *end, *last, *dest, *c, *value, *newtext, *textend;
     char param[1024], subtext[1024];
-    int n, ndest, nmax, changed;
+    int n, ndest, nmax, changed, pid;
 
     nmax = sizeof(subtext);
     textend = text + strlen(text);
@@ -186,7 +189,17 @@ char *substitute_params(tbx_inip_file_t *fd, char *text)
         param[n] = 0;
 
         //** Look up the parameter
-        value = tbx_inip_get_string(fd, PARAMS, param, "oops!arg!is!missing");
+        if (strcmp(param, VAR_RANDOM) == 0) {  //** Random number
+            if (used_random == 0) {
+                used_random = 1;
+                pid = getpid();
+                srandom(pid);
+            }
+            tbx_type_malloc(value, char, 20);
+            snprintf(value, 20, "%ld", random());
+        } else {    //** Look it up
+            value = tbx_inip_get_string(fd, PARAMS, param, "oops!arg!is!missing");
+        }
 
 finished:
         n = ndest + start - last + 1;
@@ -505,9 +518,11 @@ void _parse_group(bfile_t *bfd, tbx_inip_group_t *group)
     tbx_inip_element_t *ele, *prev;
 
     ele = _parse_ele(bfd);
-    group->n_kv_substitution_check += ele->substitution_check;
-    prev = ele;
+    if (ele) group->n_kv_substitution_check += ele->substitution_check;
     group->list = ele;
+    if (!ele) return;
+
+    prev = ele;
     ele = _parse_ele(bfd);
     while (ele != NULL) {
         group->n_kv_substitution_check += ele->substitution_check;
