@@ -128,6 +128,18 @@ int tbx_chksum_type_valid(tbx_chksum_type_t type)
     return(0);
 }
 
+//**********************************************************************
+//  chksum_type2string
+//    Returns a character string describing the type
+//**********************************************************************
+
+char *tbx_chksum_type2string(tbx_chksum_type_t type)
+{
+    if ((type > 0) && (type < CHKSUM_MAX_TYPE)) return("UNKNOWN");
+
+    return(_chksum_name[type]);
+}
+
 
 //**********************************************************************
 //  openssl chksum macros
