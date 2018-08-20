@@ -208,8 +208,12 @@ struct lio_config_t {
     char *rs_section;
     char *tpc_unlimited_section;
     char *tpc_cache_section;
+    char *cache_section;
     char *creds_name;
+    char *creds_user;
+    char *blacklist_section;
     char *exe_name;
+    char *rc_section;
     lio_blacklist_t *blacklist;
     ex_off_t readahead;
     ex_off_t readahead_trigger;
@@ -218,6 +222,10 @@ struct lio_config_t {
     int max_attr;
     int anonymous_creation;
     int auto_translate;
+    int jerase_paranoid;
+    int tpc_unlimited_count;
+    int tpc_cache_count;
+    int tpc_max_recursion;
     int ref_cnt;
 };
 

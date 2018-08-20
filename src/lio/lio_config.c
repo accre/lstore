@@ -55,6 +55,7 @@
 #include "remote_config.h"
 #include "os.h"
 #include "os/file.h"
+#include "os/remote.h"
 #include "rs.h"
 #include "rs/simple.h"
 #include "service_manager.h"
@@ -71,6 +72,26 @@ typedef struct {
 } lfs_mount_t;
 
 int lio_parallel_task_count = 100;
+
+lio_config_t lio_default_options = {
+    .timeout = 60,  //********** FIXME should be in APR time! *************
+    .max_attr = 10*1024*1024,
+    .calc_adler32 = 0,
+    .readahead = 0,
+    .readahead_trigger = 0,
+    .jerase_paranoid = 0,
+    .tpc_unlimited_count = 300,
+    .tpc_max_recursion = 10,
+    .tpc_cache_count = 100,
+    .blacklist_section = NULL,
+    .section_name = "lio",
+    .mq_section = "mq_context",
+    .ds_section = DS_TYPE_IBP,
+    .rs_section = "rs_simple",
+    .os_section = "os_remote_client",
+    .cache_section = "cache_amp",
+    .creds_user = "guest"
+};
 
 // ** Define the global LIO config
 lio_config_t *lio_gc = NULL;
@@ -90,6 +111,58 @@ lio_config_t *lio_create_nl(tbx_inip_file_t *ifd, char *section, char *user, cha
 void lio_destroy_nl(lio_config_t *lio);
 
 char **myargv = NULL;  // ** This is used to hold the new argv we return from lio_init so we can properly clean it up
+
+
+//***************************************************************
+// lio_print_running_config - Prints the running config
+//***************************************************************
+
+void lio_print_running_config(FILE *fd, lio_config_t *lio)
+{
+    char text[1024];
+
+    fprintf(fd, "[%s]\n", lio->section_name);
+    fprintf(fd, "timeout = %d # seconds FIXME!!! Should be in APR time!\n", lio->timeout);
+    fprintf(fd, "max_attr_size = %s\n", tbx_stk_pretty_print_int_with_scale(lio->max_attr, text));
+    fprintf(fd, "calc_adler32 = %d\n", lio->calc_adler32);
+    fprintf(fd, "readahead = %s\n", tbx_stk_pretty_print_int_with_scale(lio->readahead, text));
+    fprintf(fd, "readahead_trigger = %s\n", tbx_stk_pretty_print_int_with_scale(lio->readahead_trigger, text));
+    fprintf(fd, "jerase_paranoid = %d\n", lio->jerase_paranoid);
+    fprintf(fd, "tpc_unlimited = %d\n", lio->tpc_unlimited_count);
+    fprintf(fd, "tpc_max_recursion = %d\n", lio->tpc_max_recursion);
+    fprintf(fd, "tpc_cache = %d\n", lio->tpc_cache_count);
+    fprintf(fd, "blacklist= %s\n", lio->blacklist_section);
+    fprintf(fd, "mq = %s\n", lio->mq_section);
+    fprintf(fd, "ds = %s\n", lio->ds_section);
+    fprintf(fd, "rs = %s\n", lio->rs_section);
+    fprintf(fd, "os = %s\n", lio->os_section);
+    fprintf(fd, "remote_config = %s\n", lio->rc_section);
+    fprintf(fd, "cache = %s\n", lio->cache_section);
+    fprintf(fd, "user = %s\n", lio->creds_user);
+    fprintf(fd, "\n");
+
+    rc_print_running_config(fd);
+    cache_print_running_config(lio->cache, fd, 1);
+    gop_mq_print_running_config(lio->mqc, fd, 1);
+    os_print_running_config(lio->os, fd, 1);
+    ds_print_running_config(lio->ds, fd, 1);
+    rs_print_running_config(lio->rs, fd, 1);
+}
+
+//***************************************************************
+//** lio_dump_running_config_fn - Dumps the config
+//***************************************************************
+
+void lio_dump_running_config_fn(void *arg, FILE *fd)
+{
+    lio_config_t *lc = (lio_config_t *)arg;
+
+    fprintf(fd, "---------------------------------- LIO config start --------------------------------------------\n");
+    lio_print_running_config(fd, lc);
+    fprintf(fd, "---------------------------------- LIO config end --------------------------------------------\n");
+    fprintf(fd, "\n");
+}
+
 
 //***************************************************************
 // check_for_section - Checks to make sure the section
@@ -465,7 +538,7 @@ lio_path_tuple_t lio_path_tuple_copy(lio_path_tuple_t *curr, char *fname)
     tuple.path = fname;
 
     snprintf(buffer, sizeof(buffer), "tuple:%s@%s", an_cred_get_id(curr->creds), curr->lc->obj_name);
-    apr_thread_mutex_lock(_lc_lock);    
+    apr_thread_mutex_lock(_lc_lock);
     t2 = _lc_object_get(buffer);
     apr_thread_mutex_unlock(_lc_lock);
 
@@ -509,7 +582,7 @@ lio_path_tuple_t lio_path_resolve_base(char *lpath)
     if (!fname) {
         fname = strdup(lpath);
         is_lio = 0;
-        strncpy(uri, lio_gc->obj_name, sizeof(uri));        
+        strncpy(uri, lio_gc->obj_name, sizeof(uri));
     } else if ((lio_gc) && (!pp_mq) && (!pp_host) && (!pp_cfg) && (!pp_section) && (pp_port == 0)) { //** Check if we just have defaults if so use the global context
         strncpy(uri, lio_gc->obj_name, sizeof(uri));
     } else {
@@ -784,7 +857,8 @@ void lio_print_options(FILE *fd)
     fprintf(fd, "       -it N              - Print information messages of level N or greater. Thread ID header is used\n");
     fprintf(fd, "       -if N              - Print information messages of level N or greater. Full header is used\n");
     fprintf(fd, "       -ilog info_log_out - Where to send informational log output.\n");
-    fprintf(fd, "       --print-config     - Print the loaded config.\n");
+    fprintf(fd, "       --print-config     - Print the parsed config.\n");
+    fprintf(fd, "       --print-running-config  - Print the running config.\n");
     fprintf(fd, "\n");
     tbx_inip_print_hint_options(fd);
 }
@@ -873,11 +947,18 @@ void lio_destroy_nl(lio_config_t *lio)
 
     //** Remove ourselves to the info handler
     tbx_siginfo_handler_remove(lio_open_files_info_fn, lio);
+    tbx_siginfo_handler_remove(lio_dump_running_config_fn, lio);
 
     //** Blacklist if used
-    if (lio->blacklist != NULL) blacktbx_list_destroy(lio->blacklist);
+    if (lio->blacklist != NULL) {
+        blacktbx_list_destroy(lio->blacklist);
+    }
+    if (lio->blacklist_section) free(lio->blacklist_section);
 
     if (lio->obj_name) free(lio->obj_name);
+
+    if (lio->cache_section) free(lio->cache_section);
+    if (lio->creds_user) free(lio->creds_user);
 
     apr_thread_mutex_destroy(lio->lock);
     apr_pool_destroy(lio->mpool);
@@ -930,6 +1011,7 @@ lio_config_t *lio_create_nl(tbx_inip_file_t *ifd, char *section, char *user, cha
     tbx_type_malloc_clear(lio, lio_config_t, 1);
     lio->ess = lio_exnode_service_set_create();
     lio->auto_translate = 1;
+    if (section) lio->section_name = strdup(section);
     if (exe_name) lio->exe_name = strdup(exe_name);
 
     //** Add it to the table for ref counting
@@ -947,28 +1029,30 @@ lio_config_t *lio_create_nl(tbx_inip_file_t *ifd, char *section, char *user, cha
     _lio_load_plugins(lio, lio->ifd);  //** Load the plugins
 
     check_for_section(lio->ifd, section, "No primary LIO config section!\n");
-    lio->timeout = tbx_inip_get_integer(lio->ifd, section, "timeout", 120);
-    lio->max_attr = tbx_inip_get_integer(lio->ifd, section, "max_attr_size", 10*1024*1024);
-    lio->calc_adler32 = tbx_inip_get_integer(lio->ifd, section, "calc_adler32", 0);
-    lio->readahead = tbx_inip_get_integer(lio->ifd, section, "readahead", 0);
-    lio->readahead_trigger = lio->readahead * tbx_inip_get_double(lio->ifd, section, "readahead_trigger", 1.0);
+    lio->timeout = tbx_inip_get_integer(lio->ifd, section, "timeout", lio_default_options.timeout);
+    lio->max_attr = tbx_inip_get_integer(lio->ifd, section, "max_attr_size", lio_default_options.max_attr);
+    lio->calc_adler32 = tbx_inip_get_integer(lio->ifd, section, "calc_adler32", lio_default_options.calc_adler32);
+    lio->readahead = tbx_inip_get_integer(lio->ifd, section, "readahead", lio_default_options.readahead);
+    lio->readahead_trigger = tbx_inip_get_integer(lio->ifd, section, "readahead_trigger", lio_default_options.readahead_trigger);
 
     //** Check and see if we need to enable the blacklist
-    stype = tbx_inip_get_string(lio->ifd, section, "blacklist", NULL);
-    if (stype != NULL) { //** Yup we need to parse and load those params
+    lio->blacklist_section = tbx_inip_get_string(lio->ifd, section, "blacklist", lio_default_options.blacklist_section);
+    if (lio->blacklist_section != NULL) { //** Yup we need to parse and load those params
         check_for_section(lio->ifd, section, "No blacklist section found!\n");
-        lio->blacklist = blacklist_load(lio->ifd, stype);
+        lio->blacklist = blacklist_load(lio->ifd, lio->blacklist_section);
         add_service(lio->ess, ESS_RUNNING, "blacklist", lio->blacklist);
-        free(stype);
     }
 
     //** Add the Jerase paranoid option
     tbx_type_malloc(val, int, 1);  //** NOTE: this is not freed on a destroy
-    *val = tbx_inip_get_integer(lio->ifd, section, "jerase_paranoid", 0);
+    *val = tbx_inip_get_integer(lio->ifd, section, "jerase_paranoid", lio_default_options.jerase_paranoid);
     add_service(lio->ess, ESS_RUNNING, "jerase_paranoid", val);
+    lio->jerase_paranoid = *val;
 
-    cores = tbx_inip_get_integer(lio->ifd, section, "tpc_unlimited", 200);
-    max_recursion = tbx_inip_get_integer(lio->ifd, section, "tpc_max_recursion", 10);
+    cores = tbx_inip_get_integer(lio->ifd, section, "tpc_unlimited", lio_default_options.tpc_unlimited_count);
+    lio->tpc_unlimited_count = cores;
+    max_recursion = tbx_inip_get_integer(lio->ifd, section, "tpc_max_recursion", lio_default_options.tpc_max_recursion);
+    lio->tpc_max_recursion = max_recursion;
     sprintf(buffer, "tpc:%d", cores);
     stype = buffer;
     lio->tpc_unlimited_section = strdup(stype);
@@ -990,7 +1074,8 @@ lio_config_t *lio_create_nl(tbx_inip_file_t *ifd, char *section, char *user, cha
     add_service(lio->ess, ESS_RUNNING, ESS_TPC_UNLIMITED, lio->tpc_unlimited);
 
 
-    cores = tbx_inip_get_integer(lio->ifd, section, "tpc_cache", 100);
+    cores = tbx_inip_get_integer(lio->ifd, section, "tpc_cache", lio_default_options.tpc_cache_count);
+    lio->tpc_cache_count = cores;
     sprintf(buffer, "tpc-cache:%d", cores);
     stype = buffer;
     lio->tpc_cache_section = strdup(stype);
@@ -1012,8 +1097,7 @@ lio_config_t *lio_create_nl(tbx_inip_file_t *ifd, char *section, char *user, cha
     add_service(lio->ess, ESS_RUNNING, ESS_TPC_CACHE, lio->tpc_cache);
 
 
-    stype = tbx_inip_get_string(lio->ifd, section, "mq", "mq_context");
-    check_for_section(lio->ifd, stype, "No MQ context in LIO config!\n");
+    stype = tbx_inip_get_string(lio->ifd, section, "mq", lio_default_options.mq_section);
     lio->mq_section = stype;
     lio->mqc = _lc_object_get(stype);
     if (lio->mqc == NULL) {  //** Need to load it
@@ -1038,8 +1122,8 @@ lio_config_t *lio_create_nl(tbx_inip_file_t *ifd, char *section, char *user, cha
 
     add_service(lio->ess, ESS_RUNNING, ESS_ONGOING_CLIENT, on);
 
-    stype = tbx_inip_get_string(lio->ifd, section, "ds", DS_TYPE_IBP);
-    check_for_section(lio->ifd, stype, "No primary Data Service (ds) found in LIO config!\n");
+    stype = tbx_inip_get_string(lio->ifd, section, "ds", lio_default_options.ds_section);
+    if (strcmp(stype, lio_default_options.ds_section) != 0) check_for_section(lio->ifd, stype, "No primary Data Service (ds) found in LIO config!\n");
     lio->ds_section = stype;
     lio->ds = _lc_object_get(stype);
     if (lio->ds == NULL) {  //** Need to load it
@@ -1065,8 +1149,8 @@ lio_config_t *lio_create_nl(tbx_inip_file_t *ifd, char *section, char *user, cha
     add_service(lio->ess, ESS_RUNNING, ESS_DS, lio->ds);  //** This is needed by the RS service
     add_service(lio->ess, ESS_RUNNING, ESS_DA, lio->da);  //** This is needed by the RS service
 
-    stype = tbx_inip_get_string(lio->ifd, section, "rs", RS_TYPE_SIMPLE);
-    check_for_section(lio->ifd, stype, "No Resource Service (rs) found in LIO config!\n");
+    stype = tbx_inip_get_string(lio->ifd, section, "rs", lio_default_options.rs_section);
+    if (strcmp(stype,lio_default_options.rs_section) != 0) check_for_section(lio->ifd, stype, "No Resource Service (rs) found in LIO config!\n");
     lio->rs_section = stype;
     lio->rs = _lc_object_get(stype);
     if (lio->rs == NULL) {  //** Need to load it
@@ -1085,12 +1169,12 @@ lio_config_t *lio_create_nl(tbx_inip_file_t *ifd, char *section, char *user, cha
     }
     add_service(lio->ess, ESS_RUNNING, ESS_RS, lio->rs);
 
-    stype = tbx_inip_get_string(lio->ifd, section, "os", "osfile");
-    check_for_section(lio->ifd, stype, "No Object Service (os) found in LIO config!\n");
+    stype = tbx_inip_get_string(lio->ifd, section, "os", lio_default_options.os_section);
+    if (strcmp(stype, lio_default_options.os_section) != 0) check_for_section(lio->ifd, stype, "No Object Service (os) found in LIO config!\n");
     lio->os_section = stype;
     lio->os = _lc_object_get(stype);
     if (lio->os == NULL) {  //** Need to load it
-        ctype = tbx_inip_get_string(lio->ifd, stype, "type", OS_TYPE_FILE);
+        ctype = tbx_inip_get_string(lio->ifd, stype, "type", OS_TYPE_REMOTE_CLIENT);
         os_create = lio_lookup_service(lio->ess, OS_AVAILABLE, ctype);
         lio->os = (*os_create)(lio->ess, lio->ifd, stype);
         if (lio->os == NULL) {
@@ -1106,7 +1190,8 @@ lio_config_t *lio_create_nl(tbx_inip_file_t *ifd, char *section, char *user, cha
     add_service(lio->ess, ESS_RUNNING, ESS_OS, lio->os);
 
     cred_args[0] = lio->ifd;
-    cred_args[1] = (user == NULL) ? tbx_inip_get_string(lio->ifd, section, "user", "guest") : strdup(user);
+    cred_args[1] = (user == NULL) ? tbx_inip_get_string(lio->ifd, section, "user", lio_default_options.creds_user) : strdup(user);
+    lio->creds_user = strdup(cred_args[1]);
     snprintf(buffer, sizeof(buffer), "tuple:%s@%s", (char *)cred_args[1], lio->obj_name);
     stype = buffer;
     lio->creds_name = strdup(buffer);
@@ -1123,8 +1208,9 @@ lio_config_t *lio_create_nl(tbx_inip_file_t *ifd, char *section, char *user, cha
     if (cred_args[1] != NULL) free(cred_args[1]);
 
     if (_lio_cache == NULL) {
-        stype = tbx_inip_get_string(lio->ifd, section, "cache", CACHE_TYPE_AMP);
-        check_for_section(lio->ifd, stype, "No Cache section found in LIO config!\n");
+        stype = tbx_inip_get_string(lio->ifd, section, "cache", lio_default_options.cache_section);
+        if (strcmp(stype,lio_default_options.cache_section) != 0) check_for_section(lio->ifd, stype, "No Cache section found in LIO config!\n");
+        lio->cache_section = strdup(stype);
         ctype = tbx_inip_get_string(lio->ifd, stype, "type", CACHE_TYPE_AMP);
         cache_create = lio_lookup_service(lio->ess, CACHE_LOAD_AVAILABLE, ctype);
         _lio_cache = (*cache_create)(lio->ess, lio->ifd, stype, lio->da, lio->timeout);
@@ -1154,6 +1240,7 @@ lio_config_t *lio_create_nl(tbx_inip_file_t *ifd, char *section, char *user, cha
 
     //** Add ourselves to the info handler
     tbx_siginfo_handler_add(lio_open_files_info_fn, lio);
+    tbx_siginfo_handler_add(lio_dump_running_config_fn, lio);
 
     log_printf(1, "END: uri=%s\n", obj_name);
 
@@ -1429,9 +1516,12 @@ int lio_init(int *argc, char ***argvp)
             i++;
             section_name = argv[i];
             i++;
-        } else if (strcmp(argv[i], "--print-config") == 0) { //** Default LIO config section
+        } else if (strcmp(argv[i], "--print-config") == 0) { //** Print the parsed config file
             i++;
-            print_config = 1;
+            print_config |= 1;
+        } else if (strcmp(argv[i], "--print-running-config") == 0) { //** Print the running config
+            i++;
+            print_config |= 2;
         } else {
             myargv[nargs] = argv[i];
             nargs++;
@@ -1542,6 +1632,16 @@ no_args:
     tbx_inip_hint_list_apply(ifd, hints);  //** Apply the hints
     tbx_inip_hint_list_destroy(hints);     //** and cleanup
 
+    if ((print_config & 1) == 1) {
+        char *cfg_dump = tbx_inip_serialize(ifd);
+        fprintf(stdout, "------------------- Dumping input LStore configuration file -------------------\n");
+        fprintf(stdout, "Config string: %s   Section: %s\n", cfg_name, section_name);
+        fprintf(stdout, "-------------------------------------------------------------------------------\n\n");
+        fprintf(stdout, "%s", cfg_dump);
+        fprintf(stdout, "-------------------------------------------------------------------------------\n\n");
+        if (cfg_dump) free(cfg_dump);
+    }
+
     tbx_mlog_load(ifd, out_override, ll_override);
     lio_gc = lio_create(ifd, section_name, userid, obj_name, name);
     if (!lio_gc) {
@@ -1549,16 +1649,11 @@ no_args:
         return 1;
     }
 
-    if (print_config) {
-        char *cfg_dump = tbx_inip_serialize(lio_gc->ifd);
-        info_printf(lio_ifd, 0, "-------------------Dumping LStore config-------------------\n");
-        info_printf(lio_ifd, 0, "Config string: %s   Section: %s\n", cfg_name, section_name);
-        info_printf(lio_ifd, 0, "-----------------------------------------------------------\n\n");
-        info_printf(lio_ifd, 0, "%s", cfg_dump);
-        info_printf(lio_ifd, 0, "-----------------------------------------------------------\n\n");
-        if (cfg_dump) free(cfg_dump);
+    if ((print_config & 2) == 2) {
+        fprintf(stdout, "--------------------- Dumping running LStore configuration --------------------\n");
+        lio_print_running_config(stdout, lio_gc);
+        fprintf(stdout, "-------------------------------------------------------------------------------\n\n");
     }
-
 
     lio_gc->ref_cnt = 1;
 
@@ -1576,9 +1671,9 @@ no_args:
 
     //** See if we run a remote config server
     remote_config = tbx_inip_get_string(lio_gc->ifd, section_name, "remote_config", NULL);
+    lio_gc->rc_section = remote_config;
     if (remote_config) {
         rc_server_install(lio_gc, remote_config);
-        free(remote_config);
     }
 
     //** Install the signal handler hook to get info
@@ -1604,6 +1699,7 @@ int lio_shutdown()
     }
 
     rc_server_destroy();
+    if (lio_gc->rc_section) free(lio_gc->rc_section);
 
     cache_destroy(_lio_cache);
     _lio_cache = NULL;
