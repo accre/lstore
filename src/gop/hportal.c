@@ -136,6 +136,22 @@ struct gop_portal_context_t {             //** Handle for maintaining all the ec
     gop_portal_fn_t *fn;       //** Actual implementaion for application
 };
 
+static gop_portal_context_t  hpc_default_options = {
+    .name = NULL,
+    .dt_dead_timeout = apr_time_from_sec(5*60),
+    .dt_dead_check = apr_time_from_sec(1*60),
+    .min_bw_fraction = 0.001,
+    .max_total_conn = 64,
+    .max_idle = apr_time_from_sec(30),
+    .wait_stable_time = apr_time_from_sec(1*60),
+    .min_conn = 1,
+    .max_conn = 4,
+    .dt_connect = apr_time_from_sec(10),
+    .max_workload = 10*1024*1024,
+    .mix_latest_fraction = 0.5
+};
+
+
 int process_incoming(gop_portal_context_t *hpc);
 hconn_t *hconn_new(hportal_t *hp, tbx_que_t *outgoing, apr_pool_t *mpool);
 void hconn_add(hportal_t *hp, hconn_t *hc);
@@ -316,6 +332,7 @@ double determine_bandwidths(gop_portal_context_t *hpc, int *n_used, hportal_t **
         if (hp_min) *hp_min = NULL;
         if (hp_median) *hp_median = NULL;
         if (hp_max) *hp_max = NULL;
+        if (n_used) *n_used = n;
         return(0.0);
     }
 
@@ -347,7 +364,7 @@ double determine_bandwidths(gop_portal_context_t *hpc, int *n_used, hportal_t **
     if (hp_median) *hp_median = array[i];
     if (hp_max) *hp_max = array[n-1];
     if (n_used) *n_used = n;
-    
+
     free(array);  //** Clean up
     return(total_avg_bw);
 }
@@ -1288,6 +1305,27 @@ double gop_hpc_min_bw_fraction_get(gop_portal_context_t *hpc) { return(hpc->min_
 void gop_hpc_mex_latest_fraction_set(gop_portal_context_t *hpc, double d) { hpc->mix_latest_fraction = d; }
 double gop_hpc_mix_latest_fraction_get(gop_portal_context_t *hpc) { return(hpc->mix_latest_fraction); }
 
+//************************************************************************
+// gop_hpc_print_running_config - Prints the running config
+//************************************************************************
+
+void gop_hpc_print_running_config(gop_portal_context_t *hpc, FILE *fd, int print_section_heading)
+{
+    char text[1024];
+
+    if (print_section_heading) fprintf(fd, "[%s]\n", hpc->name);
+    fprintf(fd, "dt_dead_timeout = %s\n", tbx_stk_pretty_print_time(hpc->dt_dead_timeout, 0, text));
+    fprintf(fd, "dead_check = %s\n", tbx_stk_pretty_print_time(hpc->dt_dead_check, 0, text));
+    fprintf(fd, "min_bw_fraction = %s\n", tbx_stk_pretty_print_double_with_scale(1000, hpc->min_bw_fraction, text));
+    fprintf(fd, "max_total_conn = %d\n", hpc->max_total_conn);
+    fprintf(fd, "max_idle = %s\n", tbx_stk_pretty_print_time(hpc->max_idle, 0, text));
+    fprintf(fd, "wait_stable_time = %s\n", tbx_stk_pretty_print_time(hpc->wait_stable_time, 0, text));
+    fprintf(fd, "min_host_conn = %d\n", hpc->min_conn);
+    fprintf(fd, "max_host_conn = %d\n", hpc->max_conn);
+    fprintf(fd, "max_workload_conn = %s\n", tbx_stk_pretty_print_int_with_scale(hpc->max_workload, text));
+    fprintf(fd, "mix_latest_fraction = %s\n", tbx_stk_pretty_print_double_with_scale(1000, hpc->mix_latest_fraction, text));
+    fprintf(fd, "\n");
+}
 
 //************************************************************************
 //  gop_hp_context_create - Creates a new hportal context structure for use
@@ -1309,17 +1347,17 @@ gop_portal_context_t *gop_hp_context_create(gop_portal_fn_t *imp, char *name)
     hpc->hp = apr_hash_make(hpc->pool); FATAL_UNLESS(hpc->hp != NULL);
     hpc->que = tbx_que_create(10000, sizeof(hpc_cmd_t));
 
-    hpc->dt_dead_timeout = apr_time_from_sec(5*60);
-    hpc->dt_dead_check = apr_time_from_sec(60);
-    hpc->min_bw_fraction = 0.001;
-    hpc->max_total_conn = 64;
-    hpc->max_idle = apr_time_from_sec(30);
-    hpc->wait_stable_time = apr_time_from_sec(60);
-    hpc->min_conn = 1;
-    hpc->max_conn = 4;
-    hpc->dt_connect = apr_time_from_sec(10);
-    hpc->max_workload = 10*1024*1024;
-    hpc->mix_latest_fraction = 0.5;
+    hpc->dt_dead_timeout = hpc_default_options.dt_dead_timeout;
+    hpc->dt_dead_check = hpc_default_options.dt_dead_check;
+    hpc->min_bw_fraction = hpc_default_options.min_bw_fraction;
+    hpc->max_total_conn = hpc_default_options.max_total_conn;
+    hpc->max_idle = hpc_default_options.max_idle;
+    hpc->wait_stable_time = hpc_default_options.wait_stable_time;
+    hpc->min_conn = hpc_default_options.min_conn;
+    hpc->max_conn = hpc_default_options.max_conn;
+    hpc->dt_connect = hpc_default_options.dt_connect;
+    hpc->max_workload = hpc_default_options.max_workload;
+    hpc->mix_latest_fraction = hpc_default_options.mix_latest_fraction;
     tbx_ns_timeout_set(&(hpc->dt_connect), 1, 0);
 
     tbx_thread_create_warn(err, &(hpc->main_thread), NULL, hportal_thread, (void *)hpc, hpc->pool);
@@ -1335,17 +1373,19 @@ gop_portal_context_t *gop_hp_context_create(gop_portal_fn_t *imp, char *name)
 
 void gop_hpc_load(gop_portal_context_t *hpc, tbx_inip_file_t *fd, char *section)
 {
-    hpc->dt_dead_timeout = tbx_inip_get_time(fd, section, "dead_timeout", "5m");
-    hpc->dt_dead_check = tbx_inip_get_time(fd, section, "dead_check", "1m");
-    hpc->min_bw_fraction = tbx_inip_get_double(fd, section, "min_bw_fraction", 0.001);
-    hpc->max_total_conn = tbx_inip_get_integer(fd, section, "max_connections", 64);;
-    hpc->max_idle = tbx_inip_get_time(fd, section, "max_idle", "30s");
-    hpc->wait_stable_time = tbx_inip_get_time(fd, section, "wait_stable", "1m");
-    hpc->min_conn = tbx_inip_get_integer(fd, section, "min_host_conn", 1);;
-    hpc->max_conn = tbx_inip_get_integer(fd, section, "max_host_conn", 4);;
-    hpc->dt_connect = apr_time_from_sec(10);
-    hpc->max_workload = tbx_inip_get_integer(fd, section, "max_workload_conn", 10*1024*1024);
-    hpc->mix_latest_fraction = tbx_inip_get_double(fd, section, "mix_latest_fraction", 0.5);;
+    char text[1024];
+
+    hpc->dt_dead_timeout = tbx_inip_get_time(fd, section, "dead_timeout", tbx_stk_pretty_print_time(hpc_default_options.dt_dead_timeout, 0, text));
+    hpc->dt_dead_check = tbx_inip_get_time(fd, section, "dead_check", tbx_stk_pretty_print_time(hpc_default_options.dt_dead_check, 0, text));
+    hpc->min_bw_fraction = tbx_inip_get_double(fd, section, "min_bw_fraction", hpc_default_options.min_bw_fraction);
+    hpc->max_total_conn = tbx_inip_get_integer(fd, section, "max_connections", hpc_default_options.max_total_conn);
+    hpc->max_idle = tbx_inip_get_time(fd, section, "max_idle", tbx_stk_pretty_print_time(hpc_default_options.max_idle, 0, text));
+    hpc->wait_stable_time = tbx_inip_get_time(fd, section, "wait_stable", tbx_stk_pretty_print_time(hpc_default_options.wait_stable_time, 0, text));
+    hpc->min_conn = tbx_inip_get_integer(fd, section, "min_host_conn", hpc_default_options.min_conn);
+    hpc->max_conn = tbx_inip_get_integer(fd, section, "max_host_conn", hpc_default_options.max_conn);
+    hpc->dt_connect = hpc_default_options.dt_connect;
+    hpc->max_workload = tbx_inip_get_integer(fd, section, "max_workload_conn", hpc_default_options.max_workload);
+    hpc->mix_latest_fraction = tbx_inip_get_double(fd, section, "mix_latest_fraction", hpc_default_options.mix_latest_fraction);
     tbx_ns_timeout_set(&(hpc->dt_connect), 1, 0);
 }
 

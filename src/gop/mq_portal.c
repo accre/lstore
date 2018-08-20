@@ -43,6 +43,22 @@
 #define PI_CONN 0   //** Actual connection
 #define PI_EFD  1   //** Portal event FD for incoming tasks
 
+static gop_mq_context_t mqc_default_options = {
+    .section = "mq_context",
+    .socket_type = MQ_TRACE_ROUTER,
+    .min_conn = 1,
+    .max_conn = 1,
+    .min_threads = 2,
+    .max_threads = 20,
+    .max_recursion = 5,
+    .backlog_trigger = 100,
+    .heartbeat_dt = 5,
+    .heartbeat_failure = 60,
+    .min_ops_per_sec = 100,
+    .bind_short_running_max = 40
+};
+
+
 static apr_threadkey_t *_mq_long_running_key = NULL;
 apr_pool_t *_mq_long_running_pool = NULL;
 
@@ -1919,6 +1935,7 @@ void gop_mq_destroy_context(gop_mq_context_t *mqc)
     apr_thread_mutex_destroy(mqc->lock);
     apr_pool_destroy(mqc->mpool);
 
+    if (mqc->section) free(mqc->section);
     free(mqc);
 
     log_printf(5, "AFTER SLEEP2\n");
@@ -1940,6 +1957,27 @@ void _gop_mq_submit_op(void *arg, gop_op_generic_t *gop)
 }
 
 //**************************************************************
+// gop_mq_print_running_config - Prings the running MQ config
+//**************************************************************
+
+void gop_mq_print_running_config(gop_mq_context_t *mqc, FILE *fd, int print_section_heading)
+{
+    if (print_section_heading) fprintf(fd, "[%s]\n", mqc->section);
+    fprintf(fd, "min_conn = %d\n", mqc->min_conn);
+    fprintf(fd, "max_conn = %d\n", mqc->max_conn);
+    fprintf(fd, "min_threads = %d\n", mqc->min_threads);
+    fprintf(fd, "max_threads = %d\n", mqc->max_threads);
+    fprintf(fd, "max_recursion = %d\n", mqc->max_recursion);
+    fprintf(fd, "backlog_trigger = %d\n", mqc->backlog_trigger);
+    fprintf(fd, "heartbeat_dt = %d # seconds\n", mqc->heartbeat_dt);
+    fprintf(fd, "heartbeat_failure = %d # seconds\n", mqc->heartbeat_failure);
+    fprintf(fd, "min_ops_per_sec = %lf\n", mqc->min_ops_per_sec);
+    fprintf(fd, "bind_short_running_max = %d\n", mqc->bind_short_running_max);
+    fprintf(fd, "socket_type = %d\n", mqc->socket_type);
+    fprintf(fd, "\n");
+}
+
+//**************************************************************
 //  gop_mq_create_context - Creates a new MQ pool
 //**************************************************************
 
@@ -1951,16 +1989,17 @@ gop_mq_context_t *gop_mq_create_context(tbx_inip_file_t *ifd, char *section)
 
     tbx_type_malloc_clear(mqc, gop_mq_context_t, 1);
 
-    mqc->min_conn = tbx_inip_get_integer(ifd, section, "min_conn", 1);
-    mqc->max_conn = tbx_inip_get_integer(ifd, section, "max_conn", 3);
-    mqc->min_threads = tbx_inip_get_integer(ifd, section, "min_threads", 2);
-    mqc->max_threads = tbx_inip_get_integer(ifd, section, "max_threads", 20);
-    mqc->max_recursion = tbx_inip_get_integer(ifd, section, "max_recursion", 5);
-    mqc->backlog_trigger = tbx_inip_get_integer(ifd, section, "backlog_trigger", 100);
-    mqc->heartbeat_dt = tbx_inip_get_integer(ifd, section, "heartbeat_dt", 5);
-    mqc->heartbeat_failure = tbx_inip_get_integer(ifd, section, "heartbeat_failure", 60);
-    mqc->min_ops_per_sec = tbx_inip_get_integer(ifd, section, "min_ops_per_sec", 100);
-    mqc->bind_short_running_max = tbx_inip_get_integer(ifd, section, "bind_short_running_max", 40);
+    mqc->section = strdup(section);
+    mqc->min_conn = tbx_inip_get_integer(ifd, section, "min_conn", mqc_default_options.min_conn);
+    mqc->max_conn = tbx_inip_get_integer(ifd, section, "max_conn", mqc_default_options.max_conn);
+    mqc->min_threads = tbx_inip_get_integer(ifd, section, "min_threads", mqc_default_options.min_threads);
+    mqc->max_threads = tbx_inip_get_integer(ifd, section, "max_threads", mqc_default_options.max_threads);
+    mqc->max_recursion = tbx_inip_get_integer(ifd, section, "max_recursion", mqc_default_options.max_recursion);
+    mqc->backlog_trigger = tbx_inip_get_integer(ifd, section, "backlog_trigger", mqc_default_options.backlog_trigger);
+    mqc->heartbeat_dt = tbx_inip_get_integer(ifd, section, "heartbeat_dt",mqc_default_options.heartbeat_dt);
+    mqc->heartbeat_failure = tbx_inip_get_integer(ifd, section, "heartbeat_failure", mqc_default_options.heartbeat_failure);
+    mqc->min_ops_per_sec = tbx_inip_get_double(ifd, section, "min_ops_per_sec", mqc_default_options.min_ops_per_sec);
+    mqc->bind_short_running_max = tbx_inip_get_integer(ifd, section, "bind_short_running_max", mqc_default_options.bind_short_running_max);
 
     // New socket_type parameter
     mqc->socket_type = tbx_inip_get_integer(ifd, section, "socket_type", MQ_TRACE_ROUTER);

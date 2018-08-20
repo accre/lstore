@@ -80,6 +80,7 @@ GOP_API void gop_hp_fn_set(gop_portal_context_t *hpc, gop_portal_fn_t *fn);
 GOP_API int gop_hp_que_op_submit(gop_portal_context_t *hpc, gop_op_generic_t *op);
 GOP_API void gop_hp_shutdown(gop_portal_context_t *hpc);
 GOP_API int gop_hp_submit(gop_host_portal_t *dp, gop_op_generic_t *op, bool addtotop, bool release_master);
+GOP_API void gop_hpc_print_running_config(gop_portal_context_t *hpc, FILE *fd, int print_section_heading);
 
 // tunable accessors
 GOP_API void gop_hpc_dead_dt_set(gop_portal_context_t *hpc, apr_time_t dt);

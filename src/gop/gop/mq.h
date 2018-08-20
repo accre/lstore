@@ -167,6 +167,7 @@ GOP_API gop_mq_context_t *gop_mq_portal_mq_context(gop_mq_portal_t *p);
 GOP_API void gop_mq_msg_apply_return_address(mq_msg_t *msg, mq_msg_t *raw_address, int dup_frames);
 GOP_API void gop_mq_command_set(gop_mq_command_table_t *table, void *cmd, int cmd_size, void *arg, gop_mq_exec_fn_t fn);
 GOP_API void gop_mq_command_table_set_default(gop_mq_command_table_t *table, void *arg, gop_mq_exec_fn_t fn);
+GOP_API void gop_mq_print_running_config(gop_mq_context_t *mqc, FILE *fd, int print_section_heading);
 GOP_API gop_mq_context_t *gop_mq_create_context(tbx_inip_file_t *ifd, char *section);
 GOP_API void gop_mq_destroy_context(gop_mq_context_t *mqp);
 GOP_API void gop_mq_frame_destroy(gop_mq_frame_t *f);
