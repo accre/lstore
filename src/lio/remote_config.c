@@ -34,6 +34,7 @@ typedef struct {
     gop_mq_portal_t *server_portal;
     char *prefix;
     char *host;
+    char *section;
 } rc_t;
 
 typedef struct {
@@ -43,6 +44,12 @@ typedef struct {
     char **config;
     rc_t *rc;
 } rc_op_t;
+
+static rc_t rc_default_options = {
+    .section = NULL,
+    .host = "${rc_host}",
+    .prefix = "/etc/lio/clients"
+};
 
 static rc_t *rc_server = NULL;
 
@@ -320,6 +327,19 @@ int rc_client_get_config(char *rc_string, char **config, char **obj_name)
 }
 
 //***********************************************************************
+// rc_print_running_config - Prints the running remote config server
+//***********************************************************************
+
+void rc_print_running_config(FILE *fd)
+{
+    if (!rc_server) return;
+    fprintf(fd, "[%s]\n", rc_server->section);
+    fprintf(fd, "host = %s\n", rc_server->host);
+    fprintf(fd, "prefix = %s\n", rc_server->prefix);
+    fprintf(fd, "\n");
+}
+
+//***********************************************************************
 // rc_server_install - Installs the Remote config server
 //***********************************************************************
 
@@ -329,9 +349,10 @@ int rc_server_install(lio_config_t *lc, char *section)
 
     tbx_type_malloc_clear(rc_server, rc_t, 1);
 
+    rc_server->section = strdup(section);
     rc_server->mqc = lio_gc->mqc;
-    rc_server->host = tbx_inip_get_string(lc->ifd, section, "host", NULL);
-    rc_server->prefix = tbx_inip_get_string(lc->ifd, section, "prefix", "/etc/lio");
+    rc_server->host = tbx_inip_get_string(lc->ifd, section, "host", rc_default_options.host);
+    rc_server->prefix = tbx_inip_get_string(lc->ifd, section, "prefix", rc_default_options.prefix);
 
     log_printf(5, "Starting remote config server on %s\n", rc_server->host);
     log_printf(5, "Client config path: %s\n", rc_server->prefix);
@@ -363,6 +384,7 @@ void rc_server_destroy()
 
     if (rc_server->host) free(rc_server->host);
     if (rc_server->prefix) free(rc_server->prefix);
+    if (rc_server->section) free(rc_server->section);
     free(rc_server);
     rc_server = NULL;
 }

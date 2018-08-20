@@ -16,6 +16,7 @@
 
 #include <lio/lio.h>
 
+void rc_print_running_config(FILE *fd);
 int rc_client_get_config(char *rc_string, char **config, char **obj_name);
 int rc_server_install(lio_config_t *lc, char *section);
 void rc_server_destroy();
