@@ -3091,6 +3091,8 @@ void os_remote_server_destroy(lio_object_service_fn_t *os)
 
     free(osrs->section);
     free(osrs->hostname);
+    free(osrs->os_local_section);
+
     if (osrs->fname_active) free(osrs->fname_active);
     free(osrs);
     free(os);

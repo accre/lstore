@@ -4259,7 +4259,7 @@ lio_object_service_fn_t *object_service_file_create(lio_service_manager_t *ess, 
         osf->max_copy = tbx_inip_get_integer(fd, section, "max_copy", osf_default_options.max_copy);
         osf->hardlink_dir_size = tbx_inip_get_integer(fd, section, "hardlink_dir_size", osf_default_options.hardlink_dir_size);
         asection = tbx_inip_get_string(fd, section, "authz", osf_default_options.authn_section);
-        osf->authn_section = asection;
+        osf->authz_section = asection;
         atype = (asection == NULL) ? strdup(OSAZ_TYPE_FAKE) : tbx_inip_get_string(fd, asection, "type", OSAZ_TYPE_FAKE);
         osaz_create = lio_lookup_service(ess, OSAZ_AVAILABLE, atype);
         osf->osaz = (*osaz_create)(ess, fd, asection, os);
